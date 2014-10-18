@@ -1,0 +1,16 @@
+{% load i18n %}
+
+<div id="CookielawBanner"
+     style="border: 2px solid gray; border-rounding: 8px; padding: 20px;">
+    <div class="container">
+        <center><h6>{% trans "COOKIE_INFO_HEADER" %}</h6></center>
+        <p>
+            {% trans "COOKIE_INFO_PARA" %}
+
+        <p/>
+        <a class="btn btn-primary pull-right"
+           href="javascript:Cookielaw.createCookielawCookie();">
+            <b>{% trans "COOKIE_INFO_OK" %}</b></a>
+        </p>
+    </div>
+</div>

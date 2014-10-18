@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% load pagination_tags %}
+
+{% block extratitle %}
+    Rezultaty wyszukiwania
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "multiseek:index" %}">Wyszukiwanie</a></li>
+    <li class="current">Rezultaty wyszukiwania ({{ paginator_count }}
+        rekordów)
+    </li>
+{% endblock %}
+
+{% block content %}
+    {% include "multiseek/common-results.html" with paging=20 live="0" %}
+{% endblock %}

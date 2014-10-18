@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% load columns %}
+
+{% block extratitle %}
+    {{ jednostka }}
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li>
+        <a href="{% url "bpp:browse_wydzial" jednostka.wydzial.slug %}">{{ jednostka.wydzial }}</a>
+    </li>
+    <li class="current"><a href=".">{{ jednostka }}</a></li>
+{% endblock %}
+
+{% block content %}
+    <h1>{{ jednostka }}</h1>
+    {% include "browse/edit_if_logged_in.html" with url="admin:bpp_jednostka_change" pk=jednostka.pk %}
+
+    {#    <h2><a href="{% url "bpp:browse_wydzial" jednostka.wydzial.slug %}">#}
+    {#    {{ jednostka.wydzial }}</a></h2>#}
+
+    {% if jednostka.kierownik %}
+        Kierownik: {{ jednostka.kierownik }}
+    {% endif %}
+    </a>
+
+    <form method="post"
+          action="{% url "bpp:browse_build_search" %}"
+          class="browserForm">
+        {% csrf_token %}
+        <input type="hidden" name="jednostka" value="{{ jednostka.pk }}"/>
+        <input type="hidden" name="suggested-title" value="{{ jednostka }}"/>
+        <fieldset>
+            <legend>Wyszukaj dla tej jednostki</legend>
+            {% include "browse/typy.html" %}
+        </fieldset>
+
+        {% if jednostka.nazwa != "Obca jednostka" %}
+
+            <fieldset>
+                <legend>... napisane przez:</legend>
+
+                <div class="row">
+                    {% for autor in jednostka.obecni_autorzy %}
+                        <div class="large-6 medium-12 small-12 columns" style="white-spacE:nowrap;">
+                            <label for="autor_{{ autor.pk }}">
+                                <input type="checkbox" name="autor"
+                                       value="{{ autor.pk }}"
+                                       id="autor_{{ autor.pk }}"
+                                        />
+                                <span class="custom checkbox"></span>
+                                {{ autor }}
+                                <a href="{% url "bpp:browse_autor" autor.slug %}">►</a>
+
+                            </label>
+                        </div>
+                    {% endfor %}
+                <span class="filler"></span>
+                </div>
+            </fieldset>
+        {% endif %}
+
+        {% include "browse/w_latach.html" with prace_w_latach=jednostka.prace_w_latach %}
+        <input class="submit button" type="submit" value="Wyślij zapytanie"/>
+    </form>
+
+{% endblock %}

@@ -1,0 +1,19 @@
+<table cellpadding="0" cellspacing="0" width="100%" class="global-nav" id="global-nav-table">
+
+{% for element in elements %}
+    <tr>
+        <td width="24" align="center">
+            <center><img src="/static/bpp/svg/{{ element.model }}.svg"
+                 class="navigation-autocomplete-icon"
+                 /></center>
+        </td>
+        <td>
+            <a style="display:block"
+               href="{{ element.url }}">
+                {{ element.label|safe }}
+            </a>
+        </td>
+    </tr>
+{% endfor %}
+
+</table>

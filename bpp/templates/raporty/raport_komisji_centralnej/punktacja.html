@@ -1,0 +1,78 @@
+<table>
+    <thead>
+    <tr>
+        <th>Artykuły w czasopismach</th>
+        <th>Liczba prac</th>
+        <th>IF</th>
+        <th>PK</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <th>Prace oryginalne</th>
+        <td>{{ suma_1.count }}</td>
+        <td>{{ suma_1.impact_factor }}</td>
+        <td>{{ suma_1.punkty_kbn }}</td>
+    </tr>
+    <tr>
+        <th>Opisy przypadków</th>
+        <td>{{ suma_2.count }}</td>
+        <td>{{ suma_2.impact_factor }}</td>
+        <td>{{ suma_2.punkty_kbn }}</td>
+    </tr>
+    <tr>
+        <th>Prace poglądowe</th>
+        <td>{{ suma_3.count }}</td>
+        <td>{{ suma_3.impact_factor }}</td>
+        <td>{{ suma_3.punkty_kbn }}</td>
+    </tr>
+    </tbody>
+</table>
+
+
+<table>
+    <thead>
+    <tr>
+        <th>Inne publikacje</th>
+        <th>Liczba prac</th>
+        <th>IF</th>
+        <th>PK</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <th>Publikacje w suplementach</th>
+        <td>{{ suma_9.count }}</td>
+        <td>{{ suma_9.impact_factor }}</td>
+        <td>{{ suma_9.punkty_kbn }}</td>
+    </tr>
+    <tr>
+        <th>Listy do redakcji</th>
+        <td>{{ suma_10.count }}</td>
+        <td>{{ suma_10.impact_factor }}</td>
+        <td>{{ suma_10.punkty_kbn }}</td>
+    </tr>
+    <tr>
+        <th>Prace wieloośrodkowe</th>
+        <td>{{ suma_11.count }}</td>
+        <td>{{ suma_11.impact_factor }}</td>
+        <td>{{ suma_11.punkty_kbn }}</td>
+    </tr>
+    <tr>
+        <th>Monografie (autor/redaktor)</th>
+        <td>???</td>
+    </tr>
+    <tr>
+        <th>Rozdziały z książek</th>
+        <td>{{ suma_4.count }}</td>
+    </tr>
+    <tr>
+        <th>Prace popularnonaukowe</th>
+        <td>{{ suma_5.count }}</td>
+    </tr>
+    <tr>
+        <th>Streszczenia zjazdowe</th>
+        <td>{{ suma_8.count }}</td>
+    </tr>
+    </tbody>
+</table>

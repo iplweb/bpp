@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block extratitle %}
+    {{ zrodlo.nazwa }}
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "bpp:browse_zrodla" %}">Źródła</a></li>
+    <li class="current">{{ zrodlo.nazwa }}</li>
+{% endblock %}
+
+{% block content %}
+    <h1>{{ zrodlo.nazwa }}</h1>
+    {% include "browse/edit_if_logged_in.html" with url="admin:bpp_zrodlo_change" pk=zrodlo.pk %}
+
+    <form method="post"
+          action="{% url "bpp:browse_build_search" %}" class="browserForm">
+        {% csrf_token %}
+        <input type="hidden" name="suggested-title" value="{{ zrodlo }}"/>
+        <input type="hidden" name="zrodlo" value="{{ zrodlo.pk }}"/>
+
+        <p>
+            Wyszukaj prace w tym źródle:
+        </p>
+        {% include "browse/w_latach.html" with prace_w_latach=zrodlo.prace_w_latach %}
+        <input class="submit button" type="submit" value="Wyślij zapytanie"/>
+    </form>
+
+{% endblock %}

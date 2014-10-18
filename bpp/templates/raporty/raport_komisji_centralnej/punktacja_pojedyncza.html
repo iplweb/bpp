@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Analiza bibliometryczna publikacji w postępowaniu o nadanie
+        {{ stopien }} - {{ autor }} - punktacja sumaryczna</title>
+    <meta charset="utf-8"/>
+    <style type="text/css">
+        {# embeddujemy, bo to będzie otwierane w MS Word później np #}
+        {% include "raporty/raport_komisji_centralnej/included_style.css" %}
+    </style>
+</head>
+<body>
+<h2>
+    PODSUMOWANIE ANALIZY BIBLIOMETRYCZNEJ DOROBKU NAUKOWEGO
+    w postępowaniu o nadanie {{ stopien }}<br />
+    {{ autor.imiona }} {{ autor.nazwisko }}
+</h2>
+<h2>{{ rodzaj_dorobku }}</h2>
+{% include "raporty/raport_komisji_centralnej/punktacja.html" %}
+</body>
+</html>

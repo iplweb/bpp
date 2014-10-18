@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Analiza bibliometryczna publikacji w postępowaniu o nadanie
+        {{ stopien }} - {{ autor }}</title>
+    <meta charset="utf-8"/>
+    <style type="text/css">
+        {# embeddujemy, bo to będzie otwierane w MS Word później np #}
+        {% include "raporty/raport_komisji_centralnej/included_style.css" %}
+    </style>
+</head>
+<body>
+
+<center>
+    <h2>
+        Analiza bibliometryczna publikacji w postępowaniu o nadanie
+        {{ stopien }}.<br/>
+        {{ autor.imiona }} {{ autor.nazwisko }}
+    </h2>
+
+    <h2>{{ rodzaj_dorobku }}</h2>
+</center>
+
+<h3>I. Oryginalne pełnotekstowe prace naukowe - liczba
+    prac: {{ liczba_prac_I }}</h3>
+<h4>A. w czasopismach z Impact Factor</h4>
+{% include "raporty/raport_komisji_centralnej/tabela_lub_tekst.html" with tabela=tabela_1a %}
+<h4>B. w czasopismach bez Impact Factor</h4>
+{% include "raporty/raport_komisji_centralnej/tabela_lub_tekst.html" with tabela=tabela_1b %}
+
+<h3>II. Opisy przypadków - liczba prac: {{ liczba_prac_II }}</h3>
+<h4>A. w czasopismach z Impact Factor</h4>
+{% include "raporty/raport_komisji_centralnej/tabela_lub_tekst.html" with tabela=tabela_2a %}
+<h4>B. w czasopismach bez Impact Factor</h4>
+{% include "raporty/raport_komisji_centralnej/tabela_lub_tekst.html" with tabela=tabela_2b %}
+
+<h3>III. Prace poglądowe - liczba prac: {{ liczba_prac_III }}</h3>
+<h4>A. w czasopismach z Impact Factor</h4>
+{% include "raporty/raport_komisji_centralnej/tabela_lub_tekst.html" with tabela=tabela_3a %}
+<h4>B. w czasopismach bez Impact Factor</h4>
+{% include "raporty/raport_komisji_centralnej/tabela_lub_tekst.html" with tabela=tabela_3b %}
+<br/>
+
+<div style="border: 1px solid black;">
+    <table width="100%" style="margin: 10px; font-weight: bold;">
+        <tr>
+            <td>Łączna punktacja (dla pkt. I-III):</td>
+            <td>IF = {{ impact_od_1_do_3 }} </td>
+            <td>KBN/MNiSW = {{ kbn_od_1_do_3 }}</td>
+        </tr>
+    </table>
+</div>
+<h3>IV. Rozdziały w podręcznikach:</h3>
+{% spaceless %}
+    <table width="100%">
+        <tr>
+            <td width="50%">A. międzynarodowych</td>
+            <td>liczba:</td>
+        </tr>
+        <tr>
+            <td>B. krajowych</td>
+            <td>liczba:</td>
+        </tr>
+        <tr>
+        <tr>
+            <td>
+                C. Autorstwo monografii lub podręcznika:
+            </td>
+            <td>liczba: {{ liczba_prac_IVc }}</td>
+        </tr>
+        <tr>
+            <td>
+                C1. w języku angielskim
+            </td>
+            <td>liczba: {{ liczba_prac_IVc1 }}</td>
+        </tr>
+        <tr>
+            <td>
+                C2. w języku polskim lub innym niż angielski
+            </td>
+            <td>liczba: {{ liczba_prac_IVc2 }}</td>
+        </tr>
+    </table>
+{% endspaceless %}
+
+<h3>V. Prace popularno-naukowe i inne, liczba prac: {{ liczba_prac_5 }}</h3>
+
+<h3>VI. Redaktor naczelny czasopisma o zasięgu:</h3>
+{% include "raporty/raport_komisji_centralnej/podtabelka.html" with a="międzynarodowym" data_a=liczba_redaktor_mnar b="krajowym" data_b=liczba_redaktor_kraj %}
+
+<h3>VII. Redaktor naczelny wieloautorskich: monografii, podręcznika
+    akademickiego lub serii wydawniczej</h3>
+{% include "raporty/raport_komisji_centralnej/podtabelka.html" with a="w języku angielskim" data_a=liczba_redaktor_wieloautorskich_ang b="w języku polskim lub innym, niż angielski" data_b=liczba_redaktor_wieloautorskich_pol %}
+
+<h2 style="text-decoration:underline;">Informacje dodatkowe</h2>
+
+<h3>VIII. Liczba streszczeń: {{ liczba_streszczen }}</h3>
+{% include "raporty/raport_komisji_centralnej/podtabelka.html" with a="ze zjazdów międzynarodowych" data_a=liczba_streszczen_mnar b="ze zjazdów krajowych" data_b=liczba_streszczen_kraj %}
+
+<h3>IX. Liczba publikacji pełnotekstowych w suplementach
+    czasopism: {{ liczba_prac_IX }}</h3>
+<h4>A. w czasopismach z Impact Factor</h4>
+{% include "raporty/raport_komisji_centralnej/tabela_lub_tekst.html" with tabela=tabela_9a %}
+<h4>B. w czasopismach bez Impact Factor</h4>
+{% include "raporty/raport_komisji_centralnej/tabela_lub_tekst.html" with tabela=tabela_9b %}
+
+<h3>X. Liczba listów do redakcji czasopism: {{ suma_10 }}</h3>
+<h4>A. z Impact Factor</h4>
+{% include "raporty/raport_komisji_centralnej/tabela_lub_tekst.html" with tabela=tabela_10a %}
+<h4>B. bez Impact Factor</h4>
+{% include "raporty/raport_komisji_centralnej/tabela_lub_tekst.html" with tabela=tabela_10b %}
+
+<h3>XI. Liczba publikacji z udziałem autora w badaniach
+    wieloośrodkowych: {{ suma_11 }}</h3>
+<h4>A. w czasopismach z Impact Factor</h4>
+{% include "raporty/raport_komisji_centralnej/tabela_lub_tekst.html" with tabela=tabela_11a %}
+<h4>B. w czasopismach bez Impact Factor</h4>
+{% include "raporty/raport_komisji_centralnej/tabela_lub_tekst.html" with tabela=tabela_11b %}
+
+<p>
+    <b>Liczba cytowań</b> według bazy Scopus (bez autocytowań): <b>UZUPEŁNIJ</b>
+</p>
+
+<p>
+    Analizę bibliometryczną wykonano zgodnie z wytycznymi CK zawartymi w
+    pismach:
+<ul style="list-style-type: square;">
+    <li>Nr BCK-Org.-54/2009 z dnia 23.03.2009</li>
+    <li>Nr BCK-Org.-317/2010 z dnia 11.10.2010</li>
+</ul>
+</p>
+<div style="clear:both;"></div>
+<div style="float:right;">
+    <center>
+        ………………………………
+        <br/>
+        <br/>
+        Podpis osoby sporządzającej
+    </center>
+</div>
+
+</b></body>
+</html>

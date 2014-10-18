@@ -1,0 +1,12 @@
+[
+    {
+        "model": "bpp.uczelnia",
+        "pk": 1,
+        "fields": {
+            "nazwa": "Uniwersytet Medyczny w Lublinie",
+            "nazwa_dopelniacz_field": "Uniwersytetu Medycznego w Lublinie",
+            "skrot": "UML",
+            "slug": "UML"
+        }
+    }
+]

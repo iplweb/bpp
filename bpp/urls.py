@@ -1,0 +1,89 @@
+# -*- encoding: utf-8 -*-
+from django.conf.urls import patterns, url, include
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.csrf import csrf_exempt
+
+from bpp.views.oai import OAIView
+from bpp.views.api import RokHabilitacjiView, PunktacjaZrodlaView, UploadPunktacjaZrodlaView, OstatniaJednostkaView
+from bpp.views.browse import UczelniaView, WydzialView, JednostkaView, \
+    AutorView, ZrodlaView, ZrodloView, AutorzyView, BuildSearch, PracaView, \
+    JednostkiView
+from bpp.views.raporty import RaportSelector, RankingAutorow, \
+    PobranieRaportu, PodgladRaportu, KasowanieRaportu, \
+    RaportJednostek2012
+from bpp.views.utils import charmap, charmap_update_setting
+from bpp import reports
+
+reports # PyCharm, leave that import alone, it is IMPORTANT to import it
+
+from django.conf import settings
+
+if not settings.TESTING:
+    # TODO pchnać to do inicjalizacji aplikacji dango 1.7
+    from bpp.models import cache
+    cache.enable()
+
+urlpatterns = patterns(
+    '',
+    url(r'^charmap/set/$', charmap_update_setting, name="charmap_set"),
+    url(r'^charmap/$', charmap, name="charmap"),
+
+    url(r'^api/rok-habilitacji/$', csrf_exempt(RokHabilitacjiView.as_view()),
+        name='api_rok_habilitacji'),
+    url(r'^api/punktacja-zrodla/(?P<zrodlo_id>[\d]+)/(?P<rok>[\d]+)/$',
+        csrf_exempt(PunktacjaZrodlaView.as_view()),
+        name='api_punktacja_zrodla'),
+    url(r'^api/upload-punktacja-zrodla/(?P<zrodlo_id>[\d]+)/(?P<rok>[\d]+)/$',
+        csrf_exempt(UploadPunktacjaZrodlaView.as_view()),
+        name='api_upload_punktacja_zrodla'),
+    url(r'^api/ostatnia-jednostka/$',
+        csrf_exempt(OstatniaJednostkaView.as_view()),
+        name='api_ostatnia_jednostka'),
+    
+    url(r'^oai/', OAIView.as_view(), name="oai"),
+
+    url(r'^jednostka/(?P<slug>[\w-]+)/$', JednostkaView.as_view(),
+        name='browse_jednostka'),
+    url(r'^jednostki/$', JednostkiView.as_view(), name="browse_jednostki"),
+    url(r'^jednostki/(?P<literka>.)/$', JednostkiView.as_view(),
+        name="browse_jednostki_literka"),
+    url(r'^wydzial/(?P<slug>[\w-]+)/$', WydzialView.as_view(),
+        name='browse_wydzial'),
+    url(r'^uczelnia/(?P<slug>[\w-]+)/$', UczelniaView.as_view(),
+        name='browse_uczelnia'),
+    url(r'^autorzy/$', AutorzyView.as_view(), name='browse_autorzy'),
+    url(r'^autorzy/(?P<literka>.)/$', AutorzyView.as_view(),
+        name='browse_autorzy_literka'),
+    url(r'^autor/(?P<slug>[\w-]+)/$', AutorView.as_view(), name='browse_autor'),
+    url(r'^zrodla/$', ZrodlaView.as_view(), name='browse_zrodla'),
+    url(r'^zrodla/(?P<literka>.)/$', ZrodlaView.as_view(),
+        name='browse_zrodla_literka'),
+    url(r'^zrodlo/(?P<slug>[\w-]+)/$', ZrodloView.as_view(),
+        name='browse_zrodlo'),
+
+    url(r'^(?P<model>[\w_]+)/(?P<pk>[\d]+)/$', PracaView.as_view(), name='browse_praca'),
+
+    url(r'^build_search/$', BuildSearch.as_view(), name='browse_build_search'),
+
+    url(r'^raporty/$',
+        login_required(RaportSelector.as_view()), name='raporty'),
+    url(r'^raporty/pobranie/(?P<uid>[\w-]+)/$',
+        login_required(PobranieRaportu.as_view()), name='pobranie-raportu'),
+    url(r'^raporty/podglad/(?P<uid>[\w-]+)/skasuj/$',
+        login_required(KasowanieRaportu.as_view()), name='kasowanie-raportu'),
+    url(r'^raporty/podglad/(?P<uid>[\w-]+)/$',
+        login_required(PodgladRaportu.as_view()), name='podglad-raportu'),
+    url(r'^raporty/ranking-autorow/(?P<rok>\d\d\d\d)/$',
+        login_required(RankingAutorow.as_view()), name='ranking-autorow'),
+    url(
+        r'^raporty/raport-jednostek-2012/(?P<pk>\d+)/(?P<rok_min>\d+)-(?P<rok_max>\d+)/$',
+        login_required(RaportJednostek2012.as_view()),
+        name='raport-jednostek-rok-min-max'),
+    url(r'^raporty/raport-jednostek-2012/(?P<pk>\d+)/(?P<rok_min>\d+)/$',
+        login_required(RaportJednostek2012.as_view()), name='raport-jednostek'),
+
+    url(r'^$', "bpp.views.root", name="root"),
+
+    url(r'^update-multiseek-title/$', "bpp.views.update_multiseek_title", name='update_multiseek_title')
+
+)

@@ -1,0 +1,170 @@
+# -*- encoding: utf-8 -*-
+
+"""Ten moduł zawiera 'normalne', dla ludzi funkcje, które mogą być używane
+do ustawiania testów."""
+from datetime import datetime
+from model_mommy import mommy
+import random
+import time
+from bpp.models import Tytul, Autor, Jednostka, Wydawnictwo_Ciagle, Wydawnictwo_Zwarte, Zrodlo, Wydzial, Uczelnia, Praca_Habilitacyjna, Praca_Doktorska, Typ_KBN, Jezyk, Charakter_Formalny, Patent
+
+
+def set_default(varname, value, dct):
+    if varname not in dct:
+        dct[varname] = value
+
+
+def any_autor(nazwisko='Kowalski', imiona='Jan Maria', tytul='dr', **kw):
+    tytul = Tytul.objects.get_or_create(skrot=tytul)[0]
+    return Autor.objects.create(
+        nazwisko=nazwisko, tytul=tytul, imiona=imiona, **kw)
+
+
+def any_uczelnia(nazwa="Uczelnia", skrot="UCL"):
+    return Uczelnia.objects.create(nazwa=nazwa, skrot=skrot)
+
+                     
+wydzial_cnt = 0                     
+
+def any_wydzial(nazwa=None, skrot=None, uczelnia_skrot="UCL", **kw):
+    global wydzial_cnt
+    try:
+        uczelnia = Uczelnia.objects.get(skrot=uczelnia_skrot)
+    except Uczelnia.DoesNotExist:
+        uczelnia = any_uczelnia()
+
+    if nazwa is None:
+        nazwa = 'Wydział %s' % wydzial_cnt
+
+    if skrot is None:
+        skrot = "W%s" % wydzial_cnt
+        
+    wydzial_cnt += 1
+
+    set_default('uczelnia', uczelnia, kw)
+    return Wydzial.objects.create(nazwa=nazwa, skrot=skrot, **kw)
+
+
+def any_jednostka(nazwa=None, skrot=None, wydzial_skrot="WDZ", **kw):
+    """
+    :rtype: bpp.models.Jednostka
+    """
+    if nazwa is None:
+        nazwa = 'Jednostka %s' % random.randint(0, 500000)
+
+    if skrot is None:
+        skrot = 'J. %s' % random.randint(0, 5000000)
+
+    try:
+        wydzial = Wydzial.objects.get(skrot=wydzial_skrot)
+    except Wydzial.DoesNotExist:
+        wydzial = any_wydzial()
+
+    set_default('wydzial', wydzial, kw)
+    return Jednostka.objects.create(nazwa=nazwa, skrot=skrot, **kw)
+
+
+CURRENT_YEAR = datetime.now().year
+
+
+def any_wydawnictwo(klass, rok=None, **kw):
+    if rok is None:
+        rok = CURRENT_YEAR
+
+    c = time.time()
+    kl = str(klass).split('.')[-1].replace("'>", "")
+
+    kw_wyd = dict(
+        tytul="Tytul %s %s" % (kl, c),
+        tytul_oryginalny="Tytul oryginalny %s %s" % (kl, c),
+        uwagi="Uwagi %s %s" % (kl, c),
+        szczegoly='Szczegóły %s %s' % (kl, c))
+
+    if klass == Patent:
+        del kw_wyd['tytul']
+
+    for key, value in kw_wyd.items():
+        set_default(key, value, kw)
+
+    return mommy.make(klass, rok=rok, **kw)
+
+
+def any_ciagle(**kw):
+    """
+    :rtype: bpp.models.Wydawnictwo_Ciagle
+    """
+    if 'zrodlo' not in kw:
+        set_default('zrodlo', any_zrodlo(), kw)
+    set_default('informacje', 'zrodlo-informacje', kw)
+    set_default('issn', '123-IS-SN-34', kw)
+    return any_wydawnictwo(Wydawnictwo_Ciagle, **kw)
+
+
+def any_zwarte_base(klass, **kw):
+    if klass not in [Praca_Doktorska, Praca_Habilitacyjna, Patent]:
+        set_default('liczba_znakow_wydawniczych', 31337, kw)
+
+    set_default('informacje', 'zrodlo-informacje dla zwarte', kw)
+
+    if klass not in [Patent]:
+        set_default('miejsce_i_rok', 'Lublin %s' % CURRENT_YEAR, kw)
+        set_default('wydawnictwo', 'Wydawnictwo FOLIUM', kw)
+        set_default('isbn', '123-IS-BN-34', kw)
+        set_default('redakcja', 'Redakcja', kw)
+
+    return any_wydawnictwo(klass, **kw)
+
+
+def any_zwarte(**kw):
+    """
+    :rtype: bpp.models.Wydawnictwo_Zwarte
+    """
+    return any_zwarte_base(Wydawnictwo_Zwarte, **kw)
+
+
+def any_habilitacja(**kw):
+    """
+    :rtype: bpp.models.Praca_Habilitacyjna
+    """
+    if 'jednostka' not in kw:
+        kw['jednostka'] = any_jednostka()
+    return any_zwarte_base(Praca_Habilitacyjna, **kw)
+
+
+def any_doktorat(**kw):
+    """
+    :rtype: bpp.models.Praca_Habilitacyjna
+    """
+    if 'jednostka' not in kw:
+        kw['jednostka'] = any_jednostka()
+    return any_zwarte_base(Praca_Doktorska, **kw)
+
+def any_patent(**kw):
+    """
+    :rtype: bpp.models.Patent
+    """
+    return any_zwarte_base(Patent, **kw)
+
+
+def any_zrodlo(**kw):
+    """
+    :rtype: bpp.models.Zrodlo
+    """
+    if 'nazwa' not in kw:
+        kw['nazwa'] = "Zrodlo %s" % time.time()
+
+    if 'skrot' not in kw:
+        kw['skrot'] = "Zrod. %s" % time.time()
+
+    return mommy.make(Zrodlo, **kw)
+
+
+def _lookup_fun(klass):
+    def fun(skrot):
+        return klass.objects.filter(skrot=skrot)
+    return fun
+
+
+typ_kbn = _lookup_fun(Typ_KBN)
+jezyk = _lookup_fun(Jezyk)
+charakter = _lookup_fun(Charakter_Formalny)

@@ -1,0 +1,60 @@
+{% extends "django_tables2/table.html" %}
+
+{% load django_tables2 %}
+
+
+{% block table %}
+    {% if table.is_configured %}
+        <table width="100%">
+            <tr>
+                <td><h1>{{ table_title }}</h1></td>
+                <td class="hide-on-print">
+                    {% for label, format in table.formats %}
+                        <a href="{% querystring table.param_report=format %}">
+                            <img src="{{ STATIC_URL }}img/{{ format }}_icon.png"
+                                 title="{{ label }}"/>
+                        </a>
+                    {% endfor %}
+                <a href="?per_page=1000000&print=1">
+                    <img src="{{ STATIC_URL }}bpp/images/printer.png"
+                         width="35" height="35" title="Drukuj"/>
+                </a>
+                </td>
+            </tr>
+        </table>
+    {% endif %}
+    {{ block.super }}
+
+    <script type="text/javascript">
+    if (location.search.endsWith("print=1"))
+        window.print();
+    </script>
+{% endblock table %}
+
+{% block pagination %}
+    <div class="pagination-centered">
+        <ul class="pagination">
+
+            {% if table.page.has_previous %}
+                <li class="arrow">
+                    <a href="{% querystring table.prefixed_page_field=table.page.previous_page_number %}">
+                        &laquo;
+                    </a>
+                </li>
+            {% endif %}
+
+            {% if table.page.has_previous or table.page.has_next %}
+                <li class="current">
+                    Strona {{ table.page.number }} z {{ table.page.paginator.num_pages }}
+                </li>
+            {% endif %}
+
+            {% if table.page.has_next %}
+                <li class="arrow">
+                    <a href="{% querystring table.prefixed_page_field=table.page.next_page_number %}">
+                        &raquo;</a></li>
+            {% endif %}
+
+        </ul>
+    </div>
+{% endblock %}

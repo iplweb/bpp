@@ -1,0 +1,250 @@
+[
+    {
+        "model": "bpp.tytul",
+        "pk": 1,
+        "fields": {
+            "skrot": "dr",
+            "nazwa": "doktor"
+        }
+    },
+    {
+        "model": "bpp.tytul",
+        "pk": 2,
+        "fields": {
+            "skrot": "dr n. med.",
+            "nazwa": "doktor nauk medycznych"
+        }
+    },
+    {
+        "model": "bpp.tytul",
+        "pk": 3,
+        "fields": {
+            "skrot": "dr hab.",
+            "nazwa": "doktor habilitowany"
+        }
+    },
+    {
+        "model": "bpp.tytul",
+        "pk": 4,
+        "fields": {
+            "skrot": "dr hab. med.",
+            "nazwa": "doktor habilitowany medycyny"
+        }
+    },
+    {
+        "model": "bpp.tytul",
+        "pk": 5,
+        "fields": {
+            "skrot": "prof.",
+            "nazwa": "profesor"
+        }
+    },
+    {
+        "model": "bpp.tytul",
+        "pk": 6,
+        "fields": {
+            "skrot": "prof. dr hab. med.",
+            "nazwa": "profesor doktor habilitowany medycyny"
+        }
+    },
+    {
+        "model": "bpp.tytul",
+        "pk": 7,
+        "fields": {
+            "skrot": "dr n. farm.",
+            "nazwa": "doktor nauk farmaceutycznych"
+        }
+    },
+    {
+        "model": "bpp.tytul",
+        "pk": 8,
+        "fields": {
+            "skrot": "dr hab. n. farm.",
+            "nazwa": "doktor habilitowany nauk farmaceutycznych"
+        }
+    },
+    {
+        "model": "bpp.tytul",
+        "pk": 9,
+        "fields": {
+            "skrot": "prof. dr hab. n. farm.",
+            "nazwa": "profesor doktor habilitowany nauk farmaceutycznych"
+        }
+    },
+    {
+        "model": "bpp.tytul",
+        "pk": 10,
+        "fields": {
+            "skrot": "mgr",
+            "nazwa": "magister"
+        }
+    },
+    {
+        "model": "bpp.tytul",
+        "pk": 11,
+        "fields": {
+            "skrot": "mgr piel.",
+            "nazwa": "magister pielęgniarstwa"
+        }
+    },
+    {
+        "model": "bpp.tytul",
+        "pk": 12,
+        "fields": {
+            "skrot": "mgr położ.",
+            "nazwa": "magister położnictwa"
+        }
+    },
+    {
+        "model": "bpp.tytul",
+        "pk": 13,
+        "fields": {
+            "skrot": "lek.",
+            "nazwa": "lekarz"
+        }
+    },
+    {
+        "model": "bpp.tytul",
+        "pk": 14,
+        "fields": {
+            "skrot": "lek. dent.",
+            "nazwa": "lekarz dentysta"
+        }
+    },
+    {
+        "model": "bpp.tytul",
+        "pk": 15,
+        "fields": {
+            "skrot": "lek. med.",
+            "nazwa": "lekarz medycyny"
+        }
+    },
+    {
+        "model": "bpp.tytul",
+        "pk": 16,
+        "fields": {
+            "skrot": "dr n. przyr.",
+            "nazwa": "doktor nauk przyrodniczych"
+        }
+    },
+    {
+        "model": "bpp.tytul",
+        "pk": 17,
+        "fields": {
+            "skrot": "prof. dr hab. przyr.",
+            "nazwa": "doktor habilitowany nauk przyrodniczych"
+        }
+    },
+    {
+        "model": "bpp.tytul",
+        "pk": 18,
+        "fields": {
+            "skrot": "lek. wet.",
+            "nazwa": "lekarz weterynarii"
+        }
+    },
+    {
+        "model": "bpp.tytul",
+        "pk": 19,
+        "fields": {
+            "skrot": "dr n. wet.",
+            "nazwa": "doktor nauk weterynaryjnych"
+        }
+    },
+    {
+        "model": "bpp.tytul",
+        "pk": 20,
+        "fields": {
+            "skrot": "dr n. hum.",
+            "nazwa": "doktor nauk humanistycznych"
+        }
+    },
+    {
+        "model": "bpp.tytul",
+        "pk": 21,
+        "fields": {
+            "skrot": "dr n. fiz.",
+            "nazwa": "doktor nauk fizycznych"
+        }
+    },
+    {
+        "model": "bpp.tytul",
+        "pk": 22,
+        "fields": {
+            "skrot": "mgr inż.",
+            "nazwa": "magister inżynier"
+        }
+    },
+    {
+        "model": "bpp.tytul",
+        "pk": 23,
+        "fields": {
+            "skrot": "lek. stom.",
+            "nazwa": "lekarz stomatolog"
+        }
+    },
+    {
+        "model": "bpp.tytul",
+        "pk": 24,
+        "fields": {
+            "skrot": "dr n. rol.",
+            "nazwa": "doktor nauk rolniczych"
+        }
+    },
+    {
+        "model": "bpp.tytul",
+        "pk": 25,
+        "fields": {
+            "skrot": "prof. dr hab. n. hum.",
+            "nazwa": "profesor doktor habilitowany nauk humanistycznych"
+        }
+    },
+    {
+        "model": "bpp.tytul",
+        "pk": 26,
+        "fields": {
+            "skrot": "dr n. chem.",
+            "nazwa": "doktor nauk chemicznych"
+        }
+    },
+    {
+        "model": "bpp.tytul",
+        "pk": 27,
+        "fields": {
+            "skrot": "prof. dr hab. n. chem.",
+            "nazwa": "profesor doktor habilitowany nauk chemicznych"
+        }
+    },
+    {
+        "model": "bpp.tytul",
+        "pk": 28,
+        "fields": {
+            "skrot": "dr n. prawnych",
+            "nazwa": "doktor nauk prawnych"
+        }
+    },
+    {
+        "model": "bpp.tytul",
+        "pk": 29,
+        "fields": {
+            "skrot": "dr n. o kult. fiz.",
+            "nazwa": "doktor nauk o kulturze fizycznej"
+        }
+    },
+    {
+        "model": "bpp.tytul",
+        "pk": 30,
+        "fields": {
+            "skrot": "dr hab. n. hum.",
+            "nazwa": "doktor habilitowany nauk humanistycznych"
+        }
+    },
+    {
+        "model": "bpp.tytul",
+        "pk": 31,
+        "fields": {
+            "skrot": "prof. dr hab. n. biol.",
+            "nazwa": "profesor doktor habilitowany nauk biologicznych"
+        }
+    }
+]

@@ -1,0 +1,9 @@
+Multiseek "live search" na tej samej podstronie
+
+Autocomplete dla niezalogowanych:
+    Znaleziono jednostki:
+    ... lista jednostek
+    ... oraz 5 innych, wyświetl więcej -> i wyszukiwanie
+
+
+Raz na dobę, o 12tej w nocy, celery przebuduje sobie cały indeks Cache

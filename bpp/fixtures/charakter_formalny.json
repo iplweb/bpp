@@ -1,0 +1,322 @@
+[
+    {
+        "model": "bpp.charakter_formalny",
+        "pk": null,
+        "fields": {
+            "nazwa": "Artykuł w czasopismie polskim (j. polski)",
+            "skrot": "AP",
+            "publikacja": true,
+            "streszczenie": false
+        }
+    },
+    {
+        "model": "bpp.charakter_formalny",
+        "pk": null,
+        "fields": {
+            "nazwa": "Artykuł w czasopiśmie polskim (inne języki)",
+            "skrot": "API",
+            "publikacja": true,
+            "streszczenie": false
+        }
+    },
+    {
+        "model": "bpp.charakter_formalny",
+        "pk": null,
+        "fields": {
+            "nazwa": "Artykuł w czasopiśmie zagranicznym",
+            "skrot": "AZ",
+            "publikacja": true,
+            "streszczenie": false
+        }
+    },
+    {
+        "model": "bpp.charakter_formalny",
+        "pk": null,
+        "fields": {
+            "nazwa": "Komentarz",
+            "skrot": "KOM",
+            "publikacja": true,
+            "streszczenie": false
+        }
+    },
+    {
+        "model": "bpp.charakter_formalny",
+        "pk": null,
+        "fields": {
+            "nazwa": "List do redakcji",
+            "skrot": "L",
+            "publikacja": true,
+            "streszczenie": false
+        }
+    },
+    {
+        "model": "bpp.charakter_formalny",
+        "pk": null,
+        "fields": {
+            "nazwa": "Publikacja w suplemencie",
+            "skrot": "Supl",
+            "publikacja": true,
+            "streszczenie": false
+        }
+    },
+    {
+        "model": "bpp.charakter_formalny",
+        "pk": null,
+        "fields": {
+            "nazwa": "Czasopismo",
+            "skrot": "CZ",
+            "publikacja": false,
+            "streszczenie": false
+        }
+    },
+    {
+        "model": "bpp.charakter_formalny",
+        "pk": null,
+        "fields": {
+            "nazwa": "Książka w języku polskim",
+            "skrot": "KSP",
+            "publikacja": false,
+            "streszczenie": false
+        }
+    },
+    {
+        "model": "bpp.charakter_formalny",
+        "pk": null,
+        "fields": {
+            "nazwa": "Książka w języku obcym",
+            "skrot": "KSZ",
+            "publikacja": false,
+            "streszczenie": false
+        }
+    },
+    {
+        "model": "bpp.charakter_formalny",
+        "pk": null,
+        "fields": {
+            "nazwa": "Fragment",
+            "skrot": "frg",
+            "publikacja": true,
+            "streszczenie": false
+        }
+    },
+    {
+        "model": "bpp.charakter_formalny",
+        "pk": null,
+        "fields": {
+            "nazwa": "inne",
+            "skrot": "IN",
+            "publikacja": false,
+            "streszczenie": false
+        }
+    },
+    {
+        "model": "bpp.charakter_formalny",
+        "pk": null,
+        "fields": {
+            "nazwa": "Tłumaczenie",
+            "skrot": "TŁ",
+            "publikacja": false,
+            "streszczenie": false
+        }
+    },
+    {
+        "model": "bpp.charakter_formalny",
+        "pk": null,
+        "fields": {
+            "nazwa": "Skrypt",
+            "skrot": "SKR",
+            "publikacja": false,
+            "streszczenie": false
+        }
+    },
+    {
+        "model": "bpp.charakter_formalny",
+        "pk": null,
+        "fields": {
+            "nazwa": "Polski referat zjazdowy - obcojęzyczny",
+            "skrot": "PRI",
+            "publikacja": true,
+            "streszczenie": false
+        }
+    },
+    {
+        "model": "bpp.charakter_formalny",
+        "pk": null,
+        "fields": {
+            "nazwa": "Polski Referat Zjazdowy",
+            "skrot": "PRZ",
+            "publikacja": true,
+            "streszczenie": false
+        }
+    },
+    {
+        "model": "bpp.charakter_formalny",
+        "pk": null,
+        "fields": {
+            "nazwa": "Polskie streszczenie inne - obcojęzyczne",
+            "skrot": "PSI",
+            "publikacja": false,
+            "streszczenie": true
+        }
+    },
+    {
+        "model": "bpp.charakter_formalny",
+        "pk": null,
+        "fields": {
+            "nazwa": "Polskie streszczenie zjazdowe",
+            "skrot": "PSZ",
+            "publikacja": false,
+            "streszczenie": true
+        }
+    },
+    {
+        "model": "bpp.charakter_formalny",
+        "pk": null,
+        "fields": {
+            "nazwa": "Poradnik zawodowy",
+            "skrot": "PZ",
+            "publikacja": false,
+            "streszczenie": false
+        }
+    },
+    {
+        "model": "bpp.charakter_formalny",
+        "pk": null,
+        "fields": {
+            "nazwa": "Recenzja",
+            "skrot": "R",
+            "publikacja": false,
+            "streszczenie": false
+        }
+    },
+    {
+        "model": "bpp.charakter_formalny",
+        "pk": null,
+        "fields": {
+            "nazwa": "Rozdział książki",
+            "skrot": "ROZ",
+            "publikacja": true,
+            "streszczenie": false
+        }
+    },
+    {
+        "model": "bpp.charakter_formalny",
+        "pk": null,
+        "fields": {
+            "nazwa": "Rozdział skryptu",
+            "skrot": "ROZS",
+            "publikacja": false,
+            "streszczenie": false
+        }
+    },
+    {
+        "model": "bpp.charakter_formalny",
+        "pk": null,
+        "fields": {
+            "nazwa": "Streszczenie",
+            "skrot": "S",
+            "publikacja": false,
+            "streszczenie": false
+        }
+    },
+    {
+        "model": "bpp.charakter_formalny",
+        "pk": null,
+        "fields": {
+            "nazwa": "Referat zjazdowy konferencji miedzynarodowej",
+            "skrot": "ZRZ",
+            "publikacja": true,
+            "streszczenie": false
+        }
+    },
+    {
+        "model": "bpp.charakter_formalny",
+        "pk": null,
+        "fields": {
+            "nazwa": "Streszczenie zjazdowe konferencji międzynarodowej",
+            "skrot": "ZSZ",
+            "publikacja": false,
+            "streszczenie": true
+        }
+    },
+    {
+        "model": "bpp.charakter_formalny",
+        "pk": null,
+        "fields": {
+            "nazwa": "Broszura",
+            "skrot": "BR",
+            "publikacja": false,
+            "streszczenie": false
+        }
+    },
+    {
+        "model": "bpp.charakter_formalny",
+        "pk": null,
+        "fields": {
+            "nazwa": "Projekt wynalazczy",
+            "skrot": "WYN",
+            "publikacja": false,
+            "streszczenie": false
+        }
+    },
+    {
+        "model": "bpp.charakter_formalny",
+        "pk": null,
+        "fields": {
+            "nazwa": "Praca wieloośrodkowa",
+            "skrot": "PW",
+            "publikacja": false,
+            "streszczenie": false
+        }
+    },
+    {
+        "model": "bpp.charakter_formalny",
+        "pk": null,
+        "fields": {
+            "nazwa": "Patent",
+            "skrot": "PAT",
+            "publikacja": false,
+            "streszczenie": false
+        }
+    },
+    {
+        "model": "bpp.charakter_formalny",
+        "pk": null,
+        "fields": {
+            "nazwa": "Praca doktorska",
+            "skrot": "DOK",
+            "publikacja": true,
+            "streszczenie": false
+        }
+    },
+    {
+        "model": "bpp.charakter_formalny",
+        "pk": null,
+        "fields": {
+            "nazwa": "Praca habilitacyjna",
+            "skrot": "HAB",
+            "publikacja": true,
+            "streszczenie": false
+        }
+    },
+    {
+        "model": "bpp.charakter_formalny",
+        "pk": null,
+        "fields": {
+            "nazwa": "Podręcznik akademicki",
+            "skrot": "PODR",
+            "publikacja": false,
+            "streszczenie": false
+        }
+    },
+   {
+        "model": "bpp.charakter_formalny",
+        "pk": null,
+        "fields": {
+            "nazwa": "Dokument elektroniczny",
+            "skrot": "DE",
+            "publikacja": false,
+            "streszczenie": false
+        }
+    }
+]

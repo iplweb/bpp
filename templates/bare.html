@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+{#PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"#}
+{#        "http://www.w3.org/TR/html4/loose.dtd">#}
+<html>
+<head>
+    {% load static %}
+    {% load compress %}
+    <title>{% block title %}{% block extratitle %}{% endblock %}
+        - Bibliografia Publikacji Pracowników {{ uczelnia.nazwa_dopelniacz }}
+    {% endblock %}</title>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width"/>
+
+    {% compress css %}
+        <link rel="stylesheet" href="{% static 'scss/app.css' %}"/>
+    {% endcompress %}
+
+    {% compress js %}
+        <script src="{% static 'jquery/dist/jquery.js' %}"></script>
+    {% endcompress %}
+
+    {% block extrahead %}
+    {% endblock %}
+</head>
+<body>
+{% block body %}
+{% endblock %}
+<script>
+    $(document).foundation();
+</script>
+</body>
+</html>

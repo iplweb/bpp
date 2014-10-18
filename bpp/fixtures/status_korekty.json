@@ -1,0 +1,24 @@
+
+[
+	{
+		"pk": 1,
+		"model": "bpp.status_korekty",
+		"fields": {
+			"nazwa": "przed korekt\u0105"
+		}
+	},
+	{
+		"pk": 2,
+		"model": "bpp.status_korekty",
+		"fields": {
+			"nazwa": "w trakcie korekty"
+		}
+	},
+	{
+		"pk": 3,
+		"model": "bpp.status_korekty",
+		"fields": {
+			"nazwa": "po korekcie"
+		}
+	}
+]

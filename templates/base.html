@@ -1,0 +1,187 @@
+{% extends "bare.html" %}
+{% load compress %}
+{% load static %}
+
+{% block extrahead %}
+    {{ block.super }}
+
+    {#    {% include "monitio/header.html" %}#}
+    {#    {% include "autocomplete_light/header.html" %}#}
+
+    {% compress css %}
+    <link rel="stylesheet" href="{{ STATIC_URL }}jqueryui/themes/flick/theme.css"/>
+    <link rel="stylesheet" href="{{ STATIC_URL }}jqueryui/themes/flick/jquery-ui.min.css"/>
+    <link rel="stylesheet" href="{{ STATIC_URL }}cookielaw/css/cookielaw.css"/>
+    <link rel="stylesheet" href="{{ STATIC_URL }}multiseek/css/style.css"/>
+    <link rel="stylesheet" type="text/css" href="{{ STATIC_URL }}autocomplete_light/style.css" />
+    {% endcompress %}
+
+    {% compress js %}
+
+    <script type="text/javascript" src="{{ STATIC_URL }}autocomplete_light/autocomplete.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}autocomplete_light/widget.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}autocomplete_light/addanother.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}autocomplete_light/text_widget.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}autocomplete_light/remote.js"></script>
+
+    <script src="{% static 'foundation/js/vendor/modernizr.js' %}"></script>
+    <script src="{% static 'foundation/js/foundation.min.js' %}"></script>
+    <script src="{% static 'cookielaw/js/cookielaw.js' %}"></script>
+
+    <script src="{% static 'jqueryui/jquery-ui.min.js' %}"></script>
+
+    <script src="{% static 'iframe-resizer/js/iframeResizer.min.js' %}"></script>
+
+    <script src="{{ STATIC_URL }}multiseek/js/multiseek.js" type="text/javascript"></script>
+
+    <script type="text/javascript" src="{{ STATIC_URL }}bpp/js/bpp.js"></script>
+
+    <script src="{{ STATIC_URL }}monitio/js/yaffle.js"></script>
+    <script src="{{ STATIC_URL }}monitio/js/monitio.js"></script>
+    <script src="{{ STATIC_URL }}monitio/js/themes/jqueryui.js"></script>
+    <script src="{{ STATIC_URL }}monitio/js/themes/foundation.js"></script>
+
+        {% block extrahead_js %}
+        {% endblock %}
+
+    <script src="{{ STATIC_URL }}foundation/js/foundation/foundation.accordion.js"></script>
+    <script src="{{ STATIC_URL }}foundation/js/foundation/foundation.tab.js"></script>
+    <script src="{{ STATIC_URL }}foundation/js/foundation/foundation.alert.js"></script>
+    <script src="{{ STATIC_URL }}foundation/js/foundation/foundation.magellan.js"></script>
+
+    {% endcompress %}
+
+    <script type="text/javascript" src="{% url "monitio:js_i18n" %}"></script>
+
+    <script type="text/javascript" src="{% url "multiseek:js_i18n" %}"></script>
+
+{% endblock %}
+
+{% block body %}
+
+    <div class="row" id="topBar">
+        {% include "print-title.html" %}
+
+        <div class="hide-on-print">
+
+            <div class="large-2 medium-2 small-3 columns">
+                <a href="/"><img src="/media/{{ uczelnia.logo_www }}"
+                                 alt="Logo {{ uczelnia.nazwa_dopelniacz }}"
+                        /></a>
+            </div>
+
+            <div class="large-10 medium-10 small-9 columns">
+                <h1><a href="/" style="color: #222222;">Bibliografia Publikacji
+                    Pracowników <br/>
+                    {{ uczelnia.nazwa_dopelniacz }}</a></h1>
+
+                {% block global-nav %}
+                    <div class="hide-on-print">
+                        <input type="text" name="q"
+                               id="user_navigation_autocomplete"/>
+                        <script type="text/javascript">
+                            $(document).ready(function () {
+
+                                function resizeAutocomplete(){
+                                    w = $("input#user_navigation_autocomplete").width();
+                                    $(".yourlabs-autocomplete").css("width", w);
+                                    console.log(w);
+                                }
+
+                                $(window).resize(function() { resizeAutocomplete();});
+
+                                resizeAutocomplete();
+
+                                $('#user_navigation_autocomplete').yourlabsAutocomplete({
+                                    url: '{% url "user_navigation_autocomplete" %}',
+                                    choiceSelector: 'q',
+                                    placeholder: 'wyszukaj wszędzie...'
+                                }).input.bind('selectChoice', function (e, choice, autocomplete) {
+                                            document.location.href = choice.attr('href');
+                                        });
+
+                                {% if not request.user.is_anonymous %}
+                                    $("#monitio").MessagesPlaceholder({
+                                        "url": '{% url "monitio:persistent-messages-sse" user.username %}',
+                                        "theme": "foundation" // remove for jqueryui theme
+                                    });
+                                {% endif %}
+
+                            });
+                        </script>
+                    </div>
+                {% endblock %}
+            </div>
+        </div>
+    </div>
+
+
+    <div class="row hide-on-print">
+        <ul class="breadcrumbs hide-for-small">
+            {% block breadcrumbs %}
+                <li><a href="/">Strona główna</a></li>
+            {% endblock %}
+        </ul>
+    </div>
+
+    <div class="row">
+        <div class="large-10 medium-10 push-2 columns">
+
+            {% block monitio %}
+                {% if not request.user.is_anonymous %}
+                    <div id="monitio"></div>
+                {% endif %}
+            {% endblock %}
+
+
+            <div id="content">
+
+                {% load cookielaw_tags %}
+                {% cookielaw_banner %}
+
+                {% block content %}
+                {% endblock %}
+            </div>
+        </div>
+
+        <div class="large-2 medium-2 pull-10 columns hide-on-print">
+            <ul class="side-nav">
+                <li><a href="{% url "multiseek:index" %}">wyszukiwanie</a>
+                </li>
+                <li class="divider"></li>
+                <li><a href="/">uczelnia</a></li>
+                <li><a href="{% url "bpp:browse_jednostki" %}">jednostki</a>
+                </li>
+                <li><a href="{% url "bpp:browse_autorzy" %}">autorzy</a>
+                </li>
+                <li><a href="{% url "bpp:browse_zrodla" %}">źródła</a></li>
+                <li class="divider"></li>
+
+                {% if request.user.is_anonymous %}
+                    <li><a href="{% url "login_form" %}">zaloguj</a></li>
+                {% else %}
+
+                    <li>
+                        <a href="{% url "bpp:raporty" %}">raporty</a>
+                    </li>
+
+                    <li><a target="_blank"
+                           href="{% url "admin:index" %}">redagowanie</a>
+                    </li>
+
+
+                    <li><a id="password-change-link"
+                           href="{% url "password_change" %}">zmiana
+                        hasła</a>
+                    </li>
+                    <li class="divider"></li>
+
+                    <li><a href="{% url "logout" %}">wyloguj</a></li>
+                {% endif %}
+
+            </ul>
+        </div>
+
+    </div>
+
+{% endblock %}

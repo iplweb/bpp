@@ -1,0 +1,29 @@
+<script type="text/javascript">
+    (function ($) {
+
+        $(document).ready(function () {
+
+
+            $("#grp-content-container .grp-collapse").each(function () {
+                /* Automatically open every collapsible with value */
+
+                var has_value = false;
+
+                $(this).find("input").each(function () {
+                    if ($(this).val())
+                        has_value = true;
+                });
+
+                $(this).find("textarea").each(function () {
+                    if ($(this).val())
+                        has_value = true;
+                });
+
+                if (has_value) {
+                    $(this).addClass("grp-open").removeClass("grp-closed");
+                }
+
+            });
+        });
+    })(grp.jQuery);
+</script>

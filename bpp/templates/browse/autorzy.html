@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% load pagination_tags %}
+{% load columns %}
+
+{% block extratitle %}
+    Indeks autorów{% if wybrana != None %} - litera {{ wybrana }}{% endif %}
+{% endblock %}
+
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li {% if wybrana == None %}class="current"{% endif %}><a
+            href="{% url "bpp:browse_autorzy" %}">Autorzy</a></li>
+
+    {% if wybrana != None %}
+        <li class="current">litera {{ wybrana }}</li>
+    {% endif %}
+
+{% endblock %}
+
+{% block content %}
+    {% url "bpp:browse_autorzy" as browse_autorzy %}
+    {% include "browse/literki.html" with pierwszy_tab="wszyscy" url=browse_autorzy %}
+
+    {% url "bpp:browse_autorzy" as browse_autorzy %}
+    {% autopaginate object_list 80 %}
+
+
+    <div class="row hide-on-print">
+        <div class="large-4 medium-4 small-12 columns">
+            {% include "browse/search_form.html" with url=browse_autorzy tekst="Wpisz początek nazwiska i wciśnij ENTER..." name="search" flt=flt %}
+        </div>
+        <div class="large-8 medium-8 small-12 columns">
+            {% paginate 5 %}</div>
+    </div>
+
+
+    <div class="row" style="line-height:180%">
+
+        {% for item in object_list %}
+            <div class="large-3 medium-4 small-6 columns">
+                <a href="{% url "bpp:browse_autor" item.slug %}">{{ item.get_full_name }}</a>
+            </div>
+        {% empty %}
+            <div class="panel">
+                Nie znaleziono takich autorów. <p></p>
+                <a href=".">Kliknij tutaj, aby spróbować ponownie.</a>
+            </div>
+        {% endfor %}
+        <span class="filler"></span>
+
+    </div>
+
+{% endblock %}

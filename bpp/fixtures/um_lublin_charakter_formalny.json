@@ -1,0 +1,32 @@
+[
+    {
+        "model": "bpp.charakter_formalny",
+        "pk": null,
+        "fields": {
+            "nazwa": "Polskie streszczenie UML",
+            "skrot": "PSUM",
+            "publikacja": false,
+            "streszczenie": true
+        }
+    },
+    {
+        "model": "bpp.charakter_formalny",
+        "pk": null,
+        "fields": {
+            "nazwa": "Zagraniczne streszczenie UML",
+            "skrot": "ZSUM",
+            "publikacja": false,
+            "streszczenie": true
+        }
+    },
+    {
+        "model": "bpp.charakter_formalny",
+        "pk": null,
+        "fields": {
+            "nazwa": "Brak danych",
+            "skrot": "BPEX",
+            "publikacja": false,
+            "streszczenie": false
+        }
+    }
+]

@@ -1,0 +1,11 @@
+<form method="get" action="{{ url }}">
+    <input type="text" name="{{ name }}" placeholder="{{ tekst }}" id="search_form_input"
+            {% if flt %}
+           value="{{ flt }}"
+            {% endif %}/>
+</form>
+<script type="text/javascript">
+    $("document").ready(function(){
+        $("#search_form_input").focus();
+    });
+</script>

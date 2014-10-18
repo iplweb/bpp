@@ -1,0 +1,69 @@
+{% load prace %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Kronika uczelni, rok {{ rok }}</title>
+    <meta charset="utf-8">
+</head>
+<body>
+<h1>Kronika Uczelni, rok {{ rok }}</h1>
+
+
+<table>
+    {% for rekord in prace_dla_roku %}
+        {% ifchanged rekord.autor_id %}
+            <tr>
+                <td colspan="3">
+                    {{ rekord.autor }}
+                </td>
+            </tr>
+        {% endifchanged %}
+        <tr>
+            <td valign="top">
+                {% if rekord.kolejnosc == 1 %}
+                    <strong>[{{ rekord.numerek }}]</strong>
+                {% endif %}
+            </td>
+            <td valign="top">
+                {{ rekord.cnt }}.
+            </td>
+            <td valign="top">
+                {% if rekord.kolejnosc == 1 %}
+                    {{ rekord.opis_bibliograficzny  }}
+{#                    {% include "opis_bibliograficzny/main.html" with praca=rekord.get_original_object %}#}
+                {% else %}
+                    <i>{{ rekord.get_original_object.tytul_oryginalny|safe }}</i>,
+                    zob. poz. {{ rekord.numerek }}
+                {% endif %}
+            </td>
+        </tr>
+    {% endfor %}
+</table>
+<hr>
+<h2>Indeks czasopism</h2>
+<table>
+    <tr>
+        <th>Skrót</th>
+        <th>Nazwa</th>
+    </tr>
+    {% for zrodlo in zrodla %}
+        <tr>
+            <td valign="top">{{ zrodlo.skrot }}</td>
+            <td valign="top">{{ zrodlo.nazwa }}</td>
+        </tr>
+    {% endfor %}
+</table>
+
+<hr>
+<h2>Jednostki</h2>
+{% for wydzial in wydzialy %}
+    <h3>{{ wydzial.nazwa }}</h3>
+    {% for jednostka in wydzial.jednostki_do_kroniki %}
+        <strong>{{ jednostka }}</strong>
+        <blockquote>
+        {{ jednostka.numery_prac|ladne_numery_prac}}
+        </blockquote>
+    {% endfor %}
+{% endfor %}
+</body>
+</html>

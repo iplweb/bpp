@@ -1,0 +1,16 @@
+[
+	{
+		"pk": 1,
+		"model": "bpp.zrodlo_informacji",
+		"fields": {
+			"nazwa": "od redakcji"
+		}
+	},
+	{
+		"pk": 2,
+		"model": "bpp.zrodlo_informacji",
+		"fields": {
+			"nazwa": "od autora"
+		}
+	}
+]

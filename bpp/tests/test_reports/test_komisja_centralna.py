@@ -1,0 +1,373 @@
+# -*- encoding: utf-8 -*-
+import os
+from zipfile import ZipFile
+
+from django.test import TestCase
+from model_mommy import mommy
+from bpp.models import Typ_KBN, Charakter_Formalny, Zasieg_Zrodla, Zrodlo, \
+    Redakcja_Zrodla, Tytul, Rekord
+from bpp.models.system import Jezyk
+from bpp.reports.komisja_centralna import RaportKomisjiCentralnej, get_queries, RokHabilitacjiNiePodany, make_report_zipfile
+from bpp.tests.util import any_jednostka, any_autor, any_habilitacja, \
+    CURRENT_YEAR, any_ciagle, any_patent, any_zwarte
+
+from bpp.util import Getter
+
+
+class TestRKCMixin:
+    fixtures = ['charakter_formalny.json',
+                'typ_kbn.json',
+                'jezyk.json',
+                'rodzaj_zrodla.json',
+                'tytul.json',
+                'typ_odpowiedzialnosci.json']
+
+    def odpal_browser(self, res):
+        fn = os.tempnam() + '.html'
+        x = open(fn, 'wb')
+        x.write(res.encode('utf-8'))
+        x.close()
+        os.system("start %s" % fn)
+
+
+typ_kbn = Getter(Typ_KBN)
+charakter = Getter(Charakter_Formalny)
+zasieg = Getter(Zasieg_Zrodla, 'nazwa')
+tytul = Getter(Tytul)
+jezyk = Getter(Jezyk)
+
+
+class TestRaportKomisjiCentralnej(TestRKCMixin, TestCase):
+    def setUp(self):
+        self.jednostka = any_jednostka()
+
+        self.autor = any_autor()
+
+        self.prace = {}
+
+        self.krajowe_zrodlo = mommy.make(Zrodlo, zasieg=zasieg.krajowy)
+        Redakcja_Zrodla.objects.create(
+            zrodlo=self.krajowe_zrodlo,
+            redaktor=self.autor,
+            od_roku=CURRENT_YEAR)
+
+        self.miedzynarodowe_zrodlo = mommy.make(
+            Zrodlo, zasieg=zasieg['międzynarodowy'])
+        Redakcja_Zrodla.objects.create(
+            zrodlo=self.miedzynarodowe_zrodlo,
+            redaktor=self.autor,
+            od_roku=CURRENT_YEAR
+        )
+
+        def dwie(idx, tytul_oryginalny, **kw):
+            self.prace[idx] = any_ciagle(
+                tytul_oryginalny=tytul_oryginalny, **kw)
+
+            self.prace[idx + '-2'] = any_ciagle(
+                tytul_oryginalny=tytul_oryginalny + '-2', **kw)
+
+        args_1a = dict(
+            typ_kbn=typ_kbn.PO, charakter_formalny=charakter.AZ,
+            impact_factor=10, punkty_kbn=5)
+        dwie('1a', 'Praca-1', **args_1a)
+
+        args_1b = dict(
+            typ_kbn=typ_kbn.PO, charakter_formalny=charakter.AZ,
+            impact_factor=0, punkty_kbn=5)
+        dwie('1b', 'Praca-2', **args_1b)
+
+        args_2a = dict(
+            impact_factor=5, typ_kbn=typ_kbn.CR,
+            charakter_formalny=charakter.AZ, punkty_kbn=5)
+        dwie('2a', 'Praca-3', **args_2a)
+
+        args_2b = dict(
+            impact_factor=0, typ_kbn=typ_kbn.CR,
+            charakter_formalny=charakter.AZ, punkty_kbn=5)
+        dwie('2b', 'Praca-4', **args_2b)
+
+        args_3a = dict(
+            impact_factor=5, typ_kbn=typ_kbn.PP,
+            punkty_kbn=5, charakter_formalny=charakter.AZ)
+        dwie('3a', 'Praca-5', **args_3a)
+
+        args_3b = dict(
+            impact_factor=0, typ_kbn=typ_kbn.PP,
+            charakter_formalny=charakter.AZ, punkty_kbn=5)
+        dwie('3b', 'Praca-6', **args_3b)
+
+        args_5 = dict(typ_kbn=typ_kbn.PNP,
+                      charakter_formalny=charakter.AZ)
+        dwie('5', 'Praca-7', **args_5)
+
+        # 7a
+        args_7a = dict(jezyk=jezyk['ang.'], charakter_formalny=charakter.KSZ)
+        any_zwarte(tytul_oryginalny='PRACA 7a', **args_7a) \
+            .dodaj_autora(self.autor, self.jednostka,
+                          typ_odpowiedzialnosci_skrot='red.')
+
+        any_zwarte(tytul_oryginalny='PRACA 7a NIE MA', **args_7a) \
+            .dodaj_autora(self.autor, self.jednostka,
+                          typ_odpowiedzialnosci_skrot='aut.')
+        # 7b
+        any_zwarte(tytul_oryginalny='PRACA 7b1',
+                   jezyk=jezyk['pol.'], charakter_formalny=charakter.KSZ) \
+            .dodaj_autora(self.autor, self.jednostka,
+                          typ_odpowiedzialnosci_skrot='red.')
+
+        any_zwarte(tytul_oryginalny='PRACA 7b2',
+                   jezyk=jezyk['pol.'], charakter_formalny=charakter.KSP) \
+            .dodaj_autora(self.autor, self.jednostka,
+                          typ_odpowiedzialnosci_skrot='red.')
+
+        # dodam autora o typie redaktor
+        # stworze prace o takich samych argumentach ale bez redaktora
+
+        # XXX Tu SKONCZULEM
+
+        args_8a = dict(charakter_formalny=charakter.ZSZ)
+        dwie('8a', 'Praca-8', **args_8a)
+
+        args_8b = dict(charakter_formalny=charakter.PSZ)
+        dwie('8b', 'Praca-9', **args_8b)
+
+        self.prace['9a'] = any_ciagle(
+            charakter_formalny=charakter.Supl,
+            impact_factor=0,
+            punkty_kbn=111,
+            kc_impact_factor=222,
+            kc_punkty_kbn=None,
+            tytul_oryginalny="Praca-10 ma mieć IMPACT 222 i KBN 111")
+
+        self.prace['9a-1'] = any_ciagle(
+            charakter_formalny=charakter.Supl,
+            impact_factor=5,
+            punkty_kbn=111,
+            kc_impact_factor=222,
+            kc_punkty_kbn=444,
+            tytul_oryginalny="Praca-10 ma mieć IMPACT 222 i KBN 444")
+
+        #
+        self.prace['9b'] = any_ciagle(
+            charakter_formalny=charakter.Supl,
+            impact_factor=0,
+            punkty_kbn=0,
+            kc_impact_factor=None,
+            kc_punkty_kbn=333,
+            tytul_oryginalny="Praca-11 ma mieć KBN 333 i ZERO impactu")
+
+        self.prace['9b-1'] = any_ciagle(
+            charakter_formalny=charakter.Supl,
+            impact_factor=0,
+            punkty_kbn=1,
+            kc_impact_factor=None,
+            kc_punkty_kbn=555,
+            tytul_oryginalny="Praca-11 ma mieć KBN 555 i ZERO impactu")
+
+        args_10a = dict(
+            charakter_formalny=charakter.L, impact_factor=5, punkty_kbn=5)
+        dwie('10a', 'Praca-12', **args_10a)
+
+        args_10b = dict(
+            charakter_formalny=charakter.L, impact_factor=0, punkty_kbn=5)
+        dwie('10b', 'Praca-13', **args_10b)
+
+        args_11a = dict(
+            typ_kbn=typ_kbn.PW, impact_factor=5, punkty_kbn=5)
+        dwie('11a', 'Praca-14', **args_11a)
+
+        args_11b = dict(
+            typ_kbn=typ_kbn.PW, impact_factor=0, punkty_kbn=5)
+        dwie('11b', 'Praca-15', **args_11b)
+
+        self.prace['IIIpat'] = any_patent(tytul_oryginalny="Praca-16")
+
+        # Przebuduj opisy bibliograficzne
+        for c in Rekord.objects.all():
+            c.original.zaktualizuj_cache(tylko_opis=True)
+
+        for praca in self.prace.values():
+            praca.dodaj_autora(self.autor, self.jednostka)
+
+        Rekord.objects.full_refresh()
+
+        self.raport = RaportKomisjiCentralnej(self.autor)
+
+
+    def _zrob(self):
+        return self.raport.make_prace()
+
+    def _test_tabelka(self, key):
+        s = self._zrob()
+        #self.odpal_browser(s)
+        self.assertIn(self.prace[key].tytul_oryginalny, s)
+
+    test_1a = lambda self: self._test_tabelka('1a')
+    test_1b = lambda self: self._test_tabelka('1b')
+
+    test_2a = lambda self: self._test_tabelka('2a')
+    test_2b = lambda self: self._test_tabelka('2b')
+
+    test_3a = lambda self: self._test_tabelka('3a')
+    test_3b = lambda self: self._test_tabelka('3b')
+
+    def test_5(self):
+        s = self._zrob()
+        self.assertIn('naukowe i inne, liczba prac: 2', s)
+
+    def test_6(self):
+        s = self._zrob()
+        self.assertIn(u'A. międzynarodowym</td><td>liczba: 1', s)
+        self.assertIn(u'B. krajowym</td><td>liczba: 1', s)
+
+    def test_7(self):
+        s = self._zrob()
+        self.assertIn(u'A. w języku angielskim</td><td>liczba: 1', s)
+        self.assertIn(
+            u'B. w języku polskim lub innym, niż angielski</td><td>liczba: 2', s)
+
+    def test_8(self):
+        s = self._zrob()
+        self.assertIn(u'Liczba streszczeń: 4', s)
+        self.assertIn(u'A. ze zjazd\xf3w mi\u0119dzynarodowych</td><td>liczba: 2', s)
+        self.assertIn(u'B. ze zjazd\xf3w krajowych</td><td>liczba: 2', s)
+
+    def test_9(self):
+        s = self._zrob()
+        for a in ['111', '222', '333', '444', '555', '888']: #  <-- to są sumy
+            self.assertIn(a, s)
+
+
+    test_10a = lambda self: self._test_tabelka('10a')
+    test_10b = lambda self: self._test_tabelka('10b')
+
+    def test_10_suma(self):
+        s = self._zrob()
+        self.odpal_browser(s)
+        self.assertIn(u"X. Liczba listów do redakcji czasopism: 4", s)
+
+    test_11a = lambda self: self._test_tabelka('11a')
+    test_11b = lambda self: self._test_tabelka('11b')
+
+    def test_11_suma(self):
+        s = self._zrob()
+        self.assertIn("XI. Liczba publikacji z udzia", s)
+        self.assertIn(u"wieloośrodkowych: 4", s)
+
+    def test_punktacja_sumaryczna(self):
+        dct = self.raport.policz_sumy()
+
+        def sprawdz_sumy(no, oczekiwany_count, oczekiwany_if, oczekiwany_pk):
+            key = 'suma_%s' % no
+
+            self.assertEquals(dct.get(key)['count'], oczekiwany_count, msg=key)
+            self.assertEquals(
+                dct.get(key)['impact_factor'], oczekiwany_if, msg=key)
+            self.assertEquals(dct.get(key)['punkty_kbn'], oczekiwany_pk,
+                              msg=key)
+
+        sprawdz_sumy(1, 4, 20, 20)
+        sprawdz_sumy(2, 4, 10, 20)
+        sprawdz_sumy(3, 4, 10, 20)
+        sprawdz_sumy(9, 4, 444, 1443)
+        sprawdz_sumy(10, 4, 10, 20)
+        sprawdz_sumy(11, 4, 10, 20)
+        self.assertEquals(dct['suma_5']['count'], 2)
+        self.assertEquals(dct['suma_8']['count'], 4)
+
+    def test_punktacja_sumaryczna_render(self):
+        res = self.raport.punktacja_sumaryczna()
+        self.assertIn("doktora habilitowanego", res)
+        #self.odpal_browser(res)
+
+
+class TestRaportKomisjiCentralnejPrzedPoHabilitacji(TestRKCMixin, TestCase):
+    def setUp(self):
+        self.jednostka = any_jednostka()
+        self.habilitowany = any_autor()
+
+        args_1a = dict(
+            typ_kbn=typ_kbn.PO, charakter_formalny=charakter.AZ,
+            impact_factor=10, punkty_kbn=5)
+
+        self.praca_przed = any_ciagle(
+            tytul_oryginalny='Praca-PRZED', rok=CURRENT_YEAR, **args_1a)
+        self.praca_przed.dodaj_autora(self.habilitowany, self.jednostka)
+
+        self.praca_po = any_ciagle(
+            tytul_oryginalny='Praca-PO', rok=CURRENT_YEAR + 1, **args_1a)
+        self.praca_po.dodaj_autora(self.habilitowany, self.jednostka)
+
+        Rekord.objects.full_refresh()
+
+        self.raport_przed = RaportKomisjiCentralnej(
+            self.habilitowany,
+            przed_habilitacja=True,
+            rok_habilitacji=CURRENT_YEAR)
+
+        self.raport_po = RaportKomisjiCentralnej(
+            self.habilitowany,
+            przed_habilitacja=False,
+            rok_habilitacji=CURRENT_YEAR)
+
+    def test_raport_przed(self):
+        s = self.raport_przed.make_prace()
+        res = self.raport_przed.dct
+        self.assertEquals(res['tabela_1a'].counter, 1)
+        self.assertEquals(res['tabela_1a'].sum_impact, 10)
+        self.assertIn("Praca-PRZED", s)
+        self.assertIn("Dorobek przedhabilitacyjny", s)
+        self.assertIn("profesora", s)
+
+    def test_raport_po(self):
+        s = self.raport_po.make_prace()
+        res = self.raport_po.dct
+        self.assertEquals(res['tabela_1a'].counter, 1)
+        self.assertEquals(res['tabela_1a'].sum_impact, 10)
+        self.assertIn("Praca-PO", s)
+        self.assertIn("Dorobek pohabilitacyjny", s)
+        self.assertIn("profesora", s)
+
+    def test_po_raises(self):
+        self.assertRaises(
+            RokHabilitacjiNiePodany,
+            get_queries, self.habilitowany, przed_habilitacja=False,
+            rok_habilitacji=None)
+
+
+class TestRaportKomisjiCentralnejZipfile(TestRKCMixin, TestCase):
+    def setUp(self):
+        self.jednostka = any_jednostka()
+        # Takie nazwisko, bo używamy potem autor.slug do wygnerowania nazwy pliku
+        self.habilitowany = any_autor(
+            nazwisko=u"Łącki 'al' \"Habib\" ", imiona=u"Jąń??\\/",
+            tytul=tytul['dr'])
+
+        # Odbuduj sluga
+        self.habilitowany.slug = None
+        self.habilitowany.save()
+
+        args_1a = dict(
+            typ_kbn=typ_kbn.PO, charakter_formalny=charakter.AZ,
+            impact_factor=10, punkty_kbn=5)
+
+        self.praca_przed = any_ciagle(
+            tytul_oryginalny='Praca-PRZED', rok=CURRENT_YEAR, **args_1a)
+        self.praca_przed.dodaj_autora(self.habilitowany, self.jednostka)
+
+        self.praca_po = any_ciagle(
+            tytul_oryginalny='Praca-PO', rok=CURRENT_YEAR + 1, **args_1a)
+        self.praca_po.dodaj_autora(self.habilitowany, self.jednostka)
+
+    def test_make_zipfile(self):
+        zn = make_report_zipfile(self.habilitowany.pk, CURRENT_YEAR)
+        with ZipFile(zn, 'r') as zip:
+            self.assertEquals(
+                len(zip.infolist()), 6)
+
+    def test_make_zipfile_bez_habilitacji(self):
+        zn = make_report_zipfile(self.habilitowany.pk, None)
+        with ZipFile(zn, 'r') as zip:
+            self.assertEquals(
+                len(zip.infolist()), 3)
+

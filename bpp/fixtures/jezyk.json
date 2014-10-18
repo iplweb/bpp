@@ -1,0 +1,76 @@
+[
+    {
+        "pk": 2,
+        "model": "bpp.jezyk",
+        "fields": {
+            "skrot": "ang.",
+            "nazwa": "angielski"
+        }
+    },
+    {
+        "pk": 3,
+        "model": "bpp.jezyk",
+        "fields": {
+            "skrot": "fr.",
+            "nazwa": "francuski"
+        }
+    },
+    {
+        "pk": 5,
+        "model": "bpp.jezyk",
+        "fields": {
+            "skrot": "b/d",
+            "nazwa": "brak danych"
+        }
+    },
+    {
+        "pk": 4,
+        "model": "bpp.jezyk",
+        "fields": {
+            "skrot": "niem.",
+            "nazwa": "niemiecki"
+        }
+    },
+    {
+        "pk": 1,
+        "model": "bpp.jezyk",
+        "fields": {
+            "skrot": "pol.",
+            "nazwa": "polski"
+        }
+    },
+    {
+        "pk": 6,
+        "model": "bpp.jezyk",
+        "fields": {
+            "skrot": "in.",
+            "nazwa": "inny"
+        }
+    },
+    {
+        "pk": 8,
+        "model": "bpp.jezyk",
+        "fields": {
+            "skrot": "hiszp.",
+            "nazwa": "hiszpański"
+        }
+    },
+    {
+        "pk": 9,
+        "model": "bpp.jezyk",
+        "fields": {
+            "skrot": "ros.",
+            "nazwa": "rosyjski"
+        }
+    },
+    {
+        "pk": 10,
+        "model": "bpp.jezyk",
+        "fields": {
+            "skrot": "wł.",
+            "nazwa": "włoski"
+        }
+    }
+
+
+]

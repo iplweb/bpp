@@ -1,0 +1,38 @@
+[
+	{
+		"pk": 0,
+		"model": "bpp.rodzaj_zrodla",
+		"fields": {
+			"nazwa": "źródło nieindeksowane"
+		}
+	},
+	{
+		"pk": 1,
+		"model": "bpp.rodzaj_zrodla",
+		"fields": {
+			"nazwa": "periodyk"
+		}
+	},
+	{
+		"pk": 2,
+		"model": "bpp.rodzaj_zrodla",
+		"fields": {
+			"nazwa": "wydawnictwo"
+		}
+	},
+
+    {
+        "pk": null,
+        "model": "bpp.zasieg_zrodla",
+        "fields": {
+            "nazwa": "krajowy"
+        }
+    },
+    {
+        "pk": null,
+        "model": "bpp.zasieg_zrodla",
+        "fields": {
+            "nazwa": "międzynarodowy"
+        }
+    }
+]

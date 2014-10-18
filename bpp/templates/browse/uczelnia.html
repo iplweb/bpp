@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block extratitle %}
+    Uczelnia
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li class="current"><a href="#">Uczelnia</a></li>
+{% endblock %}
+
+{% block content %}
+
+    <h1>{{ uczelnia }}</h1>
+    {% include "browse/edit_if_logged_in.html" with url="admin:bpp_uczelnia_change" pk=uczelnia.pk %}
+    Wybierz wydział:
+    <ul class="no-bullet" style="line-height: 250%;">
+        {% for wydzial in uczelnia.wydzialy %}
+            <li>
+                <a href="{% url "bpp:browse_wydzial" wydzial.slug %}">{{ wydzial }}</a>
+            </li>
+        {% endfor %}
+    </ul>
+{% endblock %}

@@ -1,0 +1,11 @@
+<b>{% include "opis_bibliograficzny/tytul.html" with praca=praca %}</b>
+{% include "opis_bibliograficzny/autorzy.html" with praca=praca %}
+{% include "opis_bibliograficzny/zrodlo.html" with praca=praca %}
+{% include "opis_bibliograficzny/extras.html" with praca=praca %}
+
+{# dispSeriaWydawnicza #}
+{#  function dispSeriaWydawnicza($znazwa_val, $zissn_val, $zno_val) {#}
+{#    return " (".$znazwa_val."; ".$zissn_val."; ".$zno_val.")";#}
+{#  }#}
+{# TODO: sprawdzę, czy seria wydawnicza jest w ogóle używana #}
+{# endif #}

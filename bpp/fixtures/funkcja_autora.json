@@ -1,0 +1,42 @@
+[
+	{
+		"pk": 5,
+		"model": "bpp.funkcja_autora",
+		"fields": {
+			"skrot": "adi.",
+			"nazwa": "adiunkt"
+		}
+	},
+	{
+		"pk": 2,
+		"model": "bpp.funkcja_autora",
+		"fields": {
+			"skrot": "as.",
+			"nazwa": "asystent"
+		}
+	},
+	{
+		"pk": 1,
+		"model": "bpp.funkcja_autora",
+		"fields": {
+			"skrot": "kier.",
+			"nazwa": "kierownik"
+		}
+	},
+	{
+		"pk": 3,
+		"model": "bpp.funkcja_autora",
+		"fields": {
+			"skrot": "m\u0142. as.",
+			"nazwa": "m\u0142odszy asystent"
+		}
+	},
+	{
+		"pk": 4,
+		"model": "bpp.funkcja_autora",
+		"fields": {
+			"skrot": "st. as.",
+			"nazwa": "starszy asystent"
+		}
+	}
+]
