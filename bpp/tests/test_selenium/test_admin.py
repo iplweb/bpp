@@ -29,7 +29,6 @@ class ProperClickMixin:
     def proper_click(self, arg):
         self.page.execute_script("document.getElementById('id_" + arg + "').scrollIntoView()")
         self.page.execute_script("document.getElementById('id_" + arg + "').click()")
-        return self.byId(arg)
 
 class SeleniumAdminTestCaseCharmapTest(ProperClickMixin, SeleniumLoggedInAdminTestCase):
     url = reverse("admin:bpp_wydawnictwo_ciagle_add")
@@ -134,7 +133,6 @@ class SeleniumAdminTestAutomatycznieUzupelnijPunkty(
         byId = self.byId
         proper_click = self.proper_click
 
-
         rok = byId("rok")
         punkty_kbn = byId("punkty_kbn")
         time.sleep(1)
@@ -142,10 +140,11 @@ class SeleniumAdminTestAutomatycznieUzupelnijPunkty(
         self.assertEquals(rok.val(), str(CURRENT_YEAR))
         self.assertEquals(punkty_kbn.val(), "5.00")
 
-        button = proper_click("wypelnij_pola_punktacji_button")
+        proper_click("wypelnij_pola_punktacji_button")
         time.sleep(1)
 
         self.assertEquals(punkty_kbn.val(), "10.20")
+        button = byId("wypelnij_pola_punktacji_button")
         self.assertEquals(button.text(), u"Wypełniona!")
 
         rok.trigger("change")
@@ -179,7 +178,6 @@ class SeleniumAdminTestUploadujPunkty(
     def test_upload_punkty(self):
 
         byId = self.byId
-        proper_click = self.proper_click
 
         z = self.z
 
@@ -189,7 +187,7 @@ class SeleniumAdminTestUploadujPunkty(
         byId("rok").send_keys(str(CURRENT_YEAR))
         byId("impact_factor").val("50")
 
-        proper_click("dodaj_punktacje_do_zrodla_button")
+        self.proper_click("dodaj_punktacje_do_zrodla_button")
         time.sleep(2)
 
         self.assertEquals(Punktacja_Zrodla.objects.count(), 1)
@@ -198,7 +196,7 @@ class SeleniumAdminTestUploadujPunkty(
 
 
         byId("impact_factor").val("60")
-        proper_click("dodaj_punktacje_do_zrodla_button")
+        self.proper_click("dodaj_punktacje_do_zrodla_button")
         time.sleep(2)
         self.page.assertPopupContains(u"Punktacja dla tego roku już istnieje")
         time.sleep(2)
