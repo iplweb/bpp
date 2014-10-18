@@ -90,7 +90,7 @@ DATABASES = {
     {% endfor %}
 }
 
-{% if salt['pillar.get']('django_bpp:ENABLE_JENKINS') %}
+{% if salt['pillar.get']('enable_jenkins') %}
 EXTRA_INSTALLED_APPS.append('django_jenkins')
 {% endif %}
 
