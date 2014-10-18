@@ -1,0 +1,9 @@
+<select name="{{ name }}">
+    {% for rok in lata %}
+    <option value="{{ rok }}"
+            {% if selected == rok %}
+            selected
+            {% endif %}
+            >{{ rok }}</option>
+    {% endfor %}
+</select>

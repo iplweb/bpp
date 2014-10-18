@@ -1,0 +1,15 @@
+# To plik, za pomocą którego możemy zbudować wheels dla pakietów korzystających
+# ze źródeł:
+
+git+https://github.com/mpasternak/djorm-ext-filtered-contenttypes#egg=filtered_contenttypes
+git+https://github.com/mpasternak/django-selenium-helpers.git#egg=django-selenium-helpers
+git+https://github.com/mpasternak/django-tables2-reports.git#egg=django_tables2_reports
+
+# CZY adimn dobrze wyswietla pola autocomplete dla dodanych pozniej elementow? jak tak, to usunac
+# git+https://github.com/mpasternak/django-autocomplete-light.git#egg=django_autocomplete_light
+
+git+https://github.com/mpasternak/djorm-ext-pgfulltext#egg=djorm-ext-pgfulltext
+git+https://github.com/mpasternak/django-monitio.git#egg=django_monitio
+git+https://github.com/mpasternak/django-celery-ui.git#egg=django_celery_ui
+git+https://github.com/mpasternak/django-multiseek.git#egg=django_multiseek
+git+https://github.com/TyMaszWeb/django-cookie-law.git#egg=django_cookie_law

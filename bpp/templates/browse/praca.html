@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+{% load prace %}
+
+{% block extratitle %}
+    {{ rekord.tytul_oryginalny|striptags }}
+{% endblock %}
+
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "multiseek:index" %}">Wyszukiwanie</a></li>
+    <li class="current">{{ rekord.tytul_oryginalny|truncatewords:10|safe }}</a>
+{% endblock %}
+
+
+{% block content %}
+
+    {% with rekord.original as praca %}
+
+        <table width="100%" class="naglowki_z_lewej">
+            <tr>
+                <th>Tytuł:</th>
+                <td>
+                    {% include "opis_bibliograficzny/tytul.html" %}
+                </td>
+            </tr>
+            <tr>
+                <th>
+                    Autorzy:
+                </th>
+                <td>
+                    {% autorzy_z_linkami praca %}
+                </td>
+            </tr>
+            <tr>
+                <th>
+                    Źródło
+                </th>
+                <td>
+                    {% if praca.zrodlo %}
+                        <a href="{% url "bpp:browse_zrodlo" praca.zrodlo.slug %}">{{ praca.zrodlo }}</a>
+                    {% endif %}
+                    {{ praca.informacje|znak_na_koncu:", " }}
+                    {{ praca.szczegoly }}
+                </td>
+            </tr>
+            <tr>
+                <th>
+                    Strona WWW
+                </th>
+                <td>
+                    {% if praca.www %}
+                        <a href="{{ praca.www }}">{{ praca.www }}</a>
+                    {% else %}
+                        Brak danych
+                    {% endif %}
+                </td>
+            </tr>
+
+            <tr>
+                <th>
+                    ID
+                </th>
+                <td>
+                    {{ praca.pk }}
+                </td>
+            </tr>
+
+            <tr>
+                <th>
+                    Rok
+                </th>
+                <td>
+                    {{ praca.rok }}
+                </td>
+            </tr>
+
+            <tr>
+                <th>
+                    Charakter formalny
+                </th>
+                <td>
+                    {{ praca.charakter_formalny }}
+                </td>
+            </tr>
+
+            <tr>
+                <th>
+                    Język
+                </th>
+                <td>
+                    {{ praca.jezyk }}
+                </td>
+            </tr>
+
+            <tr>
+                <th>
+                    Typ KBN
+                </th>
+                <td>
+                    {{ praca.typ_kbn }}
+                </td>
+            </tr>
+
+            <tr>
+                <th>
+                    Punkty KBN/MNiSW
+                </th>
+                <td>
+                    {{ praca.punkty_kbn }}
+                </td>
+            </tr>
+
+            <tr>
+                <th>
+                    Impact factor
+                </th>
+                <td>
+                    {{ praca.impact_factor }}
+                </td>
+            </tr>
+
+            <tr>
+                <th>
+                    Index Copernicus
+                </th>
+                <td>
+                    {{ praca.index_copernicus }}
+                </td>
+            </tr>
+
+            <tr>
+                <th>
+                    Punktacja wewnętrzna
+                </th>
+                <td>
+                    {{ praca.punktacja_wewnetrzna }}
+                </td>
+            </tr>
+
+            <tr>
+                <th>
+                    Status
+                </th>
+                <td>
+                    {{ praca.status_korekty }}
+                </td>
+            </tr>
+
+            <tr>
+                <th>
+                    Praca afiliowana?
+                </th>
+                <td>
+                    {{ praca.afiliowana|yesno }}
+                </td>
+            </tr>
+
+            <tr>
+                <th>
+                    Praca recenzowana?
+                </th>
+                <td>
+                    {{ praca.recenzowana|yesno }}
+                </td>
+            </tr>
+
+            <tr>
+                <th>
+                    Rekord zaktualizowany
+                </th>
+                <td>
+                    {{ praca.ostatnio_zmieniony }}
+                </td>
+            </tr>
+
+
+        </table>
+    {% endwith %}
+
+    {% with rekord as r %}
+        {% include "browse/edit_if_logged_in.html" with url="admin:"|add:r.content_type.app_label|add:"_"|add:r.content_type.model|add:"_change" pk=r.object_id %}
+    {% endwith %}
+
+{% endblock %}

@@ -1,0 +1,46 @@
+<map version="0.9.0">
+<!-- To view this file, download free mind mapping software FreeMind from http://freemind.sourceforge.net -->
+<attribute_registry SHOW_ATTRIBUTES="selected"/>
+<node CREATED="1351716586315" ID="ID_1819083567" MODIFIED="1351717580286" TEXT="Webserwis BPP">
+<icon BUILTIN="info"/>
+<node CREATED="1351716791547" HGAP="4" ID="ID_1334444889" MODIFIED="1351717609475" POSITION="left" TEXT="Wyszukiwanie" VSHIFT="-59">
+<node CREATED="1351716798068" HGAP="44" ID="ID_1426666498" MODIFIED="1351717609476" TEXT="wg autor&#xf3;w - wpisz nazwisko" VSHIFT="24">
+<node CREATED="1351716808473" ID="ID_897326299" MODIFIED="1351717609476" TEXT="podstrona autora">
+<node CREATED="1351716834666" ID="ID_1890285428" MODIFIED="1351716845648" TEXT="informacje o autorze (adnotacje, adres e-mail, strona WWW)"/>
+<node CREATED="1351716893276" ID="ID_1902898934" MODIFIED="1351716905366" TEXT="wyb&#xf3;r prac opracowanych w jednostkach"/>
+<node CREATED="1351716907893" ID="ID_935119720" MODIFIED="1351716911731" TEXT="wyb&#xf3;r prac opracowanych w latach"/>
+<node CREATED="1351716914336" ID="ID_886964333" MODIFIED="1351716920841" TEXT="wyb&#xf3;r prac wg streszczenia, publikacje, inne"/>
+</node>
+</node>
+</node>
+<node CREATED="1351716951124" HGAP="-62" ID="ID_688415078" MODIFIED="1351717609476" POSITION="right" TEXT="Przegl&#x105;danie" VSHIFT="-110">
+<node CREATED="1351716978253" ID="ID_414746813" MODIFIED="1351716987754" TEXT="wg wydzia&#x142;u - lista wydzia&#x142;&#xf3;w"/>
+<node COLOR="#990000" CREATED="1351716999110" ID="ID_1265879938" MODIFIED="1351717609476" TEXT="wg jednostki - lista jednostek wg wydzia&#x142;u">
+<node CREATED="1351717420411" ID="ID_1321631372" MODIFIED="1351717422863" TEXT="podstrona jednostki"/>
+<node CREATED="1351717423383" ID="ID_1793984754" MODIFIED="1351717425023" TEXT="prace wg lat"/>
+<node CREATED="1351717425466" ID="ID_147774368" MODIFIED="1351717427543" TEXT="informacje o jednostce"/>
+<node CREATED="1351717428157" ID="ID_1869056984" MODIFIED="1351717430000" TEXT="wyb&#xf3;r pracownik&#xf3;w"/>
+</node>
+<node CREATED="1351717050093" ID="ID_1149422158" MODIFIED="1351717609476" TEXT="wg &#x17a;r&#xf3;de&#x142; - alfabetyczna lista &#x17a;r&#xf3;de&#x142; z opcj&#x105; wyszukania">
+<node CREATED="1351717083372" ID="ID_1377163510" MODIFIED="1351717087009" TEXT="podstrona &#x17a;r&#xf3;d&#x142;a"/>
+<node CREATED="1351717087716" ID="ID_438055932" MODIFIED="1351717091135" TEXT="prace wg lat"/>
+<node CREATED="1351717096885" ID="ID_152031541" MODIFIED="1351717105046" TEXT="informacje o &#x17a;r&#xf3;dle: impact, ISSN, e-ISSN, adnotacje, WWW"/>
+</node>
+</node>
+<node CREATED="1351717220999" ID="ID_1559050897" MODIFIED="1351717594102" POSITION="right" TEXT="Zaawansowana wyszukiwarka">
+<node CREATED="1351717238783" ID="ID_1656061848" MODIFIED="1351717239643" TEXT="obecnie nie mam pomys&#x142;u jak j&#x105; zrobi&#x107;"/>
+</node>
+<node CREATED="1351717252773" ID="ID_901224360" MODIFIED="1351717609476" POSITION="left" TEXT="Raporty jednostek">
+<node CREATED="1351717263503" ID="ID_258898519" MODIFIED="1351717266157" TEXT="Wyb&#xf3;r jednostki"/>
+<node CREATED="1351717268285" ID="ID_1051971239" MODIFIED="1351717269597" TEXT="Wyb&#xf3;r lat"/>
+<node CREATED="1351717271225" ID="ID_1404099475" MODIFIED="1351717275439" TEXT="Wyb&#xf3;r opcji dodatkowych (XLS, CSV)"/>
+<node CREATED="1351717284050" ID="ID_444703220" MODIFIED="1351717382926" TEXT="Generowanie raport&#xf3;w z poziomu celery "/>
+<node CREATED="1351717383526" ID="ID_704068570" MODIFIED="1351717390157" TEXT="Wysy&#x142;anie powiadomie&#x144; o raporcie na e-maila i na WWW"/>
+</node>
+<node CREATED="1351717506366" HGAP="-71" ID="ID_1641990017" MODIFIED="1351717609476" POSITION="right" TEXT="Rankingi" VSHIFT="20">
+<node CREATED="1351717512965" ID="ID_162246921" MODIFIED="1351717515431" TEXT="ranking autor&#xf3;w"/>
+<node CREATED="1351717515905" ID="ID_1967214913" MODIFIED="1351717518169" TEXT="&#x142;&#x105;czny roczny IF"/>
+<node CREATED="1351717532909" ID="ID_275121785" MODIFIED="1351717536424" TEXT="&#x142;&#x105;czny roczny IF jednostek"/>
+</node>
+</node>
+</map>

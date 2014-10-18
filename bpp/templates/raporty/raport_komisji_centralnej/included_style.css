@@ -1,0 +1,33 @@
+table.normal {
+    border-collapse: collapse;
+}
+
+table.normal tr th, table.normal tr td {
+    border: 1px solid black;
+}
+
+h2 {
+    font-size: 13pt;
+}
+
+h3, h4, h5 {
+    font-size: 12pt;
+}
+
+body, table {
+    font-size: 11pt;
+}
+
+table.z_ramka, table.z_ramka tbody tr td {
+    border: 1px solid black;
+    font-size: 11pt;
+}
+
+table.bez_ramki, table.bez_ramki tbody tr td {
+    border: 0px;
+    font-size: 11pt;
+}
+
+table.z_ramka {
+    border-collapse: collapse;
+}

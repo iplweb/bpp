@@ -1,0 +1,25 @@
+<table cellpadding="0" cellspacing="0" width="100%" class="user-global-nav"
+       id="global-nav-table">
+
+    {% for element in elements %}
+        <tr>
+            <td width="24" align="center">
+                <center><img src="/static/bpp/svg/{{ element.model }}.svg"
+                             class="navigation-autocomplete-icon"
+                        /></center>
+            </td>
+            <td>
+                <a style="display:block"
+                   href="{{ element.url }}">
+                    {{ element.label|safe|slice:":200" }}
+                </a>
+            </td>
+        </tr>
+    {% empty %}
+        <div style="padding-left: 20px; padding-right: 20px; padding-top: 10px; padding-bottom: 10px;">
+            <i>Nic nie znaleziono!</i>
+
+        </div>
+    {% endfor %}
+
+</table>

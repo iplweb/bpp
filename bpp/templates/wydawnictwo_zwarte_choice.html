@@ -1,0 +1,7 @@
+<div data-value="{{ choice.pk }}">
+    {#    ZA WOLNO!: #}
+    {#    {% include "opis_bibliograficzny/main.html" with praca=choice %}#}
+    {#    TODO: może rozważyć wypisywanie tu opis_bibliograficzny z tabeli Cache? #}
+    {{ choice.tytul_oryginalny|safe }}
+    - {{ choice.wydawnictwo }} {{ choice.rok }}
+</div>

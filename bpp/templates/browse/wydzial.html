@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% load columns %}
+
+{% block extratitle %}
+    {{ wydzial }}
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="/">Uczelnia</a></li>
+    <li class="current"><a href=".">{{ wydzial }}</a></li>
+{% endblock %}
+
+{% block content %}
+    <h1>{{ wydzial }}</h1>
+    {% include "browse/edit_if_logged_in.html" with url="admin:bpp_wydzial_change" pk=wydzial.pk %}
+    {#    <h2><a href="{% url "bpp:browse_uczelnia" wydzial.uczelnia.slug %}">#}
+    {#    {{ wydzial.uczelnia }}#}
+    {#    </a></h2>#}
+
+    <div class="row" style="line-height: 180%;">
+        {% for jednostka in wydzial.jednostki %}
+            <div class="large-6 medium-12 small-12 columns">
+                <a href="{% url "bpp:browse_jednostka" jednostka.slug %}">
+                    {{ jednostka }}
+                </a>
+            </div>
+
+        {% endfor %}
+    </div>
+
+
+{% endblock %}

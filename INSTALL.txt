@@ -1,0 +1,99 @@
+Instalacja
+==========
+
+1. Aby działały autouzupełnienia w adminie, potrzebny jest spatchowany Django.
+Obecnie używana jest wersja 1.4 z repozytorium na github tutaj:]
+
+    https://github.com/mpasternak/django/tree/stable/1.4.x
+
+    Jedyny patch, jaki tam jest ode mnie, to:
+    https://github.com/mpasternak/django/commit/0f977556c8ee23606e6dbfb28dfea0f3d84d85d3
+
+... uzasadnienie:
+ http://stackoverflow.com/questions/2838511/how-to-bind-events-with-jquery-in-django-admin-when-new-inline-is-added
+ https://code.djangoproject.com/ticket/15760
+ https://code.djangoproject.com/ticket/18241
+
+2. Na obecną chwilę potrzebny jest również spaczowany django-autocomplete-light, który zawiera
+    kod umożliwiający klikanie nazwisk autorów/jednostek w autocomplete, tutaj:
+    https://github.com/mpasternak/django-autocomplete-light
+    https://github.com/mpasternak/django-autocomplete-light/commits/
+
+
+Konwersja bazy danych - uwagi
+=============================
+
+Podjąłem decyzję, aby nie korzystać z pola "idt_wyd integer" w tabeli bib - jest to przypisanie
+do wydziału.
+
+Zignorowane zostało zupełnie pole 'zrodlo' z tabeli bib, jako, że nie znalazłem żadnych dowodów na to,
+że dane w nim zawarte są w jakikolwiek sposób wykorzystywane w obecnej wersji BPP w PHP.
+
+Wydawnictwa ciagle konwertuja sie tak:
+--------------------------------------
+
+rying to connect...  connected!
+REKORD:         2678    ZAWIERA WARTOSC DLA POLA        redakcja PRZENOSZE DO POLA ' uwagi ' (wartosc:  Przygotowa┼é do druku Janusz Milanowski )
+REKORD 32360 TYP AUTORA= 0, ustawiam 1
+REKORD 32360 TYP AUTORA= 0, ustawiam 1
+REKORD 32360 TYP AUTORA= 0, ustawiam 1
+REKORD 32360 TYP AUTORA= 0, ustawiam 1
+REKORD 27332 TYP AUTORA= 0, ustawiam 1
+REKORD:         38562   ZAWIERA WARTOSC DLA POLA        mceirok PRZENOSZE DO POLA ' uwagi ' (wartosc:  ┼ü├│d┼║ 1996 )
+REKORD 41158 TYP AUTORA= 0, ustawiam 1
+REKORD 41158 TYP AUTORA= 0, ustawiam 1
+REKORD 41158 TYP AUTORA= 0, ustawiam 1
+REKORD 41158 TYP AUTORA= 0, ustawiam 1
+REKORD 41158 TYP AUTORA= 0, ustawiam 1
+REKORD 41158 TYP AUTORA= 0, ustawiam 1
+REKORD 41158 TYP AUTORA= 0, ustawiam 1
+REKORD 41158 TYP AUTORA= 0, ustawiam 1
+REKORD 41158 TYP AUTORA= 0, ustawiam 1
+REKORD:         35248   ZAWIERA WARTOSC DLA POLA        mceirok PRZENOSZE DO POLA ' uwagi ' (wartosc:  Pozna┼ä 1998 )
+REKORD:         35248   ZAWIERA WARTOSC DLA POLA        wydawnictwo PRZENOSZE DO POLA ' uwagi ' (wartosc:  O┼¢r. Wydaw. Nauk. PAN )
+REKORD:         51853   ZAWIERA WARTOSC DLA POLA        mceirok PRZENOSZE DO POLA ' uwagi ' (wartosc:  s. 117-125. )
+REKORD:         8078    ZAWIERA WARTOSC DLA POLA        redakcja PRZENOSZE DO POLA ' uwagi ' (wartosc:  Pod red. Marka Woynarowskiego i Jerzego Sochy. [Aut.:] )
+REKORD:         11740   ZAWIERA WARTOSC DLA POLA        redakcja PRZENOSZE DO POLA ' uwagi ' (wartosc:  t┼éum. Pawe┼é Brudkiewicz, konsult. Stanis┼éaw Jab┼éonka )
+REKORD:         51590   ZAWIERA WARTOSC DLA POLA        mceirok PRZENOSZE DO POLA ' uwagi ' (wartosc:  Wroc┼éaw 2004 )
+REKORD:         51590   ZAWIERA WARTOSC DLA POLA        wydawnictwo PRZENOSZE DO POLA ' uwagi ' (wartosc:  Polit. Wroc. )
+REKORD:         8141    ZAWIERA WARTOSC DLA POLA        redakcja PRZENOSZE DO POLA ' uwagi ' (wartosc:  Oprac. Marek Woynarowski. [Aut.:] )
+REKORD:         50457   ZAWIERA WARTOSC DLA POLA        mceirok PRZENOSZE DO POLA ' uwagi ' (wartosc:  Amsterdam-Berlin-Oxford 2008 )
+REKORD:         50457   ZAWIERA WARTOSC DLA POLA        wydawnictwo PRZENOSZE DO POLA ' uwagi ' (wartosc:  IOS Press )
+REKORD:         50457   ZAWIERA WARTOSC DLA POLA        isbn PRZENOSZE DO POLA ' uwagi ' (wartosc:  978-1-58603-888-5 )
+REKORD:         13105   ZAWIERA WARTOSC DLA POLA        mceirok PRZENOSZE DO POLA ' uwagi ' (wartosc:  Pozna┼ä 1998 )
+REKORD:         13105   ZAWIERA WARTOSC DLA POLA        wydawnictwo PRZENOSZE DO POLA ' uwagi ' (wartosc:  O┼¢r. Wydaw. Nauk. PAN )
+REKORD:         35250   ZAWIERA WARTOSC DLA POLA        mceirok PRZENOSZE DO POLA ' uwagi ' (wartosc:  Pozna┼ä )
+REKORD:         35250   ZAWIERA WARTOSC DLA POLA        wydawnictwo PRZENOSZE DO POLA ' uwagi ' (wartosc:  O┼¢r. Wydaw. Nauk. )
+REKORD:         35247   ZAWIERA WARTOSC DLA POLA        mceirok PRZENOSZE DO POLA ' uwagi ' (wartosc:  Pozna┼ä 1998 )
+REKORD:         35247   ZAWIERA WARTOSC DLA POLA        wydawnictwo PRZENOSZE DO POLA ' uwagi ' (wartosc:  O┼¢r. Wydaw. Nauk. PAN )
+REKORD:         41079   ZAWIERA WARTOSC DLA POLA        mceirok PRZENOSZE DO POLA ' uwagi ' (wartosc:  Pozna┼ä 1998 )
+REKORD:         41079   ZAWIERA WARTOSC DLA POLA        wydawnictwo PRZENOSZE DO POLA ' uwagi ' (wartosc:  O┼¢r. Wydaw. Nauk. )
+REKORD:         65325   ZAWIERA WARTOSC DLA POLA        mceirok PRZENOSZE DO POLA ' uwagi ' (wartosc:  ss. 5, bibliogr. poz. 24 )
+REKORD 20960 TYP AUTORA= 0, ustawiam 1
+REKORD 20960 TYP AUTORA= 0, ustawiam 1
+REKORD 20960 TYP AUTORA= 0, ustawiam 1
+REKORD 20960 TYP AUTORA= 0, ustawiam 1
+REKORD:         65400   ZAWIERA WARTOSC DLA POLA        mceirok PRZENOSZE DO POLA ' uwagi ' (wartosc:  s. 737-743, bibliogr. )
+REKORD:         66059   ZAWIERA WARTOSC DLA POLA        isbn PRZENOSZE DO POLA ' uwagi ' (wartosc:  ISSN 2090-3502 )
+REKORD:         66382   ZAWIERA WARTOSC DLA POLA        isbn PRZENOSZE DO POLA ' uwagi ' (wartosc:  ISSN 2090-3502 )
+REKORD:         5988    ZAWIERA WARTOSC DLA POLA        redakcja PRZENOSZE DO POLA ' uwagi ' (wartosc:  Rec.: )
+REKORD 23019 TYP AUTORA= 0, ustawiam 1
+REKORD 23019 TYP AUTORA= 0, ustawiam 1
+REKORD:         5989    ZAWIERA WARTOSC DLA POLA        redakcja PRZENOSZE DO POLA ' uwagi ' (wartosc:  Rec.: )
+REKORD:         17498   ZAWIERA WARTOSC DLA POLA        mceirok PRZENOSZE DO POLA ' uwagi ' (wartosc:  Warszawa [2001] )
+REKORD:         16126   ZAWIERA WARTOSC DLA POLA        mceirok PRZENOSZE DO POLA ' uwagi ' (wartosc:  [B. m. 2001] )
+REKORD 20497 TYP AUTORA= 0, ustawiam 1
+REKORD 20497 TYP AUTORA= 0, ustawiam 1
+REKORD 20497 TYP AUTORA= 0, ustawiam 1
+REKORD 20497 TYP AUTORA= 0, ustawiam 1
+REKORD 20497 TYP AUTORA= 0, ustawiam 1
+REKORD 20497 TYP AUTORA= 0, ustawiam 1
+REKORD 20851 TYP AUTORA= 0, ustawiam 1
+REKORD 20851 TYP AUTORA= 0, ustawiam 1
+REKORD 20851 TYP AUTORA= 0, ustawiam 1
+python manage.py collectstatic --noinput
+
+Uprawnienia użytkowników - stara baza vs nowa
+=============================================
+
+W nowej bazie nie ma uprawnienia "przeglądanie danych".

@@ -1,0 +1,18 @@
+[
+    {
+        "pk": null,
+        "model": "bpp.plec",
+        "fields": {
+            "skrot": "M",
+            "nazwa": "mężczyzna"
+        }
+    },
+    {
+        "pk": null,
+        "model": "bpp.plec",
+        "fields": {
+            "skrot": "K",
+            "nazwa": "kobieta"
+        }
+    }
+]

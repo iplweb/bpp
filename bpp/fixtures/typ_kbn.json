@@ -1,0 +1,74 @@
+[
+    {
+        "model": "bpp.typ_kbn",
+        "pk": 1,
+        "fields": {
+            "nazwa": "Praca Oryginalna",
+            "skrot": "PO"
+        }
+    },
+    {
+        "model": "bpp.typ_kbn",
+        "pk": 2,
+        "fields": {
+            "nazwa": "Praca Przeglądowa",
+            "skrot": "PP"
+        }
+    },
+    {
+		"model": "bpp.typ_kbn",
+		"pk": 3,
+		"fields": {
+			"nazwa": "inne",
+			"skrot": "000"
+		}
+	},
+	{
+		"model": "bpp.typ_kbn",
+		"pk": 4,
+		"fields": {
+			"nazwa": "Publikacja popularnonaukowa",
+			"skrot": "PNP"
+		}
+	},
+    {
+        "model": "bpp.typ_kbn",
+        "pk": 5,
+        "fields": {
+            "nazwa": "praca monograficzna",
+            "skrot": "mon"
+        }
+    },
+    {
+        "model": "bpp.typ_kbn",
+        "pk": 6,
+        "fields": {
+            "nazwa": "Opis Przypadku",
+            "skrot": "CR"
+        }
+    },
+    {
+        "model": "bpp.typ_kbn",
+        "pk": 7,
+        "fields": {
+            "nazwa": "Podręcznik akademicki",
+            "skrot": "PAK"
+        }
+    },
+    {
+        "model": "bpp.typ_kbn",
+        "pk": 8,
+        "fields": {
+            "nazwa": "Redakcja czasopisma",
+            "skrot": "RC"
+        }
+    },
+    {
+		"model": "bpp.typ_kbn",
+		"pk": 9,
+		"fields": {
+			"nazwa": "Praca wieloośrodkowa",
+			"skrot": "PW"
+		}
+	}
+]

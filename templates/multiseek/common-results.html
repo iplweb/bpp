@@ -1,0 +1,228 @@
+{% load i18n %}
+{% load pagination_tags %}
+
+{% load static %}
+{% load compress %}
+
+
+{% compress js %}
+    <script src="{% static 'jinplace/js/jinplace.js' %}"></script>
+{% endcompress %}
+
+{% if not request.user.is_anonymous %}
+
+    {% if paginator_count < 5000 %}
+        {% if request.GET.all == "1" %}
+            {% autopaginate object_list paging 5000 %}
+        {% else %}
+            {% autopaginate object_list paging %}
+        {% endif %}
+    {% else %}
+        {% autopaginate object_list paging %}
+    {% endif %}
+
+{% else %}
+
+    {% if request.GET.all == "1" %}
+        {% autopaginate object_list paging 2147483647 %}
+    {% else %}
+        {% autopaginate object_list paging %}
+    {% endif %}
+
+{% endif %}
+
+
+<div data-magellan-expedition="fixed" class="hide-on-print">
+
+    <dl class="sub-nav">
+        <dt>wynik:</dt>
+        <dd class="active">
+        {% if live == "1" %}
+            <a href="{% url "multiseek:results" %}" target="_top">
+            {% else %}
+            <a href="#">
+        {% endif %}
+        rekordy: {{ paginator_count }}
+        </a>
+        </dd>
+
+        {% if live == "0" %}
+            <dd><a href="..">powrót</a></dd>
+        {% endif %}
+
+        {% if paginator_count > 0 and paginator_count < 2000 %}
+            {% if live == "1" %}
+                <dd><a target="_blank" href="/multiseek/results/?all=1&print=1">drukuj</a></dd>
+                {% if request.GET.all != "1" %}
+                    <dd><a target="_blank" href="/multiseek/results/?all=1">wszystkie</a></dd>
+                {% endif %}
+            {% else %}
+                <dd><a href="?all=1&print=1">drukuj</a></dd>
+                {% if request.GET.all != "1" and paginator.num_pages > 1 %}
+                    <dd><a href="?all=1">wszystkie</a></dd>
+                {% endif %}
+            {% endif %}
+        {% endif %}
+    {% if not request.GET.all == "1" and paginator.num_pages > 1 %}
+        <dt>strony:</dt>
+        <dd>{% paginate window=2 %}</dd>
+    {% endif %}
+    </dl>
+
+
+</div>
+
+
+<div style="padding: 10px;">
+
+    {% if description %}
+        <div class="panel info">
+            <strong>Parametry zapytania: </strong>{{ description|default:"brak"|safe }}
+        </div>
+    {% endif %}
+
+    {% if request.session.MULTISEEK_TITLE %}
+        <div class="row">
+            <div class="large-12 columns">
+                <h1 class="editable"
+                    data-url="{% url 'bpp:update_multiseek_title' %}">{{ request.session.MULTISEEK_TITLE }}</h1>
+                <script>
+                    $('.editable').jinplace();
+                </script>
+            </div>
+        </div>
+    {% endif %}
+
+
+    {% if report_type == "list" or report_type == "numer_list" or report_type == None %}
+        <ol start="{{ page_obj.start_index }}">
+            {% for element in object_list %}
+                <li>
+                    <a href="{% url "bpp:browse_praca" element.content_type.model element.object_id %}"
+                       target="_top">
+                        {#                        {% include "opis_bibliograficzny/main.html" with praca=element.get_original_object %}#}
+                        {{ element.opis_bibliograficzny_cache|safe }}
+
+                    </a>
+                    {% if report_type == "numer_list" %}
+                        <span style="color: red;">
+                    {{ element.uwagi }}
+                    </span>
+                    {% endif %}
+                </li>
+            {% empty %}
+                {% trans "No elements" %}
+            {% endfor %}
+        </ol>
+    {% endif %}
+
+    {% if report_type == "table" %}
+        <table class="kbntab">
+            <tr>
+                <th>Lp.</th>
+                <th>Tytuł, autorzy, źródło</th>
+                <th>IF</th>
+                <th>PK</th>
+                <th>IC</th>
+                <th>Charakter</th>
+                <th>Typ KBN/MNiSW</th>
+            </tr>
+            {% for element in object_list %}
+                <tr>
+                    <td valign="top">
+                        {{ page_obj.start_index|add:forloop.counter|add:-1 }}.
+                    </td>
+                    <td>
+                    <a href="{% url "bpp:browse_praca" element.content_type.model element.object_id %}"
+                           target="_top">
+                            {#                            {% include "opis_bibliograficzny/main.html" with praca=element.get_original_object %}#}
+                            {{ element.opis_bibliograficzny_cache|safe }}
+
+                        </a>
+                    </td>
+                    <td>{{ element.impact_factor }}</td>
+                    <td>{{ element.punkty_kbn }}</td>
+                    <td>{{ element.index_copernicus }}</td>
+                    <td>{{ element.charakter_formalny }}</td>
+                    <td>{{ element.typ_kbn }}</td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td>{% trans "No elements" %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </table>
+
+    {% endif %}
+
+    {% if report_type == "pkt_wewn" or report_type == "pkt_wewn_bez" %}
+        <table class="kbntab" width="100%">
+            <tr>
+                <th>Lp.</th>
+                <th>Tytuł, autorzy, źródło</th>
+                <th>IF</th>
+                <th>PK</th>
+                {% if report_type == "pkt_wewn" %}
+                    <th>pkt. wewn.</th>
+                {% endif %}
+                <th>Typ KBN/MNiSW</th>
+            </tr>
+            {% for element in object_list %}
+                <tr>
+                    <td valign="top">
+                        {{ page_obj.start_index|add:forloop.counter|add:-1 }}.
+                    </td>
+                    <td>
+                    <a href="{% url "bpp:browse_praca" element.content_type.model element.object_id %}"
+                           target="_top">
+                            {#                            {% include "opis_bibliograficzny/main.html" with praca=element.get_original_object %}#}
+                            {{ element.opis_bibliograficzny_cache|safe }}
+
+                        </a>
+                    </td>
+                    <td>{{ element.impact_factor }}</td>
+                    <td>{{ element.punkty_kbn }}</td>
+                    {% if report_type == "pkt_wewn" %}
+                        <td>{{ element.punktacja_wewnetrzna }}</td>
+                    {% endif %}
+                    <td>{{ element.typ_kbn }}</td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td align="center"
+                        colspan="{% if report_type == "pkt_wewn" %}6{% else %}5{% endif %}">{% trans "No elements" %}
+                    </td>
+                </tr>
+            {% endfor %}
+            {#        Stopka tylko na ostatniej stronie #}
+            {% if page_obj.number == page_obj.paginator.num_pages %}
+                <tfoot>
+                <tr>
+                    <td colspan="2">
+                        Suma:
+                    </td>
+                    <td>
+                        {{ sumy.impact_factor__sum|default_if_none:"0.00" }}
+                    </td>
+                    <td>
+                        {{ sumy.punkty_kbn__sum|default_if_none:"0.00" }}
+                    </td>
+                    {% if report_type == "pkt_wewn" %}
+                        <td>
+                            {{ sumy.punktacja_wewnetrzna__sum|default_if_none:"0.00" }}
+                        </td>
+                    {% endif %}
+                    <td>&nbsp;</td>
+
+                </tr>
+                </tfoot>
+            {% endif %}
+        </table>
+
+    {% endif %}
+</div>
+<script type="text/javascript">
+    if (queryDict.print == "1")
+        window.print();
+</script>

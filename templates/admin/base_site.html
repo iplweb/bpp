@@ -1,0 +1,67 @@
+{% extends "admin/base.html" %}
+
+{% load i18n admin_tools_menu_tags %}
+
+{% block title %}{{ title }} - Bibliografia Publikacji Pracowników{% endblock %}
+
+{% block branding %}
+    <h1 id="site-name">{% trans 'Django administration' %}</h1>
+{% endblock %}
+
+{#{% block messages %}#}
+{#    {% include "monitio/message/includes/../../../django-monitio/monitio/templates/monitio/jqueryui/messages.jquery.html" %}#}
+{#{% endblock %}#}
+
+{% block nav-global %}
+    {% if user.is_active and user.is_staff %}
+        {% if not is_popup %}
+            {% include 'navigation_autocomplete_script.html' %}
+            {% include 'navigation_autocomplete_input.html' %}
+
+            <div style="display: none;" id="show-after-load">
+                {% admin_tools_render_menu %}
+            </div>
+        {% endif %}
+    {% endif %}
+{% endblock %}
+
+{% block extrahead %}
+    {{ block.super }}
+    {% load static %}
+    {% load compress %}
+
+    {% compress js %}
+    <script src="{% static 'jquery/dist/jquery.min.js' %}" type="text/javascript"></script>
+    <script src="/static/bpp/js/bpp.js" type="text/javascript"></script>
+{#    {% include 'autocomplete_light/static.html' %}#}
+
+{#{% include 'autocomplete_light/_ajax_csrf.html' %}#}
+
+
+<script type="text/javascript" src="{% static 'autocomplete_light/autocomplete.js' %}"></script>
+<script type="text/javascript" src="{% static 'autocomplete_light/widget.js' %}"></script>
+<script type="text/javascript" src="{% static 'autocomplete_light/addanother.js' %}"></script>
+<script type="text/javascript" src="{% static 'autocomplete_light/text_widget.js' %}"></script>
+<script type="text/javascript" src="{% static 'autocomplete_light/remote.js' %}"></script>
+    {% endcompress %}
+    {% compress css %}
+<link rel="stylesheet" type="text/css" href="{% static 'autocomplete_light/style.css' %}" />
+{% endcompress %}
+{% endblock %}
+
+{% block footer %}
+    {{ block.super }}
+    <link rel="stylesheet" type="text/css" media="screen"
+          href="{{ STATIC_URL }}bpp/css/admin-style.css"/>
+    <link rel="stylesheet" type="text/css" media="screen"
+          href="{{ STATIC_URL }}bpp/css/admin-menu.css"/>
+
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $("#show-after-load").css("display", "block");
+            txt = $("#grp-admin-title").text();
+            $("#grp-admin-title").html(
+                    '<a href="/">' + txt + '</a>');
+        });
+    </script>
+{% endblock %}

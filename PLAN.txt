@@ -1,0 +1,1233 @@
+﻿
+
+        1) wheels
+        2) testy
+
+
+    JENKINS:
+    regularne odpalenie jenkinsa w trybie ma-działać
+    EWENTUALNIE nie uruchamiać testów selenium ale to ewentualnie jedynie
+
+
+============================================
+
+UCZYNIONE, STWORZONE:
+
+* multiwyszukiwarka:
+	- projekt, jak ją zaimplementować w django+jQuery
+
+* działajace autocompletes dla WydawnictwoZwarte
+
+* "Zapisany jako":
+    - custom autocomplete,
+    - znakowe,
+
+* "Zapisany jako":
+    - iteracja po nazwiskach i po imionach
+    - => robię tam ChoicesField
+    - => z opcjonalnei wpisywanym tekstem
+    - => a lista nazwisk będzie przez Javascript pobierana
+    - => ... z widoku gdzie będzie robiony JSON
+    - => dowiaduję się, jak zajsonować widok w django
+
+* charakter_formalny_wydawcnitwa_zwartego, charakter_formalny_wydawnictwa_ciaglego => wraca to wszystko
+    do jednego pola charakter_formalny i już; w tym celu:
+        # - fikstury do jednej
+        - modele: do jednego pola
+        - import: w zaleznosci czy jest wyd ciagle czy wyd zwarte po new_zrodlo
+
+
+* modele dla patentów
+* import tabeli patentny
+
+* modele dla doktoratów i habilitacji,
+* import tabeli doktoraty i habilitacje
+* wysokość nagłówka nawigacyjnego global-nav 35 px jest za duża, wyłazi coś spod spodu
+
+
+* klikalne nazwiska autorów i jednostki po wybraniu opcji z autocomplete
+    => dodaję do wszystkich stron admina funkcję javascript, otwierającą
+        popup po stronie javascriptu
+    => dodaję formatowanie choice_html_format dla różnych klas,
+        które wskazuje na skrypty edycji z ?_popup=1
+* klikalne okienka - otwiereanie wg javascriptu
+
+* kasowanie lepsze, http://stackoverflow.com/questions/5917409/speeding-up-the-django-admin-delete-page
+    => NIE zrobione
+
+* w inline dla autora pole autocomplete jest jakby za wysoko
+
+* super fajną gwiazdkę, bardziej żółtą i fajniejsze rogi
+
+* praca doktorska i habilitacyjna - z ikon usuwam daszek, czynię kolorowe
+
+* w global navie: wyszukiwanie po zrodlach i po wydawnictwach
+
+* PREFERENCJE dla użytkownika - JAKIKOLWIEK sposób żeby zapisywać preferencje użytkownika
+    http://code.google.com/p/django-preferences/
+
+* widgety z mapą znaków dla pól tekstowych
+
+* klikniecie w przycisk z mapą znaków otwiera DIALOG na stronie admina,
+    z tego dialogu jest opcja klikania znaków do wyboru
+        => obecnie jest request context processor z greek, iso, etc
+        => wrzucam skrypt jquery dialog na admin/change_form.html
+        => testuje jak to dziala
+
+* usunę link "dokumentacja" w django-adminie
+
+* kwiatek do kożucha: kolejnosc przy dodawaniu nowego wiersza autora nie idzie w gore automatycznie, dopiero po
+    zapisaniu
+
+* wyrzucę z patentu pole "wydawnictwo", 'typ_kbn' i ew inne pola
+
+    => skrypt sprawdzający które pola są puste w kontekście GLOBALNYM dla wszystkich obiektów i sugerujący
+    pozbycie się tych pól
+
+* wyrzucę z habilitacji/doktoratu pole "wydawnictwo"? i inne pola
+
+* wyjaśnienie co to za pola: zrodlo, zrodlo_src, redakcja, nr_zeszytu
+
+* pole ILOŚC ZNAKÓW WYDAWNICZYCH zaimportowane
+
+
+* IMPORTOWANIE z XLSów przede wszystkim powiązań do JEDNOSTEK
+
+* import osób "nie ujętych" w XLSach
+    => model opi_2012_afiliacja_do_wydzialu sie NIE importuje
+    => modyfikuję skrypt EKSPORTU aby uwzględniał dane wydziału
+        funkcja dopisz_autorów
+            i tam jest sprawdzanie afiliacji do wydziału autora
+                sprawdzam wg nowej tabeli
+    => mam export załatwiony zimportem XLS
+
+* raport nr 9 czyli redaktorstwo monografii pokazanych WCZEŚNIEJ robię wyszukiwanie po tytule prac
+
+   W tym celu:
+   => czytam o class-based views
+   => robie views dla Uczelnia, Jednostka, Autor
+
+* eksport do OPI z TYTUŁAMI przetłumaczonymi
+
+* funkcja Jednostka.obecni_autorzy znajdujaca OBECNYCH autorów w jednostce
+    => z TESAMI
+
+* multiwyszukiwarkę
+    => kasowanie pól
+    => dynamicznie zmieniające się pola pod wpływem JAVASCRIPTU
+    => 'ładna' serializacja HTML formularza-- czyli przejście po drzewie elementów, od góry w dół,
+        stworzenie nazwanych elementów o w taki sposób:
+
+            pole_1=
+            operacja_1=
+            wartosc_1=
+            lacznik_1=
+            ...
+            pole_2_0_0=...
+            operacja_2_0_0=...
+    => opisy rodzajów pól i ich funkcji po stronie DJANGO
+    => ładne renderowanie tychże na UI javascriptowym
+    => pole AND/OR _za_ nowo doda\ną tabelką
+
+    => test selenium: => NIE CHODZĄ
+        dodawanie elementu
+        czy prawidłowo się zmienia JAVASCRIPT po prawej stronie
+        czy prawidłowo jest enkodowany string do serwerea
+
+    => BUG: zamknięcie RAMKI nie chowa ostatniego AND/OR
+
+    => testowanie, czy dobrze jest enkodowanys string dla pól
+        typu RANGE oraz VALUE_LIST
+
+
+
+
+w 1, 2, 3 wykazach dla monografii:
+* test funkcji monografie_w_jezykach, _po_polsku, _inne
+* test funkcji wiersze_monografii CZY UWZGLEDNIA TYLKO_AUTORZY
+* ma być liczba autorów DO TRZECH, --?
+test_monografie_w_jezykach
+tesT_monografie_po_polsku
+test_monografie_w_innym_jezyku
+* w raporcie "monografie wieloautorskie" WRACAMY do tego co było
+* admin autocomplete NIE działa w grappelli -> overflowy -> CSS
+
+    => zamiana serializera na JSON
+
+    => klonowanie pól autowyszukiwanie -- z widgetem
+
+    => testowanie pól autowyszukiwanie --
+        wpisać klika liter,
+        STRZAŁKA W DÓŁ,
+        pobieranie danych (serializacja)
+
+JS AND* globalna tabela cache:
+    => enkodowanie nazwiska autora
+
+    => zawiera wszystkie pola, wszystkich rekordów
+        ... ma zapisaną oryginalną nazwę modelu
+        ...
+
+    => MOŻE być robiona przez Django, aczkolwiek nie musi
+    => ma autorów zapisywanych w formie: "(NR_KOL:ID_AUT:ID_JED_ID_ODPOW)",
+    => ma autorów zapisywanych w formie
+    => SYGNAŁY zapisujące do tej tabeli każde modyfikacje innych tabel
+
+* multiwyszukiwarka:
+	- rekursywna funkcja robiąca DOM => zapytanie
+	- rodzaje pól przywiązane do rodzajów operatorów
+	- podpowiedzi w polu z wyszukiwaniem - charaktery, ect.
+
+    => tłumaczenie zapytania POST ze strony internetowej na
+        ... siakeis wewnętrzne COŚ
+        ... zapytanie DJANGO ORM do bazy
+    => STRONA Z WYNIKAMI WYSZUKIWANIA
+        ... iframe albo cośkolwiek innego
+
+    => więcej API w multiseek.htmll pozwalające swobodnie dodawać pola formularza
+    i manipulować nimi
+
+    => siakieś COS, któro pozwala wrócić do formularza ("dostosuj formularz")
+        ... kod w DJANGO
+        ... generujący JAVASCRIPT
+
+    => LOGIC
+        -> wsyzstkie klasy na instancje
+        -> nazwane costmaQuery
+        -> konwertowanie wartości z web
+        -> ...
+
+    => POD wyszukiwarką okienko: że tyle a tyle prac, wyświetlone pierwsze
+    10 i opcja "kliknij, aby zobaczyć więcej"
+* projekt z testami selenium moimi (seleniuim helper)
+
+	=> raise_on_bad_operation dla QueryObject
+	=> TESTY DLA NOWEGO ZEWNĘTRZNEGO PROJEKTU
+    => zripuję do oddzielnej aplikacji
+        => base.html template
+        => potem overridniety template multiseeka
+
+        => url.py dla multiwyszukiwarki
+        => przestawiam widoki na class-based views
+            ... które przyjmują klasę LOGIC jako parametr
+            ... i potem są instalowane na URLach
+    => opcja zresetowania formularza
+    => testy na to wszystko
+	
+	multiseek
+	=> testy SELENIUM skonwertuję na nową wyszukiwarkę
+	=> tłumaczenie do plików PO 
+    => opcja zapisu lub usunięcia wyszukiwania
+		=> view "save":
+			- sprawdzanie uprawnień
+		=> TESTY DO VIEW SAVE
+		- $("#formsSelector").attr('style', 'display:none')
+		- czy sie ukrywa gdy nie ma fromularzy
+		czy sie pokazuje gdy stwrzymy formula
+        1) dorobię do aplikacji formularz do zalogowania się użytkownika
+        2) stworzę użytkownika
+        3) zaloguję go
+        4) zapiszę "zwyczajnie" formularz
+		6) czy pojawi się formsselector?
+        5) zapiszę formularz nadpisując, odpowiedź "tak"
+        6) zapiszę formularz nadpisując, odpowiedź "nie"        9) do PLAN.txt -- co zamiast alertów?		
+
+	=> view "load" 
+		- również sprawdzanie uprawnień
+		=> TESTY SELENIUM dla LOAD!!!
+		=> TESTY SELENIUM DLA SAVE:
+        7) zapiszę formularz i uzyskam z serwera 500 i pojawi się błąd
+		=> test jeżeli user WYCOFA SIĘ z wyboru formualrza w multiseeku
+		to czy wróci on do opcji ZEROWEJ i nie wczyta nowego formularza
+		=> test MultiseekViewResults
+	
+* multiwyszukiwarkę
+	=> tłumaczenie javascriptu	
+
+PACKAGING multiseeka
+	- żeby templates były
+	- ALE żeby nie było test_project
+	
+
+* tłumaczenie dla django-=auto
+		-> również dla django_autocomplete_light
+
+			* No matches found -- dla pola AUTOCOMPLETE -- przetłumaczę
+			
+* next, previous dla paginatora - plik PO
+			
+* BUG w MULTISEEKU:
+	2 pola, LUB, potem refresh i zmienia się na "I"
+
+* slugi dłuższe ORAZ unikalne wraz z jednostką/uczelnią etc
+* slugi z literkami Ł i Ź poprawnymi
+
+* w URLach skrót uczelni/jednostka, skrót uczelni/autor -- zrezygnowałem
+
+* CZY system w ogóle zapisuje informacje o utworzeniu, zmienieniu rekordu?
+    -> czy one są w ogóle potrzebne, skoro DJANGO śledzi jakąś tam historię
+        w adminie?
+	-> modelzmetryczką WYLATUJE,
+		-> obsługiwanie zapisów wylatuje
+		-> można stworzyć wpisy w tabeli historii DJANGO podczas
+			tworzenia obiektów.
+
+python manage.py import_bpp --traceback
+PROBLEM Z UNICODEM
+
+* slug jednak NIE always_update
+    slug mixin
+    regeneracja WSZYSTKICH slugów w bazie danych
+    custom-funkcja używająca np unidecode
+    zamiana kropek na puste znaki
+
+    => browsing po autorach
+
+    => przeglądanie po jednostkach, autorach
+
+    => TESTY widoku ZRODLA TO SAMO
+
+    => podstrona autora
+            - doktorat, habilitacja
+        - wyszukiwanie po latach, jednostkach, publikacje/streszczeina/inne
+    => podstrona autora
+        - strona PROXY zamieniająca te wyszukiwania na multiseeka
+    => podstrona autora
+        - strona PROXY zamieniająca te wyszukiwania na multiseeka
+        - dla zalogowanych is_staff link "otwórz w edytorze"
+    => wyświetlanie jednostek w kolumnach
+    => podstrona źródeł z wyszukiwaniem itp
+BUG MULTISEEKA jak sie da tableka z kilkoma polami to pole "lub" jest zamias tego pola "i"
+
+    => podstrona jednostki wg podstrony autora
+        - też PROXY przechodzące do multiseeka
+
+    => podstrona źródła
+
+    => wyszukiwanie
+        - wyszukiwanie a'la facebook dla WSZYSTKICH na każdej podstronie
+
+    => PAGING autorów na podstronie jednostki POWYŻEJ PEWNEJ ILOŚCI -- obca jednostka!
+
+    => OKNO RESULTS na tej samej stronie? przy dużej rozdzielczości
+
+Strona wyszukiwania dla jednostek
+
+BUG: autocomplete nie wyświetla okna na prawidłowej wysokości
+
+DO models\cache.py:
+    - get original object
+    - rebuild
+
+Kasowanie uczelni
+    -> do cache
+Kasowanie wydzialu
+    -> do cache
+Przetestuje pobieranie obiektu oryginalnego w cache
+Przetestuje kasowanie uczelni i kasowanie wydzialu i ich wplyw na cache
+
+CACHE powinno reagować na następujące zmiany:
+    usunięcie autora
+    usunięcie tytułu odpowiedzialności
+    usunięcie jednostki, wydziału, uczelni
+
+    zmiana rekordu Wydawnictwo_Ciagle_Autor,
+        Wydawnictwo_Zwarte_Autor,
+        Patent_Autor
+
+    PLAN:
+    1) system cachujący używający celery
+
+    2) django wysyła proste informacje:
+        zmiana, obiekt, id
+       czyli np:
+        zmiana, Wydawnictwo_Ciagle, 5
+        usuniecie, Autor, 50
+        usuniecie, Jednostka, 1
+
+    3) celery dostaje informację PO COMMIT za pomocą odpowiedniego rozszerzenia
+        z Django
+        adekwatnie
+        jeżeli ma ID skasowanego autora - to nie musi nic więcej wiedzieć
+CZY cache działa w momencie dodawania/odejmowania obiektu Autor_Wydawnictwa_...?
+    odpowiedz brzmi NIE
+    zatem pytanie: JAK ADMIN ZAPISUJE REKORDY?
+    czy moze POD KONIEC TRANSAKCJI przebudowac cahce?
+    odpowiedź brzmi NIE
+    ZATEM:
+
+    przebudowujemy obiekty Wydawnictwo_Ciagle i Wydawnictwo_Zwarte
+    po kazdej zmianie Wydawnictwo_Zwarte_Autor oraz Wydawnictwo_Ciagle_Autor
+
+    sygnały kasowania -- usuwanie z CACHE
+
+
+    1) utworzenie publikacji
+    2) utworzenie obiektu autora
+    3) skasowanie publikacji
+    4) skasowanie obiektu autora
+    5) modyfikacja publikacji
+    6) modyfikacja obiektu autora
+
+    moge to robic:
+    1) sygnaly django:
+        + jedna transakcja
+        + atomowo
+        - wolniej
+        - wielokrotna odbudowa autora w przypadku gdy dodajemy kilku
+        - sygnal m2m_changed nie funguje
+        - user w razie kasowania autora lub jednostki może sobie bardzo
+            długo poczekać na rezultat
+
+    2) celery:
+        - poza transakcją
+        - konieczność patchowania post_transaction signal? od django 1.6 będą
+        - nieatomowo
+        - wielokrotna odbudowa - jak keszować?
+        - utrudnienie testów
+        - komplikacja setupu
+        + user nie musi czekać na rezultat
+        + w razie przebudowy większej ilości rekordów
+
+
+
+
+CACHE: Pełna treść opisu pracy do CACHE, generowana z funkcji na obiekcie,
+a funkcja na obiekcie skąd? z PHP!!
+
+    - ZADANIE: wyświetlić pełny opis pracy w multiseeku, z autorami,
+        przecinkami, ze wszystkim
+
+    - SYTUACJA: wiele obiektów, różne obiekty
+
+    - PODEJŚCIA:
+        DWA:
+            template-based:
+                robie template dla każdego obiektu
+                - prędkość jaka?
+                - czy poradzą sobie z logiką tego zadania?
+                + wysoce wygodna konfiguracja
+                + bez przeładowywania serwisu
+                - i tak trzeba będzie pisać dodatkowy kod
+                + możliwość użycia jednej templatki do różnych obiektów
+
+            code-based:
+                do każdej klasy w kodzie dokładam funkcję "full desc"
+                - generowanie wyglądu w kodzie
+                + wygoda wszystkich funkcji split, trim, etc.
+                + możliwość użycia jednego kodu do różnych obiektów
+
+* podstrona PUBLIKACJI
+* multiseek bez tego napisu na dole o zapisywaniu formularza
+* multiseek OPCJONALNIE okno z rezultatami
+* robię SZABLON nowej strony serwisu
+
+    opcja wyświetlenia wszystkie/dużo/mało rekordów => USTAWIENIA UŻYTKOWNIKA ile chce rekordów na stronie
+    opcja druku -
+        - do stopki strony ikona drukarki czy coś takiego
+
+* logowanie userów
+    => zmiana hasła formularz
+    => e-mail usera
+
+=> DRUKOWANIE!
+    - CSS dla druku, nie pokazujący elementów nawigacyjnych
+        i np podkreśleń dla <a href>
+
+* globalny system notyfikacyjny - komunikaty dla każdej strony:
+	- oddzielny MODUŁ łączący django-sse, django-persistent-messages oraz eventsource
+    - komunikaty używające stylów jquery - aristo
+    - zamykalne przez kliknięcie (xhr)
+    - działające za pomocą:
+        - po pierwsze, REDIS po stronie serwera - django-sse
+        - po drugie, gdy nie ma django-sse, komunikaty typu PERSISTENT
+        DLA MSIE PODPINAM https://github.com/Yaffle/EventSource
+
+* raport pt "Ranking autorów"
+    - przekierowanie z tabelki
+    - po prostu na żywo tabelka do przeglądania
+    - sortowalna
+    - przy użyciu django-tables
+    - gdzieśtam podmontowana
+
+ŁADNA FUNKCJA W UTIL.PY
+    - pozwalająca wykryć zmianę w stosunku do oryginału
+    - w jednym polu
+    - lub w WIELU polach
+    - TESTY dla tej funkcji
+
+
+    GENERALNIE wszystko jest SPOKO, z tym że:
+        - robimy PRE delete jeżeli już
+        - do celery trafia ZDUBLOWANy wielokrotnie ten sam ID autora
+            jednego,
+            nie za bardzo widzę, jak to ukrócić,
+        - potrzebne są ZDROWE PSYCHICZNIE testy: ja sam zarządzam
+            transakcjami, ale transaction.commit_manually zjada tracebacki,
+            zaś TransactionTestCase nie śmiga tj opisane, najwyraźniej
+            ŹLE ZROZUMIAŁEM dokumentację!
+
+    wszystko z CACHE_SUMY pięknie, ale:
+        - czemu PRE save a nie POST save?
+        - faktycznie to zmiana rekordów _Autor powinna TEŻ powodować
+        przebudowanie bazy danych, bo na razie nie widzę, żeby to
+        przebudowywało
+
+
+rebuild_cache robi coś takiego:
+    - zbiera ID autorów lub publikacji które uległy zmianie podczas transakcji
+    - ZAPISUJE gdzieś te dane (w transakcji?)
+    - po commitnięciu obecnej transakcji WYWOŁUJE proces celery
+
+    - dla usuniętego autora: informacja o nim usuwana jest z tabeli
+    - dla utworzonego/zmienionego/usuniętego rekordu:
+        - przebudowywana jest informacja dla danego ROKU dla wszystkich
+            jego autorów w tabeli
+
+
+CACHE'owanie:
+    * podpinam SYGNAŁY
+        dla autorów ORAZ dla edycji wszystkich 5 tabeli
+        jeżeli jest zmieniona tabela:
+            * dodawany nowy rekord,
+            * edytowany stary -- zmieniane pole któreś z punktów
+            * usuwany rekrd
+
+        => wówczas Celery dostaje sygnał, aby zaktualizować
+        tabelę z punktami
+            - kasuje starą
+            - tworzy nową Sumy_Cache
+
+    - TESTY dla tego cache
+
+* ODPALĘ admina na nowym grappelli
+    - menu ma się pojawiać
+
+* dodam ADMINA do django-monitio i przetestuję, jak zachowuje się
+    monitio po przeedytowaniu czegokolwiek w adminie i czy ten komunikat
+    będzie prawidłowo usuwany
+
+* przeszukiwanie źródeł po LITERKACH, a-Z i tak dalej
+
+* validation error dla autocopmletes pojawia się w adminie
+
+* po kliknieciu w domek przez chwilę jest "mrugnięcie" menu, zrobię jquery
+    aby tego mrugnięcia nie było
+
+* URUCHOMIĘ CELERY _jakos_ (czy to już czas przesiąść się na PostgreSQL?)
+
+* monkeypatching django.contrib.auth.Permission?
+
+* raport pt "Ranking autorów"
+    - podpinam CACHE
+* ADMIN: pola autorów mają funkcjonować
+* admin dla użytkownika BppUser ŁADNIEJSZY
+
+* użyję django-dynamic-fixture w NOWYCH testach
+* ustawiam django-monitio na każdej stronie serwisu dla użytkowników ZALOGOWANYCH
+    => z dostępem do raportów
+        - powiadamianie przez SSE -- okno oczekiwania
+        - z klikalnym napisem "powiadom mnie przez e-mail"
+        - ... dla przeglądarek, w których nie ma SSE
+
+    * raporty:
+        => raporty OPI do pobrania - przez WWW lub przez CELERY
+        => do notyfikacji używam np django-sse
+
+[bug] * po angielsku "close all messages" jest w monitio, CZYŻBY pliki po i mo się nie zainstalowały?
+TEST_CACHE.PY przerobie testy SQLowe na bez-SQL
+
+[crit] * testy gdy uruchomione wszystkie, nie działają
+
+[bug] Admin -- nie ma być "ilość znaków" tylko LICZBA znaków,
+
+[bug] nie działa charmap w adminie: CSS nie podpięty, javascript nie funguje
+
+[feat] test na działającą charmapę?
+
+<class 'bpp.models.praca_doktorska.Praca_Doktorska'> 71366
+    serwowanie pliku
+        => użycie django-sendfile
+        =>testy
+
+test_models.TestRaport zrobię
+
+WYRIPUJĘ framework do raportów jako django-reports-framework
+    używające celery
+    przetłumaczone
+
+Wepnę i użyję z adapterami.
+
+WyeKSTRAKTUJE poszczegolne typy raportow jako... hm?
+zawijacze, interfejsy klasy raport
+czyli jakas tablica interfejsow,
+nastepnie x = ICostam(raport.adapt()),
+x.czytelne_argumenty()
+
+
+
+    * framework do RAPORTÓW:
+        - raport jest generowany przez Celery
+        - user dostaje powiadomienie przez django-sse ORAZ przez e-mail
+        - zapisywanie raportów po stronie serwera:
+            tabela
+            z modelami
+            kto poprosił
+            kiedy
+        - notyfikacja po skończeniu: e-mail, django-sse
+        - raport składa się z :
+            obrobionych danych
+            formy wynikowej
+        - raport może być poproszony w formie PDFa, XLSa, HTMLa, Worda,
+
+    Witam,
+    Jeszcze raz piszę w sprawie raportów. Zdaniem Pani Dyrektor oba raporty tzn.
+    RAPORT JEDNOSTEK 2012 i RAPORTY OPI (z możliwością wyboru wydziałów ale z
+    aktualnym algorytmem - zgodnym z raportem jednostek 2012) powinny obejmować
+    jedynie zakres lat od 2009 roku. Poza tym prosimy o pozostawienie KRONIK i
+    rankingu autorów. W rankingu autorów należało by uwzględnić wszystkich -
+    również tych bez IF. (W tej chwili jeśli wyświetlimy opcję wszystkie - widzimy
+    wszystkich autorów (również tych bez prac z IF) ale jeśli posortujemy wg KBN -
+    ucina listę. (z ponad 1000 prac pozostaje np. połowa).
+[crit] nie instaluje się custom.sql
+
+    * KASOWANIE RAPORTU za pomocą linku przez WŁAŚCICIELA
+        => defer(kasowanie pliku)
+
+
+make_raport_... CO MA ROBIC jezeli chdozi o plik ZIP:
+    1) tworzy go sobie
+    2) ... i nie kastuje tempdir
+        = > zostaje duuuzo danych na dyskiu
+
+
+    1) tworzy go sobie
+    2) przenosi w tempname czy tempdir
+    3) kasuje katalog
+    4) zwraca sciezke do plik
+* raport pt "OPI 2012" -- podpinam
+        => make_report_zipfile
+        => testy dla jakiegoś krótkiego wydziału czy ZIP tworzy
+        => wydzialy ma byc SELECT MULTIPLE
+        => formularz SELECTOR niech po wybraniu opcji pod-opcje znikają
+
+    * test kasowania pliku - wrzucę do NOWEJ klasy, bez tranakcji
+
+[crit] do django-monitio żeby po kliknięciu "zamknij" mogło iść na jakiś inny URL,
+wówczas "otwieramy" raport i automatycznie znika komunikat
+ORAZ żeby znikał po wejściu na jakis konkretny URL
+    => PODEPNĘ template tag
+    => testy dla strony WWW czy to funguje
+
+
+[crit] aktualizacja tabeli monitio_monits ORAZ pole url dla raportów
+    ORAZ tag mark_as_read_by_url
+
+
+Sprawdzę, czy tytuł_sort jest prawidłowo ustawiany:
+CREATE OR REPLACE FUNCTION cut_tytul (text) RETURNS text
+    AS '
+declare
+str text;
+tmp text;
+pos integer;
+len integer;
+begin
+	str:=initcap($1);
+	len:=length(str);
+	tmp:=substring(str, 1, 4);
+
+	if tmp like ''The %'' then
+	  return trim (leading ''The '' from str) || '', The'';
+	end if;
+
+	if tmp like ''A %'' then
+	  return trim (leading ''A '' from str) || '', A'';
+	end if;
+
+	if tmp like ''Die %'' then
+	  return trim (leading ''A '' from str) || '', Die'';
+	end if;
+	if tmp like ''Der %'' then
+	  return trim (leading ''A '' from str) || '', Der'';
+	end if;
+	if tmp like ''Das %'' then
+	  return trim (leading ''A '' from str) || '', Das'';
+	end if;
+
+
+	if tmp like ''De %'' then
+	  return trim (leading ''De '' from str) || '', De'';
+	end if;
+
+	if tmp like ''La %'' then
+	  return trim (leading ''La '' from str) || '', La'';
+	end if;
+
+	if tmp like ''En %'' then
+	  return trim (leading ''En '' from str) || '', En'';
+	end if;
+
+	return str;
+end;
+'
+    LANGUAGE plpgsql IMMUTABLE;
+
+
+TEST test_cache_get_values_doktorat NIE PORZECHODZI
+    => bo jest sobie taki ciekawy dosyć bug
+
+        * skasowanie charakter_formalny
+            nie kasuje Cache
+                chyba.
+                    CHYBA najwyraźniej te drop-triggery tak-sobie działają
+
+
+do jenkinsa:
+    sparametryzowana nazwa bazy danych
+    do skryptu Make
+    oraz do settings
+    EWENTUALNIE neiktorze rzeczy z makefile pchnac do commands
+123
+
+trigger "purge internal cache" po jakichkowliek zmianach np kasowaniu z tabel cacche'waonych
+
+Jenkins: wszystko, co wypisuje nie-ascii, wywala się.
+    1) jakie tam jest kodowanie?
+    2) czemu nie utf-8
+    3) jak zrobić, żeby jednak się przekodowywało nie do ascii, ale do utf
+
+
+[crit] przypisanie DOKTORATU i HABILITACJI do jednostki
+    - nowe pole
+    - zaktualizowany trigger cache
+    - zaktualizowane funkcje wyszukujące w cache (nie ma "zero" jako jednostka)
+    - wyciągnięcie autorów z nowego importu
+    - re-importowanie
+    => testy dla zaktualizowanego triggera cache (wszystkie czy przechodzi)
+
+
+    KRONIKA UCZELNI
+    => jednostka.WCHODZI DO KRONIKI że dana jednostka wchodzi do kroniki
+    i domyślnie wszędzie PRÓCZ "obca jednostka"
+
+
+        => funkcja cut_tytul() z postgresa -- sportuję i sprawdzę, czy
+            sortowanie po tej funkcji działa
+    zapytanie SQL:
+        o wszystkich autorów w danym ROKU,
+        prace posortowane tytułem
+        autor->praca
+
+        zrobić VIEW dla tej opcji?
+        wyciągający autor, rok, id pracy, tytuł_sort ze wszystkich publikacji?
+
+        potem ten VIEW ma już wszystkie niezbędne dane i zajmujemy się
+        WYPLUCIEM GO
+
+        Zatem, zacznę od stworzenia tego VIEW dla:
+        -wyd. ciągłe
+        -wyd. zwarte
+        -patent
+        -doktorat
+        -habilitacja
+
+        ... i tu już mam dane do odpytania:
+            - o ROK pracy,
+            - o jednostkę, w której praca powstawała
+            - posortowane przez nazwisko autora,
+            - posortowane przez CUT_ pracy,
+            - wypluwam,
+            - numerki wg SETu lecą,
+            - ewnetualnie sąwyciągane
+
+    * raport pt "Kronika" -- port z PHP
+        => na początku napis "KRonika" i wybrany ROK
+
+        => wszystko leci jako jedna tabelka
+
+        => lecą najpierw alfabetyczne nazwiska autorów
+
+        => pod każdym nazwiskiem są prace:
+            - posortowane alfabetycznie
+            - albo w pełnym brzmieniu, z numerkiem "kolejnym" pozycji,
+            - albo tylko tytuł i odsyłacz do pozycji której.
+
+
+    * raport pt "Kronika" -- port z PHP
+        => potem tabelka skrótów czasopism
+
+        => potem "jednostki UM" i kolejno
+            nazwa wydziału
+                nazwa jednostki
+                    prace zakres od-do
+
+
+[crit] opcja dla jednostek
+    => czy wchodzą do rankingu autorów
+    => generalnie może jakąś opcję typu 'raporty' że jednostka wchodzi lub
+        nie wchodzi do raportów
+        ALBO
+        kronika tak/nie
+        ranking autorów tak/nie
+        w sumie to KOMPLIKACJA JEST DUŻA
+
+        więc:
+        dla jednostek opcja 'raporty' zamiast 'kronika'
+        i RESPEKTOWANIE tej opcji
+
+odpalić wEBDRIVER na lokalnym kompie ponownie
+
+        => czy to zrobić na stronie WWW z opcją "wersja do druku"
+        czy jako pobierany plik PHP?
+        RACZEJ jako strona z opcją "wersja do druku"
+
+        WIDOKI w SQLu czy może jednak zapytania w Django?
+        -> widoki, bo wszystkie tabele zepniemy w ten sposób
+        GENERYCZNY WIDOK "wszystkie tabele"
+        i ewentualnie przeszukiwanie tego "generycznego widoku"
+        być może zrezygnujemy z Cache wówczas?
+
+[wydawnictwo_zwarte]
+    pole WYDAWNICTWO NADRZĘDNE z AUTOCOMPLETE'm
+    może być NULL
+    => autocomplete
+    => do admina
+    * raport pt "Raport jednostek" -- port z PHP
+        => na tabelach
+        => na zapytaniach np Cache
+
+    * raport_jednostek
+        => TESTY
+
+testy test_reports test_raport_jednostek
+    CRIT czeguś nie przechodzą -- czyszczenie tabeli Cache czy wisi, czy cos?
+        -> ten GD['...'] z czymśtam
+        czyżby z TYPEM ODPOWIEDZLANOSCI?
+
+    uruchomienie DOWOLNEGO testu powoduje problem w 2_1
+    ALE
+    moze setUp/
+
+    * raport jednostek
+        => rok_min, rok_mask
+
+    => test WIDOKU raport jednostek
+   => test link_2_selects na stronie selector.html
+
+[crit] RAPORTY
+   => test ranking autorów!
+
+
+ZRODLO:
+    -> zasięg źródła
+    krajowy
+    międzynarodowy
+Potem raport 6 można robić
+
+[crit] * raport pt "Raport dla komisji centralnej"
+1) test dla RENDEROWANIA pliku HTML
+    -> jest, ale coś nie funguje.
+    test_reports.test_komisja_centralne
+  a
+
+raport nr 9:
+    - jeżeli jest punktacja dla KC, to ona ma tam wejść
+    - tak samo sumowanie tejże
+
+TESTY DLA SUMOWANIA TEJŻE
+
+ZADANIE testy weryfikacyjne dla tabeli SUMARYCZNEJ
+
+=> TABELKA SUM
+
+rozbicie na przed i po doktoracie
+
+
+STOPIEN
+i RODZAJ DOROBKU
+        - de novo z dokumentacji dostraczonej przez p Drożdż
+
+
+2) potem testy dla zapisywania raportu do pliku ZIP
+3) ... dla 1 tabelki
+
+        NAJPIERW
+        => postępowanie dla doktora habilitowanego
+            powstaje template,
+            zapytania renderujące
+                -> na podstawie zapytania bazowego
+
+        => potem postępowanie dla profesora,
+            na podstawie poprzedniej template,
+            dwa zapytania bazowe,
+            dwa różne formularze
+
+        => templejt "podsumowanie"
+
+        => procedurka robiąca z tego plik ZIP
+
+[bug] Mają być DWIE tabelki w raportach Komisji Centralnej
+[bug] TYTUŁY raportów się nie pokazują
+
+[bug] sumy_view.sql ma mieć kc_* zmienne wzsystkie
+
+[wish] Charmap w JS auto-size tekstu
+
+[wish]
+    tytuł (nagłówek) na stronie rankingu autorów
+
+[wish] praca habilitacyjna ma być LINKIEM do podglądu pracy habilitacyjnej
+    LOGICZNE, NEI?
+
+[wish] Ranking autorów XLS
+
+[crit] ONLOAD w okienku raportów
+    => ma sprawdzić wartości selecta
+    => odkryć lub schowac WŁAŚCIWY tab
+
+[low prio] w Cache są 182 prace BEZ poola autorzy, do weryfikacji to
+
+[wish] BREADCRUMBS!!!! pododaję tam, gdzie ich NIE MA
+
+REGISTRY w testach nie funguje
+    opcja różnych formatów raportu (tabele -> django tables)
+    -> multiseek klasa ma dostać context 'format' i 'current_format'
+    -> cookies lub zapis
+
+    TESTY
+        -> tytuł raportów
+        => rodzaje raportów ORAZ SORTOWANIE do multiseeka -- do okna RESULTS
+
+    opcja sortowania po różnych parametrach:
+    PODEPNĘ SORTOWANIE DO ZAPYTANIA MULTISEEKOWEGO
+[wish] Brakujące tytuły: dr n. rol, prof dr n hum, dr n chem, dr n prawnych,
+    prof dr hab n chem, dr n o kult fiz, dr hab n hum, lek dent, lek stom, dr n przyr, prof dr hab n biol
+
+[wish] breadcrumbs?
+
+[wish] różne formaty wyświetlania w multiwyszukiwarce
+
+[bug] Admin -- na górnej belce przycisk menu "do strony" przejście do strony głównej
+
+[bug] Admin -- wywalę link "Dokumentacja"
+
+MANTIS PRZETESTOWANY
+
+- jeszcze ze 2 okna sortowania?
+    -> rezultaty wyszukiwania pokazują ILOŚC PRAC
+
+# Numerowana lista Z UWAGAMI
+    -> UWAGI na czerwono, po szczegółach
+
+    # Punktacja Sumaryczna z punktacją wewnętrzna
+        -> SUMOWANIE punktacji na koniec
+        Lp	Tytuł, autorzy, źródło	IF	PK	pkt. wewn.	Typ KBN/MNiSW
+
+    # Punktacja Sumaryczna BEZ punktacji wewnętrznej
+        Lp	Tytuł, autorzy, źródło	IF	PK	Typ KBN/MNiSW
+
+    ładny wygląd dla tabelki "kbn-owskiej"
+
+* multiseek:
+
+    TESTY INTEGRACYJNE
+
+    opcja wyboru ILE REKORDÓW NA STRONĘ
+    opcja "pobierz wszystko" zapisująca wyniki do HTMLa
+       -> drukuj wszystko
+
+      reset formularza kasuje ustawienia wyświetlania
+
+[wish] Cache opisu bibliograficznego
+    sygnały
+    zapisanie dowolnego modelu pod koniec transakcji woła Celery
+    Celery zapisuje opis_bibliograficzny danego elementu
+    .. do Cache.
+
+[wish] ilość rekordów do multiseeka
+
+
+[wish] Multiwyszukiwarka -- całkowita ilość rekordów w wyszukiwaniu gdzieś widoczna
+
+[bug] CACHE nie zadziała, bo trzeba jeszcze zrobić, zeby się przebudowywało przy:
+    zmianie tytułu pola Źródło
+    zmianie dowolnego pola _autor
+
+
+[bug] CACHE za każdym razem wkłada nowy rekord INSERT'em,
+    zmienię to na coś w stylu MySQLowego REPLACE
+
+[BUG] admin nie wyswietla INLINE publikaci ZŁOŻONEj
+
+[wish] ZŁOŻONE HABILITACJE:
+    habilitacja "złożona"
+    czyli składowa habilitacji
+    następnie -> cykl habilitacji podlinkowany
+        prawdopodobnie na GenericForeignKeys to zrobię.
+[wish] opis bibliograficzny -- spaceless? bo sa spacje między dwoma kropkami
+   i warto by z tym zrobić porządek...
+
+[wish] Punktacja czasopism - wszystkie punkty mają być dla poszczególnych lat
+    (czyli też KC, PK, copernicus)
+
+[wish] WYBÓR ROKU HABILITACJI do dorobku przed-po-habilitacyjnego
+
+[bug] Admin -- w patentach, gdy damy "szukaj" to się WYKRZACZA, brakująca kolumna
+        => testy dla WSZYSTKICH adminów, wyszukujące COKOLWIEK, czy aby nie będzie 500
+
+[bug] kasowanie autora - rekordy powiązane - czekamy godzinę na pokazanie listy, WONTFIX
+
+    -> wydawnictwo_ciagle_toz_AS_VIEW zrobię
+    TESTY dla tej funkcji
+
+[bug] Admin -- TAMŻE ma być, czyli w tym samym źródle wszystkie
+    informacje PRÓCZ tytułu i autorów
+
+        => TOŻ i TAMŻĘ w metodzie "add" mają pobierać defaultowe
+        dane i wypełniać formualrz.
+
+    TESTY selenium dla TOŻ
+    TESTY selenium dla TAMŻE
+
+[wish] plik - element graficzny logo uczelni - na wWW
+
+[wish] po skasowaniu raportu informacja, że skasowano raport
+
+[bug] ADMIN
+    czemu po otwarciu rekordu fokus ma pole 'informacje'
+    czemu jest górna krawędź ekranu przescrollowana poza pole "tytuł oryginalny"?
+    tego NIE M  A gdy dodajemy nowy rekord
+
+[testy] WSZYSTKIE TESTY PRZECHODZĄ
+
+[feat] punktacja źródła -- ma być punktacja KBN, do komisji centralnej i inne
+    (czyli wszystkie te co ma ModelPunktowany), punktacja ministra
+
+[feat] * publikacja NADRZĘDNA -- jako OPCJA -- przykładowo, dla MONOGRAFII mogło by tak być
+[feat] * nieco większy margines POD komunikatami monitio
+
+[wish] list display -> wydawnictwo ciągłe -> rok -- dziwne rezultaty wyszukiwania,
+
+[bug] Adnotacje -- to pole ma być wyszukiwane:
+                - we wszystkich tabelach
+                - w multiwyszukiwarce jako dla zalogowanych
+
+
+TESTY do API,
+podpięcie API
+___ pytanie: JAK SIE ZACHOWA SKRYPT selector.html przy braku habilitacji u autora? będzie 404
+
+WyWALĘ POLĘ "automatycznie oblicz PK"
+	po sprawdzeniu CZY i gdzie jest wykorzystywane
+	w obecnych skryptach PHP
+
+    jest test selenium
+    trzeba go sprawdzić
+    ORAZ napisać wersję sprawdzającą komunikat BŁĘDU
+
+BUTTON ustawiający punktację dla ŹRÓDŁA z wpisanych punktów!!!
+
+[wish] Przy DODAWANIU pracy po wybraniu czasopisma ORAZ roku ma być np przycisk
+    "automatycznie uzupełnij punktację" który wpisze punktację dla danej pracy
+
+    button JUŻ JEST
+    teraz API
+    komunikaty że nie ma punktów dla danego roku
+    potem TESTY
+
+    TESTY SELENIUM DO ADMINISTRATORA,
+    że działa uzupełnianie punkciszy
+
+[wish] Pole UZUPEŁNIANIA punktacji źródła
+    - Api
+    - testy API
+[wish] Pole UZUPEŁNIANIA punktacji źródła
+    - testy Selenium
+        bez testów komunikatów błędów
+
+[wish] Pola do SORTOWANIA
+    pierwszy autor,
+
+[autocompletes]
+zarówno ADMIN jak i serwis PUBLICZNY
+ma mieć po prawej stronie STRZAŁECZKĘ
+której kliknięcie
+otwiera dany rekord w NOWYM OKNIE
+
+[gen] nowe raporty CK
+Przyjrzałyśmy się dzisiaj przesłanym przez Pana przykładowym analizom do CK.
+Niestety nie jest dobrze. W każdym punkcie wychodzi dużo mniej prac niż w
+naszych "ręcznych" działaniach. Proszę może spojrzeć dla porównania na nasze
+formularze: CK i nr konkretnego punktu analizy.
+
+[wish] dawne nazwisko ma się wyświetlać przy dodawaniu autora do pracy
+    w opcjach "zapisane nazwiska",
+
+WONTFIX [wish] numeracja w tabelce przy przeglądaniu listy prac - pole "Liczba porządkowa"
+
+[bug] Admin -- grupy i użytkownicy widoczne są dla wszystkich userów,
+
+
+[feat] Wydawnictwo ciągłe - po wybraniu go, ma wskakiwać automatycznie OSTATNIA jednostka,
+    => możemy każdą jednostke przypisać do danego autora,
+    => wtedy ta jednostka staje się DOPISANA do autora,
+    -> API do pobierania OSTATNIEJ JEDNOSTKI
+
+    -> testy SELENIUM wybierania ostatniej jednostki
+[feat] przy zapisywaniu klas autor_jednostka sprawdzaj, czy są takie
+    powiązania w bazie, jeżeli nie ma, to dodawaj je.
+
+        -> sprawdzaj powiazania autor_jednostka
+        jeżeli są jakieś NOWE
+        to je DODAJ
+
+
+[bug] status "do korekty" jest ŹLE zaimportowany
+[feat] ADMIN -> onkienka do poukładania, opcje dla uzytkowników o różnym poziomie dostępu
+
+TESTY mają przechodzić na JENKINSIE
+
+[wish] kliiknięcie na "znaleziono" w multiseeku powiększa ramkę na cały ekran
+    IV. brak liczby rozdziałów w p. IV A i IV B oraz IV C1 i C2.
+    VII. Brak liczb w p. A i B
+[feat] COOKIES informacja -- coś jak InfoWin w OPACu
+    GOTOWIEC https://github.com/TyMaszWeb/django-cookie-law
+
+any_model => any_jednostka
+
+MAM do wyboru 2 opcje:
+    jedna to katalog websites/ i tam mam virtualenvs,
+    druga to katalog .virtualenvs
+
+
+nginx konfiguracja: HTTPS tylko dla admina -- jak to wymusić?
+
+CZY nie instalowac django-bpp w root virtualenv?
+chyba ma to większy sens,
+niż w głównym
+ALE w sumie
+to potem jest tak, że katalog zaczyna się od KROPKI,
+
+zatem
+najlepiej
+byłoby
+komfortowo
+zrobić virtualenv w katalogu websites/NAZWA_HOSTA/
+
+tak, jak przy v4u
+
+
+ZAKONCZYLEM NA: uruchamianie celery (exited too quickly)
+
+    instalacja konfiguracji supervisord
+        -> celery
+        -> gunicorn
+
+mam zrobić coś takiego, żeby settings.py w końcu działały -- wykrywały hosta i tak dalej.
+    być może było by rozsądnie
+    na poziomie fabric'a
+    instalować odpowiednie ustawienia.
+    np. conf/settings.linux-dev.py
+    czy coś w tym stylu.
+    NIE
+    to ma być w HG
+    settings.production
+    ALE
+    jak wykryć hosta.
+
+podpiąć sentry
+
+SUPERVISOR musi uruchamiać celery z odpowiednimi settings.py
+
+    * gunicorn server 500
+
+
+Przetestuje pod windows:
+    -> zmiana katalogu użytkownika
+Przetestuje na jenkinsie:
+    - xvfb
+    - manualne testy
+    - jenkins
+
+[build]
+    1) przejście wszystkich testów
+    2) sklonowanie aktualnej bazy, skonwertowanie jej
+    3) opracowanie skryptów fabfile wrzucających stronę z hg na dany
+        serwer, instalujących wymagane pakiety, etc
+    4) stworzenie skryptów testujących przez fabfile, uruchomienie testów
+        z fabfile,
+    5) ... na serwerze linux-dev
+    6) na serwerze bpp
+
+[jenkins] odtworzę ponownie środowisko budowania
+
+NINIEJSZYM CZYNIĘ:
+    TESTY dla warunku 7a i 7b
+    TESTY dla wypluwania do HTMLa warunku 7a i 7b
+
+[bug] Komisja Centralna
+monografii A. w jęz.ang. i B. w jęz. polskim i innym niż angielski
+Warunek:
+VIIA: Redaktor AND KSZ AND (Jęz=ang)
+VIIB: Redaktor AND (KSZ OR KSP) NOT (jęz=ang)
+
+CZYLI:
+
+	=> django-selenium helpers także
+    Prosimy również  o drobne poprawki:
+    1.      Zmniejszenie czcionek w nagłówkach i nie wyświetlanie warunków logicznych,
+    2.      Punkt III – błędne nagłówki: powinno być: prace poglądowe zamiast opisy przypadków
+
+* MONOGRAFIE -> ROZDZIAŁ: tytuł rozdziału -> jak to rozwiązałem, gdy jest monografia i w jej skład wchodzą rozdziały?
+    -> REDAKTOR MONOGRAFII?
+    -> objętość w arkuszach wydawniczych (IMPORT NOWEGO POLA dla MONOGRAFII)
+
+
+    zrobie gunicorn-event na linux-dev
+
+    za pomoca fabrica sprawdze rebuild_package
+    przebuduje django-monitio
+    i sprawdze, czy przestal blokowac baze danych
+    na linux-dev
+
+
+
+
+
+
+
+
+
+instalowanie FAVICONY
+zrobie fawikonye
+to wszystko do makefile
+do loaddata
+    LOGO:
+    1) instalacja z fixtury
+    2) zaktualizowanie BPP:
+        - fiksture,
+        -
+
+===================================
+    PUBLICZNE typy raportów
+    dla multiseeka
+    +/- sortowania
+
+
+1) nie lezy mi "malejąco" checkbox w sortowaniu
+2) LISTA formularzy z ahref, zamiast SELECTu
+
+ZAPAMIETUJ
+ostatni tab wybrany
+na WWW
+
+    selector.html
+        => utworzę NORMALNE formularze
+        za pomoca crispy-forms
+        ... w akordeonie.
+
+    TESTY
+    - selector - selenium
+    - zamawianie raportow
+

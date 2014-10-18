@@ -1,0 +1,63 @@
+﻿
+* PATENT OBJECT patent nie ma __unicode__
+
+* NIE POKAZUJE SIĘ inline autor<->wydział w adminie
+
+* NIE DZIAŁA JAVASCRIPT WYBORU AUTORÓW pod publikacją
+
+* administracja UŻYTKOWNIKAMI nie działa
+    => zły link
+    => zły list view
+
+* administracja grupami nie działa
+
+* autorform_dependant NIE wymaga funkcjonalności formsetadd i spatchowanego Django raczej
+
+------------------------------------------------------------------------------------------
+
+ZROBIONE:
+
+WIELOKROTNIE zapisane nazwisko NIE jest identyczne z takimi, które można wygenerować
+    jako podpowiedzi. Zatem, SELECT jako podpowiedź do pola zapisane nazwisko
+    może być wyłącznie OPCJONALNY.
+
+Inlines z autorami - dla istniejących autorów, nie ma ustalenia powiązań.
+
+Po wybraniu czegokolwiek z pola autocomplete, plusik idzie poniżej tego pola.
+    Mógłby zniknąć LUB pozostać na tym samym poziomie.
+    => zgłaszam issue do yourlabs,
+    => ze screenshotami,
+    => próbuję coś zrobić z tym SAM
+
+Brak MENU na górze po instalacji GRAPELLI
+
+Brak UKŁADU DASHBOARDU po instalacji GRAPELLI.
+
+Brak polskich liter w labelach (np. Wydanwicto ciagle "Zrodlo" zamiast "Źródło")
+
+1) sortowanie po kolejnosci gdy jest wielu autorow dziala ZLE
+http://127.0.0.1:8080/admin/bpp/wydawnictwo_zwarte/15350/
+
+
+2) javascript ustalający zależności między polami powinien zostać sparametryzowany
+od formularza, dynamicznie generowany; na ten moment javascript dla wydawnictwo_ciagle
+nie moze zostac uzyty dla wydawnictwo_zwarte
+
+ * błędy w JavaScript po otwarciu strony głównej
+    => jquery nie było podlinkowane prawidłowo
+
+ * dodaj autora, kliknij "dodaj nowe powiazanie", dodaj nowego, kliknij kilka razy, wybierz kogos
+    - wszystkie nowe pola zmienia sie
+    na ostatnio wybranego w chromie i ffoxie
+    - wine za to ponosi GRAPPELLI
+    -> pociagne nowe grappelli ew popatrze jak sa inline zalatwiane w grappelli vs w oryginalnym
+        adminie
+* wyszukiwanie globalne nie używa CSSów
+
+* wyszukiwanie globalne NIE limituje po uprawnieniach
+
+* wyszukiwanie globalne
+    - mały obrazek jest dla wydawnictwa jakiegośtam
+
+* zakończył pracę może być WCZESNIEJSZE niż rozpoczął pracę w powiązaniu autor-jednostka
+* bug: gorna belka zle sie skaluje w niskich rozdzielczosciach

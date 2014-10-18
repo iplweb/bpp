@@ -1,0 +1,122 @@
+[
+	{
+		"model": "bpp.wydzial",
+		"pk": 0,
+		"fields": {
+			"nazwa": "Brak wpisanego wydziału",
+			"skrot": "BPEX",
+			"uczelnia": "1",
+			"kolejnosc": "0",
+			"widoczny": "0",
+            "slug": "Brak-wpisanego-wydzialu"
+		}
+	},
+	{
+		"model": "bpp.wydzial",
+		"pk": 1,
+		"fields": {
+			"nazwa": "Wydział Lekarski",
+			"skrot": "WL",
+			"uczelnia": "1",
+			"kolejnosc": "0",
+			"widoczny": "0",
+            "slug": "Wydzial-Lekarski"
+		}
+	},
+	{
+        "model": "bpp.wydzial",
+        "pk": 7,
+        "fields": {
+            "nazwa": "I Wydział Lekarski z Oddziałem Stomatologicznym",
+            "skrot": "1WL",
+            "uczelnia": "1",
+			"kolejnosc": "1",
+			"widoczny": "1",
+            "slug": "I-Wydzial-Lekarski-z-Oddzialem-Stomatologicznym"
+		}
+    },
+    {
+        "model": "bpp.wydzial",
+        "pk": 8,
+        "fields": {
+            "nazwa": "II Wydział Lekarski z Oddziałem Anglojęzycznym",
+            "skrot": "2WL",
+            "uczelnia": "1",
+			"kolejnosc": "2",
+			"widoczny": "1",
+            "slug": "II-Wydzial-Lekarski-z-Oddzialem-Anglojezycznym"
+        }
+    },
+    {
+        "model": "bpp.wydzial",
+        "pk": 2,
+        "fields": {
+            "nazwa": "Wydział Farmaceutyczny z Oddziałem Analityki Medycznej",
+            "skrot": "WF",
+            "uczelnia": "1",
+			"kolejnosc": "3",
+			"widoczny": "1",
+            "slug": "Wydzial-Farmaceutyczny-z-Oddzialem-Analityki-Medycznej"
+        }
+    },
+    {
+        "model": "bpp.wydzial",
+        "pk": 3,
+        "fields": {
+            "nazwa": "Wydział Pielęgniarstwa i Nauk o Zdrowiu",
+            "uczelnia": "1",
+            "skrot": "WP",
+			"kolejnosc": "4",
+			"widoczny": "1",
+            "slug": "Wydzial-Pielegniarstwa-i-Nauk-o-Zdrowiu"
+        }
+    },
+    {
+        "model": "bpp.wydzial",
+        "pk": 4,
+        "fields": {
+            "nazwa": "Jednostka międzywydziałowa",
+            "uczelnia": "1",
+            "skrot": "JM",
+			"kolejnosc": "5",
+			"widoczny": "1",
+            "slug": "Jednostka-miedzywydzialowa"
+        }
+    },
+    {
+        "model": "bpp.wydzial",
+        "pk": 6,
+        "fields": {
+            "nazwa": "Jednostki Dawne",
+            "uczelnia": "1",
+            "skrot": "JD",
+			"kolejnosc": "6",
+			"widoczny": "1",
+            "slug": "Jednostki-Dawne"
+        }
+    },
+    {
+        "model": "bpp.wydzial",
+        "pk": 5,
+        "fields": {
+            "nazwa": "Bez Wydziału",
+            "uczelnia": "1",
+            "skrot": "000",
+			"kolejnosc": "7",
+			"widoczny": "1",
+            "slug": "Bez-Wydzialu"
+        }
+    },
+	{
+		"model": "bpp.wydzial",
+		"pk": 9,
+		"fields": {
+			"nazwa": "Poza Wydziałem",
+			"uczelnia": "1",
+			"skrot": "PW",
+			"kolejnosc": "8",
+			"widoczny": "0",
+            "slug": "poza-wydzialem"
+		}
+	}
+]

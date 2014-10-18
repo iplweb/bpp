@@ -1,0 +1,13 @@
+{% extends "bare.html" %}
+{% load static %}
+{% block extrahead %}
+    <script type="text/javascript" src="{{ STATIC_URL }}bpp/js/bpp.js"></script>
+    <script type="text/javascript" src="{% static 'iframe-resizer/js/iframeResizer.contentWindow.min.js' %}"></script>
+{% endblock %}
+{% block extratitle %}
+    Rezultat wyszukiwania
+{% endblock %}
+{% block body %}
+    {% include "print-title.html" %}
+    {% include "multiseek/common-results.html" with paging=5 live="1" %}
+{% endblock %}

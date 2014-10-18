@@ -1,0 +1,189 @@
+{% extends "admin/change_form.html" %}
+
+{% block submit_buttons_bottom %}
+    {{ block.super }}
+    <script type="text/javascript">
+        pub_id = $("#id_wydawnictwo_ciagle_autor_set-__prefix__-rekord").val()
+
+        if (pub_id) {
+            btn = $("input[name=_continue]");
+            tamze = $("<input/>")
+                    .attr("id", "tamze")
+                    .attr("class", "grp-button")
+                    .attr("type", "button")
+                    .attr("value", "Tamże");
+
+            toz = tamze.clone()
+                    .attr("id", "toz")
+                    .attr("value", "Toż");
+
+            btn.parent().parent().append($("<li/>").append(tamze));
+            btn.parent().parent().append($("<li/>").append(toz));
+
+            $("#tamze").click(function () {
+                data = {
+                    "zrodlo": $("select[name=zrodlo]").val(),
+                    "informacje": $("textarea[name=informacje]").val(),
+                    "szczegoly": $("input[name=szczegoly]").val(),
+                    "uwagi": $("textarea[name=uwagi]").val(),
+                    "rok": $("input[name=rok]").val()
+                }
+
+                location.href = "../add/?" + $.param(data);
+            });
+
+            $("#toz").click(function () {
+                if (confirm('Utworzysz kopię tego rekordu. Czy kontynuować?')) {
+                    location.href = "../toz/" + pub_id;
+                }
+            });
+        }
+
+    </script>
+
+    <script type="text/javascript">
+        $(document).ready(function () {
+
+            wypelnij_pola_punktacji = "Wypełnij pola punktacji";
+            dodaj_punktacje_do_zrodla = "Dodaj punktację do źródła";
+            names = ['impact_factor', 'index_copernicus',
+                'kc_impact_factor', 'kc_index_copernicus',
+                'kc_punkty_kbn', 'punktacja_wewnetrzna',
+                'punkty_kbn'];
+            /*
+             W razie zmiany źródła LUB roku, ustaw domyślne wartości tekstu
+             na przyciskach punktacji.
+             */
+
+            function resetButtonText() {
+                $("#id_wypelnij_pola_punktacji_button").text(wypelnij_pola_punktacji);
+                $("#id_dodaj_punktacje_do_zrodla_button").text(dodaj_punktacje_do_zrodla);
+            }
+
+            names.forEach(function (n) {
+                $("#id_" + n).change(resetButtonText);
+            });
+
+            function walidujParametry() {
+                zrodlo = $("#id_zrodlo").val();
+                if (zrodlo == null) {
+                    alert("Najpierw wybierz jakieś źródło.");
+                    return false;
+                }
+
+                rok = $("#id_rok").val();
+                if (rok == '') {
+                    alert("Uzupełnij pole 'Rok'");
+                    return false;
+                }
+                return {rok: rok, zrodlo: zrodlo}
+            }
+
+            $("#id_zrodlo").change(resetButtonText);
+            $("#id_rok").change(resetButtonText);
+
+            $("#id_uzupelnij_punktacje").css("display", "none");
+            $("label[for=id_uzupelnij_punktacje]").css("display", "none");
+            $("#id_uzupelnij_punktacje").parent()
+                    .append('<button style="width: 200px;" class="grp-button" ' +
+                            'id="id_wypelnij_pola_punktacji_button">' +
+                            'Uzupełnij punktację</button>')
+                    .append('<button style="width: 200px; margin-left: 30px;" class="grp-button" ' +
+                            'id="id_dodaj_punktacje_do_zrodla_button">' +
+                            'Dodaj punktację do źródła</button>');
+
+            $("#id_dodaj_punktacje_do_zrodla_button").click(function () {
+                ret = walidujParametry();
+                if (ret == false)
+                    return ret;
+
+                url = "/bpp/api/upload-punktacja-zrodla/" + ret.zrodlo + '/' + ret.rok + '/';
+                data = {}
+                names.forEach(function (n) {
+                    data[n] = $("#id_" + n).val();
+                });
+                console.log(data);
+
+                $.ajax({type: "POST", url: url, data: data }).done(
+                        function (res) {
+                            if (res.result == 'exists') {
+                                if (confirm("Punktacja dla tego roku już istnieje. Nadpisać?")) {
+                                    data.overwrite = "1";
+                                    console.log(data);
+                                    $.ajax({type: "POST", url: url, data: data}).done(
+                                            function (res) {
+                                                if (res.result == 'ok')
+                                                    $("#id_dodaj_punktacje_do_zrodla_button").text("Punktacja zapisana!");
+                                            }
+                                    ).error(
+                                            function (err) {
+                                                alert("Wystąpił błąd, status: " + err.status);
+                                            }
+                                    )
+
+                                } else
+                                    return false;
+                            }
+
+                            if (res.result == 'ok')
+                                $("#id_dodaj_punktacje_do_zrodla_button").text("Dodana!!");
+                        }).error(
+                        function (err) {
+                            if (err.status == 404) {
+                                if (err.response == "Zrodlo") {
+                                    alert("Brak danych na temat wybranego źródła");
+                                    return false;
+                                }
+                            }
+
+                            alert("Wystąpił błąd, status: " + err.status + ".");
+                        });
+
+
+                return false;
+
+            });
+
+            $("#id_wypelnij_pola_punktacji_button").click(function () {
+                ret = walidujParametry();
+                if (ret == false)
+                    return ret;
+
+                url = "/bpp/api/punktacja-zrodla/" + ret.zrodlo + '/' + ret.rok + '/';
+                $.ajax({
+                    type: "POST",
+                    url: url,
+                }).done(
+                        function (data) {
+
+                            names = ['impact_factor', 'index_copernicus',
+                                'kc_impact_factor', 'kc_index_copernicus',
+                                'kc_punkty_kbn', 'punktacja_wewnetrzna',
+                                'punkty_kbn'];
+
+                            names.forEach(function (n) {
+                                $("#id_" + n).val(data[n]);
+                            });
+
+                            $("#id_wypelnij_pola_punktacji_button").text("Wypełniona!");
+                        }).error(
+                        function (err) {
+                            if (err.status == 404) {
+                                if (err.responseText == "Rok") {
+                                    alert("Brak danych o punktacji tego " +
+                                            "źródła dla wpisanego roku.");
+                                    return false;
+                                }
+                                if (err.response == "Zrodlo") {
+                                    alert("Brak danych na temat wybranego źródła");
+                                    return false;
+                                }
+                            }
+
+                            alert("Wystąpił błąd, status: " + err.status + ".");
+                        });
+                return false;
+            });
+        });
+    </script>
+{% endblock %}

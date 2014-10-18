@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block extratitle %}
+    Raport "{{ report.adapted.title }}"
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "bpp:raporty" %}">Raporty</a></li>
+    <li class="current">{{ report.adapted.title }}</li>
+{% endblock %}
+
+
+{% block content %}
+    {% block monitio %}
+        {% load mark_as_read_by_url %}
+        {% mark_as_read_by_url %}
+        {{ block.super }}
+    {% endblock %}
+
+    <h1>Raport "{{ report.adapted.title }}"</h1>
+    <p>wygenerowano dla parametrów: {{ report.adapted.readable_arguments }}</p>
+    </small>
+    <p>Zamówił(a): {{ report.ordered_by }}.<br/>
+        Zamówiono: {{ report.ordered_on|naturaltime }}<br>
+        Obecny stan raportu: {{ report.status }}.<br/>
+        {% if report.started_on %}
+            {% if report.finished_on %}
+                Zakończono przetwarzanie: {{ report.finished_on|naturaltime }}.
+                <br/>
+
+                {% if report.error %}
+                    <strong>Wystąpił błąd, proszę powiadomić administratora
+                        (id={{ report.pk }}).</strong>
+                {% else %}
+                    <p><strong><a
+                            href="{% url "bpp:pobranie-raportu" report.uid %}">Pobierz
+                        raport</a></strong></p>
+                {% endif %}
+
+                {% if request.user == report.ordered_by %}
+                    <p>
+                        <a href="{% url "bpp:kasowanie-raportu" report.uid %}"
+                           onclick="return confirm('Czy na pewno chcesz usunąć ten raport?');">
+                            skasuj raport
+                        </a>
+                    </p>
+                {% endif %}
+
+
+            {% else %}
+                Rozpoczęto przetwarzanie: {{ report.started_on|naturaltime }}.
+                <br/>
+            {% endif %}
+        {% endif %}
+
+    <p><a href="{% url "bpp:raporty" %}">powrót do raportów</a></p>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "django_tables2/table.html" %}
+
+{% load i18n django_tables2 %}
+
+{% block table %}
+    {% if table.is_configured %}
+        <table width="100%">
+            <tr>
+                <td><h1>{{ table_title }}</h1></td>
+                <td>
+                    {% for label, format in table.formats %}
+                        <a href="{% querystring table.param_report=format %}">
+                            <img src="{{ STATIC_URL }}img/{{ format }}_icon.png"
+                                 title="{{ label }}"/>
+                        </a>
+                    {% endfor %}
+
+                </td>
+            </tr>
+        </table>
+    {% endif %}
+    {{ block.super }}
+{% endblock table %}

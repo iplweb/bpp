@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% load pagination_tags %}
+{% load columns %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li {% if wybrana == None %}class="current"{% endif %}><a
+            href="{% url "bpp:browse_zrodla" %}">Źródła</a></li>
+    {% if wybrana != None %}
+        <li class="current">Litera {{ wybrana }}</a>
+    {% endif %}
+{% endblock %}
+
+{% block extratitle %}
+    Indeks źródeł{% if wybrana != None %} - litera {{ wybrana }}{% endif %}
+{% endblock %}
+
+{% block content %}
+    {% url "bpp:browse_zrodla" as browse_zrodla %}
+    {% include "browse/literki.html" with pierwszy_tab="wszystkie" url=browse_zrodla %}
+
+    {% url "bpp:browse_zrodlo" as browse_zrodlo %}
+
+    {% autopaginate object_list 46 %}
+
+    <div class="row hide-on-print">
+        <div class="large-4 medium-4 columns">
+            {% include "browse/search_form.html" with url=browse_zrodla tekst="Wpisz część nazwy i wciśnij ENTER..." name="search" flt=flt %}
+        </div>
+        <div class="large-8 medium-8 columns">
+            {% paginate 5 %}
+        </div>
+    </div>
+
+    <div class="row" style="line-height:180%;">
+        {% for item in object_list %}
+            <div class="large-4 medium-6 small-12 columns">
+                <a href="{% url "bpp:browse_zrodlo" item.slug %}">{{ item }}</a>
+            </div>
+        {% empty %}
+            <div class="panel">
+                Nie znaleziono takich źródeł. <p></p>
+                <a href=".">Kliknij tutaj, aby spróbować ponownie.</a>
+            </div>
+        {% endfor %}
+        <span class="filler"></span>
+
+    </div>
+{% endblock %}

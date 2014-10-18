@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block extratitle %}
+    {{ autor }}
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "bpp:browse_autorzy" %}">Autorzy</a></li>
+    <li class="current">{{ autor }}</li>
+{% endblock %}
+
+{% block content %}
+    <h1>{{ autor }}</h1>
+    {% include "browse/edit_if_logged_in.html" with url="admin:bpp_autor_change" pk=autor.pk %}
+
+    {% if autor.praca_doktorska %}
+        <p>
+            Praca doktorska:
+            <a href="{% url "bpp:browse_praca" "praca_doktorska" autor.praca_doktorska.pk %}">
+                {{ autor.praca_doktorska|safe }}
+            </a>
+        </p>
+    {% endif %}
+
+    {% if autor.praca_habilitacyjna %}
+        <p>
+            Praca habilitacyjna:
+            <a href="{% url "bpp:browse_praca" "praca_habilitacyjna" autor.praca_habilitacyjna.pk %}">
+                {{ autor.praca_habilitacyjna|safe }}
+            </a>
+        </p>
+    {% endif %}
+
+    <form method="post"
+          action="{% url "bpp:browse_build_search" %}"
+          class="browserForm">
+        {% csrf_token %}
+        <input type="hidden" name="suggested-title" value="{{ autor }}"/>
+        <input type="hidden" name="autor" value="{{ autor.pk }}"/>
+
+        <fieldset>
+            <legend>
+                Wyszukaj dla tego autora:
+
+            </legend>
+            {% include "browse/typy.html" %}
+        </fieldset>
+
+        <fieldset>
+            <legend>
+                ... opracowane w jednostkach:
+            </legend>
+            <div clas="row">
+                {% for jednostka in autor.jednostki.all %}
+                    <div class="large-4 medium-6 small-12">
+                        <label for="jednostka_{{ jednostka.pk }}">
+                            <input type="checkbox"
+                                   name="jednostka"
+                                   value="{{ jednostka.pk }}"
+                                   id="jednostka_{{ jednostka.pk }}"
+                                    />
+                            {{ jednostka }}
+                            <a href="{% url "bpp:browse_jednostka" jednostka.slug %}">►</a></li>
+                        </label>
+                    </div>
+                {% endfor %}
+            </div>
+        </fieldset>
+
+
+        <p>
+            {% include "browse/w_latach.html" with prace_w_latach=autor.prace_w_latach %}
+            <input class="submit button" type="submit" value="Wyszukaj prace"/>
+    </form>
+
+
+{% endblock %}
