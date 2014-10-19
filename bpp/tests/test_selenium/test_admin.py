@@ -27,9 +27,8 @@ class ProperClickMixin:
         return self.page.find_element_by_id("id_" + arg)
 
     def proper_click(self, arg):
-        elem = self.byId(arg)
         self.page.execute_script("document.getElementById('id_" + arg + "').click()")
-        return elem
+        return self.byId(arg)
 
 class SeleniumAdminTestCaseCharmapTest(ProperClickMixin, SeleniumLoggedInAdminTestCase):
     url = reverse("admin:bpp_wydawnictwo_ciagle_add")
@@ -197,6 +196,7 @@ class SeleniumAdminTestUploadujPunkty(
 
         byId("impact_factor").val("60")
         proper_click("dodaj_punktacje_do_zrodla_button")
+        time.sleep(1)
         self.page.assertPopupContains(u"Punktacja dla tego roku już istnieje")
         time.sleep(1)
 
