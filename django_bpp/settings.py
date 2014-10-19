@@ -324,6 +324,14 @@ MAT_VIEW_REFRESH_COUNTDOWN = 30
 
 from .local_settings import *
 
+SITE_ROOT = os.path.abspath(
+    os.path.join(
+        os.path.dirname(__file__), '..'))
+
+STATIC_ROOT = os.path.join(SITE_ROOT, "staticroot")
+MEDIA_ROOT = os.path.join(SITE_ROOT, "mediaroot")
+
+COMPRESS_ENABLED = True
 COMPRESS_ROOT = STATIC_ROOT
 
 INSTALLED_APPS.extend(EXTRA_INSTALLED_APPS)

@@ -5,7 +5,6 @@
 #
 #
 #
-#
 # WYGENEROWANY AUTOMATYCZNIE PRZEZ SALT
 #
 # - zmiany beda nadpisane - 
@@ -25,7 +24,6 @@
 # czy inne ustawienia, takie, jak redis czy django-sessions. 
 
 EXTRA_INSTALLED_APPS = []
-
 
 {% if salt['pillar.get']('django_bpp:RAVEN_CONFIG_URL') %}
 RAVEN_CONFIG = {
@@ -96,17 +94,7 @@ EXTRA_INSTALLED_APPS.append('django_jenkins')
 
 SELENIUM_DRIVER = '{{ salt['pillar.get']('django_bpp:SELENIUM_DRIVER', 'Firefox') }}'
 
-{% if salt['pillar.get']('django_bpp:STATIC_ROOT') %}
-STATIC_ROOT = '{{ salt['pillar.get']('django_bpp:STATIC_ROOT') }}'
-{% endif %}
-
-{% if salt['pillar.get']('django_bpp:MEDIA_ROOT') %}
-MEDIA_ROOT = '{{ salt['pillar.get']('django_bpp:MEDIA_ROOT') }}'
-{% endif %}
-
 SECRET_KEY = '{{ salt['pillar.get']('django_bpp:SECRET_KEY') }}'
 
 SESSION_COOKIE_SECURE = {{ salt['pillar.get']('django_bpp:SESSION_COOKIE_SECURE') }}
 CSRF_COOKIE_SECURE = {{ salt['pillar.get']('django_bpp:CSRF_COOKIE_SECURE') }}
-
-COMPRESS_ENABLED = True
