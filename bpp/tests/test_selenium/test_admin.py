@@ -27,6 +27,7 @@ class ProperClickMixin:
         return self.page.find_element_by_id("id_" + arg)
 
     def proper_click(self, arg):
+        self.page.execute_script("document.getElementById('id_" + arg + "').scrollIntoView()")
         self.page.execute_script("document.getElementById('id_" + arg + "').click()")
         return self.byId(arg)
 
