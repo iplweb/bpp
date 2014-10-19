@@ -42,7 +42,7 @@ class RaportyPage(LiveServerTestCase):
         raise Exception("Nie moge zalogowac")
 
     def setUp(self):
-        self.browser = Browser()
+        self.browser = Browser(driver_name=getattr(settings, 'SELENIUM_DRIVER', 'Firefox').lower())
         self.user = get_user_model().objects.create_user(
             username=DEFAULT_LOGIN, password=DEFAULT_PASSWORD)
         self.login()
