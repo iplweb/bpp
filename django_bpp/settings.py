@@ -353,7 +353,3 @@ SESSION_REDIS_PREFIX = 'session'
 # django-sendfile
 SENDFILE_ROOT = MEDIA_ROOT
 SENDFILE_URL = MEDIA_URL
-
-
-print "X" * 100
-print TEMPLATE_DIRS
