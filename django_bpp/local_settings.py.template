@@ -61,7 +61,7 @@ ADMINS = (
 MANAGERS = ADMINS
 
 # django-sendfile
-SENDFILE_BACKEND = 'sendfile.backend.{{ salt['pillar.get']('django_bpp:SENDFILE_BACKEND', 'simple') }}'
+SENDFILE_BACKEND = 'sendfile.backends.{{ salt['pillar.get']('django_bpp:SENDFILE_BACKEND', 'simple') }}'
 
 
 # django-redis
