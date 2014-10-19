@@ -157,6 +157,10 @@ class TestCacheDeferredOpisBibliograficznyCache(TransactionTestCase):
     def test_opis_bibliograficzny(self):
         c = any_ciagle(szczegoly='sz', uwagi='u')
         transaction.commit()
+
+        print Rekord.objects.all()[0].opis_bibliograficzny_cache
+        print c.opis_bibliograficzny()
+
         self.assertEquals(
             Rekord.objects.all()[0].opis_bibliograficzny_cache,
             c.opis_bibliograficzny())
