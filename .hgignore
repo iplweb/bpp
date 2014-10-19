@@ -22,7 +22,6 @@ static/
 venv/
 components/bower_components/
 wheelhouse
-reports
 pip-wheel
 oaimarc/dist
 node_modules
