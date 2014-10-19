@@ -1,0 +1,110 @@
+/* -------------------------------------------------------------------------------- */
+/* Globalne ustawienia wszystkich kontrolek autocomplete */
+/* -------------------------------------------------------------------------------- */
+
+fieldset.grp-module .grp-row {
+    overflow: visible !important;
+}
+
+.autocomplete-light-widget .deck {
+    padding-left: 0px;
+    width: 100%;
+    display: inline;
+    background: none;
+}
+
+.autocomplete-light-widget .deck li {
+    background: none;
+    border-radius: 0px;
+    display: inline;
+}
+
+.autocomplete-light-widget .deck [data-value]:last-child {
+    background: none;
+    display: inline;
+}
+
+/* -------------------------------------------------------------------------------- */
+/* Nawigacja na górze administratora */
+/* -------------------------------------------------------------------------------- */
+
+/* Kontrolka <input> wyszukiwania nawigacyjnego */
+#navigation_autocomplete {
+    width: 15%;
+    top: 6px;
+    position: relative;
+    float: right;
+    display: inline;
+}
+
+/* wyskakująca lista z elementami do wyboru */
+.yourlabs-autocomplete.inner-container {
+    width: 400px;
+}
+
+.navigation-autocomplete-icon {
+    width: 16px;
+    height: 16px;
+}
+/* -------------------------------------------------------------------------------- */
+/* Nadpisane style Grappelli */
+/* -------------------------------------------------------------------------------- */
+
+.grp-tabular .grp-table .grp-tbody .grp-th.grp-tools-container, .grp-tabular .grp-table .grp-tbody .grp-td.grp-tools-container {
+    width: 5% !important;
+}
+
+.grp-td a.add-another {
+    float: none !important;
+}
+
+#grp-navigation #bookmark-button {
+    background: url('/static/bpp/images/star_white.png') !important;
+    background-position: 0px 0px !important;
+    width: 25px !important;
+}
+
+#grp-navigation #bookmark-button.bookmarked {
+    background: url('/static/bpp/images/star_yellow.png') !important;
+    background-position: 0px 0px !important;
+    width: 25px !important;
+}
+
+/* global nav */
+
+#global-nav-table {
+    border: 0;
+    border-collapse: collapse;
+}
+
+.global-nav td {
+    padding: 0;
+}
+
+/* ---- */
+
+textarea.charmap {
+    float: left;
+}
+
+button.charmap {
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    position: relative;
+    left: 40px;
+    top: 15px;
+    float: left;
+    color: black;
+    font-weight: bold;
+}
+
+#global-nav-table {
+    border: none;
+    border-collapse: collapse;
+}
+
+.global-nav tbody tr td, table tbody tr th {
+    border-bottom: none;
+    border-left: none;
+}
