@@ -18,7 +18,6 @@ packages/src-bundle*
 django_bpp/wsgi.py
 svg-sources/Thumbs.db
 dump.gz
-static/
 venv/
 components/bower_components/
 wheelhouse
