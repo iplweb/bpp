@@ -75,7 +75,7 @@ ROOT_URLCONF = 'django_bpp.urls'
 WSGI_APPLICATION = 'django_bpp.wsgi.application'
 
 TEMPLATE_DIRS = (
-    os.path.join(os.path.dirname(__file__), '', '..', 'templates'),
+    os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'templates')),
 )
 
 INSTALLED_APPS = [
@@ -166,7 +166,8 @@ DJORM_POOL_OPTIONS = {
     "recycle": 3600, # the default value
 }
 
-TESTING = 'test' in sys.argv
+TESTING = ('test' in sys.argv) or ('jenkins' in sys.argv)
+
 
 DJANGO_BPP_DATABASE_NAME = os.getenv('DJANGO_BPP_DATABASE_NAME', 'django_bpp')
 
@@ -353,3 +354,6 @@ SESSION_REDIS_PREFIX = 'session'
 SENDFILE_ROOT = MEDIA_ROOT
 SENDFILE_URL = MEDIA_URL
 
+
+print "X" * 100
+print TEMPLATE_DIRS
