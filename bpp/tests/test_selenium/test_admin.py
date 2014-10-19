@@ -194,6 +194,8 @@ class SeleniumAdminTestUploadujPunkty(
         self.assertEquals(Punktacja_Zrodla.objects.count(), 1)
         self.assertEquals(Punktacja_Zrodla.objects.all()[0].impact_factor, 50)
 
+
+
         byId("impact_factor").val("60")
         proper_click("dodaj_punktacje_do_zrodla_button")
         time.sleep(2)
