@@ -38,10 +38,10 @@ form.custom .custom.checkbox.checked:before { content: "\2714";}
     a[href] { text-decoration: none; }
     a[href]:after { content: "" !important; }
   body {
-    margin-left: 1cm;
-    margin-right: 1cm;
-    margin-top: 1cm;
-    margin-bottom: 1cm;
+    margin-left: 1cm !important;
+    margin-right: 1cm !important;
+    margin-top: 1cm !important;
+    margin-bottom: 1cm !important;
   }
 
   table {
