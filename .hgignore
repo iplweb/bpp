@@ -2,3 +2,11 @@ syntax: glob
 *.pyc
 build/*
 *~
+./venv/
+./bower_components
+./staticroot
+./media
+./django_bpp/local_settings.py
+./django_bpp/wsgi.py
+./dbdump@bpp.umlub.pl/
+./.idea/
