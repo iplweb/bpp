@@ -93,13 +93,15 @@ class TestAutor(TestCase):
         j = mommy.make(Autor, imiona='Omg', nazwisko='Lol', tytul=None)
         self.assertEquals(unicode(j), u"Lol Omg")
 
-        t = Tytul.objects.create(nazwa="dr")
+        t = Tytul.objects.create(nazwa="daktur", skrot="dar")
         j = mommy.make(Autor, imiona='Omg', nazwisko='Lol', tytul=t)
-        self.assertEquals(unicode(j), u"Lol Omg, dr")
+        self.assertEquals(unicode(j), u"Lol Omg, dar")
 
         j.poprzednie_nazwiska = "Kowalski"
-        self.assertEquals(unicode(j), u"Lol Omg (Kowalski), dr")
+        self.assertEquals(unicode(j), u"Lol Omg (Kowalski), dar")
 
+        self.assertEquals(j.get_full_name(), u"Omg Lol (Kowalski)")
+        self.assertEquals(j.get_full_name_surname_first(), u"Lol (Kowalski) Omg")
 
     def test_afiliacja_na_rok(self):
         w = any_wydzial()
@@ -347,7 +349,7 @@ class TestRedakcjaZrodla(TestCase):
     fixtures = ['plec.json']
 
     def test_redakcja_zrodla(self):
-        t = Tytul.objects.create(nazwa='dr')
+        t = Tytul.objects.create(nazwa='daktor', skrot='dr')
         a = mommy.make(
             Autor, imiona="Jan", nazwisko="Kowalski", tytul=t,
             plec=Plec.objects.get(skrot='M'))
