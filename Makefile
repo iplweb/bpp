@@ -80,8 +80,8 @@ loaddata:
 	${LOADDATA} um_lublin_wydzial.json
 	${LOADDATA} um_lublin_charakter_formalny.json
 
-	${MANAGE} install_file data/uml/logo.png Uczelnia 1 logo_www
-	${MANAGE} install_file data/uml/favicon.ico Uczelnia 1 favicon_ico
+	${MANAGE} install_file files/data/uml/logo.png Uczelnia 1 logo_www
+	${MANAGE} install_file files/data/uml/favicon.ico Uczelnia 1 favicon_ico
 
 import:
 	${MANAGE} run_import --traceback --cpu=1
