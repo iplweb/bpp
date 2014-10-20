@@ -54,6 +54,22 @@ def find_user(login):
         return None
     return User.objects.get(pk=login)
 
+def convert_www(s):
+    if s is None:
+        return
+
+    if not s:
+        return
+
+    s = s.strip()
+
+    if not s:
+        return
+
+    if s.lower().startswith("http://"):
+        return s
+
+    return u"http://" + s
 
 def set_seq(s):
     if settings.DATABASES['default']['ENGINE'].find('postgresql') >= 0:
@@ -104,7 +120,7 @@ def szczegoly_i_inne(dct, kw, zrodlowe_pole_dla_informacji):
         rok=dct['rok'],
 
         # ModelZWWW
-        www=dct['www'],
+        www=convert_www(dct['www']),
     )
 
     if zrodlowe_pole_dla_informacji is not None:
@@ -401,7 +417,7 @@ def zrob_jednostki(cur, initial_offset, skip):
 
         kw = dict(pk=jed['id'], nazwa=jed['nazwa'], skrot=jed['skrot'],
                   wydzial=wyd, widoczna=jed['to_print'] == "*",
-                  email=jed['email'], www=jed['www'], adnotacje=jed['opis'])
+                  email=jed['email'], www=convert_www(jed['www']), adnotacje=jed['opis'])
         j = Jednostka.objects.create(**kw)
         admin_log_history(j, jed)
 
@@ -473,7 +489,7 @@ def zrob_autorow(cur, initial_offset=0, skip=0):
 
         kw = dict(pk=aut['id'], imiona=imiona,
                   nazwisko=aut['nazwisko'].strip(), tytul=tytul,
-                  email=aut['email'], www=aut['www'], urodzony=aut['urodzony'],
+                  email=aut['email'], www=convert_www(aut['www']), urodzony=aut['urodzony'],
                   zmarl=aut['zmarl'],
                   pokazuj_na_stronach_jednostek=aut['hide_on_unit'] == 0,
                   poprzednie_nazwiska=aut['dawne_nazwisko'])
