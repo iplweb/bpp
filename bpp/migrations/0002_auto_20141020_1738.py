@@ -251,5 +251,5 @@ class Migration(migrations.Migration):
             name='skrot',
             field=models.CharField(max_length=512, verbose_name=b'Skr\xc3\xb3t', db_index=True),
         ),
-        RunSQL("DROP INDEX IF EXISTSbpp_autorzy_mat_11 ")
+        RunSQL("DROP INDEX IF EXISTS bpp_autorzy_mat_11 ")
     ]
