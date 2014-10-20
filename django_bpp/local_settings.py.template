@@ -75,17 +75,18 @@ REDIS_DB_CACHEOPS = {{ salt['pillar.get']('django_bpp:REDIS_DB_CACHEOPS', '5') }
 REDIS_DB_LOCKS = {{ salt['pillar.get']('django_bpp:REDIS_DB_LOCKS', '6') }}
 
 
+{% set db = salt['pillar.get']('django_bpp_database', {}) %}
+{% set django_bpp_user = salt['pillar.get']('django_bpp:user') %}
+
 DATABASES = {
-    {% for name, db in salt['pillar.get']('django_bpp:DATABASES', {}).items() %}
-    '{{ name }}': {
+    'default': {
         'ENGINE': 'django.db.backends.{{ db.get('ENGINE', 'postgresql_psycopg2') }}',
-        'NAME': '{{ db.get('NAME', '') }}',
-        'USER': '{{ db.get('USER', '') }}',
+        'NAME': '{{ db.get('NAME', django_bpp_user) }}',
+        'USER': '{{ db.get('USER', django_bpp_user) }}',
         'PASSWORD': '{{ db.get('PASSWORD', '') }}',
         'HOST': '{{ db.get('HOST', '') }}',
         'PORT': '{{ db.get('PORT', '') }}',
-    },
-    {% endfor %}
+    }
 }
 
 {% if salt['pillar.get']('django_bpp:ENABLE_JENKINS') %}
