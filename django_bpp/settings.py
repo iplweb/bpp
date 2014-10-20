@@ -261,7 +261,7 @@ BOWER_INSTALLED_APPS = (
     'jquery#2.1.1',
     'jeditable#1.7.3',
     'jqueryui#1.11.0',
-    'foundation#5.3.0',
+    'foundation#5.4.6',
     'foundation-datepicker',
     'font-awesome#4.1.0',
     'iframe-resizer#2.5.1',
@@ -364,3 +364,5 @@ SENDFILE_URL = MEDIA_URL
 
 if TESTING:
     CELERY_ALWAYS_EAGER = True
+    
+COMPRESS_OFFLINE = True
