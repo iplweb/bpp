@@ -86,7 +86,7 @@ class Autor(ModelZAdnotacjami):
             buf += " (%s)" % self.poprzednie_nazwiska
 
         if self.tytul is not None:
-            buf += ", " + unicode(self.tytul)
+            buf += ", " + unicode(self.tytul.skrot)
         return buf
 
     def dodaj_jednostke(self, jednostka, rok, funkcja):
