@@ -70,13 +70,14 @@ class AutocompleteZrodlo(autocomplete_light.AutocompleteModelTemplate):
 
 
 autocomplete_light.register(
-    Zrodlo, AutocompleteZrodlo, search_fields=('nazwa', 'poprzednia_nazwa'),
+    Zrodlo, AutocompleteZrodlo,
+    search_fields=('nazwa', 'poprzednia_nazwa', 'alternatywna_nazwa', 'skrot', 'skrot_nazwy_alternatywnej'),
     name="ZrodloMultiseek",
     choice_template="autocompletes/zrodlo.html")
 
 autocomplete_light.register(
     Zrodlo, AutocompleteZrodlo,
-    search_fields=('nazwa', 'poprzednia_nazwa'),
+    search_fields=('nazwa', 'poprzednia_nazwa', 'alternatywna_nazwa', 'skrot', 'skrot_nazwy_alternatywnej'),
     autocomplete_js_attributes={'placeholder': u'źródło...'},
     choice_template="autocompletes/admin.html")
 

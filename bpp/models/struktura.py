@@ -92,7 +92,12 @@ class Jednostka(ModelZAdnotacjami, ModelHistoryczny):
         app_label = 'bpp'
 
     def __unicode__(self):
-        return self.nazwa
+        ret = self.nazwa
+
+        if self.wydzial:
+            ret += u" (%s)" % self.wydzial.skrot
+
+        return ret
 
     def dodaj_autora(self, autor, funkcja=None, rozpoczal_prace=None, zakonczyl_prace=None):
         return Autor_Jednostka.objects.create(

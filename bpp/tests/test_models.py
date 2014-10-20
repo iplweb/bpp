@@ -36,8 +36,9 @@ class TestWydzial(TestCase):
 
 class TestJednostka(TestCase):
     def test_jednostka(self):
-        j = any_jednostka(nazwa="foo")
-        self.assertEquals(unicode(j), u"foo")
+        w = any_wydzial(skrot="BAR")
+        j = any_jednostka(nazwa="foo", wydzial_skrot="BAR")
+        self.assertEquals(unicode(j), u"foo (BAR)")
 
     def test_obecni_autorzy(self):
         j1 = any_jednostka()
@@ -318,6 +319,15 @@ class TestZrodlo(TestCase):
     def test_zrodlo(self):
         z = mommy.make(Zrodlo, nazwa="foo")
         self.assertEquals(unicode(z), 'foo')
+
+        z = mommy.make(Zrodlo, nazwa="foo", nazwa_alternatywna="bar")
+        self.assertEquals(unicode(z), 'foo (bar)')
+
+        z = mommy.make(Zrodlo, nazwa="foo", poprzednia_nazwa="bar", nazwa_alternatywna="quux")
+        self.assertEquals(unicode(z), 'foo (quux) (d. bar)')
+
+        z = mommy.make(Zrodlo, nazwa="foo", poprzednia_nazwa="quux")
+        self.assertEquals(unicode(z), 'foo (d. quux)')
 
     def test_zrodlo_prace_w_latach(self):
         z = mommy.make(Zrodlo)

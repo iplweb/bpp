@@ -188,14 +188,17 @@ class Redakcja_ZrodlaInline(admin.TabularInline):
 class ZrodloAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
     fields = None
     inlines = (Punktacja_ZrodlaInline, Redakcja_ZrodlaInline,)
-    search_fields = ['nazwa', 'skrot', 'issn', 'e_issn', 'www',
+    search_fields = ['nazwa', 'skrot', 'nazwa_alternatywna',
+                     'skrot_nazwy_alternatywnej', 'issn', 'e_issn', 'www',
                      'poprzednia_nazwa']
-    list_display = ['nazwa', 'skrot', 'rodzaj', 'www']
+    list_display = ['nazwa', 'skrot', 'nazwa_alternatywna', 'poprzednia_nazwa',
+                    'rodzaj', 'www']
     list_filter = ['rodzaj', 'zasieg']
     fieldsets = (
         (None, {
             'fields': (
-                'rodzaj', 'nazwa', 'skrot', 'issn', 'e_issn', 'www', 'zasieg',
+                'rodzaj', 'nazwa', 'skrot', 'nazwa_alternatywna',
+                'skrot_nazwy_alternatywnej', 'issn', 'e_issn', 'www', 'zasieg',
                 'poprzednia_nazwa'),
         }),
         ADNOTACJE_FIELDSET)

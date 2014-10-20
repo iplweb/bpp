@@ -182,6 +182,13 @@ class Autor(ModelZAdnotacjami):
             buf += u" (%s)" % self.poprzednie_nazwiska
         return buf
 
+    def get_full_name_surname_first(self):
+        buf = u"%s" % self.nazwisko
+        if self.poprzednie_nazwiska:
+            buf += u" (%s)" % self.poprzednie_nazwiska
+        buf += u" %s" % self.imiona
+        return buf
+
     def prace_w_latach(self):
         """Zwraca lata, w których ten autor opracowywał jakiekolwiek prace."""
         from bpp.models.cache import Rekord
