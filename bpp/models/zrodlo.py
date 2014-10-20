@@ -89,14 +89,21 @@ class ZrodloManager(FulltextSearchMixin, models.Manager):
 class Zrodlo(ModelZAdnotacjami, ModelZISSN):
     rodzaj = models.ForeignKey(Rodzaj_Zrodla)
     nazwa = models.CharField(max_length=1024, db_index=True)
-    skrot = models.CharField("Skrót", max_length=512)
+    skrot = models.CharField("Skrót", max_length=512, db_index=True)
+
+    nazwa_alternatywna = models.CharField(
+        max_length=1024, db_index=True, blank=True, null=True)
+    skrot_nazwy_alternatywnej = models.CharField(
+        max_length=512, blank=True, null=True, db_index=True)
+
     zasieg = models.ForeignKey(
         Zasieg_Zrodla, null=True, blank=True, default=None)
 
     www = models.URLField("WWW", max_length=1024, blank=True, null=True)
 
     poprzednia_nazwa = models.CharField(
-        "Poprzedni tytuł", max_length=1024, db_index=True, blank=True, null=True)
+        "Poprzedni tytuł", max_length=1024, db_index=True, blank=True,
+        null=True)
 
     search = VectorField()
 
@@ -107,10 +114,15 @@ class Zrodlo(ModelZAdnotacjami, ModelZISSN):
         unique=True)
 
     def __unicode__(self):
-        if self.poprzednia_nazwa:
-            return u"%s (d. %s)" % (self.nazwa, self.poprzednia_nazwa)
+        ret = u"%s" % self.nazwa
 
-        return self.nazwa
+        if self.nazwa_alternatywna:
+            ret += u" (%s)" % self.nazwa_alternatywna
+
+        if self.poprzednia_nazwa:
+            ret += u" (d. %s)" % (self.poprzednia_nazwa)
+
+        return ret
 
     class Meta:
         verbose_name = 'źródło'

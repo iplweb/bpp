@@ -40,7 +40,7 @@
 
         {% for item in object_list %}
             <div class="large-3 medium-4 small-6 columns">
-                <a href="{% url "bpp:browse_autor" item.slug %}">{{ item.get_full_name }}</a>
+                <a href="{% url "bpp:browse_autor" item.slug %}">{{ item.get_full_name_surname_first }}</a>
             </div>
         {% empty %}
             <div class="panel">
