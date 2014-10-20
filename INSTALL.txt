@@ -1,23 +1,19 @@
 Instalacja
 ==========
 
-1. Aby działały autouzupełnienia w adminie, potrzebny jest spatchowany Django.
-Obecnie używana jest wersja 1.4 z repozytorium na github tutaj:]
+Instalacja systemu odbywa sie za pomoca salt,
 
-    https://github.com/mpasternak/django/tree/stable/1.4.x
+repozytorium hg@bpp.umlub.pl/srv
 
-    Jedyny patch, jaki tam jest ode mnie, to:
-    https://github.com/mpasternak/django/commit/0f977556c8ee23606e6dbfb28dfea0f3d84d85d3
+Stany:
+------
+ - django_bpp.jenkins - dla serwera ciaglej integracji,
 
-... uzasadnienie:
- http://stackoverflow.com/questions/2838511/how-to-bind-events-with-jquery-in-django-admin-when-new-inline-is-added
- https://code.djangoproject.com/ticket/15760
- https://code.djangoproject.com/ticket/18241
+ - django_bpp.app - ustaw aplikacje
+     - jezeli jest zmienna django_bpp_release, to ustaw release
+     - jezeli nie, to instaluj tip mercuriala
 
-2. Na obecną chwilę potrzebny jest również spaczowany django-autocomplete-light, który zawiera
-    kod umożliwiający klikanie nazwisk autorów/jednostek w autocomplete, tutaj:
-    https://github.com/mpasternak/django-autocomplete-light
-    https://github.com/mpasternak/django-autocomplete-light/commits/
+ - django_bpp.removed.all - usun wszystko, procz bazy danych
 
 
 Konwersja bazy danych - uwagi
@@ -95,5 +91,4 @@ python manage.py collectstatic --noinput
 
 Uprawnienia użytkowników - stara baza vs nowa
 =============================================
-
 W nowej bazie nie ma uprawnienia "przeglądanie danych".
