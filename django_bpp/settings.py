@@ -331,7 +331,7 @@ SITE_ROOT = os.path.abspath(
 STATIC_ROOT = os.path.join(SITE_ROOT, "staticroot")
 MEDIA_ROOT = os.path.join(SITE_ROOT, "mediaroot")
 
-COMPRESS_ENABLED = False# True
+COMPRESS_ENABLED = True
 COMPRESS_ROOT = STATIC_ROOT
 
 INSTALLED_APPS.extend(EXTRA_INSTALLED_APPS)
