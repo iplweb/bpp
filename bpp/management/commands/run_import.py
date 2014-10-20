@@ -29,7 +29,7 @@ class Command(BaseCommand):
 
         for option in ['uzytkownicy', 'jednostki', 'autorzy', 'powiazania', 'zrodla', 'korekty', 'publikacje', 'clusters']:
             proc = []
-            if True:  #option in jednowatkowe:
+            if option in jednowatkowe:
                 ret = subprocess.check_call(
                     [sys.executable, 'manage.py', 'import_bpp',
                      '--' + option,
