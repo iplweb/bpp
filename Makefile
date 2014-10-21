@@ -83,6 +83,8 @@ loaddata:
 	${MANAGE} install_file files/data/uml/logo.png Uczelnia 1 logo_www
 	${MANAGE} install_file files/data/uml/favicon.ico Uczelnia 1 favicon_ico
 
+
+
 import:
 	${MANAGE} run_import --traceback --cpu=4
 
