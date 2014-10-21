@@ -86,7 +86,7 @@ loaddata:
 
 
 import:
-	${MANAGE} run_import --traceback --cpu=4
+	${MANAGE} run_import --traceback --cpu=1
 
 import-clean: rebuilddb loaddata import
 	@echo done
