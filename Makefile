@@ -84,7 +84,7 @@ loaddata:
 	${MANAGE} install_file files/data/uml/favicon.ico Uczelnia 1 favicon_ico
 
 import:
-	${MANAGE} run_import --traceback --cpu=1
+	${MANAGE} run_import --traceback --cpu=4
 
 import-clean: rebuilddb loaddata import
 	@echo done
