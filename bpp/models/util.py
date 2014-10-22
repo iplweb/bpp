@@ -111,6 +111,10 @@ class ModelZOpisemBibliograficznym(models.Model):
 
     opis_bibliograficzny_cache = models.TextField(default='')
 
+    # To pole używane jest na ten moment jedynie przez moduł OAI, do szybkiego
+    # produkowania pola "Creator" dla formatu Dublin Core, vide moduł bpp.oai .
+    # To pole zawiera listę autorów, w kolejności, nazwisko i imię, bez
+    # tytułu
     opis_bibliograficzny_autorzy_cache = TextArrayField()
 
     def zaktualizuj_cache(self, tylko_opis=False):
@@ -119,10 +123,16 @@ class ModelZOpisemBibliograficznym(models.Model):
         flds = ['opis_bibliograficzny_cache']
 
         if not tylko_opis:
+
             if hasattr(self, 'autor'):
-                self.opis_bibliograficzny_autorzy_cache = [u"%s %s" % (self.autor.nazwisko, self.autor.imiona)]
+                autorzy = [self.autor]
             else:
-                self.opis_bibliograficzny_autorzy_cache = [x.zapisany_jako for x in self.autorzy.through.objects.filter(rekord=self)]
+                autorzy = self.autorzy.through.objects.filter(rekord=self).order_by('kolejnosc')
+                autorzy = [x.autor for x in autorzy]
+
+            self.opis_bibliograficzny_autorzy_cache = [
+                u"%s %s" % (x.nazwisko, x.imiona) for x in autorzy]
+
             flds.append('opis_bibliograficzny_autorzy_cache')
 
         # Podaj parametr flds aby uniknąć pętli wywoływania sygnału post_save
