@@ -9,7 +9,7 @@ from django.test import TransactionTestCase, TestCase
 from model_mommy import mommy
 from django.conf import settings
 
-from bpp.tests.util import any_uczelnia, any_wydzial
+from bpp.tests.util import any_uczelnia, any_wydzial, any_doktorat
 
 from bpp.models import Autor, Patent_Autor, Jednostka, Typ_Odpowiedzialnosci, \
     Patent, Praca_Doktorska, Praca_Habilitacyjna, Tytul, Zrodlo, \
@@ -279,11 +279,51 @@ class LoadFixturesMixin:
                                 'skip_validation': True})
 
 
-class TestCacheZapisani(TestCacheMixin, TestCase):
-    def test_zapisani(self):
+class TestCacheZapisani(TestCase):
+    fixtures = [
+        'typ_odpowiedzialnosci.json', 'tytul.json', 'zrodlo_informacji.json',
+        'charakter_formalny.json', 'status_korekty.json', 'typ_kbn.json',
+        'jezyk.json']
+
+    def test_zapisani_wielu(self):
+        aut = any_autor("Kowalski", "Jan")
+        aut2 = any_autor("Nowak", "Jan")
+
+        jed = any_jednostka("Jednostka")
+        wyd = any_ciagle(tytul_oryginalny="Wydawnictwo ciagle")
+
+        for kolejnosc, autor in enumerate([aut, aut2]):
+            Wydawnictwo_Ciagle_Autor.objects.create(
+                autor=autor,
+                jednostka=jed,
+                rekord=wyd,
+                typ_odpowiedzialnosci_id=1,
+                zapisany_jako='FOO BAR',
+                kolejnosc=kolejnosc
+            )
+
+
         Rekord.objects.full_refresh()
-        c = Rekord.objects.all()[0]
-        self.assertEquals(c.opis_bibliograficzny_autorzy_cache, [u'Kowalski J'])
+        c = Rekord.objects.get(original=wyd)
+
+        # Upewnij się, że w przypadku pracy z wieloma autorami do cache
+        # zapisywane jest nie nazwisko z pól 'zapisany_jako' w bazie danych,
+        # a oryginalne
+        self.assertEquals(c.opis_bibliograficzny_autorzy_cache,
+                          [u'Kowalski Jan', 'Nowak Jan'])
+
+    def test_zapisani_jeden(self):
+        aut = any_autor("Kowalski", "Jan")
+        dok = any_doktorat(tytul_oryginalny="Doktorat", autor=aut)
+
+        Rekord.objects.full_refresh()
+        c = Rekord.objects.get(original=dok)
+
+        # Upewnij się, że w przypadku pracy z jednym autorem do cache
+        # zapisywana jest prawidłowa wartość
+        self.assertEquals(c.opis_bibliograficzny_autorzy_cache,
+                          [u'Kowalski Jan'])
+
 
 class TestCacheTriggers(TestCacheMixin, TransactionTestCase):
 
