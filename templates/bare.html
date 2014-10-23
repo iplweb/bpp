@@ -16,7 +16,9 @@
     {% endcompress %}
 
     {% compress js %}
-        <script src="{% static 'jquery/dist/jquery.js' %}"></script>
+       <script src="{% static 'jquery/dist/jquery.min.js' %}"></script>
+       <script src="{% static 'foundation/js/vendor/modernizr.js' %}"></script>
+       <script src="{% static 'foundation/js/foundation.min.js' %}"></script>
     {% endcompress %}
 
     {% block extrahead %}
@@ -25,7 +27,7 @@
 <body>
 {% block body %}
 {% endblock %}
-<script>
+<script type="text/javascript">
     $(document).foundation();
 </script>
 </body>
