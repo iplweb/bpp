@@ -19,6 +19,7 @@ class ModelZAdnotacjami(models.Model):
     """
     ostatnio_zmieniony = models.DateTimeField(
         auto_now=True, auto_now_add=True, null=True, db_index=True)
+
     adnotacje = models.TextField(help_text="""Pole do użytku wewnętrznego -
     wpisane tu informacje nie są wyświetlane na stronach WWW dostępnych
     dla użytkowników końcowych.""", null=True, blank=True, db_index=True)
@@ -256,7 +257,8 @@ class ModelZeSzczegolami(models.Model):
     slowa_kluczowe = models.TextField("Słowa kluczowe", null=True, blank=True)
 
     utworzono = models.DateTimeField(
-        "Utworzono", auto_now_add=True, default=datetime(1970,1,1))
+        "Utworzono", auto_now_add=True, default=datetime(1970,1,1),
+        db_index=True)
 
     class Meta:
         abstract = True

@@ -1,15 +1,13 @@
 # -*- encoding: utf-8 -*-
 
-from crispy_forms.helper import FormHelper
-from crispy_forms_foundation.layout import Layout, Fieldset, ButtonHolder, Submit
 from django.conf.urls import patterns, include, url
 
 import autocomplete_light
 from django.conf.urls.static import static
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.forms import AuthenticationForm
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
+from bpp.forms import MyAuthenticationForm
 from bpp.views.admin import WydawnictwoCiagleTozView
 from bpp.views.mymultiseek import MyMultiseekResults
 autocomplete_light.autodiscover()
@@ -24,21 +22,6 @@ js_info_dict = {
 }
 
 
-
-class MyAuthenticationForm(AuthenticationForm):
-    def __init__(self, request=None, *args, **kw):
-        self.helper = FormHelper()
-        self.helper.form_class = "custom"
-        self.helper.form_action = '.'
-        self.helper.layout = Layout(
-            Fieldset(
-                u'Zaloguj się!',
-                'username',
-                'password'),
-             ButtonHolder(
-                Submit('submit', u'Zaloguj się', css_id='id_submit'),
-            ))
-        AuthenticationForm.__init__(self, request, *args, **kw)
 
 
 urlpatterns = patterns(
