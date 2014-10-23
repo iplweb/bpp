@@ -1,8 +1,14 @@
 {% extends "bare.html" %}
+
+{% load compress %}
+{% load staticfiles %}
 {% load static %}
+
 {% block extrahead %}
-    <script type="text/javascript" src="{{ STATIC_URL }}bpp/js/bpp.js"></script>
+    {% compress js %}
+    <script type="text/javascript" src="{% static "bpp/js/bpp.js" %}"></script>
     <script type="text/javascript" src="{% static 'iframe-resizer/js/iframeResizer.contentWindow.min.js' %}"></script>
+    {% endcompress %}
 {% endblock %}
 {% block extratitle %}
     Rezultat wyszukiwania
