@@ -14,7 +14,7 @@ django-pagination==1.0.7
 django-grappelli==2.6.2
 django-autocomplete-light==1.4.14
 django-celery-ui==0.2
-django_multiseek==0.9.8.1
+django_multiseek==0.9.8.5
 django-admin-tools==0.5.2
 django-transaction-signals==1.0.0
 xlrd==0.9.2
