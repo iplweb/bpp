@@ -1,6 +1,10 @@
 # -*- encoding: utf-8 -*-
 from django.contrib.contenttypes.models import ContentType
+from django.utils.itercompat import is_iterable
 
+NULL_VALUE = u"(brak wpisanej wartości)"
+
+from dateutil.parser import parse as parse_string_date
 from django.db.models import Q
 from django.utils.datastructures import SortedDict
 from bpp import autocomplete_light_registry
@@ -70,10 +74,21 @@ class DataUtworzeniaQueryObject(DateQueryObject):
     field_name = 'utworzono'
     public = False
 
+    def value_for_description(self, value):
+        value = self.value_from_web(value)
+        if value is None:
+            return NULL_VALUE
+        if is_iterable(value):
+            return u"od %s do %s" % (value[0], value[1])
+        return unicode(value)
+
 
 class ForeignKeyDescribeMixin:
 
     def value_for_description(self, value):
+        if value is None:
+            return NULL_VALUE
+
         return self.model.objects.get(pk=int(value))
 
 class NazwiskoIImieQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
