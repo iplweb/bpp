@@ -24,9 +24,23 @@
                 data = {
                     "zrodlo": $("select[name=zrodlo]").val(),
                     "informacje": $("textarea[name=informacje]").val(),
-                    "szczegoly": $("input[name=szczegoly]").val(),
-                    "uwagi": $("textarea[name=uwagi]").val(),
-                    "rok": $("input[name=rok]").val()
+                    // "szczegoly": $("input[name=szczegoly]").val(),
+                    // UWAGI tylko dla PATENTU ma kopiować
+                    // "uwagi": $("textarea[name=uwagi]").val(),
+                    "rok": $("input[name=rok]").val(),
+
+                    "charakter_formalny": $("select[name=charakter_formalny]").val(),
+                    "jezyk": $("select[name=jezyk]").val(),
+                    "typ_kbn": $("select[name=typ_kbn]").val(),
+
+                    "punkty_kbn": $("input[name=punkty_kbn]").val(),
+                    "impact_factor": $("input[name=impact_factor]").val(),
+                    "index_copernicus": $("input[name=index_copernicus]").val(),
+                    "punktacja_wewnetrzna": $("input[name=punktacja_wewnetrzna]").val(),
+
+                    "kc_punkty_kbn": $("input[name=kc_punkty_kbn]").val(),
+                    "kc_impact_factor": $("input[name=kc_impact_factor]").val(),
+                    "kc_index_copernicus": $("input[name=kc_index_copernicus]").val()
                 }
 
                 location.href = "../add/?" + $.param(data);
