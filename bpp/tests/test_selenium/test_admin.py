@@ -53,7 +53,7 @@ class SeleniumAdminTestCaseCharmapTest(ProperClickMixin, SeleniumLoggedInAdminTe
 
 
 class SeleniumAdminTestTozTamze(SeleniumLoggedInAdminTestCase):
-    url = "/"
+    url = "/admin/"
 
     def setUp(self):
         Status_Korekty.objects.create(pk=1, nazwa='ok')
@@ -75,7 +75,6 @@ class SeleniumAdminTestTozTamze(SeleniumLoggedInAdminTestCase):
         self.c = any_ciagle(informacje='TO INFORMACJE')
         self.open(reverse("admin:bpp_wydawnictwo_ciagle_change", args=(self.c.pk,)))
         
-        self.c = any_ciagle(informacje='TO INFORMACJE')
         tamze = self.page.find_element_by_id('tamze')
         tamze.click()
         time.sleep(1)
@@ -96,7 +95,7 @@ class SeleniumAdminTestTozTamze(SeleniumLoggedInAdminTestCase):
         self.assertEquals(wcc(), 2)
 
     def test_admin_wydawnictwo_zwarte_tamze(self):
-        self.c = any_zwarte(informacje="TO INFOMRACJE")
+        self.c = any_zwarte(informacje="TO INFORMACJE")
         self.open(reverse("admin:bpp_wydawnictwo_zwarte_change", args=(self.c.pk,)))
 
         tamze = self.page.find_element_by_id('tamze')
@@ -119,14 +118,14 @@ class SeleniumAdminTestTozTamze(SeleniumLoggedInAdminTestCase):
         self.page.wait_for_id('navigation-menu')
         self.assertEquals(wcc(), 2)
 
-    def test_admin_wydawnictwo_ciagle_tamze(self):
+    def test_admin_patent_tamze(self):
         self.c = any_patent(informacje="TO INFORMACJE")
         self.open(reverse("admin:bpp_patent_change", args=(self.c.pk,)))
 
         tamze = self.page.find_element_by_id('tamze')
         tamze.click()
         time.sleep(1)
-        self.assertIn('Dodaj wydawnictwo', self.page.page_source)
+        self.assertIn('Dodaj patent', self.page.page_source)
         self.assertIn('TO INFORMACJE', self.page.page_source)
 
 
