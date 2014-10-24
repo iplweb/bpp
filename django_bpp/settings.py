@@ -118,12 +118,10 @@ INSTALLED_APPS = [
     'crispy_forms',
     'crispy_forms_foundation',
 
-    'django_nose',
     'djangobower',
     'compressor',
     'djorm_pgarray',
 
-    #'cacheops'
 ]
 
 

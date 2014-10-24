@@ -35,9 +35,7 @@ EXTRA_INSTALLED_APPS.append('raven.contrib.django.raven_compat')
 
 
 ALLOWED_HOSTS = [
-{% for host in salt['pillar.get']('django_bpp:ALLOWED_HOSTS', []) %}
-    '{{ host }}',
-{% endfor %}
+    '{{ salt['pillar.get']('django_bpp:hostname') }}',
 ]
 
 
@@ -48,7 +46,11 @@ CORS_ORIGIN_WHITELIST = [
 ]
 
 
+{% if salt['pillar.get']("django_bpp_release_mode") %}
+DEBUG = {{ salt['pillar.get']("django_bpp:DEBUG", 'False') }}
+{% else %}
 DEBUG = {{ salt['pillar.get']("django_bpp:DEBUG", 'True') }}
+{% endif %}
 TEMPLATE_DEBUG = DEBUG
 
 ADMINS = (
@@ -91,6 +93,7 @@ DATABASES = {
 
 {% if salt['pillar.get']('django_bpp:ENABLE_JENKINS') %}
 EXTRA_INSTALLED_APPS.append('django_jenkins')
+EXTRA_INSTALLED_APPS.append('django_nose')
 {% endif %}
 
 SELENIUM_DRIVER = '{{ salt['pillar.get']('django_bpp:SELENIUM_DRIVER', 'Firefox') }}'
