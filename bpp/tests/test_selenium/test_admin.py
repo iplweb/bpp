@@ -6,12 +6,14 @@ from django.db import transaction
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.select import Select
 from bpp.models import Wydawnictwo_Ciagle
+from bpp.models.patent import Patent
 from bpp.models.system import Status_Korekty
+from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 from bpp.models.zrodlo import Punktacja_Zrodla
 from bpp.tests import any_ciagle, any_autor, any_jednostka
 
 from bpp.tests.helpers import SeleniumLoggedInAdminTestCase
-from bpp.tests.util import any_zrodlo, CURRENT_YEAR
+from bpp.tests.util import any_zrodlo, CURRENT_YEAR, any_zwarte, any_patent
 
 
 ID = "id_tytul_oryginalny"
@@ -51,17 +53,16 @@ class SeleniumAdminTestCaseCharmapTest(ProperClickMixin, SeleniumLoggedInAdminTe
 
 
 class SeleniumAdminTestTozTamze(SeleniumLoggedInAdminTestCase):
+    url = "/"
+
     def setUp(self):
         Status_Korekty.objects.create(pk=1, nazwa='ok')
-        self.c = any_ciagle(informacje='TO INFORMACJE')
         SeleniumLoggedInAdminTestCase.setUp(self)
 
-    def _get_url(self):
-        return reverse("admin:bpp_wydawnictwo_ciagle_change", args=(self.c.pk,))
-
-    url = property(_get_url)
-
     def test_admin_wydawnictwo_ciagle_toz(self):
+        self.c = any_ciagle(informacje='TO INFORMACJE')
+        self.open(reverse("admin:bpp_wydawnictwo_ciagle_change", args=(self.c.pk,)))
+
         wcc = Wydawnictwo_Ciagle.objects.count
         self.assertEquals(wcc(), 1)
         toz = self.page.find_element_by_id('toz')
@@ -71,6 +72,57 @@ class SeleniumAdminTestTozTamze(SeleniumLoggedInAdminTestCase):
         self.assertEquals(wcc(), 2)
 
     def test_admin_wydawnictwo_ciagle_tamze(self):
+        self.c = any_ciagle(informacje='TO INFORMACJE')
+        self.open(reverse("admin:bpp_wydawnictwo_ciagle_change", args=(self.c.pk,)))
+        
+        self.c = any_ciagle(informacje='TO INFORMACJE')
+        tamze = self.page.find_element_by_id('tamze')
+        tamze.click()
+        time.sleep(1)
+        self.assertIn('Dodaj wydawnictwo', self.page.page_source)
+        self.assertIn('TO INFORMACJE', self.page.page_source)
+
+
+    def test_admin_wydawnictwo_zwarte_toz(self):
+        self.c = any_zwarte(informacje="TO INFOMRACJE")
+        self.open(reverse("admin:bpp_wydawnictwo_zwarte_change", args=(self.c.pk,)))
+
+        wcc = Wydawnictwo_Zwarte.objects.count
+        self.assertEquals(wcc(), 1)
+        toz = self.page.find_element_by_id('toz')
+        toz.click()
+        self.page.assertPopupContains(u"Utworzysz kopię tego rekordu")
+        self.page.wait_for_id('navigation-menu')
+        self.assertEquals(wcc(), 2)
+
+    def test_admin_wydawnictwo_zwarte_tamze(self):
+        self.c = any_zwarte(informacje="TO INFOMRACJE")
+        self.open(reverse("admin:bpp_wydawnictwo_zwarte_change", args=(self.c.pk,)))
+
+        tamze = self.page.find_element_by_id('tamze')
+        tamze.click()
+        time.sleep(1)
+        self.assertIn('Dodaj wydawnictwo', self.page.page_source)
+        self.assertIn('TO INFORMACJE', self.page.page_source)
+
+
+
+    def test_admin_patent_toz(self):
+        self.c = any_patent(informacje="TO INFORMACJE")
+        self.open(reverse("admin:bpp_patent_change", args=(self.c.pk,)))
+
+        wcc = Patent.objects.count
+        self.assertEquals(wcc(), 1)
+        toz = self.page.find_element_by_id('toz')
+        toz.click()
+        self.page.assertPopupContains(u"Utworzysz kopię tego rekordu")
+        self.page.wait_for_id('navigation-menu')
+        self.assertEquals(wcc(), 2)
+
+    def test_admin_wydawnictwo_ciagle_tamze(self):
+        self.c = any_patent(informacje="TO INFORMACJE")
+        self.open(reverse("admin:bpp_patent_change", args=(self.c.pk,)))
+
         tamze = self.page.find_element_by_id('tamze')
         tamze.click()
         time.sleep(1)

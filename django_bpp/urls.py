@@ -8,7 +8,8 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 from bpp.forms import MyAuthenticationForm
-from bpp.views.admin import WydawnictwoCiagleTozView
+from bpp.views.admin import WydawnictwoCiagleTozView, WydawnictwoZwarteTozView, \
+    PatentTozView
 from bpp.views.mymultiseek import MyMultiseekResults
 autocomplete_light.autodiscover()
 
@@ -33,10 +34,10 @@ urlpatterns = patterns(
 
     #url(r'^admin/doc/', include('django.contrib.admindocs.urls')),
 
-    url(r'^admin/bpp/wydawnictwo_ciagle/toz/(?P<pk>[\d]+)/$',
-        login_required(
-            WydawnictwoCiagleTozView.as_view()
-        ), name="admin:bpp_wydawnictwo_ciagle_toz"),
+    url(r'^admin/bpp/wydawnictwo_ciagle/toz/(?P<pk>[\d]+)/$', login_required(WydawnictwoCiagleTozView.as_view()), name="admin:bpp_wydawnictwo_ciagle_toz"),
+    url(r'^admin/bpp/wydawnictwo_zwarte/toz/(?P<pk>[\d]+)/$', login_required(WydawnictwoZwarteTozView.as_view()), name="admin:bpp_wydawnictwo_ciagle_toz"),
+    url(r'^admin/bpp/patent/toz/(?P<pk>[\d]+)/$', login_required(PatentTozView.as_view()), name="admin:bpp_wydawnictwo_ciagle_toz"),
+
     url(r'^admin/', include(admin.site.urls)),
 
     url(r'^bpp/', include('bpp.urls', namespace='bpp')),
