@@ -8,9 +8,10 @@ from bpp.views.api import RokHabilitacjiView, PunktacjaZrodlaView, UploadPunktac
 from bpp.views.browse import UczelniaView, WydzialView, JednostkaView, \
     AutorView, ZrodlaView, ZrodloView, AutorzyView, BuildSearch, PracaView, \
     JednostkiView
-from bpp.views.raporty import RaportSelector, RankingAutorow, \
+from bpp.views.raporty import RankingAutorow, \
     PobranieRaportu, PodgladRaportu, KasowanieRaportu, \
-    RaportJednostek2012
+    RaportJednostek2012, RaportKronikaUczelni, RaportOPI2012, RaportJednostek, \
+    RankingAutorowFormularz, RaportDlaKomisjiCentralnejFormularz, RaportSelector
 from bpp.views.utils import charmap, charmap_update_setting
 from bpp import reports
 
@@ -65,16 +66,30 @@ urlpatterns = patterns(
 
     url(r'^build_search/$', BuildSearch.as_view(), name='browse_build_search'),
 
-    url(r'^raporty/$',
-        login_required(RaportSelector.as_view()), name='raporty'),
+    url(r'^raporty/$', login_required(RaportSelector.as_view()), name='raporty'),
+    url(r'^raporty/kronika_uczelni/$', login_required(RaportKronikaUczelni.as_view()), name='raport_kronika_uczelni'),
+    url(r'^raporty/opi2012/$', login_required(RaportOPI2012.as_view()), name='raport_opi2012'),
+    url(r'^raporty/jednostek/$', login_required(RaportJednostek.as_view()), name='raport_jednostek_formularz'),
+    url(r'^raporty/ranking-autorow/wybierz/$', login_required(RankingAutorowFormularz.as_view()), name='ranking_autorow_formularz'),
+    url(r'^raporty/dla-komisji-centralnej/$', login_required(RaportDlaKomisjiCentralnejFormularz.as_view()), name='raport_dla_komisji_centralnej'),
+
+
     url(r'^raporty/pobranie/(?P<uid>[\w-]+)/$',
         login_required(PobranieRaportu.as_view()), name='pobranie-raportu'),
     url(r'^raporty/podglad/(?P<uid>[\w-]+)/skasuj/$',
         login_required(KasowanieRaportu.as_view()), name='kasowanie-raportu'),
     url(r'^raporty/podglad/(?P<uid>[\w-]+)/$',
         login_required(PodgladRaportu.as_view()), name='podglad-raportu'),
+
+    url(r'^raporty/ranking-autorow/(?P<rok>\d)/$',
+        login_required(RankingAutorow.as_view()), name='ranking-autorow'),
+    url(r'^raporty/ranking-autorow/(?P<rok>\d\d)/$',
+        login_required(RankingAutorow.as_view()), name='ranking-autorow'),
+    url(r'^raporty/ranking-autorow/(?P<rok>\d\d\d)/$',
+        login_required(RankingAutorow.as_view()), name='ranking-autorow'),
     url(r'^raporty/ranking-autorow/(?P<rok>\d\d\d\d)/$',
         login_required(RankingAutorow.as_view()), name='ranking-autorow'),
+
     url(
         r'^raporty/raport-jednostek-2012/(?P<pk>\d+)/(?P<rok_min>\d+)-(?P<rok_max>\d+)/$',
         login_required(RaportJednostek2012.as_view()),

@@ -12,20 +12,25 @@ from crispy_forms_foundation.layout import Layout, Fieldset, ButtonHolder, \
 from .ranking_autorow import *
 from .raport_jednostek_2012 import *
 from bpp.models import Wydzial
-
+from django.core import validators
 
 def ustaw_rok(rok, lata):
+    lata = list(lata)
     try:
         rok.min_value = lata[0]
     except IndexError:
         pass
 
     try:
-        rok.max_value = list(lata)[-1]
-        rok.initial = list(lata)[-1]
+        rok.max_value = lata[-1]
+        rok.initial = lata[-1]
     except IndexError:
         pass
 
+    if rok.max_value is not None:
+        rok.field.validators.append(validators.MaxValueValidator(rok.max_value))
+    if rok.min_value is not None:
+        rok.field.validators.append(validators.MinValueValidator(rok.min_value))
 
 class KronikaUczelniForm(forms.Form):
     rok = forms.IntegerField()
@@ -33,7 +38,6 @@ class KronikaUczelniForm(forms.Form):
     def __init__(self, lata, *args, **kwargs):
         self.helper = FormHelper()
         self.helper.form_method = 'post'
-        self.helper.form_action = "#KronikaUczelni"
         self.helper.layout = Layout(
             Fieldset(
                 'Kronika Uczelni',
