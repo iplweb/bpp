@@ -28,7 +28,7 @@ class RaportyPage(LiveServerTestCase):
 
     def go(self, url):
         final_url = self.live_server_url + url
-        print final_url
+        print "self.browser.visit", final_url
         self.browser.visit(final_url)
 
     def login(self, username=DEFAULT_LOGIN, password=DEFAULT_PASSWORD):
@@ -88,18 +88,18 @@ class TestRaportyPage(RaportyPage):
         self.browser.quit()
 
     def test_submit(self):
-        self.browser.visit(reverse("bpp:raport_kronika_uczelni"))
+        self.go(reverse("bpp:raport_kronika_uczelni"))
         self.submit_page()
         self.assertIn("To pole jest wymagane", self.browser.html)
 
     def test_ranking_autorow(self):
-        self.browser.visit(reverse("bpp:ranking_autorow_formularz"))
+        self.go(reverse("bpp:ranking_autorow_formularz"))
         self.assertIn(
             '/bpp/raporty/ranking-autorow/%s/' % CURRENT_YEAR,
             self.browser.html)
 
     def test_raport_jednostek(self):
-        self.browser.visit(reverse("bpp:raport_jednostek_formularz"))
+        self.go(reverse("bpp:raport_jednostek_formularz"))
 
         elem = self.browser.find_by_css("input#id_jednostka_text.choicewidget")[0]
         for x in elem.type("Jed" + Keys.TAB, slowly=True):
@@ -120,7 +120,7 @@ class TestRaportyPage(RaportyPage):
         c = Report.objects.all().count
         self.assertEquals(c(), 0)
 
-        self.browser.visit(reverse("bpp:raport_kronika_uczelni"))
+        self.go(reverse("bpp:raport_kronika_uczelni"))
         self.browser.execute_script('$("input[name=rok]").val("' + str(CURRENT_YEAR) + '")')
         self.submit_page()
         time.sleep(2)
