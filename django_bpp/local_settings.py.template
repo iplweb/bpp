@@ -40,9 +40,7 @@ ALLOWED_HOSTS = [
 
 
 CORS_ORIGIN_WHITELIST = [
-{% for host in salt['pillar.get']('django_bpp:CORS_ORIGIN_WHITELIST', []) %}
-    '{{ host }}',
-{% endfor %}
+    '{{ salt['pillar.get']('django_bpp:hostname') }}',
 ]
 
 
