@@ -134,7 +134,6 @@ class RaportKronikaUczelni(RaportyFormMixin, FormView):
     form_class = KronikaUczelniForm
     nazwa_raportu = "Kronika Uczelni"
 
-
 class RaportOPI2012(RaportyFormMixin, FormView):
     form_class = RaportOPI2012Form
     nazwa_raportu = "OPI 2012"
@@ -180,3 +179,7 @@ class RaportDlaKomisjiCentralnejFormularz(RaportyFormMixin, FormView):
 
 class RaportSelector(RaportyMixin, TemplateView):
     template_name = "raporty/strona_raportow/index.html"
+
+    def get_context_data(self, **kwargs):
+        return super(RaportSelector, self).get_context_data(
+            raporty=self.get_raporty(), **kwargs)

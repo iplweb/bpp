@@ -52,10 +52,6 @@ class RaportyPage(LiveServerTestCase):
         return self.browser.execute_script(
             "$('section.active div[data-slug]').attr('data-slug')")
 
-    def wybierz(self, nazwa):
-        return self.browser.execute_script(
-            "$('#%s').parent().children().first().click()" % nazwa)
-
     def submit_page(self):
         self.browser.execute_script("$('input[name=submit]:visible').click()")
 
@@ -92,18 +88,18 @@ class TestRaportyPage(RaportyPage):
         self.browser.quit()
 
     def test_submit(self):
-        self.wybierz("KronikaUczelni")
+        self.browser.visit(reverse("bpp:raport_kronika_uczelni"))
         self.submit_page()
         self.assertIn("To pole jest wymagane", self.browser.html)
 
     def test_ranking_autorow(self):
-        self.wybierz("RankingAutorow")
+        self.browser.visit(reverse("bpp:ranking_autorow_formularz"))
         self.assertIn(
             '/bpp/raporty/ranking-autorow/%s/' % CURRENT_YEAR,
             self.browser.html)
 
     def test_raport_jednostek(self):
-        self.wybierz("RaportJednostek")
+        self.browser.visit(reverse("bpp:raport_jednostek_formularz"))
 
         elem = self.browser.find_by_css("input#id_jednostka_text.choicewidget")[0]
         for x in elem.type("Jed" + Keys.TAB, slowly=True):
@@ -124,7 +120,7 @@ class TestRaportyPage(RaportyPage):
         c = Report.objects.all().count
         self.assertEquals(c(), 0)
 
-        self.wybierz("KronikaUczelni")
+        self.browser.visit(reverse("bpp:raport_kronika_uczelni"))
         self.browser.execute_script('$("input[name=rok]").val("' + str(CURRENT_YEAR) + '")')
         self.submit_page()
         time.sleep(2)

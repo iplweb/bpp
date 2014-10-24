@@ -71,6 +71,8 @@ class TestRaportSelector(UserTestCase):
             status_code=200)
 
     def test_tytuly_raportow_kronika_uczelni(self):
+        any_ciagle(rok=2000)
+
         rep = Report.objects.create(
             ordered_by=self.user,
             function="kronika-uczelni",
