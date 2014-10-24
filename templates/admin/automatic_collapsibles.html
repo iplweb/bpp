@@ -10,7 +10,7 @@
                 var has_value = false;
 
                 $(this).find("input").each(function () {
-                    if ($(this).val())
+                    if ($(this).val() && $(this).val() != 0)
                         has_value = true;
                 });
 
