@@ -83,11 +83,9 @@
                                 function resizeAutocomplete(){
                                     w = $("input#user_navigation_autocomplete").width();
                                     $(".yourlabs-autocomplete").css("width", w);
-                                    console.log(w);
                                 }
 
                                 $(window).resize(function() { resizeAutocomplete();});
-
                                 resizeAutocomplete();
 
                                 $('#user_navigation_autocomplete').yourlabsAutocomplete({
@@ -99,8 +97,23 @@
                                         });
 
                                 {% if not request.user.is_anonymous %}
+
+                                    var initial = [];
+                                    {% if messages %}
+                                        {% for message in messages %}
+                                            initial.push({
+                                                'subject': '{{ message.subject }}',
+                                                'message': '{{ message.message }}',
+                                                'level': '{{ message.level }}',
+                                                'url': '{{ message.url }}',
+                                                'is_persistent': {{ message.is_persistent|lower }},
+                                                'pk': '{{ message.pk }}'});
+                                        {% endfor %}
+                                    {% endif %}
+
                                     $("#monitio").MessagesPlaceholder({
                                         "url": '{% url "monitio:persistent-messages-sse" user.username %}',
+                                        "initial": initial,
                                         "theme": "foundation" // remove for jqueryui theme
                                     });
                                 {% endif %}

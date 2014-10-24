@@ -14,7 +14,7 @@
 {% block breadcrumbs %}
     {{ block.super }}
     <li><a href="{% url "bpp:raporty" %}">Raporty</a></li>
-    <li><a href="{% url  "bpp:raporty"%}#RankingAutorow">Ranking autorów</a></li>
+    <li><a href="{% url  "bpp:ranking_autorow_formularz"%}">Ranking autorów</a></li>
     <li class="current">Ranking autorów za rok {{ rok }}</li>
 {% endblock %}
 

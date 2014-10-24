@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block extratitle %}
+    Ranking autorów
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "bpp:raporty" %}">Raporty</a></li>
+    <li class="current">Ranking autorów</li>
+{% endblock %}
+
+{% block content %}
+    <h1>Raporty</h1>
+    <h2>Ranking autorów</h2>
+    Wybierz rok:
+    <div id="RankingAutorow" class="content">
+        <div class="row">
+            {% for rok in lata reversed %}
+                <a class="large-2 small-3 columns"
+                   style="line-height: 150%"
+                   href="{% url "bpp:ranking-autorow" rok %}">{{ rok }}</a>
+            {% endfor %}
+            <span class="filler"></span>
+        </div>
+    </div>
+{% endblock %}

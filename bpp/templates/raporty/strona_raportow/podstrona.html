@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block extratitle %}
+    {{ nazwa_raportu }}
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="..">Raporty</a></li>
+    <li class="current">{{ nazwa_raportu }}</li>
+{% endblock %}
+
+{% block content %}
+    <h1>Raporty</h1>
+    <h2>{{ nazwa_raportu }}</h2>
+    {% crispy form %}
+
+    {% include "raporty/strona_raportow/ostatnio_wygenerowane.html" %}
+
+
+    <style>
+        select.selectmultiple {
+            height: auto !important;
+        }
+
+        /* dla Chrome, srednio sie sprawdza, bo obniza pola od roku i do roku
+         * ale nic lepszego w tym momencie nie wymysle
+         */
+        .autocomplete-light-widget {
+            position: relative !important;
+            top: 0px !important;
+            left: 0px !important;
+        }
+    </style>
+
+{% endblock %}

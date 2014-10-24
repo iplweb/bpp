@@ -1,0 +1,15 @@
+{% load humanize %}
+
+<p><strong>Ostatnio wygenerowane:</strong></p>
+<ul>
+    {% for raport in raporty %}
+        <li>
+            <a href="{% url "bpp:podglad-raportu" raport.uid %}">
+                {{ raport.adapted.title }} - zamówiony
+                {{ raport.ordered_on|naturaltime }}
+                - {{ raport.status }}</a>
+        </li>
+    {% empty %}
+        Nie znaleziono ostatnio wygenerowanych raportów.
+    {% endfor %}
+</ul>

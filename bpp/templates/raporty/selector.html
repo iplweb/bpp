@@ -80,21 +80,4 @@
         });
     </script>
 
-    <style>
-        select.selectmultiple {
-            height: auto !important;
-        }
-    </style>
-    <p><strong>Ostatnio wygenerowane:</strong></p>
-    <ul>
-        {% for raport in raporty %}
-            <li>
-                <a href="{% url "bpp:podglad-raportu" raport.uid %}">
-                    {{ raport.adapted.title }} - zamówiony
-                    {{ raport.ordered_on|naturaltime }}
-                    - {{ raport.status }}</a>
-            </li>
-        {% endfor %}
-    </ul>
-
 {% endblock %}

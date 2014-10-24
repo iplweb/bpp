@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block extratitle %}
+    Wybierz rodzaj raportu
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li class="current">Raporty</li>
+{% endblock %}
+
+{% block content %}
+
+<h1>Raporty</h1>
+
+Wybierz rodzaj raportu:
+
+<ul>
+
+    <li><a href="{% url "bpp:raport_kronika_uczelni" %}">Kronika Uczelni</a></li>
+    <li><a href="{% url "bpp:raport_opi2012" %}">OPI 2012</a></li>
+    <li><a href="{% url "bpp:raport_jednostek_formularz" %}">Raport jednostek</a></li>
+    <li><a href="{% url "bpp:ranking_autorow_formularz" %}">Ranking autorów</a></li>
+    <li><a href="{% url "bpp:raport_dla_komisji_centralnej" %}">Raport dla Komisji Centralnej</a></li>
+
+</ul>
+
+{% include "raporty/strona_raportow/ostatnio_wygenerowane.html" %}
+
+{% endblock %}
