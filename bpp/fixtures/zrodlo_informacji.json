@@ -12,5 +12,12 @@
 		"fields": {
 			"nazwa": "od autora"
 		}
+	},
+	{
+		"pk": 3,
+		"model": "bpp.zrodlo_informacji",
+		"fields": {
+			"nazwa": "wartość szacunkowa"
+		}
 	}
 ]
