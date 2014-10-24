@@ -68,6 +68,21 @@ class AdnotacjeQueryObject(StringQueryObject):
     field_name = 'adnotacje'
     public = False
 
+class InformacjeQueryObject(StringQueryObject):
+    label = u'Informacje'
+    field_name = 'informacje'
+
+class SzczegolyQueryObject(StringQueryObject):
+    label = u'Szczegóły'
+    field_name = 'szczegoly'
+
+class UwagiQueryObject(StringQueryObject):
+    label = u'Uwagi'
+    field_name = 'uwagi'
+
+class SlowaKluczoweQueryObject(StringQueryObject):
+    label = u'Słowa kluczowe'
+    field_name = 'slowa_kluczowe'
 
 class DataUtworzeniaQueryObject(DateQueryObject):
     label = u'Data utworzenia'
@@ -275,6 +290,11 @@ registry = create_registry(
     KCImpactQueryObject(),
     KCPunktyKBNQueryObject(),
     KCPunktacjaWewnetrznaQueryObject(),
+    
+    InformacjeQueryObject(),
+    SzczegolyQueryObject(),
+    UwagiQueryObject(),
+    SlowaKluczoweQueryObject(),
 
     AdnotacjeQueryObject(),
     DataUtworzeniaQueryObject(),
