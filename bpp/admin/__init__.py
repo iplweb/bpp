@@ -3,6 +3,7 @@ from django.contrib.admin.options import BaseModelAdmin
 from django.contrib.contenttypes.admin import GenericTabularInline, \
     GenericInlineModelAdmin
 from django.contrib.contenttypes.forms import generic_inlineformset_factory
+from django.db.models.fields import BLANK_CHOICE_DASH
 
 from bpp import autocomplete_light_registry
 
@@ -30,12 +31,27 @@ from bpp.models.zrodlo import Redakcja_Zrodla
 class BaseBppAdmin(admin.ModelAdmin):
     pass
 
+class RestrictDeletionToAdministracjaGroupMixin:
+    def get_action_choices(self, request, default_choices=BLANK_CHOICE_DASH):
+        if 'administracja' in [x.name for x in request.user.groups.all()]:
+            return admin.ModelAdmin.get_action_choices(self, request, default_choices)
+        return []
 
-admin.site.register(Jezyk, BaseBppAdmin)
-admin.site.register(Funkcja_Autora, BaseBppAdmin)
-admin.site.register(Rodzaj_Zrodla, BaseBppAdmin)
-admin.site.register(Status_Korekty, BaseBppAdmin)
-admin.site.register(Zrodlo_Informacji, BaseBppAdmin)
+    def has_delete_permission(self, request, obj=None):
+        if 'administracja' in [x.name for x in request.user.groups.all()]:
+            return admin.ModelAdmin.has_delete_permission(self, request, obj=obj)
+        return False
+
+
+class RestrictDeletionToAdministracjaGroupAdmin(
+    RestrictDeletionToAdministracjaGroupMixin, admin.ModelAdmin):
+    pass
+
+admin.site.register(Jezyk, RestrictDeletionToAdministracjaGroupAdmin)
+admin.site.register(Funkcja_Autora, RestrictDeletionToAdministracjaGroupAdmin)
+admin.site.register(Rodzaj_Zrodla, RestrictDeletionToAdministracjaGroupAdmin)
+admin.site.register(Status_Korekty, RestrictDeletionToAdministracjaGroupAdmin)
+admin.site.register(Zrodlo_Informacji, RestrictDeletionToAdministracjaGroupAdmin)
 
 
 class CommitedModelAdmin(BaseBppAdmin):
@@ -54,7 +70,7 @@ class CommitedModelAdmin(BaseBppAdmin):
         # transaction.commit()
 
 
-class Charakter_FormalnyAdmin(CommitedModelAdmin):
+class Charakter_FormalnyAdmin(RestrictDeletionToAdministracjaGroupMixin, CommitedModelAdmin):
     list_display = ['skrot', 'nazwa', 'publikacja', 'streszczenie']
     list_filter = ('publikacja', 'streszczenie')
     search_fields = ['skrot', 'nazwa']
@@ -63,7 +79,7 @@ class Charakter_FormalnyAdmin(CommitedModelAdmin):
 admin.site.register(Charakter_Formalny, Charakter_FormalnyAdmin)
 
 
-class NazwaISkrotAdmin(CommitedModelAdmin):
+class NazwaISkrotAdmin(RestrictDeletionToAdministracjaGroupMixin, CommitedModelAdmin):
     list_display = ['skrot', 'nazwa']
 
 
@@ -71,14 +87,14 @@ admin.site.register(Tytul, NazwaISkrotAdmin)
 admin.site.register(Typ_KBN, NazwaISkrotAdmin)
 
 
-class Typ_OdpowiedzialnosciAdmin(CommitedModelAdmin):
+class Typ_OdpowiedzialnosciAdmin(RestrictDeletionToAdministracjaGroupMixin, CommitedModelAdmin):
     list_display = ['nazwa', 'skrot']
 
 
 admin.site.register(Typ_Odpowiedzialnosci, Typ_OdpowiedzialnosciAdmin)
 # Uczelnia
 
-class UczelniaAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
+class UczelniaAdmin(RestrictDeletionToAdministracjaGroupMixin, ZapiszZAdnotacjaMixin, CommitedModelAdmin):
     fieldsets = (
         (None, {
             'fields': (
@@ -92,7 +108,7 @@ admin.site.register(Uczelnia, UczelniaAdmin)
 
 # Wydział
 
-class WydzialAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
+class WydzialAdmin(RestrictDeletionToAdministracjaGroupMixin, ZapiszZAdnotacjaMixin, CommitedModelAdmin):
     list_display = ['nazwa', 'skrot', 'uczelnia', 'kolejnosc']
     fieldsets = (
         (None, {
@@ -116,7 +132,7 @@ class Autor_JednostkaInline(admin.TabularInline):
 
 # Jednostka
 
-class JednostkaAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
+class JednostkaAdmin(RestrictDeletionToAdministracjaGroupMixin, ZapiszZAdnotacjaMixin, CommitedModelAdmin):
     list_display = ('nazwa', 'skrot', 'wydzial', 'widoczna',
                     'wchodzi_do_raportow')
     fields = None
