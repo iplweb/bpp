@@ -19,7 +19,11 @@ admin.autodiscover()
 
 
 js_info_dict = {
-    'packages': ('django.conf',),
+    'packages': (
+        'django.conf',
+        'multiseek',
+        'monitio'
+    ),
 }
 
 
