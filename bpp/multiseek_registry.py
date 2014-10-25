@@ -24,6 +24,20 @@ from bpp.models import Typ_Odpowiedzialnosci, Jezyk, Autor, Jednostka, \
 from bpp.models.cache import Autorzy, Rekord
 
 from bpp.models.system import Typ_KBN
+#
+# class StringQueryObject(OrigStringQueryObject):
+#     def value_for_description(self, value):
+#         if not value:
+#             return
+#         return OrigStringQueryObject.value_for_description(self, value)
+
+# monkey-patch, bo fajniejsze
+def value_for_description(self, value):
+    if not value:
+        return '""'
+    return u'"%s"' % value
+
+StringQueryObject.value_for_description = value_for_description
 
 
 class TytulPracyQueryObject(StringQueryObject):
