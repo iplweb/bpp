@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Max
 from djorm_pgfulltext.models import SearchManager
+from secure_input.utils import safe_html
 
 from bpp.models.abstract import BazaModeluOdpowiedzialnosciAutorow, DwaTytuly, ModelZRokiem, \
     ModelZWWW, ModelAfiliowanyRecenzowany, ModelPunktowany, ModelTypowany, \
@@ -59,6 +60,10 @@ class Wydawnictwo_Ciagle(ZapobiegajNiewlasciwymCharakterom,
         return dodaj_autora(
             Wydawnictwo_Ciagle_Autor, self, autor, jednostka, zapisany_jako,
             typ_odpowiedzialnosci_skrot, kolejnosc)
+    
+    def clean(self):
+        self.tytul_oryginalny = safe_html(self.tytul_oryginalny)
+        self.tytul = safe_html(self.tytul)
 
     class Meta:
         verbose_name = "wydawnictwo ciągłe"
