@@ -138,32 +138,33 @@ class TextareaWithCharmap(Textarea):
 
         textarea = u''
 
-        options = dict(
-            width=590,
-            height=500,
-            menubar='no',
-            status='no',
-            toolbar='no',
-            scrollbars='no',
-            location='no',
-            url='no',
-        )
-
         textarea += u'<textarea class="charmap" %s>%s</textarea>' % (
             flatatt(final_attrs),
             conditional_escape(force_unicode(value)))
 
-        cmap_id = '%s_charmap' % final_attrs['id']
+        keypad = u"""
 
-        textarea += u'<button class="charmap" id="%s"' % cmap_id
+        <script type="text/javascript">
 
-        window_open = js_openwin(
-            url='/bpp/charmap/?fieldId=%s' % final_attrs['id'],
-            handle=cmap_id + "_window",
-            options=options)
+            $('#%(id)s').keypad({
+                keypadOnly: false,
+                layout: [
+                    'αβγδεζ ©® àáâãäåæç ъяшертыу',
+                    'ηθικλμ ™℠ èéêëìííî иопющэас',
+                    'νξοπρσ €£ ïñòóôõöø дфгчйкль',
+                    'τυφχψω ¥¢ ùúûüýÿðþ жзхцвбнм',
+                    $.keypad.SHIFT, ],
+                showAnim: 'fadeIn',
+                duration: 'fast',
+                showOn: 'button'
+            });
 
-        textarea += u'onclick="%s; return false;">φ</button>' % window_open
+        </script>
+	    """ % final_attrs
 
+        textarea += keypad
+
+        print textarea
         return mark_safe(textarea)
 
 NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW = {

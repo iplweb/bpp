@@ -15,8 +15,7 @@ from bpp.tests.util import any_doktorat, any_habilitacja, any_ciagle, any_autor,
 from bpp.tests.testutil import UserTestCase, SuperuserTestCase
 from bpp.views import navigation_autocomplete, autorform_dependant_js
 from bpp.views.browse import AutorzyView, AutorView
-from bpp.views.utils import JsonResponse, charmap, charmap_update_setting
-
+from bpp.views.utils import JsonResponse
 
 class TestViews(UserTestCase):
     def test_navigation_autocomplete(self):
@@ -44,21 +43,6 @@ class TestViews(UserTestCase):
 class TestUtils(UserTestCase):
     def test_jsonresponse(self):
         JsonResponse('foo')
-
-    def test_charmap(self):
-        req = self.factory.get('/')
-        req.user = self.user
-        charmap(req)
-
-    def test_charmap_update_setting(self):
-        def test(value, result):
-            req = self.factory.get('/', {'active_tab': value})
-            req.user = self.user
-            charmap_update_setting(req)
-            self.assertEquals(self.user.active_charmap_tab, result)
-
-        test('1', 1)
-        test('lol', 1)  # wartość nie zmieni się
 
 
 class TestRoot(UserTestCase):

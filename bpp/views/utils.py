@@ -37,20 +37,3 @@ class JSONResponseMixin(object):
         # objects -- such as Django model instances or querysets
         # -- can be serialized as JSON.
         return json.dumps(context)
-
-
-@login_required
-def charmap(request):
-    return shortcuts.render(request, "charmap.html", dict(
-        choosen=None, fieldId=request.GET.get('fieldId'),
-        active=request.user.active_charmap_tab
-    ))
-
-@login_required
-def charmap_update_setting(request):
-    try:
-        request.user.active_charmap_tab = int(request.GET.get('active_tab'))
-    except (TypeError, ValueError):
-        return
-    request.user.save()
-    return JsonResponse(dict(status='ok'))

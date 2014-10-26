@@ -28,7 +28,6 @@ window.bpp.label = function (numer) {
 
 window.bpp.ustawZaleznosciDlaWiersza = function (numer, noReset) {
     // ID to numerek.
-    console.log("USTAWIAM DLA WIERSZA " + numer);
     var autorSelectElement = bpp.wiersz(numer, 'autor');
     var jednostkaSelectElement = bpp.wiersz(numer, 'jednostka');
     var zapisanyJakoElement = bpp.wiersz(numer, 'zapisany_jako');
