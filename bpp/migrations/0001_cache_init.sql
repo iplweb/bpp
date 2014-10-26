@@ -27,6 +27,7 @@ CREATE INDEX bpp_rekord_mat_e ON bpp_rekord_mat(uwagi);
 CREATE INDEX bpp_rekord_mat_f ON bpp_rekord_mat(adnotacje);
 CREATE INDEX bpp_rekord_mat_g ON bpp_rekord_mat(utworzono);
 CREATE INDEX bpp_rekord_mat_h ON bpp_rekord_mat(ostatnio_zmieniony);
+CREATE INDEX bpp_rekord_mat_i ON bpp_rekord_mat(rok);
 
 UPDATE bpp_wydawnictwo_zwarte_autor SET kolejnosc = 1 WHERE rekord_id = 15425 AND autor_id = 3817;
 UPDATE bpp_wydawnictwo_zwarte_autor SET kolejnosc = 2 WHERE rekord_id = 15425 AND autor_id = 6063;

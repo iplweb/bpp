@@ -323,6 +323,7 @@ registry = create_registry(
         Ordering("zrodlo__nazwa", u"źródło"),
         Ordering("pierwszy_autor__nazwisko", u"pierwszy autor"),
     ],
+    default_ordering=['-rok', '-impact_factor', '-punkty_kbn'],
     report_types=[
         ReportType("list", "lista"),
         ReportType("table", "tabela"),
