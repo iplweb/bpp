@@ -31,14 +31,6 @@ from bpp.models.system import Typ_KBN
 #             return
 #         return OrigStringQueryObject.value_for_description(self, value)
 
-# monkey-patch, bo fajniejsze
-def value_for_description(self, value):
-    if not value:
-        return '""'
-    return u'"%s"' % value
-
-StringQueryObject.value_for_description = value_for_description
-
 
 class TytulPracyQueryObject(StringQueryObject):
     label = u'Tytuł pracy'

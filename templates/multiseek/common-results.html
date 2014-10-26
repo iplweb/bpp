@@ -3,7 +3,7 @@
 
 {% load static %}
 {% load compress %}
-
+{% load prace %}
 
 {% compress js %}
     <script src="{% static 'jinplace/js/jinplace.js' %}"></script>
@@ -37,13 +37,13 @@
     <dl class="sub-nav">
         <dt>wynik:</dt>
         <dd class="active">
-        {% if live == "1" %}
-            <a href="{% url "multiseek:results" %}" target="_top">
+            {% if live == "1" %}
+                <a href="{% url "multiseek:results" %}" target="_top">
             {% else %}
-            <a href="#">
-        {% endif %}
-        rekordy: {{ paginator_count }}
-        </a>
+                <a href=".">
+            {% endif %}
+            rekordy: {{ paginator_count }}
+            </a>
         </dd>
 
         {% if live == "0" %}
@@ -52,9 +52,11 @@
 
         {% if paginator_count > 0 and paginator_count < 2000 %}
             {% if live == "1" %}
-                <dd><a target="_blank" href="/multiseek/results/?all=1&print=1">drukuj</a></dd>
+                <dd><a target="_blank" href="/multiseek/results/?all=1&print=1">drukuj</a>
+                </dd>
                 {% if request.GET.all != "1" %}
-                    <dd><a target="_blank" href="/multiseek/results/?all=1">wszystkie</a></dd>
+                    <dd><a target="_blank" href="/multiseek/results/?all=1">wszystkie</a>
+                    </dd>
                 {% endif %}
             {% else %}
                 <dd><a href="?all=1&print=1">drukuj</a></dd>
@@ -63,10 +65,10 @@
                 {% endif %}
             {% endif %}
         {% endif %}
-    {% if not request.GET.all == "1" and paginator.num_pages > 1 %}
-        <dt>strony:</dt>
-        <dd>{% paginate window=2 %}</dd>
-    {% endif %}
+        {% if not request.GET.all == "1" and paginator.num_pages > 1 %}
+            <dt>strony:</dt>
+            <dd>{% paginate window=2 %}</dd>
+        {% endif %}
     </dl>
 
 
@@ -77,7 +79,44 @@
 
     {% if description %}
         <div class="panel info hide-on-print">
-            <strong>Parametry zapytania: </strong>{{ description|default:"brak"|safe }}
+            <strong>Parametry
+                zapytania: </strong>{{ description|default:"brak"|safe }}
+        </div>
+    {% endif %}
+
+    {% if removed_ids %}
+        <script type="text/javascript">
+        function togglePokaz(){
+            $('#rekordy-usuniete').toggle();
+        }
+
+        $(document).ready(function(){
+            $("#rekordy-usuniete").hide();
+        });
+        </script>
+        <div class="panel info hide-on-print" id="panel-removed-by-hand">
+            Z zapytania usunięto ręcznie <span id="no-removed-recs">{{ removed_ids|length }}</span> rekord(ów).
+            <a id="pokaz-jakie" onclick="togglePokaz()">Pokaż, jakie.</a>
+            | <a onclick="return confirm('Czy na pewno dodać wszystkie ręcznie usunięte prace do wyników wyszukiwania ponownie?');" href="../reenable-removed-ids/">Kliknij tutaj, aby dodać je wszystkie do wyszukiwania z powrotem.</a>
+            | <a href=".">Odśwież</a>
+
+            <div id="rekordy-usuniete">
+                <p>
+                <ul>
+                    {% for elem in removed_ids %}
+                        <li id="multiseek-row-{{ elem }}" class="multiseek-row">
+                            <span class="multiseek-element" style="text-decoration: line-through">
+                            {% opis_bibliograficzny_cache elem %}
+                                </span>
+                            <a onclick="multiseek.removeFromResults('{{ elem }}')">
+                                dodaj ponownie
+                            </a>
+                        </li>
+                    {% endfor %}
+                </ul>
+                </p>
+            </div>
+
         </div>
     {% endif %}
 
@@ -97,18 +136,29 @@
     {% if report_type == "list" or report_type == "numer_list" or report_type == None %}
         <ol start="{{ page_obj.start_index }}">
             {% for element in object_list %}
-                <li>
-                    <a href="{% url "bpp:browse_praca" element.content_type.model element.object_id %}"
-                       target="_top">
-                        {#                        {% include "opis_bibliograficzny/main.html" with praca=element.get_original_object %}#}
-                        {{ element.opis_bibliograficzny_cache|safe }}
 
-                    </a>
-                    {% if report_type == "numer_list" %}
-                        <span style="color: red;">
+                <li class="multiseek-row" id="multiseek-row-{{ element.pk }}">
+                    <span class="multiseek-element">
+                        <a href="{% url "bpp:browse_praca" element.content_type.model element.object_id %}"
+                           target="_top">
+                            {#                        {% include "opis_bibliograficzny/main.html" with praca=element.get_original_object %}#}
+                            {{ element.opis_bibliograficzny_cache|safe }}
+
+                        </a>
+
+                        {% if report_type == "numer_list" %}
+                            <span style="color: red;">
                     {{ element.uwagi }}
                     </span>
-                    {% endif %}
+                        {% endif %}
+
+                    </span>
+                    <span class="multiseek-remove-from-results">
+                        <a onclick="multiseek.removeFromResults('{{ element.pk }}'); return false">
+                            wyrzuć (ręcznie)
+                        </a>
+                        | <a href=".">odśwież</a>
+                    </span>
                 </li>
             {% empty %}
                 {% trans "No elements" %}
@@ -132,13 +182,22 @@
                     <td valign="top">
                         {{ page_obj.start_index|add:forloop.counter|add:-1 }}.
                     </td>
-                    <td>
+                    <td class="multiseek-row"
+                          id="multiseek-row-{{ element.pk }}">
+                    <span class="multiseek-element">
                     <a href="{% url "bpp:browse_praca" element.content_type.model element.object_id %}"
-                           target="_top">
-                            {#                            {% include "opis_bibliograficzny/main.html" with praca=element.get_original_object %}#}
-                            {{ element.opis_bibliograficzny_cache|safe }}
+                       target="_top">
+                        {#                            {% include "opis_bibliograficzny/main.html" with praca=element.get_original_object %}#}
+                        {{ element.opis_bibliograficzny_cache|safe }}
 
+                    </a>
+                    </span>
+                    <span class="multiseek-remove-from-results">
+                        <a onclick="multiseek.removeFromResults('{{ element.pk }}'); return false">
+                            wyrzuć (ręcznie)
                         </a>
+                        | <a href=".">odśwież</a>
+                    </span>
                     </td>
                     <td>{{ element.impact_factor }}</td>
                     <td>{{ element.punkty_kbn }}</td>
@@ -173,13 +232,23 @@
                     <td valign="top">
                         {{ page_obj.start_index|add:forloop.counter|add:-1 }}.
                     </td>
-                    <td>
-                    <a href="{% url "bpp:browse_praca" element.content_type.model element.object_id %}"
-                           target="_top">
-                            {#                            {% include "opis_bibliograficzny/main.html" with praca=element.get_original_object %}#}
-                            {{ element.opis_bibliograficzny_cache|safe }}
+                    <td class="multiseek-row"
+                          id="multiseek-row-{{ element.pk }}">
+                    <span class="multiseek-element">
 
+                    <a href="{% url "bpp:browse_praca" element.content_type.model element.object_id %}"
+                       target="_top">
+                        {#                            {% include "opis_bibliograficzny/main.html" with praca=element.get_original_object %}#}
+                        {{ element.opis_bibliograficzny_cache|safe }}
+
+                    </a>
+                    </span>
+                    <span class="multiseek-remove-from-results">
+                        <a onclick="multiseek.removeFromResults('{{ element.pk }}'); return false">
+                            wyrzuć (ręcznie)
                         </a>
+                        | <a href=".">odśwież</a>
+                    </span>
                     </td>
                     <td>{{ element.impact_factor }}</td>
                     <td>{{ element.punkty_kbn }}</td>
