@@ -773,6 +773,7 @@ def make_clusters():
     cluster("bpp_jednostka", "nazwa")
     for table in ['bpp_wydawnictwo_ciagle', 'bpp_patent', 'bpp_wydawnictwo_zwarte', 'bpp_praca_doktorska', 'bpp_praca_habilitacyjna']:
         cluster(table, "tytul_oryginalny")
+    cluster("bpp_rekord_mat", "bpp_rekord_mat_i")
 
 
 def db_connect():
