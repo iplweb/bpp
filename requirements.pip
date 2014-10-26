@@ -93,3 +93,5 @@ flake8
 django-jenkins>=0.16.3
 pep8
 pyflakes
+
+django-secure-input==0.9.3

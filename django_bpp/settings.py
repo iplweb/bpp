@@ -121,6 +121,8 @@ INSTALLED_APPS = [
     'compressor',
     'djorm_pgarray',
 
+    'secure_input',
+
 ]
 
 
@@ -365,3 +367,5 @@ if TESTING:
 
 COMPRESS_OFFLINE = True
 COMPRESS_ENABLED = False
+
+ALLOWED_TAGS = ('b', 'em', 'i', 'strong', 'strike', 'u', 'sup', 'font', 'sub')

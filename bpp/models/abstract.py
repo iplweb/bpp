@@ -9,6 +9,7 @@ from django.db import models
 from django.db.models.fields import TextField
 from djorm_pgarray.fields import TextArrayField
 from djorm_pgfulltext.fields import VectorField
+from secure_input.fields import SafeCharFieldInput
 from bpp.fields import YearField
 from bpp.models.util import ModelZOpisemBibliograficznym
 

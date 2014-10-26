@@ -4,6 +4,7 @@ from django.contrib.contenttypes.admin import GenericTabularInline, \
     GenericInlineModelAdmin
 from django.contrib.contenttypes.forms import generic_inlineformset_factory
 from django.db.models.fields import BLANK_CHOICE_DASH
+from secure_input.fields import SafeCharFieldInput
 
 from bpp import autocomplete_light_registry
 
@@ -311,7 +312,6 @@ Wydawnictwo_Ciagle_Form.base_fields['uzupelnij_punktacje'] = \
             'uzupelnij_punktacje',
             'Uzupełnij punktację',
             {'id': 'uzupelnij_punktacje'}))
-
 
 class Wydawnictwo_CiagleAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
 
