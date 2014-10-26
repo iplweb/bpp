@@ -87,9 +87,10 @@ class ZrodloManager(FulltextSearchMixin, models.Manager):
 
 
 class Zrodlo(ModelZAdnotacjami, ModelZISSN):
-    rodzaj = models.ForeignKey(Rodzaj_Zrodla)
     nazwa = models.CharField(max_length=1024, db_index=True)
     skrot = models.CharField("Skrót", max_length=512, db_index=True)
+
+    rodzaj = models.ForeignKey(Rodzaj_Zrodla)
 
     nazwa_alternatywna = models.CharField(
         max_length=1024, db_index=True, blank=True, null=True)
