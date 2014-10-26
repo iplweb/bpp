@@ -128,47 +128,22 @@ def js_openwin(url, handle, options):
     d = dict(url=url, handle=handle, options=options)
     return "window.open(\'%(url)s\','\%(handle)s\',\'%(options)s\')" % d
 
-
-class TextareaWithCharmap(Textarea):
-    """Ten widget wyświetla po prawej stronie przycisk, otwierający
-    mapę znaków ze znakami obcymi - greka, cyrylica, inne."""
-    def render(self, name, value, attrs=None):
-        if value is None: value = ''
-        final_attrs = self.build_attrs(attrs, name=name)
-
-        textarea = u''
-
-        textarea += u'<textarea class="charmap" %s>%s</textarea>' % (
-            flatatt(final_attrs),
-            conditional_escape(force_unicode(value)))
-
-        keypad = u"""
-
-        <script type="text/javascript">
-
-            $('#%(id)s').keypad({
-                keypadOnly: false,
-                layout: [
-                    'αβγδεζ ©® àáâãäåæç ъяшертыу',
-                    'ηθικλμ ™℠ èéêëìííî иопющэас',
-                    'νξοπρσ €£ ïñòóôõöø дфгчйкль',
-                    'τυφχψω ¥¢ ùúûüýÿðþ жзхцвбнм',
-                    $.keypad.SHIFT, ],
-                showAnim: 'fadeIn',
-                duration: 'fast',
-                showOn: 'button'
-            });
-
-        </script>
-	    """ % final_attrs
-
-        textarea += keypad
-
-        print textarea
-        return mark_safe(textarea)
+#
+# class TextareaWithCharmap(Textarea):
+#     """Ten widget jest klasy charmap, czyli ma przycisk który wyświetla
+#     mapę znaków ze znakami obcymi - greka, cyrylica, inne."""
+#     def render(self, name, value, attrs=None):
+#         if value is None: value = ''
+#         final_attrs = self.build_attrs(attrs, name=name)
+#
+#         textarea = u'<textarea class="charmap" %s>%s</textarea>' % (
+#             flatatt(final_attrs),
+#             conditional_escape(force_unicode(value)))
+#
+#         return mark_safe(textarea)
 
 NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW = {
     models.TextField: {
-        'widget': TextareaWithCharmap(attrs={'rows':2, 'cols': 90})},
+        'widget': Textarea(attrs={'rows':2, 'cols': 90, 'class': 'charmap'})},
     }
 

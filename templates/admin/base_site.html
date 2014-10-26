@@ -74,11 +74,32 @@
             $("#grp-admin-title").html(
                     '<a href="/">' + txt + '</a>');
 
+            $('.charmap').keypad({
+                keypadOnly: false,
+                layout: [
+                    'αβγδεζ ©® àáâãäåæçß ъяшертыу',
+                    'ηθικλμ ™℠ èéêëìííî  иопющэас',
+                    'νξοπρσ €£ ïñòóôõöø  дфгчйкль',
+                    'τυφχψω ¥¢ ùúûüýÿðþ  жзхцвбнм',
+                    $.keypad.SHIFT + $.keypad.CLOSE
+                ],
+                showAnim: 'fadeIn',
+                duration: 'fast',
+                showOn: 'button'
+            });
+
             // Przyciski jquery.keypad
-            $("button.keypad-trigger")
-                .css("margin-left", "12px")
-                .css("margin-top", "15px")
-                .css("color", "black");
+            $("button.keypad-trigger").each(
+                    function(no, tag) {
+                        var tag = $(tag);
+                        var first = tag.siblings().first();
+                        if (first.is("textarea"))
+                            tag.css("margin-left", "12px")
+                                    .css("margin-top", "15px");
+
+                        tag.css("color", "black")
+                                .attr("tabindex", "-1");
+                    });
 
         });
     </script>

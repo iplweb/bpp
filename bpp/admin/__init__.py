@@ -130,6 +130,7 @@ class Autor_JednostkaInline(admin.TabularInline):
     extra = 1
 
 
+
 # Jednostka
 
 class JednostkaAdmin(RestrictDeletionToAdministracjaGroupMixin, ZapiszZAdnotacjaMixin, CommitedModelAdmin):
@@ -154,7 +155,20 @@ admin.site.register(Jednostka, JednostkaAdmin)
 
 # Autorzy
 
+CHARMAP_SINGLE_LINE = forms.TextInput(
+    attrs={'class': 'charmap', 'style': "width: 500px"})
+
+class AutorForm(forms.ModelForm):
+    class Meta:
+        model = Autor
+        widgets = {
+            'imiona': CHARMAP_SINGLE_LINE,
+            'nazwisko': CHARMAP_SINGLE_LINE
+        }
+
 class AutorAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
+    form = AutorForm
+
     list_display = ['nazwisko', 'imiona', 'tytul', 'poprzednie_nazwiska',
                     'email']
     fields = None
@@ -201,7 +215,20 @@ class Redakcja_ZrodlaInline(admin.TabularInline):
     form = autocomplete_light.modelform_factory(Redakcja_Zrodla)
 
 
+class ZrodloForm(forms.ModelForm):
+    class Meta:
+        model = Zrodlo
+        widgets = {
+            'nazwa': CHARMAP_SINGLE_LINE,
+            'skrot': CHARMAP_SINGLE_LINE,
+            'nazwa_alternatywna': CHARMAP_SINGLE_LINE,
+            'skrot_nazwy_alternatywnej': CHARMAP_SINGLE_LINE,
+            'poprzednia_nazwa': CHARMAP_SINGLE_LINE
+        }
+
 class ZrodloAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
+    form = ZrodloForm
+
     fields = None
     inlines = (Punktacja_ZrodlaInline, Redakcja_ZrodlaInline,)
     search_fields = ['nazwa', 'skrot', 'nazwa_alternatywna',
@@ -213,7 +240,7 @@ class ZrodloAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
     fieldsets = (
         (None, {
             'fields': (
-                'rodzaj', 'nazwa', 'skrot', 'nazwa_alternatywna',
+                'nazwa', 'skrot', 'rodzaj', 'nazwa_alternatywna',
                 'skrot_nazwy_alternatywnej', 'issn', 'e_issn', 'www', 'zasieg',
                 'poprzednia_nazwa'),
         }),
@@ -223,7 +250,7 @@ class ZrodloAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
 admin.site.register(Zrodlo, ZrodloAdmin)
 
 # Bibliografia
-from django.forms.widgets import HiddenInput
+from django.forms.widgets import HiddenInput, TextInput
 
 
 def generuj_inline_dla_autorow(baseModel):
