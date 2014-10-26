@@ -53,11 +53,21 @@ urlpatterns = patterns(
         )), name="multiseek:results"),
 
     url(r'^multiseek/', include('multiseek.urls', namespace='multiseek')),
+
     url(r'^multiseek/live-results/$',
         csrf_exempt(MyMultiseekResults.as_view(
             registry=settings.MULTISEEK_REGISTRY,
             template_name="multiseek/live-results.html"
         )), name="live-results"),
+
+
+    url(r'^multiseek/remove-from-results/(?P<pk>\w+)$',
+        'multiseek.views.remove_by_hand',
+        name="remove_from_results"),
+
+    url(r'^multiseek/remove-from-removed-results/(?P<pk>\w+)$',
+        'multiseek.views.remove_from_removed_by_hand',
+        name="remove_from_removed_results"),
 
     url(r'^admin_tools/', include('admin_tools.urls')),
     url(r'^grappelli/', include('grappelli.urls')),
