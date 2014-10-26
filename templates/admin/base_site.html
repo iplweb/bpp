@@ -43,9 +43,15 @@
 <script type="text/javascript" src="{% static 'autocomplete_light/addanother.js' %}"></script>
 <script type="text/javascript" src="{% static 'autocomplete_light/text_widget.js' %}"></script>
 <script type="text/javascript" src="{% static 'autocomplete_light/remote.js' %}"></script>
+
+        <script type="text/javascript" src="{% static 'jquery.keypad.package-2.0.1/jquery.plugin.js' %}"></script>
+        <script type="text/javascript" src="{% static 'jquery.keypad.package-2.0.1/jquery.keypad.js' %}"></script>
+        <script type="text/javascript" src="{% static 'jquery.keypad.package-2.0.1/jquery.keypad-pl.js' %}"></script>
+
     {% endcompress %}
     {% compress css %}
 <link rel="stylesheet" type="text/css" href="{% static 'autocomplete_light/style.css' %}" />
+<link rel="stylesheet" type="text/css" href="{% static 'jquery.keypad.package-2.0.1/jquery.keypad.css' %}" />
 {% endcompress %}
 {% endblock %}
 
@@ -56,12 +62,24 @@
     <link rel="stylesheet" type="text/css" media="screen"
           href="{{ STATIC_URL }}bpp/css/admin-menu.css"/>
 
+    <style type="text/css">
+    .keypad-key {
+        color: black !important;
+    }
+    </style>
     <script type="text/javascript">
         $(document).ready(function () {
             $("#show-after-load").css("display", "block");
             txt = $("#grp-admin-title").text();
             $("#grp-admin-title").html(
                     '<a href="/">' + txt + '</a>');
+
+            // Przyciski jquery.keypad
+            $("button.keypad-trigger")
+                .css("margin-left", "12px")
+                .css("margin-top", "15px")
+                .css("color", "black");
+
         });
     </script>
 {% endblock %}

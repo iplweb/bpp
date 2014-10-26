@@ -12,7 +12,6 @@ from bpp.views.raporty import RankingAutorow, \
     PobranieRaportu, PodgladRaportu, KasowanieRaportu, \
     RaportJednostek2012, RaportKronikaUczelni, RaportOPI2012, RaportJednostek, \
     RankingAutorowFormularz, RaportDlaKomisjiCentralnejFormularz, RaportSelector
-from bpp.views.utils import charmap, charmap_update_setting
 from bpp import reports
 
 reports # PyCharm, leave that import alone, it is IMPORTANT to import it
@@ -26,8 +25,6 @@ if not settings.TESTING:
 
 urlpatterns = patterns(
     '',
-    url(r'^charmap/set/$', charmap_update_setting, name="charmap_set"),
-    url(r'^charmap/$', charmap, name="charmap"),
 
     url(r'^api/rok-habilitacji/$', csrf_exempt(RokHabilitacjiView.as_view()),
         name='api_rok_habilitacji'),

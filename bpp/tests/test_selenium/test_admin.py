@@ -17,8 +17,6 @@ from bpp.tests.util import any_zrodlo, CURRENT_YEAR, any_zwarte, any_patent
 
 
 ID = "id_tytul_oryginalny"
-CHARMAP = ID + "_charmap"
-WINDOW = CHARMAP + "_window"
 
 
 class ProperClickMixin:
@@ -31,26 +29,6 @@ class ProperClickMixin:
     def proper_click(self, arg):
         self.page.execute_script("document.getElementById('id_" + arg + "').scrollIntoView()")
         self.page.execute_script("document.getElementById('id_" + arg + "').click()")
-
-class SeleniumAdminTestCaseCharmapTest(ProperClickMixin, SeleniumLoggedInAdminTestCase):
-    url = reverse("admin:bpp_wydawnictwo_ciagle_add")
-
-    def test_admin_charmap(self):
-        """Ten test dodaje pracę ze "specjalnym" tytułem, za pomocą clicków
-        w charmapę, następnie sprawdza, czy została istotnie dodana."""
-
-        main_window = self.page.current_window_handle
-        self.proper_click(CHARMAP[3:])
-
-        self.page.switch_to_window(WINDOW)
-        self.page.wait_for_selector(".char")
-        elem = self.page.find_elements_by_class_name("char")[0]
-        elem.click()
-
-        self.page.switch_to_window(main_window)
-        value = self.page.find_element_by_id(ID)
-        self.assertEquals(value.get_attribute('value'), u'\u0391') # Pierwszy znak z greki
-
 
 class SeleniumAdminTestTozTamze(SeleniumLoggedInAdminTestCase):
     url = "/admin/"

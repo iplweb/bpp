@@ -49,7 +49,6 @@ TEMPLATE_CONTEXT_PROCESSORS = (
     'django.core.context_processors.request',
     'django.core.context_processors.static',
     'django.contrib.messages.context_processors.messages',
-    'bpp.context_processors.charmap_dialog',
     'bpp.context_processors.uczelnia'
 
 )
@@ -263,7 +262,8 @@ BOWER_INSTALLED_APPS = (
     'foundation-datepicker',
     'font-awesome#4.1.0',
     'iframe-resizer#2.5.1',
-    'jinplace#1.0.1'
+    'jinplace#1.0.1',
+    'http://keith-wood.name/zip/jquery.keypad.package-2.0.1.zip'
 )
 
 CRISPY_TEMPLATE_PACK = 'foundation-5'
