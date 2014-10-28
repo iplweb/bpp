@@ -61,12 +61,6 @@ class TestAdmin(SuperuserTestCase):
             pass
 
 
-class TestWidgets(TestCase):
-    def test_textarea(self):
-        ret = TextareaWithCharmap().render('foo', 'bar', {'id': 'id'})
-        self.assertIn("bar", ret)
-
-
 class TestAdminViews(TestCase):
     def test_wydawnictwociagletozview(self):
         c1 = any_ciagle()
