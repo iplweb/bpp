@@ -14,3 +14,5 @@ git+https://github.com/mpasternak/django-celery-ui.git#egg=django_celery_ui
 git+https://github.com/mpasternak/django-multiseek.git#egg=django_multiseek
 git+https://github.com/TyMaszWeb/django-cookie-law.git#egg=django_cookie_law
 git+https://github.com/sehmaschine/django-grappelli#egg=django_grappelli
+
+git+https://github.com/nvbn/django-bower#egg=djangobower
