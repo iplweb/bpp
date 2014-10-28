@@ -15,7 +15,6 @@ from bpp.models import Jednostka, Autor, Zrodlo, Wydawnictwo_Zwarte, Praca_Dokto
 from bpp import autocomplete_light_registry # Bez tego następny import się wywali
 autocomplete_light_registry # Pycharm, zostaw to w spokoju
 
-from bpp.admin.helpers import TextareaWithCharmap
 from bpp.views.admin import WydawnictwoCiagleTozView
 
 
