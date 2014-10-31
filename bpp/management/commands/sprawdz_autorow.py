@@ -1,6 +1,7 @@
 # -*- encoding: utf-8 -*-
 
 from django.core.management import BaseCommand
+from django.db import transaction
 
 from bpp.models.patent import Patent, Patent_Autor
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, \
@@ -50,6 +51,7 @@ def znajdz_i_napraw_podwojnych(model, autor_model):
 class Command(BaseCommand):
     help = u'Naprawia indeks autorow - szuka wpisów o tej samej kolejności'
 
+    @transaction.atomic
     def handle(self, *args, **options):
 
         for model, autor_model in [
