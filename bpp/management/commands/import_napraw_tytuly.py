@@ -58,3 +58,28 @@ class Command(BaseCommand):
                     pass
 
                 rekord.save()
+
+        for elem in Rekord.objects.raw("""select * from bpp_rekord_mat where
+tytul_oryginalny like '%%<%%' and
+lower(tytul_oryginalny) not like '%%<b>%%'  and
+lower(tytul_oryginalny) not like '%%<i>%%'  and
+lower(tytul_oryginalny) not like '%%<sub>%%'  and
+lower(tytul_oryginalny) not like '%%<sup>%%'  and
+lower(tytul_oryginalny) not like '%%<beta>%%' and
+lower(tytul_oryginalny) not like '%%<alfa>%%' and
+lower(tytul_oryginalny) not like '%%<pi>%%'  and
+lower(tytul_oryginalny) not like '%%<gamma>%%' and
+lower(tytul_oryginalny) not like '%%<up>%%' and
+lower(tytul_oryginalny) not like '%%<dn>%%' and
+lower(tytul_oryginalny) not like '%%<mi>%%' and
+lower(tytul_oryginalny) not like '%%<i/>%%' and
+lower(tytul_oryginalny) not like '%%<alfa>%%' and
+lower(tytul_oryginalny) not like '%%<afa>%%' and
+lower(tytul_oryginalny) not like '%%<delta>%%'  and
+lower(tytul_oryginalny) not like '%%<zeta>%%'  and
+lower(tytul_oryginalny) not like '%%<tau>%%'  and
+lower(tytul_oryginalny) not like '%%<kappa>%%'  and
+lower(tytul_oryginalny) not like '%%<sub)%%'  and
+lower(tytul_oryginalny) not like '%%<alpha>%%';
+"""):
+            print elem.tytul_oryginalny
