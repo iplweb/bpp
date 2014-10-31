@@ -19,6 +19,7 @@ def znajdz_i_napraw_podwojnych(model, autor_model):
         if obj.rekord_id != rekord_pk:
             rekord_pk = obj.rekord_id
             poprzednia_kolejnosc = None
+            autorzy = []
 
             if obj.kolejnosc != 1:
                 print "XX Dla rekordu %r %r autorzy zaczynaja sie od kolejnosci %i" % (
@@ -34,7 +35,16 @@ def znajdz_i_napraw_podwojnych(model, autor_model):
                 print "XX roznica w kolejnosci wynosi %i dla rekordu %s %s" % (
                     delta, autor_model, obj.pk
                 )
+
         poprzednia_kolejnosc = obj.kolejnosc
+
+        if obj.autor_id in autorzy:
+            print "XX zdublowany autor %i dla rekordu %s %s (rekord_id %s)" % (
+                obj.autor_id, autor_model, obj.pk, obj.rekord_id
+            )
+
+            autorzy.append(obj.autor_id)
+
 
 
 class Command(BaseCommand):
