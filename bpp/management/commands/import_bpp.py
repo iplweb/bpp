@@ -288,10 +288,10 @@ def zrob_autorow_dla(wc, klass, pgsql_conn):
                                                 autor.poprzednie_nazwiska))
 
         if row['typ_autora'] == 0:
-            print "REKORD", row['id'], "TYP AUTORA= 0 *** NIE IMPORTUJE TEGO AUTORA"
-            continue
-            # BYŁO: ustawianie na "1"
-            # row['typ_autora'] = 1
+            # print "REKORD", row['id'], "TYP AUTORA= 0 *** NIE IMPORTUJE TEGO AUTORA"
+            # continue
+            print "REKORD", row['id'], "TYP AUTORA == 0 USTAWIAM NA 1"
+            row['typ_autora'] = 1
 
         typ = cache.typy_odpowiedzialnosci[row['typ_autora']]
 
