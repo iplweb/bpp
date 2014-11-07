@@ -2,8 +2,8 @@
 """Importuje bazę danych BPP z istniejącego serwera PostgreSQL"""
 
 import sys
-from django.db import IntegrityError
 
+from django.db import IntegrityError
 import psycopg2.extensions
 
 
@@ -377,6 +377,7 @@ def admin_log_history(obj, dct):
             content_type_id=ContentType.objects.get_for_model(obj).pk,
             object_id=obj.pk,
             object_repr=unicode(obj),
+            change_message="Import z poprzedniej wersji bazy danych",
             action_flag=ADDITION)
         try:
             LogEntry.objects.log_action(**kw)
@@ -393,6 +394,7 @@ def admin_log_history(obj, dct):
             content_type_id=ContentType.objects.get_for_model(obj).pk,
             object_id=obj.pk,
             object_repr=unicode(obj),
+            change_message="Ostatnia edycja w poprzedniej wersji bazy danych",
             action_flag=CHANGE
         )
     utworzono(obj, dct)
@@ -606,7 +608,7 @@ def zrob_wydawnictwo_ciagle(bib, skrot, pgsql_conn):
                          docelowe='uwagi', pgsql_conn=pgsql_conn,
                          zrodlowe_pole_dla_informacji='new_zrodlo_src')
 
-    admin_log_history(w, bib)
+    # admin_log_history(w, bib)
 
 
 def zrob_baze_wydawnictwa_zwartego(bib):
@@ -634,7 +636,7 @@ def zrob_wydawnictwo_zwarte(bib, skrot, pgsql_conn):
         wc.liczba_znakow_wydawniczych = bib['ilosc_znakow_wydawnicznych']
         wc.save()
 
-    admin_log_history(wc, bib)
+    # admin_log_history(wc, bib)
 
 
 def zrob_doktorat_lub_habilitacje(bib, pgsql_conn):
@@ -682,7 +684,7 @@ def zrob_patent(bib, pgsql_conn):
                          usun_przed=['tytul', 'isbn', 'wydawnictwo', 'redakcja',
                                      'typ_kbn', 'jezyk', 'miejsce_i_rok'])
 
-    admin_log_history(p, bib)
+    # admin_log_history(p, bib)
 
 
 charakter = {}
