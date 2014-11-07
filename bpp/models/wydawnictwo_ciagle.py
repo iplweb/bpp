@@ -1,9 +1,6 @@
 # -*- encoding: utf-8 -*-
-from django.contrib.contenttypes.fields import GenericRelation
-from django.core.exceptions import ValidationError
 
 from django.db import models
-from django.db.models import Max
 from djorm_pgfulltext.models import SearchManager
 from secure_input.utils import safe_html
 
@@ -11,8 +8,6 @@ from bpp.models.abstract import BazaModeluOdpowiedzialnosciAutorow, DwaTytuly, M
     ModelZWWW, ModelAfiliowanyRecenzowany, ModelPunktowany, ModelTypowany, \
     ModelZeSzczegolami, ModelZInformacjaZ, ModelZeStatusem, ModelZISSN, \
     ModelZAdnotacjami, ModelZCharakterem, Wydawnictwo_Baza
-
-
 from bpp.models.util import dodaj_autora, ZapobiegajNiewlasciwymCharakterom
 
 
@@ -26,8 +21,8 @@ class Wydawnictwo_Ciagle_Autor(BazaModeluOdpowiedzialnosciAutorow):
         app_label = 'bpp'
         ordering = ('kolejnosc', )
         unique_together = \
-            [('rekord', 'autor', 'typ_odpowiedzialnosci', 'kolejnosc'), # XXX TODO wyrzucic kolejnosc
-             ]
+            [('rekord', 'autor', 'typ_odpowiedzialnosci'),
+             ('rekord', 'autor', 'kolejnosc')]
 
 
 

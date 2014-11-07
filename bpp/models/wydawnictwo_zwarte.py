@@ -23,8 +23,8 @@ class Wydawnictwo_Zwarte_Autor(BazaModeluOdpowiedzialnosciAutorow):
         app_label = 'bpp'
         ordering = ('kolejnosc', )
         unique_together = \
-            [('rekord', 'autor', 'typ_odpowiedzialnosci', 'kolejnosc'), # XXX TODO wyrzucic kolejnosc
-             ]
+            [('rekord', 'autor', 'typ_odpowiedzialnosci'),
+             ('rekord', 'autor', 'kolejnosc')]
 
 
 class Wydawnictwo_Zwarte_Baza(

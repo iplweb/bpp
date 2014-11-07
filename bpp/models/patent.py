@@ -2,12 +2,11 @@
 
 from django.db import models
 from djorm_pgfulltext.models import SearchManager
+
 from bpp.models import BazaModeluOdpowiedzialnosciAutorow, Autor, \
     ModelZRokiem, ModelZeStatusem, ModelZWWW, ModelAfiliowanyRecenzowany, \
-    ModelZInformacjaZ, ModelZAdnotacjami, ModelZeSzczegolami, ModelTypowany, \
-    ModelPunktowany
+    ModelZInformacjaZ, ModelZAdnotacjami, ModelZeSzczegolami, ModelPunktowany
 from bpp.models.abstract import ModelPrzeszukiwalny
-
 from bpp.models.util import dodaj_autora, ModelZOpisemBibliograficznym
 
 
@@ -21,8 +20,8 @@ class Patent_Autor(BazaModeluOdpowiedzialnosciAutorow):
         app_label = 'bpp'
         ordering = ('kolejnosc', )
         unique_together = \
-            [('rekord', 'autor', 'typ_odpowiedzialnosci', 'kolejnosc'), # TODO wyrzucic kolejnosc
-            ]
+            [('rekord', 'autor', 'typ_odpowiedzialnosci'),
+             ('rekord', 'autor', 'kolejnosc')]
 
 
 class Patent(ModelZOpisemBibliograficznym, ModelZRokiem, ModelZeStatusem,
