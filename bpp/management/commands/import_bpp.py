@@ -291,15 +291,20 @@ def zrob_autorow_dla(wc, klass, pgsql_conn):
             print "REKORD", row['id'], "TYP AUTORA= 0, ustawiam 1"
             row['typ_autora'] = 1
 
-        klass.objects.create(
-            rekord=wc,
-            autor=autor,
-            jednostka=Jednostka.objects.get(pk=row['idt_jed']),
-            kolejnosc=row['lp'],
-            zapisany_jako=row['naz_zapis'],
-            typ_odpowiedzialnosci=cache.typy_odpowiedzialnosci[
-                row['typ_autora']]
-        )
+        typ = cache.typy_odpowiedzialnosci[row['typ_autora']]
+
+        try:
+            klass.objects.create(
+                rekord=wc,
+                autor=autor,
+                jednostka=Jednostka.objects.get(pk=row['idt_jed']),
+                kolejnosc=row['lp'],
+                zapisany_jako=row['naz_zapis'],
+                typ_odpowiedzialnosci=typ
+            )
+        except IntegrityError, e:
+            print "ERROR dla pracy %r, autor %r, kolejnosc %r, typ_odpowiedzialnosci %r" % (wc, autor, row['lp'], typ)
+            raise e
 
 
 def zrob_userow(cur):
