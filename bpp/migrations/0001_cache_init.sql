@@ -37,7 +37,7 @@ CREATE TABLE bpp_autorzy_mat AS SELECT * FROM bpp_autorzy;
 
 CREATE UNIQUE INDEX bpp_autorzy_mat_0 ON bpp_autorzy_mat(fake_id);
 CREATE UNIQUE INDEX bpp_autorzy_mat_1 ON bpp_autorzy_mat(content_type_id, object_id, autor_id, typ_odpowiedzialnosci_id, kolejnosc);
-CREATE UNIQUE INDEX bpp_autorzy_mat_11 ON bpp_autorzy_mat(content_type_id, object_id, kolejnosc);
+CREATE UNIQUE INDEX bpp_autorzy_mat_11 ON bpp_autorzy_mat(content_type_id, object_id, autor_id, kolejnosc);
 CREATE INDEX bpp_autorzy_mat_2 ON bpp_autorzy_mat(autor_id);
 CREATE INDEX bpp_autorzy_mat_3 ON bpp_autorzy_mat(jednostka_id);
 CREATE INDEX bpp_autorzy_mat_4 ON bpp_autorzy_mat(autor_id, jednostka_id);
