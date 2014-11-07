@@ -82,4 +82,4 @@ lower(tytul_oryginalny) not like '%%<kappa>%%'  and
 lower(tytul_oryginalny) not like '%%<sub)%%'  and
 lower(tytul_oryginalny) not like '%%<alpha>%%';
 """):
-            print elem.tytul_oryginalny
+            print "%r" % elem.tytul_oryginalny
