@@ -24,7 +24,7 @@ class Wydawnictwo_Zwarte_Autor(BazaModeluOdpowiedzialnosciAutorow):
         ordering = ('kolejnosc', )
         unique_together = \
             [('rekord', 'autor', 'typ_odpowiedzialnosci'),
-             ('rekord', 'autor', 'kolejnosc')]
+             ('rekord', 'kolejnosc')]
 
 
 class Wydawnictwo_Zwarte_Baza(
