@@ -2,6 +2,8 @@
 
 import os, sys
 
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+
 # Django
 import random, string
 
@@ -369,3 +371,4 @@ COMPRESS_OFFLINE = True
 COMPRESS_ENABLED = False
 
 ALLOWED_TAGS = ('b', 'em', 'i', 'strong', 'strike', 'u', 'sup', 'font', 'sub')
+
