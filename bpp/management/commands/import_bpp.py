@@ -303,7 +303,7 @@ def zrob_autorow_dla(wc, klass, pgsql_conn):
                 typ_odpowiedzialnosci=typ
             )
         except IntegrityError, e:
-            print "ERROR dla pracy %r, autor %r, kolejnosc %r, typ_odpowiedzialnosci %r" % (wc, autor, row['lp'], typ)
+            print "ERROR dla pracy %r, row=%r" % (wc, row)
             raise e
 
 
