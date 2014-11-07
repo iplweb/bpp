@@ -179,7 +179,11 @@ def zrob_formularz(*args):
 
 class BuildSearch(RedirectView):
     def get_redirect_url(self, **kwargs):
-        return reverse("multiseek:index")
+        url =  self.request.build_absolute_uri(reverse("multiseek:index"))
+        scheme = self.request.META.get("HTTP_X_SCHEME", "").lower()
+        if scheme == "https":
+            url = url.replace("http://", "https://").replace("HTTP://", "HTTPS://")
+        return url
 
     def post(self, *args, **kw):
         zrodla_box = zrob_box_z_requestu(self.request.POST, 'zrodlo',
