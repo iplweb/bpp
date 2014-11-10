@@ -1,21 +1,16 @@
 # -*- encoding: utf-8 -*-
-from django.contrib.contenttypes.models import ContentType
 from django.utils.itercompat import is_iterable
 
 NULL_VALUE = u"(brak wpisanej wartości)"
 
-from dateutil.parser import parse as parse_string_date
 from django.db.models import Q
-from django.utils.datastructures import SortedDict
-from bpp import autocomplete_light_registry
 from django.db.models.expressions import F
 from djorm_pgfulltext.fields import TSConfig
 from multiseek import logic
 from multiseek.logic import DecimalQueryObject
 from multiseek.logic import StringQueryObject, QueryObject, EQUALITY_OPS_ALL, \
     UnknownOperation, DIFFERENT_ALL, AUTOCOMPLETE, EQUALITY_OPS_NONE, \
-    EQUALITY_OPS_FEMALE, VALUE_LIST, EQUALITY_OPS_MALE, RANGE, RANGE_OPS, \
-    create_registry, IntegerQueryObject, ValueListQueryObject, EQUAL, DIFFERENT, \
+    EQUALITY_OPS_FEMALE, VALUE_LIST, EQUALITY_OPS_MALE, create_registry, IntegerQueryObject, ValueListQueryObject, EQUAL, DIFFERENT, \
     AutocompleteQueryObject, Ordering, ReportType, RangeQueryObject, \
     DateQueryObject
 
@@ -137,7 +132,7 @@ class NazwiskoIImieQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject)
 
 
 class JednostkaQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
-    label = u'Jednostka dowolnego autora'
+    label = u'Jednostka'
     type = AUTOCOMPLETE
     ops = EQUALITY_OPS_FEMALE
     model = Jednostka
@@ -159,6 +154,27 @@ class JednostkaQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
     def get_autocomplete_query(self, data):
         return Jednostka.objects.fulltext_filter(data)
 
+
+
+class Typ_OdpowiedzialnosciQueryObject(QueryObject):
+    label = u'Typ odpowiedzialności'
+    type = VALUE_LIST
+    values = Typ_Odpowiedzialnosci.objects.all()
+    ops = EQUALITY_OPS_MALE
+    field_name = 'typ_odpowiedzialnosci'
+
+    def value_from_web(self, value):
+        return Typ_Odpowiedzialnosci.objects.get(nazwa=value)
+
+    def real_query(self, value, operation):
+        if operation in EQUALITY_OPS_ALL:
+            ret = Q(original__in_raw=Autorzy.objects.filter(typ_odpowiedzialnosci=value))
+        else:
+            raise UnknownOperation(operation)
+
+        if operation in DIFFERENT_ALL:
+            return ~ret
+        return ret
 
 
 class ZakresLatQueryObject(RangeQueryObject):
@@ -278,8 +294,7 @@ registry = create_registry(
     TytulPracyQueryObject(),
     NazwiskoIImieQueryObject(),
     JednostkaQueryObject(),
-    # Działa wadliwie i jest BEZ SENSU
-    # Typ_OdpowiedzialnosciQueryObject(),
+    Typ_OdpowiedzialnosciQueryObject(),
     ZakresLatQueryObject(),
     JezykQueryObject(),
     RokQueryObject(),
