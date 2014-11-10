@@ -1,22 +1,10 @@
 # -*- encoding: utf-8 -*-
-from django.contrib.admin.options import BaseModelAdmin
-from django.contrib.contenttypes.admin import GenericTabularInline, \
-    GenericInlineModelAdmin
-from django.contrib.contenttypes.forms import generic_inlineformset_factory
 from django.db.models.fields import BLANK_CHOICE_DASH
-from secure_input.fields import SafeCharFieldInput
-
-from bpp import autocomplete_light_registry
-
 from django import forms
-from django.utils.safestring import mark_safe
-from django import forms
-from django.db import transaction
 from django.contrib import admin
 import autocomplete_light
 
 from bpp.admin.helpers import *
-
 from bpp.models import Jezyk, Typ_KBN, Uczelnia, Wydzial, \
     Jednostka, Tytul, Autor, Autor_Jednostka, Funkcja_Autora, Rodzaj_Zrodla, \
     Zrodlo, Punktacja_Zrodla, Typ_Odpowiedzialnosci, Status_Korekty, \
@@ -251,7 +239,7 @@ class ZrodloAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
 admin.site.register(Zrodlo, ZrodloAdmin)
 
 # Bibliografia
-from django.forms.widgets import HiddenInput, TextInput
+from django.forms.widgets import HiddenInput
 
 
 def generuj_inline_dla_autorow(baseModel):
@@ -466,6 +454,10 @@ class Publikacja_Habilitacyjna_Inline(admin.TabularInline):
     sortable_field_name = "kolejnosc"
 
 
+    related_lookup_fields = {
+        'generic': [['content_type', 'object_id']],
+    }
+
 class Praca_HabilitacyjnaAdmin(Praca_Doktorska_Habilitacyjna_Admin_Base):
     inlines = [Publikacja_Habilitacyjna_Inline, ]
     form = autocomplete_light.modelform_factory(Praca_Habilitacyjna)
@@ -479,7 +471,6 @@ class Praca_HabilitacyjnaAdmin(Praca_Doktorska_Habilitacyjna_Admin_Base):
         MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
         POZOSTALE_MODELE_FIELDSET,
         ADNOTACJE_FIELDSET)
-
 
 admin.site.register(Praca_Habilitacyjna, Praca_HabilitacyjnaAdmin)
 
