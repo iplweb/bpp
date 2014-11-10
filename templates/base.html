@@ -3,6 +3,7 @@
 {% load static %}
 {% load staticfiles %}
 {% load just_single_quotes %}
+{% load bpp_version %}
 
 {% block extrahead %}
     {{ block.super }}
@@ -71,7 +72,6 @@
                 <h1><a href="/" style="color: #222222;">Bibliografia Publikacji
                     Pracowników <br/>
                     {{ uczelnia.nazwa_dopelniacz }}</a></h1>
-
                 {% block global-nav %}
                     <div class="hide-on-print">
                         <input type="text" name="q"
@@ -193,7 +193,8 @@
 
             </ul>
         </div>
-
     </div>
+    <hr size="1" />
+    <small style="float: right;">wersja {% bpp_version %}&nbsp;&nbsp;</small>
 
 {% endblock %}

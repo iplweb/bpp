@@ -2,17 +2,13 @@
 
 from __future__ import absolute_import
 
-import os, sys
-from celery import Celery
+import os
 
+from celery import Celery
 from django.conf import settings
 
-# set the default Django settings module for the 'celery' program.
-s = 'production'
-if sys.platform == 'win32':
-    s = 'devel'
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'django_bpp.settings.%s' % s)
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'django_bpp.settings')
 
 app = Celery('bpp')
 
