@@ -2,6 +2,7 @@
 {% load compress %}
 {% load static %}
 {% load staticfiles %}
+{% load just_single_quotes %}
 
 {% block extrahead %}
     {{ block.super }}
@@ -75,6 +76,8 @@
                     <div class="hide-on-print">
                         <input type="text" name="q"
                                id="user_navigation_autocomplete"/>
+                        {% block pre_monitio %}
+                        {% endblock  %}
                         <script type="text/javascript">
                             $(document).ready(function () {
 
@@ -101,7 +104,7 @@
                                         {% for message in messages %}
                                             initial.push({
                                                 'subject': '{{ message.subject }}',
-                                                'message': '{{ message.message }}',
+                                                'message': '{{ message.message|just_single_quotes|safe }}',
                                                 'level': '{{ message.level }}',
                                                 'url': '{{ message.url }}',
                                                 'is_persistent': {{ message.is_persistent|lower }},
