@@ -1,5 +1,4 @@
 # -*- encoding: utf-8 -*-
-import re
 from django.core.urlresolvers import reverse
 from django.template import Library
 from django import template
@@ -114,7 +113,7 @@ def znak_na_poczatku(ciag, znak):
     Tag używany do uzyskiwania opisu bibliograficznego.
     """
     if ciag is None:
-        return
+        return ''
 
     ciag = strip_at_beginning(strip_at_end(ciag))
     if ciag:
