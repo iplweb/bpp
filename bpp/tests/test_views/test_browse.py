@@ -1,14 +1,11 @@
 # -*- encoding: utf-8 -*-
 import json
-from django.core.urlresolvers import reverse
-from multiseek.views import MULTISEEK_SESSION_KEY
-from bpp.models.system import Typ_Odpowiedzialnosci
-from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
-from bpp.tests.util import any_ciagle, any_autor, any_jednostka
 
-from bpp.tests.testutil import UserTestCase, WebTestCase
+from multiseek.views import MULTISEEK_SESSION_KEY
+
+from bpp.tests.testutil import UserTestCase
 from bpp.views.browse import BuildSearch
-from django.test import TestCase
+
 
 class TestViewsBrowse(UserTestCase):
     def test_buildSearch(self):
@@ -26,10 +23,14 @@ class TestViewsBrowse(UserTestCase):
 
         class request:
             POST = mydct(dct)
+            META = {}
             session = {}
 
+            def build_absolute_uri(self, *args, **kw):
+                return "/absolute/uri"
+
         tbs = BuildSearch()
-        tbs.request = request
+        tbs.request = request()
         tbs.post(request)
 
         self.maxDiff = None
@@ -48,7 +49,7 @@ class TestViewsBrowse(UserTestCase):
                u'operator': u'r\xf3wny',
                u'prev_op': u'and',
                u'value': 1},
-              {u'field': u'Jednostka dowolnego autora',
+              {u'field': u'Jednostka',
                u'operator': u'r\xf3wna',
                u'prev_op': u'and',
                u'value': 1},
