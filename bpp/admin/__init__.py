@@ -12,6 +12,7 @@ from bpp.models import Jezyk, Typ_KBN, Uczelnia, Wydzial, \
     Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor, Praca_Doktorska, \
     Praca_Habilitacyjna, Patent, Patent_Autor, BppUser, Publikacja_Habilitacyjna
 
+
 # Proste tabele
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
 from bpp.models.zrodlo import Redakcja_Zrodla
@@ -506,4 +507,10 @@ admin.site.register(Patent, Patent_Admin)
 
 from django.contrib.auth.admin import UserAdmin
 
-admin.site.register(BppUser, UserAdmin)
+class BppUserAdmin(UserAdmin):
+    list_display = ('username', 'email', 'first_name', 'last_name', 'is_staff', 'is_active', 'is_superuser', 'lista_grup')
+
+    def lista_grup(self, row):
+        return ", ".join([x.name for x in row.groups.all()])
+
+admin.site.register(BppUser, BppUserAdmin)
