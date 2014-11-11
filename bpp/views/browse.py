@@ -1,26 +1,15 @@
 # -*- encoding: utf-8 -*-
 import json
-import datetime
-from django.core.handlers.wsgi import WSGIRequest
 
 from django.core.urlresolvers import reverse
-from django.db.models.aggregates import Min
 from django.db.models.query_utils import Q
-
 from django.http import Http404
-from django.http.response import HttpResponse, HttpResponseServerError, \
-    HttpResponseForbidden
-from django.utils.timezone import make_naive
 from django.views.generic import DetailView, ListView, RedirectView
-from django.views.generic.base import View
-from ludibrio.mock import Mock
-from moai.oai import OAIServerFactory
 from multiseek.logic import OR, AND
 from multiseek.util import make_field
-from multiseek.views import MULTISEEK_SESSION_KEY
-from bpp.marc import to_marc
-from bpp.models import Uczelnia, Jednostka, Wydzial, Autor, Zrodlo, Rekord, \
-    Praca_Doktorska, Praca_Habilitacyjna
+from multiseek.views import MULTISEEK_SESSION_KEY, MULTISEEK_SESSION_KEY_REMOVED
+
+from bpp.models import Uczelnia, Jednostka, Wydzial, Autor, Zrodlo, Rekord
 from bpp.multiseek_registry import JednostkaQueryObject, RokQueryObject, \
     NazwiskoIImieQueryObject, TypRekorduObject, ZrodloQueryObject
 
@@ -201,6 +190,10 @@ class BuildSearch(RedirectView):
 
         self.request.session["MULTISEEK_TITLE"] = self.request.POST.get(
             'suggested-title', '')
+
+        # Usuń listę ręcznie wyrzuconych rekordów, ponieważ wchodzimy na świeże
+        # wyszukiwanie (#325)
+        self.request.session.pop(MULTISEEK_SESSION_KEY_REMOVED, None)
 
         return super(BuildSearch, self).post(*args, **kw)
 
