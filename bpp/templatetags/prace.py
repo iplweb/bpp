@@ -36,16 +36,25 @@ class AutorzyNode(template.Node):
                     continue
                 ret.append(azj)
 
-            return ", ".join(ret) + ". "
+            retval = ", ".join(ret)
 
         elif hasattr(value, 'autor'):
-            return u"[AUT.] " + moj_zapisany(unicode(value.autor),
-                                value.autor.slug) + ". "
+            retval = u"[AUT.] " + moj_zapisany("%s %s" % (value.autor.nazwisko, value.autor.imiona),
+                                value.autor.slug)
         else:
             raise template.TemplateSyntaxError(
                 "%r wymaga obiektu z atrybutem autorzy lub autor, dostal %r" % (
                 self, value))
 
+        retval = retval.strip()
+
+        if retval.endswith("."):
+            return retval
+
+        if retval.endswith(".</a>"):
+            retval = retval[:-5] + "</a>"
+
+        return retval + ". "
 
 class AutorzyZLinkamiNode(AutorzyNode):
     url = "bpp:browse_autor"
