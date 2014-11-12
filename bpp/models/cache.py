@@ -1,27 +1,18 @@
 # -*- encoding: utf-8 -*-
-from contextlib import contextmanager
 import warnings
-from django.contrib.contenttypes.fields import GenericForeignKey
+
 from django.contrib.contenttypes.models import ContentType
 from django.db.models.deletion import DO_NOTHING
-from django.db.models.query import QuerySet, EmptyResultSet
-from django.db.models.sql.query import Query
-from django.utils.datastructures import SortedDict
-
-from djorm_pgarray.fields import ArrayField, IntegerArrayField
 from django.db import models, transaction
 from django.db.models.signals import post_save, pre_save, post_delete
-from django.db import connection
 from djorm_pgfulltext.fields import VectorField
-from djorm_pgfulltext.models import SearchManagerMixIn
+
 from filtered_contenttypes.fields import FilteredGenericForeignKey
-
-
-from bpp.models import Wydawnictwo_Zwarte_Baza, ModelZISSN, Patent, \
+from bpp.models import Patent, \
     Praca_Doktorska, Praca_Habilitacyjna, \
-    Typ_Odpowiedzialnosci, ModelZCharakterem, Wydawnictwo_Zwarte, \
-    Wydawnictwo_Ciagle, Autor, Jednostka, MODELE_AUTORSKIE, \
-    Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor, Patent_Autor, Zrodlo
+    Typ_Odpowiedzialnosci, Wydawnictwo_Zwarte, \
+    Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor, Patent_Autor, Zrodlo
+
 
 
 # Cache'ujemy:
@@ -31,12 +22,12 @@ from bpp.models import Wydawnictwo_Zwarte_Baza, ModelZISSN, Patent, \
 # - Praca_Doktorska
 # - Praca_Habilitacyjna
 from django.core.exceptions import ObjectDoesNotExist
-from bpp.models.abstract import ModelPunktowany, ModelPunktowanyBaza, \
-    ModelZRokiem, ModelZeSzczegolami
+from bpp.models.abstract import ModelPunktowanyBaza, \
+    ModelZRokiem, ModelZeSzczegolami, ModelAfiliowanyRecenzowany
 from bpp.models.system import Charakter_Formalny, Jezyk
 from bpp.models.util import ModelZOpisemBibliograficznym
 from bpp.tasks import refresh_rekord, refresh_autorzy
-from bpp.util import get_original_object, FulltextSearchMixin
+from bpp.util import FulltextSearchMixin
 
 CACHED_MODELS = [Wydawnictwo_Ciagle, Wydawnictwo_Zwarte, Praca_Doktorska,
                  Praca_Habilitacyjna, Patent]
@@ -52,7 +43,7 @@ OTHER_DEPENDENT_MODELS = [Typ_Odpowiedzialnosci, Jezyk, Charakter_Formalny]
 def defer_zaktualizuj_opis(instance, *args, **kw):
     """Obiekt typu Wydawnictwo_..., Patent, Praca_... został zapisany.
     Zaktualizuj jego opis bibliograficzny."""
-    from bpp.tasks import zaktualizuj_opis, zaktualizuj_zrodlo
+    from bpp.tasks import zaktualizuj_opis
 
     flds = kw.get('update_fields', [])
 
@@ -299,7 +290,8 @@ class RekordManager(FulltextSearchMixin, models.Manager):
     #
 
 class Rekord(ModelPunktowanyBaza, ModelZOpisemBibliograficznym,
-             ModelZRokiem, ModelZeSzczegolami, models.Model):
+             ModelZRokiem, ModelZeSzczegolami, ModelAfiliowanyRecenzowany,
+             models.Model):
     # XXX TODO: gdy będą compound keys w Django, można pozbyć się fake_id
     fake_id = models.TextField(primary_key=True)
 

@@ -5,11 +5,10 @@ Klasy abstrakcyjne
 """
 from datetime import datetime
 from decimal import Decimal
+
 from django.db import models
-from django.db.models.fields import TextField
-from djorm_pgarray.fields import TextArrayField
 from djorm_pgfulltext.fields import VectorField
-from secure_input.fields import SafeCharFieldInput
+
 from bpp.fields import YearField
 from bpp.models.util import ModelZOpisemBibliograficznym
 
@@ -131,8 +130,8 @@ class ModelZWWW(models.Model):
 
 class ModelAfiliowanyRecenzowany(models.Model):
     """Model zawierający informacje o afiliowaniu/recenzowaniu pracy."""
-    afiliowana = models.BooleanField(default=False)
-    recenzowana = models.BooleanField(default=False)
+    afiliowana = models.BooleanField(default=False, db_index=True)
+    recenzowana = models.BooleanField(default=False, db_index=True)
 
     class Meta:
         abstract = True
