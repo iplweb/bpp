@@ -13,6 +13,7 @@ from bpp.models import Jezyk, Typ_KBN, Uczelnia, Wydzial, \
     Praca_Habilitacyjna, Patent, Patent_Autor, BppUser, Publikacja_Habilitacyjna
 
 
+
 # Proste tabele
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
 from bpp.models.zrodlo import Redakcja_Zrodla
@@ -395,18 +396,19 @@ class Wydawnictwo_ZwarteAdmin(Wydawnictwo_ZwarteAdmin_Baza):
 
 admin.site.register(Wydawnictwo_Zwarte, Wydawnictwo_ZwarteAdmin)
 
-DOKTORSKA_HABILITACYJNA_FIELDS = DWA_TYTULY \
-                                 + MODEL_ZE_SZCZEGOLAMI \
-                                 + (
-    'miejsce_i_rok', 'wydawnictwo', 'autor', 'jednostka') \
-                                 + MODEL_Z_ROKIEM
+DOKTORSKA_FIELDS = DWA_TYTULY \
+                     + MODEL_ZE_SZCZEGOLAMI \
+                     + ('miejsce_i_rok', 'wydawnictwo', 'autor', 'jednostka', 'promotor') \
+                     + MODEL_Z_ROKIEM
 
+HABILITACYJNA_FIELDS = DWA_TYTULY \
+                     + MODEL_ZE_SZCZEGOLAMI \
+                     + ('miejsce_i_rok', 'wydawnictwo', 'autor', 'jednostka') \
+                     + MODEL_Z_ROKIEM
 
 class Praca_Doktorska_Habilitacyjna_Admin_Base(ZapiszZAdnotacjaMixin,
                                                CommitedModelAdmin):
     formfield_overrides = NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW
-
-    form = autocomplete_light.modelform_factory(Praca_Doktorska)
 
     list_display = [
         'tytul_oryginalny', 'autor', 'jednostka', 'wydawnictwo',
@@ -421,9 +423,11 @@ class Praca_Doktorska_Habilitacyjna_Admin_Base(ZapiszZAdnotacjaMixin,
 
 
 class Praca_DoktorskaAdmin(Praca_Doktorska_Habilitacyjna_Admin_Base):
+    form = autocomplete_light.modelform_factory(Praca_Doktorska)
+
     fieldsets = (
         ('Praca doktorska', {
-            'fields': DOKTORSKA_HABILITACYJNA_FIELDS
+            'fields': DOKTORSKA_FIELDS
         }),
         EKSTRA_INFORMACJE_WYDAWNICTWO_ZWARTE_FIELDSET,
         MODEL_TYPOWANY_BEZ_CHARAKTERU_FIELDSET,
@@ -460,11 +464,14 @@ class Publikacja_Habilitacyjna_Inline(admin.TabularInline):
     }
 
 class Praca_HabilitacyjnaAdmin(Praca_Doktorska_Habilitacyjna_Admin_Base):
+
     inlines = [Publikacja_Habilitacyjna_Inline, ]
+
     form = autocomplete_light.modelform_factory(Praca_Habilitacyjna)
+
     fieldsets = (
         ('Praca habilitacyjna', {
-            'fields': DOKTORSKA_HABILITACYJNA_FIELDS
+            'fields': HABILITACYJNA_FIELDS
         }),
         EKSTRA_INFORMACJE_WYDAWNICTWO_ZWARTE_FIELDSET,
         MODEL_TYPOWANY_BEZ_CHARAKTERU_FIELDSET,
