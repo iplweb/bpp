@@ -7,7 +7,7 @@ from django.db.models import Q
 from django.db.models.expressions import F
 from djorm_pgfulltext.fields import TSConfig
 from multiseek import logic
-from multiseek.logic import DecimalQueryObject
+from multiseek.logic import DecimalQueryObject, BooleanQueryObject
 from multiseek.logic import StringQueryObject, QueryObject, EQUALITY_OPS_ALL, \
     UnknownOperation, DIFFERENT_ALL, AUTOCOMPLETE, EQUALITY_OPS_NONE, \
     EQUALITY_OPS_FEMALE, VALUE_LIST, EQUALITY_OPS_MALE, create_registry, IntegerQueryObject, ValueListQueryObject, EQUAL, DIFFERENT, \
@@ -288,6 +288,15 @@ class ZrodloQueryObject(AutocompleteQueryObject):
     def get_autocomplete_query(self, data):
         return Zrodlo.objects.fulltext_filter(data)
 
+class AfiliowanaQueryObject(BooleanQueryObject):
+    field_name = "afiliowana"
+    label = "Praca afiliowana"
+
+
+class RecenzowanaQueryObject(BooleanQueryObject):
+    field_name = "recenzowana"
+    label = "Praca recenzowana"
+
 
 registry = create_registry(
     Rekord,
@@ -319,6 +328,10 @@ registry = create_registry(
 
     AdnotacjeQueryObject(),
     DataUtworzeniaQueryObject(),
+
+    AfiliowanaQueryObject(),
+    RecenzowanaQueryObject(),
+
     ordering=[
         Ordering("", u"(nieistotne)"),
         Ordering("tytul_oryginalny", u"tytuł oryginalny"),
