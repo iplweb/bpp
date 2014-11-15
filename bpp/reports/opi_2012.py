@@ -10,15 +10,15 @@ from datetime import date, datetime
 import os
 import shutil
 import tempfile
-from django.core.files.base import File
 
+from django.core.files.base import File
 from django.db.models import Q
+from celeryui.registry import ReportAdapter
 
 from bpp.models import Wydawnictwo_Ciagle, Charakter_Formalny, \
     Wydawnictwo_Zwarte, Jezyk, Typ_KBN, Typ_Odpowiedzialnosci, Wydzial
 from bpp.reports import wytnij_numery_stron, \
-    wytnij_zbedne_informacje_ze_zrodla, wytnij_tom, slugify, addToRegistry
-from celeryui.registry import ReportAdapter
+    wytnij_zbedne_informacje_ze_zrodla, wytnij_tom, addToRegistry
 from bpp.util import zrob_cache
 
 
@@ -528,7 +528,7 @@ def make_report_zipfile(wydzialy, rok_min=2009, rok_maks=2012):
         # Zzipuj wszystko
         os.chdir(katalog)
         zipname = "raporty_OPI_%s.zip" % datetime.now().date()
-        os.system("zip -r %s ." % zipname)
+        os.system("zip --quiet -r %s ." % zipname)
 
         # Utwórz nowy katalog temp na plik zip
         katalog_zip = tempfile.mkdtemp("-BPP-ZIP")
