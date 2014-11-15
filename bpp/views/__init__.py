@@ -4,7 +4,7 @@ from django import shortcuts
 from django.db.models import Q
 from django.core.urlresolvers import reverse
 from django.contrib.auth import get_user_model
-from django.http.response import Http404, HttpResponse
+from django.http.response import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from sendfile import sendfile
 
@@ -173,7 +173,7 @@ def favicon(request):
     try:
         fn = Uczelnia.objects.get(pk=1).favicon_ico
     except Uczelnia.DoesNotExist:
-        raise Http404
+        return HttpResponse("create Uczelnia object first")
 
     try:
         return sendfile(request, fn.path)
