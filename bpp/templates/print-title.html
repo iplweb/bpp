@@ -1,21 +1,25 @@
 <div class="print-only">
 
-        <center>
-            <table>
-                <tr>
-                    <td width="100">
-            <img src="/media/{{ uczelnia.logo_www }}"
-                                 alt="Logo {{ uczelnia.nazwa_dopelniacz }}"
-                        style="align: left; " width="100"/>
+    <center>
+        <table>
+            <tr>
+                <td width="100">
+                    {% if uczelnia.logo_www %}
 
-                    </td>
-                    <td>
+                        <img src="/media/{{ uczelnia.logo_www }}"
+                             alt="Logo {{ uczelnia.nazwa_dopelniacz }}"
+                             style="align: left; " width="100"/>
+                    {% endif %}
 
-            <strong style="font-size: 18pt;">Bibliografia Publikacji Pracowników
-                {{ uczelnia.nazwa_dopelniacz }}</strong>
+                </td>
+                <td>
 
-                    </td>
-                </tr>
-            </table>
-        </center>
-    </div>
+                    <strong style="font-size: 18pt;">Bibliografia Publikacji
+                        Pracowników
+                        {{ uczelnia.nazwa_dopelniacz }}</strong>
+
+                </td>
+            </tr>
+        </table>
+    </center>
+</div>
