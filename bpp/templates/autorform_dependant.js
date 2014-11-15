@@ -122,19 +122,28 @@ window.bpp.ustawZaleznosciDlaWiersza = function (numer, noReset) {
 	    /* cala ta funkcja jest tu tylko dlatego, ze normalne 'lapanie' 
 	       eventu 'change' wyemitowanego dla selecta autocomplete (w d-a-light)
 	       NIE jest z jakichs powodow mozliwe, wiec lapiemy event zmieniajacy
-	       pole tekstowe (przy wychdozeniu z niego), nastepnie czekamy 100 ms na 
+	       pole tekstowe (przy wychdozeniu z niego), nastepnie czekamy 200 ms na
 	       ustawienie selecta przez kod jquery PO tym evencie zmiany, nastepnie
 	       sami mozemy zasymulowac emitowanie eventu change.
 	    */
 	    
 	    var target = $(e.target);
-	    if (target.attr("class") == " autocomplete") {
-		value_select = target.siblings().next().next().next().first();
-		setTimeout(function() {
-		    if (value_select.attr("id").endsWith("-autor")) {
-			onAutorChanged(value_select);
-		    }
-		}, 200);
+
+        console.log("TARGET", target);
+        console.log("TARGET CLASS", target.attr("class"));
+        console.log("TARGET CLASS EQUALS ", target.attr("class") == "autocomplete");
+
+	    if (target.attr("class") == "autocomplete") {
+
+            var value_select = target.siblings().next().next().next().first();
+
+            console.log("VAR VALUE SELECT", value_select);
+
+            setTimeout(function() {
+                if (value_select.attr("id").endsWith("-autor"))
+                    onAutorChanged(value_select);
+            }, 200);
+
 	    }}});
 	
     });
