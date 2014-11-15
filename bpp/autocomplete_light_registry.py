@@ -55,7 +55,8 @@ class AutocompleteJednostka(autocomplete_light.AutocompleteModelTemplate):
 autocomplete_light.register(
     Jednostka, AutocompleteJednostka,
     search_fields=('nazwa',),
-    name="JednostkaMultiseek", choice_template="autocompletes/jednostka.html")
+    name="JednostkaMultiseek",
+    choice_template="autocompletes/jednostka.html")
 
 autocomplete_light.register(
     Jednostka, AutocompleteJednostka,

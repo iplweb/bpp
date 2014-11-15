@@ -5,14 +5,13 @@
 "od ręki" -- generowane za pomocą WWW"""
 from crispy_forms.helper import FormHelper
 from django import forms
-
 import autocomplete_light
 from crispy_forms_foundation.layout import Layout, Fieldset, ButtonHolder, \
     Submit, Hidden, Row, Column as F4Column
-from .ranking_autorow import *
-from .raport_jednostek_2012 import *
-from bpp.models import Wydzial
 from django.core import validators
+
+from bpp.models import Wydzial
+
 
 def ustaw_rok(rok, lata):
     lata = list(lata)
@@ -86,9 +85,8 @@ class RaportOPI2012Form(forms.Form):
 
 
 class RaportJednostekForm(forms.Form):
-    jednostka = forms.ModelChoiceField(
-        queryset=Jednostka.objects.all(),
-        widget=autocomplete_light.ChoiceWidget('JednostkaAutocompleteJednostka'))
+    jednostka = autocomplete_light.ChoiceField(
+        'JednostkaAutocompleteJednostka')
 
     od_roku = forms.IntegerField()
     do_roku = forms.IntegerField()
@@ -102,7 +100,9 @@ class RaportJednostekForm(forms.Form):
         self.helper.layout = Layout(
             Fieldset(
                 'Raport jednostek',
-                'jednostka',
+                Row(
+                    F4Column('jednostka', css_class='large-12 small-12')
+                ),
                 Row(
                     F4Column('od_roku', css_class='large-6 small-6'),
                     F4Column('do_roku', css_class='large-6 small-6')
@@ -120,9 +120,8 @@ class RaportJednostekForm(forms.Form):
 
 
 class RaportDlaKomisjiCentralnejForm(forms.Form):
-    autor = forms.ModelChoiceField(
-        Autor.objects.all(),
-        widget=autocomplete_light.ChoiceWidget('AutorAutocompleteAutor'))
+    autor = autocomplete_light.ModelChoiceField(
+        'AutorAutocompleteAutor')
 
     rok_habilitacji = forms.IntegerField(required=False)
 

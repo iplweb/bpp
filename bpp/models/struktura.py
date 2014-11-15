@@ -8,10 +8,9 @@ from datetime import datetime
 from django.db import models
 from autoslug import AutoSlugField
 from django.db.models import Q
-from bpp.util import FulltextSearchMixin
 from djorm_pgfulltext.fields import VectorField
-from djorm_pgfulltext.models import SearchManager
 
+from bpp.util import FulltextSearchMixin
 from bpp.models import ModelZAdnotacjami, NazwaISkrot, ModelHistoryczny
 from bpp.models.abstract import NazwaWDopelniaczu
 from bpp.models.autor import Autor, Autor_Jednostka
@@ -94,7 +93,12 @@ class Jednostka(ModelZAdnotacjami, ModelHistoryczny):
     def __unicode__(self):
         ret = self.nazwa
 
-        if self.wydzial:
+        try:
+            wydzial = self.wydzial
+        except: # TODO catch-all
+            wydzial = None
+
+        if wydzial is not None:
             ret += u" (%s)" % self.wydzial.skrot
 
         return ret
