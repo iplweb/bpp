@@ -191,7 +191,7 @@ class SeleniumAdminTestAutomatycznieUzupelnijPunkty(
 
         # Teraz usuniemy źródło i sprawdzimy, czy przycisk zmieni nazwę
         self.assertEquals(button.text(), u"Wypełniona!")
-        self.page.execute_script('$("span.remove.div").click()')
+        self.page.execute_script('$("span.remove").first().click()')
         time.sleep(1)
         self.assertEquals(button.text(), u"Wypełnij pola punktacji")
 
@@ -210,9 +210,9 @@ class SeleniumAdminTestUploadujPunkty(
 
         z = self.z
 
-        byId("zrodlo_text").send_keys("WTF LOL")
+        byId("zrodlo-autocomplete").send_keys("WTF LOL")
         time.sleep(2)
-        byId("zrodlo_text").send_keys(Keys.TAB)
+        byId("zrodlo-autocomplete").send_keys(Keys.TAB)
         byId("rok").send_keys(str(CURRENT_YEAR))
         byId("impact_factor").val("50")
 
@@ -245,7 +245,7 @@ class SeleniumAdminTestAutorformJednostka(SeleniumLoggedInAdminTestCase):
         SeleniumLoggedInAdminTestCase.setUp(self)
 
     def test_uzupelnianie_jednostki(self):
-        aut = self.page.find_element_by_id("id_wydawnictwo_ciagle_autor_set-0-autor_text")
+        aut = self.page.find_element_by_id("id_wydawnictwo_ciagle_autor_set-0-autor-autocomplete")
         aut.send_keys("KOWALSKI")
         time.sleep(2)
         aut.send_keys(Keys.TAB)
@@ -265,7 +265,7 @@ class SeleniumAdminTestAutorformJednostka(SeleniumLoggedInAdminTestCase):
 
         # a potem wpisz dane i sprawdź, że jednostki NIE będzie
 
-        aut = self.page.find_element_by_id("id_wydawnictwo_ciagle_autor_set-1-autor_text")
+        aut = self.page.find_element_by_id("id_wydawnictwo_ciagle_autor_set-1-autor-autocomplete")
         aut.send_keys("KOWALSKI")
         time.sleep(2)
         aut.send_keys(Keys.TAB)
