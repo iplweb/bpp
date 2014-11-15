@@ -1,8 +1,8 @@
 # -*- encoding: utf-8 -*-
 
 import autocomplete_light
+
 from bpp.models import Autor, Jednostka, Zrodlo, Wydawnictwo_Zwarte
-from bpp.views import zapytaj_o_autora
 from bpp.jezyk_polski import warianty_zapisanego_nazwiska
 
 
@@ -17,7 +17,7 @@ class AutocompleteAutor(autocomplete_light.AutocompleteModelTemplate):
 
 
 class AutorMultiseek(autocomplete_light.AutocompleteModelTemplate):
-    model = 'autor'
+    choices = Autor.objects
     limit_choices = 10
 
     def choices_for_request(self):

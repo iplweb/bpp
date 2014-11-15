@@ -14,6 +14,7 @@ from bpp.models import Jezyk, Typ_KBN, Uczelnia, Wydzial, \
 
 
 
+
 # Proste tabele
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
 from bpp.models.zrodlo import Redakcja_Zrodla
@@ -245,18 +246,18 @@ from django.forms.widgets import HiddenInput
 
 
 def generuj_inline_dla_autorow(baseModel):
-    class baseModel_AutorForm(forms.ModelForm):
+    class baseModel_AutorForm(autocomplete_light.ModelForm):
         class Media:
             js = (
                 "../dynjs/autorform_dependant.js?class=%s" % baseModel.__name__, )
 
         class Meta:
             model = baseModel
-            widgets = dict(
-                autocomplete_light.get_widgets_dict(baseModel).items() +
-                [('zapisany_jako', autocomplete_light.TextWidget(
-                    'AutocompleteZapisaneNazwiska')),
-                 ('kolejnosc', HiddenInput)])
+            widgets = {
+                'zapisany_jako': autocomplete_light.TextWidget(
+                    'AutocompleteZapisaneNazwiska'),
+                'kolejnosc': HiddenInput
+            }
 
     class baseModel_AutorInline(admin.TabularInline):
         model = baseModel
@@ -355,7 +356,8 @@ class Wydawnictwo_ZwarteAdmin_Baza(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
         'wydawnictwo', 'redakcja', 'adnotacje']
 
     list_filter = ['status_korekty', 'afiliowana', 'recenzowana', 'typ_kbn',
-                   'charakter_formalny', 'liczba_znakow_wydawniczych']
+                   'charakter_formalny', 'liczba_znakow_wydawniczych',
+                   'informacja_z']
 
     fieldsets = (
         ('Wydawnictwo zwarte', {
@@ -442,22 +444,18 @@ admin.site.register(Praca_Doktorska, Praca_DoktorskaAdmin)
 #
 # Praca Habilitacyjna
 #
-
+#
 class Publikacja_Habilitacyjna_Form(forms.ModelForm):
     class Meta:
         model = Publikacja_Habilitacyjna
-        widgets = dict(
-            autocomplete_light.get_widgets_dict(
-                Publikacja_Habilitacyjna).items() +
-            [('kolejnosc', HiddenInput)])
+        widgets = {'kolejnosc': HiddenInput}
 
 
 class Publikacja_Habilitacyjna_Inline(admin.TabularInline):
     model = Publikacja_Habilitacyjna
-    form = Publikacja_Habilitacyjna_Form  # autocomplete_light.modelform_factory(Publikacja_Habilitacyjna)
+    form = Publikacja_Habilitacyjna_Form
     extra = 1
     sortable_field_name = "kolejnosc"
-
 
     related_lookup_fields = {
         'generic': [['content_type', 'object_id']],
