@@ -1,16 +1,16 @@
 # -*- encoding: utf-8 -*-
 import os
+import sys
 from zipfile import ZipFile
 
 from django.test import TestCase
 from model_mommy import mommy
+
 from bpp.models import Typ_KBN, Charakter_Formalny, Zasieg_Zrodla, Zrodlo, \
     Redakcja_Zrodla, Tytul, Rekord
 from bpp.models.system import Jezyk
 from bpp.reports.komisja_centralna import RaportKomisjiCentralnej, get_queries, RokHabilitacjiNiePodany, make_report_zipfile
-from bpp.tests.util import any_jednostka, any_autor, any_habilitacja, \
-    CURRENT_YEAR, any_ciagle, any_patent, any_zwarte
-
+from bpp.tests.util import any_jednostka, any_autor, CURRENT_YEAR, any_ciagle, any_patent, any_zwarte
 from bpp.util import Getter
 
 
@@ -27,7 +27,8 @@ class TestRKCMixin:
         x = open(fn, 'wb')
         x.write(res.encode('utf-8'))
         x.close()
-        os.system("start %s" % fn)
+        if sys.platform == 'win32':
+            os.system("start %s" % fn)
 
 
 typ_kbn = Getter(Typ_KBN)
