@@ -1,20 +1,16 @@
 # -*- encoding: utf-8 -*-
 import time
-from django.contrib.auth import get_user_model
-from django.contrib.auth.models import User
 
+from django.contrib.auth import get_user_model
 from django.core.urlresolvers import reverse
 from django.test.testcases import LiveServerTestCase
 from selenium.webdriver.common.keys import Keys
 from splinter.browser import Browser
-from bpp.models.system import Status_Korekty
+from celeryui.models import Report
+from django.conf import settings
+
 from bpp.tests.util import any_autor, CURRENT_YEAR, any_ciagle, any_jednostka
 
-from selenium_helpers import wd
-from celeryui.models import Report
-from bpp.tests.helpers import SeleniumLoggedInTestCase
-from selenium.webdriver import Remote
-from django.conf import settings
 
 DEFAULT_LOGIN = 'foo'
 DEFAULT_PASSWORD = 'bar'
@@ -28,7 +24,6 @@ class RaportyPage(LiveServerTestCase):
 
     def go(self, url):
         final_url = self.live_server_url + url
-        print "self.browser.visit", final_url
         self.browser.visit(final_url)
 
     def login(self, username=DEFAULT_LOGIN, password=DEFAULT_PASSWORD):
@@ -101,9 +96,11 @@ class TestRaportyPage(RaportyPage):
     def test_raport_jednostek(self):
         self.go(reverse("bpp:raport_jednostek_formularz"))
 
-        elem = self.browser.find_by_css("input#id_jednostka_text.choicewidget")[0]
-        for x in elem.type("Jed" + Keys.TAB, slowly=True):
-            time.sleep(0.5)
+        elem = self.browser.find_by_id("id_jednostka-autocomplete")[0]
+        elem.type("Jedn")
+        time.sleep(2)
+        elem.type(Keys.TAB)
+        time.sleep(1)
 
         self.browser.execute_script('$("input[name=od_roku]:visible").val("' + str(CURRENT_YEAR) + '")')
         self.browser.execute_script('$("input[name=do_roku]:visible").val("' + str(CURRENT_YEAR) + '")')

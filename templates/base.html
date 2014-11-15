@@ -83,7 +83,7 @@
 
                                 function resizeAutocomplete(){
                                     w = $("input#user_navigation_autocomplete").width();
-                                    $(".yourlabs-autocomplete").css("width", w);
+                                    $(".yourlabs-autocomplete").first().css("width", w);
                                 }
 
                                 $(window).resize(function() { resizeAutocomplete();});

@@ -1,17 +1,17 @@
 # -*- encoding: utf-8 -*-
-from django.core.urlresolvers import reverse
 import time
-from django.conf import settings
+
+from django.core.urlresolvers import reverse
 from django.db import transaction
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.select import Select
+
 from bpp.models import Wydawnictwo_Ciagle
 from bpp.models.patent import Patent
 from bpp.models.system import Status_Korekty
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 from bpp.models.zrodlo import Punktacja_Zrodla
 from bpp.tests import any_ciagle, any_autor, any_jednostka
-
 from bpp.tests.helpers import SeleniumLoggedInAdminTestCase
 from bpp.tests.util import any_zrodlo, CURRENT_YEAR, any_zwarte, any_patent
 
@@ -120,9 +120,9 @@ class SeleniumAdminTestAutomatycznieUzupelnijPunktyNowyRekord(
         # bo jenkins
         self.page.assertPopupContains(u"Najpierw wybierz jakie")
         time.sleep(1)
-        jq("#id_zrodlo_text").send_keys("FOO BAR")
+        jq("#id_zrodlo-autocomplete").send_keys("FOO BAR")
         time.sleep(2)
-        jq("#id_zrodlo_text").send_keys(Keys.TAB)
+        jq("#id_zrodlo-autocomplete").send_keys(Keys.TAB)
         time.sleep(2)
 
         self.page.execute_script("$('#id_wypelnij_pola_punktacji_button').click()")

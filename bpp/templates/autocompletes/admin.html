@@ -1,7 +1,7 @@
-<div data-value="{{ choice.pk }}" class="autocomplete-choice">
+{% load model_to_class %}<div data-value="{{ choice.pk }}" class="autocomplete-choice">
     {{ choice }}
     <a target="_blank"
-       href="/admin/bpp/{{ autocomplete.model }}/{{ choice.pk }}"
+       href="/admin/bpp/{{ choice|model_to_class_name|lower }}/{{ choice.pk }}"
        target="_blank">
         ►
     </a>
