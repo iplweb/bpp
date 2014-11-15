@@ -63,9 +63,11 @@
         <div class="hide-on-print">
 
             <div class="large-2 medium-2 small-3 columns">
+            {% if uczelnia.logo_www %}
                 <a href="/"><img src="/media/{{ uczelnia.logo_www }}"
                                  alt="Logo {{ uczelnia.nazwa_dopelniacz }}"
                         /></a>
+            {% endif %}
             </div>
 
             <div class="large-10 medium-10 small-9 columns">
@@ -126,7 +128,6 @@
             </div>
         </div>
     </div>
-
 
     <div class="row hide-on-print">
         <ul class="breadcrumbs hide-for-small">
