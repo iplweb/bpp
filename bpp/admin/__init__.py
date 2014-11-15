@@ -15,6 +15,7 @@ from bpp.models import Jezyk, Typ_KBN, Uczelnia, Wydzial, \
 
 
 
+
 # Proste tabele
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
 from bpp.models.zrodlo import Redakcja_Zrodla
@@ -90,7 +91,7 @@ class UczelniaAdmin(RestrictDeletionToAdministracjaGroupMixin, ZapiszZAdnotacjaM
     fieldsets = (
         (None, {
             'fields': (
-            'nazwa', 'nazwa_dopelniacz_field', 'skrot', 'logo_www', 'logo_svg'),
+            'nazwa', 'nazwa_dopelniacz_field', 'skrot', 'logo_www', 'logo_svg', 'favicon_ico'),
         }),
         ADNOTACJE_FIELDSET
     )
