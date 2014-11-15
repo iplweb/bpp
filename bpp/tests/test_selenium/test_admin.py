@@ -1,6 +1,8 @@
 # -*- encoding: utf-8 -*-
 import time
 
+from django.conf import settings
+
 from django.core.urlresolvers import reverse
 from django.db import transaction
 from selenium.webdriver.common.keys import Keys
@@ -127,8 +129,6 @@ class SeleniumAdminTestAutomatycznieUzupelnijPunktyNowyRekord(
 
         self.page.execute_script("$('#id_wypelnij_pola_punktacji_button').click()")
         self.page.assertPopupContains(u"Uzupełnij pole")
-
-from django.conf import settings
 
 class SeleniumAdminTestAutomatycznieUzupelnijPunkty(
     ProperClickMixin, SeleniumLoggedInAdminTestCase):
