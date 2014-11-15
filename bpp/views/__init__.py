@@ -4,18 +4,13 @@ from django import shortcuts
 from django.db.models import Q
 from django.core.urlresolvers import reverse
 from django.contrib.auth import get_user_model
-from django.http.response import HttpResponseNotFound, Http404, HttpResponse
+from django.http.response import Http404, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.views.generic import UpdateView
-from django import forms
 from sendfile import sendfile
 
 from bpp.views.utils import JSONResponseMixin
-
-
-from bpp.models import Autor, Jednostka, Wydawnictwo_Zwarte, \
-    Wydawnictwo_Ciagle, Praca_Doktorska, Praca_Habilitacyjna, Patent, Zrodlo, \
-    Uczelnia, BppUser
+from bpp.models import Autor, Jednostka, Zrodlo, \
+    Uczelnia
 
 
 def zapytaj_o_autora(q):
@@ -183,7 +178,8 @@ def favicon(request):
     try:
         return sendfile(request, fn.path)
     except ValueError:
-        raise Http404
+        return HttpResponse("icon image is not set")
+        # raise Http404
 
 
 from .mymultiseek import *
