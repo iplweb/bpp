@@ -12,7 +12,7 @@ Django==1.7
 django-autoslug==1.7.1
 django-pagination==1.0.7
 # UWAGA wymagany jest build ze zrodel z mojego repo na github
-django-grappelli==2.6.3
+django-grappelli==2.6.4
 django-autocomplete-light==2.0.1
 django-celery-ui==0.2
 django_multiseek==0.9.12
