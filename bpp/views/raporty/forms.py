@@ -85,7 +85,7 @@ class RaportOPI2012Form(forms.Form):
 
 
 class RaportJednostekForm(forms.Form):
-    jednostka = autocomplete_light.ChoiceField(
+    jednostka = autocomplete_light.ModelChoiceField(
         'JednostkaAutocompleteJednostka')
 
     od_roku = forms.IntegerField()
