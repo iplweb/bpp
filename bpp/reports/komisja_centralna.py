@@ -14,6 +14,7 @@ from django.utils import safestring
 from django_tables2 import Column, A, Table
 
 from bpp.models import Autor, Typ_KBN, Rekord, Charakter_Formalny, Zasieg_Zrodla, Redakcja_Zrodla
+
 #from bpp.models.cache import cache_znajdz_autora_i_typ
 from bpp.models.system import Typ_Odpowiedzialnosci, Jezyk
 from bpp.reports import addToRegistry
@@ -431,7 +432,7 @@ def make_report_zipfile(autor_id, rok_habilitacji):
         zipname = "%s.zip" % subdir
 
         os.chdir('..')
-        os.system('zip -r "%s" "%s"' % (zipname, subdir))
+        os.system('zip --quiet -r "%s" "%s" ' % (zipname, subdir))
         shutil.rmtree(subdir)
 
         return os.path.abspath(zipname)
