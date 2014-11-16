@@ -85,6 +85,7 @@ class TestRaportyPage(RaportyPage):
     def test_submit(self):
         self.go(reverse("bpp:raport_kronika_uczelni"))
         self.submit_page()
+        time.sleep(3)
         self.assertIn("To pole jest wymagane", self.browser.html)
 
     def test_ranking_autorow(self):
