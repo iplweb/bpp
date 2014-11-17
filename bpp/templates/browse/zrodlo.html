@@ -24,6 +24,7 @@
             Wyszukaj prace w tym źródle:
         </p>
         {% include "browse/w_latach.html" with prace_w_latach=zrodlo.prace_w_latach %}
+        {% include "browse/tytul_raportu.html" with obj=zrodlo %}
         <input class="submit button" type="submit" value="Wyślij zapytanie"/>
     </form>
 
