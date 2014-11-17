@@ -1,6 +1,8 @@
 # -*- encoding: utf-8 -*-
 import re
+
 from unidecode import unidecode
+
 
 non_url = re.compile(r'[^\w-]+')
 
@@ -78,14 +80,23 @@ class Getter:
         self.field = field
         self.klass = klass
 
-    def __getattr__(self, item):
-        kw = {self.field: item}
-        return self.klass.objects.get(**kw)
-
     def __getitem__(self, item):
         kw = {self.field: item}
         return self.klass.objects.get(**kw)
 
+    __getattr__ = __getitem__
+
+class NewGetter(Getter):
+    """Zwraca KeyError zamiast DoesNotExist."""
+
+    def __getitem__(self, item):
+        kw = {self.field: item}
+        try:
+            return self.klass.objects.get(**kw)
+        except self.klass.DoesNotExist, e:
+            raise KeyError, e
+
+    __getattr__ = __getitem__
 
 def zrob_cache(t):
     zle_znaki = [" ", ":", ";", "-", ",", "-", ".", "(", ")", "?", "!", u"ę", u"ą", u"ł", u"ń", u"ó", u"ź", u"ż"]
