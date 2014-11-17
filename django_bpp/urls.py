@@ -1,12 +1,12 @@
 # -*- encoding: utf-8 -*-
 
 from django.conf.urls import patterns, include, url
-
-import autocomplete_light
 from django.conf.urls.static import static
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
+
+import autocomplete_light
 from bpp.forms import MyAuthenticationForm
 from bpp.views.admin import WydawnictwoCiagleTozView, WydawnictwoZwarteTozView, \
     PatentTozView
@@ -96,6 +96,9 @@ urlpatterns = patterns(
     (r'^messages/', include('monitio.urls', namespace="monitio")),
 
     (r'^jsi18n$', 'django.views.i18n.javascript_catalog', js_info_dict),
+
+    url(r'session_security/', include('session_security.urls')),
+
 
 ) + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) \
   + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
