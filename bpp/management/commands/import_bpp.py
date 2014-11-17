@@ -117,7 +117,7 @@ def szczegoly_i_inne(dct, kw, zrodlowe_pole_dla_informacji):
         slowa_kluczowe=dct['slowa_kluczowe'],
 
         # ModelZRokiem
-        rok=dct['rok'],
+        rok=dct['rok_publikacji'],
 
         # ModelZWWW
         www=convert_www(dct['www']),
