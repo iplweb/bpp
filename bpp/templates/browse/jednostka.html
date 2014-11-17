@@ -62,6 +62,7 @@
         {% endif %}
 
         {% include "browse/w_latach.html" with prace_w_latach=jednostka.prace_w_latach %}
+        {% include "browse/tytul_raportu.html" with obj=jednostka %}
         <input class="submit button" type="submit" value="Wyślij zapytanie"/>
     </form>
 
