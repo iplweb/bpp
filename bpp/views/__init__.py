@@ -8,6 +8,7 @@ from django.http.response import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from sendfile import sendfile
 
+from bpp.models.cache import Rekord
 from bpp.views.utils import JSONResponseMixin
 from bpp.models import Autor, Jednostka, Zrodlo, \
     Uczelnia
