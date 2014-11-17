@@ -1,6 +1,9 @@
 # -*- encoding: utf-8 -*-
 
-import sys
+import sys, os
+
+# pycharm, leave this
+os
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
