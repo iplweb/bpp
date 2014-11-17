@@ -75,7 +75,7 @@
         "fields": {
             "nazwa": "Książka w języku polskim",
             "skrot": "KSP",
-            "publikacja": false,
+            "publikacja": true,
             "streszczenie": false
         }
     },
@@ -85,7 +85,7 @@
         "fields": {
             "nazwa": "Książka w języku obcym",
             "skrot": "KSZ",
-            "publikacja": false,
+            "publikacja": true,
             "streszczenie": false
         }
     },
