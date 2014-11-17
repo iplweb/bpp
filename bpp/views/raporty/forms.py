@@ -5,11 +5,12 @@
 "od ręki" -- generowane za pomocą WWW"""
 from crispy_forms.helper import FormHelper
 from django import forms
-import autocomplete_light
 from crispy_forms_foundation.layout import Layout, Fieldset, ButtonHolder, \
     Submit, Hidden, Row, Column as F4Column
 from django.core import validators
+from django.core.exceptions import ValidationError
 
+import autocomplete_light
 from bpp.models import Wydzial
 
 
@@ -82,6 +83,13 @@ class RaportOPI2012Form(forms.Form):
         super(RaportOPI2012Form, self).__init__(*args, **kwargs)
         ustaw_rok(self['od_roku'], lata)
         ustaw_rok(self['do_roku'], lata)
+
+    def clean(self):
+        od_roku = self.cleaned_data.get('od_roku')
+        do_roku = self.cleaned_data.get("do_roku")
+
+        if od_roku > do_roku:
+            raise ValidationError("Data w polu 'Do roku' musi być większa lub równa, jak w polu 'Od roku'.")
 
 
 class RaportJednostekForm(forms.Form):
