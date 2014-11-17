@@ -2,8 +2,8 @@
 from django.db.models.fields import BLANK_CHOICE_DASH
 from django import forms
 from django.contrib import admin
-import autocomplete_light
 
+import autocomplete_light
 from bpp.admin.helpers import *
 from bpp.models import Jezyk, Typ_KBN, Uczelnia, Wydzial, \
     Jednostka, Tytul, Autor, Autor_Jednostka, Funkcja_Autora, Rodzaj_Zrodla, \
@@ -11,6 +11,7 @@ from bpp.models import Jezyk, Typ_KBN, Uczelnia, Wydzial, \
     Zrodlo_Informacji, Wydawnictwo_Ciagle, Charakter_Formalny, \
     Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor, Praca_Doktorska, \
     Praca_Habilitacyjna, Patent, Patent_Autor, BppUser, Publikacja_Habilitacyjna
+
 
 
 
@@ -425,8 +426,12 @@ class Praca_Doktorska_Habilitacyjna_Admin_Base(ZapiszZAdnotacjaMixin,
     list_filter = ['status_korekty', 'afiliowana', 'recenzowana', 'typ_kbn']
 
 
+class Praca_DoktorskaForm(autocomplete_light.ModelForm):
+    class Meta:
+        model = Praca_Doktorska
+
 class Praca_DoktorskaAdmin(Praca_Doktorska_Habilitacyjna_Admin_Base):
-    form = autocomplete_light.modelform_factory(Praca_Doktorska)
+    form = Praca_DoktorskaForm
 
     fieldsets = (
         ('Praca doktorska', {

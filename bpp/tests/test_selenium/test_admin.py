@@ -2,7 +2,6 @@
 import time
 
 from django.conf import settings
-
 from django.core.urlresolvers import reverse
 from django.db import transaction
 from selenium.webdriver.common.keys import Keys
@@ -222,8 +221,6 @@ class SeleniumAdminTestUploadujPunkty(
         self.assertEquals(Punktacja_Zrodla.objects.count(), 1)
         self.assertEquals(Punktacja_Zrodla.objects.all()[0].impact_factor, 50)
 
-
-
         byId("impact_factor").val("60")
         self.proper_click("dodaj_punktacje_do_zrodla_button")
         time.sleep(2)
@@ -276,3 +273,24 @@ class SeleniumAdminTestAutorformJednostka(SeleniumLoggedInAdminTestCase):
             jed.first_selected_option.text(),
             "WTF LOL")
 
+
+    def test_kasowanie_autora(self):
+        # bug polegający na tym, że przy dodaniu autora i potem skasowaniu go,
+        # pole jednostki i nazwisk się NIE czyści
+        # ... ale zostawiam to w spokoju.
+        # bo: 1) trudno zlapac event czyszczenia pola ( d-a-light zmienia chyba DOM)
+        #     2) co to niby ma dać?
+        #     3) ten test zostaje, bo sprawdza działanie przycisku 'remove' - był bug na to
+
+        aut = self.page.find_element_by_id("id_wydawnictwo_ciagle_autor_set-0-autor-autocomplete")
+        aut.send_keys("KOWALSKI")
+        time.sleep(2)
+        aut.send_keys(Keys.TAB)
+        time.sleep(2)
+
+        self.page.execute_script("""
+        $("#id_wydawnictwo_ciagle_autor_set-0-autor-deck").find(".remove").click()
+        """)
+
+        jed = Select(self.page.find_element_by_id("id_wydawnictwo_ciagle_autor_set-0-jednostka"))
+        self.assertEquals(jed.first_selected_option.text(), "WTF LOL")

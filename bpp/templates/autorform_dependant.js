@@ -77,7 +77,7 @@ window.bpp.ustawZaleznosciDlaWiersza = function (numer, noReset) {
 (function ($) {
 
     $(document).ready(function () {
-	
+
 	for (a = 0; a < 199; a++) {
 	    // 200 autorow should be enough for anyone
 	    if (bpp.wiersz(a, 'autor').length)
@@ -88,14 +88,14 @@ window.bpp.ustawZaleznosciDlaWiersza = function (numer, noReset) {
 
 	function onAutorChanged(t) {
 	    var autorSelectElement = $(t);
-	    console.log(autorSelectElement);
-	    var id = $(t).attr('id'); // id_wydawnictwo_ciagle_autor_set-3-autor
+
+        var id = $(t).attr('id'); // id_wydawnictwo_ciagle_autor_set-3-autor
 	    id = id.replace('id_{{ class }}_set-', '').replace('-autor', '');
 	    bpp.ustawZaleznosciDlaWiersza(id);
-	    
+
 	    jednostkaSelectElement = bpp.wiersz(id, 'jednostka');
 	    typOdpowiedzialnosciSelectElement = bpp.wiersz(id, 'typ_odpowiedzialnosci');
-	    
+
 	    autor_id = autorSelectElement.val()[0];
 	    if (autor_id != null)
 		$.ajax(
@@ -112,32 +112,26 @@ window.bpp.ustawZaleznosciDlaWiersza = function (numer, noReset) {
 			    // gdyby nie to, ze jest to cholernie karkolomne do zrobienia
 			    // w javascript
                 typOdpowiedzialnosciSelectElement.val(1);
-			    
+
 			});
 
 	}
-	
-	
+
+
 	$("body").on({"change": function(e) {
-	    /* cala ta funkcja jest tu tylko dlatego, ze normalne 'lapanie' 
+	    /* cala ta funkcja jest tu tylko dlatego, ze normalne 'lapanie'
 	       eventu 'change' wyemitowanego dla selecta autocomplete (w d-a-light)
 	       NIE jest z jakichs powodow mozliwe, wiec lapiemy event zmieniajacy
 	       pole tekstowe (przy wychdozeniu z niego), nastepnie czekamy 200 ms na
 	       ustawienie selecta przez kod jquery PO tym evencie zmiany, nastepnie
 	       sami mozemy zasymulowac emitowanie eventu change.
 	    */
-	    
+
 	    var target = $(e.target);
-
-        console.log("TARGET", target);
-        console.log("TARGET CLASS", target.attr("class"));
-        console.log("TARGET CLASS EQUALS ", target.attr("class") == "autocomplete");
-
-	    if (target.attr("class") == "autocomplete") {
+        console.log("TARGET" ,target);
+        if (target.attr("class") == "autocomplete") {
 
             var value_select = target.siblings().next().next().next().first();
-
-            console.log("VAR VALUE SELECT", value_select);
 
             setTimeout(function() {
                 if (value_select.attr("id").endsWith("-autor"))
@@ -145,8 +139,8 @@ window.bpp.ustawZaleznosciDlaWiersza = function (numer, noReset) {
             }, 200);
 
 	    }}});
-	
+
     });
-    
+
 })(django.jQuery);
 
