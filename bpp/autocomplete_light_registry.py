@@ -87,8 +87,12 @@ class AutocompleteZapisaneNazwiska(autocomplete_light.AutocompleteTemplate):
     autocomplete_js_attributes = {'placeholder': 'zapisany...'}
 
     def choices_for_request(self):
+        autor_id = self.request.GET.get('autor_id')
+        if autor_id is None:
+            return ['(... może najpierw wybierz autora)']
+
         try:
-            autor_id = int(self.request.GET.get('autor_id'))
+            autor_id = int(autor_id)
             a = Autor.objects.get(pk=autor_id)
         except (KeyError, ValueError):
             return []
