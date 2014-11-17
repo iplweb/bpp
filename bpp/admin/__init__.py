@@ -17,6 +17,7 @@ from bpp.models import Jezyk, Typ_KBN, Uczelnia, Wydzial, \
 
 
 
+
 # Proste tabele
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
 from bpp.models.zrodlo import Redakcja_Zrodla
@@ -388,13 +389,12 @@ class Wydawnictwo_ZwarteAdmin(Wydawnictwo_ZwarteAdmin_Baza):
                 + MODEL_ZE_SZCZEGOLAMI
                 + ('wydawnictwo_nadrzedne', 'miejsce_i_rok', 'wydawnictwo',)
                 + MODEL_Z_ROKIEM
-                + ('liczba_znakow_wydawniczych',)
         }),
         EKSTRA_INFORMACJE_WYDAWNICTWO_ZWARTE_FIELDSET,
         MODEL_TYPOWANY_FIELDSET,
         MODEL_PUNKTOWANY_FIELDSET,
         MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
-        POZOSTALE_MODELE_FIELDSET,
+        POZOSTALE_MODELE_WYDAWNICTWO_ZWARTE_FIELDSET,
         ADNOTACJE_FIELDSET)
 
 

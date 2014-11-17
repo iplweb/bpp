@@ -1,13 +1,9 @@
 # -*- encoding: utf-8 -*-
 
-from django.forms.util import flatatt
 from django.forms.widgets import Textarea
 from django.db import models
 
 # Pomocnik dla klasy ModelZMetryczka
-from django.utils.encoding import force_unicode
-from django.utils.html import conditional_escape
-from django.utils.safestring import mark_safe
 
 
 class ZapiszZAdnotacjaMixin:
@@ -109,8 +105,17 @@ POZOSTALE_MODELE_FIELDSET = ('Pozostałe informacje', {
     'classes': ('',),
     'fields': MODEL_Z_INFORMACJA_Z
               + MODEL_ZE_STATUSEM
-    + MODEL_AFILIOWANY_RECENZOWANY
+              + MODEL_AFILIOWANY_RECENZOWANY
 })
+
+POZOSTALE_MODELE_WYDAWNICTWO_ZWARTE_FIELDSET = ('Pozostałe informacje', {
+    'classes': ('',),
+    'fields': ('liczba_znakow_wydawniczych',)
+              + MODEL_Z_INFORMACJA_Z
+              + MODEL_ZE_STATUSEM
+              + MODEL_AFILIOWANY_RECENZOWANY
+})
+
 
 EKSTRA_INFORMACJE_WYDAWNICTWO_CIAGLE_FIELDSET = ('Ekstra informacje', {
     'classes': ('grp-collapse grp-closed', ),
