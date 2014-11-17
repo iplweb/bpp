@@ -1,6 +1,6 @@
 # -*- encoding: utf-8 -*-
 
-import os, sys
+import sys
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
@@ -66,6 +66,9 @@ MIDDLEWARE_CLASSES = (
     'pagination.middleware.PaginationMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django_tables2_reports.middleware.TableReportMiddleware',
+
+    'session_security.middleware.SessionSecurityMiddleware',
+
 )
 
 INTERNAL_IPS = ('127.0.0.1',)
@@ -124,7 +127,7 @@ INSTALLED_APPS = [
     'djorm_pgarray',
 
     'secure_input',
-
+    'session_security'
 ]
 
 
