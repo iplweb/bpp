@@ -35,19 +35,20 @@ form.custom .custom.checkbox.checked:before { content: "\2714";}
 // test
 
 @media print {
-    a[href] { text-decoration: none; }
-    a[href]:after { content: "" !important; }
-  body {
-    margin-left: 1cm !important;
-    margin-right: 1cm !important;
-    margin-top: 1cm !important;
-    margin-bottom: 1cm !important;
-  }
+
+  a[href] { text-decoration: none; }
+
+  a[href]:after { content: "" !important; }
 
   table {
     border: none;
+    margin: 0pt;
   }
 
+  table tfoot tr th,
+  tfoot {
+    display: table-row-group;
+  }
 }
 
 .alert-box {
