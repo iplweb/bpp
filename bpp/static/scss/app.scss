@@ -83,3 +83,11 @@ body ol li {
   background-color: #f2f2f2;
   border-radius: 6px;
 }
+
+.nonfield-errors ol {
+  margin: 0px;
+}
+
+.nonfield-errors ol li {
+  list-style-type: none;
+}
