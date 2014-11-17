@@ -94,30 +94,39 @@
             $("#rekordy-usuniete").hide();
         });
         </script>
-        <div class="panel info hide-on-print" id="panel-removed-by-hand">
-            Z zapytania usunięto ręcznie <span id="no-removed-recs">{{ removed_ids|length }}</span> rekord(ów).
-            <a id="pokaz-jakie" onclick="togglePokaz()">Pokaż, jakie.</a>
-            | <a onclick="return confirm('Czy na pewno dodać wszystkie ręcznie usunięte prace do wyników wyszukiwania ponownie?');" href="../reenable-removed-ids/">Kliknij tutaj, aby dodać je wszystkie do wyszukiwania z powrotem.</a>
-            | <a href=".">Odśwież</a>
+        {% if not print_removed %}
+            <div class="panel info hide-on-print" id="panel-removed-by-hand">
+                Z zapytania usunięto ręcznie <span id="no-removed-recs">{{ removed_ids|length }}</span> rekord(ów).
+                <a id="pokaz-jakie" onclick="togglePokaz()">Pokaż, jakie.</a>
+                | <a onclick="return confirm('Czy na pewno dodać wszystkie ręcznie usunięte prace do wyników wyszukiwania ponownie?');" href="../reenable-removed-ids/">Kliknij tutaj, aby dodać je wszystkie do wyszukiwania z powrotem.</a>
+                | <a href=".">Odśwież</a>
+                | <a href="?print-removed=1&all=1">Pokaż rekordy usunięte ręcznie</a>
+                | <a href="?print=1&print-removed=1&all=1">Wydrukuj rekordy usunięte ręcznie</a>
 
-            <div id="rekordy-usuniete">
-                <p>
-                <ul>
-                    {% for elem in removed_ids %}
-                        <li id="multiseek-row-{{ elem }}" class="multiseek-row">
-                            <span class="multiseek-element" style="text-decoration: line-through">
-                            {% opis_bibliograficzny_cache elem %}
-                                </span>
-                            <a onclick="multiseek.removeFromResults('{{ elem }}')">
-                                dodaj ponownie
-                            </a>
-                        </li>
-                    {% endfor %}
-                </ul>
-                </p>
+                <div id="rekordy-usuniete">
+                    <p>
+                    <ul>
+                        {% for elem in removed_ids %}
+                            <li id="multiseek-row-{{ elem }}" class="multiseek-row">
+                                <span class="multiseek-element" style="text-decoration: line-through">
+                                {% opis_bibliograficzny_cache elem %}
+                                    </span>
+                                <a onclick="multiseek.removeFromResults('{{ elem }}')">
+                                    dodaj ponownie
+                                </a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                    </p>
+                </div>
+
             </div>
-
-        </div>
+        {% else %}
+           <div class="panel info hide-on-print" id="panel-removed-by-hand">
+           <strong>Wyświetlam listę rekordów usuniętych ręcznie z zapytania. </strong><p></p>
+           <a href=".">Kliknij tutaj, aby wyświetlić wszystkie rekordy.</a>
+            </div>
+        {% endif %}
     {% endif %}
 
     {% if request.session.MULTISEEK_TITLE %}
