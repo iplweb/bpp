@@ -375,3 +375,6 @@ COMPRESS_ENABLED = False
 
 ALLOWED_TAGS = ('b', 'em', 'i', 'strong', 'strike', 'u', 'sup', 'font', 'sub')
 
+SESSION_SECURITY_PASSIVE_URLS = [
+    '/messages/'
+]
