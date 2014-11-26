@@ -72,7 +72,6 @@ class TestOpi2012(TestCase):
         self.assertNotIn(wc3, l)
 
     def test_publikacje_z_impactem_wykaz_A(self):
-        pw = charakter('PW')
         not_pw = charakter('WYN')
 
         wydzial = any_wydzial()
@@ -81,13 +80,6 @@ class TestOpi2012(TestCase):
         aj = mommy.make(Autor_Jednostka, autor=a1, jednostka=jed,
                        rozpoczal_prace=date(rok - 1, 1, 1),
                        zakonczyl_prace=date(rok + 5, 1, 1))
-
-        wc1 = mommy.make(
-            Wydawnictwo_Ciagle, rok=rok, charakter_formalny=pw,
-            impact_factor=1.0)
-        Wydawnictwo_Ciagle_Autor.objects.create(
-            autor=a1, rekord=wc1, jednostka=jed,
-            typ_odpowiedzialnosci=mommy.make(Typ_Odpowiedzialnosci))
 
         wc2 = mommy.make(
             Wydawnictwo_Ciagle, rok=rok, charakter_formalny=not_pw,
