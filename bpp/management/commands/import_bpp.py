@@ -170,8 +170,11 @@ def nowy_charakter_formalny(skrot):
     """Przemapuj 'stary' charakter formalny na nowy charakter formalny,
     wg. zmian ustalonych w listopadzie 2014 r.
     """
-
-    return cache.charaktery[NOWE_CHARAKTERY_MAPPING.get(skrot, skrot)]
+    try:
+        return cache.charaktery[NOWE_CHARAKTERY_MAPPING.get(skrot, skrot)]
+    except KeyError, e:
+        print "KEY ERROR DLA SKROTU %r" % skrot
+        raise e
 
 
 def jezyki_statusy(dct, kw):
