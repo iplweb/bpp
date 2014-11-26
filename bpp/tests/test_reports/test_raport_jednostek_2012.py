@@ -46,7 +46,8 @@ class TestRaportJednostek2012(TestCase):
     @with_cache
     def test_1_2(self):
         c = any_ciagle(
-            charakter_formalny=charakter("AP"),
+            charakter_formalny=charakter("AC"),
+            jezyk=jezyk("pol."),
             impact_factor=0,
             punkty_kbn=5)
         self.sprawdz("1_2", c)
@@ -54,7 +55,8 @@ class TestRaportJednostek2012(TestCase):
     @with_cache
     def test_1_3(self):
         c = any_ciagle(
-            charakter_formalny=charakter("AP"),
+            charakter_formalny=charakter("AC"),
+            jezyk=jezyk("pol."),
             uwagi="erih",
             punkty_kbn=10)
         self.sprawdz("1_3", c)
