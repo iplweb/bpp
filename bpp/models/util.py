@@ -147,7 +147,7 @@ class ZapobiegajNiewlasciwymCharakterom(models.Model):
 
     def clean_fields(self, *args, **kw):
         if self.charakter_formalny is not None:
-            if self.charakter_formalny.skrot in ['DOK', 'HAB', 'PAT']:
+            if self.charakter_formalny.skrot in ['D', 'H', 'PAT']:
                 raise ValidationError({'charakter_formalny': [
                     safestring.mark_safe(u'Jeżeli chcesz dodać rekord o typie "%s"'
                     u', <a href="%s">kliknij tutaj</a>.' % (
