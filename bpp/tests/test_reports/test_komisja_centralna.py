@@ -214,7 +214,8 @@ class TestRaportKomisjiCentralnej(TestRKCMixin, TestCase):
 
     def test_5(self):
         s = self._zrob()
-        self.assertIn('naukowe i inne, liczba prac: 2', s)
+        # TODO: potwierdzenie od p Eli
+        self.assertIn('naukowe i inne, liczba prac: 4', s)
 
     def test_6(self):
         s = self._zrob()
