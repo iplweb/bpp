@@ -219,20 +219,20 @@ def raport_jednostek_tabela(key, base_query, jednostka):
 
     elif key == "1_2":
         return base_query.filter(
-            charakter_formalny__in=charaktery('AP', 'AZ', 'API'),
+            charakter_formalny="AC",
             impact_factor=0,
             punkty_kbn__gt=0)
 
     elif key == "1_3":
         return base_query.filter(
-            charakter_formalny__in=charaktery('AP', 'AZ', 'API'),
+            charakter_formalny="AC",
             uwagi__icontains='erih',
             punkty_kbn__in=[10, 12, 14])
 
     elif key == "1_4":
         return base_query.filter(
             charakter_formalny__in=charaktery(
-                'ZRZ', 'PRI', 'PRZ', 'PSI', 'ZSZ'),
+                'ZRZ', 'PRI', 'PRZ', 'PSZ', 'ZSZ'),
             punkty_kbn=10)
 
     elif key == "2_1":
