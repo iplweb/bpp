@@ -43,7 +43,6 @@ class TestOpi2012(TestCase):
         # z dwóch różnych wydziałów i sprawdzić, czy funkcja filtrująca tylko
         # jeden wydział da jakiekolwiek efekty:
 
-        pw = charakter('PW')
         not_pw = charakter('WYN')
 
         w1 = any_wydzial()
@@ -106,36 +105,39 @@ class TestOpi2012(TestCase):
             list(publikacje_z_impactem_wykaz_A()), [wc3])
 
     def test_publikacje_erih(self):
-        az = charakter('AZ')
+        ac = charakter('AC')
+
         wc1 = any_ciagle(
-            rok=rok, charakter_formalny=az,
+            rok=rok,
+            charakter_formalny=ac,
             uwagi='foo ERIH bar',
             punkty_kbn=10
         )
 
         wc2 = mommy.make(
-            Wydawnictwo_Ciagle, rok=rok, charakter_formalny=charakter('PW'),
+            Wydawnictwo_Ciagle,
+            rok=rok,
             uwagi='foo ERIH bar',
             punkty_kbn=10
         )
 
-        self.assertEquals(list(publikacje_erih()), [wc1])
+        self.assertEquals(list(publikacje_erih().order_by("pk")), [wc1, wc2])
 
     def test_publikacje_wykaz_B(self):
-        api = charakter('API')
+        ac = charakter('AC')
 
         wc1 = mommy.make(
-            Wydawnictwo_Ciagle, rok=rok, charakter_formalny=api,
+            Wydawnictwo_Ciagle, rok=rok, charakter_formalny=ac,
             punkty_kbn=0, jezyk=jezyk('pol.')
         )
 
         wc2 = mommy.make(
-            Wydawnictwo_Ciagle, rok=rok, charakter_formalny=api,
+            Wydawnictwo_Ciagle, rok=rok, charakter_formalny=ac,
             punkty_kbn=15, impact_factor=0, jezyk=jezyk('ang.')
         )
 
         wc3 = mommy.make(
-            Wydawnictwo_Ciagle, rok=rok, charakter_formalny=api,
+            Wydawnictwo_Ciagle, rok=rok, charakter_formalny=ac,
             punkty_kbn=15, impact_factor=0, jezyk=jezyk('b/d')
         )
 

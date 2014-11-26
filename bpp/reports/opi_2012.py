@@ -66,19 +66,21 @@ def chce_jeden_wydzial(funkcja, wydzial, rok_min, rok_maks=None):
 def publikacje_z_impactem_wykaz_A():
     """Publikacje w czasopismach naukowych posiadających impact factor i wymienione w części A wykazu MNiSW
     """
-    pw = charakter('PW')
+    # TODO: po zmianie charakterów, użyty będzie charakter "AC" i "impact > 0",
+    # TODO: wcześniej używany był "PW" prace wieloośrodkowe do EXCLUDE z tego
+    ac = charakter('AC')
 
     return Wydawnictwo_Ciagle.objects.filter(
-        impact_factor__gt=0, punkty_kbn__gt=0,
-        ).exclude(charakter_formalny=pw)
+        impact_factor__gt=0,
+        punkty_kbn__gt=0,
+        charakter_formalny=ac)
 
 def publikacje_erih():
     """Publikacje w czasopismach znajdujących się w bazie EIRH i wymienionych w części C wykazu MNiSW
     """
-    charaktery = map(charakter, ['AP', 'API', 'AZ'])
     return Wydawnictwo_Ciagle.objects.filter(
+        charakter_formalny=charakter("AC"),
         punkty_kbn__in=[10, 12, 14],
-        charakter_formalny__in=charaktery,
         uwagi__icontains='erih'
     )
 
@@ -86,17 +88,16 @@ def publikacje_erih():
 def publikacje_wykaz_B():
     """Publikacje w czasopismach naukowych wymienionych w części B wykazu MNiSW
     """
-    charaktery = map(charakter, ['AP', 'API', 'AZ'])
     return Wydawnictwo_Ciagle.objects.filter(
         punkty_kbn__gt=0, impact_factor=0,
-        charakter_formalny__in=charaktery
+        charakter_formalny=charakter("AC")
     ).exclude(jezyk__skrot='b/d')
 
 
 def publikacje_wos():
     """Publikacje w recenzowanych materiałach z konferencji międzynarodowych uwzględnionych w Web of Science
     """
-    charaktery = map(charakter, ['ZRZ', 'PRI', 'PRZ'])
+    charaktery = map(charakter, ['ZRZ', 'PSZ', 'PRZ'])
     return Wydawnictwo_Zwarte.objects.filter(
         charakter_formalny__in=charaktery,
         uwagi__icontains='wos'

@@ -68,37 +68,37 @@ class TestRaportKomisjiCentralnej(TestRKCMixin, TestCase):
                 tytul_oryginalny=tytul_oryginalny + '-2', **kw)
 
         args_1a = dict(
-            typ_kbn=typ_kbn.PO, charakter_formalny=charakter.AZ,
+            typ_kbn=typ_kbn.PO, charakter_formalny=charakter.AC,
             impact_factor=10, punkty_kbn=5)
         dwie('1a', 'Praca-1', **args_1a)
 
         args_1b = dict(
-            typ_kbn=typ_kbn.PO, charakter_formalny=charakter.AZ,
+            typ_kbn=typ_kbn.PO, charakter_formalny=charakter.AC,
             impact_factor=0, punkty_kbn=5)
         dwie('1b', 'Praca-2', **args_1b)
 
         args_2a = dict(
             impact_factor=5, typ_kbn=typ_kbn.CR,
-            charakter_formalny=charakter.AZ, punkty_kbn=5)
+            charakter_formalny=charakter.AC, punkty_kbn=5)
         dwie('2a', 'Praca-3', **args_2a)
 
         args_2b = dict(
             impact_factor=0, typ_kbn=typ_kbn.CR,
-            charakter_formalny=charakter.AZ, punkty_kbn=5)
+            charakter_formalny=charakter.AC, punkty_kbn=5)
         dwie('2b', 'Praca-4', **args_2b)
 
         args_3a = dict(
             impact_factor=5, typ_kbn=typ_kbn.PP,
-            punkty_kbn=5, charakter_formalny=charakter.AZ)
+            punkty_kbn=5, charakter_formalny=charakter.AC)
         dwie('3a', 'Praca-5', **args_3a)
 
         args_3b = dict(
             impact_factor=0, typ_kbn=typ_kbn.PP,
-            charakter_formalny=charakter.AZ, punkty_kbn=5)
+            charakter_formalny=charakter.AC, punkty_kbn=5)
         dwie('3b', 'Praca-6', **args_3b)
 
         args_5 = dict(typ_kbn=typ_kbn.PNP,
-                      charakter_formalny=charakter.AZ)
+                      charakter_formalny=charakter.AC)
         dwie('5', 'Praca-7', **args_5)
 
         # 7a
@@ -288,7 +288,7 @@ class TestRaportKomisjiCentralnejPrzedPoHabilitacji(TestRKCMixin, TestCase):
         self.habilitowany = any_autor()
 
         args_1a = dict(
-            typ_kbn=typ_kbn.PO, charakter_formalny=charakter.AZ,
+            typ_kbn=typ_kbn.PO, charakter_formalny=charakter.AC,
             impact_factor=10, punkty_kbn=5)
 
         self.praca_przed = any_ciagle(
@@ -349,7 +349,7 @@ class TestRaportKomisjiCentralnejZipfile(TestRKCMixin, TestCase):
         self.habilitowany.save()
 
         args_1a = dict(
-            typ_kbn=typ_kbn.PO, charakter_formalny=charakter.AZ,
+            typ_kbn=typ_kbn.PO, charakter_formalny=charakter.AC,
             impact_factor=10, punkty_kbn=5)
 
         self.praca_przed = any_ciagle(
