@@ -274,7 +274,8 @@ class TestRaportKomisjiCentralnej(TestRKCMixin, TestCase):
         sprawdz_sumy(9, 4, 444, 1443)
         sprawdz_sumy(10, 4, 10, 20)
         sprawdz_sumy(11, 4, 10, 20)
-        self.assertEquals(dct['suma_5']['count'], 2)
+        # TODO: email do p Eli jak ma być raport nr 5 rozwiązany
+        self.assertEquals(dct['suma_5']['count'], 4)
         self.assertEquals(dct['suma_8']['count'], 4)
 
     def test_punktacja_sumaryczna_render(self):

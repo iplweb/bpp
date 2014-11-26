@@ -44,6 +44,7 @@ class TestOpi2012(TestCase):
         # jeden wydział da jakiekolwiek efekty:
 
         not_pw = charakter('WYN')
+        ac = charakter("AC")
 
         w1 = any_wydzial()
         w2 = any_wydzial()
@@ -57,9 +58,9 @@ class TestOpi2012(TestCase):
         a3 = autor(j2, rozpoczal_prace=date(rok - 5, 1, 1),
                    zakonczyl_prace=date(rok - 1, 12, 31))
 
-        wc1 = ciagle(a1, j1, rok=rok, charakter_formalny=not_pw,
+        wc1 = ciagle(a1, j1, rok=rok, charakter_formalny=ac,
                      impact_factor=1.0, punkty_kbn=1.0)
-        wc2 = ciagle(a2, j2, rok=rok, charakter_formalny=not_pw,
+        wc2 = ciagle(a2, j2, rok=rok, charakter_formalny=ac,
                      impact_factor=1.0, punkty_kbn=1.0)
         wc3 = ciagle(a3, j2, rok=rok, charakter_formalny=not_pw,
                      impact_factor=1.0, punkty_kbn=1.0)
