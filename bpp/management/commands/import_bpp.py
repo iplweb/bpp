@@ -150,6 +150,30 @@ class Cache:
 cache = Cache()
 
 
+NOWE_CHARAKTERY_MAPPING = {
+    "AP": "AC",
+    "API": "AC",
+    "AZ": "AC",
+    "PRI": "PSZ",
+    "PSI": "PSZ",
+    "S": None,
+    "PW": None,
+    "DOK": "D",
+    "HAB": "H",
+    "PODR": "PA",
+    "PSUM": "PSZ",
+    "ZSUM": None,
+    "BPEX": None
+}
+
+def nowy_charakter_formalny(skrot):
+    """Przemapuj 'stary' charakter formalny na nowy charakter formalny,
+    wg. zmian ustalonych w listopadzie 2014 r.
+    """
+
+    return cache.charaktery[NOWE_CHARAKTERY_MAPPING.get(skrot, skrot)]
+
+
 def jezyki_statusy(dct, kw):
     kw.update(dict(
         # ModelTypowany
@@ -606,7 +630,7 @@ def zrob_wydawnictwo_ciagle(bib, skrot, pgsql_conn):
     kw = dict(
         # Wydawnictwo_Ciagle
         zrodlo=Zrodlo.objects.get(pk=bib['new_zrodlo']),
-        charakter_formalny=cache.charaktery[skrot],
+        charakter_formalny=nowy_charakter_formalny(skrot),
     )
 
     w = zrob_wydawnictwo(kw, bib, Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor,
@@ -631,7 +655,7 @@ def zrob_baze_wydawnictwa_zwartego(bib):
 
 def zrob_wydawnictwo_zwarte(bib, skrot, pgsql_conn):
     kw = zrob_baze_wydawnictwa_zwartego(bib)
-    kw['charakter_formalny'] = cache.charaktery[skrot]
+    kw['charakter_formalny'] = nowy_charakter_formalny(skrot)
     bib['new_zrodlo_src'] = None
 
     wc = zrob_wydawnictwo(kw, bib, Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor,

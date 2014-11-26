@@ -228,7 +228,7 @@ FROM
 WHERE
   django_content_type.app_label = 'bpp' AND
   django_content_type.model = 'praca_doktorska' AND
-  bpp_charakter_formalny.skrot = 'DOK';
+  bpp_charakter_formalny.skrot = 'D';
 
 
 
@@ -287,7 +287,7 @@ FROM
 WHERE
   django_content_type.app_label = 'bpp' AND
   django_content_type.model = 'praca_habilitacyjna' AND
-  bpp_charakter_formalny.skrot = 'HAB';
+  bpp_charakter_formalny.skrot = 'H';
 
 
 
