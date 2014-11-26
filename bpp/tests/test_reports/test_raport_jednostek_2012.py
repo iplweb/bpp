@@ -4,10 +4,24 @@ from django.db import transaction
 from django.test import TestCase
 from bpp.models import cache
 from bpp.models.cache import with_cache
-from bpp.reports.opi_2012 import charakter, jezyk
+from bpp.models.system import Charakter_Formalny, Jezyk
 from bpp.tests.util import any_jednostka, any_autor, any_ciagle, CURRENT_YEAR, any_zwarte
 from bpp.views.raporty import get_base_query, raport_jednostek_tabela
 
+
+def _query(model, atrybut, wartosc):
+    return model.objects.get(**{atrybut:wartosc})
+
+def charakter(skrot):
+    # Pobieramy charaktery w ten sposób, za pomocą funkcji GET, a nie za
+    # pomocą zapytań typu charakter_formalny__skrot__in [...] ponieważ
+    # pobierając pojedynczo charakter dla każdego skrótu dostaniemy błąd
+    # jeżeli dany skrót nie odzwierciedla charakteru w bazie danych
+    return _query(Charakter_Formalny, 'skrot', skrot)
+
+
+def jezyk(skrot):
+    return _query(Jezyk, 'skrot', skrot)
 
 class TestRaportJednostek2012(TestCase):
     fixtures = ["charakter_formalny.json", "jezyk.json", "typ_odpowiedzialnosci.json",
