@@ -137,8 +137,8 @@ def get_queries(autor, przed_habilitacja=True, rok_habilitacji=None):
     kw2 = dict(typ_kbn=typ_kbn.CR, charakter_formalny=ac)
     kw3 = dict(typ_kbn=typ_kbn.PP, charakter_formalny=ac)
 
-    kw4c1 = dict(charakter_formalny__in=[charakter.KSZ, charakter.HAB], jezyk=jezyk['ang.'])
-    kw4c2 = dict(charakter_formalny__in=[charakter.KSZ, charakter.KSP, charakter.HAB])
+    kw4c1 = dict(charakter_formalny__in=[charakter.KSZ, charakter.H], jezyk=jezyk['ang.'])
+    kw4c2 = dict(charakter_formalny__in=[charakter.KSZ, charakter.KSP, charakter.H])
 
     kw9 = dict(charakter_formalny=charakter.Supl)
     kw10 = dict(charakter_formalny=charakter.L)
@@ -164,7 +164,7 @@ def get_queries(autor, przed_habilitacja=True, rok_habilitacji=None):
         '5': base_query.filter(Q(charakter_formalny__in=[
             charakter.BR, charakter.frg, charakter.IN, charakter.KOM,
             charakter.PZ, charakter.SKR, charakter['TŁ'], charakter.DE,
-            charakter.PRZ, charakter.ZRZ, charakter.PRI, charakter.R,
+            charakter.PRZ, charakter.ZRZ, charakter.PSZ, charakter.R,
             charakter.WYN
         ]) | Q(typ_kbn__in=[typ_kbn['000'], typ_kbn.PNP],
                charakter_formalny=ac)),
@@ -186,7 +186,7 @@ def get_queries(autor, przed_habilitacja=True, rok_habilitacji=None):
 
         '8a': base_query.filter(charakter_formalny=charakter.ZSZ),
         '8b': base_query.filter(
-            charakter_formalny__in=[charakter.PSZ, charakter.PSI]),
+            charakter_formalny=charakter.PSZ),
 
         '9a': base_query.filter(
             Q(Q(impact_factor__gt=0) | Q(kc_impact_factor__gt=0)),
