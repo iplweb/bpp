@@ -52,45 +52,6 @@ class KronikaUczelniForm(forms.Form):
         ustaw_rok(self['rok'], lata)
 
 
-class RaportOPI2012Form(forms.Form):
-    wydzial = forms.ModelMultipleChoiceField(
-        queryset=Wydzial.objects.all())
-    od_roku = forms.IntegerField()
-    do_roku = forms.IntegerField()
-
-    def __init__(self, lata, *args, **kwargs):
-        self.helper = FormHelper()
-        self.helper.form_method = 'post'
-        self.helper.form_action = "#OPI2012"
-        #self.helper.form_action = "./prepare/"
-        self.helper.layout = Layout(
-            Fieldset(
-                'Raport OPI 2012',
-                'wydzial',
-                Row(
-                    F4Column('od_roku', css_class='large-6 small-6'),
-                    F4Column('do_roku', css_class='large-6 small-6')
-                ),
-                Hidden("report", "raport-opi-2012")
-            ),
-            ButtonHolder(
-                Submit('submit', u'Zamów', css_class='button white')
-            )
-        )
-
-        self.base_fields['wydzial'].widget.attrs['size'] = \
-            Wydzial.objects.all().count()
-        super(RaportOPI2012Form, self).__init__(*args, **kwargs)
-        ustaw_rok(self['od_roku'], lata)
-        ustaw_rok(self['do_roku'], lata)
-
-    def clean(self):
-        od_roku = self.cleaned_data.get('od_roku')
-        do_roku = self.cleaned_data.get("do_roku")
-
-        if od_roku > do_roku:
-            raise ValidationError("Data w polu 'Do roku' musi być większa lub równa, jak w polu 'Od roku'.")
-
 
 class RaportJednostekForm(forms.Form):
     jednostka = autocomplete_light.ModelChoiceField(

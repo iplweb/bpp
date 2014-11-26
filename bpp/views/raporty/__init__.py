@@ -11,7 +11,7 @@ from django.views.generic.base import TemplateView
 from django.views.generic.edit import BaseDeleteView, FormView, FormMixin
 from django_transaction_signals import defer
 from sendfile import sendfile
-from bpp.views.raporty.forms import KronikaUczelniForm, RaportOPI2012Form, \
+from bpp.views.raporty.forms import KronikaUczelniForm, \
     RaportJednostekForm, RaportDlaKomisjiCentralnejForm
 
 from celeryui.interfaces import IWebTask
@@ -133,15 +133,6 @@ class RaportyFormMixin(RaportyMixin):
 class RaportKronikaUczelni(RaportyFormMixin, FormView):
     form_class = KronikaUczelniForm
     nazwa_raportu = "Kronika Uczelni"
-
-class RaportOPI2012(RaportyFormMixin, FormView):
-    form_class = RaportOPI2012Form
-    nazwa_raportu = "OPI 2012"
-
-    def get_raport_arguments(self, form):
-        form.cleaned_data['wydzial'] = self.request.POST.getlist('wydzial')
-        return form.cleaned_data
-
 
 class RaportJednostek(RaportyFormMixin, FormView):
     form_class = RaportJednostekForm
