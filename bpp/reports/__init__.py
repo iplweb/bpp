@@ -80,6 +80,5 @@ def addToRegistry(klass):
 
 # Poniższy import jest KONIECZNY żeby adaptery do registry się
 # prawidłowo zassały (tasks.py importuje tylko toplevel-module)
-import opi_2012
 import kronika_uczelni
 import komisja_centralna
