@@ -6,7 +6,8 @@
             "nazwa": "Artykuł w czasopismie",
             "skrot": "AC",
             "publikacja": true,
-            "streszczenie": false
+            "streszczenie": false,
+            "nazwa_w_primo": "Artykuł"
         }
     },
     {
@@ -16,7 +17,8 @@
             "nazwa": "Książka",
             "skrot": "KS",
             "publikacja": true,
-            "streszczenie": false
+            "streszczenie": false,
+            "nazwa_w_primo": "Książka"
         }
     },
     {
@@ -26,7 +28,8 @@
             "nazwa": "Komentarz",
             "skrot": "KOM",
             "publikacja": true,
-            "streszczenie": false
+            "streszczenie": false,
+            "nazwa_w_primo": ""
         }
     },
     {
@@ -36,7 +39,8 @@
             "nazwa": "List do redakcji",
             "skrot": "L",
             "publikacja": true,
-            "streszczenie": false
+            "streszczenie": false,
+            "nazwa_w_primo": ""
         }
     },
     {
@@ -46,7 +50,8 @@
             "nazwa": "Publikacja w suplemencie",
             "skrot": "Supl",
             "publikacja": true,
-            "streszczenie": false
+            "streszczenie": false,
+            "nazwa_w_primo": "Artykuł"
         }
     },
     {
@@ -56,7 +61,8 @@
             "nazwa": "Czasopismo",
             "skrot": "CZ",
             "publikacja": false,
-            "streszczenie": false
+            "streszczenie": false,
+            "nazwa_w_primo": "Czasopismo"
         }
     },
     {
@@ -66,7 +72,8 @@
             "nazwa": "Książka w języku polskim",
             "skrot": "KSP",
             "publikacja": true,
-            "streszczenie": false
+            "streszczenie": false,
+            "nazwa_w_primo": "Książka"
         }
     },
     {
@@ -76,7 +83,8 @@
             "nazwa": "Książka w języku obcym",
             "skrot": "KSZ",
             "publikacja": true,
-            "streszczenie": false
+            "streszczenie": false,
+            "nazwa_w_primo": "Książka"
         }
     },
     {
@@ -86,7 +94,8 @@
             "nazwa": "Fragment",
             "skrot": "frg",
             "publikacja": true,
-            "streszczenie": false
+            "streszczenie": false,
+            "nazwa_w_primo": ""
         }
     },
     {
@@ -96,7 +105,8 @@
             "nazwa": "inne",
             "skrot": "IN",
             "publikacja": false,
-            "streszczenie": false
+            "streszczenie": false,
+            "nazwa_w_primo": ""
         }
     },
     {
@@ -106,7 +116,8 @@
             "nazwa": "Tłumaczenie",
             "skrot": "TŁ",
             "publikacja": false,
-            "streszczenie": false
+            "streszczenie": false,
+            "nazwa_w_primo": ""
         }
     },
     {
@@ -116,7 +127,8 @@
             "nazwa": "Skrypt",
             "skrot": "SKR",
             "publikacja": false,
-            "streszczenie": false
+            "streszczenie": false,
+            "nazwa_w_primo": ""
         }
     },
     {
@@ -126,7 +138,8 @@
             "nazwa": "Polski Referat Zjazdowy",
             "skrot": "PRZ",
             "publikacja": true,
-            "streszczenie": false
+            "streszczenie": false,
+            "nazwa_w_primo": "Materiał konferencyjny"
         }
     },
     {
@@ -136,7 +149,8 @@
             "nazwa": "Polskie streszczenie zjazdowe",
             "skrot": "PSZ",
             "publikacja": false,
-            "streszczenie": true
+            "streszczenie": true,
+            "nazwa_w_primo": "Materiał konferencyjny"
         }
     },
     {
@@ -146,7 +160,8 @@
             "nazwa": "Poradnik zawodowy",
             "skrot": "PZ",
             "publikacja": false,
-            "streszczenie": false
+            "streszczenie": false,
+            "nazwa_w_primo": ""
         }
     },
     {
@@ -156,7 +171,8 @@
             "nazwa": "Recenzja",
             "skrot": "R",
             "publikacja": false,
-            "streszczenie": false
+            "streszczenie": false,
+            "nazwa_w_primo": ""
         }
     },
     {
@@ -166,7 +182,8 @@
             "nazwa": "Rozdział książki",
             "skrot": "ROZ",
             "publikacja": true,
-            "streszczenie": false
+            "streszczenie": false,
+            "nazwa_w_primo": "Rozdział"
         }
     },
     {
@@ -176,7 +193,8 @@
             "nazwa": "Rozdział skryptu",
             "skrot": "ROZS",
             "publikacja": false,
-            "streszczenie": false
+            "streszczenie": false,
+            "nazwa_w_primo": "Rozdział"
         }
     },
     {
@@ -186,7 +204,8 @@
             "nazwa": "Referat zjazdowy konferencji miedzynarodowej",
             "skrot": "ZRZ",
             "publikacja": true,
-            "streszczenie": false
+            "streszczenie": false,
+            "nazwa_w_primo": "Materiał konferencyjny"
         }
     },
     {
@@ -196,7 +215,8 @@
             "nazwa": "Streszczenie zjazdowe konferencji międzynarodowej",
             "skrot": "ZSZ",
             "publikacja": false,
-            "streszczenie": true
+            "streszczenie": true,
+            "nazwa_w_primo": ""
         }
     },
     {
@@ -206,7 +226,8 @@
             "nazwa": "Broszura",
             "skrot": "BR",
             "publikacja": false,
-            "streszczenie": false
+            "streszczenie": false,
+            "nazwa_w_primo": ""
         }
     },
     {
@@ -216,7 +237,8 @@
             "nazwa": "Projekt wynalazczy",
             "skrot": "WYN",
             "publikacja": false,
-            "streszczenie": false
+            "streszczenie": false,
+            "nazwa_w_primo": ""
         }
     },
     {
@@ -226,7 +248,8 @@
             "nazwa": "Patent",
             "skrot": "PAT",
             "publikacja": false,
-            "streszczenie": false
+            "streszczenie": false,
+            "nazwa_w_primo": ""
         }
     },
     {
@@ -236,7 +259,8 @@
             "nazwa": "Praca doktorska",
             "skrot": "D",
             "publikacja": true,
-            "streszczenie": false
+            "streszczenie": false,
+            "nazwa_w_primo": ""
         }
     },
     {
@@ -246,7 +270,8 @@
             "nazwa": "Praca habilitacyjna",
             "skrot": "H",
             "publikacja": true,
-            "streszczenie": false
+            "streszczenie": false,
+            "nazwa_w_primo": ""
         }
     },
     {
@@ -256,7 +281,8 @@
             "nazwa": "Podręcznik akademicki",
             "skrot": "PA",
             "publikacja": false,
-            "streszczenie": false
+            "streszczenie": false,
+            "nazwa_w_primo": ""
         }
     },
    {
@@ -266,7 +292,8 @@
             "nazwa": "Dokument elektroniczny",
             "skrot": "DE",
             "publikacja": false,
-            "streszczenie": false
+            "streszczenie": false,
+            "nazwa_w_primo": ""
         }
     }
 ]

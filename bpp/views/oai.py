@@ -27,6 +27,8 @@ class CacheMetadata:
             return default
 
         if item == 'title':
+            if self.orig.tytul:
+                return [self.orig.tytul_oryginalny, self.orig.tytul]
             return [self.orig.tytul_oryginalny,]
 
         if item == 'language':
@@ -51,6 +53,9 @@ class CacheMetadata:
             else:
                 if self.orig.informacje or self.orig.szczegoly:
                     return ["%s %s" % (self.orig.informacje, self.orig.szczegoly)]
+
+        if item == "type":
+            return [self.orig.charakter_formalny.nazwa_w_primo,]
 
         return default
 
@@ -112,7 +117,7 @@ class BPPOAIDatabase(object):
         r = self.original.aggregate(Min('ostatnio_zmieniony'))
         value = r['ostatnio_zmieniony__min']
         if value is None:
-            return datetime.fromtimestamp(0)
+            return datetime.datetime.fromtimestamp(0)
         return value.replace(tzinfo=None)
 
 
@@ -159,7 +164,7 @@ class BPPOAIDatabase(object):
             "ostatnio_zmieniony", "object_id", "content_type__model", "tytul_oryginalny",
             "tytul_oryginalny", "jezyk__nazwa", "rok", "wydawnictwo",
             "slowa_kluczowe", "zrodlo", "informacje", "szczegoly",
-            "opis_bibliograficzny_autorzy_cache"
+            "opis_bibliograficzny_autorzy_cache", "charakter_formalny__nazwa_w_primo"
         ).select_related()[offset:offset+batch_size]:
             yield {'id': get_dc_ident(row.content_type.model, row.object_id),
                    'deleted': False,
@@ -188,7 +193,6 @@ class OAIView(View):
 
         url = '/'.join(urlparts)
 
-        db = BPPOAIDatabase(Rekord.objects.all())
-        oai_server = OAIServerFactory(db, FeedConfig(
-            "bpp", base_url))
+        db = BPPOAIDatabase(Rekord.objects.all().exclude(charakter_formalny__nazwa_w_primo=""))
+        oai_server = OAIServerFactory(db, FeedConfig("bpp", base_url))
         return HttpResponse(content=oai_server.handleRequest(request.GET))

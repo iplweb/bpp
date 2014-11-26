@@ -23,7 +23,8 @@ from bpp.models import Patent, \
 # - Praca_Habilitacyjna
 from django.core.exceptions import ObjectDoesNotExist
 from bpp.models.abstract import ModelPunktowanyBaza, \
-    ModelZRokiem, ModelZeSzczegolami, ModelAfiliowanyRecenzowany
+    ModelZRokiem, ModelZeSzczegolami, ModelAfiliowanyRecenzowany, \
+    ModelZCharakterem
 from bpp.models.system import Charakter_Formalny, Jezyk
 from bpp.models.util import ModelZOpisemBibliograficznym
 from bpp.tasks import refresh_rekord, refresh_autorzy

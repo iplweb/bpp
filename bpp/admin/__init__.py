@@ -66,8 +66,8 @@ class CommitedModelAdmin(BaseBppAdmin):
 
 
 class Charakter_FormalnyAdmin(RestrictDeletionToAdministracjaGroupMixin, CommitedModelAdmin):
-    list_display = ['skrot', 'nazwa', 'publikacja', 'streszczenie']
-    list_filter = ('publikacja', 'streszczenie')
+    list_display = ['skrot', 'nazwa', 'publikacja', 'streszczenie', 'nazwa_w_primo']
+    list_filter = ('publikacja', 'streszczenie', 'nazwa_w_primo')
     search_fields = ['skrot', 'nazwa']
 
 
