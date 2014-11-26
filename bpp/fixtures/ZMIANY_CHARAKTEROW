@@ -1,0 +1,115 @@
+Zmiany charakterów - listopad 2014
+
+// zmiana charakteru:  AP => AC + j. polski
+//    {
+//        "model": "bpp.charakter_formalny",
+//        "pk": null,
+//        "fields": {
+//            "nazwa": "Artykuł w czasopismie polskim (j. polski)",
+//            "skrot": "AP",
+//            "publikacja": true,
+//            "streszczenie": false
+//        }
+//    },
+// zmiana charakteru:  API => AC + j. nie-polski
+//    {
+//        "model": "bpp.charakter_formalny",
+//        "pk": null,
+//        "fields": {
+//            "nazwa": "Artykuł w czasopiśmie polskim (inne języki)",
+//            "skrot": "API",
+//            "publikacja": true,
+//            "streszczenie": false
+//        }
+//    },
+// zmiana charakteru:  AZ => AC
+//    {
+//        "model": "bpp.charakter_formalny",
+//        "pk": null,
+//        "fields": {
+//            "nazwa": "Artykuł w czasopiśmie zagranicznym",
+//            "skrot": "AZ",
+//            "publikacja": true,
+//            "streszczenie": false
+//        }
+//    },
+// zmiana charakteru: PRI => PSZ
+//    {
+//        "model": "bpp.charakter_formalny",
+//        "pk": null,
+//        "fields": {
+//            "nazwa": "Polski referat zjazdowy - obcojęzyczny",
+//            "skrot": "PRI",
+//            "publikacja": true,
+//            "streszczenie": false
+//        }
+//    },
+// zmiana charakteru:  PSI => PSZ
+//    {
+//        "model": "bpp.charakter_formalny",
+//        "pk": null,
+//        "fields": {
+//            "nazwa": "Polskie streszczenie inne - obcojęzyczne",
+//            "skrot": "PSI",
+//            "publikacja": false,
+//            "streszczenie": true
+//        }
+//    },
+// zmiana charakteru:  S => usunięto
+//    {
+//        "model": "bpp.charakter_formalny",
+//        "pk": null,
+//        "fields": {
+//            "nazwa": "Streszczenie",
+//            "skrot": "S",
+//            "publikacja": false,
+//            "streszczenie": false
+//        }
+//    },
+// zmiana charakteru:  PW => usunięto
+//    {
+//        "model": "bpp.charakter_formalny",
+//        "pk": null,
+//        "fields": {
+//            "nazwa": "Praca wieloośrodkowa",
+//            "skrot": "PW",
+//            "publikacja": false,
+//            "streszczenie": false
+//        }
+//    },
+// zmiana charakteru:  DOK => D
+// zmiana charakteru:  HAB => H
+// zmiana charakteru:  PODR => PA
+// zmiana charakteru: PSUM => PSZ
+//    {
+//        "model": "bpp.charakter_formalny",
+//        "pk": null,
+//        "fields": {
+//            "nazwa": "Polskie streszczenie UML",
+//            "skrot": "PSUM",
+//            "publikacja": false,
+//            "streszczenie": true
+//        }
+//    },
+// zmiana charakteru: ZSUM => usunięto
+//    {
+//        "model": "bpp.charakter_formalny",
+//        "pk": null,
+//        "fields": {
+//            "nazwa": "Zagraniczne streszczenie UML",
+//            "skrot": "ZSUM",
+//            "publikacja": false,
+//            "streszczenie": true
+//        }
+//    },
+// zmiana charakteru: BPEX => usunięto
+//    {
+//        "model": "bpp.charakter_formalny",
+//        "pk": null,
+//        "fields": {
+//            "nazwa": "Brak danych",
+//            "skrot": "BPEX",
+//            "publikacja": false,
+//            "streszczenie": false
+//        }
+//    }
