@@ -8,7 +8,7 @@
 # w wheelhouse
 #
 
-Django==1.7
+Django==1.7.1
 django-autoslug==1.7.1
 django-pagination==1.0.7
 # UWAGA wymagany jest build ze zrodel z mojego repo na github
