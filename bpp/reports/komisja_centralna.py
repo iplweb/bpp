@@ -127,15 +127,15 @@ def get_queries(autor, przed_habilitacja=True, rok_habilitacji=None):
     zasieg = Getter(Zasieg_Zrodla, 'nazwa')
     jezyk = Getter(Jezyk)
 
-    az_ap_api = [charakter.AP, charakter.AZ, charakter.API]
+    ac = charakter.AC
 
     order_if = ('rok', '-impact_factor', 'zrodlo')
     order_if_kc = ('rok', '-kc_impact_factor', '-impact_factor', 'zrodlo')
     order_kbn = ('rok', '-punkty_kbn', 'zrodlo')
 
-    kw1 = dict(typ_kbn=typ_kbn.PO, charakter_formalny__in=az_ap_api)
-    kw2 = dict(typ_kbn=typ_kbn.CR, charakter_formalny__in=az_ap_api)
-    kw3 = dict(typ_kbn=typ_kbn.PP, charakter_formalny__in=az_ap_api)
+    kw1 = dict(typ_kbn=typ_kbn.PO, charakter_formalny=ac)
+    kw2 = dict(typ_kbn=typ_kbn.CR, charakter_formalny=ac)
+    kw3 = dict(typ_kbn=typ_kbn.PP, charakter_formalny=ac)
 
     kw4c1 = dict(charakter_formalny__in=[charakter.KSZ, charakter.HAB], jezyk=jezyk['ang.'])
     kw4c2 = dict(charakter_formalny__in=[charakter.KSZ, charakter.KSP, charakter.HAB])
@@ -167,7 +167,7 @@ def get_queries(autor, przed_habilitacja=True, rok_habilitacji=None):
             charakter.PRZ, charakter.ZRZ, charakter.PRI, charakter.R,
             charakter.WYN
         ]) | Q(typ_kbn__in=[typ_kbn['000'], typ_kbn.PNP],
-               charakter_formalny__in=az_ap_api)),
+               charakter_formalny=ac)),
 
         '6a': Redakcja_Zrodla.objects.filter(
             redaktor=autor, zrodlo__zasieg=zasieg['krajowy']).values_list(
