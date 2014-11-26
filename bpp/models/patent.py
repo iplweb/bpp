@@ -21,7 +21,8 @@ class Patent_Autor(BazaModeluOdpowiedzialnosciAutorow):
         ordering = ('kolejnosc', )
         unique_together = \
             [('rekord', 'autor', 'typ_odpowiedzialnosci'),
-             ('rekord', 'kolejnosc')]
+              # Tu musi być autor, inaczej admin nie pozwoli wyedytować
+             ('rekord', 'autor', 'kolejnosc')]
 
 
 class Patent(ModelZOpisemBibliograficznym, ModelZRokiem, ModelZeStatusem,
