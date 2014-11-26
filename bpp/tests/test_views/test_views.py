@@ -6,7 +6,7 @@ from ludibrio import Mock
 from bpp.models import Autor, Zrodlo, Uczelnia, Wydzial, Jednostka, \
     Praca_Doktorska, Praca_Habilitacyjna
 from bpp.models.cache import Rekord
-from bpp.models.system import Typ_Odpowiedzialnosci
+from bpp.models.system import Typ_Odpowiedzialnosci, Charakter_Formalny
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, \
     Wydawnictwo_Ciagle_Autor
 from bpp.tests.util import any_doktorat, any_habilitacja, any_ciagle, any_autor, \
@@ -134,15 +134,27 @@ class TestOAI(UserTestCase):
                 'typ_odpowiedzialnosci.json', 'status_korekty.json']
 
     def setUp(self):
-        c = any_ciagle(tytul_oryginalny="Test foo bar")
+        c = any_ciagle(
+            tytul_oryginalny="Test foo bar",
+            charakter_formalny=Charakter_Formalny.objects.get(skrot="AC"))
+
+        c2 = any_ciagle(
+             tytul_oryginalny="TEGO NIE BEDZIE bo nie ma nazwa_w_primo dla typu KOM",
+             charakter_formalny=Charakter_Formalny.objects.get(skrot="KOM"))
+
         a = any_autor()
         j = any_jednostka()
-        Wydawnictwo_Ciagle_Autor.objects.create(
-            rekord=c, autor=a, jednostka=j,
-            typ_odpowiedzialnosci=Typ_Odpowiedzialnosci.objects.all()[0]
-        )
+
+        for rekord in c, c2:
+            Wydawnictwo_Ciagle_Autor.objects.create(
+                rekord=rekord, autor=a, jednostka=j,
+                typ_odpowiedzialnosci=Typ_Odpowiedzialnosci.objects.all()[0]
+            )
+
         Rekord.objects.full_refresh()
-        self.assertEquals(Rekord.objects.all().count(), 1)
+
+        self.assertEquals(Rekord.objects.all().count(), 2)
+
         #Wydawnictwo_Ciagle.objects.raw("SELECT update_cache('bpp_wydawnictwo_ciagle', '%s')" % c.pk)
         self.c = c
 
@@ -161,5 +173,6 @@ class TestOAI(UserTestCase):
         res = self.client.get(url, data={'verb': 'ListRecords',
                                          'metadataPrefix': 'oai_dc'})
         self.assertContains(res, "foo", status_code=200)
+        self.assertNotContains(res, "TEGO NIE BEDZIE", status_code=200)
 
 
