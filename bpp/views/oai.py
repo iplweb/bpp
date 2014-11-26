@@ -162,7 +162,7 @@ class BPPOAIDatabase(object):
 
         for row in query.only(
             "ostatnio_zmieniony", "object_id", "content_type__model", "tytul_oryginalny",
-            "tytul_oryginalny", "jezyk__nazwa", "rok", "wydawnictwo",
+            "tytul", "jezyk__nazwa", "rok", "wydawnictwo",
             "slowa_kluczowe", "zrodlo", "informacje", "szczegoly",
             "opis_bibliograficzny_autorzy_cache", "charakter_formalny__nazwa_w_primo"
         ).select_related()[offset:offset+batch_size]:
