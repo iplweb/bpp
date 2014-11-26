@@ -32,44 +32,6 @@ class TestRaportSelector(UserTestCase):
 
         self.client.get(reverse('bpp:raporty'))
 
-    def test_tytuly_raportow_opi_2012(self):
-        w1 = any_wydzial("Farmerski", "WF")
-        w2 = any_wydzial("Braterski", "WB")
-        rep = Report.objects.create(
-            ordered_by=self.user,
-            function="raport-opi-2012",
-            arguments={"wydzial": [w1.pk, w2.pk],
-                       "od_roku": 2000,
-                       "do_roku": 3000})
-
-        res = self.client.get(reverse('bpp:raporty'))
-        self.assertContains(
-            res,
-            "Raport OPI 2012 dla Farmerski, Braterski, lata 2000-3000",
-            status_code=200)
-
-        rep.delete()
-        rep = Report.objects.create(
-            ordered_by=self.user,
-            function="raport-opi-2012",
-            arguments={"wydzial": [w1.pk],
-                       "od_roku": 2000,
-                       "do_roku": 3000})
-
-        res = self.client.get(reverse('bpp:raporty'))
-        self.assertContains(
-            res,
-            "Raport OPI 2012 dla Farmerski, lata 2000-3000",
-            status_code=200)
-
-        w1.delete()
-
-        res = self.client.get(reverse('bpp:raporty'))
-        self.assertContains(
-            res,
-            "Raport OPI 2012 dla (wydział usunięty), lata 2000-3000",
-            status_code=200)
-
     def test_tytuly_raportow_kronika_uczelni(self):
         any_ciagle(rok=2000)
 

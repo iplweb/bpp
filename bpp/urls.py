@@ -10,7 +10,7 @@ from bpp.views.browse import UczelniaView, WydzialView, JednostkaView, \
     JednostkiView
 from bpp.views.raporty import RankingAutorow, \
     PobranieRaportu, PodgladRaportu, KasowanieRaportu, \
-    RaportJednostek2012, RaportKronikaUczelni, RaportOPI2012, RaportJednostek, \
+    RaportJednostek2012, RaportKronikaUczelni, RaportJednostek, \
     RankingAutorowFormularz, RaportDlaKomisjiCentralnejFormularz, RaportSelector
 from bpp import reports
 
@@ -65,7 +65,6 @@ urlpatterns = patterns(
 
     url(r'^raporty/$', login_required(RaportSelector.as_view()), name='raporty'),
     url(r'^raporty/kronika_uczelni/$', login_required(RaportKronikaUczelni.as_view()), name='raport_kronika_uczelni'),
-    url(r'^raporty/opi2012/$', login_required(RaportOPI2012.as_view()), name='raport_opi2012'),
     url(r'^raporty/jednostek/$', login_required(RaportJednostek.as_view()), name='raport_jednostek_formularz'),
     url(r'^raporty/ranking-autorow/wybierz/$', login_required(RankingAutorowFormularz.as_view()), name='ranking_autorow_formularz'),
     url(r'^raporty/dla-komisji-centralnej/$', login_required(RaportDlaKomisjiCentralnejFormularz.as_view()), name='raport_dla_komisji_centralnej'),
