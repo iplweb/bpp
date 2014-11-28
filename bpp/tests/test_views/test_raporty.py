@@ -213,8 +213,8 @@ class TestRankingAutorow(UserTestCase):
     def setUp(self):
         UserTestCase.setUp(self)
         j = any_jednostka()
-        a = any_autor()
-        c = any_ciagle(impact_factor=200)
+        a = any_autor(nazwisko="Kowalski")
+        c = any_ciagle(impact_factor=200, rok=2000)
         c.dodaj_autora(a, j)
 
     def test_renderowanie(self):
@@ -222,3 +222,12 @@ class TestRankingAutorow(UserTestCase):
         res = self.client.get(url)
         self.assertContains(
             res, u"Ranking autorów", status_code=200)
+        self.assertContains(res, u"Kowalski")
+
+    def test_renderowanie_csv(self):
+        url = reverse("bpp:ranking-autorow", args=(2000,))
+        res = self.client.get(url, data={"report-rankingautorowtable": "csv"})
+        print(res.content)
+        self.assertContains(
+            res,
+            u'"Kowalski Jan Maria, dr",Jednostka')
