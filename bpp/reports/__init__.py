@@ -74,7 +74,7 @@ logger = logging.getLogger(__name__)
 
 
 def addToRegistry(klass):
-    logger.info("rejestruje", klass.slug, "jako", klass)
+    logger.info("rejestruje %r jako %r" % (klass.slug, klass))
     registerAdapter(klass.slug, klass)
 
 
