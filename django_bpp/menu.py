@@ -43,7 +43,9 @@ REDAKTOR_MENU = [
 
 ADMIN_MENU = [
     (u'Grupy', '/admin/auth/group/'),
-    (u'Użytkownicy', '/admin/bpp/bppuser/')
+    (u'Użytkownicy', '/admin/bpp/bppuser/'),
+    (u'Formularze wyszukiwania', '/admin/multiseek/searchform/')
+
 ]
 
 def submenu(label, tuples):

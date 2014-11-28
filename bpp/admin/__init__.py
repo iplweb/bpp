@@ -4,6 +4,8 @@ from django import forms
 from django.contrib import admin
 
 import autocomplete_light
+from multiseek.models import SearchForm
+from multiseek.views import MultiseekFormPage
 from bpp.admin.helpers import *
 from bpp.models import Jezyk, Typ_KBN, Uczelnia, Wydzial, \
     Jednostka, Tytul, Autor, Autor_Jednostka, Funkcja_Autora, Rodzaj_Zrodla, \
@@ -525,3 +527,14 @@ class BppUserAdmin(UserAdmin):
         return ", ".join([x.name for x in row.groups.all()])
 
 admin.site.register(BppUser, BppUserAdmin)
+
+
+class SearchFormAdmin(admin.ModelAdmin):
+    list_display = ['name', 'owner', 'public']
+    fields = ['name', 'owner', 'public', 'data']
+    readonly_fields = ['data']
+
+SearchForm._meta.verbose_name = "formularz wyszukiwania"
+SearchForm._meta.verbose_name_plural = "formularze wyszukiwania"
+
+admin.site.register(SearchForm, SearchFormAdmin)
