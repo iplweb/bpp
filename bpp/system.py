@@ -7,6 +7,7 @@ groups - lista grup wraz z uprawnieniami do edycji poszczególnych obiektów.
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+from multiseek.models import SearchForm
 
 from bpp.models import Funkcja_Autora, Zrodlo_Informacji, Jezyk,\
     Rodzaj_Zrodla, Status_Korekty, Tytul, Typ_KBN, Uczelnia, Wydzial,\
@@ -34,7 +35,7 @@ groups = {
         Praca_Doktorska, Praca_Habilitacyjna, Patent, Patent_Autor,
         Publikacja_Habilitacyjna],
     'indeks autorów': [Autor, Autor_Jednostka],
-    'administracja': [User, Group]
+    'administracja': [User, Group, SearchForm]
 }
 
 
