@@ -67,6 +67,7 @@ class CustomIndexDashboard(Dashboard):
                 "Administracja",
                 ['auth.contrib.group',
                  'auth.contrib.user',
+                 'multiseek.models.searchform'
                  ]
             )
         )
