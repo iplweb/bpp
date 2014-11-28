@@ -158,16 +158,14 @@ def get_queries(autor, przed_habilitacja=True, rok_habilitacji=None):
         '3b': base_query.filter(**dict(no_impact, **kw3)).order_by(*order_kbn),
 
 
-        '4c1': base_query.filter(**kw4c1),
-        '4c2': base_query.filter(**kw4c2).exclude(jezyk=jezyk['ang.']),
+        '4c1': Rekord.objects.prace_autor_i_typ(autor, 'aut.').filter(**kw4c1),
+        '4c2': Rekord.objects.prace_autor_i_typ(autor, 'aut.').filter(**kw4c2).exclude(jezyk=jezyk['ang.']),
 
         '5': base_query.filter(Q(charakter_formalny__in=[
             charakter.BR, charakter.frg, charakter.IN, charakter.KOM,
             charakter.PZ, charakter.SKR, charakter['TŁ'], charakter.DE,
-            charakter.PRZ, charakter.ZRZ, charakter.PSZ, charakter.R,
-            charakter.WYN
-        ]) | Q(typ_kbn__in=[typ_kbn['000'], typ_kbn.PNP],
-               charakter_formalny=ac)),
+            charakter.PRZ, charakter.ZRZ, charakter.R, charakter.WYN
+        ]) | Q(typ_kbn=typ_kbn['000'])).exclude(charakter_formalny=charakter.PSZ),
 
         '6a': Redakcja_Zrodla.objects.filter(
             redaktor=autor, zrodlo__zasieg=zasieg['krajowy']).values_list(

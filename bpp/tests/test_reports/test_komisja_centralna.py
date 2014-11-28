@@ -97,9 +97,12 @@ class TestRaportKomisjiCentralnej(TestRKCMixin, TestCase):
             charakter_formalny=charakter.AC, punkty_kbn=5)
         dwie('3b', 'Praca-6', **args_3b)
 
-        args_5 = dict(typ_kbn=typ_kbn.PNP,
-                      charakter_formalny=charakter.AC)
-        dwie('5', 'Praca-7', **args_5)
+        # args_4
+        dwie('4c1', 'Praca-6.5', charakter_formalny=charakter['KSZ'], jezyk=jezyk['ang.'])
+        dwie('4c2', 'Praca-6.75', charakter_formalny=charakter['KSP'], jezyk=jezyk['pol.'])
+
+        # args_5
+        dwie('5', 'Praca-7', typ_kbn=typ_kbn['000'])
 
         # 7a
         args_7a = dict(jezyk=jezyk['ang.'], charakter_formalny=charakter.KSZ)
@@ -107,6 +110,7 @@ class TestRaportKomisjiCentralnej(TestRKCMixin, TestCase):
             .dodaj_autora(self.autor, self.jednostka,
                           typ_odpowiedzialnosci_skrot='red.')
 
+        # Praca 7a nie wejdzie do punktu 7a, ale do 4c1 już tak :-)
         any_zwarte(tytul_oryginalny='PRACA 7a NIE MA', **args_7a) \
             .dodaj_autora(self.autor, self.jednostka,
                           typ_odpowiedzialnosci_skrot='aut.')
@@ -123,8 +127,6 @@ class TestRaportKomisjiCentralnej(TestRKCMixin, TestCase):
 
         # dodam autora o typie redaktor
         # stworze prace o takich samych argumentach ale bez redaktora
-
-        # XXX Tu SKONCZULEM
 
         args_8a = dict(charakter_formalny=charakter.ZSZ)
         dwie('8a', 'Praca-8', **args_8a)
@@ -212,10 +214,23 @@ class TestRaportKomisjiCentralnej(TestRKCMixin, TestCase):
     test_3a = lambda self: self._test_tabelka('3a')
     test_3b = lambda self: self._test_tabelka('3b')
 
+    def test_4c(self):
+        haystack = self._zrob().replace("\r\n", "").replace("\t", "")
+        for a in range(10):
+            haystack = haystack.replace("  ", " ")
+
+        needles = [
+            u"C. Autorstwo monografii lub podręcznika: </td><td>liczba: 5",
+            u"C1. w języku angielskim </td><td>liczba: 3",
+            u"C2. w języku polskim lub innym niż angielski </td><td>liczba: 2"
+            ]
+        self.assertIn(needles[0], haystack)
+        self.assertIn(needles[1], haystack)
+        self.assertIn(needles[2], haystack)
+
     def test_5(self):
         s = self._zrob()
-        # TODO: potwierdzenie od p Eli
-        self.assertIn('naukowe i inne, liczba prac: 4', s)
+        self.assertIn('naukowe i inne, liczba prac: 2', s)
 
     def test_6(self):
         s = self._zrob()
@@ -274,8 +289,7 @@ class TestRaportKomisjiCentralnej(TestRKCMixin, TestCase):
         sprawdz_sumy(9, 4, 444, 1443)
         sprawdz_sumy(10, 4, 10, 20)
         sprawdz_sumy(11, 4, 10, 20)
-        # TODO: email do p Eli jak ma być raport nr 5 rozwiązany
-        self.assertEquals(dct['suma_5']['count'], 4)
+        self.assertEquals(dct['suma_5']['count'], 2)
         self.assertEquals(dct['suma_8']['count'], 4)
 
     def test_punktacja_sumaryczna_render(self):
