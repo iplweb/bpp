@@ -4,7 +4,6 @@
 
 
 
-
 //.row{
 //    @media #{$medium} {
 //        max-width: 90em;
@@ -90,4 +89,9 @@ body ol li {
 
 .nonfield-errors ol li {
   list-style-type: none;
+}
+
+.multiseek-range-field-label {
+  padding-left: 0.5em !important;
+  padding-top: 0.5em !important;
 }
