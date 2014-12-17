@@ -63,7 +63,7 @@ PIL
 pycrypto
 simplejson
 
-zope.interface==4.0.5
+zope.interface==4.1.1
 zope.component==4.1.0
 
 # logowanie
