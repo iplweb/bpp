@@ -20,7 +20,7 @@ django-admin-tools==0.5.2
 django-transaction-signals==1.0.0
 xlrd==0.9.3
 django-redis-sessions==0.4.0
-celery==3.1.13
+celery==3.1.17
 django-tables2==0.15.0
 django-tables2-reports==0.0.10
 pyExcelerator==0.6.4.1
