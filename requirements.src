@@ -4,7 +4,7 @@
 git+https://github.com/mpasternak/djorm-ext-filtered-contenttypes#egg=filtered_contenttypes
 git+https://github.com/mpasternak/django-selenium-helpers.git#egg=django-selenium-helpers
 # git+https://github.com/mpasternak/django-tables2-reports.git#egg=django_tables2_reports
-https://github.com/goinnn/django-tables2-reports.git#egg=django_tables2_reports
+git+https://github.com/goinnn/django-tables2-reports.git#egg=django_tables2_reports
 
 git+https://github.com/mpasternak/djorm-ext-pgfulltext#egg=djorm-ext-pgfulltext
 git+https://github.com/mpasternak/django-monitio.git#egg=django_monitio
