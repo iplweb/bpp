@@ -41,7 +41,7 @@ python-dateutil==2.3
 djorm-ext-pgfulltext==0.9.1
 django-bower==5.0.1
 django-compressor==1.4
-djorm-pgarray==1.0.4
+djorm-pgarray==1.2
 djorm-ext-filtered-contenttypes==0.2
 django-cacheops==2.1.1
 
