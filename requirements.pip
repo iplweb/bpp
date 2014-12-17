@@ -93,4 +93,4 @@ pyflakes
 
 django-secure-input==0.9.3
 
-django-session-security==2.2.2
+django-session-security==2.2.0
