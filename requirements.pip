@@ -53,7 +53,7 @@ watchdog==0.8.2
 # django-monitio wymaga:
 django-sse==0.4.1
 sse==1.2
-django-cors-headers==0.12
+django-cors-headers==0.13
 
 
 
@@ -67,21 +67,17 @@ zope.interface==4.0.5
 zope.component==4.1.0
 
 # logowanie
-raven==4.0.3
+raven==5.1.1
 
 # DO TESTÓW:
-django-debug-toolbar==1.2.1
+django-debug-toolbar==1.2.2
 selenium==2.44.0
 ludibrio==3.1.0
 mock==1.0.1
-django-nose==1.2
+django-nose==1.3
 django-crawler==0.1
 django-selenium-helpers==1.1.3
 coverage==3.6
-# fix fabric
-paramiko==1.10
-Fabric==1.8.0
-Jinja2==2.7.1
 
 model_mommy==1.2.1
 
@@ -96,6 +92,5 @@ pep8
 pyflakes
 
 django-secure-input==0.9.3
-
 
 django-session-security==2.2.2
