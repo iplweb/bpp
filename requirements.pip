@@ -46,7 +46,7 @@ djorm-ext-filtered-contenttypes==0.2
 django-cacheops==2.2.1
 
 # MUSI być budowany pod Linuxem z powodu poniższych poleceń:
-gunicorn==0.17.4
+gunicorn==19.1.1
 gevent==0.13.8
 watchdog==0.6.0
 
