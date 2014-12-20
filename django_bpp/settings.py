@@ -130,7 +130,9 @@ INSTALLED_APPS = [
     'djorm_pgarray',
 
     'secure_input',
-    'session_security'
+    'session_security',
+
+    'dbdump'
 ]
 
 
