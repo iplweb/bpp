@@ -55,7 +55,7 @@
 			"nazwa": "t\u0142umacz z j\u0119zyka angielskiego"
 		}
 	},
-]	{
+	{
 		"pk": 8,
 		"model": "bpp.typ_odpowiedzialnosci",
 		"fields": {
@@ -63,3 +63,4 @@
 			"nazwa": "opracowa\u0142"
 		}
 	}
+]
