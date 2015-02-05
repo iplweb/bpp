@@ -74,14 +74,23 @@ class SeleniumAdminTestTozTamze(SeleniumLoggedInAdminTestCase):
         self.assertEquals(wcc(), 2)
 
     def test_admin_wydawnictwo_zwarte_tamze(self):
-        self.c = any_zwarte(informacje="TO INFORMACJE")
+        self.c = any_zwarte(
+            informacje="TO INFORMACJE",
+            uwagi='te uwagi',
+            miejsce_i_rok='te miejsce i rok',
+            wydawnictwo='te wydawnictwo',
+            www='ten adres WWW',
+            isbn='Z_ISBN',
+            e_isbn='E_ISBN')
         self.open(reverse("admin:bpp_wydawnictwo_zwarte_change", args=(self.c.pk,)))
 
         tamze = self.page.find_element_by_id('tamze')
         tamze.click()
         time.sleep(1)
         self.assertIn('Dodaj wydawnictwo', self.page.page_source)
-        self.assertIn('TO INFORMACJE', self.page.page_source)
+        for elem in ['TO INFORMACJE', 'te uwagi', 'te miejsce i rok',
+                     'te wydawnictwo', 'ten adres WWW', 'Z_ISBN', 'E_ISBN']:
+            self.assertIn(elem, self.page.page_source, msg='BRAK %r' % elem)
 
 
 
