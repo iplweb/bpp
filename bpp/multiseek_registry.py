@@ -1,5 +1,6 @@
 # -*- encoding: utf-8 -*-
 from django.utils.itercompat import is_iterable
+from bpp.models.struktura import Wydzial
 
 NULL_VALUE = u"(brak wpisanej wartości)"
 
@@ -155,6 +156,30 @@ class JednostkaQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
         return Jednostka.objects.fulltext_filter(data)
 
 
+class WydzialQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
+    label = u'Wydział'
+    type = AUTOCOMPLETE
+    ops = EQUALITY_OPS_MALE
+    model = Wydzial
+    search_fields = ['nazwa']
+    field_name = 'wydzial'
+
+    def real_query(self, value, operation):
+        if operation in EQUALITY_OPS_ALL:
+            ret = Q(original__in_raw=Autorzy.objects.filter(jednostka__wydzial=value))
+
+        else:
+            raise UnknownOperation(operation)
+
+        if operation in DIFFERENT_ALL:
+            return ~ret
+        return ret
+
+
+    def get_autocomplete_query(self, data):
+        return Wydzial.objects.filter(nazwa__icontains=data)
+
+
 
 class Typ_OdpowiedzialnosciQueryObject(QueryObject):
     label = u'Typ odpowiedzialności'
@@ -303,6 +328,7 @@ registry = create_registry(
     TytulPracyQueryObject(),
     NazwiskoIImieQueryObject(),
     JednostkaQueryObject(),
+    WydzialQueryObject(),
     Typ_OdpowiedzialnosciQueryObject(),
     ZakresLatQueryObject(),
     JezykQueryObject(),
@@ -341,7 +367,6 @@ registry = create_registry(
         Ordering("charakter_formalny__nazwa", u"charakter formalny"),
         Ordering("typ_kbn__nazwa", u"typ KBN"),
         Ordering("zrodlo__nazwa", u"źródło"),
-        Ordering("pierwszy_autor__nazwisko", u"pierwszy autor"),
     ],
     default_ordering=['-rok', '-impact_factor', '-punkty_kbn'],
     report_types=[
