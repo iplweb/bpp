@@ -31,7 +31,6 @@
 
 {% endif %}
 
-
 <div data-magellan-expedition="fixed" class="hide-on-print">
 
     <dl class="sub-nav">
@@ -181,7 +180,6 @@
                 <th>Tytuł, autorzy, źródło</th>
                 <th>IF</th>
                 <th>PK</th>
-                <th>IC</th>
                 <th>Charakter</th>
                 <th>Typ KBN/MNiSW</th>
             </tr>
@@ -208,7 +206,6 @@
                     </td>
                     <td>{{ element.impact_factor }}</td>
                     <td>{{ element.punkty_kbn }}</td>
-                    <td>{{ element.index_copernicus }}</td>
                     <td>{{ element.charakter_formalny }}</td>
                     <td>{{ element.typ_kbn }}</td>
                 </tr>
@@ -218,8 +215,26 @@
                     </td>
                 </tr>
             {% endfor %}
-        </table>
 
+            {% if page_obj.number == page_obj.paginator.num_pages %}
+                <tfoot>
+                <tr>
+                    <td colspan="2">
+                        Suma:
+                    </td>
+                    <td>
+                        {{ sumy.impact_factor__sum|default_if_none:"0.00" }}
+                    </td>
+                    <td>
+                        {{ sumy.punkty_kbn__sum|default_if_none:"0.00" }}
+                    </td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                </tr>
+                </tfoot>
+            {% endif %}
+
+        </table>
     {% endif %}
 
     {% if report_type == "pkt_wewn" or report_type == "pkt_wewn_bez" %}
@@ -296,6 +311,7 @@
         </table>
 
     {% endif %}
+
 </div>
 <script type="text/javascript">
     if (queryDict.print == "1")

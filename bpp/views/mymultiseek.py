@@ -31,13 +31,13 @@ class MyMultiseekResults(MultiseekResults):
             qset = self.get_queryset(only_those_ids=self.request.session.get(MULTISEEK_SESSION_KEY_REMOVED, []))
             ctx['print_removed'] = True
 
-        if ctx['report_type'] in ['pkt_wewn', 'pkt_wewn_bez']:
-            ctx['sumy'] = qset.aggregate(
-                Sum('impact_factor'), Sum('punkty_kbn'),
-                Sum('index_copernicus'), Sum('punktacja_wewnetrzna'))
-
         ctx['paginator_count'] = qset.count()
         object_list = ctx['object_list']
         object_list.count = lambda *args, **kw: ctx['paginator_count']
+
+        if ctx['report_type'] in ['pkt_wewn', 'pkt_wewn_bez', 'table']:
+            ctx['sumy'] = qset.aggregate(
+                Sum('impact_factor'), Sum('punkty_kbn'),
+                Sum('index_copernicus'), Sum('punktacja_wewnetrzna'))
 
         return ctx
