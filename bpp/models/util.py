@@ -2,7 +2,7 @@
 
 """Funkcje pomocnicze dla klas w bpp.models"""
 from django.db import models
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.core.urlresolvers import reverse
 
 from django.db.models import Max
@@ -146,7 +146,12 @@ class ZapobiegajNiewlasciwymCharakterom(models.Model):
         abstract = True
 
     def clean_fields(self, *args, **kw):
-        if self.charakter_formalny is not None:
+        try:
+            cf = self.charakter_formalny
+        except ObjectDoesNotExist:
+            cf = None
+
+        if cf is not None:
             if self.charakter_formalny.skrot in ['D', 'H', 'PAT']:
                 raise ValidationError({'charakter_formalny': [
                     safestring.mark_safe(u'Jeżeli chcesz dodać rekord o typie "%s"'
