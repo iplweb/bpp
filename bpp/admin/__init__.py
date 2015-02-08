@@ -1,4 +1,5 @@
 # -*- encoding: utf-8 -*-
+from django.contrib.auth.forms import UserChangeForm, UserCreationForm
 from django.db.models.fields import BLANK_CHOICE_DASH
 from django import forms
 from django.contrib import admin
@@ -13,10 +14,6 @@ from bpp.models import Jezyk, Typ_KBN, Uczelnia, Wydzial, \
     Zrodlo_Informacji, Wydawnictwo_Ciagle, Charakter_Formalny, \
     Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor, Praca_Doktorska, \
     Praca_Habilitacyjna, Patent, Patent_Autor, BppUser, Publikacja_Habilitacyjna
-
-
-
-
 
 
 
@@ -520,8 +517,27 @@ admin.site.register(Patent, Patent_Admin)
 
 from django.contrib.auth.admin import UserAdmin
 
+class BppUserCreationForm(UserCreationForm):
+    class Meta:
+        model = BppUser
+
+    def clean_username(self):
+        # Since User.username is unique, this check is redundant,
+        # but it sets a nicer error message than the ORM. See #13147.
+        username = self.cleaned_data["username"]
+        try:
+            BppUser._default_manager.get(username=username)
+        except BppUser.DoesNotExist:
+            return username
+        raise forms.ValidationError(
+            self.error_messages['duplicate_username'],
+            code='duplicate_username',
+        )
+
 class BppUserAdmin(UserAdmin):
     list_display = ('username', 'email', 'first_name', 'last_name', 'is_staff', 'is_active', 'is_superuser', 'lista_grup')
+
+    add_form = BppUserCreationForm
 
     def lista_grup(self, row):
         return ", ".join([x.name for x in row.groups.all()])
