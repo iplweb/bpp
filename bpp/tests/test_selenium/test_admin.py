@@ -253,6 +253,12 @@ class SeleniumAdminTestAutorformJednostka(SeleniumLoggedInAdminTestCase):
             j.dodaj_autora(a)
         SeleniumLoggedInAdminTestCase.setUp(self)
 
+    def test_bug_wydawnictwo_ciagle_zapisz(self):
+        elem = self.page.find_element_by_name("_continue")
+        elem.click()
+        time.sleep(3)
+        self.assertIn("To pole jest wymagane.", self.page.page_source)
+
     def test_uzupelnianie_jednostki(self):
         aut = self.page.find_element_by_id("id_wydawnictwo_ciagle_autor_set-0-autor-autocomplete")
         aut.send_keys("KOWALSKI")
@@ -306,3 +312,4 @@ class SeleniumAdminTestAutorformJednostka(SeleniumLoggedInAdminTestCase):
 
         jed = Select(self.page.find_element_by_id("id_wydawnictwo_ciagle_autor_set-0-jednostka"))
         self.assertEquals(jed.first_selected_option.text(), "WTF LOL")
+
