@@ -313,3 +313,15 @@ class SeleniumAdminTestAutorformJednostka(SeleniumLoggedInAdminTestCase):
         jed = Select(self.page.find_element_by_id("id_wydawnictwo_ciagle_autor_set-0-jednostka"))
         self.assertEquals(jed.first_selected_option.text(), "WTF LOL")
 
+class SeleniumAdminTestAddUser(SeleniumLoggedInAdminTestCase):
+
+    url = reverse('admin:bpp_bppuser_add')
+
+    def test_bug_on_user_add(self):
+        self.page.find_element_by_id("id_username").send_keys("as")
+        self.page.find_element_by_id("id_password1").send_keys("as")
+        self.page.find_element_by_id("id_password2").send_keys("as")
+        self.page.find_element_by_name("_continue").click()
+        time.sleep(3)
+        self.assertNotIn("server error", self.page.page_source.lower())
+        self.assertIn(u"Zmień bpp user", self.page.page_source)
