@@ -83,7 +83,7 @@ class TestRaportyPage(RaportyPage):
         self.browser.quit()
 
     def test_submit(self):
-        self.go(reverse("bpp:raport_kronika_uczelni"))
+        self.go(reverse("bpp:raport_jednostek"))
         self.submit_page()
         time.sleep(3)
         self.assertIn("To pole jest wymagane", self.browser.html)
@@ -91,7 +91,7 @@ class TestRaportyPage(RaportyPage):
     def test_ranking_autorow(self):
         self.go(reverse("bpp:ranking_autorow_formularz"))
         self.assertIn(
-            '/bpp/raporty/ranking-autorow/%s/' % CURRENT_YEAR,
+            'value="%s"' % (CURRENT_YEAR - 1),
             self.browser.html)
 
     def test_raport_jednostek(self):

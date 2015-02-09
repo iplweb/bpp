@@ -35,6 +35,8 @@ CREATE OR REPLACE VIEW bpp_sumy_patent_view AS
     bpp_autor.id, bpp_jednostka.id, bpp_wydzial.id, bpp_patent.rok;
 
 
+
+
 CREATE OR REPLACE VIEW bpp_sumy_praca_doktorska_view AS
 
   SELECT
@@ -58,16 +60,22 @@ CREATE OR REPLACE VIEW bpp_sumy_praca_doktorska_view AS
     bpp_autor,
     bpp_praca_doktorska,
     bpp_jednostka,
-    bpp_wydzial
+    bpp_wydzial,
+    bpp_typ_kbn
 
   WHERE
     bpp_autor.id = bpp_praca_doktorska.autor_id AND
     bpp_jednostka.id = bpp_praca_doktorska.jednostka_id AND
     bpp_wydzial.id = bpp_jednostka.wydzial_id AND
-    bpp_jednostka.wchodzi_do_raportow = TRUE
+    bpp_jednostka.wchodzi_do_raportow = TRUE AND
+    bpp_typ_kbn.id = bpp_praca_doktorska.typ_kbn_id AND
+    bpp_typ_kbn.skrot != 'PW'
 
   GROUP BY
     bpp_autor.id, bpp_jednostka.id, bpp_wydzial.id, bpp_praca_doktorska.rok;
+
+
+
 
 
 CREATE OR REPLACE VIEW bpp_sumy_praca_habilitacyjna_view AS
@@ -93,17 +101,22 @@ CREATE OR REPLACE VIEW bpp_sumy_praca_habilitacyjna_view AS
     bpp_autor,
     bpp_praca_habilitacyjna,
     bpp_jednostka,
-    bpp_wydzial
+    bpp_wydzial,
+    bpp_typ_kbn
 
   WHERE
     bpp_autor.id = bpp_praca_habilitacyjna.autor_id AND
     bpp_jednostka.id = bpp_praca_habilitacyjna.jednostka_id AND
     bpp_wydzial.id = bpp_jednostka.wydzial_id AND
-    bpp_jednostka.wchodzi_do_raportow = TRUE
-
+    bpp_jednostka.wchodzi_do_raportow = TRUE AND
+    bpp_typ_kbn.id = bpp_praca_habilitacyjna.typ_kbn_id AND
+    bpp_typ_kbn.skrot != 'PW'
 
   GROUP BY
     bpp_autor.id, bpp_jednostka.id, bpp_wydzial.id, bpp_praca_habilitacyjna.rok;
+
+
+
 
 
 CREATE OR REPLACE VIEW bpp_sumy_wydawnictwo_ciagle_view AS
@@ -130,18 +143,23 @@ CREATE OR REPLACE VIEW bpp_sumy_wydawnictwo_ciagle_view AS
     bpp_wydawnictwo_ciagle,
     bpp_wydawnictwo_ciagle_autor,
     bpp_jednostka,
-    bpp_wydzial
+    bpp_wydzial,
+    bpp_typ_kbn
 
   WHERE
     bpp_autor.id = bpp_wydawnictwo_ciagle_autor.autor_id AND
     bpp_wydawnictwo_ciagle.id = bpp_wydawnictwo_ciagle_autor.rekord_id AND
     bpp_jednostka.id = bpp_wydawnictwo_ciagle_autor.jednostka_id AND
     bpp_wydzial.id = bpp_jednostka.wydzial_id AND
-    bpp_jednostka.wchodzi_do_raportow = TRUE
+    bpp_jednostka.wchodzi_do_raportow = TRUE AND
+    bpp_typ_kbn.id = bpp_wydawnictwo_ciagle.typ_kbn_id AND
+    bpp_typ_kbn.skrot != 'PW'
 
 
   GROUP BY
     bpp_autor.id, bpp_jednostka.id, bpp_wydzial.id, bpp_wydawnictwo_ciagle.rok;
+
+
 
 
 CREATE OR REPLACE VIEW bpp_sumy_wydawnictwo_zwarte_view AS
@@ -168,14 +186,17 @@ CREATE OR REPLACE VIEW bpp_sumy_wydawnictwo_zwarte_view AS
     bpp_wydawnictwo_zwarte,
     bpp_wydawnictwo_zwarte_autor,
     bpp_jednostka,
-    bpp_wydzial
+    bpp_wydzial,
+    bpp_typ_kbn
 
   WHERE
     bpp_autor.id = bpp_wydawnictwo_zwarte_autor.autor_id AND
     bpp_wydawnictwo_zwarte.id = bpp_wydawnictwo_zwarte_autor.rekord_id AND
     bpp_jednostka.id = bpp_wydawnictwo_zwarte_autor.jednostka_id AND
     bpp_wydzial.id = bpp_jednostka.wydzial_id AND
-    bpp_jednostka.wchodzi_do_raportow = TRUE
+    bpp_jednostka.wchodzi_do_raportow = TRUE AND
+    bpp_typ_kbn.id = bpp_wydawnictwo_zwarte.typ_kbn_id AND
+    bpp_typ_kbn.skrot != 'PW'
 
 
   GROUP BY
