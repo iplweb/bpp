@@ -83,7 +83,7 @@ class TestRaportyPage(RaportyPage):
         self.browser.quit()
 
     def test_submit(self):
-        self.go(reverse("bpp:raport_jednostek"))
+        self.go(reverse("bpp:raport_jednostek_formularz"))
         self.submit_page()
         time.sleep(3)
         self.assertIn("To pole jest wymagane", self.browser.html)
