@@ -17,20 +17,20 @@ from bpp.models import Wydzial
 def ustaw_rok(rok, lata):
     lata = list(lata)
     try:
-        rok.min_value = lata[0]
+        rok.field.min_value = lata[0]
     except IndexError:
         pass
 
     try:
-        rok.max_value = lata[-1]
-        rok.initial = lata[-1]
+        rok.field.max_value = lata[-1]
+        rok.field.initial = lata[-2]
     except IndexError:
         pass
 
-    if rok.max_value is not None:
-        rok.field.validators.append(validators.MaxValueValidator(rok.max_value))
-    if rok.min_value is not None:
-        rok.field.validators.append(validators.MinValueValidator(rok.min_value))
+    if rok.field.max_value is not None:
+        rok.field.validators.append(validators.MaxValueValidator(rok.field.max_value))
+    if rok.field.min_value is not None:
+        rok.field.validators.append(validators.MinValueValidator(rok.field.min_value))
 
 class KronikaUczelniForm(forms.Form):
     rok = forms.IntegerField()
@@ -73,8 +73,10 @@ class RaportJednostekForm(forms.Form):
                     F4Column('jednostka', css_class='large-12 small-12')
                 ),
                 Row(
-                    F4Column('od_roku', css_class='large-6 small-6'),
-                    F4Column('do_roku', css_class='large-6 small-6')
+                    F4Column('od_roku', css_class='large-12 small-12'),
+                ),
+                Row(
+                    F4Column('do_roku', css_class='large-12 small-12')
                 ),
                 Hidden("report", "raport-jednostek")
             ),
@@ -113,3 +115,42 @@ class RaportDlaKomisjiCentralnejForm(forms.Form):
 
         super(RaportDlaKomisjiCentralnejForm, self).__init__(*args, **kwargs)
         ustaw_rok(self['rok_habilitacji'], lata)
+
+
+class RankingAutorowForm(forms.Form):
+    wydzialy = forms.MultipleChoiceField(
+        label=u"Ogranicz do wydziału (wydziałów):",
+        required=False,
+        widget=forms.SelectMultiple(attrs={'size': '15'}),
+        choices=[(x.id, x.nazwa) for x in Wydzial.objects.all()],
+        help_text=u"Jeżeli nie wybierzesz żadnego wydziału, system wygeneruje "
+                  u"dane dla wszystkich wydziałów. Przytrzymaj przycisk CTRL ("
+                  u"CMD na Maku) gdy klikasz, aby wybrać więcej, niż jeden "
+                  u"wydział lub odznaczyć już zaznaczony wydział. ")
+
+    rok = forms.IntegerField()
+
+    def __init__(self, lata, *args, **kwargs):
+        self.helper = FormHelper()
+        self.helper.form_method = 'post'
+
+        self.helper.layout = Layout(
+            Fieldset(
+                u'Ranking autorów',
+                Row(
+                    F4Column('rok', css_class='large-12 small-12'),
+                ),
+                Row(
+                    F4Column('wydzialy', css_class='large-12 small-12')
+                ),
+                Hidden("report", "ranking-autorow")
+            ),
+            ButtonHolder(
+                Submit('submit', u'Otwórz', css_class='button white')
+            )
+        )
+
+        super(RankingAutorowForm, self).__init__(*args, **kwargs)
+        ustaw_rok(self['rok'], lata)
+
+
