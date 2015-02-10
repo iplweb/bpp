@@ -1,6 +1,8 @@
 # -*- encoding: utf-8 -*-
 
 from decimal import Decimal
+from django.utils.datastructures import SortedDict
+from django.utils.safestring import mark_safe
 from django.views.generic import DetailView
 from django_tables2 import RequestConfig, A, Column, Table
 
@@ -34,7 +36,7 @@ class TypowaTabelaMixin:
     jezyk = Column("Język", A("jezyk.skrot"), orderable=False)
     autorzy = Column(
         "Autor (autorzy)",
-        A('get_original_object.opis_bibliograficzny_autorzy'),
+        A('opis_bibliograficzny_autorzy_cache'),
         orderable=False)
 
     def __init__(self):
@@ -44,6 +46,12 @@ class TypowaTabelaMixin:
         self.counter += 1
         return '%d.' % self.counter
 
+    def render_autorzy(self, record):
+        return ", ".join(record.opis_bibliograficzny_autorzy_cache)
+
+    def render_tytul_oryginalny(self, record):
+        return mark_safe(record.tytul_oryginalny)
+
 
 class Tabela_Publikacji(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
     class Meta:
@@ -52,7 +60,7 @@ class Tabela_Publikacji(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
         per_page = sys.maxint
         empty_text = "Brak takich rekordów."
         sequence = ('lp', 'zrodlo', 'lp_art', 'autorzy', 'tytul_oryginalny',
-                    'jezyk', 'rok_tom_zakres', 'impact_factor', 'punkty_kbn')
+                    'jezyk', 'rok', 'impact_factor', 'punkty_kbn')
 
     lp = TypowaTabelaMixin.lp
     autorzy = TypowaTabelaMixin.autorzy
@@ -63,7 +71,7 @@ class Tabela_Publikacji(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
 
     zrodlo = Column("Czasopismo", A("zrodlo.nazwa"), orderable=False)
     lp_art = Column("Lp. art.", A("id"), empty_values=(), orderable=False)
-    rok_tom_zakres = Column("Rok, tom, zakres stron", A("id"), orderable=False)
+    rok = Column("Rok, tom, zakres stron", orderable=False)
 
     def __init__(self, *args, **kwargs):
         Table.__init__(self, *args, **kwargs)
@@ -76,19 +84,26 @@ class Tabela_Publikacji(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
         ret = "%s.%s." % (self.counter, next(self.zrodlo_counter))
         return ret
 
-    def render_zrodlo(self, record):
-        if record.zrodlo is None:
-            # EDOOFUS
-            return u''
-
+    def render_lp(self, record):
         if self.old_zrodlo != record.zrodlo.nazwa:
+            self.counter += 1
             self.zrodlo_counter = itertools.count(1)
             self.old_zrodlo = record.zrodlo.nazwa
+            self.nowe_zrodlo_w_wierszu = True
+        else:
+            self.nowe_zrodlo_w_wierszu = False
+
+        if self.nowe_zrodlo_w_wierszu:
+            return '%d.' % self.counter
+        return u''
+
+    def render_zrodlo(self, record):
+        if self.nowe_zrodlo_w_wierszu:
             return record.zrodlo.nazwa
 
         return u''
 
-    def render_rok_tom_zakres(self, record):
+    def render_rok(self, record):
         buf = record.szczegoly
         if record.uwagi:
             buf += u", " + record.uwagi
@@ -119,6 +134,9 @@ class Tabela_Monografii(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
     def __init__(self, *args, **kwargs):
         Table.__init__(self, *args, **kwargs)
         TypowaTabelaMixin.__init__(self)
+
+    def render_liczba_znakow_wydawniczych(self, record):
+        return str(record.liczba_znakow_wydawniczych)
 
 
 def split_red(s, want, if_no_result=None):
@@ -206,16 +224,26 @@ def jezyki(*args):
 def jezyki_obce():
     return jezyki('ang.', 'niem.', 'fr.', 'hiszp.', 'ros.', 'wł.')
 
-
-WSZYSTKIE_TABELE = ["1_1", "1_2", "1_3", "1_4", "2_1", "2_2", "2_3", "2_4",
-                    "2_5", "2_6"]
+WSZYSTKIE_TABELE = SortedDict(
+    [
+        ("1_1", Tabela_Publikacji),
+        ("1_2", Tabela_Publikacji),
+        ("1_3", Tabela_Publikacji),
+        ("1_4", Tabela_Publikacji), # Tabela_Konferencji_Miedzynarodowej),
+        ("2_1", Tabela_Monografii),
+        ("2_2", Tabela_Monografii),
+        ("2_3", Tabela_Rozdzialu_Monografii),
+        ("2_4", Tabela_Rozdzialu_Monografii),
+        ("2_5", Tabela_Monografii),
+        ("2_6", Tabela_Monografii),
+    ])
 
 
 def raport_jednostek_tabela(key, base_query, jednostka):
     if key == "1_1":
         return base_query.filter(
             impact_factor__gt=0,
-            punktacja_wewnetrzna=0)
+            punktacja_wewnetrzna=0).order_by("zrodlo__nazwa")
 
     elif key == "1_2":
         return base_query.filter(
@@ -318,8 +346,8 @@ class RaportJednostek2012(DetailView):
 
         kw = dict(rok_min=rok_min, rok_max=rok_max)
 
-        for key in WSZYSTKIE_TABELE:
-            kw['tabela_%s' % key] = Tabela_Publikacji(
+        for key, klass in WSZYSTKIE_TABELE.items():
+            kw['tabela_%s' % key] = klass(
                 raport_jednostek_tabela(key, base_query, self.object))
 
         for tabela in [tabela for key, tabela in kw.items() if

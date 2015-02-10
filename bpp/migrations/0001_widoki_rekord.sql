@@ -46,7 +46,9 @@ CREATE VIEW bpp_wydawnictwo_ciagle_view AS SELECT
   opis_bibliograficzny_autorzy_cache,
 
   afiliowana,
-  recenzowana
+  recenzowana,
+
+  '0' AS liczba_znakow_wydawniczych
 
 FROM
   bpp_wydawnictwo_ciagle, django_content_type
@@ -103,7 +105,9 @@ CREATE VIEW bpp_wydawnictwo_zwarte_view AS SELECT
   opis_bibliograficzny_autorzy_cache,
 
   afiliowana,
-  recenzowana
+  recenzowana,
+
+  liczba_znakow_wydawniczych
 
 FROM
   bpp_wydawnictwo_zwarte, django_content_type
@@ -161,7 +165,9 @@ CREATE VIEW bpp_patent_view AS SELECT
   opis_bibliograficzny_autorzy_cache,
 
   afiliowana,
-  recenzowana
+  recenzowana,
+
+  '0' AS liczba_znakow_wydawniczych
 
 FROM
   bpp_patent, django_content_type, bpp_jezyk, bpp_charakter_formalny, bpp_typ_kbn
@@ -221,7 +227,9 @@ CREATE VIEW bpp_praca_doktorska_view AS SELECT
   opis_bibliograficzny_autorzy_cache,
 
   afiliowana,
-  recenzowana
+  recenzowana,
+
+  '0' AS liczba_znakow_wydawniczych
 
 FROM
   bpp_praca_doktorska, django_content_type, bpp_charakter_formalny
@@ -280,7 +288,9 @@ CREATE VIEW bpp_praca_habilitacyjna_view AS SELECT
   opis_bibliograficzny_autorzy_cache,
 
   afiliowana,
-  recenzowana
+  recenzowana,
+
+  '0' AS liczba_znakow_wydawniczych
 
 FROM
   bpp_praca_habilitacyjna, django_content_type, bpp_charakter_formalny

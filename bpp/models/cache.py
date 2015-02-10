@@ -317,6 +317,8 @@ class Rekord(ModelPunktowanyBaza, ModelZOpisemBibliograficznym,
 
     tytul_oryginalny_sort = models.TextField()
 
+    liczba_znakow_wydawniczych = models.IntegerField()
+
     objects = RekordManager()
 
     class Meta:
