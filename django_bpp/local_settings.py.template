@@ -100,3 +100,6 @@ SECRET_KEY = '{{ salt['pillar.get']('django_bpp:SECRET_KEY') }}'
 
 SESSION_COOKIE_SECURE = {{ salt['pillar.get']('django_bpp:SESSION_COOKIE_SECURE') }}
 CSRF_COOKIE_SECURE = {{ salt['pillar.get']('django_bpp:CSRF_COOKIE_SECURE') }}
+
+
+MEDIA_ROOT = '{{ salt['pillar.get']('django_bpp:mediaroot') }}'

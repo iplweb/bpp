@@ -339,7 +339,6 @@ SITE_ROOT = os.path.abspath(
         os.path.dirname(__file__), '..'))
 
 STATIC_ROOT = os.path.join(SITE_ROOT, "staticroot")
-MEDIA_ROOT = os.path.join(SITE_ROOT, "mediaroot")
 
 COMPRESS_ENABLED = True
 COMPRESS_ROOT = STATIC_ROOT
