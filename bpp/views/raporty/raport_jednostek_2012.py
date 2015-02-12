@@ -117,8 +117,7 @@ class Tabela_Monografii(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
         per_page = sys.maxint
         empty_text = "Brak takich rekordów."
         sequence = ('lp', 'autorzy', 'wydawca', 'tytul_oryginalny',
-                    'jezyk', 'rok', 'liczba_znakow_wydawniczych',
-                    'punkty_kbn')
+                    'jezyk', 'rok', 'punkty_kbn')
 
     lp = TypowaTabelaMixin.lp
     autorzy = TypowaTabelaMixin.autorzy
@@ -129,14 +128,10 @@ class Tabela_Monografii(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
 
     wydawca = Column("Wydawca", A("wydawnictwo"), orderable=False)
     rok = Column("Rok", orderable=False)
-    liczba_znakow_wydawniczych = Column("Obj. w ark. wyd.")
 
     def __init__(self, *args, **kwargs):
         Table.__init__(self, *args, **kwargs)
         TypowaTabelaMixin.__init__(self)
-
-    def render_liczba_znakow_wydawniczych(self, record):
-        return str(record.liczba_znakow_wydawniczych)
 
 
 def split_red(s, want, if_no_result=None):
@@ -160,7 +155,6 @@ class Tabela_Rozdzialu_Monografii(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
         empty_text = "Brak takich rekordów."
         sequence = ('lp', 'autorzy', 'wydawca', 'tytul_monografii',
                     'tytul_rozdzialu', 'jezyk', 'rok',
-                    'liczba_znakow_wydawniczych',
                     'redaktor_monografii', 'punkty_kbn')
 
     lp = TypowaTabelaMixin.lp
@@ -175,7 +169,6 @@ class Tabela_Rozdzialu_Monografii(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
     wydawca = Column("Wydawca", A("wydawnictwo"), orderable=False)
     redaktor_monografii = Column("Redaktor monografii", A("id"))
     rok = Column("Rok", orderable=False)
-    liczba_znakow_wydawniczych = Column("Obj. w ark. wyd.")
 
     def __init__(self, *args, **kwargs):
         Table.__init__(self, *args, **kwargs)
