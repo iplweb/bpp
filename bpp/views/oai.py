@@ -48,11 +48,17 @@ class CacheMetadata:
             return ifhas("slowa_kluczowe")
 
         if item == "source":
+            src = []
             if self.orig.zrodlo:
-                return ["%s %s %s" % (self.orig.zrodlo.nazwa, self.orig.informacje, self.orig.szczegoly)]
+                src.append("%s %s %s" % (self.orig.zrodlo.nazwa, self.orig.informacje, self.orig.szczegoly))
             else:
                 if self.orig.informacje or self.orig.szczegoly:
-                    return ["%s %s" % (self.orig.informacje, self.orig.szczegoly)]
+                    src.append("%s %s" % (self.orig.informacje, self.orig.szczegoly))
+
+            if self.orig.www:
+                src.append(self.orig.www)
+
+            return src
 
         if item == "type":
             return [self.orig.charakter_formalny.nazwa_w_primo,]
@@ -164,7 +170,8 @@ class BPPOAIDatabase(object):
             "ostatnio_zmieniony", "object_id", "content_type__model", "tytul_oryginalny",
             "tytul", "jezyk__nazwa", "rok", "wydawnictwo",
             "slowa_kluczowe", "zrodlo", "informacje", "szczegoly",
-            "opis_bibliograficzny_autorzy_cache", "charakter_formalny__nazwa_w_primo"
+            "opis_bibliograficzny_autorzy_cache", "charakter_formalny__nazwa_w_primo",
+            "www"
         ).select_related()[offset:offset+batch_size]:
             yield {'id': get_dc_ident(row.content_type.model, row.object_id),
                    'deleted': False,
