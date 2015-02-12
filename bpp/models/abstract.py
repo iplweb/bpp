@@ -123,6 +123,9 @@ class ModelZRokiem(models.Model):
 class ModelZWWW(models.Model):
     """Model zawierający adres strony WWW"""
     www = models.URLField("Adres WWW", max_length=1024, blank=True, null=True)
+    dostep_dnia = models.DateField(
+        "Dostęp dnia", blank=True, null=True,
+        help_text="""Data dostępu do strony WWW.""")
 
     class Meta:
         abstract = True

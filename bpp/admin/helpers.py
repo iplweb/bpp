@@ -42,6 +42,7 @@ MODEL_Z_ISBN = (
 
 MODEL_Z_WWW = (
     'www',
+    'dostep_dnia'
     )
 
 MODEL_Z_ROKIEM = (
