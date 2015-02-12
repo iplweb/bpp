@@ -40,4 +40,8 @@ class MyMultiseekResults(MultiseekResults):
                 Sum('impact_factor'), Sum('punkty_kbn'),
                 Sum('index_copernicus'), Sum('punktacja_wewnetrzna'))
 
+
+        if 'MULTISEEK_TITLE' not in self.request.session:
+            self.request.session['MULTISEEK_TITLE'] = 'Rezultat wyszukiwania'
+
         return ctx
