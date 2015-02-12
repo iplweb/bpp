@@ -6,6 +6,7 @@ import tempfile
 import sys
 
 from celeryui.registry import ReportAdapter
+from django.contrib.contenttypes.models import ContentType
 from django.core.files import File
 from django.db.models import Q, Sum
 from django.template import RequestContext, Context
@@ -16,6 +17,7 @@ from django_tables2 import Column, A, Table
 from bpp.models import Autor, Typ_KBN, Rekord, Charakter_Formalny, Zasieg_Zrodla, Redakcja_Zrodla
 
 #from bpp.models.cache import cache_znajdz_autora_i_typ
+from bpp.models.praca_habilitacyjna import Publikacja_Habilitacyjna
 from bpp.models.system import Typ_Odpowiedzialnosci, Jezyk
 from bpp.reports import addToRegistry
 from bpp.util import Getter
@@ -147,6 +149,14 @@ def get_queries(autor, przed_habilitacja=True, rok_habilitacji=None):
     impact = dict(impact_factor__gt=0)
     no_impact = dict(impact_factor=0)
 
+    pkt_5_charaktery = [
+        charakter.BR, charakter.frg, charakter.IN, charakter.KOM,
+        charakter.PAT, charakter.PZ, charakter.SKR, charakter['TŁ'],
+        charakter.DE, charakter.PRZ, charakter.ZRZ, charakter.R
+    ]
+    praca_habilitacyjna_content_type = ContentType.objects.get(
+        app_label="bpp", model="praca_habilitacyjna").pk
+
     ret = {
         '1a': base_query.filter(**dict(impact, **kw1)).order_by(*order_if),
         '1b': base_query.filter(**dict(no_impact, **kw1)).order_by(*order_kbn),
@@ -161,11 +171,14 @@ def get_queries(autor, przed_habilitacja=True, rok_habilitacji=None):
         '4c1': Rekord.objects.prace_autor_i_typ(autor, 'aut.').filter(**kw4c1),
         '4c2': Rekord.objects.prace_autor_i_typ(autor, 'aut.').filter(**kw4c2).exclude(jezyk=jezyk['ang.']),
 
-        '5': base_query.filter(Q(charakter_formalny__in=[
-            charakter.BR, charakter.frg, charakter.IN, charakter.KOM,
-            charakter.PZ, charakter.SKR, charakter['TŁ'], charakter.DE,
-            charakter.PRZ, charakter.ZRZ, charakter.R, charakter.WYN
-        ]) | Q(typ_kbn=typ_kbn['000'])).exclude(charakter_formalny=charakter.PSZ),
+        '5': base_query.filter(
+            Q(charakter_formalny__in=pkt_5_charaktery) |
+            Q(typ_kbn=typ_kbn['000'], charakter_formalny=charakter.AC) |
+            Q(typ_kbn=typ_kbn.PNP) |
+            # Habilitacja-składak
+            Q(content_type_id=praca_habilitacyjna_content_type,
+              object_id__in=Publikacja_Habilitacyjna.objects.all().only("id")),
+        ).exclude(charakter_formalny__in=[charakter.PSZ, charakter.ZSZ]),
 
         '6a': Redakcja_Zrodla.objects.filter(
             redaktor=autor, zrodlo__zasieg=zasieg['krajowy']).values_list(
