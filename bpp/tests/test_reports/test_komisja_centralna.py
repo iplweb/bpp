@@ -8,9 +8,12 @@ from model_mommy import mommy
 
 from bpp.models import Typ_KBN, Charakter_Formalny, Zasieg_Zrodla, Zrodlo, \
     Redakcja_Zrodla, Tytul, Rekord
+from bpp.models.praca_habilitacyjna import Praca_Habilitacyjna, \
+    Publikacja_Habilitacyjna
 from bpp.models.system import Jezyk
 from bpp.reports.komisja_centralna import RaportKomisjiCentralnej, get_queries, RokHabilitacjiNiePodany, make_report_zipfile
-from bpp.tests.util import any_jednostka, any_autor, CURRENT_YEAR, any_ciagle, any_patent, any_zwarte
+from bpp.tests.util import any_jednostka, any_autor, CURRENT_YEAR, any_ciagle, any_patent, any_zwarte, \
+    any_habilitacja
 from bpp.util import Getter
 
 
@@ -102,7 +105,17 @@ class TestRaportKomisjiCentralnej(TestRKCMixin, TestCase):
         dwie('4c2', 'Praca-6.75', charakter_formalny=charakter['KSP'], jezyk=jezyk['pol.'])
 
         # args_5
-        dwie('5', 'Praca-7', typ_kbn=typ_kbn['000'])
+        dwie('5', 'Praca-7', typ_kbn=typ_kbn['000'], charakter_formalny=charakter.AC)
+        dwie('5a', 'Praca-7a', typ_kbn=typ_kbn['PNP'])
+        any_habilitacja(tytul_oryginalny='NIE WEJDZIE')
+        any_habilitacja(tytul_oryginalny='NIE WEJDZIE')
+        any_habilitacja(tytul_oryginalny='NIE WEJDZIE')
+
+        p = any_patent()
+        h = any_habilitacja(tytul_oryginalny='WEJDZIE')
+        Publikacja_Habilitacyjna.objects.create(
+            praca_habilitacyjna=h,
+            publikacja=p)
 
         # 7a
         args_7a = dict(jezyk=jezyk['ang.'], charakter_formalny=charakter.KSZ)
@@ -230,7 +243,7 @@ class TestRaportKomisjiCentralnej(TestRKCMixin, TestCase):
 
     def test_5(self):
         s = self._zrob()
-        self.assertIn('naukowe i inne, liczba prac: 2', s)
+        self.assertIn('naukowe i inne, liczba prac: 5', s)
 
     def test_6(self):
         s = self._zrob()
@@ -289,7 +302,7 @@ class TestRaportKomisjiCentralnej(TestRKCMixin, TestCase):
         sprawdz_sumy(9, 4, 444, 1443)
         sprawdz_sumy(10, 4, 10, 20)
         sprawdz_sumy(11, 4, 10, 20)
-        self.assertEquals(dct['suma_5']['count'], 2)
+        self.assertEquals(dct['suma_5']['count'], 5)
         self.assertEquals(dct['suma_8']['count'], 4)
 
     def test_punktacja_sumaryczna_render(self):
