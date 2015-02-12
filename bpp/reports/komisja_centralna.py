@@ -139,9 +139,6 @@ def get_queries(autor, przed_habilitacja=True, rok_habilitacji=None):
     kw2 = dict(typ_kbn=typ_kbn.CR, charakter_formalny=ac)
     kw3 = dict(typ_kbn=typ_kbn.PP, charakter_formalny=ac)
 
-    kw4c1 = dict(charakter_formalny__in=[charakter.KSZ, charakter.H], jezyk=jezyk['ang.'])
-    kw4c2 = dict(charakter_formalny__in=[charakter.KSZ, charakter.KSP, charakter.H])
-
     kw9 = dict(charakter_formalny=charakter.Supl)
     kw10 = dict(charakter_formalny=charakter.L)
     kw11 = dict(typ_kbn=typ_kbn.PW)
@@ -168,8 +165,16 @@ def get_queries(autor, przed_habilitacja=True, rok_habilitacji=None):
         '3b': base_query.filter(**dict(no_impact, **kw3)).order_by(*order_kbn),
 
 
-        '4c1': Rekord.objects.prace_autor_i_typ(autor, 'aut.').filter(**kw4c1),
-        '4c2': Rekord.objects.prace_autor_i_typ(autor, 'aut.').filter(**kw4c2).exclude(jezyk=jezyk['ang.']),
+        '4c1': Rekord.objects.prace_autor_i_typ(autor, 'aut.').filter(
+            charakter_formalny__in=[charakter.KSZ, charakter.H],
+            jezyk=jezyk['ang.']
+        ).exclude(content_type_id=praca_habilitacyjna_content_type,
+              object_id__in=Publikacja_Habilitacyjna.objects.all().only("id")),
+        '4c2': Rekord.objects.prace_autor_i_typ(autor, 'aut.').filter(
+            charakter_formalny__in=[charakter.KSZ, charakter.KSP, charakter.H]
+        ).exclude(jezyk=jezyk['ang.']).exclude(
+            content_type_id=praca_habilitacyjna_content_type,
+            object_id__in=Publikacja_Habilitacyjna.objects.all().only("id")),
 
         '5': base_query.filter(
             Q(charakter_formalny__in=pkt_5_charaktery) |
