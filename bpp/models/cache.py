@@ -292,7 +292,7 @@ class RekordManager(FulltextSearchMixin, models.Manager):
 
 class Rekord(ModelPunktowanyBaza, ModelZOpisemBibliograficznym,
              ModelZRokiem, ModelZeSzczegolami, ModelAfiliowanyRecenzowany,
-             ModelZWWW, models.Model):
+             models.Model):
     # XXX TODO: gdy będą compound keys w Django, można pozbyć się fake_id
     fake_id = models.TextField(primary_key=True)
 
@@ -318,6 +318,10 @@ class Rekord(ModelPunktowanyBaza, ModelZOpisemBibliograficznym,
     tytul_oryginalny_sort = models.TextField()
 
     liczba_znakow_wydawniczych = models.IntegerField()
+
+    # nie dziedziczymy z ModelZWWW, poniewaz tam jest pole dostep_dnia,
+    # ktore to obecnie nie jest potrzebne w Cache, wiec:
+    www = models.URLField("Adres WWW", max_length=1024, blank=True, null=True)
 
     objects = RekordManager()
 

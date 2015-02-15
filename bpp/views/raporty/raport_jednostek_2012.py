@@ -1,6 +1,7 @@
 # -*- encoding: utf-8 -*-
 
 from decimal import Decimal
+from django.core.exceptions import ObjectDoesNotExist
 from django.utils.datastructures import SortedDict
 from django.utils.safestring import mark_safe
 from django.views.generic import DetailView
@@ -85,10 +86,16 @@ class Tabela_Publikacji(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
         return ret
 
     def render_lp(self, record):
-        if self.old_zrodlo != record.zrodlo.nazwa:
+        # record.zrodlo moze byc None
+        try:
+            new_zrodlo = record.zrodlo.nazwa
+        except ObjectDoesNotExist:
+            new_zrodlo = u''
+
+        if self.old_zrodlo != new_zrodlo:
             self.counter += 1
             self.zrodlo_counter = itertools.count(1)
-            self.old_zrodlo = record.zrodlo.nazwa
+            self.old_zrodlo = new_zrodlo
             self.nowe_zrodlo_w_wierszu = True
         else:
             self.nowe_zrodlo_w_wierszu = False
@@ -135,7 +142,10 @@ class Tabela_Monografii(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
 
 
 def split_red(s, want, if_no_result=None):
-    seps = [u"Red. nauk.", u"red.", u"Pod redakcją", u"pod redakcją", u"Red."]
+    seps = [u"Pod. red.", u"Pod red.", u"Red. nauk.",
+            u"red.", u"Pod redakcją", u"pod redakcją",
+            u"Red.", u"Ed. by"]
+
     for sep in seps:
         if s.find(sep) > 0:
             x = s.split(sep)
@@ -144,6 +154,7 @@ def split_red(s, want, if_no_result=None):
 
     if if_no_result:
         return if_no_result
+
     return s
 
 
@@ -153,42 +164,45 @@ class Tabela_Rozdzialu_Monografii(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
         template = "raporty/raport_jednostek_2012/rozdzialy_monografii.html"
         per_page = sys.maxint
         empty_text = "Brak takich rekordów."
-        sequence = ('lp', 'autorzy', 'wydawca', 'tytul_monografii',
+        sequence = ('lp', 'autorzy', 'wydawca', 'tytul',
                     'tytul_rozdzialu', 'jezyk', 'rok',
-                    'redaktor_monografii', 'punkty_kbn')
+                    'impact_factor', # redaktor monografii
+                    'punkty_kbn')
 
     lp = TypowaTabelaMixin.lp
     autorzy = TypowaTabelaMixin.autorzy
 
-    tytul_monografii = Column("Tytuł monografii", A("id"))
+    tytul = Column("Tytuł monografii", A("pk"))
     tytul_rozdzialu = Column("Tytuł rozdziału", A("tytul_oryginalny"))
 
     jezyk = TypowaTabelaMixin.jezyk
     punkty_kbn = SumyImpactKbnMixin.punkty_kbn
 
     wydawca = Column("Wydawca", A("wydawnictwo"), orderable=False)
-    redaktor_monografii = Column("Redaktor monografii", A("id"))
+    impact_factor  = Column("Redaktor monografii")
     rok = Column("Rok", orderable=False)
 
     def __init__(self, *args, **kwargs):
         Table.__init__(self, *args, **kwargs)
         TypowaTabelaMixin.__init__(self)
 
-    def render_tytul_monografii(self, record):
+    def render_tytul(self, record):
         # JEŻĘLI ma zdefiniowaną monografię NADRZĘDNĄ to ją wyrzuć tutaj
-        orig = record.get_original_object()
+        orig = record.original
+
         if hasattr(orig, 'wydawnictwo_nadrzedne'):
             wn = orig.wydawnictwo_nadrzedne
             if wn is not None:
                 return wn.tytul_oryginalny
 
-        return split_red(record.informacje, 0)
+        return split_red(record.informacje, 0, if_no_result="").replace("W: ", "")
 
     def render_tytul_rozdzialu(self, record):
         return record.tytul_oryginalny
 
-    def render_redaktor_monografii(self, record):
-        orig = record.get_original_object()
+    def render_impact_factor(self, record): # redaktor monografii
+        orig = record.original
+
         if hasattr(orig, 'wydawnictwo_nadrzedne'):
             wn = orig.wydawnictwo_nadrzedne
             if wn is not None:
@@ -199,7 +213,7 @@ class Tabela_Rozdzialu_Monografii(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
 
                 return u", ".join([unicode(red) for red in redaktorzy])
 
-        return split_red(record.informacje, 1, "")
+        return split_red(record.informacje, 1, "").strip(" .")
 
 
 def wiele(model, *args):
