@@ -61,7 +61,7 @@ class Tabela_Publikacji(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
         per_page = sys.maxint
         empty_text = "Brak takich rekordów."
         sequence = ('lp', 'zrodlo', 'lp_art', 'autorzy', 'tytul_oryginalny',
-                    'jezyk', 'rok', 'impact_factor', 'punkty_kbn')
+                    'rok', 'impact_factor', 'punkty_kbn')
 
     lp = TypowaTabelaMixin.lp
     autorzy = TypowaTabelaMixin.autorzy
@@ -124,21 +124,42 @@ class Tabela_Monografii(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
         per_page = sys.maxint
         empty_text = "Brak takich rekordów."
         sequence = ('lp', 'autorzy', 'wydawca', 'tytul_oryginalny',
-                    'jezyk', 'rok', 'punkty_kbn')
+                    'jezyk', 'rok', 'szczegoly', 'punkty_kbn')
 
     lp = TypowaTabelaMixin.lp
     autorzy = TypowaTabelaMixin.autorzy
     tytul_oryginalny = TypowaTabelaMixin.tytul_oryginalny
     jezyk = TypowaTabelaMixin.jezyk
-    impact_factor = SumyImpactKbnMixin.impact_factor
+    # impact_factor = SumyImpactKbnMixin.impact_factor
     punkty_kbn = SumyImpactKbnMixin.punkty_kbn
+    szczegoly = Column(u"Szczegóły", A("szczegoly"))
 
     wydawca = Column("Wydawca", A("wydawnictwo"), orderable=False)
     rok = Column("Rok", orderable=False)
 
+    def render_szczegoly(self, record):
+        buf = record.szczegoly
+        if record.uwagi:
+            buf += u", " + record.uwagi
+        return buf
+
     def __init__(self, *args, **kwargs):
         Table.__init__(self, *args, **kwargs)
         TypowaTabelaMixin.__init__(self)
+
+class Tabela_Redakcji_Naukowej(Tabela_Monografii):
+    class Meta:
+        attrs = {"class": "paleblue"}
+        template = "raporty/raport_jednostek_2012/monografie.html"
+        per_page = sys.maxint
+        empty_text = "Brak takich rekordów."
+        sequence = ('lp', 'redaktorzy', 'wydawca', 'tytul_oryginalny',
+                    'jezyk', 'rok', 'szczegoly', 'punkty_kbn')
+
+    redaktorzy = Column(
+        "Redaktor (redaktorzy)",
+        A('opis_bibliograficzny_autorzy_cache'),
+        orderable=False)
 
 
 def split_red(s, want, if_no_result=None):
@@ -158,15 +179,31 @@ def split_red(s, want, if_no_result=None):
     return s
 
 
+def get_tytul_monografii(record):
+    orig = record.original
+
+    if hasattr(orig, 'wydawnictwo_nadrzedne'):
+        wn = orig.wydawnictwo_nadrzedne
+        if wn is not None:
+            return wn.tytul_oryginalny
+
+    return split_red(record.informacje, 0, if_no_result="").replace("W: ", "")
+
+
 class Tabela_Rozdzialu_Monografii(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
     class Meta:
         attrs = {"class": "paleblue"}
         template = "raporty/raport_jednostek_2012/rozdzialy_monografii.html"
         per_page = sys.maxint
         empty_text = "Brak takich rekordów."
-        sequence = ('lp', 'autorzy', 'wydawca', 'tytul',
-                    'tytul_rozdzialu', 'jezyk', 'rok',
-                    'impact_factor', # redaktor monografii
+        sequence = ('lp', 'tytul', 'wydawca',
+                    'lp_rozdzialu',
+                    'tytul_rozdzialu',
+                    'jezyk',
+                    'rok',
+                    'szczegoly',
+                    # 'impact_factor',
+                    # redaktor monografii
                     'punkty_kbn')
 
     lp = TypowaTabelaMixin.lp
@@ -179,41 +216,70 @@ class Tabela_Rozdzialu_Monografii(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
     punkty_kbn = SumyImpactKbnMixin.punkty_kbn
 
     wydawca = Column("Wydawca", A("wydawnictwo"), orderable=False)
-    impact_factor  = Column("Redaktor monografii")
+    # impact_factor  = Column("Redaktor monografii")
     rok = Column("Rok", orderable=False)
+    szczegoly = Column(u"Szczegóły", A("szczegoly"))
+    lp_rozdzialu = Column(u'Lp. rozdziału', A("szczegoly"))
 
     def __init__(self, *args, **kwargs):
         Table.__init__(self, *args, **kwargs)
         TypowaTabelaMixin.__init__(self)
 
+        self.counter = 0
+        self.old_tm = None
+
+    def render_lp(self, record):
+        tm = get_tytul_monografii(record)
+
+        if self.old_tm != tm:
+            self.counter += 1
+            self.tm_counter = itertools.count(1)
+            self.old_tm = tm
+            self.nowy_tytul_w_wierszu = True
+        else:
+            self.nowy_tytul_w_wierszu= False
+
+        if self.nowy_tytul_w_wierszu:
+            return '%d.' % self.counter
+        return u''
+
+    def render_lp_rozdzialu(self, record):
+        ret = "%s.%s." % (self.counter, next(self.tm_counter))
+        return ret
+
     def render_tytul(self, record):
-        # JEŻĘLI ma zdefiniowaną monografię NADRZĘDNĄ to ją wyrzuć tutaj
-        orig = record.original
+        if self.nowy_tytul_w_wierszu:
+            return get_tytul_monografii(record)
+        return u''
 
-        if hasattr(orig, 'wydawnictwo_nadrzedne'):
-            wn = orig.wydawnictwo_nadrzedne
-            if wn is not None:
-                return wn.tytul_oryginalny
-
-        return split_red(record.informacje, 0, if_no_result="").replace("W: ", "")
+    def render_wydawca(self, record):
+        if self.nowy_tytul_w_wierszu:
+            return record.wydawnictwo
+        return u''
 
     def render_tytul_rozdzialu(self, record):
         return record.tytul_oryginalny
 
-    def render_impact_factor(self, record): # redaktor monografii
-        orig = record.original
+    def render_szczegoly(self, record):
+        buf = record.szczegoly
+        if record.uwagi:
+            buf += u", " + record.uwagi
+        return buf
 
-        if hasattr(orig, 'wydawnictwo_nadrzedne'):
-            wn = orig.wydawnictwo_nadrzedne
-            if wn is not None:
-                redaktorzy = Wydawnictwo_Zwarte_Autor.objects.filter(
-                    rekord=wn,
-                    typ_odpowiedzialnosci=Typ_Odpowiedzialnosci.objects.get(
-                        skrot='red.'))
-
-                return u", ".join([unicode(red) for red in redaktorzy])
-
-        return split_red(record.informacje, 1, "").strip(" .")
+    # def render_impact_factor(self, record): # redaktor monografii
+    #     orig = record.original
+    #
+    #     if hasattr(orig, 'wydawnictwo_nadrzedne'):
+    #         wn = orig.wydawnictwo_nadrzedne
+    #         if wn is not None:
+    #             redaktorzy = Wydawnictwo_Zwarte_Autor.objects.filter(
+    #                 rekord=wn,
+    #                 typ_odpowiedzialnosci=Typ_Odpowiedzialnosci.objects.get(
+    #                     skrot='red.'))
+    #
+    #             return u", ".join([unicode(red) for red in redaktorzy])
+    #
+    #     return split_red(record.informacje, 1, "").strip(" .")
 
 
 def wiele(model, *args):
@@ -241,8 +307,8 @@ WSZYSTKIE_TABELE = SortedDict(
         ("2_2", Tabela_Monografii),
         ("2_3", Tabela_Rozdzialu_Monografii),
         ("2_4", Tabela_Rozdzialu_Monografii),
-        ("2_5", Tabela_Monografii),
-        ("2_6", Tabela_Monografii),
+        ("2_5", Tabela_Redakcji_Naukowej),
+        ("2_6", Tabela_Redakcji_Naukowej),
     ])
 
 
@@ -294,7 +360,7 @@ def raport_jednostek_tabela(key, base_query, jednostka):
                 jednostka_id=jednostka.pk,
                 typ_odpowiedzialnosci_id=Typ_Odpowiedzialnosci.objects.get(skrot='aut.')
             ).distinct(),
-            punkty_kbn__gt=0)
+            punkty_kbn__gt=0).order_by('informacje', 'tytul_oryginalny')
 
     elif key == "2_4":
         return base_query.filter(
@@ -304,7 +370,7 @@ def raport_jednostek_tabela(key, base_query, jednostka):
                 jednostka_id=jednostka.pk,
                 typ_odpowiedzialnosci_id=Typ_Odpowiedzialnosci.objects.get(skrot='aut.')
             ).distinct(),
-            punkty_kbn__gt=0)
+            punkty_kbn__gt=0).order_by('informacje', 'tytul_oryginalny')
 
     elif key == "2_5":
         return base_query.filter(
