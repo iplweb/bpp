@@ -905,6 +905,7 @@ class Command(BaseCommand):
             set_seq("bpp_praca_doktorska")
             set_seq("bpp_praca_habilitacyjna")
             set_seq("bpp_bppuser")
+            set_seq("bpp_jednostka")
 
         if options['clusters']:
             make_clusters()
