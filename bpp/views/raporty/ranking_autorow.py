@@ -63,5 +63,5 @@ class RankingAutorow(ReportTableView):
         context['table_title'] = u"Ranking autorów za rok %s" % context['rok']
         context['tab_subtitle'] = u''
         if wydzialy:
-            context['table_subtitle'] = u'dla %s' % u", ".join([x.nazwa for x in wydzialy])
+            context['table_subtitle'] = u", ".join([x.nazwa for x in wydzialy])
         return context

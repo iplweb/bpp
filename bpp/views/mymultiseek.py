@@ -41,7 +41,11 @@ class MyMultiseekResults(MultiseekResults):
                 Sum('index_copernicus'), Sum('punktacja_wewnetrzna'))
 
 
-        if 'MULTISEEK_TITLE' not in self.request.session:
+        keys = self.request.session.keys()
+        if 'MULTISEEK_TITLE' not in keys:
             self.request.session['MULTISEEK_TITLE'] = 'Rezultat wyszukiwania'
+        else:
+            if self.request.session['MULTISEEK_TITLE'] == '':
+                self.request.session['MULTISEEK_TITLE'] = 'Rezultat wyszukiwania'
 
         return ctx
