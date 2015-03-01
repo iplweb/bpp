@@ -61,18 +61,18 @@ class Tabela_Publikacji(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
         per_page = sys.maxint
         empty_text = "Brak takich rekordów."
         sequence = ('lp', 'zrodlo', 'lp_art', 'autorzy', 'tytul_oryginalny',
-                    'rok', 'impact_factor', 'punkty_kbn')
+                    'rok', 'szczegoly', 'punkty_kbn')
 
     lp = TypowaTabelaMixin.lp
     autorzy = TypowaTabelaMixin.autorzy
     tytul_oryginalny = TypowaTabelaMixin.tytul_oryginalny
     jezyk = TypowaTabelaMixin.jezyk
-    impact_factor = SumyImpactKbnMixin.impact_factor
     punkty_kbn = SumyImpactKbnMixin.punkty_kbn
 
     zrodlo = Column("Czasopismo", A("zrodlo.nazwa"), orderable=False)
     lp_art = Column("Lp. art.", A("id"), empty_values=(), orderable=False)
-    rok = Column("Rok, tom, zakres stron", orderable=False)
+    rok = Column("Rok", A("rok"), orderable=False)
+    szczegoly = Column("Tom, zakres stron", A("szczegoly"))
 
     def __init__(self, *args, **kwargs):
         Table.__init__(self, *args, **kwargs)
@@ -110,11 +110,89 @@ class Tabela_Publikacji(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
 
         return u''
 
-    def render_rok(self, record):
+    def render_szczegoly(self, record):
         buf = record.szczegoly
         if record.uwagi:
             buf += u", " + record.uwagi
         return buf
+
+class Tabela_Publikacji_Z_Impactem(Tabela_Publikacji):
+    class Meta:
+        attrs = {"class": "paleblue"}
+        template = "raporty/raport_jednostek_2012/publikacje.html"
+        per_page = sys.maxint
+        empty_text = "Brak takich rekordów."
+        sequence = ('lp', 'zrodlo', 'lp_art', 'autorzy', 'tytul_oryginalny',
+                    'rok', 'szczegoly', 'impact_factor', 'punkty_kbn')
+    impact_factor = SumyImpactKbnMixin.impact_factor
+
+class Tabela_Konferencji_Miedzynarodowej(TypowaTabelaMixin,
+                                         SumyImpactKbnMixin,
+                                         Table):
+
+    class Meta:
+        attrs = {"class": "paleblue"}
+        template = "raporty/raport_jednostek_2012/publikacje.html"
+        per_page = sys.maxint
+        empty_text = "Brak takich rekordów."
+        sequence = ('lp', 'zrodlo', 'lp_art', 'autorzy', 'tytul_oryginalny',
+                    'rok', 'zakres', 'punkty_kbn')
+
+    lp = TypowaTabelaMixin.lp
+    autorzy = TypowaTabelaMixin.autorzy
+    tytul_oryginalny = TypowaTabelaMixin.tytul_oryginalny
+    jezyk = TypowaTabelaMixin.jezyk
+    punkty_kbn = SumyImpactKbnMixin.punkty_kbn
+
+    zrodlo = Column("Tytuł materiału konf.", A("informacje"), orderable=False)
+    lp_art = Column("Lp. ref.", A("id"), empty_values=(), orderable=False)
+    rok = Column("Rok")
+    zakres = Column("Zakres stron ref.", A("szczegoly"), orderable=False)
+
+    def __init__(self, *args, **kwargs):
+        Table.__init__(self, *args, **kwargs)
+        TypowaTabelaMixin.__init__(self)
+        self.zrodlo_counter = itertools.count(1)
+        self.output_zrodlo = False
+        self.old_zrodlo = None
+
+    def render_lp_art(self, record):
+        ret = "%s.%s." % (self.counter, next(self.zrodlo_counter))
+        return ret
+
+    def render_lp(self, record):
+        # record.zrodlo moze byc None
+        try:
+            new_zrodlo = record.informacje
+        except ObjectDoesNotExist:
+            new_zrodlo = u''
+
+        if self.old_zrodlo != new_zrodlo:
+            self.counter += 1
+            self.zrodlo_counter = itertools.count(1)
+            self.old_zrodlo = new_zrodlo
+            self.nowe_zrodlo_w_wierszu = True
+        else:
+            self.nowe_zrodlo_w_wierszu = False
+
+        if self.nowe_zrodlo_w_wierszu:
+            return '%d.' % self.counter
+        return u''
+
+    def render_zrodlo(self, record):
+        if self.nowe_zrodlo_w_wierszu:
+            return record.informacje.strip("W: ")
+
+        return u''
+
+    def render_zakres(self, record):
+        buf = record.szczegoly
+        # if record.uwagi:
+        #     buf += u", " + record.uwagi
+        #
+        buf = buf.strip("WoS").strip()
+        return buf
+
 
 
 class Tabela_Monografii(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
@@ -147,7 +225,7 @@ class Tabela_Monografii(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
         Table.__init__(self, *args, **kwargs)
         TypowaTabelaMixin.__init__(self)
 
-class Tabela_Redakcji_Naukowej(Tabela_Monografii):
+class Tabela_Redakcji_Naukowej(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
     class Meta:
         attrs = {"class": "paleblue"}
         template = "raporty/raport_jednostek_2012/monografie.html"
@@ -156,11 +234,33 @@ class Tabela_Redakcji_Naukowej(Tabela_Monografii):
         sequence = ('lp', 'redaktorzy', 'wydawca', 'tytul_oryginalny',
                     'jezyk', 'rok', 'szczegoly', 'punkty_kbn')
 
+
+    lp = TypowaTabelaMixin.lp
+    tytul_oryginalny = TypowaTabelaMixin.tytul_oryginalny
+    jezyk = TypowaTabelaMixin.jezyk
+    # impact_factor = SumyImpactKbnMixin.impact_factor
+    punkty_kbn = SumyImpactKbnMixin.punkty_kbn
+    szczegoly = Column(u"Szczegóły", A("szczegoly"))
+
+    wydawca = Column("Wydawca", A("wydawnictwo"), orderable=False)
+    rok = Column("Rok", orderable=False)
+
     redaktorzy = Column(
         "Redaktor (redaktorzy)",
         A('opis_bibliograficzny_autorzy_cache'),
         orderable=False)
 
+    def __init__(self, *args, **kwargs):
+        Table.__init__(self, *args, **kwargs)
+        TypowaTabelaMixin.__init__(self)
+
+    def render_redaktorzy(self, record):
+        klass = record.original.autorzy.through
+        to = Typ_Odpowiedzialnosci.objects.get(skrot='red.')
+        reds = klass.objects.filter(
+            rekord=record.original,
+            typ_odpowiedzialnosci=to)
+        return u", ".join([x.zapisany_jako for x in reds])
 
 def split_red(s, want, if_no_result=None):
     seps = [u"Pod. red.", u"Pod red.", u"Red. nauk.",
@@ -198,6 +298,7 @@ class Tabela_Rozdzialu_Monografii(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
         empty_text = "Brak takich rekordów."
         sequence = ('lp', 'tytul', 'wydawca',
                     'lp_rozdzialu',
+                    'autorzy',
                     'tytul_rozdzialu',
                     'jezyk',
                     'rok',
@@ -299,10 +400,10 @@ def jezyki_obce():
 
 WSZYSTKIE_TABELE = SortedDict(
     [
-        ("1_1", Tabela_Publikacji),
+        ("1_1", Tabela_Publikacji_Z_Impactem),
         ("1_2", Tabela_Publikacji),
-        ("1_3", Tabela_Publikacji),
-        ("1_4", Tabela_Publikacji), # Tabela_Konferencji_Miedzynarodowej),
+        ("1_3", Tabela_Publikacji_Z_Impactem),
+        ("1_4", Tabela_Konferencji_Miedzynarodowej),
         ("2_1", Tabela_Monografii),
         ("2_2", Tabela_Monografii),
         ("2_3", Tabela_Rozdzialu_Monografii),
@@ -350,7 +451,12 @@ def raport_jednostek_tabela(key, base_query, jednostka):
     elif key == "2_2":
         return base_query.filter(
             charakter_formalny=Charakter_Formalny.objects.get(skrot="KSP"),
-            punkty_kbn__gt=0)
+            punkty_kbn__gt=0,
+            # znajdz autorow w jednostce
+            original__in_raw=Autorzy.objects.filter(
+                jednostka_id=jednostka.pk,
+                typ_odpowiedzialnosci_id=Typ_Odpowiedzialnosci.objects.get(skrot='aut.')
+            ).distinct(),)
 
     elif key == "2_3":
         return base_query.filter(
