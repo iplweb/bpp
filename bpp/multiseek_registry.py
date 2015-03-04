@@ -246,12 +246,12 @@ class KCPunktacjaWewnetrznaQueryObject(PunktacjaWewnetrznaQueryObject):
 
 
 class PunktyKBNQueryObject(DecimalQueryObject):
-    label = "Punkty KBN"
+    label = "Punkty PK"
     field_name = "punkty_kbn"
 
 
 class KCPunktyKBNQueryObject(PunktyKBNQueryObject):
-    label = u"KC: Punkty KBN"
+    label = u"KC: Punkty PK"
     field_name = 'kc_punkty_kbn'
     public = False
 
@@ -363,7 +363,7 @@ registry = create_registry(
         Ordering("tytul_oryginalny", u"tytuł oryginalny"),
         Ordering("rok", u"rok"),
         Ordering("impact_factor", u"impact factor"),
-        Ordering("punkty_kbn", u"punkty KBN"),
+        Ordering("punkty_kbn", u"punkty PK"),
         Ordering("charakter_formalny__nazwa", u"charakter formalny"),
         Ordering("typ_kbn__nazwa", u"typ KBN"),
         Ordering("zrodlo__nazwa", u"źródło"),
