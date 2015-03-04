@@ -63,10 +63,13 @@ class Tabela_Publikacji(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
         sequence = ('lp', 'zrodlo', 'lp_art', 'autorzy', 'tytul_oryginalny',
                     'rok', 'szczegoly', 'punkty_kbn')
 
+    span_rows = 7
+    print_sum_impact = False
+
     lp = TypowaTabelaMixin.lp
     autorzy = TypowaTabelaMixin.autorzy
     tytul_oryginalny = TypowaTabelaMixin.tytul_oryginalny
-    jezyk = TypowaTabelaMixin.jezyk
+    # jezyk = TypowaTabelaMixin.jezyk
     punkty_kbn = SumyImpactKbnMixin.punkty_kbn
 
     zrodlo = Column("Czasopismo", A("zrodlo.nazwa"), orderable=False)
@@ -125,6 +128,8 @@ class Tabela_Publikacji_Z_Impactem(Tabela_Publikacji):
         sequence = ('lp', 'zrodlo', 'lp_art', 'autorzy', 'tytul_oryginalny',
                     'rok', 'szczegoly', 'impact_factor', 'punkty_kbn')
     impact_factor = SumyImpactKbnMixin.impact_factor
+    span_rows = 7
+    print_sum_impact = True
 
 class Tabela_Konferencji_Miedzynarodowej(TypowaTabelaMixin,
                                          SumyImpactKbnMixin,
@@ -138,10 +143,13 @@ class Tabela_Konferencji_Miedzynarodowej(TypowaTabelaMixin,
         sequence = ('lp', 'zrodlo', 'lp_art', 'autorzy', 'tytul_oryginalny',
                     'rok', 'zakres', 'punkty_kbn')
 
+    span_rows = 7
+    print_sum_impact = False
+
     lp = TypowaTabelaMixin.lp
     autorzy = TypowaTabelaMixin.autorzy
     tytul_oryginalny = TypowaTabelaMixin.tytul_oryginalny
-    jezyk = TypowaTabelaMixin.jezyk
+    # jezyk = TypowaTabelaMixin.jezyk
     punkty_kbn = SumyImpactKbnMixin.punkty_kbn
 
     zrodlo = Column("Tytuł materiału konf.", A("informacje"), orderable=False)
