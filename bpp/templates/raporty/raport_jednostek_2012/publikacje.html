@@ -5,10 +5,12 @@
 {% block table.tfoot %}
     {% if table.rows %}
     <tr>
-        <td colspan="7" align="right" style="text-align: right;">
+        <td colspan="{{  table.span_rows }}" align="right" style="text-align: right;">
             <strong>Suma:</strong>
         </td>
-        <td>{{ table.sum_impact }}</td>
+        {% if table.print_sum_impact %}
+            <td>{{ table.sum_impact }}</td>
+        {% endif %}
         <td>{{ table.sum_punkty_kbn }}</td>
     </tr>
     {% endif %}
