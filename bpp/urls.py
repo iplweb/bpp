@@ -65,8 +65,8 @@ urlpatterns = patterns(
 
     url(r'^raporty/$', login_required(RaportSelector.as_view()), name='raporty'),
     url(r'^raporty/kronika_uczelni/$', login_required(RaportKronikaUczelni.as_view()), name='raport_kronika_uczelni'),
-    url(r'^raporty/jednostek/$', login_required(RaportJednostek.as_view()), name='raport_jednostek_formularz'),
-    url(r'^raporty/ranking-autorow/wybierz/$', login_required(RankingAutorowFormularz.as_view()), name='ranking_autorow_formularz'),
+    url(r'^raporty/jednostek/$', RaportJednostek.as_view(), name='raport_jednostek_formularz'),
+    url(r'^raporty/ranking-autorow/wybierz/$', RankingAutorowFormularz.as_view(), name='ranking_autorow_formularz'),
     url(r'^raporty/dla-komisji-centralnej/$', login_required(RaportDlaKomisjiCentralnejFormularz.as_view()), name='raport_dla_komisji_centralnej'),
 
 
@@ -78,20 +78,20 @@ urlpatterns = patterns(
         login_required(PodgladRaportu.as_view()), name='podglad-raportu'),
 
     url(r'^raporty/ranking-autorow/(?P<rok>\d)/$',
-        login_required(RankingAutorow.as_view()), name='ranking-autorow'),
+        RankingAutorow.as_view(), name='ranking-autorow'),
     url(r'^raporty/ranking-autorow/(?P<rok>\d\d)/$',
-        login_required(RankingAutorow.as_view()), name='ranking-autorow'),
+        RankingAutorow.as_view(), name='ranking-autorow'),
     url(r'^raporty/ranking-autorow/(?P<rok>\d\d\d)/$',
-        login_required(RankingAutorow.as_view()), name='ranking-autorow'),
+        RankingAutorow.as_view(), name='ranking-autorow'),
     url(r'^raporty/ranking-autorow/(?P<rok>\d\d\d\d)/$',
-        login_required(RankingAutorow.as_view()), name='ranking-autorow'),
+        RankingAutorow.as_view(), name='ranking-autorow'),
 
     url(
         r'^raporty/raport-jednostek-2012/(?P<pk>\d+)/(?P<rok_min>\d+)-(?P<rok_max>\d+)/$',
-        login_required(RaportJednostek2012.as_view()),
+        RaportJednostek2012.as_view(),
         name='raport-jednostek-rok-min-max'),
     url(r'^raporty/raport-jednostek-2012/(?P<pk>\d+)/(?P<rok_min>\d+)/$',
-        login_required(RaportJednostek2012.as_view()), name='raport-jednostek'),
+        RaportJednostek2012.as_view(), name='raport-jednostek'),
 
     url(r'^$', "bpp.views.root", name="root"),
 

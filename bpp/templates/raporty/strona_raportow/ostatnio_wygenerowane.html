@@ -1,5 +1,5 @@
 {% load humanize %}
-
+{% if raporty %}
 <p><strong>Ostatnio wygenerowane:</strong></p>
 <ul>
     {% for raport in raporty %}
@@ -13,3 +13,4 @@
         Nie znaleziono ostatnio wygenerowanych raportów.
     {% endfor %}
 </ul>
+{% endif %}
