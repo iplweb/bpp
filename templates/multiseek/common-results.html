@@ -132,11 +132,23 @@
         <div class="row">
             <div class="large-12 columns">
                 <h1 class="editable"
-                    data-url="{% url 'bpp:update_multiseek_title' %}">{{ request.session.MULTISEEK_TITLE }}</h1>
-                <script>
-                    $('.editable').jinplace();
-                </script>
+                    data-activator="#edit-activator"
+                    style="display: inline;"
+                    data-input-class="short"
+                    data-url="{% url 'bpp:update_multiseek_title' %}">{{ request.session.MULTISEEK_TITLE }}
+                </h1>
+                <img
+                        title="Kliknij, aby zmienić tytuł wyszukiwania"
+                        id="edit-activator"
+                        src="{% static "bpp/svg/pencil.svg" %}" width="24"
+                        height="24"
+                        class="hide-on-print">
+
             </div>
+            <script>
+                $('.editable').jinplace();
+            </script>
+        </div>
         </div>
     {% endif %}
 
