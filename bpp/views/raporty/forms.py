@@ -81,7 +81,7 @@ class RaportJednostekForm(forms.Form):
                 Hidden("report", "raport-jednostek")
             ),
             ButtonHolder(
-                Submit('submit', u'Przejdź do', css_class='button white')
+                Submit('submit', u'Szukaj', css_class='button white')
             )
         )
 
