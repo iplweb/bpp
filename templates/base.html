@@ -172,13 +172,15 @@
                 <li><a href="{% url "bpp:browse_zrodla" %}">źródła</a></li>
                 <li class="divider"></li>
 
+                {% if not request.user.is_anonymous %}
+                    <li><a href="{% url "bpp:raport_dla_komisji_centralnej" %}">raport dla Komisji Centralnej</a></li>
+                {% endif %}
+                <li><a href="{% url "bpp:raport_jednostek_formularz" %}">raport jednostek</a></li>
+                <li><a href="{% url "bpp:ranking_autorow_formularz" %}">ranking autorów</a></li>
+                <li class="divider"></li>
                 {% if request.user.is_anonymous %}
                     <li><a href="{% url "login_form" %}?next={{ request.get_full_path }}">zaloguj</a></li>
                 {% else %}
-
-                    <li>
-                        <a href="{% url "bpp:raporty" %}">raporty</a>
-                    </li>
 
                     <li><a target="_blank"
                            href="{% url "admin:index" %}">redagowanie</a>
