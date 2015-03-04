@@ -402,7 +402,7 @@ WSZYSTKIE_TABELE = SortedDict(
     [
         ("1_1", Tabela_Publikacji_Z_Impactem),
         ("1_2", Tabela_Publikacji),
-        ("1_3", Tabela_Publikacji_Z_Impactem),
+        ("1_3", Tabela_Publikacji),
         ("1_4", Tabela_Konferencji_Miedzynarodowej),
         ("2_1", Tabela_Monografii),
         ("2_2", Tabela_Monografii),
@@ -435,7 +435,7 @@ def raport_jednostek_tabela(key, base_query, jednostka):
         return base_query.filter(
             charakter_formalny__in=charaktery(
                 'ZRZ', 'PRZ', 'PSZ', 'ZSZ'),
-            punkty_kbn=10)
+            punkty_kbn__gt=0)
 
     elif key == "2_1":
         return base_query.filter(
