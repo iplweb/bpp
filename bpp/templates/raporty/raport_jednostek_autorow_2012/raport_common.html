@@ -1,38 +1,6 @@
-{% extends "base.html" %}
-
 {% load render_table from django_tables2 %}
-
-{% block breadcrumbs %}
-    {{ block.super }}
-    <li><a href="{% url "bpp:raporty" %}">Raporty</a></li>
-    <li><a href="{% url  "bpp:raport_jednostek_formularz"%}">Raport jednostek</a></li>
-    <li class="current">
-        {% if rok_min != rok_max %}
-        {{ jednostka }}, lata {{ rok_min }} - {{ rok_max }}
-    {% else %}
-        {{ jednostka }} - rok {{ rok_min }}
-    {% endif %}
-
-    </li>
-{% endblock %}
-
-{% block extratitle %}
-    {% if rok_min != rok_max %}
-        Raport dla {{ jednostka }} za okres {{ rok_min }} - {{ rok_max }}
-    {% else %}
-        Raport dla {{ jednostka }} za rok {{ rok }}
-    {% endif %}
-{% endblock %}
-
-{% block extrahead %}
-    {{ block.super }}
-    <link rel="stylesheet"
-          href="{{ STATIC_URL }}django_tables2/themes/paleblue/css/screen.css"/>
-{% endblock %}
-
-{% block content %}
     <center>
-        <h1>{{ jednostka }}</h1>
+        <h1>{{ object }}</h1>
 
         {% if rok_min != rok_max %}
             <h2>Dane o publikacjach za okres {{ rok_min }} - {{ rok_max }}</h2>
@@ -72,4 +40,3 @@
     <h5>2.6 Redakcja naukowa monografii naukowej wieloautorskiej w języku
         polskim</h5>
     {% render_table tabela_2_6 %}
-{% endblock %}

@@ -11,17 +11,14 @@ from bpp.views.browse import UczelniaView, WydzialView, JednostkaView, \
 from bpp.views.raporty import RankingAutorow, \
     PobranieRaportu, PodgladRaportu, KasowanieRaportu, \
     RaportJednostek2012, RaportKronikaUczelni, RaportJednostek, \
-    RankingAutorowFormularz, RaportDlaKomisjiCentralnejFormularz, RaportSelector
+    RankingAutorowFormularz, RaportDlaKomisjiCentralnejFormularz, RaportSelector, \
+    RaportAutorow
 from bpp import reports
+from bpp.views.raporty.raport_autorow_2012 import RaportAutorow2012
 
 reports # PyCharm, leave that import alone, it is IMPORTANT to import it
 
 from django.conf import settings
-
-if not settings.TESTING:
-    # TODO pchnać to do inicjalizacji aplikacji dango 1.7
-    from bpp.models import cache
-    cache.enable()
 
 urlpatterns = patterns(
     '',
@@ -66,6 +63,7 @@ urlpatterns = patterns(
     url(r'^raporty/$', login_required(RaportSelector.as_view()), name='raporty'),
     url(r'^raporty/kronika_uczelni/$', login_required(RaportKronikaUczelni.as_view()), name='raport_kronika_uczelni'),
     url(r'^raporty/jednostek/$', RaportJednostek.as_view(), name='raport_jednostek_formularz'),
+    url(r'^raporty/autorow/$', RaportAutorow.as_view(), name='raport_autorow_formularz'),
     url(r'^raporty/ranking-autorow/wybierz/$', RankingAutorowFormularz.as_view(), name='ranking_autorow_formularz'),
     url(r'^raporty/dla-komisji-centralnej/$', login_required(RaportDlaKomisjiCentralnejFormularz.as_view()), name='raport_dla_komisji_centralnej'),
 
@@ -92,6 +90,13 @@ urlpatterns = patterns(
         name='raport-jednostek-rok-min-max'),
     url(r'^raporty/raport-jednostek-2012/(?P<pk>\d+)/(?P<rok_min>\d+)/$',
         RaportJednostek2012.as_view(), name='raport-jednostek'),
+
+    url(
+        r'^raporty/raport-autorow-2012/(?P<pk>\d+)/(?P<rok_min>\d+)-(?P<rok_max>\d+)/$',
+        RaportAutorow2012.as_view(),
+        name='raport-autorow-rok-min-max'),
+    url(r'^raporty/raport-autorow-2012/(?P<pk>\d+)/(?P<rok_min>\d+)/$',
+        RaportAutorow2012.as_view(), name='raport-autorow'),
 
     url(r'^$', "bpp.views.root", name="root"),
 

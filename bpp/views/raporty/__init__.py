@@ -12,7 +12,8 @@ from django.views.generic.edit import BaseDeleteView, FormView, FormMixin
 from django_transaction_signals import defer
 from sendfile import sendfile
 from bpp.views.raporty.forms import KronikaUczelniForm, \
-    RaportJednostekForm, RaportDlaKomisjiCentralnejForm, RankingAutorowForm
+    RaportJednostekForm, RaportDlaKomisjiCentralnejForm, RankingAutorowForm, \
+    RaportAutorowForm
 
 from celeryui.interfaces import IWebTask
 from celeryui.models import Report
@@ -153,6 +154,25 @@ class RaportJednostek(RaportyFormMixin, FormView):
 
         return HttpResponseRedirect(
             reverse("bpp:raport-jednostek", args=(jednostka, rok_min)))
+
+
+class RaportAutorow(RaportyFormMixin, FormView):
+    form_class = RaportAutorowForm
+    nazwa_raportu = "Raport autorów"
+
+    def form_valid(self, form):
+        rok_min = form.cleaned_data['od_roku']
+        rok_max = form.cleaned_data['do_roku']
+        autor = form.cleaned_data['autor'].pk
+
+        if rok_min != rok_max:
+            return HttpResponseRedirect(
+                reverse(
+                    "bpp:raport-autorow-rok-min-max",
+                    args=(autor, rok_min, rok_max)))
+
+        return HttpResponseRedirect(
+            reverse("bpp:raport-autorow", args=(autor, rok_min)))
 
 
 class RankingAutorowFormularz(RaportyFormMixin, FormView):

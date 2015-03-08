@@ -5,12 +5,12 @@ from django_tables2 import RequestConfig
 
 from bpp.models import Jednostka
 from bpp.views.raporty.raport_aut_jed_common import WSZYSTKIE_TABELE, \
-    get_base_query_jednostka, raport_jednostek_tabela
+    raport_jednostek_tabela, get_base_query_autor, raport_autorow_tabela
 
 
-class RaportJednostek2012(DetailView):
+class RaportAutorow2012(DetailView):
     model = Jednostka
-    template_name = "raporty/raport_jednostek_autorow_2012/raport_jednostek.html"
+    template_name = "raporty/raport_jednostek_autorow_2012/raport_autorow.html"
 
     def get_context_data(self, **kwargs):
         rok_min = self.kwargs['rok_min']
@@ -18,8 +18,8 @@ class RaportJednostek2012(DetailView):
         if rok_max is None:
             rok_max = rok_min
 
-        base_query = get_base_query_jednostka(
-            jednostka=self.object,
+        base_query = get_base_query_autor(
+            autor=self.object,
             rok_min=rok_min,
             rok_max=rok_max)
 
@@ -27,7 +27,7 @@ class RaportJednostek2012(DetailView):
 
         for key, klass in WSZYSTKIE_TABELE.items():
             kw['tabela_%s' % key] = klass(
-                raport_jednostek_tabela(key, base_query, self.object))
+                raport_autorow_tabela(key, base_query))
 
         for tabela in [tabela for key, tabela in kw.items() if
                        key.startswith('tabela_')]:
