@@ -90,6 +90,43 @@ class RaportJednostekForm(forms.Form):
         ustaw_rok(self['do_roku'], lata)
 
 
+class RaportAutorowForm(forms.Form):
+    autor = autocomplete_light.ModelChoiceField(
+        'AutorAutocompleteAutor')
+
+    od_roku = forms.IntegerField()
+    do_roku = forms.IntegerField()
+
+    def __init__(self, lata, *args, **kwargs):
+        self.helper = FormHelper()
+        self.helper.form_method = 'post'
+        self.helper.form_action = "#RaportAutorow"
+
+        #self.helper.form_action = "./prepare/"
+        self.helper.layout = Layout(
+            Fieldset(
+                u'Raport autorów',
+                Row(
+                    F4Column('autor', css_class='large-12 small-12')
+                ),
+                Row(
+                    F4Column('od_roku', css_class='large-12 small-12'),
+                ),
+                Row(
+                    F4Column('do_roku', css_class='large-12 small-12')
+                ),
+                Hidden("report", "raport-autorow")
+            ),
+            ButtonHolder(
+                Submit('submit', u'Szukaj', css_class='button white')
+            )
+        )
+
+        super(RaportAutorowForm, self).__init__(*args, **kwargs)
+        ustaw_rok(self['od_roku'], lata)
+        ustaw_rok(self['do_roku'], lata)
+
+
 class RaportDlaKomisjiCentralnejForm(forms.Form):
     autor = autocomplete_light.ModelChoiceField(
         'AutorAutocompleteAutor')

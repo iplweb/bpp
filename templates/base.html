@@ -176,6 +176,7 @@
                     <li><a href="{% url "bpp:raport_dla_komisji_centralnej" %}">raport dla Komisji Centralnej</a></li>
                 {% endif %}
                 <li><a href="{% url "bpp:raport_jednostek_formularz" %}">raport jednostek</a></li>
+                <li><a href="{% url "bpp:raport_autorow_formularz" %}">raport autorów</a></li>
                 <li><a href="{% url "bpp:ranking_autorow_formularz" %}">ranking autorów</a></li>
                 <li class="divider"></li>
                 {% if request.user.is_anonymous %}

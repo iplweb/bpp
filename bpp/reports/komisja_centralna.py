@@ -21,7 +21,7 @@ from bpp.models.praca_habilitacyjna import Publikacja_Habilitacyjna
 from bpp.models.system import Typ_Odpowiedzialnosci, Jezyk
 from bpp.reports import addToRegistry
 from bpp.util import Getter
-from bpp.views.raporty import SumyImpactKbnMixin
+from bpp.views.raporty.raport_aut_jed_common import SumyImpactKbnMixin
 
 
 class TabelaRaportuKomisjiCentralnejMixin:

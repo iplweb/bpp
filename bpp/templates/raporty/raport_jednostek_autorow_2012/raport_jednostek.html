@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "bpp:raporty" %}">Raporty</a></li>
+    <li><a href="{% url  "bpp:raport_jednostek_formularz"%}">Raport jednostek</a></li>
+    <li class="current">
+        {% if rok_min != rok_max %}
+        {{ jednostka }}, lata {{ rok_min }} - {{ rok_max }}
+    {% else %}
+        {{ jednostka }} - rok {{ rok_min }}
+    {% endif %}
+
+    </li>
+{% endblock %}
+
+{% block extratitle %}
+    {% if rok_min != rok_max %}
+        Raport dla {{ jednostka }} za okres {{ rok_min }} - {{ rok_max }}
+    {% else %}
+        Raport dla {{ jednostka }} za rok {{ rok }}
+    {% endif %}
+{% endblock %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <link rel="stylesheet"
+          href="{{ STATIC_URL }}django_tables2/themes/paleblue/css/screen.css"/>
+{% endblock %}
+
+{% block content %}
+    {% include "raporty/raport_jednostek_autorow_2012/raport_common.html" with object=jednostka %}
+{% endblock %}
