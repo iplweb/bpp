@@ -6,7 +6,7 @@ from bpp.models import cache
 from bpp.models.cache import with_cache
 from bpp.models.system import Charakter_Formalny, Jezyk
 from bpp.tests.util import any_jednostka, any_autor, any_ciagle, CURRENT_YEAR, any_zwarte
-from bpp.views.raporty import get_base_query, raport_jednostek_tabela
+from bpp.views.raporty import get_base_query_jednostka, raport_jednostek_tabela
 
 
 def _query(model, atrybut, wartosc):
@@ -35,7 +35,7 @@ class TestRaportJednostek2012(TestCase):
     def sprawdz(self, klucz, rezultat, cnt=1):
         rezultat.dodaj_autora(self.a, self.j)
 
-        base_query = get_base_query(self.j, CURRENT_YEAR, CURRENT_YEAR)
+        base_query = get_base_query_jednostka(self.j, CURRENT_YEAR, CURRENT_YEAR)
         q = raport_jednostek_tabela(klucz, base_query, self.j)
         self.assertEquals(q.count(), cnt)
         self.assertEquals(q[0].original, rezultat)
@@ -52,7 +52,7 @@ class TestRaportJednostek2012(TestCase):
         e = any_ciagle(impact_factor=5, punktacja_wewnetrzna=0, rok=CURRENT_YEAR+6)
         for elem in [c,d,e]:
             elem.dodaj_autora(self.a, self.j)
-        base_query = get_base_query(self.j, CURRENT_YEAR, CURRENT_YEAR + 5)
+        base_query = get_base_query_jednostka(self.j, CURRENT_YEAR, CURRENT_YEAR + 5)
         q = raport_jednostek_tabela("1_1", base_query, self.j).order_by('rok')
         self.assertEquals(q.count(), 2)
         self.assertEquals([x.original for x in list(q)], [c, d])
