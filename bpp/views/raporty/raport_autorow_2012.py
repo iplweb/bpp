@@ -3,13 +3,13 @@
 from django.views.generic import DetailView
 from django_tables2 import RequestConfig
 
-from bpp.models import Jednostka
+from bpp.models import Autor
 from bpp.views.raporty.raport_aut_jed_common import WSZYSTKIE_TABELE, \
     raport_jednostek_tabela, get_base_query_autor, raport_autorow_tabela
 
 
 class RaportAutorow2012(DetailView):
-    model = Jednostka
+    model = Autor
     template_name = "raporty/raport_jednostek_autorow_2012/raport_autorow.html"
 
     def get_context_data(self, **kwargs):
