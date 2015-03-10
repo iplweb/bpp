@@ -16,6 +16,7 @@ from django_tables2 import A, Column, Table
 from bpp.models import Charakter_Formalny, Jezyk, \
     Typ_Odpowiedzialnosci
 from bpp.models.cache import Autorzy, Rekord
+from bpp.models.system import Typ_KBN
 
 
 class SumyImpactKbnMixin:
@@ -440,19 +441,28 @@ def raport_common_tabela(key, base_query, jednostka=None):
     if key == "1_1":
         return base_query.filter(
             impact_factor__gt=0,
-            punktacja_wewnetrzna=0).order_by("zrodlo__nazwa")
+            punktacja_wewnetrzna=0
+        ).exclude(
+            typ_kbn=Typ_KBN.objects.get(skrot="PW")
+        ).order_by("zrodlo__nazwa")
 
     elif key == "1_2":
         return base_query.filter(
             charakter_formalny__skrot="AC",
             impact_factor=0,
-            punkty_kbn__gt=0)
+            punkty_kbn__gt=0
+        ).exclude(
+            typ_kbn=Typ_KBN.objects.get(skrot="PW")
+        )
 
     elif key == "1_3":
         return base_query.filter(
             charakter_formalny__skrot="AC",
             uwagi__icontains='erih',
-            punkty_kbn__in=[10, 12, 14])
+            punkty_kbn__in=[10, 12, 14]
+        ).exclude(
+            typ_kbn=Typ_KBN.objects.get(skrot="PW")
+        )
 
     elif key == "1_4":
         return base_query.filter(
