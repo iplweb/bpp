@@ -182,7 +182,9 @@ class TestKasowanieRaportuFileDeletion(
 
 
 class TestWidokiRaportJednostek2012(UserTestCase):
-    fixtures = ['charakter_formalny.json', 'jezyk.json',
+    fixtures = ['charakter_formalny.json',
+                'jezyk.json',
+                'typ_kbn.json',
                 'typ_odpowiedzialnosci.json']
 
     def setUp(self):
