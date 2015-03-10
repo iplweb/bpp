@@ -78,8 +78,8 @@ class Tabela_Publikacji(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
 
     zrodlo = Column("Czasopismo", A("zrodlo.nazwa"), orderable=False)
     lp_art = Column("Lp. art.", A("id"), empty_values=(), orderable=False)
-    rok = Column("Rok", A("rok"), orderable=False)
-    szczegoly = Column("Tom, zakres stron", A("szczegoly"))
+    rok = Column("Rok, tom/nr", A("rok"), orderable=False)
+    szczegoly = Column("Szczegóły", A("szczegoly"))
 
     def __init__(self, *args, **kwargs):
         Table.__init__(self, *args, **kwargs)
@@ -118,10 +118,10 @@ class Tabela_Publikacji(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
         return u''
 
     def render_szczegoly(self, record):
-        buf = record.szczegoly
-        if record.uwagi:
-            buf += u", " + record.uwagi
-        return buf
+        return record.szczegoly
+
+    def render_rok(self, record):
+        return u"%s, %s" % (record.rok, record.informacje)
 
 class Tabela_Publikacji_Z_Impactem(Tabela_Publikacji):
     class Meta:
