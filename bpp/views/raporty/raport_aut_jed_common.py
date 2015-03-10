@@ -121,6 +121,8 @@ class Tabela_Publikacji(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
         return record.szczegoly
 
     def render_rok(self, record):
+        if str(record.rok) in record.informacje:
+            return record.informacje
         return u"%s, %s" % (record.rok, record.informacje)
 
 class Tabela_Publikacji_Z_Impactem(Tabela_Publikacji):
