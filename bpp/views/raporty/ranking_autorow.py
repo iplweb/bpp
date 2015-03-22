@@ -48,9 +48,7 @@ class RankingAutorow(ReportTableView):
         if wydzialy:
             try:
                 wydzialy = [Wydzial.objects.get(pk=int(x)) for x in wydzialy]
-            except TypeError:
-                return []
-            except Wydzial.DoesNotExist:
+            except (TypeError, ValueError, Wydzial.DoesNotExist):
                 return []
 
         return wydzialy

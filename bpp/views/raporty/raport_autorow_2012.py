@@ -18,6 +18,8 @@ class RaportAutorow2012(DetailView):
         if rok_max is None:
             rok_max = rok_min
 
+        rok_min, rok_max = min(rok_min, rok_max), max(rok_min, rok_max)
+
         base_query = get_base_query_autor(
             autor=self.object,
             rok_min=rok_min,
