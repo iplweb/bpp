@@ -12,6 +12,8 @@ class FulltextSearchMixin:
     def fulltext_filter(self, qstr):
         from djorm_pgfulltext.fields import startswith
 
+        if qstr == None: qstr = u""
+
         words = [x.strip() for x in qstr.split(u" ") if x.strip()]
         qstr = " & ".join(startswith(words))
         params = ('bpp_nazwy_wlasne', qstr)
