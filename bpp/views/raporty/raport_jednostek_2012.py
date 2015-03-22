@@ -17,6 +17,8 @@ class RaportJednostek2012(DetailView):
         rok_max = self.kwargs.get('rok_max', None)
         if rok_max is None:
             rok_max = rok_min
+            
+        rok_min, rok_max = min(rok_min, rok_max), max(rok_min, rok_max)
 
         base_query = get_base_query_jednostka(
             jednostka=self.object,
