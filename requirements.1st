@@ -30,8 +30,7 @@ djorm-pgarray==1.2
 django-cacheops==2.2.1
 
 # MUSI być budowany pod Linuxem z powodu poniższych poleceń:
-gunicorn==19.1.1
-gevent==0.13.8
+gunicorn==19.3.0
 watchdog==0.8.2
 
 # django-monitio wymaga:
