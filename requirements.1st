@@ -1,26 +1,12 @@
-#
-# UWAGA!!!
-#
-# jeżeli cokolwiek wymaga pociągnięcia z VCS, skorzystaj z pliku
-# requirements.src
-#
-# tutaj jedynie pakiety z PyPI, ew. wcześniej zbudowane binarki
-# w wheelhouse
-#
-
 Django==1.7.1
 django-autoslug==1.7.1
 django-pagination==1.0.7
-# UWAGA wymagany jest build ze zrodel z mojego repo na github
-django-grappelli==2.6.4
 django-autocomplete-light==2.0.1
-django-celery-ui==0.2
-django_multiseek==0.9.13
 django-admin-tools==0.5.2
 django-transaction-signals==1.0.0
 xlrd==0.9.3
-django-redis-sessions==0.4.0
 celery==3.1.17
+django-redis-sessions==0.4.0
 django-tables2==0.15.0
 django-tables2-reports==0.0.10
 pyExcelerator==0.6.4.1
@@ -28,11 +14,10 @@ django-sendfile==0.3.2
 
 unidecode==0.04.16
 django-cookie-law==1.0.1
-django-monitio==0.4.8
 openpyxl==1.6.2
-# oaimarc==0.1
 pymarc==2.9.2
 moai==2.0.0
+
 django-crispy-forms==1.4.0
 crispy-forms-foundation==0.3.5
 django-smart-extends==0.7.0
@@ -55,44 +40,11 @@ django-sse==0.4.1
 sse==1.2
 django-cors-headers==0.13
 
-
-
-# requirements.apt
-psycopg2
-PIL
-pycrypto
-simplejson
-
 zope.interface==4.1.1
 zope.component==4.1.0
 
-# logowanie
 raven==5.1.1
 
-# DO TESTÓW:
-django-debug-toolbar==1.2.2
-selenium==2.44.0
-ludibrio==3.1.0
-mock==1.0.1
-django-nose==1.3
-django-crawler==0.1
-django-selenium-helpers==1.1.3
-coverage==3.6
-
-model_mommy==1.2.3
-
-splinter==0.7.0
-django-whatever==0.2.3
-django-extensions
-django-dynamic-fixture==1.8.0
-
-flake8
-django-jenkins>=0.16.3
-pep8
-pyflakes
-
 django-secure-input==0.9.3
-
 django-session-security==2.2.0
-
 django-dbdump==1.1

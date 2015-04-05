@@ -160,7 +160,7 @@ def virtualenv_packages_install():
     with cd(sources_path()):
         virtualenv(
             'pip install --use-wheel --no-index --find-links=wheelhouse '
-            '-r requirements.pip')
+            '-r requirements.2nd')
 
 
 def virtualenv_path():
