@@ -6,6 +6,7 @@ django-admin-tools==0.5.2
 django-transaction-signals==1.0.0
 xlrd==0.9.3
 celery==3.1.17
+kombu==3.0.24
 django-redis-sessions==0.4.0
 django-tables2==0.15.0
 django-tables2-reports==0.0.10
