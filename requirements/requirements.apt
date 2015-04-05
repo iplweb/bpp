@@ -6,3 +6,4 @@ python-imaging
 python-crypto
 python-simplejson
 python-sqlalchemy
+postgresql-plpython-9.3
