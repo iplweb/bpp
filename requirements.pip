@@ -39,7 +39,7 @@ django-smart-extends==0.7.0
 python-dateutil==2.3
 
 djorm-ext-pgfulltext==0.9.1
-django-bower==5.0.1
+django-bower==5.0.3
 django-compressor==1.4
 djorm-pgarray==1.2
 djorm-ext-filtered-contenttypes==0.2.1
