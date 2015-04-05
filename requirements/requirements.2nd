@@ -4,3 +4,4 @@ django-celery-ui==0.2
 django_multiseek==0.9.13
 django-monitio==0.4.8
 djorm-ext-filtered-contenttypes==0.2.1
+djorm-ext-pgfulltext==0.9.1
