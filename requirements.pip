@@ -30,7 +30,7 @@ unidecode==0.04.16
 django-cookie-law==1.0.1
 django-monitio==0.4.8
 openpyxl==1.6.2
-oaimarc==0.1
+# oaimarc==0.1
 pymarc==2.9.2
 moai==2.0.0
 django-crispy-forms==1.4.0
