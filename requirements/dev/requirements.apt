@@ -1,9 +1,7 @@
-build-essential
 libpq-dev
 libjpeg-dev
 libpng-dev
-python-dev
 libxml2-dev
 libxslt1-dev
 libevent-dev
-python-sqlalchemy
+
