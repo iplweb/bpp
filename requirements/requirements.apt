@@ -1,0 +1,7 @@
+python
+postgresql
+python-gevent
+python-psycopg2
+python-imaging
+python-crypto
+python-simplejson
