@@ -27,7 +27,6 @@ djorm-ext-pgfulltext==0.9.3
 django-bower==5.0.3
 django-compressor==1.4
 djorm-pgarray==1.2
-djorm-ext-filtered-contenttypes==0.2.1
 django-cacheops==2.2.1
 
 # MUSI być budowany pod Linuxem z powodu poniższych poleceń:
