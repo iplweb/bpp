@@ -4,7 +4,7 @@ libpng-dev
 libxml2-dev
 libxslt1-dev
 libevent-dev
-firefox=28.0+build2-0ubuntu2
+firefox
 tightvncserver
 icewm
 

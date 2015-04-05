@@ -1,5 +1,5 @@
 django-debug-toolbar==1.2.2
-selenium==2.44.0
+selenium==2.45.0
 ludibrio==3.1.0
 mock==1.0.1
 django-nose==1.3
