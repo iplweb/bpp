@@ -1,6 +1,14 @@
 # -*- encoding: utf-8 -*-
 
 import sys, os
+from django.core.exceptions import ImproperlyConfigured
+
+
+def django_getenv(varname, default=None):
+    value = os.getenv(varname, default)
+    if value is None:
+        raise ImproperlyConfigured("Please set %r variable" % varname)
+    return value
 
 # pycharm, leave this
 os
@@ -82,7 +90,7 @@ ROOT_URLCONF = 'django_bpp.urls'
 WSGI_APPLICATION = 'django_bpp.wsgi.application'
 
 TEMPLATE_DIRS = (
-    os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'templates')),
+    os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'templates')),
 )
 
 INSTALLED_APPS = [
@@ -177,8 +185,6 @@ DJORM_POOL_OPTIONS = {
 
 TESTING = ('test' in sys.argv) or ('jenkins' in sys.argv)
 
-
-DJANGO_BPP_DATABASE_NAME = os.getenv('DJANGO_BPP_DATABASE_NAME', 'django_bpp')
 
 # django-jenkins
 
@@ -332,8 +338,6 @@ CACHEOPS_DEGRADE_ON_FAILURE = True
 
 MAT_VIEW_REFRESH_COUNTDOWN = 30
 
-from .local_settings import *
-
 SITE_ROOT = os.path.abspath(
     os.path.join(
         os.path.dirname(__file__), '..'))
@@ -343,7 +347,32 @@ STATIC_ROOT = os.path.join(SITE_ROOT, "staticroot")
 COMPRESS_ENABLED = True
 COMPRESS_ROOT = STATIC_ROOT
 
-INSTALLED_APPS.extend(EXTRA_INSTALLED_APPS)
+# Domyslnie, redis na Ubuntu pozwala na 16 baz danych
+REDIS_DB_BROKER = 1
+REDIS_DB_CELERY = 2
+REDIS_DB_MONITIO = 3
+REDIS_DB_SESSION = 4
+REDIS_DB_CACHEOPS = 5
+REDIS_DB_LOCKS = 6
+
+if django_getenv("DJANGO_BPP_RAVEN_CONFIG_URL"):
+    RAVEN_CONFIG = {
+        'dsn': django_getenv("DJANGO_BPP_RAVEN_CONFIG_URL"),
+    }
+
+    INSTALLED_APPS.append('raven.contrib.django.raven_compat')
+
+ALLOWED_HOSTS = [
+    django_getenv("DJANGO_BPP_HOSTNAME"),
+]
+
+
+CORS_ORIGIN_WHITELIST = [
+    django_getenv("DJANGO_BPP_HOSTNAME"),
+]
+
+REDIS_HOST = django_getenv("DJANGO_BPP_REDIS_HOST", "localhost")
+REDIS_PORT = int(django_getenv("DJANGO_BPP_REDIS_PORT", "6379"))
 
 CACHEOPS_REDIS = {
     'host': REDIS_HOST, # redis-server is on same machine
@@ -367,10 +396,6 @@ SESSION_REDIS_PORT = REDIS_PORT
 SESSION_REDIS_DB = REDIS_DB_SESSION
 SESSION_REDIS_PREFIX = 'session'
 
-# django-sendfile
-SENDFILE_ROOT = MEDIA_ROOT
-SENDFILE_URL = MEDIA_URL
-
 if TESTING:
     CELERY_ALWAYS_EAGER = True
 
@@ -381,3 +406,23 @@ ALLOWED_TAGS = ('b', 'em', 'i', 'strong', 'strike', 'u', 'sup', 'font', 'sub')
 SESSION_SECURITY_PASSIVE_URLS = [
     '/messages/'
 ]
+
+ADMINS = (
+    ("Michal Pasternak", "michal.dtz@gmail.com"),
+)
+MANAGERS = ADMINS
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': django_getenv("DJANGO_BPP_DB_NAME"),
+        'USER': django_getenv("DJANGO_BPP_DB_USER"),
+        'PASSWORD': django_getenv("DJANGO_BPP_DB_PASSWORD"),
+        'HOST': django_getenv("DJANGO_BPP_DB_HOST", "localhost"),
+        'PORT': int(django_getenv("DJANGO_BPP_DB_PORT", "5432"))
+    }
+}
+
+SECRET_KEY = django_getenv("DJANGO_BPP_SECRET_KEY")
+
+SENDFILE_URL = MEDIA_URL
