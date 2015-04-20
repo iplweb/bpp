@@ -13,7 +13,7 @@ def django_getenv(varname, default=None):
 # pycharm, leave this
 os
 
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 
 # Django
 import random, string
@@ -90,7 +90,7 @@ ROOT_URLCONF = 'django_bpp.urls'
 WSGI_APPLICATION = 'django_bpp.wsgi.application'
 
 TEMPLATE_DIRS = (
-    os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'templates')),
+    os.path.join(BASE_DIR, 'templates'),
 )
 
 INSTALLED_APPS = [
@@ -151,10 +151,7 @@ GRAPPELLI_INDEX_DASHBOARD = 'django_bpp.dashboard.CustomIndexDashboard'
 GRAPPELLI_ADMIN_TITLE = "BPP"
 ADMIN_TOOLS_MENU = 'django_bpp.menu.CustomMenu'
 
-PROJECT_ROOT = os.path.abspath(
-    os.path.join(
-        os.path.dirname(os.path.realpath(__file__)),
-        '', '..'))
+PROJECT_ROOT = BASE_DIR
 
 MULTISEEK_REGISTRY = 'bpp.multiseek_registry'
 
@@ -270,7 +267,7 @@ MOMMY_CUSTOM_FIELDS_GEN = {
 BOWER_COMPONENTS_ROOT = os.path.abspath(
     os.path.join(
         os.path.dirname(__file__),
-        '', '..', 'components'))
+        '..', '..', 'components'))
 
 BOWER_INSTALLED_APPS = (
     'jquery#2.1.1',
