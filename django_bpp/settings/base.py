@@ -414,7 +414,7 @@ MANAGERS = ADMINS
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'ENGINE': django_getenv("DJANGO_BPP_DB_ENGINE", 'django.db.backends.postgresql_psycopg2'),
         'NAME': django_getenv("DJANGO_BPP_DB_NAME"),
         'USER': django_getenv("DJANGO_BPP_DB_USER"),
         'PASSWORD': django_getenv("DJANGO_BPP_DB_PASSWORD"),

@@ -10,5 +10,5 @@ SENDFILE_BACKEND = 'sendfile.backends.nginx'
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = False
 
-MEDIA_ROOT = "/home/%s/django-bpp-media"
+MEDIA_ROOT = "/home/%s/django-bpp-media" % django_getenv("USER")
 SENDFILE_ROOT = MEDIA_ROOT
