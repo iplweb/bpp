@@ -1,1 +1,5 @@
-version = "20141020-35"
+VERSION = "0.9.0"
+
+if __name__ == "__main__":
+    import sys
+    sys.stdout.write(VERSION)
