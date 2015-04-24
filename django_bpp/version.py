@@ -3,7 +3,7 @@ VERSION = "0.9.17"
 if __name__ == "__main__":
     import sys
 
-    output = VERSION
+    OUTPUT = VERSION
 
     if "--json" in sys.argv:
         import json
