@@ -114,8 +114,6 @@ INSTALLED_APPS = [
     'admin_tools.menu',
     'admin_tools.dashboard',
 
-    'django_extensions',
-
     'django_tables2',
     'django_tables2_reports',
 
