@@ -10,7 +10,6 @@ model_mommy==1.2.3
 
 splinter==0.7.0
 django-whatever==0.2.3
-django-extensions
 django-dynamic-fixture==1.8.0
 
 flake8

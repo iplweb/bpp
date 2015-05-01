@@ -22,7 +22,6 @@ SENDFILE_BACKEND = 'sendfile.backends.simple'
 
 INSTALLED_APPS += ("django_jenkins", )
 INSTALLED_APPS += ("django_nose", )
-INSTALLED_APPS += ("django_extensions", )
 
 SELENIUM_DRIVER = "Firefox"
 
