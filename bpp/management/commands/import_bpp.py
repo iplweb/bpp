@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
 """Importuje bazę danych BPP z istniejącego serwera PostgreSQL"""
 
-import sys
+import os, sys
 
 from django.db import IntegrityError
 import psycopg2.extensions
@@ -813,22 +813,12 @@ def make_clusters():
 
 
 def db_connect():
-    #print "Trying to connect...",
-    if sys.platform == 'win32':
-        pgsql_conn = psycopg2.connect(
-            database="b_med",
-            user="postgres",
-            password="",
-            host="bpplocal",
-            port=5432)
-    else:
-        pgsql_conn = psycopg2.connect(
-            database="b_med",
-            user="aml",
-            password="1g97r8mhvfsdaoighq329thadsfasd",
-            host="localhost",
-            port=5432)
-        #print " connected!"
+    pgsql_conn = psycopg2.connect(
+        database=os.getenv("BPP_DB_REBUILD_SOURCE_DB_NAME", "b_med"),
+        user=os.getenv("BPP_DB_REBUILD_SOURCE_DB_USER", "postgres"),
+        password=os.getenv("BPP_DB_REBUILD_SOURCE_DB_PASSWORD", ""),
+        host=os.getenv("BPP_DB_REBUILD_SOURCE_DB_HOST", "staging-bpp"),
+        port=5432)
     pgsql_conn.set_client_encoding('UTF8')
     return pgsql_conn
 
