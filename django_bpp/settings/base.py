@@ -337,7 +337,7 @@ MAT_VIEW_REFRESH_COUNTDOWN = 30
 
 SITE_ROOT = os.path.abspath(
     os.path.join(
-        os.path.dirname(__file__), '..'))
+        os.path.dirname(__file__), '..', '..'))
 
 STATIC_ROOT = os.path.join(SITE_ROOT, "staticroot")
 
