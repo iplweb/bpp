@@ -2,7 +2,7 @@
 
 from .base import *
 
-DEBUG = True
+DEBUG = False
 TEMPLATE_DEBUG = DEBUG
 
 SENDFILE_BACKEND = 'sendfile.backends.nginx'
