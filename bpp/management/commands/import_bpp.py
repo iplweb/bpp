@@ -246,7 +246,7 @@ def zrob_korekty(cur):
         (5437, 'imiona', u'Jamal'),
         (6680, 'imiona', u'Sławomir'),
         (10285, 'nazwisko', u'Kowal'),
-        (15791, 'nazwisko', u'Janiszewska-Grzyb'),
+#        (15791, 'nazwisko', u'Janiszewska-Grzyb'),
         (8164, 'imiona', u'Majda'),
         (174, 'imiona', u'Kinga K.'),
         (907, 'imiona', u'Małgorzata H.'),
