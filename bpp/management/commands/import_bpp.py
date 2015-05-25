@@ -154,7 +154,7 @@ NOWE_CHARAKTERY_MAPPING = {
     "AP": "AC",
     "API": "AC",
     "AZ": "AC",
-    "PRI": "PSZ",
+    "PRI": "PRZ",
     "PSI": "PSZ",
     "S": None,
     "PW": None,
