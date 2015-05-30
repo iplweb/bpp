@@ -1,6 +1,8 @@
 # -*- encoding: utf-8 -*-
 from django.core.urlresolvers import reverse
+from django.db.models.query_utils import Q
 from django.template.defaultfilters import safe
+from django_tables2.columns.base import Column
 from django_tables2_reports.tables import TableReport
 
 from bpp.models import Autor, Sumy
@@ -18,6 +20,7 @@ class RankingAutorowTable(TableReport):
                   'wydzial',
                   'impact_factor',
                   'punkty_kbn')
+    punkty_kbn = Column("Punkty PK", "punkty_kbn")
 
     def __init__(self, *args, **kwargs):
         kwargs['template'] = "raporty/ranking-autorow-tabelka.html"
@@ -42,16 +45,21 @@ class RankingAutorow(ReportTableView):
 
         return qset.select_related()
 
-    def get_wydzialy(self):
-        wydzialy = self.request.GET.getlist("wydzialy[]")
+    def get_dostepne_wydzialy(self):
+        return Wydzial.objects.filter(zezwalaj_na_ranking_autorow=True)
 
+    def get_wydzialy(self):
+        base_query = self.get_dostepne_wydzialy()
+
+        wydzialy = self.request.GET.getlist("wydzialy[]")
         if wydzialy:
             try:
-                wydzialy = [Wydzial.objects.get(pk=int(x)) for x in wydzialy]
-            except (TypeError, ValueError, Wydzial.DoesNotExist):
-                return []
+                wydzialy = base_query.filter(pk__in=[int(x) for x in wydzialy])
+                return wydzialy
+            except (TypeError, ValueError):
+                pass
 
-        return wydzialy
+        return base_query
 
     def get_context_data(self, **kwargs):
         context = super(ReportTableView, self).get_context_data(**kwargs)
@@ -60,6 +68,6 @@ class RankingAutorow(ReportTableView):
         context['wydzialy'] = wydzialy
         context['table_title'] = u"Ranking autorów za rok %s" % context['rok']
         context['tab_subtitle'] = u''
-        if wydzialy:
-            context['table_subtitle'] = u", ".join([x.nazwa for x in wydzialy])
+        #if wydzialy.count() != self.get_dostepne_wydzialy.count():
+        context['table_subtitle'] = u", ".join([x.nazwa for x in wydzialy])
         return context
