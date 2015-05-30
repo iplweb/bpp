@@ -12,6 +12,7 @@ from django.core.exceptions import ValidationError
 
 import autocomplete_light
 from bpp.models import Wydzial
+from django.utils.functional import lazy
 
 
 def ustaw_rok(rok, lata):
@@ -55,7 +56,7 @@ class KronikaUczelniForm(forms.Form):
 
 class RaportJednostekForm(forms.Form):
     jednostka = autocomplete_light.ModelChoiceField(
-        'JednostkaAutocompleteJednostka')
+        'RaportyJednostkaWidoczna')
 
     od_roku = forms.IntegerField()
     do_roku = forms.IntegerField()
@@ -153,13 +154,16 @@ class RaportDlaKomisjiCentralnejForm(forms.Form):
         super(RaportDlaKomisjiCentralnejForm, self).__init__(*args, **kwargs)
         ustaw_rok(self['rok_habilitacji'], lata)
 
+class WydzialChoiceField(forms.ModelMultipleChoiceField):
+    def label_from_instance(self, obj):
+        return obj.nazwa
 
 class RankingAutorowForm(forms.Form):
-    wydzialy = forms.MultipleChoiceField(
+    wydzialy = WydzialChoiceField(
         label=u"Ogranicz do wydziału (wydziałów):",
         required=False,
         widget=forms.SelectMultiple(attrs={'size': '15'}),
-        choices=[(x.id, x.nazwa) for x in Wydzial.objects.all()],
+        queryset=Wydzial.objects.filter(widoczny=True, zezwalaj_na_ranking_autorow=True),
         help_text=u"Jeżeli nie wybierzesz żadnego wydziału, system wygeneruje "
                   u"dane dla wszystkich wydziałów. Przytrzymaj przycisk CTRL ("
                   u"CMD na Maku) gdy klikasz, aby wybrać więcej, niż jeden "

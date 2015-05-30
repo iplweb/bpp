@@ -46,9 +46,14 @@ class Wydzial(ModelZAdnotacjami, ModelHistoryczny):
     slug = AutoSlugField(populate_from='nazwa',
         max_length=512, unique=True)
     poprzednie_nazwy = models.CharField(max_length=4096, blank=True, null=True, default='')
-
     kolejnosc = models.IntegerField("Kolejność", default=0)
-    widoczny = models.BooleanField(default=True)
+    widoczny = models.BooleanField(
+        default=True,
+        help_text="""Czy wydział ma być widoczny przy przeglądaniu strony dla zakładki "Uczelnia"?""")
+
+    zezwalaj_na_ranking_autorow = models.BooleanField(
+        "Zezwalaj na generowanie rankingu autorów dla tego wydziału",
+        default=True)
 
     class Meta:
         verbose_name = "wydział"

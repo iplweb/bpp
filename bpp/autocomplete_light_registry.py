@@ -64,6 +64,17 @@ autocomplete_light.register(
     choice_template="autocompletes/admin.html")
 
 
+class AutocompleteJednostkaWidoczna(AutocompleteJednostka):
+    choices = Jednostka.objects.filter(widoczna=True)
+
+
+autocomplete_light.register(
+    Jednostka, AutocompleteJednostkaWidoczna,
+    search_fields=('nazwa',),
+    name="RaportyJednostkaWidoczna",
+    choice_template="autocompletes/jednostka.html")
+
+
 class AutocompleteZrodlo(autocomplete_light.AutocompleteModelTemplate):
     model = 'zrodlo'
     limit_choices = 7
