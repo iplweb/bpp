@@ -9,7 +9,7 @@ from bpp.models import Rekord
 
 
 class Command(BaseCommand):
-    help = 'Weryfikuje prace bez autorów'
+    help = 'Weryfikuje prace bez autorow'
 
     @transaction.commit_on_success
     def handle(self, *args, **options):
