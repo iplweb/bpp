@@ -19,3 +19,5 @@ MEDIA_ROOT = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..', '..', 'media')
 )
 SENDFILE_ROOT = MEDIA_ROOT
+
+COMPRESS_OFFLINE = True
