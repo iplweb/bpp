@@ -103,10 +103,10 @@ admin.site.register(Uczelnia, UczelniaAdmin)
 # Wydział
 
 class WydzialAdmin(RestrictDeletionToAdministracjaGroupMixin, ZapiszZAdnotacjaMixin, CommitedModelAdmin):
-    list_display = ['nazwa', 'skrot', 'uczelnia', 'kolejnosc']
+    list_display = ['nazwa', 'skrot', 'uczelnia', 'kolejnosc', 'widoczny', 'zezwalaj_na_ranking_autorow']
     fieldsets = (
         (None, {
-            'fields': ('uczelnia', 'nazwa', 'skrot', 'opis', 'kolejnosc'),
+            'fields': ('uczelnia', 'nazwa', 'skrot', 'opis', 'kolejnosc', 'widoczny', 'zezwalaj_na_ranking_autorow'),
         }),
         HISTORYCZNY_FIELDSET,
         ADNOTACJE_FIELDSET
