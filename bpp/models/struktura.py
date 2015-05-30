@@ -45,6 +45,7 @@ class Wydzial(ModelZAdnotacjami, ModelHistoryczny):
     opis = models.TextField(null=True, blank=True)
     slug = AutoSlugField(populate_from='nazwa',
         max_length=512, unique=True)
+    poprzednie_nazwy = models.CharField(max_length=4096, blank=True, null=True, default='')
 
     kolejnosc = models.IntegerField("Kolejność", default=0)
     widoczny = models.BooleanField(default=True)

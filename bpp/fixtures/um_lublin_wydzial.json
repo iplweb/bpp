@@ -63,12 +63,13 @@
         "model": "bpp.wydzial",
         "pk": 3,
         "fields": {
-            "nazwa": "Wydział Pielęgniarstwa i Nauk o Zdrowiu",
+            "nazwa": "Wydział Nauk o Zdrowiu",
+            "poprzednie_nazwy": "Wydział Pielęgniarstwa i Nauk o Zdrowiu",
             "uczelnia": "1",
             "skrot": "WP",
 			"kolejnosc": "4",
 			"widoczny": "1",
-            "slug": "Wydzial-Pielegniarstwa-i-Nauk-o-Zdrowiu"
+            "slug": "Wydzial-Nauk-o-Zdrowiu"
         }
     },
     {
