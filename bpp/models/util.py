@@ -117,6 +117,10 @@ class ModelZOpisemBibliograficznym(models.Model):
     # tytułu
     opis_bibliograficzny_autorzy_cache = TextArrayField()
 
+    # To pole używane jest przez Raport autorów oraz Raport jednostek do wypluwania
+    # listy zapisanych nazwisk
+    opis_bibliograficzny_zapisani_autorzy_cache = models.TextField(default='')
+
     def zaktualizuj_cache(self, tylko_opis=False):
         self.opis_bibliograficzny_cache = self.opis_bibliograficzny()
 
@@ -132,6 +136,8 @@ class ModelZOpisemBibliograficznym(models.Model):
 
             self.opis_bibliograficzny_autorzy_cache = [
                 u"%s %s" % (x.nazwisko, x.imiona) for x in autorzy]
+
+            self.opis_bibliograficzny_zapisani_autorzy_cache = ", ".join([x.zapisany for x in autorzy])
 
             flds.append('opis_bibliograficzny_autorzy_cache')
 

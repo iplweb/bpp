@@ -51,7 +51,8 @@ def defer_zaktualizuj_opis(instance, *args, **kw):
     if flds:
         flds = list(flds)
         for elem in ['opis_bibliograficzny_cache',
-                     'opis_bibliograficzny_autorzy_cache']:
+                     'opis_bibliograficzny_autorzy_cache',
+                     'opis_bibliograficzny_zapisani_autorzy_cache']:
             try:
                 flds.remove(elem)
             except ValueError:
