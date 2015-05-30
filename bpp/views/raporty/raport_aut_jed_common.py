@@ -41,7 +41,7 @@ class TypowaTabelaMixin:
     jezyk = Column("Język", A("jezyk.skrot"), orderable=False)
     autorzy = Column(
         "Autor (autorzy)",
-        A('opis_bibliograficzny_autorzy_cache'),
+        A('opis_bibliograficzny_zapisani_autorzy_cache'),
         orderable=False)
 
     def __init__(self):
@@ -50,9 +50,9 @@ class TypowaTabelaMixin:
     def render_lp(self, record):
         self.counter += 1
         return '%d.' % self.counter
-
-    def render_autorzy(self, record):
-        return ", ".join(record.opis_bibliograficzny_autorzy_cache)
+    #
+    # def render_autorzy(self, record):
+    #     return record.opis_bibliograficzny_zapisani_autorzy_cache
 
     def render_tytul_oryginalny(self, record):
         return mark_safe(record.tytul_oryginalny)

@@ -312,6 +312,11 @@ class TestCacheZapisani(TestCase):
         self.assertEquals(c.opis_bibliograficzny_autorzy_cache,
                           [u'Kowalski Jan', 'Nowak Jan'])
 
+        # Upewnij się, że pole 'opis_bibliograficzny_zapisani_autorzy_cache'
+        # zapisywane jest prawidłowo
+        self.assertEquals(c.opis_bibliograficzny_zapisani_autorzy_cache,
+                          'FOO BAR, FOO BAR')
+
     def test_zapisani_jeden(self):
         aut = any_autor("Kowalski", "Jan")
         dok = any_doktorat(tytul_oryginalny="Doktorat", autor=aut)
@@ -321,9 +326,9 @@ class TestCacheZapisani(TestCase):
 
         # Upewnij się, że w przypadku pracy z jednym autorem do cache
         # zapisywana jest prawidłowa wartość
-        self.assertEquals(c.opis_bibliograficzny_autorzy_cache,
-                          [u'Kowalski Jan'])
+        self.assertEquals(c.opis_bibliograficzny_autorzy_cache, [u'Kowalski Jan'])
 
+        self.assertEquals(c.opis_bibliograficzny_zapisani_autorzy_cache, u'Kowalski Jan')
 
 class TestCacheTriggers(TestCacheMixin, TransactionTestCase):
 

@@ -44,6 +44,7 @@ CREATE VIEW bpp_wydawnictwo_ciagle_view AS SELECT
   tytul_oryginalny_sort,
   opis_bibliograficzny_cache,
   opis_bibliograficzny_autorzy_cache,
+  opis_bibliograficzny_zapisani_autorzy_cache,
 
   afiliowana,
   recenzowana,
@@ -105,6 +106,7 @@ CREATE VIEW bpp_wydawnictwo_zwarte_view AS SELECT
   tytul_oryginalny_sort,
   opis_bibliograficzny_cache,
   opis_bibliograficzny_autorzy_cache,
+  opis_bibliograficzny_zapisani_autorzy_cache,
 
   afiliowana,
   recenzowana,
@@ -167,6 +169,7 @@ CREATE VIEW bpp_patent_view AS SELECT
   tytul_oryginalny_sort,
   opis_bibliograficzny_cache,
   opis_bibliograficzny_autorzy_cache,
+  opis_bibliograficzny_zapisani_autorzy_cache,
 
   afiliowana,
   recenzowana,
@@ -231,6 +234,7 @@ CREATE VIEW bpp_praca_doktorska_view AS SELECT
   tytul_oryginalny_sort,
   opis_bibliograficzny_cache,
   opis_bibliograficzny_autorzy_cache,
+  opis_bibliograficzny_zapisani_autorzy_cache,
 
   afiliowana,
   recenzowana,
@@ -294,6 +298,7 @@ CREATE VIEW bpp_praca_habilitacyjna_view AS SELECT
   tytul_oryginalny_sort,
   opis_bibliograficzny_cache,
   opis_bibliograficzny_autorzy_cache,
+  opis_bibliograficzny_zapisani_autorzy_cache,
 
   afiliowana,
   recenzowana,
