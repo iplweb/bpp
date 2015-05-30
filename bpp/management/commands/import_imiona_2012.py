@@ -7,7 +7,7 @@ from bpp.imports.egeria_2012 import importuj_imiona
 
 
 class Command(BaseCommand):
-    help = u'Importuje imiona do wydziału z arkuszy XLS'
+    help = 'Importuje imiona do wydzialu z arkuszy XLS'
     args = '<katalog z xlsx> | <plik xls 1> <plik xls 2> ...'
 
     @transaction.commit_on_success

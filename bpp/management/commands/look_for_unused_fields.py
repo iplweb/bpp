@@ -6,7 +6,7 @@ from bpp.models import Sumy
 
 
 class Command(BaseCommand):
-    help = 'Szuka nieużywanych pól we wszystkich modelach'
+    help = 'Szuka nieuzywanych pol we wszystkich modelach'
 
     def handle(self, *args, **options):
         for model in get_models():

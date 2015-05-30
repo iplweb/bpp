@@ -6,7 +6,7 @@ from bpp.models import Opi_2012_Tytul_Cache
 
 
 class Command(BaseCommand):
-    help = 'Keszuje tytuły prac'
+    help = "Keszuje tytuly prac"
 
     @transaction.commit_on_success
     def handle(self, *args, **options):

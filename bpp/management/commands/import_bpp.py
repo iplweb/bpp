@@ -900,12 +900,23 @@ class Command(BaseCommand):
         if options['clusters']:
             make_clusters()
 
-        try:
-            x = Jednostka.objects.get(nazwa="Obca jednostka")
-        except Jednostka.DoesNotExist:
-            pass
-        else:
-            x.wchodzi_do_raportow = False
-            x.save()
+        for nazwa in ['Obca jednostka', 'Studenci Uniwersytetu Medycznego w Lublinie']:
+            try:
+                x = Jednostka.objects.get(nazwa=nazwa)
+            except Jednostka.DoesNotExist:
+                pass
+            else:
+                x.wchodzi_do_raportow = False
+                x.save()
+
+        for nazwa in ['Jednostki Dawne', 'Bez Wydziału', 'Poza Wydziałem', 'Brak wpisanego wydziału',
+                      'Wydział Lekarski', 'Jednostka międzywydziałowa']:
+            try:
+                x = Wydzial.objects.get(nazwa=nazwa)
+            except Wydzial.DoesNotExist:
+                pass
+            else:
+                x.zezwalaj_na_ranking_autorow = False
+                x.save()
 
         db_disconnect(cur)
