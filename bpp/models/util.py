@@ -143,6 +143,7 @@ class ModelZOpisemBibliograficznym(models.Model):
             self.opis_bibliograficzny_zapisani_autorzy_cache = ", ".join(zapisani)
 
             flds.append('opis_bibliograficzny_autorzy_cache')
+            flds.append('opis_bibliograficzny_zapisani_autorzy_cache')
 
         # Podaj parametr flds aby uniknąć pętli wywoływania sygnału post_save
         self.save(update_fields=flds)
