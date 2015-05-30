@@ -130,14 +130,17 @@ class ModelZOpisemBibliograficznym(models.Model):
 
             if hasattr(self, 'autor'):
                 autorzy = [self.autor]
+                zapisani = ["%s %s" % (self.autor.nazwisko, self.autor.imiona)]
+
             else:
                 autorzy = self.autorzy.through.objects.filter(rekord=self).order_by('kolejnosc')
+                zapisani = [x.zapisany_jako for x in autorzy]
                 autorzy = [x.autor for x in autorzy]
 
             self.opis_bibliograficzny_autorzy_cache = [
                 u"%s %s" % (x.nazwisko, x.imiona) for x in autorzy]
 
-            self.opis_bibliograficzny_zapisani_autorzy_cache = ", ".join([x.zapisany for x in autorzy])
+            self.opis_bibliograficzny_zapisani_autorzy_cache = ", ".join(zapisani)
 
             flds.append('opis_bibliograficzny_autorzy_cache')
 
