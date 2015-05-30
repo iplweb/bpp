@@ -112,7 +112,7 @@ body ol li {
 }
 
 @media print {
-  // patch dla django_tables2 screen.css
+  // patch dla django_tables2 screen.css, issue #409
   div.table-container {
     display: inline !important;
   }
