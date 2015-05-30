@@ -12,3 +12,5 @@ CSRF_COOKIE_SECURE = False
 
 MEDIA_ROOT = "/home/%s/django_bpp-media" % django_getenv("USER")
 SENDFILE_ROOT = MEDIA_ROOT
+
+COMPRESS_OFFLINE = True
