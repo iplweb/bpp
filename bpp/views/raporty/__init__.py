@@ -185,7 +185,7 @@ class RankingAutorowFormularz(RaportyFormMixin, FormView):
         w = form.cleaned_data['wydzialy']
         if w:
             url += "?"
-            url += "&".join(["wydzialy[]=%s" % x for x in w])
+            url += "&".join(["wydzialy[]=%s" % x.pk for x in w])
 
         return HttpResponseRedirect(url)
 
