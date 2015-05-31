@@ -29,6 +29,7 @@ class MyMultiseekResults(MultiseekResults):
             qset = self.get_queryset()
         else:
             qset = self.get_queryset(only_those_ids=self.request.session.get(MULTISEEK_SESSION_KEY_REMOVED, []))
+            ctx['object_list'] = qset
             ctx['print_removed'] = True
 
         ctx['paginator_count'] = qset.count()
