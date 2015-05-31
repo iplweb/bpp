@@ -9,6 +9,7 @@ from bpp.models.cache import Rekord
 from bpp.models.system import Typ_Odpowiedzialnosci, Charakter_Formalny
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, \
     Wydawnictwo_Ciagle_Autor
+from bpp.tests.helpers import FakeUnauthenticatedUser
 from bpp.tests.util import any_doktorat, any_habilitacja, any_ciagle, any_autor, \
     any_jednostka
 
@@ -20,6 +21,7 @@ from bpp.views.utils import JsonResponse
 class TestViews(UserTestCase):
     def test_navigation_autocomplete(self):
         req = self.factory.get('/', {'q': 'test'})
+        req.session = {}
         navigation_autocomplete(req)
 
         # dla superusera dochodzi parę opcji w wyszukiwaniu
@@ -37,7 +39,10 @@ class TestViews(UserTestCase):
         self.assertContains(ret, 'Test user')
 
     def test_autorform_dependant_js(self):
-        autorform_dependant_js(self.factory.get('/'))
+        req = self.factory.get('/')
+        req.session = {}
+        autorform_dependant_js(req)
+
 
 
 class TestUtils(UserTestCase):
@@ -82,6 +87,9 @@ class TestBrowseAutorzy(UserTestCase):
 
         class FakeRequest:
             GET = dict(search='Autor')
+            def __init__(self):
+                self.user = FakeUnauthenticatedUser()
+
         self.view.request = FakeRequest()
         self.autor = mommy.make(Autor, nazwisko='Autor', imiona='Foo')
         self.view.kwargs = dict(literka='A')
