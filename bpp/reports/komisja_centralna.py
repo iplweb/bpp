@@ -20,7 +20,6 @@ from bpp.models import Autor, Typ_KBN, Rekord, Charakter_Formalny, Zasieg_Zrodla
 from bpp.models.praca_habilitacyjna import Publikacja_Habilitacyjna
 from bpp.models.system import Typ_Odpowiedzialnosci, Jezyk
 from bpp.reports import addToRegistry
-from bpp.tests.helpers import FakeUnauthenticatedUser
 from bpp.util import Getter
 from bpp.views.raporty.raport_aut_jed_common import SumyImpactKbnMixin
 
@@ -320,13 +319,18 @@ class RaportKomisjiCentralnej:
         self.rendered = False
 
     def make_prace(self):
+        class FakeXUnauthenticatedUser:
+            def is_authenticated(self):
+                return False
+
+
         class FakeXRequest:
             GET = {}
             POST = {}
             META = {'REMOTE_ADDR': '127.0.0.1'}
 
             def __init__(self, *args, **kw):
-                self.user = FakeUnauthenticatedUser()
+                self.user = FakeXUnauthenticatedUser()
 
             pass
 
