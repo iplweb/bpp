@@ -51,14 +51,14 @@
 
         {% if paginator_count > 0 and paginator_count < 2000 %}
             {% if live == "1" %}
-                <dd><a target="_blank" href="/multiseek/results/?all=1&print=1">drukuj</a>
+                <dd><a target="_blank" href="/multiseek/results/?all=1&print=1{% if print_removed %}&print-removed=1{% endif %}">drukuj</a>
                 </dd>
                 {% if request.GET.all != "1" %}
                     <dd><a target="_blank" href="/multiseek/results/?all=1">wyświetl&nbsp;wszystkie</a>
                     </dd>
                 {% endif %}
             {% else %}
-                <dd><a href="?all=1&print=1">drukuj</a></dd>
+                <dd><a href="?all=1&print=1{% if print_removed %}&print-removed=1{% endif %}">drukuj</a></dd>
                 {% if request.GET.all != "1" and paginator.num_pages > 1 %}
                     <dd><a href="?all=1">wszystkie</a></dd>
                 {% endif %}
@@ -173,11 +173,13 @@
                         {% endif %}
 
                     </span>
+                {% if not print_removed %}
                     <span class="multiseek-remove-from-results">
                         <a onclick="multiseek.removeFromResults('{{ element.pk }}'); return false">
                             wyrzuć
                         </a>
                     </span>
+                {% endif %}
                 </li>
             {% empty %}
                 {% trans "No elements" %}
@@ -210,11 +212,13 @@
 
                     </a>
                     </span>
+                        {% if not print_removed %}
                     <span class="multiseek-remove-from-results">
                         <a onclick="multiseek.removeFromResults('{{ element.pk }}'); return false">
                             wyrzuć
                         </a>
                     </span>
+                        {% endif %}
                     </td>
                     <td>{{ element.impact_factor }}</td>
                     <td>{{ element.punkty_kbn }}</td>
@@ -277,11 +281,13 @@
 
                     </a>
                     </span>
+                        {% if not print_removed %}
                     <span class="multiseek-remove-from-results">
                         <a onclick="multiseek.removeFromResults('{{ element.pk }}'); return false">
                             wyrzuć
                         </a>
                     </span>
+                        {% endif %}
                     </td>
                     <td>{{ element.impact_factor }}</td>
                     <td>{{ element.punkty_kbn }}</td>
