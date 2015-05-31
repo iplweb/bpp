@@ -7,6 +7,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 
 import autocomplete_light
+from password_policies.views import PasswordChangeDoneView, PasswordChangeFormView
 from bpp.forms import MyAuthenticationForm
 from bpp.views.admin import WydawnictwoCiagleTozView, WydawnictwoZwarteTozView, \
     PatentTozView
@@ -86,9 +87,10 @@ urlpatterns = patterns(
     url(r'^accounts/login/$', 'django.contrib.auth.views.login',
         name="login_form", kwargs={'authentication_form':MyAuthenticationForm}),
     url(r'^password_change_done/$',
-        'django.contrib.auth.views.password_change_done',
+        PasswordChangeDoneView.as_view(),
         name="password_change_done"),
-    url(r'^password_change/$', 'django.contrib.auth.views.password_change',
+    url(r'^password_change/$',
+        PasswordChangeFormView.as_view(),
         name="password_change"),
 
     url(r'^logout/$', 'django.contrib.auth.views.logout', name="logout"),

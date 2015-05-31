@@ -62,6 +62,8 @@ TEMPLATE_CONTEXT_PROCESSORS = (
     'django.core.context_processors.request',
     'django.core.context_processors.static',
     'django.contrib.messages.context_processors.messages',
+    'password_policies.context_processors.password_status',
+
     'bpp.context_processors.uczelnia'
 
 )
@@ -72,6 +74,8 @@ MIDDLEWARE_CLASSES = (
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
+    'password_policies.middleware.PasswordChangeMiddleware',
+
 
     'bpp.middleware.ProfileMiddleware',
     'pagination.middleware.PaginationMiddleware',
@@ -100,6 +104,9 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.sessions',
+    'django.contrib.sites',
+    'password_policies',
+
     'celery',
 
     'cookielaw',
@@ -421,3 +428,11 @@ DATABASES = {
 SECRET_KEY = django_getenv("DJANGO_BPP_SECRET_KEY")
 
 SENDFILE_URL = MEDIA_URL
+
+# django-password-policies
+# Zmiana hasla co 30 dni
+PASSWORD_DURATION_SECONDS = (60 * 60 * 24) * 30
+PASSWORD_USE_HISTORY = True
+PASSWORD_HISTORY_COUNT = 12
+# wymagane przez django-password-policies
+SESSION_SERIALIZER='django.contrib.sessions.serializers.PickleSerializer'
