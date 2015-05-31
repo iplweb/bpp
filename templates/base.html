@@ -154,8 +154,18 @@
                 {% load cookielaw_tags %}
                 {% cookielaw_banner %}
 
-                {% block content %}
-                {% endblock %}
+                {% if password_change_required %}
+                    <p class='help'>Twoje hasło wygasło. Proszę, zmień je używając formularza poniżej:</p>
+                    <form action="." method="post">{% csrf_token %}
+                        {{ form.as_p }}{% if next %}
+                            <input type="hidden" name="next" value="{{ next }}" />{% endif %}
+                        <input type="submit" value="Submit" />
+                    </form>
+                {% else %}
+
+                    {% block content %}
+                    {% endblock %}
+                {% endif %}
             </div>
         </div>
 
