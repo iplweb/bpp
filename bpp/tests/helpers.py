@@ -55,3 +55,9 @@ class SeleniumLoggedInAdminTestCase(Mixin, SeleniumTestCase):
         self.page.find_element_by_id("id_password").send_keys(DEFAULT_PASSWORD)
         self.page.find_element_by_class_name("grp-button").click()
         self.page.wait_for_id("navigation-menu")
+
+class FakeUnauthenticatedUser:
+    def is_authenticated(self):
+        return False
+
+
