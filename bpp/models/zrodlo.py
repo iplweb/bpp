@@ -20,15 +20,15 @@ from bpp.jezyk_polski import czasownik_byc
 
 class Rodzaj_Zrodla(ModelZNazwa):
     class Meta:
-        verbose_name = 'rodzaj źródła'
-        verbose_name_plural = 'rodzaje źródeł'
+        verbose_name = u'rodzaj źródła'
+        verbose_name_plural = u'rodzaje źródeł'
         app_label = 'bpp'
 
 
 class Zasieg_Zrodla(ModelZNazwa):
     class Meta:
-        verbose_name = 'zasięg źródła'
-        verbose_name_plural = 'zasięg źródeł'
+        verbose_name = u'zasięg źródła'
+        verbose_name_plural = u'zasięg źródeł'
         app_label = 'bpp'
 
 
@@ -42,8 +42,8 @@ class Redakcja_Zrodla(models.Model):
 
     class Meta:
         app_label = 'bpp'
-        verbose_name = 'redaktor źródła'
-        verbose_name_plural = 'redaktorzy źródła'
+        verbose_name = u'redaktor źródła'
+        verbose_name_plural = u'redaktorzy źródła'
 
     def __unicode__(self):
         buf = u"Redaktorem od %s " % self.od_roku
@@ -75,8 +75,8 @@ class Punktacja_Zrodla(ModelPunktowanyBaza, models.Model):
         return u"Punktacja źródła za rok %s" % self.rok
 
     class Meta:
-        verbose_name = 'punktacja źródła'
-        verbose_name_plural = 'punktacja źródła'
+        verbose_name = u'punktacja źródła'
+        verbose_name_plural = u'punktacja źródła'
         ordering = ['zrodlo__nazwa', 'rok']
         unique_together = [('zrodlo', 'rok')]
         app_label = 'bpp'
@@ -126,8 +126,8 @@ class Zrodlo(ModelZAdnotacjami, ModelZISSN):
         return ret
 
     class Meta:
-        verbose_name = 'źródło'
-        verbose_name_plural = 'źródła'
+        verbose_name = u'źródło'
+        verbose_name_plural = u'źródła'
         ordering = ['nazwa']
         app_label = 'bpp'
 

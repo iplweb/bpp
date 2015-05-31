@@ -56,8 +56,8 @@ class Wydzial(ModelZAdnotacjami, ModelHistoryczny):
         default=True)
 
     class Meta:
-        verbose_name = "wydział"
-        verbose_name_plural = "wydziały"
+        verbose_name = u"wydział"
+        verbose_name_plural = u"wydziały"
         ordering = ['kolejnosc', 'skrot']
         app_label = 'bpp'
 
