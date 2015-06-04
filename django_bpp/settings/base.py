@@ -147,7 +147,9 @@ INSTALLED_APPS = [
     'secure_input',
     'session_security',
 
-    'dbdump'
+    'dbdump',
+
+    'notifications'
 ]
 
 
