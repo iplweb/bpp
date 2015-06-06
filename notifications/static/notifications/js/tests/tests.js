@@ -1,0 +1,95 @@
+QUnit.module( "notifications.js", {
+  beforeEach: function() {
+      $("#messagesPlaceholder").children().remove();
+  },
+  afterEach: function() {
+    // clean up after each test
+  }
+});
+
+QUnit.test( "addMessage", function( assert ) {
+
+  assert.ok(
+      document.getElementById("messagesPlaceholder") !== null,
+      "DIV istnieje i ma children");
+
+  bppNotifications.addMessage({
+      'text':'aapud'
+  });
+
+  assert.equal(
+      $("#messagesPlaceholder").children().length,
+      1,
+      "Komunikat zostal dolozony do DIVu");
+
+});
+
+QUnit.test( "addMessage + klasa css", function( assert ) {
+
+  bppNotifications.addMessage({
+      'text':'aapud',
+      'cssClass': 'infoi'
+  });
+
+  assert.equal(
+      $("#messagesPlaceholder").children().first().hasClass("infoi"),
+      true,
+      "Komunikat zostal dolozony do DIVu z odpowiednia klasa");
+
+});
+
+QUnit.test( "addMessage + clickURL", function( assert ) {
+
+  bppNotifications.addMessage({
+      'text':'aapud',
+      'clickURL': 'onet.pl'
+  });
+
+  assert.equal(
+      $("#messagesPlaceholder").find("a").first().attr("href"),
+      "onet.pl",
+      "Komunikat zostal dolozony do DIVu z odpowiednim linkiem");
+
+});
+
+QUnit.test( "addMessage + closeURL", function( assert ) {
+
+  bppNotifications.addMessage({
+      'text':'aapud',
+      'closeURL': 'onet.pl'
+  });
+
+  assert.equal(
+      $("#messagesPlaceholder").find("a").first().attr("href"),
+      "onet.pl",
+      "Komunikat zostal dolozony do DIVu z odpowiednim linkiem zamkniêcia");
+
+});
+
+
+QUnit.test( "addMessage + hideCloseOption=True", function( assert ) {
+
+  bppNotifications.addMessage({
+      'text':'aapud',
+      'hideCloseOption': true,
+  });
+
+  assert.deepEqual(
+      $("#messagesPlaceholder").find("a").length,
+      0,
+      "Nie by³o iksa do zamykania");
+
+});
+
+QUnit.test( "addMessage + hideCloseOption default (not specified0", function( assert ) {
+
+  bppNotifications.addMessage({
+      'text':'aapud',
+  });
+
+  assert.deepEqual(
+      $("#messagesPlaceholder").find("a").length,
+      1,
+      "Byl iks do zamykania");
+
+});

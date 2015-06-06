@@ -38,6 +38,7 @@
     <script type="text/javascript" src="{% static "bpp/js/bpp.js" %}"></script>
 
     <script src="{% static "notifications/js/pushstream.js" %}"></script>
+    <script src="{% static "notifications/js/notifications.js" %}"></script>
 
     <script src="{% static "monitio/js/yaffle.js" %}"></script>
     <script src="{% static "monitio/js/monitio.js" %}"></script>
@@ -61,6 +62,13 @@
 {% endblock %}
 
 {% block body %}
+    {% if request.user.is_authenticated %}
+        <script type="text/javascript" >
+            bppNotifications.init('{{ request.user.username }}');
+        </script>
+    {% endif %}
+
+
     <div class="row" id="topBar">
         {% include "print-title.html" %}
 
@@ -144,12 +152,7 @@
     <div class="row">
         <div class="large-10 medium-10 push-2 columns">
 
-            {% block monitio %}
-                {% if not request.user.is_anonymous %}
-                    <div id="monitio"></div>
-                {% endif %}
-            {% endblock %}
-
+            <div id="messagesPlaceholder"></div>
 
             <div id="content">
 
