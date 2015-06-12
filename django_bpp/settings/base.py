@@ -64,7 +64,8 @@ TEMPLATE_CONTEXT_PROCESSORS = (
     'django.contrib.messages.context_processors.messages',
     'password_policies.context_processors.password_status',
 
-    'bpp.context_processors.uczelnia'
+    'bpp.context_processors.uczelnia',
+    'notifications.context_processors.notification_settings'
 
 )
 
@@ -79,7 +80,6 @@ MIDDLEWARE_CLASSES = (
 
     'bpp.middleware.ProfileMiddleware',
     'pagination.middleware.PaginationMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
     'django_tables2_reports.middleware.TableReportMiddleware',
 
     'session_security.middleware.SessionSecurityMiddleware',
@@ -128,9 +128,7 @@ INSTALLED_APPS = [
 
     'autocomplete_light',
 
-    'django_sse',
-    'corsheaders',
-    'monitio',
+    'messages_extends',
 
     'pagination',
 
@@ -169,13 +167,6 @@ from bpp.util import slugify_function
 AUTOSLUG_SLUGIFY_FUNCTION = slugify_function
 
 LOGIN_REDIRECT_URL = '/'
-
-# django-monitio
-MESSAGE_STORAGE = 'monitio.storage.PersistentMessageStorage'
-MONITIO_EXCLUDE_READ = True
-
-# django-cors
-CORS_ORIGIN_WHITELIST = ()
 
 # django
 MEDIA_URL = '/media/'
@@ -282,7 +273,7 @@ BOWER_INSTALLED_APPS = (
     'jquery#2.1.1',
     'jeditable#1.7.3',
     'jqueryui#1.11.0',
-    'foundation#5.4.6',
+    'foundation#5.5.2',
     'foundation-datepicker',
     'font-awesome#4.1.0',
     'iframe-resizer#2.5.1',
@@ -356,7 +347,6 @@ COMPRESS_ROOT = STATIC_ROOT
 # Domyslnie, redis na Ubuntu pozwala na 16 baz danych
 REDIS_DB_BROKER = 1
 REDIS_DB_CELERY = 2
-REDIS_DB_MONITIO = 3
 REDIS_DB_SESSION = 4
 REDIS_DB_CACHEOPS = 5
 REDIS_DB_LOCKS = 6
@@ -372,11 +362,6 @@ ALLOWED_HOSTS = [
     django_getenv("DJANGO_BPP_HOSTNAME"),
 ]
 
-
-CORS_ORIGIN_WHITELIST = [
-    django_getenv("DJANGO_BPP_HOSTNAME"),
-]
-
 REDIS_HOST = django_getenv("DJANGO_BPP_REDIS_HOST", "localhost")
 REDIS_PORT = int(django_getenv("DJANGO_BPP_REDIS_PORT", "6379"))
 
@@ -389,12 +374,6 @@ CACHEOPS_REDIS = {
 
 BROKER_URL = 'redis://%s:%s/%s' % (REDIS_HOST, REDIS_PORT, REDIS_DB_BROKER)
 CELERY_RESULT_BACKEND = 'redis://%s:%s/%s' % (REDIS_HOST, REDIS_PORT, REDIS_DB_CELERY)
-
-# django-monitio
-REDIS_SSEQUEUE_CONNECTION_SETTINGS = {
-    'location': '%s:%s' % (REDIS_HOST, REDIS_PORT),
-    'db': REDIS_DB_MONITIO,
-}
 
 #
 SESSION_REDIS_HOST = REDIS_HOST
@@ -438,3 +417,8 @@ PASSWORD_USE_HISTORY = True
 PASSWORD_HISTORY_COUNT = 12
 # wymagane przez django-password-policies
 SESSION_SERIALIZER='django.contrib.sessions.serializers.PickleSerializer'
+
+
+MESSAGE_STORAGE = 'messages_extends.storages.FallbackStorage'
+
+NOTIFICATIONS_PUB_PREFIX = 'django_bpp'

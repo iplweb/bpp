@@ -95,7 +95,7 @@ urlpatterns = patterns(
 
     url(r'^logout/$', 'django.contrib.auth.views.logout', name="logout"),
 
-    (r'^messages/', include('monitio.urls', namespace="monitio")),
+    (r'^messages/', include('messages_extends.urls', namespace='messages_extends')),
 
     (r'^jsi18n$', 'django.views.i18n.javascript_catalog', js_info_dict),
 

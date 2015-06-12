@@ -37,16 +37,12 @@
 
     <script type="text/javascript" src="{% static "bpp/js/bpp.js" %}"></script>
 
+    <script src="{% static "notifications/js/mustache.js" %}"></script>
     <script src="{% static "notifications/js/pushstream.js" %}"></script>
     <script src="{% static "notifications/js/notifications.js" %}"></script>
 
-    <script src="{% static "monitio/js/yaffle.js" %}"></script>
-    <script src="{% static "monitio/js/monitio.js" %}"></script>
-    <script src="{% static "monitio/js/themes/jqueryui.js" %}"></script>
-    <script src="{% static "monitio/js/themes/foundation.js" %}"></script>
-
-        {% block extrahead_js %}
-        {% endblock %}
+    {% block extrahead_js %}
+    {% endblock %}
 
     <script src="{% static "foundation/js/foundation/foundation.accordion.js" %}"></script>
     <script src="{% static "foundation/js/foundation/foundation.tab.js" %}"></script>
@@ -63,8 +59,59 @@
 
 {% block body %}
     {% if request.user.is_authenticated %}
+
+    <div id="messageTemplate" style="display: none;">{% verbatim messageTemplate %}
+        <div data-alert class="alert-box radius {{ cssClass }}{{^cssClass}}info{{/cssClass}}">
+            {{#clickURL}}<a href="{{ clickURL }}">{{/clickURL}}
+            {{ text }}
+            {{#clickURL}}</a>{{/clickURL}}
+
+
+            {{^hideCloseOption}}
+            {{#closeURL}}
+                <a href="{{{ closeURL }}}" class="{{ closeClass }}{{ ^closeClass }}close{{ /closeClass }}">
+            {{/closeURL}}
+            {{^closeURL}}
+                <a href="#" class="{{ closeClass }}{{ ^closeClass }}close{{ /closeClass }}">
+            {{/closeURL}}
+                {{{ closeText }}}{{ ^closeText }}&times;{{ /closeText }}
+            </a>
+            {{/hideCloseOption}}
+        </div>{% endverbatim messageTemplate %}
+    </div>
+
+
         <script type="text/javascript" >
-            bppNotifications.init('{{ request.user.username }}');
+
+            $(document).ready(function(){
+
+                bppNotifications.init('{{ NOTIFICATIONS_PUB_PREFIX }}-{{ request.user.username }}', '{{ NOTIFICATIONS_HOST }}', '{{ NOTIFICATIONS_PORT }}');
+
+                $(document).on('close.fndtn.alert', function(event) {
+{#                    if (event.namespace!='alert.fndtn') // https://github.com/zurb/foundation/issues/5482#}
+{#                        return;#}
+                    $.get($(event.target).find("a").last().attr("href"));
+
+                });
+
+
+                {% if messages %}
+                    {% load notifications %}
+                    {% for message in messages %}
+                        bppNotifications.addMessage({
+                            cssClass: '{{ message.level|message_level_to_css_class }}',
+                            clickURL: '{{ message.url }}',
+                            closeURL: '{% url "messages_extends:message_mark_read" message_id=message.pk %}',
+                            pk: '{{ message.pk }}',
+                            text: '{{ message.message|just_single_quotes|safe }}'
+                        });
+                    {% endfor %}
+                {% endif %}
+
+            });
+
+
+
         </script>
     {% endif %}
 
@@ -90,8 +137,6 @@
                     <div class="hide-on-print">
                         <input type="text" name="q"
                                id="user_navigation_autocomplete"/>
-                        {% block pre_monitio %}
-                        {% endblock  %}
                         <script type="text/javascript">
                             $(document).ready(function () {
 
@@ -110,28 +155,6 @@
                                 }).input.bind('selectChoice', function (e, choice, autocomplete) {
                                             document.location.href = choice.attr('href');
                                         });
-
-                                {% if not request.user.is_anonymous %}
-
-                                    var initial = [];
-                                    {% if messages %}
-                                        {% for message in messages %}
-                                            initial.push({
-                                                'subject': '{{ message.subject }}',
-                                                'message': '{{ message.message|just_single_quotes|safe }}',
-                                                'level': '{{ message.level }}',
-                                                'url': '{{ message.url }}',
-                                                'is_persistent': {{ message.is_persistent|lower }},
-                                                'pk': '{{ message.pk }}'});
-                                        {% endfor %}
-                                    {% endif %}
-
-                                    $("#monitio").MessagesPlaceholder({
-                                        "url": '{% url "monitio:persistent-messages-sse" user.username %}',
-                                        "initial": initial,
-                                        "theme": "foundation" // remove for jqueryui theme
-                                    });
-                                {% endif %}
 
                             });
                         </script>

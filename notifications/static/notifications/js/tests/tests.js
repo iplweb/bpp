@@ -62,7 +62,7 @@ QUnit.test( "addMessage + closeURL", function( assert ) {
   assert.equal(
       $("#messagesPlaceholder").find("a").first().attr("href"),
       "onet.pl",
-      "Komunikat zostal dolozony do DIVu z odpowiednim linkiem zamkniêcia");
+      "Komunikat zostal dolozony do DIVu z odpowiednim linkiem zamkniï¿½cia");
 
 });
 
@@ -77,7 +77,7 @@ QUnit.test( "addMessage + hideCloseOption=True", function( assert ) {
   assert.deepEqual(
       $("#messagesPlaceholder").find("a").length,
       0,
-      "Nie by³o iksa do zamykania");
+      "Nie byï¿½o iksa do zamykania");
 
 });
 
@@ -91,5 +91,19 @@ QUnit.test( "addMessage + hideCloseOption default (not specified0", function( as
       $("#messagesPlaceholder").find("a").length,
       1,
       "Byl iks do zamykania");
+
+});
+
+QUnit.test( "addMessage closeURL", function( assert ) {
+
+  bppNotifications.addMessage({
+      'text':'aapud',
+      'closeURL': 'onet.pl',
+  });
+
+  assert.deepEqual(
+      $("#messagesPlaceholder").find("a").last().attr("href"),
+      'onet.pl',
+      "Atrybut do zamykania jest OK");
 
 });

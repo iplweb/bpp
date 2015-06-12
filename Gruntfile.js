@@ -1,3 +1,5 @@
+
+
 module.exports = function(grunt) {
   grunt.initConfig({
     pkg: grunt.file.readJSON('package.json'),
@@ -23,11 +25,16 @@ module.exports = function(grunt) {
         files: 'bpp/static/scss/*.scss',
         tasks: ['sass']
       }
+    },
+
+    qunit: {
+      all: ['notifications/static/notifications/js/tests/index.html']
     }
   });
 
   grunt.loadNpmTasks('grunt-sass');
   grunt.loadNpmTasks('grunt-contrib-watch');
+  grunt.loadNpmTasks('grunt-contrib-qunit');
 
   grunt.registerTask('build', ['sass']);
   grunt.registerTask('default', ['build','watch']);

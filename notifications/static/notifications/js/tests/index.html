@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <title>QUnit Example</title>
-    <link rel="stylesheet" href="//code.jquery.com/qunit/qunit-1.18.0.css">
+    <link rel="stylesheet" href="http://code.jquery.com/qunit/qunit-1.18.0.css">
 
     <link rel="stylesheet" href="http://cdnjs.cloudflare.com/ajax/libs/foundation/5.5.2/css/normalize.min.css">
     <link rel="stylesheet" href="http://cdnjs.cloudflare.com/ajax/libs/foundation/5.5.2/css/foundation.min.css">
@@ -14,7 +14,7 @@
 <body>
 <div id="qunit"></div>
 <div id="qunit-fixture"></div>
-<script src="//code.jquery.com/qunit/qunit-1.18.0.js"></script>
+<script src="http://code.jquery.com/qunit/qunit-1.18.0.js"></script>
 
 <script src="http://code.jquery.com/jquery-2.1.4.min.js"></script>
 <script src="http://cdnjs.cloudflare.com/ajax/libs/foundation/5.5.2/js/foundation.min.js"></script>
@@ -31,7 +31,7 @@
 
     <div id="messagesPlaceholder"></div>
 
-    <script id="messageTemplate" type="text/html">
+    <div id="messageTemplate">
         <div data-alert class="alert-box radius {{ cssClass }}{{^cssClass}}info{{/cssClass}}">
             {{#clickURL}}<a href="{{ clickURL }}">{{/clickURL}}
             {{ text }}
@@ -46,13 +46,12 @@
                 <a href="#" class="{{ closeClass }}{{ ^closeClass }}close{{ /closeClass }}" onclick="$(this).parent().fadeOut()">
             {{/closeURL}}
 
-                {{ closeText }}{{ ^closeText }}&times;{{ /closeText }}
+                {{{ closeText }}}{{ ^closeText }}&times;{{ /closeText }}
             </a>
             {{/hideCloseOption}}
-
-
         </div>
-    </script>
+
+    </div>
 
 </div>
 
