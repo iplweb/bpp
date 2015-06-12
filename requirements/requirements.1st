@@ -4,7 +4,6 @@ django-autoslug==1.7.1
 django-pagination==1.0.7
 django-autocomplete-light==2.0.1
 django-admin-tools==0.5.2
-django-transaction-signals==1.0.0
 lxml==3.4.3
 xlrd==0.9.3
 celery==3.1.17
@@ -23,19 +22,13 @@ moai==2.0.0
 
 django-crispy-forms==1.4.0
 crispy-forms-foundation==0.3.5
-django-smart-extends==0.7.0
-python-dateutil==2.3
-
-django-extensions==1.5.2
 
 django-bower==5.0.3
 django-compressor==1.4
 djorm-pgarray==1.2
-django-cacheops==2.2.1
 
 # MUSI być budowany pod Linuxem z powodu poniższych poleceń:
 gunicorn==19.3.0
-watchdog==0.8.2
 
 zope.interface==4.1.1
 zope.component==4.1.0
@@ -44,7 +37,6 @@ raven==5.1.1
 
 django-secure-input==0.9.3
 django-session-security==2.2.0
-django-dbdump==1.1
 
 django-password-policies==0.3.1
 
