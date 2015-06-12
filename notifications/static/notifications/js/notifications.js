@@ -1,24 +1,32 @@
 var bppNotifications = bppNotifications || {};
 
-bppNotifications.pushstream = new PushStream({
-    host: window.location.hostname,
-    port: window.location.port,
-    modes: "websocket",
-    useSSL: true
-});
+bppNotifications.init = function(channel, host, port, useSSL){
+    if (host == null)
+        host = window.location.hostname;
 
-bppNotifications.init = function(){
-    this.pushstream.onmessage = messageReceived;
-    this.pushstream.addChannel("django_bpp-{{ request.user.username }}");
+    if (port == null)
+        port = window.location.port;
+
+    if (useSSL == null) {
+        useSSL = false;
+
+        var url = window.location.href;
+        var arr = url.split('/');
+        if (arr[0]=='https')
+            useSSL = true;
+    }
+
+    this.pushstream = new PushStream({
+        host: host,
+        port: port,
+        modes: "websocket",
+        useSSL: useSSL
+    });
+
+    this.pushstream.onmessage = this.addMessage;
+    this.pushstream.addChannel(channel);
     this.pushstream.connect();
 };
-
-bppNotifications.defaultValue = function(value, defaultValue) {
-    if (typeof(value)==='undefined')
-        return defaultValue;
-    return value;
-};
-
 
 bppNotifications.addMessage = function(message){
     // U¿ywane atrybuty z message:
@@ -31,7 +39,7 @@ bppNotifications.addMessage = function(message){
 
     $("#messagesPlaceholder").append(
         Mustache.render(
-        $("#messageTemplate").text(),
+        $("#messageTemplate").html(),
         message)
     );
 };
