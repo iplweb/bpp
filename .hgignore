@@ -9,3 +9,5 @@ build/*
 ./django_bpp/local_settings.py
 ./dbdump@bpp.umlub.pl/
 ./.idea/
+node_modules/*
+wheelhouse/*
