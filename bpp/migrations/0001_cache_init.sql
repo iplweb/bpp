@@ -4,8 +4,6 @@ BEGIN;
 -- VIEW: bpp_autorzy
 
 DROP TABLE IF EXISTS bpp_rekord_mat CASCADE;
-DROP TABLE IF EXISTS bpp_autorzy_mat CASCADE;
-
 CREATE TABLE bpp_rekord_mat AS SELECT * FROM bpp_rekord;
 
 CREATE UNIQUE INDEX bpp_rekord_mat_fake_id_idx ON bpp_rekord_mat(fake_id);
@@ -34,6 +32,9 @@ CREATE INDEX bpp_rekord_mat_i ON bpp_rekord_mat(rok);
 CREATE INDEX bpp_rekord_mat_j ON bpp_rekord_mat(afiliowana);
 CREATE INDEX bpp_rekord_mat_k ON bpp_rekord_mat(recenzowana);
 
+
+
+DROP TABLE IF EXISTS bpp_autorzy_mat CASCADE;
 CREATE TABLE bpp_autorzy_mat AS SELECT * FROM bpp_autorzy;
 
 UPDATE bpp_wydawnictwo_zwarte_autor SET kolejnosc = 1 WHERE rekord_id = 15425 AND autor_id = 3817;
