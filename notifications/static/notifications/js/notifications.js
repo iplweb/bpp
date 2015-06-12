@@ -29,7 +29,7 @@ bppNotifications.init = function(channel, host, port, useSSL){
 };
 
 bppNotifications.addMessage = function(message){
-    // U¿ywane atrybuty z message:
+    // Uzywane atrybuty z message:
     //  - cssClass,
     //  - closeURL,
     //  - closeText,
