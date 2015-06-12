@@ -101,7 +101,7 @@
                         bppNotifications.addMessage({
                             cssClass: '{{ message.level|message_level_to_css_class }}',
                             clickURL: '{{ message.url }}',
-                            closeURL: '{% url "messages_extends:message_mark_read" message_id=message.pk %}',
+                            closeURL: '{% url "messages_extends:message_mark_read" message.pk %}',
                             pk: '{{ message.pk }}',
                             text: '{{ message.message|just_single_quotes|safe }}'
                         });
