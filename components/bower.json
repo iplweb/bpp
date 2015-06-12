@@ -12,7 +12,7 @@
   "dependencies": {
     "font-awesome": "4.1.0",
     "foundation-datepicker": "~1.0.0",
-    "foundation": "5.4.7",
+    "foundation": "5.5.2",
     "iframe-resizer": "2.5.1",
     "jeditable": "1.7.3",
     "jinplace": "1.0.1",
