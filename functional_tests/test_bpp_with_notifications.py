@@ -1,6 +1,7 @@
 # -*- encoding: utf-8 -*-
 
 from django.core.management import call_command
+import time
 
 from conftest import NORMAL_DJANGO_USER_LOGIN
 
@@ -12,6 +13,22 @@ def test_bpp_notifications(preauth_browser):
     s = "test notyfikacji 123 456"
     assert preauth_browser.is_text_not_present(s)
     call_command('send_notification', NORMAL_DJANGO_USER_LOGIN, s)
+    assert preauth_browser.is_text_present(s)
+
+
+def test_bpp_notifications_and_messages(preauth_browser):
+    """Sprawdz, czy notyfikacje dochodza.
+    Wymaga uruchomionego staging-server.
+    """
+    s = "test notyfikacji 123 456"
+    assert preauth_browser.is_text_not_present(s)
+
+    call_command('send_message', NORMAL_DJANGO_USER_LOGIN, s)
+    time.sleep(1)
+    assert preauth_browser.is_text_present(s)
+
+    preauth_browser.reload()
+    time.sleep(1)
     assert preauth_browser.is_text_present(s)
 
 
