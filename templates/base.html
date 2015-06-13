@@ -8,7 +8,6 @@
 {% block extrahead %}
     {{ block.super }}
 
-    {#    {% include "monitio/header.html" %}#}
     {#    {% include "autocomplete_light/header.html" %}#}
 
     {% compress css %}
@@ -97,6 +96,7 @@
 
                 {% if messages %}
                     {% load notifications %}
+{#                    TODO: ograniczenie ilości komunikatów np do 10ciu #}
                     {% for message in messages %}
                         bppNotifications.addMessage({
                             cssClass: '{{ message.level|message_level_to_css_class }}',

@@ -83,6 +83,7 @@ MIDDLEWARE_CLASSES = (
     'django_tables2_reports.middleware.TableReportMiddleware',
 
     'session_security.middleware.SessionSecurityMiddleware',
+    'notifications.middleware.NotificationsMiddleware'
 
 )
 

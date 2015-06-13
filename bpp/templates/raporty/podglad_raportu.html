@@ -13,11 +13,6 @@
 
 
 {% block content %}
-    {% block pre_monitio%}
-        {% load mark_as_read_by_url %}
-        {% mark_as_read_by_url %}
-    {% endblock %}
-
     <h1>Raport "{{ report.adapted.title }}"</h1>
     <p>wygenerowano dla parametrów: {{ report.adapted.readable_arguments }}</p>
     </small>
