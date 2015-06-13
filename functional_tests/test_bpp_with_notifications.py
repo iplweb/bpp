@@ -5,6 +5,10 @@ import time
 
 from conftest import NORMAL_DJANGO_USER_LOGIN
 
+# SPRAWDZE czy
+# - HTML wysyłany przechodzi
+# - odwiedzenie URLa powoduje zamykanie komunkatu
+# - klikniecie "generuj raport" powoduje wygenerowanie komunikatu
 
 def test_bpp_notifications(preauth_browser):
     """Sprawdz, czy notyfikacje dochodza.

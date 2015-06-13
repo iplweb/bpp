@@ -1,5 +1,6 @@
 # -*- encoding: utf-8 -*-
 import os
+from django.core.management import call_command
 
 from django.db import connection
 from django.core.urlresolvers import reverse
@@ -36,16 +37,10 @@ def make_report(uid):
 
     @transaction.commit_on_success
     def execute():
-        from monitio import api
-
         report.execute(raise_exceptions=True)
         msg = u'Ukończono generowanie raportu "%s", <a href="%s">kliknij tutaj, aby otworzyć</a>. '
         url = reverse("bpp:podglad-raportu", args=(report.uid, ))
-        defer(api.create_message,
-              level=api.constants.SUCCESS,
-              to_user=report.ordered_by,
-              message=msg % (IWebTask(report).title, url),
-              subject="Informacja", sse=True, url=url)
+        call_command('send_message', report.ordered_by.username, msg % (IWebTask(report).title, url))
 
     return execute()
 

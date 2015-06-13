@@ -1,5 +1,6 @@
 from django import template
 from django.template.defaultfilters import stringfilter
+from messages_extends.models import Message
 
 register = template.Library()
 
