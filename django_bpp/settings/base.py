@@ -423,3 +423,6 @@ SESSION_SERIALIZER='django.contrib.sessions.serializers.PickleSerializer'
 MESSAGE_STORAGE = 'messages_extends.storages.FallbackStorage'
 
 NOTIFICATIONS_PUB_PREFIX = 'django_bpp'
+
+TEST_NON_SERIALIZED_APPS = ['django.contrib.contenttypes',
+                            'django.contrib.auth']
