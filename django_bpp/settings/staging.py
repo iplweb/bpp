@@ -14,4 +14,4 @@ TEMPLATE_LOADERS = (
     )),
 )
 
-HTML_MINIFY = False
+HTML_MINIFY = True
