@@ -4,11 +4,12 @@
 from django.db import transaction
 from django.db import connection
 from model_mommy import mommy
+import pytest
 from bpp.models.autor import Autor
-from bpp.models.cache import Rekord
+from bpp.models.cache import Rekord, Autorzy
 from bpp.models.praca_doktorska import Praca_Doktorska
 from bpp.models.struktura import Jednostka
-from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
+from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor
 from bpp.models.zrodlo import Zrodlo
 from bpp.tests.util import any_doktorat
 
@@ -101,23 +102,27 @@ def test_deletion_cache(doktorat):
     doktorat.delete()
     assert Rekord.objects.all().count() == 0
 
-def test_wca_delete_cache(wydawnictwo_ciagle, autor, autor_jan_kowalski, autor_jan_nowak, jednostka):
-    wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
-    wydawnictwo_ciagle.dodaj_autora(autor_jan_nowak, jednostka)
+def test_wca_delete_cache(wydawnictwo_ciagle_z_dwoma_autorami):
+    """Czy skasowanie obiektu Wydawnictwo_Ciagle_Autor zmieni opis
+    wydawnictwa ciągłego w Rekordy materialized view?"""
 
-# def test_m2m_caching(self):
-#     """Czy skasowanie obiektu Wydawnictwo_Ciagle_Autor zmieni opis
-#     wydawnictwa ciągłego w Rekordy materialized view?"""
-#
-#     # Odśwież wpisy w mat view, zapisując Wydawnictwo_Ciagle:
-#     self.c.save()
-#     self.assertEquals(Rekord.objects.all().count(), 5)
-#
-#     # Skasuj obiekt
-#     aca = Wydawnictwo_Ciagle_Autor.objects.all()[0]
-#     aca.delete()
-#     self.assertEquals(Autorzy.objects.filter(rekord=aca).count(), 0)
+    assert Rekord.objects.all().count() == 1
+    assert Wydawnictwo_Ciagle_Autor.objects.all().count() == 2
 
+    r = Rekord.objects.all()[0]
+    assert 'NOWAK' in r.opis_bibliograficzny_cache
+    assert 'KOWALSKI' in r.opis_bibliograficzny_cache
+
+    Wydawnictwo_Ciagle_Autor.objects.all()[0].delete()
+    aca = Wydawnictwo_Ciagle_Autor.objects.all()[0]
+    aca.delete()
+
+    assert Autorzy.objects.filter(rekord=aca).count() == 0
+    assert Rekord.objects.all().count() == 1
+
+    r = Rekord.objects.all()[0]
+    assert 'NOWAK' not in r.opis_bibliograficzny_cache
+    assert 'KOWALSKI' not in r.opis_bibliograficzny_cache
 
         #
     # def __test_m2m_caching(self, obj, should_be=3):

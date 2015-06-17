@@ -10,9 +10,7 @@ bppNotifications.init = function(channel, host, port, useSSL){
     if (useSSL == null) {
         useSSL = false;
 
-        var url = window.location.href;
-        var arr = url.split('/');
-        if (arr[0]=='https')
+        if (window.location.protocol === 'https:')
             useSSL = true;
     }
 

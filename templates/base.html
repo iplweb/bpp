@@ -84,7 +84,7 @@
 
             $(document).ready(function(){
 
-                bppNotifications.init('{{ NOTIFICATIONS_PUB_PREFIX }}-{{ request.user.username }}', '{{ NOTIFICATIONS_HOST }}', '{{ NOTIFICATIONS_PORT }}');
+                bppNotifications.init('{{ NOTIFICATIONS_PUB_PREFIX }}-{{ request.user.username }}');
 
                 $(document).on('close.fndtn.alert', function(event) {
 {#                    if (event.namespace!='alert.fndtn') // https://github.com/zurb/foundation/issues/5482#}

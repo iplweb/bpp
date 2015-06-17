@@ -94,7 +94,7 @@ def wydzial(uczelnia, db):
 
 def _autor_maker(imiona, nazwisko, tytul="dr. ", **kwargs):
     tytul = Tytul.objects.get_or_create(skrot=tytul, nazwa=tytul)[0]
-    return Autor.objects.get_or_create(tytul=tytul, imiona='Jan', nazwisko='Kowalski', **kwargs)[0]
+    return Autor.objects.get_or_create(tytul=tytul, imiona=imiona, nazwisko=nazwisko, **kwargs)[0]
 
 
 @pytest.fixture
@@ -104,7 +104,7 @@ def autor_maker(db):
 
 @pytest.fixture(scope="function")
 def autor_jan_nowak(db):
-    return _autor_maker("Jan", "Nowak")
+    return _autor_maker(imiona="Jan", nazwisko="Nowak")
 
 @pytest.fixture(scope="function")
 def autor(db):
@@ -112,7 +112,7 @@ def autor(db):
 
 @pytest.fixture(scope="function")
 def autor_jan_kowalski(db):
-    return _autor_maker("Jan", "Kowalski", "prof. dr hab. n. med.")
+    return _autor_maker(imiona="Jan", nazwisko="Kowalski", tytul="prof. dr hab. n. med.")
 
 
 def _jednostka_maker(nazwa, skrot, wydzial, **kwargs):
@@ -350,3 +350,10 @@ def obiekty_bpp(typy_kbn, charaktery_formalne, jezyki, statusy_korekt):
         status_korekty = Status_Korekty.objects.all()
 
     return ObiektyBpp
+
+@pytest.fixture(scope="function")
+def wydawnictwo_ciagle_z_dwoma_autorami(wydawnictwo_ciagle, autor_jan_kowalski, autor_jan_nowak, jednostka):
+    wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
+    wydawnictwo_ciagle.dodaj_autora(autor_jan_nowak, jednostka)
+    return wydawnictwo_ciagle
+
