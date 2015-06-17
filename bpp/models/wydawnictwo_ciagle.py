@@ -39,7 +39,7 @@ class Wydawnictwo_Ciagle(ZapobiegajNiewlasciwymCharakterom,
 
     autorzy = models.ManyToManyField('Autor', through=Wydawnictwo_Ciagle_Autor)
 
-    zrodlo = models.ForeignKey('Zrodlo', null=True, verbose_name="Źródło")
+    zrodlo = models.ForeignKey('Zrodlo', null=True, verbose_name="Źródło", on_delete=models.SET_NULL)
 
     # To pole nie służy w bazie danych do niczego - jedyne co, to w adminie
     # w wygodny sposób chcemy wyświetlić przycisk 'uzupelnij punktacje', jak

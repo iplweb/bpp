@@ -24,6 +24,7 @@ import pytest
 from bpp.models.system import Charakter_Formalny
 from conftest import NORMAL_DJANGO_USER_PASSWORD
 
+
 def test_caching_enabled(preauth_webtest_admin_app, zrodlo, obiekty_bpp):
     """
     1) wejdź do redagowania
@@ -42,7 +43,7 @@ def test_caching_enabled(preauth_webtest_admin_app, zrodlo, obiekty_bpp):
     form['tytul_oryginalny'].value = 'Takie tam'
     form['rok'].value = '2000'
 
-    form['zrodlo'].force_value([zrodlo.pk,]) # force_value bo to autocomplete
+    form['zrodlo'].force_value([zrodlo.pk, ])  # force_value bo to autocomplete
     form['charakter_formalny'].value = obiekty_bpp.charakter_formalny.values()[0].pk
     form['jezyk'].value = obiekty_bpp.jezyk.values()[0].pk
     form['typ_kbn'].value = obiekty_bpp.typ_kbn.values()[0].pk
@@ -60,6 +61,7 @@ def test_caching_enabled(preauth_webtest_admin_app, zrodlo, obiekty_bpp):
             found = True
 
     assert found
+
 
 def test_bpp_notifications(preauth_browser):
     """Sprawdz, czy notyfikacje dochodza.
@@ -106,3 +108,30 @@ def test_webtest(webtest_app, normal_django_user):
     form['password'] = NORMAL_DJANGO_USER_PASSWORD
     res = form.submit().follow()
     assert res.context['user'].username == normal_django_user.username
+
+
+@pytest.xfail
+def test_admin_display_persistent_messages():
+    """Testuj komunikaty w adminie: czy sie wyswietlaja?"""
+    pass
+
+
+@pytest.xfail
+def test_admin_notifications():
+    """Testuj komunikaty w adminie: czy dochodza notyfikacje?"""
+    pass
+
+
+@pytest.xfail
+def test_admin_close_messages():
+    """Testuj komunikaty w adminie: czy javascript do zamykania komunikatow dziala?"""
+    pass
+
+
+@pytest.xfail
+def test_generowanie_raportu_notyfikacja():
+    """Testuj, czy klikniecie w generowanie raportu KC wyswietli notyfikacje
+    ORAZ czy po odswiezeniu strony zostanie persistent-komunikat
+    ORAZ czy po kliknieciu mu 'close' zostanie poprawnie zamkniety.
+    """
+    pass

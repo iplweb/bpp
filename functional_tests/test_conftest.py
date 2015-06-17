@@ -2,6 +2,8 @@
 
 from django.db import connection
 import pytest
+from bpp.models.cache import Rekord, Autorzy
+from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
 
 
 def test_uczelnia(uczelnia):
@@ -80,3 +82,9 @@ def test_patent_view(patent):
     cur = connection.cursor()
     cur.execute("SELECT * FROM bpp_patent_view")
     assert len(cur.fetchall()) == 1
+
+def test_wydawnictwo_ciagle_z_dwoma_autorami(wydawnictwo_ciagle_z_dwoma_autorami):
+    assert Rekord.objects.all().count() == 1
+    assert Wydawnictwo_Ciagle_Autor.objects.all().count() == 2
+    assert Autorzy.objects.count() == 31337
+    
