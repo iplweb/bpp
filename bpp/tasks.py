@@ -43,27 +43,6 @@ def make_report(uid):
 
     return execute()
 
-
-@app.task
-def refresh_autorzy_mat_view():
-    """UWAGA: to zadanie winno być uruchamiane przez jednego workera,
-    nie więcej niż jedno na cały system jednocześnie."""
-    logger.info("refresh mat view autorzy started...")
-    from bpp.models.cache import Autorzy
-    Autorzy.objects.refresh_materialized_view()
-    logger.info("refresh mat view autorzy done!")
-
-
-@app.task
-def refresh_rekord_mat_view():
-    """UWAGA: to zadanie winno być uruchamiane przez jednego workera,
-    nie więcej niż jedno na cały system jednocześnie."""
-    logger.info("refresh mat view rekord started...")
-    from bpp.models.cache import Rekord
-    Rekord.objects.refresh_materialized_view()
-    logger.info("refresh mat view rekord done!")
-
-
 task_limits = {}
 
 
@@ -80,32 +59,13 @@ def my_limit(fun):
 
 
 @app.task
-def refresh_rekord():
-    my_limit(refresh_rekord_mat_view)
-
-
-@app.task
-def refresh_autorzy():
-    my_limit(refresh_autorzy_mat_view)
-
-
-@app.task
 def zaktualizuj_opis(klasa, pk):
-
-    # XXX TODO czy to jest potrzebne tutja?
-    #import django
-    #django.setup()
-    # XXX ENDTODO
-
     try:
         obj = klasa.objects.get(pk=pk)
     except Exception:
         logger.exception('Problem z pobraniem obiektu')
 
     obj.zaktualizuj_cache(tylko_opis=True)
-
-    refresh_rekord.delay()
-    refresh_autorzy.delay()
 
 @app.task
 def zaktualizuj_zrodlo(pk):
@@ -114,5 +74,3 @@ def zaktualizuj_zrodlo(pk):
     z = Zrodlo.objects.get(pk=pk)
     for rekord in Rekord.objects.filter(zrodlo=z):
         rekord.original.zaktualizuj_cache(tylko_opis=True)
-
-    refresh_rekord.delay()

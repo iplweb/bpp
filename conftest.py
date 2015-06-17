@@ -16,6 +16,7 @@ from bpp.models.system import Jezyk, Charakter_Formalny, Typ_KBN, Status_Korekty
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 from bpp.models.zrodlo import Zrodlo
+import os
 
 NORMAL_DJANGO_USER_LOGIN = 'test_login_bpp'
 NORMAL_DJANGO_USER_PASSWORD = 'test_password'
@@ -313,7 +314,10 @@ def typy_kbn(db):
 
 @pytest.fixture
 def statusy_korekt(db):
-    for elem in json.load(open("bpp/fixtures/status_korekty.json", "r")):
+    for elem in json.load(open(
+            os.path.join(
+                os.path.dirname(__file__),
+                "bpp/fixtures/status_korekty.json"), "r")):
         Status_Korekty.objects.get_or_create(**elem['fields'])
 
 @pytest.fixture

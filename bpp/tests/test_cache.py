@@ -147,66 +147,6 @@ class TestCacheMixin:
         self.wszystkie_modele = [self.d, self.h, self.p, self.c, self.z]
 
 
-class TestCacheDeferredOpisBibliograficznyCache(TransactionTestCase):
-    serialized_rollback = True
-    def setUp(self):
-        Status_Korekty.objects.create(pk=1, nazwa="foo")
-
-    @with_cache
-    def test_opis_bibliograficzny(self):
-        c = any_ciagle(szczegoly='sz', uwagi='u')
-        transaction.commit()
-
-        print Rekord.objects.all()[0].opis_bibliograficzny_cache
-        print c.opis_bibliograficzny()
-
-        self.assertEquals(
-            Rekord.objects.all()[0].opis_bibliograficzny_cache,
-            c.opis_bibliograficzny())
-        c.delete()
-        self.assertEquals(Rekord.objects.all().count(), 0)
-
-    @with_cache
-    def test_opis_bibliograficzny_dependent(self):
-        """Stwórz i skasuj Wydawnictwo_Ciagle_Autor i sprawdź, jak to
-        wpłynie na opis."""
-        c = any_ciagle(szczegoly='sz', uwagi='u')
-        self.assertNotIn('KOWALSKI', Rekord.objects.all()[0].opis_bibliograficzny_cache)
-
-        a = any_autor(nazwisko='Kowalski')
-        j = any_jednostka()
-        wca = c.dodaj_autora(a, j)
-        self.assertIn('KOWALSKI', Rekord.objects.all()[0].opis_bibliograficzny_cache)
-
-        wca.delete()
-        self.assertNotIn('KOWALSKI', Rekord.objects.all()[0].opis_bibliograficzny_cache)
-
-    @with_cache
-    def test_opis_bibliograficzny_zrodlo(self):
-        """Zmień nazwę źródła i sprawdź, jak to wpłynie na opis."""
-
-        z = any_zrodlo(nazwa='OMG', skrot="wutlolski")
-        c = any_ciagle(szczegoly='sz', uwagi='u', zrodlo=z)
-
-        self.assertIn('wutlolski', Rekord.objects.all()[0].opis_bibliograficzny_cache)
-
-        z.nazwa = 'LOL'
-        z.skrot = "foka"
-        z.save() # XXX w tym momencie wywoływany jest sygnał
-
-        # Z uwagi na ustawienie CELERY_ALWAYS_EAGER, uruchomimy
-        # sobie takie wywołanie DRUGI raz, aby system zauważył inny
-        # tytuł rekordu...
-        z.nazwa = 'LOL 2'
-        z.skrot = "foka 2"
-        z.save()
-
-        self.assertIn('foka', Rekord.objects.all()[0].opis_bibliograficzny_cache)
-
-        # to się nie uda i wlasciwie to nie wiem, czemu.
-        # self.assertIn('foka 2', Rekord.objects.all()[0].opis_bibliograficzny_cache)
-
-
 class TestCacheSimple(TestCacheMixin, TestCase):
     @with_cache
     def test_get_original_object(self):
