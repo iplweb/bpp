@@ -148,6 +148,7 @@ class TestCacheMixin:
 
 
 class TestCacheDeferredOpisBibliograficznyCache(TransactionTestCase):
+    serialized_rollback = True
     def setUp(self):
         Status_Korekty.objects.create(pk=1, nazwa="foo")
 
