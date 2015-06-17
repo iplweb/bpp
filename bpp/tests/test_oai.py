@@ -9,7 +9,6 @@ class TestOAI(WebTestCase):
 
     def setUp(self):
         any_ciagle()
-        Rekord.objects.refresh()
         self.assertEquals(Rekord.objects.all().count(), 1)
     
     def test_identify(self):

@@ -1,12 +1,15 @@
 # -*- encoding: utf-8 -*-
 from datetime import datetime
 import json
+import time
+import os
+
 from django.core.urlresolvers import reverse
 import django_webtest
-from model_mommy import mommy
 
+from model_mommy import mommy
 import pytest
-import time
+
 from bpp.models.autor import Autor, Tytul
 from bpp.models.patent import Patent
 from bpp.models.praca_doktorska import Praca_Doktorska
@@ -16,12 +19,12 @@ from bpp.models.system import Jezyk, Charakter_Formalny, Typ_KBN, Status_Korekty
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 from bpp.models.zrodlo import Zrodlo
-import os
 
 NORMAL_DJANGO_USER_LOGIN = 'test_login_bpp'
 NORMAL_DJANGO_USER_PASSWORD = 'test_password'
 
 from django.conf import settings
+
 
 def pytest_configure(config):
     setattr(settings, 'CELERY_ALWAYS_EAGER', True)
@@ -84,7 +87,7 @@ def wydzial_maker(db):
     return _wydzial_maker
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def wydzial(uczelnia, db):
     return _wydzial_maker(uczelnia=uczelnia, skrot='W1', nazwa=u'Wydział Testowy I')
 
@@ -99,12 +102,15 @@ def autor_maker(db):
     return _autor_maker
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def autor_jan_nowak(db):
     return _autor_maker("Jan", "Nowak")
 
+@pytest.fixture(scope="function")
+def autor(db):
+    return mommy.make(Autor)
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def autor_jan_kowalski(db):
     return _autor_maker("Jan", "Kowalski", "prof. dr hab. n. med.")
 
@@ -113,7 +119,7 @@ def _jednostka_maker(nazwa, skrot, wydzial, **kwargs):
     return Jednostka.objects.get_or_create(nazwa=nazwa, skrot=skrot, wydzial=wydzial, **kwargs)[0]
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def jednostka(wydzial, db):
     return _jednostka_maker("Jednostka Uczelni", skrot="Jedn. Ucz.", wydzial=wydzial)
 
@@ -132,7 +138,7 @@ def zrodlo_maker(db):
     return _zrodlo_maker
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def zrodlo(db):
     return _zrodlo_maker(nazwa=u'Testowe Źródło', skrot='Test. Źr.')
 
@@ -179,7 +185,7 @@ def wydawnictwo_ciagle_maker(db):
     return _wydawnictwo_ciagle_maker
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def wydawnictwo_ciagle(db):
     return _wydawnictwo_ciagle_maker()
 
@@ -203,7 +209,7 @@ def _zwarte_maker(**kwargs):
     return _zwarte_base_maker(Wydawnictwo_Zwarte, **kwargs)
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def wydawnictwo_zwarte(db):
     return _zwarte_maker(tytul_oryginalny=u'Wydawnictwo Zwarte ĄćłłóńŹ')
 
@@ -214,10 +220,11 @@ def zwarte_maker(db):
 
 
 def _habilitacja_maker(**kwargs):
+    Charakter_Formalny.objects.get_or_create(nazwa='habilitacja', skrot='H')
     return _zwarte_base_maker(Praca_Habilitacyjna, **kwargs)
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def habilitacja(jednostka, db):
     return _habilitacja_maker(tytul_oryginalny=u'Praca habilitacyjna', jednostka=jednostka)
 
@@ -228,12 +235,13 @@ def habilitacja_maker(db):
 
 
 def _doktorat_maker(**kwargs):
+    Charakter_Formalny.objects.get_or_create(nazwa='doktorat', skrot='D')
     return _zwarte_base_maker(Praca_Doktorska, **kwargs)
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def doktorat(jednostka, db):
-    return _doktorat_maker(tytul_oryginalny=u'Praca habilitacyjna', jednostka=jednostka)
+    return _doktorat_maker(tytul_oryginalny=u'Praca doktorska', jednostka=jednostka)
 
 
 @pytest.fixture
@@ -242,6 +250,7 @@ def doktorat_maker(db):
 
 
 def _patent_maker(**kwargs):
+    Charakter_Formalny.objects.get_or_create(nazwa='patent', skrot='PAT')
     return _zwarte_base_maker(Patent, **kwargs)
 
 
@@ -302,7 +311,8 @@ def jezyki(db):
 
 @pytest.fixture
 def charaktery_formalne(db):
-    Charakter_Formalny.objects.get_or_create(nazwa='testowy', skrot='CHT')
+    for elem in fixture("charakter_formalny.json"):
+        Charakter_Formalny.objects.get_or_create(**elem['fields'])
     return dict([(x.skrot, x) for x in Charakter_Formalny.objects.all()])
 
 
@@ -312,13 +322,21 @@ def typy_kbn(db):
     return dict([(x.skrot, x) for x in Typ_KBN.objects.all()])
 
 
+def fixture(name):
+    return json.load(
+        open(
+            os.path.abspath(
+                os.path.join(
+                    os.path.dirname(__file__),
+                    "bpp", "fixtures", name)
+            ), "r"))
+
+
 @pytest.fixture
 def statusy_korekt(db):
-    for elem in json.load(open(
-            os.path.join(
-                os.path.dirname(__file__),
-                "bpp/fixtures/status_korekty.json"), "r")):
+    for elem in fixture("status_korekty.json"):
         Status_Korekty.objects.get_or_create(**elem['fields'])
+
 
 @pytest.fixture
 def obiekty_bpp(typy_kbn, charaktery_formalne, jezyki, statusy_korekt):
