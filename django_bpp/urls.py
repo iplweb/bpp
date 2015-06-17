@@ -97,7 +97,7 @@ urlpatterns = patterns(
 
     (r'^messages/', include('messages_extends.urls', namespace='messages_extends')),
 
-    (r'^jsi18n$', 'django.views.i18n.javascript_catalog', js_info_dict),
+    (r'^.*/jsi18n/$', 'bpp.views.javascript_catalog', js_info_dict),
 
     url(r'session_security/', include('session_security.urls')),
 

@@ -50,7 +50,9 @@
 
     {% endcompress %}
 
-    <script type="text/javascript" src="/jsi18n"></script>
+    {% load i18n %}
+    {% get_current_language as LANGUAGE_CODE %}
+    <script type="text/javascript" src="/bpp/jsi18n/?language={{LANGUAGE_CODE}}"></script>
 
     {% include 'session_security/all.html' %}
 
