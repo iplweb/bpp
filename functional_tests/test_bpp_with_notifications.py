@@ -77,7 +77,7 @@ def test_bpp_notifications_and_messages(preauth_browser):
     """Sprawdz, czy notyfikacje dochodza.
     Wymaga uruchomionego staging-server.
     """
-    s = "test notyfikacji 123 456"
+    s = "test notyfikacji 123 456 902309093209092"
     assert preauth_browser.is_text_not_present(s)
 
     call_command('send_message', preauth_browser.authorized_user.username, s)

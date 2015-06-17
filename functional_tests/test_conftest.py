@@ -86,5 +86,5 @@ def test_patent_view(patent):
 def test_wydawnictwo_ciagle_z_dwoma_autorami(wydawnictwo_ciagle_z_dwoma_autorami):
     assert Rekord.objects.all().count() == 1
     assert Wydawnictwo_Ciagle_Autor.objects.all().count() == 2
-    assert Autorzy.objects.count() == 31337
+    assert Autorzy.objects.count() == 2
     
