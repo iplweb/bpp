@@ -4,7 +4,7 @@ import warnings
 from django.contrib.contenttypes.models import ContentType
 from django.db.models.deletion import DO_NOTHING
 from django.db import models, transaction
-from django.db.models.signals import post_save, pre_save, post_delete
+from django.db.models.signals import post_save, post_delete, pre_save
 from djorm_pgfulltext.fields import VectorField
 
 from filtered_contenttypes.fields import FilteredGenericForeignKey
@@ -27,18 +27,18 @@ from bpp.models.abstract import ModelPunktowanyBaza, \
     ModelZCharakterem, ModelZWWW
 from bpp.models.system import Charakter_Formalny, Jezyk
 from bpp.models.util import ModelZOpisemBibliograficznym
-from bpp.tasks import refresh_rekord, refresh_autorzy
 from bpp.util import FulltextSearchMixin
 
+# zmiana CACHED_MODELS powoduje zmiane opisu bibliograficznego wszystkich rekordow
 CACHED_MODELS = [Wydawnictwo_Ciagle, Wydawnictwo_Zwarte, Praca_Doktorska,
                  Praca_Habilitacyjna, Patent]
 
+# zmiana DEPENDEND_REKORD_MODELS powoduje zmiane opisu bibliograficznego rekordu z pola z ich .rekord
 DEPENDENT_REKORD_MODELS = [Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor,
                            Patent_Autor]
 
-# Other dependent -- czyli skasowanie tych obiektów pociąga za sobą odbudowanie
-# tabeli cache
-OTHER_DEPENDENT_MODELS = [Typ_Odpowiedzialnosci, Jezyk, Charakter_Formalny]
+# Other dependent -- czyli skasowanie tych obiektów pociąga za sobą odbudowanie tabeli cache
+OTHER_DEPENDENT_MODELS = [Typ_Odpowiedzialnosci, Jezyk, Charakter_Formalny, Zrodlo]
 
 
 def defer_zaktualizuj_opis(instance, *args, **kw):
@@ -65,10 +65,6 @@ def defer_zaktualizuj_opis(instance, *args, **kw):
 
     zaktualizuj_opis.delay(instance.__class__, instance.pk)
 
-def defer_odswiez_rekordy(*args, **kw):
-    refresh_rekord()
-    refresh_autorzy()
-
 def defer_zaktualizuj_opis_rekordu(instance, *args, **kw):
     """Obiekt typy Wydawnictwo..._Autor został zapisany (post_save) LUB
     został skasowany (post_delete). Zaktualizuj rekordy."""
@@ -80,14 +76,13 @@ def defer_zaktualizuj_opis_rekordu(instance, *args, **kw):
     return defer_zaktualizuj_opis(rekord)
 
 
-def defer_zaktualizuj_zrodlo(instance, *args, **kw):
-    """Źródło za chwilę zostanie zapisane (pre_save).
-
-    Jeżeli jego tytuł uległ zmianie, zaktualizuj wszystkie publikacje zapisane
-    w tym źródle."""
-
-    # Nowy obiekt -- wyjdź
+def zrodlo_pre_save(instance, *args, **kw):
     if instance.pk is None:
+        return
+
+    changed = kw.get("update_fields", [])
+    if changed:
+        instance._BPP_CHANGED_FIELDS = changed
         return
 
     try:
@@ -95,8 +90,20 @@ def defer_zaktualizuj_zrodlo(instance, *args, **kw):
     except Zrodlo.DoesNotExist:
         return
 
-    if old.nazwa != instance.nazwa:
-        from bpp.tasks import zaktualizuj_opis, zaktualizuj_zrodlo
+    if old.skrot != instance.skrot: # sprawdz skrot, bo on idzie do opisu
+        instance._BPP_CHANGED_FIELDS = ['skrot',]
+
+
+def zrodlo_post_save(instance, *args, **kw):
+    """Źródło zostało zapisane (post_save)
+    """
+
+    changed = getattr(instance, "_BPP_CHANGED_FIELDS", [])
+    if not changed:
+        changed = kw.get('update_fields') or []
+
+    if 'skrot' in changed:
+        from bpp.tasks import zaktualizuj_zrodlo
         zaktualizuj_zrodlo.delay(instance.pk)
 
 
@@ -115,7 +122,8 @@ def enable():
 
     if _CACHE_ENABLED: raise AlreadyEnabledException()
 
-    pre_save.connect(defer_zaktualizuj_zrodlo, sender=Zrodlo)
+    pre_save.connect(zrodlo_pre_save, sender=Zrodlo)
+    post_save.connect(zrodlo_post_save, sender=Zrodlo)
 
     for model in DEPENDENT_REKORD_MODELS:
         post_save.connect(defer_zaktualizuj_opis_rekordu, sender=model)
@@ -123,10 +131,6 @@ def enable():
 
     for model in CACHED_MODELS:
         post_save.connect(defer_zaktualizuj_opis, sender=model)
-        post_delete.connect(defer_odswiez_rekordy, sender=model)
-
-    for model in OTHER_DEPENDENT_MODELS:
-        post_delete.connect(defer_odswiez_rekordy, sender=model)
 
     _CACHE_ENABLED = True
 
@@ -136,7 +140,8 @@ def disable():
     if not _CACHE_ENABLED:
         raise AlreadyDisabledException
 
-    pre_save.disconnect(defer_zaktualizuj_zrodlo, sender=Zrodlo)
+    pre_save.disconnect(zrodlo_pre_save, sender=Zrodlo)
+    post_save.disconnect(zrodlo_post_save, sender=Zrodlo)
 
     for model in DEPENDENT_REKORD_MODELS:
         post_save.disconnect(defer_zaktualizuj_opis_rekordu, sender=model)
@@ -144,17 +149,9 @@ def disable():
 
     for model in CACHED_MODELS:
         post_save.disconnect(defer_zaktualizuj_opis, sender=model)
-        post_delete.disconnect(defer_odswiez_rekordy, sender=model)
-
-    for model in OTHER_DEPENDENT_MODELS:
-        post_delete.disconnect(defer_odswiez_rekordy, sender=model)
 
     _CACHE_ENABLED = False
 
-
-class AutorzyManager(models.Manager):
-    def refresh_materialized_view(self):
-        warnings.warn("Ta procedura NIC nie robi", DeprecationWarning)
 
 
 class AutorzyBase(models.Model):
@@ -169,8 +166,6 @@ class AutorzyBase(models.Model):
     kolejnosc = models.IntegerField()
     typ_odpowiedzialnosci = models.ForeignKey('Typ_Odpowiedzialnosci', on_delete=DO_NOTHING)
     zapisany_jako = models.TextField()
-
-    objects = AutorzyManager()
 
     class Meta:
         abstract = True
@@ -251,14 +246,6 @@ class RekordManager(FulltextSearchMixin, models.Manager):
                 jednostka=jednostka,
                 typ_odpowiedzialnosci=Typ_Odpowiedzialnosci.objects.get(skrot='red.')
             )).distinct()
-
-    def refresh_materialized_view(self):
-        warnings.warn("ta procedura nic nie robi", DeprecationWarning)
-
-    def refresh(self):
-        """Procedura używana przez testy w sytuacji wyłączonego cache
-        """
-        warnings.warn("ta procedura nic nie robi", DeprecationWarning)
 
     @transaction.atomic
     def full_refresh(self):
