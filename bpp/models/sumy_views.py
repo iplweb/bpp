@@ -4,7 +4,6 @@
 from django.db.models import DO_NOTHING
 from django.db.models.signals import post_delete, pre_delete, post_save
 from django.db import models, connection
-from django_transaction_signals import defer
 from django.conf import settings
 
 from bpp.models import Autor, MODELE_PUNKTOWANE, POLA_PUNKTACJI, ModelPunktowany, MODELE_AUTORSKIE

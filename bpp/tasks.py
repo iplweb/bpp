@@ -5,7 +5,6 @@ from django.core.management import call_command
 from django.db import connection
 from django.core.urlresolvers import reverse
 from django.db import transaction
-from django_transaction_signals import defer
 from celeryui.interfaces import IWebTask
 from django.conf import settings
 from celery.utils.log import get_task_logger
