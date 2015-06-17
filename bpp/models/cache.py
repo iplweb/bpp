@@ -4,7 +4,7 @@ import warnings
 from django.contrib.contenttypes.models import ContentType
 from django.db.models.deletion import DO_NOTHING
 from django.db import models, transaction
-from django.db.models.signals import post_save, post_delete, pre_save
+from django.db.models.signals import post_save, post_delete, pre_save, pre_delete
 from djorm_pgfulltext.fields import VectorField
 
 from filtered_contenttypes.fields import FilteredGenericForeignKey
@@ -106,7 +106,17 @@ def zrodlo_post_save(instance, *args, **kw):
         from bpp.tasks import zaktualizuj_zrodlo
         zaktualizuj_zrodlo.delay(instance.pk)
 
+def zrodlo_pre_delete(instance, *args, **kw):
+    # TODO: moze byc memory-consuming, lepiej byloby to wrzucic do bazy danych - moze?
+    instance._PRACE = list(Rekord.objects.filter(zrodlo__id=instance.pk).values_list("content_type__id", "object_id"))
 
+def zrodlo_post_delete(instance, *args, **kw):
+    for content_type__id, object_id in instance._PRACE:
+        ct = ContentType.objects.get_for_id(content_type__id)
+        i = ct.get_object_for_this_type(pk=object_id)
+        defer_zaktualizuj_opis(i)
+
+    pass
 _CACHE_ENABLED = False
 
 class AlreadyEnabledException(Exception):
@@ -124,6 +134,8 @@ def enable():
 
     pre_save.connect(zrodlo_pre_save, sender=Zrodlo)
     post_save.connect(zrodlo_post_save, sender=Zrodlo)
+    pre_delete.connect(zrodlo_pre_delete, sender=Zrodlo)
+    post_delete.connect(zrodlo_post_delete, sender=Zrodlo)
 
     for model in DEPENDENT_REKORD_MODELS:
         post_save.connect(defer_zaktualizuj_opis_rekordu, sender=model)
@@ -142,6 +154,8 @@ def disable():
 
     pre_save.disconnect(zrodlo_pre_save, sender=Zrodlo)
     post_save.disconnect(zrodlo_post_save, sender=Zrodlo)
+    pre_delete.disconnect(zrodlo_pre_delete, sender=Zrodlo)
+    post_delete.disconnect(zrodlo_post_delete, sender=Zrodlo)
 
     for model in DEPENDENT_REKORD_MODELS:
         post_save.disconnect(defer_zaktualizuj_opis_rekordu, sender=model)

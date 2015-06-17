@@ -9,6 +9,7 @@ from bpp.models.autor import Autor
 from bpp.models.cache import Rekord, Autorzy
 from bpp.models.praca_doktorska import Praca_Doktorska
 from bpp.models.struktura import Jednostka
+from bpp.models.system import Typ_Odpowiedzialnosci, Jezyk, Charakter_Formalny
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor
 from bpp.models.zrodlo import Zrodlo
 from bpp.tests.util import any_doktorat
@@ -96,11 +97,13 @@ def test_post_save_cache(doktorat):
 
     assert Rekord.objects.get(original=doktorat).tytul == 'zmieniono'
 
+
 def test_deletion_cache(doktorat):
     assert Rekord.objects.all().count() == 1
 
     doktorat.delete()
     assert Rekord.objects.all().count() == 0
+
 
 def test_wca_delete_cache(wydawnictwo_ciagle_z_dwoma_autorami):
     """Czy skasowanie obiektu Wydawnictwo_Ciagle_Autor zmieni opis
@@ -124,83 +127,114 @@ def test_wca_delete_cache(wydawnictwo_ciagle_z_dwoma_autorami):
     assert 'NOWAK' not in r.opis_bibliograficzny_cache
     assert 'KOWALSKI' not in r.opis_bibliograficzny_cache
 
-        #
-    # def __test_m2m_caching(self, obj, should_be=3):
-    #     """Czy skasowanie autora, jednostki, typu odpowiedzialnosci lub zrodla
-    #      zmieni opis wydawnictwa ciągłego w Cache?"""
-    #
-    #     self.assertEquals(Rekord.objects.all().count(), 5)
-    #     self.assertEquals(Wydawnictwo_Ciagle_Autor.objects.all().count(), 1)
-    #
-    #     obj.delete()
-    #
-    #     self.assertEquals(Wydawnictwo_Ciagle_Autor.objects.all().count(), 0)
-    #     self.assertEquals(Rekord.objects.all().count(), should_be)
-    #
-    # @with_cache
-    # def test_m2m_caching_autor(self):
-    #     self.__test_m2m_caching(self.a)
-    #
-    # @with_cache
-    # def test_m2m_caching_typ_odpowiedzialnosci(self):
-    #     self.__test_m2m_caching(self.typ_odpowiedzialnosci, should_be=5)
-    #     self.assertEquals(Autorzy.objects.all().count(), 0)
-    #
-    # @with_cache
-    # def test_m2m_caching_zrodlo(self):
-    #     self.__test_m2m_caching(self.zr, should_be=4)
-    #
-    # @with_cache
-    # def test_m2m_caching_jezyk(self):
-    #     Rekord.objects.full_refresh()
-    #     self.assertEquals(Rekord.objects.all().count(), 5)
-    #     self.assertEquals(Wydawnictwo_Ciagle_Autor.objects.all().count(), 1)
-    #
-    #     Jezyk.objects.all().delete()
-    #
-    #     self.assertEquals(Rekord.objects.all().count(), 0)
-    #     self.assertEquals(Autorzy.objects.all().count(), 0)
-    #
-    # @with_cache
-    # def test_m2m_caching_charakter_formalny(self):
-    #     self.assertEquals(AutorzyView.objects.all().count(), 5)
-    #     self.assertEquals(Autorzy.objects.all().count(), 5)
-    #
-    #     Rekord.objects.full_refresh()
-    #
-    #     self.assertEquals(Rekord.objects.all().count(), 5)
-    #     self.assertEquals(Wydawnictwo_Ciagle_Autor.objects.all().count(), 1)
-    #
-    #     self.assertEquals(AutorzyView.objects.all().count(), 5)
-    #     self.assertEquals(Autorzy.objects.all().count(), 5)
-    #
-    #     Charakter_Formalny.objects.all().delete()
-    #
-    #     self.assertEquals(Rekord.objects.all().count(), 0)
-    #     # XXX: TODO: idealnie, tu powinno byc 0 rekordów, ale PAT, DOK i HAB
-    #     # XXX: TODO: mają symulowane pole charakteru i nie zostaną usunięte
-    #     self.assertEquals(Autorzy.objects.all().count(), 0)
-    #     transaction.commit()
-    #
-    #
-    # @with_cache
-    # def test_m2m_caching_uczelnia(self):
-    #     self.__test_m2m_caching(self.uczelnia)
-    #
-    # @with_cache
-    # def test_m2m_caching_wydzial(self):
-    #     self.__test_m2m_caching(self.wydzial)
-    #
-    # @with_cache
-    # def test_rekord_objects_full_refresh_bug(self):
-    #     self.assertEquals(Rekord.objects.all().count(), 5)
-    #     self.assertEquals(AutorzyView.objects.all().count(), 5)
-    #     self.assertEquals(Autorzy.objects.all().count(), 5)
-    #
-    #     Rekord.objects.full_refresh()
-    #
-    #     self.assertEquals(Rekord.objects.all().count(), 5)
-    #     self.assertEquals(AutorzyView.objects.all().count(), 5)
-    #     self.assertEquals(Autorzy.objects.all().count(), 5)
-    #
-    #
+
+def test_caching_kasowanie_autorow(wydawnictwo_ciagle_z_dwoma_autorami):
+    for wca in Wydawnictwo_Ciagle_Autor.objects.all().only('autor'):
+        wca.autor.delete()
+
+    assert Wydawnictwo_Ciagle_Autor.objects.count() == 0
+    assert Rekord.objects.all().count() == 1
+
+    r = Rekord.objects.all()[0]
+    assert 'NOWAK' not in r.opis_bibliograficzny_cache
+    assert 'KOWALSKI' not in r.opis_bibliograficzny_cache
+
+
+def test_caching_kasowanie_typu_odpowiedzialnosci_autorow(wydawnictwo_ciagle_z_dwoma_autorami):
+    assert Typ_Odpowiedzialnosci.objects.all().count() == 1
+
+    Typ_Odpowiedzialnosci.objects.all().delete()
+
+    assert Wydawnictwo_Ciagle_Autor.objects.count() == 0
+    assert Rekord.objects.all().count() == 1
+
+    r = Rekord.objects.all()[0]
+    assert 'NOWAK' not in r.opis_bibliograficzny_cache
+    assert 'KOWALSKI' not in r.opis_bibliograficzny_cache
+
+
+def test_caching_kasowanie_zrodla(wydawnictwo_ciagle_z_dwoma_autorami):
+    assert Zrodlo.objects.all().count() == 1
+
+    z = Zrodlo.objects.all()[0]
+    z.delete()  # WCA ma zrodlo.on_delete=SET_NULL
+
+    assert Rekord.objects.all().count() == 1
+    assert Wydawnictwo_Ciagle.objects.all().count() == 1
+
+    r = Rekord.objects.all()[0]
+    assert 'NOWAK' in r.opis_bibliograficzny_cache
+    assert 'KOWALSKI' in r.opis_bibliograficzny_cache
+    assert z.skrot not in r.opis_bibliograficzny_cache
+    assert "None" not in r.opis_bibliograficzny_cache
+
+
+def test_caching_kasowanie_jezyka(wydawnictwo_ciagle_z_dwoma_autorami):
+    ang = Jezyk.objects.create(skrot="ang.", nazwa="taki")
+    wydawnictwo_ciagle_z_dwoma_autorami.jezyk = ang
+    wydawnictwo_ciagle_z_dwoma_autorami.save()
+
+    assert Rekord.objects.all().count() == 1
+    ang.delete()
+
+    assert Rekord.objects.all().count() == 0
+
+
+def test_caching_kasowanie_typu_kbn(wydawnictwo_ciagle_z_dwoma_autorami, typy_kbn):
+    tk = typy_kbn.values()[0]
+
+    wydawnictwo_ciagle_z_dwoma_autorami.typ_kbn = tk
+    wydawnictwo_ciagle_z_dwoma_autorami.save()
+
+    assert Rekord.objects.all().count() == 1
+    tk.delete()
+
+    assert Rekord.objects.all().count() == 0
+
+
+def test_caching_kasowanie_charakteru_formalnego(wydawnictwo_ciagle_z_dwoma_autorami, patent, autor_jan_kowalski, jednostka, charaktery_formalne):
+    patent.dodaj_autora(autor_jan_kowalski, jednostka)
+
+    cf = charaktery_formalne.values()[0]
+
+    wydawnictwo_ciagle_z_dwoma_autorami.charakter_formalny = cf
+    wydawnictwo_ciagle_z_dwoma_autorami.save()
+
+    assert Rekord.objects.all().count() == 2
+    Charakter_Formalny.objects.all().delete()
+
+    assert Rekord.objects.all().count() == 0
+
+
+def test_caching_kasowanie_wydzialu(autor_jan_kowalski, jednostka, wydzial, wydawnictwo_ciagle):
+    assert jednostka.wydzial == wydzial
+
+    wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
+
+    assert Rekord.objects.all().count() == 1
+    assert Jednostka.objects.all().count() == 1
+    wydzial.delete()
+
+    assert Rekord.objects.all().count() == 1
+    assert Rekord.objects.all()[0].original.autorzy.all().count() == 0
+    assert Jednostka.objects.all().count() == 0
+
+def test_caching_kasowanie_uczelni(autor_jan_kowalski, jednostka, wydzial, uczelnia, wydawnictwo_ciagle):
+    assert wydzial.uczelnia == uczelnia
+    assert jednostka.wydzial == wydzial
+
+    wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
+
+    assert Rekord.objects.all().count() == 1
+    assert Jednostka.objects.all().count() == 1
+    uczelnia.delete()
+
+    assert Rekord.objects.all().count() == 1
+    assert Rekord.objects.all()[0].original.autorzy.all().count() == 0
+    assert Jednostka.objects.all().count() == 0
+
+
+def test_caching_full_refresh(wydawnictwo_ciagle_z_dwoma_autorami):
+    assert Rekord.objects.all().count() == 1
+    Rekord.objects.full_refresh()
+    assert Rekord.objects.all().count() == 1
