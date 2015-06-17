@@ -1,14 +1,11 @@
 # -*- encoding: utf-8 -*-
 import os
-from django.core.management import call_command
 
-from django.db import connection
+from django.core.management import call_command
 from django.core.urlresolvers import reverse
-from django.db import transaction
 from celeryui.interfaces import IWebTask
 from django.conf import settings
 from celery.utils.log import get_task_logger
-
 
 logger = get_task_logger(__name__)
 
@@ -34,7 +31,6 @@ def make_report(uid):
     report = Report.objects.get(uid=uid)
     report.started()
 
-    @transaction.commit_on_success
     def execute():
         report.execute(raise_exceptions=True)
         msg = u'Ukończono generowanie raportu "%s", <a href="%s">kliknij tutaj, aby otworzyć</a>. '
