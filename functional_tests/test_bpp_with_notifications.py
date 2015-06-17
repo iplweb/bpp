@@ -110,25 +110,25 @@ def test_webtest(webtest_app, normal_django_user):
     assert res.context['user'].username == normal_django_user.username
 
 
-@pytest.xfail
+@pytest.mark.xfail
 def test_admin_display_persistent_messages():
     """Testuj komunikaty w adminie: czy sie wyswietlaja?"""
     pass
 
 
-@pytest.xfail
+@pytest.mark.xfail
 def test_admin_notifications():
     """Testuj komunikaty w adminie: czy dochodza notyfikacje?"""
     pass
 
 
-@pytest.xfail
+@pytest.mark.xfail
 def test_admin_close_messages():
     """Testuj komunikaty w adminie: czy javascript do zamykania komunikatow dziala?"""
     pass
 
 
-@pytest.xfail
+@pytest.mark.xfail
 def test_generowanie_raportu_notyfikacja():
     """Testuj, czy klikniecie w generowanie raportu KC wyswietli notyfikacje
     ORAZ czy po odswiezeniu strony zostanie persistent-komunikat
