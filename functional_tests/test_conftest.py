@@ -1,5 +1,6 @@
 # -*- encoding: utf-8 -*-
 
+from django.db import connection
 import pytest
 
 
@@ -58,3 +59,24 @@ def test_preauth_webtest_admin_app(preauth_webtest_admin_app):
     assert preauth_webtest_admin_app != None
     res = preauth_webtest_admin_app.get("/admin/")
     assert 'Administracja stron' in res.content
+
+
+def test_praca_doktorska_view(doktorat):
+    # Jeżeli nie ma charatkeruy formalnego 'D', to sie to nie pokaze
+    cur = connection.cursor()
+    cur.execute("SELECT * FROM bpp_praca_doktorska_view")
+    assert len(cur.fetchall()) == 1
+
+
+def test_praca_habilitacyjna_view(habilitacja):
+    # Jeżeli nie ma charatkeruy formalnego 'H', to sie to nie pokaze
+    cur = connection.cursor()
+    cur.execute("SELECT * FROM bpp_praca_habilitacyjna_view")
+    assert len(cur.fetchall()) == 1
+
+
+def test_patent_view(patent):
+    # Jeżeli nie ma charatkeruy formalnego 'PAT', to sie to nie pokaze
+    cur = connection.cursor()
+    cur.execute("SELECT * FROM bpp_patent_view")
+    assert len(cur.fetchall()) == 1

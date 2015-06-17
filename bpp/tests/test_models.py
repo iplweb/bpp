@@ -81,7 +81,6 @@ class TestJednostka(TestCase):
             rekord=wc, autor=a1, jednostka=j1,
             typ_odpowiedzialnosci=mommy.make(Typ_Odpowiedzialnosci))
 
-        Rekord.objects.refresh()
         self.assertEquals(list(j1.prace_w_latach()), [2012, 2013])
 
 
@@ -204,8 +203,6 @@ class TestAutor(TestCase):
         j = any_jednostka()
         w = mommy.make(Wydawnictwo_Ciagle, rok=ROK)
         wa = mommy.make(Wydawnictwo_Ciagle_Autor, autor=a, jednostka=j, rekord=w)
-
-        Rekord.objects.refresh()
 
         self.assertEquals(
             a.prace_w_latach()[0],
