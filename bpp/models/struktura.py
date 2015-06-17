@@ -114,6 +114,8 @@ class Jednostka(ModelZAdnotacjami, ModelHistoryczny):
             autor=autor, jednostka=self, funkcja=funkcja,
             rozpoczal_prace=rozpoczal_prace, zakonczyl_prace=zakonczyl_prace)
 
+    zatrudnij = dodaj_autora
+
     def obecni_autorzy(self):
         dzis = datetime.now().date()
 
@@ -122,6 +124,8 @@ class Jednostka(ModelZAdnotacjami, ModelHistoryczny):
             Q(autor_jednostka__rozpoczal_prace__lte=dzis) | Q(autor_jednostka__rozpoczal_prace=None),
             autor_jednostka__jednostka=self
         ).distinct()
+
+    pracownicy = obecni_autorzy
 
     def kierownik(self):
         try:
