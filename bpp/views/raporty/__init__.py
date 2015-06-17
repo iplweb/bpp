@@ -9,7 +9,6 @@ from django.http.response import HttpResponseRedirect
 from django.views.generic import View
 from django.views.generic.base import TemplateView
 from django.views.generic.edit import BaseDeleteView, FormView, FormMixin
-from django_transaction_signals import defer
 from sendfile import sendfile
 from bpp.views.raporty.forms import KronikaUczelniForm, \
     RaportJednostekForm, RaportDlaKomisjiCentralnejForm, RankingAutorowForm, \
@@ -72,11 +71,6 @@ class KasowanieRaportu(BaseDeleteView):
             pass
 
         response = BaseDeleteView.delete(self, request, *args, **kwargs)
-
-        if path:
-            from bpp.tasks import remove_file
-            defer(remove_file.delay, obj.file.path)
-
         messages.add_message(request, messages.INFO, u'Raport został usunięty.')
         return response
 
@@ -124,7 +118,7 @@ class RaportyFormMixin(RaportyMixin):
 
         if self.request.POST.get('do_not_call_celery') != '1':
             from bpp.tasks import make_report
-            defer(make_report.delay, r.uid)
+            make_report.delay(r.uid)
 
         messages.add_message(
             self.request, messages.INFO,
