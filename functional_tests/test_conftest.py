@@ -76,7 +76,7 @@ def test_praca_habilitacyjna_view(habilitacja):
 
 
 def test_patent_view(patent):
-    # Jeżeli nie ma charatkeruy formalnego 'PAT', to sie to nie pokaze
+    # Jeżeli nie ma charatkeruy formalnego 'PAT' oraz typu KBN PO oraz jezyka 'pol.', to sie to nie pokaze
     cur = connection.cursor()
     cur.execute("SELECT * FROM bpp_patent_view")
     assert len(cur.fetchall()) == 1

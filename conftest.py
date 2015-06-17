@@ -250,7 +250,10 @@ def doktorat_maker(db):
 
 
 def _patent_maker(**kwargs):
-    Charakter_Formalny.objects.get_or_create(nazwa='patent', skrot='PAT')
+    Charakter_Formalny.objects.get_or_create(nazwa='Patent', skrot='PAT')
+    Typ_KBN.objects.get_or_create(nazwa="Praca Oryginalna", skrot='PO')
+    Jezyk.objects.get_or_create(nazwa="polski", skrot='pol.')
+
     return _zwarte_base_maker(Patent, **kwargs)
 
 
