@@ -12,5 +12,3 @@ git+https://github.com/TyMaszWeb/django-cookie-law.git#egg=django_cookie_law
 git+https://github.com/mpasternak/django-grappelli#egg=django_grappelli
 
 git+https://github.com/nvbn/django-bower#egg=djangobower
-
-git+https://github.com/waldeinburg/django-dbdump.git#egg=django_dbdump
