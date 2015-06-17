@@ -400,7 +400,9 @@ DATABASES = {
         'USER': django_getenv("DJANGO_BPP_DB_USER"),
         'PASSWORD': django_getenv("DJANGO_BPP_DB_PASSWORD"),
         'HOST': django_getenv("DJANGO_BPP_DB_HOST", "localhost"),
-        'PORT': int(django_getenv("DJANGO_BPP_DB_PORT", "5432"))
+        'PORT': int(django_getenv("DJANGO_BPP_DB_PORT", "5432")),
+        'CONN_MAX_AGE': 600,
+
     }
 }
 

@@ -19,3 +19,11 @@ COMPRESS_OFFLINE = True
 NOTIFICATIONS_HOST = 'bpp.umlub.pl'
 NOTIFICATIONS_PORT = None
 NOTIFICATIONS_PROTOCOL = 'http'
+
+
+TEMPLATE_LOADERS = (
+    ('django.template.loaders.cached.Loader', (
+        'django.template.loaders.filesystem.Loader',
+        'django.template.loaders.app_directories.Loader',
+    )),
+)
