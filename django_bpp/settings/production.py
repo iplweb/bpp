@@ -14,3 +14,8 @@ MEDIA_ROOT = "/home/%s/django_bpp-media" % django_getenv("USER")
 SENDFILE_ROOT = MEDIA_ROOT
 
 COMPRESS_OFFLINE = True
+
+# host dla HTMLu oraz linii polecen, reszta dla linii polecen (bo HTML sie autokonfiguruje...)
+NOTIFICATIONS_HOST = 'bpp.umlub.pl'
+NOTIFICATIONS_PORT = None
+NOTIFICATIONS_PROTOCOL = 'http'
