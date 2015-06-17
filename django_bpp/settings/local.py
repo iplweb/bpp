@@ -49,7 +49,7 @@ COMPRESS_OFFLINE = False
 
 COMPRESS_ENABLED = False
 
-# Te ustawienia tylko dla linii polecen
+# host dla HTMLu oraz linii polecen, reszta dla linii polecen (bo HTML sie autokonfiguruje...)
 NOTIFICATIONS_HOST = 'staging-bpp.local'
-NOTIFICATIONS_PORT = 80
+NOTIFICATIONS_PORT = None
 NOTIFICATIONS_PROTOCOL = 'http'

@@ -27,7 +27,10 @@ def send_notification(request_or_username, level, text, get_pub_path=get_pub_pat
 
     path = get_pub_path(username)
 
-    url = "%s://%s:%s%s" % (proto, host, port, path)
+    if port is not None:
+        port = ":%s" % port
+
+    url = "%s://%s%s%s" % (proto, host, port or "", path)
 
     data=json.dumps(Message(text=text, cssClass=DEFAULT_TAGS.get(level), closeURL=closeURL).__dict__)
 

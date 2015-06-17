@@ -4,7 +4,7 @@ bppNotifications.init = function(channel, host, port, useSSL){
     if (host == null)
         host = window.location.hostname;
 
-    if (port == null)
+    if (port == null || port === '')
         port = window.location.port;
 
     if (useSSL == null) {
