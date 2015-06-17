@@ -75,12 +75,28 @@
                 $(document).ready(function() {
                     $("#grp-navigation .grp-collapse").grp_collapsible();
 
+                    function csrfSafeMethod(method) {
+                        // these HTTP methods do not require CSRF protection
+                        return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
+                    }
+
+                    $.ajaxSetup({
+                        beforeSend: function(xhr, settings) {
+                            if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
+                                xhr.setRequestHeader("X-CSRFToken", "{{ csrf_token }}");
+                            }
+                        }
+                    });
+
                     $("a.close[close-href]").click(function (e) {
                         e.preventDefault();
+                        var orig_elem = $(this);
+
                         $.post(
-                                $(this).attr("close-href"),
-                                { csrftoken: '{{ csrf_token }}'},
+                                orig_elem.attr("close-href"),
+                                "",
                                 function () {
+                                    orig_elem.parent().hide();
                                 }
                         );
                     });
