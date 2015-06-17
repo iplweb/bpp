@@ -148,8 +148,6 @@ class TestCacheMixin:
 
 
 class TestCacheDeferredOpisBibliograficznyCache(TransactionTestCase):
-    available_apps = ['bpp'] # dla sqlflush truncate
-
     def setUp(self):
         Status_Korekty.objects.create(pk=1, nazwa="foo")
 
@@ -332,8 +330,6 @@ class TestCacheZapisani(TestCase):
 
 class TestCacheTriggers(TestCacheMixin, TransactionTestCase):
 
-    available_apps = settings.INSTALLED_APPS
-
     def setUp(self):
         TestCacheMixin.setUp(self)
 
@@ -452,8 +448,6 @@ class TestMinimalCachingProblem(TestCase):
         "charakter_formalny.json",
         "jezyk.json",
         "typ_odpowiedzialnosci.json"]
-
-    available_apps = settings.INSTALLED_APPS
 
     @with_cache
     def test_tworzenie(self):
