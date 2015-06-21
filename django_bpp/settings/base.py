@@ -181,9 +181,6 @@ DJORM_POOL_OPTIONS = {
     "recycle": 3600, # the default value
 }
 
-TESTING = ('test' in sys.argv) or ('jenkins' in sys.argv)
-
-
 # django-jenkins
 
 JENKINS_TASKS = []
@@ -382,9 +379,6 @@ SESSION_REDIS_PORT = REDIS_PORT
 SESSION_REDIS_DB = REDIS_DB_SESSION
 SESSION_REDIS_PREFIX = 'session'
 
-if TESTING:
-    CELERY_ALWAYS_EAGER = True
-
 ALLOWED_TAGS = ('b', 'em', 'i', 'strong', 'strike', 'u', 'sup', 'font', 'sub')
 
 SESSION_SECURITY_PASSIVE_URLS = [
@@ -404,8 +398,6 @@ DATABASES = {
         'PASSWORD': django_getenv("DJANGO_BPP_DB_PASSWORD"),
         'HOST': django_getenv("DJANGO_BPP_DB_HOST", "localhost"),
         'PORT': int(django_getenv("DJANGO_BPP_DB_PORT", "5432")),
-        'CONN_MAX_AGE': 600,
-
     }
 }
 
