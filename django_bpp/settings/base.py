@@ -366,12 +366,13 @@ REDIS_PORT = int(django_getenv("DJANGO_BPP_REDIS_PORT", "6379"))
 CACHEOPS_REDIS = {
     'host': REDIS_HOST, # redis-server is on same machine
     'port': REDIS_PORT,        # default redis port
-    'db': REDIS_DB_CACHEOPS, # "redis://%s:%s/%s" % (REDIS_HOST, REDIS_PORT, REDIS_DB_CACHEOPS), 
+    'db': REDIS_DB_CACHEOPS, # "redis://%s:%s/%s" % (REDIS_HOST, REDIS_PORT, REDIS_DB_CACHEOPS),
     'socket_timeout': 3,
 }
 
-BROKER_URL = 'redis://%s:%s/%s' % (REDIS_HOST, REDIS_PORT, REDIS_DB_BROKER)
-CELERY_RESULT_BACKEND = 'redis://%s:%s/%s' % (REDIS_HOST, REDIS_PORT, REDIS_DB_CELERY)
+BROKER_URL = django_getenv("DJANGO_BPP_BROKER_URL", "amqp://guest:guest@localhost:5672//")
+# BYłO: redis://%s:%s/%s' % (REDIS_HOST, REDIS_PORT, REDIS_DB_BROKER)
+# CELERY_RESULT_BACKEND = 'redis://%s:%s/%s' % (REDIS_HOST, REDIS_PORT, REDIS_DB_CELERY)
 
 #
 SESSION_REDIS_HOST = REDIS_HOST
