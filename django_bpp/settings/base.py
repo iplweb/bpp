@@ -236,8 +236,8 @@ LOGGING = {
             'propagate': True,
         },
         'celery.worker.job': {
-            'level': 'INFO',
-            'handlers': ['console', 'sentry'],
+            'level': 'ERROR',
+            'handlers': ['sentry'],
             'propagate': False
         },
     },
