@@ -29,3 +29,6 @@ TEMPLATE_LOADERS = (
 )
 
 HTML_MINIFY = True
+
+DATABASES['default']['CONN_MAX_AGE'] = 600
+
