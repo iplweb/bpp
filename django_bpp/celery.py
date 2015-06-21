@@ -2,13 +2,22 @@
 
 from __future__ import absolute_import
 
-import os
-
-from celery import Celery
 from django.conf import settings
+import celery
 
-# os.environ['DJANGO_SETTINGS_MODULE'] = 'natasz'
+class Celery(celery.Celery):
+    def on_configure(self):
+        import raven
+        from raven.contrib.celery import register_signal, register_logger_signal
+
+        client = raven.Client()
+
+        # register a custom filter to filter out duplicate logs
+        register_logger_signal(client)
+
+        # hook into the Celery error handler
+        register_signal(client)
+
 app = Celery('django_bpp')
-
 app.config_from_object('django.conf:settings')
 app.autodiscover_tasks(lambda: settings.INSTALLED_APPS)

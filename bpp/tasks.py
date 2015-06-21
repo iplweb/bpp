@@ -6,6 +6,7 @@ from django.core.urlresolvers import reverse
 from celeryui.interfaces import IWebTask
 from django.conf import settings
 from celery.utils.log import get_task_logger
+import time
 
 logger = get_task_logger(__name__)
 
@@ -53,20 +54,30 @@ def my_limit(fun):
         res.revoke()
         task_limits[fun] = fun.apply_async(countdown=settings.MAT_VIEW_REFRESH_COUNTDOWN)
 
+def wait_for_object(klass, pk, no_tries=10):
+    obj = None
+
+    while no_tries > 0:
+        try:
+            obj = klass.objects.get(pk=pk)
+        except klass.DoesNotExist:
+            time.sleep(1)
+            no_tries = no_tries - 1
+
+    if obj is None:
+        raise klass.DoesNotExist("Cannot fetch klass %r with pk %r" % (klass, pk))
+
+    return obj
 
 @app.task
 def zaktualizuj_opis(klasa, pk):
-    try:
-        obj = klasa.objects.get(pk=pk)
-    except Exception:
-        logger.exception('Problem z pobraniem obiektu')
-
+    obj = wait_for_object(klasa, pk)
     obj.zaktualizuj_cache(tylko_opis=True)
 
 @app.task
 def zaktualizuj_zrodlo(pk):
     from bpp.models import Zrodlo, Rekord
 
-    z = Zrodlo.objects.get(pk=pk)
+    z = wait_for_object(Zrodlo, pk)
     for rekord in Rekord.objects.filter(zrodlo=z):
         rekord.original.zaktualizuj_cache(tylko_opis=True)
