@@ -235,6 +235,11 @@ LOGGING = {
             'level': 'DEBUG',
             'propagate': True,
         },
+        'celery.worker.job': {
+            'level': 'INFO',
+            'handlers': ['console', 'sentry'],
+            'propagate': False
+        },
     },
 }
 
@@ -426,4 +431,4 @@ TESTING = ('test' in sys.argv) or ('jenkins' in sys.argv) or ('py.test' in sys.a
 if TESTING:
     CELERY_ALWAYS_EAGER = True
 
-
+CELERYD_HIJACK_ROOT_LOGGER = False
