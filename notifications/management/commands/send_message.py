@@ -22,7 +22,6 @@ class Command(BaseCommand):
     #
 
     def handle(self, *args, **options):
-
         request_factory = RequestFactory()
 
         request = request_factory.get('/')
@@ -46,4 +45,4 @@ class Command(BaseCommand):
             msg = msg[0]
             closeURL = reverse('messages_extends:message_mark_read', args=(msg.pk,))
             notifications.send_notification(
-                request, level, text, verbose=options['verbosity'] > 0, closeURL=closeURL)
+                request, level, text, verbose=options['verbosity'] > 1, closeURL=closeURL)
