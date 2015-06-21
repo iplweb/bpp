@@ -3,21 +3,28 @@
 from __future__ import absolute_import
 
 from django.conf import settings
-import celery
+from celery import signals, Celery
 
-class Celery(celery.Celery):
+@signals.setup_logging.connect
+def setup_logging(**kwargs):
+    """Setup logging."""
+    pass
+
+class Celery(Celery):
+
     def on_configure(self):
-        import raven
-        from raven.contrib.celery import register_signal, register_logger_signal
+        if hasattr(settings, 'RAVEN_CONFIG') and settings.RAVEN_CONFIG['dsn']:
+            import raven
+            from raven.contrib.celery import (register_signal,
+            register_logger_signal)
 
-        client = raven.Client()
+            client = raven.Client(settings.RAVEN_CONFIG['dsn'])
+            register_logger_signal(client)
+            register_signal(client)
 
-        # register a custom filter to filter out duplicate logs
-        register_logger_signal(client)
-
-        # hook into the Celery error handler
-        register_signal(client)
 
 app = Celery('django_bpp')
 app.config_from_object('django.conf:settings')
 app.autodiscover_tasks(lambda: settings.INSTALLED_APPS)
+
+
