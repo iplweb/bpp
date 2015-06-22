@@ -402,8 +402,8 @@ DATABASES = {
         'NAME': django_getenv("DJANGO_BPP_DB_NAME"),
         'USER': django_getenv("DJANGO_BPP_DB_USER"),
         'PASSWORD': django_getenv("DJANGO_BPP_DB_PASSWORD"),
-        'HOST': django_getenv("DJANGO_BPP_DB_HOST", "localhost"),
-        'PORT': int(django_getenv("DJANGO_BPP_DB_PORT", "5432")),
+        'HOST': django_getenv("DJANGO_BPP_DB_HOST", ""),
+        'PORT': int(django_getenv("DJANGO_BPP_DB_PORT", "")),
     }
 }
 
