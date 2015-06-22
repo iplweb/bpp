@@ -396,6 +396,12 @@ ADMINS = (
 )
 MANAGERS = ADMINS
 
+def int_or_None(value):
+    try:
+        return int(value)
+    except ValueError:
+        return ""
+
 DATABASES = {
     'default': {
         'ENGINE': django_getenv("DJANGO_BPP_DB_ENGINE", 'django.db.backends.postgresql_psycopg2'),
@@ -403,7 +409,7 @@ DATABASES = {
         'USER': django_getenv("DJANGO_BPP_DB_USER"),
         'PASSWORD': django_getenv("DJANGO_BPP_DB_PASSWORD"),
         'HOST': django_getenv("DJANGO_BPP_DB_HOST", ""),
-        'PORT': int(django_getenv("DJANGO_BPP_DB_PORT", "")),
+        'PORT': int_or_None(django_getenv("DJANGO_BPP_DB_PORT", "")),
     }
 }
 
