@@ -9,12 +9,16 @@ non_url = re.compile(r'[^\w-]+')
 class FulltextSearchMixin:
     fts_field = 'search'
 
+    def tokenize(self, qstr):
+        qstr = qstr.replace("\\", "")
+        return [x.strip() for x in qstr.split(u" ") if x.strip()]
+
     def fulltext_filter(self, qstr):
         from djorm_pgfulltext.fields import startswith
 
         if qstr == None: qstr = u""
 
-        words = [x.strip() for x in qstr.split(u" ") if x.strip()]
+        words = self.tokenize(qstr)
         qstr = " & ".join(startswith(words))
         params = ('bpp_nazwy_wlasne', qstr)
 
