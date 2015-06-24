@@ -15,7 +15,7 @@ from django_bpp.celery import app
 
 
 
-@app.task
+@app.task(ignore_result=True)
 def remove_file(path):
     if path.startswith(os.path.join(settings.MEDIA_ROOT, 'report')):
         logger.warning("Removing %r" % path)
@@ -54,7 +54,7 @@ def my_limit(fun):
         res.revoke()
         task_limits[fun] = fun.apply_async(countdown=settings.MAT_VIEW_REFRESH_COUNTDOWN)
 
-def wait_for_object(klass, pk, no_tries=10):
+def wait_for_object(klass, pk, no_tries=10, called_by=""):
     obj = None
 
     while no_tries > 0:
@@ -66,16 +66,16 @@ def wait_for_object(klass, pk, no_tries=10):
             no_tries = no_tries - 1
 
     if obj is None:
-        raise klass.DoesNotExist("Cannot fetch klass %r with pk %r" % (klass, pk))
+        raise klass.DoesNotExist("Cannot fetch klass %r with pk %r, TB: %r" % (klass, pk, called_by))
 
     return obj
 
-@app.task
-def zaktualizuj_opis(klasa, pk):
+@app.task(ignore_result=True)
+def zaktualizuj_opis(klasa, pk, called_by=""):
     obj = wait_for_object(klasa, pk)
-    obj.zaktualizuj_cache(tylko_opis=True)
+    obj.zaktualizuj_cache(tylko_opis=True, called_by=called_by)
 
-@app.task
+@app.task(ignore_result=True)
 def zaktualizuj_zrodlo(pk):
     from bpp.models import Zrodlo, Rekord
 
