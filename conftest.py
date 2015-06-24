@@ -360,3 +360,4 @@ def wydawnictwo_ciagle_z_dwoma_autorami(wydawnictwo_ciagle, autor_jan_kowalski, 
 def pytest_configure():
     from django.conf import settings
     settings.TESTING = True
+    settings.CELERY_ALWAYS_EAGER = True
