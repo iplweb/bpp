@@ -357,3 +357,7 @@ def wydawnictwo_ciagle_z_dwoma_autorami(wydawnictwo_ciagle, autor_jan_kowalski, 
     wydawnictwo_ciagle.dodaj_autora(autor_jan_nowak, jednostka)
     return wydawnictwo_ciagle
 
+from django.conf import settings
+
+def pytest_configure():
+    settings.configure(TESTING=True)
