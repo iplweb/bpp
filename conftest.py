@@ -361,3 +361,6 @@ def pytest_configure():
     from django.conf import settings
     settings.TESTING = True
     settings.CELERY_ALWAYS_EAGER = True
+
+    from bpp.models import cache
+    cache.enable()
