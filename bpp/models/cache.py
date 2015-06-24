@@ -21,6 +21,7 @@ from bpp.models import Patent, \
 # - Patent
 # - Praca_Doktorska
 # - Praca_Habilitacyjna
+import traceback
 from django.core.exceptions import ObjectDoesNotExist
 from bpp.models.abstract import ModelPunktowanyBaza, \
     ModelZRokiem, ModelZeSzczegolami, ModelAfiliowanyRecenzowany, \
@@ -63,7 +64,9 @@ def defer_zaktualizuj_opis(instance, *args, **kw):
             # models.util.ModelZOpisemBibliograficznym.zaktualizuj_opis
             return
 
-    zaktualizuj_opis.delay(instance.__class__, instance.pk)
+    called_by = "LOCALS: %r" % locals()
+    called_by += "|".join(traceback.format_stack())
+    zaktualizuj_opis.delay(instance.__class__, instance.pk, called_by)
 
 def defer_zaktualizuj_opis_rekordu(instance, *args, **kw):
     """Obiekt typy Wydawnictwo..._Autor został zapisany (post_save) LUB
