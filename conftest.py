@@ -357,7 +357,8 @@ def wydawnictwo_ciagle_z_dwoma_autorami(wydawnictwo_ciagle, autor_jan_kowalski, 
     wydawnictwo_ciagle.dodaj_autora(autor_jan_nowak, jednostka)
     return wydawnictwo_ciagle
 
-# def pytest_configure():
-#     from django.conf import settings
-#     settings.TESTING = True
-#     settings.CELERY_ALWAYS_EAGER = True
+def pytest_configure():
+     from django.conf import settings
+     del settings.RAVEN_CONFIG # setattr(settings, "RAVEN_CONFIG", None)
+     settings.TESTING = True
+     settings.CELERY_ALWAYS_EAGER = True

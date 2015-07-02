@@ -72,8 +72,8 @@ def wait_for_object(klass, pk, no_tries=10, called_by=""):
 
 @app.task(ignore_result=True)
 def zaktualizuj_opis(klasa, pk, called_by=""):
-    obj = wait_for_object(klasa, pk)
-    obj.zaktualizuj_cache(tylko_opis=True, called_by=called_by)
+    obj = wait_for_object(klasa, pk, called_by=called_by)
+    obj.zaktualizuj_cache(tylko_opis=True)
 
 @app.task(ignore_result=True)
 def zaktualizuj_zrodlo(pk):
