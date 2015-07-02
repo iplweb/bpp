@@ -18,9 +18,9 @@ os.environ['DJANGO_BPP_HOSTNAME'] = 'localhost'
 
 os.environ['DJANGO_BPP_SECRET_KEY'] = '123'
 
-os.environ['DJANGO_BPP_DB_NAME'] = 'django-bpp'
-os.environ['DJANGO_BPP_DB_USER'] = 'django-bpp'
-os.environ['DJANGO_BPP_DB_PASSWORD'] = 'test'
+os.environ['DJANGO_BPP_DB_NAME'] = 'test_bpp'
+os.environ['DJANGO_BPP_DB_USER'] = 'test_bpp'
+os.environ['DJANGO_BPP_DB_PASSWORD'] = '12345678'
 os.environ['DJANGO_BPP_DB_HOST'] = 'localhost'
 os.environ['DJANGO_BPP_DB_PORT'] = '15432'
 os.environ['DJANGO_BPP_REDIS_PORT'] = '16379'
