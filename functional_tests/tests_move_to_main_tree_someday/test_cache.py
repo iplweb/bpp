@@ -58,9 +58,16 @@ def test_opis_bibliograficzny_dependent(db, statusy_korekt):
 
 def test_opis_bibliograficzny_zrodlo(db, statusy_korekt):
     """Zmień nazwę źródła i sprawdź, jak to wpłynie na opis."""
+    from bpp.models import cache
+    assert cache._CACHE_ENABLED
+
+    from django.conf import settings
+    assert(settings.TESTING, True)
+    assert(settings.CELERY_ALWAYS_EAGER, True)
 
     z = mommy.make(Zrodlo, nazwa='OMG', skrot='wutlolski')
     c = mommy.make(Wydawnictwo_Ciagle, szczegoly='SZ', uwagi='U', zrodlo=z)
+
     assert 'wutlolski' in c.opis_bibliograficzny()
     assert 'wutlolski' in pierwszy_rekord()
 
@@ -72,7 +79,6 @@ def test_opis_bibliograficzny_zrodlo(db, statusy_korekt):
 
     assert 'wutlolski' in pierwszy_rekord()
 
-    from bpp.models import cache
 
     assert cache._CACHE_ENABLED
 

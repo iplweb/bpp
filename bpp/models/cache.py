@@ -64,7 +64,7 @@ def defer_zaktualizuj_opis(instance, *args, **kw):
             # models.util.ModelZOpisemBibliograficznym.zaktualizuj_opis
             return
 
-    called_by = "LOCALS: %r" % locals()
+    called_by = "INSTANCE: %r" % instance
     called_by += "|".join(traceback.format_stack())
     zaktualizuj_opis.delay(instance.__class__, instance.pk, called_by)
 
