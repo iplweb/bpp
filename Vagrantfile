@@ -18,7 +18,7 @@ Vagrant.configure(2) do |config|
       master.vm.synced_folder "../ANSIBLE-django-bpp/.gnupg", 		"/home/vagrant/.gnupg", 			mount_options: ["dmode=700", "fmode=600"]
 
       # A to jest zamiast serwera devpi - tam budujemy pakiety Pythona i każdy host może tam coś od siebie wrzucić:
-      master.vm.synced_folder "../wheelhouse", 	                    "/wheelhouse", 		mount_options: ["dmode=700", "fmode=600"]
+      master.vm.synced_folder "../wheelhouse", 	                    "/wheelhouse", 		mount_options: ["dmode=777", "fmode=666"]
 
       master.vm.network "private_network", ip: "192.168.111.100"
 
