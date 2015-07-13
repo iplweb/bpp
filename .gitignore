@@ -68,3 +68,4 @@ src/django_bpp/bower_components
 src/django_bpp/staticroot
 src/django_bpp/media
 src/django_bpp/django_bpp/local_settings.py
+.vagrant/
