@@ -7,9 +7,18 @@ Vagrant.configure(2) do |config|
       master.vm.box = "ubuntu/trusty64"
       master.vm.box_check_update = false
 
+      # Ansible playbooks zarządzające serwisami - prosta sprawa:
       master.vm.synced_folder "../ANSIBLE-django-bpp/playbooks", 	"/home/vagrant/ansible-playbooks"
+
+      # ... tak samo dla Ansible potrzebny jest katalog /etc/ansible z inwentarzem hostów:
       master.vm.synced_folder "../ANSIBLE-django-bpp/etc", 			"/etc/ansible", 					mount_options: ["dmode=777", "fmode=666"]
+
+      # To jest potrzebne do budowania pakietów nginx, aby potem je móc podpisać i wrzucić
+      # do PPA na launchpad
       master.vm.synced_folder "../ANSIBLE-django-bpp/.gnupg", 		"/home/vagrant/.gnupg", 			mount_options: ["dmode=700", "fmode=600"]
+
+      # A to jest zamiast serwera devpi - tam budujemy pakiety Pythona i każdy host może tam coś od siebie wrzucić:
+      master.vm.synced_folder "../wheelhouse", 	                    "/wheelhouse", 		mount_options: ["dmode=700", "fmode=600"]
 
       master.vm.network "private_network", ip: "192.168.111.100"
 
@@ -44,6 +53,8 @@ Vagrant.configure(2) do |config|
   config.vm.define "staging" do |staging|
       staging.vm.box = "ubuntu/trusty64"
       staging.vm.box_check_update = false
+
+      staging.vm.synced_folder "../wheelhouse", "/home/vagrant/wheelhouse", mount_options: ["dmode=700", "fmode=600"]
 
       staging.vm.network "private_network", ip: "192.168.111.101"
       staging.vm.network "forwarded_port", guest: 80, host: 8080
