@@ -45,14 +45,15 @@ Vagrant.configure(2) do |config|
         dd if=/dev/zero of=/swapfile bs=1M count=2048
         mkswap /swapfile
         swapon /swapfile
-        sudo -s bash -c "echo swapon /swapfile > /etc/rc.local"
-        sudo -s bash -c "echo exit 0 >> /etc/rc.local"
+
+        echo swapon /swapfile > /etc/rc.local
+        echo exit 0 >> /etc/rc.local
 
 
         # Basic APT stuff
-        sudo apt-get update -qq
-        sudo apt-get dist-upgrade -y
-        sudo apt-get install -y git mercurial build-essential mc emacs24-nox yaml-mode python-dev python3-dev sshpass links redis-server jed lxde xinit
+        apt-get update -qq
+        apt-get dist-upgrade -y
+        apt-get install -y git mercurial build-essential mc emacs24-nox yaml-mode python-dev python3-dev sshpass links redis-server jed lxde xinit wpolish dictionaries-common
 
         # firefox=28.0+build2-0ubuntu2
 
@@ -90,6 +91,13 @@ Vagrant.configure(2) do |config|
         su vagrant -c "git config --global core.autocrlf true"
         su vagrant -c "echo alias\ jed=emacs24-nox >> ~/.bashrc"
 		su vagrant -c "mkdir -p ~/.cache/pip && cd ~/.cache/pip && ln -s /pip-cache-http http && ln -s /pip-cache-wheels wheels"
+
+		# Autologin
+		cd /etc/lxdm
+		cat lxdm.conf | sed -e "s/# autologin=dgod/autologin=vagrant/g" > lxdm-new.conf
+		cp lxdm.conf lxdm.conf.bak
+		mv lxdm-new.conf lxdm.conf
+
 
       SHELL
   end
