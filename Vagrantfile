@@ -40,6 +40,14 @@ Vagrant.configure(2) do |config|
 	  
       master.vm.provision "shell", inline: <<-SHELL
 
+        # Extra swap
+        dd if=/dev/zero of=/swapfile bs=1M count=2048
+        mkswap /swapfile
+        swapon /swapfile
+        sudo -s bash -c "echo swapon /swapfile > /etc/rc.local"
+        sudo -s bash -c "echo exit 0 >> /etc/rc.local"
+
+
         # Basic APT stuff
         sudo apt-get update -qq
         sudo apt-get dist-upgrade -y
