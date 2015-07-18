@@ -7,6 +7,9 @@ Vagrant.configure(2) do |config|
       master.vm.box = "ubuntu/trusty64"
       master.vm.box_check_update = false
 
+      master.ssh.forward_x11 = true
+      master.ssh.forward_agent = true
+
       # Ansible playbooks zarządzające serwisami - prosta sprawa:
       master.vm.synced_folder "../ANSIBLE-django-bpp/playbooks", "/home/vagrant/ansible-playbooks-bpp", mount_options: ["dmode=700", "fmode=600"], owner: "vagrant"
 
@@ -24,23 +27,25 @@ Vagrant.configure(2) do |config|
       master.vm.network "forwarded_port", guest: 5432, host: 15432
 	  master.vm.network "forwarded_port", guest: 80, host: 8080
 
-      # master.vm.provider "virtualbox" do |vb|
-      #   vb.gui = true
-      #   vb.memory = "1024"
-      # end
+      master.vm.provider "virtualbox" do |vb|
+         vb.gui = true
+         vb.memory = "2048"
+      end
 
-	  if Vagrant.has_plugin?("vagrant-proxyconf")
+      if Vagrant.has_plugin?("vagrant-proxyconf")
         master.proxy.http     = "http://192.168.111.1:8123/"
         master.proxy.https    = "http://192.168.111.1:8123/"
         master.proxy.no_proxy = "localhost,127.0.0.1,.example.com,staging,.localnet,messaging-test"
-	  end
+      end
 	  
       master.vm.provision "shell", inline: <<-SHELL
 
         # Basic APT stuff
         sudo apt-get update -qq
         sudo apt-get dist-upgrade -y
-        sudo apt-get install -y git mercurial build-essential mc emacs24-nox yaml-mode python-dev python3-dev sshpass links redis-server jed
+        sudo apt-get install -y git mercurial build-essential mc emacs24-nox yaml-mode python-dev python3-dev sshpass links redis-server jed lxde xinit
+
+        # firefox=28.0+build2-0ubuntu2
 
         # PIP, Virtualenv
         wget https://bootstrap.pypa.io/get-pip.py
