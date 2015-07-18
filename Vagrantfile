@@ -2,8 +2,6 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-# DPI pod Windows
-
 Vagrant.configure(2) do |config|
 
   config.vm.define "master", primary: true do |master|
