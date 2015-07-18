@@ -7,6 +7,9 @@ Vagrant.configure(2) do |config|
       master.vm.box = "ubuntu/trusty64"
       master.vm.box_check_update = false
 
+      master.ssh.forward_x11 = true
+      master.ssh.forward_agent = true
+
       # Ansible playbooks zarządzające serwisami - prosta sprawa:
       master.vm.synced_folder "../ANSIBLE-django-bpp/playbooks", "/home/vagrant/ansible-playbooks-bpp", mount_options: ["dmode=700", "fmode=600"], owner: "vagrant"
 
@@ -25,7 +28,7 @@ Vagrant.configure(2) do |config|
 	  master.vm.network "forwarded_port", guest: 80, host: 8080
 
       master.vm.provider "virtualbox" do |vb|
-      #   vb.gui = true
+         vb.gui = true
          vb.memory = "2048"
       end
 
@@ -40,7 +43,9 @@ Vagrant.configure(2) do |config|
         # Basic APT stuff
         sudo apt-get update -qq
         sudo apt-get dist-upgrade -y
-        sudo apt-get install -y git mercurial build-essential mc emacs24-nox yaml-mode python-dev python3-dev sshpass links redis-server jed
+        sudo apt-get install -y git mercurial build-essential mc emacs24-nox yaml-mode python-dev python3-dev sshpass links redis-server jed lxde xinit
+
+        # firefox=28.0+build2-0ubuntu2
 
         # PIP, Virtualenv
         wget https://bootstrap.pypa.io/get-pip.py
