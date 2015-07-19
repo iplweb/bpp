@@ -233,9 +233,9 @@ class TestRaportKomisjiCentralnej(TestRKCMixin, TestCase):
             haystack = haystack.replace("  ", " ")
 
         needles = [
-            u"C. Autorstwo monografii lub podręcznika: </td><td>liczba: 5",
-            u"C1. w języku angielskim </td><td>liczba: 3",
-            u"C2. w języku polskim lub innym niż angielski </td><td>liczba: 2"
+            u"C. Autorstwo monografii lub podręcznika:\n </td><td>liczba: 5",
+            u"C1. w języku angielskim\n </td><td>liczba: 3",
+            u"C2. w języku polskim lub innym niż angielski\n </td><td>liczba: 2"
             ]
         self.assertIn(needles[0], haystack)
         self.assertIn(needles[1], haystack)
