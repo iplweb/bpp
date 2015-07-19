@@ -8,3 +8,9 @@
 *.sh text eol=lf
 *.txt text eol=lf
 *.md text eol=lf
+*.svg text eol=lf
+*.sql text eol=lf
+*.json text eol=lf
+*.1st text eol=lf
+*.2nd text eol=lf
+*.apt text eol=lf
