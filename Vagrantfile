@@ -5,14 +5,11 @@
 Vagrant.configure(2) do |config|
   config.vm.define "master", primary: true do |master|
       master.vm.box = "ubuntu/trusty64"
-      master.vm.box_check_update = false
+      master.vm.box_check_update = true
 
       master.ssh.forward_x11 = true
       master.ssh.forward_agent = true
 
-      # To jest potrzebne do budowania pakietów nginx, aby potem je móc podpisać i wrzucić do PPA na launchpad
-      master.vm.synced_folder "../GNUPG-homedir-keys", "/home/vagrant/.hpg", mount_options: ["dmode=700", "fmode=600"], owner: "vagrant"
-	  
       # A to jest zamiast serwera devpi - tam budujemy pakiety Pythona i każdy host może tam coś od siebie wrzucić:
       master.vm.synced_folder "../wheelhouse", "/wheelhouse", mount_options: ["dmode=777", "fmode=666"], owner: "vagrant"
       # ... i takie dopalenie dla pip(1)
@@ -36,6 +33,16 @@ Vagrant.configure(2) do |config|
       end
 	  
       master.vm.provision "shell", path: "provisioning/master.sh"
+
+      master.vm.provision "file", source: "provisioning/lxterminal.desktop", destination: "/home/vagrant/Desktop/lxterminal.desktop"
+
+      master.vm.provision "file", source: "../GNUPG-keys/gpg.conf", destination: "/home/vagrant/.gpg/gpg.conf"
+      master.vm.provision "file", source: "../GNUPG-keys/pubring.gpg", destination: "/home/vagrant/.gpg/pubring.gpg"
+      master.vm.provision "file", source: "../GNUPG-keys/random_seed", destination: "/home/vagrant/.gpg/random_seed"
+      master.vm.provision "file", source: "../GNUPG-keys/secring.gpg", destination: "/home/vagrant/.gpg/secring.gpg"
+      master.vm.provision "file", source: "../GNUPG-keys/trustdb.gpg", destination: "/home/vagrant/.gpg/trustdb.gpg"
+
+      master.vm.provision "shell", path: "provisioning/master-post-file.sh"
 
       if Vagrant.has_plugin?("vagrant-reload")
         master.vm.provision :reload
