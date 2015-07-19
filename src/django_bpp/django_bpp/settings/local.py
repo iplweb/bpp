@@ -6,6 +6,13 @@ def setenv_default(varname, default_value):
     if os.environ.get(varname) is None:
         os.environ[varname] = default_value
 
+
+#
+#  Ustawienia srodowiska sa konieczne, mimo, ze umieszczone w activate.bat...
+# Zmienne srodowiskowe i command-line to jedno, ale testy uruchamiane przez PyCharm
+# przeciez nie zaciągają zmiennych z pliku 'activate' virtualenv, więc... :
+#
+
 setenv_default("DJANGO_SETTINGS_MODULE", "django_bpp.settings.local")
 setenv_default("DJANGO_BPP_HOSTNAME", "localhost")
 setenv_default("DJANGO_BPP_SECRET_KEY", "123")
