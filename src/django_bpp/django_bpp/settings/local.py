@@ -1,29 +1,23 @@
 # -*- encoding: utf-8 -*-
 
-# Na WINDOWS trzeba:
-# - zainstalowac nodejs
-# - zainstalowac npm
-# - zainstalowac bower,
-# - zainstalowac requirements
-#
-# Nastepnie uruchamiamy:
-# - venv\scripts\activate.bat
-# - python manage.py bower install
-# - python manage.py collectstatic
-
 import os
 
-os.environ['DJANGO_BPP_RAVEN_CONFIG_URL'] = 'http://4355f955f2ae4522ba06752c05eaff0a:5a62fbddd2ac4c0ab3d25b22c352df2a@sentry.iplweb.pl:9000/13'
-os.environ['DJANGO_BPP_HOSTNAME'] = 'localhost'
+def setenv_default(varname, default_value):
+    if os.environ.get(varname) is None:
+        os.environ[varname] = default_value
 
-os.environ['DJANGO_BPP_SECRET_KEY'] = '123'
+setenv_default("DJANGO_SETTINGS_MODULE", "django_bpp.settings.local")
+setenv_default("DJANGO_BPP_HOSTNAME", "localhost")
+setenv_default("DJANGO_BPP_SECRET_KEY", "123")
+setenv_default("DJANGO_BPP_DB_NAME", "test_bpp")
+setenv_default("DJANGO_BPP_DB_USER", "test_bpp")
+setenv_default("DJANGO_BPP_DB_PASSWORD", "12345678")
+setenv_default("DJANGO_BPP_DB_HOST", "192.168.111.100")
+setenv_default("DJANGO_BPP_DB_PORT", "5432")
+setenv_default("DJANGO_BPP_RAVEN_CONFIG_URL", "http://4355f955f2ae4522ba06752c05eaff0a:5a62fbddd2ac4c0ab3d25b22c352df2a@sentry.iplweb.pl:9000/13")
+setenv_default("DJANGO_BPP_REDIS_PORT", "6379")
+setenv_default("DJANGO_BPP_REDIS_HOST", "192.168.111.100")
 
-os.environ['DJANGO_BPP_DB_NAME'] = 'test_bpp'
-os.environ['DJANGO_BPP_DB_USER'] = 'test_bpp'
-os.environ['DJANGO_BPP_DB_PASSWORD'] = '12345678'
-os.environ['DJANGO_BPP_DB_HOST'] = 'localhost'
-os.environ['DJANGO_BPP_DB_PORT'] = '15432'
-os.environ['DJANGO_BPP_REDIS_PORT'] = '16379'
 
 from .base import *
 

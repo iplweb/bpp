@@ -70,3 +70,7 @@ src/django_bpp/media
 src/django_bpp/django_bpp/local_settings.py
 .vagrant/
 venv/
+
+src/django_bpp/components/bower_components/
+src/django_bpp/node_modules/
+src/django_bpp/wheelhouse/
