@@ -11,11 +11,8 @@ Vagrant.configure(2) do |config|
       master.ssh.forward_x11 = true
       master.ssh.forward_agent = true
 
-      # Ansible playbooks zarządzające serwisami - prosta sprawa:
-      master.vm.synced_folder "../ANSIBLE-django-bpp/playbooks", "/home/vagrant/ansible-playbooks-bpp", mount_options: ["dmode=700", "fmode=600"], owner: "vagrant"
-
       # To jest potrzebne do budowania pakietów nginx, aby potem je móc podpisać i wrzucić do PPA na launchpad
-      master.vm.synced_folder "../ANSIBLE-django-bpp/.gnupg", "/home/vagrant/.gnupg", mount_options: ["dmode=700", "fmode=600"], owner: "vagrant"
+      master.vm.synced_folder "../GNUPG-homedir-keys", "/home/vagrant/.hpg", mount_options: ["dmode=700", "fmode=600"], owner: "vagrant"
 	  
       # A to jest zamiast serwera devpi - tam budujemy pakiety Pythona i każdy host może tam coś od siebie wrzucić:
       master.vm.synced_folder "../wheelhouse", "/wheelhouse", mount_options: ["dmode=777", "fmode=666"], owner: "vagrant"
@@ -100,6 +97,10 @@ Vagrant.configure(2) do |config|
 
 
       SHELL
+
+      if Vagrant.has_plugin?("vagrant-reload")
+        master.vm.provision :reload
+      end
   end
 
   config.vm.define "staging" do |staging|
