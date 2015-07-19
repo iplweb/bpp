@@ -3,7 +3,6 @@
 # vi: set ft=ruby :
 
 Vagrant.configure(2) do |config|
-
   config.vm.define "master", primary: true do |master|
       master.vm.box = "ubuntu/trusty64"
       master.vm.box_check_update = false
@@ -56,7 +55,5 @@ Vagrant.configure(2) do |config|
 	  end
 
       staging.vm.provision "shell", path: "provisioning/staging.sh"
-
   end
-
 end
