@@ -36,67 +36,7 @@ Vagrant.configure(2) do |config|
         master.proxy.no_proxy = "localhost,127.0.0.1,.example.com,staging,.localnet,messaging-test"
       end
 	  
-      master.vm.provision "shell", inline: <<-SHELL
-
-        # Extra swap
-        dd if=/dev/zero of=/swapfile bs=1M count=2048
-        mkswap /swapfile
-        swapon /swapfile
-
-        echo swapon /swapfile > /etc/rc.local
-        echo exit 0 >> /etc/rc.local
-
-
-        # Basic APT stuff
-        apt-get update -qq
-        apt-get dist-upgrade -y
-        apt-get install -y git mercurial build-essential mc emacs24-nox yaml-mode python-dev python3-dev sshpass links redis-server jed lxde xinit wpolish dictionaries-common
-
-        # firefox=28.0+build2-0ubuntu2
-
-        # PIP, Virtualenv
-        wget https://bootstrap.pypa.io/get-pip.py
-
-        sudo python get-pip.py
-        sudo python3 get-pip.py
-
-        sudo pip2 install virtualenv
-        sudo pip3 install virtualenv
-
-        # Git global config
-        git config --global user.email "michal.dtz@gmail.com"
-        git config --global user.name "Michał Pasternak"
-        git config --global core.autocrlf true
-
-        # Ansible
-        sudo pip2 install ansible redis
-
-        # Hosts
-		echo "# Moje hosty: " >> /etc/hosts
-		echo "192.168.111.1 thinkpad thinkpad.localnet" >> /etc/hosts
-		echo "10.0.2.2 gate" >> /etc/hosts		
-		echo "192.168.111.100 master master.localnet  messaging-test.localnet messaging-test" >> /etc/hosts
-        echo "192.168.111.101 staging" >> /etc/hosts
-
-        # Hostname
-        echo "master" > /etc/hostname
-        hostname `cat /etc/hostname`
-
-        # User config
-        su vagrant -c "git config --global user.email michal.dtz@gmail.com"
-        su vagrant -c "git config --global user.name Michał\ Pasternak"
-        su vagrant -c "git config --global core.autocrlf true"
-        su vagrant -c "echo alias\ jed=emacs24-nox >> ~/.bashrc"
-		su vagrant -c "mkdir -p ~/.cache/pip && cd ~/.cache/pip && ln -s /pip-cache-http http && ln -s /pip-cache-wheels wheels"
-
-		# Autologin
-		cd /etc/lxdm
-		cat lxdm.conf | sed -e "s/# autologin=dgod/autologin=vagrant/g" > lxdm-new.conf
-		cp lxdm.conf lxdm.conf.bak
-		mv lxdm-new.conf lxdm.conf
-
-
-      SHELL
+      master.vm.provision "shell", path: "provisioning/master.sh"
 
       if Vagrant.has_plugin?("vagrant-reload")
         master.vm.provision :reload
@@ -107,11 +47,6 @@ Vagrant.configure(2) do |config|
       staging.vm.box = "ubuntu/trusty64"
       staging.vm.box_check_update = false
 
-      # A to jest zamiast serwera devpi - tam budujemy pakiety Pythona i każdy host może tam coś od siebie wrzucić:
-      staging.vm.synced_folder "../wheelhouse", "/wheelhouse", mount_options: ["dmode=777", "fmode=666"]
-      # ... i takie dopalenie dla pip(1)
-      staging.vm.synced_folder "../pip-cache", "/home/vagrant/.cache/pip", mount_options: ["dmode=775", "fmode=664"]
-
       staging.vm.network "private_network", ip: "192.168.111.101"
 
       if Vagrant.has_plugin?("vagrant-proxyconf")
@@ -120,22 +55,8 @@ Vagrant.configure(2) do |config|
         staging.proxy.no_proxy = "localhost,127.0.0.1,.example.com,staging,master,messaging-test.localnet,.localnet,messaging-test"
 	  end
 
-      staging.vm.provision "shell", inline: <<-SHELL
-        sudo apt-get update -qq
-        sudo apt-get dist-upgrade -y
-        sudo apt-get install -y sshpass jed emacs24-nox
+      staging.vm.provision "shell", path: "provisioning/staging.sh"
 
-        # Hosts
-		echo "# Moje hosty: " >> /etc/hosts
-		echo "192.168.111.1 thinkpad thinkpad.localnet" >> /etc/hosts
-		echo "10.0.2.2 gate" >> /etc/hosts		
-		echo "192.168.111.100 master master.localnet  messaging-test.localnet messaging-test" >> /etc/hosts
-        echo "192.168.111.101 staging" >> /etc/hosts
-		
-        echo "staging" > /etc/hostname
-        hostname `cat /etc/hostname`
-
-      SHELL
   end
 
 end
