@@ -1,22 +1,11 @@
 #!/bin/bash
 
-# Extra swap - 2 GB
-dd if=/dev/zero of=/swapfile bs=1M count=2048
-mkswap /swapfile
-swapon /swapfile
-
-echo swapon /swapfile > /etc/rc.local
-echo exit 0 >> /etc/rc.local
-
 # Basic APT stuff
-apt-get update -qq
-apt-get dist-upgrade -y
-apt-get install -y git mercurial build-essential mc emacs24-nox yaml-mode python-dev python3-dev sshpass links redis-server jed lxde xinit wpolish dictionaries-common firefox
-
+apt-get install -y git mercurial build-essential python-dev python3-dev redis-server phantomjs
 # firefox=28.0+build2-0ubuntu2
 
 # PIP, Virtualenv
-wget https://bootstrap.pypa.io/get-pip.py
+wget https://bootstrap.pypa.io/get-pip.py > /dev/null
 
 sudo python get-pip.py
 sudo python3 get-pip.py
