@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-cd vagrant && chmod 600 .gpg/*
+cd /home/vagrant && chmod 600 .gnupg/* && chmod 700 .gnupg/
