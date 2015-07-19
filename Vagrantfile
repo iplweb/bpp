@@ -4,8 +4,8 @@
 
 Vagrant.configure(2) do |config|
   config.vm.define "master", primary: true do |master|
-      master.vm.box = "ubuntu/trusty64"
-      master.vm.box_check_update = true
+      master.vm.box = "mpasternak/trusty64-updated"
+      master.vm.box_check_update = false
 
       master.ssh.forward_x11 = true
       master.ssh.forward_agent = true
@@ -34,23 +34,18 @@ Vagrant.configure(2) do |config|
 	  
       master.vm.provision "shell", path: "provisioning/master.sh"
 
-      master.vm.provision "file", source: "provisioning/lxterminal.desktop", destination: "/home/vagrant/Desktop/lxterminal.desktop"
-
-      master.vm.provision "file", source: "../GNUPG-keys/gpg.conf", destination: "/home/vagrant/.gpg/gpg.conf"
-      master.vm.provision "file", source: "../GNUPG-keys/pubring.gpg", destination: "/home/vagrant/.gpg/pubring.gpg"
-      master.vm.provision "file", source: "../GNUPG-keys/random_seed", destination: "/home/vagrant/.gpg/random_seed"
-      master.vm.provision "file", source: "../GNUPG-keys/secring.gpg", destination: "/home/vagrant/.gpg/secring.gpg"
-      master.vm.provision "file", source: "../GNUPG-keys/trustdb.gpg", destination: "/home/vagrant/.gpg/trustdb.gpg"
+      master.vm.provision "file", source: "../GNUPG-keys/gpg.conf", destination: "/home/vagrant/.gnupg/gpg.conf"
+      master.vm.provision "file", source: "../GNUPG-keys/pubring.gpg", destination: "/home/vagrant/.gnupg/pubring.gpg"
+      master.vm.provision "file", source: "../GNUPG-keys/random_seed", destination: "/home/vagrant/.gnupg/random_seed"
+      master.vm.provision "file", source: "../GNUPG-keys/secring.gpg", destination: "/home/vagrant/.gnupg/secring.gpg"
+      master.vm.provision "file", source: "../GNUPG-keys/trustdb.gpg", destination: "/home/vagrant/.gnupg/trustdb.gpg"
 
       master.vm.provision "shell", path: "provisioning/master-post-file.sh"
 
-      if Vagrant.has_plugin?("vagrant-reload")
-        master.vm.provision :reload
-      end
   end
 
   config.vm.define "staging" do |staging|
-      staging.vm.box = "ubuntu/trusty64"
+      staging.vm.box = "mpasternak/trusty64-updated"
       staging.vm.box_check_update = false
 
       staging.vm.network "private_network", ip: "192.168.111.101"

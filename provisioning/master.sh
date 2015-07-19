@@ -11,7 +11,7 @@ echo exit 0 >> /etc/rc.local
 # Basic APT stuff
 apt-get update -qq
 apt-get dist-upgrade -y
-apt-get install -y git mercurial build-essential mc emacs24-nox yaml-mode python-dev python3-dev sshpass links redis-server jed lxde xinit wpolish dictionaries-common
+apt-get install -y git mercurial build-essential mc emacs24-nox yaml-mode python-dev python3-dev sshpass links redis-server jed lxde xinit wpolish dictionaries-common firefox
 
 # firefox=28.0+build2-0ubuntu2
 
@@ -27,7 +27,7 @@ sudo pip3 install virtualenv
 # Git global config
 git config --global user.email "michal.dtz@gmail.com"
 git config --global user.name "Michał Pasternak"
-git config --global core.autocrlf true
+git config --global push.default simple
 
 # Ansible
 sudo pip2 install ansible redis
@@ -43,22 +43,13 @@ echo "192.168.111.101 staging" >> /etc/hosts
 echo "master" > /etc/hostname
 hostname `cat /etc/hostname`
 
-
 # User config
 su vagrant -c "git config --global user.email michal.dtz@gmail.com"
 su vagrant -c "git config --global user.name Michał\ Pasternak"
 su vagrant -c "git config --global core.autocrlf true"
 su vagrant -c "echo alias\ jed=emacs24-nox >> ~/.bashrc"
 su vagrant -c "mkdir -p ~/.cache/pip && cd ~/.cache/pip && ln -s /pip-cache-http http && ln -s /pip-cache-wheels wheels"
-su vagrant -c "cd /home/vagrant && mkdir Desktop"
-su vagrant -c "cd /home/vagrant && mkdir .gpg && chmod 700 .gpg"
+su vagrant -c "cd /home/vagrant && mkdir .gnupg && chmod 700 .gnupg"
 
 # Checkout ansible-playbook-bpp from GIT
 su vagrant -c "cd /home/vagrant && git clone git://192.168.111.1/ansible-bpp"
-
-# Autologin
-cd /etc/lxdm
-cat lxdm.conf | sed -e "s/# autologin=dgod/autologin=vagrant/g" > lxdm-new.conf
-cp lxdm.conf lxdm.conf.bak
-mv lxdm-new.conf lxdm.conf
-
