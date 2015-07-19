@@ -43,6 +43,7 @@ echo "192.168.111.101 staging" >> /etc/hosts
 echo "master" > /etc/hostname
 hostname `cat /etc/hostname`
 
+
 # User config
 su vagrant -c "git config --global user.email michal.dtz@gmail.com"
 su vagrant -c "git config --global user.name Michał\ Pasternak"
