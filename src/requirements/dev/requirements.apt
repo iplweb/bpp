@@ -1,9 +1,0 @@
-libpq-dev
-libjpeg-dev
-libpng-dev
-libxml2-dev
-libxslt1-dev
-libevent-dev
-firefox
-tightvncserver
-icewm
