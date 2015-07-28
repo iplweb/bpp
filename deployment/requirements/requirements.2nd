@@ -1,0 +1,5 @@
+django-grappelli==2.6.4
+django-celery-ui==0.2
+django_multiseek==0.9.13
+djorm-ext-filtered-contenttypes==0.2.1
+djorm-ext-pgfulltext==0.9.1
