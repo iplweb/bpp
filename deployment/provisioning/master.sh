@@ -37,8 +37,7 @@ su vagrant -c "git config --global user.email michal.dtz@gmail.com"
 su vagrant -c "git config --global user.name Michał\ Pasternak"
 su vagrant -c "git config --global core.autocrlf true"
 su vagrant -c "echo alias\ jed=emacs24-nox >> ~/.bashrc"
-su vagrant -c "mkdir -p ~/.cache && cd ~/.cache && ln -s /caches/pip pip"
 su vagrant -c "cd /home/vagrant && mkdir .gnupg && chmod 700 .gnupg"
 
 # Checkout ansible-playbook-bpp from GIT
-su vagrant -c "cd /home/vagrant && git clone git://192.168.111.1/ansible-bpp"
+# su vagrant -c "cd /home/vagrant && git clone git://192.168.111.1/ansible-bpp"

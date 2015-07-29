@@ -10,19 +10,13 @@ Vagrant.configure(2) do |config|
       master.ssh.forward_x11 = true
       master.ssh.forward_agent = true
 
-      # A to jest zamiast serwera devpi - tam budujemy pakiety Pythona i każdy host może tam coś od siebie wrzucić:
-      master.vm.synced_folder "../wheelhouse", "/caches/wheelhouse", mount_options: ["dmode=777", "fmode=666"], owner: "vagrant"
-
-      # ... i takie dopalenie dla pip(1)
-      master.vm.synced_folder "../pip-cache", "/caches/pip-cache", mount_options: ["dmode=775", "fmode=664"], owner: "vagrant"
-
       master.vm.network "private_network", ip: "192.168.111.100"
 	  
       master.vm.network "forwarded_port", guest: 5432, host: 15432
 	  master.vm.network "forwarded_port", guest: 80, host: 8080
 
       master.vm.provider "virtualbox" do |vb|
-         vb.gui = true
+         vb.gui = false
          vb.memory = "2048"
       end
 
@@ -34,11 +28,11 @@ Vagrant.configure(2) do |config|
 	  
       master.vm.provision "shell", path: "provisioning/master.sh"
 
-      master.vm.provision "file", source: "../GNUPG-keys/gpg.conf", destination: "/home/vagrant/.gnupg/gpg.conf"
-      master.vm.provision "file", source: "../GNUPG-keys/pubring.gpg", destination: "/home/vagrant/.gnupg/pubring.gpg"
-      master.vm.provision "file", source: "../GNUPG-keys/random_seed", destination: "/home/vagrant/.gnupg/random_seed"
-      master.vm.provision "file", source: "../GNUPG-keys/secring.gpg", destination: "/home/vagrant/.gnupg/secring.gpg"
-      master.vm.provision "file", source: "../GNUPG-keys/trustdb.gpg", destination: "/home/vagrant/.gnupg/trustdb.gpg"
+      master.vm.provision "file", source: "/Volumes/Dane zaszyfrowane/Klucze GPG - Ubuntu/gpg.conf", destination: "/home/vagrant/.gnupg/gpg.conf"
+      master.vm.provision "file", source: "/Volumes/Dane zaszyfrowane/Klucze GPG - Ubuntu/pubring.gpg", destination: "/home/vagrant/.gnupg/pubring.gpg"
+      master.vm.provision "file", source: "/Volumes/Dane zaszyfrowane/Klucze GPG - Ubuntu/random_seed", destination: "/home/vagrant/.gnupg/random_seed"
+      master.vm.provision "file", source: "/Volumes/Dane zaszyfrowane/Klucze GPG - Ubuntu/secring.gpg", destination: "/home/vagrant/.gnupg/secring.gpg"
+      master.vm.provision "file", source: "/Volumes/Dane zaszyfrowane/Klucze GPG - Ubuntu/trustdb.gpg", destination: "/home/vagrant/.gnupg/trustdb.gpg"
 
       master.vm.provision "shell", path: "provisioning/master-post-file.sh"
 
