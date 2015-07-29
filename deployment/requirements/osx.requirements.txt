@@ -1,0 +1,8 @@
+gevent
+psycopg2
+Pillow
+pycrypto
+simplejson
+SQLAlchemy
+
+lxml --install-option="--static-deps"
