@@ -1,2 +1,0 @@
--r requirements.1st
--r requirements.2nd
