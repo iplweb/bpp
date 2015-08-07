@@ -7,19 +7,16 @@ def setenv_default(varname, default_value):
         os.environ[varname] = default_value
 
 
-#
-#  Ustawienia srodowiska sa konieczne, mimo, ze umieszczone w activate.bat...
 # Zmienne srodowiskowe i command-line to jedno, ale testy uruchamiane przez PyCharm
 # przeciez nie zaciągają zmiennych z pliku 'activate' virtualenv, więc... :
-#
 
 setenv_default("DJANGO_SETTINGS_MODULE", "django_bpp.settings.local")
 setenv_default("DJANGO_BPP_HOSTNAME", "localhost")
 setenv_default("DJANGO_BPP_SECRET_KEY", "123")
-setenv_default("DJANGO_BPP_DB_NAME", "test_bpp")
-setenv_default("DJANGO_BPP_DB_USER", "test_bpp")
+setenv_default("DJANGO_BPP_DB_NAME", "mpasternak")
+setenv_default("DJANGO_BPP_DB_USER", "mpasternak")
 setenv_default("DJANGO_BPP_DB_PASSWORD", "12345678")
-setenv_default("DJANGO_BPP_DB_HOST", "192.168.111.100")
+setenv_default("DJANGO_BPP_DB_HOST", "localhost")
 setenv_default("DJANGO_BPP_DB_PORT", "5432")
 setenv_default("DJANGO_BPP_RAVEN_CONFIG_URL", "http://4355f955f2ae4522ba06752c05eaff0a:5a62fbddd2ac4c0ab3d25b22c352df2a@sentry.iplweb.pl:9000/13")
 setenv_default("DJANGO_BPP_REDIS_PORT", "6379")
