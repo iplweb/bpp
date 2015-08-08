@@ -13,6 +13,7 @@ if [[ "$unamestr" == 'Linux' ]]; then
 	# Install dev build packages
 	sudo apt-get install -y  libpq-dev libjpeg-dev libpng-dev libxml2-dev libxslt1-dev libevent-dev firefox tightvncserver icewm libxslt1-dev python-dev npm
 
+	sudo rm /usr/local/bin/node
 	sudo ln -s /usr/bin/nodejs /usr/local/bin/node
 	
     fi
