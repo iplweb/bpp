@@ -33,3 +33,5 @@ npm config set https-proxy $HTTPS_PROXY
 sudo npm config set https-proxy $HTTPS_PROXY
 
 sudo npm install -g grunt-cli
+
+yes | bower
