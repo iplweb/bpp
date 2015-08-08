@@ -1,4 +1,4 @@
-#!/bin/sh -e
+#!/bin/bash -e
 
 if [ -z "$VIRTUAL_ENV" ]; then
     echo "Ten skrypt dziala spod virtualenv, aktywuj jakies"
