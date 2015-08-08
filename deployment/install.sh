@@ -2,7 +2,6 @@
 
 platform='unknown'
 unamestr=`uname`
-
 hostnamestr=`hostname`
 
 if [[ "$unamestr" == 'Linux' ]]; then
@@ -25,13 +24,14 @@ elif [[ "$unamestr" == 'Darwin' ]]; then
 
 fi
 
+if [[ "$hostnamestr" == "master" ]] || [[ "$unamestr" == "Darwin" ]]; then
+    npm config set proxy $HTTP_PROXY
+    sudo npm config set proxy $HTTP_PROXY
 
-npm config set proxy $HTTP_PROXY
-sudo npm config set proxy $HTTP_PROXY
+    npm config set https-proxy $HTTPS_PROXY
+    sudo npm config set https-proxy $HTTPS_PROXY
 
-npm config set https-proxy $HTTPS_PROXY
-sudo npm config set https-proxy $HTTPS_PROXY
+    sudo npm install -g grunt-cli bower
 
-sudo npm install -g grunt-cli bower
-
-yes | bower
+    yes | bower
+fi
