@@ -17,7 +17,7 @@ cd ../src/django_bpp
 
 npm install grunt-sass grunt-contrib-watch grunt-contrib-qunit
 
-python manage.py bower_install -F
+yes n | python manage.py bower_install -F
 python manage.py collectstatic --noinput
 
 grunt build
