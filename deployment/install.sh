@@ -3,7 +3,7 @@
 platform='unknown'
 unamestr=`uname`
 
-hostnamestr=`
+hostnamestr=`hostname`
 
 if [[ "$unamestr" == 'Linux' ]]; then
 

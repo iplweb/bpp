@@ -35,9 +35,9 @@ hostname `cat /etc/hostname`
 # User config
 su vagrant -c "git config --global user.email michal.dtz@gmail.com"
 su vagrant -c "git config --global user.name Michał\ Pasternak"
-su vagrant -c "git config --global core.autocrlf true"
 su vagrant -c "echo alias\ jed=emacs24-nox >> ~/.bashrc"
 su vagrant -c "cd /home/vagrant && mkdir .gnupg && chmod 700 .gnupg"
+su vagrant -c "git config --global push.default simple"
 
 # Checkout ansible-playbook-bpp from GIT
 # su vagrant -c "cd /home/vagrant && git clone git://192.168.111.1/ansible-bpp"
