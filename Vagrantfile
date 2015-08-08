@@ -10,7 +10,6 @@ Vagrant.configure(2) do |config|
       master.ssh.forward_x11 = true
       master.ssh.forward_agent = true
 
-      master.vm.synced_folder "/Users/mpasternak/Programowanie/DIST", "/DIST", mount_options: ["dmode=775", "fmode=664"], owner: "vagrant"
       master.vm.synced_folder "/Users/mpasternak/Dropbox/GIT", "/GIT", mount_options: ["dmode=775", "fmode=664"], owner: "vagrant"
 
       master.vm.network "private_network", ip: "192.168.111.100"
