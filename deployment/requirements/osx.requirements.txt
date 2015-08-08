@@ -4,5 +4,3 @@ Pillow
 pycrypto
 simplejson
 SQLAlchemy
-
-lxml --install-option="--static-deps"
