@@ -12,7 +12,7 @@ if [[ "$unamestr" == 'Linux' ]]; then
     if [[ "$hostnamestr" == "master" ]]; then
 	
 	# Install dev build packages
-	sudo apt-get install -y  libpq-dev libjpeg-dev libpng-dev libxml2-dev libxslt1-dev libevent-dev firefox tightvncserver icewm libxslt1-dev python-dev
+	sudo apt-get install -y  libpq-dev libjpeg-dev libpng-dev libxml2-dev libxslt1-dev libevent-dev firefox tightvncserver icewm libxslt1-dev python-dev npm
 	
     fi
 
@@ -21,5 +21,15 @@ elif [[ "$unamestr" == 'Darwin' ]]; then
 	brew install python
 	brew install postgresql --with-python
 	brew install redis
+	brew install node
 
 fi
+
+
+npm config set proxy $HTTP_PROXY
+sudo npm config set proxy $HTTP_PROXY
+
+npm config set https-proxy $HTTPS_PROXY
+sudo npm config set https-proxy $HTTPS_PROXY
+
+sudo npm install -g grunt-cli
