@@ -20,7 +20,7 @@
     "jqueryui": "1.11.0"
   },
   "resolutions": {
-    "jquery": "2.1.1",
+    "jquery": ">=1.6",
     "foundation-datepicker": "~1.4.0",
     "foundation": "5.4.7"
   }
