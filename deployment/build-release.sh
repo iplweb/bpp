@@ -8,9 +8,12 @@ fi
 cd ..
 make clean
 
+export PWD=`pwd`
+export CURDIR=`basename $PWD`
+
 cd ..
 rm -rf django-bpp-release
-cp -R django-bpp django-bpp-release
+cp -R $CURDIR django-bpp-release
 
 cd django-bpp-release
 rm -rf src/django_bpp/node_modules files .git src/django_bpp/components Vagrantfile Makefile provisioning deployment/node_modules .idea .vagrant
