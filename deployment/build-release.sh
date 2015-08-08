@@ -7,7 +7,7 @@ fi
 
 cd ..
 make clean
-bumpversion patch
+bumpversion patch --allow-dirty
 
 export PWD=`pwd`
 export CURDIR=`basename $PWD`
