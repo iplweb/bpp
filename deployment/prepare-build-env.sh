@@ -11,6 +11,7 @@ if [ -z "$DJANGO_SETTINGS_MODULE" ]; then
     exit 1
 fi
 
+rm -rf ~/tmp
 
 cd ../src/django_bpp
 
