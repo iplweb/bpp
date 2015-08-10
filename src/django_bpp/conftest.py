@@ -364,3 +364,4 @@ def pytest_configure():
 
      settings.TESTING = True
      settings.CELERY_ALWAYS_EAGER = True
+     settings.CELERY_EAGER_PROPAGATES_EXCEPTIONS = True

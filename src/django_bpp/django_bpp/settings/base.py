@@ -148,7 +148,8 @@ INSTALLED_APPS = [
     'secure_input',
     'session_security',
 
-    'notifications'
+    'notifications',
+    'integrator'
 ]
 
 
@@ -436,5 +437,6 @@ TEST_NON_SERIALIZED_APPS = ['django.contrib.contenttypes',
 TESTING = ('test' in sys.argv) or ('jenkins' in sys.argv) or ('py.test' in sys.argv)
 if TESTING:
     CELERY_ALWAYS_EAGER = True
+    CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
 
 CELERYD_HIJACK_ROOT_LOGGER = False

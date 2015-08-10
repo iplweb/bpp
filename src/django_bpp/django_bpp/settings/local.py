@@ -13,15 +13,14 @@ def setenv_default(varname, default_value):
 setenv_default("DJANGO_SETTINGS_MODULE", "django_bpp.settings.local")
 setenv_default("DJANGO_BPP_HOSTNAME", "localhost")
 setenv_default("DJANGO_BPP_SECRET_KEY", "123")
-setenv_default("DJANGO_BPP_DB_NAME", "mpasternak")
+setenv_default("DJANGO_BPP_DB_NAME", "bpp")
 setenv_default("DJANGO_BPP_DB_USER", "mpasternak")
 setenv_default("DJANGO_BPP_DB_PASSWORD", "12345678")
 setenv_default("DJANGO_BPP_DB_HOST", "localhost")
 setenv_default("DJANGO_BPP_DB_PORT", "5432")
 setenv_default("DJANGO_BPP_RAVEN_CONFIG_URL", "http://4355f955f2ae4522ba06752c05eaff0a:5a62fbddd2ac4c0ab3d25b22c352df2a@sentry.iplweb.pl:9000/13")
 setenv_default("DJANGO_BPP_REDIS_PORT", "6379")
-setenv_default("DJANGO_BPP_REDIS_HOST", "192.168.111.100")
-
+setenv_default("DJANGO_BPP_REDIS_HOST", "127.0.0.1")
 
 from .base import *
 
@@ -48,7 +47,7 @@ COMPRESS_OFFLINE = False
 COMPRESS_ENABLED = False
 
 # host dla HTMLu oraz linii polecen, reszta dla linii polecen (bo HTML sie autokonfiguruje...)
-NOTIFICATIONS_HOST = 'staging-bpp.local'
+NOTIFICATIONS_HOST = '127.0.0.1'
 NOTIFICATIONS_PORT = 80
 NOTIFICATIONS_PROTOCOL = 'http'
 
