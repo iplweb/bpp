@@ -1,6 +1,6 @@
 from django.conf import settings
 
-NOTIFICATIONS_HOST = getattr(settings, "NOTIFICATIONS_HOST", 'localhost')
+NOTIFICATIONS_HOST = getattr(settings, "NOTIFICATIONS_HOST", '127.0.0.1')
 NOTIFICATIONS_PORT = getattr(settings, "NOTIFICATIONS_PORT", 80)
 NOTIFICATIONS_PROTOCOL = getattr(settings, "NOTIFICATIONS_PROTOCOL", 'http')
 

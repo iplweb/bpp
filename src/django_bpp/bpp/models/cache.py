@@ -190,7 +190,7 @@ class AutorzyBase(models.Model):
 
 class Autorzy(AutorzyBase):
     class Meta:
-        # managed = False
+        managed = False
         db_table = 'bpp_autorzy_mat'
 
 
@@ -331,7 +331,7 @@ class Rekord(ModelPunktowanyBaza, ModelZOpisemBibliograficznym,
     objects = RekordManager()
 
     class Meta:
-        # managed = False
+        managed = False
         ordering = ['tytul_oryginalny_sort']
         db_table = 'bpp_rekord_mat'
 

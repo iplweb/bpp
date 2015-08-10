@@ -7,6 +7,7 @@ from celeryui.interfaces import IWebTask
 from django.conf import settings
 from celery.utils.log import get_task_logger
 import time
+from django_bpp.util import wait_for_object
 
 logger = get_task_logger(__name__)
 
@@ -53,22 +54,6 @@ def my_limit(fun):
         logger.info("Task %r has been revoked." % res.id)
         res.revoke()
         task_limits[fun] = fun.apply_async(countdown=settings.MAT_VIEW_REFRESH_COUNTDOWN)
-
-def wait_for_object(klass, pk, no_tries=10, called_by=""):
-    obj = None
-
-    while no_tries > 0:
-        try:
-            obj = klass.objects.get(pk=pk)
-            break
-        except klass.DoesNotExist:
-            time.sleep(1)
-            no_tries = no_tries - 1
-
-    if obj is None:
-        raise klass.DoesNotExist("Cannot fetch klass %r with pk %r, TB: %r" % (klass, pk, called_by))
-
-    return obj
 
 @app.task(ignore_result=True)
 def zaktualizuj_opis(klasa, pk, called_by=""):
