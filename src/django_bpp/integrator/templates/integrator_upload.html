@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>Integracja autorów</h1>
+    Warunki przyjęcia pliku do analizy to:
+    <ul>
+        <li>w jednym z pierwszych wierszy musi znaleźć się nagłówek tabeli</li>
+        <li>wartości nagłówka muszą nazywać się: Tytuł/Stopień, Nazwisko, Imię, Nazwa jednostki, PBN ID</li>
+        <li>inne nagłówki kolumn, a co za tym idzie, również i wartości w tych kolumnach, zostaną zignorowane</li>
+        <li>proszę <b>nie dodawać plików zawierających kody PESEL</b>, ponieważ kody PESEL nie są potrzebne do
+            scalenia danych, a stanowią zagrożenie ujawnienia danych osobowych w wypadku dostępu do systemu przez
+            niepowołane osoby
+        </li>
+    </ul>
+    {% load crispy_forms_tags %}
+    {% crispy form %}
+{% endblock %}

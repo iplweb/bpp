@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <a href="{% url "integrator:new" %}">Dodaj plik...</a>
+    <h1>Pliki</h1>
+<ul>
+{% for plik in object_list %}
+    <li>{{ plik.nazwa }}</li>
+{% empty %}
+    <li>Brak plików.</li>
+{% endfor %}
+</ul>
+
+
+{% endblock %}
