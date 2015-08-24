@@ -149,7 +149,8 @@ INSTALLED_APPS = [
     'session_security',
 
     'notifications',
-    'integrator'
+    'integrator',
+    'eksport_pbn'
 ]
 
 
@@ -238,7 +239,7 @@ LOGGING = {
         },
         'celery.worker.job': {
             'level': 'ERROR',
-            'handlers': ['sentry'],
+            'handlers': ['sentry', 'console'],
             'propagate': False
         },
     },

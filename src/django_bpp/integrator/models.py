@@ -108,18 +108,21 @@ class AutorIntegrationRecord(models.Model):
 
         # UWAGA: autor moze byc nie-przypisany do tej jednostki
 
-        strategia_1 = Jednostka.objects.filter(nazwa__icontains=self.nazwa_jednostki.strip())
-        strategia_2 = Jednostka.objects.filter(nazwa=self.nazwa_jednostki.strip())
-        strategia_3 = Jednostka.objects.filter(nazwa=self.nazwa_jednostki)
-        strategia_4 = Jednostka.objects.filter(slug=slugify_function(self.nazwa_jednostki)[:50])
-        strategia_5 = Jednostka.objects.filter(nazwa=unicode("%r" % self.nazwa_jednostki))
+        strategia_1 = Jednostka.objects.filter(nazwa__icontains=self.nazwa_jednostki.strip())[:3]
+        strategia_2 = Jednostka.objects.filter(nazwa=self.nazwa_jednostki.strip())[:3]
+        strategia_3 = Jednostka.objects.filter(nazwa=self.nazwa_jednostki)[:3]
+        strategia_4 = Jednostka.objects.filter(slug=slugify_function(self.nazwa_jednostki)[:50])[:3]
+        strategia_5 = Jednostka.objects.filter(nazwa=unicode("%r" % self.nazwa_jednostki))[:3]
+        strategia_6 = Jednostka.objects.filter(slug=slugify_function(unicode("%r" % self.nazwa_jednostki))[:50])[:3]
 
         log = [u"Ciąg: |%s|" % self.nazwa_jednostki]
 
-        for no, strategia in enumerate([strategia_1, strategia_2, strategia_3, strategia_4, strategia_5]):
-            log.append(u"%s: %s" % (no, strategia.count()))
-            if strategia.count() == 1:
-                self.matching_jednostka = list(strategia)[0]
+        for no, strategia in enumerate([strategia_1, strategia_2, strategia_3, strategia_4, strategia_5, strategia_6]):
+            res = list(strategia)
+            log.append(u"%s: %s" % (no, len(strategia)))
+
+            if len(strategia) == 1:
+                self.matching_jednostka = strategia[0]
                 self.save()
                 return True
 
