@@ -366,6 +366,6 @@ def pytest_configure():
      settings.CELERY_ALWAYS_EAGER = True
      settings.CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
 
-     # from bpp.models.cache import Rekord, Autorzy
-     # Rekord._meta.managed = True
-     # Autorzy._meta.managed = True
+     from bpp.models.cache import Rekord, Autorzy
+     Rekord._meta.managed = True
+     Autorzy._meta.managed = True
