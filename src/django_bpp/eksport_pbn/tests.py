@@ -6,6 +6,6 @@ def test_wybor(preauth_webtest_app, wydzial):
     assert '2013' in page.content
 
 
-def test_generuj(preauth_webtest_app, wydzial):
-    page = preauth_webtest_app.get(reverse('eksport_pbn:generuj', args=(wydzial.pk, 2013)))
-    assert page.status_code == 200
+#def test_generuj(preauth_webtest_app, wydzial):
+#    page = preauth_webtest_app.get(reverse('eksport_pbn:generuj', args=(wydzial.pk, 2013)))
+#    assert page.status_code == 200

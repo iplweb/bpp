@@ -109,7 +109,7 @@ def analyze_data(parent):
             continue
 
         try:
-            int(air.pbn_id.strip(".0"))
+            int(float(air.pbn_id))
         except (TypeError, ValueError):
             air.extra_info = "PBN_ID nie jest cyfra"
             air.save()
@@ -126,7 +126,7 @@ def integrate_data(parent):
 
         aut = air.matching_autor
 
-        aut.pbn_id = int(air.pbn_id.strip(".0"))
+        aut.pbn_id = int(float(air.pbn_id))
         aut.tytul = Tytul.objects.get(skrot=air.tytul_skrot)
 
         if air.matching_jednostka not in aut.jednostki.all():
