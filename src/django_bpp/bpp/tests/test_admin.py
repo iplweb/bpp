@@ -45,7 +45,7 @@ class TestAdmin(SuperuserTestCase):
             """
         self.assertContains(
             self.client.get("/admin/bpp/"),
-            "Bpp", status_code=200)
+            u"Użytkownicy", status_code=200)
 
     def test_wyszukiwanie(self):
         """Dla wielu różnych model spróbuj wyszukiwać w tabelce

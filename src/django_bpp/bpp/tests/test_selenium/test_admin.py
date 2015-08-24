@@ -324,4 +324,4 @@ class SeleniumAdminTestAddUser(SeleniumLoggedInAdminTestCase):
         self.page.find_element_by_name("_continue").click()
         time.sleep(3)
         self.assertNotIn("server error", self.page.page_source.lower())
-        self.assertIn(u"Zmień bpp user", self.page.page_source)
+        self.assertIn(u"Zmień użytkownik bpp", self.page.page_source)
