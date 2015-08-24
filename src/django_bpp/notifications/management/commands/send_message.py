@@ -18,11 +18,18 @@ class Command(BaseCommand):
     help = 'Wysyla komunikat offline za pomoca frameworku messages'
     args = '<username> <message>'
 
-    option_list = BaseCommand.option_list + (make_option('--dont-persist',
-                                                        action='store_true',
-                                                        dest='no_persist',
-                                                        default=False,
-                                                        help="Don't persist the message"),)
+    option_list = BaseCommand.option_list + (
+        make_option('--dont-persist',
+                    action='store_true',
+                    dest='no_persist',
+                    default=False,
+                    help="Don't persist the message"),
+        make_option('--ignore-proxy',
+                    action='store_true',
+                    dest='ignore_proxy',
+                    default=False,
+                    help="Ignore proxy settings when sending notification"),
+    )
 
     def handle(self, *args, **options):
         request_factory = RequestFactory()
@@ -42,7 +49,8 @@ class Command(BaseCommand):
         msg = None
 
         if options['no_persist']:
-            notifications.send_notification(request, level, text, verbose=int(options['verbosity']) > 1)
+            notifications.send_notification(request, level, text, verbose=int(options['verbosity']) > 1,
+                                            ignore_proxy_settings=options['ignore_proxy'])
             return
 
         with transaction.atomic():
@@ -53,4 +61,4 @@ class Command(BaseCommand):
             msg = msg[0]
             closeURL = reverse('messages_extends:message_mark_read', args=(msg.pk,))
             notifications.send_notification(
-                request, level, text, verbose=int(options['verbosity']) > 1, closeURL=closeURL)
+                request, level, text, verbose=int(options['verbosity']) > 1, closeURL=closeURL, ignore_proxy_settings=options['ignore_proxy'])
