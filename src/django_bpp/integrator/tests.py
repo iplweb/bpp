@@ -1,4 +1,5 @@
 # -*- encoding: utf-8 -*-
+from django.contrib.auth.models import Group
 
 from django.core.urlresolvers import reverse
 from model_mommy import mommy
@@ -15,7 +16,8 @@ integrator_test1_xlsx = os.path.join(
 
 
 def test_upload(preauth_webtest_app, normal_django_user):
-    page = preauth_webtest_app.get(reverse('integrator:new'))
+    normal_django_user.groups.add(Group.objects.get(name="wprowadzanie danych"))
+    page = preauth_webtest_app.get(reverse('integrator:new')).maybe_follow()
     form = page.form
     form['file'] = Upload(integrator_test1_xlsx)
     res = form.submit().maybe_follow()
@@ -85,7 +87,7 @@ def test_analyze_data_2(db):
     analyze_data(aif)
     air1 = AutorIntegrationRecord.objects.get(pk=air1.pk)
     assert air1.moze_byc_zintegrowany_automatycznie == False
-    assert air1.extra_info == "Brak takiej jednostki"
+    assert air1.extra_info.startswith("Brak takiej jednostki")
 
 
 def test_analyze_data_3(db):
@@ -166,7 +168,8 @@ def test_analyze_data_5_bledny_pbn(db):
 def test_analyze_data_6(db):
     a = Autor.objects.create(
         nazwisko='Kowalski',
-        imiona='Jan'
+        imiona='Jan',
+        pbn_id=None
     )
     Tytul.objects.create(
         skrot='dr',
@@ -181,7 +184,7 @@ def test_analyze_data_6(db):
         nazwisko='Kowalski',
         imie='Jan',
         nazwa_jednostki='I Zakład',
-        pbn_id=100,
+        pbn_id="100.0",
 
         matching_autor=Autor.objects.all()[0],
         matching_jednostka=Jednostka.objects.all()[0],
@@ -191,6 +194,7 @@ def test_analyze_data_6(db):
 
     assert a.pbn_id == None
     integrate_data(aif)
+
     a = Autor.objects.get(pk=a.pk)
     assert a.pbn_id == 100
 

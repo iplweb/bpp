@@ -8,4 +8,3 @@ from django_bpp.celery import app
 def eksport_pbn(wydzial_id, rok):
     wydzial = Wydzial.objects.get(pk=wydzial_id)
 
-    
