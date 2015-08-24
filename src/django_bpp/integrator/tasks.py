@@ -1,11 +1,12 @@
 # -*- encoding: utf-8 -*-
 
 from celery.utils.log import get_task_logger
+from datetime import datetime
 from django.core.management import call_command
 from django.core.urlresolvers import reverse
 from django.db import transaction
 import xlrd
-from bpp.models.autor import Autor, Tytul
+from bpp.models.autor import Autor, Tytul, Autor_Jednostka
 from django_bpp.util import wait_for_object
 from integrator.models import AutorIntegrationFile, AUTOR_IMPORT_COLUMNS, AutorIntegrationRecord
 
@@ -122,9 +123,16 @@ def analyze_data(parent):
 @transaction.atomic
 def integrate_data(parent):
     for air in AutorIntegrationRecord.objects.filter(parent=parent, moze_byc_zintegrowany_automatycznie=True):
-        air.matching_autor.pbn_id = int(air.pbn_id.strip(".0"))
-        air.matching_autor.tytul = Tytul.objects.get(skrot=air.tytul_skrot)
-        air.matching_autor.save()
+
+        aut = air.matching_autor
+
+        aut.pbn_id = int(air.pbn_id.strip(".0"))
+        aut.tytul = Tytul.objects.get(skrot=air.tytul_skrot)
+
+        if air.matching_jednostka not in aut.jednostki.all():
+            Autor_Jednostka.objects.create(autor=aut, jednostka=air.matching_jednostka)
+        aut.save()
+
         air.zintegrowano = True
         air.save()
 

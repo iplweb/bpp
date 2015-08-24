@@ -1,5 +1,11 @@
 {% extends "base.html" %}
 
+
+{% block extratitle %}
+Dodaj plik integracji autorów
+{% endblock %}
+
+
 {% block breadcrumbs %}
     {{ block.super }}
     <li><a href="{% url "integrator:list" %}">integrator</a></li>

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block extratitle %}
+    Wybór wydziału
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li class="current">wybór wydziału</li>
+{% endblock %}
+
+
+{% block content %}
+    <h1>Wybór wydziału</h1>
+    {% for wydzial in object_list %}
+        <h3>{{ wydzial }}</h3>
+        <div style="margin-left: 3em; margin-bottom: 1em;">
+        {% for rok in lata %}
+            <a href="./{{ wydzial.pk }}/{{ rok }}">{{ rok }}</a>&nbsp;
+        {% endfor %}
+        </div>
+    {% endfor %}
+{% endblock %}

@@ -1,5 +1,11 @@
 {% extends "base.html" %}
 {% load humanize %}
+
+{% block extratitle %}
+    {{ object.filename }}
+{% endblock %}
+
+
 {% block breadcrumbs %}
     {{ block.super }}
     <li><a href="{% url "integrator:list" %}">integrator</a></li>
@@ -14,20 +20,22 @@
     <p>Kod błędu: {{ object.extra_info|default:"brak" }}</p>
     <p>Wszystkich rekordów: {{ object.autorintegrationrecord_set.all.count }}</p>
     <p>Zintegrowano automatycznie: {{ object.integrated.count }}</p>
-        <p>Nie zintegrowano: {{ object.not_integrated.count }}</p>
+    <p>Nie zintegrowano: {{ object.not_integrated.count }}</p>
 
-    <p>Rekordy niezintegrowane:</p>
+    {% if object.status > 1 %}
+        <p>Rekordy niezintegrowane:</p>
 
-    <table>
-    {% for row in object.not_integrated %}
-    <tr>
-        <td>{{ row.nazwisko }} {{ row.imie }}</td>
-        <td>{{ row.tytul_skrot }}</td>
-        <td>{{ row.nazwa_jednostki }}</td>
-        <td>{{ row.pbn_id }}</td>
-        <td>{{ row.extra_info }}</td>
-    </tr>
-    {% endfor %}
-    </table>
+        <table>
+            {% for row in object.not_integrated %}
+                <tr>
+                    <td>{{ row.nazwisko }} {{ row.imie }}</td>
+                    <td>{{ row.tytul_skrot }}</td>
+                    <td>{{ row.nazwa_jednostki }}</td>
+                    <td>{{ row.pbn_id }}</td>
+                    <td>{{ row.extra_info }}</td>
+                </tr>
+            {% endfor %}
+        </table>
+    {% endif %}
 
 {% endblock %}
