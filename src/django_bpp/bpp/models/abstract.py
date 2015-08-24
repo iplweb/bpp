@@ -28,6 +28,18 @@ class ModelZAdnotacjami(models.Model):
         abstract = True
 
 
+class ModelZPBN_ID(models.Model):
+    """Zawiera informacje o PBN_ID
+    """
+    pbn_id = models.IntegerField(
+        verbose_name='Identyfikator PBN',
+        help_text="Identyfikator w systemie Polskiej Bibliografii Naukowej (PBN)",
+        null=True, blank=True)
+
+    class Meta:
+        abstract = True
+
+
 class ModelZNazwa(models.Model):
     """Nazwany model."""
     nazwa = models.CharField(max_length=512, unique=True)
@@ -59,7 +71,7 @@ class NazwaWDopelniaczu(models.Model):
         if not hasattr(self, 'nazwa'):
             return self.nazwa_dopelniacz_field
         if self.nazwa_dopelniacz_field is None \
-            or self.nazwa_dopelniacz_field == '':
+                or self.nazwa_dopelniacz_field == '':
             return self.nazwa
         return self.nazwa_dopelniacz_field
 
@@ -245,7 +257,6 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
         return super(BazaModeluOdpowiedzialnosciAutorow, self).save(*args, **kw)
 
 
-
 class ModelZeSzczegolami(models.Model):
     """Model zawierający pola: informacje, szczegóły, uwagi, słowa kluczowe."""
     informacje = models.TextField(
@@ -260,7 +271,7 @@ class ModelZeSzczegolami(models.Model):
     slowa_kluczowe = models.TextField("Słowa kluczowe", null=True, blank=True)
 
     utworzono = models.DateTimeField(
-        "Utworzono", auto_now_add=True, default=datetime(1970,1,1),
+        "Utworzono", auto_now_add=True, default=datetime(1970, 1, 1),
         db_index=True)
 
     class Meta:
@@ -274,6 +285,7 @@ class ModelZCharakterem(models.Model):
     class Meta:
         abstract = True
 
+
 class ModelPrzeszukiwalny(models.Model):
     """Model zawierający pole pełnotekstowego przeszukiwania
     'search_index'"""
@@ -283,6 +295,7 @@ class ModelPrzeszukiwalny(models.Model):
 
     class Meta:
         abstract = True
+
 
 class Wydawnictwo_Baza(ModelZOpisemBibliograficznym, ModelPrzeszukiwalny):
     def __unicode__(self):
@@ -301,4 +314,3 @@ class ModelHistoryczny(models.Model):
 
     class Meta:
         abstract = True
-        

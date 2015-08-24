@@ -1,4 +1,5 @@
 # -*- encoding: utf-8 -*
+from optparse import make_option
 from django.core.urlresolvers import reverse
 from django.db import transaction
 
@@ -12,14 +13,16 @@ from messages_extends.storages import PersistentStorage
 import notifications
 from messages_extends.models import Message
 
+
 class Command(BaseCommand):
     help = 'Wysyla komunikat offline za pomoca frameworku messages'
     args = '<username> <message>'
 
-    # option_list = BaseCommand.option_list + (
-    #         make_option("--cpu", action="store", type="int", default=4),
-    # )
-    #
+    option_list = BaseCommand.option_list + (make_option('--dont-persist',
+                                                        action='store_true',
+                                                        dest='no_persist',
+                                                        default=False,
+                                                        help="Don't persist the message"),)
 
     def handle(self, *args, **options):
         request_factory = RequestFactory()
@@ -37,6 +40,12 @@ class Command(BaseCommand):
         text = args[1]
 
         msg = None
+
+        if options['no_persist']:
+            notifications.send_notification(
+                request, level, text, verbose=int(options['verbosity']) > 1)
+            return
+
         with transaction.atomic():
             messages.add_message(request, level, text)
             msg = Message.objects.filter(user_id=request.user.pk, message=text).order_by('-pk')[:1]

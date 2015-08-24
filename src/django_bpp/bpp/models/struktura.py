@@ -12,10 +12,10 @@ from djorm_pgfulltext.fields import VectorField
 
 from bpp.util import FulltextSearchMixin
 from bpp.models import ModelZAdnotacjami, NazwaISkrot, ModelHistoryczny
-from bpp.models.abstract import NazwaWDopelniaczu
+from bpp.models.abstract import NazwaWDopelniaczu, ModelZPBN_ID
 from bpp.models.autor import Autor, Autor_Jednostka
 
-class Uczelnia(ModelZAdnotacjami, NazwaISkrot, NazwaWDopelniaczu):
+class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
     slug = AutoSlugField(populate_from='skrot',
         unique=True)
     logo_www = models.ImageField(
@@ -38,7 +38,7 @@ class Uczelnia(ModelZAdnotacjami, NazwaISkrot, NazwaWDopelniaczu):
         return Wydzial.objects.filter(uczelnia=self, widoczny=True)
 
 
-class Wydzial(ModelZAdnotacjami, ModelHistoryczny):
+class Wydzial(ModelZAdnotacjami, ModelZPBN_ID, ModelHistoryczny):
     uczelnia = models.ForeignKey(Uczelnia)
     nazwa = models.CharField(max_length=512, unique=True)
     skrot = models.CharField("Skrót", max_length=4, unique=True)
@@ -71,7 +71,7 @@ class Wydzial(ModelZAdnotacjami, ModelHistoryczny):
 class JednostkaManager(FulltextSearchMixin, models.Manager):
     pass
 
-class Jednostka(ModelZAdnotacjami, ModelHistoryczny):
+class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelHistoryczny):
     wydzial = models.ForeignKey(Wydzial, verbose_name="Wydział")
     nazwa = models.CharField(max_length=512, unique=True)
     skrot = models.CharField("Skrót", max_length=128, unique=True)

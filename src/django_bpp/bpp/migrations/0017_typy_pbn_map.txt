@@ -1,0 +1,3 @@
+article,case-study,commentary-on-the-law,guidelines,original-article,others-citable,others-noncitable,popular-science-article,review-article,scientific-review,short-communication
+book,anthology,atlas-maps,bibliography,book-of-abstracts,catalogue,commentary-on-the-law,critical-edition-of-literary-texts,edition-of-source-texts,encyclopedia-dictionary,expertise-report,peer-reviewed,popular-science-book,scholarly-monograph,scholarly-textbook
+chapter,abstract,account,afterword,bibliography,chapter-in-a-book,commentary-on-the-law,communique,critical-edition-of-literary-texts,edition-of-source-texts,encyclopaedia-entry,introduction-preface,map,peer-reviewed,popular-science-text,text-in-anthology

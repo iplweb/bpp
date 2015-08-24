@@ -10,12 +10,11 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 
 from django.db import models, IntegrityError
-from bpp.models.abstract import BazaModeluOdpowiedzialnosciAutorow
+from bpp.models.abstract import BazaModeluOdpowiedzialnosciAutorow, ModelZPBN_ID
 from bpp.util import FulltextSearchMixin
 from djorm_pgfulltext.fields import VectorField
 from djorm_pgfulltext.models import SearchManager
 from bpp.models import ModelZAdnotacjami, NazwaISkrot
-
 
 
 class Tytul(NazwaISkrot):
@@ -35,7 +34,8 @@ class Plec(NazwaISkrot):
 class AutorManager(FulltextSearchMixin, models.Manager):
     pass
 
-class Autor(ModelZAdnotacjami):
+
+class Autor(ModelZAdnotacjami, ModelZPBN_ID):
     imiona = models.CharField(max_length=512, db_index=True)
     nazwisko = models.CharField(max_length=256, db_index=True)
     tytul = models.ForeignKey(Tytul, blank=True, null=True)
@@ -72,6 +72,7 @@ class Autor(ModelZAdnotacjami):
     sort = models.TextField()
 
     jednostki = models.ManyToManyField('bpp.Jednostka', through='Autor_Jednostka')
+
 
     class Meta:
         verbose_name = 'autor'
@@ -121,9 +122,9 @@ class Autor(ModelZAdnotacjami):
             self.defragmentuj_jednostke(jednostka)
 
         self.aktualna_jednostka = None
-        for elem in Autor_Jednostka.objects.filter(autor=self)\
-            .exclude(rozpoczal_prace=None)\
-            .order_by('-rozpoczal_prace')[:1]:
+        for elem in Autor_Jednostka.objects.filter(autor=self) \
+                            .exclude(rozpoczal_prace=None) \
+                            .order_by('-rozpoczal_prace')[:1]:
             self.aktualna_jednostka = elem.jednostka
             super(Autor, self).save(*args, **kw)
             break
@@ -142,20 +143,20 @@ class Autor(ModelZAdnotacjami):
         koniec_pracy = date(rok, 12, 31)
 
         if Autor_Jednostka.objects.filter(
-            autor=self,
-            rozpoczal_prace__lte=start_pracy,
-            zakonczyl_prace__gte=koniec_pracy,
-            jednostka__wydzial=wydzial
+                autor=self,
+                rozpoczal_prace__lte=start_pracy,
+                zakonczyl_prace__gte=koniec_pracy,
+                jednostka__wydzial=wydzial
         ):
             return True
 
         # A może ma wpisaną tylko datę początku pracy? W takiej sytuacji
         # stwierdzamy, że autor NADAL tam pracuje, bo nie ma końca, więc:
         if Autor_Jednostka.objects.filter(
-            autor=self,
-            rozpoczal_prace__lte=start_pracy,
-            zakonczyl_prace=None,
-            jednostka__wydzial=wydzial
+                autor=self,
+                rozpoczal_prace__lte=start_pracy,
+                zakonczyl_prace=None,
+                jednostka__wydzial=wydzial
         ):
             return True
 
@@ -233,6 +234,7 @@ class Autor(ModelZAdnotacjami):
 
 class Funkcja_Autora(NazwaISkrot):
     """Funkcja autora w jednostce"""
+
     class Meta:
         verbose_name = 'funkcja w jednostce'
         verbose_name_plural = 'funkcje w jednostkach'
@@ -260,7 +262,7 @@ class Autor_Jednostka_Manager(models.Manager):
             # Przy imporcie danych z XLS na dane ze starego systemu - obydwa pola są None
             if poprzedni_rekord.zakonczyl_prace is None and poprzedni_rekord.rozpoczal_prace is None:
                 usun.append(poprzedni_rekord)
-                poprzedni_rekord=rec
+                poprzedni_rekord = rec
                 continue
 
             # Nowy system - przy imporcie danych z XLS do nowego systemu jest sytuacja, gdy autor
@@ -288,7 +290,7 @@ class Autor_Jednostka(models.Model):
     autor = models.ForeignKey(Autor)
     jednostka = models.ForeignKey('bpp.Jednostka')
     rozpoczal_prace = models.DateField("Rozpoczął pracę",
-        blank=True, null=True, db_index=True)
+                                       blank=True, null=True, db_index=True)
     zakonczyl_prace = models.DateField(
         "Zakończył pracę", null=True, blank=True, db_index=True)
     funkcja = models.ForeignKey(Funkcja_Autora, null=True, blank=True)
@@ -315,4 +317,3 @@ class Autor_Jednostka(models.Model):
         ordering = ['autor__nazwisko', 'jednostka__nazwa', 'rozpoczal_prace']
         unique_together = [('autor', 'jednostka', 'rozpoczal_prace')]
         app_label = 'bpp'
-

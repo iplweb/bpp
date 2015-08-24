@@ -36,4 +36,7 @@ def send_notification(request_or_username, level, text, get_pub_path=get_pub_pat
 
     if verbose:
         print "Posting to %r data %r" % (url, data)
-    requests.request("POST", url, data=data)
+    res = requests.request("POST", url, data=data)
+    if verbose:
+        print "Result: ", res
+        print res.content
