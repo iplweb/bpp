@@ -15,7 +15,7 @@ def get_pub_path(username):
 Message = namedtuple("Message", "text cssClass clickURL hideCloseOption closeURL closeText")
 Message.__new__.__defaults__ = (      'info',  None,    False,          None,    '&times;')
 
-def send_notification(request_or_username, level, text, get_pub_path=get_pub_path, verbose=False, closeURL=None):
+def send_notification(request_or_username, level, text, get_pub_path=get_pub_path, verbose=False, closeURL=None, ignore_proxy_settings=False):
 
     proto = getattr(settings, "NOTIFICATIONS_PROTOCOL")
     host = getattr(settings, "NOTIFICATIONS_HOST")
@@ -36,7 +36,12 @@ def send_notification(request_or_username, level, text, get_pub_path=get_pub_pat
 
     if verbose:
         print "Posting to %r data %r" % (url, data)
-    res = requests.request("POST", url, data=data)
+
+    session = requests.Session()
+    if ignore_proxy_settings:
+        session.trust_env = False
+
+    res = session.post(url=url, data=data)
     if verbose:
         print "Result: ", res
         print res.content

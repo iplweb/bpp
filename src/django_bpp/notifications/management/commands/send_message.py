@@ -42,8 +42,7 @@ class Command(BaseCommand):
         msg = None
 
         if options['no_persist']:
-            notifications.send_notification(
-                request, level, text, verbose=int(options['verbosity']) > 1)
+            notifications.send_notification(request, level, text, verbose=int(options['verbosity']) > 1)
             return
 
         with transaction.atomic():
