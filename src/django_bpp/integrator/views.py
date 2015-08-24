@@ -2,6 +2,7 @@
 
 from django.contrib import messages
 from django.shortcuts import render
+from django.views.generic.detail import DetailView
 from django.views.generic.edit import FormView
 from django.views.generic.list import ListView
 from integrator.forms import DodajPlik
@@ -12,6 +13,7 @@ from integrator.tasks import analyze_file
 
 class FileListView(ListView):
     model = AutorIntegrationFile
+    paginate_by = 20
 
     def get_queryset(self):
         return self.model.objects.all().filter(owner=self.request.user)
@@ -28,3 +30,7 @@ class FileUploadView(FormView):
         messages.info(self.request,
                       "Plik został dodany. Będzie on przetwarzany. Zostaniesz poinformowany/a o rezultacie.")
         return super(FileUploadView, self).form_valid(form)
+
+
+class AutorIntegrationFileDetail(DetailView):
+    model = AutorIntegrationFile

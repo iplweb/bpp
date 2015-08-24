@@ -1,0 +1,34 @@
+abstract;Abstrakt; 
+account;Sprawozdanie; 
+afterword;Posłowie; 
+anthology;Antologia; 
+atlas-maps;Atlas/Mapy; 
+bibliography;Bibliografia; 
+book-of-abstracts;Książka abstraktów; 
+case-study;Studium przypadku; 
+catalogue;Katalog;Np. katalog zabytków
+chapter-in-a-book;Rozdział w książce; 
+commentary-on-the-law;Komentarz do ustawy; 
+communique;Komunikat; 
+critical-edition-of-literary-texts;Opracowanie krytyczne tekstów literackich; 
+edition-of-source-texts;Edycja tekstów źródłowych; 
+editorial;Artykuł wstępny/Edytorial; 
+encyclopaedia-entry;Hasło rzeczowe;Hasło encykolpedyczne/słownikowe/leksykonowe
+encyclopedia-dictionary;Encyklopedia/Słownik/Leksykon; 
+expertise-report;Ekspertyza/Raport badawczy; 
+guidelines;Wytyczne/zalecenia; 
+introduction-preface;Wstęp/Przedmowa;Wstęp/Wprowadzenie/Przedmowa
+map;Mapa; 
+original-article;Oryginalny artykuł naukowy;Oryginalny artykuł naukowy przedstawia rezultaty oryginalnych badań naukowych lub eksperymentu.
+others-citable;Inne o charakterze cytowalnym; 
+others-noncitable;Inne o charakterze niecytowalnym; 
+peer-reviewed;Publikacja recenzowana;Publikacja podlegała recenzji naukowej
+popular-science-article;Artykuł popularnonaukowy; 
+popular-science-book;Książka popularnonaukowa; 
+popular-science-text;Tekst popularnonaukowy; 
+review-article;Artykuł przeglądowy;Artykuł przeglądowy stanowi podsumowanie aktualnego stanu badań w danym obszarze tematycznym.
+scholarly-monograph;Monografia naukowa;"Monografia naukowa to spójne tematycznie, wyczerpujące opracowanie naukowe. W PBN za monografie naukowe uważane są również zbiorowe książki pokonferencyjne (tzw. conference proceedings). Jeśli dodajesz zbiorową książkę pokonferencyjną, pamiętaj o tym, by zaznaczyć również pola ""Publikacja zbiorowa"" oraz ""Publikacja konferencyjna"""
+scholarly-textbook;Podręcznik akademicki/skrypt; 
+scientific-review;Artykuł recenzyjny (recenzja naukowa); 
+short-communication;Komunikat o wynikach badań; 
+text-in-anthology;Tekst w antologii;

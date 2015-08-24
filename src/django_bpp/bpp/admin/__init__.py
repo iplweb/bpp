@@ -65,8 +65,8 @@ class CommitedModelAdmin(BaseBppAdmin):
 
 
 class Charakter_FormalnyAdmin(RestrictDeletionToAdministracjaGroupMixin, CommitedModelAdmin):
-    list_display = ['skrot', 'nazwa', 'publikacja', 'streszczenie', 'nazwa_w_primo']
-    list_filter = ('publikacja', 'streszczenie', 'nazwa_w_primo')
+    list_display = ['skrot', 'nazwa', 'publikacja', 'streszczenie', 'nazwa_w_primo', 'charakter_pbn']
+    list_filter = ('publikacja', 'streszczenie', 'nazwa_w_primo', 'charakter_pbn')
     search_fields = ['skrot', 'nazwa']
 
 
@@ -89,10 +89,11 @@ admin.site.register(Typ_Odpowiedzialnosci, Typ_OdpowiedzialnosciAdmin)
 # Uczelnia
 
 class UczelniaAdmin(RestrictDeletionToAdministracjaGroupMixin, ZapiszZAdnotacjaMixin, CommitedModelAdmin):
+    list_display = ['nazwa', 'nazwa_dopelniacz_field', 'skrot', 'pbn_id']
     fieldsets = (
         (None, {
             'fields': (
-            'nazwa', 'nazwa_dopelniacz_field', 'skrot', 'logo_www', 'logo_svg', 'favicon_ico'),
+            'nazwa', 'nazwa_dopelniacz_field', 'skrot', 'pbn_id', 'logo_www', 'logo_svg', 'favicon_ico'),
         }),
         ADNOTACJE_FIELDSET
     )
@@ -103,10 +104,10 @@ admin.site.register(Uczelnia, UczelniaAdmin)
 # Wydział
 
 class WydzialAdmin(RestrictDeletionToAdministracjaGroupMixin, ZapiszZAdnotacjaMixin, CommitedModelAdmin):
-    list_display = ['nazwa', 'skrot', 'uczelnia', 'kolejnosc', 'widoczny', 'zezwalaj_na_ranking_autorow']
+    list_display = ['nazwa', 'skrot', 'uczelnia', 'kolejnosc', 'widoczny', 'zezwalaj_na_ranking_autorow', 'pbn_id']
     fieldsets = (
         (None, {
-            'fields': ('uczelnia', 'nazwa', 'skrot', 'opis', 'kolejnosc', 'widoczny', 'zezwalaj_na_ranking_autorow'),
+            'fields': ('uczelnia', 'nazwa', 'skrot', 'pbn_id', 'opis', 'kolejnosc', 'widoczny', 'zezwalaj_na_ranking_autorow'),
         }),
         HISTORYCZNY_FIELDSET,
         ADNOTACJE_FIELDSET
@@ -129,7 +130,7 @@ class Autor_JednostkaInline(admin.TabularInline):
 
 class JednostkaAdmin(RestrictDeletionToAdministracjaGroupMixin, ZapiszZAdnotacjaMixin, CommitedModelAdmin):
     list_display = ('nazwa', 'skrot', 'wydzial', 'widoczna',
-                    'wchodzi_do_raportow')
+                    'wchodzi_do_raportow', 'pbn_id')
     fields = None
     list_filter = ('wydzial', 'widoczna', 'wchodzi_do_raportow')
     search_fields = ['nazwa', 'skrot', 'wydzial__nazwa']
@@ -137,7 +138,7 @@ class JednostkaAdmin(RestrictDeletionToAdministracjaGroupMixin, ZapiszZAdnotacja
     fieldsets = (
         (None, {
             'fields': (
-                'nazwa', 'skrot', 'wydzial', 'opis', 'widoczna',
+                'nazwa', 'skrot', 'wydzial', 'pbn_id', 'opis', 'widoczna',
                 'wchodzi_do_raportow', 'email', 'www'),
         }),
         HISTORYCZNY_FIELDSET,
@@ -164,7 +165,7 @@ class AutorAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
     form = AutorForm
 
     list_display = ['nazwisko', 'imiona', 'tytul', 'poprzednie_nazwiska',
-                    'email']
+                    'email', 'pbn_id']
     fields = None
     inlines = [Autor_JednostkaInline, ]
     list_filter = ['jednostki', 'jednostki__wydzial']

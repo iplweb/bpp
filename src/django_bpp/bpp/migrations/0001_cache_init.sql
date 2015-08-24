@@ -6,6 +6,7 @@ BEGIN;
 DROP TABLE IF EXISTS bpp_rekord_mat CASCADE;
 CREATE TABLE bpp_rekord_mat AS SELECT * FROM bpp_rekord;
 
+
 CREATE UNIQUE INDEX bpp_rekord_mat_fake_id_idx ON bpp_rekord_mat(fake_id);
 CREATE UNIQUE INDEX bpp_rekord_mat_original_idx ON bpp_rekord_mat(content_type_id, object_id);
 
@@ -36,6 +37,15 @@ CREATE INDEX bpp_rekord_mat_k ON bpp_rekord_mat(recenzowana);
 
 DROP TABLE IF EXISTS bpp_autorzy_mat CASCADE;
 CREATE TABLE bpp_autorzy_mat AS SELECT * FROM bpp_autorzy;
+
+
+-- Zeby nie bylo tego bledu przy TRUNCATE table przy testach:
+-- DETAIL:  Table "bpp_autorzy_mat" references "bpp_typ_odpowiedzialnosci".
+-- to zmieniamy tabele bpp_rekord_mat w nastepujacy sposob:
+
+-- ALTER TABLE bpp_autorzy_mat DROP FOREIGN KEY(typ_odpowiedzialnosci_id_fk);
+-- ALTER TABLE bpp_autorzy_mat ADD FOREIGN KEY(typ_odpowiedzialnosci_id) REFERENCES bpp_typ_odpowiedzialnosci(id) ON DELETE CASCADE;
+
 
 UPDATE bpp_wydawnictwo_zwarte_autor SET kolejnosc = 1 WHERE rekord_id = 15425 AND autor_id = 3817;
 UPDATE bpp_wydawnictwo_zwarte_autor SET kolejnosc = 2 WHERE rekord_id = 15425 AND autor_id = 6063;

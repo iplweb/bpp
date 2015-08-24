@@ -219,6 +219,9 @@
                 {% if not request.user.is_anonymous %}
                     <li><a href="{% url "bpp:raport_dla_komisji_centralnej" %}">raport dla Komisji Centralnej</a></li>
                 {% endif %}
+
+                {% load user_in_group %}
+
                 <li><a href="{% url "bpp:raport_jednostek_formularz" %}">raport jednostek</a></li>
                 <li><a href="{% url "bpp:raport_autorow_formularz" %}">raport autorów</a></li>
                 <li><a href="{% url "bpp:ranking_autorow_formularz" %}">ranking autorów</a></li>
@@ -231,6 +234,9 @@
                            href="{% url "admin:index" %}">redagowanie</a>
                     </li>
 
+                    {% if request.user|has_group:"wprowadzanie danych" %}
+                        <li><a href="{% url "integrator:list" %}">integrator</a></li>
+                    {% endif %}
 
                     <li><a id="password-change-link"
                            href="{% url "password_change" %}">zmiana

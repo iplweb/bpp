@@ -21,9 +21,23 @@ if [[ "$unamestr" == 'Linux' ]]; then
 elif [[ "$unamestr" == 'Darwin' ]]; then
 
 	brew install python
-	brew install postgresql --with-python
-	brew install redis
 	brew install node
+
+	brew install postgresql --with-python
+    ln -sfv /usr/local/opt/postgresql/*.plist ~/Library/LaunchAgents
+    launchctl load ~/Library/LaunchAgents/homebrew.mxcl.postgresql.plist
+
+	brew install redis
+	ln -sfv /usr/local/opt/redis/*.plist ~/Library/LaunchAgents
+    launchctl load ~/Library/LaunchAgents/homebrew.mxcl.redis.plist
+
+	brew install rabbitmq
+	ln -sfv /usr/local/opt/rabbitmq/*.plist ~/Library/LaunchAgents
+    launchctl load ~/Library/LaunchAgents/homebrew.mxcl.rabbitmq.plist
+
+    brew install nginx-full --with-push-stream-module
+    ln -sfv /usr/local/opt/nginx-full/*.plist ~/Library/LaunchAgents
+    launchctl load ~/Library/LaunchAgents/homebrew.mxcl.nginx-full.plist
 
 fi
 

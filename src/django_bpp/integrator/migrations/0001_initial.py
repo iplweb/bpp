@@ -8,7 +8,7 @@ from django.conf import settings
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('bpp', '0015_auto_20150617_2247'),
+        ('bpp', '0020_auto_20150824_1609'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
@@ -37,10 +37,13 @@ class Migration(migrations.Migration):
                 ('imie', models.TextField()),
                 ('nazwa_jednostki', models.TextField()),
                 ('pbn_id', models.TextField()),
+                ('zanalizowano', models.BooleanField(default=False)),
+                ('moze_byc_zintegrowany_automatycznie', models.BooleanField(default=False)),
                 ('zintegrowano', models.BooleanField(default=False)),
                 ('extra_info', models.TextField()),
-                ('matching_autor', models.ForeignKey(to='bpp.Autor')),
-                ('matching_jednostka', models.ForeignKey(to='bpp.Jednostka')),
+                ('matching_autor', models.ForeignKey(to='bpp.Autor', null=True)),
+                ('matching_jednostka', models.ForeignKey(to='bpp.Jednostka', null=True)),
+                ('parent', models.ForeignKey(to='integrator.AutorIntegrationFile')),
             ],
             options={
             },

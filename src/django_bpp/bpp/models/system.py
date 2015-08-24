@@ -29,6 +29,26 @@ NAZWY_PRIMO = [
 
 NAZWY_PRIMO = zip(NAZWY_PRIMO, NAZWY_PRIMO)
 
+RODZAJE_DOKUMENTOW_PBN = [("article", "Artykuł"),
+                          ("book", "Książka"),
+                          ("chapter", "Rozdział")]
+
+class Charakter_PBN(models.Model):
+    wlasciwy_dla = models.CharField(max_length=20,
+                                    choices=RODZAJE_DOKUMENTOW_PBN)
+    identyfikator = models.CharField(max_length=100)
+    opis = models.CharField(max_length=500)
+    help_text = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ['identyfikator']
+        verbose_name = 'Charakter PBN'
+        verbose_name_plural = 'Charaktery PBN'
+
+    def __unicode__(self):
+        return self.opis
+
+
 class Charakter_Formalny(NazwaISkrot):
     """Bazowa klasa dla charakterów formalnych. """
 
@@ -40,6 +60,10 @@ class Charakter_Formalny(NazwaISkrot):
     gdy to pole jest puste, prace o danym charakterze formalnym nie będą udostępniane przez
     protokół OAI-PMH.
     """, blank=True, default="", choices=NAZWY_PRIMO, db_index=True)
+
+    charakter_pbn = models.ForeignKey(Charakter_PBN,
+                                      verbose_name="Charakter PBN",
+                                      blank=True, null=True, default=None)
 
     class Meta:
         ordering = ['nazwa']
