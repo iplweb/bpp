@@ -5,6 +5,7 @@ Klasy abstrakcyjne
 """
 from datetime import datetime
 from decimal import Decimal
+from django.core.exceptions import ValidationError
 
 from django.db import models
 from djorm_pgfulltext.fields import VectorField
@@ -353,7 +354,7 @@ class PBNSerializerHelperMixin:
             try:
                 url_validator(self.www)
                 public_uri = SubElement(toplevel, "public-uri", href=self.www)
-            except ValueError:
+            except (ValueError, ValidationError):
                 pass
 
         publication_date = SubElement(toplevel, 'publication-date')

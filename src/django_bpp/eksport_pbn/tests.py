@@ -12,7 +12,7 @@ def test_wybor(preauth_webtest_app, wydzial):
 
 def test_generuj(preauth_webtest_app, wydzial):
     page = preauth_webtest_app.get(reverse('eksport_pbn:generuj', args=(wydzial.pk, 2013)))
-    assert page.status_code == 200
+    assert page.status_code == 302
 
 
 def test_id_zwartych(wydawnictwo_zwarte_z_autorem, wydzial, rok):
