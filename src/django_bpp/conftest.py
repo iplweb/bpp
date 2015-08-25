@@ -29,6 +29,9 @@ from django.conf import settings
 def pytest_configure(config):
     setattr(settings, 'CELERY_ALWAYS_EAGER', True)
 
+@pytest.fixture
+def rok():
+    return datetime.now().date().year
 
 @pytest.fixture
 def normal_django_user(request, db, django_user_model):  # , django_username_field):
@@ -106,9 +109,11 @@ def autor_maker(db):
 def autor_jan_nowak(db):
     return _autor_maker(imiona="Jan", nazwisko="Nowak")
 
+
 @pytest.fixture(scope="function")
 def autor(db):
     return mommy.make(Autor)
+
 
 @pytest.fixture(scope="function")
 def autor_jan_kowalski(db):
@@ -150,7 +155,7 @@ def set_default(varname, value, dct):
 
 def _wydawnictwo_maker(klass, **kwargs):
     if 'rok' not in kwargs:
-        kwargs['rok'] = datetime.now().date().year
+        kwargs['rok'] = rok()
 
     c = time.time()
     kl = str(klass).split('.')[-1].replace("'>", "")
@@ -197,7 +202,7 @@ def _zwarte_base_maker(klass, **kwargs):
     set_default('informacje', 'zrodlo-informacje dla zwarte', kwargs)
 
     if klass not in [Patent]:
-        set_default('miejsce_i_rok', 'Lublin %s' % datetime.now().date().year, kwargs)
+        set_default('miejsce_i_rok', 'Lublin %s' % rok, kwargs)
         set_default('wydawnictwo', 'Wydawnictwo FOLIUM', kwargs)
         set_default('isbn', '123-IS-BN-34', kwargs)
         set_default('redakcja', 'Redakcja', kwargs)
@@ -351,21 +356,34 @@ def obiekty_bpp(typy_kbn, charaktery_formalne, jezyki, statusy_korekt):
 
     return ObiektyBpp
 
+
 @pytest.fixture(scope="function")
-def wydawnictwo_ciagle_z_dwoma_autorami(wydawnictwo_ciagle, autor_jan_kowalski, autor_jan_nowak, jednostka):
+def wydawnictwo_ciagle_z_autorem(wydawnictwo_ciagle, autor_jan_kowalski, jednostka):
     wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
-    wydawnictwo_ciagle.dodaj_autora(autor_jan_nowak, jednostka)
     return wydawnictwo_ciagle
 
+
+@pytest.fixture(scope="function")
+def wydawnictwo_zwarte_z_autorem(wydawnictwo_zwarte, autor_jan_kowalski, jednostka):
+    wydawnictwo_zwarte.dodaj_autora(autor_jan_kowalski, jednostka)
+    return wydawnictwo_zwarte
+
+
+@pytest.fixture(scope="function")
+def wydawnictwo_ciagle_z_dwoma_autorami(wydawnictwo_ciagle_z_autorem, autor_jan_nowak, jednostka):
+    wydawnictwo_ciagle_z_autorem.dodaj_autora(autor_jan_nowak, jednostka)
+    return wydawnictwo_ciagle_z_autorem
+
+
 def pytest_configure():
-     from django.conf import settings
-     if hasattr(settings, "RAVEN_CONFIG"):
-        del settings.RAVEN_CONFIG # setattr(settings, "RAVEN_CONFIG", None)
+    from django.conf import settings
+    if hasattr(settings, "RAVEN_CONFIG"):
+        del settings.RAVEN_CONFIG  # setattr(settings, "RAVEN_CONFIG", None)
 
-     settings.TESTING = True
-     settings.CELERY_ALWAYS_EAGER = True
-     settings.CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
+    settings.TESTING = True
+    settings.CELERY_ALWAYS_EAGER = True
+    settings.CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
 
-     from bpp.models.cache import Rekord, Autorzy
-     Rekord._meta.managed = True
-     Autorzy._meta.managed = True
+    from bpp.models.cache import Rekord, Autorzy
+    Rekord._meta.managed = True
+    Autorzy._meta.managed = True

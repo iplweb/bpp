@@ -7,7 +7,6 @@ Małe klasy pomocnicze dla całego systemu
 from django.db import models
 from bpp.models.abstract import ModelZNazwa, NazwaISkrot, ModelPunktowany
 
-
 NAZWY_PRIMO = [
     u"",
     u"Artykuł",
@@ -32,6 +31,7 @@ NAZWY_PRIMO = zip(NAZWY_PRIMO, NAZWY_PRIMO)
 RODZAJE_DOKUMENTOW_PBN = [("article", "Artykuł"),
                           ("book", "Książka"),
                           ("chapter", "Rozdział")]
+
 
 class Charakter_PBN(models.Model):
     wlasciwy_dla = models.CharField(max_length=20,
@@ -96,13 +96,22 @@ class Typ_Odpowiedzialnosci(NazwaISkrot):
     def __unicode__(self):
         return self.nazwa
 
+
 class Jezyk(NazwaISkrot):
+    skrot_dla_pbn = models.CharField(max_length=10, verbose_name="Skrót dla PBN", help_text="""
+    Skrót nazwy języka używany w plikach eksportu do PBN.""", blank=True)
 
     class Meta:
         verbose_name = 'język'
         verbose_name_plural = 'języki'
         ordering = ['nazwa']
         app_label = 'bpp'
+
+    def get_skrot_dla_pbn(self):
+        if self.skrot_dla_pbn:
+            return self.skrot_dla_pbn
+
+        return self.skrot
 
 
 class Typ_KBN(NazwaISkrot):
@@ -111,4 +120,3 @@ class Typ_KBN(NazwaISkrot):
         verbose_name_plural = 'typy KBN'
         ordering = ['nazwa']
         app_label = 'bpp'
-

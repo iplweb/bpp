@@ -1,0 +1,282 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xl="http://www.w3.org/1999/xlink" xmlns="http://pbn.nauka.gov.pl/-/ns/bibliography" xmlns:b="http://pbn.nauka.gov.pl/-/ns/bibliography" targetNamespace="http://pbn.nauka.gov.pl/-/ns/bibliography" elementFormDefault="qualified">
+  <xsd:element name="works">
+    <xsd:complexType>
+      <xsd:choice maxOccurs="unbounded">
+        <xsd:element ref="article"/>
+        <xsd:element ref="book"/>
+        <xsd:element ref="chapter"/>
+      </xsd:choice>
+      <xsd:attribute name="pbn-unit-id" type="xsd:string" use="required"/>
+    </xsd:complexType>
+  </xsd:element>
+  <xsd:element name="article" type="article"/>
+  <xsd:element name="book" type="book"/>
+  <xsd:element name="chapter" type="chapter"/>
+  <xsd:complexType name="work">
+    <xsd:sequence>
+      <xsd:element name="title" type="xsd:string" minOccurs="0"/>
+      <xsd:element name="author" type="author" minOccurs="0" maxOccurs="unbounded"/>
+      <xsd:element name="other-contributors" type="xsd:nonNegativeInteger" minOccurs="0"/>
+      <xsd:element name="doi" type="doi" minOccurs="0" maxOccurs="1"/>
+      <xsd:element name="lang" type="xsd:string" minOccurs="0"/>
+      <xsd:element name="abstract" type="abstract" minOccurs="0" maxOccurs="unbounded"/>
+      <xsd:element name="keywords" type="langKeywords" minOccurs="0" maxOccurs="unbounded"/>
+      <xsd:element name="public-uri" type="simpleLink" minOccurs="0"/>
+      <xsd:element name="publication-date" type="date" minOccurs="0"/>
+      <xsd:element name="conference" type="conference" minOccurs="0"/>
+      <xsd:element name="size" type="size" minOccurs="0"/>
+      <xsd:any namespace="http://pbn.nauka.gov.pl/-/ns/metrics" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>
+      <xsd:element name="is" type="xsd:string" minOccurs="0" maxOccurs="unbounded"/>
+      <xsd:element name="system-identifier" type="externalIdentifier" minOccurs="0" maxOccurs="unbounded"/>
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="abstract">
+    <xsd:simpleContent>
+      <xsd:extension base="xsd:string">
+        <xsd:attribute name="lang" type="lang"/>
+      </xsd:extension>
+    </xsd:simpleContent>
+  </xsd:complexType>
+  <xsd:complexType name="langKeywords">
+    <xsd:sequence>
+      <xsd:element name="k" type="xsd:string" minOccurs="0" maxOccurs="unbounded"/>
+    </xsd:sequence>
+    <xsd:attribute name="lang" type="lang"/>
+  </xsd:complexType>
+  <xsd:complexType name="size">
+    <xsd:simpleContent>
+      <xsd:extension base="xsd:string">
+        <xsd:attribute name="unit" use="required">
+          <xsd:simpleType>
+            <xsd:restriction base="xsd:string">
+              <xsd:enumeration value="sheets"/>
+            </xsd:restriction>
+          </xsd:simpleType>
+        </xsd:attribute>
+      </xsd:extension>
+    </xsd:simpleContent>
+  </xsd:complexType>
+  <xsd:complexType name="xmlContribution" abstract="true">
+    <xsd:sequence>
+      <xsd:element name="given-names" type="notAbbreviatedName" minOccurs="0"/>
+      <xsd:element name="family-name" type="notAbbreviatedName" minOccurs="0"/>
+      <xsd:element name="system-identifier" type="externalIdentifier" minOccurs="0" maxOccurs="unbounded"/>
+      <xsd:element name="affiliated-to-unit" type="xsd:boolean" minOccurs="0"/>
+      <xsd:element name="employed-in-unit" type="xsd:boolean" minOccurs="0"/>
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="journal">
+    <xsd:sequence>
+      <xsd:element name="title" minOccurs="0">
+        <xsd:complexType>
+          <xsd:simpleContent>
+            <xsd:extension base="xsd:string">
+              <xsd:attribute name="lang" type="lang"/>
+            </xsd:extension>
+          </xsd:simpleContent>
+        </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="issn" type="xsd:string" minOccurs="0"/>
+      <xsd:element name="eissn" type="xsd:string" minOccurs="0"/>
+      <xsd:any namespace="http://pbn.nauka.gov.pl/-/ns/metrics" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>
+      <xsd:element name="doi" type="doi" minOccurs="0"/>
+      <xsd:element name="website" type="simpleLink" minOccurs="0"/>
+      <xsd:element name="system-identifier" type="externalIdentifier" minOccurs="0" maxOccurs="unbounded"/>
+      <xsd:element name="publisher-name" type="xsd:string" minOccurs="0"/>
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="simpleLink">
+    <xsd:attribute name="href" type="hrefType"/>
+  </xsd:complexType>
+  <xsd:complexType name="conference">
+    <xsd:sequence>
+      <xsd:element name="short-name" type="xsd:string" minOccurs="0"/>
+      <xsd:element name="name" type="xsd:string"/>
+      <xsd:element name="start-date" type="fulldate" minOccurs="0"/>
+      <xsd:element name="end-date" type="fulldate" minOccurs="0"/>
+      <xsd:element name="location" type="xsd:string" minOccurs="0"/>
+      <xsd:element name="country" type="country" minOccurs="0"/>
+      <xsd:element name="web-of-science-indexed" type="xsd:boolean" minOccurs="0"/>
+      <xsd:element name="scopus-indexed" type="xsd:boolean" minOccurs="0"/>
+      <xsd:element name="other-indexes" type="xsd:string" minOccurs="0"/>
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="open-access" abstract="true">
+    <xsd:sequence>
+      <xsd:element name="open-access-text-version" type="open-access-text-version" minOccurs="0"/>
+      <xsd:element name="open-access-license" type="open-access-license" minOccurs="0"/>
+      <xsd:element name="open-access-release-time" type="open-access-release-time" minOccurs="0"/>
+      <xsd:element name="open-access-months" type="xsd:positiveInteger" minOccurs="0"/>
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="author">
+    <xsd:complexContent>
+      <xsd:extension base="xmlContribution">
+        <xsd:sequence/>
+      </xsd:extension>
+    </xsd:complexContent>
+  </xsd:complexType>
+  <xsd:complexType name="editor">
+    <xsd:complexContent>
+      <xsd:extension base="xmlContribution">
+        <xsd:sequence/>
+      </xsd:extension>
+    </xsd:complexContent>
+  </xsd:complexType>
+  <xsd:complexType name="chapter">
+    <xsd:complexContent>
+      <xsd:extension base="work">
+        <xsd:sequence>
+          <xsd:element name="editor" type="editor" minOccurs="0" maxOccurs="unbounded"/>
+          <xsd:element name="chapter-number" type="xsd:int" minOccurs="0"/>
+          <xsd:element name="book" type="book" minOccurs="0"/>
+          <xsd:element name="pages" type="pages" minOccurs="0"/>
+          <xsd:element name="open-access" type="open-access-monography" minOccurs="0"/>
+        </xsd:sequence>
+      </xsd:extension>
+    </xsd:complexContent>
+  </xsd:complexType>
+  <xsd:complexType name="article">
+    <xsd:complexContent>
+      <xsd:extension base="work">
+        <xsd:sequence>
+          <xsd:element name="journal" type="journal" minOccurs="0"/>
+          <xsd:element name="issue" type="xsd:string" minOccurs="0"/>
+          <xsd:element name="volume" type="xsd:string" minOccurs="0"/>
+          <xsd:element name="pages" type="pages" minOccurs="0"/>
+          <xsd:element name="open-access" type="open-access-article" minOccurs="0"/>
+        </xsd:sequence>
+      </xsd:extension>
+    </xsd:complexContent>
+  </xsd:complexType>
+  <xsd:complexType name="book">
+    <xsd:complexContent>
+      <xsd:extension base="work">
+        <xsd:sequence>
+          <xsd:element name="editor" type="editor" minOccurs="0" maxOccurs="unbounded"/>
+          <xsd:element name="isbn" type="isbn" minOccurs="0"/>
+          <xsd:element name="series" type="xsd:string" minOccurs="0"/>
+          <xsd:element name="number-in-series" type="xsd:string" minOccurs="0"/>
+          <xsd:element name="edition" type="xsd:string" minOccurs="0"/>
+          <xsd:element name="volume" type="xsd:string" minOccurs="0"/>
+          <xsd:element name="pages" type="xsd:string" minOccurs="0"/>
+          <xsd:element name="publisher-name" type="xsd:string" minOccurs="0"/>
+          <xsd:element name="publication-place" type="xsd:string" minOccurs="0"/>
+          <xsd:element name="open-access" type="open-access-monography" minOccurs="0"/>
+        </xsd:sequence>
+      </xsd:extension>
+    </xsd:complexContent>
+  </xsd:complexType>
+  <xsd:complexType name="externalIdentifier">
+    <xsd:simpleContent>
+      <xsd:extension base="xsd:string">
+        <xsd:attribute name="system" type="xsd:string"/>
+      </xsd:extension>
+    </xsd:simpleContent>
+  </xsd:complexType>
+  <xsd:simpleType name="doi">
+    <xsd:restriction base="xsd:string"/>
+  </xsd:simpleType>
+  <xsd:simpleType name="notAbbreviatedName">
+    <xsd:restriction base="xsd:string">
+      <xsd:minLength value="2"/>
+      <xsd:maxLength value="1024"/>
+      <xsd:pattern value="[^.]*"/>
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="open-access-mode-article">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="OPEN_JOURNAL"/>
+      <xsd:enumeration value="OPEN_REPOSITORY"/>
+      <xsd:enumeration value="OTHER"/>
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="open-access-mode-monography">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="PUBLISHER_WEBSITE"/>
+      <xsd:enumeration value="OPEN_REPOSITORY"/>
+      <xsd:enumeration value="OTHER"/>
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="open-access-text-version">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="ORIGINAL_AUTHOR"/>
+      <xsd:enumeration value="FINAL_AUTHOR"/>
+      <xsd:enumeration value="FINAL_PUBLISHED"/>
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="open-access-license">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="CC-BY"/>
+      <xsd:enumeration value="CC-BY-SA"/>
+      <xsd:enumeration value="CC-BY-NC"/>
+      <xsd:enumeration value="CC-BY-ND"/>
+      <xsd:enumeration value="CC-BY-NC-SA"/>
+      <xsd:enumeration value="CC-BY-NC-ND"/>
+      <xsd:enumeration value="OTHER"/>
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="open-access-release-time">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="BEFORE_PUBLICATION"/>
+      <xsd:enumeration value="AT_PUBLICATION"/>
+      <xsd:enumeration value="AFTER_PUBLICATION"/>
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="pages">
+    <xsd:restriction base="xsd:token">
+      <xsd:pattern value="[0-9]+-[0-9]+"/>
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="open-access-article">
+    <xsd:complexContent>
+      <xsd:extension base="open-access">
+        <xsd:sequence>
+          <xsd:element name="open-access-mode" type="open-access-mode-article" minOccurs="0"/>
+        </xsd:sequence>
+      </xsd:extension>
+    </xsd:complexContent>
+  </xsd:complexType>
+  <xsd:complexType name="open-access-monography">
+    <xsd:complexContent>
+      <xsd:extension base="open-access">
+        <xsd:sequence>
+          <xsd:element name="open-access-mode" type="open-access-mode-monography" minOccurs="0"/>
+        </xsd:sequence>
+      </xsd:extension>
+    </xsd:complexContent>
+  </xsd:complexType>
+  <xsd:simpleType name="fulldate">
+    <xsd:restriction base="xsd:string">
+      <xsd:pattern value="\d{4}-\d{2}-\d{2}"/>
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="country">
+    <xsd:restriction base="xsd:string">
+      <xsd:pattern value="[A-Z]{2}"/>
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="isbn">
+    <xsd:restriction base="xsd:string">
+      <xsd:pattern value="[- \dX]{10,17}"/>
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="date">
+    <xsd:restriction base="xsd:string">
+      <xsd:pattern value="\d{4}(-\d{2}(-\d{2})?)?"/>
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="hrefType">
+    <xsd:restriction base="xsd:anyURI"/>
+  </xsd:simpleType>
+  <xsd:simpleType name="lang">
+    <xsd:union memberTypes="xsd:language">
+      <xsd:simpleType>
+        <xsd:restriction base="xsd:string">
+          <xsd:enumeration value=""/>
+        </xsd:restriction>
+      </xsd:simpleType>
+    </xsd:union>
+  </xsd:simpleType>
+</xsd:schema>
