@@ -316,6 +316,8 @@ class ModelHistoryczny(models.Model):
     class Meta:
         abstract = True
 
+from django.core.validators import URLValidator
+url_validator = URLValidator()
 
 class PBNSerializerHelperMixin:
     def serializuj_typowe_elementy(self, toplevel, wydzial, autorzy_klass):
@@ -348,7 +350,11 @@ class PBNSerializerHelperMixin:
                 k.text = elem.strip()
 
         if self.www:
-            public_uri = SubElement(toplevel, "public-uri", href=self.www)
+            try:
+                url_validator(self.www)
+                public_uri = SubElement(toplevel, "public-uri", href=self.www)
+            except ValueError:
+                pass
 
         publication_date = SubElement(toplevel, 'publication-date')
         publication_date.text = str(self.rok)
@@ -356,6 +362,8 @@ class PBNSerializerHelperMixin:
         system_identifier = SubElement(toplevel, 'system-identifier')
         system_identifier.text = str(self.pk)
 
+
+        return # NIE is
         is_text = self.guess_pbn_type()
 
         if is_text:
