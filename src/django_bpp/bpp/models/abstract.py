@@ -8,6 +8,7 @@ from decimal import Decimal
 
 from django.db import models
 from djorm_pgfulltext.fields import VectorField
+from lxml.etree import SubElement
 
 from bpp.fields import YearField
 from bpp.models.util import ModelZOpisemBibliograficznym
@@ -314,3 +315,49 @@ class ModelHistoryczny(models.Model):
 
     class Meta:
         abstract = True
+
+
+class PBNSerializerHelperMixin:
+    def serializuj_typowe_elementy(self, toplevel, wydzial, autorzy_klass):
+        title = SubElement(toplevel, 'title')
+        title.text = self.tytul_oryginalny
+
+        wszyscy_autorzy = self.autorzy.all().count()
+        dopisani_autorzy = 0
+
+        for autor_wyd in autorzy_klass.objects.filter(rekord=self, typ_odpowiedzialnosci__skrot='aut.'):
+            if autor_wyd.autor.afiliacja_na_rok(self.rok, wydzial, rozszerzona=True):
+                toplevel.append(autor_wyd.autor.serializuj_dla_pbn(affiliated=True, employed=True))
+                dopisani_autorzy += 1
+
+        other_contributors = SubElement(toplevel, 'other-contributors')
+        other_contributors.text = str(wszyscy_autorzy - dopisani_autorzy)
+
+        for redaktor_wyd in autorzy_klass.objects.filter(rekord=self,
+                                                     typ_odpowiedzialnosci__skrot__in=['red.', 'red. nauk. wyd. pol.']):
+            afi = redaktor_wyd.autor.afiliacja_na_rok(self.rok, wydzial, rozszerzona=True)
+            toplevel.append(redaktor_wyd.autor.serializuj_dla_pbn(affiliated=afi, employed=afi, tagname='editor'))
+
+        lang = SubElement(toplevel, 'lang')
+        lang.text = self.jezyk.get_skrot_dla_pbn()
+
+        if self.slowa_kluczowe:
+            keywords = SubElement(toplevel, 'keywords', lang=lang.text)
+            for elem in self.slowa_kluczowe.split(","):
+                k = SubElement(keywords, 'k')
+                k.text = elem.strip()
+
+        if self.www:
+            public_uri = SubElement(toplevel, "public-uri", href=self.www)
+
+        publication_date = SubElement(toplevel, 'publication-date')
+        publication_date.text = str(self.rok)
+
+        system_identifier = SubElement(toplevel, 'system-identifier')
+        system_identifier.text = str(self.pk)
+
+        is_text = self.guess_pbn_type()
+
+        if is_text:
+            _is = SubElement(toplevel, 'is')
+            _is.text = is_text

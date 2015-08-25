@@ -6,6 +6,8 @@
 from autoslug import AutoSlugField
 
 from django.db import models
+from lxml.etree import Element, SubElement
+from bpp.models.system import Jezyk
 from bpp.util import FulltextSearchMixin
 from djorm_pgfulltext.fields import VectorField
 from djorm_pgfulltext.models import SearchManager
@@ -106,6 +108,9 @@ class Zrodlo(ModelZAdnotacjami, ModelZISSN):
         "Poprzedni tytuł", max_length=1024, db_index=True, blank=True,
         null=True)
 
+    jezyk = models.ForeignKey(Jezyk, null=True, blank=True)
+    wydawca = models.CharField(max_length=250, blank=True)
+
     search = VectorField()
 
     objects = ZrodloManager()
@@ -137,3 +142,34 @@ class Zrodlo(ModelZAdnotacjami, ModelZISSN):
         return Wydawnictwo_Ciagle.objects.filter(
             zrodlo=self).values_list(
             'rok', flat=True).distinct().order_by('rok')
+
+    def serializuj_dla_pbn(self):
+        journal = Element('journal')
+
+        title_kw = {}
+        if self.jezyk != None:
+            title_kw['lang'] = self.jezyk.get_skrot_dla_pbn()
+
+        title = SubElement(journal, 'title', **title_kw)
+        title.text = self.nazwa
+
+        if self.issn:
+            issn = SubElement(journal, 'issn')
+            issn.text = self.issn
+
+        if self.e_issn:
+            eissn = SubElement(journal, 'eissn')
+            eissn.text = self.e_issn
+
+        if self.www:
+            website = SubElement(journal, 'website', href=self.www)
+
+
+        system_identifier = SubElement(journal, 'system-identifier')
+        system_identifier.text = str(self.pk)
+
+        if self.wydawca:
+            publisher_name = SubElement(journal, 'publisher-name')
+            publisher_name.text = self.wydawca
+
+        return journal

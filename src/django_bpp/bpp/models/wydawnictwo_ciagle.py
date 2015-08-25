@@ -2,12 +2,13 @@
 
 from django.db import models
 from djorm_pgfulltext.models import SearchManager
+from lxml.etree import SubElement, Element
 from secure_input.utils import safe_html
 
 from bpp.models.abstract import BazaModeluOdpowiedzialnosciAutorow, DwaTytuly, ModelZRokiem, \
     ModelZWWW, ModelAfiliowanyRecenzowany, ModelPunktowany, ModelTypowany, \
     ModelZeSzczegolami, ModelZInformacjaZ, ModelZeStatusem, ModelZISSN, \
-    ModelZAdnotacjami, ModelZCharakterem, Wydawnictwo_Baza
+    ModelZAdnotacjami, ModelZCharakterem, Wydawnictwo_Baza, PBNSerializerHelperMixin
 from bpp.models.util import dodaj_autora, ZapobiegajNiewlasciwymCharakterom
 
 
@@ -26,6 +27,13 @@ class Wydawnictwo_Ciagle_Autor(BazaModeluOdpowiedzialnosciAutorow):
              ('rekord', 'autor', 'kolejnosc')]
 
 
+TYP_KBN_MAP = {
+    'PO': 'original-article',
+    'PW': 'original-article',
+    'PP': 'review-article',
+    'PNP': 'popular-science-article',
+    '000': 'others-citable'
+}
 
 class Wydawnictwo_Ciagle(ZapobiegajNiewlasciwymCharakterom,
                          Wydawnictwo_Baza, DwaTytuly, ModelZRokiem,
@@ -33,7 +41,7 @@ class Wydawnictwo_Ciagle(ZapobiegajNiewlasciwymCharakterom,
                          ModelZWWW, ModelAfiliowanyRecenzowany,
                          ModelPunktowany, ModelTypowany, ModelZeSzczegolami,
                          ModelZISSN, ModelZInformacjaZ, ModelZAdnotacjami,
-                         ModelZCharakterem):
+                         ModelZCharakterem, PBNSerializerHelperMixin):
     """Wydawnictwo ciągłe, czyli artykuły z czasopism, komentarze, listy
     do redakcji, publikacje w suplemencie, etc. """
 
@@ -66,4 +74,20 @@ class Wydawnictwo_Ciagle(ZapobiegajNiewlasciwymCharakterom,
         verbose_name_plural = "wydawnictwa ciągłe"
         app_label = 'bpp'
 
+    def guess_pbn_type(self):
+        if self.charakter_formalny.charakter_pbn != None:
+            return self.charakter_formalny.charakter_pbn.identyfikator
 
+        tks = self.typ_kbn.skrot
+        if TYP_KBN_MAP.get(tks):
+            return TYP_KBN_MAP.get(tks)
+
+    def serializuj_dla_pbn(self, wydzial):
+        article = Element('article')
+        self.serializuj_typowe_elementy(article, wydzial, Wydawnictwo_Ciagle_Autor)
+        article.append(self.zrodlo.serializuj_dla_pbn())
+        #     <issue>4</issue>
+        #     <volume>2</volume>
+        #     <pages>25-31</pages>
+
+        return article

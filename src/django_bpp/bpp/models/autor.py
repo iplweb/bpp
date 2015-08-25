@@ -10,12 +10,13 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 
 from django.db import models, IntegrityError
+from lxml.etree import Element, SubElement
 from bpp.models.abstract import BazaModeluOdpowiedzialnosciAutorow, ModelZPBN_ID
 from bpp.util import FulltextSearchMixin
 from djorm_pgfulltext.fields import VectorField
 from djorm_pgfulltext.models import SearchManager
 from bpp.models import ModelZAdnotacjami, NazwaISkrot
-
+from datetime import datetime
 
 class Tytul(NazwaISkrot):
     class Meta:
@@ -90,7 +91,10 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
             buf += ", " + unicode(self.tytul.skrot)
         return buf
 
-    def dodaj_jednostke(self, jednostka, rok, funkcja):
+    def dodaj_jednostke(self, jednostka, rok=None, funkcja=None):
+        if rok is None:
+            rok = datetime.now().date().year
+
         start_pracy = date(rok, 1, 1)
         koniec_pracy = date(rok, 12, 31)
 
@@ -173,8 +177,7 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
         # gdy jest rozszerzona afiliacja:
 
         if Autor_Jednostka.objects.filter(
-                autor=self, jednostka__wydzial=wydzial,
-                rozpoczal_prace=None, zakonczyl_prace=None):
+            autor=self, jednostka__wydzial=wydzial):
             return True
 
     def get_full_name(self):
@@ -231,6 +234,27 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
                 return Autor_Jednostka.objects.filter(
                     autor=self).order_by('-rozpoczal_prace', '-pk')[0].jednostka
 
+    def serializuj_dla_pbn(self, tagname='author', affiliated=True, employed=True):
+        author = Element(tagname)
+
+        given_names = SubElement(author, 'given-names')
+        given_names.text = self.imiona.replace(".", " ")
+
+        family_name = SubElement(author, 'family-name')
+        family_name.text = self.nazwisko
+
+        system_identifier = SubElement(author, 'system-identifier')
+        system_identifier.text = str(self.pk)
+
+        if affiliated:
+            affiliated_to_unit = SubElement(author, 'affiliated-to-unit')
+            affiliated_to_unit.text = 'true'
+
+        if employed:
+            employed_in_unit = SubElement(author, 'employed-in-unit')
+            employed_in_unit.text = 'true'
+
+        return author
 
 class Funkcja_Autora(NazwaISkrot):
     """Funkcja autora w jednostce"""

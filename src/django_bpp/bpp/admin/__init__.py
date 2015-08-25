@@ -41,7 +41,10 @@ class RestrictDeletionToAdministracjaGroupAdmin(
     RestrictDeletionToAdministracjaGroupMixin, admin.ModelAdmin):
     pass
 
-admin.site.register(Jezyk, RestrictDeletionToAdministracjaGroupAdmin)
+class JezykAdmin(RestrictDeletionToAdministracjaGroupAdmin):
+    list_display = ['nazwa', 'skrot', 'skrot_dla_pbn']
+
+admin.site.register(Jezyk, JezykAdmin)
 admin.site.register(Funkcja_Autora, RestrictDeletionToAdministracjaGroupAdmin)
 admin.site.register(Rodzaj_Zrodla, RestrictDeletionToAdministracjaGroupAdmin)
 admin.site.register(Status_Korekty, RestrictDeletionToAdministracjaGroupAdmin)
@@ -237,7 +240,7 @@ class ZrodloAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
             'fields': (
                 'nazwa', 'skrot', 'rodzaj', 'nazwa_alternatywna',
                 'skrot_nazwy_alternatywnej', 'issn', 'e_issn', 'www', 'zasieg',
-                'poprzednia_nazwa'),
+                'poprzednia_nazwa', 'jezyk', 'wydawca'),
         }),
         ADNOTACJE_FIELDSET)
 
