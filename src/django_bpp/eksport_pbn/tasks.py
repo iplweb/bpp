@@ -70,7 +70,7 @@ def eksport_pbn(user_id, wydzial_id, rok):
         outfile.write('</works>')
         outfile.close()
 
-    hdr = header % wydzial.pk
+    hdr = header % wydzial.pbn_id
 
     for element in gen_ser():
 

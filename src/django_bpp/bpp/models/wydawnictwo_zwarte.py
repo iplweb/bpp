@@ -1,6 +1,7 @@
 # -*- encoding: utf-8 -*-
 
 from django.db import models
+from django.utils.functional import cached_property
 from djorm_pgfulltext.models import SearchManager
 from lxml.etree import Element, SubElement
 
@@ -87,7 +88,7 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
 
         tks = self.typ_kbn.skrot
 
-        if self.is_chapter():
+        if self.is_chapter:
             return 'chapter-in-a-book'
 
         if tks == 'PNP':
@@ -96,26 +97,25 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
         if tks == 'PO' or tks == 'PP':
             return 'scholarly-monograph'
 
-
+    @cached_property
     def is_chapter(self):
         return self.charakter_formalny.skrot in ['ROZ', 'ROZS']
 
 
     def serializuj_dla_pbn(self, wydzial):
         toplevel = Element('book')
-        if self.is_chapter():
+        if self.is_chapter:
             toplevel = Element('chapter')
 
         self.serializuj_typowe_elementy(toplevel, wydzial, Wydawnictwo_Zwarte_Autor)
 
-        if self.isbn:
+        if not self.is_chapter and self.isbn:
             isbn = SubElement(toplevel, 'isbn')
             isbn.text = self.isbn
 
-
-        if self.wydawnictwo_nadrzedne:
-            series = SubElement(toplevel, 'series')
-            series.text = self.wydawnictwo_nadrzedne.tytul_oryginalny
+        # if self.wydawnictwo_nadrzedne:
+        #    series = SubElement(toplevel, 'series')
+        #    series.text = self.wydawnictwo_nadrzedne.tytul_oryginalny
 
         #     <number-in-series>3</number-in-series>
 
