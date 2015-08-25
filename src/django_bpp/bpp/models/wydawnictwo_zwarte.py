@@ -129,9 +129,9 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
             except ValueError:
                 miejsce = self.miejsce_i_rok
 
-            if miejsce:
-                publication_place = SubElement(toplevel, 'publication-place')
-                publication_place.text = miejsce
+            # if miejsce:
+            #     publication_place = SubElement(toplevel, 'publication-place')
+            #     publication_place.text = miejsce
 
         if self.wydawnictwo:
             publisher_name = SubElement(toplevel, 'publisher-name')
