@@ -1,12 +1,5 @@
 [
-    {
-        "pk": 2,
-        "model": "bpp.jezyk",
-        "fields": {
-            "skrot": "ang.",
-            "nazwa": "angielski"
-        }
-    },
+
     {
         "pk": 3,
         "model": "bpp.jezyk",
@@ -31,14 +24,7 @@
             "nazwa": "niemiecki"
         }
     },
-    {
-        "pk": 1,
-        "model": "bpp.jezyk",
-        "fields": {
-            "skrot": "pol.",
-            "nazwa": "polski"
-        }
-    },
+
     {
         "pk": 6,
         "model": "bpp.jezyk",
