@@ -22,7 +22,7 @@ class Generuj(LoginRequiredMixin, TemplateView):
         rok = kwargs['rok']
 
         eksport_pbn.delay(self.request.user.pk, kwargs['wydzial'], kwargs['rok'])
-        messages.info(self.request, u"Rozpoczęto generowanie raportu dla %s, rok %s" % (wydzial.nazwa, rok))
+        messages.info(self.request, u"Rozpoczęto generowanie eksportu PBN dla %s, rok %s" % (wydzial.nazwa, rok))
         return HttpResponseRedirect("..")
 
 
