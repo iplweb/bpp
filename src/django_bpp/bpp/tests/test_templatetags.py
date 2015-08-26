@@ -4,6 +4,7 @@ from model_mommy import mommy
 from django.test import TestCase
 
 from bpp.models import Jednostka, Wydawnictwo_Ciagle, Autor, Praca_Doktorska, Typ_Odpowiedzialnosci
+from bpp.models.system import Jezyk
 from bpp.templatetags.prace import strip_at_end, znak_na_koncu
 from bpp.tests import any_jednostka
 from bpp.tests.test_reports.util import autor_ciaglego
@@ -22,8 +23,7 @@ class TestTemplateTags(TestCase):
         a2 = mommy.make(Autor, nazwisko='Nowak', imiona='Jan', tytul=None, slug='B')
         a3 = mommy.make(Autor, nazwisko='Nowak', imiona='Jan', tytul=None, slug='C')
 
-        c = mommy.make(Wydawnictwo_Ciagle, tytul="foo", tytul_oryginalny="bar",
-                      uwagi='fo')
+        c = mommy.make(Wydawnictwo_Ciagle, tytul="foo", tytul_oryginalny="bar", uwagi='fo', jezyk=Jezyk.objects.all()[0])
         t = Typ_Odpowiedzialnosci.objects.get(skrot='aut.')
         autor_ciaglego(a1, j, c, zapisany_jako='Jan Budnik', typ_odpowiedzialnosci=t, kolejnosc=1)
         autor_ciaglego(a2, j, c, zapisany_jako='Stefan Kolbe', typ_odpowiedzialnosci=Typ_Odpowiedzialnosci.objects.get(skrot='red.'), kolejnosc=2)
