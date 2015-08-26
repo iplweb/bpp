@@ -111,7 +111,7 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
 
         if not self.is_chapter and self.isbn:
             isbn = SubElement(toplevel, 'isbn')
-            isbn.text = self.isbn
+            isbn.text = self.isbn.replace(".", "").strip()
 
         # if self.wydawnictwo_nadrzedne:
         #    series = SubElement(toplevel, 'series')
@@ -133,8 +133,8 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
             #     publication_place = SubElement(toplevel, 'publication-place')
             #     publication_place.text = miejsce
 
-        if self.wydawnictwo:
-            publisher_name = SubElement(toplevel, 'publisher-name')
-            publisher_name.text = self.wydawnictwo
+        #if self.wydawnictwo:
+        #    publisher_name = SubElement(toplevel, 'publisher-name')
+        #    publisher_name.text = self.wydawnictwo
 
         return toplevel
