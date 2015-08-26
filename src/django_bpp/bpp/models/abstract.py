@@ -336,10 +336,10 @@ class PBNSerializerHelperMixin:
         other_contributors = SubElement(toplevel, 'other-contributors')
         other_contributors.text = str(wszyscy_autorzy - dopisani_autorzy)
 
-        for redaktor_wyd in autorzy_klass.objects.filter(rekord=self,
-                                                     typ_odpowiedzialnosci__skrot__in=['red.', 'red. nauk. wyd. pol.']):
-            afi = redaktor_wyd.autor.afiliacja_na_rok(self.rok, wydzial, rozszerzona=True)
-            toplevel.append(redaktor_wyd.autor.serializuj_dla_pbn(affiliated=afi, employed=afi, tagname='editor'))
+        # for redaktor_wyd in autorzy_klass.objects.filter(rekord=self,
+        #                                              typ_odpowiedzialnosci__skrot__in=['red.', 'red. nauk. wyd. pol.']):
+        #     afi = redaktor_wyd.autor.afiliacja_na_rok(self.rok, wydzial, rozszerzona=True)
+        #     toplevel.append(redaktor_wyd.autor.serializuj_dla_pbn(affiliated=afi, employed=afi, tagname='editor'))
 
         lang = SubElement(toplevel, 'lang')
         lang.text = self.jezyk.get_skrot_dla_pbn()
