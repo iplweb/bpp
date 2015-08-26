@@ -23,7 +23,8 @@ class TestTemplateTags(TestCase):
         a2 = mommy.make(Autor, nazwisko='Nowak', imiona='Jan', tytul=None, slug='B')
         a3 = mommy.make(Autor, nazwisko='Nowak', imiona='Jan', tytul=None, slug='C')
 
-        c = mommy.make(Wydawnictwo_Ciagle, tytul="foo", tytul_oryginalny="bar", uwagi='fo', jezyk=Jezyk.objects.all()[0])
+        jezyk = Jezyk.objects.all()[0]
+        c = mommy.make(Wydawnictwo_Ciagle, tytul="foo", tytul_oryginalny="bar", uwagi='fo', jezyk=jezyk)
         t = Typ_Odpowiedzialnosci.objects.get(skrot='aut.')
         autor_ciaglego(a1, j, c, zapisany_jako='Jan Budnik', typ_odpowiedzialnosci=t, kolejnosc=1)
         autor_ciaglego(a2, j, c, zapisany_jako='Stefan Kolbe', typ_odpowiedzialnosci=Typ_Odpowiedzialnosci.objects.get(skrot='red.'), kolejnosc=2)
@@ -31,7 +32,7 @@ class TestTemplateTags(TestCase):
 
         self.ciagle = c
 
-        self.doktorat = any_doktorat(tytul_oryginalny='wtf', tytul='lol', autor=a1)
+        self.doktorat = any_doktorat(tytul_oryginalny='wtf', tytul='lol', autor=a1, jezyk=jezyk)
 
     def test_autorzy(self):
         template = '''
