@@ -98,8 +98,10 @@ def eksport_pbn(user_id, wydzial_id, rok):
     pep.file.save(fn, File(open(fn)))
     pep.save()
 
-    informuj("Zakończono. <a href=%s>Kliknij tutaj, aby pobrać raport</a>. " % reverse("eksport_pbn:pobierz",
-                                                                                       args=(pep.pk,)),
+    informuj("Zakończono. <a href=%s>Kliknij tutaj, aby pobrać eksport PBN dla %s, rok: %s</a>. " %
+             (reverse("eksport_pbn:pobierz", args=(pep.pk,)),
+              wydzial.nazwa,
+              rok),
              dont_persist=False)
 
     return pep.pk
