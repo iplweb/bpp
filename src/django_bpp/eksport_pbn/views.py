@@ -40,7 +40,7 @@ class SerwujPlik(LoginRequiredMixin, DetailView):
             return sendfile(self.request,
                             self.object.file.path,
                             attachment=True,
-                            attachment_filename=self.object.get_fn(),
+                            attachment_filename=self.object.get_fn() + ".zip",
                             mimetype="application/octet-stream")
 
         return HttpResponseForbidden
