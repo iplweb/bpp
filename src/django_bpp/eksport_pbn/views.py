@@ -53,7 +53,7 @@ class WyborWydzialu(LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         return super(WyborWydzialu, self).get_context_data(**{
             'lata': [2013, 2014, 2015],
-            'ostatnie_raporty': PlikEksportuPBN.objects.filter(owner=self.request.user).order_by('-pk')[:10]
+            'ostatnie_raporty': PlikEksportuPBN.objects.filter(owner=self.request.user).order_by('-pk').exclude(file=None)[:10]
         })
 
 class ZamowEksportDoPBN(LoginRequiredMixin, FormView):
@@ -62,7 +62,7 @@ class ZamowEksportDoPBN(LoginRequiredMixin, FormView):
 
     def get_context_data(self, form, **kwargs):
         return super(ZamowEksportDoPBN, self).get_context_data(**{
-            'ostatnie_raporty': PlikEksportuPBN.objects.filter(owner=self.request.user).order_by('-pk')[:10],
+            'ostatnie_raporty': PlikEksportuPBN.objects.filter(owner=self.request.user).exclude(file='').order_by('-pk')[:10],
             'form': form,
         })
 
