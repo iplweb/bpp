@@ -85,7 +85,10 @@ class Wydawnictwo_Ciagle(ZapobiegajNiewlasciwymCharakterom,
     def serializuj_dla_pbn(self, wydzial):
         article = Element('article')
         self.serializuj_typowe_elementy(article, wydzial, Wydawnictwo_Ciagle_Autor)
-        article.append(self.zrodlo.serializuj_dla_pbn())
+
+        if self.zrodlo is not None:
+            article.append(self.zrodlo.serializuj_dla_pbn())
+            
         #     <issue>4</issue>
         #     <volume>2</volume>
         #     <pages>25-31</pages>
