@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block extratitle %}
+    Wybór wydziału
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li class="current">wybór wydziału</li>
+{% endblock %}
+
+{% load humanize %}
+{% block content %}
+    <div class="row">
+        <div class="large-6 columns">
+            <h1>Wybór wydziału</h1>
+            {% for wydzial in object_list %}
+                <h3>{{ wydzial }}</h3>
+                <div style="margin-left: 3em; margin-bottom: 1em;">
+                    {% for rok in lata %}
+                        <a href="./{{ wydzial.pk }}/{{ rok }}">{{ rok }}</a>&nbsp;
+                    {% endfor %}
+                </div>
+            {% endfor %}
+        </div>
+        <div class="large-6 columns">
+            <h1>Ostatnio wygenerowano</h1>
+            <ul>
+                {% for plik in ostatnie_raporty %}
+                    <li><a href="{% url "eksport_pbn:pobierz" plik.pk %}">{{ plik.wydzial.nazwa }}, rok {{ plik.rok }}
+                        - {{ plik.created_on|naturaltime }}</a></li>
+                {% empty %}
+                    Brak plików.
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+{% endblock %}
