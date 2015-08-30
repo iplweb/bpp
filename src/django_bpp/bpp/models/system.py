@@ -63,14 +63,16 @@ class Charakter_Formalny(NazwaISkrot):
 
     charakter_pbn = models.ForeignKey(Charakter_PBN,
                                       verbose_name="Charakter PBN",
-                                      blank=True, null=True, default=None)
+                                      blank=True, null=True, default=None,
+                                      help_text="""Wartość wybrana w tym polu zostanie użyta jako zawartość tagu <is>
+                                      w plikach eksportu do PBN""")
 
-    artykul_pbn = models.BooleanField(verbose_name="Artykuł w PBN", help_text="""Ten charakter formalny zostanie
-    wyeksportowany do PBN jako artykuł""", default=False)
-    ksiazka_pbn = models.BooleanField(verbose_name="Książka w PBN", help_text="""Ten charakter formalny zostanie
-    wyeksportowany do PBN jako książka""", default=False)
-    rozdzial_pbn = models.BooleanField(verbose_name="Rozdział w PBN", help_text="""Ten charakter formalny zostanie
-    wyeksportowany do PBN jako rozdział.""", default=False)
+    artykul_pbn = models.BooleanField(verbose_name="Artykuł w PBN", help_text="""Wydawnictwa ciągłe posiadające
+     ten charakter formalny zostaną włączone do eksportu PBN jako artykuły""", default=False)
+    ksiazka_pbn = models.BooleanField(verbose_name="Książka w PBN", help_text="""Wydawnictwa zwarte posiadające ten
+    charakter formalny zostaną włączone do eksportu PBN jako ksiażki""", default=False)
+    rozdzial_pbn = models.BooleanField(verbose_name="Rozdział w PBN", help_text="""Wydawnictwa zwarte posiadające ten
+    charakter formalny zostaną włączone do eksportu PBN jako rozdziały""", default=False)
 
     class Meta:
         ordering = ['nazwa']
