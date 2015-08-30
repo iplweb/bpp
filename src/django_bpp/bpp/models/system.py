@@ -65,6 +65,13 @@ class Charakter_Formalny(NazwaISkrot):
                                       verbose_name="Charakter PBN",
                                       blank=True, null=True, default=None)
 
+    artykul_pbn = models.BooleanField(verbose_name="Artykuł w PBN", help_text="""Ten charakter formalny zostanie
+    wyeksportowany do PBN jako artykuł""", default=False)
+    ksiazka_pbn = models.BooleanField(verbose_name="Książka w PBN", help_text="""Ten charakter formalny zostanie
+    wyeksportowany do PBN jako książka""", default=False)
+    rozdzial_pbn = models.BooleanField(verbose_name="Rozdział w PBN", help_text="""Ten charakter formalny zostanie
+    wyeksportowany do PBN jako rozdział.""", default=False)
+
     class Meta:
         ordering = ['nazwa']
         app_label = 'bpp'

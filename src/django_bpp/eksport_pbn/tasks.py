@@ -9,23 +9,39 @@ import os
 from bpp.models.cache import Autorzy
 from bpp.models.profile import BppUser
 from bpp.models.struktura import Wydzial
+from bpp.models.system import Charakter_Formalny
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor, Wydawnictwo_Ciagle
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte_Autor, Wydawnictwo_Zwarte
 
 from django_bpp.celery import app
+from django_bpp.util import wait_for_object
 from eksport_pbn.models import PlikEksportuPBN
 
 
 def id_ciaglych(wydzial, rok):
     return Wydawnictwo_Ciagle_Autor.objects.filter(
         jednostka__wydzial=wydzial,
-        rekord__rok=rok).only("rekord_id").values_list("rekord_id", flat=True).distinct()
+        rekord__rok=rok,
+        rekord__charakter_formalny__in=Charakter_Formalny.objects.filter(artykul_pbn=True)
+    ).only("rekord_id").values_list("rekord_id", flat=True).distinct()
 
 
-def id_zwartych(wydzial, rok):
-    return Wydawnictwo_Zwarte_Autor.objects.filter(
-        jednostka__wydzial=wydzial,
-        rekord__rok=rok).only("rekord_id").values_list("rekord_id", flat=True).distinct()
+def id_zwartych(wydzial, rok, ksiazki, rozdzialy):
+    if ksiazki:
+        for rekord in Wydawnictwo_Zwarte_Autor.objects.filter(
+                jednostka__wydzial=wydzial,
+                rekord__rok=rok,
+                rekord__charakter_formalny__in=Charakter_Formalny.objects.filter(ksiazka_pbn=True)
+        ).only("rekord_id").values_list("rekord_id", flat=True).distinct():
+            yield rekord
+
+    if rozdzialy:
+        for rekord in Wydawnictwo_Zwarte_Autor.objects.filter(
+                jednostka__wydzial=wydzial,
+                rekord__rok=rok,
+                rekord__charakter_formalny__in=Charakter_Formalny.objects.filter(rozdzial_pbn=True)
+        ).only("rekord_id").values_list("rekord_id", flat=True).distinct():
+            yield rekord
 
 
 def zipdir(path, ziph):
@@ -43,20 +59,33 @@ header = """<?xml version="1.0" encoding="UTF-8"?>
 
 
 @app.task
-def eksport_pbn(user_id, wydzial_id, rok):
-    user = BppUser.objects.get(pk=user_id)
-    wydzial = Wydzial.objects.get(pk=wydzial_id)
+def eksport_pbn(pk):
+    obj = wait_for_object(PlikEksportuPBN, pk)
+
+    user = obj.owner
+    wydzial = obj.wydzial
+    rok = obj.rok
+
+    artykuly = obj.artykuly
+    ksiazki = obj.ksiazki
+    rozdzialy = obj.rozdzialy
 
     def informuj(msg, dont_persist=True):
         call_command('send_message', user, msg, no_persist=dont_persist)
 
     def gen_ser():
-        for ic in id_ciaglych(wydzial, rok):
-            yield Wydawnictwo_Ciagle.objects.get(pk=ic).serializuj_dla_pbn(wydzial)
+        if artykuly:
+            for ic in id_ciaglych(wydzial, rok):
+                yield Wydawnictwo_Ciagle.objects.get(pk=ic).serializuj_dla_pbn(wydzial)
 
-        informuj(u"... generuję książki i rozdziały dla %s, rok %s" % (wydzial.nazwa, rok))
+        if ksiazki and rozdzialy:
+            informuj(u"... generuję książki i rodziały dla %s, rok %s" % (wydzial.nazwa, rok))
+        elif rozdzialy:
+            informuj(u"... generuję rodziały dla %s, rok %s" % (wydzial.nazwa, rok))
+        elif ksiazki:
+            informuj(u"... generuję książki dla %s, rok %s" % (wydzial.nazwa, rok))
 
-        for iz in id_zwartych(wydzial, rok):
+        for iz in id_zwartych(wydzial, rok, ksiazki, rozdzialy):
             yield Wydawnictwo_Zwarte.objects.get(pk=iz).serializuj_dla_pbn(wydzial)
 
     tmpdir = mkdtemp()
@@ -94,7 +123,7 @@ def eksport_pbn(user_id, wydzial_id, rok):
     zipdir(tmpdir, zipf)
     zipf.close()
 
-    pep = PlikEksportuPBN.objects.create(owner=user, wydzial=wydzial, rok=rok)
+    pep = obj
     pep.file.save(fn, File(open(fn)))
     pep.save()
 

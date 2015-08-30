@@ -101,7 +101,6 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
     def is_chapter(self):
         return self.charakter_formalny.skrot in ['ROZ', 'ROZS']
 
-
     def serializuj_dla_pbn(self, wydzial):
         toplevel = Element('book')
         if self.is_chapter:
