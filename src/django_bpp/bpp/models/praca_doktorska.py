@@ -9,7 +9,7 @@ from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte_Baza
 
 class Praca_Doktorska_Baza(Wydawnictwo_Zwarte_Baza):
 
-    autor = models.ForeignKey(Autor)
+    autor = models.ForeignKey(Autor, unique=True)
     jednostka = models.ForeignKey(Jednostka)
 
     objects = SearchManager(
