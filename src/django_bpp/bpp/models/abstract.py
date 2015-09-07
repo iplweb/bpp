@@ -321,6 +321,59 @@ from django.core.validators import URLValidator
 url_validator = URLValidator()
 
 class PBNSerializerHelperMixin:
+
+    def serializuj_strony(self, toplevel):
+
+        def znajdz_znak_rozdzielajacy(ciag):
+            for elem in ciag:
+                if elem in "0123456789":
+                    continue
+                return elem
+
+        if self.szczegoly.find("s. bibliogr") >= 0:
+            return
+
+        if self.szczegoly.find("s.") >= 0:
+            pages = SubElement(toplevel, "pages")
+
+            no_pages = self.szczegoly.split("s.", 1)[1].strip()
+
+            if no_pages.find(",") >= 0:
+                no_pages = no_pages.split(",")[0]
+
+            no_pages = no_pages.strip(".").strip()
+
+            znak_rozdzielajacy = znajdz_znak_rozdzielajacy(no_pages)
+            if znak_rozdzielajacy is not None:
+                no_pages = no_pages.replace(znak_rozdzielajacy, "-")
+            else:
+                no_pages = no_pages + "-" + no_pages
+
+            no_pages = no_pages.replace(" ", "").replace("\t", "").replace("\n", "").replace("]", "")
+            if no_pages[0] == "-":
+                no_pages = no_pages[1:]
+
+            if znak_rozdzielajacy is not None:
+                no_pages = no_pages.replace(znak_rozdzielajacy + znak_rozdzielajacy, znak_rozdzielajacy)
+                no_pages = no_pages.replace(znak_rozdzielajacy + znak_rozdzielajacy, znak_rozdzielajacy)
+
+            no_pages = no_pages.replace(". bibliogr. sum", "")
+            no_pages = no_pages.replace(".bibliogr.sum", "")
+
+            no_pages = no_pages.replace("--", "-")
+
+            pages.text = no_pages
+
+    def serializuj_is(self, toplevel):
+        is_text = self.guess_pbn_type()
+
+        if is_text:
+            _is = SubElement(toplevel, 'is')
+            _is.text = is_text
+
+        system_identifier = SubElement(toplevel, 'system-identifier')
+        system_identifier.text = str(self.pk)
+
     def serializuj_typowe_elementy(self, toplevel, wydzial, autorzy_klass):
         title = SubElement(toplevel, 'title')
         title.text = self.tytul_oryginalny
@@ -336,37 +389,33 @@ class PBNSerializerHelperMixin:
         other_contributors = SubElement(toplevel, 'other-contributors')
         other_contributors.text = str(wszyscy_autorzy - dopisani_autorzy)
 
-        # for redaktor_wyd in autorzy_klass.objects.filter(rekord=self,
-        #                                              typ_odpowiedzialnosci__skrot__in=['red.', 'red. nauk. wyd. pol.']):
-        #     afi = redaktor_wyd.autor.afiliacja_na_rok(self.rok, wydzial, rozszerzona=True)
-        #     toplevel.append(redaktor_wyd.autor.serializuj_dla_pbn(affiliated=afi, employed=afi, tagname='editor'))
+        # Redaktorzy tylko dla wydawnictw zwartych
+        from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte_Autor
+        if autorzy_klass == Wydawnictwo_Zwarte_Autor:
+            for redaktor_wyd in autorzy_klass.objects.filter(rekord=self,
+                                                             typ_odpowiedzialnosci__skrot__in=['red.',
+                                                                                               'red. nauk. wyd. pol.']):
+                afi = redaktor_wyd.autor.afiliacja_na_rok(self.rok, wydzial, rozszerzona=True)
+                toplevel.append(redaktor_wyd.autor.serializuj_dla_pbn(affiliated=afi, employed=afi, tagname='editor'))
 
-        lang = SubElement(toplevel, 'lang')
-        lang.text = self.jezyk.get_skrot_dla_pbn()
+        if dopisani_autorzy:
+            lang = SubElement(toplevel, 'lang')
+            lang.text = self.jezyk.get_skrot_dla_pbn()
 
-        if self.slowa_kluczowe:
-            keywords = SubElement(toplevel, 'keywords', lang=lang.text)
-            for elem in self.slowa_kluczowe.split(","):
-                k = SubElement(keywords, 'k')
-                k.text = elem.strip()
+            if self.slowa_kluczowe:
+                keywords = SubElement(toplevel, 'keywords', lang=lang.text)
+                for elem in self.slowa_kluczowe.split(","):
+                    k = SubElement(keywords, 'k')
+                    k.text = elem.strip()
 
-        if self.www:
-            try:
-                url_validator(self.www)
-                public_uri = SubElement(toplevel, "public-uri", href=self.www)
-            except (ValueError, ValidationError):
-                pass
+            if self.www:
+                try:
+                    url_validator(self.www)
+                    public_uri = SubElement(toplevel, "public-uri", href=self.www)
+                except (ValueError, ValidationError):
+                    pass
 
-        publication_date = SubElement(toplevel, 'publication-date')
-        publication_date.text = str(self.rok)
+            publication_date = SubElement(toplevel, 'publication-date')
+            publication_date.text = str(self.rok)
 
-        system_identifier = SubElement(toplevel, 'system-identifier')
-        system_identifier.text = str(self.pk)
-
-
-        return # NIE is
-        is_text = self.guess_pbn_type()
-
-        if is_text:
-            _is = SubElement(toplevel, 'is')
-            _is.text = is_text
+        return dopisani_autorzy > 0

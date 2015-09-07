@@ -23,7 +23,7 @@ def id_ciaglych(wydzial, rok):
         jednostka__wydzial=wydzial,
         rekord__rok=rok,
         rekord__charakter_formalny__in=Charakter_Formalny.objects.filter(artykul_pbn=True)
-    ).only("rekord_id").values_list("rekord_id", flat=True).distinct()
+    ).order_by("rekord_id").distinct("rekord_id").only("rekord_id").values_list("rekord_id", flat=True)
 
 
 def id_zwartych(wydzial, rok, ksiazki, rozdzialy):
@@ -32,7 +32,7 @@ def id_zwartych(wydzial, rok, ksiazki, rozdzialy):
                 jednostka__wydzial=wydzial,
                 rekord__rok=rok,
                 rekord__charakter_formalny__in=Charakter_Formalny.objects.filter(ksiazka_pbn=True)
-        ).only("rekord_id").values_list("rekord_id", flat=True).distinct():
+        ).order_by("rekord_id").distinct("rekord_id").only("rekord_id").values_list("rekord_id", flat=True):
             yield rekord
 
     if rozdzialy:
@@ -40,7 +40,7 @@ def id_zwartych(wydzial, rok, ksiazki, rozdzialy):
                 jednostka__wydzial=wydzial,
                 rekord__rok=rok,
                 rekord__charakter_formalny__in=Charakter_Formalny.objects.filter(rozdzial_pbn=True)
-        ).only("rekord_id").values_list("rekord_id", flat=True).distinct():
+        ).order_by("rekord_id").distinct("rekord_id").only("rekord_id").values_list("rekord_id", flat=True):
             yield rekord
 
 
