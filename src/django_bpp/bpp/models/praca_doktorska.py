@@ -32,5 +32,3 @@ class Praca_Doktorska(Praca_Doktorska_Baza):
         verbose_name = 'praca doktorska'
         verbose_name_plural = 'prace doktorskie'
         app_label = 'bpp'
-
-

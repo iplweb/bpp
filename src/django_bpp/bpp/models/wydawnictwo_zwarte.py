@@ -4,8 +4,9 @@ from django.db import models
 from django.utils.functional import cached_property
 from djorm_pgfulltext.models import SearchManager
 from lxml.etree import Element, SubElement
+from math import ceil
 
-from bpp.models import dodaj_autora
+from bpp.models.util import dodaj_autora
 from bpp.models.abstract import \
     BazaModeluOdpowiedzialnosciAutorow, DwaTytuly, ModelZRokiem, \
     ModelZWWW, ModelAfiliowanyRecenzowany, ModelPunktowany, ModelTypowany, \
@@ -106,34 +107,61 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
         if self.is_chapter:
             toplevel = Element('chapter')
 
-        self.serializuj_typowe_elementy(toplevel, wydzial, Wydawnictwo_Zwarte_Autor)
+        ma_autorow = self.serializuj_typowe_elementy(toplevel, wydzial, Wydawnictwo_Zwarte_Autor)
 
         if not self.is_chapter and self.isbn:
             isbn = SubElement(toplevel, 'isbn')
             isbn.text = self.isbn.replace(".", "").strip()
 
-        # if self.wydawnictwo_nadrzedne:
-        #    series = SubElement(toplevel, 'series')
-        #    series.text = self.wydawnictwo_nadrzedne.tytul_oryginalny
-
+        #     <series> </series>
         #     <number-in-series>3</number-in-series>
 
         #     <edition>2</edition>
         #     <volume>15</volume>
-        #     <pages>374</pages>
 
-        if self.miejsce_i_rok:
-            try:
-                miejsce, rok = self.miejsce_i_rok.split(" ")
-            except ValueError:
-                miejsce = self.miejsce_i_rok
+        if not self.is_chapter:
+            publisher_name = SubElement(toplevel, 'publisher-name')
+            publisher_name.text = self.wydawnictwo
 
-            # if miejsce:
-            #     publication_place = SubElement(toplevel, 'publication-place')
-            #     publication_place.text = miejsce
+            if self.miejsce_i_rok:
+                try:
+                    miejsce, rok = self.miejsce_i_rok.split(" ")
+                except ValueError:
+                    miejsce = self.miejsce_i_rok
 
-        #if self.wydawnictwo:
-        #    publisher_name = SubElement(toplevel, 'publisher-name')
-        #    publisher_name.text = self.wydawnictwo
+                if miejsce:
+                    publication_place = SubElement(toplevel, 'publication-place')
+                    publication_place.text = miejsce
+
+        if ma_autorow:
+            if self.liczba_znakow_wydawniczych:
+                size = SubElement(toplevel, 'size', unit="sheets")
+                size.text = str(int(ceil(self.liczba_znakow_wydawniczych / 40000.0)))
+
+            self.serializuj_is(toplevel)
+
+            if self.is_chapter:
+                book = SubElement(toplevel, 'book')
+
+                if self.wydawnictwo_nadrzedne:
+                    title = SubElement(book, 'title')
+                    title.text = self.wydawnictwo_nadrzedne.tytul_oryginalny
+
+                    if self.wydawnictwo_nadrzedne.isbn:
+                        isbn = SubElement(book, 'isbn')
+                        isbn.text = self.wydawnictwo_nadrzedne.isbn.replace(".", "").strip()
+
+                    if self.wydawnictwo_nadrzedne.wydawnictwo:
+                        publisher_name = SubElement(book, 'publisher-name')
+                        publisher_name.text = self.wydawnictwo_nadrzedne.wydawnictwo
+
+                    #publication_date = SubElement(book, 'publication-date')
+                    #publication_date.text = str(self.wydawnictwo_nadrzedne.rok)
+
+                else:
+                    title = SubElement(book, 'title')
+                    title.text = self.informacje.split("W:", 1)[1].strip()
+
+            self.serializuj_strony(toplevel)
 
         return toplevel
