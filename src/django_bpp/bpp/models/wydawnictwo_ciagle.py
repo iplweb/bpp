@@ -99,6 +99,6 @@ class Wydawnictwo_Ciagle(ZapobiegajNiewlasciwymCharakterom,
             volume = SubElement(article, 'volume')
             volume.text = self.informacje.split("vol.")[1].strip().split(" ")[0]
 
-        self.serializuj_strony(article)
+        self.eksport_serializuj_strony(article)
 
         return article

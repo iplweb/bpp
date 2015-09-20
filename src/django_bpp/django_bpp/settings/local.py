@@ -23,6 +23,12 @@ setenv_default("DJANGO_BPP_RAVEN_CONFIG_URL", "")
 setenv_default("DJANGO_BPP_REDIS_PORT", "6379")
 setenv_default("DJANGO_BPP_REDIS_HOST", "127.0.0.1")
 
+setenv_default("DJANGO_BPP_CELERY_HOST", "127.0.0.1")
+setenv_default("DJANGO_BPP_CELERY_PORT", "5672")
+setenv_default("DJANGO_BPP_CELERY_USER", "bpp")
+setenv_default("DJANGO_BPP_CELERY_PASSWORD", "39q8uafsjodijoi")
+setenv_default("DJANGO_BPP_CELERY_VHOST", "bpp")
+
 from .base import *
 
 DEBUG = True

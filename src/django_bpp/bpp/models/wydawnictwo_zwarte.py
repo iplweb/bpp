@@ -141,27 +141,34 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
             self.serializuj_is(toplevel)
 
             if self.is_chapter:
+
+                def add_wydawnictwo_nadrzedne_data(book, wydawnictwo_nadrzedne, title_text=None):
+                    title = SubElement(book, 'title')
+                    if not title_text:
+                        title_text = wydawnictwo_nadrzedne.tytul_oryginalny
+                    title.text = title_text
+
+                    publication_date = SubElement(book, 'publication-date')
+                    publication_date.text = str(wydawnictwo_nadrzedne.rok)
+
+                    if wydawnictwo_nadrzedne.isbn:
+                        isbn = SubElement(book, 'isbn')
+                        isbn.text = wydawnictwo_nadrzedne.isbn.replace(".", "").strip()
+
+                    if wydawnictwo_nadrzedne.wydawnictwo:
+                        publisher_name = SubElement(book, 'publisher-name')
+                        publisher_name.text = wydawnictwo_nadrzedne.wydawnictwo
+
                 book = SubElement(toplevel, 'book')
 
                 if self.wydawnictwo_nadrzedne:
-                    title = SubElement(book, 'title')
-                    title.text = self.wydawnictwo_nadrzedne.tytul_oryginalny
-
-                    if self.wydawnictwo_nadrzedne.isbn:
-                        isbn = SubElement(book, 'isbn')
-                        isbn.text = self.wydawnictwo_nadrzedne.isbn.replace(".", "").strip()
-
-                    if self.wydawnictwo_nadrzedne.wydawnictwo:
-                        publisher_name = SubElement(book, 'publisher-name')
-                        publisher_name.text = self.wydawnictwo_nadrzedne.wydawnictwo
-
-                    #publication_date = SubElement(book, 'publication-date')
-                    #publication_date.text = str(self.wydawnictwo_nadrzedne.rok)
+                    add_wydawnictwo_nadrzedne_data(book, self.wydawnictwo_nadrzedne)
 
                 else:
-                    title = SubElement(book, 'title')
-                    title.text = self.informacje.split("W:", 1)[1].strip()
+                    add_wydawnictwo_nadrzedne_data(
+                        book, self,
+                        title_text=self.informacje.split("W:", 1)[1].strip())
 
-            self.serializuj_strony(toplevel)
+            self.eksport_serializuj_strony(toplevel)
 
         return toplevel
