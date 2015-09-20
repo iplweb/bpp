@@ -377,7 +377,19 @@ CACHEOPS_REDIS = {
     'socket_timeout': 3,
 }
 
-BROKER_URL = django_getenv("DJANGO_BPP_BROKER_URL", "amqp://guest:guest@localhost:5672//")
+CELERY_HOST = django_getenv("DJANGO_BPP_CELERY_HOST", "localhost")
+CELERY_PORT = int(django_getenv("DJANGO_BPP_CELERY_PORT", "5672"))
+CELERY_USER = django_getenv("DJANGO_BPP_CELERY_USER", "guest")
+CELERY_PASSWORD = django_getenv("DJANGO_BPP_CELERY_PASSWORD", "guest")
+CELERY_VHOST = django_getenv("DJANGO_BPP_CELERY_VHOST", "localhost")
+
+
+BROKER_URL = django_getenv("DJANGO_BPP_BROKER_URL",
+                           "amqp://%s:%s@%s:%s/%s" % (CELERY_USER,
+                                                      CELERY_PASSWORD,
+                                                      CELERY_HOST,
+                                                      CELERY_PORT,
+                                                      CELERY_VHOST))
 # BYłO: redis://%s:%s/%s' % (REDIS_HOST, REDIS_PORT, REDIS_DB_BROKER)
 # CELERY_RESULT_BACKEND = 'redis://%s:%s/%s' % (REDIS_HOST, REDIS_PORT, REDIS_DB_CELERY)
 

@@ -320,49 +320,35 @@ class ModelHistoryczny(models.Model):
 from django.core.validators import URLValidator
 url_validator = URLValidator()
 
+import re
+ss_regex = re.compile(r"ss\. (?P<ile_stron>[0-9]+)")
+s_regex = re.compile(r"s\. (?P<od_strony>[0-9]+)-(?P<do_strony>[0-9]+)")
+single_s_regex = re.compile(r"s\. (?P<ile_stron>[0-9]+)")
+
 class PBNSerializerHelperMixin:
 
-    def serializuj_strony(self, toplevel):
+    def eksport_zakres_stron(self):
+        res = ss_regex.search(self.szczegoly)
+        if res is not None:
+            ile = res.groups()[0]
+            return "1-%s" % ile
 
-        def znajdz_znak_rozdzielajacy(ciag):
-            for elem in ciag:
-                if elem in "0123456789":
-                    continue
-                return elem
+        res = s_regex.search(self.szczegoly)
+        if res is not None:
+            ile = res.groups()
+            return "%s-%s" % (ile[0], ile[1])
 
-        if self.szczegoly.find("s. bibliogr") >= 0:
-            return
+        res = single_s_regex.search(self.szczegoly)
+        if res is not None:
+            ile = res.groups()[0]
+            return "%s-%s" % (ile, ile)
 
-        if self.szczegoly.find("s.") >= 0:
+
+    def eksport_serializuj_strony(self, toplevel):
+        zakres = self.eksport_zakres_stron()
+        if zakres:
             pages = SubElement(toplevel, "pages")
-
-            no_pages = self.szczegoly.split("s.", 1)[1].strip()
-
-            if no_pages.find(",") >= 0:
-                no_pages = no_pages.split(",")[0]
-
-            no_pages = no_pages.strip(".").strip()
-
-            znak_rozdzielajacy = znajdz_znak_rozdzielajacy(no_pages)
-            if znak_rozdzielajacy is not None:
-                no_pages = no_pages.replace(znak_rozdzielajacy, "-")
-            else:
-                no_pages = no_pages + "-" + no_pages
-
-            no_pages = no_pages.replace(" ", "").replace("\t", "").replace("\n", "").replace("]", "")
-            if no_pages[0] == "-":
-                no_pages = no_pages[1:]
-
-            if znak_rozdzielajacy is not None:
-                no_pages = no_pages.replace(znak_rozdzielajacy + znak_rozdzielajacy, znak_rozdzielajacy)
-                no_pages = no_pages.replace(znak_rozdzielajacy + znak_rozdzielajacy, znak_rozdzielajacy)
-
-            no_pages = no_pages.replace(". bibliogr. sum", "")
-            no_pages = no_pages.replace(".bibliogr.sum", "")
-
-            no_pages = no_pages.replace("--", "-")
-
-            pages.text = no_pages
+            pages.text = zakres
 
     def serializuj_is(self, toplevel):
         is_text = self.guess_pbn_type()
