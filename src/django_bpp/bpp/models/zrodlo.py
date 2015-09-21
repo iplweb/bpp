@@ -143,7 +143,7 @@ class Zrodlo(ModelZAdnotacjami, ModelZISSN):
             zrodlo=self).values_list(
             'rok', flat=True).distinct().order_by('rok')
 
-    def serializuj_dla_pbn(self):
+    def eksport_pbn_serializuj(self):
         journal = Element('journal')
 
         title_kw = {}
@@ -163,7 +163,6 @@ class Zrodlo(ModelZAdnotacjami, ModelZISSN):
 
         if self.www:
             website = SubElement(journal, 'website', href=self.www)
-
 
         system_identifier = SubElement(journal, 'system-identifier')
         system_identifier.text = str(self.pk)

@@ -76,7 +76,7 @@ def eksport_pbn(pk):
     def gen_ser():
         if artykuly:
             for ic in id_ciaglych(wydzial, rok):
-                yield Wydawnictwo_Ciagle.objects.get(pk=ic).serializuj_dla_pbn(wydzial)
+                yield Wydawnictwo_Ciagle.objects.get(pk=ic).eksport_pbn_serializuj(wydzial)
 
         if ksiazki and rozdzialy:
             informuj(u"... generuję książki i rodziały dla %s, rok %s" % (wydzial.nazwa, rok))
@@ -86,7 +86,7 @@ def eksport_pbn(pk):
             informuj(u"... generuję książki dla %s, rok %s" % (wydzial.nazwa, rok))
 
         for iz in id_zwartych(wydzial, rok, ksiazki, rozdzialy):
-            yield Wydawnictwo_Zwarte.objects.get(pk=iz).serializuj_dla_pbn(wydzial)
+            yield Wydawnictwo_Zwarte.objects.get(pk=iz).eksport_pbn_serializuj(wydzial)
 
     tmpdir = mkdtemp()
 

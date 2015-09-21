@@ -102,73 +102,82 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
     def is_chapter(self):
         return self.charakter_formalny.skrot in ['ROZ', 'ROZS']
 
-    def serializuj_dla_pbn(self, wydzial):
-        toplevel = Element('book')
-        if self.is_chapter:
-            toplevel = Element('chapter')
-
-        ma_autorow = self.serializuj_typowe_elementy(toplevel, wydzial, Wydawnictwo_Zwarte_Autor)
-
-        if not self.is_chapter and self.isbn:
+    def eksport_pbn_isbn(self, toplevel, wydzial=None, autorzy_klass=None):
+        if self.isbn:
             isbn = SubElement(toplevel, 'isbn')
             isbn.text = self.isbn.replace(".", "").strip()
 
-        #     <series> </series>
-        #     <number-in-series>3</number-in-series>
+    def eksport_pbn_publisher_name(self, toplevel, wydzial=None, autorzy_klass=None):
+        publisher_name = SubElement(toplevel, 'publisher-name')
+        publisher_name.text = self.wydawnictwo
 
-        #     <edition>2</edition>
-        #     <volume>15</volume>
+    def eksport_pbn_publication_place(self, toplevel, wydzial=None, autorzy_klass=None):
+        if self.miejsce_i_rok:
+            try:
+                miejsce, rok = self.miejsce_i_rok.split(" ")
+            except ValueError:
+                miejsce = self.miejsce_i_rok
 
-        if not self.is_chapter:
-            publisher_name = SubElement(toplevel, 'publisher-name')
-            publisher_name.text = self.wydawnictwo
+            if miejsce:
+                publication_place = SubElement(toplevel, 'publication-place')
+                publication_place.text = miejsce
 
-            if self.miejsce_i_rok:
-                try:
-                    miejsce, rok = self.miejsce_i_rok.split(" ")
-                except ValueError:
-                    miejsce = self.miejsce_i_rok
+    def eksport_pbn_size(self, toplevel, wydzial=None, autorzy_klass=None):
+        if self.liczba_znakow_wydawniczych:
+            size = SubElement(toplevel, 'size', unit="sheets")
+            size.text = str(int(ceil(self.liczba_znakow_wydawniczych / 40000.0)))
 
-                if miejsce:
-                    publication_place = SubElement(toplevel, 'publication-place')
-                    publication_place.text = miejsce
+    def eksport_pbn_book(self, toplevel, wydzial=None, autorzy_klass=None):
+        def add_wydawnictwo_nadrzedne_data(book, wydawnictwo_nadrzedne, title_text=None):
+            title = SubElement(book, 'title')
+            if not title_text:
+                title_text = wydawnictwo_nadrzedne.tytul_oryginalny
+            title.text = title_text
 
-        if ma_autorow:
-            if self.liczba_znakow_wydawniczych:
-                size = SubElement(toplevel, 'size', unit="sheets")
-                size.text = str(int(ceil(self.liczba_znakow_wydawniczych / 40000.0)))
+            publication_date = SubElement(book, 'publication-date')
+            publication_date.text = str(wydawnictwo_nadrzedne.rok)
 
-            self.serializuj_is(toplevel)
+            if wydawnictwo_nadrzedne.isbn:
+                isbn = SubElement(book, 'isbn')
+                isbn.text = wydawnictwo_nadrzedne.isbn.replace(".", "").strip()
 
-            if self.is_chapter:
+            if wydawnictwo_nadrzedne.wydawnictwo:
+                publisher_name = SubElement(book, 'publisher-name')
+                publisher_name.text = wydawnictwo_nadrzedne.wydawnictwo
 
-                def add_wydawnictwo_nadrzedne_data(book, wydawnictwo_nadrzedne, title_text=None):
-                    title = SubElement(book, 'title')
-                    if not title_text:
-                        title_text = wydawnictwo_nadrzedne.tytul_oryginalny
-                    title.text = title_text
+        book = SubElement(toplevel, 'book')
 
-                    publication_date = SubElement(book, 'publication-date')
-                    publication_date.text = str(wydawnictwo_nadrzedne.rok)
+        if self.wydawnictwo_nadrzedne:
+            add_wydawnictwo_nadrzedne_data(book, self.wydawnictwo_nadrzedne)
 
-                    if wydawnictwo_nadrzedne.isbn:
-                        isbn = SubElement(book, 'isbn')
-                        isbn.text = wydawnictwo_nadrzedne.isbn.replace(".", "").strip()
+        else:
+            add_wydawnictwo_nadrzedne_data(
+                book, self,
+                title_text=self.informacje.split("W:", 1)[1].strip())
 
-                    if wydawnictwo_nadrzedne.wydawnictwo:
-                        publisher_name = SubElement(book, 'publisher-name')
-                        publisher_name.text = wydawnictwo_nadrzedne.wydawnictwo
+    def eksport_pbn_editor(self, toplevel, wydzial, autorzy_klass):
+        from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte_Autor
+        if autorzy_klass == Wydawnictwo_Zwarte_Autor:
+            for redaktor_wyd in autorzy_klass.objects.filter(
+                    rekord=self,
+                    typ_odpowiedzialnosci__skrot__in=['red.', 'red. nauk. wyd. pol.']):
+                afi = redaktor_wyd.autor.afiliacja_na_rok(self.rok, wydzial, rozszerzona=True)
+                toplevel.append(redaktor_wyd.autor.eksport_pbn_serializuj(affiliated=afi, employed=afi, tagname='editor'))
 
-                book = SubElement(toplevel, 'book')
+    eksport_pbn_BOOK_FLDS = ["editor", "isbn", "series", "number-in-series", "edition", "volume", "pages",
+                             "publisher-name", "publication-place"]
+    eksport_pbn_CHAPTER_FLDS = ["editor", "chapter-number", "book", "pages"]
 
-                if self.wydawnictwo_nadrzedne:
-                    add_wydawnictwo_nadrzedne_data(book, self.wydawnictwo_nadrzedne)
+    def eksport_pbn_serializuj(self, wydzial):
+        toplevel = Element('book')
+        flds = self.eksport_pbn_BOOK_FLDS
 
-                else:
-                    add_wydawnictwo_nadrzedne_data(
-                        book, self,
-                        title_text=self.informacje.split("W:", 1)[1].strip())
+        if self.is_chapter:
+            toplevel = Element('chapter')
+            flds = self.eksport_pbn_CHAPTER_FLDS
 
-            self.eksport_serializuj_strony(toplevel)
+        super(Wydawnictwo_Zwarte, self).eksport_pbn_serializuj(toplevel, wydzial, Wydawnictwo_Zwarte_Autor)
+
+        self.eksport_pbn_run_serialization_functions(flds, toplevel, wydzial, Wydawnictwo_Zwarte_Autor)
 
         return toplevel
