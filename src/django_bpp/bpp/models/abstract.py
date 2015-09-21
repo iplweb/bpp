@@ -89,8 +89,8 @@ class ModelZISSN(models.Model):
 
 class ModelZISBN(models.Model):
     """Model z numerem ISBN oraz E-ISBN"""
-    isbn = models.CharField("ISBN", max_length=64, blank=True, null=True)
-    e_isbn = models.CharField("E-ISBN", max_length=64, blank=True, null=True)
+    isbn = models.CharField("ISBN", max_length=64, blank=True, null=True, db_index=True)
+    e_isbn = models.CharField("E-ISBN", max_length=64, blank=True, null=True, db_index=True)
 
     class Meta:
         abstract = True

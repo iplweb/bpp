@@ -359,7 +359,7 @@ class Wydawnictwo_ZwarteAdmin_Baza(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
 
     search_fields = [
         'tytul', 'tytul_oryginalny', 'szczegoly', 'uwagi', 'informacje',
-        'slowa_kluczowe', 'rok',
+        'slowa_kluczowe', 'rok', 'isbn',
         'wydawnictwo', 'redakcja', 'adnotacje']
 
     list_filter = ['status_korekty', 'afiliowana', 'recenzowana', 'typ_kbn',
