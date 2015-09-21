@@ -31,11 +31,11 @@ def test_id_ciaglych(wydawnictwo_ciagle_z_autorem, wydzial, rok):
 
 
 def test_serializuj_pbn_ciagle(wydawnictwo_ciagle_z_autorem, wydzial):
-    wydawnictwo_ciagle_z_autorem.serializuj_dla_pbn(wydzial)
+    wydawnictwo_ciagle_z_autorem.eksport_pbn_serializuj(wydzial)
 
 
 def test_serializuj_pbn_zwarte(wydawnictwo_zwarte_z_autorem, wydzial):
-    wydawnictwo_zwarte_z_autorem.serializuj_dla_pbn(wydzial)
+    wydawnictwo_zwarte_z_autorem.eksport_pbn_serializuj(wydzial)
 
 
 def test_eksport_pbn(normal_django_user, jednostka, autor_jan_kowalski, wydawnictwo_ciagle, wydawnictwo_zwarte, rok):

@@ -7,7 +7,7 @@ from selenium_helpers import SeleniumTestCase, wd
 import time
 from bpp.models import Autor, Zrodlo
 from selenium.webdriver.common.keys import Keys
-
+import sys
 
 class AutorzyPage(wd()):
     def get_search_box(self):
@@ -41,13 +41,17 @@ class TestAutorzyPage(SeleniumTestCase):
     def test_autorzy_search_form(self):
         input = self.page.get_search_box()
         input.send_keys('Atest', Keys.RETURN)
-        time.sleep(1)
+        time.sleep(2)
         self.assert_('Atest' in self.page.page_source)
 
         input = self.page.get_search_box()
-        input.send_keys(Keys.CONTROL, 'a')
+        ctrl = Keys.CONTROL
+        if sys.platform == 'darwin':
+            ctrl = Keys.COMMAND
+        input.send_keys(ctrl, 'a')
+
         input.send_keys('Btest', Keys.RETURN)
-        time.sleep(1)
+        time.sleep(2)
         self.assert_('Atest' not in self.page.page_source)
 
 
@@ -87,7 +91,11 @@ class TestZrodlaPage(SeleniumTestCase):
         self.assert_('Atest' in self.page.page_source)
 
         input = self.page.get_zrodlo_box()
-        input.send_keys(Keys.CONTROL, 'a')
+        ctrl = Keys.CONTROL
+        if sys.platform == 'darwin':
+            ctrl = Keys.COMMAND
+
+        input.send_keys(ctrl, 'a')
         input.send_keys('Btest', Keys.RETURN)
         time.sleep(1)
         self.assert_('Atest' not in self.page.page_source)

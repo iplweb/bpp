@@ -234,7 +234,7 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
                 return Autor_Jednostka.objects.filter(
                     autor=self).order_by('-rozpoczal_prace', '-pk')[0].jednostka
 
-    def serializuj_dla_pbn(self, tagname='author', affiliated=True, employed=True):
+    def eksport_pbn_serializuj(self, tagname='author', affiliated=True, employed=True):
         author = Element(tagname)
 
         given_names = SubElement(author, 'given-names')

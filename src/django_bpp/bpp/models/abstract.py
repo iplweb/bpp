@@ -325,9 +325,10 @@ ss_regex = re.compile(r"ss\. (?P<ile_stron>[0-9]+)")
 s_regex = re.compile(r"s\. (?P<od_strony>[0-9]+)-(?P<do_strony>[0-9]+)")
 single_s_regex = re.compile(r"s\. (?P<ile_stron>[0-9]+)")
 
+
 class PBNSerializerHelperMixin:
 
-    def eksport_zakres_stron(self):
+    def eksport_pbn_zakres_stron(self):
         res = ss_regex.search(self.szczegoly)
         if res is not None:
             ile = res.groups()[0]
@@ -344,64 +345,90 @@ class PBNSerializerHelperMixin:
             return "%s-%s" % (ile, ile)
 
 
-    def eksport_serializuj_strony(self, toplevel):
-        zakres = self.eksport_zakres_stron()
+    def eksport_pbn_pages(self, toplevel, wydzial=None, autorzy_klass=None):
+        zakres = self.eksport_pbn_zakres_stron()
         if zakres:
             pages = SubElement(toplevel, "pages")
             pages.text = zakres
 
-    def serializuj_is(self, toplevel):
-        is_text = self.guess_pbn_type()
+    eksport_pbn_TYP_KBN_MAP = {
+        'PO': 'original-article',
+        'PW': 'original-article',
+        'PP': 'review-article',
+        'PNP': 'popular-science-article',
+        '000': 'others-citable'
+    }
+
+
+    def eksport_pbn_is(self, toplevel, wydzial=None, autorzy_klass=None):
+        if self.charakter_formalny.charakter_pbn != None:
+            return self.charakter_formalny.charakter_pbn.identyfikator
+
+        is_text = None
+        tks = self.typ_kbn.skrot
+        if self.eksport_pbn_TYP_KBN_MAP.get(tks):
+            is_text = self.eksport_pbn_TYP_KBN_MAP.get(tks)
 
         if is_text:
             _is = SubElement(toplevel, 'is')
             _is.text = is_text
 
+    def eksport_pbn_system_identifier(self, toplevel, wydzial=None, autorzy_klass=None):
         system_identifier = SubElement(toplevel, 'system-identifier')
         system_identifier.text = str(self.pk)
 
-    def serializuj_typowe_elementy(self, toplevel, wydzial, autorzy_klass):
+    def eksport_pbn_title(self, toplevel, wydzial=None, autorzy_klass=None):
         title = SubElement(toplevel, 'title')
         title.text = self.tytul_oryginalny
 
-        wszyscy_autorzy = self.autorzy.all().count()
-        dopisani_autorzy = 0
-
+    def eksport_pbn_author(self, toplevel, wydzial, autorzy_klass):
         for autor_wyd in autorzy_klass.objects.filter(rekord=self, typ_odpowiedzialnosci__skrot='aut.'):
             if autor_wyd.autor.afiliacja_na_rok(self.rok, wydzial, rozszerzona=True):
-                toplevel.append(autor_wyd.autor.serializuj_dla_pbn(affiliated=True, employed=True))
-                dopisani_autorzy += 1
+                toplevel.append(autor_wyd.autor.eksport_pbn_serializuj(affiliated=True, employed=True))
 
+    def eksport_pbn_other_contributors(self, toplevel, wydzial, autorzy_klass):
+        dopisani_autorzy = 0
+        wszyscy_autorzy = self.autorzy.all().count()
+        for autor_wyd in autorzy_klass.objects.filter(rekord=self, typ_odpowiedzialnosci__skrot='aut.'):
+            if autor_wyd.autor.afiliacja_na_rok(self.rok, wydzial, rozszerzona=True):
+                dopisani_autorzy += 1
         other_contributors = SubElement(toplevel, 'other-contributors')
         other_contributors.text = str(wszyscy_autorzy - dopisani_autorzy)
 
-        # Redaktorzy tylko dla wydawnictw zwartych
-        from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte_Autor
-        if autorzy_klass == Wydawnictwo_Zwarte_Autor:
-            for redaktor_wyd in autorzy_klass.objects.filter(rekord=self,
-                                                             typ_odpowiedzialnosci__skrot__in=['red.',
-                                                                                               'red. nauk. wyd. pol.']):
-                afi = redaktor_wyd.autor.afiliacja_na_rok(self.rok, wydzial, rozszerzona=True)
-                toplevel.append(redaktor_wyd.autor.serializuj_dla_pbn(affiliated=afi, employed=afi, tagname='editor'))
+    def eksport_pbn_lang(self, toplevel, wydzial=None, autorzy_klass=None):
+        lang = SubElement(toplevel, 'lang')
+        lang.text = self.jezyk.get_skrot_dla_pbn()
 
-        if dopisani_autorzy:
-            lang = SubElement(toplevel, 'lang')
-            lang.text = self.jezyk.get_skrot_dla_pbn()
+    def eksport_pbn_keywords(self, toplevel, wydzial=None, autorzy_klass=None):
+        if self.slowa_kluczowe:
+            lang = self.jezyk.get_skrot_dla_pbn()
+            keywords = SubElement(toplevel, 'keywords', lang=lang)
+            for elem in self.slowa_kluczowe.split(","):
+                k = SubElement(keywords, 'k')
+                k.text = elem.strip()
 
-            if self.slowa_kluczowe:
-                keywords = SubElement(toplevel, 'keywords', lang=lang.text)
-                for elem in self.slowa_kluczowe.split(","):
-                    k = SubElement(keywords, 'k')
-                    k.text = elem.strip()
+    def eksport_pbn_public_uri(self, toplevel, wydzial=None, autorzy_klass=None):
+        if self.www:
+            try:
+                url_validator(self.www)
+                public_uri = SubElement(toplevel, "public-uri", href=self.www)
+            except (ValueError, ValidationError):
+                pass
 
-            if self.www:
-                try:
-                    url_validator(self.www)
-                    public_uri = SubElement(toplevel, "public-uri", href=self.www)
-                except (ValueError, ValidationError):
-                    pass
+    def eksport_pbn_publication_date(self, toplevel, wydzial=None, autorzy_klass=None):
+        publication_date = SubElement(toplevel, 'publication-date')
+        publication_date.text = str(self.rok)
 
-            publication_date = SubElement(toplevel, 'publication-date')
-            publication_date.text = str(self.rok)
+    def eksport_pbn_run_serialization_functions(self, names, toplevel, wydzial, autorzy_klass):
+        for elem in names:
+            func = "eksport_pbn_" + elem.replace("-", "_")
+            f = getattr(self, func, None)
+            if f and hasattr(f, "__call__"):
+                f(toplevel, wydzial, autorzy_klass)
 
-        return dopisani_autorzy > 0
+    def eksport_pbn_serializuj(self, toplevel, wydzial, autorzy_klass):
+        self.eksport_pbn_run_serialization_functions(
+            ['title', 'author', "other-contributors", "doi",
+            "lang", "abstract", "keywords", "public-uri", "publication-date",
+            "conference", "size", "is", "system-identifier"],
+            toplevel, wydzial, autorzy_klass)

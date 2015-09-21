@@ -27,14 +27,6 @@ class Wydawnictwo_Ciagle_Autor(BazaModeluOdpowiedzialnosciAutorow):
              ('rekord', 'autor', 'kolejnosc')]
 
 
-TYP_KBN_MAP = {
-    'PO': 'original-article',
-    'PW': 'original-article',
-    'PP': 'review-article',
-    'PNP': 'popular-science-article',
-    '000': 'others-citable'
-}
-
 class Wydawnictwo_Ciagle(ZapobiegajNiewlasciwymCharakterom,
                          Wydawnictwo_Baza, DwaTytuly, ModelZRokiem,
                          ModelZeStatusem,
@@ -74,31 +66,24 @@ class Wydawnictwo_Ciagle(ZapobiegajNiewlasciwymCharakterom,
         verbose_name_plural = "wydawnictwa ciągłe"
         app_label = 'bpp'
 
-    def guess_pbn_type(self):
-        if self.charakter_formalny.charakter_pbn != None:
-            return self.charakter_formalny.charakter_pbn.identyfikator
+    eksport_pbn_FLDS = ["journal", "issue", "volume", "pages", "open-access"]
 
-        tks = self.typ_kbn.skrot
-        if TYP_KBN_MAP.get(tks):
-            return TYP_KBN_MAP.get(tks)
+    def eksport_pbn_journal(self, toplevel, wydzial=None, autorzy_klass=None):
+        if self.zrodlo:
+            toplevel.append(self.zrodlo.eksport_pbn_serializuj())
 
-    def serializuj_dla_pbn(self, wydzial):
-        article = Element('article')
-        self.serializuj_typowe_elementy(article, wydzial, Wydawnictwo_Ciagle_Autor)
-
-        self.serializuj_is(article)
-
-        if self.zrodlo is not None:
-            article.append(self.zrodlo.serializuj_dla_pbn())
-
+    def eksport_pbn_issue(self, toplevel, wydzial=None, autorzy_klass=None):
         if self.informacje.find("nr") >= 0:
-            issue = SubElement(article, "issue")
+            issue = SubElement(toplevel, "issue")
             issue.text = self.informacje.split("nr")[1].strip().split(" ")[0]
 
+    def eksport_pbn_volume(self, toplevel, wydzial=None, autorzy_klass=None):
         if self.informacje.find("vol.") >= 0:
-            volume = SubElement(article, 'volume')
+            volume = SubElement(toplevel, 'volume')
             volume.text = self.informacje.split("vol.")[1].strip().split(" ")[0]
 
-        self.eksport_serializuj_strony(article)
-
-        return article
+    def eksport_pbn_serializuj(self, wydzial):
+        toplevel = Element('article')
+        super(Wydawnictwo_Ciagle, self).eksport_pbn_serializuj(toplevel, wydzial, Wydawnictwo_Ciagle_Autor)
+        self.eksport_pbn_run_serialization_functions(self.eksport_pbn_FLDS, toplevel, wydzial, Wydawnictwo_Ciagle_Autor)
+        return toplevel
