@@ -12,7 +12,7 @@ from bpp.models.abstract import \
     ModelZWWW, ModelAfiliowanyRecenzowany, ModelPunktowany, ModelTypowany, \
     ModelZeSzczegolami, ModelZInformacjaZ, ModelZeStatusem, ModelZISBN, ModelZAdnotacjami, ModelZCharakterem, \
     Wydawnictwo_Baza, \
-    PBNSerializerHelperMixin
+    PBNSerializerHelperMixin, ModelZOpenAccess, ModelZPubmedID, ModelZDOI
 from bpp.models.autor import Autor
 from bpp.models.util import ZapobiegajNiewlasciwymCharakterom
 
@@ -35,7 +35,7 @@ class Wydawnictwo_Zwarte_Autor(BazaModeluOdpowiedzialnosciAutorow):
 
 class Wydawnictwo_Zwarte_Baza(
     Wydawnictwo_Baza, DwaTytuly, ModelZRokiem, ModelZeStatusem,
-    ModelZWWW, ModelAfiliowanyRecenzowany,
+    ModelZWWW, ModelZPubmedID, ModelZDOI, ModelAfiliowanyRecenzowany,
     ModelPunktowany, ModelTypowany, ModelZeSzczegolami,
     ModelZInformacjaZ, ModelZISBN, ModelZAdnotacjami):
     """Baza dla klas Wydawnictwo_Zwarte oraz Praca_Doktorska_Lub_Habilitacyjna
@@ -53,9 +53,17 @@ class Wydawnictwo_Zwarte_Baza(
     class Meta:
         abstract = True
 
+class ModelZOpenAccessWydawnictwoZwarte(ModelZOpenAccess):
+    openaccess_tryb_dostepu = models.ForeignKey("Tryb_OpenAccess_Wydawnictwo_Zwarte", blank=True, null=True)
+
+    class Meta:
+        abstract = True
+
+
 class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
                          Wydawnictwo_Zwarte_Baza, ModelZCharakterem,
-                         PBNSerializerHelperMixin):
+                         PBNSerializerHelperMixin,
+                         ModelZOpenAccessWydawnictwoZwarte):
     """Wydawnictwo zwarte, czyli: książki, broszury, skrypty, fragmenty,
     doniesienia zjazdowe."""
 

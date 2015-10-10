@@ -1,0 +1,56 @@
+<script type="text/javascript">
+
+        $(document).ready(function(){
+            var i = $("#id_pubmed_id");
+
+            $("<input id='id_pubmed_id_get' type='button' value='Pobierz PubmedID'/>").insertAfter(i);
+
+            var pubmed_button = $("#id_pubmed_id_get");
+            var orig = pubmed_button.val();
+
+            pubmed_button.click(function(){
+                var t = $("#id_tytul_oryginalny").val();
+                if (!t){
+                    alert("Aby wykonać zapytanie, potrzebny jest tytuł w polu 'Tytuł oryginalny'.");
+                    return;
+                }
+
+                pubmed_button.val("Czekaj...");
+                pubmed_button.attr('disabled', true);
+
+                $.ajax({
+                    type: "POST",
+                    url: "{% url "bpp:api_pubmed_id" %}",
+                    data: {t: t},
+                    error: function(request, status, error){
+                        alert('Wystąpił błąd! (' + status + ', ' + error + ').');
+                        return;
+                    },
+                    success: function(data, text) {
+                        var found = false;
+
+                        pubmed_button.val("Pobrano!");
+                        pubmed_button.attr('disabled', false);
+
+                        if (data.pubmed_id) {
+                            $("#id_pubmed_id").val(data.pubmed_id);
+                            found = true;
+                        }
+
+                        if (data.doi) {
+                            $("#id_doi").val(data.doi);
+                            found = true;
+                        }
+
+                        if (!found)
+                            pubmed_button.val("Brak danych w PubMed!");
+
+                        // data.has_abstract_text
+                    }
+                });
+
+            });
+
+
+        });
+</script>

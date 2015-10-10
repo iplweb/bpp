@@ -17,12 +17,20 @@ SYSTEM_MENU = [
     (u'Charaktery formalne', '/admin/bpp/charakter_formalny/'),
     (u'Funkcje w jednostce', '/admin/bpp/funkcja_autora/'),
     (u'Języki', '/admin/bpp/jezyk/'),
+
+    (u'OpenAccess: wydawnictwa ciągłe', '/admin/bpp/tryb_openaccess_wydawnictwo_ciagle'),
+    (u'OpenAccess: wydawnictwa zwarte', '/admin/bpp/tryb_openaccess_wydawnictwo_ciagle'),
+    (u'OpenAccess: czas udostępnienia',  '/admin/bpp/czas_udostepnienia_openaccess'),
+    (u'OpenAccess: licencja', '/admin/bpp/licencja_openaccess'),
+    (u'OpenAccess: wersja tekstu', '/admin/bpp/wersja_tekstu_openaccess'),
+
     (u'Rodzaje źródeł', '/admin/bpp/rodzaj_zrodla/'),
     (u'Statusy korekt', '/admin/bpp/status_korekty/'),
     (u'Typy KBN', '/admin/bpp/typ_kbn/'),
     (u'Typy odpowiedzialności', '/admin/bpp/typ_odpowiedzialnosci/'),
     (u'Tytuły', '/admin/bpp/tytul/'),
     (u'Źródło informacji', '/admin/bpp/zrodlo_informacji/'),
+
 ]
 
 STRUKTURA_MENU = [

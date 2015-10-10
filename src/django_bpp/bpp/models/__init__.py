@@ -34,6 +34,8 @@ from bpp.models.kronika_view import *
 
 from bpp.models.opi_2012 import *
 
+from bpp.models.openaccess import *
+
 
 TABLE_TO_MODEL = {
     "bpp_wydawnictwo_ciagle": Wydawnictwo_Ciagle,

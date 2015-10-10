@@ -13,6 +13,12 @@ ADNOTACJE_FIELDSET = ('Adnotacje', {
     'classes': ('grp-collapse grp-closed', ),
     'fields': (ZapiszZAdnotacjaMixin.readonly_fields + ('adnotacje',))})
 
+OPENACCESS_FIELDSET = ("OpenAccess", {
+    'classes': ('grp-collapse grp-closed',),
+    'fields': ('openaccess_tryb_dostepu', 'openaccess_licencja',
+               'openaccess_wersja_tekstu', 'openaccess_czas_publikacji')
+})
+
 HISTORYCZNY_FIELDSET = ('Historia', {
     'classes': ('grp-collapse grp-closed', ),
     'fields': ('rozpoczecie_funkcjonowania', 'zakonczenie_funkcjonowania')})
@@ -42,8 +48,18 @@ MODEL_Z_ISBN = (
 
 MODEL_Z_WWW = (
     'www',
-    'dostep_dnia'
+    'dostep_dnia',
+    'public_www',
+    'public_dostep_dnia',
     )
+
+MODEL_Z_PUBMEDID = (
+    'pubmed_id',
+)
+
+MODEL_Z_DOI = (
+    'doi',
+)
 
 MODEL_Z_ROKIEM = (
     'rok',
@@ -120,12 +136,12 @@ POZOSTALE_MODELE_WYDAWNICTWO_ZWARTE_FIELDSET = ('Pozostałe informacje', {
 
 EKSTRA_INFORMACJE_WYDAWNICTWO_CIAGLE_FIELDSET = ('Ekstra informacje', {
     'classes': ('grp-collapse grp-closed', ),
-    'fields': MODEL_Z_ISSN + MODEL_Z_WWW
+    'fields': MODEL_Z_ISSN + MODEL_Z_WWW + MODEL_Z_PUBMEDID + MODEL_Z_DOI
 })
 
 EKSTRA_INFORMACJE_WYDAWNICTWO_ZWARTE_FIELDSET = ('Ekstra informacje', {
     'classes': ('grp-collapse grp-closed', ),
-    'fields': MODEL_Z_ISBN + MODEL_Z_WWW
+    'fields': MODEL_Z_ISBN + MODEL_Z_WWW + MODEL_Z_PUBMEDID + MODEL_Z_DOI
 })
 
 

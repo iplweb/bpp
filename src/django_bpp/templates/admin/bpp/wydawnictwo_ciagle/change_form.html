@@ -55,8 +55,12 @@
 
     </script>
 
+    {%  include "admin/pubmed_id_button_handler.html" %}
+
     <script type="text/javascript">
+
         $(document).ready(function () {
+            var wypelnij_pola_punktacji, dodaj_punktacje_do_zrodla, names;
 
             wypelnij_pola_punktacji = "Wypełnij pola punktacji";
             dodaj_punktacje_do_zrodla = "Dodaj punktację do źródła";
@@ -79,6 +83,8 @@
             });
 
             function walidujParametry() {
+                var zrodlo, rok;
+
                 zrodlo = $("#id_zrodlo").val();
                 if (zrodlo == null) {
                     alert("Najpierw wybierz jakieś źródło.");
@@ -107,6 +113,8 @@
                             'Dodaj punktację do źródła</button>');
 
             $("#id_dodaj_punktacje_do_zrodla_button").click(function () {
+                var ret, data;
+
                 ret = walidujParametry();
                 if (ret == false)
                     return ret;
@@ -159,6 +167,8 @@
             });
 
             $("#id_wypelnij_pola_punktacji_button").click(function () {
+                var ret;
+
                 ret = walidujParametry();
                 if (ret == false)
                     return ret;

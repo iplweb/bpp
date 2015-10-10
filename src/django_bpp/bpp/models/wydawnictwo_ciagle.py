@@ -8,7 +8,8 @@ from secure_input.utils import safe_html
 from bpp.models.abstract import BazaModeluOdpowiedzialnosciAutorow, DwaTytuly, ModelZRokiem, \
     ModelZWWW, ModelAfiliowanyRecenzowany, ModelPunktowany, ModelTypowany, \
     ModelZeSzczegolami, ModelZInformacjaZ, ModelZeStatusem, ModelZISSN, \
-    ModelZAdnotacjami, ModelZCharakterem, Wydawnictwo_Baza, PBNSerializerHelperMixin
+    ModelZAdnotacjami, ModelZCharakterem, Wydawnictwo_Baza, PBNSerializerHelperMixin, ModelZOpenAccess, ModelZPubmedID, \
+    ModelZDOI
 from bpp.models.util import dodaj_autora, ZapobiegajNiewlasciwymCharakterom
 
 
@@ -27,13 +28,22 @@ class Wydawnictwo_Ciagle_Autor(BazaModeluOdpowiedzialnosciAutorow):
              ('rekord', 'autor', 'kolejnosc')]
 
 
+class ModelZOpenAccessWydawnictwoCiagle(ModelZOpenAccess):
+    openaccess_tryb_dostepu = models.ForeignKey(
+        "Tryb_OpenAccess_Wydawnictwo_Ciagle", verbose_name="OpenAccess: tryb dostępu", blank=True, null=True)
+
+    class Meta:
+        abstract = True
+
+
 class Wydawnictwo_Ciagle(ZapobiegajNiewlasciwymCharakterom,
                          Wydawnictwo_Baza, DwaTytuly, ModelZRokiem,
                          ModelZeStatusem,
-                         ModelZWWW, ModelAfiliowanyRecenzowany,
+                         ModelZWWW, ModelZPubmedID, ModelZDOI, ModelAfiliowanyRecenzowany,
                          ModelPunktowany, ModelTypowany, ModelZeSzczegolami,
                          ModelZISSN, ModelZInformacjaZ, ModelZAdnotacjami,
-                         ModelZCharakterem, PBNSerializerHelperMixin):
+                         ModelZCharakterem, PBNSerializerHelperMixin,
+                         ModelZOpenAccessWydawnictwoCiagle):
     """Wydawnictwo ciągłe, czyli artykuły z czasopism, komentarze, listy
     do redakcji, publikacje w suplemencie, etc. """
 

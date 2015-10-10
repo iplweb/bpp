@@ -11,7 +11,7 @@ from django.db import models
 from djorm_pgfulltext.fields import VectorField
 from lxml.etree import SubElement
 
-from bpp.fields import YearField
+from bpp.fields import YearField, DOIField
 from bpp.models.util import ModelZOpisemBibliograficznym
 
 
@@ -36,7 +36,7 @@ class ModelZPBN_ID(models.Model):
     pbn_id = models.IntegerField(
         verbose_name='Identyfikator PBN',
         help_text="Identyfikator w systemie Polskiej Bibliografii Naukowej (PBN)",
-        null=True, blank=True)
+        null=True, blank=True, unique=True, db_index=True)
 
     class Meta:
         abstract = True
@@ -136,10 +136,28 @@ class ModelZRokiem(models.Model):
 
 class ModelZWWW(models.Model):
     """Model zawierający adres strony WWW"""
-    www = models.URLField("Adres WWW", max_length=1024, blank=True, null=True)
+    www = models.URLField("Adres WWW (płatny dostęp)", max_length=1024, blank=True, null=True)
     dostep_dnia = models.DateField(
-        "Dostęp dnia", blank=True, null=True,
+        "Dostęp dnia (płatny dostęp)", blank=True, null=True,
         help_text="""Data dostępu do strony WWW.""")
+
+    public_www = models.URLField("Adres WWW (wolny dostęp)", max_length=2048, blank=True, null=True)
+    public_dostep_dnia = models.DateField(
+        "Dostęp dnia (wolny dostęp)", blank=True, null=True,
+        help_text="""Data wolnego dostępu do strony WWW.""")
+
+    class Meta:
+        abstract = True
+
+
+class ModelZPubmedID(models.Model):
+    pubmed_id = models.BigIntegerField("PubMed ID", blank=True, null=True, help_text="Identyfikator PubMed (PMID)")
+
+    class Meta:
+        abstract = True
+
+class ModelZDOI(models.Model):
+    doi = DOIField("DOI", null=True, blank=True, db_index=True)
 
     class Meta:
         abstract = True
@@ -317,17 +335,19 @@ class ModelHistoryczny(models.Model):
     class Meta:
         abstract = True
 
+
 from django.core.validators import URLValidator
+
 url_validator = URLValidator()
 
 import re
+
 ss_regex = re.compile(r"ss\. (?P<ile_stron>[0-9]+)")
 s_regex = re.compile(r"s\. (?P<od_strony>[0-9]+)-(?P<do_strony>[0-9]+)")
 single_s_regex = re.compile(r"s\. (?P<ile_stron>[0-9]+)")
 
 
 class PBNSerializerHelperMixin:
-
     def eksport_pbn_zakres_stron(self):
         res = ss_regex.search(self.szczegoly)
         if res is not None:
@@ -344,7 +364,6 @@ class PBNSerializerHelperMixin:
             ile = res.groups()[0]
             return "%s-%s" % (ile, ile)
 
-
     def eksport_pbn_pages(self, toplevel, wydzial=None, autorzy_klass=None):
         zakres = self.eksport_pbn_zakres_stron()
         if zakres:
@@ -358,7 +377,6 @@ class PBNSerializerHelperMixin:
         'PNP': 'popular-science-article',
         '000': 'others-citable'
     }
-
 
     def eksport_pbn_is(self, toplevel, wydzial=None, autorzy_klass=None):
         if self.charakter_formalny.charakter_pbn != None:
@@ -429,6 +447,34 @@ class PBNSerializerHelperMixin:
     def eksport_pbn_serializuj(self, toplevel, wydzial, autorzy_klass):
         self.eksport_pbn_run_serialization_functions(
             ['title', 'author', "other-contributors", "doi",
-            "lang", "abstract", "keywords", "public-uri", "publication-date",
-            "conference", "size", "is", "system-identifier"],
+             "lang", "abstract", "keywords", "public-uri", "publication-date",
+             "conference", "size", "is", "system-identifier"],
             toplevel, wydzial, autorzy_klass)
+
+
+class ModelZOpenAccess(models.Model):
+    openaccess_wersja_tekstu = models.ForeignKey(
+        'Wersja_Tekstu_OpenAccess',
+        verbose_name="OpenAccess: wersja tekstu",
+        blank=True, null=True)
+
+    openaccess_licencja = models.ForeignKey(
+        "Licencja_OpenAccess",
+        verbose_name="OpenAccess: licencja",
+        blank=True,
+        null=True)
+
+    openaccess_czas_publikacji = models.ForeignKey(
+        "Czas_Udostepnienia_OpenAccess",
+        verbose_name="OpenAccess: czas udostępnienia",
+        blank=True,
+        null=True)
+
+    class Meta:
+        abstract = True
+
+
+class ModelZDOI(models.Model):
+    doi = DOIField("DOI", null=True, blank=True, db_index=True)
+    class Meta:
+        abstract = True
