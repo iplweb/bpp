@@ -19,6 +19,11 @@
                         has_value = true;
                 });
 
+                $(this).find("select").each(function () {
+                    if ($(this).val())
+                        has_value = true;
+                });
+
                 if (has_value) {
                     $(this).addClass("grp-open").removeClass("grp-closed");
                 }

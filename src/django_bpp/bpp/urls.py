@@ -2,6 +2,7 @@
 from django.conf.urls import patterns, url, include
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
+from bpp.views.api.pubmed import GetPubmedIDView
 
 from bpp.views.oai import OAIView
 from bpp.views.api import RokHabilitacjiView, PunktacjaZrodlaView, UploadPunktacjaZrodlaView, OstatniaJednostkaView
@@ -34,7 +35,10 @@ urlpatterns = patterns(
     url(r'^api/ostatnia-jednostka/$',
         csrf_exempt(OstatniaJednostkaView.as_view()),
         name='api_ostatnia_jednostka'),
-    
+    url(r'^api/pubmed-id/$',
+        csrf_exempt(GetPubmedIDView.as_view()),
+        name='api_pubmed_id'),
+
     url(r'^oai/', OAIView.as_view(), name="oai"),
 
     url(r'^jednostka/(?P<slug>[\w-]+)/$', JednostkaView.as_view(),

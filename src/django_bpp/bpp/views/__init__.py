@@ -91,6 +91,13 @@ def navigation_autocomplete(
         doloz(Rekord, Rekord.objects.fulltext_filter(q).only(
             "tytul_oryginalny", "content_type_id", "object_id").select_related()[:6])
 
+    try:
+        look_for_pk = int(q)
+        recs = Rekord.objects.filter(object_id=look_for_pk).only("tytul_oryginalny", "content_type_id", "object_id")
+        doloz(Rekord, recs)
+    except:
+        pass
+
     # DSU
     elements = [(x['label'], x) for x in elements]
     elements.sort()
@@ -139,6 +146,12 @@ def user_navigation_autocomplete(
           'bpp:browse_zrodlo')
 
     doloz_rekord(Rekord.objects.fulltext_filter(q).only("tytul_oryginalny", "content_type__model", "object_id")[:6])
+
+    try:
+        look_for_pk = int(q)
+        doloz_rekord(Rekord.objects.filter(object_id=look_for_pk))
+    except:
+        pass
 
     # DSU
     elements = [(x['label'], x) for x in elements]

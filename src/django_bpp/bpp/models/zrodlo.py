@@ -12,7 +12,7 @@ from bpp.util import FulltextSearchMixin
 from djorm_pgfulltext.fields import VectorField
 from djorm_pgfulltext.models import SearchManager
 
-from bpp.fields import YearField
+from bpp.fields import YearField, DOIField
 
 from bpp.models.abstract import ModelZNazwa, ModelZAdnotacjami, ModelZISSN, \
     ModelPunktowanyBaza
@@ -102,10 +102,28 @@ class Zrodlo(ModelZAdnotacjami, ModelZISSN):
     zasieg = models.ForeignKey(
         Zasieg_Zrodla, null=True, blank=True, default=None)
 
-    www = models.URLField("WWW", max_length=1024, blank=True, null=True)
+    www = models.URLField("WWW", max_length=1024, blank=True, null=True, db_index=True)
+
+    doi = DOIField("DOI", blank=True, null=True, db_index=True)
 
     poprzednia_nazwa = models.CharField(
         "Poprzedni tytuł", max_length=1024, db_index=True, blank=True,
+        null=True)
+
+    openaccess_tryb_dostepu = models.CharField(
+        verbose_name="OpenAccess: tryb dostępu",
+        max_length=50,
+        db_index=True,
+        blank=True,
+        choices=[('FULL', 'pełny'),
+                 ('PARTIAL', 'częściowy')]
+
+    )
+
+    openaccess_licencja = models.ForeignKey(
+        "Licencja_OpenAccess",
+        verbose_name="OpenAccess: licencja",
+        blank=True,
         null=True)
 
     jezyk = models.ForeignKey(Jezyk, null=True, blank=True)

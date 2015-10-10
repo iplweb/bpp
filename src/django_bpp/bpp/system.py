@@ -9,14 +9,16 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from multiseek.models import SearchForm
 
-from bpp.models import Funkcja_Autora, Zrodlo_Informacji, Jezyk,\
-    Rodzaj_Zrodla, Status_Korekty, Tytul, Typ_KBN, Uczelnia, Wydzial,\
-    Jednostka, Zrodlo, Autor, Autor_Jednostka,\
-    Charakter_Formalny,\
+from bpp.models import Funkcja_Autora, Zrodlo_Informacji, Jezyk, \
+    Rodzaj_Zrodla, Status_Korekty, Tytul, Typ_KBN, Uczelnia, Wydzial, \
+    Jednostka, Zrodlo, Autor, Autor_Jednostka, \
+    Charakter_Formalny, \
     Typ_Odpowiedzialnosci, \
     Wydawnictwo_Ciagle, Wydawnictwo_Zwarte, Punktacja_Zrodla, \
-    Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor,\
+    Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor, \
     Redakcja_Zrodla, Praca_Doktorska, Praca_Habilitacyjna, Patent, Patent_Autor
+from bpp.models.openaccess import Tryb_OpenAccess_Wydawnictwo_Ciagle, Tryb_OpenAccess_Wydawnictwo_Zwarte, \
+    Czas_Udostepnienia_OpenAccess, Licencja_OpenAccess, Wersja_Tekstu_OpenAccess
 from bpp.models.praca_habilitacyjna import Publikacja_Habilitacyjna
 
 User = get_user_model()
@@ -26,7 +28,12 @@ groups = {
         Charakter_Formalny,
         Funkcja_Autora, Zrodlo_Informacji,
         Jezyk, Typ_Odpowiedzialnosci, Rodzaj_Zrodla, Status_Korekty,
-        Tytul, Typ_KBN],
+        Tytul, Typ_KBN,
+        Tryb_OpenAccess_Wydawnictwo_Ciagle,
+        Tryb_OpenAccess_Wydawnictwo_Zwarte,
+        Czas_Udostepnienia_OpenAccess,
+        Licencja_OpenAccess,
+        Wersja_Tekstu_OpenAccess],
     'struktura': [Uczelnia, Wydzial, Jednostka],
     'wprowadzanie danych': [
         Zrodlo, Autor, Wydawnictwo_Ciagle, Wydawnictwo_Zwarte,

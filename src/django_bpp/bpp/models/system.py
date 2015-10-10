@@ -129,3 +129,4 @@ class Typ_KBN(NazwaISkrot):
         verbose_name_plural = 'typy KBN'
         ordering = ['nazwa']
         app_label = 'bpp'
+

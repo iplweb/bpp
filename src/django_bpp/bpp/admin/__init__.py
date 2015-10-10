@@ -18,6 +18,8 @@ from bpp.models import Jezyk, Typ_KBN, Uczelnia, Wydzial, \
 
 
 # Proste tabele
+from bpp.models.openaccess import Tryb_OpenAccess_Wydawnictwo_Ciagle, Tryb_OpenAccess_Wydawnictwo_Zwarte, \
+    Czas_Udostepnienia_OpenAccess, Licencja_OpenAccess, Wersja_Tekstu_OpenAccess
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
 from bpp.models.zrodlo import Redakcja_Zrodla
 
@@ -80,7 +82,6 @@ admin.site.register(Charakter_Formalny, Charakter_FormalnyAdmin)
 class NazwaISkrotAdmin(RestrictDeletionToAdministracjaGroupMixin, CommitedModelAdmin):
     list_display = ['skrot', 'nazwa']
 
-
 admin.site.register(Tytul, NazwaISkrotAdmin)
 admin.site.register(Typ_KBN, NazwaISkrotAdmin)
 
@@ -88,6 +89,31 @@ admin.site.register(Typ_KBN, NazwaISkrotAdmin)
 class Typ_OdpowiedzialnosciAdmin(RestrictDeletionToAdministracjaGroupMixin, CommitedModelAdmin):
     list_display = ['nazwa', 'skrot']
 
+
+class Tryb_OpenAccess_Wydawnictwo_CiagleAdmin(RestrictDeletionToAdministracjaGroupMixin, CommitedModelAdmin):
+    list_display = ['nazwa', 'skrot']
+admin.site.register(Tryb_OpenAccess_Wydawnictwo_Ciagle, Tryb_OpenAccess_Wydawnictwo_CiagleAdmin)
+
+
+class Tryb_OpenAccess_Wydawnictwo_ZwarteAdmin(RestrictDeletionToAdministracjaGroupMixin, CommitedModelAdmin):
+    list_display = ['nazwa', 'skrot']
+admin.site.register(Tryb_OpenAccess_Wydawnictwo_Zwarte, Tryb_OpenAccess_Wydawnictwo_ZwarteAdmin)
+
+
+class Czas_Udostepnienia_OpenAccessAdmin(RestrictDeletionToAdministracjaGroupMixin, CommitedModelAdmin):
+    list_display = ['nazwa', 'skrot']
+admin.site.register(Czas_Udostepnienia_OpenAccess, Czas_Udostepnienia_OpenAccessAdmin)
+
+
+class Licencja_OpenAccessAdmin(RestrictDeletionToAdministracjaGroupMixin, CommitedModelAdmin):
+    list_display = ['nazwa', 'skrot']
+admin.site.register(Licencja_OpenAccess, Licencja_OpenAccessAdmin)
+
+
+class Wersja_Tekstu_OpenAccessAdmin(RestrictDeletionToAdministracjaGroupMixin, CommitedModelAdmin):
+    list_display = ['nazwa', 'skrot']
+admin.site.register(Wersja_Tekstu_OpenAccess, Wersja_Tekstu_OpenAccessAdmin)
+    
 
 admin.site.register(Typ_Odpowiedzialnosci, Typ_OdpowiedzialnosciAdmin)
 # Uczelnia
@@ -174,12 +200,12 @@ class AutorAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
     inlines = [Autor_JednostkaInline, ]
     list_filter = ['jednostki', 'jednostki__wydzial']
     search_fields = ['imiona', 'nazwisko', 'poprzednie_nazwiska', 'email',
-                     'www']
+                     'www', 'id', 'pbn_id']
     fieldsets = (
         (None, {
             'fields': (
                 'imiona', 'nazwisko', 'tytul', 'pokazuj_na_stronach_jednostek',
-                'email', 'www')
+                'email', 'www', 'pbn_id')
         }),
         ('Biografia', {
             'classes': ('grp-collapse grp-closed',),
@@ -232,18 +258,22 @@ class ZrodloAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
     inlines = (Punktacja_ZrodlaInline, Redakcja_ZrodlaInline,)
     search_fields = ['nazwa', 'skrot', 'nazwa_alternatywna',
                      'skrot_nazwy_alternatywnej', 'issn', 'e_issn', 'www',
-                     'poprzednia_nazwa']
-    list_display = ['nazwa', 'skrot', 'nazwa_alternatywna', 'poprzednia_nazwa',
-                    'rodzaj', 'www']
-    list_filter = ['rodzaj', 'zasieg']
+                     'poprzednia_nazwa', 'doi']
+    list_display = ['nazwa', 'skrot', 'rodzaj', 'www', 'issn', 'e_issn']
+    list_filter = ['rodzaj', 'zasieg', 'openaccess_tryb_dostepu', 'openaccess_licencja']
     fieldsets = (
         (None, {
             'fields': (
                 'nazwa', 'skrot', 'rodzaj', 'nazwa_alternatywna',
-                'skrot_nazwy_alternatywnej', 'issn', 'e_issn', 'www', 'zasieg',
-                'poprzednia_nazwa', 'jezyk', 'wydawca'),
+                'skrot_nazwy_alternatywnej', 'issn', 'e_issn', 'www', 'doi',
+                'zasieg', 'poprzednia_nazwa', 'jezyk', 'wydawca',),
         }),
-        ADNOTACJE_FIELDSET)
+        ADNOTACJE_FIELDSET,
+        ("OpenAccess", {
+            'classes': ('grp-collapse grp-closed',),
+            'fields': ('openaccess_tryb_dostepu', 'openaccess_licencja',)
+        })
+    )
 
 
 admin.site.register(Zrodlo, ZrodloAdmin)
@@ -322,11 +352,11 @@ class Wydawnictwo_CiagleAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
 
     search_fields = [
         'tytul', 'tytul_oryginalny', 'szczegoly', 'uwagi', 'informacje',
-        'slowa_kluczowe', 'rok',
+        'slowa_kluczowe', 'rok', 'id',
         'issn', 'e_issn', 'zrodlo__nazwa', 'zrodlo__skrot', 'adnotacje']
 
     list_filter = ['status_korekty', 'afiliowana', 'recenzowana', 'typ_kbn',
-                   'charakter_formalny']
+                   'charakter_formalny', 'jezyk']
 
     fieldsets = (
         ('Wydawnictwo ciągłe', {
@@ -341,7 +371,8 @@ class Wydawnictwo_CiagleAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
         MODEL_PUNKTOWANY_WYDAWNICTWO_CIAGLE_FIELDSET,
         MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
         POZOSTALE_MODELE_FIELDSET,
-        ADNOTACJE_FIELDSET)
+        ADNOTACJE_FIELDSET,
+        OPENACCESS_FIELDSET)
 
     inlines = (
         generuj_inline_dla_autorow(Wydawnictwo_Ciagle_Autor),
@@ -359,12 +390,12 @@ class Wydawnictwo_ZwarteAdmin_Baza(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
 
     search_fields = [
         'tytul', 'tytul_oryginalny', 'szczegoly', 'uwagi', 'informacje',
-        'slowa_kluczowe', 'rok', 'isbn',
+        'slowa_kluczowe', 'rok', 'isbn', 'id',
         'wydawnictwo', 'redakcja', 'adnotacje']
 
     list_filter = ['status_korekty', 'afiliowana', 'recenzowana', 'typ_kbn',
                    'charakter_formalny', 'liczba_znakow_wydawniczych',
-                   'informacja_z']
+                   'informacja_z', 'jezyk']
 
     fieldsets = (
         ('Wydawnictwo zwarte', {
@@ -425,7 +456,7 @@ class Praca_Doktorska_Habilitacyjna_Admin_Base(ZapiszZAdnotacjaMixin,
     search_fields = [
         'tytul', 'tytul_oryginalny', 'szczegoly', 'uwagi', 'informacje',
         'slowa_kluczowe', 'rok', 'www', 'wydawnictwo', 'redakcja',
-        'autor__tytul__nazwa', 'jednostka__nazwa', 'adnotacje']
+        'autor__tytul__nazwa', 'jednostka__nazwa', 'adnotacje', 'id',]
 
     list_filter = ['status_korekty', 'afiliowana', 'recenzowana', 'typ_kbn']
 
@@ -499,7 +530,7 @@ class Patent_Admin(Wydawnictwo_ZwarteAdmin_Baza):
 
     search_fields = [
         'tytul_oryginalny', 'szczegoly', 'uwagi', 'informacje',
-        'slowa_kluczowe', 'rok', 'adnotacje']
+        'slowa_kluczowe', 'rok', 'adnotacje', 'id',]
 
     list_filter = ['status_korekty', 'afiliowana', 'recenzowana', ]
 
