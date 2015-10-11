@@ -8,6 +8,7 @@
 # 'Journal title': 'Anais da Academia Brasileira de Ci\xc3\xaancias',
 # 'Journal license': 'CC BY-NC',
 import csv
+from django.db import transaction
 from bpp.models.openaccess import Licencja_OpenAccess
 from integrator.models import ZrodloIntegrationRecord
 
@@ -23,7 +24,7 @@ def read_doaj_csv_data(fobj):
         except StopIteration:
             break
 
-        return dict(zip(keys, values))
+        yield dict(zip(keys, values))
 
 
 def doaj_import_data(parent, data):
@@ -31,12 +32,12 @@ def doaj_import_data(parent, data):
         ZrodloIntegrationRecord.objects.create(
             parent=parent,
 
-            title=data['Journal title'],
-            www=data['Journal URL'],
-            publisher=data['Publisher'],
-            issn=data['Journal ISSN (print version)'],
-            e_issn=data['Journal EISSN (online version)'],
-            license=data['Journal license'])
+            title=elem['Journal title'],
+            www=elem['Journal URL'],
+            publisher=elem['Publisher'],
+            issn=elem['Journal ISSN (print version)'],
+            e_issn=elem['Journal EISSN (online version)'],
+            license=elem['Journal license'])
 
 
 def zrodlo_analyze_data(parent):
@@ -62,7 +63,7 @@ def zrodlo_analyze_data(parent):
         elem.zanalizowano = True
         elem.save()
 
-
+@transaction.atomic
 def zrodlo_integrate_data(parent):
     for elem in ZrodloIntegrationRecord.objects.filter(moze_byc_zintegrowany_automatycznie=True, parent=parent):
         zrodlo = elem.matching_zrodlo
@@ -90,4 +91,6 @@ def zrodlo_integrate_data(parent):
             changed = True
 
         if changed:
+            elem.zintegrowano = True
+            elem.save()
             zrodlo.save()
