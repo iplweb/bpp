@@ -12,7 +12,7 @@ from integrator.tasks import read_xls_data, read_autor_import, import_data, anal
 
 integrator_test1_xlsx = os.path.join(
     os.path.dirname(__file__),
-    "integrator.test1.xlsx")
+    "integrator.autorzy.test1.xlsx")
 
 
 def test_upload(preauth_webtest_app, normal_django_user):
