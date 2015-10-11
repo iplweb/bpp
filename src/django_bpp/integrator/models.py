@@ -3,6 +3,7 @@ import logging
 
 from django.db import models
 from django.contrib.auth import get_user_model
+from django.db.models.query_utils import Q
 from bpp.models import Autor, Jednostka
 from django.conf import settings
 import os
@@ -41,7 +42,11 @@ class IntegrationFile(models.Model):
         return os.path.basename(self.file.name)
 
     def records(self):
-        return self.autorintegrationrecord_set.all()
+        if self.type == INTEGRATOR_AUTOR:
+            return self.autorintegrationrecord_set.all()
+        if self.type == INTEGRATOR_DOI or self.type == INTEGRATOR_ATOZ:
+            return self.zrodlointegrationrecord_set.all()
+        raise NotImplementedError
 
     def integrated(self):
         return self.records().filter(zintegrowano=True)

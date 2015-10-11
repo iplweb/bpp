@@ -241,7 +241,7 @@
                     </li>
 
                     {% if request.user|has_group:"wprowadzanie danych" %}
-                        <li><a href="{% url "integrator:list" %}">integrator autorów</a></li>
+                        <li><a href="{% url "integrator:list" %}">integrator</a></li>
                     {% endif %}
 
                     <li><a id="password-change-link"

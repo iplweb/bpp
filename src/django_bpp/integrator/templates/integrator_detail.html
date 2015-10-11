@@ -26,6 +26,7 @@
         <p>Rekordy niezintegrowane:</p>
 
         <table>
+        {% if object.type == 2 %}
             {% for row in object.not_integrated %}
                 <tr>
                     <td>{{ row.nazwisko }} {{ row.imie }}</td>
@@ -35,6 +36,21 @@
                     <td>{{ row.extra_info }}</td>
                 </tr>
             {% endfor %}
+        {% else %}
+            {% for row in object.not_integrated %}
+                <tr>
+                    <td>{{ row.title }} </td>
+                    <td>{{ row.publisher }}</td>
+                    <td>{{ row.issn }}</td>
+                    <td>{{ row.e_issn }}</td>
+                    <td>{{ row.license }}</td>
+                    <td>{{ row.extra_info }}</td>
+
+                </tr>
+            {% endfor %}
+        {% endif %}
+
+
         </table>
     {% endif %}
 

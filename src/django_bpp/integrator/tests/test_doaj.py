@@ -11,11 +11,11 @@ integrator_test1_csv = os.path.join(
 
 def test_atoz_read():
     l = list(read_doaj_csv_data(open(integrator_test1_csv)))
-    assert len(l) == 58
+    assert len(l) == 6
 
 @pytest.mark.django_db
 def test_atoz_import():
     parent = mommy.make(IntegrationFile, type=INTEGRATOR_ATOZ)
     doaj_import_data(parent, read_doaj_csv_data(open(integrator_test1_csv)))
 
-    assert ZrodloIntegrationRecord.objects.filter(parent=parent).count() == 58
+    assert ZrodloIntegrationRecord.objects.filter(parent=parent).count() == 6
