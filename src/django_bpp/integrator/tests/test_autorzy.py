@@ -7,8 +7,8 @@ from webtest import Upload
 import os
 from bpp.models.autor import Autor, Tytul
 from bpp.models.struktura import Jednostka
-from integrator.models import AUTOR_IMPORT_COLUMNS, AutorIntegrationFile, AutorIntegrationRecord
-from integrator.tasks import read_xls_data, read_autor_import, import_data, analyze_data, integrate_data
+from integrator.models import AUTOR_IMPORT_COLUMNS, IntegrationFile, AutorIntegrationRecord, INTEGRATOR_AUTOR
+from integrator.autorzy import read_xls_data, read_autor_import, autorzy_import_data, autorzy_analyze_data, autorzy_integrate_data
 
 integrator_test1_xlsx = os.path.join(
     os.path.dirname(__file__),
@@ -20,9 +20,10 @@ def test_upload(preauth_webtest_app, normal_django_user):
     page = preauth_webtest_app.get(reverse('integrator:new')).maybe_follow()
     form = page.form
     form['file'] = Upload(integrator_test1_xlsx)
+    form['type'] = INTEGRATOR_AUTOR
     res = form.submit().maybe_follow()
     assert "Plik został dodany" in res.content
-    assert "integrator.test1" in res.content
+    assert "integrator.autorzy.test1" in res.content
 
 
 def test_read_xls_data():
@@ -33,9 +34,9 @@ def test_read_xls_data():
     assert len(data) == 4
 
 
-def test_import_data(db):
-    aif = mommy.make(AutorIntegrationFile)
-    import_data(parent=aif,
+def test_autorzy_import_data(db):
+    aif = mommy.make(IntegrationFile, type=INTEGRATOR_AUTOR)
+    autorzy_import_data(parent=aif,
                 data=[{'tytul_skrot': 'foo',
                        'nazwisko': 'nazwisko',
                        'imie': 'imie',
@@ -52,7 +53,7 @@ def test_import_data(db):
 
 
 def test_analyze_data_1(db):
-    aif = mommy.make(AutorIntegrationFile)
+    aif = mommy.make(IntegrationFile, type=INTEGRATOR_AUTOR)
     air1 = AutorIntegrationRecord.objects.create(
         parent=aif,
         tytul_skrot='dr',
@@ -62,14 +63,14 @@ def test_analyze_data_1(db):
         pbn_id=100)
 
     assert air1.moze_byc_zintegrowany_automatycznie == False
-    analyze_data(aif)
+    autorzy_analyze_data(aif)
     air1 = AutorIntegrationRecord.objects.get(pk=air1.pk)
     assert air1.moze_byc_zintegrowany_automatycznie == False
     assert air1.extra_info == "Brak takiego autora"
 
 
 def test_analyze_data_2(db):
-    aif = mommy.make(AutorIntegrationFile)
+    aif = mommy.make(IntegrationFile, type=INTEGRATOR_AUTOR)
     air1 = AutorIntegrationRecord.objects.create(
         parent=aif,
         tytul_skrot='dr',
@@ -84,14 +85,14 @@ def test_analyze_data_2(db):
     )
 
     assert air1.moze_byc_zintegrowany_automatycznie == False
-    analyze_data(aif)
+    autorzy_analyze_data(aif)
     air1 = AutorIntegrationRecord.objects.get(pk=air1.pk)
     assert air1.moze_byc_zintegrowany_automatycznie == False
     assert air1.extra_info.startswith("Brak takiej jednostki")
 
 
 def test_analyze_data_3(db):
-    aif = mommy.make(AutorIntegrationFile)
+    aif = mommy.make(IntegrationFile, type=INTEGRATOR_AUTOR)
     air1 = AutorIntegrationRecord.objects.create(
         parent=aif,
         tytul_skrot='dr',
@@ -107,14 +108,14 @@ def test_analyze_data_3(db):
     mommy.make(Jednostka, nazwa='I Zakład')
 
     assert air1.moze_byc_zintegrowany_automatycznie == False
-    analyze_data(aif)
+    autorzy_analyze_data(aif)
     air1 = AutorIntegrationRecord.objects.get(pk=air1.pk)
     assert air1.moze_byc_zintegrowany_automatycznie == False
     assert air1.extra_info == "Brak takiego tytulu"
 
 
 def test_analyze_data_4(db):
-    aif = mommy.make(AutorIntegrationFile)
+    aif = mommy.make(IntegrationFile, type=INTEGRATOR_AUTOR)
     air1 = AutorIntegrationRecord.objects.create(
         parent=aif,
         tytul_skrot='dr',
@@ -134,13 +135,13 @@ def test_analyze_data_4(db):
     mommy.make(Jednostka, nazwa='I Zakład')
 
     assert air1.moze_byc_zintegrowany_automatycznie == False
-    analyze_data(aif)
+    autorzy_analyze_data(aif)
     air1 = AutorIntegrationRecord.objects.get(pk=air1.pk)
     assert air1.moze_byc_zintegrowany_automatycznie == True
 
 
 def test_analyze_data_5_bledny_pbn(db):
-    aif = mommy.make(AutorIntegrationFile)
+    aif = mommy.make(IntegrationFile, type=INTEGRATOR_AUTOR)
     air1 = AutorIntegrationRecord.objects.create(
         parent=aif,
         tytul_skrot='dr',
@@ -160,7 +161,7 @@ def test_analyze_data_5_bledny_pbn(db):
     mommy.make(Jednostka, nazwa='I Zakład')
 
     assert air1.moze_byc_zintegrowany_automatycznie == False
-    analyze_data(aif)
+    autorzy_analyze_data(aif)
     air1 = AutorIntegrationRecord.objects.get(pk=air1.pk)
     assert air1.extra_info == "PBN_ID nie jest cyfra"
 
@@ -177,7 +178,7 @@ def test_analyze_data_6(db):
     )
     mommy.make(Jednostka, nazwa='I Zakład')
 
-    aif = mommy.make(AutorIntegrationFile)
+    aif = mommy.make(IntegrationFile, type=INTEGRATOR_AUTOR)
     air1 = AutorIntegrationRecord.objects.create(
         parent=aif,
         tytul_skrot='dr',
@@ -193,7 +194,7 @@ def test_analyze_data_6(db):
         zintegrowano=False)
 
     assert a.pbn_id == None
-    integrate_data(aif)
+    autorzy_integrate_data(aif)
 
     a = Autor.objects.get(pk=a.pk)
     assert a.pbn_id == 100

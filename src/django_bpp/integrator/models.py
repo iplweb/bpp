@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 from bpp.models import Autor, Jednostka
 from django.conf import settings
 import os
+from bpp.models.zrodlo import Zrodlo
 from bpp.util import slugify_function
 
 STATUSY = [
@@ -15,10 +16,21 @@ STATUSY = [
     (3, "przetworzony z błędami")
 ]
 
+INTEGRATOR_DOI = 0
+INTEGRATOR_ATOZ = 1
+INTEGRATOR_AUTOR = 2
 
-class AutorIntegrationFile(models.Model):
+RODZAJE = [
+    (INTEGRATOR_DOI, "lista DOI"),
+    (INTEGRATOR_ATOZ, "lista AtoZ"),
+    (INTEGRATOR_AUTOR, "integracja autorów")
+]
+
+
+class IntegrationFile(models.Model):
     name = models.CharField("Nazwa", max_length=255)
     file = models.FileField(verbose_name="Plik", upload_to="integrator")
+    type = models.IntegerField(verbose_name="Rodzaj", choices=RODZAJE, default=RODZAJE[0][0])
     owner = models.ForeignKey(settings.AUTH_USER_MODEL)
     uploaded_on = models.DateTimeField(auto_now_add=True)
     last_updated_on = models.DateTimeField(auto_now=True, auto_now_add=True)
@@ -41,6 +53,7 @@ class AutorIntegrationFile(models.Model):
         verbose_name = "Plik integracji autorów"
         ordering = ['-last_updated_on']
 
+
 AUTOR_IMPORT_COLUMNS = {
     u"Tytuł/Stopień": "tytul_skrot",
     u"Nazwisko": "nazwisko",
@@ -57,8 +70,47 @@ def int_or_None(val):
         return None
 
 
-class AutorIntegrationRecord(models.Model):
-    parent = models.ForeignKey(AutorIntegrationFile)
+class MetkaRekorduIntegracji(models.Model):
+    zanalizowano = models.BooleanField(default=False)
+    moze_byc_zintegrowany_automatycznie = models.BooleanField(default=False)
+    zintegrowano = models.BooleanField(default=False)
+    extra_info = models.TextField()
+
+    class Meta:
+        abstract = True
+
+
+class ZrodloIntegrationRecord(MetkaRekorduIntegracji, models.Model):
+    parent = models.ForeignKey(IntegrationFile)
+
+    title = models.TextField()
+    www = models.TextField()
+    publisher = models.TextField()
+    issn = models.TextField()
+    e_issn = models.TextField()
+    license = models.TextField()
+
+    matching_zrodlo = models.ForeignKey(Zrodlo, null=True)
+
+    def sprobuj_znalezc_zrodlo(self):
+        res = Zrodlo.objects.filter(Q(nazwa=self.title) | Q(nazwa_alternatywna=self.title))
+        if res.count() == 1:
+            return res[0]
+
+        if self.issn:
+            res = Zrodlo.objects.filter(issn=self.issn)
+            if res.count() == 1:
+                return res[0]
+
+        if self.e_issn:
+            res = Zrodlo.objects.filter(e_issn=self.e_issn)
+            if res.count() == 1:
+                return res[0]
+
+
+
+class AutorIntegrationRecord(MetkaRekorduIntegracji, models.Model):
+    parent = models.ForeignKey(IntegrationFile)
 
     tytul_skrot = models.TextField()
     nazwisko = models.TextField()
@@ -68,10 +120,6 @@ class AutorIntegrationRecord(models.Model):
 
     matching_autor = models.ForeignKey(Autor, null=True)
     matching_jednostka = models.ForeignKey(Jednostka, null=True)
-    zanalizowano = models.BooleanField(default=False)
-    moze_byc_zintegrowany_automatycznie = models.BooleanField(default=False)
-    zintegrowano = models.BooleanField(default=False)
-    extra_info = models.TextField()
 
     def sprobuj_zlokalizowac_autora(self):
         strategia_1 = lambda self: Autor.objects.filter(nazwisko=self.nazwisko, imiona=self.imie)
