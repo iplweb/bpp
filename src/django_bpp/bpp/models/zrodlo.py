@@ -179,6 +179,10 @@ class Zrodlo(ModelZAdnotacjami, ModelZISSN):
             eissn = SubElement(journal, 'eissn')
             eissn.text = self.e_issn
 
+        if self.doi:
+            doi = SubElement(journal, 'doi')
+            doi.text = self.doi
+
         if self.www:
             website = SubElement(journal, 'website', href=self.www)
 

@@ -172,9 +172,10 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
                 afi = redaktor_wyd.autor.afiliacja_na_rok(self.rok, wydzial, rozszerzona=True)
                 toplevel.append(redaktor_wyd.autor.eksport_pbn_serializuj(affiliated=afi, employed=afi, tagname='editor'))
 
+
     eksport_pbn_BOOK_FLDS = ["editor", "isbn", "series", "number-in-series", "edition", "volume", "pages",
-                             "publisher-name", "publication-place"]
-    eksport_pbn_CHAPTER_FLDS = ["editor", "chapter-number", "book", "pages"]
+                             "publisher-name", "publication-place", "open-access"]
+    eksport_pbn_CHAPTER_FLDS = ["editor", "chapter-number", "book", "pages", "open-access"]
 
     def eksport_pbn_serializuj(self, wydzial):
         toplevel = Element('book')

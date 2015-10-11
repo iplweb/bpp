@@ -16,7 +16,8 @@ ADNOTACJE_FIELDSET = ('Adnotacje', {
 OPENACCESS_FIELDSET = ("OpenAccess", {
     'classes': ('grp-collapse grp-closed',),
     'fields': ('openaccess_tryb_dostepu', 'openaccess_licencja',
-               'openaccess_wersja_tekstu', 'openaccess_czas_publikacji')
+               'openaccess_wersja_tekstu', 'openaccess_czas_publikacji',
+               'openaccess_ilosc_miesiecy')
 })
 
 HISTORYCZNY_FIELDSET = ('Historia', {
