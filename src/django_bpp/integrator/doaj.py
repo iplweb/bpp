@@ -29,15 +29,17 @@ def read_doaj_csv_data(fobj):
 
 def doaj_import_data(parent, data):
     for elem in data:
-        ZrodloIntegrationRecord.objects.create(
-            parent=parent,
+        if elem.get("Journal title", None):
+            ZrodloIntegrationRecord.objects.create(
+                parent=parent,
 
-            title=elem['Journal title'],
-            www=elem['Journal URL'],
-            publisher=elem['Publisher'],
-            issn=elem['Journal ISSN (print version)'],
-            e_issn=elem['Journal EISSN (online version)'],
-            license=elem['Journal license'])
+                title=elem['Journal title'],
+                www=elem['Journal URL'],
+                publisher=elem['Publisher'],
+                issn=elem['Journal ISSN (print version)'],
+                e_issn=elem['Journal EISSN (online version)'],
+                license=elem['Journal license']
+            )
 
 
 def zrodlo_analyze_data(parent):

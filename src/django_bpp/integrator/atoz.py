@@ -20,7 +20,7 @@ def read_atoz_import(file_contents):
 
 def read_atoz_xls_data(fobj):
     if fobj is None:
-        raise ReadDataException("Brak pliku dla rekordu z PK %i" % pk)
+        raise ReadDataException("Brak pliku dla rekordu")
 
     for data in read_atoz_import(fobj.read()):
         yield data
