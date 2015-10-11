@@ -433,9 +433,56 @@ class PBNSerializerHelperMixin:
             except (ValueError, ValidationError):
                 pass
 
+
+    def eksport_pbn_open_access(self, toplevel, wydzial=None, autorzy_klass=None):
+
+        open_access = None
+
+        if self.openaccess_wersja_tekstu is not None:
+            if open_access is None:
+                open_access = SubElement(toplevel, 'open-access')
+
+            text_version = SubElement(open_access, "open-access-text-version")
+            text_version.text = self.openaccess_wersja_tekstu.skrot
+            has_stuff = True
+
+        if self.openaccess_licencja is not None:
+            if open_access is None:
+                open_access = SubElement(toplevel, 'open-access')
+
+            license = SubElement(open_access, "open-access-license")
+            license.text = self.openaccess_licencja.skrot
+
+        if self.openaccess_czas_publikacji is not None:
+            if open_access is None:
+                open_access = SubElement(toplevel, 'open-access')
+
+            release_time = SubElement(open_access, "open-access-release-time")
+            release_time.text = self.openaccess_czas_publikacji.skrot
+
+        if self.openaccess_ilosc_miesiecy:
+            if open_access is None:
+                open_access = SubElement(toplevel, 'open-access')
+
+            months = SubElement(open_access, "open-access-months")
+            months.text = str(self.openaccess_ilosc_miesiecy)
+
+        if self.openaccess_tryb_dostepu is not None:
+            if open_access is None:
+                open_access = SubElement(toplevel, 'open-access')
+
+            mode = SubElement(open_access, "open-access-mode")
+            mode.text = self.openaccess_tryb_dostepu.skrot
+
+
     def eksport_pbn_publication_date(self, toplevel, wydzial=None, autorzy_klass=None):
         publication_date = SubElement(toplevel, 'publication-date')
         publication_date.text = str(self.rok)
+
+    def eksport_pbn_doi(self, toplevel, wydzial=None, autorzy_klass=None):
+        if self.doi:
+            doi = SubElement(toplevel, 'doi')
+            doi.text = self.doi
 
     def eksport_pbn_run_serialization_functions(self, names, toplevel, wydzial, autorzy_klass):
         for elem in names:
@@ -469,6 +516,13 @@ class ModelZOpenAccess(models.Model):
         verbose_name="OpenAccess: czas udostępnienia",
         blank=True,
         null=True)
+
+    openaccess_ilosc_miesiecy = models.PositiveIntegerField(
+        "OpenAccess: ilość miesięcy",
+        blank=True,
+        null=True,
+        help_text="Ilość miesięcy jakie upłynęły od momentu opublikowania do momentu udostępnienia"
+    )
 
     class Meta:
         abstract = True
