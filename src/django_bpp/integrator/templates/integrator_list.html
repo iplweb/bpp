@@ -7,14 +7,14 @@ Integrator autorów
 
 {% block breadcrumbs %}
     {{ block.super }}
-    <li class="current">integrator autorów</li>
+    <li class="current">integrator</li>
 {% endblock %}
 
 
 {% block content %}
-    <a href="{% url "integrator:new" %}">Dodaj plik integracji autorów</a>
+    <a href="{% url "integrator:new" %}">Dodaj plik</a>
     <hr>
-    <h1>Pliki integracji autorów</h1>
+    <h1>Pliki z danymi</h1>
 
     {% if object_list %}
         {% if is_paginated %}
@@ -37,7 +37,7 @@ Integrator autorów
         <ul>
             {% for plik in object_list %}
                 <li><a href="./{{ plik.pk }}">
-                    {{ plik.filename }} - status: {{ plik.get_status_display }} - ost.
+                    {{ plik.filename }} - rodzaj: {{  plik.get_type_display }} - status: {{ plik.get_status_display }} - ost.
                     zmiana: {{ plik.last_updated_on|naturaltime }}
                 </a></li>
                 {% empty %}
@@ -45,7 +45,7 @@ Integrator autorów
             {% endfor %}
         </ul>
     {% else %}
-        Brak dokumentów.
+        Brak plików.
     {% endif %}
 
 {% endblock %}

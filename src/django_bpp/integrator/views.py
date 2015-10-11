@@ -8,13 +8,13 @@ from django.views.generic.edit import FormView
 from django.views.generic.list import ListView
 from integrator.forms import DodajPlik
 
-from integrator.models import AutorIntegrationFile
+from integrator.models import IntegrationFile
 
 from integrator.tasks import analyze_file
 
 
 class FileListView(GroupRequiredMixin, ListView):
-    model = AutorIntegrationFile
+    model = IntegrationFile
     paginate_by = 20
 
     group_required = "wprowadzanie danych"
@@ -38,5 +38,5 @@ class FileUploadView(GroupRequiredMixin, FormView):
 
 
 class AutorIntegrationFileDetail(GroupRequiredMixin, DetailView):
-    model = AutorIntegrationFile
+    model = IntegrationFile
     group_required = "wprowadzanie danych"

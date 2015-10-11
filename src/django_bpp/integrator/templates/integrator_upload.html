@@ -14,7 +14,10 @@ Dodaj plik integracji autorów
 {% endblock %}
 
 {% block content %}
-    <h1>Integracja autorów</h1>
+    {% load crispy_forms_tags %}
+    {% crispy form %}
+    <h1>Instrukcja - jak importować dane</h1>
+        <h2>Integracja autorów</h2>
     Warunki przyjęcia pliku do analizy to:
     <ul>
         <li>w jednym z pierwszych wierszy musi znaleźć się nagłówek tabeli</li>
@@ -25,6 +28,4 @@ Dodaj plik integracji autorów
             niepowołane osoby
         </li>
     </ul>
-    {% load crispy_forms_tags %}
-    {% crispy form %}
 {% endblock %}
