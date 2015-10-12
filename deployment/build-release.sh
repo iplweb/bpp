@@ -8,6 +8,7 @@ fi
 cd ..
 make clean
 bumpversion patch --allow-dirty
+git push
 git push --tags
 
 export PWD=`pwd`
