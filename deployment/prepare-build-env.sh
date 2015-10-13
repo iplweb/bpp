@@ -22,7 +22,7 @@ python manage.py collectstatic --noinput
 
 grunt build
 
-python manage.py migrate
+python manage.py migrate --noinput
 python manage.py compress --force
 
 
