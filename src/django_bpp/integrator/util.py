@@ -2,7 +2,7 @@
 import xlrd
 
 def find_header_row(sheet, first_column_value):
-    for a in range(sheet.nrows):
+    for a in range(min(10, sheet.nrows)):
         f = sheet.row(a)[0].value
         if hasattr(f, 'upper') and f.upper() == first_column_value.upper():
             return a

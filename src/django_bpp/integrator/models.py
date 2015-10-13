@@ -98,7 +98,10 @@ class ZrodloIntegrationRecord(MetkaRekorduIntegracji, models.Model):
     matching_zrodlo = models.ForeignKey(Zrodlo, null=True)
 
     def sprobuj_znalezc_zrodlo(self):
-        res = Zrodlo.objects.filter(Q(nazwa=self.title) | Q(nazwa_alternatywna=self.title))
+        res = Zrodlo.objects.extra(
+            where=["(nazwa ILIKE %s OR nazwa_alternatywna ILIKE %s)"],
+            params=[self.title, self.title])
+
         if res.count() == 1:
             return res[0]
 

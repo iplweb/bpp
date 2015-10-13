@@ -30,6 +30,12 @@ def read_doaj_csv_data(fobj):
 def doaj_import_data(parent, data):
     for elem in data:
         if elem.get("Journal title", None):
+
+            license = elem['Journal license']
+
+            if license:
+                license = license.replace("CC BY", "CC-BY")
+
             ZrodloIntegrationRecord.objects.create(
                 parent=parent,
 
@@ -38,7 +44,7 @@ def doaj_import_data(parent, data):
                 publisher=elem['Publisher'],
                 issn=elem['Journal ISSN (print version)'],
                 e_issn=elem['Journal EISSN (online version)'],
-                license=elem['Journal license']
+                license=license
             )
 
 
@@ -77,7 +83,7 @@ def zrodlo_integrate_data(parent):
             changed = True
 
         if elem.license:
-            zrodlo.openaccess_licencja = Licencja_OpenAccess.obejcts.get(skrot=elem.license)
+            zrodlo.openaccess_licencja = Licencja_OpenAccess.objects.get(skrot=elem.license)
             changed = True
 
         if elem.issn:
