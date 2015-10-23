@@ -453,12 +453,18 @@ class PBNSerializerHelperMixin:
                 k.text = elem.strip()
 
     def eksport_pbn_public_uri(self, toplevel, wydzial=None, autorzy_klass=None):
-        if self.www:
+        def exp_www(www):
             try:
-                url_validator(self.www)
-                public_uri = SubElement(toplevel, "public-uri", href=self.www)
+                url_validator(www)
+                public_uri = SubElement(toplevel, "public-uri", href=www)
             except (ValueError, ValidationError):
                 pass
+
+        if self.public_www:
+            exp_www(self.public_www)
+
+        elif self.www:
+            exp_www(self.www)
 
 
     def eksport_pbn_open_access(self, toplevel, wydzial=None, autorzy_klass=None):
