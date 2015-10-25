@@ -1,5 +1,6 @@
 # -*- encoding: utf-8 -*-
 import os
+from celeryui.models import Report
 
 from django.core.management import call_command
 from django.core.urlresolvers import reverse
@@ -7,6 +8,7 @@ from celeryui.interfaces import IWebTask
 from django.conf import settings
 from celery.utils.log import get_task_logger
 import time
+from bpp.util import remove_old_objects
 from django_bpp.util import wait_for_object
 
 logger = get_task_logger(__name__)
@@ -67,3 +69,8 @@ def zaktualizuj_zrodlo(pk):
     z = wait_for_object(Zrodlo, pk)
     for rekord in Rekord.objects.filter(zrodlo=z):
         rekord.original.zaktualizuj_cache(tylko_opis=True)
+
+
+@app.task
+def remove_old_report_files():
+    return remove_old_objects(Report, field_name="started_on")

@@ -1,18 +1,19 @@
 # -*- encoding: utf-8 -*-
 from tempfile import mkdtemp, mkstemp
 import zipfile
+from datetime import datetime, timedelta
+import os
+
 from django.core.files.base import File
 from django.core.management import call_command
 from django.core.urlresolvers import reverse
-from lxml.etree import Element, tostring
-import os
-from bpp.models.cache import Autorzy
-from bpp.models.profile import BppUser
-from bpp.models.struktura import Wydzial
+
+from lxml.etree import tostring
+
 from bpp.models.system import Charakter_Formalny
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor, Wydawnictwo_Ciagle
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte_Autor, Wydawnictwo_Zwarte
-
+from bpp.util import remove_old_objects
 from django_bpp.celery import app
 from django_bpp.util import wait_for_object
 from eksport_pbn.models import PlikEksportuPBN
@@ -134,3 +135,8 @@ def eksport_pbn(pk):
              dont_persist=False)
 
     return pep.pk
+
+
+@app.task
+def remove_old_eksport_pbn_files():
+    return remove_old_objects(PlikEksportuPBN)
