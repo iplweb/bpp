@@ -3,6 +3,7 @@
 from celery.utils.log import get_task_logger
 from django.core.management import call_command
 from django.core.urlresolvers import reverse
+from bpp.util import remove_old_objects
 
 from django_bpp.util import wait_for_object
 from integrator.atoz import read_atoz_xls_data, atoz_import_data
@@ -85,3 +86,8 @@ def analyze_file(pk):
     obj.save()
 
     informuj(u"zakończono integrację", dont_persist=False)
+
+
+@app.task
+def remove_old_integrator_files():
+    return remove_old_objects(IntegrationFile, field_name="uploaded_on")
