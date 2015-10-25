@@ -1,6 +1,7 @@
 # -*- encoding: utf-8 -*-
 
 import sys, os
+from datetime import timedelta
 from django.core.exceptions import ImproperlyConfigured
 
 
@@ -453,3 +454,22 @@ if TESTING:
     CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
 
 CELERYD_HIJACK_ROOT_LOGGER = False
+
+
+CELERYBEAT_SCHEDULE = {
+
+    'cleanup-integrator-files': {
+        'task': 'integrator.tasks.remove_old_integrator_files',
+        'schedule': timedelta(days=1),
+    },
+
+    'cleanup-eksport_pbn-files': {
+        'task': 'eksport_pbn.tasks.remove_old_eksport_pbn_files',
+        'schedule': timedelta(days=1),
+    },
+
+    'cleanup-report-files': {
+        'task': 'bpp.tasks.remove_old_report_files',
+        'schedule': timedelta(days=1),
+    }
+}

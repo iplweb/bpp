@@ -1,5 +1,7 @@
 # -*- encoding: utf-8 -*-
+import os
 import re
+from datetime import datetime, timedelta
 
 from unidecode import unidecode
 
@@ -109,3 +111,25 @@ def zrob_cache(t):
     for znak in zle_znaki:
         t = t.replace(znak, "")
     return t.lower()
+
+
+def remove_old_objects(klass, file_field="file", field_name="created_on", days=7):
+    since = datetime.now() - timedelta(days=days)
+
+    kwargs = {}
+    kwargs["%s__lt" % field_name] = since
+
+    for rec in klass.objects.filter(**kwargs):
+        try:
+            path = getattr(rec, file_field).path
+        except ValueError:
+            path = None
+
+        rec.delete()
+
+        if path is not None:
+            try:
+                os.unlink(path)
+            except OSError:
+                pass
+

@@ -1,8 +1,9 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from django.core.urlresolvers import reverse
+from model_mommy import mommy
 import pytest
 from eksport_pbn.models import PlikEksportuPBN
-from eksport_pbn.tasks import eksport_pbn, id_zwartych, id_ciaglych
+from eksport_pbn.tasks import eksport_pbn, id_zwartych, id_ciaglych, remove_old_eksport_pbn_files
 
 
 def test_wybor(preauth_webtest_app, wydzial):
@@ -67,3 +68,17 @@ def test_eksport_pbn(normal_django_user, jednostka, autor_jan_kowalski, wydawnic
     eksport_pbn(obj.pk)
 
     assert PlikEksportuPBN.objects.all().count() == 1
+
+
+def test_remove_old_eksport_files(db):
+    mommy.make(PlikEksportuPBN, created_on=datetime.now())
+    e2 = mommy.make(PlikEksportuPBN)
+    e2.created_on=datetime.now() - timedelta(days=15)
+    e2.save()
+
+    assert PlikEksportuPBN.objects.all().count() == 2
+
+    remove_old_eksport_pbn_files()
+
+    assert PlikEksportuPBN.objects.all().count() == 1
+
