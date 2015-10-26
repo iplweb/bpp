@@ -151,7 +151,9 @@ INSTALLED_APPS = [
 
     'notifications',
     'integrator',
-    'eksport_pbn'
+    'eksport_pbn',
+
+    'loginas'
 ]
 
 
@@ -473,3 +475,5 @@ CELERYBEAT_SCHEDULE = {
         'schedule': timedelta(days=1),
     }
 }
+
+CAN_LOGIN_AS = lambda request, target_user: request.user.username in ['admin', 'sysdba']

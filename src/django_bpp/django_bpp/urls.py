@@ -104,6 +104,7 @@ urlpatterns = patterns(
 
     url(r'session_security/', include('session_security.urls')),
 
+    url(r"^login/user/(?P<user_id>.+)/$", "loginas.views.user_login", name="loginas-user-login"),
 
 ) + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) \
   + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
