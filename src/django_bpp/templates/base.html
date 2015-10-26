@@ -16,6 +16,7 @@
     <link rel="stylesheet" href="{% static "cookielaw/css/cookielaw.css" %}"/>
     <link rel="stylesheet" href="{% static "multiseek/css/style.css" %}"/>
     <link rel="stylesheet" type="text/css" href="{% static "autocomplete_light/style.css" %}"/>
+    <link rel="stylesheet" type="text/css" href="{% static 'session_security/style.css' %}"></link>
     {% endcompress %}
 
     {% compress js %}
@@ -48,13 +49,29 @@
     <script src="{% static "foundation/js/foundation/foundation.alert.js" %}"></script>
     <script src="{% static "foundation/js/foundation/foundation.magellan.js" %}"></script>
 
+    <script type="text/javascript" src="{% static 'session_security/script.js' %}"></script>
+
     {% endcompress %}
 
     {% load i18n %}
     {% get_current_language as LANGUAGE_CODE %}
     <script type="text/javascript" src="/bpp/jsi18n/?language={{LANGUAGE_CODE}}"></script>
 
-    {% include 'session_security/all.html' %}
+    {% load session_security_tags %}
+    {% load url from future %}
+    {% load l10n %}
+
+    {% if request.user.is_authenticated %}
+        {% include 'session_security/dialog.html' %}
+        <script type="text/javascript">
+            var sessionSecurity = new yourlabs.SessionSecurity({
+                pingUrl: '{% url 'session_security_ping' %}',
+                warnAfter: {{ request|warn_after|unlocalize }},
+                expireAfter: {{ request|expire_after|unlocalize }},
+                confirmFormDiscard: false
+            });
+        </script>
+    {% endif %}
 
 {% endblock %}
 
