@@ -574,6 +574,7 @@ class BppUserAdmin(UserAdmin):
     list_display = ('username', 'email', 'first_name', 'last_name', 'is_staff', 'is_active', 'is_superuser', 'lista_grup')
 
     add_form = BppUserCreationForm
+    # change_form_template = 'loginas/change_form.html'
 
     def lista_grup(self, row):
         return ", ".join([x.name for x in row.groups.all()])

@@ -60,3 +60,5 @@ djorm-ext-filtered-contenttypes==0.2.1
 djorm-ext-pgfulltext==0.9.1
 
 django_braces==1.8.1
+
+django-loginas==0.1.5

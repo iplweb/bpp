@@ -258,6 +258,10 @@
     </div>
     <div class="hide-on-print">
     <hr size="1" />
-    <small style="float: right;">wersja {% bpp_version %}&nbsp;&nbsp;</small>
+    <small style="float: right;">
+        {% if not request.user.is_anonymous %}
+        zalogowany/a jako {{ request.user.username }} -
+        {% endif %}
+        wersja {% bpp_version %}&nbsp;&nbsp;</small>
     </div>
 {% endblock %}
