@@ -244,3 +244,21 @@ def test_caching_full_refresh(wydawnictwo_ciagle_z_dwoma_autorami):
     assert Rekord.objects.all().count() == 1
     Rekord.objects.full_refresh()
     assert Rekord.objects.all().count() == 1
+
+def test_caching_kolejnosc(wydawnictwo_ciagle_z_dwoma_autorami):
+
+    a = list(Wydawnictwo_Ciagle_Autor.objects.all().order_by('kolejnosc'))
+    assert len(a) == 2
+
+    x = Rekord.objects.get(original=wydawnictwo_ciagle_z_dwoma_autorami)
+    assert "[AUT.] KOWALSKI JAN, NOWAK JAN" in x.opis_bibliograficzny_cache
+
+    k = a[0].kolejnosc
+    a[0].kolejnosc = a[1].kolejnosc
+    a[1].kolejnosc = k
+    a[0].save()
+    a[1].save()
+
+    x = Rekord.objects.get(original=wydawnictwo_ciagle_z_dwoma_autorami)
+    assert "[AUT.] NOWAK JAN, KOWALSKI JAN" in x.opis_bibliograficzny_cache
+
