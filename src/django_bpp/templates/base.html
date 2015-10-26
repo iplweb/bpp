@@ -70,6 +70,8 @@
                 expireAfter: {{ request|expire_after|unlocalize }},
                 confirmFormDiscard: false
             });
+
+            var messageAlertSound = null;
         </script>
     {% endif %}
 
@@ -96,8 +98,7 @@
             {{/hideCloseOption}}
         </div>{% endverbatim messageTemplate %}
     </div>
-
-
+{# fix pycharm highlighting #}
         <script type="text/javascript" >
 
             $(document).ready(function(){
@@ -105,7 +106,10 @@
                 bppNotifications.init(
                         '{{ NOTIFICATIONS_PUB_PREFIX }}-{{ request.user.username }}',
                         '{{ NOTIFICATIONS_HOST }}',
-                        {{ NOTIFICATIONS_PORT|default:"window.location.port" }});
+                        {{ NOTIFICATIONS_PORT|default:"window.location.port" }},
+                        null,
+                        "{% static "bpp/wav/alert.wav" %}"
+                );
 
                 $(document).on('close.fndtn.alert', function(event) {
 {#                    if (event.namespace!='alert.fndtn') // https://github.com/zurb/foundation/issues/5482#}
@@ -117,7 +121,6 @@
 
                 {% if messages %}
                     {% load notifications %}
-{#                    TODO: ograniczenie ilości komunikatów np do 10ciu #}
                     {% for message in messages %}
                         bppNotifications.addMessage({
                             cssClass: '{{ message.level|message_level_to_css_class }}',

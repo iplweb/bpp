@@ -1,6 +1,10 @@
 var bppNotifications = bppNotifications || {};
 
-bppNotifications.init = function(channel, host, port, useSSL){
+bppNotifications.init = function(channel, host, port, useSSL, soundAlertPath){
+    this.messageAlertSound = null;
+    if (Audio && soundAlertPath)
+        this.messageAlertSound = new Audio(soundAlertPath);
+
     if (host == null)
         host = window.location.hostname;
 
@@ -24,6 +28,7 @@ bppNotifications.init = function(channel, host, port, useSSL){
     this.pushstream.onmessage = this.addMessage;
     this.pushstream.addChannel(channel);
     this.pushstream.connect();
+
 };
 
 bppNotifications.addMessage = function(message){
@@ -40,4 +45,7 @@ bppNotifications.addMessage = function(message){
         $("#messageTemplate").html(),
         message)
     );
+
+    if (bppNotifications.messageAlertSound)
+        bppNotifications.messageAlertSound.play();
 };
