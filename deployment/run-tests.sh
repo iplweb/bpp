@@ -24,4 +24,4 @@ cd ../src/django_bpp
 
 grunt qunit
 py.test --create-db functional_tests integrator/tests eksport_pbn bpp/tests-pytest
-python manage.py test --noinput bpp
+python manage.py test --noinput bpp -v 3
