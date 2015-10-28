@@ -22,6 +22,33 @@ fi
 
 cd ../src/django_bpp
 
-grunt qunit
-py.test --create-db functional_tests integrator/tests eksport_pbn bpp/tests-pytest
-python manage.py test --noinput bpp -v 3
+NO_QUNIT=0
+NO_PYTEST=0
+NO_DJANGO=0
+
+while test $# -gt 0
+do
+    case "$1" in
+        --no-qunit) NO_QUNIT=1
+            ;;
+        --no-pytest) NO_PYTEST=1
+            ;;
+        --no-django) NO_DJANGO=1
+            ;;
+        --*) echo "bad option $1"
+            ;;
+    esac
+    shift
+done
+
+if [ "$NO_QUNIT" == "0" ]; then
+    grunt qunit
+fi
+
+if [ "$NO_PYTEST" == "0" ]; then
+    py.test --create-db functional_tests integrator/tests eksport_pbn bpp/tests-pytest
+fi
+
+if [ "$NO_DJANGO" == "0" ]; then
+    python manage.py test --noinput bpp -v 3
+fi
