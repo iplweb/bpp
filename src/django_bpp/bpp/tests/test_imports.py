@@ -105,92 +105,92 @@ class TestImports(TestCase):
             date(2012, 12, 31)
         )
 
-    def test_importuj_sheet_roczny(self):
-        a1 = mommy.make(Autor, imiona='Jan', nazwisko='Kowalski')
-        j1 = any_jednostka(nazwa='Foo')
-
-        with Mock() as sheet:
-            sheet.row(0) >> [_x('Stanowisko'), _x('PRC IMIE'), _x('PRC NAZWISKO'), _x('OB_NAZWA')]
-            sheet.nrows >> 1
-            sheet.row(1) >> [_x('Kucharz'), _x('Jan'), _x('Kowalski'), _x(u'Zakład')]
-
-        importuj_sheet_roczny(sheet, 2012, UML_Egeria_2012_Mangle)
-
-    def test_importuj_sheet_osoby_nie_ujete(self):
-        w1 = any_wydzial(nazwa='Wydział Kucharski')
-        a1 = any_autor(imiona='Jan', nazwisko='Kowalski')
-        j1 = any_jednostka(nazwa=u'Zakład', wydzial=w1)
-
-        with Mock() as sheet:
-            sheet.row(2) >> [_x("NUMER"), _x("PRC IMIE"), _x("PRC NAZWISKO"), _x("OB_NAZWA"),
-                             _x("Stanowisko"), _x("WYMIAR ETATU"),
-                             _x('stanowisko'), _x(u'stopień'), _x(u'Wydział'),
-                             _x('stanowisko'), _x(u'stopień'), _x(u'Wydział'),
-                             _x('stanowisko'), _x(u'stopień'), _x(u'Wydział'),
-                             _x('stanowisko'), _x(u'stopień'), _x(u'Wydział')]
-            sheet.nrows >> 4
-            sheet.row(3) >> [_x('123'), _x('Jan'), _x('Kowalski'), _x(u'Zakład'),
-                             _x('Kucharz'), _x('Pełny'),
-                             _x('#N/D!'), _x('#N/D!'), _x('#N/D!'),
-                             _x('Sternik'), _x(u'Młodzszy'), _x(u'Tego wydziału nie ma'),
-                             _x("Kucharz"), _x('Starszy'), _x(u'Wydział Kucharski'),
-                             _x("Kucharz"), _x('Starszy'), _x(u'Wydział Kucharski'),
-                             ]
-
-        importuj_sheet_osoby_nie_ujete(sheet, UML_Egeria_2012_Mangle)
-
-        l = list(Opi_2012_Afiliacja_Do_Wydzialu.objects.all().order_by('rok'))
-        self.assertEquals(len(l), 2)
-        self.assertEquals(l[0].autor, a1)
-        self.assertEquals(l[0].wydzial, w1)
-        self.assertEquals(l[0].rok, 2011)
-
-
-class TestImportujImiona(TestCase):
-
-
-    def test_importuj_imiona(self):
-
-        with Mock() as sheet:
-            sheet.nrows >> 3
-            sheet.row(0) >> [_x(a) for a in ['0', 'dr', 'Jan Maria', 'Kowalski', 'nie']]
-            sheet.row(1) >> [_x(a) for a in ['0', 'dr', 'Jan Maria', 'Nowak', 'nie']]
-            sheet.row(2) >> [_x(a) for a in ['0', 'dr', 'Jan Maria', 'Strzelec', 'nie']]
-
-        wydzial = any_wydzial()
-        wydzial2 = any_wydzial()
-
-        jednostka = any_jednostka(wydzial=wydzial)
-        jednostka2 = any_jednostka(wydzial=wydzial2)
-
-        autor = mommy.make(Autor, nazwisko='Kowalski', imiona='Jan')
-        Autor_Jednostka.objects.create(jednostka=jednostka, autor=autor)
-
-        autor2 = mommy.make(Autor, nazwisko='Nowak', imiona='Jan')
-        Autor_Jednostka.objects.create(jednostka=jednostka, autor=autor2)
-
-        autor3 = mommy.make(Autor, nazwisko='Nowak', imiona='Jan')
-        Autor_Jednostka.objects.create(jednostka=jednostka, autor=autor3)
-
-        autor4 = mommy.make(Autor, nazwisko='Strzelec', imiona='Jan')
-        Autor_Jednostka.objects.create(jednostka=jednostka, autor=autor4)
-
-        autor5 = mommy.make(Autor, nazwisko='Strzelec', imiona='Jan')
-        Autor_Jednostka.objects.create(jednostka=jednostka2, autor=autor5)
-
-        importuj_imiona_sheet(sheet, wydzial)
-
-        autor = Autor.objects.get(pk=autor.pk)
-        self.assertEquals(autor.imiona, 'Jan Maria')
-
-        # A u tych dwóch nic się nie zmieni...
-        autor = Autor.objects.get(pk=autor2.pk)
-        self.assertEquals(autor.imiona, 'Jan')
-        autor = Autor.objects.get(pk=autor3.pk)
-        self.assertEquals(autor.imiona, 'Jan')
-
-        # A u tego się zmieni tylko ten który jest w Wydziale Lekarskim
-        autor = Autor.objects.get(pk=autor4.pk)
-        self.assertEquals(autor.imiona, 'Jan Maria')
-        autor = Autor.objects.get(pk=autor5.pk)
-        self.assertEquals(autor.imiona, 'Jan')
+    # def test_importuj_sheet_roczny(self):
+    #     a1 = mommy.make(Autor, imiona='Jan', nazwisko='Kowalski')
+    #     j1 = any_jednostka(nazwa='Foo')
+    #
+    #     with Mock() as sheet:
+    #         sheet.row(0) >> [_x('Stanowisko'), _x('PRC IMIE'), _x('PRC NAZWISKO'), _x('OB_NAZWA')]
+    #         sheet.nrows >> 1
+    #         sheet.row(1) >> [_x('Kucharz'), _x('Jan'), _x('Kowalski'), _x(u'Zakład')]
+    #
+    #     importuj_sheet_roczny(sheet, 2012, UML_Egeria_2012_Mangle)
+    #
+    # def test_importuj_sheet_osoby_nie_ujete(self):
+    #     w1 = any_wydzial(nazwa='Wydział Kucharski')
+    #     a1 = any_autor(imiona='Jan', nazwisko='Kowalski')
+    #     j1 = any_jednostka(nazwa=u'Zakład', wydzial=w1)
+    #
+    #     with Mock() as sheet:
+    #         sheet.row(2) >> [_x("NUMER"), _x("PRC IMIE"), _x("PRC NAZWISKO"), _x("OB_NAZWA"),
+    #                          _x("Stanowisko"), _x("WYMIAR ETATU"),
+    #                          _x('stanowisko'), _x(u'stopień'), _x(u'Wydział'),
+    #                          _x('stanowisko'), _x(u'stopień'), _x(u'Wydział'),
+    #                          _x('stanowisko'), _x(u'stopień'), _x(u'Wydział'),
+    #                          _x('stanowisko'), _x(u'stopień'), _x(u'Wydział')]
+    #         sheet.nrows >> 4
+    #         sheet.row(3) >> [_x('123'), _x('Jan'), _x('Kowalski'), _x(u'Zakład'),
+    #                          _x('Kucharz'), _x('Pełny'),
+    #                          _x('#N/D!'), _x('#N/D!'), _x('#N/D!'),
+    #                          _x('Sternik'), _x(u'Młodzszy'), _x(u'Tego wydziału nie ma'),
+    #                          _x("Kucharz"), _x('Starszy'), _x(u'Wydział Kucharski'),
+    #                          _x("Kucharz"), _x('Starszy'), _x(u'Wydział Kucharski'),
+    #                          ]
+    #
+    #     importuj_sheet_osoby_nie_ujete(sheet, UML_Egeria_2012_Mangle)
+    #
+    #     l = list(Opi_2012_Afiliacja_Do_Wydzialu.objects.all().order_by('rok'))
+    #     self.assertEquals(len(l), 2)
+    #     self.assertEquals(l[0].autor, a1)
+    #     self.assertEquals(l[0].wydzial, w1)
+    #     self.assertEquals(l[0].rok, 2011)
+    #
+#
+# class TestImportujImiona(TestCase):
+#
+#
+#     def test_importuj_imiona(self):
+#
+#         with Mock() as sheet:
+#             sheet.nrows >> 3
+#             sheet.row(0) >> [_x(a) for a in ['0', 'dr', 'Jan Maria', 'Kowalski', 'nie']]
+#             sheet.row(1) >> [_x(a) for a in ['0', 'dr', 'Jan Maria', 'Nowak', 'nie']]
+#             sheet.row(2) >> [_x(a) for a in ['0', 'dr', 'Jan Maria', 'Strzelec', 'nie']]
+#
+#         wydzial = any_wydzial()
+#         wydzial2 = any_wydzial()
+#
+#         jednostka = any_jednostka(wydzial=wydzial)
+#         jednostka2 = any_jednostka(wydzial=wydzial2)
+#
+#         autor = mommy.make(Autor, nazwisko='Kowalski', imiona='Jan')
+#         Autor_Jednostka.objects.create(jednostka=jednostka, autor=autor)
+#
+#         autor2 = mommy.make(Autor, nazwisko='Nowak', imiona='Jan')
+#         Autor_Jednostka.objects.create(jednostka=jednostka, autor=autor2)
+#
+#         autor3 = mommy.make(Autor, nazwisko='Nowak', imiona='Jan')
+#         Autor_Jednostka.objects.create(jednostka=jednostka, autor=autor3)
+#
+#         autor4 = mommy.make(Autor, nazwisko='Strzelec', imiona='Jan')
+#         Autor_Jednostka.objects.create(jednostka=jednostka, autor=autor4)
+#
+#         autor5 = mommy.make(Autor, nazwisko='Strzelec', imiona='Jan')
+#         Autor_Jednostka.objects.create(jednostka=jednostka2, autor=autor5)
+#
+#         importuj_imiona_sheet(sheet, wydzial)
+#
+#         autor = Autor.objects.get(pk=autor.pk)
+#         self.assertEquals(autor.imiona, 'Jan Maria')
+#
+#         # A u tych dwóch nic się nie zmieni...
+#         autor = Autor.objects.get(pk=autor2.pk)
+#         self.assertEquals(autor.imiona, 'Jan')
+#         autor = Autor.objects.get(pk=autor3.pk)
+#         self.assertEquals(autor.imiona, 'Jan')
+#
+#         # A u tego się zmieni tylko ten który jest w Wydziale Lekarskim
+#         autor = Autor.objects.get(pk=autor4.pk)
+#         self.assertEquals(autor.imiona, 'Jan Maria')
+#         autor = Autor.objects.get(pk=autor5.pk)
+#         self.assertEquals(autor.imiona, 'Jan')

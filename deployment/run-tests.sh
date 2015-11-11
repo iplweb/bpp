@@ -35,7 +35,11 @@ do
             ;;
         --no-django) NO_DJANGO=1
             ;;
+	--help) echo "--no-qunit, --no-pytest, --no-django"
+	    exit 1
+	    ;;
         --*) echo "bad option $1"
+	    exit 1
             ;;
     esac
     shift

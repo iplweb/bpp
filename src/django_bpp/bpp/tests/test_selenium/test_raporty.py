@@ -8,6 +8,7 @@ from selenium.webdriver.common.keys import Keys
 from splinter.browser import Browser
 from celeryui.models import Report
 from django.conf import settings
+from bpp.models.system import Jezyk
 
 from bpp.tests.util import any_autor, CURRENT_YEAR, any_ciagle, any_jednostka
 
@@ -95,6 +96,7 @@ class TestRaportyPage(RaportyPage):
             self.browser.html)
 
     def test_raport_jednostek(self):
+        Jezyk.objects.get_or_create(skrot="ang.", nazwa="angielski")
         self.go(reverse("bpp:raport_jednostek_formularz"))
 
         elem = self.browser.find_by_id("id_jednostka-autocomplete")[0]
