@@ -18,8 +18,8 @@ class Wydawnictwo_Ciagle_Autor(BazaModeluOdpowiedzialnosciAutorow):
     rekord = models.ForeignKey('Wydawnictwo_Ciagle')
 
     class Meta:
-        verbose_name = 'powiązanie autora z wyd. ciągłym'
-        verbose_name_plural = 'powiązania autorów z wyd. ciągłymi'
+        verbose_name = u'powiązanie autora z wyd. ciągłym'
+        verbose_name_plural = u'powiązania autorów z wyd. ciągłymi'
         app_label = 'bpp'
         ordering = ('kolejnosc', )
         unique_together = \
@@ -72,8 +72,8 @@ class Wydawnictwo_Ciagle(ZapobiegajNiewlasciwymCharakterom,
         self.tytul = safe_html(self.tytul)
 
     class Meta:
-        verbose_name = "wydawnictwo ciągłe"
-        verbose_name_plural = "wydawnictwa ciągłe"
+        verbose_name = u"wydawnictwo ciągłe"
+        verbose_name_plural = u"wydawnictwa ciągłe"
         app_label = 'bpp'
 
     eksport_pbn_FLDS = ["journal", "issue", "volume", "pages", "open-access"]

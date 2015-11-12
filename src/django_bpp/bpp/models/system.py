@@ -90,15 +90,15 @@ class Status_Korekty(ModelZNazwa):
 
 class Zrodlo_Informacji(ModelZNazwa):
     class Meta:
-        verbose_name = 'źródło informacji o bibliografii'
-        verbose_name_plural = 'źródła informacji o bibliografii'
+        verbose_name = u'źródło informacji o bibliografii'
+        verbose_name_plural = u'źródła informacji o bibliografii'
         app_label = 'bpp'
 
 
 class Typ_Odpowiedzialnosci(NazwaISkrot):
     class Meta:
-        verbose_name = 'typ odpowiedzialności autora'
-        verbose_name_plural = 'typy odpowiedzialności autorów'
+        verbose_name = u'typ odpowiedzialności autora'
+        verbose_name_plural = u'typy odpowiedzialności autorów'
         ordering = ['nazwa']
         app_label = 'bpp'
 
@@ -111,8 +111,8 @@ class Jezyk(NazwaISkrot):
     Skrót nazwy języka używany w plikach eksportu do PBN.""", blank=True)
 
     class Meta:
-        verbose_name = 'język'
-        verbose_name_plural = 'języki'
+        verbose_name = u'język'
+        verbose_name_plural = u'języki'
         ordering = ['nazwa']
         app_label = 'bpp'
 
