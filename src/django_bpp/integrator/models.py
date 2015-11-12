@@ -55,7 +55,7 @@ class IntegrationFile(models.Model):
         return self.records().exclude(zintegrowano=True).order_by('extra_info')
 
     class Meta:
-        verbose_name = "Plik integracji autorów"
+        verbose_name = u"Plik integracji autorów"
         ordering = ['-last_updated_on']
 
 

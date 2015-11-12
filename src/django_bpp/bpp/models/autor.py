@@ -20,15 +20,15 @@ from datetime import datetime
 
 class Tytul(NazwaISkrot):
     class Meta:
-        verbose_name = 'tytuł'
-        verbose_name_plural = 'tytuły'
+        verbose_name = u'tytuł'
+        verbose_name_plural = u'tytuły'
         app_label = 'bpp'
 
 
 class Plec(NazwaISkrot):
     class Meta:
-        verbose_name = "płeć"
-        verbose_name_plural = "płcie"
+        verbose_name = u"płeć"
+        verbose_name_plural = u"płcie"
         app_label = 'bpp'
 
 
@@ -336,8 +336,8 @@ class Autor_Jednostka(models.Model):
         return buf
 
     class Meta:
-        verbose_name = "powiązanie autor-jednostka"
-        verbose_name_plural = "powiązania autor-jednostka"
+        verbose_name = u"powiązanie autor-jednostka"
+        verbose_name_plural = u"powiązania autor-jednostka"
         ordering = ['autor__nazwisko', 'jednostka__nazwa', 'rozpoczal_prace']
         unique_together = [('autor', 'jednostka', 'rozpoczal_prace')]
         app_label = 'bpp'
