@@ -26,6 +26,8 @@ NO_QUNIT=0
 NO_PYTEST=0
 NO_DJANGO=0
 
+export PYTHONIOENCODING=utf_8
+
 while test $# -gt 0
 do
     case "$1" in
