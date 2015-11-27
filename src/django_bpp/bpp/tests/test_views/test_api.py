@@ -13,7 +13,7 @@ FakeRequest = namedtuple("FakeRequest", ["POST"])
 
 
 class TestRokHabilitacjiView(TestCase):
-    fixtures = ['charakter_formalny.json', 'typ_odpowiedzialnosci.json']
+    # fixtures = ['charakter_formalny.json', 'typ_odpowiedzialnosci.json']
 
     def test_rokhabilitacjiview(self):
         a = any_autor()

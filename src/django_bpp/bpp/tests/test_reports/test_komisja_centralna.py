@@ -18,12 +18,12 @@ from bpp.util import Getter
 
 
 class TestRKCMixin:
-    fixtures = ['charakter_formalny.json',
-                'typ_kbn.json',
-                'jezyk.json',
-                'rodzaj_zrodla.json',
-                'tytul.json',
-                'typ_odpowiedzialnosci.json']
+    # fixtures = ['charakter_formalny.json',
+    #             'typ_kbn.json',
+    #             'jezyk.json',
+    #             'rodzaj_zrodla.json',
+    #             'tytul.json',
+    #             'typ_odpowiedzialnosci.json']
 
     def odpal_browser(self, res):
         fn = os.tempnam() + '.html'

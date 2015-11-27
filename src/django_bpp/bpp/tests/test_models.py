@@ -62,8 +62,7 @@ class TestJednostka(TestCase):
         self.assertEquals(j1.kierownik(), None)
 
         a1 = mommy.make(Autor)
-        j1.dodaj_autora(a1, funkcja=Funkcja_Autora.objects.create(
-            nazwa='kierownik'))
+        j1.dodaj_autora(a1, funkcja=Funkcja_Autora.objects.get(nazwa='kierownik'))
 
         self.assertEquals(j1.kierownik(), a1)
 
@@ -85,8 +84,8 @@ class TestJednostka(TestCase):
 
 
 class TestAutor(TestCase):
-    fixtures = ['charakter_formalny.json', 'tytul.json',
-                'typ_odpowiedzialnosci.json']
+    # fixtures = ['charakter_formalny.json', 'tytul.json',
+    #             'typ_odpowiedzialnosci.json']
 
     def test_autor(self):
         j = mommy.make(Autor, imiona='Omg', nazwisko='Lol', tytul=None)
@@ -247,7 +246,7 @@ class TestAutor(TestCase):
 
 class TestAutor_Jednostka(TestCase):
     def test_autor_jednostka(self):
-        f = Funkcja_Autora.objects.create(nazwa="kierownik", skrot="kier.")
+        f = Funkcja_Autora.objects.get(skrot="kier.")
         a = mommy.make(Autor, imiona='Omg', nazwisko='Lol', tytul=None)
         j = any_jednostka(nazwa='Lol', skrot="L.")
         aj = Autor_Jednostka.objects.create(autor=a, jednostka=j, funkcja=f)
@@ -343,12 +342,12 @@ class TestZrodlo(TestCase):
 
 
 class TestRedakcjaZrodla(TestCase):
-    fixtures = ['plec.json']
+    # fixtures = ['plec.json']
 
     def test_redakcja_zrodla(self):
-        t = Tytul.objects.create(nazwa='daktor', skrot='dr')
         a = mommy.make(
-            Autor, imiona="Jan", nazwisko="Kowalski", tytul=t,
+            Autor, imiona="Jan", nazwisko="Kowalski",
+            tytul=Tytul.objects.get(skrot='dr'),
             plec=Plec.objects.get(skrot='M'))
         z = mommy.make(Zrodlo, nazwa='LOL Zine')
         r = Redakcja_Zrodla.objects.create(
@@ -407,7 +406,7 @@ class TestTworzenieModeliAutorJednostka(TestCase):
 
 
 class TestWydawnictwoCiagleTestWydawnictwoZwarte(TestCase):
-    fixtures = ['charakter_formalny.json']
+    # fixtures = ['charakter_formalny.json']
 
     def test_clean(self):
         for model in [any_ciagle, any_zwarte]:

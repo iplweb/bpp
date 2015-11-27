@@ -106,8 +106,8 @@ class TestBrowseAutorzy(UserTestCase):
 
 
 class TestBrowseAutor(UserTestCase):
-    fixtures = ['charakter_formalny.json', 'tytul.json',
-                'typ_odpowiedzialnosci.json']
+    # fixtures = ['charakter_formalny.json', 'tytul.json',
+    #             'typ_odpowiedzialnosci.json']
 
     def test_get_context_data(self):
         av = AutorView()
@@ -138,8 +138,8 @@ class TestBrowseAutorStaff(SuperuserTestCase):
 
 
 class TestOAI(UserTestCase):
-    fixtures = ['charakter_formalny.json', 'tytul.json',
-                'typ_odpowiedzialnosci.json', 'status_korekty.json']
+    # fixtures = ['charakter_formalny.json', 'tytul.json',
+    #             'typ_odpowiedzialnosci.json', 'status_korekty.json']
 
     def setUp(self):
         c = any_ciagle(

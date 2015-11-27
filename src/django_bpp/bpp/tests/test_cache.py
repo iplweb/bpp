@@ -36,10 +36,10 @@ def clean_dict(ret):
 
 
 class TestCacheMixin:
-    fixtures = [
-        'typ_odpowiedzialnosci.json', 'tytul.json', 'zrodlo_informacji.json',
-        'charakter_formalny.json', 'status_korekty.json', 'typ_kbn.json',
-        'jezyk.json']
+    # fixtures = [
+    #     'typ_odpowiedzialnosci.json', 'tytul.json', 'zrodlo_informacji.json',
+    #     'charakter_formalny.json', 'status_korekty.json', 'typ_kbn.json',
+    #     'jezyk.json']
 
     def setUp(self):
         self.maxDiff = None
@@ -219,10 +219,10 @@ class LoadFixturesMixin:
 
 
 class TestCacheZapisani(TestCase):
-    fixtures = [
-        'typ_odpowiedzialnosci.json', 'tytul.json', 'zrodlo_informacji.json',
-        'charakter_formalny.json', 'status_korekty.json', 'typ_kbn.json',
-        'jezyk.json']
+    # fixtures = [
+    #     'typ_odpowiedzialnosci.json', 'tytul.json', 'zrodlo_informacji.json',
+    #     'charakter_formalny.json', 'status_korekty.json', 'typ_kbn.json',
+    #     'jezyk.json']
 
     def test_zapisani_wielu(self):
         aut = any_autor("Kowalski", "Jan")
@@ -270,11 +270,11 @@ class TestCacheZapisani(TestCase):
         self.assertEquals(c.opis_bibliograficzny_zapisani_autorzy_cache, u'Kowalski Jan')
 
 class TestMinimalCachingProblem(TestCase):
-    fixtures = [
-        "status_korekty.json",
-        "charakter_formalny.json",
-        "jezyk.json",
-        "typ_odpowiedzialnosci.json"]
+    # fixtures = [
+    #     "status_korekty.json",
+    #     "charakter_formalny.json",
+    #     "jezyk.json",
+    #     "typ_odpowiedzialnosci.json"]
 
     @with_cache
     def test_tworzenie(self):

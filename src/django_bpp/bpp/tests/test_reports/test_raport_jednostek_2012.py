@@ -24,11 +24,11 @@ def jezyk(skrot):
     return _query(Jezyk, 'skrot', skrot)
 
 class TestRaportJednostek2012(TestCase):
-    fixtures = ["charakter_formalny.json",
-                "jezyk.json",
-                "typ_odpowiedzialnosci.json",
-                "typ_kbn.json",
-                "status_korekty.json"]
+    # fixtures = ["charakter_formalny.json",
+    #             "jezyk.json",
+    #             "typ_odpowiedzialnosci.json",
+    #             "typ_kbn.json",
+    #             "status_korekty.json"]
 
     def setUp(self):
         self.j = any_jednostka()

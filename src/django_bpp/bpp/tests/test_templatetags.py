@@ -13,8 +13,8 @@ from bpp.tests.util import any_doktorat
 
 class TestTemplateTags(TestCase):
 
-    fixtures = ['typ_odpowiedzialnosci.json', 'charakter_formalny.json',
-                'tytul.json']
+    # fixtures = ['typ_odpowiedzialnosci.json', 'charakter_formalny.json',
+    #             'tytul.json']
 
     def setUp(self):
         j = any_jednostka()
