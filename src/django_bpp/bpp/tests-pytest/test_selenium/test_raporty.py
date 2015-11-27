@@ -8,125 +8,84 @@ from selenium.webdriver.common.keys import Keys
 from splinter.browser import Browser
 from celeryui.models import Report
 from django.conf import settings
-from bpp.models.system import Jezyk
-
+from bpp.models.system import Jezyk, Status_Korekty
 from bpp.tests.util import any_autor, CURRENT_YEAR, any_ciagle, any_jednostka
+import pytest
+
+@pytest.fixture
+def raporty_browser(preauth_browser, live_server):
+    preauth_browser.visit(live_server + reverse("bpp:raporty"))
+    return preauth_browser
+
+def wybrany(browser):
+    return browser.execute_script(
+        "$('section.active div[data-slug]').attr('data-slug')")
+
+def submit_page(browser):
+    browser.execute_script("$('input[name=submit]:visible').click()")
 
 
-DEFAULT_LOGIN = 'foo'
-DEFAULT_PASSWORD = 'bar'
+@pytest.mark.django_db
+@pytest.fixture
+def jednostka_raportow():
+    Status_Korekty.objects.get_or_create(pk=1, nazwa="przed korektą")
+
+    j = any_jednostka(nazwa="Jednostka")
+    a = any_autor()
+
+    c = any_ciagle(rok=CURRENT_YEAR)
+    c.dodaj_autora(a, j)
+
+    d = any_ciagle(rok=CURRENT_YEAR - 1)
+    d.dodaj_autora(a, j)
+
+    e = any_ciagle(rok=CURRENT_YEAR - 2)
+    e.dodaj_autora(a, j)
+
+    return j
+
+@pytest.mark.django_db
+def test_submit(raporty_browser, jednostka_raportow, live_server):
+    raporty_browser.visit(live_server + reverse("bpp:raport_jednostek_formularz"))
+    submit_page(raporty_browser)
+    time.sleep(3)
+
+    assert "To pole jest wymagane" in raporty_browser.html
+
+@pytest.mark.django_db
+def test_ranking_autorow(raporty_browser, jednostka_raportow, live_server):
+    raporty_browser.visit(live_server + reverse("bpp:ranking_autorow_formularz"))
+    assert 'value="%s"' % (CURRENT_YEAR - 1) in raporty_browser.html
 
 
-class RaportyPage(LiveServerTestCase):
+@pytest.mark.django_db
+def test_raport_jednostek(raporty_browser, jednostka_raportow, live_server):
+    raporty_browser.visit(live_server + reverse("bpp:raport_jednostek_formularz"))
 
-    @classmethod
-    def setUpClass(cls):
-        super(RaportyPage, cls).setUpClass()
+    elem = raporty_browser.find_by_id("id_jednostka-autocomplete")[0]
+    elem.type("Jedn")
+    time.sleep(2)
+    elem.type(Keys.TAB)
+    time.sleep(1)
 
-    def go(self, url):
-        final_url = self.live_server_url + url
-        self.browser.visit(final_url)
+    raporty_browser.execute_script('$("input[name=od_roku]:visible").val("' + str(CURRENT_YEAR) + '")')
+    raporty_browser.execute_script('$("input[name=do_roku]:visible").val("' + str(CURRENT_YEAR) + '")')
+    submit_page(raporty_browser)
+    time.sleep(0.5)
 
-    def login(self, username=DEFAULT_LOGIN, password=DEFAULT_PASSWORD):
-        self.go(reverse("login_form"))
-        self.browser.fill("username", DEFAULT_LOGIN)
-        self.browser.fill("password", DEFAULT_PASSWORD)
-        self.browser.find_by_id("id_submit").click()
-
-        if self.browser.is_element_present_by_id("password-change-link"):
-            return True
-        raise Exception("Nie moge zalogowac")
-
-    def setUp(self):
-        self.browser = Browser(driver_name=getattr(settings, 'SELENIUM_DRIVER', 'Firefox').lower())
-        self.user = get_user_model().objects.create_user(
-            username=DEFAULT_LOGIN, password=DEFAULT_PASSWORD)
-        self.login()
-        self.go(self.url)
-
-    def wybrany(self):
-        return self.browser.execute_script(
-            "$('section.active div[data-slug]').attr('data-slug')")
-
-    def submit_page(self):
-        self.browser.execute_script("$('input[name=submit]:visible').click()")
+    assert '/bpp/raporty/raport-jednostek-2012/%s/%s/' % (jednostka_raportow.pk, CURRENT_YEAR) in raporty_browser.url
 
 
-class TestRaportyPage(RaportyPage):
-    url = reverse("bpp:raporty")
+@pytest.mark.django_db
+def test_submit_kronika_uczelni(raporty_browser, jednostka_raportow, live_server):
+    c = Report.objects.all().count
+    assert c() == 0
 
-    available_apps = settings.INSTALLED_APPS
+    raporty_browser.visit(live_server + reverse("bpp:raport_kronika_uczelni"))
+    raporty_browser.execute_script('$("input[name=rok]").val("' + str(CURRENT_YEAR) + '")')
+    submit_page(raporty_browser)
+    time.sleep(2)
 
-    fixtures = ['typ_odpowiedzialnosci.json',
-                'charakter_formalny.json',
-                'jezyk.json',
-                'typ_kbn.json',
-                'status_korekty.json']
+    assert c() == 1
 
-    def setUp(self):
-        j = any_jednostka(nazwa="Jednostka")
-        a = any_autor()
-
-        c = any_ciagle(rok=CURRENT_YEAR)
-        c.dodaj_autora(a, j)
-
-        d = any_ciagle(rok=CURRENT_YEAR - 1)
-        d.dodaj_autora(a, j)
-
-        e = any_ciagle(rok=CURRENT_YEAR - 2)
-        e.dodaj_autora(a, j)
-
-        self.jednostka = j
-        super(TestRaportyPage, self).setUp()
-
-    def tearDown(self):
-        self.go(reverse("logout"))
-        self.browser.quit()
-
-    def test_submit(self):
-        self.go(reverse("bpp:raport_jednostek_formularz"))
-        self.submit_page()
-        time.sleep(3)
-        self.assertIn("To pole jest wymagane", self.browser.html)
-
-    def test_ranking_autorow(self):
-        self.go(reverse("bpp:ranking_autorow_formularz"))
-        self.assertIn(
-            'value="%s"' % (CURRENT_YEAR - 1),
-            self.browser.html)
-
-    def test_raport_jednostek(self):
-        Jezyk.objects.get_or_create(skrot="ang.", nazwa="angielski")
-        self.go(reverse("bpp:raport_jednostek_formularz"))
-
-        elem = self.browser.find_by_id("id_jednostka-autocomplete")[0]
-        elem.type("Jedn")
-        time.sleep(2)
-        elem.type(Keys.TAB)
-        time.sleep(1)
-
-        self.browser.execute_script('$("input[name=od_roku]:visible").val("' + str(CURRENT_YEAR) + '")')
-        self.browser.execute_script('$("input[name=do_roku]:visible").val("' + str(CURRENT_YEAR) + '")')
-
-        self.submit_page()
-        time.sleep(0.5)
-
-        self.assertIn(
-            '/bpp/raporty/raport-jednostek-2012/%s/%s/' % (
-                self.jednostka.pk, CURRENT_YEAR),
-            self.browser.url)
-
-    def test_submit_kronika_uczelni(self):
-        c = Report.objects.all().count
-        self.assertEquals(c(), 0)
-
-        self.go(reverse("bpp:raport_kronika_uczelni"))
-        self.browser.execute_script('$("input[name=rok]").val("' + str(CURRENT_YEAR) + '")')
-        self.submit_page()
-        time.sleep(2)
-
-        self.assertEquals(c(), 1)
-
-        self.assertEquals(
-            Report.objects.all()[0].function,
-            'kronika-uczelni')
+    assert Report.objects.all()[0].function == 'kronika-uczelni'

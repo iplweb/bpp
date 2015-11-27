@@ -7,6 +7,7 @@ from model_mommy import mommy
 import random
 import time
 from bpp.models import Tytul, Autor, Jednostka, Wydawnictwo_Ciagle, Wydawnictwo_Zwarte, Zrodlo, Wydzial, Uczelnia, Praca_Habilitacyjna, Praca_Doktorska, Typ_KBN, Jezyk, Charakter_Formalny, Patent
+from bpp.models.system import Status_Korekty
 
 
 def set_default(varname, value, dct):
@@ -85,6 +86,8 @@ def any_wydawnictwo(klass, rok=None, **kw):
 
     for key, value in kw_wyd.items():
         set_default(key, value, kw)
+
+    Status_Korekty.objects.get_or_create(pk=1, nazwa='przed korektą')
 
     return mommy.make(klass, rok=rok, **kw)
 
