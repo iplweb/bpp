@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # Basic APT stuff
-apt-get install -y git mercurial build-essential python-dev python3-dev redis-server phantomjs postgresql pgtune postgresql-plpython tightvncserver
+apt-get install -y git mercurial build-essential python-dev python3-dev redis-server phantomjs  postgresql pgtune postgresql-plpython 
+# Tightvnc i phantomjs zalatwia nam host selenium:  tightvncserver phantomjs
 # firefox=28.0+build2-0ubuntu2
 
 # PIP, Virtualenv
