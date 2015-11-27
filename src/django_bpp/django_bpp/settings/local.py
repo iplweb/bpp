@@ -54,7 +54,7 @@ COMPRESS_OFFLINE = False
 COMPRESS_ENABLED = False
 
 # host dla HTMLu oraz linii polecen, reszta dla linii polecen (bo HTML sie autokonfiguruje...)
-NOTIFICATIONS_HOST = '127.0.0.1'
+NOTIFICATIONS_HOST = '192.168.111.1'
 NOTIFICATIONS_PORT = 80
 NOTIFICATIONS_PROTOCOL = 'http'
 

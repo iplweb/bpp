@@ -30,11 +30,12 @@ Vagrant.configure(2) do |config|
 	  
       master.vm.provision "shell", path: "provisioning/master.sh"
 
-      master.vm.provision "file", source: "/Volumes/Dane zaszyfrowane/Klucze GPG - Ubuntu/gpg.conf", destination: "/home/vagrant/.gnupg/gpg.conf"
-      master.vm.provision "file", source: "/Volumes/Dane zaszyfrowane/Klucze GPG - Ubuntu/pubring.gpg", destination: "/home/vagrant/.gnupg/pubring.gpg"
-      master.vm.provision "file", source: "/Volumes/Dane zaszyfrowane/Klucze GPG - Ubuntu/random_seed", destination: "/home/vagrant/.gnupg/random_seed"
-      master.vm.provision "file", source: "/Volumes/Dane zaszyfrowane/Klucze GPG - Ubuntu/secring.gpg", destination: "/home/vagrant/.gnupg/secring.gpg"
-      master.vm.provision "file", source: "/Volumes/Dane zaszyfrowane/Klucze GPG - Ubuntu/trustdb.gpg", destination: "/home/vagrant/.gnupg/trustdb.gpg"
+      # Potrzebne do budowania pakietu nginxa... tym moze sie zajac np jakas inna masyzna wirtualna - w przyszlosci... 
+      #master.vm.provision "file", source: "/Volumes/Dane zaszyfrowane/Klucze GPG - Ubuntu/gpg.conf", destination: "/home/vagrant/.gnupg/gpg.conf"
+      #master.vm.provision "file", source: "/Volumes/Dane zaszyfrowane/Klucze GPG - Ubuntu/pubring.gpg", destination: "/home/vagrant/.gnupg/pubring.gpg"
+      #master.vm.provision "file", source: "/Volumes/Dane zaszyfrowane/Klucze GPG - Ubuntu/random_seed", destination: "/home/vagrant/.gnupg/random_seed"
+      #master.vm.provision "file", source: "/Volumes/Dane zaszyfrowane/Klucze GPG - Ubuntu/secring.gpg", destination: "/home/vagrant/.gnupg/secring.gpg"
+      #master.vm.provision "file", source: "/Volumes/Dane zaszyfrowane/Klucze GPG - Ubuntu/trustdb.gpg", destination: "/home/vagrant/.gnupg/trustdb.gpg"
 
       master.vm.provision "shell", path: "provisioning/master-post-file.sh"
 
@@ -53,5 +54,34 @@ Vagrant.configure(2) do |config|
 	  end
 
       staging.vm.provision "shell", path: "provisioning/staging.sh"
+  end
+
+  config.vm.define "selenium", primary: true do |selenium|
+      selenium.vm.box = "mpasternak/trusty64-updated"
+      selenium.vm.box_check_update = false
+
+      selenium.ssh.forward_x11 = true
+      selenium.ssh.forward_agent = true
+
+      selenium.vm.network "private_network", ip: "192.168.111.150"
+
+      if Vagrant.has_plugin?("vagrant-proxyconf")
+        selenium.proxy.http     = "http://192.168.111.1:3128/"
+        selenium.proxy.https    = "http://192.168.111.1:3128/"
+        selenium.proxy.no_proxy = "localhost,127.0.0.1,.example.com,staging,.localnet,messaging-test"
+      end
+	  
+      selenium.vm.provider "virtualbox" do |vb|
+         vb.gui = false
+         vb.memory = "1024"
+	 vb.cpus = "4"
+      end
+
+      selenium.vm.provision "shell", path: "provisioning/selenium.sh"
+
+      selenium.vm.provision "file", source: "provisioning/selenium.conf", destination: "050-selenium.conf"
+      selenium.vm.provision "shell", inline: "mv 050-selenium.conf /etc/supervisor/conf.d/050-selenium.conf"
+      selenium.vm.provision "shell", inline: "service supervisor restart"
+
   end
 end
