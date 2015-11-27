@@ -11,7 +11,6 @@ echo "Instaluje wheels z $DISTDIR"
 
 export PIP_INSTALL="pip install --find-links=$DISTDIR --use-wheel -v"
 
-platform='unknown'
 unamestr=`uname`
 hostnamestr=`hostname`
 
@@ -33,4 +32,3 @@ fi
 if [[ "$hostnamestr" == "master" ]]; then
     $PIP_INSTALL -r requirements/dev.requirements.txt
 fi
-
