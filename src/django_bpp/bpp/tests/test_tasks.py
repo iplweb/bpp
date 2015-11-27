@@ -8,7 +8,7 @@ from bpp.tests import any_ciagle
 
 
 class TestTasks(TestCase):
-    fixtures = ["charakter_formalny.json", ]
+    # fixtures = ["charakter_formalny.json", ]
 
     def test_zaktualizuj_opis(self):
         c = any_ciagle(

@@ -12,9 +12,9 @@ from bpp.views.raporty.ranking_autorow import RankingAutorow
 
 class TestRankingAutorow(TestCase):
 
-    fixtures = ['typ_odpowiedzialnosci.json',
-                'charakter_formalny.json',
-                'typ_kbn.json']
+    # fixtures = ['typ_odpowiedzialnosci.json',
+    #             'charakter_formalny.json',
+    #             'typ_kbn.json']
 
     def setUp(self):
         w1 = any_wydzial()

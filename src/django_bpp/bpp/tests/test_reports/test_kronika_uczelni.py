@@ -12,7 +12,7 @@ from bpp.tests.util import any_autor, any_jednostka, any_ciagle, any_zwarte, CUR
 
 
 class TestKronikaUczelni(TestCase):
-    fixtures = USUAL_FIXTURES
+    # fixtures = USUAL_FIXTURES
 
     def setUp(self):
         u = any_uczelnia()
