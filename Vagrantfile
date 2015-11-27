@@ -32,11 +32,11 @@ Vagrant.configure(2) do |config|
       master.vm.provision "shell", path: "provisioning/master.sh"
 
       # Potrzebne do budowania pakietu nginxa... tym moze sie zajac np jakas inna masyzna wirtualna - w przyszlosci... 
-      #master.vm.provision "file", source: "/Volumes/Dane zaszyfrowane/Klucze GPG - Ubuntu/gpg.conf", destination: "/home/vagrant/.gnupg/gpg.conf"
-      #master.vm.provision "file", source: "/Volumes/Dane zaszyfrowane/Klucze GPG - Ubuntu/pubring.gpg", destination: "/home/vagrant/.gnupg/pubring.gpg"
-      #master.vm.provision "file", source: "/Volumes/Dane zaszyfrowane/Klucze GPG - Ubuntu/random_seed", destination: "/home/vagrant/.gnupg/random_seed"
-      #master.vm.provision "file", source: "/Volumes/Dane zaszyfrowane/Klucze GPG - Ubuntu/secring.gpg", destination: "/home/vagrant/.gnupg/secring.gpg"
-      #master.vm.provision "file", source: "/Volumes/Dane zaszyfrowane/Klucze GPG - Ubuntu/trustdb.gpg", destination: "/home/vagrant/.gnupg/trustdb.gpg"
+      # master.vm.provision "file", source: "/Volumes/Dane zaszyfrowane/Klucze GPG - Ubuntu/gpg.conf", destination: "/home/vagrant/.gnupg/gpg.conf"
+      # master.vm.provision "file", source: "/Volumes/Dane zaszyfrowane/Klucze GPG - Ubuntu/pubring.gpg", destination: "/home/vagrant/.gnupg/pubring.gpg"
+      # master.vm.provision "file", source: "/Volumes/Dane zaszyfrowane/Klucze GPG - Ubuntu/random_seed", destination: "/home/vagrant/.gnupg/random_seed"
+      # master.vm.provision "file", source: "/Volumes/Dane zaszyfrowane/Klucze GPG - Ubuntu/secring.gpg", destination: "/home/vagrant/.gnupg/secring.gpg"
+      # master.vm.provision "file", source: "/Volumes/Dane zaszyfrowane/Klucze GPG - Ubuntu/trustdb.gpg", destination: "/home/vagrant/.gnupg/trustdb.gpg"
 
       master.vm.provision "shell", path: "provisioning/master-post-file.sh"
 
