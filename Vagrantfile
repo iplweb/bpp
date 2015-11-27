@@ -19,7 +19,8 @@ Vagrant.configure(2) do |config|
 
       master.vm.provider "virtualbox" do |vb|
          vb.gui = false
-         vb.memory = "2048"
+	 vb.cpus = "2"
+         vb.memory = "1024"
       end
 
       if Vagrant.has_plugin?("vagrant-proxyconf")
@@ -74,7 +75,7 @@ Vagrant.configure(2) do |config|
       selenium.vm.provider "virtualbox" do |vb|
          vb.gui = false
          vb.memory = "1024"
-	 vb.cpus = "4"
+	 vb.cpus = "2"
       end
 
       selenium.vm.provision "shell", path: "provisioning/selenium.sh"
