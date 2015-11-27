@@ -53,11 +53,11 @@ simplejson==3.8.0
 
 Pillow==2.9.0
 
---allow-external django-celery-ui==0.2
+django-celery-ui==0.2
 django-grappelli==2.6.4
---allow-external django-multiseek==0.9.13
+django-multiseek==0.9.13
 djorm-ext-filtered-contenttypes==0.3
---allow-external djorm-ext-pgfulltext==0.9.1
+djorm-ext-pgfulltext==0.9.1
 
 django_braces==1.8.1
 
