@@ -9,10 +9,12 @@ from django_bpp.util import wait_for_object
 from integrator.atoz import read_atoz_xls_data, atoz_import_data
 from integrator.autorzy import autorzy_import_data, autorzy_analyze_data, autorzy_integrate_data, \
     real_autorzy_analyze_file
+from integrator.autorzy_bez_pbn import autorzy_bez_pbn_integrate_data, autorzy_bez_pbn_analyze_data, \
+    autorzy_bez_pbn_import_data, real_autorzy_bez_pbn_analyze_file
 from integrator.doaj import doaj_import_data, read_doaj_csv_data, zrodlo_integrate_data, \
     zrodlo_analyze_data
 from integrator.models import IntegrationFile, INTEGRATOR_AUTOR, \
-    INTEGRATOR_ATOZ, INTEGRATOR_DOI
+    INTEGRATOR_ATOZ, INTEGRATOR_DOI, INTEGRATOR_AUTOR_BEZ_PBN
 
 logger = get_task_logger(__name__)
 from django_bpp.celery import app
@@ -41,6 +43,12 @@ def analyze_file(pk):
         f1a = real_autorzy_analyze_file
         f2 = autorzy_analyze_data
         f3 = autorzy_integrate_data
+
+    elif obj.type == INTEGRATOR_AUTOR_BEZ_PBN:
+        f1 = autorzy_bez_pbn_import_data
+        f1a = real_autorzy_bez_pbn_analyze_file
+        f2 = autorzy_bez_pbn_analyze_data
+        f3 = autorzy_bez_pbn_integrate_data
 
     elif obj.type == INTEGRATOR_ATOZ:
         f1 = atoz_import_data

@@ -17,7 +17,7 @@ def read_autor_import(file_contents):
             yield data
 
 
-def real_autorzy_analyze_file(fobj):
+def real_autorzy_bez_pbn_analyze_file(fobj):
     if fobj is None:
         raise ReadDataException("Brak pliku dla rekordu z PK %i" % pk)
 
@@ -26,7 +26,7 @@ def real_autorzy_analyze_file(fobj):
 
 
 @transaction.atomic
-def autorzy_import_data(parent, data):
+def autorzy_bez_pbn_import_data(parent, data):
     for record in data:
         AutorIntegrationRecord.objects.create(
             parent=parent,
@@ -39,7 +39,7 @@ def autorzy_import_data(parent, data):
 
 
 @transaction.atomic
-def autorzy_analyze_data(parent):
+def autorzy_bez_pbn_analyze_data(parent):
     for air in AutorIntegrationRecord.objects.filter(parent=parent):
 
         czy_jest_taki_autor = air.sprobuj_zlokalizowac_autora()
@@ -71,7 +71,7 @@ def autorzy_analyze_data(parent):
 
 
 @transaction.atomic
-def autorzy_integrate_data(parent):
+def autorzy_bez_pbn_integrate_data(parent):
     for air in AutorIntegrationRecord.objects.filter(parent=parent, moze_byc_zintegrowany_automatycznie=True):
 
         aut = air.matching_autor
