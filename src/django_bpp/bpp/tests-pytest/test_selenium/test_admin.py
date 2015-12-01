@@ -5,7 +5,6 @@ import pytest
 from django.core.urlresolvers import reverse
 from django.db import transaction
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.select import Select
 
 from bpp.models import Wydawnictwo_Ciagle
 from bpp.models.patent import Patent
@@ -17,6 +16,7 @@ from bpp.tests.util import any_zrodlo, CURRENT_YEAR, any_zwarte, any_patent
 ID = "id_tytul_oryginalny"
 
 pytestmark = [pytest.mark.slow, pytest.mark.selenium]
+
 
 def scrollIntoView(browser, arg):
     return browser.execute_script("document.getElementById('id_" + arg + "').scrollIntoView()")
@@ -247,12 +247,16 @@ def test_upload_punkty(preauth_admin_browser, live_server):
 
 
 @pytest.fixture
-def autorform_browser(preauth_admin_browser, db, live_server):
+def autorform_jednostka(db):
     with transaction.atomic():
         a = any_autor(nazwisko="KOWALSKI", imiona="Jan Sebastian")
         j = any_jednostka(nazwa="WTF LOL")
         j.dodaj_autora(a)
+    return j
 
+
+@pytest.fixture
+def autorform_browser(preauth_admin_browser, db, live_server):
     url = reverse("admin:bpp_wydawnictwo_ciagle_add")
     preauth_admin_browser.visit(live_server + url)
     preauth_admin_browser.execute_script("window.onbeforeunload = function(e) {};")
@@ -260,11 +264,12 @@ def autorform_browser(preauth_admin_browser, db, live_server):
     return preauth_admin_browser
 
 
-def test_autorform_jednostka_bug_wydawnictwo_ciagle_zapisz(autorform_browser):
+def test_autorform_jednostka_bug_wydawnictwo_ciagle_zapisz(autorform_browser, autorform_jednostka):
     autorform_browser.find_by_name("_continue").click()
     assert "To pole jest wymagane." in autorform_browser.html
 
-def test_autorform_uzupelnianie_jednostki(autorform_browser):
+
+def test_autorform_uzupelnianie_jednostki(autorform_browser, autorform_jednostka):
     aut = autorform_browser.find_by_id("id_wydawnictwo_ciagle_autor_set-0-autor-autocomplete")
     aut.type("KOWALSKI")
     time.sleep(2)
@@ -273,9 +278,10 @@ def test_autorform_uzupelnianie_jednostki(autorform_browser):
 
     sel = autorform_browser.find_by_id("id_wydawnictwo_ciagle_autor_set-0-jednostka")
 
-    assert sel.value == u"1"
+    assert sel.value == str(autorform_jednostka.pk)
 
-def test_autorform_uzupelnianie_jednostki_drugi_wiersz(autorform_browser):
+
+def test_autorform_uzupelnianie_jednostki_drugi_wiersz(autorform_browser, autorform_jednostka):
     # bug polegający na tym, że druga jednostka się ŹLE wypełnia
 
     # najpierw kliknij "dodaj autora"
@@ -291,9 +297,10 @@ def test_autorform_uzupelnianie_jednostki_drugi_wiersz(autorform_browser):
     time.sleep(2)
 
     sel = autorform_browser.find_by_id("id_wydawnictwo_ciagle_autor_set-1-jednostka")
-    assert sel.value == u"1"
+    assert sel.value == str(autorform_jednostka.pk)
 
-def test_autorform_kasowanie_autora(autorform_browser):
+
+def test_autorform_kasowanie_autora(autorform_browser, autorform_jednostka):
     # bug polegający na tym, że przy dodaniu autora i potem skasowaniu go,
     # pole jednostki i nazwisk się NIE czyści
     # ... ale zostawiam to w spokoju.
@@ -312,7 +319,7 @@ def test_autorform_kasowanie_autora(autorform_browser):
     """)
     time.sleep(2)
     jed = autorform_browser.find_by_id("id_wydawnictwo_ciagle_autor_set-0-jednostka")
-    assert jed.value == "1"
+    assert jed.value == str(autorform_jednostka.pk)
 
     autorform_browser.execute_script("window.onbeforeunload = function(e) {};")
 
