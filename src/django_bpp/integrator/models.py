@@ -9,6 +9,7 @@ from django.conf import settings
 import os
 from bpp.models.zrodlo import Zrodlo
 from bpp.util import slugify_function
+import copy
 
 STATUSY = [
     (0, "dodany"),
@@ -20,11 +21,14 @@ STATUSY = [
 INTEGRATOR_DOI = 0
 INTEGRATOR_ATOZ = 1
 INTEGRATOR_AUTOR = 2
+INTEGRATOR_AUTOR_BEZ_PBN = 3
+
 
 RODZAJE = [
     (INTEGRATOR_DOI, "lista DOI"),
     (INTEGRATOR_ATOZ, "lista AtoZ"),
-    (INTEGRATOR_AUTOR, "integracja autorów")
+    (INTEGRATOR_AUTOR, "integracja autorów"),
+    (INTEGRATOR_AUTOR_BEZ_PBN, "integracja autorów bez PBN ID")
 ]
 
 
@@ -42,7 +46,7 @@ class IntegrationFile(models.Model):
         return os.path.basename(self.file.name)
 
     def records(self):
-        if self.type == INTEGRATOR_AUTOR:
+        if self.type in [INTEGRATOR_AUTOR, INTEGRATOR_AUTOR_BEZ_PBN]:
             return self.autorintegrationrecord_set.all()
         if self.type == INTEGRATOR_DOI or self.type == INTEGRATOR_ATOZ:
             return self.zrodlointegrationrecord_set.all()
@@ -67,6 +71,13 @@ AUTOR_IMPORT_COLUMNS = {
     u"PBN ID": "pbn_id"
 }
 
+
+AUTOR_BEZ_PBN_IMPORT_COLUMNS = {
+    u"Tytuł/Stopień": "tytul_skrot",
+    u"NAZWISKO": "nazwisko",
+    u"IMIĘ": "imie",
+    u"NAZWA JEDNOSTKI": "nazwa_jednostki",
+}
 
 def int_or_None(val):
     try:

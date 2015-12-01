@@ -9,7 +9,6 @@ from bpp.models.cache import Rekord
 from bpp.models.system import Typ_Odpowiedzialnosci, Charakter_Formalny
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, \
     Wydawnictwo_Ciagle_Autor
-from bpp.tests.helpers import FakeUnauthenticatedUser
 from bpp.tests.util import any_doktorat, any_habilitacja, any_ciagle, any_autor, \
     any_jednostka
 
@@ -77,6 +76,12 @@ class TestBrowse(UserTestCase):
 
         res = self.client.get(reverse("bpp:browse_jednostka", args=(j.slug,)))
         self.assertContains(res, "jednostka", status_code=200)
+
+
+class FakeUnauthenticatedUser:
+    def is_authenticated(self):
+        return False
+
 
 
 class TestBrowseAutorzy(UserTestCase):

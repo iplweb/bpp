@@ -24,6 +24,7 @@ def wybrany(browser):
 def submit_page(browser):
     browser.execute_script("$('input[name=submit]:visible').click()")
 
+pytestmark = [pytest.mark.slow, pytest.mark.selenium]
 
 @pytest.mark.django_db
 @pytest.fixture

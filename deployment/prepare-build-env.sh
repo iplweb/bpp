@@ -1,5 +1,8 @@
 #!/bin/bash -e
 
+#
+# Ten skrypt przygotowywuje do budowania django-bpp
+#
 
 if [ -z "$VIRTUAL_ENV" ]; then
     echo "Ten skrypt dziala spod virtualenv, aktywuj jakies"
