@@ -25,9 +25,12 @@ def build_mapping(xls_columns, wanted_columns):
 
 
 
-def read_xls_data(file_contents, wanted_columns, header_row_name):
+def read_xls_data(file_contents, wanted_columns, header_row_name, ignored_sheet_names=None):
     book = xlrd.open_workbook(file_contents=file_contents)
     for sheet in book.sheets():
+        if ignored_sheet_names is not None:
+            if sheet.name in ignored_sheet_names:
+                continue
         header_row_no = find_header_row(sheet, header_row_name)
         if header_row_no is None:
             raise ReadDataException("Brak wiersza nagłówka")
