@@ -11,7 +11,8 @@ logger = get_task_logger(__name__)
 
 
 def read_autor_import(file_contents):
-    for data in read_xls_data(file_contents, wanted_columns=AUTOR_BEZ_PBN_IMPORT_COLUMNS, header_row_name=u"Tytuł/Stopień"):
+    for data in read_xls_data(file_contents, wanted_columns=AUTOR_BEZ_PBN_IMPORT_COLUMNS,
+                              header_row_name=u"Tytuł/Stopień", ignored_sheet_names=['zbiorczy']):
         if data['nazwisko'] and data['imie'] and data['nazwa_jednostki']:
             yield data
 
