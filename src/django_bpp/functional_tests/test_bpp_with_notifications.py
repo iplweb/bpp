@@ -24,6 +24,8 @@ import pytest
 from bpp.models.system import Charakter_Formalny
 from conftest import NORMAL_DJANGO_USER_PASSWORD
 
+pytestmark = [pytest.mark.slow, pytest.mark.selenium]
+
 
 def test_caching_enabled(preauth_webtest_admin_app, zrodlo, obiekty_bpp):
     """

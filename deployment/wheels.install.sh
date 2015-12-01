@@ -1,5 +1,9 @@
 #!/bin/bash -e
 
+#
+# Ten skrypt instaluje pakiety WHL, z których krozysta django-bpp
+#
+
 if [ -z "$VIRTUAL_ENV" ]; then
     echo "Ten skrypt dziala spod virtualenv, aktywuj jakies"
     exit 1
