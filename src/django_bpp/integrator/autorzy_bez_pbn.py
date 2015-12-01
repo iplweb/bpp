@@ -76,7 +76,6 @@ def autorzy_bez_pbn_integrate_data(parent):
 
         aut = air.matching_autor
 
-        aut.pbn_id = int(float(air.pbn_id))
         aut.tytul = Tytul.objects.get(skrot=air.tytul_skrot)
 
         if air.matching_jednostka not in aut.jednostki.all():
