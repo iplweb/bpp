@@ -22,14 +22,23 @@
     <p>Zintegrowano automatycznie: {{ object.integrated.count }}</p>
     <p>Nie zintegrowano: {{ object.not_integrated.count }}</p>
 
-    {% if object.status > 1 %}
+    {% if object.status > 1 and object.not_integrated.count %}
         <p>Rekordy niezintegrowane:</p>
 
         <table>
-        {% if object.type == 2 %}
+        {% if object.type == 2 or object.type == 3 %}
+            <tr>
+            <th>Nazwisko</th>
+            <th>Imię</th>
+            <th>Tytuł</th>
+            <th>Nazwa jednostki</th>
+            <th>PBN ID</th>
+            <th>Problem</th>
+            </tr>
             {% for row in object.not_integrated %}
                 <tr>
-                    <td>{{ row.nazwisko }} {{ row.imie }}</td>
+                    <td>{{ row.nazwisko }}</td>
+                    <td>{{ row.imie }}</td>
                     <td>{{ row.tytul_skrot }}</td>
                     <td>{{ row.nazwa_jednostki }}</td>
                     <td>{{ row.pbn_id }}</td>

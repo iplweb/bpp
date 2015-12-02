@@ -58,12 +58,13 @@ def autorzy_bez_pbn_analyze_data(parent):
 
         # Można integrować automatycznie?
         # Sprawdz tytul_skrot, sprawdz PBN_ID czy do integera sie da zrobic
-        try:
-            Tytul.objects.get(skrot=air.tytul_skrot)
-        except Tytul.DoesNotExist:
-            air.extra_info = "Brak takiego tytulu"
-            air.save()
-            continue
+        if air.tytul_skrot and air.tytul_skrot.strip():
+            try:
+                Tytul.objects.get(skrot=air.tytul_skrot)
+            except Tytul.DoesNotExist:
+                air.extra_info = "Brak takiego tytulu"
+                air.save()
+                continue
 
         air.moze_byc_zintegrowany_automatycznie = True
         air.zanalizowano = True
@@ -76,7 +77,8 @@ def autorzy_bez_pbn_integrate_data(parent):
 
         aut = air.matching_autor
 
-        aut.tytul = Tytul.objects.get(skrot=air.tytul_skrot)
+        if air.tytul_skrot and air.tytul_skrot.strip():
+            aut.tytul = Tytul.objects.get(skrot=air.tytul_skrot)
 
         if air.matching_jednostka not in aut.jednostki.all():
             Autor_Jednostka.objects.create(autor=aut, jednostka=air.matching_jednostka)

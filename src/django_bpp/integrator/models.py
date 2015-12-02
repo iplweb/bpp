@@ -181,10 +181,11 @@ class AutorIntegrationRecord(MetkaRekorduIntegracji, models.Model):
         strategia_4 = Jednostka.objects.filter(slug=slugify_function(self.nazwa_jednostki)[:50])[:3]
         strategia_5 = Jednostka.objects.filter(nazwa=unicode("%r" % self.nazwa_jednostki))[:3]
         strategia_6 = Jednostka.objects.filter(slug=slugify_function(unicode("%r" % self.nazwa_jednostki))[:50])[:3]
+        strategia_7 = Jednostka.objects.filter(nazwa__icontains=self.nazwa_jednostki.strip().replace("  ", " ").replace("  ", " ").strip())[:3]
 
         log = [u"Ciąg: |%s|" % self.nazwa_jednostki]
 
-        for no, strategia in enumerate([strategia_1, strategia_2, strategia_3, strategia_4, strategia_5, strategia_6]):
+        for no, strategia in enumerate([strategia_1, strategia_2, strategia_3, strategia_4, strategia_5, strategia_6, strategia_7]):
             res = list(strategia)
             log.append(u"%s: %s" % (no, len(strategia)))
 

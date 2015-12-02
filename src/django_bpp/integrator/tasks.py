@@ -3,6 +3,8 @@
 from celery.utils.log import get_task_logger
 from django.core.management import call_command
 from django.core.urlresolvers import reverse
+from requests.exceptions import ConnectionError
+
 from bpp.util import remove_old_objects
 
 from django_bpp.util import wait_for_object
@@ -29,6 +31,8 @@ def analyze_file(pk):
             msg = u'<a href="%s">Integracja pliku "%s": %s</a>. '
             url = reverse("integrator:detail", args=(obj.pk,))
             call_command('send_message', obj.owner, msg % (url, obj.filename(), komunikat), dont_persist=dont_persist)
+        except ConnectionError, e:
+            pass
         except Exception, e:
             obj.extra_info = str(e)
             obj.status = 3
