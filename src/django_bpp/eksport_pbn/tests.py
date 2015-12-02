@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from django.core.urlresolvers import reverse
 from model_mommy import mommy
 import pytest
-from eksport_pbn.models import PlikEksportuPBN
+from eksport_pbn.models import PlikEksportuPBN, DATE_CREATED_ON
 from eksport_pbn.tasks import eksport_pbn, id_zwartych, id_ciaglych, remove_old_eksport_pbn_files
 
 
@@ -82,3 +82,18 @@ def test_remove_old_eksport_files(db):
 
     assert PlikEksportuPBN.objects.all().count() == 1
 
+
+def test_z_datami(jednostka, autor_jan_kowalski, wydawnictwo_ciagle, wydawnictwo_zwarte, rok):
+
+    autor_jan_kowalski.dodaj_jednostke(jednostka=jednostka)
+    wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
+    wydawnictwo_zwarte.dodaj_autora(autor_jan_kowalski, jednostka)
+
+    assert list(id_ciaglych(jednostka.wydzial, wydawnictwo_ciagle.rok, data=(datetime.now() + timedelta(days=20)).date())) == []
+    assert list(id_zwartych(jednostka.wydzial, wydawnictwo_ciagle.rok, True, True, data=(datetime.now() + timedelta(days=20)).date())) == []
+
+def test_z_datami_2(db):
+    d = datetime.now().date()
+    p = mommy.make(PlikEksportuPBN, rodzaj_daty=DATE_CREATED_ON, data=d)
+    s = p.get_fn()
+    assert str(d).replace("-", "_") in s
