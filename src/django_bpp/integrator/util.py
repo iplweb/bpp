@@ -3,9 +3,10 @@ import xlrd
 
 def find_header_row(sheet, first_column_value):
     for a in range(min(10, sheet.nrows)):
-        f = sheet.row(a)[0].value
-        if hasattr(f, 'upper') and f.upper() == first_column_value.upper():
-            return a
+        for b in range(min(10, sheet.ncols)):
+            f = sheet.row(a)[b].value
+            if hasattr(f, 'upper') and f.upper() == first_column_value.upper():
+                return a
 
 class ReadDataException(Exception):
     pass
