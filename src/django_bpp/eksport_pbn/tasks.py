@@ -1,13 +1,11 @@
 # -*- encoding: utf-8 -*-
-from tempfile import mkdtemp, mkstemp
-import zipfile
-from datetime import datetime, timedelta
 import os
+import zipfile
+from tempfile import mkdtemp, mkstemp
 
 from django.core.files.base import File
 from django.core.management import call_command
 from django.core.urlresolvers import reverse
-
 from lxml.etree import tostring
 
 from bpp.models.system import Charakter_Formalny
@@ -16,23 +14,45 @@ from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte_Autor, Wydawnictwo_
 from bpp.util import remove_old_objects
 from django_bpp.celery import app
 from django_bpp.util import wait_for_object
-from eksport_pbn.models import PlikEksportuPBN
+from eksport_pbn.models import PlikEksportuPBN, DATE_CREATED_ON, DATE_UPDATED_ON
 
 
-def id_ciaglych(wydzial, rok):
+class ExportPBNException(Exception):
+    pass
+
+
+class BrakTakiegoRodzajuDatyException(ExportPBNException):
+    pass
+
+
+def data_kw(data, rodzaj_daty):
+    if data is None or rodzaj_daty is None:
+        return {}
+
+    if rodzaj_daty == DATE_CREATED_ON:
+        return {'rekord__utworzono__gte': data}
+    elif rodzaj_daty == DATE_UPDATED_ON:
+        return {'rekord__ostatnio_zmieniony__gte': data}
+    else:
+        raise BrakTakiegoRodzajuDatyException(rodzaj_daty)
+
+
+def id_ciaglych(wydzial, rok, data=None, rodzaj_daty=None):
     return Wydawnictwo_Ciagle_Autor.objects.filter(
         jednostka__wydzial=wydzial,
         rekord__rok=rok,
-        rekord__charakter_formalny__in=Charakter_Formalny.objects.filter(artykul_pbn=True)
+        rekord__charakter_formalny__in=Charakter_Formalny.objects.filter(artykul_pbn=True),
+        **data_kw(data, rodzaj_daty)
     ).order_by("rekord_id").distinct("rekord_id").only("rekord_id").values_list("rekord_id", flat=True)
 
 
-def id_zwartych(wydzial, rok, ksiazki, rozdzialy):
+def id_zwartych(wydzial, rok, ksiazki, rozdzialy, data=None, rodzaj_daty=None):
     if ksiazki:
         for rekord in Wydawnictwo_Zwarte_Autor.objects.filter(
                 jednostka__wydzial=wydzial,
                 rekord__rok=rok,
-                rekord__charakter_formalny__in=Charakter_Formalny.objects.filter(ksiazka_pbn=True)
+                rekord__charakter_formalny__in=Charakter_Formalny.objects.filter(ksiazka_pbn=True),
+                **data_kw(data, rodzaj_daty)
         ).order_by("rekord_id").distinct("rekord_id").only("rekord_id").values_list("rekord_id", flat=True):
             yield rekord
 
@@ -40,7 +60,8 @@ def id_zwartych(wydzial, rok, ksiazki, rozdzialy):
         for rekord in Wydawnictwo_Zwarte_Autor.objects.filter(
                 jednostka__wydzial=wydzial,
                 rekord__rok=rok,
-                rekord__charakter_formalny__in=Charakter_Formalny.objects.filter(rozdzial_pbn=True)
+                rekord__charakter_formalny__in=Charakter_Formalny.objects.filter(rozdzial_pbn=True),
+                **data_kw(data, rodzaj_daty)
         ).order_by("rekord_id").distinct("rekord_id").only("rekord_id").values_list("rekord_id", flat=True):
             yield rekord
 
@@ -71,12 +92,15 @@ def eksport_pbn(pk):
     ksiazki = obj.ksiazki
     rozdzialy = obj.rozdzialy
 
+    data = obj.data
+    rodzaj_daty = obj.rodzaj_daty
+
     def informuj(msg, dont_persist=True):
         call_command('send_message', user, msg, no_persist=dont_persist)
 
     def gen_ser():
         if artykuly:
-            for ic in id_ciaglych(wydzial, rok):
+            for ic in id_ciaglych(wydzial, rok, data, rodzaj_daty):
                 yield Wydawnictwo_Ciagle.objects.get(pk=ic).eksport_pbn_serializuj(wydzial)
 
         if ksiazki and rozdzialy:
@@ -86,7 +110,7 @@ def eksport_pbn(pk):
         elif ksiazki:
             informuj(u"... generuję książki dla %s, rok %s" % (wydzial.nazwa, rok))
 
-        for iz in id_zwartych(wydzial, rok, ksiazki, rozdzialy):
+        for iz in id_zwartych(wydzial, rok, ksiazki, rozdzialy, data, rodzaj_daty):
             yield Wydawnictwo_Zwarte.objects.get(pk=iz).eksport_pbn_serializuj(wydzial)
 
     tmpdir = mkdtemp()

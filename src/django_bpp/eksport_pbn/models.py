@@ -1,12 +1,11 @@
 # -*- encoding: utf-8 -*-
-from django.contrib.contenttypes.fields import GenericForeignKey
-from django.contrib.contenttypes.models import ContentType
-
-from django.db import models
 from django.conf import settings
-
+from django.contrib.contenttypes.models import ContentType
+from django.db import models
 # Create your models here.
 from bpp.models.struktura import Wydzial
+
+DATE_CREATED_ON, DATE_UPDATED_ON = (1, 2)
 
 
 class PlikEksportuPBN(models.Model):
@@ -24,6 +23,19 @@ class PlikEksportuPBN(models.Model):
     ksiazki = models.BooleanField("Książki", default=True)
     rozdzialy = models.BooleanField("Rozdziały", default=True)
 
+    data = models.DateField(
+        verbose_name="Data",
+        help_text="""Data aktualizacji lub utworzenia rekordu większa od lub równa. Jeżeli pozostawisz
+        to pole puste, data nie będzie używana przy generowaniu pliku. """,
+        blank=True, null=True)
+
+    rodzaj_daty = models.SmallIntegerField(
+        verbose_name="Rodzaj pola daty",
+        choices=[(DATE_CREATED_ON, "data utworzenia"),
+                 (DATE_UPDATED_ON, "data aktualizacji")],
+        default=0,
+        help_text="""Jakie pole z datą będzie używane do wybierania rekordów?""")
+
     # PLAN
     #
     # 1) eksportowanie POJEDYNCZYCH prac
@@ -34,17 +46,27 @@ class PlikEksportuPBN(models.Model):
     def get_fn(self):
         buf = u"PBN-%s-%s" % (self.wydzial.skrot, self.rok)
 
-        if self.artykuly and self.ksiazki and self.rozdzialy:
-            return buf
+        if not (self.artykuly and self.ksiazki and self.rozdzialy):
 
-        extra = [
-            (self.artykuly, u"art"),
-            (self.ksiazki, u"ksi"),
-            (self.rozdzialy, u"roz")
-        ]
+            extra = [
+                (self.artykuly, u"art"),
+                (self.ksiazki, u"ksi"),
+                (self.rozdzialy, u"roz")
+            ]
 
-        for b, val in extra:
-            if b:
-                buf += u"-" + val
+            for b, val in extra:
+                if b:
+                    buf += u"-" + val
 
+        if self.data:
+
+            if self.rodzaj_daty == DATE_CREATED_ON:
+                buf += "-utw_po-"
+            elif self.rodzaj_daty == DATE_UPDATED_ON:
+                buf += "-zm_po-"
+            else:
+                from tasks import BrakTakiegoRodzajuDatyException
+                raise BrakTakiegoRodzajuDatyException(self.rodzaj_daty)
+
+            buf += str(self.data).replace("-", "_").replace("/", "_")
         return buf
