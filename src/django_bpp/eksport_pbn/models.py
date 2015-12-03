@@ -23,11 +23,9 @@ class PlikEksportuPBN(models.Model):
     ksiazki = models.BooleanField("Książki", default=True)
     rozdzialy = models.BooleanField("Rozdziały", default=True)
 
-    data = models.DateField(
-        verbose_name="Data",
-        help_text="""Data aktualizacji lub utworzenia rekordu większa od lub równa. Jeżeli pozostawisz
-        to pole puste, data nie będzie używana przy generowaniu pliku. """,
-        blank=True, null=True)
+    od_daty = models.DateField(verbose_name="Od daty", blank=True, null=True)
+
+    do_daty = models.DateField(verbose_name="Od daty", blank=True, null=True)
 
     rodzaj_daty = models.SmallIntegerField(
         verbose_name="Rodzaj pola daty",
@@ -58,15 +56,19 @@ class PlikEksportuPBN(models.Model):
                 if b:
                     buf += u"-" + val
 
-        if self.data:
+        flds = { DATE_CREATED_ON: 'utw',
+                 DATE_UPDATED_ON: 'zm' }
 
-            if self.rodzaj_daty == DATE_CREATED_ON:
-                buf += "-utw_po-"
-            elif self.rodzaj_daty == DATE_UPDATED_ON:
-                buf += "-zm_po-"
-            else:
+        if self.od_daty:
+            try:
+                buf += "-" + flds[self.rodzaj_daty]
+            except KeyError:
                 from tasks import BrakTakiegoRodzajuDatyException
                 raise BrakTakiegoRodzajuDatyException(self.rodzaj_daty)
 
-            buf += str(self.data).replace("-", "_").replace("/", "_")
+            for label, wartosc in [('od', self.od_daty), ('do', self.do_daty)]:
+                if wartosc is None:
+                    continue
+                buf += "-" + label + "-"
+                buf += str(wartosc).replace("-", "_").replace("/", "_")
         return buf
