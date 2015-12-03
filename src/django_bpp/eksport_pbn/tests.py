@@ -89,11 +89,22 @@ def test_z_datami(jednostka, autor_jan_kowalski, wydawnictwo_ciagle, wydawnictwo
     wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
     wydawnictwo_zwarte.dodaj_autora(autor_jan_kowalski, jednostka)
 
-    assert list(id_ciaglych(jednostka.wydzial, wydawnictwo_ciagle.rok, data=(datetime.now() + timedelta(days=20)).date())) == []
-    assert list(id_zwartych(jednostka.wydzial, wydawnictwo_ciagle.rok, True, True, data=(datetime.now() + timedelta(days=20)).date())) == []
+    assert list(id_ciaglych(jednostka.wydzial, wydawnictwo_ciagle.rok, rodzaj_daty=DATE_CREATED_ON, od_daty=(datetime.now() + timedelta(days=20)).date())) == []
+    assert list(id_zwartych(jednostka.wydzial, wydawnictwo_ciagle.rok, True, True, rodzaj_daty=DATE_CREATED_ON, do_daty=(datetime.now() + timedelta(days=20)).date())) == []
+
+    assert list(id_ciaglych(jednostka.wydzial, wydawnictwo_ciagle.rok, rodzaj_daty=DATE_CREATED_ON, do_daty=(datetime.now() + timedelta(days=20)).date())) == []
+    assert list(id_zwartych(jednostka.wydzial, wydawnictwo_ciagle.rok, True, True, rodzaj_daty=DATE_CREATED_ON, do_daty=(datetime.now() + timedelta(days=20)).date())) == []
 
 def test_z_datami_2(db):
     d = datetime.now().date()
-    p = mommy.make(PlikEksportuPBN, rodzaj_daty=DATE_CREATED_ON, data=d)
+
+    p = mommy.make(PlikEksportuPBN, rodzaj_daty=DATE_CREATED_ON)
+
+    p.od_daty=d
+    p.do_daty=None
+    s = p.get_fn()
+    assert str(d).replace("-", "_") in s
+
+    p.do_daty = d
     s = p.get_fn()
     assert str(d).replace("-", "_") in s

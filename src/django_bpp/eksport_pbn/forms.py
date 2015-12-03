@@ -10,7 +10,7 @@ from eksport_pbn.models import PlikEksportuPBN
 class EksportDoPBNForm(forms.ModelForm):
     class Meta:
         model = PlikEksportuPBN
-        fields = ['wydzial', 'rok', 'artykuly', 'ksiazki', 'rozdzialy', 'rodzaj_daty', 'data']
+        fields = ['wydzial', 'rok', 'artykuly', 'ksiazki', 'rozdzialy', 'rodzaj_daty', 'od_daty', 'do_daty']
 
 
     def __init__(self, *args, **kw):
@@ -22,7 +22,7 @@ class EksportDoPBNForm(forms.ModelForm):
             Fieldset(
                 u'Zamów eksport PBN',
                 'wydzial', 'rok', 'artykuly', 'ksiazki', 'rozdzialy',
-                'rodzaj_daty', 'data',
+                'rodzaj_daty', 'od_daty', 'do_daty',
                 Submit('submit', u'Zamów', css_id='id_submit')))
         self.helper = helper
 
