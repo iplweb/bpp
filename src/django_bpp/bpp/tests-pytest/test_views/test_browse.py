@@ -61,4 +61,3 @@ class TestViewsBrowse(UserTestCase):
         self.assertEquals(
             json.loads(request.session[MULTISEEK_SESSION_KEY]),
             expected)
-
