@@ -430,7 +430,9 @@ class Wydawnictwo_ZwarteAdmin(Wydawnictwo_ZwarteAdmin_Baza):
         MODEL_PUNKTOWANY_FIELDSET,
         MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
         POZOSTALE_MODELE_WYDAWNICTWO_ZWARTE_FIELDSET,
-        ADNOTACJE_FIELDSET)
+        ADNOTACJE_FIELDSET,
+        OPENACCESS_FIELDSET)
+
 
 
 admin.site.register(Wydawnictwo_Zwarte, Wydawnictwo_ZwarteAdmin)
