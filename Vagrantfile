@@ -15,7 +15,7 @@ Vagrant.configure(2) do |config|
       master.vm.network "private_network", ip: "192.168.111.100"
 	  
       master.vm.network "forwarded_port", guest: 5432, host: 15432
-	  master.vm.network "forwarded_port", guest: 80, host: 8080
+      # master.vm.network "forwarded_port", guest: 80, host: 8080
 
       master.vm.provider "virtualbox" do |vb|
          vb.gui = false
