@@ -49,7 +49,9 @@
                     Strona WWW
                 </th>
                 <td>
-                    {% if praca.www %}
+                    {% if praca.public_www %}
+                        <a href="{{ praca.public_www }}">{{ praca.public_www }}</a>
+                    {% elif praca.www %}
                         <a href="{{ praca.www }}">{{ praca.www }}</a>
                     {% else %}
                         Brak danych
