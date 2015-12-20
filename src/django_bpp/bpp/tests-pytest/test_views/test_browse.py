@@ -64,7 +64,7 @@ pattern = re.compile("Strona WWW")
 
 def nastepna_komorka_po_strona_www(dokument):
     soup = BeautifulSoup(dokument, 'html.parser')
-    return soup.find(text=pattern).parent.parent.contents[3].text.strip()
+    return soup.find("th", text=pattern).parent.find("td").text.strip()
 
 def test_darmowy_platny_dostep_www_wyswietlanie(client, wydawnictwo_ciagle):
     wydawnictwo_ciagle.www = ""
