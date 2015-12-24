@@ -31,48 +31,7 @@
 
 {% endif %}
 
-<div data-magellan-expedition="fixed" class="hide-on-print">
-
-    <dl class="sub-nav">
-        <dt>wynik:</dt>
-        <dd class="active">
-            {% if live == "1" %}
-                <a href="{% url "multiseek:results" %}" target="_top">
-            {% else %}
-                <a href=".">
-            {% endif %}
-            rekordy: {{ paginator_count }}
-            </a>
-        </dd>
-
-        {% if live == "0" %}
-            <dd><a href="..">powrót</a></dd>
-        {% endif %}
-
-        {% if paginator_count > 0 and paginator_count < 2000 %}
-            {% if live == "1" %}
-                <dd><a target="_blank" href="/multiseek/results/?all=1&print=1{% if print_removed %}&print-removed=1{% endif %}">drukuj</a>
-                </dd>
-                {% if request.GET.all != "1" %}
-                    <dd><a target="_blank" href="/multiseek/results/?all=1">wyświetl&nbsp;wszystkie</a>
-                    </dd>
-                {% endif %}
-            {% else %}
-                <dd><a href="?all=1&print=1{% if print_removed %}&print-removed=1{% endif %}">drukuj</a></dd>
-                {% if request.GET.all != "1" and paginator.num_pages > 1 %}
-                    <dd><a href="?all=1">wszystkie</a></dd>
-                {% endif %}
-            {% endif %}
-        {% endif %}
-        {% if not request.GET.all == "1" and paginator.num_pages > 1 %}
-            <dt>strony:</dt>
-            <dd>{% paginate window=2 %}</dd>
-        {% endif %}
-    </dl>
-
-
-</div>
-
+{% include "multiseek/paginator.html" %}
 
 <div style="padding: 10px;">
 
@@ -331,6 +290,9 @@
     {% endif %}
 
 </div>
+
+{% include "multiseek/paginator.html" with magellan="no" %}
+
 <script type="text/javascript">
     if (queryDict.print == "1")
         window.print();
