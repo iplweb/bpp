@@ -1,4 +1,4 @@
-Django==1.7.8
+Django==1.7.11
 django-messages-extends==0.4
 django-autoslug==1.7.1
 django-pagination==1.0.7
@@ -34,7 +34,7 @@ zope.component==4.1.0
 raven==5.1.1
 
 django-secure-input==0.9.3
-django-session-security==2.2.0
+django-session-security==2.3.0
 
 django-password-policies==0.3.1
 
