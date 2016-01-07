@@ -1,5 +1,16 @@
 #!/bin/bash -e
 
+#
+# Ten skrypt instaluje rzeczy potrzebne do budowania i do uruchamiania pakietu django-bpp
+# po stronie systemu operacyjnego. 
+#
+# Zatem, dla Mac OS X używany będzie brew, dla Ubuntu - apt-get, i tak dalej. 
+#
+# Ten skrypt NIE może instalować nic za pomocą pip, nie instaluje nic do virtualenv, ten skrypt
+# nie dotyka środowiska języka Python, lokalnego bądź globalnego, ten skrypt NIE dotyka go. Ten
+# skrypt instaluje Pythona i potrzebne biblioteki. I bazę danych PostgreSQL. I jeszcze parę innych. 
+#
+
 platform='unknown'
 unamestr=`uname`
 hostnamestr=`hostname`
