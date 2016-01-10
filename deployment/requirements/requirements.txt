@@ -2,7 +2,7 @@ Django==1.7.11
 django-messages-extends==0.4
 django-autoslug==1.7.1
 django-pagination==1.0.7
-django-autocomplete-light==2.2.10
+django-autocomplete-light==2.1.1
 django-admin-tools==0.5.2
 xlrd==0.9.3
 celery==3.1.18
