@@ -94,7 +94,7 @@ $(document).ready(function () {
         jednostkaSelectElement = bpp.wiersz(id, 'jednostka');
         typOdpowiedzialnosciSelectElement = bpp.wiersz(id, 'typ_odpowiedzialnosci');
 
-        autor_id = autorSelectElement.val()[0];
+        autor_id = autorSelectElement.val();
         if (autor_id != null)
             $.ajax(
                 {
