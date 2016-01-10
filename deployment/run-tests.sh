@@ -52,7 +52,7 @@ if [ "$NO_QUNIT" == "0" ]; then
 fi
 
 if [ "$NO_PYTEST" == "0" ]; then
-    py.test $PYTEST_OPTIONS functional_tests integrator/tests eksport_pbn bpp/tests-pytest
+    py.test $PYTEST_OPTIONS functional_tests integrator2/tests eksport_pbn bpp/tests-pytest
 fi
 
 if [ "$NO_DJANGO" == "0" ]; then

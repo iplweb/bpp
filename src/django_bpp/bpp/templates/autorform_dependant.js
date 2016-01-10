@@ -78,69 +78,61 @@ window.bpp.ustawZaleznosciDlaWiersza = function (numer, noReset) {
 
     $(document).ready(function () {
 
-	for (a = 0; a < 199; a++) {
-	    // 200 autorow should be enough for anyone
-	    if (bpp.wiersz(a, 'autor').length)
-	      if (bpp.wiersz(a, 'autor').val())
-		  bpp.ustawZaleznosciDlaWiersza(a, true);
-	}
+        for (a = 0; a < 199; a++) {
+            // 200 autorow should be enough for anyone
+            if (bpp.wiersz(a, 'autor').length)
+                if (bpp.wiersz(a, 'autor').val())
+                    bpp.ustawZaleznosciDlaWiersza(a, true);
+        }
 
 
-	function onAutorChanged(t) {
-	    var autorSelectElement = $(t);
+        function onAutorChanged(t) {
+            var autorSelectElement = $(t);
 
-        var id = $(t).attr('id'); // id_wydawnictwo_ciagle_autor_set-3-autor
-	    id = id.replace('id_{{ class }}_set-', '').replace('-autor', '');
-	    bpp.ustawZaleznosciDlaWiersza(id);
+            var id = $(t).attr('id'); // id_wydawnictwo_ciagle_autor_set-3-autor
+            id = id.replace('id_{{ class }}_set-', '').replace('-autor', '');
+            bpp.ustawZaleznosciDlaWiersza(id);
 
-	    jednostkaSelectElement = bpp.wiersz(id, 'jednostka');
-	    typOdpowiedzialnosciSelectElement = bpp.wiersz(id, 'typ_odpowiedzialnosci');
+            jednostkaSelectElement = bpp.wiersz(id, 'jednostka');
+            typOdpowiedzialnosciSelectElement = bpp.wiersz(id, 'typ_odpowiedzialnosci');
 
-	    autor_id = autorSelectElement.val()[0];
-	    if (autor_id != null)
-		$.ajax(
-		    {type: "POST",
-		     data: {"autor_id": autor_id},
-		     url: "{% url "bpp:api_ostatnia_jednostka" %}",
-		    }).success(
-			function (res) {
-			    $(jednostkaSelectElement).append(
-				'<option value="' + res.jednostka_id + '" selected="selected">' +
-				    res.nazwa + '</option>')
+            autor_id = autorSelectElement.val()[0];
+            if (autor_id != null)
+                $.ajax(
+                    {
+                        type: "POST",
+                        data: {"autor_id": autor_id},
+                        url: "{% url "bpp:api_ostatnia_jednostka" %}",
+                    }).success(
+                    function (res) {
+                        $(jednostkaSelectElement).append(
+                            '<option value="' + res.jednostka_id + '" selected="selected">' +
+                            res.nazwa + '</option>')
 
-			    // tu moznaby rozwinac "typ odpowiedzialnosci",
-			    // gdyby nie to, ze jest to cholernie karkolomne do zrobienia
-			    // w javascript
-                typOdpowiedzialnosciSelectElement.val(1);
+                        // tu moznaby rozwinac "typ odpowiedzialnosci",
+                        // gdyby nie to, ze jest to cholernie karkolomne do zrobienia
+                        // w javascript
+                        typOdpowiedzialnosciSelectElement.val(1);
 
-			});
+                    });
 
-	}
+        }
 
 
-	$("body").on({"change": function(e) {
-	    /* cala ta funkcja jest tu tylko dlatego, ze normalne 'lapanie'
-	       eventu 'change' wyemitowanego dla selecta autocomplete (w d-a-light)
-	       NIE jest z jakichs powodow mozliwe, wiec lapiemy event zmieniajacy
-	       pole tekstowe (przy wychdozeniu z niego), nastepnie czekamy 200 ms na
-	       ustawienie selecta przez kod jquery PO tym evencie zmiany, nastepnie
-	       sami mozemy zasymulowac emitowanie eventu change.
-	    */
+        $("body").on("change", function(e) {
+            var target = $(e.target);
+            if (target.attr("class") == "autocomplete") {
 
-	    var target = $(e.target);
-        console.log("TARGET" ,target);
-        if (target.attr("class") == "autocomplete") {
+                    var value_select = target.siblings().next().next().next().first();
 
-            var value_select = target.siblings().next().next().next().first();
-
-            setTimeout(function() {
-                if (value_select.attr("id").endsWith("-autor"))
-                    onAutorChanged(value_select);
-            }, 200);
-
-	    }}});
+                    setTimeout(function () {
+                        if (value_select.attr("id").endsWith("-autor"))
+                            onAutorChanged(value_select);
+                    }, 200);
+                }
+            }
+        );
 
     });
 
 })(django.jQuery);
-

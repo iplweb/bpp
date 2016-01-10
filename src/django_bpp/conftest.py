@@ -310,12 +310,12 @@ def _webtest_login(webtest_app, username, password, login_form='login_form'):
 
 
 @pytest.fixture(scope='function')
-def preauth_webtest_app(webtest_app, normal_django_user):
+def app(webtest_app, normal_django_user):
     return _webtest_login(webtest_app, NORMAL_DJANGO_USER_LOGIN, NORMAL_DJANGO_USER_PASSWORD)
 
 
 @pytest.fixture(scope='function')
-def preauth_webtest_admin_app(webtest_app, admin_user):
+def admin_app(webtest_app, admin_user):
     return _webtest_login(webtest_app, 'admin', 'password')
 
 
