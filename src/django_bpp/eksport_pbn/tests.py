@@ -6,8 +6,8 @@ from eksport_pbn.models import PlikEksportuPBN, DATE_CREATED_ON
 from eksport_pbn.tasks import eksport_pbn, id_zwartych, id_ciaglych, remove_old_eksport_pbn_files
 
 
-def test_wybor(preauth_webtest_app, wydzial):
-    page = preauth_webtest_app.get(reverse('eksport_pbn:zamow'))
+def test_wybor(app, wydzial):
+    page = app.get(reverse('eksport_pbn:zamow'))
     assert '2013' in page.content
 
 
