@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block extratitle %}
+    Integrator danych
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li class="current">integrator danych</li>
+{% endblock %}
+
+
+{% block content %}
+    <a href="{% url "integrator2:upload_lista_ministerialna" %}">dodaj listę ministerialną</a>
+
+    {#    <a href="{% url "integrator2:new_list_min" %}">Dodaj plik listy ministerialnej</a>#}
+    <hr>
+    <h1>Pliki</h1>
+
+    {% if object_list %}
+        {% if is_paginated %}
+            <ul class="pagination">
+                <li class="arrow {% if not page_obj.has_previous %}unavailable{% endif %}">
+                    <a href="?page={% if page_obj.has_previous %}{{ page_obj.previous_page_number }}{% endif %}">
+                        &laquo;</a>
+                </li>
+
+                {% for page in page_obj.paginator.page_range %}
+                    <li class="{% if page == page_obj.number %}current{% endif %}"><a
+                            href="?page={{ page }}">{{ page }}</a></li>
+                {% endfor %}
+
+                <li class="arrow {% if not page_obj.has_next %}unavailable{% endif %}">
+                    <a href="?page={% if page_obj.has_next %}{{ page_obj.next_page_number }}{% endif %}">&raquo;</a>
+                </li>
+            </ul>
+        {% endif %}
+        <ul>
+            {% for plik in object_list %}
+                <li><a href="./{{ plik.model_name }}/{{ plik.pk }}/">
+                    {{ plik.filename }} - rodzaj: {{ plik.verbose_name }} - status: {{ plik.get_status_display }} - ost.
+                    zmiana: {{ plik.last_updated_on|naturaltime }}
+                </a></li>
+                {% empty %}
+                <li>Brak plików.</li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        Brak plików.
+    {% endif %}
+
+{% endblock %}
