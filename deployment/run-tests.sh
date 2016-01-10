@@ -47,6 +47,9 @@ do
     shift
 done
 
+# LiveServer podejrzewam, że może potrzebować:
+python manage.py collectstatic --noinput
+
 if [ "$NO_QUNIT" == "0" ]; then
     grunt qunit
 fi
