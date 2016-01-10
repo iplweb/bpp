@@ -27,7 +27,7 @@ from conftest import NORMAL_DJANGO_USER_PASSWORD
 pytestmark = [pytest.mark.slow, pytest.mark.selenium]
 
 
-def test_caching_enabled(preauth_webtest_admin_app, zrodlo, obiekty_bpp):
+def test_caching_enabled(admin_app, zrodlo, obiekty_bpp):
     """
     1) wejdź do redagowania
     2) dopisz publikację, zapisz
@@ -37,7 +37,7 @@ def test_caching_enabled(preauth_webtest_admin_app, zrodlo, obiekty_bpp):
     -- dla DOMYSLNEJ konfiguracji, cache powinno byc uruchomione przez appconfig,
     celery powinno w trybie always_eager wrzucac cache'owany opis publikacji
     """
-    page = preauth_webtest_admin_app.get(reverse('admin:bpp_wydawnictwo_ciagle_add'))
+    page = admin_app.get(reverse('admin:bpp_wydawnictwo_ciagle_add'))
 
     char = Charakter_Formalny.objects.get_or_create(nazwa='charakter', skrot='chr')[0]
 
@@ -54,7 +54,7 @@ def test_caching_enabled(preauth_webtest_admin_app, zrodlo, obiekty_bpp):
 
     # Teraz wchodzimy do multiseek i sprawdzamy jak to wyglada
 
-    page = preauth_webtest_admin_app.get(reverse("multiseek:results"))
+    page = admin_app.get(reverse("multiseek:results"))
 
     found = False
     for elem in page.html.find_all("a", href=True):

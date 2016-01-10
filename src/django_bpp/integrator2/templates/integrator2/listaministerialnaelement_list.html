@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block extratitle %}
+    {{ object.filename }}
+{% endblock %}
+
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "integrator2:main" %}">integrator</a></li>
+    <li class="current">{{ object.filename }}</li>
+
+{% endblock %}
+
+{% block content %}
+    <h1>{{ object.verbose_name }} - plik {{ object.filename }}</h1>
+    <p>Status: {{ object.get_status_display }}</p>
+    <p>Ostatnia zmiana: {{ object.last_updated_on|naturaltime }}</p>
+    <p>Kod błędu: {{ object.extra_info|default:"brak" }}</p>
+    <p>Wszystkich rekordów: {{ object.records.count }}</p>
+    <p>Zintegrowano automatycznie: {{ object.integrated.count }}</p>
+    <p>Nie zintegrowano: {{ object.not_integrated.count }}</p>
+
+    {% if object.status > 1 and object.not_integrated.count %}
+        <p>Rekordy niezintegrowane:</p>
+
+
+        {% if is_paginated %}
+            <ul class="pagination">
+                <li class="arrow {% if not page_obj.has_previous %}unavailable{% endif %}">
+                    <a href="?page={% if page_obj.has_previous %}{{ page_obj.previous_page_number }}{% endif %}">
+                        &laquo;</a>
+                </li>
+
+                {% for page in page_obj.paginator.page_range %}
+                    <li class="{% if page == page_obj.number %}current{% endif %}"><a href="?page={{ page }}">{{ page }}</a></li>
+                {% endfor %}
+
+                <li class="arrow {% if not page_obj.has_next %}unavailable{% endif %}">
+                    <a href="?page={% if page_obj.has_next %}{{ page_obj.next_page_number }}{% endif %}">&raquo;</a>
+                </li>
+            </ul>
+        {% endif %}
+
+
+        <table width="100%">
+            <tr>
+                {% for col in object.header_columns %}
+                    <th>{{ col }}</th>
+                {% endfor %}
+            </tr>
+            {% for row in object_list %}
+                <tr>
+                    {% for col in row %}
+                        <td>{{ col }}</td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+
+        </table>
+    {% endif %}
+
+{% endblock %}

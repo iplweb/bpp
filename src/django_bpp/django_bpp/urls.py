@@ -45,7 +45,7 @@ urlpatterns = patterns(
 
     url(r'^admin/', include(admin.site.urls)),
 
-    url(r'^integrator/', include('integrator.urls', namespace='integrator')),
+    url(r'^integrator2/', include('integrator2.urls', namespace='integrator2')),
     url(r'^eksport_pbn/', include('eksport_pbn.urls', namespace='eksport_pbn')),
 
     url(r'^bpp/', include('bpp.urls', namespace='bpp')),

@@ -150,7 +150,7 @@ INSTALLED_APPS = [
     'session_security',
 
     'notifications',
-    'integrator',
+    'integrator2',
     'eksport_pbn',
 
     'loginas'
@@ -460,8 +460,8 @@ CELERYD_HIJACK_ROOT_LOGGER = False
 
 CELERYBEAT_SCHEDULE = {
 
-    'cleanup-integrator-files': {
-        'task': 'integrator.tasks.remove_old_integrator_files',
+    'cleanup-integrator2-files': {
+        'task': 'integrator2.tasks.remove_old_integrator_files',
         'schedule': timedelta(days=1),
     },
 
