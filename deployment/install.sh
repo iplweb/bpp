@@ -6,6 +6,11 @@ hostnamestr=`hostname`
 
 if [[ "$unamestr" == 'Linux' ]]; then
 
+    # Niby nie powinniśmy się bawić w aktualizowanie systemu w tym miejscu ALE może się okazać, 
+    # że pakietów nie da się w tym momencie pobrać, bo system maszyny wirtualnej np. ma stare linki
+    # więc dla bezpieczeństwa lepiej odpalić o to, ale jeżeli np miałoby nie być sieci...
+    sudo apt-get update || true
+
     sudo apt-get -y install python postgresql python-gevent python-psycopg2 python-imaging python-crypto python-simplejson python-sqlalchemy postgresql-plpython-9.3 postgresql-contrib-9.3 redis-server zip unzip
 	
     if [[ "$hostnamestr" == "master" ]]; then
