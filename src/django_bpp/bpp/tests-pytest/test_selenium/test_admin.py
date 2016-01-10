@@ -301,13 +301,6 @@ def test_autorform_uzupelnianie_jednostki_drugi_wiersz(autorform_browser, autorf
 
 
 def test_autorform_kasowanie_autora(autorform_browser, autorform_jednostka):
-    # bug polegający na tym, że przy dodaniu autora i potem skasowaniu go,
-    # pole jednostki i nazwisk się NIE czyści
-    # ... ale zostawiam to w spokoju.
-    # bo: 1) trudno zlapac event czyszczenia pola ( d-a-light zmienia chyba DOM)
-    #     2) co to niby ma dać?
-    #     3) ten test zostaje, bo sprawdza działanie przycisku 'remove' - był bug na to
-
     aut = autorform_browser.find_by_id("id_wydawnictwo_ciagle_autor_set-0-autor-autocomplete")
     aut.type("KOWALSKI")
     time.sleep(2)
@@ -319,7 +312,7 @@ def test_autorform_kasowanie_autora(autorform_browser, autorform_jednostka):
     """)
     time.sleep(2)
     jed = autorform_browser.find_by_id("id_wydawnictwo_ciagle_autor_set-0-jednostka")
-    assert jed.value == str(autorform_jednostka.pk)
+    assert jed.value == ''
 
     autorform_browser.execute_script("window.onbeforeunload = function(e) {};")
 
