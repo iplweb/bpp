@@ -11,7 +11,7 @@ from bpp.models import Rekord
 class Command(BaseCommand):
     help = 'Weryfikuje prace bez autorow'
 
-    @transaction.commit_on_success
+    @transaction.atomic
     def handle(self, *args, **options):
         connection = psycopg2.connect(database="b_med", host="linux-dev")
         cursor = connection.cursor()

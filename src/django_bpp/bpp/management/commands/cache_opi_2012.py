@@ -8,6 +8,6 @@ from bpp.models import Opi_2012_Tytul_Cache
 class Command(BaseCommand):
     help = "Keszuje tytuly prac"
 
-    @transaction.commit_on_success
+    @transaction.atomic
     def handle(self, *args, **options):
         Opi_2012_Tytul_Cache.objects.rebuild()
