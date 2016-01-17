@@ -18,7 +18,7 @@ class Main(GroupRequiredMixin, ListView):
     template_name = "main.html"
 
     def get_queryset(self):
-        return ListaMinisterialnaIntegration.objects.filter(owner=self.request.user)
+        return ListaMinisterialnaIntegration.objects.filter(owner=self.request.user).order_by('-uploaded_on')
 
 
 class UploadListaMinisterialna(GroupRequiredMixin, FormView):

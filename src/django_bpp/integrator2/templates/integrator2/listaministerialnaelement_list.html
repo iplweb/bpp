@@ -15,12 +15,29 @@
 
 {% block content %}
     <h1>{{ object.verbose_name }} - plik {{ object.filename }}</h1>
-    <p>Status: {{ object.get_status_display }}</p>
-    <p>Ostatnia zmiana: {{ object.last_updated_on|naturaltime }}</p>
-    <p>Kod błędu: {{ object.extra_info|default:"brak" }}</p>
-    <p>Wszystkich rekordów: {{ object.records.count }}</p>
-    <p>Zintegrowano automatycznie: {{ object.integrated.count }}</p>
-    <p>Nie zintegrowano: {{ object.not_integrated.count }}</p>
+
+
+    <table>
+        <tr>
+            <td>Status</td>
+            <td>{{ object.get_status_display }}</td>
+
+            <td>Ostatnia zmiana</td>
+            <td>{{ object.last_updated_on|naturaltime }}</td>
+        </tr>
+        <tr>
+            <td>Kod błędu</td>
+            <td>{{ object.extra_info|default:"brak" }}</td>
+            <td>Wszystkich rekordów</td>
+            <td>{{ object.records.count }}</td>
+        </tr>
+        <tr>
+            <td>Zintegrowano automatycznie</td>
+            <td>{{ object.integrated.count }}</td>
+            <td>Nie zintegrowano</td>
+            <td>{{ object.not_integrated.count }}</td>
+        </tr>
+    </table>
 
     {% if object.status > 1 and object.not_integrated.count %}
         <p>Rekordy niezintegrowane:</p>
@@ -34,7 +51,8 @@
                 </li>
 
                 {% for page in page_obj.paginator.page_range %}
-                    <li class="{% if page == page_obj.number %}current{% endif %}"><a href="?page={{ page }}">{{ page }}</a></li>
+                    <li class="{% if page == page_obj.number %}current{% endif %}"><a
+                            href="?page={{ page }}">{{ page }}</a></li>
                 {% endfor %}
 
                 <li class="arrow {% if not page_obj.has_next %}unavailable{% endif %}">
