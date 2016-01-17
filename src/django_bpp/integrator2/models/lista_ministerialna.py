@@ -58,6 +58,7 @@ class ListaMinisterialnaIntegration(BaseIntegration):
 
     class Meta:
         verbose_name = "integracja list ministerialnych"
+        ordering = ['-uploaded_on']
 
     def input_file_to_dict_stream(self, limit=None, limit_sheets=None):
         gen = read_xls_data(
