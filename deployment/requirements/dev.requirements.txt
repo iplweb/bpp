@@ -1,13 +1,11 @@
 django-debug-toolbar==1.2.2
 selenium==2.49.0
 django-nose==1.4.2
-django-crawler==0.1
 coverage==3.6
 
 model_mommy==1.2.3
 
 splinter==0.7.3
-django-whatever==0.2.3
 django-dynamic-fixture==1.8.0
 
 flake8==2.4.1
