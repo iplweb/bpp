@@ -58,6 +58,7 @@ Vagrant.configure(2) do |config|
   end
 
   config.vm.define "selenium", primary: true do |selenium|
+
       selenium.vm.box = "mpasternak/trusty64-updated"
       selenium.vm.box_check_update = false
 
@@ -75,14 +76,19 @@ Vagrant.configure(2) do |config|
       selenium.vm.provider "virtualbox" do |vb|
          vb.gui = false
          vb.memory = "1024"
-	 vb.cpus = "2"
+	     vb.cpus = "4"
       end
 
+      selenium.vm.provision "file", source: "provisioning/selenium-optimized-profile-firefox-43.0.4.tbz2", destination: "selenium-optimized-profile-firefox-43.0.4.tbz2"
+
       selenium.vm.provision "shell", path: "provisioning/selenium.sh"
+      selenium.vm.provision "shell", path: "provisioning/tightvnc.sh"
 
       selenium.vm.provision "file", source: "provisioning/selenium.conf", destination: "050-selenium.conf"
       selenium.vm.provision "shell", inline: "mv 050-selenium.conf /etc/supervisor/conf.d/050-selenium.conf"
       selenium.vm.provision "shell", inline: "service supervisor restart"
+
+      selenium.vm.provision :reload
 
   end
 end
