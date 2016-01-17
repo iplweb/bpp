@@ -1,21 +1,9 @@
 # -*- encoding: utf-8 -*-
 
-import logging
-
-from django.db import models
-from django.contrib.auth import get_user_model
-from django.db.models.query_utils import Q
-from django.db.transaction import _transaction_func
-from django.db import transaction
-
-from bpp.models import Autor, Jednostka
-from django.conf import settings
 import os
-from bpp.models.zrodlo import Zrodlo
-from bpp.util import slugify_function
-import copy
 
-from integrator2.util import read_xls_data
+from django.conf import settings
+from django.db import models
 
 STATUSY = [
     (0, "dodany"),
@@ -23,6 +11,7 @@ STATUSY = [
     (2, "przetworzony"),
     (3, "przetworzony z błędami")
 ]
+
 
 class BaseIntegration(models.Model):
     """
@@ -55,9 +44,9 @@ class BaseIntegration(models.Model):
     last_updated_on = models.DateTimeField(auto_now=True, auto_now_add=True)
 
     status = models.IntegerField(choices=STATUSY, default=STATUSY[0][0])
-    extra_info = models.TextField() # ekstra informacje dla statusu
+    extra_info = models.TextField()  # ekstra informacje dla statusu
 
-    klass = None # zobacz self.records()
+    klass = None  # zobacz self.records()
 
     class Meta:
         verbose_name = u"Plik integracji danych"
