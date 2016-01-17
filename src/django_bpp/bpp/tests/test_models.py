@@ -214,10 +214,16 @@ class TestAutor(TestCase):
             (Praca_Habilitacyjna, True, False, any_habilitacja)]:
             k = fn(autor=a)
 
-            s1 = a.praca_doktorska() is None
+            try:
+                s1 = a.praca_doktorska is None
+            except Praca_Doktorska.DoesNotExist:
+                s1 = True
             self.assertEquals(s1, r1)
 
-            s2 = a.praca_habilitacyjna() is None
+            try:
+                s2 = a.praca_habilitacyjna is None
+            except Praca_Habilitacyjna.DoesNotExist:
+                s2 = True
             self.assertEquals(s2, r2)
 
             k.delete()
