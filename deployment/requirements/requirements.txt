@@ -1,4 +1,4 @@
-Django==1.8.7
+Django==1.8.8
 django-messages-extends==0.4
 django-autoslug==1.7.1
 django-pagination==1.0.7
@@ -13,7 +13,7 @@ django-tables2-reports==0.0.10
 pyExcelerator==0.6.4.1
 django-sendfile==0.3.2
 
-unidecode==0.04.16
+unidecode==0.04.18
 django-cookie-law==1.0.1
 openpyxl==1.6.2
 moai==2.0.0
@@ -55,7 +55,7 @@ Pillow==2.9.0
 
 django-celery-ui==0.2
 django-grappelli==2.6.4
-django-multiseek==0.9.13
+django-multiseek==0.9.14
 djorm-ext-filtered-contenttypes==0.3
 djorm-ext-pgfulltext==0.9.1
 
