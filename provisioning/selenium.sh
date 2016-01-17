@@ -1,5 +1,6 @@
 #!/bin/bash 
 
+apt-get update
 apt-get install -y openjdk-7-jre-headless xvfb firefox libxss1 libappindicator1 libindicator7 unzip python-pip supervisor
 
 # Hostname
@@ -13,7 +14,6 @@ echo "10.0.2.2 gate" >> /etc/hosts
 echo "192.168.111.100 master master.localnet  messaging-test.localnet messaging-test" >> /etc/hosts
 echo "192.168.111.101 staging staging.localnet" >> /etc/hosts
 echo "192.168.111.150 selenium selenium.localnet" >> /etc/hosts
-
 
 # Setup wget to use proxy
 export WGET="wget -e use_proxy=on -e http_proxy=$http_proxy -e https_proxy=$https_proxy --quiet"
@@ -33,3 +33,5 @@ chmod +x chromedriver
 mv -f chromedriver /usr/local/share/chromedriver
 ln -s /usr/local/share/chromedriver /usr/local/bin/chromedriver
 ln -s /usr/local/share/chromedriver /usr/bin/chromedriver
+
+tar -xjvf selenium-optimized-profile-firefox-43.0.4.tbz2
