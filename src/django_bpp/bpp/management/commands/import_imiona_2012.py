@@ -10,7 +10,7 @@ class Command(BaseCommand):
     help = 'Importuje imiona do wydzialu z arkuszy XLS'
     args = '<katalog z xlsx> | <plik xls 1> <plik xls 2> ...'
 
-    @transaction.commit_on_success
+    @transaction.atomic
     def handle(self, *args, **options):
         for plik in files_or_directory(args):
             print "==> ", plik

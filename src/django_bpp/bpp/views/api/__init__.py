@@ -44,7 +44,7 @@ class UploadPunktacjaZrodlaView(JSONResponseMixin, View):
     def ok(self):
         return self.render_to_response(dict(result='ok'))
 
-    @transaction.commit_on_success
+    @transaction.atomic
     def post(self, request, zrodlo_id, rok, *args, **kw):
         try:
             z = Zrodlo.objects.get(pk=zrodlo_id)

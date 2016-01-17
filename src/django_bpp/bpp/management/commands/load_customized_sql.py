@@ -9,6 +9,6 @@ from bpp.management.post_syncdb import load_customized_sql
 class Command(BaseCommand):
     help = 'Wczytuje plik custom.sql do bazy danych'
 
-    @transaction.commit_on_success
+    @transaction.atomic
     def handle(self, **kwargs):
         load_customized_sql(models, [])
