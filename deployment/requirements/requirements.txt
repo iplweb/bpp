@@ -16,6 +16,8 @@ django-sendfile==0.3.2
 unidecode==0.04.18
 django-cookie-law==1.0.1
 openpyxl==1.6.2
+
+pyoai==2.4.4
 moai==2.0.0
 
 django-crispy-forms==1.4.0
