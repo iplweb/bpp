@@ -1,5 +1,5 @@
 django-debug-toolbar==1.2.2
-selenium==2.48.0
+selenium==2.49.0
 ludibrio==3.1.0
 django-nose==1.4.2
 django-crawler==0.1
@@ -21,7 +21,7 @@ bumpversion==0.5.3
 ipython==3.1.0
 pyreadline==2.0
 
-pytest==2.8.3
+pytest==2.8.5
 pytest-django==2.9.1
 pytest-xdist==1.13.1
 pytest-splinter==1.7.0

@@ -3,7 +3,7 @@ django-messages-extends==0.4
 django-autoslug==1.7.1
 django-pagination==1.0.7
 django-autocomplete-light==2.2.10
-django-admin-tools==0.5.2
+django-admin-tools==0.7.2
 xlrd==0.9.3
 celery==3.1.18
 kombu==3.0.26
@@ -36,7 +36,7 @@ raven==5.1.1
 django-secure-input==0.9.3
 django-session-security==2.3.0
 
-django-password-policies==0.3.1
+django-password-policies==0.4.1
 
 requests==2.7.0
 pytz==2015.4
@@ -53,8 +53,7 @@ simplejson==3.8.0
 
 Pillow==2.9.0
 
-django-celery-ui==0.2
-django-grappelli==2.6.4
+django-grappelli==2.7.3
 django-multiseek==0.9.14
 djorm-ext-filtered-contenttypes==0.3
 djorm-ext-pgfulltext==0.9.1
