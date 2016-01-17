@@ -207,27 +207,6 @@ class TestAutor(TestCase):
             a.prace_w_latach()[0],
             ROK)
 
-    def test_praca_doktorska_test_praca_habilitacyjna(self):
-        a = mommy.make(Autor, imiona='foo', nazwisko='bar', tytul=Tytul.objects.get(skrot='dr'))
-        for klass, r1, r2, fn in [
-            (Praca_Doktorska, False, True, any_doktorat),
-            (Praca_Habilitacyjna, True, False, any_habilitacja)]:
-            k = fn(autor=a)
-
-            try:
-                s1 = a.praca_doktorska is None
-            except Praca_Doktorska.DoesNotExist:
-                s1 = True
-            self.assertEquals(s1, r1)
-
-            try:
-                s2 = a.praca_habilitacyjna is None
-            except Praca_Habilitacyjna.DoesNotExist:
-                s2 = True
-            self.assertEquals(s2, r2)
-
-            k.delete()
-
     def test_ostatnia_jednostka_1(self):
         a = any_autor()
         j1 = any_jednostka()
