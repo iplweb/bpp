@@ -16,7 +16,7 @@ from bpp.util import has_changed
 # tych VIEWs w PostgreSQL, które są modyfikowalne...)
 
 class Sumy_Base(ModelPunktowany, models.Model):
-    autor = models.ForeignKey('Autor', primary_key=True, on_delete=DO_NOTHING)
+    autor = models.OneToOneField('Autor', primary_key=True, on_delete=DO_NOTHING)
     jednostka = models.ForeignKey('Jednostka', on_delete=DO_NOTHING)
     wydzial = models.ForeignKey('Wydzial', on_delete=DO_NOTHING)
     rok = models.IntegerField()
