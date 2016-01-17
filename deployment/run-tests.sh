@@ -54,6 +54,10 @@ if [ "$NO_QUNIT" == "0" ]; then
     grunt qunit
 fi
 
+if [ "$NO_DJANGO" == "0" ]; then
+    python manage.py test --noinput --keepdb -v 3 bpp
+fi
+
 if [ "$NO_PYTEST" == "0" ]; then
     # PYTEST_OPTIONS domyślnie dla Vagrantowego hosta master mogą wyglądać o tak:
     #   export PYTEST_OPTIONS="--create-db --liveserver=master:12000-13000 -vvv"
@@ -62,6 +66,3 @@ if [ "$NO_PYTEST" == "0" ]; then
     py.test $PYTEST_OPTIONS functional_tests integrator2/tests eksport_pbn bpp/tests-pytest
 fi
 
-if [ "$NO_DJANGO" == "0" ]; then
-    python manage.py test --noinput bpp -v 3
-fi
