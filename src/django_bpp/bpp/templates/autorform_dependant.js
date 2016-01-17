@@ -128,7 +128,6 @@ window.bpp.ustawZaleznosciDlaWiersza = function (numer, noReset) {
 	    */
 
 	    var target = $(e.target);
-        console.log("TARGET" ,target);
         if (target.attr("class") == "autocomplete") {
 
             var value_select = target.siblings().next().next().next().first();
