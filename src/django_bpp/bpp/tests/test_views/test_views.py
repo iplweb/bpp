@@ -2,7 +2,6 @@
 from django.contrib import auth
 from django.core.urlresolvers import reverse
 from model_mommy import mommy
-from ludibrio import Mock
 from bpp.models import Autor, Zrodlo, Uczelnia, Wydzial, Jednostka, \
     Praca_Doktorska, Praca_Habilitacyjna
 from bpp.models.cache import Rekord

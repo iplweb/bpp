@@ -1,6 +1,5 @@
 # -*- encoding: utf-8 -*-
 from datetime import date
-from ludibrio import Mock
 from model_mommy import mommy
 from django.test import TestCase
 
