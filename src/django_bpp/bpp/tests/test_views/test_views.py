@@ -147,9 +147,16 @@ class TestOAI(UserTestCase):
     #             'typ_odpowiedzialnosci.json', 'status_korekty.json']
 
     def setUp(self):
-        c = any_ciagle(
-            tytul_oryginalny="Test foo bar",
-            charakter_formalny=Charakter_Formalny.objects.get(skrot="AC"))
+        ch, ign = Charakter_Formalny.objects.get_or_create(
+            skrot="AC",
+            nazwa="Artykuł w czasopismie",
+            nazwa_w_primo="Artykuł")
+
+        ch2, ign = Charakter_Formalny.objects.get_or_create(
+            skrot="KOM",
+            nazwa="Komentarz")
+
+        c = any_ciagle(tytul_oryginalny="Test foo bar", charakter_formalny=ch)
 
         c2 = any_ciagle(
              tytul_oryginalny="TEGO NIE BEDZIE bo nie ma nazwa_w_primo dla typu KOM",

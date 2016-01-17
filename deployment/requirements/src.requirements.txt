@@ -2,4 +2,4 @@ git+https://github.com/mpasternak/djorm-ext-filtered-contenttypes#egg=djorm_ext_
 git+https://github.com/mpasternak/djorm-ext-pgfulltext#egg=djorm-ext-pgfulltext
 git+https://github.com/mpasternak/django-celery-ui.git#egg=django_celery_ui
 git+https://github.com/mpasternak/django-multiseek.git#egg=django-multiseek
-https://github.com/mpasternak/django-grappelli/archive/2.5.0-pl.tar.gz#egg=django-grappelli
+git+https://github.com/AliLozano/django-messages-extends.git#egg=django-messages-extends

@@ -5,6 +5,7 @@ from django.http.response import HttpResponseNotFound
 from django.views.generic import View
 from bpp.models import Autor, Zrodlo
 from bpp.models.abstract import POLA_PUNKTACJI
+from bpp.models.praca_habilitacyjna import Praca_Habilitacyjna
 from bpp.models.zrodlo import Punktacja_Zrodla
 from bpp.views.utils import JSONResponseMixin
 
@@ -16,8 +17,9 @@ class RokHabilitacjiView(JSONResponseMixin, View):
         except Autor.DoesNotExist:
             return HttpResponseNotFound("Autor")
 
-        habilitacja = autor.praca_habilitacyjna()
-        if habilitacja is None:
+        try:
+            habilitacja = autor.praca_habilitacyjna
+        except Praca_Habilitacyjna.DoesNotExist:
             return HttpResponseNotFound("Habilitacja")
 
         return self.render_to_response({"rok": habilitacja.rok})
@@ -44,7 +46,7 @@ class UploadPunktacjaZrodlaView(JSONResponseMixin, View):
     def ok(self):
         return self.render_to_response(dict(result='ok'))
 
-    @transaction.commit_on_success
+    @transaction.atomic
     def post(self, request, zrodlo_id, rok, *args, **kw):
         try:
             z = Zrodlo.objects.get(pk=zrodlo_id)

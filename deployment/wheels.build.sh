@@ -25,9 +25,10 @@ if [[ "$unamestr" == 'Linux' ]]; then
 
 elif [[ "$unamestr" == 'Darwin' ]]; then
 
-
+    # http://louistiao.me/posts/installing-lxml-on-mac-osx-1011-inside-a-virtualenv-with-pip.html
+    # $ STATIC_DEPS=true LIBXML2_VERSION=2.9.2 pip install lxml
     for f in $DISTDIR/lxml*macosx*; do
-	[ -e "$f" ] && echo "lxml exists, not building" || $PIP_WHEEL --build-option="--static-deps" lxml 
+	[ -e "$f" ] && echo "lxml exists, not building" || $PIP_WHEEL --build-option="--static-deps" --build-option="--libxml2-version=2.9.2" lxml 
 	break
     done
 

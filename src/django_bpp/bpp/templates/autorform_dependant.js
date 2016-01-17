@@ -113,7 +113,6 @@ $(document).ready(function () {
                     typOdpowiedzialnosciSelectElement.val(1);
 
                 });
-
     }
 
     $("body").on("change", function(e) {
