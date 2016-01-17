@@ -1,14 +1,13 @@
 # -*- encoding: utf-8 -*-
-from datetime import datetime
 import json
-import time
 import os
+import time
+from datetime import datetime
 
-from django.core.urlresolvers import reverse
 import django_webtest
-
-from model_mommy import mommy
 import pytest
+from django.core.urlresolvers import reverse
+from model_mommy import mommy
 
 from bpp.models.autor import Autor, Tytul
 from bpp.models.patent import Patent
@@ -29,23 +28,24 @@ from django.conf import settings
 def pytest_configure(config):
     setattr(settings, 'CELERY_ALWAYS_EAGER', True)
 
+
 @pytest.fixture
 def rok():
     return datetime.now().date().year
+
 
 @pytest.fixture
 def normal_django_user(request, db, django_user_model):  # , django_username_field):
     """
     A normal Django user
     """
-    UserModel = django_user_model
-    # username_field = django_username_field
 
     try:
-        obj = UserModel.objects.get(username=NORMAL_DJANGO_USER_LOGIN)
-    except UserModel.DoesNotExist:
-        obj = UserModel.objects.create_user(
-            username=NORMAL_DJANGO_USER_LOGIN, password=NORMAL_DJANGO_USER_PASSWORD)
+        obj = django_user_model.objects.get(username=NORMAL_DJANGO_USER_LOGIN)
+    except django_user_model.DoesNotExist:
+        obj = django_user_model.objects.create_user(
+                username=NORMAL_DJANGO_USER_LOGIN,
+                password=NORMAL_DJANGO_USER_PASSWORD)
 
     def fin():
         obj.delete()
@@ -55,19 +55,23 @@ def normal_django_user(request, db, django_user_model):  # , django_username_fie
 
 def _preauth_session_id_helper(username, password, client, browser, live_server, django_user_model,
                                django_username_field):
-    client.login(username=username, password=password)
     # Jeżeli poprzednia sesja sobie wisi np. na stronie wymagającej potwierdzenia
     # jej opuszczenia, to będzie problem, stąd:
     browser.execute_script("window.onbeforeunload = function() {};")
+
     def close_all_popups(driver):
         for h in driver.window_handles[1:]:
             driver.switch_to_window(h)
             driver.close()
         driver.switch_to_window(driver.window_handles[0])
+
     close_all_popups(browser.driver)
-    browser.visit(live_server + '/favicon.ico')
-    browser.cookies.add({'sessionid': client.cookies['sessionid'].value})
-    browser.visit(live_server + '/')
+
+    browser.visit(live_server + reverse("login_form"))
+    browser.fill('username', username)
+    browser.fill('password', password)
+    browser.find_by_css("input[type=submit]").click()
+
     browser.authorized_user = django_user_model.objects.get(**{django_username_field: username})
     return browser
 
@@ -75,8 +79,8 @@ def _preauth_session_id_helper(username, password, client, browser, live_server,
 @pytest.fixture
 def preauth_browser(normal_django_user, client, browser, live_server, django_user_model, django_username_field):
     return _preauth_session_id_helper(
-        NORMAL_DJANGO_USER_LOGIN, NORMAL_DJANGO_USER_PASSWORD, client,
-        browser, live_server, django_user_model, django_username_field)
+            NORMAL_DJANGO_USER_LOGIN, NORMAL_DJANGO_USER_PASSWORD, client,
+            browser, live_server, django_user_model, django_username_field)
 
 
 @pytest.fixture
@@ -170,10 +174,10 @@ def _wydawnictwo_maker(klass, **kwargs):
     kl = str(klass).split('.')[-1].replace("'>", "")
 
     kw_wyd = dict(
-        tytul="Tytul %s %s" % (kl, c),
-        tytul_oryginalny="Tytul oryginalny %s %s" % (kl, c),
-        uwagi="Uwagi %s %s" % (kl, c),
-        szczegoly='Szczegóły %s %s' % (kl, c))
+            tytul="Tytul %s %s" % (kl, c),
+            tytul_oryginalny="Tytul oryginalny %s %s" % (kl, c),
+            uwagi="Uwagi %s %s" % (kl, c),
+            szczegoly='Szczegóły %s %s' % (kl, c))
 
     if klass == Patent:
         del kw_wyd['tytul']
@@ -341,12 +345,12 @@ def typy_kbn(db):
 
 def fixture(name):
     return json.load(
-        open(
-            os.path.abspath(
-                os.path.join(
-                    os.path.dirname(__file__),
-                    "bpp", "fixtures", name)
-            ), "r"))
+            open(
+                    os.path.abspath(
+                            os.path.join(
+                                    os.path.dirname(__file__),
+                                    "bpp", "fixtures", name)
+                    ), "r"))
 
 
 @pytest.fixture

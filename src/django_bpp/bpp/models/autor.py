@@ -199,27 +199,6 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
         return Rekord.objects.prace_autora(self).values_list(
             'rok', flat=True).distinct().order_by('rok')
 
-    def _pub(self, klass):
-        try:
-            return klass.objects.get(autor=self)
-        except klass.DoesNotExist:
-            return
-
-    def praca_habilitacyjna(self):
-        """
-
-        :rtype: bpp.models.Praca_Habilitacyjna
-        """
-        from bpp.models import Praca_Habilitacyjna
-        return self._pub(Praca_Habilitacyjna)
-
-    def praca_doktorska(self):
-        """
-        :rtype: bpp.models.Praca_Doktorska
-        """
-        from bpp.models import Praca_Doktorska
-        return self._pub(Praca_Doktorska)
-
     def ostatnia_jednostka(self):
         """Zwróć ostatnią jednostkę autora - czyli taką, w której albo
         obecnie pracuje, albo taką, która ma najwyższe ID wśród wszystkich

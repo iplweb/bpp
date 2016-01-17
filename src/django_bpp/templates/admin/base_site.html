@@ -8,10 +8,6 @@
     <h1 id="site-name">{% trans 'Django administration' %}</h1>
 {% endblock %}
 
-{#{% block messages %}#}
-{#    {% include "monitio/message/includes/../../../django-monitio/monitio/templates/monitio/jqueryui/messages.jquery.html" %}#}
-{#{% endblock %}#}
-
 {% block nav-global %}
     {% if user.is_active and user.is_staff %}
         {% if not is_popup %}

@@ -12,7 +12,7 @@ from bpp.reports.opi_2012 import make_report_zipfile
 class Command(BaseCommand):
     help = u'Eksportuje raporty OPI 2009-2012'
 
-    @transaction.commit_on_success
+    @transaction.atomic
     def handle(self, *args, **options):
         wydzialy = ['1WL', '2WL', 'WF', 'WP']
         zipname = make_report_zipfile(wydzialy=wydzialy)

@@ -12,7 +12,7 @@ from bpp.models.profile import BppUser
 class Command(BaseCommand):
     help = 'Tworzy grupy i uprawnienia dla serwisu - uruchamiaj po zmianach'
 
-    @transaction.commit_on_success
+    @transaction.atomic
     def handle(self, *args, **options):
         # Najpierw pobierz dane o grupach dla wszystkich użytkowników
         grp_dict = {}

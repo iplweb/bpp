@@ -108,3 +108,8 @@ button.charmap {
     border-bottom: none;
     border-left: none;
 }
+
+
+.grp-related-widget-tools {
+  z-index: -9999 !important;
+}
