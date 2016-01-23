@@ -1,0 +1,11 @@
+---
+- hosts: db
+  become: yes
+  become_method: sudo
+  vars:
+    database_name: bpp
+    database_user: bpp
+    database_password: password
+    postgresql_version: 9.3
+  roles: 
+    - postgresql-server
