@@ -2,93 +2,53 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
+#
+# Boxy są zdefiniowane tutaj: 
+# 
+# 	https://github.com/mpasternak/vagrant-boxes
+# 
+# Sugerowane pluginy:
+#
+#  * vagrant-hostmanager
+#  * vagrant-cachier
+#
+
+
 Vagrant.configure(2) do |config|
+
+  config.hostmanager.enabled = true
+  config.hostmanager.manage_host = true
+  config.hostmanager.ignore_private_ip = false
+  config.hostmanager.include_offline = true
+
   config.vm.define "master", primary: true do |master|
-      master.vm.box = "mpasternak/trusty64-updated"
-      master.vm.box_check_update = false
-
-      master.ssh.forward_x11 = true
-      master.ssh.forward_agent = true
-
-      master.vm.synced_folder "/Users/mpasternak/Dropbox/GIT", "/GIT", mount_options: ["dmode=775", "fmode=664"], owner: "vagrant"
-
+      master.vm.box = "mpasternak/base-buildbox-trusty64"
+      master.vm.hostname = 'bpp-master'
       master.vm.network "private_network", ip: "192.168.111.100"
-	  
-      master.vm.network "forwarded_port", guest: 5432, host: 15432
-      # master.vm.network "forwarded_port", guest: 80, host: 8080
 
-      master.vm.provider "virtualbox" do |vb|
-         vb.gui = false
-	 vb.cpus = "2"
-         vb.memory = "1024"
-      end
-
-      if Vagrant.has_plugin?("vagrant-proxyconf")
-        master.proxy.http     = "http://192.168.111.1:3128/"
-        master.proxy.https    = "http://192.168.111.1:3128/"
-        master.proxy.no_proxy = "localhost,127.0.0.1,.example.com,staging,.localnet,messaging-test"
-      end
-	  
-      master.vm.provision "shell", path: "provisioning/master.sh"
-
-      # Potrzebne do budowania pakietu nginxa... tym moze sie zajac np jakas inna masyzna wirtualna - w przyszlosci... 
-      # master.vm.provision "file", source: "/Volumes/Dane zaszyfrowane/Klucze GPG - Ubuntu/gpg.conf", destination: "/home/vagrant/.gnupg/gpg.conf"
-      # master.vm.provision "file", source: "/Volumes/Dane zaszyfrowane/Klucze GPG - Ubuntu/pubring.gpg", destination: "/home/vagrant/.gnupg/pubring.gpg"
-      # master.vm.provision "file", source: "/Volumes/Dane zaszyfrowane/Klucze GPG - Ubuntu/random_seed", destination: "/home/vagrant/.gnupg/random_seed"
-      # master.vm.provision "file", source: "/Volumes/Dane zaszyfrowane/Klucze GPG - Ubuntu/secring.gpg", destination: "/home/vagrant/.gnupg/secring.gpg"
-      # master.vm.provision "file", source: "/Volumes/Dane zaszyfrowane/Klucze GPG - Ubuntu/trustdb.gpg", destination: "/home/vagrant/.gnupg/trustdb.gpg"
-
-      master.vm.provision "shell", path: "provisioning/master-post-file.sh"
-
+      master.vm.provision "shell", inline: "provisioning/master.sh"
   end
 
   config.vm.define "staging" do |staging|
-      staging.vm.box = "mpasternak/trusty64-updated"
-      staging.vm.box_check_update = false
-
+      staging.vm.box = "mpasternak/base-trusty64"
+      staging.vm.hostname = 'bpp-staging'
       staging.vm.network "private_network", ip: "192.168.111.101"
+  end
 
-      if Vagrant.has_plugin?("vagrant-proxyconf")
-        staging.proxy.http     = "http://192.168.111.1:3128/"
-        staging.proxy.https    = "http://192.168.111.1:3128/"
-        staging.proxy.no_proxy = "localhost,127.0.0.1,.example.com,staging,master,messaging-test.localnet,.localnet,messaging-test"
-	  end
+  config.vm.define "db" do |db|
+      db.vm.box = "mpasternak/base-trusty64"
+      db.vm.hostname = 'bpp-db'
+      db.vm.network "private_network", ip: "192.168.111.102"
 
-      staging.vm.provision "shell", path: "provisioning/staging.sh"
+      db.vm.provision "ansible" do |ansible|
+        ansible.playbook = "ansible/provision-db.yml"
+      end
   end
 
   config.vm.define "selenium", primary: true do |selenium|
-
-      selenium.vm.box = "mpasternak/trusty64-updated"
-      selenium.vm.box_check_update = false
-
-      selenium.ssh.forward_x11 = true
-      selenium.ssh.forward_agent = true
-
+      selenium.vm.box = "mpasternak/base-selenium-trusty64"
+      selenium.vm.hostname = 'bpp-selenium'
       selenium.vm.network "private_network", ip: "192.168.111.150"
-
-      if Vagrant.has_plugin?("vagrant-proxyconf")
-        selenium.proxy.http     = "http://192.168.111.1:3128/"
-        selenium.proxy.https    = "http://192.168.111.1:3128/"
-        selenium.proxy.no_proxy = "localhost,127.0.0.1,.example.com,staging,.localnet,messaging-test"
-      end
-	  
-      selenium.vm.provider "virtualbox" do |vb|
-         vb.gui = false
-         vb.memory = "1024"
-	     vb.cpus = "4"
-      end
-
-      selenium.vm.provision "file", source: "provisioning/selenium-optimized-profile-firefox-43.0.4.tbz2", destination: "selenium-optimized-profile-firefox-43.0.4.tbz2"
-
-      selenium.vm.provision "shell", path: "provisioning/selenium.sh"
-      selenium.vm.provision "shell", path: "provisioning/tightvnc.sh"
-
-      selenium.vm.provision "file", source: "provisioning/selenium.conf", destination: "050-selenium.conf"
-      selenium.vm.provision "shell", inline: "mv 050-selenium.conf /etc/supervisor/conf.d/050-selenium.conf"
-      selenium.vm.provision "shell", inline: "service supervisor restart"
-
-      selenium.vm.provision :reload
-
   end
+
 end

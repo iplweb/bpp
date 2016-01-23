@@ -76,3 +76,6 @@ src/django_bpp/node_modules/
 src/django_bpp/wheelhouse/
 node_modules/
 splintershots/
+
+.DS_Store
+\#*
