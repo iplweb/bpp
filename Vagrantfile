@@ -26,7 +26,16 @@ Vagrant.configure(2) do |config|
       master.vm.hostname = 'bpp-master'
       master.vm.network "private_network", ip: "192.168.111.100"
 
-      master.vm.provision "shell", inline: "provisioning/master.sh"
+      master.vm.provision "shell", path: "provisioning/ubuntu-14.04.sh"
+      master.vm.provision "shell", path: "provisioning/ubuntu-14.04-dev.sh"
+      master.vm.provision "shell", path: "provisioning/venv.sh", privileged: false
+      master.vm.provision "shell", path: "provisioning/wheels.sh", privileged: false
+
+      if Vagrant.has_plugin?("vagrant-cachier")
+        config.cache.scope = :box
+        config.cache.enable :apt
+        config.cache.enable :npm
+      end
   end
 
   config.vm.define "staging" do |staging|
