@@ -10,3 +10,4 @@ echo "export PGDATABASE=bpp" >> ~/.bashrc
 
 echo ". /home/vagrant/env/bin/activate" >> ~/.bashrc
 
+export DJANGO_LIVE_TEST_SERVER_ADDRESS="bpp-master.localnet:12000-13000"
