@@ -1,16 +1,18 @@
 # -*- encoding: utf-8 -*-
 
+from __future__ import unicode_literals
 import pytest
 
 VALUES = [
     "Zi%C4%99ba+%5C",
+    "Zi%C4%99ba+%5C \\",
     "fa\\\"fa",
     "'",
     "fa ' fa",
     " ' fa",
     " fa '",
     "fa\\'fa",
-    "Zięba \\",
+    # "Zięba \\",
     "Test ; test",
     "test & test",
     "test &",
@@ -32,9 +34,8 @@ AUTOCOMPLETES = ["Autor", "Jednostka"]
 @pytest.mark.parametrize("autocomplete_name", AUTOCOMPLETES)
 @pytest.mark.parametrize("qstr", VALUES)
 def test_autocomplete_bug_1(autocomplete_name, qstr, webtest_app):
-    """Kiedys taki URL wywoływał BUGa"""
     webtest_app.get("/multiseek/autocomplete/%(autocomplete_name)s/?term=%(qstr)s" % dict(
-        autocomplete_name=autocomplete_name, qstr=qstr))
+        autocomplete_name=autocomplete_name, qstr=qstr.encode("utf-8")))
 
 #
 # @pytest.mark.django_db
