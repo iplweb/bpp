@@ -7,7 +7,7 @@
 # 
 # 	https://github.com/mpasternak/vagrant-boxes
 # 
-# Sugerowane pluginy:
+# Wymagane pluginy:
 #
 #  * vagrant-hostmanager
 #  * vagrant-cachier
