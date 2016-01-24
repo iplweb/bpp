@@ -36,7 +36,7 @@ def vcs():
         run("git pull")
         run("git reset --hard")
 
-def download_db(restore=False, cleanup=False, recreate=True, download=True):
+def download_db(restore=True, cleanup=False, recreate=True, download=True):
     """Download remote database dump.
     Restore dump on local host if 'restore' is True.
     Drop and recreate the target database if 'recreate' is True, remove dump
@@ -47,6 +47,9 @@ def download_db(restore=False, cleanup=False, recreate=True, download=True):
             run('pg_dump --clean -F custom '
                 '{0} > {0}.backup'.format(env.db))
         dump_file = get('{}.backup'.format(env.db), '%(host)s-%(path)s')[0]
+    else:
+        dump_file = '%s@%s-%s.backup' % (env.user, env.host, env.db)
+
     if not restore:
         return
     if recreate:
