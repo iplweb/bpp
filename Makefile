@@ -26,3 +26,6 @@ new-patch: clean
 	bumpversion patch 
 	git push
 	git push --tags
+
+release: new-patch
+	fab build
