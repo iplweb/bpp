@@ -55,6 +55,8 @@ Vagrant.configure(2) do |config|
         ansible.playbook = "ansible/provision-db.yml"
       end
 
+      db.vm.provision "shell", path: "provisioning/postgresql-open-wide.sh"
+
       if Vagrant.has_plugin?("vagrant-cachier")
         config.cache.scope = :box
         config.cache.enable :apt

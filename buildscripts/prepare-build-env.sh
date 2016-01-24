@@ -14,11 +14,13 @@ if [ -z "$DJANGO_SETTINGS_MODULE" ]; then
     exit 1
 fi
 
-rm -rf ~/tmp
+pushd `dirname $0` > /dev/null
+SCRIPTPATH=`pwd -P`
+popd > /dev/null
 
-cd ../src/django_bpp
+cd $SCRIPTPATH/../src
 
-npm install grunt-sass grunt-contrib-watch grunt-contrib-qunit
+npm --quiet install grunt-sass grunt-contrib-watch grunt-contrib-qunit
 
 yes n | python manage.py bower_install -F
 python manage.py collectstatic --noinput
