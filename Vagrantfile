@@ -24,6 +24,7 @@ Vagrant.configure(2) do |config|
   config.vm.define "master", primary: true do |master|
       master.vm.box = "mpasternak/base-buildbox-trusty64"
       master.vm.hostname = 'bpp-master'
+      master.hostmanager.aliases = %w(bpp-master.localnet)
       master.vm.network "private_network", ip: "192.168.111.100"
 
       master.vm.provision "shell", path: "provisioning/ubuntu-14.04.sh"
@@ -32,6 +33,12 @@ Vagrant.configure(2) do |config|
       master.vm.provision "shell", path: "provisioning/wheels.sh", privileged: false
       master.vm.provision "shell", path: "provisioning/vars.sh", privileged: false
       master.vm.provision "shell", path: "provisioning/git.sh", privileged: false
+
+      # Nginx & co
+      master.vm.provision "ansible" do |ansible|
+        ansible.playbook = "ansible/provision.yml"
+      end
+
 
       if Vagrant.has_plugin?("vagrant-cachier")
         config.cache.scope = :box
@@ -52,7 +59,7 @@ Vagrant.configure(2) do |config|
       db.vm.network "private_network", ip: "192.168.111.102"
 
       db.vm.provision "ansible" do |ansible|
-        ansible.playbook = "ansible/provision-db.yml"
+        ansible.playbook = "ansible/provision.yml"
       end
 
       db.vm.provision "shell", path: "provisioning/postgresql-open-wide.sh"

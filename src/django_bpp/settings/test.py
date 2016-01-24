@@ -25,6 +25,6 @@ SENDFILE_ROOT = MEDIA_ROOT
 COMPRESS_OFFLINE = True
 
 # host dla HTMLu oraz linii polecen, reszta dla linii polecen (bo HTML sie autokonfiguruje...)
-NOTIFICATIONS_HOST = 'messaging-test.localnet'
+NOTIFICATIONS_HOST = 'bpp-master.localnet'
 NOTIFICATIONS_PORT = 80
 NOTIFICATIONS_PROTOCOL = 'http'
