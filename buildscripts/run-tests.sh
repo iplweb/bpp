@@ -59,7 +59,7 @@ if [ "$NO_QUNIT" == "0" ]; then
 fi
 
 if [ "$NO_DJANGO" == "0" ]; then
-    python manage.py test --noinput --keepdb -v 3 bpp
+    python manage.py test --noinput bpp
 fi
 
 if [ "$NO_PYTEST" == "0" ]; then
