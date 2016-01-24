@@ -11,7 +11,7 @@
 # PostgreSQL jest na oddzielnym hoscie.
 
 # Install dev build packages
-sudo apt-get -q install -y libpq-dev libjpeg-dev libpng-dev libxml2-dev libxslt1-dev libevent-dev libxslt1-dev python-dev npm
+sudo apt-get -qq install -y libpq-dev libjpeg-dev libpng-dev libxml2-dev libxslt1-dev libevent-dev libxslt1-dev python-dev npm
 
 sudo rm -f /usr/local/bin/node
 sudo ln -s /usr/bin/nodejs /usr/local/bin/node
