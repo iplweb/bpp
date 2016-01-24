@@ -1,5 +1,5 @@
 ---
-- hosts: db
+- hosts: bpp-db
   become: yes
   become_method: sudo
   vars:
@@ -9,3 +9,11 @@
     postgresql_version: 9.3
   roles: 
     - postgresql-server
+
+- hosts: bpp-master
+  become: yes
+  become_method: sudo
+  roles:
+    - nginx-with-pubsub
+    - name: nginx-messaging-test
+      tags: ['fo']

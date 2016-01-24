@@ -1,0 +1,7 @@
+nginx_test_message_server_hostname: bpp-master
+nginx_test_message_server_domain: localnet
+nginx_test_message_server_fqdn: "{{ nginx_test_message_server_hostname }}.{{ nginx_test_message_server_domain}}"
+nginx_test_message_server_allowed_ips:
+  - 127.0.0.1
+  - 192.168.111.1
+  - 192.168.111.100  

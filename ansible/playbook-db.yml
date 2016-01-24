@@ -1,6 +1,0 @@
----
-- hosts: dbservers
-  become: yes
-  become_method: sudo
-  roles: 
-    - postgresql-server
