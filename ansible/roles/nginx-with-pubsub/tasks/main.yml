@@ -1,0 +1,24 @@
+---
+- name: Add nginx-with-push-stream PPA
+  apt_repository: repo="ppa:dotz/nginx-with-push-stream-module" state=present
+  register: nginx_ppa
+
+- name: Update apt cache
+  apt:  update_cache=yes
+  when: nginx_ppa|changed
+
+- name: Install PPA with nginx + nginx-push-stream-module
+  apt: name="nginx=1.8.0-1+trusty2" state=present
+
+- name: Install scripts for nginx_ensite
+  copy: src=nginx_ensite dest=/usr/bin/nginx_ensite mode=755
+  tags: ['nginx_ensite',]
+
+- name: Install symlink for nginx_dissite
+  file: src=/usr/bin/nginx_ensite dest=/usr/bin/nginx_dissite state=link
+
+- name: Update main nginx config file
+  lineinfile: dest="/etc/nginx/nginx.conf" insertafter="http {" line="push_stream_shared_memory_size 32M;"
+  notify:
+    - check nginx conf
+    - reload nginx conf

@@ -1,0 +1,15 @@
+---
+- name: Zainstaluj konfiguracje hosta {{ nginx_test_message_server_fqdn }}
+  template: src=nginx-test-site.jinja2 dest=/etc/nginx/sites-available/{{ nginx_test_message_server_fqdn }}
+  notify:
+    - check nginx conf
+    - reload nginx conf
+
+- name: Enable nginx test site
+  shell: /usr/bin/nginx_ensite {{ nginx_test_message_server_fqdn }}
+  notify:
+    - check nginx conf
+    - reload nginx conf    
+
+- name: Force restart
+  command: service nginx restart
