@@ -1,5 +1,7 @@
 #!/bin/bash -e
 
+mkdir -p /vagrant/releases || true
+
 cd /home/vagrant/django-bpp/src
 
 rm -rf staticroot
@@ -9,6 +11,20 @@ python manage.py compress --force -v 0
 
 VERSION=`python django_bpp/version.py`
 
-cd ..
-mkdir -p /vagrant/releases || true
-tar --exclude=src/media --exclude=*.pyc --exclude=__pycache__ --exclude=src/.cache --exclude=src/node_modules --exclude=src/components -cjf /vagrant/releases/release-$VERSION.tbz2 src
+cd ../..
+
+OUTDIR=django-bpp-$VERSION
+rm -rf $OUTDIR
+
+cp -R django-bpp $OUTDIR
+
+rm -rf $OUTDIR/src/media
+rm -rf $OUTDIR/src/.cache
+rm -rf $OUTDIR/src/node_modules
+rm -rf $OUTDIR/src/components
+rm -rf $OUTDIR/.git $OUTDIR/.gitignore $OUTDIR/Makefile $OUTDIR/provisioning $OUTDIR/requirements/Darwin.requirements.txt
+rm -rf $OUTDIR/files $OUTDIR/requirements/src.requirements.txt $OUTDIR/requirements/dev.requirements.txt
+rm -rf $OUTDIR/ansible
+rm -rf $OUTDIR/buildscripts
+
+tar --exclude=*.pyc --exclude=__pycache__ -cjf /vagrant/releases/release-$VERSION.tbz2 src
