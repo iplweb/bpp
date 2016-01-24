@@ -8,3 +8,5 @@ echo "export PGUSER=bpp" >> ~/.bashrc
 echo "export PGPASSWORD=password" >> ~/.bashrc
 echo "export PGDATABASE=bpp" >> ~/.bashrc
 
+echo ". /home/vagrant/env/bin/activate" >> ~/.bashrc
+
