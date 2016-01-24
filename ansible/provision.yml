@@ -16,4 +16,3 @@
   roles:
     - nginx-with-pubsub
     - name: nginx-messaging-test
-      tags: ['fo']
