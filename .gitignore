@@ -78,3 +78,4 @@ splintershots/
 
 .DS_Store
 \#*
+*.backup
