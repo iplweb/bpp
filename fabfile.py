@@ -19,7 +19,9 @@ def test():
     run("django-bpp/buildscripts/run-tests.sh")
 
 def build():
-    run("django-bpp/buildscripts/build-release.sh")
+    run("/vagrant/buildscripts/build-deps.sh")
+    run("/vagrant/buildscripts/build-src.sh")
+    local("ls -lash releases; du -h releases")
 
 def migrate():
     run("python django-bpp/src/manage.py migrate")
