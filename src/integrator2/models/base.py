@@ -41,7 +41,7 @@ class BaseIntegration(models.Model):
     owner = models.ForeignKey(settings.AUTH_USER_MODEL)
 
     uploaded_on = models.DateTimeField(auto_now_add=True)
-    last_updated_on = models.DateTimeField(auto_now=True, auto_now_add=True)
+    last_updated_on = models.DateTimeField(auto_now=True)
 
     status = models.IntegerField(choices=STATUSY, default=STATUSY[0][0])
     extra_info = models.TextField()  # ekstra informacje dla statusu
