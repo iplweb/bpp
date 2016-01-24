@@ -26,7 +26,7 @@ def zapytaj_o_autora(q):
 
 def navigation_autocomplete(
         request, template_name='navigation_autocomplete.html'):
-    q = request.GET.get('q', '')
+    q = request.GET.get('q', '').encode("utf-8")
     context = {'q': q}
 
     # % url admin:bpp_wydawnictwo_zwarte_change wydawnictwo.pk %}
