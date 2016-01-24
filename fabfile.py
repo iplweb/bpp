@@ -60,3 +60,6 @@ def download_db(restore=True, cleanup=False, recreate=True, download=True):
     local('pg_restore -U postgres -d {1} {2}'.format(env.dbuser, env.db, dump_file))
     if cleanup:
         local('/bin/rm {}'.format(dump_file))
+
+def django18_migrations_fix():
+    run("for app in password_policies celeryui menu dashboard multiseek messages_extends; do python django-bpp/src/manage.py migrate $app --fake; done")
