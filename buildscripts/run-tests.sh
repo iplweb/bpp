@@ -23,7 +23,6 @@ fi
 pushd `dirname $0` > /dev/null
 SCRIPTPATH=`pwd -P`
 popd > /dev/null
-
 cd $SCRIPTPATH/../src
 
 NO_QUNIT=0
