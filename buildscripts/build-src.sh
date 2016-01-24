@@ -27,4 +27,4 @@ rm -rf $OUTDIR/files $OUTDIR/requirements/src.requirements.txt $OUTDIR/requireme
 rm -rf $OUTDIR/ansible
 rm -rf $OUTDIR/buildscripts
 
-tar --exclude=*.pyc --exclude=__pycache__ -cjf /vagrant/releases/release-$VERSION.tbz2 src
+tar --exclude=*.pyc --exclude=__pycache__ -cjf /vagrant/releases/release-$VERSION.tbz2 $OUTDIR
