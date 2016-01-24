@@ -12,7 +12,7 @@ VALUES = [
     " ' fa",
     " fa '",
     "fa\\'fa",
-    # "Zięba \\",
+    "Zięba \\",
     "Test ; test",
     "test & test",
     "test &",
@@ -34,8 +34,7 @@ AUTOCOMPLETES = ["Autor", "Jednostka"]
 @pytest.mark.parametrize("autocomplete_name", AUTOCOMPLETES)
 @pytest.mark.parametrize("qstr", VALUES)
 def test_autocomplete_bug_1(autocomplete_name, qstr, webtest_app):
-    webtest_app.get("/multiseek/autocomplete/%(autocomplete_name)s/?term=%(qstr)s" % dict(
-        autocomplete_name=autocomplete_name, qstr=qstr.encode("utf-8")))
+    webtest_app.get("/multiseek/autocomplete/%s/" % autocomplete_name, params={'qstr': qstr})
 
 #
 # @pytest.mark.django_db
