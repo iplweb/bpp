@@ -79,3 +79,5 @@ splintershots/
 .DS_Store
 \#*
 *.backup
+
+releases/
