@@ -1,5 +1,6 @@
 #!/bin/bash -e
 
+echo "export DJANGO_LIVE_TEST_SERVER_ADDRESS=bpp-master.localnet:12000-13000" >> ~/.bashrc
 echo "export DJANGO_SETTINGS_MODULE=django_bpp.settings.test" >> ~/.bashrc
 echo "export DJANGO_BPP_SECRET_KEY=0xdeadbeef" >> ~/.bashrc
 
@@ -10,4 +11,4 @@ echo "export PGDATABASE=bpp" >> ~/.bashrc
 
 echo ". /home/vagrant/env/bin/activate" >> ~/.bashrc
 
-export DJANGO_LIVE_TEST_SERVER_ADDRESS="bpp-master.localnet:12000-13000"
+
