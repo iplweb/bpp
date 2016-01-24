@@ -77,6 +77,8 @@ Vagrant.configure(2) do |config|
       selenium.vm.network "private_network", ip: "192.168.111.150"
       selenium.hostmanager.aliases = %w(selenium)
 
+      selenium.vm.provision "shell", inline: "echo 192.168.111.1 MacOSX.localnet >> /etc/hosts"
+
       if Vagrant.has_plugin?("vagrant-cachier")
         config.cache.scope = :box
         config.cache.enable :apt
