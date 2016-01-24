@@ -18,9 +18,9 @@ def zapytaj_o_autora(q):
     myQ = Q()
     for elem in q.split(" "):
         myQ = myQ & Q(
-            Q(nazwisko__istartswith=elem) |
-            Q(imiona__istartswith=elem) |
-            Q(poprzednie_nazwiska__istartswith=elem))
+            q(nazwisko__istartswith=elem) |
+            q(imiona__istartswith=elem) |
+            q(poprzednie_nazwiska__istartswith=elem))
     return myQ
 
 
@@ -111,7 +111,7 @@ def navigation_autocomplete(
 def user_navigation_autocomplete(
         request, template_name='user_navigation_autocomplete.html'):
     elements = []
-    q = request.GET.get('q', '')
+    q = request.GET.get('q', '').encode("utf-8")
     context = {'q': q}
 
     def doloz(model, qset, url, label=lambda x: unicode(x), attr='slug'):

@@ -13,7 +13,7 @@ class FulltextSearchMixin:
 
     def tokenize(self, qstr):
         qstr = qstr.replace("\\", "")
-        return [x.strip() for x in qstr.split(u" ") if x.strip()]
+        return [x.strip() for x in qstr.split(" ") if x.strip()]
 
     def fulltext_filter(self, qstr):
         from djorm_pgfulltext.fields import startswith
