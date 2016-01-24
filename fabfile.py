@@ -1,3 +1,6 @@
+"""Szybkie interakcje z hostem 'master'
+"""
+
 from fabric.api import *
 
 if not env['hosts']:
