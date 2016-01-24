@@ -368,7 +368,7 @@ if os.getenv("DJANGO_BPP_RAVEN_CONFIG_URL", None):
     INSTALLED_APPS.append('raven.contrib.django.raven_compat')
 
 ALLOWED_HOSTS = [
-    django_getenv("DJANGO_BPP_HOSTNAME"),
+    django_getenv("DJANGO_BPP_HOSTNAME", "localhost"),
 ]
 
 REDIS_HOST = django_getenv("DJANGO_BPP_REDIS_HOST", "localhost")
@@ -423,11 +423,11 @@ def int_or_None(value):
 DATABASES = {
     'default': {
         'ENGINE': django_getenv("DJANGO_BPP_DB_ENGINE", 'django.db.backends.postgresql_psycopg2'),
-        'NAME': django_getenv("DJANGO_BPP_DB_NAME"),
-        'USER': django_getenv("DJANGO_BPP_DB_USER"),
-        'PASSWORD': django_getenv("DJANGO_BPP_DB_PASSWORD"),
-        'HOST': django_getenv("DJANGO_BPP_DB_HOST", ""),
-        'PORT': int_or_None(django_getenv("DJANGO_BPP_DB_PORT", "")),
+        'NAME': django_getenv("DJANGO_BPP_DB_NAME", "bpp"),
+        'USER': django_getenv("DJANGO_BPP_DB_USER", "bpp"),
+        'PASSWORD': django_getenv("DJANGO_BPP_DB_PASSWORD", "password"),
+        'HOST': django_getenv("DJANGO_BPP_DB_HOST", "bpp-db"),
+        'PORT': int_or_None(django_getenv("DJANGO_BPP_DB_PORT", "5432")),
     }
 }
 

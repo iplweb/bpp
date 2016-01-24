@@ -1,5 +1,7 @@
 # -*- encoding: utf-8 -*-
 
+# Konfiguracja hosta 'master'
+
 from .base import *
 
 DEBUG = True
