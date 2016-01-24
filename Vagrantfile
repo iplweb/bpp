@@ -64,10 +64,16 @@ Vagrant.configure(2) do |config|
 
   end
 
-  config.vm.define "selenium", primary: true do |selenium|
+  config.vm.define "selenium" do |selenium|
       selenium.vm.box = "mpasternak/base-selenium-trusty64"
       selenium.vm.hostname = 'bpp-selenium'
       selenium.vm.network "private_network", ip: "192.168.111.150"
+      selenium.hostmanager.aliases = %w(selenium)
+
+      if Vagrant.has_plugin?("vagrant-cachier")
+        config.cache.scope = :box
+        config.cache.enable :apt
+      end
   end
 
 end
