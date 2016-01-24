@@ -30,6 +30,8 @@ Vagrant.configure(2) do |config|
       master.vm.provision "shell", path: "provisioning/ubuntu-14.04-dev.sh"
       master.vm.provision "shell", path: "provisioning/venv.sh", privileged: false
       master.vm.provision "shell", path: "provisioning/wheels.sh", privileged: false
+      master.vm.provision "shell", path: "provisioning/vars.sh", privileged: false
+      master.vm.provision "shell", path: "provisioning/git.sh", privileged: false
 
       if Vagrant.has_plugin?("vagrant-cachier")
         config.cache.scope = :box
@@ -52,6 +54,12 @@ Vagrant.configure(2) do |config|
       db.vm.provision "ansible" do |ansible|
         ansible.playbook = "ansible/provision-db.yml"
       end
+
+      if Vagrant.has_plugin?("vagrant-cachier")
+        config.cache.scope = :box
+        config.cache.enable :apt
+      end
+
   end
 
   config.vm.define "selenium", primary: true do |selenium|
