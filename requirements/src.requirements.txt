@@ -1,3 +1,3 @@
 git+https://github.com/mpasternak/djorm-ext-filtered-contenttypes#egg=djorm_ext_filtered_contenttypes
-git+https://github.com/mpasternak/django-multiseek.git#egg=django-multiseek
+# git+https://github.com/mpasternak/django-multiseek.git#egg=django-multiseek
 git+https://github.com/AliLozano/django-messages-extends.git#egg=django-messages-extends
