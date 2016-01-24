@@ -13,7 +13,7 @@ from django_bpp.util import wait_for_object
 
 logger = get_task_logger(__name__)
 
-from django_bpp.celery import app
+from django_bpp.celery_tasks import app
 
 
 
