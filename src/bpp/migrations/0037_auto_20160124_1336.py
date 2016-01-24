@@ -20,7 +20,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='jednostka',
             name='search',
-            field=djorm_pgfulltext.fields.VectorField(),
+            field=djorm_pgfulltext.fields.VectorField(null=True, blank=True),
         ),
         migrations.AlterField(
             model_name='patent',

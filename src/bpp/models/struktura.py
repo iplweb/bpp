@@ -86,7 +86,7 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelHistoryczny):
     email = models.EmailField("E-mail", max_length=128, blank=True, null=True)
     www = models.URLField("WWW", max_length=1024, blank=True, null=True)
 
-    search = VectorField()
+    search = VectorField(blank=True, null=True)
 
     objects = JednostkaManager()
 
