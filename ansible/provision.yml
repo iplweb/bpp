@@ -1,5 +1,5 @@
 ---
-- hosts: bpp-db
+- hosts: db
   become: yes
   become_method: sudo
   vars:
@@ -10,7 +10,7 @@
   roles: 
     - postgresql-server
 
-- hosts: bpp-master
+- hosts: master
   become: yes
   become_method: sudo
   roles:
