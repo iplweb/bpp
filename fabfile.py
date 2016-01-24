@@ -18,6 +18,12 @@ def test():
 def build():
     run("django-bpp/buildscripts/build-release.sh")
 
+def migrate():
+    run("python django-bpp/src/manage.py migrate")
+
+def collectstatic():
+    run("python django-bpp/src/manage.py collectstatic --noinput -v 0 ")
+
 def venv():
     run("rm -rf env")
     run("/vagrant/provisioning/venv.sh")
