@@ -12,7 +12,7 @@ from bpp.models.system import Charakter_Formalny
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor, Wydawnictwo_Ciagle
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte_Autor, Wydawnictwo_Zwarte
 from bpp.util import remove_old_objects
-from django_bpp.celery import app
+from django_bpp.celery_tasks import app
 from django_bpp.util import wait_for_object
 from eksport_pbn.models import PlikEksportuPBN, DATE_CREATED_ON, DATE_UPDATED_ON
 
