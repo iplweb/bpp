@@ -21,3 +21,8 @@ wholeworld:
 
 buildwholeworld: wholeworld build
 	@echo "Done"
+
+new-patch: clean
+	bumpversion patch 
+	git push
+	git push --tags
