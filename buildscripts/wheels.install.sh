@@ -24,3 +24,7 @@ fi
 
 $PIP_INSTALL -r ../requirements/$unamestr.requirements.txt
 $PIP_INSTALL -r ../requirements/requirements.txt
+
+if [[ "$unamestr" == 'Darwin' ]]; then
+    $PIP_INSTALL -r ../requirements/dev.requirements.txt
+fi
