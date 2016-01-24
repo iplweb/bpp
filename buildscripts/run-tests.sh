@@ -59,14 +59,12 @@ if [ "$NO_QUNIT" == "0" ]; then
 fi
 
 if [ "$NO_DJANGO" == "0" ]; then
+    # żadnego keepdb, baza ma być utworzona od zera
     python manage.py test --noinput bpp
 fi
 
 if [ "$NO_PYTEST" == "0" ]; then
-    # PYTEST_OPTIONS domyślnie dla Vagrantowego hosta master mogą wyglądać o tak:
-    #   export PYTEST_OPTIONS="--create-db --liveserver=master:12000-13000 -vvv"
-    # ew. przy testowaniu z palca, bez tworzenia bazy danych:
-    #   export PYTEST_OPTIONS="--liveserver=master:12000-13000 -vvv"
-    py.test $PYTEST_OPTIONS functional_tests integrator2/tests eksport_pbn bpp/tests-pytest
+    # baza ma być utworzona od zera - ponownie!
+    py.test --create-db functional_tests integrator2/tests eksport_pbn bpp/tests-pytest
 fi
 
