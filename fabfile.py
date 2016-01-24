@@ -1,7 +1,9 @@
 """Szybkie interakcje z hostem 'master'
 """
 
+import os
 from fabric.api import *
+from fabric.contrib.files import exists
 
 if not env['hosts']:
     env['hosts'] = ['vagrant@bpp-master']
@@ -19,8 +21,8 @@ def test():
     run("django-bpp/buildscripts/run-tests.sh")
 
 def build():
-    run("/vagrant/buildscripts/build-deps.sh")
-    run("/vagrant/buildscripts/build-src.sh")
+    run("django-bpp/buildscripts/build-deps.sh")
+    run("django-bpp/buildscripts/build-src.sh")
     local("ls -lash releases; du -h releases")
 
 def migrate():
@@ -68,3 +70,18 @@ def download_db(restore=True, cleanup=False, recreate=True, download=True):
 
 def django18_migrations_fix():
     run("for app in password_policies celeryui menu dashboard multiseek messages_extends; do python django-bpp/src/manage.py migrate $app --fake; done")
+
+def upload_deps(remote_os="Ubuntu-14.04", deps_version="20160124"):
+    fn = "dependencies-%s-%s.tar" % (remote_os, deps_version)
+    if not exists(fn):
+        put("releases/%s" % fn, fn)
+        run("tar -xf %s" % fn)
+
+def upload_src():
+    latest = os.popen("python src/django_bpp/version.py").read()
+    fn = "release-%s.tbz2" % latest
+    if not exists(fn):
+        put("releases/%s" % fn, fn)
+        run("tar -xf %s" % fn)
+        run("rm -rf latest")
+        run("ln -s django-bpp-%s latest" % latest)
