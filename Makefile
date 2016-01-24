@@ -8,7 +8,16 @@ build:
 	fab build
 
 world:
-	vagrant pristine -f
+	vagrant pristine -f master
+	vagrant up selenium 
+	vagrant up db
+	vagrant up staging
 
 buildworld: world build
+	@echo "Done!"
+
+wholeworld:
+	vagrant pristine -f
+
+buildwholeworld: wholeworld build
 	@echo "Done"
