@@ -20,7 +20,11 @@ if [[ "$unamestr" == 'Linux' ]]; then
     export DJANGO_SETTINGS_MODULE=django_bpp.settings.test
 fi
 
-cd ../src/django_bpp
+pushd `dirname $0` > /dev/null
+SCRIPTPATH=`pwd -P`
+popd > /dev/null
+
+cd $SCRIPTPATH/../src
 
 NO_QUNIT=0
 NO_PYTEST=0
