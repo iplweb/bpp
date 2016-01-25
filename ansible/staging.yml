@@ -21,13 +21,15 @@
     django_db_password: password
     django_db_host: localhost
 
-    django_settings_module: "{{ django_project_name }}.settings.staging"
+    django_settings_module: "{{ django_project_name }}.settings.production"
 
     django_enable_raven: false
     django_raven_url: none
 
     django_project_name: django_bpp
     django_toplevel_dir: django-bpp
+
+    django_notifications_host: bpp-staging.localnet
 
   roles:
     - nginx-with-pubsub
