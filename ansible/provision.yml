@@ -47,12 +47,11 @@
     django_project_name: django_bpp
     django_toplevel_dir: django-bpp
 
-    django_certs_dir: "roles/django-site/files/" # toplevel katalog gdzie znajduje sie plik nazwa-hosta.cert i nazwa-hosta.key, do nginx SSL
-
   roles:
     - nginx-with-pubsub
     - postgresql-server
     - rabbitmq-server
+    - redis-server
     - name: django-site
       tags: ['django-site']
 
