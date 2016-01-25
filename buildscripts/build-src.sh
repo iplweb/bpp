@@ -24,7 +24,7 @@ rm -rf $OUTDIR/src/node_modules
 rm -rf $OUTDIR/src/components
 rm -rf $OUTDIR/.git $OUTDIR/.gitignore $OUTDIR/Makefile $OUTDIR/provisioning $OUTDIR/requirements/Darwin.requirements.txt
 rm -rf $OUTDIR/files $OUTDIR/requirements/src.requirements.txt $OUTDIR/requirements/dev.requirements.txt
-rm -rf $OUTDIR/ansible
+rm -rf $OUTDIR/ansible $OUTDIR/fabfile.py $OUTDIR/.bumpversion.cfg
 rm -rf $OUTDIR/buildscripts
 
 tar --exclude=*.pyc --exclude=__pycache__ -cjf /vagrant/releases/release-$VERSION.tbz2 $OUTDIR
