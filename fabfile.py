@@ -15,28 +15,28 @@ env['db'] = 'bpp'
 env['dbuser'] = 'bpp'
 
 def prepare():
-    run("django-bpp/buildscripts/prepare-build-env.sh")
+    run("latest/buildscripts/prepare-build-env.sh")
 
 def test():
-    run("django-bpp/buildscripts/run-tests.sh")
+    run("latest/buildscripts/run-tests.sh")
 
 def build():
-    run("django-bpp/buildscripts/build-deps.sh")
-    run("django-bpp/buildscripts/build-src.sh")
+    run("latest/buildscripts/build-deps.sh")
+    run("latest/buildscripts/build-src.sh")
     local("ls -lash releases; du -h releases")
 
 def migrate():
-    run("python django-bpp/src/manage.py migrate")
+    run("python latest/src/manage.py migrate")
 
 def collectstatic():
-    run("python django-bpp/src/manage.py collectstatic --noinput -v 0 ")
+    run("python latest/src/manage.py collectstatic --noinput -v 0 ")
 
 def venv():
     run("rm -rf env")
     run("/vagrant/provisioning/venv.sh")
 
 def wheels():
-    run("django-bpp/provisioning/wheels.sh")
+    run("latest/provisioning/wheels.sh")
 
 def vcs():
     with cd("django-bpp"):
@@ -69,7 +69,7 @@ def download_db(restore=True, cleanup=False, recreate=True, download=True):
         local('/bin/rm {}'.format(dump_file))
 
 def django18_migrations_fix():
-    run("for app in password_policies celeryui menu dashboard multiseek messages_extends; do python django-bpp/src/manage.py migrate $app --fake; done")
+    run("for app in password_policies celeryui menu dashboard multiseek messages_extends; do python latest/src/manage.py migrate $app --fake; done")
 
 def upload_deps(remote_os="Ubuntu-14.04", deps_version="20160124"):
     dn = "dependencies-%s-%s" % (remote_os, deps_version)
