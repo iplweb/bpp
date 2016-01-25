@@ -1,6 +1,6 @@
 ---
 - name: Install apt packages
-  apt: name=rabbitmq-server state=present update_cache=yes
+  apt: name=rabbitmq-server state=present
 
 - name: Add RabbitMQ Vhost
   rabbitmq_vhost: name="{{ rabbitmq_vhost }}" state=present
