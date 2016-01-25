@@ -1,0 +1,7 @@
+---
+  - name: stop django site processes
+    shell: supervisorctl stop "{{ django_site_project_name }}-{{ django_site_hostname }}:*"
+    ignore_errors: yes
+
+  - name: restart rabbitmq-server
+    service: name=rabbitmq-server state=restarted

@@ -1,0 +1,84 @@
+- name: Group for django site is present
+  group: name={{ django_group }}
+
+- name: User for django site is present
+  user: name={{ django_user  }} createhome=yes
+
+- name: Media dir for django site is present
+  file: path={{ django_media_root }} state=directory owner={{ django_user }} mode=0755
+
+- name: Basic django requirements are installed
+  apt: name={{ item }}
+  with_items:
+    - python-virtualenv
+
+- name: Last version of sources is known
+  local_action: shell python ../src/{{ django_project_name }}/version.py
+  register: django_latest_version_discovery_command
+  sudo: false
+  tags: ['django-depends', 'django-migrate', 'supervisor', 'nginx']
+
+- name: Ansible fact for latest version of sources is set
+  set_fact: django_latest_version={{ django_latest_version_discovery_command.stdout }}
+  tags: ['django-depends', 'django-migrate', 'supervisor', 'nginx']
+
+- name: Ansible fact for directory name of extracted sources is set
+  set_fact: django_extracted_sources_dir={{ django_home_dir }}/{{ django_toplevel_dir }}-{{ django_latest_version }}
+  tags: ['django-depends', 'django-migrate', 'supervisor', 'nginx']
+
+- name: Source release is uploaded and extracted
+  unarchive: src=../releases/release-{{ django_latest_version }}.tbz2 dest={{ django_home_dir }} creates={{ django_extracted_sources_dir }} copy=yes
+
+- name: Symlink to lates sources version is created
+  file: state=link src="{{ django_extracted_sources_dir }}" dest="{{ django_home_dir }}/latest"
+
+- name: Virtualenv is created
+  command: virtualenv --python=python{{ django_python_version }} {{ django_venv_dir }}
+  sudo_user: "{{ django_user }}"
+  args:
+    creates: "{{ django_venv_dir }}"
+
+- name: Wheel is installed in virtual environment
+  pip: virtualenv={{ django_venv_dir }} name=wheel
+  sudo_user: "{{ django_user }}"
+
+- name: Virtualenv wrapper for execution of scripts is created
+  template: src=vexec dest={{ django_home_dir }}/vexec mode=755
+  sudo_user: "{{ django_user }}"
+
+- include: config.yml
+  tags: ['config']
+
+- name: Ansible fact for dependency file name of sources is set
+  set_fact: django_depends=dependencies-{{ ansible_distribution }}-{{ ansible_distribution_version }}-{{ django_deps_version }}
+  tags: ['django-depends']
+
+- name: Dependency file is uploaded and extracted
+  unarchive: src=../releases/{{ django_depends }}.tar dest={{ django_home_dir }} creates={{ django_depends }} copy=yes
+  tags: ['django-depends']
+
+- name: OS-specific dependency packages are installed within virtual environment
+  command: "{{ django_home_dir }}/vexec pip install --no-index -r {{ django_extracted_sources_dir }}/requirements/{{ ansible_system }}.requirements.txt --find-links=file://{{ django_home_dir }}/{{ django_depends }}"
+  sudo_user: "{{ django_user }}"
+  tags: ['django-depends']
+
+- name: Dependency packages are installed within virtual environment
+  command: "{{ django_home_dir }}/vexec pip install --no-index -r {{ django_extracted_sources_dir }}/requirements/requirements.txt --find-links=file://{{ django_home_dir }}/{{ django_depends }}"
+  sudo_user: "{{ django_user }}"
+  tags: ['django-depends']
+
+- name: Database is migrated
+  command: "{{ django_home_dir }}/vexec python {{ django_extracted_sources_dir }}/src/manage.py migrate --noinput"
+  tags: ['django-migrate']
+
+- include: supervisor.yml
+  tags: ['supervisor',]
+
+- include: nginx.yml
+  tags: ['nginx',]
+#
+#
+#
+#- name: Add cron entry to restart django site processess every night
+#  cron: name="Restartuj procesy supervisord raz dziennie" minute="30" hour="23" job="service supervisord restart > /dev/null"
+#  tags: ['cron',]

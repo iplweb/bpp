@@ -1,0 +1,31 @@
+---
+- name: SSL certificate files are installed
+  copy: src="{{ django_certs_dir }}{{ django_hostname }}.{{ item }}" dest="/etc/ssl/private/{{ django_hostname }}.{{ item }}"
+  with_items: ['cert', 'key']
+  notify:
+    - reload nginx conf
+
+- name: Nginx config files are installed
+  template: src={{ item.src }} dest={{ item.dest }}
+  with_items:
+    - { src: nginx-site.jinja2, dest: "/etc/nginx/sites-available/{{ django_hostname }}" }
+    - { src: nginx-maint-site.jinja2, dest: "/etc/nginx/sites-available/{{ django_hostname }}-maint" }
+  register: nginx_conf
+
+- name: Check nginx configuration file
+  shell: nginx -t
+  when: nginx_conf.changed
+
+- name: Enable nginx normal site
+  shell: /usr/bin/nginx_ensite {{ django_hostname }}
+  when: nginx_conf.changed
+
+- name: Disable nginx maint site
+  shell: /usr/bin/nginx_dissite {{ django_hostname }}-maint
+  register: nginx_config_maint_site
+  ignore_errors: yes
+  when: nginx_conf.changed
+
+- name: reload nginx conf
+  service: name=nginx state=reloaded
+  when: nginx_conf.changed

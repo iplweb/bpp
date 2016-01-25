@@ -1,0 +1,23 @@
+server {
+  listen        {{ django_nginx_http_port }};
+  listen        {{ django_nginx_https_port }} default ssl;
+  server_name 	{{ django_hostname }} {{ django_hostname_aliases|default("") }};
+  access_log  	/var/log/nginx/{{ django_hostname }}-maint-access.log;
+  error_log    	/var/log/nginx/{{ django_hostname }}-maint-error.log;
+
+  error_page 497 https://$host:{{ django_nginx_https_port }}$request_uri;
+
+  location / {
+    alias {{ django_extracted_sources_dir }}/src/maint-site;
+    if_modified_since off;
+    add_header Last-Modified "";
+  }
+
+  error_page 404 $scheme://bpp2.umlub.pl/index.html;
+
+  ssl_certificate         /etc/ssl/private/{{ django_hostname }}.cert;
+  ssl_certificate_key     /etc/ssl/private/{{ django_hostname }}.key;
+  ssl_session_timeout     30m;
+
+}
+

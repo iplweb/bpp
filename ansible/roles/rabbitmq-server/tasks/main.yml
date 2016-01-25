@@ -1,0 +1,22 @@
+---
+- name: Install apt packages
+  apt: name=rabbitmq-server state=present update_cache=yes
+
+- name: Add RabbitMQ Vhost
+  rabbitmq_vhost: name="{{ rabbitmq_vhost }}" state=present
+
+- name: Add RabbitMQ user
+  rabbitmq_user: user="{{ rabbitmq_user }}" vhost="{{ rabbitmq_vhost }}" state=present configure_priv=.* read_priv=.* write_priv=.* password="{{ rabbitmq_password }}" force="yes" tags="administrator"
+
+- name: Add RabbitMQ management plugin
+  rabbitmq_plugin: names=rabbitmq_management state=enabled
+
+- name: Disable RabbitMQ guest account
+  rabbitmq_user: user=guest state=absent
+  notify:
+    - restart rabbitmq-server
+
+- name: Make RabbitMQ listen only on localhost
+  lineinfile: state="present" line="RABBITMQ_NODE_IP_ADDRESS=127.0.0.1" dest="/etc/rabbitmq/rabbitmq-env.conf" create="yes"
+  notify:
+    - restart rabbitmq-server
