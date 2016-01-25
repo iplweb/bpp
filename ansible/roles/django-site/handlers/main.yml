@@ -3,5 +3,8 @@
     shell: supervisorctl stop "{{ django_site_project_name }}-{{ django_site_hostname }}:*"
     ignore_errors: yes
 
+  - name: supervisor restart
+    shell: supervisorctl restart all
+
   - name: restart rabbitmq-server
     service: name=rabbitmq-server state=restarted
