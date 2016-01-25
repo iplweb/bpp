@@ -72,16 +72,24 @@ def django18_migrations_fix():
     run("for app in password_policies celeryui menu dashboard multiseek messages_extends; do python django-bpp/src/manage.py migrate $app --fake; done")
 
 def upload_deps(remote_os="Ubuntu-14.04", deps_version="20160124"):
-    fn = "dependencies-%s-%s.tar" % (remote_os, deps_version)
-    if not exists(fn):
+    dn = "dependencies-%s-%s" % (remote_os, deps_version)
+    fn = "%s.tar" % dn
+
+    if not exists(dn):
         put("releases/%s" % fn, fn)
         run("tar -xf %s" % fn)
+        run("rm %s" % fn)
 
 def upload_src():
     latest = os.popen("python src/django_bpp/version.py").read()
+    dn = "django-bpp-%s" % latest
     fn = "release-%s.tbz2" % latest
-    if not exists(fn):
+    if not exists(dn):
         put("releases/%s" % fn, fn)
         run("tar -xf %s" % fn)
-        run("rm -rf latest")
+        run("rm -rf latest %s" % fn)
         run("ln -s django-bpp-%s latest" % latest)
+
+def upload():
+    upload_deps()
+    upload_src()
