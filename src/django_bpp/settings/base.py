@@ -478,3 +478,18 @@ CELERYBEAT_SCHEDULE = {
 }
 
 CAN_LOGIN_AS = lambda request, target_user: request.user.username in ['admin', 'sysdba']
+
+#
+
+# host dla HTMLu oraz linii polecen, reszta dla linii polecen (bo HTML sie autokonfiguruje...)
+NOTIFICATIONS_HOST = django_getenv("DJANGO_BPP_NOTIFICATIONS_HOST", '127.0.0.1')
+NOTIFICATIONS_PORT = django_getenv("DJANGO_BPP_NOTIFICATIONS_HOST", 80)
+NOTIFICATIONS_PROTOCOL = django_getenv("DJANGO_BPP_NOTIFICATIONS_PROTOCOL", 'http')
+
+MEDIA_ROOT = django_getenv(
+        "DJANGO_BPP_MEDIA_ROOT",
+        os.getenv("HOME", "C:/django-bpp-media")
+)
+
+SENDFILE_ROOT = MEDIA_ROOT
+
