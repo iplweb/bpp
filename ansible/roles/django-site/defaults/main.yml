@@ -1,0 +1,20 @@
+---
+supervisor_logdir: /var/log/supervisor
+django_home_dir: /home/{{ django_user }}
+django_media_root: /home/{{ django_user }}/media
+django_venv_dir: "{{ django_home_dir }}/env"
+django_python_version: 2.7
+django_envvar_prefix: "{{ django_project_name|upper }}"
+django_db_port: 5432
+postgresql_version: 9.3
+rabbitmq_user: "{{ database_user }}"
+rabbitmq_vhost: "{{ database_name }}"
+rabbitmq_password: "rabbit-{{ rabbitmq_user }}"
+
+django_gunicorn_port: 9999
+
+django_nginx_http_port: 80
+django_nginx_https_port: 443
+
+django_nginx_push_stream_allowed_ips:
+  - 127.0.0.1

@@ -1,0 +1,101 @@
+upstream app_server {
+    server 127.0.0.1:{{ django_gunicorn_port }} fail_timeout=0;
+}
+
+server {
+  listen        {{ django_nginx_http_port }};
+  listen        {{ django_nginx_https_port }} default ssl;
+  server_name 	{{ django_hostname }} {{ django_hostname_aliases|default("") }};
+  access_log  	/var/log/nginx/{{ django_hostname }}-access.log;
+  error_log    	/var/log/nginx/{{ django_hostname }}-error.log;
+
+  error_page 497 https://$host:{{ django_nginx_https_port }}$request_uri;
+
+  location /static {
+    alias {{ django_extracted_sources_dir }}/src/staticroot;
+    expires 30d;
+  }
+
+   location / {
+      try_files $uri @proxy_to_app;
+   }
+
+   location @proxy_to_app {
+      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_set_header Host $http_host;
+      proxy_set_header X-Real-IP $remote_addr;
+      proxy_set_header X-Scheme $scheme;
+      proxy_redirect off;
+
+      proxy_pass   http://app_server;
+   }
+
+  location /admin {
+    if ($ssl_protocol = "") {
+      rewrite (.*) https://$server_name:{{ django_nginx_https_port }}$request_uri? permanent;
+    }
+    proxy_pass_header Server;
+    proxy_set_header Host $http_host;
+    proxy_redirect off;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Scheme $scheme;
+    proxy_set_header X-Forwarded-Protocol $scheme;
+    proxy_connect_timeout 1800;
+    proxy_read_timeout 1800;
+    proxy_pass http://localhost:{{ django_gunicorn_port }}/admin;
+  }
+
+  location /accounts {
+    if ($ssl_protocol = "") {
+      rewrite (.*) https://$server_name:{{ django_nginx_https_port }}$request_uri? permanent;
+    }
+    proxy_pass_header Server;
+    proxy_set_header Host $http_host;
+    proxy_redirect off;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Scheme $scheme;
+    proxy_set_header X-Forwarded-Protocol $scheme;
+    proxy_connect_timeout 1800;
+    proxy_read_timeout 1800;
+    proxy_pass http://localhost:{{ django_gunicorn_port }}/accounts;
+  }
+
+  location /media {
+    alias {{ django_media_root }}/;
+    expires 1d;
+  }
+
+  location /pub {
+    push_stream_publisher admin;
+    push_stream_channels_path               $arg_id;
+    {% for item in django_nginx_push_stream_allowed_ips %}
+    allow {{ item }};
+    {% endfor %}
+    deny    all;
+  }
+
+  location ~ /sub/(.*) {
+    push_stream_subscriber;
+    push_stream_channels_path                   $1;
+    push_stream_message_template                "{\"id\":~id~,\"channel\":\"~channel~\",\"text\":~text~, \"time\":\"~time~\", \"eventid\":\"~event-id~\"}";
+
+  }
+
+  location ~ /ws/(.*) {
+    push_stream_subscriber websocket;
+    push_stream_channels_path                   $1;
+    push_stream_message_template                "{\"id\":~id~,\"channel\":\"~channel~\",\"text\":~text~, \"time\":\"~time~\", \"eventid\":\"~event-id~\"}";
+
+  }
+  location ~ /ev/(.*) {
+    push_stream_subscriber                      eventsource;
+    push_stream_channels_path                   $1;
+    push_stream_message_template                "{\"id\":~id~,\"channel\":\"~channel~\",\"text\":~text~}";
+  }
+
+  ssl_certificate         /etc/ssl/private/{{ django_hostname }}.cert;
+  ssl_certificate_key     /etc/ssl/private/{{ django_hostname }}.key;
+  ssl_session_timeout     30m;
+
+}
+

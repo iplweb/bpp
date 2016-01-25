@@ -1,0 +1,47 @@
+[program:celery-worker]
+command={{ django_home_dir }}/vexec {{ django_venv_dir }}/bin/celery
+    worker
+    -A django_bpp.celery_tasks
+    --pidfile={{ django_home_dir }}/celeryworker.pid
+user={{ django_user }}
+autostart=true
+autorestart=true
+numprocs=1
+environment=USER="{{ django_user }}"
+stdout_logfile={{ supervisor_logdir }}/{{ django_project_name }}/{{ django_hostname }}/celery-worker-stdout
+stderr_logfile={{ supervisor_logdir }}/{{ django_project_name }}/{{ django_hostname }}/celery-worker-stderr
+directory={{ django_extracted_sources_dir }}/src
+
+[program:celery-beat]
+command={{ django_home_dir }}/vexec {{ django_venv_dir }}/bin/celery
+    beat
+    -A django_bpp.celery_tasks
+    --pidfile={{ django_home_dir }}/celerybeat.pid
+    -s {{ django_home_dir }}/celerybeat-schedule
+user={{ django_user }}
+autostart=true
+autorestart=true
+numprocs=1
+environment=USER="{{ django_user }}"
+stdout_logfile={{ supervisor_logdir }}/{{ django_project_name }}/{{ django_hostname }}/celery-beat-stdout
+stderr_logfile={{ supervisor_logdir }}/{{ django_project_name }}/{{ django_hostname }}/celery-beat-stderr
+directory={{ django_extracted_sources_dir }}/src
+
+[program:gunicorn]
+command={{ django_home_dir }}/vexec {{ django_venv_dir }}/bin/gunicorn
+    --pid {{ django_home_dir }}/gunicorn.pid
+    -b 127.0.0.1:{{ django_gunicorn_port }}
+    --workers={{ ansible_processor_cores }}
+    --timeout=1800 django_bpp.wsgi
+    --max-requests=4096
+directory={{ django_extracted_sources_dir }}/src
+user={{ django_user }}
+autostart=true
+autorestart=true
+numprocs=1
+stdout_logfile={{ supervisor_logdir }}/{{ django_project_name }}/{{ django_hostname }}/gunicorn-stdout
+stderr_logfile={{ supervisor_logdir }}/{{ django_project_name }}/{{ django_hostname }}/gunicorn-stderr
+environment=USER="{{ django_user }}"
+
+[group:{{ django_project_name }}_{{ django_hostname }}]
+programs=celery-worker,celery-beat,gunicorn
