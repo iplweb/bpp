@@ -1,9 +1,10 @@
 ---
 - name: SSL certificate files are installed
-  copy: src="{{ django_certs_dir }}{{ django_hostname }}.{{ item }}" dest="/etc/ssl/private/{{ django_hostname }}.{{ item }}"
+  copy: src="{{ django_hostname }}.{{ item }}" dest="/etc/ssl/private/{{ django_hostname }}.{{ item }}"
   with_items: ['cert', 'key']
   notify:
     - reload nginx conf
+  tags: ['certs']
 
 - name: Nginx config files are installed
   template: src={{ item.src }} dest={{ item.dest }}
