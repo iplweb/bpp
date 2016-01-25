@@ -93,3 +93,11 @@ def upload_src():
 def upload():
     upload_deps()
     upload_src()
+
+def upload_db(fn, db, dbuser):
+    put(fn, fn)
+
+    with settings(warn_only=True):
+        run('dropdb -U {0} {1}'.format(dbuser, db))
+    run('createdb --echo --encoding=UTF8 -U {0} --owner={0} {1}'.format(dbuser, db))
+    run('pg_restore -U {0} -d {1} {2}'.format(dbuser, db, fn))
