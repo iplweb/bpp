@@ -483,7 +483,7 @@ CAN_LOGIN_AS = lambda request, target_user: request.user.username in ['admin', '
 
 # host dla HTMLu oraz linii polecen, reszta dla linii polecen (bo HTML sie autokonfiguruje...)
 NOTIFICATIONS_HOST = django_getenv("DJANGO_BPP_NOTIFICATIONS_HOST", '127.0.0.1')
-NOTIFICATIONS_PORT = django_getenv("DJANGO_BPP_NOTIFICATIONS_HOST", 80)
+NOTIFICATIONS_PORT = django_getenv("DJANGO_BPP_NOTIFICATIONS_PORT", 80)
 NOTIFICATIONS_PROTOCOL = django_getenv("DJANGO_BPP_NOTIFICATIONS_PROTOCOL", 'http')
 
 MEDIA_ROOT = django_getenv(
