@@ -17,14 +17,4 @@ SELENIUM_DRIVER = "Firefox"
 SESSION_COOKIE_SECURE = False
 CSRF_COOKIE_SECURE = False
 
-MEDIA_ROOT = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '..', '..', 'media')
-)
-SENDFILE_ROOT = MEDIA_ROOT
-
 COMPRESS_OFFLINE = True
-
-# host dla HTMLu oraz linii polecen, reszta dla linii polecen (bo HTML sie autokonfiguruje...)
-NOTIFICATIONS_HOST = 'bpp-master.localnet'
-NOTIFICATIONS_PORT = 80
-NOTIFICATIONS_PROTOCOL = 'http'
