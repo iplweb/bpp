@@ -29,3 +29,9 @@ new-patch: clean
 
 release: new-patch
 	fab build
+
+download-db:
+	fab -H zarzadca@bpp.umlub.pl download_db:True,False,True,True
+
+recreate-db:
+	fab -H zarzadca@bpp.umlub.pl download_db:True,False,True,False
