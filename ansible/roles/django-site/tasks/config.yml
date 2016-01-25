@@ -16,6 +16,11 @@
     - export PGPORT="{{ django_db_port}}"
     - export DJANGO_SETTINGS_MODULE="{{ django_settings_module }}"
 
+- name: ".bashrc activates default environment"
+  lineinfile: dest={{ django_home_dir }}/.bashrc line="{{ item }}"
+  with_items:
+    - "source {{ django_venv_dir }}/bin/activate"
+
 - name: RAVEN_CONFIG_URL is set, if enabled
   lineinfile: dest={{ django_venv_dir }}/bin/activate line="{{ item }}" 
   with_items:
