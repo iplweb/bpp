@@ -3,24 +3,31 @@ clean:
 	find . -name \*pyc -print0 | xargs -0 rm -fv 
 
 
-boot-machines:
+boot:
 	vagrant up
 
-vcs: boot-machines
+vcs:
 	fab vcs
 
-prepare: vcs
+wheels: 
 	fab wheels
+
+prepare:
 	fab prepare
 
-tests: prepare
+tests:  vcs wheels prepare
 	fab test
 
-full-build: tests
+build:
 	fab build
+
+staging:
 	ansible-playbook ansible/staging.yml
 
-small-build:
+full-build: vcs tests build staging
+	@echo "Done"
+
+small-build: vcs build staging
 	fab build
 	ansible-playbook ansible/staging.yml
 
