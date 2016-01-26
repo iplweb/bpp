@@ -3,9 +3,14 @@ clean:
 	find . -name \*pyc -print0 | xargs -0 rm -fv 
 
 build:
+	fab vcs
 	fab prepare
 	fab test
 	fab build
+
+local-build:
+	buildscripts/prepare-build-env.sh
+	buildscripts/run-tests.sh
 
 world:
 	vagrant pristine -f master
