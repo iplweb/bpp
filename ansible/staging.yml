@@ -1,12 +1,12 @@
 ---
 - hosts: 
-    - bpp-staging
+    - bpp-staging.localnet
   become: yes
   become_method: sudo
   vars:
     database_name: staging-bpp
     database_user: staging-bpp
-    database_password: password
+    database_password: "password"
 
     django_group: vagrant
     django_user: vagrant
@@ -15,11 +15,6 @@
 
     django_hostname: bpp-staging.localnet
     django_secret_key: '0xdeadbeef 3'
-
-    django_db_name: staging-bpp
-    django_db_user: staging-bpp
-    django_db_password: password
-    django_db_host: localhost
 
     django_settings_module: "{{ django_project_name }}.settings.production"
 
