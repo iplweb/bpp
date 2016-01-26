@@ -10,6 +10,6 @@
   register: supervisor_config
 
 - name: Supervisor is restarted when config changed
-  service: name=supervisor state=restarted
+  shell: service supervisor stop && sleep 5 && service supervisor start
   when: supervisor_config.changed
   tags: ['supervisor-restart']
