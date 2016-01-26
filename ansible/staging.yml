@@ -11,8 +11,6 @@
     django_group: vagrant
     django_user: vagrant
 
-    django_deps_version: 20160124
-
     django_hostname: bpp-staging.localnet
     django_secret_key: '0xdeadbeef 3'
 
