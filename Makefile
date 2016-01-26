@@ -28,8 +28,7 @@ full-build: vcs tests build staging
 	@echo "Done"
 
 small-build: vcs build staging
-	fab build
-	ansible-playbook ansible/staging.yml
+	@echo "Done"
 
 local-build:
 	buildscripts/prepare-build-env.sh
