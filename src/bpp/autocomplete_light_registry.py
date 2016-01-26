@@ -12,7 +12,7 @@ class AutocompleteAutor(autocomplete_light.AutocompleteModelTemplate):
     limit_choices = 10
 
     def choices_for_request(self):
-        q = self.request.GET.get('q', '')
+        q = self.request.GET.get('q', '').encode('utf-8')
         return Autor.objects.fulltext_filter(q)[0:self.limit_choices]
 
 
@@ -21,7 +21,7 @@ class AutorMultiseek(autocomplete_light.AutocompleteModelTemplate):
     limit_choices = 10
 
     def choices_for_request(self):
-        q = self.request.GET.get('q', '')
+        q = self.request.GET.get('q', '').encode('utf-8')
         return self.choices.fulltext_filter(q)
 
 autocomplete_light.register(
