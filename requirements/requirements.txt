@@ -56,7 +56,7 @@ simplejson==3.8.0
 Pillow==2.9.0
 
 django-grappelli==2.7.3
-django-multiseek==0.9.15.4
+django-multiseek==0.9.15.5
 djorm-ext-filtered-contenttypes==0.3
 djorm-ext-pgfulltext==0.9.3
 
