@@ -81,7 +81,5 @@ splintershots/
 *.backup
 
 releases/
-ansible/production.yml
-ansible/private-hosts.cfg
 *.cert
 *.key
