@@ -81,6 +81,7 @@ splintershots/
 *.backup
 
 releases/
+ansible-playbook/production.yml
 
 *.cert
 *.key
