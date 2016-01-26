@@ -22,7 +22,7 @@ build:
 	fab build
 
 staging:
-	ansible-playbook ansible/staging.yml
+	ansible-playbook ansible/webserver.yml
 
 full-build: vcs tests build staging
 	@echo "Done"
@@ -51,3 +51,5 @@ release: new-patch
 download-db:
 	fab -H zarzadca@bpp.umlub.pl download_db
 
+production:
+	ansible-playbook -I "/Volumes/Dane zaszyfrowane/Biblioteka Główna/hosts.cg" ansible/webserver.yml
