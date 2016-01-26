@@ -4,6 +4,7 @@ clean:
 
 build:
 	fab vcs
+	fab wheels
 	fab prepare
 	fab test
 	fab build
