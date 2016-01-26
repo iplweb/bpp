@@ -52,4 +52,4 @@ download-db:
 	fab -H zarzadca@bpp.umlub.pl download_db
 
 production:
-	ansible-playbook -I "/Volumes/Dane zaszyfrowane/Biblioteka Główna/hosts.cg" ansible/webserver.yml
+	ansible-playbook -i "/Volumes/Dane zaszyfrowane/Biblioteka Glowna/hosts.cfg" ansible/webserver.yml
