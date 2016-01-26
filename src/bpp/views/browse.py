@@ -67,7 +67,7 @@ class Browser(ListView):
     literka_field = None
 
     def get_search_string(self):
-        return self.request.GET.get(self.param)
+        return self.request.GET.get(self.param, '').encode("utf-8")
 
     def get_literka(self):
         return self.kwargs.get('literka')
