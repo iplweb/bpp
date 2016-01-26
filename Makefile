@@ -2,30 +2,36 @@ clean:
 	find . -name \*~ -print0 | xargs -0 rm -fv 
 	find . -name \*pyc -print0 | xargs -0 rm -fv 
 
-build:
+
+boot-machines:
+	vagrant up
+
+vcs: boot-machines
 	fab vcs
+
+prepare: vcs
 	fab wheels
 	fab prepare
+
+tests: prepare
 	fab test
+
+full-build: tests
 	fab build
+	ansible-playbook ansible/staging.yml
+
+small-build:
+	fab build
+	ansible-playbook ansible/staging.yml
 
 local-build:
 	buildscripts/prepare-build-env.sh
 	buildscripts/run-tests.sh
 
-world:
-	vagrant pristine -f master
-	vagrant up selenium 
-	vagrant up db
-	vagrant up staging
-
-buildworld: world build
-	@echo "Done!"
-
-wholeworld:
+machines: 
 	vagrant pristine -f
 
-buildwholeworld: wholeworld build
+buildworld: machines build
 	@echo "Done"
 
 new-patch: clean
@@ -37,7 +43,5 @@ release: new-patch
 	fab build
 
 download-db:
-	fab -H zarzadca@bpp.umlub.pl download_db:True,False,True,True
+	fab -H zarzadca@bpp.umlub.pl download_db
 
-recreate-db:
-	fab -H zarzadca@bpp.umlub.pl download_db:True,False,True,False
