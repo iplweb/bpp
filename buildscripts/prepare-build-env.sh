@@ -27,5 +27,7 @@ python manage.py collectstatic --noinput
 
 grunt build
 
+dropdb 
+
 python manage.py migrate --noinput
 python manage.py compress --force
