@@ -18,5 +18,5 @@
         - export {{ django_envvar_prefix }}_BROKER_URL="amqp://{{ rabbitmq_user }}:{{ rabbitmq_password }}@localhost:5672/{{ rabbitmq_vhost }}"
       notify:
         - supervisor restart
-      tags: ['django-site', 'rabbitmq']
+      tags: ['django-site', 'rabbitmq', 'config']
 
