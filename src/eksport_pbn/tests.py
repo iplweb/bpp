@@ -2,6 +2,8 @@ from datetime import datetime, timedelta
 from django.core.urlresolvers import reverse
 from model_mommy import mommy
 import pytest
+
+from bpp.models.struktura import Wydzial
 from eksport_pbn.models import PlikEksportuPBN, DATE_CREATED_ON
 from eksport_pbn.tasks import eksport_pbn, id_zwartych, id_ciaglych, remove_old_eksport_pbn_files
 
@@ -110,3 +112,11 @@ def test_z_datami_2(db):
     p.do_daty = d
     s = p.get_fn()
     assert str(d).replace("-", "_") in s
+
+
+def test_submit_report_form(admin_app):
+    w = mommy.make(Wydzial)
+    page = admin_app.get(reverse("eksport_pbn:zamow"))
+    page.form['wydzial'] = w.pk
+    res = page.form.submit().maybe_follow()
+    assert res.status_code == 200

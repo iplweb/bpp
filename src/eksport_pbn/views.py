@@ -72,6 +72,6 @@ class ZamowEksportDoPBN(LoginRequiredMixin, FormView):
         obj.save()
 
         eksport_pbn.delay(obj.pk)
-        messages.info(self.request, u"Rozpoczęto generowanie eksportu PBN dla %s, rok %s" % (obj.wydzial.nazwa, obj.rok))
+        messages.info(self.request, u"Rozpoczęto generowanie eksportu PBN dla %s - %s" % (obj.wydzial.nazwa, obj.get_rok_string()))
 
         return HttpResponseRedirect('.')
