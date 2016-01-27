@@ -32,7 +32,7 @@ class PlikEksportuPBN(models.Model):
 
     od_daty = models.DateField(verbose_name="Od daty", blank=True, null=True)
 
-    do_daty = models.DateField(verbose_name="Od daty", blank=True, null=True)
+    do_daty = models.DateField(verbose_name="Do daty", blank=True, null=True)
 
     rodzaj_daty = models.SmallIntegerField(
             verbose_name="Rodzaj pola daty",
