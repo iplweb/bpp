@@ -287,6 +287,7 @@ BOWER_INSTALLED_APPS = (
     'font-awesome#4.1.0',
     'iframe-resizer#2.5.1',
     'jinplace#1.0.1',
+    'qunit',
     'http://keith-wood.name/zip/jquery.keypad.package-2.0.1.zip'
 )
 
