@@ -36,3 +36,30 @@ class EksportDoPBNForm(forms.ModelForm):
         self.helper = helper
 
         self.fields['wydzial'].queryset = Wydzial.objects.filter(widoczny=True)
+
+    def clean(self):
+        cleaned_data = super(EksportDoPBNForm, self).clean()
+
+        od_roku = cleaned_data.get("od_roku")
+        do_roku = cleaned_data.get("do_roku")
+
+        if od_roku is not None and do_roku is not None:
+            if od_roku > do_roku:
+                self.errors['od_roku'] = ['Skoryguj wartość.']
+                self.errors['do_roku'] = ['Skoryguj wartość.']
+                raise forms.ValidationError("Wartość w polu 'Od roku' musi być niższa lub równa, niż w polu 'Do roku'.")
+
+        od_daty = cleaned_data.get("od_daty")
+        do_daty = cleaned_data.get("do_daty")
+
+        if od_daty is not None and do_daty is not None:
+            if od_daty > do_daty:
+                self.errors['od_daty'] = ['Skoryguj wartość.']
+                self.errors['do_daty'] = ['Skoryguj wartość.']
+                raise forms.ValidationError("Wartość w polu 'Od daty' musi być wcześniejsza lub równa, niż w polu 'Do daty'.")
+
+        if not cleaned_data.get("artykuly") and not cleaned_data.get("ksiazki") and not cleaned_data.get("rozdzialy"):
+            self.errors['artykuly'] = ['Kliknij tu...']
+            self.errors['ksiazki'] = ['albo tu...']
+            self.errors['rozdzialy'] = ['... a przynajmniej tu.']
+            raise forms.ValidationError("Wybierz przynajmniej jedną opcję: artykuły, książki lub rozdziały.")
