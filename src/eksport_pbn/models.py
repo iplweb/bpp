@@ -1,6 +1,5 @@
 # -*- encoding: utf-8 -*-
 from django.conf import settings
-from django.contrib.contenttypes.models import ContentType
 from django.db import models
 # Create your models here.
 from bpp.models.struktura import Wydzial
@@ -28,11 +27,11 @@ class PlikEksportuPBN(models.Model):
     do_daty = models.DateField(verbose_name="Od daty", blank=True, null=True)
 
     rodzaj_daty = models.SmallIntegerField(
-        verbose_name="Rodzaj pola daty",
-        choices=[(DATE_CREATED_ON, "data utworzenia"),
-                 (DATE_UPDATED_ON, "data aktualizacji")],
-        default=0,
-        help_text="""Jakie pole z datą będzie używane do wybierania rekordów?""")
+            verbose_name="Rodzaj pola daty",
+            choices=[(DATE_CREATED_ON, "data utworzenia"),
+                     (DATE_UPDATED_ON, "data aktualizacji")],
+            default=0,
+            help_text="""Jakie pole z datą będzie używane do wybierania rekordów?""")
 
     # PLAN
     #
@@ -56,8 +55,8 @@ class PlikEksportuPBN(models.Model):
                 if b:
                     buf += u"-" + val
 
-        flds = { DATE_CREATED_ON: 'utw',
-                 DATE_UPDATED_ON: 'zm' }
+        flds = {DATE_CREATED_ON: 'utw',
+                DATE_UPDATED_ON: 'zm'}
 
         if self.od_daty:
             try:
