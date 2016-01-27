@@ -30,7 +30,7 @@
             <h1>Ostatnio wygenerowano</h1>
             <ul>
                 {% for plik in ostatnie_raporty %}
-                    <li><a href="{% url "eksport_pbn:pobierz" plik.pk %}">{{ plik.wydzial.nazwa }}, rok {{ plik.rok }}
+                    <li><a href="{% url "eksport_pbn:pobierz" plik.pk %}">{{ plik.wydzial.nazwa }} - {{ plik.get_rok_string }}
                         - {{ plik.created_on|naturaltime }}</a></li>
                     {% empty %}
                     Brak plików.
