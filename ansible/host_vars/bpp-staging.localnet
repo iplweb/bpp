@@ -1,0 +1,4 @@
+---
+django_nginx_push_stream_allowed_ips:
+  - 127.0.0.1
+  - 192.168.111.101
