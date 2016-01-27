@@ -17,6 +17,8 @@
     <link rel="stylesheet" href="{% static "multiseek/css/style.css" %}"/>
     <link rel="stylesheet" type="text/css" href="{% static "autocomplete_light/style.css" %}"/>
     <link rel="stylesheet" type="text/css" href="{% static 'session_security/style.css' %}"></link>
+    <link rel="stylesheet" type="text/css" href="{% static "foundation-datepicker/css/foundation-datepicker.min.css" %}"></link>
+
     {% endcompress %}
 
     {% compress js %}
@@ -40,6 +42,9 @@
     <script src="{% static "notifications/js/mustache.js" %}"></script>
     <script src="{% static "notifications/js/pushstream.js" %}"></script>
     <script src="{% static "notifications/js/notifications.js" %}"></script>
+
+    <script src="{% static "foundation-datepicker/js/foundation-datepicker.min.js" %}"></script>
+    <script src="{% static "foundation-datepicker/js/locales/foundation-datepicker.pl.js" %}"></script>
 
     {% block extrahead_js %}
     {% endblock %}
