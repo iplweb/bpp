@@ -45,20 +45,22 @@ def data_kw(rodzaj_daty, od_daty, do_daty=None):
     return ret
 
 
-def id_ciaglych(wydzial, rok, rodzaj_daty=None, od_daty=None, do_daty=None):
+def id_ciaglych(wydzial, od_roku, do_roku, rodzaj_daty=None, od_daty=None, do_daty=None):
     return Wydawnictwo_Ciagle_Autor.objects.filter(
         jednostka__wydzial=wydzial,
-        rekord__rok=rok,
+        rekord__rok__gte=od_roku,
+        rekord__rok__lte=do_roku,
         rekord__charakter_formalny__in=Charakter_Formalny.objects.filter(artykul_pbn=True),
         **data_kw(rodzaj_daty, od_daty, do_daty)
     ).order_by("rekord_id").distinct("rekord_id").only("rekord_id").values_list("rekord_id", flat=True)
 
 
-def id_zwartych(wydzial, rok, ksiazki, rozdzialy, rodzaj_daty=None, od_daty=None, do_daty=None):
+def id_zwartych(wydzial, od_roku, do_roku, ksiazki, rozdzialy, rodzaj_daty=None, od_daty=None, do_daty=None):
     if ksiazki:
         for rekord in Wydawnictwo_Zwarte_Autor.objects.filter(
                 jednostka__wydzial=wydzial,
-                rekord__rok=rok,
+                rekord__rok__gte=od_roku,
+                rekord__rok__lte=do_roku,
                 rekord__charakter_formalny__in=Charakter_Formalny.objects.filter(ksiazka_pbn=True),
                 **data_kw(rodzaj_daty, od_daty, do_daty)
         ).order_by("rekord_id").distinct("rekord_id").only("rekord_id").values_list("rekord_id", flat=True):
@@ -67,7 +69,8 @@ def id_zwartych(wydzial, rok, ksiazki, rozdzialy, rodzaj_daty=None, od_daty=None
     if rozdzialy:
         for rekord in Wydawnictwo_Zwarte_Autor.objects.filter(
                 jednostka__wydzial=wydzial,
-                rekord__rok=rok,
+                rekord__rok__gte=od_roku,
+                rekord__rok__lte=do_roku,
                 rekord__charakter_formalny__in=Charakter_Formalny.objects.filter(rozdzial_pbn=True),
                 **data_kw(rodzaj_daty, od_daty, do_daty)
         ).order_by("rekord_id").distinct("rekord_id").only("rekord_id").values_list("rekord_id", flat=True):
@@ -94,7 +97,8 @@ def eksport_pbn(pk):
 
     user = obj.owner
     wydzial = obj.wydzial
-    rok = obj.rok
+    od_roku = obj.od_roku
+    do_roku = obj.do_roku
 
     artykuly = obj.artykuly
     ksiazki = obj.ksiazki
@@ -104,22 +108,24 @@ def eksport_pbn(pk):
     do_daty = obj.do_daty
     rodzaj_daty = obj.rodzaj_daty
 
+    rokstr = obj.get_rok_string()
+
     def informuj(msg, dont_persist=True):
         call_command('send_message', user, msg, no_persist=dont_persist)
 
     def gen_ser():
         if artykuly:
-            for ic in id_ciaglych(wydzial, rok, rodzaj_daty=rodzaj_daty, od_daty=od_daty, do_daty=do_daty):
+            for ic in id_ciaglych(wydzial, od_roku, do_roku, rodzaj_daty=rodzaj_daty, od_daty=od_daty, do_daty=do_daty):
                 yield Wydawnictwo_Ciagle.objects.get(pk=ic).eksport_pbn_serializuj(wydzial)
 
         if ksiazki and rozdzialy:
-            informuj(u"... generuję książki i rodziały dla %s, rok %s" % (wydzial.nazwa, rok))
+            informuj(u"... generuję książki i rodziały dla %s - %s" % (wydzial.nazwa, rokstr))
         elif rozdzialy:
-            informuj(u"... generuję rodziały dla %s, rok %s" % (wydzial.nazwa, rok))
+            informuj(u"... generuję rodziały dla %s - %s" % (wydzial.nazwa, rokstr))
         elif ksiazki:
-            informuj(u"... generuję książki dla %s, rok %s" % (wydzial.nazwa, rok))
+            informuj(u"... generuję książki dla %s - %s" % (wydzial.nazwa, rokstr))
 
-        for iz in id_zwartych(wydzial, rok, ksiazki, rozdzialy, rodzaj_daty=rodzaj_daty, od_daty=od_daty, do_daty=do_daty):
+        for iz in id_zwartych(wydzial, od_roku, do_roku, ksiazki, rozdzialy, rodzaj_daty=rodzaj_daty, od_daty=od_daty, do_daty=do_daty):
             yield Wydawnictwo_Zwarte.objects.get(pk=iz).eksport_pbn_serializuj(wydzial)
 
     tmpdir = mkdtemp()
@@ -161,10 +167,10 @@ def eksport_pbn(pk):
     pep.file.save(fn, File(open(fn)))
     pep.save()
 
-    informuj(u"Zakończono. <a href=%s>Kliknij tutaj, aby pobrać eksport PBN dla %s, rok: %s</a>. " %
+    informuj(u"Zakończono. <a href=%s>Kliknij tutaj, aby pobrać eksport PBN dla %s - %s</a>. " %
              (reverse("eksport_pbn:pobierz", args=(pep.pk,)),
               wydzial.nazwa,
-              rok),
+              rokstr),
              dont_persist=False)
 
     return pep.pk

@@ -48,8 +48,13 @@ class PlikEksportuPBN(models.Model):
     # 3) parser do pola "uwagi" ORAZ globalne sprawdzenie tabel pod katem tego, czy da sie je tak podzielic
     # 4) skrypt w SELENIUM czy w innym browser poserze wrzucajacy eksport na strone?
 
+    def get_rok_string(self):
+        if self.od_roku != self.do_roku:
+            return u"%s-%s" % (self.od_roku, self.do_roku)
+        return u"%s" % self.od_roku
+
     def get_fn(self):
-        buf = u"PBN-%s-%s" % (self.wydzial.skrot, self.rok)
+        buf = u"PBN-%s-%s" % (self.wydzial.skrot, self.get_rok_string())
 
         if not (self.artykuly and self.ksiazki and self.rozdzialy):
 
