@@ -38,9 +38,12 @@ def venv():
 def wheels():
     run("latest/provisioning/wheels.sh")
 
-def vcs():
+def vcs(branch=None):
     with cd("django-bpp"):
+        run("git reset --hard")
         run("git pull")
+        if branch:
+            run("git checkout %s" % branch)
         run("git reset --hard")
 
 def download_db(restore=True, cleanup=False, recreate=True, download=True):
