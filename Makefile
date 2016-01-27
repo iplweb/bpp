@@ -45,8 +45,8 @@ new-patch: clean
 	git push
 	git push --tags
 
-release: new-patch
-	fab build
+release: new-patch full-build
+	@echo "Done"
 
 download-db:
 	fab -H zarzadca@bpp.umlub.pl download_db
