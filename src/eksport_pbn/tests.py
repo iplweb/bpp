@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
+
 from django.core.urlresolvers import reverse
 from model_mommy import mommy
-import pytest
 
 from bpp.models.struktura import Wydzial
 from eksport_pbn.models import PlikEksportuPBN, DATE_CREATED_ON
@@ -62,9 +62,9 @@ def test_eksport_pbn(normal_django_user, jednostka, autor_jan_kowalski, wydawnic
     cf.save()
 
     obj = PlikEksportuPBN.objects.create(
-        owner=normal_django_user,
-        wydzial=jednostka.wydzial,
-        od_roku=rok, do_roku=rok
+            owner=normal_django_user,
+            wydzial=jednostka.wydzial,
+            od_roku=rok, do_roku=rok
     )
 
     eksport_pbn(obj.pk)
@@ -75,7 +75,7 @@ def test_eksport_pbn(normal_django_user, jednostka, autor_jan_kowalski, wydawnic
 def test_remove_old_eksport_files(db):
     mommy.make(PlikEksportuPBN, created_on=datetime.now())
     e2 = mommy.make(PlikEksportuPBN)
-    e2.created_on=datetime.now() - timedelta(days=15)
+    e2.created_on = datetime.now() - timedelta(days=15)
     e2.save()
 
     assert PlikEksportuPBN.objects.all().count() == 2
@@ -86,26 +86,30 @@ def test_remove_old_eksport_files(db):
 
 
 def test_z_datami(jednostka, autor_jan_kowalski, wydawnictwo_ciagle, wydawnictwo_zwarte, rok):
-
     autor_jan_kowalski.dodaj_jednostke(jednostka=jednostka)
     wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
     wydawnictwo_zwarte.dodaj_autora(autor_jan_kowalski, jednostka)
 
     rok = wydawnictwo_ciagle.rok
 
-    assert list(id_ciaglych(jednostka.wydzial, od_roku=rok, do_roku=rok, rodzaj_daty=DATE_CREATED_ON, od_daty=(datetime.now() + timedelta(days=20)).date())) == []
-    assert list(id_zwartych(jednostka.wydzial, od_roku=rok, do_roku=rok, ksiazki=True, rozdzialy=True, rodzaj_daty=DATE_CREATED_ON, do_daty=(datetime.now() + timedelta(days=20)).date())) == []
+    assert list(id_ciaglych(jednostka.wydzial, od_roku=rok, do_roku=rok, rodzaj_daty=DATE_CREATED_ON,
+                            od_daty=(datetime.now() + timedelta(days=20)).date())) == []
+    assert list(id_zwartych(jednostka.wydzial, od_roku=rok, do_roku=rok, ksiazki=True, rozdzialy=True,
+                            rodzaj_daty=DATE_CREATED_ON, do_daty=(datetime.now() + timedelta(days=20)).date())) == []
 
-    assert list(id_ciaglych(jednostka.wydzial, od_roku=rok, do_roku=rok, rodzaj_daty=DATE_CREATED_ON, do_daty=(datetime.now() + timedelta(days=20)).date())) == []
-    assert list(id_zwartych(jednostka.wydzial, od_roku=rok, do_roku=rok, ksiazki=True, rozdzialy=True, rodzaj_daty=DATE_CREATED_ON, do_daty=(datetime.now() + timedelta(days=20)).date())) == []
+    assert list(id_ciaglych(jednostka.wydzial, od_roku=rok, do_roku=rok, rodzaj_daty=DATE_CREATED_ON,
+                            do_daty=(datetime.now() + timedelta(days=20)).date())) == []
+    assert list(id_zwartych(jednostka.wydzial, od_roku=rok, do_roku=rok, ksiazki=True, rozdzialy=True,
+                            rodzaj_daty=DATE_CREATED_ON, do_daty=(datetime.now() + timedelta(days=20)).date())) == []
+
 
 def test_z_datami_2(db):
     d = datetime.now().date()
 
     p = mommy.make(PlikEksportuPBN, rodzaj_daty=DATE_CREATED_ON)
 
-    p.od_daty=d
-    p.do_daty=None
+    p.od_daty = d
+    p.do_daty = None
     s = p.get_fn()
     assert str(d).replace("-", "_") in s
 
