@@ -14,7 +14,7 @@ from bpp.models.patent import Patent
 from bpp.models.praca_doktorska import Praca_Doktorska
 from bpp.models.praca_habilitacyjna import Praca_Habilitacyjna
 from bpp.models.struktura import Uczelnia, Wydzial, Jednostka
-from bpp.models.system import Jezyk, Charakter_Formalny, Typ_KBN, Status_Korekty
+from bpp.models.system import Jezyk, Charakter_Formalny, Typ_KBN, Status_Korekty, Typ_Odpowiedzialnosci
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 from bpp.models.zrodlo import Zrodlo
@@ -327,6 +327,9 @@ def admin_app(webtest_app, admin_user):
 def jezyki(db):
     Jezyk.objects.get_or_create(nazwa='angielski', skrot='ang.')
     Jezyk.objects.get_or_create(nazwa='polski', skrot='pol.')
+    for elem in fixture("jezyk.json"):
+        Jezyk.objects.get_or_create(**elem['fields'])
+
     return dict([(x.skrot, x) for x in Jezyk.objects.all()])
 
 
@@ -339,7 +342,8 @@ def charaktery_formalne(db):
 
 @pytest.fixture
 def typy_kbn(db):
-    Typ_KBN.objects.get_or_create(nazwa='testowy', skrot='TKBN')
+    for elem in fixture("typ_kbn.json"):
+        Typ_KBN.objects.get_or_create(**elem['fields'])
     return dict([(x.skrot, x) for x in Typ_KBN.objects.all()])
 
 
@@ -358,13 +362,18 @@ def statusy_korekt(db):
     for elem in fixture("status_korekty.json"):
         Status_Korekty.objects.get_or_create(**elem['fields'])
 
+@pytest.fixture
+def typy_odpowiedzialnosci(db):
+    for elem in fixture("typ_odpowiedzialnosci.json"):
+        Typ_Odpowiedzialnosci.objects.get_or_create(**elem['fields'])
 
 @pytest.fixture
-def obiekty_bpp(typy_kbn, charaktery_formalne, jezyki, statusy_korekt):
+def obiekty_bpp(typy_kbn, charaktery_formalne, jezyki, statusy_korekt, typy_odpowiedzialnosci):
     class ObiektyBpp:
         jezyk = jezyki
         charakter_formalny = charaktery_formalne
         typ_kbn = typy_kbn
+        typy_odpowiedzialnosci = Typ_Odpowiedzialnosci.objects.all()
         status_korekty = Status_Korekty.objects.all()
 
     return ObiektyBpp

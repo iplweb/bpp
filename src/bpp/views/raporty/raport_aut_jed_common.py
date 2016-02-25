@@ -4,9 +4,9 @@
 """Wspólne procedury dla raportu jednostek oraz autorów.
 """
 
-from decimal import Decimal
 import itertools
 import sys
+from decimal import Decimal
 
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils.datastructures import SortedDict
@@ -50,6 +50,7 @@ class TypowaTabelaMixin:
     def render_lp(self, record):
         self.counter += 1
         return '%d.' % self.counter
+
     #
     # def render_autorzy(self, record):
     #     return record.opis_bibliograficzny_zapisani_autorzy_cache
@@ -125,6 +126,7 @@ class Tabela_Publikacji(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
             return record.informacje
         return u"%s, %s" % (record.rok, record.informacje)
 
+
 class Tabela_Publikacji_Z_Impactem(Tabela_Publikacji):
     class Meta:
         attrs = {"class": "paleblue"}
@@ -133,14 +135,15 @@ class Tabela_Publikacji_Z_Impactem(Tabela_Publikacji):
         empty_text = "Brak takich rekordów."
         sequence = ('lp', 'zrodlo', 'lp_art', 'autorzy', 'tytul_oryginalny',
                     'rok', 'szczegoly', 'impact_factor', 'punkty_kbn')
+
     impact_factor = SumyImpactKbnMixin.impact_factor
     span_rows = 7
     print_sum_impact = True
 
+
 class Tabela_Konferencji_Miedzynarodowej(TypowaTabelaMixin,
                                          SumyImpactKbnMixin,
                                          Table):
-
     class Meta:
         attrs = {"class": "paleblue"}
         template = "raporty/raport_jednostek_autorow_2012/publikacje.html"
@@ -208,7 +211,6 @@ class Tabela_Konferencji_Miedzynarodowej(TypowaTabelaMixin,
         return buf
 
 
-
 class Tabela_Monografii(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
     class Meta:
         attrs = {"class": "paleblue"}
@@ -239,6 +241,7 @@ class Tabela_Monografii(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
         Table.__init__(self, *args, **kwargs)
         TypowaTabelaMixin.__init__(self)
 
+
 class Tabela_Redakcji_Naukowej(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
     class Meta:
         attrs = {"class": "paleblue"}
@@ -247,7 +250,6 @@ class Tabela_Redakcji_Naukowej(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
         empty_text = "Brak takich rekordów."
         sequence = ('lp', 'redaktorzy', 'wydawca', 'tytul_oryginalny',
                     'jezyk', 'rok', 'szczegoly', 'punkty_kbn')
-
 
     lp = TypowaTabelaMixin.lp
     tytul_oryginalny = TypowaTabelaMixin.tytul_oryginalny
@@ -275,6 +277,7 @@ class Tabela_Redakcji_Naukowej(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
             rekord=record.original,
             typ_odpowiedzialnosci=to)
         return u", ".join([x.zapisany_jako for x in reds])
+
 
 def split_red(s, want, if_no_result=None):
     seps = [u"Pod. red.", u"Pod red.", u"Red. nauk.",
@@ -352,7 +355,7 @@ class Tabela_Rozdzialu_Monografii(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
             self.old_tm = tm
             self.nowy_tytul_w_wierszu = True
         else:
-            self.nowy_tytul_w_wierszu= False
+            self.nowy_tytul_w_wierszu = False
 
         if self.nowy_tytul_w_wierszu:
             return '%d.' % self.counter
@@ -381,20 +384,20 @@ class Tabela_Rozdzialu_Monografii(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
             buf += u", " + record.uwagi
         return buf
 
-    # def render_impact_factor(self, record): # redaktor monografii
-    #     orig = record.original
-    #
-    #     if hasattr(orig, 'wydawnictwo_nadrzedne'):
-    #         wn = orig.wydawnictwo_nadrzedne
-    #         if wn is not None:
-    #             redaktorzy = Wydawnictwo_Zwarte_Autor.objects.filter(
-    #                 rekord=wn,
-    #                 typ_odpowiedzialnosci=Typ_Odpowiedzialnosci.objects.get(
-    #                     skrot='red.'))
-    #
-    #             return u", ".join([unicode(red) for red in redaktorzy])
-    #
-    #     return split_red(record.informacje, 1, "").strip(" .")
+        # def render_impact_factor(self, record): # redaktor monografii
+        #     orig = record.original
+        #
+        #     if hasattr(orig, 'wydawnictwo_nadrzedne'):
+        #         wn = orig.wydawnictwo_nadrzedne
+        #         if wn is not None:
+        #             redaktorzy = Wydawnictwo_Zwarte_Autor.objects.filter(
+        #                 rekord=wn,
+        #                 typ_odpowiedzialnosci=Typ_Odpowiedzialnosci.objects.get(
+        #                     skrot='red.'))
+        #
+        #             return u", ".join([unicode(red) for red in redaktorzy])
+        #
+        #     return split_red(record.informacje, 1, "").strip(" .")
 
 
 def wiele(model, *args):
@@ -412,6 +415,7 @@ def jezyki(*args):
 def jezyki_obce():
     return jezyki('ang.', 'niem.', 'fr.', 'hiszp.', 'ros.', 'wł.')
 
+
 WSZYSTKIE_TABELE = SortedDict(
     [
         ("1_1", Tabela_Publikacji_Z_Impactem),
@@ -427,19 +431,31 @@ WSZYSTKIE_TABELE = SortedDict(
     ])
 
 
-def get_extra_kw_for(jednostka, typ_autora_skrot):
+def get_extra_kw_for_jednostka(jednostka, typ_autora_skrot):
     return {'original__in_raw': Autorzy.objects.filter(
         jednostka_id=jednostka.pk,
         typ_odpowiedzialnosci_id=Typ_Odpowiedzialnosci.objects.get(
             skrot=typ_autora_skrot)
     ).distinct()}
 
-def raport_common_tabela(key, base_query, jednostka=None):
+
+def get_extra_kw_for_autor(autor, typ_autora_skrot):
+    return {'original__in_raw': Autorzy.objects.filter(
+        autor_id=autor.pk,
+        typ_odpowiedzialnosci_id=Typ_Odpowiedzialnosci.objects.get(
+            skrot=typ_autora_skrot)
+    ).distinct()}
+
+
+def raport_common_tabela(key, base_query, jednostka=None, autor=None):
     """Modyfikuje base_query według zadanego klucza.
     """
     """Modyfikuje queryset base_query według parametrów dla zadanego
     raportu (key)
     """
+
+    assert not (jednostka != None and autor != None), "albo autor, albo jednostka"
+
     if key == "1_1":
         return base_query.filter(
             impact_factor__gt=0,
@@ -477,7 +493,7 @@ def raport_common_tabela(key, base_query, jednostka=None):
         # Jeżeli podana jest jednostka jako parametr, no to wówczas wyszukujemy
         # autorów tylko z tej jednostki o zadanym typie:
         if jednostka is not None:
-            extra_kw = get_extra_kw_for(jednostka, "aut.")
+            extra_kw = get_extra_kw_for_jednostka(jednostka, "aut.")
 
         return base_query.filter(
             charakter_formalny=Charakter_Formalny.objects.get(skrot='KSZ'),
@@ -491,8 +507,9 @@ def raport_common_tabela(key, base_query, jednostka=None):
         # Jeżeli podana jest jednostka jako parametr, no to wówczas wyszukujemy
         # autorów tylko z tej jednostki o zadanym typie:
         if jednostka is not None:
-            extra_kw = get_extra_kw_for(jednostka, "aut.")
-
+            extra_kw = get_extra_kw_for_jednostka(jednostka, "aut.")
+        if autor is not None:
+            extra_kw = get_extra_kw_for_autor(autor, "aut.")
         return base_query.filter(
             charakter_formalny=Charakter_Formalny.objects.get(skrot="KSP"),
             punkty_kbn__gt=0,
@@ -503,7 +520,7 @@ def raport_common_tabela(key, base_query, jednostka=None):
         # Jeżeli podana jest jednostka jako parametr, no to wówczas wyszukujemy
         # autorów tylko z tej jednostki o zadanym typie:
         if jednostka is not None:
-            extra_kw = get_extra_kw_for(jednostka, "aut.")
+            extra_kw = get_extra_kw_for_jednostka(jednostka, "aut.")
 
         return base_query.filter(
             charakter_formalny=Charakter_Formalny.objects.get(skrot="ROZ"),
@@ -516,7 +533,7 @@ def raport_common_tabela(key, base_query, jednostka=None):
         # Jeżeli podana jest jednostka jako parametr, no to wówczas wyszukujemy
         # autorów tylko z tej jednostki o zadanym typie:
         if jednostka is not None:
-            extra_kw = get_extra_kw_for(jednostka, "aut.")
+            extra_kw = get_extra_kw_for_jednostka(jednostka, "aut.")
 
         return base_query.filter(
             charakter_formalny=Charakter_Formalny.objects.get(skrot='ROZ'),
@@ -529,7 +546,7 @@ def raport_common_tabela(key, base_query, jednostka=None):
         # Jeżeli podana jest jednostka jako parametr, no to wówczas wyszukujemy
         # autorów tylko z tej jednostki o zadanym typie:
         if jednostka is not None:
-            extra_kw = get_extra_kw_for(jednostka, "red.")
+            extra_kw = get_extra_kw_for_jednostka(jednostka, "red.")
         return base_query.filter(
             charakter_formalny=Charakter_Formalny.objects.get(skrot="KSZ"),
             jezyk__in=jezyki_obce(),
@@ -541,7 +558,9 @@ def raport_common_tabela(key, base_query, jednostka=None):
         # Jeżeli podana jest jednostka jako parametr, no to wówczas wyszukujemy
         # autorów tylko z tej jednostki o zadanym typie:
         if jednostka is not None:
-            extra_kw = get_extra_kw_for(jednostka, "red.")
+            extra_kw = get_extra_kw_for_jednostka(jednostka, "red.")
+        if autor is not None:
+            extra_kw = get_extra_kw_for_autor(autor, "red.")
         return base_query.filter(
             charakter_formalny=Charakter_Formalny.objects.get(skrot="KSP"),
             jezyk=Jezyk.objects.get(skrot='pol.'),
@@ -550,11 +569,11 @@ def raport_common_tabela(key, base_query, jednostka=None):
 
 
 def raport_jednostek_tabela(key, base_query, jednostka):
-    return raport_common_tabela(key, base_query, jednostka)
+    return raport_common_tabela(key, base_query, jednostka=jednostka)
 
 
-def raport_autorow_tabela(key, base_query):
-    return raport_common_tabela(key, base_query)
+def raport_autorow_tabela(key, base_query, autor):
+    return raport_common_tabela(key, base_query, autor=autor)
 
 
 def _get_base_query(fun, param, rok_min, rok_max):
@@ -562,7 +581,7 @@ def _get_base_query(fun, param, rok_min, rok_max):
     if rok_min == rok_max:
         return base.filter(rok=rok_min)
 
-    assert(rok_min < rok_max)
+    assert (rok_min < rok_max)
     return base.filter(rok__gte=rok_min, rok__lte=rok_max)
 
 
