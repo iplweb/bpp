@@ -29,7 +29,7 @@ class RaportAutorow2012(DetailView):
 
         for key, klass in WSZYSTKIE_TABELE.items():
             kw['tabela_%s' % key] = klass(
-                raport_autorow_tabela(key, base_query))
+                raport_autorow_tabela(key, base_query, autor=self.object))
 
         for tabela in [tabela for key, tabela in kw.items() if
                        key.startswith('tabela_')]:
