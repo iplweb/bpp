@@ -494,7 +494,8 @@ def raport_common_tabela(key, base_query, jednostka=None, autor=None):
         # autorów tylko z tej jednostki o zadanym typie:
         if jednostka is not None:
             extra_kw = get_extra_kw_for_jednostka(jednostka, "aut.")
-
+        if autor is not None:
+            extra_kw = get_extra_kw_for_autor(autor, "aut.")
         return base_query.filter(
             charakter_formalny=Charakter_Formalny.objects.get(skrot='KSZ'),
             jezyk__in=jezyki_obce(),
@@ -521,7 +522,8 @@ def raport_common_tabela(key, base_query, jednostka=None, autor=None):
         # autorów tylko z tej jednostki o zadanym typie:
         if jednostka is not None:
             extra_kw = get_extra_kw_for_jednostka(jednostka, "aut.")
-
+        if autor is not None:
+            extra_kw = get_extra_kw_for_autor(autor, "aut.")
         return base_query.filter(
             charakter_formalny=Charakter_Formalny.objects.get(skrot="ROZ"),
             jezyk__in=jezyki_obce(),
@@ -534,7 +536,8 @@ def raport_common_tabela(key, base_query, jednostka=None, autor=None):
         # autorów tylko z tej jednostki o zadanym typie:
         if jednostka is not None:
             extra_kw = get_extra_kw_for_jednostka(jednostka, "aut.")
-
+        if autor is not None:
+            extra_kw = get_extra_kw_for_autor(autor, "aut.")
         return base_query.filter(
             charakter_formalny=Charakter_Formalny.objects.get(skrot='ROZ'),
             jezyk=Jezyk.objects.get(skrot='pol.'),
@@ -547,6 +550,8 @@ def raport_common_tabela(key, base_query, jednostka=None, autor=None):
         # autorów tylko z tej jednostki o zadanym typie:
         if jednostka is not None:
             extra_kw = get_extra_kw_for_jednostka(jednostka, "red.")
+        if autor is not None:
+            extra_kw = get_extra_kw_for_autor(autor, "red.")
         return base_query.filter(
             charakter_formalny=Charakter_Formalny.objects.get(skrot="KSZ"),
             jezyk__in=jezyki_obce(),
