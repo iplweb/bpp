@@ -40,6 +40,11 @@ class ListaMinisterialnaElement(BaseIntegrationElement):
         ordering = ['nazwa',]
 
     def __iter__(self):
+        """Zwraca kolejne elementy do wyświetlenia na stronie w widoku tabeli.
+
+        Kolejność zwracanych pól powinna odpowiadać kolejności pól nagłówka zwracanych przez
+        ListaMinisterialnaIntegration.header_columns
+        """
         return iter([self.nazwa, self.issn, self.e_issn, self.punkty_kbn])
 
 def last_year():
@@ -85,7 +90,7 @@ class ListaMinisterialnaIntegration(BaseIntegration):
         for elem in dict_stream:
             ListaMinisterialnaElement.objects.create(
                     parent=self,
-                    **dict([(str(x), y) for x, y in elem.items() if x is not None]))
+                    **dict([(str(x), y) for x, y in elem.items() if x is not None and x != "__sheet__"]))
         pass
 
     strategie = [lambda obj: Zrodlo.objects.get(issn=obj.issn) if obj.issn is not None else None,
