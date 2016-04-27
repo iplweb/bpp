@@ -75,38 +75,31 @@ class TestRaportJednostek2012(TestCase):
 
     @with_cache
     def test_1_2(self):
-        c = any_ciagle(
-            charakter_formalny=charakter("AC"),
+        common = dict(charakter_formalny=charakter("AC"),
             jezyk=jezyk("pol."),
             impact_factor=0,
             punkty_kbn=5)
-        c.dodaj_autora(self.a, self.j)
+        c = any_ciagle(adnotacje="", **common)
 
-        tego_ma_nie_byc = any_ciagle(
-            charakter_formalny=charakter("AC"),
-            jezyk=jezyk("pol."),
-            impact_factor=0,
-            punkty_kbn=5,
-            typ_kbn=Typ_KBN.objects.get(skrot="PW"))
-        tego_ma_nie_byc.dodaj_autora(self.a, self.j)
+        tego_ma_nie_byc = any_ciagle(typ_kbn=Typ_KBN.objects.get(skrot="PW"), **common)
+        tego_tez_ma_nie_byc = any_ciagle(adnotacje="wos", **common)
+        i_jeszcze_tego_tez = any_ciagle(adnotacje="erih", **common)
+
+        for elem in [c, tego_ma_nie_byc, tego_tez_ma_nie_byc, i_jeszcze_tego_tez]:
+            elem.dodaj_autora(self.a, self.j)
 
         self.sprawdz("1_2", c)
 
     @with_cache
     def test_1_3(self):
         c = any_ciagle(
-            charakter_formalny=charakter("AC"),
-            jezyk=jezyk("pol."),
-            uwagi="erih",
-            punkty_kbn=10)
+            adnotacje="erih",
+            punkty_kbn=1)
         c.dodaj_autora(self.a, self.j)
 
         tego_ma_nie_byc = any_ciagle(
-            charakter_formalny=charakter("AC"),
-            jezyk=jezyk("pol."),
             uwagi="erih",
-            punkty_kbn=10,
-            typ_kbn=Typ_KBN.objects.get(skrot="PW"))
+            punkty_kbn=1)
         tego_ma_nie_byc.dodaj_autora(self.a, self.j)
 
         self.sprawdz("1_3", c)
@@ -114,17 +107,11 @@ class TestRaportJednostek2012(TestCase):
     @with_cache
     def test_1_4(self):
         c = any_ciagle(
-            charakter_formalny=charakter("ZRZ"),
-            punkty_kbn=10)
+            adnotacje="WOS",
+            punkty_kbn=1)
         c.dodaj_autora(self.a, self.j)
 
-        to_ma_byc = any_ciagle(
-            charakter_formalny=charakter("ZRZ"),
-            punkty_kbn=10,
-            typ_kbn=Typ_KBN.objects.get(skrot="PW"))
-        to_ma_byc.dodaj_autora(self.a, self.j)
-
-        self.sprawdz("1_4", c, cnt=2)
+        self.sprawdz("1_4", c)
 
     @with_cache
     def test_2_1(self):
