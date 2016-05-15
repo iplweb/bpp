@@ -3,19 +3,31 @@
 {% load render_table from django_tables2 %}
 
 {% block extratitle %}
-    Ranking autorów za rok {{ rok }}
+    {% if rok %}
+        Ranking autorów za rok {{ rok }}
+    {% else %}
+        Ranking autorów za lata {{ od_roku }} - {{ do_roku }}
+    {% endif %}
 {% endblock %}
 
 {% block extrahead %}
-    <link rel="stylesheet" href="{{ STATIC_URL }}django_tables2/themes/paleblue/css/screen.css" />
+    <link rel="stylesheet" href="{{ STATIC_URL }}django_tables2/themes/paleblue/css/screen.css"/>
     {{ block.super }}
 {% endblock %}
 
 {% block breadcrumbs %}
     {{ block.super }}
     <li><a href="{% url "bpp:raporty" %}">Raporty</a></li>
-    <li><a href="{% url  "bpp:ranking_autorow_formularz"%}">Ranking autorów</a></li>
-    <li class="current">Ranking autorów za rok {{ rok }}</li>
+    <li><a href="{% url "bpp:ranking_autorow_formularz" %}">Ranking autorów</a></li>
+    <li class="current">
+
+        {% if rok %}
+            Ranking autorów za rok {{ rok }}
+        {% else %}
+            Ranking autorów za lata {{ od_roku }} - {{ do_roku }}
+        {% endif %}
+
+    </li>
 {% endblock %}
 
 {% block content %}
