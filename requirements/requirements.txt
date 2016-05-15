@@ -1,4 +1,4 @@
-Django==1.8.8
+Django==1.8.13
 django-messages-extends==0.3.2
 django-autoslug==1.7.1
 django-pagination==1.0.7
