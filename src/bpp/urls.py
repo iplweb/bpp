@@ -79,13 +79,7 @@ urlpatterns = patterns(
     url(r'^raporty/podglad/(?P<uid>[\w-]+)/$',
         login_required(PodgladRaportu.as_view()), name='podglad-raportu'),
 
-    url(r'^raporty/ranking-autorow/(?P<rok>\d)/$',
-        RankingAutorow.as_view(), name='ranking-autorow'),
-    url(r'^raporty/ranking-autorow/(?P<rok>\d\d)/$',
-        RankingAutorow.as_view(), name='ranking-autorow'),
-    url(r'^raporty/ranking-autorow/(?P<rok>\d\d\d)/$',
-        RankingAutorow.as_view(), name='ranking-autorow'),
-    url(r'^raporty/ranking-autorow/(?P<rok>\d\d\d\d)/$',
+    url(r'^raporty/ranking-autorow/(?P<od_roku>\d+)/(?P<do_roku>\d+)/$',
         RankingAutorow.as_view(), name='ranking-autorow'),
 
     url(
