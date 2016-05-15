@@ -24,7 +24,7 @@ from bpp.util import Getter
 from bpp.views.raporty.raport_aut_jed_common import SumyImpactKbnMixin
 
 class TabelaRaportuKomisjiCentralnejMixin:
-    lp = Column("Lp.", A("id"), empty_values=(), orderable=False)
+    lp = Column("Lp.", A("id"), empty_values=(), sortable=False)
 
     def __init__(self):
         self.counter = 0
