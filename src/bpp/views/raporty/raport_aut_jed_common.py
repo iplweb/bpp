@@ -466,7 +466,7 @@ def raport_common_tabela(key, base_query, jednostka=None, autor=None):
 
     elif key == "1_2":
         return base_query.filter(
-            charakter_formalny__skrot="AC",
+            charakter_formalny__skrot__in=["AC", "L"],
             impact_factor=0,
             punkty_kbn__gt=0
         ).exclude(
