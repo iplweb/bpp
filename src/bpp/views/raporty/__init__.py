@@ -174,7 +174,9 @@ class RankingAutorowFormularz(RaportyFormMixin, FormView):
     nazwa_raportu = u"Ranking autorow"
 
     def form_valid(self, form):
-        url = reverse("bpp:ranking-autorow", args=(form.cleaned_data['rok'],))
+        url = reverse("bpp:ranking-autorow", args=(form.cleaned_data['od_roku'],
+                                                   form.cleaned_data['do_roku'],
+                                                   ))
 
         w = form.cleaned_data['wydzialy']
         if w:

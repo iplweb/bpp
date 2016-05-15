@@ -169,7 +169,8 @@ class RankingAutorowForm(forms.Form):
                   u"CMD na Maku) gdy klikasz, aby wybrać więcej, niż jeden "
                   u"wydział lub odznaczyć już zaznaczony wydział. ")
 
-    rok = forms.IntegerField()
+    od_roku = forms.IntegerField()
+    do_roku = forms.IntegerField()
 
     def __init__(self, lata, *args, **kwargs):
         self.helper = FormHelper()
@@ -179,7 +180,8 @@ class RankingAutorowForm(forms.Form):
             Fieldset(
                 u'Ranking autorów',
                 Row(
-                    F4Column('rok', css_class='large-12 small-12'),
+                    F4Column('od_roku', css_class='large-6 small-6'),
+                    F4Column('do_roku', css_class='large-6 small-6'),
                 ),
                 Row(
                     F4Column('wydzialy', css_class='large-12 small-12')
@@ -192,6 +194,6 @@ class RankingAutorowForm(forms.Form):
         )
 
         super(RankingAutorowForm, self).__init__(*args, **kwargs)
-        ustaw_rok(self['rok'], lata)
-
+        ustaw_rok(self['od_roku'], lata)
+        ustaw_rok(self['do_roku'], lata)
 
