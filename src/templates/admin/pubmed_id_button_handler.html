@@ -23,7 +23,12 @@
                     url: "{% url "bpp:api_pubmed_id" %}",
                     data: {t: t},
                     error: function(request, status, error){
-                        alert('Wystąpił błąd! (' + status + ', ' + error + ').');
+                        alert('Wystąpił błąd (' + status + ', ' + error + '). Najpewniej może być on związany z ' +
+                                'problemem połączenia z bazą PubMed. Spróbuj za chwilę jeszcze raz.');
+
+                        pubmed_button.val("Spróbuj jeszcze raz!");
+                        pubmed_button.attr('disabled', false);
+
                         return;
                     },
                     success: function(data, text) {
