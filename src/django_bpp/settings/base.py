@@ -66,7 +66,9 @@ TEMPLATE_CONTEXT_PROCESSORS = (
     'django.contrib.messages.context_processors.messages',
     'password_policies.context_processors.password_status',
 
-    'bpp.context_processors.uczelnia',
+    'bpp.context_processors.uczelnia.uczelnia',
+    'bpp.context_processors.google_analytics.google_analytics',
+
     'notifications.context_processors.notification_settings'
 
 )
@@ -493,4 +495,7 @@ MEDIA_ROOT = django_getenv(
 )
 
 SENDFILE_ROOT = MEDIA_ROOT
+
+GOOGLE_ANALYTICS_PROPERTY_ID = django_getenv("DJANGO_BPP_GOOGLE_ANALYTICS_PROPERTY_ID", "")
+
 

@@ -289,4 +289,9 @@
         {% endif %}
         wersja {% bpp_version %}&nbsp;&nbsp;</small>
     </div>
+
+    {% if GOOGLE_ANALYTICS_PROPERTY_ID %}
+    {% include "ga.html" %}
+    {% endif %}
+
 {% endblock %}
