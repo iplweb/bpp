@@ -12,7 +12,7 @@ from bpp.models.abstract import \
     ModelZWWW, ModelAfiliowanyRecenzowany, ModelPunktowany, ModelTypowany, \
     ModelZeSzczegolami, ModelZInformacjaZ, ModelZeStatusem, ModelZISBN, ModelZAdnotacjami, ModelZCharakterem, \
     Wydawnictwo_Baza, \
-    PBNSerializerHelperMixin, ModelZOpenAccess, ModelZPubmedID, ModelZDOI
+    PBNSerializerHelperMixin, ModelZOpenAccess, ModelZPubmedID, ModelZDOI, ModelZeZnakamiWydawniczymi
 from bpp.models.autor import Autor
 from bpp.models.util import ZapobiegajNiewlasciwymCharakterom
 
@@ -63,7 +63,8 @@ class ModelZOpenAccessWydawnictwoZwarte(ModelZOpenAccess):
 class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
                          Wydawnictwo_Zwarte_Baza, ModelZCharakterem,
                          PBNSerializerHelperMixin,
-                         ModelZOpenAccessWydawnictwoZwarte):
+                         ModelZOpenAccessWydawnictwoZwarte,
+                         ModelZeZnakamiWydawniczymi):
     """Wydawnictwo zwarte, czyli: książki, broszury, skrypty, fragmenty,
     doniesienia zjazdowe."""
 
@@ -72,9 +73,6 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
         config='bpp_nazwy_wlasne')
 
     autorzy = models.ManyToManyField(Autor, through=Wydawnictwo_Zwarte_Autor)
-
-    liczba_znakow_wydawniczych = models.IntegerField(
-        'Liczba znaków wydawniczych', blank=True, null=True)
 
     wydawnictwo_nadrzedne = models.ForeignKey(
         'self', blank=True, null=True, help_text="""Jeżeli dodajesz rozdział,

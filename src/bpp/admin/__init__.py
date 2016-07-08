@@ -376,7 +376,7 @@ class Wydawnictwo_CiagleAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
         'issn', 'e_issn', 'zrodlo__nazwa', 'zrodlo__skrot', 'adnotacje']
 
     list_filter = ['status_korekty', 'afiliowana', 'recenzowana', 'typ_kbn',
-                   'charakter_formalny', 'jezyk']
+                   'charakter_formalny', 'jezyk', 'liczba_znakow_wydawniczych']
 
     fieldsets = (
         ('Wydawnictwo ciągłe', {
@@ -390,7 +390,7 @@ class Wydawnictwo_CiagleAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
         MODEL_TYPOWANY_FIELDSET,
         MODEL_PUNKTOWANY_WYDAWNICTWO_CIAGLE_FIELDSET,
         MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
-        POZOSTALE_MODELE_FIELDSET,
+        POZOSTALE_MODELE_WYDAWNICTWO_CIAGLE_FIELDSET,
         ADNOTACJE_FIELDSET,
         OPENACCESS_FIELDSET)
 
