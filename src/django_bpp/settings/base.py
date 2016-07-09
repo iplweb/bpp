@@ -284,7 +284,7 @@ BOWER_INSTALLED_APPS = (
     'jquery#2.2.0',
     'jeditable#1.7.3',
     'jqueryui#1.11.0',
-    'foundation#5.5.2',
+    'foundation#5.5.3',
     'foundation-datepicker',
     'font-awesome#4.1.0',
     'iframe-resizer#2.5.1',
