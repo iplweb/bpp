@@ -281,7 +281,7 @@ BOWER_COMPONENTS_ROOT = os.path.abspath(
         '..', '..', 'components'))
 
 BOWER_INSTALLED_APPS = (
-    'jquery#2.1.1',
+    'jquery#2.2.0',
     'jeditable#1.7.3',
     'jqueryui#1.11.0',
     'foundation#5.5.2',
@@ -289,7 +289,7 @@ BOWER_INSTALLED_APPS = (
     'font-awesome#4.1.0',
     'iframe-resizer#2.5.1',
     'jinplace#1.0.1',
-    'qunit',
+    'qunit#2.0.0',
     'http://keith-wood.name/zip/jquery.keypad.package-2.0.1.zip'
 )
 

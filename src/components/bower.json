@@ -20,8 +20,9 @@
     "jqueryui": "1.11.0"
   },
   "resolutions": {
-    "jquery": ">=1.6",
-    "foundation-datepicker": "~1.5.0",
-    "foundation": "5.4.7"
+    "jquery": "2.2.0",
+    "foundation-datepicker": "~1.5.3",
+    "foundation": "5.4.7",
+    "qunit": "2.0.0"
   }
 }
