@@ -21,8 +21,8 @@
   },
   "resolutions": {
     "jquery": "2.2.0",
-    "foundation-datepicker": "~1.5.3",
-    "foundation": "5.4.7",
+    "foundation-datepicker": "^1.5.3",
+    "foundation": "5.5.3",
     "qunit": "2.0.0"
   }
 }
