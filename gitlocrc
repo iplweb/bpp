@@ -1,0 +1,6 @@
+[exclude]
+# multiple lines are allowed here.
+# the second, third, ... line must be indented.
+# note that they have to match the whole first commit line.
+regexes: .*DONTCOUNT.*
+    .*GITLOCIGNORE\s.*
