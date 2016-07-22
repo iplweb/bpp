@@ -50,5 +50,8 @@ release: new-patch full-build
 download-db:
 	fab -H zarzadca@bpp.umlub.pl download_db
 
+rebuild-from-downloaded:
+	fab -H zarzadca@bpp.umlub.pl download_db:restore=True,cleanup=False,recreate=True,download=False
+
 production:
 	ansible-playbook -i "/Volumes/Dane zaszyfrowane/Biblioteka Glowna/ansible/hosts.cfg" ansible/webserver.yml
