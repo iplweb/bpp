@@ -61,7 +61,7 @@ def test_egeria_core_diff_tytuly(egeria_import, autor_jan_nowak):
     assert u"nieistniejący tytuł" in Diff_Tytul_Create.objects.all().values_list("nazwa_skrot", flat=True)
     assert u"nikt tego nie ma" not in Diff_Tytul_Create.objects.all().values_list("nazwa_skrot", flat=True)
 
-    assert u"doktor" in Diff_Tytul_Delete.objects.all().values_list("reference__nazwa", flat=True)
+    assert u"dr. " in Diff_Tytul_Delete.objects.all().values_list("reference__nazwa", flat=True)
     assert u"nikt tego nie ma" in Diff_Tytul_Delete.objects.all().values_list("reference__nazwa", flat=True)
     assert u"jeden to ma" not in Diff_Tytul_Delete.objects.all().values_list("reference__nazwa", flat=True)
 
@@ -79,10 +79,9 @@ def test_egeria_core_diff_funkcje(egeria_import, autor_jan_nowak, jednostka):
     egeria_import.analyze()
     diff_funkcje(egeria_import)
 
-    assert u"lek. med." in Diff_Funkcja_Autora_Create.objects.all().values_list("nazwa_skrot", flat=True)
+    assert u"Asystent dr" in Diff_Funkcja_Autora_Create.objects.all().values_list("nazwa_skrot", flat=True)
     assert u"nikt tego nie ma" not in Diff_Funkcja_Autora_Create.objects.all().values_list("nazwa_skrot", flat=True)
 
-    assert u"adiunkt" in Diff_Funkcja_Autora_Delete.objects.all().values_list("reference__nazwa", flat=True)
     assert u"nikt tego nie ma" in Diff_Funkcja_Autora_Delete.objects.all().values_list("reference__nazwa", flat=True)
     assert u"jeden to ma" not in Diff_Funkcja_Autora_Delete.objects.all().values_list("reference__nazwa", flat=True)
 
