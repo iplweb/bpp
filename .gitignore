@@ -83,3 +83,5 @@ splintershots/
 releases/
 *.cert
 *.key
+ansible/webserver.retry
+ansible/host_vars/bpp.umlub.pl
