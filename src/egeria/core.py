@@ -29,7 +29,7 @@ def diff_tytuly(egeria_import):
 
 
 def diff_funkcje(egeria_import):
-    diff_nazwa_i_skrot(egeria_import, 'tytul_stopien', Funkcja_Autora, 'skrot')
+    diff_nazwa_i_skrot(egeria_import, 'stanowisko', Funkcja_Autora, 'skrot')
 
 
 def diff_wydzialy(egeria_import):
