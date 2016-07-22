@@ -9,7 +9,7 @@ from bpp.models.abstract import BazaModeluOdpowiedzialnosciAutorow, DwaTytuly, M
     ModelZWWW, ModelAfiliowanyRecenzowany, ModelPunktowany, ModelTypowany, \
     ModelZeSzczegolami, ModelZInformacjaZ, ModelZeStatusem, ModelZISSN, \
     ModelZAdnotacjami, ModelZCharakterem, Wydawnictwo_Baza, PBNSerializerHelperMixin, ModelZOpenAccess, ModelZPubmedID, \
-    ModelZDOI
+    ModelZDOI, ModelZeZnakamiWydawniczymi
 from bpp.models.util import dodaj_autora, ZapobiegajNiewlasciwymCharakterom
 
 
@@ -43,7 +43,8 @@ class Wydawnictwo_Ciagle(ZapobiegajNiewlasciwymCharakterom,
                          ModelPunktowany, ModelTypowany, ModelZeSzczegolami,
                          ModelZISSN, ModelZInformacjaZ, ModelZAdnotacjami,
                          ModelZCharakterem, PBNSerializerHelperMixin,
-                         ModelZOpenAccessWydawnictwoCiagle):
+                         ModelZOpenAccessWydawnictwoCiagle,
+                         ModelZeZnakamiWydawniczymi):
     """Wydawnictwo ciągłe, czyli artykuły z czasopism, komentarze, listy
     do redakcji, publikacje w suplemencie, etc. """
 

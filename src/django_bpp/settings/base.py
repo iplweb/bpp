@@ -66,7 +66,9 @@ TEMPLATE_CONTEXT_PROCESSORS = (
     'django.contrib.messages.context_processors.messages',
     'password_policies.context_processors.password_status',
 
-    'bpp.context_processors.uczelnia',
+    'bpp.context_processors.uczelnia.uczelnia',
+    'bpp.context_processors.google_analytics.google_analytics',
+
     'notifications.context_processors.notification_settings'
 
 )
@@ -280,15 +282,15 @@ BOWER_COMPONENTS_ROOT = os.path.abspath(
         '..', '..', 'components'))
 
 BOWER_INSTALLED_APPS = (
-    'jquery#2.1.1',
+    'jquery#2.2.0',
     'jeditable#1.7.3',
     'jqueryui#1.11.0',
-    'foundation#5.5.2',
+    'foundation#5.5.3',
     'foundation-datepicker',
     'font-awesome#4.1.0',
     'iframe-resizer#2.5.1',
     'jinplace#1.0.1',
-    'qunit',
+    'qunit#2.0.0',
     'http://keith-wood.name/zip/jquery.keypad.package-2.0.1.zip'
 )
 
@@ -494,4 +496,7 @@ MEDIA_ROOT = django_getenv(
 )
 
 SENDFILE_ROOT = MEDIA_ROOT
+
+GOOGLE_ANALYTICS_PROPERTY_ID = django_getenv("DJANGO_BPP_GOOGLE_ANALYTICS_PROPERTY_ID", "")
+
 

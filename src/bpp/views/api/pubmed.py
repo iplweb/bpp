@@ -1,7 +1,9 @@
 # -*- encoding: utf-8 -*-
 
 import requests
+from django.http.response import HttpResponseServerError
 from django.views.generic.base import View
+
 from bpp.views.utils import JSONResponseMixin
 from lxml import etree
 
@@ -48,6 +50,9 @@ def parse_data_from_ncbi(elem):
 
     return ret
 
+class PubmedConnectionFailure(HttpResponseServerError):
+    pass
+
 
 class GetPubmedIDView(JSONResponseMixin, View):
     def post(self, request, *args, **kw):
@@ -55,6 +60,9 @@ class GetPubmedIDView(JSONResponseMixin, View):
 
         if tytul:
             data = get_data_from_ncbi(title=tytul)
+            if data is None:
+                return PubmedConnectionFailure()
+
             if len(data) == 1:
                 return self.render_to_response(parse_data_from_ncbi(data[0]))
 

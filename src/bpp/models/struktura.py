@@ -55,6 +55,16 @@ class Wydzial(ModelZAdnotacjami, ModelZPBN_ID, ModelHistoryczny):
         "Zezwalaj na generowanie rankingu autorów dla tego wydziału",
         default=True)
 
+    archiwalny = models.BooleanField(
+        default=False,
+        help_text="""Jeżeli to pole oznaczone jest jako 'PRAWDA', to jednostki 'dawne' - usunięte
+        ze struktury uczelni, ale nadal występujące w bazie danych, będą przypisywane do tego wydziału
+        przez automatyczne procedury integrujące dane z zewnętrznych systemów informatycznych.
+        <br/><br/>
+        Jeżeli więcej, niż jeden wydział w bazie ma to pole oznaczone jako 'PRAWDA', jednostki
+        przypisywane będą do wydziału o niższym numerze unikalnego identyfikatora (ID)."""
+    )
+
     class Meta:
         verbose_name = u"wydział"
         verbose_name_plural = u"wydziały"

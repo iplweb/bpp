@@ -16,15 +16,15 @@
   local_action: shell python $HOME/Programowanie/django-bpp/src/{{ django_project_name }}/version.py
   register: django_latest_version_discovery_command
   sudo: false
-  tags: ['django-depends', 'django-migrate', 'supervisor', 'nginx']
+  tags: ['django-depends', 'django-migrate', 'supervisor', 'nginx', 'cron']
 
 - name: Ansible fact for latest version of sources is set
   set_fact: django_latest_version={{ django_latest_version_discovery_command.stdout }}
-  tags: ['django-depends', 'django-migrate', 'supervisor', 'nginx']
+  tags: ['django-depends', 'django-migrate', 'supervisor', 'nginx', 'cron']
 
 - name: Ansible fact for directory name of extracted sources is set
   set_fact: django_extracted_sources_dir={{ django_home_dir }}/{{ django_toplevel_dir }}-{{ django_latest_version }}
-  tags: ['django-depends', 'django-migrate', 'supervisor', 'nginx']
+  tags: ['django-depends', 'django-migrate', 'supervisor', 'nginx', 'cron']
 
 - name: Source release is uploaded and extracted
   unarchive: src=../releases/release-{{ django_latest_version }}.tbz2 dest={{ django_home_dir }} creates={{ django_extracted_sources_dir }} copy=yes
@@ -89,3 +89,8 @@
 - name: Cron restartuje supervisord raz dziennie
   cron: name="Restartuj procesy supervisord raz dziennie" minute="30" hour="23" job="supervisorctl restart all > /dev/null"
   tags: ['cron',]
+
+- name: Przebudowa cache bazy danych raz dziennie
+  cron: name="Przebuduj cache bazy danych raz dziennie" minute="30" hour="2" job="{{ django_home_dir }}/vexec python {{ django_extracted_sources_dir }}/src/manage.py rebuild_cache"
+  tags: ['cron',]
+  sudo_user: "{{ django_user }}"

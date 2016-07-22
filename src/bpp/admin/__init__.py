@@ -147,15 +147,24 @@ admin.site.register(Uczelnia, UczelniaAdmin)
 # Wydział
 
 class WydzialAdmin(RestrictDeletionToAdministracjaGroupMixin, ZapiszZAdnotacjaMixin, CommitedModelAdmin):
-    list_display = ['nazwa', 'skrot', 'uczelnia', 'kolejnosc', 'widoczny', 'zezwalaj_na_ranking_autorow', 'pbn_id']
+    list_display = ['nazwa', 'skrot', 'uczelnia', 'kolejnosc', 'widoczny', 'ranking_autorow',
+                    'archiwalny', 'pbn_id']
+    list_filter = ['uczelnia', 'zezwalaj_na_ranking_autorow', 'widoczny', 'archiwalny']
     fieldsets = (
         (None, {
             'fields': (
-                'uczelnia', 'nazwa', 'skrot', 'pbn_id', 'opis', 'kolejnosc', 'widoczny', 'zezwalaj_na_ranking_autorow'),
+                'uczelnia', 'nazwa', 'skrot', 'pbn_id', 'opis', 'kolejnosc', 'widoczny',
+                'zezwalaj_na_ranking_autorow', 'archiwalny'),
         }),
         HISTORYCZNY_FIELDSET,
         ADNOTACJE_FIELDSET
     )
+
+    def ranking_autorow(self, obj):
+        return obj.zezwalaj_na_ranking_autorow
+    ranking_autorow.short_description = "Ranking autorów"
+    ranking_autorow.boolean = True
+    ranking_autorow.admin_order_field = 'zezwalaj_na_ranking_autorow'
 
 
 admin.site.register(Wydzial, WydzialAdmin)
@@ -376,7 +385,7 @@ class Wydawnictwo_CiagleAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
         'issn', 'e_issn', 'zrodlo__nazwa', 'zrodlo__skrot', 'adnotacje']
 
     list_filter = ['status_korekty', 'afiliowana', 'recenzowana', 'typ_kbn',
-                   'charakter_formalny', 'jezyk']
+                   'charakter_formalny', 'jezyk', 'liczba_znakow_wydawniczych']
 
     fieldsets = (
         ('Wydawnictwo ciągłe', {
@@ -390,7 +399,7 @@ class Wydawnictwo_CiagleAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
         MODEL_TYPOWANY_FIELDSET,
         MODEL_PUNKTOWANY_WYDAWNICTWO_CIAGLE_FIELDSET,
         MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
-        POZOSTALE_MODELE_FIELDSET,
+        POZOSTALE_MODELE_WYDAWNICTWO_CIAGLE_FIELDSET,
         ADNOTACJE_FIELDSET,
         OPENACCESS_FIELDSET)
 

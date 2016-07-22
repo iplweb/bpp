@@ -15,6 +15,15 @@ from bpp.fields import YearField, DOIField
 from bpp.models.util import ModelZOpisemBibliograficznym
 
 
+class ModelZeZnakamiWydawniczymi(models.Model):
+
+    liczba_znakow_wydawniczych = models.IntegerField(
+        'Liczba znaków wydawniczych', blank=True, null=True,
+        db_index=True)
+
+    class Meta:
+        abstract = True
+
 class ModelZAdnotacjami(models.Model):
     """Zawiera adnotację  dla danego obiektu, czyli informacje, które
     użytkownik może sobie dowolnie uzupełnić.
