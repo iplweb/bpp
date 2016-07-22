@@ -466,26 +466,25 @@ def raport_common_tabela(key, base_query, jednostka=None, autor=None):
 
     elif key == "1_2":
         return base_query.filter(
-            charakter_formalny__skrot="AC",
+            charakter_formalny__skrot__in=["AC", "L"],
             impact_factor=0,
             punkty_kbn__gt=0
         ).exclude(
             typ_kbn=Typ_KBN.objects.get(skrot="PW")
+        ).exclude(
+            adnotacje__icontains="erih"
+        ).exclude(
+            adnotacje__icontains="wos"
         )
 
     elif key == "1_3":
         return base_query.filter(
-            charakter_formalny__skrot="AC",
-            uwagi__icontains='erih',
-            punkty_kbn__in=[10, 12, 14]
-        ).exclude(
-            typ_kbn=Typ_KBN.objects.get(skrot="PW")
-        )
+            adnotacje__icontains='erih',
+            punkty_kbn__gt=0)
 
     elif key == "1_4":
         return base_query.filter(
-            charakter_formalny__in=charaktery(
-                'ZRZ', 'PRZ', 'PSZ', 'ZSZ'),
+            adnotacje__icontains="wos",
             punkty_kbn__gt=0)
 
     elif key == "2_1":

@@ -20,7 +20,9 @@ popd > /dev/null
 
 cd $SCRIPTPATH/../src
 
-npm --quiet install grunt-sass grunt-contrib-watch grunt-contrib-qunit
+npm --quiet install grunt grunt-sass grunt-contrib-watch grunt-contrib-qunit
+
+rm -rf components/bower_components staticroot
 
 yes n | python manage.py bower_install -F
 python manage.py collectstatic --noinput

@@ -1,4 +1,4 @@
-Django==1.8.11
+Django==1.8.13
 django-messages-extends==0.3.2
 django-autoslug==1.7.1
 django-pagination==1.0.7
@@ -23,7 +23,7 @@ moai==2.0.0
 django-crispy-forms==1.4.0
 crispy-forms-foundation==0.3.5
 
-django-bower==5.0.3
+django-bower==5.1.0
 django-compressor==2.0
 djorm-pgarray==1.2
 

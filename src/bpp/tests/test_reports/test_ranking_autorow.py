@@ -3,8 +3,9 @@
 from django.core.urlresolvers import reverse
 from django.test import TestCase, Client
 from bpp.models.profile import BppUser
+from bpp.models.struktura import Wydzial
 from bpp.models.system import Typ_Odpowiedzialnosci, Charakter_Formalny, Typ_KBN
-from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
+from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor, Wydawnictwo_Ciagle
 from bpp.tests.util import any_wydzial, any_autor, any_ciagle, any_jednostka, \
     CURRENT_YEAR
 from bpp.views.raporty.ranking_autorow import RankingAutorow
@@ -17,10 +18,14 @@ class TestRankingAutorow(TestCase):
     #             'typ_kbn.json']
 
     def setUp(self):
-        w1 = any_wydzial()
+        w1 = any_wydzial(nazwa="Wydzial 1", skrot="W9")
+        w1.zezwalaj_na_ranking_autorow = True
+        w1.save()
         j1 = any_jednostka(wydzial=w1)
 
-        w2 = any_wydzial()
+        w2 = any_wydzial(nazwa="Wydzial 2", skrot="W8")
+        w2.zezwalaj_na_ranking_autorow = True
+        w2.save()
         j2 = any_jednostka(wydzial=w2)
 
         self.w2 = w2
@@ -68,17 +73,17 @@ class TestRankingAutorow(TestCase):
     def test_bez_argumentow(self):
         "Zsumuje punktacje ze wszystkich prac, ze wszystkich wydziałów dla danego roku"
         response = self.client.get(
-            reverse("bpp:ranking-autorow", args=(str(CURRENT_YEAR), )),
+            reverse("bpp:ranking-autorow", args=(str(CURRENT_YEAR), str(CURRENT_YEAR),)),
             follow=True
         )
         self.assertIn("44,444", response.content) # wydział 2
-        self.assertIn("33,333", response.content) # wydział 1 - praca 'nie-wejdzie'
+        self.assertIn("33,333", response.content) # wydział 1
 
     def test_z_wydzialem(self):
         "Zsumuje punktacje ze wszystkich prac, ze wszystkich wydziałów dla danego roku"
         response = self.client.get(
-            reverse("bpp:ranking-autorow", args=(str(CURRENT_YEAR), )) + "?wydzialy[]=" + str(self.w2.pk),
+            reverse("bpp:ranking-autorow", args=(str(CURRENT_YEAR), str(CURRENT_YEAR), )) + "?wydzialy[]=" + str(self.w2.pk),
             follow=True
         )
         self.assertIn("44,444", response.content) # wydział 2
-        self.assertNotIn("33,333", response.content) # wydział 1 - praca 'nie-wejdzie'
+        self.assertNotIn("33,333", response.content) # wydział 1 - praca nie wejdzie do rankingu

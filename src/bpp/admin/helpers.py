@@ -89,6 +89,10 @@ MODEL_Z_INFORMACJA_Z = (
     'informacja_z',
     )
 
+MODEL_Z_LICZBA_ZNAKOW_WYDAWNICZYCH = (
+    'liczba_znakow_wydawniczych',
+)
+
 MODEL_ZE_STATUSEM = (
     'status_korekty',
     )
@@ -126,9 +130,17 @@ POZOSTALE_MODELE_FIELDSET = ('Pozostałe informacje', {
               + MODEL_AFILIOWANY_RECENZOWANY
 })
 
+POZOSTALE_MODELE_WYDAWNICTWO_CIAGLE_FIELDSET = ('Pozostałe informacje', {
+    'classes': ('',),
+    'fields': MODEL_Z_LICZBA_ZNAKOW_WYDAWNICZYCH
+              + MODEL_Z_INFORMACJA_Z
+              + MODEL_ZE_STATUSEM
+              + MODEL_AFILIOWANY_RECENZOWANY
+})
+
 POZOSTALE_MODELE_WYDAWNICTWO_ZWARTE_FIELDSET = ('Pozostałe informacje', {
     'classes': ('',),
-    'fields': ('liczba_znakow_wydawniczych',)
+    'fields': MODEL_Z_LICZBA_ZNAKOW_WYDAWNICZYCH
               + MODEL_Z_INFORMACJA_Z
               + MODEL_ZE_STATUSEM
               + MODEL_AFILIOWANY_RECENZOWANY

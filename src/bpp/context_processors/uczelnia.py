@@ -1,6 +1,4 @@
 from bpp.models.struktura import Uczelnia
-from bpp.system import greek, cyrylic, iso
-
 
 
 class NiezdefiniowanaUczelnia:

@@ -222,14 +222,14 @@ class TestRankingAutorow(UserTestCase):
         c.dodaj_autora(a, j)
 
     def test_renderowanie(self):
-        url = reverse("bpp:ranking-autorow", args=(2000,))
+        url = reverse("bpp:ranking-autorow", args=(2000,2000))
         res = self.client.get(url)
         self.assertContains(
             res, u"Ranking autorów", status_code=200)
         self.assertContains(res, u"Kowalski")
 
     def test_renderowanie_csv(self):
-        url = reverse("bpp:ranking-autorow", args=(2000,))
+        url = reverse("bpp:ranking-autorow", args=(2000,2000))
         res = self.client.get(url, data={"report-rankingautorowtable": "csv"})
         print(res.content)
         self.assertContains(
