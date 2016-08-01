@@ -6,10 +6,9 @@ from django.core.management import call_command
 
 from bpp.models.autor import Tytul, Funkcja_Autora, Autor_Jednostka
 from bpp.models.struktura import Uczelnia, Wydzial, Jednostka
-from egeria.core import diff_tytuly, diff_funkcje, diff_wydzialy
 from egeria.models import EgeriaRow, AlreadyAnalyzedError, Diff_Tytul_Create, Diff_Tytul_Delete, \
     Diff_Funkcja_Autora_Create, Diff_Funkcja_Autora_Delete, Diff_Wydzial_Delete, Diff_Wydzial_Create, zrob_skrot, \
-    Diff_Jednostka_Create, Diff_Jednostka_Update
+    Diff_Jednostka_Create, Diff_Jednostka_Update, Diff_Jednostka_Delete
 
 
 @pytest.mark.django_db
@@ -31,21 +30,16 @@ def test_egeria_management_commands_egeria_import(test_file_path):
 
 
 @pytest.mark.django_db
-def test_egeria_core_diff_tytuly_test_commit_all(egeria_import, autor_jan_nowak):
+def test_egeria_models_EgeriaImport_diff_tytuly_test_commit_all(egeria_import, autor_jan_nowak):
     Tytul.objects.create(nazwa="nikt tego nie ma", skrot="n. t. n. m.")
 
     egeria_import.analyze()
-    diff_tytuly(egeria_import)
-
-    for elem in Diff_Tytul_Create.objects.filter(parent=egeria_import):
-        elem.commit()
-
-    for elem in Diff_Tytul_Delete.objects.filter(parent=egeria_import):
-        elem.commit()
+    egeria_import.diff_tytuly()
+    egeria_import.commit_tytuly()
 
 
 @pytest.mark.django_db
-def test_egeria_core_diff_tytuly(egeria_import, autor_jan_nowak):
+def test_egeria_models_EgeriaImport_diff_tytuly(egeria_import, autor_jan_nowak):
     assert Diff_Tytul_Create.objects.all().count() == 0
     assert Diff_Tytul_Delete.objects.all().count() == 0
 
@@ -56,7 +50,7 @@ def test_egeria_core_diff_tytuly(egeria_import, autor_jan_nowak):
     autor_jan_nowak.save()
 
     egeria_import.analyze()
-    diff_tytuly(egeria_import)
+    egeria_import.diff_tytuly()
 
     assert u"nieistniejący tytuł" in Diff_Tytul_Create.objects.all().values_list("nazwa_skrot", flat=True)
     assert u"nikt tego nie ma" not in Diff_Tytul_Create.objects.all().values_list("nazwa_skrot", flat=True)
@@ -67,7 +61,7 @@ def test_egeria_core_diff_tytuly(egeria_import, autor_jan_nowak):
 
 
 @pytest.mark.django_db
-def test_egeria_core_diff_funkcje(egeria_import, autor_jan_nowak, jednostka):
+def test_egeria_models_diff_funkcje(egeria_import, autor_jan_nowak, jednostka):
     assert Diff_Funkcja_Autora_Create.objects.all().count() == 0
     assert Diff_Funkcja_Autora_Delete.objects.all().count() == 0
 
@@ -77,7 +71,7 @@ def test_egeria_core_diff_funkcje(egeria_import, autor_jan_nowak, jednostka):
     Autor_Jednostka.objects.create(autor=autor_jan_nowak, jednostka=jednostka, funkcja=j)
 
     egeria_import.analyze()
-    diff_funkcje(egeria_import)
+    egeria_import.diff_funkcje()
 
     assert u"Asystent dr" in Diff_Funkcja_Autora_Create.objects.all().values_list("nazwa_skrot", flat=True)
     assert u"nikt tego nie ma" not in Diff_Funkcja_Autora_Create.objects.all().values_list("nazwa_skrot", flat=True)
@@ -87,11 +81,11 @@ def test_egeria_core_diff_funkcje(egeria_import, autor_jan_nowak, jednostka):
 
 
 @pytest.mark.django_db
-def test_egeria_core_diff_funkcje_test_commit_all(egeria_import, autor_jan_nowak):
+def test_egeria_models_diff_funkcje_test_commit_all(egeria_import, autor_jan_nowak):
     Funkcja_Autora.objects.create(nazwa="nikt tego nie ma", skrot="n. t. n. m.")
 
     egeria_import.analyze()
-    diff_funkcje(egeria_import)
+    egeria_import.diff_funkcje()
 
     for elem in Diff_Funkcja_Autora_Create.objects.filter(parent=egeria_import):
         elem.commit()
@@ -101,12 +95,12 @@ def test_egeria_core_diff_funkcje_test_commit_all(egeria_import, autor_jan_nowak
 
 
 @pytest.mark.django_db
-def test_egeria_core_diff_wydzialy_uczelnia_is_created(egeria_import):
+def test_egeria_models_diff_wydzialy_uczelnia_is_created(egeria_import):
     Uczelnia.objects.all().delete()
     assert Uczelnia.objects.all().count() == 0
 
     egeria_import.analyze()
-    diff_wydzialy(egeria_import)
+    egeria_import.diff_wydzialy()
 
     Diff_Wydzial_Create.objects.all().first().commit()
 
@@ -114,18 +108,18 @@ def test_egeria_core_diff_wydzialy_uczelnia_is_created(egeria_import):
 
 
 @pytest.mark.django_db
-def test_egeria_core_diff_wydzialy_kasowanie(egeria_import, uczelnia):
+def test_egeria_models_diff_wydzialy_kasowanie(egeria_import, uczelnia):
     WYDZIAL = dict(nazwa="tego wydzialu bankowo nie ma w pliku importu", skrot="twbn")
     Wydzial.objects.create(uczelnia=uczelnia, **WYDZIAL)
 
     egeria_import.analyze()
-    diff_wydzialy(egeria_import)
+    egeria_import.diff_wydzialy()
 
     assert WYDZIAL['nazwa'] in Diff_Wydzial_Delete.objects.all().values_list("reference__nazwa", flat=True)
 
 
 @pytest.mark.django_db
-def test_egeria_core_diff_wydzialy_testuj_ukrywanie_wydzialu(egeria_import, uczelnia):
+def test_egeria_models_diff_wydzialy_testuj_ukrywanie_wydzialu(egeria_import, uczelnia):
     WYDZIAL = dict(nazwa="tego wydzialu bankowo nie ma w pliku importu", skrot="twbn")
     w = Wydzial.objects.create(uczelnia=uczelnia, **WYDZIAL)
     assert w.widoczny == True
@@ -134,7 +128,7 @@ def test_egeria_core_diff_wydzialy_testuj_ukrywanie_wydzialu(egeria_import, ucze
     Jednostka.objects.create(nazwa="Jednostka", skrot="J", wydzial=w)
 
     egeria_import.analyze()
-    diff_wydzialy(egeria_import)
+    egeria_import.diff_wydzialy()
 
     for elem in Diff_Wydzial_Delete.objects.all():
         elem.commit()
@@ -145,12 +139,12 @@ def test_egeria_core_diff_wydzialy_testuj_ukrywanie_wydzialu(egeria_import, ucze
 
 
 @pytest.mark.django_db
-def test_egeria_core_diff_wydzialy_testuj_kasowanie_wydzialu(egeria_import, uczelnia):
+def test_egeria_models_diff_wydzialy_testuj_kasowanie_wydzialu(egeria_import, uczelnia):
     WYDZIAL = dict(nazwa="tego wydzialu bankowo nie ma w pliku importu", skrot="twbn")
     w = Wydzial.objects.create(uczelnia=uczelnia, **WYDZIAL)
 
     egeria_import.analyze()
-    diff_wydzialy(egeria_import)
+    egeria_import.diff_wydzialy()
 
     for elem in Diff_Wydzial_Delete.objects.all():
         elem.commit()
@@ -187,19 +181,21 @@ def test_egeria_models_wydzial_check_if_needed(uczelnia):
 
 
 @pytest.mark.django_db
-def test_egeria_models_wydzial_test_kasowania(uczelnia, egeria_import):
+def test_egeria_models_Diff_Wydzial_Delete_wariant_1(uczelnia, egeria_import):
     w = Wydzial.objects.create(uczelnia=uczelnia, nazwa="foo", skrot="bar")
-    Diff_Wydzial_Delete.objects.create(reference=w, parent=egeria_import).commit()
+    dwd = Diff_Wydzial_Delete.objects.create(reference=w, parent=egeria_import)
+    dwd.commit()
     # Upewnij się, że wydział bez jednostek znikł z bazy
     with pytest.raises(Wydzial.DoesNotExist):
         w.refresh_from_db()
 
 
 @pytest.mark.django_db
-def test_egeria_models_wydzial_test_kasowania_2(uczelnia, egeria_import):
+def test_egeria_models_Diff_Wydzial_Delete_wariant_2(uczelnia, egeria_import):
     w = Wydzial.objects.create(uczelnia=uczelnia, nazwa="foo", skrot="bar")
     j = Jednostka.objects.create(nazwa="nazwa", skrot="skrt", wydzial=w)
-    Diff_Wydzial_Delete.objects.create(reference=w, parent=egeria_import).commit()
+    dwd = Diff_Wydzial_Delete.objects.create(reference=w, parent=egeria_import)
+    dwd.commit()
     # Upewnij się, że wydział z jednostką NIE znikł z bazy
     w.refresh_from_db()
     assert w.widoczny == False
@@ -236,9 +232,9 @@ def test_egeria_models_Diff_Jednostka_Create_commit(wydzial, egeria_import):
     assert j.nazwa == "Test Jednostki"
     assert j.skrot == "TJ"
 
+
 @pytest.mark.django_db
 def test_egeria_models_Diff_Jednostka_Update_check_if_needed(jednostka, wydzial, drugi_wydzial):
-
     # wariant 1: jednostka widoczna, ten sam wydział, aktualizacja NIE WYMAGANA
     jednostka.widoczna = True
     jednostka.wchodzi_do_raportow = True
@@ -265,9 +261,9 @@ def test_egeria_models_Diff_Jednostka_Update_check_if_needed(jednostka, wydzial,
     )
     assert ret == True
 
+
 @pytest.mark.django_db
 def test_egeria_models_Diff_Jednostka_Update_commit(jednostka, wydzial, drugi_wydzial, egeria_import):
-
     jednostka.widoczna = jednostka.wchodzi_do_raportow = False
     jednostka.save()
 
@@ -285,11 +281,82 @@ def test_egeria_models_Diff_Jednostka_Update_commit(jednostka, wydzial, drugi_wy
 
 
 @pytest.mark.django_db
-@pytest.mark.xfail
-def test_egeria_core_Diff_Jednostka_Delete_check_if_needed(uczelnia, egeria_import):
-    raise NotImplementedError
+def test_egeria_models_Diff_Jednostka_Delete_check_if_needed(jednostka, egeria_import):
+    jednostka.widoczna = jednostka.wchodzi_do_raportow = True
+    jednostka.wydzial.archiwalny = False
+    jednostka.wydzial.save()
+    jednostka.save()
+
+    # Wariant 1: jednostka jest widoczna i w wydziale nie-archiwalnym
+    assert Diff_Jednostka_Delete.check_if_needed(jednostka) == True
+
+    # Wariant 2: jednostka jest niewidoczna, ale w wydziale nie-archiwalnym
+    jednostka.widoczna = jednostka.wchodzi_do_raportow = False
+    jednostka.save()
+    assert Diff_Jednostka_Delete.check_if_needed(jednostka) == True
+
+    # Wariant 3: jednostka jest niewidoczna, w wydziale archiwalnym
+    jednostka.wydzial.archiwalny = True
+    jednostka.wydzial.save()
+    assert Diff_Jednostka_Delete.check_if_needed(jednostka) == False
+
 
 @pytest.mark.django_db
-@pytest.mark.xfail
-def test_egeria_core_Diff_Jednostka_Delete_comit(uczelnia, egeria_import):
-    raise NotImplementedError
+def test_egeria_models_Diff_Jednostka_Delete_comit_wariant_1(jednostka, wydzial, wydzial_archiwalny, autor,
+                                                           egeria_import):
+    wydzial.archiwalny = False
+    wydzial.save()
+
+    jednostka.wydzial = wydzial
+    jednostka.widoczna = jednostka.wchodzi_do_raportow = True
+    jednostka.save()
+
+    aj = Autor_Jednostka.objects.create(
+        autor=autor, jednostka=jednostka
+    )
+
+    # Wariant 1: jednostka jest powiązana z innymi rekordami w bazie danych,
+    # w rezultacie ma pozostać niewidoczna oraz przesunięta do wydziału archiwalnego
+    djd = Diff_Jednostka_Delete.objects.create(
+        parent=egeria_import,
+        reference=jednostka
+    )
+    djd.commit()
+
+    jednostka.refresh_from_db()
+    assert jednostka.widoczna == jednostka.wchodzi_do_raportow == False
+    assert jednostka.wydzial == wydzial_archiwalny
+
+
+@pytest.mark.django_db
+def test_egeria_models_Diff_Jednostka_Delete_comit_wariant_2(jednostka, wydzial, wydzial_archiwalny, autor,
+                                                           egeria_import):
+    wydzial.archiwalny = False
+    wydzial.save()
+
+    jednostka.wydzial = wydzial
+    jednostka.widoczna = jednostka.wchodzi_do_raportow = True
+    jednostka.save()
+
+    # Wariant 2: jednostka nie jest powiązana z innymi rekordami w bazie danych,
+    # ma zostać fizycznie usunięta
+    djd = Diff_Jednostka_Delete.objects.create(
+        parent=egeria_import,
+        reference=jednostka
+    )
+    djd.commit()
+
+    with pytest.raises(Jednostka.DoesNotExist):
+        jednostka.refresh_from_db()
+
+
+@pytest.mark.django_db
+def test_egeria_models_diff_jednostki(egeria_import):
+    assert Jednostka.objects.all().count() == 0
+
+    egeria_import.diff_wydzialy()
+    egeria_import.commit_wydzialy()
+    egeria_import.diff_jednostki()
+    egeria_import.commit_jednostki()
+
+    assert Jednostka.objects.all().count() == 13
