@@ -1,15 +1,13 @@
 # -*- encoding: utf-8 -*-
 
+import os
+
 import pytest
-from django.core.files.base import File
 from django.core.files.uploadedfile import SimpleUploadedFile
-from model_mommy import mommy
 
 from bpp.models.struktura import Wydzial
 from egeria.models import EgeriaImport
-from integrator2.models import ListaMinisterialnaIntegration
-from mock import Mock
-import os
+
 
 @pytest.fixture
 def test_file_path():
@@ -23,11 +21,11 @@ def test_file_path():
 @pytest.fixture
 @pytest.mark.django_db
 def egeria_import(test_file_path):
-
     test = EgeriaImport.objects.create(created_by=None)
     test.file = SimpleUploadedFile(test_file_path, open(test_file_path).read())
     test.save()
     return test
+
 
 @pytest.fixture
 @pytest.mark.django_db
@@ -37,3 +35,14 @@ def drugi_wydzial(uczelnia):
         skrot="wtf",
         uczelnia=uczelnia)
     return drugi_wydzial
+
+
+@pytest.fixture
+@pytest.mark.django_db
+def wydzial_archiwalny(uczelnia):
+    wydzial_archiwalny = Wydzial.objects.create(
+        nazwa=u"Wydział Archiwalny",
+        skrot="WArc",
+        uczelnia=uczelnia,
+        archiwalny=True)
+    return wydzial_archiwalny
