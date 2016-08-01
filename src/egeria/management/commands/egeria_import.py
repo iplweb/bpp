@@ -6,7 +6,6 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import BaseCommand
 from django.db import transaction
 
-from egeria import core
 from egeria.models import EgeriaImport
 
 
@@ -25,7 +24,9 @@ class Command(BaseCommand):
         parent.analyze()
 
         # Utwórz diffy
-        core.diff_tytuly(parent)
-        core.diff_funkcje(parent)
+        # TODO: zrób to kiedyś
+        raise NotImplementedError("zrób to dobrze kiedyś")
+        parent.diff_tytuly(parent)
+        parent.diff_funkcje(parent)
 
-        raise NotImplementedError("ROLLBACK! Wszystko gra. ")
+
