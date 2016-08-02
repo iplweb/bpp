@@ -371,7 +371,7 @@ Wydawnictwo_Ciagle_Form.base_fields['uzupelnij_punktacje'] = \
                     {'id': 'uzupelnij_punktacje'}))
 
 
-class Wydawnictwo_CiagleAdmin(AdnotacjeZDatamiMixin, CommitedModelAdmin):
+class Wydawnictwo_CiagleAdmin(AdnotacjeZDatamiOrazPBNMixin, CommitedModelAdmin):
     formfield_overrides = NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW
 
     form = Wydawnictwo_Ciagle_Form
@@ -400,7 +400,7 @@ class Wydawnictwo_CiagleAdmin(AdnotacjeZDatamiMixin, CommitedModelAdmin):
         MODEL_PUNKTOWANY_WYDAWNICTWO_CIAGLE_FIELDSET,
         MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
         POZOSTALE_MODELE_WYDAWNICTWO_CIAGLE_FIELDSET,
-        ADNOTACJE_Z_DATAMI_FIELDSET,
+        ADNOTACJE_Z_DATAMI_ORAZ_PBN_FIELDSET,
         OPENACCESS_FIELDSET)
 
     inlines = (
@@ -411,7 +411,7 @@ class Wydawnictwo_CiagleAdmin(AdnotacjeZDatamiMixin, CommitedModelAdmin):
 admin.site.register(Wydawnictwo_Ciagle, Wydawnictwo_CiagleAdmin)
 
 
-class Wydawnictwo_ZwarteAdmin_Baza(AdnotacjeZDatamiMixin, CommitedModelAdmin):
+class Wydawnictwo_ZwarteAdmin_Baza(CommitedModelAdmin):
     formfield_overrides = NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW
 
     list_display = ['tytul_oryginalny', 'wydawnictwo', 'typ_kbn',
@@ -439,10 +439,10 @@ class Wydawnictwo_ZwarteAdmin_Baza(AdnotacjeZDatamiMixin, CommitedModelAdmin):
         MODEL_PUNKTOWANY_FIELDSET,
         MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
         POZOSTALE_MODELE_FIELDSET,
-        ADNOTACJE_Z_DATAMI_FIELDSET)
+        ADNOTACJE_Z_DATAMI_ORAZ_PBN_FIELDSET)
 
 
-class Wydawnictwo_ZwarteAdmin(Wydawnictwo_ZwarteAdmin_Baza):
+class Wydawnictwo_ZwarteAdmin(AdnotacjeZDatamiOrazPBNMixin, Wydawnictwo_ZwarteAdmin_Baza):
     form = autocomplete_light.modelform_factory(Wydawnictwo_Zwarte, fields="__all__")
     inlines = (generuj_inline_dla_autorow(Wydawnictwo_Zwarte_Autor),)
 
@@ -459,7 +459,7 @@ class Wydawnictwo_ZwarteAdmin(Wydawnictwo_ZwarteAdmin_Baza):
         MODEL_PUNKTOWANY_FIELDSET,
         MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
         POZOSTALE_MODELE_WYDAWNICTWO_ZWARTE_FIELDSET,
-        ADNOTACJE_Z_DATAMI_FIELDSET,
+        ADNOTACJE_Z_DATAMI_ORAZ_PBN_FIELDSET,
         OPENACCESS_FIELDSET)
 
 
