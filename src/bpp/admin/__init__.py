@@ -558,7 +558,7 @@ class Praca_HabilitacyjnaAdmin(Praca_Doktorska_Habilitacyjna_Admin_Base):
 admin.site.register(Praca_Habilitacyjna, Praca_HabilitacyjnaAdmin)
 
 
-class Patent_Admin(Wydawnictwo_ZwarteAdmin_Baza):
+class Patent_Admin(AdnotacjeZDatamiMixin, Wydawnictwo_ZwarteAdmin_Baza):
     form = autocomplete_light.modelform_factory(Patent, fields="__all__")
     inlines = (generuj_inline_dla_autorow(Patent_Autor),)
 
