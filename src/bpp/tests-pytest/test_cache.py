@@ -228,7 +228,6 @@ def test_caching_kasowanie_wydzialu(autor_jan_kowalski, jednostka, wydzial, wyda
 def test_caching_kasowanie_uczelni(autor_jan_kowalski, jednostka, wydzial, uczelnia, wydawnictwo_ciagle):
     assert wydzial.uczelnia == uczelnia
     assert jednostka.wydzial == wydzial
-
     wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
 
     assert Rekord.objects.all().count() == 1
