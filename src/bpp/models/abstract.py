@@ -582,8 +582,9 @@ class ModelZAktualizacjaDlaPBN(models.Model):
     ostatnio_zmieniony_dla_pbn = models.DateTimeField(
         "Ostatnio zmieniony (dla PBN)",
         auto_now_add=True,
-        help_text="""Ostatnia aktualizacja rekordu - zmiana dowolnego z pól za wyjątkiem bloków pól: „punktacja”,
-        „punktacja komisji centralnej”, „adnotacje” oraz pole „status korekty”."""
+        help_text="""Moment ostatniej aktualizacji rekordu dla potrzeb PBN. To pole zmieni się automatycznie, gdy
+        nastąpi zmiana dowolnego z pól za wyjątkiem bloków pól: „punktacja”, „punktacja komisji centralnej”,
+        „adnotacje” oraz pole „status korekty”."""
     )
 
     def save(self, *args, **kw):
@@ -594,8 +595,8 @@ class ModelZAktualizacjaDlaPBN(models.Model):
                 from bpp.admin.helpers import MODEL_PUNKTOWANY, MODEL_PUNKTOWANY_KOMISJA_CENTRALNA
 
                 for elem in MODEL_PUNKTOWANY + MODEL_PUNKTOWANY_KOMISJA_CENTRALNA + \
-                        ('ostatnio_zmieniony', 'ostatnio_zmieniony_dla_pbn', 'opis_bibliograficzny_cache',
-                         'search_index', 'tytul_oryginalny_sort'):
+                        ('adnotacje', 'ostatnio_zmieniony', 'ostatnio_zmieniony_dla_pbn',
+                         'opis_bibliograficzny_cache', 'search_index', 'tytul_oryginalny_sort'):
                     if elem in flds_keys:
                         flds_keys.remove(elem)
 
