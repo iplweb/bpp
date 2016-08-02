@@ -38,12 +38,16 @@
   args:
     creates: "{{ django_venv_dir }}"
 
-- name: Wheel is installed in virtual environment
-  pip: virtualenv={{ django_venv_dir }} name=wheel
-  sudo_user: "{{ django_user }}"
-
 - name: Virtualenv wrapper for execution of scripts is created
   template: src=vexec dest={{ django_home_dir }}/vexec mode=755
+  sudo_user: "{{ django_user }}"
+
+- name: Pip is upgraded in virtualenv
+  command: "{{ django_home_dir }}/vexec pip install --upgrade pip"
+  sudo_user: "{{ django_user }}"
+
+- name: Wheel is installed in virtual environment
+  pip: virtualenv={{ django_venv_dir }} name=wheel
   sudo_user: "{{ django_user }}"
 
 - include: config.yml

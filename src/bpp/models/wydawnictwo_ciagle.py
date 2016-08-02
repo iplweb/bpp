@@ -1,6 +1,9 @@
 # -*- encoding: utf-8 -*-
-
+from datetime import datetime
+from dirtyfields.dirtyfields import DirtyFieldsMixin
 from django.db import models
+from django.db.models.signals import post_delete
+from django.utils import timezone
 from djorm_pgfulltext.models import SearchManager
 from lxml.etree import SubElement, Element
 from secure_input.utils import safe_html
@@ -9,11 +12,11 @@ from bpp.models.abstract import BazaModeluOdpowiedzialnosciAutorow, DwaTytuly, M
     ModelZWWW, ModelAfiliowanyRecenzowany, ModelPunktowany, ModelTypowany, \
     ModelZeSzczegolami, ModelZInformacjaZ, ModelZeStatusem, ModelZISSN, \
     ModelZAdnotacjami, ModelZCharakterem, Wydawnictwo_Baza, PBNSerializerHelperMixin, ModelZOpenAccess, ModelZPubmedID, \
-    ModelZDOI, ModelZeZnakamiWydawniczymi
+    ModelZDOI, ModelZeZnakamiWydawniczymi, ModelZAktualizacjaDlaPBN
 from bpp.models.util import dodaj_autora, ZapobiegajNiewlasciwymCharakterom
 
 
-class Wydawnictwo_Ciagle_Autor(BazaModeluOdpowiedzialnosciAutorow):
+class Wydawnictwo_Ciagle_Autor(DirtyFieldsMixin, BazaModeluOdpowiedzialnosciAutorow):
     """Powiązanie autora do wydawnictwa ciągłego."""
     rekord = models.ForeignKey('Wydawnictwo_Ciagle')
 
@@ -26,6 +29,19 @@ class Wydawnictwo_Ciagle_Autor(BazaModeluOdpowiedzialnosciAutorow):
             [('rekord', 'autor', 'typ_odpowiedzialnosci'),
               # Tu musi być autor, inaczej admin nie pozwoli wyedytować
              ('rekord', 'autor', 'kolejnosc')]
+
+    def save(self, *args, **kw):
+        if self.pk is None or self.is_dirty():
+            self.rekord.ostatnio_zmieniony_dla_pbn = timezone.now()
+            self.rekord.save(update_fields=['ostatnio_zmieniony_dla_pbn'])
+        super(Wydawnictwo_Ciagle_Autor, self).save(*args, **kw)
+
+
+def wydawnictwo_ciagle_autor_post_delete(sender, instance, **kwargs):
+    instance.rekord.ostatnio_zmieniony_dla_pbn = timezone.now()
+    instance.rekord.save(update_fields=['ostatnio_zmieniony_dla_pbn'])
+
+post_delete.connect(wydawnictwo_ciagle_autor_post_delete, Wydawnictwo_Ciagle_Autor)
 
 
 class ModelZOpenAccessWydawnictwoCiagle(ModelZOpenAccess):
@@ -44,7 +60,9 @@ class Wydawnictwo_Ciagle(ZapobiegajNiewlasciwymCharakterom,
                          ModelZISSN, ModelZInformacjaZ, ModelZAdnotacjami,
                          ModelZCharakterem, PBNSerializerHelperMixin,
                          ModelZOpenAccessWydawnictwoCiagle,
-                         ModelZeZnakamiWydawniczymi):
+                         ModelZeZnakamiWydawniczymi,
+                         ModelZAktualizacjaDlaPBN,
+                         DirtyFieldsMixin):
     """Wydawnictwo ciągłe, czyli artykuły z czasopism, komentarze, listy
     do redakcji, publikacje w suplemencie, etc. """
 

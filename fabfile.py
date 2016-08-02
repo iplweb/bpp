@@ -100,7 +100,12 @@ def upload():
 def upload_db(fn, db, dbuser):
     put(fn, fn)
 
+    sudo('supervisorctl stop all')
     with settings(warn_only=True):
         run('dropdb -U {0} {1}'.format(dbuser, db))
+    with settings(warn_only=True):
+        run('createuser -s bpp')
     run('createdb --echo --encoding=UTF8 -U {0} --owner={0} {1}'.format(dbuser, db))
     run('pg_restore -U {0} -d {1} {2}'.format(dbuser, db, fn))
+    run('./vexec python latest/src/manage.py migrate')
+    sudo('supervisorctl start all')
