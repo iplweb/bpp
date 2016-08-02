@@ -26,7 +26,7 @@ def test_models_wydawnictwo_ciagle_dirty_fields_ostatnio_zmieniony_dla_pbn(wydaw
 
         time.sleep(0.5)
 
-        for fld in MODEL_PUNKTOWANY_KOMISJA_CENTRALNA + MODEL_PUNKTOWANY:
+        for fld in MODEL_PUNKTOWANY_KOMISJA_CENTRALNA + MODEL_PUNKTOWANY + ('adnotacje', ):
             setattr(wyd, fld, 123)
             wyd.save()
             assert ost_zm_pbn == wyd.ostatnio_zmieniony_dla_pbn
