@@ -8,6 +8,7 @@ from decimal import Decimal
 from django.core.exceptions import ValidationError
 
 from django.db import models
+from django.utils import timezone
 from djorm_pgfulltext.fields import VectorField
 from lxml.etree import SubElement
 
@@ -569,5 +570,40 @@ class ModelZOpenAccess(models.Model):
 
 class ModelZDOI(models.Model):
     doi = DOIField("DOI", null=True, blank=True, db_index=True)
+    class Meta:
+        abstract = True
+
+
+class ModelZAktualizacjaDlaPBN(models.Model):
+    #
+    # Obiekt subklasujący tę klasę musi subklasować również DirtyFieldsMixin
+    #
+
+    ostatnio_zmieniony_dla_pbn = models.DateTimeField(
+        "Ostatnio zmieniony (dla PBN)",
+        auto_now_add=True,
+        help_text="""Moment ostatniej aktualizacji rekordu dla potrzeb PBN. To pole zmieni się automatycznie, gdy
+        nastąpi zmiana dowolnego z pól za wyjątkiem bloków pól: „punktacja”, „punktacja komisji centralnej”,
+        „adnotacje” oraz pole „status korekty”."""
+    )
+
+    def save(self, *args, **kw):
+        if self.pk is not None:
+            if self.is_dirty():
+                flds = self.get_dirty_fields(verbose=True)
+                flds_keys = flds.keys()
+                from bpp.admin.helpers import MODEL_PUNKTOWANY, MODEL_PUNKTOWANY_KOMISJA_CENTRALNA
+
+                for elem in MODEL_PUNKTOWANY + MODEL_PUNKTOWANY_KOMISJA_CENTRALNA + \
+                        ('adnotacje', 'ostatnio_zmieniony', 'ostatnio_zmieniony_dla_pbn',
+                         'opis_bibliograficzny_cache', 'search_index', 'tytul_oryginalny_sort'):
+                    if elem in flds_keys:
+                        flds_keys.remove(elem)
+
+                if flds_keys:
+                    self.ostatnio_zmieniony_dla_pbn = timezone.now()
+
+        super(ModelZAktualizacjaDlaPBN, self).save(*args, **kw)
+
     class Meta:
         abstract = True
