@@ -14,7 +14,7 @@ from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte_Autor, Wydawnictwo_
 from bpp.util import remove_old_objects
 from django_bpp.celery_tasks import app
 from django_bpp.util import wait_for_object
-from eksport_pbn.models import PlikEksportuPBN, DATE_CREATED_ON, DATE_UPDATED_ON
+from eksport_pbn.models import PlikEksportuPBN, DATE_CREATED_ON, DATE_UPDATED_ON, DATE_UPDATED_ON_PBN
 
 
 class ExportPBNException(Exception):
@@ -30,7 +30,8 @@ def data_kw(rodzaj_daty, od_daty, do_daty=None):
         return {}
 
     flds = {DATE_CREATED_ON: 'utworzono',
-            DATE_UPDATED_ON: 'ostatnio_zmieniony'}
+            DATE_UPDATED_ON: 'ostatnio_zmieniony',
+            DATE_UPDATED_ON_PBN: 'ostatnio_zmieniony_dla_pbn'}
 
     ret = {}
 
