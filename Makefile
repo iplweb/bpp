@@ -1,3 +1,5 @@
+BRANCH=`git branch | sed -n '/\* /s///p'`
+
 clean:
 	find . -name \*~ -print0 | xargs -0 rm -fv 
 	find . -name \*pyc -print0 | xargs -0 rm -fv 
@@ -6,7 +8,7 @@ boot:
 	vagrant up
 
 vcs:
-	fab vcs
+	fab vcs:${BRANCH}
 
 wheels: 
 	fab wheels
