@@ -371,7 +371,7 @@ Wydawnictwo_Ciagle_Form.base_fields['uzupelnij_punktacje'] = \
                     {'id': 'uzupelnij_punktacje'}))
 
 
-class Wydawnictwo_CiagleAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
+class Wydawnictwo_CiagleAdmin(AdnotacjeZDatamiMixin, CommitedModelAdmin):
     formfield_overrides = NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW
 
     form = Wydawnictwo_Ciagle_Form
@@ -400,7 +400,7 @@ class Wydawnictwo_CiagleAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
         MODEL_PUNKTOWANY_WYDAWNICTWO_CIAGLE_FIELDSET,
         MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
         POZOSTALE_MODELE_WYDAWNICTWO_CIAGLE_FIELDSET,
-        ADNOTACJE_FIELDSET,
+        ADNOTACJE_Z_DATAMI_FIELDSET,
         OPENACCESS_FIELDSET)
 
     inlines = (
@@ -411,7 +411,7 @@ class Wydawnictwo_CiagleAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
 admin.site.register(Wydawnictwo_Ciagle, Wydawnictwo_CiagleAdmin)
 
 
-class Wydawnictwo_ZwarteAdmin_Baza(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
+class Wydawnictwo_ZwarteAdmin_Baza(AdnotacjeZDatamiMixin, CommitedModelAdmin):
     formfield_overrides = NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW
 
     list_display = ['tytul_oryginalny', 'wydawnictwo', 'typ_kbn',
@@ -439,7 +439,7 @@ class Wydawnictwo_ZwarteAdmin_Baza(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
         MODEL_PUNKTOWANY_FIELDSET,
         MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
         POZOSTALE_MODELE_FIELDSET,
-        ADNOTACJE_FIELDSET)
+        ADNOTACJE_Z_DATAMI_FIELDSET)
 
 
 class Wydawnictwo_ZwarteAdmin(Wydawnictwo_ZwarteAdmin_Baza):
@@ -459,7 +459,7 @@ class Wydawnictwo_ZwarteAdmin(Wydawnictwo_ZwarteAdmin_Baza):
         MODEL_PUNKTOWANY_FIELDSET,
         MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
         POZOSTALE_MODELE_WYDAWNICTWO_ZWARTE_FIELDSET,
-        ADNOTACJE_FIELDSET,
+        ADNOTACJE_Z_DATAMI_FIELDSET,
         OPENACCESS_FIELDSET)
 
 
@@ -476,7 +476,7 @@ HABILITACYJNA_FIELDS = DWA_TYTULY \
                        + MODEL_Z_ROKIEM
 
 
-class Praca_Doktorska_Habilitacyjna_Admin_Base(ZapiszZAdnotacjaMixin,
+class Praca_Doktorska_Habilitacyjna_Admin_Base(AdnotacjeZDatamiMixin,
                                                CommitedModelAdmin):
     formfield_overrides = NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW
 
@@ -510,7 +510,7 @@ class Praca_DoktorskaAdmin(Praca_Doktorska_Habilitacyjna_Admin_Base):
         MODEL_PUNKTOWANY_FIELDSET,
         MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
         POZOSTALE_MODELE_FIELDSET,
-        ADNOTACJE_FIELDSET)
+        ADNOTACJE_Z_DATAMI_FIELDSET)
 
 
 admin.site.register(Praca_Doktorska, Praca_DoktorskaAdmin)
@@ -552,7 +552,7 @@ class Praca_HabilitacyjnaAdmin(Praca_Doktorska_Habilitacyjna_Admin_Base):
         MODEL_PUNKTOWANY_FIELDSET,
         MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
         POZOSTALE_MODELE_FIELDSET,
-        ADNOTACJE_FIELDSET)
+        ADNOTACJE_Z_DATAMI_FIELDSET)
 
 
 admin.site.register(Praca_Habilitacyjna, Praca_HabilitacyjnaAdmin)
@@ -582,7 +582,7 @@ class Patent_Admin(Wydawnictwo_ZwarteAdmin_Baza):
         MODEL_PUNKTOWANY_FIELDSET,
         MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
         POZOSTALE_MODELE_FIELDSET,
-        ADNOTACJE_FIELDSET)
+        ADNOTACJE_Z_DATAMI_FIELDSET)
 
 
 admin.site.register(Patent, Patent_Admin)
