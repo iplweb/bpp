@@ -37,6 +37,8 @@ zope.component==4.1.0
 raven==5.1.1
 
 django-secure-input==0.9.3
+bleach==1.4.3
+html5lib==0.9999999
 django-session-security==2.3.0
 
 django-password-policies==0.4.1
