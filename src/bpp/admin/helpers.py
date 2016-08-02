@@ -9,9 +9,17 @@ from django.db import models
 class ZapiszZAdnotacjaMixin:
     readonly_fields = ('ostatnio_zmieniony', )
 
+class AdnotacjeZDatamiMixin:
+    readonly_fields = ('utworzono', 'ostatnio_zmieniony',)
+
 ADNOTACJE_FIELDSET = ('Adnotacje', {
     'classes': ('grp-collapse grp-closed', ),
     'fields': (ZapiszZAdnotacjaMixin.readonly_fields + ('adnotacje',))})
+
+ADNOTACJE_Z_DATAMI_FIELDSET = ('Adnotacje', {
+    'classes': ('grp-collapse grp-closed', ),
+    'fields': ('utworzono',) + ZapiszZAdnotacjaMixin.readonly_fields + ('adnotacje',)
+})
 
 OPENACCESS_FIELDSET = ("OpenAccess", {
     'classes': ('grp-collapse grp-closed',),
