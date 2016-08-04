@@ -460,6 +460,18 @@ class PBNSerializerHelperMixin:
                 k.text = elem.strip()
 
     def eksport_pbn_public_uri(self, toplevel, wydzial=None, autorzy_klass=None):
+
+        # Zachowanie opisuje issue-449 w Mantis, E-maile od elad@ i rbb@ z 3.08.2016,
+        # a konkretnie:
+        # 1) jeżeli jest pole „Adres WWW (wolny dostęp)”, to użyć tego pola
+        # 2) jeżeli pole „Adres WWW (wolny dostęp)” jest puste, użyć Pubmed ID do wygenerowania adresu na Pubmed
+        # i użyć tego adresu URL,
+        #       zgodnie z instrukcją na PubMed, http://www.ncbi.nlm.nih.gov/books/NBK3862/
+        #       żeby otworzyć pracę mając jej PubmedID wystarczy wejść na stronę:
+        #           http://www.ncbi.nlm.nih.gov/pubmed/[pubmed id]
+        #       przykładowo: http://www.ncbi.nlm.nih.gov/pubmed/18276894
+        # 3) jeżeli brak PubmedID, to… pozostawić to pole puste.
+
         def exp_www(www):
             try:
                 url_validator(www)
@@ -470,8 +482,14 @@ class PBNSerializerHelperMixin:
         if self.public_www:
             exp_www(self.public_www)
 
-        elif self.www:
-            exp_www(self.www)
+        elif hasattr(self, 'pubmed_id'):
+            if self.pubmed_id:
+                exp_www("http://www.ncbi.nlm.nih.gov/pubmed/%s" % self.pubmed_id)
+
+        # tego ma nie być w polu public-uri:
+
+        # elif self.www:
+        #     exp_www(self.www)
 
 
     def eksport_pbn_open_access(self, toplevel, wydzial=None, autorzy_klass=None):
