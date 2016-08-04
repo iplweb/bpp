@@ -3,6 +3,8 @@
 import pytest
 import time
 
+from lxml import etree
+
 from bpp.admin.helpers import MODEL_PUNKTOWANY_KOMISJA_CENTRALNA, MODEL_PUNKTOWANY
 from bpp.models.system import Status_Korekty
 
@@ -53,3 +55,30 @@ def test_models_wydawnictwo_ciagle_dirty_fields_ostatnio_zmieniony_dla_pbn(wydaw
         aj.delete()
         wyd.refresh_from_db()
         assert ost_zm_pbn != wyd.ostatnio_zmieniony_dla_pbn
+
+
+def test_export_pubmed_id(wydawnictwo_ciagle):
+    wc = wydawnictwo_ciagle
+
+    wc.pubmed_id = None
+    wc.public_www = "http://www.onet.pl/"
+    wc.www = None
+
+    toplevel = etree.fromstring("<body></body>")
+    wc.eksport_pbn_public_uri(toplevel)
+    assert toplevel[0].attrib['href'] == "http://www.onet.pl/"
+
+    wc.public_www = None
+    wc.pubmed_id = "123"
+    toplevel = etree.fromstring("<body></body>")
+    wc.eksport_pbn_public_uri(toplevel)
+    assert toplevel[0].attrib['href'] == "http://www.ncbi.nlm.nih.gov/pubmed/123"
+
+    wc.public_www = None
+    wc.pubmed_id = None
+    wc.www = "http://www.onet.pl/"
+    toplevel = etree.fromstring("<body></body>")
+    wc.eksport_pbn_public_uri(toplevel)
+    import pytest
+    with pytest.raises(IndexError):
+        toplevel[0]
