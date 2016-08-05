@@ -69,7 +69,7 @@ class Funkcja_AutoraDiffProducer(NazwaISkrotDiffProducer):
 
 
 class WydzialDiffProducer(NazwaISkrotDiffProducer):
-    egeria_field = 'nazwa_jednostki'
+    egeria_field = 'wydzial'
     db_klass = Wydzial
     db_klass_field = 'nazwa'
     create_class = Diff_Wydzial_Create

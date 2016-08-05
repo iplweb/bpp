@@ -1,8 +1,13 @@
 # -*- encoding: utf-8 -*-
-from bpp.models.struktura import Jednostka
+from bpp.models.struktura import Jednostka, Wydzial
+from egeria.models.jednostka import Diff_Jednostka_Create, Diff_Jednostka_Delete, Diff_Jednostka_Update
 from .base import BaseDiffProducer
 
 class JednostkaDiffProducer(BaseDiffProducer):
+    create_class = Diff_Jednostka_Create
+    update_class = Diff_Jednostka_Update
+    delete_class = Diff_Jednostka_Delete
+
     def get_import_values(self):
         return self.parent.rows().values('nazwa_jednostki', 'wydzial').distinct()
 
@@ -12,44 +17,39 @@ class JednostkaDiffProducer(BaseDiffProducer):
     def get_new_values(self):
         """Wartości z importu oprócz wartości w bazie danych
         """
-
-        # TU SKONCZYLEM
-        raise NotImplementedError
-        raise NotImplementedError
-        raise NotImplementedError
-        raise NotImplementedError
-        raise NotImplementedError
-        raise NotImplementedError
-
         import_values = self.get_import_values()
-        db_values = dict([(ref.nazwa_jednostki, ref) for ref in self.get_db_values()])
-
+        db_values = dict([(ref.nazwa, ref) for ref in self.get_db_values()])
         for elem in import_values:
-            if elem['nazwa_jednostki']
-            if nazwa_jednostki not in
-            if (nazwa_jednostki, wydzial) in import_values:
-                raise NotImplementedError
-                raise NotImplementedError
-                raise NotImplementedError
-                raise NotImplementedError
-                raise NotImplementedError
+            if elem['nazwa_jednostki'] not in db_values:
+                # Nowa jednostka
+                yield elem
 
-
-                # XXX TU SKONCZYLEM
-                pass
-
-        # TU SKONCZYLEM
-        kwargs = {self.egeria_field + "__in": self.get_db_values().values(self.db_klass_field).distinct()}
-        return self.get_import_values().exclude(**kwargs)
+    def get_update_values(self):
+        """Wartości z importu oprócz wartości w bazie danych
+        """
+        import_values = self.get_import_values()
+        db_values = dict([(ref.nazwa, ref) for ref in self.get_db_values()])
+        for elem in import_values:
+            if elem['nazwa_jednostki'] in db_values:
+                jednostka = db_values[elem['nazwa_jednostki']]
+                if elem['wydzial'] != jednostka.wydzial.nazwa:
+                    yield dict(reference=jednostka, wydzial=Wydzial.objects.get(nazwa=elem['wydzial']))
 
     def get_delete_values(self):
         """Wartości z bazy danych oprócz wartości z importu
         """
-        kwargs = {self.db_klass_field + "__in": self.get_import_values()}
-        return self.get_db_values().exclude(**kwargs)
+        for elem in Jednostka.objects.all().exclude(
+                nazwa__in=self.get_import_values().values_list("nazwa_jednostki", flat=True)):
+            if elem.wydzial.archiwalny is False and elem.nie_archiwizuj != True:
+                # Zwróc wszystkie jednostki nie występujące w pliku importu, które to
+                # nie są w wydziale oznaczonym jako "Archiwalny".
+                yield elem
 
     def create_kwargs(self, elem):
-        return dict(nazwa_skrot=elem[self.egeria_field])
+        return dict(nazwa=elem['nazwa_jednostki'], wydzial=Wydzial.objects.get(nazwa=elem['wydzial']))
+
+    def update_kwargs(self, elem):
+        return elem
 
     def delete_kwargs(self, elem):
         return dict(reference=elem)

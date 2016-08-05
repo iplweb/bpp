@@ -98,6 +98,9 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelHistoryczny):
 
     search = VectorField(blank=True, null=True)
 
+    nie_archiwizuj = models.BooleanField(help_text="""Jeżeli zaznaczono to pole, to przy imporcie danych
+    na temat struktury uczelni z zewnętrznych źródeł ta jednostka nie będzie przenoszona do wydziału oznaczonego
+    jako archiwalny.""", default=False)
     objects = JednostkaManager()
 
     class Meta:

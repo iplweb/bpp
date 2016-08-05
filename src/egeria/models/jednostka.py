@@ -24,7 +24,7 @@ class Diff_Jednostka_Update(Diff_Base):
     wydzial = models.ForeignKey(Wydzial)
 
     @classmethod
-    def check_if_needed(cls, reference, wydzial):
+    def check_if_needed(cls, elem):
         """
         - czy jest to ten sam wydział?
             TAK: nic
@@ -33,6 +33,9 @@ class Diff_Jednostka_Update(Diff_Base):
             TAK: nic
             NIE: zaktualizuj widoczność
         """
+        reference = elem['reference']
+        wydzial = elem['wydzial']
+
         ret = False
         if reference.wydzial != wydzial:
             ret = True
@@ -63,6 +66,9 @@ class Diff_Jednostka_Delete(Diff_Delete):
         :param reference:
         :return:
         """
+
+        if reference.nie_archiwizuj:
+            return False
 
         if reference.widoczna or reference.wchodzi_do_raportow:
             return True
