@@ -5,6 +5,7 @@ from django.db import models
 from django.conf import settings
 
 from egeria.models.funkcja_autora import Diff_Funkcja_Autora_Create, Diff_Funkcja_Autora_Delete
+from egeria.models.jednostka import Diff_Jednostka_Create, Diff_Jednostka_Delete, Diff_Jednostka_Update
 from egeria.models.tytul import Diff_Tytul_Create, Diff_Tytul_Delete
 from egeria.models.wydzial import Diff_Wydzial_Create, Diff_Wydzial_Delete
 
@@ -104,22 +105,14 @@ class EgeriaImport(models.Model):
         :return:
         """
 
-        wartosci_w_xls = self.rows().values(nazwa_kolumny_w_egerii).distinct()
+        from egeria.diff_producers.jednostka import JednostkaDiffProducer
+        JednostkaDiffProducer(parent=self).produce()
 
-        create_obj = globals()['Diff_%s_Create' % klasa.__name__]
-        # ACTION_CREATE
-        nowe_rekordy = wartosci_w_xls.exclude(tytul_stopien__in=klasa.objects.all().values(nazwa_kolumny_w_klasie))
-        for elem in nowe_rekordy:
-            create_obj.objects.create(parent=egeria_import, nazwa_skrot=elem[nazwa_kolumny_w_egerii])
+    def commit_jednostki(self):
+        self.commit(self.diffs(Diff_Jednostka_Create))
+        self.commit(self.diffs(Diff_Jednostka_Update))
+        self.commit(self.diffs(Diff_Jednostka_Delete))
 
-        delete_obj = globals()['Diff_%s_Delete' % klasa.__name__]
-        # ACTION_DELETE
-        rekordy_do_usuniecia = klasa.objects.all().exclude(skrot__in=wartosci_w_xls.values(nazwa_kolumny_w_egerii))
-        for elem in rekordy_do_usuniecia:
-            if delete_obj.check_if_needed(reference=elem):
-                delete_obj.objects.create(parent=egeria_import, reference=elem)
-
-        raise NotImplementedError
 
 
 class EgeriaRow(models.Model):

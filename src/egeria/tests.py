@@ -351,12 +351,46 @@ def test_egeria_models_Diff_Jednostka_Delete_comit_wariant_2(jednostka, wydzial,
 
 
 @pytest.mark.django_db
-def test_egeria_models_diff_jednostki(egeria_import):
+def test_egeria_models_diff_jednostki(egeria_import, uczelnia, autor_jan_kowalski):
     assert Jednostka.objects.all().count() == 0
+
+    wt = Wydzial.objects.create(nazwa="Wydział Nauk o Zdrowiu", skrot="WZ", uczelnia=uczelnia)
+
+    j = Jednostka.objects.create(
+        nazwa=u'II Katedra i Klinika Chirurgii Og\xf3lnej, Gastroenterologicznej i Nowotwor\xf3w Uk\u0142adu Pokarmowego',
+        skrot="123",
+        wydzial=wt)
+
+    jdu = Jednostka.objects.create(
+        nazwa="Jednostka do usunięcia",
+        skrot="JDU",
+        wydzial=wt)
+
+    jdsch = Jednostka.objects.create(
+        nazwa="Jednostka do schowania",
+        skrot="JDSCH",
+        wydzial=wt
+    )
+    Autor_Jednostka.objects.create(
+        autor=autor_jan_kowalski,
+        jednostka=jdsch)
+
+    egeria_import.analyze()
 
     egeria_import.diff_wydzialy()
     egeria_import.commit_wydzialy()
+
     egeria_import.diff_jednostki()
     egeria_import.commit_jednostki()
 
-    assert Jednostka.objects.all().count() == 13
+    assert Jednostka.objects.all().count() == 14 # 13 w pliku importu + jednostka do schowania
+
+    j.refresh_from_db()
+    assert j.wydzial != wt
+
+    with pytest.raises(Jednostka.DoesNotExist):
+        jdu.refresh_from_db()
+
+    jdsch.refresh_from_db()
+    assert jdsch.widoczna == False
+    assert jdsch.wchodzi_do_raportow == False
