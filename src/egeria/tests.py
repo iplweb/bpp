@@ -1,10 +1,12 @@
 # -*- encoding: utf-8 -*-
 
 
+from md5 import md5
+
 import pytest
 from django.core.management import call_command
 
-from bpp.models.autor import Tytul, Funkcja_Autora, Autor_Jednostka
+from bpp.models.autor import Tytul, Funkcja_Autora, Autor_Jednostka, Autor
 from bpp.models.struktura import Uczelnia, Wydzial, Jednostka
 from egeria.models import EgeriaRow, AlreadyAnalyzedError, Diff_Tytul_Create, Diff_Tytul_Delete, \
     Diff_Funkcja_Autora_Create, Diff_Funkcja_Autora_Delete, Diff_Wydzial_Delete, Diff_Wydzial_Create, zrob_skrot, \
@@ -241,24 +243,22 @@ def test_egeria_models_Diff_Jednostka_Update_check_if_needed(jednostka, wydzial,
     jednostka.wydzial = wydzial
     jednostka.save()
 
-    ret = Diff_Jednostka_Update.check_if_needed(
+    ret = Diff_Jednostka_Update.check_if_needed(dict(
         reference=jednostka,
-        wydzial=wydzial)
+        wydzial=wydzial))
     assert ret == False
 
     # wariant 2: jednostka widoczna, ale inny wydział, aktualizacja WYMAGANA\
-    ret = Diff_Jednostka_Update.check_if_needed(
+    ret = Diff_Jednostka_Update.check_if_needed(dict(
         reference=jednostka,
-        wydzial=drugi_wydzial
-    )
+        wydzial=drugi_wydzial))
     assert ret == True
 
     # wariant 3: jednostka niewidoczna, ten sam wydział, aktualizacja WYMAGANA
     jednostka.widoczna = False
-    ret = Diff_Jednostka_Update.check_if_needed(
+    ret = Diff_Jednostka_Update.check_if_needed(dict(
         reference=jednostka,
-        wydzial=wydzial
-    )
+        wydzial=wydzial))
     assert ret == True
 
 
@@ -303,7 +303,7 @@ def test_egeria_models_Diff_Jednostka_Delete_check_if_needed(jednostka, egeria_i
 
 @pytest.mark.django_db
 def test_egeria_models_Diff_Jednostka_Delete_comit_wariant_1(jednostka, wydzial, wydzial_archiwalny, autor,
-                                                           egeria_import):
+                                                             egeria_import):
     wydzial.archiwalny = False
     wydzial.save()
 
@@ -330,7 +330,7 @@ def test_egeria_models_Diff_Jednostka_Delete_comit_wariant_1(jednostka, wydzial,
 
 @pytest.mark.django_db
 def test_egeria_models_Diff_Jednostka_Delete_comit_wariant_2(jednostka, wydzial, wydzial_archiwalny, autor,
-                                                           egeria_import):
+                                                             egeria_import):
     wydzial.archiwalny = False
     wydzial.save()
 
@@ -383,7 +383,7 @@ def test_egeria_models_diff_jednostki(egeria_import, uczelnia, autor_jan_kowalsk
     egeria_import.diff_jednostki()
     egeria_import.commit_jednostki()
 
-    assert Jednostka.objects.all().count() == 14 # 13 w pliku importu + jednostka do schowania
+    assert Jednostka.objects.all().count() == 14  # 13 w pliku importu + jednostka do schowania
 
     j.refresh_from_db()
     assert j.wydzial != wt
@@ -394,3 +394,80 @@ def test_egeria_models_diff_jednostki(egeria_import, uczelnia, autor_jan_kowalsk
     jdsch.refresh_from_db()
     assert jdsch.widoczna == False
     assert jdsch.wchodzi_do_raportow == False
+
+
+@pytest.mark.django_db
+def test_egeria_models_core_EgeriaImport_match_autorzy(egeria_import, jednostka):
+
+    egeria_import.rows().delete()
+
+    pesel_md5 = md5("foobar").hexdigest()
+
+    row = EgeriaRow.objects.create(
+        parent=egeria_import,
+        lp=1,
+        tytul_stopien="foobar",
+        nazwisko="Kowalski",
+        imie="Stefan",
+        pesel_md5=pesel_md5,
+        stanowisko="kierownik",
+        nazwa_jednostki=jednostka.nazwa,
+        wydzial=jednostka.wydzial.nazwa
+    )
+
+    # Strategia 0 - nowy rekord
+    egeria_import.match_autorzy()
+    row.refresh_from_db()
+    assert row.unmatched_because_new
+
+
+    # Strategia 1
+    autor = Autor.objects.create(
+        nazwisko="Kowalski",
+        imiona="Stefan",
+        pesel_md5="hmmm... "
+    )
+
+    egeria_import.match_autorzy()
+    row.refresh_from_db()
+    assert row.matched_autor == autor
+
+    row.matched_autor = None
+    row.save()
+
+    # Strategia 2
+    # Dwóch autorów o identycznych personalniach, jeden ma inny pesel md5 hash
+    autor2 = Autor.objects.create(
+        nazwisko="Kowalski",
+        imiona="Stefan",
+        pesel_md5=pesel_md5
+    )
+
+    egeria_import.match_autorzy()
+    row.refresh_from_db()
+    assert row.matched_autor == autor2
+
+    # Strategia 3
+    # Dwóch autorów o identycznych personaliach, jeden ma jednostke w zatrudnieniu
+    autor2.pesel_md5 = "inny niz byl"
+    autor2.save()
+
+    row.matched_autor = None
+    row.matched_jednostka = jednostka
+    row.save()
+
+    autor2.dodaj_jednostke(jednostka)
+
+    egeria_import.match_autorzy()
+    row.refresh_from_db()
+    assert row.matched_autor == autor2
+
+
+    row.matched_autor = None
+    row.save()
+    Autor_Jednostka.objects.filter(autor=autor2).delete()
+
+    # Strategia 4 - nie można określić
+    egeria_import.match_autorzy()
+    row.refresh_from_db()
+    assert row.unmatched_because_multiple == True
