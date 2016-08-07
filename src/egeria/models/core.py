@@ -1,14 +1,16 @@
 # -*- encoding: utf-8 -*-
-
+import os
+from md5 import md5
 import xlrd
 from django.db import models
 from django.conf import settings
 
+from bpp.models.autor import Autor
 from egeria.models.funkcja_autora import Diff_Funkcja_Autora_Create, Diff_Funkcja_Autora_Delete
 from egeria.models.jednostka import Diff_Jednostka_Create, Diff_Jednostka_Delete, Diff_Jednostka_Update
 from egeria.models.tytul import Diff_Tytul_Create, Diff_Tytul_Delete
 from egeria.models.wydzial import Diff_Wydzial_Create, Diff_Wydzial_Delete
-
+from django.db import connection
 
 class AlreadyAnalyzedError(Exception):
     pass
@@ -35,13 +37,13 @@ class EgeriaImport(models.Model):
             EgeriaRow.objects.create(
                 parent=self,
                 lp=lp,
-                tytul_stopien=tytul_stopien,
-                nazwisko=nazwisko,
-                imie=imie,
-                pesel_md5=pesel_md5,
-                stanowisko=stanowisko,
-                nazwa_jednostki=nazwa_jednostki,
-                wydzial=wydzial
+                tytul_stopien=tytul_stopien.strip(),
+                nazwisko=nazwisko.strip(),
+                imie=imie.strip(),
+                pesel_md5=md5(pesel_md5).hexdigest(),
+                stanowisko=stanowisko.strip(),
+                nazwa_jednostki=nazwa_jednostki.strip(),
+                wydzial=wydzial.strip()
             )
 
         self.analyzed = True
@@ -81,30 +83,6 @@ class EgeriaImport(models.Model):
         self.commit(self.diffs(Diff_Wydzial_Delete))
 
     def diff_jednostki(self):
-        """
-        Jednostka po nazwie
-        - czy jest w bazie:
-            TAK:
-                - czy jest to ten sam wydział?
-                    TAK: nic
-                    NIE: zaktualizuj wydział,
-                - czy jest widoczna i dostępna dla raportów?
-                    TAK: nic
-                    NIE: zaktualizuj widoczność
-
-            NIE:
-                - utwórz jednostkę, tworząc wcześniej wydział
-
-        Sprawdź wszystkie jednostki w bazie:
-        - czy jest w pliku XLS?
-            TAK: nic nie rób,
-            NIE: ukryj z raportów, ukryj jednostkę, ustaw wydział na "Jednostki Dawne"
-            (pierwszy archiwalny wydział w bazie danych, wg kolejności ID)
-
-        :param egeria_import:
-        :return:
-        """
-
         from egeria.diff_producers.jednostka import JednostkaDiffProducer
         JednostkaDiffProducer(parent=self).produce()
 
@@ -113,7 +91,104 @@ class EgeriaImport(models.Model):
         self.commit(self.diffs(Diff_Jednostka_Update))
         self.commit(self.diffs(Diff_Jednostka_Delete))
 
+    def match_jednostki(self):
+        cursor = connection.cursor()
+        cursor.execute("""
+        UPDATE
+          egeria_egeriarow
+        SET
+          matched_jednostka_id = bpp_jednostka.id
+        FROM
+          bpp_jednostka, bpp_wydzial
+        WHERE
+          bpp_wydzial.id = bpp_jednostka.wydzial_id AND
+          egeria_egeriarow.nazwa_jednostki = bpp_jednostka.nazwa AND
+          egeria_egeriarow.wydzial = bpp_wydzial.nazwa AND
+          egeria_egeriarow.parent_id = %s
+        """, [self.pk,])
 
+        # W tym momencie nie powinno być żadnych nie-zmatchowanych jednostek, jeżeli kolejność
+        # odpalania procedur importujących została zachowana:
+        assert self.rows().filter(matched_jednostka=None).count() == 0
+
+    def match_autorzy(self):
+        # Nie matchujemy automatycznie po hashu MD5 numeru PESEL - ta wartość jest tylko
+        # wartością pomocniczą, ponieważ PESEL nie jest numerem unikalnym i dwóch autorów
+        # mogłoby dzielić ten sam numer.
+
+        # Matchujemy "ręcznie", wiersz po wierszu.
+
+        # Na tym etapie matchowania mamy dostępne jednostki (EgeriaRow.matched_jednostka)
+
+        for elem in self.rows():
+            # Strategia 1: imię i nazwisko
+            a = Autor.objects.filter(nazwisko=elem.nazwisko, imiona=elem.imie)
+            c = a.count()
+            if c == 0:
+                elem.unmatched_because_new = True
+                elem.save()
+                continue
+
+            if c == 1:
+                elem.matched_autor = a.first()
+                elem.save()
+                continue
+
+            # Strategia 2: imię i nazwisko i hash MD5 numeru PESEL
+            a = Autor.objects.filter(nazwisko=elem.nazwisko, imiona=elem.imie, pesel_md5=elem.pesel_md5)
+            if a.count() == 1:
+                elem.matched_autor = a.first()
+                elem.save()
+                continue
+
+            # Strategia 3: imię i nazwisko i jedna z jednostek w zatrudnieniu
+            a = Autor.objects.filter(nazwisko=elem.nazwisko, imiona=elem.imie)
+            possible_matches = []
+            for autor in a:
+                if autor.autor_jednostka_set.filter(jednostka=elem.matched_jednostka).count() == 1:
+                    possible_matches.append(autor)
+
+            if len(possible_matches) == 1:
+                elem.matched_autor = possible_matches[0]
+                elem.save()
+                continue
+
+            # Strategia 4: nie ma strategii 4. Dany autor pasuje do wielu i nie można określić.
+            elem.unmatched_because_multiple = True
+            elem.save()
+
+    def diff_autorzy(self):
+        raise NotImplementedError
+
+    def commit_autorzy(self):
+        raise NotImplementedError
+
+    def cleanup(self):
+        self.rows.delete()
+        # os.unlink(self.file.path)
+        self.delete()
+
+    def everything(self):
+        self.analyze()
+
+        self.diff_tytuly()
+        self.commit_tytuly()
+
+        self.diff_funkcje()
+        self.commit_funkcje()
+
+        self.diff_wydzialy()
+        self.commit_wydzialy()
+
+        self.diff_jednostki()
+        self.commit_jednostki()
+        self.match_jednostki()
+
+        self.match_autorzy()
+        self.diff_autorzy()
+        self.commit_autorzy()
+
+        self.cleanup()
 
 class EgeriaRow(models.Model):
     parent = models.ForeignKey(EgeriaImport)
@@ -126,3 +201,9 @@ class EgeriaRow(models.Model):
     stanowisko = models.CharField(max_length=50)
     nazwa_jednostki = models.CharField(max_length=300)
     wydzial = models.CharField(max_length=150)
+
+    matched_jednostka = models.ForeignKey('bpp.Jednostka', null=True)
+    matched_autor = models.ForeignKey('bpp.Autor', null=True)
+
+    unmatched_because_new = models.BooleanField(default=False)
+    unmatched_because_multiple = models.BooleanField(default=False)
