@@ -20,13 +20,4 @@ class Command(BaseCommand):
         parent = EgeriaImport.objects.create(created_by=None)
         parent.file = SimpleUploadedFile(options['infile'].name, options['infile'].read())
         parent.save()
-
-        parent.analyze()
-
-        # Utwórz diffy
-        # TODO: zrób to kiedyś
-        raise NotImplementedError("zrób to dobrze kiedyś")
-        parent.diff_tytuly(parent)
-        parent.diff_funkcje(parent)
-
-
+        parent.everything()
