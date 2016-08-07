@@ -4,6 +4,30 @@ from egeria.models.jednostka import Diff_Jednostka_Create, Diff_Jednostka_Delete
 from .base import BaseDiffProducer
 
 class JednostkaDiffProducer(BaseDiffProducer):
+    """
+    Jednostka po nazwie
+    - czy jest w bazie:
+        TAK:
+            - czy jest to ten sam wydział?
+                TAK: nic
+                NIE: zaktualizuj wydział,
+            - czy jest widoczna i dostępna dla raportów?
+                TAK: nic
+                NIE: zaktualizuj widoczność
+
+        NIE:
+            - utwórz jednostkę, tworząc wcześniej wydział
+
+    Sprawdź wszystkie jednostki w bazie:
+    - czy jest w pliku XLS?
+        TAK: nic nie rób,
+        NIE: ukryj z raportów, ukryj jednostkę, ustaw wydział na "Jednostki Dawne"
+        (pierwszy archiwalny wydział w bazie danych, wg kolejności ID)
+
+    :param egeria_import:
+    :return:
+    """
+
     create_class = Diff_Jednostka_Create
     update_class = Diff_Jednostka_Update
     delete_class = Diff_Jednostka_Delete
