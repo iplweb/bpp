@@ -93,16 +93,18 @@ def preauth_admin_browser(admin_user, client, browser, live_server, django_user_
 def uczelnia(db):
     return Uczelnia.objects.get_or_create(skrot='TE', nazwa='Testowa uczelnia')[0]
 
-
+@pytest.mark.django_db
 def _wydzial_maker(nazwa, skrot, uczelnia, **kwargs):
     return Wydzial.objects.get_or_create(uczelnia=uczelnia, skrot=skrot, nazwa=nazwa, **kwargs)[0]
 
 
+@pytest.mark.django_db
 @pytest.fixture
 def wydzial_maker(db):
     return _wydzial_maker
 
 
+@pytest.mark.django_db
 @pytest.fixture(scope="function")
 def wydzial(uczelnia, db):
     return _wydzial_maker(uczelnia=uczelnia, skrot='W1', nazwa=u'Wydział Testowy I')
@@ -117,7 +119,7 @@ def _autor_maker(imiona, nazwisko, tytul="dr. ", **kwargs):
 def autor_maker(db):
     return _autor_maker
 
-
+@pytest.mark.django_db
 @pytest.fixture(scope="function")
 def autor_jan_nowak(db):
     return _autor_maker(imiona="Jan", nazwisko="Nowak")
@@ -136,11 +138,15 @@ def autor_jan_kowalski(db):
 def _jednostka_maker(nazwa, skrot, wydzial, **kwargs):
     return Jednostka.objects.get_or_create(nazwa=nazwa, skrot=skrot, wydzial=wydzial, **kwargs)[0]
 
-
+@pytest.mark.django_db
 @pytest.fixture(scope="function")
 def jednostka(wydzial, db):
     return _jednostka_maker("Jednostka Uczelni", skrot="Jedn. Ucz.", wydzial=wydzial)
 
+@pytest.mark.django_db
+@pytest.fixture(scope="function")
+def obca_jednostka(wydzial, db):
+    return _jednostka_maker("Obca Jednostka", skrot="OJ", wydzial=wydzial, obca_jednostka=True)
 
 @pytest.fixture
 def jednostka_maker(db):
@@ -198,6 +204,7 @@ def _wydawnictwo_ciagle_maker(**kwargs):
     return _wydawnictwo_maker(Wydawnictwo_Ciagle, **kwargs)
 
 
+@pytest.mark.django_db
 @pytest.fixture
 def wydawnictwo_ciagle_maker(db):
     return _wydawnictwo_ciagle_maker
