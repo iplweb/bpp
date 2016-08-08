@@ -3,15 +3,17 @@
 
 from md5 import md5
 
+import datetime
 import pytest
 from django.core.management import call_command
+from django.utils import timezone
 
 from bpp.models.autor import Tytul, Funkcja_Autora, Autor_Jednostka, Autor
 from bpp.models.struktura import Uczelnia, Wydzial, Jednostka
 from egeria.models import EgeriaRow, AlreadyAnalyzedError, Diff_Tytul_Create, Diff_Tytul_Delete, \
     Diff_Funkcja_Autora_Create, Diff_Funkcja_Autora_Delete, Diff_Wydzial_Delete, Diff_Wydzial_Create, zrob_skrot, \
     Diff_Jednostka_Create, Diff_Jednostka_Update, Diff_Jednostka_Delete
-from egeria.models.autor import Diff_Autor_Create
+from egeria.models.autor import Diff_Autor_Create, Diff_Autor_Delete
 
 
 @pytest.mark.django_db
@@ -492,3 +494,39 @@ def test_models_Diff_Autor_Create(jednostka, funkcje_autorow, tytuly):
     # Upewnij się, że powstał obiekt
     assert Autor_Jednostka.objects.all().count() == 1
     assert Autor_Jednostka.objects.all().first().autor.nazwisko == "Foo"
+
+
+@pytest.mark.django_db
+def test_models_Diff_Autor_Delete_check_if_needed(autor_jan_nowak, jednostka, obca_jednostka, wydawnictwo_ciagle):
+    # Autor bez rekordow
+    assert Diff_Autor_Delete.check_if_needed(autor_jan_nowak) == True
+
+    # Autor z rekordem, ale bez jednostek
+    wydawnictwo_ciagle.dodaj_autora(autor_jan_nowak, jednostka)
+    assert Diff_Autor_Delete.check_if_needed(autor_jan_nowak) == True
+
+    # Autor z rekordem, ale aktualna jednostka to obca jednostka
+    Autor_Jednostka.objects.create(
+        autor=autor_jan_nowak,
+        jednostka=obca_jednostka,
+        rozpoczal_prace=timezone.now(),
+    )
+    autor_jan_nowak.save()
+    assert autor_jan_nowak.aktualna_jednostka == obca_jednostka
+    assert Diff_Autor_Delete.check_if_needed(autor_jan_nowak) != True
+    Autor_Jednostka.objects.all().delete()
+
+    # Autor z rekordem, ale aktualna jednsotka jest nie-obca
+    Autor_Jednostka.objects.create(
+        autor=autor_jan_nowak,
+        jednostka=jednostka,
+        rozpoczal_prace=timezone.now(),
+    )
+    autor_jan_nowak.save()
+    assert autor_jan_nowak.aktualna_jednostka == jednostka
+    assert Diff_Autor_Delete.check_if_needed(autor_jan_nowak) == True
+
+@pytest.mark.django_db
+def test_models_Diff_Autor_Delete_commit(autor_jan_nowak, jednostka, obca_jednostka, wydawnictwo_ciagle):
+    # TU SKONCZYLEM
+    raise NotImplementedError
