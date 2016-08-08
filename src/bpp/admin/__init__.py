@@ -148,13 +148,13 @@ admin.site.register(Uczelnia, UczelniaAdmin)
 
 class WydzialAdmin(RestrictDeletionToAdministracjaGroupMixin, ZapiszZAdnotacjaMixin, CommitedModelAdmin):
     list_display = ['nazwa', 'skrot', 'uczelnia', 'kolejnosc', 'widoczny', 'ranking_autorow',
-                    'archiwalny', 'pbn_id']
-    list_filter = ['uczelnia', 'zezwalaj_na_ranking_autorow', 'widoczny', 'archiwalny']
+                    'archiwalny', 'wirtualny', 'pbn_id']
+    list_filter = ['uczelnia', 'zezwalaj_na_ranking_autorow', 'widoczny', 'archiwalny', 'wirtualny']
     fieldsets = (
         (None, {
             'fields': (
                 'uczelnia', 'nazwa', 'skrot', 'pbn_id', 'opis', 'kolejnosc', 'widoczny',
-                'zezwalaj_na_ranking_autorow', 'archiwalny'),
+                'zezwalaj_na_ranking_autorow', 'archiwalny', 'wirtualny'),
         }),
         HISTORYCZNY_FIELDSET,
         ADNOTACJE_FIELDSET
@@ -182,16 +182,16 @@ class Autor_JednostkaInline(admin.TabularInline):
 
 class JednostkaAdmin(RestrictDeletionToAdministracjaGroupMixin, ZapiszZAdnotacjaMixin, CommitedModelAdmin):
     list_display = ('nazwa', 'skrot', 'wydzial', 'widoczna',
-                    'wchodzi_do_raportow', 'pbn_id')
+                    'wchodzi_do_raportow', 'wirtualna', 'obca_jednostka', 'pbn_id')
     fields = None
-    list_filter = ('wydzial', 'widoczna', 'wchodzi_do_raportow')
+    list_filter = ('wydzial', 'widoczna', 'wchodzi_do_raportow', 'wirtualna', 'obca_jednostka')
     search_fields = ['nazwa', 'skrot', 'wydzial__nazwa']
     # inlines = [Autor_JednostkaInline,]
     fieldsets = (
         (None, {
             'fields': (
                 'nazwa', 'skrot', 'wydzial', 'pbn_id', 'opis', 'widoczna',
-                'wchodzi_do_raportow', 'email', 'www'),
+                'wchodzi_do_raportow', 'wirtualna', 'obca_jednostka', 'email', 'www'),
         }),
         HISTORYCZNY_FIELDSET,
         ADNOTACJE_FIELDSET)
