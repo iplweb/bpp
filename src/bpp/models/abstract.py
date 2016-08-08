@@ -8,6 +8,7 @@ from decimal import Decimal
 from django.core.exceptions import ValidationError
 
 from django.db import models
+from django.utils import timezone
 from djorm_pgfulltext.fields import VectorField
 from lxml.etree import SubElement
 
@@ -459,6 +460,18 @@ class PBNSerializerHelperMixin:
                 k.text = elem.strip()
 
     def eksport_pbn_public_uri(self, toplevel, wydzial=None, autorzy_klass=None):
+
+        # Zachowanie opisuje issue-449 w Mantis, E-maile od elad@ i rbb@ z 3.08.2016,
+        # a konkretnie:
+        # 1) jeżeli jest pole „Adres WWW (wolny dostęp)”, to użyć tego pola
+        # 2) jeżeli pole „Adres WWW (wolny dostęp)” jest puste, użyć Pubmed ID do wygenerowania adresu na Pubmed
+        # i użyć tego adresu URL,
+        #       zgodnie z instrukcją na PubMed, http://www.ncbi.nlm.nih.gov/books/NBK3862/
+        #       żeby otworzyć pracę mając jej PubmedID wystarczy wejść na stronę:
+        #           http://www.ncbi.nlm.nih.gov/pubmed/[pubmed id]
+        #       przykładowo: http://www.ncbi.nlm.nih.gov/pubmed/18276894
+        # 3) jeżeli brak PubmedID, to… pozostawić to pole puste.
+
         def exp_www(www):
             try:
                 url_validator(www)
@@ -469,8 +482,14 @@ class PBNSerializerHelperMixin:
         if self.public_www:
             exp_www(self.public_www)
 
-        elif self.www:
-            exp_www(self.www)
+        elif hasattr(self, 'pubmed_id'):
+            if self.pubmed_id:
+                exp_www("http://www.ncbi.nlm.nih.gov/pubmed/%s" % self.pubmed_id)
+
+        # tego ma nie być w polu public-uri:
+
+        # elif self.www:
+        #     exp_www(self.www)
 
 
     def eksport_pbn_open_access(self, toplevel, wydzial=None, autorzy_klass=None):
@@ -569,5 +588,40 @@ class ModelZOpenAccess(models.Model):
 
 class ModelZDOI(models.Model):
     doi = DOIField("DOI", null=True, blank=True, db_index=True)
+    class Meta:
+        abstract = True
+
+
+class ModelZAktualizacjaDlaPBN(models.Model):
+    #
+    # Obiekt subklasujący tę klasę musi subklasować również DirtyFieldsMixin
+    #
+
+    ostatnio_zmieniony_dla_pbn = models.DateTimeField(
+        "Ostatnio zmieniony (dla PBN)",
+        auto_now_add=True,
+        help_text="""Moment ostatniej aktualizacji rekordu dla potrzeb PBN. To pole zmieni się automatycznie, gdy
+        nastąpi zmiana dowolnego z pól za wyjątkiem bloków pól: „punktacja”, „punktacja komisji centralnej”,
+        „adnotacje” oraz pole „status korekty”."""
+    )
+
+    def save(self, *args, **kw):
+        if self.pk is not None:
+            if self.is_dirty():
+                flds = self.get_dirty_fields(verbose=True)
+                flds_keys = flds.keys()
+                from bpp.admin.helpers import MODEL_PUNKTOWANY, MODEL_PUNKTOWANY_KOMISJA_CENTRALNA
+
+                for elem in MODEL_PUNKTOWANY + MODEL_PUNKTOWANY_KOMISJA_CENTRALNA + \
+                        ('adnotacje', 'ostatnio_zmieniony', 'ostatnio_zmieniony_dla_pbn',
+                         'opis_bibliograficzny_cache', 'search_index', 'tytul_oryginalny_sort'):
+                    if elem in flds_keys:
+                        flds_keys.remove(elem)
+
+                if flds_keys:
+                    self.ostatnio_zmieniony_dla_pbn = timezone.now()
+
+        super(ModelZAktualizacjaDlaPBN, self).save(*args, **kw)
+
     class Meta:
         abstract = True
