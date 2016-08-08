@@ -11,6 +11,7 @@ from bpp.models.struktura import Uczelnia, Wydzial, Jednostka
 from egeria.models import EgeriaRow, AlreadyAnalyzedError, Diff_Tytul_Create, Diff_Tytul_Delete, \
     Diff_Funkcja_Autora_Create, Diff_Funkcja_Autora_Delete, Diff_Wydzial_Delete, Diff_Wydzial_Create, zrob_skrot, \
     Diff_Jednostka_Create, Diff_Jednostka_Update, Diff_Jednostka_Delete
+from egeria.models.autor import Diff_Autor_Create
 
 
 @pytest.mark.django_db
@@ -471,3 +472,23 @@ def test_egeria_models_core_EgeriaImport_match_autorzy(egeria_import, jednostka)
     egeria_import.match_autorzy()
     row.refresh_from_db()
     assert row.unmatched_because_multiple == True
+
+@pytest.mark.django_db
+def test_models_Diff_Autor_Create(jednostka, funkcje_autorow, tytuly):
+    c = Diff_Autor_Create(
+        nazwisko="Foo",
+        imiona="Bar",
+        pesel_md5="ha",
+
+        jednostka=jednostka,
+        funkcja=funkcje_autorow.first(),
+        tytul=tytuly.first(),
+    )
+
+    c.commit()
+
+    assert Autor.objects.all().count() == 1
+
+    # Upewnij się, że powstał obiekt
+    assert Autor_Jednostka.objects.all().count() == 1
+    assert Autor_Jednostka.objects.all().first().autor.nazwisko == "Foo"

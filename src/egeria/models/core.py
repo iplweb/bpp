@@ -6,6 +6,7 @@ from django.db import models
 from django.conf import settings
 
 from bpp.models.autor import Autor
+from egeria.models.autor import Diff_Autor_Create
 from egeria.models.funkcja_autora import Diff_Funkcja_Autora_Create, Diff_Funkcja_Autora_Delete
 from egeria.models.jednostka import Diff_Jednostka_Create, Diff_Jednostka_Delete, Diff_Jednostka_Update
 from egeria.models.tytul import Diff_Tytul_Create, Diff_Tytul_Delete
@@ -158,6 +159,11 @@ class EgeriaImport(models.Model):
             elem.save()
 
     def diff_autorzy(self):
+        raise NotImplementedError
+        for element in self.rows().filter(unmatched_because_new=True):
+            Diff_Autor_Create.objects.create(
+
+            )
         raise NotImplementedError
 
     def commit_autorzy(self):
