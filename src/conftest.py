@@ -9,7 +9,7 @@ import pytest
 from django.core.urlresolvers import reverse
 from model_mommy import mommy
 
-from bpp.models.autor import Autor, Tytul
+from bpp.models.autor import Autor, Tytul, Funkcja_Autora
 from bpp.models.patent import Patent
 from bpp.models.praca_doktorska import Praca_Doktorska
 from bpp.models.praca_habilitacyjna import Praca_Habilitacyjna
@@ -44,8 +44,8 @@ def normal_django_user(request, db, django_user_model):  # , django_username_fie
         obj = django_user_model.objects.get(username=NORMAL_DJANGO_USER_LOGIN)
     except django_user_model.DoesNotExist:
         obj = django_user_model.objects.create_user(
-                username=NORMAL_DJANGO_USER_LOGIN,
-                password=NORMAL_DJANGO_USER_PASSWORD)
+            username=NORMAL_DJANGO_USER_LOGIN,
+            password=NORMAL_DJANGO_USER_PASSWORD)
 
     def fin():
         obj.delete()
@@ -79,8 +79,8 @@ def _preauth_session_id_helper(username, password, client, browser, live_server,
 @pytest.fixture
 def preauth_browser(normal_django_user, client, browser, live_server, django_user_model, django_username_field):
     return _preauth_session_id_helper(
-            NORMAL_DJANGO_USER_LOGIN, NORMAL_DJANGO_USER_PASSWORD, client,
-            browser, live_server, django_user_model, django_username_field)
+        NORMAL_DJANGO_USER_LOGIN, NORMAL_DJANGO_USER_PASSWORD, client,
+        browser, live_server, django_user_model, django_username_field)
 
 
 @pytest.fixture
@@ -174,10 +174,10 @@ def _wydawnictwo_maker(klass, **kwargs):
     kl = str(klass).split('.')[-1].replace("'>", "")
 
     kw_wyd = dict(
-            tytul="Tytul %s %s" % (kl, c),
-            tytul_oryginalny="Tytul oryginalny %s %s" % (kl, c),
-            uwagi="Uwagi %s %s" % (kl, c),
-            szczegoly='Szczegóły %s %s' % (kl, c))
+        tytul="Tytul %s %s" % (kl, c),
+        tytul_oryginalny="Tytul oryginalny %s %s" % (kl, c),
+        uwagi="Uwagi %s %s" % (kl, c),
+        szczegoly='Szczegóły %s %s' % (kl, c))
 
     if klass == Patent:
         del kw_wyd['tytul']
@@ -349,12 +349,12 @@ def typy_kbn(db):
 
 def fixture(name):
     return json.load(
-            open(
-                    os.path.abspath(
-                            os.path.join(
-                                    os.path.dirname(__file__),
-                                    "bpp", "fixtures", name)
-                    ), "r"))
+        open(
+            os.path.abspath(
+                os.path.join(
+                    os.path.dirname(__file__),
+                    "bpp", "fixtures", name)
+            ), "r"))
 
 
 @pytest.fixture
@@ -362,10 +362,26 @@ def statusy_korekt(db):
     for elem in fixture("status_korekty.json"):
         Status_Korekty.objects.get_or_create(**elem['fields'])
 
+
+@pytest.fixture
+def funkcje_autorow(db):
+    for elem in fixture("funkcja_autora.json"):
+        Funkcja_Autora.objects.get_or_create(**elem['fields'])
+    return Funkcja_Autora.objects.all()
+
+
+@pytest.fixture
+def tytuly(db):
+    for elem in fixture("tytul.json"):
+        Tytul.objects.get_or_create(**elem['fields'])
+    return Tytul.objects.all()
+
+
 @pytest.fixture
 def typy_odpowiedzialnosci(db):
     for elem in fixture("typ_odpowiedzialnosci.json"):
         Typ_Odpowiedzialnosci.objects.get_or_create(**elem['fields'])
+
 
 @pytest.fixture
 def obiekty_bpp(typy_kbn, charaktery_formalne, jezyki, statusy_korekt, typy_odpowiedzialnosci):
