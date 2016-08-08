@@ -1,3 +1,5 @@
+BRANCH=`git branch | sed -n '/\* /s///p'`
+
 clean:
 	find . -name \*~ -print0 | xargs -0 rm -fv 
 	find . -name \*pyc -print0 | xargs -0 rm -fv 
@@ -6,7 +8,7 @@ boot:
 	vagrant up
 
 vcs:
-	fab vcs
+	fab vcs:${BRANCH}
 
 wheels: 
 	fab wheels
@@ -19,6 +21,13 @@ tests:  vcs wheels prepare
 
 build:
 	fab build
+
+rebuild-staging:
+	vagrant pristine -f staging
+	yes | ssh-keygen -R bpp-staging.localnet
+	yes | ssh-keygen -R bpp-staging
+	yes | ssh-keygen -R 192.168.111.101
+	yes | ansible-playbook ansible/webserver.yml
 
 staging:
 	ansible-playbook ansible/webserver.yml
@@ -55,3 +64,6 @@ rebuild-from-downloaded:
 
 production:
 	ansible-playbook -i "/Volumes/Dane zaszyfrowane/Biblioteka Glowna/ansible/hosts.cfg" ansible/webserver.yml
+
+upload-db-to-staging:
+	fab -pvagrant -H vagrant@bpp-staging.localnet upload_db:zarzadca@bpp.umlub.pl-bpp.backup,staging-bpp,staging-bpp

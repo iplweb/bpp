@@ -65,6 +65,13 @@ class Wydzial(ModelZAdnotacjami, ModelZPBN_ID, ModelHistoryczny):
         przypisywane będą do wydziału o niższym numerze unikalnego identyfikatora (ID)."""
     )
 
+    wirtualny = models.BooleanField(
+        default=False, help_text="""Wydział wirtualny to wydział nie mający odzwierciedlenia
+        w strukturach uczelni, utworzony na potrzeby bazy danych. Przykładowo, może być
+        to wydział skupiający jednostki dawne lub jednostki typu "Obca jednostka", "Doktoranci".
+        Tego typu wydział musi być zarządzany ręcznie - nie będzie usuwany, ukrywany ani aktualizowany
+        przez procedury importujące dane z zewnętrznych systemów. """)
+
     class Meta:
         verbose_name = u"wydział"
         verbose_name_plural = u"wydziały"
@@ -96,11 +103,29 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelHistoryczny):
     email = models.EmailField("E-mail", max_length=128, blank=True, null=True)
     www = models.URLField("WWW", max_length=1024, blank=True, null=True)
 
-    search = VectorField(blank=True, null=True)
+    wirtualna = models.BooleanField(
+        default=False, help_text="""Jednostka wirtualna to jednostka nie mająca odzwierciedlenia
+        w strukturach uczelni, utworzona jedynie na potrzeby bazy danych. Przykładowo, może być
+        to "Obca jednostka" - dla autorów nieindeksowanych, lub też może być to jednostka "Doktoranci".
+        Tego typu jednostka musi być zarządzana ręcznie od strony strukturalnej - nie będzie
+        ukrywana, usuwana ani zmieniana przez procedury importujące dane z zewnętrznych systemów. """)
+
+    obca_jednostka = models.BooleanField(
+        default=False, help_text="""Zaznacz dla jednostki skupiającej autorów nieindeksowanych,
+        np. dla "Obca jednostka" lub "Doktoranci".
+
+                <br/><br/>
+        Jeżeli więcej, niż jedna jednostka w bazie danych ma to pole oznaczone jako 'PRAWDA', autorzy
+        przypisywani będą do jednostki obcej o niższym numerze unikalnego identyfikatora (ID).
+        """
+    )
 
     nie_archiwizuj = models.BooleanField(help_text="""Jeżeli zaznaczono to pole, to przy imporcie danych
     na temat struktury uczelni z zewnętrznych źródeł ta jednostka nie będzie przenoszona do wydziału oznaczonego
     jako archiwalny.""", default=False)
+
+    search = VectorField(blank=True, null=True)
+
     objects = JednostkaManager()
 
     class Meta:

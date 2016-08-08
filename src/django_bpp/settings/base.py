@@ -389,7 +389,7 @@ CELERY_HOST = django_getenv("DJANGO_BPP_CELERY_HOST", "localhost")
 CELERY_PORT = int(django_getenv("DJANGO_BPP_CELERY_PORT", "5672"))
 CELERY_USER = django_getenv("DJANGO_BPP_CELERY_USER", "guest")
 CELERY_PASSWORD = django_getenv("DJANGO_BPP_CELERY_PASSWORD", "guest")
-CELERY_VHOST = django_getenv("DJANGO_BPP_CELERY_VHOST", "localhost")
+CELERY_VHOST = django_getenv("DJANGO_BPP_CELERY_VHOST", "/")
 
 
 BROKER_URL = django_getenv("DJANGO_BPP_BROKER_URL",

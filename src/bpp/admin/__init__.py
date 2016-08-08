@@ -148,13 +148,13 @@ admin.site.register(Uczelnia, UczelniaAdmin)
 
 class WydzialAdmin(RestrictDeletionToAdministracjaGroupMixin, ZapiszZAdnotacjaMixin, CommitedModelAdmin):
     list_display = ['nazwa', 'skrot', 'uczelnia', 'kolejnosc', 'widoczny', 'ranking_autorow',
-                    'archiwalny', 'pbn_id']
-    list_filter = ['uczelnia', 'zezwalaj_na_ranking_autorow', 'widoczny', 'archiwalny']
+                    'archiwalny', 'wirtualny', 'pbn_id']
+    list_filter = ['uczelnia', 'zezwalaj_na_ranking_autorow', 'widoczny', 'archiwalny', 'wirtualny']
     fieldsets = (
         (None, {
             'fields': (
                 'uczelnia', 'nazwa', 'skrot', 'pbn_id', 'opis', 'kolejnosc', 'widoczny',
-                'zezwalaj_na_ranking_autorow', 'archiwalny'),
+                'zezwalaj_na_ranking_autorow', 'archiwalny', 'wirtualny'),
         }),
         HISTORYCZNY_FIELDSET,
         ADNOTACJE_FIELDSET
@@ -182,16 +182,16 @@ class Autor_JednostkaInline(admin.TabularInline):
 
 class JednostkaAdmin(RestrictDeletionToAdministracjaGroupMixin, ZapiszZAdnotacjaMixin, CommitedModelAdmin):
     list_display = ('nazwa', 'skrot', 'wydzial', 'widoczna',
-                    'wchodzi_do_raportow', 'pbn_id')
+                    'wchodzi_do_raportow', 'wirtualna', 'obca_jednostka', 'pbn_id')
     fields = None
-    list_filter = ('wydzial', 'widoczna', 'wchodzi_do_raportow')
+    list_filter = ('wydzial', 'widoczna', 'wchodzi_do_raportow', 'wirtualna', 'obca_jednostka')
     search_fields = ['nazwa', 'skrot', 'wydzial__nazwa']
     # inlines = [Autor_JednostkaInline,]
     fieldsets = (
         (None, {
             'fields': (
                 'nazwa', 'skrot', 'wydzial', 'pbn_id', 'opis', 'widoczna',
-                'wchodzi_do_raportow', 'email', 'www'),
+                'wchodzi_do_raportow', 'wirtualna', 'obca_jednostka', 'email', 'www'),
         }),
         HISTORYCZNY_FIELDSET,
         ADNOTACJE_FIELDSET)
@@ -371,7 +371,7 @@ Wydawnictwo_Ciagle_Form.base_fields['uzupelnij_punktacje'] = \
                     {'id': 'uzupelnij_punktacje'}))
 
 
-class Wydawnictwo_CiagleAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
+class Wydawnictwo_CiagleAdmin(AdnotacjeZDatamiOrazPBNMixin, CommitedModelAdmin):
     formfield_overrides = NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW
 
     form = Wydawnictwo_Ciagle_Form
@@ -400,7 +400,7 @@ class Wydawnictwo_CiagleAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
         MODEL_PUNKTOWANY_WYDAWNICTWO_CIAGLE_FIELDSET,
         MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
         POZOSTALE_MODELE_WYDAWNICTWO_CIAGLE_FIELDSET,
-        ADNOTACJE_FIELDSET,
+        ADNOTACJE_Z_DATAMI_ORAZ_PBN_FIELDSET,
         OPENACCESS_FIELDSET)
 
     inlines = (
@@ -411,7 +411,7 @@ class Wydawnictwo_CiagleAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
 admin.site.register(Wydawnictwo_Ciagle, Wydawnictwo_CiagleAdmin)
 
 
-class Wydawnictwo_ZwarteAdmin_Baza(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
+class Wydawnictwo_ZwarteAdmin_Baza(CommitedModelAdmin):
     formfield_overrides = NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW
 
     list_display = ['tytul_oryginalny', 'wydawnictwo', 'typ_kbn',
@@ -439,10 +439,10 @@ class Wydawnictwo_ZwarteAdmin_Baza(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
         MODEL_PUNKTOWANY_FIELDSET,
         MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
         POZOSTALE_MODELE_FIELDSET,
-        ADNOTACJE_FIELDSET)
+        ADNOTACJE_Z_DATAMI_ORAZ_PBN_FIELDSET)
 
 
-class Wydawnictwo_ZwarteAdmin(Wydawnictwo_ZwarteAdmin_Baza):
+class Wydawnictwo_ZwarteAdmin(AdnotacjeZDatamiOrazPBNMixin, Wydawnictwo_ZwarteAdmin_Baza):
     form = autocomplete_light.modelform_factory(Wydawnictwo_Zwarte, fields="__all__")
     inlines = (generuj_inline_dla_autorow(Wydawnictwo_Zwarte_Autor),)
 
@@ -459,7 +459,7 @@ class Wydawnictwo_ZwarteAdmin(Wydawnictwo_ZwarteAdmin_Baza):
         MODEL_PUNKTOWANY_FIELDSET,
         MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
         POZOSTALE_MODELE_WYDAWNICTWO_ZWARTE_FIELDSET,
-        ADNOTACJE_FIELDSET,
+        ADNOTACJE_Z_DATAMI_ORAZ_PBN_FIELDSET,
         OPENACCESS_FIELDSET)
 
 
@@ -476,7 +476,7 @@ HABILITACYJNA_FIELDS = DWA_TYTULY \
                        + MODEL_Z_ROKIEM
 
 
-class Praca_Doktorska_Habilitacyjna_Admin_Base(ZapiszZAdnotacjaMixin,
+class Praca_Doktorska_Habilitacyjna_Admin_Base(AdnotacjeZDatamiMixin,
                                                CommitedModelAdmin):
     formfield_overrides = NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW
 
@@ -510,7 +510,7 @@ class Praca_DoktorskaAdmin(Praca_Doktorska_Habilitacyjna_Admin_Base):
         MODEL_PUNKTOWANY_FIELDSET,
         MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
         POZOSTALE_MODELE_FIELDSET,
-        ADNOTACJE_FIELDSET)
+        ADNOTACJE_Z_DATAMI_FIELDSET)
 
 
 admin.site.register(Praca_Doktorska, Praca_DoktorskaAdmin)
@@ -552,13 +552,13 @@ class Praca_HabilitacyjnaAdmin(Praca_Doktorska_Habilitacyjna_Admin_Base):
         MODEL_PUNKTOWANY_FIELDSET,
         MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
         POZOSTALE_MODELE_FIELDSET,
-        ADNOTACJE_FIELDSET)
+        ADNOTACJE_Z_DATAMI_FIELDSET)
 
 
 admin.site.register(Praca_Habilitacyjna, Praca_HabilitacyjnaAdmin)
 
 
-class Patent_Admin(Wydawnictwo_ZwarteAdmin_Baza):
+class Patent_Admin(AdnotacjeZDatamiMixin, Wydawnictwo_ZwarteAdmin_Baza):
     form = autocomplete_light.modelform_factory(Patent, fields="__all__")
     inlines = (generuj_inline_dla_autorow(Patent_Autor),)
 
@@ -582,7 +582,7 @@ class Patent_Admin(Wydawnictwo_ZwarteAdmin_Baza):
         MODEL_PUNKTOWANY_FIELDSET,
         MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
         POZOSTALE_MODELE_FIELDSET,
-        ADNOTACJE_FIELDSET)
+        ADNOTACJE_Z_DATAMI_FIELDSET)
 
 
 admin.site.register(Patent, Patent_Admin)

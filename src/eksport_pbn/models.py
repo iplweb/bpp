@@ -4,7 +4,7 @@ from django.db import models
 # Create your models here.
 from bpp.models.struktura import Wydzial
 
-DATE_CREATED_ON, DATE_UPDATED_ON = (1, 2)
+DATE_CREATED_ON, DATE_UPDATED_ON, DATE_UPDATED_ON_PBN = (1, 2, 3)
 
 
 class PlikEksportuPBN(models.Model):
@@ -37,8 +37,9 @@ class PlikEksportuPBN(models.Model):
     rodzaj_daty = models.SmallIntegerField(
             verbose_name="Rodzaj pola daty",
             choices=[(DATE_CREATED_ON, "data utworzenia"),
-                     (DATE_UPDATED_ON, "data aktualizacji")],
-            default=0,
+                     (DATE_UPDATED_ON, "data aktualizacji"),
+                     (DATE_UPDATED_ON_PBN, "data aktualizacji dla PBN")],
+            default=3,
             help_text="""Jakie pole z datą będzie używane do wybierania rekordów?""")
 
     # PLAN
@@ -69,7 +70,8 @@ class PlikEksportuPBN(models.Model):
                     buf += u"-" + val
 
         flds = {DATE_CREATED_ON: 'utw',
-                DATE_UPDATED_ON: 'zm'}
+                DATE_UPDATED_ON: 'zm',
+                DATE_UPDATED_ON_PBN: 'zm_pbn'}
 
         if self.od_daty:
             try:
