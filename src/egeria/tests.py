@@ -511,7 +511,7 @@ def test_models_Diff_Autor_Delete_check_if_needed(autor_jan_nowak, jednostka, ob
         jednostka=obca_jednostka,
         rozpoczal_prace=timezone.now(),
     )
-    autor_jan_nowak.save()
+    autor_jan_nowak.refresh_from_db()  # Pobierz zmianę z triggera
     assert autor_jan_nowak.aktualna_jednostka == obca_jednostka
     assert Diff_Autor_Delete.check_if_needed(autor_jan_nowak) != True
     Autor_Jednostka.objects.all().delete()
@@ -522,7 +522,7 @@ def test_models_Diff_Autor_Delete_check_if_needed(autor_jan_nowak, jednostka, ob
         jednostka=jednostka,
         rozpoczal_prace=timezone.now(),
     )
-    autor_jan_nowak.save()
+    autor_jan_nowak.refresh_from_db()  # Pobierz zmianę z triggera
     assert autor_jan_nowak.aktualna_jednostka == jednostka
     assert Diff_Autor_Delete.check_if_needed(autor_jan_nowak) == True
 
@@ -583,8 +583,45 @@ def test_models_Diff_Autor_Delete_commit(autor_jan_nowak, autor_jan_kowalski, je
 
 
 @pytest.mark.django_db
-def test_models_Diff_Autor_Update_check_if_needed(autor_jan_nowak):
-    raise NotImplementedError
+def test_models_Diff_Autor_Update_check_if_needed(autor_jan_nowak, jednostka):
+
+    jednostka.dodaj_autora(autor_jan_nowak)
+
+    nowa_jednostka = Jednostka.objects.create(nazwa="nowa zupelnie", skrot="nzj", wydzial=jednostka.wydzial)
+    nowy_tytul = Tytul.objects.create(nazwa="nowy tytul", skrot="nt")
+    nowa_funkcja_autora = Funkcja_Autora.objects.create(nazwa="nowa funkcja autora", skrot="nfa")
+
+    obecna_jednostka = autor_jan_nowak.aktualna_jednostka
+    obecny_tytul = autor_jan_nowak.tytul
+    obecna_funkcja_autora = autor_jan_nowak.aktualna_funkcja
+
+    assert Diff_Autor_Update.check_if_needed(dict(
+        reference=autor_jan_nowak,
+        jednostka=obecna_jednostka,
+        tytul=obecny_tytul,
+        funkcja=obecna_funkcja_autora
+    )) != True
+
+    assert Diff_Autor_Update.check_if_needed(dict(
+        reference=autor_jan_nowak,
+        jednostka=nowa_jednostka,
+        tytul=obecny_tytul,
+        funkcja=obecna_funkcja_autora
+    )) == True
+
+    assert Diff_Autor_Update.check_if_needed(dict(
+        reference=autor_jan_nowak,
+        jednostka=obecna_jednostka,
+        tytul=nowy_tytul,
+        funkcja=obecna_funkcja_autora
+    )) == True
+
+    assert Diff_Autor_Update.check_if_needed(dict(
+        reference=autor_jan_nowak,
+        jednostka=obecna_jednostka,
+        tytul=obecny_tytul,
+        funkcja=nowa_funkcja_autora
+    )) == True
 
 
 @pytest.mark.django_db
@@ -596,3 +633,6 @@ def test_models_Diff_Autor_Update_commit(autor_jan_nowak, tytuly, funkcje_autoro
         jednostka=druga_jednostka
     ).commit()
 
+    assert autor_jan_nowak.aktualna_jednostka == druga_jednostka
+    assert autor_jan_nowak.aktualna_funkcja == funkcje_autorow.last()
+    assert autor_jan_nowak.tytul == tytuly.first()
