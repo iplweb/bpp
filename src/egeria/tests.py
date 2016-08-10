@@ -3,7 +3,7 @@
 
 from md5 import md5
 
-import datetime
+from datetime import timedelta
 import pytest
 from django.core.management import call_command
 from django.utils import timezone
@@ -13,7 +13,7 @@ from bpp.models.struktura import Uczelnia, Wydzial, Jednostka
 from egeria.models import EgeriaRow, AlreadyAnalyzedError, Diff_Tytul_Create, Diff_Tytul_Delete, \
     Diff_Funkcja_Autora_Create, Diff_Funkcja_Autora_Delete, Diff_Wydzial_Delete, Diff_Wydzial_Create, zrob_skrot, \
     Diff_Jednostka_Create, Diff_Jednostka_Update, Diff_Jednostka_Delete
-from egeria.models.autor import Diff_Autor_Create, Diff_Autor_Delete
+from egeria.models.autor import Diff_Autor_Create, Diff_Autor_Delete, Diff_Autor_Update
 
 
 @pytest.mark.django_db
@@ -527,6 +527,72 @@ def test_models_Diff_Autor_Delete_check_if_needed(autor_jan_nowak, jednostka, ob
     assert Diff_Autor_Delete.check_if_needed(autor_jan_nowak) == True
 
 @pytest.mark.django_db
-def test_models_Diff_Autor_Delete_commit(autor_jan_nowak, jednostka, obca_jednostka, wydawnictwo_ciagle):
-    # TU SKONCZYLEM
+def test_models_Diff_Autor_Delete_commit(autor_jan_nowak, autor_jan_kowalski, jednostka, obca_jednostka, druga_jednostka, wydawnictwo_ciagle):
+
+    # Skasuj autora bez powiazan
+    dad = Diff_Autor_Delete.objects.create(reference=autor_jan_nowak)
+    dad.commit()
+    with pytest.raises(Diff_Autor_Delete.DoesNotExist):
+        dad.refresh_from_db()
+
+    # "Skasuj" autora z powiazaniami, czyli:
+    # - zakończ pracę we wszystkich jednostkach
+    # - dodaj obca jednostke do jego jednostek,
+    aj = Autor_Jednostka.objects.create(
+        autor=autor_jan_kowalski,
+        jednostka=jednostka)
+
+    # Autor musi mieć powiązania z jakimikolwiek rekordami, aby być przeniesiony do "Obcej jednostki",
+    wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
+
+    dad = Diff_Autor_Delete.objects.create(reference=autor_jan_kowalski)
+    dad.commit()
+    with pytest.raises(Diff_Autor_Delete.DoesNotExist):
+        dad.refresh_from_db()
+
+    assert Autor_Jednostka.objects.all().count() == 2
+
+    # "Skasuj" autora z powiązaniami, ale z już dodaną obcą jednostką, czyli:
+    # - zakończ pracę we wszystkich jednostkach
+    # - rozpocznij pracę w obcej jednostce
+    trzy_miesiace_temu = (timezone.now() - timedelta(days=90)).date()
+    autor_jan_stefan = Autor.objects.create(nazwisko="Stefan", imiona="Jan")
+    wydawnictwo_ciagle.dodaj_autora(autor_jan_stefan, jednostka)
+    aj1 = Autor_Jednostka.objects.create(autor=autor_jan_stefan, jednostka=jednostka)
+    aj2 = Autor_Jednostka.objects.create(autor=autor_jan_stefan, jednostka=obca_jednostka)
+    aj3 = Autor_Jednostka.objects.create(autor=autor_jan_stefan, jednostka=druga_jednostka,
+                                         zakonczyl_prace=trzy_miesiace_temu)
+
+
+    dad = Diff_Autor_Delete.objects.create(reference=autor_jan_stefan)
+    dad.commit()
+    with pytest.raises(Diff_Autor_Delete.DoesNotExist):
+        dad.refresh_from_db()
+
+    for elem in aj1, aj2, aj3:
+        elem.refresh_from_db()
+
+    assert aj1.rozpoczal_prace == None
+    assert aj1.zakonczyl_prace != None
+
+    assert aj2.rozpoczal_prace == timezone.now().date()
+    assert aj2.zakonczyl_prace == None
+
+    assert aj3.rozpoczal_prace == None
+    assert aj3.zakonczyl_prace == trzy_miesiace_temu
+
+
+@pytest.mark.django_db
+def test_models_Diff_Autor_Update_check_if_needed(autor_jan_nowak):
     raise NotImplementedError
+
+
+@pytest.mark.django_db
+def test_models_Diff_Autor_Update_commit(autor_jan_nowak, tytuly, funkcje_autorow, druga_jednostka):
+    Diff_Autor_Update.objects.create(
+        reference=autor_jan_nowak,
+        tytul=tytuly.first(),
+        funkcja=funkcje_autorow.last(),
+        jednostka=druga_jednostka
+    ).commit()
+
