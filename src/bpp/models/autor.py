@@ -41,9 +41,8 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
     nazwisko = models.CharField(max_length=256, db_index=True)
     tytul = models.ForeignKey(Tytul, blank=True, null=True)
 
-    aktualna_jednostka = models.ForeignKey(
-        'Jednostka', blank=True, null=True,
-        related_name='aktualna_jednostka')
+    aktualna_jednostka = models.ForeignKey('Jednostka', blank=True, null=True, related_name='aktualna_jednostka')
+    aktualna_funkcja = models.ForeignKey('Funkcja_Autora', blank=True, null=True, related_name='aktualna_funkcja')
 
     pokazuj_na_stronach_jednostek = models.BooleanField(default=True)
 
@@ -128,14 +127,6 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
         for jednostka in self.jednostki.all():
             self.defragmentuj_jednostke(jednostka)
 
-        self.aktualna_jednostka = None
-        for elem in Autor_Jednostka.objects.filter(autor=self) \
-                            .exclude(rozpoczal_prace=None) \
-                            .order_by('-rozpoczal_prace')[:1]:
-            self.aktualna_jednostka = elem.jednostka
-            super(Autor, self).save(*args, **kw)
-            break
-
         return ret
 
     def afiliacja_na_rok(self, rok, wydzial, rozszerzona=False):
@@ -201,20 +192,6 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
         from bpp.models.cache import Rekord
         return Rekord.objects.prace_autora(self).values_list(
             'rok', flat=True).distinct().order_by('rok')
-
-    def ostatnia_jednostka(self):
-        """Zwróć ostatnią jednostkę autora - czyli taką, w której albo
-        obecnie pracuje, albo taką, która ma najwyższe ID wśród wszystkich
-        jednostek."""
-        if self.jednostki.count():
-            try:
-                return Autor_Jednostka.objects.filter(
-                    autor=self).exclude(
-                    rozpoczal_prace=None).order_by(
-                    '-rozpoczal_prace', '-pk')[0].jednostka
-            except IndexError:
-                return Autor_Jednostka.objects.filter(
-                    autor=self).order_by('-rozpoczal_prace', '-pk')[0].jednostka
 
     def eksport_pbn_serializuj(self, tagname='author', affiliated=True, employed=True):
         author = Element(tagname)
