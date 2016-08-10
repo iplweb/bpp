@@ -207,26 +207,6 @@ class TestAutor(TestCase):
             a.prace_w_latach()[0],
             ROK)
 
-    def test_ostatnia_jednostka_1(self):
-        a = any_autor()
-        j1 = any_jednostka()
-        j1.dodaj_autora(a)
-
-        j2 = any_jednostka()
-        j2.dodaj_autora(a)
-
-        self.assertEquals(a.ostatnia_jednostka(), j2)
-
-    def test_ostatnia_jednostka_2(self):
-        a = any_autor()
-
-        j2 = any_jednostka()
-        j2.dodaj_autora(a, rozpoczal_prace=date(CURRENT_YEAR, 1, 1))
-
-        j1 = any_jednostka()
-        j1.dodaj_autora(a)
-
-        self.assertEquals(a.ostatnia_jednostka(), j2)
 
 
 class TestAutor_Jednostka(TestCase):

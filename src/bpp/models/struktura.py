@@ -148,9 +148,13 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelHistoryczny):
         return ret
 
     def dodaj_autora(self, autor, funkcja=None, rozpoczal_prace=None, zakonczyl_prace=None):
-        return Autor_Jednostka.objects.create(
+        ret = Autor_Jednostka.objects.create(
             autor=autor, jednostka=self, funkcja=funkcja,
             rozpoczal_prace=rozpoczal_prace, zakonczyl_prace=zakonczyl_prace)
+        # Odśwież obiekt - pobierz ewentualną zmiane pola 'aktualna_jednostka', obsługiwaną
+        # przez trigger bazodanowy (migracja 0046)
+        autor.refresh_from_db()
+        return ret
 
     zatrudnij = dodaj_autora
 

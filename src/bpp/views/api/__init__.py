@@ -81,7 +81,7 @@ class OstatniaJednostkaView(JSONResponseMixin, View):
         except Autor.DoesNotExist:
             return HttpResponseNotFound("Autor")
 
-        jed = a.ostatnia_jednostka()
+        jed = a.aktualna_jednostka
         if jed is None:
             return HttpResponseNotFound("Jednostka")
 
