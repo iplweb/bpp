@@ -145,6 +145,11 @@ def jednostka(wydzial, db):
 
 @pytest.mark.django_db
 @pytest.fixture(scope="function")
+def druga_jednostka(wydzial, db):
+    return _jednostka_maker("Druga Jednostka Uczelni", skrot="Dr. Jedn. Ucz.", wydzial=wydzial)
+
+@pytest.mark.django_db
+@pytest.fixture(scope="function")
 def obca_jednostka(wydzial, db):
     return _jednostka_maker("Obca Jednostka", skrot="OJ", wydzial=wydzial, obca_jednostka=True)
 
