@@ -34,6 +34,39 @@ class Diff_Autor_Create(models.Model):
             rozpoczal_prace=timezone.now().date(),
         )
 
+class Diff_Autor_Update(models.Model):
+    """
+    Autor może mieć aktualizowany:
+    * tytuł,
+    * główną jednostkę, w której pracuje,
+    * funkcję w głównej jednostce, w której pracuje.
+
+    """
+
+    reference = models.ForeignKey('bpp.Autor')
+
+    jednostka = models.ForeignKey('bpp.Jednostka')
+    tytul = models.ForeignKey('bpp.Tytul')
+    funkcja = models.ForeignKey('bpp.Funkcja_Autora')
+
+    @classmethod
+    def check_if_needed(cls, elem):
+        reference, jednostka, tytul, funkcja = elem['reference'], elem['jednostka'], elem['tytul'], elem['funkcja']
+
+        if reference.tytul != tytul:
+            return True
+
+        if reference.aktualna_jednostka != jednostka:
+            return True
+
+        for elem in reference.autor_jednostka_set \
+            .filter(jednostka=jednostka, zakonczyl_prace=None) \
+            .exclude(rozpoczal_prace=None):
+            if elem.funkcja_autora != funkcja:
+                return True
+
+    def commit(self):
+        raise NotImplementedError
 
 class Diff_Autor_Delete(models.Model):
     """
@@ -81,22 +114,29 @@ class Diff_Autor_Delete(models.Model):
             self.delete()
             return
 
-        # Zakończ prace we wszystkich jednostkach
-        for elem in Autor_Jednostka.objects.filter(autor=self.reference).exclude(jednostka__obca_jednostka=True):
+        # Zakończ prace we wszystkich jednostkach, w których jest rozpoczęta
+        for elem in Autor_Jednostka.objects.filter(autor=self.reference, zakonczyl_prace=None)\
+                .exclude(jednostka__obca_jednostka=True):
             elem.zakonczyl_prace = timezone.now().date()
             elem.save()
 
-        mial_obca = False
         for elem in Autor_Jednostka.objects.filter(autor=self.reference, jednostka__obca_jednostka=True):
             elem.rozpoczal_prace = timezone.now().date()
             elem.zakonczyl_prace = None
             elem.save()
+
+            # Zapisz autora za pomocą metody 'Save', aby ustawić poprawnie pole "ostatnia_jednostka"
+            self.reference.save()
+            self.delete()
             return
 
-        if not mial_obca:
-            Autor_Jednostka.objects.create(
-                autor=self.reference,
-                jednostka=Jednostka.objects.filter(obca_jednostka=True).first(),
-                rozpoczal_prace=timezone.now().date(),
-                zakonczyl_prace=None,
-            )
+        # Autor nie miał dopisanej żadnej jednostki jako "Obca jednostka", dopisz go teraz
+        Autor_Jednostka.objects.create(
+            autor=self.reference,
+            jednostka=Jednostka.objects.filter(obca_jednostka=True).first(),
+            rozpoczal_prace=timezone.now().date(),
+            zakonczyl_prace=None,
+        )
+        # Zapisz autora za pomocą metody 'Save', aby ustawić poprawnie pole "ostatnia_jednostka"
+        self.reference.save()
+        self.delete()
