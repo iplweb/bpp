@@ -1,9 +1,9 @@
 # -*- encoding: utf-8 -*-
 
 
+from datetime import timedelta
 from md5 import md5
 
-from datetime import timedelta
 import pytest
 from django.core.management import call_command
 from django.utils import timezone
