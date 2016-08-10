@@ -59,14 +59,45 @@ class Diff_Autor_Update(models.Model):
         if reference.aktualna_jednostka != jednostka:
             return True
 
-        for elem in reference.autor_jednostka_set \
-            .filter(jednostka=jednostka, zakonczyl_prace=None) \
-            .exclude(rozpoczal_prace=None):
-            if elem.funkcja_autora != funkcja:
-                return True
+        if reference.aktualna_funkcja != funkcja:
+            return True
 
     def commit(self):
-        raise NotImplementedError
+        autor = self.reference
+        needs_saving = False
+
+        if autor.tytul != self.tytul:
+            autor.tytul = self.tytul
+            needs_saving = True
+
+        if autor.aktualna_jednostka != self.jednostka:
+            # Zakończ pracę we wszystkich jednostkach
+            for elem in autor.autor_jednostka_set.all():
+                elem.zakonczyl_prace = timezone.now()
+                elem.save()
+            Autor_Jednostka.objects.create(
+                autor=autor,
+                jednostka=self.jednostka,
+                funkcja=self.funkcja,
+                rozpoczal_prace=timezone.now()
+            )
+            autor.refresh_from_db()
+
+        if autor.aktualna_funkcja != self.funkcja:
+            aj = Autor_Jednostka.objects.get(
+                autor=autor,
+                jednostka=autor.aktualna_jednostka
+            )
+
+            aj.funkcja = self.funkcja
+            aj.save()
+            autor.refresh_from_db()
+
+        if needs_saving:
+            autor.save()
+
+        self.delete()
+
 
 class Diff_Autor_Delete(models.Model):
     """
