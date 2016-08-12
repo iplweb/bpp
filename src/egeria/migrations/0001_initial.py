@@ -8,11 +8,51 @@ from django.conf import settings
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('bpp', '0038_autor_pesel_md5'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
+        ('bpp', '0046_ostatnia_jednostka_trigger'),
     ]
 
     operations = [
+        migrations.CreateModel(
+            name='Diff_Autor_Create',
+            fields=[
+                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
+                ('commited', models.BooleanField(default=False)),
+                ('nazwisko', models.CharField(max_length=200)),
+                ('imiona', models.CharField(max_length=200)),
+                ('pesel_md5', models.CharField(max_length=32)),
+                ('funkcja', models.ForeignKey(to='bpp.Funkcja_Autora')),
+                ('jednostka', models.ForeignKey(to='bpp.Jednostka')),
+            ],
+            options={
+                'abstract': False,
+            },
+        ),
+        migrations.CreateModel(
+            name='Diff_Autor_Delete',
+            fields=[
+                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
+                ('commited', models.BooleanField(default=False)),
+            ],
+            options={
+                'abstract': False,
+            },
+        ),
+        migrations.CreateModel(
+            name='Diff_Autor_Update',
+            fields=[
+                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
+                ('commited', models.BooleanField(default=False)),
+                ('nazwisko', models.CharField(max_length=200)),
+                ('imiona', models.CharField(max_length=200)),
+                ('pesel_md5', models.CharField(max_length=32)),
+                ('funkcja', models.ForeignKey(to='bpp.Funkcja_Autora')),
+                ('jednostka', models.ForeignKey(to='bpp.Jednostka')),
+            ],
+            options={
+                'abstract': False,
+            },
+        ),
         migrations.CreateModel(
             name='Diff_Funkcja_Autora_Create',
             fields=[
@@ -129,6 +169,12 @@ class Migration(migrations.Migration):
                 ('stanowisko', models.CharField(max_length=50)),
                 ('nazwa_jednostki', models.CharField(max_length=300)),
                 ('wydzial', models.CharField(max_length=150)),
+                ('unmatched_because_new', models.BooleanField(default=False)),
+                ('unmatched_because_multiple', models.BooleanField(default=False)),
+                ('matched_autor', models.ForeignKey(to='bpp.Autor', null=True)),
+                ('matched_funkcja', models.ForeignKey(to='bpp.Funkcja_Autora', null=True)),
+                ('matched_jednostka', models.ForeignKey(to='bpp.Jednostka', null=True)),
+                ('matched_tytul', models.ForeignKey(to='bpp.Tytul', null=True)),
                 ('parent', models.ForeignKey(to='egeria.EgeriaImport')),
             ],
         ),
@@ -256,5 +302,55 @@ class Migration(migrations.Migration):
             model_name='diff_funkcja_autora_create',
             name='row',
             field=models.ForeignKey(blank=True, to='egeria.EgeriaRow', null=True),
+        ),
+        migrations.AddField(
+            model_name='diff_autor_update',
+            name='parent',
+            field=models.ForeignKey(to='egeria.EgeriaImport'),
+        ),
+        migrations.AddField(
+            model_name='diff_autor_update',
+            name='reference',
+            field=models.ForeignKey(to='bpp.Autor'),
+        ),
+        migrations.AddField(
+            model_name='diff_autor_update',
+            name='row',
+            field=models.ForeignKey(blank=True, to='egeria.EgeriaRow', null=True),
+        ),
+        migrations.AddField(
+            model_name='diff_autor_update',
+            name='tytul',
+            field=models.ForeignKey(to='bpp.Tytul'),
+        ),
+        migrations.AddField(
+            model_name='diff_autor_delete',
+            name='parent',
+            field=models.ForeignKey(to='egeria.EgeriaImport'),
+        ),
+        migrations.AddField(
+            model_name='diff_autor_delete',
+            name='reference',
+            field=models.ForeignKey(to='bpp.Autor'),
+        ),
+        migrations.AddField(
+            model_name='diff_autor_delete',
+            name='row',
+            field=models.ForeignKey(blank=True, to='egeria.EgeriaRow', null=True),
+        ),
+        migrations.AddField(
+            model_name='diff_autor_create',
+            name='parent',
+            field=models.ForeignKey(to='egeria.EgeriaImport'),
+        ),
+        migrations.AddField(
+            model_name='diff_autor_create',
+            name='row',
+            field=models.ForeignKey(blank=True, to='egeria.EgeriaRow', null=True),
+        ),
+        migrations.AddField(
+            model_name='diff_autor_create',
+            name='tytul',
+            field=models.ForeignKey(to='bpp.Tytul'),
         ),
     ]
