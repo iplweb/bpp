@@ -18,13 +18,24 @@ def test_file_path():
     return test_file
 
 
+def _egeria_import_factory(path):
+    test = EgeriaImport.objects.create(created_by=None)
+    test.file = SimpleUploadedFile(path, open(path).read())
+    test.save()
+    return test
+
 @pytest.fixture
 @pytest.mark.django_db
 def egeria_import(test_file_path):
-    test = EgeriaImport.objects.create(created_by=None)
-    test.file = SimpleUploadedFile(test_file_path, open(test_file_path).read())
-    test.save()
-    return test
+    return _egeria_import_factory(test_file_path)
+
+
+@pytest.fixture
+@pytest.mark.django_db
+def egeria_import_imported(test_file_path):
+    egeria_import = _egeria_import_factory(test_file_path)
+    egeria_import.everything()
+    return egeria_import
 
 
 @pytest.fixture
