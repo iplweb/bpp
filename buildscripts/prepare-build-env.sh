@@ -29,5 +29,8 @@ python manage.py collectstatic --noinput
 
 grunt build
 
+dropdb --if-exists bpp
+createdb bpp 
+
 python manage.py migrate --noinput
 python manage.py compress --force
