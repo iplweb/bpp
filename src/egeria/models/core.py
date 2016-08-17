@@ -2,6 +2,7 @@
 import os
 from md5 import md5
 import xlrd
+from django.core.urlresolvers import reverse
 from django.db import models
 from django.conf import settings
 
@@ -20,8 +21,24 @@ class AlreadyAnalyzedError(Exception):
 class EgeriaImport(models.Model):
     created_on = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True)
-    file = models.FileField(upload_to="egeria_xls")
+    file = models.FileField("Plik XLS", upload_to="egeria_xls")
+
     analyzed = models.BooleanField(default=False)
+
+    # Dla web ui:
+    analysis_level = models.IntegerField(default=0)
+    error = models.BooleanField(default=False)
+    error_message = models.TextField(null=True, blank=True)
+
+
+    class Meta:
+        ordering = ('-created_on',)
+
+    def get_absolute_url(self):
+        return reverse("egeria:detail", args=(self.pk, ))
+
+    def get_title(self):
+        return os.path.basename(self.file.name)
 
     def analyze(self):
         """Wczytuje plik XLS do bazy danych - tworzy potomne rekordy egeria.models.EgeriaRow"""
@@ -38,11 +55,11 @@ class EgeriaImport(models.Model):
             EgeriaRow.objects.create(
                 parent=self,
                 lp=lp,
-                tytul_stopien=tytul_stopien.strip(),
+                tytul_stopien=tytul_stopien.strip().lower(),
                 nazwisko=nazwisko.strip(),
                 imie=imie.strip(),
                 pesel_md5=md5(pesel_md5).hexdigest(),
-                stanowisko=stanowisko.strip(),
+                stanowisko=stanowisko.strip().lower(),
                 nazwa_jednostki=nazwa_jednostki.strip(),
                 wydzial=wydzial.strip()
             )

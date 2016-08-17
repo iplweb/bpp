@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% load staticfiles %}
+{% load compress %}
+{% load i18n %}
+
+{% block title %}
+    Import osób - {{ object.get_title}}
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "egeria:main" %}">import osób</a></li>
+    <li class="current">{{ object.get_title }}</li>
+{% endblock %}
+
+{% block content %}
+    {% include "egeria/object_heading.html" %}
+    {% if not object.analyzed %}
+        Plik nie został jeszcze przeanalizowany. Proszę czekać.
+    {% else %}
+        NotImplemented
+    {% endif %}
+{% endblock %}
