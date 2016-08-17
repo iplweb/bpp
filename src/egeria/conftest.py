@@ -4,6 +4,7 @@ import os
 
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.urlresolvers import reverse
 
 from bpp.models.struktura import Wydzial
 from egeria.models import EgeriaImport
@@ -57,3 +58,10 @@ def wydzial_archiwalny(uczelnia):
         uczelnia=uczelnia,
         archiwalny=True)
     return wydzial_archiwalny
+
+@pytest.fixture
+@pytest.mark.django_db
+def first_page_after_upload(admin_app, test_file_path):
+    page = admin_app.get(reverse("egeria:new"))
+    res = page.form.submit(upload_files=[('file', test_file_path)]).maybe_follow()
+    return res

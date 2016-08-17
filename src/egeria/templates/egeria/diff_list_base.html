@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% load staticfiles %}
+{% load compress %}
+{% load i18n %}
+
+{% block title %}
+    Import osób - {{ object_list.parent.get_title }} - {{ this_title }}
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "egeria:main" %}">import osób</a></li>
+    <li><a href="{{ object_list.parent.get_absolute_url }}">{{ object_list.parent.get_title }}</a></li>
+    <li class="current">{{ this_title }}</li>
+{% endblock %}
+
+{% block content %}
+    {% include "egeria/object_heading.html" with object=object_list.parent %}
+    <h2>{{ this_title }}</h2>
+    {% load pagination_tags %}
+    {% autopaginate object_list %}
+    <p>
+        Zapoznaj się z proponowanymi zmianami do bazy danych. Kliknij przycisk "Zatwierdź" jeżeli się zgadzasz.
+    </p>
+    {% paginate %}
+    <p>
+        {% block table %}
+        {% endblock %}
+    </p>
+    <button type="submit" onclick="location.href='?submit=1';">Zatwierdź</button>
+    <button type="anuluj" onclick="if (confirm('Czy na pewno anulować? Spowoduje to usunięcie tego importu.')) location.href='?cancel=1';">
+        Anuluj
+    </button>
+
+{% endblock %}

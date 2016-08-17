@@ -79,7 +79,7 @@ def test_egeria_models_diff_funkcje(egeria_import, autor_jan_nowak, jednostka):
     egeria_import.analyze()
     egeria_import.diff_funkcje()
 
-    assert u"Asystent dr" in Diff_Funkcja_Autora_Create.objects.all().values_list("nazwa_skrot", flat=True)
+    assert u"asystent dr" in Diff_Funkcja_Autora_Create.objects.all().values_list("nazwa_skrot", flat=True)
     assert u"nikt tego nie ma" not in Diff_Funkcja_Autora_Create.objects.all().values_list("nazwa_skrot", flat=True)
 
     assert u"nikt tego nie ma" in Diff_Funkcja_Autora_Delete.objects.all().values_list("reference__nazwa", flat=True)

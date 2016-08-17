@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% load staticfiles %}
+{% load compress %}
+{% load i18n %}
+
+{% block title %}
+    Import osób
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li class="current">import osób</li>
+{% endblock %}
+
+{% block content %}
+    {% load pagination_tags %}
+    {% autopaginate egeriaimport_list %}
+    {% paginate %}
+    <h1>Pliki importu osób</h1>
+    <a href="{% url "egeria:new" %}">dodaj nowy</a><hr>
+    <table width="80%">
+        <tr>
+            <th>Nazwa pliku</th>
+            <th>Dodany przez</th>
+            <th>Dodany dnia</th>
+            <th>Zanalizowany</th>
+        </tr>
+        {% for element in egeriaimport_list %}
+            <tr>
+                <td><a href="{{ element.get_absolute_url }}">{{ element.get_title }}</a></td>
+                <td>{{ element.created_by }}</td>
+                <td>{{ element.created_on }}</td>
+                <td>{{ element.analyzed }}</td>
+            </tr>
+        {% empty %}
+            <tr>
+            <td colspan="4">
+                <center>Brak elementów</center>
+            </td>
+            </tr>
+        {% endfor %}
+    </table>
+
+{% endblock %}

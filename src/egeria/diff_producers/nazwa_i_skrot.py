@@ -62,7 +62,7 @@ class TytulDiffProducer(NazwaISkrotDiffProducer):
 class Funkcja_AutoraDiffProducer(NazwaISkrotDiffProducer):
     egeria_field = 'stanowisko'
     db_klass = Funkcja_Autora
-    db_klass_field = 'skrot'
+    db_klass_field = 'nazwa'
     create_class = Diff_Funkcja_Autora_Create
     delete_class = Diff_Funkcja_Autora_Delete
     update_class = None
