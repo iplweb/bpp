@@ -12,7 +12,9 @@ from bpp.models.system import Status_Korekty
 
 @pytest.mark.django_db
 def test_models_wydawnictwo_ciagle_dirty_fields_ostatnio_zmieniony_dla_pbn(wydawnictwo_ciagle, wydawnictwo_zwarte, autor_jan_nowak, jednostka, statusy_korekt):
-
+    Licencja_OpenAccess.objects.create(nazwa="lic 1 ", skrot="l1")
+    Licencja_OpenAccess.objects.create(nazwa="lic 2 ", skrot="l2")
+    
     # Licencje muszą być w bazie, jakiekolwiek
     assert Licencja_OpenAccess.objects.all().first() != Licencja_OpenAccess.objects.all().last()
 
