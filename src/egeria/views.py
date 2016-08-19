@@ -34,8 +34,23 @@ class EgeriaImportListView(LoginRequiredMixin, ListView):
 
 
 class DiffListViewBase(LoginRequiredMixin, ListView):
+    """
+    Bazowa klasa widoku obsługująca podgląd diffów.
+
+    Jeżeli atrybut klasy "display_submit_button" jest ustawiony jako True, wyświetla przycisk
+    "Zatwierdź". Jeżeli nie, to będzie wyświetlony przycisk "Następny". Jeden i drugi przycisk
+    powodują przejście do następnego kroku
+    """
+
+    display_submit_button = False
+    next_url = None
+
     def get(self, request, *args, **kwargs):
+        self.object_list = self.get_queryset()
+
         if request.GET.has_key("submit"):
+            self.object_list.parent
+
             raise NotImplementedError
         elif request.GET.has_key("cancel"):
             raise NotImplementedError
@@ -44,6 +59,8 @@ class DiffListViewBase(LoginRequiredMixin, ListView):
 
 
 class Diff_Tytul_CreateListView(DiffListViewBase):
+    allow_submit = False
+
     def get_queryset(self):
         self.parent = EgeriaImport.objects.get(pk=self.kwargs['pk'])
         object_list = Diff_Tytul_Create.objects.filter(parent=self.parent)

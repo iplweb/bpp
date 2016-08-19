@@ -268,30 +268,56 @@ class EgeriaImport(models.Model):
         # os.unlink(self.file.path)
         self.delete()
 
+    def next_import_step(self, return_after_match_autorzy=False):
+        """Ta funkcja wywołuje kolejny krok importu. W ten sposób możemy za pomocą web ui oglądać
+        kolejne fazy importowania: tytuły, funkcje, wydziały, jednostki, autorzy.
+        """
+
+        if self.analysis_level == 0:
+            self.diff_tytuly()
+
+        elif self.analysis_level == 1:
+            self.commit_tytuly()
+            self.match_tytuly()
+            self.diff_funkcje()
+
+        elif self.analysis_level == 2:
+            self.commit_funkcje()
+            self.match_funkcje()
+            self.diff_wydzialy()
+
+        elif self.analysis_level == 3:
+            self.commit_wydzialy()
+            self.diff_jednostki()
+
+        elif self.analysis_level == 4:
+            self.commit_jednostki()
+            self.match_jednostki()
+            self.match_autorzy()
+            if return_after_match_autorzy is not True:
+                self.diff_autorzy()
+
+        elif self.analysis_level == 5:
+            self.commit_autorzy()
+
+        self.analysis_level += 1
+        self.save()
+
     def everything(self, return_after_match_autorzy=False, dont_analyze=False):
+        """
+
+        :param return_after_match_autorzy: powoduje powrót funkcji po etapie matchowania autorów, potrzebne do testów.
+        :param dont_analyze: nie analizuj pliku - w sytuacji gdyby był już przeanalizowany, potrzebne do testów.
+        :return:
+        """
         if dont_analyze is not True:
             self.analyze()
 
-        self.diff_tytuly()
-        self.commit_tytuly()
-        self.match_tytuly()
+        while self.analysis_level < 6:
+            self.next_import_step(return_after_match_autorzy=return_after_match_autorzy)
 
-        self.diff_funkcje()
-        self.commit_funkcje()
-        self.match_funkcje()
-
-        self.diff_wydzialy()
-        self.commit_wydzialy()
-
-        self.diff_jednostki()
-        self.commit_jednostki()
-        self.match_jednostki()
-
-        self.match_autorzy()
-        if return_after_match_autorzy:
-            return
-        self.diff_autorzy()
-        self.commit_autorzy()
+            if (return_after_match_autorzy is True) and (self.analysis_level == 5):
+                return
 
         self.cleanup()
 
