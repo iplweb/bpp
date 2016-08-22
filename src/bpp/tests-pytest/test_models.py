@@ -6,12 +6,22 @@ import time
 from lxml import etree
 
 from bpp.admin.helpers import MODEL_PUNKTOWANY_KOMISJA_CENTRALNA, MODEL_PUNKTOWANY
+from bpp.models.openaccess import Licencja_OpenAccess
 from bpp.models.system import Status_Korekty
 
 
 @pytest.mark.django_db
 def test_models_wydawnictwo_ciagle_dirty_fields_ostatnio_zmieniony_dla_pbn(wydawnictwo_ciagle, wydawnictwo_zwarte, autor_jan_nowak, jednostka, statusy_korekt):
+    Licencja_OpenAccess.objects.create(nazwa="lic 1 ", skrot="l1")
+    Licencja_OpenAccess.objects.create(nazwa="lic 2 ", skrot="l2")
+    
+    # Licencje muszą być w bazie, jakiekolwiek
+    assert Licencja_OpenAccess.objects.all().first() != Licencja_OpenAccess.objects.all().last()
+
     for wyd in wydawnictwo_ciagle, wydawnictwo_zwarte:
+        wyd.openaccess_licencja = Licencja_OpenAccess.objects.all().first()
+        wyd.save()
+
         ost_zm_pbn = wyd.ostatnio_zmieniony_dla_pbn
 
         time.sleep(0.5)
@@ -53,6 +63,16 @@ def test_models_wydawnictwo_ciagle_dirty_fields_ostatnio_zmieniony_dla_pbn(wydaw
         ost_zm_pbn = wyd.ostatnio_zmieniony_dla_pbn
 
         aj.delete()
+        wyd.refresh_from_db()
+        assert ost_zm_pbn != wyd.ostatnio_zmieniony_dla_pbn
+
+        # Test na foreign keys
+        ost_zm_pbn = wyd.ostatnio_zmieniony_dla_pbn
+
+        assert wyd.openaccess_licencja.pk != Licencja_OpenAccess.objects.all().last().pk
+        wyd.openaccess_licencja = Licencja_OpenAccess.objects.all().last()
+        wyd.save()
+
         wyd.refresh_from_db()
         assert ost_zm_pbn != wyd.ostatnio_zmieniony_dla_pbn
 

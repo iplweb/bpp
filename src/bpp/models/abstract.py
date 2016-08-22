@@ -607,8 +607,8 @@ class ModelZAktualizacjaDlaPBN(models.Model):
 
     def save(self, *args, **kw):
         if self.pk is not None:
-            if self.is_dirty():
-                flds = self.get_dirty_fields(verbose=True)
+            if self.is_dirty(check_relationship=True):
+                flds = self.get_dirty_fields(check_relationship=True)
                 flds_keys = flds.keys()
                 from bpp.admin.helpers import MODEL_PUNKTOWANY, MODEL_PUNKTOWANY_KOMISJA_CENTRALNA
 

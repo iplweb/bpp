@@ -1,6 +1,8 @@
 var bppNotifications = bppNotifications || {};
 
-bppNotifications.init = function(channel, host, port, useSSL, soundAlertPath){
+bppNotifications.init = function(channel, host, port, useSSL, messageCookieId, soundAlertPath){
+    this.messageCookieId = messageCookieId;
+
     this.messageAlertSound = null;
     if (Audio && soundAlertPath)
         this.messageAlertSound = new Audio(soundAlertPath);
@@ -31,6 +33,10 @@ bppNotifications.init = function(channel, host, port, useSSL, soundAlertPath){
 
 };
 
+bppNotifications.goTo = function(url){
+    window.location.href = url;
+}
+
 bppNotifications.addMessage = function(message){
     // Uzywane atrybuty z message:
     //  - cssClass,
@@ -40,12 +46,19 @@ bppNotifications.addMessage = function(message){
     //  - hideCloseOption,
     //  - text;
 
-    $("#messagesPlaceholder").append(
-        Mustache.render(
-        $("#messageTemplate").html(),
-        message)
-    );
+    if (message['text']) {
+        $("#messagesPlaceholder").append(
+            Mustache.render(
+                $("#messageTemplate").html(),
+                message)
+        );
 
-    if (bppNotifications.messageAlertSound)
-        bppNotifications.messageAlertSound.play();
+        if (bppNotifications.messageAlertSound)
+            bppNotifications.messageAlertSound.play();
+
+    } else if (message['url']) {
+        if (message['cookieId'] == this.messageCookieId)
+            this.goTo(message['url']);
+    }
+
 };
