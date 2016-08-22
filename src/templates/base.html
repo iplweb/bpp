@@ -217,12 +217,14 @@
                 {% if password_change_required %}
                     <p class='help'>Twoje hasło wygasło. Proszę, zmień je używając formularza poniżej:</p>
                     <form action="." method="post">{% csrf_token %}
-                        {{ form.as_p }}{% if next %}
+                    <fieldset>
+                        <legend>Zmiana hasła</legend>
+                        {{ form.as_table }}{% if next %}
                             <input type="hidden" name="next" value="{{ next }}" />{% endif %}
-                        <input type="submit" value="Submit" />
+                        <input type="submit" value="Zmień hasło" class="submit button" />
+                    </fieldset>
                     </form>
                 {% else %}
-
                     {% block content %}
                     {% endblock %}
                 {% endif %}
