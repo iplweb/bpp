@@ -23,11 +23,15 @@ cd $SCRIPTPATH/../src
 npm --quiet install grunt grunt-sass grunt-contrib-watch grunt-contrib-qunit
 
 rm -rf components/bower_components staticroot
-
 yes n | python manage.py bower_install -F
+echo "2" |python manage.py bower install "jquery#2.2.4"
+
 python manage.py collectstatic --noinput
 
 grunt build
+
+dropdb --if-exists bpp
+createdb bpp 
 
 python manage.py migrate --noinput
 python manage.py compress --force

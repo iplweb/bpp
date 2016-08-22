@@ -107,3 +107,24 @@ QUnit.test( "addMessage closeURL", function( assert ) {
       "Atrybut do zamykania jest OK");
 
 });
+
+QUnit.test( "bppNotifications.init", function( assert ) {
+    var pushstream = sinon.stub(window, "PushStream");
+    pushstream.prototype.addChannel = sinon.stub();
+    pushstream.prototype.connect = sinon.stub();
+
+    bppNotifications.init("foo", "bar", "baz", true, "123", null);
+
+    assert.equal(bppNotifications.messageCookieId, "123");
+    pushstream.restore();
+
+});
+
+QUnit.test( "bppNotifications.goTo", function( assert ) {
+    var goTo = sinon.stub(bppNotifications, "goTo");
+    bppNotifications.messageCookieId = "123"
+    bppNotifications.addMessage({'url': 'www.onet.pl', 'cookieId': "123"});
+    assert.ok(goTo.calledOnce);
+    goTo.restore();
+
+});
