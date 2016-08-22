@@ -114,6 +114,7 @@
                         '{{ NOTIFICATIONS_HOST }}',
                         {{ NOTIFICATIONS_PORT|default:"window.location.port" }},
                         null,
+                        "{% csrf_token %}",
                         "{% static "bpp/wav/alert.wav" %}"
                 );
 
