@@ -17,8 +17,8 @@
 
         {% for elem in object_list %}
             <tr>
-            <td>{{ elem.nazwisko }}</td>
-            <td>{{ elem.imiona }}</td>
+            <td>{{ elem.reference.nazwisko }}</td>
+            <td>{{ elem.reference.imiona }}</td>
             <td>
 
                 {% if elem.reference.tytul != elem.tytul %}

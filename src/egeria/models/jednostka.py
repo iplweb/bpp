@@ -54,10 +54,11 @@ class Diff_Jednostka_Update(Diff_Base):
         return ret
 
     def commit(self):
-        self.reference.widoczna = True
-        self.reference.wchodzi_do_raportow = True
-        self.reference.wydzial = self.wydzial
-        self.reference.save()
+        j = self.reference
+        j.widoczna = True
+        j.wchodzi_do_raportow = True
+        j.wydzial = self.wydzial
+        j.save()
         super(Diff_Jednostka_Update, self).commit()
 
 

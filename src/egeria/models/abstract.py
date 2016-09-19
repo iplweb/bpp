@@ -9,12 +9,8 @@ class Diff_Base(models.Model):
     # opcjonalny odnośnik do wiersza, gdzie znajdują się informacje
     row = models.ForeignKey('EgeriaRow', blank=True, null=True)
 
-    # Czy został dodany do bazy?
-    commited = models.BooleanField(default=False)
-
     def commit(self):
-        self.commited = True
-        self.save()
+        self.delete()
 
     class Meta:
         abstract = True

@@ -20,4 +20,7 @@ class Command(BaseCommand):
         parent = EgeriaImport.objects.create(created_by=None)
         parent.file = SimpleUploadedFile(options['infile'].name, options['infile'].read())
         parent.save()
-        parent.everything()
+        parent.everything(cleanup=False)
+        for elem in parent.unmatched():
+            print elem.nazwisko, elem.imie
+        parent.cleanup()
