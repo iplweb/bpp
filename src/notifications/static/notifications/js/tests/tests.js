@@ -81,7 +81,7 @@ QUnit.test( "addMessage + hideCloseOption=True", function( assert ) {
 
 });
 
-QUnit.test( "addMessage + hideCloseOption default (not specified0", function( assert ) {
+QUnit.test( "addMessage + hideCloseOption default (not specified)", function( assert ) {
 
   bppNotifications.addMessage({
       'text':'aapud',
@@ -113,10 +113,16 @@ QUnit.test( "bppNotifications.init", function( assert ) {
     pushstream.prototype.addChannel = sinon.stub();
     pushstream.prototype.connect = sinon.stub();
 
+    if (window.Audio)
+        var Audio = sinon.stub(window, "Audio");
+
     bppNotifications.init("foo", "bar", "baz", true, "123", null);
 
     assert.equal(bppNotifications.messageCookieId, "123");
     pushstream.restore();
+
+    if (window.Audio)
+        Audio.restore();
 
 });
 

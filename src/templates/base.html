@@ -106,7 +106,8 @@
     </div>
 {# fix pycharm highlighting #}
         <script type="text/javascript" >
-
+            {% load notifications %}
+            {% uuid notifications_uuid %}
             $(document).ready(function(){
 
                 bppNotifications.init(
@@ -114,7 +115,7 @@
                         '{{ NOTIFICATIONS_HOST }}',
                         {{ NOTIFICATIONS_PORT|default:"window.location.port" }},
                         null,
-                        "{% csrf_token %}",
+                        "{{ notifications_uuid }}",
                         "{% static "bpp/wav/alert.wav" %}"
                 );
 

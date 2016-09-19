@@ -18,28 +18,65 @@
     {% autopaginate egeriaimport_list %}
     {% paginate %}
     <h1>Pliki importu osób</h1>
-    <a href="{% url "egeria:new" %}">dodaj nowy</a><hr>
+    <a href="{% url "egeria:new" %}">dodaj nowy</a>
+    <hr>
+
+    <div id="myModal" class="reveal-modal" data-reveal aria-labelledby="modalTitle" aria-hidden="true"
+         role="dialog">
+        <h2 id="modalTitle">Przygotowywanie importu do analizy...</h2>
+        <div style="float: left;">
+            <img src="{% static "bpp/images/giphy.gif" %}" width="48"/>
+        </div>
+
+        <p>Importowanie pliku odbywa się etapami. Za chwilę strona powinna odświeżyć się
+            i przejdziesz do pierwszego etapu importu wymagającego Twojej interwencji.</p>
+    </div>
+
+    <script>
+        function doReset(url) {
+            $('#myModal').foundation('reveal', 'open');
+            $.ajax(url + '?messageId=' + bppNotifications.messageCookieId);
+        }
+    </script>
+
     <table width="80%">
         <tr>
             <th>Nazwa pliku</th>
             <th>Dodany przez</th>
             <th>Dodany dnia</th>
             <th>Zanalizowany</th>
+            <th>Działania</th>
         </tr>
         {% for element in egeriaimport_list %}
-            <tr>
-                <td><a href="{{ element.get_absolute_url }}">{{ element.get_title }}</a></td>
+            <tr id="row-{{ element.pk }}">
+                <td><a href="#"
+                       onclick="doReset('{% url "egeria:reset_import_state" element.pk %}');">{{ element.get_title }}</a>
+                </td>
                 <td>{{ element.created_by }}</td>
                 <td>{{ element.created_on }}</td>
                 <td>{{ element.analyzed }}</td>
+                <td><a href="?delete={{ element.pk }}"
+                       onclick="return confirm('Czy na pewno skasować? Wprowadzone częściowo zmiany z tego ' +
+                        'importu pozostaną w systemie, o ile były takowe dokonane.');">usuń</a>
+                </td>
             </tr>
-        {% empty %}
+            {% empty %}
             <tr>
-            <td colspan="4">
-                <center>Brak elementów</center>
-            </td>
+                <td colspan="5">
+                    <center>Brak elementów</center>
+                </td>
             </tr>
         {% endfor %}
     </table>
+
+    <script>
+        $(window).on("load", function () {
+            var elem = $("tr#row-" + qs("hilite"));
+            elem.fadeTo(200, 0.01, function () {
+                elem.fadeTo(500, 1.0);
+            });
+
+        });
+    </script>
 
 {% endblock %}

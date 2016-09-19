@@ -24,7 +24,7 @@ npm --quiet install grunt grunt-sass grunt-contrib-watch grunt-contrib-qunit
 
 rm -rf components/bower_components staticroot
 yes n | python manage.py bower_install -F
-echo "2" |python manage.py bower install "jquery#2.2.4"
+echo "2" |python manage.py bower install "jquery#2.1.4"
 
 python manage.py collectstatic --noinput
 

@@ -11,7 +11,8 @@ def zrob_skrot(ciag, max_length, klasa, atrybut):
     cyferki.
     """
 
-    pierwsze_litery = "".join([x[0].upper() for x in ciag.split(" ")])[:max_length]
+
+    pierwsze_litery = "".join([x.strip()[0].upper() for x in ciag.split(" ") if x.strip()])[:max_length]
     w_bazie_sa = klasa.objects.all().values_list(atrybut, flat=True).distinct()
     ret = pierwsze_litery
 

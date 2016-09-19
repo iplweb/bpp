@@ -691,6 +691,9 @@ def test_models_Diff_Autor_Update_commit(egeria_import, autor_jan_nowak, tytuly,
 
     nowy_tytul = tytuly.first()
 
+    autor_jan_nowak.tytul = tytuly.last()
+    autor_jan_nowak.save()
+
     assert autor_jan_nowak.aktualna_jednostka != druga_jednostka
     assert autor_jan_nowak.aktualna_funkcja != funkcje_autorow.last()
     assert autor_jan_nowak.tytul != nowy_tytul
@@ -714,12 +717,24 @@ def test_models_Diff_Autor_Update_commit(egeria_import, autor_jan_nowak, tytuly,
 
 
 @pytest.mark.django_db
+def test_models_EgeriaImport_reset_import_steps(egeria_import):
+    egeria_import.everything(cleanup=False)
+    assert egeria_import.analysis_level != 0
+    assert Diff_Autor_Create.objects.all().count() != 0
+
+    egeria_import.reset_import_steps()
+    assert egeria_import.analysis_level == 0
+    assert Diff_Autor_Create.objects.all().count() == 0
+
+
+@pytest.mark.django_db
 def test_models_core_diff_autorzy_creates(egeria_import):
     egeria_import.everything(return_after_match_autorzy=True)
     egeria_import.diff_autorzy()
     assert Diff_Autor_Create.objects.all().count() == 14
     assert Diff_Autor_Update.objects.all().count() == 0
     assert Diff_Autor_Delete.objects.all().count() == 0
+
 
 @pytest.mark.django_db
 def test_models_core_diff_autorzy_updates(egeria_import, egeria_import_imported):

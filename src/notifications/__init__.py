@@ -1,8 +1,11 @@
+# -*- encoding: utf-8 -*-
+
 from collections import namedtuple
 import json
 
 from django.contrib.messages import DEFAULT_TAGS
 import requests
+from django.http.response import HttpResponseRedirect
 
 from .conf import settings
 
@@ -45,3 +48,35 @@ def send_notification(request_or_username, level, text, get_pub_path=get_pub_pat
     if verbose:
         print "Result: ", res
         print res.content
+
+
+def send_redirect(username, redirect_url,  messageCookieId, ignore_proxy_settings=False):
+    """
+
+    :param request_or_username: request lub nazwa użytkownika, który ma zostać poinformowany
+    :param redirect_url: URL do którego strona ma przejść
+    :param messageCookieId: unikalny identyfikator sesji użytkownika, do którego należy wysłać kmounikat
+    :param ignore_proxy_settings: parametr dla biblioteki requests, ignoruj ustawienia proxy
+    :return:
+    """
+
+    proto = getattr(settings, "NOTIFICATIONS_PROTOCOL")
+    host = getattr(settings, "NOTIFICATIONS_HOST")
+    port = getattr(settings, "NOTIFICATIONS_PORT")
+
+    path = get_pub_path(username)
+
+    if port is not None:
+        port = ":%s" % port
+
+    url = "%s://%s%s%s" % (proto, host, port or "", path)
+
+    data=json.dumps(dict(url=redirect_url, cookieId=messageCookieId))
+
+    session = requests.Session()
+    if ignore_proxy_settings:
+        session.trust_env = False
+
+    res = session.post(url=url, data=data)
+
+    return HttpResponseRedirect(redirect_url)

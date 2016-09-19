@@ -65,3 +65,21 @@ def first_page_after_upload(admin_app, test_file_path):
     page = admin_app.get(reverse("egeria:new"))
     res = page.form.submit(upload_files=[('file', test_file_path)]).maybe_follow()
     return res
+
+
+@pytest.fixture
+@pytest.mark.django_db
+def egeria_browser_detail(preauth_browser, live_server, egeria_import):
+    """
+    Zwraca zalogowaną przeglądarkę WWW (Selenium poprzez splitnera),
+    otwarta strona to widok szczegółów zaimportowanego pliku XLS,
+    gdzie plik XLS do importu został już wstępnie przeanalizowany.
+        :return:
+    """
+
+    egeria_import.analyze()
+    egeria_import.next_import_step()
+    # Selenium
+    preauth_browser.visit(live_server + reverse("egeria:detail", args=(egeria_import.pk, )))
+    return preauth_browser
+

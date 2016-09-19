@@ -15,11 +15,12 @@ class Diff_Autor_Base(Diff_Base):
     pesel_md5 = models.CharField(max_length=32)
 
     jednostka = models.ForeignKey('bpp.Jednostka')
-    tytul = models.ForeignKey('bpp.Tytul')
+    tytul = models.ForeignKey('bpp.Tytul', blank=True, null=True)
     funkcja = models.ForeignKey('bpp.Funkcja_Autora')
 
     class Meta:
         abstract = True
+        ordering = ('nazwisko', 'imiona', 'jednostka')
 
 
 class Diff_Autor_Create(Diff_Autor_Base):
@@ -102,7 +103,7 @@ class Diff_Autor_Update(Diff_Autor_Base):
 
         if autor.pesel_md5 != self.pesel_md5:
             if autor.pesel_md5 is not None:
-                raise Exception("Zmiana PESELu - sprawdź poprawność oprogramowania i pliku importu. ")
+                raise Exception("Zmiana PESELu (%r %r) - sprawdź poprawność procedur matchujących i pliku importu. " % (autor.nazwisko, autor.imiona))
             autor.pesel_md5 = self.pesel_md5
             needs_saving = True
 
@@ -163,6 +164,9 @@ class Diff_Autor_Delete(Diff_Base):
             # Jeżeli hgw-gdzie-jest-przypisany, to tak
             # lub tez, jeżeli jest przypisany do innej jednostki, niż obca
             return True
+
+    def this_has_links(self):
+        return self.has_links(self.reference)
 
     def commit(self):
         if not self.has_links(self.reference):

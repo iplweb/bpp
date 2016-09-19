@@ -42,7 +42,7 @@ class JednostkaDiffProducer(BaseDiffProducer):
         """Wartości z importu oprócz wartości w bazie danych
         """
         import_values = self.get_import_values()
-        db_values = dict([(ref.nazwa, ref) for ref in self.get_db_values()])
+        db_values = dict([(ref.nazwa.strip(), ref) for ref in self.get_db_values()])
         for elem in import_values:
             if elem['nazwa_jednostki'] not in db_values:
                 # Nowa jednostka
@@ -62,8 +62,9 @@ class JednostkaDiffProducer(BaseDiffProducer):
     def get_delete_values(self):
         """Wartości z bazy danych oprócz wartości z importu
         """
-        for elem in Jednostka.objects.all().exclude(
-                nazwa__in=self.get_import_values().values_list("nazwa_jednostki", flat=True)):
+        for elem in Jednostka.objects.all()\
+                .exclude(wirtualna=True)\
+                .exclude(nazwa__in=self.get_import_values().values_list("nazwa_jednostki", flat=True)):
             if elem.wydzial.archiwalny is False and elem.nie_archiwizuj != True:
                 # Zwróc wszystkie jednostki nie występujące w pliku importu, które to
                 # nie są w wydziale oznaczonym jako "Archiwalny".

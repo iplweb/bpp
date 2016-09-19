@@ -251,6 +251,13 @@ class Autor_Jednostka_Manager(models.Manager):
             # Nowy system - przy imporcie danych z XLS do nowego systemu jest sytuacja, gdy autor
             # zaczął kiedyśtam prace ALE jej nie zakończył:
             if poprzedni_rekord.zakonczyl_prace is None:
+                if rec.rozpoczal_prace is None and poprzedni_rekord.rozpoczal_prace is not None:
+                    if rec.zakonczyl_prace == poprzedni_rekord.rozpoczal_prace:
+                        usun.append(rec)
+                        poprzedni_rekord.rozpoczal_prace=rec.rozpoczal_prace
+                        poprzedni_rekord.save()
+                        continue
+
                 if rec.rozpoczal_prace >= poprzedni_rekord.rozpoczal_prace:
                     usun.append(rec)
                     poprzedni_rekord.zakonczyl_prace = rec.zakonczyl_prace

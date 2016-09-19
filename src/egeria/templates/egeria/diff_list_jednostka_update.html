@@ -1,0 +1,32 @@
+{% extends "egeria/diff_list_base.html" %}
+
+{% block table %}
+    <strong>{{ list_label }}</strong>
+
+    <table>
+        <tr>
+            <th>Nazwa jednostki</th>
+            <th>Obecny wydział</th>
+            <th>Zmiana wydziału</th>
+            <th>Zmiana widoczności</th>
+        </tr>
+
+        {% for elem in object_list %}
+            <tr>
+                <td>{{ elem.reference.nazwa }}</td>
+                <td>{{ elem.reference.wydzial.nazwa }}</td>
+                <td>
+                    {% if elem.reference.wydzial != elem.wydzial %}
+                        {{ elem.wydzial.nazwa }}
+                    {% endif %}
+                </td>
+                <td>
+                    {% if elem.visibility_changed %}
+                        tak
+                    {% endif %}
+                </td>
+            </tr>
+        {% endfor %}
+
+    </table>
+{% endblock %}

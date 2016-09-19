@@ -5,6 +5,7 @@ from egeria.models import Diff_Tytul_Create, Diff_Tytul_Delete, Diff_Funkcja_Aut
     Diff_Wydzial_Create, Diff_Wydzial_Delete
 from .base import BaseDiffProducer
 
+
 # def diff_nazwa_i_skrot(egeria_import, nazwa_kolumny_w_egerii, klasa, nazwa_kolumny_w_klasie):
 #     current_import = egeria_import.rows()
 #
@@ -26,7 +27,7 @@ from .base import BaseDiffProducer
 
 class NazwaISkrotDiffProducer(BaseDiffProducer):
     def get_import_values(self):
-        return self.parent.rows().values(self.egeria_field).distinct()
+        return self.parent.rows().values(self.egeria_field).distinct().filter()
 
     def get_db_values(self):
         return self.db_klass.objects.all()
@@ -35,7 +36,7 @@ class NazwaISkrotDiffProducer(BaseDiffProducer):
         """Wartości z importu oprócz wartości w bazie danych
         """
         kwargs = {self.egeria_field + "__in": self.get_db_values().values(self.db_klass_field).distinct()}
-        return self.get_import_values().exclude(**kwargs)
+        return self.get_import_values().exclude(**kwargs).exclude(**{self.egeria_field: ""})
 
     def get_delete_values(self):
         """Wartości z bazy danych oprócz wartości z importu
@@ -75,3 +76,11 @@ class WydzialDiffProducer(NazwaISkrotDiffProducer):
     create_class = Diff_Wydzial_Create
     delete_class = Diff_Wydzial_Delete
     update_class = None
+
+    def get_delete_values(self):
+        """Wartości z bazy danych oprócz wartości z importu
+        i oprócz wydziałów wirtualnych
+        """
+        return self.get_db_values() \
+            .exclude(wirtualny=True) \
+            .exclude(nazwa__in=self.get_import_values())

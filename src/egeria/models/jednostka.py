@@ -1,14 +1,18 @@
 # -*- encoding: utf-8 -*-
 
 from django.db import models
-from egeria.models.abstract import Diff_Delete, Diff_Base
+
 from bpp.models import Wydzial, Jednostka
+from egeria.models.abstract import Diff_Delete, Diff_Base
 from .util import zrob_skrot
 
 
 class Diff_Jednostka_Create(Diff_Base):
     nazwa = models.CharField(max_length=512)
     wydzial = models.ForeignKey(Wydzial)
+
+    def __unicode__(self):
+        return " ".join([self.nazwa, "-", self.wydzial.nazwa])
 
     def commit(self):
         Jednostka.objects.create(
@@ -22,6 +26,10 @@ class Diff_Jednostka_Create(Diff_Base):
 class Diff_Jednostka_Update(Diff_Base):
     reference = models.ForeignKey(Jednostka)
     wydzial = models.ForeignKey(Wydzial)
+
+    def visibility_changed(self):
+        if self.reference.widoczna != True or self.reference.wchodzi_do_raportow != True:
+            return True
 
     @classmethod
     def check_if_needed(cls, elem):
@@ -50,6 +58,7 @@ class Diff_Jednostka_Update(Diff_Base):
         self.reference.wchodzi_do_raportow = True
         self.reference.wydzial = self.wydzial
         self.reference.save()
+        super(Diff_Jednostka_Update, self).commit()
 
 
 class Diff_Jednostka_Delete(Diff_Delete):
@@ -78,6 +87,23 @@ class Diff_Jednostka_Delete(Diff_Delete):
 
         return False
 
+    def has_linked(self):
+        r = self.reference
+
+        linked_sets = [x for x in dir(r)
+                       if x.find("_set") > 0
+                       and x.find("_view") == -1
+                       and not x.startswith("__")
+                       and not x.startswith("diff_")
+                       and not x.startswith("autorzy")]
+
+        has_linked = False
+        for elem in linked_sets:
+            if getattr(r, elem).count():
+                has_linked = True
+
+        return has_linked
+
     def commit(self):
         """
         Jeżeli żadne rekordy autorów lub publikacji nie wskazują na tą jednostkę,
@@ -94,26 +120,20 @@ class Diff_Jednostka_Delete(Diff_Delete):
         # danych:
         r = self.reference
 
-        linked_sets = [x for x in dir(r)
-                       if x.find("_set") > 0
-                       and x.find("_view") == -1
-                       and not x.startswith("__")
-                       and not x.startswith("diff_")
-                       and not x.startswith("autorzy")]
-
-        has_linked = False
-        for elem in linked_sets:
-            if getattr(r, elem).count():
-                has_linked = True
-
-        if has_linked:
+        if self.has_linked():
             r.widoczna = r.wchodzi_do_raportow = False
-            archiwalny = Wydzial.objects.filter(archiwalny=True).order_by("pk").first()
-            if archiwalny:
-                r.wydzial = archiwalny
+            if r.wydzial.archiwalny is not True:
+                archiwalny = Wydzial.objects.filter(archiwalny=True).order_by("pk").first()
+                if archiwalny:
+                    r.wydzial = archiwalny
             r.save()
+            self.delete()
             return
 
         r.delete()
         self.delete()
 
+    def will_really_delete(self):
+        if self.has_linked():
+            return False
+        return True
