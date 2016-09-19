@@ -5,7 +5,6 @@ from django.db import migrations, models
 from django.db.migrations.operations.special import RunPython
 
 from bpp.models.struktura import Jednostka
-import pytest
 
 def zaktualizuj(apps, schema_editor):
     Wydzial = apps.get_model("bpp", "Wydzial")
