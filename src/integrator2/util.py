@@ -51,7 +51,7 @@ class ReadDataException(Exception):
     pass
 
 
-def read_xls_data(filename, column_mapping, header_row_name, ignored_sheet_names=None, limit=None, limit_sheets=None):
+def read_xls_data(filename, column_mapping, header_row_name, ignored_sheet_names=None, limit=None, limit_sheets=None, transformations=None):
     """
     Importuje dane z pliku XLS - ze wszystkich kolejnych zeszytów.
 
@@ -59,6 +59,7 @@ def read_xls_data(filename, column_mapping, header_row_name, ignored_sheet_names
     :param column_mapping: mapowanie nazwa kolumny z XLS do atrybutu danych
     :param header_row_name: poszukiwany ciąg znaków z pierwszej kolumny wiersza nagłówka
     :param ignored_sheet_names: nazwy zeszytów ignorowanych - te nie zostaną ujęte w imporcie.
+    :param transformations: słownik funkcji, transformujących wartość z arkusza przed zwróceniem jej
     :return:
     """
     book = xlrd.open_workbook(filename=filename)
@@ -71,7 +72,7 @@ def read_xls_data(filename, column_mapping, header_row_name, ignored_sheet_names
                 continue
         header_row_no = find_header_row(sheet, header_row_name)
         if header_row_no is None:
-            raise ReadDataException("Brak wiersza nagłówka")
+            raise ReadDataException("Brak wiersza nagłówka, poszukiwano %r" % header_row_name)
         header_row_values = sheet.row(header_row_no)
         read_data_mapping = list(enumerate(build_mapping(header_row_values, column_mapping)))
 
@@ -80,7 +81,13 @@ def read_xls_data(filename, column_mapping, header_row_name, ignored_sheet_names
             max_row = min(header_row_no + 2 + limit, max_row)
 
         for row in range(header_row_no + 1, max_row):
-            dct = {}
+            dct = {"__sheet__": sheet.name}
             for no, elem in read_data_mapping:
-                dct[elem] = sheet.row(row)[no].value
+                value = sheet.row(row)[no].value
+
+                if transformations is not None:
+                    if elem in transformations:
+                        value = transformations[elem](value)
+
+                dct[elem] = value
             yield dct

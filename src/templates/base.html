@@ -11,8 +11,8 @@
     {#    {% include "autocomplete_light/header.html" %}#}
 
     {% compress css %}
-    <link rel="stylesheet" href="{% static "jqueryui/themes/flick/theme.css" %}"/>
-    <link rel="stylesheet" href="{% static "jqueryui/themes/flick/jquery-ui.min.css" %}"/>
+    <link rel="stylesheet" href="{% static "jquery-ui/themes/flick/theme.css" %}"/>
+    <link rel="stylesheet" href="{% static "jquery-ui/themes/flick/jquery-ui.min.css" %}"/>
     <link rel="stylesheet" href="{% static "cookielaw/css/cookielaw.css" %}"/>
     <link rel="stylesheet" href="{% static "multiseek/css/style.css" %}"/>
     <link rel="stylesheet" type="text/css" href="{% static "autocomplete_light/style.css" %}"/>
@@ -32,7 +32,7 @@
 
     <script src="{% static 'cookielaw/js/cookielaw.js' %}"></script>
 
-    <script src="{% static 'jqueryui/jquery-ui.min.js' %}"></script>
+    <script src="{% static 'jquery-ui/jquery-ui.min.js' %}"></script>
 
     <script src="{% static 'iframe-resizer/js/iframeResizer.min.js' %}"></script>
 
@@ -106,7 +106,8 @@
     </div>
 {# fix pycharm highlighting #}
         <script type="text/javascript" >
-
+            {% load notifications %}
+            {% uuid notifications_uuid %}
             $(document).ready(function(){
 
                 bppNotifications.init(
@@ -114,6 +115,7 @@
                         '{{ NOTIFICATIONS_HOST }}',
                         {{ NOTIFICATIONS_PORT|default:"window.location.port" }},
                         null,
+                        "{{ notifications_uuid }}",
                         "{% static "bpp/wav/alert.wav" %}"
                 );
 
@@ -217,12 +219,14 @@
                 {% if password_change_required %}
                     <p class='help'>Twoje hasło wygasło. Proszę, zmień je używając formularza poniżej:</p>
                     <form action="." method="post">{% csrf_token %}
-                        {{ form.as_p }}{% if next %}
+                    <fieldset>
+                        <legend>Zmiana hasła</legend>
+                        {{ form.as_table }}{% if next %}
                             <input type="hidden" name="next" value="{{ next }}" />{% endif %}
-                        <input type="submit" value="Submit" />
+                        <input type="submit" value="Zmień hasło" class="submit button" />
+                    </fieldset>
                     </form>
                 {% else %}
-
                     {% block content %}
                     {% endblock %}
                 {% endif %}
@@ -267,7 +271,8 @@
                     </li>
 
                     {% if request.user|has_group:"wprowadzanie danych" %}
-                        <li><a href="{% url "integrator2:main" %}">integrator</a></li>
+                        <li><a href="{% url "integrator2:main" %}">import danych</a></li>
+                        <li><a href="{% url "egeria:main" %}">import osób</a></li>
                     {% endif %}
 
                     <li><a id="password-change-link"

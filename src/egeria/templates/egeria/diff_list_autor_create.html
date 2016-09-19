@@ -1,0 +1,26 @@
+{% extends "egeria/diff_list_base.html" %}
+
+{% block table %}
+    <strong>{{ list_label }}</strong>
+
+    <table>
+        <tr>
+            <th>Nazwisko</th>
+            <th>Imiona</th>
+            <th>Tytuł</th>
+            <th>Jednostka</th>
+            <th>Funkcja</th>
+        </tr>
+
+        {% for elem in object_list %}
+            <tr>
+                <td>{{ elem.nazwisko }}</td>
+                <td>{{ elem.imiona }}</td>
+                <td>{{ elem.tytul.skrot }}</td>
+                <td>{{ elem.jednostka.nazwa }}</td>
+                <td>{{ elem.funkcja.nazwa }}</td>
+            </tr>
+        {% endfor %}
+
+    </table>
+{% endblock %}

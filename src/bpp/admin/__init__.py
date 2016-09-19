@@ -225,11 +225,12 @@ class AutorAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
     list_filter = ['jednostki', 'jednostki__wydzial']
     search_fields = ['imiona', 'nazwisko', 'poprzednie_nazwiska', 'email',
                      'www', 'id', 'pbn_id']
+    readonly_fields = ('pesel_md5', 'ostatnio_zmieniony')
     fieldsets = (
         (None, {
             'fields': (
                 'imiona', 'nazwisko', 'tytul', 'pokazuj_na_stronach_jednostek',
-                'email', 'www', 'pbn_id')
+                'email', 'www', 'pbn_id', 'pesel_md5')
         }),
         ('Biografia', {
             'classes': ('grp-collapse grp-closed',),
