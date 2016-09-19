@@ -17,4 +17,9 @@
 {% block content %}
     {% load crispy_forms_tags %}
     {% crispy form %}
+    <script type="text/javascript">
+        $(window).on("load", function () {
+            $("input[name=messageId]").attr("value", bppNotifications.messageCookieId);
+        });
+    </script>
 {% endblock %}

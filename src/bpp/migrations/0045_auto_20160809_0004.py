@@ -7,7 +7,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('bpp', '0044_merge'),
+        ('bpp', '0044_zaktualizuj_obce_archiwalne'),
     ]
 
     operations = [

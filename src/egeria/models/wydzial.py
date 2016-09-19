@@ -45,4 +45,5 @@ class Diff_Wydzial_Delete(Diff_Delete):
             self.reference.widoczny = False
             self.reference.zezwalaj_na_ranking_autorow = False
             self.reference.save()
+            self.delete()
 

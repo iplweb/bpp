@@ -5,7 +5,7 @@
 {% load i18n %}
 
 {% block title %}
-    Import osób - {{ object.get_title}}
+    Import osób - {{ object.get_title }}
 {% endblock %}
 
 {% block breadcrumbs %}
@@ -15,10 +15,14 @@
 {% endblock %}
 
 {% block content %}
-    {% include "egeria/object_heading.html" %}
-    {% if not object.analyzed %}
-        Plik nie został jeszcze przeanalizowany. Proszę czekać.
-    {% else %}
-        NotImplemented
-    {% endif %}
+    Następuje przekierowanie, proszę czekać...
+    <script type="text/javascript">
+        $(window).on("load", function () {
+            var url;
+
+            url = location.href + '?messageId=' + bppNotifications.messageCookieId;
+
+            $.ajax(url);
+        });
+    </script>
 {% endblock %}
