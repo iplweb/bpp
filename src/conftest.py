@@ -9,7 +9,7 @@ import pytest
 from django.core.urlresolvers import reverse
 from model_mommy import mommy
 
-from bpp.models.autor import Autor, Tytul
+from bpp.models.autor import Autor, Tytul, Funkcja_Autora
 from bpp.models.patent import Patent
 from bpp.models.praca_doktorska import Praca_Doktorska
 from bpp.models.praca_habilitacyjna import Praca_Habilitacyjna
@@ -44,8 +44,8 @@ def normal_django_user(request, db, django_user_model):  # , django_username_fie
         obj = django_user_model.objects.get(username=NORMAL_DJANGO_USER_LOGIN)
     except django_user_model.DoesNotExist:
         obj = django_user_model.objects.create_user(
-                username=NORMAL_DJANGO_USER_LOGIN,
-                password=NORMAL_DJANGO_USER_PASSWORD)
+            username=NORMAL_DJANGO_USER_LOGIN,
+            password=NORMAL_DJANGO_USER_PASSWORD)
 
     def fin():
         obj.delete()
@@ -79,8 +79,8 @@ def _preauth_session_id_helper(username, password, client, browser, live_server,
 @pytest.fixture
 def preauth_browser(normal_django_user, client, browser, live_server, django_user_model, django_username_field):
     return _preauth_session_id_helper(
-            NORMAL_DJANGO_USER_LOGIN, NORMAL_DJANGO_USER_PASSWORD, client,
-            browser, live_server, django_user_model, django_username_field)
+        NORMAL_DJANGO_USER_LOGIN, NORMAL_DJANGO_USER_PASSWORD, client,
+        browser, live_server, django_user_model, django_username_field)
 
 
 @pytest.fixture
@@ -93,16 +93,18 @@ def preauth_admin_browser(admin_user, client, browser, live_server, django_user_
 def uczelnia(db):
     return Uczelnia.objects.get_or_create(skrot='TE', nazwa='Testowa uczelnia')[0]
 
-
+@pytest.mark.django_db
 def _wydzial_maker(nazwa, skrot, uczelnia, **kwargs):
     return Wydzial.objects.get_or_create(uczelnia=uczelnia, skrot=skrot, nazwa=nazwa, **kwargs)[0]
 
 
+@pytest.mark.django_db
 @pytest.fixture
 def wydzial_maker(db):
     return _wydzial_maker
 
 
+@pytest.mark.django_db
 @pytest.fixture(scope="function")
 def wydzial(uczelnia, db):
     return _wydzial_maker(uczelnia=uczelnia, skrot='W1', nazwa=u'Wydział Testowy I')
@@ -117,7 +119,7 @@ def _autor_maker(imiona, nazwisko, tytul="dr. ", **kwargs):
 def autor_maker(db):
     return _autor_maker
 
-
+@pytest.mark.django_db
 @pytest.fixture(scope="function")
 def autor_jan_nowak(db):
     return _autor_maker(imiona="Jan", nazwisko="Nowak")
@@ -136,11 +138,20 @@ def autor_jan_kowalski(db):
 def _jednostka_maker(nazwa, skrot, wydzial, **kwargs):
     return Jednostka.objects.get_or_create(nazwa=nazwa, skrot=skrot, wydzial=wydzial, **kwargs)[0]
 
-
+@pytest.mark.django_db
 @pytest.fixture(scope="function")
 def jednostka(wydzial, db):
     return _jednostka_maker("Jednostka Uczelni", skrot="Jedn. Ucz.", wydzial=wydzial)
 
+@pytest.mark.django_db
+@pytest.fixture(scope="function")
+def druga_jednostka(wydzial, db):
+    return _jednostka_maker("Druga Jednostka Uczelni", skrot="Dr. Jedn. Ucz.", wydzial=wydzial)
+
+@pytest.mark.django_db
+@pytest.fixture(scope="function")
+def obca_jednostka(wydzial, db):
+    return _jednostka_maker("Obca Jednostka", skrot="OJ", wydzial=wydzial, obca_jednostka=True)
 
 @pytest.fixture
 def jednostka_maker(db):
@@ -174,10 +185,10 @@ def _wydawnictwo_maker(klass, **kwargs):
     kl = str(klass).split('.')[-1].replace("'>", "")
 
     kw_wyd = dict(
-            tytul="Tytul %s %s" % (kl, c),
-            tytul_oryginalny="Tytul oryginalny %s %s" % (kl, c),
-            uwagi="Uwagi %s %s" % (kl, c),
-            szczegoly='Szczegóły %s %s' % (kl, c))
+        tytul="Tytul %s %s" % (kl, c),
+        tytul_oryginalny="Tytul oryginalny %s %s" % (kl, c),
+        uwagi="Uwagi %s %s" % (kl, c),
+        szczegoly='Szczegóły %s %s' % (kl, c))
 
     if klass == Patent:
         del kw_wyd['tytul']
@@ -198,6 +209,7 @@ def _wydawnictwo_ciagle_maker(**kwargs):
     return _wydawnictwo_maker(Wydawnictwo_Ciagle, **kwargs)
 
 
+@pytest.mark.django_db
 @pytest.fixture
 def wydawnictwo_ciagle_maker(db):
     return _wydawnictwo_ciagle_maker
@@ -349,12 +361,12 @@ def typy_kbn(db):
 
 def fixture(name):
     return json.load(
-            open(
-                    os.path.abspath(
-                            os.path.join(
-                                    os.path.dirname(__file__),
-                                    "bpp", "fixtures", name)
-                    ), "r"))
+        open(
+            os.path.abspath(
+                os.path.join(
+                    os.path.dirname(__file__),
+                    "bpp", "fixtures", name)
+            ), "r"))
 
 
 @pytest.fixture
@@ -362,10 +374,26 @@ def statusy_korekt(db):
     for elem in fixture("status_korekty.json"):
         Status_Korekty.objects.get_or_create(**elem['fields'])
 
+
+@pytest.fixture
+def funkcje_autorow(db):
+    for elem in fixture("funkcja_autora.json"):
+        Funkcja_Autora.objects.get_or_create(**elem['fields'])
+    return Funkcja_Autora.objects.all()
+
+
+@pytest.fixture
+def tytuly(db):
+    for elem in fixture("tytul.json"):
+        Tytul.objects.get_or_create(**elem['fields'])
+    return Tytul.objects.all()
+
+
 @pytest.fixture
 def typy_odpowiedzialnosci(db):
     for elem in fixture("typ_odpowiedzialnosci.json"):
         Typ_Odpowiedzialnosci.objects.get_or_create(**elem['fields'])
+
 
 @pytest.fixture
 def obiekty_bpp(typy_kbn, charaktery_formalne, jezyki, statusy_korekt, typy_odpowiedzialnosci):

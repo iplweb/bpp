@@ -84,7 +84,6 @@ MIDDLEWARE_CLASSES = (
     'django.contrib.messages.middleware.MessageMiddleware',
     'password_policies.middleware.PasswordChangeMiddleware',
 
-
     'bpp.middleware.ProfileMiddleware',
     'pagination.middleware.PaginationMiddleware',
     'django_tables2_reports.middleware.TableReportMiddleware',
@@ -154,6 +153,7 @@ INSTALLED_APPS = [
 
     'notifications',
     'integrator2',
+    'egeria',
     'eksport_pbn',
 
     'loginas'
@@ -281,7 +281,13 @@ BOWER_COMPONENTS_ROOT = os.path.abspath(
         '..', '..', 'components'))
 
 BOWER_INSTALLED_APPS = (
-    'jquery#2.2.0',
+    # Musi być Jquery 2.1.4, bo Foundation 5.5.3 nie wspólpracuje z Jquery 2.2.0,
+    # nie da się odpalic dialogu modalnego Reveal,
+    # chyba, że zaktualizuję Foudnation do wersji 6.x, wówczsa można by
+    # użyć wyższego jquery
+    'jquery#2.1.4',
+
+    'jquery-cookie',
     'jeditable#1.7.3',
     'jqueryui#1.11.0',
     'foundation#5.5.3',
@@ -289,7 +295,8 @@ BOWER_INSTALLED_APPS = (
     'font-awesome#4.1.0',
     'iframe-resizer#2.5.1',
     'jinplace#1.0.1',
-    'qunit#2.0.0',
+    'qunit#2.0.1',
+    'http://sinonjs.org/releases/sinon-1.17.5.js',
     'http://keith-wood.name/zip/jquery.keypad.package-2.0.1.zip'
 )
 
@@ -298,8 +305,6 @@ CRISPY_TEMPLATE_PACK = 'foundation-5'
 SESSION_ENGINE = 'redis_sessions.session'
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTOCOL', 'https')
-
-
 
 
 

@@ -47,6 +47,7 @@ urlpatterns = patterns(
 
     url(r'^integrator2/', include('integrator2.urls', namespace='integrator2')),
     url(r'^eksport_pbn/', include('eksport_pbn.urls', namespace='eksport_pbn')),
+    url(r'^egeria/', include('egeria.urls', namespace='egeria')),
 
     url(r'^bpp/', include('bpp.urls', namespace='bpp')),
 
@@ -103,6 +104,8 @@ urlpatterns = patterns(
     (r'^.*/jsi18n/$', 'bpp.views.javascript_catalog', js_info_dict),
 
     url(r'session_security/', include('session_security.urls')),
+
+    url(r'egeria/', include('egeria.urls')),
 
     url(r"^login/user/(?P<user_id>.+)/$", "loginas.views.user_login", name="loginas-user-login"),
 

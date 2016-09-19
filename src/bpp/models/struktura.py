@@ -120,7 +120,12 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelHistoryczny):
         """
     )
 
+    nie_archiwizuj = models.BooleanField(help_text="""Jeżeli zaznaczono to pole, to przy imporcie danych
+    na temat struktury uczelni z zewnętrznych źródeł ta jednostka nie będzie przenoszona do wydziału oznaczonego
+    jako archiwalny.""", default=False)
+
     search = VectorField(blank=True, null=True)
+
     objects = JednostkaManager()
 
     class Meta:
@@ -143,9 +148,13 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelHistoryczny):
         return ret
 
     def dodaj_autora(self, autor, funkcja=None, rozpoczal_prace=None, zakonczyl_prace=None):
-        return Autor_Jednostka.objects.create(
+        ret = Autor_Jednostka.objects.create(
             autor=autor, jednostka=self, funkcja=funkcja,
             rozpoczal_prace=rozpoczal_prace, zakonczyl_prace=zakonczyl_prace)
+        # Odśwież obiekt - pobierz ewentualną zmiane pola 'aktualna_jednostka', obsługiwaną
+        # przez trigger bazodanowy (migracja 0046)
+        autor.refresh_from_db()
+        return ret
 
     zatrudnij = dodaj_autora
 

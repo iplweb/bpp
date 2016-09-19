@@ -56,8 +56,21 @@ new-patch: clean
 release: new-patch full-build
 	@echo "Done"
 
-download-db:
+download: 
 	fab -H zarzadca@bpp.umlub.pl download_db
+	
+download-db: download migrate
+	@echo "Done!"
+
+rebuild-from-downloaded:
+	fab -H zarzadca@bpp.umlub.pl download_db:restore=True,recreate=True,download=False
+
+migrate: 
+	cd src && python manage.py migrate
+
+rebuild: rebuild-from-downloaded migrate
+	-say "Przebudowa bazy danych zakończona"
+	@echo "Done"
 
 production:
 	ansible-playbook -i "/Volumes/Dane zaszyfrowane/Biblioteka Glowna/ansible/hosts.cfg" ansible/webserver.yml

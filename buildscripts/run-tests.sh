@@ -64,6 +64,6 @@ fi
 
 if [ "$NO_PYTEST" == "0" ]; then
     # baza ma być utworzona od zera - ponownie!
-    py.test --create-db functional_tests integrator2/tests eksport_pbn bpp/tests-pytest
+    py.test --create-db functional_tests integrator2/tests eksport_pbn bpp/tests-pytest egeria/tests
 fi
 

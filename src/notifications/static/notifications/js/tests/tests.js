@@ -81,7 +81,7 @@ QUnit.test( "addMessage + hideCloseOption=True", function( assert ) {
 
 });
 
-QUnit.test( "addMessage + hideCloseOption default (not specified0", function( assert ) {
+QUnit.test( "addMessage + hideCloseOption default (not specified)", function( assert ) {
 
   bppNotifications.addMessage({
       'text':'aapud',
@@ -105,5 +105,32 @@ QUnit.test( "addMessage closeURL", function( assert ) {
       $("#messagesPlaceholder").find("a").last().attr("href"),
       'onet.pl',
       "Atrybut do zamykania jest OK");
+
+});
+
+QUnit.test( "bppNotifications.init", function( assert ) {
+    var pushstream = sinon.stub(window, "PushStream");
+    pushstream.prototype.addChannel = sinon.stub();
+    pushstream.prototype.connect = sinon.stub();
+
+    if (window.Audio)
+        var Audio = sinon.stub(window, "Audio");
+
+    bppNotifications.init("foo", "bar", "baz", true, "123", null);
+
+    assert.equal(bppNotifications.messageCookieId, "123");
+    pushstream.restore();
+
+    if (window.Audio)
+        Audio.restore();
+
+});
+
+QUnit.test( "bppNotifications.goTo", function( assert ) {
+    var goTo = sinon.stub(bppNotifications, "goTo");
+    bppNotifications.messageCookieId = "123"
+    bppNotifications.addMessage({'url': 'www.onet.pl', 'cookieId': "123"});
+    assert.ok(goTo.calledOnce);
+    goTo.restore();
 
 });

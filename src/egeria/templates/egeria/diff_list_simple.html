@@ -1,0 +1,10 @@
+{% extends "egeria/diff_list_base.html" %}
+
+{% block table %}
+    <strong>{{ list_label }}</strong>
+    <ul>
+        {% for elem in object_list %}
+            <li>{{ elem }}</li>
+        {% endfor %}
+    </ul>
+{% endblock %}

@@ -41,9 +41,8 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
     nazwisko = models.CharField(max_length=256, db_index=True)
     tytul = models.ForeignKey(Tytul, blank=True, null=True)
 
-    aktualna_jednostka = models.ForeignKey(
-        'Jednostka', blank=True, null=True,
-        related_name='aktualna_jednostka')
+    aktualna_jednostka = models.ForeignKey('Jednostka', blank=True, null=True, related_name='aktualna_jednostka')
+    aktualna_funkcja = models.ForeignKey('Funkcja_Autora', blank=True, null=True, related_name='aktualna_funkcja')
 
     pokazuj_na_stronach_jednostek = models.BooleanField(default=True)
 
@@ -60,6 +59,10 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
         się publikacje lub zmieniał nazwisko z innych powodów, wpisz tutaj
         wszystkie poprzednie nazwiska, oddzielając je przecinkami.""",
         db_index=True)
+
+    pesel_md5 = models.CharField(verbose_name="PESEL MD5",
+                                 max_length=32, db_index=True, blank=True, null=True,
+                                 help_text="Hash MD5 numeru PESEL")
 
     search = VectorField()
 
@@ -124,14 +127,6 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
 
         for jednostka in self.jednostki.all():
             self.defragmentuj_jednostke(jednostka)
-
-        self.aktualna_jednostka = None
-        for elem in Autor_Jednostka.objects.filter(autor=self) \
-                            .exclude(rozpoczal_prace=None) \
-                            .order_by('-rozpoczal_prace')[:1]:
-            self.aktualna_jednostka = elem.jednostka
-            super(Autor, self).save(*args, **kw)
-            break
 
         return ret
 
@@ -199,20 +194,6 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
         return Rekord.objects.prace_autora(self).values_list(
             'rok', flat=True).distinct().order_by('rok')
 
-    def ostatnia_jednostka(self):
-        """Zwróć ostatnią jednostkę autora - czyli taką, w której albo
-        obecnie pracuje, albo taką, która ma najwyższe ID wśród wszystkich
-        jednostek."""
-        if self.jednostki.count():
-            try:
-                return Autor_Jednostka.objects.filter(
-                    autor=self).exclude(
-                    rozpoczal_prace=None).order_by(
-                    '-rozpoczal_prace', '-pk')[0].jednostka
-            except IndexError:
-                return Autor_Jednostka.objects.filter(
-                    autor=self).order_by('-rozpoczal_prace', '-pk')[0].jednostka
-
     def eksport_pbn_serializuj(self, tagname='author', affiliated=True, employed=True):
         author = Element(tagname)
 
@@ -271,6 +252,13 @@ class Autor_Jednostka_Manager(models.Manager):
             # Nowy system - przy imporcie danych z XLS do nowego systemu jest sytuacja, gdy autor
             # zaczął kiedyśtam prace ALE jej nie zakończył:
             if poprzedni_rekord.zakonczyl_prace is None:
+                if rec.rozpoczal_prace is None and poprzedni_rekord.rozpoczal_prace is not None:
+                    if rec.zakonczyl_prace == poprzedni_rekord.rozpoczal_prace:
+                        usun.append(rec)
+                        poprzedni_rekord.rozpoczal_prace=rec.rozpoczal_prace
+                        poprzedni_rekord.save()
+                        continue
+
                 if rec.rozpoczal_prace >= poprzedni_rekord.rozpoczal_prace:
                     usun.append(rec)
                     poprzedni_rekord.zakonczyl_prace = rec.zakonczyl_prace

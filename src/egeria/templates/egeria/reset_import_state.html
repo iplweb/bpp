@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% load staticfiles %}
+{% load compress %}
+{% load i18n %}
+
+{% block title %}
+    Import osób - {{ object.get_title }}
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "egeria:main" %}">import osób</a></li>
+    <li class="current">{{ object.get_title }}</li>
+{% endblock %}
+
+{% block content %}
+    Następuje przekierowanie, proszę czekać...
+    <script type="text/javascript">
+        $(window).on("load", function () {
+            var url;
+
+            url = location.href + '?messageId=' + bppNotifications.messageCookieId;
+
+            $.ajax(url);
+        });
+    </script>
+{% endblock %}
