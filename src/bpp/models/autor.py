@@ -60,7 +60,8 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
         wszystkie poprzednie nazwiska, oddzielając je przecinkami.""",
         db_index=True)
 
-    pesel_md5 = models.CharField(max_length=32, db_index=True, blank=True, null=True,
+    pesel_md5 = models.CharField(verbose_name="PESEL MD5",
+                                 max_length=32, db_index=True, blank=True, null=True,
                                  help_text="Hash MD5 numeru PESEL")
 
     search = VectorField()

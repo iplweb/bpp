@@ -7,6 +7,7 @@ from md5 import md5
 import pytest
 from django.core.management import call_command
 from django.utils import timezone
+from model_mommy import mommy
 
 from bpp.models.autor import Tytul, Funkcja_Autora, Autor_Jednostka, Autor
 from bpp.models.struktura import Uczelnia, Wydzial, Jednostka
@@ -30,9 +31,9 @@ def test_egeriaimport_analyze(egeria_import):
 
 @pytest.mark.django_db
 def test_egeria_management_commands_egeria_import(test_file_path):
-    assert Autor.objects.all().count() == 0
+    assert Tytul.objects.all().count() == 0
     call_command('egeria_import', test_file_path)
-    assert Autor.objects.all().count() == 14
+    assert Tytul.objects.all().count() == 7
 
 
 @pytest.mark.django_db
@@ -232,7 +233,6 @@ def test_egeria_models_Diff_Jednostka_Create_commit(wydzial, egeria_import):
     )
     d.commit()
 
-    assert d.commited
     assert Jednostka.objects.all().count() == 1
     j = Jednostka.objects.all()[0]
     assert j.nazwa == "Test Jednostki"
@@ -398,94 +398,6 @@ def test_egeria_models_diff_jednostki(egeria_import, uczelnia, autor_jan_kowalsk
     jdsch.refresh_from_db()
     assert jdsch.widoczna == False
     assert jdsch.wchodzi_do_raportow == False
-
-
-@pytest.mark.django_db
-def test_egeria_models_core_EgeriaImport_match_autorzy(egeria_import, jednostka):
-    egeria_import.rows().delete()
-
-    pesel_md5 = md5("foobar NIE MA W IMPORCIE").hexdigest()
-
-    row = EgeriaRow.objects.create(
-        parent=egeria_import,
-        lp=1,
-        tytul_stopien="foobar",
-        nazwisko="Kowalski",
-        imie="Stefan",
-        pesel_md5=pesel_md5,
-        stanowisko="kierownik",
-        nazwa_jednostki=jednostka.nazwa,
-        wydzial=jednostka.wydzial.nazwa
-    )
-
-    # nowy rekord
-    egeria_import.match_autorzy()
-    row.refresh_from_db()
-    assert row.unmatched_because_new
-
-    # Strategia 0 - pesel MD5
-    autor0 = Autor.objects.create(
-        nazwisko="Kowalski 123",
-        imiona="Stefan 123",
-        pesel_md5=pesel_md5
-    )
-
-    egeria_import.match_autorzy()
-    row.refresh_from_db()
-    assert row.matched_autor == autor0
-    row.matched_autor = None
-    row.save()
-    autor0.delete()
-
-    # Strategia 1
-    autor = Autor.objects.create(
-        nazwisko="Kowalski",
-        imiona="Stefan",
-        pesel_md5="hmmm... "
-    )
-
-    egeria_import.match_autorzy()
-    row.refresh_from_db()
-    assert row.matched_autor == autor
-
-    row.matched_autor = None
-    row.save()
-
-    # Strategia 2
-    # Dwóch autorów o identycznych personalniach, jeden ma inny pesel md5 hash
-    autor2 = Autor.objects.create(
-        nazwisko="Kowalski",
-        imiona="Stefan",
-        pesel_md5=pesel_md5
-    )
-
-    egeria_import.match_autorzy()
-    row.refresh_from_db()
-    assert row.matched_autor == autor2
-
-    # Strategia 3
-    # Dwóch autorów o identycznych personaliach, jeden ma jednostke w zatrudnieniu
-    autor2.pesel_md5 = "inny niz byl"
-    autor2.save()
-
-    row.matched_autor = None
-    row.matched_jednostka = jednostka
-    row.save()
-
-    autor2.dodaj_jednostke(jednostka)
-
-    egeria_import.match_autorzy()
-    row.refresh_from_db()
-    assert row.matched_autor == autor2
-
-    row.matched_autor = None
-    row.save()
-    Autor_Jednostka.objects.filter(autor=autor2).delete()
-
-    # Strategia 4 - nie można określić
-    egeria_import.match_autorzy()
-    row.refresh_from_db()
-    assert row.unmatched_because_multiple == True
 
 
 @pytest.mark.django_db
@@ -720,28 +632,26 @@ def test_models_Diff_Autor_Update_commit(egeria_import, autor_jan_nowak, tytuly,
 def test_models_EgeriaImport_reset_import_steps(egeria_import):
     egeria_import.everything(cleanup=False)
     assert egeria_import.analysis_level != 0
-    assert Diff_Autor_Create.objects.all().count() != 0
 
     egeria_import.reset_import_steps()
     assert egeria_import.analysis_level == 0
-    assert Diff_Autor_Create.objects.all().count() == 0
 
 
 @pytest.mark.django_db
 def test_models_core_diff_autorzy_creates(egeria_import):
     egeria_import.everything(return_after_match_autorzy=True)
     egeria_import.diff_autorzy()
-    assert Diff_Autor_Create.objects.all().count() == 14
+    assert Diff_Autor_Create.objects.all().count() == 0
     assert Diff_Autor_Update.objects.all().count() == 0
     assert Diff_Autor_Delete.objects.all().count() == 0
 
 
 @pytest.mark.django_db
 def test_models_core_diff_autorzy_updates(egeria_import, egeria_import_imported):
-    a = Autor.objects.all().first()
-    a.nazwisko = "123 zmienisz to"
-    a.save()
+    t = Tytul.objects.create(nazwa="123", skrot="456")
+    mommy.make(Autor, tytul=t, nazwisko="Kowalska", imiona="Oleg", pesel_md5=md5("aaa").hexdigest())
 
+    # Zmieni tytuł
     egeria_import.everything(return_after_match_autorzy=True)
     egeria_import.diff_autorzy()
     assert Diff_Autor_Create.objects.all().count() == 0
@@ -751,6 +661,11 @@ def test_models_core_diff_autorzy_updates(egeria_import, egeria_import_imported)
 
 @pytest.mark.django_db
 def test_models_core_diff_autorzy_deletes(egeria_import, egeria_import_imported):
+    a = mommy.make(Autor, nazwisko="Kowalska 5", imiona="Oleg 10", pesel_md5=md5("xx123123123aaa").hexdigest())
+    w = mommy.make(Wydzial)
+    j = mommy.make(Jednostka, wydzial=w)
+    j.dodaj_autora(a)
+
     egeria_import.analyze()
     egeria_import.rows().first().delete()
 
@@ -759,3 +674,4 @@ def test_models_core_diff_autorzy_deletes(egeria_import, egeria_import_imported)
     assert Diff_Autor_Create.objects.all().count() == 0
     assert Diff_Autor_Update.objects.all().count() == 0
     assert Diff_Autor_Delete.objects.all().count() == 1
+

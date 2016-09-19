@@ -87,6 +87,14 @@ class EgeriaImport(models.Model):
             lp, tytul_stopien, nazwisko, imie, pesel_md5, stanowisko, nazwa_jednostki, wydzial = [cell.value for cell in
                                                                                                   sheet.row(nrow)]
             nazwa_jednostki = nazwa_jednostki.replace("  ", " ").replace("  ", " ")
+            if wydzial.strip() == "":
+                if nazwa_jednostki == "Biblioteka Główna":
+                    wydzial = "Jednostki Ogólnouczelniane"
+                else:
+                    wydzial = "Brak wpisanego wydziału"
+
+            if pesel_md5.strip() == "":
+                continue
 
             EgeriaRow.objects.create(
                 parent=self,
@@ -218,30 +226,35 @@ class EgeriaImport(models.Model):
         # W tym momencie nie powinno być żadnych nie-zmatchowanych funkcji
         assert self.rows().filter(matched_funkcja=None).count() == 0
 
+    @transaction.atomic
     def match_autorzy(self):
         # Uwaga, PESEL nie jest numerem unikalnym i dwóch autorów może dzielić ten sam numer.
 
         # Na tym etapie matchowania mamy dostępne jednostki (EgeriaRow.matched_jednostka)
 
         for elem in self.rows():
-            # Strategia 0: hash MD5 numeru PESEL
-            # PESELe nie są unikalne, ale być może w naszym zbiorze danych będzie tylko
-            # jeden taki pesel, więc:
-            a = Autor.objects.filter(pesel_md5=elem.pesel_md5)
-            c = a.count()
-            if c == 1:
+            # Strategia 1: imię i nazwisko i hash MD5 numeru PESEL
+            a = Autor.objects.filter(
+                nazwisko=elem.nazwisko,
+                imiona__startswith=elem.imie,
+                pesel_md5=elem.pesel_md5)
+
+            if a.count() == 1:
                 elem.matched_autor = a.first()
                 elem.save()
                 continue
 
-            if elem.nazwisko == u'Kowal' and elem.imie == u'Małgorzata':
-                # unmatched_because_Kowal_Małgorzata, TBH
+            if (elem.nazwisko, elem.imie) in [
+                ("Nowak", "Maria"),
+            ]:
                 elem.unmatched_because_multiple = True
                 elem.save()
                 continue
 
-            # Strategia 1: imię i nazwisko i jedna z jednostek w zatrudnieniu
-            a = Autor.objects.filter(nazwisko=elem.nazwisko, imiona=elem.imie)
+            # Strategia 2: imię i nazwisko i jedna z jednostek w zatrudnieniu
+            a = Autor.objects.filter(
+                nazwisko=elem.nazwisko,
+                imiona__startswith=elem.imie)
             possible_matches = []
             for autor in a:
                 if autor.autor_jednostka_set.filter(jednostka=elem.matched_jednostka).count() == 1:
@@ -260,29 +273,32 @@ class EgeriaImport(models.Model):
                 elem.save()
                 continue
 
-            # Strategia 2: imię i nazwisko
-            a = Autor.objects.filter(nazwisko=elem.nazwisko, imiona=elem.imie)
-            c = a.count()
-            if c == 0:
-                elem.unmatched_because_new = True
-                elem.save()
-                continue
+            # tego NIE - autor Andrzej Goral, pracownik techiniczny, pasuje do
+            # autora w BPP - jeżeli jest taki match jak niżej
+            # # W sytuacji gdy taki zestaw imion i nazwisk występuje w imporcie
+            # # tylko raz - oraz w BPP tylko raz - możemy matchować po imieniu i nazwisku:
+            if self.rows().filter(nazwisko=elem.nazwisko, imie=elem.imie).count() == 1:
+                qset = Autor.objects.filter(
+                    nazwisko=elem.nazwisko,
+                    imiona__startswith=elem.imie)
+                if qset.count() == 1:
+                    # Jeżeli tytuł lub wydział jest zgodny, to matchuj z tym autorem
+                    autor = qset.first()
 
-            if c == 1:
-                elem.matched_autor = a.first()
-                elem.save()
-                continue
+                    t = j = False
 
-            # Strategia 3: imię i nazwisko i hash MD5 numeru PESEL
-            a = Autor.objects.filter(nazwisko=elem.nazwisko, imiona=elem.imie, pesel_md5=elem.pesel_md5)
-            if a.count() == 1:
-                elem.matched_autor = a.first()
-                elem.save()
-                continue
+                    if autor.tytul != None:
+                        t = autor.tytul.nazwa == elem.tytul_stopien
 
-            # Strategia 4: nie ma strategii 4. Dany autor pasuje do wielu i nie można określić.
-            elem.unmatched_because_multiple = True
-            elem.save()
+                    if autor.aktualna_jednostka != None:
+                        j = autor.aktualna_jednostka.wydzial.nazwa == elem.wydzial
+
+                    if t or j:
+                        elem.matched_autor = autor
+                        elem.save()
+                        continue
+
+            # Dany autor pasuje do wielu i nie można określić czemu.
 
     def diff_autorzy(self):
         # Utwórz nowych autorów
@@ -317,9 +333,10 @@ class EgeriaImport(models.Model):
 
         # Stwórz obiekty Delete dla wszystkich autorów, którzy 1) nie są w pliku
         # importu i 2) nie są w jednostce określonej jako "Obca"
-        for autor in Autor.objects.all() \
-                .exclude(pk__in=self.rows().values_list('matched_autor')) \
-                .exclude(aktualna_jednostka__obca_jednostka=True):
+        lst = list(self.rows().values_list('matched_autor', flat=True).distinct())
+        if None in lst:
+            lst.remove(None)
+        for autor in Autor.objects.all().exclude(pk__in=lst).exclude(aktualna_jednostka__obca_jednostka=True):
             if Diff_Autor_Delete.check_if_needed(autor):
                 Diff_Autor_Delete.objects.create(parent=self, reference=autor)
 
@@ -415,6 +432,12 @@ class EgeriaImport(models.Model):
         if cleanup:
             self.cleanup()
 
+    def unmatched(self):
+        return EgeriaRow.objects.filter(
+            parent=self,
+            matched_autor=None).exclude(
+            unmatched_because_new=True)
+
 
 class EgeriaRow(models.Model):
     parent = models.ForeignKey(EgeriaImport)
@@ -424,7 +447,7 @@ class EgeriaRow(models.Model):
     nazwisko = models.CharField(max_length=200)
     imie = models.CharField(max_length=200)
     pesel_md5 = models.CharField(max_length=32)
-    stanowisko = models.CharField(max_length=50)
+    stanowisko = models.CharField(max_length=250)
     nazwa_jednostki = models.CharField(max_length=300)
     wydzial = models.CharField(max_length=150)
 

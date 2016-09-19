@@ -42,6 +42,7 @@ class EgeriaImportListView(LoginRequiredMixin, ListView):
                         os.unlink(obj.file.path)
                     except IOError:
                         pass
+                    obj.cleanup()
                     obj.delete()
 
         return super(EgeriaImportListView, self).get(request, *args, **kwargs)
@@ -208,10 +209,7 @@ class ResultsView(DiffListViewBase):
         return EgeriaImport.objects.get(pk=self.kwargs['pk'])
 
     def get_queryset(self):
-        return self.model.objects.filter(
-            parent=self.parent,
-            matched_autor=None).exclude(
-            unmatched_because_new=True)
+        return self.parent.unmatched()
 
     def get_next_url(self):
         return reverse("egeria:main")

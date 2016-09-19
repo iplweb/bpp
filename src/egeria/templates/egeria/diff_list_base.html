@@ -62,8 +62,9 @@
         </p>
         {% paginate %}
 
-        <button type="submit" id="submit"
-                onclick="if (confirm('Ten krok może powodować wprowadzenie zmian do bazy danych. Późniejsze cofnięcie go nie może nie być możliwe. Potwierdź.')) doSubmit(this.form);"
+        <button type="submit" id="submit" onclick="doSubmit(this.form);"
+
+{#                onclick="if (confirm('Ten krok może powodować wprowadzenie zmian do bazy danych. Późniejsze cofnięcie go nie może nie być możliwe. Potwierdź.')) doSubmit(this.form);"#}
         >
             Dalej...
         </button>

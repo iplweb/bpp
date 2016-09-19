@@ -23,34 +23,42 @@
     <center>
         <p>
             <strong>GRATULACJE!</strong>
-        </p><p>
-<span style="font-size: 48pt;">&#x1f44d;</span></p>
+        </p>
+        <p>
+            <span style="font-size: 48pt;">&#x1f44d;</span></p>
         <p>
             <strong>Zmiany z pliku zostały scalone z systemem.</strong>
         </p>
     </center>
-        {% load pagination_tags %}
-        {% autopaginate object_list %}
-{% paginate %}
+    {% load pagination_tags %}
+    {% autopaginate object_list %}
+    {% paginate %}
     <h2>Rekordy nie zintegrowane</h2>
     <table>
-    <tr>
-        <th>Nazwisko</th>
-        <th>Imię</th>
-        <th>Jednostka</th>
-        <th>Zmatchowano ponad 1 rekord</th>
-    </tr>
-    {% for elem in object_list %}
         <tr>
-        <td>
-    {{ elem.nazwisko }}
-        </td>
-        <td>{{ elem.imie }}</td>
-        <td>{{ elem.nazwa_jednostki }}</td>
-        <td>{{ elem.unmatched_because_multiple }}</td>
-        </tr>
+            <th>Nazwisko</th>
+            <th>Imię</th>
+            <th>Tytuł</th>
+            <th>Jednostka</th>
+            <th>Stanowisko</th>
 
-    {% endfor %}
+            <th>Zmatchowano ponad 1 rekord</th>
+            <th>Zmatchowano jako nowy rekord</th>
+
+        </tr>
+        {% for elem in object_list %}
+            <tr>
+                <td>{{ elem.nazwisko }}</td>
+                <td>{{ elem.imie }}</td>
+                <td>{{ elem.tytul_stopien }}</td>
+                <td>{{ elem.nazwa_jednostki }}</td>
+                <td>{{ elem.stanowisko }}</td>
+                <td>{{ elem.unmatched_because_multiple }}</td>
+                <td>{{ elem.unmatched_because_new }}</td>
+
+            </tr>
+
+        {% endfor %}
     </table>
-{% paginate %}
+    {% paginate %}
 {% endblock %}

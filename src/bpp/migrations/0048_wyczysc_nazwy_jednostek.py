@@ -15,4 +15,6 @@ class Migration(migrations.Migration):
         RunSQL("UPDATE bpp_jednostka SET nazwa = trim(nazwa)"),
         RunSQL("UPDATE bpp_jednostka SET nazwa = replace(nazwa, '  ', ' ')"),
         RunSQL("UPDATE bpp_jednostka SET nazwa = replace(nazwa, '  ', ' ')"),
+        RunSQL("UPDATE bpp_wydzial SET nazwa = 'Jednostki Ogólnouczelniane' where nazwa = 'Jednostka międzywydziałowa'")
+
     ]
