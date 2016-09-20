@@ -58,7 +58,7 @@ release: new-patch full-build
 
 download: 
 	fab -H zarzadca@bpp.umlub.pl download_db
-	
+
 download-db: download migrate
 	@echo "Done!"
 
