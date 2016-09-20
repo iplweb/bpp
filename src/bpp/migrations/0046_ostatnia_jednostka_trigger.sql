@@ -107,4 +107,7 @@ CREATE TRIGGER bpp_autor_jednostka_aktualna_jednostka_trigger
   FOR EACH ROW
   EXECUTE PROCEDURE bpp_autor_jednostka_aktualna_jednostka();
 
+
+UPDATE bpp_autor_jednostka SET id=id;
+
 COMMIT;
