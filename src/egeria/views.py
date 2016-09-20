@@ -7,9 +7,7 @@ from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit
 from crispy_forms_foundation.layout import Layout, Fieldset, Hidden
 from django.core.urlresolvers import reverse
-from django.db.models.expressions import F
-from django.db.models.query_utils import Q
-from django.http.response import HttpResponseRedirect, HttpResponse, HttpResponseForbidden
+from django.http.response import HttpResponseRedirect, HttpResponse, HttpResponseForbidden, Http404
 from django.utils.functional import cached_property
 from django.views.generic.detail import DetailView
 from django.views.generic.edit import CreateView
@@ -68,6 +66,11 @@ class DiffListViewBase(LoginRequiredMixin, ListView):
             request.GET['messageId'])
 
     def get(self, request, *args, **kwargs):
+        try:
+            self.parent
+        except EgeriaImport.DoesNotExist:
+            raise Http404
+
         self.object_list = self.get_queryset()
 
         if request.GET.has_key("submit"):
