@@ -23,6 +23,7 @@ class Tytul(NazwaISkrot):
         verbose_name = u'tytuł'
         verbose_name_plural = u'tytuły'
         app_label = 'bpp'
+        ordering = ('skrot',)
 
 
 class Plec(NazwaISkrot):
