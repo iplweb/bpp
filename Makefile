@@ -77,3 +77,12 @@ production:
 
 upload-db-to-staging:
 	fab -pvagrant -H vagrant@bpp-staging.localnet upload_db:zarzadca@bpp.umlub.pl-bpp.backup,staging-bpp,staging-bpp
+
+
+egeria-import:
+	python src/manage.py egeria_import "/Volumes/Dane zaszyfrowane/Biblioteka Główna/wykaz-27.06.2016-mpasternak.xlsx"
+	-say "Integracja autorów zakończona"
+
+
+rebuild-reimport: rebuild egeria-import
+	@echo "Done"

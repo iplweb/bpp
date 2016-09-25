@@ -51,6 +51,9 @@ class Diff_Autor_Update(Diff_Autor_Base):
 
     reference = models.ForeignKey('bpp.Autor')
 
+    class Meta:
+        ordering = ('nazwisko', 'imiona', 'jednostka')
+
     @classmethod
     def check_if_needed(cls, elem):
         reference, nazwisko, imiona, jednostka, tytul, funkcja, pesel_md5 = \
@@ -77,6 +80,17 @@ class Diff_Autor_Update(Diff_Autor_Base):
 
     def commit(self):
         autor = self.reference
+
+        if autor.pesel_md5 != self.pesel_md5:
+            if autor.pesel_md5 is not None:
+                raise Exception(
+                    "Zmiana PESELu (%r %r %r %r %r; match z %r %r %r %r %r) - sprawdź poprawność procedur matchujących i "
+                    "pliku importu. " % (
+                        autor.nazwisko, autor.imiona, autor.tytul, autor.pesel_md5,
+                        list(autor.autor_jednostka_set.all()),
+                        self.nazwisko, self.imiona, self.tytul, self.pesel_md5,
+                        self.jednostka))
+
         needs_saving = False
 
         if autor.aktualna_jednostka != self.jednostka:
@@ -103,7 +117,7 @@ class Diff_Autor_Update(Diff_Autor_Base):
 
         if autor.pesel_md5 != self.pesel_md5:
             if autor.pesel_md5 is not None:
-                raise Exception("Zmiana PESELu (%r %r) - sprawdź poprawność procedur matchujących i pliku importu. " % (autor.nazwisko, autor.imiona))
+                raise NotImplementedError
             autor.pesel_md5 = self.pesel_md5
             needs_saving = True
 
@@ -134,6 +148,9 @@ class Diff_Autor_Delete(Diff_Base):
     """
 
     reference = models.ForeignKey('bpp.Autor')
+
+    class Meta:
+        ordering = ('reference__nazwisko', 'reference__imiona', 'reference__aktualna_jednostka__nazwa')
 
     @classmethod
     def has_links(cls, reference):

@@ -24,8 +24,10 @@
         <div style="float: left;; margin-right: 5px;">
             <img src="{% static "bpp/images/giphy.gif" %}" width="48"/>
         </div>
-        <p>Praca procedury na serwerze rozpoczęta. Za chwilę strona powinna odświeżyć się i przejdziesz do kolejnego
-            etapu integracji danych.</p>
+        <div>
+        <p>Praca procedury na serwerze rozpoczęta.</p>
+        <p>Za chwilę strona powinna odświeżyć się i przejdziesz do kolejnego etapu integracji danych.</p></div>
+
     </div>
 
 
@@ -64,7 +66,7 @@
 
         <button type="submit" id="submit" onclick="doSubmit(this.form);"
 
-{#                onclick="if (confirm('Ten krok może powodować wprowadzenie zmian do bazy danych. Późniejsze cofnięcie go nie może nie być możliwe. Potwierdź.')) doSubmit(this.form);"#}
+                {#                onclick="if (confirm('Ten krok może powodować wprowadzenie zmian do bazy danych. Późniejsze cofnięcie go nie może nie być możliwe. Potwierdź.')) doSubmit(this.form);"#}
         >
             Dalej...
         </button>

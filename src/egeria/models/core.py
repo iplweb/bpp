@@ -7,6 +7,7 @@ from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.db import connection
 from django.db import models, transaction
+from django.db.models.query_utils import Q
 
 from bpp.models.autor import Autor
 from egeria.models.autor import Diff_Autor_Create, Diff_Autor_Update, Diff_Autor_Delete
@@ -227,21 +228,25 @@ class EgeriaImport(models.Model):
         assert self.rows().filter(matched_funkcja=None).count() == 0
 
     @transaction.atomic
-    def match_autorzy(self):
+    def match_autorzy(self, verbose=False):
         # Uwaga, PESEL nie jest numerem unikalnym i dwóch autorów może dzielić ten sam numer.
 
         # Na tym etapie matchowania mamy dostępne jednostki (EgeriaRow.matched_jednostka)
 
         for elem in self.rows():
-            # Strategia 1: imię i nazwisko i hash MD5 numeru PESEL
-            a = Autor.objects.filter(
-                nazwisko=elem.nazwisko,
-                imiona__startswith=elem.imie,
-                pesel_md5=elem.pesel_md5)
+
+            default_match = (
+                Q(nazwisko=elem.nazwisko, imiona__startswith=elem.imie) |
+                Q(nazwisko__startswith=elem.nazwisko + "-", imiona__startswith=elem.imie),)
+
+            # Strategia 1: imię zaczyna się od, nazwisko identyczne, hash MD5 numeru PESEL identyczny
+            a = Autor.objects.filter(pesel_md5=elem.pesel_md5, *default_match)
 
             if a.count() == 1:
                 elem.matched_autor = a.first()
                 elem.save()
+                if verbose:
+                    print "1", elem.nazwisko, elem.imie, elem.matched_autor
                 continue
 
             if (elem.nazwisko, elem.imie) in [
@@ -251,10 +256,8 @@ class EgeriaImport(models.Model):
                 elem.save()
                 continue
 
-            # Strategia 2: imię i nazwisko i jedna z jednostek w zatrudnieniu
-            a = Autor.objects.filter(
-                nazwisko=elem.nazwisko,
-                imiona__startswith=elem.imie)
+            # Strategia 2: imię zaczyna się od, nazwisko identyczne i jedna z jednostek w zatrudnieniu
+            a = Autor.objects.filter(*default_match)
             possible_matches = []
             for autor in a:
                 if autor.autor_jednostka_set.filter(jednostka=elem.matched_jednostka).count() == 1:
@@ -263,6 +266,8 @@ class EgeriaImport(models.Model):
             if len(possible_matches) == 1:
                 elem.matched_autor = possible_matches[0]
                 elem.save()
+                if verbose:
+                    print "2", elem.nazwisko, elem.imie, elem.matched_autor
                 continue
             elif len(possible_matches) > 1:
                 # W tym momencie mamy dwóch lub więcej autorów o tych samych nazwiskach,
@@ -273,32 +278,19 @@ class EgeriaImport(models.Model):
                 elem.save()
                 continue
 
-            # tego NIE - autor Andrzej Goral, pracownik techiniczny, pasuje do
-            # autora w BPP - jeżeli jest taki match jak niżej
             # # W sytuacji gdy taki zestaw imion i nazwisk występuje w imporcie
             # # tylko raz - oraz w BPP tylko raz - możemy matchować po imieniu i nazwisku:
             if self.rows().filter(nazwisko=elem.nazwisko, imie=elem.imie).count() == 1:
-                qset = Autor.objects.filter(
-                    nazwisko=elem.nazwisko,
-                    imiona__startswith=elem.imie)
+                qset = Autor.objects.filter(nazwisko=elem.nazwisko, imiona=elem.imie)
                 if qset.count() == 1:
-                    # Jeżeli tytuł lub wydział jest zgodny, to matchuj z tym autorem
-                    autor = qset.first()
+                    elem.matched_autor = autor
+                    elem.save()
+                    if verbose:
+                        print "3", elem.nazwisko, elem.imie, elem.matched_autor
+                    continue
 
-                    t = j = False
-
-                    if autor.tytul != None:
-                        t = autor.tytul.nazwa == elem.tytul_stopien
-
-                    if autor.aktualna_jednostka != None:
-                        j = autor.aktualna_jednostka.wydzial.nazwa == elem.wydzial
-
-                    if t or j:
-                        elem.matched_autor = autor
-                        elem.save()
-                        continue
-
-            # Dany autor pasuje do wielu i nie można określić czemu.
+            # Dany autor pasuje do wielu i nie można określić czemu. Dodać go jako nowego?
+            # na razie NIE
 
     def diff_autorzy(self):
         # Utwórz nowych autorów
