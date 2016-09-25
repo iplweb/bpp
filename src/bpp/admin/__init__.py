@@ -81,6 +81,7 @@ admin.site.register(Charakter_Formalny, Charakter_FormalnyAdmin)
 
 class NazwaISkrotAdmin(RestrictDeletionToAdministracjaGroupMixin, CommitedModelAdmin):
     list_display = ['skrot', 'nazwa']
+    search_fields = ['skrot', 'nazwa']
 
 
 admin.site.register(Tytul, NazwaISkrotAdmin)
@@ -222,7 +223,7 @@ class AutorAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
                     'email', 'pbn_id']
     fields = None
     inlines = [Autor_JednostkaInline, ]
-    list_filter = ['jednostki', 'jednostki__wydzial']
+    list_filter = ['jednostki', 'jednostki__wydzial', 'tytul']
     search_fields = ['imiona', 'nazwisko', 'poprzednie_nazwiska', 'email',
                      'www', 'id', 'pbn_id']
     readonly_fields = ('pesel_md5', 'ostatnio_zmieniony')
