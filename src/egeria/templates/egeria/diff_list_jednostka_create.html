@@ -2,26 +2,23 @@
 
 {% block table %}
     <strong>{{ list_label }}</strong>
-    <p>
-
+    <p style="padding: 2em;">
     <b style="color: red;">
     Uwaga: zmiana nazwy jednostek nie jest obsługiwana.
     </b> Jeżeli na poniższej liście zauważysz jednostki, które zmieniły nazwę, to zmień je ręcznie w systemie
-    przy pomocy opcji <a href="{% reverse "admin:bpp_jednostka_list" %}">redagowanie</a>, następnie ponownie
-    rozpocznij procedurę integracji danych (ponowne dodanie pliku do systemu nie jest wymagane).
+    przy pomocy opcji <a href="{% url "admin:bpp_jednostka_changelist" %}">redagowanie - jednostki</a>, następnie ponownie
+    rozpocznij procedurę integracji danych. W takiej sytuacji, ponowne dodanie pliku do systemu nie jest wymagane.
     </p>
     <table>
         <tr>
             <th>Nowa jednostka</th>
             <th>Wydział</th>
         </tr>
-
         {% for elem in object_list %}
             <tr>
                 <td>{{ elem.nazwa }}</td>
                 <td>{{ elem.wydzial.nazwa }}</td>
             </tr>
         {% endfor %}
-
     </table>
 {% endblock %}
