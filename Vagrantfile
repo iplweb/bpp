@@ -34,6 +34,7 @@ Vagrant.configure(2) do |config|
       master.vm.provision "shell", path: "provisioning/add-swap.sh"
       master.vm.provision "shell", path: "provisioning/apt-fresh.sh"
       master.vm.provision "shell", path: "provisioning/tools.sh"
+      master.vm.provision "shell", path: "provisioning/python.sh"
 
       master.vm.provision "shell", path: "provisioning/git.sh"
       master.vm.provision "shell", path: "provisioning/build.sh"      
@@ -74,6 +75,10 @@ Vagrant.configure(2) do |config|
       staging.vm.provision "shell", path: "provisioning/apt-fresh.sh"
       staging.vm.provision "shell", path: "provisioning/tools.sh"
 
+      if Vagrant.has_plugin?("vagrant-reload")
+            staging.vm.provision :reload
+      end
+
       if Vagrant.has_plugin?("vagrant-cachier")
         config.cache.scope = :box
         config.cache.enable :apt
@@ -106,6 +111,10 @@ Vagrant.configure(2) do |config|
       db.vm.provision "shell", inline: "sudo cat postgresql-optimized.conf >> /etc/postgresql/9.5/main/postgresql.conf"
       db.vm.provision "shell", inline: "sudo service postgresql restart"
 
+      if Vagrant.has_plugin?("vagrant-reload")
+            db.vm.provision :reload
+      end
+
       if Vagrant.has_plugin?("vagrant-cachier")
         config.cache.scope = :box
         config.cache.enable :apt
@@ -114,6 +123,8 @@ Vagrant.configure(2) do |config|
   end
 
   config.vm.define "selenium" do |selenium|
+      # Na ten moment zostaje na Firefox 43 / trusty64 / selenium 2.8 do momentu
+      # przeanalizowania zmian w Selenium 3-beta
       selenium.vm.box = "mpasternak/selenium-trusty64"
       selenium.vm.hostname = 'bpp-selenium'
       selenium.vm.network "private_network", ip: "192.168.111.150"
