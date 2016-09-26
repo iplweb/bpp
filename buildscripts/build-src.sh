@@ -2,7 +2,7 @@
 
 mkdir -p /vagrant/releases || true
 
-cd /home/vagrant/django-bpp/src
+cd $HOME/django-bpp/src
 
 rm -rf staticroot
 grunt build

@@ -3,7 +3,7 @@
 . /etc/lsb-release
 
 
-cd /home/vagrant
+cd $HOME
 OUTDIR=dependencies-$DISTRIB_ID-$DISTRIB_RELEASE-`date +%Y%m%d`
 
 rm -rf $OUTDIR

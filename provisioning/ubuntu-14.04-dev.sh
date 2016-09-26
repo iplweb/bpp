@@ -18,5 +18,5 @@ sudo ln -s /usr/bin/nodejs /usr/local/bin/node
 
 sudo npm install --quiet -g grunt-cli bower
 
-yes n | sudo -i -u vagrant bower > /dev/null
+yes n | sudo -i -u $SUDO_USER bower > /dev/null
 
