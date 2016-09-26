@@ -5,7 +5,6 @@
     - postgresql-plpython
     - postgresql-contrib
     - python-psycopg2
-    - pgtune
   
 - name: Create PostgreSQL user
   postgresql_user: name={{ database_user }} password={{ database_password }} role_attr_flags=CREATEDB,SUPERUSER state=present
