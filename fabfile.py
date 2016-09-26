@@ -6,8 +6,10 @@ from fabric.api import *
 from fabric.contrib.files import exists
 
 if not env['hosts']:
-    env['hosts'] = ['vagrant@bpp-master']
-    env['password'] = 'vagrant'
+    env['hosts'] = ['ubuntu@bpp-master']
+    # env['password'] = 'vagrant'
+    env.key_filename = '.vagrant/machines/master/virtualbox/private_key'
+
 
 env['shell'] = "/bin/bash -l -i -c" 
 
