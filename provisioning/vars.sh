@@ -12,6 +12,6 @@ echo "export PGPASSWORD=password" >> ~/.bashrc
 echo "export PGDATABASE=bpp" >> ~/.bashrc
 
 
-echo ". /home/vagrant/env/bin/activate" >> ~/.bashrc
+echo ". /home/$USER/env/bin/activate" >> ~/.bashrc
 
 

@@ -9,6 +9,6 @@ git config --global user.name "Michał Pasternak"
 git config --global push.default simple
 
 # User config
-su vagrant -c "git config --global user.email michal.dtz@gmail.com"
-su vagrant -c "git config --global user.name Michał\ Pasternak"
-su vagrant -c "git config --global push.default simple"
+su $SUDO_USER -c "git config --global user.email michal.dtz@gmail.com"
+su $SUDO_USER -c "git config --global user.name Michał\ Pasternak"
+su $SUDO_USER -c "git config --global push.default simple"
