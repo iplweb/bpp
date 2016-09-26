@@ -74,6 +74,7 @@ Vagrant.configure(2) do |config|
       staging.vm.provision "shell", path: "provisioning/add-swap.sh"
       staging.vm.provision "shell", path: "provisioning/apt-fresh.sh"
       staging.vm.provision "shell", path: "provisioning/tools.sh"
+      staging.vm.provision "shell", path: "provisioning/python.sh"
 
       if Vagrant.has_plugin?("vagrant-reload")
             staging.vm.provision :reload
