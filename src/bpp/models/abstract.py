@@ -332,17 +332,6 @@ class Wydawnictwo_Baza(ModelZOpisemBibliograficznym, ModelPrzeszukiwalny):
         abstract = True
 
 
-class ModelHistoryczny(models.Model):
-    rozpoczecie_funkcjonowania = models.DateField(
-        "Rozpoczęcie funkcjonowania", blank=True, null=True)
-    zakonczenie_funkcjonowania = models.DateField(
-        "Zakończenie funkcjonowania", blank=True, null=True
-    )
-
-    class Meta:
-        abstract = True
-
-
 from django.core.validators import URLValidator
 
 url_validator = URLValidator()

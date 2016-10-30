@@ -36,10 +36,6 @@ OPENACCESS_FIELDSET = ("OpenAccess", {
                'openaccess_ilosc_miesiecy')
 })
 
-HISTORYCZNY_FIELDSET = ('Historia', {
-    'classes': ('grp-collapse grp-closed', ),
-    'fields': ('rozpoczecie_funkcjonowania', 'zakonczenie_funkcjonowania')})
-
 DWA_TYTULY = (
     'tytul_oryginalny',
     'tytul',

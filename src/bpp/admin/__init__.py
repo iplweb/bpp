@@ -157,7 +157,6 @@ class WydzialAdmin(RestrictDeletionToAdministracjaGroupMixin, ZapiszZAdnotacjaMi
                 'uczelnia', 'nazwa', 'skrot', 'pbn_id', 'opis', 'kolejnosc', 'widoczny',
                 'zezwalaj_na_ranking_autorow', 'archiwalny', 'wirtualny'),
         }),
-        HISTORYCZNY_FIELDSET,
         ADNOTACJE_FIELDSET
     )
 
@@ -194,7 +193,6 @@ class JednostkaAdmin(RestrictDeletionToAdministracjaGroupMixin, ZapiszZAdnotacja
                 'nazwa', 'skrot', 'wydzial', 'pbn_id', 'opis', 'widoczna',
                 'wchodzi_do_raportow', 'wirtualna', 'obca_jednostka', 'email', 'www'),
         }),
-        HISTORYCZNY_FIELDSET,
         ADNOTACJE_FIELDSET)
 
 
