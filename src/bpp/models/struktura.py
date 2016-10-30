@@ -11,7 +11,7 @@ from django.db.models import Q
 from djorm_pgfulltext.fields import VectorField
 
 from bpp.util import FulltextSearchMixin
-from bpp.models import ModelZAdnotacjami, NazwaISkrot, ModelHistoryczny
+from bpp.models import ModelZAdnotacjami, NazwaISkrot
 from bpp.models.abstract import NazwaWDopelniaczu, ModelZPBN_ID
 from bpp.models.autor import Autor, Autor_Jednostka
 
@@ -38,7 +38,7 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         return Wydzial.objects.filter(uczelnia=self, widoczny=True)
 
 
-class Wydzial(ModelZAdnotacjami, ModelZPBN_ID, ModelHistoryczny):
+class Wydzial(ModelZAdnotacjami, ModelZPBN_ID):
     uczelnia = models.ForeignKey(Uczelnia)
     nazwa = models.CharField(max_length=512, unique=True)
     skrot = models.CharField("Skrót", max_length=4, unique=True)
@@ -88,7 +88,7 @@ class Wydzial(ModelZAdnotacjami, ModelZPBN_ID, ModelHistoryczny):
 class JednostkaManager(FulltextSearchMixin, models.Manager):
     pass
 
-class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelHistoryczny):
+class Jednostka(ModelZAdnotacjami, ModelZPBN_ID):
     wydzial = models.ForeignKey(Wydzial, verbose_name="Wydział")
     nazwa = models.CharField(max_length=512, unique=True)
     skrot = models.CharField("Skrót", max_length=128, unique=True)
