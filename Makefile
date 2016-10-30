@@ -30,7 +30,7 @@ rebuild-staging:
 	yes | ansible-playbook ansible/webserver.yml
 
 staging:
-	ansible-playbook ansible/webserver.yml
+	ansible-playbook ansible/webserver.yml --private-key=.vagrant/machines/staging/virtualbox/private_key
 
 full-build: vcs tests build staging
 	@echo "Done"
