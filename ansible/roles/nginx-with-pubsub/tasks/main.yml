@@ -5,7 +5,9 @@
 
 - name: Update apt cache
   apt:  update_cache=yes
-  when: nginx_ppa|changed
+# Aktualizuj zawsze - jezeli Ubuntu zostało zaktualizowane lub pakiet w PPA 
+# został zaktualizowany, to nie zaciągnie nowych pakietów
+#  when: nginx_ppa|changed
 
 - name: Install PPA with nginx + nginx-push-stream-module
   apt: name="nginx=1.10.1-0+xenial0+pushstream1" state=present
