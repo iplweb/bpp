@@ -316,7 +316,8 @@ def generuj_inline_dla_autorow(baseModel):
                 "../dynjs/autorform_dependant.js?class=%s" % baseModel.__name__,)
 
         class Meta:
-            fields = "__all__"
+            fields = ["autor", "jednostka", "typ_odpowiedzialnosci", "zapisany_jako",
+                      "zatrudniony", "kolejnosc"]
             model = baseModel
             widgets = {
                 'zapisany_jako': autocomplete_light.TextWidget(
