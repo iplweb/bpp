@@ -270,6 +270,7 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
     typ_odpowiedzialnosci = models.ForeignKey('Typ_Odpowiedzialnosci',
                                               verbose_name="Typ odpowiedzialności")
     zapisany_jako = models.CharField(max_length=512)
+    zatrudniony = models.BooleanField(default=False, help_text="""Pracownik jednostki podanej w afiliacji""")
 
     class Meta:
         abstract = True

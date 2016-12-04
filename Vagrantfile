@@ -16,17 +16,22 @@
 
 Vagrant.configure(2) do |config|
 
-  config.hostmanager.enabled = true
-  config.hostmanager.manage_host = true
-  config.hostmanager.ignore_private_ip = false
-  config.hostmanager.include_offline = true
+  if Vagrant.has_plugin?("vagrant-hostmanager")
+      config.hostmanager.enabled = true
+      config.hostmanager.manage_host = true
+      config.hostmanager.ignore_private_ip = false
+      config.hostmanager.include_offline = true
+   end
 
   config.vm.define "master", primary: true do |master|
       master.vm.box = "ubuntu/xenial64"
       master.vm.box_check_update = false
 
       master.vm.hostname = 'bpp-master'
-      master.hostmanager.aliases = %w(bpp-master.localnet)
+
+      if Vagrant.has_plugin?("vagrant-hostmanager")
+          master.hostmanager.aliases = %w(bpp-master.localnet)
+      end
 
       master.vm.network "private_network", ip: "192.168.111.100"
 
@@ -67,7 +72,9 @@ Vagrant.configure(2) do |config|
       staging.vm.box_check_update = false
 
       staging.vm.hostname = 'bpp-staging'
-      staging.hostmanager.aliases = %w(bpp-staging.localnet)
+      if Vagrant.has_plugin?("vagrant-hostmanager")
+          staging.hostmanager.aliases = %w(bpp-staging.localnet)
+      end
       staging.vm.network "private_network", ip: "192.168.111.101"
 
       staging.vm.provision "shell", path: "provisioning/locale.sh"
@@ -129,7 +136,10 @@ Vagrant.configure(2) do |config|
       selenium.vm.box = "mpasternak/selenium-trusty64"
       selenium.vm.hostname = 'bpp-selenium'
       selenium.vm.network "private_network", ip: "192.168.111.150"
-      selenium.hostmanager.aliases = %w(selenium)
+
+      if Vagrant.has_plugin?("vagrant-hostmanager")
+        selenium.hostmanager.aliases = %w(selenium)
+      end
 
       selenium.vm.provision "shell", inline: "echo 192.168.111.1 MacOSX.localnet >> /etc/hosts"
 

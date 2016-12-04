@@ -212,7 +212,6 @@ def test_admin_uzupelnij_punkty(preauth_admin_browser, live_server):
 
     preauth_admin_browser.execute_script("window.onbeforeunload = function(e) {};")
 
-
 def test_upload_punkty(preauth_admin_browser, live_server):
     z = any_zrodlo(nazwa="WTF LOL")
     url = reverse("admin:bpp_wydawnictwo_ciagle_add")
@@ -225,8 +224,8 @@ def test_upload_punkty(preauth_admin_browser, live_server):
     preauth_admin_browser.fill("rok", str(CURRENT_YEAR))
     preauth_admin_browser.fill("impact_factor", "50")
 
-    # proper_click(preauth_admin_browser, "id_dodaj_punktacje_do_zrodla_button")
-    preauth_admin_browser.find_by_id("id_dodaj_punktacje_do_zrodla_button").click()
+    proper_click(preauth_admin_browser, "id_dodaj_punktacje_do_zrodla_button")
+    # preauth_admin_browser.find_by_id("id_dodaj_punktacje_do_zrodla_button").first.click()
     time.sleep(2)
 
     assert Punktacja_Zrodla.objects.count() == 1
