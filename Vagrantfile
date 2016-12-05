@@ -33,6 +33,11 @@ Vagrant.configure(2) do |config|
           master.hostmanager.aliases = %w(bpp-master.localnet)
       end
 
+      master.vm.provider "virtualbox" do |vb|
+          vb.customize ["modifyvm", :id, "--cpus", "4"]
+          vb.customize ["modifyvm", :id, "--memory", "2048"]
+      end
+
       master.vm.network "private_network", ip: "192.168.111.100"
 
       master.vm.provision "shell", path: "provisioning/locale.sh"
@@ -70,6 +75,10 @@ Vagrant.configure(2) do |config|
   config.vm.define "staging" do |staging|
       staging.vm.box = "ubuntu/xenial64"
       staging.vm.box_check_update = false
+
+      staging.vm.provider "virtualbox" do |vb|
+          vb.customize ["modifyvm", :id, "--cpus", "4"]
+      end
 
       staging.vm.hostname = 'bpp-staging'
       if Vagrant.has_plugin?("vagrant-hostmanager")
@@ -111,6 +120,10 @@ Vagrant.configure(2) do |config|
         ansible.playbook = "ansible/provision.yml"
       end
 
+      db.vm.provider "virtualbox" do |vb|
+          vb.customize ["modifyvm", :id, "--cpus", "4"]
+      end
+
       # Otwórz PostgreSQL po TCP/IP dla wszystkich
       db.vm.provision "shell", path: "provisioning/postgresql-open-wide.sh"
 
@@ -147,6 +160,12 @@ Vagrant.configure(2) do |config|
         config.cache.scope = :box
         config.cache.enable :apt
       end
+
+      selenium.vm.provider "virtualbox" do |vb|
+          vb.customize ["modifyvm", :id, "--cpus", "4"]
+          vb.customize ["modifyvm", :id, "--memory", "2048"]
+      end
+
   end
 
 end
