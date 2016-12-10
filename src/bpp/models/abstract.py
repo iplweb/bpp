@@ -425,6 +425,11 @@ class PBNSerializerHelperMixin:
 
     def eksport_pbn_author(self, toplevel, wydzial, autorzy_klass):
         for autor_wyd in autorzy_klass.objects.filter(rekord=self, typ_odpowiedzialnosci__skrot='aut.'):
+
+            # XXX: tu jest błąd moim zdaniem, bo sprawdzana jest afiliacja autora na dany rok, a faktycznie to:
+            # powinno być sprawdzenie, czy AUTOR w kontekście PRACY ma przypisaną jednostkę z danego WYDZIALU
+            # (przypisaną = afliowaną) ORAZ NASTęPNIE czy autor w konteście pracy ma kliknięte, że jest
+            # PRACOWNIKIEM afiliowanej jednostki.
             if autor_wyd.autor.afiliacja_na_rok(self.rok, wydzial, rozszerzona=True):
                 toplevel.append(autor_wyd.autor.eksport_pbn_serializuj(affiliated=True, employed=True))
 
