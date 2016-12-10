@@ -59,11 +59,14 @@ release: new-patch full-build
 download: 
 	fab -H zarzadca@bpp.umlub.pl download_db
 
-download-db: download migrate
+download-and-migrate: download migrate
 	@echo "Done!"
 
-rebuild-from-downloaded:
+_rebuild-from-downloaded:
 	fab -H zarzadca@bpp.umlub.pl download_db:restore=True,recreate=True,download=False
+
+rebuild-from-downloaded: _rebuild-from-downloaded migrate
+	@echo "Done!"
 
 migrate: 
 	cd src && python manage.py migrate
