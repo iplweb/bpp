@@ -62,8 +62,8 @@ def test_opis_bibliograficzny_zrodlo(db, statusy_korekt):
     assert cache._CACHE_ENABLED
 
     from django.conf import settings
-    assert(settings.TESTING, True)
-    assert(settings.CELERY_ALWAYS_EAGER, True)
+    assert settings.TESTING == True
+    assert settings.CELERY_ALWAYS_EAGER == True
 
     z = mommy.make(Zrodlo, nazwa='OMG', skrot='wutlolski')
     c = mommy.make(Wydawnictwo_Ciagle, szczegoly='SZ', uwagi='U', zrodlo=z)
