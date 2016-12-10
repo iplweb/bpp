@@ -14,7 +14,7 @@ from lxml.etree import SubElement
 
 from bpp.fields import YearField, DOIField
 from bpp.models.util import ModelZOpisemBibliograficznym
-
+from lxml.etree import Element
 
 class ModelZeZnakamiWydawniczymi(models.Model):
 
@@ -425,22 +425,21 @@ class PBNSerializerHelperMixin:
 
     def eksport_pbn_author(self, toplevel, wydzial, autorzy_klass):
         for autor_wyd in autorzy_klass.objects.filter(rekord=self, typ_odpowiedzialnosci__skrot='aut.'):
-
-            # XXX: tu jest błąd moim zdaniem, bo sprawdzana jest afiliacja autora na dany rok, a faktycznie to:
-            # powinno być sprawdzenie, czy AUTOR w kontekście PRACY ma przypisaną jednostkę z danego WYDZIALU
-            # (przypisaną = afliowaną) ORAZ NASTęPNIE czy autor w konteście pracy ma kliknięte, że jest
-            # PRACOWNIKIEM afiliowanej jednostki.
-            if autor_wyd.autor.afiliacja_na_rok(self.rok, wydzial, rozszerzona=True):
-                toplevel.append(autor_wyd.autor.eksport_pbn_serializuj(affiliated=True, employed=True))
+            # TODO: zrób sprawdzanie jednostki w kontekście ROKU do jakiego wydziału była WÓWCZAS przypisana
+            if autor_wyd.jednostka.wydzial_id == wydzial.pk:
+                toplevel.append(autor_wyd.autor.eksport_pbn_serializuj(
+                    affiliated=True, employed=autor_wyd.zatrudniony))
 
     def eksport_pbn_other_contributors(self, toplevel, wydzial, autorzy_klass):
         dopisani_autorzy = 0
-        wszyscy_autorzy = self.autorzy.all().count()
-        for autor_wyd in autorzy_klass.objects.filter(rekord=self, typ_odpowiedzialnosci__skrot='aut.'):
-            if autor_wyd.autor.afiliacja_na_rok(self.rok, wydzial, rozszerzona=True):
-                dopisani_autorzy += 1
-        other_contributors = SubElement(toplevel, 'other-contributors')
-        other_contributors.text = str(wszyscy_autorzy - dopisani_autorzy)
+        qry = autorzy_klass.objects.filter(rekord=self, typ_odpowiedzialnosci__skrot='aut.')
+
+        wszyscy_autorzy = qry.count()
+        nasi_autorzy = qry.filter(jednostka__wydzial_id=wydzial.id).count()
+
+        other_contributors = Element('other-contributors')
+        other_contributors.text = str(wszyscy_autorzy - nasi_autorzy)
+        toplevel.append(other_contributors)
 
     def eksport_pbn_lang(self, toplevel, wydzial=None, autorzy_klass=None):
         lang = SubElement(toplevel, 'lang')
@@ -546,7 +545,7 @@ class PBNSerializerHelperMixin:
 
     def eksport_pbn_serializuj(self, toplevel, wydzial, autorzy_klass):
         self.eksport_pbn_run_serialization_functions(
-            ['title', 'author', "other-contributors", "doi",
+            ['title', 'author', "other-contributors", "other-editors", "doi",
              "lang", "abstract", "keywords", "public-uri", "publication-date",
              "conference", "size", "is", "system-identifier"],
             toplevel, wydzial, autorzy_klass)
