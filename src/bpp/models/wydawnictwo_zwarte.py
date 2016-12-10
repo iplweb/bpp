@@ -188,10 +188,24 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
         if autorzy_klass == Wydawnictwo_Zwarte_Autor:
             for redaktor_wyd in autorzy_klass.objects.filter(
                     rekord=self,
-                    typ_odpowiedzialnosci__skrot__in=['red.', 'red. nauk. wyd. pol.']):
-                afi = redaktor_wyd.autor.afiliacja_na_rok(self.rok, wydzial, rozszerzona=True)
-                toplevel.append(
-                    redaktor_wyd.autor.eksport_pbn_serializuj(affiliated=afi, employed=afi, tagname='editor'))
+                    typ_odpowiedzialnosci__skrot__in=['red.', 'red. nauk. wyd. pol.']).select_related("jednostka"):
+                if redaktor_wyd.jednostka.wydzial_id == wydzial.id:
+                    # Afiliowany!
+                    toplevel.append(
+                        redaktor_wyd.autor.eksport_pbn_serializuj(
+                            affiliated=True, employed=redaktor_wyd.zatrudniony, tagname='editor'))
+
+    def eksport_pbn_other_editors(self, toplevel, wydzial, autorzy_klass):
+        from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte_Autor
+        if autorzy_klass == Wydawnictwo_Zwarte_Autor:
+            qry = autorzy_klass.objects.filter(rekord=self, typ_odpowiedzialnosci__skrot__in=['red.', 'red. nauk. wyd. pol.'])
+
+            wszyscy_redaktorzy = qry.count()
+            nasi_redaktorzy = qry.filter(jednostka__wydzial_id=wydzial.id).count()
+
+            other_editors = Element('other-editors')
+            other_editors.text = str(wszyscy_redaktorzy - nasi_redaktorzy)
+            toplevel.append(other_editors)
 
     eksport_pbn_BOOK_FLDS = ["editor", "isbn", "series", "number-in-series", "edition", "volume", "pages",
                              "publisher-name", "publication-place", "open-access"]
