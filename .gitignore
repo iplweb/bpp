@@ -85,3 +85,4 @@ releases/
 *.key
 ansible/webserver.retry
 ansible/host_vars/bpp.umlub.pl
+ansible/provision.retry
