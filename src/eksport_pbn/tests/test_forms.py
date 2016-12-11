@@ -2,14 +2,7 @@
 
 from __future__ import unicode_literals
 
-from datetime import datetime, timedelta
-
 from django.core.urlresolvers import reverse
-from model_mommy import mommy
-
-from eksport_pbn.models import PlikEksportuPBN, DATE_CREATED_ON
-from eksport_pbn.tasks import eksport_pbn, id_zwartych, id_ciaglych, remove_old_eksport_pbn_files
-
 
 
 def test_submit_report_form(admin_app, wydzial):
@@ -25,7 +18,7 @@ def test_submit_report_form_validation_data_od_do(admin_app, wydzial):
     page.form['od_daty'] = '2010-01-01'
     page.form['do_daty'] = '2009-01-01'
     res = page.form.submit()
-    assert u'Warto\u015b\u0107 w polu &#39;Od daty&#39; musi' in res.content.decode('utf-8')
+    assert "Wartość w polu &#39;Od daty&#39;" in res.content.decode("utf-8")
 
 
 def test_submit_report_form_validation_rok_od_do(admin_app, wydzial):
