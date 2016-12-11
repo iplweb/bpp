@@ -18,7 +18,9 @@ def test_submit_report_form_validation_data_od_do(admin_app, wydzial):
     page.form['od_daty'] = '2010-01-01'
     page.form['do_daty'] = '2009-01-01'
     res = page.form.submit()
-    assert "Wartość w polu &#39;Od daty&#39;" in res.content.decode("utf-8")
+    macOs = "Wartość w polu &#39;Od daty&#39;" in res.content.decode("utf-8")
+    linux = "Wartość w polu 'Od daty'" in res.content.decode("utf-8")
+    assert macOs or linux
 
 
 def test_submit_report_form_validation_rok_od_do(admin_app, wydzial):
