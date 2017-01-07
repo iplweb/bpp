@@ -14,5 +14,5 @@ class Diff_Tytul_Delete(Diff_Delete):
     reference = models.ForeignKey(Tytul)
 
     @classmethod
-    def check_if_needed(cls, reference):
+    def check_if_needed(cls, parent, reference):
         return reference.autor_set.count() == 0

@@ -4,6 +4,7 @@ import time
 import pytest
 from django.core.urlresolvers import reverse
 from django.db import transaction
+from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.common.keys import Keys
 
 from bpp.models import Wydawnictwo_Ciagle
@@ -19,7 +20,7 @@ pytestmark = [pytest.mark.slow, pytest.mark.selenium]
 
 
 def scrollIntoView(browser, arg):
-    return browser.execute_script("document.getElementById('id_" + arg + "').scrollIntoView()")
+    return browser.execute_script("document.getElementById('" + arg + "').scrollIntoView()")
 
 
 def proper_click(browser, arg):
@@ -29,6 +30,14 @@ def proper_click(browser, arg):
     browser.execute_script("document.getElementById('" + arg + "').scrollIntoView()")
     browser.execute_script("document.getElementById('" + arg + "').click()")
 
+def clickButtonBuggyMarionetteDriver(browser, id):
+    try:
+        browser.execute_script("$('#" + id + "').click()")
+    except WebDriverException, e:
+        if e.msg.startswith("Failed to find value field"):
+            pass
+        else:
+            raise e
 
 # url = "/admin/"
 
@@ -44,6 +53,7 @@ def assertPopupContains(browser, text, accept=True):
 
 
 def test_admin_wydawnictwo_ciagle_toz(preauth_admin_browser, live_server):
+    Wydawnictwo_Ciagle.objects.all().delete()
     c = any_ciagle(informacje='TO INFORMACJE')
 
     preauth_admin_browser.visit(live_server + reverse("admin:bpp_wydawnictwo_ciagle_change", args=(c.pk,)))
@@ -55,6 +65,7 @@ def test_admin_wydawnictwo_ciagle_toz(preauth_admin_browser, live_server):
     toz.click()
 
     assertPopupContains(preauth_admin_browser, u"Utworzysz kopię tego rekordu")
+    time.sleep(2)
     assert preauth_admin_browser.is_element_present_by_id('navigation-menu', wait_time=5000)
 
     assert wcc() == 2
@@ -72,6 +83,7 @@ def test_admin_wydawnictwo_zwarte_toz(preauth_admin_browser, live_server):
     toz.click()
 
     assertPopupContains(preauth_admin_browser, u"Utworzysz kopię tego rekordu")
+    time.sleep(2)
     preauth_admin_browser.is_element_present_by_id('navigation-menu', 5000)
     assert wcc() == 2
 
@@ -120,6 +132,8 @@ def test_admin_patent_toz(preauth_admin_browser, live_server):
     toz.click()
 
     assertPopupContains(preauth_admin_browser, u"Utworzysz kopię tego rekordu")
+    time.sleep(2)
+
     preauth_admin_browser.is_element_present_by_id('navigation-menu', 5000)
     assert wcc() == 2
 
@@ -140,17 +154,19 @@ def test_automatycznie_uzupelnij_punkty(preauth_admin_browser, live_server):
     preauth_admin_browser.visit(live_server + url)
 
     z = any_zrodlo(nazwa="FOO BAR")
-
-    preauth_admin_browser.execute_script("$('#id_wypelnij_pola_punktacji_button').click()")
+    clickButtonBuggyMarionetteDriver(
+        preauth_admin_browser,
+        "id_wypelnij_pola_punktacji_button")
     assertPopupContains(preauth_admin_browser, u"Najpierw wybierz jakie")
-    time.sleep(1)
 
     zrodlo = preauth_admin_browser.find_by_id("id_zrodlo-autocomplete")
     zrodlo.type("FOO BAR")
     time.sleep(2)
     zrodlo.type(Keys.TAB)
 
-    preauth_admin_browser.execute_script("$('#id_wypelnij_pola_punktacji_button').click()")
+    clickButtonBuggyMarionetteDriver(
+        preauth_admin_browser,
+        "id_wypelnij_pola_punktacji_button")
     assertPopupContains(preauth_admin_browser, u"Uzupełnij pole")
 
     preauth_admin_browser.execute_script("window.onbeforeunload = function(e) {};")
@@ -225,15 +241,15 @@ def test_upload_punkty(preauth_admin_browser, live_server):
     preauth_admin_browser.fill("impact_factor", "50")
 
     proper_click(preauth_admin_browser, "id_dodaj_punktacje_do_zrodla_button")
-    # preauth_admin_browser.find_by_id("id_dodaj_punktacje_do_zrodla_button").first.click()
+    # preauth_admin_browser.find_by_id("id_dodaj_punktacje_do_zrodla_button").click()
     time.sleep(2)
 
     assert Punktacja_Zrodla.objects.count() == 1
     assert Punktacja_Zrodla.objects.all()[0].impact_factor == 50
 
     preauth_admin_browser.fill("impact_factor", "60")
-    # self.proper_click("dodaj_punktacje_do_zrodla_button")
-    preauth_admin_browser.find_by_id("id_dodaj_punktacje_do_zrodla_button").click()
+    proper_click(preauth_admin_browser, "id_dodaj_punktacje_do_zrodla_button")
+    # preauth_admin_browser.find_by_id("id_dodaj_punktacje_do_zrodla_button").click()
     time.sleep(2)
 
     assertPopupContains(preauth_admin_browser, u"Punktacja dla tego roku już istnieje")
@@ -258,13 +274,14 @@ def autorform_jednostka(db):
 def autorform_browser(preauth_admin_browser, db, live_server):
     url = reverse("admin:bpp_wydawnictwo_ciagle_add")
     preauth_admin_browser.visit(live_server + url)
+    time.sleep(2)
     preauth_admin_browser.execute_script("window.onbeforeunload = function(e) {};")
-
     return preauth_admin_browser
 
 
 def test_autorform_jednostka_bug_wydawnictwo_ciagle_zapisz(autorform_browser, autorform_jednostka):
     autorform_browser.find_by_name("_continue").click()
+    time.sleep(2)
     assert "To pole jest wymagane." in autorform_browser.html
 
 

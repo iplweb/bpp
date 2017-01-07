@@ -89,3 +89,12 @@ egeria-import:
 
 rebuild-reimport: rebuild egeria-import
 	@echo "Done"
+
+rebuilddb:
+	-dropdb bpp
+	-dropdb test_bpp
+	createdb bpp
+	python src/manage.py makemigrations
+	python src/manage.py migrate
+	-say "Przebudowa bazy danych zakończona"
+	-noti -t "rebuilddb zakończono" -m "Proces przebudowania bazy danych zakończony"

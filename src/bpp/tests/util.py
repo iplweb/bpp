@@ -57,12 +57,21 @@ def any_jednostka(nazwa=None, skrot=None, wydzial_skrot="WDZ", **kw):
         skrot = 'J. %s' % random.randint(0, 5000000)
 
     try:
-        wydzial = Wydzial.objects.get(skrot=wydzial_skrot)
-    except Wydzial.DoesNotExist:
-        wydzial = any_wydzial()
+        uczelnia = kw.pop('uczelnia')
+    except KeyError:
+        uczelnia = Uczelnia.objects.all().first()
+        if uczelnia is None:
+            uczelnia = mommy.make(Uczelnia)
 
-    set_default('wydzial', wydzial, kw)
-    return Jednostka.objects.create(nazwa=nazwa, skrot=skrot, **kw)
+    try:
+        wydzial = kw.pop('wydzial')
+    except KeyError:
+        try:
+            wydzial = Wydzial.objects.get(skrot=wydzial_skrot)
+        except Wydzial.DoesNotExist:
+            wydzial = mommy.make(Wydzial, uczelnia=uczelnia)
+
+    return mommy.make(Jednostka, nazwa=nazwa, skrot=skrot, wydzial=wydzial, uczelnia=uczelnia, **kw)
 
 
 CURRENT_YEAR = datetime.now().year

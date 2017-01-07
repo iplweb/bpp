@@ -17,7 +17,7 @@ def test_0046_ostatnia_jednostka_trigger_via_api(autor_jan_nowak, jednostka):
 def test_0046_ostatnia_jednostka_trigger(autor_jan_nowak, jednostka, druga_jednostka):
     assert autor_jan_nowak.aktualna_jednostka == None
 
-    two_months = timedelta(days=30)
+    two_months = timedelta(days=60)
     month = timedelta(days=30)
 
     # Strategia 3 test 1
@@ -65,6 +65,8 @@ def test_0046_ostatnia_jednostka_trigger(autor_jan_nowak, jednostka, druga_jedno
     aj2.delete()
     autor_jan_nowak.refresh_from_db()
     assert autor_jan_nowak.aktualna_jednostka == None
+
+    Autor_Jednostka.objects.all().delete()
 
     # Strategia 2
     aj = Autor_Jednostka.objects.create(

@@ -436,7 +436,15 @@ DATABASES = {
         'PASSWORD': django_getenv("DJANGO_BPP_DB_PASSWORD", "password"),
         'HOST': django_getenv("DJANGO_BPP_DB_HOST", "bpp-db"),
         'PORT': int_or_None(django_getenv("DJANGO_BPP_DB_PORT", "5432")),
-    }
+    },
+    # 'test': {
+    #     'ENGINE': django_getenv("DJANGO_BPP_DB_ENGINE", 'django.db.backends.postgresql_psycopg2'),
+    #     'NAME': "test_" + django_getenv("DJANGO_BPP_DB_NAME", "bpp"),
+    #     'USER': django_getenv("DJANGO_BPP_DB_USER", "bpp"),
+    #     'PASSWORD': django_getenv("DJANGO_BPP_DB_PASSWORD", "password"),
+    #     'HOST': django_getenv("DJANGO_BPP_DB_HOST", "bpp-db"),
+    #     'PORT': int_or_None(django_getenv("DJANGO_BPP_DB_PORT", "5432")),
+    # },
 }
 
 SECRET_KEY = django_getenv("DJANGO_BPP_SECRET_KEY")

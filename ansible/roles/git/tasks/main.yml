@@ -1,0 +1,19 @@
+---
+- name: install git package
+  apt: name=git
+
+- name: Run global config
+  shell: "{{ item }}"
+  with_items:
+    - git config --global user.email "michal.dtz@gmail.com"
+    - git config --global user.name "Michał Pasternak"
+    - git config --global push.default simple
+
+- name: Run user config
+  shell: "{{ item }}"
+  become: "{{ user }}"
+  with_items:
+    - git config --global user.email "michal.dtz@gmail.com"
+    - git config --global user.name "Michał Pasternak"
+    - git config --global push.default simple
+

@@ -1,0 +1,28 @@
+---
+- name: Install {{ item }}
+  apt: name={{ item }}
+  with_items:
+    - python-gevent
+    - python-psycopg2 
+    - python-imaging 
+    - python-crypto 
+    - python-simplejson 
+    - python-sqlalchemy 
+    - redis-server 
+    - zip 
+    - unzip
+    
+    - libpq-dev 
+    - libjpeg-dev 
+    - libpng-dev 
+    - libxml2-dev 
+    - libxslt1-dev 
+    - libevent-dev 
+    - libxslt1-dev 
+    - python-dev 
+    - npm 
+    - nodejs-legacy
+    - postgresql-client
+
+- name: Install bower globally
+  npm: name=bower global=yes

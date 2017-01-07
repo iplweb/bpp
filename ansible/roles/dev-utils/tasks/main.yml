@@ -1,0 +1,11 @@
+---
+- name: Install emacs, mc and links
+  apt: name={{ item }} 
+  with_items: 
+    - emacs24-nox
+    - mc
+    - links
+
+- name: Add alias to emacs24-nox to user env 
+  lineinfile: dest=/home/ubuntu/.bashrc line="alias jed=emacs24-nox"
+  become_user: ubuntu

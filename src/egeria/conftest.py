@@ -19,22 +19,23 @@ def test_file_path():
     return test_file
 
 
-def _egeria_import_factory(path):
-    test = EgeriaImport.objects.create(created_by=None)
+def _egeria_import_factory(path, uczelnia):
+    test = EgeriaImport.objects.create(created_by=None, uczelnia=uczelnia)
     test.file = SimpleUploadedFile(path, open(path).read())
     test.save()
     return test
 
+
 @pytest.fixture
 @pytest.mark.django_db
-def egeria_import(test_file_path):
-    return _egeria_import_factory(test_file_path)
+def egeria_import(test_file_path, uczelnia):
+    return _egeria_import_factory(test_file_path, uczelnia)
 
 
 @pytest.fixture
 @pytest.mark.django_db
-def egeria_import_imported(test_file_path):
-    egeria_import = _egeria_import_factory(test_file_path)
+def egeria_import_imported(test_file_path, uczelnia):
+    egeria_import = _egeria_import_factory(test_file_path, uczelnia)
     egeria_import.everything()
     return egeria_import
 
@@ -48,16 +49,6 @@ def drugi_wydzial(uczelnia):
         uczelnia=uczelnia)
     return drugi_wydzial
 
-
-@pytest.fixture
-@pytest.mark.django_db
-def wydzial_archiwalny(uczelnia):
-    wydzial_archiwalny = Wydzial.objects.create(
-        nazwa=u"Wydział Archiwalny",
-        skrot="WArc",
-        uczelnia=uczelnia,
-        archiwalny=True)
-    return wydzial_archiwalny
 
 @pytest.fixture
 @pytest.mark.django_db
@@ -80,6 +71,5 @@ def egeria_browser_detail(preauth_browser, live_server, egeria_import):
     egeria_import.analyze()
     egeria_import.next_import_step()
     # Selenium
-    preauth_browser.visit(live_server + reverse("egeria:detail", args=(egeria_import.pk, )))
+    preauth_browser.visit(live_server + reverse("egeria:detail", args=(egeria_import.pk,)))
     return preauth_browser
-

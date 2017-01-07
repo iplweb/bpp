@@ -82,14 +82,14 @@ class BaseDiffProducer:
         for elem in self.get_update_values():
             kwargs = self.update_kwargs(elem)
             kwargs['parent'] = self.parent
-            if self.update_class.check_if_needed(elem):
+            if self.update_class.check_if_needed(self.parent, elem):
                 self.update_class.objects.create(**kwargs)
 
     def delete_handler(self):
         for elem in self.get_delete_values():
             kwargs = self.delete_kwargs(elem)
             kwargs['parent'] = self.parent
-            if self.delete_class.check_if_needed(elem):
+            if self.delete_class.check_if_needed(self.parent, elem):
                 self.delete_class.objects.create(**kwargs)
 
     def produce(self):

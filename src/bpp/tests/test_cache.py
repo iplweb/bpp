@@ -47,9 +47,9 @@ class TestCacheMixin:
         aut = Typ_Odpowiedzialnosci.objects.get(skrot='aut.')
         self.typ_odpowiedzialnosci = aut
 
-        self.uczelnia = any_uczelnia()
-        self.wydzial = any_wydzial(uczelnia=self.uczelnia)
-        self.j = any_jednostka(nazwa='Foo Bar', wydzial=self.wydzial)
+        self.uczelnia = mommy.make(Uczelnia)
+        self.wydzial = mommy.make(Wydzial, uczelnia=self.uczelnia)
+        self.j = mommy.make(Jednostka, nazwa='Foo Bar', uczelnia=self.uczelnia, wydzial=self.wydzial)
 
         self.a = autor(self.j)
         self.a.nazwisko = 'Kowalski'
@@ -228,7 +228,7 @@ class TestCacheZapisani(TestCase):
         aut = any_autor("Kowalski", "Jan")
         aut2 = any_autor("Nowak", "Jan")
 
-        jed = any_jednostka("Jednostka")
+        jed = mommy.make(Jednostka)
         wyd = any_ciagle(tytul_oryginalny="Wydawnictwo ciagle")
 
         for kolejnosc, autor in enumerate([aut, aut2]):
@@ -258,7 +258,7 @@ class TestCacheZapisani(TestCase):
 
     def test_zapisani_jeden(self):
         aut = any_autor("Kowalski", "Jan")
-        dok = any_doktorat(tytul_oryginalny="Doktorat", autor=aut)
+        dok = mommy.make(Praca_Doktorska, tytul_oryginalny="Doktorat", autor=aut)
 
         Rekord.objects.full_refresh()
         c = Rekord.objects.get(original=dok)
@@ -279,7 +279,7 @@ class TestMinimalCachingProblem(TestCase):
     @with_cache
     def test_tworzenie(self):
 
-        self.j = any_jednostka()
+        self.j = mommy.make(Jednostka)
         self.a = any_autor()
 
         self.assertEquals(Autorzy.objects.all().count(), 0)
@@ -295,7 +295,7 @@ class TestMinimalCachingProblem(TestCase):
     @with_cache
     def test_usuwanie(self):
 
-        self.j = any_jednostka()
+        self.j = mommy.make(Jednostka)
         self.a = any_autor()
 
         self.assertEquals(Autorzy.objects.all().count(), 0)

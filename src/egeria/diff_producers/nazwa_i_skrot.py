@@ -82,5 +82,5 @@ class WydzialDiffProducer(NazwaISkrotDiffProducer):
         i oprócz wydziałów wirtualnych
         """
         return self.get_db_values() \
-            .exclude(wirtualny=True) \
+            .exclude(zarzadzaj_automatycznie=False) \
             .exclude(nazwa__in=self.get_import_values())

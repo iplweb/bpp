@@ -1,0 +1,25 @@
+- name: Check swapfile exists
+  stat: path={{ swapfile_location }}
+  register: swap_stat
+
+- name: Write swapfile
+  command: dd if=/dev/zero of={{ swapfile_location }} bs=1M count={{ swapfile_size }} creates={{ swapfile_location }}
+  register: write_swapfile
+  when: swapfile_size != false and swap_stat.stat.exists != true
+
+- name: Create swapfile
+  command: mkswap {{ swapfile_location }}
+  environment:
+    PATH: "{{ ansible_env.PATH }}:/usr/local/sbin:/usr/sbin:/sbin"
+  register: create_swapfile
+  when: swapfile_size != false and write_swapfile.changed
+
+- name: Enable swapfile
+  command: swapon {{ swapfile_location }}
+  environment:
+    PATH: "{{ ansible_env.PATH }}:/usr/local/sbin:/usr/sbin:/sbin"
+  when: swapfile_size != false and create_swapfile.changed
+
+- name: Add swapfile to /etc/fstab
+  lineinfile: dest=/etc/fstab line="{{ swapfile_location }}   none    swap    sw    0   0" state=present
+  when: swapfile_size != false

@@ -72,7 +72,7 @@ def test_raport_jednostek(raporty_browser, jednostka_raportow, live_server):
     raporty_browser.execute_script('$("input[name=od_roku]:visible").val("' + str(CURRENT_YEAR) + '")')
     raporty_browser.execute_script('$("input[name=do_roku]:visible").val("' + str(CURRENT_YEAR) + '")')
     submit_page(raporty_browser)
-    time.sleep(0.5)
+    time.sleep(2)
 
     assert '/bpp/raporty/raport-jednostek-2012/%s/%s/' % (jednostka_raportow.pk, CURRENT_YEAR) in raporty_browser.url
 

@@ -1,0 +1,6 @@
+---
+- name: Add Fireox-nightly PPA
+  apt_repository: repo="ppa:ubuntu-mozilla-daily/ppa"
+
+- name: Install firefox nightly
+  apt: name=firefox-trunk

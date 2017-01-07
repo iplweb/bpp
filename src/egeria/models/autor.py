@@ -55,7 +55,7 @@ class Diff_Autor_Update(Diff_Autor_Base):
         ordering = ('nazwisko', 'imiona', 'jednostka')
 
     @classmethod
-    def check_if_needed(cls, elem):
+    def check_if_needed(cls, parent, elem):
         reference, nazwisko, imiona, jednostka, tytul, funkcja, pesel_md5 = \
             elem['reference'], elem['nazwisko'], elem['imiona'], elem['jednostka'], \
             elem['tytul'], elem['funkcja'], elem['pesel_md5']
@@ -171,16 +171,23 @@ class Diff_Autor_Delete(Diff_Base):
             pass
 
     @classmethod
-    def check_if_needed(cls, reference):
-        # Czy usunąć tego autora?
+    def check_if_needed(cls, parent, reference):
+        """Funkcja odpowiada na pytanie, czy potrzebne jest usunięcie tego autora; jeżeli ma powiązane
+        jakiekolwiek rekordy bibliograficzne to zamiast usunięcia przeprowadzone będzie dopisanie
+        go do "Obcej jednostki". """
         if not cls.has_links(reference):
             # Jeżeli nie ma żadnych podlinkowanych rekordów, to tak
             return True
 
-        if reference.aktualna_jednostka is None or reference.aktualna_jednostka.obca_jednostka != True:
-            # Jeżeli hgw-gdzie-jest-przypisany, to tak
-            # lub tez, jeżeli jest przypisany do innej jednostki, niż obca
+        if reference.aktualna_jednostka is None or reference.aktualna_jednostka != parent.uczelnia.obca_jednostka:
+            # Jeżeli nie wiadomo, gdzie autor ejst przypisany - to obiekt Diff_Autor_Delete jest potrzebny,
+            # żeby przypisać tego autora do Obcej Jednostki.
+            #
+            # Jeżeli autor jest przypisany aktualnie do innej-niż-obca jednostki - to obiekt Diff_Autor_Delete
+            # jest potrzebny.
             return True
+
+        return False
 
     def this_has_links(self):
         return self.has_links(self.reference)

@@ -1,0 +1,12 @@
+---
+- name: Stat virtualenv
+  stat: path=/home/{{user}}/env
+  register: v
+
+- name: Create virtualenv
+  shell: virtualenv -p python2.7 /home/{{ user }}/env
+  become: no
+  when: not v.stat.exists
+
+- name: Create symlink
+  template: src=vexec dest=/home/{{user}}/vexec owner={{user}} group={{user}} mode=0755

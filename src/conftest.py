@@ -71,7 +71,7 @@ def _preauth_session_id_helper(username, password, client, browser, live_server,
     browser.fill('username', username)
     browser.fill('password', password)
     browser.find_by_css("input[type=submit]").click()
-
+    time.sleep(2)
     browser.authorized_user = django_user_model.objects.get(**{django_username_field: username})
     return browser
 
@@ -92,6 +92,7 @@ def preauth_admin_browser(admin_user, client, browser, live_server, django_user_
 @pytest.fixture
 def uczelnia(db):
     return Uczelnia.objects.get_or_create(skrot='TE', nazwa='Testowa uczelnia')[0]
+
 
 @pytest.mark.django_db
 def _wydzial_maker(nazwa, skrot, uczelnia, **kwargs):
@@ -119,6 +120,7 @@ def _autor_maker(imiona, nazwisko, tytul="dr. ", **kwargs):
 def autor_maker(db):
     return _autor_maker
 
+
 @pytest.mark.django_db
 @pytest.fixture(scope="function")
 def autor_jan_nowak(db):
@@ -136,22 +138,28 @@ def autor_jan_kowalski(db):
 
 
 def _jednostka_maker(nazwa, skrot, wydzial, **kwargs):
-    return Jednostka.objects.get_or_create(nazwa=nazwa, skrot=skrot, wydzial=wydzial, **kwargs)[0]
+    return \
+    Jednostka.objects.get_or_create(nazwa=nazwa, skrot=skrot, wydzial=wydzial, uczelnia=wydzial.uczelnia, **kwargs)[0]
+
 
 @pytest.mark.django_db
 @pytest.fixture(scope="function")
 def jednostka(wydzial, db):
     return _jednostka_maker("Jednostka Uczelni", skrot="Jedn. Ucz.", wydzial=wydzial)
 
+
 @pytest.mark.django_db
 @pytest.fixture(scope="function")
 def druga_jednostka(wydzial, db):
     return _jednostka_maker("Druga Jednostka Uczelni", skrot="Dr. Jedn. Ucz.", wydzial=wydzial)
 
+
 @pytest.mark.django_db
 @pytest.fixture(scope="function")
-def obca_jednostka(wydzial, db):
-    return _jednostka_maker("Obca Jednostka", skrot="OJ", wydzial=wydzial, obca_jednostka=True)
+def obca_jednostka(wydzial):
+    return _jednostka_maker("Obca Jednostka", skrot="OJ", wydzial=wydzial, skupia_pracownikow=False,
+                            zarzadzaj_automatycznie=False, widoczna=False, wchodzi_do_raportow=False)
+
 
 @pytest.fixture
 def jednostka_maker(db):
@@ -265,7 +273,7 @@ def habilitacja_maker(db):
 
 
 def _doktorat_maker(**kwargs):
-    Charakter_Formalny.objects.get_or_create(nazwa='doktorat', skrot='D')
+    Charakter_Formalny.objects.get_or_create(nazwa='Praca doktorska', skrot='D')
     return _zwarte_base_maker(Praca_Doktorska, **kwargs)
 
 

@@ -1,0 +1,7 @@
+---
+- name: Install dev apt packages
+  apt: name={{item}}
+  with_items:
+    - build-essential
+    - python-dev
+    - python3-dev

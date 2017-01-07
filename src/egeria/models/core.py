@@ -1,15 +1,18 @@
 # -*- encoding: utf-8 -*-
-import os
+import os, datetime
+from datetime import date
 from md5 import md5
 
 import xlrd
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
 from django.db import connection
 from django.db import models, transaction
 from django.db.models.query_utils import Q
 
 from bpp.models.autor import Autor
+from bpp.models.struktura import Uczelnia
 from egeria.models.autor import Diff_Autor_Create, Diff_Autor_Update, Diff_Autor_Delete
 from egeria.models.funkcja_autora import Diff_Funkcja_Autora_Create, Diff_Funkcja_Autora_Delete
 from egeria.models.jednostka import Diff_Jednostka_Create, Diff_Jednostka_Delete, Diff_Jednostka_Update
@@ -19,6 +22,9 @@ from egeria.models.wydzial import Diff_Wydzial_Create, Diff_Wydzial_Delete
 
 class AlreadyAnalyzedError(Exception):
     pass
+
+def get_today_date(*args, **kw):
+    return datetime.date.today()
 
 
 class EgeriaImport(models.Model):
@@ -52,7 +58,15 @@ class EgeriaImport(models.Model):
     """
     created_on = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True)
+
+    uczelnia = models.ForeignKey(Uczelnia)
     file = models.FileField("Plik XLS", upload_to="egeria_xls")
+
+    od = models.DateField(default=get_today_date)
+    do = models.DateField(blank=True, null=True, help_text="""
+    Uwaga, to pole jest opcjonalne, a w przypadku importu danych aktualnych (tzn. obowiązujących
+    OD danego terminu, ale nie mających wyraźnego "zakończenia" w przyszłości) - powinno
+    pozostać puste!""")
 
     analyzed = models.BooleanField(default=False)
 
@@ -61,8 +75,18 @@ class EgeriaImport(models.Model):
     error = models.BooleanField(default=False)
     error_message = models.TextField(null=True, blank=True)
 
+    @property
+    def do_not_null(self):
+        return self.do or date(9999, 12, 31)
+
     class Meta:
         ordering = ('-created_on',)
+
+    def clean(self):
+        d = self.do or datetime.date(9999, 12, 31)
+        if d >= datetime.date.today():
+            raise ValidationError({"do": """Data w polu "Do" nie może być większa lub równa jak data aktualna
+            (dzisiejsza)."""})
 
     def get_absolute_url(self):
         return reverse("egeria:reset_import_state", args=(self.pk,))
@@ -320,7 +344,7 @@ class EgeriaImport(models.Model):
                 funkcja=row.matched_funkcja,
                 jednostka=row.matched_jednostka
             )
-            if Diff_Autor_Update.check_if_needed(elem):
+            if Diff_Autor_Update.check_if_needed(self, elem):
                 Diff_Autor_Update.objects.create(parent=self, **elem)
 
         # Stwórz obiekty Delete dla wszystkich autorów, którzy 1) nie są w pliku
@@ -329,7 +353,7 @@ class EgeriaImport(models.Model):
         if None in lst:
             lst.remove(None)
         for autor in Autor.objects.all().exclude(pk__in=lst).exclude(aktualna_jednostka__obca_jednostka=True):
-            if Diff_Autor_Delete.check_if_needed(autor):
+            if Diff_Autor_Delete.check_if_needed(self, autor):
                 Diff_Autor_Delete.objects.create(parent=self, reference=autor)
 
     DIFF_AUTOR = [Diff_Autor_Create, Diff_Autor_Update, Diff_Autor_Delete]

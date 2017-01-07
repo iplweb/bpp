@@ -20,6 +20,7 @@ from bpp.models import Funkcja_Autora, Zrodlo_Informacji, Jezyk, \
 from bpp.models.openaccess import Tryb_OpenAccess_Wydawnictwo_Ciagle, Tryb_OpenAccess_Wydawnictwo_Zwarte, \
     Czas_Udostepnienia_OpenAccess, Licencja_OpenAccess, Wersja_Tekstu_OpenAccess
 from bpp.models.praca_habilitacyjna import Publikacja_Habilitacyjna
+from bpp.models.struktura import Jednostka_Wydzial
 
 User = get_user_model()
 
@@ -34,7 +35,7 @@ groups = {
         Czas_Udostepnienia_OpenAccess,
         Licencja_OpenAccess,
         Wersja_Tekstu_OpenAccess],
-    'struktura': [Uczelnia, Wydzial, Jednostka],
+    'struktura': [Uczelnia, Wydzial, Jednostka, Jednostka_Wydzial],
     'wprowadzanie danych': [
         Zrodlo, Autor, Wydawnictwo_Ciagle, Wydawnictwo_Zwarte,
         Punktacja_Zrodla, Wydawnictwo_Ciagle_Autor,

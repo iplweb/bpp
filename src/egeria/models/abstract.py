@@ -41,7 +41,7 @@ class Diff_Delete(Diff_Base):
         self.delete()
 
     @classmethod
-    def check_if_needed(cls, reference):
+    def check_if_needed(cls, parent, reference):
         """
         Ta metoda sprawdza, czy potrzebne jest tworzenie tego rodzaju obiektu,
         odpowiada na pytanie "Czy potrzebne jest skasowanie obiektu do którego
