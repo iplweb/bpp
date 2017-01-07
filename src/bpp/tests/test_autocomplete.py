@@ -31,9 +31,9 @@ class TestAutocomplete(WebTestCase):
 
     def test_autocomplete_jednostka(self):
         a = mommy.make(Autor)
-        jednostki = [any_jednostka(nazwa='Ala'),
-                     any_jednostka(),
-                     any_jednostka()]
+        jednostki = [mommy.make(Jednostka, nazwa='Ala'),
+                     mommy.make(Jednostka, nazwa="jeszczeinna"),
+                     mommy.make(Jednostka, nazwa="kolejnaInna")]
 
         map(lambda j: Autor_Jednostka.objects.create(autor=a, jednostka=j), jednostki)
 
@@ -49,6 +49,7 @@ class TestAutocomplete(WebTestCase):
         ret = choices(request('Ala'))
         self.assertIn(jednostki[0], ret)
         self.assertNotIn(jednostki[1], ret)
+        self.assertNotIn(jednostki[2], ret)
 
 
     def test_autocomplete_zapisane_nazwiska(self):

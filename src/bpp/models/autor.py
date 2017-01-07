@@ -42,6 +42,10 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
     nazwisko = models.CharField(max_length=256, db_index=True)
     tytul = models.ForeignKey(Tytul, blank=True, null=True)
 
+    aktualny = models.BooleanField("Aktualny?", default=False, help_text="""Jeżeli zaznaczone, pole to oznacza,
+    że autor jest aktualnie - na dziś dzień - przypisany do jakiejś jednostki w bazie danych i jego przypisanie
+    do tej jednostki nie zostało zakończone wraz z konkretną datą w przeszłości.""")
+
     aktualna_jednostka = models.ForeignKey('Jednostka', blank=True, null=True, related_name='aktualna_jednostka')
     aktualna_funkcja = models.ForeignKey('Funkcja_Autora', blank=True, null=True, related_name='aktualna_funkcja')
 

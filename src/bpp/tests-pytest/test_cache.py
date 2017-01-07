@@ -147,7 +147,7 @@ def test_caching_kasowanie_autorow(wydawnictwo_ciagle_z_dwoma_autorami):
 
 
 def test_caching_kasowanie_typu_odpowiedzialnosci_autorow(wydawnictwo_ciagle_z_dwoma_autorami):
-    assert Typ_Odpowiedzialnosci.objects.all().count() == 1
+    assert Wydawnictwo_Ciagle_Autor.objects.filter(rekord=wydawnictwo_ciagle_z_dwoma_autorami).count() == 2
 
     Typ_Odpowiedzialnosci.objects.all().delete()
 
@@ -176,12 +176,12 @@ def test_caching_kasowanie_zrodla(wydawnictwo_ciagle_z_dwoma_autorami):
 
 
 def test_caching_kasowanie_jezyka(wydawnictwo_ciagle_z_dwoma_autorami):
-    ang = Jezyk.objects.create(skrot="ang.", nazwa="taki")
-    wydawnictwo_ciagle_z_dwoma_autorami.jezyk = ang
+    xng = Jezyk.objects.create(skrot="xng.", nazwa="taki")
+    wydawnictwo_ciagle_z_dwoma_autorami.jezyk = xng
     wydawnictwo_ciagle_z_dwoma_autorami.save()
 
     assert Rekord.objects.all().count() == 1
-    ang.delete()
+    xng.delete()
 
     assert Rekord.objects.all().count() == 0
 

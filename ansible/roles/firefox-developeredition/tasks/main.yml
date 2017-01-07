@@ -1,0 +1,14 @@
+---
+- name: Add Firefox-aurora PPA
+  apt_repository: repo="ppa:ubuntu-mozilla-daily/firefox-aurora"
+  register: ppa
+
+- name: Apt-get update
+  apt: update_cache=yes
+  when: ppa.changed
+
+- name: Install firefox developer edition
+  apt: name={{item}}
+  with_items:
+    - firefox 
+    - firefox-locale-pl

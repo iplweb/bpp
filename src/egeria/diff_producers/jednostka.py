@@ -63,9 +63,9 @@ class JednostkaDiffProducer(BaseDiffProducer):
         """Wartości z bazy danych oprócz wartości z importu
         """
         for elem in Jednostka.objects.all()\
-                .exclude(wirtualna=True)\
+                .exclude(zarzadzaj_automatycznie=False)\
                 .exclude(nazwa__in=self.get_import_values().values_list("nazwa_jednostki", flat=True)):
-            if elem.wydzial.archiwalny is False and elem.nie_archiwizuj != True:
+            if elem.wydzial.zarzadzaj_automatycznie == True and elem.zarzadzaj_automatycznie == True:
                 # Zwróc wszystkie jednostki nie występujące w pliku importu, które to
                 # nie są w wydziale oznaczonym jako "Archiwalny".
                 yield elem

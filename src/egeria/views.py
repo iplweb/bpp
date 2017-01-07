@@ -5,7 +5,7 @@ import os
 from braces.views import LoginRequiredMixin
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit
-from crispy_forms_foundation.layout import Layout, Fieldset, Hidden
+from crispy_forms_foundation.layout import Layout, Fieldset, Hidden, Row, Column
 from django.core.urlresolvers import reverse
 from django.http.response import HttpResponseRedirect, HttpResponse, HttpResponseForbidden, Http404
 from django.utils.functional import cached_property
@@ -14,6 +14,7 @@ from django.views.generic.edit import CreateView
 from django.views.generic.list import ListView
 
 from egeria import tasks
+from egeria.forms import EgeriaImportCreateForm
 from egeria.models.autor import Diff_Autor_Create, Diff_Autor_Update, Diff_Autor_Delete
 from egeria.models.core import EgeriaImport, EgeriaRow
 from egeria.models.funkcja_autora import Diff_Funkcja_Autora_Create, Diff_Funkcja_Autora_Delete
@@ -243,7 +244,7 @@ class ResetImportStateView(LoginRequiredMixin, DetailView):
 
 class EgeriaImportCreateView(LoginRequiredMixin, CreateView):
     model = EgeriaImport
-    fields = ['file']
+    form_class = EgeriaImportCreateForm
 
     def get_success_url(self):
         return reverse("egeria:main") + "?hilite=%s" % self.object.pk
@@ -253,8 +254,18 @@ class EgeriaImportCreateView(LoginRequiredMixin, CreateView):
         form.helper = FormHelper()
         form.helper.layout = Layout(
             Fieldset('Dodaj nowy plik importu',
-                     'file',
-                     ))
+                     Row(
+                         Column('uczelnia', css_class="large-12 small-12")
+                     ),
+                     Row(
+                         Column('od', css_class="small-6 large-6"),
+                         Column('do', css_class="small-6 large-6")
+                     ),
+                     Row(
+                         Column('file', css_class="large-12 small-12")
+                     )
+                ),
+        )
         form.helper.add_input(Hidden("messageId", "123"))  # Wypełni później JavaScript
         form.helper.add_input(Submit('submit', 'Utwórz import osób', css_class='submit button'))
         return form

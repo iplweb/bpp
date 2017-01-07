@@ -17,6 +17,7 @@ from bpp.models import Jezyk, Typ_KBN, Uczelnia, Wydzial, \
 # Proste tabele
 from bpp.models.openaccess import Tryb_OpenAccess_Wydawnictwo_Ciagle, Tryb_OpenAccess_Wydawnictwo_Zwarte, \
     Czas_Udostepnienia_OpenAccess, Licencja_OpenAccess, Wersja_Tekstu_OpenAccess
+from bpp.models.struktura import Jednostka_Wydzial
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
 from bpp.models.zrodlo import Redakcja_Zrodla
 
@@ -136,7 +137,8 @@ class UczelniaAdmin(RestrictDeletionToAdministracjaGroupMixin, ZapiszZAdnotacjaM
     fieldsets = (
         (None, {
             'fields': (
-                'nazwa', 'nazwa_dopelniacz_field', 'skrot', 'pbn_id', 'logo_www', 'logo_svg', 'favicon_ico'),
+                'nazwa', 'nazwa_dopelniacz_field', 'skrot', 'pbn_id', 'logo_www', 'logo_svg', 'favicon_ico',
+                'obca_jednostka'),
         }),
         ADNOTACJE_FIELDSET
     )
@@ -149,13 +151,13 @@ admin.site.register(Uczelnia, UczelniaAdmin)
 
 class WydzialAdmin(RestrictDeletionToAdministracjaGroupMixin, ZapiszZAdnotacjaMixin, CommitedModelAdmin):
     list_display = ['nazwa', 'skrot', 'uczelnia', 'kolejnosc', 'widoczny', 'ranking_autorow',
-                    'archiwalny', 'wirtualny', 'pbn_id']
-    list_filter = ['uczelnia', 'zezwalaj_na_ranking_autorow', 'widoczny', 'archiwalny', 'wirtualny']
+                    'zarzadzaj_automatycznie', 'otwarcie', 'zamkniecie', 'pbn_id']
+    list_filter = ['uczelnia', 'zezwalaj_na_ranking_autorow', 'widoczny', 'zarzadzaj_automatycznie',]
     fieldsets = (
         (None, {
             'fields': (
                 'uczelnia', 'nazwa', 'skrot', 'pbn_id', 'opis', 'kolejnosc', 'widoczny',
-                'zezwalaj_na_ranking_autorow', 'archiwalny', 'wirtualny'),
+                'zezwalaj_na_ranking_autorow', 'zarzadzaj_automatycznie', 'otwarcie', 'zamkniecie'),
         }),
         ADNOTACJE_FIELDSET
     )
@@ -180,21 +182,31 @@ class Autor_JednostkaInline(admin.TabularInline):
 
 # Jednostka
 
+class Jednostka_WydzialInline(admin.TabularInline):
+    model = Jednostka_Wydzial
+    extra = 1
+
 class JednostkaAdmin(RestrictDeletionToAdministracjaGroupMixin, ZapiszZAdnotacjaMixin, CommitedModelAdmin):
     list_display = ('nazwa', 'skrot', 'wydzial', 'widoczna',
-                    'wchodzi_do_raportow', 'wirtualna', 'obca_jednostka', 'pbn_id')
+                    'wchodzi_do_raportow', 'skupia_pracownikow', 'zarzadzaj_automatycznie', 'pbn_id')
     fields = None
-    list_filter = ('wydzial', 'widoczna', 'wchodzi_do_raportow', 'wirtualna', 'obca_jednostka')
+    list_filter = ('wydzial', 'widoczna', 'wchodzi_do_raportow', 'skupia_pracownikow', 'zarzadzaj_automatycznie')
     search_fields = ['nazwa', 'skrot', 'wydzial__nazwa']
-    # inlines = [Autor_JednostkaInline,]
+
+    inlines = (Jednostka_WydzialInline,
+               # Autor_JednostkaInline,
+               )
+
+    readonly_fields = ['wydzial', 'aktualna', 'ostatnio_zmieniony']
     fieldsets = (
         (None, {
             'fields': (
-                'nazwa', 'skrot', 'wydzial', 'pbn_id', 'opis', 'widoczna',
-                'wchodzi_do_raportow', 'wirtualna', 'obca_jednostka', 'email', 'www'),
+                'nazwa', 'skrot', 'uczelnia', 'wydzial', 'aktualna',
+                'pbn_id', 'opis', 'widoczna',
+                'wchodzi_do_raportow', 'skupia_pracownikow',
+                'zarzadzaj_automatycznie', 'email', 'www'),
         }),
         ADNOTACJE_FIELDSET)
-
 
 admin.site.register(Jednostka, JednostkaAdmin)
 

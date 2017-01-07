@@ -11,13 +11,79 @@
     database_user: bpp
     database_password: password
     postgresql_version: 9.5
+    user: ubuntu
   roles: 
+    - locale
+    - swapfile
+    - dev-utils
     - postgresql-server
+    - postgresql-open-wide
+    - postgresql-optimized
+
+- hosts: selenium
+  become: yes
+  become_method: sudo
+  vars: 
+    user: ubuntu
+  roles:
+    - locale
+    - swapfile
+    - dev-utils
+    - java
+    - firefox-beta
+    - supervisor
+    - tightvnc
+    - selenium
 
 - hosts: master
   become: yes
   become_method: sudo
+  vars: 
+    user: ubuntu
   roles:
+    - locale
+    - swapfile
+    - dev-utils
+    - git
+    - dev
+    - pip
+    - ubuntu-dev
     - nginx-with-pubsub
     - nginx-messaging-test
+    - virtualenv
+    - checkout
 
+  tasks: 
+    - name: Build and install wheel packages
+      shell: . /home/{{user}}/env/bin/activate && {{ item }}
+      with_items:
+        - cd /vagrant/buildscripts && ./wheels.build.sh
+        - cd /vagrant/buildscripts && ./wheels.install.sh
+        - cd /vagrant/requirements && pip --quiet install -r dev.requirements.txt
+      become: no
+
+    - name: Setup variables in .bashrc
+      lineinfile: dest=/home/{{user}}/.bashrc line="{{item}}"
+      become: no
+      no_log: True
+      with_items: 
+        - export DJANGO_LIVE_TEST_SERVER_ADDRESS=bpp-master.localnet:12000-13000
+        - export DJANGO_SETTINGS_MODULE=django_bpp.settings.test
+        - export DJANGO_BPP_SECRET_KEY=0xdeadbeef
+        - export DJANGO_BPP_NOTIFICATIONS_HOST=bpp-master.localnet
+        - export DJANGO_BPP_MEDIA_ROOT=$HOME/media
+        - export PGHOST=bpp-db
+        - export PGUSER=bpp
+        - export PGPASSWORD=password
+        - export PGDATABASE=bpp
+        - . /home/{{ user }}/env/bin/activate
+       
+- hosts: staging
+  become: yes
+  become_method: sudo
+  vars: 
+    user: ubuntu
+  roles:
+    - locale
+    - swapfile
+    - dev-utils

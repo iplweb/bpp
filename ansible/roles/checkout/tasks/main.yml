@@ -1,0 +1,8 @@
+---
+- name: Checkout sources for django-bpp
+  git: repo=/vagrant dest=/home/{{user}}/django-bpp
+  become: no
+     
+- name: Create 'latest' symlink
+  file: src=/home/{{user}}/django-bpp dest=/home/{{user}}/latest state=link
+

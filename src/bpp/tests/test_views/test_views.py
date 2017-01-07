@@ -71,7 +71,7 @@ class TestBrowse(UserTestCase):
     def test_jednostka(self):
         u = Uczelnia.objects.create(nazwa="uczelnia", skrot="uu")
         w = Wydzial.objects.create(nazwa="wydzial", uczelnia=u)
-        j = Jednostka.objects.create(nazwa="jednostka", wydzial=w)
+        j = Jednostka.objects.create(nazwa="jednostka", wydzial=w, uczelnia=u)
 
         res = self.client.get(reverse("bpp:browse_jednostka", args=(j.slug,)))
         self.assertContains(res, "jednostka", status_code=200)

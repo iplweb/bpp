@@ -20,6 +20,7 @@
     <script type="text/javascript">
         $(window).on("load", function () {
             $("input[name=messageId]").attr("value", bppNotifications.messageCookieId);
+            $("input.dateinput").fdatepicker({language: 'pl', format: 'yyyy-mm-dd'});
         });
     </script>
 {% endblock %}

@@ -140,44 +140,44 @@ class TestAutor(TestCase):
         def ma_byc(ile=1):
             self.assertEquals(Autor_Jednostka.objects.count(), ile)
 
-        a.dodaj_jednostke(j, 2012, f)
+        a.dodaj_jednostke(j, 1912, f)
         ma_byc(1)
 
-        a.dodaj_jednostke(j, 2013, f)
+        a.dodaj_jednostke(j, 1913, f)
         ma_byc(1)
 
-        a.dodaj_jednostke(j, 2014, f)
+        a.dodaj_jednostke(j, 1914, f)
         ma_byc(1)
 
-        a.dodaj_jednostke(j, 2013, f)
+        a.dodaj_jednostke(j, 1913, f)
         ma_byc(1)
 
-        a.dodaj_jednostke(j, 2020, f)
+        a.dodaj_jednostke(j, 1920, f)
         ma_byc(2)
 
-        a.dodaj_jednostke(j, 2021, f)
+        a.dodaj_jednostke(j, 1921, f)
         ma_byc(2)
 
-        a.dodaj_jednostke(j, 2060, f)
+        a.dodaj_jednostke(j, 1960, f)
         ma_byc(3)
 
         l = Autor_Jednostka.objects.all().order_by('rozpoczal_prace')
-        self.assertEquals(l[0].rozpoczal_prace, date(2012, 1, 1))
-        self.assertEquals(l[1].rozpoczal_prace, date(2020, 1, 1))
+        self.assertEquals(l[0].rozpoczal_prace, date(1912, 1, 1))
+        self.assertEquals(l[1].rozpoczal_prace, date(1920, 1, 1))
 
-        self.assertEquals(l[0].zakonczyl_prace, date(2014, 12, 31))
-        self.assertEquals(l[1].zakonczyl_prace, date(2021, 12, 31))
+        self.assertEquals(l[0].zakonczyl_prace, date(1914, 12, 31))
+        self.assertEquals(l[1].zakonczyl_prace, date(1921, 12, 31))
 
-        self.assertEquals(a.afiliacja_na_rok(2012, w), True)
-        self.assertEquals(a.afiliacja_na_rok(2013, w), True)
-        self.assertEquals(a.afiliacja_na_rok(2014, w), True)
-        self.assertEquals(a.afiliacja_na_rok(2014, w2), None)
+        self.assertEquals(a.afiliacja_na_rok(1912, w), True)
+        self.assertEquals(a.afiliacja_na_rok(1913, w), True)
+        self.assertEquals(a.afiliacja_na_rok(1914, w), True)
+        self.assertEquals(a.afiliacja_na_rok(1914, w2), None)
 
-        self.assertEquals(a.afiliacja_na_rok(2020, w), True)
-        self.assertEquals(a.afiliacja_na_rok(2021, w), True)
+        self.assertEquals(a.afiliacja_na_rok(1920, w), True)
+        self.assertEquals(a.afiliacja_na_rok(1921, w), True)
 
-        self.assertEquals(a.afiliacja_na_rok(2022, w), None)
-        self.assertEquals(a.afiliacja_na_rok(2016, w), None)
+        self.assertEquals(a.afiliacja_na_rok(1922, w), None)
+        self.assertEquals(a.afiliacja_na_rok(1916, w), None)
 
         # Gdy jest wpisany tylko początek czasu pracy, traktujemy pracę
         # jako NIE zakończoną i każda data w przyszłości ma zwracać to miejsce
@@ -247,7 +247,7 @@ class TestAutor_Jednostka(TestCase):
                                        rozpoczal_prace=date(2013, 1, 1),
                                        zakonczyl_prace=date(2014, 12, 31))
         Autor_Jednostka.objects.create(autor=a, jednostka=j1,
-                                       rozpoczal_prace=date(2018, 1, 1))
+                                       rozpoczal_prace=date(2016, 1, 1))
 
         Autor_Jednostka.objects.defragmentuj(a, j1)
 
@@ -263,13 +263,13 @@ class TestAutor_Jednostka(TestCase):
                                        rozpoczal_prace=date(2012, 1, 1),
                                        zakonczyl_prace=None)
         Autor_Jednostka.objects.create(autor=a, jednostka=j1,
-                                       rozpoczal_prace=date(2018, 1, 1),
-                                       zakonczyl_prace=date(2019, 12, 31))
+                                       rozpoczal_prace=date(2014, 1, 1),
+                                       zakonczyl_prace=date(2015, 12, 31))
 
         Autor_Jednostka.objects.defragmentuj(a, j1)
         aj = Autor_Jednostka.objects.all()[0]
         self.assertEquals(aj.rozpoczal_prace, date(2012, 1, 1))
-        self.assertEquals(aj.zakonczyl_prace, date(2019, 12, 31))
+        self.assertEquals(aj.zakonczyl_prace, date(2015, 12, 31))
 
 
 class TestPunktacjaZrodla(TestCase):

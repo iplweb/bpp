@@ -1,0 +1,6 @@
+---
+- name: restart supervisor
+  shell: service supervisor restart
+
+- name: restart supervisor services
+  shell: supervisorctl restart all

@@ -1,9 +1,12 @@
 # -*- encoding: utf-8 -*-
+from datetime import date, timedelta
 
-from django.db import models
+from django.db import models, transaction
 
 from bpp.models import Wydzial, Jednostka
+from bpp.models.struktura import Jednostka_Wydzial
 from egeria.models.abstract import Diff_Delete, Diff_Base
+from egeria.models.util import date_range_inside
 from .util import zrob_skrot
 
 
@@ -15,10 +18,17 @@ class Diff_Jednostka_Create(Diff_Base):
         return " ".join([self.nazwa, "-", self.wydzial.nazwa])
 
     def commit(self):
-        Jednostka.objects.create(
-            wydzial=self.wydzial,
+        j = Jednostka.objects.create(
+            uczelnia_id=self.parent.uczelnia_id,
+            wydzial_id=self.wydzial_id,
             nazwa=self.nazwa,
             skrot=zrob_skrot(self.nazwa, 128, Jednostka, 'skrot')
+        )
+        Jednostka_Wydzial.objects.create(
+            jednostka_id=j.pk,
+            wydzial_id=self.wydzial_id,
+            od=self.parent.od,
+            do=self.parent.do
         )
         super(Diff_Jednostka_Create, self).commit()
 
@@ -32,20 +42,40 @@ class Diff_Jednostka_Update(Diff_Base):
             return True
 
     @classmethod
-    def check_if_needed(cls, elem):
+    def check_if_needed(cls, parent, elem):
         """
-        - czy jest to ten sam wydział?
+        - czy w okresie czasu parent(od, do) jednostka ma przypisany self.wydzial?
             TAK: nic
-            NIE: zaktualizuj wydział,
+            NIE: jest potrzebne dopisanie tego wydziału
         - czy jest widoczna i dostępna dla raportów?
             TAK: nic
-            NIE: zaktualizuj widoczność
+            NIE: jest potrezbna zmiana
         """
         reference = elem['reference']
         wydzial = elem['wydzial']
-
         ret = False
-        if reference.wydzial != wydzial:
+
+        q = reference.przypisania_dla_czasokresu(parent.od, parent.do).order_by("-od_not_null")
+
+        if q.count() > 1:
+            # W tym czasokresie jest więcej, niż jedno przypisanie. W pliku importu za dany okres
+            # przypisanie jest ZAWSZE jedno. Zatem, wymagana jest aktualizacja
+            ret = True
+        elif q.count() == 1:
+            # Czy czasokres (parent.od, parent.do) jest cały wewnątrz zwracanego
+            # czasokresu obiektu Jednostka_Wydzial? Mimo nazwy "parent", nadrzędnym
+            # obiektem w tym kontekście jest Jednostka_Wydział, który swoim zakresem
+            # musi "objąć" zakres importowanych danych. Jeżeli go nie obejmie, to wymagana
+            # jest aktualizacja, czyli funkcja check_if_needed ma zwrócić True.
+
+            jw = q.first()
+            if not date_range_inside(jw.od, jw.do, parent.od, parent.do):
+                ret = True
+            if jw.wydzial_id != wydzial.pk:
+                ret = True
+        else:
+            # q.count() == 0
+            # Dodaj przypisanie
             ret = True
 
         if reference.widoczna != True or reference.wchodzi_do_raportow != True:
@@ -53,12 +83,26 @@ class Diff_Jednostka_Update(Diff_Base):
 
         return ret
 
+    @transaction.atomic
     def commit(self):
-        j = self.reference
-        j.widoczna = True
-        j.wchodzi_do_raportow = True
-        j.wydzial = self.wydzial
-        j.save()
+        jednostka = self.reference
+        jednostka.widoczna = jednostka.wchodzi_do_raportow = True
+        jednostka.save()
+
+        # Przypisz do wydziału zdefiniowanego w pliku dla czasokresu parent.od, parent.do
+        Jednostka_Wydzial.objects.wyczysc_przypisania(
+            jednostka=jednostka,
+            parent_od=self.parent.od,
+            parent_do=self.parent.do
+        )
+
+        Jednostka_Wydzial.objects.create(
+            jednostka=jednostka,
+            wydzial=self.wydzial,
+            od=self.parent.od,
+            do=self.parent.do
+        )
+
         super(Diff_Jednostka_Update, self).commit()
 
 
@@ -66,7 +110,7 @@ class Diff_Jednostka_Delete(Diff_Delete):
     reference = models.ForeignKey(Jednostka)
 
     @classmethod
-    def check_if_needed(cls, reference):
+    def check_if_needed(cls, parent, reference):
         """
         Czy jednostka podana w parametrze 'reference' jest widoczna, dostępna do
         raportów lub też jest w innym wydziale, niż wydział oznaczony jako archiwalny?
@@ -77,13 +121,13 @@ class Diff_Jednostka_Delete(Diff_Delete):
         :return:
         """
 
-        if reference.nie_archiwizuj:
+        if not reference.zarzadzaj_automatycznie:
             return False
 
-        if reference.widoczna or reference.wchodzi_do_raportow:
-            return True
+        if reference.wydzial is not None and not reference.wydzial.zarzadzaj_automatycznie:
+            return False
 
-        if reference.wydzial.archiwalny == False:
+        if reference.widoczna or reference.wchodzi_do_raportow or reference.aktualna:
             return True
 
         return False
@@ -94,6 +138,7 @@ class Diff_Jednostka_Delete(Diff_Delete):
         linked_sets = [x for x in dir(r)
                        if x.find("_set") > 0
                        and x.find("_view") == -1
+                       and not x.startswith("jednostka_wydzial_set")
                        and not x.startswith("__")
                        and not x.startswith("diff_")
                        and not x.startswith("autorzy")]
@@ -119,19 +164,15 @@ class Diff_Jednostka_Delete(Diff_Delete):
 
         # Sprawdź, czy na tą jednostkę wskazują jakiekolwiek inne rekordy w bazie
         # danych:
-        r = self.reference
+        jednostka = self.reference
 
         if self.has_linked():
-            r.widoczna = r.wchodzi_do_raportow = False
-            if r.wydzial.archiwalny is not True:
-                archiwalny = Wydzial.objects.filter(archiwalny=True).order_by("pk").first()
-                if archiwalny:
-                    r.wydzial = archiwalny
-            r.save()
-            self.delete()
+            jednostka.widoczna = jednostka.wchodzi_do_raportow = False
+            jednostka.save()
+            Jednostka_Wydzial.objects.wyczysc_przypisania(jednostka, self.parent.od, self.parent.do)
             return
 
-        r.delete()
+        jednostka.delete()
         self.delete()
 
     def will_really_delete(self):
