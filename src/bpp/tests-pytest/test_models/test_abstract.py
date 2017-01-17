@@ -9,8 +9,8 @@ def test_eksport_pbn_author_afiliacja_w_kontekscie_wydzialu(uczelnia, autor_jan_
     w1 = mommy.make(Wydzial, uczelnia=uczelnia)
     w2 = mommy.make(Wydzial, uczelnia=uczelnia)
 
-    j1 = mommy.make(Jednostka, wydzial=w1)
-    j2 = mommy.make(Jednostka, wydzial=w2)
+    j1 = mommy.make(Jednostka, wydzial=w1, uczelnia=uczelnia)
+    j2 = mommy.make(Jednostka, wydzial=w2, uczelnia=uczelnia)
 
     # Przypisz autora do DWÓCH jednostek z różnych wydziałów
     autor_jan_kowalski.dodaj_jednostke(j1)
@@ -42,8 +42,8 @@ def test_eksport_pbn_editor_afiliacja_w_kontekscie_wydzialu(uczelnia, autor_jan_
     w1 = mommy.make(Wydzial, uczelnia=uczelnia)
     w2 = mommy.make(Wydzial, uczelnia=uczelnia)
 
-    j1 = mommy.make(Jednostka, wydzial=w1)
-    j2 = mommy.make(Jednostka, wydzial=w2)
+    j1 = mommy.make(Jednostka, wydzial=w1, uczelnia=uczelnia)
+    j2 = mommy.make(Jednostka, wydzial=w2, uczelnia=uczelnia)
 
     # Przypisz autora do DWÓCH jednostek z różnych wydziałów
     autor_jan_kowalski.dodaj_jednostke(j1)
