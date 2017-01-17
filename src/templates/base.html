@@ -272,7 +272,8 @@
 
                     {% if request.user|has_group:"wprowadzanie danych" %}
                         <li><a href="{% url "integrator2:main" %}">import danych</a></li>
-                        <li><a href="{% url "egeria:main" %}">import osób</a></li>
+{#                        TODO: później włączyć mpasternak 2017.1.17 #}
+{#                        <li><a href="{% url "egeria:main" %}">import osób</a></li>#}
                     {% endif %}
 
                     <li><a id="password-change-link"
