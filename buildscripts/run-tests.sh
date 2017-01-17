@@ -54,7 +54,7 @@ done
 python manage.py collectstatic --noinput
 
 if [ "$NO_QUNIT" == "0" ]; then
-    grunt qunit
+    ./node_modules/.bin/grunt qunit
 fi
 
 if [ "$NO_DJANGO" == "0" ]; then
