@@ -27,6 +27,10 @@ Vagrant.configure(2) do |config|
           master.hostmanager.aliases = %w(bpp-master.localnet)
       end
 
+      if Vagrant.has_plugin?("vagrant-timezone")
+      	 master.timezone.value = :host
+      end
+
       master.vm.provider "virtualbox" do |vb|
           vb.customize ["modifyvm", :id, "--cpus", "4"]
           vb.customize ["modifyvm", :id, "--memory", "2048"]
@@ -63,6 +67,10 @@ Vagrant.configure(2) do |config|
           staging.hostmanager.aliases = %w(bpp-staging.localnet)
       end
 
+      if Vagrant.has_plugin?("vagrant-timezone")
+      	 staging.timezone.value = :host
+      end
+
       staging.vm.network "private_network", ip: "192.168.111.101"
 
       staging.vm.provision "shell", inline: "sudo apt install python-minimal -y"
@@ -92,6 +100,10 @@ Vagrant.configure(2) do |config|
       db.vm.provision "shell", inline: "sudo apt install python-minimal -y"
       db.vm.provision "ansible" do |ansible|
         ansible.playbook = "ansible/provision.yml"
+      end
+
+      if Vagrant.has_plugin?("vagrant-timezone")
+      	 db.timezone.value = :host
       end
 
       db.vm.provider "virtualbox" do |vb|
@@ -132,6 +144,11 @@ Vagrant.configure(2) do |config|
 	selenium.cache.enable :generic, {
 	  "wget" => { cache_dir: "/var/cache/wget" },
 	}
+      end
+
+
+      if Vagrant.has_plugin?("vagrant-timezone")
+      	 selenium.timezone.value = :host
       end
 
       selenium.vm.provider "virtualbox" do |vb|
