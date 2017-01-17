@@ -153,7 +153,8 @@ INSTALLED_APPS = [
 
     'notifications',
     'integrator2',
-    'egeria',
+    # 2017.1.17 mpasternak TODO: włączyć później
+    # 'egeria',
     'eksport_pbn',
 
     'loginas'

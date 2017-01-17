@@ -47,7 +47,9 @@ urlpatterns = patterns(
 
     url(r'^integrator2/', include('integrator2.urls', namespace='integrator2')),
     url(r'^eksport_pbn/', include('eksport_pbn.urls', namespace='eksport_pbn')),
-    url(r'^egeria/', include('egeria.urls', namespace='egeria')),
+
+    # mpasternak 17.01.2017 TODO: włączyć później
+    # url(r'^egeria/', include('egeria.urls', namespace='egeria')),
 
     url(r'^bpp/', include('bpp.urls', namespace='bpp')),
 
