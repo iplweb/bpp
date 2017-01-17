@@ -1,6 +1,6 @@
 Django==1.8.17
 django-dirtyfields==1.0.1
-django-messages-extends==0.3.2
+django-messages-extends==0.5
 django-autoslug==1.7.1
 django-pagination==1.0.7
 django-autocomplete-light==2.2.10
