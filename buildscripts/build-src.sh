@@ -5,7 +5,7 @@ mkdir -p /vagrant/releases || true
 cd $HOME/django-bpp/src
 
 rm -rf staticroot
-grunt build
+./node_modules/.bin/grunt build
 python manage.py collectstatic --noinput -v 0
 python manage.py compress --force -v 0
 
