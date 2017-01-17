@@ -30,7 +30,7 @@
     - swapfile
     - dev-utils
     - java
-    - firefox-beta
+    - firefox-trunk
     - supervisor
     - tightvnc
     - selenium
