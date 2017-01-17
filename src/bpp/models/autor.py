@@ -101,7 +101,7 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
 
     def dodaj_jednostke(self, jednostka, rok=None, funkcja=None):
         if rok is None:
-            rok = datetime.now().date().year
+            rok = datetime.now().date().year - 1
 
         start_pracy = date(rok, 1, 1)
         koniec_pracy = date(rok, 12, 31)
