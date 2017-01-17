@@ -38,7 +38,11 @@ def venv():
     run("/vagrant/provisioning/venv.sh")
 
 def wheels():
-    run("latest/provisioning/wheels.sh")
+    with cd("/vagrant/buildscripts"):
+        run("./wheels.build.sh")
+        run("./wheels.install.sh")
+    with cd("/vagrant/requirements"):
+        run("pip --quiet install -r dev.requirements.txt")
 
 def vcs(branch=None):
     with cd("django-bpp"):
