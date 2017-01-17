@@ -9,12 +9,12 @@
   notify: 
     - restart supervisor services
 
-- name: Stat cached gecko
-  stat: path=/var/cache/wget/geckodriver-v0.11.1-linux64.tar.gz
+- name: Stat cached geckodriver
+  stat: path=/var/cache/wget/geckodriver-v0.13.0-linux64.tar.gz
   register: gd
 
 - name: Download geckodriver
-  get_url: url=https://github.com/mozilla/geckodriver/releases/download/v0.11.1/geckodriver-v0.11.1-linux64.tar.gz dest=/var/cache/wget/
+  get_url: url=https://github.com/mozilla/geckodriver/releases/download/v0.13.0/geckodriver-v0.13.0-linux64.tar.gz dest=/var/cache/wget/
   when: not gd.stat.exists
 
 - name: Stat geckodriver bin
@@ -22,7 +22,7 @@
   register: gd
 
 - name: Unpack geckodriver
-  shell: tar -xzf /var/cache/wget/geckodriver-v0.11.1-linux64.tar.gz
+  shell: tar -xzf /var/cache/wget/geckodriver-v0.13.0-linux64.tar.gz
   args: 
     chdir: /usr/bin
     creates: /usr/bin/geckodriver
