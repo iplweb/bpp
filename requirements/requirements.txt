@@ -1,4 +1,4 @@
-Django==1.8.13
+Django==1.8.17
 django-dirtyfields==1.0.1
 django-messages-extends==0.3.2
 django-autoslug==1.7.1
