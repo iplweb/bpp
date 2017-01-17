@@ -1,6 +1,18 @@
 ---
 - name: Add Fireox-nightly PPA
   apt_repository: repo="ppa:ubuntu-mozilla-daily/ppa"
+  register: ppa
 
-- name: Install firefox nightly
-  apt: name=firefox-trunk
+- name: Apt-get update
+  apt: update_cache=yes
+  when: ppa.changed
+
+- name: Install firefox-trunk
+  apt: name={{item}}
+  with_items:
+    - firefox-trunk=53.0~a1~hg20170115r329516-0ubuntu1~umd1~xenial
+    - firefox-trunk-locale-pl=53.0~a1~hg20170115r329516-0ubuntu1~umd1~xenial
+
+- name: Install symlink for geckodriver
+  file: src=/usr/bin/firefox-trunk dest=/usr/bin/firefox state=link
+  
