@@ -377,6 +377,7 @@ if os.getenv("DJANGO_BPP_RAVEN_CONFIG_URL", None):
     INSTALLED_APPS.append('raven.contrib.django.raven_compat')
 
 ALLOWED_HOSTS = [
+    "127.0.0.1",
     django_getenv("DJANGO_BPP_HOSTNAME", "localhost"),
 ]
 
