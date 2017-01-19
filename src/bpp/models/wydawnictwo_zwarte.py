@@ -153,7 +153,10 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
     def eksport_pbn_size(self, toplevel, wydzial=None, autorzy_klass=None):
         if self.liczba_znakow_wydawniczych:
             size = SubElement(toplevel, 'size', unit="sheets")
-            size.text = str(int(ceil(self.liczba_znakow_wydawniczych / 40000.0)))
+            size.text = self.liczba_arkuszy_wydawniczych()
+
+    def liczba_arkuszy_wydawniczych(self):
+        return "%.2f" % round(self.liczba_znakow_wydawniczych / 40000.0, 2)
 
     def eksport_pbn_book(self, toplevel, wydzial=None, autorzy_klass=None):
         def add_wydawnictwo_nadrzedne_data(book, wydawnictwo_nadrzedne, title_text=None):
