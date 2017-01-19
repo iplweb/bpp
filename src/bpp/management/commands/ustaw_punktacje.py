@@ -7,6 +7,7 @@ from django.db import transaction
 from django.test.utils import override_settings
 
 from bpp.models.cache import Rekord
+from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
 from bpp.models.zrodlo import Punktacja_Zrodla
 
 
@@ -22,28 +23,23 @@ class Command(BaseCommand):
     @transaction.atomic
     @override_settings(CELERY_ALWAYS_EAGER=True)
     def handle(self, *args, **options):
-        fn = ['impact_factor', 'punkty_kbn', 'index_copernicus', 'punktacja_wewnetrzna']
+        # fn = ['impact_factor', 'punkty_kbn', 'index_copernicus', 'punktacja_wewnetrzna']
+        fn = ['punkty_kbn',]
 
-        for praca in Rekord.objects.filter(
-            rok__gt=2013,
+        for praca in Wydawnictwo_Ciagle.objects.filter(
+            rok__gt=2016,
             charakter_formalny__skrot="AC",
-        ).exclude(
-            typ_kbn__skrot="000",
-        ).exclude(
-            typ_kbn__skrot="PNP"
-        ).exclude(
-            typ_kbn__skrot="RC").only("content_type", "object_id"):
-
-            original = praca.original
+            punkty_kbn__gt=0):
 
             try:
                 pz = Punktacja_Zrodla.objects.get(
-                        rok=original.rok,
-                        zrodlo=original.zrodlo)
+                        rok=praca.rok,
+                        zrodlo=praca.zrodlo)
             except Punktacja_Zrodla.DoesNotExist:
-                print "BRAK PUNKTACJI ZRODLA: ", original.zrodlo, original.rok
+                print "BRAK PUNKTACJI ZRODLA: ", praca.zrodlo, praca.rok
+                continue
 
             for field in fn:
-                setattr(original, field, getattr(pz, field))
+                setattr(praca, field, getattr(pz, field))
 
-            original.save()
+            praca.save()
