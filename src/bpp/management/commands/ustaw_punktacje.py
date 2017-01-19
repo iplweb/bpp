@@ -27,19 +27,24 @@ class Command(BaseCommand):
         fn = ['punkty_kbn',]
 
         for praca in Wydawnictwo_Ciagle.objects.filter(
-            rok__gt=2016,
+            rok__gte=2016,
             charakter_formalny__skrot="AC",
-            punkty_kbn__gt=0):
-
+            punkty_kbn__gt=0).only("pk", "punkty_kbn", "tytul_oryginalny", "zrodlo_id", "rok"):
             try:
                 pz = Punktacja_Zrodla.objects.get(
                         rok=praca.rok,
-                        zrodlo=praca.zrodlo)
+                        zrodlo=praca.zrodlo_id)
             except Punktacja_Zrodla.DoesNotExist:
                 print "BRAK PUNKTACJI ZRODLA: ", praca.zrodlo, praca.rok
                 continue
 
+            ch = False
             for field in fn:
-                setattr(praca, field, getattr(pz, field))
-
-            praca.save()
+                v = getattr(praca, field)
+                s = getattr(pz, field)
+                if v != s:
+                    setattr(praca, field, s)
+                    ch = True
+            if ch:
+                print praca.tytul_oryginalny
+                praca.save()
