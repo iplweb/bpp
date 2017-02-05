@@ -1,0 +1,6 @@
+logging: 30
+migrate_from_0_3_2: false
+project_name: test_bpp
+stellar_url: postgresql://bpp:password@bpp-db:5432/stellar_data
+tracked_databases: [test_bpp]
+url: postgresql://bpp:password@bpp-db:5432/template1

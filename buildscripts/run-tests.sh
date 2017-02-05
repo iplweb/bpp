@@ -28,6 +28,7 @@ cd $SCRIPTPATH/../src
 NO_QUNIT=0
 NO_PYTEST=0
 NO_DJANGO=0
+NO_REBUILD=0
 
 export PYTHONIOENCODING=utf_8
 
@@ -40,7 +41,9 @@ do
             ;;
         --no-django) NO_DJANGO=1
             ;;
-	--help) echo "--no-qunit, --no-pytest, --no-django"
+        --no-rebuild) NO_REBUILD=1
+            ;;
+	--help) echo "--no-qunit, --no-pytest, --no-django, --no-rebuild"
 	    exit 1
 	    ;;
         --*) echo "bad option $1"
@@ -57,15 +60,25 @@ if [ "$NO_QUNIT" == "0" ]; then
     ./node_modules/.bin/grunt qunit
 fi
 
+if [ "$NO_REBUILD" == "0" ]; then
+    # Nie przebudowuj bazy danych przed uruchomieniem testów.
+    # Baza powinna być zazwyczaj utworzona od zera. 
+    dropdb test_bpp
+    python manage.py create_test_db
+    stellar replace test_bpp_v1 || stellar snapshot test_bpp_v1
+fi
+
 if [ "$NO_DJANGO" == "0" ]; then
-    # żadnego keepdb, baza ma być utworzona od zera
-    python manage.py test --noinput bpp
+    python manage.py test bpp --keepdb
+    # Ewentualne następne testy muszą startować na czystej bazie danych
+    stellar restore test_bpp_v1
 fi
 
 if [ "$NO_PYTEST" == "0" ]; then
-    # baza ma być utworzona od zera - ponownie!
-    py.test --create-db functional_tests integrator2/tests eksport_pbn bpp/tests-pytest
+    py.test functional_tests integrator2/tests eksport_pbn bpp/tests-pytest
     # mpasternak 17.1.2017 TODO: włączyć później
     # egeria/tests
+
+    stellar restore test_bpp_v1
 fi
 
