@@ -63,7 +63,8 @@ fi
 if [ "$NO_REBUILD" == "0" ]; then
     # Nie przebudowuj bazy danych przed uruchomieniem testów.
     # Baza powinna być zazwyczaj utworzona od zera. 
-    dropdb test_bpp
+    dropdb test_bpp || true
+    createdb test_bpp
     python manage.py create_test_db
     stellar replace test_bpp_v1 || stellar snapshot test_bpp_v1
 fi

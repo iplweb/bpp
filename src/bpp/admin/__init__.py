@@ -2,10 +2,12 @@
 import autocomplete_light
 from django import forms
 from django.contrib import admin
+from django.contrib.admin.filters import SimpleListFilter
 from django.contrib.auth.forms import UserCreationForm
 from django.db.models.fields import BLANK_CHOICE_DASH
 from multiseek.models import SearchForm
 
+from bpp.admin.filters import LiczbaZnakowFilter
 from bpp.admin.helpers import *
 from bpp.models import Jezyk, Typ_KBN, Uczelnia, Wydzial, \
     Jednostka, Tytul, Autor, Autor_Jednostka, Funkcja_Autora, Rodzaj_Zrodla, \
@@ -383,22 +385,23 @@ Wydawnictwo_Ciagle_Form.base_fields['uzupelnij_punktacje'] = \
                     'Uzupełnij punktację',
                     {'id': 'uzupelnij_punktacje'}))
 
-
 class Wydawnictwo_CiagleAdmin(AdnotacjeZDatamiOrazPBNMixin, CommitedModelAdmin):
     formfield_overrides = NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW
 
     form = Wydawnictwo_Ciagle_Form
 
     list_display = ['tytul_oryginalny', 'zrodlo', 'rok',
-                    'typ_kbn', 'charakter_formalny', 'ostatnio_zmieniony']
+                    'typ_kbn', 'charakter_formalny', 'liczba_znakow_wydawniczych',
+                    'ostatnio_zmieniony']
 
     search_fields = [
         'tytul', 'tytul_oryginalny', 'szczegoly', 'uwagi', 'informacje',
         'slowa_kluczowe', 'rok', 'id',
-        'issn', 'e_issn', 'zrodlo__nazwa', 'zrodlo__skrot', 'adnotacje']
+        'issn', 'e_issn', 'zrodlo__nazwa', 'zrodlo__skrot', 'adnotacje',
+        'liczba_znakow_wydawniczych']
 
     list_filter = ['status_korekty', 'afiliowana', 'recenzowana', 'typ_kbn',
-                   'charakter_formalny', 'jezyk', 'liczba_znakow_wydawniczych']
+                   'charakter_formalny', 'jezyk', LiczbaZnakowFilter, 'rok']
 
     fieldsets = (
         ('Wydawnictwo ciągłe', {
@@ -428,16 +431,17 @@ class Wydawnictwo_ZwarteAdmin_Baza(CommitedModelAdmin):
     formfield_overrides = NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW
 
     list_display = ['tytul_oryginalny', 'wydawnictwo', 'typ_kbn',
-                    'charakter_formalny', 'ostatnio_zmieniony']
+                    'charakter_formalny', 'liczba_znakow_wydawniczych',
+                    'ostatnio_zmieniony']
 
     search_fields = [
         'tytul', 'tytul_oryginalny', 'szczegoly', 'uwagi', 'informacje',
         'slowa_kluczowe', 'rok', 'isbn', 'id',
-        'wydawnictwo', 'redakcja', 'adnotacje']
+        'wydawnictwo', 'redakcja', 'adnotacje',
+        'liczba_znakow_wydawniczych']
 
     list_filter = ['status_korekty', 'afiliowana', 'recenzowana', 'typ_kbn',
-                   'charakter_formalny', 'liczba_znakow_wydawniczych',
-                   'informacja_z', 'jezyk']
+                   'charakter_formalny', 'informacja_z', 'jezyk', LiczbaZnakowFilter, 'rok']
 
     fieldsets = (
         ('Wydawnictwo zwarte', {
