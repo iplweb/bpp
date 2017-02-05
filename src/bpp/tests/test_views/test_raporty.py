@@ -231,7 +231,6 @@ class TestRankingAutorow(UserTestCase):
     def test_renderowanie_csv(self):
         url = reverse("bpp:ranking-autorow", args=(2000,2000))
         res = self.client.get(url, data={"report-rankingautorowtable": "csv"})
-        print(res.content)
         self.assertContains(
             res,
             u'"Kowalski Jan Maria, dr",Jednostka')

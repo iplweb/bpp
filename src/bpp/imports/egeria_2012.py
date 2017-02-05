@@ -34,7 +34,7 @@ def dopasuj_jednostke(nazwa_jednostki, text_mangle):
     if nazwa_jednostki in text_mangle.ignorowane_jednostki:
         if nazwa_jednostki not in ignored_seen:
             ignored_seen.add(nazwa_jednostki)
-            print "... TA JEDNOSTKA ZOSTAJE IGNOROWANA W CALOSCI: ", nazwa_jednostki.encode('utf-8')
+            # print "... TA JEDNOSTKA ZOSTAJE IGNOROWANA W CALOSCI: ", nazwa_jednostki.encode('utf-8')
         return None
 
     try:

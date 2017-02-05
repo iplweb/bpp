@@ -5,4 +5,4 @@ from bpp.management.commands.look_for_unused_fields import Command as LookForUnu
 
 class TestManagement(TestCase):
     def test_LookForUnusedFields(self):
-        LookForUnusedFields().handle()
+        LookForUnusedFields().handle(silent=True)
