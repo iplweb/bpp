@@ -114,6 +114,8 @@ INSTALLED_APPS = [
     'django.contrib.sites',
     'password_policies',
 
+    'create_test_db',
+
     'celery',
 
     'cookielaw',
