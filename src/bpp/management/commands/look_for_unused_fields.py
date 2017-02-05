@@ -8,7 +8,7 @@ from bpp.models import Sumy
 class Command(BaseCommand):
     help = 'Szuka nieuzywanych pol we wszystkich modelach'
 
-    def handle(self, *args, **options):
+    def handle(self, silent=False, *args, **options):
         for model in get_models():
 
             if model._meta.app_label != 'bpp' or \
@@ -26,4 +26,5 @@ class Command(BaseCommand):
                 check = model.objects.filter(
                     Q(**{field.name: None}) | Q(**{field.name:''})).count()
                 if check == total:
-                    print "Nieuzywane pole: ", model, field
+                    if not silent:
+                        print "Nieuzywane pole: ", model, field
