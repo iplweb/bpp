@@ -19,10 +19,11 @@ import traceback
 from bpp.system import groups
 import os, sys
 
-def bpp_post_syncdb(force=False, **kw):
+def bpp_post_syncdb(force=False, silent=False, **kw):
     # Jeżeli grupy były już utworzone i nie podano parametru 'force' to ich nie twórz więcej
     if Group.objects.filter(name='administracja').count() != 0 and not force:
-        print("Groups exists! Not creating them...")
+        if not silent:
+            print("Groups exists! Not creating them...")
         return
 
     #

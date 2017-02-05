@@ -102,7 +102,7 @@ def afiliacja(dct, kw):
 
     for field in ['afiliowana', 'recenzowana']:
         if kw[field] == None:
-            print "Ustawiam %s=False dla pracy z ID: %s " % (field, dct['id'])
+            # print "Ustawiam %s=False dla pracy z ID: %s " % (field, dct['id'])
             kw[field] = False
 
 
