@@ -100,6 +100,11 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
         'self', blank=True, null=True, help_text="""Jeżeli dodajesz rozdział,
         tu wybierz pracę, w ramach której dany rozdział występuje.""")
 
+    calkowita_liczba_autorow = models.PositiveIntegerField(
+        blank=True, null=True, help_text="""Jeżeli dodajesz monografię, wpisz tutaj całkowitą liczbę
+        autorów monografii. Ta informacja zostanie użyta w eksporcie danych do PBN."""
+    )
+
     def dodaj_autora(self, autor, jednostka, zapisany_jako=None,
                      typ_odpowiedzialnosci_skrot='aut.', kolejnosc=None):
         return dodaj_autora(

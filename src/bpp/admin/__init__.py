@@ -468,7 +468,7 @@ class Wydawnictwo_ZwarteAdmin(AdnotacjeZDatamiOrazPBNMixin, Wydawnictwo_ZwarteAd
             'fields':
                 DWA_TYTULY
                 + MODEL_ZE_SZCZEGOLAMI
-                + ('wydawnictwo_nadrzedne', 'miejsce_i_rok', 'wydawnictwo',)
+                + ('wydawnictwo_nadrzedne', 'calkowita_liczba_autorow', 'miejsce_i_rok', 'wydawnictwo',)
                 + MODEL_Z_ROKIEM
         }),
         EKSTRA_INFORMACJE_WYDAWNICTWO_ZWARTE_FIELDSET,
