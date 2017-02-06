@@ -7,6 +7,7 @@ from mock import Mock
 
 from bpp import autocomplete_light_registry  # Bez tego następny import się wywali
 from bpp.admin import LiczbaZnakowFilter, Wydawnictwo_ZwarteAdmin
+from bpp.admin.filters import CalkowitaLiczbaAutorowFilter
 from bpp.models import Jednostka, Autor, Zrodlo, Wydawnictwo_Zwarte, Praca_Doktorska, Praca_Habilitacyjna, Patent, \
     Charakter_Formalny
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
@@ -20,19 +21,20 @@ from bpp.views.admin import WydawnictwoCiagleTozView
 
 
 class TestLiczbaZnakowFilter(TestCase):
-    def test_LiczbaZnakowFilter(self):
-        l = LiczbaZnakowFilter(Mock(), [], Wydawnictwo_Zwarte, Wydawnictwo_ZwarteAdmin)
+    def test_simpleIntegerFilters(self):
+        for klass in [LiczbaZnakowFilter, CalkowitaLiczbaAutorowFilter]:
+            l = klass(Mock(), [], Wydawnictwo_Zwarte, Wydawnictwo_ZwarteAdmin)
 
-        for elem in ['brak', 'zero', 'powyzej']:
-            l.value = Mock(return_value=elem)
+            for elem in ['brak', 'zero', 'powyzej']:
+                l.value = Mock(return_value=elem)
+                queryset = Mock()
+                l.queryset(Mock(), queryset)
+                self.assertEquals(queryset.filter.called, True)
+
+            l.value = Mock(return_value='__nie ma tego parametru')
             queryset = Mock()
             l.queryset(Mock(), queryset)
-            self.assertEquals(queryset.filter.called, True)
-
-        l.value = Mock(return_value='__nie ma tego parametru')
-        queryset = Mock()
-        l.queryset(Mock(), queryset)
-        self.assertEquals(queryset.filter.called, False)
+            self.assertEquals(queryset.filter.called, False)
 
 
 class TestNormalUserAdmin(UserTestCase):

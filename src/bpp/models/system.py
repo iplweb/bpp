@@ -5,7 +5,8 @@ Małe klasy pomocnicze dla całego systemu
 """
 
 from django.db import models
-from bpp.models.abstract import ModelZNazwa, NazwaISkrot, ModelPunktowany
+
+from bpp.models.abstract import ModelZNazwa, NazwaISkrot
 
 NAZWY_PRIMO = [
     u"",
@@ -124,9 +125,11 @@ class Jezyk(NazwaISkrot):
 
 
 class Typ_KBN(NazwaISkrot):
+    artykul_pbn = models.BooleanField("Artykuł w PBN", help_text="""Wydawnictwa ciągłe posiadające
+    ten typ KBN zostaną włączone do eksportu PBN jako artykuły""", default=False)
+
     class Meta:
         verbose_name = 'typ KBN'
         verbose_name_plural = 'typy KBN'
         ordering = ['nazwa']
         app_label = 'bpp'
-
