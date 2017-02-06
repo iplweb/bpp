@@ -1,6 +1,6 @@
 # -*- encoding: utf-8 -*-
 
-from bpp.models.system import Charakter_Formalny
+from bpp.models.system import Charakter_Formalny, Typ_KBN
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte_Autor
 from eksport_pbn.models import DATE_CREATED_ON, DATE_UPDATED_ON, DATE_UPDATED_ON_PBN
@@ -41,6 +41,7 @@ def id_ciaglych(wydzial, od_roku, do_roku, rodzaj_daty=None, od_daty=None, do_da
         rekord__rok__gte=od_roku,
         rekord__rok__lte=do_roku,
         rekord__charakter_formalny__in=Charakter_Formalny.objects.filter(artykul_pbn=True),
+        rekord__typ_kbn__in=Typ_KBN.objects.filter(artykul_pbn=True),
         **data_kw(rodzaj_daty, od_daty, do_daty)
     ).order_by("rekord_id").distinct("rekord_id").only("rekord_id").values_list("rekord_id", flat=True)
 
@@ -52,6 +53,7 @@ def id_zwartych(wydzial, od_roku, do_roku, ksiazki, rozdzialy, rodzaj_daty=None,
                 rekord__rok__gte=od_roku,
                 rekord__rok__lte=do_roku,
                 rekord__charakter_formalny__in=Charakter_Formalny.objects.filter(ksiazka_pbn=True),
+                rekord__liczba_znakow_wydawniczych__gte=240000,
                 **data_kw(rodzaj_daty, od_daty, do_daty)
         ).order_by("rekord_id").distinct("rekord_id").only("rekord_id").values_list("rekord_id", flat=True):
             yield rekord
@@ -62,6 +64,7 @@ def id_zwartych(wydzial, od_roku, do_roku, ksiazki, rozdzialy, rodzaj_daty=None,
                 rekord__rok__gte=od_roku,
                 rekord__rok__lte=do_roku,
                 rekord__charakter_formalny__in=Charakter_Formalny.objects.filter(rozdzial_pbn=True),
+                rekord__liczba_znakow_wydawniczych__gt=0,
                 **data_kw(rodzaj_daty, od_daty, do_daty)
         ).order_by("rekord_id").distinct("rekord_id").only("rekord_id").values_list("rekord_id", flat=True):
             yield rekord
