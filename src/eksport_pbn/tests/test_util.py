@@ -12,6 +12,12 @@ from eksport_pbn.tasks import id_zwartych, id_ciaglych
 
 
 def test_id_zwartych(wydawnictwo_zwarte_z_autorem, wydzial, rok):
+    """
+    :type wydawnictwo_zwarte_z_autorem: bpp.models.Wydawnictwo_Zwarte
+    """
+    wydawnictwo_zwarte_z_autorem.liczba_znakow_wydawniczych = 240000
+    wydawnictwo_zwarte_z_autorem.save()
+
     cf = wydawnictwo_zwarte_z_autorem.charakter_formalny
 
     cf.ksiazka_pbn = True
@@ -23,9 +29,12 @@ def test_id_zwartych(wydawnictwo_zwarte_z_autorem, wydzial, rok):
 
 def test_id_ciaglych(wydawnictwo_ciagle_z_autorem, wydzial, rok):
     cf = wydawnictwo_ciagle_z_autorem.charakter_formalny
-
     cf.artykul_pbn = True
     cf.save()
+
+    tk = wydawnictwo_ciagle_z_autorem.typ_kbn
+    tk.artykul_pbn = True
+    tk.save()
 
     l = id_ciaglych(wydzial, rok, rok)
     assert l.count() == 1
