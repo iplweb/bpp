@@ -1,11 +1,15 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+from django.core.management import call_command
 from django.db import migrations, models
 
 
 def ustaw_typy_kbn(apps, schema_editor):
     Typ_KBN = apps.get_model("bpp", "Typ_KBN")
+    if Typ_KBN.objects.count() == 0:
+        call_command('loaddata', "typ_kbn.json", app='bpp', verbosity=0)
+
     for elem in Typ_KBN.objects.all():
         elem.artykul_pbn = True
         if elem.skrot in ['000', 'PW']:
@@ -22,6 +26,7 @@ def ustaw_typy_kbn(apps, schema_editor):
         s = Charakter_Formalny.objects.get(skrot=elem)
         s.rozdzial_pbn = True
         s.save()
+
 
 def noop(apps, schema_editor):
     pass

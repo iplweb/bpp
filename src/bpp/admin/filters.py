@@ -2,9 +2,8 @@
 from django.contrib.admin.filters import SimpleListFilter
 
 
-class LiczbaZnakowFilter(SimpleListFilter):
-    title = 'liczba znaków wydawniczych'
-    parameter_name = 'liczba_znakow_wydawniczych'
+class SimpleIntegerFilter(SimpleListFilter):
+    db_field_name = None
 
     def lookups(self, request, model_admin):
         return (
@@ -16,11 +15,25 @@ class LiczbaZnakowFilter(SimpleListFilter):
     def queryset(self, request, queryset):
         v = self.value()
 
+        field = self.db_field_name
+        if field is None:
+            field = self.parameter_name
+
         if v == "brak":
-            return queryset.filter(liczba_znakow_wydawniczych=None)
+            return queryset.filter(**{field: None})
         elif v == "zero":
-            return queryset.filter(liczba_znakow_wydawniczych=0)
+            return queryset.filter(**{field: 0})
         elif v == "powyzej":
-            return queryset.filter(liczba_znakow_wydawniczych__gt=0)
+            return queryset.filter(**{field + "__gt": 0})
 
         return queryset
+
+
+class LiczbaZnakowFilter(SimpleIntegerFilter):
+    title = 'liczba znaków wydawniczych'
+    parameter_name = 'liczba_znakow_wydawniczych'
+
+
+class CalkowitaLiczbaAutorowFilter(SimpleIntegerFilter):
+    title = 'całkowita liczba autorów'
+    parameter_name = 'calkowita_liczba_autorow'

@@ -7,7 +7,7 @@ from django.contrib.auth.forms import UserCreationForm
 from django.db.models.fields import BLANK_CHOICE_DASH
 from multiseek.models import SearchForm
 
-from bpp.admin.filters import LiczbaZnakowFilter
+from bpp.admin.filters import LiczbaZnakowFilter, CalkowitaLiczbaAutorowFilter
 from bpp.admin.helpers import *
 from bpp.models import Jezyk, Typ_KBN, Uczelnia, Wydzial, \
     Jednostka, Tytul, Autor, Autor_Jednostka, Funkcja_Autora, Rodzaj_Zrodla, \
@@ -75,7 +75,8 @@ class CommitedModelAdmin(BaseBppAdmin):
 class Charakter_FormalnyAdmin(RestrictDeletionToAdministracjaGroupMixin, CommitedModelAdmin):
     list_display = ['skrot', 'nazwa', 'publikacja', 'streszczenie', 'nazwa_w_primo',
                     'charakter_pbn', 'artykul_pbn', 'ksiazka_pbn', 'rozdzial_pbn']
-    list_filter = ('publikacja', 'streszczenie', 'nazwa_w_primo', 'charakter_pbn',)
+    list_filter = ('publikacja', 'streszczenie', 'nazwa_w_primo', 'charakter_pbn',
+                   'artykul_pbn', 'ksiazka_pbn', 'rozdzial_pbn')
     search_fields = ['skrot', 'nazwa']
 
 
@@ -88,7 +89,11 @@ class NazwaISkrotAdmin(RestrictDeletionToAdministracjaGroupMixin, CommitedModelA
 
 
 admin.site.register(Tytul, NazwaISkrotAdmin)
-admin.site.register(Typ_KBN, NazwaISkrotAdmin)
+
+class Typ_KBNAdmin(RestrictDeletionToAdministracjaGroupAdmin, CommitedModelAdmin):
+    list_display = ['nazwa', 'skrot', 'artykul_pbn']
+
+admin.site.register(Typ_KBN, Typ_KBNAdmin)
 
 
 class Typ_OdpowiedzialnosciAdmin(RestrictDeletionToAdministracjaGroupMixin, CommitedModelAdmin):
@@ -462,6 +467,8 @@ class Wydawnictwo_ZwarteAdmin_Baza(CommitedModelAdmin):
 class Wydawnictwo_ZwarteAdmin(AdnotacjeZDatamiOrazPBNMixin, Wydawnictwo_ZwarteAdmin_Baza):
     form = autocomplete_light.modelform_factory(Wydawnictwo_Zwarte, fields="__all__")
     inlines = (generuj_inline_dla_autorow(Wydawnictwo_Zwarte_Autor),)
+
+    list_filter = Wydawnictwo_ZwarteAdmin_Baza.list_filter + [CalkowitaLiczbaAutorowFilter,]
 
     fieldsets = (
         ('Wydawnictwo zwarte', {
