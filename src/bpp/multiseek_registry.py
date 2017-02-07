@@ -1,5 +1,6 @@
 # -*- encoding: utf-8 -*-
 from django.utils.itercompat import is_iterable
+
 from bpp.models.struktura import Wydzial
 
 NULL_VALUE = u"(brak wpisanej wartości)"
@@ -11,7 +12,8 @@ from multiseek import logic
 from multiseek.logic import DecimalQueryObject, BooleanQueryObject
 from multiseek.logic import StringQueryObject, QueryObject, EQUALITY_OPS_ALL, \
     UnknownOperation, DIFFERENT_ALL, AUTOCOMPLETE, EQUALITY_OPS_NONE, \
-    EQUALITY_OPS_FEMALE, VALUE_LIST, EQUALITY_OPS_MALE, create_registry, IntegerQueryObject, ValueListQueryObject, EQUAL, DIFFERENT, \
+    EQUALITY_OPS_FEMALE, VALUE_LIST, EQUALITY_OPS_MALE, create_registry, IntegerQueryObject, ValueListQueryObject, \
+    EQUAL, DIFFERENT, \
     AutocompleteQueryObject, Ordering, ReportType, RangeQueryObject, \
     DateQueryObject
 
@@ -20,6 +22,8 @@ from bpp.models import Typ_Odpowiedzialnosci, Jezyk, Autor, Jednostka, \
 from bpp.models.cache import Autorzy, Rekord
 
 from bpp.models.system import Typ_KBN
+
+
 #
 # class StringQueryObject(OrigStringQueryObject):
 #     def value_for_description(self, value):
@@ -70,21 +74,26 @@ class AdnotacjeQueryObject(StringQueryObject):
     field_name = 'adnotacje'
     public = False
 
+
 class InformacjeQueryObject(StringQueryObject):
     label = u'Informacje'
     field_name = 'informacje'
+
 
 class SzczegolyQueryObject(StringQueryObject):
     label = u'Szczegóły'
     field_name = 'szczegoly'
 
+
 class UwagiQueryObject(StringQueryObject):
     label = u'Uwagi'
     field_name = 'uwagi'
 
+
 class SlowaKluczoweQueryObject(StringQueryObject):
     label = u'Słowa kluczowe'
     field_name = 'slowa_kluczowe'
+
 
 class DataUtworzeniaQueryObject(DateQueryObject):
     label = u'Data utworzenia'
@@ -101,12 +110,12 @@ class DataUtworzeniaQueryObject(DateQueryObject):
 
 
 class ForeignKeyDescribeMixin:
-
     def value_for_description(self, value):
         if value is None:
             return NULL_VALUE
 
         return self.model.objects.get(pk=int(value))
+
 
 class NazwiskoIImieQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
     label = u'Nazwisko i imię'
@@ -151,7 +160,6 @@ class JednostkaQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
             return ~ret
         return ret
 
-
     def get_autocomplete_query(self, data):
         return Jednostka.objects.fulltext_filter(data)
 
@@ -175,10 +183,8 @@ class WydzialQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
             return ~ret
         return ret
 
-
     def get_autocomplete_query(self, data):
         return Wydzial.objects.filter(nazwa__icontains=data)
-
 
 
 class Typ_OdpowiedzialnosciQueryObject(QueryObject):
@@ -261,6 +267,11 @@ class IndexCopernicusQueryObject(DecimalQueryObject):
     field_name = "index_copernicus"
 
 
+class LiczbaZnakowWydawniczychQueryObject(IntegerQueryObject):
+    label = u'Liczba znaków wydawniczych'
+    field_name = 'liczba_znakow_wydawniczych'
+
+
 class TypRekorduObject(ValueListQueryObject):
     label = 'Typ rekordu'
     values = ['publikacje', 'streszczenia', 'inne']
@@ -313,6 +324,7 @@ class ZrodloQueryObject(AutocompleteQueryObject):
     def get_autocomplete_query(self, data):
         return Zrodlo.objects.fulltext_filter(data)
 
+
 class AfiliowanaQueryObject(BooleanQueryObject):
     field_name = "afiliowana"
     label = "Praca afiliowana"
@@ -346,7 +358,7 @@ registry = create_registry(
     KCImpactQueryObject(),
     KCPunktyKBNQueryObject(),
     KCPunktacjaWewnetrznaQueryObject(),
-    
+
     InformacjeQueryObject(),
     SzczegolyQueryObject(),
     UwagiQueryObject(),
@@ -357,6 +369,8 @@ registry = create_registry(
 
     AfiliowanaQueryObject(),
     RecenzowanaQueryObject(),
+
+    LiczbaZnakowWydawniczychQueryObject(),
 
     ordering=[
         Ordering("", u"(nieistotne)"),
