@@ -62,7 +62,7 @@ def test_eksport_pbn_wydawnictwo_nadrzedne_liczba_autorow():
         chf_ksp.ksiazka_pbn = True
         chf_ksp.save()
 
-    chf_roz, created = Charakter_Formalny.objects.get(skrot='ROZ', nazwa="Rozdział książki")
+    chf_roz, created = Charakter_Formalny.objects.get_or_create(skrot='ROZ', nazwa="Rozdział książki")
     if created:
         chf_roz.rozdzial_pbn = True
         chf_roz.save()
@@ -115,13 +115,15 @@ def test_eksport_pbn_wydawnictwo_nadrzedne_liczba_autorow_trzech():
     j1 = mommy.make(Jednostka, wydzial=w1, uczelnia=u)
     j2 = mommy.make(Jednostka, wydzial=w2, uczelnia=u)
 
-    chf_ksp = Charakter_Formalny.objects.get_or_create(skrot='KSP', nazwa="Książka w języku polskim")
-    chf_ksp.ksiazka_pbn = True
-    chf_ksp.save()
+    chf_ksp, created = Charakter_Formalny.objects.get_or_create(skrot='KSP', nazwa="Książka w języku polskim")
+    if created:
+        chf_ksp.ksiazka_pbn = True
+        chf_ksp.save()
 
-    chf_roz = Charakter_Formalny.objects.get(skrot='ROZ', nazwa="Rozdział książki")
-    chf_roz.rozdzial_pbn = True
-    chf_roz.save()
+    chf_roz, created = Charakter_Formalny.objects.get_or_create(skrot='ROZ', nazwa="Rozdział książki")
+    if created:
+        chf_roz.rozdzial_pbn = True
+        chf_roz.save()
 
     wz_root = mommy.make(Wydawnictwo_Zwarte, charakter_formalny=chf_ksp, szczegoly="s. 123",
                          calkowita_liczba_autorow=50)
