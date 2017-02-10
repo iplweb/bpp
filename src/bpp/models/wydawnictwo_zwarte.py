@@ -1,6 +1,4 @@
 # -*- encoding: utf-8 -*-
-from datetime import datetime
-from math import ceil
 
 from dirtyfields.dirtyfields import DirtyFieldsMixin
 from django.db import models
@@ -98,7 +96,8 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
 
     wydawnictwo_nadrzedne = models.ForeignKey(
         'self', blank=True, null=True, help_text="""Jeżeli dodajesz rozdział,
-        tu wybierz pracę, w ramach której dany rozdział występuje.""")
+        tu wybierz pracę, w ramach której dany rozdział występuje.""",
+        related_name="wydawnictwa_powiazane_set")
 
     calkowita_liczba_autorow = models.PositiveIntegerField(
         blank=True, null=True, help_text="""Jeżeli dodajesz monografię, wpisz tutaj całkowitą liczbę
@@ -133,7 +132,11 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
 
     @cached_property
     def is_chapter(self):
-        return self.charakter_formalny.skrot in ['ROZ', 'ROZS']
+        return self.charakter_formalny.rozdzial_pbn
+
+    @cached_property
+    def is_book(self):
+        return self.charakter_formalny.ksiazka_pbn
 
     def eksport_pbn_isbn(self, toplevel, wydzial=None, autorzy_klass=None):
         if self.isbn:
@@ -206,7 +209,8 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
     def eksport_pbn_other_editors(self, toplevel, wydzial, autorzy_klass):
         from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte_Autor
         if autorzy_klass == Wydawnictwo_Zwarte_Autor:
-            qry = autorzy_klass.objects.filter(rekord=self, typ_odpowiedzialnosci__skrot__in=['red.', 'red. nauk. wyd. pol.'])
+            qry = autorzy_klass.objects.filter(rekord=self,
+                                               typ_odpowiedzialnosci__skrot__in=['red.', 'red. nauk. wyd. pol.'])
 
             wszyscy_redaktorzy = qry.count()
             nasi_redaktorzy = qry.filter(jednostka__wydzial_id=wydzial.id).count()
@@ -214,6 +218,79 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
             other_editors = Element('other-editors')
             other_editors.text = str(wszyscy_redaktorzy - nasi_redaktorzy)
             toplevel.append(other_editors)
+
+    #
+    # def eksport_pbn_get_autorzy_iter(self, wydzial, autorzy_klass):
+    #     # Jeżeli KSIĄŻKA ma jakiekolwiek wydawnictwa POWIĄZANE, to wyrzuć tutaj WSZYSTKICH AUTORÓW
+    #     # przypisanych do jednostek znajdujących się w danym WYDZIALE dla tych powiązanych REKORDÓW.
+    #     if not self.is_chapter:
+    #         raise NotImplementedError
+    #
+    #     # Jeżeli nie ma, to standardowo:
+    #     return super(Wydawnictwo_Zwarte, self).eksport_pbn_get_autorzy_iter(self, wydzial, autorzy_klass)
+    #
+    #
+    # def eksport_pbn_get_other_contributors_cnt(self, wydzial, autorzy_klass):
+    #     # Jeżeli KSIĄŻKA ma jakiekolwiek wydawnictwa POWIĄZANE, to poczli tutaj WSZYSTKICH AUTORÓW
+    #     # OPRÓCZ przypisanych do jednostek znajdujących się w danym WYDZIALE dla tych powiązanych REKORDÓW.
+    #     if not self.is_chapter:
+    #         if self.wydawnictwa_powiazane_set.count():
+    #             autorzy_klass.objects.
+    #             raise NotImplementedError
+    #
+    #     # Jeżeli nie jest to książką, to standardowo:
+    #     super(Wydawnictwo_Zwarte, self).eksport_pbn_get_other_contributors_cnt(wydzial, autorzy_klass)
+
+    def eksport_pbn_get_nasi_autorzy_iter(self, wydzial, autorzy_klass):
+        # TODO: zrób sprawdzanie jednostki w kontekście ROKU do jakiego wydziału była WÓWCZAS przypisana
+
+        ret = set()
+
+        if self.is_book:
+            for elem in autorzy_klass.objects.filter(
+                    rekord__in=self.wydawnictwa_powiazane_set.all().values_list("pk", flat=True),
+                    typ_odpowiedzialnosci__skrot='aut.').select_related("jednostka"):
+                if elem.jednostka.wydzial_id == wydzial.pk and elem.autor_id not in ret:
+                    ret.add(elem.autor_id)
+                    yield elem
+
+            for elem in autorzy_klass.objects.filter(rekord=self, typ_odpowiedzialnosci__skrot='aut.').select_related(
+                    "jednostka"):
+                if elem.jednostka.wydzial_id == wydzial.pk and elem.autor_id not in ret:
+                    ret.add(elem.autor_id)
+                    yield elem
+        else:
+            for elem in super(Wydawnictwo_Zwarte, self).eksport_pbn_get_nasi_autorzy_iter(wydzial, autorzy_klass):
+                yield elem
+
+    def eksport_pbn_get_wszyscy_autorzy_iter(self, wydzial, autorzy_klass):
+        ret = set()
+
+        if self.is_book:
+            for elem in autorzy_klass.objects.filter(
+                    rekord=self.wydawnictwa_powiazane_set.all().values_list("pk", flat=True),
+                    typ_odpowiedzialnosci__skrot='aut.'):
+                if elem.autor_id not in ret:
+                    ret.add(elem.autor_id)
+                    yield elem
+
+            for elem in autorzy_klass.objects.filter(rekord=self, typ_odpowiedzialnosci__skrot='aut.'):
+                if elem.autor_id not in ret:
+                    ret.add(elem.autor_id)
+                    yield elem
+
+        else:
+            for elem in super(Wydawnictwo_Zwarte, self).eksport_pbn_get_wszyscy_autorzy_iter(wydzial, autorzy_klass):
+                yield elem
+
+    def eksport_pbn_get_wszyscy_autorzy_count(self, wydzial, autorzy_klass):
+        if self.is_book:
+            wszyscy_autorzy = self.calkowita_liczba_autorow
+            if wszyscy_autorzy is None:
+                wszyscy_autorzy = len(list(self.eksport_pbn_get_wszyscy_autorzy_iter(wydzial, autorzy_klass)))
+            return wszyscy_autorzy
+        return super(Wydawnictwo_Zwarte, self).eksport_pbn_get_wszyscy_autorzy_count(wydzial, autorzy_klass)
+
 
     eksport_pbn_BOOK_FLDS = ["editor", "isbn", "series", "number-in-series", "edition", "volume", "pages",
                              "publisher-name", "publication-place", "open-access"]

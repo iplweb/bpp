@@ -3,27 +3,27 @@
 """
 Klasy abstrakcyjne
 """
-from datetime import datetime
 from decimal import Decimal
-from django.core.exceptions import ValidationError
 
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 from djorm_pgfulltext.fields import VectorField
+from lxml.etree import Element
 from lxml.etree import SubElement
 
 from bpp.fields import YearField, DOIField
 from bpp.models.util import ModelZOpisemBibliograficznym
-from lxml.etree import Element
+
 
 class ModelZeZnakamiWydawniczymi(models.Model):
-
     liczba_znakow_wydawniczych = models.IntegerField(
         'Liczba znaków wydawniczych', blank=True, null=True,
         db_index=True)
 
     class Meta:
         abstract = True
+
 
 class ModelZAdnotacjami(models.Model):
     """Zawiera adnotację  dla danego obiektu, czyli informacje, które
@@ -164,6 +164,7 @@ class ModelZPubmedID(models.Model):
 
     class Meta:
         abstract = True
+
 
 class ModelZDOI(models.Model):
     doi = DOIField("DOI", null=True, blank=True, db_index=True)
@@ -423,22 +424,33 @@ class PBNSerializerHelperMixin:
         title = SubElement(toplevel, 'title')
         title.text = self.tytul_oryginalny
 
+    def eksport_pbn_get_nasi_autorzy_iter(self, wydzial, autorzy_klass):
+        # TODO: zrób sprawdzanie jednostki w kontekście ROKU do jakiego wydziału była WÓWCZAS przypisana
+        return [elem for elem in autorzy_klass.objects.filter(
+            rekord=self, typ_odpowiedzialnosci__skrot='aut.').select_related("jednostka")
+                if elem.jednostka.wydzial_id == wydzial.pk]
+
+    def eksport_pbn_get_wszyscy_autorzy_iter(self, wydzial, autorzy_klass):
+        return [elem for elem in autorzy_klass.objects.filter(rekord=self, typ_odpowiedzialnosci__skrot='aut.')]
+
     def eksport_pbn_author(self, toplevel, wydzial, autorzy_klass):
-        for autor_wyd in autorzy_klass.objects.filter(rekord=self, typ_odpowiedzialnosci__skrot='aut.'):
-            # TODO: zrób sprawdzanie jednostki w kontekście ROKU do jakiego wydziału była WÓWCZAS przypisana
-            if autor_wyd.jednostka.wydzial_id == wydzial.pk:
-                toplevel.append(autor_wyd.autor.eksport_pbn_serializuj(
-                    affiliated=True, employed=autor_wyd.zatrudniony))
+        for autor_wyd in self.eksport_pbn_get_nasi_autorzy_iter(wydzial, autorzy_klass):
+            toplevel.append(autor_wyd.autor.eksport_pbn_serializuj(affiliated=True, employed=autor_wyd.zatrudniony))
+
+    def eksport_pbn_get_nasi_autorzy_count(self, wydzial, autorzy_klass):
+        return len(list(self.eksport_pbn_get_nasi_autorzy_iter(wydzial, autorzy_klass)))
+
+    def eksport_pbn_get_wszyscy_autorzy_count(self, wydzial, autorzy_klass):
+        return len(list(self.eksport_pbn_get_wszyscy_autorzy_iter(wydzial, autorzy_klass)))
+
+    def eksport_pbn_get_other_contributors_cnt(self, wydzial, autorzy_klass):
+        wszyscy_autorzy = self.eksport_pbn_get_wszyscy_autorzy_count(wydzial, autorzy_klass)
+        nasi_autorzy = self.eksport_pbn_get_nasi_autorzy_count(wydzial, autorzy_klass)
+        return wszyscy_autorzy - nasi_autorzy
 
     def eksport_pbn_other_contributors(self, toplevel, wydzial, autorzy_klass):
-        dopisani_autorzy = 0
-        qry = autorzy_klass.objects.filter(rekord=self, typ_odpowiedzialnosci__skrot='aut.')
-
-        wszyscy_autorzy = qry.count()
-        nasi_autorzy = qry.filter(jednostka__wydzial_id=wydzial.id).count()
-
         other_contributors = Element('other-contributors')
-        other_contributors.text = str(wszyscy_autorzy - nasi_autorzy)
+        other_contributors.text = str(self.eksport_pbn_get_other_contributors_cnt(wydzial, autorzy_klass))
         toplevel.append(other_contributors)
 
     def eksport_pbn_lang(self, toplevel, wydzial=None, autorzy_klass=None):
@@ -480,11 +492,10 @@ class PBNSerializerHelperMixin:
             if self.pubmed_id:
                 exp_www("http://www.ncbi.nlm.nih.gov/pubmed/%s" % self.pubmed_id)
 
-        # tego ma nie być w polu public-uri:
+                # tego ma nie być w polu public-uri:
 
-        # elif self.www:
-        #     exp_www(self.www)
-
+                # elif self.www:
+                #     exp_www(self.www)
 
     def eksport_pbn_open_access(self, toplevel, wydzial=None, autorzy_klass=None):
 
@@ -525,7 +536,6 @@ class PBNSerializerHelperMixin:
 
             mode = SubElement(open_access, "open-access-mode")
             mode.text = self.openaccess_tryb_dostepu.skrot
-
 
     def eksport_pbn_publication_date(self, toplevel, wydzial=None, autorzy_klass=None):
         publication_date = SubElement(toplevel, 'publication-date')
@@ -582,6 +592,7 @@ class ModelZOpenAccess(models.Model):
 
 class ModelZDOI(models.Model):
     doi = DOIField("DOI", null=True, blank=True, db_index=True)
+
     class Meta:
         abstract = True
 
