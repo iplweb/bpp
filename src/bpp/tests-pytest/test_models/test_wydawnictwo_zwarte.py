@@ -74,8 +74,8 @@ def test_eksport_pbn_wydawnictwo_nadrzedne_liczba_autorow():
     wz_child2 = mommy.make(Wydawnictwo_Zwarte, wydawnictwo_nadrzedne=wz_root, charakter_formalny=chf_roz,
                            szczegoly="s. 16-25")
 
-    Typ_Odpowiedzialnosci.objects.get_or_create(skrot="aut.")
-    Typ_Odpowiedzialnosci.objects.get_or_create(skrot="red.")
+    Typ_Odpowiedzialnosci.objects.get_or_create(skrot="aut.", nazwa="autor")
+    Typ_Odpowiedzialnosci.objects.get_or_create(skrot="red.", nazwa="redaktor")
 
     wz_root.dodaj_autora(a1, j1, typ_odpowiedzialnosci_skrot="red.")
     wz_root.dodaj_autora(a2, j2, typ_odpowiedzialnosci_skrot="red.")
@@ -132,8 +132,8 @@ def test_eksport_pbn_wydawnictwo_nadrzedne_liczba_autorow_trzech():
     wz_child2 = mommy.make(Wydawnictwo_Zwarte, wydawnictwo_nadrzedne=wz_root, charakter_formalny=chf_roz,
                            szczegoly="s. 16-25")
 
-    Typ_Odpowiedzialnosci.objects.get_or_create(skrot="aut.")
-    Typ_Odpowiedzialnosci.objects.get_or_create(skrot="red.")
+    Typ_Odpowiedzialnosci.objects.get_or_create(skrot="aut.", nazwa="autor")
+    Typ_Odpowiedzialnosci.objects.get_or_create(skrot="red.", nazwa="redaktor")
 
     wz_root.dodaj_autora(a1, j1, typ_odpowiedzialnosci_skrot="red.")
     wz_root.dodaj_autora(a2, j2, typ_odpowiedzialnosci_skrot="red.")
