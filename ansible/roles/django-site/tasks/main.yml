@@ -13,7 +13,7 @@
     - python-virtualenv
 
 - name: Last version of sources is known
-  local_action: shell python $HOME/Programowanie/django-bpp/src/{{ django_project_name }}/version.py
+  local_action: shell python ../src/{{ django_project_name }}/version.py
   register: django_latest_version_discovery_command
   sudo: false
   tags: ['django-depends', 'django-migrate', 'supervisor', 'nginx', 'cron']
