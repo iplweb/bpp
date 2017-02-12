@@ -1,6 +1,8 @@
 # -*- encoding: utf-8 -*-
 from django.contrib.admin.filters import SimpleListFilter
 
+from bpp.models.struktura import Jednostka
+
 
 class SimpleIntegerFilter(SimpleListFilter):
     db_field_name = None
@@ -37,3 +39,15 @@ class LiczbaZnakowFilter(SimpleIntegerFilter):
 class CalkowitaLiczbaAutorowFilter(SimpleIntegerFilter):
     title = 'całkowita liczba autorów'
     parameter_name = 'calkowita_liczba_autorow'
+
+class JednostkaFilter(SimpleListFilter):
+    title = "Jednostka"
+    parameter_name = "jednostka"
+    def queryset(self, request, queryset):
+        v = self.value()
+        if v:
+            return queryset.filter(aktualna_jednostka_id=v)
+        return queryset
+
+    def lookups(self, request, model_admin):
+        return ((x.pk, unicode(x)) for x in Jednostka.objects.all().select_related('wydzial'))
