@@ -36,9 +36,6 @@ staging:
 full-build: vcs tests build staging
 	@echo "Done"
 
-small-build: vcs build staging
-	@echo "Done"
-
 local-build:
 	buildscripts/prepare-build-env.sh
 	buildscripts/run-tests.sh
