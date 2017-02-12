@@ -74,7 +74,7 @@ TEMPLATE_CONTEXT_PROCESSORS = (
 )
 
 MIDDLEWARE_CLASSES = (
-    'debug_toolbar.middleware.DebugToolbarMiddleware',
+    # 'debug_toolbar.middleware.DebugToolbarMiddleware',
 
     'htmlmin.middleware.HtmlMinifyMiddleware',
     'htmlmin.middleware.MarkRequestMiddleware',
@@ -118,7 +118,7 @@ INSTALLED_APPS = [
 
     'create_test_db',
 
-    'debug_toolbar',
+    # 'debug_toolbar',
 
     'celery',
 
