@@ -435,15 +435,20 @@ admin.site.register(Wydawnictwo_Ciagle, Wydawnictwo_CiagleAdmin)
 class Wydawnictwo_ZwarteAdmin_Baza(CommitedModelAdmin):
     formfield_overrides = NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW
 
-    list_display = ['tytul_oryginalny', 'wydawnictwo', 'typ_kbn',
-                    'charakter_formalny', 'liczba_znakow_wydawniczych',
+    list_display = ['tytul_oryginalny', 'wydawnictwo',
+                    'wydawnictwo_nadrzedne_col',
+                    'rok',
+                    'typ_kbn__skrot',
+                    'charakter_formalny__skrot',
+                    'liczba_znakow_wydawniczych',
                     'ostatnio_zmieniony']
 
     search_fields = [
         'tytul', 'tytul_oryginalny', 'szczegoly', 'uwagi', 'informacje',
         'slowa_kluczowe', 'rok', 'isbn', 'id',
         'wydawnictwo', 'redakcja', 'adnotacje',
-        'liczba_znakow_wydawniczych']
+        'liczba_znakow_wydawniczych',
+        'wydawnictwo_nadrzedne__tytul_oryginalny']
 
     list_filter = ['status_korekty', 'afiliowana', 'recenzowana', 'typ_kbn',
                    'charakter_formalny', 'informacja_z', 'jezyk', LiczbaZnakowFilter, 'rok']
@@ -462,6 +467,27 @@ class Wydawnictwo_ZwarteAdmin_Baza(CommitedModelAdmin):
         MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
         POZOSTALE_MODELE_FIELDSET,
         ADNOTACJE_Z_DATAMI_ORAZ_PBN_FIELDSET)
+
+    def charakter_formalny__skrot(self, obj):
+        return obj.charakter_formalny.skrot
+    charakter_formalny__skrot.short_description = "Char. form."
+    charakter_formalny__skrot.admin_order_field = "charakter_formalny__skrot"
+
+    def typ_kbn__skrot(self, obj):
+        return obj.typ_kbn.skrot
+    typ_kbn__skrot.short_description = "Typ KBN"
+    typ_kbn__skrot.admin_order_field = "typ_kbn__skrot"
+
+    def wydawnictwo_nadrzedne_col(self, obj):
+        try:
+            return obj.wydawnictwo_nadrzedne.tytul_oryginalny
+        except Wydawnictwo_Zwarte.DoesNotExist:
+            return ''
+        except AttributeError:
+            return ''
+    wydawnictwo_nadrzedne_col.short_description = "Wydawnictwo nadrzędne"
+    wydawnictwo_nadrzedne_col.admin_order_field = "wydawnictwo_nadrzedne__tytul_oryginalny"
+
 
 
 class Wydawnictwo_ZwarteAdmin(AdnotacjeZDatamiOrazPBNMixin, Wydawnictwo_ZwarteAdmin_Baza):
