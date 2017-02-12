@@ -7,7 +7,7 @@ from django.contrib.auth.forms import UserCreationForm
 from django.db.models.fields import BLANK_CHOICE_DASH
 from multiseek.models import SearchForm
 
-from bpp.admin.filters import LiczbaZnakowFilter, CalkowitaLiczbaAutorowFilter
+from bpp.admin.filters import LiczbaZnakowFilter, CalkowitaLiczbaAutorowFilter, JednostkaFilter
 from bpp.admin.helpers import *
 from bpp.models import Jezyk, Typ_KBN, Uczelnia, Wydzial, \
     Jednostka, Tytul, Autor, Autor_Jednostka, Funkcja_Autora, Rodzaj_Zrodla, \
@@ -196,6 +196,7 @@ class Jednostka_WydzialInline(admin.TabularInline):
 class JednostkaAdmin(RestrictDeletionToAdministracjaGroupMixin, ZapiszZAdnotacjaMixin, CommitedModelAdmin):
     list_display = ('nazwa', 'skrot', 'wydzial', 'widoczna',
                     'wchodzi_do_raportow', 'skupia_pracownikow', 'zarzadzaj_automatycznie', 'pbn_id')
+    list_select_related = ['wydzial',]
     fields = None
     list_filter = ('wydzial', 'widoczna', 'wchodzi_do_raportow', 'skupia_pracownikow', 'zarzadzaj_automatycznie')
     search_fields = ['nazwa', 'skrot', 'wydzial__nazwa']
@@ -236,14 +237,14 @@ class AutorForm(forms.ModelForm):
 class AutorAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
     form = AutorForm
 
-    list_display = ['nazwisko', 'imiona', 'tytul', 'poprzednie_nazwiska',
-                    'email', 'pbn_id']
+    list_display = ['nazwisko', 'imiona', 'tytul', 'poprzednie_nazwiska', 'email', 'pbn_id']
+    list_select_related = ['tytul',]
     fields = None
     inlines = [Autor_JednostkaInline, ]
-    list_filter = ['jednostki', 'jednostki__wydzial', 'tytul']
-    search_fields = ['imiona', 'nazwisko', 'poprzednie_nazwiska', 'email',
-                     'www', 'id', 'pbn_id']
+    list_filter = [JednostkaFilter, 'aktualna_jednostka__wydzial', 'tytul']
+    search_fields = ['imiona', 'nazwisko', 'poprzednie_nazwiska', 'email', 'www', 'id', 'pbn_id']
     readonly_fields = ('pesel_md5', 'ostatnio_zmieniony')
+
     fieldsets = (
         (None, {
             'fields': (
@@ -307,6 +308,7 @@ class ZrodloAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
                      'poprzednia_nazwa', 'doi']
     list_display = ['nazwa', 'skrot', 'rodzaj', 'www', 'issn', 'e_issn']
     list_filter = ['rodzaj', 'zasieg', 'openaccess_tryb_dostepu', 'openaccess_licencja']
+    list_select_related = ['openaccess_licencja', 'rodzaj']
     fieldsets = (
         (None, {
             'fields': (
@@ -354,6 +356,21 @@ def generuj_inline_dla_autorow(baseModel):
 
 
 #
+# Kolumny ze skrótami
+#
+
+class KolumnyZeSkrotamiMixin:
+    def charakter_formalny__skrot(self, obj):
+        return obj.charakter_formalny.skrot
+    charakter_formalny__skrot.short_description = "Char. form."
+    charakter_formalny__skrot.admin_order_field = "charakter_formalny__skrot"
+
+    def typ_kbn__skrot(self, obj):
+        return obj.typ_kbn.skrot
+    typ_kbn__skrot.short_description = "Typ KBN"
+    typ_kbn__skrot.admin_order_field = "typ_kbn__skrot"
+
+#
 # Wydaniwcto Ciągłe
 #
 
@@ -390,14 +407,16 @@ Wydawnictwo_Ciagle_Form.base_fields['uzupelnij_punktacje'] = \
                     'Uzupełnij punktację',
                     {'id': 'uzupelnij_punktacje'}))
 
-class Wydawnictwo_CiagleAdmin(AdnotacjeZDatamiOrazPBNMixin, CommitedModelAdmin):
+class Wydawnictwo_CiagleAdmin(KolumnyZeSkrotamiMixin, AdnotacjeZDatamiOrazPBNMixin, CommitedModelAdmin):
     formfield_overrides = NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW
 
     form = Wydawnictwo_Ciagle_Form
 
-    list_display = ['tytul_oryginalny', 'zrodlo', 'rok',
-                    'typ_kbn', 'charakter_formalny', 'liczba_znakow_wydawniczych',
+    list_display = ['tytul_oryginalny', 'zrodlo_col', 'rok',
+                    'typ_kbn__skrot', 'charakter_formalny__skrot', 'liczba_znakow_wydawniczych',
                     'ostatnio_zmieniony']
+
+    list_select_related = ['zrodlo', 'typ_kbn', 'charakter_formalny']
 
     search_fields = [
         'tytul', 'tytul_oryginalny', 'szczegoly', 'uwagi', 'informacje',
@@ -427,6 +446,15 @@ class Wydawnictwo_CiagleAdmin(AdnotacjeZDatamiOrazPBNMixin, CommitedModelAdmin):
     inlines = (
         generuj_inline_dla_autorow(Wydawnictwo_Ciagle_Autor),
     )
+
+    def zrodlo_col(self, obj):
+        try:
+            return obj.zrodlo.nazwa
+        except Zrodlo.DoesNotExist:
+            return ''
+    zrodlo_col.admin_order_field = 'zrodlo__nazwa'
+    zrodlo_col.short_description = "Źródło"
+
 
 
 admin.site.register(Wydawnictwo_Ciagle, Wydawnictwo_CiagleAdmin)
@@ -468,16 +496,6 @@ class Wydawnictwo_ZwarteAdmin_Baza(CommitedModelAdmin):
         POZOSTALE_MODELE_FIELDSET,
         ADNOTACJE_Z_DATAMI_ORAZ_PBN_FIELDSET)
 
-    def charakter_formalny__skrot(self, obj):
-        return obj.charakter_formalny.skrot
-    charakter_formalny__skrot.short_description = "Char. form."
-    charakter_formalny__skrot.admin_order_field = "charakter_formalny__skrot"
-
-    def typ_kbn__skrot(self, obj):
-        return obj.typ_kbn.skrot
-    typ_kbn__skrot.short_description = "Typ KBN"
-    typ_kbn__skrot.admin_order_field = "typ_kbn__skrot"
-
     def wydawnictwo_nadrzedne_col(self, obj):
         try:
             return obj.wydawnictwo_nadrzedne.tytul_oryginalny
@@ -490,11 +508,13 @@ class Wydawnictwo_ZwarteAdmin_Baza(CommitedModelAdmin):
 
 
 
-class Wydawnictwo_ZwarteAdmin(AdnotacjeZDatamiOrazPBNMixin, Wydawnictwo_ZwarteAdmin_Baza):
+class Wydawnictwo_ZwarteAdmin(KolumnyZeSkrotamiMixin, AdnotacjeZDatamiOrazPBNMixin, Wydawnictwo_ZwarteAdmin_Baza):
     form = autocomplete_light.modelform_factory(Wydawnictwo_Zwarte, fields="__all__")
     inlines = (generuj_inline_dla_autorow(Wydawnictwo_Zwarte_Autor),)
 
     list_filter = Wydawnictwo_ZwarteAdmin_Baza.list_filter + [CalkowitaLiczbaAutorowFilter,]
+
+    list_select_related = ['charakter_formalny', 'typ_kbn', 'wydawnictwo_nadrzedne',]
 
     fieldsets = (
         ('Wydawnictwo zwarte', {
@@ -533,6 +553,7 @@ class Praca_Doktorska_Habilitacyjna_Admin_Base(AdnotacjeZDatamiMixin,
     list_display = [
         'tytul_oryginalny', 'autor', 'jednostka', 'wydawnictwo',
         'typ_kbn', 'ostatnio_zmieniony']
+    list_select_related = ['autor', 'autor__tytul', 'jednostka', 'jednostka__wydzial', 'typ_kbn']
 
     search_fields = [
         'tytul', 'tytul_oryginalny', 'szczegoly', 'uwagi', 'informacje',

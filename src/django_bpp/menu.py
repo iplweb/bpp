@@ -74,9 +74,12 @@ class CustomMenu(Menu):
 
     def init_with_context(self, context):
         user = context['request'].user
+        if not hasattr(user, '__admin_menu_groups'):
+            user.__admin_menu_groups = [x.name for x in user.groups.all()]
+        groups = user.__admin_menu_groups
 
         def flt(n1, n2, v):
-            if user.is_superuser or user.groups.filter(name=n1):
+            if user.is_superuser or n1 in groups:
                 self.children += [submenu(n2, v), ]
 
         flt("dane systemowe", "Dane systemowe", SYSTEM_MENU)
