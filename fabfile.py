@@ -19,8 +19,11 @@ env['dbuser'] = 'bpp'
 def prepare():
     run("latest/buildscripts/prepare-build-env.sh")
 
-def test():
-    run("latest/buildscripts/run-tests.sh")
+def test(no_rebuild=False):
+    no_rebuild_opt = ""
+    if no_rebuild:
+        no_rebuild_opt = "--no-rebuild"
+    run("latest/buildscripts/run-tests.sh %s" % no_rebuild_opt)
 
 def build():
     run("latest/buildscripts/build-deps.sh")

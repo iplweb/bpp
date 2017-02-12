@@ -18,7 +18,7 @@ prepare:
 	fab prepare
 
 tests:  vcs wheels prepare
-	fab test
+	fab test:no_rebuild=True
 
 build:
 	fab build
@@ -33,7 +33,7 @@ rebuild-staging:
 staging:
 	ansible-playbook ansible/webserver.yml --private-key=.vagrant/machines/staging/virtualbox/private_key
 
-full-build: vcs tests build staging
+full-build: tests build staging
 	@echo "Done"
 
 local-build:

@@ -60,26 +60,27 @@ if [ "$NO_QUNIT" == "0" ]; then
     ./node_modules/.bin/grunt qunit
 fi
 
+export GIT_BRANCH_NAME=`git status |grep "On branch"|sed "s/On branch //"`
+
 if [ "$NO_REBUILD" == "0" ]; then
     # Nie przebudowuj bazy danych przed uruchomieniem testów.
     # Baza powinna być zazwyczaj utworzona od zera. 
     dropdb test_bpp || true
     createdb test_bpp
     python manage.py create_test_db
-    stellar replace test_bpp_v1 || stellar snapshot test_bpp_v1
+    stellar replace $GIT_BRANCH_NAME || stellar snapshot $GIT_BRANCH_NAME
 fi
 
 if [ "$NO_DJANGO" == "0" ]; then
     python manage.py test bpp --keepdb
     # Ewentualne następne testy muszą startować na czystej bazie danych
-    stellar restore test_bpp_v1
+    stellar restore $GIT_BRANCH_NAME
 fi
 
 if [ "$NO_PYTEST" == "0" ]; then
-    py.test --create-db functional_tests integrator2/tests eksport_pbn bpp/tests-pytest
+    py.test functional_tests integrator2/tests eksport_pbn bpp/tests-pytest
     # mpasternak 17.1.2017 TODO: włączyć później
     # egeria/tests
-
-    stellar restore test_bpp_v1
+    stellar restore $GIT_BRANCH_NAME
 fi
 
