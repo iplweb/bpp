@@ -32,6 +32,11 @@ python manage.py collectstatic --noinput
 
 dropdb --if-exists bpp
 createdb bpp 
-
 python manage.py migrate --noinput
+dropdb --if-exists test_bpp
+createdb test_bpp --template=bpp
+
+export GIT_BRANCH_NAME=`git status |grep "On branch"|sed "s/On branch //"`
+stellar replace $GIT_BRANCH_NAME || stellar snapshot $GIT_BRANCH_NAME
+
 python manage.py compress --force
