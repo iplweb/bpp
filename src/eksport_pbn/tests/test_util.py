@@ -5,8 +5,13 @@ from __future__ import unicode_literals
 
 from datetime import datetime, timedelta
 
+import pytest
 from model_mommy import mommy
 
+from bpp.models.autor import Autor
+from bpp.models.struktura import Uczelnia, Wydzial, Jednostka
+from bpp.models.system import Typ_Odpowiedzialnosci
+from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 from eksport_pbn.models import PlikEksportuPBN, DATE_CREATED_ON
 from eksport_pbn.tasks import id_zwartych, id_ciaglych
 
@@ -25,6 +30,43 @@ def test_id_zwartych(wydawnictwo_zwarte_z_autorem, wydzial, rok):
 
     l = id_zwartych(wydzial, rok, rok, True, True)
     assert len(list(l)) == 1
+
+
+@pytest.mark.django_db
+def test_id_zwartych_gdy_jest_ksiazka_z_w1_ale_rozdzialy_ma_w_w2(chf_ksp, chf_roz):
+    """
+    Książka "nadrzędna" redagowana przez autora z W1 ma się znaleźć w eksporcie dla W2
+    jeżeli w przypisanych rozdziałach jest rozdział opracowany dla W2.
+    :return:
+    """
+
+    u = mommy.make(Uczelnia)
+
+    w1 = mommy.make(Wydzial, uczelnia=u)
+    w2 = mommy.make(Wydzial, uczelnia=u)
+
+    a1 = mommy.make(Autor, imiona="Jan", nazwisko="Kowalski")
+    a2 = mommy.make(Autor, imiona="Stefan", nazwisko="Nowak")
+
+    j1 = mommy.make(Jednostka, wydzial=w1, uczelnia=u)
+    j2 = mommy.make(Jednostka, wydzial=w2, uczelnia=u)
+
+    wz_root = mommy.make(Wydawnictwo_Zwarte, charakter_formalny=chf_ksp, szczegoly="s. 123",
+                         calkowita_liczba_autorow=50, rok=2015, liczba_znakow_wydawniczych=240000)
+    wz_child1 = mommy.make(Wydawnictwo_Zwarte, wydawnictwo_nadrzedne=wz_root, charakter_formalny=chf_roz,
+                           szczegoly="s. 10-15", rok=2015, liczba_znakow_wydawniczych=5)
+
+    Typ_Odpowiedzialnosci.objects.get_or_create(skrot="aut.", nazwa="autor")
+    Typ_Odpowiedzialnosci.objects.get_or_create(skrot="red.", nazwa="redaktor")
+
+    wz_root.dodaj_autora(a1, j1, typ_odpowiedzialnosci_skrot="red.")
+    wz_child1.dodaj_autora(a2, j2, typ_odpowiedzialnosci_skrot="aut.")
+
+    assert wz_root.pk in list(id_zwartych(w1, 2015, 2015, True, True))
+    assert wz_child1.pk not in list(id_zwartych(w1, 2015, 2015, True, True))
+
+    assert wz_root.pk in list(id_zwartych(w2, 2015, 2015, True, True))
+    assert wz_child1.pk in list(id_zwartych(w2, 2015, 2015, True, True))
 
 
 def test_id_ciaglych(wydawnictwo_ciagle_z_autorem, wydzial, rok):

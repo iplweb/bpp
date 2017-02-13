@@ -139,7 +139,8 @@ def autor_jan_kowalski(db):
 
 def _jednostka_maker(nazwa, skrot, wydzial, **kwargs):
     return \
-    Jednostka.objects.get_or_create(nazwa=nazwa, skrot=skrot, wydzial=wydzial, uczelnia=wydzial.uczelnia, **kwargs)[0]
+        Jednostka.objects.get_or_create(nazwa=nazwa, skrot=skrot, wydzial=wydzial, uczelnia=wydzial.uczelnia, **kwargs)[
+            0]
 
 
 @pytest.mark.django_db
@@ -431,6 +432,26 @@ def wydawnictwo_zwarte_z_autorem(wydawnictwo_zwarte, autor_jan_kowalski, jednost
 def wydawnictwo_ciagle_z_dwoma_autorami(wydawnictwo_ciagle_z_autorem, autor_jan_nowak, jednostka):
     wydawnictwo_ciagle_z_autorem.dodaj_autora(autor_jan_nowak, jednostka)
     return wydawnictwo_ciagle_z_autorem
+
+
+@pytest.fixture(scope="session")
+@pytest.mark.django_db
+def chf_ksp():
+    chf_ksp, created = Charakter_Formalny.objects.get_or_create(skrot='KSP', nazwa="Książka w języku polskim")
+    if created:
+        chf_ksp.ksiazka_pbn = True
+        chf_ksp.save()
+    return chf_ksp
+
+
+@pytest.fixture(scope="session")
+@pytest.mark.django_db
+def chf_roz():
+    chf_roz, created = Charakter_Formalny.objects.get_or_create(skrot='ROZ', nazwa="Rozdział książki")
+    if created:
+        chf_roz.rozdzial_pbn = True
+        chf_roz.save()
+    return chf_roz
 
 
 def pytest_configure():
