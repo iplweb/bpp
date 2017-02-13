@@ -85,12 +85,12 @@ class TestImports(TestCase):
         )
 
         self.assertEquals(
-            dopasuj_autora('Jan', 'Kowalski', j1, f1),
+            dopasuj_autora('Jan', 'Kowalski', j1.nazwa, f1),
             a1
         )
 
         self.assertEquals(
-            dopasuj_autora('Jan', 'Kowalski', j2, f1),
+            dopasuj_autora('Jan', 'Kowalski', j2.nazwa, f1),
             a2
         )
 
