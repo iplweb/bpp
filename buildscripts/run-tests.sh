@@ -78,7 +78,7 @@ if [ "$NO_DJANGO" == "0" ]; then
 fi
 
 if [ "$NO_PYTEST" == "0" ]; then
-    py.test functional_tests integrator2/tests eksport_pbn bpp/tests-pytest
+    py.test eksport_pbn functional_tests integrator2/tests bpp/tests-pytest
     # mpasternak 17.1.2017 TODO: włączyć później
     # egeria/tests
     stellar restore $GIT_BRANCH_NAME
