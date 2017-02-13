@@ -63,7 +63,7 @@ def dopasuj_autora(imiona, nazwisko, jednostka, stanowisko):
         aj = list(Autor_Jednostka.objects.filter(
             autor__imiona__icontains=imiona,
             autor__nazwisko__icontains=nazwisko,
-            jednostka=jednostka).values('autor').distinct())
+            jednostka__nazwa=jednostka).values('autor').distinct())
 
         if len(aj) == 1:
             return Autor.objects.get(pk=aj[0]['autor'])
