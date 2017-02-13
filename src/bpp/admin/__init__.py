@@ -7,7 +7,8 @@ from django.contrib.auth.forms import UserCreationForm
 from django.db.models.fields import BLANK_CHOICE_DASH
 from multiseek.models import SearchForm
 
-from bpp.admin.filters import LiczbaZnakowFilter, CalkowitaLiczbaAutorowFilter, JednostkaFilter
+from bpp.admin.filters import LiczbaZnakowFilter, CalkowitaLiczbaAutorowFilter, JednostkaFilter, PBNIDObecnyFilter, \
+    PeselMD5ObecnyFilter
 from bpp.admin.helpers import *
 from bpp.models import Jezyk, Typ_KBN, Uczelnia, Wydzial, \
     Jednostka, Tytul, Autor, Autor_Jednostka, Funkcja_Autora, Rodzaj_Zrodla, \
@@ -241,7 +242,7 @@ class AutorAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
     list_select_related = ['tytul',]
     fields = None
     inlines = [Autor_JednostkaInline, ]
-    list_filter = [JednostkaFilter, 'aktualna_jednostka__wydzial', 'tytul']
+    list_filter = [JednostkaFilter, 'aktualna_jednostka__wydzial', 'tytul', PBNIDObecnyFilter, PeselMD5ObecnyFilter]
     search_fields = ['imiona', 'nazwisko', 'poprzednie_nazwiska', 'email', 'www', 'id', 'pbn_id']
     readonly_fields = ('pesel_md5', 'ostatnio_zmieniony')
 
