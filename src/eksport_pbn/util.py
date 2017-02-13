@@ -2,7 +2,7 @@
 
 from bpp.models.system import Charakter_Formalny, Typ_KBN
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
-from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte_Autor
+from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte_Autor, Wydawnictwo_Zwarte
 from eksport_pbn.models import DATE_CREATED_ON, DATE_UPDATED_ON, DATE_UPDATED_ON_PBN
 
 
@@ -47,24 +47,42 @@ def id_ciaglych(wydzial, od_roku, do_roku, rodzaj_daty=None, od_daty=None, do_da
 
 
 def id_zwartych(wydzial, od_roku, do_roku, ksiazki, rozdzialy, rodzaj_daty=None, od_daty=None, do_daty=None):
+    ksiazki_query = Wydawnictwo_Zwarte_Autor.objects.filter(
+        jednostka__wydzial=wydzial,
+        rekord__rok__gte=od_roku,
+        rekord__rok__lte=do_roku,
+        rekord__charakter_formalny__in=Charakter_Formalny.objects.filter(ksiazka_pbn=True),
+        rekord__liczba_znakow_wydawniczych__gte=240000,
+        **data_kw(rodzaj_daty, od_daty, do_daty)
+    ).order_by("rekord_id").distinct("rekord_id").only("rekord_id")
+
     if ksiazki:
-        for rekord in Wydawnictwo_Zwarte_Autor.objects.filter(
-                jednostka__wydzial=wydzial,
-                rekord__rok__gte=od_roku,
-                rekord__rok__lte=do_roku,
-                rekord__charakter_formalny__in=Charakter_Formalny.objects.filter(ksiazka_pbn=True),
-                rekord__liczba_znakow_wydawniczych__gte=240000,
-                **data_kw(rodzaj_daty, od_daty, do_daty)
-        ).order_by("rekord_id").distinct("rekord_id").only("rekord_id").values_list("rekord_id", flat=True):
+        for rekord in ksiazki_query.values_list("rekord_id", flat=True):
             yield rekord
 
     if rozdzialy:
-        for rekord in Wydawnictwo_Zwarte_Autor.objects.filter(
-                jednostka__wydzial=wydzial,
-                rekord__rok__gte=od_roku,
-                rekord__rok__lte=do_roku,
-                rekord__charakter_formalny__in=Charakter_Formalny.objects.filter(rozdzial_pbn=True),
-                rekord__liczba_znakow_wydawniczych__gt=0,
-                **data_kw(rodzaj_daty, od_daty, do_daty)
-        ).order_by("rekord_id").distinct("rekord_id").only("rekord_id").values_list("rekord_id", flat=True):
+
+        rozdzialy_query = Wydawnictwo_Zwarte_Autor.objects.filter(
+            jednostka__wydzial=wydzial,
+            rekord__rok__gte=od_roku,
+            rekord__rok__lte=do_roku,
+            rekord__charakter_formalny__in=Charakter_Formalny.objects.filter(rozdzial_pbn=True),
+            rekord__liczba_znakow_wydawniczych__gt=0,
+            **data_kw(rodzaj_daty, od_daty, do_daty)
+        ).order_by("rekord_id").distinct("rekord_id").only("rekord_id")
+
+        if ksiazki:
+            # Jeżeli eksportujemy rozdziały ORAZ książki, to tutaj powinny się znaleźć wszystkie książki
+            # będące wydawnictwami nadrzędnymi dla eksportowanych rozdziałów
+            ksiazki_widziane = Wydawnictwo_Zwarte.objects.filter(
+                pk__in=ksiazki_query).only("pk").distinct("pk")
+
+            wydawnictwa_nadrzedne = Wydawnictwo_Zwarte.objects.filter(
+                pk__in=rozdzialy_query
+            ).only("wydawnictwo_nadrzedne_id").distinct("wydawnictwo_nadrzedne_id").exclude(wydawnictwo_nadrzedne_id__in=ksiazki_widziane)
+
+            for rekord in wydawnictwa_nadrzedne.values_list("wydawnictwo_nadrzedne_id", flat=True):
+                yield rekord
+
+        for rekord in rozdzialy_query.values_list("rekord_id", flat=True):
             yield rekord
