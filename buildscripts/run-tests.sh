@@ -56,10 +56,6 @@ done
 # LiveServer podejrzewam, że może potrzebować:
 python manage.py collectstatic --noinput
 
-if [ "$NO_QUNIT" == "0" ]; then
-    ./node_modules/.bin/grunt qunit
-fi
-
 export GIT_BRANCH_NAME=`git status |grep "On branch"|sed "s/On branch //"`
 
 if [ "$NO_REBUILD" == "0" ]; then
@@ -69,6 +65,10 @@ if [ "$NO_REBUILD" == "0" ]; then
     createdb test_bpp
     python manage.py create_test_db
     stellar replace $GIT_BRANCH_NAME || stellar snapshot $GIT_BRANCH_NAME
+else
+    # --no-rebuild na command line, czyli baza danych została (prawdopodobnie) wcześniej
+    # utworzona, więc
+    stellar restore $GIT_BRANCH_NAME
 fi
 
 if [ "$NO_DJANGO" == "0" ]; then
@@ -82,5 +82,9 @@ if [ "$NO_PYTEST" == "0" ]; then
     # mpasternak 17.1.2017 TODO: włączyć później
     # egeria/tests
     stellar restore $GIT_BRANCH_NAME
+fi
+
+if [ "$NO_QUNIT" == "0" ]; then
+    ./node_modules/.bin/grunt qunit
 fi
 
