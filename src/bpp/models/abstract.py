@@ -291,7 +291,7 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
 class ModelZeSzczegolami(models.Model):
     """Model zawierający pola: informacje, szczegóły, uwagi, słowa kluczowe."""
     informacje = models.TextField(
-        "Informacje", null=True, blank=True)
+        "Informacje", null=True, blank=True, db_index=True)
 
     szczegoly = models.CharField(
         "Szczegóły", max_length=512, null=True, blank=True,
@@ -340,27 +340,28 @@ url_validator = URLValidator()
 
 import re
 
-ss_regex = re.compile(r"ss\. (?P<ile_stron>[0-9]+)")
-s_regex = re.compile(r"s\. (?P<od_strony>[0-9]+)-(?P<do_strony>[0-9]+)")
-single_s_regex = re.compile(r"s\. (?P<ile_stron>[0-9]+)")
+strony_regex = re.compile(
+    r"(?P<parametr>s{1,2}\.)\s*(?P<poczatek>(\w*\d+|\w+|\d+))((-)(?P<koniec>(\w*\d+|\w+|\d+))|)",
+    flags=re.IGNORECASE)
 
+BRAK_PAGINACJI = ("[b. pag.]", "[b.pag.]", "[b. pag]", "[b. bag.]")
 
 class PBNSerializerHelperMixin:
     def eksport_pbn_zakres_stron(self):
-        res = ss_regex.search(self.szczegoly)
-        if res is not None:
-            ile = res.groups()[0]
-            return "1-%s" % ile
+        for bp in BRAK_PAGINACJI:
+            if self.szczegoly.find(bp) >= 0:
+                return "brak"
 
-        res = s_regex.search(self.szczegoly)
+        res = strony_regex.search(self.szczegoly)
         if res is not None:
-            ile = res.groups()
-            return "%s-%s" % (ile[0], ile[1])
+            d = res.groupdict()
+            if d.has_key("poczatek") and d.has_key("koniec") and d['koniec'] is not None:
+                return "%s-%s" % (d['poczatek'], d['koniec'])
 
-        res = single_s_regex.search(self.szczegoly)
-        if res is not None:
-            ile = res.groups()[0]
-            return "%s-%s" % (ile, ile)
+            if d['parametr'] == "ss.":
+                return "1-%s" % d['poczatek']
+
+            return "%s-%s" % (d['poczatek'], d['poczatek'])
 
     def eksport_pbn_pages(self, toplevel, wydzial=None, autorzy_klass=None):
         zakres = self.eksport_pbn_zakres_stron()
