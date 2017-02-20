@@ -208,8 +208,12 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
         family_name = SubElement(author, 'family-name')
         family_name.text = self.nazwisko
 
-        system_identifier = SubElement(author, 'system-identifier')
+        system_identifier = SubElement(author, 'system-identifier', system="BPP-ID")
         system_identifier.text = str(self.pk)
+
+        if self.pbn_id:
+            pbn_id_system_identifier = SubElement(author, 'system-identifier', system="PBN-ID")
+            pbn_id_system_identifier.text = str(self.pbn_id)
 
         if affiliated:
             affiliated_to_unit = SubElement(author, 'affiliated-to-unit')
