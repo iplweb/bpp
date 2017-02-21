@@ -55,18 +55,23 @@ def test_id_zwartych_gdy_jest_ksiazka_z_w1_ale_rozdzialy_ma_w_w2(chf_ksp, chf_ro
                          calkowita_liczba_autorow=50, rok=2015, liczba_znakow_wydawniczych=240000)
     wz_child1 = mommy.make(Wydawnictwo_Zwarte, wydawnictwo_nadrzedne=wz_root, charakter_formalny=chf_roz,
                            szczegoly="s. 10-15", rok=2015, liczba_znakow_wydawniczych=5)
+    wz_child2 = mommy.make(Wydawnictwo_Zwarte, wydawnictwo_nadrzedne=wz_root, charakter_formalny=chf_roz,
+                           szczegoly="s. 10-15", rok=2015, liczba_znakow_wydawniczych=5)
 
     Typ_Odpowiedzialnosci.objects.get_or_create(skrot="aut.", nazwa="autor")
     Typ_Odpowiedzialnosci.objects.get_or_create(skrot="red.", nazwa="redaktor")
 
     wz_root.dodaj_autora(a1, j1, typ_odpowiedzialnosci_skrot="red.")
     wz_child1.dodaj_autora(a2, j2, typ_odpowiedzialnosci_skrot="aut.")
+    wz_child2.dodaj_autora(a1, j2, typ_odpowiedzialnosci_skrot="aut.")
 
     assert wz_root.pk in list(id_zwartych(w1, 2015, 2015, True, True))
     assert wz_child1.pk not in list(id_zwartych(w1, 2015, 2015, True, True))
+    assert wz_child2.pk not in list(id_zwartych(w1, 2015, 2015, True, True))
 
     assert wz_root.pk in list(id_zwartych(w2, 2015, 2015, True, True))
     assert wz_child1.pk in list(id_zwartych(w2, 2015, 2015, True, True))
+    assert wz_child2.pk in list(id_zwartych(w2, 2015, 2015, True, True))
 
 
 def test_id_ciaglych(wydawnictwo_ciagle_z_autorem, wydzial, rok):
