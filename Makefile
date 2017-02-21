@@ -18,7 +18,7 @@ prepare:
 	fab prepare
 
 tests:  vcs wheels prepare
-	fab test:no_rebuild=True
+	fab test
 
 build:
 	fab build
