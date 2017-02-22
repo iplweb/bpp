@@ -358,10 +358,7 @@ class PBNSerializerHelperMixin:
             if d.has_key("poczatek") and d.has_key("koniec") and d['koniec'] is not None:
                 return "%s-%s" % (d['poczatek'], d['koniec'])
 
-            if d['parametr'] == "ss.":
-                return "1-%s" % d['poczatek']
-
-            return "%s-%s" % (d['poczatek'], d['poczatek'])
+            return "%s" % d['poczatek']
 
     def eksport_pbn_pages(self, toplevel, wydzial=None, autorzy_klass=None):
         zakres = self.eksport_pbn_zakres_stron()
