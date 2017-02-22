@@ -82,10 +82,10 @@ def test_eksport_pbn_editor_afiliacja_w_kontekscie_wydzialu(uczelnia, autor_jan_
 
 @pytest.mark.parametrize(
     "input,expected",
-    [("s. 35", "35-35"),
-     ("ss. 90", "1-90"),
-     ("ss. 190", "1-190"),
-     ("ss. 290", "1-290"),
+    [("s. 35", "35"),
+     ("ss. 90", "90"),
+     ("ss. 190", "190"),
+     ("ss. 290", "290"),
      ("s. 10-20", "10-20"),
      ("tia", None),
      ("s. e27-e53", "e27-e53"),
@@ -93,10 +93,10 @@ def test_eksport_pbn_editor_afiliacja_w_kontekscie_wydzialu(uczelnia, autor_jan_
      ("[b. pag.]", "brak"),
      ("[b. pag]", "brak"),
      ("s. 132-153.", "132-153"),
-     ("s. 143.", "143-143"),
+     ("s. 143.", "143"),
      ("aosidfjoaisd fjoiasdjf s. 132-153.", "132-153"),
-     ("      s. 143.", "143-143"),
-     ("      s.          143.", "143-143"),
+     ("      s. 143.", "143"),
+     ("      s.          143.", "143"),
      ("s. P-29.", "P-29"),
      ("s. PP-4.", "PP-4"),
      # ("s. P-27-P-28.", "P-27-P-28"), # to się nie uda
