@@ -32,3 +32,4 @@
     - grunt-contrib-watch 
     - grunt-contrib-qunit 
     - grunt-cli
+    - bower
