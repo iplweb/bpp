@@ -18,7 +18,7 @@ from bpp.models.system import Jezyk, Charakter_Formalny, Typ_KBN, Status_Korekty
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 from bpp.models.zrodlo import Zrodlo
-from django_bpp.util import wait_for_page_load
+from django_bpp.selenium_util import wait_for_page_load
 
 NORMAL_DJANGO_USER_LOGIN = 'test_login_bpp'
 NORMAL_DJANGO_USER_PASSWORD = 'test_password'
