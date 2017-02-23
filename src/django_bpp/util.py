@@ -30,16 +30,18 @@ def wait_for(condition_function):
     )
 
 
+from selenium.webdriver.support.expected_conditions import staleness_of
+from selenium.webdriver.support.ui import WebDriverWait
+
+
 class wait_for_page_load(object):
     def __init__(self, browser):
         self.browser = browser
 
     def __enter__(self):
-        self.old_page_id = self.browser.find_by_tag('html')[0]._element.id
-
-    def page_has_loaded(self):
-        new_page = self.browser.find_by_tag('html')
-        return new_page[0]._element.id != self.old_page_id # self.old_page[0]._element.id
+        self.old_page = self.browser.find_by_tag('html')[0]._element
 
     def __exit__(self, *_):
-        wait_for(self.page_has_loaded)
+        WebDriverWait(self.browser, 10).until(
+            staleness_of(self.old_page)
+        )
