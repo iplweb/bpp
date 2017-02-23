@@ -20,7 +20,7 @@ def wait_for_object(klass, pk, no_tries=10, called_by=""):
 
 def wait_for(condition_function):
     start_time = time.time()
-    while time.time() < start_time + 3:
+    while time.time() < start_time + 10:
         if condition_function():
             return True
         else:
