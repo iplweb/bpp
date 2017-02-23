@@ -20,7 +20,8 @@ popd > /dev/null
 
 cd $SCRIPTPATH/../src
 
-npm --quiet install grunt grunt-sass grunt-contrib-watch grunt-contrib-qunit grunt-cli
+# 2017-02-23 to poszło do ansible/provisioner ubuntu-dev
+# npm --quiet install grunt grunt-sass grunt-contrib-watch grunt-contrib-qunit grunt-cli
 
 rm -rf components/bower_components staticroot
 yes n | python manage.py bower_install -F

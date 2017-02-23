@@ -24,5 +24,11 @@
     - nodejs-legacy
     - postgresql-client
 
-- name: Install bower globally
-  npm: name=bower global=yes
+- name: Install node packages globally
+  npm: name={{ item }} global=yes
+  with_items:
+    - grunt
+    - grunt-sass
+    - grunt-contrib-watch 
+    - grunt-contrib-qunit 
+    - grunt-cli
