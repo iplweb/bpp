@@ -7,3 +7,7 @@ def test_autor_eksport_pbn_serialize(autor_jan_kowalski):
 
     ret = autor_jan_kowalski.eksport_pbn_serializuj()
     assert len(ret.findall("system-identifier")) == 2
+
+    autor_jan_kowalski.nazwisko = "Kowalski*"
+    ret = autor_jan_kowalski.eksport_pbn_serializuj()
+    assert ret.find("family-name").text == "Kowalski"

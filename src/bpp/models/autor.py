@@ -202,11 +202,19 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
     def eksport_pbn_serializuj(self, tagname='author', affiliated=True, employed=True):
         author = Element(tagname)
 
+        imiona = self.imiona.replace(".", " ")
+        if self.pbn_id:
+            imiona = imiona.replace("*", "")
+
         given_names = SubElement(author, 'given-names')
-        given_names.text = self.imiona.replace(".", " ")
+        given_names.text = imiona
+
+        nazwisko = self.nazwisko
+        if self.pbn_id:
+            nazwisko = nazwisko.replace("*", "")
 
         family_name = SubElement(author, 'family-name')
-        family_name.text = self.nazwisko
+        family_name.text = nazwisko
 
         system_identifier = SubElement(author, 'system-identifier', system="BPP-ID")
         system_identifier.text = str(self.pk)
