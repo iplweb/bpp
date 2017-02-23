@@ -1,0 +1,11 @@
+{ 
+    "name": "django-bpp",
+    "version": "0.0.1",
+    "devDependencies": {
+	"grunt": "~1.0.1"
+	"grunt-cli": "~1.20"
+	"grunt-sass": "~2.0.0"
+	"grunt-contrib-watch": "~1.0.0"
+	"grunt-contrib-qunit": "~1.20"
+	    }
+}
