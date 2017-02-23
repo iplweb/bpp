@@ -20,7 +20,7 @@ popd > /dev/null
 
 cd $SCRIPTPATH/../src
 
-npm-cache install --quiet --save-dev install grunt grunt-sass grunt-contrib-watch grunt-contrib-qunit grunt-cli
+npm-cache install --save-dev install grunt grunt-sass grunt-contrib-watch grunt-contrib-qunit grunt-cli
 
 rm -rf components/bower_components staticroot
 yes n | python manage.py bower_install -F
