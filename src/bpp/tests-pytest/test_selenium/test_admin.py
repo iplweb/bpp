@@ -13,7 +13,7 @@ from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 from bpp.models.zrodlo import Punktacja_Zrodla
 from bpp.tests import any_ciagle, any_autor, any_jednostka
 from bpp.tests.util import any_zrodlo, CURRENT_YEAR, any_zwarte, any_patent
-from django_bpp.util import wait_for_page_load, wait_for
+from django_bpp.selenium_util import wait_for_page_load, wait_for
 
 ID = "id_tytul_oryginalny"
 
