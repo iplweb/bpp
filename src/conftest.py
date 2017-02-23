@@ -18,6 +18,7 @@ from bpp.models.system import Jezyk, Charakter_Formalny, Typ_KBN, Status_Korekty
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 from bpp.models.zrodlo import Zrodlo
+from django_bpp.util import wait_for_page_load
 
 NORMAL_DJANGO_USER_LOGIN = 'test_login_bpp'
 NORMAL_DJANGO_USER_PASSWORD = 'test_password'
@@ -71,8 +72,8 @@ def _preauth_session_id_helper(username, password, client, browser, live_server,
     browser.fill('username', username)
     browser.fill('password', password)
     browser.find_by_css("input[type=submit]").click()
-    time.sleep(2)
-    browser.authorized_user = django_user_model.objects.get(**{django_username_field: username})
+    with wait_for_page_load(browser): # time.sleep(2)
+        browser.authorized_user = django_user_model.objects.get(**{django_username_field: username})
     return browser
 
 

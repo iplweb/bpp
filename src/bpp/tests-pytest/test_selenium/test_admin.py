@@ -13,6 +13,7 @@ from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 from bpp.models.zrodlo import Punktacja_Zrodla
 from bpp.tests import any_ciagle, any_autor, any_jednostka
 from bpp.tests.util import any_zrodlo, CURRENT_YEAR, any_zwarte, any_patent
+from django_bpp.util import wait_for_page_load, wait_for
 
 ID = "id_tytul_oryginalny"
 
@@ -30,6 +31,7 @@ def proper_click(browser, arg):
     browser.execute_script("document.getElementById('" + arg + "').scrollIntoView()")
     browser.execute_script("document.getElementById('" + arg + "').click()")
 
+
 def clickButtonBuggyMarionetteDriver(browser, id):
     try:
         browser.execute_script("$('#" + id + "').click()")
@@ -38,6 +40,7 @@ def clickButtonBuggyMarionetteDriver(browser, id):
             pass
         else:
             raise e
+
 
 # url = "/admin/"
 
@@ -228,6 +231,7 @@ def test_admin_uzupelnij_punkty(preauth_admin_browser, live_server):
 
     preauth_admin_browser.execute_script("window.onbeforeunload = function(e) {};")
 
+
 def test_upload_punkty(preauth_admin_browser, live_server):
     z = any_zrodlo(nazwa="WTF LOL")
     url = reverse("admin:bpp_wydawnictwo_ciagle_add")
@@ -273,27 +277,25 @@ def autorform_jednostka(db):
 @pytest.fixture
 def autorform_browser(preauth_admin_browser, db, live_server):
     url = reverse("admin:bpp_wydawnictwo_ciagle_add")
-    preauth_admin_browser.visit(live_server + url)
-    time.sleep(2)
+    with wait_for_page_load(preauth_admin_browser):
+        preauth_admin_browser.visit(live_server + url)
+
     preauth_admin_browser.execute_script("window.onbeforeunload = function(e) {};")
     return preauth_admin_browser
 
 
 def test_autorform_jednostka_bug_wydawnictwo_ciagle_zapisz(autorform_browser, autorform_jednostka):
-    autorform_browser.find_by_name("_continue").click()
-    time.sleep(2)
+    with wait_for_page_load(autorform_browser):
+        autorform_browser.find_by_name("_continue").click()
     assert "To pole jest wymagane." in autorform_browser.html
 
 
 def test_autorform_uzupelnianie_jednostki(autorform_browser, autorform_jednostka):
-    aut = autorform_browser.find_by_id("id_wydawnictwo_ciagle_autor_set-0-autor-autocomplete")
-    aut.type("KOWALSKI")
-    time.sleep(2)
-    aut.type(Keys.TAB)
-    time.sleep(2)
+    set_autocomplete(autorform_browser,
+                     "id_wydawnictwo_ciagle_autor_set-0-autor-autocomplete",
+                     "KOWALSKI")
 
     sel = autorform_browser.find_by_id("id_wydawnictwo_ciagle_autor_set-0-jednostka")
-
     assert sel.value == str(autorform_jednostka.pk)
 
 
@@ -302,31 +304,64 @@ def test_autorform_uzupelnianie_jednostki_drugi_wiersz(autorform_browser, autorf
 
     # najpierw kliknij "dodaj autora"
     autorform_browser.execute_script('$(".grp-add-handler")[1].click()')
-    time.sleep(2)
+    wait_for(
+        lambda: autorform_browser.find_by_id("id_wydawnictwo_ciagle_autor_set-1-autor-autocomplete")
+    )
 
     # a potem wpisz dane i sprawdź, że jednostki NIE będzie
-
-    aut = autorform_browser.find_by_id("id_wydawnictwo_ciagle_autor_set-1-autor-autocomplete")
-    aut.type("KOWALSKI")
-    time.sleep(2)
-    aut.type(Keys.TAB)
-    time.sleep(2)
+    set_autocomplete(autorform_browser,
+                     "id_wydawnictwo_ciagle_autor_set-1-autor-autocomplete",
+                     "KOWALSKI")
 
     sel = autorform_browser.find_by_id("id_wydawnictwo_ciagle_autor_set-1-jednostka")
     assert sel.value == str(autorform_jednostka.pk)
 
 
+def find_autocomplete_widget(browser, id):
+    for elem in browser.find_by_css(".yourlabs-autocomplete"):
+        try:
+            dii = elem['data-input-id']
+        except KeyError:
+            continue
+
+        if dii == id:
+            return elem
+
+
+def set_autocomplete(browser, id, entry):
+    scrollIntoView(browser, id)
+    ac = browser.find_by_id(id)
+    for key in ac.type(entry, slowly=True): pass
+    widget = find_autocomplete_widget(browser, id)
+    start = time.time()
+    while True:
+        for elem in ac.type(Keys.TAB, slowly=True):
+            time.sleep(0.2)
+        if not widget.visible:
+            break
+        if start - time.time() > 13:
+            raise Exception("Timeout")
+
+
 def test_autorform_kasowanie_autora(autorform_browser, autorform_jednostka):
-    aut = autorform_browser.find_by_id("id_wydawnictwo_ciagle_autor_set-0-autor-autocomplete")
-    aut.type("KOWALSKI")
-    time.sleep(2)
-    aut.type(Keys.TAB)
-    time.sleep(2)
+    set_autocomplete(
+        autorform_browser,
+        "id_wydawnictwo_ciagle_autor_set-0-autor-autocomplete",
+        "KOW")
+
+    start = time.time()
+    while True:
+        jed = autorform_browser.find_by_id("id_wydawnictwo_ciagle_autor_set-0-jednostka")
+        if jed.value != '':
+            break
+        time.sleep(0.1)
+        if time.time() - start >= 3:
+            raise Exception("Timeout")
 
     autorform_browser.execute_script("""
     $("#id_wydawnictwo_ciagle_autor_set-0-autor-deck").find(".remove").click()
     """)
-    time.sleep(2)
+
     jed = autorform_browser.find_by_id("id_wydawnictwo_ciagle_autor_set-0-jednostka")
     assert jed.value == ''
 
