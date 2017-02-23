@@ -18,7 +18,10 @@ prepare:
 	fab prepare
 
 tests:  vcs wheels prepare
-	fab test
+	# Nie przebudowuj testów po fazie „prepare”, gdyż tam jest przebudowywana
+	# główna baza danych od zera ORAZ tworzona jest baza danych test_bpp ORAZ
+	# tworzony jest też jej snapshot… 
+	fab test:no_rebuild=True
 
 build:
 	fab build
