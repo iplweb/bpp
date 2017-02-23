@@ -1,5 +1,6 @@
 import time
 
+
 def wait_for_object(klass, pk, no_tries=10, called_by=""):
     obj = None
 
@@ -15,3 +16,30 @@ def wait_for_object(klass, pk, no_tries=10, called_by=""):
         raise klass.DoesNotExist("Cannot fetch klass %r with pk %r, TB: %r" % (klass, pk, called_by))
 
     return obj
+
+
+def wait_for(condition_function):
+    start_time = time.time()
+    while time.time() < start_time + 3:
+        if condition_function():
+            return True
+        else:
+            time.sleep(0.1)
+    raise Exception(
+        'Timeout waiting for {}'.format(condition_function.__name__)
+    )
+
+
+class wait_for_page_load(object):
+    def __init__(self, browser):
+        self.browser = browser
+
+    def __enter__(self):
+        self.old_page_id = self.browser.find_by_tag('html')[0]._element.id
+
+    def page_has_loaded(self):
+        new_page = self.browser.find_by_tag('html')
+        return new_page[0]._element.id != self.old_page_id # self.old_page[0]._element.id
+
+    def __exit__(self, *_):
+        wait_for(self.page_has_loaded)
