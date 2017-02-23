@@ -17,11 +17,14 @@ wheels:
 prepare:
 	fab prepare
 
-tests:  vcs wheels prepare
-	# Nie przebudowuj testów po fazie „prepare”, gdyż tam jest przebudowywana
-	# główna baza danych od zera ORAZ tworzona jest baza danych test_bpp ORAZ
-	# tworzony jest też jej snapshot… 
+just-tests: 
 	fab test:no_rebuild=True
+
+# Nie przebudowuj testów po fazie „prepare”, gdyż tam jest przebudowywana
+# główna baza danych od zera ORAZ tworzona jest baza danych test_bpp ORAZ
+# tworzony jest też jej snapshot...
+tests:  vcs wheels prepare just-tests
+	@echo "Done"
 
 build:
 	fab build
