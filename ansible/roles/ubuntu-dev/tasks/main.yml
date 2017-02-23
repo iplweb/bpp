@@ -28,8 +28,6 @@
   npm: name={{ item }} global=yes
   with_items:
     - grunt
-    - grunt-sass
-    - grunt-contrib-watch 
-    - grunt-contrib-qunit 
     - grunt-cli
     - bower
+    - npm-cache
