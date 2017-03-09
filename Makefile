@@ -5,9 +5,6 @@ clean:
 	find . -name \*pyc -print0 | xargs -0 rm -fv 
 	find . -name \*\\.log -print0 | xargs -0 rm -fv 
 
-boot:
-	vagrant up
-
 vcs:
 	fab vcs:${BRANCH}
 
@@ -46,12 +43,6 @@ local-build:
 	buildscripts/prepare-build-env.sh
 	buildscripts/run-tests.sh
 
-machines: 
-	vagrant pristine -f
-
-buildworld: machines build
-	@echo "Done"
-
 new-patch: clean
 	bumpversion patch 
 	git push
@@ -89,7 +80,6 @@ upload-db-to-staging:
 egeria-import:
 	python src/manage.py egeria_import "/Volumes/Dane zaszyfrowane/Biblioteka Główna/wykaz-27.06.2016-mpasternak.xlsx"
 	-say "Integracja autorów zakończona"
-
 
 rebuild-reimport: rebuild egeria-import
 	@echo "Done"
