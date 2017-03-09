@@ -63,9 +63,6 @@ def autor_zwartego(autor, jednostka, rekord, typ_odpowiedzialnosci=None,
                               **kwargs)
 
 
-from django_dynamic_fixture import G
-
-
 def zwarte(autor, jednostka, typ_odpowiedzialnosci, **kw):
     enrich_kw_for_wydawnictwo(kw)
     z = mommy.make(Wydawnictwo_Zwarte, **kw)

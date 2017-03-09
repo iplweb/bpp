@@ -1,7 +1,6 @@
 # -*- encoding: utf-8 -*-
 
 from django.test import TestCase
-from django_dynamic_fixture import G
 from bpp.models import POLA_PUNKTACJI, ModelPunktowany
 
 
