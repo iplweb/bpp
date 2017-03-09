@@ -399,8 +399,8 @@ class PBNSerializerHelperMixin:
         # Maksymalny int 32-bity: 2147483647
         # sys.maxint na MacOS X:  9223372036854775807
         #
-        # ... zatem, do Wydawnictwo_Ciagle dopisujemy jedynkę i tyle zer, żeby zmieściś się w 10 znakach
-        # ... tak samo do Wydawnictwo_Zwarte, tylko, ze tam damy dwójkę
+        # ... zatem, do Wydawnictwo_Ciagle dopisujemy dwójkę i tyle zer, żeby zmieściś się w 10 znakach
+        # ... tak samo do Wydawnictwo_Zwarte, tylko, ze tam damy czwórkę
         #
         # kilka miliardów publikacji w każdej kategorii "should be enough for anyone"
         #
@@ -410,7 +410,7 @@ class PBNSerializerHelperMixin:
         global_id = 3
 
         if 'Wydawnictwo_Zwarte' in s:
-            global_id = 1
+            global_id = 4
         elif 'Wydawnictwo_Ciagle' in s:
             global_id = 2
         else:
