@@ -26,5 +26,6 @@ rm -rf $OUTDIR/.git $OUTDIR/.gitignore $OUTDIR/Makefile $OUTDIR/provisioning $OU
 rm -rf $OUTDIR/files $OUTDIR/requirements/src.requirements.txt $OUTDIR/requirements/dev.requirements.txt
 rm -rf $OUTDIR/ansible $OUTDIR/fabfile.py $OUTDIR/.bumpversion.cfg
 rm -rf $OUTDIR/buildscripts
+rm -rf $OUTDIR/stellar.yaml $OUTDIR/gitlocrc $OUTDIR/ansible.cfg $OUTDIR/Vagrantfile
 
 tar --exclude=*.pyc --exclude=__pycache__ -cjf /vagrant/releases/release-$VERSION.tbz2 $OUTDIR
