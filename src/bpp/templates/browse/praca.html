@@ -40,8 +40,14 @@
                     {% if praca.zrodlo %}
                         <a href="{% url "bpp:browse_zrodlo" praca.zrodlo.slug %}">{{ praca.zrodlo }}</a>
                     {% endif %}
+                    {% if praca.wydawnictwo_nadrzedne %}
+                        <a href="{% url "bpp:browse_praca" "wydawnictwo_zwarte" praca.wydawnictwo_nadrzedne.pk %}">
+                    {% endif %}
                     {{ praca.informacje|znak_na_koncu:", " }}
                     {{ praca.szczegoly }}
+                    {% if praca.wydawnictwo_nadrzedne %}
+                        </a>
+                    {% endif %}
                 </td>
             </tr>
             <tr>
