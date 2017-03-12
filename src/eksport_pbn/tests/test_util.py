@@ -35,7 +35,7 @@ def test_id_zwartych(wydawnictwo_zwarte_z_autorem, wydzial, rok):
 @pytest.mark.django_db
 def test_id_zwartych_gdy_jest_ksiazka_z_w1_ale_rozdzialy_ma_w_w2(chf_ksp, chf_roz):
     """
-    Książka "nadrzędna" redagowana przez autora z W1 ma się znaleźć w eksporcie dla W2
+    Książka "nadrzędna" redagowana przez autora z W1 ma się NIE znaleźć w eksporcie dla W2
     jeżeli w przypisanych rozdziałach jest rozdział opracowany dla W2.
     :return:
     """
@@ -69,7 +69,7 @@ def test_id_zwartych_gdy_jest_ksiazka_z_w1_ale_rozdzialy_ma_w_w2(chf_ksp, chf_ro
     assert wz_child1.pk not in list(id_zwartych(w1, 2015, 2015, True, True))
     assert wz_child2.pk not in list(id_zwartych(w1, 2015, 2015, True, True))
 
-    assert wz_root.pk in list(id_zwartych(w2, 2015, 2015, True, True))
+    assert wz_root.pk not in list(id_zwartych(w2, 2015, 2015, True, True))
     assert wz_child1.pk in list(id_zwartych(w2, 2015, 2015, True, True))
     assert wz_child2.pk in list(id_zwartych(w2, 2015, 2015, True, True))
 

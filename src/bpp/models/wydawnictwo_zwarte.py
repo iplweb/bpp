@@ -187,7 +187,7 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
         book = SubElement(toplevel, 'book')
 
         if self.wydawnictwo_nadrzedne:
-            add_wydawnictwo_nadrzedne_data(book, self.wydawnictwo_nadrzedne)
+            self.wydawnictwo_nadrzedne.eksport_pbn_serializuj(wydzial=wydzial, toplevel=book)
 
         else:
             add_wydawnictwo_nadrzedne_data(
@@ -296,16 +296,19 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
                              "publisher-name", "publication-place", "open-access"]
     eksport_pbn_CHAPTER_FLDS = ["editor", "chapter-number", "book", "pages", "open-access"]
 
-    def eksport_pbn_serializuj(self, wydzial):
-        toplevel = Element('book')
+    def eksport_pbn_serializuj(self, wydzial, toplevel=None):
+        if toplevel is None:
+            my_toplevel = Element('book')
         flds = self.eksport_pbn_BOOK_FLDS
 
         if self.is_chapter:
-            toplevel = Element('chapter')
+            if toplevel is None:
+                my_toplevel = Element('chapter')
             flds = self.eksport_pbn_CHAPTER_FLDS
 
+        if toplevel is None:
+            toplevel = my_toplevel
+
         super(Wydawnictwo_Zwarte, self).eksport_pbn_serializuj(toplevel, wydzial, Wydawnictwo_Zwarte_Autor)
-
         self.eksport_pbn_run_serialization_functions(flds, toplevel, wydzial, Wydawnictwo_Zwarte_Autor)
-
         return toplevel
