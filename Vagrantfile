@@ -95,6 +95,9 @@ Vagrant.configure(2) do |config|
       db.vm.box_check_update = false
 
       db.vm.hostname = 'bpp-db'
+      if Vagrant.has_plugin?("vagrant-hostmanager")
+          db.hostmanager.aliases = %w(bpp-db.localnet)
+      end
       db.vm.network "private_network", ip: "192.168.111.102"
 
       db.vm.provision "shell", inline: "sudo apt install python-minimal -y"
