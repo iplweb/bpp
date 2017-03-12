@@ -1,4 +1,6 @@
 ---
+django_deps_version: "20170312"
+
 supervisor_logdir: /var/log/supervisor
 
 django_home_dir: /home/{{ django_user }}
@@ -32,4 +34,3 @@ django_nginx_push_stream_allowed_ips:
 
 celery_broker_url: "amqp://{{ rabbitmq_user }}:{{ rabbitmq_password }}@localhost:5672/{{ rabbitmq_vhost }}"
 
-django_deps_version: "20170212"
