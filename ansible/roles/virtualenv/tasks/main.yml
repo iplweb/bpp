@@ -4,7 +4,7 @@
   register: v
 
 - name: Create virtualenv
-  shell: virtualenv -p python2.7 /home/{{ user }}/env
+  shell: virtualenv -p python{{ python_version }} /home/{{ user }}/env
   become: no
   when: not v.stat.exists
 
