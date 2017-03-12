@@ -71,19 +71,5 @@ def id_zwartych(wydzial, od_roku, do_roku, ksiazki, rozdzialy, rodzaj_daty=None,
             **data_kw(rodzaj_daty, od_daty, do_daty)
         ).order_by("rekord_id").distinct("rekord_id").only("rekord_id")
 
-        if ksiazki:
-            # Jeżeli eksportujemy rozdziały ORAZ książki, to tutaj powinny się znaleźć wszystkie książki
-            # będące wydawnictwami nadrzędnymi dla eksportowanych rozdziałów
-            ksiazki_widziane = Wydawnictwo_Zwarte.objects.filter(
-                pk__in=ksiazki_query.values_list("rekord_id", flat=True)
-            ).only("pk").distinct("pk")
-
-            wydawnictwa_nadrzedne = Wydawnictwo_Zwarte.objects.filter(
-                pk__in=rozdzialy_query.values_list("rekord_id__wydawnictwo_nadrzedne_id").distinct()
-            ).exclude(pk__in=ksiazki_widziane).only("pk").distinct("pk")
-
-            for rekord in wydawnictwa_nadrzedne.values_list("pk", flat=True):
-                yield rekord
-
         for rekord in rozdzialy_query.values_list("rekord_id", flat=True):
             yield rekord
