@@ -5,15 +5,15 @@
 - name: Run global config
   shell: "{{ item }}"
   with_items:
-    - git config --global user.email "michal.dtz@gmail.com"
-    - git config --global user.name "Michał Pasternak"
+    - git config --global user.email "{{ git_user_email }}"
+    - git config --global user.name "{{ git_user_name }}"
     - git config --global push.default simple
 
 - name: Run user config
   shell: "{{ item }}"
   become: "{{ user }}"
   with_items:
-    - git config --global user.email "michal.dtz@gmail.com"
-    - git config --global user.name "Michał Pasternak"
+    - git config --global user.email "{{ git_user_email }}"
+    - git config --global user.name "{{ git_user_name }}"
     - git config --global push.default simple
 
