@@ -1,5 +1,5 @@
 # -*- encoding: utf-8 -*-
-
+import re
 from dirtyfields.dirtyfields import DirtyFieldsMixin
 from django.db import models
 from django.db.models.signals import post_delete
@@ -77,6 +77,7 @@ class ModelZOpenAccessWydawnictwoZwarte(ModelZOpenAccess):
     class Meta:
         abstract = True
 
+rok_regex = re.compile(r"\s[12]\d\d\d")
 
 class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
                          Wydawnictwo_Zwarte_Baza, ModelZCharakterem,
@@ -156,7 +157,7 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
 
             if miejsce:
                 publication_place = SubElement(toplevel, 'publication-place')
-                publication_place.text = miejsce
+                publication_place.text = rok_regex.sub("", miejsce.strip()).strip()
 
     def eksport_pbn_size(self, toplevel, wydzial=None, autorzy_klass=None):
         if self.liczba_znakow_wydawniczych:

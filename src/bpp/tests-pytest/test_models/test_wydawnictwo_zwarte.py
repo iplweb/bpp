@@ -6,7 +6,7 @@ from model_mommy import mommy
 
 from bpp.models.autor import Autor
 from bpp.models.struktura import Wydzial, Jednostka, Uczelnia
-from bpp.models.system import Typ_Odpowiedzialnosci, Charakter_Formalny
+from bpp.models.system import Typ_Odpowiedzialnosci
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 
 
@@ -36,6 +36,7 @@ def test_eksport_pbn_size(wydawnictwo_zwarte_z_autorem):
     toplevel = Element("fa")
     wydawnictwo_zwarte_z_autorem.eksport_pbn_size(toplevel)
     assert toplevel.getchildren()[0].text == "0.50"
+
 
 @pytest.mark.django_db
 def test_eksport_pbn_wydawnictwo_nadrzedne_liczba_autorow(chf_ksp, chf_roz):
@@ -131,3 +132,20 @@ def test_eksport_pbn_wydawnictwo_nadrzedne_liczba_autorow_trzech(chf_ksp, chf_ro
 
     assert len(ret.findall("author")) == 2
     assert ret.find("other-contributors").text == "48"
+
+
+def test_eksport_pbn_publication_place(wydawnictwo_zwarte):
+    wydawnictwo_zwarte.miejsce_i_rok = "Lublin 1993"
+    toplevel = Element("a")
+    wydawnictwo_zwarte.eksport_pbn_publication_place(toplevel)
+    assert toplevel.getchildren()[0].text == "Lublin"
+
+    wydawnictwo_zwarte.miejsce_i_rok = "   Lublin 1993   "
+    toplevel = Element("a")
+    wydawnictwo_zwarte.eksport_pbn_publication_place(toplevel)
+    assert toplevel.getchildren()[0].text == "Lublin"
+
+    wydawnictwo_zwarte.miejsce_i_rok = "Berlin Heidelberg 2015"
+    toplevel = Element("a")
+    wydawnictwo_zwarte.eksport_pbn_publication_place(toplevel)
+    assert toplevel.getchildren()[0].text == "Berlin Heidelberg"
