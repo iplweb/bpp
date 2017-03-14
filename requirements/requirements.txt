@@ -56,7 +56,8 @@ django-htmlmin==0.7.0
 
 simplejson==3.8.0
 
-Pillow==2.9.0
+Pillow==4.0.0
+olefile==0.44
 
 django-grappelli==2.7.3
 django-multiseek==0.9.15.5
@@ -66,3 +67,5 @@ djorm-ext-pgfulltext==0.9.3
 django_braces==1.8.1
 
 django-loginas==0.1.5
+
+
