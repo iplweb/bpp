@@ -1,5 +1,5 @@
 ---
-django_deps_version: "20170312"
+django_deps_version: "20170314"
 
 supervisor_logdir: /var/log/supervisor
 
