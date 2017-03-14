@@ -223,13 +223,17 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
             pbn_id_system_identifier = SubElement(author, 'system-identifier', system="PBN-ID")
             pbn_id_system_identifier.text = str(self.pbn_id)
 
+        affiliated_to_unit = SubElement(author, 'affiliated-to-unit')
         if affiliated:
-            affiliated_to_unit = SubElement(author, 'affiliated-to-unit')
             affiliated_to_unit.text = 'true'
+        else:
+            affiliated_to_unit.text = 'false'
 
+        employed_in_unit = SubElement(author, 'employed-in-unit')
         if employed:
-            employed_in_unit = SubElement(author, 'employed-in-unit')
             employed_in_unit.text = 'true'
+        else:
+            employed_in_unit.text = 'false'
 
         return author
 

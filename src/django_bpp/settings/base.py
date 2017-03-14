@@ -196,16 +196,6 @@ DJORM_POOL_OPTIONS = {
     "recycle": 3600, # the default value
 }
 
-# django-jenkins
-
-JENKINS_TASKS = []
-#    'django_jenkins.tasks.run_pylint',
-#    'django_jenkins.tasks.run_pep8',
-#    'django_jenkins.tasks.run_pyflakes',
-#    'django_jenkins.tasks.run_flake8',
-#    'django_jenkins.tasks.with_coverage',
-
-
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': True,
