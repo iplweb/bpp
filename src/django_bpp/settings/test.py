@@ -9,9 +9,6 @@ TEMPLATE_DEBUG = DEBUG
 
 SENDFILE_BACKEND = 'sendfile.backends.simple'
 
-INSTALLED_APPS += ("django_jenkins", )
-INSTALLED_APPS += ("django_nose", )
-
 SELENIUM_DRIVER = "Firefox"
 
 SESSION_COOKIE_SECURE = False
