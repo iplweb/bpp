@@ -149,3 +149,11 @@ def test_eksport_pbn_publication_place(wydawnictwo_zwarte):
     toplevel = Element("a")
     wydawnictwo_zwarte.eksport_pbn_publication_place(toplevel)
     assert toplevel.getchildren()[0].text == "Berlin Heidelberg"
+
+
+def test_eksport_pbn_book_bug(wydawnictwo_zwarte, wydzial):
+    wydawnictwo_zwarte.informacje = "Tu nie będzie wu i dwukropka"
+    wydawnictwo_zwarte.save()
+
+    toplevel = Element("foo")
+    wydawnictwo_zwarte.eksport_pbn_book(toplevel, wydzial)

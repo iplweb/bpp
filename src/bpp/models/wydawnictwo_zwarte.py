@@ -191,9 +191,14 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
             self.wydawnictwo_nadrzedne.eksport_pbn_serializuj(wydzial=wydzial, toplevel=book)
 
         else:
-            add_wydawnictwo_nadrzedne_data(
-                book, self,
-                title_text=self.informacje.split("W:", 1)[1].strip())
+            title_text = None
+            try:
+                title_text = self.informacje.split("W:", 1)[1].strip()
+            except IndexError:
+                pass
+
+            if title_text:
+                add_wydawnictwo_nadrzedne_data(book, self, title_text=title_text)
 
     def eksport_pbn_editor(self, toplevel, wydzial, autorzy_klass):
         from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte_Autor
