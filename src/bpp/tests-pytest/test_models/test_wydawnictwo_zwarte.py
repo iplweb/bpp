@@ -157,3 +157,11 @@ def test_eksport_pbn_book_bug(wydawnictwo_zwarte, wydzial):
 
     toplevel = Element("foo")
     wydawnictwo_zwarte.eksport_pbn_book(toplevel, wydzial)
+    # przeszło
+
+    wydawnictwo_zwarte.informacje = "W: foobar"
+    wydawnictwo_zwarte.save()
+
+    toplevel = Element("foo")
+    wydawnictwo_zwarte.eksport_pbn_book(toplevel, wydzial)
+    assert toplevel.getchildren()[0].getchildren()[0].text == "foobar"
