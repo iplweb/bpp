@@ -3,13 +3,13 @@
 {% block breadcrumbs %}
     {{ block.super }}
     <li><a href="{% url "bpp:raporty" %}">Raporty</a></li>
-    <li><a href="{% url  "bpp:raport_jednostek_formularz"%}">Raport autorów</a></li>
+    <li><a href="{% url "bpp:raport_jednostek_formularz" %}">Raport autorów</a></li>
     <li class="current">
         {% if rok_min != rok_max %}
-        {{ autor }}, lata {{ rok_min }} - {{ rok_max }}
-    {% else %}
-        {{ autor }} - rok {{ rok_min }}
-    {% endif %}
+            {{ autor }}, lata {{ rok_min }} - {{ rok_max }}
+        {% else %}
+            {{ autor }} - rok {{ rok_min }}
+        {% endif %}
 
     </li>
 {% endblock %}
@@ -29,5 +29,11 @@
 {% endblock %}
 
 {% block content %}
+    <div data-alert="" class="alert-box warning round">
+        Uwaga! Te raporty są przestarzałe, tzn. nie są one zgodne z ustawą. Trwają obecnie prace nad aktualizacją
+        raportów. Prosimy o cierpliwość lub kontakt z <a href="mailto:info@bg.umlub.pl">Działem Informacji</a>.
+        <a href="#" class="close">×</a>
+    </div>
+
     {% include "raporty/raport_jednostek_autorow_2012/raport_common.html" with object=autor %}
 {% endblock %}
