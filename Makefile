@@ -51,6 +51,9 @@ new-patch: clean
 release: new-patch full-build
 	@echo "Done"
 
+rerun-release-after-tests-failure: vcs just-tests build staging
+	@echo "Done"
+
 download: 
 	fab -H zarzadca@bpp.umlub.pl download_db
 
