@@ -14,11 +14,13 @@
 {% block content %}
     <h1>Raporty</h1>
     <h2>{{ nazwa_raportu }}</h2>
-            <div data-alert="" class="alert-box warning round">
+    {% if nazwa_raportu != "Ranking autorow" %}
+    <div data-alert="" class="alert-box warning round">
         Uwaga! Te raporty są przestarzałe, tzn. nie są one zgodne z ustawą. Trwają obecnie prace nad aktualizacją
         raportów. Prosimy o cierpliwość lub kontakt z <a href="mailto:info@bg.umlub.pl">Działem Informacji</a>.
         <a href="#" class="close">×</a>
     </div>
+    {% endif %}
 
 {% crispy form %}
 
