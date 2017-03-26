@@ -9,7 +9,7 @@ def test_zmiany_formularza(preauth_browser, live_server):
     elem = preauth_browser.find_by_id("id_old_password")[0]
     elem.type("123348u3")
 
-    link = preauth_browser.find_link_by_href("/bpp/raporty/jednostek/")
+    link = preauth_browser.find_link_by_href("/bpp/zrodla/")
     link[0].click()
 
     with pytest.raises(NoAlertPresentException):
