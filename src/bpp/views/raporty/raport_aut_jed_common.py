@@ -17,6 +17,7 @@ from bpp.models import Charakter_Formalny, Jezyk, \
     Typ_Odpowiedzialnosci
 from bpp.models.cache import Autorzy, Rekord
 from bpp.models.system import Typ_KBN
+from bpp.models.wydawnictwo_zwarte import ILOSC_ZNAKOW_NA_ARKUSZ
 
 
 class SumyImpactKbnMixin:
@@ -421,13 +422,11 @@ WSZYSTKIE_TABELE = SortedDict(
         ("1_1", Tabela_Publikacji_Z_Impactem),
         ("1_2", Tabela_Publikacji),
         ("1_3", Tabela_Publikacji),
-        ("1_4", Tabela_Konferencji_Miedzynarodowej),
+        ("1_4", Tabela_Publikacji),
+        ("1_5", Tabela_Konferencji_Miedzynarodowej),
         ("2_1", Tabela_Monografii),
-        ("2_2", Tabela_Monografii),
-        ("2_3", Tabela_Rozdzialu_Monografii),
-        ("2_4", Tabela_Rozdzialu_Monografii),
-        ("2_5", Tabela_Redakcji_Naukowej),
-        ("2_6", Tabela_Redakcji_Naukowej),
+        ("2_2", Tabela_Rozdzialu_Monografii),
+        ("2_3", Tabela_Redakcji_Naukowej),
     ])
 
 
@@ -484,6 +483,12 @@ def raport_common_tabela(key, base_query, jednostka=None, autor=None):
 
     elif key == "1_4":
         return base_query.filter(
+            charakter_formalny=Charakter_Formalny.objects.get(skrot="AC"),
+            liczba_znakow_wydawniczych__gte=ILOSC_ZNAKOW_NA_ARKUSZ / 2
+        ).exclude(jezyk=Jezyk.objects.get(skrot="pol."))
+
+    elif key == "1_5":
+        return base_query.filter(
             adnotacje__icontains="wos",
             punkty_kbn__gt=0)
 
@@ -496,8 +501,11 @@ def raport_common_tabela(key, base_query, jednostka=None, autor=None):
         if autor is not None:
             extra_kw = get_extra_kw_for_autor(autor, "aut.")
         return base_query.filter(
-            charakter_formalny=Charakter_Formalny.objects.get(skrot='KSZ'),
-            jezyk__in=jezyki_obce(),
+            charakter_formalny__in=[
+                Charakter_Formalny.objects.get(skrot='KSZ'),
+                Charakter_Formalny.objects.get(skrot='KSP'),
+                Charakter_Formalny.objects.get(skrot='KS'),
+            ],
             punkty_kbn__gt=0,
             **extra_kw)
 
@@ -511,63 +519,24 @@ def raport_common_tabela(key, base_query, jednostka=None, autor=None):
         if autor is not None:
             extra_kw = get_extra_kw_for_autor(autor, "aut.")
         return base_query.filter(
-            charakter_formalny=Charakter_Formalny.objects.get(skrot="KSP"),
+            charakter_formalny=Charakter_Formalny.objects.get(skrot='ROZ'),
             punkty_kbn__gt=0,
-            **extra_kw)
+            **extra_kw).order_by('informacje', 'tytul_oryginalny')
 
     elif key == "2_3":
         extra_kw = {}
         # Jeżeli podana jest jednostka jako parametr, no to wówczas wyszukujemy
         # autorów tylko z tej jednostki o zadanym typie:
         if jednostka is not None:
-            extra_kw = get_extra_kw_for_jednostka(jednostka, "aut.")
-        if autor is not None:
-            extra_kw = get_extra_kw_for_autor(autor, "aut.")
-        return base_query.filter(
-            charakter_formalny=Charakter_Formalny.objects.get(skrot="ROZ"),
-            jezyk__in=jezyki_obce(),
-            punkty_kbn__gt=0,
-            **extra_kw).order_by('informacje', 'tytul_oryginalny')
-
-    elif key == "2_4":
-        extra_kw = {}
-        # Jeżeli podana jest jednostka jako parametr, no to wówczas wyszukujemy
-        # autorów tylko z tej jednostki o zadanym typie:
-        if jednostka is not None:
-            extra_kw = get_extra_kw_for_jednostka(jednostka, "aut.")
-        if autor is not None:
-            extra_kw = get_extra_kw_for_autor(autor, "aut.")
-        return base_query.filter(
-            charakter_formalny=Charakter_Formalny.objects.get(skrot='ROZ'),
-            jezyk=Jezyk.objects.get(skrot='pol.'),
-            punkty_kbn__gt=0,
-            **extra_kw).order_by('informacje', 'tytul_oryginalny')
-
-    elif key == "2_5":
-        extra_kw = {}
-        # Jeżeli podana jest jednostka jako parametr, no to wówczas wyszukujemy
-        # autorów tylko z tej jednostki o zadanym typie:
-        if jednostka is not None:
             extra_kw = get_extra_kw_for_jednostka(jednostka, "red.")
         if autor is not None:
             extra_kw = get_extra_kw_for_autor(autor, "red.")
         return base_query.filter(
-            charakter_formalny=Charakter_Formalny.objects.get(skrot="KSZ"),
-            jezyk__in=jezyki_obce(),
-            punkty_kbn__gt=0,
-            **extra_kw)
-
-    elif key == "2_6":
-        extra_kw = {}
-        # Jeżeli podana jest jednostka jako parametr, no to wówczas wyszukujemy
-        # autorów tylko z tej jednostki o zadanym typie:
-        if jednostka is not None:
-            extra_kw = get_extra_kw_for_jednostka(jednostka, "red.")
-        if autor is not None:
-            extra_kw = get_extra_kw_for_autor(autor, "red.")
-        return base_query.filter(
-            charakter_formalny=Charakter_Formalny.objects.get(skrot="KSP"),
-            jezyk=Jezyk.objects.get(skrot='pol.'),
+            charakter_formalny__in=[
+                Charakter_Formalny.objects.get(skrot='KSZ'),
+                Charakter_Formalny.objects.get(skrot='KSP'),
+                Charakter_Formalny.objects.get(skrot='KS'),
+            ],
             punkty_kbn__gt=0,
             **extra_kw)
 

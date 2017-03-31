@@ -5,6 +5,7 @@ from django.test import TestCase
 from bpp.models import cache
 from bpp.models.cache import with_cache
 from bpp.models.system import Charakter_Formalny, Jezyk, Typ_KBN
+from bpp.models.wydawnictwo_zwarte import ILOSC_ZNAKOW_NA_ARKUSZ
 from bpp.tests.util import any_jednostka, any_autor, any_ciagle, CURRENT_YEAR, any_zwarte
 from bpp.views.raporty import get_base_query_jednostka, raport_jednostek_tabela
 
@@ -107,11 +108,20 @@ class TestRaportJednostek2012(TestCase):
     @with_cache
     def test_1_4(self):
         c = any_ciagle(
+            charakter_formalny=Charakter_Formalny.objects.get(skrot="AC"),
+            liczba_znakow_wydawniczych=1 + (ILOSC_ZNAKOW_NA_ARKUSZ / 2),
+            jezyk=Jezyk.objects.get(skrot="ang."))
+        c.dodaj_autora(self.a, self.j)
+        self.sprawdz("1_4", c)
+
+    @with_cache
+    def test_1_5(self):
+        c = any_ciagle(
             adnotacje="WOS",
             punkty_kbn=1)
         c.dodaj_autora(self.a, self.j)
 
-        self.sprawdz("1_4", c)
+        self.sprawdz("1_5", c)
 
     @with_cache
     def test_2_1(self):
@@ -132,64 +142,27 @@ class TestRaportJednostek2012(TestCase):
 
     @with_cache
     def test_2_2(self):
-        c = any_ciagle(
-            charakter_formalny=charakter("KSP"),
-            punkty_kbn=50
+        c = any_zwarte(
+            charakter_formalny=charakter("ROZ"),
+            punkty_kbn=20
         )
         c.dodaj_autora(self.a, self.j)
         self.sprawdz("2_2", c)
 
     @with_cache
     def test_2_3(self):
-        c = any_zwarte(
-            charakter_formalny=charakter("ROZ"),
-            jezyk=jezyk("ang."),
-            punkty_kbn=20
+        d = any_zwarte(
+            charakter_formalny=charakter("KSZ"),
+            jezyk=jezyk('ang.'),
+            punkty_kbn=50
         )
-        c.dodaj_autora(self.a, self.j)
+        d.dodaj_autora(self.a, self.j)
+
+        c = any_zwarte(
+            charakter_formalny=charakter("KSZ"),
+            jezyk=jezyk('ang.'),
+            punkty_kbn=50
+        )
+        c.dodaj_autora(self.a, self.j, typ_odpowiedzialnosci_skrot="red.")
+
         self.sprawdz("2_3", c)
-
-    @with_cache
-    def test_2_4(self):
-        c = any_zwarte(
-            charakter_formalny=charakter("ROZ"),
-            jezyk=jezyk("pol."),
-            punkty_kbn=20
-        )
-        c.dodaj_autora(self.a, self.j)
-        self.sprawdz("2_4", c)
-
-    @with_cache
-    def test_2_5(self):
-        d = any_zwarte(
-            charakter_formalny=charakter("KSZ"),
-            jezyk=jezyk('ang.'),
-            punkty_kbn=50
-        )
-        d.dodaj_autora(self.a, self.j)
-
-        c = any_zwarte(
-            charakter_formalny=charakter("KSZ"),
-            jezyk=jezyk('ang.'),
-            punkty_kbn=50
-        )
-        c.dodaj_autora(self.a, self.j, typ_odpowiedzialnosci_skrot="red.")
-
-        self.sprawdz("2_5", c)
-
-    @with_cache
-    def test_2_6(self):
-        d = any_zwarte(
-            charakter_formalny=charakter("KSP"),
-            jezyk=jezyk('pol.'),
-            punkty_kbn=50
-        )
-        d.dodaj_autora(self.a, self.j)
-
-        c = any_zwarte(
-            charakter_formalny=charakter("KSP"),
-            jezyk=jezyk('pol.'),
-            punkty_kbn=50
-        )
-        c.dodaj_autora(self.a, self.j, typ_odpowiedzialnosci_skrot="red.")
-        self.sprawdz("2_6", c)
