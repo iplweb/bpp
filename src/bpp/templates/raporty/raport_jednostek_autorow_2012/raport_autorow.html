@@ -29,11 +29,5 @@
 {% endblock %}
 
 {% block content %}
-    <div data-alert="" class="alert-box warning round">
-        Uwaga! Te raporty są przestarzałe, tzn. nie są one zgodne z ustawą. Trwają obecnie prace nad aktualizacją
-        raportów. Prosimy o cierpliwość lub kontakt z <a href="mailto:info@bg.umlub.pl">Działem Informacji</a>.
-        <a href="#" class="close">×</a>
-    </div>
-
     {% include "raporty/raport_jednostek_autorow_2012/raport_common.html" with object=autor %}
 {% endblock %}
