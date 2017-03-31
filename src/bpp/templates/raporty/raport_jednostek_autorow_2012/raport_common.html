@@ -1,42 +1,37 @@
 {% load render_table from django_tables2 %}
-    <center>
-        <h1>{{ object }}</h1>
+<center>
+    <h1>{{ object }}</h1>
 
-        {% if rok_min != rok_max %}
-            <h2>Dane o publikacjach za okres {{ rok_min }} - {{ rok_max }}</h2>
-        {% else %}
-            <h2>Dane o publikacjach za rok {{ rok_min }}</h2>
-        {% endif %}
-    </center>
-    <h3>I. Osiągnięcia naukowe i twórcze</h3>
-    <h4>1. Publikacje w czasopismach naukowych</h4>
-    <h5>1.1. Publikacje w czasopiśmie naukowym posiadającym Impact Factor IF
-        (część A wykazu MNiSW)</h5>
-    {% render_table tabela_1_1 %}
-    <h5>1.2 Publikacja w czasopiśmie naukowym nieposiadającym IF (część B wykazu
-        MNiSW)</h5>
-    {% render_table tabela_1_2 %}
-    <h5>1.3 Publikacja w czasopiśmie naukowym znajdującym się w bazie European
-        Reference Index for the Humanities (ERIH (część C wykazu MNiSW)</h5>
-    {% render_table tabela_1_3 %}
-    <h5>1.4 Publikacja w recenzowanych materiałach z konferencji międzynarodowej
-        uwzględnionej w Web of Science.</h5>
-    {% render_table tabela_1_4 %}
-    <h4>2. Monografie naukowe</h4>
-    <h5>2.1 Autorstwo monografii naukowej w językach: angielskim, niemieckim,
-        francuskim, hiszpańskim, rosyjskim lub włoskim.</h5>
-    {% render_table tabela_2_1 %}
-    <h5>2.2 Autorstwo monografii naukowej w języku polskim</h5>
-    {% render_table tabela_2_2 %}
-    <h5>2.3 Autorstwo rozdziału w monografii naukowej w językach: angielskim,
-        niemieckim, francuskim, hiszpańskim, rosyjskim lub włoskim</h5>
-    {% render_table tabela_2_3 %}
-    <h5>2.4. Autorstwo rozdziału w monografii naukowej w języku polskim</h5>
-    {% render_table tabela_2_4 %}
-    <h5>2.5 Redakcja naukowa monografii naukowej wieloautorskiej w językach:
-        angielskim, niemieckim, francuskim, hiszpańskim, rosyjskim lub
-        włoskim</h5>
-    {% render_table tabela_2_5 %}
-    <h5>2.6 Redakcja naukowa monografii naukowej wieloautorskiej w języku
-        polskim</h5>
-    {% render_table tabela_2_6 %}
+    {% if rok_min != rok_max %}
+        <h2>Dane o publikacjach za okres {{ rok_min }} - {{ rok_max }}</h2>
+    {% else %}
+        <h2>Dane o publikacjach za rok {{ rok_min }}</h2>
+    {% endif %}
+</center>
+<h3>I. Osiągnięcia naukowe i twórcze</h3>
+<h4>1. Publikacje w czasopismach naukowych</h4>
+<h5>1.1. Publikacje w czasopiśmie naukowym posiadającym Impact Factor IF
+    (część A wykazu MNiSW)</h5>
+{% render_table tabela_1_1 %}
+<h5>1.2 Publikacja w czasopiśmie naukowym nieposiadającym IF (część B wykazu
+    MNiSW)</h5>
+{% render_table tabela_1_2 %}
+<h5>1.3 Publikacja w czasopiśmie naukowym znajdującym się w bazie European
+    Reference Index for the Humanities (ERIH (część C wykazu MNiSW)</h5>
+{% render_table tabela_1_3 %}
+<h5>1.4 Recenzowana publikacja naukowa w języku innym niż polski w zagranicznym
+    czasopiśmie naukowym spoza list A,B,C, o objętości co najmniej 0,5 arkusza
+</h5>
+{% render_table tabela_1_4 %}
+<h5>1.5 Publikacja w recenzowanych materiałach z konferencji międzynarodowej
+    uwzględnionej w Web of Science.</h5>
+{% render_table tabela_1_5 %}
+
+<h4>2. Monografie naukowe</h4>
+
+<h5>2.1 Autorstwo monografii naukowej (do 3 autorów)</h5>
+{% render_table tabela_2_1 %}
+<h5>2.2 Autorstwo rozdziału w monografii naukowej</h5>
+{% render_table tabela_2_2 %}
+<h5>2.3 Redakcja naukowa monografii naukowej wieloautorskiej </h5>
+{% render_table tabela_2_3 %}
