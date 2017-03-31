@@ -71,5 +71,7 @@ CREATE VIEW bpp_rekord AS
                 UNION
                   SELECT * FROM bpp_praca_habilitacyjna_view;
 
+DELETE FROM bpp_rekord_mat;
+INSERT INTO bpp_rekord_mat SELECT * FROM bpp_rekord;
 
 COMMIT;
