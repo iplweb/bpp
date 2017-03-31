@@ -12,4 +12,4 @@ class Test(TestCase):
     def test_raport_autorow(self):
         c = Client()
         res = c.get(reverse("bpp:raport_autorow_formularz"))
-        self.assertContains(res, 'przestarzałe', status_code=200)
+        self.assertContains(res, 'raport autorów', status_code=200)
