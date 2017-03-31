@@ -147,7 +147,22 @@ class TestCacheMixin:
         self.wszystkie_modele = [self.d, self.h, self.p, self.c, self.z]
 
 
+class TestCacheRebuildBug(TestCase):
+    @with_cache
+    def test_liczba_znakow_bug(self):
+        Rekord.objects.full_refresh()
+        self.assertEquals(Rekord.objects.all().count(), 0)
+
+        c = any_ciagle(tytul="foo", liczba_znakow_wydawniczych=31337)
+        Rekord.objects.full_refresh()
+
+        self.assertEquals(Rekord.objects.all().count(), 1)
+        self.assertEquals(Rekord.objects.all()[0].tytul, "foo")
+        self.assertEquals(Rekord.objects.all()[0].liczba_znakow_wydawniczych, 31337)
+
+
 class TestCacheSimple(TestCacheMixin, TestCase):
+
     @with_cache
     def test_get_original_object(self):
         Rekord.objects.full_refresh()

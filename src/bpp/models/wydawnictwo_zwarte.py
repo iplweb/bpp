@@ -1,5 +1,6 @@
 # -*- encoding: utf-8 -*-
 import re
+
 from dirtyfields.dirtyfields import DirtyFieldsMixin
 from django.db import models
 from django.db.models.signals import post_delete
@@ -18,6 +19,12 @@ from bpp.models.abstract import \
 from bpp.models.autor import Autor
 from bpp.models.util import ZapobiegajNiewlasciwymCharakterom
 from bpp.models.util import dodaj_autora
+
+ILOSC_ZNAKOW_NA_ARKUSZ = 40000.0
+
+
+def get_liczba_arkuszy_wydawniczych(liczba_znakow_wydawniczych):
+    return round(liczba_znakow_wydawniczych / ILOSC_ZNAKOW_NA_ARKUSZ, 2)
 
 
 class Wydawnictwo_Zwarte_Autor(DirtyFieldsMixin, BazaModeluOdpowiedzialnosciAutorow):
@@ -77,7 +84,9 @@ class ModelZOpenAccessWydawnictwoZwarte(ModelZOpenAccess):
     class Meta:
         abstract = True
 
+
 rok_regex = re.compile(r"\s[12]\d\d\d")
+
 
 class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
                          Wydawnictwo_Zwarte_Baza, ModelZCharakterem,
@@ -165,7 +174,7 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
             size.text = self.liczba_arkuszy_wydawniczych()
 
     def liczba_arkuszy_wydawniczych(self):
-        return "%.2f" % round(self.liczba_znakow_wydawniczych / 40000.0, 2)
+        return "%.2f" % get_liczba_arkuszy_wydawniczych(self.liczba_znakow_wydawniczych)
 
     def eksport_pbn_book(self, toplevel, wydzial, autorzy_klass=None):
         def add_wydawnictwo_nadrzedne_data(book, wydawnictwo_nadrzedne, title_text=None):
@@ -296,7 +305,6 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
                 wszyscy_autorzy = len(list(self.eksport_pbn_get_wszyscy_autorzy_iter(wydzial, autorzy_klass)))
             return wszyscy_autorzy
         return super(Wydawnictwo_Zwarte, self).eksport_pbn_get_wszyscy_autorzy_count(wydzial, autorzy_klass)
-
 
     eksport_pbn_BOOK_FLDS = ["editor", "isbn", "series", "number-in-series", "edition", "volume", "pages",
                              "publisher-name", "publication-place", "open-access"]
