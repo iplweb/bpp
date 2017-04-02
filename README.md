@@ -18,7 +18,8 @@ $ . foo/bin/activate
 $ git clone https://github.com/mpasternak/django-bpp.git
 $ cd django-bpp
 $ vagrant up
-$ ./buildscripts/run-tests.sh
+$ ./buildscripts/run-tests.sh # Uruchom testy lokalnie
+$ make release
 ```
 
 ## Wsparcie komercyjne
