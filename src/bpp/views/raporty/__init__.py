@@ -3,22 +3,21 @@
 """W tym pakiecie znajdują się procedury generujące raporty, które są dostępne
 "od ręki" -- generowane za pomocą WWW"""
 from django.contrib import messages
-from django.db.models import Max
 from django.http import Http404
 from django.http.response import HttpResponseRedirect
 from django.views.generic import View
 from django.views.generic.base import TemplateView
-from django.views.generic.edit import BaseDeleteView, FormView, FormMixin
+from django.views.generic.edit import BaseDeleteView, FormView
 from sendfile import sendfile
+
+from bpp.models import Rekord
 from bpp.views.raporty.forms import KronikaUczelniForm, \
     RaportJednostekForm, RaportDlaKomisjiCentralnejForm, RankingAutorowForm, \
     RaportAutorowForm
-
 from celeryui.interfaces import IWebTask
 from celeryui.models import Report
 from .ranking_autorow import *
 from .raport_jednostek_2012 import *
-from bpp.models import Rekord
 
 
 class PobranieRaportu(View):
@@ -89,6 +88,7 @@ class RaportyMixin:
         return Rekord.objects.all().values_list(
             'rok', flat=True).order_by('rok').distinct()
 
+
 class RaportyFormMixin(RaportyMixin):
     template_name = 'raporty/strona_raportow/podstrona.html'
     success_url = "."
@@ -127,46 +127,57 @@ class RaportyFormMixin(RaportyMixin):
 
         return FormView.form_valid(self, form)
 
+
 class RaportKronikaUczelni(RaportyFormMixin, FormView):
     form_class = KronikaUczelniForm
     nazwa_raportu = "Kronika Uczelni"
 
-class RaportJednostek(RaportyFormMixin, FormView):
+
+class RaportCommonView(RaportyFormMixin, FormView):
+    def form_valid(self, form):
+        rok_min = form.cleaned_data['od_roku']
+        rok_max = form.cleaned_data['do_roku']
+        object = form.cleaned_data[self.object_key].pk
+        output = "html"
+        if form.cleaned_data['output']:
+            output = "msw"
+
+        if rok_min != rok_max:
+            url = reverse(self.url_min_max, args=(object, rok_min, rok_max)) + "?output=%s" % output
+            return HttpResponseRedirect(url)
+
+        url = reverse(self.url_single, args=(object, rok_min)) + "?output=%s" % output
+        return HttpResponseRedirect(url)
+
+
+class RaportJednostek(RaportCommonView):
     form_class = RaportJednostekForm
     nazwa_raportu = "Raport jednostek"
-
-    def form_valid(self, form):
-        rok_min = form.cleaned_data['od_roku']
-        rok_max = form.cleaned_data['do_roku']
-        jednostka = form.cleaned_data['jednostka'].pk
-
-        if rok_min != rok_max:
-            return HttpResponseRedirect(
-                reverse(
-                    "bpp:raport-jednostek-rok-min-max",
-                    args=(jednostka, rok_min, rok_max)))
-
-        return HttpResponseRedirect(
-            reverse("bpp:raport-jednostek", args=(jednostka, rok_min)))
+    object_key = 'jednostka'
+    url_min_max = "bpp:raport-jednostek-rok-min-max"
+    url_single = "bpp:raport-jednostek"
 
 
-class RaportAutorow(RaportyFormMixin, FormView):
+class RaportAutorow(RaportCommonView):
     form_class = RaportAutorowForm
     nazwa_raportu = "Raport autorów"
-
-    def form_valid(self, form):
-        rok_min = form.cleaned_data['od_roku']
-        rok_max = form.cleaned_data['do_roku']
-        autor = form.cleaned_data['autor'].pk
-
-        if rok_min != rok_max:
-            return HttpResponseRedirect(
-                reverse(
-                    "bpp:raport-autorow-rok-min-max",
-                    args=(autor, rok_min, rok_max)))
-
-        return HttpResponseRedirect(
-            reverse("bpp:raport-autorow", args=(autor, rok_min)))
+    object_key = "autor"
+    url_min_max = "bpp:raport-autorow-rok-min-max"
+    url_single = "bpp:raport-autorow"
+    #
+    # def form_valid(self, form):
+    #     rok_min = form.cleaned_data['od_roku']
+    #     rok_max = form.cleaned_data['do_roku']
+    #     autor = form.cleaned_data['autor'].pk
+    #
+    #     if rok_min != rok_max:
+    #         return HttpResponseRedirect(
+    #             reverse(
+    #                 "bpp:raport-autorow-rok-min-max",
+    #                 args=(autor, rok_min, rok_max)))
+    #
+    #     return HttpResponseRedirect(
+    #         reverse("bpp:raport-autorow", args=(autor, rok_min)))
 
 
 class RankingAutorowFormularz(RaportyFormMixin, FormView):
@@ -185,6 +196,7 @@ class RankingAutorowFormularz(RaportyFormMixin, FormView):
 
         return HttpResponseRedirect(url)
 
+
 class RaportDlaKomisjiCentralnejFormularz(RaportyFormMixin, FormView):
     form_class = RaportDlaKomisjiCentralnejForm
     nazwa_raportu = "Raport dla Komisji Centralnej"
@@ -192,6 +204,7 @@ class RaportDlaKomisjiCentralnejFormularz(RaportyFormMixin, FormView):
     def get_raport_arguments(self, form):
         form.cleaned_data['autor'] = form.cleaned_data['autor'].pk
         return form.cleaned_data
+
 
 class RaportSelector(RaportyMixin, TemplateView):
     template_name = "raporty/strona_raportow/index.html"
