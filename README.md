@@ -10,16 +10,21 @@ Dostępny na licencji MIT.
 
 ## Startujemy!
 
-Zainstaluj: Python, Vagrant, VirtualBox, Git.
+Zainstaluj: Python, Vagrant i pluginy (vide: Vagrantfile), VirtualBox, Git.
+
+```bash
+$ git clone https://github.com/mpasternak/django-bpp.git
+$ cd django-bpp
+$ vagrant up
+$ make release
+```
+
+Lokalne testy: 
 
 ```bash
 $ virtualenv foo -ppython2.7
 $ . foo/bin/activate
-$ git clone https://github.com/mpasternak/django-bpp.git
-$ cd django-bpp
-$ vagrant up
 $ ./buildscripts/run-tests.sh # Uruchom testy lokalnie
-$ make release
 ```
 
 ## Wsparcie komercyjne
