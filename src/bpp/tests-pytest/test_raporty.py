@@ -37,3 +37,9 @@ def test_raport_jednostek(app, autor_jan_kowalski, jednostka, obiekty_bpp):
 def test_raport_aut_jed_1_4(obiekty_bpp, autor_jan_kowalski, jednostka):
     base_query = get_base_query_autor(autor=autor_jan_kowalski, rok_min=0, rok_max=9999)
     tabela_1_4 = raport_autorow_tabela("1_4", base_query, autor_jan_kowalski)
+
+@pytest.mark.django_db
+def test_raport_autorow_msword(obiekty_bpp, autor_jan_kowalski, webtest_app):
+    res = webtest_app.get(reverse("bpp:raport-autorow", args=(autor_jan_kowalski.pk, 2016)) + "?output=msw")
+    assert res.content_type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    assert res.status_code == 200
