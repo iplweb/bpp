@@ -20,3 +20,7 @@ $ cd django-bpp
 $ vagrant up
 $ ./buildscripts/run-tests.sh
 ```
+
+## Wsparcie komercyjne
+
+Wsparcie komercyjne dla projektu świadczy firma IPL, http://iplweb.pl/
