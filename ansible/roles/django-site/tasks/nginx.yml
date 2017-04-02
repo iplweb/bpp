@@ -6,6 +6,10 @@
     - reload nginx conf
   tags: ['certs']
 
+- name: Disable deafult site if variable set
+  shell: /usr/bin/nginx_dissite default
+  when: django_set_as_default_http_in_nginx
+
 - name: Nginx config files are installed
   template: src={{ item.src }} dest={{ item.dest }}
   with_items:
@@ -30,3 +34,4 @@
 - name: reload nginx conf
   service: name=nginx state=reloaded
   when: nginx_conf.changed
+
