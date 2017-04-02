@@ -5,10 +5,10 @@ from django_tables2 import RequestConfig
 
 from bpp.models import Jednostka
 from bpp.views.raporty.raport_aut_jed_common import WSZYSTKIE_TABELE, \
-    get_base_query_jednostka, raport_jednostek_tabela
+    get_base_query_jednostka, raport_jednostek_tabela, MSWordFromTemplateResponse, Raport2012CommonView
 
 
-class RaportJednostek2012(DetailView):
+class RaportJednostek2012(Raport2012CommonView):
     model = Jednostka
     template_name = "raporty/raport_jednostek_autorow_2012/raport_jednostek.html"
 
@@ -17,7 +17,7 @@ class RaportJednostek2012(DetailView):
         rok_max = self.kwargs.get('rok_max', None)
         if rok_max is None:
             rok_max = rok_min
-            
+
         rok_min, rok_max = min(rok_min, rok_max), max(rok_min, rok_max)
 
         base_query = get_base_query_jednostka(
@@ -35,5 +35,11 @@ class RaportJednostek2012(DetailView):
                        key.startswith('tabela_')]:
             RequestConfig(self.request).configure(tabela)
 
+        if hasattr(self.request, "GET"):
+            output = self.request.GET.get("output", "")
+            kw['output'] = output
+
         return DetailView.get_context_data(self, **kw)
 
+    def get_short_object_name(self):
+        return self.object.skrot

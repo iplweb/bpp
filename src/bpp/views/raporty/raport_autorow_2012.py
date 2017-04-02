@@ -5,10 +5,10 @@ from django_tables2 import RequestConfig
 
 from bpp.models import Autor
 from bpp.views.raporty.raport_aut_jed_common import WSZYSTKIE_TABELE, \
-    raport_jednostek_tabela, get_base_query_autor, raport_autorow_tabela
+    raport_jednostek_tabela, get_base_query_autor, raport_autorow_tabela, Raport2012CommonView
 
 
-class RaportAutorow2012(DetailView):
+class RaportAutorow2012(Raport2012CommonView):
     model = Autor
     template_name = "raporty/raport_jednostek_autorow_2012/raport_autorow.html"
 
@@ -35,5 +35,11 @@ class RaportAutorow2012(DetailView):
                        key.startswith('tabela_')]:
             RequestConfig(self.request).configure(tabela)
 
+        if hasattr(self.request, "GET"):
+            output = self.request.GET.get("output", "")
+            kw['output'] = output
+
         return DetailView.get_context_data(self, **kw)
 
+    def get_short_object_name(self):
+        return self.object.nazwisko + " " + self.object.imiona

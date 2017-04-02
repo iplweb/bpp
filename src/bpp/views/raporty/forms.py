@@ -3,16 +3,14 @@
 
 """W tym pakiecie znajdują się procedury generujące raporty, które są dostępne
 "od ręki" -- generowane za pomocą WWW"""
+import autocomplete_light
 from crispy_forms.helper import FormHelper
-from django import forms
 from crispy_forms_foundation.layout import Layout, Fieldset, ButtonHolder, \
     Submit, Hidden, Row, Column as F4Column
+from django import forms
 from django.core import validators
-from django.core.exceptions import ValidationError
 
-import autocomplete_light
 from bpp.models import Wydzial
-from django.utils.functional import lazy
 
 
 def ustaw_rok(rok, lata):
@@ -32,6 +30,7 @@ def ustaw_rok(rok, lata):
         rok.field.validators.append(validators.MaxValueValidator(rok.field.max_value))
     if rok.field.min_value is not None:
         rok.field.validators.append(validators.MinValueValidator(rok.field.min_value))
+
 
 class KronikaUczelniForm(forms.Form):
     rok = forms.IntegerField()
@@ -53,36 +52,31 @@ class KronikaUczelniForm(forms.Form):
         ustaw_rok(self['rok'], lata)
 
 
-
 class RaportJednostekForm(forms.Form):
     jednostka = autocomplete_light.ModelChoiceField(
         'RaportyJednostkaWidoczna')
 
     od_roku = forms.IntegerField()
     do_roku = forms.IntegerField()
+    output = forms.BooleanField(label="Pobierz jako plik Microsoft Word", required=False)
 
     def __init__(self, lata, *args, **kwargs):
         self.helper = FormHelper()
         self.helper.form_method = 'post'
         self.helper.form_action = "#RaportJednostek"
 
-        #self.helper.form_action = "./prepare/"
+        # self.helper.form_action = "./prepare/"
         self.helper.layout = Layout(
             Fieldset(
                 'Raport jednostek',
-                Row(
-                    F4Column('jednostka', css_class='large-12 small-12')
-                ),
-                Row(
-                    F4Column('od_roku', css_class='large-12 small-12'),
-                ),
-                Row(
-                    F4Column('do_roku', css_class='large-12 small-12')
-                ),
+                Row(F4Column('jednostka', css_class='large-12 small-12')),
+                Row(F4Column('od_roku', css_class='large-6 small-6'),
+                    F4Column('do_roku', css_class='large-6 small-6')),
+                Row(F4Column('output', css_class='large-12 small-12')),
                 Hidden("report", "raport-jednostek")
             ),
             ButtonHolder(
-                Submit('submit', u'Szukaj', css_class='button white')
+                Submit('submit', u'Wyświetl', css_class='button white')
             )
         )
 
@@ -97,25 +91,21 @@ class RaportAutorowForm(forms.Form):
 
     od_roku = forms.IntegerField()
     do_roku = forms.IntegerField()
+    output = forms.BooleanField(label="Pobierz jako plik Microsoft Word", required=False)
 
     def __init__(self, lata, *args, **kwargs):
         self.helper = FormHelper()
         self.helper.form_method = 'post'
         self.helper.form_action = "#RaportAutorow"
 
-        #self.helper.form_action = "./prepare/"
+        # self.helper.form_action = "./prepare/"
         self.helper.layout = Layout(
             Fieldset(
                 u'Raport autorów',
-                Row(
-                    F4Column('autor', css_class='large-12 small-12')
-                ),
-                Row(
-                    F4Column('od_roku', css_class='large-12 small-12'),
-                ),
-                Row(
-                    F4Column('do_roku', css_class='large-12 small-12')
-                ),
+                Row(F4Column('autor', css_class='large-12 small-12')),
+                Row(F4Column('od_roku', css_class='large-6 small-6'),
+                    F4Column('do_roku', css_class='large-6 small-6')),
+                Row(F4Column("output", css_class="large-12 small-12")),
                 Hidden("report", "raport-autorow")
             ),
             ButtonHolder(
@@ -138,7 +128,7 @@ class RaportDlaKomisjiCentralnejForm(forms.Form):
         self.helper = FormHelper()
         self.helper.form_method = 'post'
         self.helper.form_action = "#RaportDlaKomisjiCentralnej"
-        #self.helper.form_action = "./prepare/"
+        # self.helper.form_action = "./prepare/"
         self.helper.layout = Layout(
             Fieldset(
                 'Raport dla Komisji Centralnej',
@@ -154,9 +144,11 @@ class RaportDlaKomisjiCentralnejForm(forms.Form):
         super(RaportDlaKomisjiCentralnejForm, self).__init__(*args, **kwargs)
         ustaw_rok(self['rok_habilitacji'], lata)
 
+
 class WydzialChoiceField(forms.ModelMultipleChoiceField):
     def label_from_instance(self, obj):
         return obj.nazwa
+
 
 class RankingAutorowForm(forms.Form):
     wydzialy = WydzialChoiceField(
@@ -196,4 +188,3 @@ class RankingAutorowForm(forms.Form):
         super(RankingAutorowForm, self).__init__(*args, **kwargs)
         ustaw_rok(self['od_roku'], lata)
         ustaw_rok(self['do_roku'], lata)
-
