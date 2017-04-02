@@ -3,4 +3,26 @@ django_nginx_push_stream_allowed_ips:
   - 127.0.0.1
   - 192.168.111.101
 
-django_google_analytics_property_id: FOOBAR
+django_google_analytics_property_id: UA-96622450-2
+
+database_name: staging-bpp
+database_user: staging-bpp
+database_password: "password"
+
+django_group: ubuntu
+django_user: ubuntu
+
+django_hostname: bpp-staging.localnet
+django_secret_key: "0xdeadbeef_3_bez_spacj"
+
+django_settings_module: "{{ django_project_name }}.settings.production"
+    
+django_enable_raven: false
+django_raven_url: none
+
+django_project_name: django_bpp
+django_toplevel_dir: django-bpp
+
+django_notifications_host: bpp-staging.localnet
+
+django_set_as_default_http_in_nginx: true
