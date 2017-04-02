@@ -6,11 +6,16 @@
 
 import itertools
 import sys
+import urllib
 from decimal import Decimal
 
+import bleach
 from django.core.exceptions import ObjectDoesNotExist
+from django.http.response import HttpResponse
+from django.template import loader
 from django.utils.datastructures import SortedDict
 from django.utils.safestring import mark_safe
+from django.views.generic.detail import DetailView
 from django_tables2 import A, Column, Table
 
 from bpp.models import Charakter_Formalny, Jezyk, \
@@ -564,3 +569,45 @@ def get_base_query_jednostka(jednostka, *args, **kw):
 
 def get_base_query_autor(autor, *args, **kw):
     return _get_base_query(Rekord.objects.prace_autora, autor, *args, **kw)
+
+
+MSW_ALLOWED_TAGS = [
+    'abbr',
+    'acronym',
+    'b',
+    'blockquote',
+    'code',
+    'em',
+    'i',
+    'li',
+    'ol',
+    'strong',
+    'ul',
+    'center', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+    'table', 'tr', 'td', 'th', 'div', 'thead', 'tbody'
+]
+
+class MSWordFromTemplateResponse(HttpResponse):
+    def __init__(self, request, context, template_name, visible_name, *args, **kwargs):
+        super(HttpResponse, self).__init__(*args, **kwargs)
+        self['Content-type'] = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        self['Content-disposition'] = 'attachment; filename*=%s' % urllib.quote(visible_name.encode("utf-8"))
+        c = loader.render_to_string(template_name, context, request=request)
+        c = bleach.clean(c, tags=MSW_ALLOWED_TAGS, strip=True)
+        self.content = c
+        self['Content-length'] = len(self.content)
+
+
+class Raport2012CommonView(DetailView):
+
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        context = self.get_context_data(object=self.object)
+        if context['output'] == 'msw':
+            zakres_lat = "%s" % context['rok_min']
+            if context['rok_min'] != context['rok_max']:
+                zakres_lat += "-%s" % context['rok_max']
+            nazwa_pliku = "raport-%s-%s.docx" % (self.get_short_object_name().replace(".", "").replace(" ", ""), zakres_lat)
+            return MSWordFromTemplateResponse(
+                self.request, context, "raporty/raport_jednostek_autorow_2012/raport_common.html", nazwa_pliku)
+        return self.render_to_response(context)
