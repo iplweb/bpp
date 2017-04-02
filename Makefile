@@ -34,7 +34,11 @@ rebuild-staging:
 	yes | ansible-playbook ansible/webserver.yml
 
 staging:
+	vagrant up staging
 	ansible-playbook ansible/webserver.yml --private-key=.vagrant/machines/staging/virtualbox/private_key
+
+demo-vm-ansible:
+	ansible-playbook ansible/demo-vm.yml --private-key=.vagrant/machines/staging/virtualbox/private_key
 
 full-build: tests build staging
 	@echo "Done"
@@ -95,3 +99,22 @@ rebuilddb:
 	python src/manage.py migrate
 	-say "Przebudowa bazy danych zakończona"
 	-noti -t "rebuilddb zakończono" -m "Proces przebudowania bazy danych zakończony"
+
+pristine-staging:
+	vagrant pristine -f staging
+
+export:
+
+
+vm-clone:
+	-rm bpp-`python src/django_bpp/version.py`.ova
+	vagrant halt staging
+	VBoxManage clonevm `VBoxManage list vms|grep django-bpp_staging|cut -f 2 -d\  ` --name Demo\ BPP\ `python src/django_bpp/version.py` --register
+	VBoxManage export Demo\ BPP\ `python src/django_bpp/version.py` -o  bpp-`python src/django_bpp/version.py`.ova --options nomacs --options manifest --vsys 0 --product "Maszyna wirtualna BPP" --producturl http://iplweb.pl/kontakt/ --vendor IPLWeb --vendorurl http://iplweb.pl --version `python src/django_bpp/version.py` --eulafile LICENSE 
+
+vm-cleanup: 
+	# VBoxManage modifyvm Demo\ BPP\ `python src/django_bpp/version.py` -hda none
+	VBoxManage unregistervm Demo\ BPP\ `python src/django_bpp/version.py` --delete
+
+demo-vm: pristine-staging staging demo-vm-ansible vm-clone vm-cleanup
+	@echo Done
