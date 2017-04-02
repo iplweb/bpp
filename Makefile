@@ -110,7 +110,7 @@ vm-clone:
 	-rm bpp-`python src/django_bpp/version.py`.ova
 	vagrant halt staging
 	VBoxManage clonevm `VBoxManage list vms|grep django-bpp_staging|cut -f 2 -d\  ` --name Demo\ BPP\ `python src/django_bpp/version.py` --register
-	VBoxManage export Demo\ BPP\ `python src/django_bpp/version.py` -o  bpp-`python src/django_bpp/version.py`.ova --options nomacs --options manifest --vsys 0 --product "Maszyna wirtualna BPP" --producturl http://iplweb.pl/kontakt/ --vendor IPLWeb --vendorurl http://iplweb.pl --version `python src/django_bpp/version.py` --eulafile LICENSE 
+	VBoxManage export Demo\ BPP\ `python src/django_bpp/version.py` -o bpp-`python src/django_bpp/version.py`.ova --options nomacs --options manifest --vsys 0 --product "Maszyna wirtualna BPP" --producturl http://iplweb.pl/kontakt/ --vendor IPLWeb --vendorurl http://iplweb.pl --version `python src/django_bpp/version.py` --eulafile LICENSE 
 
 vm-cleanup: 
 	# VBoxManage modifyvm Demo\ BPP\ `python src/django_bpp/version.py` -hda none
