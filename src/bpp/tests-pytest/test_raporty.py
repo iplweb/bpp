@@ -41,5 +41,5 @@ def test_raport_aut_jed_1_4(obiekty_bpp, autor_jan_kowalski, jednostka):
 @pytest.mark.django_db
 def test_raport_autorow_msword(obiekty_bpp, autor_jan_kowalski, webtest_app):
     res = webtest_app.get(reverse("bpp:raport-autorow", args=(autor_jan_kowalski.pk, 2016)) + "?output=msw")
-    assert res.content_type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    assert res.content_type == "application/msword"
     assert res.status_code == 200
