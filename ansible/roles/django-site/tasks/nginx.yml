@@ -7,7 +7,7 @@
   tags: ['certs']
 
 - name: Disable deafult site if variable set
-  shell: /usr/bin/nginx_dissite default
+  file: state=absent path=/etc/nginx/sites-enabled/default
   when: django_set_as_default_http_in_nginx
 
 - name: Nginx config files are installed
