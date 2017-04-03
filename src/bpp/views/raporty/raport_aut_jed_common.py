@@ -10,6 +10,11 @@ import urllib
 from decimal import Decimal
 
 import bleach
+from bpp.models import Charakter_Formalny, Jezyk, \
+    Typ_Odpowiedzialnosci
+from bpp.models.cache import Autorzy, Rekord
+from bpp.models.system import Typ_KBN
+from bpp.models.wydawnictwo_zwarte import ILOSC_ZNAKOW_NA_ARKUSZ
 from django.core.exceptions import ObjectDoesNotExist
 from django.http.response import HttpResponse
 from django.template import loader
@@ -17,12 +22,6 @@ from django.utils.datastructures import SortedDict
 from django.utils.safestring import mark_safe
 from django.views.generic.detail import DetailView
 from django_tables2 import A, Column, Table
-
-from bpp.models import Charakter_Formalny, Jezyk, \
-    Typ_Odpowiedzialnosci
-from bpp.models.cache import Autorzy, Rekord
-from bpp.models.system import Typ_KBN
-from bpp.models.wydawnictwo_zwarte import ILOSC_ZNAKOW_NA_ARKUSZ
 
 
 class SumyImpactKbnMixin:
@@ -584,22 +583,30 @@ MSW_ALLOWED_TAGS = [
     'strong',
     'ul',
     'center', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-    'table', 'tr', 'td', 'th', 'div', 'thead', 'tbody'
+    'table', 'tr', 'td', 'th', 'div', 'thead', 'tbody',
+    'body', 'head', 'meta', 'html'
 ]
+
+MSW_ALLOWED_ATTRIBUTES = {
+    'a': ['href', 'title'],
+    'abbr': ['title'],
+    'acronym': ['title'],
+    'meta': ['charset']
+}
+
 
 class MSWordFromTemplateResponse(HttpResponse):
     def __init__(self, request, context, template_name, visible_name, *args, **kwargs):
         super(HttpResponse, self).__init__(*args, **kwargs)
-        self['Content-type'] = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        self['Content-disposition'] = 'attachment; filename*=%s' % urllib.quote(visible_name.encode("utf-8"))
+        self['Content-type'] = "application/msword"
+        self['Content-disposition'] = 'attachment; filename=%s' % visible_name.encode("utf-8") # urllib.quote(visible_name.encode("utf-8"))
         c = loader.render_to_string(template_name, context, request=request)
-        c = bleach.clean(c, tags=MSW_ALLOWED_TAGS, strip=True)
-        self.content = c
+        c = bleach.clean(c, tags=MSW_ALLOWED_TAGS, attributes=MSW_ALLOWED_ATTRIBUTES, strip=True)
+        self.content = '<html><head><meta charset="utf-8"></head><body>' + c + "</body></html>"
         self['Content-length'] = len(self.content)
 
 
 class Raport2012CommonView(DetailView):
-
     def get(self, request, *args, **kwargs):
         self.object = self.get_object()
         context = self.get_context_data(object=self.object)
@@ -607,7 +614,8 @@ class Raport2012CommonView(DetailView):
             zakres_lat = "%s" % context['rok_min']
             if context['rok_min'] != context['rok_max']:
                 zakres_lat += "-%s" % context['rok_max']
-            nazwa_pliku = "raport-%s-%s.docx" % (self.get_short_object_name().replace(".", "").replace(" ", ""), zakres_lat)
+            nazwa_pliku = "raport-%s-%s.doc" % (
+            self.get_short_object_name().replace(".", "").replace(" ", ""), zakres_lat)
             return MSWordFromTemplateResponse(
                 self.request, context, "raporty/raport_jednostek_autorow_2012/raport_common.html", nazwa_pliku)
         return self.render_to_response(context)
