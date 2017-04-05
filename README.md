@@ -29,4 +29,6 @@ $ ./buildscripts/run-tests.sh # Uruchom testy lokalnie
 
 ## Wsparcie komercyjne
 
-Wsparcie komercyjne dla projektu świadczy firma IPL, http://iplweb.pl/
+Wsparcie komercyjne dla projektu świadczy firma IPL, szczegóły na stronie domowej projektu http://bpp.iplweb.pl/
+
+Live-demo serwisu dostępne jest pod adresem http://bppdemo.iplweb.pl
