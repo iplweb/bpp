@@ -18,11 +18,22 @@
     encoding: UTF-8
     lc_collate: pl_PL.UTF-8
     lc_ctype: pl_PL.UTF-8
+    template: template0
   sudo_user: postgres
   
 - name: Create PostgreSQL plpython language
   postgresql_lang: db={{ database_name }} lang=plpythonu state=present
   sudo_user: postgres
+
+- name: Create PostgreSQL collation for pl_PL
+  shell: psql -c "CREATE COLLATION pl_PL(locale='pl_PL.utf8');" "{{ database_name }}"
+  sudo_user: postgres
+  ignore_errors: yes
+
+- name: Create PostgreSQL collation for pl_PL
+  shell: psql -c "CREATE COLLATION \"pl_PL.utf8\"(locale='pl_PL.utf8');" "{{ database_name }}"
+  sudo_user: postgres
+  ignore_errors: yes
 
 - name: Update unaccent.txt file
   file: src=unaccent-rules.txt dest=/usr/share/postgresql/{{ postgresql_version }}/tsearch_data/unaccent.rules

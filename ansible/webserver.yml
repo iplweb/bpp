@@ -3,6 +3,7 @@
   become: yes
   become_method: sudo
   roles:
+    - locale
     - nginx-with-pubsub
     - postgresql-server
     - rabbitmq-server
