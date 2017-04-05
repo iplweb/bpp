@@ -80,6 +80,9 @@ rebuild: rebuild-from-downloaded migrate
 production:
 	ansible-playbook -i "/Volumes/Dane zaszyfrowane/Biblioteka Glowna/ansible/hosts.cfg" ansible/webserver.yml
 
+bppdemo:
+	ansible-playbook -i "/Volumes/Dane zaszyfrowane/IPL/ansible/hosts.cfg" ansible/webserver.yml
+
 upload-db-to-staging:
 	fab -i .vagrant/machines/staging/virtualbox/private_key -H ubuntu@bpp-staging.localnet upload_db:zarzadca@bpp.umlub.pl-bpp.backup,staging-bpp,staging-bpp
 
