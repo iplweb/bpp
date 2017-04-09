@@ -3,7 +3,6 @@
 from .base import *
 
 DEBUG = False
-TEMPLATE_DEBUG = DEBUG
 
 SENDFILE_BACKEND = 'sendfile.backends.nginx'
 
@@ -12,11 +11,8 @@ CSRF_COOKIE_SECURE = False
 
 COMPRESS_OFFLINE = True
 
-TEMPLATE_LOADERS = (
-    ('django.template.loaders.cached.Loader', (
-        'django.template.loaders.filesystem.Loader',
-        'django.template.loaders.app_directories.Loader',
-    )),
-)
+TEMPLATES[0]['OPTIONS']['loaders'] = [
+    ('django.template.loaders.cached.Loader', TEMPLATES[0]['OPTIONS']['loaders'])
+]
 
 HTML_MINIFY = True

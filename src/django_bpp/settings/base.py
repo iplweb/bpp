@@ -48,30 +48,41 @@ STATICFILES_FINDERS = (
 # Make this unique, and don't share it with anybody.
 SECRET_KEY = '=6uqi1)(qnzjo8q@-@m#egd8v#+zac6feh2h-b&amp;=3bczpfqxxd'
 
-# List of callables that know how to import templates from various sources.
-TEMPLATE_LOADERS = (
-    "admin_tools.template_loaders.Loader",
-    'django.template.loaders.filesystem.Loader',
-    'django.template.loaders.app_directories.Loader',
-    #     'django.template.loaders.eggs.Loader',
-)
 
-TEMPLATE_CONTEXT_PROCESSORS = (
-    'django.contrib.auth.context_processors.auth',
-    'django.core.context_processors.debug',
-    'django.core.context_processors.i18n',
-    'django.core.context_processors.media',
-    'django.core.context_processors.request',
-    'django.core.context_processors.static',
-    'django.contrib.messages.context_processors.messages',
-    'password_policies.context_processors.password_status',
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [
+            os.path.join(BASE_DIR, 'templates'),
+        ],
+        'OPTIONS': {
+            'loaders': [
+                "admin_tools.template_loaders.Loader",
+                'django.template.loaders.filesystem.Loader',
+                'django.template.loaders.app_directories.Loader',
+            ],
+            'context_processors': [
 
-    'bpp.context_processors.uczelnia.uczelnia',
-    'bpp.context_processors.google_analytics.google_analytics',
+                'django.contrib.auth.context_processors.auth',
+                'django.core.context_processors.debug',
+                'django.core.context_processors.i18n',
+                'django.core.context_processors.media',
+                'django.core.context_processors.request',
+                'django.core.context_processors.static',
+                'django.contrib.messages.context_processors.messages',
+                'password_policies.context_processors.password_status',
 
-    'notifications.context_processors.notification_settings'
+                'bpp.context_processors.uczelnia.uczelnia',
+                'bpp.context_processors.google_analytics.google_analytics',
 
-)
+                'notifications.context_processors.notification_settings'
+
+            ],
+        },
+    },
+]
+
+
 
 MIDDLEWARE_CLASSES = (
     # 'debug_toolbar.middleware.DebugToolbarMiddleware',
@@ -102,9 +113,6 @@ ROOT_URLCONF = 'django_bpp.urls'
 # Python dotted path to the WSGI application used by Django's runserver.
 WSGI_APPLICATION = 'django_bpp.wsgi.application'
 
-TEMPLATE_DIRS = (
-    os.path.join(BASE_DIR, 'templates'),
-)
 
 INSTALLED_APPS = [
     'django.contrib.humanize',

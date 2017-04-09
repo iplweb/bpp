@@ -14,7 +14,6 @@ setenv_default("DJANGO_BPP_SECRET_KEY", "0xdeadbeef 2")
 from .base import *
 
 DEBUG = True
-TEMPLATE_DEBUG = DEBUG
 
 SENDFILE_BACKEND = 'sendfile.backends.simple'
 
