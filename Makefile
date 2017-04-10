@@ -34,7 +34,6 @@ rebuild-staging:
 	yes | ansible-playbook ansible/webserver.yml
 
 staging:
-	vagrant up staging
 	ansible-playbook ansible/webserver.yml --private-key=.vagrant/machines/staging/virtualbox/private_key
 
 demo-vm-ansible:
