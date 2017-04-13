@@ -602,6 +602,7 @@ class MSWordFromTemplateResponse(HttpResponse):
         self['Content-disposition'] = 'attachment; filename=%s' % visible_name.encode("utf-8") # urllib.quote(visible_name.encode("utf-8"))
         c = loader.render_to_string(template_name, context, request=request)
         c = bleach.clean(c, tags=MSW_ALLOWED_TAGS, attributes=MSW_ALLOWED_ATTRIBUTES, strip=True)
+        c = c.replace("<table>", "<table border=1 cellspacing=0>")
         self.content = '<html><head><meta charset="utf-8"></head><body>' + c + "</body></html>"
         self['Content-length'] = len(self.content)
 
