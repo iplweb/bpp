@@ -245,6 +245,12 @@ class RekordManager(FulltextSearchMixin, models.Manager):
     def prace_autora(self, autor):
         return self.filter(original__in_raw=Autorzy.objects.filter(autor=autor)).distinct()
 
+    def prace_autora_z_afiliowanych_jednostek(self, autor):
+        return self.filter(original__in_raw=Autorzy.objects.filter(
+            autor_id=autor.pk,
+            jednostka__skupia_pracownikow=True
+        )).distinct()
+
     def prace_autor_i_typ(self, autor, skrot):
         return self.filter(
             original__in_raw=Autorzy.objects.filter(

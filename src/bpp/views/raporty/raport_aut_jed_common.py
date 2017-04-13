@@ -567,7 +567,7 @@ def get_base_query_jednostka(jednostka, *args, **kw):
 
 
 def get_base_query_autor(autor, *args, **kw):
-    return _get_base_query(Rekord.objects.prace_autora, autor, *args, **kw)
+    return _get_base_query(Rekord.objects.prace_autora_z_afiliowanych_jednostek, autor, *args, **kw)
 
 
 MSW_ALLOWED_TAGS = [
