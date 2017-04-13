@@ -589,6 +589,7 @@ MSW_ALLOWED_TAGS = [
 
 MSW_ALLOWED_ATTRIBUTES = {
     'a': ['href', 'title'],
+    'td': ['colspan', 'rowspan', 'align', 'valign'],
     'abbr': ['title'],
     'acronym': ['title'],
     'meta': ['charset']
