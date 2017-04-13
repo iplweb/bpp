@@ -23,12 +23,11 @@ pytestmark = [pytest.mark.slow, pytest.mark.selenium]
 def scrollIntoView(browser, arg):
     return browser.execute_script("document.getElementById('" + arg + "').scrollIntoView()")
 
-
 def proper_click(browser, arg):
     # Czy ta metoda jest potrzebna? Kiedyś był bug, który
     # uniemożliwiał kliknięcie elementu, który nei był widoczny
     # na stronie, stąd konieczność przescrollowania do niego
-    browser.execute_script("document.getElementById('" + arg + "').scrollIntoView()")
+    scrollIntoView(browser, arg)
     browser.execute_script("document.getElementById('" + arg + "').click()")
 
 
@@ -163,7 +162,7 @@ def test_automatycznie_uzupelnij_punkty(preauth_admin_browser, live_server):
     assertPopupContains(preauth_admin_browser, u"Najpierw wybierz jakie")
 
     zrodlo = preauth_admin_browser.find_by_id("id_zrodlo-autocomplete")
-    zrodlo.type("FOO BAR")
+    zrodlo.type("FOO")
     time.sleep(2)
     zrodlo.type(Keys.TAB)
 
@@ -237,21 +236,24 @@ def test_upload_punkty(preauth_admin_browser, live_server):
     url = reverse("admin:bpp_wydawnictwo_ciagle_add")
     preauth_admin_browser.visit(live_server + url)
 
-    preauth_admin_browser.fill("zrodlo-autocomplete", "WTF LOL")
-    time.sleep(1)
-    preauth_admin_browser.fill("zrodlo-autocomplete", Keys.ENTER)
+    preauth_admin_browser.fill("zrodlo-autocomplete", "WTF")
+    time.sleep(2)
+    preauth_admin_browser.fill("zrodlo-autocomplete", Keys.TAB)
 
+    scrollIntoView(preauth_admin_browser, "id_rok")
     preauth_admin_browser.fill("rok", str(CURRENT_YEAR))
-    preauth_admin_browser.fill("impact_factor", "50")
+
+    scrollIntoView(preauth_admin_browser, "id_impact_factor")
+    preauth_admin_browser.fill("impact_factor", "1")
 
     proper_click(preauth_admin_browser, "id_dodaj_punktacje_do_zrodla_button")
     # preauth_admin_browser.find_by_id("id_dodaj_punktacje_do_zrodla_button").click()
     time.sleep(2)
 
     assert Punktacja_Zrodla.objects.count() == 1
-    assert Punktacja_Zrodla.objects.all()[0].impact_factor == 50
+    assert Punktacja_Zrodla.objects.all()[0].impact_factor == 1
 
-    preauth_admin_browser.fill("impact_factor", "60")
+    preauth_admin_browser.fill("impact_factor", "2")
     proper_click(preauth_admin_browser, "id_dodaj_punktacje_do_zrodla_button")
     # preauth_admin_browser.find_by_id("id_dodaj_punktacje_do_zrodla_button").click()
     time.sleep(2)
@@ -260,7 +262,7 @@ def test_upload_punkty(preauth_admin_browser, live_server):
     time.sleep(2)
 
     assert Punktacja_Zrodla.objects.count() == 1
-    assert Punktacja_Zrodla.objects.all()[0].impact_factor == 60
+    assert Punktacja_Zrodla.objects.all()[0].impact_factor == 2
 
     preauth_admin_browser.execute_script("window.onbeforeunload = function(e) {};")
 
@@ -335,8 +337,13 @@ def set_autocomplete(browser, id, entry):
     widget = find_autocomplete_widget(browser, id)
     start = time.time()
     while True:
-        for elem in ac.type(Keys.TAB, slowly=True):
-            time.sleep(0.2)
+        if widget.visible:
+            break
+        if start - time.time() > 13:
+            raise Exception("Timeout")
+    for elem in ac.type(Keys.TAB, slowly=True):
+        pass
+    while True:
         if not widget.visible:
             break
         if start - time.time() > 13:
