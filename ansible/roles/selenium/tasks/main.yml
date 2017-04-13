@@ -9,27 +9,6 @@
   notify: 
     - restart supervisor services
 
-- name: Stat cached geckodriver
-  stat: path=/var/cache/wget/geckodriver-v{{ geckodriver_version }}-{{ geckodriver_platform }}.tar.gz
-  register: gd
-
-- name: Download geckodriver
-  get_url: url=https://github.com/mozilla/geckodriver/releases/download/v{{ geckodriver_version }}/geckodriver-v{{ geckodriver_version }}-{{ geckodriver_platform }}.tar.gz dest=/var/cache/wget/
-  when: not gd.stat.exists
-
-- name: Stat geckodriver bin
-  stat: path=/usr/bin/geckodriver
-  register: gd
-
-- name: Unpack geckodriver
-  shell: tar -xzf /var/cache/wget/geckodriver-v{{ geckodriver_version }}-{{ geckodriver_platform }}.tar.gz
-  args: 
-    chdir: /usr/bin
-    creates: /usr/bin/geckodriver
-  when: not gd.stat.exists
-  notify: 
-    - restart supervisor services
-
 - name: Supervisor service template installed
   template: src=selenium.conf dest=/etc/supervisor/conf.d/0050-selenium.conf
   notify: 
@@ -38,3 +17,6 @@
 
 - name: Add localhost to /etc/hosts
   lineinfile: dest=/etc/hosts line="192.168.111.1 macosx.localnet" owner=root group=root mode=0644
+
+- include: geckodriver.yml
+- include: chromedriver.yml
