@@ -1,0 +1,14 @@
+---
+- name: Download Chrome
+  get_url: 
+    url: https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb 
+    dest: /var/cache/wget/
+    checksum: md5:52a4341475511d3627a86a344c0831ce
+
+- name: Install deb (this will fail and failure is expected at this point.. and ignored!)
+  shell: dpkg -i --force-depends /var/cache/wget/google-chrome-stable_current_amd64.deb 
+  ignore_errors: yes
+
+- name: Fix apt
+  shell: apt-get install -fy
+  

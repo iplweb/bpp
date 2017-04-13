@@ -1,0 +1,24 @@
+---
+- name: Chromedriver directory exists
+  file: state=directory path={{ chromedriver_dir }}
+
+- name: Stat cached chromedriver
+  stat: path={{ chromedriver_zip }}
+  register: chrdrv
+
+- name: Download chromedriver
+  get_url: url=https://chromedriver.storage.googleapis.com/{{ chromedriver_version }}/chromedriver_{{ chromedriver_platform }}.zip dest={{ chromedriver_dir }}
+  when: not chrdrv.stat.exists
+
+- name: Stat chromedriver bin
+  stat: path=/usr/bin/chromedriver
+  register: chrdrv
+
+- name: Unpack chromedriver
+  shell: unzip {{ chromedriver_zip }}
+  args: 
+    chdir: /usr/bin
+    creates: /usr/bin/chromedriver
+  when: not chrdrv.stat.exists
+  notify: 
+    - restart supervisor services
