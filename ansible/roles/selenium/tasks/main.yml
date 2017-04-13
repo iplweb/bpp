@@ -1,20 +1,20 @@
 ---
 - name: Stat cached selenium
-  stat: path=/var/cache/wget/selenium-server-standalone-3.0.1.jar
+  stat: path=/var/cache/wget/selenium-server-standalone-{{ selenium_version }}.jar
   register: sel
 
 - name: Download Selenium
-  get_url: url=https://goo.gl/Lyo36k dest=/var/cache/wget/
+  get_url: url=https://goo.gl/uTXEJ1 dest=/var/cache/wget/
   when: not sel.stat.exists
   notify: 
     - restart supervisor services
 
 - name: Stat cached geckodriver
-  stat: path=/var/cache/wget/geckodriver-v0.13.0-linux64.tar.gz
+  stat: path=/var/cache/wget/geckodriver-v{{ geckodriver_version }}-{{ geckodriver_platform }}.tar.gz
   register: gd
 
 - name: Download geckodriver
-  get_url: url=https://github.com/mozilla/geckodriver/releases/download/v0.13.0/geckodriver-v0.13.0-linux64.tar.gz dest=/var/cache/wget/
+  get_url: url=https://github.com/mozilla/geckodriver/releases/download/v{{ geckodriver_version }}/geckodriver-v{{ geckodriver_version }}-{{ geckodriver_platform }}.tar.gz dest=/var/cache/wget/
   when: not gd.stat.exists
 
 - name: Stat geckodriver bin
@@ -22,7 +22,7 @@
   register: gd
 
 - name: Unpack geckodriver
-  shell: tar -xzf /var/cache/wget/geckodriver-v0.13.0-linux64.tar.gz
+  shell: tar -xzf /var/cache/wget/geckodriver-v{{ geckodriver_version }}-{{ geckodriver_platform }}.tar.gz
   args: 
     chdir: /usr/bin
     creates: /usr/bin/geckodriver
