@@ -3,6 +3,7 @@
 from django.conf.urls import patterns, include, url
 from django.conf.urls.static import static
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.cache import cache_page
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 
@@ -12,9 +13,12 @@ from bpp.forms import MyAuthenticationForm
 from bpp.views.admin import WydawnictwoCiagleTozView, WydawnictwoZwarteTozView, \
     PatentTozView
 from bpp.views.mymultiseek import MyMultiseekResults
+from django_bpp.sitemaps import JednostkaSitemap, django_bpp_sitemaps
+
 autocomplete_light.autodiscover()
 
 from django.contrib import admin
+from django.contrib.sitemaps import views as sitemaps_views
 
 admin.autodiscover()
 
@@ -26,8 +30,6 @@ js_info_dict = {
         'monitio'
     ),
 }
-
-
 
 
 urlpatterns = patterns(
@@ -110,6 +112,16 @@ urlpatterns = patterns(
     url(r'egeria/', include('egeria.urls')),
 
     url(r"^login/user/(?P<user_id>.+)/$", "loginas.views.user_login", name="loginas-user-login"),
+
+    (r'^robots\.txt$', include('robots.urls')),
+
+    url(r'^sitemap\.xml$', cache_page(7*24*3600)(sitemaps_views.index), {
+        'sitemaps': django_bpp_sitemaps,
+        'sitemap_url_name': 'sitemaps'
+    }, name='sitemap'),
+    url(r'^sitemap-(?P<section>.+)\.xml$',
+        cache_page(7*24*3600)(sitemaps_views.sitemap), {'sitemaps': django_bpp_sitemaps},
+        name='sitemaps'),
 
 ) + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) \
   + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

@@ -122,6 +122,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.sessions',
     'django.contrib.sites',
+    'django.contrib.sitemaps',
     'password_policies',
 
     'create_test_db',
@@ -171,7 +172,9 @@ INSTALLED_APPS = [
     # 'egeria',
     'eksport_pbn',
 
-    'loginas'
+    'loginas',
+
+    'robots'
 ]
 
 
@@ -517,4 +520,4 @@ SENDFILE_ROOT = MEDIA_ROOT
 
 GOOGLE_ANALYTICS_PROPERTY_ID = django_getenv("DJANGO_BPP_GOOGLE_ANALYTICS_PROPERTY_ID", "")
 
-
+ROBOTS_SITEMAP_VIEW_NAME = 'sitemap'

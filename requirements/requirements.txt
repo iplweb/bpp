@@ -69,3 +69,4 @@ django_braces==1.8.1
 django-loginas==0.1.5
 
 
+django-robots==3.0

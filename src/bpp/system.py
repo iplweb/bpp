@@ -21,6 +21,7 @@ from bpp.models.openaccess import Tryb_OpenAccess_Wydawnictwo_Ciagle, Tryb_OpenA
     Czas_Udostepnienia_OpenAccess, Licencja_OpenAccess, Wersja_Tekstu_OpenAccess
 from bpp.models.praca_habilitacyjna import Publikacja_Habilitacyjna
 from bpp.models.struktura import Jednostka_Wydzial
+import robots.models as robots
 
 User = get_user_model()
 
@@ -34,7 +35,9 @@ groups = {
         Tryb_OpenAccess_Wydawnictwo_Zwarte,
         Czas_Udostepnienia_OpenAccess,
         Licencja_OpenAccess,
-        Wersja_Tekstu_OpenAccess],
+        Wersja_Tekstu_OpenAccess,
+        robots.Url, robots.Rule
+    ],
     'struktura': [Uczelnia, Wydzial, Jednostka, Jednostka_Wydzial],
     'wprowadzanie danych': [
         Zrodlo, Autor, Wydawnictwo_Ciagle, Wydawnictwo_Zwarte,
