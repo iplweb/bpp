@@ -4,7 +4,7 @@ django_nginx_push_stream_allowed_ips:
   - 192.168.111.101
 
 django_google_analytics_property_id: UA-96622450-2
-django_google_verification_code: 123
+django_google_verification_code: 1111111111111111
 
 database_name: staging-bpp
 database_user: staging-bpp
