@@ -3,6 +3,7 @@
 from django.conf import settings
 from django.apps import AppConfig
 
+
 class BppConfig(AppConfig):
     name = 'bpp'
     verbose_name = u'Biblioteka Publikacji Pracowników'
@@ -12,3 +13,6 @@ class BppConfig(AppConfig):
             from bpp.models import cache
             cache.enable()
 
+        from django.db.models.signals import post_migrate
+        from bpp.system import ustaw_robots_txt
+        post_migrate.connect(ustaw_robots_txt, sender=self)
