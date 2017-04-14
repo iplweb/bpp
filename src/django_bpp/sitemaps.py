@@ -9,7 +9,7 @@ from bpp.models.autor import Autor
 from bpp.models.patent import Patent
 from bpp.models.praca_doktorska import Praca_Doktorska
 from bpp.models.praca_habilitacyjna import Praca_Habilitacyjna
-from bpp.models.struktura import Uczelnia
+from bpp.models.struktura import Uczelnia, Wydzial
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 
@@ -37,6 +37,11 @@ class UczelniaSitemap(BppSitemap):
     changefreq = "yearly"
     klass = Uczelnia
     url = "bpp:browse_uczelnia"
+
+class WydzialSitemap(BppSitemap):
+    changefreq = "yearly"
+    klass = Wydzial
+    url = "bpp:browse_wydzial"
 
 
 class AutorSitemap(BppSitemap):
@@ -77,6 +82,7 @@ django_bpp_sitemaps = {
     'jednostka': JednostkaSitemap,
     'autor': AutorSitemap,
     'uczelnia': UczelniaSitemap,
+    'wydzial': WydzialSitemap,
     'wydawnictwo-ciagle': Wydawnictwo_CiagleSitemap,
     'wydawnictwo-zwarte': Wydawnictwo_ZwarteSitemap,
     'praca-doktorska': Praca_DoktorskaSitemap,

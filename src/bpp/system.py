@@ -21,7 +21,8 @@ from bpp.models.openaccess import Tryb_OpenAccess_Wydawnictwo_Ciagle, Tryb_OpenA
     Czas_Udostepnienia_OpenAccess, Licencja_OpenAccess, Wersja_Tekstu_OpenAccess
 from bpp.models.praca_habilitacyjna import Publikacja_Habilitacyjna
 from bpp.models.struktura import Jednostka_Wydzial
-import robots.models as robots
+from robots.models import Rule, Url
+from django.contrib.sites.models import Site
 
 User = get_user_model()
 
@@ -36,7 +37,6 @@ groups = {
         Czas_Udostepnienia_OpenAccess,
         Licencja_OpenAccess,
         Wersja_Tekstu_OpenAccess,
-        robots.Url, robots.Rule
     ],
     'struktura': [Uczelnia, Wydzial, Jednostka, Jednostka_Wydzial],
     'wprowadzanie danych': [
@@ -46,7 +46,8 @@ groups = {
         Praca_Doktorska, Praca_Habilitacyjna, Patent, Patent_Autor,
         Publikacja_Habilitacyjna],
     'indeks autorów': [Autor, Autor_Jednostka],
-    'administracja': [User, Group, SearchForm]
+    'administracja': [User, Group, SearchForm],
+    'web': [Url, Rule, Site],
 }
 
 

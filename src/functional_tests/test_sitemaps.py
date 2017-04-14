@@ -7,12 +7,14 @@ from bpp.models.autor import Autor
 from bpp.models.patent import Patent
 from bpp.models.praca_doktorska import Praca_Doktorska
 from bpp.models.praca_habilitacyjna import Praca_Habilitacyjna
+from bpp.models.struktura import Wydzial
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 
 
 @pytest.mark.django_db
 def test_sitemaps(webtest_app):
+    mommy.make(Wydzial)
     mommy.make(Autor)
     mommy.make(Wydawnictwo_Ciagle)
     mommy.make(Wydawnictwo_Zwarte)
@@ -21,7 +23,7 @@ def test_sitemaps(webtest_app):
     mommy.make(Patent)
 
     for page in ['', '-jednostka', '-autor', '-uczelnia', '-wydawnictwo-ciagle', '-wydawnictwo-zwarte',
-                 '-praca-doktorska', '-praca-habilitacyjna', '-patent']:
+                 '-praca-doktorska', '-praca-habilitacyjna', '-patent', '-wydzial']:
         res = webtest_app.get("/sitemap%s.xml" % page)
         assert res.status_code == 200
         assert 'example.com' in res.content
