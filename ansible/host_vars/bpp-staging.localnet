@@ -13,6 +13,8 @@ django_group: ubuntu
 django_user: ubuntu
 
 django_hostname: bpp-staging.localnet
+django_site_name: "Staging BPP"
+
 django_secret_key: "0xdeadbeef_3_bez_spacj"
 
 django_settings_module: "{{ django_project_name }}.settings.production"
