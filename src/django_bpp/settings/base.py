@@ -175,7 +175,8 @@ INSTALLED_APPS = [
     'loginas',
 
     'robots',
-    'webmaster_verification'
+    'webmaster_verification',
+    'favicon'
 ]
 
 

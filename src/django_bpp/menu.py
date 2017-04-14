@@ -36,6 +36,7 @@ WEB_MENU = [
     (u"robots.txt - URLe", "/admin/robots/url/"),
     (u"robots.txt - reguły", "/admin/robots/rule/"),
     (u"Strony", "/admin/sites/site/"),
+    (u"Favicon", "/admin/favicon/"),
 ]
 
 STRUKTURA_MENU = [

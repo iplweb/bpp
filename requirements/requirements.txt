@@ -71,3 +71,4 @@ django-loginas==0.1.5
 
 django-robots==3.0
 django-webmaster-verification==0.3.0
+favicon==0.0.6
