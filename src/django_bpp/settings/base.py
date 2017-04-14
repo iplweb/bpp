@@ -174,7 +174,8 @@ INSTALLED_APPS = [
 
     'loginas',
 
-    'robots'
+    'robots',
+    'webmaster_verification'
 ]
 
 
@@ -521,3 +522,7 @@ SENDFILE_ROOT = MEDIA_ROOT
 GOOGLE_ANALYTICS_PROPERTY_ID = django_getenv("DJANGO_BPP_GOOGLE_ANALYTICS_PROPERTY_ID", "")
 
 ROBOTS_SITEMAP_VIEW_NAME = 'sitemap'
+
+WEBMASTER_VERIFICATION = {
+    'google': django_getenv("DJANGO_BPP_GOOGLE_VERIFICATION_CODE", "1111111111111111"),
+}
