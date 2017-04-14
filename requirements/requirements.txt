@@ -28,8 +28,7 @@ django-bower==5.1.0
 django-compressor==2.0
 djorm-pgarray==1.2
 
-# MUSI być budowany pod Linuxem z powodu poniższych poleceń:
-gunicorn==19.3.0
+gunicorn==19.7.1
 
 zope.interface==4.1.1
 zope.component==4.1.0
