@@ -14,5 +14,6 @@ class BppConfig(AppConfig):
             cache.enable()
 
         from django.db.models.signals import post_migrate
-        from bpp.system import ustaw_robots_txt
+        from bpp.system import ustaw_robots_txt, odtworz_grupy
         post_migrate.connect(ustaw_robots_txt, sender=self)
+        post_migrate.connect(odtworz_grupy, sender=self)

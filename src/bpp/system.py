@@ -6,9 +6,13 @@ groups - lista grup wraz z uprawnieniami do edycji poszczególnych obiektów.
 """
 
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Group
-from django.db.models.signals import post_migrate
+from django.contrib.auth.models import Group, Permission
+from django.contrib.contenttypes.models import ContentType
+from django.contrib.sites.models import Site
+from django.db import transaction
+from favicon.models import Favicon, FaviconImg
 from multiseek.models import SearchForm
+from robots.models import Rule, Url
 
 from bpp.models import Funkcja_Autora, Zrodlo_Informacji, Jezyk, \
     Rodzaj_Zrodla, Status_Korekty, Tytul, Typ_KBN, Uczelnia, Wydzial, \
@@ -21,9 +25,8 @@ from bpp.models import Funkcja_Autora, Zrodlo_Informacji, Jezyk, \
 from bpp.models.openaccess import Tryb_OpenAccess_Wydawnictwo_Ciagle, Tryb_OpenAccess_Wydawnictwo_Zwarte, \
     Czas_Udostepnienia_OpenAccess, Licencja_OpenAccess, Wersja_Tekstu_OpenAccess
 from bpp.models.praca_habilitacyjna import Publikacja_Habilitacyjna
+from bpp.models.profile import BppUser
 from bpp.models.struktura import Jednostka_Wydzial
-from robots.models import Rule, Url
-from django.contrib.sites.models import Site
 
 User = get_user_model()
 
@@ -48,9 +51,8 @@ groups = {
         Publikacja_Habilitacyjna],
     'indeks autorów': [Autor, Autor_Jednostka],
     'administracja': [User, Group, SearchForm],
-    'web': [Url, Rule, Site],
+    'web': [Url, Rule, Site, Favicon, FaviconImg],
 }
-
 
 # -*- charmap -*- -*- charmap -*--*- charmap -*--*- charmap -*--*- charmap -*-
 
@@ -107,7 +109,6 @@ iso = ['00A0', '0104', '02D8', '0141', '00A4', '013D', '015A', '00A7', '00A8', '
        '010D', '00E9', '00E8', '0119', '00EB', '011B', '00ED', '00EE', '010F', '0111', '0144', '0148', '00F3',
        '00F4', '0151', '00F6', '00F7', '0159', '016F', '00FA', '0171', '00FC', '00FD', '0163', '02D9']
 
-
 # Po migracji, upewnij się że robots.txt są generowane poprawnie
 
 DISALLOW_URLS = [
@@ -118,6 +119,7 @@ DISALLOW_URLS = [
     "/integrator2/",
     "/password_change/",
 ]
+
 
 def ustaw_robots_txt(**kwargs):
     urls = set()
@@ -134,3 +136,27 @@ def ustaw_robots_txt(**kwargs):
     for elem in DISALLOW_URLS:
         r.disallowed.add(Url.objects.get(pattern=elem))
     r.save()
+
+
+@transaction.atomic
+def odtworz_grupy(**kwargs):
+    grp_dict = {}
+    for u in BppUser.objects.all():
+        grp_dict[u] = [grp.name for grp in u.groups.all()]
+
+    for name, models in groups.items():
+        try:
+            Group.objects.get(name=name).delete()
+        except Group.DoesNotExist:
+            pass
+
+        g = Group.objects.create(name=name)
+        for model in models:
+            content_type = ContentType.objects.get_for_model(model)
+            for permission in Permission.objects.filter(
+                    content_type=content_type):
+                g.permissions.add(permission)
+
+    for u, grps in grp_dict.items():
+        for gname in grps:
+            u.groups.add(Group.objects.get(name=gname))
