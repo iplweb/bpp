@@ -4,6 +4,7 @@ django_nginx_push_stream_allowed_ips:
   - 192.168.111.101
 
 django_google_analytics_property_id: UA-96622450-2
+django_google_verification_code: 123
 
 database_name: staging-bpp
 database_user: staging-bpp
@@ -13,6 +14,8 @@ django_group: ubuntu
 django_user: ubuntu
 
 django_hostname: bpp-staging.localnet
+django_site_name: "Staging BPP"
+
 django_secret_key: "0xdeadbeef_3_bez_spacj"
 
 django_settings_module: "{{ django_project_name }}.settings.production"

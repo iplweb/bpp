@@ -7,6 +7,7 @@ groups - lista grup wraz z uprawnieniami do edycji poszczególnych obiektów.
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+from django.db.models.signals import post_migrate
 from multiseek.models import SearchForm
 
 from bpp.models import Funkcja_Autora, Zrodlo_Informacji, Jezyk, \
@@ -21,6 +22,8 @@ from bpp.models.openaccess import Tryb_OpenAccess_Wydawnictwo_Ciagle, Tryb_OpenA
     Czas_Udostepnienia_OpenAccess, Licencja_OpenAccess, Wersja_Tekstu_OpenAccess
 from bpp.models.praca_habilitacyjna import Publikacja_Habilitacyjna
 from bpp.models.struktura import Jednostka_Wydzial
+from robots.models import Rule, Url
+from django.contrib.sites.models import Site
 
 User = get_user_model()
 
@@ -34,7 +37,8 @@ groups = {
         Tryb_OpenAccess_Wydawnictwo_Zwarte,
         Czas_Udostepnienia_OpenAccess,
         Licencja_OpenAccess,
-        Wersja_Tekstu_OpenAccess],
+        Wersja_Tekstu_OpenAccess,
+    ],
     'struktura': [Uczelnia, Wydzial, Jednostka, Jednostka_Wydzial],
     'wprowadzanie danych': [
         Zrodlo, Autor, Wydawnictwo_Ciagle, Wydawnictwo_Zwarte,
@@ -43,7 +47,8 @@ groups = {
         Praca_Doktorska, Praca_Habilitacyjna, Patent, Patent_Autor,
         Publikacja_Habilitacyjna],
     'indeks autorów': [Autor, Autor_Jednostka],
-    'administracja': [User, Group, SearchForm]
+    'administracja': [User, Group, SearchForm],
+    'web': [Url, Rule, Site],
 }
 
 
@@ -101,3 +106,31 @@ iso = ['00A0', '0104', '02D8', '0141', '00A4', '013D', '015A', '00A7', '00A8', '
        '00DC', '00DD', '0162', '00DF', '0155', '00E1', '00E2', '0103', '00E4', '013A', '0107', '00E7',
        '010D', '00E9', '00E8', '0119', '00EB', '011B', '00ED', '00EE', '010F', '0111', '0144', '0148', '00F3',
        '00F4', '0151', '00F6', '00F7', '0159', '016F', '00FA', '0171', '00FC', '00FD', '0163', '02D9']
+
+
+# Po migracji, upewnij się że robots.txt są generowane poprawnie
+
+DISALLOW_URLS = [
+    "/multiseek/",
+    "/bpp/raporty/",
+    "/eksport_pbn/",
+    "/admin/",
+    "/integrator2/",
+    "/password_change/",
+]
+
+def ustaw_robots_txt(**kwargs):
+    urls = set()
+    for elem in DISALLOW_URLS:
+        url, _ignore = Url.objects.get_or_create(pattern=elem)
+        urls.add(url)
+
+    cnt = Site.objects.all().count()
+    if cnt != 1:
+        raise Exception("Not supported count=%i" % cnt)
+
+    r, _ignore = Rule.objects.get_or_create(robot="*")
+    r.sites.add(Site.objects.all()[0])
+    for elem in DISALLOW_URLS:
+        r.disallowed.add(Url.objects.get(pattern=elem))
+    r.save()

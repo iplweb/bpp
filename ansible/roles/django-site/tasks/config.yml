@@ -12,6 +12,7 @@
     - export {{ django_envvar_prefix }}_NOTIFICATIONS_HOST="{{ django_notifications_host }}"
     - export {{ django_envvar_prefix }}_MEDIA_ROOT="{{ django_media_root }}"
     - export {{ django_envvar_prefix }}_GOOGLE_ANALYTICS_PROPERTY_ID="{{ django_google_analytics_property_id }}"
+    - export {{ django_envvar_prefix }}_GOOGLE_VERIFICATION_CODE="{{ django_google_verification_code }}"
     - export PGDATABASE="{{ django_db_name}}"
     - export PGUSER="{{ django_db_user}}"
     - export PGPASSWORD="{{ django_db_password}}"

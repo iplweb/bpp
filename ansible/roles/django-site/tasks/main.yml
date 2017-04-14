@@ -75,6 +75,9 @@
   command: "{{ django_home_dir }}/vexec python {{ django_extracted_sources_dir }}/src/manage.py migrate --noinput"
   tags: ['django-migrate']
 
+- name: Site name for sites framework is set up
+  command: "{{ django_home_dir }}/vexec python {{ django_extracted_sources_dir }}/src/manage.py set_site_name -d {{ django_hostname }} -n {{ django_site_name }}"
+
 - include: supervisor.yml
   tags: ['supervisor',]
 

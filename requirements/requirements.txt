@@ -69,3 +69,5 @@ django_braces==1.8.1
 django-loginas==0.1.5
 
 
+django-robots==3.0
+django-webmaster-verification==0.3.0

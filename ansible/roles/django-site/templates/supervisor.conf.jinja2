@@ -33,7 +33,7 @@ command={{ django_home_dir }}/vexec {{ django_venv_dir }}/bin/gunicorn
     -b 127.0.0.1:{{ django_gunicorn_port }}
     --workers={{ ansible_processor_cores }}
     --timeout=1800 django_bpp.wsgi
-    --max-requests=256
+    --max-requests=40960
 directory={{ django_extracted_sources_dir }}/src
 user={{ django_user }}
 autostart=true
