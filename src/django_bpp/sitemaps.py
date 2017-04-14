@@ -106,7 +106,6 @@ django_bpp_sitemaps = {
     'jednostka': JednostkaSitemap,
     'uczelnia': UczelniaSitemap,
     'wydzial': WydzialSitemap,
-    'patent': PatentSitemap
 }
 
 for litera in u"aąbcćdefghijklłmnńoópqrsśtuvwxyzźż":
@@ -114,5 +113,6 @@ for litera in u"aąbcćdefghijklłmnńoópqrsśtuvwxyzźż":
                          ("wydawnictwo-ciagle", Wydawnictwo_CiagleSitemap),
                          ("praca-doktorska", Praca_DoktorskaSitemap),
                          ("praca-habilitacyjna", Praca_HabilitacyjnaSitemap),
-                         ("autor", AutorSitemap)]:
+                         ("autor", AutorSitemap),
+                         ("patent", PatentSitemap)]:
         django_bpp_sitemaps[label + "-" + litera] = klasa(litera)

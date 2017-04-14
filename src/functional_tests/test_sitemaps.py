@@ -15,15 +15,15 @@ from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 @pytest.mark.django_db
 def test_sitemaps(webtest_app):
     mommy.make(Wydzial)
-    mommy.make(Autor)
-    mommy.make(Wydawnictwo_Ciagle)
-    mommy.make(Wydawnictwo_Zwarte)
-    mommy.make(Praca_Doktorska)
-    mommy.make(Praca_Habilitacyjna)
-    mommy.make(Patent)
+    mommy.make(Autor, nazwisko="Alan")
+    mommy.make(Wydawnictwo_Ciagle, tytul_oryginalny="A case of")
+    mommy.make(Wydawnictwo_Zwarte, tytul_oryginalny="A case of")
+    mommy.make(Praca_Doktorska, tytul_oryginalny="A case of")
+    mommy.make(Praca_Habilitacyjna, tytul_oryginalny="A case of")
+    mommy.make(Patent, tytul_oryginalny="A case of")
 
-    for page in ['', '-jednostka', '-autor', '-uczelnia', '-wydawnictwo-ciagle', '-wydawnictwo-zwarte',
-                 '-praca-doktorska', '-praca-habilitacyjna', '-patent', '-wydzial']:
+    for page in ['', '-jednostka', '-autor-a', '-uczelnia', '-wydawnictwo-ciagle-a', '-wydawnictwo-zwarte-a',
+                 '-praca-doktorska-a', '-praca-habilitacyjna-a', '-patent-a', '-wydzial']:
         res = webtest_app.get("/sitemap%s.xml" % page)
         assert res.status_code == 200
         assert 'example.com' in res.content
