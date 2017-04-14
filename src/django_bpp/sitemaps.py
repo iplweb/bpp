@@ -15,7 +15,7 @@ from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 
 
 class BppSitemap(Sitemap):
-    priority = 0.5
+    url_obj_field = "pk"
 
     def items(self):
         return self.klass.objects.all()
@@ -24,36 +24,60 @@ class BppSitemap(Sitemap):
         return obj.ostatnio_zmieniony
 
     def location(self, obj):
-        return reverse(self.url, args=(obj.pk,))
+        return reverse(self.url, args=(getattr(obj, self.url_obj_field),))
 
 
 class JednostkaSitemap(BppSitemap):
     changefreq = "yearly"
     klass = Jednostka
     url = "bpp:browse_jednostka"
+    url_obj_field = "slug"
 
 
 class UczelniaSitemap(BppSitemap):
     changefreq = "yearly"
     klass = Uczelnia
     url = "bpp:browse_uczelnia"
+    url_obj_field = "slug"
+
 
 class WydzialSitemap(BppSitemap):
     changefreq = "yearly"
     klass = Wydzial
     url = "bpp:browse_wydzial"
+    url_obj_field = "slug"
+
+    def items(self):
+        return self.klass.objects.filter(widoczny=True)
 
 
-class AutorSitemap(BppSitemap):
+class AlphabeticBppSitemap(BppSitemap):
+    changefreq = "weekly"
+    url = "bpp:browse_praca"
+    title_field = "tytul_oryginalny"
+    litera = None
+
+    def __init__(self, litera=""):
+        super(AlphabeticBppSitemap, self).__init__()
+        if litera:
+            self.litera = litera
+
+    def items(self):
+        if not self.litera:
+            return super(AlphabeticBppSitemap, self).items()
+        kw = {self.title_field + "__istartswith": self.litera}
+        return super(AlphabeticBppSitemap, self).items().filter(**kw)
+
+
+class AutorSitemap(AlphabeticBppSitemap):
     changefreq = "weekly"
     klass = Autor
     url = "bpp:browse_autor"
+    url_obj_field = "slug"
+    title_field = "nazwisko"
 
 
-class PracaBppSitemap(BppSitemap):
-    changefreq = "weekly"
-    url = "bpp:browse_praca"
-
+class PracaBppSitemap(AlphabeticBppSitemap):
     def location(self, obj):
         return reverse(self.url, args=(str(self.klass.__name__).lower(), obj.pk))
 
@@ -80,12 +104,15 @@ class PatentSitemap(PracaBppSitemap):
 
 django_bpp_sitemaps = {
     'jednostka': JednostkaSitemap,
-    'autor': AutorSitemap,
     'uczelnia': UczelniaSitemap,
     'wydzial': WydzialSitemap,
-    'wydawnictwo-ciagle': Wydawnictwo_CiagleSitemap,
-    'wydawnictwo-zwarte': Wydawnictwo_ZwarteSitemap,
-    'praca-doktorska': Praca_DoktorskaSitemap,
-    'praca-habilitacyjna': Praca_HabilitacyjnaSitemap,
     'patent': PatentSitemap
 }
+
+for litera in u"aąbcćdefghijklłmnńoópqrsśtuvwxyzźż":
+    for label, klasa in [("wydawnictwo-zwarte", Wydawnictwo_ZwarteSitemap),
+                         ("wydawnictwo-ciagle", Wydawnictwo_CiagleSitemap),
+                         ("praca-doktorska", Praca_DoktorskaSitemap),
+                         ("praca-habilitacyjna", Praca_HabilitacyjnaSitemap),
+                         ("autor", AutorSitemap)]:
+        django_bpp_sitemaps[label + "-" + litera] = klasa(litera)
