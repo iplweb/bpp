@@ -378,9 +378,12 @@ REDIS_DB_SESSION = 4
 REDIS_DB_CACHEOPS = 5
 REDIS_DB_LOCKS = 6
 
+from django_bpp.version import VERSION
+
 if os.getenv("DJANGO_BPP_RAVEN_CONFIG_URL", None):
     RAVEN_CONFIG = {
         'dsn': django_getenv("DJANGO_BPP_RAVEN_CONFIG_URL"),
+        'release': VERSION
     }
 
     INSTALLED_APPS.append('raven.contrib.django.raven_compat')
