@@ -1,7 +1,9 @@
 # -*- encoding: utf-8 -*-
 
-import sys, os
+import os
+import sys
 from datetime import timedelta
+
 from django.core.exceptions import ImproperlyConfigured
 
 
@@ -10,6 +12,7 @@ def django_getenv(varname, default=None):
     if value is None:
         raise ImproperlyConfigured("Please set %r variable" % varname)
     return value
+
 
 # pycharm, leave this
 os
@@ -30,9 +33,9 @@ STATIC_URL = '/static/'
 
 ADMIN_MEDIA_PREFIX = '/static/admin/'
 STATICFILES_DIRS = (
-# Put strings here, like "/home/html/static" or "C:/www/django/static".
-# Always use forward slashes, even on Windows.
-# Don't forget to use absolute paths, not relative paths.
+    # Put strings here, like "/home/html/static" or "C:/www/django/static".
+    # Always use forward slashes, even on Windows.
+    # Don't forget to use absolute paths, not relative paths.
 )
 
 # List of finder classes that know how to find static files in
@@ -47,7 +50,6 @@ STATICFILES_FINDERS = (
 
 # Make this unique, and don't share it with anybody.
 SECRET_KEY = '=6uqi1)(qnzjo8q@-@m#egd8v#+zac6feh2h-b&amp;=3bczpfqxxd'
-
 
 TEMPLATES = [
     {
@@ -82,8 +84,6 @@ TEMPLATES = [
     },
 ]
 
-
-
 MIDDLEWARE_CLASSES = (
     # 'debug_toolbar.middleware.DebugToolbarMiddleware',
 
@@ -102,9 +102,13 @@ MIDDLEWARE_CLASSES = (
     'django_tables2_reports.middleware.TableReportMiddleware',
 
     'session_security.middleware.SessionSecurityMiddleware',
-    'notifications.middleware.NotificationsMiddleware'
-
+    'notifications.middleware.NotificationsMiddleware',
+    'dogslow.WatchdogMiddleware',
 )
+
+DOGSLOW_LOGGER = 'dogslow'  # can be anything, but must match `logger` below
+DOGSLOW_LOG_TO_SENTRY = True
+DOGSLOW_LOG_LEVEL = 'WARNING'  # optional, defaults to 'WARNING'
 
 INTERNAL_IPS = ('127.0.0.1',)
 
@@ -112,7 +116,6 @@ ROOT_URLCONF = 'django_bpp.urls'
 
 # Python dotted path to the WSGI application used by Django's runserver.
 WSGI_APPLICATION = 'django_bpp.wsgi.application'
-
 
 INSTALLED_APPS = [
     'django.contrib.humanize',
@@ -179,7 +182,6 @@ INSTALLED_APPS = [
     'favicon'
 ]
 
-
 # Profile użytkowników
 AUTH_USER_MODEL = "bpp.BppUser"
 
@@ -206,7 +208,7 @@ INTERNAL_IPS = ('127.0.0.1',)
 DJORM_POOL_OPTIONS = {
     "pool_size": 30,
     "max_overflow": 0,
-    "recycle": 3600, # the default value
+    "recycle": 3600,  # the default value
 }
 
 LOGGING = {
@@ -226,6 +228,10 @@ LOGGING = {
             'level': 'ERROR',
             'class': 'raven.contrib.django.raven_compat.handlers.SentryHandler',
         },
+        'dogslow': {
+            'level': 'WARNING',
+            'class': 'raven.contrib.django.handlers.SentryHandler',
+        },
         'console': {
             'level': 'DEBUG',
             'class': 'logging.StreamHandler',
@@ -242,6 +248,10 @@ LOGGING = {
             'level': 'DEBUG',
             'handlers': ['console'],
             'propagate': False,
+        },
+        'dogslow': {
+            'level': 'WARNING',
+            'handlers': ['dogslow'],  # or whatever you named your handler
         },
         'sentry.errors': {
             'level': 'DEBUG',
@@ -282,7 +292,6 @@ MOMMY_CUSTOM_FIELDS_GEN = {
     'autoslug.fields.AutoSlugField': autoslug_gen
 }
 
-
 # Ustawienia Bower
 
 BOWER_COMPONENTS_ROOT = os.path.abspath(
@@ -316,50 +325,6 @@ SESSION_ENGINE = 'redis_sessions.session'
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTOCOL', 'https')
 
-
-
-CACHEOPS = {
-    # Automatically cache any User.objects.get() calls for 15 minutes
-    # This includes request.user or post.author access,
-    # where Post.author is a foreign key to auth.User
-    'auth.user': ('get', 60*15),
-    'bpp.bppuser': ('get', 60*15),
-
-    'contenttypes.*': ('get', 60*60),
-
-    'bpp.uczelnia': ('all', 60*60*3),
-    'bpp.jednostka': ('all', 60*15),
-    'bpp.wydzial': ('all', 60*15),
-    'bpp.autor': ('get', 60*15),
-
-    'bpp.zrodlo': ('all', 60*15),
-
-    'multiseek.searchform': ('all', 60*15),
-
-    'bpp.charakter_formalny': ('all', 60*15),
-    'bpp.typ_kbn': ('all', 60*15),
-    'bpp.jezyk': ('all', 60*15),
-    'bpp.typ_odpowiedzialnosci': ('all', 60*15),
-    'bpp.status_korekty': ('all', 60*15),
-
-
-    # Automatically cache all gets, queryset fetches and counts
-    # to other django.contrib.auth models for an hour
-    'auth.*': ('all', 60*60),
-
-    # Enable manual caching on all news models with default timeout of an hour
-    # Use News.objects.cache().get(...)
-    #  or Tags.objects.filter(...).order_by(...).cache()
-    # to cache particular ORM request.
-    # Invalidation is still automatic
-    #'news.*': ('just_enable', 60*60),
-
-    # Automatically cache count requests for all other models for 15 min
-    #'*.*': ('count', 60*15),
-}
-
-CACHEOPS_DEGRADE_ON_FAILURE = True
-
 MAT_VIEW_REFRESH_COUNTDOWN = 30
 
 SITE_ROOT = os.path.abspath(
@@ -375,7 +340,6 @@ COMPRESS_ROOT = STATIC_ROOT
 REDIS_DB_BROKER = 1
 REDIS_DB_CELERY = 2
 REDIS_DB_SESSION = 4
-REDIS_DB_CACHEOPS = 5
 REDIS_DB_LOCKS = 6
 
 from django_bpp.version import VERSION
@@ -396,19 +360,11 @@ ALLOWED_HOSTS = [
 REDIS_HOST = django_getenv("DJANGO_BPP_REDIS_HOST", "localhost")
 REDIS_PORT = int(django_getenv("DJANGO_BPP_REDIS_PORT", "6379"))
 
-CACHEOPS_REDIS = {
-    'host': REDIS_HOST, # redis-server is on same machine
-    'port': REDIS_PORT,        # default redis port
-    'db': REDIS_DB_CACHEOPS, # "redis://%s:%s/%s" % (REDIS_HOST, REDIS_PORT, REDIS_DB_CACHEOPS),
-    'socket_timeout': 3,
-}
-
 CELERY_HOST = django_getenv("DJANGO_BPP_CELERY_HOST", "localhost")
 CELERY_PORT = int(django_getenv("DJANGO_BPP_CELERY_PORT", "5672"))
 CELERY_USER = django_getenv("DJANGO_BPP_CELERY_USER", "guest")
 CELERY_PASSWORD = django_getenv("DJANGO_BPP_CELERY_PASSWORD", "guest")
 CELERY_VHOST = django_getenv("DJANGO_BPP_CELERY_VHOST", "/")
-
 
 BROKER_URL = django_getenv("DJANGO_BPP_BROKER_URL",
                            "amqp://%s:%s@%s:%s/%s" % (CELERY_USER,
@@ -436,11 +392,13 @@ ADMINS = (
 )
 MANAGERS = ADMINS
 
+
 def int_or_None(value):
     try:
         return int(value)
     except ValueError:
         return ""
+
 
 DATABASES = {
     'default': {
@@ -471,8 +429,7 @@ PASSWORD_DURATION_SECONDS = (60 * 60 * 24) * 30
 PASSWORD_USE_HISTORY = True
 PASSWORD_HISTORY_COUNT = 12
 # wymagane przez django-password-policies
-SESSION_SERIALIZER='django.contrib.sessions.serializers.PickleSerializer'
-
+SESSION_SERIALIZER = 'django.contrib.sessions.serializers.PickleSerializer'
 
 MESSAGE_STORAGE = 'messages_extends.storages.FallbackStorage'
 
@@ -487,7 +444,6 @@ if TESTING:
     CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
 
 CELERYD_HIJACK_ROOT_LOGGER = False
-
 
 CELERYBEAT_SCHEDULE = {
 
@@ -517,8 +473,8 @@ NOTIFICATIONS_PORT = django_getenv("DJANGO_BPP_NOTIFICATIONS_PORT", 80)
 NOTIFICATIONS_PROTOCOL = django_getenv("DJANGO_BPP_NOTIFICATIONS_PROTOCOL", 'http')
 
 MEDIA_ROOT = django_getenv(
-        "DJANGO_BPP_MEDIA_ROOT",
-        os.getenv("HOME", "C:/django-bpp-media")
+    "DJANGO_BPP_MEDIA_ROOT",
+    os.getenv("HOME", "C:/django-bpp-media")
 )
 
 SENDFILE_ROOT = MEDIA_ROOT
