@@ -10,6 +10,8 @@ import urllib
 from decimal import Decimal
 
 import bleach
+from django.db.models.query_utils import Q
+
 from bpp.models import Charakter_Formalny, Jezyk, \
     Typ_Odpowiedzialnosci
 from bpp.models.cache import Autorzy, Rekord
@@ -478,6 +480,12 @@ def raport_common_tabela(key, base_query, jednostka=None, autor=None):
             adnotacje__icontains="erih"
         ).exclude(
             adnotacje__icontains="wos"
+        ).exclude(
+            Q(
+                charakter_formalny=Charakter_Formalny.objects.get(skrot="AC"),
+                liczba_znakow_wydawniczych__gte=ILOSC_ZNAKOW_NA_ARKUSZ / 2
+            ),
+            ~Q(jezyk=Jezyk.objects.get(skrot="pol."))
         )
 
     elif key == "1_3":

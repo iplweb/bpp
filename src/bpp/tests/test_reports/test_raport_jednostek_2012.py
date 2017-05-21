@@ -20,6 +20,8 @@ def charakter(skrot):
     # jeżeli dany skrót nie odzwierciedla charakteru w bazie danych
     return _query(Charakter_Formalny, 'skrot', skrot)
 
+def typ_kbn(skrot):
+    return _query(Typ_KBN, 'skrot', skrot)
 
 def jezyk(skrot):
     return _query(Jezyk, 'skrot', skrot)
@@ -76,17 +78,34 @@ class TestRaportJednostek2012(TestCase):
 
     @with_cache
     def test_1_2(self):
+        # Ta praca ma WEJŚC
         common = dict(charakter_formalny=charakter("AC"),
-            jezyk=jezyk("pol."),
+                      jezyk=jezyk("pol."),
+                      impact_factor=0,
+                      punkty_kbn=5)
+        c = any_ciagle(adnotacje="",
+                       typ_kbn=typ_kbn("PO"),
+                       **common)
+
+        tego_ma_nie_byc = any_ciagle(
+            typ_kbn=Typ_KBN.objects.get(skrot="PW"), **common)
+        tego_tez_ma_nie_byc = any_ciagle(
+            adnotacje="wos", **common)
+        i_jeszcze_tego_tez = any_ciagle(
+            adnotacje="erih", **common)
+
+        tego_rowniez_ma_nie_byc = any_ciagle(
+            charakter_formalny=charakter("AC"),
+            jezyk=jezyk("ang."),
             impact_factor=0,
-            punkty_kbn=5)
-        c = any_ciagle(adnotacje="", **common)
+            punkty_kbn=5,
+            adnotacje="",
+            typ_kbn=typ_kbn("PO"),
+            liczba_znakow_wydawniczych=1 + (ILOSC_ZNAKOW_NA_ARKUSZ / 2),
+        )
 
-        tego_ma_nie_byc = any_ciagle(typ_kbn=Typ_KBN.objects.get(skrot="PW"), **common)
-        tego_tez_ma_nie_byc = any_ciagle(adnotacje="wos", **common)
-        i_jeszcze_tego_tez = any_ciagle(adnotacje="erih", **common)
-
-        for elem in [c, tego_ma_nie_byc, tego_tez_ma_nie_byc, i_jeszcze_tego_tez]:
+        for elem in [c, tego_ma_nie_byc, tego_tez_ma_nie_byc,
+                     i_jeszcze_tego_tez, tego_rowniez_ma_nie_byc]:
             elem.dodaj_autora(self.a, self.j)
 
         self.sprawdz("1_2", c)
