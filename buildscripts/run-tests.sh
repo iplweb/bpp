@@ -67,13 +67,14 @@ if [ "$NO_REBUILD" == "0" ]; then
     stellar replace $GIT_BRANCH_NAME || stellar snapshot $GIT_BRANCH_NAME
 else
     # --no-rebuild na command line, czyli baza danych została (prawdopodobnie) wcześniej
-    # utworzona, więc
+    # utworzona. Jednakże, dla zachowania integralności testów, chcemy pozbyć się 
+    # ewentualnych artefaktów z testów, więc: 
     stellar restore $GIT_BRANCH_NAME
 fi
 
 if [ "$NO_DJANGO" == "0" ]; then
     python manage.py test bpp --keepdb
-    # Ewentualne następne testy muszą startować na czystej bazie danych
+    # Ewentualne następne testy muszą startować na czystej bazie danych, więc:
     stellar restore $GIT_BRANCH_NAME
 fi
 
