@@ -34,3 +34,5 @@ webtest==2.0.23
 WebOb==1.6.3
 
 stellar
+
+fabric
