@@ -1,4 +1,4 @@
-django_bpp
+django-bpp
 ==========
 
 .. role:: bash(code)
@@ -17,8 +17,8 @@ Wersja demo serwisu
 -------------------
 
 Live-demo serwisu dostępne jest pod adresem http://bppdemo.iplweb.pl . W razie
-pytań lub problemów z dostępem prosimy o kontakt pod adresem e-mail
-michal.dtz@gmail.com.
+pytań lub problemów z dostępem do serwisu demonstracyjnego prosimy o kontakt
+pod adresem e-mail michal.dtz@gmail.com.
 
 
 Dla kogo niniejsza dokumentacja?
@@ -35,10 +35,11 @@ Jak zacząć?
 -----------
 
 Zainstaluj:
-  * Python_ w wersji 2.7,
-  * Vagrant_,
-  * VirtualBox_,
-  * PostgreSQL_
+
+* Python_ w wersji 2.7,
+* Vagrant_,
+* VirtualBox_,
+* PostgreSQL_
 
 Zainstaluj virtualenv:
 
@@ -94,11 +95,16 @@ Ustaw zmienne środowiskowe na cele lokalnego developmentu:
     export PGDATABASE=bpp
     export PGUSER=bpp
 
-Uruchom lokalne testy:
+Uruchom lokalne testy.
 
 .. code-block:: bash
 
     ./buildscripts/run-tests.sh
+
+Jeżeli któryś test "utknie" - zdarza się to przezde
+wszystkim przy testach korzystających z przeglądarki, Selenium i live-servera
+Django, możesz podejrzeć serwer testowy za pomocą oprogramowania typu
+`VNC Viever`_ (wejdź na adres VNC :bash:`bpp-selenium:99`)
 
 Zbuduj wersję "release". Poniższe polecenie uruchomi testy na docelowym systemie
 operacyjnym (Linux) oraz zbuduje wersję instalacyjną systemu:
@@ -115,6 +121,7 @@ operacyjnym (Linux) oraz zbuduje wersję instalacyjną systemu:
 .. _IPLWeb: http://bpp.iplweb.pl/
 .. _PostgreSQL: http://postgresql.org/
 .. _Licencja MIT: http://github.com/mpasternak/django-bpp/LICENSE
+.. _VNC Viever: https://www.realvnc.com/download/viewer/
 
 Wsparcie komercyjne
 -------------------
