@@ -28,9 +28,7 @@ def test(no_rebuild=False, no_django=False):
     run("latest/buildscripts/run-tests.sh %s %s" % (no_rebuild_opt, no_django_opt))
 
 def build():
-    run("latest/buildscripts/build-deps.sh")
-    run("latest/buildscripts/build-src.sh")
-    local("ls -lash releases; du -h releases")
+    run("/vagrant/buildscripts/build-wheel.sh")
 
 def migrate():
     run("python latest/src/manage.py migrate")
