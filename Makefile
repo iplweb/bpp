@@ -5,6 +5,9 @@ clean:
 	find . -name \*pyc -print0 | xargs -0 rm -fv 
 	find . -name \*\\.log -print0 | xargs -0 rm -fv 
 
+distclean: clean
+	rm -rf build/ dist/ 
+
 vcs:
 	fab vcs:${BRANCH}
 
