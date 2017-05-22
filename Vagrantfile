@@ -44,6 +44,7 @@ Vagrant.configure(2) do |config|
         master.cache.enable :npm
 	master.cache.enable :generic, {
 	  "wget" => { cache_dir: "/var/cache/wget" },
+	  "pip" => { cache_dir: "/home/ubuntu/.cache/pip" }
 	}
       end
 
@@ -146,6 +147,7 @@ Vagrant.configure(2) do |config|
         selenium.cache.enable :npm
 	selenium.cache.enable :generic, {
 	  "wget" => { cache_dir: "/var/cache/wget" },
+	  "pip" => { cache_dir: "/home/ubuntu/.cache/pip" },
 	}
       end
 
