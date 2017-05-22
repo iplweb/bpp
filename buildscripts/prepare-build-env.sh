@@ -29,10 +29,9 @@ cd $SCRIPTPATH/..
 
 export PATH=$PATH:./node_modules/.bin/
 
-sudo npm install -g npm-cache
-npm install bower
+sudo npm install -g npm-cache bower grunt-cli
 
-npm-cache install --save-dev install grunt grunt-sass grunt-contrib-watch grunt-contrib-qunit grunt-cli 
+npm-cache install --save-dev install grunt grunt-sass grunt-contrib-watch grunt-contrib-qunit 
 
 rm -rf src/components/bower_components src/django_bpp/staticroot
 yes n | python src/manage.py bower_install -F
