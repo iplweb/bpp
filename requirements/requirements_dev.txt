@@ -33,3 +33,5 @@ webtest==2.0.27
 stellar==0.4.3
 
 fabric==1.13.2
+
+ansible==2.3.0.0
