@@ -40,7 +40,7 @@ Wymagania systemowe
 Oprogramowanie docelowo działa na Ubuntu Linux 16.04, a rozwijane jest na Mac
 OS X. Większość opisanych tu procedur jest testowana własnie na tych systemach.
 Nic nie stoi na przeszkodzie, aby spróbować uruchomić niniejsze oprogramowanie
-na Windows, jednakże na ten moment nie jest to wspierana konfiguracja. 
+na Windows, jednakże na ten moment nie jest to wspierana konfiguracja.
 
 Jak zacząć?
 -----------
@@ -55,21 +55,6 @@ Zainstaluj:
 Wymagane oprogramowanie serwerowe, w tym PostgreSQL_, RabbitMQ_, redis_ zostanie
 zainstalowane przez skrypty Ansible_ na maszynie wirtualnej zarządzanej przez
 Vagrant_.
-
-Konfiguracja Vagrant_
-~~~~~~~~~~~~~~~~~~~~~
-
-Zainstaluj wymagane wtyczki do Vagrant_:
-
-.. code-block:: bash
-
-    vagrant plugin install vagrant-hostmanager vagrant-timezone vagrant-cachier vagrant-reload
-
-Stwórz maszyny wirtualne:
-
-.. code-block:: bash
-
-    vagrant up
 
 
 Klonowanie repozytorium z kodem
@@ -111,6 +96,22 @@ Zainstaluj pakiety developerskie:
 .. code-block:: bash
 
     pip install -r requirements/requirements_dev.txt
+
+Konfiguracja Vagrant_
+~~~~~~~~~~~~~~~~~~~~~
+
+Zainstaluj wymagane wtyczki do Vagrant_:
+
+.. code-block:: bash
+
+    vagrant plugin install vagrant-hostmanager vagrant-timezone vagrant-cachier vagrant-reload
+
+Stwórz maszyny wirtualne:
+
+.. code-block:: bash
+
+    vagrant up
+
 
 Przygotuj środowisko budowania
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
