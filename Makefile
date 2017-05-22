@@ -42,7 +42,7 @@ staging:
 demo-vm-ansible:
 	ansible-playbook ansible/demo-vm.yml --private-key=.vagrant/machines/staging/virtualbox/private_key
 
-full-build: tests build staging
+release: tests build staging
 	@echo "Done"
 
 local-build:
@@ -53,9 +53,6 @@ new-patch: clean
 	bumpversion patch 
 	git push
 	git push --tags
-
-release: new-patch full-build
-	@echo "Done"
 
 rerun-release-after-tests-failure: vcs just-tests build staging
 	@echo "Done"
