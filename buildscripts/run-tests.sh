@@ -1,16 +1,5 @@
 #!/bin/bash -e
 
-
-if [ -z "$VIRTUAL_ENV" ]; then
-    echo "Ten skrypt dziala spod virtualenv, aktywuj jakies"
-    exit 1
-fi
-
-if [ -z "$DJANGO_SETTINGS_MODULE" ]; then
-    echo "Ustaw zmienna DJANGO_SETTINGS_MODULE, bo sie nie uda..."
-    exit 1
-fi
-
 unamestr=`uname`
 
 export DJANGO_SETTINGS_MODULE=django_bpp.settings.local
@@ -23,7 +12,7 @@ fi
 pushd `dirname $0` > /dev/null
 SCRIPTPATH=`pwd -P`
 popd > /dev/null
-cd $SCRIPTPATH/../src
+cd $SCRIPTPATH/..
 
 NO_QUNIT=0
 NO_PYTEST=0
@@ -54,16 +43,16 @@ do
 done
 
 # LiveServer podejrzewam, że może potrzebować:
-python manage.py collectstatic --noinput
+python src/manage.py collectstatic --noinput
 
 export GIT_BRANCH_NAME=`git status |grep "On branch"|sed "s/On branch //"`
 
 if [ "$NO_REBUILD" == "0" ]; then
     # Nie przebudowuj bazy danych przed uruchomieniem testów.
     # Baza powinna być zazwyczaj utworzona od zera. 
-    dropdb test_bpp || true
+    dropdb --if-exists test_bpp 
     createdb test_bpp
-    python manage.py create_test_db
+    python src/manage.py create_test_db
     stellar replace $GIT_BRANCH_NAME || stellar snapshot $GIT_BRANCH_NAME
 else
     # --no-rebuild na command line, czyli baza danych została (prawdopodobnie) wcześniej
@@ -73,13 +62,13 @@ else
 fi
 
 if [ "$NO_DJANGO" == "0" ]; then
-    python manage.py test bpp --keepdb
+    python src/manage.py test bpp --keepdb
     # Ewentualne następne testy muszą startować na czystej bazie danych, więc:
     stellar restore $GIT_BRANCH_NAME
 fi
 
 if [ "$NO_PYTEST" == "0" ]; then
-    py.test eksport_pbn functional_tests integrator2/tests bpp/tests-pytest
+    py.test src/eksport_pbn tests src/integrator2/tests src/bpp/tests_pytest
     # mpasternak 17.1.2017 TODO: włączyć później
     # egeria/tests
     stellar restore $GIT_BRANCH_NAME
