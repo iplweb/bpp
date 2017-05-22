@@ -27,15 +27,18 @@ popd > /dev/null
 
 cd $SCRIPTPATH/..
 
-npm install --cache-min 9999999 npm-cache
+export PATH=$PATH:./node_modules/.bin/
 
-npm-cache install --save-dev install grunt grunt-sass grunt-contrib-watch grunt-contrib-qunit grunt-cli bower
+sudo npm install -g npm-cache
+npm install bower
+
+npm-cache install --save-dev install grunt grunt-sass grunt-contrib-watch grunt-contrib-qunit grunt-cli 
 
 rm -rf src/components/bower_components src/django_bpp/staticroot
 yes n | python src/manage.py bower_install -F
 echo "2" |python src/manage.py bower install "jquery#2.1.4"
 
-./node_modules/.bin/grunt build
+grunt build
 
 python src/manage.py collectstatic --noinput
 
