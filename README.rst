@@ -69,16 +69,17 @@ Stwórz i zaktywizuj wirtualne środowisko języka Python:
     mkvirtualenv django-bpp
     workon django-bpp
 
+Zainstaluj django-bpp:
+
+.. code-block:: bash
+
+    pip install -e .
+
 Zainstaluj pakiety developerskie:
 
 .. code-block:: bash
 
-    # Dla Twojego systemu operacyjnego
-    pip install -r requirements/`uname -s`.requirements.txt
-
-    # Ogólne
-    pip install -r requirements/dev.requirements.txt
-    pip install -r requirements/requirements.txt
+    pip install -r requirements/requirements_dev.txt
 
 Stwórz maszyny wirtualne:
 
@@ -90,9 +91,7 @@ Ustaw zmienne środowiskowe na cele lokalnego developmentu:
 
 .. code-block:: bash
 
-    export DJANGO_SETTINGS_MODULE=django_bpp.settings.local
-    export PGHOST=bpp-db  # host obsługiwany przez Vagrant
-    export PGDATABASE=bpp
+    export PGHOST=bpp-db
     export PGUSER=bpp
 
 Uruchom lokalne testy.
