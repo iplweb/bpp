@@ -16,21 +16,28 @@
   local_action: shell python ../src/{{ django_project_name }}/version.py
   register: django_latest_version_discovery_command
   sudo: false
-  tags: ['django-depends', 'django-migrate', 'supervisor', 'nginx', 'cron']
+  tags: ['django-depends', 'django-migrate', 'supervisor', 'nginx', 'cron', 'sync']
 
 - name: Ansible fact for latest version of sources is set
   set_fact: django_latest_version={{ django_latest_version_discovery_command.stdout }}
-  tags: ['django-depends', 'django-migrate', 'supervisor', 'nginx', 'cron']
+  tags: ['django-depends', 'django-migrate', 'supervisor', 'nginx', 'cron', 'sync']
 
-- name: Ansible fact for directory name of extracted sources is set
-  set_fact: django_extracted_sources_dir={{ django_home_dir }}/{{ django_toplevel_dir }}-{{ django_latest_version }}
-  tags: ['django-depends', 'django-migrate', 'supervisor', 'nginx', 'cron']
-
-- name: Source release is uploaded and extracted
-  unarchive: src=../releases/release-{{ django_latest_version }}.tbz2 dest={{ django_home_dir }} creates={{ django_extracted_sources_dir }} copy=yes
-
-- name: Symlink to lates sources version is created
-  file: state=link src="{{ django_extracted_sources_dir }}" dest="{{ django_home_dir }}/latest"
+- name: Wheel repository is synchronized
+  synchronize:
+    src: ../dist/
+    dest: "{{django_home_dir}}/dist"
+    delete: yes
+    archive: no
+    compress: no
+    checksum: yes
+    recursive: yes
+    times: yes
+    rsync_path: rsync
+    rsync_opts:
+      - "--exclude-from=../rsync.exclude"
+  sudo_user: "{{django_user}}"
+  sudo: true
+  tags: ['sync']
 
 - name: Virtualenv is created
   command: virtualenv --python=python{{ django_python_version }} {{ django_venv_dir }}
@@ -53,30 +60,18 @@
 - include: config.yml
   tags: ['config']
 
-- name: Ansible fact for dependency file name of sources is set
-  set_fact: django_depends=dependencies-{{ ansible_distribution }}-{{ ansible_distribution_version }}-{{ django_deps_version }}
-  tags: ['django-depends']
-
-- name: Dependency file is uploaded and extracted
-  unarchive: src=../releases/{{ django_depends }}.tar dest={{ django_home_dir }} creates={{ django_depends }} copy=yes
-  tags: ['django-depends']
-
-- name: OS-specific dependency packages are installed within virtual environment
-  command: "{{ django_home_dir }}/vexec pip install --no-index -r {{ django_extracted_sources_dir }}/requirements/{{ ansible_system }}.requirements.txt --find-links=file://{{ django_home_dir }}/{{ django_depends }}"
+- name: django-bpp package is installed
+  command: "{{ django_home_dir }}/vexec pip install --no-index django-bpp=={{django_latest_version}} --find-links=file://{{ django_home_dir }}/dist"
   sudo_user: "{{ django_user }}"
   tags: ['django-depends']
-
-- name: Dependency packages are installed within virtual environment
-  command: "{{ django_home_dir }}/vexec pip install --no-index -r {{ django_extracted_sources_dir }}/requirements/requirements.txt --find-links=file://{{ django_home_dir }}/{{ django_depends }}"
-  sudo_user: "{{ django_user }}"
-  tags: ['django-depends']
+  tags: ['sync']
 
 - name: Database is migrated
-  command: "{{ django_home_dir }}/vexec python {{ django_extracted_sources_dir }}/src/manage.py migrate --noinput"
+  command: "{{ django_manage_py }} migrate --noinput"
   tags: ['django-migrate']
 
 - name: Site name for sites framework is set up
-  command: "{{ django_home_dir }}/vexec python {{ django_extracted_sources_dir }}/src/manage.py set_site_name -d {{ django_hostname }} -n {{ django_site_name }}"
+  command: "{{ django_manage_py }} set_site_name -d {{ django_hostname }} -n {{ django_site_name }}"
 
 - include: supervisor.yml
   tags: ['supervisor',]
@@ -98,6 +93,6 @@
   tags: ['cron',]
 
 - name: Przebudowa cache bazy danych raz dziennie
-  cron: name="Przebuduj cache bazy danych raz dziennie" minute="30" hour="2" job="{{ django_home_dir }}/vexec python {{ django_extracted_sources_dir }}/src/manage.py rebuild_cache"
+  cron: name="Przebuduj cache bazy danych raz dziennie" minute="30" hour="2" job="{{ django_manage_py }} rebuild_cache"
   tags: ['cron',]
   sudo_user: "{{ django_user }}"
