@@ -86,3 +86,4 @@ releases/
 *.retry
 *.ova
 
+src/bpp/static/scss/app.css
