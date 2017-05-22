@@ -17,7 +17,7 @@ def django_getenv(varname, default=None):
 # pycharm, leave this
 os
 
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
 # Django
 import random, string
