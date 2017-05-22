@@ -327,11 +327,12 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTOCOL', 'https')
 
 MAT_VIEW_REFRESH_COUNTDOWN = 30
 
-SITE_ROOT = os.path.abspath(
-    os.path.join(
-        os.path.dirname(__file__), '..', '..'))
+SCRIPT_PATH = os.path.abspath(os.path.dirname(__file__))
 
-STATIC_ROOT = os.path.join(SITE_ROOT, "staticroot")
+SITE_ROOT = os.path.abspath(
+    os.path.join(SCRIPT_PATH, '..', '..'))
+
+STATIC_ROOT = os.path.join(SCRIPT_PATH, "..", "staticroot")
 
 COMPRESS_ENABLED = True
 COMPRESS_ROOT = STATIC_ROOT
