@@ -4,39 +4,52 @@
 # Ten skrypt przygotowywuje do budowania django-bpp
 #
 
-if [ -z "$VIRTUAL_ENV" ]; then
-    echo "Ten skrypt dziala spod virtualenv, aktywuj jakies"
-    exit 1
-fi
+NO_REBUILD=0
 
-if [ -z "$DJANGO_SETTINGS_MODULE" ]; then
-    echo "Ustaw zmienna DJANGO_SETTINGS_MODULE, bo sie nie uda..."
-    exit 1
-fi
+while test $# -gt 0
+do
+    case "$1" in
+        --no-rebuild) NO_REBUILD=1
+            ;;
+	--help) echo "--no-rebuild"
+	    exit 1
+	    ;;
+        --*) echo "bad option $1"
+	    exit 1
+            ;;
+    esac
+    shift
+done
 
 pushd `dirname $0` > /dev/null
 SCRIPTPATH=`pwd -P`
 popd > /dev/null
 
-cd $SCRIPTPATH/../src
+cd $SCRIPTPATH/..
 
-npm-cache install --save-dev install grunt grunt-sass grunt-contrib-watch grunt-contrib-qunit grunt-cli
+npm install --cache-min 9999999 npm-cache
 
-rm -rf components/bower_components staticroot
-yes n | python manage.py bower_install -F
-echo "2" |python manage.py bower install "jquery#2.1.4"
+npm-cache install --save-dev install grunt grunt-sass grunt-contrib-watch grunt-contrib-qunit grunt-cli bower
 
-python manage.py collectstatic --noinput
+rm -rf src/components/bower_components src/django_bpp/staticroot
+yes n | python src/manage.py bower_install -F
+echo "2" |python src/manage.py bower install "jquery#2.1.4"
 
 ./node_modules/.bin/grunt build
 
-dropdb --if-exists bpp
-createdb bpp 
-python manage.py migrate --noinput
-dropdb --if-exists test_bpp
-createdb test_bpp --template=bpp
+python src/manage.py collectstatic --noinput
 
-export GIT_BRANCH_NAME=`git status |grep "On branch"|sed "s/On branch //"`
-stellar replace $GIT_BRANCH_NAME || stellar snapshot $GIT_BRANCH_NAME
 
-python manage.py compress --force
+if [ "$NO_REBUILD" == "0" ]; then
+    # Nie przebudowuj bazy danych 
+    dropdb --if-exists bpp
+    createdb bpp 
+    python src/manage.py migrate --noinput
+    dropdb --if-exists test_bpp
+    createdb test_bpp --template=bpp
+
+    export GIT_BRANCH_NAME=`git status |grep "On branch"|sed "s/On branch //"`
+    stellar replace $GIT_BRANCH_NAME || stellar snapshot $GIT_BRANCH_NAME
+fi
+
+python src/manage.py compress --force
