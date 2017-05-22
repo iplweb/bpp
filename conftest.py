@@ -375,7 +375,7 @@ def fixture(name):
             os.path.abspath(
                 os.path.join(
                     os.path.dirname(__file__),
-                    "bpp", "fixtures", name)
+                    "src", "bpp", "fixtures", name)
             ), "r"))
 
 
