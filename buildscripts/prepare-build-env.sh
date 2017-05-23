@@ -8,9 +8,9 @@ popd > /dev/null
 
 cd $SCRIPTPATH/..
 
-export PATH=./node_modules/.bin/:$PATH
+# export PATH=./node_modules/.bin/:$PATH
 
-npm install --upgrade npm 
+# npm install --upgrade --quiet npm 
 npm install
 
 rm -rf src/components/bower_components src/django_bpp/staticroot
