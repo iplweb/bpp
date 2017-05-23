@@ -10,8 +10,8 @@ cd $SCRIPTPATH/..
 
 export PATH=./node_modules/.bin/:$PATH
 
-npm install --upgrade npm npm-cache
-npm-cache install 
+npm install --upgrade npm 
+npm install
 
 rm -rf src/components/bower_components src/django_bpp/staticroot
 yes n | python src/manage.py bower_install -F
