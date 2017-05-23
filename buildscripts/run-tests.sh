@@ -72,6 +72,6 @@ if [ "$NO_PYTEST" == "0" ]; then
 fi
 
 if [ "$NO_QUNIT" == "0" ]; then
-    ./node_modules/.bin/grunt qunit
+    grunt qunit
 fi
 
