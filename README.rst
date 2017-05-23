@@ -67,6 +67,15 @@ Sklonuj repozytorium z kodem:
   git clone https://github.com/mpasternak/django-bpp.git
   cd django-bpp
 
+Konfiguracja pakietów języka JavaScript
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Zainstaluj pakiety JavaScript przez npm_:
+
+.. code-block:: bash
+
+    npm install -g bower grunt-cli npm-cache
+
 Konfiguracja Pythona
 ~~~~~~~~~~~~~~~~~~~~
 
@@ -148,7 +157,7 @@ utworzone za pomocą Vagrant_.
     ./buildscripts/run-tests.sh
 
 W przyszłości możesz uruchamiać testy z opcją ``--no-rebuild``, aby nie
-przebudowywać za każdym razem bazy danych. 
+przebudowywać za każdym razem bazy danych.
 
 Jeżeli któryś test "utknie" - zdarza się to przezde
 wszystkim przy testach korzystających z przeglądarki, Selenium i live-servera
