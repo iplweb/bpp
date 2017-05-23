@@ -1,0 +1,16 @@
+---
+- name: Add yarn signature
+  apt_key:
+    url: https://dl.yarnpkg.com/debian/pubkey.gpg
+
+- name: Add yarn PPA
+  apt_repository:
+    repo: deb https://dl.yarnpkg.com/debian/ stable main
+  register: yarn_ppa
+
+- name: Apt-get update
+  apt: update_cache=yes
+  when: yarn_ppa.changed
+
+- name: Install yarn
+  apt: name=yarn

@@ -8,10 +8,7 @@ popd > /dev/null
 
 cd $SCRIPTPATH/..
 
-# export PATH=./node_modules/.bin/:$PATH
-
-# npm install --upgrade --quiet npm 
-npm install
+yarn install
 
 rm -rf src/components/bower_components src/django_bpp/staticroot
 yes n | python src/manage.py bower_install -F

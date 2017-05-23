@@ -50,7 +50,7 @@ Zainstaluj:
 * Python_ w wersji 2.7,
 * Vagrant_,
 * VirtualBox_,
-* npm_
+* yarn_
 
 Wymagane oprogramowanie serwerowe, w tym PostgreSQL_, RabbitMQ_, redis_ zostanie
 zainstalowane przez skrypty Ansible_ na maszynie wirtualnej zarządzanej przez
@@ -175,7 +175,7 @@ operacyjnym (Linux) oraz zbuduje wersję instalacyjną systemu:
     make release
 
 .. _Python: http://python.org/
-.. _npm: https://www.npmjs.com/get-npm
+.. _yarn: https://yarnpkg.com/en/docs/install
 .. _Vagrant: http://vagrantup.com/
 .. _vagrant-hostmanager: https://github.com/devopsgroup-io/vagrant-hostmanager
 .. _Virtualbox: http://virtualbox.org

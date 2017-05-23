@@ -48,6 +48,7 @@
     - git
     - dev
     - pip
+    - yarn
     - ubuntu-dev
     - nginx-with-pubsub
     - nginx-messaging-test
