@@ -16,6 +16,10 @@ before_install:
   - export PGUSER=bpp
   - export PATH=.:$PATH
   - export DJANGO_SETTINGS_MODULE=django_bpp.settings.test
+  - export DJANGO_BPP_SECRET_KEY=0xdeadbeefbabe
+  - export DJANGO_BPP_MEDIA_ROOT=$HOME/media
+  - export DJANGO_BPP_NOTIFICATIONS_HOST=localhost
+  - export DJANGO_LIVE_TEST_SERVER_ADDRESS=localhost:9000-15000
 
 install:
   - nvm install 6
