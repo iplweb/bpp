@@ -14,20 +14,17 @@ vcs:
 wheels: 
 	fab wheels
 
-prepare:
+prepare-build-environment:
 	fab prepare
 
-just-tests: 
-	fab test:no_rebuild=True
+build-assets:
+	fab build_assets
 
-# Nie przebudowuj testów po fazie „prepare”, gdyż tam jest przebudowywana
-# główna baza danych od zera ORAZ tworzona jest baza danych test_bpp ORAZ
-# tworzony jest też jej snapshot...
-tests:  vcs wheels prepare just-tests
+tests:
+	fab test
+
+tests-from-scratch: build-assets wheels just-tests
 	@echo "Done"
-
-build:
-	fab build
 
 rebuild-staging:
 	vagrant pristine -f staging
@@ -42,7 +39,7 @@ staging:
 demo-vm-ansible:
 	ansible-playbook ansible/demo-vm.yml --private-key=.vagrant/machines/staging/virtualbox/private_key
 
-release: tests build staging
+release: vcs tests-from-scratch build staging
 	@echo "Done"
 
 local-build:
