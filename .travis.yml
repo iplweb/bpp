@@ -15,6 +15,7 @@ before_install:
   - export PGHOST=localhost
   - export PGUSER=bpp
   - export PATH=.:$PATH
+  - export DJANGO_SETTINGS_MODULE=django_bpp.settings.test
 
 install:
   - nvm install 6
