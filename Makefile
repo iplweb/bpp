@@ -22,6 +22,9 @@ prepare-build-env:
 build-assets:
 	fab build_assets
 
+build:
+	fab build
+
 tests: build-assets
 	fab test
 
