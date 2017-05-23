@@ -7,8 +7,17 @@ from fabric.contrib.files import exists
 
 if not env['hosts']:
     env['hosts'] = ['ubuntu@bpp-master']
-    # env['password'] = 'vagrant'
-    env.key_filename = '.vagrant/machines/master/virtualbox/private_key'
+
+if not env.key_filename:
+    env.key_filename = []
+    for host in env['hosts']:
+        hostname = host.replace("ubuntu@", "").replace("bpp-", "")
+        fn = '.vagrant/machines/%s/virtualbox/private_key' % hostname
+        try:
+            stat = os.stat(fn)
+        except OSError, e:
+            continue
+        env.key_filename.append(fn)
 
 
 env['shell'] = "/bin/bash -l -i -c" 
@@ -38,7 +47,10 @@ def build():
     run("/vagrant/buildscripts/build-wheel.sh")
 
 def migrate():
-    run("python latest/src/manage.py migrate")
+    run("bpp-manage.py migrate")
+
+def changepassword(user='admin'):
+    run("bpp-manage.py changepassword %s" % user)
 
 def collectstatic():
     run("python latest/src/manage.py collectstatic --noinput -v 0 ")
@@ -122,5 +134,5 @@ def upload_db(fn, db, dbuser):
         run('createuser -s bpp')
     run('createdb --echo --encoding=UTF8 -U {0} --owner={0} {1}'.format(dbuser, db))
     run('pg_restore -U {0} -d {1} {2}'.format(dbuser, db, fn))
-    run('./vexec python latest/src/manage.py migrate')
+    run('bpp-manage.py migrate')
     sudo('supervisorctl start all')
