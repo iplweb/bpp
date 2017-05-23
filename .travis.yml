@@ -16,7 +16,10 @@ before_install:
   - export PGUSER=bpp
   - export PATH=.:$PATH
 
-install: 
+install:
+  - nvm install 6
+  - npm install -g yarn
+
   - createuser -dsU postgres bpp
   - createdb -U bpp 
   - pip install -U tox
