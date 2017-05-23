@@ -54,7 +54,8 @@ Zainstaluj:
 
 Wymagane oprogramowanie serwerowe, w tym PostgreSQL_, RabbitMQ_, redis_ zostanie
 zainstalowane przez skrypty Ansible_ na maszynie wirtualnej zarządzanej przez
-Vagrant_.
+Vagrant_. Jest to zalecany sposób testowania i rozwijania programu, który
+docelowo działać ma na platformie Ubuntu Linux 16.04.
 
 Jeżeli używasz macOS:
 ~~~~~~~~~~~~~~~~~~~~~
@@ -64,6 +65,7 @@ Większość procedur instalacyjnych możesz załatwić przez Homebrew_:
 .. code-block:: bash
 
     brew install bower grunt-cli yarn npm ansible python git
+    brew cask install vagrant vagrant-manager virtualbox
 
 
 Klonowanie repozytorium z kodem
@@ -79,11 +81,11 @@ Sklonuj repozytorium z kodem:
 Konfiguracja pakietów języka JavaScript
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Zainstaluj pakiety JavaScript przez npm_:
+Zainstaluj pakiety JavaScript za pomocą yarn_:
 
 .. code-block:: bash
 
-    npm install -g bower grunt-cli
+    yarn global add bower grunt-cli
 
 Konfiguracja Pythona
 ~~~~~~~~~~~~~~~~~~~~
@@ -101,17 +103,12 @@ Stwórz i zaktywizuj wirtualne środowisko języka Python:
     mkvirtualenv django-bpp
     workon django-bpp
 
-Zainstaluj django-bpp:
-
-.. code-block:: bash
-
-    pip install -e .
-
-Zainstaluj pakiety developerskie:
+Zainstaluj wymagane pakiety:
 
 .. code-block:: bash
 
     pip install -r requirements/requirements_dev.txt
+    pip install -r requirements/requirements.txt
 
 Konfiguracja Vagrant_
 ~~~~~~~~~~~~~~~~~~~~~
