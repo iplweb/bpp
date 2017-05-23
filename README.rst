@@ -145,10 +145,10 @@ utworzone za pomocą Vagrant_.
 
 .. code-block:: bash
 
-    ./buildscripts/run-tests.sh --no-rebuild
+    ./buildscripts/run-tests.sh
 
-Opcja ``--no-rebuild`` nie przebudowuje bazy danych. Testowa baza danych została
-utworzona przez skrypt ``prepare-build-env.sh`.
+W przyszłości możesz uruchamiać testy z opcją ``--no-rebuild``, aby nie
+przebudowywać za każdym razem bazy danych. 
 
 Jeżeli któryś test "utknie" - zdarza się to przezde
 wszystkim przy testach korzystających z przeglądarki, Selenium i live-servera
