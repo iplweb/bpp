@@ -16,16 +16,16 @@ vcs:
 wheels: 
 	fab wheels
 
-prepare-build-environment:
+prepare-build-env:
 	fab prepare
 
 build-assets:
 	fab build_assets
 
-tests:
+tests: build-assets
 	fab test
 
-tests-from-scratch: build-assets wheels just-tests
+tests-from-scratch: prepare-build-env wheels tests
 	@echo "Done"
 
 rebuild-staging:
