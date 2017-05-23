@@ -33,11 +33,8 @@
     checksum: yes
     recursive: yes
     times: yes
-    rsync_path: rsync
     rsync_opts:
       - "--exclude-from=../rsync.exclude"
-  sudo_user: "{{django_user}}"
-  sudo: true
   tags: ['sync']
 
 - name: Virtualenv is created
@@ -65,7 +62,6 @@
   command: "{{ django_home_dir }}/vexec pip install --no-index django-bpp=={{django_latest_version}} --find-links=file://{{ django_home_dir }}/dist"
   sudo_user: "{{ django_user }}"
   tags: ['django-depends']
-  tags: ['sync']
 
 - name: Database is migrated
   command: "{{ django_manage_py }} migrate --noinput"
