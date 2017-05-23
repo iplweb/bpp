@@ -42,9 +42,6 @@ do
     shift
 done
 
-# LiveServer podejrzewam, że może potrzebować:
-python src/manage.py collectstatic --noinput
-
 export GIT_BRANCH_NAME=`git status |grep "On branch"|sed "s/On branch //"`
 
 if [ "$NO_REBUILD" == "0" ]; then
