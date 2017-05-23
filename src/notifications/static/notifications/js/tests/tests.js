@@ -113,16 +113,10 @@ QUnit.test( "bppNotifications.init", function( assert ) {
     pushstream.prototype.addChannel = sinon.stub();
     pushstream.prototype.connect = sinon.stub();
 
-    if (window.Audio)
-        var Audio = sinon.stub(window, "Audio");
-
     bppNotifications.init("foo", "bar", "baz", true, "123", null);
 
     assert.equal(bppNotifications.messageCookieId, "123");
     pushstream.restore();
-
-    if (window.Audio)
-        Audio.restore();
 
 });
 

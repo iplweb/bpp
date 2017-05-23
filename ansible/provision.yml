@@ -48,6 +48,7 @@
     - git
     - dev
     - pip
+    - yarn
     - ubuntu-dev
     - nginx-with-pubsub
     - nginx-messaging-test
@@ -58,9 +59,8 @@
     - name: Build and install wheel packages
       shell: . /home/{{user}}/env/bin/activate && {{ item }}
       with_items:
-        - cd /vagrant/buildscripts && ./wheels.build.sh
-        - cd /vagrant/buildscripts && ./wheels.install.sh
-        - cd /vagrant/requirements && pip --quiet install -r dev.requirements.txt
+        - cd /vagrant/requirements && pip --quiet install -r requirements_dev.txt
+        - cd /vagrant/requirements && pip --quiet install -r requirements.txt
       become: no
 
     - name: Setup variables in .bashrc
@@ -78,6 +78,19 @@
         - export PGPASSWORD=password
         - export PGDATABASE=bpp
         - . /home/{{ user }}/env/bin/activate
+
+    - name: Prepare build env
+      shell: "{{activate}} && ./buildscripts/prepare-build-env.sh"
+      args:
+        chdir: /home/{{user}}/latest
+      become: no
+
+    - name: Pack js-html deps
+      shell: "{{activate}} && ./buildscripts/build-js-css-html.sh"
+      args:
+        chdir: /home/{{user}}/latest
+      become: no
+
        
 - hosts: staging
   become: yes

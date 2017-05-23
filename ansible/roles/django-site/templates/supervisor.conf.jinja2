@@ -10,7 +10,7 @@ numprocs=1
 environment=USER="{{ django_user }}"
 stdout_logfile={{ supervisor_logdir }}/{{ django_project_name }}/{{ django_hostname }}/celery-worker-stdout
 stderr_logfile={{ supervisor_logdir }}/{{ django_project_name }}/{{ django_hostname }}/celery-worker-stderr
-directory={{ django_extracted_sources_dir }}/src
+directory={{ django_home_dir }}
 
 [program:celery-beat]
 command={{ django_home_dir }}/vexec {{ django_venv_dir }}/bin/celery
@@ -25,7 +25,7 @@ numprocs=1
 environment=USER="{{ django_user }}"
 stdout_logfile={{ supervisor_logdir }}/{{ django_project_name }}/{{ django_hostname }}/celery-beat-stdout
 stderr_logfile={{ supervisor_logdir }}/{{ django_project_name }}/{{ django_hostname }}/celery-beat-stderr
-directory={{ django_extracted_sources_dir }}/src
+directory={{ django_home_dir }}
 
 [program:gunicorn]
 command={{ django_home_dir }}/vexec {{ django_venv_dir }}/bin/gunicorn
@@ -34,7 +34,7 @@ command={{ django_home_dir }}/vexec {{ django_venv_dir }}/bin/gunicorn
     --workers={{ ansible_processor_cores }}
     --timeout=1800 django_bpp.wsgi
     --max-requests=40960
-directory={{ django_extracted_sources_dir }}/src
+directory={{ django_home_dir }}
 user={{ django_user }}
 autostart=true
 autorestart=true

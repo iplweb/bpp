@@ -8,7 +8,7 @@ server {
   error_page 497 https://$host:{{ django_nginx_https_port }}$request_uri;
 
   location / {
-    alias {{ django_extracted_sources_dir }}/src/maint-site;
+    alias {{ django_home_dir }}/src/maint-site;
     if_modified_since off;
     add_header Last-Modified "";
   }

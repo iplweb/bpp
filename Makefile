@@ -1,9 +1,14 @@
 BRANCH=`git branch | sed -n '/\* /s///p'`
 
+.PHONY: tests clean distclean
+
 clean:
 	find . -name \*~ -print0 | xargs -0 rm -fv 
 	find . -name \*pyc -print0 | xargs -0 rm -fv 
 	find . -name \*\\.log -print0 | xargs -0 rm -fv 
+
+distclean: clean
+	rm -rf build/ dist/ 
 
 vcs:
 	fab vcs:${BRANCH}
@@ -11,20 +16,20 @@ vcs:
 wheels: 
 	fab wheels
 
-prepare:
+prepare-build-env:
 	fab prepare
 
-just-tests: 
-	fab test:no_rebuild=True
-
-# Nie przebudowuj testów po fazie „prepare”, gdyż tam jest przebudowywana
-# główna baza danych od zera ORAZ tworzona jest baza danych test_bpp ORAZ
-# tworzony jest też jej snapshot...
-tests:  vcs wheels prepare just-tests
-	@echo "Done"
+build-assets:
+	fab build_assets
 
 build:
 	fab build
+
+tests: build-assets
+	fab test
+
+tests-from-scratch: prepare-build-env tests
+	@echo "Done"
 
 rebuild-staging:
 	vagrant pristine -f staging
@@ -39,7 +44,7 @@ staging:
 demo-vm-ansible:
 	ansible-playbook ansible/demo-vm.yml --private-key=.vagrant/machines/staging/virtualbox/private_key
 
-full-build: tests build staging
+release: vcs wheels tests-from-scratch build staging
 	@echo "Done"
 
 local-build:
@@ -50,9 +55,6 @@ new-patch: clean
 	bumpversion patch 
 	git push
 	git push --tags
-
-release: new-patch full-build
-	@echo "Done"
 
 rerun-release-after-tests-failure: vcs just-tests build staging
 	@echo "Done"

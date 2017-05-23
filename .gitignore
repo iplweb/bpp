@@ -65,7 +65,7 @@ target/
 *~
 src/bower_components
 src/components/bower_components
-src/staticroot
+src/django_bpp/staticroot
 src/media
 src/django_bpp/local_settings.py
 .vagrant/
@@ -85,3 +85,6 @@ releases/
 *.key
 *.retry
 *.ova
+
+src/bpp/static/scss/app.css
+yarn.lock
