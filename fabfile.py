@@ -18,7 +18,9 @@ env['dbuser'] = 'bpp'
 
 def prepare():
     run("latest/buildscripts/prepare-build-env.sh")
-    run("latest/buildscripts/build-js-html-css.sh")
+
+def build_assets():
+    run("latest/buildscripts/build-js-css-html.sh")
 
 def test(no_rebuild=False, no_django=False):
     no_rebuild_opt = no_django_opt = ""
