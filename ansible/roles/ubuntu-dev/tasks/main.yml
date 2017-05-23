@@ -2,32 +2,18 @@
 - name: Install {{ item }}
   apt: name={{ item }}
   with_items:
-#    - python-gevent
-#    - python-psycopg2 
-#    - python-imaging 
-#    - python-crypto 
-#    - python-simplejson 
-#    - python-sqlalchemy 
-    - redis-server 
+    - redis-server
     - zip 
     - unzip
-    
-    - libpq-dev 
-    - libjpeg-dev 
-    - libpng-dev 
-    - libxml2-dev 
-    - libxslt1-dev 
-    - libevent-dev 
-    - libxslt1-dev 
-    - python-dev 
+    - phantomjs
+    - python-dev
     - npm 
     - nodejs-legacy
     - postgresql-client
 
-#- name: Install node packages globally
-#  npm: name={{ item }} global=yes
-#  with_items:
-#    - grunt
-#    - grunt-cli
-#    - bower
-#    - npm-cache
+- name: Install node packages globally
+  npm: name={{ item }} global=yes
+  with_items:
+    - grunt-cli
+    - bower
+    - npm-cache
