@@ -8,9 +8,10 @@ popd > /dev/null
 
 cd $SCRIPTPATH/..
 
-export PATH=$PATH:./node_modules/.bin/
+export PATH=./node_modules/.bin/:$PATH
 
-npm-cache install grunt grunt-sass grunt-contrib-watch grunt-contrib-qunit 
+npm install --upgrade npm npm-cache
+npm-cache install 
 
 rm -rf src/components/bower_components src/django_bpp/staticroot
 yes n | python src/manage.py bower_install -F
