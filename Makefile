@@ -25,7 +25,7 @@ build-assets:
 tests: build-assets
 	fab test
 
-tests-from-scratch: prepare-build-env wheels tests
+tests-from-scratch: prepare-build-env tests
 	@echo "Done"
 
 rebuild-staging:
@@ -41,7 +41,7 @@ staging:
 demo-vm-ansible:
 	ansible-playbook ansible/demo-vm.yml --private-key=.vagrant/machines/staging/virtualbox/private_key
 
-release: vcs tests-from-scratch build staging
+release: vcs wheels tests-from-scratch build staging
 	@echo "Done"
 
 local-build:
