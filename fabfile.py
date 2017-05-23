@@ -22,13 +22,17 @@ def prepare():
 def build_assets():
     run("latest/buildscripts/build-js-css-html.sh")
 
-def test(no_rebuild=False, no_django=False):
-    no_rebuild_opt = no_django_opt = ""
+def test(no_rebuild=False, no_django=False, no_pytest=False, no_qunit=False):
+    opts = []
     if no_rebuild:
-        no_rebuild_opt = "--no-rebuild"
+        opts.append("--no-rebuild")
     if no_django:
-        no_django_opt = "--no-django"
-    run("latest/buildscripts/run-tests.sh %s %s" % (no_rebuild_opt, no_django_opt))
+        opts.append("--no-django")
+    if no_qunit:
+        opts.append("--no-qunit")
+    if no_pytest:
+        opts.append("--no-pytest")
+    run("latest/buildscripts/run-tests.sh %s" % " ".join(opts))
 
 def build():
     run("/vagrant/buildscripts/build-wheel.sh")
