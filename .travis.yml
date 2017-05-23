@@ -19,6 +19,7 @@ before_install:
 install:
   - nvm install 6
   - npm install -g yarn
+  - yarn global add bower grunt-cli
 
   - createuser -dsU postgres bpp
   - createdb -U bpp 
