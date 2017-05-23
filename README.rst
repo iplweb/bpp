@@ -56,6 +56,15 @@ Wymagane oprogramowanie serwerowe, w tym PostgreSQL_, RabbitMQ_, redis_ zostanie
 zainstalowane przez skrypty Ansible_ na maszynie wirtualnej zarządzanej przez
 Vagrant_.
 
+Jeżeli używasz macOS:
+~~~~~~~~~~~~~~~~~~~~~
+
+Większość procedur instalacyjnych możesz załatwić przez Homebrew_:
+
+.. code-block:: bash
+
+    brew install bower grunt-cli yarn npm ansible python git
+
 
 Klonowanie repozytorium z kodem
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -74,18 +83,16 @@ Zainstaluj pakiety JavaScript przez npm_:
 
 .. code-block:: bash
 
-    npm install -g bower grunt-cli npm-cache
+    npm install -g bower grunt-cli
 
 Konfiguracja Pythona
 ~~~~~~~~~~~~~~~~~~~~
 
-Zainstaluj virtualenv:
+Zainstaluj virtualenv oraz virtualenvwrapper_.:
 
 .. code-block:: bash
 
-    pip install virtualenv
-
-Zainstaluj virtualenvwrapper_.
+    pip install virtualenv virtualenvwrapper
 
 Stwórz i zaktywizuj wirtualne środowisko języka Python:
 
@@ -136,14 +143,16 @@ Możesz umieścić te ustawienia w pliku ``bin/postactivate`` środowiska
 wirtualnego utworzonego przez ``mkvirtualenv``. Domyślnie będą one w katalogu
 ``~/.envs/django-bpp/bin/postactivate``.
 
-Następnie uruchom skrypt aby przygotować środowisko budowania. Skrypt ten
-instaluje wymagane przez interfejs WWW pakiety języka JavaScript za pomocą
-django-bower_ oraz konfiguruje bibliotekę Foundation_ budując ją za pomocą
-Grunt_. Następnie kompiluje tak uzbierane pakiety za pomocą django-compressor_.
+Następnie uruchom skrypt aby przygotować środowisko budowania oraz kolejny
+skrypt, aby zbudować pliki CSS i JS. Skrypty te
+instalują wymagane przez interfejs WWW pakiety języka JavaScript za pomocą
+django-bower_ oraz konfigurują bibliotekę Foundation_ budując ją za pomocą
+Grunt_. Następnie kompilują tak uzbierane pakiety za pomocą django-compressor_.
 
 .. code-block:: bash
 
     ./buildsrcipts/prepare-build-env.sh
+    ./buildsrcipts/build-js-css-html.sh
 
 Uruchom lokalne testy
 ~~~~~~~~~~~~~~~~~~~~~
@@ -191,6 +200,7 @@ operacyjnym (Linux) oraz zbuduje wersję instalacyjną systemu:
 .. _Ansible: http://ansible.com/
 .. _RabbitMQ: http://rabbitmq.com/
 .. _redis: http://redis.io/
+.. _Homebrew: http://brew.sh
 
 Wsparcie komercyjne
 -------------------
