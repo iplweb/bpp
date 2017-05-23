@@ -5,7 +5,6 @@
     - redis-server
     - zip 
     - unzip
-    - phantomjs
     - python-dev
     - npm 
     - nodejs-legacy
