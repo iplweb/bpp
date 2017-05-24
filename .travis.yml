@@ -27,7 +27,8 @@ addons:
 before_install: 
   - sudo apt-get update
   - sudo apt-get install chromium-chromedriver
-  - sudo echo "/usr/lib/chromium-browser/libs" >> /etc/ld.so.conf.d/chrome_lib.conf
+  - ls -las /etc/ld.so.conf.d
+  - sudo python -c "open('/etc/ld.so.conf.d/chrome_lib.conf', 'w').write('/usr/lib/chromium-browser/libs')"
   - sudo ldconfig
 
   - export PGHOST=localhost
