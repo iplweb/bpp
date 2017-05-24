@@ -7,8 +7,17 @@ from fabric.contrib.files import exists
 
 if not env['hosts']:
     env['hosts'] = ['ubuntu@bpp-master']
-    # env['password'] = 'vagrant'
-    env.key_filename = '.vagrant/machines/master/virtualbox/private_key'
+
+if not env.key_filename:
+    env.key_filename = []
+    for host in env['hosts']:
+        hostname = host.replace("ubuntu@", "").replace("bpp-", "")
+        fn = '.vagrant/machines/%s/virtualbox/private_key' % hostname
+        try:
+            stat = os.stat(fn)
+        except OSError, e:
+            continue
+        env.key_filename.append(fn)
 
 
 env['shell'] = "/bin/bash -l -i -c" 
@@ -19,21 +28,29 @@ env['dbuser'] = 'bpp'
 def prepare():
     run("latest/buildscripts/prepare-build-env.sh")
 
-def test(no_rebuild=False, no_django=False):
-    no_rebuild_opt = no_django_opt = ""
+def build_assets():
+    run("latest/buildscripts/build-js-css-html.sh")
+
+def test(no_rebuild=False, no_django=False, no_pytest=False, no_qunit=False):
+    opts = []
     if no_rebuild:
-        no_rebuild_opt = "--no-rebuild"
+        opts.append("--no-rebuild")
     if no_django:
-        no_django_opt = "--no-django"
-    run("latest/buildscripts/run-tests.sh %s %s" % (no_rebuild_opt, no_django_opt))
+        opts.append("--no-django")
+    if no_qunit:
+        opts.append("--no-qunit")
+    if no_pytest:
+        opts.append("--no-pytest")
+    run("latest/buildscripts/run-tests.sh %s" % " ".join(opts))
 
 def build():
-    run("latest/buildscripts/build-deps.sh")
-    run("latest/buildscripts/build-src.sh")
-    local("ls -lash releases; du -h releases")
+    run("/vagrant/buildscripts/build-wheel.sh")
 
 def migrate():
-    run("python latest/src/manage.py migrate")
+    run("bpp-manage.py migrate")
+
+def changepassword(user='admin'):
+    run("bpp-manage.py changepassword %s" % user)
 
 def collectstatic():
     run("python latest/src/manage.py collectstatic --noinput -v 0 ")
@@ -43,11 +60,10 @@ def venv():
     run("/vagrant/provisioning/venv.sh")
 
 def wheels():
-    with cd("/vagrant/buildscripts"):
-        run("./wheels.build.sh")
-        run("./wheels.install.sh")
     with cd("/vagrant/requirements"):
-        run("pip --quiet install -r dev.requirements.txt")
+        run("pip --quiet install -r requirements_dev.txt -r requirements.txt")
+    # with cd("/vagrant/"):
+    #     run("pip --quiet install .")
 
 def vcs(branch=None):
     with cd("django-bpp"):
@@ -118,5 +134,5 @@ def upload_db(fn, db, dbuser):
         run('createuser -s bpp')
     run('createdb --echo --encoding=UTF8 -U {0} --owner={0} {1}'.format(dbuser, db))
     run('pg_restore -U {0} -d {1} {2}'.format(dbuser, db, fn))
-    run('./vexec python latest/src/manage.py migrate')
+    run('bpp-manage.py migrate')
     sudo('supervisorctl start all')

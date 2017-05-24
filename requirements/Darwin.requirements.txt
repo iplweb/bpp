@@ -1,6 +1,0 @@
-gevent
-psycopg2
-Pillow
-pycrypto
-simplejson
-SQLAlchemy

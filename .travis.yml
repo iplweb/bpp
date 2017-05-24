@@ -1,0 +1,53 @@
+language: python
+cache: pip
+python: 2.7
+
+addons:
+  apt:
+    packages:
+      - xvfb
+      - postgresql-plpython-9.4
+      - postgresql-9.4
+      - oracle-java8-installer
+      - oracle-java8-set-default
+
+before_install: 
+  - export PGHOST=localhost
+  - export PGUSER=bpp
+  - export PATH=.:$PATH
+  - export DJANGO_SETTINGS_MODULE=django_bpp.settings.test
+  - export DJANGO_BPP_SECRET_KEY=0xdeadbeefbabe
+  - export DJANGO_BPP_MEDIA_ROOT=$HOME/media
+  - export DJANGO_BPP_NOTIFICATIONS_HOST=localhost:80
+  - export DJANGO_LIVE_TEST_SERVER_ADDRESS=localhost:9000-15000
+  - export DJANGO_BPP_DB_HOST=localhost
+
+install:
+  - apt-get source nginx
+  - git clone https://github.com/wandenberg/nginx-push-stream-module.git
+  - export BUILD_ROOT_DIR=`pwd -P`
+  - cd nginx-1.1.19
+  - ./configure --add-module=../nginx-push-stream-module --prefix=$BUILD_ROOT_DIR
+  - make && make install
+  - cd ..
+  - cd conf
+  - wget https://raw.githubusercontent.com/mpasternak/django-bpp/dev/.travis/nginx.conf.patch
+  - patch -p0 < nginx.conf.patch
+  - cd ..
+  - sbin/nginx
+
+  - nvm install 6
+  - npm install -g yarn
+  - yarn global add bower grunt-cli
+
+  - createuser -dsU postgres bpp
+  - createdb -U bpp 
+  - pip install -U tox
+  - export DISPLAY=":99.0"
+  - Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
+  - wget https://chromedriver.storage.googleapis.com/2.29/chromedriver_linux64.zip
+  - unzip chromedriver_linux64.zip
+  - wget https://goo.gl/uTXEJ1
+  - java -jar uTXEJ1 &
+
+script: tox

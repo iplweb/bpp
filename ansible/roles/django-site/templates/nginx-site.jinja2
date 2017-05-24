@@ -12,7 +12,7 @@ server {
   error_page 497 https://$host:{{ django_nginx_https_port }}$request_uri;
 
   location /static {
-    alias {{ django_home_dir }}/latest/src/staticroot;
+    alias {{ django_home_dir }}/env/lib/python2.7/site-packages/django_bpp/staticroot;
     expires 30d;
   }
 

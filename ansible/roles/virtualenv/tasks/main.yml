@@ -1,10 +1,10 @@
 ---
 - name: Stat virtualenv
-  stat: path=/home/{{user}}/env
+  stat: path={{venv_path}}
   register: v
 
 - name: Create virtualenv
-  shell: virtualenv -p python{{ python_version }} /home/{{ user }}/env
+  shell: virtualenv -p python{{ python_version }} {{venv_path}}
   become: no
   when: not v.stat.exists
 

@@ -6,14 +6,14 @@ module.exports = function(grunt) {
 
     sass: {
       options: {
-        includePaths: ['components/bower_components/foundation/scss']
+        includePaths: ['src/components/bower_components/foundation/scss']
       },
       dist: {
         options: {
           outputStyle: 'compressed'
         },
         files: {
-          'staticroot/scss/app.css': 'bpp/static/scss/app.scss'
+          'src/bpp/static/scss/app.css': 'src/bpp/static/scss/app.scss'
         }
       }
     },
@@ -22,13 +22,13 @@ module.exports = function(grunt) {
       grunt: { files: ['Gruntfile.js'] },
 
       sass: {
-        files: 'bpp/static/scss/*.scss',
+        files: 'src/bpp/static/scss/*.scss',
         tasks: ['sass']
       }
     },
 
     qunit: {
-      all: ['notifications/static/notifications/js/tests/index.html']
+      all: ['src/notifications/static/notifications/js/tests/index.html']
     }
   });
 
