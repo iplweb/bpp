@@ -20,6 +20,7 @@ before_install:
   - export DJANGO_BPP_MEDIA_ROOT=$HOME/media
   - export DJANGO_BPP_NOTIFICATIONS_HOST=localhost:80
   - export DJANGO_LIVE_TEST_SERVER_ADDRESS=localhost:9000-15000
+  - export DJANGO_BPP_DB_HOST=localhost
 
 install:
   - apt-get source nginx
