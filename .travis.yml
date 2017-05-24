@@ -42,10 +42,10 @@ install:
   - npm install -g yarn > /dev/null
   - yarn global add bower grunt-cli > /dev/null
 
-  # We're using sudo anyways, so:
-  - sudo update-locale LC_ALL="pl_PL.UTF-8" LANG="pl_PL.UTF-8"
-  - sudo locale-gen pl_PL.UTF-8
-  - sudo dpkg-reconfigure locales > /dev/null
+#  # We're using sudo anyways, so:
+#  - sudo update-locale LC_ALL="pl_PL.UTF-8" LANG="pl_PL.UTF-8"
+#  - sudo locale-gen pl_PL.UTF-8
+#  - sudo dpkg-reconfigure locales > /dev/null
 
   # Restart PostgreSQL - the only place we use 'sudo'. It is required because
   # extra locales have been added.
@@ -55,11 +55,14 @@ install:
   #- export LC_ALL=pl_PL.UTF-8
   #- export LANG=pl_PL.UTF-8
   #- sudo pg_createcluster 9.4 main -- --locale pl_PL.utf-8
+
   - sudo /etc/init.d/postgresql restart
+
   # - sudo /etc/init.d/postgresql start 9.4
+  - psql -U postgres -c "CREATE COLLATION \"pl_PL\"(locale='pl_PL.utf8');" template1
+  - createlang -U postgres plpythonu template1
+
   - createuser -dsU postgres $PGUSER
-  - psql -U $PGUSER -c "CREATE COLLATION pl_PL(locale='pl_PL.utf8');" template1
-  - createlang -U $PGUSER plpythonu template1
   - createdb -U $PGUSER bpp
 
   - pip install -U tox
