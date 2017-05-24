@@ -96,7 +96,8 @@ install:
   #- Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
   #- wget https://chromedriver.storage.googleapis.com/2.29/chromedriver_linux64.zip
   #- unzip chromedriver_linux64.zip
-  - wget https://goo.gl/uTXEJ1
-  - java -jar uTXEJ1 &
+  - # 3.3.1 https://goo.gl/uTXEJ1
+  - wget https://goo.gl/s4o9Vx
+  - java -jar s4o9Vx &
 
 script: tox
