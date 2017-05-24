@@ -41,6 +41,10 @@ install:
   - npm install -g yarn
   - yarn global add bower grunt-cli
 
+  # Restart PostgreSQL - the only place we use 'sudo'. It is required because
+  # extra locales have been added. 
+  - sudo /etc/init.d/postgresql stop
+  - sudo /etc/init.d/postgresql start 9.4
   - createuser -dsU postgres $PGUSER
   - createdb -U $PGUSER bpp
   - psql -U $PGUSER -c "CREATE COLLATION pl_PL(locale='pl_PL.utf8');" bpp
