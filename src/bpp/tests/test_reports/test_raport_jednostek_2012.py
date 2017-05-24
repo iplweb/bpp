@@ -82,7 +82,8 @@ class TestRaportJednostek2012(TestCase):
         common = dict(charakter_formalny=charakter("AC"),
                       jezyk=jezyk("pol."),
                       impact_factor=0,
-                      punkty_kbn=5)
+                      punkty_kbn=5,
+                      liczba_znakow_wydawniczych=500)
         c = any_ciagle(adnotacje="",
                        typ_kbn=typ_kbn("PO"),
                        **common)
@@ -128,6 +129,8 @@ class TestRaportJednostek2012(TestCase):
     def test_1_4(self):
         c = any_ciagle(
             charakter_formalny=Charakter_Formalny.objects.get(skrot="AC"),
+            impact_factor=0,
+            punkty_kbn=5,
             liczba_znakow_wydawniczych=1 + (ILOSC_ZNAKOW_NA_ARKUSZ / 2),
             jezyk=Jezyk.objects.get(skrot="ang."))
         c.dodaj_autora(self.a, self.j)

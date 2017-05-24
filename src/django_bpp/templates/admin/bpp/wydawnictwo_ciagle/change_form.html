@@ -126,22 +126,29 @@
                 });
                 console.log(data);
 
-                $.ajax({type: "POST", url: url, data: data }).done(
+                var y = $.ajax({type: "POST", url: url, data: data });
+
+                y.done(
                         function (res) {
                             if (res.result == 'exists') {
                                 if (confirm("Punktacja dla tego roku już istnieje. Nadpisać?")) {
                                     data.overwrite = "1";
                                     console.log(data);
-                                    $.ajax({type: "POST", url: url, data: data}).done(
+                                    var x = $.ajax({type: "POST", url: url,
+                                        data: data});
+
+                                    x.done(
                                             function (res) {
                                                 if (res.result == 'ok')
                                                     $("#id_dodaj_punktacje_do_zrodla_button").text("Punktacja zapisana!");
                                             }
-                                    ).error(
+                                    );
+
+                                    x.error(
                                             function (err) {
                                                 alert("Wystąpił błąd, status: " + err.status);
                                             }
-                                    )
+                                    );
 
                                 } else
                                     return false;
@@ -149,7 +156,9 @@
 
                             if (res.result == 'ok')
                                 $("#id_dodaj_punktacje_do_zrodla_button").text("Dodana!!");
-                        }).error(
+                        });
+
+                y.error(
                         function (err) {
                             if (err.status == 404) {
                                 if (err.response == "Zrodlo") {
@@ -174,10 +183,12 @@
                     return ret;
 
                 url = "/bpp/api/punktacja-zrodla/" + ret.zrodlo + '/' + ret.rok + '/';
-                $.ajax({
+                var z = $.ajax({
                     type: "POST",
                     url: url,
-                }).done(
+                });
+
+                z.done(
                         function (data) {
 
                             names = ['impact_factor', 'index_copernicus',
@@ -190,7 +201,9 @@
                             });
 
                             $("#id_wypelnij_pola_punktacji_button").text("Wypełniona!");
-                        }).error(
+                        });
+
+                z.error(
                         function (err) {
                             if (err.status == 404) {
                                 if (err.responseText == "Rok") {
@@ -206,6 +219,7 @@
 
                             alert("Wystąpił błąd, status: " + err.status + ".");
                         });
+
                 return false;
             });
         });

@@ -470,22 +470,19 @@ def raport_common_tabela(key, base_query, jednostka=None, autor=None):
         ).order_by("zrodlo__nazwa")
 
     elif key == "1_2":
+        # (Charakter formalny= AC OR L OR Supl) AND IF=0 AND PK>0 AND NOT
+        # [(Charakter formalny= AC OR L OR Supl) AND IF=0 PK>0 AND l. znaków> 20000]
+
         return base_query.filter(
-            charakter_formalny__skrot__in=["AC", "L"],
+            charakter_formalny__skrot__in=["AC", "L", "Supl"],
             impact_factor=0,
-            punkty_kbn__gt=0
+            punkty_kbn__gt=0,
         ).exclude(
-            typ_kbn=Typ_KBN.objects.get(skrot="PW")
-        ).exclude(
-            adnotacje__icontains="erih"
+            liczba_znakow_wydawniczych__gte=ILOSC_ZNAKOW_NA_ARKUSZ/2
         ).exclude(
             adnotacje__icontains="wos"
         ).exclude(
-            Q(
-                charakter_formalny=Charakter_Formalny.objects.get(skrot="AC"),
-                liczba_znakow_wydawniczych__gte=ILOSC_ZNAKOW_NA_ARKUSZ / 2
-            ),
-            ~Q(jezyk=Jezyk.objects.get(skrot="pol."))
+            adnotacje__icontains="erih"
         )
 
     elif key == "1_3":
@@ -494,8 +491,16 @@ def raport_common_tabela(key, base_query, jednostka=None, autor=None):
             punkty_kbn__gt=0)
 
     elif key == "1_4":
+        # 1.4 Recenzowana publikacja naukowa w języku innym niż polski w
+        # zagranicznym czasopiśmie naukowym spoza list A,B,C, o objętości co
+        # najmniej 0,5 arkusza
+
+        # (Charakter formalny= AC OR L OR Supl) AND IF=0 AND PK>0 AND l. znaków> 20000
+
         return base_query.filter(
-            charakter_formalny=Charakter_Formalny.objects.get(skrot="AC"),
+            charakter_formalny__skrot__in=["AC", "L", "Supl"],
+            impact_factor=0,
+            punkty_kbn__gt=0,
             liczba_znakow_wydawniczych__gte=ILOSC_ZNAKOW_NA_ARKUSZ / 2
         ).exclude(jezyk=Jezyk.objects.get(skrot="pol."))
 

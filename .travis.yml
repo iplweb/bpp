@@ -1,6 +1,18 @@
+sudo: required
+dist: trusty 
 language: python
-cache: pip
 python: 2.7
+
+cache: 
+  directories:
+    - $HOME/.cache/bower
+    - $HOME/.cache/yarn
+    - $HOME/.cache/pip
+    - $HOME/.npm
+
+
+services:
+  - redis-server
 
 addons:
   apt:
@@ -10,25 +22,40 @@ addons:
       - postgresql-9.4
       - oracle-java8-installer
       - oracle-java8-set-default
+      - language-pack-pl
 
 before_install: 
+  - sudo apt-get update
+  - sudo apt-get install chromium-chromedriver
+  - ls -las /etc/ld.so.conf.d
+  - sudo python -c "open('/etc/ld.so.conf.d/chrome_lib.conf', 'w').write('/usr/lib/chromium-browser/')"
+  - sudo ldconfig
+
   - export PGHOST=localhost
   - export PGUSER=bpp
   - export PATH=.:$PATH
   - export DJANGO_SETTINGS_MODULE=django_bpp.settings.test
   - export DJANGO_BPP_SECRET_KEY=0xdeadbeefbabe
   - export DJANGO_BPP_MEDIA_ROOT=$HOME/media
-  - export DJANGO_BPP_NOTIFICATIONS_HOST=localhost:80
+  - export DJANGO_BPP_NOTIFICATIONS_HOST=localhost
+  - export DJANGO_BPP_NOTIFICATIONS_PORT=8080
   - export DJANGO_LIVE_TEST_SERVER_ADDRESS=localhost:9000-15000
   - export DJANGO_BPP_DB_HOST=localhost
 
+  - "export PATH=$PATH:/usr/lib/chromium-browser/"
+  - "export DISPLAY=:99.0"
+  - "sh -e /etc/init.d/xvfb start"
+  - sleep 3
+
 install:
   - apt-get source nginx
-  - git clone https://github.com/wandenberg/nginx-push-stream-module.git
+  - git clone https://github.com/wandenberg/nginx-push-stream-module.git > /dev/null
   - export BUILD_ROOT_DIR=`pwd -P`
-  - cd nginx-1.1.19
-  - ./configure --add-module=../nginx-push-stream-module --prefix=$BUILD_ROOT_DIR
-  - make && make install
+  - ls -las
+  - cd nginx-1.4.6
+  - ./configure --add-module=../nginx-push-stream-module --prefix=$BUILD_ROOT_DIR > /dev/null
+  - make > /dev/null
+  - make install > /dev/null
   - cd ..
   - cd conf
   - wget https://raw.githubusercontent.com/mpasternak/django-bpp/dev/.travis/nginx.conf.patch
@@ -36,18 +63,39 @@ install:
   - cd ..
   - sbin/nginx
 
-  - nvm install 6
-  - npm install -g yarn
-  - yarn global add bower grunt-cli
+  - nvm install 6 > /dev/null
+  - npm install -g yarn > /dev/null
+  - yarn global add bower grunt-cli > /dev/null
 
-  - createuser -dsU postgres bpp
-  - createdb -U bpp 
+#  # We're using sudo anyways, so:
+#  - sudo update-locale LC_ALL="pl_PL.UTF-8" LANG="pl_PL.UTF-8"
+#  - sudo locale-gen pl_PL.UTF-8
+#  - sudo dpkg-reconfigure locales > /dev/null
+
+  # Restart PostgreSQL - the only place we use 'sudo'. It is required because
+  # extra locales have been added.
+
+  #- sudo pg_dropcluster --stop 9.4 main
+  #- sudo rm -rf /var/lib/postgresql/9.4/main/data
+  #- export LC_ALL=pl_PL.UTF-8
+  #- export LANG=pl_PL.UTF-8
+  #- sudo pg_createcluster 9.4 main -- --locale pl_PL.utf-8
+
+  - sudo /etc/init.d/postgresql restart
+
+  # - sudo /etc/init.d/postgresql start 9.4
+  - psql -U postgres -c "CREATE COLLATION \"pl_PL\"(locale='pl_PL.utf8');" template1
+  - createlang -U postgres plpythonu template1
+
+  - createuser -dsU postgres $PGUSER
+  - createdb -U $PGUSER bpp
+
+  - cp .travis/stellar.yaml .travis/pytest.ini . 
+
+  - pip install -U pip
   - pip install -U tox
-  - export DISPLAY=":99.0"
-  - Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
-  - wget https://chromedriver.storage.googleapis.com/2.29/chromedriver_linux64.zip
-  - unzip chromedriver_linux64.zip
-  - wget https://goo.gl/uTXEJ1
-  - java -jar uTXEJ1 &
+
+  - wget https://goo.gl/s4o9Vx
+  - java -jar s4o9Vx &
 
 script: tox
