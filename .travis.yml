@@ -16,7 +16,10 @@ services:
 
 addons:
   apt:
+    sources:
+      - google-chrome
     packages:
+      - google-chrome-stable
       - xvfb
       - postgresql-plpython-9.4
       - postgresql-9.4
@@ -25,8 +28,12 @@ addons:
       - language-pack-pl
 
 before_install: 
-  - sudo apt-get update
-  - sudo apt-get install chromium-chromedriver
+  - ls -las /home/travis/virtualenv/
+  - ls -las /home/travis/virtualenv/python2.7.9/
+  - wget http://chromedriver.storage.googleapis.com/2.29/chromedriver_linux64.zip
+  - unzip chromedriver_linux64.zip -d  /home/travis/virtualenv/python2.7.9/
+  - export CHROME_BIN=chromium-browser
+
   - ls -las /etc/ld.so.conf.d
   - sudo python -c "open('/etc/ld.so.conf.d/chrome_lib.conf', 'w').write('/usr/lib/chromium-browser/libs')"
   - sudo ldconfig
