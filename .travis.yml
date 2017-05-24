@@ -1,11 +1,13 @@
 language: python
+python: 2.7
+
 cache: 
-  - pip
   directories:
     - $HOME/.cache/bower
+    - $HOME/.cache/yarn
+    - $HOME/.cache/pip
     - $HOME/.npm
 
-python: 2.7
 
 services:
   - redis-server
