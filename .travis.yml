@@ -23,8 +23,6 @@ addons:
       - xvfb
       - postgresql-plpython-9.4
       - postgresql-9.4
-      - oracle-java8-installer
-      - oracle-java8-set-default
       - language-pack-pl
 
 before_install: 
