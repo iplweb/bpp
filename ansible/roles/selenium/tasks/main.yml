@@ -4,7 +4,7 @@
   register: sel
 
 - name: Download Selenium
-  get_url: url=https://goo.gl/uTXEJ1 dest=/var/cache/wget/
+  get_url: url=https://goo.gl/s4o9Vx dest=/var/cache/wget/
   when: not sel.stat.exists
   notify: 
     - restart supervisor services
