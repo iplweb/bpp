@@ -74,7 +74,7 @@ install:
   - createuser -dsU postgres $PGUSER
   - createdb -U $PGUSER bpp
 
-  - cp .travis/stellar.yaml . 
+  - cp .travis/stellar.yaml .travis/pytest.ini . 
 
   - pip install -U tox
   - export DISPLAY=":99.0"
