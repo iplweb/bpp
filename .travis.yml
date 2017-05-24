@@ -10,6 +10,7 @@ addons:
       - postgresql-9.4
       - oracle-java8-installer
       - oracle-java8-set-default
+      - language-pack-pl
 
 before_install: 
   - export PGHOST=localhost
@@ -42,7 +43,6 @@ install:
 
   - createuser -dsU postgres $PGUSER
   - createdb -U $PGUSER bpp
-  - locale-gen pl_PL.UTF-8
   - psql -U $PGUSER -c "CREATE COLLATION pl_PL(locale='pl_PL.utf8');" bpp
   - createlang -U $PGUSER plpythonu bpp
 
