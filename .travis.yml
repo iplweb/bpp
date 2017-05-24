@@ -40,8 +40,13 @@ install:
   - npm install -g yarn
   - yarn global add bower grunt-cli
 
-  - createuser -dsU postgres bpp
-  - createdb -U bpp 
+  - createuser -dsU postgres $PGUSER
+  - createdb -U $PGUSER bpp
+  # - locale-gen pl_PL.UTF-8
+  # - psql -U $PGUSER -c "CREATE COLLATION pl_PL(locale='pl_PL.utf8');" bpp
+  - psql -U $PGUSER -c "CREATE COLLATION pl_PL(locale='C');" bpp
+  - createlang -U $PGUSER plpythonu bpp
+
   - pip install -U tox
   - export DISPLAY=":99.0"
   - Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
