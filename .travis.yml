@@ -41,10 +41,21 @@ install:
   - npm install -g yarn
   - yarn global add bower grunt-cli
 
+  # We're using sudo anyways, so:
+  - sudo update-locale LC_ALL="pl_PL.UTF-8" LANG="pl_PL.UTF-8"
+  - sudo locale-gen pl_PL.UTF-8
+  - sudo dpkg-reconfigure locales
+
   # Restart PostgreSQL - the only place we use 'sudo'. It is required because
-  # extra locales have been added. 
-  - sudo /etc/init.d/postgresql stop
-  - sudo /etc/init.d/postgresql start 9.4
+  # extra locales have been added.
+
+  #- sudo pg_dropcluster --stop 9.4 main
+  #- sudo rm -rf /var/lib/postgresql/9.4/main/data
+  #- export LC_ALL=pl_PL.UTF-8
+  #- export LANG=pl_PL.UTF-8
+  #- sudo pg_createcluster 9.4 main -- --locale pl_PL.utf-8
+  - sudo /etc/init.d/postgresql restart
+  # - sudo /etc/init.d/postgresql start 9.4
   - createuser -dsU postgres $PGUSER
   - createdb -U $PGUSER bpp
   - psql -U $PGUSER -c "CREATE COLLATION pl_PL(locale='pl_PL.utf8');" bpp
