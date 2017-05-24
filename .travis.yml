@@ -24,12 +24,13 @@ before_install:
 install:
   - apt-get source nginx
   - git clone https://github.com/wandenberg/nginx-push-stream-module.git
-  - cd nginx-1.1.19
+  - cd ~/nginx-1.1.19
   - ./configure --add-module=../nginx-push-stream-module --prefix=$HOME
   - make && make install
-  - cd ../conf
+  - cd ~/conf
   - wget https://raw.githubusercontent.com/mpasternak/django-bpp/dev/.travis/nginx.conf.patch
   - patch -p0 < nginx.conf.patch
+  - cd ~
   - ~/sbin/nginx
 
   - nvm install 6
