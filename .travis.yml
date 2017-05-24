@@ -25,11 +25,12 @@ before_install:
 
 install:
   - apt-get source nginx
-  - git clone https://github.com/wandenberg/nginx-push-stream-module.git
+  - git clone https://github.com/wandenberg/nginx-push-stream-module.git > /dev/null
   - export BUILD_ROOT_DIR=`pwd -P`
   - cd nginx-1.1.19
-  - ./configure --add-module=../nginx-push-stream-module --prefix=$BUILD_ROOT_DIR
-  - make && make install
+  - ./configure --add-module=../nginx-push-stream-module --prefix=$BUILD_ROOT_DIR > /dev/null
+  - make > /dev/null
+  - make install > /dev/null
   - cd ..
   - cd conf
   - wget https://raw.githubusercontent.com/mpasternak/django-bpp/dev/.travis/nginx.conf.patch
@@ -37,14 +38,14 @@ install:
   - cd ..
   - sbin/nginx
 
-  - nvm install 6
-  - npm install -g yarn
-  - yarn global add bower grunt-cli
+  - nvm install 6 > /dev/null
+  - npm install -g yarn > /dev/null
+  - yarn global add bower grunt-cli > /dev/null
 
   # We're using sudo anyways, so:
   - sudo update-locale LC_ALL="pl_PL.UTF-8" LANG="pl_PL.UTF-8"
   - sudo locale-gen pl_PL.UTF-8
-  - sudo dpkg-reconfigure locales
+  - sudo dpkg-reconfigure locales > /dev/null
 
   # Restart PostgreSQL - the only place we use 'sudo'. It is required because
   # extra locales have been added.
@@ -57,9 +58,9 @@ install:
   - sudo /etc/init.d/postgresql restart
   # - sudo /etc/init.d/postgresql start 9.4
   - createuser -dsU postgres $PGUSER
+  - psql -U $PGUSER -c "CREATE COLLATION pl_PL(locale='pl_PL.utf8');" template1
+  - createlang -U $PGUSER plpythonu template1
   - createdb -U $PGUSER bpp
-  - psql -U $PGUSER -c "CREATE COLLATION pl_PL(locale='pl_PL.utf8');" bpp
-  - createlang -U $PGUSER plpythonu bpp
 
   - pip install -U tox
   - export DISPLAY=":99.0"
