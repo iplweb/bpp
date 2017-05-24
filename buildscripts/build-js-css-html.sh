@@ -7,6 +7,6 @@ popd > /dev/null
 
 cd $SCRIPTPATH/..
 
-grunt build
-python src/manage.py collectstatic --noinput
-python src/manage.py compress --force
+grunt build > /dev/null
+python src/manage.py collectstatic --noinput -v0
+python src/manage.py compress --force -v0
