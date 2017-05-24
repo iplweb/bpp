@@ -44,6 +44,8 @@ done
 
 export GIT_BRANCH_NAME=`git status |grep "On branch"|sed "s/On branch //"|sed "s/\# //"`
 
+echo "GIT_BRANCH_NAME=$GIT_BRANCH_NAME"
+
 if [ "$NO_REBUILD" == "0" ]; then
     # Nie przebudowuj bazy danych przed uruchomieniem testów.
     # Baza powinna być zazwyczaj utworzona od zera. 
