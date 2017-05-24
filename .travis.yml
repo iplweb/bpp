@@ -32,7 +32,7 @@ install:
   - wget https://raw.githubusercontent.com/mpasternak/django-bpp/dev/.travis/nginx.conf.patch
   - patch -p0 < nginx.conf.patch
   - cd ..
-  - ~/sbin/nginx
+  - sbin/nginx
 
   - nvm install 6
   - npm install -g yarn
