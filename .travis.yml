@@ -39,7 +39,6 @@ before_install:
   - export DJANGO_LIVE_TEST_SERVER_ADDRESS=localhost:9000-15000
   - export DJANGO_BPP_DB_HOST=localhost
 
-before_script:
   - "export PATH=$PATH:/usr/lib/chromium-browser/"
   - "export DISPLAY=:99.0"
   - "sh -e /etc/init.d/xvfb start"
@@ -92,11 +91,7 @@ install:
 
   - pip install -U pip
   - pip install -U tox
-  #- export DISPLAY=":99.0"
-  #- Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
-  #- wget https://chromedriver.storage.googleapis.com/2.29/chromedriver_linux64.zip
-  #- unzip chromedriver_linux64.zip
-  - # 3.3.1 https://goo.gl/uTXEJ1
+
   - wget https://goo.gl/s4o9Vx
   - java -jar s4o9Vx &
 
