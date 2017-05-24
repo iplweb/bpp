@@ -24,8 +24,9 @@ before_install:
 install:
   - apt-get source nginx
   - git clone https://github.com/wandenberg/nginx-push-stream-module.git
+  - export BUILD_ROOT_DIR=`pwd -P`
   - cd nginx-1.1.19
-  - ./configure --add-module=../nginx-push-stream-module --prefix=..
+  - ./configure --add-module=../nginx-push-stream-module --prefix=$BUILD_ROOT_DIR
   - make && make install
   - cd ..
   - cd conf
