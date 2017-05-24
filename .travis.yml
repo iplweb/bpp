@@ -1,7 +1,6 @@
 language: python
 cache: 
   - pip
-  - yarn
   directories:
     - $HOME/.cache/bower
     - $HOME/.npm
