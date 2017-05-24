@@ -1,3 +1,5 @@
+sudo: required
+dist: trusty 
 language: python
 python: 2.7
 
@@ -23,6 +25,9 @@ addons:
       - language-pack-pl
 
 before_install: 
+  - sudo apt-get update
+  - sudo apt-get install chromium-chromedriver
+
   - export PGHOST=localhost
   - export PGUSER=bpp
   - export PATH=.:$PATH
@@ -32,6 +37,12 @@ before_install:
   - export DJANGO_BPP_NOTIFICATIONS_HOST=localhost:80
   - export DJANGO_LIVE_TEST_SERVER_ADDRESS=localhost:9000-15000
   - export DJANGO_BPP_DB_HOST=localhost
+
+before_script:
+  - "export PATH=$PATH:/usr/lib/chromium-browser/"
+  - "export DISPLAY=:99.0"
+  - "sh -e /etc/init.d/xvfb start"
+  - sleep 3
 
 install:
   - apt-get source nginx
@@ -79,10 +90,10 @@ install:
 
   - pip install -U pip
   - pip install -U tox
-  - export DISPLAY=":99.0"
-  - Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
-  - wget https://chromedriver.storage.googleapis.com/2.29/chromedriver_linux64.zip
-  - unzip chromedriver_linux64.zip
+  #- export DISPLAY=":99.0"
+  #- Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
+  #- wget https://chromedriver.storage.googleapis.com/2.29/chromedriver_linux64.zip
+  #- unzip chromedriver_linux64.zip
   - wget https://goo.gl/uTXEJ1
   - java -jar uTXEJ1 &
 
