@@ -18,10 +18,20 @@ before_install:
   - export DJANGO_SETTINGS_MODULE=django_bpp.settings.test
   - export DJANGO_BPP_SECRET_KEY=0xdeadbeefbabe
   - export DJANGO_BPP_MEDIA_ROOT=$HOME/media
-  - export DJANGO_BPP_NOTIFICATIONS_HOST=localhost
+  - export DJANGO_BPP_NOTIFICATIONS_HOST=localhost:80
   - export DJANGO_LIVE_TEST_SERVER_ADDRESS=localhost:9000-15000
 
 install:
+  - apt-get source nginx
+  - git clone https://github.com/wandenberg/nginx-push-stream-module.git
+  - cd nginx-1.1.19
+  - ./configure --add-module=../nginx-push-stream-module --prefix=$HOME
+  - make && make install
+  - cd ../conf
+  - wget https://raw.githubusercontent.com/mpasternak/django-bpp/dev/.travis/nginx.conf.patch
+  - patch -p0 < nginx.conf.patch
+  - ~/sbin/nginx
+
   - nvm install 6
   - npm install -g yarn
   - yarn global add bower grunt-cli
