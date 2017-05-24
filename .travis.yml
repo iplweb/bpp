@@ -2,6 +2,9 @@ language: python
 cache: pip
 python: 2.7
 
+services:
+  - redis-server
+
 addons:
   apt:
     packages:
