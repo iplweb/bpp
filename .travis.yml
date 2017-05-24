@@ -29,10 +29,8 @@ addons:
 
 before_install: 
   - ls -las /home/travis/virtualenv/
-  - ls -las /home/travis/virtualenv/python2.7.12/
   - wget http://chromedriver.storage.googleapis.com/2.29/chromedriver_linux64.zip
   - unzip chromedriver_linux64.zip -d  /home/travis/virtualenv/python2.7.12/
-  - export CHROME_BIN=chromium-browser
 
   - ls -las /etc/ld.so.conf.d
   - sudo python -c "open('/etc/ld.so.conf.d/chrome_lib.conf', 'w').write('/usr/lib/chromium-browser/libs')"
@@ -101,8 +99,5 @@ install:
 
   - pip install -U pip
   - pip install -U tox
-
-  - wget https://goo.gl/s4o9Vx
-  - java -jar s4o9Vx &
 
 script: tox
