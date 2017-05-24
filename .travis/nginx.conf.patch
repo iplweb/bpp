@@ -1,6 +1,6 @@
---- nginx.conf.orig	2017-05-24 08:28:35.251955637 +0000
-+++ nginx.conf	2017-05-24 08:30:12.564768334 +0000
-@@ -29,6 +29,7 @@
+--- nginx.conf.orig	2017-05-24 08:58:28.902144805 +0000
++++ nginx.conf	2017-05-24 11:32:39.390466022 +0000
+@@ -29,11 +29,12 @@
  
      #keepalive_timeout  0;
      keepalive_timeout  65;
@@ -8,6 +8,12 @@
  
      #gzip  on;
  
+     server {
+-        listen       80;
++        listen       8080;
+         server_name  localhost;
+ 
+         #charset koi8-r;
 @@ -54,6 +55,32 @@
              root   html;
          }
