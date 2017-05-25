@@ -29,6 +29,7 @@ before_install:
   - ls -las /home/travis/virtualenv/
   - wget http://chromedriver.storage.googleapis.com/2.29/chromedriver_linux64.zip
   - unzip chromedriver_linux64.zip -d  /home/travis/virtualenv/python2.7.12/
+  - ls -las /home/travis/virtualenv/python2.7.12
 
   - ls -las /etc/ld.so.conf.d
   - sudo python -c "open('/etc/ld.so.conf.d/chrome_lib.conf', 'w').write('/usr/lib/chromium-browser/libs')"
@@ -47,7 +48,7 @@ before_install:
 
   - export PATH=$PATH:/usr/lib/chromium-browser/
   - export DISPLAY=:99
-  - Xvfb :99 &
+  - nohup sudo Xvfb :99 -ac
 
 install:
   - apt-get source nginx
