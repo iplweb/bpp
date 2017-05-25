@@ -54,8 +54,6 @@ before_install:
   - export DJANGO_BPP_DB_HOST=localhost
 
   - export PATH=$PATH:/usr/lib/chromium-browser/
-  - export DISPLAY=:99
-  - nohup sudo Xvfb :99 -ac &
 
 install:
   - apt-get source nginx
@@ -105,4 +103,4 @@ install:
   - pip install -U pip
   - pip install -U tox
 
-script: tox
+script: xvfb-run tox
