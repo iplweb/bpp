@@ -16,20 +16,27 @@ services:
 
 addons:
   apt:
-    sources:
-      - google-chrome
+    sources: 
+      - sourceline: "ppa:ubuntu-mozilla-daily/firefox-aurora"          
     packages:
-      - google-chrome-stable
       - xvfb
       - postgresql-plpython-9.4
       - postgresql-9.4
       - language-pack-pl
+      - firefox-locale-pl
+      - firefox
 
 before_install: 
-  - ls -las /home/travis/virtualenv/
-  - wget http://chromedriver.storage.googleapis.com/2.29/chromedriver_linux64.zip
-  - unzip chromedriver_linux64.zip -d  /home/travis/virtualenv/python2.7.12/
-  - ls -las /home/travis/virtualenv/python2.7.12
+  # Geckodriver
+  - wget https://github.com/mozilla/geckodriver/releases/download/v0.16.1/geckodriver-v0.16.1-linux64.tar.gz
+  - tar -xzvf geckodriver-v0.16.1-linux64.tar.gz
+  - mv geckodriver /home/travis/virtualenv/python2.7.12
+  
+  # Chromedriver
+  #- ls -las /home/travis/virtualenv/
+  #- wget http://chromedriver.storage.googleapis.com/2.29/chromedriver_linux64.zip
+  #- unzip chromedriver_linux64.zip -d  /home/travis/virtualenv/python2.7.12/
+  #- ls -las /home/travis/virtualenv/python2.7.12
 
   - ls -las /etc/ld.so.conf.d
   - sudo python -c "open('/etc/ld.so.conf.d/chrome_lib.conf', 'w').write('/usr/lib/chromium-browser/libs')"
