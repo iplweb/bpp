@@ -181,8 +181,7 @@ INSTALLED_APPS = [
     'webmaster_verification',
     'favicon',
 
-    'django_18_fast_migrations.apps.Django18FastMigrationsConfig',
-
+    'django_18_fast_migrations',
 
 ]
 
