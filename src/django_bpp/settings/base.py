@@ -179,7 +179,11 @@ INSTALLED_APPS = [
 
     'robots',
     'webmaster_verification',
-    'favicon'
+    'favicon',
+
+    'django_18_fast_migrations.apps.Django18FastMigrationsConfig',
+
+
 ]
 
 # Profile użytkowników

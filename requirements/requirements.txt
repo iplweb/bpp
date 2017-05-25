@@ -1,4 +1,5 @@
 Django==1.8.18
+django_18_fast_migrations==0.1.0
 django-dirtyfields==1.2.1
 django-messages-extends==0.5
 django-autoslug==1.7.1
