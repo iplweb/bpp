@@ -55,7 +55,7 @@ before_install:
 
   - export PATH=$PATH:/usr/lib/chromium-browser/
   - export DISPLAY=:99
-  - nohup sudo Xvfb :99 -ac
+  - nohup sudo Xvfb :99 -ac &
 
 install:
   - apt-get source nginx
