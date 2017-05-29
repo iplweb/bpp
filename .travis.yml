@@ -15,8 +15,6 @@ services:
 
 addons:
   apt:
-    sources: 
-      - sourceline: "ppa:ubuntu-mozilla-daily/firefox-aurora"          
     packages:
       - xvfb
       - postgresql-plpython-9.4
@@ -27,27 +25,20 @@ before_install:
   # Xvfb
   - export DISPLAY=98.0
   - Xvfb $DISPLAY -screen 0 1024x768x24 > /dev/null 2>&1 &
+  
+  # Firefox 54
+  - apt-get remove --purge firefox
+  - sudo rm -rf /usr/local/bin/firefox  /usr/local/firefox* /usr/bin/firefox*
 
-  # Geckodriver
+  - wget https://download-installer.cdn.mozilla.net/pub/firefox/nightly/latest-mozilla-aurora/firefox-54.0a2.en-US.linux-x86_64.tar.bz2
+  - sudo tar -xjvf firefox-54.0a2.en-US.linux-x86_64.tar.bz2  -C /usr/local
+
+  - sudo ln -s /usr/local/firefox/firefox /usr/local/bin/firefox
+
+  # Geckodriver 0.16
   - wget https://github.com/mozilla/geckodriver/releases/download/v0.16.1/geckodriver-v0.16.1-linux64.tar.gz
   - tar -xzvf geckodriver-v0.16.1-linux64.tar.gz
   - sudo mv geckodriver /usr/local/bin
-
-  # Latest Firefox
-  - sudo apt-get update
-  - apt-cache show firefox|grep Version
-  - sudo apt-get remove --purge firefox
-  - sudo apt-get install -y firefox=53.0.3+build1-0ubuntu0.14.04.2
-  - sudo dpkg -L firefox
-  - echo $PATH
-  - firefox -version
-  - sudo rm -rf /usr/local/bin/firefox  /usr/local/firefox*
-  - sudo ln -s /usr/bin/firefox /usr/local/bin/firefox
-  - /usr/bin/firefox -version
-  - /usr/local/bin/firefox -version
-  - ls -las /usr/local/bin/firefox
-  - ls -las /usr/local
-  - find / -name firefox-bin | grep firefox-bin
 
   # Environment
   - export PGHOST=localhost
