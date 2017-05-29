@@ -65,6 +65,9 @@ if [ "$NO_DJANGO" == "0" ]; then
 fi
 
 if [ "$NO_PYTEST" == "0" ]; then
+    # TravisCI debug
+    firefox -version
+    geckodriver --version
     py.test src/eksport_pbn tests src/integrator2/tests src/bpp/tests_pytest
     # mpasternak 17.1.2017 TODO: włączyć później
     # egeria/tests

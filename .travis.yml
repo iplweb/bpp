@@ -41,7 +41,7 @@ before_install:
   - sudo dpkg -L firefox
   - echo $PATH
   - firefox -version
-  - sudo rm -rf /usr/local/bin/firefox 
+  - sudo rm -rf /usr/local/bin/firefox  /usr/local/firefox*
   - sudo ln -s /usr/bin/firefox /usr/local/bin/firefox
   - /usr/bin/firefox -version
   - /usr/local/bin/firefox -version
@@ -95,7 +95,7 @@ install:
   - pip install -U tox
 
 script: 
-  - /bin/echo DISPLAY: $DISPLAY
-  - /bin/echo FIREFOX VERSION
+  - echo DISPLAY: $DISPLAY
+  - echo FIREFOX VERSION
   - firefox -version
   - tox
