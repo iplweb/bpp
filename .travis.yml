@@ -28,11 +28,11 @@ before_install:
 
   - sudo apt-get update
   - sudo apt-get install -y chromium-chromedriver 
-  - /usr/lib/chromium-browser/chromedriver --version
   - sudo echo "/usr/lib/chromium-browser/libs" > /etc/ld.so.conf.d/chrome_lib.conf
   - sudo ldconfig
   - /usr/lib/chromium-browser/chromedriver --version
-
+  - echo ENV VARS
+  - set
   
   # Firefox 54
   #- sudo apt-get remove --purge firefox
