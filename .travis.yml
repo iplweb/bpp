@@ -38,6 +38,7 @@ before_install:
   - apt-cache show firefox|grep Version
   - sudo apt-get remove --purge firefox
   - sudo apt-get install -y firefox=53.0.3+build1-0ubuntu0.14.04.2
+  - firefox -version
 
   # Environment
   - export PGHOST=localhost
