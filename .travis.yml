@@ -22,8 +22,6 @@ addons:
       - postgresql-plpython-9.4
       - postgresql-9.4
       - language-pack-pl
-      - firefox-locale-pl
-      - firefox
 
 before_install: 
   # Xvfb
@@ -34,7 +32,11 @@ before_install:
   - wget https://github.com/mozilla/geckodriver/releases/download/v0.16.1/geckodriver-v0.16.1-linux64.tar.gz
   - tar -xzvf geckodriver-v0.16.1-linux64.tar.gz
   - mv geckodriver /home/travis/virtualenv/python2.7.12
-  
+
+  # Latest Firefox
+  - apt-get install -y firefox=52.0.2+build1-0ubuntu0.12.04.1
+
+  # Environment
   - export PGHOST=localhost
   - export PGUSER=bpp
   - export PATH=.:$PATH
@@ -45,8 +47,6 @@ before_install:
   - export DJANGO_BPP_NOTIFICATIONS_PORT=8080
   - export DJANGO_LIVE_TEST_SERVER_ADDRESS=localhost:9000-15000
   - export DJANGO_BPP_DB_HOST=localhost
-
-  - export PATH=$PATH:/usr/lib/chromium-browser/
 
 install:
   - apt-get source nginx
@@ -82,7 +82,7 @@ install:
   - pip install -U tox
 
 script: 
-  - /bin/echo "DISPLAY: $DISPLAY"
-  - "FIREFOX VERSION"
+  - /bin/echo DISPLAY: $DISPLAY
+  - /bin/echo FIREFOX VERSION
   - firefox -version
   - tox
