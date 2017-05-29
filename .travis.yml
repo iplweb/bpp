@@ -26,19 +26,19 @@ before_install:
   - export DISPLAY=98.0
   - Xvfb $DISPLAY -screen 0 1024x768x24 > /dev/null 2>&1 &
 
-  - sudo apt-get update
+  # TravisCI chromium is borked (missing liburl.so)
   - sudo apt-get update
   - sudo apt-get remove --purge chromium-browser
   - sudo apt-get install -y chromium-chromedriver chromium-browser 
-  - sudo bash -c "echo /usr/lib/chromium-browser/libs > /etc/ld.so.conf.d/chrome_lib.conf"
-  - ls -las /usr/lib/chromium-browser
-  - ls -las /usr/lib/chromium-browser/libs
-  - sudo ldconfig
-  - sudo ldconfig -p
-  - strace /usr/lib/chromium-browser/chromedriver --version
-  - echo ENV VARS
-  - set
-  - cat /etc/ld.so.cache
+  - /usr/lib/chromium-browser/chromedriver --version
+  #- sudo bash -c "echo /usr/lib/chromium-browser/libs > /etc/ld.so.conf.d/chrome_lib.conf"
+  #- ls -las /usr/lib/chromium-browser
+  #- ls -las /usr/lib/chromium-browser/libs
+  #- sudo ldconfig
+  #- sudo ldconfig -p
+  #- echo ENV VARS
+  #- set
+  #- cat /etc/ld.so.cache
   
   # Firefox 54
   #- sudo apt-get remove --purge firefox
