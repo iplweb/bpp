@@ -36,7 +36,7 @@ before_install:
   # Latest Firefox
   - sudo apt-get update
   - apt-cache show firefox|grep Version
-  - sudo apt-get install -y firefox=52.0.2+build1-0ubuntu0.12.04.1
+  - sudo apt-get install -y firefox=53.0.3+build1-0ubuntu0.14.04.2
 
   # Environment
   - export PGHOST=localhost
