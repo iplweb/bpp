@@ -39,7 +39,10 @@ before_install:
   - sudo apt-get remove --purge firefox
   - sudo apt-get install -y firefox=53.0.3+build1-0ubuntu0.14.04.2
   - firefox -version
-  - find / -name firefox-bin
+  - /usr/local/bin/firefox -version
+  - ls -las /usr/local/bin/firefox
+  - ls -las /usr/local
+  - find / -name firefox-bin | grep firefox-bin
 
   # Environment
   - export PGHOST=localhost
