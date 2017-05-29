@@ -10,7 +10,6 @@ cache:
     - $HOME/.cache/pip
     - $HOME/.npm
 
-
 services:
   - redis-server
 
@@ -36,16 +35,6 @@ before_install:
   - tar -xzvf geckodriver-v0.16.1-linux64.tar.gz
   - mv geckodriver /home/travis/virtualenv/python2.7.12
   
-  # Chromedriver
-  #- ls -las /home/travis/virtualenv/
-  #- wget http://chromedriver.storage.googleapis.com/2.29/chromedriver_linux64.zip
-  #- unzip chromedriver_linux64.zip -d  /home/travis/virtualenv/python2.7.12/
-  #- ls -las /home/travis/virtualenv/python2.7.12
-
-  - ls -las /etc/ld.so.conf.d
-  - sudo python -c "open('/etc/ld.so.conf.d/chrome_lib.conf', 'w').write('/usr/lib/chromium-browser/libs')"
-  - sudo ldconfig
-
   - export PGHOST=localhost
   - export PGUSER=bpp
   - export PATH=.:$PATH
@@ -79,23 +68,8 @@ install:
   - npm install -g yarn > /dev/null
   - yarn global add bower grunt-cli > /dev/null
 
-#  # We're using sudo anyways, so:
-#  - sudo update-locale LC_ALL="pl_PL.UTF-8" LANG="pl_PL.UTF-8"
-#  - sudo locale-gen pl_PL.UTF-8
-#  - sudo dpkg-reconfigure locales > /dev/null
-
-  # Restart PostgreSQL - the only place we use 'sudo'. It is required because
-  # extra locales have been added.
-
-  #- sudo pg_dropcluster --stop 9.4 main
-  #- sudo rm -rf /var/lib/postgresql/9.4/main/data
-  #- export LC_ALL=pl_PL.UTF-8
-  #- export LANG=pl_PL.UTF-8
-  #- sudo pg_createcluster 9.4 main -- --locale pl_PL.utf-8
-
   - sudo /etc/init.d/postgresql restart
 
-  # - sudo /etc/init.d/postgresql start 9.4
   - psql -U postgres -c "CREATE COLLATION \"pl_PL\"(locale='pl_PL.utf8');" template1
   - createlang -U postgres plpythonu template1
 
@@ -109,4 +83,6 @@ install:
 
 script: 
   - /bin/echo "DISPLAY: $DISPLAY"
+  - "FIREFOX VERSION"
+  - firefox -version
   - tox
