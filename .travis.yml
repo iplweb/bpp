@@ -27,7 +27,7 @@ before_install:
   - Xvfb $DISPLAY -screen 0 1024x768x24 > /dev/null 2>&1 &
   
   # Firefox 54
-  - apt-get remove --purge firefox
+  - sudo apt-get remove --purge firefox
   - sudo rm -rf /usr/local/bin/firefox  /usr/local/firefox* /usr/bin/firefox*
 
   - wget https://download-installer.cdn.mozilla.net/pub/firefox/nightly/latest-mozilla-aurora/firefox-54.0a2.en-US.linux-x86_64.tar.bz2
