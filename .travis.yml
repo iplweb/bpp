@@ -30,7 +30,7 @@ before_install:
   - sudo apt-get install -y chromium-chromedriver 
   - sudo bash -c "echo /usr/lib/chromium-browser/libs > /etc/ld.so.conf.d/chrome_lib.conf"
   - sudo ldconfig
-  - /usr/lib/chromium-browser/chromedriver --version
+  - strace /usr/lib/chromium-browser/chromedriver --version
   - echo ENV VARS
   - set
   - cat /etc/ld.so.cache
