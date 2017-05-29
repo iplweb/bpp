@@ -41,6 +41,7 @@ before_install:
   - sudo dpkg -L firefox
   - echo $PATH
   - firefox -version
+  - /usr/bin/firefox -version
   - /usr/local/bin/firefox -version
   - ls -las /usr/local/bin/firefox
   - ls -las /usr/local
