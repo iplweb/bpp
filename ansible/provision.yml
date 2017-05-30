@@ -59,8 +59,8 @@
     - name: Build and install wheel packages
       shell: . /home/{{user}}/env/bin/activate && {{ item }}
       with_items:
-        - cd /vagrant/requirements && pip --quiet install -r requirements_dev.txt
-        - cd /vagrant/requirements && pip --quiet install -r requirements.txt
+        - cd /vagrant/ && pip --quiet install -r requirements_dev.txt
+        - cd /vagrant/ && pip --quiet install -r requirements.txt
       become: no
 
     - name: Setup variables in .bashrc

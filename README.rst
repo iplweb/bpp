@@ -107,8 +107,8 @@ Zainstaluj wymagane pakiety:
 
 .. code-block:: bash
 
-    pip install -r requirements/requirements_dev.txt
-    pip install -r requirements/requirements.txt
+    pip install -r requirements_dev.txt
+    pip install -r requirements.txt
 
 Konfiguracja Vagrant_
 ~~~~~~~~~~~~~~~~~~~~~

@@ -11,9 +11,9 @@ with open('HISTORY.rst') as history_file:
     
 reqs = lambda fn: list([x.strip() for x in open(fn).readlines() if x.strip() and not x.startswith("#")])      
 
-requirements = reqs("requirements/requirements.txt")
+requirements = reqs("requirements.txt")
 
-test_requirements = reqs("requirements/requirements_dev.txt") + requirements
+test_requirements = reqs("requirements_dev.txt") + requirements
 
 setup(
     name='django_bpp',

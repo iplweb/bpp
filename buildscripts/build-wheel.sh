@@ -9,4 +9,5 @@ export DISTDIR=$SCRIPTPATH/../DIST
 echo "Buduje wheels w $DISTDIR"
 
 mkdir -p $DISTDIR
-pip wheel --wheel-dir=$DISTDIR --find-links=$DISTDIR $SCRIPTPATH/..
+pip wheel --verbose --wheel-dir=$DISTDIR --find-links=$DISTDIR -r requirements.txt
+python setup.py bdist_wheel
