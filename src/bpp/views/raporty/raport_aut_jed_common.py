@@ -466,6 +466,10 @@ def raport_common_tabela(key, base_query, jednostka=None, autor=None):
             impact_factor__gt=0,
             punktacja_wewnetrzna=0
         ).exclude(
+            adnotacje__icontains="wos"
+        ).exclude(
+            adnotacje__icontains="erih"
+        ).exclude(
             typ_kbn=Typ_KBN.objects.get(skrot="PW")
         ).order_by("zrodlo__nazwa")
 
@@ -483,7 +487,9 @@ def raport_common_tabela(key, base_query, jednostka=None, autor=None):
             adnotacje__icontains="wos"
         ).exclude(
             adnotacje__icontains="erih"
-        )
+        ).exclude(
+            typ_kbn=Typ_KBN.objects.get(skrot="PW")
+        ).order_by("zrodlo__nazwa", "tytul_oryginalny")
 
     elif key == "1_3":
         return base_query.filter(
