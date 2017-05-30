@@ -9,6 +9,7 @@ clean:
 
 distclean: clean
 	rm -rf build/ dist/ 
+	rm -rf node_modules src/node_modules src/django_bpp/staticroot
 
 vcs:
 	fab vcs:${BRANCH}
