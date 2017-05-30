@@ -470,21 +470,22 @@ def pytest_configure():
 
 
 @pytest.fixture(scope="session")
-def splinter_driver_kwargs():
-    from selenium import webdriver
+def splinter_driver_kwargs(splinter_webdriver):
+    if splinter_webdriver == "remote":
+        from selenium import webdriver
 
-    chrome_op = webdriver.ChromeOptions()
-    chrome_op.add_argument("--disable-extensions")
-    chrome_op.add_argument("--disable-extensions-file-access-check")
-    chrome_op.add_argument("--disable-extensions-http-throttling")
-    chrome_op.add_argument("--disable-infobars")
-    chrome_op.add_argument("--enable-automation")
-    chrome_op.add_argument("--start-maximized")
-    chrome_op.add_experimental_option('prefs', {
-        'credentials_enable_service': False,
-        'profile': {
-            'password_manager_enabled': False
-        }
-    })
-    return {'browser': "chrome",
-            "desired_capabilities": chrome_op.to_capabilities()}
+        chrome_op = webdriver.ChromeOptions()
+        chrome_op.add_argument("--disable-extensions")
+        chrome_op.add_argument("--disable-extensions-file-access-check")
+        chrome_op.add_argument("--disable-extensions-http-throttling")
+        chrome_op.add_argument("--disable-infobars")
+        chrome_op.add_argument("--enable-automation")
+        chrome_op.add_argument("--start-maximized")
+        chrome_op.add_experimental_option('prefs', {
+                'credentials_enable_service': False,
+                'profile': {
+                    'password_manager_enabled': False
+                    }
+                })
+        return {'browser': "chrome",
+                "desired_capabilities": chrome_op.to_capabilities()}

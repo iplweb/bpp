@@ -36,6 +36,8 @@
     rsync_opts:
       - "--exclude-from=../rsync.exclude"
   tags: ['sync']
+  notify: 
+    - supervisor restart
 
 - name: Virtualenv is created
   command: virtualenv --python=python{{ django_python_version }} {{ django_venv_dir }}
