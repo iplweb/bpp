@@ -53,7 +53,9 @@ class TestRaportJednostek2012(TestCase):
     def test_1_1(self):
         c = any_ciagle(
             impact_factor=5,
-            punktacja_wewnetrzna=0)
+            punktacja_wewnetrzna=0,
+            adnotacje="tei",
+            typ_kbn=typ_kbn("PO"))
         c.dodaj_autora(self.a, self.j)
 
         tego_ma_nie_byc = any_ciagle(
@@ -66,9 +68,12 @@ class TestRaportJednostek2012(TestCase):
 
     @with_cache
     def test_1_1_zakres_lat(self):
-        c = any_ciagle(impact_factor=5, punktacja_wewnetrzna=0)
-        d = any_ciagle(impact_factor=5, punktacja_wewnetrzna=0, rok=CURRENT_YEAR+5)
-        e = any_ciagle(impact_factor=5, punktacja_wewnetrzna=0, rok=CURRENT_YEAR+6)
+        kwargs = dict(impact_factor=5, punktacja_wewnetrzna=0,
+                       adnotacje="foo", typ_kbn=typ_kbn("PO"))
+
+        c = any_ciagle(**kwargs)
+        d = any_ciagle(rok=CURRENT_YEAR+5, **kwargs)
+        e = any_ciagle(rok=CURRENT_YEAR+6, **kwargs)
         for elem in [c,d,e]:
             elem.dodaj_autora(self.a, self.j)
         base_query = get_base_query_jednostka(self.j, CURRENT_YEAR, CURRENT_YEAR + 5)
