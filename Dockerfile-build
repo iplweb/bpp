@@ -1,0 +1,11 @@
+FROM mpasternak/djbuilder
+
+RUN mkdir -p /usr/src/app
+WORKDIR /usr/src/app
+
+ADD requirements.txt ./requirements.txt
+ADD buildscripts/build-wheel.sh buildscripts/build-wheel.sh
+
+COPY . /usr/src/app
+
+ENTRYPOINT /usr/src/app/buildscripts/build-wheel.sh

@@ -15,7 +15,8 @@ vcs:
 	fab vcs:${BRANCH}
 
 wheels: 
-	fab wheels
+	docker build -t mpasternak/djangobpp_wheel_builder -f Dockerfile-build .
+	docker run -it -v `pwd`/dist:/usr/src/app/dist mpasternak/djangobpp_wheel_builder
 
 prepare-build-env:
 	fab prepare
