@@ -6,45 +6,51 @@ clean:
 	find . -name \*~ -print0 | xargs -0 rm -fv 
 	find . -name \*pyc -print0 | xargs -0 rm -fv 
 	find . -name \*\\.log -print0 | xargs -0 rm -fv 
+	rm -rf build __pycache__
 
 distclean: clean
-	rm -rf build/ dist/ 
+	rm -rf dist/ 
 	rm -rf node_modules src/node_modules src/django_bpp/staticroot .eggs .cache .tox
 
-vcs:
-	fab vcs:${BRANCH}
-
+# cel: wheels
+# Buduje pakiety WHL na bazie requirements.txt, zapisując je do katalogu 'dist',
+# buduje pakiety WHL na bazie requirements_dev.txt, zapisując je do katalogu 'dist_dev'.
+# Ten cel NIE buduje smaego pakietu django-bpp
 wheels: 
-	docker build -t mpasternak/djangobpp_wheel_builder -f Dockerfile-build .
-	docker run -it -v `pwd`/dist:/usr/src/app/dist mpasternak/djangobpp_wheel_builder
+	docker build -t django_bpp_wheel_builder -f Dockerfile-build .
+	docker run --rm -it -v `pwd`/dist:/usr/src/app/dist -v `pwd`/dist_dev:/usr/src/app/dist_dev django_bpp_wheel_builder
 
-prepare-build-env:
-	fab prepare
-
+# cel: build-assets
+# Pobiera i składa do kupy JS/CSS/Foundation
 build-assets:
-	fab build_assets
+	./buildscripts/build-assets.sh
 
-build: 
-	fab build
+# cel: bdist_wheel
+# Buduje pakiet WHL zawierający django_bpp i skompilowane, statyczne assets. 
+# Wymaga:
+# 1) zainstalowanych pakietów z requirements.txt i requirements_dev.txt przez pip
+# 2) yarn, grunt-cli, npm, bower
+bdist_wheel: build-assets
+	python setup.py bdist_wheel
 
-tests: build-assets
-	fab test
-
-tests-from-scratch: prepare-build-env tests
-	@echo "Done"
-
-rebuild-staging:
-	vagrant pristine -f staging
-	yes | ssh-keygen -R bpp-staging.localnet
-	yes | ssh-keygen -R bpp-staging
-	yes | ssh-keygen -R 192.168.111.101
-	yes | ansible-playbook ansible/webserver.yml
+# cel: tests
+# Uruchamia testy całego site'u za pomocą docker-compose. Wymaga zbudowanych 
+# pakietów WHL (cel: wheels) oraz statycznych assets w katalogu src/django_bpp/staticroot
+# (cel: prepare-build-env)
+tests: 
+	-docker rmi -f djangobpp_test
+	docker-compose run test
 
 staging:
 	ansible-playbook ansible/webserver.yml --private-key=.vagrant/machines/staging/virtualbox/private_key
 
 demo-vm-ansible:
 	ansible-playbook ansible/demo-vm.yml --private-key=.vagrant/machines/staging/virtualbox/private_key
+
+
+#
+# TODO: dockerize, analyze, remove below targets
+#
 
 release-no-tests: vcs wheels build-assets build staging
 	@echo "Done"

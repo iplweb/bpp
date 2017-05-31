@@ -1,0 +1,39 @@
+version: '2'
+services:
+  rabbitmq: 
+    image: rabbitmq
+  redis: 
+    image: redis
+  db:
+    image: mpasternak79/docker-postgres
+  selenium:
+    image: mpasternak79/docker-selenium
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile-test
+    volumes: 
+      - ./dist:/dist
+      - ./dist_dev:/dist_dev
+    environment:
+      - PGHOST=db
+      - PGDATABASE=bpp
+      - PGUSER=postgres
+      
+      - DJANGO_SETTINGS_MODULE=django_bpp.settings.test
+      - DJANGO_LIVE_TEST_SERVER_ADDRESS=test:9015
+      
+      - DJANGO_BPP_SECRET_KEY=0xdeadbeef
+      - DJANGO_BPP_REDIS_HOST=redis
+      - DJANGO_BPP_CELERY_HOST=rabbitmq
+      - DJANGO_BPP_DB_USER=postgres
+      - DJANGO_BPP_DB_HOST=db
+      - DJANGO_BPP_NOTIFICATIONS_HOST=nginx_http_push
+      - DJANGO_BPP_NOTIFICATIONS_PORT=80
+      - DJANGO_BPP_MEDIA_ROOT=/usr/src/app/media_root
+
+    depends_on:
+      - db
+      - redis
+      - selenium
+      - rabbitmq

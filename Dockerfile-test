@@ -1,0 +1,12 @@
+FROM mpasternak79/docker-builder
+
+# django live test server
+EXPOSE 9015
+
+RUN mkdir -p /usr/src/app
+WORKDIR /usr/src/app
+
+COPY . /usr/src/app
+COPY stellar-docker.yaml /usr/src/app/stellar.yaml
+
+ENTRYPOINT ["tox", "-c", "tox-docker.ini"]
