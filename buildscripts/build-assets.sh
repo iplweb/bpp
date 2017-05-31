@@ -1,6 +1,5 @@
 #!/bin/bash -e
 
-# Ten skrypt przygotowywuje do budowania django-bpp
 
 pushd `dirname $0` > /dev/null
 SCRIPTPATH=`pwd -P`
@@ -8,8 +7,12 @@ popd > /dev/null
 
 cd $SCRIPTPATH/..
 
-yarn install > /dev/null
+yarn install 
 
-rm -rf src/components/bower_components src/django_bpp/staticroot
 python src/manage.py bower_install -RF
 echo "2" |python src/manage.py bower install "jquery#2.1.4" -- --allow-root
+
+grunt build 
+rm -rf $SCRIPTPATH/src/django_bpp/staticroot
+python src/manage.py collectstatic --noinput 
+python src/manage.py compress --force 
