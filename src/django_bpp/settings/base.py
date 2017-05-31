@@ -408,9 +408,9 @@ DATABASES = {
     'default': {
         'ENGINE': django_getenv("DJANGO_BPP_DB_ENGINE", 'django.db.backends.postgresql_psycopg2'),
         'NAME': django_getenv("DJANGO_BPP_DB_NAME", "bpp"),
-        'USER': django_getenv("DJANGO_BPP_DB_USER", "bpp"),
+        'USER': django_getenv("DJANGO_BPP_DB_USER", "postgres"),
         'PASSWORD': django_getenv("DJANGO_BPP_DB_PASSWORD", "password"),
-        'HOST': django_getenv("DJANGO_BPP_DB_HOST", "bpp-db"),
+        'HOST': django_getenv("DJANGO_BPP_DB_HOST", "localhost"),
         'PORT': int_or_None(django_getenv("DJANGO_BPP_DB_PORT", "5432")),
     },
     # 'test': {
