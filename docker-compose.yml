@@ -2,12 +2,24 @@ version: '2'
 services:
   rabbitmq: 
     image: rabbitmq
+    ports:
+      - "4369:4369"
+      - "5671:5671"
+      - "5672:5672"
+      - "25672:25672"
   redis: 
     image: redis
+    ports:
+      - "6379:6379"
   db:
     image: mpasternak79/docker-postgres
+    ports:
+      - "5432:5432"
   selenium:
     image: mpasternak79/docker-selenium
+    ports:
+      - "5999:5999"
+      - "4444:4444"
   test:
     build:
       context: .
