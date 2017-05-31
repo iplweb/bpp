@@ -50,12 +50,18 @@ Zainstaluj:
 * Python_ w wersji 2.7,
 * Vagrant_,
 * VirtualBox_,
-* yarn_
+* yarn_,
+* Docker_
 
 Wymagane oprogramowanie serwerowe, w tym PostgreSQL_, RabbitMQ_, redis_ zostanie
-zainstalowane przez skrypty Ansible_ na maszynie wirtualnej zarządzanej przez
-Vagrant_. Jest to zalecany sposób testowania i rozwijania programu, który
-docelowo działać ma na platformie Ubuntu Linux 16.04.
+zainstalowane i skonfigurowane przez skrypty Ansible_ na maszynie wirtualnej
+zarządzanej przez Vagrant_. Jest to zalecany sposób testowania i rozwijania
+programu, który docelowo działać ma na platformie Ubuntu Linux 16.04 na
+"metalowych" serwerach.
+
+Rozwijanie programu z kolei - budowanie pakietów wheel języka Python, testowanie
+za pomocą Selenium_, zapewnienie szybko skonfigurowanej bazy danych obsługuje
+Docker_.
 
 Jeżeli używasz macOS:
 ~~~~~~~~~~~~~~~~~~~~~
@@ -119,7 +125,7 @@ Zainstaluj wymagane wtyczki do Vagrant_:
 
     vagrant plugin install vagrant-hostmanager vagrant-timezone vagrant-cachier vagrant-reload
 
-Stwórz maszyny wirtualne:
+Stwórz testowy serwer wirtualny ("staging"):
 
 .. code-block:: bash
 
@@ -133,12 +139,12 @@ Ustaw zmienne środowiskowe na cele lokalnego developmentu:
 
 .. code-block:: bash
 
-    export PGHOST=bpp-db
-    export PGUSER=bpp
+    export PGHOST=localhost
+    export PGUSER=postgres
 
 Możesz umieścić te ustawienia w pliku ``bin/postactivate`` środowiska
-wirtualnego utworzonego przez ``mkvirtualenv``. Domyślnie będą one w katalogu
-``~/.envs/django-bpp/bin/postactivate``.
+wirtualnego utworzonego przez ``mkvirtualenv``. Domyślnie znajduje się on
+w katalogu ``~/.envs/django-bpp/bin/postactivate``.
 
 Następnie uruchom skrypt aby przygotować środowisko budowania oraz kolejny
 skrypt, aby zbudować pliki CSS i JS. Skrypty te
@@ -148,15 +154,24 @@ Grunt_. Następnie kompilują tak uzbierane pakiety za pomocą django-compressor
 
 .. code-block:: bash
 
-    ./buildsrcipts/prepare-build-env.sh
-    ./buildsrcipts/build-js-css-html.sh
+    ./buildsrcipts/build-assets.sh
 
 Uruchom lokalne testy
 ~~~~~~~~~~~~~~~~~~~~~
 
-Uruchom testy lokalnie. Ustawienia domyślne korzystają z serwera bazodanowego
-'bpp-db' oraz serwera selenium 'bpp-selenium'. Obydwa te serwery zostaną
-utworzone za pomocą Vagrant_.
+Uruchom testy lokalnie. Domyślna konfiguracja oczekuje, iż serwer bazodanowy
+PostgreSQL_ dostępny będzie na porcie 5432 komputera localhost i obsługiwał
+będzie język PL/Python 2 oraz sortowanie wg polskiego locale pl_PL.UTF8.
+Testy oczekują również, iż serwer Selenium_ dostępny będzie na porcie 4444
+hosta lokalnego, jak również dostępny będzie serwer Redis_ na standardowym
+porcie 6379. Jak uruchomić szybko te wszystkie usługi w sposób wstępnie
+skonfigurowany, wymagany przez django-bpp? Z pomocą przychodzi Docker_:
+
+.. code-block:: bash
+
+     make bootup-services
+
+Następnie uruchom testy na maszynie lokalnej:
 
 .. code-block:: bash
 
@@ -168,7 +183,9 @@ przebudowywać za każdym razem bazy danych.
 Jeżeli któryś test "utknie" - zdarza się to przezde
 wszystkim przy testach korzystających z przeglądarki, Selenium i live-servera
 Django, możesz podejrzeć serwer testowy za pomocą oprogramowania typu
-`VNC Viever`_ (wejdź na adres VNC :bash:`bpp-selenium:99`)
+`VNC Viever`_ (wejdź na adres VNC :bash:`localhost:5999`, wpisz hasło
+"password" bez cudzysłowu i zapoznaj się z sytuacją po stronie przeglądarki
+WWW).
 
 Release
 ~~~~~~~
@@ -178,7 +195,7 @@ operacyjnym (Linux) oraz zbuduje wersję instalacyjną systemu:
 
 .. code-block:: bash
 
-    make release
+    make wheels bdist_wheel tests
 
 .. _Python: http://python.org/
 .. _yarn: https://yarnpkg.com/en/docs/install
@@ -198,6 +215,8 @@ operacyjnym (Linux) oraz zbuduje wersję instalacyjną systemu:
 .. _RabbitMQ: http://rabbitmq.com/
 .. _redis: http://redis.io/
 .. _Homebrew: http://brew.sh
+.. _Docker: http://docker.io/
+.. _Selenium: http://seleniumhq.org
 
 Wsparcie komercyjne
 -------------------
