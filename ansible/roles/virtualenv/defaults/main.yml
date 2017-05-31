@@ -1,4 +1,0 @@
----
-python_version: 2.7
-venv_path: /home/{{user}}/env
-activate: . {{venv_path}}/bin/activate
