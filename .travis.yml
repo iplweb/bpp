@@ -5,4 +5,6 @@ services:
 
 script:
   - sudo service postgresql stop
+  - make wheels
+  - make bdist_wheel
   - make tests
