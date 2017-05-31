@@ -41,6 +41,11 @@ tests:
 	-docker rmi -f djangobpp_test
 	docker-compose run test
 
+# cel: bootup-services
+# Uruchamia PostgreSQL, RabbitMQ, Redis, Selenium w dockerze celem użycia do testów/developmentu
+bootup-services:
+	docker-compose up -d db rabbitmq redis selenium
+
 staging:
 	ansible-playbook ansible/webserver.yml --private-key=.vagrant/machines/staging/virtualbox/private_key
 
