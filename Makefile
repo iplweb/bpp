@@ -20,9 +20,15 @@ wheels:
 	docker build -t django_bpp_wheel_builder -f Dockerfile-build .
 	docker run --rm -it -v `pwd`/dist:/usr/src/app/dist -v `pwd`/dist_dev:/usr/src/app/dist_dev django_bpp_wheel_builder
 
+# cel: pip-install
+# Instaluje wszystkie requirements
+pip-install: wheels
+	pip2 install --no-index --find-links=./dist --find-links=./dist_dev -r requirements_dev.txt 
+	pip2 install --no-index --find-links=./dist --find-links=./dist_dev -r requirements.txt
+
 # cel: build-assets
 # Pobiera i składa do kupy JS/CSS/Foundation
-build-assets:
+build-assets: pip-install
 	./buildscripts/build-assets.sh
 
 # cel: bdist_wheel
@@ -30,15 +36,14 @@ build-assets:
 # Wymaga:
 # 1) zainstalowanych pakietów z requirements.txt i requirements_dev.txt przez pip
 # 2) yarn, grunt-cli, npm, bower
-bdist_wheel: wheels build-assets
-	pip install --no-index --find-links=./dist -r requirements.txt
+bdist_wheel: build-assets
 	python setup.py bdist_wheel
 
 # cel: tests
 # Uruchamia testy całego site'u za pomocą docker-compose. Wymaga zbudowanych 
 # pakietów WHL (cel: wheels) oraz statycznych assets w katalogu src/django_bpp/staticroot
 # (cel: prepare-build-env)
-tests: 
+tests: bdist_wheel
 	-docker rmi -f djangobpp_test
 	docker-compose run test
 
