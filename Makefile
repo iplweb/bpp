@@ -30,7 +30,8 @@ build-assets:
 # Wymaga:
 # 1) zainstalowanych pakietów z requirements.txt i requirements_dev.txt przez pip
 # 2) yarn, grunt-cli, npm, bower
-bdist_wheel: build-assets
+bdist_wheel: wheels build-assets
+	pip install --no-index --find-links=./dist -r requirements.txt
 	python setup.py bdist_wheel
 
 # cel: tests
