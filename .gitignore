@@ -88,4 +88,3 @@ releases/
 *.ova
 
 src/bpp/static/scss/app.css
-yarn.lock
