@@ -27,7 +27,7 @@ setup(
     package_dir={
         '': 'src'
         },
-    package_data={'django_bpp': ['src/staticroot/*']},
+    # package_data={'django_bpp': ['src/staticroot/*']},
     include_package_data=True,
     install_requires=requirements,
     license="MIT license",
