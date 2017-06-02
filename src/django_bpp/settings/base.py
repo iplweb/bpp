@@ -43,8 +43,9 @@ STATICFILES_DIRS = (
 STATICFILES_FINDERS = (
     'django.contrib.staticfiles.finders.AppDirectoriesFinder',
     'django.contrib.staticfiles.finders.FileSystemFinder',
+    'yarn.finders.YarnFinder',
     'djangobower.finders.BowerFinder',
-    'compressor.finders.CompressorFinder'
+    'compressor.finders.CompressorFinder',
     #    'django.contrib.staticfiles.finders.DefaultStorageFinder',
 )
 
@@ -302,25 +303,10 @@ BOWER_COMPONENTS_ROOT = os.path.abspath(
         os.path.dirname(__file__),
         '..', '..', 'components'))
 
-BOWER_INSTALLED_APPS = (
-    # Musi być Jquery 2.1.4, bo Foundation 5.5.3 nie wspólpracuje z Jquery 2.2.0,
-    # nie da się odpalic dialogu modalnego Reveal,
-    # chyba, że zaktualizuję Foudnation do wersji 6.x, wówczsa można by
-    # użyć wyższego jquery
-    'jquery#2.1.4',
-
-    'jquery-cookie',
-    'jeditable#1.7.3',
-    'jqueryui#1.11.0',
-    'foundation#5.5.3',
-    'foundation-datepicker',
-    'font-awesome#4.1.0',
-    'iframe-resizer#2.5.1',
-    'jinplace#1.0.1',
-    'qunit#2.0.1',
-    'http://sinonjs.org/releases/sinon-1.17.5.js',
-    'http://keith-wood.name/zip/jquery.keypad.package-2.0.1.zip'
-)
+BOWER_INSTALLED_APPS = [
+    # 406 Unacceptable podczas instalacji via yarn
+    'http://keith-wood.name/zip/jquery.keypad.package-2.0.1.zip',
+]
 
 CRISPY_TEMPLATE_PACK = 'foundation-5'
 
