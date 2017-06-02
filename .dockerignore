@@ -1,4 +1,5 @@
 .vagrant
+Vagrantfile
 .tox
 ansible
 splintershots
@@ -6,3 +7,5 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.so
+docker-compose.yml
+Dockerfile*
