@@ -5,13 +5,13 @@ coverage==3.6
 
 model_mommy==1.2.6
 
-pytest==3.1.0 
+pytest==3.1.1
 pytest-django==3.1.2
 pytest-xdist==1.13.1
 pytest-instafail==0.3.0
 pytest-localserver==0.3.6
 pytest-splinter==1.8.5 
-selenium==3.4.2
+selenium==3.4.3
 
 django-dynamic-fixture==1.8.0
 
