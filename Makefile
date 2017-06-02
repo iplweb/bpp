@@ -3,13 +3,14 @@ BRANCH=`git branch | sed -n '/\* /s///p'`
 .PHONY: tests clean distclean
 
 clean:
+	find . -name __pycache__ -type d -print0 | xargs -0 rm -rfv
 	find . -name \*~ -print0 | xargs -0 rm -fv 
 	find . -name \*pyc -print0 | xargs -0 rm -fv 
 	find . -name \*\\.log -print0 | xargs -0 rm -fv 
-	rm -rf build __pycache__
+	rm -rf build __pycache__ *.log
 
 distclean: clean
-	rm -rf dist/ 
+	rm -rf dist/ zarzadca*backup 
 	rm -rf node_modules src/node_modules src/django_bpp/staticroot .eggs .cache .tox
 
 # cel: local-build-wheels
@@ -58,6 +59,13 @@ tests-from-scratch: bdist_wheel tests
 # Uruchamia PostgreSQL, RabbitMQ, Redis, Selenium w dockerze celem użycia do testów/developmentu
 bootup-services:
 	docker-compose up -d db rabbitmq redis selenium
+
+# cel: docker-world
+# Czyści wszystko, przebudowuje od początku kontenery
+docker-world: 
+	docker-compose stop
+	docker-compose rm -f
+	docker-compose build
 
 staging:
 	ansible-playbook ansible/webserver.yml --private-key=.vagrant/machines/staging/virtualbox/private_key
