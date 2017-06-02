@@ -16,10 +16,10 @@ services:
     ports:
       - "5432:5432"
   selenium:
-    image: mpasternak79/docker-selenium
+    image: selenium/standalone-firefox-debug
     ports:
-      - "5999:5999"
       - "4444:4444"
+      - "5900:5900"
   nginx_http_push:
     image: mpasternak79/docker-nginx-http-push
     ports:
