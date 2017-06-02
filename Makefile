@@ -12,6 +12,11 @@ distclean: clean
 	rm -rf dist/ 
 	rm -rf node_modules src/node_modules src/django_bpp/staticroot .eggs .cache .tox
 
+# cel: local-build-wheels
+# Buduje pakiety WHL korzystając z 'lokalnego' systemu
+local-build-wheels:
+	./buildscripts/build-wheel.sh
+
 # cel: wheels
 # Buduje pakiety WHL na bazie requirements.txt, zapisując je do katalogu 'dist',
 # buduje pakiety WHL na bazie requirements_dev.txt, zapisując je do katalogu 'dist_dev'.
@@ -39,13 +44,15 @@ build-assets: pip-install
 bdist_wheel: build-assets
 	python setup.py bdist_wheel
 
+tests:
+	-docker rmi -f djangobpp_test
+	docker-compose run test tox
+
 # cel: tests
 # Uruchamia testy całego site'u za pomocą docker-compose. Wymaga zbudowanych 
 # pakietów WHL (cel: wheels) oraz statycznych assets w katalogu src/django_bpp/staticroot
 # (cel: prepare-build-env)
-tests: bdist_wheel
-	-docker rmi -f djangobpp_test
-	docker-compose run test
+tests-from-scratch: bdist_wheel tests
 
 # cel: bootup-services
 # Uruchamia PostgreSQL, RabbitMQ, Redis, Selenium w dockerze celem użycia do testów/developmentu
