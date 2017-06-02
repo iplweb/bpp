@@ -14,6 +14,7 @@ SCRIPTPATH=`pwd -P`
 popd > /dev/null
 cd $SCRIPTPATH/..
 
+DEBUG=0
 NO_QUNIT=0
 NO_PYTEST=0
 NO_DJANGO=0
@@ -32,7 +33,9 @@ do
             ;;
         --no-rebuild) NO_REBUILD=1
             ;;
-	--help) echo "--no-qunit, --no-pytest, --no-django, --no-rebuild"
+	--debug) DEBUG=1
+	    ;;
+	--help) echo "--no-qunit, --no-pytest, --no-django, --no-rebuild, --debug"
 	    exit 1
 	    ;;
         --*) echo "bad option $1"
@@ -43,6 +46,20 @@ do
 done
 
 export GIT_BRANCH_NAME=`git status |grep "On branch"|sed "s/On branch //"|sed "s/# //"`
+
+
+if [ "$DEBUG" == "1" ]; then
+    echo "Firefox version: "
+    firefox -version || true
+    echo "Geckodriver version: "
+    geckodriver --version || true 
+    echo "Chromium version"
+    chromium-browser --version || true
+    echo "Chromedriver version: "
+    chromedriver --version || true
+    echo "Git branch detected: "
+    echo $GIT_BRANCH_NAME
+fi
 
 if [ "$NO_REBUILD" == "0" ]; then
     # Nie przebudowuj bazy danych przed uruchomieniem testów.
@@ -65,18 +82,7 @@ if [ "$NO_DJANGO" == "0" ]; then
 fi
 
 if [ "$NO_PYTEST" == "0" ]; then
-
-    # TravisCI debug BEGIN
-    echo "Firefox version: "
-    firefox -version || true
-    echo "Geckodriver version: "
-    geckodriver --version || true
-    echo "Chromium version"
-    chromium-browser --version || true
-    echo "Chromedriver version: "
-    chromedriver --version || true
-    # TravisCI debug END
-
+    
     py.test src/eksport_pbn tests src/integrator2/tests src/bpp/tests_pytest
     # mpasternak 17.1.2017 TODO: włączyć później
     # egeria/tests
