@@ -13,7 +13,7 @@ from moai.oai import OAIServerFactory
 from moai.server import FeedConfig
 
 from bpp.models import Rekord
-
+from django.utils import timezone
 
 class CacheMetadata:
     def __init__(self, orig):
@@ -145,7 +145,7 @@ class BPPOAIDatabase(object):
 
         # make sure until date is set, and not in future
         if until_date == None or until_date > datetime.datetime.utcnow():
-            until_date = datetime.datetime.now()
+            until_date = timezone.now()
 
         query = self.original.order_by('-ostatnio_zmieniony')
 
