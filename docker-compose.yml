@@ -28,6 +28,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile-test
+    ports: 
+      - "9015:9015"
     volumes: 
       - ./dist:/usr/src/app/dist
       - ./dist_dev:/usr/src/app/dist_dev
