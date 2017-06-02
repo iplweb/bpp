@@ -8,6 +8,7 @@ clean:
 	find . -name \*pyc -print0 | xargs -0 rm -fv 
 	find . -name \*\\.log -print0 | xargs -0 rm -fv 
 	rm -rf build __pycache__ *.log
+	rm -rf src/django_bpp/staticroot 
 
 distclean: clean
 	rm -rf dist/ zarzadca*backup 
