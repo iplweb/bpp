@@ -87,11 +87,13 @@ Sklonuj repozytorium z kodem:
 Konfiguracja pakietów języka JavaScript
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Zainstaluj pakiety JavaScript za pomocą yarn_:
+Zainstaluj globalnie wymagane pakiety JavaScript za pomocą yarn_.
+Zainstaluj następnie wymagane przez django-bpp pakiety:
 
 .. code-block:: bash
 
     yarn global add bower grunt-cli
+    yarn install
 
 Konfiguracja Pythona
 ~~~~~~~~~~~~~~~~~~~~
@@ -114,7 +116,6 @@ Zainstaluj wymagane pakiety:
 .. code-block:: bash
 
     pip install -r requirements_dev.txt
-    pip install -r requirements.txt
 
 Konfiguracja Vagrant_
 ~~~~~~~~~~~~~~~~~~~~~

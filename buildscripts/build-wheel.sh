@@ -9,8 +9,8 @@ export DISTDIR=$SCRIPTPATH/../dist
 echo "Buduje wheels w $DISTDIR"
 
 mkdir -p $DISTDIR
-pip2 wheel --wheel-dir=$DISTDIR --find-links=$DISTDIR -r requirements.txt
+pip2 wheel --wheel-dir=$DISTDIR --find-links=$DISTDIR -r requirements.txt -q
 
 export DISTDIR_DEV=${DISTDIR}_dev
 mkdir -p $DISTDIR_DEV
-pip2 wheel --wheel-dir=$DISTDIR_DEV --find-links=$DISTDIR --find-links=$DISTDIR_DEV -r requirements_dev.txt
+pip2 wheel --wheel-dir=$DISTDIR_DEV --find-links=$DISTDIR --find-links=$DISTDIR_DEV -r requirements_dev.txt -q
