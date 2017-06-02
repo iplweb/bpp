@@ -71,7 +71,7 @@ docker-clean:
 # Buduje kontener testowy
 docker-test: 
 	docker-compose build test
-	docker-compose run test /bin/bash -c ./buildscripts/run-tests.sh --no-qunit --no-django --no-pytest
+	docker-compose run test .docker/test_run.sh
 
 # cel: docker-world
 # przebudowuje od początku kontenery

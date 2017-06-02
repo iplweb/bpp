@@ -13,11 +13,4 @@ COPY . /usr/src/app
 COPY .docker/stellar.yaml . 
 COPY .docker/pytest.ini . 
 
-RUN pip2 install --no-index --find-links=./dist_dev --find-links=./dist -rrequirements_dev.txt
-RUN ./buildscripts/build-assets.sh
-
-ENV PGHOST=db
-ENV PGUSER=postgres
-ENV DJANGO_SETTINGS_MODULE=django_bpp.settings.test
-
 ENTRYPOINT [".docker/test_shell.sh"]
