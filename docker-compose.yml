@@ -20,6 +20,10 @@ services:
     ports:
       - "5999:5999"
       - "4444:4444"
+  nginx_http_push:
+    image: mpasternak79/docker-nginx-http-push
+    ports:
+      - "9090:80"
   test:
     build:
       context: .
@@ -33,3 +37,4 @@ services:
       - redis
       - selenium
       - rabbitmq
+      - nginx_http_push
