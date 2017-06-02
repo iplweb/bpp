@@ -100,18 +100,8 @@ class TestRaportJednostek2012(TestCase):
         i_jeszcze_tego_tez = any_ciagle(
             adnotacje="erih", **common)
 
-        tego_rowniez_ma_nie_byc = any_ciagle(
-            charakter_formalny=charakter("AC"),
-            jezyk=jezyk("ang."),
-            impact_factor=0,
-            punkty_kbn=5,
-            adnotacje="",
-            typ_kbn=typ_kbn("PO"),
-            liczba_znakow_wydawniczych=1 + (ILOSC_ZNAKOW_NA_ARKUSZ / 2),
-        )
-
         for elem in [c, tego_ma_nie_byc, tego_tez_ma_nie_byc,
-                     i_jeszcze_tego_tez, tego_rowniez_ma_nie_byc]:
+                     i_jeszcze_tego_tez]:
             elem.dodaj_autora(self.a, self.j)
 
         self.sprawdz("1_2", c)
