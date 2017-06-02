@@ -482,14 +482,12 @@ def raport_common_tabela(key, base_query, jednostka=None, autor=None):
             impact_factor=0,
             punkty_kbn__gt=0,
         ).exclude(
-            liczba_znakow_wydawniczych__gte=ILOSC_ZNAKOW_NA_ARKUSZ/2
-        ).exclude(
             adnotacje__icontains="wos"
         ).exclude(
             adnotacje__icontains="erih"
         ).exclude(
             typ_kbn=Typ_KBN.objects.get(skrot="PW")
-        ).order_by("zrodlo__nazwa", "tytul_oryginalny")
+        )
 
     elif key == "1_3":
         return base_query.filter(
