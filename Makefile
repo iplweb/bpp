@@ -66,10 +66,15 @@ docker-clean:
 	docker-compose stop
 	docker-compose rm -f
 
+# cel: docker-test
+# Buduje kontener testowy
+docker-test: 
+	docker-compose build test
+	docker-compose run test /bin/bash -c ./buildscripts/run-tests.sh --no-qunit --no-django --no-pytest
+
 # cel: docker-world
-# , przebudowuje od początku kontenery
-docker-world: docker-clean
-	docker-compose build
+# przebudowuje od początku kontenery
+docker-world: docker-clean docker-test
 
 staging:
 	ansible-playbook ansible/webserver.yml --private-key=.vagrant/machines/staging/virtualbox/private_key
