@@ -25,6 +25,9 @@ before_install:
 
   - pip install -U tox pip setuptools virtualenv
 
+  - mkdir -p dist dist_dev
+
+
 services:
   - docker
 
