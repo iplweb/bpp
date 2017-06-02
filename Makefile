@@ -60,11 +60,15 @@ tests-from-scratch: bdist_wheel tests
 bootup-services:
 	docker-compose up -d db rabbitmq redis selenium
 
-# cel: docker-world
-# Czyści wszystko, przebudowuje od początku kontenery
-docker-world: 
+# cel: docker-clean
+# Czyści wszystko
+docker-clean:
 	docker-compose stop
 	docker-compose rm -f
+
+# cel: docker-world
+# , przebudowuje od początku kontenery
+docker-world: docker-clean
 	docker-compose build
 
 staging:
