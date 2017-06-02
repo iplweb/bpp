@@ -9,4 +9,6 @@ WORKDIR /usr/src/app
 COPY . /usr/src/app
 COPY stellar-docker.yaml /usr/src/app/stellar.yaml
 
-ENTRYPOINT ["tox", "-c", "tox-docker.ini"]
+RUN pip2 install --no-index --find-links=./dist_dev --find-links=./dist -rrequirements_dev.txt
+RUN ./buildscripts/build-assets.sh
+CMD ["/bin/bash"]
