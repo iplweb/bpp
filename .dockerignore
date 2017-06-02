@@ -2,5 +2,7 @@
 .tox
 ansible
 splintershots
-dist
-dist_dev
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
