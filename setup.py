@@ -9,7 +9,7 @@ with open('README.rst') as readme_file:
 with open('HISTORY.rst') as history_file:
     history = history_file.read()
     
-reqs = lambda fn: list([x.strip() for x in open(fn).readlines() if x.strip() and not x.startswith("#")])      
+reqs = lambda fn: list([x.strip() for x in open(fn).readlines() if x.strip() and not x[:1] in ["#", "-"]])
 
 requirements = reqs("requirements.txt")
 
