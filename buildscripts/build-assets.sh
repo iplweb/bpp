@@ -7,7 +7,7 @@ popd > /dev/null
 
 cd $SCRIPTPATH/..
 
-yarn install 
+yarn install > /dev/null
 
 python src/manage.py bower_install -RF -v0
 
