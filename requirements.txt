@@ -74,5 +74,3 @@ django-webmaster-verification==0.3.0
 django-favicon-plus==0.0.6
 
 dogslow==0.9.7
-
-https://github.com/epineda/django-yarn/archive/v1.0.0.zip#egg=django-yarn

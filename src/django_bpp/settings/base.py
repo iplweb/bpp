@@ -43,7 +43,7 @@ STATICFILES_DIRS = (
 STATICFILES_FINDERS = (
     'django.contrib.staticfiles.finders.AppDirectoriesFinder',
     'django.contrib.staticfiles.finders.FileSystemFinder',
-    'yarn.finders.YarnFinder',
+    'bpp.finders.YarnFinder',
     'djangobower.finders.BowerFinder',
     'compressor.finders.CompressorFinder',
     #    'django.contrib.staticfiles.finders.DefaultStorageFinder',
