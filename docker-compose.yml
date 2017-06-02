@@ -12,7 +12,9 @@ services:
     ports:
       - "6379:6379"
   db:
-    image: mpasternak79/docker-postgres
+    build:
+      dockerfile: Dockerfile-db
+      context: .docker
     ports:
       - "5432:5432"
   selenium:
@@ -21,7 +23,9 @@ services:
       - "4444:4444"
       - "5900:5900"
   nginx_http_push:
-    image: mpasternak79/docker-nginx-http-push
+    build:
+      dockerfile: Dockerfile-nginx
+      context: .docker
     ports:
       - "9090:80"
   test:
