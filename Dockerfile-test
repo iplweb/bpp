@@ -7,7 +7,7 @@ RUN mkdir -p /usr/src/app
 WORKDIR /usr/src/app
 
 COPY . /usr/src/app
-COPY stellar-docker.yaml /usr/src/app/stellar.yaml
+COPY .docker/stellar-docker.yaml /usr/src/app/stellar.yaml
 
 RUN pip2 install --no-index --find-links=./dist_dev --find-links=./dist -rrequirements_dev.txt
 RUN ./buildscripts/build-assets.sh
