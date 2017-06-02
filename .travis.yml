@@ -18,6 +18,8 @@ before_install:
 
   - sudo service postgresql stop
 
+  - sudo pip install -U tox pip setuptools virtualenv
+
 services:
   - docker
 
