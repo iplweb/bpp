@@ -8,4 +8,4 @@ export DISPLAY=:99
 
 Xvfb $DISPLAY &
 
-bash $*
+exec $*
