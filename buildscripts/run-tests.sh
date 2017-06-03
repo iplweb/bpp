@@ -90,5 +90,5 @@ if [ "$NO_PYTEST" == "0" ]; then
 fi
 
 if [ "$NO_QUNIT" == "0" ]; then
-    grunt qunit
+    grunt qunit -v
 fi
