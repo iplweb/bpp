@@ -44,9 +44,6 @@ build-assets: pip-install
 # 1) zainstalowanych pakietów z requirements.txt i requirements_dev.txt przez pip
 # 2) yarn, grunt-cli, npm, bower
 bdist_wheel: build-assets
-	ls -las /home/travis/build/mpasternak/
-	ls -las	/home/travis/build/mpasternak/django-bpp
-	ls -las	/home/travis/build/mpasternak/django-bpp/dist
 	python setup.py bdist_wheel
 
 tests:
