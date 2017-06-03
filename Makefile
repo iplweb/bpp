@@ -30,8 +30,8 @@ wheels:
 # cel: pip-install
 # Instaluje wszystkie requirements
 pip-install: wheels
-	pip2 install --no-index --find-links=./dist --find-links=./dist_dev -r requirements_dev.txt 
-	pip2 install --no-index --find-links=./dist --find-links=./dist_dev -r requirements.txt
+	pip2 install -q --no-index --find-links=./dist --find-links=./dist_dev -r requirements_dev.txt 
+	pip2 install -q --no-index --find-links=./dist --find-links=./dist_dev -r requirements.txt
 
 # cel: build-assets
 # Pobiera i składa do kupy JS/CSS/Foundation

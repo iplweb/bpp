@@ -23,7 +23,7 @@ before_install:
 
   - sudo service postgresql stop
 
-  - pip install -U tox pip setuptools virtualenv
+  - pip install -q -U tox pip setuptools virtualenv
 
   - mkdir -p dist dist_dev
 
