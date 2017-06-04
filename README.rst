@@ -1,6 +1,9 @@
 django-bpp
 ==========
 
+.. image:: https://travis-ci.org/mpasternak/django-bpp.svg?branch=dev
+   :target: https://travis-ci.org/mpasternak/django-bpp
+
 .. role:: bash(code)
    :language: bash
 
