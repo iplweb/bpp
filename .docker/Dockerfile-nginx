@@ -1,12 +1,12 @@
 FROM ubuntu:16.04
 
-RUN apt-get update -q && apt-get install -qq -y \
+RUN apt-get update -qq && apt-get install -qq -y \
   software-properties-common 
 
 # This fails because UnicodeBug (I have an 'ł' in my first name...)
 RUN add-apt-repository -y "ppa:dotz/nginx-with-push-stream-module" || true
 
-RUN apt-get update -q \ 
+RUN apt-get update -qq \ 
   && DEBIAN_FRONTEND=noninteractive apt-get install -qq -y --allow-unauthenticated \
      nginx-full
 
