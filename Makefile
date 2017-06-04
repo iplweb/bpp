@@ -59,6 +59,7 @@ tests:
 
 docker-up: 
 	docker-compose up -d rabbitmq redis db selenium
+	docker-compose ps
 
 
 # cel: download
