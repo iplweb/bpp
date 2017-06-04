@@ -1,8 +1,8 @@
 #!/bin/bash
 
 export DJANGO_SETTINGS_MODULE=django_bpp.settings.local
-export PGHOST=bpp-db.localnet
-export PGUSER=bpp
+export PGHOST=localhost
+export PGUSER=postgres
 export PGPASSWORD=any
 export PGDATABASE=bpp
 export PGPORT=5432
