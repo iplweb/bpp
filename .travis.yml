@@ -6,6 +6,7 @@ python:
   - "2.7"
 
 cache:
+  pip: true
   yarn: true
   directories:
     - node_modules
@@ -28,6 +29,8 @@ before_install:
   # jak nie dam tego teraz, zrobi katalogi przez dockera, owner root:root
   # a potem bedzie permission deny przy build_wheel wiec:
   - mkdir -p dist dist_dev
+  
+  - pip install -q -r requirements.txt 
 
 services:
   - docker
