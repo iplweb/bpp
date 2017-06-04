@@ -16,9 +16,9 @@ clean:
 	find . -name \*pyc -print0 | xargs -0 rm -fv 
 	find . -name \*\\.log -print0 | xargs -0 rm -fv 
 	rm -rf build __pycache__ *.log
-	rm -rf src/django_bpp/staticroot 
 
 distclean: clean
+	rm -rf src/django_bpp/staticroot 
 	rm -rf dist/ dist_dev/ zarzadca*backup 
 	rm -rf node_modules src/node_modules src/django_bpp/staticroot .eggs .cache .tox
 	rm -rf .vagrant splintershots src/components/bower_components src/media
@@ -47,7 +47,7 @@ assets:
 # Wymaga:
 # 1) zainstalowanych pakietów z requirements.txt i requirements_dev.txt przez pip
 # 2) yarn, grunt-cli, npm, bower
-bdist_wheel: install-wheels assets
+bdist_wheel: install-wheels assets clean
 	python setup.py bdist_wheel
 
 # cel: tests-from-scratch
