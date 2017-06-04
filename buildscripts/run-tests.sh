@@ -2,13 +2,6 @@
 
 unamestr=`uname`
 
-export DJANGO_SETTINGS_MODULE=django_bpp.settings.local
-
-if [[ "$unamestr" == 'Linux' ]]; then
-    export DISPLAY=localhost:1
-    export DJANGO_SETTINGS_MODULE=django_bpp.settings.test
-fi
-
 pushd `dirname $0` > /dev/null
 SCRIPTPATH=`pwd -P`
 popd > /dev/null
@@ -90,5 +83,6 @@ if [ "$NO_PYTEST" == "0" ]; then
 fi
 
 if [ "$NO_QUNIT" == "0" ]; then
+    npm rebuild
     grunt qunit -v
 fi
