@@ -35,15 +35,6 @@ Vagrant.configure(2) do |config|
 
       staging.vm.network "private_network", ip: "192.168.111.101"
 
-#      staging.vm.provision "shell", inline: "sudo apt install python-minimal -y"
-#      staging.vm.provision "ansible" do |ansible|
-#        ansible.playbook = "ansible/provision.yml"
-#      end
-
-      if Vagrant.has_plugin?("vagrant-reload")
-            staging.vm.provision :reload
-      end
-
       if Vagrant.has_plugin?("vagrant-cachier")
         staging.cache.scope = :box
         staging.cache.enable :apt
