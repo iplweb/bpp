@@ -40,7 +40,6 @@ done
 
 export GIT_BRANCH_NAME=`git status |grep "On branch"|sed "s/On branch //"|sed "s/# //"`
 
-
 if [ "$DEBUG" == "1" ]; then
     echo "Firefox version: "
     firefox -version || true
@@ -50,6 +49,10 @@ if [ "$DEBUG" == "1" ]; then
     chromium-browser --version || true
     echo "Chromedriver version: "
     chromedriver --version || true
+    echo "Git version"
+    git --version
+    echo "Git status" 
+    git status
     echo "Git branch detected: "
     echo $GIT_BRANCH_NAME
 fi
