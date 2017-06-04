@@ -6,7 +6,9 @@
         "grunt": "^1.0.1",
         "grunt-contrib-qunit": "^2.0.0",
         "grunt-contrib-watch": "^1.0.0",
-        "grunt-sass": "^2.0.0"
+        "grunt-sass": "^2.0.0",
+        "qunitjs": "2.0.1",
+        "sinon": "^2.3.2"
     },
     "dependencies": {
         "font-awesome": "4.1.0",
@@ -16,8 +18,6 @@
         "jinplace": "1.0.1",
         "jquery": "2.1.4",
         "jquery.cookie": "1.4.1",
-        "jqueryui": "1.11.1",
-        "qunitjs": "2.0.1",
-        "sinon": "1.17.5"
+        "jqueryui": "1.11.1"
     }
 }
