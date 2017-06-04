@@ -62,7 +62,7 @@ zarządzanej przez Vagrant_. Jest to zalecany sposób testowania i rozwijania
 programu, który docelowo działać ma na platformie Ubuntu Linux 16.04 na
 "metalowych" serwerach.
 
-Rozwijanie programu z kolei - budowanie pakietów wheel języka Python, testowanie
+Rozwijanie programu z kolei - budowanie pakietów wheel języka Python_, testowanie
 za pomocą Selenium_, zapewnienie szybko skonfigurowanej bazy danych obsługuje
 Docker_.
 
@@ -184,7 +184,20 @@ Następnie uruchom testy na maszynie lokalnej:
 
 .. code-block:: bash
 
-    ./buildscripts/run-tests.sh
+    # Ustaw zmienne środowiskowe aby korzystać z kontenerów Dockera:
+    . local.rc
+
+    # Skonfiguruj interfejs lo0 (MacOS X) aby kontener 'selenium' miał
+    # dostęp do live-servera Django uruchamianego na interfejsie
+    # lokalnym:
+    make setup-lo0
+
+    # Zbuduj/pobierz pakiety WHL, używane później w nasętępnym kroku przez
+    # tox:
+    make wheels
+
+    # Uruchom testy
+    ./buildscripts/run-tests.sh --debug
 
 W przyszłości możesz uruchamiać testy z opcją ``--no-rebuild``, aby nie
 przebudowywać za każdym razem bazy danych.
@@ -206,6 +219,16 @@ polecenie, które uruchamiane jest na serwerze ciągłej integracji Travis-CI_.
 .. code-block:: bash
 
     make -f Makefile.docker travis
+
+Aby zainstalować aktualną wersję pakietu django-bpp na serwerze staging, skorzystaj
+z polecenia:
+
+.. code-block:: bash
+
+    make -f Makefile.production staging
+
+Następnie wejdź na adres http://bpp-staging.localnet/ aby sprawdzić
+funkcjonowanie serwera.
 
 .. _Python: http://python.org/
 .. _yarn: https://yarnpkg.com/en/docs/install

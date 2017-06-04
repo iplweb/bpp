@@ -50,7 +50,7 @@ assets:
 bdist_wheel: install-wheels assets clean
 	python setup.py bdist_wheel
 
-# cel: tests-from-scratch
+# cel: tests
 # Uruchamia testy całego site'u za pomocą docker-compose. Wymaga zbudowanych 
 # pakietów WHL (cel: wheels) oraz statycznych assets w katalogu src/django_bpp/staticroot
 # (cel: prepare-build-env)
@@ -85,3 +85,10 @@ rebuild-from-downloaded: _rebuild-from-downloaded migrate
 # Wrzuca pobraną bazę danych na staging-server
 upload-db-to-staging:
 	fab -i .vagrant/machines/staging/virtualbox/private_key -H ubuntu@bpp-staging.localnet upload_db:zarzadca@bpp.umlub.pl-bpp.backup,staging-bpp,staging-bpp
+
+# cel: setup-lo0
+# Konfiguruje alias IP dla interfejsu lo0 aby kontener Dockera 'selenium'
+# miał dostęp do live-serwera uruchamianego na komputerze hosta. Użyteczne
+# pod Mac OS X
+setup-lo0:
+	sudo ifconfig lo0 alias 192.168.13.37
