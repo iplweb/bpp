@@ -1,6 +1,14 @@
 BRANCH=`git branch | sed -n '/\* /s///p'`
 
-.PHONY: tests clean distclean
+#
+# UWAGA UWAGA UWAGA
+# 
+# Ten makefile buduje TYLKO lokalnie.
+#
+# Makefile ułatwiający rzeczy przez dockera nazywa się "Makefile.dev"
+# 
+
+.PHONY: clean distclean build-wheels install-wheels wheels
 
 clean:
 	find . -name __pycache__ -type d -print0 | xargs -0 rm -rfv
@@ -14,28 +22,21 @@ distclean: clean
 	rm -rf dist/ zarzadca*backup 
 	rm -rf node_modules src/node_modules src/django_bpp/staticroot .eggs .cache .tox
 
-# cel: local-build-wheels
-# Buduje pakiety WHL korzystając z 'lokalnego' systemu
-local-build-wheels:
-	./buildscripts/build-wheel.sh
-
-# cel: wheels
+# cel: build-wheels
+# Buduje pakiety WHL. Nie buduje samego pakietu django-bpp
 # Buduje pakiety WHL na bazie requirements.txt, zapisując je do katalogu 'dist',
 # buduje pakiety WHL na bazie requirements_dev.txt, zapisując je do katalogu 'dist_dev'.
-# Ten cel NIE buduje smaego pakietu django-bpp
-wheels: 
-	docker build -t django_bpp_wheel_builder -f Dockerfile-build .
-	docker run --rm -it -v `pwd`/dist:/usr/src/app/dist -v `pwd`/dist_dev:/usr/src/app/dist_dev django_bpp_wheel_builder
+build-wheels:
+	./buildscripts/build-wheel.sh
 
-# cel: pip-install
+# cel: install-wheels
 # Instaluje wszystkie requirements
-pip-install: wheels
-	pip2 install -q --no-index --find-links=./dist --find-links=./dist_dev -r requirements_dev.txt 
-	pip2 install -q --no-index --find-links=./dist --find-links=./dist_dev -r requirements.txt
+install-wheels:
+	pip2 install -q --no-index --find-links=./dist --find-links=./dist_dev -r requirements_dev.txt
 
 # cel: build-assets
 # Pobiera i składa do kupy JS/CSS/Foundation
-build-assets: pip-install
+build-assets: 
 	./buildscripts/build-assets.sh
 
 # cel: bdist_wheel
@@ -46,41 +47,14 @@ build-assets: pip-install
 bdist_wheel: build-assets
 	python setup.py bdist_wheel
 
-tests:
-	-docker rmi -f djangobpp_test
-	docker-compose run test tox
-
 # cel: tests
 # Uruchamia testy całego site'u za pomocą docker-compose. Wymaga zbudowanych 
 # pakietów WHL (cel: wheels) oraz statycznych assets w katalogu src/django_bpp/staticroot
 # (cel: prepare-build-env)
-tests-from-scratch: bdist_wheel tests
+tests-from-scratch: build-wheels bdist_wheel tests
 
-# cel: bootup-services
-# Uruchamia PostgreSQL, RabbitMQ, Redis, Selenium w dockerze celem użycia do testów/developmentu
-bootup-services:
-	docker-compose up -d db rabbitmq redis selenium
 
-# cel: docker-clean
-# Czyści wszystko
-docker-clean:
-	docker-compose stop
-	docker-compose rm -f
 
-# cel: docker-build
-# Buduje kontenery
-docker-build: 
-	docker-compose build 
-
-# cel: docker-world
-# przebudowuje od początku kontenery
-docker-world: docker-clean docker-build
-
-staging:
-	ansible-playbook ansible/webserver.yml --private-key=.vagrant/machines/staging/virtualbox/private_key
-
-demo-vm-ansible:
-	ansible-playbook ansible/demo-vm.yml --private-key=.vagrant/machines/staging/virtualbox/private_key
 
 
 #
