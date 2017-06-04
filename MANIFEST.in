@@ -4,8 +4,9 @@ include HISTORY.rst
 include LICENSE
 include README.rst
 
-recursive-exclude src/django_bpp/staticroot *
-recursive-include src/django_bpp/staticroot/CACHE *
+recursive-include src/django_bpp/staticroot/ *
+recursive-exclude src/django_bpp/staticroot/*grunt* *
+recursive-exclude src/django_bpp/staticroot/*sass* *
 recursive-include src/templates/* *.html *.js *.css *.mo *.po *.wav *.jpg *.png *.svg *.json
 recursive-include src/bpp/migrations *.sql *.txt
 
