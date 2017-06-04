@@ -21,6 +21,9 @@ clean:
 distclean: clean
 	rm -rf dist/ dist_dev/ zarzadca*backup 
 	rm -rf node_modules src/node_modules src/django_bpp/staticroot .eggs .cache .tox
+	rm -rf .vagrant splintershots src/components/bower_components src/media
+	docker-compose stop
+	docker-compose rm -f
 
 # cel: wheels
 # Buduje pakiety WHL. Nie buduje samego pakietu django-bpp
