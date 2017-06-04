@@ -1,4 +1,4 @@
 FROM postgres:9.6
 RUN localedef -i pl_PL -c -f UTF-8 -A /usr/share/locale/locale.alias pl_PL.UTF-8
-RUN apt-get update && apt-get install -y postgresql-plpython-9.6
+RUN apt-get update -qq && apt-get install -qq -y postgresql-plpython-9.6
 ENV LANG pl_PL.utf8"
