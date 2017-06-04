@@ -34,4 +34,6 @@ services:
   - docker
 
 script:
-  - make tests-from-scratch
+  - make -f Makefile.docker wheels
+  - make -f Makefile.docker bdist_wheel
+  - make -f Makefile.docker tests
