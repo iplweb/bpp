@@ -41,20 +41,34 @@ done
 export GIT_BRANCH_NAME=`git status |grep "On branch"|sed "s/On branch //"|sed "s/# //"`
 
 if [ "$DEBUG" == "1" ]; then
-    echo "Firefox version: "
+    echo "------------------------------------------------------------------------------"
+    echo -n "Firefox version: "
     firefox -version || true
-    echo "Geckodriver version: "
+    echo -n "Geckodriver version: "
     geckodriver --version || true 
-    echo "Chromium version"
+    echo -n "Chromium version"
     chromium-browser --version || true
-    echo "Chromedriver version: "
+    echo -n "Chromedriver version: "
     chromedriver --version || true
-    echo "Git version"
+    echo "------------------------------------------------------------------------------"
+    echo -n "Git version: "
     git --version
-    echo "Git status" 
+    echo "Git status: " 
     git status
-    echo "Git branch detected: "
+    echo "------------------------------------------------------------------------------"
+    echo -n "Git branch detected: "
     echo $GIT_BRANCH_NAME
+    echo "------------------------------------------------------------------------------"
+    echo -n "DJANGO_LIVE_TEST_SERVER_ADDRESS: "
+    echo $DJANGO_LIVE_TEST_SERVER_ADDRESS 
+    echo "------------------------------------------------------------------------------"
+    echo "pytest.ini: "
+    echo "------------------------------------------------------------------------------"
+    cat pytest.ini
+    echo "------------------------------------------------------------------------------"
+    echo "tox.ini"
+    echo "------------------------------------------------------------------------------"
+    cat tox.ini
 fi
 
 if [ "$NO_REBUILD" == "0" ]; then
