@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <base href="../../../../../"/>
+    
+    <meta charset="utf-8">
+    <title>Test notyfikacji</title>
+    <link rel="stylesheet" href="django_bpp/staticroot/qunitjs/qunit/qunit.css">
+
+    <link rel="stylesheet" href="django_bpp/staticroot/foundation-sites/css/normalize.min.css">
+    <link rel="stylesheet" href="django_bpp/staticroot/foundation-sites/css/foundation.min.css">
+
+    <script src="django_bpp/staticroot/foundation-sites/js/vendor/modernizr.js"></script>
+
+</head>
+<body>
+<div id="qunit"></div>
+<div id="qunit-fixture"></div>
+<script src="django_bpp/staticroot/jquery/dist/jquery.js"></script>
+<script src="django_bpp/staticroot/qunitjs/qunit/qunit.js"></script>
+<script src="django_bpp/staticroot/sinon-1.17.5/index.js"></script>
+<script src="django_bpp/staticroot/foundation-sites/js/foundation.js"></script>
+<script src="django_bpp/staticroot/foundation-sites/js/foundation/foundation.alert.js"></script>
+
+
+<script src="notifications/static/notifications/js/pushstream.js"></script>
+<script src="notifications/static/notifications/js/mustache.js"></script>
+<script src="notifications/static/notifications/js/notifications.js"></script>
+
+<script src="notifications/static/notifications/js/tests/tests.js"></script>
+
+<div id="qunit-fixture">
+
+    <div id="messagesPlaceholder"></div>
+
+    <div id="messageTemplate">
+        <div data-alert class="alert-box radius {{ cssClass }}{{^cssClass}}info{{/cssClass}}">
+            {{#clickURL}}<a href="{{ clickURL }}">{{/clickURL}}
+            {{ text }}
+            {{#clickURL}}</a>{{/clickURL}}
+
+
+            {{^hideCloseOption}}
+            {{#closeURL}}
+                <a href="{{ closeURL }}" class="{{ closeClass }}{{ ^closeClass }}close{{ /closeClass }}">
+            {{/closeURL}}
+            {{^closeURL}}
+                <a href="#" class="{{ closeClass }}{{ ^closeClass }}close{{ /closeClass }}" onclick="$(this).parent().fadeOut()">
+            {{/closeURL}}
+
+                {{{ closeText }}}{{ ^closeText }}&times;{{ /closeText }}
+            </a>
+            {{/hideCloseOption}}
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+    $(window).on("load", function(){
+        $(document).foundation();
+    });
+</script>
+
+
+
+</body>
+</html>
