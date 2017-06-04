@@ -3,8 +3,10 @@ Vagrantfile
 .tox
 ansible
 splintershots
-__pycache__/
-*.py[cod]
+__pycache__
+*.pyc
+*.pyo
+*.pyd
 *$py.class
 *.so
 docker-compose.yml
