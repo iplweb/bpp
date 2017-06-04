@@ -4,6 +4,7 @@
 #
 #
 
+.PHONY: tests
 
 # cel: bootup-services
 # Uruchamia PostgreSQL, RabbitMQ, Redis, Selenium w dockerze celem użycia do testów/developmentu
@@ -16,18 +17,31 @@ docker-clean:
 	docker-compose stop
 	docker-compose rm -f
 
-# cel: docker-build
-# Buduje kontenery
-docker-build: 
-	docker-compose build 
+# cel: wheels
+# Buduje pakiety WHL
+wheels: 
+	mkdir -p dist dist_dev
+	docker build -t django_bpp/wheel_builder -f Dockerfile-build .
+	docker run --rm -v `pwd`/dist:/usr/src/app/dist -v `pwd`/dist_dev:/usr/src/app/dist_dev django_bpp/wheel_builder 
 
-# cel: docker-world
-# przebudowuje od początku kontenery
-docker-world: docker-clean docker-build
+cleanup-pycs:
+	find . -name __pycache__ -type d -print0 | xargs -0 rm -rfv
+	find . -name \*~ -print0 | xargs -0 rm -fv 
+	find . -name \*pyc -print0 | xargs -0 rm -fv 
+	find . -name \*\\.log -print0 | xargs -0 rm -fv 
+	rm -rf build __pycache__ *.log
 
-staging:
-	ansible-playbook ansible/webserver.yml --private-key=.vagrant/machines/staging/virtualbox/private_key
+# cel: build-test-container
+# Buduje testowy kontener
+build-test-container: cleanup-pycs
+	docker-compose build test
 
-demo-vm-ansible:
-	ansible-playbook ansible/demo-vm.yml --private-key=.vagrant/machines/staging/virtualbox/private_key
+# cel: bdist_wheel
+# Buduje pakiet WHL z django_bpp
+bdist_wheel: build-test-container
+	docker-compose run --rm test make bdist_wheel
 
+# cel: tests
+# Uruchamia tox
+tests: build-test-container
+	docker-compose run --rm test make tests

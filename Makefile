@@ -8,7 +8,7 @@ BRANCH=`git branch | sed -n '/\* /s///p'`
 # Makefile ułatwiający rzeczy przez dockera nazywa się "Makefile.dev"
 # 
 
-.PHONY: clean distclean build-wheels install-wheels wheels
+.PHONY: clean distclean build-wheels install-wheels wheels tests
 
 clean:
 	find . -name __pycache__ -type d -print0 | xargs -0 rm -rfv
@@ -19,14 +19,14 @@ clean:
 	rm -rf src/django_bpp/staticroot 
 
 distclean: clean
-	rm -rf dist/ zarzadca*backup 
+	rm -rf dist/ dist_dev/ zarzadca*backup 
 	rm -rf node_modules src/node_modules src/django_bpp/staticroot .eggs .cache .tox
 
-# cel: build-wheels
+# cel: wheels
 # Buduje pakiety WHL. Nie buduje samego pakietu django-bpp
 # Buduje pakiety WHL na bazie requirements.txt, zapisując je do katalogu 'dist',
 # buduje pakiety WHL na bazie requirements_dev.txt, zapisując je do katalogu 'dist_dev'.
-build-wheels:
+wheels:
 	./buildscripts/build-wheel.sh
 
 # cel: install-wheels
@@ -44,16 +44,18 @@ build-assets:
 # Wymaga:
 # 1) zainstalowanych pakietów z requirements.txt i requirements_dev.txt przez pip
 # 2) yarn, grunt-cli, npm, bower
-bdist_wheel: build-assets
+bdist_wheel: install-wheels build-assets
 	python setup.py bdist_wheel
 
-# cel: tests
+# cel: tests-from-scratch
 # Uruchamia testy całego site'u za pomocą docker-compose. Wymaga zbudowanych 
 # pakietów WHL (cel: wheels) oraz statycznych assets w katalogu src/django_bpp/staticroot
 # (cel: prepare-build-env)
-tests-from-scratch: build-wheels bdist_wheel tests
+tests: 
+	tox
 
-
+docker-up: 
+	docker-compose up -d rabbitmq redis db selenium
 
 
 
