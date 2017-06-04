@@ -34,6 +34,7 @@ Vagrant.configure(2) do |config|
       end
 
       staging.vm.network "private_network", ip: "192.168.111.101"
+      staging.vm.provision "shell", inline: "sudo apt install python-minimal -y"
 
       if Vagrant.has_plugin?("vagrant-cachier")
         staging.cache.scope = :box
