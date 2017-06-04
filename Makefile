@@ -37,9 +37,9 @@ wheels:
 install-wheels:
 	pip2 install -q --no-index --find-links=./dist --find-links=./dist_dev -r requirements_dev.txt
 
-# cel: build-assets
+# cel: assets
 # Pobiera i składa do kupy JS/CSS/Foundation
-build-assets: 
+assets: 
 	./buildscripts/build-assets.sh
 
 # cel: bdist_wheel
@@ -47,7 +47,7 @@ build-assets:
 # Wymaga:
 # 1) zainstalowanych pakietów z requirements.txt i requirements_dev.txt przez pip
 # 2) yarn, grunt-cli, npm, bower
-bdist_wheel: install-wheels build-assets
+bdist_wheel: install-wheels assets
 	python setup.py bdist_wheel
 
 # cel: tests-from-scratch
