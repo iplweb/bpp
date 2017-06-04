@@ -29,11 +29,8 @@ before_install:
   # a potem bedzie permission deny przy build_wheel wiec:
   - mkdir -p dist dist_dev
 
-
 services:
   - docker
 
 script:
-  - make -f Makefile.docker wheels
-  - make -f Makefile.docker bdist_wheel
-  - make -f Makefile.docker tests
+  - make -f Makefile.docker travis

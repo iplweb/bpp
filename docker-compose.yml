@@ -31,7 +31,7 @@ services:
   test:
     build:
       context: .
-      dockerfile: Dockerfile-test
+      dockerfile: Dockerfile
     ports: 
       - "9015:9015"
     volumes: 

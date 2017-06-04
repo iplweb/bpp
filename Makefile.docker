@@ -21,8 +21,7 @@ docker-clean:
 # Buduje pakiety WHL
 wheels: 
 	mkdir -p dist dist_dev
-	docker build -t django_bpp/wheel_builder -f Dockerfile-build .
-	docker run --rm -v `pwd`/dist:/usr/src/app/dist -v `pwd`/dist_dev:/usr/src/app/dist_dev django_bpp/wheel_builder 
+	docker-compose run --rm test
 
 cleanup-pycs:
 	find . -name __pycache__ -type d -print0 | xargs -0 rm -rfv
@@ -38,10 +37,13 @@ build-test-container: cleanup-pycs
 
 # cel: bdist_wheel
 # Buduje pakiet WHL z django_bpp
-bdist_wheel: build-test-container
+bdist_wheel: 
 	docker-compose run --rm test make bdist_wheel
 
 # cel: tests
 # Uruchamia tox
-tests: build-test-container
+tests: 
 	docker-compose run --rm test make tests
+
+travis: build-test-container wheels bdist_wheel tests
+	

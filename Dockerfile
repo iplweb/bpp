@@ -8,8 +8,8 @@ EXPOSE 8080
 
 RUN mkdir -p /usr/src/app
 WORKDIR /usr/src/app
-
 COPY . /usr/src/app
+
 COPY .docker/stellar.yaml . 
 COPY .docker/pytest.ini . 
 
