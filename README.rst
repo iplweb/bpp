@@ -127,7 +127,7 @@ Zainstaluj wymagane wtyczki do Vagrant_:
 
 .. code-block:: bash
 
-    vagrant plugin install vagrant-hostmanager vagrant-timezone vagrant-cachier vagrant-reload
+    vagrant plugin install vagrant-hostmanager vagrant-timezone vagrant-cachier
 
 Stwórz testowy serwer wirtualny ("staging"):
 
@@ -143,6 +143,7 @@ Ustaw zmienne środowiskowe na cele lokalnego developmentu:
 
 .. code-block:: bash
 
+    export DJANGO_SETTINGS_MODULE=django_bpp.settings.local
     export PGHOST=localhost
     export PGUSER=postgres
 
@@ -150,11 +151,15 @@ Możesz umieścić te ustawienia w pliku ``bin/postactivate`` środowiska
 wirtualnego utworzonego przez ``mkvirtualenv``. Domyślnie znajduje się on
 w katalogu ``~/.envs/django-bpp/bin/postactivate``.
 
+Zbuduj pliki CSS i JavaScript
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 Następnie uruchom skrypt aby przygotować środowisko budowania oraz kolejny
 skrypt, aby zbudować pliki CSS i JS. Skrypty te
 instalują wymagane przez interfejs WWW pakiety języka JavaScript za pomocą
-django-bower_ oraz konfigurują bibliotekę Foundation_ budując ją za pomocą
-Grunt_. Następnie kompilują tak uzbierane pakiety za pomocą django-compressor_.
+yarn_ oraz django-bower_ oraz konfigurują bibliotekę Foundation_ budując ją
+za pomocą Grunt_ i SASS. Następnie kompilują tak uzbierane pakiety za pomocą
+django-compressor_.
 
 .. code-block:: bash
 
@@ -173,7 +178,7 @@ skonfigurowany, wymagany przez django-bpp? Z pomocą przychodzi Docker_:
 
 .. code-block:: bash
 
-     make bootup-services
+     make docker-up
 
 Następnie uruchom testy na maszynie lokalnej:
 
@@ -187,19 +192,20 @@ przebudowywać za każdym razem bazy danych.
 Jeżeli któryś test "utknie" - zdarza się to przezde
 wszystkim przy testach korzystających z przeglądarki, Selenium i live-servera
 Django, możesz podejrzeć serwer testowy za pomocą oprogramowania typu
-`VNC Viever`_ (wejdź na adres VNC :bash:`localhost:5999`, wpisz hasło
-"password" bez cudzysłowu i zapoznaj się z sytuacją po stronie przeglądarki
+`VNC Viever`_ (wejdź na adres VNC :bash:`localhost:5900`, wpisz hasło
+"secret" bez cudzysłowu i zapoznaj się z sytuacją po stronie przeglądarki
 WWW).
 
 Release
 ~~~~~~~
 
 Zbuduj wersję "release". Poniższe polecenie uruchomi testy na docelowym systemie
-operacyjnym (Linux) oraz zbuduje wersję instalacyjną systemu:
+operacyjnym (Linux) oraz zbuduje wersję instalacyjną systemu. Jest to to samo
+polecenie, które uruchamiane jest na serwerze ciągłej integracji Travis-CI_.
 
 .. code-block:: bash
 
-    make wheels bdist_wheel tests
+    make -f Makefile.docker travis
 
 .. _Python: http://python.org/
 .. _yarn: https://yarnpkg.com/en/docs/install
@@ -221,6 +227,7 @@ operacyjnym (Linux) oraz zbuduje wersję instalacyjną systemu:
 .. _Homebrew: http://brew.sh
 .. _Docker: http://docker.io/
 .. _Selenium: http://seleniumhq.org
+.. _Travis-CI: https://travis-ci.org/mpasternak/django-bpp/builds
 
 Wsparcie komercyjne
 -------------------
