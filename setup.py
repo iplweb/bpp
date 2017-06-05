@@ -16,13 +16,13 @@ requirements = reqs("requirements.txt")
 test_requirements = reqs("requirements_dev.txt") + requirements
 
 setup(
-    name='django_bpp',
+    name='django-bpp',
     version='0.10.99',
     description="System informatyczny do zarządzania bibliografią publikacji pracowników naukowych",
     long_description=readme + '\n\n' + history,
     author="Michał Pasternak",
     author_email='michal.dtz@gmail.com',
-    url='https://github.com/mpasternak/django_bpp',
+    url='https://github.com/mpasternak/django-bpp',
     packages=find_packages("src"),
     package_dir={
         '': 'src'
