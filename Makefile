@@ -27,6 +27,9 @@ dockerclean:
 	docker-compose stop
 	docker-compose rm -f
 
+vagrantclean:
+	vagrant destroy -f
+
 # cel: wheels
 # Buduje pakiety WHL. Nie buduje samego pakietu django-bpp
 # Buduje pakiety WHL na bazie requirements.txt, zapisując je do katalogu 'dist',
@@ -103,3 +106,28 @@ setup-lo0:
 release: clean assets
 	python setup.py sdist upload
 	python setup.py bdist_wheel upload
+
+# cel: staging
+# Konfiguruje system django-bpp za pomocą Ansible na komputerze 'staging' (vagrant)
+staging: wheels bdist_wheel
+	vagrant up staging
+	ansible-playbook ansible/webserver.yml --private-key=.vagrant/machines/staging/virtualbox/private_key
+
+demo-vm-ansible: 
+	ansible-playbook ansible/demo-vm.yml --private-key=.vagrant/machines/staging/virtualbox/private_key
+
+# cel: demo-vm-clone
+# Tworzy klon Vagrantowego boxa "staging" celem stworzenia pliku OVA
+# z demo-wersją maszyny wirtualnej.
+demo-vm-clone:
+	-rm bpp-`python src/django_bpp/version.py`.ova
+	vagrant halt staging
+	VBoxManage clonevm `VBoxManage list vms|grep django-bpp_staging|cut -f 2 -d\  ` --name Demo\ BPP\ `python src/django_bpp/version.py` --register
+	VBoxManage export Demo\ BPP\ `python src/django_bpp/version.py` -o bpp-`python src/django_bpp/version.py`.ova --options nomacs --options manifest --vsys 0 --product "Maszyna wirtualna BPP" --producturl http://iplweb.pl/kontakt/ --vendor IPLWeb --vendorurl http://iplweb.pl --version `python src/django_bpp/version.py` --eulafile LICENSE
+
+# cel: demo-vm-cleanup
+# Usuwa klon demo-maszyny wirutalnej
+demo-vm-cleanup:
+	VBoxManage unregistervm Demo\ BPP\ `python src/django_bpp/version.py` --delete
+
+demo-vm: vagrantclean staging demo-vm-ansible demo-vm-clone demo-vm-cleanup

@@ -1,0 +1,39 @@
+---
+- hosts: bpp-staging.localnet
+  become: yes
+  become_method: sudo
+  roles:
+
+  tasks:
+    - name: "** NIE UŻYWAĆ NA PRODUKCJI ** Hasło domyślnego użytkownika zmienione"
+      user: name={{ django_user }} password="$6$7/YB0MRvn.ff5520$NHkjQSbz.gR0Q1wkrmOAZ.T94.iBiVZgQsfJuPVt.SK9OOAW7EajtlS9Hq4JUeyQPj.JBhJdiYhWtsWk6kQdt/"
+
+    - name: "Usuń wzsystko z bpp_bppuser"
+      shell: . env/bin/activate && psql -c "delete from bpp_bppuser;"
+
+    - name: "** NIE UŻYWAĆ NA PRODUKCJI ** Domyślny użytkownik systemu zostaje utworzony"
+      shell: . env/bin/activate && bpp-manage.py createsuperuser --email michal.dtz@gmail.com  --username admin --noinput
+
+    - name: "** NIE UŻYWAĆ NA PRODUKCJI ** Hasło domyślnego użytkownika systemu zostaje ustalone"
+      shell:  . ./env/bin/activate && python -c  "from bpp.models import BppUser; u = BppUser.objects.all()[0]; u.set_password('admin'); u.save()"
+    - name: "** NIE UŻYWAĆ NA PRODUKCJI ** Wpuszczamy wszystkie hosty"
+      lineinfile: name=./env/lib/python2.7/site-packages/django_bpp/settings/base.py line="ALLOWED_HOSTS.append('*')"
+
+    - name: supervisor restart
+      shell: supervisorctl restart all
+
+    - name: Zainstaluj GUI
+      shell: apt-get update && apt-get install -qq -y lightdm firefox lxsession language-pack-pl xterm
+
+    - name: Lightdm bez hasła
+      template: src=autologin.conf dest=/etc/lightdm/lightdm.conf.d/12-autologin.conf
+
+    - name: Restart lightdm
+      shell: service lightdm restart || true && sleep 5
+
+    - name: Startuj przeglądarkę
+      lineinfile: name=/home/ubuntu/.config/lxsession/LXDE/autostart line="@firefox -url 192.168.111.101"
+
+    - name: Ustaw nazwę hosta
+      shell: echo "bppdemo" > /etc/hostname
+
