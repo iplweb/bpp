@@ -28,7 +28,14 @@ services:
       context: .docker
     ports:
       - "9090:80"
-  test:
+  prod: # Host używany do pobierania/instalowania WHL z PyPI
+    build:
+      dockerfile: Dockerfile-prod
+      context: .docker
+    ports: 
+      - "8080:8080"
+    env_file: env.test.txt
+  test: # Host używany do uruchamiania testów i budowania pakietów
     build:
       context: .
       dockerfile: Dockerfile

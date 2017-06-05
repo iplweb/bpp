@@ -1,0 +1,17 @@
+FROM ubuntu:16.04
+
+EXPOSE 8080
+
+RUN apt-get update -qq && apt-get install -qq --yes \
+    python \
+    python-pip \ 
+    virtualenv \
+    virtualenvwrapper 
+
+RUN . /etc/bash_completion.d/virtualenvwrapper && mkvirtualenv env-bpp
+
+RUN . .virtualenvs/env-bpp/bin/activate && pip install -U pip && pip install django-bpp
+
+RUN .virtualenvs/env-bpp/bin/bpp-manage.py migrate
+
+ENTRYPOINT .virtualenvs/env-bpp/bin/bpp-manage.py runserver 0.0.0.0:8080
