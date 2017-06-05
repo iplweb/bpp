@@ -1,5 +1,7 @@
 FROM ubuntu:16.04
 
+SHELL ["/bin/bash", "-c"]
+
 EXPOSE 8080
 
 RUN apt-get update -qq && apt-get install -qq --yes \
@@ -10,8 +12,8 @@ RUN apt-get update -qq && apt-get install -qq --yes \
 
 RUN . /etc/bash_completion.d/virtualenvwrapper && mkvirtualenv env-bpp
 
-RUN . .virtualenvs/env-bpp/bin/activate && pip install -U pip && pip install django-bpp
+RUN . ~/.virtualenvs/env-bpp/bin/activate && pip install -U pip && pip install django-bpp
 
-RUN .virtualenvs/env-bpp/bin/bpp-manage.py migrate
+RUN ~/.virtualenvs/env-bpp/bin/bpp-manage.py migrate
 
-ENTRYPOINT .virtualenvs/env-bpp/bin/bpp-manage.py runserver 0.0.0.0:8080
+ENTRYPOINT ~/.virtualenvs/env-bpp/bin/bpp-manage.py runserver 0.0.0.0:8080
