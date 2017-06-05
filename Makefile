@@ -5,23 +5,25 @@ BRANCH=`git branch | sed -n '/\* /s///p'`
 # 
 # Ten makefile buduje TYLKO lokalnie.
 #
-# Makefile ułatwiający rzeczy przez dockera nazywa się "Makefile.dev"
+# Makefile ułatwiający rzeczy przez dockera nazywa się "Makefile.docker"
 # 
 
-.PHONY: clean distclean build-wheels install-wheels wheels tests
+.PHONY: clean distclean build-wheels install-wheels wheels tests release
 
 clean:
 	find . -name __pycache__ -type d -print0 | xargs -0 rm -rfv
 	find . -name \*~ -print0 | xargs -0 rm -fv 
 	find . -name \*pyc -print0 | xargs -0 rm -fv 
 	find . -name \*\\.log -print0 | xargs -0 rm -fv 
-	rm -rf build __pycache__ *.log
+	rm -rf build dist/*django_bpp*whl __pycache__ *.log
 
 distclean: clean
 	rm -rf src/django_bpp/staticroot 
 	rm -rf dist/ dist_dev/ zarzadca*backup 
 	rm -rf node_modules src/node_modules src/django_bpp/staticroot .eggs .cache .tox
 	rm -rf .vagrant splintershots src/components/bower_components src/media
+
+dockerclean:
 	docker-compose stop
 	docker-compose rm -f
 
@@ -57,6 +59,9 @@ bdist_wheel: install-wheels assets clean
 tests: 
 	tox
 
+# cel: docker-up
+# Startuje usługi dockera wymagane do lokalnego developmentu
+# Zobacz też: setup-lo0
 docker-up: 
 	docker-compose up -d rabbitmq redis db selenium
 	docker-compose ps
@@ -92,3 +97,9 @@ upload-db-to-staging:
 # pod Mac OS X
 setup-lo0:
 	sudo ifconfig lo0 alias 192.168.13.37
+
+# cel: release
+# PyPI release
+release: clean assets
+	python setup.py sdist upload
+	python setup.py bdist_wheel upload
