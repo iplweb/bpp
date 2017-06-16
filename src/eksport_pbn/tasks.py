@@ -105,7 +105,7 @@ def eksport_pbn(pk):
     zipf.close()
 
     pep = obj
-    pep.file.save(fn, File(open(fn)))
+    pep.file.save(os.path.basename(fn), File(open(fn)))
     pep.save()
 
     informuj(u"Zakończono. <a href=%s>Kliknij tutaj, aby pobrać eksport PBN dla %s - %s</a>. " %
