@@ -28,7 +28,7 @@ pdbpp
 
 mock==1.0.1
 
-django-webtest==1.8.0
+django-webtest==1.9.2
 beautifulsoup4==4.4.1
 webtest==2.0.27
 
