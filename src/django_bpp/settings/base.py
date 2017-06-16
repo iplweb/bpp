@@ -44,7 +44,6 @@ STATICFILES_FINDERS = (
     'django.contrib.staticfiles.finders.AppDirectoriesFinder',
     'django.contrib.staticfiles.finders.FileSystemFinder',
     'bpp.finders.YarnFinder',
-    'djangobower.finders.BowerFinder',
     'compressor.finders.CompressorFinder',
     #    'django.contrib.staticfiles.finders.DefaultStorageFinder',
 )
@@ -163,7 +162,6 @@ INSTALLED_APPS = [
     'crispy_forms',
     'crispy_forms_foundation',
 
-    'djangobower',
     'compressor',
 
     'secure_input',
@@ -294,18 +292,6 @@ def autoslug_gen():
 MOMMY_CUSTOM_FIELDS_GEN = {
     'autoslug.fields.AutoSlugField': autoslug_gen
 }
-
-# Ustawienia Bower
-
-BOWER_COMPONENTS_ROOT = os.path.abspath(
-    os.path.join(
-        os.path.dirname(__file__),
-        '..', '..', 'components'))
-
-BOWER_INSTALLED_APPS = [
-    # 406 Unacceptable podczas instalacji via yarn
-    'http://keith-wood.name/zip/jquery.keypad.package-2.0.1.zip',
-]
 
 CRISPY_TEMPLATE_PACK = 'foundation-5'
 
