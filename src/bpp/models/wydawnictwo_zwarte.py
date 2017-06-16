@@ -2,6 +2,7 @@
 import re
 
 from dirtyfields.dirtyfields import DirtyFieldsMixin
+from django.contrib.postgres.search import SearchVector
 from django.db import models
 from django.db.models.signals import post_delete
 from django.utils import timezone
@@ -42,11 +43,6 @@ class Wydawnictwo_Zwarte_Autor(DirtyFieldsMixin, BazaModeluOdpowiedzialnosciAuto
              ('rekord', 'autor', 'kolejnosc')]
 
     def save(self, *args, **kw):
-        # objects = SearchManager(
-        #     fields=['tytul_oryginalny', 'tytul'],
-        #     config='bpp_nazwy_wlasne')
-        #
-        raise NotImplementedError("Search manager")
         if self.pk is None or self.is_dirty():
             self.rekord.ostatnio_zmieniony_dla_pbn = timezone.now()
             self.rekord.save(update_fields=['ostatnio_zmieniony_dla_pbn'])
@@ -326,3 +322,4 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
         super(Wydawnictwo_Zwarte, self).eksport_pbn_serializuj(toplevel, wydzial, Wydawnictwo_Zwarte_Autor)
         self.eksport_pbn_run_serialization_functions(flds, toplevel, wydzial, Wydawnictwo_Zwarte_Autor)
         return toplevel
+

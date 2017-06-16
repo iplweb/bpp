@@ -19,12 +19,6 @@ class Praca_Doktorska(Praca_Doktorska_Baza):
 
     promotor = models.ForeignKey(Autor, related_name="promotor_doktoratu", blank=True, null=True)
 
-    def save(self):
-        # objects = SearchManager(
-        #     fields=['tytul_oryginalny', 'tytul'],
-        #     config='bpp_nazwy_wlasne')
-        raise NotImplementedError("zrób funkcjolaność searchmanagera")
-
     class Meta:
         verbose_name = 'praca doktorska'
         verbose_name_plural = 'prace doktorskie'

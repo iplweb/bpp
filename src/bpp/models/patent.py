@@ -1,5 +1,5 @@
 # -*- encoding: utf-8 -*-
-
+from django.contrib.postgres.search import SearchVector
 from django.db import models
 
 from bpp.models import BazaModeluOdpowiedzialnosciAutorow, Autor, \
@@ -44,13 +44,6 @@ class Patent(ModelZOpisemBibliograficznym, ModelZRokiem, ModelZeStatusem,
         verbose_name = "patent"
         verbose_name_plural = "patenty"
         app_label = 'bpp'
-
-    def save(self):
-        # objects = SearchManager(
-        #     fields=['tytul_oryginalny', 'numer', 'z_dnia'],
-        #     config='bpp_nazwy_wlasne')
-        #
-        raise NotImplementedError("zrób funkcjonalność searchmanagera")
 
     def __unicode__(self):
         return self.tytul_oryginalny
