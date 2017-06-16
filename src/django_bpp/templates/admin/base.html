@@ -11,7 +11,7 @@
         <link href="{% static "grappelli/stylesheets/screen.css" %}" rel="stylesheet" type="text/css" media="all" />
         <link href="{% static "grappelli/stylesheets/mueller/grid/output.css" %}" rel="stylesheet" type="text/css" media="screen" />
         <link rel="stylesheet" type="text/css" href="{% static 'autocomplete_light/style.css' %}" />
-        <link rel="stylesheet" type="text/css" href="{% static 'jquery.keypad.package-2.0.1/jquery.keypad.css' %}" />
+        <link rel="stylesheet" type="text/css" href="{% static 'kbw-keypad/dist/css/jquery.keypad.css' %}" />
         {% endcompress %}
     {% endblock %}
     <!-- EXTRASTYLES -->
@@ -65,9 +65,9 @@
         <script type="text/javascript" src="{% static 'autocomplete_light/text_widget.js' %}"></script>
         <script type="text/javascript" src="{% static 'autocomplete_light/remote.js' %}"></script>
 
-        <script type="text/javascript" src="{% static 'jquery.keypad.package-2.0.1/jquery.plugin.js' %}"></script>
-        <script type="text/javascript" src="{% static 'jquery.keypad.package-2.0.1/jquery.keypad.js' %}"></script>
-        <script type="text/javascript" src="{% static 'jquery.keypad.package-2.0.1/jquery.keypad-pl.js' %}"></script>
+        <script type="text/javascript" src="{% static 'kbw-keypad/dist/js/jquery.plugin.js' %}"></script>
+        <script type="text/javascript" src="{% static 'kbw-keypad/dist/js/jquery.keypad.js' %}"></script>
+        <script type="text/javascript" src="{% static 'kbw-keypad/dist/js/jquery.keypad-pl.js' %}"></script>
 
         {% endcompress %}
         {% include 'session_security/all.html' %}
