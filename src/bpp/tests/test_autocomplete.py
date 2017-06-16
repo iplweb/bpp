@@ -1,6 +1,6 @@
 # -*- encoding: utf-8 -*-
 from model_mommy import mommy
-from autocomplete_light import registry
+from autocomplete_light.registry import registry
 
 from bpp.models import Autor, Jednostka, Zrodlo, Tytul, Autor_Jednostka
 from bpp.tests.util import any_jednostka
