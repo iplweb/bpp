@@ -8,7 +8,8 @@ from decimal import Decimal
 from django.db.migrations.operations.special import RunPython, RunSQL
 import djorm_pgfulltext.fields
 import django.utils.timezone
-import djorm_pgarray.fields
+
+from django.contrib.postgres.fields import ArrayField
 import django.core.validators
 from bpp.migration_util import load_custom_sql
 
@@ -211,7 +212,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('opis_bibliograficzny_cache', models.TextField(default=b'')),
-                ('opis_bibliograficzny_autorzy_cache', djorm_pgarray.fields.TextArrayField(dbtype=b'text')),
+                ('opis_bibliograficzny_autorzy_cache', ArrayField(models.TextField())),
                 ('opis_bibliograficzny_zapisani_autorzy_cache', models.TextField(default=b'')),
                 ('ostatnio_zmieniony', models.DateTimeField(auto_now=True, auto_now_add=True, null=True, db_index=True)),
                 ('adnotacje', models.TextField(help_text=b'Pole do u\xc5\xbcytku wewn\xc4\x99trznego -\n    wpisane tu informacje nie s\xc4\x85 wy\xc5\x9bwietlane na stronach WWW dost\xc4\x99pnych\n    dla u\xc5\xbcytkownik\xc3\xb3w ko\xc5\x84cowych.', null=True, db_index=True, blank=True)),
@@ -296,7 +297,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('opis_bibliograficzny_cache', models.TextField(default=b'')),
-                ('opis_bibliograficzny_autorzy_cache', djorm_pgarray.fields.TextArrayField(dbtype=b'text')),
+                ('opis_bibliograficzny_autorzy_cache', ArrayField(models.TextField())),
                 ('opis_bibliograficzny_zapisani_autorzy_cache', models.TextField(default=b'')),
                 ('ostatnio_zmieniony', models.DateTimeField(auto_now=True, auto_now_add=True, null=True, db_index=True)),
                 ('adnotacje', models.TextField(help_text=b'Pole do u\xc5\xbcytku wewn\xc4\x99trznego -\n    wpisane tu informacje nie s\xc4\x85 wy\xc5\x9bwietlane na stronach WWW dost\xc4\x99pnych\n    dla u\xc5\xbcytkownik\xc3\xb3w ko\xc5\x84cowych.', null=True, db_index=True, blank=True)),
@@ -341,7 +342,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('opis_bibliograficzny_cache', models.TextField(default=b'')),
-                ('opis_bibliograficzny_autorzy_cache', djorm_pgarray.fields.TextArrayField(dbtype=b'text')),
+                ('opis_bibliograficzny_autorzy_cache', ArrayField(models.TextField())),
                 ('opis_bibliograficzny_zapisani_autorzy_cache', models.TextField(default=b'')),
                 ('ostatnio_zmieniony', models.DateTimeField(auto_now=True, auto_now_add=True, null=True, db_index=True)),
                 ('adnotacje', models.TextField(help_text=b'Pole do u\xc5\xbcytku wewn\xc4\x99trznego -\n    wpisane tu informacje nie s\xc4\x85 wy\xc5\x9bwietlane na stronach WWW dost\xc4\x99pnych\n    dla u\xc5\xbcytkownik\xc3\xb3w ko\xc5\x84cowych.', null=True, db_index=True, blank=True)),
@@ -567,7 +568,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('opis_bibliograficzny_cache', models.TextField(default=b'')),
-                ('opis_bibliograficzny_autorzy_cache', djorm_pgarray.fields.TextArrayField(dbtype=b'text')),
+                ('opis_bibliograficzny_autorzy_cache', ArrayField(models.TextField())),
                 ('opis_bibliograficzny_zapisani_autorzy_cache', models.TextField(default=b'')),
                 ('ostatnio_zmieniony', models.DateTimeField(auto_now=True, auto_now_add=True, null=True, db_index=True)),
                 ('adnotacje', models.TextField(help_text=b'Pole do u\xc5\xbcytku wewn\xc4\x99trznego -\n    wpisane tu informacje nie s\xc4\x85 wy\xc5\x9bwietlane na stronach WWW dost\xc4\x99pnych\n    dla u\xc5\xbcytkownik\xc3\xb3w ko\xc5\x84cowych.', null=True, db_index=True, blank=True)),
@@ -649,7 +650,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('opis_bibliograficzny_cache', models.TextField(default=b'')),
-                ('opis_bibliograficzny_autorzy_cache', djorm_pgarray.fields.TextArrayField(dbtype=b'text')),
+                ('opis_bibliograficzny_autorzy_cache', ArrayField(models.TextField())),
                 ('opis_bibliograficzny_zapisani_autorzy_cache', models.TextField(default=b'')),
                 ('ostatnio_zmieniony', models.DateTimeField(auto_now=True, auto_now_add=True, null=True, db_index=True)),
                 ('adnotacje', models.TextField(help_text=b'Pole do u\xc5\xbcytku wewn\xc4\x99trznego -\n    wpisane tu informacje nie s\xc4\x85 wy\xc5\x9bwietlane na stronach WWW dost\xc4\x99pnych\n    dla u\xc5\xbcytkownik\xc3\xb3w ko\xc5\x84cowych.', null=True, db_index=True, blank=True)),

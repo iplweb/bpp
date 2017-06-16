@@ -5,12 +5,12 @@ from django.db import models
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.core.urlresolvers import reverse
 
-from django.db.models import Max
+from django.db.models import Max, TextField
+from django.contrib.postgres.fields import ArrayField
 from django.template import Template, Context
 from django.template.loader import get_template
 from django.utils import safestring
 from django.conf import settings
-from djorm_pgarray.fields import TextArrayField
 
 
 def dodaj_autora(klass, rekord, autor, jednostka, zapisany_jako=None,
@@ -115,7 +115,8 @@ class ModelZOpisemBibliograficznym(models.Model):
     # produkowania pola "Creator" dla formatu Dublin Core, vide moduł bpp.oai .
     # To pole zawiera listę autorów, w kolejności, nazwisko i imię, bez
     # tytułu
-    opis_bibliograficzny_autorzy_cache = TextArrayField()
+    opis_bibliograficzny_autorzy_cache = ArrayField(TextField(), blank=True,
+                                                    null=True)
 
     # To pole używane jest przez Raport autorów oraz Raport jednostek do wypluwania
     # listy zapisanych nazwisk
