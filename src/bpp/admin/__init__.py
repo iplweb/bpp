@@ -23,7 +23,8 @@ from bpp.models.openaccess import Tryb_OpenAccess_Wydawnictwo_Ciagle, Tryb_OpenA
 from bpp.models.struktura import Jednostka_Wydzial
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
 from bpp.models.zrodlo import Redakcja_Zrodla
-
+from autocomplete_light.forms import modelform_factory
+from autocomplete_light.forms import ModelForm as AutocompleteLightModelForm
 
 class BaseBppAdmin(admin.ModelAdmin):
     pass
@@ -184,7 +185,7 @@ admin.site.register(Wydzial, WydzialAdmin)
 
 class Autor_JednostkaInline(admin.TabularInline):
     model = Autor_Jednostka
-    form = autocomplete_light.modelform_factory(Autor_Jednostka, fields="__all__")
+    form = modelform_factory(Autor_Jednostka, fields="__all__")
     extra = 1
 
 
@@ -283,7 +284,7 @@ class Punktacja_ZrodlaInline(admin.TabularInline):
 class Redakcja_ZrodlaInline(admin.TabularInline):
     model = Redakcja_Zrodla
     extra = 1
-    form = autocomplete_light.modelform_factory(Redakcja_Zrodla, fields="__all__")
+    form = modelform_factory(Redakcja_Zrodla, fields="__all__")
 
 
 class ZrodloForm(forms.ModelForm):
@@ -332,7 +333,7 @@ from django.forms.widgets import HiddenInput
 
 
 def generuj_inline_dla_autorow(baseModel):
-    class baseModel_AutorForm(autocomplete_light.ModelForm):
+    class baseModel_AutorForm(AutocompleteLightModelForm):
         class Media:
             js = (
                 "../dynjs/autorform_dependant.js?class=%s" % baseModel.__name__,)
@@ -342,7 +343,7 @@ def generuj_inline_dla_autorow(baseModel):
                       "zatrudniony", "kolejnosc"]
             model = baseModel
             widgets = {
-                'zapisany_jako': autocomplete_light.TextWidget(
+                'zapisany_jako': autocomplete_light.widgets.TextWidget(
                         'AutocompleteZapisaneNazwiska'),
                 'kolejnosc': HiddenInput
             }
@@ -399,7 +400,7 @@ class Button(forms.Widget):
         ))
 
 
-Wydawnictwo_Ciagle_Form = autocomplete_light.modelform_factory(
+Wydawnictwo_Ciagle_Form = modelform_factory(
         Wydawnictwo_Ciagle, fields="__all__")
 Wydawnictwo_Ciagle_Form.base_fields['uzupelnij_punktacje'] = \
     forms.Field(
@@ -510,7 +511,7 @@ class Wydawnictwo_ZwarteAdmin_Baza(CommitedModelAdmin):
 
 
 class Wydawnictwo_ZwarteAdmin(KolumnyZeSkrotamiMixin, AdnotacjeZDatamiOrazPBNMixin, Wydawnictwo_ZwarteAdmin_Baza):
-    form = autocomplete_light.modelform_factory(Wydawnictwo_Zwarte, fields="__all__")
+    form = modelform_factory(Wydawnictwo_Zwarte, fields="__all__")
     inlines = (generuj_inline_dla_autorow(Wydawnictwo_Zwarte_Autor),)
 
     list_filter = Wydawnictwo_ZwarteAdmin_Baza.list_filter + [CalkowitaLiczbaAutorowFilter,]
@@ -564,7 +565,7 @@ class Praca_Doktorska_Habilitacyjna_Admin_Base(AdnotacjeZDatamiMixin,
     list_filter = ['status_korekty', 'afiliowana', 'recenzowana', 'typ_kbn']
 
 
-class Praca_DoktorskaForm(autocomplete_light.ModelForm):
+class Praca_DoktorskaForm(AutocompleteLightModelForm):
     class Meta:
         model = Praca_Doktorska
         fields = "__all__"
@@ -613,7 +614,7 @@ class Publikacja_Habilitacyjna_Inline(admin.TabularInline):
 class Praca_HabilitacyjnaAdmin(Praca_Doktorska_Habilitacyjna_Admin_Base):
     inlines = [Publikacja_Habilitacyjna_Inline, ]
 
-    form = autocomplete_light.modelform_factory(Praca_Habilitacyjna, fields="__all__")
+    form = modelform_factory(Praca_Habilitacyjna, fields="__all__")
 
     fieldsets = (
         ('Praca habilitacyjna', {
@@ -631,7 +632,7 @@ admin.site.register(Praca_Habilitacyjna, Praca_HabilitacyjnaAdmin)
 
 
 class Patent_Admin(AdnotacjeZDatamiMixin, Wydawnictwo_ZwarteAdmin_Baza):
-    form = autocomplete_light.modelform_factory(Patent, fields="__all__")
+    form = modelform_factory(Patent, fields="__all__")
     inlines = (generuj_inline_dla_autorow(Patent_Autor),)
 
     list_display = ['tytul_oryginalny', 'ostatnio_zmieniony']

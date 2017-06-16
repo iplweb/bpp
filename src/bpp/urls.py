@@ -1,5 +1,5 @@
 # -*- encoding: utf-8 -*-
-from django.conf.urls import patterns, url, include
+from django.conf.urls import url
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from bpp.views.api.pubmed import GetPubmedIDView
@@ -18,12 +18,10 @@ from bpp import reports
 from bpp.views.raporty.raport_autorow_2012 import RaportAutorow2012
 
 reports # PyCharm, leave that import alone, it is IMPORTANT to import it
-
+import bpp
 from django.conf import settings
 
-urlpatterns = patterns(
-    '',
-
+urlpatterns = [
     url(r'^api/rok-habilitacji/$', csrf_exempt(RokHabilitacjiView.as_view()),
         name='api_rok_habilitacji'),
     url(r'^api/punktacja-zrodla/(?P<zrodlo_id>[\d]+)/(?P<rok>[\d]+)/$',
@@ -96,8 +94,8 @@ urlpatterns = patterns(
     url(r'^raporty/raport-autorow-2012/(?P<pk>\d+)/(?P<rok_min>\d+)/$',
         RaportAutorow2012.as_view(), name='raport-autorow'),
 
-    url(r'^$', "bpp.views.root", name="root"),
+    url(r'^$', bpp.views.root, name="root"),
 
-    url(r'^update-multiseek-title/$', "bpp.views.update_multiseek_title", name='update_multiseek_title')
+    url(r'^update-multiseek-title/$', bpp.views.update_multiseek_title, name='update_multiseek_title')
 
-)
+]

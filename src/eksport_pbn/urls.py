@@ -1,10 +1,8 @@
-from django.conf.urls import patterns, url
+from django.conf.urls import url
 
 from eksport_pbn.views import Generuj, SerwujPlik, ZamowEksportDoPBN
 
-urlpatterns = patterns(
-    '',
-
+urlpatterns = [
     url(r'^(?P<wydzial>[0-9]+)/(?P<rok>[0-9]+)$',
         Generuj.as_view(), name='generuj'),
 
@@ -16,4 +14,4 @@ urlpatterns = patterns(
 
     url(r'zamow/$', ZamowEksportDoPBN.as_view(), name='zamow')
 
-)
+]

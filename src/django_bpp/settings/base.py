@@ -2,6 +2,7 @@
 
 import os
 import sys
+import django
 from datetime import timedelta
 
 from django.core.exceptions import ImproperlyConfigured
@@ -169,8 +170,8 @@ INSTALLED_APPS = [
 
     'notifications',
     'integrator2',
-    # 2017.1.17 mpasternak TODO: włączyć później
-    # 'egeria',
+
+    'egeria',
     'eksport_pbn',
 
     'loginas',
@@ -179,9 +180,10 @@ INSTALLED_APPS = [
     'webmaster_verification',
     'favicon',
 
-    'django_18_fast_migrations',
-
 ]
+
+if django.VERSION < (1,9):
+    INSTALLED_APPS += ['django_18_fast_migrations',]
 
 # Profile użytkowników
 AUTH_USER_MODEL = "bpp.BppUser"
@@ -465,3 +467,5 @@ WEBMASTER_VERIFICATION = {
 EXCLUDE_FROM_MINIFYING = [
     "^google.*html$"
 ]
+
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True

@@ -4,9 +4,10 @@ import autocomplete_light
 
 from bpp.models import Autor, Jednostka, Zrodlo, Wydawnictwo_Zwarte
 from bpp.jezyk_polski import warianty_zapisanego_nazwiska
+from autocomplete_light.shortcuts import AutocompleteModelTemplate, \
+    AutocompleteTemplate, register
 
-
-class AutocompleteAutor(autocomplete_light.AutocompleteModelTemplate):
+class AutocompleteAutor(AutocompleteModelTemplate):
     model = 'autor'  # potrzebny, zeby template wyrenderowało klikalny link dobrze
     autocomplete_js_attributes = {'placeholder': 'autor...'}
     limit_choices = 10
@@ -16,7 +17,7 @@ class AutocompleteAutor(autocomplete_light.AutocompleteModelTemplate):
         return Autor.objects.fulltext_filter(q)[0:self.limit_choices]
 
 
-class AutorMultiseek(autocomplete_light.AutocompleteModelTemplate):
+class AutorMultiseek(AutocompleteModelTemplate):
     choices = Autor.objects
     limit_choices = 10
 
@@ -24,17 +25,17 @@ class AutorMultiseek(autocomplete_light.AutocompleteModelTemplate):
         q = self.request.GET.get('q', '').encode('utf-8')
         return self.choices.fulltext_filter(q)
 
-autocomplete_light.register(
+register(
     Autor, AutorMultiseek,
     search_fields=('nazwisko', 'imiona'),
     name="AutorMultiseek")
 
-autocomplete_light.register(
+register(
     Autor, AutocompleteAutor, search_fields=('nazwisko',),
     choice_template="autocompletes/admin.html")
 
 
-class AutocompleteJednostka(autocomplete_light.AutocompleteModelTemplate):
+class AutocompleteJednostka(AutocompleteModelTemplate):
     limit_choices = 10
     model = 'jednostka'  # potrzebny, zeby template wyrenderowało klikalny link dobrze
     autocomplete_js_attributes = {'placeholder': 'jednostka...'}
@@ -52,13 +53,13 @@ class AutocompleteJednostka(autocomplete_light.AutocompleteModelTemplate):
         return self.order_choices(choices)[0:self.limit_choices]
 
 
-autocomplete_light.register(
+register(
     Jednostka, AutocompleteJednostka,
     search_fields=('nazwa',),
     name="JednostkaMultiseek",
     choice_template="autocompletes/jednostka.html")
 
-autocomplete_light.register(
+register(
     Jednostka, AutocompleteJednostka,
     search_fields=('nazwa',),
     choice_template="autocompletes/admin.html")
@@ -68,33 +69,33 @@ class AutocompleteJednostkaWidoczna(AutocompleteJednostka):
     choices = Jednostka.objects.filter(widoczna=True)
 
 
-autocomplete_light.register(
+register(
     Jednostka, AutocompleteJednostkaWidoczna,
     search_fields=('nazwa',),
     name="RaportyJednostkaWidoczna",
     choice_template="autocompletes/jednostka.html")
 
 
-class AutocompleteZrodlo(autocomplete_light.AutocompleteModelTemplate):
+class AutocompleteZrodlo(AutocompleteModelTemplate):
     model = 'zrodlo'
     limit_choices = 7
     pass
 
 
-autocomplete_light.register(
+register(
     Zrodlo, AutocompleteZrodlo,
     search_fields=('nazwa', 'poprzednia_nazwa', 'nazwa_alternatywna', 'skrot', 'skrot_nazwy_alternatywnej'),
     name="ZrodloMultiseek",
     choice_template="autocompletes/zrodlo.html")
 
-autocomplete_light.register(
+register(
     Zrodlo, AutocompleteZrodlo,
     search_fields=('nazwa', 'poprzednia_nazwa', 'nazwa_alternatywna', 'skrot', 'skrot_nazwy_alternatywnej'),
     autocomplete_js_attributes={'placeholder': u'źródło...'},
     choice_template="autocompletes/admin.html")
 
 
-class AutocompleteZapisaneNazwiska(autocomplete_light.AutocompleteTemplate):
+class AutocompleteZapisaneNazwiska(AutocompleteTemplate):
     autocomplete_js_attributes = {'placeholder': 'zapisany...'}
 
     def choices_for_request(self):
@@ -111,27 +112,27 @@ class AutocompleteZapisaneNazwiska(autocomplete_light.AutocompleteTemplate):
                                             a.poprzednie_nazwiska)
 
 
-autocomplete_light.register(AutocompleteZapisaneNazwiska)
+register(AutocompleteZapisaneNazwiska)
 
 
 class AutocompleteWydawnictwo_Zwarte(
-    autocomplete_light.AutocompleteModelTemplate):
+    AutocompleteModelTemplate):
     model = 'wydawnictwo_zwarte'
 
 
-autocomplete_light.register(
+register(
     Wydawnictwo_Zwarte, AutocompleteWydawnictwo_Zwarte,
     search_fields=('tytul_oryginalny', 'tytul'),
     autocomplete_js_attributes={'placeholder': u'wydawnictwo zwarte...'},
     choice_template="wydawnictwo_zwarte_choice.html")
 
 
-class AutocompleteCacheTytul(autocomplete_light.AutocompleteModelTemplate):
+class AutocompleteCacheTytul(AutocompleteModelTemplate):
     limit_choices = 10
     model = 'rekord'
 
 #
-# autocomplete_light.register(
+# register(
 #     Cache, AutocompleteCacheTytul,
 #     search_fields=('tytul_oryginalny', 'tytul'),
 #     autocomplete_js_attributes={'placeholder': u'tytuł publikacji...'},
