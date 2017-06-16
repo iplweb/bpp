@@ -98,7 +98,6 @@ MIDDLEWARE_CLASSES = (
     'password_policies.middleware.PasswordChangeMiddleware',
 
     'bpp.middleware.ProfileMiddleware',
-    'pagination.middleware.PaginationMiddleware',
     'django_tables2_reports.middleware.TableReportMiddleware',
 
     'session_security.middleware.SessionSecurityMiddleware',
@@ -152,8 +151,6 @@ INSTALLED_APPS = [
     'autocomplete_light',
 
     'messages_extends',
-
-    'pagination',
 
     'multiseek',
     'django_extensions',
@@ -294,6 +291,7 @@ MOMMY_CUSTOM_FIELDS_GEN = {
     'autoslug.fields.AutoSlugField': autoslug_gen
 }
 
+CRISPY_ALLOWED_TEMPLATE_PACKS = ('foundation-5',)
 CRISPY_TEMPLATE_PACK = 'foundation-5'
 
 SESSION_ENGINE = 'redis_sessions.session'
