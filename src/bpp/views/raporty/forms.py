@@ -53,7 +53,7 @@ class KronikaUczelniForm(forms.Form):
 
 
 class RaportJednostekForm(forms.Form):
-    jednostka = autocomplete_light.ModelChoiceField(
+    jednostka = autocomplete_light.forms.ModelChoiceField(
         'RaportyJednostkaWidoczna')
 
     od_roku = forms.IntegerField()
@@ -86,7 +86,7 @@ class RaportJednostekForm(forms.Form):
 
 
 class RaportAutorowForm(forms.Form):
-    autor = autocomplete_light.ModelChoiceField(
+    autor = autocomplete_light.forms.ModelChoiceField(
         'AutorAutocompleteAutor')
 
     od_roku = forms.IntegerField()
@@ -119,7 +119,7 @@ class RaportAutorowForm(forms.Form):
 
 
 class RaportDlaKomisjiCentralnejForm(forms.Form):
-    autor = autocomplete_light.ModelChoiceField(
+    autor = autocomplete_light.forms.ModelChoiceField(
         'AutorAutocompleteAutor')
 
     rok_habilitacji = forms.IntegerField(required=False)

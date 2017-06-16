@@ -24,7 +24,7 @@ from bpp.util import Getter
 from bpp.views.raporty.raport_aut_jed_common import SumyImpactKbnMixin
 
 class TabelaRaportuKomisjiCentralnejMixin:
-    lp = Column("Lp.", A("id"), empty_values=(), sortable=False)
+    lp = Column("Lp.", A("id"), empty_values=(), orderable=False)
 
     def __init__(self):
         self.counter = 0
@@ -45,16 +45,16 @@ class TabelkaZImpactem(TabelaRaportuKomisjiCentralnejMixin, SumyImpactKbnMixin,
             'lp', 'rok', 'opis_bibliograficzny_cache', 'impact_factor', 'punkty_kbn')
 
     lp = TabelaRaportuKomisjiCentralnejMixin.lp
-    rok = Column('Rok', sortable=False)
+    rok = Column('Rok', orderable=False)
     opis_bibliograficzny_cache = \
-        Column('Opis', sortable=False, attrs={"td": {"width": "70%"}})
+        Column('Opis', orderable=False, attrs={"td": {"width": "70%"}})
 
     # Redefinicja kolumn z raport_jednostek_2012.SumyImpactKbnMixin ponieważ
     # dodajemy atrybuty HTMLowe
     impact_factor = Column(
-        "IF", sortable=False, attrs={"td": {"align": "right"}})
+        "IF", orderable=False, attrs={"td": {"align": "right"}})
     punkty_kbn = Column(
-        "PK (MNiSzW)", sortable=False, attrs={"td": {"align": "right"}})
+        "PK (MNiSzW)", orderable=False, attrs={"td": {"align": "right"}})
 
     def __init__(self, *args, **kwargs):
         Table.__init__(self, *args, **kwargs)
