@@ -9,8 +9,6 @@ cd $SCRIPTPATH/..
 
 yarn install > /dev/null
 
-python src/manage.py bower_install -RF -v0
-
 npm rebuild > /dev/null
 
 rm -rf src/django_bpp/staticroot

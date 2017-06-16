@@ -73,7 +73,7 @@ Większość procedur instalacyjnych możesz załatwić przez Homebrew_:
 
 .. code-block:: bash
 
-    brew install bower grunt-cli yarn npm ansible python git
+    brew install grunt-cli yarn npm ansible python git
     brew cask install vagrant vagrant-manager virtualbox
 
 
@@ -95,7 +95,7 @@ Zainstaluj następnie wymagane przez django-bpp pakiety:
 
 .. code-block:: bash
 
-    yarn global add bower grunt-cli
+    yarn global add grunt-cli
     yarn install
 
 Konfiguracja Pythona
@@ -157,7 +157,7 @@ Zbuduj pliki CSS i JavaScript
 Następnie uruchom skrypt aby przygotować środowisko budowania oraz kolejny
 skrypt, aby zbudować pliki CSS i JS. Skrypty te
 instalują wymagane przez interfejs WWW pakiety języka JavaScript za pomocą
-yarn_ oraz django-bower_ oraz konfigurują bibliotekę Foundation_ budując ją
+yarn_ oraz konfigurują bibliotekę Foundation_ budując ją
 za pomocą Grunt_ i SASS. Następnie kompilują tak uzbierane pakiety za pomocą
 django-compressor_.
 
@@ -240,7 +240,6 @@ funkcjonowanie serwera.
 .. _PostgreSQL: http://postgresql.org/
 .. _Licencja MIT: http://github.com/mpasternak/django-bpp/LICENSE
 .. _VNC Viever: https://www.realvnc.com/download/viewer/
-.. _django-bower: https://github.com/nvbn/django-bower
 .. _Grunt: http://gruntjs.com/
 .. _Foundation: http://foundation.zurb.com/
 .. _django-compressor: https://django-compressor.readthedocs.io

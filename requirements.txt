@@ -25,7 +25,6 @@ moai==2.0.0
 django-crispy-forms==1.4.0
 crispy-forms-foundation==0.3.5
 
-django-bower==5.2.0
 django-compressor==2.0
 
 gunicorn==19.7.1
