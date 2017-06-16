@@ -49,7 +49,6 @@ class TytulPracyQueryObject(StringQueryObject):
             if not value:
                 return Q(pk=F('pk'))
 
-            raise NotImplementedError
             params = [TSConfig('bpp_nazwy_wlasne')]
             params.extend(value)
 
