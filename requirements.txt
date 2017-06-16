@@ -27,7 +27,6 @@ crispy-forms-foundation==0.3.5
 
 django-bower==5.2.0
 django-compressor==2.0
-djorm-pgarray==1.2
 
 gunicorn==19.7.1
 

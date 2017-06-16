@@ -165,7 +165,6 @@ INSTALLED_APPS = [
 
     'djangobower',
     'compressor',
-    'djorm_pgarray',
 
     'secure_input',
     'session_security',
