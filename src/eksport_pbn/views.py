@@ -60,11 +60,10 @@ class ZamowEksportDoPBN(LoginRequiredMixin, FormView):
     form_class = EksportDoPBNForm
     template_name = "zamow.html"
 
-    def get_context_data(self, form, **kwargs):
-        return super(ZamowEksportDoPBN, self).get_context_data(**{
-            'ostatnie_raporty': PlikEksportuPBN.objects.filter(owner=self.request.user).exclude(file='').order_by('-pk')[:10],
-            'form': form,
-        })
+    def get_context_data(self, **kwargs):
+        return super(ZamowEksportDoPBN, self).get_context_data(
+            ostatnie_raporty=PlikEksportuPBN.objects.filter(owner=self.request.user).exclude(file='').order_by('-pk')[:10],
+        )
 
     def form_valid(self, form):
         obj = form.instance
