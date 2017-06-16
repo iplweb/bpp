@@ -338,7 +338,7 @@ class RaportKomisjiCentralnej:
         try:
             return render_to_string(
                 "raporty/raport_komisji_centralnej/raport_bazowy.html",
-                context_instance=rctx)
+                context=rctx)
         finally:
             self.rendered = True
 
