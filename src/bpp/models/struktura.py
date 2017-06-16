@@ -10,7 +10,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models.functions import Coalesce
 from django.db.models.query_utils import Q
-from djorm_pgfulltext.fields import VectorField
+from django.contrib.postgres.search import SearchVectorField as VectorField
 
 from bpp.models import ModelZAdnotacjami, NazwaISkrot
 from bpp.models.abstract import NazwaWDopelniaczu, ModelZPBN_ID

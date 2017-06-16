@@ -7,7 +7,6 @@ NULL_VALUE = u"(brak wpisanej wartości)"
 
 from django.db.models import Q
 from django.db.models.expressions import F
-from djorm_pgfulltext.fields import TSConfig
 from multiseek import logic
 from multiseek.logic import DecimalQueryObject, BooleanQueryObject
 from multiseek.logic import StringQueryObject, QueryObject, EQUALITY_OPS_ALL, \
@@ -50,6 +49,7 @@ class TytulPracyQueryObject(StringQueryObject):
             if not value:
                 return Q(pk=F('pk'))
 
+            raise NotImplementedError
             params = [TSConfig('bpp_nazwy_wlasne')]
             params.extend(value)
 

@@ -10,8 +10,7 @@ from lxml.etree import Element, SubElement
 from bpp.models.system import Jezyk
 from bpp.util import FulltextSearchMixin
 from djorm_pgfulltext.fields import VectorField
-from djorm_pgfulltext.models import SearchManager
-
+from django.contrib.postgres.search import SearchVectorField as VectorField
 from bpp.fields import YearField, DOIField
 
 from bpp.models.abstract import ModelZNazwa, ModelZAdnotacjami, ModelZISSN, \

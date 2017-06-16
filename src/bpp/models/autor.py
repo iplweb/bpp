@@ -13,8 +13,8 @@ from django.db import models, IntegrityError
 from lxml.etree import Element, SubElement
 from bpp.models.abstract import BazaModeluOdpowiedzialnosciAutorow, ModelZPBN_ID
 from bpp.util import FulltextSearchMixin
-from djorm_pgfulltext.fields import VectorField
-from djorm_pgfulltext.models import SearchManager
+from django.contrib.postgres.search import SearchVectorField as VectorField
+
 from bpp.models import ModelZAdnotacjami, NazwaISkrot
 from datetime import datetime
 

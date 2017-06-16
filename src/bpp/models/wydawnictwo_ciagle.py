@@ -5,7 +5,7 @@ from dirtyfields.dirtyfields import DirtyFieldsMixin
 from django.db import models
 from django.db.models.signals import post_delete
 from django.utils import timezone
-from djorm_pgfulltext.models import SearchManager
+
 from lxml.etree import SubElement, Element
 from secure_input.utils import safe_html
 
@@ -32,6 +32,11 @@ class Wydawnictwo_Ciagle_Autor(DirtyFieldsMixin, BazaModeluOdpowiedzialnosciAuto
              ('rekord', 'autor', 'kolejnosc')]
 
     def save(self, *args, **kw):
+        # objects = SearchManager(
+        #     fields=['tytul_oryginalny', 'tytul'],
+        #     config='bpp_nazwy_wlasne')
+        raise NotImplementedError("searchmanager")
+
         if self.pk is None or self.is_dirty():
             self.rekord.ostatnio_zmieniony_dla_pbn = timezone.now()
             self.rekord.save(update_fields=['ostatnio_zmieniony_dla_pbn'])
@@ -86,9 +91,6 @@ class Wydawnictwo_Ciagle(ZapobiegajNiewlasciwymCharakterom,
     # z tego co na dziś dzień umiem, mocno utrudnione.
     uzupelnij_punktacje = models.BooleanField(default=False)
 
-    objects = SearchManager(
-        fields=['tytul_oryginalny', 'tytul'],
-        config='bpp_nazwy_wlasne')
 
     def dodaj_autora(self, autor, jednostka, zapisany_jako=None,
                      typ_odpowiedzialnosci_skrot='aut.', kolejnosc=None):

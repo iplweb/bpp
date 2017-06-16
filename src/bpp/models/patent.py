@@ -1,7 +1,6 @@
 # -*- encoding: utf-8 -*-
 
 from django.db import models
-from djorm_pgfulltext.models import SearchManager
 
 from bpp.models import BazaModeluOdpowiedzialnosciAutorow, Autor, \
     ModelZRokiem, ModelZeStatusem, ModelZWWW, ModelAfiliowanyRecenzowany, \
@@ -36,10 +35,6 @@ class Patent(ModelZOpisemBibliograficznym, ModelZRokiem, ModelZeStatusem,
     z_dnia = models.DateField(null=True, blank=True)
     autorzy = models.ManyToManyField(Autor, through=Patent_Autor)
 
-    objects = SearchManager(
-        fields=['tytul_oryginalny', 'numer', 'z_dnia'],
-        config='bpp_nazwy_wlasne')
-
     def dodaj_autora(self, autor, jednostka, zapisany_jako=None,
                      typ_odpowiedzialnosci_skrot='aut.', kolejnosc=None):
         return dodaj_autora(Patent_Autor, self, autor, jednostka, zapisany_jako,
@@ -49,6 +44,13 @@ class Patent(ModelZOpisemBibliograficznym, ModelZRokiem, ModelZeStatusem,
         verbose_name = "patent"
         verbose_name_plural = "patenty"
         app_label = 'bpp'
+
+    def save(self):
+        # objects = SearchManager(
+        #     fields=['tytul_oryginalny', 'numer', 'z_dnia'],
+        #     config='bpp_nazwy_wlasne')
+        #
+        raise NotImplementedError("zrób funkcjonalność searchmanagera")
 
     def __unicode__(self):
         return self.tytul_oryginalny

@@ -6,7 +6,6 @@ from django.db import models
 from django.db.models.signals import post_delete
 from django.utils import timezone
 from django.utils.functional import cached_property
-from djorm_pgfulltext.models import SearchManager
 from lxml.etree import Element, SubElement
 
 from bpp.models.abstract import \
@@ -43,6 +42,11 @@ class Wydawnictwo_Zwarte_Autor(DirtyFieldsMixin, BazaModeluOdpowiedzialnosciAuto
              ('rekord', 'autor', 'kolejnosc')]
 
     def save(self, *args, **kw):
+        # objects = SearchManager(
+        #     fields=['tytul_oryginalny', 'tytul'],
+        #     config='bpp_nazwy_wlasne')
+        #
+        raise NotImplementedError("Search manager")
         if self.pk is None or self.is_dirty():
             self.rekord.ostatnio_zmieniony_dla_pbn = timezone.now()
             self.rekord.save(update_fields=['ostatnio_zmieniony_dla_pbn'])
@@ -97,10 +101,6 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
                          DirtyFieldsMixin):
     """Wydawnictwo zwarte, czyli: książki, broszury, skrypty, fragmenty,
     doniesienia zjazdowe."""
-
-    objects = SearchManager(
-        fields=['tytul_oryginalny', 'tytul'],
-        config='bpp_nazwy_wlasne')
 
     autorzy = models.ManyToManyField(Autor, through=Wydawnictwo_Zwarte_Autor)
 

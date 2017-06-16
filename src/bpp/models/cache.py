@@ -5,7 +5,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db.models.deletion import DO_NOTHING
 from django.db import models, transaction
 from django.db.models.signals import post_save, post_delete, pre_save, pre_delete
-from djorm_pgfulltext.fields import VectorField
+from django.contrib.postgres.search import SearchVectorField as VectorField
 
 from filtered_contenttypes.fields import FilteredGenericForeignKey
 from bpp.models import Patent, \

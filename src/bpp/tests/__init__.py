@@ -11,6 +11,8 @@ from model_mommy import mommy
 mommy.generators.add('django.contrib.postgres.fields.array.ArrayField',
                      lambda x: [])
 
+mommy.generators.add('django.contrib.postgres.search.SearchVectorField',
+                     lambda x=None: None)
 
 
 from bpp.tests.util import *

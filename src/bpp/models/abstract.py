@@ -8,7 +8,7 @@ from decimal import Decimal
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
-from djorm_pgfulltext.fields import VectorField
+from django.contrib.postgres.search import SearchVectorField as VectorField
 from lxml.etree import Element
 from lxml.etree import SubElement
 

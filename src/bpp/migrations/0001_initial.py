@@ -8,7 +8,7 @@ from decimal import Decimal
 from django.db.migrations.operations.special import RunPython, RunSQL
 import djorm_pgfulltext.fields
 import django.utils.timezone
-
+from django.contrib.postgres.search import SearchVectorField
 from django.contrib.postgres.fields import ArrayField
 import django.core.validators
 from bpp.migration_util import load_custom_sql
@@ -63,7 +63,7 @@ class Migration(migrations.Migration):
                 ('urodzony', models.DateField(null=True, blank=True)),
                 ('zmarl', models.DateField(null=True, blank=True)),
                 ('poprzednie_nazwiska', models.CharField(help_text=b'Je\xc5\xbceli ten\n        autor(-ka) posiada nazwisko panie\xc5\x84skie, pod kt\xc3\xb3rym ukazywa\xc5\x82y\n        si\xc4\x99 publikacje lub zmienia\xc5\x82 nazwisko z innych powod\xc3\xb3w, wpisz tutaj\n        wszystkie poprzednie nazwiska, oddzielaj\xc4\x85c je przecinkami.', max_length=1024, null=True, db_index=True, blank=True)),
-                ('search', djorm_pgfulltext.fields.VectorField(default=b'', serialize=False, null=True, editable=False, db_index=True)),
+                ('search', SearchVectorField(default=b'', serialize=False, null=True, editable=False, db_index=True)),
                 ('slug', autoslug.fields.AutoSlugField(unique=True, max_length=1024, editable=False)),
                 ('sort', models.TextField()),
             ],
@@ -141,7 +141,7 @@ class Migration(migrations.Migration):
                 ('wchodzi_do_raportow', models.BooleanField(default=True, db_index=True, verbose_name=b'Wchodzi do raport\xc3\xb3w')),
                 ('email', models.EmailField(max_length=128, null=True, verbose_name=b'E-mail', blank=True)),
                 ('www', models.URLField(max_length=1024, null=True, verbose_name=b'WWW', blank=True)),
-                ('search', djorm_pgfulltext.fields.VectorField(default=b'', serialize=False, null=True, editable=False, db_index=True)),
+                ('search', SearchVectorField(default=b'', serialize=False, null=True, editable=False, db_index=True)),
             ],
             options={
                 'ordering': [b'nazwa'],
@@ -233,7 +233,7 @@ class Migration(migrations.Migration):
                 ('uwagi', models.TextField(db_index=True, null=True, blank=True)),
                 ('slowa_kluczowe', models.TextField(null=True, verbose_name=b'S\xc5\x82owa kluczowe', blank=True)),
                 ('utworzono', models.DateTimeField(default=datetime.datetime(1970, 1, 1, 0, 0), verbose_name=b'Utworzono', auto_now_add=True)),
-                ('search_index', djorm_pgfulltext.fields.VectorField(default=b'', serialize=False, null=True, editable=False, db_index=True)),
+                ('search_index', SearchVectorField(default=b'', serialize=False, null=True, editable=False, db_index=True)),
                 ('tytul_oryginalny_sort', models.TextField(default=b'', db_index=True)),
                 ('tytul_oryginalny', models.TextField(verbose_name=b'Tytu\xc5\x82 oryginalny', db_index=True)),
                 ('numer', models.CharField(max_length=255, null=True, blank=True)),
@@ -322,7 +322,7 @@ class Migration(migrations.Migration):
                 ('uwagi', models.TextField(db_index=True, null=True, blank=True)),
                 ('slowa_kluczowe', models.TextField(null=True, verbose_name=b'S\xc5\x82owa kluczowe', blank=True)),
                 ('utworzono', models.DateTimeField(default=datetime.datetime(1970, 1, 1, 0, 0), verbose_name=b'Utworzono', auto_now_add=True)),
-                ('search_index', djorm_pgfulltext.fields.VectorField(default=b'', serialize=False, null=True, editable=False, db_index=True)),
+                ('search_index', SearchVectorField(default=b'', serialize=False, null=True, editable=False, db_index=True)),
                 ('tytul_oryginalny_sort', models.TextField(default=b'', db_index=True)),
                 ('miejsce_i_rok', models.CharField(help_text=b'Przyk\xc5\x82adowo:\n        Warszawa 2012. Wpisz prosz\xc4\x99 najpierw miejsce potem rok; oddziel\n        spacj\xc4\x85.', max_length=256, null=True, blank=True)),
                 ('wydawnictwo', models.CharField(max_length=256, null=True, blank=True)),
@@ -367,7 +367,7 @@ class Migration(migrations.Migration):
                 ('uwagi', models.TextField(db_index=True, null=True, blank=True)),
                 ('slowa_kluczowe', models.TextField(null=True, verbose_name=b'S\xc5\x82owa kluczowe', blank=True)),
                 ('utworzono', models.DateTimeField(default=datetime.datetime(1970, 1, 1, 0, 0), verbose_name=b'Utworzono', auto_now_add=True)),
-                ('search_index', djorm_pgfulltext.fields.VectorField(default=b'', serialize=False, null=True, editable=False, db_index=True)),
+                ('search_index', SearchVectorField(default=b'', serialize=False, null=True, editable=False, db_index=True)),
                 ('tytul_oryginalny_sort', models.TextField(default=b'', db_index=True)),
                 ('miejsce_i_rok', models.CharField(help_text=b'Przyk\xc5\x82adowo:\n        Warszawa 2012. Wpisz prosz\xc4\x99 najpierw miejsce potem rok; oddziel\n        spacj\xc4\x85.', max_length=256, null=True, blank=True)),
                 ('wydawnictwo', models.CharField(max_length=256, null=True, blank=True)),
@@ -593,7 +593,7 @@ class Migration(migrations.Migration):
                 ('uwagi', models.TextField(db_index=True, null=True, blank=True)),
                 ('slowa_kluczowe', models.TextField(null=True, verbose_name=b'S\xc5\x82owa kluczowe', blank=True)),
                 ('utworzono', models.DateTimeField(default=datetime.datetime(1970, 1, 1, 0, 0), verbose_name=b'Utworzono', auto_now_add=True)),
-                ('search_index', djorm_pgfulltext.fields.VectorField(default=b'', serialize=False, null=True, editable=False, db_index=True)),
+                ('search_index', SearchVectorField(default=b'', serialize=False, null=True, editable=False, db_index=True)),
                 ('tytul_oryginalny_sort', models.TextField(default=b'', db_index=True)),
                 ('uzupelnij_punktacje', models.BooleanField(default=False)),
                 ('charakter_formalny', models.ForeignKey(verbose_name=b'Charakter formalny', to='bpp.Charakter_Formalny')),
@@ -675,7 +675,7 @@ class Migration(migrations.Migration):
                 ('uwagi', models.TextField(db_index=True, null=True, blank=True)),
                 ('slowa_kluczowe', models.TextField(null=True, verbose_name=b'S\xc5\x82owa kluczowe', blank=True)),
                 ('utworzono', models.DateTimeField(default=datetime.datetime(1970, 1, 1, 0, 0), verbose_name=b'Utworzono', auto_now_add=True)),
-                ('search_index', djorm_pgfulltext.fields.VectorField(default=b'', serialize=False, null=True, editable=False, db_index=True)),
+                ('search_index', SearchVectorField(default=b'', serialize=False, null=True, editable=False, db_index=True)),
                 ('tytul_oryginalny_sort', models.TextField(default=b'', db_index=True)),
                 ('miejsce_i_rok', models.CharField(help_text=b'Przyk\xc5\x82adowo:\n        Warszawa 2012. Wpisz prosz\xc4\x99 najpierw miejsce potem rok; oddziel\n        spacj\xc4\x85.', max_length=256, null=True, blank=True)),
                 ('wydawnictwo', models.CharField(max_length=256, null=True, blank=True)),
@@ -800,7 +800,7 @@ class Migration(migrations.Migration):
                 ('skrot', models.CharField(max_length=512, verbose_name=b'Skr\xc3\xb3t')),
                 ('www', models.URLField(max_length=1024, null=True, verbose_name=b'WWW', blank=True)),
                 ('poprzednia_nazwa', models.CharField(db_index=True, max_length=1024, null=True, verbose_name=b'Poprzedni tytu\xc5\x82', blank=True)),
-                ('search', djorm_pgfulltext.fields.VectorField(default=b'', serialize=False, null=True, editable=False, db_index=True)),
+                ('search', SearchVectorField(default=b'', serialize=False, null=True, editable=False, db_index=True)),
                 ('slug', autoslug.fields.AutoSlugField(unique=True, editable=False)),
                 ('rodzaj', models.ForeignKey(to='bpp.Rodzaj_Zrodla')),
                 ('zasieg', models.ForeignKey(default=None, blank=True, to='bpp.Zasieg_Zrodla', null=True)),

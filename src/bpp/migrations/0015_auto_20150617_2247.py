@@ -2,10 +2,7 @@
 from __future__ import unicode_literals
 
 from django.db import models, migrations
-import datetime
-from decimal import Decimal
 import django.db.models.deletion
-import djorm_pgfulltext.fields
 
 
 class Migration(migrations.Migration):
