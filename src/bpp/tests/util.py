@@ -9,6 +9,16 @@ import time
 from bpp.models import Tytul, Autor, Jednostka, Wydawnictwo_Ciagle, Wydawnictwo_Zwarte, Zrodlo, Wydzial, Uczelnia, Praca_Habilitacyjna, Praca_Doktorska, Typ_KBN, Jezyk, Charakter_Formalny, Patent
 from bpp.models.system import Status_Korekty
 
+from model_mommy import mommy
+
+def setup_mommy():
+    mommy.generators.add('django.contrib.postgres.fields.array.ArrayField',
+                         lambda x: [])
+
+    mommy.generators.add('django.contrib.postgres.search.SearchVectorField',
+                         lambda x=None: None)
+
+
 
 def set_default(varname, value, dct):
     if varname not in dct:

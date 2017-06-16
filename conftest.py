@@ -24,6 +24,8 @@ NORMAL_DJANGO_USER_LOGIN = 'test_login_bpp'
 NORMAL_DJANGO_USER_PASSWORD = 'test_password'
 
 from django.conf import settings
+from bpp.tests.util import setup_mommy
+setup_mommy()
 
 
 def pytest_configure(config):
