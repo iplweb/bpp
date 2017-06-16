@@ -16,11 +16,12 @@ clean:
 	find . -name \*pyc -print0 | xargs -0 rm -fv 
 	find . -name \*\\.log -print0 | xargs -0 rm -fv 
 	rm -rf build dist/*django_bpp*whl __pycache__ *.log
+	rm -rf .eggs .cache .tox
 
 distclean: clean
 	rm -rf src/django_bpp/staticroot 
 	rm -rf dist/ dist_dev/ zarzadca*backup 
-	rm -rf node_modules src/node_modules src/django_bpp/staticroot .eggs .cache .tox
+	rm -rf node_modules src/node_modules src/django_bpp/staticroot 
 	rm -rf .vagrant splintershots src/components/bower_components src/media
 
 dockerclean:
