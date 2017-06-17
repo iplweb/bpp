@@ -1,8 +1,6 @@
 # -*- encoding: utf-8 -*-
 from django.core.urlresolvers import reverse
 from django.db.models.aggregates import Sum
-from django.db.models.query import QuerySet
-from django.db.models.query_utils import Q
 from django.template.defaultfilters import safe
 from django_tables2.columns.base import Column
 from django_tables2_reports.tables import TableReport
@@ -45,25 +43,23 @@ class RankingAutorow(ReportTableView):
     def get_queryset(self):
         if self._cache: return self._cache
 
-        qset = Sumy.objects.annotate(
-            impact_factor_sum=Sum('impact_factor'),
-            punkty_kbn_sum=Sum('punkty_kbn'),
-        ).filter(
+        qset = Sumy.objects.filter(
             rok__gte=self.kwargs['od_roku'],
             rok__lte=self.kwargs['do_roku']
-        ).only('autor', 'jednostka', 'wydzial')
+        )
 
         wydzialy = self.get_wydzialy()
         if wydzialy:
             qset = qset.filter(wydzial__in=wydzialy)
 
-        # Przelecenie po całym queryset - za pomocą len(ret) musi tutaj być, bo jest jakiś
-        # bug; ret.count() da niekiedy zły wynik; podejrzewam jakieś problemy w Django
-        # po stronie sql/query.py get_aggregation
-        len(qset)
+        qset = qset.values(
+            "autor", "jednostka", "wydzial").annotate(
+            impact_factor_sum=Sum('impact_factor'),
+            punkty_kbn_sum=Sum('punkty_kbn'),
+        )
 
+        qset = Sumy.objects.raw(str(qset.query) + ", jednostka_id, wydzial_id")
         self._cache = qset
-
         return qset
 
     def get_dostepne_wydzialy(self):
