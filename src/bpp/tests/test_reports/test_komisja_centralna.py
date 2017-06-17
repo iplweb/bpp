@@ -32,6 +32,8 @@ class TestRKCMixin:
         x.close()
         if sys.platform == 'win32':
             os.system("start %s" % fn)
+        if sys.platform == 'darwin':
+            os.system('open "%s"' % fn)
 
 
 typ_kbn = Getter(Typ_KBN)
@@ -215,7 +217,7 @@ class TestRaportKomisjiCentralnej(TestRKCMixin, TestCase):
 
     def _test_tabelka(self, key):
         s = self._zrob()
-        #self.odpal_browser(s)
+        # self.odpal_browser(s)
         self.assertIn(self.prace[key].tytul_oryginalny, s)
 
     test_1a = lambda self: self._test_tabelka('1a')
