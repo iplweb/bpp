@@ -18,7 +18,7 @@ class AutocompleteAutor(AutocompleteModelTemplate):
 
 
 class AutorMultiseek(AutocompleteModelTemplate):
-    choices = Autor.objects
+    choices = Autor.objects.all()
     limit_choices = 10
 
     def choices_for_request(self):
