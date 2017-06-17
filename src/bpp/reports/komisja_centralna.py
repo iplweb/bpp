@@ -319,26 +319,11 @@ class RaportKomisjiCentralnej:
         self.rendered = False
 
     def make_prace(self):
-        class FakeXUnauthenticatedUser:
-            def is_authenticated(self):
-                return False
 
-
-        class FakeXRequest:
-            GET = {}
-            POST = {}
-            META = {'REMOTE_ADDR': '127.0.0.1'}
-
-            def __init__(self, *args, **kw):
-                self.user = FakeXUnauthenticatedUser()
-
-            pass
-
-        rctx = RequestContext(FakeXRequest(), self.dct)
         try:
             return render_to_string(
                 "raporty/raport_komisji_centralnej/raport_bazowy.html",
-                context=rctx)
+                context=self.dct)
         finally:
             self.rendered = True
 
