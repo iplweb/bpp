@@ -11,7 +11,7 @@ django-redis-sessions==0.4.0
 django-tables2==1.7.1
 git+https://github.com/savoirfairelinux/django-tables2-reports.git
 pyExcelerator==0.6.4.1
-django-sendfile==0.3.2
+django-sendfile==0.3.11
 
 unidecode==0.04.18
 django-cookie-law==1.0.1
