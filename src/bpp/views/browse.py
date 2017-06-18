@@ -65,6 +65,7 @@ class Browser(ListView):
     model = None
     param = None
     literka_field = None
+    paginate_by = 40
 
     def get_search_string(self):
         return self.request.GET.get(self.param, '').encode("utf-8")
@@ -106,6 +107,7 @@ class AutorzyView(Browser):
     model = Autor
     param = 'search'
     literka_field = 'nazwisko'
+    paginate_by = 250
 
 
 class ZrodlaView(Browser):
@@ -113,6 +115,7 @@ class ZrodlaView(Browser):
     model = Zrodlo
     param = 'search'
     literka_field = 'nazwa'
+    paginate_by = 70
 
 
 class JednostkiView(Browser):
@@ -120,6 +123,7 @@ class JednostkiView(Browser):
     model = Jednostka
     param = 'search'
     literka_field = 'nazwa'
+    paginate_by = 100
 
     def get_queryset(self):
         qry = super(JednostkiView, self).get_queryset()

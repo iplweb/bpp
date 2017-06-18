@@ -1,6 +1,5 @@
 {% extends "base.html" %}
 
-{% load pagination_tags %}
 {% load columns %}
 
 {% block extratitle %}
@@ -24,15 +23,14 @@
     {% include "browse/literki.html" with pierwszy_tab="wszyscy" url=browse_autorzy %}
 
     {% url "bpp:browse_autorzy" as browse_autorzy %}
-    {% autopaginate object_list 80 %}
-
 
     <div class="row hide-on-print">
         <div class="large-4 medium-4 small-12 columns">
             {% include "browse/search_form.html" with url=browse_autorzy tekst="Wpisz początek nazwiska i wciśnij ENTER..." name="search" flt=flt %}
         </div>
         <div class="large-8 medium-8 small-12 columns">
-            {% paginate 5 %}</div>
+                        {% include "pagination.html" %}
+        </div>
     </div>
 
 
