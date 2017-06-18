@@ -15,7 +15,7 @@ from bpp.reports.komisja_centralna import RaportKomisjiCentralnej, get_queries, 
 from bpp.tests.util import any_jednostka, any_autor, CURRENT_YEAR, any_ciagle, any_patent, any_zwarte, \
     any_habilitacja
 from bpp.util import Getter
-
+import tempfile
 
 class TestRKCMixin:
     # fixtures = ['charakter_formalny.json',
@@ -26,10 +26,10 @@ class TestRKCMixin:
     #             'typ_odpowiedzialnosci.json']
 
     def odpal_browser(self, res):
-        fn = os.tempnam() + '.html'
-        x = open(fn, 'wb')
-        x.write(res.encode('utf-8'))
-        x.close()
+        handle, fn = tempfile.mkstemp(".html")
+        os.write(handle, res.encode('utf-8'))
+        os.close(handle)
+        
         if sys.platform == 'win32':
             os.system("start %s" % fn)
         if sys.platform == 'darwin':
@@ -270,8 +270,11 @@ class TestRaportKomisjiCentralnej(TestRKCMixin, TestCase):
             self.assertIn(a, s)
 
 
-    test_10a = lambda self: self._test_tabelka('10a')
-    test_10b = lambda self: self._test_tabelka('10b')
+    def test_10a(self):
+        self._test_tabelka('10a')
+
+    def test_10b(self):
+        self._test_tabelka('10b')
 
     def test_10_suma(self):
         s = self._zrob()
