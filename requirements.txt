@@ -38,6 +38,7 @@ html5lib==0.9999999
 django-session-security==2.5.1
 
 django-password-policies==0.4.2
+dj_pagination==2.2.1
 
 requests==2.7.0
 pytz==2015.7

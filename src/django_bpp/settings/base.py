@@ -97,6 +97,8 @@ MIDDLEWARE_CLASSES = (
     'django.contrib.messages.middleware.MessageMiddleware',
     'password_policies.middleware.PasswordChangeMiddleware',
 
+    'dj_pagination.middleware.PaginationMiddleware',
+
     'bpp.middleware.ProfileMiddleware',
     'django_tables2_reports.middleware.TableReportMiddleware',
 
@@ -137,6 +139,8 @@ INSTALLED_APPS = [
 
     'grappelli',
     'django.contrib.admin',
+
+    'dj_pagination',
 
     'bpp',
 
