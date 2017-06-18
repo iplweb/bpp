@@ -830,17 +830,17 @@ def db_disconnect(cur):
 class Command(BaseCommand):
     help = 'Importuje baze danych BPP z istniejacego serwera PostgreSQL'
 
-    option_list = BaseCommand.option_list + (
-        make_option("--uzytkownicy", action="store_true"),
-        make_option("--jednostki", action="store_true"),
-        make_option("--powiazania", action="store_true"),
-        make_option("--zrodla", action="store_true"),
-        make_option("--autorzy", action="store_true"),
-        make_option("--korekty", action="store_true"),
-        make_option("--publikacje", action="store_true"),
-        make_option("--clusters", action="store_true"),
-        make_option("--initial-offset", action="store", type="int", default=0),
-        make_option("--skip", action="store", type="int", default=0))
+    def add_arguments(self, parser):
+        parser.add_argument("--uzytkownicy", action="store_true"),
+        parser.add_argument("--jednostki", action="store_true"),
+        parser.add_argument("--powiazania", action="store_true"),
+        parser.add_argument("--zrodla", action="store_true"),
+        parser.add_argument("--autorzy", action="store_true"),
+        parser.add_argument("--korekty", action="store_true"),
+        parser.add_argument("--publikacje", action="store_true"),
+        parser.add_argument("--clusters", action="store_true"),
+        parser.add_argument("--initial-offset", action="store", type="int", default=0),
+        parser.add_argument("--skip", action="store", type="int", default=0)
 
     @transaction.atomic
     def handle(self, *args, **options):
