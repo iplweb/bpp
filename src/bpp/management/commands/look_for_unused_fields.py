@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
 
 from django.core.management import BaseCommand
-from django.db.models import get_models, CharField, TextField, Q
+from django.db.models import CharField, TextField, Q
 from django.apps import apps
 from bpp.models import Sumy
 
