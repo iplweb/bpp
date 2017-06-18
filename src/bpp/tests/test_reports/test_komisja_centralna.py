@@ -29,7 +29,7 @@ class TestRKCMixin:
         handle, fn = tempfile.mkstemp(".html")
         os.write(handle, res.encode('utf-8'))
         os.close(handle)
-        
+
         if sys.platform == 'win32':
             os.system("start %s" % fn)
         if sys.platform == 'darwin':
@@ -278,7 +278,6 @@ class TestRaportKomisjiCentralnej(TestRKCMixin, TestCase):
 
     def test_10_suma(self):
         s = self._zrob()
-        self.odpal_browser(s)
         self.assertIn(u"X. Liczba listów do redakcji czasopism: 4", s)
 
     test_11a = lambda self: self._test_tabelka('11a')
