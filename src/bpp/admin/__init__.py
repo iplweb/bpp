@@ -5,6 +5,7 @@ from django.contrib import admin
 from django.contrib.admin.filters import SimpleListFilter
 from django.contrib.auth.forms import UserCreationForm
 from django.db.models.fields import BLANK_CHOICE_DASH
+from django.utils.safestring import mark_safe
 from multiseek.models import SearchForm
 
 from bpp.admin.filters import LiczbaZnakowFilter, CalkowitaLiczbaAutorowFilter, JednostkaFilter, PBNIDObecnyFilter, \
@@ -335,8 +336,7 @@ from django.forms.widgets import HiddenInput
 def generuj_inline_dla_autorow(baseModel):
     class baseModel_AutorForm(AutocompleteLightModelForm):
         class Media:
-            js = (
-                "../dynjs/autorform_dependant.js?class=%s" % baseModel.__name__,)
+            js = ["../dynjs/autorform_dependant.js/%s/" % baseModel.__name__]
 
         class Meta:
             fields = ["autor", "jednostka", "typ_odpowiedzialnosci", "zapisany_jako",

@@ -43,7 +43,8 @@ urlpatterns = [
 
     url(r'^favicon\.ico$', favicon),
 
-    url(r'^dynjs/autorform_dependant.js$', autorform_dependant_js),
+    url(r'^dynjs/autorform_dependant.js/(?P<klass>[\w]+)/$',
+        autorform_dependant_js),
 
     #url(r'^admin/doc/', include('django.contrib.admindocs.urls')),
 

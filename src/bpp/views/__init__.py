@@ -163,9 +163,9 @@ def user_navigation_autocomplete(
     return shortcuts.render(request, template_name, context)
 
 
-def autorform_dependant_js(request):
+def autorform_dependant_js(request, klass):
     return shortcuts.render(request, "autorform_dependant.js", {
-        'class': request.GET.get('class', 'NO CLASS ON REQUEST').lower()
+        'class': klass.lower()
     }, content_type='text/javascript')
 
 
