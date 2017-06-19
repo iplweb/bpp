@@ -247,7 +247,8 @@ def wydawnictwo_ciagle_maker(db):
     return _wydawnictwo_ciagle_maker
 
 @pytest.fixture(scope="function")
-def wydawnictwo_ciagle(jezyki, charaktery_formalne, typy_kbn, statusy_korekt):
+def wydawnictwo_ciagle(jezyki, charaktery_formalne, typy_kbn,
+                       statusy_korekt, typy_odpowiedzialnosci):
     ret = _wydawnictwo_ciagle_maker()
     return ret
 
@@ -272,7 +273,8 @@ def _zwarte_maker(**kwargs):
 
 
 @pytest.fixture(scope="function")
-def wydawnictwo_zwarte(jezyki, charaktery_formalne, typy_kbn, statusy_korekt):
+def wydawnictwo_zwarte(jezyki, charaktery_formalne, typy_kbn,
+                       statusy_korekt, typy_odpowiedzialnosci):
     return _zwarte_maker(tytul_oryginalny=u'Wydawnictwo Zwarte ĄćłłóńŹ')
 
 
@@ -288,7 +290,7 @@ def _habilitacja_maker(**kwargs):
 
 
 @pytest.fixture(scope="function")
-def habilitacja(jednostka, db):
+def habilitacja(jednostka, db, charaktery_formalne, jezyki, typy_odpowiedzialnosci):
     return _habilitacja_maker(tytul_oryginalny=u'Praca habilitacyjna',
                               jednostka=jednostka)
 
@@ -299,13 +301,11 @@ def habilitacja_maker(db):
 
 
 def _doktorat_maker(**kwargs):
-    Charakter_Formalny.objects.get_or_create(nazwa='Praca doktorska',
-                                             skrot='D')
     return _zwarte_base_maker(Praca_Doktorska, **kwargs)
 
 
 @pytest.fixture(scope="function")
-def doktorat(jednostka):
+def doktorat(jednostka, charaktery_formalne, jezyki, typy_odpowiedzialnosci):
     return _doktorat_maker(tytul_oryginalny=u'Praca doktorska',
                            jednostka=jednostka)
 
@@ -412,6 +412,14 @@ def charaktery_formalne():
     for elem in fixture("charakter_formalny.json"):
         Charakter_Formalny.objects.get_or_create(pk=elem['pk'], **elem['fields'])
 
+    chf_ksp = Charakter_Formalny.objects.get(skrot='KSP')
+    chf_ksp.ksiazka_pbn = True
+    chf_ksp.save()
+
+    chf_roz = Charakter_Formalny.objects.get(skrot="ROZ")
+    chf_roz.rozdzial_pbn = True
+    chf_roz.save()
+
 @pytest.fixture(scope='function')
 def typy_kbn():
     for elem in fixture("typ_kbn.json"):
@@ -443,7 +451,7 @@ def wydawnictwo_ciagle_z_autorem(wydawnictwo_ciagle, autor_jan_kowalski,
 
 @pytest.fixture(scope="function")
 def wydawnictwo_zwarte_z_autorem(wydawnictwo_zwarte, autor_jan_kowalski,
-                                 jednostka, typy_odpowiedzialnosci):
+                                 jednostka):
     wydawnictwo_zwarte.dodaj_autora(autor_jan_kowalski, jednostka)
     return wydawnictwo_zwarte
 
@@ -454,28 +462,6 @@ def wydawnictwo_ciagle_z_dwoma_autorami(wydawnictwo_ciagle_z_autorem,
                                         typy_odpowiedzialnosci):
     wydawnictwo_ciagle_z_autorem.dodaj_autora(autor_jan_nowak, jednostka)
     return wydawnictwo_ciagle_z_autorem
-
-
-@pytest.fixture(scope="session")
-@pytest.mark.django_db
-def chf_ksp():
-    chf_ksp, created = Charakter_Formalny.objects.get_or_create(skrot='KSP',
-                                                                nazwa="Książka w języku polskim")
-    if created:
-        chf_ksp.ksiazka_pbn = True
-        chf_ksp.save()
-    return chf_ksp
-
-
-@pytest.fixture(scope="session")
-@pytest.mark.django_db
-def chf_roz():
-    chf_roz, created = Charakter_Formalny.objects.get_or_create(skrot='ROZ',
-                                                                nazwa="Rozdział książki")
-    if created:
-        chf_roz.rozdzial_pbn = True
-        chf_roz.save()
-    return chf_roz
 
 
 def pytest_configure():
