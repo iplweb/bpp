@@ -36,14 +36,19 @@ class Wydawnictwo_Ciagle_Autor(DirtyFieldsMixin, BazaModeluOdpowiedzialnosciAuto
 
     def save(self, *args, **kw):
         if self.pk is None or self.is_dirty():
-            self.rekord.ostatnio_zmieniony_dla_pbn = timezone.now()
-            self.rekord.save(update_fields=['ostatnio_zmieniony_dla_pbn'])
+            # W sytuacji gdy dodajemy nowego autora lub zmieniamy jego dane,
+            # rekord "nadrzędny" publikacji powinien mieć zaktualizowany
+            # czas ostatniej aktualizacji na potrzeby PBN:
+            r = self.rekord
+            r.ostatnio_zmieniony_dla_pbn = timezone.now()
+            r.save(update_fields=['ostatnio_zmieniony_dla_pbn'])
         super(Wydawnictwo_Ciagle_Autor, self).save(*args, **kw)
 
 
 def wydawnictwo_ciagle_autor_post_delete(sender, instance, **kwargs):
-    instance.rekord.ostatnio_zmieniony_dla_pbn = timezone.now()
-    instance.rekord.save(update_fields=['ostatnio_zmieniony_dla_pbn'])
+    rec = instance.rekord
+    rec.ostatnio_zmieniony_dla_pbn = timezone.now()
+    rec.save(update_fields=['ostatnio_zmieniony_dla_pbn'])
 
 
 post_delete.connect(wydawnictwo_ciagle_autor_post_delete, Wydawnictwo_Ciagle_Autor)

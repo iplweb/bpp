@@ -7,6 +7,7 @@ from datetime import datetime
 import django_webtest
 import pytest
 from django.core.urlresolvers import reverse
+from django.db.utils import IntegrityError
 from model_mommy import mommy
 
 from bpp.models.autor import Autor, Tytul, Funkcja_Autora
@@ -126,8 +127,8 @@ def wydzial(uczelnia, db):
                           nazwa=u'Wydział Testowy I')
 
 
-def _autor_maker(imiona, nazwisko, tytul="dr. ", **kwargs):
-    tytul = Tytul.objects.get_or_create(skrot=tytul, nazwa=tytul)[0]
+def _autor_maker(imiona, nazwisko, tytul="dr", **kwargs):
+    tytul = Tytul.objects.get(skrot=tytul)
     return \
     Autor.objects.get_or_create(tytul=tytul, imiona=imiona, nazwisko=nazwisko,
                                 **kwargs)[0]
@@ -138,21 +139,20 @@ def autor_maker(db):
     return _autor_maker
 
 
-@pytest.mark.django_db
 @pytest.fixture(scope="function")
-def autor_jan_nowak(db):
+def autor_jan_nowak(db, tytuly):
     return _autor_maker(imiona="Jan", nazwisko="Nowak")
 
 
 @pytest.fixture(scope="function")
-def autor(db):
+def autor(db, tytuly):
     return mommy.make(Autor)
 
 
 @pytest.fixture(scope="function")
-def autor_jan_kowalski(db):
+def autor_jan_kowalski(db, tytuly):
     return _autor_maker(imiona="Jan", nazwisko="Kowalski",
-                        tytul="prof. dr hab. n. med.")
+                        tytul="prof. dr hab. med.")
 
 
 def _jednostka_maker(nazwa, skrot, wydzial, **kwargs):
@@ -209,7 +209,6 @@ def set_default(varname, value, dct):
     if varname not in dct:
         dct[varname] = value
 
-@pytest.mark.django_db
 def _wydawnictwo_maker(klass, **kwargs):
     if 'rok' not in kwargs:
         kwargs['rok'] = rok()
@@ -248,7 +247,7 @@ def wydawnictwo_ciagle_maker(db):
     return _wydawnictwo_ciagle_maker
 
 @pytest.fixture(scope="function")
-def wydawnictwo_ciagle():
+def wydawnictwo_ciagle(standard_data):
     ret = _wydawnictwo_ciagle_maker()
     return ret
 
@@ -317,15 +316,11 @@ def doktorat_maker(db):
 
 
 def _patent_maker(**kwargs):
-    Charakter_Formalny.objects.get_or_create(nazwa='Patent', skrot='PAT')
-    Typ_KBN.objects.get_or_create(nazwa="Praca Oryginalna", skrot='PO')
-    Jezyk.objects.get_or_create(nazwa="polski", skrot='pol.')
-
     return _zwarte_base_maker(Patent, **kwargs)
 
 
 @pytest.fixture
-def patent(db):
+def patent(db, typy_odpowiedzialnosci, jezyki, charaktery_formalne):
     return _patent_maker(tytul_oryginalny=u'PATENT!')
 
 
@@ -384,8 +379,17 @@ def fixture(name):
             ), "r"))
 
 @pytest.fixture(scope='function')
-def standard_data():
-    s = time.time()
+def typy_odpowiedzialnosci():
+    for elem in fixture("typ_odpowiedzialnosci.json"):
+        Typ_Odpowiedzialnosci.objects.get_or_create(pk=elem['pk'], **elem['fields'])
+
+@pytest.fixture(scope='function')
+def tytuly():
+    for elem in fixture("tytul.json"):
+        Tytul.objects.get_or_create(pk=elem['pk'], **elem['fields'])
+
+@pytest.fixture(scope='function')
+def jezyki():
 
     pl, created = Jezyk.objects.get_or_create(
         pk=1, skrot='pol.', nazwa='polski')
@@ -402,31 +406,37 @@ def standard_data():
     for elem in fixture("jezyk.json"):
         Jezyk.objects.get_or_create(pk=elem['pk'], **elem['fields'])
 
+@pytest.fixture(scope='function')
+def charaktery_formalne():
+    Charakter_Formalny.objects.all().delete()
     for elem in fixture("charakter_formalny.json"):
         Charakter_Formalny.objects.get_or_create(pk=elem['pk'], **elem['fields'])
 
+@pytest.fixture(scope='function')
+def typy_kbn():
     for elem in fixture("typ_kbn.json"):
         Typ_KBN.objects.get_or_create(pk=elem['pk'], **elem['fields'])
 
+@pytest.fixture(scope='function')
+def statusy_korekt():
     for elem in fixture("status_korekty.json"):
         Status_Korekty.objects.get_or_create(pk=elem['pk'], **elem['fields'])
 
+@pytest.fixture(scope='function')
+def funkcje_autorow():
     for elem in fixture("funkcja_autora.json"):
         Funkcja_Autora.objects.get_or_create(pk=elem['pk'], **elem['fields'])
 
-    for elem in fixture("tytul.json"):
-        Tytul.objects.get_or_create(pk=elem['pk'], **elem['fields'])
-
-    for elem in fixture("typ_odpowiedzialnosci.json"):
-        Typ_Odpowiedzialnosci.objects.get_or_create(pk=elem['pk'], **elem['fields'])
-
-    e = time.time()
-    print "standard data took %.2f" % (e-s)
+@pytest.fixture(scope='function')
+def standard_data(typy_odpowiedzialnosci, tytuly, jezyki,
+                  charaktery_formalne, typy_kbn, statusy_korekt,
+                  funkcje_autorow):
+    pass
 
 
 @pytest.fixture(scope="function")
 def wydawnictwo_ciagle_z_autorem(wydawnictwo_ciagle, autor_jan_kowalski,
-                                 jednostka):
+                                 jednostka, typy_odpowiedzialnosci):
     wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
     return wydawnictwo_ciagle
 

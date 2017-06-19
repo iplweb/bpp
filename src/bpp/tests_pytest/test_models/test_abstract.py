@@ -5,8 +5,9 @@ from bpp.models.abstract import BRAK_PAGINACJI
 from bpp.models.struktura import Jednostka, Wydzial
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte_Autor
 import pytest
-
-def test_eksport_pbn_author_afiliacja_w_kontekscie_wydzialu(uczelnia, autor_jan_kowalski, wydawnictwo_zwarte):
+@pytest.mark.django_db
+def test_eksport_pbn_author_afiliacja_w_kontekscie_wydzialu(uczelnia,
+                                                            autor_jan_kowalski, wydawnictwo_zwarte, standard_data):
     w1 = mommy.make(Wydzial, uczelnia=uczelnia)
     w2 = mommy.make(Wydzial, uczelnia=uczelnia)
 
@@ -38,8 +39,9 @@ def test_eksport_pbn_author_afiliacja_w_kontekscie_wydzialu(uczelnia, autor_jan_
     wydawnictwo_zwarte.eksport_pbn_other_contributors(toplevel, w2, Wydawnictwo_Zwarte_Autor)
     assert toplevel[0].text == "0"
 
-
-def test_eksport_pbn_editor_afiliacja_w_kontekscie_wydzialu(uczelnia, autor_jan_kowalski, wydawnictwo_zwarte):
+@pytest.mark.django_db
+def test_eksport_pbn_editor_afiliacja_w_kontekscie_wydzialu(uczelnia,
+                                                            autor_jan_kowalski, wydawnictwo_zwarte, standard_data):
     w1 = mommy.make(Wydzial, uczelnia=uczelnia)
     w2 = mommy.make(Wydzial, uczelnia=uczelnia)
 

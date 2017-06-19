@@ -44,8 +44,12 @@ class Wydawnictwo_Zwarte_Autor(DirtyFieldsMixin, BazaModeluOdpowiedzialnosciAuto
 
     def save(self, *args, **kw):
         if self.pk is None or self.is_dirty():
-            self.rekord.ostatnio_zmieniony_dla_pbn = timezone.now()
-            self.rekord.save(update_fields=['ostatnio_zmieniony_dla_pbn'])
+            # W sytuacji gdy dodajemy nowego autora lub zmieniamy jego dane,
+            # rekord "nadrzędny" publikacji powinien mieć zaktualizowany
+            # czas ostatniej aktualizacji na potrzeby PBN:
+            r = self.rekord
+            r.ostatnio_zmieniony_dla_pbn = timezone.now()
+            r.save(update_fields=['ostatnio_zmieniony_dla_pbn'])
         super(Wydawnictwo_Zwarte_Autor, self).save(*args, **kw)
 
 

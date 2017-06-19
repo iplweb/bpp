@@ -179,7 +179,7 @@ def test_caching_kasowanie_zrodla(wydawnictwo_ciagle_z_dwoma_autorami):
 
 @pytest.mark.django_db
 def test_caching_kasowanie_jezyka(wydawnictwo_ciagle_z_dwoma_autorami):
-    xng = Jezyk.objects.create(skrot="xng.", nazwa="taki")
+    xng = Jezyk.objects.create(skrot="xng.", nazwa="taki", pk=500)
     wydawnictwo_ciagle_z_dwoma_autorami.jezyk = xng
     wydawnictwo_ciagle_z_dwoma_autorami.save()
 
@@ -187,7 +187,6 @@ def test_caching_kasowanie_jezyka(wydawnictwo_ciagle_z_dwoma_autorami):
     xng.delete()
 
     assert Rekord.objects.all().count() == 0
-
 
 @pytest.mark.django_db
 def test_caching_kasowanie_typu_kbn(wydawnictwo_ciagle_z_dwoma_autorami, standard_data):
@@ -218,8 +217,9 @@ def test_caching_kasowanie_charakteru_formalnego(
 
     assert Rekord.objects.all().count() == 0
 
-
-def test_caching_kasowanie_wydzialu(autor_jan_kowalski, jednostka, wydzial, wydawnictwo_ciagle):
+@pytest.mark.django_db
+def test_caching_kasowanie_wydzialu(autor_jan_kowalski, jednostka, wydzial,
+                                    wydawnictwo_ciagle):
     assert jednostka.wydzial == wydzial
 
     wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
@@ -232,7 +232,9 @@ def test_caching_kasowanie_wydzialu(autor_jan_kowalski, jednostka, wydzial, wyda
     assert Rekord.objects.all()[0].original.autorzy.all().count() == 0
     assert Jednostka.objects.all().count() == 0
 
-def test_caching_kasowanie_uczelni(autor_jan_kowalski, jednostka, wydzial, uczelnia, wydawnictwo_ciagle):
+@pytest.mark.django_db
+def test_caching_kasowanie_uczelni(autor_jan_kowalski, jednostka, wydzial,
+                                   uczelnia, wydawnictwo_ciagle):
     assert wydzial.uczelnia == uczelnia
     assert jednostka.wydzial == wydzial
     wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)

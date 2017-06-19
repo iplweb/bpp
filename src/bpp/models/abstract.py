@@ -616,8 +616,16 @@ class ModelZAktualizacjaDlaPBN(models.Model):
                 from bpp.admin.helpers import MODEL_PUNKTOWANY, MODEL_PUNKTOWANY_KOMISJA_CENTRALNA
 
                 for elem in MODEL_PUNKTOWANY + MODEL_PUNKTOWANY_KOMISJA_CENTRALNA + \
-                        ('adnotacje', 'ostatnio_zmieniony', 'ostatnio_zmieniony_dla_pbn',
-                         'opis_bibliograficzny_cache', 'search_index', 'tytul_oryginalny_sort'):
+                        ('adnotacje',
+                         'ostatnio_zmieniony',
+                         # Nie wyrzucaj poniższego pola. Jeżeli jest jedynym
+                         # zmienionym polem to zmiana prawdopodobnie idzie z
+                         # powodu dodania lub usunięcia autora rekordu
+                         # podrzędnego
+                         # 'ostatnio_zmieniony_dla_pbn',
+                         'opis_bibliograficzny_cache',
+                         'search_index',
+                         'tytul_oryginalny_sort'):
                     if elem in flds_keys:
                         flds_keys.remove(elem)
 

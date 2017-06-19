@@ -8,13 +8,15 @@ from django.utils import timezone
 from bpp.models.autor import Autor_Jednostka
 
 @pytest.mark.django_db
-def test_0046_ostatnia_jednostka_trigger_via_api(autor_jan_nowak, jednostka):
+def test_0046_ostatnia_jednostka_trigger_via_api(autor_jan_nowak, jednostka,
+                                                 standard_data):
     jednostka.dodaj_autora(autor_jan_nowak)
     assert autor_jan_nowak.aktualna_jednostka == jednostka
 
 
 @pytest.mark.django_db
-def test_0046_ostatnia_jednostka_trigger(autor_jan_nowak, jednostka, druga_jednostka):
+def test_0046_ostatnia_jednostka_trigger(autor_jan_nowak, jednostka,
+                                         druga_jednostka, standard_data):
     assert autor_jan_nowak.aktualna_jednostka == None
 
     two_months = timedelta(days=60)
