@@ -127,7 +127,7 @@ class DwaTytuly(models.Model):
 class ModelZeStatusem(models.Model):
     """Model zawierający pole statusu korekty, oraz informację, czy
     punktacja została zweryfikowana."""
-    status_korekty = models.ForeignKey('Status_Korekty', default=1)
+    status_korekty = models.ForeignKey('Status_Korekty')
 
     class Meta:
         abstract = True
