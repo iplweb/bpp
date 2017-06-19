@@ -74,6 +74,7 @@ def test_id_zwartych_gdy_jest_ksiazka_z_w1_ale_rozdzialy_ma_w_w2(chf_ksp, chf_ro
     assert wz_child2.pk in list(id_zwartych(w2, 2015, 2015, True, True))
 
 
+@pytest.mark.django_db
 def test_id_ciaglych(wydawnictwo_ciagle_z_autorem, wydzial, rok):
     cf = wydawnictwo_ciagle_z_autorem.charakter_formalny
     cf.artykul_pbn = True

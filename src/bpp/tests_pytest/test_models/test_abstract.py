@@ -79,7 +79,7 @@ def test_eksport_pbn_editor_afiliacja_w_kontekscie_wydzialu(uczelnia, autor_jan_
     wydawnictwo_zwarte.eksport_pbn_other_editors(toplevel, w2, Wydawnictwo_Zwarte_Autor)
     assert toplevel[0].text == "0"
 
-
+@pytest.mark.django_db
 @pytest.mark.parametrize(
     "input,expected",
     [("s. 35", "35"),

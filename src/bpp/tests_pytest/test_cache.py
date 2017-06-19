@@ -9,7 +9,8 @@ from bpp.models.autor import Autor
 from bpp.models.cache import Rekord, Autorzy
 from bpp.models.praca_doktorska import Praca_Doktorska
 from bpp.models.struktura import Jednostka
-from bpp.models.system import Typ_Odpowiedzialnosci, Jezyk, Charakter_Formalny
+from bpp.models.system import Typ_Odpowiedzialnosci, Jezyk, Charakter_Formalny, \
+    Status_Korekty, Typ_KBN
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor
 from bpp.models.zrodlo import Zrodlo
 from bpp.tests.util import any_doktorat
@@ -19,7 +20,7 @@ def pierwszy_rekord():
     return Rekord.objects.all()[0].opis_bibliograficzny_cache
 
 
-def test_opis_bibliograficzny(db, statusy_korekt):
+def test_opis_bibliograficzny(db, standard_data):
     wc = mommy.make(Wydawnictwo_Ciagle, szczegoly='Sz', uwagi='U')
 
     rekord_opis = Rekord.objects.all()[0].opis_bibliograficzny_cache
@@ -27,7 +28,7 @@ def test_opis_bibliograficzny(db, statusy_korekt):
     assert rekord_opis == wc_opis
 
 
-def test_kasowanie(db, statusy_korekt):
+def test_kasowanie(db, standard_data):
     assert Rekord.objects.count() == 0
 
     wc = mommy.make(Wydawnictwo_Ciagle)
@@ -37,7 +38,7 @@ def test_kasowanie(db, statusy_korekt):
     assert Rekord.objects.count() == 0
 
 
-def test_opis_bibliograficzny_dependent(db, statusy_korekt):
+def test_opis_bibliograficzny_dependent(db, standard_data):
     """Stwórz i skasuj Wydawnictwo_Ciagle_Autor i sprawdź, jak to
     wpłynie na opis."""
 
@@ -56,7 +57,7 @@ def test_opis_bibliograficzny_dependent(db, statusy_korekt):
     assert 'KOWALSKI' not in pierwszy_rekord()
 
 
-def test_opis_bibliograficzny_zrodlo(db, statusy_korekt):
+def test_opis_bibliograficzny_zrodlo(db, standard_data):
     """Zmień nazwę źródła i sprawdź, jak to wpłynie na opis."""
     from bpp.models import cache
     assert cache._CACHE_ENABLED
@@ -94,7 +95,7 @@ def test_opis_bibliograficzny_zrodlo(db, statusy_korekt):
     assert 'foka 2' in c.opis_bibliograficzny()
     assert 'foka 2' in pierwszy_rekord()
 
-
+@pytest.mark.django_db
 def test_post_save_cache(doktorat):
     assert Rekord.objects.all().count() == 1
 
@@ -110,7 +111,7 @@ def test_deletion_cache(doktorat):
     doktorat.delete()
     assert Rekord.objects.all().count() == 0
 
-
+@pytest.mark.django_db
 def test_wca_delete_cache(wydawnictwo_ciagle_z_dwoma_autorami):
     """Czy skasowanie obiektu Wydawnictwo_Ciagle_Autor zmieni opis
     wydawnictwa ciągłego w Rekordy materialized view?"""
@@ -133,7 +134,7 @@ def test_wca_delete_cache(wydawnictwo_ciagle_z_dwoma_autorami):
     assert 'NOWAK' not in r.opis_bibliograficzny_cache
     assert 'KOWALSKI' not in r.opis_bibliograficzny_cache
 
-
+@pytest.mark.django_db
 def test_caching_kasowanie_autorow(wydawnictwo_ciagle_z_dwoma_autorami):
     for wca in Wydawnictwo_Ciagle_Autor.objects.all().only('autor'):
         wca.autor.delete()
@@ -145,7 +146,7 @@ def test_caching_kasowanie_autorow(wydawnictwo_ciagle_z_dwoma_autorami):
     assert 'NOWAK' not in r.opis_bibliograficzny_cache
     assert 'KOWALSKI' not in r.opis_bibliograficzny_cache
 
-
+@pytest.mark.django_db
 def test_caching_kasowanie_typu_odpowiedzialnosci_autorow(wydawnictwo_ciagle_z_dwoma_autorami):
     assert Wydawnictwo_Ciagle_Autor.objects.filter(rekord=wydawnictwo_ciagle_z_dwoma_autorami).count() == 2
 
@@ -159,6 +160,7 @@ def test_caching_kasowanie_typu_odpowiedzialnosci_autorow(wydawnictwo_ciagle_z_d
     assert 'KOWALSKI' not in r.opis_bibliograficzny_cache
 
 
+@pytest.mark.django_db
 def test_caching_kasowanie_zrodla(wydawnictwo_ciagle_z_dwoma_autorami):
     assert Zrodlo.objects.all().count() == 1
 
@@ -175,6 +177,7 @@ def test_caching_kasowanie_zrodla(wydawnictwo_ciagle_z_dwoma_autorami):
     assert "None" not in r.opis_bibliograficzny_cache
 
 
+@pytest.mark.django_db
 def test_caching_kasowanie_jezyka(wydawnictwo_ciagle_z_dwoma_autorami):
     xng = Jezyk.objects.create(skrot="xng.", nazwa="taki")
     wydawnictwo_ciagle_z_dwoma_autorami.jezyk = xng
@@ -186,8 +189,9 @@ def test_caching_kasowanie_jezyka(wydawnictwo_ciagle_z_dwoma_autorami):
     assert Rekord.objects.all().count() == 0
 
 
-def test_caching_kasowanie_typu_kbn(wydawnictwo_ciagle_z_dwoma_autorami, typy_kbn):
-    tk = typy_kbn.values()[0]
+@pytest.mark.django_db
+def test_caching_kasowanie_typu_kbn(wydawnictwo_ciagle_z_dwoma_autorami, standard_data):
+    tk = Typ_KBN.objects.all().first()
 
     wydawnictwo_ciagle_z_dwoma_autorami.typ_kbn = tk
     wydawnictwo_ciagle_z_dwoma_autorami.save()
@@ -198,10 +202,13 @@ def test_caching_kasowanie_typu_kbn(wydawnictwo_ciagle_z_dwoma_autorami, typy_kb
     assert Rekord.objects.all().count() == 0
 
 
-def test_caching_kasowanie_charakteru_formalnego(wydawnictwo_ciagle_z_dwoma_autorami, patent, autor_jan_kowalski, jednostka, charaktery_formalne):
+@pytest.mark.django_db
+def test_caching_kasowanie_charakteru_formalnego(
+        wydawnictwo_ciagle_z_dwoma_autorami, patent, autor_jan_kowalski,
+        jednostka, standard_data):
     patent.dodaj_autora(autor_jan_kowalski, jednostka)
 
-    cf = charaktery_formalne.values()[0]
+    cf = Charakter_Formalny.objects.all().first()
 
     wydawnictwo_ciagle_z_dwoma_autorami.charakter_formalny = cf
     wydawnictwo_ciagle_z_dwoma_autorami.save()
@@ -239,11 +246,13 @@ def test_caching_kasowanie_uczelni(autor_jan_kowalski, jednostka, wydzial, uczel
     assert Jednostka.objects.all().count() == 0
 
 
+@pytest.mark.django_db
 def test_caching_full_refresh(wydawnictwo_ciagle_z_dwoma_autorami):
     assert Rekord.objects.all().count() == 1
     Rekord.objects.full_refresh()
     assert Rekord.objects.all().count() == 1
 
+@pytest.mark.django_db
 def test_caching_kolejnosc(wydawnictwo_ciagle_z_dwoma_autorami):
 
     a = list(Wydawnictwo_Ciagle_Autor.objects.all().order_by('kolejnosc'))

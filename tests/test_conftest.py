@@ -3,6 +3,7 @@
 from django.db import connection
 import pytest
 from bpp.models.cache import Rekord, Autorzy
+from bpp.models.system import Status_Korekty, Jezyk, Charakter_Formalny
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
 
 
@@ -13,10 +14,13 @@ def test_uczelnia(uczelnia):
 def test_wydzial(wydzial):
     assert wydzial != None
 
-
 def test_wydawnictwo_ciagle(wydawnictwo_ciagle):
     assert wydawnictwo_ciagle != None
-
+    print "-" * 78
+    for obj in Status_Korekty, Jezyk, Charakter_Formalny:
+        for elem in obj.objects.all():
+            print elem.pk, elem.skrot, elem.nazwa
+    print "^" * 78
 
 def test_autorzy(autor_jan_nowak, autor_jan_kowalski):
     assert autor_jan_kowalski != None
@@ -29,10 +33,6 @@ def test_jednostka(jednostka):
 
 def test_zrodlo(zrodlo):
     assert zrodlo != None
-
-
-def test_wydawnictwo_ciagle(wydawnictwo_ciagle):
-    assert wydawnictwo_ciagle != None
 
 
 def test_wydawnictwo_zwarte(wydawnictwo_zwarte):
