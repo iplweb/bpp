@@ -40,8 +40,9 @@ def test_eksport_pbn_author_afiliacja_w_kontekscie_wydzialu(uczelnia,
     assert toplevel[0].text == "0"
 
 @pytest.mark.django_db
-def test_eksport_pbn_editor_afiliacja_w_kontekscie_wydzialu(uczelnia,
-                                                            autor_jan_kowalski, wydawnictwo_zwarte, standard_data):
+def test_eksport_pbn_editor_afiliacja_w_kontekscie_wydzialu(
+        uczelnia, autor_jan_kowalski, wydawnictwo_zwarte,
+        typy_odpowiedzialnosci):
     w1 = mommy.make(Wydzial, uczelnia=uczelnia)
     w2 = mommy.make(Wydzial, uczelnia=uczelnia)
 

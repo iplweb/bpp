@@ -11,8 +11,9 @@ from bpp.models.system import Status_Korekty
 
 
 @pytest.mark.django_db
-def test_models_wydawnictwo_ciagle_dirty_fields_ostatnio_zmieniony_dla_pbn(wydawnictwo_ciagle, wydawnictwo_zwarte,
-                                                                           autor_jan_nowak, jednostka, statusy_korekt):
+def test_models_wydawnictwo_ciagle_dirty_fields_ostatnio_zmieniony_dla_pbn(
+        wydawnictwo_ciagle, wydawnictwo_zwarte,
+        autor_jan_nowak, jednostka, typy_odpowiedzialnosci):
     Licencja_OpenAccess.objects.create(nazwa="lic 1 ", skrot="l1")
     Licencja_OpenAccess.objects.create(nazwa="lic 2 ", skrot="l2")
 
@@ -79,7 +80,7 @@ def test_models_wydawnictwo_ciagle_dirty_fields_ostatnio_zmieniony_dla_pbn(wydaw
         wyd.refresh_from_db()
         assert ost_zm_pbn != wyd.ostatnio_zmieniony_dla_pbn
 
-
+@pytest.mark.django_db
 def test_export_pubmed_id(wydawnictwo_ciagle):
     wc = wydawnictwo_ciagle
 
@@ -107,6 +108,7 @@ def test_export_pubmed_id(wydawnictwo_ciagle):
         toplevel[0]
 
 
+@pytest.mark.django_db
 @pytest.mark.parametrize("informacje,expected",
                          [("bez sensu", None),
                           ("2016 vol. 5 nr 10", "5"),

@@ -150,7 +150,7 @@ def test_admin_patent_tamze(preauth_admin_browser, live_server):
     assert 'Dodaj patent' in preauth_admin_browser.html
     assert 'TO INFORMACJE' in preauth_admin_browser.html
 
-
+@pytest.mark.django_db(transaction=True)
 def test_automatycznie_uzupelnij_punkty(preauth_admin_browser, live_server):
     url = reverse("admin:bpp_wydawnictwo_ciagle_add")
     preauth_admin_browser.visit(live_server + url)
@@ -163,8 +163,9 @@ def test_automatycznie_uzupelnij_punkty(preauth_admin_browser, live_server):
 
     zrodlo = preauth_admin_browser.find_by_id("id_zrodlo-autocomplete")
     zrodlo.type("FOO")
-    time.sleep(2)
-    zrodlo.type(Keys.TAB)
+    time.sleep(1)
+    zrodlo.type(Keys.DOWN)
+    zrodlo.type(Keys.ENTER)
 
     clickButtonBuggyMarionetteDriver(
         preauth_admin_browser,
@@ -237,8 +238,9 @@ def test_upload_punkty(preauth_admin_browser, live_server):
     preauth_admin_browser.visit(live_server + url)
 
     preauth_admin_browser.fill("zrodlo-autocomplete", "WTF")
-    time.sleep(2)
-    preauth_admin_browser.fill("zrodlo-autocomplete", Keys.TAB)
+    time.sleep(1)
+    preauth_admin_browser.fill("zrodlo-autocomplete", Keys.DOWN)
+    preauth_admin_browser.fill("zrodlo-autocomplete", Keys.ENTER)
 
     scrollIntoView(preauth_admin_browser, "id_rok")
     preauth_admin_browser.fill("rok", str(CURRENT_YEAR))

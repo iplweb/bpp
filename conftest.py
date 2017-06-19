@@ -247,7 +247,7 @@ def wydawnictwo_ciagle_maker(db):
     return _wydawnictwo_ciagle_maker
 
 @pytest.fixture(scope="function")
-def wydawnictwo_ciagle(standard_data):
+def wydawnictwo_ciagle(jezyki, charaktery_formalne, typy_kbn, statusy_korekt):
     ret = _wydawnictwo_ciagle_maker()
     return ret
 
@@ -272,7 +272,7 @@ def _zwarte_maker(**kwargs):
 
 
 @pytest.fixture(scope="function")
-def wydawnictwo_zwarte(db):
+def wydawnictwo_zwarte(jezyki, charaktery_formalne, typy_kbn, statusy_korekt):
     return _zwarte_maker(tytul_oryginalny=u'Wydawnictwo Zwarte ĄćłłóńŹ')
 
 
@@ -443,14 +443,15 @@ def wydawnictwo_ciagle_z_autorem(wydawnictwo_ciagle, autor_jan_kowalski,
 
 @pytest.fixture(scope="function")
 def wydawnictwo_zwarte_z_autorem(wydawnictwo_zwarte, autor_jan_kowalski,
-                                 jednostka):
+                                 jednostka, typy_odpowiedzialnosci):
     wydawnictwo_zwarte.dodaj_autora(autor_jan_kowalski, jednostka)
     return wydawnictwo_zwarte
 
 
 @pytest.fixture(scope="function")
 def wydawnictwo_ciagle_z_dwoma_autorami(wydawnictwo_ciagle_z_autorem,
-                                        autor_jan_nowak, jednostka):
+                                        autor_jan_nowak, jednostka,
+                                        typy_odpowiedzialnosci):
     wydawnictwo_ciagle_z_autorem.dodaj_autora(autor_jan_nowak, jednostka)
     return wydawnictwo_ciagle_z_autorem
 

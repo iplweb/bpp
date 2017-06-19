@@ -9,11 +9,12 @@ from bpp.models.struktura import Wydzial, Jednostka, Uczelnia
 from bpp.models.system import Typ_Odpowiedzialnosci
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 
-
+@pytest.mark.django_db
 def test_serializuj_pbn_zwarte(wydawnictwo_zwarte_z_autorem, wydzial):
     wydawnictwo_zwarte_z_autorem.eksport_pbn_serializuj(wydzial)
 
 
+@pytest.mark.django_db
 def test_liczba_arkuszy_wydawniczych(wydawnictwo_zwarte_z_autorem):
     wydawnictwo_zwarte_z_autorem.liczba_znakow_wydawniczych = 41000
     assert wydawnictwo_zwarte_z_autorem.liczba_arkuszy_wydawniczych() == "1.02"
@@ -28,6 +29,7 @@ def test_liczba_arkuszy_wydawniczych(wydawnictwo_zwarte_z_autorem):
     assert wydawnictwo_zwarte_z_autorem.liczba_arkuszy_wydawniczych() == "0.50"
 
 
+@pytest.mark.django_db
 def test_eksport_pbn_size(wydawnictwo_zwarte_z_autorem):
     """
     :type wydawnictwo_zwarte_z_autorem: bpp.models.Wydawnictwo_Zwarte

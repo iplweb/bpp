@@ -219,7 +219,8 @@ def test_caching_kasowanie_charakteru_formalnego(
 
 @pytest.mark.django_db
 def test_caching_kasowanie_wydzialu(autor_jan_kowalski, jednostka, wydzial,
-                                    wydawnictwo_ciagle):
+                                    wydawnictwo_ciagle,
+                                    typy_odpowiedzialnosci):
     assert jednostka.wydzial == wydzial
 
     wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
@@ -234,7 +235,8 @@ def test_caching_kasowanie_wydzialu(autor_jan_kowalski, jednostka, wydzial,
 
 @pytest.mark.django_db
 def test_caching_kasowanie_uczelni(autor_jan_kowalski, jednostka, wydzial,
-                                   uczelnia, wydawnictwo_ciagle):
+                                   uczelnia, wydawnictwo_ciagle,
+                                   typy_odpowiedzialnosci):
     assert wydzial.uczelnia == uczelnia
     assert jednostka.wydzial == wydzial
     wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
