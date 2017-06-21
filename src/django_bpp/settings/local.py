@@ -27,6 +27,7 @@ MEDIA_ROOT = os.path.abspath(
 )
 SENDFILE_ROOT = MEDIA_ROOT
 
+COMPRESS_ENABLED = not DEBUG
 COMPRESS_OFFLINE = False
 
 # host dla HTMLu oraz linii polecen, reszta dla linii polecen (bo HTML sie autokonfiguruje...)
