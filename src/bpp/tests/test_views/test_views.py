@@ -39,7 +39,7 @@ class TestViews(UserTestCase):
     def test_autorform_dependant_js(self):
         req = self.factory.get('/')
         req.session = {}
-        autorform_dependant_js(req)
+        autorform_dependant_js(req, "nazwa_klasy")
 
 
 

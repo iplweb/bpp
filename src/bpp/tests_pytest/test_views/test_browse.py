@@ -2,6 +2,7 @@
 import json
 import re
 
+import pytest
 from django.core.urlresolvers import reverse
 from multiseek.views import MULTISEEK_SESSION_KEY
 
@@ -66,6 +67,7 @@ def nastepna_komorka_po_strona_www(dokument):
     soup = BeautifulSoup(dokument, 'html.parser')
     return soup.find("th", text=pattern).parent.find("td").text.strip()
 
+@pytest.mark.django_db
 def test_darmowy_platny_dostep_www_wyswietlanie(client, wydawnictwo_ciagle):
     wydawnictwo_ciagle.www = ""
     wydawnictwo_ciagle.public_www = ""

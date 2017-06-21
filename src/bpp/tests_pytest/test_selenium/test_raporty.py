@@ -28,7 +28,7 @@ pytestmark = [pytest.mark.slow, pytest.mark.selenium]
 
 @pytest.mark.django_db
 @pytest.fixture
-def jednostka_raportow():
+def jednostka_raportow(typy_odpowiedzialnosci):
     Status_Korekty.objects.get_or_create(pk=1, nazwa="przed korektą")
 
     j = any_jednostka(nazwa="Jednostka")
@@ -46,7 +46,7 @@ def jednostka_raportow():
     return j
 
 @pytest.mark.django_db
-def test_submit(raporty_browser, jednostka_raportow, live_server):
+def test_submit(raporty_browser, jednostka_raportow, live_server, typy_odpowiedzialnosci):
     raporty_browser.visit(live_server + reverse("bpp:raport_jednostek_formularz"))
     submit_page(raporty_browser)
     time.sleep(3)
@@ -54,13 +54,13 @@ def test_submit(raporty_browser, jednostka_raportow, live_server):
     assert "To pole jest wymagane" in raporty_browser.html
 
 @pytest.mark.django_db
-def test_ranking_autorow(raporty_browser, jednostka_raportow, live_server):
+def test_ranking_autorow(raporty_browser, jednostka_raportow, live_server, typy_odpowiedzialnosci):
     raporty_browser.visit(live_server + reverse("bpp:ranking_autorow_formularz"))
     assert 'value="%s"' % (CURRENT_YEAR - 1) in raporty_browser.html
 
 
 @pytest.mark.django_db
-def test_raport_jednostek(raporty_browser, jednostka_raportow, live_server):
+def test_raport_jednostek(raporty_browser, jednostka_raportow, live_server, typy_odpowiedzialnosci):
     raporty_browser.visit(live_server + reverse("bpp:raport_jednostek_formularz"))
 
     elem = raporty_browser.find_by_id("id_jednostka-autocomplete")[0]
@@ -78,7 +78,8 @@ def test_raport_jednostek(raporty_browser, jednostka_raportow, live_server):
 
 
 @pytest.mark.django_db
-def test_submit_kronika_uczelni(raporty_browser, jednostka_raportow, live_server):
+def test_submit_kronika_uczelni(raporty_browser, jednostka_raportow,
+                                live_server, typy_odpowiedzialnosci):
     c = Report.objects.all().count
     assert c() == 0
 
