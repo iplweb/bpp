@@ -8,7 +8,6 @@ from django.views.decorators.cache import cache_page
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 
-import autocomplete_light
 from loginas.views import user_login
 from multiseek.views import remove_by_hand, remove_from_removed_by_hand
 from password_policies.views import PasswordChangeDoneView, PasswordChangeFormView
@@ -17,8 +16,6 @@ from bpp.views.admin import WydawnictwoCiagleTozView, WydawnictwoZwarteTozView, 
     PatentTozView
 from bpp.views.mymultiseek import MyMultiseekResults
 from django_bpp.sitemaps import JednostkaSitemap, django_bpp_sitemaps
-
-autocomplete_light.shortcuts.autodiscover()
 
 from django.contrib import admin
 from django.contrib.sitemaps import views as sitemaps_views
@@ -36,7 +33,7 @@ js_info_dict = {
 
 import multiseek, loginas, django
 from bpp.views import favicon, autorform_dependant_js, \
-    navigation_autocomplete, user_navigation_autocomplete, root, \
+    navigation_autocomplete, root, \
     javascript_catalog
 
 urlpatterns = [
@@ -87,15 +84,6 @@ urlpatterns = [
 
     url(r'^admin_tools/', include('admin_tools.urls')),
     url(r'^grappelli/', include('grappelli.urls')),
-
-    url(r'^autocomplete/', include('autocomplete_light.urls'),
-        name="autocomplete"),
-
-    url(r'^navigation_autocomplete/$', navigation_autocomplete,
-        name='navigation_autocomplete'),
-    url(r'^user_navigation_autocomplete/$',
-        user_navigation_autocomplete,
-        name='user_navigation_autocomplete'),
 
     url(r'^$', root, name="root"),
 

@@ -75,6 +75,7 @@ TEMPLATES = [
                 'password_policies.context_processors.password_status',
 
                 'bpp.context_processors.uczelnia.uczelnia',
+                'bpp.context_processors.global_nav.user',
                 'bpp.context_processors.google_analytics.google_analytics',
 
                 'notifications.context_processors.notification_settings'
@@ -137,6 +138,9 @@ INSTALLED_APPS = [
 
     'cookielaw',
 
+    'dal',
+    'dal_select2',
+
     'grappelli',
     'django.contrib.admin',
 
@@ -152,7 +156,7 @@ INSTALLED_APPS = [
     'django_tables2',
     'django_tables2_reports',
 
-    'autocomplete_light',
+    # 'autocomplete_light',
 
     'messages_extends',
 
@@ -311,7 +315,7 @@ SITE_ROOT = os.path.abspath(
 
 STATIC_ROOT = os.path.join(SCRIPT_PATH, "..", "staticroot")
 
-COMPRESS_ENABLED = True
+
 COMPRESS_ROOT = STATIC_ROOT
 
 # Domyslnie, redis na Ubuntu pozwala na 16 baz danych

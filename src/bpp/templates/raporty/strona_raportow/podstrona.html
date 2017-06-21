@@ -15,9 +15,9 @@
     <h1>Raporty</h1>
     <h2>{{ nazwa_raportu }}</h2>
     {% crispy form %}
+    {{ form.media }}
 
     {% include "raporty/strona_raportow/ostatnio_wygenerowane.html" %}
-
 
     <style>
         select.selectmultiple {

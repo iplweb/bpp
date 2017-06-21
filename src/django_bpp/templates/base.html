@@ -8,14 +8,11 @@
 {% block extrahead %}
     {{ block.super }}
 
-    {#    {% include "autocomplete_light/header.html" %}#}
-
     {% compress css %}
     <link rel="stylesheet" href="{% static "bpp/flick/theme.css" %}"/>
     <link rel="stylesheet" href="{% static "bpp/flick/jquery-ui.min.css" %}"/>
     <link rel="stylesheet" href="{% static "cookielaw/css/cookielaw.css" %}"/>
     <link rel="stylesheet" href="{% static "multiseek/css/style.css" %}"/>
-    <link rel="stylesheet" type="text/css" href="{% static "autocomplete_light/style.css" %}"/>
     <link rel="stylesheet" type="text/css" href="{% static 'session_security/style.css' %}"></link>
     <link rel="stylesheet" type="text/css" href="{% static "foundation-datepicker/foundation/fonts/foundation-icons.css" %}"></link>
     <link rel="stylesheet" type="text/css" href="{% static "foundation-datepicker/css/foundation-datepicker.min.css" %}"></link>
@@ -23,12 +20,6 @@
     {% endcompress %}
 
     {% compress js %}
-
-    <script type="text/javascript" src="{% static "autocomplete_light/autocomplete.js" %}"></script>
-    <script type="text/javascript" src="{% static "autocomplete_light/widget.js" %}"></script>
-    <script type="text/javascript" src="{% static "autocomplete_light/addanother.js" %}"></script>
-    <script type="text/javascript" src="{% static "autocomplete_light/text_widget.js" %}"></script>
-    <script type="text/javascript" src="{% static "autocomplete_light/remote.js" %}"></script>
 
     <script src="{% static 'cookielaw/js/cookielaw.js' %}"></script>
 
@@ -167,31 +158,18 @@
                     Pracowników <br/>
                     {{ uczelnia.nazwa_dopelniacz }}</a></h1>
                 {% block global-nav %}
-                    <div class="hide-on-print">
-                        <input type="text" name="q"
-                               id="user_navigation_autocomplete"/>
-                        <script type="text/javascript">
-                            $(document).ready(function () {
+                    {% load crispy_forms_tags %}
+                    {% crispy global_nav_form %}
+                    {{ global_nav_form.media }}
 
-                                function resizeAutocomplete(){
-                                    w = $("input#user_navigation_autocomplete").width();
-                                    $(".yourlabs-autocomplete").first().css("width", w);
-                                }
-
-                                $(window).resize(function() { resizeAutocomplete();});
-                                resizeAutocomplete();
-
-                                $('#user_navigation_autocomplete').yourlabsAutocomplete({
-                                    url: '{% url "user_navigation_autocomplete" %}',
-                                    choiceSelector: 'q',
-                                    placeholder: 'wyszukaj wszędzie...'
-                                }).input.bind('selectChoice', function (e, choice, autocomplete) {
-                                            document.location.href = choice.attr('href');
-                                        });
-
+                    <script type="text/javascript">
+                        $(document).ready(function() {
+                            $(':input[name$=global_nav_value]').on('change', function() {
+                                location.href = $(this).val();
                             });
-                        </script>
-                    </div>
+                        });
+                    </script>
+                    <br/>
                 {% endblock %}
             </div>
         </div>

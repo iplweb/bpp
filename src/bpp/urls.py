@@ -9,6 +9,9 @@ from bpp.views.api import RokHabilitacjiView, PunktacjaZrodlaView, UploadPunktac
 from bpp.views.browse import UczelniaView, WydzialView, JednostkaView, \
     AutorView, ZrodlaView, ZrodloView, AutorzyView, BuildSearch, PracaView, \
     JednostkiView
+from bpp.views.autocomplete import WidocznaJednostkaAutocomplete, \
+    AutorZUczelniAutocopmlete, UserNavigationAutocomplete, \
+    JednostkaAutocomplete, ZrodloAutocomplete, AutorAutocomplete
 from bpp.views.raporty import RankingAutorow, \
     PobranieRaportu, PodgladRaportu, KasowanieRaportu, \
     RaportJednostek2012, RaportKronikaUczelni, RaportJednostek, \
@@ -96,6 +99,41 @@ urlpatterns = [
 
     url(r'^$', bpp.views.root, name="root"),
 
-    url(r'^update-multiseek-title/$', bpp.views.update_multiseek_title, name='update_multiseek_title')
+    url(r'^update-multiseek-title/$', bpp.views.update_multiseek_title,
+        name='update_multiseek_title'),
 
+    url(
+        r'^jednostka-widoczna-autocomplete/$',
+        WidocznaJednostkaAutocomplete.as_view(),
+        name='jednostka-widoczna-autocomplete',
+    ),
+
+    url(
+        r'^jednostka-autocomplete/$',
+        JednostkaAutocomplete.as_view(),
+        name='jednostka-autocomplete',
+    ),
+
+    url(
+        r'^zrodlo-autocomplete/$',
+        ZrodloAutocomplete.as_view(),
+        name='zrodlo-autocomplete',
+    ),
+
+    url(
+        r'^autor-z-uczelni-autocomplete/$',
+        AutorZUczelniAutocopmlete.as_view(),
+        name='autor-z-uczelni-autocomplete',
+    ),
+    url(
+        r'^autor-autocomplete/$',
+        AutorAutocomplete.as_view(),
+        name='autor-autocomplete',
+    ),
+
+    url(
+        r'^user-navigation-autocomplete/$',
+        UserNavigationAutocomplete.as_view(),
+        name='user-navigation-autocomplete'
+    )
 ]

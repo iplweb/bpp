@@ -10,7 +10,6 @@
         <link href="{% static "grappelli/jquery/ui/jquery-ui.min.css" %}" rel="stylesheet" type="text/css" media="screen" />
         <link href="{% static "grappelli/stylesheets/screen.css" %}" rel="stylesheet" type="text/css" media="all" />
         <link href="{% static "grappelli/stylesheets/mueller/grid/output.css" %}" rel="stylesheet" type="text/css" media="screen" />
-        <link rel="stylesheet" type="text/css" href="{% static 'autocomplete_light/style.css' %}" />
         <link rel="stylesheet" type="text/css" href="{% static 'kbw-keypad/dist/css/jquery.keypad.css' %}" />
         {% endcompress %}
     {% endblock %}
@@ -57,13 +56,6 @@
 
         <script src="/static/bpp/js/bpp.js" type="text/javascript"></script>
         <script src="{% static "jquery/dist/jquery.min.js" %}" type="text/javascript"></script>
-        {% include 'autocomplete_light/_ajax_csrf.html' %}
-        <script type="text/javascript" src="{% static 'autocomplete_light/django_admin.js' %}"></script>
-        <script type="text/javascript" src="{% static 'autocomplete_light/autocomplete.js' %}"></script>
-        <script type="text/javascript" src="{% static 'autocomplete_light/widget.js' %}"></script>
-        <script type="text/javascript" src="{% static 'autocomplete_light/addanother.js' %}"></script>
-        <script type="text/javascript" src="{% static 'autocomplete_light/text_widget.js' %}"></script>
-        <script type="text/javascript" src="{% static 'autocomplete_light/remote.js' %}"></script>
 
         <script type="text/javascript" src="{% static 'kbw-keypad/dist/js/jquery.plugin.js' %}"></script>
         <script type="text/javascript" src="{% static 'kbw-keypad/dist/js/jquery.keypad.js' %}"></script>

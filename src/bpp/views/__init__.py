@@ -25,7 +25,8 @@ def zapytaj_o_autora(q):
 
 
 def navigation_autocomplete(
-        request, template_name='navigation_autocomplete.html'):
+        request, template_name='XXnavigaXtion_autocomplete.html'):
+    raise NotImplementedError("TODO: DAL")
     q = request.GET.get('q', '').encode("utf-8")
     context = {'q': q}
 
@@ -95,61 +96,6 @@ def navigation_autocomplete(
         look_for_pk = int(q)
         recs = Rekord.objects.filter(object_id=look_for_pk).only("tytul_oryginalny", "content_type_id", "object_id")
         doloz(Rekord, recs)
-    except:
-        pass
-
-    # DSU
-    elements = [(x['label'], x) for x in elements]
-    elements.sort()
-    elements = [x[1] for x in elements]
-
-    context['elements'] = elements
-
-    return shortcuts.render(request, template_name, context)
-
-
-def user_navigation_autocomplete(
-        request, template_name='user_navigation_autocomplete.html'):
-    elements = []
-    q = request.GET.get('q', '').encode("utf-8")
-    context = {'q': q}
-
-    def doloz(model, qset, url, label=lambda x: unicode(x), attr='slug'):
-        no_obj = 0
-
-        for obj in qset:
-            elements.append(dict(
-                model=model._meta.object_name.lower(),
-                label=label(obj),
-                url=reverse(url, args=(getattr(obj, attr), ))
-            ))
-
-    def doloz_rekord(qset):
-        for obj in qset:
-            elements.append(dict(
-                model=obj.content_type.model,
-                label=obj.tytul_oryginalny,
-                url=reverse(
-                    "bpp:browse_praca",
-                    args=(obj.content_type.model, obj.object_id))
-            ))
-
-    doloz(
-        Jednostka, Jednostka.objects.fulltext_filter(q).only("pk", "nazwa")[:5],
-        'bpp:browse_jednostka')
-
-    doloz(Autor, Autor.objects.fulltext_filter(q).only("pk", "nazwisko", "imiona", "poprzednie_nazwiska", "tytul").select_related()[:5],
-          'bpp:browse_autor')
-
-    doloz(Zrodlo,
-          Zrodlo.objects.fulltext_filter(q).only("pk", "nazwa", "poprzednia_nazwa")[:5],
-          'bpp:browse_zrodlo')
-
-    doloz_rekord(Rekord.objects.fulltext_filter(q).only("tytul_oryginalny", "content_type__model", "object_id")[:6])
-
-    try:
-        look_for_pk = int(q)
-        doloz_rekord(Rekord.objects.filter(object_id=look_for_pk))
     except:
         pass
 

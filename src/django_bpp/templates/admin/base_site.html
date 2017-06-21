@@ -11,9 +11,6 @@
 {% block nav-global %}
     {% if user.is_active and user.is_staff %}
         {% if not is_popup %}
-            {% include 'navigation_autocomplete_script.html' %}
-            {% include 'navigation_autocomplete_input.html' %}
-
             <div style="display: none;" id="show-after-load">
                 {% admin_tools_render_menu %}
             </div>
