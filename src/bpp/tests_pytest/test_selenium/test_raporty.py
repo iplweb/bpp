@@ -46,14 +46,6 @@ def jednostka_raportow(typy_odpowiedzialnosci):
     return j
 
 @pytest.mark.django_db
-def test_submit(raporty_browser, jednostka_raportow, live_server, typy_odpowiedzialnosci):
-    raporty_browser.visit(live_server + reverse("bpp:raport_jednostek_formularz"))
-    submit_page(raporty_browser)
-    time.sleep(3)
-
-    assert "To pole jest wymagane" in raporty_browser.html
-
-@pytest.mark.django_db
 def test_ranking_autorow(raporty_browser, jednostka_raportow, live_server, typy_odpowiedzialnosci):
     raporty_browser.visit(live_server + reverse("bpp:ranking_autorow_formularz"))
     assert 'value="%s"' % (CURRENT_YEAR - 1) in raporty_browser.html
@@ -66,7 +58,8 @@ def test_raport_jednostek(raporty_browser, jednostka_raportow, live_server, typy
     elem = raporty_browser.find_by_id("id_jednostka-autocomplete")[0]
     elem.type("Jedn")
     time.sleep(2)
-    elem.type(Keys.TAB)
+    elem.type(Keys.DOWN)
+    elem.type(Keys.ENTER)
     time.sleep(1)
 
     raporty_browser.execute_script('$("input[name=od_roku]:visible").val("' + str(CURRENT_YEAR) + '")')

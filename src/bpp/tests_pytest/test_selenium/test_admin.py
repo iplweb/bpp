@@ -288,12 +288,6 @@ def autorform_browser(preauth_admin_browser, db, live_server):
     return preauth_admin_browser
 
 
-def test_autorform_jednostka_bug_wydawnictwo_ciagle_zapisz(autorform_browser, autorform_jednostka):
-    with wait_for_page_load(autorform_browser):
-        autorform_browser.find_by_name("_continue").click()
-    assert "To pole jest wymagane." in autorform_browser.html
-
-
 def test_autorform_uzupelnianie_jednostki(autorform_browser, autorform_jednostka):
     set_autocomplete(autorform_browser,
                      "id_wydawnictwo_ciagle_autor_set-0-autor-autocomplete",
@@ -343,7 +337,7 @@ def set_autocomplete(browser, id, entry):
             break
         if start - time.time() > 13:
             raise Exception("Timeout")
-    for elem in ac.type(Keys.TAB, slowly=True):
+    for elem in ac.type([Keys.DOWN, Keys.ENTER], slowly=True):
         pass
     while True:
         if not widget.visible:
