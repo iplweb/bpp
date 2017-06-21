@@ -3,10 +3,12 @@ import os
 import re
 from datetime import datetime, timedelta
 
+from psycopg2._psycopg import adapt
 from unidecode import unidecode
 
 
 non_url = re.compile(r'[^\w-]+')
+
 
 class FulltextSearchMixin:
     fts_field = 'search'
@@ -16,7 +18,12 @@ class FulltextSearchMixin:
         return [x.strip() for x in qstr.split(" ") if x.strip()]
 
     def fulltext_filter(self, qstr):
-        from djorm_pgfulltext.fields import startswith
+
+        def quotes(wordlist):
+            return ["%s" % adapt(x.replace("\\", "")) for x in wordlist]
+
+        def startswith(wordlist):
+            return [x + ":*" for x in quotes(wordlist)]
 
         if qstr == None: qstr = u""
 
