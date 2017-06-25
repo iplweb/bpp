@@ -10,8 +10,10 @@ from bpp.views.browse import UczelniaView, WydzialView, JednostkaView, \
     AutorView, ZrodlaView, ZrodloView, AutorzyView, BuildSearch, PracaView, \
     JednostkiView
 from bpp.views.autocomplete import WidocznaJednostkaAutocomplete, \
-    AutorZUczelniAutocopmlete, UserNavigationAutocomplete, \
-    JednostkaAutocomplete, ZrodloAutocomplete, AutorAutocomplete
+    AutorZUczelniAutocopmlete, GlobalNavigationAutocomplete, \
+    JednostkaAutocomplete, ZrodloAutocomplete, AutorAutocomplete, \
+    ZapisanyJakoAutocomplete, Wydawnictwo_NadrzedneAutocomplete, \
+    PodrzednaPublikacjaHabilitacyjnaAutocomplete, AdminNavigationAutocomplete
 from bpp.views.raporty import RankingAutorow, \
     PobranieRaportu, PodgladRaportu, KasowanieRaportu, \
     RaportJednostek2012, RaportKronikaUczelni, RaportJednostek, \
@@ -132,8 +134,34 @@ urlpatterns = [
     ),
 
     url(
-        r'^user-navigation-autocomplete/$',
-        UserNavigationAutocomplete.as_view(),
-        name='user-navigation-autocomplete'
+        r'^navigation-autocomplete/$',
+        GlobalNavigationAutocomplete.as_view(),
+        name='navigation-autocomplete'
+    ),
+
+    url(
+        r'^admin-navigation-autocomplete/$',
+        AdminNavigationAutocomplete.as_view(),
+        name='admin-navigation-autocomplete'
+    ),
+
+    url(
+        r'^zapisany-jako-autocomplete/$',
+        ZapisanyJakoAutocomplete.as_view(),
+        name='zapisany-jako-autocomplete'
+    ),
+
+    url(
+        r'^wydawnictwo-nadrzedne-autocomplete/$',
+        Wydawnictwo_NadrzedneAutocomplete.as_view(),
+        name='wydawnictwo-nadrzedne-autocomplete'
+    ),
+
+    url(
+        r'^podrzedna-publikacja-habilitacyjna-autocomplete/$',
+        PodrzednaPublikacjaHabilitacyjnaAutocomplete.as_view(),
+        name='podrzedna-publikacja-habilitacyjna-autocomplete'
     )
+
+
 ]

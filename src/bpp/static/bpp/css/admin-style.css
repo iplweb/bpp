@@ -113,3 +113,32 @@ button.charmap {
 .grp-related-widget-tools {
   z-index: -9999 !important;
 }
+
+/* Select2 */
+
+.select2-container  {
+    font-size: 12px;
+    font-weight: bold;
+    min-width: 250px;
+}
+
+.select2-container--default .select2-selection--single {
+    border-radius: 3px;
+    border: 1px solid #aaa;
+}
+
+/* TODO: tam jest <span> i nie przyjmuje :focus... */
+
+.select2-selection--single:hover {
+    box-shadow: #ccc 0 0 6px  ;
+}
+
+.select2-dropdown {
+    box-shadow: #ccc 0 0 6px  ;
+    max-height: 500px;
+    overflow: scroll;
+}
+
+.select2-results {
+    max-height: 100%;
+}

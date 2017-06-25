@@ -14,107 +14,6 @@ from bpp.models import Autor, Jednostka, Zrodlo, \
     Uczelnia
 
 
-def zapytaj_o_autora(q):
-    myQ = Q()
-    for elem in q.split(" "):
-        myQ = myQ & Q(
-            q(nazwisko__istartswith=elem) |
-            q(imiona__istartswith=elem) |
-            q(poprzednie_nazwiska__istartswith=elem))
-    return myQ
-
-
-def navigation_autocomplete(
-        request, template_name='XXnavigaXtion_autocomplete.html'):
-    raise NotImplementedError("TODO: DAL")
-    q = request.GET.get('q', '').encode("utf-8")
-    context = {'q': q}
-
-    # % url admin:bpp_wydawnictwo_zwarte_change wydawnictwo.pk %}
-
-    # element.model
-    # element.label
-    # element.url
-
-    #{% for wydawnictwo in wydawnictwa_zwarte %}
-    #{% for wydawnictwo in wydawnictwa_ciagle %}
-    #{% for patent in patenty %}
-    #{% for praca in prace_doktorskie %}
-    #{% for praca in prace_habilitacyjne %}
-    #{% for jednostka in jednostki %}
-    #{% for autor in autorzy %}
-    #{% for user in users %}
-
-    elements = []
-    user = request.user
-
-    def doloz(model, qset, label=lambda x: unicode(x)):
-
-        for obj in qset:
-
-            if model == Rekord:
-                app_label = 'bpp'
-                object_name = obj.content_type.model
-                object_pk = obj.object_id
-            else:
-                app_label = obj._meta.app_label
-                object_name = obj._meta.object_name.lower()
-                object_pk = obj.pk
-
-            url = 'admin:%s_%s_change' % (app_label, object_name)
-
-            elements.append(dict(
-                model=object_name,
-                label=label(obj),
-                url=reverse(url, args=(object_pk, ))
-            ))
-
-    if user.is_staff or user.groups.filter(name="administracja"):
-        User = get_user_model()
-
-        qset = User.objects.filter(
-            Q(username__istartswith=q) |
-            Q(first_name__istartswith=q) |
-            Q(last_name__istartswith=q) |
-            Q(email__istartswith=q)
-        ).distinct()[:6]
-
-        doloz(User, qset)
-
-    if user.is_staff or user.groups.filter(name="struktura"):
-        doloz(Jednostka, Jednostka.objects.fulltext_filter(q)[:6])
-
-    if user.is_staff or user.groups.filter(name="indeks_autorow") or \
-            user.groups.filter(name="wprowadzanie danych"):
-
-        doloz(Autor, Autor.objects.fulltext_filter(q)[:6])
-        doloz(Zrodlo, Zrodlo.objects.fulltext_filter(q)[:6])
-        doloz(Rekord, Rekord.objects.fulltext_filter(q).only(
-            "tytul_oryginalny", "content_type_id", "object_id").select_related()[:6])
-
-    try:
-        look_for_pk = int(q)
-        recs = Rekord.objects.filter(object_id=look_for_pk).only("tytul_oryginalny", "content_type_id", "object_id")
-        doloz(Rekord, recs)
-    except:
-        pass
-
-    # DSU
-    elements = [(x['label'], x) for x in elements]
-    elements.sort()
-    elements = [x[1] for x in elements]
-
-    context['elements'] = elements
-
-    return shortcuts.render(request, template_name, context)
-
-
-def autorform_dependant_js(request, klass):
-    return shortcuts.render(request, "autorform_dependant.js", {
-        'class': klass.lower()
-    }, content_type='text/javascript')
-
-
 def root(request):
     """Zachowanie domyślne: przekieruj nas na pierwszą dostępną w bazie danych
     uczelnię, lub wyświetl komunikat jeżeli nie ma żadnych uczelni wpisanych do
@@ -143,7 +42,6 @@ def favicon(request):
 
 
 from .mymultiseek import *
-
 
 @csrf_exempt
 def update_multiseek_title(request):

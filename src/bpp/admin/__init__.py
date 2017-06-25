@@ -1,4 +1,12 @@
 # -*- encoding: utf-8 -*-
+from dal.forms import FutureModelForm
+from dal_queryset_sequence.fields import QuerySetSequenceModelField
+from dal_select2_queryset_sequence.widgets import \
+    QuerySetSequenceSelect2
+from queryset_sequence import QuerySetSequence
+
+from bpp.jezyk_polski import warianty_zapisanego_nazwiska
+from bpp.models.praca_habilitacyjna import Publikacja_Habilitacyjna
 
 try:
     import autocomplete_light
@@ -11,7 +19,6 @@ except ImportError:
 
 from django import forms
 from django.contrib import admin
-from django.contrib.admin.filters import SimpleListFilter
 from django.contrib.auth.forms import UserCreationForm
 from django.db.models.fields import BLANK_CHOICE_DASH
 from django.utils.safestring import mark_safe
@@ -25,7 +32,7 @@ from bpp.models import Jezyk, Typ_KBN, Uczelnia, Wydzial, \
     Zrodlo, Punktacja_Zrodla, Typ_Odpowiedzialnosci, Status_Korekty, \
     Zrodlo_Informacji, Wydawnictwo_Ciagle, Charakter_Formalny, \
     Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor, Praca_Doktorska, \
-    Praca_Habilitacyjna, Patent, Patent_Autor, BppUser, Publikacja_Habilitacyjna
+    Praca_Habilitacyjna, Patent, Patent_Autor, BppUser # Publikacja_Habilitacyjna
 
 # Proste tabele
 from bpp.models.openaccess import Tryb_OpenAccess_Wydawnictwo_Ciagle, Tryb_OpenAccess_Wydawnictwo_Zwarte, \
@@ -209,9 +216,7 @@ class Autor_JednostkaInlineForm(forms.ModelForm):
 
 class Autor_JednostkaInline(admin.TabularInline):
     model = Autor_Jednostka
-    # TODO: DAL
     form = Autor_JednostkaInlineForm
-    # form = modelform_factory(Autor_Jednostka, fields="__all__")
     extra = 1
 
 
@@ -307,11 +312,23 @@ class Punktacja_ZrodlaInline(admin.TabularInline):
     extra = 1
 
 
+
+class Redakcja_ZrodlaForm(forms.ModelForm):
+    redaktor = forms.ModelChoiceField(
+        queryset=Autor.objects.all(),
+        widget=autocomplete.ModelSelect2(
+            url='bpp:autor-autocomplete')
+    )
+
+    model = Redakcja_Zrodla
+
+
 class Redakcja_ZrodlaInline(admin.TabularInline):
     model = Redakcja_Zrodla
     extra = 1
-    # TODO: DAL
-    # form = modelform_factory(Redakcja_Zrodla, fields="__all__")
+    form = Redakcja_ZrodlaForm
+    class Meta:
+        fields = "__all__"
 
 
 class ZrodloForm(forms.ModelForm):
@@ -373,22 +390,74 @@ def generuj_inline_dla_autorow(baseModel):
                 url='bpp:jednostka-autocomplete')
         )
 
+        zapisany_jako = forms.ChoiceField(
+            choices=[],
+            widget=autocomplete.Select2(
+                url="bpp:zapisany-jako-autocomplete",
+                forward=['autor']
+            )
+        )
+
+        typ_odpowiedzialnosci = forms.ModelChoiceField(
+            queryset=Typ_Odpowiedzialnosci.objects.all(),
+            initial=Typ_Odpowiedzialnosci.objects.filter(skrot='aut.').first()
+        )
+
+        def __init__(self, *args, **kwargs):
+            super(baseModel_AutorForm, self).__init__(*args, **kwargs)
+
+            # Nowy rekord
+            data = kwargs.get("data")
+            if data:
+                zapisany_jako = data.get(kwargs['prefix'] + '-zapisany_jako')
+                if not zapisany_jako:
+                    return
+
+                autor = Autor.objects.get(pk=int(
+                    data[kwargs['prefix'] + '-autor']))
+                initial = zapisany_jako
+            else:
+                instance = kwargs.get('instance')
+                if not instance:
+                    return
+
+                autor = instance.autor
+                initial = instance.zapisany_jako
+
+            warianty = warianty_zapisanego_nazwiska(
+                autor.imiona,
+                autor.nazwisko,
+                autor.poprzednie_nazwiska)
+            warianty = list(warianty)
+
+            if initial not in warianty:
+                warianty.append(instance.zapisany_jako)
+
+            self.initial['zapisany_jako'] = initial
+
+            self.fields['zapisany_jako'] = forms.ChoiceField(
+                choices=zip(warianty, warianty),
+                initial=initial,
+                widget=autocomplete.Select2(
+                        url="bpp:zapisany-jako-autocomplete",
+                        forward=['autor']
+                    )
+            )
+
         class Media:
-            js = ["../dynjs/autorform_dependant.js/%s/" % baseModel.__name__]
+            js = ["/static/bpp/js/autorform_dependant.js"]
 
         class Meta:
             fields = ["autor", "jednostka", "typ_odpowiedzialnosci", "zapisany_jako",
                       "zatrudniony", "kolejnosc"]
             model = baseModel
             widgets = {
-            #'zapisany_jako': autocomplete_light.widgets.TextWidget(
-            #               'AutocompleteZapisaneNazwiska'),
                 'kolejnosc': HiddenInput
             }
 
     class baseModel_AutorInline(admin.TabularInline):
         model = baseModel
-        extra = 1
+        extra = 0
         form = baseModel_AutorForm
         sortable_field_name = "kolejnosc"
 
@@ -428,7 +497,7 @@ class Button(forms.Widget):
                 type="button",
                 name=name)
 
-        return mark_safe(u'<button%s>%s</button>' % (
+        return mark_safe(u'<input type="button"%s value="%s" />' % (
             forms.widgets.flatatt(final_attrs),
             final_attrs['label'],
         ))
@@ -442,15 +511,19 @@ class Wydawnictwo_Ciagle_Form(forms.ModelForm):
             url='bpp:zrodlo-autocomplete')
     )
 
+    uzupelnij_punktacje = forms.CharField(
+        max_length=50,
+        required=False,
+        label="Uzupełnij punktację",
+        widget=Button(dict(
+            id='id_uzupelnij_punktacje',
+            label=u"Uzupełnij punktację",
+        ))
+    )
+
+
     class Meta:
         fields = "__all__"
-
-Wydawnictwo_Ciagle_Form.base_fields['uzupelnij_punktacje'] = \
-   forms.Field(
-           'uzupelnij_punktacje', widget=Button(dict(
-                   name='uzupelnij_punktacje',
-                   label=u'Uzupełnij punktację',
-                   id='uzupelnij_punktacje')))
 
 class Wydawnictwo_CiagleAdmin(KolumnyZeSkrotamiMixin, AdnotacjeZDatamiOrazPBNMixin, CommitedModelAdmin):
     formfield_overrides = NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW
@@ -551,11 +624,21 @@ class Wydawnictwo_ZwarteAdmin_Baza(CommitedModelAdmin):
     wydawnictwo_nadrzedne_col.short_description = "Wydawnictwo nadrzędne"
     wydawnictwo_nadrzedne_col.admin_order_field = "wydawnictwo_nadrzedne__tytul_oryginalny"
 
+class Wydawnictwo_ZwarteForm(forms.ModelForm):
+    wydawnictwo_nadrzedne = forms.ModelChoiceField(
+        queryset=Wydawnictwo_Zwarte.objects.all(),
+        widget=autocomplete.ModelSelect2(
+            url='bpp:wydawnictwo-nadrzedne-autocomplete',
+            attrs=dict(style="width: 746px;")
+        )
+    )
 
+    class Meta:
+        fields = "__all__"
 
 class Wydawnictwo_ZwarteAdmin(KolumnyZeSkrotamiMixin, AdnotacjeZDatamiOrazPBNMixin, Wydawnictwo_ZwarteAdmin_Baza):
-    # TODO: DAL
-    # form = modelform_factory(Wydawnictwo_Zwarte, fields="__all__")
+    form = Wydawnictwo_ZwarteForm
+
     inlines = (generuj_inline_dla_autorow(Wydawnictwo_Zwarte_Autor),)
 
     list_filter = Wydawnictwo_ZwarteAdmin_Baza.list_filter + [CalkowitaLiczbaAutorowFilter,]
@@ -609,7 +692,25 @@ class Praca_Doktorska_Habilitacyjna_Admin_Base(AdnotacjeZDatamiMixin,
     list_filter = ['status_korekty', 'afiliowana', 'recenzowana', 'typ_kbn']
 
 
-class Praca_DoktorskaForm(forms.ModelForm): # TODO: DAL AutocompleteLightModelForm):
+class Praca_DoktorskaForm(forms.ModelForm):
+    autor = forms.ModelChoiceField(
+        queryset=Autor.objects.all(),
+        widget=autocomplete.ModelSelect2(
+            url='bpp:autor-z-uczelni-autocomplete')
+    )
+
+    jednostka = forms.ModelChoiceField(
+        queryset=Jednostka.objects.all(),
+        widget=autocomplete.ModelSelect2(
+            url='bpp:jednostka-autocomplete')
+    )
+
+    promotor = forms.ModelChoiceField(
+        queryset=Autor.objects.all(),
+        widget=autocomplete.ModelSelect2(
+            url='bpp:autor-z-uczelni-autocomplete')
+    )
+
     class Meta:
         model = Praca_Doktorska
         fields = "__all__"
@@ -637,29 +738,54 @@ admin.site.register(Praca_Doktorska, Praca_DoktorskaAdmin)
 # Praca Habilitacyjna
 #
 #
-class Publikacja_Habilitacyjna_Form(forms.ModelForm):
+class Publikacja_HabilitacyjnaForm(FutureModelForm):
+    publikacja = QuerySetSequenceModelField(
+        queryset=QuerySetSequence(
+            Wydawnictwo_Zwarte.objects.all(),
+            Wydawnictwo_Ciagle.objects.all(),
+            Patent.objects.all()
+        ),
+        required=True,
+        widget=QuerySetSequenceSelect2(
+            'bpp:podrzedna-publikacja-habilitacyjna-autocomplete',
+            forward=['autor'],
+            attrs=dict(style="width: 764px;")
+        ),
+    )
+
     class Meta:
         model = Publikacja_Habilitacyjna
         widgets = {'kolejnosc': HiddenInput}
-        fields = "__all__"
+        fields = ['publikacja', 'kolejnosc']
 
 
 class Publikacja_Habilitacyjna_Inline(admin.TabularInline):
     model = Publikacja_Habilitacyjna
-    form = Publikacja_Habilitacyjna_Form
+    form = Publikacja_HabilitacyjnaForm
     extra = 1
     sortable_field_name = "kolejnosc"
 
-    related_lookup_fields = {
-        'generic': [['content_type', 'object_id']],
-    }
 
+class Praca_HabilitacyjnaForm(forms.ModelForm):
+    autor = forms.ModelChoiceField(
+        queryset=Autor.objects.all(),
+        widget=autocomplete.ModelSelect2(
+            url='bpp:autor-z-uczelni-autocomplete')
+    )
+
+    jednostka = forms.ModelChoiceField(
+        queryset=Jednostka.objects.all(),
+        widget=autocomplete.ModelSelect2(
+            url='bpp:jednostka-autocomplete')
+    )
+
+    class Meta:
+        fields = "__all__"
 
 class Praca_HabilitacyjnaAdmin(Praca_Doktorska_Habilitacyjna_Admin_Base):
     inlines = [Publikacja_Habilitacyjna_Inline, ]
 
-    # TODO: DAL
-    # form = modelform_factory(Praca_Habilitacyjna, fields="__all__")
+    form = Praca_HabilitacyjnaForm
 
     fieldsets = (
         ('Praca habilitacyjna', {
@@ -677,8 +803,6 @@ admin.site.register(Praca_Habilitacyjna, Praca_HabilitacyjnaAdmin)
 
 
 class Patent_Admin(AdnotacjeZDatamiMixin, Wydawnictwo_ZwarteAdmin_Baza):
-    # TODO: DAL
-    # form = modelform_factory(Patent, fields="__all__")
     inlines = (generuj_inline_dla_autorow(Patent_Autor),)
 
     list_display = ['tytul_oryginalny', 'ostatnio_zmieniony']

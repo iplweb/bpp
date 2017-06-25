@@ -29,7 +29,6 @@ VALUES = [
 ]
 AUTOCOMPLETES = ["Autor", "Jednostka"]
 
-
 @pytest.mark.django_db
 @pytest.mark.parametrize("autocomplete_name", AUTOCOMPLETES)
 @pytest.mark.parametrize("qstr", VALUES)

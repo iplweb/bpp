@@ -12,35 +12,8 @@ from bpp.tests.util import any_doktorat, any_habilitacja, any_ciagle, any_autor,
     any_jednostka
 
 from bpp.tests.testutil import UserTestCase, SuperuserTestCase
-from bpp.views import navigation_autocomplete, autorform_dependant_js
 from bpp.views.browse import AutorzyView, AutorView
 from bpp.views.utils import JsonResponse
-
-class TestViews(UserTestCase):
-    def test_navigation_autocomplete(self):
-        req = self.factory.get('/', {'q': 'test'})
-        req.session = {}
-        navigation_autocomplete(req)
-
-        # dla superusera dochodzi parę opcji w wyszukiwaniu
-        # zakładamy, że poniższa linia znajdzie przyajmniej JEDNEGO usera, autora i zrodlo
-        a = mommy.make(Autor, nazwisko='Test autor testowski')
-        z = mommy.make(Zrodlo, nazwa='Zrodlo test testowe')
-        auth.get_user_model().objects.create_user('Test test user X', 'foo',
-                                                  'bar')
-        req.user = auth.get_user_model().objects.create_superuser('Test user',
-                                                                  'pass', 'ema')
-        ret = navigation_autocomplete(req)
-
-        self.assertContains(ret, 'Test autor')
-        self.assertContains(ret, 'Zrodlo test')
-        self.assertContains(ret, 'Test user')
-
-    def test_autorform_dependant_js(self):
-        req = self.factory.get('/')
-        req.session = {}
-        autorform_dependant_js(req, "nazwa_klasy")
-
 
 
 class TestUtils(UserTestCase):

@@ -163,9 +163,10 @@
                     {{ global_nav_form.media }}
 
                     <script type="text/javascript">
-                        $(document).ready(function() {
-                            $(':input[name$=global_nav_value]').on('change', function() {
-                                location.href = $(this).val();
+                        $(document).ready(function () {
+                            $(':input[name$=global_nav_value]').on('change', function () {
+                                location.href = "/global-nav-redir/" + $(this).val() +
+                                    "/?source=user";
                             });
                         });
                     </script>

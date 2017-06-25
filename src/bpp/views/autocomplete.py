@@ -1,19 +1,40 @@
 # -*- encoding: utf-8 -*-
 
-import json
-
 from dal import autocomplete
-from django import http
+from dal_select2_queryset_sequence.views import Select2QuerySetSequenceView
+from django.contrib.auth.mixins import UserPassesTestMixin
 from django.db.models.query_utils import Q
-from django.template.defaultfilters import safe
-from django.urls.base import reverse
-from django.utils.text import Truncator
+from queryset_sequence import QuerySetSequence
 
+from bpp.jezyk_polski import warianty_zapisanego_nazwiska
 from bpp.lookups import SearchQueryStartsWith
 from bpp.models import Jednostka
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
+from bpp.models.patent import Patent, Patent_Autor
+from bpp.models.praca_doktorska import Praca_Doktorska
+from bpp.models.praca_habilitacyjna import Praca_Habilitacyjna
+from bpp.models.profile import BppUser
+from bpp.models.system import Charakter_Formalny
+from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, \
+    Wydawnictwo_Ciagle_Autor
+from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte, \
+    Wydawnictwo_Zwarte_Autor
 from bpp.models.zrodlo import Zrodlo
+
+
+class Wydawnictwo_NadrzedneAutocomplete(autocomplete.Select2QuerySetView):
+    def get_queryset(self):
+        roz = Charakter_Formalny.objects.get(skrot="ROZ")
+        rozs = Charakter_Formalny.objects.get(skrot="ROZS")
+
+        qs = Wydawnictwo_Zwarte.objects.all()
+        qs = qs.exclude(charakter_formalny=roz)
+        qs = qs.exclude(charakter_formalny=rozs)
+
+        if self.q:
+            qs = qs.filter(tytul_oryginalny__icontains=self.q)
+        return qs
 
 
 class JednostkaAutocomplete(autocomplete.Select2QuerySetView):
@@ -61,73 +82,149 @@ class AutorZUczelniAutocopmlete(AutorAutocomplete):
     pass
 
 
-class UserNavigationAutocomplete(autocomplete.Select2ListView):
-    def get_result_label(self, model, name):
-        return '<img width="16" height="16" src="/static/bpp/svg/%s.svg"> ' \
-               '%s' % (
-                   model, safe(Truncator(name).chars(200)))
+class GlobalNavigationAutocomplete(Select2QuerySetSequenceView):
+    paginate_by = 20
 
-    def get(self, request, *args, **kwargs):
-        return http.HttpResponse(json.dumps({
-            'results': self.get_results()
-        }))
+    def get_queryset(self):
+        if not self.q:
+            return []
 
-    def get_results(self):
-        elements = []
-        q = self.q
+        querysets = []
+        querysets.append(
+            Jednostka.objects.fulltext_filter(self.q).only("pk", "nazwa")
+        )
 
-        def doloz(model, qset, url, label=lambda x: unicode(x), attr='slug'):
-            no_obj = 0
+        querysets.append(
+            Autor.objects.fulltext_filter(self.q).only(
+                "pk", "nazwisko", "imiona", "poprzednie_nazwiska",
+                "tytul").select_related("tytul")
+        )
 
-            for obj in qset:
-                elements.append(dict(
-                    text=self.get_result_label(
-                        model=model._meta.object_name.lower(),
-                        name=label(obj)),
-                    id=reverse(url, args=(getattr(obj, attr),))
-                ))
+        querysets.append(
+            Zrodlo.objects.fulltext_filter(self.q).only(
+                "pk", "nazwa", "poprzednia_nazwa")
+        )
 
-        def doloz_rekord(qset):
-            for obj in qset:
-                elements.append(dict(
-                    text=self.get_result_label(
-                        model=obj.content_type.model,
-                        name=obj.tytul_oryginalny),
-                    id=reverse(
-                        "bpp:browse_praca",
-                        args=(obj.content_type.model, obj.object_id))
-                ))
+        querysets.append(
+            Rekord.objects.fulltext_filter(self.q).only(
+                "tytul_oryginalny", "content_type__model", "object_id")
+        )
 
-        doloz(
-            Jednostka,
-            Jednostka.objects.fulltext_filter(q).only("pk", "nazwa")[:5],
-            'bpp:browse_jednostka')
+        ret = QuerySetSequence(*querysets)
+        return self.mixup_querysets(ret)
 
-        doloz(Autor,
-              Autor.objects.fulltext_filter(q).only("pk", "nazwisko", "imiona",
-                                                    "poprzednie_nazwiska",
-                                                    "tytul").select_related()[
-              :5],
-              'bpp:browse_autor')
 
-        doloz(Zrodlo,
-              Zrodlo.objects.fulltext_filter(q).only("pk", "nazwa",
-                                                     "poprzednia_nazwa")[:5],
-              'bpp:browse_zrodlo')
+class StaffRequired(UserPassesTestMixin):
+    def test_func(self):
+        return self.request.user.is_staff
 
-        doloz_rekord(Rekord.objects.fulltext_filter(q).only("tytul_oryginalny",
-                                                            "content_type__model",
-                                                            "object_id")[:6])
+
+class AdminNavigationAutocomplete(StaffRequired, Select2QuerySetSequenceView):
+    paginate_by = 30
+
+    def get_queryset(self):
+        if not self.q:
+            return []
+
+        querysets = []
+
+        querysets.append(
+            BppUser.objects.filter(username__icontains=self.q).only(
+                "pk", "username"))
+
+        querysets.append(
+            Jednostka.objects.fulltext_filter(self.q).only("pk", "nazwa")
+        )
+
+        querysets.append(
+            Autor.objects.fulltext_filter(self.q).only(
+                "pk", "nazwisko", "imiona", "poprzednie_nazwiska",
+                "tytul").select_related("tytul")
+        )
+
+        querysets.append(
+            Zrodlo.objects.fulltext_filter(self.q).only(
+                "pk", "nazwa", "poprzednia_nazwa")
+        )
+
+        for klass in [Wydawnictwo_Zwarte, Wydawnictwo_Ciagle, Patent,
+                      Praca_Doktorska, Praca_Habilitacyjna]:
+
+            filter = Q(tytul_oryginalny__icontains=self.q)
+
+            try:
+                int(self.q)
+                filter |= Q(pk=self.q)
+            except:
+                pass
+
+            querysets.append(
+                klass.objects.filter(filter).only("tytul_oryginalny")
+            )
+
+        ret = QuerySetSequence(*querysets)
+        return self.mixup_querysets(ret)
+
+
+class ZapisanyJakoAutocomplete(autocomplete.Select2ListView):
+    def get_list(self):
+        autor = self.forwarded.get('autor', None)
+
+        if autor is None:
+            return [u'(... może najpierw wybierz autora)']
 
         try:
-            look_for_pk = int(q)
-            doloz_rekord(Rekord.objects.filter(object_id=look_for_pk))
-        except:
-            pass
+            autor_id = int(autor)
+            a = Autor.objects.get(pk=autor_id)
+        except (KeyError, ValueError):
+            return []
+        return list(
+            warianty_zapisanego_nazwiska(a.imiona, a.nazwisko,
+                                         a.poprzednie_nazwiska)
+        )
 
-        # DSU
-        elements = [(x['text'], x) for x in elements]
-        elements.sort()
-        elements = [x[1] for x in elements]
 
-        return elements
+class PodrzednaPublikacjaHabilitacyjnaAutocomplete(
+    Select2QuerySetSequenceView):
+    def get_queryset(self):
+        wydawnictwa_zwarte = Wydawnictwo_Zwarte.objects.all()
+        wydawnictwa_ciagle = Wydawnictwo_Ciagle.objects.all()
+        patenty = Patent.objects.all()
+
+        qs = QuerySetSequence(wydawnictwa_ciagle,
+                              wydawnictwa_zwarte,
+                              patenty)
+
+        autor_id = self.forwarded.get('autor', None)
+        if autor_id is None:
+            return qs.none()
+
+        try:
+            autor = Autor.objects.get(pk=int(autor_id))
+        except (TypeError, ValueError, Autor.DoesNotExist):
+            return qs.none()
+
+        wydawnictwa_zwarte = Wydawnictwo_Zwarte.objects.filter(
+            pk__in=Wydawnictwo_Zwarte_Autor.objects.filter(
+                autor=autor).only('rekord')
+        )
+        wydawnictwa_ciagle = Wydawnictwo_Ciagle.objects.filter(
+            pk__in=Wydawnictwo_Ciagle_Autor.objects.filter(
+                autor=autor).only("rekord")
+        )
+
+        patenty = Patent.objects.filter(
+            pk__in=Patent_Autor.objects.filter(
+                autor=autor).only("rekord")
+        )
+
+        qs = QuerySetSequence(wydawnictwa_ciagle,
+                              wydawnictwa_zwarte,
+                              patenty)
+
+        if self.q:
+            qs = qs.filter(tytul_oryginalny__icontains=self.q)
+
+        qs = self.mixup_querysets(qs)
+
+        return qs

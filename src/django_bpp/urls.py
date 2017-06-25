@@ -14,6 +14,7 @@ from password_policies.views import PasswordChangeDoneView, PasswordChangeFormVi
 from bpp.forms import MyAuthenticationForm
 from bpp.views.admin import WydawnictwoCiagleTozView, WydawnictwoZwarteTozView, \
     PatentTozView
+from bpp.views.global_nav import global_nav_redir
 from bpp.views.mymultiseek import MyMultiseekResults
 from django_bpp.sitemaps import JednostkaSitemap, django_bpp_sitemaps
 
@@ -32,18 +33,11 @@ js_info_dict = {
 }
 
 import multiseek, loginas, django
-from bpp.views import favicon, autorform_dependant_js, \
-    navigation_autocomplete, root, \
-    javascript_catalog
+from bpp.views import favicon, root, javascript_catalog
 
 urlpatterns = [
 
     url(r'^favicon\.ico$', favicon),
-
-    url(r'^dynjs/autorform_dependant.js/(?P<klass>[\w]+)/$',
-        autorform_dependant_js),
-
-    #url(r'^admin/doc/', include('django.contrib.admindocs.urls')),
 
     url(r'^admin/bpp/wydawnictwo_ciagle/toz/(?P<pk>[\d]+)/$', login_required(WydawnictwoCiagleTozView.as_view()), name="admin:bpp_wydawnictwo_ciagle_toz"),
     url(r'^admin/bpp/wydawnictwo_zwarte/toz/(?P<pk>[\d]+)/$', login_required(WydawnictwoZwarteTozView.as_view()), name="admin:bpp_wydawnictwo_ciagle_toz"),
@@ -120,6 +114,10 @@ urlpatterns = [
         name='sitemaps'),
 
     url(r'', include('webmaster_verification.urls')),
+
+    url(r'^global-nav-redir/(?P<param>.+)/$',
+        global_nav_redir,
+        name='global-nav-redir')
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) \
   + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
