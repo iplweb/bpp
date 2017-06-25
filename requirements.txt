@@ -13,7 +13,7 @@ django-tables2-reports==0.1.0
 pyExcelerator==0.6.4.1
 django-sendfile==0.3.11
 
-unidecode==0.04.18
+unidecode==0.4.20
 django-cookie-law==1.0.1
 openpyxl==1.6.2
 
