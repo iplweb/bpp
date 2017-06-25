@@ -49,10 +49,10 @@ def any_wydzial(nazwa=None, skrot=None, uczelnia_skrot="UCL", **kw):
         uczelnia = any_uczelnia()
 
     if nazwa is None:
-        nazwa = 'Wydział %s' % wydzial_cnt
+        nazwa = u'Wydział %s' % wydzial_cnt
 
     if skrot is None:
-        skrot = "W%s" % wydzial_cnt
+        skrot = u"W%s" % wydzial_cnt
         
     wydzial_cnt += 1
 
