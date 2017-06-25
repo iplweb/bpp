@@ -25,6 +25,10 @@ import random, string
 
 TIME_ZONE = 'Europe/Warsaw'
 LANGUAGE_CODE = 'pl'
+LANGUAGES = (
+    ('pl', 'Polish'),
+)
+
 SITE_ID = 1
 USE_I18N = True
 USE_L10N = True
@@ -90,6 +94,8 @@ MIDDLEWARE_CLASSES = (
 
     'htmlmin.middleware.HtmlMinifyMiddleware',
     'htmlmin.middleware.MarkRequestMiddleware',
+
+    'django.middleware.locale.LocaleMiddleware',
 
     'django.middleware.common.CommonMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',

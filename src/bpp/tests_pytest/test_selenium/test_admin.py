@@ -349,8 +349,9 @@ def test_autorform_kasowanie_autora(autorform_browser, autorform_jednostka):
         autorform_browser,
         "id_wydawnictwo_ciagle_autor_set-0-autor")
 
+    # jednostka nie jest wybrana
     jed = autorform_browser.find_by_id("id_wydawnictwo_ciagle_autor_set-0-jednostka")
-    assert jed.value.find("\n") == -1
+    assert jed.value.find("\n") != -1
 
     autorform_browser.execute_script("window.onbeforeunload = function(e) {};")
 
