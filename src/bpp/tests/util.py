@@ -2,14 +2,18 @@
 
 """Ten moduł zawiera 'normalne', dla ludzi funkcje, które mogą być używane
 do ustawiania testów."""
-from datetime import datetime
-from model_mommy import mommy
 import random
 import time
-from bpp.models import Tytul, Autor, Jednostka, Wydawnictwo_Ciagle, Wydawnictwo_Zwarte, Zrodlo, Wydzial, Uczelnia, Praca_Habilitacyjna, Praca_Doktorska, Typ_KBN, Jezyk, Charakter_Formalny, Patent
-from bpp.models.system import Status_Korekty
+from datetime import datetime
 
 from model_mommy import mommy
+from selenium.webdriver.common.keys import Keys
+
+from bpp.models import Tytul, Autor, Jednostka, Wydawnictwo_Ciagle, \
+    Wydawnictwo_Zwarte, Zrodlo, Wydzial, Uczelnia, Praca_Habilitacyjna, \
+    Praca_Doktorska, Typ_KBN, Jezyk, Charakter_Formalny, Patent
+from bpp.models.system import Status_Korekty
+
 
 def setup_mommy():
     mommy.generators.add('django.contrib.postgres.fields.array.ArrayField',
@@ -190,3 +194,24 @@ def _lookup_fun(klass):
 typ_kbn = _lookup_fun(Typ_KBN)
 jezyk = _lookup_fun(Jezyk)
 charakter = _lookup_fun(Charakter_Formalny)
+
+def scroll_into_view(browser, arg):
+    return browser.execute_script("document.getElementById('" + arg + "').scrollIntoView()")
+
+def select_select2_autocomplete(browser, element_id, value):
+    element = browser.find_by_id(element_id)[0]
+    sibling = element.find_by_xpath("following-sibling::span")
+    #scroll_into_view(browser, sibling)
+    sibling.click()
+    time.sleep(0.1)
+    active = element.parent.switch_to.active_element
+    active.send_keys(value)
+    time.sleep(0.1)
+    element.parent.switch_to.active_element.send_keys(Keys.ENTER)
+    time.sleep(0.2)
+
+def select_select2_clear_selection(browser, element_id):
+    element = browser.find_by_id(element_id)[0]
+    browser.execute_script(
+        "$('#" + element_id + "').val(null).trigger('change')")
+    time.sleep(0.2)

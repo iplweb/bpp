@@ -16,8 +16,10 @@ var autorform_dependant = function () {
             console.log(data['jednostka_id']);
 
             $(':input[name=' + prefix + 'jednostka]').append(
-                '<option value=' + data['jednostka_id'] + '>'
+                '<option selected="selected" value=' + data['jednostka_id'] + '>'
                 + data['nazwa'] + '</option>');
+
+            $(':input[name=' + prefix + 'jednostka]').trigger("change");
 
             $(':input[name=' + prefix + 'zapisany_jako]').val(null).trigger('change');
 

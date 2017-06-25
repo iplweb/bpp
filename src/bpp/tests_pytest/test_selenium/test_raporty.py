@@ -9,7 +9,8 @@ from splinter.browser import Browser
 from celeryui.models import Report
 from django.conf import settings
 from bpp.models.system import Jezyk, Status_Korekty
-from bpp.tests.util import any_autor, CURRENT_YEAR, any_ciagle, any_jednostka
+from bpp.tests.util import any_autor, CURRENT_YEAR, any_ciagle, any_jednostka, \
+    select_select2_autocomplete
 import pytest
 
 @pytest.fixture
@@ -52,15 +53,11 @@ def test_ranking_autorow(raporty_browser, jednostka_raportow, live_server, typy_
 
 
 @pytest.mark.django_db
-def test_raport_jednostek(raporty_browser, jednostka_raportow, live_server, typy_odpowiedzialnosci):
+def test_raport_jednostek(raporty_browser, jednostka_raportow, live_server,
+                          typy_odpowiedzialnosci, typy_kbn):
     raporty_browser.visit(live_server + reverse("bpp:raport_jednostek_formularz"))
 
-    elem = raporty_browser.find_by_id("id_jednostka-autocomplete")[0]
-    elem.type("Jedn")
-    time.sleep(2)
-    elem.type(Keys.DOWN)
-    elem.type(Keys.ENTER)
-    time.sleep(1)
+    select_select2_autocomplete(raporty_browser, "id_jednostka", "Jedn")
 
     raporty_browser.execute_script('$("input[name=od_roku]:visible").val("' + str(CURRENT_YEAR) + '")')
     raporty_browser.execute_script('$("input[name=do_roku]:visible").val("' + str(CURRENT_YEAR) + '")')
