@@ -15,9 +15,24 @@ class FulltextSearchMixin:
 
     def tokenize(self, qstr):
         qstr = qstr.replace("\\", "")
-        return [x.strip() for x in qstr.split(" ") if x.strip()]
+        return [x.strip().encode("utf-8") for x in qstr.split(" ") if
+                x.strip()]
 
     def fulltext_filter(self, qstr):
+        #
+        # def quotes(wordlist):
+        #     ret = []
+        #     for x in wordlist:
+        #         x = x.replace("\\", "").replace("&", "").replace("*", "")
+        #         x = x.strip()
+        #         x = adapt(x)
+        #         if x:
+        #             ret.append(x)
+        #     return ret
+        #
+        # def startswith(wordlist):
+        #     return [x + u":*" for x in quotes(wordlist)]
+
 
         def quotes(wordlist):
             return ["%s" % adapt(x.replace("\\", "")) for x in wordlist]
@@ -25,7 +40,11 @@ class FulltextSearchMixin:
         def startswith(wordlist):
             return [x + ":*" for x in quotes(wordlist)]
 
-        if qstr == None: qstr = u""
+        def negative(wordlist):
+            return ['!' + x for x in startswith(wordlist)]
+
+        if qstr == None:
+            qstr = u""
 
         words = self.tokenize(qstr)
         qstr = " & ".join(startswith(words))
