@@ -44,7 +44,10 @@ jezyk = Getter(Jezyk)
 
 
 class TestRaportKomisjiCentralnej(TestRKCMixin, TestCase):
-    def setUp(self):
+    @classmethod
+    def setUpClass(self):
+        super(TestRaportKomisjiCentralnej, self).setUpClass()
+
         self.jednostka = any_jednostka()
 
         self.autor = any_autor()
@@ -209,16 +212,18 @@ class TestRaportKomisjiCentralnej(TestRKCMixin, TestCase):
 
         Rekord.objects.full_refresh()
 
-        self.raport = RaportKomisjiCentralnej(self.autor)
+        self._zrob()
 
-
+    @classmethod
     def _zrob(self):
-        return self.raport.make_prace()
+        self.raport = RaportKomisjiCentralnej(self.autor)
+        self.s = self.raport.make_prace()
+        return self.s
 
     def _test_tabelka(self, key):
-        s = self._zrob()
+        # s = self._zrob()
         # self.odpal_browser(s)
-        self.assertIn(self.prace[key].tytul_oryginalny, s)
+        self.assertIn(self.prace[key].tytul_oryginalny, self.s)
 
     test_1a = lambda self: self._test_tabelka('1a')
     test_1b = lambda self: self._test_tabelka('1b')
@@ -265,10 +270,8 @@ class TestRaportKomisjiCentralnej(TestRKCMixin, TestCase):
         self.assertIn(u'B. ze zjazd\xf3w krajowych</td><td>liczba: 2', s)
 
     def test_9(self):
-        s = self._zrob()
         for a in ['111', '222', '333', '444', '555', '888']: #  <-- to są sumy
-            self.assertIn(a, s)
-
+            self.assertIn(a, self._zrob())
 
     def test_10a(self):
         self._test_tabelka('10a')
@@ -289,6 +292,7 @@ class TestRaportKomisjiCentralnej(TestRKCMixin, TestCase):
         self.assertIn(u"wieloośrodkowych: 4", s)
 
     def test_punktacja_sumaryczna(self):
+        self.s = self._zrob()
         dct = self.raport.policz_sumy()
 
         def sprawdz_sumy(no, oczekiwany_count, oczekiwany_if, oczekiwany_pk):
