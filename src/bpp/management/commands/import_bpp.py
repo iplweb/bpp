@@ -883,9 +883,6 @@ class Command(BaseCommand):
 
         # Publikacje
         if options['publikacje']:
-            # XXX TODO ---- CZY przypadkiem sekwencje nie powinnismy
-            # ustawiac w run_import
-
             zrob_publikacje(cur, pgsql_conn, options['initial_offset'],
                             options['skip'])
 
