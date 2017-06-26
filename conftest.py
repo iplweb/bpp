@@ -320,7 +320,7 @@ def _patent_maker(**kwargs):
 
 
 @pytest.fixture
-def patent(db, typy_odpowiedzialnosci, jezyki, charaktery_formalne):
+def patent(db, typy_odpowiedzialnosci, jezyki, charaktery_formalne, typy_kbn):
     return _patent_maker(tytul_oryginalny=u'PATENT!')
 
 
@@ -363,9 +363,12 @@ def app(webtest_app, normal_django_user):
     return _webtest_login(webtest_app, NORMAL_DJANGO_USER_LOGIN,
                           NORMAL_DJANGO_USER_PASSWORD)
 
-
 @pytest.fixture(scope='function')
 def admin_app(webtest_app, admin_user):
+    """
+    :rtype: django_webtest.DjangoTestApp
+    """
+
     return _webtest_login(webtest_app, 'admin', 'password')
 
 

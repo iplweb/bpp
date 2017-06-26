@@ -14,13 +14,9 @@ def test_uczelnia(uczelnia):
 def test_wydzial(wydzial):
     assert wydzial != None
 
+@pytest.mark.django_db
 def test_wydawnictwo_ciagle(wydawnictwo_ciagle):
     assert wydawnictwo_ciagle != None
-    print "-" * 78
-    for obj in Status_Korekty, Jezyk, Charakter_Formalny:
-        for elem in obj.objects.all():
-            print elem.pk, elem.skrot, elem.nazwa
-    print "^" * 78
 
 def test_autorzy(autor_jan_nowak, autor_jan_kowalski):
     assert autor_jan_kowalski != None
@@ -34,7 +30,7 @@ def test_jednostka(jednostka):
 def test_zrodlo(zrodlo):
     assert zrodlo != None
 
-
+@pytest.mark.django_db
 def test_wydawnictwo_zwarte(wydawnictwo_zwarte):
     assert wydawnictwo_zwarte != None
 
@@ -76,13 +72,14 @@ def test_praca_habilitacyjna_view(habilitacja):
     cur.execute("SELECT * FROM bpp_praca_habilitacyjna_view")
     assert len(cur.fetchall()) == 1
 
-
+@pytest.mark.django_db
 def test_patent_view(patent):
     # Jeżeli nie ma charatkeruy formalnego 'PAT' oraz typu KBN PO oraz jezyka 'pol.', to sie to nie pokaze
     cur = connection.cursor()
     cur.execute("SELECT * FROM bpp_patent_view")
     assert len(cur.fetchall()) == 1
 
+@pytest.mark.django_db
 def test_wydawnictwo_ciagle_z_dwoma_autorami(wydawnictwo_ciagle_z_dwoma_autorami):
     assert Rekord.objects.all().count() == 1
     assert Wydawnictwo_Ciagle_Autor.objects.all().count() == 2

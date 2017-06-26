@@ -1,12 +1,26 @@
 # -*- encoding: utf-8 -*-
+from django_bpp.selenium_util import wait_for_page_load
 
-def test_loginas(admin_app, admin_user, normal_django_user):
-    res = admin_app.get("/")
-    assert "zalogowany/a jako %s" % admin_user.username in res.content
 
-    # robimy SUDO
-    res = admin_app.get("/login/user/%i/" % normal_django_user.pk)
-    res = admin_app.get("/")
-    assert "zalogowany/a jako %s" % admin_user.username not in res.content
-    assert "zalogowany/a jako %s" % normal_django_user.username in res.content
+def test_loginas(live_server,
+                 preauth_admin_browser,
+                 admin_user,
+                 normal_django_user):
+    """
+    :ptype admin_app: django_webtest.DjangoTestApp
+    """
+    assert u"zalogowany/a jako %s" % admin_user.username in \
+           preauth_admin_browser.html
 
+    with wait_for_page_load(preauth_admin_browser):
+        preauth_admin_browser.visit(
+            live_server.url + "/admin/bpp/bppuser/%s/change/" % \
+                        normal_django_user.pk)
+
+    with wait_for_page_load(preauth_admin_browser):
+        preauth_admin_browser.find_by_id("loginas-link").click()
+
+    assert u"zalogowany/a jako %s" % admin_user.username not in \
+           preauth_admin_browser.html
+    assert u"zalogowany/a jako %s" % normal_django_user.username in \
+           preauth_admin_browser.html
