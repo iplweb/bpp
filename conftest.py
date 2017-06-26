@@ -102,6 +102,7 @@ def preauth_admin_browser(admin_user, client, browser, live_server,
                                       live_server, django_user_model,
                                       django_username_field)
     yield browser
+    browser.execute_script("window.onbeforeunload = function(e) {};")
     browser.quit()
 
 

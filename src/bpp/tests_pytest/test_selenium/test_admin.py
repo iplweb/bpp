@@ -361,7 +361,6 @@ def test_bug_on_user_add(preauth_admin_browser, live_server):
     preauth_admin_browser.fill("username", "as")
     preauth_admin_browser.fill("password1", "as")
     preauth_admin_browser.fill("password2", "as")
-    preauth_admin_browser.find_by_name("_continue").click()
-    time.sleep(3)
-    assert "server error" not in preauth_admin_browser.html
+    with wait_for_page_load(preauth_admin_browser):
+        preauth_admin_browser.find_by_name("_continue").click()
     assert u"Zmień użytkownik" in preauth_admin_browser.html
