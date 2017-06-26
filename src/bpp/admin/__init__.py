@@ -375,6 +375,9 @@ admin.site.register(Zrodlo, ZrodloAdmin)
 # Bibliografia
 from django.forms.widgets import HiddenInput
 
+def get_first_typ_odpowiedzialnosci():
+    return Typ_Odpowiedzialnosci.objects.filter(skrot='aut.').first()
+
 def generuj_inline_dla_autorow(baseModel):
     class baseModel_AutorForm(forms.ModelForm):
 
@@ -400,7 +403,7 @@ def generuj_inline_dla_autorow(baseModel):
 
         typ_odpowiedzialnosci = forms.ModelChoiceField(
             queryset=Typ_Odpowiedzialnosci.objects.all(),
-            initial=Typ_Odpowiedzialnosci.objects.filter(skrot='aut.').first()
+            initial=get_first_typ_odpowiedzialnosci
         )
 
         def __init__(self, *args, **kwargs):
