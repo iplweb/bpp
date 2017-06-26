@@ -6,7 +6,6 @@ import datetime
 import autoslug.fields
 from decimal import Decimal
 from django.db.migrations.operations.special import RunPython, RunSQL
-import djorm_pgfulltext.fields
 import django.utils.timezone
 from django.contrib.postgres.search import SearchVectorField
 from django.contrib.postgres.fields import ArrayField

@@ -9,7 +9,6 @@ from django.db import models
 from lxml.etree import Element, SubElement
 from bpp.models.system import Jezyk
 from bpp.util import FulltextSearchMixin
-from djorm_pgfulltext.fields import VectorField
 from django.contrib.postgres.search import SearchVectorField as VectorField
 from bpp.fields import YearField, DOIField
 
