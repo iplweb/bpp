@@ -1,4 +1,6 @@
 Django==1.10.7
+psycopg2==2.7.1
+
 django-dirtyfields==1.2.1
 django-messages-extends==0.5
 django-autoslug==1.9.3
