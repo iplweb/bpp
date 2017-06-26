@@ -13,9 +13,13 @@ from bpp.tests.util import any_autor, CURRENT_YEAR, any_ciagle, any_jednostka, \
     select_select2_autocomplete
 import pytest
 
+from django_bpp.selenium_util import wait_for_page_load
+
+
 @pytest.fixture
 def raporty_browser(preauth_browser, live_server):
-    preauth_browser.visit(live_server + reverse("bpp:raporty"))
+    with wait_for_page_load(preauth_browser):
+        preauth_browser.visit(live_server + reverse("bpp:raporty"))
     return preauth_browser
 
 def wybrany(browser):
@@ -29,9 +33,8 @@ pytestmark = [pytest.mark.slow, pytest.mark.selenium]
 
 @pytest.mark.django_db
 @pytest.fixture
-def jednostka_raportow(typy_odpowiedzialnosci):
-    Status_Korekty.objects.get_or_create(pk=1, nazwa="przed korektą")
-
+def jednostka_raportow(typy_odpowiedzialnosci, jezyki, statusy_korekt,
+                       typy_kbn, charaktery_formalne):
     j = any_jednostka(nazwa="Jednostka")
     a = any_autor()
 
@@ -47,14 +50,12 @@ def jednostka_raportow(typy_odpowiedzialnosci):
     return j
 
 @pytest.mark.django_db
-def test_ranking_autorow(raporty_browser, jednostka_raportow, live_server, typy_odpowiedzialnosci):
+def test_ranking_autorow(raporty_browser, jednostka_raportow, live_server):
     raporty_browser.visit(live_server + reverse("bpp:ranking_autorow_formularz"))
     assert 'value="%s"' % (CURRENT_YEAR - 1) in raporty_browser.html
 
-
 @pytest.mark.django_db
-def test_raport_jednostek(raporty_browser, jednostka_raportow, live_server,
-                          typy_odpowiedzialnosci, typy_kbn):
+def test_raport_jednostek(raporty_browser, jednostka_raportow, live_server):
     raporty_browser.visit(live_server + reverse("bpp:raport_jednostek_formularz"))
 
     select_select2_autocomplete(raporty_browser, "id_jednostka", "Jedn")
@@ -66,10 +67,9 @@ def test_raport_jednostek(raporty_browser, jednostka_raportow, live_server,
 
     assert '/bpp/raporty/raport-jednostek-2012/%s/%s/' % (jednostka_raportow.pk, CURRENT_YEAR) in raporty_browser.url
 
-
 @pytest.mark.django_db
 def test_submit_kronika_uczelni(raporty_browser, jednostka_raportow,
-                                live_server, typy_odpowiedzialnosci):
+                                live_server):
     c = Report.objects.all().count
     assert c() == 0
 

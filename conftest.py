@@ -88,17 +88,21 @@ def _preauth_session_id_helper(username, password, client, browser,
 @pytest.fixture
 def preauth_browser(normal_django_user, client, browser, live_server,
                     django_user_model, django_username_field):
-    return _preauth_session_id_helper(
+    browser = _preauth_session_id_helper(
         NORMAL_DJANGO_USER_LOGIN, NORMAL_DJANGO_USER_PASSWORD, client,
         browser, live_server, django_user_model, django_username_field)
+    yield browser
+    browser.quit()
 
 
 @pytest.fixture
 def preauth_admin_browser(admin_user, client, browser, live_server,
                           django_user_model, django_username_field):
-    return _preauth_session_id_helper('admin', 'password', client, browser,
+    browser = _preauth_session_id_helper('admin', 'password', client, browser,
                                       live_server, django_user_model,
                                       django_username_field)
+    yield browser
+    browser.quit()
 
 
 @pytest.fixture
