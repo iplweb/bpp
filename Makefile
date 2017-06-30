@@ -132,3 +132,6 @@ demo-vm-cleanup:
 	VBoxManage unregistervm Demo\ BPP\ `python src/django_bpp/version.py` --delete
 
 demo-vm: vagrantclean staging demo-vm-ansible demo-vm-clone demo-vm-cleanup
+
+travis: distclean dockerclean
+	make -f Makefile.docker travis
