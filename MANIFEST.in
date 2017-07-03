@@ -19,5 +19,6 @@ recursive-exclude src/django_bpp/staticroot/globule *
 recursive-include src/templates/* *.html *.js *.css *.mo *.po *.wav *.jpg *.png *.svg *.json
 
 recursive-include src/bpp/migrations *.sql *.txt
+recursive-include src/bpp/fixtures *
 
 recursive-include docs *.rst conf.py Makefile make.bat *.jpg *.png *.gif
