@@ -23,7 +23,7 @@ class Patent_Autor(BazaModeluOdpowiedzialnosciAutorow):
               # Tu musi być autor, inaczej admin nie pozwoli wyedytować
              ('rekord', 'autor', 'kolejnosc')]
 
-@six.python2_unicode_compatible
+@six.python_2_unicode_compatible
 class Patent(ModelZOpisemBibliograficznym, ModelZRokiem, ModelZeStatusem,
              ModelZWWW, ModelAfiliowanyRecenzowany, ModelPunktowany,
              ModelZeSzczegolami, ModelZInformacjaZ, ModelZAdnotacjami,

@@ -31,7 +31,7 @@ class Zasieg_Zrodla(ModelZNazwa):
         verbose_name_plural = u'zasięg źródeł'
         app_label = 'bpp'
 
-@six.python2_unicode_compatible
+@six.python_2_unicode_compatible
 class Redakcja_Zrodla(models.Model):
     """Informacja o tym, że ktoś jest redaktorem danego źródła - w latach,
     od - do."""

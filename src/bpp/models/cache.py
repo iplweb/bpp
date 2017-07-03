@@ -302,7 +302,7 @@ class RekordManager(FulltextSearchMixin, models.Manager):
     #                     using=self._db, hints=self._hints)
     #
 
-@six.python2_unicode_compatible
+@six.python_2_unicode_compatible
 class Rekord(ModelPunktowanyBaza, ModelZOpisemBibliograficznym,
              ModelZRokiem, ModelZeSzczegolami, ModelAfiliowanyRecenzowany,
              models.Model):

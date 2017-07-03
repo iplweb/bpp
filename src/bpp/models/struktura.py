@@ -45,7 +45,7 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         """Widoczne wydziały -- do pokazania na WWW"""
         return Wydzial.objects.filter(uczelnia=self, widoczny=True)
 
-@six.python2_unicode_compatible
+@six.python_2_unicode_compatible
 class Wydzial(ModelZAdnotacjami, ModelZPBN_ID):
     uczelnia = models.ForeignKey(Uczelnia)
     nazwa = models.CharField(max_length=512, unique=True)

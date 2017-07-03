@@ -259,7 +259,7 @@ class ModelTypowany(models.Model):
     class Meta:
         abstract = True
 
-@python_2_unicode_compatible
+@six.python_2_unicode_compatible
 class BazaModeluOdpowiedzialnosciAutorow(models.Model):
     """Bazowa klasa dla odpowiedzialności autorów (czyli dla przypisania
     autora do czegokolwiek innego). Zawiera wszystkie informacje dla autora,
