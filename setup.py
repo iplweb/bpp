@@ -9,11 +9,23 @@ with open('README.rst', encoding="utf-8") as readme_file:
 with open('HISTORY.rst') as history_file:
     history = history_file.read()
     
-reqs = lambda fn: list([x.strip() for x in open(fn).readlines() if x.strip() and not x[:1] in ["#", "-"] and not x.startswith("git+https")])
+def parse_reqs(fn):
+    for line in open(fn).readlines():
+        line = line.strip()
+        if line:
 
-requirements = reqs("requirements.txt")
+            if line.startswith("#") or line.startswith("-r"):
+                continue
 
-test_requirements = reqs("requirements_dev.txt") + requirements
+            if line.startswith("git+https"):
+                _ignore, line = line.split("#egg=", 2)
+
+            yield line
+
+
+requirements = list(parse_reqs("requirements.txt"))
+
+test_requirements = list(parse_reqs("requirements_dev.txt")) + requirements
 
 setup(
     name='django-bpp',
