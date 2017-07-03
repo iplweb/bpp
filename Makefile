@@ -74,8 +74,8 @@ assets:
 # Wymaga:
 # 1) zainstalowanych pakietów z requirements.txt i requirements_dev.txt przez pip
 # 2) yarn, grunt-cli, npm, bower
-bdist_wheel: install-wheels assets clean
-	python setup.py bdist_wheel
+bdist_wheel: clean install-wheels assets 
+	${PYTHON} setup.py bdist_wheel
 
 # cel: tests
 # Uruchamia testy całego site'u za pomocą docker-compose. Wymaga zbudowanych 
@@ -103,7 +103,7 @@ download:
 	fab -H zarzadca@bpp.umlub.pl download_db
 
 migrate: 
-	cd src && python manage.py migrate
+	cd src && ${PYTHON} manage.py migrate
 
 download-and-migrate: download migrate
 	@echo "Done!"
@@ -131,8 +131,8 @@ setup-lo0:
 # cel: release
 # PyPI release
 release: clean assets
-	python setup.py sdist upload
-	python setup.py bdist_wheel upload
+	${PYTHON} setup.py sdist upload
+	${PYTHON} setup.py bdist_wheel upload
 
 # cel: staging
 # Konfiguruje system django-bpp za pomocą Ansible na komputerze 'staging' (vagrant)
