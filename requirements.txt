@@ -18,8 +18,10 @@ unidecode==0.4.20
 django-cookie-law==1.0.13
 openpyxl==1.6.2
 
-pyoai==2.4.4
-moai==2.0.0
+#pyoai==2.4.4
+git+https://github.com/mpasternak/pyoai.git
+#moai==2.0.0
+git+https://github.com/mpasternak/moai.git
 
 django-crispy-forms==1.6.1
 crispy-forms-foundation==0.3.5
