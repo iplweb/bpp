@@ -8,6 +8,7 @@
     - postgresql-server
     - rabbitmq-server
     - redis-server
+    - python36-xenial
     - name: django-site
       tags: ['django-site']
 

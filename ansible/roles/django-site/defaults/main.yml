@@ -9,7 +9,7 @@ django_media_root: /home/{{ django_user }}/media
 
 django_venv_dir: "{{ django_home_dir }}/env"
 
-django_python_version: 2.7
+django_python_version: 3.6
 django_envvar_prefix: "{{ django_project_name|upper }}"
 
 django_manage_py: "{{ django_home_dir }}/vexec python -mdjango_bpp.manage_command"
