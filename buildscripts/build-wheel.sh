@@ -8,7 +8,7 @@ cd $SCRIPTPATH/..
 export DISTDIR=$SCRIPTPATH/../dist
 echo "Buduje wheels w $DISTDIR"
 
-export PIP="python3.6 pip wheel"
+export PIP="python3.6 -m pip wheel"
 
 mkdir -p $DISTDIR
 $PIP --wheel-dir=$DISTDIR --find-links=$DISTDIR -r requirements.txt 
