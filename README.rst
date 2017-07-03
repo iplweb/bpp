@@ -50,7 +50,7 @@ Jak zacząć?
 
 Zainstaluj:
 
-* Python_ w wersji 2.7,
+* Python_ w wersji 3.6,
 * Vagrant_,
 * VirtualBox_,
 * yarn_,
@@ -163,7 +163,7 @@ django-compressor_.
 
 .. code-block:: bash
 
-    ./buildsrcipts/build-assets.sh
+    make assets
 
 Uruchom lokalne testy
 ~~~~~~~~~~~~~~~~~~~~~
@@ -178,7 +178,7 @@ skonfigurowany, wymagany przez django-bpp? Z pomocą przychodzi Docker_:
 
 .. code-block:: bash
 
-     make docker-up
+     docker-compose up -d
 
 Następnie uruchom testy na maszynie lokalnej:
 
@@ -194,10 +194,10 @@ Następnie uruchom testy na maszynie lokalnej:
 
     # Zbuduj/pobierz pakiety WHL, używane później w nasętępnym kroku przez
     # tox:
-    make wheels
+    make wheels bdist_wheel
 
     # Uruchom testy
-    ./buildscripts/run-tests.sh --debug
+    make tests
 
 W przyszłości możesz uruchamiać testy z opcją ``--no-rebuild``, aby nie
 przebudowywać za każdym razem bazy danych.
@@ -218,14 +218,14 @@ polecenie, które uruchamiane jest na serwerze ciągłej integracji Travis-CI_.
 
 .. code-block:: bash
 
-    make -f Makefile.docker travis
+    make travis
 
 Aby zainstalować aktualną wersję pakietu django-bpp na serwerze staging, skorzystaj
 z polecenia:
 
 .. code-block:: bash
 
-    make -f Makefile.production staging
+    make staging
 
 Następnie wejdź na adres http://bpp-staging.localnet/ aby sprawdzić
 funkcjonowanie serwera.
