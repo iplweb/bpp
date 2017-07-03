@@ -58,7 +58,7 @@ install-wheels:
 
 # cel: assets
 # Pobiera i składa do kupy JS/CSS/Foundation
-assets: 
+assets: # wymaga install-wheels
 	yarn install > /dev/null
 	npm rebuild > /dev/null
 	rm -rf src/django_bpp/staticroot
@@ -136,7 +136,7 @@ release: clean assets
 
 # cel: staging
 # Konfiguruje system django-bpp za pomocą Ansible na komputerze 'staging' (vagrant)
-staging: wheels bdist_wheel
+staging: # wymaga: wheels bdist_wheel
 	vagrant up staging
 	ansible-playbook ansible/webserver.yml --private-key=.vagrant/machines/staging/virtualbox/private_key
 
