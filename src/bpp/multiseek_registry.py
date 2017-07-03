@@ -3,6 +3,7 @@ from django.contrib.postgres.search import SearchQuery
 from django.utils.itercompat import is_iterable
 
 from bpp.models.struktura import Wydzial
+import six
 
 NULL_VALUE = "(brak wpisanej wartości)"
 
@@ -139,6 +140,9 @@ class NazwiskoIImieQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject)
         return ret
 
     def get_autocomplete_query(self, data):
+        if six.PY3:
+            if type(data) == bytes:
+                data = data.decode("utf-8")
         return Autor.objects.fulltext_filter(data)
 
 
@@ -162,6 +166,9 @@ class JednostkaQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
         return ret
 
     def get_autocomplete_query(self, data):
+        if six.PY3:
+            if type(data) == bytes:
+                data = data.decode("utf-8")
         return Jednostka.objects.fulltext_filter(data)
 
 

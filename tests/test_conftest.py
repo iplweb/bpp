@@ -50,13 +50,13 @@ def test_patent(patent):
 def test_preauth_webtest_app(app):
     assert app != None
     res = app.get("/admin/").follow()
-    assert 'Zaloguj si' in res.content
+    assert 'Zaloguj się' in res.text
 
 
 def test_admin_app(admin_app):
     assert admin_app != None
     res = admin_app.get("/admin/")
-    assert 'Administracja stron' in res.content
+    assert 'Administracja stroną' in res.text
 
 
 def test_praca_doktorska_view(doktorat):

@@ -32,8 +32,10 @@ AUTOCOMPLETES = ["Autor", "Jednostka"]
 @pytest.mark.django_db
 @pytest.mark.parametrize("autocomplete_name", AUTOCOMPLETES)
 @pytest.mark.parametrize("qstr", VALUES)
-def test_autocomplete_bug_1(autocomplete_name, qstr, webtest_app):
-    webtest_app.get("/multiseek/autocomplete/%s/" % autocomplete_name, params={'qstr': qstr})
+def test_autocomplete_bug_1(autocomplete_name, qstr, client):
+    client.get(
+        "/multiseek/autocomplete/%s/" % autocomplete_name,
+        data={'qstr': qstr})
 
 #
 # @pytest.mark.django_db

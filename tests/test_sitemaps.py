@@ -26,4 +26,4 @@ def test_sitemaps(webtest_app):
                  '-praca-doktorska-a', '-praca-habilitacyjna-a', '-patent-a', '-wydzial']:
         res = webtest_app.get("/sitemap%s.xml" % page)
         assert res.status_code == 200
-        assert 'example.com' in res.content
+        assert b'example.com' in res.content

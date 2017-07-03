@@ -66,7 +66,7 @@ class AlphabeticBppSitemap(BppSitemap):
         if not self.litera:
             return list(super(AlphabeticBppSitemap, self).items())
         kw = {self.title_field + "__istartswith": self.litera}
-        return list(super(AlphabeticBppSitemap, self).items()).filter(**kw)
+        return list(super(AlphabeticBppSitemap, self).items().filter(**kw))
 
 
 class AutorSitemap(AlphabeticBppSitemap):

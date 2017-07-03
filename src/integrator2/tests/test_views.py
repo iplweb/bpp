@@ -19,7 +19,7 @@ def test_views_upload_lista_ministerialna(admin_app):
     form['file'] = Upload(os.path.dirname(__file__) + "/xls/lista_a_krotka.xlsx")
     res = form.submit().maybe_follow()
 
-    assert "Plik został dodany" in res.rendered_content
+    assert "Plik został dodany" in res.text
 
 
 def test_views_detail(admin_app, admin_user, lmi):
