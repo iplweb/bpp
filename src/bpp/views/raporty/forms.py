@@ -3,7 +3,6 @@
 
 """W tym pakiecie znajdują się procedury generujące raporty, które są dostępne
 "od ręki" -- generowane za pomocą WWW"""
-import autocomplete_light
 from crispy_forms.helper import FormHelper
 from crispy_forms_foundation.layout import Layout, Fieldset, ButtonHolder, \
     Submit, Hidden, Row, Column as F4Column
@@ -11,7 +10,10 @@ from django import forms
 from django.core import validators
 
 from bpp.models import Wydzial
+from bpp.models.autor import Autor
+from bpp.models.struktura import Jednostka
 
+from dal import autocomplete
 
 def ustaw_rok(rok, lata):
     lata = list(lata)
@@ -53,8 +55,11 @@ class KronikaUczelniForm(forms.Form):
 
 
 class RaportJednostekForm(forms.Form):
-    jednostka = autocomplete_light.ModelChoiceField(
-        'RaportyJednostkaWidoczna')
+    jednostka = forms.ModelChoiceField(
+        queryset=Jednostka.objects.filter(widoczna=True),
+        widget=autocomplete.ModelSelect2(
+            url='bpp:jednostka-widoczna-autocomplete')
+    )
 
     od_roku = forms.IntegerField()
     do_roku = forms.IntegerField()
@@ -65,7 +70,6 @@ class RaportJednostekForm(forms.Form):
         self.helper.form_method = 'post'
         self.helper.form_action = "#RaportJednostek"
 
-        # self.helper.form_action = "./prepare/"
         self.helper.layout = Layout(
             Fieldset(
                 'Raport jednostek',
@@ -76,7 +80,7 @@ class RaportJednostekForm(forms.Form):
                 Hidden("report", "raport-jednostek")
             ),
             ButtonHolder(
-                Submit('submit', u'Wyświetl', css_class='button white')
+                Submit('submit', u'Wyświetl', css_class='button'),
             )
         )
 
@@ -86,9 +90,11 @@ class RaportJednostekForm(forms.Form):
 
 
 class RaportAutorowForm(forms.Form):
-    autor = autocomplete_light.ModelChoiceField(
-        'AutorAutocompleteAutor')
-
+    autor = forms.ModelChoiceField(
+        queryset=Autor.objects.all(),
+        widget=autocomplete.ModelSelect2(
+            url='bpp:autor-z-uczelni-autocomplete')
+    )
     od_roku = forms.IntegerField()
     do_roku = forms.IntegerField()
     output = forms.BooleanField(label="Pobierz jako plik Microsoft Word", required=False)
@@ -119,8 +125,11 @@ class RaportAutorowForm(forms.Form):
 
 
 class RaportDlaKomisjiCentralnejForm(forms.Form):
-    autor = autocomplete_light.ModelChoiceField(
-        'AutorAutocompleteAutor')
+    autor = forms.ModelChoiceField(
+        queryset=Autor.objects.all(),
+        widget=autocomplete.ModelSelect2(
+            url='bpp:autor-z-uczelni-autocomplete')
+    )
 
     rok_habilitacji = forms.IntegerField(required=False)
 

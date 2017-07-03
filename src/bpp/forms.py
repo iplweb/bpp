@@ -20,6 +20,7 @@ class MyAuthenticationForm(AuthenticationForm):
                 'password',
                 Hidden(REDIRECT_FIELD_NAME, request.GET.get(REDIRECT_FIELD_NAME, "/bpp/"))),
              ButtonHolder(
-                Submit('submit', u'Zaloguj się', css_id='id_submit'),
+                Submit('submit', u'Zaloguj się', css_id='id_submit',
+                       css_class="submit button"),
             ))
         AuthenticationForm.__init__(self, request, *args, **kw)

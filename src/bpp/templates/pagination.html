@@ -1,0 +1,47 @@
+
+     {% if is_paginated %}
+        <ul class="pagination">
+            {% if page_obj.has_previous %}
+              <li class="arrow"><a href="?page={{ page_obj.previous_page_number }}">&laquo;
+              </a></li>
+            {% else %}
+              <li class="arrow unavailable"><span>&laquo;</span></li>
+            {% endif %}
+
+
+            {% if page_obj.number >= 5 %}
+            <li><a href="?page=1">1</a></li>
+            <li class="unavailable"><span>...</span></li>
+            {% elif page_obj.number == 4 %}
+            <li><a href="?page=1">1</a></li>
+            {% endif %}
+            {% if page_obj.number|add:"-2" >= 1  %}
+            <li><a href="?page={{ page_obj.number|add:"-2" }}">{{ page_obj.number|add:"-2" }}</a></li>
+            {% endif %}
+            {% if page_obj.number|add:"-1" >= 1  %}
+            <li><a href="?page={{ page_obj.number|add:"-1" }}">{{ page_obj.number|add:"-1" }}</a></li>
+            {% endif %}
+            <li class="current"><a href="?page={{ page_obj.number }}">{{ page_obj.number }}</a></li>
+            {% if page_obj.number|add:"1" <= paginator.num_pages  %}
+            <li><a href="?page={{ page_obj.number|add:"1" }}">{{ page_obj.number|add:"1" }}</a></li>
+            {% endif %}
+            {% if page_obj.number|add:"2" <= paginator.num_pages %}
+            <li><a href="?page={{ page_obj.number|add:"2" }}">{{ page_obj.number|add:"2" }}</a></li>
+            {% endif %}
+            {% if page_obj.number|add:"2" <= paginator.num_pages|add:"-2" %}
+            <li class="unavailable"><span>...</span></li>
+            <li><a href="?page={{ paginator.num_pages }}">{{ paginator.num_pages }}</a></li>
+            {% elif page_obj.number|add:"1" <= paginator.num_pages|add:"-2" %}
+            <li><a href="?page={{ paginator.num_pages }}">{{ paginator.num_pages }}</a></li>
+            {% endif %}
+
+
+            {% if page_obj.has_next %}
+              <li class="arrow"><a href="?page={{ page_obj.next_page_number }}">&raquo;
+              </a></li>
+            {% else %}
+              <li class="arrow unavailable"><span>&raquo;</span></li>
+            {% endif %}
+
+        </ul>
+{% endif %}

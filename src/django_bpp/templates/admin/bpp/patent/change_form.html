@@ -36,12 +36,12 @@
                     "kc_index_copernicus": $("input[name=kc_index_copernicus]").val()
                 }
 
-                location.href = "../add/?" + $.param(data);
+                location.href = "../../add/?" + $.param(data);
             });
 
             $("#toz").click(function () {
                 if (confirm('Utworzysz kopię tego rekordu. Czy kontynuować?')) {
-                    location.href = "../toz/" + pub_id;
+                    location.href = "../../toz/" + pub_id;
                 }
             });
         }

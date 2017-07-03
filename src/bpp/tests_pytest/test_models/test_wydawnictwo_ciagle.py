@@ -11,8 +11,9 @@ from bpp.models.system import Status_Korekty
 
 
 @pytest.mark.django_db
-def test_models_wydawnictwo_ciagle_dirty_fields_ostatnio_zmieniony_dla_pbn(wydawnictwo_ciagle, wydawnictwo_zwarte,
-                                                                           autor_jan_nowak, jednostka, statusy_korekt):
+def test_models_wydawnictwo_ciagle_dirty_fields_ostatnio_zmieniony_dla_pbn(
+        wydawnictwo_ciagle, wydawnictwo_zwarte,
+        autor_jan_nowak, jednostka, typy_odpowiedzialnosci):
     Licencja_OpenAccess.objects.create(nazwa="lic 1 ", skrot="l1")
     Licencja_OpenAccess.objects.create(nazwa="lic 2 ", skrot="l2")
 
@@ -40,6 +41,8 @@ def test_models_wydawnictwo_ciagle_dirty_fields_ostatnio_zmieniony_dla_pbn(wydaw
         time.sleep(0.5)
 
         for fld in MODEL_PUNKTOWANY_KOMISJA_CENTRALNA + MODEL_PUNKTOWANY + ('adnotacje',):
+            if fld == 'weryfikacja_punktacji':
+                continue
             setattr(wyd, fld, 123)
             wyd.save()
             assert ost_zm_pbn == wyd.ostatnio_zmieniony_dla_pbn
@@ -77,7 +80,7 @@ def test_models_wydawnictwo_ciagle_dirty_fields_ostatnio_zmieniony_dla_pbn(wydaw
         wyd.refresh_from_db()
         assert ost_zm_pbn != wyd.ostatnio_zmieniony_dla_pbn
 
-
+@pytest.mark.django_db
 def test_export_pubmed_id(wydawnictwo_ciagle):
     wc = wydawnictwo_ciagle
 
@@ -105,6 +108,7 @@ def test_export_pubmed_id(wydawnictwo_ciagle):
         toplevel[0]
 
 
+@pytest.mark.django_db
 @pytest.mark.parametrize("informacje,expected",
                          [("bez sensu", None),
                           ("2016 vol. 5 nr 10", "5"),
@@ -113,7 +117,7 @@ def test_eksport_pbn_get_volume(informacje, expected, wydawnictwo_ciagle):
     wydawnictwo_ciagle.informacje = informacje
     assert wydawnictwo_ciagle.eksport_pbn_get_volume() == expected
 
-
+@pytest.mark.django_db
 def test_eksport_pbn_volume(wydawnictwo_ciagle):
     toplevel = etree.fromstring("<body></body>")
     wydawnictwo_ciagle.informacje = "bez sensu"
@@ -125,7 +129,7 @@ def test_eksport_pbn_volume(wydawnictwo_ciagle):
     wydawnictwo_ciagle.eksport_pbn_volume(toplevel)
     assert toplevel[0].text == "4"
 
-
+@pytest.mark.django_db
 @pytest.mark.parametrize("informacje,expected",
                          [("bez sensu", None),
                           ("2016 vol. 5 nr 10", "10"),
@@ -137,7 +141,7 @@ def test_eksport_pbn_get_issue(informacje, expected, wydawnictwo_ciagle):
     wydawnictwo_ciagle.informacje = informacje
     assert wydawnictwo_ciagle.eksport_pbn_get_issue() == expected
 
-
+@pytest.mark.django_db
 def test_eksport_pbn_issue(wydawnictwo_ciagle):
     toplevel = etree.fromstring("<body></body>")
     wydawnictwo_ciagle.informacje = "2016 vol 4"

@@ -18,25 +18,28 @@ class Command(BaseCommand):
     help = 'Wysyla komunikat offline za pomoca frameworku messages'
     args = '<username> <message>'
 
-    option_list = BaseCommand.option_list + (
-        make_option('--dont-persist',
+    def add_arguments(self, parser):
+        parser.add_argument('username')
+        parser.add_argument('text')
+
+        parser.add_argument('--dont-persist',
                     action='store_true',
                     dest='no_persist',
                     default=False,
-                    help="Don't persist the message"),
-        make_option('--ignore-proxy',
+                    help="Don't persist the message")
+        parser.add_argument('--ignore-proxy',
                     action='store_true',
                     dest='ignore_proxy',
                     default=False,
-                    help="Ignore proxy settings when sending notification"),
-    )
+                    help="Ignore proxy settings when sending notification")
 
     def handle(self, *args, **options):
         request_factory = RequestFactory()
 
         request = request_factory.get('/')
 
-        request.user = get_user_model().objects.get(username=args[0])
+        request.user = get_user_model().objects.get(
+            username=options['username'])
         setattr(request, 'session', 'session')
 
         storage = PersistentStorage(request)
@@ -44,7 +47,7 @@ class Command(BaseCommand):
         setattr(request, '_messages', storage)
 
         level = messages.INFO_PERSISTENT
-        text = args[1]
+        text = options['text']
 
         msg = None
 

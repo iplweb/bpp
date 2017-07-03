@@ -10,12 +10,13 @@ from model_mommy import mommy
 
 from bpp.models.autor import Autor
 from bpp.models.struktura import Uczelnia, Wydzial, Jednostka
-from bpp.models.system import Typ_Odpowiedzialnosci
+from bpp.models.system import Typ_Odpowiedzialnosci, Charakter_Formalny
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 from eksport_pbn.models import PlikEksportuPBN, DATE_CREATED_ON
 from eksport_pbn.tasks import id_zwartych, id_ciaglych
 
 
+@pytest.mark.django_db
 def test_id_zwartych(wydawnictwo_zwarte_z_autorem, wydzial, rok):
     """
     :type wydawnictwo_zwarte_z_autorem: bpp.models.Wydawnictwo_Zwarte
@@ -33,12 +34,16 @@ def test_id_zwartych(wydawnictwo_zwarte_z_autorem, wydzial, rok):
 
 
 @pytest.mark.django_db
-def test_id_zwartych_gdy_jest_ksiazka_z_w1_ale_rozdzialy_ma_w_w2(chf_ksp, chf_roz):
+def test_id_zwartych_gdy_jest_ksiazka_z_w1_ale_rozdzialy_ma_w_w2(
+        charaktery_formalne):
     """
     Książka "nadrzędna" redagowana przez autora z W1 ma się NIE znaleźć w eksporcie dla W2
     jeżeli w przypisanych rozdziałach jest rozdział opracowany dla W2.
     :return:
     """
+
+    chf_ksp = Charakter_Formalny.objects.get(skrot="KSP")
+    chf_roz = Charakter_Formalny.objects.get(skrot="ROZ")
 
     u = mommy.make(Uczelnia)
 
@@ -74,6 +79,7 @@ def test_id_zwartych_gdy_jest_ksiazka_z_w1_ale_rozdzialy_ma_w_w2(chf_ksp, chf_ro
     assert wz_child2.pk in list(id_zwartych(w2, 2015, 2015, True, True))
 
 
+@pytest.mark.django_db
 def test_id_ciaglych(wydawnictwo_ciagle_z_autorem, wydzial, rok):
     cf = wydawnictwo_ciagle_z_autorem.charakter_formalny
     cf.artykul_pbn = True

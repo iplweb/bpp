@@ -10,13 +10,16 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 
 from django.db import models, IntegrityError
+from django.utils.six import python_2_unicode_compatible
 from lxml.etree import Element, SubElement
 from bpp.models.abstract import BazaModeluOdpowiedzialnosciAutorow, ModelZPBN_ID
 from bpp.util import FulltextSearchMixin
-from djorm_pgfulltext.fields import VectorField
-from djorm_pgfulltext.models import SearchManager
+from django.contrib.postgres.search import SearchVectorField as VectorField
+
 from bpp.models import ModelZAdnotacjami, NazwaISkrot
 from datetime import datetime
+from six import text_type
+from django.utils import six
 
 class Tytul(NazwaISkrot):
     class Meta:
@@ -36,7 +39,7 @@ class Plec(NazwaISkrot):
 class AutorManager(FulltextSearchMixin, models.Manager):
     pass
 
-
+@six.python_2_unicode_compatible
 class Autor(ModelZAdnotacjami, ModelZPBN_ID):
     imiona = models.CharField(max_length=512, db_index=True)
     nazwisko = models.CharField(max_length=256, db_index=True)
@@ -44,7 +47,8 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
 
     aktualny = models.BooleanField("Aktualny?", default=False, help_text="""Jeżeli zaznaczone, pole to oznacza,
     że autor jest aktualnie - na dziś dzień - przypisany do jakiejś jednostki w bazie danych i jego przypisanie
-    do tej jednostki nie zostało zakończone wraz z konkretną datą w przeszłości.""")
+    do tej jednostki nie zostało zakończone wraz z konkretną datą w 
+    przeszłości.""", db_index=True)
 
     aktualna_jednostka = models.ForeignKey('Jednostka', blank=True, null=True, related_name='aktualna_jednostka')
     aktualna_funkcja = models.ForeignKey('Funkcja_Autora', blank=True, null=True, related_name='aktualna_funkcja')
@@ -89,14 +93,14 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
         ordering = ['sort']
         app_label = 'bpp'
 
-    def __unicode__(self):
+    def __str__(self):
         buf = "%s %s" % (self.nazwisko, self.imiona)
 
         if self.poprzednie_nazwiska:
             buf += " (%s)" % self.poprzednie_nazwiska
 
         if self.tytul is not None:
-            buf += ", " + unicode(self.tytul.skrot)
+            buf += ", " + six.text_type(self.tytul.skrot)
         return buf
 
     def dodaj_jednostke(self, jednostka, rok=None, funkcja=None):
@@ -296,7 +300,7 @@ class Autor_Jednostka_Manager(models.Manager):
         for aj in usun:
             aj.delete()
 
-
+@six.python_2_unicode_compatible
 class Autor_Jednostka(models.Model):
     """Powiązanie autora z jednostką"""
     autor = models.ForeignKey(Autor)
@@ -314,7 +318,7 @@ class Autor_Jednostka(models.Model):
             if self.rozpoczal_prace >= self.zakonczyl_prace:
                 raise ValidationError("Początek pracy późniejszy lub równy, jak zakończenie")
 
-    def __unicode__(self):
+    def __str__(self):
         buf = u"%s ↔ %s" % (self.autor, self.jednostka.skrot)
         if self.funkcja:
             buf = u"%s ↔ %s, %s" % (

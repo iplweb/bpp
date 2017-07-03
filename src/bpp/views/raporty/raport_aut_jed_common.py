@@ -20,7 +20,7 @@ from bpp.models.wydawnictwo_zwarte import ILOSC_ZNAKOW_NA_ARKUSZ
 from django.core.exceptions import ObjectDoesNotExist
 from django.http.response import HttpResponse
 from django.template import loader
-from django.utils.datastructures import SortedDict
+from collections import OrderedDict as SortedDict
 from django.utils.safestring import mark_safe
 from django.views.generic.detail import DetailView
 from django_tables2 import A, Column, Table

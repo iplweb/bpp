@@ -2,11 +2,11 @@
 import re
 
 from dirtyfields.dirtyfields import DirtyFieldsMixin
+from django.contrib.postgres.search import SearchVector
 from django.db import models
 from django.db.models.signals import post_delete
 from django.utils import timezone
 from django.utils.functional import cached_property
-from djorm_pgfulltext.models import SearchManager
 from lxml.etree import Element, SubElement
 
 from bpp.models.abstract import \
@@ -44,8 +44,12 @@ class Wydawnictwo_Zwarte_Autor(DirtyFieldsMixin, BazaModeluOdpowiedzialnosciAuto
 
     def save(self, *args, **kw):
         if self.pk is None or self.is_dirty():
-            self.rekord.ostatnio_zmieniony_dla_pbn = timezone.now()
-            self.rekord.save(update_fields=['ostatnio_zmieniony_dla_pbn'])
+            # W sytuacji gdy dodajemy nowego autora lub zmieniamy jego dane,
+            # rekord "nadrzędny" publikacji powinien mieć zaktualizowany
+            # czas ostatniej aktualizacji na potrzeby PBN:
+            r = self.rekord
+            r.ostatnio_zmieniony_dla_pbn = timezone.now()
+            r.save(update_fields=['ostatnio_zmieniony_dla_pbn'])
         super(Wydawnictwo_Zwarte_Autor, self).save(*args, **kw)
 
 
@@ -97,10 +101,6 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
                          DirtyFieldsMixin):
     """Wydawnictwo zwarte, czyli: książki, broszury, skrypty, fragmenty,
     doniesienia zjazdowe."""
-
-    objects = SearchManager(
-        fields=['tytul_oryginalny', 'tytul'],
-        config='bpp_nazwy_wlasne')
 
     autorzy = models.ManyToManyField(Autor, through=Wydawnictwo_Zwarte_Autor)
 
@@ -326,3 +326,4 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
         super(Wydawnictwo_Zwarte, self).eksport_pbn_serializuj(toplevel, wydzial, Wydawnictwo_Zwarte_Autor)
         self.eksport_pbn_run_serialization_functions(flds, toplevel, wydzial, Wydawnictwo_Zwarte_Autor)
         return toplevel
+

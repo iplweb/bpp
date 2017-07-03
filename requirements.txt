@@ -1,31 +1,32 @@
-Django==1.8.18
-django_18_fast_migrations==0.1.0
+Django==1.10.7
+psycopg2==2.7.1
+
 django-dirtyfields==1.2.1
 django-messages-extends==0.5
-django-autoslug==1.7.1
-django-pagination==1.0.7
-django-autocomplete-light==2.2.10
-django-admin-tools==0.7.2
+django-autoslug==1.9.3
+django-autocomplete-light==3.2.9
+django-admin-tools==0.8.1
 xlrd==0.9.3
 celery==3.1.19
 kombu==3.0.33
 django-redis-sessions==0.4.0
-django-tables2==0.15.0
-django-tables2-reports==0.0.10
-pyExcelerator==0.6.4.1
-django-sendfile==0.3.2
+django-tables2==1.7.1
+django-tables2-reports==0.1.0
+django-sendfile==0.3.11
 
-unidecode==0.04.18
-django-cookie-law==1.0.1
+unidecode==0.4.20
+django-cookie-law==1.0.13
 openpyxl==1.6.2
 
-pyoai==2.4.4
-moai==2.0.0
+#pyoai==2.4.4
+git+https://github.com/mpasternak/pyoai.git
+#moai==2.0.0
+git+https://github.com/mpasternak/moai.git
 
-django-crispy-forms==1.4.0
+django-crispy-forms==1.6.1
 crispy-forms-foundation==0.3.5
 
-django-compressor==2.0
+django-compressor==2.1.1
 
 gunicorn==19.7.1
 
@@ -37,18 +38,16 @@ raven==5.1.1
 django-secure-input==0.9.3
 bleach==1.4.3
 html5lib==0.9999999
-django-session-security==2.3.0
+django-session-security==2.5.1
 
-django-password-policies==0.4.1
+# django-password-policies==0.4.2
+git+https://github.com/OpenTherapeutics/django-password-policies.git@feature/adds_django_1_10_compatibility
+dj_pagination==2.2.1
 
 requests==2.7.0
-pytz==2015.7
+pytz==2017.2
 
-django-extensions==1.5.5
-
-# multiseek
-dateutils==0.6.6
-argparse==1.3.0
+django-extensions==1.7.9
 
 django-htmlmin==0.7.0
 
@@ -57,14 +56,13 @@ simplejson==3.8.0
 Pillow==4.0.0
 olefile==0.44
 
-django-grappelli==2.7.3
-django-multiseek==0.9.15.5
-djorm-ext-filtered-contenttypes==0.3
-djorm-ext-pgfulltext==0.9.3
+django-grappelli==2.9.1
+django-multiseek==0.9.19
+djorm-ext-filtered-contenttypes==0.4.1
 
 django_braces==1.8.1
 
-django-loginas==0.1.5
+django-loginas==0.3.2
 
 
 django-robots==3.0
@@ -72,3 +70,5 @@ django-webmaster-verification==0.3.0
 django-favicon-plus==0.0.6
 
 dogslow==0.9.7
+
+django-querysetsequence==0.7.2

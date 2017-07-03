@@ -10,13 +10,13 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models.functions import Coalesce
 from django.db.models.query_utils import Q
-from djorm_pgfulltext.fields import VectorField
+from django.contrib.postgres.search import SearchVectorField as VectorField
 
 from bpp.models import ModelZAdnotacjami, NazwaISkrot
 from bpp.models.abstract import NazwaWDopelniaczu, ModelZPBN_ID
 from bpp.models.autor import Autor, Autor_Jednostka
 from bpp.util import FulltextSearchMixin
-
+from django.utils import six
 
 class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
     slug = AutoSlugField(populate_from='skrot',
@@ -45,7 +45,7 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         """Widoczne wydziały -- do pokazania na WWW"""
         return Wydzial.objects.filter(uczelnia=self, widoczny=True)
 
-
+@six.python_2_unicode_compatible
 class Wydzial(ModelZAdnotacjami, ModelZPBN_ID):
     uczelnia = models.ForeignKey(Uczelnia)
     nazwa = models.CharField(max_length=512, unique=True)
@@ -79,7 +79,7 @@ class Wydzial(ModelZAdnotacjami, ModelZPBN_ID):
         ordering = ['kolejnosc', 'skrot']
         app_label = 'bpp'
 
-    def __unicode__(self):
+    def __str__(self):
         return self.nazwa
 
     def jednostki(self):
@@ -95,7 +95,7 @@ class JednostkaManager(FulltextSearchMixin, models.Manager):
             kw['uczelnia'] = kw['wydzial'].uczelnia
         return super(JednostkaManager, self).create(*args, **kw)
 
-
+@six.python_2_unicode_compatible
 class Jednostka(ModelZAdnotacjami, ModelZPBN_ID):
     uczelnia = models.ForeignKey(Uczelnia)
 
@@ -141,7 +141,7 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID):
         ordering = ['nazwa']
         app_label = 'bpp'
 
-    def __unicode__(self):
+    def __str__(self):
         ret = self.nazwa
 
         try:
@@ -298,7 +298,7 @@ class Jednostka_Wydzial_Manager(models.Manager):
                 jw.save()
                 continue
 
-
+@six.python_2_unicode_compatible
 class Jednostka_Wydzial(models.Model):
     jednostka = models.ForeignKey(Jednostka)
     wydzial = models.ForeignKey(Wydzial)
@@ -312,7 +312,7 @@ class Jednostka_Wydzial(models.Model):
         verbose_name_plural = "powiązania jednostka-wydział"
         ordering = ('-od',)
 
-    def __unicode__(self):
+    def __str__(self):
         return u"%s - %s (%s, %s)" % (self.jednostka, self.wydzial, self.od, self.do)
 
     def clean(self):

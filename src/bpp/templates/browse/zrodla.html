@@ -1,6 +1,5 @@
 {% extends "base.html" %}
 
-{% load pagination_tags %}
 {% load columns %}
 
 {% block breadcrumbs %}
@@ -22,14 +21,13 @@
 
     {% url "bpp:browse_zrodlo" as browse_zrodlo %}
 
-    {% autopaginate object_list 46 %}
-
     <div class="row hide-on-print">
         <div class="large-4 medium-4 columns">
             {% include "browse/search_form.html" with url=browse_zrodla tekst="Wpisz część nazwy i wciśnij ENTER..." name="search" flt=flt %}
         </div>
         <div class="large-8 medium-8 columns">
-            {% paginate 5 %}
+            {% include "pagination.html" %}
+
         </div>
     </div>
 

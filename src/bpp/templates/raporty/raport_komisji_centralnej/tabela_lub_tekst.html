@@ -1,5 +1,5 @@
 {% load render_table from django_tables2 %}
-{% if tabela.data.queryset.count %}
+{% if tabela.data|length %}
     {% render_table tabela %}
 {% else %}
     Brak rekordów.

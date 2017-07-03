@@ -2,6 +2,7 @@
 
 from django.test import TestCase
 from django.test.client import Client
+from django.urls.base import reverse
 from django.utils.http import urlencode
 from bpp.models.autor import Autor
 from bpp.tests.util import any_autor
@@ -30,5 +31,7 @@ class TestFulltextSearch(TestCase):
                   "paste rnak)", "&", "& &", "()", "!!", "!", ")()()(\\\\!@!!@@!#!@",
                   "   ()(*(*$(*#  oiad  9*(*903498985398)()(||| aosid  p p    ",
                   ]:
-            res = client.get('/user_navigation_autocomplete/?' + urlencode({'q':s}))
+            url = reverse('bpp:navigation-autocomplete')
+            url += '?'+ urlencode({'q':s})
+            res = client.get(url)
             self.assertEquals(res.status_code, 200)

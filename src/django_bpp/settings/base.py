@@ -2,6 +2,7 @@
 
 import os
 import sys
+import django
 from datetime import timedelta
 
 from django.core.exceptions import ImproperlyConfigured
@@ -24,6 +25,10 @@ import random, string
 
 TIME_ZONE = 'Europe/Warsaw'
 LANGUAGE_CODE = 'pl'
+LANGUAGES = (
+    ('pl', 'Polish'),
+)
+
 SITE_ID = 1
 USE_I18N = True
 USE_L10N = True
@@ -64,17 +69,17 @@ TEMPLATES = [
                 'django.template.loaders.app_directories.Loader',
             ],
             'context_processors': [
-
                 'django.contrib.auth.context_processors.auth',
-                'django.core.context_processors.debug',
-                'django.core.context_processors.i18n',
-                'django.core.context_processors.media',
-                'django.core.context_processors.request',
-                'django.core.context_processors.static',
+                'django.template.context_processors.debug',
+                'django.template.context_processors.i18n',
+                'django.template.context_processors.media',
+                'django.template.context_processors.request',
+                'django.template.context_processors.static',
                 'django.contrib.messages.context_processors.messages',
                 'password_policies.context_processors.password_status',
 
                 'bpp.context_processors.uczelnia.uczelnia',
+                'bpp.context_processors.global_nav.user',
                 'bpp.context_processors.google_analytics.google_analytics',
 
                 'notifications.context_processors.notification_settings'
@@ -90,6 +95,8 @@ MIDDLEWARE_CLASSES = (
     'htmlmin.middleware.HtmlMinifyMiddleware',
     'htmlmin.middleware.MarkRequestMiddleware',
 
+    'django.middleware.locale.LocaleMiddleware',
+
     'django.middleware.common.CommonMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -97,8 +104,9 @@ MIDDLEWARE_CLASSES = (
     'django.contrib.messages.middleware.MessageMiddleware',
     'password_policies.middleware.PasswordChangeMiddleware',
 
+    'dj_pagination.middleware.PaginationMiddleware',
+
     'bpp.middleware.ProfileMiddleware',
-    'pagination.middleware.PaginationMiddleware',
     'django_tables2_reports.middleware.TableReportMiddleware',
 
     'session_security.middleware.SessionSecurityMiddleware',
@@ -136,8 +144,13 @@ INSTALLED_APPS = [
 
     'cookielaw',
 
+    'dal',
+    'dal_select2',
+
     'grappelli',
     'django.contrib.admin',
+
+    'dj_pagination',
 
     'bpp',
 
@@ -149,11 +162,9 @@ INSTALLED_APPS = [
     'django_tables2',
     'django_tables2_reports',
 
-    'autocomplete_light',
+    # 'autocomplete_light',
 
     'messages_extends',
-
-    'pagination',
 
     'multiseek',
     'django_extensions',
@@ -169,8 +180,8 @@ INSTALLED_APPS = [
 
     'notifications',
     'integrator2',
-    # 2017.1.17 mpasternak TODO: włączyć później
-    # 'egeria',
+
+    'egeria',
     'eksport_pbn',
 
     'loginas',
@@ -179,9 +190,10 @@ INSTALLED_APPS = [
     'webmaster_verification',
     'favicon',
 
-    'django_18_fast_migrations',
-
 ]
+
+if django.VERSION < (1,9):
+    INSTALLED_APPS += ['django_18_fast_migrations',]
 
 # Profile użytkowników
 AUTH_USER_MODEL = "bpp.BppUser"
@@ -293,6 +305,7 @@ MOMMY_CUSTOM_FIELDS_GEN = {
     'autoslug.fields.AutoSlugField': autoslug_gen
 }
 
+CRISPY_ALLOWED_TEMPLATE_PACKS = ('foundation-5',)
 CRISPY_TEMPLATE_PACK = 'foundation-5'
 
 SESSION_ENGINE = 'redis_sessions.session'
@@ -308,7 +321,7 @@ SITE_ROOT = os.path.abspath(
 
 STATIC_ROOT = os.path.join(SCRIPT_PATH, "..", "staticroot")
 
-COMPRESS_ENABLED = True
+
 COMPRESS_ROOT = STATIC_ROOT
 
 # Domyslnie, redis na Ubuntu pozwala na 16 baz danych
@@ -465,3 +478,5 @@ WEBMASTER_VERIFICATION = {
 EXCLUDE_FROM_MINIFYING = [
     "^google.*html$"
 ]
+
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True

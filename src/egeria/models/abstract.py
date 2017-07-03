@@ -15,11 +15,13 @@ class Diff_Base(models.Model):
     class Meta:
         abstract = True
 
+from django.utils import six
 
+@six.python_2_unicode_compatible
 class Diff_Create(Diff_Base):
     nazwa_skrot = models.CharField(max_length=512)
 
-    def __unicode__(self):
+    def __str__(self):
         return self.nazwa_skrot
 
     def commit(self):
@@ -29,11 +31,11 @@ class Diff_Create(Diff_Base):
     class Meta:
         abstract = True
 
-
+@six.python_2_unicode_compatible
 class Diff_Delete(Diff_Base):
     # reference = models.ForeignKey(base_klass)
 
-    def __unicode__(self):
+    def __str__(self):
         return self.reference.nazwa
 
     def commit(self):

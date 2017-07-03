@@ -2,7 +2,7 @@
 from __future__ import unicode_literals
 
 from django.db import migrations, models
-import djorm_pgfulltext.fields
+from django.contrib.postgres.search import SearchVectorField
 
 
 class Migration(migrations.Migration):
@@ -15,41 +15,41 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='autor',
             name='search',
-            field=djorm_pgfulltext.fields.VectorField(),
+            field=SearchVectorField(),
         ),
         migrations.AlterField(
             model_name='jednostka',
             name='search',
-            field=djorm_pgfulltext.fields.VectorField(null=True, blank=True),
+            field=SearchVectorField(null=True, blank=True),
         ),
         migrations.AlterField(
             model_name='patent',
             name='search_index',
-            field=djorm_pgfulltext.fields.VectorField(),
+            field=SearchVectorField(),
         ),
         migrations.AlterField(
             model_name='praca_doktorska',
             name='search_index',
-            field=djorm_pgfulltext.fields.VectorField(),
+            field=SearchVectorField(),
         ),
         migrations.AlterField(
             model_name='praca_habilitacyjna',
             name='search_index',
-            field=djorm_pgfulltext.fields.VectorField(),
+            field=SearchVectorField(),
         ),
         migrations.AlterField(
             model_name='wydawnictwo_ciagle',
             name='search_index',
-            field=djorm_pgfulltext.fields.VectorField(),
+            field=SearchVectorField(),
         ),
         migrations.AlterField(
             model_name='wydawnictwo_zwarte',
             name='search_index',
-            field=djorm_pgfulltext.fields.VectorField(),
+            field=SearchVectorField(),
         ),
         migrations.AlterField(
             model_name='zrodlo',
             name='search',
-            field=djorm_pgfulltext.fields.VectorField(),
+            field=SearchVectorField(),
         ),
     ]

@@ -1,7 +1,8 @@
 # -*- encoding: utf-8 -*-
 
 from django.core.management import BaseCommand
-from django.db.models import get_models, CharField, TextField, Q
+from django.db.models import CharField, TextField, Q
+from django.apps import apps
 from bpp.models import Sumy
 
 
@@ -9,7 +10,7 @@ class Command(BaseCommand):
     help = 'Szuka nieuzywanych pol we wszystkich modelach'
 
     def handle(self, silent=False, *args, **options):
-        for model in get_models():
+        for model in apps.get_app_config("bpp").get_models():
 
             if model._meta.app_label != 'bpp' or \
                 model._meta.object_name in ['Jednostka', 'Wydzial'] or \

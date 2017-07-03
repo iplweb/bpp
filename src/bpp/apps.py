@@ -2,7 +2,7 @@
 
 from django.conf import settings
 from django.apps import AppConfig
-from django.db.migrations import executor
+import django
 
 class BppConfig(AppConfig):
     name = 'bpp'
@@ -12,9 +12,6 @@ class BppConfig(AppConfig):
         if not settings.TESTING:
             from bpp.models import cache
             cache.enable()
-
-        from django_18_fast_migrations import migration_executor_patched
-        migration_executor_patched.monkeypatch(executor)
 
         from django.db.models.signals import post_migrate
         from bpp.system import ustaw_robots_txt, odtworz_grupy

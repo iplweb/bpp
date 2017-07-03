@@ -1,21 +1,22 @@
 # -*- encoding: utf-8 -*-
 
-from django.conf.urls import patterns, include, url
+from django.conf.urls import include, url
 from django.conf.urls.static import static
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.views import login
 from django.views.decorators.cache import cache_page
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 
-import autocomplete_light
+from loginas.views import user_login
+from multiseek.views import remove_by_hand, remove_from_removed_by_hand
 from password_policies.views import PasswordChangeDoneView, PasswordChangeFormView
 from bpp.forms import MyAuthenticationForm
 from bpp.views.admin import WydawnictwoCiagleTozView, WydawnictwoZwarteTozView, \
     PatentTozView
+from bpp.views.global_nav import global_nav_redir
 from bpp.views.mymultiseek import MyMultiseekResults
 from django_bpp.sitemaps import JednostkaSitemap, django_bpp_sitemaps
-
-autocomplete_light.autodiscover()
 
 from django.contrib import admin
 from django.contrib.sitemaps import views as sitemaps_views
@@ -31,15 +32,12 @@ js_info_dict = {
     ),
 }
 
+import multiseek, loginas, django
+from bpp.views import favicon, root, javascript_catalog
 
-urlpatterns = patterns(
-    '',
+urlpatterns = [
 
-    url(r'^favicon\.ico$', "bpp.views.favicon"),
-
-    url(r'^dynjs/autorform_dependant.js$', "bpp.views.autorform_dependant_js"),
-
-    #url(r'^admin/doc/', include('django.contrib.admindocs.urls')),
+    url(r'^favicon\.ico$', favicon),
 
     url(r'^admin/bpp/wydawnictwo_ciagle/toz/(?P<pk>[\d]+)/$', login_required(WydawnictwoCiagleTozView.as_view()), name="admin:bpp_wydawnictwo_ciagle_toz"),
     url(r'^admin/bpp/wydawnictwo_zwarte/toz/(?P<pk>[\d]+)/$', login_required(WydawnictwoZwarteTozView.as_view()), name="admin:bpp_wydawnictwo_ciagle_toz"),
@@ -71,28 +69,19 @@ urlpatterns = patterns(
 
 
     url(r'^multiseek/remove-from-results/(?P<pk>\w+)$',
-        'multiseek.views.remove_by_hand',
+        remove_by_hand,
         name="remove_from_results"),
 
     url(r'^multiseek/remove-from-removed-results/(?P<pk>\w+)$',
-        'multiseek.views.remove_from_removed_by_hand',
+        remove_from_removed_by_hand,
         name="remove_from_removed_results"),
 
     url(r'^admin_tools/', include('admin_tools.urls')),
     url(r'^grappelli/', include('grappelli.urls')),
 
-    url(r'^autocomplete/', include('autocomplete_light.urls'),
-        name="autocomplete"),
+    url(r'^$', root, name="root"),
 
-    url(r'^navigation_autocomplete/$', "bpp.views.navigation_autocomplete",
-        name='navigation_autocomplete'),
-    url(r'^user_navigation_autocomplete/$',
-        "bpp.views.user_navigation_autocomplete",
-        name='user_navigation_autocomplete'),
-
-    url(r'^$', "bpp.views.root", name="root"),
-
-    url(r'^accounts/login/$', 'django.contrib.auth.views.login',
+    url(r'^accounts/login/$', login,
         name="login_form", kwargs={'authentication_form':MyAuthenticationForm}),
     url(r'^password_change_done/$',
         PasswordChangeDoneView.as_view(),
@@ -101,19 +90,20 @@ urlpatterns = patterns(
         PasswordChangeFormView.as_view(),
         name="password_change"),
 
-    url(r'^logout/$', 'django.contrib.auth.views.logout', name="logout"),
+    url(r'^logout/$', django.contrib.auth.views.logout, name="logout"),
 
-    (r'^messages/', include('messages_extends.urls', namespace='messages_extends')),
+    url(r'^messages/', include('messages_extends.urls',
+                             namespace='messages_extends')),
 
-    (r'^.*/jsi18n/$', 'bpp.views.javascript_catalog', js_info_dict),
+    url(r'^.*/jsi18n/$', javascript_catalog, js_info_dict),
 
     url(r'session_security/', include('session_security.urls')),
 
     url(r'egeria/', include('egeria.urls')),
 
-    url(r"^login/user/(?P<user_id>.+)/$", "loginas.views.user_login", name="loginas-user-login"),
+    url(r"^login/user/(?P<user_id>.+)/$", user_login, name="loginas-user-login"),
 
-    (r'^robots\.txt$', include('robots.urls')),
+    url(r'^robots\.txt$', include('robots.urls')),
 
     url(r'^sitemap\.xml$', cache_page(7*24*3600)(sitemaps_views.index), {
         'sitemaps': django_bpp_sitemaps,
@@ -125,7 +115,11 @@ urlpatterns = patterns(
 
     url(r'', include('webmaster_verification.urls')),
 
-) + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) \
+    url(r'^global-nav-redir/(?P<param>.+)/$',
+        global_nav_redir,
+        name='global-nav-redir')
+
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) \
   + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
 

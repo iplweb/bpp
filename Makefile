@@ -59,8 +59,8 @@ bdist_wheel: install-wheels assets clean
 # cel: tests
 # Uruchamia testy całego site'u za pomocą docker-compose. Wymaga zbudowanych 
 # pakietów WHL (cel: wheels) oraz statycznych assets w katalogu src/django_bpp/staticroot
-# (cel: prepare-build-env)
-tests: 
+# (cel: assets)
+tests: # wymaga: wheels assets
 	tox
 
 # cel: docker-up
@@ -132,3 +132,6 @@ demo-vm-cleanup:
 	VBoxManage unregistervm Demo\ BPP\ `python src/django_bpp/version.py` --delete
 
 demo-vm: vagrantclean staging demo-vm-ansible demo-vm-clone demo-vm-cleanup
+
+travis: distclean dockerclean
+	make -f Makefile.docker travis

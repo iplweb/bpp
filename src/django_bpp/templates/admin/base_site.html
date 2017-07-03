@@ -1,6 +1,6 @@
 {% extends "admin/base.html" %}
 
-{% load i18n admin_tools_menu_tags %}
+{% load i18n admin_tools_menu_tags crispy_forms_tags %}
 
 {% block title %}{{ title }} - Bibliografia Publikacji Pracowników{% endblock %}
 
@@ -8,12 +8,22 @@
     <h1 id="site-name">{% trans 'Django administration' %}</h1>
 {% endblock %}
 
+{% block extrahead %}
+    {{ global_nav_form.media }}
+{% endblock %}
+
 {% block nav-global %}
     {% if user.is_active and user.is_staff %}
         {% if not is_popup %}
-            {% include 'navigation_autocomplete_script.html' %}
-            {% include 'navigation_autocomplete_input.html' %}
-
+            <div style="float: right; ">
+            {% crispy global_nav_form %}
+            <script type="text/javascript">
+                $(':input[name$=global_nav_value]').on('change', function () {
+                    location.href = "/global-nav-redir/" + $(this).val() +
+                        "?source=admin";
+                });
+            </script>
+            </div>
             <div style="display: none;" id="show-after-load">
                 {% admin_tools_render_menu %}
             </div>
@@ -35,6 +45,7 @@
     </style>
     <script type="text/javascript">
         $(document).ready(function () {
+
             $("#show-after-load").css("display", "block");
             txt = $("#grp-admin-title").text();
             $("#grp-admin-title").html(

@@ -12,7 +12,9 @@ from bpp.models.patent import Patent
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 from bpp.models.zrodlo import Punktacja_Zrodla
 from bpp.tests import any_ciagle, any_autor, any_jednostka
-from bpp.tests.util import any_zrodlo, CURRENT_YEAR, any_zwarte, any_patent
+from bpp.tests.util import any_zrodlo, CURRENT_YEAR, any_zwarte, any_patent, \
+    select_select2_autocomplete, scroll_into_view, \
+    select_select2_clear_selection
 from django_bpp.selenium_util import wait_for_page_load, wait_for
 
 ID = "id_tytul_oryginalny"
@@ -20,14 +22,11 @@ ID = "id_tytul_oryginalny"
 pytestmark = [pytest.mark.slow, pytest.mark.selenium]
 
 
-def scrollIntoView(browser, arg):
-    return browser.execute_script("document.getElementById('" + arg + "').scrollIntoView()")
-
 def proper_click(browser, arg):
     # Czy ta metoda jest potrzebna? Kiedyś był bug, który
     # uniemożliwiał kliknięcie elementu, który nei był widoczny
     # na stronie, stąd konieczność przescrollowania do niego
-    scrollIntoView(browser, arg)
+    scroll_into_view(browser, arg)
     browser.execute_script("document.getElementById('" + arg + "').click()")
 
 
@@ -150,7 +149,7 @@ def test_admin_patent_tamze(preauth_admin_browser, live_server):
     assert 'Dodaj patent' in preauth_admin_browser.html
     assert 'TO INFORMACJE' in preauth_admin_browser.html
 
-
+@pytest.mark.django_db(transaction=True)
 def test_automatycznie_uzupelnij_punkty(preauth_admin_browser, live_server):
     url = reverse("admin:bpp_wydawnictwo_ciagle_add")
     preauth_admin_browser.visit(live_server + url)
@@ -161,10 +160,11 @@ def test_automatycznie_uzupelnij_punkty(preauth_admin_browser, live_server):
         "id_wypelnij_pola_punktacji_button")
     assertPopupContains(preauth_admin_browser, u"Najpierw wybierz jakie")
 
-    zrodlo = preauth_admin_browser.find_by_id("id_zrodlo-autocomplete")
-    zrodlo.type("FOO")
-    time.sleep(2)
-    zrodlo.type(Keys.TAB)
+    select_select2_autocomplete(
+        preauth_admin_browser,
+        "id_zrodlo",
+        "FOO"
+    )
 
     clickButtonBuggyMarionetteDriver(
         preauth_admin_browser,
@@ -222,9 +222,8 @@ def test_admin_uzupelnij_punkty(preauth_admin_browser, live_server):
 
     # Teraz usuniemy źródło i sprawdzimy, czy przycisk zmieni nazwę
     assert button.value == u"Wypełniona!"
-    preauth_admin_browser.execute_script('$("span.remove").first().click()')
-    time.sleep(1)
 
+    select_select2_clear_selection(preauth_admin_browser, "id_zrodlo")
     button = preauth_admin_browser.find_by_id("id_wypelnij_pola_punktacji_button")
     assert button.value == u"Wypełnij pola punktacji"
 
@@ -236,14 +235,16 @@ def test_upload_punkty(preauth_admin_browser, live_server):
     url = reverse("admin:bpp_wydawnictwo_ciagle_add")
     preauth_admin_browser.visit(live_server + url)
 
-    preauth_admin_browser.fill("zrodlo-autocomplete", "WTF")
-    time.sleep(2)
-    preauth_admin_browser.fill("zrodlo-autocomplete", Keys.TAB)
+    select_select2_autocomplete(
+        preauth_admin_browser,
+        "id_zrodlo",
+        "WTF"
+    )
 
-    scrollIntoView(preauth_admin_browser, "id_rok")
+    scroll_into_view(preauth_admin_browser, "id_rok")
     preauth_admin_browser.fill("rok", str(CURRENT_YEAR))
 
-    scrollIntoView(preauth_admin_browser, "id_impact_factor")
+    scroll_into_view(preauth_admin_browser, "id_impact_factor")
     preauth_admin_browser.fill("impact_factor", "1")
 
     proper_click(preauth_admin_browser, "id_dodaj_punktacje_do_zrodla_button")
@@ -286,37 +287,24 @@ def autorform_browser(preauth_admin_browser, db, live_server):
     return preauth_admin_browser
 
 
-def test_autorform_jednostka_bug_wydawnictwo_ciagle_zapisz(autorform_browser, autorform_jednostka):
-    with wait_for_page_load(autorform_browser):
-        autorform_browser.find_by_name("_continue").click()
-    assert "To pole jest wymagane." in autorform_browser.html
-
-
 def test_autorform_uzupelnianie_jednostki(autorform_browser, autorform_jednostka):
-    set_autocomplete(autorform_browser,
-                     "id_wydawnictwo_ciagle_autor_set-0-autor-autocomplete",
-                     "KOWALSKI")
+    autorform_browser.execute_script("""
+    document.getElementsByClassName("grp-add-handler")[0].scrollIntoView()
+    """)
+    autorform_browser.find_by_css(".grp-add-handler").first.click()
+    wait_for(
+        lambda: autorform_browser.find_by_id("id_wydawnictwo_ciagle_autor_set-0-autor")
+    )
+
+    select_select2_autocomplete(
+        autorform_browser,
+        "id_wydawnictwo_ciagle_autor_set-0-autor",
+        "KOWALSKI"
+    )
 
     sel = autorform_browser.find_by_id("id_wydawnictwo_ciagle_autor_set-0-jednostka")
     assert sel.value == str(autorform_jednostka.pk)
 
-
-def test_autorform_uzupelnianie_jednostki_drugi_wiersz(autorform_browser, autorform_jednostka):
-    # bug polegający na tym, że druga jednostka się ŹLE wypełnia
-
-    # najpierw kliknij "dodaj autora"
-    autorform_browser.execute_script('$(".grp-add-handler")[1].click()')
-    wait_for(
-        lambda: autorform_browser.find_by_id("id_wydawnictwo_ciagle_autor_set-1-autor-autocomplete")
-    )
-
-    # a potem wpisz dane i sprawdź, że jednostki NIE będzie
-    set_autocomplete(autorform_browser,
-                     "id_wydawnictwo_ciagle_autor_set-1-autor-autocomplete",
-                     "KOWALSKI")
-
-    sel = autorform_browser.find_by_id("id_wydawnictwo_ciagle_autor_set-1-jednostka")
-    assert sel.value == str(autorform_jednostka.pk)
 
 
 def find_autocomplete_widget(browser, id):
@@ -330,30 +318,21 @@ def find_autocomplete_widget(browser, id):
             return elem
 
 
-def set_autocomplete(browser, id, entry):
-    scrollIntoView(browser, id)
-    ac = browser.find_by_id(id)
-    for key in ac.type(entry, slowly=True): pass
-    widget = find_autocomplete_widget(browser, id)
-    start = time.time()
-    while True:
-        if widget.visible:
-            break
-        if start - time.time() > 13:
-            raise Exception("Timeout")
-    for elem in ac.type(Keys.TAB, slowly=True):
-        pass
-    while True:
-        if not widget.visible:
-            break
-        if start - time.time() > 13:
-            raise Exception("Timeout")
-
-
 def test_autorform_kasowanie_autora(autorform_browser, autorform_jednostka):
-    set_autocomplete(
+
+    # kliknij "dodaj powiazanie autor-wydawnictwo"
+    autorform_browser.execute_script("""
+    document.getElementsByClassName("grp-add-handler")[0].scrollIntoView()
+    """)
+    autorform_browser.find_by_css(".grp-add-handler").first.click()
+    wait_for(
+        lambda: autorform_browser.find_by_id("id_wydawnictwo_ciagle_autor_set-0-autor")
+    )
+
+    # uzupełnij autora
+    select_select2_autocomplete(
         autorform_browser,
-        "id_wydawnictwo_ciagle_autor_set-0-autor-autocomplete",
+        "id_wydawnictwo_ciagle_autor_set-0-autor",
         "KOW")
 
     start = time.time()
@@ -365,12 +344,14 @@ def test_autorform_kasowanie_autora(autorform_browser, autorform_jednostka):
         if time.time() - start >= 3:
             raise Exception("Timeout")
 
-    autorform_browser.execute_script("""
-    $("#id_wydawnictwo_ciagle_autor_set-0-autor-deck").find(".remove").click()
-    """)
+    # Jednostka ustawiona. Usuń autora:
+    select_select2_clear_selection(
+        autorform_browser,
+        "id_wydawnictwo_ciagle_autor_set-0-autor")
 
+    # jednostka nie jest wybrana
     jed = autorform_browser.find_by_id("id_wydawnictwo_ciagle_autor_set-0-jednostka")
-    assert jed.value == ''
+    assert jed.value.find("\n") != -1
 
     autorform_browser.execute_script("window.onbeforeunload = function(e) {};")
 
@@ -380,7 +361,6 @@ def test_bug_on_user_add(preauth_admin_browser, live_server):
     preauth_admin_browser.fill("username", "as")
     preauth_admin_browser.fill("password1", "as")
     preauth_admin_browser.fill("password2", "as")
-    preauth_admin_browser.find_by_name("_continue").click()
-    time.sleep(3)
-    assert "server error" not in preauth_admin_browser.html
+    with wait_for_page_load(preauth_admin_browser):
+        preauth_admin_browser.find_by_name("_continue").click()
     assert u"Zmień użytkownik" in preauth_admin_browser.html

@@ -11,9 +11,9 @@ class Publikacja_Habilitacyjna(models.Model):
     praca_habilitacyjna = models.ForeignKey('Praca_Habilitacyjna')
     kolejnosc = models.IntegerField('Kolejność', default=0)
 
-    limit = models.Q(app_label = 'bpp', model = 'wydawnictwo_ciagle') | \
-            models.Q(app_label = 'bpp', model = 'wydawnictwo_zwarte') | \
-            models.Q(app_label = 'bpp', model = 'patent')
+    limit = models.Q(app_label='bpp', model='wydawnictwo_ciagle') | \
+            models.Q(app_label='bpp', model='wydawnictwo_zwarte') | \
+            models.Q(app_label='bpp', model='patent')
     content_type = models.ForeignKey(ContentType, limit_choices_to=limit)
     object_id = models.PositiveIntegerField()
     publikacja = GenericForeignKey()
@@ -22,6 +22,9 @@ class Publikacja_Habilitacyjna(models.Model):
         app_label = 'bpp'
         verbose_name = u"powiązanie publikacji z habilitacją"
         verbose_name_plural = u"powiązania publikacji z habilitacją"
+        unique_together = [
+            ('praca_habilitacyjna', 'content_type', 'object_id')
+        ]
         ordering = ('kolejnosc',)
 
 
@@ -32,5 +35,3 @@ class Praca_Habilitacyjna(Praca_Doktorska_Baza):
         verbose_name = 'praca habilitacyjna'
         verbose_name_plural = 'prace habilitacyjne'
         app_label = 'bpp'
-
-

@@ -5,9 +5,8 @@ coverage==3.6
 
 model_mommy==1.3.2
 
-pytest==3.1.1
+pytest==3.1.2
 pytest-django==3.1.2
-pytest-xdist==1.13.1
 pytest-instafail==0.3.0
 pytest-localserver==0.3.6
 pytest-splinter==1.8.5 
@@ -28,7 +27,7 @@ pdbpp
 
 mock==1.0.1
 
-django-webtest==1.8.0
+django-webtest==1.9.2
 beautifulsoup4==4.4.1
 webtest==2.0.27
 

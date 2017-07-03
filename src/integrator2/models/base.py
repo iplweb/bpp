@@ -5,6 +5,8 @@ import os
 from django.conf import settings
 from django.db import models
 
+from bpp.models.profile import BppUser
+
 STATUSY = [
     (0, "dodany"),
     (1, "w trakcie analizy"),
@@ -38,7 +40,7 @@ class BaseIntegration(models.Model):
     name = models.CharField("Nazwa pliku", max_length=255)
 
     file = models.FileField(verbose_name="Plik", upload_to="integrator2")
-    owner = models.ForeignKey(settings.AUTH_USER_MODEL)
+    owner = models.ForeignKey(BppUser)
 
     uploaded_on = models.DateTimeField(auto_now_add=True)
     last_updated_on = models.DateTimeField(auto_now=True)

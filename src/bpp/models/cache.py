@@ -5,7 +5,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db.models.deletion import DO_NOTHING
 from django.db import models, transaction
 from django.db.models.signals import post_save, post_delete, pre_save, pre_delete
-from djorm_pgfulltext.fields import VectorField
+from django.contrib.postgres.search import SearchVectorField as VectorField
 
 from filtered_contenttypes.fields import FilteredGenericForeignKey
 from bpp.models import Patent, \
@@ -29,6 +29,7 @@ from bpp.models.abstract import ModelPunktowanyBaza, \
 from bpp.models.system import Charakter_Formalny, Jezyk
 from bpp.models.util import ModelZOpisemBibliograficznym
 from bpp.util import FulltextSearchMixin
+from django.utils import six
 
 # zmiana CACHED_MODELS powoduje zmiane opisu bibliograficznego wszystkich rekordow
 CACHED_MODELS = [Wydawnictwo_Ciagle, Wydawnictwo_Zwarte, Praca_Doktorska,
@@ -301,6 +302,7 @@ class RekordManager(FulltextSearchMixin, models.Manager):
     #                     using=self._db, hints=self._hints)
     #
 
+@six.python_2_unicode_compatible
 class Rekord(ModelPunktowanyBaza, ModelZOpisemBibliograficznym,
              ModelZRokiem, ModelZeSzczegolami, ModelAfiliowanyRecenzowany,
              models.Model):
@@ -342,7 +344,7 @@ class Rekord(ModelPunktowanyBaza, ModelZOpisemBibliograficznym,
         db_table = 'bpp_rekord_mat'
 
 
-    def __unicode__(self):
+    def __str__(self):
         return self.tytul_oryginalny
 
 

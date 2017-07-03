@@ -1,4 +1,5 @@
 # -*- encoding: utf-8 -*-
+from django.contrib.postgres.search import SearchQuery
 from django.utils.itercompat import is_iterable
 
 from bpp.models.struktura import Wydzial
@@ -7,7 +8,6 @@ NULL_VALUE = u"(brak wpisanej wartości)"
 
 from django.db.models import Q
 from django.db.models.expressions import F
-from djorm_pgfulltext.fields import TSConfig
 from multiseek import logic
 from multiseek.logic import DecimalQueryObject, BooleanQueryObject
 from multiseek.logic import StringQueryObject, QueryObject, EQUALITY_OPS_ALL, \
@@ -47,16 +47,17 @@ class TytulPracyQueryObject(StringQueryObject):
 
             value = [x.strip() for x in value.split(" ") if x.strip()]
 
-            if not value:
-                return Q(pk=F('pk'))
+            query = None
+            for elem in value:
+                if query is None:
+                    query = SearchQuery(elem, config="bpp_nazwy_wlasne")
+                else:
+                    query &= SearchQuery(elem, config="bpp_nazwy_wlasne")
 
-            params = [TSConfig('bpp_nazwy_wlasne')]
-            params.extend(value)
+            if operation == logic.NOT_CONTAINS:
+                query = ~query
 
-            if operation == logic.CONTAINS:
-                ret = Q(search_index__ft_startswith=params)
-            else:
-                ret = Q(search_index__ft_not_startswith=params)
+            ret = Q(search_index=query)
 
         elif operation in [logic.STARTS_WITH, logic.NOT_STARTS_WITH]:
             ret = Q(**{self.field_name + "__istartswith": value})

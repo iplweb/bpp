@@ -21,13 +21,14 @@ from django.core.management import call_command
 # tzn. najbardziej to na WYSYLANIE by sie przydala.
 from django.core.urlresolvers import reverse
 import pytest
-from bpp.models.system import Charakter_Formalny
+from bpp.models.system import Charakter_Formalny, Status_Korekty, Jezyk, \
+    Typ_KBN
 from conftest import NORMAL_DJANGO_USER_PASSWORD
 
 pytestmark = [pytest.mark.slow, pytest.mark.selenium]
 
 
-def test_caching_enabled(admin_app, zrodlo, obiekty_bpp):
+def test_caching_enabled(admin_app, zrodlo, standard_data):
     """
     1) wejdź do redagowania
     2) dopisz publikację, zapisz
@@ -46,10 +47,10 @@ def test_caching_enabled(admin_app, zrodlo, obiekty_bpp):
     form['rok'].value = '2000'
 
     form['zrodlo'].force_value([zrodlo.pk, ])  # force_value bo to autocomplete
-    form['charakter_formalny'].value = obiekty_bpp.charakter_formalny.values()[0].pk
-    form['jezyk'].value = obiekty_bpp.jezyk.values()[0].pk
-    form['typ_kbn'].value = obiekty_bpp.typ_kbn.values()[0].pk
-    form['status_korekty'].value = obiekty_bpp.status_korekty[0].pk
+    form['charakter_formalny'].value = Charakter_Formalny.objects.all().first().pk
+    form['jezyk'].value = Jezyk.objects.all().first().pk
+    form['typ_kbn'].value = Typ_KBN.objects.all().first().pk
+    form['status_korekty'].value = Status_Korekty.objects.all().first().pk
     form.submit()
 
     # Teraz wchodzimy do multiseek i sprawdzamy jak to wyglada
@@ -95,7 +96,8 @@ def test_preauth_browser(preauth_browser, live_server):
     """Sprawdz, czy pre-autoryzowany browser zwyklego uzytkownika
     funkcjonuje poprawnie."""
     preauth_browser.visit(live_server + '/admin/')
-    assert preauth_browser.is_text_present(u"Login")
+    assert preauth_browser.is_text_present(u"Login") or \
+           preauth_browser.is_text_present(u"Zaloguj si")
 
 
 def test_preauth_admin_browser(preauth_admin_browser, live_server):

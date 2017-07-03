@@ -6,14 +6,8 @@ from django_bpp import urls
 urls
 
 
-from model_mommy import mommy
-
-mommy.generators.add('django.contrib.postgres.fields.array.ArrayField',
-                     lambda x: [])
-
-
-
 from bpp.tests.util import *
+setup_mommy()
 #
 #from test_abstract import *
 #from test_admin import *

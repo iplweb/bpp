@@ -33,8 +33,8 @@ def dodaj_autora(klass, rekord, autor, jednostka, zapisany_jako=None,
 
     from bpp.models import Typ_Odpowiedzialnosci
 
-    typ_odpowiedzialnosci = Typ_Odpowiedzialnosci.objects.get_or_create(
-        skrot=typ_odpowiedzialnosci_skrot)[0]
+    typ_odpowiedzialnosci = Typ_Odpowiedzialnosci.objects.get(
+        skrot=typ_odpowiedzialnosci_skrot)
 
     if zapisany_jako is None:
         zapisany_jako = u"%s %s" % (autor.nazwisko, autor.imiona)

@@ -7,6 +7,7 @@ Małe klasy pomocnicze dla całego systemu
 from django.db import models
 
 from bpp.models.abstract import ModelZNazwa, NazwaISkrot
+from django.utils import six
 
 NAZWY_PRIMO = [
     u"",
@@ -33,7 +34,7 @@ RODZAJE_DOKUMENTOW_PBN = [("article", "Artykuł"),
                           ("book", "Książka"),
                           ("chapter", "Rozdział")]
 
-
+@six.python_2_unicode_compatible
 class Charakter_PBN(models.Model):
     wlasciwy_dla = models.CharField(max_length=20,
                                     choices=RODZAJE_DOKUMENTOW_PBN)
@@ -46,7 +47,7 @@ class Charakter_PBN(models.Model):
         verbose_name = 'Charakter PBN'
         verbose_name_plural = 'Charaktery PBN'
 
-    def __unicode__(self):
+    def __str__(self):
         return self.opis
 
 
@@ -95,7 +96,7 @@ class Zrodlo_Informacji(ModelZNazwa):
         verbose_name_plural = u'źródła informacji o bibliografii'
         app_label = 'bpp'
 
-
+@six.python_2_unicode_compatible
 class Typ_Odpowiedzialnosci(NazwaISkrot):
     class Meta:
         verbose_name = u'typ odpowiedzialności autora'
@@ -103,7 +104,7 @@ class Typ_Odpowiedzialnosci(NazwaISkrot):
         ordering = ['nazwa']
         app_label = 'bpp'
 
-    def __unicode__(self):
+    def __str__(self):
         return self.nazwa
 
 

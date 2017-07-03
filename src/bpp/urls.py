@@ -1,5 +1,5 @@
 # -*- encoding: utf-8 -*-
-from django.conf.urls import patterns, url, include
+from django.conf.urls import url
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from bpp.views.api.pubmed import GetPubmedIDView
@@ -9,6 +9,11 @@ from bpp.views.api import RokHabilitacjiView, PunktacjaZrodlaView, UploadPunktac
 from bpp.views.browse import UczelniaView, WydzialView, JednostkaView, \
     AutorView, ZrodlaView, ZrodloView, AutorzyView, BuildSearch, PracaView, \
     JednostkiView
+from bpp.views.autocomplete import WidocznaJednostkaAutocomplete, \
+    AutorZUczelniAutocopmlete, GlobalNavigationAutocomplete, \
+    JednostkaAutocomplete, ZrodloAutocomplete, AutorAutocomplete, \
+    ZapisanyJakoAutocomplete, Wydawnictwo_NadrzedneAutocomplete, \
+    PodrzednaPublikacjaHabilitacyjnaAutocomplete, AdminNavigationAutocomplete
 from bpp.views.raporty import RankingAutorow, \
     PobranieRaportu, PodgladRaportu, KasowanieRaportu, \
     RaportJednostek2012, RaportKronikaUczelni, RaportJednostek, \
@@ -18,12 +23,10 @@ from bpp import reports
 from bpp.views.raporty.raport_autorow_2012 import RaportAutorow2012
 
 reports # PyCharm, leave that import alone, it is IMPORTANT to import it
-
+import bpp
 from django.conf import settings
 
-urlpatterns = patterns(
-    '',
-
+urlpatterns = [
     url(r'^api/rok-habilitacji/$', csrf_exempt(RokHabilitacjiView.as_view()),
         name='api_rok_habilitacji'),
     url(r'^api/punktacja-zrodla/(?P<zrodlo_id>[\d]+)/(?P<rok>[\d]+)/$',
@@ -96,8 +99,69 @@ urlpatterns = patterns(
     url(r'^raporty/raport-autorow-2012/(?P<pk>\d+)/(?P<rok_min>\d+)/$',
         RaportAutorow2012.as_view(), name='raport-autorow'),
 
-    url(r'^$', "bpp.views.root", name="root"),
+    url(r'^$', bpp.views.root, name="root"),
 
-    url(r'^update-multiseek-title/$', "bpp.views.update_multiseek_title", name='update_multiseek_title')
+    url(r'^update-multiseek-title/$', bpp.views.update_multiseek_title,
+        name='update_multiseek_title'),
 
-)
+    url(
+        r'^jednostka-widoczna-autocomplete/$',
+        WidocznaJednostkaAutocomplete.as_view(),
+        name='jednostka-widoczna-autocomplete',
+    ),
+
+    url(
+        r'^jednostka-autocomplete/$',
+        JednostkaAutocomplete.as_view(),
+        name='jednostka-autocomplete',
+    ),
+
+    url(
+        r'^zrodlo-autocomplete/$',
+        ZrodloAutocomplete.as_view(),
+        name='zrodlo-autocomplete',
+    ),
+
+    url(
+        r'^autor-z-uczelni-autocomplete/$',
+        AutorZUczelniAutocopmlete.as_view(),
+        name='autor-z-uczelni-autocomplete',
+    ),
+    url(
+        r'^autor-autocomplete/$',
+        AutorAutocomplete.as_view(),
+        name='autor-autocomplete',
+    ),
+
+    url(
+        r'^navigation-autocomplete/$',
+        GlobalNavigationAutocomplete.as_view(),
+        name='navigation-autocomplete'
+    ),
+
+    url(
+        r'^admin-navigation-autocomplete/$',
+        AdminNavigationAutocomplete.as_view(),
+        name='admin-navigation-autocomplete'
+    ),
+
+    url(
+        r'^zapisany-jako-autocomplete/$',
+        ZapisanyJakoAutocomplete.as_view(),
+        name='zapisany-jako-autocomplete'
+    ),
+
+    url(
+        r'^wydawnictwo-nadrzedne-autocomplete/$',
+        Wydawnictwo_NadrzedneAutocomplete.as_view(),
+        name='wydawnictwo-nadrzedne-autocomplete'
+    ),
+
+    url(
+        r'^podrzedna-publikacja-habilitacyjna-autocomplete/$',
+        PodrzednaPublikacjaHabilitacyjnaAutocomplete.as_view(),
+        name='podrzedna-publikacja-habilitacyjna-autocomplete'
+    )
+
+
+]

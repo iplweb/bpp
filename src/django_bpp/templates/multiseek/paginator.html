@@ -34,7 +34,7 @@
         {% endif %}
         {% if not request.GET.all == "1" and paginator.num_pages > 1 %}
             <dt>strony:</dt>
-            <dd>{% paginate window=2 %}</dd>
+            <dd>{% paginate %}</dd>
         {% endif %}
     </dl>
 

@@ -9,6 +9,7 @@ SENDFILE_BACKEND = 'sendfile.backends.nginx'
 SESSION_COOKIE_SECURE = False
 CSRF_COOKIE_SECURE = False
 
+COMPRESS_ENABLED = not DEBUG
 COMPRESS_OFFLINE = False
 
 TEMPLATES[0]['OPTIONS']['loaders'] = [

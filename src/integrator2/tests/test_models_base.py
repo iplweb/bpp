@@ -4,9 +4,9 @@ from mock import Mock, MagicMock
 
 from integrator2.models.base import BaseIntegration
 
-
 @pytest.mark.django_db
-def test_models_base():
+def test_models_base(normal_django_user):
+
     bi = BaseIntegration()
 
     bi.file.name = 'foo'

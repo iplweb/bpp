@@ -1,5 +1,5 @@
 # -*- encoding: utf-8 -*-
-from django.conf.urls import patterns, url
+from django.conf.urls import url
 
 from egeria.views import EgeriaImportCreateView, EgeriaImportListView, Diff_Tytul_CreateListView, \
     Diff_Tytul_DeleteListView, ResetImportStateView, Diff_Funkcja_Autora_CreateListView, \
@@ -7,8 +7,7 @@ from egeria.views import EgeriaImportCreateView, EgeriaImportListView, Diff_Tytu
     Diff_Jednostka_CreateListView, Diff_Jednostka_UpdateListView, Diff_Jednostka_DeleteListView, \
     Diff_Autor_CreateListView, Diff_Autor_UpdateListView, Diff_Autor_DeleteListView, ResultsView
 
-urlpatterns = patterns(
-    '',
+urlpatterns = (
 
     url(r'^new/$', EgeriaImportCreateView.as_view(), name="new"),
 

@@ -6,14 +6,15 @@ from model_mommy import mommy
 
 from bpp.models.autor import Autor
 from bpp.models.struktura import Wydzial, Jednostka, Uczelnia
-from bpp.models.system import Typ_Odpowiedzialnosci
+from bpp.models.system import Typ_Odpowiedzialnosci, Charakter_Formalny
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 
-
+@pytest.mark.django_db
 def test_serializuj_pbn_zwarte(wydawnictwo_zwarte_z_autorem, wydzial):
     wydawnictwo_zwarte_z_autorem.eksport_pbn_serializuj(wydzial)
 
 
+@pytest.mark.django_db
 def test_liczba_arkuszy_wydawniczych(wydawnictwo_zwarte_z_autorem):
     wydawnictwo_zwarte_z_autorem.liczba_znakow_wydawniczych = 41000
     assert wydawnictwo_zwarte_z_autorem.liczba_arkuszy_wydawniczych() == "1.02"
@@ -28,6 +29,7 @@ def test_liczba_arkuszy_wydawniczych(wydawnictwo_zwarte_z_autorem):
     assert wydawnictwo_zwarte_z_autorem.liczba_arkuszy_wydawniczych() == "0.50"
 
 
+@pytest.mark.django_db
 def test_eksport_pbn_size(wydawnictwo_zwarte_z_autorem):
     """
     :type wydawnictwo_zwarte_z_autorem: bpp.models.Wydawnictwo_Zwarte
@@ -39,7 +41,8 @@ def test_eksport_pbn_size(wydawnictwo_zwarte_z_autorem):
 
 
 @pytest.mark.django_db
-def test_eksport_pbn_wydawnictwo_nadrzedne_liczba_autorow(chf_ksp, chf_roz):
+def test_eksport_pbn_wydawnictwo_nadrzedne_liczba_autorow(
+        charaktery_formalne, typy_odpowiedzialnosci):
     """
 
     :type wydawnictwo_zwarte_z_autorem: bpp.models.Wydawnictwo_Zwarte
@@ -57,15 +60,15 @@ def test_eksport_pbn_wydawnictwo_nadrzedne_liczba_autorow(chf_ksp, chf_roz):
     j1 = mommy.make(Jednostka, wydzial=w1, uczelnia=u)
     j2 = mommy.make(Jednostka, wydzial=w2, uczelnia=u)
 
+    chf_ksp = Charakter_Formalny.objects.get(skrot="KSP")
+    chf_roz = Charakter_Formalny.objects.get(skrot="ROZ")
+
     wz_root = mommy.make(Wydawnictwo_Zwarte, charakter_formalny=chf_ksp, szczegoly="s. 123",
                          calkowita_liczba_autorow=50)
     wz_child1 = mommy.make(Wydawnictwo_Zwarte, wydawnictwo_nadrzedne=wz_root, charakter_formalny=chf_roz,
                            szczegoly="s. 10-15")
     wz_child2 = mommy.make(Wydawnictwo_Zwarte, wydawnictwo_nadrzedne=wz_root, charakter_formalny=chf_roz,
                            szczegoly="s. 16-25")
-
-    Typ_Odpowiedzialnosci.objects.get_or_create(skrot="aut.", nazwa="autor")
-    Typ_Odpowiedzialnosci.objects.get_or_create(skrot="red.", nazwa="redaktor")
 
     wz_root.dodaj_autora(a1, j1, typ_odpowiedzialnosci_skrot="red.")
     wz_root.dodaj_autora(a2, j2, typ_odpowiedzialnosci_skrot="red.")
@@ -86,7 +89,8 @@ def test_eksport_pbn_wydawnictwo_nadrzedne_liczba_autorow(chf_ksp, chf_roz):
 
 
 @pytest.mark.django_db
-def test_eksport_pbn_wydawnictwo_nadrzedne_liczba_autorow_trzech(chf_ksp, chf_roz):
+def test_eksport_pbn_wydawnictwo_nadrzedne_liczba_autorow_trzech(
+        standard_data):
     """
 
     :type wydawnictwo_zwarte_z_autorem: bpp.models.Wydawnictwo_Zwarte
@@ -105,15 +109,15 @@ def test_eksport_pbn_wydawnictwo_nadrzedne_liczba_autorow_trzech(chf_ksp, chf_ro
     j1 = mommy.make(Jednostka, wydzial=w1, uczelnia=u)
     j2 = mommy.make(Jednostka, wydzial=w2, uczelnia=u)
 
+    chf_ksp = Charakter_Formalny.objects.get(skrot="KSP")
+    chf_roz = Charakter_Formalny.objects.get(skrot="ROZ")
+
     wz_root = mommy.make(Wydawnictwo_Zwarte, charakter_formalny=chf_ksp, szczegoly="s. 123",
                          calkowita_liczba_autorow=50)
     wz_child1 = mommy.make(Wydawnictwo_Zwarte, wydawnictwo_nadrzedne=wz_root, charakter_formalny=chf_roz,
                            szczegoly="s. 10-15")
     wz_child2 = mommy.make(Wydawnictwo_Zwarte, wydawnictwo_nadrzedne=wz_root, charakter_formalny=chf_roz,
                            szczegoly="s. 16-25")
-
-    Typ_Odpowiedzialnosci.objects.get_or_create(skrot="aut.", nazwa="autor")
-    Typ_Odpowiedzialnosci.objects.get_or_create(skrot="red.", nazwa="redaktor")
 
     wz_root.dodaj_autora(a1, j1, typ_odpowiedzialnosci_skrot="red.")
     wz_root.dodaj_autora(a2, j2, typ_odpowiedzialnosci_skrot="red.")
@@ -133,7 +137,7 @@ def test_eksport_pbn_wydawnictwo_nadrzedne_liczba_autorow_trzech(chf_ksp, chf_ro
     assert len(ret.findall("author")) == 2
     assert ret.find("other-contributors").text == "48"
 
-
+@pytest.mark.django_db
 def test_eksport_pbn_publication_place(wydawnictwo_zwarte):
     wydawnictwo_zwarte.miejsce_i_rok = "Lublin 1993"
     toplevel = Element("a")
@@ -151,6 +155,7 @@ def test_eksport_pbn_publication_place(wydawnictwo_zwarte):
     assert toplevel.getchildren()[0].text == "Berlin Heidelberg"
 
 
+@pytest.mark.django_db
 def test_eksport_pbn_book_bug(wydawnictwo_zwarte, wydzial):
     wydawnictwo_zwarte.informacje = "Tu nie będzie wu i dwukropka"
     wydawnictwo_zwarte.save()

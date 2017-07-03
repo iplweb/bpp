@@ -1,10 +1,8 @@
-from django.conf.urls import patterns, url
+from django.conf.urls import url
 
 from integrator2.views import Main, UploadListaMinisterialna, DetailBase
 
-urlpatterns = patterns(
-        '',
-
+urlpatterns = (
         url(r'^upload/$', UploadListaMinisterialna.as_view(), name='upload_lista_ministerialna'),
         # url(r'^nowy_lista_min/$', .as_view(template_name="integrator_upload.html"), name='new_list_min'),
         url(r'^$', Main.as_view(), name='main'),
