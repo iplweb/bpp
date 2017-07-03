@@ -10,7 +10,7 @@ from bpp.reports.opi_2012 import make_report_zipfile
 
 
 class Command(BaseCommand):
-    help = u'Eksportuje raporty OPI 2009-2012'
+    help = 'Eksportuje raporty OPI 2009-2012'
 
     @transaction.atomic
     def handle(self, *args, **options):

@@ -16,7 +16,7 @@ class TestTasks(TestCase):
             szczegoly='wtf-lol')
         zaktualizuj_opis(c.__class__, c.pk)
 
-        self.assertEquals(
+        self.assertEqual(
             c.opis_bibliograficzny(),
             Rekord.objects.all()[0].opis_bibliograficzny_cache
         )

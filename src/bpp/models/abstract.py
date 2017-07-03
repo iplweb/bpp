@@ -73,7 +73,7 @@ class NazwaISkrot(ModelZNazwa):
 
 class NazwaWDopelniaczu(models.Model):
     nazwa_dopelniacz_field = models.CharField(
-        u"Nazwa w dopełniaczu", max_length=512, null=True, blank=True)
+        "Nazwa w dopełniaczu", max_length=512, null=True, blank=True)
 
     class Meta:
         abstract = True
@@ -278,7 +278,7 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
         ordering = ('kolejnosc', 'typ_odpowiedzialnosci__skrot')
 
     def __str__(self):
-        return six.text_type(self.autor) + u" - " + six.text_type(
+        return six.text_type(self.autor) + " - " + six.text_type(
             self.jednostka.skrot)
 
     # XXX TODO sprawdzanie, żęby nie było dwóch autorów o tej samej kolejności
@@ -356,7 +356,7 @@ class PBNSerializerHelperMixin:
         res = strony_regex.search(self.szczegoly)
         if res is not None:
             d = res.groupdict()
-            if d.has_key("poczatek") and d.has_key("koniec") and d['koniec'] is not None:
+            if "poczatek" in d and "koniec" in d and d['koniec'] is not None:
                 return "%s-%s" % (d['poczatek'], d['koniec'])
 
             return "%s" % d['poczatek']
@@ -613,7 +613,7 @@ class ModelZAktualizacjaDlaPBN(models.Model):
         if self.pk is not None:
             if self.is_dirty(check_relationship=True):
                 flds = self.get_dirty_fields(check_relationship=True)
-                flds_keys = flds.keys()
+                flds_keys = list(flds.keys())
                 from bpp.admin.helpers import MODEL_PUNKTOWANY, MODEL_PUNKTOWANY_KOMISJA_CENTRALNA
 
                 for elem in MODEL_PUNKTOWANY + MODEL_PUNKTOWANY_KOMISJA_CENTRALNA + \

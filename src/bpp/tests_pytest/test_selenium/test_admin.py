@@ -33,7 +33,7 @@ def proper_click(browser, arg):
 def clickButtonBuggyMarionetteDriver(browser, id):
     try:
         browser.execute_script("$('#" + id + "').click()")
-    except WebDriverException, e:
+    except WebDriverException as e:
         if e.msg.startswith("Failed to find value field"):
             pass
         else:
@@ -65,7 +65,7 @@ def test_admin_wydawnictwo_ciagle_toz(preauth_admin_browser, live_server):
     toz = preauth_admin_browser.find_by_id('toz')
     toz.click()
 
-    assertPopupContains(preauth_admin_browser, u"Utworzysz kopię tego rekordu")
+    assertPopupContains(preauth_admin_browser, "Utworzysz kopię tego rekordu")
     time.sleep(2)
     assert preauth_admin_browser.is_element_present_by_id('navigation-menu', wait_time=5000)
 
@@ -83,7 +83,7 @@ def test_admin_wydawnictwo_zwarte_toz(preauth_admin_browser, live_server):
     toz = preauth_admin_browser.find_by_id('toz')
     toz.click()
 
-    assertPopupContains(preauth_admin_browser, u"Utworzysz kopię tego rekordu")
+    assertPopupContains(preauth_admin_browser, "Utworzysz kopię tego rekordu")
     time.sleep(2)
     preauth_admin_browser.is_element_present_by_id('navigation-menu', 5000)
     assert wcc() == 2
@@ -132,7 +132,7 @@ def test_admin_patent_toz(preauth_admin_browser, live_server):
     toz = preauth_admin_browser.find_by_id('toz')
     toz.click()
 
-    assertPopupContains(preauth_admin_browser, u"Utworzysz kopię tego rekordu")
+    assertPopupContains(preauth_admin_browser, "Utworzysz kopię tego rekordu")
     time.sleep(2)
 
     preauth_admin_browser.is_element_present_by_id('navigation-menu', 5000)
@@ -158,7 +158,7 @@ def test_automatycznie_uzupelnij_punkty(preauth_admin_browser, live_server):
     clickButtonBuggyMarionetteDriver(
         preauth_admin_browser,
         "id_wypelnij_pola_punktacji_button")
-    assertPopupContains(preauth_admin_browser, u"Najpierw wybierz jakie")
+    assertPopupContains(preauth_admin_browser, "Najpierw wybierz jakie")
 
     select_select2_autocomplete(
         preauth_admin_browser,
@@ -169,7 +169,7 @@ def test_automatycznie_uzupelnij_punkty(preauth_admin_browser, live_server):
     clickButtonBuggyMarionetteDriver(
         preauth_admin_browser,
         "id_wypelnij_pola_punktacji_button")
-    assertPopupContains(preauth_admin_browser, u"Uzupełnij pole")
+    assertPopupContains(preauth_admin_browser, "Uzupełnij pole")
 
     preauth_admin_browser.execute_script("window.onbeforeunload = function(e) {};")
 
@@ -205,12 +205,12 @@ def test_admin_uzupelnij_punkty(preauth_admin_browser, live_server):
 
     assert punkty_kbn.value == "10.20"
     button = preauth_admin_browser.find_by_id("id_wypelnij_pola_punktacji_button")
-    assert button.value == u"Wypełniona!"
+    assert button.value == "Wypełniona!"
 
     trigger_event(rok, "change")
     time.sleep(1)
     # Po zmianie roku LUB źródła przycisk ma się zmienić
-    assert button.value == u"Wypełnij pola punktacji"
+    assert button.value == "Wypełnij pola punktacji"
 
     # Zwiększymy rok o 1 i sprawdzimy, czy zmieni się punktacja
     preauth_admin_browser.fill("rok", str(CURRENT_YEAR + 1))
@@ -221,11 +221,11 @@ def test_admin_uzupelnij_punkty(preauth_admin_browser, live_server):
     assert punkty_kbn.value == "11.20"
 
     # Teraz usuniemy źródło i sprawdzimy, czy przycisk zmieni nazwę
-    assert button.value == u"Wypełniona!"
+    assert button.value == "Wypełniona!"
 
     select_select2_clear_selection(preauth_admin_browser, "id_zrodlo")
     button = preauth_admin_browser.find_by_id("id_wypelnij_pola_punktacji_button")
-    assert button.value == u"Wypełnij pola punktacji"
+    assert button.value == "Wypełnij pola punktacji"
 
     preauth_admin_browser.execute_script("window.onbeforeunload = function(e) {};")
 
@@ -259,7 +259,7 @@ def test_upload_punkty(preauth_admin_browser, live_server):
     # preauth_admin_browser.find_by_id("id_dodaj_punktacje_do_zrodla_button").click()
     time.sleep(2)
 
-    assertPopupContains(preauth_admin_browser, u"Punktacja dla tego roku już istnieje")
+    assertPopupContains(preauth_admin_browser, "Punktacja dla tego roku już istnieje")
     time.sleep(2)
 
     assert Punktacja_Zrodla.objects.count() == 1
@@ -363,4 +363,4 @@ def test_bug_on_user_add(preauth_admin_browser, live_server):
     preauth_admin_browser.fill("password2", "as")
     with wait_for_page_load(preauth_admin_browser):
         preauth_admin_browser.find_by_name("_continue").click()
-    assert u"Zmień użytkownik" in preauth_admin_browser.html
+    assert "Zmień użytkownik" in preauth_admin_browser.html

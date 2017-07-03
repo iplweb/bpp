@@ -13,14 +13,14 @@ from bpp.imports.uml import UML_Egeria_2012_Mangle
 from bpp.management.commands import files_or_directory
 
 class Command(BaseCommand):
-    help = u'Importuje afiliacje do wydziału z arkuszy XLS'
+    help = 'Importuje afiliacje do wydziału z arkuszy XLS'
     args = '<katalog z xlsx> | <plik xls 1> <plik xls 2> ...'
 
     @transaction.atomic
     def handle(self, *args, **options):
 
         for plik_xls in files_or_directory(args):
-            print(" *** Importuje plik", plik_xls)
+            print((" *** Importuje plik", plik_xls))
             importuj_afiliacje(plik_xls, UML_Egeria_2012_Mangle)
 
         for aj in Autor_Jednostka.objects.filter(zakonczyl_prace=date(2012,12,31)):

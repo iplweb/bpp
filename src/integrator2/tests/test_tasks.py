@@ -11,7 +11,7 @@ from integrator2.tasks import remove_old_integrator_files, analyze_file
 @pytest.mark.django_db
 def test_analyze_file(lmi):
     res = analyze_file(ListaMinisterialnaIntegration, pk=lmi.pk)
-    print res
+    print(res)
 
 @pytest.mark.django_db
 def test_remove_old_integrator_files():

@@ -15,17 +15,17 @@ class TestFulltextSearch(TestCase):
         self.nowak = any_autor('Nowak', 'Jan')
 
     def test_search_field(self):
-        self.assertNotEquals(
+        self.assertNotEqual(
             Autor.objects.all()[0].search, None)
 
     def test_fulltext_search_mixin(self):
         res = Autor.objects.fulltext_filter('kowalski jan')
-        self.assert_(self.kowalski in res)
+        self.assertTrue(self.kowalski in res)
 
     def test_global_nav_search(self):
         client = Client()
 
-        for s in ["śmierć", u"śmierć",
+        for s in ["śmierć", "śmierć",
                   "pas ternak'", "paste rnak''", "past ernak\\", "pastern ak\\'",
                   "past ernak\'", "past ernak &", "pa sternak (", "!paster nak",
                   "paste rnak)", "&", "& &", "()", "!!", "!", ")()()(\\\\!@!!@@!#!@",
@@ -34,4 +34,4 @@ class TestFulltextSearch(TestCase):
             url = reverse('bpp:navigation-autocomplete')
             url += '?'+ urlencode({'q':s})
             res = client.get(url)
-            self.assertEquals(res.status_code, 200)
+            self.assertEqual(res.status_code, 200)

@@ -57,7 +57,7 @@ def wytnij_zbedne_informacje_ze_zrodla(z):
                  'Praca zbior.', '[Ed.]', 'Sci. eds.', 'Pr. zbior.',
                  'Praca zbiorowa pod', 'Aut.', '[Red.]', 'Sci.ed.',
                  'Praca zbiorowa', ': praca zbiorowa', 'Ed.', 'Edited by',
-                 'Wyd.', ": praca zbiorowa", u" : [księga dedykowana",
+                 'Wyd.', ": praca zbiorowa", " : [księga dedykowana",
                  ]:
         z = splituj(z, elem)
 
@@ -80,5 +80,5 @@ def addToRegistry(klass):
 
 # Poniższy import jest KONIECZNY żeby adaptery do registry się
 # prawidłowo zassały (tasks.py importuje tylko toplevel-module)
-import kronika_uczelni
-import komisja_centralna
+from . import kronika_uczelni
+from . import komisja_centralna

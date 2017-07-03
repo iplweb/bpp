@@ -24,7 +24,7 @@ class TestKronikaUczelni(TestCase):
         a1 = any_autor()
         j1.dodaj_autora(a1)
 
-        a2 = any_autor(nazwisko=u"Óńwak", imiona=u"Jań")
+        a2 = any_autor(nazwisko="Óńwak", imiona="Jań")
         j2.dodaj_autora(a2)
 
         a3 = any_autor(nazwisko="Budnik", imiona="Piotr")

@@ -33,8 +33,8 @@ class Wydawnictwo_Zwarte_Autor(DirtyFieldsMixin, BazaModeluOdpowiedzialnosciAuto
     rekord = models.ForeignKey('Wydawnictwo_Zwarte')
 
     class Meta:
-        verbose_name = u'powiązanie autora z wyd. zwartym'
-        verbose_name_plural = u'powiązania autorów z wyd. zwartymi'
+        verbose_name = 'powiązanie autora z wyd. zwartym'
+        verbose_name_plural = 'powiązania autorów z wyd. zwartymi'
         app_label = 'bpp'
         ordering = ('kolejnosc',)
         unique_together = \

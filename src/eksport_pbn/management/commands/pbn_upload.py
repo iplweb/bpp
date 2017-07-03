@@ -71,7 +71,7 @@ class Command(BaseCommand):
             if wgranych != wszystkich and options['fix'] == 1:
                 ktora = int(wgranych)+1
                 call_command('pbn_extract', file=options['file'], ktora=ktora)
-                from pbn_extract import new_filename
+                from .pbn_extract import new_filename
 
                 import ipdb; ipdb.set_trace()
 

@@ -42,8 +42,8 @@ class TestRaportJednostek2012(TestCase):
         base_query = get_base_query_jednostka(self.j, CURRENT_YEAR, CURRENT_YEAR)
         q = raport_jednostek_tabela(klucz, base_query, self.j)
         q = list(q)
-        self.assertEquals(len(q), cnt)
-        self.assertEquals(q[0].original, rezultat)
+        self.assertEqual(len(q), cnt)
+        self.assertEqual(q[0].original, rezultat)
 
         if not_found is not None:
             for elem in not_found:
@@ -78,8 +78,8 @@ class TestRaportJednostek2012(TestCase):
             elem.dodaj_autora(self.a, self.j)
         base_query = get_base_query_jednostka(self.j, CURRENT_YEAR, CURRENT_YEAR + 5)
         q = raport_jednostek_tabela("1_1", base_query, self.j).order_by('rok')
-        self.assertEquals(q.count(), 2)
-        self.assertEquals([x.original for x in list(q)], [c, d])
+        self.assertEqual(q.count(), 2)
+        self.assertEqual([x.original for x in list(q)], [c, d])
 
     @with_cache
     def test_1_2(self):

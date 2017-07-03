@@ -8,7 +8,7 @@ from bpp.multiseek_registry import TytulPracyQueryObject
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("value", ["foo", "bar", u"łódź"])
+@pytest.mark.parametrize("value", ["foo", "bar", "łódź"])
 @pytest.mark.parametrize("operation",
                          [CONTAINS, NOT_CONTAINS,
                           STARTS_WITH, NOT_STARTS_WITH])

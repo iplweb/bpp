@@ -171,7 +171,7 @@ class ZapisanyJakoAutocomplete(autocomplete.Select2ListView):
         autor = self.forwarded.get('autor', None)
 
         if autor is None:
-            return [u'(... może najpierw wybierz autora)']
+            return ['(... może najpierw wybierz autora)']
 
         try:
             autor_id = int(autor)

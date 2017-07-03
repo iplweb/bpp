@@ -24,41 +24,41 @@ class TestImports(TestCase):
         b = ['foo', 'bar', 'baz', 'quux',
              'Stanowisko',
              'foo', 'bar', 'quux',
-             u'Stanowisko_2009', u'Wydzial_2009', u'Stanowisko_2010', u'Wydzial_2010', u'Stanowisko_2011', u'Wydzial_2011']
+             'Stanowisko_2009', 'Wydzial_2009', 'Stanowisko_2010', 'Wydzial_2010', 'Stanowisko_2011', 'Wydzial_2011']
 
-        self.assertEquals(mangle_labels(a), b)
+        self.assertEqual(mangle_labels(a), b)
 
     def test_znajdz_lub_zrob_stanowisko(self):
         f = znajdz_lub_zrob_stanowisko('Kucharz')
-        self.assertEquals(f.nazwa, 'Kucharz')
+        self.assertEqual(f.nazwa, 'Kucharz')
         f1 = znajdz_lub_zrob_stanowisko('Kucharz')
-        self.assertEquals(f1, f)
+        self.assertEqual(f1, f)
 
     def test_dopasuj_jednostke(self):
         mangle = UML_Egeria_2012_Mangle
         j1 = any_jednostka(nazwa='Foo')
-        j2 = any_jednostka(nazwa=u'Sam. Pracownia Propedeutyki Radiologii Stom. i Szczęk-Twarz')
-        j3 = any_jednostka(nazwa=u'Katedra i Klinika Ginekologii i Endokrynologii Ginekologicznej')
-        j4 = any_jednostka(nazwa=u'I Katedra i Klinika Ginekologii')
-        j5 = any_jednostka(nazwa=u'II Katedra i Klinika Ginekologii')
+        j2 = any_jednostka(nazwa='Sam. Pracownia Propedeutyki Radiologii Stom. i Szczęk-Twarz')
+        j3 = any_jednostka(nazwa='Katedra i Klinika Ginekologii i Endokrynologii Ginekologicznej')
+        j4 = any_jednostka(nazwa='I Katedra i Klinika Ginekologii')
+        j5 = any_jednostka(nazwa='II Katedra i Klinika Ginekologii')
 
-        self.assertEquals(
-            dopasuj_jednostke(u'Katedra i Klinika Ginekologii i Endokrynologii Ginekolog.', mangle),
+        self.assertEqual(
+            dopasuj_jednostke('Katedra i Klinika Ginekologii i Endokrynologii Ginekolog.', mangle),
             j3
         )
 
-        self.assertEquals(
-            dopasuj_jednostke(u'Foo', mangle),
+        self.assertEqual(
+            dopasuj_jednostke('Foo', mangle),
             j1
         )
 
-        self.assertEquals(
-            dopasuj_jednostke(u'Sam. Pracownia Propedeutyki Radiologii Stom. i Szczęk-Twarz', mangle),
+        self.assertEqual(
+            dopasuj_jednostke('Sam. Pracownia Propedeutyki Radiologii Stom. i Szczęk-Twarz', mangle),
             None
         )
 
-        self.assertEquals(
-            dopasuj_jednostke(u'I Katedra i Klinika Ginekologii', mangle),
+        self.assertEqual(
+            dopasuj_jednostke('I Katedra i Klinika Ginekologii', mangle),
             j4
         )
 
@@ -79,17 +79,17 @@ class TestImports(TestCase):
             autor=a2, jednostka=j2, funkcja=f1
         )
 
-        self.assertEquals(
+        self.assertEqual(
             dopasuj_autora('Jan', 'Unikalny', None, None),
             a3
         )
 
-        self.assertEquals(
+        self.assertEqual(
             dopasuj_autora('Jan', 'Kowalski', j1.nazwa, f1),
             a1
         )
 
-        self.assertEquals(
+        self.assertEqual(
             dopasuj_autora('Jan', 'Kowalski', j2.nazwa, f1),
             a2
         )
@@ -99,7 +99,7 @@ class TestImports(TestCase):
         j1 = any_jednostka(nazwa='Foo')
 
         importuj_wiersz('Jan', 'Kowalski', 'Foo', 'Kucharz', 2012, UML_Egeria_2012_Mangle)
-        self.assertEquals(
+        self.assertEqual(
             Autor_Jednostka.objects.get(autor=a1, jednostka=j1).zakonczyl_prace,
             date(2012, 12, 31)
         )

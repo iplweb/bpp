@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
+
 
 from django.db import models, migrations
 import datetime
@@ -143,7 +143,7 @@ class Migration(migrations.Migration):
                 ('search', SearchVectorField(default=b'', serialize=False, null=True, editable=False, db_index=True)),
             ],
             options={
-                'ordering': [b'nazwa'],
+                'ordering': ['nazwa'],
                 'verbose_name': b'jednostka',
                 'verbose_name_plural': b'jednostki',
             },
@@ -157,7 +157,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AlterUniqueTogether(
             name='autor_jednostka',
-            unique_together=set([(b'autor', b'jednostka', b'rozpoczal_prace')]),
+            unique_together=set([('autor', 'jednostka', 'rozpoczal_prace')]),
         ),
         migrations.AddField(
             model_name='autor',
@@ -179,7 +179,7 @@ class Migration(migrations.Migration):
                 ('skrot', models.CharField(unique=True, max_length=128)),
             ],
             options={
-                'ordering': [b'nazwa'],
+                'ordering': ['nazwa'],
                 'verbose_name': b'j\xc4\x99zyk',
                 'verbose_name_plural': b'j\xc4\x99zyki',
             },
@@ -254,7 +254,7 @@ class Migration(migrations.Migration):
                 ('jednostka', models.ForeignKey(to='bpp.Jednostka')),
             ],
             options={
-                'ordering': (b'kolejnosc',),
+                'ordering': ('kolejnosc',),
                 'verbose_name': b'powi\xc4\x85zanie autora z patentem',
                 'verbose_name_plural': b'powi\xc4\x85zania autor\xc3\xb3w z patentami',
             },
@@ -391,7 +391,7 @@ class Migration(migrations.Migration):
                 ('praca_habilitacyjna', models.ForeignKey(to='bpp.Praca_Habilitacyjna')),
             ],
             options={
-                'ordering': (b'kolejnosc',),
+                'ordering': ('kolejnosc',),
                 'verbose_name': b'powi\xc4\x85zanie publikacji z habilitacj\xc4\x85',
                 'verbose_name_plural': b'powi\xc4\x85zania publikacji z habilitacj\xc4\x85',
             },
@@ -411,7 +411,7 @@ class Migration(migrations.Migration):
                 ('rok', models.IntegerField()),
             ],
             options={
-                'ordering': [b'zrodlo__nazwa', b'rok'],
+                'ordering': ['zrodlo__nazwa', 'rok'],
                 'verbose_name': b'punktacja \xc5\xbar\xc3\xb3d\xc5\x82a',
                 'verbose_name_plural': b'punktacja \xc5\xbar\xc3\xb3d\xc5\x82a',
             },
@@ -481,7 +481,7 @@ class Migration(migrations.Migration):
                 ('skrot', models.CharField(unique=True, max_length=128)),
             ],
             options={
-                'ordering': [b'nazwa'],
+                'ordering': ['nazwa'],
                 'verbose_name': b'typ KBN',
                 'verbose_name_plural': b'typy KBN',
             },
@@ -521,7 +521,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AlterUniqueTogether(
             name='patent_autor',
-            unique_together=set([(b'rekord', b'autor', b'typ_odpowiedzialnosci', b'kolejnosc')]),
+            unique_together=set([('rekord', 'autor', 'typ_odpowiedzialnosci', 'kolejnosc')]),
         ),
         migrations.CreateModel(
             name='Tytul',
@@ -642,7 +642,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AlterUniqueTogether(
             name='wydawnictwo_ciagle_autor',
-            unique_together=set([(b'rekord', b'autor', b'typ_odpowiedzialnosci', b'kolejnosc')]),
+            unique_together=set([('rekord', 'autor', 'typ_odpowiedzialnosci', 'kolejnosc')]),
         ),
         migrations.CreateModel(
             name='Wydawnictwo_Zwarte',
@@ -734,7 +734,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AlterUniqueTogether(
             name='wydawnictwo_zwarte_autor',
-            unique_together=set([(b'rekord', b'autor', b'typ_odpowiedzialnosci', b'kolejnosc')]),
+            unique_together=set([('rekord', 'autor', 'typ_odpowiedzialnosci', 'kolejnosc')]),
         ),
         migrations.CreateModel(
             name='Wydzial',
@@ -767,7 +767,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AlterUniqueTogether(
             name='opi_2012_afiliacja_do_wydzialu',
-            unique_together=set([(b'autor', b'wydzial', b'rok')]),
+            unique_together=set([('autor', 'wydzial', 'rok')]),
         ),
         migrations.AddField(
             model_name='jednostka',
@@ -831,7 +831,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AlterUniqueTogether(
             name='punktacja_zrodla',
-            unique_together=set([(b'zrodlo', b'rok')]),
+            unique_together=set([('zrodlo', 'rok')]),
         ),
         migrations.CreateModel(
             name='Zrodlo_Informacji',

@@ -30,7 +30,7 @@ class RankingAutorowTable(TableReport):
     def render_autor(self, record):
         return safe('<a href="%s">%s</a>' % (
             reverse('bpp:browse_autor', args=(record.autor.slug,)),
-            unicode(record.autor)))
+            str(record.autor)))
 
 
 class RankingAutorow(ReportTableView):
@@ -89,10 +89,10 @@ class RankingAutorow(ReportTableView):
         wydzialy = self.get_wydzialy()
         context['wydzialy'] = wydzialy
         if jeden_rok:
-            context['table_title'] = u"Ranking autorów za rok %s" % context['rok']
+            context['table_title'] = "Ranking autorów za rok %s" % context['rok']
         else:
-            context['table_title'] = u"Ranking autorów za lata %s - %s" % (context['od_roku'], context['do_roku'])
-        context['tab_subtitle'] = u''
+            context['table_title'] = "Ranking autorów za lata %s - %s" % (context['od_roku'], context['do_roku'])
+        context['tab_subtitle'] = ''
         #if wydzialy.count() != self.get_dostepne_wydzialy.count():
-        context['table_subtitle'] = u", ".join([x.nazwa for x in wydzialy])
+        context['table_subtitle'] = ", ".join([x.nazwa for x in wydzialy])
         return context

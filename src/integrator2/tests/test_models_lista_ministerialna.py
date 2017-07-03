@@ -1,5 +1,5 @@
 # -*- encoding: utf-8 -*-
-from __future__ import unicode_literals
+
 
 import pytest
 from mock import Mock
@@ -11,29 +11,29 @@ from integrator2.models.lista_ministerialna import ListaMinisterialnaElement
 
 def test_models_lista_ministerialna_input_file_to_dict_stream(lmi):
     gen = lmi.input_file_to_dict_stream()
-    gen.next()
-    res = gen.next()
+    next(gen)
+    res = next(gen)
     assert res['nazwa'] == "AAPG BULLETIN"
 
 
 def test_models_lista_ministerialna_b(lmi_b):
     gen = lmi_b.input_file_to_dict_stream()
-    gen.next()
-    res = gen.next()
+    next(gen)
+    res = next(gen)
     assert res['nazwa'] == '„Studia Etnologiczne i Antropologiczne”'
 
 
 def test_models_lista_ministerialna_b(lmi_b):
     gen = lmi_b.input_file_to_dict_stream()
-    gen.next()
-    res = gen.next()
+    next(gen)
+    res = next(gen)
     assert res['nazwa'] == '„Studia Etnologiczne i Antropologiczne”'
 
 
 def test_models_lista_ministerialna_c(lmi_c):
     gen = lmi_c.input_file_to_dict_stream()
-    gen.next()
-    res = gen.next()
+    next(gen)
+    res = next(gen)
     assert res['nazwa'] == '19th Century music'
 
 

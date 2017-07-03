@@ -37,21 +37,21 @@ class TestModels(TestCase):
 
     def test_raport_status(self):
         r = self.r
-        self.assertEquals(r.status(), Status.WAITING)
+        self.assertEqual(r.status(), Status.WAITING)
 
         r.started_on= datetime.now()
-        self.assertEquals(r.status(), Status.IN_PROGRESS)
+        self.assertEqual(r.status(), Status.IN_PROGRESS)
 
         r.finished_on = datetime.now()
-        self.assertEquals(r.status(), Status.COMPLETED)
+        self.assertEqual(r.status(), Status.COMPLETED)
 
         r.error = True
-        self.assertEquals(r.status(), Status.ERROR)
+        self.assertEqual(r.status(), Status.ERROR)
 
     def test_adaptation(self):
         r = self.r
         r.function = "MAD_EXAMPLE"
-        self.assertEquals(
+        self.assertEqual(
             IWebTask(self.r).get_readable_title(),
             'mad example')
 
@@ -60,9 +60,9 @@ class TestModels(TestCase):
             return True
 
         r = self.r
-        self.assertEquals(r.finished_on, None)
+        self.assertEqual(r.finished_on, None)
         r.run_in_context(fokay)
-        self.assertNotEquals(r.finished_on, None)
+        self.assertNotEqual(r.finished_on, None)
 
     def test_context_error(self):
         def ferror():
@@ -70,10 +70,10 @@ class TestModels(TestCase):
 
         r = self.r
 
-        self.assertEquals(r.finished_on, None)
+        self.assertEqual(r.finished_on, None)
         r.run_in_context(ferror)
-        self.assertNotEquals(r.finished_on, None)
-        self.assertEquals(r.error, True)
+        self.assertNotEqual(r.finished_on, None)
+        self.assertEqual(r.error, True)
         self.assertIn("ZeroDivisionError", r.traceback)
 
         self.assertRaises(

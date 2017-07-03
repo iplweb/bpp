@@ -13,52 +13,52 @@ from django.core.urlresolvers import reverse
 from django.utils.translation import ugettext_lazy as _
 
 SYSTEM_MENU = [
-    (u'Charaktery formalne', '/admin/bpp/charakter_formalny/'),
-    (u'Funkcje w jednostce', '/admin/bpp/funkcja_autora/'),
-    (u'Języki', '/admin/bpp/jezyk/'),
+    ('Charaktery formalne', '/admin/bpp/charakter_formalny/'),
+    ('Funkcje w jednostce', '/admin/bpp/funkcja_autora/'),
+    ('Języki', '/admin/bpp/jezyk/'),
 
-    (u'OpenAccess: wydawnictwa ciągłe', '/admin/bpp/tryb_openaccess_wydawnictwo_ciagle'),
-    (u'OpenAccess: wydawnictwa zwarte', '/admin/bpp/tryb_openaccess_wydawnictwo_ciagle'),
-    (u'OpenAccess: czas udostępnienia', '/admin/bpp/czas_udostepnienia_openaccess'),
-    (u'OpenAccess: licencja', '/admin/bpp/licencja_openaccess'),
-    (u'OpenAccess: wersja tekstu', '/admin/bpp/wersja_tekstu_openaccess'),
+    ('OpenAccess: wydawnictwa ciągłe', '/admin/bpp/tryb_openaccess_wydawnictwo_ciagle'),
+    ('OpenAccess: wydawnictwa zwarte', '/admin/bpp/tryb_openaccess_wydawnictwo_ciagle'),
+    ('OpenAccess: czas udostępnienia', '/admin/bpp/czas_udostepnienia_openaccess'),
+    ('OpenAccess: licencja', '/admin/bpp/licencja_openaccess'),
+    ('OpenAccess: wersja tekstu', '/admin/bpp/wersja_tekstu_openaccess'),
 
-    (u'Rodzaje źródeł', '/admin/bpp/rodzaj_zrodla/'),
-    (u'Statusy korekt', '/admin/bpp/status_korekty/'),
-    (u'Typy KBN', '/admin/bpp/typ_kbn/'),
-    (u'Typy odpowiedzialności', '/admin/bpp/typ_odpowiedzialnosci/'),
-    (u'Tytuły', '/admin/bpp/tytul/'),
-    (u'Źródło informacji', '/admin/bpp/zrodlo_informacji/'),
+    ('Rodzaje źródeł', '/admin/bpp/rodzaj_zrodla/'),
+    ('Statusy korekt', '/admin/bpp/status_korekty/'),
+    ('Typy KBN', '/admin/bpp/typ_kbn/'),
+    ('Typy odpowiedzialności', '/admin/bpp/typ_odpowiedzialnosci/'),
+    ('Tytuły', '/admin/bpp/tytul/'),
+    ('Źródło informacji', '/admin/bpp/zrodlo_informacji/'),
 
 ]
 
 WEB_MENU = [
-    (u"robots.txt - URLe", "/admin/robots/url/"),
-    (u"robots.txt - reguły", "/admin/robots/rule/"),
-    (u"Strony", "/admin/sites/site/"),
-    (u"Favicon", "/admin/favicon/"),
+    ("robots.txt - URLe", "/admin/robots/url/"),
+    ("robots.txt - reguły", "/admin/robots/rule/"),
+    ("Strony", "/admin/sites/site/"),
+    ("Favicon", "/admin/favicon/"),
 ]
 
 STRUKTURA_MENU = [
-    (u'Uczelnie', '/admin/bpp/uczelnia/'),
-    (u'Wydziały', '/admin/bpp/wydzial/'),
-    (u'Jednostki', '/admin/bpp/jednostka/'),
+    ('Uczelnie', '/admin/bpp/uczelnia/'),
+    ('Wydziały', '/admin/bpp/wydzial/'),
+    ('Jednostki', '/admin/bpp/jednostka/'),
 ]
 
 REDAKTOR_MENU = [
-    (u'Autorzy', '/admin/bpp/autor/'),
-    (u'Źródła', '/admin/bpp/zrodlo/'),
-    (u'Wydawnictwa ciągłe', '/admin/bpp/wydawnictwo_ciagle/'),
-    (u'Wydawnictwa zwarte', '/admin/bpp/wydawnictwo_zwarte/'),
-    (u'Prace doktorskie', '/admin/bpp/praca_doktorska/'),
-    (u'Prace habilitacyjne', '/admin/bpp/praca_habilitacyjna/'),
-    (u'Patenty', '/admin/bpp/patent/'),
+    ('Autorzy', '/admin/bpp/autor/'),
+    ('Źródła', '/admin/bpp/zrodlo/'),
+    ('Wydawnictwa ciągłe', '/admin/bpp/wydawnictwo_ciagle/'),
+    ('Wydawnictwa zwarte', '/admin/bpp/wydawnictwo_zwarte/'),
+    ('Prace doktorskie', '/admin/bpp/praca_doktorska/'),
+    ('Prace habilitacyjne', '/admin/bpp/praca_habilitacyjna/'),
+    ('Patenty', '/admin/bpp/patent/'),
 ]
 
 ADMIN_MENU = [
-    (u'Grupy', '/admin/auth/group/'),
-    (u'Użytkownicy', '/admin/bpp/bppuser/'),
-    (u'Formularze wyszukiwania', '/admin/multiseek/searchform/')
+    ('Grupy', '/admin/auth/group/'),
+    ('Użytkownicy', '/admin/bpp/bppuser/'),
+    ('Formularze wyszukiwania', '/admin/multiseek/searchform/')
 
 ]
 

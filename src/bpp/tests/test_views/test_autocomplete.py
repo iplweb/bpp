@@ -11,22 +11,22 @@ class TestAutocomplete(WebTestCase):
     def test_Wydawnictwo_NadrzedneAutocomplete(self):
         x = autocomplete.Wydawnictwo_NadrzedneAutocomplete()
         x.q = "foobar"
-        self.assert_(x.get_queryset() != None)
+        self.assertTrue(x.get_queryset() != None)
 
     def test_JednostkaAutocomplete(self):
         x = autocomplete.JednostkaAutocomplete()
         x.q = "foobar"
-        self.assert_(x.get_queryset() != None)
+        self.assertTrue(x.get_queryset() != None)
 
     def test_ZrodloAutocomplete(self):
         x = autocomplete.ZrodloAutocomplete()
         x.q = "foobar"
-        self.assert_(x.get_queryset() != None)
+        self.assertTrue(x.get_queryset() != None)
 
     def test_AutorAutocomplete(self):
         x = autocomplete.AutorAutocomplete()
         x.q = "foobar"
-        self.assert_(x.get_queryset() != None)
+        self.assertTrue(x.get_queryset() != None)
 
     def test_GlobalNavigationAutocomplete(self):
         x = autocomplete.GlobalNavigationAutocomplete()
@@ -34,14 +34,14 @@ class TestAutocomplete(WebTestCase):
         x.get_result_label("foo", "bar")
         x.get(None)
         x.q = "foobar"
-        self.assert_(x.get_results() != None)
+        self.assertTrue(x.get_results() != None)
 
     def test_ZapisanyJakoAutocomplete(self):
         x = autocomplete.ZapisanyJakoAutocomplete()
         a = mommy.make(Autor, imiona="Jan", nazwisko="Kowalski",
                        poprzednie_nazwiska="")
         x.forwarded = dict(autor=str(a.id))
-        self.assert_(len(x.get_list()), 3)
+        self.assertTrue(len(x.get_list()), 3)
 
     def test_PodrzednaPublikacjaHabilitacyjnaAutocomplete(self):
         x = autocomplete.PodrzednaPublikacjaHabilitacyjnaAutocomplete()
@@ -50,9 +50,9 @@ class TestAutocomplete(WebTestCase):
         x.forwarded = dict(autor=str(a.id))
 
         x.q = "foobar"
-        self.assert_(x.get_queryset() != None)
+        self.assertTrue(x.get_queryset() != None)
 
     def test_GlobalNavigationAutocomplete(self):
         x = autocomplete.GlobalNavigationAutocomplete()
         x.q = "foobar"
-        self.assert_(x.get_queryset() != None)
+        self.assertTrue(x.get_queryset() != None)

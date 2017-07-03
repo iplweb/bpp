@@ -38,7 +38,7 @@ def send_notification(request_or_username, level, text, get_pub_path=get_pub_pat
     data=json.dumps(Message(text=text, cssClass=DEFAULT_TAGS.get(level), closeURL=closeURL).__dict__)
 
     if verbose:
-        print "Posting to %r data %r" % (url, data)
+        print("Posting to %r data %r" % (url, data))
 
     session = requests.Session()
     if ignore_proxy_settings:
@@ -46,8 +46,8 @@ def send_notification(request_or_username, level, text, get_pub_path=get_pub_pat
 
     res = session.post(url=url, data=data)
     if verbose:
-        print "Result: ", res
-        print res.content
+        print("Result: ", res)
+        print(res.content)
 
 
 def send_redirect(username, redirect_url,  messageCookieId, ignore_proxy_settings=False):

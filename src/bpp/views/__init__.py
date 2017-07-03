@@ -83,7 +83,7 @@ def javascript_catalog(request, domain='djangojs', packages=None):
             packages=packages)
     from django.utils.translation import check_for_language
     if request.GET and \
-            request.GET.has_key('language') and \
+            'language' in request.GET and \
             check_for_language(request.GET['language']):
         expires = datetime.datetime.now() + TEN_YEARS
         response['Expires'] = expires.strftime('%a, %d %b %Y %H:%M:%S GMT')

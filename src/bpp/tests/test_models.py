@@ -18,27 +18,27 @@ from bpp.tests.util import any_jednostka
 class TestNazwaISkrot(TestCase):
     def test_skrot(self):
         a = NazwaISkrot(nazwa="foo", skrot="bar")
-        self.assertEquals("foo", unicode(a))
+        self.assertEqual("foo", str(a))
 
 
 class TestTytul(TestCase):
     def test_tytul(self):
         t = mommy.make(Tytul)
-        unicode(t)
+        str(t)
 
 
 class TestWydzial(TestCase):
     def test_wydzial(self):
         u = any_uczelnia()
         w = any_wydzial(nazwa="Lekarski", uczelnia=u)
-        self.assertEquals(unicode(w), u"Lekarski")
+        self.assertEqual(str(w), "Lekarski")
 
 
 class TestJednostka(TestCase):
     def test_jednostka(self):
         w = any_wydzial(skrot="BAR")
         j = any_jednostka(nazwa="foo", wydzial_skrot="BAR")
-        self.assertEquals(unicode(j), u"foo (BAR)")
+        self.assertEqual(str(j), "foo (BAR)")
 
     def test_obecni_autorzy(self):
         j1 = any_jednostka()
@@ -59,12 +59,12 @@ class TestJednostka(TestCase):
 
     def test_kierownik(self):
         j1 = any_jednostka()
-        self.assertEquals(j1.kierownik(), None)
+        self.assertEqual(j1.kierownik(), None)
 
         a1 = mommy.make(Autor)
         j1.dodaj_autora(a1, funkcja=Funkcja_Autora.objects.get(nazwa='kierownik'))
 
-        self.assertEquals(j1.kierownik(), a1)
+        self.assertEqual(j1.kierownik(), a1)
 
     def test_prace_w_latach(self):
         j1 = any_jednostka()
@@ -80,7 +80,7 @@ class TestJednostka(TestCase):
             rekord=wc, autor=a1, jednostka=j1,
             typ_odpowiedzialnosci=mommy.make(Typ_Odpowiedzialnosci))
 
-        self.assertEquals(list(j1.prace_w_latach()), [2012, 2013])
+        self.assertEqual(list(j1.prace_w_latach()), [2012, 2013])
 
 
 class TestAutor(TestCase):
@@ -89,17 +89,17 @@ class TestAutor(TestCase):
 
     def test_autor(self):
         j = mommy.make(Autor, imiona='Omg', nazwisko='Lol', tytul=None)
-        self.assertEquals(unicode(j), u"Lol Omg")
+        self.assertEqual(str(j), "Lol Omg")
 
         t = Tytul.objects.create(nazwa="daktur", skrot="dar")
         j = mommy.make(Autor, imiona='Omg', nazwisko='Lol', tytul=t)
-        self.assertEquals(unicode(j), u"Lol Omg, dar")
+        self.assertEqual(str(j), "Lol Omg, dar")
 
         j.poprzednie_nazwiska = "Kowalski"
-        self.assertEquals(unicode(j), u"Lol Omg (Kowalski), dar")
+        self.assertEqual(str(j), "Lol Omg (Kowalski), dar")
 
-        self.assertEquals(j.get_full_name(), u"Omg Lol (Kowalski)")
-        self.assertEquals(j.get_full_name_surname_first(), u"Lol (Kowalski) Omg")
+        self.assertEqual(j.get_full_name(), "Omg Lol (Kowalski)")
+        self.assertEqual(j.get_full_name_surname_first(), "Lol (Kowalski) Omg")
 
     def test_afiliacja_na_rok(self):
         w = any_wydzial()
@@ -110,23 +110,23 @@ class TestAutor(TestCase):
         aj = Autor_Jednostka.objects.create(autor=a, jednostka=j,
                                             funkcja=mommy.make(Funkcja_Autora))
 
-        self.assertEquals(a.afiliacja_na_rok(2030, w), None)
-        self.assertEquals(a.afiliacja_na_rok(2030, n), None)
+        self.assertEqual(a.afiliacja_na_rok(2030, w), None)
+        self.assertEqual(a.afiliacja_na_rok(2030, n), None)
 
         aj.rozpoczal_prace = date(2012, 1, 1)
         aj.save()
 
-        self.assertEquals(a.afiliacja_na_rok(2030, w), True)
-        self.assertEquals(a.afiliacja_na_rok(2011, w), None)
-        self.assertEquals(a.afiliacja_na_rok(2030, n), None)
+        self.assertEqual(a.afiliacja_na_rok(2030, w), True)
+        self.assertEqual(a.afiliacja_na_rok(2011, w), None)
+        self.assertEqual(a.afiliacja_na_rok(2030, n), None)
 
         aj.zakonczyl_prace = date(2013, 12, 31)
         aj.save()
 
-        self.assertEquals(a.afiliacja_na_rok(2030, w), None)
-        self.assertEquals(a.afiliacja_na_rok(2011, w), None)
-        self.assertEquals(a.afiliacja_na_rok(2012, w), True)
-        self.assertEquals(a.afiliacja_na_rok(2030, n), None)
+        self.assertEqual(a.afiliacja_na_rok(2030, w), None)
+        self.assertEqual(a.afiliacja_na_rok(2011, w), None)
+        self.assertEqual(a.afiliacja_na_rok(2012, w), True)
+        self.assertEqual(a.afiliacja_na_rok(2030, n), None)
 
     def test_dodaj_jednostke(self):
         f = mommy.make(Funkcja_Autora)
@@ -138,7 +138,7 @@ class TestAutor(TestCase):
 
 
         def ma_byc(ile=1):
-            self.assertEquals(Autor_Jednostka.objects.count(), ile)
+            self.assertEqual(Autor_Jednostka.objects.count(), ile)
 
         a.dodaj_jednostke(j, 1912, f)
         ma_byc(1)
@@ -162,38 +162,38 @@ class TestAutor(TestCase):
         ma_byc(3)
 
         l = Autor_Jednostka.objects.all().order_by('rozpoczal_prace')
-        self.assertEquals(l[0].rozpoczal_prace, date(1912, 1, 1))
-        self.assertEquals(l[1].rozpoczal_prace, date(1920, 1, 1))
+        self.assertEqual(l[0].rozpoczal_prace, date(1912, 1, 1))
+        self.assertEqual(l[1].rozpoczal_prace, date(1920, 1, 1))
 
-        self.assertEquals(l[0].zakonczyl_prace, date(1914, 12, 31))
-        self.assertEquals(l[1].zakonczyl_prace, date(1921, 12, 31))
+        self.assertEqual(l[0].zakonczyl_prace, date(1914, 12, 31))
+        self.assertEqual(l[1].zakonczyl_prace, date(1921, 12, 31))
 
-        self.assertEquals(a.afiliacja_na_rok(1912, w), True)
-        self.assertEquals(a.afiliacja_na_rok(1913, w), True)
-        self.assertEquals(a.afiliacja_na_rok(1914, w), True)
-        self.assertEquals(a.afiliacja_na_rok(1914, w2), None)
+        self.assertEqual(a.afiliacja_na_rok(1912, w), True)
+        self.assertEqual(a.afiliacja_na_rok(1913, w), True)
+        self.assertEqual(a.afiliacja_na_rok(1914, w), True)
+        self.assertEqual(a.afiliacja_na_rok(1914, w2), None)
 
-        self.assertEquals(a.afiliacja_na_rok(1920, w), True)
-        self.assertEquals(a.afiliacja_na_rok(1921, w), True)
+        self.assertEqual(a.afiliacja_na_rok(1920, w), True)
+        self.assertEqual(a.afiliacja_na_rok(1921, w), True)
 
-        self.assertEquals(a.afiliacja_na_rok(1922, w), None)
-        self.assertEquals(a.afiliacja_na_rok(1916, w), None)
+        self.assertEqual(a.afiliacja_na_rok(1922, w), None)
+        self.assertEqual(a.afiliacja_na_rok(1916, w), None)
 
         # Gdy jest wpisany tylko początek czasu pracy, traktujemy pracę
         # jako NIE zakończoną i każda data w przyszłości ma zwracać to miejsce
         Autor_Jednostka.objects.create(autor=a, jednostka=j2,
                                        rozpoczal_prace=date(2100, 1, 1))
-        self.assertEquals(a.afiliacja_na_rok(2200, w2), True)
+        self.assertEqual(a.afiliacja_na_rok(2200, w2), True)
 
         Autor_Jednostka.objects.all().delete()
         # Gdy nie ma dat początku i końca pracy, to funkcja ma zwracać NONE
         Autor_Jednostka.objects.create(autor=a, jednostka=j2)
-        self.assertEquals(a.afiliacja_na_rok(2100, w2), None)
-        self.assertEquals(a.afiliacja_na_rok(1100, w2), None)
+        self.assertEqual(a.afiliacja_na_rok(2100, w2), None)
+        self.assertEqual(a.afiliacja_na_rok(1100, w2), None)
 
     def test_autor_save(self):
         a = Autor.objects.create(nazwisko='von Foo', imiona='Bar')
-        self.assertEquals(a.sort, 'foobar')
+        self.assertEqual(a.sort, 'foobar')
 
     def test_autor_prace_w_latach(self):
         ROK = 2000
@@ -203,7 +203,7 @@ class TestAutor(TestCase):
         w = mommy.make(Wydawnictwo_Ciagle, rok=ROK)
         wa = mommy.make(Wydawnictwo_Ciagle_Autor, autor=a, jednostka=j, rekord=w)
 
-        self.assertEquals(
+        self.assertEqual(
             a.prace_w_latach()[0],
             ROK)
 
@@ -215,10 +215,10 @@ class TestAutor_Jednostka(TestCase):
         a = mommy.make(Autor, imiona='Omg', nazwisko='Lol', tytul=None)
         j = any_jednostka(nazwa='Lol', skrot="L.")
         aj = Autor_Jednostka.objects.create(autor=a, jednostka=j, funkcja=f)
-        self.assertEquals(unicode(aj), u'Lol Omg ↔ kierownik, L.')
+        self.assertEqual(str(aj), 'Lol Omg ↔ kierownik, L.')
 
         aj = Autor_Jednostka.objects.create(autor=a, jednostka=j, funkcja=None)
-        self.assertEquals(unicode(aj), u'Lol Omg ↔ L.')
+        self.assertEqual(str(aj), 'Lol Omg ↔ L.')
 
         aj.rozpoczal_prace = datetime(2012, 1, 1)
         aj.zakonczyl_prace = datetime(2012, 1, 2)
@@ -251,7 +251,7 @@ class TestAutor_Jednostka(TestCase):
 
         Autor_Jednostka.objects.defragmentuj(a, j1)
 
-        self.assertEquals(Autor_Jednostka.objects.all().count(), 2)
+        self.assertEqual(Autor_Jednostka.objects.all().count(), 2)
 
         Autor_Jednostka.objects.all().delete()
 
@@ -268,40 +268,40 @@ class TestAutor_Jednostka(TestCase):
 
         Autor_Jednostka.objects.defragmentuj(a, j1)
         aj = Autor_Jednostka.objects.all()[0]
-        self.assertEquals(aj.rozpoczal_prace, date(2012, 1, 1))
-        self.assertEquals(aj.zakonczyl_prace, date(2015, 12, 31))
+        self.assertEqual(aj.rozpoczal_prace, date(2012, 1, 1))
+        self.assertEqual(aj.zakonczyl_prace, date(2015, 12, 31))
 
 
 class TestPunktacjaZrodla(TestCase):
     def test_punktacja_zrodla(self):
         j = mommy.make(Punktacja_Zrodla, rok='2012', impact_factor='0.5')
-        self.assertEquals(unicode(j), u'Punktacja źródła za rok 2012')
+        self.assertEqual(str(j), 'Punktacja źródła za rok 2012')
 
 
 class TestZrodlo(TestCase):
     def test_zrodlo(self):
         z = mommy.make(Zrodlo, nazwa="foo")
-        self.assertEquals(unicode(z), 'foo')
+        self.assertEqual(str(z), 'foo')
 
         z = mommy.make(Zrodlo, nazwa="foo", nazwa_alternatywna="bar")
-        self.assertEquals(unicode(z), 'foo (bar)')
+        self.assertEqual(str(z), 'foo (bar)')
 
         z = mommy.make(Zrodlo, nazwa="foo", poprzednia_nazwa="bar", nazwa_alternatywna="quux")
-        self.assertEquals(unicode(z), 'foo (quux) (d. bar)')
+        self.assertEqual(str(z), 'foo (quux) (d. bar)')
 
         z = mommy.make(Zrodlo, nazwa="foo", poprzednia_nazwa="quux")
-        self.assertEquals(unicode(z), 'foo (d. quux)')
+        self.assertEqual(str(z), 'foo (d. quux)')
 
     def test_zrodlo_prace_w_latach(self):
         z = mommy.make(Zrodlo)
         wc = any_ciagle(rok=2012, zrodlo=z)
 
-        self.assertEquals(list(z.prace_w_latach()), [2012])
+        self.assertEqual(list(z.prace_w_latach()), [2012])
 
     def test_unicode(self):
         z = Zrodlo(nazwa="foo", poprzednia_nazwa="bar")
-        self.assertEquals(
-            unicode(z),
+        self.assertEqual(
+            str(z),
             "foo (d. bar)"
         )
 
@@ -318,24 +318,24 @@ class TestRedakcjaZrodla(TestCase):
         r = Redakcja_Zrodla.objects.create(
             zrodlo=z, redaktor=a, od_roku=2010, do_roku=None)
 
-        self.assertEquals(
-            unicode(r),
-            u"Redaktorem od 2010 jest Kowalski Jan, dr")
+        self.assertEqual(
+            str(r),
+            "Redaktorem od 2010 jest Kowalski Jan, dr")
 
         r.do_roku = 2012
-        self.assertEquals(
-            unicode(r),
-            u"Redaktorem od 2010 do 2012 był Kowalski Jan, dr")
+        self.assertEqual(
+            str(r),
+            "Redaktorem od 2010 do 2012 był Kowalski Jan, dr")
 
         a.plec = Plec.objects.get(skrot='K')
-        self.assertEquals(
-            unicode(r),
-            u"Redaktorem od 2010 do 2012 była Kowalski Jan, dr")
+        self.assertEqual(
+            str(r),
+            "Redaktorem od 2010 do 2012 była Kowalski Jan, dr")
 
         a.plec = None
-        self.assertEquals(
-            unicode(r),
-            u'Redaktorem od 2010 do 2012 był(a) Kowalski Jan, dr'
+        self.assertEqual(
+            str(r),
+            'Redaktorem od 2010 do 2012 był(a) Kowalski Jan, dr'
         )
 
 
@@ -349,13 +349,13 @@ class TestAbstract(TestCase):
         b = Wydawnictwo_Ciagle_Autor.objects.create(
             autor=a, jednostka=j, typ_odpowiedzialnosci=t,
             rekord=r)
-        self.assertEquals(unicode(b), u"Lol Omg - foo")
-        self.assertEquals(unicode(r), u'AAA')
-        self.assertEquals(unicode(t), u'Y')
+        self.assertEqual(str(b), "Lol Omg - foo")
+        self.assertEqual(str(r), 'AAA')
+        self.assertEqual(str(t), 'Y')
 
     def test_ModelZNazwa(self):
         a = Jezyk.objects.create(nazwa='Foo', skrot='Bar')
-        self.assertEquals(unicode(a), 'Foo')
+        self.assertEqual(str(a), 'Foo')
 
 
 class TestTworzenieModeliAutorJednostka(TestCase):
@@ -367,7 +367,7 @@ class TestTworzenieModeliAutorJednostka(TestCase):
 
         # Utworzenie modelu Wydawnictwo_Zwarte_Autor powinno utworzyć model
         # Autor_Jednostka, będący powiązaniem autora a z jednostką j
-        self.assertEquals(Autor_Jednostka.objects.filter(autor=a).count(), 1)
+        self.assertEqual(Autor_Jednostka.objects.filter(autor=a).count(), 1)
 
 
 class TestWydawnictwoCiagleTestWydawnictwoZwarte(TestCase):

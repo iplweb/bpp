@@ -19,12 +19,12 @@ def analyze_file(klass, pk):
 
     def informuj(komunikat, dont_persist=True):
         try:
-            msg = u'<a href="%s">Integracja pliku "%s": %s</a>. '
+            msg = '<a href="%s">Integracja pliku "%s": %s</a>. '
             url = reverse("integrator2:detail", args=(obj._meta.model_name, obj.pk,))
             call_command('send_message', obj.owner, msg % (url, obj.filename(), komunikat), dont_persist=dont_persist)
-        except ConnectionError, e:
+        except ConnectionError as e:
             pass
-        except Exception, e:
+        except Exception as e:
             obj.extra_info = str(e)
             obj.status = 3
             obj.save()
@@ -35,41 +35,41 @@ def analyze_file(klass, pk):
 
     try:
         obj.dict_stream_to_db()
-    except Exception, e:
+    except Exception as e:
         obj.extra_info = str(e)
         obj.status = 3
         obj.save()
 
-        informuj(u"wystąpił błąd na etapie importu danych")
+        informuj("wystąpił błąd na etapie importu danych")
         raise
 
-    informuj(u"zaimportowano, trwa analiza danych")
+    informuj("zaimportowano, trwa analiza danych")
 
     try:
         obj.match_records()
-    except Exception, e:
+    except Exception as e:
         obj.extra_info = str(e)
         obj.status = 3
         obj.save()
 
-        informuj(u"wystąpił błąd na etapie matchowania danych")
+        informuj("wystąpił błąd na etapie matchowania danych")
         raise
 
-    informuj(u"rozpoczęto integrację")
+    informuj("rozpoczęto integrację")
 
     try:
         obj.integrate()
-    except Exception, e:
+    except Exception as e:
         obj.extra_info = str(e)
         obj.status = 3
         obj.save()
-        informuj(u"wystąpił błąd na etapie integracji danych")
+        informuj("wystąpił błąd na etapie integracji danych")
         raise
 
     obj.status = 2
     obj.save()
 
-    informuj(u"zakończono integrację", dont_persist=False)
+    informuj("zakończono integrację", dont_persist=False)
 
 
 @app.task

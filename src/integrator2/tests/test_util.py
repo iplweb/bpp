@@ -1,6 +1,6 @@
 # -*- encoding: utf-8 -*-
 
-from __future__ import unicode_literals
+
 
 from mock import Mock
 import os
@@ -55,7 +55,7 @@ def test_build_mapping_alt():
 
 def test_read_xls_data():
     gen = read_xls_data(os.path.dirname(__file__) + "/xls/lista_a.xlsx", {"TYTUŁ CZASOPISMA": "fubar"}, "Lp.")
-    gen.next()
-    gen.next()
-    res = gen.next()
+    next(gen)
+    next(gen)
+    res = next(gen)
     assert res['fubar'] == "AAPG BULLETIN"

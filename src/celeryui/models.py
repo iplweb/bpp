@@ -88,11 +88,11 @@ class Report(models.Model):
         try:
             function()
             self.finished_okay()
-        except Exception, e:
+        except Exception as e:
             exc_type, exc_value, exc_traceback = sys.exc_info()
             self.finished_with_error(exc_type, exc_value, exc_traceback)
             if raise_exceptions:
-                raise exc_value, None, exc_traceback
+                raise exc_value.with_traceback(exc_traceback)
 
     def execute(self, raise_exceptions=False):
         self.run_in_context(

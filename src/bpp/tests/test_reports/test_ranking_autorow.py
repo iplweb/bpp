@@ -68,7 +68,7 @@ class TestRankingAutorow(TestCase):
             reverse("login_form"),
             {"username":"foo", "password": "bar"},
             follow=True)
-        self.assertEquals(response.status_code, 200)
+        self.assertEqual(response.status_code, 200)
 
     def test_bez_argumentow(self):
         "Zsumuje punktacje ze wszystkich prac, ze wszystkich wydziałów dla danego roku"

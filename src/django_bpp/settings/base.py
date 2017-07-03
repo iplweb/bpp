@@ -106,7 +106,6 @@ MIDDLEWARE_CLASSES = (
 
     'dj_pagination.middleware.PaginationMiddleware',
 
-    'bpp.middleware.ProfileMiddleware',
     'django_tables2_reports.middleware.TableReportMiddleware',
 
     'session_security.middleware.SessionSecurityMiddleware',

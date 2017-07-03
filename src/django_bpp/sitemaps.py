@@ -64,9 +64,9 @@ class AlphabeticBppSitemap(BppSitemap):
 
     def items(self):
         if not self.litera:
-            return super(AlphabeticBppSitemap, self).items()
+            return list(super(AlphabeticBppSitemap, self).items())
         kw = {self.title_field + "__istartswith": self.litera}
-        return super(AlphabeticBppSitemap, self).items().filter(**kw)
+        return list(super(AlphabeticBppSitemap, self).items()).filter(**kw)
 
 
 class AutorSitemap(AlphabeticBppSitemap):
@@ -108,7 +108,7 @@ django_bpp_sitemaps = {
     'wydzial': WydzialSitemap,
 }
 
-for litera in u"aąbcćdefghijklłmnńoópqrsśtuvwxyzźż":
+for litera in "aąbcćdefghijklłmnńoópqrsśtuvwxyzźż":
     for label, klasa in [("wydawnictwo-zwarte", Wydawnictwo_ZwarteSitemap),
                          ("wydawnictwo-ciagle", Wydawnictwo_CiagleSitemap),
                          ("praca-doktorska", Praca_DoktorskaSitemap),

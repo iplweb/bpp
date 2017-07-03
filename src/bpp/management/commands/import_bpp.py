@@ -69,7 +69,7 @@ def convert_www(s):
     if s.lower().startswith("http://"):
         return s
 
-    return u"http://" + s
+    return "http://" + s
 
 def set_seq(s):
     if settings.DATABASES['default']['ENGINE'].find('postgresql') >= 0:
@@ -172,8 +172,8 @@ def nowy_charakter_formalny(skrot):
     """
     try:
         return cache.charaktery[NOWE_CHARAKTERY_MAPPING.get(skrot, skrot)]
-    except KeyError, e:
-        print "KEY ERROR DLA SKROTU %r" % skrot
+    except KeyError as e:
+        print("KEY ERROR DLA SKROTU %r" % skrot)
         raise e
 
 
@@ -207,24 +207,24 @@ def poprzestawiaj_wartosci_pol(bib, zakazane, docelowe):
 
             skrot = charakter.get(bib['charakter'])['skrot'].strip()
 
-            msg = [u"REKORD: \t", unicode(bib['id']),
-                   u"\tchar: ", unicode(bib['charakter']),
-                   u"\t", skrot,
-                   u"\tZAWIERA WARTOSC DLA POLA \t", field,
-                   u"PRZENOSZE DO POLA '", docelowe,
-                   u"' (wartosc: ", unicode(bib[field]), u")"]
+            msg = ["REKORD: \t", str(bib['id']),
+                   "\tchar: ", str(bib['charakter']),
+                   "\t", skrot,
+                   "\tZAWIERA WARTOSC DLA POLA \t", field,
+                   "PRZENOSZE DO POLA '", docelowe,
+                   "' (wartosc: ", str(bib[field]), ")"]
 
-            print "%r" % u" ".join(msg)
+            print("%r" % " ".join(msg))
 
             if bib[docelowe] is None:
-                bib[docelowe] = u''
+                bib[docelowe] = ''
 
             if type(bib[field]) == int:
                 bib[field] = str(bib[field])
 
             try:
                 bib[docelowe] += bib[field]
-            except UnicodeDecodeError, e:
+            except UnicodeDecodeError as e:
                 raise Exception(type(bib[field]), bib[field])
             bib[field] = ""
 
@@ -239,36 +239,36 @@ def skoryguj_wartosci_pol(bib):
 
 def zrob_korekty(cur):
     zmiany = [
-        (95, 'imiona', u'Radzisław J.'),
-        (1549, 'imiona', u'Leszek'),
-        (9934, 'poprzednie_nazwiska', u'Piętka'),
-        (561, 'nazwisko', u'Jakimiec-Kimak'),
-        (5437, 'imiona', u'Jamal'),
-        (6680, 'imiona', u'Sławomir'),
-        (10285, 'nazwisko', u'Kowal'),
+        (95, 'imiona', 'Radzisław J.'),
+        (1549, 'imiona', 'Leszek'),
+        (9934, 'poprzednie_nazwiska', 'Piętka'),
+        (561, 'nazwisko', 'Jakimiec-Kimak'),
+        (5437, 'imiona', 'Jamal'),
+        (6680, 'imiona', 'Sławomir'),
+        (10285, 'nazwisko', 'Kowal'),
 #        (15791, 'nazwisko', u'Janiszewska-Grzyb'),
-        (8164, 'imiona', u'Majda'),
-        (174, 'imiona', u'Kinga K.'),
-        (907, 'imiona', u'Małgorzata H.'),
-        (9793, 'poprzednie_nazwiska', u'Klucha'),
-        (11186, 'poprzednie_nazwiska', u'Czarnota'),
-        (10418, 'imiona', u'D.H.'),
-        (4990, 'imiona', u'Dorota Irena'),
-        (8599, 'poprzednie_nazwiska', u'Zawitkowska-Klaczyńska'),
-        (440, 'imiona', u'Jerzy B.'),
-        (166, 'imiona', u'Tomasz R.'),
-        (4335, 'imiona', u'Katarzyna'),
-        (11264, 'imiona', u'Krystyna H.'),
-        (2718, 'imiona', u'Elżbieta'),
-        (1140, 'imiona', u'Beata Z.'),
-        (11058, 'imiona', u'Agnieszka'),
-        (516, 'imiona', u'Wojciech P.'),
-        (10584, 'imiona', u'I.M.'),
-        (2221, 'imiona', u'Henryk T.'),
-        (175, 'imiona', u'Stanisław Jerzy'),
-        (1002, 'nazwiska', u'Jabłońska-Ulbrych'),
-        (20, 'poprzednie_nazwiska', u'Adamczyk-Cioch'),
-        (5099, 'imiona', u'Jean-Pierre')
+        (8164, 'imiona', 'Majda'),
+        (174, 'imiona', 'Kinga K.'),
+        (907, 'imiona', 'Małgorzata H.'),
+        (9793, 'poprzednie_nazwiska', 'Klucha'),
+        (11186, 'poprzednie_nazwiska', 'Czarnota'),
+        (10418, 'imiona', 'D.H.'),
+        (4990, 'imiona', 'Dorota Irena'),
+        (8599, 'poprzednie_nazwiska', 'Zawitkowska-Klaczyńska'),
+        (440, 'imiona', 'Jerzy B.'),
+        (166, 'imiona', 'Tomasz R.'),
+        (4335, 'imiona', 'Katarzyna'),
+        (11264, 'imiona', 'Krystyna H.'),
+        (2718, 'imiona', 'Elżbieta'),
+        (1140, 'imiona', 'Beata Z.'),
+        (11058, 'imiona', 'Agnieszka'),
+        (516, 'imiona', 'Wojciech P.'),
+        (10584, 'imiona', 'I.M.'),
+        (2221, 'imiona', 'Henryk T.'),
+        (175, 'imiona', 'Stanisław Jerzy'),
+        (1002, 'nazwiska', 'Jabłońska-Ulbrych'),
+        (20, 'poprzednie_nazwiska', 'Adamczyk-Cioch'),
+        (5099, 'imiona', 'Jean-Pierre')
     ]
 
     for pk, atrybut, wartosc in zmiany:
@@ -307,7 +307,7 @@ def zrob_autorow_dla(wc, klass, pgsql_conn):
             row['idt_jed'] = -1
 
         if row['id'] == 107513:
-            a = Autor.objects.create(imiona=u'J.', nazwisko=u'Posłuszna')
+            a = Autor.objects.create(imiona='J.', nazwisko='Posłuszna')
             row['idt_aut'] = a.pk
 
         autor = Autor.objects.get(pk=row['idt_aut'])
@@ -317,7 +317,7 @@ def zrob_autorow_dla(wc, klass, pgsql_conn):
         if row['typ_autora'] == 0:
             # print "REKORD", row['id'], "TYP AUTORA= 0 *** NIE IMPORTUJE TEGO AUTORA"
             # continue
-            print "REKORD", row['id'], "TYP AUTORA == 0 USTAWIAM NA 1"
+            print("REKORD", row['id'], "TYP AUTORA == 0 USTAWIAM NA 1")
             row['typ_autora'] = 1
 
         typ = cache.typy_odpowiedzialnosci[row['typ_autora']]
@@ -331,8 +331,8 @@ def zrob_autorow_dla(wc, klass, pgsql_conn):
                 zapisany_jako=row['naz_zapis'],
                 typ_odpowiedzialnosci=typ
             )
-        except IntegrityError, e:
-            print "ERROR dla pracy %r, row=%r" % (wc, row)
+        except IntegrityError as e:
+            print("ERROR dla pracy %r, row=%r" % (wc, row))
             raise e
 
 
@@ -359,10 +359,10 @@ def zrob_userow(cur):
         u.set_password(l['haslo'])
         u.save()
 
-        for letter, name in dict(
+        for letter, name in list(dict(
                 S="dane systemowe", E="wprowadzanie danych",
                 B="przeglądanie", I="indeks autorów",
-                A="administracja").items():
+                A="administracja").items()):
             if letter in uprawnienia:
                 if letter == "B":
                     # Ignorujemy grupę "przeglądanie" totalnie
@@ -410,14 +410,14 @@ def admin_log_history(obj, dct):
             user_id=user.pk,
             content_type_id=ContentType.objects.get_for_model(obj).pk,
             object_id=obj.pk,
-            object_repr=unicode(obj),
+            object_repr=str(obj),
             change_message="Import z poprzedniej wersji bazy danych",
             action_flag=ADDITION)
         try:
             LogEntry.objects.log_action(**kw)
-        except DatabaseError, e:
-            print e
-            print kw
+        except DatabaseError as e:
+            print(e)
+            print(kw)
             raise e
 
     user = find_user(dct['edited_by'])
@@ -427,7 +427,7 @@ def admin_log_history(obj, dct):
             user_id=user.pk,
             content_type_id=ContentType.objects.get_for_model(obj).pk,
             object_id=obj.pk,
-            object_repr=unicode(obj),
+            object_repr=str(obj),
             change_message="Ostatnia edycja w poprzedniej wersji bazy danych",
             action_flag=CHANGE
         )
@@ -517,7 +517,7 @@ def zrob_autorow(cur, initial_offset=0, skip=0):
             except KeyError:
                 tytul = Tytul.objects.create(nazwa=aut['tytul'],
                                              skrot=aut['tytul'])
-                print "UTWORZYLEM TYTUL", tytul
+                print("UTWORZYLEM TYTUL", tytul)
 
         imiona = aut['imiona']
         if imiona is None:
@@ -621,8 +621,8 @@ def zrob_wydawnictwo(kw, bib, klass, autor_klass, zakazane, docelowe,
             del kw[field]
     try:
         wc = klass.objects.create(**kw)
-    except decimal.InvalidOperation, e:
-        print kw
+    except decimal.InvalidOperation as e:
+        print(kw)
         raise e
     admin_log_history(wc, bib)
     zrob_autorow_dla(wc, autor_klass, pgsql_conn)
@@ -683,9 +683,9 @@ def zrob_doktorat_lub_habilitacje(bib, pgsql_conn):
 
     autor = wez_autorow(bib['id'], pgsql_conn)
     if len(autor) != 1:
-        print(
+        print((
         "dla pracy doktorskiej/habilitacyjnej z id %s ilosc autorow jest rowna %s, IGNORUJE TEN WPIS" % (
-            bib['id'], len(autor)))
+            bib['id'], len(autor))))
         return
 
     kw['autor'] = Autor.objects.get(pk=autor[0]['idt_aut'])
@@ -702,8 +702,8 @@ def zrob_doktorat_lub_habilitacje(bib, pgsql_conn):
 
     try:
         r = klass.objects.create(**kw)
-    except decimal.InvalidOperation, e:
-        print kw
+    except decimal.InvalidOperation as e:
+        print(kw)
         raise e
 
     admin_log_history(r, bib)
@@ -753,7 +753,7 @@ def zrob_publikacje(cur, pgsql_conn, initial_offset, skip):
 
         skrot = charakter.get(bib['charakter'])['skrot'].strip()
         if skrot == 'T\xc5\x81':
-            skrot = u'TŁ'
+            skrot = 'TŁ'
 
         @transaction.atomic
         def _txn():
@@ -862,16 +862,16 @@ class Command(BaseCommand):
             zrob_userow(cur)#  , options['initial_offset'], options['skip'])
 
         if options['jednostki']:
-            print "JEDNOSTKI", options['initial_offset']
+            print("JEDNOSTKI", options['initial_offset'])
             zrob_jednostki(cur, options['initial_offset'], options['skip'])
 
         if options['autorzy']:
-            print "AUTORZY", options['initial_offset']
+            print("AUTORZY", options['initial_offset'])
             zrob_autorow(cur, options['initial_offset'], options['skip'])
             set_seq("bpp_autor")
 
         if options['powiazania']:
-            print "POWIAZANIA", options['initial_offset']
+            print("POWIAZANIA", options['initial_offset'])
             zrob_powiazania(cur, options['initial_offset'], options['skip'])
 
         if options['zrodla']:

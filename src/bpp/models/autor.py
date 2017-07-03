@@ -23,16 +23,16 @@ from django.utils import six
 
 class Tytul(NazwaISkrot):
     class Meta:
-        verbose_name = u'tytuł'
-        verbose_name_plural = u'tytuły'
+        verbose_name = 'tytuł'
+        verbose_name_plural = 'tytuły'
         app_label = 'bpp'
         ordering = ('skrot',)
 
 
 class Plec(NazwaISkrot):
     class Meta:
-        verbose_name = u"płeć"
-        verbose_name_plural = u"płcie"
+        verbose_name = "płeć"
+        verbose_name_plural = "płcie"
         app_label = 'bpp'
 
 
@@ -185,16 +185,16 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
             return True
 
     def get_full_name(self):
-        buf = u"%s %s" % (self.imiona, self.nazwisko)
+        buf = "%s %s" % (self.imiona, self.nazwisko)
         if self.poprzednie_nazwiska:
-            buf += u" (%s)" % self.poprzednie_nazwiska
+            buf += " (%s)" % self.poprzednie_nazwiska
         return buf
 
     def get_full_name_surname_first(self):
-        buf = u"%s" % self.nazwisko
+        buf = "%s" % self.nazwisko
         if self.poprzednie_nazwiska:
-            buf += u" (%s)" % self.poprzednie_nazwiska
-        buf += u" %s" % self.imiona
+            buf += " (%s)" % self.poprzednie_nazwiska
+        buf += " %s" % self.imiona
         return buf
 
     def prace_w_latach(self):
@@ -319,17 +319,17 @@ class Autor_Jednostka(models.Model):
                 raise ValidationError("Początek pracy późniejszy lub równy, jak zakończenie")
 
     def __str__(self):
-        buf = u"%s ↔ %s" % (self.autor, self.jednostka.skrot)
+        buf = "%s ↔ %s" % (self.autor, self.jednostka.skrot)
         if self.funkcja:
-            buf = u"%s ↔ %s, %s" % (
+            buf = "%s ↔ %s, %s" % (
                 self.autor,
                 self.funkcja.nazwa,
                 self.jednostka.skrot)
         return buf
 
     class Meta:
-        verbose_name = u"powiązanie autor-jednostka"
-        verbose_name_plural = u"powiązania autor-jednostka"
+        verbose_name = "powiązanie autor-jednostka"
+        verbose_name_plural = "powiązania autor-jednostka"
         ordering = ['autor__nazwisko', 'jednostka__nazwa', 'rozpoczal_prace']
         unique_together = [('autor', 'jednostka', 'rozpoczal_prace')]
         app_label = 'bpp'

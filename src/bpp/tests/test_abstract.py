@@ -12,11 +12,11 @@ class AbstractModelsTestCase(TestCase):
 
     def test_model_punktowany(self):
         mp = ModelPunktowany()
-        self.assertEquals(mp.ma_punktacje(), False)
+        self.assertEqual(mp.ma_punktacje(), False)
 
         mp.impact_factor = 0
-        self.assertEquals(mp.ma_punktacje(), False)
+        self.assertEqual(mp.ma_punktacje(), False)
 
         mp.impact_factor = 1
-        self.assertEquals(mp.ma_punktacje(), True)
+        self.assertEqual(mp.ma_punktacje(), True)
         pass

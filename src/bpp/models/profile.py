@@ -34,7 +34,7 @@ class BppUser(AbstractUser, ModelZAdnotacjami):
 
     class Meta:
         app_label = 'bpp'
-        verbose_name = u'użytkownik'
-        verbose_name_plural = u'użytkownicy'
+        verbose_name = 'użytkownik'
+        verbose_name_plural = 'użytkownicy'
 
     objects = BppUserManager()

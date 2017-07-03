@@ -1,5 +1,5 @@
 # -*- encoding: utf-8 -*-
-from __future__ import unicode_literals
+
 
 from django.core.exceptions import MultipleObjectsReturned
 from django.db import models
@@ -76,7 +76,7 @@ class ListaMinisterialnaIntegration(BaseIntegration):
                 },
                 "Lp.",
                 limit=limit, limit_sheets=limit_sheets)
-        gen.next()  # wiersz z cyferkami
+        next(gen)  # wiersz z cyferkami
         return gen
 
     def header_columns(self):
@@ -90,7 +90,7 @@ class ListaMinisterialnaIntegration(BaseIntegration):
         for elem in dict_stream:
             ListaMinisterialnaElement.objects.create(
                     parent=self,
-                    **dict([(str(x), y) for x, y in elem.items() if x is not None and x != "__sheet__"]))
+                    **dict([(str(x), y) for x, y in list(elem.items()) if x is not None and x != "__sheet__"]))
         pass
 
     strategie = [lambda obj: Zrodlo.objects.get(issn=obj.issn) if obj.issn is not None else None,

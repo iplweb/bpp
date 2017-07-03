@@ -15,12 +15,12 @@ class MyAuthenticationForm(AuthenticationForm):
         self.helper.form_action = '.'
         self.helper.layout = Layout(
             Fieldset(
-                u'Zaloguj się!',
+                'Zaloguj się!',
                 'username',
                 'password',
                 Hidden(REDIRECT_FIELD_NAME, request.GET.get(REDIRECT_FIELD_NAME, "/bpp/"))),
              ButtonHolder(
-                Submit('submit', u'Zaloguj się', css_id='id_submit',
+                Submit('submit', 'Zaloguj się', css_id='id_submit',
                        css_class="submit button"),
             ))
         AuthenticationForm.__init__(self, request, *args, **kw)

@@ -12,7 +12,7 @@ from multiseek.views import MULTISEEK_SESSION_KEY, MULTISEEK_SESSION_KEY_REMOVED
 from bpp.models import Uczelnia, Jednostka, Wydzial, Autor, Zrodlo, Rekord
 from bpp.multiseek_registry import JednostkaQueryObject, RokQueryObject, \
     NazwiskoIImieQueryObject, TypRekorduObject, ZrodloQueryObject
-
+from django.utils import six
 
 PUBLIKACJE = 'publikacje'
 STRESZCZENIA = 'streszczenia'
@@ -48,7 +48,7 @@ class AutorView(DetailView):
             typy=TYPY, **kwargs)
 
 
-LITERKI = u'ABCDEFGHIJKLMNOPQRSTUVWYXZ'
+LITERKI = 'ABCDEFGHIJKLMNOPQRSTUVWYXZ'
 
 PODWOJNE = {
     'A': ['A', 'Ą'],
@@ -68,7 +68,10 @@ class Browser(ListView):
     paginate_by = 40
 
     def get_search_string(self):
-        return self.request.GET.get(self.param, '').encode("utf-8")
+        ret = self.request.GET.get(self.param, '')
+        if six.PY2:
+            ret = ret.encode("utf-8")
+        return ret
 
     def get_literka(self):
         return self.kwargs.get('literka')

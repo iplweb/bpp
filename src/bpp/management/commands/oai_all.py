@@ -25,14 +25,14 @@ class Command(BaseCommand):
         start = datetime.now()
 
         res = requests.get(url, params=params)
-        print res.content
+        print(res.content)
         
         while True:
 
             try:
                 r = ElementTree.XML(res.content)
-            except Exception, e:
-                print res.content
+            except Exception as e:
+                print(res.content)
                 raise e
 
             try:
@@ -43,7 +43,7 @@ class Command(BaseCommand):
             delta = datetime.now() - start
             seconds = float(delta.seconds + delta.microseconds/1000000.0)
 
-            print '\r', resumptionToken[:20], "response len: ", len(res.content), "response time: ", delta, "b/s: ", ("%.2f" % (len(res.content)/seconds)),
+            print('\r', resumptionToken[:20], "response len: ", len(res.content), "response time: ", delta, "b/s: ", ("%.2f" % (len(res.content)/seconds)), end=' ')
             sys.stdout.flush()
             #print "%r" %  r.getchildren()[2].getchildren()[0][1].getchildren()[0].getchildren()[0].text[:78]
 

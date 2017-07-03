@@ -27,11 +27,11 @@ class RaportAutorow2012(Raport2012CommonView):
 
         kw = dict(rok_min=rok_min, rok_max=rok_max)
 
-        for key, klass in WSZYSTKIE_TABELE.items():
+        for key, klass in list(WSZYSTKIE_TABELE.items()):
             kw['tabela_%s' % key] = klass(
                 raport_autorow_tabela(key, base_query, autor=self.object))
 
-        for tabela in [tabela for key, tabela in kw.items() if
+        for tabela in [tabela for key, tabela in list(kw.items()) if
                        key.startswith('tabela_')]:
             RequestConfig(self.request).configure(tabela)
 

@@ -4,7 +4,7 @@ from django.utils.itercompat import is_iterable
 
 from bpp.models.struktura import Wydzial
 
-NULL_VALUE = u"(brak wpisanej wartości)"
+NULL_VALUE = "(brak wpisanej wartości)"
 
 from django.db.models import Q
 from django.db.models.expressions import F
@@ -33,7 +33,7 @@ from bpp.models.system import Typ_KBN
 
 
 class TytulPracyQueryObject(StringQueryObject):
-    label = u'Tytuł pracy'
+    label = 'Tytuł pracy'
     field_name = "tytul_oryginalny"
 
     def real_query(self, value, operation):
@@ -71,33 +71,33 @@ class TytulPracyQueryObject(StringQueryObject):
 
 
 class AdnotacjeQueryObject(StringQueryObject):
-    label = u'Adnotacje'
+    label = 'Adnotacje'
     field_name = 'adnotacje'
     public = False
 
 
 class InformacjeQueryObject(StringQueryObject):
-    label = u'Informacje'
+    label = 'Informacje'
     field_name = 'informacje'
 
 
 class SzczegolyQueryObject(StringQueryObject):
-    label = u'Szczegóły'
+    label = 'Szczegóły'
     field_name = 'szczegoly'
 
 
 class UwagiQueryObject(StringQueryObject):
-    label = u'Uwagi'
+    label = 'Uwagi'
     field_name = 'uwagi'
 
 
 class SlowaKluczoweQueryObject(StringQueryObject):
-    label = u'Słowa kluczowe'
+    label = 'Słowa kluczowe'
     field_name = 'slowa_kluczowe'
 
 
 class DataUtworzeniaQueryObject(DateQueryObject):
-    label = u'Data utworzenia'
+    label = 'Data utworzenia'
     field_name = 'utworzono'
     public = False
 
@@ -106,8 +106,8 @@ class DataUtworzeniaQueryObject(DateQueryObject):
         if value is None:
             return NULL_VALUE
         if is_iterable(value):
-            return u"od %s do %s" % (value[0], value[1])
-        return unicode(value)
+            return "od %s do %s" % (value[0], value[1])
+        return str(value)
 
 
 class ForeignKeyDescribeMixin:
@@ -119,7 +119,7 @@ class ForeignKeyDescribeMixin:
 
 
 class NazwiskoIImieQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
-    label = u'Nazwisko i imię'
+    label = 'Nazwisko i imię'
     type = AUTOCOMPLETE
     ops = EQUALITY_OPS_NONE
     model = Autor
@@ -143,7 +143,7 @@ class NazwiskoIImieQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject)
 
 
 class JednostkaQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
-    label = u'Jednostka'
+    label = 'Jednostka'
     type = AUTOCOMPLETE
     ops = EQUALITY_OPS_FEMALE
     model = Jednostka
@@ -166,7 +166,7 @@ class JednostkaQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
 
 
 class WydzialQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
-    label = u'Wydział'
+    label = 'Wydział'
     type = AUTOCOMPLETE
     ops = EQUALITY_OPS_MALE
     model = Wydzial
@@ -189,7 +189,7 @@ class WydzialQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
 
 
 class Typ_OdpowiedzialnosciQueryObject(QueryObject):
-    label = u'Typ odpowiedzialności'
+    label = 'Typ odpowiedzialności'
     type = VALUE_LIST
     values = Typ_Odpowiedzialnosci.objects.all()
     ops = EQUALITY_OPS_MALE
@@ -210,12 +210,12 @@ class Typ_OdpowiedzialnosciQueryObject(QueryObject):
 
 
 class ZakresLatQueryObject(RangeQueryObject):
-    label = u'Zakres lat'
+    label = 'Zakres lat'
     field_name = 'rok'
 
 
 class JezykQueryObject(QueryObject):
-    label = u'Język'
+    label = 'Język'
     type = VALUE_LIST
     ops = EQUALITY_OPS_MALE
     values = Jezyk.objects.all()
@@ -242,13 +242,13 @@ class KCImpactQueryObject(ImpactQueryObject):
 
 
 class PunktacjaWewnetrznaQueryObject(DecimalQueryObject):
-    label = u"Punktacja wewnętrzna"
+    label = "Punktacja wewnętrzna"
     field_name = "punktacja_wewnetrzna"
 
 
 class KCPunktacjaWewnetrznaQueryObject(PunktacjaWewnetrznaQueryObject):
     field_name = 'kc_punktacja_wewnetrzna'
-    label = u"KC: Punktacja wewnętrzna"
+    label = "KC: Punktacja wewnętrzna"
     public = False
 
 
@@ -258,7 +258,7 @@ class PunktyKBNQueryObject(DecimalQueryObject):
 
 
 class KCPunktyKBNQueryObject(PunktyKBNQueryObject):
-    label = u"KC: Punkty PK"
+    label = "KC: Punkty PK"
     field_name = 'kc_punkty_kbn'
     public = False
 
@@ -269,7 +269,7 @@ class IndexCopernicusQueryObject(DecimalQueryObject):
 
 
 class LiczbaZnakowWydawniczychQueryObject(IntegerQueryObject):
-    label = u'Liczba znaków wydawniczych'
+    label = 'Liczba znaków wydawniczych'
     field_name = 'liczba_znakow_wydawniczych'
 
 
@@ -317,7 +317,7 @@ class TypKBNQueryObject(ValueListQueryObject):
 
 
 class ZrodloQueryObject(AutocompleteQueryObject):
-    label = u'Źródło'
+    label = 'Źródło'
     ops = EQUALITY_OPS_NONE
     model = Zrodlo
     field_name = 'zrodlo'
@@ -374,14 +374,14 @@ registry = create_registry(
     LiczbaZnakowWydawniczychQueryObject(),
 
     ordering=[
-        Ordering("", u"(nieistotne)"),
-        Ordering("tytul_oryginalny", u"tytuł oryginalny"),
-        Ordering("rok", u"rok"),
-        Ordering("impact_factor", u"impact factor"),
-        Ordering("punkty_kbn", u"punkty PK"),
-        Ordering("charakter_formalny__nazwa", u"charakter formalny"),
-        Ordering("typ_kbn__nazwa", u"typ KBN"),
-        Ordering("zrodlo__nazwa", u"źródło"),
+        Ordering("", "(nieistotne)"),
+        Ordering("tytul_oryginalny", "tytuł oryginalny"),
+        Ordering("rok", "rok"),
+        Ordering("impact_factor", "impact factor"),
+        Ordering("punkty_kbn", "punkty PK"),
+        Ordering("charakter_formalny__nazwa", "charakter formalny"),
+        Ordering("typ_kbn__nazwa", "typ KBN"),
+        Ordering("zrodlo__nazwa", "źródło"),
     ],
     default_ordering=['-rok', '-impact_factor', '-punkty_kbn'],
     report_types=[

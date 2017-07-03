@@ -32,14 +32,14 @@ class AutorzyNode(template.Node):
                 azj = moj_zapisany(autor.zapisany_jako, autor.autor.slug)
                 if prev_typ != autor.typ_odpowiedzialnosci:
                     prev_typ = autor.typ_odpowiedzialnosci
-                    ret.append(u"[%s] %s" % (prev_typ.skrot.upper(), azj))
+                    ret.append("[%s] %s" % (prev_typ.skrot.upper(), azj))
                     continue
                 ret.append(azj)
 
             retval = ", ".join(ret)
 
         elif hasattr(value, 'autor'):
-            retval = u"[AUT.] " + moj_zapisany("%s %s" % (value.autor.nazwisko, value.autor.imiona),
+            retval = "[AUT.] " + moj_zapisany("%s %s" % (value.autor.nazwisko, value.autor.imiona),
                                 value.autor.slug)
         else:
             raise template.TemplateSyntaxError(
@@ -175,7 +175,7 @@ register.filter(ladne_numery_prac)
 
 @register.simple_tag
 def opis_bibliograficzny_cache(pk):
-    if type(pk) in [str, unicode]:
+    if type(pk) in [str, str]:
         if pk.find("_") > 0:
             content_type_id, object_id = [int(x) for x in pk.split("_")]
             from bpp.models.cache import Rekord

@@ -51,23 +51,23 @@ class PlikEksportuPBN(models.Model):
 
     def get_rok_string(self):
         if self.od_roku != self.do_roku:
-            return u"%s-%s" % (self.od_roku, self.do_roku)
-        return u"%s" % self.od_roku
+            return "%s-%s" % (self.od_roku, self.do_roku)
+        return "%s" % self.od_roku
 
     def get_fn(self):
-        buf = u"PBN-%s-%s" % (self.wydzial.skrot, self.get_rok_string())
+        buf = "PBN-%s-%s" % (self.wydzial.skrot, self.get_rok_string())
 
         if not (self.artykuly and self.ksiazki and self.rozdzialy):
 
             extra = [
-                (self.artykuly, u"art"),
-                (self.ksiazki, u"ksi"),
-                (self.rozdzialy, u"roz")
+                (self.artykuly, "art"),
+                (self.ksiazki, "ksi"),
+                (self.rozdzialy, "roz")
             ]
 
             for b, val in extra:
                 if b:
-                    buf += u"-" + val
+                    buf += "-" + val
 
         flds = {DATE_CREATED_ON: 'utw',
                 DATE_UPDATED_ON: 'zm',
@@ -77,7 +77,7 @@ class PlikEksportuPBN(models.Model):
             try:
                 buf += "-" + flds[self.rodzaj_daty]
             except KeyError:
-                from tasks import BrakTakiegoRodzajuDatyException
+                from .tasks import BrakTakiegoRodzajuDatyException
                 raise BrakTakiegoRodzajuDatyException(self.rodzaj_daty)
 
             for label, wartosc in [('od', self.od_daty), ('do', self.do_daty)]:

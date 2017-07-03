@@ -14,8 +14,8 @@ class Patent_Autor(BazaModeluOdpowiedzialnosciAutorow):
     rekord = models.ForeignKey('Patent')
 
     class Meta:
-        verbose_name = u'powiązanie autora z patentem'
-        verbose_name_plural = u'powiązania autorów z patentami'
+        verbose_name = 'powiązanie autora z patentem'
+        verbose_name_plural = 'powiązania autorów z patentami'
         app_label = 'bpp'
         ordering = ('kolejnosc', )
         unique_together = \

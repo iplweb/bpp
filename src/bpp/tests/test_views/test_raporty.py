@@ -1,5 +1,5 @@
 # -*- encoding: utf-8 -*-
-from __future__ import print_function
+
 import sys
 from datetime import datetime
 import os
@@ -56,7 +56,7 @@ class TestRaportSelector(UserTestCase):
         res = self.client.get(reverse('bpp:raporty'))
         self.assertContains(
             res,
-            "Raport dla Komisji Centralnej - %s" % unicode(a),
+            "Raport dla Komisji Centralnej - %s" % str(a),
             status_code=200)
 
 
@@ -92,7 +92,7 @@ class TestPobranieRaportu(RaportMixin, UserTestCase):
         with override_settings(SENDFILE_BACKEND='sendfile.backends.nginx'):
             url = reverse('bpp:pobranie-raportu', kwargs=dict(uid=self.r.uid))
             resp = self.client.get(url)
-            self.assertEquals(resp.status_code, 200)
+            self.assertEqual(resp.status_code, 200)
             self.assertIn('x-accel-redirect', resp._headers)
 
 
@@ -106,7 +106,7 @@ class TestPodgladRaportu(RaportMixin, UserTestCase):
         p.kwargs = {}
         p.kwargs['uid'] = self.r.uid
 
-        self.assertEquals(p.get_object(), self.r)
+        self.assertEqual(p.get_object(), self.r)
 
         p.kwargs['uid'] = 'nonexistent'
         self.assertRaises(Http404, p.get_object)
@@ -142,14 +142,14 @@ class TestKasowanieRaportu(KasowanieRaportuMixin, RaportMixin, UserTestCase):
         self.assertRaises(Http404, k.get_object)
 
         k.request.user = self.user
-        self.assertEquals(k.get_object(), self.r)
+        self.assertEqual(k.get_object(), self.r)
 
     def test_kasowanieraportu_client(self):
-        self.assertEquals(Report.objects.count(), 1)
+        self.assertEqual(Report.objects.count(), 1)
         url = reverse('bpp:kasowanie-raportu', kwargs=dict(uid=self.r.uid))
         resp = self.client.get(url)
         self.assertRedirects(resp, reverse("bpp:raporty"))
-        self.assertEquals(Report.objects.count(), 0)
+        self.assertEqual(Report.objects.count(), 0)
 
 from django.conf import settings
 
@@ -167,18 +167,18 @@ class TestKasowanieRaportuFileDeletion(
 
         self.r.file.save("fubar", ContentFile("foo"))
 
-        self.assert_(os.path.exists(self.r.file.path))
+        self.assertTrue(os.path.exists(self.r.file.path))
 
-        self.assertEquals(Report.objects.count(), 1)
+        self.assertEqual(Report.objects.count(), 1)
         url = reverse('bpp:kasowanie-raportu', kwargs=dict(uid=self.r.uid))
         resp = self.client.get(url)
         self.assertRedirects(resp, reverse("bpp:raporty"))
-        self.assertEquals(Report.objects.count(), 0)
+        self.assertEqual(Report.objects.count(), 0)
         transaction.commit()
 
         # hgw, jak to wywołać, transcation.commit, musiałby być
         # w trybie ręcznym czy coś, problem z tym testem
-        self.assert_(not os.path.exists(self.r.file.path))
+        self.assertTrue(not os.path.exists(self.r.file.path))
 
         pass
 
@@ -225,12 +225,12 @@ class TestRankingAutorow(UserTestCase):
         url = reverse("bpp:ranking-autorow", args=(2000,2000))
         res = self.client.get(url)
         self.assertContains(
-            res, u"Ranking autorów", status_code=200)
-        self.assertContains(res, u"Kowalski")
+            res, "Ranking autorów", status_code=200)
+        self.assertContains(res, "Kowalski")
 
     def test_renderowanie_csv(self):
         url = reverse("bpp:ranking-autorow", args=(2000,2000))
         res = self.client.get(url, data={"report-rankingautorowtable": "csv"})
         self.assertContains(
             res,
-            u'"Kowalski Jan Maria, dr",Jednostka')
+            '"Kowalski Jan Maria, dr",Jednostka')

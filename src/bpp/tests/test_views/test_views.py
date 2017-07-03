@@ -73,13 +73,13 @@ class TestBrowseAutorzy(UserTestCase):
 
     def test_get_queryset(self):
         q = self.view.get_queryset()
-        self.assertEquals(list(q)[0], self.autor)
+        self.assertEqual(list(q)[0], self.autor)
 
     def test_get_context_data(self):
         self.view.object_list = []
         d = self.view.get_context_data()
-        self.assertEquals(d['wybrana'], 'A')
-        self.assertEquals(d['flt'], 'Autor')
+        self.assertEqual(d['wybrana'], 'A')
+        self.assertEqual(d['flt'], 'Autor')
 
 
 class TestBrowseAutor(UserTestCase):
@@ -90,7 +90,7 @@ class TestBrowseAutor(UserTestCase):
         av = AutorView()
         av.object = mommy.make(Autor)
         d = av.get_context_data()
-        self.assert_('publikacje' in d['typy'])
+        self.assertTrue('publikacje' in d['typy'])
 
     def test_habilitacyjna_doktorska(self):
         a = mommy.make(Autor)
@@ -145,7 +145,7 @@ class TestOAI(UserTestCase):
 
         Rekord.objects.full_refresh()
 
-        self.assertEquals(Rekord.objects.all().count(), 2)
+        self.assertEqual(Rekord.objects.all().count(), 2)
 
         #Wydawnictwo_Ciagle.objects.raw("SELECT update_cache('bpp_wydawnictwo_ciagle', '%s')" % c.pk)
         self.c = c

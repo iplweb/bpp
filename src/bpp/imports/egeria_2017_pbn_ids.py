@@ -8,7 +8,7 @@ from .egeria_2012 import dopasuj_autora
 
 
 def importuj_wiersz(dct, row, sheet, row_no, sheet_no):
-    autor = dopasuj_autora(dct[u'IMIĘ'].value, dct['NAZWISKO'].value, dct['NAZWA JEDNOSTKI'].value, dct['Stanowisko'].value)
+    autor = dopasuj_autora(dct['IMIĘ'].value, dct['NAZWISKO'].value, dct['NAZWA JEDNOSTKI'].value, dct['Stanowisko'].value)
     if autor:
         autor.pesel_md5 = md5(dct['PESEL'].value).hexdigest()
         autor.pbn_id = dct['PBN ID'].value
@@ -24,7 +24,7 @@ def import_sheet(sheet, sheet_no, label_row_no=3):
 
     for nrow in range(label_row_no, sheet.nrows):
         row = sheet.row(nrow)
-        dct = dict(zip(labels, row))
+        dct = dict(list(zip(labels, row)))
         importuj_wiersz(dct, row, sheet, nrow, sheet_no)
 
 

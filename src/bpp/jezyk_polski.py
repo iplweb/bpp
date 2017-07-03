@@ -6,14 +6,14 @@ Ten moduł zawiera rozwiązania dla języka polskiego.
 
 czasownik_byc = dict(
     czas_przeszly=dict(
-        K=u'była',
-        M=u'był',
-        default=u'był(a)'
+        K='była',
+        M='był',
+        default='był(a)'
     ),
     czas_terazniejszy=dict(
-        K=u'jest',
-        M=u'jest',
-        default=u'jest'
+        K='jest',
+        M='jest',
+        default='jest'
     )
 )
 
@@ -21,17 +21,17 @@ def warianty_zapisanego_nazwiska(p_imiona, p_nazwisko, poprzednie_nazwiska):
     imiona = p_imiona.replace("*", "")
     nazwisko = p_nazwisko.replace("*", "")
     # Pozbądź się pustych imion
-    imiona = [x for x in imiona.split(u" ") if x]
+    imiona = [x for x in imiona.split(" ") if x]
     # Sprawdź, czy mamy podwójne nazwiska
-    nazwiska = [x for x in nazwisko.replace(u"-", u" ").split(u" ") if x]
+    nazwiska = [x for x in nazwisko.replace("-", " ").split(" ") if x]
     if len(nazwiska)>1:
         nazwiska = [nazwisko,] + nazwiska
 
     def wersje_imienia(imie):
         buf = [imie, ]
         if len(imie)>2:
-            buf.append(imie[0] + u"[" + imie[1:] + u"]")
-            buf.append(imie[0] + u".")
+            buf.append(imie[0] + "[" + imie[1:] + "]")
+            buf.append(imie[0] + ".")
         else:
             buf.append(imie)
             buf.append(imie)
@@ -39,7 +39,7 @@ def warianty_zapisanego_nazwiska(p_imiona, p_nazwisko, poprzednie_nazwiska):
 
     for i in zip(*tuple([wersje_imienia(imie) for imie in imiona])):
         for n in nazwiska:
-            yield u" ".join(list(i)) + u" " + n
+            yield " ".join(list(i)) + " " + n
 
     # Wersja, w której z autora z wieloma imionami robimy autora z jednym imieniem,
     # czyli np. Stanisław J. Czuczwar => Stanisław Czuczwar

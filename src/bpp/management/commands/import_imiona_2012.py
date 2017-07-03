@@ -13,5 +13,5 @@ class Command(BaseCommand):
     @transaction.atomic
     def handle(self, *args, **options):
         for plik in files_or_directory(args):
-            print "==> ", plik
+            print("==> ", plik)
             importuj_imiona(plik)

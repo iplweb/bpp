@@ -28,7 +28,7 @@ class EgeriaImportListView(LoginRequiredMixin, ListView):
     model = EgeriaImport
 
     def get(self, request, *args, **kwargs):
-        if request.GET.has_key("delete"):
+        if "delete" in request.GET:
             obj = None
             try:
                 obj = EgeriaImport.objects.get(pk=request.GET['delete'])
@@ -74,7 +74,7 @@ class DiffListViewBase(LoginRequiredMixin, ListView):
 
         self.object_list = self.get_queryset()
 
-        if request.GET.has_key("submit"):
+        if "submit" in request.GET:
             self.on_submit(request)
             return HttpResponse("K")
 

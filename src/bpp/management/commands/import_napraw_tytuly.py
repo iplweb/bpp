@@ -8,23 +8,23 @@ from bpp.models import cache
 
 
 FIXME = [
-    ('<alpha>', u'α'),
-    ('<alfa>', u'α'),
-    ('<afa>', u'α'),
+    ('<alpha>', 'α'),
+    ('<alfa>', 'α'),
+    ('<afa>', 'α'),
 
-    ('<beta>', u'β'),
-    ('<gamma>', u'γ'),
-    ('<delta>', u'δ'),
-    ('<d>', u'δ'),
-    ('<epsilon>', u'ε'),
-    ('<pi>', u'π'),
+    ('<beta>', 'β'),
+    ('<gamma>', 'γ'),
+    ('<delta>', 'δ'),
+    ('<d>', 'δ'),
+    ('<epsilon>', 'ε'),
+    ('<pi>', 'π'),
 
-    ('<mi>', u'μ'),
-    ('<omega>', u'ω'),
+    ('<mi>', 'μ'),
+    ('<omega>', 'ω'),
 
-    ('<zeta>', u'ζ'),
-    ('<tau>', u'τ'),
-    ('<kappa>', u'κ'),
+    ('<zeta>', 'ζ'),
+    ('<tau>', 'τ'),
+    ('<kappa>', 'κ'),
 
     ('<sub)', '<sub>'),
 
@@ -40,7 +40,7 @@ FIXME = [
 ]
 
 class Command(BaseCommand):
-    help = u'Naprawia tytuły prac po imporcie'
+    help = 'Naprawia tytuły prac po imporcie'
 
     @transaction.atomic
     def handle(self, *args, **options):
@@ -82,4 +82,4 @@ lower(tytul_oryginalny) not like '%%<kappa>%%'  and
 lower(tytul_oryginalny) not like '%%<sub)%%'  and
 lower(tytul_oryginalny) not like '%%<alpha>%%';
 """):
-            print "%r" % elem.tytul_oryginalny
+            print("%r" % elem.tytul_oryginalny)

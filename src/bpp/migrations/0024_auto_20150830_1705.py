@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
+
 
 from django.db import models, migrations
 
@@ -25,13 +25,13 @@ def ustaw_charaktery(apps, schema_editor):
 
     }
 
-    for key, item in mapping.items():
+    for key, item in list(mapping.items()):
         try:
             obj = Charakter_Formalny.objects.get(skrot=key)
         except Charakter_Formalny.DoesNotExist:  # testy, dalej uzywamy fixtury...
             continue
 
-        for attrname, attrvalue in item.items():
+        for attrname, attrvalue in list(item.items()):
             setattr(obj, attrname, attrvalue)
 
         obj.save()

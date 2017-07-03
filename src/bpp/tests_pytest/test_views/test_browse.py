@@ -36,28 +36,28 @@ def test_buildSearch():
     tbs.request = request()
     tbs.post(request)
 
-    expected = {u'form_data':
+    expected = {'form_data':
         [None,
-          {u'field': u'\u0179r\xf3d\u0142o',
-           u'operator': u'r\xf3wne',
-           u'prev_op': None,
-           u'value': 1},
-          {u'field': u'Nazwisko i imi\u0119',
-           u'operator': u'r\xf3wne',
-           u'prev_op': u'and',
-           u'value': 1},
-          {u'field': u'Typ rekordu',
-           u'operator': u'r\xf3wny',
-           u'prev_op': u'and',
-           u'value': 1},
-          {u'field': u'Jednostka',
-           u'operator': u'r\xf3wna',
-           u'prev_op': u'and',
-           u'value': 1},
-          {u'field': u'Rok',
-           u'operator': u'r\xf3wny',
-           u'prev_op': u'and',
-           u'value': 2013}]}
+          {'field': '\u0179r\xf3d\u0142o',
+           'operator': 'r\xf3wne',
+           'prev_op': None,
+           'value': 1},
+          {'field': 'Nazwisko i imi\u0119',
+           'operator': 'r\xf3wne',
+           'prev_op': 'and',
+           'value': 1},
+          {'field': 'Typ rekordu',
+           'operator': 'r\xf3wny',
+           'prev_op': 'and',
+           'value': 1},
+          {'field': 'Jednostka',
+           'operator': 'r\xf3wna',
+           'prev_op': 'and',
+           'value': 1},
+          {'field': 'Rok',
+           'operator': 'r\xf3wny',
+           'prev_op': 'and',
+           'value': 2013}]}
 
     assert json.loads(request.session[MULTISEEK_SESSION_KEY]) == expected
 

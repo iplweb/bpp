@@ -36,7 +36,7 @@ def build_mapping(xls_columns, wanted_columns):
     :rtype: list
     """
     ret = []
-    upper_wanted_columns = dict([(x.upper().strip(), wanted_columns[x]) for x in wanted_columns.keys()])
+    upper_wanted_columns = dict([(x.upper().strip(), wanted_columns[x]) for x in list(wanted_columns.keys())])
     for elem in xls_columns:
         val = elem.value.upper().strip()
         if val in upper_wanted_columns:

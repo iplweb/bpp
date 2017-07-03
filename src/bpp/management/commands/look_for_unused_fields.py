@@ -28,4 +28,4 @@ class Command(BaseCommand):
                     Q(**{field.name: None}) | Q(**{field.name:''})).count()
                 if check == total:
                     if not silent:
-                        print "Nieuzywane pole: ", model, field
+                        print("Nieuzywane pole: ", model, field)

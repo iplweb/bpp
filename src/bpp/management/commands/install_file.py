@@ -1,6 +1,6 @@
 # -*- encoding: utf-8 -*-
 
-from __future__ import print_function
+
 import importlib
 import os
 from django.core.management import BaseCommand

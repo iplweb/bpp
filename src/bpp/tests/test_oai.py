@@ -9,9 +9,9 @@ class TestOAI(WebTestCase):
 
     def setUp(self):
         any_ciagle()
-        self.assertEquals(Rekord.objects.all().count(), 1)
+        self.assertEqual(Rekord.objects.all().count(), 1)
     
     def test_identify(self):
         identify = reverse("bpp:oai") + "?verb=Identify"
         res = self.client.get(identify)
-        self.assertEquals(res.status_code, 200)
+        self.assertEqual(res.status_code, 200)
