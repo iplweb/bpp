@@ -49,7 +49,7 @@ pytz==2017.2
 
 django-extensions==1.7.9
 
-django-htmlmin==0.7.0
+django-htmlmin==0.10.0
 
 simplejson==3.8.0
 
