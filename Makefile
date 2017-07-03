@@ -27,7 +27,7 @@ clean:
 
 distclean: clean
 	rm -rf src/django_bpp/staticroot 
-	rm -rf dist/ dist_dev/ zarzadca*backup 
+	rm -rf zarzadca*backup 
 	rm -rf node_modules src/node_modules src/django_bpp/staticroot 
 	rm -rf .vagrant splintershots src/components/bower_components src/media
 
@@ -54,7 +54,7 @@ wheels:
 # cel: install-wheels
 # Instaluje wszystkie requirements
 install-wheels:
-	${PIP} install -q --no-index --find-links=./dist --find-links=./dist_dev -r requirements_dev.txt
+	${PIP} install --no-index --find-links=./dist --find-links=./dist_dev -r requirements_dev.txt
 
 # cel: assets
 # Pobiera i składa do kupy JS/CSS/Foundation
@@ -81,7 +81,7 @@ bdist_wheel: clean install-wheels assets
 # Uruchamia testy całego site'u za pomocą docker-compose. Wymaga zbudowanych 
 # pakietów WHL (cel: wheels) oraz statycznych assets w katalogu src/django_bpp/staticroot
 # (cel: assets)
-tests: # wymaga: wheels assets
+tests: # wymaga: instsall-wheels assets
 	tox
 
 # cel: tests-full
