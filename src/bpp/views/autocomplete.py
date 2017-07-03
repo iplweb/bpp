@@ -1,7 +1,9 @@
 # -*- encoding: utf-8 -*-
+import json
 
 from dal import autocomplete
 from dal_select2_queryset_sequence.views import Select2QuerySetSequenceView
+from django import http
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.db.models.query_utils import Q
 from queryset_sequence import QuerySetSequence
@@ -182,6 +184,22 @@ class ZapisanyJakoAutocomplete(autocomplete.Select2ListView):
             warianty_zapisanego_nazwiska(a.imiona, a.nazwisko,
                                          a.poprzednie_nazwiska)
         )
+
+    def get(self, request, *args, **kwargs):
+        """"Return option list json response."""
+        results = self.get_list()
+        create_option = []
+        if self.q:
+            results = [x for x in results if self.q.lower() in x.lower()]
+            if hasattr(self, 'create'):
+                create_option = [{
+                    'id': self.q,
+                    'text': 'Create "%s"' % self.q,
+                    'create_id': True
+                }]
+        return http.HttpResponse(json.dumps({
+            'results': [dict(id=x, text=x) for x in results] + create_option
+        }), content_type='application/json')
 
 
 class PodrzednaPublikacjaHabilitacyjnaAutocomplete(
