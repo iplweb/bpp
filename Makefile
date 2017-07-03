@@ -159,5 +159,21 @@ demo-vm-cleanup:
 
 demo-vm: vagrantclean staging demo-vm-ansible demo-vm-clone demo-vm-cleanup
 
-travis: distclean dockerclean
-	make -f Makefile.docker travis
+cleanup-pycs:
+	find . -name __pycache__ -type d -print0 | xargs -0 rm -rfv
+	find . -name \*~ -print0 | xargs -0 rm -fv 
+	find . -name \*pyc -print0 | xargs -0 rm -fv 
+	find . -name \*\\.log -print0 | xargs -0 rm -fv 
+	rm -rf build __pycache__ *.log
+
+# cel: build-test-container
+# Buduje testowy kontener
+build-test-container: cleanup-pycs
+	docker-compose stop test
+	docker-compose rm test
+	docker-compose build test
+
+# cel: travis
+# Uruchamia wszystkie testy - dla TravisCI
+travis: distclean dockerclean build-test-container
+	docker-compose run --rm test "make full-tests"
