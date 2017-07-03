@@ -11,10 +11,9 @@ from bpp.models.cache import Rekord
 class Command(BaseCommand):
     help = 'Ustawia nazwę domeny i strony internetowej'
 
-    option_list = BaseCommand.option_list + (
-        make_option("-d", "--domain", action="store", type="str"),
-        make_option("-n", "--name", action="store", type="str"),
-    )
+    def add_arguments(self, parser):
+        parser.add_argument("-d", "--domain", action="store")
+        parser.add_argument("-n", "--name", action="store")
 
     def handle(self, *args, **options):
         kw = {}
