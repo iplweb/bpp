@@ -7,8 +7,8 @@ django-autoslug==1.9.3
 django-autocomplete-light==3.2.9
 django-admin-tools==0.8.1
 xlrd==0.9.3
-celery==3.1.19
-kombu==3.0.33
+celery==4.0.1
+
 django-redis-sessions==0.4.0
 django-tables2==1.10.0
 django_tables2_reports==0.1.3

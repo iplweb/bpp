@@ -12,12 +12,12 @@ def test_google_analytics_disabled(client):
     try:
         settings.DEBUG = True
         res = client.get("/")
-        assert "GoogleAnalyticsObject" not in res.content
+        assert b"GoogleAnalyticsObject" not in res.content
 
         settings.DEBUG = False
         settings.GOOGLE_ANALYTICS_PROPERTY_ID = ""
         res = client.get("/")
-        assert "GoogleAnalyticsObject" not in res.content
+        assert b"GoogleAnalyticsObject" not in res.content
 
     finally:
         settings.DEBUG = orig_DEBUG
@@ -37,7 +37,7 @@ def test_google_analytics_enabled(client):
 
         res = client.get("/")
 
-        assert "GoogleAnalyticsObject" in res.content
+        assert b"GoogleAnalyticsObject" in res.content
 
     finally:
         settings.DEBUG = orig_DEBUG

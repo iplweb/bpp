@@ -425,7 +425,9 @@ NOTIFICATIONS_PUB_PREFIX = 'django_bpp'
 TEST_NON_SERIALIZED_APPS = ['django.contrib.contenttypes',
                             'django.contrib.auth']
 
-TESTING = ('test' in sys.argv) or ('jenkins' in sys.argv) or ('py.test' in sys.argv)
+TESTING = ('test' in sys.argv) or ('jenkins' in sys.argv) or \
+          ('py.test' in sys.argv) or ('pytest' in sys.argv)
+
 if TESTING:
     CELERY_ALWAYS_EAGER = True
     CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
