@@ -14,6 +14,7 @@ recursive-exclude src/django_bpp/staticroot/*sass* *
 recursive-exclude src/django_bpp/staticroot/phantomjs-prebuilt *
 recursive-exclude src/django_bpp/staticroot/node-gyp *
 recursive-exclude src/django_bpp/staticroot/sinon *
+recursive-exclude src/django_bpp/staticroot/globule * 
 
 recursive-include src/templates/* *.html *.js *.css *.mo *.po *.wav *.jpg *.png *.svg *.json
 
