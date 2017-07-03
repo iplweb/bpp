@@ -8,9 +8,11 @@ cd $SCRIPTPATH/..
 export DISTDIR=$SCRIPTPATH/../dist
 echo "Buduje wheels w $DISTDIR"
 
+export PIP="python3.6 pip wheel"
+
 mkdir -p $DISTDIR
-pip3 wheel -q --wheel-dir=$DISTDIR --find-links=$DISTDIR -r requirements.txt 
+$PIP --wheel-dir=$DISTDIR --find-links=$DISTDIR -r requirements.txt 
 
 export DISTDIR_DEV=${DISTDIR}_dev
 mkdir -p $DISTDIR_DEV
-pip3 wheel -q --wheel-dir=$DISTDIR_DEV --find-links=$DISTDIR --find-links=$DISTDIR_DEV -r requirements_dev.txt 
+$PIP --wheel-dir=$DISTDIR_DEV --find-links=$DISTDIR --find-links=$DISTDIR_DEV -r requirements_dev.txt 
