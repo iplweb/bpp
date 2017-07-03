@@ -7,10 +7,16 @@ include README.rst
 include requirements.txt
 include requirements_dev.txt
 
-recursive-include src/django_bpp/staticroot/ *
+recursive-include src/django_bpp/staticroot *
+
 recursive-exclude src/django_bpp/staticroot/*grunt* *
 recursive-exclude src/django_bpp/staticroot/*sass* *
+recursive-exclude src/django_bpp/staticroot/phantomjs-prebuilt *
+recursive-exclude src/django_bpp/staticroot/node-gyp *
+recursive-exclude src/django_bpp/staticroot/sinon *
+
 recursive-include src/templates/* *.html *.js *.css *.mo *.po *.wav *.jpg *.png *.svg *.json
+
 recursive-include src/bpp/migrations *.sql *.txt
 
 recursive-include docs *.rst conf.py Makefile make.bat *.jpg *.png *.gif
