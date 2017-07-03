@@ -16,7 +16,7 @@ from bpp.models.abstract import ModelZNazwa, ModelZAdnotacjami, ModelZISSN, \
     ModelPunktowanyBaza
 
 from bpp.jezyk_polski import czasownik_byc
-
+from django.utils import six
 
 class Rodzaj_Zrodla(ModelZNazwa):
     class Meta:
@@ -31,7 +31,7 @@ class Zasieg_Zrodla(ModelZNazwa):
         verbose_name_plural = u'zasięg źródeł'
         app_label = 'bpp'
 
-
+@six.python2_unicode_compatible
 class Redakcja_Zrodla(models.Model):
     """Informacja o tym, że ktoś jest redaktorem danego źródła - w latach,
     od - do."""
@@ -45,7 +45,7 @@ class Redakcja_Zrodla(models.Model):
         verbose_name = u'redaktor źródła'
         verbose_name_plural = u'redaktorzy źródła'
 
-    def __unicode__(self):
+    def __str__(self):
         buf = u"Redaktorem od %s " % self.od_roku
 
         if self.do_roku is not None:
@@ -65,13 +65,13 @@ class Redakcja_Zrodla(models.Model):
         return buf
 
 # TODO: sprawdzanie dla redakcja_zrodla, czy rok od jest > niz rok do <
-
+@six.python_2_unicode_compatible
 class Punktacja_Zrodla(ModelPunktowanyBaza, models.Model):
     """Informacja o punktacji danego źródła w danym roku"""
     zrodlo = models.ForeignKey('Zrodlo')
     rok = YearField()
 
-    def __unicode__(self):
+    def __str__(self):
         return u"Punktacja źródła za rok %s" % self.rok
 
     class Meta:
@@ -86,6 +86,7 @@ class ZrodloManager(FulltextSearchMixin, models.Manager):
     pass
 
 
+@six.python_2_unicode_compatible
 class Zrodlo(ModelZAdnotacjami, ModelZISSN):
     nazwa = models.CharField(max_length=1024, db_index=True)
     skrot = models.CharField("Skrót", max_length=512, db_index=True)
@@ -135,7 +136,7 @@ class Zrodlo(ModelZAdnotacjami, ModelZISSN):
         populate_from='nazwa',
         unique=True)
 
-    def __unicode__(self):
+    def __str__(self):
         ret = u"%s" % self.nazwa
 
         if self.nazwa_alternatywna:

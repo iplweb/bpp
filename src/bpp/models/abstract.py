@@ -9,12 +9,12 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 from django.contrib.postgres.search import SearchVectorField as VectorField
+from django.utils import six
 from lxml.etree import Element
 from lxml.etree import SubElement
 
 from bpp.fields import YearField, DOIField
 from bpp.models.util import ModelZOpisemBibliograficznym
-
 
 class ModelZeZnakamiWydawniczymi(models.Model):
     liczba_znakow_wydawniczych = models.IntegerField(
@@ -50,12 +50,12 @@ class ModelZPBN_ID(models.Model):
     class Meta:
         abstract = True
 
-
+@six.python_2_unicode_compatible
 class ModelZNazwa(models.Model):
     """Nazwany model."""
     nazwa = models.CharField(max_length=512, unique=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return self.nazwa
 
     class Meta:
@@ -259,7 +259,7 @@ class ModelTypowany(models.Model):
     class Meta:
         abstract = True
 
-
+@python_2_unicode_compatible
 class BazaModeluOdpowiedzialnosciAutorow(models.Model):
     """Bazowa klasa dla odpowiedzialności autorów (czyli dla przypisania
     autora do czegokolwiek innego). Zawiera wszystkie informacje dla autora,
@@ -277,8 +277,9 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
         abstract = True
         ordering = ('kolejnosc', 'typ_odpowiedzialnosci__skrot')
 
-    def __unicode__(self):
-        return unicode(self.autor) + u" - " + unicode(self.jednostka.skrot)
+    def __str__(self):
+        return six.text_type(self.autor) + u" - " + six.text_type(
+            self.jednostka.skrot)
 
     # XXX TODO sprawdzanie, żęby nie było dwóch autorów o tej samej kolejności
 
@@ -325,9 +326,9 @@ class ModelPrzeszukiwalny(models.Model):
     class Meta:
         abstract = True
 
-
+@six.python_2_unicode_compatible
 class Wydawnictwo_Baza(ModelZOpisemBibliograficznym, ModelPrzeszukiwalny):
-    def __unicode__(self):
+    def __str__(self):
         return self.tytul_oryginalny
 
     class Meta:

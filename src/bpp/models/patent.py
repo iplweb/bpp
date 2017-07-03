@@ -7,7 +7,7 @@ from bpp.models import BazaModeluOdpowiedzialnosciAutorow, Autor, \
     ModelZInformacjaZ, ModelZAdnotacjami, ModelZeSzczegolami, ModelPunktowany
 from bpp.models.abstract import ModelPrzeszukiwalny
 from bpp.models.util import dodaj_autora, ModelZOpisemBibliograficznym
-
+from django.utils import six
 
 class Patent_Autor(BazaModeluOdpowiedzialnosciAutorow):
     """Powiązanie autora do patentu."""
@@ -23,7 +23,7 @@ class Patent_Autor(BazaModeluOdpowiedzialnosciAutorow):
               # Tu musi być autor, inaczej admin nie pozwoli wyedytować
              ('rekord', 'autor', 'kolejnosc')]
 
-
+@six.python2_unicode_compatible
 class Patent(ModelZOpisemBibliograficznym, ModelZRokiem, ModelZeStatusem,
              ModelZWWW, ModelAfiliowanyRecenzowany, ModelPunktowany,
              ModelZeSzczegolami, ModelZInformacjaZ, ModelZAdnotacjami,
@@ -45,6 +45,6 @@ class Patent(ModelZOpisemBibliograficznym, ModelZRokiem, ModelZeStatusem,
         verbose_name_plural = "patenty"
         app_label = 'bpp'
 
-    def __unicode__(self):
+    def __str__(self):
         return self.tytul_oryginalny
 

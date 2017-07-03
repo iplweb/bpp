@@ -8,13 +8,14 @@ from bpp.models.struktura import Jednostka_Wydzial
 from egeria.models.abstract import Diff_Delete, Diff_Base
 from egeria.models.util import date_range_inside
 from .util import zrob_skrot
+from django.utils import six
 
-
+@six.python_2_unicode_compatible
 class Diff_Jednostka_Create(Diff_Base):
     nazwa = models.CharField(max_length=512)
     wydzial = models.ForeignKey(Wydzial)
 
-    def __unicode__(self):
+    def __str__(self):
         return " ".join([self.nazwa, "-", self.wydzial.nazwa])
 
     def commit(self):
