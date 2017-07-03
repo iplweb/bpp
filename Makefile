@@ -10,6 +10,11 @@ BRANCH=`git branch | sed -n '/\* /s///p'`
 
 .PHONY: clean distclean build-wheels install-wheels wheels tests release
 
+PYTHON=python3.6
+PIP=${PYTHON} -m pip
+DISTDIR=./dist
+DISTDIR_DEV=./dist_dev
+
 clean:
 	find . -name __pycache__ -type d -print0 | xargs -0 rm -rfv
 	find . -name \*~ -print0 | xargs -0 rm -fv 
@@ -38,17 +43,31 @@ vagrantclean:
 # Buduje pakiety WHL na bazie requirements.txt, zapisując je do katalogu 'dist',
 # buduje pakiety WHL na bazie requirements_dev.txt, zapisując je do katalogu 'dist_dev'.
 wheels:
-	./buildscripts/build-wheel.sh
+	echo "Buduje wheels w ${DISTDIR}"
+
+	mkdir -p ${DISTDIR}
+	${PIP} wheel --wheel-dir=${DISTDIR} --find-links=${DISTDIR} -r requirements.txt 
+
+	mkdir -p ${DISTDIR_DEV}
+	${PIP} wheel --wheel-dir=${DISTDIR_DEV} --find-links=${DISTDIR} --find-links=${DISTDIR_DEV} -r requirements_dev.txt 
 
 # cel: install-wheels
 # Instaluje wszystkie requirements
 install-wheels:
-	pip2 install -q --no-index --find-links=./dist --find-links=./dist_dev -r requirements_dev.txt
+	${PIP} install -q --no-index --find-links=./dist --find-links=./dist_dev -r requirements_dev.txt
 
 # cel: assets
 # Pobiera i składa do kupy JS/CSS/Foundation
 assets: 
-	./buildscripts/build-assets.sh
+	yarn install > /dev/null
+	npm rebuild > /dev/null
+	rm -rf src/django_bpp/staticroot
+	${PYTHON} src/manage.py collectstatic --noinput -v0
+	grunt build 
+	${PYTHON} src/manage.py collectstatic --noinput -v0
+	${PYTHON} src/manage.py compress --force  -v0
+	echo -n "Static root size: "
+	du -ch src/django_bpp/staticroot | grep total
 
 # cel: bdist_wheel
 # Buduje pakiet WHL zawierający django_bpp i skompilowane, statyczne assets. 
@@ -64,6 +83,11 @@ bdist_wheel: install-wheels assets clean
 # (cel: assets)
 tests: # wymaga: wheels assets
 	tox
+
+# cel: tests-full
+# Jak tests, ale całość
+full-tests: wheels bdist_wheel tests
+
 
 # cel: docker-up
 # Startuje usługi dockera wymagane do lokalnego developmentu
