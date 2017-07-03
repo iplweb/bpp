@@ -33,6 +33,8 @@ cleanup-pycs:
 # cel: build-test-container
 # Buduje testowy kontener
 build-test-container: cleanup-pycs
+	docker-compose stop test
+	docker-compose rm test
 	docker-compose build test
 
 # cel: bdist_wheel
@@ -46,4 +48,4 @@ tests:
 	docker-compose run --rm test make tests
 
 travis: build-test-container wheels
-	docker-compose run --rm test "make wheels bdist_wheel tests"
+	docker-compose run --rm test "make full-tests"
