@@ -70,7 +70,7 @@
   tags: ['django-migrate']
 
 - name: Site name for sites framework is set up
-  command: "{{ django_manage_py }} set_site_name -d {{ django_hostname }} -n {{ django_site_name }}"
+  command: "{{ django_manage_py }} set_site_name --domain \"{{ django_hostname }}\" --name \"{{ django_site_name }}\""
 
 - include: supervisor.yml
   tags: ['supervisor',]
