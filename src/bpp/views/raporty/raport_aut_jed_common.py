@@ -6,7 +6,7 @@
 
 import itertools
 import sys
-import urllib
+import urllib.request, urllib.parse, urllib.error
 from decimal import Decimal
 
 import bleach
@@ -70,7 +70,7 @@ class Tabela_Publikacji(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
     class Meta:
         attrs = {"class": "paleblue"}
         template = "raporty/raport_jednostek_autorow_2012/publikacje.html"
-        per_page = sys.maxint
+        per_page = sys.maxsize
         empty_text = "Brak takich rekordów."
         sequence = ('lp', 'zrodlo', 'lp_art', 'autorzy', 'tytul_oryginalny',
                     'rok', 'szczegoly', 'punkty_kbn')
@@ -105,7 +105,7 @@ class Tabela_Publikacji(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
         try:
             new_zrodlo = record.zrodlo.nazwa
         except ObjectDoesNotExist:
-            new_zrodlo = u''
+            new_zrodlo = ''
 
         if self.old_zrodlo != new_zrodlo:
             self.counter += 1
@@ -117,13 +117,13 @@ class Tabela_Publikacji(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
 
         if self.nowe_zrodlo_w_wierszu:
             return '%d.' % self.counter
-        return u''
+        return ''
 
     def render_zrodlo(self, record):
         if self.nowe_zrodlo_w_wierszu:
             return record.zrodlo.nazwa
 
-        return u''
+        return ''
 
     def render_szczegoly(self, record):
         return record.szczegoly
@@ -131,14 +131,14 @@ class Tabela_Publikacji(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
     def render_rok(self, record):
         if str(record.rok) in record.informacje:
             return record.informacje
-        return u"%s, %s" % (record.rok, record.informacje)
+        return "%s, %s" % (record.rok, record.informacje)
 
 
 class Tabela_Publikacji_Z_Impactem(Tabela_Publikacji):
     class Meta:
         attrs = {"class": "paleblue"}
         template = "raporty/raport_jednostek_autorow_2012/publikacje.html"
-        per_page = sys.maxint
+        per_page = sys.maxsize
         empty_text = "Brak takich rekordów."
         sequence = ('lp', 'zrodlo', 'lp_art', 'autorzy', 'tytul_oryginalny',
                     'rok', 'szczegoly', 'impact_factor', 'punkty_kbn')
@@ -154,7 +154,7 @@ class Tabela_Konferencji_Miedzynarodowej(TypowaTabelaMixin,
     class Meta:
         attrs = {"class": "paleblue"}
         template = "raporty/raport_jednostek_autorow_2012/publikacje.html"
-        per_page = sys.maxint
+        per_page = sys.maxsize
         empty_text = "Brak takich rekordów."
         sequence = ('lp', 'zrodlo', 'lp_art', 'autorzy', 'tytul_oryginalny',
                     'rok', 'zakres', 'punkty_kbn')
@@ -189,7 +189,7 @@ class Tabela_Konferencji_Miedzynarodowej(TypowaTabelaMixin,
         try:
             new_zrodlo = record.informacje
         except ObjectDoesNotExist:
-            new_zrodlo = u''
+            new_zrodlo = ''
 
         if self.old_zrodlo != new_zrodlo:
             self.counter += 1
@@ -201,13 +201,13 @@ class Tabela_Konferencji_Miedzynarodowej(TypowaTabelaMixin,
 
         if self.nowe_zrodlo_w_wierszu:
             return '%d.' % self.counter
-        return u''
+        return ''
 
     def render_zrodlo(self, record):
         if self.nowe_zrodlo_w_wierszu:
             return record.informacje.strip("W: ")
 
-        return u''
+        return ''
 
     def render_zakres(self, record):
         buf = record.szczegoly
@@ -222,7 +222,7 @@ class Tabela_Monografii(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
     class Meta:
         attrs = {"class": "paleblue"}
         template = "raporty/raport_jednostek_autorow_2012/monografie.html"
-        per_page = sys.maxint
+        per_page = sys.maxsize
         empty_text = "Brak takich rekordów."
         sequence = ('lp', 'autorzy', 'wydawca', 'tytul_oryginalny',
                     'jezyk', 'rok', 'szczegoly', 'punkty_kbn')
@@ -233,7 +233,7 @@ class Tabela_Monografii(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
     jezyk = TypowaTabelaMixin.jezyk
     # impact_factor = SumyImpactKbnMixin.impact_factor
     punkty_kbn = SumyImpactKbnMixin.punkty_kbn
-    szczegoly = Column(u"Szczegóły", A("szczegoly"))
+    szczegoly = Column("Szczegóły", A("szczegoly"))
 
     wydawca = Column("Wydawca", A("wydawnictwo"), orderable=False)
     rok = Column("Rok", orderable=False)
@@ -241,7 +241,7 @@ class Tabela_Monografii(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
     def render_szczegoly(self, record):
         buf = record.szczegoly
         if record.uwagi:
-            buf += u", " + record.uwagi
+            buf += ", " + record.uwagi
         return buf
 
     def __init__(self, *args, **kwargs):
@@ -253,7 +253,7 @@ class Tabela_Redakcji_Naukowej(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
     class Meta:
         attrs = {"class": "paleblue"}
         template = "raporty/raport_jednostek_autorow_2012/monografie.html"
-        per_page = sys.maxint
+        per_page = sys.maxsize
         empty_text = "Brak takich rekordów."
         sequence = ('lp', 'redaktorzy', 'wydawca', 'tytul_oryginalny',
                     'jezyk', 'rok', 'szczegoly', 'punkty_kbn')
@@ -263,7 +263,7 @@ class Tabela_Redakcji_Naukowej(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
     jezyk = TypowaTabelaMixin.jezyk
     # impact_factor = SumyImpactKbnMixin.impact_factor
     punkty_kbn = SumyImpactKbnMixin.punkty_kbn
-    szczegoly = Column(u"Szczegóły", A("szczegoly"))
+    szczegoly = Column("Szczegóły", A("szczegoly"))
 
     wydawca = Column("Wydawca", A("wydawnictwo"), orderable=False)
     rok = Column("Rok", orderable=False)
@@ -283,13 +283,13 @@ class Tabela_Redakcji_Naukowej(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
         reds = klass.objects.filter(
             rekord=record.original,
             typ_odpowiedzialnosci=to)
-        return u", ".join([x.zapisany_jako for x in reds])
+        return ", ".join([x.zapisany_jako for x in reds])
 
 
 def split_red(s, want, if_no_result=None):
-    seps = [u"Pod. red.", u"Pod red.", u"Red. nauk.",
-            u"red.", u"Pod redakcją", u"pod redakcją",
-            u"Red.", u"Ed. by"]
+    seps = ["Pod. red.", "Pod red.", "Red. nauk.",
+            "red.", "Pod redakcją", "pod redakcją",
+            "Red.", "Ed. by"]
 
     for sep in seps:
         if s.find(sep) > 0:
@@ -318,7 +318,7 @@ class Tabela_Rozdzialu_Monografii(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
     class Meta:
         attrs = {"class": "paleblue"}
         template = "raporty/raport_jednostek_autorow_2012/rozdzialy_monografii.html"
-        per_page = sys.maxint
+        per_page = sys.maxsize
         empty_text = "Brak takich rekordów."
         sequence = ('lp', 'tytul', 'wydawca',
                     'lp_rozdzialu',
@@ -343,8 +343,8 @@ class Tabela_Rozdzialu_Monografii(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
     wydawca = Column("Wydawca", A("wydawnictwo"), orderable=False)
     # impact_factor  = Column("Redaktor monografii")
     rok = Column("Rok", orderable=False)
-    szczegoly = Column(u"Szczegóły", A("szczegoly"))
-    lp_rozdzialu = Column(u'Lp. rozdziału', A("szczegoly"))
+    szczegoly = Column("Szczegóły", A("szczegoly"))
+    lp_rozdzialu = Column('Lp. rozdziału', A("szczegoly"))
 
     def __init__(self, *args, **kwargs):
         Table.__init__(self, *args, **kwargs)
@@ -366,7 +366,7 @@ class Tabela_Rozdzialu_Monografii(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
 
         if self.nowy_tytul_w_wierszu:
             return '%d.' % self.counter
-        return u''
+        return ''
 
     def render_lp_rozdzialu(self, record):
         ret = "%s.%s." % (self.counter, next(self.tm_counter))
@@ -375,12 +375,12 @@ class Tabela_Rozdzialu_Monografii(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
     def render_tytul(self, record):
         if self.nowy_tytul_w_wierszu:
             return get_tytul_monografii(record)
-        return u''
+        return ''
 
     def render_wydawca(self, record):
         if self.nowy_tytul_w_wierszu:
             return record.wydawnictwo
-        return u''
+        return ''
 
     def render_tytul_rozdzialu(self, record):
         return record.tytul_oryginalny
@@ -388,7 +388,7 @@ class Tabela_Rozdzialu_Monografii(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
     def render_szczegoly(self, record):
         buf = record.szczegoly
         if record.uwagi:
-            buf += u", " + record.uwagi
+            buf += ", " + record.uwagi
         return buf
 
         # def render_impact_factor(self, record): # redaktor monografii

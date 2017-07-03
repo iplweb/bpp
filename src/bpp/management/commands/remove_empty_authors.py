@@ -16,5 +16,5 @@ class Command(BaseCommand):
         for a in Autor.objects.all().only("id"):
             res = Autorzy.objects.filter(autor_id=a.pk)[:1]
             if res.count() == 0:
-                print "BRAK PRAC: ID=%s, autor=%s, USUWAM!" % (a.pk, str(a))
+                print("BRAK PRAC: ID=%s, autor=%s, USUWAM!" % (a.pk, str(a)))
                 a.delete()

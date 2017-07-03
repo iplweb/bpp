@@ -37,7 +37,7 @@ def dodaj_autora(klass, rekord, autor, jednostka, zapisany_jako=None,
         skrot=typ_odpowiedzialnosci_skrot)
 
     if zapisany_jako is None:
-        zapisany_jako = u"%s %s" % (autor.nazwisko, autor.imiona)
+        zapisany_jako = "%s %s" % (autor.nazwisko, autor.imiona)
 
     if kolejnosc is None:
         kolejnosc = klass.objects.filter(rekord=rekord).aggregate(
@@ -139,7 +139,7 @@ class ModelZOpisemBibliograficznym(models.Model):
                 autorzy = [x.autor for x in autorzy]
 
             self.opis_bibliograficzny_autorzy_cache = [
-                u"%s %s" % (x.nazwisko, x.imiona) for x in autorzy]
+                "%s %s" % (x.nazwisko, x.imiona) for x in autorzy]
 
             self.opis_bibliograficzny_zapisani_autorzy_cache = ", ".join(zapisani)
 
@@ -165,7 +165,7 @@ class ZapobiegajNiewlasciwymCharakterom(models.Model):
         if cf is not None:
             if self.charakter_formalny.skrot in ['D', 'H', 'PAT']:
                 raise ValidationError({'charakter_formalny': [
-                    safestring.mark_safe(u'Jeżeli chcesz dodać rekord o typie "%s"'
-                    u', <a href="%s">kliknij tutaj</a>.' % (
+                    safestring.mark_safe('Jeżeli chcesz dodać rekord o typie "%s"'
+                    ', <a href="%s">kliknij tutaj</a>.' % (
                         self.charakter_formalny.nazwa,
                         reverse("admin:bpp_%s_add" % self.charakter_formalny.nazwa.lower().replace(" ", "_"))))]})

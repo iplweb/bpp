@@ -29,12 +29,12 @@ class TestLiczbaZnakowFilter(TestCase):
                 l.value = Mock(return_value=elem)
                 queryset = Mock()
                 l.queryset(Mock(), queryset)
-                self.assertEquals(queryset.filter.called, True)
+                self.assertEqual(queryset.filter.called, True)
 
             l.value = Mock(return_value='__nie ma tego parametru')
             queryset = Mock()
             l.queryset(Mock(), queryset)
-            self.assertEquals(queryset.filter.called, False)
+            self.assertEqual(queryset.filter.called, False)
 
 
 class TestNormalUserAdmin(UserTestCase):
@@ -64,7 +64,7 @@ class TestAdmin(SuperuserTestCase):
             """
         self.assertContains(
             self.client.get("/admin/bpp/"),
-            u"Użytkownicy", status_code=200)
+            "Użytkownicy", status_code=200)
 
     def test_wyszukiwanie(self):
         """Dla wielu różnych model spróbuj wyszukiwać w tabelce
@@ -76,14 +76,14 @@ class TestAdmin(SuperuserTestCase):
             url = reverse("admin:%s_%s_changelist" % (
                 content_type.app_label, content_type.model))
             res = self.client.get(url, data={"q": "wtf"})
-            self.assertEquals(res.status_code, 200)
+            self.assertEqual(res.status_code, 200)
             pass
 
 
 class TestAdminViews(TestCase):
     def test_wydawnictwociagletozview(self):
         c1 = any_ciagle()
-        self.assertEquals(Wydawnictwo_Ciagle.objects.count(), 1)
+        self.assertEqual(Wydawnictwo_Ciagle.objects.count(), 1)
 
         w = WydawnictwoCiagleTozView()
         url = w.get_redirect_url(c1.pk)
@@ -93,4 +93,4 @@ class TestAdminViews(TestCase):
         self.assertIn(str(c2[0].pk), url)
 
         # Czy stworzył kopię?
-        self.assertEquals(Wydawnictwo_Ciagle.objects.count(), 2)
+        self.assertEqual(Wydawnictwo_Ciagle.objects.count(), 2)

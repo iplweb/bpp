@@ -6,7 +6,7 @@ import django
 
 class BppConfig(AppConfig):
     name = 'bpp'
-    verbose_name = u'Biblioteka Publikacji Pracowników'
+    verbose_name = 'Biblioteka Publikacji Pracowników'
 
     def ready(self):
         if not settings.TESTING:

@@ -24,9 +24,9 @@ CHANGED = 'foo-123-changed'
 
 
 def ramka(msg):
-    print "+" + ("-" * 78) + "+"
-    print "+ " + msg
-    print "+" + ("-" * 78) + "+"
+    print("+" + ("-" * 78) + "+")
+    print("+ " + msg)
+    print("+" + ("-" * 78) + "+")
 
 
 def clean_dict(ret):
@@ -91,7 +91,7 @@ class TestCacheMixin:
             self.a, self.j, aut, tytul_oryginalny='zwarte',
             liczba_znakow_wydawniczych=40000,
             charakter_formalny=Charakter_Formalny.objects.all()[0],
-            **dict(zwarte_dane.items() + wspolne_dane.items())
+            **dict(list(zwarte_dane.items()) + list(wspolne_dane.items()))
         )
 
         self.zr = mommy.make(Zrodlo, nazwa='Zrodlo')
@@ -105,7 +105,7 @@ class TestCacheMixin:
             e_issn='e_issn',
             charakter_formalny=Charakter_Formalny.objects.all()[0],
             **wspolne_dane)
-        self.assertEquals(Wydawnictwo_Ciagle_Autor.objects.all().count(), 1)
+        self.assertEqual(Wydawnictwo_Ciagle_Autor.objects.all().count(), 1)
 
         wca = Wydawnictwo_Ciagle_Autor.objects.all()[0]
         wca.typ_odpowiedzialnosci = self.typ_odpowiedzialnosci
@@ -115,7 +115,7 @@ class TestCacheMixin:
 
         # Doktorat i habilitacja
 
-        doktorat_kw = dict(zwarte_dane.items() + wspolne_dane.items())
+        doktorat_kw = dict(list(zwarte_dane.items()) + list(wspolne_dane.items()))
 
         self.d = mommy.make(
             Praca_Doktorska, tytul_oryginalny='doktorat',
@@ -151,14 +151,14 @@ class TestCacheRebuildBug(TestCase):
     @with_cache
     def test_liczba_znakow_bug(self):
         Rekord.objects.full_refresh()
-        self.assertEquals(Rekord.objects.all().count(), 0)
+        self.assertEqual(Rekord.objects.all().count(), 0)
 
         c = any_ciagle(tytul="foo", liczba_znakow_wydawniczych=31337)
         Rekord.objects.full_refresh()
 
-        self.assertEquals(Rekord.objects.all().count(), 1)
-        self.assertEquals(Rekord.objects.all()[0].tytul, "foo")
-        self.assertEquals(Rekord.objects.all()[0].liczba_znakow_wydawniczych, 31337)
+        self.assertEqual(Rekord.objects.all().count(), 1)
+        self.assertEqual(Rekord.objects.all()[0].tytul, "foo")
+        self.assertEqual(Rekord.objects.all()[0].liczba_znakow_wydawniczych, 31337)
 
 
 class TestCacheSimple(TestCacheMixin, TestCase):
@@ -168,7 +168,7 @@ class TestCacheSimple(TestCacheMixin, TestCase):
         Rekord.objects.full_refresh()
         for model in self.wszystkie_modele:
             c = Rekord.objects.get(original=model)
-            self.assertEquals(c.original, model)
+            self.assertEqual(c.original, model)
 
     @with_cache
     def test_cache_triggers(self):
@@ -178,17 +178,17 @@ class TestCacheSimple(TestCacheMixin, TestCase):
         for model in self.wszystkie_modele:
             model.tytul_oryginalny = T1
             model.save()
-            self.assertEquals(Rekord.objects.get(original=model).tytul_oryginalny, T1)
+            self.assertEqual(Rekord.objects.get(original=model).tytul_oryginalny, T1)
 
             model.tytul_oryginalny = T2
             model.save()
-            self.assertEquals(Rekord.objects.get(original=model).tytul_oryginalny, T2)
+            self.assertEqual(Rekord.objects.get(original=model).tytul_oryginalny, T2)
 
 
     def assertInstanceEquals(self, instance, values_dict):
-        for key, value in values_dict.items():
+        for key, value in list(values_dict.items()):
             instance_value = getattr(instance, key)
-            self.assertEquals(
+            self.assertEqual(
                 instance_value, value,
                 msg="key=%s, %s!=%s" % (key, value, instance_value))
 
@@ -199,7 +199,7 @@ class TestCacheSimple(TestCacheMixin, TestCase):
             elem.jezyk = Jezyk.objects.get(skrot='ang.')
             elem.save()
 
-            self.assertEquals(
+            self.assertEqual(
                 Rekord.objects.get(original=elem).tytul_oryginalny_sort,
                 'approach')
 
@@ -210,7 +210,7 @@ class TestCacheSimple(TestCacheMixin, TestCase):
             #elem = elem.__class__.objects.get(pk=elem.pk) #reload
             #self.assertEquals(elem.tytul_oryginalny_sort, "test")
 
-            self.assertEquals(
+            self.assertEqual(
                 Rekord.objects.get(original=elem).tytul_oryginalny_sort,
                 'test')
 
@@ -263,12 +263,12 @@ class TestCacheZapisani(TestCase):
         # Upewnij się, że w przypadku pracy z wieloma autorami do cache
         # zapisywane jest nie nazwisko z pól 'zapisany_jako' w bazie danych,
         # a oryginalne
-        self.assertEquals(c.opis_bibliograficzny_autorzy_cache,
-                          [u'Kowalski Jan', 'Nowak Jan'])
+        self.assertEqual(c.opis_bibliograficzny_autorzy_cache,
+                          ['Kowalski Jan', 'Nowak Jan'])
 
         # Upewnij się, że pole 'opis_bibliograficzny_zapisani_autorzy_cache'
         # zapisywane jest prawidłowo
-        self.assertEquals(c.opis_bibliograficzny_zapisani_autorzy_cache,
+        self.assertEqual(c.opis_bibliograficzny_zapisani_autorzy_cache,
                           'FOO BAR, FOO BAR')
 
     def test_zapisani_jeden(self):
@@ -280,9 +280,9 @@ class TestCacheZapisani(TestCase):
 
         # Upewnij się, że w przypadku pracy z jednym autorem do cache
         # zapisywana jest prawidłowa wartość
-        self.assertEquals(c.opis_bibliograficzny_autorzy_cache, [u'Kowalski Jan'])
+        self.assertEqual(c.opis_bibliograficzny_autorzy_cache, ['Kowalski Jan'])
 
-        self.assertEquals(c.opis_bibliograficzny_zapisani_autorzy_cache, u'Kowalski Jan')
+        self.assertEqual(c.opis_bibliograficzny_zapisani_autorzy_cache, 'Kowalski Jan')
 
 class TestMinimalCachingProblem(TestCase):
     # fixtures = [
@@ -297,15 +297,15 @@ class TestMinimalCachingProblem(TestCase):
         self.j = mommy.make(Jednostka)
         self.a = any_autor()
 
-        self.assertEquals(Autorzy.objects.all().count(), 0)
+        self.assertEqual(Autorzy.objects.all().count(), 0)
 
         c = any_ciagle(impact_factor=5, punktacja_wewnetrzna=0)
-        self.assertEquals(Rekord.objects.all().count(), 1)
+        self.assertEqual(Rekord.objects.all().count(), 1)
 
         c.dodaj_autora(self.a, self.j)
 
-        self.assertEquals(AutorzyView.objects.all().count(), 1)
-        self.assertEquals(Autorzy.objects.all().count(), 1)
+        self.assertEqual(AutorzyView.objects.all().count(), 1)
+        self.assertEqual(Autorzy.objects.all().count(), 1)
 
     @with_cache
     def test_usuwanie(self):
@@ -313,14 +313,14 @@ class TestMinimalCachingProblem(TestCase):
         self.j = mommy.make(Jednostka)
         self.a = any_autor()
 
-        self.assertEquals(Autorzy.objects.all().count(), 0)
+        self.assertEqual(Autorzy.objects.all().count(), 0)
 
         c = any_ciagle(impact_factor=5, punktacja_wewnetrzna=0)
-        self.assertEquals(Rekord.objects.all().count(), 1)
+        self.assertEqual(Rekord.objects.all().count(), 1)
 
         c.dodaj_autora(self.a, self.j)
 
         c.delete()
 
-        self.assertEquals(AutorzyView.objects.all().count(), 0)
-        self.assertEquals(Autorzy.objects.all().count(), 0)
+        self.assertEqual(AutorzyView.objects.all().count(), 0)
+        self.assertEqual(Autorzy.objects.all().count(), 0)

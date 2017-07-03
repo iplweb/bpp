@@ -68,12 +68,12 @@ def test_egeria_models_EgeriaImport_diff_tytuly(egeria_import, autor_jan_nowak):
     egeria_import.analyze()
     egeria_import.diff_tytuly()
 
-    assert u"nieistniejący tytuł" in Diff_Tytul_Create.objects.all().values_list("nazwa_skrot", flat=True)
-    assert u"nikt tego nie ma" not in Diff_Tytul_Create.objects.all().values_list("nazwa_skrot", flat=True)
+    assert "nieistniejący tytuł" in Diff_Tytul_Create.objects.all().values_list("nazwa_skrot", flat=True)
+    assert "nikt tego nie ma" not in Diff_Tytul_Create.objects.all().values_list("nazwa_skrot", flat=True)
 
-    assert u"dr. " in Diff_Tytul_Delete.objects.all().values_list("reference__nazwa", flat=True)
-    assert u"nikt tego nie ma" in Diff_Tytul_Delete.objects.all().values_list("reference__nazwa", flat=True)
-    assert u"jeden to ma" not in Diff_Tytul_Delete.objects.all().values_list("reference__nazwa", flat=True)
+    assert "dr. " in Diff_Tytul_Delete.objects.all().values_list("reference__nazwa", flat=True)
+    assert "nikt tego nie ma" in Diff_Tytul_Delete.objects.all().values_list("reference__nazwa", flat=True)
+    assert "jeden to ma" not in Diff_Tytul_Delete.objects.all().values_list("reference__nazwa", flat=True)
 
 
 @pytest.mark.django_db
@@ -89,11 +89,11 @@ def test_egeria_models_EgeriaImport_diff_funkcje(egeria_import, autor_jan_nowak,
     egeria_import.analyze()
     egeria_import.diff_funkcje()
 
-    assert u"asystent dr" in Diff_Funkcja_Autora_Create.objects.all().values_list("nazwa_skrot", flat=True)
-    assert u"nikt tego nie ma" not in Diff_Funkcja_Autora_Create.objects.all().values_list("nazwa_skrot", flat=True)
+    assert "asystent dr" in Diff_Funkcja_Autora_Create.objects.all().values_list("nazwa_skrot", flat=True)
+    assert "nikt tego nie ma" not in Diff_Funkcja_Autora_Create.objects.all().values_list("nazwa_skrot", flat=True)
 
-    assert u"nikt tego nie ma" in Diff_Funkcja_Autora_Delete.objects.all().values_list("reference__nazwa", flat=True)
-    assert u"jeden to ma" not in Diff_Funkcja_Autora_Delete.objects.all().values_list("reference__nazwa", flat=True)
+    assert "nikt tego nie ma" in Diff_Funkcja_Autora_Delete.objects.all().values_list("reference__nazwa", flat=True)
+    assert "jeden to ma" not in Diff_Funkcja_Autora_Delete.objects.all().values_list("reference__nazwa", flat=True)
 
 
 @pytest.mark.django_db
@@ -163,7 +163,7 @@ def test_egeria_models_EgeriaImport_diff_jednostki(egeria_import, uczelnia, auto
     wt = Wydzial.objects.create(nazwa="Wydział Nauk o Zdrowiu", skrot="WZ", uczelnia=uczelnia)
 
     j = Jednostka.objects.create(
-        nazwa=u'II Katedra i Klinika Chirurgii Og\xf3lnej, Gastroenterologicznej i Nowotwor\xf3w Uk\u0142adu Pokarmowego',
+        nazwa='II Katedra i Klinika Chirurgii Og\xf3lnej, Gastroenterologicznej i Nowotwor\xf3w Uk\u0142adu Pokarmowego',
         skrot="123",
         wydzial=wt)
 

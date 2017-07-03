@@ -26,7 +26,7 @@ class Generuj(LoginRequiredMixin, TemplateView):
         rok = kwargs['rok']
 
         eksport_pbn.delay(self.request.user.pk, kwargs['wydzial'], kwargs['rok'])
-        messages.info(self.request, u"Rozpoczęto generowanie eksportu PBN dla %s, rok %s" % (wydzial.nazwa, rok))
+        messages.info(self.request, "Rozpoczęto generowanie eksportu PBN dla %s, rok %s" % (wydzial.nazwa, rok))
         return HttpResponseRedirect("..")
 
 
@@ -71,6 +71,6 @@ class ZamowEksportDoPBN(LoginRequiredMixin, FormView):
         obj.save()
 
         eksport_pbn.delay(obj.pk)
-        messages.info(self.request, u"Rozpoczęto generowanie eksportu PBN dla %s - %s" % (obj.wydzial.nazwa, obj.get_rok_string()))
+        messages.info(self.request, "Rozpoczęto generowanie eksportu PBN dla %s - %s" % (obj.wydzial.nazwa, obj.get_rok_string()))
 
         return HttpResponseRedirect('.')

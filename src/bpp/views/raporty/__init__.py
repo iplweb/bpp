@@ -70,7 +70,7 @@ class KasowanieRaportu(BaseDeleteView):
             pass
 
         response = BaseDeleteView.delete(self, request, *args, **kwargs)
-        messages.add_message(request, messages.INFO, u'Raport został usunięty.')
+        messages.add_message(request, messages.INFO, 'Raport został usunięty.')
         return response
 
     def render_to_response(self, *args, **kwargs):
@@ -182,7 +182,7 @@ class RaportAutorow(RaportCommonView):
 
 class RankingAutorowFormularz(RaportyFormMixin, FormView):
     form_class = RankingAutorowForm
-    nazwa_raportu = u"Ranking autorow"
+    nazwa_raportu = "Ranking autorow"
 
     def form_valid(self, form):
         url = reverse("bpp:ranking-autorow", args=(form.cleaned_data['od_roku'],

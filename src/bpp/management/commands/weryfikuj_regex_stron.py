@@ -29,4 +29,4 @@ class Command(BaseCommand):
 
             parsed = strony_regex.search(elem.szczegoly)
             if parsed is None or parsed.groupdict()['poczatek'] is None:
-                print elem.pk, "|", elem.szczegoly, "|", elem.tytul_oryginalny
+                print(elem.pk, "|", elem.szczegoly, "|", elem.tytul_oryginalny)

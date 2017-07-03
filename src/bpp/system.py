@@ -144,7 +144,7 @@ def odtworz_grupy(**kwargs):
     for u in BppUser.objects.all():
         grp_dict[u] = [grp.name for grp in u.groups.all()]
 
-    for name, models in groups.items():
+    for name, models in list(groups.items()):
         try:
             Group.objects.get(name=name).delete()
         except Group.DoesNotExist:
@@ -157,6 +157,6 @@ def odtworz_grupy(**kwargs):
                     content_type=content_type):
                 g.permissions.add(permission)
 
-    for u, grps in grp_dict.items():
+    for u, grps in list(grp_dict.items()):
         for gname in grps:
             u.groups.add(Group.objects.get(name=gname))

@@ -15,7 +15,7 @@ if not env.key_filename:
         fn = '.vagrant/machines/%s/virtualbox/private_key' % hostname
         try:
             stat = os.stat(fn)
-        except OSError, e:
+        except OSError:
             continue
         env.key_filename.append(fn)
 

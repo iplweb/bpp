@@ -31,7 +31,7 @@ def flatten_patterns(patterns):
         return None
     return [
         os.path.join(module, module_pattern)
-        for module, module_patterns in patterns.items()
+        for module, module_patterns in list(patterns.items())
         for module_pattern in module_patterns
     ]
 

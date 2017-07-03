@@ -207,7 +207,7 @@ class TestRaportKomisjiCentralnej(TestRKCMixin, TestCase):
         for c in Rekord.objects.all():
             c.original.zaktualizuj_cache(tylko_opis=True)
 
-        for praca in self.prace.values():
+        for praca in list(self.prace.values()):
             praca.dodaj_autora(self.autor, self.jednostka)
 
         Rekord.objects.full_refresh()
@@ -240,9 +240,9 @@ class TestRaportKomisjiCentralnej(TestRKCMixin, TestCase):
             haystack = haystack.replace("  ", " ")
 
         needles = [
-            u"C. Autorstwo monografii lub podręcznika:\n </td><td>liczba: 5",
-            u"C1. w języku angielskim\n </td><td>liczba: 3",
-            u"C2. w języku polskim lub innym niż angielski\n </td><td>liczba: 2"
+            "C. Autorstwo monografii lub podręcznika:\n </td><td>liczba: 5",
+            "C1. w języku angielskim\n </td><td>liczba: 3",
+            "C2. w języku polskim lub innym niż angielski\n </td><td>liczba: 2"
             ]
         self.assertIn(needles[0], haystack)
         self.assertIn(needles[1], haystack)
@@ -254,20 +254,20 @@ class TestRaportKomisjiCentralnej(TestRKCMixin, TestCase):
 
     def test_6(self):
         s = self._zrob()
-        self.assertIn(u'A. międzynarodowym</td><td>liczba: 1', s)
-        self.assertIn(u'B. krajowym</td><td>liczba: 1', s)
+        self.assertIn('A. międzynarodowym</td><td>liczba: 1', s)
+        self.assertIn('B. krajowym</td><td>liczba: 1', s)
 
     def test_7(self):
         s = self._zrob()
-        self.assertIn(u'A. w języku angielskim</td><td>liczba: 1', s)
+        self.assertIn('A. w języku angielskim</td><td>liczba: 1', s)
         self.assertIn(
-            u'B. w języku polskim lub innym, niż angielski</td><td>liczba: 2', s)
+            'B. w języku polskim lub innym, niż angielski</td><td>liczba: 2', s)
 
     def test_8(self):
         s = self._zrob()
-        self.assertIn(u'Liczba streszczeń: 4', s)
-        self.assertIn(u'A. ze zjazd\xf3w mi\u0119dzynarodowych</td><td>liczba: 2', s)
-        self.assertIn(u'B. ze zjazd\xf3w krajowych</td><td>liczba: 2', s)
+        self.assertIn('Liczba streszczeń: 4', s)
+        self.assertIn('A. ze zjazd\xf3w mi\u0119dzynarodowych</td><td>liczba: 2', s)
+        self.assertIn('B. ze zjazd\xf3w krajowych</td><td>liczba: 2', s)
 
     def test_9(self):
         for a in ['111', '222', '333', '444', '555', '888']: #  <-- to są sumy
@@ -281,7 +281,7 @@ class TestRaportKomisjiCentralnej(TestRKCMixin, TestCase):
 
     def test_10_suma(self):
         s = self._zrob()
-        self.assertIn(u"X. Liczba listów do redakcji czasopism: 4", s)
+        self.assertIn("X. Liczba listów do redakcji czasopism: 4", s)
 
     test_11a = lambda self: self._test_tabelka('11a')
     test_11b = lambda self: self._test_tabelka('11b')
@@ -289,7 +289,7 @@ class TestRaportKomisjiCentralnej(TestRKCMixin, TestCase):
     def test_11_suma(self):
         s = self._zrob()
         self.assertIn("XI. Liczba publikacji z udzia", s)
-        self.assertIn(u"wieloośrodkowych: 4", s)
+        self.assertIn("wieloośrodkowych: 4", s)
 
     def test_punktacja_sumaryczna(self):
         self.s = self._zrob()
@@ -298,10 +298,10 @@ class TestRaportKomisjiCentralnej(TestRKCMixin, TestCase):
         def sprawdz_sumy(no, oczekiwany_count, oczekiwany_if, oczekiwany_pk):
             key = 'suma_%s' % no
 
-            self.assertEquals(dct.get(key)['count'], oczekiwany_count, msg=key)
-            self.assertEquals(
+            self.assertEqual(dct.get(key)['count'], oczekiwany_count, msg=key)
+            self.assertEqual(
                 dct.get(key)['impact_factor'], oczekiwany_if, msg=key)
-            self.assertEquals(dct.get(key)['punkty_kbn'], oczekiwany_pk,
+            self.assertEqual(dct.get(key)['punkty_kbn'], oczekiwany_pk,
                               msg=key)
 
         sprawdz_sumy(1, 4, 20, 20)
@@ -310,8 +310,8 @@ class TestRaportKomisjiCentralnej(TestRKCMixin, TestCase):
         sprawdz_sumy(9, 4, 444, 1443)
         sprawdz_sumy(10, 4, 10, 20)
         sprawdz_sumy(11, 4, 10, 20)
-        self.assertEquals(dct['suma_5']['count'], 5)
-        self.assertEquals(dct['suma_8']['count'], 4)
+        self.assertEqual(dct['suma_5']['count'], 5)
+        self.assertEqual(dct['suma_8']['count'], 4)
 
     def test_punktacja_sumaryczna_render(self):
         res = self.raport.punktacja_sumaryczna()
@@ -351,8 +351,8 @@ class TestRaportKomisjiCentralnejPrzedPoHabilitacji(TestRKCMixin, TestCase):
     def test_raport_przed(self):
         s = self.raport_przed.make_prace()
         res = self.raport_przed.dct
-        self.assertEquals(res['tabela_1a'].counter, 1)
-        self.assertEquals(res['tabela_1a'].sum_impact, 10)
+        self.assertEqual(res['tabela_1a'].counter, 1)
+        self.assertEqual(res['tabela_1a'].sum_impact, 10)
         self.assertIn("Praca-PRZED", s)
         self.assertIn("Dorobek przedhabilitacyjny", s)
         self.assertIn("profesora", s)
@@ -360,8 +360,8 @@ class TestRaportKomisjiCentralnejPrzedPoHabilitacji(TestRKCMixin, TestCase):
     def test_raport_po(self):
         s = self.raport_po.make_prace()
         res = self.raport_po.dct
-        self.assertEquals(res['tabela_1a'].counter, 1)
-        self.assertEquals(res['tabela_1a'].sum_impact, 10)
+        self.assertEqual(res['tabela_1a'].counter, 1)
+        self.assertEqual(res['tabela_1a'].sum_impact, 10)
         self.assertIn("Praca-PO", s)
         self.assertIn("Dorobek pohabilitacyjny", s)
         self.assertIn("profesora", s)
@@ -378,7 +378,7 @@ class TestRaportKomisjiCentralnejZipfile(TestRKCMixin, TestCase):
         self.jednostka = any_jednostka()
         # Takie nazwisko, bo używamy potem autor.slug do wygnerowania nazwy pliku
         self.habilitowany = any_autor(
-            nazwisko=u"Łącki 'al' \"Habib\" ", imiona=u"Jąń??\\/",
+            nazwisko="Łącki 'al' \"Habib\" ", imiona="Jąń??\\/",
             tytul=tytul['dr'])
 
         # Odbuduj sluga
@@ -400,12 +400,12 @@ class TestRaportKomisjiCentralnejZipfile(TestRKCMixin, TestCase):
     def test_make_zipfile(self):
         zn = make_report_zipfile(self.habilitowany.pk, CURRENT_YEAR)
         with ZipFile(zn, 'r') as zip:
-            self.assertEquals(
+            self.assertEqual(
                 len(zip.infolist()), 6)
 
     def test_make_zipfile_bez_habilitacji(self):
         zn = make_report_zipfile(self.habilitowany.pk, None)
         with ZipFile(zn, 'r') as zip:
-            self.assertEquals(
+            self.assertEqual(
                 len(zip.infolist()), 3)
 

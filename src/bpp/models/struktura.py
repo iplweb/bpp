@@ -74,8 +74,8 @@ class Wydzial(ModelZAdnotacjami, ModelZPBN_ID):
     zamkniecie = models.DateField("Data zamknięcia wydziału", blank=True, null=True)
 
     class Meta:
-        verbose_name = u"wydział"
-        verbose_name_plural = u"wydziały"
+        verbose_name = "wydział"
+        verbose_name_plural = "wydziały"
         ordering = ['kolejnosc', 'skrot']
         app_label = 'bpp'
 
@@ -150,7 +150,7 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID):
             wydzial = None
 
         if wydzial is not None:
-            ret += u" (%s)" % self.wydzial.skrot
+            ret += " (%s)" % self.wydzial.skrot
 
         return ret
 
@@ -313,7 +313,7 @@ class Jednostka_Wydzial(models.Model):
         ordering = ('-od',)
 
     def __str__(self):
-        return u"%s - %s (%s, %s)" % (self.jednostka, self.wydzial, self.od, self.do)
+        return "%s - %s (%s, %s)" % (self.jednostka, self.wydzial, self.od, self.do)
 
     def clean(self):
         try:

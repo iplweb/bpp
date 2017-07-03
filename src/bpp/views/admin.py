@@ -21,7 +21,7 @@ class TozView(RedirectView):
 
         w_copy = copy.copy(w)
         w_copy.id = None
-        w_copy.tytul_oryginalny = u'[ ** KOPIA ** ]' + w_copy.tytul_oryginalny
+        w_copy.tytul_oryginalny = '[ ** KOPIA ** ]' + w_copy.tytul_oryginalny
         w_copy.save()
 
         for wca in self.klass_autor.objects.filter(rekord=w):

@@ -18,7 +18,7 @@ class FormListaMinisterialna(forms.ModelForm):
         helper.form_class = "custom"
         helper.layout = Layout(
             Fieldset(
-                u'Dodaj plik',
+                'Dodaj plik',
                 'file', 'year',
-                Submit('submit', u'Wyślij', css_id='id_submit')))
+                Submit('submit', 'Wyślij', css_id='id_submit')))
         self.helper = helper

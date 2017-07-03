@@ -3,7 +3,7 @@
 
 from setuptools import setup, find_packages
 
-with open('README.rst') as readme_file:
+with open('README.rst', encoding="utf-8") as readme_file:
     readme = readme_file.read()
 
 with open('HISTORY.rst') as history_file:
@@ -42,7 +42,7 @@ setup(
         'Intended Audience :: Information Technology',
         'License :: OSI Approved :: MIT License',
         'Natural Language :: Polish',
-        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3.6',
         'Programming Language :: JavaScript',
         'Programming Language :: PL/SQL',        
     ],
@@ -56,5 +56,5 @@ setup(
 #    ],
     tests_require=test_requirements,
     scripts=["src/bin/bpp-manage.py"],
-    python_requires=">=2.7,<3"
+    python_requires=">=3.6,<4"
 )

@@ -12,8 +12,8 @@ def znajdz_lub_zrob_stanowisko(nf):
     except Funkcja_Autora.DoesNotExist:
         try:
             return Funkcja_Autora.objects.create(nazwa=nf, skrot=nf)
-        except Exception, e:
-            print e, nf
+        except Exception as e:
+            print(e, nf)
 
 
 def dopasuj_jednostke(nazwa_jednostki, text_mangle):
@@ -41,7 +41,7 @@ def dopasuj_jednostke(nazwa_jednostki, text_mangle):
         return Jednostka.objects.get(**kw)
     except Jednostka.DoesNotExist:
         if nazwa_jednostki not in unseen_jed:
-            print "=== BRAK JEDNOSTKI: ", nazwa_jednostki.encode('utf-8')
+            print("=== BRAK JEDNOSTKI: ", nazwa_jednostki.encode('utf-8'))
             unseen_jed.add(nazwa_jednostki)
 
 
@@ -51,7 +51,7 @@ def dopasuj_autora(imiona, nazwisko, jednostka, stanowisko):
 
     if cnt == 0:
         if (imiona, nazwisko) not in brak_takiego:
-            print "--- BRAK TAKIEGO AUTORA W BPP: ", imiona.encode('utf-8'), nazwisko.encode('utf-8'), "Stanowisko:", stanowisko
+            print("--- BRAK TAKIEGO AUTORA W BPP: ", imiona.encode('utf-8'), nazwisko.encode('utf-8'), "Stanowisko:", stanowisko)
             brak_takiego.add((imiona, nazwisko))
         return
 
@@ -69,7 +69,7 @@ def dopasuj_autora(imiona, nazwisko, jednostka, stanowisko):
             return Autor.objects.get(pk=aj[0]['autor'])
 
         if (imiona, nazwisko) not in wiecej_niz_jeden:
-            print "*** WIĘCEJ NIŻ JEDEN AUTOR W BPP: ", imiona.encode('utf-8'), nazwisko.encode('utf-8'), " MIMO DOPASOWANIA Z JENOSTKĄ!"
+            print("*** WIĘCEJ NIŻ JEDEN AUTOR W BPP: ", imiona.encode('utf-8'), nazwisko.encode('utf-8'), " MIMO DOPASOWANIA Z JENOSTKĄ!")
             wiecej_niz_jeden.add((imiona, nazwisko))
         return
 
@@ -105,7 +105,7 @@ def importuj_sheet_roczny(sheet, rok, text_mangle):
 
     for nrow in range(1, sheet.nrows):
         row = sheet.row(nrow)
-        dct = dict(zip(labels, row))
+        dct = dict(list(zip(labels, row)))
 
         importuj_wiersz(
             dct['PRC IMIE'].value, dct['PRC NAZWISKO'].value,
@@ -122,7 +122,7 @@ def mangle_labels(labels):
     appender = 2008
 
     fun = lambda element: element
-    new_fun = lambda element: element.strip() + u"_" + unicode(appender)
+    new_fun = lambda element: element.strip() + "_" + str(appender)
 
     for element in labels:
         if element.lower() == 'stanowisko':
@@ -140,7 +140,7 @@ def importuj_sheet_osoby_nie_ujete(sheet, text_mangle):
 
     for nrow in range(3, sheet.nrows):
         row = sheet.row(nrow)
-        dct = dict(zip(labels, row))
+        dct = dict(list(zip(labels, row)))
 
         # Stanowisko
         funkcja = znajdz_lub_zrob_stanowisko(dct['Stanowisko'].value)
@@ -157,7 +157,7 @@ def importuj_sheet_osoby_nie_ujete(sheet, text_mangle):
 
         for rok in range(2009, 2013):
             stanowisko = 'stanowisko_%s' % rok
-            wydzial = u'Wydział_%s' % rok
+            wydzial = 'Wydział_%s' % rok
             # jest jeszcze stopień
 
             if dct[stanowisko].value == '#N/D!':
@@ -167,8 +167,8 @@ def importuj_sheet_osoby_nie_ujete(sheet, text_mangle):
             try:
                 wydzial_rok = Wydzial.objects.get(nazwa=wn)
             except Wydzial.DoesNotExist:
-                print "BRAK TAKIEGO WYDZIALU:", [
-                    unicode(x).encode('utf-8') for x in wn, autor, jednostka, rok]
+                print("BRAK TAKIEGO WYDZIALU:", [
+                    str(x).encode('utf-8') for x in (wn, autor, jednostka, rok)])
                 continue
 
             Opi_2012_Afiliacja_Do_Wydzialu.objects.get_or_create(
@@ -217,12 +217,12 @@ def importuj_imiona_sheet(sheet, wydzial):
             a.save()
 
     def poinformuj(ile, dct):
-        print "*** DLA AUTORA %s %s JEST %s DOPASOWAN!!!" % tuple([
-            unicode(x).encode('utf-8') for x in [dct['imiona'].value, dct['nazwisko'].value, ile]])
+        print("*** DLA AUTORA %s %s JEST %s DOPASOWAN!!!" % tuple([
+            str(x).encode('utf-8') for x in [dct['imiona'].value, dct['nazwisko'].value, ile]]))
 
     for nrow in range(0, sheet.nrows):
         row = sheet.row(nrow)
-        dct = dict(zip(labels, row))
+        dct = dict(list(zip(labels, row)))
 
         i = dct['imiona'].value.split(" ", 1)[0]
 

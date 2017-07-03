@@ -35,7 +35,7 @@ class Command(BaseCommand):
                         rok=praca.rok,
                         zrodlo=praca.zrodlo_id)
             except Punktacja_Zrodla.DoesNotExist:
-                print "BRAK PUNKTACJI ZRODLA: ", praca.zrodlo, praca.rok
+                print("BRAK PUNKTACJI ZRODLA: ", praca.zrodlo, praca.rok)
                 continue
 
             ch = False
@@ -46,5 +46,5 @@ class Command(BaseCommand):
                     setattr(praca, field, s)
                     ch = True
             if ch:
-                print praca.tytul_oryginalny
+                print(praca.tytul_oryginalny)
                 praca.save()

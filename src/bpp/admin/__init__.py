@@ -439,7 +439,7 @@ def generuj_inline_dla_autorow(baseModel):
             self.initial['zapisany_jako'] = initial
 
             self.fields['zapisany_jako'] = forms.ChoiceField(
-                choices=zip(warianty, warianty),
+                choices=list(zip(warianty, warianty)),
                 initial=initial,
                 widget=autocomplete.Select2(
                         url="bpp:zapisany-jako-autocomplete",
@@ -500,7 +500,7 @@ class Button(forms.Widget):
                 type="button",
                 name=name)
 
-        return mark_safe(u'<input type="button"%s value="%s" />' % (
+        return mark_safe('<input type="button"%s value="%s" />' % (
             forms.widgets.flatatt(final_attrs),
             final_attrs['label'],
         ))
@@ -520,7 +520,7 @@ class Wydawnictwo_Ciagle_Form(forms.ModelForm):
         label="Uzupełnij punktację",
         widget=Button(dict(
             id='id_uzupelnij_punktacje',
-            label=u"Uzupełnij punktację",
+            label="Uzupełnij punktację",
         ))
     )
 

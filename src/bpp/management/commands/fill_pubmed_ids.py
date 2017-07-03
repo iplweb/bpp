@@ -17,7 +17,7 @@ from bpp.views.api.pubmed import get_data_from_ncbi, parse_data_from_ncbi
 
 
 class Command(BaseCommand):
-    help = u'Pobiera PubMed IDs dla wszystkich angielskich publikacji 2013-2015'
+    help = 'Pobiera PubMed IDs dla wszystkich angielskich publikacji 2013-2015'
 
     def handle(self, *args, **options):
         for rec in Rekord.objects.filter(jezyk=Jezyk.objects.get(skrot='ang.'),
@@ -26,12 +26,12 @@ class Command(BaseCommand):
             if orig.pubmed_id:
                 continue
 
-            print "Pobieram: %r" % orig.tytul_oryginalny
+            print("Pobieram: %r" % orig.tytul_oryginalny)
 
             xml = get_data_from_ncbi(orig.tytul_oryginalny)
             if len(xml) == 1:
                 data = parse_data_from_ncbi(xml[0])
-                print data
+                print(data)
 
                 changed = False
 

@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
 import os, datetime
 from datetime import date
-from md5 import md5
+from hashlib import md5
 
 import xlrd
 from django.conf import settings
@@ -109,7 +109,7 @@ class EgeriaImport(models.Model):
 
         for nrow in range(5, sheet.nrows):
             # [number:1.0, text:u'dr n. med.', text:u'Kowalska', text:u'Oleg', text:u'12121200587', text:u'Adiunkt', text:u'II Katedra i Klinika Chirurgii Og\xf3lnej, Gastroenterologicznej i Nowotwor\xf3w Uk\u0142adu Pokarmowego', text:u'I Wydzia\u0142 Lekarski z Oddzia\u0142em Stomatologicznym']
-            lp, tytul_stopien, nazwisko, imie, pesel_md5, stanowisko, nazwa_jednostki, wydzial = [cell.value for cell in
+            lp, tytul_stopien, nazwisko, imie, pesel, stanowisko, nazwa_jednostki, wydzial = [cell.value for cell in
                                                                                                   sheet.row(nrow)]
             nazwa_jednostki = nazwa_jednostki.replace("  ", " ").replace("  ", " ")
             if wydzial.strip() == "":
@@ -118,7 +118,7 @@ class EgeriaImport(models.Model):
                 else:
                     wydzial = "Brak wpisanego wydziału"
 
-            if pesel_md5.strip() == "":
+            if pesel.strip() == "":
                 continue
 
             EgeriaRow.objects.create(
@@ -127,7 +127,7 @@ class EgeriaImport(models.Model):
                 tytul_stopien=tytul_stopien.strip().lower(),
                 nazwisko=nazwisko.strip(),
                 imie=imie.strip(),
-                pesel_md5=md5(pesel_md5).hexdigest(),
+                pesel_md5=md5(pesel.encode("ascii")).hexdigest(),
                 stanowisko=stanowisko.strip().lower(),
                 nazwa_jednostki=nazwa_jednostki.strip(),
                 wydzial=wydzial.strip()
@@ -140,13 +140,16 @@ class EgeriaImport(models.Model):
         return klass.objects.filter(parent=self)
 
     def commit(self, lst):
-        map(lambda x: x.commit(), lst)
+        for elem in list(lst):
+            x.commit()
 
     def commit_objs(self, lst):
-        map(lambda obj: self.commit(self.diffs(obj)), lst)
+        for elem in list(lst):
+            self.commit(self.diffs(obj))
 
     def reset_objs(self, lst):
-        map(lambda obj: self.diffs(obj).delete(), lst)
+        for elem in list(lst):
+            self.diffs(obj).delete()
 
     DIFF_TYTUL = [Diff_Tytul_Create, Diff_Tytul_Delete]
 
@@ -270,7 +273,7 @@ class EgeriaImport(models.Model):
                 elem.matched_autor = a.first()
                 elem.save()
                 if verbose:
-                    print "1", elem.nazwisko, elem.imie, elem.matched_autor
+                    print("1", elem.nazwisko, elem.imie, elem.matched_autor)
                 continue
 
             if (elem.nazwisko, elem.imie) in [
@@ -291,7 +294,7 @@ class EgeriaImport(models.Model):
                 elem.matched_autor = possible_matches[0]
                 elem.save()
                 if verbose:
-                    print "2", elem.nazwisko, elem.imie, elem.matched_autor
+                    print("2", elem.nazwisko, elem.imie, elem.matched_autor)
                 continue
             elif len(possible_matches) > 1:
                 # W tym momencie mamy dwóch lub więcej autorów o tych samych nazwiskach,
@@ -310,7 +313,7 @@ class EgeriaImport(models.Model):
                     elem.matched_autor = autor
                     elem.save()
                     if verbose:
-                        print "3", elem.nazwisko, elem.imie, elem.matched_autor
+                        print("3", elem.nazwisko, elem.imie, elem.matched_autor)
                     continue
 
             # Dany autor pasuje do wielu i nie można określić czemu. Dodać go jako nowego?

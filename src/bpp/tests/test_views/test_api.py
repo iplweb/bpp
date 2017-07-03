@@ -27,7 +27,7 @@ class TestRokHabilitacjiView(TestCase):
 
         res = rhv.post(request)
         self.assertContains(res, str(CURRENT_YEAR), status_code=200)
-        self.assertEquals(json.loads(res.content)['rok'], CURRENT_YEAR)
+        self.assertEqual(json.loads(res.content)['rok'], CURRENT_YEAR)
 
         h.delete()
         res = rhv.post(request)
@@ -46,8 +46,8 @@ class TestPunktacjaZrodlaView(TestCase):
             impact_factor=50)
 
         res = PunktacjaZrodlaView().post(None, z.pk, CURRENT_YEAR)
-        analyze = json.loads(str(res.content))
-        self.assertEquals(analyze['impact_factor'], '50.000')
+        analyze = json.loads(res.content.decode(res.charset))
+        self.assertEqual(analyze['impact_factor'], '50.000')
 
         res = PunktacjaZrodlaView().post(None, z.pk, CURRENT_YEAR + 100)
         self.assertContains(res, "Rok", status_code=404)
@@ -66,8 +66,8 @@ class TestUploadPunktacjaZrodlaView(TestCase):
         z = any_zrodlo()
         fr = FakeRequest(dict(impact_factor="50.00"))
         res = UploadPunktacjaZrodlaView().post(fr, z.pk, CURRENT_YEAR)
-        self.assertEquals(Punktacja_Zrodla.objects.count(), 1)
-        self.assertEquals(Punktacja_Zrodla.objects.all()[0].impact_factor, 50)
+        self.assertEqual(Punktacja_Zrodla.objects.count(), 1)
+        self.assertEqual(Punktacja_Zrodla.objects.all()[0].impact_factor, 50)
 
     def test_upload_punktacja_zrodla_overwrite(self):
         z = any_zrodlo()
@@ -79,8 +79,8 @@ class TestUploadPunktacjaZrodlaView(TestCase):
 
         fr = FakeRequest(dict(impact_factor="60.00", overwrite="1"))
         res = UploadPunktacjaZrodlaView().post(fr, z.pk, CURRENT_YEAR)
-        self.assertEquals(Punktacja_Zrodla.objects.count(), 1)
-        self.assertEquals(Punktacja_Zrodla.objects.all()[0].impact_factor, 60)
+        self.assertEqual(Punktacja_Zrodla.objects.count(), 1)
+        self.assertEqual(Punktacja_Zrodla.objects.all()[0].impact_factor, 60)
 
 
 class TestOstatniaJednostkaView(TestCase):

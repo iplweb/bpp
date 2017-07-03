@@ -43,12 +43,12 @@ class TestTemplateTags(TestCase):
         t = Template(template)
         c = Context({"praca": self.ciagle})
         ret = t.render(c).strip()
-        self.assertEquals(ret, "[aut.] Testowy Autor, Jan Budnik, [red.] Stefan Kolbe.".upper())
+        self.assertEqual(ret, "[aut.] Testowy Autor, Jan Budnik, [red.] Stefan Kolbe.".upper())
 
         c = Context({"praca": self.doktorat})
         ret = t.render(c).strip()
         # unicode(self.doktorat.autor)
-        self.assertEquals(ret, "[AUT.] KOWALSKI JAN.")
+        self.assertEqual(ret, "[AUT.] KOWALSKI JAN.")
 
     def test_autorzy_z_linkami(self):
         template = '''
@@ -59,27 +59,27 @@ class TestTemplateTags(TestCase):
         t = Template(template)
         c = Context({"praca": self.ciagle})
         ret = t.render(c).strip()
-        self.assertEquals(ret,  u'[AUT.] <a href="/bpp/autor/C/">Testowy Autor</a>, <a href="/bpp/autor/A/">Jan Budnik</a>, [RED.] <a href="/bpp/autor/B/">Stefan Kolbe</a>.')
+        self.assertEqual(ret,  '[AUT.] <a href="/bpp/autor/C/">Testowy Autor</a>, <a href="/bpp/autor/A/">Jan Budnik</a>, [RED.] <a href="/bpp/autor/B/">Stefan Kolbe</a>.')
 
         c = Context({"praca": self.doktorat})
         ret = t.render(c).strip()
-        self.assertEquals(ret,  u'[AUT.] <a href="/bpp/autor/A/">Kowalski Jan</a>.')
+        self.assertEqual(ret,  '[AUT.] <a href="/bpp/autor/A/">Kowalski Jan</a>.')
 
     def test_strip_at_end(self):
-        self.assertEquals(
+        self.assertEqual(
             "foo",
             strip_at_end("foo.,.,.,"))
 
     def test_znak_na_koncu(self):
-        self.assertEquals(
+        self.assertEqual(
             "foo.",
             znak_na_koncu("foo.,.,", "."))
 
-        self.assertEquals(
+        self.assertEqual(
             "",
             znak_na_koncu(".,.,", "."))
 
-        self.assertEquals(None, znak_na_koncu(None, ",."))
+        self.assertEqual(None, znak_na_koncu(None, ",."))
 
 
     def test_znak_na_koncu(self):
@@ -91,7 +91,7 @@ class TestTemplateTags(TestCase):
         t = Template(template)
         c = Context({"ciag_znakow": "loll..."})
         ret = t.render(c).strip()
-        self.assertEquals(ret, "loll,")
+        self.assertEqual(ret, "loll,")
 
     def test_znak_na_poczatku(self):
         template = '''
@@ -102,7 +102,7 @@ class TestTemplateTags(TestCase):
         t = Template(template)
         c = Context({"ciag_znakow": "loll"})
         ret = t.render(c).strip()
-        self.assertEquals(ret, ", loll")
+        self.assertEqual(ret, ", loll")
 
     def test_ladne_numery_prac(self):
         template = '''
@@ -114,8 +114,8 @@ class TestTemplateTags(TestCase):
         c = Context({"arr": set([1, 2, 3, 4, 5, 10, 11, 12, 15, 16, 20, 25,
                                  30, 31, 32, 33])})
         ret = t.render(c).strip()
-        self.assertEquals(ret, "1-5, 10-12, 15-16, 20, 25, 30-33")
+        self.assertEqual(ret, "1-5, 10-12, 15-16, 20, 25, 30-33")
 
         c = Context({"arr": set([1, 3, 4, 5])})
         ret = t.render(c).strip()
-        self.assertEquals(ret, "1, 3-5")
+        self.assertEqual(ret, "1, 3-5")

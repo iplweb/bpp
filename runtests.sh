@@ -5,7 +5,6 @@ unamestr=`uname`
 pushd `dirname $0` > /dev/null
 SCRIPTPATH=`pwd -P`
 popd > /dev/null
-cd $SCRIPTPATH/..
 
 DEBUG=0
 NO_QUNIT=0

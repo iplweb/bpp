@@ -85,4 +85,4 @@ class JednostkaFilter(SimpleListFilter):
         return queryset
 
     def lookups(self, request, model_admin):
-        return ((x.pk, unicode(x)) for x in Jednostka.objects.all().select_related('wydzial'))
+        return ((x.pk, str(x)) for x in Jednostka.objects.all().select_related('wydzial'))

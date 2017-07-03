@@ -1,13 +1,14 @@
 # -*- encoding: utf-8 -*-
 
-from collections import namedtuple
 import json
+from collections import namedtuple
 
-from django.contrib.messages import DEFAULT_TAGS
 import requests
+from django.contrib.messages import DEFAULT_TAGS
 from django.http.response import HttpResponseRedirect
 
 from .conf import settings
+
 
 def get_pub_path(username):
     path = getattr(settings, "NOTIFICATIONS_PUB_PATH")
@@ -35,10 +36,14 @@ def send_notification(request_or_username, level, text, get_pub_path=get_pub_pat
 
     url = "%s://%s%s%s" % (proto, host, port or "", path)
 
-    data=json.dumps(Message(text=text, cssClass=DEFAULT_TAGS.get(level), closeURL=closeURL).__dict__)
+    data = json.dumps(
+        Message(text=text,
+                cssClass=DEFAULT_TAGS.get(level),
+                closeURL=closeURL
+                )._asdict())
 
     if verbose:
-        print "Posting to %r data %r" % (url, data)
+        print("Posting to %r data %r" % (url, data))
 
     session = requests.Session()
     if ignore_proxy_settings:
@@ -46,8 +51,8 @@ def send_notification(request_or_username, level, text, get_pub_path=get_pub_pat
 
     res = session.post(url=url, data=data)
     if verbose:
-        print "Result: ", res
-        print res.content
+        print("Result: ", res)
+        print(res.content)
 
 
 def send_redirect(username, redirect_url,  messageCookieId, ignore_proxy_settings=False):

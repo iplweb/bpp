@@ -9,7 +9,7 @@ from bpp.models.cache import Rekord
 
 
 class Command(BaseCommand):
-    help = u'Ustawia nazwę domeny i strony internetowej'
+    help = 'Ustawia nazwę domeny i strony internetowej'
 
     option_list = BaseCommand.option_list + (
         make_option("-d", "--domain", action="store", type="str"),
@@ -28,5 +28,5 @@ class Command(BaseCommand):
             raise ValueError("To polecenie jest przeznaczone tylko dla sytuacji, gdy jest jeden obiekt Site w systemie")
 
         s = Site.objects.all()[0]
-        [setattr(s, attr, value) for attr, value in kw.items()]
+        [setattr(s, attr, value) for attr, value in list(kw.items())]
         s.save()

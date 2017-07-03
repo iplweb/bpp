@@ -49,10 +49,10 @@ def any_wydzial(nazwa=None, skrot=None, uczelnia_skrot="UCL", **kw):
         uczelnia = any_uczelnia()
 
     if nazwa is None:
-        nazwa = u'Wydział %s' % wydzial_cnt
+        nazwa = 'Wydział %s' % wydzial_cnt
 
     if skrot is None:
-        skrot = u"W%s" % wydzial_cnt
+        skrot = "W%s" % wydzial_cnt
         
     wydzial_cnt += 1
 
@@ -107,7 +107,7 @@ def any_wydawnictwo(klass, rok=None, **kw):
     if klass == Patent:
         del kw_wyd['tytul']
 
-    for key, value in kw_wyd.items():
+    for key, value in list(kw_wyd.items()):
         set_default(key, value, kw)
 
     Status_Korekty.objects.get_or_create(pk=1, nazwa='przed korektą')

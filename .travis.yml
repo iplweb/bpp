@@ -3,7 +3,7 @@ sudo: required
 language: python
 
 python: 
-  - "2.7"
+  - "3.6"
 
 cache:
   pip: true
@@ -29,11 +29,9 @@ before_install:
   # jak nie dam tego teraz, zrobi katalogi przez dockera, owner root:root
   # a potem bedzie permission deny przy build_wheel wiec:
   - mkdir -p dist dist_dev
-  
-  - pip install -q -r requirements.txt 
 
 services:
   - docker
 
 script:
-  - make -f Makefile.docker travis
+  - make travis

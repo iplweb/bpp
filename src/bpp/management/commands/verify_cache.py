@@ -28,4 +28,4 @@ class Command(BaseCommand):
             cursor.execute(qry)
             res = cursor.fetchall()
             assert(len(res) == 0)
-        print "%s: DB is correct!" % sys.argv[0]
+        print("%s: DB is correct!" % sys.argv[0])

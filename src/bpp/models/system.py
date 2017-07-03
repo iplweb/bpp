@@ -10,25 +10,25 @@ from bpp.models.abstract import ModelZNazwa, NazwaISkrot
 from django.utils import six
 
 NAZWY_PRIMO = [
-    u"",
-    u"Artykuł",
-    u"Książka",
-    u"Zasób tekstowy",
-    u"Rozprawa naukowa",
-    u"Recenzja",
-    u"Artykuł prasowy",
-    u"Rozdział",
-    u"Czasopismo",
-    u"Dane badawcze",
-    u"Materiał konferencyjny",
-    u"Obraz",
-    u"Baza",
-    u"Zestaw danych statystycznych",
-    u"Multimedia",
-    u"Inny"
+    "",
+    "Artykuł",
+    "Książka",
+    "Zasób tekstowy",
+    "Rozprawa naukowa",
+    "Recenzja",
+    "Artykuł prasowy",
+    "Rozdział",
+    "Czasopismo",
+    "Dane badawcze",
+    "Materiał konferencyjny",
+    "Obraz",
+    "Baza",
+    "Zestaw danych statystycznych",
+    "Multimedia",
+    "Inny"
 ]
 
-NAZWY_PRIMO = zip(NAZWY_PRIMO, NAZWY_PRIMO)
+NAZWY_PRIMO = list(zip(NAZWY_PRIMO, NAZWY_PRIMO))
 
 RODZAJE_DOKUMENTOW_PBN = [("article", "Artykuł"),
                           ("book", "Książka"),
@@ -92,15 +92,15 @@ class Status_Korekty(ModelZNazwa):
 
 class Zrodlo_Informacji(ModelZNazwa):
     class Meta:
-        verbose_name = u'źródło informacji o bibliografii'
-        verbose_name_plural = u'źródła informacji o bibliografii'
+        verbose_name = 'źródło informacji o bibliografii'
+        verbose_name_plural = 'źródła informacji o bibliografii'
         app_label = 'bpp'
 
 @six.python_2_unicode_compatible
 class Typ_Odpowiedzialnosci(NazwaISkrot):
     class Meta:
-        verbose_name = u'typ odpowiedzialności autora'
-        verbose_name_plural = u'typy odpowiedzialności autorów'
+        verbose_name = 'typ odpowiedzialności autora'
+        verbose_name_plural = 'typy odpowiedzialności autorów'
         ordering = ['nazwa']
         app_label = 'bpp'
 
@@ -113,8 +113,8 @@ class Jezyk(NazwaISkrot):
     Skrót nazwy języka używany w plikach eksportu do PBN.""", blank=True)
 
     class Meta:
-        verbose_name = u'język'
-        verbose_name_plural = u'języki'
+        verbose_name = 'język'
+        verbose_name_plural = 'języki'
         ordering = ['nazwa']
         app_label = 'bpp'
 

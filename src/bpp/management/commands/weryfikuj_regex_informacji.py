@@ -16,4 +16,4 @@ class Command(BaseCommand):
         for elem in q.only("pk", "tytul_oryginalny", "informacje"):
             parsed = parsed_informacje_regex.match(elem.informacje)
             if parsed is None or parsed.groupdict()['rok'] is None:
-                print elem.pk, "|", elem.informacje, "|", elem.tytul_oryginalny
+                print(elem.pk, "|", elem.informacje, "|", elem.tytul_oryginalny)

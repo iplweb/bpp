@@ -3,9 +3,9 @@ import os
 import re
 from datetime import datetime, timedelta
 
-from psycopg2._psycopg import adapt
+from psycopg2.extensions import QuotedString
 from unidecode import unidecode
-
+from django.utils import six
 
 non_url = re.compile(r'[^\w-]+')
 
@@ -15,8 +15,10 @@ class FulltextSearchMixin:
 
     def tokenize(self, qstr):
         qstr = qstr.replace("\\", "")
-        return [x.strip().encode("utf-8") for x in qstr.split(" ") if
-                x.strip()]
+        ret = [x.strip() for x in qstr.split(" ") if x.strip()]
+        if six.PY2:
+            ret = [x.encode("utf-8") for x in ret]
+        return ret
 
     def fulltext_filter(self, qstr):
         #
@@ -35,7 +37,16 @@ class FulltextSearchMixin:
 
 
         def quotes(wordlist):
-            return ["%s" % adapt(x.replace("\\", "")) for x in wordlist]
+            ret = []
+            for elem in wordlist:
+                ret.append(
+                    str(
+                        QuotedString(
+                            elem.replace("\\", "").encode("utf-8")
+                        )
+                    )
+                )
+            return ret
 
         def startswith(wordlist):
             return [x + ":*" for x in quotes(wordlist)]
@@ -44,7 +55,7 @@ class FulltextSearchMixin:
             return ['!' + x for x in startswith(wordlist)]
 
         if qstr == None:
-            qstr = u""
+            qstr = ""
 
         words = self.tokenize(qstr)
         qstr = " & ".join(startswith(words))
@@ -91,7 +102,7 @@ def has_changed(instance, field_or_fields):
         return True
 
     fields = field_or_fields
-    if isinstance(field_or_fields, basestring):
+    if isinstance(field_or_fields, str):
         fields = [field_or_fields]
 
     for field in fields:
@@ -127,13 +138,13 @@ class NewGetter(Getter):
         kw = {self.field: item}
         try:
             return self.klass.objects.get(**kw)
-        except self.klass.DoesNotExist, e:
-            raise KeyError, e
+        except self.klass.DoesNotExist as e:
+            raise KeyError(e)
 
     __getattr__ = __getitem__
 
 def zrob_cache(t):
-    zle_znaki = [" ", ":", ";", "-", ",", "-", ".", "(", ")", "?", "!", u"ę", u"ą", u"ł", u"ń", u"ó", u"ź", u"ż"]
+    zle_znaki = [" ", ":", ";", "-", ",", "-", ".", "(", ")", "?", "!", "ę", "ą", "ł", "ń", "ó", "ź", "ż"]
     for znak in zle_znaki:
         t = t.replace(znak, "")
     return t.lower()

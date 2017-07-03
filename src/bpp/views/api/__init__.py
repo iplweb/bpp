@@ -54,7 +54,7 @@ class UploadPunktacjaZrodlaView(JSONResponseMixin, View):
             return HttpResponseNotFound("Zrodlo")
 
         kw_punktacji = {}
-        for element in request.POST.keys():
+        for element in list(request.POST.keys()):
             if element in POLA_PUNKTACJI:
                 if request.POST.get(element) != '':
                     kw_punktacji[element] = request.POST.get(element)
@@ -67,7 +67,7 @@ class UploadPunktacjaZrodlaView(JSONResponseMixin, View):
             return self.ok()
 
         if request.POST.get("overwrite") == "1":
-            for key, value in kw_punktacji.items():
+            for key, value in list(kw_punktacji.items()):
                 setattr(pz, key, value)
             pz.save()
             return self.ok()

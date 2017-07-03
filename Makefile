@@ -10,6 +10,11 @@ BRANCH=`git branch | sed -n '/\* /s///p'`
 
 .PHONY: clean distclean build-wheels install-wheels wheels tests release
 
+PYTHON=python3.6
+PIP=${PYTHON} -m pip
+DISTDIR=./dist
+DISTDIR_DEV=./dist_dev
+
 clean:
 	find . -name __pycache__ -type d -print0 | xargs -0 rm -rfv
 	find . -name \*~ -print0 | xargs -0 rm -fv 
@@ -22,7 +27,7 @@ clean:
 
 distclean: clean
 	rm -rf src/django_bpp/staticroot 
-	rm -rf dist/ dist_dev/ zarzadca*backup 
+	rm -rf zarzadca*backup 
 	rm -rf node_modules src/node_modules src/django_bpp/staticroot 
 	rm -rf .vagrant splintershots src/components/bower_components src/media
 
@@ -38,32 +43,51 @@ vagrantclean:
 # Buduje pakiety WHL na bazie requirements.txt, zapisując je do katalogu 'dist',
 # buduje pakiety WHL na bazie requirements_dev.txt, zapisując je do katalogu 'dist_dev'.
 wheels:
-	./buildscripts/build-wheel.sh
+	echo "Buduje wheels w ${DISTDIR}"
+
+	mkdir -p ${DISTDIR}
+	${PIP} wheel --wheel-dir=${DISTDIR} --find-links=${DISTDIR} -r requirements.txt 
+
+	mkdir -p ${DISTDIR_DEV}
+	${PIP} wheel --wheel-dir=${DISTDIR_DEV} --find-links=${DISTDIR} --find-links=${DISTDIR_DEV} -r requirements_dev.txt 
 
 # cel: install-wheels
 # Instaluje wszystkie requirements
 install-wheels:
-	pip2 install -q --no-index --find-links=./dist --find-links=./dist_dev -r requirements_dev.txt
+	${PIP} install --no-index --find-links=./dist --find-links=./dist_dev -r requirements_dev.txt
 
 # cel: assets
 # Pobiera i składa do kupy JS/CSS/Foundation
 assets: 
-	./buildscripts/build-assets.sh
+	yarn install > /dev/null
+	npm rebuild > /dev/null
+	rm -rf src/django_bpp/staticroot
+	${PYTHON} src/manage.py collectstatic --noinput -v0
+	grunt build 
+	${PYTHON} src/manage.py collectstatic --noinput -v0
+	${PYTHON} src/manage.py compress --force  -v0
+	echo -n "Static root size: "
+	du -ch src/django_bpp/staticroot | grep total
 
 # cel: bdist_wheel
 # Buduje pakiet WHL zawierający django_bpp i skompilowane, statyczne assets. 
 # Wymaga:
 # 1) zainstalowanych pakietów z requirements.txt i requirements_dev.txt przez pip
 # 2) yarn, grunt-cli, npm, bower
-bdist_wheel: install-wheels assets clean
-	python setup.py bdist_wheel
+bdist_wheel: clean install-wheels assets 
+	${PYTHON} setup.py bdist_wheel
 
 # cel: tests
 # Uruchamia testy całego site'u za pomocą docker-compose. Wymaga zbudowanych 
 # pakietów WHL (cel: wheels) oraz statycznych assets w katalogu src/django_bpp/staticroot
 # (cel: assets)
-tests: # wymaga: wheels assets
+tests: # wymaga: instsall-wheels assets
 	tox
+
+# cel: tests-full
+# Jak tests, ale całość
+full-tests: wheels bdist_wheel tests
+
 
 # cel: docker-up
 # Startuje usługi dockera wymagane do lokalnego developmentu
@@ -79,7 +103,7 @@ download:
 	fab -H zarzadca@bpp.umlub.pl download_db
 
 migrate: 
-	cd src && python manage.py migrate
+	cd src && ${PYTHON} manage.py migrate
 
 download-and-migrate: download migrate
 	@echo "Done!"
@@ -107,8 +131,8 @@ setup-lo0:
 # cel: release
 # PyPI release
 release: clean assets
-	python setup.py sdist upload
-	python setup.py bdist_wheel upload
+	${PYTHON} setup.py sdist upload
+	${PYTHON} setup.py bdist_wheel upload
 
 # cel: staging
 # Konfiguruje system django-bpp za pomocą Ansible na komputerze 'staging' (vagrant)
@@ -135,5 +159,21 @@ demo-vm-cleanup:
 
 demo-vm: vagrantclean staging demo-vm-ansible demo-vm-clone demo-vm-cleanup
 
-travis: distclean dockerclean
-	make -f Makefile.docker travis
+cleanup-pycs:
+	find . -name __pycache__ -type d -print0 | xargs -0 rm -rfv
+	find . -name \*~ -print0 | xargs -0 rm -fv 
+	find . -name \*pyc -print0 | xargs -0 rm -fv 
+	find . -name \*\\.log -print0 | xargs -0 rm -fv 
+	rm -rf build __pycache__ *.log
+
+# cel: build-test-container
+# Buduje testowy kontener
+build-test-container: cleanup-pycs
+	docker-compose stop test
+	docker-compose rm test
+	docker-compose build test
+
+# cel: travis
+# Uruchamia wszystkie testy - dla TravisCI
+travis: distclean dockerclean build-test-container
+	docker-compose run --rm test "make full-tests"

@@ -60,11 +60,11 @@ def eksport_pbn(pk):
                 yield Wydawnictwo_Ciagle.objects.get(pk=ic).eksport_pbn_serializuj(wydzial)
 
         if ksiazki and rozdzialy:
-            informuj(u"... generuję książki i rodziały dla %s - %s" % (wydzial.nazwa, rokstr))
+            informuj("... generuję książki i rodziały dla %s - %s" % (wydzial.nazwa, rokstr))
         elif rozdzialy:
-            informuj(u"... generuję rodziały dla %s - %s" % (wydzial.nazwa, rokstr))
+            informuj("... generuję rodziały dla %s - %s" % (wydzial.nazwa, rokstr))
         elif ksiazki:
-            informuj(u"... generuję książki dla %s - %s" % (wydzial.nazwa, rokstr))
+            informuj("... generuję książki dla %s - %s" % (wydzial.nazwa, rokstr))
 
         for iz in id_zwartych(wydzial, od_roku, do_roku, ksiazki, rozdzialy, rodzaj_daty=rodzaj_daty, od_daty=od_daty, do_daty=do_daty):
             yield Wydawnictwo_Zwarte.objects.get(pk=iz).eksport_pbn_serializuj(wydzial)
@@ -108,7 +108,7 @@ def eksport_pbn(pk):
     pep.file.save(os.path.basename(fn), File(open(fn)))
     pep.save()
 
-    informuj(u"Zakończono. <a href=%s>Kliknij tutaj, aby pobrać eksport PBN dla %s - %s</a>. " %
+    informuj("Zakończono. <a href=%s>Kliknij tutaj, aby pobrać eksport PBN dla %s - %s</a>. " %
              (reverse("eksport_pbn:pobierz", args=(pep.pk,)),
               wydzial.nazwa,
               rokstr),

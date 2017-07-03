@@ -39,7 +39,7 @@ class TabelkaZImpactem(TabelaRaportuKomisjiCentralnejMixin, SumyImpactKbnMixin,
     class Meta:
         attrs = {"class": "z_ramka"}
         template = "raporty/raport_komisji_centralnej/tabela_ia.html"
-        per_page = sys.maxint
+        per_page = sys.maxsize
         empty_text = "Brak takich rekordów."
         sequence = (
             'lp', 'rok', 'opis_bibliograficzny_cache', 'impact_factor', 'punkty_kbn')
@@ -190,7 +190,7 @@ def get_queries(autor, przed_habilitacja=True, rok_habilitacji=None):
 
         '6b': Redakcja_Zrodla.objects.filter(
             redaktor=autor,
-            zrodlo__zasieg=zasieg[u'międzynarodowy']).values_list(
+            zrodlo__zasieg=zasieg['międzynarodowy']).values_list(
             'zrodlo_id').distinct(),
 
         '7a': Rekord.objects.prace_autor_i_typ(autor, 'red.').filter(
@@ -258,7 +258,7 @@ class RaportKomisjiCentralnej:
         liczba_streszczen = liczba_streszczen_kraj + liczba_streszczen_mnar
 
         def zsumuj(indeksy_zapytan):
-            return sum(map(lambda x: queries[x].count(), indeksy_zapytan))
+            return sum([queries[x].count() for x in indeksy_zapytan])
 
         liczba_prac_I = zsumuj(['1a', '1b'])
         liczba_prac_II = zsumuj(['2a', '2b'])
@@ -456,10 +456,10 @@ class Raport_Dla_Komisji_Centralnej(ReportAdapter):
 
     def _get_title(self):
         try:
-            a = unicode(Autor.objects.get(pk=self.original.arguments['autor']))
+            a = str(Autor.objects.get(pk=self.original.arguments['autor']))
         except Autor.DoesNotExist:
-            a = u"(autor usunięty)"
-        return u"Raport dla Komisji Centralnej - %s" % a
+            a = "(autor usunięty)"
+        return "Raport dla Komisji Centralnej - %s" % a
 
     title = property(_get_title)
 

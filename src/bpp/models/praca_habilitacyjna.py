@@ -20,8 +20,8 @@ class Publikacja_Habilitacyjna(models.Model):
 
     class Meta:
         app_label = 'bpp'
-        verbose_name = u"powiązanie publikacji z habilitacją"
-        verbose_name_plural = u"powiązania publikacji z habilitacją"
+        verbose_name = "powiązanie publikacji z habilitacją"
+        verbose_name_plural = "powiązania publikacji z habilitacją"
         unique_together = [
             ('praca_habilitacyjna', 'content_type', 'object_id')
         ]

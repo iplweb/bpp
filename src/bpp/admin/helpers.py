@@ -171,7 +171,7 @@ EKSTRA_INFORMACJE_WYDAWNICTWO_ZWARTE_FIELDSET = ('Ekstra informacje', {
 
 
 def js_openwin(url, handle, options):
-    options = ",".join(["%s=%s" % (a, b) for a, b in options.items()])
+    options = ",".join(["%s=%s" % (a, b) for a, b in list(options.items())])
     d = dict(url=url, handle=handle, options=options)
     return "window.open(\'%(url)s\','\%(handle)s\',\'%(options)s\')" % d
 

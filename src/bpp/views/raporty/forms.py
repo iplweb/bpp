@@ -47,7 +47,7 @@ class KronikaUczelniForm(forms.Form):
                 Hidden("report", "kronika-uczelni")
             ),
             ButtonHolder(
-                Submit('submit', u'Zamów', css_class='button white')
+                Submit('submit', 'Zamów', css_class='button white')
             )
         )
         super(KronikaUczelniForm, self).__init__(*args, **kwargs)
@@ -80,7 +80,7 @@ class RaportJednostekForm(forms.Form):
                 Hidden("report", "raport-jednostek")
             ),
             ButtonHolder(
-                Submit('submit', u'Wyświetl', css_class='button'),
+                Submit('submit', 'Wyświetl', css_class='button'),
             )
         )
 
@@ -107,7 +107,7 @@ class RaportAutorowForm(forms.Form):
         # self.helper.form_action = "./prepare/"
         self.helper.layout = Layout(
             Fieldset(
-                u'Raport autorów',
+                'Raport autorów',
                 Row(F4Column('autor', css_class='large-12 small-12')),
                 Row(F4Column('od_roku', css_class='large-6 small-6'),
                     F4Column('do_roku', css_class='large-6 small-6')),
@@ -115,7 +115,7 @@ class RaportAutorowForm(forms.Form):
                 Hidden("report", "raport-autorow")
             ),
             ButtonHolder(
-                Submit('submit', u'Szukaj', css_class='button white')
+                Submit('submit', 'Szukaj', css_class='button white')
             )
         )
 
@@ -146,7 +146,7 @@ class RaportDlaKomisjiCentralnejForm(forms.Form):
                 Hidden("report", "raport-dla-komisji-centralnej")
             ),
             ButtonHolder(
-                Submit('submit', u'Zamów', css_class='button white')
+                Submit('submit', 'Zamów', css_class='button white')
             )
         )
 
@@ -161,14 +161,14 @@ class WydzialChoiceField(forms.ModelMultipleChoiceField):
 
 class RankingAutorowForm(forms.Form):
     wydzialy = WydzialChoiceField(
-        label=u"Ogranicz do wydziału (wydziałów):",
+        label="Ogranicz do wydziału (wydziałów):",
         required=False,
         widget=forms.SelectMultiple(attrs={'size': '15'}),
         queryset=Wydzial.objects.filter(widoczny=True, zezwalaj_na_ranking_autorow=True),
-        help_text=u"Jeżeli nie wybierzesz żadnego wydziału, system wygeneruje "
-                  u"dane dla wszystkich wydziałów. Przytrzymaj przycisk CTRL ("
-                  u"CMD na Maku) gdy klikasz, aby wybrać więcej, niż jeden "
-                  u"wydział lub odznaczyć już zaznaczony wydział. ")
+        help_text="Jeżeli nie wybierzesz żadnego wydziału, system wygeneruje "
+                  "dane dla wszystkich wydziałów. Przytrzymaj przycisk CTRL ("
+                  "CMD na Maku) gdy klikasz, aby wybrać więcej, niż jeden "
+                  "wydział lub odznaczyć już zaznaczony wydział. ")
 
     od_roku = forms.IntegerField()
     do_roku = forms.IntegerField()
@@ -179,7 +179,7 @@ class RankingAutorowForm(forms.Form):
 
         self.helper.layout = Layout(
             Fieldset(
-                u'Ranking autorów',
+                'Ranking autorów',
                 Row(
                     F4Column('od_roku', css_class='large-6 small-6'),
                     F4Column('do_roku', css_class='large-6 small-6'),
@@ -190,7 +190,7 @@ class RankingAutorowForm(forms.Form):
                 Hidden("report", "ranking-autorow")
             ),
             ButtonHolder(
-                Submit('submit', u'Otwórz', css_class='button white')
+                Submit('submit', 'Otwórz', css_class='button white')
             )
         )
 

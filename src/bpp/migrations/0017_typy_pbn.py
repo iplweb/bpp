@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
+
 import os
 from django.db import models, migrations
 import csv
@@ -9,7 +9,7 @@ def migration_open(fn):
         os.path.dirname(__file__),
         fn)
 
-    return open(p)
+    return open(p, encoding="utf-8")
 
 def dodaj_dane_typow_pbn(apps, schema_editor):
     Charakter_PBN = apps.get_model("bpp", "Charakter_PBN")
@@ -20,7 +20,7 @@ def dodaj_dane_typow_pbn(apps, schema_editor):
             mapa[elem] = row[0]
 
     for identyfikator, opis, help_text in csv.reader(
-            migration_open("0017_typy_pbn.txt"), delimiter=b';'):
+            migration_open("0017_typy_pbn.txt"), delimiter=';'):
         Charakter_PBN.objects.create(
             wlasciwy_dla=mapa.get(identyfikator, "article"),
             identyfikator=identyfikator,

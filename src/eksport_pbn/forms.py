@@ -20,7 +20,7 @@ class EksportDoPBNForm(forms.ModelForm):
         helper.form_class = "custom"
         helper.layout = Layout(
                 Fieldset(
-                        u'Zamów eksport PBN',
+                        'Zamów eksport PBN',
                         Row(Column('wydzial')),
                         Row(Column('od_roku', css_class='small-6 large-6'),
                             Column('do_roku', css_class='small-6 large-6')),
@@ -32,7 +32,7 @@ class EksportDoPBNForm(forms.ModelForm):
                                 Column('od_daty', css_class='small-6 large-6'),
                                 Column('do_daty', css_class='small-6 large-6'),
                         ),
-                        Submit('submit', u'Zamów', css_id='id_submit')))
+                        Submit('submit', 'Zamów', css_id='id_submit')))
         self.helper = helper
 
         self.fields['wydzial'].queryset = Wydzial.objects.filter(widoczny=True)

@@ -51,7 +51,7 @@ class BaseIntegration(models.Model):
     klass = None  # zobacz self.records()
 
     class Meta:
-        verbose_name = u"Plik integracji danych"
+        verbose_name = "Plik integracji danych"
         ordering = ['-last_updated_on']
         abstract = True
 

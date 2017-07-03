@@ -37,7 +37,7 @@ def make_report(uid):
 
     def execute():
         report.execute(raise_exceptions=True)
-        msg = u'Ukończono generowanie raportu "%s", <a href="%s">kliknij tutaj, aby otworzyć</a>. '
+        msg = 'Ukończono generowanie raportu "%s", <a href="%s">kliknij tutaj, aby otworzyć</a>. '
         url = reverse("bpp:podglad-raportu", args=(report.uid, ))
         call_command('send_message', report.ordered_by.username, msg % (IWebTask(report).title, url))
 

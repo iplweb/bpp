@@ -22,7 +22,7 @@ def analyze_egeriaimport(pk):
     obj.diff_tytuly()
     obj.analysis_level += 1
     obj.save()
-    msg = u'Ukończono analizę importu osób "%s", <a href="%s">kliknij tutaj, aby otworzyć</a>. '
+    msg = 'Ukończono analizę importu osób "%s", <a href="%s">kliknij tutaj, aby otworzyć</a>. '
     call_command('send_message', obj.created_by.username, msg % (obj.get_title(), obj.get_absolute_url()))
 
 
