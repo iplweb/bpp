@@ -45,5 +45,5 @@ bdist_wheel:
 tests: 
 	docker-compose run --rm test make tests
 
-travis: build-test-container 
+travis: build-test-container wheels
 	docker-compose run --rm test "make wheels bdist_wheel tests"
