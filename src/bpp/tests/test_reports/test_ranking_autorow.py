@@ -76,8 +76,10 @@ class TestRankingAutorow(TestCase):
             reverse("bpp:ranking-autorow", args=(str(CURRENT_YEAR), str(CURRENT_YEAR),)),
             follow=True
         )
-        self.assertIn("44,444", response.content) # wydział 2
-        self.assertIn("33,333", response.content) # wydział 1
+        # wydział 2
+        self.assertIn("44,444", response.rendered_content)
+        # wydział 1
+        self.assertIn("33,333", response.rendered_content)
 
     def test_z_wydzialem(self):
         "Zsumuje punktacje ze wszystkich prac, ze wszystkich wydziałów dla danego roku"
@@ -85,5 +87,7 @@ class TestRankingAutorow(TestCase):
             reverse("bpp:ranking-autorow", args=(str(CURRENT_YEAR), str(CURRENT_YEAR), )) + "?wydzialy[]=" + str(self.w2.pk),
             follow=True
         )
-        self.assertIn("44,444", response.content) # wydział 2
-        self.assertNotIn("33,333", response.content) # wydział 1 - praca nie wejdzie do rankingu
+        # wydział 2
+        self.assertIn("44,444", response.rendered_content)
+        # wydział 1 - praca nie wejdzie do rankingu
+        self.assertNotIn("33,333", response.rendered_content)

@@ -9,7 +9,7 @@ from webtest.forms import Upload
 
 def test_views_main(admin_client):
     res = admin_client.get(reverse("integrator2:main"))
-    assert b"Brak plików" in res.content
+    assert "Brak plików" in res.rendered_content
 
 
 def test_views_upload_lista_ministerialna(admin_app):
@@ -19,7 +19,7 @@ def test_views_upload_lista_ministerialna(admin_app):
     form['file'] = Upload(os.path.dirname(__file__) + "/xls/lista_a_krotka.xlsx")
     res = form.submit().maybe_follow()
 
-    assert b"Plik został dodany" in res.content
+    assert "Plik został dodany" in res.rendered_content
 
 
 def test_views_detail(admin_app, admin_user, lmi):

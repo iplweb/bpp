@@ -3,7 +3,7 @@ import os
 import re
 from datetime import datetime, timedelta
 
-from psycopg2._psycopg import adapt
+from psycopg2.extensions import QuotedString
 from unidecode import unidecode
 from django.utils import six
 
@@ -37,7 +37,16 @@ class FulltextSearchMixin:
 
 
         def quotes(wordlist):
-            return ["%s" % adapt(x.replace("\\", "")) for x in wordlist]
+            ret = []
+            for elem in wordlist:
+                ret.append(
+                    str(
+                        QuotedString(
+                            elem.replace("\\", "").encode("utf-8")
+                        )
+                    )
+                )
+            return ret
 
         def startswith(wordlist):
             return [x + ":*" for x in quotes(wordlist)]

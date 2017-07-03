@@ -46,7 +46,7 @@ class TestPunktacjaZrodlaView(TestCase):
             impact_factor=50)
 
         res = PunktacjaZrodlaView().post(None, z.pk, CURRENT_YEAR)
-        analyze = json.loads(str(res.content))
+        analyze = json.loads(res.content.decode(res.charset))
         self.assertEqual(analyze['impact_factor'], '50.000')
 
         res = PunktacjaZrodlaView().post(None, z.pk, CURRENT_YEAR + 100)
