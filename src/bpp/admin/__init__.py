@@ -408,7 +408,6 @@ def generuj_inline_dla_autorow(baseModel):
 
         def __init__(self, *args, **kwargs):
             super(baseModel_AutorForm, self).__init__(*args, **kwargs)
-
             # Nowy rekord
             data = kwargs.get("data")
             if data:
@@ -434,7 +433,7 @@ def generuj_inline_dla_autorow(baseModel):
             warianty = list(warianty)
 
             if initial not in warianty:
-                warianty.append(instance.zapisany_jako)
+                warianty.append(initial) # instance.zapisany_jako)
 
             self.initial['zapisany_jako'] = initial
 

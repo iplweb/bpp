@@ -4,6 +4,7 @@ from django.contrib.auth.models import Group
 from django.contrib.contenttypes.models import ContentType
 from django.core.urlresolvers import reverse
 from mock import Mock
+from model_mommy import mommy
 
 from bpp import autocomplete_light_registry  # Bez tego następny import się wywali
 from bpp.admin import LiczbaZnakowFilter, Wydawnictwo_ZwarteAdmin
@@ -94,3 +95,4 @@ class TestAdminViews(TestCase):
 
         # Czy stworzył kopię?
         self.assertEqual(Wydawnictwo_Ciagle.objects.count(), 2)
+
