@@ -130,15 +130,23 @@ setup-lo0:
 
 # cel: release
 # PyPI release
-release: clean assets
+release: bdist_wheel
 	${PYTHON} setup.py sdist upload
 	${PYTHON} setup.py bdist_wheel upload
 
 # cel: staging
 # Konfiguruje system django-bpp za pomocą Ansible na komputerze 'staging' (vagrant)
 staging: # wymaga: wheels bdist_wheel
-	vagrant up staging
 	ansible-playbook ansible/webserver.yml --private-key=.vagrant/machines/staging/virtualbox/private_key
+
+pristine-staging:
+	vagrant pristine -f staging
+	echo -n "Sleeping for 10 secs..."
+	sleep 10
+	echo " done!" 
+
+rebuild-staging: bdist_wheel pristine-staging staging
+
 
 demo-vm-ansible: 
 	ansible-playbook ansible/demo-vm.yml --private-key=.vagrant/machines/staging/virtualbox/private_key
