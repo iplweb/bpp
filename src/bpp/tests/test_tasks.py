@@ -11,12 +11,13 @@ class TestTasks(TestCase):
     # fixtures = ["charakter_formalny.json", ]
 
     def test_zaktualizuj_opis(self):
-        ContentType.objects.clear_cache()
 
         c = any_ciagle(
             charakter_formalny=Charakter_Formalny.objects.get(skrot='ZSZ'),
             szczegoly='wtf-lol')
-        zaktualizuj_opis(c.__class__, c.pk)
+
+        ctype = ContentType.objects.get_for_model(c)
+        zaktualizuj_opis(ctype.pk, c.pk)
 
         self.assertEqual(
             c.opis_bibliograficzny(),
