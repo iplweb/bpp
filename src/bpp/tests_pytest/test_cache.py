@@ -1,12 +1,13 @@
 # -*- encoding: utf-8 -*-
 # TODO: przenies do bpp/tests/test_cache.py
-
+from bpp.tasks import zaktualizuj_opis
+from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.db import connection
 from model_mommy import mommy
 import pytest
 from bpp.models.autor import Autor
-from bpp.models.cache import Rekord, Autorzy
+from bpp.models.cache import Rekord, Autorzy, defer_zaktualizuj_opis
 from bpp.models.praca_doktorska import Praca_Doktorska
 from bpp.models.struktura import Jednostka
 from bpp.models.system import Typ_Odpowiedzialnosci, Jezyk, Charakter_Formalny, \
@@ -273,4 +274,22 @@ def test_caching_kolejnosc(wydawnictwo_ciagle_z_dwoma_autorami):
 
     x = Rekord.objects.get(original=wydawnictwo_ciagle_z_dwoma_autorami)
     assert "[AUT.] NOWAK JAN, KOWALSKI JAN" in x.opis_bibliograficzny_cache
+
+
+@pytest.mark.django_db
+def test_defer_zaktualizuj_opis(settings):
+    settings.CELERY_ALWAYS_EAGER = False
+    w = mommy.make(Wydawnictwo_Ciagle)
+    w.tytul_oryginalny = "foobar"
+    defer_zaktualizuj_opis(w)
+    settings.CELERY_ALWAYS_EAGER = True
+
+@pytest.mark.django_db
+def test_defer_zaktualizuj_opis_task(settings):
+    w = mommy.make(Wydawnictwo_Ciagle)
+    w.tytul_oryginalny = "foobar"
+    w.save()
+
+    ctype = ContentType.objects.get_for_model(w)
+    zaktualizuj_opis(ctype.pk, w.pk, called_by="tests")
 

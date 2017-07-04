@@ -1,5 +1,8 @@
 # -*- encoding: utf-8 -*-
 import os
+
+from django.contrib.contenttypes.models import ContentType
+
 from celeryui.models import Report
 
 from django.core.management import call_command
@@ -58,8 +61,10 @@ def my_limit(fun):
         task_limits[fun] = fun.apply_async(countdown=settings.MAT_VIEW_REFRESH_COUNTDOWN)
 
 @app.task(ignore_result=True)
-def zaktualizuj_opis(klasa, pk, called_by=""):
-    obj = wait_for_object(klasa, pk, called_by=called_by)
+def zaktualizuj_opis(ctype_pk, pk, called_by=""):
+    ctype = ContentType.objects.get_for_id(ctype_pk)
+    klass = ctype.model_class()
+    obj = wait_for_object(klass, pk, called_by=called_by)
     obj.zaktualizuj_cache(tylko_opis=True)
 
 @app.task(ignore_result=True)

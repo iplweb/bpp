@@ -1,19 +1,4 @@
 # -*- encoding: utf-8 -*-
-import warnings
-
-from django.contrib.contenttypes.models import ContentType
-from django.db.models.deletion import DO_NOTHING
-from django.db import models, transaction
-from django.db.models.signals import post_save, post_delete, pre_save, pre_delete
-from django.contrib.postgres.search import SearchVectorField as VectorField
-
-from filtered_contenttypes.fields import FilteredGenericForeignKey
-from bpp.models import Patent, \
-    Praca_Doktorska, Praca_Habilitacyjna, \
-    Typ_Odpowiedzialnosci, Wydawnictwo_Zwarte, \
-    Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor, Patent_Autor, Zrodlo
-
-
 
 # Cache'ujemy:
 # - Wydawnictwo_Zwarte
@@ -22,14 +7,27 @@ from bpp.models import Patent, \
 # - Praca_Doktorska
 # - Praca_Habilitacyjna
 import traceback
+
+from django.contrib.contenttypes.models import ContentType
+from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ObjectDoesNotExist
+from django.db import models, transaction
+from django.db.models.deletion import DO_NOTHING
+from django.db.models.signals import post_save, post_delete, pre_save, \
+    pre_delete
+from django.utils import six
+from filtered_contenttypes.fields import FilteredGenericForeignKey
+
+from bpp.models import Patent, \
+    Praca_Doktorska, Praca_Habilitacyjna, \
+    Typ_Odpowiedzialnosci, Wydawnictwo_Zwarte, \
+    Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor, \
+    Patent_Autor, Zrodlo
 from bpp.models.abstract import ModelPunktowanyBaza, \
-    ModelZRokiem, ModelZeSzczegolami, ModelAfiliowanyRecenzowany, \
-    ModelZCharakterem, ModelZWWW
+    ModelZRokiem, ModelZeSzczegolami, ModelAfiliowanyRecenzowany
 from bpp.models.system import Charakter_Formalny, Jezyk
 from bpp.models.util import ModelZOpisemBibliograficznym
 from bpp.util import FulltextSearchMixin
-from django.utils import six
 
 # zmiana CACHED_MODELS powoduje zmiane opisu bibliograficznego wszystkich rekordow
 CACHED_MODELS = [Wydawnictwo_Ciagle, Wydawnictwo_Zwarte, Praca_Doktorska,
@@ -67,11 +65,14 @@ def defer_zaktualizuj_opis(instance, *args, **kw):
 
     called_by = "INSTANCE: %r" % instance
     called_by += "|".join(traceback.format_stack())
-    zaktualizuj_opis.delay(instance.__class__, instance.pk, called_by)
+    pk = ContentType.objects.get_for_model(instance).pk
+    zaktualizuj_opis.delay(ctype_pk=pk, pk=instance.pk, called_by=called_by)
+
 
 def defer_zaktualizuj_opis_rekordu(instance, *args, **kw):
     """Obiekt typy Wydawnictwo..._Autor został zapisany (post_save) LUB
     został skasowany (post_delete). Zaktualizuj rekordy."""
+
     try:
         rekord = instance.rekord
     except ObjectDoesNotExist:
