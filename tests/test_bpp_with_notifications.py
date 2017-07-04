@@ -21,9 +21,12 @@ from django.core.management import call_command
 # tzn. najbardziej to na WYSYLANIE by sie przydala.
 from django.core.urlresolvers import reverse
 import pytest
+from selenium.webdriver.support.wait import WebDriverWait
+
 from bpp.models.system import Charakter_Formalny, Status_Korekty, Jezyk, \
     Typ_KBN
 from conftest import NORMAL_DJANGO_USER_PASSWORD
+from django_bpp.selenium_util import wait_for_page_load
 
 pytestmark = [pytest.mark.slow, pytest.mark.selenium]
 
@@ -72,7 +75,8 @@ def test_bpp_notifications(preauth_browser):
     """
     s = "test notyfikacji 123 456"
     assert preauth_browser.is_text_not_present(s)
-    call_command('send_notification', preauth_browser.authorized_user.username, s)
+    call_command('send_notification',
+                 preauth_browser.authorized_user.username, s, verbosity=0)
     assert preauth_browser.is_text_present(s)
 
 
@@ -84,12 +88,14 @@ def test_bpp_notifications_and_messages(preauth_browser):
     assert preauth_browser.is_text_not_present(s)
 
     call_command('send_message', preauth_browser.authorized_user.username, s)
-    time.sleep(1)
-    assert preauth_browser.is_text_present(s)
+    WebDriverWait(preauth_browser, 10).until(
+        lambda browser: browser.is_text_present(s))
 
-    preauth_browser.reload()
-    time.sleep(1)
-    assert preauth_browser.is_text_present(s)
+    with wait_for_page_load(preauth_browser):
+        preauth_browser.reload()
+
+    WebDriverWait(preauth_browser, 10).until(
+        lambda browser: browser.is_text_present(s))
 
 
 def test_preauth_browser(preauth_browser, live_server):
