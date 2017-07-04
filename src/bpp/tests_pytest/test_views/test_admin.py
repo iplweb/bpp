@@ -1,6 +1,8 @@
 # -*- encoding: utf-8 -*-
 import pytest
-from bpp.models.cache import Rekord
+
+from bpp.models.autor import Autor
+from bpp.models.cache import Rekord, Autorzy
 from django.urls.base import reverse
 from model_mommy import mommy
 
@@ -34,7 +36,6 @@ from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte, \
 
 def test_zapisz_wydawnictwo_ciagle(klass, autor_klass, form_name,
                                    url, admin_app):
-    Rekord.objects.all().delete()
 
     wc = mommy.make(klass)
     wca = mommy.make(autor_klass, rekord=wc)
@@ -45,3 +46,5 @@ def test_zapisz_wydawnictwo_ciagle(klass, autor_klass, form_name,
     res2 = res.forms[form_name].submit().maybe_follow()
     assert res2.status_code == 200
 
+    Rekord.objects.all().delete()
+    Autorzy.objects.all().delete()
