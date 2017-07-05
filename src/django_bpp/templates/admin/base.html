@@ -11,6 +11,10 @@
         <link href="{% static "grappelli/stylesheets/screen.css" %}" rel="stylesheet" type="text/css" media="all" />
         <link href="{% static "grappelli/stylesheets/mueller/grid/output.css" %}" rel="stylesheet" type="text/css" media="screen" />
         <link rel="stylesheet" type="text/css" href="{% static 'kbw-keypad/dist/css/jquery.keypad.css' %}" />
+
+        <link rel="stylesheet" type="text/css" href="{% static "autocomplete_light/vendor/select2/dist/css/select2.css" %}"></link>
+        <link rel="stylesheet" type="text/css" href="{% static "autocomplete_light/select2.css" %}"></link>
+
         {% endcompress %}
     {% endblock %}
     <!-- EXTRASTYLES -->
@@ -49,6 +53,13 @@
         <script type="text/javascript" src="{% static 'kbw-keypad/dist/js/jquery.keypad.js' %}"></script>
         <script type="text/javascript" src="{% static 'kbw-keypad/dist/js/jquery.keypad-pl.js' %}"></script>
         <script src="/static/bpp/js/bpp.js" type="text/javascript"></script>
+
+
+        <script src="{% static "autocomplete_light/jquery.init.js" %}"></script>
+        <script src="{% static "autocomplete_light/autocomplete.init.js" %}"></script>
+        <script src="{% static "autocomplete_light/vendor/select2/dist/js/select2.full.js" %}"></script>
+        <script src="{% static "autocomplete_light/select2.js" %}"></script>
+
         {% endcompress %}
 
         {% include 'session_security/all.html' %}
