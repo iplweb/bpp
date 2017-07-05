@@ -17,6 +17,7 @@ from bpp.models.abstract import NazwaWDopelniaczu, ModelZPBN_ID
 from bpp.models.autor import Autor, Autor_Jednostka
 from bpp.util import FulltextSearchMixin
 from django.utils import six
+from django.utils import timezone
 
 class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
     slug = AutoSlugField(populate_from='skrot',
@@ -166,7 +167,7 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID):
     zatrudnij = dodaj_autora
 
     def obecni_autorzy(self):
-        dzis = datetime.now().date()
+        dzis = timezone.now().date()
 
         return Autor.objects.filter(
             Q(autor_jednostka__zakonczyl_prace__gte=dzis) | Q(autor_jednostka__zakonczyl_prace=None),

@@ -9,7 +9,7 @@ from model_mommy import mommy
 
 from eksport_pbn.models import PlikEksportuPBN, DATE_CREATED_ON
 from eksport_pbn.tasks import eksport_pbn, id_zwartych, id_ciaglych, remove_old_eksport_pbn_files
-
+from django.utils import timezone
 
 def test_eksport_pbn(normal_django_user, jednostka, autor_jan_kowalski, wydawnictwo_ciagle, wydawnictwo_zwarte, rok):
     assert PlikEksportuPBN.objects.all().count() == 0
@@ -43,9 +43,9 @@ def test_eksport_pbn(normal_django_user, jednostka, autor_jan_kowalski, wydawnic
 
 
 def test_remove_old_eksport_files(db):
-    mommy.make(PlikEksportuPBN, created_on=datetime.now())
+    mommy.make(PlikEksportuPBN, created_on=timezone.now())
     e2 = mommy.make(PlikEksportuPBN)
-    e2.created_on = datetime.now() - timedelta(days=15)
+    e2.created_on = timezone.now() - timedelta(days=15)
     e2.save()
 
     assert PlikEksportuPBN.objects.all().count() == 2

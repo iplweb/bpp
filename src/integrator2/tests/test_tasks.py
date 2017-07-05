@@ -6,7 +6,7 @@ from model_mommy import mommy
 
 from integrator2.models import ListaMinisterialnaIntegration
 from integrator2.tasks import remove_old_integrator_files, analyze_file
-
+from django.utils import timezone
 
 @pytest.mark.django_db
 def test_analyze_file(lmi):
@@ -17,7 +17,7 @@ def test_analyze_file(lmi):
 def test_remove_old_integrator_files():
     mommy.make(ListaMinisterialnaIntegration)
     f = mommy.make(ListaMinisterialnaIntegration)
-    f.uploaded_on = datetime.now() - timedelta(days=20)
+    f.uploaded_on = timezone.now() - timedelta(days=20)
     f.save()
 
     assert ListaMinisterialnaIntegration.objects.all().count() == 2
