@@ -3,7 +3,6 @@ import sys
 import time
 
 import pytest
-from django.conf import settings
 from django.core.urlresolvers import reverse
 from model_mommy import mommy
 from selenium.webdriver.common.keys import Keys
@@ -12,15 +11,17 @@ from bpp.models import Autor, Zrodlo
 
 pytestmark = [pytest.mark.slow, pytest.mark.selenium]
 
-@pytest.fixture
+
+@pytest.fixture(scope=function)
 def autorzy_browser(browser, live_server):
     mommy.make(Autor, nazwisko='Atest', imiona='foo')
     browser.visit(live_server + reverse("bpp:browse_autorzy"))
-    return browser
+    yield browser
+    browser.quit()
+
 
 def test_autorzy_index(autorzy_browser):
     assert 'Atest' in autorzy_browser.html
-
 
 
 def test_autorzy_search_form(autorzy_browser):
@@ -52,6 +53,7 @@ def zrodla_browser(browser, live_server):
     mommy.make(Zrodlo, nazwa='Atest')
     browser.visit(live_server + reverse("bpp:browse_zrodla"))
     return browser
+
 
 def test_zrodla_index(zrodla_browser):
     assert 'Atest' in zrodla_browser.html
