@@ -518,6 +518,7 @@ class Wydawnictwo_Ciagle_Form(forms.ModelForm):
     )
 
     uzupelnij_punktacje = forms.CharField(
+        initial=None,
         max_length=50,
         required=False,
         label="Uzupełnij punktację",
@@ -526,7 +527,6 @@ class Wydawnictwo_Ciagle_Form(forms.ModelForm):
             label="Uzupełnij punktację",
         ))
     )
-
 
     class Meta:
         fields = "__all__"
