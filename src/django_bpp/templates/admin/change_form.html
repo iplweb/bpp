@@ -1,5 +1,5 @@
 {% extends "admin/base_site.html" %}
-
+{% load compress %}
 <!-- LOADING -->
 {% load admin_static i18n admin_modify admin_urls grp_tags %}
 
@@ -105,6 +105,33 @@
                     grappelli.cleanInputTypes();
                 };
                 {% endblock %}
+
+              {% block js_automatic_collapsibles_bpp %}
+                /* Automatically open every collapsible with value */
+                $("#grp-content-container .grp-collapse").each(function () {
+                    var has_value = false;
+                    $(this).find("input").each(function () {
+                        if ($(this).val() && $(this).val() != 0)
+                            has_value = true;
+                    });
+
+                    $(this).find("textarea").each(function () {
+                        if ($(this).val())
+                            has_value = true;
+                    });
+
+                    $(this).find("select").each(function () {
+                        if ($(this).val())
+                            has_value = true;
+                    });
+
+                    if (has_value) {
+                        $(this).addClass("grp-open").removeClass("grp-closed");
+                    }
+                });
+                {% endblock %}
+
+
             });
         })(grp.jQuery);
     </script>

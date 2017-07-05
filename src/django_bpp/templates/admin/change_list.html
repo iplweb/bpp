@@ -1,5 +1,5 @@
 {% extends "admin/base_site.html" %}
-    {% load compress %}
+{% load compress %}
 
 <!-- LOADING -->
 {% load i18n grp_tags admin_urls admin_static admin_list %}
@@ -15,10 +15,9 @@
 <!-- JAVASCRIPTS -->
 {% block javascripts %}
     {{ block.super }}
-    {% compress js %}
+{#    {% compress js %}#}
     {{ media.js }}
-    {% include "admin/automatic_collapsibles.html %}
-    {% endcompress %}
+{#    {% endcompress %}#}
     {% if cl.formset or action_form %}
         {% url 'admin:jsi18n' as jsi18nurl %}
         <script type="text/javascript" src="{{ jsi18nurl|default:'../../jsi18n/'}}"></script>
