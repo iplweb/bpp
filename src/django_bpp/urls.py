@@ -16,6 +16,7 @@ from bpp.views.admin import WydawnictwoCiagleTozView, WydawnictwoZwarteTozView, 
     PatentTozView
 from bpp.views.global_nav import global_nav_redir
 from bpp.views.mymultiseek import MyMultiseekResults
+from django_bpp.forms import BppPasswordChangeForm
 from django_bpp.sitemaps import JednostkaSitemap, django_bpp_sitemaps
 
 from django.contrib import admin
@@ -87,7 +88,7 @@ urlpatterns = [
         PasswordChangeDoneView.as_view(),
         name="password_change_done"),
     url(r'^password_change/$',
-        PasswordChangeFormView.as_view(),
+        PasswordChangeFormView.as_view(form_class=BppPasswordChangeForm),
         name="password_change"),
 
     url(r'^logout/$', django.contrib.auth.views.logout, name="logout"),
