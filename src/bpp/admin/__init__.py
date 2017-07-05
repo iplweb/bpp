@@ -409,22 +409,26 @@ def generuj_inline_dla_autorow(baseModel):
         def __init__(self, *args, **kwargs):
             super(baseModel_AutorForm, self).__init__(*args, **kwargs)
             # Nowy rekord
+            instance = kwargs.get('instance')
             data = kwargs.get("data")
+            if not data and not instance:
+                # Jeżeli nie ma na czym pracowac
+                return
+
+            initial = None
+
+            if instance:
+                autor = instance.autor
+                initial = instance.zapisany_jako
+
             if data:
+                # "Nowe" dane z formularza przyszły
                 zapisany_jako = data.get(kwargs['prefix'] + '-zapisany_jako')
                 if not zapisany_jako:
                     return
 
                 autor = Autor.objects.get(pk=int(
                     data[kwargs['prefix'] + '-autor']))
-                initial = zapisany_jako
-            else:
-                instance = kwargs.get('instance')
-                if not instance:
-                    return
-
-                autor = instance.autor
-                initial = instance.zapisany_jako
 
             warianty = warianty_zapisanego_nazwiska(
                 autor.imiona,
@@ -433,7 +437,7 @@ def generuj_inline_dla_autorow(baseModel):
             warianty = list(warianty)
 
             if initial not in warianty:
-                warianty.append(initial) # instance.zapisany_jako)
+                warianty.append(instance.zapisany_jako)
 
             self.initial['zapisany_jako'] = initial
 
