@@ -17,3 +17,7 @@ class BppConfig(AppConfig):
         from bpp.system import ustaw_robots_txt, odtworz_grupy
         post_migrate.connect(ustaw_robots_txt, sender=self)
         post_migrate.connect(odtworz_grupy, sender=self)
+
+        from dal_select2.widgets import Select2WidgetMixin
+        Select2WidgetMixin.Media.css = {}
+        Select2WidgetMixin.Media.js = {}
