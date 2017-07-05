@@ -346,7 +346,13 @@ def zrob_userow(cur):
         if l is None:
             break
 
-        imie, nazwisko = l['nazwisko_i_imie'].split(" ", 1)
+        print(l['nazwisko_i_imie'])
+        try:
+            imie, nazwisko = l['nazwisko_i_imie'].split(" ", 1)
+        except ValueError:
+            nazwisko = l['nazwisko_i_imie']
+            imie = ""
+
         uprawnienia = l['uprawnienia'].split(":")
 
         u = User.objects.create(
@@ -355,7 +361,7 @@ def zrob_userow(cur):
             is_staff=True,
             first_name=imie,
             last_name=nazwisko,
-            email=l['e_mail'])
+            email=l['e_mail'] or 'brak@email.pl')
         u.set_password(l['haslo'])
         u.save()
 
@@ -814,11 +820,11 @@ def make_clusters():
 
 def db_connect():
     pgsql_conn = psycopg2.connect(
-        database=os.getenv("BPP_DB_REBUILD_SOURCE_DB_NAME", "b_med"),
+        database=os.getenv("BPP_DB_REBUILD_SOURCE_DB_NAME", "prace-ar"),
         user=os.getenv("BPP_DB_REBUILD_SOURCE_DB_USER", "postgres"),
         password=os.getenv("BPP_DB_REBUILD_SOURCE_DB_PASSWORD", ""),
-        host=os.getenv("BPP_DB_REBUILD_SOURCE_DB_HOST", "staging-bpp"),
-        port=5432)
+        host=os.getenv("BPP_DB_REBUILD_SOURCE_DB_HOST", "localhost"),
+        port=int(os.getenv("BPP_DB_REBUILD_SOURCE_DB_PORT", "5433")))
     pgsql_conn.set_client_encoding('UTF8')
     return pgsql_conn
 
@@ -839,8 +845,8 @@ class Command(BaseCommand):
         parser.add_argument("--korekty", action="store_true"),
         parser.add_argument("--publikacje", action="store_true"),
         parser.add_argument("--clusters", action="store_true"),
-        parser.add_argument("--initial-offset", action="store", type="int", default=0),
-        parser.add_argument("--skip", action="store", type="int", default=0)
+        parser.add_argument("--initial-offset", action="store", type=int, default=0),
+        parser.add_argument("--skip", action="store", type=int, default=0)
 
     @transaction.atomic
     def handle(self, *args, **options):
