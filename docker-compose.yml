@@ -31,18 +31,18 @@ services:
       - "9090:80"
 
 
-  prod: # Host używany do pobierania/instalowania WHL z PyPI
-    build:
-      dockerfile: Dockerfile-prod
-      context: .docker
-    ports: 
-      - "8000:8000"
-    env_file: env.test.txt
-    depends_on: 
-      - db
-      - redis
-      - rabbitmq
-      - nginx_http_push
+#  prod: # Host używany do pobierania/instalowania WHL z PyPI
+#    build:
+#      dockerfile: Dockerfile-prod
+#      context: .docker
+#    ports: 
+#      - "8000:8000"
+#    env_file: env.test.txt
+#    depends_on: 
+#      - db
+#      - redis
+#      - rabbitmq
+#      - nginx_http_push
 
 
   test: # Host używany do uruchamiania testów i budowania pakietów
