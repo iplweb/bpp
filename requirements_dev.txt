@@ -21,9 +21,6 @@ pyflakes==0.8.1
 bumpversion==0.5.3
 
 ipython==3.1.0
-pyreadline==2.0
-
-pdbpp
 
 mock==1.0.1
 
@@ -35,7 +32,6 @@ stellar==0.4.3
 
 Fabric3==1.13.1.post1
 
+ansible==2.3.1.0
 
-ansible==2.3.0.0
-
-tox
+tox==2.7.0
