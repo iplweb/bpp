@@ -12,7 +12,7 @@ from bpp.models import Autor, Zrodlo
 pytestmark = [pytest.mark.slow, pytest.mark.selenium]
 
 
-@pytest.fixture(scope=function)
+@pytest.fixture(scope="function")
 def autorzy_browser(browser, live_server):
     mommy.make(Autor, nazwisko='Atest', imiona='foo')
     browser.visit(live_server + reverse("bpp:browse_autorzy"))
