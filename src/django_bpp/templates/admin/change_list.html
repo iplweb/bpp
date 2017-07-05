@@ -17,6 +17,7 @@
     {{ block.super }}
     {% compress js %}
     {{ media.js }}
+    {% include "admin/automatic_collapsibles.html %}
     {% endcompress %}
     {% if cl.formset or action_form %}
         {% url 'admin:jsi18n' as jsi18nurl %}
