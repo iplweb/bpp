@@ -145,7 +145,7 @@ pristine-staging:
 	sleep 10
 	echo " done!" 
 
-rebuild-staging: bdist_wheel pristine-staging staging
+rebuild-staging: bdist_wheel pristine-staging staging upload-db-to-staging
 
 
 demo-vm-ansible: 
