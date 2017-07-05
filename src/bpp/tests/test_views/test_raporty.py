@@ -1,21 +1,20 @@
 # -*- encoding: utf-8 -*-
 
-import sys
-from datetime import datetime
 import os
-from django.core.files import File
+import sys
+
 from django.core.files.base import ContentFile
 from django.core.urlresolvers import reverse
-from django.conf import settings
 from django.db import transaction
 from django.http import Http404
 from django.test.utils import override_settings
+from django.utils import timezone
 from model_mommy import mommy
-from celeryui.models import Report
-from bpp.tests.util import any_jednostka, any_autor, any_ciagle, any_wydzial
+
 from bpp.tests.testutil import UserTestCase, UserTransactionTestCase
+from bpp.tests.util import any_jednostka, any_autor, any_ciagle
 from bpp.views.raporty import RaportSelector, PodgladRaportu, KasowanieRaportu
-from bpp.tests.util import any_wydzial
+from celeryui.models import Report
 
 
 class TestRaportSelector(UserTestCase):
@@ -25,7 +24,7 @@ class TestRaportSelector(UserTestCase):
         p.get_context_data()
 
     def test_raportselector_with_reports(self):
-        for x, kiedy_ukonczono in enumerate([datetime.now(), None]):
+        for x, kiedy_ukonczono in enumerate([timezone.now(), None]):
             mommy.make(
                 Report, uid='foo' + str(x), arguments={},
                 file=None, finished_on=kiedy_ukonczono)
@@ -86,7 +85,7 @@ class TestPobranieRaportu(RaportMixin, UserTestCase):
 
     def test_pobranie_nginx(self):
         # Raport musi byc zakonczony, ineczej nie ma pobrania
-        self.r.finished_on = datetime.now()
+        self.r.finished_on = timezone.now()
         self.r.save()
 
         with override_settings(SENDFILE_BACKEND='sendfile.backends.nginx'):
@@ -151,12 +150,13 @@ class TestKasowanieRaportu(KasowanieRaportuMixin, RaportMixin, UserTestCase):
         self.assertRedirects(resp, reverse("bpp:raporty"))
         self.assertEqual(Report.objects.count(), 0)
 
+
 from django.conf import settings
+
 
 class TestKasowanieRaportuFileDeletion(
     KasowanieRaportuMixin, RaportMixin, UserTransactionTestCase):
-
-    available_apps = settings.INSTALLED_APPS # dla sqlfluhs
+    available_apps = settings.INSTALLED_APPS  # dla sqlfluhs
 
     def setUp(self):
         UserTransactionTestCase.setUp(self)
@@ -222,14 +222,14 @@ class TestRankingAutorow(UserTestCase):
         c.dodaj_autora(a, j)
 
     def test_renderowanie(self):
-        url = reverse("bpp:ranking-autorow", args=(2000,2000))
+        url = reverse("bpp:ranking-autorow", args=(2000, 2000))
         res = self.client.get(url)
         self.assertContains(
             res, "Ranking autorów", status_code=200)
         self.assertContains(res, "Kowalski")
 
     def test_renderowanie_csv(self):
-        url = reverse("bpp:ranking-autorow", args=(2000,2000))
+        url = reverse("bpp:ranking-autorow", args=(2000, 2000))
         res = self.client.get(url, data={"report-rankingautorowtable": "csv"})
         self.assertContains(
             res,
