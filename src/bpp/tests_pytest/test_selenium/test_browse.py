@@ -48,11 +48,12 @@ def test_autorzy_literki(autorzy_browser):
     assert 'Atest' not in autorzy_browser.html
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def zrodla_browser(browser, live_server):
     mommy.make(Zrodlo, nazwa='Atest')
     browser.visit(live_server + reverse("bpp:browse_zrodla"))
-    return browser
+    yield browser
+    browser.quit()
 
 
 def test_zrodla_index(zrodla_browser):
