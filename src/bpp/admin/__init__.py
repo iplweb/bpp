@@ -632,6 +632,7 @@ class Wydawnictwo_ZwarteAdmin_Baza(CommitedModelAdmin):
 
 class Wydawnictwo_ZwarteForm(forms.ModelForm):
     wydawnictwo_nadrzedne = forms.ModelChoiceField(
+        required=False,
         queryset=Wydawnictwo_Zwarte.objects.all(),
         widget=autocomplete.ModelSelect2(
             url='bpp:wydawnictwo-nadrzedne-autocomplete',
