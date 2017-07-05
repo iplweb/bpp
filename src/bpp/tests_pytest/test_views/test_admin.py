@@ -37,7 +37,12 @@ from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte, \
 def test_zapisz_wydawnictwo_ciagle(klass, autor_klass, name,
                                    url, admin_app):
 
-    wc = mommy.make(klass)
+    if klass == Wydawnictwo_Ciagle:
+        wc = mommy.make(klass,
+                        zrodlo__nazwa="Kopara")
+    else:
+        wc = mommy.make(klass)
+
     wca = mommy.make(
         autor_klass,
         autor__imiona="Jan",
@@ -50,13 +55,14 @@ def test_zapisz_wydawnictwo_ciagle(klass, autor_klass, name,
 
     form = res.forms[name + "_form"]
 
-    ZMIENIONE = "J. Kowalski"
+    ZMIENIONE = "J[an] Kowalski"
     form['%s_autor_set-0-zapisany_jako' % name].options.append(
         (ZMIENIONE, False, ZMIENIONE))
     form['%s_autor_set-0-zapisany_jako' % name].value = ZMIENIONE
 
     res2 = form.submit().maybe_follow()
     assert res2.status_code == 200
+    assert "Please correct the error" not in res2.text
 
     wca.refresh_from_db()
     assert wca.zapisany_jako == ZMIENIONE
