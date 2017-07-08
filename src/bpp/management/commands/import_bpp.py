@@ -3,6 +3,7 @@
 
 import os, sys
 
+from bpp.models.struktura import Uczelnia
 from django.db import IntegrityError
 import psycopg2.extensions
 
@@ -336,6 +337,27 @@ def zrob_autorow_dla(wc, klass, pgsql_conn):
             raise e
 
 
+def zrob_wydzialy(cur):
+    cur.execute("""
+    SELECT id, skrot, nazwa, opis, skr_nazwy, id_polon, sort
+    FROM wyd""")
+
+    while True:
+        l = cur.fetchone()
+        if l is None:
+            break
+        Wydzial.objects.create(
+            pk=l['id'],
+            uczelnia_id=Uczelnia.objects.all().first().pk,
+            nazwa=l['nazwa'],
+            skrot=l['skrot'],
+            skrot_nazwy=l['skr_nazwy'],
+            poprzednie_nazwy=l['opis'],
+            pbn_id=l['id_polon'],
+            kolejnosc=l['sort']
+        )
+
+
 def zrob_userow(cur):
     cur.execute("""SELECT login, haslo, nazwisko_i_imie, e_mail, adnotacje,
             uprawnienia, id, created_on, last_access, created_by, edited_by
@@ -463,7 +485,8 @@ def zrob_jednostki(cur, initial_offset, skip):
 
         kw = dict(pk=jed['id'], nazwa=jed['nazwa'], skrot=jed['skrot'],
                   wydzial=wyd, widoczna=jed['to_print'] == "*",
-                  email=jed['email'], www=convert_www(jed['www']), adnotacje=jed['opis'])
+                  email=jed['email'], www=convert_www(jed['www']),
+                  adnotacje=jed['opis'])
         j = Jednostka.objects.create(**kw)
         admin_log_history(j, jed)
 
@@ -841,15 +864,23 @@ class Command(BaseCommand):
     help = 'Importuje baze danych BPP z istniejacego serwera PostgreSQL'
 
     def add_arguments(self, parser):
-        parser.add_argument("--uzytkownicy", action="store_true"),
-        parser.add_argument("--jednostki", action="store_true"),
-        parser.add_argument("--powiazania", action="store_true"),
-        parser.add_argument("--zrodla", action="store_true"),
-        parser.add_argument("--autorzy", action="store_true"),
-        parser.add_argument("--korekty", action="store_true"),
-        parser.add_argument("--publikacje", action="store_true"),
-        parser.add_argument("--clusters", action="store_true"),
-        parser.add_argument("--initial-offset", action="store", type=int, default=0),
+        parser.add_argument("--uzytkownicy", action="store_true")
+
+        parser.add_argument("--uczelnia", action="store_true")
+        parser.add_argument("--nazwa-uczelni", action="store", type=str)
+        parser.add_argument("--nazwa-uczelni-skrot", action="store", type=str)
+        parser.add_argument("--nazwa-uczelni-w-dopelniaczu", action="store",
+                            type=str)
+
+        parser.add_argument("--wydzialy", action="store_true")
+        parser.add_argument("--jednostki", action="store_true")
+        parser.add_argument("--powiazania", action="store_true")
+        parser.add_argument("--zrodla", action="store_true")
+        parser.add_argument("--autorzy", action="store_true")
+        parser.add_argument("--korekty", action="store_true")
+        parser.add_argument("--publikacje", action="store_true")
+        parser.add_argument("--clusters", action="store_true")
+        parser.add_argument("--initial-offset", action="store", type=int, default=0)
         parser.add_argument("--skip", action="store", type=int, default=0)
 
     @transaction.atomic
@@ -870,6 +901,15 @@ class Command(BaseCommand):
 
         if options['uzytkownicy']:
             zrob_userow(cur)#  , options['initial_offset'], options['skip'])
+
+        if options['uczelnia']:
+            Uczelnia.objects.create(
+                nazwa=options['nazwa_uczelni'],
+                nazwa_dopelniacz_field=options['nazwa_uczelni_w_dopelniaczu'],
+                skrot=options['nazwa_uczelni_skrot'])
+
+        if options['wydzialy']:
+            zrob_wydzialy(cur)#  , options['initial_offset'], options['skip'])
 
         if options['jednostki']:
             print("JEDNOSTKI", options['initial_offset'])
