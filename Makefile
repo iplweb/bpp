@@ -185,3 +185,8 @@ build-test-container: cleanup-pycs
 # Uruchamia wszystkie testy - dla TravisCI
 travis: distclean dockerclean build-test-container
 	docker-compose run --rm test "make full-tests"
+
+
+# cel: production -DCUSTOMER=... or CUSTOMER=... make production
+production: 
+	ansible-playbook -i "/Volumes/Dane zaszyfrowane/${CUSTOMER}/ansible/hosts.cfg" ansible/webserver.yml ${ANSIBLE_OPTIONS}
