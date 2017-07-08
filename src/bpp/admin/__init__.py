@@ -180,7 +180,8 @@ class WydzialAdmin(RestrictDeletionToAdministracjaGroupMixin, ZapiszZAdnotacjaMi
     fieldsets = (
         (None, {
             'fields': (
-                'uczelnia', 'nazwa', 'skrot', 'pbn_id', 'opis', 'kolejnosc', 'widoczny',
+                'uczelnia', 'nazwa', 'skrot_nazwy', 'skrot', 'pbn_id',
+                'opis', 'kolejnosc', 'widoczny',
                 'zezwalaj_na_ranking_autorow', 'zarzadzaj_automatycznie', 'otwarcie', 'zamkniecie'),
         }),
         ADNOTACJE_FIELDSET

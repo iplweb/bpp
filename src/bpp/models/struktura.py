@@ -3,21 +3,22 @@
 """
 Struktura uczelni.
 """
-from datetime import datetime, date, timedelta
+from datetime import date, timedelta
 
 from autoslug import AutoSlugField
+from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models.functions import Coalesce
 from django.db.models.query_utils import Q
-from django.contrib.postgres.search import SearchVectorField as VectorField
+from django.utils import six
+from django.utils import timezone
 
 from bpp.models import ModelZAdnotacjami, NazwaISkrot
 from bpp.models.abstract import NazwaWDopelniaczu, ModelZPBN_ID
 from bpp.models.autor import Autor, Autor_Jednostka
 from bpp.util import FulltextSearchMixin
-from django.utils import six
-from django.utils import timezone
+
 
 class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
     slug = AutoSlugField(populate_from='skrot',
@@ -49,8 +50,22 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
 @six.python_2_unicode_compatible
 class Wydzial(ModelZAdnotacjami, ModelZPBN_ID):
     uczelnia = models.ForeignKey(Uczelnia)
-    nazwa = models.CharField(max_length=512, unique=True)
-    skrot = models.CharField("Skrót", max_length=4, unique=True)
+    nazwa = models.CharField(
+        max_length=512,
+        unique=True,
+        help_text='Pełna nazwa wydziału, np. "Wydział Lekarski"')
+    skrot_nazwy = models.CharField(
+        max_length=250,
+        unique=True,
+        blank=True,
+        null=True,
+        help_text='Skrót nazwy wydziału, wersja czytelna, np. "Wydz. Lek."')
+    skrot = models.CharField(
+        "Skrót",
+        max_length=10,
+        unique=True,
+        help_text='Skrót nazwy wydziału, wersja minimalna, np. "WL"')
+
     opis = models.TextField(null=True, blank=True)
     slug = AutoSlugField(populate_from='nazwa',
                          max_length=512, unique=True)
