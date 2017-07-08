@@ -3,6 +3,13 @@ upstream app_server {
 }
 
 server {
+    server_name  www.{{ django_hostname }};
+    return 301 https://{{ django_hostname }}$request_uri;
+    listen        {{ django_nginx_http_port }};
+    listen        {{ django_nginx_https_port }} ssl;
+}
+
+server {
   listen        {{ django_nginx_http_port }} {% if django_set_as_default_http_in_nginx %}default{% endif %};
   listen        {{ django_nginx_https_port }} default ssl;
   server_name 	{{ django_hostname }} {{ django_hostname_aliases|default("") }};
