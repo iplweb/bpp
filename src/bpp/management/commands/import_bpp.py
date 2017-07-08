@@ -374,10 +374,14 @@ def zrob_userow(cur):
                     # Ignorujemy grupę "przeglądanie" totalnie
                     continue
                 u.groups.add(Group.objects.get(name=name))
-                # W promocji, dołóż wszystkim którzy mogą wprowadzać
+                # dołóż wszystkim którzy mogą wprowadzać
                 # dane opcje edycji struktury uczelni:
                 if letter == "E":
                     u.groups.add(Group.objects.get(name="struktura"))
+                # administratorzy i mogący edytować dane systemowe dostają
+                # grupę "web"
+                if letter in ["S", "A"]:
+                    u.groups.add(Group.objects.get(name="web"))
 
         u.utworzony = l['created_on']
         if l['created_by'] is not None:
@@ -821,10 +825,10 @@ def make_clusters():
 def db_connect():
     pgsql_conn = psycopg2.connect(
         database=os.getenv("BPP_DB_REBUILD_SOURCE_DB_NAME", "prace-ar"),
-        user=os.getenv("BPP_DB_REBUILD_SOURCE_DB_USER", "postgres"),
+        user=os.getenv("BPP_DB_REBUILD_SOURCE_DB_USER", "bpp"),
         password=os.getenv("BPP_DB_REBUILD_SOURCE_DB_PASSWORD", ""),
         host=os.getenv("BPP_DB_REBUILD_SOURCE_DB_HOST", "localhost"),
-        port=int(os.getenv("BPP_DB_REBUILD_SOURCE_DB_PORT", "5433")))
+        port=int(os.getenv("BPP_DB_REBUILD_SOURCE_DB_PORT", "5432")))
     pgsql_conn.set_client_encoding('UTF8')
     return pgsql_conn
 
