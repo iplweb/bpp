@@ -901,19 +901,23 @@ class Command(BaseCommand):
 
         if options['uzytkownicy']:
             zrob_userow(cur)#  , options['initial_offset'], options['skip'])
+            set_seq("bpp_bppuser")
 
         if options['uczelnia']:
             Uczelnia.objects.create(
                 nazwa=options['nazwa_uczelni'],
                 nazwa_dopelniacz_field=options['nazwa_uczelni_w_dopelniaczu'],
                 skrot=options['nazwa_uczelni_skrot'])
+            set_seq("bpp_uczelnia")
 
         if options['wydzialy']:
             zrob_wydzialy(cur)#  , options['initial_offset'], options['skip'])
+            set_seq("bpp_wydzial")
 
         if options['jednostki']:
             print("JEDNOSTKI", options['initial_offset'])
             zrob_jednostki(cur, options['initial_offset'], options['skip'])
+            set_seq("bpp_jednostka")
 
         if options['autorzy']:
             print("AUTORZY", options['initial_offset'])
@@ -941,8 +945,6 @@ class Command(BaseCommand):
             set_seq("bpp_patent")
             set_seq("bpp_praca_doktorska")
             set_seq("bpp_praca_habilitacyjna")
-            set_seq("bpp_bppuser")
-            set_seq("bpp_jednostka")
 
         if options['clusters']:
             make_clusters()
