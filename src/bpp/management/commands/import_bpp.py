@@ -238,61 +238,6 @@ def skoryguj_wartosci_pol(bib):
         bib['jezyk'] = 5
 
 
-def zrob_korekty(cur):
-    zmiany = [
-        (95, 'imiona', 'Radzisław J.'),
-        (1549, 'imiona', 'Leszek'),
-        (9934, 'poprzednie_nazwiska', 'Piętka'),
-        (561, 'nazwisko', 'Jakimiec-Kimak'),
-        (5437, 'imiona', 'Jamal'),
-        (6680, 'imiona', 'Sławomir'),
-        (10285, 'nazwisko', 'Kowal'),
-#        (15791, 'nazwisko', u'Janiszewska-Grzyb'),
-        (8164, 'imiona', 'Majda'),
-        (174, 'imiona', 'Kinga K.'),
-        (907, 'imiona', 'Małgorzata H.'),
-        (9793, 'poprzednie_nazwiska', 'Klucha'),
-        (11186, 'poprzednie_nazwiska', 'Czarnota'),
-        (10418, 'imiona', 'D.H.'),
-        (4990, 'imiona', 'Dorota Irena'),
-        (8599, 'poprzednie_nazwiska', 'Zawitkowska-Klaczyńska'),
-        (440, 'imiona', 'Jerzy B.'),
-        (166, 'imiona', 'Tomasz R.'),
-        (4335, 'imiona', 'Katarzyna'),
-        (11264, 'imiona', 'Krystyna H.'),
-        (2718, 'imiona', 'Elżbieta'),
-        (1140, 'imiona', 'Beata Z.'),
-        (11058, 'imiona', 'Agnieszka'),
-        (516, 'imiona', 'Wojciech P.'),
-        (10584, 'imiona', 'I.M.'),
-        (2221, 'imiona', 'Henryk T.'),
-        (175, 'imiona', 'Stanisław Jerzy'),
-        (1002, 'nazwiska', 'Jabłońska-Ulbrych'),
-        (20, 'poprzednie_nazwiska', 'Adamczyk-Cioch'),
-        (5099, 'imiona', 'Jean-Pierre')
-    ]
-
-    for pk, atrybut, wartosc in zmiany:
-        aut = Autor.objects.get(pk=pk)
-        setattr(aut, atrybut, wartosc)
-        aut.save()
-
-    # Artur J. Jakimiuk
-    cur.execute("UPDATE b_a SET idt_aut = 17955 WHERE id = 77174")
-
-    cur.execute(
-        "UPDATE bib SET szczegoly = 's. 78', mceirok = '' WHERE id = 59665")
-    cur.execute("""UPDATE bib SET
-        uwagi = uwagi || 'Lengerich 2004. Pabst Sci. Pub.', mceirok = '', wydawnictwo = ''
-        WHERE id = 31284""")
-
-    cur.execute("UPDATE b_a SET idt_aut = 6903 WHERE id = 21550")
-    cur.execute(
-        "UPDATE b_a SET naz_zapis = 'Jolanta Kitlińska' WHERE id = 21255")
-    cur.execute("UPDATE b_a SET naz_zapis = 'Anna Bednarek' WHERE id = 43796")
-    cur.execute("UPDATE b_a SET naz_zapis = 'Bogusław Helon' WHERE id = 87974")
-
-
 def wez_autorow(pk, pgsql_conn):
     cur2 = pgsql_conn.cursor(cursor_factory=extras.DictCursor)
     cur2.execute(
@@ -495,8 +440,20 @@ def zrob_jednostki(cur, initial_offset, skip):
 
 
 def zrob_zrodla(cur, initial_offset, skip):
-    cur.execute("""SELECT rodzaj, skrot, www, nazwa, adnotacje,
-            id, created_on, last_access, created_by, edited_by, issn, e_issn
+    cur.execute("""SELECT 
+              rodzaj, 
+              skrot, 
+              www, 
+              nazwa, 
+              adnotacje,
+              id, 
+              created_on, last_access, created_by, edited_by, 
+              issn, 
+              e_issn, 
+              issn2, 
+              doi,
+              wydawca,
+              wlasciwy
             FROM zrodla OFFSET %s""" % initial_offset)
 
     while True:
@@ -504,27 +461,31 @@ def zrob_zrodla(cur, initial_offset, skip):
         if zrod is None:
             break
 
-        rodzaj = Rodzaj_Zrodla.objects.get(pk=zrod['rodzaj'])
-
         if zrod['id'] == 0:
-            zrod['id'] = -1
+            # źródło nieindeksowane
+            continue
 
-        kw = dict(pk=zrod['id'], rodzaj=rodzaj,
-                  nazwa=zrod['nazwa'], skrot=zrod['skrot'],
-                  issn=zrod['issn'], e_issn=zrod['e_issn'],
-                  adnotacje=zrod['adnotacje'])
+        try:
+            rodzaj = Rodzaj_Zrodla.objects.get(pk=zrod['rodzaj'])
+        except Rodzaj_Zrodla.DoesNotExist as e:
+            print("Brak rodzaju zrodla: %s" % zrod['rodzaj'])
+            raise e
 
-        @transaction.atomic
-        def _txn():
-            z = Zrodlo.objects.create(**kw)
-            admin_log_history(z, zrod)
+        kw = dict(pk=zrod['id'],
+                  rodzaj=rodzaj,
+                  skrot=zrod['skrot'],
+                  www=zrod['www'],
+                  nazwa=zrod['nazwa'],
+                  adnotacje=zrod['adnotacje'],
+                  issn=zrod['issn'] or zrod['issn2'],
+                  e_issn=zrod['e_issn'],
+                  doi=zrod['doi'],
+                  wydawca=zrod['wydawca'] or '',
+                  nazwa_alternatywna=zrod['wlasciwy']
+                  )
 
-        while True:
-            try:
-                _txn()
-                break
-            except IntegrityError:
-                pass
+        z = Zrodlo.objects.create(**kw)
+        admin_log_history(z, zrod)
 
         for _skip in range(skip):
             cur.fetchone()
@@ -543,6 +504,8 @@ def zrob_autorow(cur, initial_offset=0, skip=0):
         if aut is None:
             break
 
+        aut['tytul'] = (aut['tytul'] or '').strip()
+
         tytul = None
         if aut['tytul']:
             try:
@@ -556,24 +519,20 @@ def zrob_autorow(cur, initial_offset=0, skip=0):
         if imiona is None:
             imiona = ''
 
-        kw = dict(pk=aut['id'], imiona=imiona,
-                  nazwisko=aut['nazwisko'].strip(), tytul=tytul,
-                  email=aut['email'], www=convert_www(aut['www']), urodzony=aut['urodzony'],
+        kw = dict(pk=aut['id'],
+                  imiona=imiona,
+                  nazwisko=aut['nazwisko'].strip(),
+                  tytul=tytul,
+                  email=aut['email'],
+                  adnotacje=aut['adnotacje'],
+                  www=convert_www(aut['www']),
+                  urodzony=aut['urodzony'],
                   zmarl=aut['zmarl'],
-                  pokazuj_na_stronach_jednostek=aut['hide_on_unit'] == 0,
+                  pokazuj_na_stronach_jednostek=int(aut['hide_on_unit']) == 0,
                   poprzednie_nazwiska=aut['dawne_nazwisko'])
 
-        @transaction.atomic
-        def _txtn():
-            a = Autor.objects.create(**kw)
-            admin_log_history(a, aut)
-
-        while True:
-            try:
-                _txtn()
-                break
-            except IntegrityError:
-                continue
+        a = Autor.objects.create(**kw)
+        admin_log_history(a, aut)
 
         for _skip in range(skip):
             cur.fetchone()
@@ -597,6 +556,7 @@ def zrob_powiazania(cur, initial_offset, skip):
                 aut
             WHERE
                 aut.id = idt_aut
+                AND b_a.zatrudniony = 't'
             OFFSET %s""" % initial_offset)
 
     while True:
@@ -788,23 +748,19 @@ def zrob_publikacje(cur, pgsql_conn, initial_offset, skip):
         if skrot == 'T\xc5\x81':
             skrot = 'TŁ'
 
-        @transaction.atomic
-        def _txn():
+        if bib['new_zrodlo']:
+            zrob_wydawnictwo_ciagle(bib, skrot, pgsql_conn)
+        else:
+            if skrot == 'D' or skrot == 'H':
+                # doktorat lub habilitacja
+                zrob_doktorat_lub_habilitacje(bib, pgsql_conn)
 
-            if bib['new_zrodlo']:
-                zrob_wydawnictwo_ciagle(bib, skrot, pgsql_conn)
+            elif skrot == 'PAT':
+                zrob_patent(bib, pgsql_conn)
+
             else:
-                if skrot == 'D' or skrot == 'H':
-                    # doktorat lub habilitacja
-                    zrob_doktorat_lub_habilitacje(bib, pgsql_conn)
+                zrob_wydawnictwo_zwarte(bib, skrot, pgsql_conn)
 
-                elif skrot == 'PAT':
-                    zrob_patent(bib, pgsql_conn)
-
-                else:
-                    zrob_wydawnictwo_zwarte(bib, skrot, pgsql_conn)
-
-        _txn()
         for _skip in range(skip):
             cur.fetchone()
 
@@ -844,6 +800,14 @@ def make_clusters():
         cluster(table, "tytul_oryginalny")
     cluster("bpp_rekord_mat", "rok")
 
+def zrob_rodzaje_zrodel(cur):
+    Rodzaj_Zrodla.objects.all().delete()
+    cur.execute("SELECT id, nazwa FROM zrodla_rodzaje")
+    for elem in cur.fetchall():
+        Rodzaj_Zrodla.objects.create(
+            pk=elem['id'],
+            nazwa=elem['nazwa']
+        )
 
 def db_connect():
     pgsql_conn = psycopg2.connect(
@@ -874,9 +838,9 @@ class Command(BaseCommand):
 
         parser.add_argument("--wydzialy", action="store_true")
         parser.add_argument("--jednostki", action="store_true")
-        parser.add_argument("--powiazania", action="store_true")
         parser.add_argument("--zrodla", action="store_true")
         parser.add_argument("--autorzy", action="store_true")
+        parser.add_argument("--powiazania", action="store_true")
         parser.add_argument("--korekty", action="store_true")
         parser.add_argument("--publikacje", action="store_true")
         parser.add_argument("--clusters", action="store_true")
@@ -920,20 +884,18 @@ class Command(BaseCommand):
             set_seq("bpp_jednostka")
 
         if options['autorzy']:
-            print("AUTORZY", options['initial_offset'])
             zrob_autorow(cur, options['initial_offset'], options['skip'])
             set_seq("bpp_autor")
 
         if options['powiazania']:
-            print("POWIAZANIA", options['initial_offset'])
             zrob_powiazania(cur, options['initial_offset'], options['skip'])
 
         if options['zrodla']:
+            zrob_rodzaje_zrodel(cur)
+            set_seq("bpp_rodzaj_zrodla")
+
             zrob_zrodla(cur, options['initial_offset'], options['skip'])
             set_seq("bpp_zrodlo")
-
-        if options['korekty']:
-            zrob_korekty(cur)
 
         # Publikacje
         if options['publikacje']:
