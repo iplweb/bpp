@@ -1,18 +1,19 @@
 # -*- encoding: utf-8 -*-
 """Importuje bazę danych BPP z istniejącego serwera PostgreSQL"""
 
-import os, sys
+import os
+from pathlib import Path
+
+import psycopg2.extensions
+from django.db import IntegrityError
 
 from bpp.models.struktura import Uczelnia
-from django.db import IntegrityError
-import psycopg2.extensions
-
 
 psycopg2.extensions.register_type(psycopg2.extensions.UNICODE)
 psycopg2.extensions.register_type(psycopg2.extensions.UNICODEARRAY)
 
 import decimal
-from optparse import make_option
+import json
 from datetime import datetime
 
 from django.contrib.admin.models import LogEntry, ADDITION, CHANGE
@@ -23,6 +24,7 @@ from django.contrib.auth.models import Group
 import psycopg2
 from psycopg2 import extras
 
+import bpp
 from bpp.models.autor import Autor_Jednostka
 from bpp.models.system import Typ_KBN, Status_Korekty, Jezyk, \
     Zrodlo_Informacji, Typ_Odpowiedzialnosci, Charakter_Formalny
@@ -40,6 +42,7 @@ from django.conf import settings
 
 settings.DEBUG = False
 
+
 # Put this on your base model (or monkey patch it onto django's Model if that's your thing)
 def reload(self):
     new_self = self.__class__.objects.get(pk=self.pk)
@@ -54,6 +57,7 @@ def find_user(login):
     if login is None or login == '':
         return None
     return User.objects.get(pk=login)
+
 
 def convert_www(s):
     if s is None:
@@ -71,6 +75,7 @@ def convert_www(s):
         return s
 
     return "http://" + s
+
 
 def set_seq(s):
     if settings.DATABASES['default']['ENGINE'].find('postgresql') >= 0:
@@ -150,7 +155,6 @@ class Cache:
 
 cache = Cache()
 
-
 NOWE_CHARAKTERY_MAPPING = {
     "AP": "AC",
     "API": "AC",
@@ -166,6 +170,7 @@ NOWE_CHARAKTERY_MAPPING = {
     "ZSUM": None,
     "BPEX": None
 }
+
 
 def nowy_charakter_formalny(skrot):
     """Przemapuj 'stary' charakter formalny na nowy charakter formalny,
@@ -382,7 +387,7 @@ def utworzono(model, bib):
 def admin_log_history(obj, dct):
     user = find_user(dct['created_by'])
     if user is not None:
-        #obj.reload()
+        # obj.reload()
         kw = dict(
             user_id=user.pk,
             content_type_id=ContentType.objects.get_for_model(obj).pk,
@@ -399,7 +404,7 @@ def admin_log_history(obj, dct):
 
     user = find_user(dct['edited_by'])
     if user is not None:
-        #obj.reload()
+        # obj.reload()
         LogEntry.objects.log_action(
             user_id=user.pk,
             content_type_id=ContentType.objects.get_for_model(obj).pk,
@@ -489,6 +494,7 @@ def zrob_zrodla(cur, initial_offset, skip):
 
         for _skip in range(skip):
             cur.fetchone()
+
 
 @transaction.atomic
 def zrob_autorow(cur, initial_offset=0, skip=0):
@@ -606,7 +612,8 @@ def zrob_import_z_tabeli(kw, bib, zakazane, docelowe,
 
 
 def zrob_wydawnictwo(kw, bib, klass, autor_klass, zakazane, docelowe,
-                     pgsql_conn, zrodlowe_pole_dla_informacji, usun_przed=None):
+                     pgsql_conn, zrodlowe_pole_dla_informacji,
+                     usun_przed=None):
     zrob_import_z_tabeli(kw, bib, zakazane, docelowe,
                          zrodlowe_pole_dla_informacji)
     if usun_przed:
@@ -630,7 +637,8 @@ def zrob_wydawnictwo_ciagle(bib, skrot, pgsql_conn):
     )
 
     w = zrob_wydawnictwo(kw, bib, Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor,
-                         zakazane=['redakcja', 'mceirok', 'wydawnictwo', 'isbn',
+                         zakazane=['redakcja', 'mceirok', 'wydawnictwo',
+                                   'isbn',
                                    'nr_zeszytu'],
                          docelowe='uwagi', pgsql_conn=pgsql_conn,
                          zrodlowe_pole_dla_informacji='new_zrodlo_src')
@@ -654,7 +662,8 @@ def zrob_wydawnictwo_zwarte(bib, skrot, pgsql_conn):
     kw['charakter_formalny'] = nowy_charakter_formalny(skrot)
     bib['new_zrodlo_src'] = None
 
-    wc = zrob_wydawnictwo(kw, bib, Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor,
+    wc = zrob_wydawnictwo(kw, bib, Wydawnictwo_Zwarte,
+                          Wydawnictwo_Zwarte_Autor,
                           zakazane=['new_zrodlo', 'new_zrodlo_src'],
                           docelowe='uwagi', pgsql_conn=pgsql_conn,
                           zrodlowe_pole_dla_informacji=None)
@@ -663,7 +672,7 @@ def zrob_wydawnictwo_zwarte(bib, skrot, pgsql_conn):
         wc.liczba_znakow_wydawniczych = bib['ilosc_znakow_wydawnicznych']
         wc.save()
 
-    # admin_log_history(wc, bib)
+        # admin_log_history(wc, bib)
 
 
 def zrob_doktorat_lub_habilitacje(bib, pgsql_conn):
@@ -677,16 +686,16 @@ def zrob_doktorat_lub_habilitacje(bib, pgsql_conn):
     autor = wez_autorow(bib['id'], pgsql_conn)
     if len(autor) != 1:
         print((
-        "dla pracy doktorskiej/habilitacyjnej z id %s ilosc autorow jest rowna %s, IGNORUJE TEN WPIS" % (
-            bib['id'], len(autor))))
+            "dla pracy doktorskiej/habilitacyjnej z id %s ilosc autorow jest rowna %s, IGNORUJE TEN WPIS" % (
+                bib['id'], len(autor))))
         return
 
     kw['autor'] = Autor.objects.get(pk=autor[0]['idt_aut'])
     kw['jednostka'] = Jednostka.objects.get(pk=autor[0]['idt_jed'])
 
-    if bib['charakter'] == 21: # praca doktorska
+    if bib['charakter'] == 21:  # praca doktorska
         klass = Praca_Doktorska
-    elif bib['charakter'] == 4: # praca habilitacyjna
+    elif bib['charakter'] == 4:  # praca habilitacyjna
         klass = Praca_Habilitacyjna
     else:
         raise Exception(
@@ -702,13 +711,92 @@ def zrob_doktorat_lub_habilitacje(bib, pgsql_conn):
     admin_log_history(r, bib)
 
 
+def zrob_jezyki(cursor):
+    Jezyk.objects.all().delete()
+    cursor.execute("SELECT id, skrot, nazwa FROM jez")
+    for elem in cursor.fetchall():
+        kw = {}
+        if elem['skrot'] == "POL":
+            kw['skrot_dla_pbn'] = 'PL'
+        if elem['skrot'] == "ENG":
+            kw['skrot_dla_pbn'] = 'EN'
+        Jezyk.objects.create(
+            pk=elem['id'],
+            nazwa=elem['nazwa'],
+            skrot=elem['skrot'],
+            **kw
+        )
+    set_seq("bpp_jezyk")
+
+
+def zrob_kbn(cursor):
+    artykuly_pbn = ['cr', 'pak', 'mon', 'po', 'pp', 'pnp', 'rc']
+    Typ_KBN.objects.all().delete()
+    cursor.execute("SELECT id, skrot, nazwa FROM kbn")
+    for elem in cursor.fetchall():
+        Typ_KBN.objects.create(
+            pk=elem['id'],
+            nazwa=elem['nazwa'],
+            skrot=elem['skrot'],
+            artykul_pbn=elem['skrot'].lower() in artykuly_pbn
+        )
+    set_seq("bpp_typ_kbn")
+
+
+def get_fixture(name):
+    p = Path(bpp.__file__).parent / "fixtures" / ("%s.json" % name)
+    ret = json.load(open(p))
+    ret = [x['fields'] for x in ret if x['model'] == ("bpp.%s" % name)]
+    return dict([(x['skrot'].lower().strip(), x) for x in ret])
+
+
+def zrob_charaktery_formalne(cursor):
+    Charakter_Formalny.objects.all().delete()
+    cursor.execute("SELECT id, skrot, nazwa FROM pub")
+
+    f = get_fixture("charakter_formalny")
+    artykul_pbn = ['ac', 'supl', 'l']
+    ksiazka_pbn = ['ks', 'ksz', 'ksp', 'skr', 'pa']
+    rozdzial_pbn = ['frg', 'roz', 'rozs', 'pa', 'rozp']
+
+    for elem in cursor.fetchall():
+        kw = {'nazwa': elem['nazwa']}
+
+        skrot_l = elem['skrot'].lower().strip()
+        extra = f.get(skrot_l)
+        if extra:
+            del extra['skrot']
+            kw.update(extra)
+        else:
+            print("Dla charakteru formalnego %s nie ma ekstra-informacji" % (
+                elem['skrot'] + elem['nazwa']
+            ))
+
+        Charakter_Formalny.objects.create(
+            pk=elem['id'],
+            skrot=elem['skrot'],
+            artykul_pbn=skrot_l in artykul_pbn,
+            ksiazka_pbn=skrot_l in ksiazka_pbn,
+            rozdzial_pbn=skrot_l in rozdzial_pbn,
+            **kw
+        )
+    set_seq('bpp_charakter_formalny')
+
+
+@transaction.atomic
+def zrob_indeksy(cursor):
+    zrob_jezyki(cursor=cursor)
+    zrob_kbn(cursor)
+    zrob_charaktery_formalne(cursor)
+
 def zrob_patent(bib, pgsql_conn):
     kw = zrob_baze_wydawnictwa_zwartego(bib)
     p = zrob_wydawnictwo(kw, bib, Patent, Patent_Autor,
                          zakazane=['new_zrodlo', 'new_zrodlo_src'],
                          docelowe='uwagi', pgsql_conn=pgsql_conn,
                          zrodlowe_pole_dla_informacji=None,
-                         usun_przed=['tytul', 'isbn', 'wydawnictwo', 'redakcja',
+                         usun_przed=['tytul', 'isbn', 'wydawnictwo',
+                                     'redakcja',
                                      'typ_kbn', 'jezyk', 'miejsce_i_rok'])
 
     # admin_log_history(p, bib)
@@ -724,7 +812,8 @@ def zrob_publikacje(cur, pgsql_conn, initial_offset, skip):
     cur.execute("SELECT * FROM pub")
     charakter = dict([(x['id'], x) for x in cur.fetchall()])
 
-    for obj in [Wydawnictwo_Zwarte, Wydawnictwo_Ciagle, Patent, Praca_Doktorska,
+    for obj in [Wydawnictwo_Zwarte, Wydawnictwo_Ciagle, Patent,
+                Praca_Doktorska,
                 Praca_Habilitacyjna]:
         obj.objects.all().delete()
 
@@ -764,6 +853,7 @@ def zrob_publikacje(cur, pgsql_conn, initial_offset, skip):
         for _skip in range(skip):
             cur.fetchone()
 
+
 class ColumnNotIndexed(Exception):
     def __init__(self, table, col, *args, **kw):
         super(ColumnNotIndexed, self).__init__(*args, **kw)
@@ -773,6 +863,7 @@ class ColumnNotIndexed(Exception):
     def __str__(self):
         return "No index. Create one with CREATE INDEX %(table)s_%(col)s_idx ON %(table)s(%(col)s)" % dict(
             table=self.table, col=self.col)
+
 
 def make_clusters():
     """Za pomocą CLUSTER układa tabele wg najczęściej stosowanych
@@ -796,9 +887,12 @@ def make_clusters():
     cluster("bpp_autor", "nazwisko")
     cluster("bpp_zrodlo", "nazwa")
     cluster("bpp_jednostka", "nazwa")
-    for table in ['bpp_wydawnictwo_ciagle', 'bpp_patent', 'bpp_wydawnictwo_zwarte', 'bpp_praca_doktorska', 'bpp_praca_habilitacyjna']:
+    for table in ['bpp_wydawnictwo_ciagle', 'bpp_patent',
+                  'bpp_wydawnictwo_zwarte', 'bpp_praca_doktorska',
+                  'bpp_praca_habilitacyjna']:
         cluster(table, "tytul_oryginalny")
     cluster("bpp_rekord_mat", "rok")
+
 
 def zrob_rodzaje_zrodel(cur):
     Rodzaj_Zrodla.objects.all().delete()
@@ -808,6 +902,7 @@ def zrob_rodzaje_zrodel(cur):
             pk=elem['id'],
             nazwa=elem['nazwa']
         )
+
 
 def db_connect():
     pgsql_conn = psycopg2.connect(
@@ -841,10 +936,13 @@ class Command(BaseCommand):
         parser.add_argument("--zrodla", action="store_true")
         parser.add_argument("--autorzy", action="store_true")
         parser.add_argument("--powiazania", action="store_true")
+        parser.add_argument("--indeksy", action="store_true")
+
         parser.add_argument("--korekty", action="store_true")
         parser.add_argument("--publikacje", action="store_true")
         parser.add_argument("--clusters", action="store_true")
-        parser.add_argument("--initial-offset", action="store", type=int, default=0)
+        parser.add_argument("--initial-offset", action="store", type=int,
+                            default=0)
         parser.add_argument("--skip", action="store", type=int, default=0)
 
     @transaction.atomic
@@ -864,7 +962,7 @@ class Command(BaseCommand):
         cur = pgsql_conn.cursor(cursor_factory=extras.DictCursor)
 
         if options['uzytkownicy']:
-            zrob_userow(cur)#  , options['initial_offset'], options['skip'])
+            zrob_userow(cur)  # , options['initial_offset'], options['skip'])
             set_seq("bpp_bppuser")
 
         if options['uczelnia']:
@@ -875,7 +973,7 @@ class Command(BaseCommand):
             set_seq("bpp_uczelnia")
 
         if options['wydzialy']:
-            zrob_wydzialy(cur)#  , options['initial_offset'], options['skip'])
+            zrob_wydzialy(cur)  # , options['initial_offset'], options['skip'])
             set_seq("bpp_wydzial")
 
         if options['jednostki']:
@@ -889,6 +987,9 @@ class Command(BaseCommand):
 
         if options['powiazania']:
             zrob_powiazania(cur, options['initial_offset'], options['skip'])
+
+        if options['indeksy']:
+            zrob_indeksy(cur)
 
         if options['zrodla']:
             zrob_rodzaje_zrodel(cur)
@@ -911,7 +1012,8 @@ class Command(BaseCommand):
         if options['clusters']:
             make_clusters()
 
-        for nazwa in ['Obca jednostka', 'Studenci Uniwersytetu Medycznego w Lublinie']:
+        for nazwa in ['Obca jednostka',
+                      'Studenci Uniwersytetu Medycznego w Lublinie']:
             try:
                 x = Jednostka.objects.get(nazwa=nazwa)
             except Jednostka.DoesNotExist:
@@ -920,7 +1022,8 @@ class Command(BaseCommand):
                 x.wchodzi_do_raportow = False
                 x.save()
 
-        for nazwa in ['Jednostki Dawne', 'Bez Wydziału', 'Poza Wydziałem', 'Brak wpisanego wydziału',
+        for nazwa in ['Jednostki Dawne', 'Bez Wydziału', 'Poza Wydziałem',
+                      'Brak wpisanego wydziału',
                       'Wydział Lekarski', 'Jednostka międzywydziałowa']:
             try:
                 x = Wydzial.objects.get(nazwa=nazwa)
