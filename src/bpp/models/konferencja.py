@@ -3,6 +3,7 @@
 from django.db import models
 
 from bpp.models.abstract import ModelZAdnotacjami, ModelZNazwa
+from lxml.etree import Element, SubElement
 
 
 class Konferencja(ModelZNazwa, ModelZAdnotacjami):
@@ -63,3 +64,30 @@ class Konferencja(ModelZNazwa, ModelZAdnotacjami):
     def __str__(self):
         return self.nazwa
 
+    def eksport_pbn_serializuj(self, tagname='conference'):
+        element = Element(tagname)
+
+        name = SubElement(element, "name")
+        name.text = self.nazwa
+
+        if self.skrocona_nazwa:
+            short_name = SubElement(element, "short-name")
+            short_name.text = self.skrocona_nazwa
+
+        if self.rozpoczecie:
+            start_date = SubElement(element, "start-date")
+            start_date.text = str(self.rozpoczecie)
+
+        if self.zakonczenie:
+            end_date = SubElement(element, "end-date")
+            end_date.text = str(self.zakonczenie)
+
+        if self.miasto:
+            miasto = SubElement(element, "location")
+            miasto.text = self.miasto
+
+        if self.panstwo:
+            panstwo = SubElement(element, "country")
+            panstwo.text = self.panstwo
+
+        return element
