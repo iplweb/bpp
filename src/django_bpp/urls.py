@@ -40,9 +40,9 @@ urlpatterns = [
 
     url(r'^favicon\.ico$', favicon),
 
-    url(r'^admin/bpp/wydawnictwo_ciagle/toz/(?P<pk>[\d]+)/$', login_required(WydawnictwoCiagleTozView.as_view()), name="admin:bpp_wydawnictwo_ciagle_toz"),
-    url(r'^admin/bpp/wydawnictwo_zwarte/toz/(?P<pk>[\d]+)/$', login_required(WydawnictwoZwarteTozView.as_view()), name="admin:bpp_wydawnictwo_ciagle_toz"),
-    url(r'^admin/bpp/patent/toz/(?P<pk>[\d]+)/$', login_required(PatentTozView.as_view()), name="admin:bpp_wydawnictwo_ciagle_toz"),
+    url(r'^admin/bpp/wydawnictwo_ciagle/toz/(?P<pk>[\d]+)/$', login_required(WydawnictwoCiagleTozView.as_view()), name="admin_bpp_wydawnictwo_ciagle_toz"),
+    url(r'^admin/bpp/wydawnictwo_zwarte/toz/(?P<pk>[\d]+)/$', login_required(WydawnictwoZwarteTozView.as_view()), name="admin_bpp_wydawnictwo_ciagle_toz"),
+    url(r'^admin/bpp/patent/toz/(?P<pk>[\d]+)/$', login_required(PatentTozView.as_view()), name="admin_bpp_wydawnictwo_ciagle_toz"),
 
     url(r'^admin/', include(admin.site.urls)),
 
@@ -104,7 +104,7 @@ urlpatterns = [
 
     url(r"^login/user/(?P<user_id>.+)/$", user_login, name="loginas-user-login"),
 
-    url(r'^robots\.txt$', include('robots.urls')),
+    url(r'^robots\.txt', include('robots.urls')),
 
     url(r'^sitemap\.xml$', cache_page(7*24*3600)(sitemaps_views.index), {
         'sitemaps': django_bpp_sitemaps,

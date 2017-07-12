@@ -13,7 +13,8 @@ from bpp.views.autocomplete import WidocznaJednostkaAutocomplete, \
     AutorZUczelniAutocopmlete, GlobalNavigationAutocomplete, \
     JednostkaAutocomplete, ZrodloAutocomplete, AutorAutocomplete, \
     ZapisanyJakoAutocomplete, Wydawnictwo_NadrzedneAutocomplete, \
-    PodrzednaPublikacjaHabilitacyjnaAutocomplete, AdminNavigationAutocomplete
+    PodrzednaPublikacjaHabilitacyjnaAutocomplete, \
+    AdminNavigationAutocomplete, KonferencjaAutocomplete
 from bpp.views.raporty import RankingAutorow, \
     PobranieRaportu, PodgladRaportu, KasowanieRaportu, \
     RaportJednostek2012, RaportKronikaUczelni, RaportJednostek, \
@@ -104,6 +105,11 @@ urlpatterns = [
     url(r'^update-multiseek-title/$', bpp.views.update_multiseek_title,
         name='update_multiseek_title'),
 
+    url(
+        r'^konferencja-autocomplete/$',
+        KonferencjaAutocomplete.as_view(),
+        name='konferencja-autocomplete',
+    ),
     url(
         r'^jednostka-widoczna-autocomplete/$',
         WidocznaJednostkaAutocomplete.as_view(),

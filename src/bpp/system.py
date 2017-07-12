@@ -22,6 +22,7 @@ from bpp.models import Funkcja_Autora, Zrodlo_Informacji, Jezyk, \
     Wydawnictwo_Ciagle, Wydawnictwo_Zwarte, Punktacja_Zrodla, \
     Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor, \
     Redakcja_Zrodla, Praca_Doktorska, Praca_Habilitacyjna, Patent, Patent_Autor
+from bpp.models.konferencja import Konferencja
 from bpp.models.openaccess import Tryb_OpenAccess_Wydawnictwo_Ciagle, Tryb_OpenAccess_Wydawnictwo_Zwarte, \
     Czas_Udostepnienia_OpenAccess, Licencja_OpenAccess, Wersja_Tekstu_OpenAccess
 from bpp.models.praca_habilitacyjna import Publikacja_Habilitacyjna
@@ -48,7 +49,7 @@ groups = {
         Punktacja_Zrodla, Wydawnictwo_Ciagle_Autor,
         Wydawnictwo_Zwarte_Autor, Autor_Jednostka, Redakcja_Zrodla,
         Praca_Doktorska, Praca_Habilitacyjna, Patent, Patent_Autor,
-        Publikacja_Habilitacyjna],
+        Publikacja_Habilitacyjna, Konferencja],
     'indeks autorów': [Autor, Autor_Jednostka],
     'administracja': [User, Group, SearchForm],
     'web': [Url, Rule, Site, Favicon, FaviconImg],

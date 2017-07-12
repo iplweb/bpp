@@ -8,17 +8,14 @@ from queryset_sequence import QuerySetSequence
 from bpp.jezyk_polski import warianty_zapisanego_nazwiska
 from bpp.models.praca_habilitacyjna import Publikacja_Habilitacyjna
 
-try:
-    import autocomplete_light
-    from autocomplete_light.forms import modelform_factory
-    from autocomplete_light.forms import \
-        ModelForm as AutocompleteLightModelForm
-
-except ImportError:
-    pass
+from dal import autocomplete
 
 from django import forms
 from django.contrib import admin
+from django.forms.widgets import HiddenInput
+
+
+
 from django.contrib.auth.forms import UserCreationForm
 from django.db.models.fields import BLANK_CHOICE_DASH
 from django.utils.safestring import mark_safe
@@ -34,16 +31,17 @@ from bpp.models import Jezyk, Typ_KBN, Uczelnia, Wydzial, \
     Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor, Praca_Doktorska, \
     Praca_Habilitacyjna, Patent, Patent_Autor, BppUser # Publikacja_Habilitacyjna
 
+from .common import BaseBppAdmin, CommitedModelAdmin, \
+    KolumnyZeSkrotamiMixin, generuj_inline_dla_autorow
+from .wydawnictwo_zwarte import Wydawnictwo_ZwarteAdmin_Baza, Wydawnictwo_ZwarteAdmin
+from .konferencja import KonferencjaAdmin
+
 # Proste tabele
 from bpp.models.openaccess import Tryb_OpenAccess_Wydawnictwo_Ciagle, Tryb_OpenAccess_Wydawnictwo_Zwarte, \
     Czas_Udostepnienia_OpenAccess, Licencja_OpenAccess, Wersja_Tekstu_OpenAccess
 from bpp.models.struktura import Jednostka_Wydzial
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
 from bpp.models.zrodlo import Redakcja_Zrodla
-
-class BaseBppAdmin(admin.ModelAdmin):
-    pass
-
 
 class RestrictDeletionToAdministracjaGroupMixin:
     def get_action_choices(self, request, default_choices=BLANK_CHOICE_DASH):
@@ -71,23 +69,6 @@ admin.site.register(Funkcja_Autora, RestrictDeletionToAdministracjaGroupAdmin)
 admin.site.register(Rodzaj_Zrodla, RestrictDeletionToAdministracjaGroupAdmin)
 admin.site.register(Status_Korekty, RestrictDeletionToAdministracjaGroupAdmin)
 admin.site.register(Zrodlo_Informacji, RestrictDeletionToAdministracjaGroupAdmin)
-
-
-class CommitedModelAdmin(BaseBppAdmin):
-    """Ta klasa jest potrzebna, (XXXżeby działały sygnały post_commit.XXX)
-
-    Ta klasa KIEDYŚ była potrzebna, obecnie niespecjalnie. Aczkolwiek,
-    zostawiam ją z przyczyn historycznych, w ten sposób można łatwo
-    wyłowić klasy edycyjne, które grzebią COKOLWIEK w cache.
-    """
-
-    # Mój dynks do grappelli
-    auto_open_collapsibles = True
-
-    def save_formset(self, *args, **kw):
-        super(CommitedModelAdmin, self).save_formset(*args, **kw)
-        # transaction.commit()
-
 
 class Charakter_FormalnyAdmin(RestrictDeletionToAdministracjaGroupMixin, CommitedModelAdmin):
     list_display = ['skrot', 'nazwa', 'publikacja', 'streszczenie', 'nazwa_w_primo',
@@ -198,7 +179,7 @@ admin.site.register(Wydzial, WydzialAdmin)
 
 
 # Autor_Jednostka
-from dal import autocomplete
+
 class Autor_JednostkaInlineForm(forms.ModelForm):
     autor = forms.ModelChoiceField(
         queryset=Autor.objects.all(),
@@ -374,117 +355,7 @@ class ZrodloAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
 admin.site.register(Zrodlo, ZrodloAdmin)
 
 # Bibliografia
-from django.forms.widgets import HiddenInput
 
-def get_first_typ_odpowiedzialnosci():
-    return Typ_Odpowiedzialnosci.objects.filter(skrot='aut.').first()
-
-def generuj_inline_dla_autorow(baseModel):
-    class baseModel_AutorForm(forms.ModelForm):
-
-        autor = forms.ModelChoiceField(
-            queryset=Autor.objects.all(),
-            widget=autocomplete.ModelSelect2(
-                url='bpp:autor-autocomplete')
-        )
-
-        jednostka = forms.ModelChoiceField(
-            queryset=Jednostka.objects.all(),
-            widget=autocomplete.ModelSelect2(
-                url='bpp:jednostka-autocomplete')
-        )
-
-        zapisany_jako = forms.ChoiceField(
-            choices=[],
-            widget=autocomplete.Select2(
-                url="bpp:zapisany-jako-autocomplete",
-                forward=['autor']
-            )
-        )
-
-        typ_odpowiedzialnosci = forms.ModelChoiceField(
-            queryset=Typ_Odpowiedzialnosci.objects.all(),
-            initial=get_first_typ_odpowiedzialnosci
-        )
-
-        def __init__(self, *args, **kwargs):
-            super(baseModel_AutorForm, self).__init__(*args, **kwargs)
-            # Nowy rekord
-            instance = kwargs.get('instance')
-            data = kwargs.get("data")
-            if not data and not instance:
-                # Jeżeli nie ma na czym pracowac
-                return
-
-            initial = None
-
-            if instance:
-                autor = instance.autor
-                initial = instance.zapisany_jako
-
-            if data:
-                # "Nowe" dane z formularza przyszły
-                zapisany_jako = data.get(kwargs['prefix'] + '-zapisany_jako')
-                if not zapisany_jako:
-                    return
-
-                autor = Autor.objects.get(pk=int(
-                    data[kwargs['prefix'] + '-autor']))
-
-            warianty = warianty_zapisanego_nazwiska(
-                autor.imiona,
-                autor.nazwisko,
-                autor.poprzednie_nazwiska)
-            warianty = list(warianty)
-
-            if initial not in warianty:
-                warianty.append(instance.zapisany_jako)
-
-            self.initial['zapisany_jako'] = initial
-
-            self.fields['zapisany_jako'] = forms.ChoiceField(
-                choices=list(zip(warianty, warianty)),
-                initial=initial,
-                widget=autocomplete.Select2(
-                        url="bpp:zapisany-jako-autocomplete",
-                        forward=['autor']
-                    )
-            )
-
-        class Media:
-            js = ["/static/bpp/js/autorform_dependant.js"]
-
-        class Meta:
-            fields = ["autor", "jednostka", "typ_odpowiedzialnosci", "zapisany_jako",
-                      "zatrudniony", "kolejnosc"]
-            model = baseModel
-            widgets = {
-                'kolejnosc': HiddenInput
-            }
-
-    class baseModel_AutorInline(admin.TabularInline):
-        model = baseModel
-        extra = 0
-        form = baseModel_AutorForm
-        sortable_field_name = "kolejnosc"
-
-    return baseModel_AutorInline
-
-
-#
-# Kolumny ze skrótami
-#
-
-class KolumnyZeSkrotamiMixin:
-    def charakter_formalny__skrot(self, obj):
-        return obj.charakter_formalny.skrot
-    charakter_formalny__skrot.short_description = "Char. form."
-    charakter_formalny__skrot.admin_order_field = "charakter_formalny__skrot"
-
-    def typ_kbn__skrot(self, obj):
-        return obj.typ_kbn.skrot
-    typ_kbn__skrot.short_description = "Typ KBN"
-    typ_kbn__skrot.admin_order_field = "typ_kbn__skrot"
 
 #
 # Wydaniwcto Ciągłe
@@ -583,94 +454,6 @@ class Wydawnictwo_CiagleAdmin(KolumnyZeSkrotamiMixin, AdnotacjeZDatamiOrazPBNMix
 
 
 admin.site.register(Wydawnictwo_Ciagle, Wydawnictwo_CiagleAdmin)
-
-
-class Wydawnictwo_ZwarteAdmin_Baza(CommitedModelAdmin):
-    formfield_overrides = NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW
-
-    list_display = ['tytul_oryginalny', 'wydawnictwo',
-                    'wydawnictwo_nadrzedne_col',
-                    'rok',
-                    'typ_kbn__skrot',
-                    'charakter_formalny__skrot',
-                    'liczba_znakow_wydawniczych',
-                    'ostatnio_zmieniony']
-
-    search_fields = [
-        'tytul', 'tytul_oryginalny', 'szczegoly', 'uwagi', 'informacje',
-        'slowa_kluczowe', 'rok', 'isbn', 'id',
-        'wydawnictwo', 'redakcja', 'adnotacje',
-        'liczba_znakow_wydawniczych',
-        'wydawnictwo_nadrzedne__tytul_oryginalny']
-
-    list_filter = ['status_korekty', 'afiliowana', 'recenzowana', 'typ_kbn',
-                   'charakter_formalny', 'informacja_z', 'jezyk', LiczbaZnakowFilter, 'rok']
-
-    fieldsets = (
-        ('Wydawnictwo zwarte', {
-            'fields':
-                DWA_TYTULY
-                + MODEL_ZE_SZCZEGOLAMI
-                + ('miejsce_i_rok', 'wydawnictwo',)
-                + MODEL_Z_ROKIEM
-        }),
-        EKSTRA_INFORMACJE_WYDAWNICTWO_ZWARTE_FIELDSET,
-        MODEL_TYPOWANY_FIELDSET,
-        MODEL_PUNKTOWANY_FIELDSET,
-        MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
-        POZOSTALE_MODELE_FIELDSET,
-        ADNOTACJE_Z_DATAMI_ORAZ_PBN_FIELDSET)
-
-    def wydawnictwo_nadrzedne_col(self, obj):
-        try:
-            return obj.wydawnictwo_nadrzedne.tytul_oryginalny
-        except Wydawnictwo_Zwarte.DoesNotExist:
-            return ''
-        except AttributeError:
-            return ''
-    wydawnictwo_nadrzedne_col.short_description = "Wydawnictwo nadrzędne"
-    wydawnictwo_nadrzedne_col.admin_order_field = "wydawnictwo_nadrzedne__tytul_oryginalny"
-
-class Wydawnictwo_ZwarteForm(forms.ModelForm):
-    wydawnictwo_nadrzedne = forms.ModelChoiceField(
-        required=False,
-        queryset=Wydawnictwo_Zwarte.objects.all(),
-        widget=autocomplete.ModelSelect2(
-            url='bpp:wydawnictwo-nadrzedne-autocomplete',
-            attrs=dict(style="width: 746px;")
-        )
-    )
-
-    class Meta:
-        fields = "__all__"
-
-class Wydawnictwo_ZwarteAdmin(KolumnyZeSkrotamiMixin, AdnotacjeZDatamiOrazPBNMixin, Wydawnictwo_ZwarteAdmin_Baza):
-    form = Wydawnictwo_ZwarteForm
-
-    inlines = (generuj_inline_dla_autorow(Wydawnictwo_Zwarte_Autor),)
-
-    list_filter = Wydawnictwo_ZwarteAdmin_Baza.list_filter + [CalkowitaLiczbaAutorowFilter,]
-
-    list_select_related = ['charakter_formalny', 'typ_kbn', 'wydawnictwo_nadrzedne',]
-
-    fieldsets = (
-        ('Wydawnictwo zwarte', {
-            'fields':
-                DWA_TYTULY
-                + MODEL_ZE_SZCZEGOLAMI
-                + ('wydawnictwo_nadrzedne', 'calkowita_liczba_autorow', 'miejsce_i_rok', 'wydawnictwo',)
-                + MODEL_Z_ROKIEM
-        }),
-        EKSTRA_INFORMACJE_WYDAWNICTWO_ZWARTE_FIELDSET,
-        MODEL_TYPOWANY_FIELDSET,
-        MODEL_PUNKTOWANY_FIELDSET,
-        MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
-        POZOSTALE_MODELE_WYDAWNICTWO_ZWARTE_FIELDSET,
-        ADNOTACJE_Z_DATAMI_ORAZ_PBN_FIELDSET,
-        OPENACCESS_FIELDSET)
-
-
-admin.site.register(Wydawnictwo_Zwarte, Wydawnictwo_ZwarteAdmin)
 
 DOKTORSKA_FIELDS = DWA_TYTULY \
                    + MODEL_ZE_SZCZEGOLAMI \
