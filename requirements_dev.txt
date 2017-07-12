@@ -20,7 +20,7 @@ pyflakes==0.8.1
 
 bumpversion==0.5.3
 
-ipython==3.1.0
+ipython==6.1.0
 
 mock==1.0.1
 

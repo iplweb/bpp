@@ -50,8 +50,6 @@ django-extensions==1.7.9
 
 django-htmlmin==0.10.0
 
-simplejson==3.8.0
-
 Pillow==4.0.0
 olefile==0.44
 

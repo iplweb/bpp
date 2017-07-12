@@ -13,6 +13,7 @@ from bpp.lookups import SearchQueryStartsWith
 from bpp.models import Jednostka
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
+from bpp.models.konferencja import Konferencja
 from bpp.models.patent import Patent, Patent_Autor
 from bpp.models.praca_doktorska import Praca_Doktorska
 from bpp.models.praca_habilitacyjna import Praca_Habilitacyjna
@@ -41,6 +42,15 @@ class Wydawnictwo_NadrzedneAutocomplete(autocomplete.Select2QuerySetView):
 
 class JednostkaAutocomplete(autocomplete.Select2QuerySetView):
     qset = Jednostka.objects.all()
+
+    def get_queryset(self):
+        qs = self.qset
+        if self.q:
+            qs = qs.filter(nazwa__icontains=self.q)
+        return qs
+
+class KonferencjaAutocomplete(autocomplete.Select2QuerySetView):
+    qset = Konferencja.objects.all()
 
     def get_queryset(self):
         qs = self.qset

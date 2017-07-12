@@ -7,6 +7,7 @@ from pathlib import Path
 import psycopg2.extensions
 from django.db import IntegrityError
 
+from bpp.models.konferencja import Konferencja
 from bpp.models.struktura import Uczelnia
 
 psycopg2.extensions.register_type(psycopg2.extensions.UNICODE)
@@ -755,7 +756,7 @@ def zrob_charaktery_formalne(cursor):
     cursor.execute("SELECT id, skrot, nazwa FROM pub")
 
     f = get_fixture("charakter_formalny")
-    artykul_pbn = ['ac', 'supl', 'l']
+    artykul_pbn = ['ac', 'supl', 'l', 'ap', 'az', 'api']
     ksiazka_pbn = ['ks', 'ksz', 'ksp', 'skr', 'pa']
     rozdzial_pbn = ['frg', 'roz', 'rozs', 'pa', 'rozp']
 
@@ -774,13 +775,19 @@ def zrob_charaktery_formalne(cursor):
 
         Charakter_Formalny.objects.create(
             pk=elem['id'],
-            skrot=elem['skrot'],
+            skrot=elem['skrot'].strip(),
             artykul_pbn=skrot_l in artykul_pbn,
             ksiazka_pbn=skrot_l in ksiazka_pbn,
             rozdzial_pbn=skrot_l in rozdzial_pbn,
             **kw
         )
     set_seq('bpp_charakter_formalny')
+    Charakter_Formalny.objects.create(
+        skrot='ROZS',
+        nazwa='Rozdział skryptu',
+        nazwa_w_primo='Rozdział',
+        rozdzial_pbn=True
+    )
 
 
 @transaction.atomic
@@ -788,6 +795,7 @@ def zrob_indeksy(cursor):
     zrob_jezyki(cursor=cursor)
     zrob_kbn(cursor)
     zrob_charaktery_formalne(cursor)
+
 
 def zrob_patent(bib, pgsql_conn):
     kw = zrob_baze_wydawnictwa_zwartego(bib)
@@ -904,6 +912,29 @@ def zrob_rodzaje_zrodel(cur):
         )
 
 
+def zrob_konferencje(cur):
+    Konferencja.objects.all().delete()
+    cur.execute("""
+        SELECT DISTINCT konf_nazwa, konf_od, konf_do, konf_miasto, 
+        konf_panstwo, bazy_scopus, bazy_wos, bazy_inna
+        FROM bib
+        WHERE COALESCE(konf_nazwa, '')!='' and konf_od is not null and 
+        konf_miasto is not null and konf_panstwo is not null
+                """)
+    for elem in cur.fetchall():
+        Konferencja.objects.get_or_create(
+            nazwa=elem['konf_nazwa'],
+            rozpoczecie=elem['konf_od'],
+            defaults=dict(
+                zakonczenie=elem['konf_do'],
+                miasto=elem['konf_miasto'],
+                panstwo=elem['konf_panstwo'],
+                baza_scopus=elem['bazy_scopus'] or False,
+                baza_wos=elem['bazy_wos'] or False,
+                baza_inna=elem['bazy_inna'])
+        )
+
+
 def db_connect():
     pgsql_conn = psycopg2.connect(
         database=os.getenv("BPP_DB_REBUILD_SOURCE_DB_NAME", "prace-ar"),
@@ -937,6 +968,7 @@ class Command(BaseCommand):
         parser.add_argument("--autorzy", action="store_true")
         parser.add_argument("--powiazania", action="store_true")
         parser.add_argument("--indeksy", action="store_true")
+        parser.add_argument("--konferencje", action="store_true")
 
         parser.add_argument("--korekty", action="store_true")
         parser.add_argument("--publikacje", action="store_true")
@@ -990,6 +1022,9 @@ class Command(BaseCommand):
 
         if options['indeksy']:
             zrob_indeksy(cur)
+
+        if options['konferencje']:
+            zrob_konferencje(cur)
 
         if options['zrodla']:
             zrob_rodzaje_zrodel(cur)

@@ -17,6 +17,7 @@ from bpp.models.abstract import \
     PBNSerializerHelperMixin, ModelZOpenAccess, ModelZPubmedID, ModelZDOI, ModelZeZnakamiWydawniczymi, \
     ModelZAktualizacjaDlaPBN
 from bpp.models.autor import Autor
+from bpp.models.konferencja import Konferencja
 from bpp.models.util import ZapobiegajNiewlasciwymCharakterom
 from bpp.models.util import dodaj_autora
 
@@ -113,6 +114,11 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
         blank=True, null=True, help_text="""Jeżeli dodajesz monografię, wpisz tutaj całkowitą liczbę
         autorów monografii. Ta informacja zostanie użyta w eksporcie danych do PBN."""
     )
+
+    konferencja = models.ForeignKey(
+        Konferencja,
+        blank=True,
+        null=True)
 
     def dodaj_autora(self, autor, jednostka, zapisany_jako=None,
                      typ_odpowiedzialnosci_skrot='aut.', kolejnosc=None):
