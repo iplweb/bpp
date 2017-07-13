@@ -21,12 +21,6 @@ from bpp.models.konferencja import Konferencja
 from bpp.models.util import ZapobiegajNiewlasciwymCharakterom
 from bpp.models.util import dodaj_autora
 
-ILOSC_ZNAKOW_NA_ARKUSZ = 40000.0
-
-
-def get_liczba_arkuszy_wydawniczych(liczba_znakow_wydawniczych):
-    return round(liczba_znakow_wydawniczych / ILOSC_ZNAKOW_NA_ARKUSZ, 2)
-
 
 class Wydawnictwo_Zwarte_Autor(DirtyFieldsMixin, BazaModeluOdpowiedzialnosciAutorow):
     """Model zawierający informację o przywiązaniu autorów do wydawnictwa
@@ -175,12 +169,9 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
                 publication_place.text = rok_regex.sub("", miejsce.strip()).strip()
 
     def eksport_pbn_size(self, toplevel, wydzial=None, autorzy_klass=None):
-        if self.liczba_znakow_wydawniczych:
+        if self.ma_wymiar_wydawniczy():
             size = SubElement(toplevel, 'size', unit="sheets")
-            size.text = self.liczba_arkuszy_wydawniczych()
-
-    def liczba_arkuszy_wydawniczych(self):
-        return "%.2f" % get_liczba_arkuszy_wydawniczych(self.liczba_znakow_wydawniczych)
+            size.text = self.wymiar_wydawniczy_w_arkuszach()
 
     def eksport_pbn_book(self, toplevel, wydzial, autorzy_klass=None):
         def add_wydawnictwo_nadrzedne_data(book, wydawnictwo_nadrzedne, title_text=None):

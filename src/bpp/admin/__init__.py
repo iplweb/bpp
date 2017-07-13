@@ -409,7 +409,9 @@ class Wydawnictwo_CiagleAdmin(KolumnyZeSkrotamiMixin, AdnotacjeZDatamiOrazPBNMix
     form = Wydawnictwo_Ciagle_Form
 
     list_display = ['tytul_oryginalny', 'zrodlo_col', 'rok',
-                    'typ_kbn__skrot', 'charakter_formalny__skrot', 'liczba_znakow_wydawniczych',
+                    'typ_kbn__skrot', 'charakter_formalny__skrot',
+                    'liczba_znakow_wydawniczych',
+                    'liczba_arkuszy_wydawniczych',
                     'ostatnio_zmieniony']
 
     list_select_related = ['zrodlo', 'typ_kbn', 'charakter_formalny']
@@ -418,7 +420,9 @@ class Wydawnictwo_CiagleAdmin(KolumnyZeSkrotamiMixin, AdnotacjeZDatamiOrazPBNMix
         'tytul', 'tytul_oryginalny', 'szczegoly', 'uwagi', 'informacje',
         'slowa_kluczowe', 'rok', 'id',
         'issn', 'e_issn', 'zrodlo__nazwa', 'zrodlo__skrot', 'adnotacje',
-        'liczba_znakow_wydawniczych']
+        'liczba_znakow_wydawniczych',
+        'liczba_arkuszy_wydawniczych'
+    ]
 
     list_filter = ['status_korekty', 'afiliowana', 'recenzowana', 'typ_kbn',
                    'charakter_formalny', 'jezyk', LiczbaZnakowFilter, 'rok']

@@ -16,7 +16,7 @@ from bpp.models import Charakter_Formalny, Jezyk, \
     Typ_Odpowiedzialnosci
 from bpp.models.cache import Autorzy, Rekord
 from bpp.models.system import Typ_KBN
-from bpp.models.wydawnictwo_zwarte import ILOSC_ZNAKOW_NA_ARKUSZ
+from bpp.models.abstract import ILOSC_ZNAKOW_NA_ARKUSZ
 from django.core.exceptions import ObjectDoesNotExist
 from django.http.response import HttpResponse
 from django.template import loader
@@ -502,10 +502,15 @@ def raport_common_tabela(key, base_query, jednostka=None, autor=None):
         # (Charakter formalny= AC OR L OR Supl) AND IF=0 AND PK>0 AND l. znaków> 20000
 
         return base_query.filter(
+            Q(
+                Q(liczba_znakow_wydawniczych__gte=ILOSC_ZNAKOW_NA_ARKUSZ / 2)
+                |
+                Q(liczba_arkuszy_wydawniczych__gte=Decimal("0.5"))
+            ),
             charakter_formalny__skrot__in=["AC", "L", "Supl"],
             impact_factor=0,
             punkty_kbn__gt=0,
-            liczba_znakow_wydawniczych__gte=ILOSC_ZNAKOW_NA_ARKUSZ / 2
+
         ).exclude(jezyk=Jezyk.objects.get(skrot="pol."))
 
     elif key == "1_5":

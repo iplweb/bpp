@@ -16,10 +16,43 @@ from lxml.etree import SubElement
 from bpp.fields import YearField, DOIField
 from bpp.models.util import ModelZOpisemBibliograficznym
 
+ILOSC_ZNAKOW_NA_ARKUSZ = 40000.0
+
+def get_liczba_arkuszy_wydawniczych(liczba_znakow_wydawniczych):
+    return round(liczba_znakow_wydawniczych / ILOSC_ZNAKOW_NA_ARKUSZ, 2)
+
 class ModelZeZnakamiWydawniczymi(models.Model):
     liczba_znakow_wydawniczych = models.IntegerField(
-        'Liczba znaków wydawniczych', blank=True, null=True,
+        'Liczba znaków wydawniczych',
+        blank=True,
+        null=True,
         db_index=True)
+
+    liczba_arkuszy_wydawniczych = models.DecimalField(
+        'Liczba arkuszy wydawniczych',
+        blank=True,
+        null=True,
+        decimal_places=2,
+        db_index=True,
+        max_digits=8,
+        help_text="""Liczba arkuszy wydawniczych, jeżeli wypełniona, będzie 
+        uzywana do celów eksportu danych do PBN. Jeżeli nie, to do tych 
+        celów będzie używana wartość pola 'Liczba znaków wydawniczych' 
+        podzielona przez %f z dokładnością do dwóch pól po przecinku. """ %
+                  ILOSC_ZNAKOW_NA_ARKUSZ
+    )
+
+    def ma_wymiar_wydawniczy(self):
+        return self.liczba_znakow_wydawniczych or self.liczba_arkuszy_wydawniczych
+
+    def wymiar_wydawniczy_w_arkuszach(self):
+        if self.liczba_arkuszy_wydawniczych:
+            return self.liczba_arkuszy_wydawniczych
+
+        return self.obliczona_liczba_arkuszy_wydawniczych()
+
+    def obliczona_liczba_arkuszy_wydawniczych(self):
+        return "%.2f" % get_liczba_arkuszy_wydawniczych(self.liczba_znakow_wydawniczych)
 
     class Meta:
         abstract = True
