@@ -1114,6 +1114,8 @@ class Command(BaseCommand):
 
         # Publikacje
         if options['publikacje']:
+            cur.execute("DELETE FROM b_a WHERE id = 4293")
+            cur.execute("DELETE FROM b_a WHERE id = 5511")
             zrob_publikacje(cur, pgsql_conn, options['initial_offset'],
                             options['skip'])
 
