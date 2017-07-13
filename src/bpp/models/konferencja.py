@@ -20,21 +20,29 @@ class Konferencja(ModelZNazwa, ModelZAdnotacjami):
     )
 
     rozpoczecie = models.DateField(
-        "Rozpoczęcie"
+        "Rozpoczęcie",
+        null=True,
+        blank=True
     )
 
     zakonczenie = models.DateField(
-        "Zakończenie"
+        "Zakończenie",
+        null=True,
+        blank=True
     )
 
     miasto = models.CharField(
         "Miasto",
-        max_length=100
+        max_length=100,
+        null=True,
+        blank=True
     )
 
     panstwo = models.CharField(
         "Państwo",
-        max_length=100
+        max_length=100,
+        null=True,
+        blank=True
     )
 
     baza_scopus = models.BooleanField(
