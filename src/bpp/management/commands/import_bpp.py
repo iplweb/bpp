@@ -4,6 +4,7 @@
 import os
 from collections import defaultdict
 from pathlib import Path
+from time import time
 
 import psycopg2.extensions
 from django.db import IntegrityError
@@ -53,11 +54,19 @@ def reload(self):
 
 Model.reload = reload
 
+_user_cache = None
 
 def find_user(login):
     if login is None or login == '':
         return None
-    return User.objects.get(pk=login)
+
+    global _user_cache
+
+    if _user_cache is None:
+        _user_cache = dict([
+            (x.pk, x) for x in User.objects.all()])
+
+    return _user_cache[login]
 
 
 def convert_www(s):
@@ -682,7 +691,7 @@ def zrob_wydawnictwo(kw, bib, klass, autor_klass, zakazane, docelowe,
 def zrob_wydawnictwo_ciagle(bib, skrot, pgsql_conn):
     kw = dict(
         # Wydawnictwo_Ciagle
-        zrodlo=Zrodlo.objects.get(pk=bib['new_zrodlo']),
+        zrodlo_id=bib['new_zrodlo'],
         charakter_formalny=nowy_charakter_formalny(skrot),
     )
 
@@ -710,12 +719,16 @@ def zrob_baze_wydawnictwa_zwartego(bib):
 
 
 def zrob_znaki_wydawnicze(bib, wc):
+    modified=False
     if bib['ilosc_znakow_wydawnicznych'] is not None:
         wc.liczba_znakow_wydawniczych = bib['ilosc_znakow_wydawnicznych']
-        wc.save()
+        modified=True
 
     if bib['ilosc_arkuszy_wydawniczych'] is not None:
         wc.ilosc_arkuszy_wydawniczych = bib['ilosc_arkuszy_wydawniczych']
+        modified=True
+
+    if modified:
         wc.save()
 
 def zrob_wydawnictwo_zwarte(bib, skrot, pgsql_conn):
@@ -938,7 +951,11 @@ def zrob_publikacje(cur, pgsql_conn, initial_offset, skip):
     # Charakter 21 lub 4 => praca doktorska lub habilitacyjna
     # Charakter 16 => patent
 
+    start_time = None
+    cnt = 0
     while True:
+        if start_time is None:
+            start_time = time()
         bib = cur.fetchone()
         if bib is None:
             break
@@ -959,7 +976,10 @@ def zrob_publikacje(cur, pgsql_conn, initial_offset, skip):
 
             else:
                 zrob_wydawnictwo_zwarte(bib, skrot, pgsql_conn)
+        cnt += 1
 
+        if cnt % 100 == 0:
+            print("%.2f recs/sec" % (cnt/(time()-start_time)))
         for _skip in range(skip):
             cur.fetchone()
 
@@ -1099,7 +1119,9 @@ class Command(BaseCommand):
         N-ty rekord.
         """
 
+        print("Initial cache fill")
         cache.initialize()
+        print("Cache fill done")
         pgsql_conn = db_connect()
         cur = pgsql_conn.cursor(cursor_factory=extras.DictCursor)
 
