@@ -46,7 +46,8 @@ class JednostkaAutocomplete(autocomplete.Select2QuerySetView):
     def get_queryset(self):
         qs = self.qset
         if self.q:
-            qs = qs.filter(nazwa__icontains=self.q)
+            qs = qs.filter(Q(nazwa__icontains=self.q) |
+                           Q(skrocona_nazwa__icontains=self.q))
         return qs
 
 class KonferencjaAutocomplete(autocomplete.Select2QuerySetView):

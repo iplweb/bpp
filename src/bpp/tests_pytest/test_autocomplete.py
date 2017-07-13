@@ -27,7 +27,7 @@ VALUES = [
     "\\ 123",
     "123 \\",
 ]
-AUTOCOMPLETES = ["Autor", "Jednostka"]
+AUTOCOMPLETES = ["Autor", "Jednostka", "Konferencja"]
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("autocomplete_name", AUTOCOMPLETES)

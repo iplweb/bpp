@@ -15,7 +15,8 @@ class Konferencja(ModelZNazwa, ModelZAdnotacjami):
         "Skrócona nazwa",
         max_length=250,
         null=True,
-        blank=True
+        blank=True,
+        db_index=True
     )
 
     rozpoczecie = models.DateField(
