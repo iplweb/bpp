@@ -2,6 +2,7 @@
 """Importuje bazę danych BPP z istniejącego serwera PostgreSQL"""
 
 import os
+from collections import defaultdict
 from pathlib import Path
 
 import psycopg2.extensions
@@ -36,7 +37,6 @@ from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte, \
 from bpp.models.profile import BppUser as User
 from bpp.models import Jednostka, Wydzial, Rodzaj_Zrodla, Zrodlo, Tytul, \
     Autor, Praca_Doktorska, Praca_Habilitacyjna, Patent, Patent_Autor
-from bpp.jezyk_polski import warianty_zapisanego_nazwiska
 
 from django.db.models import Model
 from django.conf import settings
@@ -152,6 +152,8 @@ class Cache:
         self.informacje_z = idx(Zrodlo_Informacji, 'nazwa')
         self.typy_odpowiedzialnosci = idx(Typ_Odpowiedzialnosci)
         self.charaktery = idx(Charakter_Formalny, 'skrot')
+        self.jednostki = idx(Jednostka)
+        self.obca_jednostka = Jednostka.objects.get(nazwa='Obca Jednostka')
 
 
 cache = Cache()
@@ -251,27 +253,50 @@ def skoryguj_wartosci_pol(bib):
         bib['jezyk'] = 5
 
 
-def wez_autorow(pk, pgsql_conn):
-    cur2 = pgsql_conn.cursor(cursor_factory=extras.DictCursor)
-    cur2.execute(
-        "SELECT id, idt_aut, idt_jed, lp, naz_zapis, typ_autora FROM b_a WHERE idt = %s" % pk)
-    ret = cur2.fetchall()
-    cur2.close()
-    return ret
+_wez_autorow_cache = None
 
+def wez_autorow(pk, pgsql_conn):
+    global _wez_autorow_cache
+
+    if _wez_autorow_cache is None:
+        _wez_autorow_cache = defaultdict(lambda: [])
+
+        print("Cache fetch")
+        cur2 = pgsql_conn.cursor(cursor_factory=extras.DictCursor)
+        cur2.execute("""
+            SELECT 
+              idt,
+              id, 
+              idt_aut, 
+              idt_jed, 
+              lp, 
+              naz_zapis, 
+              typ_autora,
+              afiliuje,
+              zatrudniony
+            FROM 
+              b_a
+              """)
+            #    """)
+            # WHERE
+            #   idt = %s
+            #   """ % pk)
+        while True:
+            elem = cur2.fetchone()
+            if elem is None:
+                break
+            _wez_autorow_cache[elem['idt']].append(elem)
+        cur2.close()
+        print("Fetch done")
+
+    return _wez_autorow_cache[pk]
 
 def zrob_autorow_dla(wc, klass, pgsql_conn):
     for row in wez_autorow(wc.pk, pgsql_conn):
         if row['idt_jed'] == 0:
             row['idt_jed'] = -1
 
-        if row['id'] == 107513:
-            a = Autor.objects.create(imiona='J.', nazwisko='Posłuszna')
-            row['idt_aut'] = a.pk
-
-        autor = Autor.objects.get(pk=row['idt_aut'])
-        wzn = list(warianty_zapisanego_nazwiska(autor.imiona, autor.nazwisko,
-                                                autor.poprzednie_nazwiska))
+        # autor = Autor.objects.get(pk=row['idt_aut'])
 
         if row['typ_autora'] == 0:
             # print "REKORD", row['id'], "TYP AUTORA= 0 *** NIE IMPORTUJE TEGO AUTORA"
@@ -280,15 +305,22 @@ def zrob_autorow_dla(wc, klass, pgsql_conn):
             row['typ_autora'] = 1
 
         typ = cache.typy_odpowiedzialnosci[row['typ_autora']]
+        jednostka = cache.jednostki[row['idt_jed']]
+        zatrudniony = row['zatrudniony'] or False
+
+        if not row['afiliuje']:
+            jednostka = cache.obca_jednostka
+            zatrudniony = False
 
         try:
             klass.objects.create(
                 rekord=wc,
-                autor=autor,
-                jednostka=Jednostka.objects.get(pk=row['idt_jed']),
+                autor_id=row['idt_aut'],
+                jednostka=jednostka,
                 kolejnosc=row['lp'],
                 zapisany_jako=row['naz_zapis'],
-                typ_odpowiedzialnosci=typ
+                typ_odpowiedzialnosci=typ,
+                zatrudniony=zatrudniony
             )
         except IntegrityError as e:
             print("ERROR dla pracy %r, row=%r" % (wc, row))
@@ -996,8 +1028,7 @@ def zrob_konferencje(cur):
           bazy_wos, 
           bazy_inna
         FROM bib
-        WHERE COALESCE(konf_nazwa, '')!='' and konf_od is not null and 
-        konf_miasto is not null and konf_panstwo is not null
+        WHERE COALESCE(konf_nazwa, '')!=''
                 """)
     for elem in cur.fetchall():
         Konferencja.objects.get_or_create(
@@ -1114,8 +1145,9 @@ class Command(BaseCommand):
 
         # Publikacje
         if options['publikacje']:
-            cur.execute("DELETE FROM b_a WHERE id = 4293")
-            cur.execute("DELETE FROM b_a WHERE id = 5511")
+            # Podwójne wpisy
+            cur.execute("DELETE FROM b_a WHERE id  IN (4293, 5511, 13043)")
+
             zrob_publikacje(cur, pgsql_conn, options['initial_offset'],
                             options['skip'])
 
