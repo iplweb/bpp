@@ -127,7 +127,7 @@ def szczegoly_i_inne(dct, kw, zrodlowe_pole_dla_informacji):
         rok=dct['rok_publikacji'],
 
         # ModelZWWW
-        www=convert_www(dct['www']),
+        www=convert_www(dct['www_old']),
     )
 
     if zrodlowe_pole_dla_informacji is not None:
@@ -204,6 +204,13 @@ def dwa_tytuly(dct, kw):
         tytul_oryginalny=dct['tytul_or'],
         tytul=dct['title'],
     ))
+
+def doi(dct, kw):
+    kw.update(
+        dict(
+            doi=dct['doi']
+        )
+    )
 
 
 def poprzestawiaj_wartosci_pol(bib, zakazane, docelowe):
@@ -598,7 +605,15 @@ def zrob_powiazania(cur, initial_offset, skip):
         for _skip in range(skip):
             cur.fetchone()
 
+def openaccess(bib, kw):
+    kw.update(dict(
+        openaccess_czas_publikacji_id=bib['oa_data'],
+        openaccess_licencja_id=bib['oa_licencja'],
+        openaccess_tryb_dostepu_id=bib['oa_sposob'],
+        openaccess_wersja_tekstu_id=bib['oa_wersja'],
+        public_www=bib['oa_link'],
 
+    ))
 def zrob_import_z_tabeli(kw, bib, zakazane, docelowe,
                          zrodlowe_pole_dla_informacji):
     # Tych pól wydawnictwo ma nie mieć
@@ -610,6 +625,8 @@ def zrob_import_z_tabeli(kw, bib, zakazane, docelowe,
     dwa_tytuly(bib, kw)
     szczegoly_i_inne(bib, kw, zrodlowe_pole_dla_informacji)
     jezyki_statusy(bib, kw)
+    doi(bib, kw)
+    openaccess(bib, kw)
 
 
 def zrob_wydawnictwo(kw, bib, klass, autor_klass, zakazane, docelowe,
@@ -644,6 +661,8 @@ def zrob_wydawnictwo_ciagle(bib, skrot, pgsql_conn):
                          docelowe='uwagi', pgsql_conn=pgsql_conn,
                          zrodlowe_pole_dla_informacji='new_zrodlo_src')
 
+    zrob_znaki_wydawnicze(bib, w)
+
     # admin_log_history(w, bib)
 
 
@@ -658,6 +677,15 @@ def zrob_baze_wydawnictwa_zwartego(bib):
     return kw
 
 
+def zrob_znaki_wydawnicze(bib, wc):
+    if bib['ilosc_znakow_wydawnicznych'] is not None:
+        wc.liczba_znakow_wydawniczych = bib['ilosc_znakow_wydawnicznych']
+        wc.save()
+
+    if bib['ilosc_arkuszy_wydawniczych'] is not None:
+        wc.ilosc_arkuszy_wydawniczych = bib['ilosc_arkuszy_wydawniczych']
+        wc.save()
+
 def zrob_wydawnictwo_zwarte(bib, skrot, pgsql_conn):
     kw = zrob_baze_wydawnictwa_zwartego(bib)
     kw['charakter_formalny'] = nowy_charakter_formalny(skrot)
@@ -669,11 +697,7 @@ def zrob_wydawnictwo_zwarte(bib, skrot, pgsql_conn):
                           docelowe='uwagi', pgsql_conn=pgsql_conn,
                           zrodlowe_pole_dla_informacji=None)
 
-    if bib['ilosc_znakow_wydawnicznych'] is not None:
-        wc.liczba_znakow_wydawniczych = bib['ilosc_znakow_wydawnicznych']
-        wc.save()
-
-        # admin_log_history(wc, bib)
+    zrob_znaki_wydawnicze(bib, wc)
 
 
 def zrob_doktorat_lub_habilitacje(bib, pgsql_conn):
@@ -825,13 +849,59 @@ def zrob_publikacje(cur, pgsql_conn, initial_offset, skip):
                 Praca_Habilitacyjna]:
         obj.objects.all().delete()
 
-    cur.execute("""SELECT id, tytul_or, title, zrodlo, szczegoly, uwagi,
-        charakter, impact, redakcja, status, rok, rok_publikacji, edited_by,
-        kbn, afiliowana, recenzowana, jezyk, pk, created_on, last_access,
-        created_by, edited_by, new_zrodlo, new_zrodlo_src, mceirok,
-        wydawnictwo, slowa_kluczowe, www, ind_cop, pkt_wewn,
-        auto_pk, isbn, nr_zeszytu, info_src, kc_impact, kc_pk, kc_ind_cop,
-        weryfikacja_punktacji, ilosc_znakow_wydawnicznych FROM bib ORDER BY id OFFSET %s""" % initial_offset)
+    cur.execute("""SELECT 
+          id, 
+          tytul_or, 
+          title, 
+          zrodlo, 
+          szczegoly, 
+          uwagi,
+          charakter, 
+          impact, 
+          redakcja, 
+          status, 
+          rok, 
+          rok_publikacji, 
+          edited_by,
+          kbn, 
+          afiliowana, 
+          recenzowana, 
+          jezyk, 
+          pk, 
+          created_on, 
+          last_access,
+          created_by, 
+          edited_by, 
+          new_zrodlo, 
+          new_zrodlo_src, 
+          mceirok,
+          wydawnictwo, 
+          slowa_kluczowe, 
+          www_old, 
+          ind_cop, 
+          pkt_wewn,
+          auto_pk, 
+          isbn, 
+          nr_zeszytu, 
+          NULL AS info_src, 
+          impact AS kc_impact, 
+          pk AS kc_pk, 
+          ind_cop AS kc_ind_cop,
+          NULL AS weryfikacja_punktacji, 
+          NULL AS ilosc_znakow_wydawnicznych,
+          arkusze AS ilosc_arkuszy_wydawniczych,
+          
+          doi,
+          
+          oa_sposob,
+          oa_licencja,
+          oa_wersja, 
+          oa_data,
+          oa_link
+          
+      FROM 
+        bib 
+      ORDER BY id OFFSET %s""" % initial_offset)
 
     # Charakter 21 lub 4 => praca doktorska lub habilitacyjna
     # Charakter 16 => patent
@@ -915,8 +985,16 @@ def zrob_rodzaje_zrodel(cur):
 def zrob_konferencje(cur):
     Konferencja.objects.all().delete()
     cur.execute("""
-        SELECT DISTINCT konf_nazwa, konf_od, konf_do, konf_miasto, 
-        konf_panstwo, bazy_scopus, bazy_wos, bazy_inna
+        SELECT DISTINCT 
+          konf_nazwa, 
+          konf_nazwa2, 
+          konf_od, 
+          konf_do, 
+          konf_miasto, 
+          konf_panstwo, 
+          bazy_scopus, 
+          bazy_wos, 
+          bazy_inna
         FROM bib
         WHERE COALESCE(konf_nazwa, '')!='' and konf_od is not null and 
         konf_miasto is not null and konf_panstwo is not null
@@ -926,6 +1004,7 @@ def zrob_konferencje(cur):
             nazwa=elem['konf_nazwa'],
             rozpoczecie=elem['konf_od'],
             defaults=dict(
+                skrocona_nazwa=elem['konf_nazwa2'],
                 zakonczenie=elem['konf_do'],
                 miasto=elem['konf_miasto'],
                 panstwo=elem['konf_panstwo'],
