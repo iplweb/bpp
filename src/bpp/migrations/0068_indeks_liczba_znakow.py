@@ -13,5 +13,5 @@ class Migration(migrations.Migration):
 
     operations = [
         RunSQL("CREATE INDEX bpp_rekord_mat_liczba_znakow_wydawniczych ON bpp_rekord_mat(liczba_znakow_wydawniczych)",
-                "DROP INDEX IF EXISTS bpp_rekord_mat")
+                "DROP INDEX IF EXISTS bpp_rekord_mat_liczba_znakow_wydawniczych")
     ]
