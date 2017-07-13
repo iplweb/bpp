@@ -18,13 +18,15 @@ from django.db.models.signals import post_save, post_delete, pre_save, \
 from django.utils import six
 from filtered_contenttypes.fields import FilteredGenericForeignKey
 
+from bpp.admin.helpers import MODEL_Z_LICZBA_ZNAKOW_WYDAWNICZYCH
 from bpp.models import Patent, \
     Praca_Doktorska, Praca_Habilitacyjna, \
     Typ_Odpowiedzialnosci, Wydawnictwo_Zwarte, \
     Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor, \
     Patent_Autor, Zrodlo
 from bpp.models.abstract import ModelPunktowanyBaza, \
-    ModelZRokiem, ModelZeSzczegolami, ModelAfiliowanyRecenzowany
+    ModelZRokiem, ModelZeSzczegolami, ModelAfiliowanyRecenzowany, \
+    ModelZeZnakamiWydawniczymi
 from bpp.models.system import Charakter_Formalny, Jezyk
 from bpp.models.util import ModelZOpisemBibliograficznym
 from bpp.util import FulltextSearchMixin
@@ -306,6 +308,7 @@ class RekordManager(FulltextSearchMixin, models.Manager):
 @six.python_2_unicode_compatible
 class Rekord(ModelPunktowanyBaza, ModelZOpisemBibliograficznym,
              ModelZRokiem, ModelZeSzczegolami, ModelAfiliowanyRecenzowany,
+             ModelZeZnakamiWydawniczymi,
              models.Model):
     # XXX TODO: gdy będą compound keys w Django, można pozbyć się fake_id
     fake_id = models.TextField(primary_key=True)
@@ -330,8 +333,6 @@ class Rekord(ModelPunktowanyBaza, ModelZOpisemBibliograficznym,
     ostatnio_zmieniony = models.DateTimeField()
 
     tytul_oryginalny_sort = models.TextField()
-
-    liczba_znakow_wydawniczych = models.IntegerField()
 
     # nie dziedziczymy z ModelZWWW, poniewaz tam jest pole dostep_dnia,
     # ktore to obecnie nie jest potrzebne w Cache, wiec:
