@@ -18,7 +18,7 @@ SYSTEM_MENU = [
     ('Języki', '/admin/bpp/jezyk/'),
 
     ('OpenAccess: wydawnictwa ciągłe', '/admin/bpp/tryb_openaccess_wydawnictwo_ciagle'),
-    ('OpenAccess: wydawnictwa zwarte', '/admin/bpp/tryb_openaccess_wydawnictwo_ciagle'),
+    ('OpenAccess: wydawnictwa zwarte', '/admin/bpp/tryb_openaccess_wydawnictwo_zwarte'),
     ('OpenAccess: czas udostępnienia', '/admin/bpp/czas_udostepnienia_openaccess'),
     ('OpenAccess: licencja', '/admin/bpp/licencja_openaccess'),
     ('OpenAccess: wersja tekstu', '/admin/bpp/wersja_tekstu_openaccess'),
