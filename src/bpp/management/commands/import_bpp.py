@@ -157,9 +157,9 @@ class Cache:
 cache = Cache()
 
 NOWE_CHARAKTERY_MAPPING = {
-    "AP": "AC",
-    "API": "AC",
-    "AZ": "AC",
+    # "AP": "AC",
+    # "API": "AC",
+    # "AZ": "AC",
     "PRI": "PRZ",
     "PSI": "PSZ",
     "S": None,
@@ -188,7 +188,7 @@ def jezyki_statusy(dct, kw):
     kw.update(dict(
         # ModelTypowany
         jezyk=cache.jezyki[dct['jezyk']],
-        typ_kbn=cache.typy_kbn.get(dct['kbn'], cache.typy_kbn[3]),
+        typ_kbn=cache.typy_kbn.get(dct['kbn'], cache.typy_kbn[12]),
 
         # ModelZeStatusem
         status_korekty=cache.statusy_korekty[int(dct['status'])],
@@ -887,7 +887,7 @@ def zrob_publikacje(cur, pgsql_conn, initial_offset, skip):
           impact AS kc_impact, 
           pk AS kc_pk, 
           ind_cop AS kc_ind_cop,
-          NULL AS weryfikacja_punktacji, 
+          false AS weryfikacja_punktacji, 
           NULL AS ilosc_znakow_wydawnicznych,
           arkusze AS ilosc_arkuszy_wydawniczych,
           
