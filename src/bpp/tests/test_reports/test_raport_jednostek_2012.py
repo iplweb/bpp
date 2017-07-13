@@ -5,7 +5,7 @@ from django.test import TestCase
 from bpp.models import cache
 from bpp.models.cache import with_cache
 from bpp.models.system import Charakter_Formalny, Jezyk, Typ_KBN
-from bpp.models.wydawnictwo_zwarte import ILOSC_ZNAKOW_NA_ARKUSZ
+from bpp.models.abstract import ILOSC_ZNAKOW_NA_ARKUSZ
 from bpp.tests.util import any_jednostka, any_autor, any_ciagle, CURRENT_YEAR, any_zwarte
 from bpp.views.raporty import get_base_query_jednostka, raport_jednostek_tabela
 
