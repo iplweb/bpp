@@ -162,7 +162,10 @@ class Cache:
         self.typy_odpowiedzialnosci = idx(Typ_Odpowiedzialnosci)
         self.charaktery = idx(Charakter_Formalny, 'skrot')
         self.jednostki = idx(Jednostka)
-        self.obca_jednostka = Jednostka.objects.get(nazwa='Obca Jednostka')
+        try:
+            self.obca_jednostka = Jednostka.objects.get(nazwa='Obca Jednostka')
+        except Jednostka.DoesNotExist:
+            pass
 
 
 cache = Cache()
@@ -889,11 +892,6 @@ def zrob_publikacje(cur, pgsql_conn, initial_offset, skip):
     cur.execute("SELECT * FROM pub")
     charakter = dict([(x['id'], x) for x in cur.fetchall()])
 
-    for obj in [Wydawnictwo_Zwarte, Wydawnictwo_Ciagle, Patent,
-                Praca_Doktorska,
-                Praca_Habilitacyjna]:
-        obj.objects.all().delete()
-
     cur.execute("""SELECT 
           id, 
           tytul_or, 
@@ -1086,6 +1084,7 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("--uzytkownicy", action="store_true")
 
+        parser.add_argument("--wyczysc", action="store_true")
         parser.add_argument("--uczelnia", action="store_true")
         parser.add_argument("--nazwa-uczelni", action="store", type=str)
         parser.add_argument("--nazwa-uczelni-skrot", action="store", type=str)
@@ -1165,11 +1164,51 @@ class Command(BaseCommand):
             zrob_zrodla(cur, options['initial_offset'], options['skip'])
             set_seq("bpp_zrodlo")
 
+        if options['wyczysc']:
+            # CZyszczenie tabeli b_a
+            # Podwójne wpisy
+
+            cur.execute("""
+              DELETE FROM b_a WHERE id  IN (
+                4293, 5511, 13043, 33814, 36048,
+                41380, 36049, 64894             
+              )
+              """)
+
+            for obj in [Wydawnictwo_Zwarte, Wydawnictwo_Ciagle, Patent,
+                        Praca_Doktorska,
+                        Praca_Habilitacyjna]:
+                obj.objects.all().delete()
+
+                # cur.execute(
+            #     """
+            #     SELECT
+            #         idt, idt_aut, typ_autora
+            #     FROM
+            #         b_a
+            #     WHERE (idt, idt_aut)
+            #     IN (
+            #         SELECT
+            #             idt, idt_aut
+            #         FROM
+            #             b_a
+            #         GROUP BY
+            #             idt,
+            #             idt_aut
+            #         HAVING
+            #             count(*) > 1)
+            #     ORDER BY
+            #         idt,
+            #         idt_aut,
+            #         lp
+            #         """)
+            #
+            # poprzedni_autor = None
+            # poprzedni_typ = None
+            # while True:
+
         # Publikacje
         if options['publikacje']:
-            # Podwójne wpisy
-            cur.execute("DELETE FROM b_a WHERE id  IN (4293, 5511, 13043)")
-
             zrob_publikacje(cur, pgsql_conn, options['initial_offset'],
                             options['skip'])
 
