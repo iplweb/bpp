@@ -332,7 +332,7 @@ def zrob_autorow_dla(wc, klass, pgsql_conn):
         typ = cache.typy_odpowiedzialnosci[row['typ_autora']]
         jednostka = cache.jednostki[row['idt_jed']]
         zatrudniony = row['zatrudniony'] or False
-        afiliuje = row['afiliuje']
+        afiliuje = row['afiliuje'] or False
 
         try:
             klass.objects.create(
