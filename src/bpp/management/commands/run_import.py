@@ -50,14 +50,14 @@ class Command(BaseCommand):
                 for elem in proc:
                     elem.wait()
 
-        # proc = []
-        # for n in range(cpus):
-        #     ret = subprocess.Popen(
-        #         [sys.executable, 'manage.py', 'rebuild_cache',
-        #          '--initial-offset=%s' % n,
-        #          '--skip=%s' % (cpus-1),
-        #          '--traceback'])
-        #     proc.append(ret)
-        #
-        # for elem in proc:
-        #     elem.wait()
+        proc = []
+        for n in range(cpus):
+            ret = subprocess.Popen(
+                [sys.executable, sys.argv[0], 'rebuild_cache',
+                 '--initial-offset=%s' % n,
+                 '--skip=%s' % (cpus-1),
+                 '--traceback'])
+            proc.append(ret)
+
+        for elem in proc:
+            elem.wait()
