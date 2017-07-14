@@ -326,8 +326,6 @@ def zrob_autorow_dla(wc, klass, pgsql_conn):
         # autor = Autor.objects.get(pk=row['idt_aut'])
 
         if row['typ_autora'] == 0:
-            # print "REKORD", row['id'], "TYP AUTORA= 0 *** NIE IMPORTUJE TEGO AUTORA"
-            # continue
             print("REKORD", row['id'], "TYP AUTORA == 0 USTAWIAM NA 1")
             row['typ_autora'] = 1
 
