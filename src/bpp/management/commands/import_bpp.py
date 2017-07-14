@@ -223,7 +223,7 @@ def fix_tags(s):
         return s
     s = "<foo>%s</foo>" % s
     s = lxml.html.fromstring(s)
-    s = lxml.etree.tostring(s)
+    s = lxml.etree.tostring(s, encoding="unicode")
     s = s[5:-6]
     return s
 
