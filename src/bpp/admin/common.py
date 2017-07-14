@@ -112,9 +112,12 @@ def generuj_inline_dla_autorow(baseModel):
             js = ["/static/bpp/js/autorform_dependant.js"]
 
         class Meta:
-            fields = ["autor", "jednostka", "typ_odpowiedzialnosci",
+            fields = ["autor", "jednostka",
+                      "typ_odpowiedzialnosci",
                       "zapisany_jako",
-                      "zatrudniony", "kolejnosc"]
+                      "afiliuje",
+                      "zatrudniony",
+                      "kolejnosc"]
             model = baseModel
             widgets = {
                 'kolejnosc': HiddenInput

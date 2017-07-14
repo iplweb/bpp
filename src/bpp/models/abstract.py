@@ -29,7 +29,7 @@ class ModelZeZnakamiWydawniczymi(models.Model):
         db_index=True)
 
     def ma_wymiar_wydawniczy(self):
-        return self.liczba_znakow_wydawniczych
+        return self.liczba_znakow_wydawniczych is not None
 
     def wymiar_wydawniczy_w_arkuszach(self):
         return "%.2f" % get_liczba_arkuszy_wydawniczych(self.liczba_znakow_wydawniczych)
@@ -284,7 +284,10 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
     typ_odpowiedzialnosci = models.ForeignKey('Typ_Odpowiedzialnosci',
                                               verbose_name="Typ odpowiedzialności")
     zapisany_jako = models.CharField(max_length=512)
-    zatrudniony = models.BooleanField(default=False, help_text="""Pracownik jednostki podanej w afiliacji""")
+    afiliuje = models.BooleanField(default=True, help_text="""Afiliuje 
+    się do jednostki podanej w przypisaniu""")
+    zatrudniony = models.BooleanField(default=False, help_text="""Pracownik 
+    jednostki podanej w przypisaniu""")
 
     class Meta:
         abstract = True
