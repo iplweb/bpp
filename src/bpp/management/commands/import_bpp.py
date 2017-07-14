@@ -3,6 +3,7 @@
 
 import os
 import sys
+import lxml.html
 import traceback
 from collections import defaultdict
 from pathlib import Path
@@ -217,11 +218,20 @@ def jezyki_statusy(dct, kw):
     ))
 
 
+def fix_tags(s):
+    if s is None or not s:
+        return s
+    s = "<foo>%s</foo>" % s
+    s = lxml.html.fromstring(s)
+    s = lxml.etree.tostring(s)
+    s = s[5:-6]
+    return s
+
 def dwa_tytuly(dct, kw):
     kw.update(dict(
         # ModelZTytulem
-        tytul_oryginalny=dct['tytul_or'],
-        tytul=dct['title'],
+        tytul_oryginalny=fix_tags(dct['tytul_or']),
+        tytul=fix_tags(dct['title']),
     ))
 
 def doi(dct, kw):
@@ -324,10 +334,7 @@ def zrob_autorow_dla(wc, klass, pgsql_conn):
         typ = cache.typy_odpowiedzialnosci[row['typ_autora']]
         jednostka = cache.jednostki[row['idt_jed']]
         zatrudniony = row['zatrudniony'] or False
-
-        if not row['afiliuje']:
-            jednostka = cache.obca_jednostka
-            zatrudniony = False
+        afiliuje = row['afiliuje']
 
         try:
             klass.objects.create(
@@ -337,6 +344,7 @@ def zrob_autorow_dla(wc, klass, pgsql_conn):
                 kolejnosc=row['lp'],
                 zapisany_jako=row['naz_zapis'],
                 typ_odpowiedzialnosci=typ,
+                afiliuje=afiliuje,
                 zatrudniony=zatrudniony
             )
         except IntegrityError as e:
@@ -984,8 +992,7 @@ def zrob_publikacje(cur, pgsql_conn, initial_offset, skip):
                 else:
                     zrob_wydawnictwo_zwarte(bib, skrot, pgsql_conn)
         except:
-            import traceback
-            print("REKORD: %i" % bib['id'])
+            print("*** BLAD REKORD: %i" % bib['id'])
             traceback.print_exc(file=sys.stdout)
 
         # cnt += 1
@@ -1221,14 +1228,19 @@ class Command(BaseCommand):
 
         # Publikacje
         if options['publikacje']:
-            zrob_publikacje(cur, pgsql_conn, options['initial_offset'],
-                            options['skip'])
-
-            set_seq("bpp_wydawnictwo_ciagle")
-            set_seq("bpp_wydawnictwo_zwarte")
-            set_seq("bpp_patent")
-            set_seq("bpp_praca_doktorska")
-            set_seq("bpp_praca_habilitacyjna")
+            try:
+                zrob_publikacje(
+                    cur,
+                    pgsql_conn,
+                    options['initial_offset'],
+                    options['skip']
+                )
+            finally:
+                set_seq("bpp_wydawnictwo_ciagle")
+                set_seq("bpp_wydawnictwo_zwarte")
+                set_seq("bpp_patent")
+                set_seq("bpp_praca_doktorska")
+                set_seq("bpp_praca_habilitacyjna")
 
         if options['clusters']:
             make_clusters()
