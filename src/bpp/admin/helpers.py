@@ -103,7 +103,6 @@ MODEL_Z_INFORMACJA_Z = (
 
 MODEL_Z_LICZBA_ZNAKOW_WYDAWNICZYCH = (
     'liczba_znakow_wydawniczych',
-    'liczba_arkuszy_wydawniczych'
 )
 
 MODEL_ZE_STATUSEM = (

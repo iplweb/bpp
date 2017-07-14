@@ -17,16 +17,16 @@ def test_serializuj_pbn_zwarte(wydawnictwo_zwarte_z_autorem, wydzial):
 @pytest.mark.django_db
 def test_liczba_arkuszy_wydawniczych(wydawnictwo_zwarte_z_autorem):
     wydawnictwo_zwarte_z_autorem.liczba_znakow_wydawniczych = 41000
-    assert wydawnictwo_zwarte_z_autorem.liczba_arkuszy_wydawniczych() == "1.02"
+    assert wydawnictwo_zwarte_z_autorem.wymiar_wydawniczy_w_arkuszach() == "1.02"
 
     wydawnictwo_zwarte_z_autorem.liczba_znakow_wydawniczych = 39000
-    assert wydawnictwo_zwarte_z_autorem.liczba_arkuszy_wydawniczych() == "0.97"
+    assert wydawnictwo_zwarte_z_autorem.wymiar_wydawniczy_w_arkuszach() == "0.97"
 
     wydawnictwo_zwarte_z_autorem.liczba_znakow_wydawniczych = 60000
-    assert wydawnictwo_zwarte_z_autorem.liczba_arkuszy_wydawniczych() == "1.50"
+    assert wydawnictwo_zwarte_z_autorem.wymiar_wydawniczy_w_arkuszach() == "1.50"
 
     wydawnictwo_zwarte_z_autorem.liczba_znakow_wydawniczych = 20000
-    assert wydawnictwo_zwarte_z_autorem.liczba_arkuszy_wydawniczych() == "0.50"
+    assert wydawnictwo_zwarte_z_autorem.wymiar_wydawniczy_w_arkuszach() == "0.50"
 
 
 @pytest.mark.django_db

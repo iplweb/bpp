@@ -25,7 +25,6 @@ class Wydawnictwo_ZwarteAdmin_Baza(CommitedModelAdmin):
                     'typ_kbn__skrot',
                     'charakter_formalny__skrot',
                     'liczba_znakow_wydawniczych',
-                    'liczba_arkuszy_wydawniczych',
                     'ostatnio_zmieniony']
 
     search_fields = [
@@ -36,7 +35,6 @@ class Wydawnictwo_ZwarteAdmin_Baza(CommitedModelAdmin):
         'wydawnictwo_nadrzedne__tytul_oryginalny',
         'konferencja__nazwa',
         'liczba_znakow_wydawniczych',
-        'liczba_arkuszy_wydawniczych'
     ]
 
     list_filter = ['status_korekty', 'afiliowana', 'recenzowana', 'typ_kbn',

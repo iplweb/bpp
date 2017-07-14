@@ -502,11 +502,7 @@ def raport_common_tabela(key, base_query, jednostka=None, autor=None):
         # (Charakter formalny= AC OR L OR Supl) AND IF=0 AND PK>0 AND l. znaków> 20000
 
         return base_query.filter(
-            Q(
-                Q(liczba_znakow_wydawniczych__gte=ILOSC_ZNAKOW_NA_ARKUSZ / 2)
-                |
-                Q(liczba_arkuszy_wydawniczych__gte=Decimal("0.5"))
-            ),
+            liczba_znakow_wydawniczych__gte=ILOSC_ZNAKOW_NA_ARKUSZ / 2,
             charakter_formalny__skrot__in=["AC", "L", "Supl"],
             impact_factor=0,
             punkty_kbn__gt=0,

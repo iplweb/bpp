@@ -11,6 +11,7 @@ from time import time
 import psycopg2.extensions
 from django.db import IntegrityError
 
+from bpp.models.abstract import ILOSC_ZNAKOW_NA_ARKUSZ
 from bpp.models.konferencja import Konferencja
 from bpp.models.struktura import Uczelnia
 
@@ -733,7 +734,7 @@ def zrob_znaki_wydawnicze(bib, wc):
         modified=True
 
     if bib['ilosc_arkuszy_wydawniczych'] is not None:
-        wc.ilosc_arkuszy_wydawniczych = bib['ilosc_arkuszy_wydawniczych']
+        wc.ilosc_znakow_wydawniczych = bib['ilosc_arkuszy_wydawniczych'] * ILOSC_ZNAKOW_NA_ARKUSZ
         modified=True
 
     if modified:
@@ -965,11 +966,11 @@ def zrob_publikacje(cur, pgsql_conn, initial_offset, skip):
         if bib is None:
             break
 
-        skrot = charakter.get(bib['charakter'])['skrot'].strip()
-        if skrot == 'T\xc5\x81':
-            skrot = 'TŁ'
-
         try:
+            skrot = charakter.get(bib['charakter'])['skrot'].strip()
+            if skrot == 'T\xc5\x81':
+                skrot = 'TŁ'
+
             if bib['new_zrodlo']:
                 zrob_wydawnictwo_ciagle(bib, skrot, pgsql_conn)
             else:

@@ -26,27 +26,21 @@ class AbstractModelsTestCase(TestCase):
     def test_ModelZeZnakamiWydawniczymi(self):
         x = ModelZeZnakamiWydawniczymi()
 
-        x.liczba_arkuszy_wydawniczych = None
         x.liczba_znakow_wydawniczych = None
         self.assert_(not x.ma_wymiar_wydawniczy())
 
         x.liczba_znakow_wydawniczych = 5
-        x.liczba_arkuszy_wydawniczych = None
         self.assertTrue(x.ma_wymiar_wydawniczy())
 
         x.liczba_znakow_wydawniczych = None
-        x.liczba_arkuszy_wydawniczych = 5
         self.assertTrue(x.ma_wymiar_wydawniczy())
 
         x.liczba_znakow_wydawniczych = 5
-        x.liczba_arkuszy_wydawniczych = 5
         self.assertTrue(x.ma_wymiar_wydawniczy())
 
         x.liczba_znakow_wydawniczych = ILOSC_ZNAKOW_NA_ARKUSZ
-        x.liczba_arkuszy_wydawniczych = 15
         self.assertEquals(x.wymiar_wydawniczy_w_arkuszach(), 15)
 
-        x.liczba_arkuszy_wydawniczych = None
         x.liczba_znakow_wydawniczych = ILOSC_ZNAKOW_NA_ARKUSZ * 2.5
         self.assertEquals(x.wymiar_wydawniczy_w_arkuszach(), "2.50")
 

@@ -28,30 +28,10 @@ class ModelZeZnakamiWydawniczymi(models.Model):
         null=True,
         db_index=True)
 
-    liczba_arkuszy_wydawniczych = models.DecimalField(
-        'Liczba arkuszy wydawniczych',
-        blank=True,
-        null=True,
-        decimal_places=2,
-        db_index=True,
-        max_digits=8,
-        help_text="""Liczba arkuszy wydawniczych, jeżeli wypełniona, będzie 
-        uzywana do celów eksportu danych do PBN. Jeżeli nie, to do tych 
-        celów będzie używana wartość pola 'Liczba znaków wydawniczych' 
-        podzielona przez %f z dokładnością do dwóch pól po przecinku. """ %
-                  ILOSC_ZNAKOW_NA_ARKUSZ
-    )
-
     def ma_wymiar_wydawniczy(self):
-        return self.liczba_znakow_wydawniczych or self.liczba_arkuszy_wydawniczych
+        return self.liczba_znakow_wydawniczych
 
     def wymiar_wydawniczy_w_arkuszach(self):
-        if self.liczba_arkuszy_wydawniczych:
-            return self.liczba_arkuszy_wydawniczych
-
-        return self.obliczona_liczba_arkuszy_wydawniczych()
-
-    def obliczona_liczba_arkuszy_wydawniczych(self):
         return "%.2f" % get_liczba_arkuszy_wydawniczych(self.liczba_znakow_wydawniczych)
 
     class Meta:
