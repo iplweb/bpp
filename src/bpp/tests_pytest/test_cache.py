@@ -290,6 +290,5 @@ def test_defer_zaktualizuj_opis_task(settings):
     w.tytul_oryginalny = "foobar"
     w.save()
 
-    ctype = ContentType.objects.get_for_model(w)
-    zaktualizuj_opis(ctype.pk, w.pk, called_by="tests")
+    zaktualizuj_opis('bpp', 'wydawnictwo_ciagle', w.pk, called_by="tests")
 

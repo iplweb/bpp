@@ -65,10 +65,13 @@ def defer_zaktualizuj_opis(instance, *args, **kw):
             # models.util.ModelZOpisemBibliograficznym.zaktualizuj_opis
             return
 
-    called_by = "INSTANCE: %r" % instance
-    called_by += "|".join(traceback.format_stack())
-    pk = ContentType.objects.get_for_model(instance).pk
-    zaktualizuj_opis.delay(ctype_pk=pk, pk=instance.pk, called_by=called_by)
+    called_by = "X".join(traceback.format_stack())
+
+    zaktualizuj_opis.delay(
+        app_label=instance._meta.app_label,
+        model_name=instance._meta.model_name,
+        pk=instance.pk,
+        called_by=called_by)
 
 
 def defer_zaktualizuj_opis_rekordu(instance, *args, **kw):

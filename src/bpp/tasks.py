@@ -61,8 +61,8 @@ def my_limit(fun):
         task_limits[fun] = fun.apply_async(countdown=settings.MAT_VIEW_REFRESH_COUNTDOWN)
 
 @app.task(ignore_result=True)
-def zaktualizuj_opis(ctype_pk, pk, called_by=""):
-    ctype = ContentType.objects.get_for_id(ctype_pk)
+def zaktualizuj_opis(app_label, model_name, pk, called_by=""):
+    ctype = ContentType.objects.get_by_natural_key(app_label, model_name)
     klass = ctype.model_class()
     obj = wait_for_object(klass, pk, called_by=called_by)
     obj.zaktualizuj_cache(tylko_opis=True)
