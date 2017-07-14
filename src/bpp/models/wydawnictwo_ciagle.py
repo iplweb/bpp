@@ -2,10 +2,8 @@
 import re
 
 from dirtyfields.dirtyfields import DirtyFieldsMixin
-
 from django.db import models
 from django.db.models.signals import post_delete
-from django.db.utils import DEFAULT_DB_ALIAS
 from django.utils import timezone
 from lxml.etree import SubElement, Element
 from secure_input.utils import safe_html
@@ -16,7 +14,8 @@ from bpp.models.abstract import BazaModeluOdpowiedzialnosciAutorow, DwaTytuly, \
     ModelZeSzczegolami, ModelZInformacjaZ, ModelZeStatusem, ModelZISSN, \
     ModelZAdnotacjami, ModelZCharakterem, Wydawnictwo_Baza, \
     PBNSerializerHelperMixin, ModelZOpenAccess, ModelZPubmedID, \
-    ModelZDOI, ModelZeZnakamiWydawniczymi, ModelZAktualizacjaDlaPBN
+    ModelZDOI, ModelZeZnakamiWydawniczymi, ModelZAktualizacjaDlaPBN, \
+    parse_informacje
 from bpp.models.util import dodaj_autora, ZapobiegajNiewlasciwymCharakterom
 
 
@@ -61,13 +60,6 @@ class ModelZOpenAccessWydawnictwoCiagle(ModelZOpenAccess):
     class Meta:
         abstract = True
 
-
-parsed_informacje_regex = re.compile(
-    r"(\[online\](\s+|)|)(\s+|)"
-    r"(?P<rok>\d\d+)\s+"
-    r"(((vol|t|r|bd)(\.|) (?P<tom>\d+)|)(\s+|)|)"
-    r"(((((nr|z|h)(\.|))) (?P<numer>((\d+)(\w+|))(\/\d+|)))|)",
-    flags=re.IGNORECASE)
 
 
 class Wydawnictwo_Ciagle(ZapobiegajNiewlasciwymCharakterom,
@@ -117,11 +109,7 @@ class Wydawnictwo_Ciagle(ZapobiegajNiewlasciwymCharakterom,
             toplevel.append(self.zrodlo.eksport_pbn_serializuj())
 
     def eksport_pbn__get_informacje_by_key(self, key):
-        p = parsed_informacje_regex.match(self.informacje)
-        if p is not None:
-            d = p.groupdict()
-            if key in d:
-                return d[key]
+        return parse_informacje(self.informacje, key)
 
     def eksport_pbn_get_issue(self):
         return self.eksport_pbn__get_informacje_by_key("numer")

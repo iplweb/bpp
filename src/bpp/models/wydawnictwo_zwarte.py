@@ -216,7 +216,9 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
                     # Afiliowany!
                     toplevel.append(
                         redaktor_wyd.autor.eksport_pbn_serializuj(
-                            affiliated=True, employed=redaktor_wyd.zatrudniony, tagname='editor'))
+                            affiliated=redaktor_wyd.afiliuje,
+                            employed=redaktor_wyd.zatrudniony,
+                            tagname='editor'))
 
     def eksport_pbn_other_editors(self, toplevel, wydzial, autorzy_klass):
         from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte_Autor

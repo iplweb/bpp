@@ -12,7 +12,8 @@ from time import time
 import psycopg2.extensions
 from django.db import IntegrityError
 
-from bpp.models.abstract import ILOSC_ZNAKOW_NA_ARKUSZ
+from bpp.models.abstract import ILOSC_ZNAKOW_NA_ARKUSZ, parse_informacje, \
+    wez_zakres_stron
 from bpp.models.konferencja import Konferencja
 from bpp.models.struktura import Uczelnia
 
@@ -136,6 +137,9 @@ def szczegoly_i_inne(dct, kw, zrodlowe_pole_dla_informacji):
         uwagi=dct['uwagi'],
         slowa_kluczowe=dct['slowa_kluczowe'],
 
+        tom=dct['tom'],
+        nr_zeszytu=dct['nr_zeszytu'],
+
         # ModelZRokiem
         rok=dct['rok_publikacji'],
 
@@ -145,6 +149,15 @@ def szczegoly_i_inne(dct, kw, zrodlowe_pole_dla_informacji):
 
     if zrodlowe_pole_dla_informacji is not None:
         d['informacje'] = dct[zrodlowe_pole_dla_informacji]
+
+    if d['informacje']:
+        if not d['tom']:
+            d['tom'] = parse_informacje(d['informacje'], "tom")
+        if not d['nr_zeszytu']:
+            d['nr_zeszytu'] = parse_informacje(d['informacje'], "numer")
+
+    if d['szczegoly']:
+        d['strony'] = wez_zakres_stron(d['szczegoly'])
 
     kw.update(d)
 
@@ -680,7 +693,6 @@ def zrob_import_z_tabeli(kw, bib, zakazane, docelowe,
     dwa_tytuly(bib, kw)
     szczegoly_i_inne(bib, kw, zrodlowe_pole_dla_informacji)
     jezyki_statusy(bib, kw)
-    doi(bib, kw)
     openaccess(bib, kw)
 
 
@@ -709,6 +721,8 @@ def zrob_wydawnictwo_ciagle(bib, skrot, pgsql_conn):
         zrodlo_id=bib['new_zrodlo'],
         charakter_formalny=nowy_charakter_formalny(skrot),
     )
+
+    doi(bib, kw)
 
     w = zrob_wydawnictwo(kw, bib, Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor,
                          zakazane=['redakcja', 'mceirok', 'wydawnictwo',
@@ -751,6 +765,7 @@ def zrob_wydawnictwo_zwarte(bib, skrot, pgsql_conn):
     kw = zrob_baze_wydawnictwa_zwartego(bib)
     kw['charakter_formalny'] = nowy_charakter_formalny(skrot)
     bib['new_zrodlo_src'] = None
+    doi(bib, kw)
 
     wc = zrob_wydawnictwo(kw, bib, Wydawnictwo_Zwarte,
                           Wydawnictwo_Zwarte_Autor,
@@ -1226,6 +1241,9 @@ class Command(BaseCommand):
 
         # Publikacje
         if options['publikacje']:
+            from bpp.models.cache import disable as cache_disable
+            cache_disable()
+
             try:
                 zrob_publikacje(
                     cur,

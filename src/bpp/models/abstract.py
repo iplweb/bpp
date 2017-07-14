@@ -320,8 +320,59 @@ class ModelZeSzczegolami(models.Model):
 
     utworzono = models.DateTimeField("Utworzono", auto_now_add=True, blank=True, null=True)
 
+    strony = models.CharField(
+        max_length=50,
+        null=True,
+        blank=True,
+        help_text="""Jeżeli uzupełnione, to pole będzie eksportowane do 
+        danych PBN. Jeżeli puste, informacja ta będzie ekstrahowana z 
+        pola 'Szczegóły'. """)
+
+    tom = models.CharField(
+        max_length=50,
+        null=True,
+        blank=True,
+        help_text="""Jeżeli uzupełnione, to pole będzie eksportowane do 
+        danych PBN. Jeżeli puste, informacja ta będzie ekstrahowana z 
+        pola 'Szczegóły'. """
+    )
+
+    nr_zeszytu = models.CharField(
+        max_length=50,
+        null=True,
+        blank=True,
+        help_text="""Jeżeli uzupełnione, to pole będzie eksportowane do 
+        danych PBN. Jeżeli puste, informacja ta będzie ekstrahowana z 
+        pola 'Szczegóły'. """
+    )
+
     class Meta:
         abstract = True
+
+    def uzupelnij_szczegoly(self):
+        if self.szczegoly:
+            s = wez_zakres_stron(self.szczegoly)
+            if not self.strony:
+                if s != self.strony:
+                    self.strony = s
+                    changed = True
+
+        if self.informacje is not None:
+            tom = parse_informacje(self.informacje, "tom")
+            nr_zeszytu = parse_informacje(self.informacje, "numer")
+
+            if not self.tom and tom:
+                if tom != self.tom:
+                    self.tom = tom
+                    chagned = True
+
+            if not self.nr_zeszytu and nr_zeszytu:
+                if nr_zeszytu != self.nr_zeszytu:
+                    self.nr_zeszytu = nr_zeszytu
+                    changed = True
+
+        if changed:
+            self.save()
 
 
 class ModelZCharakterem(models.Model):
@@ -363,19 +414,39 @@ strony_regex = re.compile(
 
 BRAK_PAGINACJI = ("[b. pag.]", "[b.pag.]", "[b. pag]", "[b. bag.]")
 
+def wez_zakres_stron(szczegoly):
+    for bp in BRAK_PAGINACJI:
+        if szczegoly.find(bp) >= 0:
+            return "brak"
+
+    res = strony_regex.search(szczegoly)
+    if res is not None:
+        d = res.groupdict()
+        if "poczatek" in d and "koniec" in d and d['koniec'] is not None:
+            return "%s-%s" % (d['poczatek'], d['koniec'])
+
+        return "%s" % d['poczatek']
+
+
+parsed_informacje_regex = re.compile(
+    r"(\[online\](\s+|)|)(\s+|)"
+    r"(?P<rok>\d\d+)\s+"
+    r"(((vol|t|r|bd)(\.|) (?P<tom>\d+)|)(\s+|)|)"
+    r"(((((nr|z|h)(\.|))) (?P<numer>((\d+)(\w+|))(\/\d+|)))|)",
+    flags=re.IGNORECASE)
+
+
+def parse_informacje(informacje, key):
+    p = parsed_informacje_regex.match(informacje)
+    if p is not None:
+        d = p.groupdict()
+        if key in d:
+            return d[key]
+
+
 class PBNSerializerHelperMixin:
     def eksport_pbn_zakres_stron(self):
-        for bp in BRAK_PAGINACJI:
-            if self.szczegoly.find(bp) >= 0:
-                return "brak"
-
-        res = strony_regex.search(self.szczegoly)
-        if res is not None:
-            d = res.groupdict()
-            if "poczatek" in d and "koniec" in d and d['koniec'] is not None:
-                return "%s-%s" % (d['poczatek'], d['koniec'])
-
-            return "%s" % d['poczatek']
+        return wez_zakres_stron(self.szczegoly)
 
     def eksport_pbn_pages(self, toplevel, wydzial=None, autorzy_klass=None):
         zakres = self.eksport_pbn_zakres_stron()
@@ -450,7 +521,8 @@ class PBNSerializerHelperMixin:
 
     def eksport_pbn_author(self, toplevel, wydzial, autorzy_klass):
         for autor_wyd in self.eksport_pbn_get_nasi_autorzy_iter(wydzial, autorzy_klass):
-            toplevel.append(autor_wyd.autor.eksport_pbn_serializuj(affiliated=True, employed=autor_wyd.zatrudniony))
+            toplevel.append(autor_wyd.autor.eksport_pbn_serializuj(
+                affiliated=autor_wyd.afiliuje, employed=autor_wyd.zatrudniony))
 
     def eksport_pbn_get_nasi_autorzy_count(self, wydzial, autorzy_klass):
         return len(list(self.eksport_pbn_get_nasi_autorzy_iter(wydzial, autorzy_klass)))
