@@ -330,8 +330,8 @@ def zrob_autorow_dla(wc, klass, pgsql_conn):
 
         # autor = Autor.objects.get(pk=row['idt_aut'])
 
-        if row['typ_autora'] == 0:
-            print("REKORD", row['id'], "TYP AUTORA == 0 USTAWIAM NA 1")
+        if row['typ_autora'] == 0 or row['typ_autora'] is None:
+            print("REKORD", row['id'], "TYP AUTORA == 0 lub None USTAWIAM NA 1")
             row['typ_autora'] = 1
 
         typ = cache.typy_odpowiedzialnosci[row['typ_autora']]
@@ -717,9 +717,10 @@ def zrob_wydawnictwo_ciagle(bib, skrot, pgsql_conn):
     openaccess(bib, kw)
 
     w = zrob_wydawnictwo(kw, bib, Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor,
-                         zakazane=['redakcja', 'mceirok', 'wydawnictwo',
-                                   'isbn',
-                                   'nr_zeszytu'],
+                         zakazane=['redakcja',
+                                   'mceirok',
+                                   'wydawnictwo',
+                                   'isbn'],
                          docelowe='uwagi', pgsql_conn=pgsql_conn,
                          zrodlowe_pole_dla_informacji='new_zrodlo_src')
 
@@ -789,9 +790,11 @@ def zrob_doktorat_lub_habilitacje(bib, pgsql_conn):
     kw['autor'] = Autor.objects.get(pk=autor[0]['idt_aut'])
     kw['jednostka'] = Jednostka.objects.get(pk=autor[0]['idt_jed'])
 
-    if bib['charakter'] == 21:  # praca doktorska
-        klass = Praca_Doktorska
-    elif bib['charakter'] == 4:  # praca habilitacyjna
+    # 20140714 brak doktoratów w UP
+    #if bib['charakter'] == 21:  # praca doktorska
+    #    klass = Praca_Doktorska
+    #el
+    if bib['charakter'] == 5:  # praca habilitacyjna
         klass = Praca_Habilitacyjna
     else:
         raise Exception(
@@ -965,11 +968,14 @@ def zrob_publikacje(cur, pgsql_conn, initial_offset, skip):
           oa_data,
           oa_link,
           
-          tom,
-          nr_zeszytu
+          tom
           
       FROM 
         bib 
+        
+      WHERE
+        charakter != NULL
+        
       ORDER BY id OFFSET %s""" % initial_offset)
 
     # Charakter 21 lub 4 => praca doktorska lub habilitacyjna
@@ -1114,7 +1120,6 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("--uzytkownicy", action="store_true")
 
-        parser.add_argument("--wyczysc", action="store_true")
         parser.add_argument("--uczelnia", action="store_true")
         parser.add_argument("--nazwa-uczelni", action="store", type=str)
         parser.add_argument("--nazwa-uczelni-skrot", action="store", type=str)
@@ -1193,48 +1198,6 @@ class Command(BaseCommand):
             zrob_zrodla(cur, options['initial_offset'], options['skip'])
             set_seq("bpp_zrodlo")
 
-        if options['wyczysc']:
-            # CZyszczenie tabeli b_a
-            # Podwójne wpisy
-
-            cur.execute("""
-              DELETE FROM b_a WHERE id  IN (
-                4293, 5511, 13043, 33814, 36048,
-                41380, 36049, 64894                     
-              )
-              """)
-
-            for obj in [Wydawnictwo_Zwarte, Wydawnictwo_Ciagle, Patent,
-                        Praca_Doktorska,
-                        Praca_Habilitacyjna]:
-                obj.objects.all().delete()
-
-                # cur.execute(
-            #     """
-            #     SELECT
-            #         idt, idt_aut, typ_autora
-            #     FROM
-            #         b_a
-            #     WHERE (idt, idt_aut)
-            #     IN (
-            #         SELECT
-            #             idt, idt_aut
-            #         FROM
-            #             b_a
-            #         GROUP BY
-            #             idt,
-            #             idt_aut
-            #         HAVING
-            #             count(*) > 1)
-            #     ORDER BY
-            #         idt,
-            #         idt_aut,
-            #         lp
-            #         """)
-            #
-            # poprzedni_autor = None
-            # poprzedni_typ = None
-            # while True:
 
         # Publikacje
         if options['publikacje']:
