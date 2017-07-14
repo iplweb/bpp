@@ -33,13 +33,13 @@ class AbstractModelsTestCase(TestCase):
         self.assertTrue(x.ma_wymiar_wydawniczy())
 
         x.liczba_znakow_wydawniczych = None
-        self.assertTrue(x.ma_wymiar_wydawniczy())
+        self.assertFalse(x.ma_wymiar_wydawniczy())
 
         x.liczba_znakow_wydawniczych = 5
         self.assertTrue(x.ma_wymiar_wydawniczy())
 
         x.liczba_znakow_wydawniczych = ILOSC_ZNAKOW_NA_ARKUSZ
-        self.assertEquals(x.wymiar_wydawniczy_w_arkuszach(), 15)
+        self.assertEquals(x.wymiar_wydawniczy_w_arkuszach(), "1.00")
 
         x.liczba_znakow_wydawniczych = ILOSC_ZNAKOW_NA_ARKUSZ * 2.5
         self.assertEquals(x.wymiar_wydawniczy_w_arkuszach(), "2.50")
