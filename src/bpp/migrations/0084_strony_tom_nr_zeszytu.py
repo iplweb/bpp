@@ -4,13 +4,37 @@ from __future__ import unicode_literals
 
 from django.db import migrations, models
 
+from bpp.models.abstract import wez_zakres_stron, parse_informacje
+
+
 def przerzuc_dane(apps, schema_editor):
     for model in ['Wydawnictwo_Ciagle', 'Wydawnictwo_Zwarte',
                   'Patent', 'Praca_Doktorska', 'Praca_Habilitacyjna']:
         klass = apps.get_model("bpp", model)
         for elem in klass.objects.all():
-            elem.uzupelnij_szczegoly()
+            if elem.szczegoly:
+                s = wez_zakres_stron(elem.szczegoly)
+                if not elem.strony:
+                    if s != elem.strony:
+                        elem.strony = s
+                        changed = True
 
+            if elem.informacje is not None:
+                tom = parse_informacje(elem.informacje, "tom")
+                nr_zeszytu = parse_informacje(elem.informacje, "numer")
+
+                if not elem.tom and tom:
+                    if tom != elem.tom:
+                        elem.tom = tom
+                        chagned = True
+
+                if not elem.nr_zeszytu and nr_zeszytu:
+                    if nr_zeszytu != elem.nr_zeszytu:
+                        elem.nr_zeszytu = nr_zeszytu
+                        changed = True
+
+            if changed:
+                elem.save()
 
 class Migration(migrations.Migration):
     dependencies = [

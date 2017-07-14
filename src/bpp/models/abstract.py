@@ -349,30 +349,6 @@ class ModelZeSzczegolami(models.Model):
     class Meta:
         abstract = True
 
-    def uzupelnij_szczegoly(self):
-        if self.szczegoly:
-            s = wez_zakres_stron(self.szczegoly)
-            if not self.strony:
-                if s != self.strony:
-                    self.strony = s
-                    changed = True
-
-        if self.informacje is not None:
-            tom = parse_informacje(self.informacje, "tom")
-            nr_zeszytu = parse_informacje(self.informacje, "numer")
-
-            if not self.tom and tom:
-                if tom != self.tom:
-                    self.tom = tom
-                    chagned = True
-
-            if not self.nr_zeszytu and nr_zeszytu:
-                if nr_zeszytu != self.nr_zeszytu:
-                    self.nr_zeszytu = nr_zeszytu
-                    changed = True
-
-        if changed:
-            self.save()
 
 
 class ModelZCharakterem(models.Model):
