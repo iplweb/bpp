@@ -1171,7 +1171,7 @@ class Command(BaseCommand):
             cur.execute("""
               DELETE FROM b_a WHERE id  IN (
                 4293, 5511, 13043, 33814, 36048,
-                41380, 36049, 64894             
+                41380, 36049, 64894                     
               )
               """)
 
