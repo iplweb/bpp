@@ -18,6 +18,11 @@ class TestAutocomplete(WebTestCase):
         x.q = "foobar"
         self.assertTrue(x.get_queryset() != None)
 
+    def test_KonferencjaAutocomplete(self):
+        x = autocomplete.KonferencjaAutocomplete()
+        x.q = "foobar"
+        self.assertTrue(x.get_queryset() != None)
+
     def test_ZrodloAutocomplete(self):
         x = autocomplete.ZrodloAutocomplete()
         x.q = "foobar"
