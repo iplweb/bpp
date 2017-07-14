@@ -2,6 +2,8 @@
 """Importuje bazę danych BPP z istniejącego serwera PostgreSQL"""
 
 import os
+import sys
+import traceback
 from collections import defaultdict
 from pathlib import Path
 from time import time
@@ -171,9 +173,9 @@ class Cache:
 cache = Cache()
 
 NOWE_CHARAKTERY_MAPPING = {
-    # "AP": "AC",
-    # "API": "AC",
-    # "AZ": "AC",
+    "AP": "AC",
+    "API": "AC",
+    "AZ": "AC",
     "PRI": "PRZ",
     "PSI": "PSZ",
     "S": None,
@@ -192,7 +194,9 @@ def nowy_charakter_formalny(skrot):
     wg. zmian ustalonych w listopadzie 2014 r.
     """
     try:
-        return cache.charaktery[NOWE_CHARAKTERY_MAPPING.get(skrot, skrot)]
+        # !!!! WYŁĄCZONE !!!!
+        # return cache.charaktery[NOWE_CHARAKTERY_MAPPING.get(skrot, skrot)]
+        return cache.charaktery[skrot]
     except KeyError as e:
         print("KEY ERROR DLA SKROTU %r" % skrot)
         raise e
@@ -691,6 +695,7 @@ def zrob_wydawnictwo(kw, bib, klass, autor_klass, zakazane, docelowe,
     return wc
 
 
+@transaction.atomic
 def zrob_wydawnictwo_ciagle(bib, skrot, pgsql_conn):
     kw = dict(
         # Wydawnictwo_Ciagle
@@ -734,6 +739,7 @@ def zrob_znaki_wydawnicze(bib, wc):
     if modified:
         wc.save()
 
+@transaction.atomic
 def zrob_wydawnictwo_zwarte(bib, skrot, pgsql_conn):
     kw = zrob_baze_wydawnictwa_zwartego(bib)
     kw['charakter_formalny'] = nowy_charakter_formalny(skrot)
@@ -748,6 +754,7 @@ def zrob_wydawnictwo_zwarte(bib, skrot, pgsql_conn):
     zrob_znaki_wydawnicze(bib, wc)
 
 
+@transaction.atomic
 def zrob_doktorat_lub_habilitacje(bib, pgsql_conn):
     kw = zrob_baze_wydawnictwa_zwartego(bib)
 
@@ -869,6 +876,7 @@ def zrob_indeksy(cursor):
     zrob_charaktery_formalne(cursor)
 
 
+@transaction.atomic
 def zrob_patent(bib, pgsql_conn):
     kw = zrob_baze_wydawnictwa_zwartego(bib)
     p = zrob_wydawnictwo(kw, bib, Patent, Patent_Autor,
@@ -885,7 +893,6 @@ def zrob_patent(bib, pgsql_conn):
 charakter = {}
 
 
-@transaction.atomic
 def zrob_publikacje(cur, pgsql_conn, initial_offset, skip):
     global charakter
 
@@ -949,11 +956,11 @@ def zrob_publikacje(cur, pgsql_conn, initial_offset, skip):
     # Charakter 21 lub 4 => praca doktorska lub habilitacyjna
     # Charakter 16 => patent
 
-    start_time = None
+    # start_time = None
     cnt = 0
     while True:
-        if start_time is None:
-            start_time = time()
+        # if start_time is None:
+        #     start_time = time()
         bib = cur.fetchone()
         if bib is None:
             break
@@ -962,22 +969,27 @@ def zrob_publikacje(cur, pgsql_conn, initial_offset, skip):
         if skrot == 'T\xc5\x81':
             skrot = 'TŁ'
 
-        if bib['new_zrodlo']:
-            zrob_wydawnictwo_ciagle(bib, skrot, pgsql_conn)
-        else:
-            if skrot == 'D' or skrot == 'H':
-                # doktorat lub habilitacja
-                zrob_doktorat_lub_habilitacje(bib, pgsql_conn)
-
-            elif skrot == 'PAT':
-                zrob_patent(bib, pgsql_conn)
-
+        try:
+            if bib['new_zrodlo']:
+                zrob_wydawnictwo_ciagle(bib, skrot, pgsql_conn)
             else:
-                zrob_wydawnictwo_zwarte(bib, skrot, pgsql_conn)
-        cnt += 1
+                if skrot == 'D' or skrot == 'H':
+                    # doktorat lub habilitacja
+                    zrob_doktorat_lub_habilitacje(bib, pgsql_conn)
 
-        if cnt % 100 == 0:
-            print("%.2f recs/sec" % (cnt/(time()-start_time)))
+                elif skrot == 'PAT':
+                    zrob_patent(bib, pgsql_conn)
+
+                else:
+                    zrob_wydawnictwo_zwarte(bib, skrot, pgsql_conn)
+        except:
+            import traceback
+            print("REKORD: %i" % bib['id'])
+            traceback.print_exc(file=sys.stdout)
+
+        # cnt += 1
+        # if cnt % 100 == 0:
+        #     print("%.2f recs/sec" % (cnt/(time()-start_time)))
         for _skip in range(skip):
             cur.fetchone()
 
@@ -1106,7 +1118,6 @@ class Command(BaseCommand):
                             default=0)
         parser.add_argument("--skip", action="store", type=int, default=0)
 
-    @transaction.atomic
     def handle(self, *args, **options):
         """
         Podajemy temu poleceniu
