@@ -19,7 +19,7 @@ class Command(BaseCommand):
     help = 'Uruchamiam import_bpp na wielu CPU'
 
     def add_arguments(self, parser):
-        parser.add_argument("--cpu", action="store", type=int, default=8)
+        parser.add_argument("--cpu", action="store", type=int, default=4)
 
     def handle(self, *args, **options):
         cpus = options['cpu']
