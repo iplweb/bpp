@@ -685,7 +685,6 @@ def zrob_import_z_tabeli(kw, bib, zakazane, docelowe,
     dwa_tytuly(bib, kw)
     szczegoly_i_inne(bib, kw, zrodlowe_pole_dla_informacji)
     jezyki_statusy(bib, kw)
-    openaccess(bib, kw)
 
 
 def zrob_wydawnictwo(kw, bib, klass, autor_klass, zakazane, docelowe,
@@ -715,6 +714,7 @@ def zrob_wydawnictwo_ciagle(bib, skrot, pgsql_conn):
     )
 
     doi(bib, kw)
+    openaccess(bib, kw)
 
     w = zrob_wydawnictwo(kw, bib, Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor,
                          zakazane=['redakcja', 'mceirok', 'wydawnictwo',
@@ -736,6 +736,7 @@ def zrob_baze_wydawnictwa_zwartego(bib):
         isbn=bib['isbn'],
         informacje=bib['new_zrodlo_src']
     )
+
     return kw
 
 
@@ -758,6 +759,7 @@ def zrob_wydawnictwo_zwarte(bib, skrot, pgsql_conn):
     kw['charakter_formalny'] = nowy_charakter_formalny(skrot)
     bib['new_zrodlo_src'] = None
     doi(bib, kw)
+    openaccess(bib, kw)
 
     wc = zrob_wydawnictwo(kw, bib, Wydawnictwo_Zwarte,
                           Wydawnictwo_Zwarte_Autor,
