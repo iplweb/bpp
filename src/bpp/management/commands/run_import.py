@@ -18,20 +18,21 @@ from django.core.management import BaseCommand
 class Command(BaseCommand):
     help = 'Uruchamiam import_bpp na wielu CPU'
 
-    option_list = BaseCommand.option_list + (
-            make_option("--cpu", action="store", type="int", default=4),
-    )
+    def add_arguments(self, parser):
+        parser.add_argument("--cpu", action="store", type=int, default=8)
 
     def handle(self, *args, **options):
         cpus = options['cpu']
 
         jednowatkowe = ['uzytkownicy', 'korekty', 'clusters']
 
-        for option in ['uzytkownicy', 'jednostki', 'autorzy', 'powiazania', 'zrodla', 'korekty', 'publikacje', 'clusters']:
+        for option in ['publikacje']:
+            # '['uzytkownicy', 'jednostki', 'autorzy',
+            #                'powiazania', 'zrodla', 'korekty', 'publikacje', 'clusters']:
             proc = []
             if option in jednowatkowe:
                 ret = subprocess.check_call(
-                    [sys.executable, 'manage.py', 'import_bpp',
+                    [sys.executable, sys.argv[1], 'import_bpp',
                      '--' + option,
                      '--traceback'])
                 continue
@@ -39,7 +40,7 @@ class Command(BaseCommand):
             else:
                 for n in range(cpus):
                     ret = subprocess.Popen(
-                        [sys.executable, 'manage.py', 'import_bpp',
+                        [sys.executable, sys.argv[0], 'import_bpp',
                          '--' + option,
                          '--initial-offset=%s' % n,
                          '--skip=%s' % (cpus-1),
@@ -49,14 +50,14 @@ class Command(BaseCommand):
                 for elem in proc:
                     elem.wait()
 
-        proc = []
-        for n in range(cpus):
-            ret = subprocess.Popen(
-                [sys.executable, 'manage.py', 'rebuild_cache',
-                 '--initial-offset=%s' % n,
-                 '--skip=%s' % (cpus-1),
-                 '--traceback'])
-            proc.append(ret)
-
-        for elem in proc:
-            elem.wait()
+        # proc = []
+        # for n in range(cpus):
+        #     ret = subprocess.Popen(
+        #         [sys.executable, 'manage.py', 'rebuild_cache',
+        #          '--initial-offset=%s' % n,
+        #          '--skip=%s' % (cpus-1),
+        #          '--traceback'])
+        #     proc.append(ret)
+        #
+        # for elem in proc:
+        #     elem.wait()
