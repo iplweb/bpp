@@ -9,7 +9,7 @@
 {% block breadcrumbs %}
     {{ block.super }}
     <li><a href="{% url "multiseek:index" %}">Wyszukiwanie</a></li>
-    <li class="current">{{ rekord.tytul_oryginalny|truncatewords:10|safe }}</a>
+    <li class="current">{{ rekord.tytul_oryginalny|truncatewords:10|safe|close_tags}}</li>
 {% endblock %}
 
 

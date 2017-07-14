@@ -2,6 +2,7 @@
 from django.core.urlresolvers import reverse
 from django.template import Library
 from django import template
+import lxml.html
 
 register = Library()
 
@@ -182,4 +183,14 @@ def opis_bibliograficzny_cache(pk):
             return Rekord.objects.get(object_id=object_id, content_type_id=content_type_id).opis_bibliograficzny_cache
 
     return "(brak danych)"
+
+@register.filter(name='close_tags')
+def close_tags(s):
+    if s is None or not s:
+        return s
+    s = "<foo>%s</foo>" % s
+    s = lxml.html.fromstring(s)
+    s = lxml.etree.tostring(s, encoding="unicode")
+    s = s[5:-6]
+    return s
 

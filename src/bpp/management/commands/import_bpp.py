@@ -16,6 +16,7 @@ from bpp.models.abstract import ILOSC_ZNAKOW_NA_ARKUSZ, parse_informacje, \
     wez_zakres_stron
 from bpp.models.konferencja import Konferencja
 from bpp.models.struktura import Uczelnia
+from bpp.templatetags.prace import close_tags
 
 psycopg2.extensions.register_type(psycopg2.extensions.UNICODE)
 psycopg2.extensions.register_type(psycopg2.extensions.UNICODEARRAY)
@@ -231,20 +232,11 @@ def jezyki_statusy(dct, kw):
     ))
 
 
-def fix_tags(s):
-    if s is None or not s:
-        return s
-    s = "<foo>%s</foo>" % s
-    s = lxml.html.fromstring(s)
-    s = lxml.etree.tostring(s, encoding="unicode")
-    s = s[5:-6]
-    return s
-
 def dwa_tytuly(dct, kw):
     kw.update(dict(
         # ModelZTytulem
-        tytul_oryginalny=fix_tags(dct['tytul_or']),
-        tytul=fix_tags(dct['title']),
+        tytul_oryginalny=close_tags(dct['tytul_or']),
+        tytul=close_tags(dct['title']),
     ))
 
 def doi(dct, kw):
