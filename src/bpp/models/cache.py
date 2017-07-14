@@ -343,6 +343,10 @@ class Rekord(ModelPunktowanyBaza, ModelZOpisemBibliograficznym,
 
     objects = RekordManager()
 
+    strony = None
+    nr_zeszytu =  None
+    tom = None
+
     class Meta:
         managed = False
         ordering = ['tytul_oryginalny_sort']
