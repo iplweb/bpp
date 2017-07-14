@@ -151,7 +151,7 @@ def szczegoly_i_inne(dct, kw, zrodlowe_pole_dla_informacji):
     if zrodlowe_pole_dla_informacji is not None:
         d['informacje'] = dct[zrodlowe_pole_dla_informacji]
 
-    if d['informacje']:
+    if 'informacje' in d:
         if not d['tom']:
             d['tom'] = parse_informacje(d['informacje'], "tom")
         if not d['nr_zeszytu']:
@@ -961,7 +961,10 @@ def zrob_publikacje(cur, pgsql_conn, initial_offset, skip):
           oa_licencja,
           oa_wersja, 
           oa_data,
-          oa_link
+          oa_link,
+          
+          tom,
+          nr_zeszytu
           
       FROM 
         bib 
