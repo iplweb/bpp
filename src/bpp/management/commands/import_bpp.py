@@ -149,13 +149,15 @@ def szczegoly_i_inne(dct, kw, zrodlowe_pole_dla_informacji):
     )
 
     if zrodlowe_pole_dla_informacji is not None:
-        d['informacje'] = dct[zrodlowe_pole_dla_informacji]
+        d['informacje'] = dct[zrodlowe_pole_dla_informacji] or ''
+        d['informacje'] = d['informacje'].strip()
 
     if 'informacje' in d:
-        if not d['tom']:
-            d['tom'] = parse_informacje(d['informacje'], "tom")
-        if not d['nr_zeszytu']:
-            d['nr_zeszytu'] = parse_informacje(d['informacje'], "numer")
+        if d['informacje']:
+            if not d['tom']:
+                d['tom'] = parse_informacje(d['informacje'], "tom")
+            if not d['nr_zeszytu']:
+                d['nr_zeszytu'] = parse_informacje(d['informacje'], "numer")
 
     if d['szczegoly']:
         d['strony'] = wez_zakres_stron(d['szczegoly'])
@@ -180,6 +182,7 @@ class Cache:
         self.typy_odpowiedzialnosci = idx(Typ_Odpowiedzialnosci)
         self.charaktery = idx(Charakter_Formalny, 'skrot')
         self.jednostki = idx(Jednostka)
+        self.zrodla = idx(Zrodlo)
         try:
             self.obca_jednostka = Jednostka.objects.get(nazwa='Obca Jednostka')
         except Jednostka.DoesNotExist:
@@ -250,6 +253,12 @@ def doi(dct, kw):
 def poprzestawiaj_wartosci_pol(bib, zakazane, docelowe):
     for field in zakazane:
         if bib[field]:
+            if field == "new_zrodlo":
+                try:
+                    bib['new_zrodlo'] = cache.zrodla[bib['new_zrodlo']].nazwa
+                except IndexError:
+                    bib['new_zrodlo'] = "Zrodlo o id %s nie znalezione" % bib['new_zrodlo']
+
             if hasattr(bib[field], 'strip'):
                 bib[field] = bib[field].strip()
 
@@ -270,20 +279,15 @@ def poprzestawiaj_wartosci_pol(bib, zakazane, docelowe):
             if type(bib[field]) == int:
                 bib[field] = str(bib[field])
 
-            try:
-                bib[docelowe] += bib[field]
-            except UnicodeDecodeError as e:
-                raise Exception(type(bib[field]), bib[field])
+            bib[docelowe] += " " + bib[field]
+            bib[docelowe] = bib[docelowe].strip()
+
             bib[field] = ""
 
 
 def skoryguj_wartosci_pol(bib):
     if bib['new_zrodlo'] == 0:
         bib['new_zrodlo'] = -1
-
-    if bib['jezyk'] == 6:
-        bib['jezyk'] = 5
-
 
 _wez_autorow_cache = None
 
@@ -812,17 +816,18 @@ def zrob_doktorat_lub_habilitacje(bib, pgsql_conn):
 
 def zrob_jezyki(cursor):
     Jezyk.objects.all().delete()
-    cursor.execute("SELECT id, skrot, nazwa FROM jez")
+    cursor.execute("SELECT id, trim(skrot) as skrot, nazwa FROM jez")
     for elem in cursor.fetchall():
         kw = {}
         if elem['skrot'] == "POL":
+            elem['skrot'] = "pol."
             kw['skrot_dla_pbn'] = 'PL'
         if elem['skrot'] == "ENG":
             kw['skrot_dla_pbn'] = 'EN'
         Jezyk.objects.create(
             pk=elem['id'],
-            nazwa=elem['nazwa'],
-            skrot=elem['skrot'],
+            nazwa=elem['nazwa'].strip(),
+            skrot=elem['skrot'].strip(),
             **kw
         )
     set_seq("bpp_jezyk")
@@ -835,9 +840,9 @@ def zrob_kbn(cursor):
     for elem in cursor.fetchall():
         Typ_KBN.objects.create(
             pk=elem['id'],
-            nazwa=elem['nazwa'],
-            skrot=elem['skrot'],
-            artykul_pbn=elem['skrot'].lower() in artykuly_pbn
+            nazwa=elem['nazwa'].strip(),
+            skrot=elem['skrot'].strip(),
+            artykul_pbn=elem['skrot'].strip().lower() in artykuly_pbn
         )
     set_seq("bpp_typ_kbn")
 
@@ -895,7 +900,7 @@ def zrob_indeksy(cursor):
     zrob_charaktery_formalne(cursor)
 
 
-@transaction.atomic
+# @transaction.atomic
 def zrob_patent(bib, pgsql_conn):
     kw = zrob_baze_wydawnictwa_zwartego(bib)
     p = zrob_wydawnictwo(kw, bib, Patent, Patent_Autor,
@@ -974,11 +979,11 @@ def zrob_publikacje(cur, pgsql_conn, initial_offset, skip):
         bib 
         
       WHERE
-        charakter != NULL
+        charakter IS NOT NULL
         
       ORDER BY id OFFSET %s""" % initial_offset)
 
-    # Charakter 21 lub 4 => praca doktorska lub habilitacyjna
+    # Charakter 5 => praca habilitacyjna
     # Charakter 16 => patent
 
     # start_time = None
@@ -995,18 +1000,20 @@ def zrob_publikacje(cur, pgsql_conn, initial_offset, skip):
             if skrot == 'T\xc5\x81':
                 skrot = 'TŁ'
 
-            if bib['new_zrodlo']:
-                zrob_wydawnictwo_ciagle(bib, skrot, pgsql_conn)
+
+            if skrot == 'D' or skrot == 'H':
+                # doktorat lub habilitacja
+                zrob_doktorat_lub_habilitacje(bib, pgsql_conn)
+
+            elif skrot == 'PAT':
+                zrob_patent(bib, pgsql_conn)
+
             else:
-                if skrot == 'D' or skrot == 'H':
-                    # doktorat lub habilitacja
-                    zrob_doktorat_lub_habilitacje(bib, pgsql_conn)
-
-                elif skrot == 'PAT':
-                    zrob_patent(bib, pgsql_conn)
-
+                if bib['new_zrodlo']:
+                    zrob_wydawnictwo_ciagle(bib, skrot, pgsql_conn)
                 else:
                     zrob_wydawnictwo_zwarte(bib, skrot, pgsql_conn)
+
         except:
             print("*** BLAD REKORD: %i" % bib['id'])
             traceback.print_exc(file=sys.stdout)
