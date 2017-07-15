@@ -33,7 +33,7 @@
 
     <div class="row" style="line-height:180%;">
         {% for item in object_list %}
-            <div class="large-4 medium-6 small-12 columns">
+            <div class="large-6 medium-6 small-12 columns">
                 <a href="{% url "bpp:browse_zrodlo" item.slug %}">{{ item }}</a>
             </div>
         {% empty %}
