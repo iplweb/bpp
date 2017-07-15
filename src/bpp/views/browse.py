@@ -126,7 +126,7 @@ class JednostkiView(Browser):
     model = Jednostka
     param = 'search'
     literka_field = 'nazwa'
-    paginate_by = 100
+    paginate_by = 150
 
     def get_queryset(self):
         qry = super(JednostkiView, self).get_queryset()
