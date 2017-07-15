@@ -139,9 +139,9 @@ class Zrodlo(ModelZAdnotacjami, ModelZISSN):
     def __str__(self):
         ret = "%s" % self.nazwa
 
-        if self.nazwa_alternatywna:
-            ret += " (%s)" % self.nazwa_alternatywna
-
+        # if self.nazwa_alternatywna:
+        #     ret += " (%s)" % self.nazwa_alternatywna
+        #
         if self.poprzednia_nazwa:
             ret += " (d. %s)" % (self.poprzednia_nazwa)
 
