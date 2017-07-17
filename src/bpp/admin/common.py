@@ -94,7 +94,7 @@ def generuj_inline_dla_autorow(baseModel):
                 autor.poprzednie_nazwiska)
             warianty = list(warianty)
 
-            if initial not in warianty:
+            if initial not in warianty and instance is not None:
                 warianty.append(instance.zapisany_jako)
 
             self.initial['zapisany_jako'] = initial
