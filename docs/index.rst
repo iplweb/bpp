@@ -11,7 +11,8 @@ Contents:
    usage
    usage_admin
    contributing
-   authorshistory
+   authors
+   history
 
 Indices and tables
 ==================

@@ -1,6 +1,6 @@
-=======
+==============
 Historia zmian
-=======
+==============
 
 0.11.19 (2017-07-15)
 --------------------
@@ -31,6 +31,8 @@ Historia zmian
   wyświetlanie punktacji wewnętrznej oraz Index Copernicus
 
 * autor - nowe pole "Open Researcher and Contributor ID"
+
+* wygodna edycja kolejności wydziałów w module Redagowanie➡Struktura➡Uczelnia
 
 0.11.0 (2017-07-05)
 -------------------
