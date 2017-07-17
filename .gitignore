@@ -89,3 +89,8 @@ releases/
 *.ova
 
 src/bpp/static/scss/app.css
+
+PO_IMPORCIE.SQL
+log.txt
+test-import.sh
+import-bpp.sh
