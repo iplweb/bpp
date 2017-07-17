@@ -190,3 +190,8 @@ travis: distclean dockerclean build-test-container
 # cel: production -DCUSTOMER=... or CUSTOMER=... make production
 production: 
 	ansible-playbook -i "/Volumes/Dane zaszyfrowane/${CUSTOMER}/ansible/hosts.cfg" ansible/webserver.yml ${ANSIBLE_OPTIONS}
+
+# cel: live-docs
+# Uruchom sphinx-autobuild
+live-docs: 
+	sphinx-autobuild -p 8080 -D language=pl docs/ docs/_build
