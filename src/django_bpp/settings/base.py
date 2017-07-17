@@ -143,6 +143,8 @@ INSTALLED_APPS = [
 
     'cookielaw',
 
+    'columns',
+
     'dal',
     'dal_select2',
 

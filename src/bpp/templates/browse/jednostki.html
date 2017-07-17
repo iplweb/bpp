@@ -1,7 +1,5 @@
 {% extends "base.html" %}
 
-{% load columns %}
-
 {% block extratitle %}
     Indeks jednostek{% if wybrana != None %} - litera {{ wybrana }}{% endif %}
 {% endblock %}
@@ -30,18 +28,27 @@
         </div>
     </div>
 
-    <div class="row" style="line-height:180%">
-        {% for item in object_list %}
-            <div class="large-6 medium-12 small-12 columns">
-                <a href="{% url "bpp:browse_jednostka" item.slug %}">{{ item }}</a>
+
+    {% load columns %}
+
+    <div class="row">
+        {% for col in object_list|columns:2 %}
+            <div class="large-6 columns">
+                {% for item in col %}
+                    <a href="{% url "bpp:browse_jednostka" item.slug %}">
+                        {{ item }}</a>
+                    <br/><br/>
+                {% endfor %}
             </div>
-        {% empty %}
+        {% endfor %}
+        {% if not object_list %}
             <div class="panel">
                 Nie znaleziono takich jednostek. <p></p>
                 <a href=".">Kliknij tutaj, aby spróbować ponownie.</a>
             </div>
 
-        {% endfor %}
-        <span class="filler"></span>
-    </div>
+        {% endif %}
+    </div><!-- /row -->
+
+
 {% endblock %}

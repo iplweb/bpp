@@ -110,7 +110,7 @@ class AutorzyView(Browser):
     model = Autor
     param = 'search'
     literka_field = 'nazwisko'
-    paginate_by = 250
+    paginate_by = 252
 
 
 class ZrodlaView(Browser):
