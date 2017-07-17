@@ -38,6 +38,15 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
     dane z zewnętrznych systemów informatycznych będą przypisywać do tej jednostki osoby, które zakończyły
     pracę na uczelni. """, related_name="obca_jednostka")
 
+    pokazuj_punktacje_wewnetrzna = models.BooleanField(
+        'Pokazuj punktację wewnętrzną na stronie rekordu',
+        default=True
+    )
+    pokazuj_index_copernicus = models.BooleanField(
+        'Pokazuj Index Copernicus na stronie rekordu',
+        default=True
+    )
+
     class Meta:
         verbose_name = "uczelnia"
         verbose_name_plural = "uczelnie"

@@ -142,8 +142,16 @@ class UczelniaAdmin(RestrictDeletionToAdministracjaGroupMixin, ZapiszZAdnotacjaM
     fieldsets = (
         (None, {
             'fields': (
-                'nazwa', 'nazwa_dopelniacz_field', 'skrot', 'pbn_id', 'logo_www', 'logo_svg', 'favicon_ico',
-                'obca_jednostka'),
+                'nazwa',
+                'nazwa_dopelniacz_field',
+                'skrot',
+                'pbn_id',
+                'logo_www',
+                'logo_svg',
+                'favicon_ico',
+                'obca_jednostka',
+                'pokazuj_punktacje_wewnetrzna',
+                'pokazuj_index_copernicus'),
         }),
         ADNOTACJE_FIELDSET
     )

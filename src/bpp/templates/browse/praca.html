@@ -128,6 +128,7 @@
                 </td>
             </tr>
 
+            {% if uczelnia.pokazuj_index_copernicus %}
             <tr>
                 <th>
                     Index Copernicus
@@ -136,7 +137,9 @@
                     {{ praca.index_copernicus }}
                 </td>
             </tr>
+            {% endif %}
 
+            {% if uczelnia.pokazuj_punktacje_wewnetrzna %}
             <tr>
                 <th>
                     Punktacja wewnętrzna
@@ -145,6 +148,7 @@
                     {{ praca.punktacja_wewnetrzna }}
                 </td>
             </tr>
+            {% endif %}
 
             <tr>
                 <th>

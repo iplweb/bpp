@@ -27,6 +27,11 @@ Historia zmian
   następnie mogą być przypisane do wydawnictwa ciągłego lub wydawnictwa
   zwartego
 
+* struktura - w module redagowania za pomocą rekordu uczelni można ukryć
+  wyświetlanie punktacji wewnętrznej oraz Index Copernicus
+
+* autor - nowe pole "Open Researcher and Contributor ID"
+
 0.11.0 (2017-07-05)
 -------------------
 
