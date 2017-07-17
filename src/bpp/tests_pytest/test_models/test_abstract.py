@@ -137,7 +137,7 @@ def test_eksport_pbn_get_issue(wydawnictwo_ciagle):
     assert wydawnictwo_ciagle.eksport_pbn_get_issue() == "10"
 
     wydawnictwo_ciagle.nr_zeszytu = None
-    wydawnictwo_ciagle.informacje = "z. 5"
+    wydawnictwo_ciagle.informacje = "1993 z. 5"
     assert wydawnictwo_ciagle.eksport_pbn_get_issue() == "5"
 
 
