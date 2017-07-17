@@ -4,6 +4,7 @@
 from dal import autocomplete
 from django import forms
 from django.contrib import admin
+from django.db.models.fields import BLANK_CHOICE_DASH
 from django.forms.widgets import HiddenInput
 
 
@@ -146,3 +147,23 @@ class KolumnyZeSkrotamiMixin:
         return obj.typ_kbn.skrot
     typ_kbn__skrot.short_description = "Typ KBN"
     typ_kbn__skrot.admin_order_field = "typ_kbn__skrot"
+
+
+
+
+class RestrictDeletionToAdministracjaGroupMixin:
+    def get_action_choices(self, request, default_choices=BLANK_CHOICE_DASH):
+        if 'administracja' in [x.name for x in request.user.groups.all()]:
+            return admin.ModelAdmin.get_action_choices(self, request, default_choices)
+        return []
+
+    def has_delete_permission(self, request, obj=None):
+        if 'administracja' in [x.name for x in request.user.groups.all()]:
+            return admin.ModelAdmin.has_delete_permission(self, request, obj=obj)
+        return False
+
+
+class RestrictDeletionToAdministracjaGroupAdmin(
+        RestrictDeletionToAdministracjaGroupMixin, admin.ModelAdmin):
+    pass
+

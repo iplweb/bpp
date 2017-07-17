@@ -5,7 +5,8 @@ from dal_select2_queryset_sequence.widgets import \
     QuerySetSequenceSelect2
 from queryset_sequence import QuerySetSequence
 
-from bpp.jezyk_polski import warianty_zapisanego_nazwiska
+from bpp.admin.common import RestrictDeletionToAdministracjaGroupAdmin, \
+    RestrictDeletionToAdministracjaGroupMixin
 from bpp.models.praca_habilitacyjna import Publikacja_Habilitacyjna
 
 from dal import autocomplete
@@ -14,10 +15,7 @@ from django import forms
 from django.contrib import admin
 from django.forms.widgets import HiddenInput
 
-
-
 from django.contrib.auth.forms import UserCreationForm
-from django.db.models.fields import BLANK_CHOICE_DASH
 from django.utils.safestring import mark_safe
 from multiseek.models import SearchForm
 
@@ -36,6 +34,7 @@ from .common import BaseBppAdmin, CommitedModelAdmin, \
     KolumnyZeSkrotamiMixin, generuj_inline_dla_autorow
 from .wydawnictwo_zwarte import Wydawnictwo_ZwarteAdmin_Baza, Wydawnictwo_ZwarteAdmin
 from .konferencja import KonferencjaAdmin
+from .struktura import UczelniaAdmin, WydzialAdmin, JednostkaAdmin
 
 # Proste tabele
 from bpp.models.openaccess import Tryb_OpenAccess_Wydawnictwo_Ciagle, Tryb_OpenAccess_Wydawnictwo_Zwarte, \
@@ -43,23 +42,6 @@ from bpp.models.openaccess import Tryb_OpenAccess_Wydawnictwo_Ciagle, Tryb_OpenA
 from bpp.models.struktura import Jednostka_Wydzial
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
 from bpp.models.zrodlo import Redakcja_Zrodla
-
-class RestrictDeletionToAdministracjaGroupMixin:
-    def get_action_choices(self, request, default_choices=BLANK_CHOICE_DASH):
-        if 'administracja' in [x.name for x in request.user.groups.all()]:
-            return admin.ModelAdmin.get_action_choices(self, request, default_choices)
-        return []
-
-    def has_delete_permission(self, request, obj=None):
-        if 'administracja' in [x.name for x in request.user.groups.all()]:
-            return admin.ModelAdmin.has_delete_permission(self, request, obj=obj)
-        return False
-
-
-class RestrictDeletionToAdministracjaGroupAdmin(
-        RestrictDeletionToAdministracjaGroupMixin, admin.ModelAdmin):
-    pass
-
 
 class JezykAdmin(RestrictDeletionToAdministracjaGroupAdmin):
     list_display = ['nazwa', 'skrot', 'skrot_dla_pbn']
@@ -136,57 +118,6 @@ admin.site.register(Wersja_Tekstu_OpenAccess, Wersja_Tekstu_OpenAccessAdmin)
 admin.site.register(Typ_Odpowiedzialnosci, Typ_OdpowiedzialnosciAdmin)
 
 
-# Uczelnia
-
-class UczelniaAdmin(RestrictDeletionToAdministracjaGroupMixin, ZapiszZAdnotacjaMixin, CommitedModelAdmin):
-    list_display = ['nazwa', 'nazwa_dopelniacz_field', 'skrot', 'pbn_id']
-    fieldsets = (
-        (None, {
-            'fields': (
-                'nazwa',
-                'nazwa_dopelniacz_field',
-                'skrot',
-                'pbn_id',
-                'logo_www',
-                'logo_svg',
-                'favicon_ico',
-                'obca_jednostka',
-                'pokazuj_punktacje_wewnetrzna',
-                'pokazuj_index_copernicus'),
-        }),
-        ADNOTACJE_FIELDSET
-    )
-
-
-admin.site.register(Uczelnia, UczelniaAdmin)
-
-
-# Wydział
-
-class WydzialAdmin(RestrictDeletionToAdministracjaGroupMixin, ZapiszZAdnotacjaMixin, CommitedModelAdmin):
-    list_display = ['nazwa', 'skrot', 'uczelnia', 'kolejnosc', 'widoczny', 'ranking_autorow',
-                    'zarzadzaj_automatycznie', 'otwarcie', 'zamkniecie', 'pbn_id']
-    list_filter = ['uczelnia', 'zezwalaj_na_ranking_autorow', 'widoczny', 'zarzadzaj_automatycznie',]
-    fieldsets = (
-        (None, {
-            'fields': (
-                'uczelnia', 'nazwa', 'skrot_nazwy', 'skrot', 'pbn_id',
-                'opis', 'kolejnosc', 'widoczny',
-                'zezwalaj_na_ranking_autorow', 'zarzadzaj_automatycznie', 'otwarcie', 'zamkniecie'),
-        }),
-        ADNOTACJE_FIELDSET
-    )
-
-    def ranking_autorow(self, obj):
-        return obj.zezwalaj_na_ranking_autorow
-    ranking_autorow.short_description = "Ranking autorów"
-    ranking_autorow.boolean = True
-    ranking_autorow.admin_order_field = 'zezwalaj_na_ranking_autorow'
-
-
-admin.site.register(Wydzial, WydzialAdmin)
-
-
 # Autor_Jednostka
 
 class Autor_JednostkaInlineForm(forms.ModelForm):
@@ -209,38 +140,6 @@ class Autor_JednostkaInline(admin.TabularInline):
     model = Autor_Jednostka
     form = Autor_JednostkaInlineForm
     extra = 1
-
-
-# Jednostka
-
-class Jednostka_WydzialInline(admin.TabularInline):
-    model = Jednostka_Wydzial
-    extra = 1
-
-class JednostkaAdmin(RestrictDeletionToAdministracjaGroupMixin, ZapiszZAdnotacjaMixin, CommitedModelAdmin):
-    list_display = ('nazwa', 'skrot', 'wydzial', 'widoczna',
-                    'wchodzi_do_raportow', 'skupia_pracownikow', 'zarzadzaj_automatycznie', 'pbn_id')
-    list_select_related = ['wydzial',]
-    fields = None
-    list_filter = ('wydzial', 'widoczna', 'wchodzi_do_raportow', 'skupia_pracownikow', 'zarzadzaj_automatycznie')
-    search_fields = ['nazwa', 'skrot', 'wydzial__nazwa']
-
-    inlines = (Jednostka_WydzialInline,
-               # Autor_JednostkaInline,
-               )
-
-    readonly_fields = ['wydzial', 'aktualna', 'ostatnio_zmieniony']
-    fieldsets = (
-        (None, {
-            'fields': (
-                'nazwa', 'skrot', 'uczelnia', 'wydzial', 'aktualna',
-                'pbn_id', 'opis', 'widoczna',
-                'wchodzi_do_raportow', 'skupia_pracownikow',
-                'zarzadzaj_automatycznie', 'email', 'www'),
-        }),
-        ADNOTACJE_FIELDSET)
-
-admin.site.register(Jednostka, JednostkaAdmin)
 
 # Autorzy
 
