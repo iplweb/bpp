@@ -4,6 +4,10 @@ django-bpp
 .. image:: https://travis-ci.org/mpasternak/django-bpp.svg?branch=dev
    :target: https://travis-ci.org/mpasternak/django-bpp
 
+.. image:: https://readthedocs.org/projects/django-bpp/badge/?version=latest
+   :target: http://django-bpp.readthedocs.io/pl/latest/?badge=latest
+   :alt: Dokumentacja
+
 .. role:: bash(code)
    :language: bash
 
