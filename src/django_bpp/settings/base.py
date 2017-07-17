@@ -280,6 +280,10 @@ LOGGING = {
             'handlers': ['sentry', 'console'],
             'propagate': False
         },
+        'django': {
+            'handlers': ['console'],
+            'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
+        },
     },
 }
 
