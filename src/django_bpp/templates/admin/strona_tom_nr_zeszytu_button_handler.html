@@ -1,10 +1,10 @@
 <script type="text/javascript">
 
     $(document).ready(function () {
-        var i = $("#id_strony");
 
-        $("<input id='id_strony_get' type='button' value='Uzupełnij'/>")
-            .insertAfter(i);
+        $("<span> <input id='id_strony_get' type='button' value='Uzupełnij " +
+            "strony, tom, nr zeszytu'/></span>")
+            .insertAfter($("#id_strony"));
 
         var strony_get_button = $("#id_strony_get");
         var orig = strony_get_button.val();
