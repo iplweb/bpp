@@ -1,114 +1,51 @@
 .. highlight:: shell
 
-============
-Contributing
-============
+=========================
+Rozwijanie oprogramowania
+=========================
 
-Contributions are welcome, and they are greatly appreciated! Every
-little bit helps, and credit will always be given.
+Cenimy sobie wszystkie uwagi, nawet te krytyczne. Każda z nich może pomóc, podobnie
+każdy z nas może zostać współautorem niniejszego oprogramowania.
 
-You can contribute in many ways:
+Możesz dołożyć się do tego projektu na różne sposoby:
 
-Types of Contributions
-----------------------
+Zgłaszanie błędów
+~~~~~~~~~~~~~~~~~
 
-Report Bugs
-~~~~~~~~~~~
+Zgłaszaj błędy w oprogramowaniu pod adresem https://github.com/mpasternak/django-bpp/issues.
 
-Report bugs at https://github.com/mpasternak/django_bpp/issues.
+Jeżeli zgłaszasz bład, prosimy, opisz:
 
-If you are reporting a bug, please include:
+* Twój system operacyjny i wersję przeglądarki WWW,
+* szczegóły dotyczące konfiguracji Twojego komputera, które mogą pomóc w powieleniu a następnie usunięciu błędu,
+* szczegółową instrukcję krok-po-kroku jak spowodować wystąpienie błędu
 
-* Your operating system name and version.
-* Any details about your local setup that might be helpful in troubleshooting.
-* Detailed steps to reproduce the bug.
-
-Fix Bugs
-~~~~~~~~
-
-Look through the GitHub issues for bugs. Anything tagged with "bug"
-and "help wanted" is open to whoever wants to implement it.
-
-Implement Features
+Naprawianie błędów
 ~~~~~~~~~~~~~~~~~~
 
-Look through the GitHub issues for features. Anything tagged with "enhancement"
-and "help wanted" is open to whoever wants to implement it.
+Przejrzyj zgłoszenia na GitHub w poszukiwaniu błędów, które możesz naprawić.
 
-Write Documentation
+Zaimplementuj nowe funkcje
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Przejrzyj zgłoszenia na GitHub w poszukiwaniu zgłoszeń zawierających zapotrzebowanie
+na nowe funkcje. Wszystko, co oznaczone "enhancement" lub "help wanted" czeka na
+osobę, która się tym zajmie.
+
+Napisz dokumentację
 ~~~~~~~~~~~~~~~~~~~
 
-Django-BPP could always use more documentation, whether as part of the
-official Django-BPP docs, in docstrings, or even on the web in blog posts,
-articles, and such.
+BPP zawsze może skorzystać z nowej dokumentacji, bądź to w formie instrukcji,
+docstrings lub artykułów na sieci, prezentacji itp.
 
-Submit Feedback
-~~~~~~~~~~~~~~~
+Zgłoś uwagi
+~~~~~~~~~~~
 
-The best way to send feedback is to file an issue at https://github.com/mpasternak/django_bpp/issues.
+Najlepszy sposób na zgłoszenie swoich uwag to wypełnienie formularza pod adresem
+ https://github.com/mpasternak/django-bpp/issues.
 
-If you are proposing a feature:
+Jeżeli proponujesz nową funkcję:
 
-* Explain in detail how it would work.
-* Keep the scope as narrow as possible, to make it easier to implement.
-* Remember that this is a volunteer-driven project, and that contributions
-  are welcome :)
-
-Get Started!
-------------
-
-Ready to contribute? Here's how to set up `django_bpp` for local development.
-
-1. Fork the `django_bpp` repo on GitHub.
-2. Clone your fork locally::
-
-    $ git clone git@github.com:your_name_here/django_bpp.git
-
-3. Install your local copy into a virtualenv. Assuming you have virtualenvwrapper installed, this is how you set up your fork for local development::
-
-    $ mkvirtualenv django_bpp
-    $ cd django_bpp/
-    $ python setup.py develop
-
-4. Create a branch for local development::
-
-    $ git checkout -b name-of-your-bugfix-or-feature
-
-   Now you can make your changes locally.
-
-5. When you're done making changes, check that your changes pass flake8 and the tests, including testing other Python versions with tox::
-
-    $ flake8 django_bpp tests
-    $ python setup.py test or py.test
-    $ tox
-
-   To get flake8 and tox, just pip install them into your virtualenv.
-
-6. Commit your changes and push your branch to GitHub::
-
-    $ git add .
-    $ git commit -m "Your detailed description of your changes."
-    $ git push origin name-of-your-bugfix-or-feature
-
-7. Submit a pull request through the GitHub website.
-
-Pull Request Guidelines
------------------------
-
-Before you submit a pull request, check that it meets these guidelines:
-
-1. The pull request should include tests.
-2. If the pull request adds functionality, the docs should be updated. Put
-   your new functionality into a function with a docstring, and add the
-   feature to the list in README.rst.
-3. The pull request should work for Python 2.6, 2.7, 3.3, 3.4 and 3.5, and for PyPy. Check
-   https://travis-ci.org/mpasternak/django_bpp/pull_requests
-   and make sure that the tests pass for all supported Python versions.
-
-Tips
-----
-
-To run a subset of tests::
-
-$ py.test tests.test_django_bpp
-
+* Wyjaśnij, w jaki sposób ma działać
+* Pamiętaj, ze ten projekt rozwijany jest na zasadach opensource i Twój wkład
+  jest mile widziany
