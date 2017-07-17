@@ -64,6 +64,9 @@ class PBNIDObecnyFilter(SimpleNotNullFilter):
     title = "PBN ID"
     parameter_name = "pbn_id"
 
+class OrcidObecnyFilter(SimpleNotNullFilter):
+    title = "ORCID"
+    parameter_name = "orcid"
 
 class PeselMD5ObecnyFilter(SimpleNotNullFilter):
     title = "PESEL MD5"

@@ -21,8 +21,9 @@ from django.db.models.fields import BLANK_CHOICE_DASH
 from django.utils.safestring import mark_safe
 from multiseek.models import SearchForm
 
-from bpp.admin.filters import LiczbaZnakowFilter, CalkowitaLiczbaAutorowFilter, JednostkaFilter, PBNIDObecnyFilter, \
-    PeselMD5ObecnyFilter
+from bpp.admin.filters import LiczbaZnakowFilter, CalkowitaLiczbaAutorowFilter, \
+    JednostkaFilter, PBNIDObecnyFilter, \
+    PeselMD5ObecnyFilter, OrcidObecnyFilter
 from bpp.admin.helpers import *
 from bpp.models import Jezyk, Typ_KBN, Uczelnia, Wydzial, \
     Jednostka, Tytul, Autor, Autor_Jednostka, Funkcja_Autora, Rodzaj_Zrodla, \
@@ -260,11 +261,22 @@ class AutorForm(forms.ModelForm):
 class AutorAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
     form = AutorForm
 
-    list_display = ['nazwisko', 'imiona', 'tytul', 'poprzednie_nazwiska', 'email', 'pbn_id']
+    list_display = ['nazwisko',
+                    'imiona',
+                    'tytul',
+                    'poprzednie_nazwiska',
+                    'email',
+                    'pbn_id',
+                    'orcid']
     list_select_related = ['tytul',]
     fields = None
     inlines = [Autor_JednostkaInline, ]
-    list_filter = [JednostkaFilter, 'aktualna_jednostka__wydzial', 'tytul', PBNIDObecnyFilter, PeselMD5ObecnyFilter]
+    list_filter = [JednostkaFilter,
+                   'aktualna_jednostka__wydzial',
+                   'tytul',
+                   PBNIDObecnyFilter,
+                   OrcidObecnyFilter,
+                   PeselMD5ObecnyFilter]
     search_fields = ['imiona', 'nazwisko', 'poprzednie_nazwiska', 'email', 'www', 'id', 'pbn_id']
     readonly_fields = ('pesel_md5', 'ostatnio_zmieniony')
 
@@ -272,7 +284,7 @@ class AutorAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
         (None, {
             'fields': (
                 'imiona', 'nazwisko', 'tytul', 'pokazuj_na_stronach_jednostek',
-                'email', 'www', 'pbn_id', 'pesel_md5')
+                'email', 'www', 'orcid', 'pbn_id', 'pesel_md5')
         }),
         ('Biografia', {
             'classes': ('grp-collapse grp-closed',),

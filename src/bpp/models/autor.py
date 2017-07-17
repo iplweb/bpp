@@ -4,22 +4,20 @@
 Autorzy
 """
 from datetime import date, timedelta
-from autoslug import AutoSlugField
-from django.contrib.contenttypes.fields import GenericForeignKey
-from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import ValidationError
+from datetime import datetime
 
-from django.db import models, IntegrityError
-from django.utils.six import python_2_unicode_compatible
-from lxml.etree import Element, SubElement
-from bpp.models.abstract import BazaModeluOdpowiedzialnosciAutorow, ModelZPBN_ID
-from bpp.util import FulltextSearchMixin
+from autoslug import AutoSlugField
 from django.contrib.postgres.search import SearchVectorField as VectorField
+from django.core.exceptions import ValidationError
+from django.core.validators import RegexValidator
+from django.db import models, IntegrityError
+from django.utils import six
+from lxml.etree import Element, SubElement
 
 from bpp.models import ModelZAdnotacjami, NazwaISkrot
-from datetime import datetime
-from six import text_type
-from django.utils import six
+from bpp.models.abstract import ModelZPBN_ID
+from bpp.util import FulltextSearchMixin
+
 
 class Tytul(NazwaISkrot):
     class Meta:
@@ -72,6 +70,22 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
     pesel_md5 = models.CharField(verbose_name="PESEL MD5",
                                  max_length=32, db_index=True, blank=True, null=True,
                                  help_text="Hash MD5 numeru PESEL")
+
+    orcid = models.CharField(
+        "Identyfikator ORCID",
+        max_length=19,
+        blank=True, null=True,
+        help_text="Open Researcher and Contributor ID, "
+                  "vide http://www.orcid.org",
+        validators=[
+            RegexValidator(
+                regex='^\d\d\d\d-\d\d\d\d-\d\d\d\d-\d\d\d\d$',
+                message='Identyfikator ORCID to 4 grupy po 4 cyfry w każdej, '
+                        'oddzielone myślnikami',
+                code='orcid_invalid_format'
+            ),
+        ]
+    )
 
     search = VectorField()
 
