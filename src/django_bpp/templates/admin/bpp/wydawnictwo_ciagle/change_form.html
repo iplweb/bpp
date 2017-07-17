@@ -45,12 +45,13 @@
                     "kc_impact_factor": $("input[name=kc_impact_factor]").val(),
                     "kc_index_copernicus": $("input[name=kc_index_copernicus]").val()
                 }
-
+                window.onbeforeunload = function(e) {};
                 location.href = "../../add/?" + $.param(data);
             });
 
             $("#toz").click(function () {
                 if (confirm('Utworzysz kopię tego rekordu. Czy kontynuować?')) {
+                    window.onbeforeunload = function(e) {};
                     location.href = "../../toz/" + pub_id;
                 }
             });
