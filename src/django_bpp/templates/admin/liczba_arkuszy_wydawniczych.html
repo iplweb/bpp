@@ -1,0 +1,28 @@
+<script type="text/javascript">
+
+    $(document).ready(function () {
+
+        $("<span> ÷ 40,000 = <input type='text' " +
+            "id='id_liczba_arkuszy_wydawniczych' style='width:150px;'>" +
+            " arkuszy</span>").insertAfter($
+        ("#id_liczba_znakow_wydawniczych"));
+
+
+        $("#id_liczba_arkuszy_wydawniczych").on("change", function(v){
+            var arkusze = $("#id_liczba_arkuszy_wydawniczych").val();
+
+            $("#id_liczba_znakow_wydawniczych").val(
+                arkusze * 40000.0);
+
+        });
+
+        $("#id_liczba_znakow_wydawniczych").on("change", function(v){
+            var znaki = $("#id_liczba_znakow_wydawniczych").val();
+
+            $("#id_liczba_arkuszy_wydawniczych").val(
+                Number(znaki / 40000.0).toFixed(2));
+        });
+
+        $("#id_liczba_znakow_wydawniczych").trigger("change");
+    });
+</script>

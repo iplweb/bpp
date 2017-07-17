@@ -175,6 +175,23 @@ def test_uzupelnij_strona_tom_nr_zeszytu(url,
     if url == "wydawnictwo_ciagle":
         assert preauth_admin_browser.find_by_name("nr_zeszytu").value == "1"
 
+def test_liczba_znakow_wydawniczych_liczba_arkuszy_wydawniczych(
+        preauth_admin_browser, live_server):
+    url = reverse("admin:bpp_wydawnictwo_zwarte_add")
+    with wait_for_page_load(preauth_admin_browser):
+        preauth_admin_browser.visit(live_server + url)
+
+    preauth_admin_browser.execute_script(
+        "$('#id_liczba_znakow_wydawniczych').val('40000').change()")
+    assert preauth_admin_browser.find_by_id(
+        "id_liczba_arkuszy_wydawniczych").value == "1.00"
+
+    preauth_admin_browser.execute_script(
+        "$('#id_liczba_arkuszy_wydawniczych').val('0.5').change()")
+    assert preauth_admin_browser.find_by_id(
+        "id_liczba_znakow_wydawniczych").value == "20000"
+
+
 @pytest.mark.django_db(transaction=True)
 def test_automatycznie_uzupelnij_punkty(preauth_admin_browser, live_server):
     url = reverse("admin:bpp_wydawnictwo_ciagle_add")
