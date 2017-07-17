@@ -32,8 +32,6 @@ from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte, \
          "admin:bpp_patent_change"),
     ]
 )
-
-
 def test_zapisz_wydawnictwo_ciagle(klass, autor_klass, name,
                                    url, admin_app):
 

@@ -139,7 +139,6 @@ def szczegoly_i_inne(dct, kw, zrodlowe_pole_dla_informacji):
         slowa_kluczowe=dct['slowa_kluczowe'],
 
         tom=dct['tom'],
-        nr_zeszytu=dct['nr_zeszytu'],
 
         # ModelZRokiem
         rok=dct['rok_publikacji'],
@@ -156,8 +155,6 @@ def szczegoly_i_inne(dct, kw, zrodlowe_pole_dla_informacji):
         if d['informacje']:
             if not d['tom']:
                 d['tom'] = parse_informacje(d['informacje'], "tom")
-            if not d['nr_zeszytu']:
-                d['nr_zeszytu'] = parse_informacje(d['informacje'], "numer")
 
     if d['szczegoly']:
         d['strony'] = wez_zakres_stron(d['szczegoly'])
@@ -253,9 +250,14 @@ def doi(dct, kw):
 def poprzestawiaj_wartosci_pol(bib, zakazane, docelowe):
     for field in zakazane:
         if bib[field]:
+            op = lambda x, y: (x + " " + y).strip()
+            _docelowe = docelowe
             if field == "new_zrodlo":
                 try:
+                    # Dla habilitacji, tytuł źródła do pola "Informacje"
                     bib['new_zrodlo'] = cache.zrodla[bib['new_zrodlo']].nazwa
+                    _docelowe = "new_zrodlo_src" # informacje"
+                    op = lambda x, y: (y + " " + x).strip()
                 except IndexError:
                     bib['new_zrodlo'] = "Zrodlo o id %s nie znalezione" % bib['new_zrodlo']
 
@@ -268,20 +270,18 @@ def poprzestawiaj_wartosci_pol(bib, zakazane, docelowe):
                    "\tchar: ", str(bib['charakter']),
                    "\t", skrot,
                    "\tZAWIERA WARTOSC DLA POLA \t", field,
-                   "PRZENOSZE DO POLA '", docelowe,
+                   "PRZENOSZE DO POLA '", _docelowe,
                    "' (wartosc: ", str(bib[field]), ")"]
 
             print("%r" % " ".join(msg))
 
-            if bib[docelowe] is None:
-                bib[docelowe] = ''
+            if bib[_docelowe] is None:
+                bib[_docelowe] = ''
 
             if type(bib[field]) == int:
                 bib[field] = str(bib[field])
 
-            bib[docelowe] += " " + bib[field]
-            bib[docelowe] = bib[docelowe].strip()
-
+            bib[_docelowe] = op(bib[_docelowe], bib[field])
             bib[field] = ""
 
 
@@ -715,7 +715,10 @@ def zrob_wydawnictwo_ciagle(bib, skrot, pgsql_conn):
         # Wydawnictwo_Ciagle
         zrodlo_id=bib['new_zrodlo'],
         charakter_formalny=nowy_charakter_formalny(skrot),
+        nr_zeszytu=bib['nr_zeszytu']
     )
+
+    bib['nr_zeszytu'] = None
 
     doi(bib, kw)
     openaccess(bib, kw)
@@ -724,9 +727,17 @@ def zrob_wydawnictwo_ciagle(bib, skrot, pgsql_conn):
                          zakazane=['redakcja',
                                    'mceirok',
                                    'wydawnictwo',
-                                   'isbn'],
+                                   'isbn',
+                                   'nr_zeszytu'
+                                   ],
                          docelowe='uwagi', pgsql_conn=pgsql_conn,
                          zrodlowe_pole_dla_informacji='new_zrodlo_src')
+
+    if not w.nr_zeszytu and w.informacje:
+        _old = w.nr_zeszytu
+        w.nr_zeszytu = parse_informacje(w.informacje, "numer")
+        if w.nr_zeszytu != _old:
+            w.save()
 
     zrob_znaki_wydawnicze(bib, w)
 
@@ -739,7 +750,7 @@ def zrob_baze_wydawnictwa_zwartego(bib):
         wydawnictwo=bib['wydawnictwo'],
         redakcja=bib['redakcja'],
         isbn=bib['isbn'],
-        informacje=bib['new_zrodlo_src']
+        informacje=bib['new_zrodlo_src'],
     )
 
     return kw
@@ -752,7 +763,7 @@ def zrob_znaki_wydawnicze(bib, wc):
         modified=True
 
     if bib['ilosc_arkuszy_wydawniczych'] is not None:
-        wc.ilosc_znakow_wydawniczych = bib['ilosc_arkuszy_wydawniczych'] * ILOSC_ZNAKOW_NA_ARKUSZ
+        wc.liczba_znakow_wydawniczych = bib['ilosc_arkuszy_wydawniczych'] * ILOSC_ZNAKOW_NA_ARKUSZ
         modified=True
 
     if modified:
@@ -768,7 +779,8 @@ def zrob_wydawnictwo_zwarte(bib, skrot, pgsql_conn):
 
     wc = zrob_wydawnictwo(kw, bib, Wydawnictwo_Zwarte,
                           Wydawnictwo_Zwarte_Autor,
-                          zakazane=['new_zrodlo', 'new_zrodlo_src'],
+                          zakazane=['new_zrodlo', 'new_zrodlo_src',
+                                    'nr_zeszytu'],
                           docelowe='uwagi', pgsql_conn=pgsql_conn,
                           zrodlowe_pole_dla_informacji=None)
 
@@ -780,9 +792,9 @@ def zrob_doktorat_lub_habilitacje(bib, pgsql_conn):
     kw = zrob_baze_wydawnictwa_zwartego(bib)
 
     zrob_import_z_tabeli(kw, bib,
-                         zakazane=['new_zrodlo'],
+                         zakazane=['new_zrodlo', 'nr_zeszytu'],
                          docelowe='uwagi',
-                         zrodlowe_pole_dla_informacji=None)
+                         zrodlowe_pole_dla_informacji="new_zrodlo_src")
 
     autor = wez_autorow(bib['id'], pgsql_conn)
     if len(autor) != 1:

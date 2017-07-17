@@ -48,8 +48,7 @@ MODEL_ZE_SZCZEGOLAMI = (
     'uwagi',
     'slowa_kluczowe',
     'strony',
-    'tom',
-    'nr_zeszytu'
+    'tom'
     )
 
 MODEL_Z_ISSN = (

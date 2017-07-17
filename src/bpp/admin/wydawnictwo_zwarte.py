@@ -89,6 +89,10 @@ class Wydawnictwo_ZwarteForm(forms.ModelForm):
 
     class Meta:
         fields = "__all__"
+        widgets = {
+            'strony': forms.TextInput(attrs=dict(style="width: 150px")),
+            'tom': forms.TextInput(attrs=dict(style="width: 150px")),
+        }
 
 
 class Wydawnictwo_ZwarteAdmin(KolumnyZeSkrotamiMixin,

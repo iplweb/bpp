@@ -3,6 +3,7 @@ from django.conf.urls import url
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from bpp.views.api.pubmed import GetPubmedIDView
+from bpp.views.api.strona_tom_nr_zeszytu import StronaTomNrZeszytuView
 
 from bpp.views.oai import OAIView
 from bpp.views.api import RokHabilitacjiView, PunktacjaZrodlaView, UploadPunktacjaZrodlaView, OstatniaJednostkaView
@@ -42,6 +43,9 @@ urlpatterns = [
     url(r'^api/pubmed-id/$',
         csrf_exempt(GetPubmedIDView.as_view()),
         name='api_pubmed_id'),
+    url(r'^api/strona-tom-nr-zeszytu/$',
+        csrf_exempt(StronaTomNrZeszytuView.as_view()),
+        name='api_strona_tom_nr_zeszytu'),
 
     url(r'^oai/', OAIView.as_view(), name="oai"),
 

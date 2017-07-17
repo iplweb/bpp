@@ -1,0 +1,57 @@
+<script type="text/javascript">
+
+    $(document).ready(function () {
+        var i = $("#id_strony");
+
+        $("<input id='id_strony_get' type='button' value='Uzupełnij'/>")
+            .insertAfter(i);
+
+        var strony_get_button = $("#id_strony_get");
+        var orig = strony_get_button.val();
+
+        strony_get_button.click(function () {
+            var s = $("#id_szczegoly").val();
+            var i = $("#id_informacje").val();
+            if (!s && !i) {
+                alert("Aby wykonać zapytanie, potrzebny jest tekst w " +
+                    "polu 'Szczegóły' oraz/lub polu 'Informacje'. ")
+                return;
+            }
+
+            strony_get_button.val("Czekaj...");
+            strony_get_button.attr('disabled', true);
+
+            $.ajax({
+                type: "POST",
+                url: "{% url "bpp:api_strona_tom_nr_zeszytu" %}",
+                data: {s: s, i: i},
+                error: function (request, status, error) {
+                    alert('Wystąpił błąd (' + status + ', ' + error + '). ');
+
+                    strony_get_button.val("Spróbuj jeszcze raz!");
+                    strony_get_button.attr('disabled', false);
+
+                    return;
+                },
+                success: function (data, text) {
+                    var found = false;
+
+                    if (data.strony)
+                        if (!$("#id_strony").val())
+                            $("#id_strony").val(data.strony);
+
+                    if (data.tom)
+                        if (!$("#id_tom").val())
+                            $("#id_tom").val(data.tom);
+
+                    if (data.nr_zeszytu)
+                        if (!$("#id_nr_zeszytu").val())
+                            $("#id_nr_zeszytu").val(data.nr_zeszytu);
+
+                    strony_get_button.val("Uzupełniono." );
+                    strony_get_button.attr('disabled', false);
+                }
+            });
+        });
+    });
+</script>

@@ -109,3 +109,36 @@ def test_eksport_pbn_zakres_stron(input, expected, wydawnictwo_ciagle):
     wydawnictwo_ciagle.szczegoly = input
     ret = wydawnictwo_ciagle.eksport_pbn_zakres_stron()
     assert ret == expected
+
+
+def test_eksport_pbn_zakres_stron_pole(wydawnictwo_ciagle):
+    """Przetestuj że w sytuacji, gdy jest wypełnione pole 'Strony', to
+    jego wartość idzie do eksportu"""
+    wydawnictwo_ciagle.szczegoly = "s. 35"
+    wydawnictwo_ciagle.strony = "44-44"
+    ret = wydawnictwo_ciagle.eksport_pbn_zakres_stron()
+    assert ret == "44-44"
+
+    wydawnictwo_ciagle.strony = None
+    ret = wydawnictwo_ciagle.eksport_pbn_zakres_stron()
+    assert ret == "35"
+
+
+@pytest.mark.django_db
+def test_eksport_pbn_get_issue(wydawnictwo_ciagle):
+    wydawnictwo_ciagle.nr_zeszytu = "10"
+    assert wydawnictwo_ciagle.eksport_pbn_get_issue() == "10"
+
+    wydawnictwo_ciagle.nr_zeszytu = None
+    wydawnictwo_ciagle.informacje = "z. 5"
+    assert wydawnictwo_ciagle.eksport_pbn_get_issue() == "5"
+
+
+@pytest.mark.django_db
+def test_eksport_pbn_get_volume(wydawnictwo_ciagle):
+    wydawnictwo_ciagle.tom = "10"
+    assert wydawnictwo_ciagle.eksport_pbn_get_volume() == "10"
+
+    wydawnictwo_ciagle.tom = None
+    wydawnictwo_ciagle.informacje = "1992 vol. 5"
+    assert wydawnictwo_ciagle.eksport_pbn_get_volume() == "5"

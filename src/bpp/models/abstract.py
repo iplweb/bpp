@@ -5,11 +5,11 @@ Klasy abstrakcyjne
 """
 from decimal import Decimal
 
+from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.utils import timezone
-from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.utils import six
+from django.utils import timezone
 from lxml.etree import Element
 from lxml.etree import SubElement
 
@@ -326,7 +326,12 @@ class ModelZeSzczegolami(models.Model):
         blank=True,
         help_text="""Jeżeli uzupełnione, to pole będzie eksportowane do 
         danych PBN. Jeżeli puste, informacja ta będzie ekstrahowana z 
-        pola 'Szczegóły'. """)
+        pola "Szczegóły" w chwili generowania eksportu PBN. Aby uniknąć 
+        sytuacji, gdy wskutek błędnego wprowadzenia tekstu do pola 
+        "Szczegóły" informacja ta nie będzie mogła być wyekstrahowana 
+        z tego pola, kliknij przycisk "Uzupełnij", aby spowodować uzupełnienie 
+        tego pola na podstawie pola "Szczegóły". 
+        """)
 
     tom = models.CharField(
         max_length=50,
@@ -334,21 +339,29 @@ class ModelZeSzczegolami(models.Model):
         blank=True,
         help_text="""Jeżeli uzupełnione, to pole będzie eksportowane do 
         danych PBN. Jeżeli puste, informacja ta będzie ekstrahowana z 
-        pola 'Szczegóły'. """
+        pola 'Informacje'. Kliknięcie przycisku "Uzupełnij" powoduje
+        również automatyczne wypełnienie tego pola, o ile do formularza
+        zostały wprowadzone odpowiednie informacje. """
     )
 
+    class Meta:
+        abstract = True
+
+
+class ModelZNumeremZeszytu(models.Model):
     nr_zeszytu = models.CharField(
         max_length=50,
         null=True,
         blank=True,
         help_text="""Jeżeli uzupełnione, to pole będzie eksportowane do 
         danych PBN. Jeżeli puste, informacja ta będzie ekstrahowana z 
-        pola 'Szczegóły'. """
+        pola 'Informacje'. Kliknięcie przycisku "Uzupełnij" powoduje
+        również automatyczne wypełnienie tego pola, o ile do formularza
+        zostały wprowadzone odpowiednie informacje. """
     )
 
     class Meta:
         abstract = True
-
 
 
 class ModelZCharakterem(models.Model):
@@ -385,12 +398,15 @@ url_validator = URLValidator()
 import re
 
 strony_regex = re.compile(
-    r"(?P<parametr>s{1,2}\.)\s*(?P<poczatek>(\w*\d+|\w+|\d+))((-)(?P<koniec>(\w*\d+|\w+|\d+))|)",
+    r"((?P<parametr>s{1,2}\.)|)\s*"
+    r"(?P<poczatek>(\w*\d+|\w+|\d+))"
+    r"((-)(?P<koniec>(\w*\d+|\w+|\d+))|)",
     flags=re.IGNORECASE)
 
 BRAK_PAGINACJI = ("[b. pag.]", "[b.pag.]", "[b. pag]", "[b. bag.]")
 
 def wez_zakres_stron(szczegoly):
+    """Funkcja wycinająca informacje o stronach z pola 'Szczegóły'"""
     for bp in BRAK_PAGINACJI:
         if szczegoly.find(bp) >= 0:
             return "brak"
@@ -413,6 +429,7 @@ parsed_informacje_regex = re.compile(
 
 
 def parse_informacje(informacje, key):
+    """Wycina z pola informacje informację o tomie lub numerze lub roku"""
     p = parsed_informacje_regex.match(informacje)
     if p is not None:
         d = p.groupdict()
@@ -422,6 +439,9 @@ def parse_informacje(informacje, key):
 
 class PBNSerializerHelperMixin:
     def eksport_pbn_zakres_stron(self):
+        if hasattr(self, "strony"):
+            if self.strony:
+                return self.strony
         return wez_zakres_stron(self.szczegoly)
 
     def eksport_pbn_pages(self, toplevel, wydzial=None, autorzy_klass=None):

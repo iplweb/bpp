@@ -403,6 +403,13 @@ class Wydawnictwo_Ciagle_Form(forms.ModelForm):
     class Meta:
         fields = "__all__"
 
+        widgets = {
+            'strony': forms.TextInput(attrs=dict(style="width: 150px")),
+            'tom': forms.TextInput(attrs=dict(style="width: 150px")),
+            'nr_zeszytu': forms.TextInput(attrs=dict(style="width: 150px"))
+        }
+
+
 class Wydawnictwo_CiagleAdmin(KolumnyZeSkrotamiMixin, AdnotacjeZDatamiOrazPBNMixin, CommitedModelAdmin):
     formfield_overrides = NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW
 
@@ -431,6 +438,7 @@ class Wydawnictwo_CiagleAdmin(KolumnyZeSkrotamiMixin, AdnotacjeZDatamiOrazPBNMix
                 DWA_TYTULY
                 + ('zrodlo',)
                 + MODEL_ZE_SZCZEGOLAMI
+                + ('nr_zeszytu', )
                 + MODEL_Z_ROKIEM
         }),
         EKSTRA_INFORMACJE_WYDAWNICTWO_CIAGLE_FIELDSET,

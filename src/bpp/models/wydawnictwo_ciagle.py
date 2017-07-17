@@ -15,7 +15,7 @@ from bpp.models.abstract import BazaModeluOdpowiedzialnosciAutorow, DwaTytuly, \
     ModelZAdnotacjami, ModelZCharakterem, Wydawnictwo_Baza, \
     PBNSerializerHelperMixin, ModelZOpenAccess, ModelZPubmedID, \
     ModelZDOI, ModelZeZnakamiWydawniczymi, ModelZAktualizacjaDlaPBN, \
-    parse_informacje
+    parse_informacje, ModelZNumeremZeszytu
 from bpp.models.util import dodaj_autora, ZapobiegajNiewlasciwymCharakterom
 
 
@@ -72,6 +72,7 @@ class Wydawnictwo_Ciagle(ZapobiegajNiewlasciwymCharakterom,
                          ModelZOpenAccessWydawnictwoCiagle,
                          ModelZeZnakamiWydawniczymi,
                          ModelZAktualizacjaDlaPBN,
+                         ModelZNumeremZeszytu,
                          DirtyFieldsMixin):
     """Wydawnictwo ciągłe, czyli artykuły z czasopism, komentarze, listy
     do redakcji, publikacje w suplemencie, etc. """
@@ -112,6 +113,9 @@ class Wydawnictwo_Ciagle(ZapobiegajNiewlasciwymCharakterom,
         return parse_informacje(self.informacje, key)
 
     def eksport_pbn_get_issue(self):
+        if hasattr(self, "nr_zeszytu"):
+            if self.nr_zeszytu:
+                return self.nr_zeszytu
         return self.eksport_pbn__get_informacje_by_key("numer")
 
     def eksport_pbn_issue(self, toplevel, wydzial=None, autorzy_klass=None):
@@ -123,6 +127,9 @@ class Wydawnictwo_Ciagle(ZapobiegajNiewlasciwymCharakterom,
             issue.text = "brak"
 
     def eksport_pbn_get_volume(self):
+        if hasattr(self, "tom"):
+            if self.tom:
+                return self.tom
         return self.eksport_pbn__get_informacje_by_key("tom")
 
     def eksport_pbn_volume(self, toplevel, wydzial=None, autorzy_klass=None):

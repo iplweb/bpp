@@ -6,6 +6,7 @@ from django.core.urlresolvers import reverse
 from django.db import transaction
 from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.wait import WebDriverWait
 
 from bpp.models import Wydawnictwo_Ciagle
 from bpp.models.patent import Patent
@@ -148,6 +149,31 @@ def test_admin_patent_tamze(preauth_admin_browser, live_server):
     time.sleep(1)
     assert 'Dodaj patent' in preauth_admin_browser.html
     assert 'TO INFORMACJE' in preauth_admin_browser.html
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize(
+    "url", ["wydawnictwo_ciagle", "wydawnictwo_zwarte"]
+)
+def test_uzupelnij_strona_tom_nr_zeszytu(url,
+                                         preauth_admin_browser,
+                                         live_server):
+    url = reverse("admin:bpp_%s_add" % url)
+    with wait_for_page_load(preauth_admin_browser):
+        preauth_admin_browser.visit(live_server + url)
+
+    preauth_admin_browser.find_by_name("informacje").type("1993 vol. 5 z. 1")
+    preauth_admin_browser.find_by_name("szczegoly").type("s. 4-3")
+
+    preauth_admin_browser.execute_script("$('#id_strony_get').click()")
+    WebDriverWait(preauth_admin_browser, 10).until(
+        lambda browser: browser.find_by_name("tom").value != "")
+
+    assert preauth_admin_browser.find_by_name("strony").value == "4-3"
+    assert preauth_admin_browser.find_by_name("tom").value == "5"
+
+    if url == "wydawnictwo_ciagle":
+        assert preauth_admin_browser.find_by_name("nr_zeszytu").value == "1"
 
 @pytest.mark.django_db(transaction=True)
 def test_automatycznie_uzupelnij_punkty(preauth_admin_browser, live_server):
