@@ -20,6 +20,8 @@ pracowników naukowych. Oprogramowanie przeznaczone jest dla bibliotek naukowych
 i uniwersyteckich w Polsce. Oprogramowanie dystrybuowane jest na zasadach
 otwartoźródłowej `licencja MIT`_.
 
+Dokumentacja dostępna jest na stronie https://readthedocs.org/projects/django-bpp/badge/?version=latest . Jest tam dostępna aktualna, rozwijana dokumentacja zarówno dla najnowszej wersi systemu BPP, przeznaczona zarówno dla administratora systemu jak i dla użytkownika końcowego. 
+
 Wersja demo serwisu
 -------------------
 
