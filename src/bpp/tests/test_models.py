@@ -284,10 +284,10 @@ class TestZrodlo(TestCase):
         self.assertEqual(str(z), 'foo')
 
         z = mommy.make(Zrodlo, nazwa="foo", nazwa_alternatywna="bar")
-        self.assertEqual(str(z), 'foo (bar)')
+        self.assertEqual(str(z), 'foo')
 
         z = mommy.make(Zrodlo, nazwa="foo", poprzednia_nazwa="bar", nazwa_alternatywna="quux")
-        self.assertEqual(str(z), 'foo (quux) (d. bar)')
+        self.assertEqual(str(z), 'foo (d. bar)')
 
         z = mommy.make(Zrodlo, nazwa="foo", poprzednia_nazwa="quux")
         self.assertEqual(str(z), 'foo (d. quux)')

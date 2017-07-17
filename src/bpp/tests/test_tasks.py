@@ -16,8 +16,7 @@ class TestTasks(TestCase):
             charakter_formalny=Charakter_Formalny.objects.get(skrot='ZSZ'),
             szczegoly='wtf-lol')
 
-        ctype = ContentType.objects.get_for_model(c)
-        zaktualizuj_opis(ctype.pk, c.pk)
+        zaktualizuj_opis("bpp", "wydawnictwo_ciagle", c.pk)
 
         self.assertEqual(
             c.opis_bibliograficzny(),
