@@ -116,6 +116,7 @@ class Wydawnictwo_ZwarteAdmin(KolumnyZeSkrotamiMixin,
                 + ('wydawnictwo_nadrzedne',
                    'konferencja',
                    'calkowita_liczba_autorow',
+                   'calkowita_liczba_redaktorow',
                    'miejsce_i_rok',
                    'wydawnictwo',)
                 + MODEL_Z_ROKIEM

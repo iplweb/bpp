@@ -105,8 +105,19 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
         related_name="wydawnictwa_powiazane_set")
 
     calkowita_liczba_autorow = models.PositiveIntegerField(
+        blank=True, null=True, help_text="""Jeżeli dodajesz monografię, wpisz 
+        tutaj całkowitą liczbę autorów monografii. Ta informacja zostanie 
+        użyta w eksporcie danych do PBN. Jeżeli informacja ta nie zostanie 
+        uzupełiona, wartość tego pola zostanie obliczona i będzie to ilość 
+        wszystkich autorów przypisanych do danej monografii"""
+    )
+
+    calkowita_liczba_redaktorow = models.PositiveIntegerField(
         blank=True, null=True, help_text="""Jeżeli dodajesz monografię, wpisz tutaj całkowitą liczbę
-        autorów monografii. Ta informacja zostanie użyta w eksporcie danych do PBN."""
+        redaktorów monografii. Ta informacja zostanie użyta w eksporcie 
+        danych do PBN. Jeżeli pole to nie zostanie uzupełnione, wartość ta
+        zostanie obliczona i będzie to ilość wszystkich redaktorów 
+        przypisanych do danej monografii"""
     )
 
     konferencja = models.ForeignKey(
@@ -223,10 +234,16 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
     def eksport_pbn_other_editors(self, toplevel, wydzial, autorzy_klass):
         from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte_Autor
         if autorzy_klass == Wydawnictwo_Zwarte_Autor:
-            qry = autorzy_klass.objects.filter(rekord=self,
-                                               typ_odpowiedzialnosci__skrot__in=['red.', 'red. nauk. wyd. pol.'])
+            wszyscy_redaktorzy = self.calkowita_liczba_redaktorow
 
-            wszyscy_redaktorzy = qry.count()
+            qry = autorzy_klass.objects.filter(
+                rekord=self,
+                typ_odpowiedzialnosci__skrot__in=['red.',
+                                                  'red. nauk. wyd. pol.'])
+
+            if wszyscy_redaktorzy is None:
+                wszyscy_redaktorzy = qry.count()
+
             nasi_redaktorzy = qry.filter(jednostka__wydzial_id=wydzial.id).count()
 
             other_editors = Element('other-editors')
