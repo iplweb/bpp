@@ -398,9 +398,13 @@ url_validator = URLValidator()
 import re
 
 strony_regex = re.compile(
-    r"((?P<parametr>s{1,2}\.)|)\s*"
+    r"(?P<parametr>s{1,2}\.)\s*"
     r"(?P<poczatek>(\w*\d+|\w+|\d+))"
     r"((-)(?P<koniec>(\w*\d+|\w+|\d+))|)",
+    flags=re.IGNORECASE)
+
+alt_strony_regex = re.compile(
+    r"(?P<poczatek>\d+)(-(?P<koniec>\d+)|)(\s*s.|)",
     flags=re.IGNORECASE)
 
 BRAK_PAGINACJI = ("[b. pag.]", "[b.pag.]", "[b. pag]", "[b. bag.]")
@@ -411,13 +415,20 @@ def wez_zakres_stron(szczegoly):
         if szczegoly.find(bp) >= 0:
             return "brak"
 
-    res = strony_regex.search(szczegoly)
-    if res is not None:
+    def ret(res):
         d = res.groupdict()
         if "poczatek" in d and "koniec" in d and d['koniec'] is not None:
             return "%s-%s" % (d['poczatek'], d['koniec'])
 
         return "%s" % d['poczatek']
+
+    res = strony_regex.search(szczegoly)
+    if res is not None:
+        return ret(res)
+
+    res = alt_strony_regex.search(szczegoly)
+    if res is not None:
+        return ret(res)
 
 
 parsed_informacje_regex = re.compile(
