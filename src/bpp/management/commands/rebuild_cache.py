@@ -21,7 +21,7 @@ class Command(BaseCommand):
             if action:
                 r.original.zaktualizuj_cache()
                 action = False
-                skip = options['skip']
+                skip = options['skip'] + 1
 
             skip -= 1
             if skip == 0:
