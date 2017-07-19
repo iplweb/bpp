@@ -1,9 +1,27 @@
 # -*- encoding: utf-8 -*-
 import pytest
+from lxml.etree import Element
 from model_mommy import mommy
 
 from bpp.models.struktura import Jednostka, Wydzial
-from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte_Autor
+from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
+from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte_Autor, \
+    Wydawnictwo_Zwarte
+
+
+@pytest.mark.parametrize(
+    "klass, pbn_id,expected",
+    [(Wydawnictwo_Ciagle, 500, "500"),
+     (Wydawnictwo_Ciagle, None, "2000000100"),
+     (Wydawnictwo_Zwarte, None, "4000000100")
+     ]
+)
+@pytest.mark.django_db
+def test_eksport_pbn_system_identifier(klass, pbn_id, expected):
+    wc = mommy.make(klass, pbn_id=pbn_id, pk=100)
+    toplevel = Element('test')
+    wc.eksport_pbn_system_identifier(toplevel=toplevel)
+    assert toplevel.getchildren()[0].text == expected
 
 
 @pytest.mark.django_db

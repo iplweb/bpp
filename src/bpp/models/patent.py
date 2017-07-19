@@ -5,7 +5,8 @@ from django.db import models
 from bpp.models import BazaModeluOdpowiedzialnosciAutorow, Autor, \
     ModelZRokiem, ModelZeStatusem, ModelZWWW, ModelAfiliowanyRecenzowany, \
     ModelZInformacjaZ, ModelZAdnotacjami, ModelZeSzczegolami, ModelPunktowany
-from bpp.models.abstract import ModelPrzeszukiwalny, ModelZLegacyData
+from bpp.models.abstract import ModelPrzeszukiwalny, ModelZLegacyData, \
+    RekordBPPBaza
 from bpp.models.util import dodaj_autora, ModelZOpisemBibliograficznym
 from django.utils import six
 
@@ -24,10 +25,15 @@ class Patent_Autor(BazaModeluOdpowiedzialnosciAutorow):
              ('rekord', 'autor', 'kolejnosc')]
 
 @six.python_2_unicode_compatible
-class Patent(ModelZOpisemBibliograficznym, ModelZRokiem, ModelZeStatusem,
-             ModelZWWW, ModelAfiliowanyRecenzowany, ModelPunktowany,
-             ModelZeSzczegolami, ModelZInformacjaZ, ModelZAdnotacjami,
-             ModelPrzeszukiwalny, ModelZLegacyData):
+class Patent(RekordBPPBaza,
+             ModelZRokiem,
+             ModelZeStatusem,
+             ModelZWWW,
+             ModelAfiliowanyRecenzowany,
+             ModelPunktowany,
+             ModelZeSzczegolami,
+             ModelZInformacjaZ,
+             ModelZAdnotacjami):
 
     tytul_oryginalny = models.TextField("Tytuł oryginalny", db_index=True)
 

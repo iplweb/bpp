@@ -394,11 +394,22 @@ class ModelZLegacyData(models.Model):
     class Meta:
         abstract = True
 
-@six.python_2_unicode_compatible
-class Wydawnictwo_Baza(
+class RekordBPPBaza(
+    ModelZPBN_ID,
     ModelZOpisemBibliograficznym,
     ModelPrzeszukiwalny,
     ModelZLegacyData):
+    """Klasa bazowa wszystkich rekordów (patenty, prace doktorskie,
+    habilitacyjne, wydawnictwa zwarte i ciągłe)"""
+
+    class Meta:
+        abstract = True
+
+
+@six.python_2_unicode_compatible
+class Wydawnictwo_Baza(RekordBPPBaza):
+    """Klasa bazowa wydawnictw (prace doktorskie, habilitacyjne, wydawnictwa
+    ciągłe, zwarte -- bez patentów)."""
 
     def __str__(self):
         return self.tytul_oryginalny
@@ -499,8 +510,6 @@ class PBNSerializerHelperMixin:
             _is.text = is_text
 
     def eksport_pbn_system_identifier(self, toplevel, wydzial=None, autorzy_klass=None):
-        system_identifier = SubElement(toplevel, 'system-identifier')
-
         # W zależności od rodzaju klasy 'self', dodaj cyferkę i kilka zer. W ten sposób
         # symlujemy unikalne ID dla każdej oodzielnej tabeli. Generalnie w systemie bpp
         # Wydawnictwo_Zwarte oraz Wydawnictwo_Ciagle może mieć ten sam numer ID, ponieważ
@@ -515,6 +524,16 @@ class PBNSerializerHelperMixin:
         #
         # kilka miliardów publikacji w każdej kategorii "should be enough for anyone"
         #
+
+        # node XML
+
+        system_identifier = SubElement(toplevel, 'system-identifier')
+
+        # Jeżeli rekord ma ustalone pole pbn_id, to wyeksportuj to pole
+
+        if self.pbn_id is not None:
+            system_identifier.text = str(self.pbn_id)
+            return
 
         # teraz omijamy cyrkularny import za pomocą tego hacka:
         s = str(self.__class__)

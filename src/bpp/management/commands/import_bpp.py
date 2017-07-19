@@ -699,6 +699,8 @@ def zrob_import_z_tabeli(kw, bib, zakazane, docelowe,
         if bib[pole]:
             kw['legacy_data'][pole] = bib[pole]
 
+    kw['pbn_id'] = bib['id']
+
 
 def zrob_wydawnictwo(kw, bib, klass, autor_klass, zakazane, docelowe,
                      pgsql_conn, zrodlowe_pole_dla_informacji,
@@ -1295,6 +1297,8 @@ class Command(BaseCommand):
 
                         print(stary.skrot, nowy.skrot, obj.pk, obj)
 
+                        if obj.legacy_data is None:
+                            obj.legacy_data = {}
                         obj.legacy_data['charakter_formalny__skrot'] = \
                             stary.skrot
                         obj.charakter_formalny = nowy
