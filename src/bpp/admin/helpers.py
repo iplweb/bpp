@@ -1,7 +1,8 @@
 # -*- encoding: utf-8 -*-
 
-from django.forms.widgets import Textarea
 from django.db import models
+from django.forms.widgets import Textarea
+
 
 # Pomocnik dla klasy ModelZMetryczka
 
@@ -9,11 +10,19 @@ from django.db import models
 class ZapiszZAdnotacjaMixin:
     readonly_fields = ('ostatnio_zmieniony', )
 
+
 class AdnotacjeZDatamiMixin:
-    readonly_fields = ('utworzono', 'ostatnio_zmieniony',)
+    readonly_fields = ('utworzono', 'ostatnio_zmieniony', 'id')
+
 
 class AdnotacjeZDatamiOrazPBNMixin:
-    readonly_fields = ('utworzono', 'ostatnio_zmieniony', 'ostatnio_zmieniony_dla_pbn')
+    readonly_fields = (
+        'utworzono',
+        'ostatnio_zmieniony',
+        'ostatnio_zmieniony_dla_pbn',
+        'id',
+        'pbn_id')
+
 
 ADNOTACJE_FIELDSET = ('Adnotacje', {
     'classes': ('grp-collapse grp-closed', ),
