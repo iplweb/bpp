@@ -249,7 +249,7 @@ def doi(dct, kw):
     )
 
 
-def poprzestawiaj_wartosci_pol(bib, zakazane, docelowe):
+def poprzestawiaj_wartosci_pol(kw, bib, zakazane, docelowe):
     for field in zakazane:
         if bib[field]:
             op = lambda x, y: (x + " " + y).strip()
@@ -277,9 +277,10 @@ def poprzestawiaj_wartosci_pol(bib, zakazane, docelowe):
 
             print("%r" % " ".join(msg))
 
-            if bib.get('legacy_data') is None:
-                bib['legacy_data'] = {}
-            bib['legacy_data'] = {field: bib[field]}
+            if kw.get('legacy_data') is None:
+                kw['legacy_data'] = {}
+
+            kw['legacy_data'] = {field: bib[field]}
 
             if bib[_docelowe] is None:
                 bib[_docelowe] = ''
@@ -687,7 +688,7 @@ def openaccess(bib, kw):
 def zrob_import_z_tabeli(kw, bib, zakazane, docelowe,
                          zrodlowe_pole_dla_informacji):
     # Tych pól wydawnictwo ma nie mieć
-    poprzestawiaj_wartosci_pol(bib, zakazane, docelowe)
+    poprzestawiaj_wartosci_pol(kw, bib, zakazane, docelowe)
     skoryguj_wartosci_pol(bib)
 
     punktacja(bib, kw)
@@ -696,9 +697,11 @@ def zrob_import_z_tabeli(kw, bib, zakazane, docelowe,
     szczegoly_i_inne(bib, kw, zrodlowe_pole_dla_informacji)
     jezyki_statusy(bib, kw)
 
-    kw['legacy_data'] = bib['legacy_data']
-    for pole in ['nrbibl', 'typ_polon', 'cechy_polon', 'seria']:
+    for pole in ['nrbibl', 'typ_polon', 'cechy_polon']:
         if bib[pole]:
+            if 'legacy_data' not in kw:
+                kw['legacy_data'] = {}
+
             kw['legacy_data'][pole] = bib[pole]
 
     kw['pbn_id'] = bib['id']
@@ -997,7 +1000,10 @@ def zrob_publikacje(cur, pgsql_conn, initial_offset, skip):
           tom,
           
           nrbibl,
-          seria
+          seria,
+          
+          typ_polon,
+          cechy_polon
           
       FROM 
         bib 
@@ -1025,15 +1031,15 @@ def zrob_publikacje(cur, pgsql_conn, initial_offset, skip):
                 skrot = 'TŁ'
 
 
-            if skrot == 'D' or skrot == 'H':
-                # doktorat lub habilitacja
-                zrob_doktorat_lub_habilitacje(bib, pgsql_conn)
+            # if skrot == 'D' or skrot == 'H':
+            #     # doktorat lub habilitacja
+            #     zrob_doktorat_lub_habilitacje(bib, pgsql_conn)
 
-            elif skrot == 'PAT':
+            if skrot == 'PAT':
                 zrob_patent(bib, pgsql_conn)
 
             else:
-                if bib['new_zrodlo']:
+                if bib['new_zrodlo'] and skrot not in ['D', 'H']:
                     zrob_wydawnictwo_ciagle(bib, skrot, pgsql_conn)
                 else:
                     zrob_wydawnictwo_zwarte(bib, skrot, pgsql_conn)
