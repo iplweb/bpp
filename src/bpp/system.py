@@ -28,12 +28,13 @@ from bpp.models.openaccess import Tryb_OpenAccess_Wydawnictwo_Ciagle, Tryb_OpenA
 from bpp.models.praca_habilitacyjna import Publikacja_Habilitacyjna
 from bpp.models.profile import BppUser
 from bpp.models.struktura import Jednostka_Wydzial
+from bpp.models.system import Charakter_PBN
 
 User = get_user_model()
 
 groups = {
     'dane systemowe': [
-        Charakter_Formalny,
+        Charakter_Formalny, Charakter_PBN,
         Funkcja_Autora, Zrodlo_Informacji,
         Jezyk, Typ_Odpowiedzialnosci, Rodzaj_Zrodla, Status_Korekty,
         Tytul, Typ_KBN,

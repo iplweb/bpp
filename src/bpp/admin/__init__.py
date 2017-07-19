@@ -29,6 +29,7 @@ from bpp.models import Jezyk, Typ_KBN, Uczelnia, Wydzial, \
     Zrodlo_Informacji, Wydawnictwo_Ciagle, Charakter_Formalny, \
     Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor, Praca_Doktorska, \
     Praca_Habilitacyjna, Patent, Patent_Autor, BppUser # Publikacja_Habilitacyjna
+from bpp.models.system import Charakter_PBN
 
 from .common import BaseBppAdmin, CommitedModelAdmin, \
     KolumnyZeSkrotamiMixin, generuj_inline_dla_autorow
@@ -52,6 +53,14 @@ admin.site.register(Funkcja_Autora, RestrictDeletionToAdministracjaGroupAdmin)
 admin.site.register(Rodzaj_Zrodla, RestrictDeletionToAdministracjaGroupAdmin)
 admin.site.register(Status_Korekty, RestrictDeletionToAdministracjaGroupAdmin)
 admin.site.register(Zrodlo_Informacji, RestrictDeletionToAdministracjaGroupAdmin)
+
+
+class Charakter_PBNAdmin(RestrictDeletionToAdministracjaGroupMixin,
+                         CommitedModelAdmin):
+    pass
+
+admin.site.register(Charakter_PBN, Charakter_PBNAdmin)
+
 
 class Charakter_FormalnyAdmin(RestrictDeletionToAdministracjaGroupMixin, CommitedModelAdmin):
     list_display = ['skrot', 'nazwa', 'publikacja', 'streszczenie', 'nazwa_w_primo',

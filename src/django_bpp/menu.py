@@ -14,6 +14,7 @@ from django.utils.translation import ugettext_lazy as _
 
 SYSTEM_MENU = [
     ('Charaktery formalne', '/admin/bpp/charakter_formalny/'),
+    ('Charakter PBN', '/admin/bpp/charakter_pbn/'),
     ('Funkcje w jednostce', '/admin/bpp/funkcja_autora/'),
     ('Języki', '/admin/bpp/jezyk/'),
 
