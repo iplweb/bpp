@@ -2,7 +2,7 @@
 from django.contrib import admin
 
 from bpp.admin.common import CommitedModelAdmin
-from bpp.models.seria import Seria_Wydawnicza
+from bpp.models.seria_wydawnicza import Seria_Wydawnicza
 
 
 class Seria_WydawniczaAdmin(CommitedModelAdmin):

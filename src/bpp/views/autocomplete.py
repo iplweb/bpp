@@ -18,7 +18,7 @@ from bpp.models.patent import Patent, Patent_Autor
 from bpp.models.praca_doktorska import Praca_Doktorska
 from bpp.models.praca_habilitacyjna import Praca_Habilitacyjna
 from bpp.models.profile import BppUser
-from bpp.models.seria import Seria_Wydawnicza
+from bpp.models.seria_wydawnicza import Seria_Wydawnicza
 from bpp.models.system import Charakter_Formalny
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, \
     Wydawnictwo_Ciagle_Autor

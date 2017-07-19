@@ -10,7 +10,7 @@ from bpp.admin.filters import LiczbaZnakowFilter, CalkowitaLiczbaAutorowFilter
 from bpp.admin.helpers import *
 from bpp.models import Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor
 from bpp.models.konferencja import Konferencja
-from bpp.models.seria import Seria_Wydawnicza
+from bpp.models.seria_wydawnicza import Seria_Wydawnicza
 from .common import CommitedModelAdmin, generuj_inline_dla_autorow, \
     KolumnyZeSkrotamiMixin
 

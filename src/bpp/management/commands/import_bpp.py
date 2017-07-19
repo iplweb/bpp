@@ -15,7 +15,7 @@ from django.db import IntegrityError
 from bpp.models.abstract import ILOSC_ZNAKOW_NA_ARKUSZ, parse_informacje, \
     wez_zakres_stron
 from bpp.models.konferencja import Konferencja
-from bpp.models.seria import Seria_Wydawnicza
+from bpp.models.seria_wydawnicza import Seria_Wydawnicza
 from bpp.models.struktura import Uczelnia
 from bpp.templatetags.prace import close_tags
 from bpp.util import get_fixture
@@ -799,7 +799,7 @@ def zrob_wydawnictwo_zwarte(bib, skrot, pgsql_conn):
 
     if bib['seria']:
         wc.seria_wydawnicza = Seria_Wydawnicza.objects.get(nazwa=bib['seria'])
-        
+
     zrob_znaki_wydawnicze(bib, wc)
 
 
