@@ -41,23 +41,25 @@
             <fieldset>
                 <legend>... napisane przez:</legend>
 
-                <div class="row">
-                    {% for autor in jednostka.autorzy_na_strone_jednostki %}
-                        <div class="large-6 medium-12 small-12 columns" style="white-spacE:nowrap;">
+            <div class="row">
+                {% for col in jednostka.autorzy_na_strone_jednostki|columns:2 %}
+                    <div class="large-6 medium-12 small-12 columns"  style="white-spacE:nowrap;">
+                        {% for autor in col %}
                             <label for="autor_{{ autor.pk }}">
                                 <input type="checkbox" name="autor"
                                        value="{{ autor.pk }}"
                                        id="autor_{{ autor.pk }}"
-                                        />
-                                <span class="custom checkbox"></span>
-                                {{ autor }}
-                                <a href="{% url "bpp:browse_autor" autor.slug %}">►</a>
+                                       />
+                                    <span class="custom checkbox"></span>
+                                    {{ autor }}
+                                    <a href="{% url "bpp:browse_autor" autor.slug %}">►</a>
 
                             </label>
-                        </div>
-                    {% endfor %}
-                <span class="filler"></span>
-                </div>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+            </div>
+
             </fieldset>
         {% endif %}
 
