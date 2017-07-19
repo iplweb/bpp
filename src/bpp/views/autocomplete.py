@@ -18,6 +18,7 @@ from bpp.models.patent import Patent, Patent_Autor
 from bpp.models.praca_doktorska import Praca_Doktorska
 from bpp.models.praca_habilitacyjna import Praca_Habilitacyjna
 from bpp.models.profile import BppUser
+from bpp.models.seria import Seria_Wydawnicza
 from bpp.models.system import Charakter_Formalny
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, \
     Wydawnictwo_Ciagle_Autor
@@ -51,6 +52,8 @@ class JednostkaAutocomplete(autocomplete.Select2QuerySetView):
         return qs
 
 class KonferencjaAutocomplete(autocomplete.Select2QuerySetView):
+    create_field = 'nazwa'
+
     qset = Konferencja.objects.all()
 
     def get_queryset(self):
@@ -58,6 +61,12 @@ class KonferencjaAutocomplete(autocomplete.Select2QuerySetView):
         if self.q:
             qs = qs.filter(nazwa__icontains=self.q)
         return qs
+
+
+class Seria_WydawniczaAutocomplete(KonferencjaAutocomplete):
+    create_field = 'nazwa'
+
+    qset = Seria_Wydawnicza.objects.all()
 
 
 class WidocznaJednostkaAutocomplete(JednostkaAutocomplete):

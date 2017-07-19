@@ -27,6 +27,7 @@ from bpp.models.openaccess import Tryb_OpenAccess_Wydawnictwo_Ciagle, Tryb_OpenA
     Czas_Udostepnienia_OpenAccess, Licencja_OpenAccess, Wersja_Tekstu_OpenAccess
 from bpp.models.praca_habilitacyjna import Publikacja_Habilitacyjna
 from bpp.models.profile import BppUser
+from bpp.models.seria import Seria_Wydawnicza
 from bpp.models.struktura import Jednostka_Wydzial
 from bpp.models.system import Charakter_PBN
 
@@ -50,7 +51,7 @@ groups = {
         Punktacja_Zrodla, Wydawnictwo_Ciagle_Autor,
         Wydawnictwo_Zwarte_Autor, Autor_Jednostka, Redakcja_Zrodla,
         Praca_Doktorska, Praca_Habilitacyjna, Patent, Patent_Autor,
-        Publikacja_Habilitacyjna, Konferencja],
+        Publikacja_Habilitacyjna, Konferencja, Seria_Wydawnicza],
     'indeks autorów': [Autor, Autor_Jednostka],
     'administracja': [User, Group, SearchForm],
     'web': [Url, Rule, Site, Favicon, FaviconImg],

@@ -10,6 +10,7 @@ from bpp.admin.filters import LiczbaZnakowFilter, CalkowitaLiczbaAutorowFilter
 from bpp.admin.helpers import *
 from bpp.models import Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor
 from bpp.models.konferencja import Konferencja
+from bpp.models.seria import Seria_Wydawnicza
 from .common import CommitedModelAdmin, generuj_inline_dla_autorow, \
     KolumnyZeSkrotamiMixin
 
@@ -87,6 +88,16 @@ class Wydawnictwo_ZwarteForm(forms.ModelForm):
         )
     )
 
+    seria_wydawnicza = forms.ModelChoiceField(
+        required=False,
+        queryset=Seria_Wydawnicza.objects.all(),
+        widget=autocomplete.ModelSelect2(
+            url='bpp:seria-wydawnicza-autocomplete',
+            attrs=dict(style="width: 746px;"),
+
+        )
+    )
+
     class Meta:
         fields = "__all__"
         widgets = {
@@ -126,6 +137,7 @@ class Wydawnictwo_ZwarteAdmin(KolumnyZeSkrotamiMixin,
                    'wydawnictwo',)
                 + MODEL_Z_ROKIEM
         }),
+        SERIA_WYDAWNICZA_FIELDSET,
         EKSTRA_INFORMACJE_WYDAWNICTWO_ZWARTE_FIELDSET,
         MODEL_TYPOWANY_FIELDSET,
         MODEL_PUNKTOWANY_FIELDSET,

@@ -37,6 +37,7 @@ from .wydawnictwo_zwarte import Wydawnictwo_ZwarteAdmin_Baza, Wydawnictwo_Zwarte
 from .wydawnictwo_ciagle import Wydawnictwo_CiagleAdmin
 from .konferencja import KonferencjaAdmin
 from .struktura import UczelniaAdmin, WydzialAdmin, JednostkaAdmin
+from .seria_wydawnicza import Seria_WydawniczaAdmin
 
 # Proste tabele
 from bpp.models.openaccess import Tryb_OpenAccess_Wydawnictwo_Ciagle, Tryb_OpenAccess_Wydawnictwo_Zwarte, \

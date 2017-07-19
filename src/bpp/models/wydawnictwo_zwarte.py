@@ -2,7 +2,6 @@
 import re
 
 from dirtyfields.dirtyfields import DirtyFieldsMixin
-from django.contrib.postgres.search import SearchVector
 from django.db import models
 from django.db.models.signals import post_delete
 from django.utils import timezone
@@ -17,9 +16,9 @@ from bpp.models.abstract import \
     Wydawnictwo_Baza, \
     PBNSerializerHelperMixin, ModelZOpenAccess, ModelZPubmedID, ModelZDOI, \
     ModelZeZnakamiWydawniczymi, \
-    ModelZAktualizacjaDlaPBN, ModelZKonferencja
+    ModelZAktualizacjaDlaPBN, ModelZKonferencja, \
+    ModelZSeria_Wydawnicza
 from bpp.models.autor import Autor
-from bpp.models.konferencja import Konferencja
 from bpp.models.util import ZapobiegajNiewlasciwymCharakterom
 from bpp.models.util import dodaj_autora
 
@@ -96,6 +95,7 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
                          ModelZeZnakamiWydawniczymi,
                          ModelZAktualizacjaDlaPBN,
                          ModelZKonferencja,
+                         ModelZSeria_Wydawnicza,
                          DirtyFieldsMixin):
     """Wydawnictwo zwarte, czyli: książki, broszury, skrypty, fragmenty,
     doniesienia zjazdowe."""

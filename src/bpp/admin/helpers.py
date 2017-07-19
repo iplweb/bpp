@@ -169,6 +169,12 @@ POZOSTALE_MODELE_WYDAWNICTWO_ZWARTE_FIELDSET = ('Pozostałe informacje', {
               + MODEL_AFILIOWANY_RECENZOWANY
 })
 
+SERIA_WYDAWNICZA_FIELDSET = ('Seria wydawnicza', {
+    'classes': ('grp-collapse grp-closed',),
+    'fields': (
+        'seria_wydawnicza',
+        'numer_w_serii')
+})
 
 EKSTRA_INFORMACJE_WYDAWNICTWO_CIAGLE_FIELDSET = ('Ekstra informacje', {
     'classes': ('grp-collapse grp-closed', ),

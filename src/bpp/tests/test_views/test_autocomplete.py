@@ -23,6 +23,11 @@ class TestAutocomplete(WebTestCase):
         x.q = "foobar"
         self.assertTrue(x.get_queryset() != None)
 
+    def test_Seria_WydawniczaAutocomplete(self):
+        x = autocomplete.Seria_WydawniczaAutocomplete()
+        x.q = "foobar"
+        self.assertTrue(x.get_queryset() != None)
+
     def test_ZrodloAutocomplete(self):
         x = autocomplete.ZrodloAutocomplete()
         x.q = "foobar"

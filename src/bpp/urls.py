@@ -15,7 +15,8 @@ from bpp.views.autocomplete import WidocznaJednostkaAutocomplete, \
     JednostkaAutocomplete, ZrodloAutocomplete, AutorAutocomplete, \
     ZapisanyJakoAutocomplete, Wydawnictwo_NadrzedneAutocomplete, \
     PodrzednaPublikacjaHabilitacyjnaAutocomplete, \
-    AdminNavigationAutocomplete, KonferencjaAutocomplete
+    AdminNavigationAutocomplete, KonferencjaAutocomplete, \
+    Seria_WydawniczaAutocomplete
 from bpp.views.raporty import RankingAutorow, \
     PobranieRaportu, PodgladRaportu, KasowanieRaportu, \
     RaportJednostek2012, RaportKronikaUczelni, RaportJednostek, \
@@ -113,6 +114,11 @@ urlpatterns = [
         r'^konferencja-autocomplete/$',
         KonferencjaAutocomplete.as_view(),
         name='konferencja-autocomplete',
+    ),
+    url(
+        r'^seria-wydawnicza-autocomplete/$',
+        Seria_WydawniczaAutocomplete.as_view(),
+        name='seria-wydawnicza-autocomplete',
     ),
     url(
         r'^jednostka-widoczna-autocomplete/$',

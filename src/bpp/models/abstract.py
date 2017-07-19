@@ -688,6 +688,22 @@ class PBNSerializerHelperMixin:
             toplevel, wydzial, autorzy_klass)
 
 
+class ModelZSeria_Wydawnicza(models.Model):
+    seria_wydawnicza = models.ForeignKey(
+        'bpp.Seria_Wydawnicza',
+        blank=True,
+        null=True
+    )
+
+    numer_w_serii = models.PositiveIntegerField(
+        blank=True,
+        null=True
+    )
+
+    class Meta:
+        abstract = True
+
+
 class ModelZKonferencja(models.Model):
     konferencja = models.ForeignKey(
         'bpp.Konferencja',
@@ -696,6 +712,7 @@ class ModelZKonferencja(models.Model):
 
     class Meta:
         abstract = True
+
 
 class ModelZOpenAccess(models.Model):
     openaccess_wersja_tekstu = models.ForeignKey(
