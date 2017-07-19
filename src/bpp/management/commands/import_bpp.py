@@ -1224,7 +1224,7 @@ class Command(BaseCommand):
             zrob_konferencje(cur)
 
         if options['serie']:
-            cur.execute("SELECT DISTINCT seria FROM bib")
+            cur.execute("SELECT DISTINCT seria FROM bib WHERE seria IS NOT NULL")
             for elem in cur.fetchall():
                 Seria_Wydawnicza.objects.create(nazwa=elem['seria'])
 
