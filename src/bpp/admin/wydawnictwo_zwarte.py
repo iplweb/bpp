@@ -103,7 +103,12 @@ class Wydawnictwo_ZwarteAdmin(KolumnyZeSkrotamiMixin,
     inlines = (generuj_inline_dla_autorow(Wydawnictwo_Zwarte_Autor),)
 
     list_filter = Wydawnictwo_ZwarteAdmin_Baza.list_filter + [
-        CalkowitaLiczbaAutorowFilter, ]
+        CalkowitaLiczbaAutorowFilter,
+        'openaccess_tryb_dostepu',
+        'openaccess_wersja_tekstu',
+        'openaccess_licencja',
+        'openaccess_czas_publikacji',
+    ]
 
     list_select_related = ['charakter_formalny', 'typ_kbn',
                            'wydawnictwo_nadrzedne', ]

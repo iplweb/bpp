@@ -369,7 +369,12 @@ class Wydawnictwo_CiagleAdmin(KolumnyZeSkrotamiMixin, AdnotacjeZDatamiOrazPBNMix
     ]
 
     list_filter = ['status_korekty', 'afiliowana', 'recenzowana', 'typ_kbn',
-                   'charakter_formalny', 'jezyk', LiczbaZnakowFilter, 'rok']
+                   'charakter_formalny', 'jezyk', LiczbaZnakowFilter, 'rok',
+                   'openaccess_tryb_dostepu',
+                   'openaccess_wersja_tekstu',
+                   'openaccess_licencja',
+                   'openaccess_czas_publikacji',
+                   ]
 
     fieldsets = (
         ('Wydawnictwo ciągłe', {
