@@ -9,29 +9,28 @@
     <script src="{% static 'jinplace/js/jinplace.js' %}"></script>
 {% endcompress %}
 
-{% if not request.user.is_anonymous %}
-
-    {% if paginator_count < 5000 %}
-        {% if request.GET.all == "1" %}
-            {% autopaginate object_list paging 5000 %}
-        {% else %}
-            {% autopaginate object_list paging %}
-        {% endif %}
+{% if request.user.is_anonymous %}
+    {#    anonim #}
+    {% if request.GET.all == "1" %}
+        {% autopaginate object_list paging 200 %}
     {% else %}
         {% autopaginate object_list paging %}
     {% endif %}
-
 {% else %}
-
+    {#    zalogowany #}
     {% if request.GET.all == "1" %}
-        {% autopaginate object_list paging 2147483647 %}
+        {% autopaginate object_list paging 10000 %}
     {% else %}
         {% autopaginate object_list paging %}
     {% endif %}
 
 {% endif %}
 
-{% include "multiseek/paginator.html" %}
+{% if request.user.is_anonymous %}
+    {% include "multiseek/paginator.html" with max_rows=200 %}
+{% else %}
+    {% include "multiseek/paginator.html" with max_rows=10000 %}
+{% endif %}
 
 <div style="padding: 10px;">
 
@@ -291,7 +290,11 @@
 
 </div>
 
-{% include "multiseek/paginator.html" with magellan="no" %}
+{% if request.user.is_anonymous %}
+    {% include "multiseek/paginator.html" with max_rows=200 magellan="no" suffix="_object_list" %}
+{% else %}
+    {% include "multiseek/paginator.html" with max_rows=10000 magellan="no" %}
+{% endif %}
 
 <script type="text/javascript">
     if (queryDict.print == "1")

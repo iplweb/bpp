@@ -1,9 +1,15 @@
 {% if is_paginated %}
-
+{#<pre>#}
+{#    hello#}
+{#    pages: [ {{ pages }} ]#}
+{#    getvars: [ {{ getvars }} ]#}
+{#    hashtag: [ {{ hashtag }} ]#}
+{#    page_obj.number: {{  page_obj.number}}#}
+{#</pre>#}
     <div class="pagination-centered">
         <ul class="pagination">
             {% if page_obj.has_previous %}
-                <li class="arrow"><a href="?page={{ page_obj.previous_page_number }}{{ getvars }}{{ hashtag }}">&lsaquo;</a>
+                <li class="arrow"><a href="?page{{ page_suffix }}={{ page_obj.previous_page_number }}{{ getvars }}{{ hashtag }}">&lsaquo;</a>
                 </li>
             {% else %}
                 <li class="arrow unavailable"><a href="">&lsaquo;</a></li>
@@ -13,7 +19,7 @@
                     {% ifequal page page_obj.number %}
                         <li class="current"><a href="">{{ page }}</a></li>
                     {% else %}
-                        <li><a href="?page={{ page }}{{ getvars }}{{ hashtag }}">{{ page }}</a>
+                        <li><a href="?page{{ page_suffix }}={{ page }}{{ getvars }}{{ hashtag }}">{{ page }}</a>
                         </li>
                     {% endifequal %}
                 {% else %}
@@ -21,7 +27,7 @@
                 {% endif %}
             {% endfor %}
             {% if page_obj.has_next %}
-                <li class="arrow"><a href="?page={{ page_obj.next_page_number }}{{ getvars }}{{ hashtag }}">&rsaquo;</a>
+                <li class="arrow"><a href="?page{{ page_suffix }}={{ page_obj.next_page_number }}{{ getvars }}{{ hashtag }}">&rsaquo;</a>
                 </li>
             {% else %}
                 <li class="arrow unavailable"><a href="">&rsaquo;</a></li>

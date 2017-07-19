@@ -17,7 +17,7 @@
             <dd><a href="..">powrót</a></dd>
         {% endif %}
 
-        {% if paginator_count > 0 and paginator_count < 2000 %}
+        {% if paginator_count > 0 and paginator_count < max_rows %}
             {% if live == "1" %}
                 <dd><a target="_blank" href="/multiseek/results/?all=1&print=1{% if print_removed %}&print-removed=1{% endif %}">drukuj</a>
                 </dd>
@@ -32,7 +32,7 @@
                 {% endif %}
             {% endif %}
         {% endif %}
-        {% if not request.GET.all == "1" and paginator.num_pages > 1 %}
+        {% if not request.GET.all == "1" or paginator.num_pages > 1 %}
             <dt>strony:</dt>
             <dd>{% paginate %}</dd>
         {% endif %}
