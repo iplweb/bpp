@@ -380,7 +380,7 @@ class Wydawnictwo_CiagleAdmin(KolumnyZeSkrotamiMixin, AdnotacjeZDatamiOrazPBNMix
         ('Wydawnictwo ciągłe', {
             'fields':
                 DWA_TYTULY
-                + ('zrodlo',)
+                + ('zrodlo', 'konferencja',)
                 + MODEL_ZE_SZCZEGOLAMI
                 + ('nr_zeszytu', )
                 + MODEL_Z_ROKIEM

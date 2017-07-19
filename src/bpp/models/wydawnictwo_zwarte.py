@@ -12,10 +12,12 @@ from lxml.etree import Element, SubElement
 from bpp.models.abstract import \
     BazaModeluOdpowiedzialnosciAutorow, DwaTytuly, ModelZRokiem, \
     ModelZWWW, ModelAfiliowanyRecenzowany, ModelPunktowany, ModelTypowany, \
-    ModelZeSzczegolami, ModelZInformacjaZ, ModelZeStatusem, ModelZISBN, ModelZAdnotacjami, ModelZCharakterem, \
+    ModelZeSzczegolami, ModelZInformacjaZ, ModelZeStatusem, ModelZISBN, \
+    ModelZAdnotacjami, ModelZCharakterem, \
     Wydawnictwo_Baza, \
-    PBNSerializerHelperMixin, ModelZOpenAccess, ModelZPubmedID, ModelZDOI, ModelZeZnakamiWydawniczymi, \
-    ModelZAktualizacjaDlaPBN
+    PBNSerializerHelperMixin, ModelZOpenAccess, ModelZPubmedID, ModelZDOI, \
+    ModelZeZnakamiWydawniczymi, \
+    ModelZAktualizacjaDlaPBN, ModelZKonferencja
 from bpp.models.autor import Autor
 from bpp.models.konferencja import Konferencja
 from bpp.models.util import ZapobiegajNiewlasciwymCharakterom
@@ -93,6 +95,7 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
                          ModelZOpenAccessWydawnictwoZwarte,
                          ModelZeZnakamiWydawniczymi,
                          ModelZAktualizacjaDlaPBN,
+                         ModelZKonferencja,
                          DirtyFieldsMixin):
     """Wydawnictwo zwarte, czyli: książki, broszury, skrypty, fragmenty,
     doniesienia zjazdowe."""
@@ -119,11 +122,6 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
         zostanie obliczona i będzie to ilość wszystkich redaktorów 
         przypisanych do danej monografii"""
     )
-
-    konferencja = models.ForeignKey(
-        Konferencja,
-        blank=True,
-        null=True)
 
     def dodaj_autora(self, autor, jednostka, zapisany_jako=None,
                      typ_odpowiedzialnosci_skrot='aut.', kolejnosc=None):

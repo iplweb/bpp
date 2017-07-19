@@ -667,6 +667,12 @@ class PBNSerializerHelperMixin:
             doi = SubElement(toplevel, 'doi')
             doi.text = self.doi
 
+    def eksport_pbn_conference(self, toplevel, wydzial=None,
+                               autorzy_klass=None):
+        if self.konferencja is not None:
+            tag = self.konferencja.eksport_pbn_serializuj()
+            toplevel.append(tag)
+
     def eksport_pbn_run_serialization_functions(self, names, toplevel, wydzial, autorzy_klass):
         for elem in names:
             func = "eksport_pbn_" + elem.replace("-", "_")
@@ -681,6 +687,15 @@ class PBNSerializerHelperMixin:
              "conference", "size", "is", "system-identifier"],
             toplevel, wydzial, autorzy_klass)
 
+
+class ModelZKonferencja(models.Model):
+    konferencja = models.ForeignKey(
+        'bpp.Konferencja',
+        blank=True,
+        null=True)
+
+    class Meta:
+        abstract = True
 
 class ModelZOpenAccess(models.Model):
     openaccess_wersja_tekstu = models.ForeignKey(

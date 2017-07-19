@@ -3,11 +3,21 @@ import pytest
 from lxml.etree import Element
 from model_mommy import mommy
 
+from bpp.models.konferencja import Konferencja
 from bpp.models.struktura import Jednostka, Wydzial
 from bpp.models.system import Charakter_PBN, Charakter_Formalny, Typ_KBN
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte_Autor, \
     Wydawnictwo_Zwarte
+
+
+@pytest.mark.django_db
+def test_eksport_pbn_conference():
+    konf = mommy.make(Konferencja)
+    wc = mommy.make(Wydawnictwo_Zwarte, konferencja=konf)
+    toplevel = Element('test')
+    wc.eksport_pbn_conference(toplevel)
+    assert len(toplevel.getchildren())
 
 
 @pytest.mark.django_db
