@@ -34,6 +34,10 @@ Historia zmian
 
 * wygodna edycja kolejności wydziałów w module Redagowanie➡Struktura➡Uczelnia
 
+* poprawiono błąd związany z obsługą pola dla rekordu Autor "Pokazuj na stronie
+  jednostki". Autorzy którzy mają to pole odznaczone, nie będą prezentowani
+  na stronach jednostek. 
+
 0.11.0 (2017-07-05)
 -------------------
 

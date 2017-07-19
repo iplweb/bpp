@@ -42,7 +42,7 @@
                 <legend>... napisane przez:</legend>
 
                 <div class="row">
-                    {% for autor in jednostka.obecni_autorzy %}
+                    {% for autor in jednostka.autorzy_na_strone_jednostki %}
                         <div class="large-6 medium-12 small-12 columns" style="white-spacE:nowrap;">
                             <label for="autor_{{ autor.pk }}">
                                 <input type="checkbox" name="autor"

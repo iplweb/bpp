@@ -201,6 +201,9 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID):
 
     pracownicy = obecni_autorzy
 
+    def autorzy_na_strone_jednostki(self):
+        return self.obecni_autorzy().filter(pokazuj_na_stronach_jednostek=True)
+
     def kierownik(self):
         try:
             return self.obecni_autorzy().get(autor_jednostka__funkcja__nazwa='kierownik')
