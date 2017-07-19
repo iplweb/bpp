@@ -38,13 +38,18 @@ class UczelniaAdmin(RestrictDeletionToAdministracjaGroupMixin,
                 'nazwa_dopelniacz_field',
                 'skrot',
                 'pbn_id',
-                'logo_www',
-                'logo_svg',
                 'favicon_ico',
                 'obca_jednostka',
+            )}),
+        ('Strona wizualna', {
+            'classes': ('grp-collapse grp-closed',),
+            'fields': (
+                'logo_www',
+                'logo_svg',
                 'pokazuj_punktacje_wewnetrzna',
-                'pokazuj_index_copernicus'),
-        }),
+                'pokazuj_index_copernicus',
+                'pokazuj_status_korekty',
+        )}),
         ADNOTACJE_FIELDSET
     )
 
