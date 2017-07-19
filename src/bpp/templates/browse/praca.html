@@ -70,7 +70,9 @@
                     ID
                 </th>
                 <td>
-                    {{ praca.pk }}
+                    {{ praca.pk }}{% if praca.pbn_id %}
+                    PBN ID: {{ praca.pbn_id }}
+                    {% endif %}
                 </td>
             </tr>
 
@@ -149,7 +151,7 @@
                 </td>
             </tr>
             {% endif %}
-
+            {% if uczelnia.pokazuj_status_korekty %}
             <tr>
                 <th>
                     Status
@@ -158,7 +160,7 @@
                     {{ praca.status_korekty }}
                 </td>
             </tr>
-
+            {% endif %}
             <tr>
                 <th>
                     Praca afiliowana?

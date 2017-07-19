@@ -46,6 +46,10 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         'Pokazuj Index Copernicus na stronie rekordu',
         default=True
     )
+    pokazuj_status_korekty = models.BooleanField(
+        'Pokazuj status korekty na stronie rekordu',
+        default=True
+    )
 
     class Meta:
         verbose_name = "uczelnia"
