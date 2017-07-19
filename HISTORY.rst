@@ -36,7 +36,17 @@ Historia zmian
 
 * poprawiono błąd związany z obsługą pola dla rekordu Autor "Pokazuj na stronie
   jednostki". Autorzy którzy mają to pole odznaczone, nie będą prezentowani
-  na stronach jednostek. 
+  na stronach jednostek.
+
+* dla typów KBN można określać odpowiadający im charakter PBN. Pole to zostanie
+  użyte jako fallback w sytuacji, gdy rekord charakteru formalnego do którego
+  przypisana jest dana praca nie ma określonego odpowiadającego mu charakteru
+  PBN
+
+* podgląd na znajdujące się w bazie charaktery PBN i przypisane im charaktery
+  formalne i typy KBN w module "Redagowanie"
+
+* w bloku "Adnotacje" w module "Redagowanie" wyświetla się ID oraz PBN ID
 
 0.11.0 (2017-07-05)
 -------------------
