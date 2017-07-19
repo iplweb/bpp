@@ -46,6 +46,9 @@ class TytulPracyQueryObject(StringQueryObject):
 
         elif operation in [logic.CONTAINS, logic.NOT_CONTAINS]:
 
+            if not value:
+                return Q(pk=F('pk'))
+
             value = [x.strip() for x in value.split(" ") if x.strip()]
 
             query = None
