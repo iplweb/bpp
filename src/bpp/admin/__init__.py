@@ -57,7 +57,18 @@ admin.site.register(Zrodlo_Informacji, RestrictDeletionToAdministracjaGroupAdmin
 
 class Charakter_PBNAdmin(RestrictDeletionToAdministracjaGroupMixin,
                          CommitedModelAdmin):
-    pass
+    list_display = ['identyfikator', 'wlasciwy_dla', 'opis',
+                    'charaktery_formalne',
+                    'typy_kbn']
+    readonly_fields = ['identyfikator', 'wlasciwy_dla', 'opis', 'help_text']
+
+    def charaktery_formalne(self, rec):
+        return ", ".join(["%s (%s)" % (x.nazwa, x.skrot)for x in
+                          rec.charakter_formalny_set.all()])
+
+    def typy_kbn(self, rec):
+        return ", ".join(["%s (%s)" % (x.nazwa, x.skrot) for x in
+                                       rec.typ_kbn_set.all()])
 
 admin.site.register(Charakter_PBN, Charakter_PBNAdmin)
 
@@ -81,7 +92,7 @@ class NazwaISkrotAdmin(RestrictDeletionToAdministracjaGroupMixin, CommitedModelA
 admin.site.register(Tytul, NazwaISkrotAdmin)
 
 class Typ_KBNAdmin(RestrictDeletionToAdministracjaGroupAdmin, CommitedModelAdmin):
-    list_display = ['nazwa', 'skrot', 'artykul_pbn']
+    list_display = ['nazwa', 'skrot', 'artykul_pbn', 'charakter_pbn']
 
 admin.site.register(Typ_KBN, Typ_KBNAdmin)
 

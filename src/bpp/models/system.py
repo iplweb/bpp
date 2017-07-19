@@ -5,9 +5,9 @@ Małe klasy pomocnicze dla całego systemu
 """
 
 from django.db import models
+from django.utils import six
 
 from bpp.models.abstract import ModelZNazwa, NazwaISkrot
-from django.utils import six
 
 NAZWY_PRIMO = [
     "",
@@ -36,8 +36,10 @@ RODZAJE_DOKUMENTOW_PBN = [("article", "Artykuł"),
 
 @six.python_2_unicode_compatible
 class Charakter_PBN(models.Model):
-    wlasciwy_dla = models.CharField(max_length=20,
-                                    choices=RODZAJE_DOKUMENTOW_PBN)
+    wlasciwy_dla = models.CharField(
+        "Właściwy dla...",
+        max_length=20,
+        choices=RODZAJE_DOKUMENTOW_PBN)
     identyfikator = models.CharField(max_length=100)
     opis = models.CharField(max_length=500)
     help_text = models.TextField(blank=True)
@@ -128,6 +130,19 @@ class Jezyk(NazwaISkrot):
 class Typ_KBN(NazwaISkrot):
     artykul_pbn = models.BooleanField("Artykuł w PBN", help_text="""Wydawnictwa ciągłe posiadające
     ten typ KBN zostaną włączone do eksportu PBN jako artykuły""", default=False)
+
+
+    charakter_pbn = models.ForeignKey(
+        Charakter_PBN,
+        verbose_name="Charakter PBN",
+        blank=True,
+        null=True,
+        default=None,
+        help_text="""Wartość wybrana w tym polu zostanie użyta jako 
+        fallback, tzn. jeżeli dla charakteru formalnego danego rekordu nie 
+        określono odpowiedniego charakteru PBN, to zostanie użyta wartość 
+        tego pola, o ile wybrana. """
+    )
 
     class Meta:
         verbose_name = 'typ KBN'

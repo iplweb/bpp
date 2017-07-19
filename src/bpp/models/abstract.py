@@ -488,22 +488,14 @@ class PBNSerializerHelperMixin:
             pages = SubElement(toplevel, "pages")
             pages.text = zakres
 
-    eksport_pbn_TYP_KBN_MAP = {
-        'PO': 'original-article',
-        'PW': 'original-article',
-        'PP': 'review-article',
-        'PNP': 'popular-science-article',
-        '000': 'others-citable'
-    }
-
     def eksport_pbn_is(self, toplevel, wydzial=None, autorzy_klass=None):
-        if self.charakter_formalny.charakter_pbn != None:
-            return self.charakter_formalny.charakter_pbn.identyfikator
-
         is_text = None
-        tks = self.typ_kbn.skrot
-        if self.eksport_pbn_TYP_KBN_MAP.get(tks):
-            is_text = self.eksport_pbn_TYP_KBN_MAP.get(tks)
+
+        if self.charakter_formalny.charakter_pbn != None:
+            is_text = self.charakter_formalny.charakter_pbn.identyfikator
+        else:
+            if self.typ_kbn.charakter_pbn != None:
+                is_text = self.typ_kbn.charakter_pbn.identyfikator
 
         if is_text:
             _is = SubElement(toplevel, 'is')

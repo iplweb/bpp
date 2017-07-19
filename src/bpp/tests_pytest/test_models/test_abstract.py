@@ -4,9 +4,42 @@ from lxml.etree import Element
 from model_mommy import mommy
 
 from bpp.models.struktura import Jednostka, Wydzial
+from bpp.models.system import Charakter_PBN, Charakter_Formalny, Typ_KBN
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte_Autor, \
     Wydawnictwo_Zwarte
+
+
+@pytest.mark.django_db
+def test_eksport_pbn_is():
+    c_pbn = mommy.make(Charakter_PBN, identyfikator='fubar')
+    c = mommy.make(Charakter_Formalny, charakter_pbn=c_pbn)
+
+    c_pbn2 = mommy.make(Charakter_PBN, identyfikator='baz')
+    t = mommy.make(Typ_KBN, charakter_pbn=c_pbn2)
+
+    wz = mommy.make(Wydawnictwo_Zwarte,
+                    charakter_formalny=c,
+                    typ_kbn=t)
+
+    toplevel = Element('test')
+    wz.eksport_pbn_is(toplevel=toplevel)
+    assert toplevel.getchildren()[0].text == "fubar"
+
+    c.charakter_pbn = None
+    c.save()
+
+    toplevel = Element('test')
+    wz.eksport_pbn_is(toplevel=toplevel)
+    assert toplevel.getchildren()[0].text == "baz"
+
+    t.charakter_pbn = None
+    t.save()
+
+    toplevel = Element('test')
+    wz.eksport_pbn_is(toplevel=toplevel)
+    with pytest.raises(IndexError):
+        assert toplevel.getchildren()[0]
 
 
 @pytest.mark.parametrize(
