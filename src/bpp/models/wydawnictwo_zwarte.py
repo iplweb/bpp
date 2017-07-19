@@ -17,7 +17,7 @@ from bpp.models.abstract import \
     PBNSerializerHelperMixin, ModelZOpenAccess, ModelZPubmedID, ModelZDOI, \
     ModelZeZnakamiWydawniczymi, \
     ModelZAktualizacjaDlaPBN, ModelZKonferencja, \
-    ModelZSeria_Wydawnicza
+    ModelZSeria_Wydawnicza, ModelZISSN
 from bpp.models.autor import Autor
 from bpp.models.util import ZapobiegajNiewlasciwymCharakterom
 from bpp.models.util import dodaj_autora
@@ -96,6 +96,7 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
                          ModelZAktualizacjaDlaPBN,
                          ModelZKonferencja,
                          ModelZSeria_Wydawnicza,
+                         ModelZISSN,
                          DirtyFieldsMixin):
     """Wydawnictwo zwarte, czyli: książki, broszury, skrypty, fragmenty,
     doniesienia zjazdowe."""
@@ -162,6 +163,11 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
             isbn = SubElement(toplevel, 'isbn')
             isbn.text = self.isbn.replace(".", "").strip()
 
+    def eksport_pbn_issn(self, toplevel, wydzial=None, autorzy_klass=None):
+        if self.issn:
+            issn = SubElement(toplevel, 'issn')
+            issn.text = self.issn.replace(".", "").strip()
+
     def eksport_pbn_publisher_name(self, toplevel, wydzial=None, autorzy_klass=None):
         publisher_name = SubElement(toplevel, 'publisher-name')
         publisher_name.text = self.wydawnictwo
@@ -181,6 +187,18 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
         if self.ma_wymiar_wydawniczy():
             size = SubElement(toplevel, 'size', unit="sheets")
             size.text = self.wymiar_wydawniczy_w_arkuszach()
+
+    def eksport_pbn_series(self, toplevel, wydzial=None, autorzy_klass=None):
+        if self.seria_wydawnicza is not None:
+            series = SubElement(toplevel, 'series')
+            series.text = self.seria_wydawnicza.nazwa
+
+    def eksport_pbn_number_in_series(self, toplevel, wydzial=None,
+                                     autorzy_klass=None):
+        if self.numer_w_serii is not None:
+            tag = SubElement(toplevel, 'number-in-series')
+            tag.text = str(self.numer_w_serii)
+
 
     def eksport_pbn_book(self, toplevel, wydzial, autorzy_klass=None):
         def add_wydawnictwo_nadrzedne_data(book, wydawnictwo_nadrzedne, title_text=None):
@@ -320,9 +338,22 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
             return wszyscy_autorzy
         return super(Wydawnictwo_Zwarte, self).eksport_pbn_get_wszyscy_autorzy_count(wydzial, autorzy_klass)
 
-    eksport_pbn_BOOK_FLDS = ["editor", "isbn", "series", "number-in-series", "edition", "volume", "pages",
-                             "publisher-name", "publication-place", "open-access"]
-    eksport_pbn_CHAPTER_FLDS = ["editor", "chapter-number", "book", "pages", "open-access"]
+    eksport_pbn_BOOK_FLDS = ["editor",
+                             "isbn",
+                             "series",
+                             "number-in-series",
+                             "edition",
+                             "volume",
+                             "pages",
+                             "publisher-name",
+                             "publication-place",
+                             "open-access"]
+
+    eksport_pbn_CHAPTER_FLDS = ["editor",
+                                "chapter-number",
+                                "book",
+                                "pages",
+                                "open-access"]
 
     def eksport_pbn_serializuj(self, wydzial, toplevel=None):
         if toplevel is None:

@@ -183,7 +183,11 @@ EKSTRA_INFORMACJE_WYDAWNICTWO_CIAGLE_FIELDSET = ('Ekstra informacje', {
 
 EKSTRA_INFORMACJE_WYDAWNICTWO_ZWARTE_FIELDSET = ('Ekstra informacje', {
     'classes': ('grp-collapse grp-closed', ),
-    'fields': MODEL_Z_ISBN + MODEL_Z_WWW + MODEL_Z_PUBMEDID + MODEL_Z_DOI
+    'fields': MODEL_Z_ISBN +
+              MODEL_Z_ISSN +
+              MODEL_Z_WWW +
+              MODEL_Z_PUBMEDID +
+              MODEL_Z_DOI
 })
 
 
