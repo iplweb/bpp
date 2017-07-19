@@ -2,12 +2,20 @@
 import os
 import re
 from datetime import datetime, timedelta
+from pathlib import Path
 
+from ansible.plugins.callback import json
 from psycopg2.extensions import QuotedString
 from unidecode import unidecode
 from django.utils import six
 
 non_url = re.compile(r'[^\w-]+')
+
+def get_fixture(name):
+    p = Path(__file__).parent / "fixtures" / ("%s.json" % name)
+    ret = json.load(open(p))
+    ret = [x['fields'] for x in ret if x['model'] == ("bpp.%s" % name)]
+    return dict([(x['skrot'].lower().strip(), x) for x in ret])
 
 
 class FulltextSearchMixin:

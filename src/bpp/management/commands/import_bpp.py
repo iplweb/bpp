@@ -17,6 +17,7 @@ from bpp.models.abstract import ILOSC_ZNAKOW_NA_ARKUSZ, parse_informacje, \
 from bpp.models.konferencja import Konferencja
 from bpp.models.struktura import Uczelnia
 from bpp.templatetags.prace import close_tags
+from bpp.util import get_fixture
 
 psycopg2.extensions.register_type(psycopg2.extensions.UNICODE)
 psycopg2.extensions.register_type(psycopg2.extensions.UNICODEARRAY)
@@ -870,13 +871,6 @@ def zrob_kbn(cursor):
     set_seq("bpp_typ_kbn")
 
 
-def get_fixture(name):
-    p = Path(bpp.__file__).parent / "fixtures" / ("%s.json" % name)
-    ret = json.load(open(p))
-    ret = [x['fields'] for x in ret if x['model'] == ("bpp.%s" % name)]
-    return dict([(x['skrot'].lower().strip(), x) for x in ret])
-
-
 def zrob_charaktery_formalne(cursor):
     Charakter_Formalny.objects.all().delete()
     cursor.execute("SELECT id, skrot, nazwa FROM pub")
@@ -998,7 +992,8 @@ def zrob_publikacje(cur, pgsql_conn, initial_offset, skip):
           
           tom,
           
-          nrbibl
+          nrbibl,
+          serial
           
       FROM 
         bib 

@@ -4,11 +4,15 @@
 from django.core.management import call_command
 from django.db import migrations, models
 
+from bpp.util import get_fixture
+
 
 def ustaw_typy_kbn(apps, schema_editor):
     Typ_KBN = apps.get_model("bpp", "Typ_KBN")
     if Typ_KBN.objects.count() == 0:
-        call_command('loaddata', "typ_kbn.json", app='bpp', verbosity=0)
+        data = get_fixture("typ_kbn")
+        for elem in data.values():
+            Typ_KBN.objects.create(**elem)
 
     for elem in Typ_KBN.objects.all():
         elem.artykul_pbn = True
