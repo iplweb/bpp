@@ -29,7 +29,7 @@ test_requirements = list(parse_reqs("requirements_dev.txt")) + requirements
 
 setup(
     name='django-bpp',
-    version='version='0.11.27'',
+    version='version='0.11.28'',
     description="System informatyczny do zarządzania bibliografią publikacji pracowników naukowych",
     long_description=readme + '\n\n' + history,
     author="Michał Pasternak",
