@@ -43,11 +43,16 @@ class ModelZAdnotacjami(models.Model):
     """Zawiera adnotację  dla danego obiektu, czyli informacje, które
     użytkownik może sobie dowolnie uzupełnić.
     """
-    ostatnio_zmieniony = models.DateTimeField(auto_now=True, null=True, db_index=True)
+    ostatnio_zmieniony = models.DateTimeField(auto_now=True, null=True,
+                                              db_index=True)
 
-    adnotacje = models.TextField(help_text="""Pole do użytku wewnętrznego -
-    wpisane tu informacje nie są wyświetlane na stronach WWW dostępnych
-    dla użytkowników końcowych.""", null=True, blank=True, db_index=True)
+    adnotacje = models.TextField(
+        help_text="""Pole do użytku wewnętrznego -
+        wpisane tu informacje nie są wyświetlane na stronach WWW dostępnych
+        dla użytkowników końcowych.""",
+        default='',
+        blank=True,
+        db_index=True)
 
     class Meta:
         abstract = True
