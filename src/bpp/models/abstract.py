@@ -52,6 +52,7 @@ class ModelZAdnotacjami(models.Model):
         dla użytkowników końcowych.""",
         default='',
         blank=True,
+        null=False,
         db_index=True)
 
     class Meta:

@@ -389,7 +389,8 @@ def zrob_wydzialy(cur):
 
 
 def zrob_userow(cur):
-    cur.execute("""SELECT login, haslo, nazwisko_i_imie, e_mail, adnotacje,
+    cur.execute("""SELECT login, haslo, nazwisko_i_imie, e_mail, 
+      COALESCE(adnotacje, '') as adnotacje,
             uprawnienia, id, created_on, last_access, created_by, edited_by
             FROM users ORDER BY id""")
     later = []
@@ -450,7 +451,7 @@ def zrob_userow(cur):
             except User.DoesNotExist:
                 later.append((u.pk, 'zmieniony_przez', l['edited_by']))
 
-        u.adnotacje = l['adnotacje']
+        u.adnotacje = l['adnotacje'] or ''
         u.save()
 
     for pk, attribute, value in later:
@@ -516,7 +517,7 @@ def zrob_jednostki(cur, initial_offset, skip):
         kw = dict(pk=jed['id'], nazwa=jed['nazwa'], skrot=jed['skrot'],
                   wydzial=wyd, widoczna=jed['to_print'] == "*",
                   email=jed['email'], www=convert_www(jed['www']),
-                  adnotacje=jed['opis'])
+                  adnotacje=jed['opis'] or '')
         j = Jednostka.objects.create(**kw)
         admin_log_history(j, jed)
 
@@ -561,7 +562,7 @@ def zrob_zrodla(cur, initial_offset, skip):
                   skrot=zrod['skrot'],
                   www=zrod['www'],
                   nazwa=zrod['nazwa'],
-                  adnotacje=zrod['adnotacje'],
+                  adnotacje=zrod['adnotacje'] or '',
                   issn=zrod['issn'] or zrod['issn2'],
                   e_issn=zrod['e_issn'],
                   doi=zrod['doi'],
@@ -610,7 +611,7 @@ def zrob_autorow(cur, initial_offset=0, skip=0):
                   nazwisko=aut['nazwisko'].strip(),
                   tytul=tytul,
                   email=aut['email'],
-                  adnotacje=aut['adnotacje'],
+                  adnotacje=aut['adnotacje'] or '',
                   www=convert_www(aut['www']),
                   urodzony=aut['urodzony'],
                   zmarl=aut['zmarl'],
