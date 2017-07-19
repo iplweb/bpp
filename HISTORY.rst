@@ -48,6 +48,9 @@ Historia zmian
 
 * w bloku "Adnotacje" w module "Redagowanie" wyświetla się ID oraz PBN ID
 
+* pola "Seria wydawnicza" oraz "ISSN" dla wydawnictwa zwartego
+
+
 0.11.0 (2017-07-05)
 -------------------
 
