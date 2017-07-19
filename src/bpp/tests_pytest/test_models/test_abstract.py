@@ -4,12 +4,46 @@ from lxml.etree import Element
 from model_mommy import mommy
 
 from bpp.models.konferencja import Konferencja
+from bpp.models.seria_wydawnicza import Seria_Wydawnicza
 from bpp.models.struktura import Jednostka, Wydzial
 from bpp.models.system import Charakter_PBN, Charakter_Formalny, Typ_KBN
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte_Autor, \
     Wydawnictwo_Zwarte
 
+
+@pytest.mark.django_db
+def test_eksport_pbn_issn():
+    wz = mommy.make(Wydawnictwo_Zwarte, issn="foobar")
+
+    toplevel = Element('test')
+    wz.eksport_pbn_issn(toplevel)
+    assert len(toplevel.getchildren())
+
+    wz.issn = None
+    toplevel = Element('test')
+    wz.eksport_pbn_issn(toplevel)
+    assert len(toplevel.getchildren()) == 0
+
+
+@pytest.mark.django_db
+def test_eksport_pbn_seria():
+    s = mommy.make(Seria_Wydawnicza, nazwa="TEST")
+    wz = mommy.make(Wydawnictwo_Zwarte, seria_wydawnicza=s, numer_w_serii="15")
+
+    toplevel = Element('test')
+    wz.eksport_pbn_series(toplevel)
+    wz.eksport_pbn_number_in_series(toplevel)
+    assert len(toplevel.getchildren()) == 2
+
+    wz.seria_wydawnicza = None
+    wz.numer_w_serii = None
+    wz.save()
+
+    toplevel = Element('test')
+    wz.eksport_pbn_series(toplevel)
+    wz.eksport_pbn_number_in_series(toplevel)
+    assert len(toplevel.getchildren()) == 0
 
 @pytest.mark.django_db
 def test_eksport_pbn_conference():
