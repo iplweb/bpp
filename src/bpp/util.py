@@ -4,7 +4,7 @@ import re
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from ansible.plugins.callback import json
+import json
 from psycopg2.extensions import QuotedString
 from unidecode import unidecode
 from django.utils import six
