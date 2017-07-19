@@ -84,7 +84,6 @@ CREATE OR REPLACE FUNCTION bpp_refresh_cache()
           if TD["event"] in ["UPDATE", "INSERT"]:
               select_query = " SELECT * FROM " + table.replace("_mat", "") + "  " + where
               query = "INSERT INTO " + table + select_query
-              plpy.notice(query)
               plpy.execute(query)
 
 $$;
