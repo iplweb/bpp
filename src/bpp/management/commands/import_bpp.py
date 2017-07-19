@@ -14,6 +14,7 @@ from django.db import IntegrityError
 
 from bpp.models.abstract import ILOSC_ZNAKOW_NA_ARKUSZ, parse_informacje, \
     wez_zakres_stron
+from bpp.models.cache import Rekord
 from bpp.models.konferencja import Konferencja
 from bpp.models.seria_wydawnicza import Seria_Wydawnicza
 from bpp.models.struktura import Uczelnia
@@ -1285,6 +1286,15 @@ class Command(BaseCommand):
 
                     c.save()
 
+            for skrot in [
+                "AP", "AZ", "API", "PRI", "BPEX",
+                "KOM", "CZ", "SKR", "PZ", "BR", "WYN"]:
+                c = Charakter_Formalny.objects.get(skrot=skrot)
+                if Rekord.objects.filter(charakter_formalny=c).count():
+                    print("*** NIE KASUJE %s, ma rekordy" % skrot)
+                else:
+                    c.delete()
+                    
             for klass in Wydawnictwo_Zwarte, Wydawnictwo_Ciagle:
                 for stary, nowy in NOWE_CHARAKTERY_MAPPING.items():
 
