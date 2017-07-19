@@ -275,6 +275,10 @@ def poprzestawiaj_wartosci_pol(bib, zakazane, docelowe):
 
             print("%r" % " ".join(msg))
 
+            if bib.get('legacy_data') is None:
+                bib['legacy_data'] = {}
+            bib['legacy_data'] = {field: bib[field]}
+
             if bib[_docelowe] is None:
                 bib[_docelowe] = ''
 
@@ -690,6 +694,11 @@ def zrob_import_z_tabeli(kw, bib, zakazane, docelowe,
     szczegoly_i_inne(bib, kw, zrodlowe_pole_dla_informacji)
     jezyki_statusy(bib, kw)
 
+    kw['legacy_data'] = bib['legacy_data']
+    for pole in ['nrbibl', 'typ_polon', 'cechy_polon', 'seria']:
+        if bib[pole]:
+            kw['legacy_data'][pole] = bib[pole]
+
 
 def zrob_wydawnictwo(kw, bib, klass, autor_klass, zakazane, docelowe,
                      pgsql_conn, zrodlowe_pole_dla_informacji,
@@ -985,7 +994,9 @@ def zrob_publikacje(cur, pgsql_conn, initial_offset, skip):
           oa_data,
           oa_link,
           
-          tom
+          tom,
+          
+          nrbibl
           
       FROM 
         bib 
@@ -1236,6 +1247,59 @@ class Command(BaseCommand):
                 set_seq("bpp_patent")
                 set_seq("bpp_praca_doktorska")
                 set_seq("bpp_praca_habilitacyjna")
+
+        if options['korekty']:
+            # Uzupełnij charaktery formalne i typy KBN o to, czego
+            # tam jeszcze nie ma:
+
+            for obj, fixture in [
+                (Charakter_Formalny, "um_lublin_charakter_formalny"),
+                (Typ_KBN, "um_lublin_typ_kbn")]:
+                f = get_fixture(fixture)
+                for elem in f.values():
+                    if obj == Charakter_Formalny:
+                        elem['charakter_pbn_id'] = elem['charakter_pbn']
+                        del elem['charakter_pbn']
+
+                    try:
+                        c = obj.objects.get(skrot=elem['skrot'])
+                    except obj.DoesNotExist:
+                        obj.objects.create(**elem)
+                        continue
+
+                    for key, value in elem.items():
+                        setattr(c, key, value)
+
+                    c.save()
+
+            for klass in Wydawnictwo_Zwarte, Wydawnictwo_Ciagle:
+                for stary, nowy in NOWE_CHARAKTERY_MAPPING.items():
+
+                    try:
+                        stary = Charakter_Formalny.objects.get(skrot=stary)
+                    except Charakter_Formalny.DoesNotExist:
+                        continue
+
+                    if nowy is not None:
+                        nowy = Charakter_Formalny.objects.get(skrot=nowy)
+
+                    stare = klass.objects\
+                        .filter(charakter_formalny=stary)\
+                        .order_by("pk")
+
+                    for obj in stare:
+                        if nowy is None:
+                            print("*** KASUJE", obj.pk, obj)
+                            obj.delete()
+                            continue
+
+                        print(stary.skrot, nowy.skrot, obj.pk, obj)
+
+                        obj.legacy_data['charakter_formalny__skrot'] = \
+                            stary.skrot
+                        obj.charakter_formalny = nowy
+                        obj.save()
+
 
         if options['clusters']:
             make_clusters()

@@ -133,6 +133,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.sites',
     'django.contrib.sitemaps',
+    'django.contrib.postgres',
     'password_policies',
 
     'create_test_db',

@@ -1,0 +1,452 @@
+[
+  {
+    "fields": {
+      "streszczenie": false,
+      "rozdzial_pbn": false,
+      "publikacja": true,
+      "charakter_pbn": null,
+      "artykul_pbn": true,
+      "nazwa_w_primo": "Artyku\u0142",
+      "nazwa": "Artyku\u0142 w czasopismie",
+      "skrot": "AC",
+      "ksiazka_pbn": false
+    },
+    "model": "bpp.um_lublin_charakter_formalny",
+    "pk": 1
+  },
+  {
+    "fields": {
+      "streszczenie": false,
+      "rozdzial_pbn": false,
+      "publikacja": true,
+      "charakter_pbn": null,
+      "artykul_pbn": false,
+      "nazwa_w_primo": "Ksi\u0105\u017cka",
+      "nazwa": "Ksi\u0105\u017cka",
+      "skrot": "KS",
+      "ksiazka_pbn": true
+    },
+    "model": "bpp.um_lublin_charakter_formalny",
+    "pk": 2
+  },
+  {
+    "fields": {
+      "streszczenie": false,
+      "rozdzial_pbn": false,
+      "publikacja": true,
+      "charakter_pbn": null,
+      "artykul_pbn": false,
+      "nazwa_w_primo": "",
+      "nazwa": "Komentarz",
+      "skrot": "KOM",
+      "ksiazka_pbn": false
+    },
+    "model": "bpp.um_lublin_charakter_formalny",
+    "pk": 3
+  },
+  {
+    "fields": {
+      "streszczenie": false,
+      "rozdzial_pbn": false,
+      "publikacja": true,
+      "charakter_pbn": null,
+      "artykul_pbn": true,
+      "nazwa_w_primo": "",
+      "nazwa": "List do redakcji",
+      "skrot": "L",
+      "ksiazka_pbn": false
+    },
+    "model": "bpp.um_lublin_charakter_formalny",
+    "pk": 4
+  },
+  {
+    "fields": {
+      "streszczenie": false,
+      "rozdzial_pbn": false,
+      "publikacja": true,
+      "charakter_pbn": null,
+      "artykul_pbn": true,
+      "nazwa_w_primo": "Artyku\u0142",
+      "nazwa": "Publikacja w suplemencie",
+      "skrot": "Supl",
+      "ksiazka_pbn": false
+    },
+    "model": "bpp.um_lublin_charakter_formalny",
+    "pk": 5
+  },
+  {
+    "fields": {
+      "streszczenie": false,
+      "rozdzial_pbn": false,
+      "publikacja": false,
+      "charakter_pbn": null,
+      "artykul_pbn": false,
+      "nazwa_w_primo": "Czasopismo",
+      "nazwa": "Czasopismo",
+      "skrot": "CZ",
+      "ksiazka_pbn": false
+    },
+    "model": "bpp.um_lublin_charakter_formalny",
+    "pk": 6
+  },
+  {
+    "fields": {
+      "streszczenie": false,
+      "rozdzial_pbn": false,
+      "publikacja": true,
+      "charakter_pbn": null,
+      "artykul_pbn": false,
+      "nazwa_w_primo": "Ksi\u0105\u017cka",
+      "nazwa": "Ksi\u0105\u017cka w j\u0119zyku polskim",
+      "skrot": "KSP",
+      "ksiazka_pbn": true
+    },
+    "model": "bpp.um_lublin_charakter_formalny",
+    "pk": 7
+  },
+  {
+    "fields": {
+      "streszczenie": false,
+      "rozdzial_pbn": false,
+      "publikacja": true,
+      "charakter_pbn": null,
+      "artykul_pbn": false,
+      "nazwa_w_primo": "Ksi\u0105\u017cka",
+      "nazwa": "Ksi\u0105\u017cka w j\u0119zyku obcym",
+      "skrot": "KSZ",
+      "ksiazka_pbn": true
+    },
+    "model": "bpp.um_lublin_charakter_formalny",
+    "pk": 8
+  },
+  {
+    "fields": {
+      "streszczenie": false,
+      "rozdzial_pbn": true,
+      "publikacja": true,
+      "charakter_pbn": null,
+      "artykul_pbn": false,
+      "nazwa_w_primo": "",
+      "nazwa": "Fragment",
+      "skrot": "frg",
+      "ksiazka_pbn": false
+    },
+    "model": "bpp.um_lublin_charakter_formalny",
+    "pk": 9
+  },
+  {
+    "fields": {
+      "streszczenie": false,
+      "rozdzial_pbn": false,
+      "publikacja": false,
+      "charakter_pbn": null,
+      "artykul_pbn": false,
+      "nazwa_w_primo": "",
+      "nazwa": "inne",
+      "skrot": "IN",
+      "ksiazka_pbn": false
+    },
+    "model": "bpp.um_lublin_charakter_formalny",
+    "pk": 10
+  },
+  {
+    "fields": {
+      "streszczenie": false,
+      "rozdzial_pbn": false,
+      "publikacja": false,
+      "charakter_pbn": null,
+      "artykul_pbn": false,
+      "nazwa_w_primo": "",
+      "nazwa": "T\u0142umaczenie",
+      "skrot": "T\u0141",
+      "ksiazka_pbn": false
+    },
+    "model": "bpp.um_lublin_charakter_formalny",
+    "pk": 11
+  },
+  {
+    "fields": {
+      "streszczenie": false,
+      "rozdzial_pbn": false,
+      "publikacja": false,
+      "charakter_pbn": null,
+      "artykul_pbn": false,
+      "nazwa_w_primo": "",
+      "nazwa": "Skrypt",
+      "skrot": "SKR",
+      "ksiazka_pbn": true
+    },
+    "model": "bpp.um_lublin_charakter_formalny",
+    "pk": 12
+  },
+  {
+    "fields": {
+      "streszczenie": false,
+      "rozdzial_pbn": false,
+      "publikacja": true,
+      "charakter_pbn": null,
+      "artykul_pbn": false,
+      "nazwa_w_primo": "Materia\u0142 konferencyjny",
+      "nazwa": "Polski Referat Zjazdowy",
+      "skrot": "PRZ",
+      "ksiazka_pbn": false
+    },
+    "model": "bpp.um_lublin_charakter_formalny",
+    "pk": 13
+  },
+  {
+    "fields": {
+      "streszczenie": true,
+      "rozdzial_pbn": false,
+      "publikacja": false,
+      "charakter_pbn": null,
+      "artykul_pbn": false,
+      "nazwa_w_primo": "Materia\u0142 konferencyjny",
+      "nazwa": "Polskie streszczenie zjazdowe",
+      "skrot": "PSZ",
+      "ksiazka_pbn": false
+    },
+    "model": "bpp.um_lublin_charakter_formalny",
+    "pk": 14
+  },
+  {
+    "fields": {
+      "streszczenie": false,
+      "rozdzial_pbn": false,
+      "publikacja": false,
+      "charakter_pbn": null,
+      "artykul_pbn": false,
+      "nazwa_w_primo": "",
+      "nazwa": "Poradnik zawodowy",
+      "skrot": "PZ",
+      "ksiazka_pbn": false
+    },
+    "model": "bpp.um_lublin_charakter_formalny",
+    "pk": 15
+  },
+  {
+    "fields": {
+      "streszczenie": false,
+      "rozdzial_pbn": false,
+      "publikacja": false,
+      "charakter_pbn": null,
+      "artykul_pbn": false,
+      "nazwa_w_primo": "",
+      "nazwa": "Recenzja",
+      "skrot": "R",
+      "ksiazka_pbn": false
+    },
+    "model": "bpp.um_lublin_charakter_formalny",
+    "pk": 16
+  },
+  {
+    "fields": {
+      "streszczenie": false,
+      "rozdzial_pbn": true,
+      "publikacja": true,
+      "charakter_pbn": null,
+      "artykul_pbn": false,
+      "nazwa_w_primo": "Rozdzia\u0142",
+      "nazwa": "Rozdzia\u0142 ksi\u0105\u017cki",
+      "skrot": "ROZ",
+      "ksiazka_pbn": false
+    },
+    "model": "bpp.um_lublin_charakter_formalny",
+    "pk": 17
+  },
+  {
+    "fields": {
+      "streszczenie": false,
+      "rozdzial_pbn": true,
+      "publikacja": false,
+      "charakter_pbn": null,
+      "artykul_pbn": false,
+      "nazwa_w_primo": "Rozdzia\u0142",
+      "nazwa": "Rozdzia\u0142 skryptu",
+      "skrot": "ROZS",
+      "ksiazka_pbn": false
+    },
+    "model": "bpp.um_lublin_charakter_formalny",
+    "pk": 18
+  },
+  {
+    "fields": {
+      "streszczenie": false,
+      "rozdzial_pbn": false,
+      "publikacja": true,
+      "charakter_pbn": null,
+      "artykul_pbn": false,
+      "nazwa_w_primo": "Materia\u0142 konferencyjny",
+      "nazwa": "Referat zjazdowy konferencji miedzynarodowej",
+      "skrot": "ZRZ",
+      "ksiazka_pbn": false
+    },
+    "model": "bpp.um_lublin_charakter_formalny",
+    "pk": 19
+  },
+  {
+    "fields": {
+      "streszczenie": true,
+      "rozdzial_pbn": false,
+      "publikacja": false,
+      "charakter_pbn": null,
+      "artykul_pbn": false,
+      "nazwa_w_primo": "",
+      "nazwa": "Streszczenie zjazdowe konferencji mi\u0119dzynarodowej",
+      "skrot": "ZSZ",
+      "ksiazka_pbn": false
+    },
+    "model": "bpp.um_lublin_charakter_formalny",
+    "pk": 20
+  },
+  {
+    "fields": {
+      "streszczenie": false,
+      "rozdzial_pbn": false,
+      "publikacja": false,
+      "charakter_pbn": null,
+      "artykul_pbn": false,
+      "nazwa_w_primo": "",
+      "nazwa": "Broszura",
+      "skrot": "BR",
+      "ksiazka_pbn": false
+    },
+    "model": "bpp.um_lublin_charakter_formalny",
+    "pk": 21
+  },
+  {
+    "fields": {
+      "streszczenie": false,
+      "rozdzial_pbn": false,
+      "publikacja": false,
+      "charakter_pbn": null,
+      "artykul_pbn": false,
+      "nazwa_w_primo": "",
+      "nazwa": "Projekt wynalazczy",
+      "skrot": "WYN",
+      "ksiazka_pbn": false
+    },
+    "model": "bpp.um_lublin_charakter_formalny",
+    "pk": 22
+  },
+  {
+    "fields": {
+      "streszczenie": false,
+      "rozdzial_pbn": false,
+      "publikacja": false,
+      "charakter_pbn": null,
+      "artykul_pbn": false,
+      "nazwa_w_primo": "",
+      "nazwa": "Patent",
+      "skrot": "PAT",
+      "ksiazka_pbn": false
+    },
+    "model": "bpp.um_lublin_charakter_formalny",
+    "pk": 23
+  },
+  {
+    "fields": {
+      "streszczenie": false,
+      "rozdzial_pbn": false,
+      "publikacja": true,
+      "charakter_pbn": null,
+      "artykul_pbn": false,
+      "nazwa_w_primo": "",
+      "nazwa": "Praca doktorska",
+      "skrot": "D",
+      "ksiazka_pbn": false
+    },
+    "model": "bpp.um_lublin_charakter_formalny",
+    "pk": 24
+  },
+  {
+    "fields": {
+      "streszczenie": false,
+      "rozdzial_pbn": false,
+      "publikacja": true,
+      "charakter_pbn": null,
+      "artykul_pbn": false,
+      "nazwa_w_primo": "",
+      "nazwa": "Praca habilitacyjna",
+      "skrot": "H",
+      "ksiazka_pbn": false
+    },
+    "model": "bpp.um_lublin_charakter_formalny",
+    "pk": 25
+  },
+  {
+    "fields": {
+      "streszczenie": false,
+      "rozdzial_pbn": true,
+      "publikacja": false,
+      "charakter_pbn": null,
+      "artykul_pbn": false,
+      "nazwa_w_primo": "",
+      "nazwa": "Podr\u0119cznik akademicki",
+      "skrot": "PA",
+      "ksiazka_pbn": true
+    },
+    "model": "bpp.um_lublin_charakter_formalny",
+    "pk": 26
+  },
+  {
+    "fields": {
+      "streszczenie": false,
+      "rozdzial_pbn": false,
+      "publikacja": false,
+      "charakter_pbn": null,
+      "artykul_pbn": false,
+      "nazwa_w_primo": "",
+      "nazwa": "Dokument elektroniczny",
+      "skrot": "DE",
+      "ksiazka_pbn": false
+    },
+    "model": "bpp.um_lublin_charakter_formalny",
+    "pk": 27
+  },
+  {
+    "fields": {
+      "streszczenie": true,
+      "rozdzial_pbn": false,
+      "publikacja": false,
+      "charakter_pbn": null,
+      "artykul_pbn": false,
+      "nazwa_w_primo": "",
+      "nazwa": "Streszczenie zjazdowe konferencji krajowej",
+      "skrot": "SZK",
+      "ksiazka_pbn": false
+    },
+    "model": "bpp.um_lublin_charakter_formalny",
+    "pk": 29
+  },
+  {
+    "fields": {
+      "streszczenie": false,
+      "rozdzial_pbn": false,
+      "publikacja": true,
+      "charakter_pbn": null,
+      "artykul_pbn": false,
+      "nazwa_w_primo": "",
+      "nazwa": "Referat zjazdowy konferencji krajowej",
+      "skrot": "RZK",
+      "ksiazka_pbn": false
+    },
+    "model": "bpp.um_lublin_charakter_formalny",
+    "pk": 30
+  },
+  {
+    "fields": {
+      "streszczenie": false,
+      "rozdzial_pbn": true,
+      "publikacja": true,
+      "charakter_pbn": 10,
+      "artykul_pbn": false,
+      "nazwa_w_primo": "Rozdzia\u0142",
+      "nazwa": "rozdzia\u0142 podr\u0119cznika",
+      "skrot": "ROZP",
+      "ksiazka_pbn": false
+    },
+    "model": "bpp.um_lublin_charakter_formalny",
+    "pk": 31
+  }
+]

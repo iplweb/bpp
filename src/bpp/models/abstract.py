@@ -5,6 +5,7 @@ Klasy abstrakcyjne
 """
 from decimal import Decimal
 
+from django.contrib.postgres.fields import HStoreField
 from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -382,8 +383,23 @@ class ModelPrzeszukiwalny(models.Model):
     class Meta:
         abstract = True
 
+
+class ModelZLegacyData(models.Model):
+    """Model zawierający informacje zaimportowane z poprzedniego systemu,
+    nie mające odpowiednika w nowych danych, jednakże pozostawione na
+    rekordzie w taki sposób, aby w razie potrzeby w przyszłości można było
+    z nich skorzystać"""
+    legacy_data = HStoreField(blank=True, null=True)
+
+    class Meta:
+        abstract = True
+
 @six.python_2_unicode_compatible
-class Wydawnictwo_Baza(ModelZOpisemBibliograficznym, ModelPrzeszukiwalny):
+class Wydawnictwo_Baza(
+    ModelZOpisemBibliograficznym,
+    ModelPrzeszukiwalny,
+    ModelZLegacyData):
+
     def __str__(self):
         return self.tytul_oryginalny
 

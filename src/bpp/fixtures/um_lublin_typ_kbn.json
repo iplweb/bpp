@@ -1,0 +1,83 @@
+[
+  {
+    "fields": {
+      "skrot": "PO",
+      "artykul_pbn": true,
+      "nazwa": "Praca Oryginalna"
+    },
+    "model": "bpp.um_lublin_typ_kbn",
+    "pk": 1
+  },
+  {
+    "fields": {
+      "skrot": "PP",
+      "artykul_pbn": true,
+      "nazwa": "Praca Przegl\u0105dowa"
+    },
+    "model": "bpp.um_lublin_typ_kbn",
+    "pk": 2
+  },
+  {
+    "fields": {
+      "skrot": "000",
+      "artykul_pbn": false,
+      "nazwa": "inne"
+    },
+    "model": "bpp.um_lublin_typ_kbn",
+    "pk": 3
+  },
+  {
+    "fields": {
+      "skrot": "PNP",
+      "artykul_pbn": true,
+      "nazwa": "Publikacja popularnonaukowa"
+    },
+    "model": "bpp.um_lublin_typ_kbn",
+    "pk": 4
+  },
+  {
+    "fields": {
+      "skrot": "mon",
+      "artykul_pbn": true,
+      "nazwa": "praca monograficzna"
+    },
+    "model": "bpp.um_lublin_typ_kbn",
+    "pk": 5
+  },
+  {
+    "fields": {
+      "skrot": "CR",
+      "artykul_pbn": true,
+      "nazwa": "Opis Przypadku"
+    },
+    "model": "bpp.um_lublin_typ_kbn",
+    "pk": 6
+  },
+  {
+    "fields": {
+      "skrot": "PAK",
+      "artykul_pbn": true,
+      "nazwa": "Podr\u0119cznik akademicki"
+    },
+    "model": "bpp.um_lublin_typ_kbn",
+    "pk": 7
+  },
+  {
+    "fields": {
+      "skrot": "RC",
+      "artykul_pbn": true,
+      "nazwa": "Redakcja czasopisma"
+    },
+    "model": "bpp.um_lublin_typ_kbn",
+    "pk": 8
+  },
+  {
+    "fields": {
+      "skrot": "PW",
+      "artykul_pbn": false,
+      "nazwa": "Praca wieloo\u015brodkowa"
+    },
+    "model": "bpp.um_lublin_typ_kbn",
+    "pk": 9
+  }
+]
