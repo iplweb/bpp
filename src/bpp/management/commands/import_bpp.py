@@ -15,6 +15,7 @@ from django.db import IntegrityError
 from bpp.models.abstract import ILOSC_ZNAKOW_NA_ARKUSZ, parse_informacje, \
     wez_zakres_stron
 from bpp.models.konferencja import Konferencja
+from bpp.models.seria import Seria_Wydawnicza
 from bpp.models.struktura import Uczelnia
 from bpp.templatetags.prace import close_tags
 from bpp.util import get_fixture
@@ -796,6 +797,9 @@ def zrob_wydawnictwo_zwarte(bib, skrot, pgsql_conn):
                           docelowe='uwagi', pgsql_conn=pgsql_conn,
                           zrodlowe_pole_dla_informacji=None)
 
+    if bib['seria']:
+        wc.seria_wydawnicza = Seria_Wydawnicza.objects.get(nazwa=bib['seria'])
+        
     zrob_znaki_wydawnicze(bib, wc)
 
 
@@ -993,7 +997,7 @@ def zrob_publikacje(cur, pgsql_conn, initial_offset, skip):
           tom,
           
           nrbibl,
-          serial
+          seria
           
       FROM 
         bib 
@@ -1162,6 +1166,7 @@ class Command(BaseCommand):
         parser.add_argument("--konferencje", action="store_true")
 
         parser.add_argument("--korekty", action="store_true")
+        parser.add_argument("--serie", action="store_true")
         parser.add_argument("--publikacje", action="store_true")
         parser.add_argument("--clusters", action="store_true")
         parser.add_argument("--initial-offset", action="store", type=int,
@@ -1217,6 +1222,11 @@ class Command(BaseCommand):
 
         if options['konferencje']:
             zrob_konferencje(cur)
+
+        if options['serie']:
+            cur.execute("SELECT DISTINCT seria FROM bib")
+            for elem in cur.fetchall():
+                Seria_Wydawnicza.objects.create(nazwa=elem['seria'])
 
         if options['zrodla']:
             zrob_rodzaje_zrodel(cur)
