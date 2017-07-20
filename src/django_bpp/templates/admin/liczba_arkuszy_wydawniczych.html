@@ -7,20 +7,21 @@
             " arkuszy</span>").insertAfter($
         ("#id_liczba_znakow_wydawniczych"));
 
-
         $("#id_liczba_arkuszy_wydawniczych").on("change", function(v){
             var arkusze = $("#id_liczba_arkuszy_wydawniczych").val();
 
-            $("#id_liczba_znakow_wydawniczych").val(
-                arkusze * 40000.0);
+            if (arkusze!='')
+                $("#id_liczba_znakow_wydawniczych").val(
+                    arkusze * 40000.0);
 
         });
 
         $("#id_liczba_znakow_wydawniczych").on("change", function(v){
             var znaki = $("#id_liczba_znakow_wydawniczych").val();
 
-            $("#id_liczba_arkuszy_wydawniczych").val(
-                Number(znaki / 40000.0).toFixed(2));
+            if (znaki!='')
+                $("#id_liczba_arkuszy_wydawniczych").val(
+                    Number(znaki / 40000.0).toFixed(2));
         });
 
         $("#id_liczba_znakow_wydawniczych").trigger("change");
