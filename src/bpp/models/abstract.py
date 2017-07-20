@@ -457,6 +457,9 @@ BRAK_PAGINACJI = ("[b. pag.]", "[b.pag.]", "[b. pag]", "[b. bag.]")
 
 def wez_zakres_stron(szczegoly):
     """Funkcja wycinająca informacje o stronach z pola 'Szczegóły'"""
+    if not szczegoly:
+        return
+
     for bp in BRAK_PAGINACJI:
         if szczegoly.find(bp) >= 0:
             return "brak"
@@ -487,6 +490,9 @@ parsed_informacje_regex = re.compile(
 
 def parse_informacje(informacje, key):
     """Wycina z pola informacje informację o tomie lub numerze lub roku"""
+    if not informacje:
+        return
+
     p = parsed_informacje_regex.match(informacje)
     if p is not None:
         d = p.groupdict()
