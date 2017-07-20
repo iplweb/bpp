@@ -16,15 +16,17 @@ class PlikEksportuPBN(models.Model):
     od_roku = models.IntegerField(choices=[(2013, '2013'),
                                            (2014, '2014'),
                                            (2015, '2015'),
-                                           (2016, '2016')
+                                           (2016, '2016'),
+                                           (2017, '2017')
                                            ],
-                                  default=2016)
+                                  default=2017)
     do_roku = models.IntegerField(choices=[(2013, '2013'),
                                            (2014, '2014'),
                                            (2015, '2015'),
-                                           (2016, '2016')
+                                           (2016, '2016'),
+                                           (2017, '2017')
                                            ],
-                                  default=2016)
+                                  default=2017)
 
     artykuly = models.BooleanField("Artykuły", default=True)
     ksiazki = models.BooleanField("Książki", default=True)
