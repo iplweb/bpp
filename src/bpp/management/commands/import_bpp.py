@@ -871,10 +871,13 @@ def zrob_kbn(cursor):
     Typ_KBN.objects.all().delete()
     cursor.execute("SELECT id, skrot, nazwa FROM kbn")
     for elem in cursor.fetchall():
+        skrot = elem['skrot'].strip()
+        if skrot == "MON":
+            skrot = "mon"
         Typ_KBN.objects.create(
             pk=elem['id'],
             nazwa=elem['nazwa'].strip(),
-            skrot=elem['skrot'].strip(),
+            skrot=skrot,
             artykul_pbn=elem['skrot'].strip().lower() in artykuly_pbn
         )
     set_seq("bpp_typ_kbn")
