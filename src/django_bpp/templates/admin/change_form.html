@@ -108,9 +108,16 @@
 
               {% block js_automatic_collapsibles_bpp %}
                 /* Automatically open every collapsible with value */
+                /* auto_open_collapsibles */
                 $("#grp-content-container .grp-collapse").each(function () {
                     var has_value = false;
-                    $(this).find("input").each(function () {
+
+                    $(this).find("input[type=checkbox]").each(function () {
+                        if ($(this).prop("checked"))
+                            has_value = true;
+                    });
+
+                    $(this).find("input[type!=checkbox]").each(function () {
                         if ($(this).val() && $(this).val() != 0)
                             has_value = true;
                     });
