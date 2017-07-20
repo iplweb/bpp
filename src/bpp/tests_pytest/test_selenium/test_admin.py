@@ -27,6 +27,9 @@ def proper_click(browser, arg):
     # Czy ta metoda jest potrzebna? Kiedyś był bug, który
     # uniemożliwiał kliknięcie elementu, który nei był widoczny
     # na stronie, stąd konieczność przescrollowania do niego
+    #
+    # 2017.07.18 jest potrzebna (mpasternak)
+    #
     scroll_into_view(browser, arg)
     browser.execute_script("document.getElementById('" + arg + "').click()")
 
@@ -144,9 +147,9 @@ def test_admin_patent_tamze(preauth_admin_browser, live_server):
     c = any_patent(informacje="TO INFORMACJE")
     preauth_admin_browser.visit(live_server + reverse("admin:bpp_patent_change", args=(c.pk,)))
 
-    tamze = preauth_admin_browser.find_by_id('tamze')
-    tamze.click()
-    time.sleep(1)
+    with wait_for_page_load(preauth_admin_browser):
+        preauth_admin_browser.execute_script("$('#tamze').click()")
+
     assert 'Dodaj patent' in preauth_admin_browser.html
     assert 'TO INFORMACJE' in preauth_admin_browser.html
 
