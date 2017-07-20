@@ -2,42 +2,60 @@
 
 
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 
-from django.core.urlresolvers import reverse
+from django.utils import timezone
 from model_mommy import mommy
 
-from eksport_pbn.models import PlikEksportuPBN, DATE_CREATED_ON
-from eksport_pbn.tasks import eksport_pbn, id_zwartych, id_ciaglych, remove_old_eksport_pbn_files
-from django.utils import timezone
+from bpp.models.system import Charakter_Formalny, Typ_KBN
+from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
+from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
+from eksport_pbn.models import PlikEksportuPBN
+from eksport_pbn.tasks import eksport_pbn, remove_old_eksport_pbn_files
 
-def test_eksport_pbn(normal_django_user, jednostka, autor_jan_kowalski, wydawnictwo_ciagle, wydawnictwo_zwarte, rok):
+
+def test_eksport_pbn(normal_django_user, jednostka, autor_jan_kowalski, rok,
+                     typy_odpowiedzialnosci):
     assert PlikEksportuPBN.objects.all().count() == 0
 
     autor_jan_kowalski.dodaj_jednostke(jednostka=jednostka)
 
-    wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
-    wydawnictwo_zwarte.dodaj_autora(autor_jan_kowalski, jednostka)
+    cf_ciagle = mommy.make(Charakter_Formalny,
+                           artykul_pbn=True,
+                           ksiazka_pbn=False,
+                           rozdzial_pbn=False)
+    cf_zwarte = mommy.make(Charakter_Formalny,
+                           artykul_pbn=False,
+                           ksiazka_pbn=True,
+                           rozdzial_pbn=True)
 
-    assert wydawnictwo_zwarte.charakter_formalny != wydawnictwo_ciagle.charakter_formalny
+    typ_ciagle = mommy.make(Typ_KBN,
+                            artykul_pbn=True)
 
-    cf = wydawnictwo_ciagle.charakter_formalny
-    cf.artykul_pbn = True
-    cf.ksiazka_pbn = cf.rozdzial_pbn = False
-    cf.save()
+    typ_zwarte = mommy.make(Typ_KBN, artykul_pbn=False)
 
-    cf = wydawnictwo_zwarte.charakter_formalny
-    cf.artykul_pbn = cf.rozdzial_pbn = False
-    cf.ksiazka_pbn = True
-    cf.save()
+    for elem in range(50):
+        wydawnictwo_ciagle = mommy.make(
+            Wydawnictwo_Ciagle,
+            charakter_formalny=cf_ciagle,
+            typ_kbn=typ_ciagle,
+            rok=rok)
+        wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
+
+        wydawnictwo_zwarte = mommy.make(
+            Wydawnictwo_Zwarte,
+            charakter_formalny=cf_zwarte,
+            rok=rok,
+            typ_kbn=typ_zwarte)
+        wydawnictwo_zwarte.dodaj_autora(autor_jan_kowalski, jednostka)
 
     obj = PlikEksportuPBN.objects.create(
-            owner=normal_django_user,
-            wydzial=jednostka.wydzial,
-            od_roku=rok, do_roku=rok
+        owner=normal_django_user,
+        wydzial=jednostka.wydzial,
+        od_roku=rok, do_roku=rok
     )
 
-    eksport_pbn(obj.pk)
+    ret = eksport_pbn(obj.pk, max_file_size=1)
 
     assert PlikEksportuPBN.objects.all().count() == 1
 
@@ -53,4 +71,3 @@ def test_remove_old_eksport_files(db):
     remove_old_eksport_pbn_files()
 
     assert PlikEksportuPBN.objects.all().count() == 1
-

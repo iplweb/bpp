@@ -33,7 +33,7 @@ header = """<?xml version="1.0" encoding="UTF-8"?>
 
 
 @app.task
-def eksport_pbn(pk):
+def eksport_pbn(pk, max_file_size=1024*1024):
     obj = wait_for_object(PlikEksportuPBN, pk)
 
     user = obj.owner
@@ -72,7 +72,7 @@ def eksport_pbn(pk):
     tmpdir = mkdtemp()
 
     count = 1
-    cur_data_size = 1024 * 1024
+    cur_data_size = max_file_size
     outfile = None
 
     def close_outfile(outfile):
@@ -82,18 +82,19 @@ def eksport_pbn(pk):
 
     hdr = header % wydzial.pbn_id
 
-    for element in gen_ser():
+    for element in list(gen_ser()):
 
-        if cur_data_size >= 1024 * 1024 - 4096:
+        if cur_data_size >= max_file_size - 4096:
             close_outfile(outfile)
 
-            outfile = open(os.path.join(tmpdir, "%s.xml" % count), 'wb')
+            outfile = open(os.path.join(tmpdir, "%s.xml" % count), 'w',
+                           encoding="utf-8")
             outfile.write(hdr)
             cur_data_size = len(hdr)
             count += 1
 
-        data = tostring(element, pretty_print=True)
-        outfile.write(data)
+        data = tostring(element, pretty_print=True, encoding="utf-8")
+        outfile.write(data.decode("utf-8"))
 
         cur_data_size += len(data)
 
@@ -105,7 +106,7 @@ def eksport_pbn(pk):
     zipf.close()
 
     pep = obj
-    pep.file.save(os.path.basename(fn), File(open(fn)))
+    pep.file.save(os.path.basename(fn), File(open(fn, 'rb')))
     pep.save()
 
     informuj("Zakończono. <a href=%s>Kliknij tutaj, aby pobrać eksport PBN dla %s - %s</a>. " %
