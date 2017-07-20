@@ -50,6 +50,9 @@ Historia zmian
 
 * pola "Seria wydawnicza" oraz "ISSN" dla wydawnictwa zwartego
 
+* możliwość określania nagród oraz statusu wybitności pracy dla rekordów
+  wydawnictw zwartych i wydawnictw ciągłych
+
 
 0.11.0 (2017-07-05)
 -------------------
