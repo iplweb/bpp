@@ -31,7 +31,7 @@ class Nagroda(models.Model):
         awardGrantingEntity.text = str(self.organ_przyznajacy.skrot)
 
         awardName = SubElement(award, "awardName")
-        awardName.text = self.awardName
+        awardName.text = self.nazwa
 
         grantYear = SubElement(award, "grantYear")
         grantYear.text = str(self.rok_przyznania)
