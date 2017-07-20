@@ -37,3 +37,5 @@ django_nginx_push_stream_allowed_ips:
 celery_broker_url: "amqp://{{ rabbitmq_user }}:{{ rabbitmq_password }}@localhost:5672/{{ rabbitmq_vhost }}"
 
 certs_path: "{{ role_path }}/files/"
+
+django_uzywaj_punktacji_wewnetrznej: 1

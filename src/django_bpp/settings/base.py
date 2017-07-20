@@ -2,9 +2,9 @@
 
 import os
 import sys
-import django
 from datetime import timedelta
 
+import django
 from django.core.exceptions import ImproperlyConfigured
 
 
@@ -488,3 +488,6 @@ EXCLUDE_FROM_MINIFYING = [
 ]
 
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+
+UZYWAJ_PUNKTACJI_WEWNETRZNEJ = bool(
+    int(django_getenv("DJANGO_BPP_UZYWAJ_PUNKTACJI_WEWNETRZNEJ", "1")))

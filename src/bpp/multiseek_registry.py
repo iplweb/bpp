@@ -1,9 +1,9 @@
 # -*- encoding: utf-8 -*-
+import six
 from django.contrib.postgres.search import SearchQuery
 from django.utils.itercompat import is_iterable
 
 from bpp.models.struktura import Wydzial
-import six
 
 NULL_VALUE = "(brak wpisanej wartości)"
 
@@ -13,7 +13,8 @@ from multiseek import logic
 from multiseek.logic import DecimalQueryObject, BooleanQueryObject
 from multiseek.logic import StringQueryObject, QueryObject, EQUALITY_OPS_ALL, \
     UnknownOperation, DIFFERENT_ALL, AUTOCOMPLETE, EQUALITY_OPS_NONE, \
-    EQUALITY_OPS_FEMALE, VALUE_LIST, EQUALITY_OPS_MALE, create_registry, IntegerQueryObject, ValueListQueryObject, \
+    EQUALITY_OPS_FEMALE, VALUE_LIST, EQUALITY_OPS_MALE, create_registry, \
+    IntegerQueryObject, ValueListQueryObject, \
     EQUAL, DIFFERENT, \
     AutocompleteQueryObject, Ordering, ReportType, RangeQueryObject, \
     DateQueryObject
@@ -122,7 +123,8 @@ class ForeignKeyDescribeMixin:
         return self.model.objects.get(pk=int(value))
 
 
-class NazwiskoIImieQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
+class NazwiskoIImieQueryObject(ForeignKeyDescribeMixin,
+                               AutocompleteQueryObject):
     label = 'Nazwisko i imię'
     type = AUTOCOMPLETE
     ops = EQUALITY_OPS_NONE
@@ -185,7 +187,8 @@ class WydzialQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
 
     def real_query(self, value, operation):
         if operation in EQUALITY_OPS_ALL:
-            ret = Q(original__in_raw=Autorzy.objects.filter(jednostka__wydzial=value))
+            ret = Q(original__in_raw=Autorzy.objects.filter(
+                jednostka__wydzial=value))
 
         else:
             raise UnknownOperation(operation)
@@ -210,7 +213,8 @@ class Typ_OdpowiedzialnosciQueryObject(QueryObject):
 
     def real_query(self, value, operation):
         if operation in EQUALITY_OPS_ALL:
-            ret = Q(original__in_raw=Autorzy.objects.filter(typ_odpowiedzialnosci=value))
+            ret = Q(original__in_raw=Autorzy.objects.filter(
+                typ_odpowiedzialnosci=value))
         else:
             raise UnknownOperation(operation)
 
@@ -345,9 +349,10 @@ class RecenzowanaQueryObject(BooleanQueryObject):
     field_name = "recenzowana"
     label = "Praca recenzowana"
 
+_pw = PunktacjaWewnetrznaQueryObject()
+_kc_pw = KCPunktacjaWewnetrznaQueryObject
 
-registry = create_registry(
-    Rekord,
+multiseek_fields = [
     TytulPracyQueryObject(),
     NazwiskoIImieQueryObject(),
     JednostkaQueryObject(),
@@ -364,11 +369,11 @@ registry = create_registry(
     ImpactQueryObject(),
     PunktyKBNQueryObject(),
     IndexCopernicusQueryObject(),
-    PunktacjaWewnetrznaQueryObject(),
+    _pw,
 
     KCImpactQueryObject(),
     KCPunktyKBNQueryObject(),
-    KCPunktacjaWewnetrznaQueryObject(),
+    _kc_pw,
 
     InformacjeQueryObject(),
     SzczegolyQueryObject(),
@@ -382,6 +387,26 @@ registry = create_registry(
     RecenzowanaQueryObject(),
 
     LiczbaZnakowWydawniczychQueryObject(),
+]
+
+multiseek_report_types = [
+    ReportType("list", "lista"),
+    ReportType("table", "tabela"),
+    ReportType("pkt_wewn", "punktacja sumaryczna z punktacją wewnętrzna"),
+    ReportType("pkt_wewn_bez", "punktacja sumaryczna"),
+    ReportType("numer_list", "numerowana lista z uwagami", public=False)
+]
+
+from django.conf import settings
+if not settings.UZYWAJ_PUNKTACJI_WEWNETRZNEJ:
+    multiseek_fields.remove(_pw)
+    multiseek_fields.remove(_kc_pw)
+    del multiseek_report_types[2]
+
+registry = create_registry(
+    Rekord,
+
+    *multiseek_fields,
 
     ordering=[
         Ordering("", "(nieistotne)"),
@@ -394,11 +419,4 @@ registry = create_registry(
         Ordering("zrodlo__nazwa", "źródło"),
     ],
     default_ordering=['-rok', '-impact_factor', '-punkty_kbn'],
-    report_types=[
-        ReportType("list", "lista"),
-        ReportType("table", "tabela"),
-        ReportType("pkt_wewn", "punktacja sumaryczna z punktacją wewnętrzna"),
-        ReportType("pkt_wewn_bez",
-                   "punktacja sumaryczna bez punktacji wewnętrznej"),
-        ReportType("numer_list", "numerowana lista z uwagami", public=False)
-    ])
+    report_types=multiseek_report_types)
