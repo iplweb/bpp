@@ -176,6 +176,13 @@ SERIA_WYDAWNICZA_FIELDSET = ('Seria wydawnicza', {
         'numer_w_serii')
 })
 
+PRACA_WYBITNA_FIELDSET = ('Praca wybitna', {
+    'classes': ('grp-collapse grp-closed',),
+    'fields': (
+        'praca_wybitna',
+        'uzasadnienie_wybitnosci')
+})
+
 EKSTRA_INFORMACJE_WYDAWNICTWO_CIAGLE_FIELDSET = ('Ekstra informacje', {
     'classes': ('grp-collapse grp-closed', ),
     'fields': MODEL_Z_ISSN + MODEL_Z_WWW + MODEL_Z_PUBMEDID + MODEL_Z_DOI

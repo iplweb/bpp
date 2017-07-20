@@ -7,6 +7,7 @@ from django.utils.safestring import mark_safe
 
 from bpp.admin.filters import LiczbaZnakowFilter
 from bpp.admin.helpers import *
+from bpp.admin.nagroda import NagrodaInline
 from bpp.models import Zrodlo, Wydawnictwo_Ciagle  # Publikacja_Habilitacyjna
 # Proste tabele
 from bpp.models.konferencja import Konferencja
@@ -124,10 +125,12 @@ class Wydawnictwo_CiagleAdmin(KolumnyZeSkrotamiMixin,
         MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
         POZOSTALE_MODELE_WYDAWNICTWO_CIAGLE_FIELDSET,
         ADNOTACJE_Z_DATAMI_ORAZ_PBN_FIELDSET,
-        OPENACCESS_FIELDSET)
+        OPENACCESS_FIELDSET,
+        PRACA_WYBITNA_FIELDSET)
 
     inlines = (
         generuj_inline_dla_autorow(Wydawnictwo_Ciagle_Autor),
+        NagrodaInline
     )
 
     def zrodlo_col(self, obj):

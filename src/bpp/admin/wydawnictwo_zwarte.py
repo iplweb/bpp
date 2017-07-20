@@ -5,11 +5,14 @@
 from dal import autocomplete
 from django import forms
 from django.contrib import admin
+from django.contrib.contenttypes.admin import GenericTabularInline
 
 from bpp.admin.filters import LiczbaZnakowFilter, CalkowitaLiczbaAutorowFilter
 from bpp.admin.helpers import *
+from .nagroda import NagrodaInline
 from bpp.models import Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor
 from bpp.models.konferencja import Konferencja
+from bpp.models.nagroda import Nagroda, OrganPrzyznajacyNagrody
 from bpp.models.seria_wydawnicza import Seria_Wydawnicza
 from .common import CommitedModelAdmin, generuj_inline_dla_autorow, \
     KolumnyZeSkrotamiMixin
@@ -69,6 +72,7 @@ class Wydawnictwo_ZwarteAdmin_Baza(CommitedModelAdmin):
     wydawnictwo_nadrzedne_col.admin_order_field = "wydawnictwo_nadrzedne__tytul_oryginalny"
 
 
+
 class Wydawnictwo_ZwarteForm(forms.ModelForm):
     wydawnictwo_nadrzedne = forms.ModelChoiceField(
         required=False,
@@ -111,7 +115,10 @@ class Wydawnictwo_ZwarteAdmin(KolumnyZeSkrotamiMixin,
                               Wydawnictwo_ZwarteAdmin_Baza):
     form = Wydawnictwo_ZwarteForm
 
-    inlines = (generuj_inline_dla_autorow(Wydawnictwo_Zwarte_Autor),)
+    inlines = (
+        generuj_inline_dla_autorow(Wydawnictwo_Zwarte_Autor),
+        NagrodaInline
+    )
 
     list_filter = Wydawnictwo_ZwarteAdmin_Baza.list_filter + [
         CalkowitaLiczbaAutorowFilter,
@@ -144,7 +151,8 @@ class Wydawnictwo_ZwarteAdmin(KolumnyZeSkrotamiMixin,
         MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
         POZOSTALE_MODELE_WYDAWNICTWO_ZWARTE_FIELDSET,
         ADNOTACJE_Z_DATAMI_ORAZ_PBN_FIELDSET,
-        OPENACCESS_FIELDSET)
+        OPENACCESS_FIELDSET,
+        PRACA_WYBITNA_FIELDSET)
 
 
 admin.site.register(Wydawnictwo_Zwarte, Wydawnictwo_ZwarteAdmin)

@@ -5,6 +5,7 @@ Klasy abstrakcyjne
 """
 from decimal import Decimal
 
+from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields import HStoreField
 from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ValidationError
@@ -412,6 +413,18 @@ class RekordBPPBaza(
         abstract = True
 
 
+class ModelWybitny(models.Model):
+    praca_wybitna = models.BooleanField(default=False)
+    uzasadnienie_wybitnosci = models.TextField(
+        "Uzasadnienie wybitności",
+        default='',
+        blank=True
+    )
+
+    class Meta:
+        abstract = True
+
+
 @six.python_2_unicode_compatible
 class Wydawnictwo_Baza(RekordBPPBaza):
     """Klasa bazowa wydawnictw (prace doktorskie, habilitacyjne, wydawnictwa
@@ -679,6 +692,26 @@ class PBNSerializerHelperMixin:
             tag = self.konferencja.eksport_pbn_serializuj()
             toplevel.append(tag)
 
+    def eksport_pbn_outstanding(self, toplevel, wydzial=None,
+                                autorzy_klass=None):
+        if self.praca_wybitna:
+            outstanding = SubElement(toplevel, "outstanding")
+            outstanding.text = "1"
+
+        if self.uzasadnienie_wybitnosci:
+            outstanding_description = SubElement(toplevel,
+                                                 "outstanding-description")
+            outstanding_description.text = self.uzasadnienie_wybitnosci
+
+    def eksport_pbn_award(self, toplevel, wydzial=None, autorzy_klass=None):
+        from bpp.models.nagroda import Nagroda
+
+        for nagroda in Nagroda.objects.filter(
+            content_type=ContentType.objects.get_for_model(self),
+            object_id=self.pk):
+            tag = nagroda.eksport_pbn_serializuj()
+            toplevel.append(tag)
+
     def eksport_pbn_run_serialization_functions(self, names, toplevel, wydzial, autorzy_klass):
         for elem in names:
             func = "eksport_pbn_" + elem.replace("-", "_")
@@ -688,9 +721,22 @@ class PBNSerializerHelperMixin:
 
     def eksport_pbn_serializuj(self, toplevel, wydzial, autorzy_klass):
         self.eksport_pbn_run_serialization_functions(
-            ['title', 'author', "other-contributors", "other-editors", "doi",
-             "lang", "abstract", "keywords", "public-uri", "publication-date",
-             "conference", "size", "is", "system-identifier"],
+            ['title',
+             'author',
+             "other-contributors",
+             "other-editors",
+             "doi",
+             "lang",
+             "abstract",
+             "keywords",
+             "outstanding",
+             "award",
+             "public-uri",
+             "publication-date",
+             "conference",
+             "size",
+             "is",
+             "system-identifier"],
             toplevel, wydzial, autorzy_klass)
 
 

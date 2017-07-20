@@ -14,6 +14,7 @@ from bpp.models import Jednostka
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
 from bpp.models.konferencja import Konferencja
+from bpp.models.nagroda import OrganPrzyznajacyNagrody
 from bpp.models.patent import Patent, Patent_Autor
 from bpp.models.praca_doktorska import Praca_Doktorska
 from bpp.models.praca_habilitacyjna import Praca_Habilitacyjna
@@ -68,6 +69,8 @@ class Seria_WydawniczaAutocomplete(KonferencjaAutocomplete):
 
     qset = Seria_Wydawnicza.objects.all()
 
+class OrganPrzyznajacyNagrodyAutocomplete(KonferencjaAutocomplete):
+    qset = OrganPrzyznajacyNagrody.objects.all()
 
 class WidocznaJednostkaAutocomplete(JednostkaAutocomplete):
     qset = Jednostka.objects.filter(widoczna=True)

@@ -7,6 +7,7 @@ from queryset_sequence import QuerySetSequence
 
 from bpp.admin.common import RestrictDeletionToAdministracjaGroupAdmin, \
     RestrictDeletionToAdministracjaGroupMixin
+from bpp.models.nagroda import OrganPrzyznajacyNagrody
 from bpp.models.praca_habilitacyjna import Publikacja_Habilitacyjna
 
 from dal import autocomplete
@@ -55,6 +56,9 @@ admin.site.register(Funkcja_Autora, RestrictDeletionToAdministracjaGroupAdmin)
 admin.site.register(Rodzaj_Zrodla, RestrictDeletionToAdministracjaGroupAdmin)
 admin.site.register(Status_Korekty, RestrictDeletionToAdministracjaGroupAdmin)
 admin.site.register(Zrodlo_Informacji, RestrictDeletionToAdministracjaGroupAdmin)
+
+admin.site.register(OrganPrzyznajacyNagrody,
+                    RestrictDeletionToAdministracjaGroupAdmin)
 
 
 class Charakter_PBNAdmin(RestrictDeletionToAdministracjaGroupMixin,

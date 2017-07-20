@@ -4,12 +4,45 @@ from lxml.etree import Element
 from model_mommy import mommy
 
 from bpp.models.konferencja import Konferencja
+from bpp.models.nagroda import Nagroda
 from bpp.models.seria_wydawnicza import Seria_Wydawnicza
 from bpp.models.struktura import Jednostka, Wydzial
 from bpp.models.system import Charakter_PBN, Charakter_Formalny, Typ_KBN
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte_Autor, \
     Wydawnictwo_Zwarte
+
+
+@pytest.mark.django_db
+def test_eksport_pbn_outstanding():
+    wz = mommy.make(Wydawnictwo_Zwarte, praca_wybitna=True,
+                    uzasadnienie_wybitnosci="foobar")
+    toplevel = Element('test')
+    wz.eksport_pbn_outstanding(toplevel)
+    assert len(toplevel.getchildren()) == 2
+
+    wz.praca_wybitna = False
+    toplevel = Element('test')
+    wz.eksport_pbn_outstanding(toplevel)
+    assert len(toplevel.getchildren()) == 0
+
+@pytest.mark.django_db
+def test_eksport_pbn_outstanding():
+    wz = mommy.make(Wydawnictwo_Zwarte)
+
+    n1 = mommy.make(Nagroda,
+                   object=wz,
+                   rok_przyznania=2000,
+                   uzasadnienie="foobar")
+
+    n1 = mommy.make(Nagroda,
+                   object=wz,
+                   rok_przyznania=2001,
+                   uzasadnienie="baz quux")
+
+    toplevel = Element('test')
+    wz.eksport_pbn_award(toplevel)
+    assert len(toplevel.getchildren()) == 2
 
 
 @pytest.mark.django_db

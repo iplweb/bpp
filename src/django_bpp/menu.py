@@ -24,6 +24,8 @@ SYSTEM_MENU = [
     ('OpenAccess: licencja', '/admin/bpp/licencja_openaccess'),
     ('OpenAccess: wersja tekstu', '/admin/bpp/wersja_tekstu_openaccess'),
 
+    ('Organy przyznające nagrody', '/admin/bpp/organprzyznajacynagrody/'),
+
     ('Rodzaje źródeł', '/admin/bpp/rodzaj_zrodla/'),
     ('Statusy korekt', '/admin/bpp/status_korekty/'),
     ('Typy KBN', '/admin/bpp/typ_kbn/'),

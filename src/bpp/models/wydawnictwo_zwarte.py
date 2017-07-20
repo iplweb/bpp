@@ -17,7 +17,7 @@ from bpp.models.abstract import \
     PBNSerializerHelperMixin, ModelZOpenAccess, ModelZPubmedID, ModelZDOI, \
     ModelZeZnakamiWydawniczymi, \
     ModelZAktualizacjaDlaPBN, ModelZKonferencja, \
-    ModelZSeria_Wydawnicza, ModelZISSN
+    ModelZSeria_Wydawnicza, ModelZISSN, ModelWybitny
 from bpp.models.autor import Autor
 from bpp.models.util import ZapobiegajNiewlasciwymCharakterom
 from bpp.models.util import dodaj_autora
@@ -97,6 +97,7 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
                          ModelZKonferencja,
                          ModelZSeria_Wydawnicza,
                          ModelZISSN,
+                         ModelWybitny,
                          DirtyFieldsMixin):
     """Wydawnictwo zwarte, czyli: książki, broszury, skrypty, fragmenty,
     doniesienia zjazdowe."""
