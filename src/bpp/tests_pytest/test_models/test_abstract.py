@@ -30,6 +30,10 @@ def test_eksport_pbn_outstanding():
 def test_eksport_pbn_outstanding():
     wz = mommy.make(Wydawnictwo_Zwarte)
 
+    toplevel = Element('test')
+    wz.eksport_pbn_award(toplevel)
+    assert len(toplevel.getchildren()) == 0
+
     n1 = mommy.make(Nagroda,
                    object=wz,
                    rok_przyznania=2000,
