@@ -15,7 +15,8 @@ class NagrodaForm(forms.ModelForm):
     )
 
     class Meta:
-        fields = ["organ_przyznajacy",
+        fields = ["nazwa",
+                  "organ_przyznajacy",
                   "rok_przyznania",
                   "uzasadnienie",
                   "adnotacja"]
