@@ -16,6 +16,11 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         qset = Rekord.objects.all()[options['initial_offset']:]
 
+        # .filter(
+        #     Q(opis_bibliograficzny_cache='') |
+        #     Q(opis_bibliograficzny_autorzy_cache=[]))
+        # | Q(opis_bibliograficzny_zapisani_autorzy_cache="")
+
         action = True
         for r in qset.only("content_type_id", "object_id"):
             if action:
