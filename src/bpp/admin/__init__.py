@@ -360,7 +360,7 @@ class Praca_DoktorskaAdmin(Praca_Doktorska_Habilitacyjna_Admin_Base):
         ('Praca doktorska', {
             'fields': DOKTORSKA_FIELDS
         }),
-        EKSTRA_INFORMACJE_WYDAWNICTWO_ZWARTE_FIELDSET,
+        EKSTRA_INFORMACJE_DOKTORSKA_HABILITACYJNA_FIELDSET,
         MODEL_TYPOWANY_BEZ_CHARAKTERU_FIELDSET,
         MODEL_PUNKTOWANY_FIELDSET,
         MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
@@ -428,7 +428,7 @@ class Praca_HabilitacyjnaAdmin(Praca_Doktorska_Habilitacyjna_Admin_Base):
         ('Praca habilitacyjna', {
             'fields': HABILITACYJNA_FIELDS
         }),
-        EKSTRA_INFORMACJE_WYDAWNICTWO_ZWARTE_FIELDSET,
+        EKSTRA_INFORMACJE_DOKTORSKA_HABILITACYJNA_FIELDSET,
         MODEL_TYPOWANY_BEZ_CHARAKTERU_FIELDSET,
         MODEL_PUNKTOWANY_FIELDSET,
         MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
