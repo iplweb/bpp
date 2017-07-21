@@ -197,6 +197,15 @@ EKSTRA_INFORMACJE_WYDAWNICTWO_ZWARTE_FIELDSET = ('Ekstra informacje', {
               MODEL_Z_DOI
 })
 
+EKSTRA_INFORMACJE_DOKTORSKA_HABILITACYJNA_FIELDSET = ('Ekstra informacje', {
+    'classes': ('grp-collapse grp-closed', ),
+    'fields': MODEL_Z_ISBN +
+              MODEL_Z_WWW +
+              MODEL_Z_PUBMEDID +
+              MODEL_Z_DOI
+})
+
+
 
 def js_openwin(url, handle, options):
     options = ",".join(["%s=%s" % (a, b) for a, b in list(options.items())])
