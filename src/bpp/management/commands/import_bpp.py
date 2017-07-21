@@ -717,6 +717,10 @@ def zrob_wydawnictwo(kw, bib, klass, autor_klass, zakazane, docelowe,
     if usun_przed:
         for field in usun_przed:
             del kw[field]
+
+    if bib['konf_nazwa']:
+        kw['konferencja'] = Konferencja.objects.get(nazwa=bib['konf_nazwa'])
+        
     try:
         wc = klass.objects.create(**kw)
     except decimal.InvalidOperation as e:
@@ -933,7 +937,8 @@ def zrob_indeksy(cursor):
 def zrob_patent(bib, pgsql_conn):
     kw = zrob_baze_wydawnictwa_zwartego(bib)
     p = zrob_wydawnictwo(kw, bib, Patent, Patent_Autor,
-                         zakazane=['new_zrodlo', 'new_zrodlo_src'],
+                         zakazane=['new_zrodlo', 'new_zrodlo_src',
+                                   'konf_nazwa'],
                          docelowe='uwagi', pgsql_conn=pgsql_conn,
                          zrodlowe_pole_dla_informacji=None,
                          usun_przed=['tytul', 'isbn', 'wydawnictwo',
@@ -1008,7 +1013,9 @@ def zrob_publikacje(cur, pgsql_conn, initial_offset, skip):
           seria,
           
           typ_polon,
-          cechy_polon
+          cechy_polon,
+          
+          konf_nazwa
           
       FROM 
         bib 
