@@ -53,6 +53,8 @@ Historia zmian
 * możliwość określania nagród oraz statusu wybitności pracy dla rekordów
   wydawnictw zwartych i wydawnictw ciągłych
 
+* możliwość filtrowania po statusach openaccess w module "Wyszukiwanie" dla
+  użytkowników niezalogowanych
 
 0.11.0 (2017-07-05)
 -------------------
