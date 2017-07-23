@@ -102,7 +102,7 @@ class Wydawnictwo_CiagleAdmin(KolumnyZeSkrotamiMixin,
         'konferencja__nazwa'
     ]
 
-    list_filter = ['status_korekty', 'afiliowana', 'recenzowana', 'typ_kbn',
+    list_filter = ['status_korekty',  'recenzowana', 'typ_kbn',
                    'charakter_formalny', 'jezyk', LiczbaZnakowFilter, 'rok',
                    'openaccess_tryb_dostepu',
                    'openaccess_wersja_tekstu',

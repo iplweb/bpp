@@ -194,9 +194,9 @@ class ModelZDOI(models.Model):
         abstract = True
 
 
-class ModelAfiliowanyRecenzowany(models.Model):
+class ModelRecenzowany(models.Model):
     """Model zawierający informacje o afiliowaniu/recenzowaniu pracy."""
-    afiliowana = models.BooleanField(default=False, db_index=True)
+
     recenzowana = models.BooleanField(default=False, db_index=True)
 
     class Meta:

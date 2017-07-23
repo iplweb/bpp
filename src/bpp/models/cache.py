@@ -25,7 +25,7 @@ from bpp.models import Patent, \
     Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor, \
     Patent_Autor, Zrodlo
 from bpp.models.abstract import ModelPunktowanyBaza, \
-    ModelZRokiem, ModelZeSzczegolami, ModelAfiliowanyRecenzowany, \
+    ModelZRokiem, ModelZeSzczegolami, ModelRecenzowany, \
     ModelZeZnakamiWydawniczymi
 from bpp.models.system import Charakter_Formalny, Jezyk
 from bpp.models.util import ModelZOpisemBibliograficznym
@@ -310,7 +310,7 @@ class RekordManager(FulltextSearchMixin, models.Manager):
 
 @six.python_2_unicode_compatible
 class Rekord(ModelPunktowanyBaza, ModelZOpisemBibliograficznym,
-             ModelZRokiem, ModelZeSzczegolami, ModelAfiliowanyRecenzowany,
+             ModelZRokiem, ModelZeSzczegolami, ModelRecenzowany,
              ModelZeZnakamiWydawniczymi,
              models.Model):
     # XXX TODO: gdy będą compound keys w Django, można pozbyć się fake_id
@@ -346,6 +346,13 @@ class Rekord(ModelPunktowanyBaza, ModelZOpisemBibliograficznym,
     strony = None
     nr_zeszytu =  None
     tom = None
+
+    # Skróty dla django-dsl
+
+    django_dsl_shortcuts = {
+        "impact": "impact_factor",
+        "charakter": "charakter_formalny__skrot"
+    }
 
     class Meta:
         managed = False

@@ -326,7 +326,7 @@ class Praca_Doktorska_Habilitacyjna_Admin_Base(AdnotacjeZDatamiMixin,
         'slowa_kluczowe', 'rok', 'www', 'wydawnictwo', 'redakcja',
         'autor__tytul__nazwa', 'jednostka__nazwa', 'adnotacje', 'id', ]
 
-    list_filter = ['status_korekty', 'afiliowana', 'recenzowana', 'typ_kbn']
+    list_filter = ['status_korekty', 'recenzowana', 'typ_kbn']
 
 
 class Praca_DoktorskaForm(forms.ModelForm):
@@ -448,7 +448,7 @@ class Patent_Admin(AdnotacjeZDatamiMixin, Wydawnictwo_ZwarteAdmin_Baza):
         'tytul_oryginalny', 'szczegoly', 'uwagi', 'informacje',
         'slowa_kluczowe', 'rok', 'adnotacje', 'id', ]
 
-    list_filter = ['status_korekty', 'afiliowana', 'recenzowana', ]
+    list_filter = ['status_korekty', 'recenzowana', ]
 
     fieldsets = (
         ('Patent', {

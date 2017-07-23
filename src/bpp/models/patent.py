@@ -3,7 +3,7 @@ from django.contrib.postgres.search import SearchVector
 from django.db import models
 
 from bpp.models import BazaModeluOdpowiedzialnosciAutorow, Autor, \
-    ModelZRokiem, ModelZeStatusem, ModelZWWW, ModelAfiliowanyRecenzowany, \
+    ModelZRokiem, ModelZeStatusem, ModelZWWW, ModelRecenzowany, \
     ModelZInformacjaZ, ModelZAdnotacjami, ModelZeSzczegolami, ModelPunktowany
 from bpp.models.abstract import ModelPrzeszukiwalny, ModelZLegacyData, \
     RekordBPPBaza
@@ -29,7 +29,7 @@ class Patent(RekordBPPBaza,
              ModelZRokiem,
              ModelZeStatusem,
              ModelZWWW,
-             ModelAfiliowanyRecenzowany,
+             ModelRecenzowany,
              ModelPunktowany,
              ModelZeSzczegolami,
              ModelZInformacjaZ,

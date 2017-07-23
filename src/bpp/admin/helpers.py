@@ -120,8 +120,7 @@ MODEL_ZE_STATUSEM = (
     'status_korekty',
     )
 
-MODEL_AFILIOWANY_RECENZOWANY = (
-    'afiliowana',
+MODEL_RECENZOWANY = (
     'recenzowana'
     )
 
@@ -150,7 +149,7 @@ POZOSTALE_MODELE_FIELDSET = ('Pozostałe informacje', {
     'classes': ('',),
     'fields': MODEL_Z_INFORMACJA_Z
               + MODEL_ZE_STATUSEM
-              + MODEL_AFILIOWANY_RECENZOWANY
+              + MODEL_RECENZOWANY
 })
 
 POZOSTALE_MODELE_WYDAWNICTWO_CIAGLE_FIELDSET = ('Pozostałe informacje', {
@@ -158,7 +157,7 @@ POZOSTALE_MODELE_WYDAWNICTWO_CIAGLE_FIELDSET = ('Pozostałe informacje', {
     'fields': MODEL_Z_LICZBA_ZNAKOW_WYDAWNICZYCH
               + MODEL_Z_INFORMACJA_Z
               + MODEL_ZE_STATUSEM
-              + MODEL_AFILIOWANY_RECENZOWANY
+              + MODEL_RECENZOWANY
 })
 
 POZOSTALE_MODELE_WYDAWNICTWO_ZWARTE_FIELDSET = ('Pozostałe informacje', {
@@ -166,7 +165,7 @@ POZOSTALE_MODELE_WYDAWNICTWO_ZWARTE_FIELDSET = ('Pozostałe informacje', {
     'fields': MODEL_Z_LICZBA_ZNAKOW_WYDAWNICZYCH
               + MODEL_Z_INFORMACJA_Z
               + MODEL_ZE_STATUSEM
-              + MODEL_AFILIOWANY_RECENZOWANY
+              + MODEL_RECENZOWANY
 })
 
 SERIA_WYDAWNICZA_FIELDSET = ('Seria wydawnicza', {

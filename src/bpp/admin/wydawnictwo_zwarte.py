@@ -41,7 +41,7 @@ class Wydawnictwo_ZwarteAdmin_Baza(CommitedModelAdmin):
         'liczba_znakow_wydawniczych',
     ]
 
-    list_filter = ['status_korekty', 'afiliowana', 'recenzowana', 'typ_kbn',
+    list_filter = ['status_korekty', 'recenzowana', 'typ_kbn',
                    'charakter_formalny', 'informacja_z', 'jezyk',
                    LiczbaZnakowFilter, 'rok']
 

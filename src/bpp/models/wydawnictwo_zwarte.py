@@ -10,7 +10,7 @@ from lxml.etree import Element, SubElement
 
 from bpp.models.abstract import \
     BazaModeluOdpowiedzialnosciAutorow, DwaTytuly, ModelZRokiem, \
-    ModelZWWW, ModelAfiliowanyRecenzowany, ModelPunktowany, ModelTypowany, \
+    ModelZWWW, ModelRecenzowany, ModelPunktowany, ModelTypowany, \
     ModelZeSzczegolami, ModelZInformacjaZ, ModelZeStatusem, ModelZISBN, \
     ModelZAdnotacjami, ModelZCharakterem, \
     Wydawnictwo_Baza, \
@@ -59,7 +59,7 @@ post_delete.connect(wydawnictwo_zwarte_autor_post_delete, Wydawnictwo_Zwarte_Aut
 
 class Wydawnictwo_Zwarte_Baza(
     Wydawnictwo_Baza, DwaTytuly, ModelZRokiem, ModelZeStatusem,
-    ModelZWWW, ModelZPubmedID, ModelZDOI, ModelAfiliowanyRecenzowany,
+    ModelZWWW, ModelZPubmedID, ModelZDOI, ModelRecenzowany,
     ModelPunktowany, ModelTypowany, ModelZeSzczegolami,
     ModelZInformacjaZ, ModelZISBN, ModelZAdnotacjami):
     """Baza dla klas Wydawnictwo_Zwarte oraz Praca_Doktorska_Lub_Habilitacyjna

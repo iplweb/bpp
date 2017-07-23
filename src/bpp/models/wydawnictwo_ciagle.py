@@ -9,7 +9,7 @@ from secure_input.utils import safe_html
 
 from bpp.models.abstract import BazaModeluOdpowiedzialnosciAutorow, DwaTytuly, \
     ModelZRokiem, \
-    ModelZWWW, ModelAfiliowanyRecenzowany, ModelPunktowany, ModelTypowany, \
+    ModelZWWW, ModelRecenzowany, ModelPunktowany, ModelTypowany, \
     ModelZeSzczegolami, ModelZInformacjaZ, ModelZeStatusem, ModelZISSN, \
     ModelZAdnotacjami, ModelZCharakterem, Wydawnictwo_Baza, \
     PBNSerializerHelperMixin, ModelZOpenAccess, ModelZPubmedID, \
@@ -64,7 +64,7 @@ class ModelZOpenAccessWydawnictwoCiagle(ModelZOpenAccess):
 class Wydawnictwo_Ciagle(ZapobiegajNiewlasciwymCharakterom,
                          Wydawnictwo_Baza, DwaTytuly, ModelZRokiem,
                          ModelZeStatusem,
-                         ModelZWWW, ModelZPubmedID, ModelZDOI, ModelAfiliowanyRecenzowany,
+                         ModelZWWW, ModelZPubmedID, ModelZDOI, ModelRecenzowany,
                          ModelPunktowany, ModelTypowany, ModelZeSzczegolami,
                          ModelZISSN, ModelZInformacjaZ, ModelZAdnotacjami,
                          ModelZCharakterem, PBNSerializerHelperMixin,
