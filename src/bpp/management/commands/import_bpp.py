@@ -557,13 +557,17 @@ def zrob_zrodla(cur, initial_offset, skip):
             print("Brak rodzaju zrodla: %s" % zrod['rodzaj'])
             raise e
 
+        issn = (zrod['issn'] or '' ).strip()
+        issn2 = (zrod['issn2'] or '').strip()
+        issn = issn or issn2
+
         kw = dict(pk=zrod['id'],
                   rodzaj=rodzaj,
                   skrot=zrod['skrot'],
                   www=zrod['www'],
                   nazwa=zrod['nazwa'],
                   adnotacje=zrod['adnotacje'] or '',
-                  issn=zrod['issn'] or zrod['issn2'],
+                  issn=issn,
                   e_issn=zrod['e_issn'],
                   doi=zrod['doi'],
                   wydawca=zrod['wydawca'] or '',
@@ -719,8 +723,9 @@ def zrob_wydawnictwo(kw, bib, klass, autor_klass, zakazane, docelowe,
             del kw[field]
 
     if bib['konf_nazwa']:
-        kw['konferencja'] = Konferencja.objects.get(nazwa=bib['konf_nazwa'])
-        
+        kw['konferencja'] = Konferencja.objects.get(
+            nazwa=bib['konf_nazwa'].strip())
+
     try:
         wc = klass.objects.create(**kw)
     except decimal.InvalidOperation as e:
@@ -1132,12 +1137,13 @@ def zrob_konferencje(cur):
           bazy_inna
         FROM bib
         WHERE COALESCE(konf_nazwa, '')!=''
+        ORDER BY konf_nazwa, konf_od DESC
                 """)
     for elem in cur.fetchall():
         Konferencja.objects.get_or_create(
-            nazwa=elem['konf_nazwa'],
-            rozpoczecie=elem['konf_od'],
+            nazwa=elem['konf_nazwa'].strip(),
             defaults=dict(
+                rozpoczecie=elem['konf_od'],
                 skrocona_nazwa=elem['konf_nazwa2'],
                 zakonczenie=elem['konf_do'],
                 miasto=elem['konf_miasto'],
