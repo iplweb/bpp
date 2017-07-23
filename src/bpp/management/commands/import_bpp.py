@@ -121,11 +121,10 @@ def punktacja(dct, kw):
 def afiliacja(dct, kw):
     kw.update(dict(
         # ModelAfiliowanyRecenzowany
-        afiliowana=dct['afiliowana'],
         recenzowana=dct['recenzowana']
     ))
 
-    for field in ['afiliowana', 'recenzowana']:
+    for field in ['recenzowana']:
         if kw[field] == None:
             # print "Ustawiam %s=False dla pracy z ID: %s " % (field, dct['id'])
             kw[field] = False
@@ -703,7 +702,7 @@ def zrob_import_z_tabeli(kw, bib, zakazane, docelowe,
     szczegoly_i_inne(bib, kw, zrodlowe_pole_dla_informacji)
     jezyki_statusy(bib, kw)
 
-    for pole in ['nrbibl', 'typ_polon', 'cechy_polon']:
+    for pole in ['nrbibl', 'typ_polon', 'cechy_polon', 'afiliowana']:
         if bib[pole]:
             if 'legacy_data' not in kw:
                 kw['legacy_data'] = {}
