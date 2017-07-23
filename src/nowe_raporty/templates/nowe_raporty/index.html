@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li class="current">nowe raporty</li>
+{% endblock %}
+
+{% block content %}
+    <h2>Nowe raporty</h2>
+    Wybierz:
+    <ul>
+        <li>
+            <a href="{% url "nowe_raporty:wydzial_form" %}">wydział</a>
+        </li>
+        <li>
+            <a href="{% url "nowe_raporty:jednostka_form" %}">jednostka</a>
+        </li>
+        <li>
+            <a href="{% url "nowe_raporty:autor_form" %}">autor</a>
+        </li>
+    </ul>
+{% endblock %}

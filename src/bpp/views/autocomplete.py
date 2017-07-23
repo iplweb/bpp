@@ -20,6 +20,7 @@ from bpp.models.praca_doktorska import Praca_Doktorska
 from bpp.models.praca_habilitacyjna import Praca_Habilitacyjna
 from bpp.models.profile import BppUser
 from bpp.models.seria_wydawnicza import Seria_Wydawnicza
+from bpp.models.struktura import Wydzial
 from bpp.models.system import Charakter_Formalny
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, \
     Wydawnictwo_Ciagle_Autor
@@ -52,6 +53,7 @@ class JednostkaAutocomplete(autocomplete.Select2QuerySetView):
                            Q(skrot__icontains=self.q))
         return qs
 
+
 class KonferencjaAutocomplete(autocomplete.Select2QuerySetView):
     create_field = 'nazwa'
 
@@ -66,11 +68,16 @@ class KonferencjaAutocomplete(autocomplete.Select2QuerySetView):
 
 class Seria_WydawniczaAutocomplete(KonferencjaAutocomplete):
     create_field = 'nazwa'
-
     qset = Seria_Wydawnicza.objects.all()
+
+
+class WydzialAutocomplete(KonferencjaAutocomplete):
+    qset = Wydzial.objects.all()
+
 
 class OrganPrzyznajacyNagrodyAutocomplete(KonferencjaAutocomplete):
     qset = OrganPrzyznajacyNagrody.objects.all()
+
 
 class WidocznaJednostkaAutocomplete(JednostkaAutocomplete):
     qset = Jednostka.objects.filter(widoczna=True)

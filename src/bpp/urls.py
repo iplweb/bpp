@@ -16,15 +16,15 @@ from bpp.views.autocomplete import WidocznaJednostkaAutocomplete, \
     ZapisanyJakoAutocomplete, Wydawnictwo_NadrzedneAutocomplete, \
     PodrzednaPublikacjaHabilitacyjnaAutocomplete, \
     AdminNavigationAutocomplete, KonferencjaAutocomplete, \
-    Seria_WydawniczaAutocomplete, OrganPrzyznajacyNagrodyAutocomplete
+    Seria_WydawniczaAutocomplete, OrganPrzyznajacyNagrodyAutocomplete, \
+    WydzialAutocomplete
 from bpp.views.raporty import RankingAutorow, \
     PobranieRaportu, PodgladRaportu, KasowanieRaportu, \
     RaportJednostek2012, RaportKronikaUczelni, RaportJednostek, \
     RankingAutorowFormularz, RaportDlaKomisjiCentralnejFormularz, RaportSelector, \
     RaportAutorow
-from bpp import reports
 from bpp.views.raporty.raport_autorow_2012 import RaportAutorow2012
-
+from bpp import reports
 reports # PyCharm, leave that import alone, it is IMPORTANT to import it
 import bpp
 from django.conf import settings
@@ -116,6 +116,11 @@ urlpatterns = [
         name='konferencja-autocomplete',
     ),
     url(
+        r'^wydzial-autocomplete/$',
+        WydzialAutocomplete.as_view(),
+        name='wydzial-autocomplete',
+    ),
+    url(
         r'^seria-wydawnicza-autocomplete/$',
         Seria_WydawniczaAutocomplete.as_view(),
         name='seria-wydawnicza-autocomplete',
@@ -186,3 +191,4 @@ urlpatterns = [
 
 
 ]
+from bpp import reports

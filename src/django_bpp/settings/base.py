@@ -142,6 +142,8 @@ INSTALLED_APPS = [
 
     'celery',
 
+    'flexible_reports',
+
     'cookielaw',
 
     'columns',
@@ -185,6 +187,7 @@ INSTALLED_APPS = [
 
     'egeria',
     'eksport_pbn',
+    'nowe_raporty',
 
     'loginas',
 

@@ -46,8 +46,14 @@ urlpatterns = [
 
     url(r'^admin/', include(admin.site.urls)),
 
-    url(r'^integrator2/', include('integrator2.urls', namespace='integrator2')),
-    url(r'^eksport_pbn/', include('eksport_pbn.urls', namespace='eksport_pbn')),
+    url(r'^integrator2/',
+        include('integrator2.urls', namespace='integrator2')),
+
+    url(r'^eksport_pbn/',
+        include('eksport_pbn.urls', namespace='eksport_pbn')),
+
+    url(r'^nowe_raporty/',
+        include('nowe_raporty.urls', namespace='nowe_raporty')),
 
     # mpasternak 17.01.2017 TODO: włączyć później
     # url(r'^egeria/', include('egeria.urls', namespace='egeria')),

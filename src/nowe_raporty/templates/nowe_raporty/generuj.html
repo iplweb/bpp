@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block extratitle %}
+    Generowanie raportu
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li class="current">Raport dla {{ object }} za {{ rok }}</li>
+{% endblock %}
+
+{% block content %}
+    {% if not report %}
+        Nie znaleziono żadnych definicji raportów w bazie danych.
+        Skontaktuj się z administratorem systemu.
+    {% else %}
+        {% load flexible_reports_tags %}
+        {% flexible report %}
+    {% endif %}
+{% endblock %}
