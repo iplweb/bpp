@@ -121,7 +121,7 @@ MODEL_ZE_STATUSEM = (
     )
 
 MODEL_RECENZOWANY = (
-    'recenzowana'
+    'recenzowana',
     )
 
 MODEL_TYPOWANY_BEZ_CHARAKTERU_FIELDSET = ('Typ', {
