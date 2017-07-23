@@ -3,6 +3,8 @@ import six
 from django.contrib.postgres.search import SearchQuery
 from django.utils.itercompat import is_iterable
 
+from bpp.models.openaccess import Wersja_Tekstu_OpenAccess, \
+    Licencja_OpenAccess, Czas_Udostepnienia_OpenAccess
 from bpp.models.struktura import Wydzial
 
 NULL_VALUE = "(brak wpisanej wartości)"
@@ -321,6 +323,34 @@ class CharakterFormalnyQueryObject(ValueListQueryObject):
         return Charakter_Formalny.objects.get(nazwa=value)
 
 
+class OpenaccessWersjaTekstuQueryObject(ValueListQueryObject):
+    field_name = 'openaccess_wersja_tekstu'
+    values = Wersja_Tekstu_OpenAccess.objects.all()
+    label = "OpenAccess: wersja tekstu"
+
+    def value_from_web(self, value):
+        return OpenaccessWersjaTekstuQueryObject.objects.get(
+            nazwa=value)
+
+
+class OpenaccessLicencjaQueryObject(ValueListQueryObject):
+    field_name = 'openaccess_licencja'
+    values = Licencja_OpenAccess.objects.all()
+    label = "OpenAccess: licencja"
+
+    def value_from_web(self, value):
+        return Licencja_OpenAccess.objects.get(nazwa=value)
+
+
+class OpenaccessCzasPublikacjiQueryObject(ValueListQueryObject):
+    field_name = 'openaccess_czas_publikacji'
+    values = Czas_Udostepnienia_OpenAccess.objects.all()
+    label = "OpenAccess: czas udostępnienia"
+
+    def value_from_web(self, value):
+        return Czas_Udostepnienia_OpenAccess.objects.get(nazwa=value)
+
+
 class TypKBNQueryObject(ValueListQueryObject):
     field_name = "typ_kbn"
     values = Typ_KBN.objects.all()
@@ -338,11 +368,6 @@ class ZrodloQueryObject(AutocompleteQueryObject):
 
     def get_autocomplete_query(self, data):
         return Zrodlo.objects.fulltext_filter(data)
-
-
-class AfiliowanaQueryObject(BooleanQueryObject):
-    field_name = "afiliowana"
-    label = "Praca afiliowana"
 
 
 class RecenzowanaQueryObject(BooleanQueryObject):
@@ -383,10 +408,15 @@ multiseek_fields = [
     AdnotacjeQueryObject(),
     DataUtworzeniaQueryObject(),
 
-    AfiliowanaQueryObject(),
     RecenzowanaQueryObject(),
 
     LiczbaZnakowWydawniczychQueryObject(),
+
+    OpenaccessWersjaTekstuQueryObject(),
+    OpenaccessLicencjaQueryObject(),
+    OpenaccessCzasPublikacjiQueryObject()
+
+
 ]
 
 multiseek_report_types = [
