@@ -394,5 +394,45 @@ CREATE INDEX bpp_rekord_mat_m ON bpp_rekord_mat(openaccess_licencja_id);
 CREATE INDEX bpp_rekord_mat_n ON bpp_rekord_mat(openaccess_tryb_dostepu_id);
 CREATE INDEX bpp_rekord_mat_o ON bpp_rekord_mat(openaccess_wersja_tekstu_id);
 
+ALTER TABLE bpp_rekord_mat ADD CONSTRAINT zrodlo_id_fk FOREIGN KEY (zrodlo_id) REFERENCES bpp_zrodlo (id) ON DELETE CASCADE ON UPDATE CASCADE DEFERRABLE INITIALLY DEFERRED ;
+ALTER TABLE bpp_rekord_mat ADD CONSTRAINT charakter_formalny_id_fk FOREIGN KEY (charakter_formalny_id) REFERENCES bpp_charakter_formalny (id) ON DELETE CASCADE ON UPDATE CASCADE DEFERRABLE INITIALLY DEFERRED ;
+ALTER TABLE bpp_rekord_mat ADD CONSTRAINT jezyk_id_fk FOREIGN KEY (jezyk_id) REFERENCES bpp_jezyk (id) ON DELETE CASCADE ON UPDATE CASCADE DEFERRABLE INITIALLY DEFERRED ;
+ALTER TABLE bpp_rekord_mat ADD CONSTRAINT typ_kbn_id_fk FOREIGN KEY (typ_kbn_id) REFERENCES bpp_typ_kbn (id) ON DELETE CASCADE ON UPDATE CASCADE DEFERRABLE INITIALLY DEFERRED ;
+
+ALTER TABLE bpp_rekord_mat
+  ADD CONSTRAINT content_type_fk
+FOREIGN KEY (content_type_id)
+REFERENCES django_content_type(id)
+ON DELETE CASCADE
+ON UPDATE CASCADE
+DEFERRABLE INITIALLY DEFERRED;
+
+ALTER TABLE bpp_rekord_mat
+  ADD CONSTRAINT openaccess_wersja_tekstu_fk 
+FOREIGN KEY (openaccess_wersja_tekstu_id) 
+REFERENCES bpp_wersja_tekstu_openaccess (id)
+ON DELETE CASCADE 
+ON UPDATE CASCADE 
+DEFERRABLE INITIALLY DEFERRED;
+
+ALTER TABLE bpp_rekord_mat
+  ADD CONSTRAINT openaccess_licencja_fk 
+FOREIGN KEY (openaccess_licencja_id)
+REFERENCES bpp_licencja_openaccess (id)
+ON DELETE CASCADE 
+ON UPDATE CASCADE 
+DEFERRABLE INITIALLY DEFERRED;
+
+ALTER TABLE bpp_rekord_mat
+  ADD CONSTRAINT openaccess_czas_publikacji_fk 
+FOREIGN KEY (openaccess_czas_publikacji_id) 
+REFERENCES bpp_czas_udostepnienia_openaccess (id)
+ON DELETE CASCADE 
+ON UPDATE CASCADE 
+DEFERRABLE INITIALLY DEFERRED;
+
+
+
+
 COMMIT;
 
