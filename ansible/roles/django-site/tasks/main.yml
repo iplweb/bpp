@@ -92,6 +92,6 @@
   tags: ['cron',]
 
 - name: Przebudowa cache bazy danych raz dziennie
-  cron: name="Przebuduj cache bazy danych raz dziennie" minute="30" hour="2" job="{{ django_manage_py }} rebuild_cache"
+  cron: name="Przebuduj cache bazy danych raz dziennie" minute="30" hour="22" job="{{ django_manage_py }} rebuild_cache"
   tags: ['cron',]
   sudo_user: "{{ django_user }}"
