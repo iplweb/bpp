@@ -7,9 +7,11 @@ from datetime import datetime
 import django_webtest
 import pytest
 from django.core.urlresolvers import reverse
+from django.contrib.contenttypes.models import ContentType
 from django.db.utils import IntegrityError
 from model_mommy import mommy
 
+from bpp.fixtures import get_openaccess_data
 from bpp.models.autor import Autor, Tytul, Funkcja_Autora
 from bpp.models.patent import Patent
 from bpp.models.praca_doktorska import Praca_Doktorska
@@ -448,6 +450,15 @@ def standard_data(typy_odpowiedzialnosci, tytuly, jezyki,
                   charaktery_formalne, typy_kbn, statusy_korekt,
                   funkcje_autorow):
     pass
+
+
+@pytest.mark.django_db
+@pytest.fixture(scope='function')
+def openaccess_data():
+    for model_name, skrot, nazwa in get_openaccess_data():
+        klass = ContentType.objects.get_by_natural_key(
+            "bpp", model_name).model_class()
+        klass.objects.get_or_create(nazwa=nazwa, skrot=skrot)
 
 
 @pytest.fixture(scope="function")
