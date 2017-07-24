@@ -63,7 +63,6 @@ class TestCacheMixin:
             status_korekty=Status_Korekty.objects.all()[0],
             rok='2000',
             www='http://127.0.0.1/',
-            afiliowana=True,
             recenzowana=True,
             impact_factor=5,
             punkty_kbn=5,
