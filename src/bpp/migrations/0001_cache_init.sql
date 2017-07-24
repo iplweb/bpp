@@ -33,39 +33,23 @@ CREATE INDEX bpp_rekord_mat_i ON bpp_rekord_mat(rok);
 CREATE INDEX bpp_rekord_mat_j ON bpp_rekord_mat(afiliowana);
 CREATE INDEX bpp_rekord_mat_k ON bpp_rekord_mat(recenzowana);
 
+ALTER TABLE bpp_rekord_mat ADD CONSTRAINT zrodlo_id_fk FOREIGN KEY (zrodlo_id) REFERENCES bpp_zrodlo (id) ON DELETE CASCADE ON UPDATE CASCADE DEFERRABLE INITIALLY DEFERRED ;
+ALTER TABLE bpp_rekord_mat ADD CONSTRAINT charakter_formalny_id_fk FOREIGN KEY (charakter_formalny_id) REFERENCES bpp_charakter_formalny (id) ON DELETE CASCADE ON UPDATE CASCADE DEFERRABLE INITIALLY DEFERRED ;
+ALTER TABLE bpp_rekord_mat ADD CONSTRAINT jezyk_id_fk FOREIGN KEY (jezyk_id) REFERENCES bpp_jezyk (id) ON DELETE CASCADE ON UPDATE CASCADE DEFERRABLE INITIALLY DEFERRED ;
+ALTER TABLE bpp_rekord_mat ADD CONSTRAINT typ_kbn_id_fk FOREIGN KEY (typ_kbn_id) REFERENCES bpp_typ_kbn (id) ON DELETE CASCADE ON UPDATE CASCADE DEFERRABLE INITIALLY DEFERRED ;
 
 
 DROP TABLE IF EXISTS bpp_autorzy_mat CASCADE;
 CREATE TABLE bpp_autorzy_mat AS SELECT * FROM bpp_autorzy;
 
-
--- Zeby nie bylo tego bledu przy TRUNCATE table przy testach:
--- DETAIL:  Table "bpp_autorzy_mat" references "bpp_typ_odpowiedzialnosci".
--- to zmieniamy tabele bpp_rekord_mat w nastepujacy sposob:
-
--- ALTER TABLE bpp_autorzy_mat DROP FOREIGN KEY(typ_odpowiedzialnosci_id_fk);
--- ALTER TABLE bpp_autorzy_mat ADD FOREIGN KEY(typ_odpowiedzialnosci_id) REFERENCES bpp_typ_odpowiedzialnosci(id) ON DELETE CASCADE;
-
-
-UPDATE bpp_wydawnictwo_zwarte_autor SET kolejnosc = 1 WHERE rekord_id = 15425 AND autor_id = 3817;
-UPDATE bpp_wydawnictwo_zwarte_autor SET kolejnosc = 2 WHERE rekord_id = 15425 AND autor_id = 6063;
-UPDATE bpp_wydawnictwo_zwarte_autor SET kolejnosc = 3 WHERE rekord_id = 15425 AND autor_id = 3663;
-
 CREATE UNIQUE INDEX bpp_autorzy_mat_0 ON bpp_autorzy_mat(fake_id);
 CREATE UNIQUE INDEX bpp_autorzy_mat_1 ON bpp_autorzy_mat(content_type_id, object_id, autor_id, typ_odpowiedzialnosci_id, kolejnosc);
 CREATE UNIQUE INDEX bpp_autorzy_mat_11 ON bpp_autorzy_mat(content_type_id, object_id, autor_id, kolejnosc);
+
 CREATE INDEX bpp_autorzy_mat_2 ON bpp_autorzy_mat(autor_id);
 CREATE INDEX bpp_autorzy_mat_3 ON bpp_autorzy_mat(jednostka_id);
 CREATE INDEX bpp_autorzy_mat_4 ON bpp_autorzy_mat(autor_id, jednostka_id);
 CREATE INDEX bpp_autorzy_mat_5 ON bpp_autorzy_mat(autor_id, typ_odpowiedzialnosci_id);
-
-
-
-ALTER TABLE bpp_rekord_mat ADD CONSTRAINT zrodlo_id_fk FOREIGN KEY (zrodlo_id) REFERENCES bpp_zrodlo (id) ON DELETE CASCADE ON UPDATE CASCADE DEFERRABLE INITIALLY DEFERRED ; 
-ALTER TABLE bpp_rekord_mat ADD CONSTRAINT charakter_formalny_id_fk FOREIGN KEY (charakter_formalny_id) REFERENCES bpp_charakter_formalny (id) ON DELETE CASCADE ON UPDATE CASCADE DEFERRABLE INITIALLY DEFERRED ; 
-ALTER TABLE bpp_rekord_mat ADD CONSTRAINT jezyk_id_fk FOREIGN KEY (jezyk_id) REFERENCES bpp_jezyk (id) ON DELETE CASCADE ON UPDATE CASCADE DEFERRABLE INITIALLY DEFERRED ; 
-ALTER TABLE bpp_rekord_mat ADD CONSTRAINT typ_kbn_id_fk FOREIGN KEY (typ_kbn_id) REFERENCES bpp_typ_kbn (id) ON DELETE CASCADE ON UPDATE CASCADE DEFERRABLE INITIALLY DEFERRED ; 
-
 
 ALTER TABLE bpp_autorzy_mat ADD CONSTRAINT original_id_fk FOREIGN KEY (content_type_id, object_id) REFERENCES bpp_rekord_mat(content_type_id, object_id) ON DELETE CASCADE ON UPDATE CASCADE DEFERRABLE INITIALLY DEFERRED ;
 ALTER TABLE bpp_autorzy_mat ADD CONSTRAINT jednostka_id_fk FOREIGN KEY (jednostka_id) REFERENCES bpp_jednostka(id) ON DELETE CASCADE ON UPDATE CASCADE DEFERRABLE INITIALLY DEFERRED ;
