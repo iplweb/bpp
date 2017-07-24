@@ -1,20 +1,19 @@
 # -*- encoding: utf-8 -*-
 # TODO: przenies do bpp/tests/test_cache.py
-from bpp.tasks import zaktualizuj_opis
-from django.contrib.contenttypes.models import ContentType
-from django.db import transaction
-from django.db import connection
-from model_mommy import mommy
 import pytest
+from model_mommy import mommy
+
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord, Autorzy, defer_zaktualizuj_opis
-from bpp.models.praca_doktorska import Praca_Doktorska
+from bpp.models.openaccess import Wersja_Tekstu_OpenAccess, \
+    Licencja_OpenAccess, Czas_Udostepnienia_OpenAccess
 from bpp.models.struktura import Jednostka
 from bpp.models.system import Typ_Odpowiedzialnosci, Jezyk, Charakter_Formalny, \
-    Status_Korekty, Typ_KBN
-from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor
+    Typ_KBN
+from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, \
+    Wydawnictwo_Ciagle_Autor
 from bpp.models.zrodlo import Zrodlo
-from bpp.tests.util import any_doktorat
+from bpp.tasks import zaktualizuj_opis
 
 
 def pierwszy_rekord():
@@ -190,7 +189,40 @@ def test_caching_kasowanie_jezyka(wydawnictwo_ciagle_z_dwoma_autorami):
     assert Rekord.objects.all().count() == 0
 
 @pytest.mark.django_db
-def test_caching_kasowanie_typu_kbn(wydawnictwo_ciagle_z_dwoma_autorami, standard_data):
+@pytest.mark.parametrize(
+    "attrname, klass, skrot, ma_zostac",
+    [("typ_kbn", Typ_KBN, "PO", 0),
+     ("charakter_formalny", Charakter_Formalny, "PAT", 0),
+     ("openaccess_wersja_tekstu", Wersja_Tekstu_OpenAccess, "FINAL_AUTHOR", 1),
+     ("openaccess_licencja", Licencja_OpenAccess, "CC-BY-ND", 1),
+     ("openaccess_czas_publikacji", Czas_Udostepnienia_OpenAccess,
+      "AT_PUBLICATION", 1)])
+def test_usuwanie_powiazanych_vs_rekord(
+        wydawnictwo_ciagle_z_dwoma_autorami,
+        patent,
+        standard_data,
+        openaccess_data,
+        attrname,
+        klass,
+        skrot,
+        ma_zostac):
+
+    o = klass.objects.get(skrot=skrot)
+    setattr(wydawnictwo_ciagle_z_dwoma_autorami, attrname, o)
+    wydawnictwo_ciagle_z_dwoma_autorami.save()
+
+    setattr(patent, attrname, o)
+    patent.save()
+
+    assert Rekord.objects.all().count() == 2
+    o.delete()
+    assert Rekord.objects.all().count() == ma_zostac
+
+
+@pytest.mark.django_db
+def test_caching_kasowanie_typu_kbn(
+        wydawnictwo_ciagle_z_dwoma_autorami,
+        standard_data):
     tk = Typ_KBN.objects.all().first()
 
     wydawnictwo_ciagle_z_dwoma_autorami.typ_kbn = tk
