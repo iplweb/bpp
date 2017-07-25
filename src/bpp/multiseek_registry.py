@@ -329,7 +329,7 @@ class OpenaccessWersjaTekstuQueryObject(ValueListQueryObject):
     label = "OpenAccess: wersja tekstu"
 
     def value_from_web(self, value):
-        return OpenaccessWersjaTekstuQueryObject.objects.get(
+        return Wersja_Tekstu_OpenAccess.objects.get(
             nazwa=value)
 
 
