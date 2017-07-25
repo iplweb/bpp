@@ -11,6 +11,7 @@ Contents:
    usage
    usage_admin
    contributing
+   faq
    authors
    history
 
