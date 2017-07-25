@@ -1,7 +1,8 @@
 Django==1.10.7
 psycopg2==2.7.1
 
-django-flexible-reports==0.1.3
+# django-flexible-reports==0.1.3
+http://github.com/mpasternak/django-flexible-reports
 
 django-columns==0.1.0
 
