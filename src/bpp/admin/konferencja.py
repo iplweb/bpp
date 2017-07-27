@@ -12,6 +12,8 @@ class KonferencjaAdmin(CommitedModelAdmin):
                     'panstwo', 'baza_scopus', 'baza_wos']
     list_filter = ['miasto', 'panstwo', 'rozpoczecie', 'zakonczenie',
                    'baza_scopus', 'baza_wos', 'baza_inna']
+    search_fields = ['nazwa', 'rozpoczecie', 'zakonczenie', 'miasto',
+                     'panstwo']
     fieldsets = (
         (None, {
             'fields': (
