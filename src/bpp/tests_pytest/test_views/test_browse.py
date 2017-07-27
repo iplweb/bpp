@@ -4,14 +4,15 @@ import re
 
 import pytest
 from django.core.urlresolvers import reverse
+from multiseek.logic import EQUAL_NONE, EQUAL, EQUAL_FEMALE
 from multiseek.views import MULTISEEK_SESSION_KEY
 
 from bpp.tests.testutil import UserTestCase
 from bpp.views.browse import BuildSearch
 from bs4 import BeautifulSoup
+from django.utils.translation import LANGUAGE_SESSION_KEY
 
-
-def test_buildSearch():
+def test_buildSearch(settings):
     dct = {
         'zrodlo': [1, ],
         'typ': [1, ],
@@ -32,6 +33,7 @@ def test_buildSearch():
         def build_absolute_uri(self, *args, **kw):
             return "/absolute/uri"
 
+    settings.LANGUAGE_CODE = "en"
     tbs = BuildSearch()
     tbs.request = request()
     tbs.post(request)
@@ -39,23 +41,23 @@ def test_buildSearch():
     expected = {'form_data':
         [None,
           {'field': '\u0179r\xf3d\u0142o',
-           'operator': 'r\xf3wne',
+           'operator': str(EQUAL_NONE),
            'prev_op': None,
            'value': 1},
           {'field': 'Nazwisko i imi\u0119',
-           'operator': 'r\xf3wne',
+           'operator': str(EQUAL_NONE),
            'prev_op': 'and',
            'value': 1},
           {'field': 'Typ rekordu',
-           'operator': 'r\xf3wny',
+           'operator': str(EQUAL),
            'prev_op': 'and',
            'value': 1},
           {'field': 'Jednostka',
-           'operator': 'r\xf3wna',
+           'operator': str(EQUAL_FEMALE),
            'prev_op': 'and',
            'value': 1},
           {'field': 'Rok',
-           'operator': 'r\xf3wny',
+           'operator': str(EQUAL),
            'prev_op': 'and',
            'value': 2013}]}
 
