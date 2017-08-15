@@ -3,6 +3,8 @@
 from django.conf.urls import url
 from django.views.generic.base import TemplateView
 
+from nowe_raporty.views import GenerujRaportDlaJednostki, \
+    GenerujRaportDlaWydzialu
 from .views import GenerujRaportDlaAutora
 from .views import WydzialRaportFormView, JednostkaRaportFormView, \
     AutorRaportFormView
@@ -17,9 +19,17 @@ urlpatterns = [
         WydzialRaportFormView.as_view(),
         name='wydzial_form'),
 
+    url(r'wydzial/(?P<pk>\d+)/(?P<rok>\d+)/',
+        GenerujRaportDlaWydzialu.as_view(),
+        name='wydzial_generuj'),
+
     url(r'^jednostka/$',
         JednostkaRaportFormView.as_view(),
         name='jednostka_form'),
+
+    url(r'jednostka/(?P<pk>\d+)/(?P<rok>\d+)/',
+        GenerujRaportDlaJednostki.as_view(),
+        name='jednostka_generuj'),
 
     url(r'^autor/$',
         AutorRaportFormView.as_view(),

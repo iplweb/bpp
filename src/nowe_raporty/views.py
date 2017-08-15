@@ -4,6 +4,7 @@ from django.views.generic.detail import DetailView
 
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
+from bpp.models.struktura import Wydzial, Jednostka
 from .forms import AutorRaportForm
 from .forms import JednostkaRaportForm, WydzialRaportForm
 
@@ -29,24 +30,49 @@ class WydzialRaportFormView(BaseFormView):
 
 
 class BaseGenerujView(TemplateView):
-
     def get_context_data(self, **kwargs):
         return kwargs
 
-class GenerujRaportDlaAutora(DetailView):
+
+class GenerujRaportBase(DetailView):
     template_name = "nowe_raporty/generuj.html"
-    model = Autor
-    
+
     def get_context_data(self, **kwargs):
         from flexible_reports.models import Report
-        report = Report.objects.all().first()
+        try:
+            report = Report.objects.get(slug=self.report_slug)
+        except Report.DoesNotExist:
+            report = None
 
-        report.set_base_queryset(
-            Rekord.objects.prace_autora(self.object)
-                .filter(rok=self.kwargs['rok'])
-        )
+        if report:
+            report.set_base_queryset(
+                self.get_base_queryset().filter(rok=self.kwargs['rok'])
+            )
 
         kwargs['report'] = report
         kwargs['rok'] = self.kwargs['rok']
+        return super(GenerujRaportBase, self).get_context_data(**kwargs)
 
-        return super(GenerujRaportDlaAutora, self).get_context_data(**kwargs)
+
+class GenerujRaportDlaAutora(GenerujRaportBase):
+    report_slug = 'raport-autorow'
+    model = Autor
+
+    def get_base_queryset(self):
+        return Rekord.objects.prace_autora(self.object)
+
+
+class GenerujRaportDlaJednostki(GenerujRaportBase):
+    report_slug = 'raport-jednostek'
+    model = Jednostka
+
+    def get_base_queryset(self):
+        return Rekord.objects.prace_jednostki(self.object)
+
+
+class GenerujRaportDlaWydzialu(GenerujRaportBase):
+    report_slug = 'raport-wydzialow'
+    model = Wydzial
+
+    def get_base_queryset(self):
+        return Rekord.objects.prace_wydzialu(self.object)
