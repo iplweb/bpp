@@ -91,10 +91,15 @@ if [ "$NO_DJANGO" == "0" ]; then
 fi
 
 if [ "$NO_PYTEST" == "0" ]; then
-    
-    py.test src/eksport_pbn tests src/integrator2/tests src/bpp/tests_pytest
+    py.test src/eksport_pbn
+    py.test tests
+    py.test src/integrator2/tests
+    py.test src/bpp/tests_pytest
+    py.test src/nowe_raporty/tests.py
+
     # mpasternak 17.1.2017 TODO: włączyć później
     # egeria/tests
+
     stellar restore $GIT_BRANCH_NAME
 fi
 
