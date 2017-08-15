@@ -11,6 +11,7 @@ RUN mkdir -p /usr/src/app
 WORKDIR /usr/src/app
 
 ADD Makefile . 
+ADD Gruntfile.js . 
 ADD package.json . 
 ADD yarn.lock . 
 ADD .docker/stellar.yaml . 
