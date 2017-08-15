@@ -1,0 +1,13 @@
+@import "settings_green";
+@import "foundation";
+@import "common";
+@import "checkbox";
+
+input[type=checkbox] + label {
+  background-image: url(/static/bpp/images/lite-green-check.png);
+}
+
+.ui-state-focus {
+  background: $primary-color !important;
+  border: 1px white !important;
+}

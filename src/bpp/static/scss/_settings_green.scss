@@ -1,0 +1,13 @@
+
+@import "settings";
+
+$primary-color: green;
+$tabs-navigation-font-color: green;
+
+$anchor-font-color-hover: scale-color($primary-color, $lightness: -24%);
+
+$side-nav-link-color: $primary-color;
+$side-nav-link-color-active: scale-color($side-nav-link-color, $lightness: -30%);
+$side-nav-link-color-hover: scale-color($side-nav-link-color, $lightness: -30%);
+
+// $primary-color: #1E90F3;
