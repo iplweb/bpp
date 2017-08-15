@@ -7,10 +7,16 @@ EXPOSE 9015
 EXPOSE 8080
 
 RUN mkdir -p /usr/src/app
+
 WORKDIR /usr/src/app
-COPY . /usr/src/app
 
-COPY .docker/stellar.yaml . 
-COPY .docker/pytest.ini . 
+ADD Makefile . 
+ADD package.json . 
+ADD yarn.lock . 
+ADD .docker/stellar.yaml . 
+ADD .docker/pytest.ini .
+ADD .docker/test_shell.sh . 
 
-ENTRYPOINT [".docker/test_shell.sh"]
+ADD requirements*.txt ./
+
+ENTRYPOINT ["/usr/src/app/test_shell.sh"]
