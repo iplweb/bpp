@@ -385,7 +385,7 @@ def fixture(name):
             os.path.abspath(
                 os.path.join(
                     os.path.dirname(__file__),
-                    "src", "bpp", "fixtures", name)
+                    "bpp", "fixtures", name)
             ), "r"))
 
 @pytest.fixture(scope='function')

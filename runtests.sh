@@ -92,7 +92,7 @@ fi
 
 if [ "$NO_PYTEST" == "0" ]; then
     py.test src/eksport_pbn
-    py.test tests
+    py.test src/integration_tests
     py.test src/integrator2/tests
     py.test src/bpp/tests_pytest
     py.test src/nowe_raporty/tests.py
