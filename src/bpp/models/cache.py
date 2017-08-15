@@ -183,7 +183,11 @@ class AutorzyBase(models.Model):
 
     content_type = models.ForeignKey(ContentType)
     object_id = models.PositiveIntegerField()
+    "Powiązanie z dowolnym rekordem z Wydawnictwo_Ciagle, _Zwarte, Patent, .."
     rekord = FilteredGenericForeignKey('content_type', 'object_id')
+
+    "Powiązanie z tabelą bpp_rekord_mat"
+    fake_rekord = models.ForeignKey("bpp.Rekord", on_delete=models.CASCADE)
 
     autor = models.ForeignKey('Autor', on_delete=DO_NOTHING)
     jednostka = models.ForeignKey('Jednostka', on_delete=DO_NOTHING)
@@ -350,8 +354,9 @@ class Rekord(ModelPunktowanyBaza, ModelZOpisemBibliograficznym,
     # Skróty dla django-dsl
 
     django_dsl_shortcuts = {
-        "impact": "impact_factor",
-        "charakter": "charakter_formalny__skrot"
+        "charakter": "charakter_formalny__skrot",
+        "typ_kbn": "typ_kbn__skrot",
+        "typ_odpowiedzialnosci": "autorzy__typ_odpowiedzialnosci__skrot"
     }
 
     class Meta:
