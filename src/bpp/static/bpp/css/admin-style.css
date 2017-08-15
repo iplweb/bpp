@@ -87,6 +87,10 @@ textarea.charmap {
     float: left;
 }
 
+textarea {
+    height: auto;
+}
+
 button.charmap {
     width: 24px;
     height: 24px;
