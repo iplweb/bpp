@@ -37,7 +37,7 @@ do
     shift
 done
 
-export GIT_BRANCH_NAME=`git status |grep "On branch"|sed "s/On branch //"|sed "s/# //"`
+# export GIT_BRANCH_NAME=`git status |grep "On branch"|sed "s/On branch //"|sed "s/# //"`
 
 if [ "$DEBUG" == "1" ]; then
     echo "------------------------------------------------------------------------------"
@@ -49,14 +49,14 @@ if [ "$DEBUG" == "1" ]; then
     chromium-browser --version || true
     echo -n "Chromedriver version: "
     chromedriver --version || true
-    echo "------------------------------------------------------------------------------"
-    echo -n "Git version: "
-    git --version
-    echo "Git status: " 
-    git status
-    echo "------------------------------------------------------------------------------"
-    echo -n "Git branch detected: "
-    echo $GIT_BRANCH_NAME
+    #echo "------------------------------------------------------------------------------"
+    #echo -n "Git version: "
+    #git --version
+    #echo "Git status: " 
+    #git status
+    #echo "------------------------------------------------------------------------------"
+    #echo -n "Git branch detected: "
+    #echo $GIT_BRANCH_NAME
     echo "------------------------------------------------------------------------------"
     echo -n "DJANGO_LIVE_TEST_SERVER_ADDRESS: "
     echo $DJANGO_LIVE_TEST_SERVER_ADDRESS 
