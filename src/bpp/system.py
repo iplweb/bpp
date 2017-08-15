@@ -31,6 +31,7 @@ from bpp.models.profile import BppUser
 from bpp.models.seria_wydawnicza import Seria_Wydawnicza
 from bpp.models.struktura import Jednostka_Wydzial
 from bpp.models.system import Charakter_PBN
+from flexible_reports import models as flexible_models
 
 User = get_user_model()
 
@@ -46,6 +47,7 @@ groups = {
         Licencja_OpenAccess,
         Wersja_Tekstu_OpenAccess,
         OrganPrzyznajacyNagrody,
+
     ],
     'struktura': [Uczelnia, Wydzial, Jednostka, Jednostka_Wydzial],
     'wprowadzanie danych': [
@@ -58,6 +60,12 @@ groups = {
     'indeks autorów': [Autor, Autor_Jednostka],
     'administracja': [User, Group, SearchForm],
     'web': [Url, Rule, Site, Favicon, FaviconImg],
+    'raporty': [
+        flexible_models.Report,
+        flexible_models.ReportElement,
+        flexible_models.Table,
+        flexible_models.Column,
+        flexible_models.Datasource,]
 }
 
 # -*- charmap -*- -*- charmap -*--*- charmap -*--*- charmap -*--*- charmap -*-

@@ -35,6 +35,12 @@ SYSTEM_MENU = [
 
 ]
 
+RAPORTY_MENU = [
+    ('Raporty', '/admin/flexible_reports/report/'),
+    ('Źródła danych', '/admin/flexible_reports/datasource/'),
+    ('Tabele', '/admin/flexible_reports/table/'),
+]
+
 WEB_MENU = [
     ("robots.txt - URLe", "/admin/robots/url/"),
     ("robots.txt - reguły", "/admin/robots/rule/"),
@@ -99,6 +105,7 @@ class CustomMenu(Menu):
         flt("dane systemowe", "Dane systemowe", SYSTEM_MENU)
         flt("struktura", "Struktura", STRUKTURA_MENU)
         flt("wprowadzanie danych", "Wprowadzanie danych", REDAKTOR_MENU)
+        flt("raporty", "Raporty", RAPORTY_MENU)
         flt("administracja", "Administracja", ADMIN_MENU)
 
         return super(CustomMenu, self).init_with_context(context)
