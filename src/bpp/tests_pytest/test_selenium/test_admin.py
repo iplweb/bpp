@@ -99,7 +99,7 @@ def test_admin_wydawnictwo_ciagle_tamze(preauth_admin_browser, live_server):
 
     tamze = preauth_admin_browser.find_by_id('tamze')
 
-    with wait_for_page_load(preauth_admin_browser.browser):
+    with wait_for_page_load(preauth_admin_browser):
         tamze.click()
 
     assert 'Dodaj wydawnictwo' in preauth_admin_browser.html
