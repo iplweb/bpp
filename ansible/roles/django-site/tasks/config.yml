@@ -14,6 +14,7 @@
     - export {{ django_envvar_prefix }}_GOOGLE_ANALYTICS_PROPERTY_ID="{{ django_google_analytics_property_id }}"
     - export {{ django_envvar_prefix }}_GOOGLE_VERIFICATION_CODE="{{ django_google_verification_code }}"
     - export {{ django_envvar_prefix }}_UZYWAJ_PUNKTACJI_WEWNETRZNEJ="{{ django_uzywaj_punktacji_wewnetrznej }}"
+    - export {{ django_envvar_prefix }}_THEME_NAME="{{ django_theme_name }}"
     - export PGDATABASE="{{ django_db_name}}"
     - export PGUSER="{{ django_db_user}}"
     - export PGPASSWORD="{{ django_db_password}}"

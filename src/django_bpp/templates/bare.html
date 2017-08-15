@@ -12,10 +12,10 @@
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width"/>
 
-    {% compress css %}
-        {#        bare.html #}
-        <link rel="stylesheet" href="{% static 'scss/app.css' %}"/>
+    {#        bare.html #}
+    <link rel="stylesheet" href="{% static THEME_NAME %}"/>
 
+    {% compress css %}
         {#        base.html #}
         <link rel="stylesheet" type="text/css" href="{% static "bpp/flick/theme.css" %}"/>
         <link rel="stylesheet" type="text/css" href="{% static "bpp/flick/jquery-ui.min.css" %}"/>

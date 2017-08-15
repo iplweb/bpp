@@ -79,6 +79,7 @@ TEMPLATES = [
                 'password_policies.context_processors.password_status',
 
                 'bpp.context_processors.uczelnia.uczelnia',
+                'bpp.context_processors.theme.theme_name',
                 'bpp.context_processors.global_nav.user',
                 'bpp.context_processors.google_analytics.google_analytics',
 
@@ -110,7 +111,7 @@ MIDDLEWARE_CLASSES = (
 
     'session_security.middleware.SessionSecurityMiddleware',
     'notifications.middleware.NotificationsMiddleware',
-    'dogslow.WatchdogMiddleware',
+    'dogslow.WatchdogMiddleware'
 )
 
 DOGSLOW_LOGGER = 'dogslow'  # can be anything, but must match `logger` below
@@ -494,3 +495,5 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 
 UZYWAJ_PUNKTACJI_WEWNETRZNEJ = bool(
     int(django_getenv("DJANGO_BPP_UZYWAJ_PUNKTACJI_WEWNETRZNEJ", "1")))
+
+THEME_NAME = os.getenv("DJANGO_BPP_THEME_NAME", "app")
