@@ -61,8 +61,6 @@ assets: # wymaga install-wheels
 	grunt build 
 	${PYTHON} src/manage.py collectstatic --noinput -v0
 	${PYTHON} src/manage.py compress --force  -v0
-	echo -n "Static root size: "
-	du -ch src/django_bpp/staticroot | grep total
 
 # cel: bdist_wheel
 # Buduje pakiet WHL zawierający django_bpp i skompilowane, statyczne assets. 
