@@ -11,6 +11,7 @@ RUN mkdir -p /usr/src/app
 WORKDIR /usr/src/app
 
 ADD tox.ini .
+ADD runtests.sh .
 ADD Makefile . 
 ADD setup.py . 
 ADD *.rst ./
