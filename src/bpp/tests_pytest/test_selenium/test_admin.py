@@ -98,8 +98,10 @@ def test_admin_wydawnictwo_ciagle_tamze(preauth_admin_browser, live_server):
     preauth_admin_browser.visit(live_server + reverse("admin:bpp_wydawnictwo_ciagle_change", args=(c.pk,)))
 
     tamze = preauth_admin_browser.find_by_id('tamze')
-    tamze.click()
-    time.sleep(1)
+
+    with wait_for_page_load(preauth_admin_browser.browser):
+        tamze.click()
+
     assert 'Dodaj wydawnictwo' in preauth_admin_browser.html
 
     for elem in ['TO INFORMACJE', 'te uwagi', 'te www']:
