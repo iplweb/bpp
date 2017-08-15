@@ -51,16 +51,26 @@ wheels:
 install-wheels:
 	${PIP} install --no-index --only-binary=whl --find-links=./dist --find-links=./dist_dev -r requirements_dev.txt
 
-# cel: assets
-# Pobiera i składa do kupy JS/CSS/Foundation
-assets: # wymaga install-wheels
-	yarn install > /dev/null
-	#	npm rebuild > /dev/null
+assets-for-django:
 	rm -rf src/django_bpp/staticroot
 	${PYTHON} src/manage.py collectstatic --noinput -v0
 	grunt build 
 	${PYTHON} src/manage.py collectstatic --noinput -v0
 	${PYTHON} src/manage.py compress --force  -v0
+
+yarn: 
+	yarn install > /dev/null
+	# npm rebuild > /dev/null
+
+yarn-production:
+	rm -rf node_modules
+	yarn install --prod > /dev/null
+
+# cel: assets
+# Pobiera i składa do kupy JS/CSS/Foundation
+assets: yarn assets-for-django 
+
+assets-production: yarn-production assets-for-django
 
 # cel: bdist_wheel
 # Buduje pakiet WHL zawierający django_bpp i skompilowane, statyczne assets. 
@@ -69,6 +79,10 @@ assets: # wymaga install-wheels
 # 2) yarn, grunt-cli, npm, bower
 bdist_wheel: clean install-wheels assets 
 	${PYTHON} setup.py bdist_wheel
+
+# cel: bdist_wheel-production
+# Jak bdist_wheel, ale pakuje tylko produkcyjne JS prezz yarn
+bdist_wheel-production: clean install-wheels assets-production
 
 # cel: tests
 # Uruchamia testy całego site'u za pomocą docker-compose. Wymaga zbudowanych 
@@ -79,7 +93,7 @@ tests: # wymaga: instsall-wheels assets
 
 # cel: tests-full
 # Jak tests, ale całość
-full-tests: wheels bdist_wheel tests
+full-tests: wheels bdist_wheel tests bdist_wheel-production
 
 
 # cel: docker-up
