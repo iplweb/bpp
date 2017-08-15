@@ -10,7 +10,7 @@ RUN mkdir -p /usr/src/app
 
 WORKDIR /usr/src/app
 
-ADD tox.ini
+ADD tox.ini .
 ADD Makefile . 
 ADD setup.py . 
 ADD *.rst ./
