@@ -55,7 +55,7 @@ install-wheels:
 # Pobiera i składa do kupy JS/CSS/Foundation
 assets: # wymaga install-wheels
 	yarn install > /dev/null
-	npm rebuild > /dev/null
+	#	npm rebuild > /dev/null
 	rm -rf src/django_bpp/staticroot
 	${PYTHON} src/manage.py collectstatic --noinput -v0
 	grunt build 
