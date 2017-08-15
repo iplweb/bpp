@@ -38,4 +38,5 @@ tox==2.7.0
 
 Sphinx==1.6.3
 sphinx-autobuild==0.7.1
-ipdb
+
+pdbpp==0.9.1
