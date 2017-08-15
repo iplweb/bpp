@@ -1,0 +1,293 @@
+[
+   {
+      "model" : "flexible_reports.column",
+      "pk" : 1,
+      "fields" : {
+         "sortable" : false,
+         "attr_name" : "pk",
+         "position" : 0,
+         "template" : "<div align=right>{{ column.column.counter }}.</div>",
+         "parent" : 1,
+         "label" : "Lp",
+         "display_totals": false
+      }
+   },
+   {
+      "fields" : {
+         "position" : 1,
+         "attr_name" : "tytul_oryginalny",
+         "parent" : 1,
+         "template" : "{{ record.opis_bibliograficzny_cache|safe }}",
+         "sortable" : true,
+         "label" : "Opis bibliograficzny"
+      },
+      "pk" : 2,
+      "model" : "flexible_reports.column"
+   },
+   {
+      "model" : "flexible_reports.column",
+      "pk" : 3,
+      "fields" : {
+         "label" : "IF",
+         "parent" : 1,
+         "template" : "",
+         "position" : 3,
+         "attr_name" : "impact_factor",
+         "sortable" : true,
+         "display_totals": false
+      }
+   },
+   {
+      "model" : "flexible_reports.column",
+      "fields" : {
+         "label" : "PK",
+         "sortable" : true,
+         "parent" : 1,
+         "template" : "",
+         "position" : 4,
+         "attr_name" : "punkty_kbn",
+         "display_totals": false
+      },
+      "pk" : 4
+   },
+   {
+      "fields" : {
+         "sortable" : true,
+         "template" : "",
+         "parent" : 1,
+         "attr_name" : "typ_kbn",
+         "position" : 5,
+         "label" : "Typ KBN"
+      },
+      "pk" : 5,
+      "model" : "flexible_reports.column"
+   },
+   {
+      "fields" : {
+         "template" : "",
+         "parent" : 1,
+         "position" : 2,
+         "attr_name" : "rok",
+         "sortable" : true,
+         "label" : "Rok",
+         "display_totals": false
+      },
+      "pk" : 6,
+      "model" : "flexible_reports.column"
+   },
+   {
+      "model" : "flexible_reports.datasource",
+      "pk" : 1,
+      "fields" : {
+         "base_model" : 22,
+         "dsl_query" : "impact_factor > 0\r\nAND punktacja_wewnetrzna = 0\r\nAND NOT (\r\n    adnotacje ~ \"wos\" \r\n    OR\r\n    adnotacje ~ \"erih\"\r\n)\r\nAND NOT typ_kbn = \"PW\"",
+         "label" : "1.1. Publikacje w czasopiśmie naukowym posiadającym Impact Factor IF (część A wykazu MNiSW)"
+      }
+   },
+   {
+      "model" : "flexible_reports.datasource",
+      "pk" : 2,
+      "fields" : {
+         "label" : "1.2 Publikacja w czasopiśmie naukowym nieposiadającym IF (część B wykazu MNiSW)",
+         "dsl_query" : "impact_factor = 0\r\nAND punkty_kbn > 0\r\nAND charakter IN [\"AC\", \"L\", \"Supl\"]\r\nAND NOT (adnotacje ~ \"wos\")\r\nAND NOT (adnotacje ~ \"erih\")\r\nAND NOT (typ_kbn = \"PW\")",
+         "base_model" : 22
+      }
+   },
+   {
+      "model" : "flexible_reports.datasource",
+      "pk" : 3,
+      "fields" : {
+         "base_model" : 22,
+         "dsl_query" : "adnotacje ~ \"erih\"\r\nAND punkty_kbn > 0",
+         "label" : "1.3 Publikacja w czasopiśmie naukowym znajdującym się w bazie European Reference Index for the Humanities (ERIH (część C wykazu MNiSW)"
+      }
+   },
+   {
+      "model" : "flexible_reports.datasource",
+      "fields" : {
+         "base_model" : 22,
+         "label" : "1.4 Recenzowana publikacja naukowa w języku innym niż polski w zagranicznym czasopiśmie naukowym spoza list A,B,C, o objętości co najmniej 0,5 arkusza",
+         "dsl_query" : "liczba_znakow_wydawniczych >= 20000\r\nAND charakter IN [\"AC\", \"L\", \"Supl\"]\r\nAND impact_factor=0\r\nAND punkty_kbn > 0\r\nAND NOT jezyk__skrot = \"pol.\""
+      },
+      "pk" : 4
+   },
+   {
+      "fields" : {
+         "label" : "1.5 Publikacja w recenzowanych materiałach z konferencji międzynarodowej uwzględnionej w Web of Science.",
+         "dsl_query" : "adnotacje ~ \"wos\"\r\nAND punkty_kbn > 0",
+         "base_model" : 22
+      },
+      "pk" : 5,
+      "model" : "flexible_reports.datasource"
+   },
+   {
+      "model" : "flexible_reports.datasource",
+      "fields" : {
+         "label" : "2.1. Autorstwo monografii naukowej",
+         "dsl_query" : "typ_odpowiedzialnosci = \"aut.\"\r\nAND charakter IN [\"KSZ\", \"KSP\", \"KS\"]\r\nAND punkty_kbn > 0",
+         "base_model" : 22
+      },
+      "pk" : 6
+   },
+   {
+      "model" : "flexible_reports.datasource",
+      "pk" : 7,
+      "fields" : {
+         "base_model" : 22,
+         "label" : "2.2 Autorstwo rozdziału w monografii naukowej",
+         "dsl_query" : "charakter = \"ROZ\"\r\nAND punkty_kbn > 0\r\nAND typ_odpowiedzialnosci = \"aut.\""
+      }
+   },
+   {
+      "pk" : 8,
+      "fields" : {
+         "dsl_query" : "typ_odpowiedzialnosci = \"red.\"\r\nAND charakter IN [\"KSZ\", \"KSP\", \"KS\"]\r\nAND punkty_kbn > 0",
+         "label" : "2.3 Redakcja naukowa monografii naukowej wieloautorskiej",
+         "base_model" : 22
+      },
+      "model" : "flexible_reports.datasource"
+   },
+   {
+      "pk" : 9,
+      "fields" : {
+         "base_model" : 22,
+         "label" : "3. Patenty",
+         "dsl_query" : "charakter = \"PAT\""
+      },
+      "model" : "flexible_reports.datasource"
+   },
+   {
+      "pk" : 10,
+      "fields" : {
+         "label" : "4.1 Materiały konferencyjne",
+         "dsl_query" : "charakter IN [\"PSZ\", \"PRZ\", \"PST\", \"PSTS\", \"RZK\", \"ZRZ\", \"PSZ\", \"SZK\", \"ZSZ\"]",
+         "base_model" : 22
+      },
+      "model" : "flexible_reports.datasource"
+   },
+   {
+      "model" : "flexible_reports.datasource",
+      "fields" : {
+         "base_model" : 22,
+         "dsl_query" : "typ_kbn = \"PNP\"",
+         "label" : "4.2 Publikacje popularnonaukowe"
+      },
+      "pk" : 11
+   },
+   {
+      "pk" : 12,
+      "fields" : {
+         "base_model" : 22,
+         "label" : "4.3 Inne",
+         "dsl_query" : "NOT (charakter IN [\"PAT\", \"AC\", \"L\", \"Supl\", \"KSZ\", \"KSP\", \"KS\", \"ROZ\", \"PSZ\", \"PRZ\", \"PST\", \"PSTS\", \"RZK\", \"ZRZ\", \"PSZ\", \"SZK\", \"ZSZ\"])\r\n\r\nAND  NOT (typ_kbn  IN [\"PW\", \"PNP\"])"
+      },
+      "model" : "flexible_reports.datasource"
+   },
+   {
+      "model" : "flexible_reports.reportelement",
+      "pk" : 1,
+      "fields" : {
+         "subtitle" : "",
+         "slug" : "jednostka_1_1",
+         "table" : 1,
+         "position" : 0,
+         "title" : "1.1. Publikacje w czasopiśmie naukowym posiadającym Impact Factor IF (część A wykazu MNiSW)",
+         "parent" : 1,
+         "datasource" : 1
+      }
+   },
+   {
+      "model" : "flexible_reports.reportelement",
+      "pk" : 2,
+      "fields" : {
+         "title" : "1.1. Publikacje w czasopiśmie naukowym posiadającym Impact Factor IF (część A wykazu MNiSW)",
+         "position" : 0,
+         "parent" : 2,
+         "datasource" : 1,
+         "subtitle" : "",
+         "slug" : "tabela_1_1",
+         "table" : 1
+      }
+   },
+   {
+      "fields" : {
+         "slug" : "tabela_1_2",
+         "table" : 1,
+         "subtitle" : "",
+         "position" : 1,
+         "title" : "1.2 Publikacja w czasopiśmie naukowym nieposiadającym IF (część B wykazu MNiSW)",
+         "parent" : 2,
+         "datasource" : 2
+      },
+      "pk" : 3,
+      "model" : "flexible_reports.reportelement"
+   },
+   {
+      "pk" : 4,
+      "fields" : {
+         "parent" : 2,
+         "datasource" : 3,
+         "title" : "1.3 Publikacja w czasopiśmie naukowym znajdującym się w bazie European Reference Index for the Humanities (ERIH (część C wykazu MNiSW)",
+         "position" : 2,
+         "table" : 1,
+         "slug" : "tabela_1_3",
+         "subtitle" : ""
+      },
+      "model" : "flexible_reports.reportelement"
+   },
+   {
+      "model" : "flexible_reports.reportelement",
+      "pk" : 5,
+      "fields" : {
+         "datasource" : 4,
+         "parent" : 2,
+         "title" : "1.4 Recenzowana publikacja naukowa w języku innym niż polski w zagranicznym czasopiśmie naukowym spoza list A,B,C, o objętości co najmniej 0,5 arkusza",
+         "position" : 3,
+         "subtitle" : "",
+         "table" : 1,
+         "slug" : "tabela_1_4"
+      }
+   },
+   {
+      "model" : "flexible_reports.reportelement",
+      "pk" : 6,
+      "fields" : {
+         "title" : "1.5 Publikacja w recenzowanych materiałach z konferencji międzynarodowej uwzględnionej w Web of Science.",
+         "position" : 4,
+         "parent" : 2,
+         "datasource" : 5,
+         "subtitle" : "",
+         "slug" : "tabela_1_5",
+         "table" : 1
+      }
+   },
+   {
+      "fields" : {
+         "subtitle" : "",
+         "slug" : "raport-jednostek",
+         "template" : "<h1>Raport jednostek</h1>\r\n\r\n<h2>1. Publikacje w czasopismach naukowych</h2>\r\n\r\n<h3>{{ tables.jednostka_1_1.title }}</h3>\r\n{% load django_tables2 %}\r\n{% render_table tables.jednostka_1_1.as_html %}",
+         "title" : "Raport jednostek"
+      },
+      "pk" : 1,
+      "model" : "flexible_reports.report"
+   },
+   {
+      "pk" : 2,
+      "fields" : {
+         "slug" : "raport-autorow",
+         "subtitle" : "",
+         "title" : "Raport autorów",
+         "template" : "<h1>Raport autora - {{ object }} za rok {{ rok }}</h1>\r\n{% load django_tables2 %}\r\n\r\n<h2>1. Publikacje w czasopismach naukowych</h2>\r\n\r\n<h3>{{ tables.tabela_1_1.title }}</h3>\r\n\r\n\r\n{% render_table elements.tabela_1_1.table %}\r\n\r\n<h3>{{ elements.tabela_1_2.title }}</h3>\r\n{% render_table elements.tabela_1_2.table %}\r\n\r\n<h3>{{ elements.tabela_1_3.title }}</h3>\r\n{% render_table elements.tabela_1_3.table %}\r\n\r\n<h3>{{ elements.tabela_1_4.title }}</h3>\r\n{% render_table elements.tabela_1_4.table %}\r\n\r\n<h3>{{ elements.tabela_1_5.title }}</h3>\r\n{% render_table elements.tabela_1_5.table %}"
+      },
+      "model" : "flexible_reports.report"
+   },
+   {
+      "fields" : {
+         "label" : "Publikacje autorów",
+         "empty_template": "<center>Nie znaleziono takich rekordów.</center>",
+         "base_model" : 22
+      },
+      "pk" : 1,
+      "model" : "flexible_reports.table"
+   }
+]
