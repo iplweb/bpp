@@ -79,7 +79,8 @@ TEMPLATES = [
                 'password_policies.context_processors.password_status',
 
                 'bpp.context_processors.uczelnia.uczelnia',
-                'bpp.context_processors.theme.theme_name',
+                'bpp.context_processors.config.theme_name',
+                'bpp.context_processors.config.enable_new_reports',
                 'bpp.context_processors.global_nav.user',
                 'bpp.context_processors.google_analytics.google_analytics',
 
@@ -496,4 +497,6 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 UZYWAJ_PUNKTACJI_WEWNETRZNEJ = bool(
     int(django_getenv("DJANGO_BPP_UZYWAJ_PUNKTACJI_WEWNETRZNEJ", "1")))
 
-THEME_NAME = os.getenv("DJANGO_BPP_THEME_NAME", "app")
+THEME_NAME = os.getenv("DJANGO_BPP_THEME_NAME", "app-blue")
+
+ENABLE_NEW_REPORTS = int(os.getenv("DJANGO_BPP_ENABLE_NEW_REPORTS", "1"))
