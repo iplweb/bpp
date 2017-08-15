@@ -187,7 +187,6 @@ class AutorzyBase(models.Model):
     rekord = FilteredGenericForeignKey('content_type', 'object_id')
 
     "Powiązanie z tabelą bpp_rekord_mat"
-    fake_rekord = models.ForeignKey("bpp.Rekord", on_delete=models.CASCADE)
 
     autor = models.ForeignKey('Autor', on_delete=DO_NOTHING)
     jednostka = models.ForeignKey('Jednostka', on_delete=DO_NOTHING)
@@ -200,6 +199,10 @@ class AutorzyBase(models.Model):
 
 
 class Autorzy(AutorzyBase):
+    fake_rekord = models.ForeignKey(
+        "bpp.Rekord",
+        on_delete=models.CASCADE)
+
     class Meta:
         managed = False
         db_table = 'bpp_autorzy_mat'
@@ -273,6 +276,10 @@ class RekordManager(FulltextSearchMixin, models.Manager):
     def prace_jednostki(self, jednostka):
         return self.filter(
             original__in_raw=Autorzy.objects.filter(jednostka=jednostka)).distinct()
+
+    def prace_wydzialu(self, wydzial):
+        return self.filter(
+            original__in_raw=Autorzy.objects.filter(jednostka__wydzial=wydzial)).distinct()
 
     def redaktorzy_z_jednostki(self, jednostka):
         return self.filter(
