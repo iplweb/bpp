@@ -1,13 +1,5 @@
 BRANCH=`git branch | sed -n '/\* /s///p'`
 
-#
-# UWAGA UWAGA UWAGA
-# 
-# Ten makefile buduje TYLKO lokalnie.
-#
-# Makefile ułatwiający rzeczy przez dockera nazywa się "Makefile.docker"
-# 
-
 .PHONY: clean distclean build-wheels install-wheels wheels tests release
 
 PYTHON=python3.6
@@ -46,6 +38,9 @@ wheels:
 	echo "Buduje wheels w ${DISTDIR}"
 
 	mkdir -p ${DISTDIR}
+	${PIP} wheel --wheel-dir=${DISTDIR} --find-links=${DISTDIR} -r requirements_src.txt 
+
+	mkdir -p ${DISTDIR}
 	${PIP} wheel --wheel-dir=${DISTDIR} --find-links=${DISTDIR} -r requirements.txt 
 
 	mkdir -p ${DISTDIR_DEV}
@@ -54,7 +49,7 @@ wheels:
 # cel: install-wheels
 # Instaluje wszystkie requirements
 install-wheels:
-	${PIP} install --no-index --find-links=./dist --find-links=./dist_dev -r requirements_dev.txt
+	${PIP} install --no-index --only-binary=whl --find-links=./dist --find-links=./dist_dev -r requirements_dev.txt
 
 # cel: assets
 # Pobiera i składa do kupy JS/CSS/Foundation
@@ -186,6 +181,12 @@ build-test-container: cleanup-pycs
 travis: distclean dockerclean build-test-container
 	docker-compose run --rm test "make full-tests"
 
+# cel: production-deps
+# Tworzy zależności dla produkcyjnej wersji oprogramowania
+# (czyli: buduje wheels i bdist_wheel pod dockerem, na docelowej
+# dystrybucji Linuxa)
+production-deps: 
+	docker-compose run --rm test "make wheels bdist_wheel"
 
 # cel: production -DCUSTOMER=... or CUSTOMER=... make production
 production: 
