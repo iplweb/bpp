@@ -185,14 +185,16 @@
 
                 {% load user_in_group %}
 
-                <li>
-                    <a href="{% url "nowe_raporty:index" %}">
-                        nowe raporty
-                    </a>
-                </li>
-
+                {% if ENABLE_NEW_REPORTS %}
+                    <li>
+                        <a href="{% url "nowe_raporty:index" %}">
+                            nowe raporty
+                        </a>
+                    </li>
+                {% endif %}
                 <li><a href="{% url "bpp:raport_jednostek_formularz" %}">raport jednostek</a></li>
                 <li><a href="{% url "bpp:raport_autorow_formularz" %}">raport autorów</a></li>
+
                 <li><a href="{% url "bpp:ranking_autorow_formularz" %}">ranking autorów</a></li>
 
                 {% if not request.user.is_anonymous %}
