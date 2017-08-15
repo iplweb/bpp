@@ -72,28 +72,32 @@ assets: yarn assets-for-django
 
 assets-production: yarn-production assets-for-django
 
+_bdist_wheel:
+	${PYTHON} setup.py bdist_wheel
+
 # cel: bdist_wheel
 # Buduje pakiet WHL zawierający django_bpp i skompilowane, statyczne assets. 
 # Wymaga:
 # 1) zainstalowanych pakietów z requirements.txt i requirements_dev.txt przez pip
 # 2) yarn, grunt-cli, npm, bower
-bdist_wheel: clean install-wheels assets 
-	${PYTHON} setup.py bdist_wheel
+bdist_wheel: clean install-wheels assets _bdist_wheel
+
 
 # cel: bdist_wheel-production
 # Jak bdist_wheel, ale pakuje tylko produkcyjne JS prezz yarn
-bdist_wheel-production: clean install-wheels assets-production
+bdist_wheel-production: clean install-wheels assets-production _bdist_wheel
 
 # cel: tests
-# Uruchamia testy całego site'u za pomocą docker-compose. Wymaga zbudowanych 
-# pakietów WHL (cel: wheels) oraz statycznych assets w katalogu src/django_bpp/staticroot
-# (cel: assets)
-tests: # wymaga: instsall-wheels assets
+# Uruchamia testy całego site'u za pomocą tox. Wymaga zbudowanych 
+# pakietów WHL (cel: wheels), zainstalowanych pakietów wheels
+# (cel: install-wheels) oraz statycznych assets w katalogu 
+# src/django_bpp/staticroot (cel: assets)
+tests:
 	tox
 
 # cel: tests-full
 # Jak tests, ale całość
-full-tests: wheels bdist_wheel tests bdist_wheel-production
+full-tests: wheels install-wheels assets tests bdist_wheel-production
 
 
 # cel: docker-up
