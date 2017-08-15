@@ -59,12 +59,10 @@ assets-for-django:
 	${PYTHON} src/manage.py compress --force  -v0
 
 yarn: 
-	yarn install > /dev/null
-	# npm rebuild > /dev/null
+	yarn > /dev/null
 
 yarn-production:
-	rm -rf node_modules
-	yarn install --prod > /dev/null
+	yarn --prod > /dev/null
 
 # cel: assets
 # Pobiera i składa do kupy JS/CSS/Foundation
