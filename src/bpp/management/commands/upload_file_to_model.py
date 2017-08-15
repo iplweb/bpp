@@ -1,5 +1,5 @@
 # -*- encoding: utf-8 -*-
-# https://djangosnippets.org/snippets/10614/
+# save me as yourapp/management/commands/upload_file_to_model.py
 
 from argparse import FileType
 from pathlib import Path
@@ -24,7 +24,14 @@ class Command(BaseCommand):
             options['model'].lower()
         ).get_object_for_this_type(pk=options['pk'])
 
-        field = getattr(obj, options['field'])
+        try:
+            field = getattr(obj, options['field'])
+        except AttributeError as e:
+            fields = [field.name for field in obj._meta.get_fields()]
+            fields = ", ".join(fields)
+            e.args = (e.args[0] + f". Available names: {fields}", )
+            raise e
+
         field.save(
             name=Path(options['path'].name).name,
             content=File(options['path']))
