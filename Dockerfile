@@ -10,8 +10,10 @@ RUN mkdir -p /usr/src/app
 
 WORKDIR /usr/src/app
 
+ADD tox.ini
 ADD Makefile . 
 ADD setup.py . 
+ADD *.rst ./
 ADD Gruntfile.js . 
 ADD package.json . 
 ADD yarn.lock . 
