@@ -2,6 +2,15 @@
 Historia zmian
 ==============
 
+0.11.43 (2017-08-15)
+--------------------
+
+* możliwość zmiany wyglądu kolorystycznego systemu
+
+* nowy framework raportów oparty o zapytania w języku DSL, obsługiwany
+  w pełni przez użytkownika końcowego
+
+
 0.11.19 (2017-07-15)
 --------------------
 
