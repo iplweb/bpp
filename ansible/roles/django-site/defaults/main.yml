@@ -41,3 +41,5 @@ certs_path: "{{ role_path }}/files/"
 django_uzywaj_punktacji_wewnetrznej: 1
 
 django_theme_name: app
+
+django_enable_new_reports: 1
