@@ -5,6 +5,7 @@ from dal import autocomplete
 from dal_select2_queryset_sequence.views import Select2QuerySetSequenceView
 from django import http
 from django.contrib.auth.mixins import UserPassesTestMixin
+from django.db.models.aggregates import Count
 from django.db.models.query_utils import Q
 from queryset_sequence import QuerySetSequence
 
@@ -54,11 +55,7 @@ class JednostkaAutocomplete(autocomplete.Select2QuerySetView):
         return qs
 
 
-class KonferencjaAutocomplete(autocomplete.Select2QuerySetView):
-    create_field = 'nazwa'
-
-    qset = Konferencja.objects.all()
-
+class NazwaMixin:
     def get_queryset(self):
         qs = self.qset
         if self.q:
@@ -66,16 +63,25 @@ class KonferencjaAutocomplete(autocomplete.Select2QuerySetView):
         return qs
 
 
-class Seria_WydawniczaAutocomplete(KonferencjaAutocomplete):
+class KonferencjaAutocomplete(NazwaMixin,
+                              autocomplete.Select2QuerySetView):
+    create_field = 'nazwa'
+    qset = Konferencja.objects.all()
+
+
+class Seria_WydawniczaAutocomplete(NazwaMixin,
+                                   autocomplete.Select2QuerySetView):
     create_field = 'nazwa'
     qset = Seria_Wydawnicza.objects.all()
 
 
-class WydzialAutocomplete(KonferencjaAutocomplete):
+class WydzialAutocomplete(NazwaMixin,
+                          autocomplete.Select2QuerySetView):
     qset = Wydzial.objects.all()
 
 
-class OrganPrzyznajacyNagrodyAutocomplete(KonferencjaAutocomplete):
+class OrganPrzyznajacyNagrodyAutocomplete(NazwaMixin,
+                                          autocomplete.Select2QuerySetView):
     qset = OrganPrzyznajacyNagrody.objects.all()
 
 
@@ -99,6 +105,24 @@ class ZrodloAutocomplete(autocomplete.Select2QuerySetView):
 
 
 class AutorAutocomplete(autocomplete.Select2QuerySetView):
+    create_field = 'nonzero'
+
+    def create_object(self, text):
+        text = text.split(" ", 1)
+        if len(text) != 2:
+            class Error:
+                pk = None
+
+                def __str__(self):
+                    return "Błąd. Wpisz nazwisko i imię oddzielone spacją"
+
+            return Error()
+
+        return self.get_queryset().create(**dict(
+            nazwisko=text[0],
+            imiona=text[1]
+        ))
+
     def get_queryset(self):
         qs = Autor.objects.all()
         if self.q:
@@ -127,9 +151,13 @@ class GlobalNavigationAutocomplete(Select2QuerySetSequenceView):
         )
 
         querysets.append(
-            Autor.objects.fulltext_filter(self.q).only(
-                "pk", "nazwisko", "imiona", "poprzednie_nazwiska",
-                "tytul").select_related("tytul")
+            Autor.objects
+                .fulltext_filter(self.q)
+                .annotate(Count('wydawnictwo_ciagle'))
+                .only("pk", "nazwisko", "imiona", "poprzednie_nazwiska",
+                      "tytul")
+                .select_related("tytul")
+                .order_by('-wydawnictwo_ciagle__count')
         )
 
         querysets.append(
@@ -141,6 +169,18 @@ class GlobalNavigationAutocomplete(Select2QuerySetSequenceView):
             Rekord.objects.fulltext_filter(self.q).only(
                 "tytul_oryginalny", "content_type__model", "object_id")
         )
+
+        this_is_an_id = False
+        try:
+            this_is_an_id = int(self.q)
+        except:
+            pass
+
+        if this_is_an_id:
+            querysets.append(
+                Rekord.objects.filter(object_id=this_is_an_id).only(
+                    "tytul_oryginalny", "content_type__model", "object_id")
+            )
 
         ret = QuerySetSequence(*querysets)
         return self.mixup_querysets(ret)
@@ -169,9 +209,13 @@ class AdminNavigationAutocomplete(StaffRequired, Select2QuerySetSequenceView):
         )
 
         querysets.append(
-            Autor.objects.fulltext_filter(self.q).only(
-                "pk", "nazwisko", "imiona", "poprzednie_nazwiska",
-                "tytul").select_related("tytul")
+            Autor.objects
+                .fulltext_filter(self.q)
+                .annotate(Count('wydawnictwo_ciagle'))
+                .only("pk", "nazwisko", "imiona", "poprzednie_nazwiska",
+                      "tytul")
+                .select_related("tytul")
+                .order_by('-wydawnictwo_ciagle__count')
         )
 
         querysets.append(
