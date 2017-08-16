@@ -1,6 +1,7 @@
 # -*- encoding: utf-8 -*-
 import json
 
+from braces.views import GroupRequiredMixin
 from dal import autocomplete
 from dal_select2_queryset_sequence.views import Select2QuerySetSequenceView
 from django import http
@@ -104,8 +105,26 @@ class ZrodloAutocomplete(autocomplete.Select2QuerySetView):
         return qs
 
 
-class AutorAutocomplete(autocomplete.Select2QuerySetView):
+class AutorAutocompleteBase(autocomplete.Select2QuerySetView):
+    def get_queryset(self):
+        qs = Autor.objects.all()
+        if self.q:
+            query = SearchQueryStartsWith(
+                "&".join([x.strip() + ":*" for x in self.q.split()]),
+                config="bpp_nazwy_wlasne")
+
+            qs = qs.filter(search=query)
+
+            qs = qs.annotate(Count('wydawnictwo_ciagle'))\
+                .select_related("tytul")\
+                .order_by('-wydawnictwo_ciagle__count')
+
+        return qs
+
+
+class AutorAutocomplete(GroupRequiredMixin, AutorAutocompleteBase):
     create_field = 'nonzero'
+    group_required = 'wprowadzanie danych'
 
     def create_object(self, text):
         text = text.split(" ", 1)
@@ -123,15 +142,9 @@ class AutorAutocomplete(autocomplete.Select2QuerySetView):
             imiona=text[1]
         ))
 
-    def get_queryset(self):
-        qs = Autor.objects.all()
-        if self.q:
-            query = SearchQueryStartsWith(
-                "&".join([x.strip() + ":*" for x in self.q.split()]),
-                config="bpp_nazwy_wlasne")
 
-            qs = qs.filter(search=query)
-        return qs
+class PublicAutorAutocomplete(AutorAutocompleteBase):
+    pass
 
 
 class AutorZUczelniAutocopmlete(AutorAutocomplete):
@@ -262,17 +275,8 @@ class ZapisanyJakoAutocomplete(autocomplete.Select2ListView):
     def get(self, request, *args, **kwargs):
         """"Return option list json response."""
         results = self.get_list()
-        create_option = []
-        if self.q:
-            results = [x for x in results if self.q.lower() in x.lower()]
-            if hasattr(self, 'create'):
-                create_option = [{
-                    'id': self.q,
-                    'text': 'Create "%s"' % self.q,
-                    'create_id': True
-                }]
         return http.HttpResponse(json.dumps({
-            'results': [dict(id=x, text=x) for x in results] + create_option
+            'results': [dict(id=x, text=x) for x in results]
         }), content_type='application/json')
 
 

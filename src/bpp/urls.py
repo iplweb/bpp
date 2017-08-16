@@ -17,7 +17,7 @@ from bpp.views.autocomplete import WidocznaJednostkaAutocomplete, \
     PodrzednaPublikacjaHabilitacyjnaAutocomplete, \
     AdminNavigationAutocomplete, KonferencjaAutocomplete, \
     Seria_WydawniczaAutocomplete, OrganPrzyznajacyNagrodyAutocomplete, \
-    WydzialAutocomplete
+    WydzialAutocomplete, PublicAutorAutocomplete
 from bpp.views.raporty import RankingAutorow, \
     PobranieRaportu, PodgladRaportu, KasowanieRaportu, \
     RaportJednostek2012, RaportKronikaUczelni, RaportJednostek, \
@@ -157,6 +157,11 @@ urlpatterns = [
         r'^autor-autocomplete/$',
         AutorAutocomplete.as_view(),
         name='autor-autocomplete',
+    ),
+    url(
+        r'^public-autor-autocomplete/$',
+        PublicAutorAutocomplete.as_view(),
+        name='public-autor-autocomplete',
     ),
 
     url(
