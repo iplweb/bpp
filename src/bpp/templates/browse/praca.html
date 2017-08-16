@@ -56,9 +56,9 @@
                 </th>
                 <td>
                     {% if praca.public_www %}
-                        <a href="{{ praca.public_www }}">{{ praca.public_www }}</a>
+                        <a href="{{ praca.public_www }}">{{ praca.public_www|truncatechars:120 }}</a>
                     {% elif praca.www %}
-                        <a href="{{ praca.www }}">{{ praca.www }}</a>
+                        <a href="{{ praca.www }}">{{ praca.www|truncatechars:120 }}</a>
                     {% else %}
                         Brak danych
                     {% endif %}
