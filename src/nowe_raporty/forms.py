@@ -69,5 +69,5 @@ class AutorRaportForm(BaseRaportForm):
         label="Autor",
         queryset=Autor.objects.all(),
         widget=autocomplete.ModelSelect2(
-            url='bpp:autor-autocomplete')
+            url='bpp:public-autor-autocomplete')
     )
