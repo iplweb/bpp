@@ -13,12 +13,14 @@ Historia zmian
 * konfigurowalny czas długości trwania sesji - możliwość wybrania, jak długo
   system czeka na reakcję użytkownika przed automatycznym jego wylogowaniem
 
-* autorzy przy wyszukiwaniu przez globalną nawigację wyświetlani są
-  zgodnie z ilością publikacji w bazie
+* autorzy przy wyszukiwaniu przez globalną nawigację oraz w module "Redagowanie"
+  wyświetlani są zgodnie z ilością publikacji w bazie
 
 * możliwość automatycznego utworzenia autora i serii wydawniczej
   podczas wpisywania rekordu - bez konieczności przechodzenia do innej częsci
   modułu redagowania
+
+* opcja resetu hasła w przypadku jego zapomnienia
 
 0.11.19 (2017-07-15)
 --------------------
