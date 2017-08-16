@@ -22,6 +22,10 @@ Historia zmian
 
 * opcja resetu hasła w przypadku jego zapomnienia
 
+* konfigurowalny czas do przymusowej zmiany hasła, konfigurowalny moduł
+  zapamiętujący ostatnio wpisane hasła oraz konfigurowalna ilość
+  ostatnio zapamiętanych haseł
+
 0.11.19 (2017-07-15)
 --------------------
 
