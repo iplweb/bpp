@@ -43,3 +43,7 @@ django_uzywaj_punktacji_wewnetrznej: 1
 django_theme_name: app-blue
 
 django_enable_new_reports: 1
+
+django_session_security_warn_after: 540
+
+django_session_security_expire_after: 600
