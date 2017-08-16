@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
 import json
 
-from braces.views import GroupRequiredMixin
+from braces.views import GroupRequiredMixin, LoginRequiredMixin
 from dal import autocomplete
 from dal_select2_queryset_sequence.views import Select2QuerySetSequenceView
 from django import http
@@ -65,12 +65,14 @@ class NazwaMixin:
 
 
 class KonferencjaAutocomplete(NazwaMixin,
+                              LoginRequiredMixin,
                               autocomplete.Select2QuerySetView):
     create_field = 'nazwa'
     qset = Konferencja.objects.all()
 
 
 class Seria_WydawniczaAutocomplete(NazwaMixin,
+                                   LoginRequiredMixin,
                                    autocomplete.Select2QuerySetView):
     create_field = 'nazwa'
     qset = Seria_Wydawnicza.objects.all()
@@ -115,8 +117,8 @@ class AutorAutocompleteBase(autocomplete.Select2QuerySetView):
 
             qs = qs.filter(search=query)
 
-            qs = qs.annotate(Count('wydawnictwo_ciagle'))\
-                .select_related("tytul")\
+            qs = qs.annotate(Count('wydawnictwo_ciagle')) \
+                .select_related("tytul") \
                 .order_by('-wydawnictwo_ciagle__count')
 
         return qs
