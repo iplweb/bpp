@@ -19,7 +19,7 @@ clean:
 
 distclean: clean
 	rm -rf src/django_bpp/staticroot 
-	rm -rf zarzadca*backup 
+	rm -rf *backup 
 	rm -rf node_modules src/node_modules src/django_bpp/staticroot 
 	rm -rf .vagrant splintershots src/components/bower_components src/media
 
@@ -105,30 +105,6 @@ docker-up:
 	docker-compose up -d rabbitmq redis db selenium
 	docker-compose ps
 
-
-# cel: download
-# Pobiera baze danych z hosta
-download: 
-	fab -H zarzadca@bpp.umlub.pl download_db
-
-migrate: 
-	cd src && ${PYTHON} manage.py migrate
-
-download-and-migrate: download migrate
-	@echo "Done!"
-
-_rebuild-from-downloaded:
-	fab -H zarzadca@bpp.umlub.pl download_db:restore=True,recreate=True,download=False
-
-# cel: rebuild-from-downloaded
-# Od-budowuje baze danych 
-rebuild-from-downloaded: _rebuild-from-downloaded migrate
-	@echo "Done!"
-
-# cel: upload-db-to-staging
-# Wrzuca pobraną bazę danych na staging-server
-upload-db-to-staging:
-	fab -i .vagrant/machines/staging/virtualbox/private_key -H ubuntu@bpp-staging.localnet upload_db:zarzadca@bpp.umlub.pl-bpp.backup,staging-bpp,staging-bpp
 
 # cel: setup-lo0
 # Konfiguruje alias IP dla interfejsu lo0 aby kontener Dockera 'selenium'
