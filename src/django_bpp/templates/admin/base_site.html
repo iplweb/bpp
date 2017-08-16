@@ -25,7 +25,9 @@
             </script>
             </div>
             <div style="display: none;" id="show-after-load">
+            {% if request.user.is_staff %}
                 {% admin_tools_render_menu %}
+                {% endif %}
             </div>
         {% endif %}
     {% endif %}

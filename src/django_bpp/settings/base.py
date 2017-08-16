@@ -423,10 +423,12 @@ SECRET_KEY = django_getenv("DJANGO_BPP_SECRET_KEY")
 SENDFILE_URL = MEDIA_URL
 
 # django-password-policies
+
 # Zmiana hasla co 30 dni
 PASSWORD_DURATION_SECONDS = (60 * 60 * 24) * 30
 PASSWORD_USE_HISTORY = True
 PASSWORD_HISTORY_COUNT = 12
+
 # wymagane przez django-password-policies
 SESSION_SERIALIZER = 'django.contrib.sessions.serializers.PickleSerializer'
 

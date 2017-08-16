@@ -10,7 +10,9 @@ from django.conf import settings
 
 from loginas.views import user_login
 from multiseek.views import remove_by_hand, remove_from_removed_by_hand
-from password_policies.views import PasswordChangeDoneView, PasswordChangeFormView
+from password_policies.views import PasswordChangeDoneView, \
+    PasswordChangeFormView, PasswordResetFormView, PasswordResetConfirmView, \
+    PasswordResetDoneView, PasswordResetCompleteView
 from bpp.forms import MyAuthenticationForm
 from bpp.views.admin import WydawnictwoCiagleTozView, WydawnictwoZwarteTozView, \
     PatentTozView
@@ -88,14 +90,29 @@ urlpatterns = [
 
     url(r'^$', root, name="root"),
 
+
     url(r'^accounts/login/$', login,
         name="login_form", kwargs={'authentication_form':MyAuthenticationForm}),
+
     url(r'^password_change_done/$',
         PasswordChangeDoneView.as_view(),
         name="password_change_done"),
     url(r'^password_change/$',
         PasswordChangeFormView.as_view(form_class=BppPasswordChangeForm),
         name="password_change"),
+    url(r"^password_reset/$",
+        PasswordResetFormView.as_view(),
+        name="password_reset"),
+    url(r'^password_reset_confirm/'
+        r'([0-9A-Za-z_\-]+)/([0-9A-Za-z]{1,13})/([0-9A-Za-z-=_]{1,32})/$',
+        PasswordResetConfirmView.as_view(),
+        name="password_reset_confirm"),
+    url(r'^password_reset_done/$',
+        PasswordResetDoneView.as_view(),
+        name="password_reset_done"),
+    url(r'^password_reset_complete/$',
+         PasswordResetCompleteView.as_view(),
+         name="password_reset_complete"),
 
     url(r'^logout/$', django.contrib.auth.views.logout, name="logout"),
 

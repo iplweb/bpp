@@ -13,6 +13,7 @@
     {% if request.user.is_anonymous %}
         {% load crispy_forms_tags %}
         {% crispy form %}
+        <a href="{% url "password_reset" %}">Zapomniałem/am hasła.</a>
     {% else %}
         Jesteś już zalogowany/a.
     {% endif %}
