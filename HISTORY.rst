@@ -10,6 +10,15 @@ Historia zmian
 * nowy framework raportów oparty o zapytania w języku DSL, obsługiwany
   w pełni przez użytkownika końcowego
 
+* konfigurowalny czas długości trwania sesji - możliwość wybrania, jak długo
+  system czeka na reakcję użytkownika przed automatycznym jego wylogowaniem
+
+* autorzy przy wyszukiwaniu przez globalną nawigację wyświetlani są
+  zgodnie z ilością publikacji w bazie
+
+* możliwość automatycznego utworzenia autora i serii wydawniczej
+  podczas wpisywania rekordu - bez konieczności przechodzenia do innej częsci
+  modułu redagowania
 
 0.11.19 (2017-07-15)
 --------------------
