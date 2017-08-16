@@ -425,9 +425,14 @@ SENDFILE_URL = MEDIA_URL
 # django-password-policies
 
 # Zmiana hasla co 30 dni
-PASSWORD_DURATION_SECONDS = (60 * 60 * 24) * 30
-PASSWORD_USE_HISTORY = True
-PASSWORD_HISTORY_COUNT = 12
+PASSWORD_DURATION_SECONDS = int(
+    os.getenv("DJANGO_BPP_PASSWORD_DURATION_SECONDS", str((60 * 60 * 24) * 30)))
+
+PASSWORD_USE_HISTORY = bool(
+    int(os.getenv("DJANGO_BPP_USE_PASSWORD_HISTORY", "1")))
+
+PASSWORD_HISTORY_COUNT = int(
+    os.getenv("DJANGO_BPP_PASSWORD_HISTORY_COUNT", "12"))
 
 # wymagane przez django-password-policies
 SESSION_SERIALIZER = 'django.contrib.sessions.serializers.PickleSerializer'
