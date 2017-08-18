@@ -3,9 +3,10 @@
     <div class="row row-collapse">
         {% for rok in prace_w_latach reversed %}
             <div class="large-1 medium-2 small-3 columns">
+                <input type="checkbox" name="rok"
+                       id="rok_{{ rok }}" value="{{ rok }}"/>
                 <label for="rok_{{ rok }}">
-                    <input type="checkbox" name="rok"
-                           id="rok_{{ rok }}" value="{{ rok }}"/>
+
                     {{ rok }}</label>
             </div>
         {% endfor %}
