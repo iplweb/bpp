@@ -434,6 +434,7 @@ def zrob_userow(cur):
                 # grupę "web"
                 if letter in ["S", "A"]:
                     u.groups.add(Group.objects.get(name="web"))
+                    u.groups.add(Group.objects.get(name="raporty"))
 
         u.utworzony = l['created_on']
         if l['created_by'] is not None:
