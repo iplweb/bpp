@@ -19,7 +19,7 @@ urlpatterns = [
         WydzialRaportFormView.as_view(),
         name='wydzial_form'),
 
-    url(r'wydzial/(?P<pk>\d+)/(?P<rok>\d+)/',
+    url(r'wydzial/(?P<pk>\d+)/(?P<od_roku>\d+)/(?P<do_roku>\d+)/',
         GenerujRaportDlaWydzialu.as_view(),
         name='wydzial_generuj'),
 
@@ -27,7 +27,7 @@ urlpatterns = [
         JednostkaRaportFormView.as_view(),
         name='jednostka_form'),
 
-    url(r'jednostka/(?P<pk>\d+)/(?P<rok>\d+)/',
+    url(r'jednostka/(?P<pk>\d+)/(?P<od_roku>\d+)/(?P<do_roku>\d+)/',
         GenerujRaportDlaJednostki.as_view(),
         name='jednostka_generuj'),
 
@@ -35,7 +35,7 @@ urlpatterns = [
         AutorRaportFormView.as_view(),
         name='autor_form'),
 
-    url(r'autor/(?P<pk>\d+)/(?P<rok>\d+)/',
+    url(r'autor/(?P<pk>\d+)/(?P<od_roku>\d+)/(?P<do_roku>\d+)/',
         GenerujRaportDlaAutora.as_view(),
         name='autor_generuj'),
 

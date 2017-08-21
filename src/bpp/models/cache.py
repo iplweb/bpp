@@ -363,7 +363,10 @@ class Rekord(ModelPunktowanyBaza, ModelZOpisemBibliograficznym,
     django_dsl_shortcuts = {
         "charakter": "charakter_formalny__skrot",
         "typ_kbn": "typ_kbn__skrot",
-        "typ_odpowiedzialnosci": "autorzy__typ_odpowiedzialnosci__skrot"
+        "typ_odpowiedzialnosci": "autorzy__typ_odpowiedzialnosci__skrot",
+        "autor": "autorzy__autor__pk",
+        "jednostka": "autorzy__jednostka__pk",
+        "wydzial": "autorzy__jednostka__wydzial__pk"
     }
 
     class Meta:

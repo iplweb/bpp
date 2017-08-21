@@ -1,5 +1,14 @@
 {% extends "base.html" %}
 
+{% block extratitle %}
+    {{ title }}
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li class="current">{{ title }}</li>
+{% endblock %}
+
 {% block content %}
     {% load crispy_forms_tags %}
     {% crispy form %}

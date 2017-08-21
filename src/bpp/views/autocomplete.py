@@ -56,11 +56,39 @@ class JednostkaAutocomplete(autocomplete.Select2QuerySetView):
         return qs
 
 
+class LataAutocomplete(autocomplete.Select2QuerySetView):
+    qset = Rekord.objects.all().values_list('rok',
+                                            flat=True).distinct().order_by(
+        '-rok')
+
+    def get_queryset(self):
+        qs = self.qset
+        if self.q:
+            qs = qs.filter(rok=self.q)
+        return qs
+
+    def get_result_value(self, result):
+        return result
+
+    def get_result_label(self, result):
+        return str(result)
+
+
 class NazwaMixin:
     def get_queryset(self):
         qs = self.qset
         if self.q:
             qs = qs.filter(nazwa__icontains=self.q)
+        return qs
+
+
+class NazwaLubSkrotMixin:
+    def get_queryset(self):
+        qs = self.qset
+        if self.q:
+            qs = qs.filter(
+                Q(nazwa__icontains=self.q) |
+                Q(skrot__icontains=self.q))
         return qs
 
 
@@ -78,7 +106,7 @@ class Seria_WydawniczaAutocomplete(NazwaMixin,
     qset = Seria_Wydawnicza.objects.all()
 
 
-class WydzialAutocomplete(NazwaMixin,
+class WydzialAutocomplete(NazwaLubSkrotMixin,
                           autocomplete.Select2QuerySetView):
     qset = Wydzial.objects.all()
 

@@ -4,6 +4,7 @@ from crispy_forms_foundation.layout import Layout, Fieldset, ButtonHolder, \
     Submit
 from dal import autocomplete
 from django import forms
+from django.core.exceptions import ValidationError
 
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
@@ -22,11 +23,31 @@ wybory = ["wydzial", "jednostka", "autor"]
 
 
 class BaseRaportForm(forms.Form):
-    rok = forms.TypedChoiceField(
+    od_roku = forms.TypedChoiceField(
         choices=wez_lata,
         coerce=int,
-        widget=autocomplete.ListSelect2
+        widget=autocomplete.ListSelect2(
+            forward='obiekt',
+            url="bpp:lata-autocomplete"
+        )
     )
+
+    do_roku = forms.TypedChoiceField(
+        choices=wez_lata,
+        coerce=int,
+        widget=autocomplete.ListSelect2(
+            forward='obiekt',
+            url="bpp:lata-autocomplete"
+        )
+    )
+
+    def clean(self):
+        if self.cleaned_data['od_roku'] > self.cleaned_data['do_roku']:
+            raise ValidationError(
+                {"od_roku": ValidationError(
+                    'Pole musi być większe lub równe jak pole "Do roku".')
+                }
+            )
 
     def __init__(self, *args, **kwargs):
         self.helper = FormHelper()
@@ -35,7 +56,8 @@ class BaseRaportForm(forms.Form):
         self.helper.layout = Layout(
             Fieldset('Wybierz parametry',
                      'obiekt',
-                     'rok'),
+                     'od_roku',
+                     'do_roku'),
             ButtonHolder(
                 Submit('submit', 'Pobierz raport', css_id='id_submit',
                        css_class="submit button"),

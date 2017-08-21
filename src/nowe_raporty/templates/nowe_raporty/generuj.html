@@ -1,12 +1,13 @@
 {% extends "base.html" %}
 
 {% block extratitle %}
-    Generowanie raportu
+    {{ title }}
 {% endblock %}
 
 {% block breadcrumbs %}
     {{ block.super }}
-    <li class="current">Raport dla {{ object }} za {{ rok }}</li>
+    <li><a href="{% url form_link %}">{{ form_title }}</a></li>
+    <li class="current">{{ title }}</li>
 {% endblock %}
 
 {% block content %}
@@ -14,7 +15,18 @@
         Nie znaleziono definicji wybranego raportu w bazie danych.
         Skontaktuj się z administratorem systemu.
     {% else %}
+        {% if request.user.is_staff %}
+            <div class="panel hide-on-print">
+                <a target="_blank"
+                   href="{% url "admin:flexible_reports_report_change" report.pk %}"
+                >
+                    otwórz do edycji
+                </a>
+            </div>
+        {% endif %}
+
         {% load flexible_reports_tags %}
         {% flexible report %}
     {% endif %}
+
 {% endblock %}

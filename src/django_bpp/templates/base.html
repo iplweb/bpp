@@ -187,13 +187,24 @@
 
                 {% if ENABLE_NEW_REPORTS %}
                     <li>
-                        <a href="{% url "nowe_raporty:index" %}">
-                            nowe raporty
+                        <a href="{% url "nowe_raporty:wydzial_form" %}">
+                            raport wydziałów
                         </a>
                     </li>
+                    <li>
+                        <a href="{% url "nowe_raporty:jednostka_form" %}">
+                            raport jednostek
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url "nowe_raporty:autor_form" %}">
+                            raport autorów
+                        </a>
+                    </li>
+                {% else %}
+                    <li><a href="{% url "bpp:raport_jednostek_formularz" %}">raport jednostek</a></li>
+                    <li><a href="{% url "bpp:raport_autorow_formularz" %}">raport autorów</a></li>
                 {% endif %}
-                <li><a href="{% url "bpp:raport_jednostek_formularz" %}">raport jednostek</a></li>
-                <li><a href="{% url "bpp:raport_autorow_formularz" %}">raport autorów</a></li>
 
                 <li><a href="{% url "bpp:ranking_autorow_formularz" %}">ranking autorów</a></li>
 
