@@ -50,3 +50,5 @@ django_session_security_expire_after: 600
 django_password_duration_seconds: 2592000
 django_password_use_history: 1
 django_password_history_count: 12
+
+django_bpp_punktuj_monografie: 1
