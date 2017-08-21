@@ -1,41 +1,31 @@
 import pytest
 from django.test.client import RequestFactory
-from flexible_reports.models.report import Report
 from model_mommy import mommy
 
 from bpp.models.autor import Autor
 from bpp.models.profile import BppUser
 from bpp.models.struktura import Jednostka, Wydzial
+from flexible_reports.models.report import Report
 from nowe_raporty.views import GenerujRaportDlaAutora, \
     GenerujRaportDlaJednostki, GenerujRaportDlaWydzialu
-
+from django.urls import reverse
 rf = RequestFactory()
 
 
 @pytest.mark.django_db
 @pytest.mark.parametrize(
-    "view",
-    [GenerujRaportDlaAutora,
-     GenerujRaportDlaJednostki,
-     GenerujRaportDlaWydzialu]
+    "view,klass",
+    [("autor_generuj", Autor),
+     ("jednostka_generuj", Jednostka),
+     ("wydzial_generuj", Wydzial)]
 )
-def test_view_raport_nie_zdefiniowany(view):
-    autor = mommy.make(Autor)
-    v = view(kwargs=dict(rok=2017))
-    v.object = autor
-    ret = v.get_context_data()
+def test_view_raport_nie_zdefiniowany(client, view, klass):
+    obj = mommy.make(klass)
+    v = reverse("nowe_raporty:" + view,
+        args=(obj.pk, 2017, 2017))
+    res = client.get(v)
 
-    assert ret['report'] is None
-
-    v.request = rf.get("/foo")
-    superuser = BppUser.objects.create_superuser(
-        "asdf", "Asdf@.asdfpl", "asdf")
-    v.request.user = superuser
-    v.request.session = {}
-    ret = v.render_to_response({})
-    ret.render()
-
-    assert "Nie znaleziono definicji" in ret.rendered_content
+    assert "Nie znaleziono definicji" in res.rendered_content
 
 
 @pytest.mark.django_db
@@ -47,7 +37,7 @@ def test_view_raport_nie_zdefiniowany(view):
 )
 def test_view_raport_zdefiniowany(view, klass, report_slug):
     obj = mommy.make(klass)
-    v = view(kwargs=dict(rok=2017))
+    v = view(kwargs=dict(od_roku=2017, do_roku=2017))
     v.object = obj
     r = mommy.make(Report, slug=report_slug)
     ret = v.get_context_data()
