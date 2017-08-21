@@ -21,4 +21,6 @@ recursive-include src/*/templates *.html *.css
 recursive-include src/bpp/migrations *.sql *.txt
 recursive-include src/bpp/fixtures *
 
+recursive-include src/*/fixtures *.json
+
 recursive-include docs *.rst conf.py Makefile make.bat *.jpg *.png *.gif
