@@ -1,8 +1,10 @@
+
 from django.conf import settings
-from django.http.response import HttpResponseRedirect
+from django.http.response import HttpResponseRedirect, HttpResponse
+from django.template.context import RequestContext
 from django.views.generic import FormView, TemplateView
 from django.views.generic.detail import DetailView
-
+from flexible_reports.adapters import django_tables2
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
 from bpp.models.struktura import Wydzial, Jednostka
@@ -17,7 +19,7 @@ class BaseFormView(FormView):
     def form_valid(self, form):
         d = form.cleaned_data
         return HttpResponseRedirect(
-            f"./{ d['obiekt'].pk }/{ d['od_roku'] }/{ d['do_roku'] }/")
+            f"./{ d['obiekt'].pk }/{ d['od_roku'] }/{ d['do_roku'] }/?docx={ d['docx'] }")
 
     def get_context_data(self, **kwargs):
         kwargs['title'] = self.title
@@ -84,6 +86,27 @@ class GenerujRaportBase(DetailView):
         kwargs['form_link'] = self.form_link
         kwargs['form_title'] = self.form_title
         return super(GenerujRaportBase, self).get_context_data(**kwargs)
+
+    def render_to_response(self, context, **response_kwargs):
+        if 'docx' in self.request.GET and self.request.GET['docx'] == "True":
+            context['request'] = self.request
+            data = django_tables2.report(
+                context['report'],
+                parent_context=RequestContext(self.request, context)
+            )
+            response = HttpResponse(
+                """<head>
+                <meta http-equiv="Content-Type" content="text/html; charset=utf-8" /> 
+                </head><body>""" + data + "</body>",
+                content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            )
+            response[
+                'Content-Disposition'] = 'attachment; filename=' + self.title + ".docx"
+            response['Content-Length'] = len(data)
+            return response
+
+        return super(GenerujRaportBase, self).render_to_response(
+            context, **response_kwargs)
 
 
 class GenerujRaportDlaAutora(GenerujRaportBase):

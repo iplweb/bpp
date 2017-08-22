@@ -41,6 +41,12 @@ class BaseRaportForm(forms.Form):
         )
     )
 
+    docx = forms.BooleanField(
+        label="eksportuj w formacie MS Word",
+        widget=forms.CheckboxInput,
+        required=False
+    )
+
     def clean(self):
         if self.cleaned_data['od_roku'] > self.cleaned_data['do_roku']:
             raise ValidationError(
@@ -57,7 +63,8 @@ class BaseRaportForm(forms.Form):
             Fieldset('Wybierz parametry',
                      'obiekt',
                      'od_roku',
-                     'do_roku'),
+                     'do_roku',
+                     'docx'),
             ButtonHolder(
                 Submit('submit', 'Pobierz raport', css_id='id_submit',
                        css_class="submit button"),
