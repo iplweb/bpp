@@ -5,13 +5,13 @@
     {{ praca.miejsce_i_rok|znak_na_poczatku:"." }}
     {{ praca.wydawnictwo|znak_na_poczatku:"," }}
     {{ praca.szczegoly|znak_na_poczatku:"," }}
-    {{ praca.uwagi|znak_na_poczatku:"," }}
+    {{ praca.uwagi|znak_na_poczatku:","|safe }}
     {{ praca.isbn|znak_na_poczatku:"," }}
     .
 {% else %}
     {# szczegóły i uwagi na poczatku #}
     {{ praca.szczegoly|znak_na_poczatku:" " }}
-    {{ praca.uwagi|znak_na_poczatku:"," }}
+    {{ praca.uwagi|znak_na_poczatku:","|safe }}
     {{ praca.miejsce_i_rok|znak_na_poczatku:"." }}
     {{ praca.wydawnictwo|znak_na_poczatku:"," }}
     {{ praca.isbn|znak_na_poczatku:"," }}
