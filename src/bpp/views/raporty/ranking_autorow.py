@@ -1,31 +1,46 @@
 # -*- encoding: utf-8 -*-
+import itertools
 from django.core.urlresolvers import reverse
-from django.db.models.aggregates import Sum
+from django.db.models.aggregates import Sum, Count
 from django.template.defaultfilters import safe
-from django_tables2.columns.base import Column
+from django_tables2 import Column
+from django_tables2.tables import Table
+from django_tables2.views import SingleTableView
 from django_tables2_reports.tables import TableReport
+from django.db.models import F
+from format_sql.shortcuts import format_sql
 
 from bpp.models import Autor, Sumy
 from django_tables2_reports.views import ReportTableView
 from bpp.models.struktura import Wydzial
+from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, \
+    Wydawnictwo_Ciagle_Autor
+from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte_Autor
 
 
-class RankingAutorowTable(TableReport):
+class RankingAutorowTable(Table):
 
     class Meta:
+        attrs = {"class": "bpp-table" }
         model = Autor
-        attrs = {"class": "paleblue"}
-        fields = ('autor',
+        fields = ('lp',
+                  'autor',
                   'jednostka',
                   'wydzial',
                   'impact_factor_sum',
                   'punkty_kbn_sum')
+
+    lp = Column(empty_values=(),
+                orderable=False,
+                attrs={'td': {'class': "bpp-lp-column"}})
+    autor = Column(order_by=("autor__nazwisko", "autor__imiona"))
     punkty_kbn_sum = Column("Punkty PK", "punkty_kbn_sum")
     impact_factor_sum = Column("Impact Factor", "impact_factor_sum")
-
-    def __init__(self, *args, **kwargs):
-        kwargs['template'] = "raporty/ranking-autorow-tabelka.html"
-        super(RankingAutorowTable, self).__init__(*args, **kwargs)
+    wydzial = Column(accessor="jednostka.wydzial")
+    def render_lp(self):
+        self.lp_counter = getattr(self, "lp_counter",
+                                  itertools.count(self.page.start_index()))
+        return "%i." % next(self.lp_counter)
 
     def render_autor(self, record):
         return safe('<a href="%s">%s</a>' % (
@@ -33,7 +48,7 @@ class RankingAutorowTable(TableReport):
             str(record.autor)))
 
 
-class RankingAutorow(ReportTableView):
+class RankingAutorow(SingleTableView):
     template_name = "raporty/ranking-autorow.html"
     table_class = RankingAutorowTable
 
@@ -41,25 +56,22 @@ class RankingAutorow(ReportTableView):
 
 
     def get_queryset(self):
-        if self._cache: return self._cache
-
-        qset = Sumy.objects.filter(
+        qset = Sumy.objects.all()
+        qset = qset.filter(
             rok__gte=self.kwargs['od_roku'],
             rok__lte=self.kwargs['do_roku']
         )
-
         wydzialy = self.get_wydzialy()
         if wydzialy:
-            qset = qset.filter(wydzial__in=wydzialy)
-
-        qset = qset.values(
-            "autor", "jednostka", "wydzial").annotate(
+           qset = qset.filter(jednostka__wydzial__in=wydzialy)
+        qset = qset.group_by("autor", "jednostka")
+        qset = qset.annotate(
             impact_factor_sum=Sum('impact_factor'),
             punkty_kbn_sum=Sum('punkty_kbn'),
         )
-
-        qset = Sumy.objects.raw(str(qset.query) + ", jednostka_id, wydzial_id")
-        self._cache = qset
+        qset = qset.exclude(
+            impact_factor_sum=0,
+            punkty_kbn_sum=0)
         return qset
 
     def get_dostepne_wydzialy(self):
@@ -79,7 +91,7 @@ class RankingAutorow(ReportTableView):
         return base_query
 
     def get_context_data(self, **kwargs):
-        context = super(ReportTableView, self).get_context_data(**kwargs)
+        context = super(SingleTableView, self).get_context_data(**kwargs)
         context['od_roku'] = self.kwargs['od_roku']
         context['do_roku'] = self.kwargs['do_roku']
         jeden_rok = False
