@@ -1,13 +1,9 @@
 # -*- encoding: utf-8 -*-
+from django.db import models
+from django.db.models import DO_NOTHING, QuerySet
+from django_group_by.mixin import GroupByMixin
 
-
-from django.db.models import DO_NOTHING
-from django.db.models.signals import post_delete, pre_delete, post_save
-from django.db import models, connection
-from django.conf import settings
-
-from bpp.models import Autor, MODELE_PUNKTOWANE, POLA_PUNKTACJI, ModelPunktowany, MODELE_AUTORSKIE
-from bpp.util import has_changed
+from bpp.models import ModelPunktowany
 
 
 # Poniżej ważne jest to on_delete=DO_NOTHING, ponieważ bez tego Django
@@ -15,50 +11,23 @@ from bpp.util import has_changed
 # są VIEWs od strony SQLa, więc to się na ten moment nie uda (nie licząc
 # tych VIEWs w PostgreSQL, które są modyfikowalne...)
 
-class Sumy_Base(ModelPunktowany, models.Model):
-    autor = models.OneToOneField('Autor', primary_key=True, on_delete=DO_NOTHING)
-    jednostka = models.ForeignKey('Jednostka', on_delete=DO_NOTHING)
+class Nowe_SumyQuerySet(QuerySet, GroupByMixin):
+    pass
+
+
+class Nowe_Sumy_View(ModelPunktowany, models.Model):
+    autor = models.ForeignKey('Autor', primary_key=True, on_delete=DO_NOTHING)
+    jednostka = models.ForeignKey('Jednostka', primary_key=True,
+                                  on_delete=DO_NOTHING)
     wydzial = models.ForeignKey('Wydzial', on_delete=DO_NOTHING)
     rok = models.IntegerField()
 
+    objects = Nowe_SumyQuerySet.as_manager()
+
     class Meta:
         app_label = 'bpp'
         managed = False
-        abstract = True
+        unique_together = ('autor', 'jednostka', 'wydzial', 'rok')
 
 
-class Sumy_View(Sumy_Base):
-    class Meta:
-        app_label = 'bpp'
-        managed = False
-
-Sumy = Sumy_View
-
-class Sumy_Praca_Doktorska_View(Sumy_Base):
-    class Meta:
-        app_label = 'bpp'
-        managed = False
-
-
-class Sumy_Praca_Habilitacyjna_View(Sumy_Base):
-    class Meta:
-        app_label = 'bpp'
-        managed = False
-
-
-class Sumy_Patent_View(Sumy_Base):
-    class Meta:
-        app_label = 'bpp'
-        managed = False
-
-
-class Sumy_Wydawnictwo_Ciagle_View(Sumy_Base):
-    class Meta:
-        app_label = 'bpp'
-        managed = False
-
-
-class Sumy_Wydawnictwo_Zwarte_View(Sumy_Base):
-    class Meta:
-        app_label = 'bpp'
-        managed = False
+Sumy = Nowe_Sumy_View
