@@ -295,8 +295,6 @@ LOGGING = {
     },
 }
 
-EXCEL_SUPPORT = 'openpyxl'
-
 TOPLEVEL = 'common'
 
 TEST_RUNNER = 'django.test.runner.DiscoverRunner'
