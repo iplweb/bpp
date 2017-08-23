@@ -2,7 +2,6 @@
 
 {% block breadcrumbs %}
     {{ block.super }}
-    <li><a href="{% url "bpp:raporty" %}">Raporty</a></li>
     <li><a href="{% url "bpp:raport_jednostek_formularz" %}">Raport autorów</a></li>
     <li class="current">
         {% if rok_min != rok_max %}
