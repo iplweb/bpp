@@ -3,6 +3,8 @@ psycopg2==2.7.1
 
 django-flexible-reports==0.1.9
 
+django-group-by==0.3.1
+
 django-columns==0.1.0
 
 django-dirtyfields==1.2.1
