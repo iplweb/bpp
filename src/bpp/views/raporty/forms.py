@@ -6,14 +6,15 @@
 from crispy_forms.helper import FormHelper
 from crispy_forms_foundation.layout import Layout, Fieldset, ButtonHolder, \
     Submit, Hidden, Row, Column as F4Column
+from dal import autocomplete
 from django import forms
 from django.core import validators
+from django_tables2.export.export import TableExport
 
 from bpp.models import Wydzial
 from bpp.models.autor import Autor
 from bpp.models.struktura import Jednostka
 
-from dal import autocomplete
 
 def ustaw_rok(rok, lata):
     lata = list(lata)
@@ -159,6 +160,15 @@ class WydzialChoiceField(forms.ModelMultipleChoiceField):
         return obj.nazwa
 
 
+OUTPUT_FORMATS = [
+    ('', 'wyświetl w przeglądarce'),
+]
+
+OUTPUT_FORMATS.extend(zip(
+    list(TableExport.FORMATS.keys()),
+    list(TableExport.FORMATS.keys()),
+))
+
 class RankingAutorowForm(forms.Form):
     wydzialy = WydzialChoiceField(
         label="Ogranicz do wydziału (wydziałów):",
@@ -173,6 +183,12 @@ class RankingAutorowForm(forms.Form):
     od_roku = forms.IntegerField()
     do_roku = forms.IntegerField()
 
+    _export = forms.ChoiceField(
+        label="Format wyjściowy",
+        required=True,
+        choices=OUTPUT_FORMATS
+    )
+
     def __init__(self, lata, *args, **kwargs):
         self.helper = FormHelper()
         self.helper.form_method = 'post'
@@ -183,6 +199,9 @@ class RankingAutorowForm(forms.Form):
                 Row(
                     F4Column('od_roku', css_class='large-6 small-6'),
                     F4Column('do_roku', css_class='large-6 small-6'),
+                ),
+                Row(
+                    F4Column('_export', css_class='large-12 small-12')
                 ),
                 Row(
                     F4Column('wydzialy', css_class='large-12 small-12')

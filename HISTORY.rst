@@ -2,6 +2,15 @@
 Historia zmian
 ==============
 
+0.11.50 (2017-08-23)
+--------------------
+
+* poprawiony błąd uniemożliwiający sortowanie w rankingu autorów
+
+* tabela rankingu autorów stylizowana podobnie jak inne tabele w systemie
+
+* możliwość eksportowania rankingu autorów w wielu różnych formatach
+
 0.11.43 (2017-08-15)
 --------------------
 

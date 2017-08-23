@@ -4,6 +4,8 @@ from django.core.urlresolvers import reverse
 from django.db.models.aggregates import Sum, Count
 from django.template.defaultfilters import safe
 from django_tables2 import Column
+from django_tables2.export.export import TableExport
+from django_tables2.export.views import ExportMixin
 from django_tables2.tables import Table
 from django_tables2.views import SingleTableView
 from django_tables2_reports.tables import TableReport
@@ -48,12 +50,9 @@ class RankingAutorowTable(Table):
             str(record.autor)))
 
 
-class RankingAutorow(SingleTableView):
+class RankingAutorow(ExportMixin, SingleTableView):
     template_name = "raporty/ranking-autorow.html"
     table_class = RankingAutorowTable
-
-    _cache = None
-
 
     def get_queryset(self):
         qset = Sumy.objects.all()
@@ -73,7 +72,7 @@ class RankingAutorow(SingleTableView):
             impact_factor_sum=0,
             punkty_kbn_sum=0)
         return qset
-
+    
     def get_dostepne_wydzialy(self):
         return Wydzial.objects.filter(zezwalaj_na_ranking_autorow=True)
 
