@@ -194,6 +194,12 @@ class RankingAutorowFormularz(RaportyFormMixin, FormView):
             url += "?"
             url += "&".join(["wydzialy[]=%s" % x.pk for x in w])
 
+        e = form.cleaned_data['_export']
+        if e:
+            if url.find("?") < 0:
+                url += "?"
+            url += f"&_export={ e }"
+
         return HttpResponseRedirect(url)
 
 
