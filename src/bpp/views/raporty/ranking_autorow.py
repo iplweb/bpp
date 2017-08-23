@@ -34,7 +34,9 @@ class RankingAutorowTable(Table):
 
     lp = Column(empty_values=(),
                 orderable=False,
-                attrs={'td': {'class': "bpp-lp-column"}})
+                attrs={'td': {'class': "bpp-lp-column"}},
+                exclude_from_export=True)
+
     autor = Column(order_by=("autor__nazwisko", "autor__imiona"))
     punkty_kbn_sum = Column("Punkty PK", "punkty_kbn_sum")
     impact_factor_sum = Column("Impact Factor", "impact_factor_sum")
@@ -48,6 +50,9 @@ class RankingAutorowTable(Table):
         return safe('<a href="%s">%s</a>' % (
             reverse('bpp:browse_autor', args=(record.autor.slug,)),
             str(record.autor)))
+
+    def value_autor(self, record):
+        return str(record.autor)
 
 
 class RankingAutorow(ExportMixin, SingleTableView):
