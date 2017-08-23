@@ -130,3 +130,18 @@ body ol li {
     background: black;
     padding: 1em;
 }
+
+.bpp-lp-column {
+  text-align: right;
+}
+
+table.bpp-table tbody tr td {
+  vertical-align: top;
+}
+
+table.bpp-table tbody tr.odd {
+  background: white !important;
+}
+
+div.table-container ul.pagination {
+}
