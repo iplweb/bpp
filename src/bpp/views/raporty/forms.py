@@ -161,13 +161,14 @@ class WydzialChoiceField(forms.ModelMultipleChoiceField):
 
 
 OUTPUT_FORMATS = [
-    ('', 'wyświetl w przeglądarce'),
+    ('html', 'wyświetl w przeglądarce'),
 ]
 
 OUTPUT_FORMATS.extend(zip(
     list(TableExport.FORMATS.keys()),
     list(TableExport.FORMATS.keys()),
 ))
+
 
 class RankingAutorowForm(forms.Form):
     wydzialy = WydzialChoiceField(
