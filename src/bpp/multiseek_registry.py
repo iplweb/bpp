@@ -3,6 +3,7 @@ import six
 from django.contrib.postgres.search import SearchQuery
 from django.utils.itercompat import is_iterable
 
+from bpp.models.konferencja import Konferencja
 from bpp.models.openaccess import Wersja_Tekstu_OpenAccess, \
     Licencja_OpenAccess, Czas_Udostepnienia_OpenAccess
 from bpp.models.struktura import Wydzial
@@ -151,6 +152,15 @@ class NazwiskoIImieQueryObject(ForeignKeyDescribeMixin,
             if type(data) == bytes:
                 data = data.decode("utf-8")
         return Autor.objects.fulltext_filter(data)
+
+
+class NazwaKonferencji(ForeignKeyDescribeMixin, AutocompleteQueryObject):
+    label = "Konferencja"
+    type = AUTOCOMPLETE
+    ops = EQUALITY_OPS_FEMALE
+    model = Konferencja
+    search_fields = ['nazwa']
+    field_name = "konferencja"
 
 
 class JednostkaQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
@@ -371,8 +381,21 @@ class ZrodloQueryObject(AutocompleteQueryObject):
 
 
 class RecenzowanaQueryObject(BooleanQueryObject):
+    ops = EQUALITY_OPS_NONE
     field_name = "recenzowana"
     label = "Praca recenzowana"
+
+
+class BazaWOS(BooleanQueryObject):
+    ops = EQUALITY_OPS_NONE
+    field_name = "konferencja__baza_wos"
+    label = "Konferencja w bazie Web of Science"
+
+
+class BazaSCOPUS(BooleanQueryObject):
+    ops = EQUALITY_OPS_NONE
+    field_name = "konferencja__baza_scopus"
+    label = "Konferencja w bazie Scopus"
 
 _pw = PunktacjaWewnetrznaQueryObject()
 _kc_pw = KCPunktacjaWewnetrznaQueryObject
@@ -412,10 +435,13 @@ multiseek_fields = [
 
     LiczbaZnakowWydawniczychQueryObject(),
 
+    NazwaKonferencji(),
+    BazaWOS(),
+    BazaSCOPUS(),
+
     OpenaccessWersjaTekstuQueryObject(),
     OpenaccessLicencjaQueryObject(),
-    OpenaccessCzasPublikacjiQueryObject()
-
+    OpenaccessCzasPublikacjiQueryObject(),
 
 ]
 

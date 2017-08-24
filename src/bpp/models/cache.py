@@ -26,7 +26,7 @@ from bpp.models import Patent, \
     Patent_Autor, Zrodlo
 from bpp.models.abstract import ModelPunktowanyBaza, \
     ModelZRokiem, ModelZeSzczegolami, ModelRecenzowany, \
-    ModelZeZnakamiWydawniczymi, ModelZOpenAccess
+    ModelZeZnakamiWydawniczymi, ModelZOpenAccess, ModelZKonferencja
 from bpp.models.system import Charakter_Formalny, Jezyk
 from bpp.models.util import ModelZOpisemBibliograficznym
 from bpp.util import FulltextSearchMixin
@@ -323,6 +323,7 @@ class RekordManager(FulltextSearchMixin, models.Manager):
 class Rekord(ModelPunktowanyBaza, ModelZOpisemBibliograficznym,
              ModelZRokiem, ModelZeSzczegolami, ModelRecenzowany,
              ModelZeZnakamiWydawniczymi, ModelZOpenAccess,
+             ModelZKonferencja,
              models.Model):
     # XXX TODO: gdy będą compound keys w Django, można pozbyć się fake_id
     fake_id = models.TextField(primary_key=True)
