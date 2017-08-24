@@ -9,7 +9,8 @@ Historia zmian
 
 * tabela rankingu autorów stylizowana podobnie jak inne tabele w systemie
 
-* możliwość eksportowania rankingu autorów w wielu różnych formatach
+* możliwość eksportowania rankingu autorów oraz raportów autorów, jednostek i
+  wydziałów w różnych formatach wyjściowych (m.in. MS Excel, MS Word, CSV)
 
 0.11.43 (2017-08-15)
 --------------------
