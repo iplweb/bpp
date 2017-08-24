@@ -2,19 +2,17 @@
 {# dispBookExtras #}
 {% if praca.charakter_formalny.skrot == 'ROZ' or praca.charakter_formalny.skrot == 'KSP' or praca.charakter_formalny.skrot == 'KSZ' %}
     {# szczególy i uwagi na końcu #}
-    {{ praca.miejsce_i_rok|znak_na_poczatku:"." }}
-    {{ praca.wydawnictwo|znak_na_poczatku:"," }}
-    {{ praca.szczegoly|znak_na_poczatku:"," }}
-    {{ praca.uwagi|znak_na_poczatku:","|safe }}
-    {{ praca.isbn|znak_na_poczatku:"," }}
-    .
+    {{ praca.miejsce_i_rok|default:"" }}
+    {{ praca.wydawnictwo|default:""|znak_na_poczatku:"," }}
+    {{ praca.szczegoly|default:""|znak_na_poczatku:"," }}
+    {{ praca.uwagi|default:""|znak_na_poczatku:","|safe }}
+    {{ praca.isbn|default:""|znak_na_poczatku:"," }}
 {% else %}
     {# szczegóły i uwagi na poczatku #}
-    {{ praca.szczegoly|znak_na_poczatku:" " }}
-    {{ praca.uwagi|znak_na_poczatku:","|safe }}
-    {{ praca.miejsce_i_rok|znak_na_poczatku:"." }}
-    {{ praca.wydawnictwo|znak_na_poczatku:"," }}
-    {{ praca.isbn|znak_na_poczatku:"," }}
-    .
+    {{ praca.szczegoly|default:""|znak_na_poczatku:" " }}
+    {{ praca.uwagi|default:""|znak_na_poczatku:","|safe }}
+    {{ praca.miejsce_i_rok|default:""|znak_na_poczatku:"." }}
+    {{ praca.wydawnictwo|default:""|znak_na_poczatku:"," }}
+    {{ praca.isbn|default:""|znak_na_poczatku:"," }}
 {% endif %}
 {# koniec dispBookExtras #}
