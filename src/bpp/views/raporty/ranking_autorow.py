@@ -40,7 +40,9 @@ class RankingAutorowTable(Table):
     autor = Column(order_by=("autor__nazwisko", "autor__imiona"))
     punkty_kbn_sum = Column("Punkty PK", "punkty_kbn_sum")
     impact_factor_sum = Column("Impact Factor", "impact_factor_sum")
+    jednostka = Column(accessor="jednostka.nazwa")
     wydzial = Column(accessor="jednostka.wydzial")
+
     def render_lp(self):
         self.lp_counter = getattr(self, "lp_counter",
                                   itertools.count(self.page.start_index()))
