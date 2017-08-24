@@ -1,13 +1,13 @@
-
 from django.conf import settings
-from django.http.response import HttpResponseRedirect, HttpResponse
+from django.http.response import HttpResponseRedirect
 from django.template.context import RequestContext
 from django.views.generic import FormView, TemplateView
 from django.views.generic.detail import DetailView
-from flexible_reports.adapters import django_tables2
+
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
 from bpp.models.struktura import Wydzial, Jednostka
+from flexible_reports.adapters import django_tables2
 from .forms import AutorRaportForm
 from .forms import JednostkaRaportForm, WydzialRaportForm
 
@@ -19,7 +19,7 @@ class BaseFormView(FormView):
     def form_valid(self, form):
         d = form.cleaned_data
         return HttpResponseRedirect(
-            f"./{ d['obiekt'].pk }/{ d['od_roku'] }/{ d['do_roku'] }/?docx={ d['docx'] }")
+            f"./{ d['obiekt'].pk }/{ d['od_roku'] }/{ d['do_roku'] }/?_export={ d['_export'] }")
 
     def get_context_data(self, **kwargs):
         kwargs['title'] = self.title
@@ -54,7 +54,8 @@ class GenerujRaportBase(DetailView):
         if self.kwargs['od_roku'] == self.kwargs['do_roku']:
             return self.kwargs['od_roku']
         else:
-            return self.kwargs['do_roku']
+            return "%s-%s" %(self.kwargs['od_roku'],
+                             self.kwargs['do_roku'])
 
     @property
     def title(self):
@@ -88,22 +89,13 @@ class GenerujRaportBase(DetailView):
         return super(GenerujRaportBase, self).get_context_data(**kwargs)
 
     def render_to_response(self, context, **response_kwargs):
-        if 'docx' in self.request.GET and self.request.GET['docx'] == "True":
+        _export = self.request.GET.get('_export')
+
+        if _export in ('docx', 'xlsx'):
             context['request'] = self.request
-            data = django_tables2.report(
-                context['report'],
-                parent_context=RequestContext(self.request, context)
-            )
-            response = HttpResponse(
-                """<head>
-                <meta http-equiv="Content-Type" content="text/html; charset=utf-8" /> 
-                </head><body>""" + data + "</body>",
-                content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-            )
-            response[
-                'Content-Disposition'] = 'attachment; filename=' + self.title + ".docx"
-            response['Content-Length'] = len(data)
-            return response
+            parent_context = RequestContext(self.request, context)
+            fun = getattr(django_tables2, "as_%s_response" % _export)
+            return fun(context['report'], parent_context, filename=self.title + "." + _export)
 
         return super(GenerujRaportBase, self).render_to_response(
             context, **response_kwargs)
