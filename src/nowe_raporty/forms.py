@@ -5,11 +5,14 @@ from crispy_forms_foundation.layout import Layout, Fieldset, ButtonHolder, \
 from dal import autocomplete
 from django import forms
 from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
+from django.db.models.aggregates import Min, Max
 
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
 from bpp.models.struktura import Wydzial, Jednostka
 
+from crispy_forms_foundation.layout import Row, Column
 
 def wez_lata():
     lata = Rekord.objects.all() \
@@ -21,56 +24,59 @@ def wez_lata():
 
 wybory = ["wydzial", "jednostka", "autor"]
 
+OUTPUT_FORMATS = [
+    ('html', 'wyświetl w przeglądarce'),
+    ('docx', 'Microsoft Word (DOCX)'),
+    ('xlsx', 'Microsoft Excel (XLSX)'),
+]
+
 
 class BaseRaportForm(forms.Form):
-    od_roku = forms.TypedChoiceField(
-        choices=wez_lata,
-        coerce=int,
-        widget=autocomplete.ListSelect2(
-            forward='obiekt',
-            url="bpp:lata-autocomplete"
-        )
-    )
+    od_roku = forms.IntegerField()
+    do_roku = forms.IntegerField()
 
-    do_roku = forms.TypedChoiceField(
-        choices=wez_lata,
-        coerce=int,
-        widget=autocomplete.ListSelect2(
-            forward='obiekt',
-            url="bpp:lata-autocomplete"
-        )
-    )
-
-    docx = forms.BooleanField(
-        label="eksportuj w formacie MS Word",
-        widget=forms.CheckboxInput,
-        required=False
+    _export = forms.ChoiceField(
+        label="Format wyjściowy",
+        choices=OUTPUT_FORMATS,
+        required=True
     )
 
     def clean(self):
-        if self.cleaned_data['od_roku'] > self.cleaned_data['do_roku']:
-            raise ValidationError(
-                {"od_roku": ValidationError(
-                    'Pole musi być większe lub równe jak pole "Do roku".')
-                }
-            )
+        if 'od_roku' in self.cleaned_data and 'do_roku' in self.cleaned_data:
+            if self.cleaned_data['od_roku'] > self.cleaned_data['do_roku']:
+                raise ValidationError(
+                    {"od_roku": ValidationError(
+                        'Pole musi być większe lub równe jak pole "Do roku".')
+                    }
+                )
 
     def __init__(self, *args, **kwargs):
         self.helper = FormHelper()
         self.helper.form_class = "custom"
         self.helper.form_action = '.'
         self.helper.layout = Layout(
-            Fieldset('Wybierz parametry',
-                     'obiekt',
-                     'od_roku',
-                     'do_roku',
-                     'docx'),
+            Fieldset(
+                'Wybierz parametry',
+                Row(Column('obiekt')),
+                Row(
+                    Column('od_roku', css_class='large-6 small-6'),
+                    Column('do_roku', css_class='large-6 small-6')
+                ),
+                Row(Column('_export'))
+            ),
             ButtonHolder(
                 Submit('submit', 'Pobierz raport', css_id='id_submit',
                        css_class="submit button"),
             ))
 
         super(BaseRaportForm, self).__init__(*args, **kwargs)
+
+        lata = Rekord.objects.all().aggregate(Min('rok'), Max('rok'))
+        for field in self['od_roku'], self['do_roku']:
+            if lata['rok__min'] is not None:
+                field.field.validators.append(MinValueValidator(lata['rok__min']))
+            if lata['rok__max'] is not None:
+                field.field.validators.append(MaxValueValidator(lata['rok__max']))
 
 
 class WydzialRaportForm(BaseRaportForm):
