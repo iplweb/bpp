@@ -171,11 +171,14 @@ build-test-container: cleanup-pycs
 travis: distclean dockerclean build-test-container
 	docker-compose run --rm test "make full-tests"
 
+rebuild-test:
+	docker-compose build test
+
 # cel: production-deps
 # Tworzy zależności dla produkcyjnej wersji oprogramowania
 # (czyli: buduje wheels i bdist_wheel pod dockerem, na docelowej
 # dystrybucji Linuxa)
-production-deps: 
+production-deps: rebuild-test
 	docker-compose run --rm test "make wheels bdist_wheel"
 
 # cel: production -DCUSTOMER=... or CUSTOMER=... make production
