@@ -1,29 +1,21 @@
 # -*- encoding: utf-8 -*-
 import itertools
+
 from django.core.urlresolvers import reverse
-from django.db.models.aggregates import Sum, Count
+from django.db.models.aggregates import Sum
 from django.template.defaultfilters import safe
 from django_tables2 import Column
-from django_tables2.export.export import TableExport
 from django_tables2.export.views import ExportMixin
 from django_tables2.tables import Table
 from django_tables2.views import SingleTableView
-from django_tables2_reports.tables import TableReport
-from django.db.models import F
-from format_sql.shortcuts import format_sql
 
 from bpp.models import Autor, Sumy
-from django_tables2_reports.views import ReportTableView
 from bpp.models.struktura import Wydzial
-from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, \
-    Wydawnictwo_Ciagle_Autor
-from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte_Autor
 
 
 class RankingAutorowTable(Table):
-
     class Meta:
-        attrs = {"class": "bpp-table" }
+        attrs = {"class": "bpp-table"}
         model = Autor
         fields = ('lp',
                   'autor',
@@ -69,7 +61,7 @@ class RankingAutorow(ExportMixin, SingleTableView):
         )
         wydzialy = self.get_wydzialy()
         if wydzialy:
-           qset = qset.filter(jednostka__wydzial__in=wydzialy)
+            qset = qset.filter(jednostka__wydzial__in=wydzialy)
         qset = qset.group_by("autor", "jednostka")
         qset = qset.annotate(
             impact_factor_sum=Sum('impact_factor'),
@@ -79,7 +71,7 @@ class RankingAutorow(ExportMixin, SingleTableView):
             impact_factor_sum=0,
             punkty_kbn_sum=0)
         return qset
-    
+
     def get_dostepne_wydzialy(self):
         return Wydzial.objects.filter(zezwalaj_na_ranking_autorow=True)
 
@@ -107,10 +99,12 @@ class RankingAutorow(ExportMixin, SingleTableView):
         wydzialy = self.get_wydzialy()
         context['wydzialy'] = wydzialy
         if jeden_rok:
-            context['table_title'] = "Ranking autorów za rok %s" % context['rok']
+            context['table_title'] = "Ranking autorów za rok %s" % context[
+                'rok']
         else:
-            context['table_title'] = "Ranking autorów za lata %s - %s" % (context['od_roku'], context['do_roku'])
+            context['table_title'] = "Ranking autorów za lata %s - %s" % (
+            context['od_roku'], context['do_roku'])
         context['tab_subtitle'] = ''
-        #if wydzialy.count() != self.get_dostepne_wydzialy.count():
+        # if wydzialy.count() != self.get_dostepne_wydzialy.count():
         context['table_subtitle'] = ", ".join([x.nazwa for x in wydzialy])
         return context
