@@ -65,6 +65,9 @@ class FulltextSearchMixin:
         if qstr == None:
             qstr = ""
 
+        if type(qstr) == bytes:
+            qstr = qstr.decode("utf-8")
+
         words = self.tokenize(qstr)
         qstr = " & ".join(startswith(words))
         params = ('bpp_nazwy_wlasne', qstr)
