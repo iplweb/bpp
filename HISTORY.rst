@@ -2,6 +2,14 @@
 Historia zmian
 ==============
 
+0.11.53 (2017-08-29)
+--------------------
+
+* poprawiony błąd eksportowania plików XLS i DOCX utrudniający ich otwieranie
+
+* poprawiony błąd wyszukiwania dla pola "Źródło"
+
+
 0.11.50 (2017-08-23)
 --------------------
 
@@ -11,6 +19,7 @@ Historia zmian
 
 * możliwość eksportowania rankingu autorów oraz raportów autorów, jednostek i
   wydziałów w różnych formatach wyjściowych (m.in. MS Excel, MS Word, CSV)
+
 
 0.11.43 (2017-08-15)
 --------------------
