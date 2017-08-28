@@ -166,7 +166,7 @@ OUTPUT_FORMATS = [
 
 OUTPUT_FORMATS.extend(zip(
     list(TableExport.FORMATS.keys()),
-    list(TableExport.FORMATS.keys()),
+    [x.upper() for x in list(TableExport.FORMATS.keys())],
 ))
 
 
