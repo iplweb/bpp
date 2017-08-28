@@ -12,6 +12,7 @@
   with_items:
     - python-virtualenv
     - zip # jest wymagany
+    - pandoc
 
 - name: Last version of sources is known
   local_action: shell python ../src/{{ django_project_name }}/version.py
