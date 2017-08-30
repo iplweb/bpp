@@ -65,25 +65,13 @@ def normal_django_user(request, db,
 def _preauth_session_id_helper(username, password, client, browser,
                                live_server, django_user_model,
                                django_username_field):
-    # Jeżeli poprzednia sesja sobie wisi np. na stronie wymagającej potwierdzenia
-    # jej opuszczenia, to będzie problem, stąd:
-    browser.execute_script("window.onbeforeunload = function() {};")
-
-    def close_all_popups(driver):
-        for h in driver.window_handles[1:]:
-            driver.switch_to_window(h)
-            driver.close()
-        driver.switch_to_window(driver.window_handles[0])
-
-    close_all_popups(browser.driver)
-
-    browser.visit(live_server + reverse("login_form"))
-    browser.fill('username', username)
-    browser.fill('password', password)
-    with wait_for_page_load(browser):
-        browser.find_by_css("input[type=submit]").click()
+    res = client.login(username=username, password=password)
+    assert res is True
+    browser.visit(live_server + "/")
+    browser.cookies.add({'sessionid': client.cookies['sessionid'].value})
     browser.authorized_user = django_user_model.objects.get(
         **{django_username_field: username})
+    browser.reload()
     return browser
 
 
