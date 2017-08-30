@@ -32,7 +32,7 @@ class EksportDoPBNForm(forms.ModelForm):
                                 Column('od_daty', css_class='small-6 large-6'),
                                 Column('do_daty', css_class='small-6 large-6'),
                         ),
-                        Submit('submit', 'Zamów', css_id='id_submit')))
+                        Submit('submit', 'Zamów', css_id='id_submit', css_class="button submit")))
         self.helper = helper
 
         self.fields['wydzial'].queryset = Wydzial.objects.filter(widoczny=True)
