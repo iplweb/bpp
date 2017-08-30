@@ -129,7 +129,7 @@ class RaportDlaKomisjiCentralnejForm(forms.Form):
     autor = forms.ModelChoiceField(
         queryset=Autor.objects.all(),
         widget=autocomplete.ModelSelect2(
-            url='bpp:autor-z-uczelni-autocomplete')
+            url='bpp:public-autor-autocomplete')
     )
 
     rok_habilitacji = forms.IntegerField(required=False)
