@@ -18,6 +18,7 @@ from bpp.models import ModelZAdnotacjami, NazwaISkrot
 from bpp.models.abstract import NazwaWDopelniaczu, ModelZPBN_ID
 from bpp.models.autor import Autor, Autor_Jednostka
 from bpp.util import FulltextSearchMixin
+from .fields import OpcjaWyswietlaniaField
 
 
 class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
@@ -46,10 +47,30 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         'Pokazuj Index Copernicus na stronie rekordu',
         default=True
     )
-    pokazuj_status_korekty = models.BooleanField(
+    pokazuj_status_korekty = OpcjaWyswietlaniaField(
         'Pokazuj status korekty na stronie rekordu',
-        default=True
     )
+
+    pokazuj_ranking_autorow = OpcjaWyswietlaniaField(
+        'Pokazuj ranking autorów',
+    )
+
+    pokazuj_raport_autorow = OpcjaWyswietlaniaField(
+        'Pokazuj raport autorów'
+    )
+
+    pokazuj_raport_jednostek = OpcjaWyswietlaniaField(
+        'Pokazuj ranking jednostek'
+    )
+
+    pokazuj_raport_wydzialow = OpcjaWyswietlaniaField(
+        'Pokazuj ranking wydziałów'
+    )
+
+    pokazuj_raport_dla_komisji_centralnej = OpcjaWyswietlaniaField(
+        'Pokazuj raport dla Komisji Centralnej'
+    )
+
 
     class Meta:
         verbose_name = "uczelnia"

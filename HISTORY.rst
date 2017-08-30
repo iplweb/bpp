@@ -9,6 +9,9 @@ Historia zmian
 
 * poprawiony błąd wyszukiwania dla pola "Źródło"
 
+* opcjonalne ukrywanie elementów menu serwisu dla użytkowników zalogowanych
+  i niezalogowanych
+
 
 0.11.50 (2017-08-23)
 --------------------

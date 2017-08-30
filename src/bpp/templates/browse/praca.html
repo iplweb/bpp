@@ -151,7 +151,7 @@
                 </td>
             </tr>
             {% endif %}
-            {% if uczelnia.pokazuj_status_korekty %}
+            {% if uczelnia.pokazuj_status_korekty == "always" or uczelnia.pokazuj_status_korekty == "logged-in" and not request.user.is_anonymous %}
             <tr>
                 <th>
                     Status

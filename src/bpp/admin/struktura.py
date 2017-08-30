@@ -49,6 +49,11 @@ class UczelniaAdmin(RestrictDeletionToAdministracjaGroupMixin,
                 'pokazuj_punktacje_wewnetrzna',
                 'pokazuj_index_copernicus',
                 'pokazuj_status_korekty',
+                'pokazuj_ranking_autorow',
+                'pokazuj_raport_autorow',
+                'pokazuj_raport_jednostek',
+                'pokazuj_raport_wydzialow',
+                'pokazuj_raport_dla_komisji_centralnej'
         )}),
         ADNOTACJE_FIELDSET
     )

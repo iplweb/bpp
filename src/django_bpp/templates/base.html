@@ -179,34 +179,53 @@
                 <li><a href="{% url "bpp:browse_zrodla" %}">źródła</a></li>
                 <li class="divider"></li>
 
-                {% if not request.user.is_anonymous %}
-                    <li><a href="{% url "bpp:raport_dla_komisji_centralnej" %}">raport dla Komisji Centralnej</a></li>
+                {% if uczelnia.pokazuj_raport_dla_komisji_centralnej == "always" or uczelnia.pokazuj_raport_dla_komisji_centralnej == "logged-in" and request.user.is_anonymous == False %}
+                    <li>
+                        <a href="{% url "bpp:raport_dla_komisji_centralnej" %}">raport
+                            dla Komisji Centralnej</a></li>
                 {% endif %}
 
                 {% load user_in_group %}
 
                 {% if ENABLE_NEW_REPORTS %}
-                    <li>
-                        <a href="{% url "nowe_raporty:wydzial_form" %}">
-                            raport wydziałów
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{% url "nowe_raporty:jednostka_form" %}">
-                            raport jednostek
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{% url "nowe_raporty:autor_form" %}">
-                            raport autorów
-                        </a>
-                    </li>
+                    {% if uczelnia.pokazuj_raport_wydzialow == "always" or uczelnia.pokazuj_raport_wydzialow == "logged-in" and request.user.is_anonymous == False %}
+                        <li>
+                            <a href="{% url "nowe_raporty:wydzial_form" %}">
+                                raport wydziałów
+                            </a>
+                        </li>
+                    {% endif %}
+                    {% if uczelnia.pokazuj_raport_jednostek == "always" or uczelnia.pokazuj_raport_jednostek == "logged-in" and request.user.is_anonymous == False %}
+                        <li>
+                            <a href="{% url "nowe_raporty:jednostka_form" %}">
+                                raport jednostek
+                            </a>
+                        </li>
+                    {% endif %}
+                    {% if uczelnia.pokazuj_raport_autorow == "always" or uczelnia.pokazuj_raport_autorow == "logged-in" and request.user.is_anonymous == False %}
+                        <li>
+                            <a href="{% url "nowe_raporty:autor_form" %}">
+                                raport autorów
+                            </a>
+                        </li>
+                    {% endif %}
                 {% else %}
-                    <li><a href="{% url "bpp:raport_jednostek_formularz" %}">raport jednostek</a></li>
-                    <li><a href="{% url "bpp:raport_autorow_formularz" %}">raport autorów</a></li>
+                    {% if uczelnia.pokazuj_raport_jednostek == "always" or uczelnia.pokazuj_raport_jednostek == "logged-in" and request.user.is_anonymous == False %}
+                        <li>
+                            <a href="{% url "bpp:raport_jednostek_formularz" %}">raport
+                                jednostek</a></li>
+                    {% endif %}
+                    {% if uczelnia.pokazuj_raport_autorow == "always" or uczelnia.pokazuj_raport_autorow == "logged-in" and request.user.is_anonymous == False %}
+
+                        <li><a href="{% url "bpp:raport_autorow_formularz" %}">raport
+                            autorów</a></li>
+                    {% endif %}
                 {% endif %}
 
-                <li><a href="{% url "bpp:ranking_autorow_formularz" %}">ranking autorów</a></li>
+                {% if uczelnia.pokazuj_ranking_autorow == "always" or uczelnia.pokazuj_ranking_autorow == "logged-in" and request.user.is_anonymous == False %}
+                    <li><a href="{% url "bpp:ranking_autorow_formularz" %}">ranking
+                        autorów</a></li>
+                {% endif %}
 
                 {% if not request.user.is_anonymous %}
 {#                <li><a href="{% url "eksport_pbn:wybor_wydzialu" %}">eksport PBN</a></li>#}
