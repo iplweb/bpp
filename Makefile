@@ -30,6 +30,9 @@ dockerclean:
 vagrantclean:
 	vagrant destroy -f
 
+vagrantup:
+	vagrant up
+
 # cel: wheels
 # Buduje pakiety WHL. Nie buduje samego pakietu django-bpp
 # Buduje pakiety WHL na bazie requirements.txt, zapisując je do katalogu 'dist',
@@ -150,7 +153,7 @@ demo-vm-clone:
 demo-vm-cleanup:
 	VBoxManage unregistervm Demo\ BPP\ `python src/django_bpp/version.py` --delete
 
-demo-vm: vagrantclean staging demo-vm-ansible demo-vm-clone demo-vm-cleanup
+demo-vm: vagrantclean vagrantup staging demo-vm-ansible demo-vm-clone demo-vm-cleanup
 
 cleanup-pycs:
 	find . -name __pycache__ -type d -print0 | xargs -0 rm -rfv
