@@ -374,7 +374,7 @@ def fixture(name):
                 os.path.join(
                     os.path.dirname(__file__),
                     "bpp", "fixtures", name)
-            ), "r"))
+            ), "rb"))
 
 @pytest.fixture(scope='function')
 def typy_odpowiedzialnosci():
