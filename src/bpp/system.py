@@ -65,7 +65,8 @@ groups = {
         flexible_models.ReportElement,
         flexible_models.Table,
         flexible_models.Column,
-        flexible_models.Datasource,]
+        flexible_models.Datasource,
+        flexible_models.ColumnOrder]
 }
 
 # -*- charmap -*- -*- charmap -*--*- charmap -*--*- charmap -*--*- charmap -*-
