@@ -136,7 +136,9 @@ def test_eksport_pbn_volume(wydawnictwo_ciagle):
                           ("2019 Bd 4 nr. 3 test", "3"),
                           ("2019 Bd 4 nr 3 test", "3"),
                           ("2019 Bd 4 z. 3 test", "3"),
-                          ("2019 Bd 4 h. 3 test", "3")])
+                          ("2019 Bd 4 h. 3 test", "3"),
+                          ("2019 Bd 4 iss. 311 test", "311")
+                          ])
 def test_eksport_pbn_get_issue(informacje, expected, wydawnictwo_ciagle):
     wydawnictwo_ciagle.informacje = informacje
     assert wydawnictwo_ciagle.eksport_pbn_get_issue() == expected

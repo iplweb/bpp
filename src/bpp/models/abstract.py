@@ -484,7 +484,7 @@ parsed_informacje_regex = re.compile(
     r"(\[online\](\s+|)|)(\s+|)"
     r"(?P<rok>\d\d+)\s+"
     r"(((vol|t|r|bd)(\.|) (?P<tom>\d+)|)(\s+|)|)"
-    r"(((((nr|z|h)(\.|))) (?P<numer>((\d+)(\w+|))(\/\d+|)))|)",
+    r"(((((iss|nr|z|h)(\.|))) (?P<numer>((\d+)(\w+|))(\/\d+|)))|)",
     flags=re.IGNORECASE)
 
 
