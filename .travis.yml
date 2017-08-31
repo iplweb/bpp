@@ -5,12 +5,12 @@ language: python
 python: 
   - "3.6"
 
-cache:
-  pip: true
-  yarn: true
-  directories:
-    - node_modules
-    - $HOME/.yarn-cache
+#cache:
+#  pip: true
+#  yarn: true
+#  directories:
+#    - node_modules
+#    - $HOME/.yarn-cache
 
 before_install:
   # Repo for newer Node.js versions
