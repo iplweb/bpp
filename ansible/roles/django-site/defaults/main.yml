@@ -20,7 +20,7 @@ django_db_password: "{{ database_password }}"
 django_db_host: localhost
 
 django_db_port: 5432
-postgresql_version: 9.5
+postgresql_version: 9.6
 
 rabbitmq_user: "{{ database_user }}"
 rabbitmq_vhost: "{{ django_hostname }}"
