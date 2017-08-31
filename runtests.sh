@@ -85,7 +85,7 @@ else
 fi
 
 if [ "$NO_DJANGO" == "0" ]; then
-    coverage run --source='src/' src/manage.py test bpp --keepdb
+    coverage run --source='bpp' src/manage.py test bpp --keepdb
     # Ewentualne następne testy muszą startować na czystej bazie danych, więc:
     stellar restore $GIT_BRANCH_NAME
 fi
