@@ -2,6 +2,13 @@
 Historia zmian
 ==============
 
+0.11.55 (2017-08-30)
+--------------------
+
+* domyślne sortowanie rankingu autorów
+
+* obsługa PostgreSQL 9.6
+
 0.11.53 (2017-08-29)
 --------------------
 
