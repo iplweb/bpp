@@ -1,0 +1,6 @@
+---
+- name: Add PostgreSQL 9.6 repository
+  apt_repository: repo="http://apt.postgresql.org/pub/repos/apt/ xenial-pgdg main"
+
+- name: Update apt cache
+  apt:  update_cache=yes
