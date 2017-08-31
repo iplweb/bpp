@@ -1,6 +1,6 @@
 +----------------------------------------------------------------------------+
 |									     |
-| Witam. Ta maszyna wirtualna zawiera oprogramowanie demonstracyjne systemu  |
+| Witaj. Ta maszyna wirtualna zawiera oprogramowanie demonstracyjne systemu  |
 | Bibliografia Publikacji Pracowników i pracuje pod kontrolą systemu         |
 | operacyjnego Ubuntu GNU/Linux.					     |
 |									     |
@@ -10,11 +10,13 @@
 |                           http://192.168.111.101/			     |
 |									     |
 | Jeżeli chcesz zalogować się do panelu administracyjnego systemu BPP,	     |
-| użyj loginu admin/admin						     |
+| użyj loginu: admin, hasło: admin				             |
 |									     |
-| Jeżeli chcesz zalogować się do systemu Linux, użyj loginu ubuntu/ubuntu    |
+| Jeżeli chcesz zalogować się do systemu Linux, użyj loginu: ubuntu, hasło:  |
+| ubuntu								     |
 |									     |
 | UWAGA: oprogramowanie demonstracyjne. Nie używać do celów produkcyjnych    |
 | Wsparcie komercyjne świadczy firma IPLweb.pl z siedzibą w Lublinie,	     |
 | e-mail: michal.dtz@gmail.com, tel. +48793668733			     |
 +----------------------------------------------------------------------------+
+
