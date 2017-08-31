@@ -13,7 +13,7 @@ from bpp.views.api.strona_tom_nr_zeszytu import StronaTomNrZeszytuView
 ])
 def test_get_pubmed_xml_single(filename, count, httpserver):
     httpserver.serve_content(open(
-        os.path.join(os.path.dirname(__file__), filename)).read())
+        os.path.join(os.path.dirname(__file__), filename), "rb").read())
 
     data = pubmed.get_data_from_ncbi(title='whateva', url=httpserver.url)
     assert len(data) == count
