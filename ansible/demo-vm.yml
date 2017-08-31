@@ -15,9 +15,9 @@
       shell: . env/bin/activate && bpp-manage.py createsuperuser --email michal.dtz@gmail.com  --username admin --noinput
 
     - name: "** NIE UŻYWAĆ NA PRODUKCJI ** Hasło domyślnego użytkownika systemu zostaje ustalone"
-      shell:  . ./env/bin/activate && python -c  "from bpp.models import BppUser; u = BppUser.objects.all()[0]; u.set_password('admin'); u.save()"
+      shell:  . ./env/bin/activate && python -c  "import django; django.setup(); from bpp.models import BppUser; u = BppUser.objects.all()[0]; u.set_password('admin'); u.save()"
     - name: "** NIE UŻYWAĆ NA PRODUKCJI ** Wpuszczamy wszystkie hosty"
-      lineinfile: name=./env/lib/python2.7/site-packages/django_bpp/settings/base.py line="ALLOWED_HOSTS.append('*')"
+      lineinfile: name=./env/lib/python3.6/site-packages/django_bpp/settings/base.py line="ALLOWED_HOSTS.append('*')"
 
     - name: supervisor restart
       shell: supervisorctl restart all
