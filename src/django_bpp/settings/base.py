@@ -469,7 +469,7 @@ CELERYBEAT_SCHEDULE = {
     }
 }
 
-CAN_LOGIN_AS = lambda request, target_user: request.user.username in ['admin', 'sysdba']
+CAN_LOGIN_AS = lambda request, target_user: request.user.is_superuser
 
 #
 

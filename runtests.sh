@@ -85,17 +85,17 @@ else
 fi
 
 if [ "$NO_DJANGO" == "0" ]; then
-    python src/manage.py test bpp --keepdb
+    coverage run --source='src/' src/manage.py test bpp --keepdb
     # Ewentualne następne testy muszą startować na czystej bazie danych, więc:
     stellar restore $GIT_BRANCH_NAME
 fi
 
 if [ "$NO_PYTEST" == "0" ]; then
-    py.test src/eksport_pbn
-    py.test src/integration_tests
-    py.test src/integrator2/tests
-    py.test src/bpp/tests_pytest
-    py.test src/nowe_raporty/tests.py
+    py.test --cov=eksport_pbn src/eksport_pbn
+    py.test --cov=bpp src/integration_tests
+    py.test --cov=integrator2 src/integrator2/tests
+    py.test --cov=bpp src/bpp/tests_pytest
+    py.test --cov=nowe_raporty src/nowe_raporty/tests.py
 
     # mpasternak 17.1.2017 TODO: włączyć później
     # egeria/tests
