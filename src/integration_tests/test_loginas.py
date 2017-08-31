@@ -22,5 +22,8 @@ def test_loginas(live_server,
 
     assert u"zalogowany/a jako %s" % admin_user.username not in \
            preauth_admin_browser.html
+    print("X" * 90)
+    print("DEBUG")
+    print(preauth_admin_browser.html)
     assert u"zalogowany/a jako %s" % normal_django_user.username in \
            preauth_admin_browser.html
