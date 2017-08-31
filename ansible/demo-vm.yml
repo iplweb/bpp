@@ -22,17 +22,25 @@
     - name: supervisor restart
       shell: supervisorctl restart all
 
-    - name: Zainstaluj GUI
-      shell: apt-get update && apt-get install -qq -y lightdm firefox lxsession language-pack-pl xterm
+# mpasternak 2017-08-31 ponieważ firefox zaczął źle działać i pociąga za sobą
+# cały x-server (wiesza go), na chwilę rezygnujemy z GUI na rzecz pliku issue
 
-    - name: Lightdm bez hasła
-      template: src=autologin.conf dest=/etc/lightdm/lightdm.conf.d/12-autologin.conf
+#    - name: Zainstaluj GUI
+#      shell: apt-get update && apt-get install -qq -y lightdm firefox lxsession language-pack-pl xterm
 
-    - name: Restart lightdm
-      shell: service lightdm restart || true && sleep 5
+#    - name: Lightdm bez hasła
+#      template: src=autologin.conf dest=/etc/lightdm/lightdm.conf.d/12-autologin.conf
 
-    - name: Startuj przeglądarkę
-      lineinfile: name=/home/ubuntu/.config/lxsession/LXDE/autostart line="@firefox -url 192.168.111.101"
+#    - name: Restart lightdm
+#      shell: service lightdm restart || true && sleep 5
+
+#    - name: Startuj przeglądarkę
+#      lineinfile: name=/home/ubuntu/.config/lxsession/LXDE/autostart line="@firefox -url 192.168.111.101"
+
+# end mpasternak 2017-08-31
+
+    - name: Zainstaluj plik issue
+      template: src=issue dest=/etc/issue
 
     - name: Ustaw nazwę hosta
       shell: echo "bppdemo" > /etc/hostname
