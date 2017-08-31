@@ -17,6 +17,7 @@ class RankingAutorowTable(Table):
     class Meta:
         attrs = {"class": "bpp-table"}
         model = Autor
+        order_by = ('-impact_factor_sum', 'autor__nazwisko')
         fields = ('lp',
                   'autor',
                   'jednostka',
