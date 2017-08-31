@@ -36,3 +36,6 @@ services:
 
 script:
   - make travis
+  
+after_success:
+  - coveralls
