@@ -21,7 +21,8 @@ def test_get_pubmed_xml_single(filename, count, httpserver):
 
 def test_parse_pubmed_xml(httpserver):
     httpserver.serve_content(open(
-        os.path.join(os.path.dirname(__file__), 'api_pubmed_xml_single.html')).read())
+        os.path.join(os.path.dirname(__file__), 'api_pubmed_xml_single.html'),
+        "rb").read())
 
     data = pubmed.get_data_from_ncbi(title='whateva', url=httpserver.url)
     assert len(data) == 1
