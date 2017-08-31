@@ -11,6 +11,7 @@ NO_QUNIT=0
 NO_PYTEST=0
 NO_DJANGO=0
 NO_REBUILD=0
+NO_COVERAGE=1
 
 export PYTHONIOENCODING=utf_8
 
@@ -25,9 +26,11 @@ do
             ;;
         --no-rebuild) NO_REBUILD=1
             ;;
+        --coverage) NO_COVERAGE=0
+            ;;
 	--debug) DEBUG=1
 	    ;;
-	--help) echo "--no-qunit, --no-pytest, --no-django, --no-rebuild, --debug"
+	--help) echo "--no-qunit, --no-pytest, --no-django, --no-rebuild, --debug, --coverage"
 	    exit 1
 	    ;;
         --*) echo "bad option $1"
@@ -85,17 +88,17 @@ else
 fi
 
 if [ "$NO_DJANGO" == "0" ]; then
-    coverage run --source='src/bpp/' src/manage.py test bpp --keepdb
+    python src/manage.py test bpp --keepdb
     # Ewentualne następne testy muszą startować na czystej bazie danych, więc:
     stellar restore $GIT_BRANCH_NAME
 fi
 
 if [ "$NO_PYTEST" == "0" ]; then
-    py.test --cov=eksport_pbn src/eksport_pbn
-    py.test --cov=bpp src/integration_tests
-    py.test --cov=integrator2 src/integrator2/tests
-    py.test --cov=bpp src/bpp/tests_pytest
-    py.test --cov=nowe_raporty src/nowe_raporty/tests.py
+    py.test src/eksport_pbn
+    py.test src/integration_tests
+    py.test src/integrator2/tests
+    py.test src/bpp/tests_pytest
+    py.test src/nowe_raporty/tests.py
 
     # mpasternak 17.1.2017 TODO: włączyć później
     # egeria/tests
@@ -106,4 +109,16 @@ fi
 if [ "$NO_QUNIT" == "0" ]; then
     npm rebuild
     grunt qunit -v
+fi
+
+if [ "$NO_COVERAGE" == "0" ]; then
+    coverage run --source='src/bpp/' src/manage.py test bpp --keepdb
+    
+    stellar restore $GIT_BRANCH_NAME    
+    py.test --cov=eksport_pbn src/eksport_pbn
+    py.test --cov=bpp src/integration_tests
+    py.test --cov=integrator2 src/integrator2/tests
+    py.test --cov=bpp src/bpp/tests_pytest
+    py.test --cov=nowe_raporty src/nowe_raporty/tests.py
+    stellar restore $GIT_BRANCH_NAME    
 fi
