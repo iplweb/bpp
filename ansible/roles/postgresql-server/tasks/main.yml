@@ -1,11 +1,11 @@
-- name: Install apt packages
+- name: Install apt packages and PostgreSQL version {{ postgresql_version }}
   apt: name={{ item }} state=present
   with_items: 
-    - postgresql
-    - postgresql-plpython
-    - postgresql-contrib
+    - postgresql-{{ postgresql_version }}
+    - postgresql-plpython-{{ postgresql_version }}
+    - postgresql-contrib-{{ postgresql_version }}
     - python-psycopg2
-  
+
 - name: Create PostgreSQL user
   postgresql_user: name={{ database_user }} password={{ database_password }} role_attr_flags=CREATEDB,SUPERUSER state=present
   sudo_user: postgres
@@ -32,8 +32,8 @@
   register: psql_coll_err
 
 - name: Check for unexpected error message (if any)
-  fail: msg="Unexpected error"
-  when: (psql_coll_err.stderr != "" and psql_coll_err.stderr.find("already exists") < 0)
+  fail: msg="Nieoczekiwany błąd podczas tworzenia collation"
+  when: (psql_coll_err.stderr != "" and psql_coll_err.stderr.find("już istnieje") < 0)
 
 - name: Create PostgreSQL collation for pl_PL
   shell: psql -c "CREATE COLLATION \"pl_PL.utf8\"(locale='pl_PL.utf8');" "{{ database_name }}"
@@ -42,8 +42,8 @@
   register: psql_coll_err_2
 
 - name: Check for unexpected error message (if any)
-  fail: msg="Unexpected error"
-  when: (psql_coll_err_2.stderr != "" and psql_coll_err_2.stderr.find("already exists") < 0)
+  fail: msg="Nieoczekiwany błąd podczas tworzenia collation"
+  when: (psql_coll_err_2.stderr != "" and psql_coll_err_2.stderr.find("już istnieje") < 0)
 
 - name: Update unaccent.txt file
   file: src=unaccent-rules.txt dest=/usr/share/postgresql/{{ postgresql_version }}/tsearch_data/unaccent.rules
