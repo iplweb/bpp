@@ -4,6 +4,6 @@
 {{ praca.tytul_oryginalny|safe }}
 ({{ praca.tytul|safe }}).
 {% else %}
-{{ praca.tytul_oryginalny|safe|znak_na_koncu:"." }}
+{{ praca.tytul_oryginalny|znak_na_koncu:"."|safe }}
 {% endif %}
 {# koniec dispBookTitle #}
