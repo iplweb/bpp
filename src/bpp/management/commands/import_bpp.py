@@ -891,6 +891,15 @@ def zrob_kbn(cursor):
         )
     set_seq("bpp_typ_kbn")
 
+def zrob_typy_odpowiedzialnosci(cursor):
+    Typ_Odpowiedzialnosci.objects.all().delete()
+    cursor.execute("SELECT id, skrot2, nazwa FROM typy_autorow")
+    for elem in cursor.fetchall():
+        Typ_Odpowiedzialnosci.objects.create(
+            pk=elem['id'],
+            nazwa=elem['nazwa'],
+            skrot=elem['skrot2'].replace("[", "").replace("]", "").lower()
+        )
 
 def zrob_charaktery_formalne(cursor):
     Charakter_Formalny.objects.all().delete()
@@ -936,7 +945,7 @@ def zrob_indeksy(cursor):
     zrob_jezyki(cursor=cursor)
     zrob_kbn(cursor)
     zrob_charaktery_formalne(cursor)
-
+    zrob_typy_odpowiedzialnosci(cursor)
 
 # @transaction.atomic
 def zrob_patent(bib, pgsql_conn):
