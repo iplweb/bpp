@@ -92,7 +92,6 @@ TEMPLATES = [
 ]
 
 MIDDLEWARE_CLASSES = (
-    'debug_toolbar.middleware.DebugToolbarMiddleware',
 
     'htmlmin.middleware.HtmlMinifyMiddleware',
     'htmlmin.middleware.MarkRequestMiddleware',
@@ -139,8 +138,6 @@ INSTALLED_APPS = [
     'password_policies',
 
     'create_test_db',
-
-    'debug_toolbar',
 
     'celery',
 

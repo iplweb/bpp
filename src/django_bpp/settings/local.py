@@ -43,3 +43,8 @@ CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
 EMAIL_PORT = 2525
 
 PUNKTUJ_MONOGRAFIE = False
+
+MIDDLEWARE_CLASSES = MIDDLEWARE_CLASSES + (
+'debug_toolbar.middleware.DebugToolbarMiddleware',)
+
+INSTALLED_APPS.append('debug_toolbar')
