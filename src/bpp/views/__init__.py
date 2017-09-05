@@ -18,10 +18,10 @@ def root(request):
     """Zachowanie domyślne: przekieruj nas na pierwszą dostępną w bazie danych
     uczelnię, lub wyświetl komunikat jeżeli nie ma żadnych uczelni wpisanych do
     bazy danych."""
-    try:
-        # TODO: jeżeli będzie więcej, niż jeden obiekt Uczelnia, to co?
-        uczelnia = Uczelnia.objects.only('slug').first()
-    except IndexError:
+    # TODO: jeżeli będzie więcej, niż jeden obiekt Uczelnia...?
+    uczelnia = Uczelnia.objects.only('slug').first()
+
+    if uczelnia is None:
         return shortcuts.render(request, "browse/brak_uczelni.html")
 
     return shortcuts.redirect(
