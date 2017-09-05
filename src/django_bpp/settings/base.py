@@ -314,8 +314,6 @@ MOMMY_CUSTOM_FIELDS_GEN = {
 CRISPY_ALLOWED_TEMPLATE_PACKS = ('foundation-5',)
 CRISPY_TEMPLATE_PACK = 'foundation-5'
 
-SESSION_ENGINE = 'redis_sessions.session'
-
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTOCOL', 'https')
 
 MAT_VIEW_REFRESH_COUNTDOWN = 30
@@ -514,11 +512,10 @@ PUNKTUJ_MONOGRAFIE = bool(int(os.getenv(
 )))
 
 CACHES = {
-    "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://127.0.0.1:6379/1",
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-        }
+    'default': {
+        'BACKEND': 'django.core.cache.backends.memcached.MemcachedCache',
+        'LOCATION': '127.0.0.1:11211',
     }
 }
+
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"

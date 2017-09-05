@@ -13,6 +13,7 @@
     - python-virtualenv
     - zip # jest wymagany
     - pandoc
+    - memcached
 
 - name: Last version of sources is known
   local_action: shell python ../src/{{ django_project_name }}/version.py
