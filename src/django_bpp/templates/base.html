@@ -95,7 +95,8 @@
         </script>
     {% endif %}
 
-
+    {% load cache %}
+    {% cache 3600 topbar %}
     <div class="row" id="topBar">
         {% include "print-title.html" %}
 
@@ -130,6 +131,7 @@
             </div>
         </div>
     </div>
+    {% endcache %}
 
     <div class="row hide-on-print">
         <ul class="breadcrumbs hide-for-small">
@@ -268,8 +270,10 @@
         wersja {% bpp_version %}&nbsp;&nbsp;</small>
     </div>
 
+    {% cache 3600 google %}
     {% if GOOGLE_ANALYTICS_PROPERTY_ID %}
     {% include "ga.html" %}
     {% endif %}
+    {% endcache %}
 
 {% endblock %}
