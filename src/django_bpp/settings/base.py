@@ -512,3 +512,13 @@ SESSION_SECURITY_EXPIRE_AFTER = int(os.getenv(
 PUNKTUJ_MONOGRAFIE = bool(int(os.getenv(
     "DJANGO_BPP_PUNKTUJ_MONOGRAFIE", "1"
 )))
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/1",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
+    }
+}
