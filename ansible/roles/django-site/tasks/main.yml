@@ -89,11 +89,5 @@
     - supervisor restart
   tags: ['django-site', 'rabbitmq']
 
-- name: Cron restartuje supervisord raz dziennie
-  cron: name="Restartuj procesy supervisord raz dziennie" minute="30" hour="23" job="supervisorctl restart all > /dev/null"
+- include: cron.yml
   tags: ['cron',]
-
-- name: Przebudowa cache bazy danych raz dziennie
-  cron: name="Przebuduj cache bazy danych raz dziennie" minute="30" hour="22" job="{{ django_manage_py }} rebuild_cache"
-  tags: ['cron',]
-  sudo_user: "{{ django_user }}"

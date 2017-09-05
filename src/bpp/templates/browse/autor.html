@@ -61,7 +61,7 @@
                                    id="jednostka_{{ jednostka.pk }}"
                                     />
                         <label for="jednostka_{{ jednostka.pk }}">
-                            {{ jednostka }}
+                            {{ jednostka.nazwa }}
                             <a href="{% url "bpp:browse_jednostka" jednostka.slug %}">►</a>
                         </label>
                     <br/>

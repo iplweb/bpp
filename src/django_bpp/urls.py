@@ -40,7 +40,7 @@ from bpp.views import favicon, root, javascript_catalog
 
 urlpatterns = [
 
-    url(r'^favicon\.ico$', favicon),
+    url(r'^favicon\.ico$', cache_page(60*60)(favicon)),
 
     url(r'^admin/bpp/wydawnictwo_ciagle/toz/(?P<pk>[\d]+)/$', login_required(WydawnictwoCiagleTozView.as_view()), name="admin_bpp_wydawnictwo_ciagle_toz"),
     url(r'^admin/bpp/wydawnictwo_zwarte/toz/(?P<pk>[\d]+)/$', login_required(WydawnictwoZwarteTozView.as_view()), name="admin_bpp_wydawnictwo_ciagle_toz"),
@@ -88,7 +88,7 @@ urlpatterns = [
     url(r'^admin_tools/', include('admin_tools.urls')),
     url(r'^grappelli/', include('grappelli.urls')),
 
-    url(r'^$', root, name="root"),
+    url(r'^$', cache_page(60*60)(root), name="root"),
 
 
     url(r'^accounts/login/$', login,
@@ -129,13 +129,15 @@ urlpatterns = [
 
     url(r'^robots\.txt', include('robots.urls')),
 
-    url(r'^sitemap\.xml$', cache_page(7*24*3600)(sitemaps_views.index), {
-        'sitemaps': django_bpp_sitemaps,
-        'sitemap_url_name': 'sitemaps'
-    }, name='sitemap'),
-    url(r'^sitemap-(?P<section>.+)\.xml$',
-        cache_page(7*24*3600)(sitemaps_views.sitemap), {'sitemaps': django_bpp_sitemaps},
-        name='sitemaps'),
+    # url(r'^sitemap\.xml$', cache_page(7*24*3600)(sitemaps_views.index), {
+    #     'sitemaps': django_bpp_sitemaps,
+    #     'sitemap_url_name': 'sitemaps'
+    # }, name='sitemap'),
+    # url(r'^sitemap-(?P<section>.+)\.xml$',
+    #     cache_page(7*24*3600)(sitemaps_views.sitemap), {'sitemaps': django_bpp_sitemaps},
+    #     name='sitemaps'),
+
+    url(r'^sitemap.xml', include('static_sitemaps.urls')),
 
     url(r'', include('webmaster_verification.urls')),
 

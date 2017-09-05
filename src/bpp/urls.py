@@ -25,6 +25,7 @@ from bpp.views.raporty import RankingAutorow, \
     RaportAutorow
 from bpp.views.raporty.raport_autorow_2012 import RaportAutorow2012
 from bpp import reports
+
 reports # PyCharm, leave that import alone, it is IMPORTANT to import it
 import bpp
 from django.conf import settings
@@ -57,7 +58,8 @@ urlpatterns = [
         name="browse_jednostki_literka"),
     url(r'^wydzial/(?P<slug>[\w-]+)/$', WydzialView.as_view(),
         name='browse_wydzial'),
-    url(r'^uczelnia/(?P<slug>[\w-]+)/$', UczelniaView.as_view(),
+    url(r'^uczelnia/(?P<slug>[\w-]+)/$',
+        UczelniaView.as_view(),
         name='browse_uczelnia'),
     url(r'^autorzy/$', AutorzyView.as_view(), name='browse_autorzy'),
     url(r'^autorzy/(?P<literka>.)/$', AutorzyView.as_view(),

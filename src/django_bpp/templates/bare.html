@@ -74,8 +74,11 @@
 
     {% block extrahead %}
     {% endblock %}
-    {% load favtags %}
-    {% placeFavicon %}
+    {% load cache %}
+    {% cache 3600 favicon %}
+        {% load favtags %}
+        {% placeFavicon  %}
+    {% endcache %}
 </head>
 <body>
 {% block body %}

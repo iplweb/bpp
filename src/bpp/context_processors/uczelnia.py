@@ -1,3 +1,5 @@
+import time
+
 from bpp.models.struktura import Uczelnia
 
 
@@ -8,8 +10,19 @@ class NiezdefiniowanaUczelnia:
     slug = 'niezdefiniowana-uczelnia'
 
 
+from django.core.cache import cache
+
 def uczelnia(request):
+    timeout, value = cache.get("bpp_uczelnia", (0, None))
+    t = time.time()
+
+    if t < timeout:
+        return value
+
     try:
-        return {'uczelnia': Uczelnia.objects.all()[0]}
+        value = {'uczelnia': Uczelnia.objects.first()}
     except IndexError:
-        return {'uczelnia': NiezdefiniowanaUczelnia}
+        value = {'uczelnia': NiezdefiniowanaUczelnia}
+
+    cache.set("bpp_uczelnia", (t + 3600, value))
+    return value

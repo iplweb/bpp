@@ -143,6 +143,8 @@ INSTALLED_APPS = [
 
     'flexible_reports',
 
+    'static_sitemaps',
+
     'cookielaw',
 
     'columns',
@@ -519,3 +521,5 @@ CACHES = {
 }
 
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+
+STATICSITEMAPS_ROOT_SITEMAP = 'django_bpp.sitemaps.django_bpp_sitemaps'

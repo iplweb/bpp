@@ -22,7 +22,7 @@
         {% for jednostka in wydzial.jednostki %}
             <div class="large-6 medium-12 small-12 columns">
                 <a href="{% url "bpp:browse_jednostka" jednostka.slug %}">
-                    {{ jednostka }}
+                    {{ jednostka.nazwa }}
                 </a>
             </div>
 

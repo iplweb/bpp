@@ -20,7 +20,7 @@ def root(request):
     bazy danych."""
     try:
         # TODO: jeżeli będzie więcej, niż jeden obiekt Uczelnia, to co?
-        uczelnia = Uczelnia.objects.all()[0]
+        uczelnia = Uczelnia.objects.only('slug').first()
     except IndexError:
         return shortcuts.render(request, "browse/brak_uczelni.html")
 

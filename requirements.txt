@@ -78,3 +78,4 @@ django-querysetsequence==0.7.2
 
 pypandoc==1.4
 python-memcached=1.58
+django-static-sitemaps==4.3.0
