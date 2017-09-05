@@ -77,5 +77,5 @@ dogslow==1.0.0
 django-querysetsequence==0.7.2
 
 pypandoc==1.4
-python-memcached==1.58
+python-memcached==1.57
 django-static-sitemaps==4.3.0
