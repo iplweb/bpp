@@ -26,7 +26,7 @@ before_install:
 
   # jak nie dam tego teraz, zrobi katalogi przez dockera, owner root:root
   # a potem bedzie permission deny przy build_wheel wiec:
-  - mkdir -p dist dist_dev
+  - mkdir -p dist dist_dev artifacts
 
 install:
   - pip install -q -U tox pip setuptools virtualenv

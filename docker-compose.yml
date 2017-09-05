@@ -54,6 +54,7 @@ services:
     volumes: 
       - ./src:/usr/src/app/src
       - ./dist:/usr/src/app/dist
+      - ./artifacts:/usr/src/app/artifacts
       - ./dist_dev:/usr/src/app/dist_dev
     env_file: env.test.txt
     depends_on:

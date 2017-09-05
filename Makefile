@@ -172,7 +172,8 @@ build-test-container: cleanup-pycs
 # cel: travis
 # Uruchamia wszystkie testy - dla TravisCI
 travis: distclean dockerclean build-test-container
-	docker-compose run --rm test "make full-tests"
+	docker-compose run --rm test "make full-tests && cp .coverage artifacts"
+	mv artifacts/.coverage .
 
 rebuild-test:
 	docker-compose build test
