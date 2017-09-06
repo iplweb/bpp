@@ -115,10 +115,10 @@ if [ "$NO_COVERAGE" == "0" ]; then
     coverage run --source='src/bpp/' src/manage.py test bpp --keepdb
     
     stellar restore $GIT_BRANCH_NAME    
-    py.test --cov=eksport_pbn src/eksport_pbn
-    py.test --cov=bpp src/integration_tests
-    py.test --cov=integrator2 src/integrator2/tests
-    py.test --cov=bpp src/bpp/tests_pytest
-    py.test --cov=nowe_raporty src/nowe_raporty/tests.py
+    py.test --cov=src/eksport_pbn src/eksport_pbn/tests
+    py.test --cov=src/bpp src/integration_tests
+    py.test --cov=src/integrator2 src/integrator2/tests
+    py.test --cov=src/bpp src/bpp/tests_pytest
+    py.test --cov=src/nowe_raporty src/nowe_raporty/tests.py
     stellar restore $GIT_BRANCH_NAME    
 fi

@@ -38,4 +38,5 @@ script:
   - make travis
   
 after_success:
+  - mv artifacts/.coverage .
   - coveralls
