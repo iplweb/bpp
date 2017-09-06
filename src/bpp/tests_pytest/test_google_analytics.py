@@ -2,9 +2,17 @@
 
 import pytest
 from django.conf import settings
+from django.core.cache import cache
+from django.core.cache.utils import make_template_fragment_key
+
+
+@pytest.fixture
+def remove_key():
+    key = make_template_fragment_key('google')
+    cache.delete(key)
 
 @pytest.mark.django_db
-def test_google_analytics_disabled(client):
+def test_google_analytics_disabled(remove_key, client):
 
     orig_DEBUG = settings.DEBUG
     orig_GAPID = settings.GOOGLE_ANALYTICS_PROPERTY_ID
@@ -25,7 +33,7 @@ def test_google_analytics_disabled(client):
 
 
 @pytest.mark.django_db
-def test_google_analytics_enabled(client):
+def test_google_analytics_enabled(remove_key, client):
     from django.conf import settings
 
     orig_DEBUG = settings.DEBUG
