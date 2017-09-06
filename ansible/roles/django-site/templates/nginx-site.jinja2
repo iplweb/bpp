@@ -104,5 +104,12 @@ server {
   ssl_certificate_key     /etc/ssl/private/{{ django_hostname }}.key;
   ssl_session_timeout     30m;
 
+  gzip            on;
+  gzip_min_length 1000;
+  gzip_proxied    expired no-cache no-store private auth;
+  gzip_types      text/plain text/css application/json application/x-javascript application/javascript text/xml application/xml application/xml+rss text/javascript;
+
+  gzip_static  on;
+  gzip_proxied expired no-cache no-store private auth;
 }
 
