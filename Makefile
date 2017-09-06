@@ -99,7 +99,9 @@ tests:
 # cel: tests-full
 # Jak tests, ale całość
 full-tests: wheels install-wheels assets tests bdist_wheel-production
-
+	# For TravisCI coveralls & with docker
+	mkdir -p artifacts
+	cp .coverage artifacts
 
 # cel: docker-up
 # Startuje usługi dockera wymagane do lokalnego developmentu
@@ -172,7 +174,7 @@ build-test-container: cleanup-pycs
 # cel: travis
 # Uruchamia wszystkie testy - dla TravisCI
 travis: distclean dockerclean build-test-container
-	docker-compose run --rm test "make full-tests && cp .coverage artifacts"
+	docker-compose run --rm test "make full-tests"
 	mv artifacts/.coverage .
 
 rebuild-test:
