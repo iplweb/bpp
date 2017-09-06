@@ -1,6 +1,7 @@
 # -*- encoding: utf-8 -*-
 
 import pytest
+from django.core.management import call_command
 from model_mommy import mommy
 
 from bpp.models.autor import Autor
@@ -22,8 +23,14 @@ def test_sitemaps(webtest_app):
     mommy.make(Praca_Habilitacyjna, tytul_oryginalny="A case of")
     mommy.make(Patent, tytul_oryginalny="A case of")
 
-    for page in ['', '-jednostka', '-autor-a', '-uczelnia', '-wydawnictwo-ciagle-a', '-wydawnictwo-zwarte-a',
+    call_command("refresh_sitemap")
+
+    res = webtest_app.get("/sitemap.xml")
+    assert res.status_code == 200
+    assert b'example.com' in res.content
+
+    for page in ['-jednostka', '-autor-a', '-uczelnia', '-wydawnictwo-ciagle-a', '-wydawnictwo-zwarte-a',
                  '-praca-doktorska-a', '-praca-habilitacyjna-a', '-patent-a', '-wydzial']:
-        res = webtest_app.get("/sitemap%s.xml" % page)
+        res = webtest_app.get("/static/sitemap%s-1.xml" % page)
         assert res.status_code == 200
         assert b'example.com' in res.content
