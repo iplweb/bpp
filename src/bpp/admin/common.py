@@ -7,8 +7,6 @@ from django.contrib import admin
 from django.db.models.fields import BLANK_CHOICE_DASH
 from django.forms.widgets import HiddenInput
 
-
-
 from bpp.jezyk_polski import warianty_zapisanego_nazwiska
 from bpp.models import Jednostka, Autor, Typ_Odpowiedzialnosci
 
@@ -152,13 +150,20 @@ class KolumnyZeSkrotamiMixin:
 
 
 class RestrictDeletionToAdministracjaGroupMixin:
+    def _cache_groups(self, request):
+        if getattr(request, '_cached_groups', None):
+            return
+        request._cached_groups = [x.name for x in request.user.groups.all()]
+
     def get_action_choices(self, request, default_choices=BLANK_CHOICE_DASH):
-        if 'administracja' in [x.name for x in request.user.groups.all()]:
+        self._cache_groups(request)
+        if 'administracja' in request._cached_groups:
             return admin.ModelAdmin.get_action_choices(self, request, default_choices)
         return []
 
     def has_delete_permission(self, request, obj=None):
-        if 'administracja' in [x.name for x in request.user.groups.all()]:
+        self._cache_groups(request)
+        if 'administracja' in request._cached_groups:
             return admin.ModelAdmin.has_delete_permission(self, request, obj=obj)
         return False
 
