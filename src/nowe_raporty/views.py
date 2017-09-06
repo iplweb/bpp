@@ -79,7 +79,8 @@ class GenerujRaportBase(DetailView):
             report.set_base_queryset(
                 self.get_base_queryset().filter(
                     rok__gte=self.kwargs['od_roku'],
-                    rok__lte=self.kwargs['do_roku'])
+                    rok__lte=self.kwargs['do_roku']
+                ).prefetch_related("typ_kbn", "charakter_formalny")
             )
 
             report.set_context(
