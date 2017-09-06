@@ -29,7 +29,7 @@ before_install:
   - mkdir -p dist dist_dev artifacts
 
 install:
-  - pip install -q -U tox pip setuptools virtualenv
+  - pip install -q -U tox pip setuptools virtualenv coveralls
 
 services:
   - docker
