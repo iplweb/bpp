@@ -34,7 +34,7 @@ class RankingAutorowTable(Table):
     punkty_kbn_sum = Column("Punkty PK", "punkty_kbn_sum")
     impact_factor_sum = Column("Impact Factor", "impact_factor_sum")
     jednostka = Column(accessor="jednostka.nazwa")
-    wydzial = Column(accessor="jednostka.wydzial")
+    wydzial = Column(accessor="jednostka.wydzial.nazwa")
 
     def render_lp(self):
         self.lp_counter = getattr(self, "lp_counter",
@@ -63,6 +63,8 @@ class RankingAutorow(ExportMixin, SingleTableView):
         wydzialy = self.get_wydzialy()
         if wydzialy:
             qset = qset.filter(jednostka__wydzial__in=wydzialy)
+        qset = qset.prefetch_related("jednostka__wydzial").select_related(
+            "autor", "jednostka")
         qset = qset.group_by("autor", "jednostka")
         qset = qset.annotate(
             impact_factor_sum=Sum('impact_factor'),
@@ -71,6 +73,7 @@ class RankingAutorow(ExportMixin, SingleTableView):
         qset = qset.exclude(
             impact_factor_sum=0,
             punkty_kbn_sum=0)
+
         return qset
 
     def get_dostepne_wydzialy(self):
