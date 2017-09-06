@@ -13,10 +13,10 @@ class NiezdefiniowanaUczelnia:
 from django.core.cache import cache
 
 def uczelnia(request):
-    timeout, value = cache.get("bpp_uczelnia", (0, None))
+    timeout, value = cache.get(b"bpp_uczelnia", (0, NiezdefiniowanaUczelnia))
     t = time.time()
 
-    if t < timeout:
+    if timeout >= t:
         return value
 
     try:
@@ -24,5 +24,5 @@ def uczelnia(request):
     except IndexError:
         value = {'uczelnia': NiezdefiniowanaUczelnia}
 
-    cache.set("bpp_uczelnia", (t + 3600, value))
+    cache.set(b"bpp_uczelnia", (t + 3600, value))
     return value

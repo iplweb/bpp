@@ -59,7 +59,7 @@ assets-for-django:
 	${PYTHON} src/manage.py collectstatic --noinput -v0 --traceback
 	grunt build 
 	${PYTHON} src/manage.py collectstatic --noinput -v0 --traceback
-	${PYTHON} src/manage.py compress --force  -v0
+	${PYTHON} src/manage.py compress --force  -v0 --traceback
 
 yarn: 
 	yarn > /dev/null
