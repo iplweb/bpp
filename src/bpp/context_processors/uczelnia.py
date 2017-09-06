@@ -1,6 +1,8 @@
 import time
 
 from django.core.cache import cache
+from django.db.models.signals import post_save
+from django.dispatch.dispatcher import receiver
 
 from bpp.models.struktura import Uczelnia
 
@@ -28,3 +30,8 @@ def uczelnia(request):
     value = {'uczelnia': u}
     cache.set(b"bpp_uczelnia", (time.time() + 3600, value))
     return value
+
+
+@receiver(post_save, sender=Uczelnia)
+def remove_cache_key(*args, **kw):
+    cache.delete(b"bpp_uczelnia")
