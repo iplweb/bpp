@@ -17,3 +17,18 @@ TEMPLATES[0]['OPTIONS']['loaders'] = [
 ]
 
 HTML_MINIFY = True
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.memcached.MemcachedCache',
+        'LOCATION': '127.0.0.1:11211',
+    },
+    # This is required for django-compressor 'compress --offline --force'
+    # memcache bug
+    'compressor': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'compressor'
+    }
+}
+
+COMPRESS_CACHE_BACKEND = 'compressor'

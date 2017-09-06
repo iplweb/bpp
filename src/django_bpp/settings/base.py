@@ -513,21 +513,6 @@ PUNKTUJ_MONOGRAFIE = bool(int(os.getenv(
     "DJANGO_BPP_PUNKTUJ_MONOGRAFIE", "1"
 )))
 
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.memcached.MemcachedCache',
-        'LOCATION': '127.0.0.1:11211',
-    },
-    # This is required for django-compressor 'compress --offline --force'
-    # memcache bug
-    'compressor': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'compressor'
-    }
-}
-
-COMPRESS_CACHE_BACKEND = 'compressor'
-
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 
 STATICSITEMAPS_ROOT_SITEMAP = 'django_bpp.sitemaps.django_bpp_sitemaps'
