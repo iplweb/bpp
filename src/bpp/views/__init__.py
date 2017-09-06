@@ -25,8 +25,8 @@ def root(request):
         return shortcuts.render(request, "browse/brak_uczelni.html")
 
     return shortcuts.redirect(
-        reverse("bpp:browse_uczelnia", args=(uczelnia.slug,)))
-
+        reverse("bpp:browse_uczelnia", args=(uczelnia.slug,)),
+        permanent=True)
 
 def favicon(request):
     try:

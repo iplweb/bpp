@@ -88,7 +88,7 @@ urlpatterns = [
     url(r'^admin_tools/', include('admin_tools.urls')),
     url(r'^grappelli/', include('grappelli.urls')),
 
-    url(r'^$', cache_page(60*60)(root), name="root"),
+    url(r'^$', root, name="root"),
 
 
     url(r'^accounts/login/$', login,

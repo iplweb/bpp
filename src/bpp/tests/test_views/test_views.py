@@ -27,11 +27,11 @@ class TestRoot(UserTestCase):
         self.assertContains(res, "W systemie nie ma", status_code=200)
 
         Uczelnia.objects.create(nazwa="uczelnia", skrot="uu")
-        res = self.client.get("/")
+        res = self.client.get("/", follow=False)
         self.assertRedirects(
             res,
             reverse("bpp:browse_uczelnia", args=('uu',)),
-            status_code=302)
+            status_code=301)
 
 
 class TestBrowse(UserTestCase):
