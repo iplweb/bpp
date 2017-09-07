@@ -158,3 +158,8 @@ if settings.DEBUG:
     urlpatterns += [
         url(r'^__debug__/', include(debug_toolbar.urls)),
     ]
+
+
+handler404 = 'bpp.views.handler404'
+handler500 = 'bpp.views.handler500'
+handler403 = 'bpp.views.handler403'

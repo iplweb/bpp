@@ -5,6 +5,8 @@ from django.db.models import Q
 from django.core.urlresolvers import reverse
 from django.contrib.auth import get_user_model
 from django.http.response import HttpResponse, JsonResponse
+from django.shortcuts import render_to_response
+from django.template.context import RequestContext
 from django.views.decorators.csrf import csrf_exempt
 from sendfile import sendfile
 
@@ -89,4 +91,30 @@ def javascript_catalog(request, domain='djangojs', packages=None):
         expires = datetime.datetime.now() + TEN_YEARS
         response['Expires'] = expires.strftime('%a, %d %b %Y %H:%M:%S GMT')
         response['Cache-Control'] = 'public'
+    return response
+
+
+
+def handler404(request):
+    response = render_to_response('404.html',
+        context=RequestContext(request)
+    )
+    response.status_code = 404
+    return response
+
+
+def handler403(request):
+    response = render_to_response('403.html',
+        context=RequestContext(request)
+    )
+    response.status_code = 403
+    return response
+
+
+
+def handler500(request):
+    response = render_to_response('50x.html',
+        context=RequestContext(request)
+    )
+    response.status_code = 500
     return response
