@@ -23,6 +23,10 @@ server {
     expires 30d;
   }
 
+  error_page 404 /static/bpp/html/404.html;
+  error_page 403 /static/bpp/html/403.html;
+  error_page 500 502 503 504 /static/bpp/html/50x.html;
+
    location / {
       try_files $uri @proxy_to_app;
    }
