@@ -101,7 +101,8 @@ tests:
 full-tests: wheels install-wheels assets tests bdist_wheel-production
 	# For TravisCI coveralls & with docker
 	mkdir -p artifacts
-	cp .coverage artifacts
+	ls -alsh .coverage
+	cp .coverage artifacts/
 
 # cel: docker-up
 # Startuje usługi dockera wymagane do lokalnego developmentu
@@ -175,6 +176,8 @@ build-test-container: cleanup-pycs
 # Uruchamia wszystkie testy - dla TravisCI
 travis: distclean dockerclean build-test-container
 	docker-compose run --rm test "make full-tests"
+	ls -las artifacts
+	ls -las .coverage
 	mv artifacts/.coverage .
 
 rebuild-test:

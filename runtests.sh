@@ -112,7 +112,7 @@ if [ "$NO_QUNIT" == "0" ]; then
 fi
 
 if [ "$NO_COVERAGE" == "0" ]; then
-    coverage run --source='src/bpp/' src/manage.py test bpp --keepdb
+    coverage run --source=src/bpp/ src/manage.py test bpp --keepdb
     
     stellar restore $GIT_BRANCH_NAME    
     py.test --cov=src/eksport_pbn src/eksport_pbn/tests
