@@ -102,12 +102,18 @@
 
         <div class="hide-on-print">
 
-            <div class="large-2 medium-2 small-3 columns">
-            {% if uczelnia.logo_www %}
-                <a href="/"><img src="/media/{{ uczelnia.logo_www }}"
-                                 alt="Logo {{ uczelnia.nazwa_dopelniacz }}"
-                        /></a>
-            {% endif %}
+            <div class="large-2 medium-2 small-3 columns" style="text-align:center;">
+                <a href="/">
+                {% if uczelnia.logo_www %}
+                <img src="/media/{{ uczelnia.logo_www }}"
+                     alt="Logo {{ uczelnia.nazwa_dopelniacz }}"
+                />
+                {% else %}
+                <img src="{% static "bpp/svg/wydawnictwo_ciagle.svg" %}"
+                     alt="Logo BPP"
+                />
+                {% endif %}
+                </a>
             </div>
 
             <div class="large-10 medium-10 small-9 columns">
