@@ -112,13 +112,20 @@ if [ "$NO_QUNIT" == "0" ]; then
 fi
 
 if [ "$NO_COVERAGE" == "0" ]; then
+    echo "Running COVERAGE" 
     coverage run --source=src/bpp/ src/manage.py test bpp --keepdb
+    ls -las .coverage
     
     stellar restore $GIT_BRANCH_NAME    
     py.test --cov=src/eksport_pbn src/eksport_pbn/tests
+    ls -las .coverage    
     py.test --cov=src/bpp src/integration_tests
+    ls -las .coverage    
     py.test --cov=src/integrator2 src/integrator2/tests
+    ls -las .coverage    
     py.test --cov=src/bpp src/bpp/tests_pytest
+    ls -las .coverage    
     py.test --cov=src/nowe_raporty src/nowe_raporty/tests.py
+    ls -las .coverage    
     stellar restore $GIT_BRANCH_NAME    
 fi
