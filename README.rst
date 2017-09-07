@@ -15,8 +15,10 @@ django-bpp
 .. role:: bash(code)
    :language: bash
 
-.. image:: https://raw.githubusercontent.com/mpasternak/django-bpp/dev/src/bpp/static/bpp/png/logo.png
-   :target: https://github.com/mpasternak/django-bpp/
+.. image:: https://github.com/mpasternak/django-bpp/raw/dev/src/bpp/static/bpp/images/logo.png
+  :height: 128 px
+  :width: 128 px
+  :align: center
   :alt: Logo projektu
 
 O projekcie
