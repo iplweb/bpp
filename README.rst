@@ -13,6 +13,7 @@ django-bpp
 
 .. image:: https://github.com/mpasternak/django-bpp/raw/dev/src/bpp/static/bpp/images/logo.png
   :alt: Logo projektu
+  :width: 128px
 
 O projekcie
 -----------
