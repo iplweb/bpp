@@ -23,9 +23,9 @@ server {
     expires 30d;
   }
 
-  error_page 404 /static/bpp/html/404.html;
-  error_page 403 /static/bpp/html/403.html;
-  error_page 500 502 503 504 /static/bpp/html/50x.html;
+  error_page 404 {{ django_home_dir }}/env/lib/python{{ django_python_version }}/site-packages/bpp/templates/404.html;
+  error_page 403 {{ django_home_dir }}/env/lib/python{{ django_python_version }}/site-packages/bpp/templates/403.html;
+  error_page 500 502 503 504 {{ django_home_dir }}/env/lib/python{{ django_python_version }}/site-packages/bpp/templates/50x.html;
 
    location / {
       try_files $uri @proxy_to_app;
