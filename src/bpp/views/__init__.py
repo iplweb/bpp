@@ -1,10 +1,10 @@
 # -*- encoding: utf-8 -*-
-
+import bleach
 from django import shortcuts
 from django.db.models import Q
 from django.core.urlresolvers import reverse
 from django.contrib.auth import get_user_model
-from django.http.response import HttpResponse
+from django.http.response import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from sendfile import sendfile
 
@@ -48,8 +48,9 @@ def update_multiseek_title(request):
     v = request.POST.get('value')
     if not v or not len(v):
         v = ''
+    v = bleach.clean(v)
     request.session["MULTISEEK_TITLE"] = v
-    return HttpResponse(v)
+    return JsonResponse(v, safe=False)
 
 
 #!/usr/bin/env python
