@@ -12,7 +12,6 @@ django-bpp
    :language: bash
 
 .. image:: https://github.com/mpasternak/django-bpp/raw/dev/src/bpp/static/bpp/images/logo.png
-   :target: https://github.com/mpasternak/django-bpp/
   :alt: Logo projektu
 
 O projekcie
