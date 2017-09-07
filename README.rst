@@ -12,6 +12,7 @@ django-bpp
    :language: bash
 
 .. image:: https://raw.githubusercontent.com/mpasternak/django-bpp/dev/src/bpp/static/bpp/svg/wydawnictwo_ciagle.svg?branch=dev
+   :target: https://raw.githubusercontent.com/mpasternak/django-bpp/dev/src/bpp/static/bpp/svg/wydawnictwo_ciagle.svg?branch=dev
   :alt: Logo projektu
 
 O projekcie
