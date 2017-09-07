@@ -8,6 +8,10 @@ django-bpp
    :target: http://django-bpp.readthedocs.io/pl/latest/?badge=latest
    :alt: Dokumentacja
 
+.. image:: https://coveralls.io/repos/github/mpasternak/django-bpp/badge.svg
+   :target: https://coveralls.io/github/mpasternak/django-bpp
+   :alt: Coverage
+
 .. role:: bash(code)
    :language: bash
 
