@@ -39,4 +39,5 @@ script:
   
 after_success:
   - mv artifacts/.coverage .
+  - ls -lash .coverage
   - coveralls
