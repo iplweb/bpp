@@ -177,7 +177,6 @@ build-test-container: cleanup-pycs
 travis: distclean dockerclean build-test-container
 	docker-compose run --rm test "make full-tests"
 	ls -las artifacts
-	ls -las .coverage
 	mv artifacts/.coverage .
 
 rebuild-test:
