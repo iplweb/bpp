@@ -8,12 +8,12 @@ DISTDIR=./dist
 DISTDIR_DEV=./dist_dev
 
 clean:
-	find . -name __pycache__ -type d -print0 | xargs -0 rm -rfv
-	find . -name \*~ -print0 | xargs -0 rm -fv 
-	find . -name \*pyc -print0 | xargs -0 rm -fv 
-	find . -name \*\\.log -print0 | xargs -0 rm -fv 
-	find . -name \*\\.log -print0 | xargs -0 rm -fv 
-	find . -name \#\* -print0 | xargs -0 rm -fv
+	find . -name __pycache__ -type d -print0 | xargs -0 rm -rf
+	find . -name \*~ -print0 | xargs -0 rm -f 
+	find . -name \*pyc -print0 | xargs -0 rm -f 
+	find . -name \*\\.log -print0 | xargs -0 rm -f 
+	find . -name \*\\.log -print0 | xargs -0 rm -f 
+	find . -name \#\* -print0 | xargs -0 rm -f
 	rm -rf build dist/*django_bpp*whl __pycache__ *.log
 	rm -rf .eggs .cache .tox
 
@@ -159,10 +159,10 @@ demo-vm-cleanup:
 demo-vm: vagrantclean vagrantup staging demo-vm-ansible demo-vm-clone demo-vm-cleanup
 
 cleanup-pycs:
-	find . -name __pycache__ -type d -print0 | xargs -0 rm -rfv
-	find . -name \*~ -print0 | xargs -0 rm -fv 
-	find . -name \*pyc -print0 | xargs -0 rm -fv 
-	find . -name \*\\.log -print0 | xargs -0 rm -fv 
+	find . -name __pycache__ -type d -print0 | xargs -0 rm -rf
+	find . -name \*~ -print0 | xargs -0 rm -f 
+	find . -name \*pyc -print0 | xargs -0 rm -f 
+	find . -name \*\\.log -print0 | xargs -0 rm -f 
 	rm -rf build __pycache__ *.log
 
 # cel: build-test-container
