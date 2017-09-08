@@ -170,7 +170,7 @@ cleanup-pycs:
 build-test-container: cleanup-pycs
 	docker-compose stop test
 	docker-compose rm test
-	docker-compose build test
+	docker-compose build test > /dev/null
 
 # cel: travis
 # Uruchamia wszystkie testy - dla TravisCI

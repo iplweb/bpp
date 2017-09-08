@@ -1,13 +1,13 @@
 FROM ubuntu:16.04
 
-RUN apt-get update -qq && apt-get install -qq -y \
-  software-properties-common 
+RUN apt-get -qq update && apt-get -qq install -y \
+  software-properties-common  
 
 # This fails because UnicodeBug (I have an 'ł' in my first name...)
 RUN add-apt-repository -y "ppa:dotz/nginx-with-push-stream-module" || true
 
-RUN apt-get update -qq \ 
-  && DEBIAN_FRONTEND=noninteractive apt-get install -qq -y --allow-unauthenticated \
+RUN apt-get -qq update \ 
+  && DEBIAN_FRONTEND=noninteractive apt-get -qq install -y --allow-unauthenticated \
      nginx-full=1.12.0-1+xenial1+pushtream0
 
 COPY default /etc/nginx/sites-available

@@ -2,7 +2,7 @@ FROM ubuntu:16.04
 
 SHELL ["/bin/bash", "-c"]
 
-RUN apt-get update -qq && apt-get -qq install --quiet -qq --yes \
+RUN apt-get -qq update  && apt-get -qq install --yes \
     python \
     python-pip \ 
     virtualenv \
