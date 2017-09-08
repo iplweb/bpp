@@ -41,18 +41,18 @@ wheels:
 	echo "Buduje wheels w ${DISTDIR}"
 
 	mkdir -p ${DISTDIR}
-	${PIP} wheel --wheel-dir=${DISTDIR} --find-links=${DISTDIR} -r requirements_src.txt 
+	${PIP} -q wheel --wheel-dir=${DISTDIR} --find-links=${DISTDIR} -r requirements_src.txt 
 
 	mkdir -p ${DISTDIR}
-	${PIP} wheel --wheel-dir=${DISTDIR} --find-links=${DISTDIR} -r requirements.txt 
+	${PIP} -q wheel --wheel-dir=${DISTDIR} --find-links=${DISTDIR} -r requirements.txt 
 
 	mkdir -p ${DISTDIR_DEV}
-	${PIP} wheel --wheel-dir=${DISTDIR_DEV} --find-links=${DISTDIR} --find-links=${DISTDIR_DEV} -r requirements_dev.txt 
+	${PIP} -q wheel --wheel-dir=${DISTDIR_DEV} --find-links=${DISTDIR} --find-links=${DISTDIR_DEV} -r requirements_dev.txt 
 
 # cel: install-wheels
 # Instaluje wszystkie requirements
 install-wheels:
-	${PIP} install --no-index --only-binary=whl --find-links=./dist --find-links=./dist_dev -r requirements_dev.txt
+	${PIP} -q install --no-index --only-binary=whl --find-links=./dist --find-links=./dist_dev -r requirements_dev.txt
 
 assets-for-django:
 	rm -rf src/django_bpp/staticroot
@@ -74,7 +74,7 @@ assets: yarn assets-for-django
 assets-production: yarn-production assets-for-django
 
 _bdist_wheel:
-	${PYTHON} setup.py bdist_wheel
+	${PYTHON} setup.py -q bdist_wheel 
 
 # cel: bdist_wheel
 # Buduje pakiet WHL zawierający django_bpp i skompilowane, statyczne assets. 
@@ -122,8 +122,8 @@ setup-lo0:
 # cel: release
 # PyPI release
 release: bdist_wheel
-	${PYTHON} setup.py sdist upload
-	${PYTHON} setup.py bdist_wheel upload
+	${PYTHON} setup.py -q sdist upload
+	${PYTHON} setup.py -q bdist_wheel upload
 
 # cel: staging
 # Konfiguruje system django-bpp za pomocą Ansible na komputerze 'staging' (vagrant)
