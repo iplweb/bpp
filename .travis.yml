@@ -40,7 +40,7 @@ script:
 after_success:
   - mv artifacts/.coverage .
   - ls -lash .coverage
-  - cat .coverage | sed s+/usr/src/app++g > .coverage2
+  - cat .coverage | sed s+/usr/src/app/++g > .coverage2
   - ls -lash .coverage2
   - rm -rf .coverage
   - mv .coverage2 .coverage
