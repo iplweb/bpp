@@ -42,5 +42,6 @@ after_success:
   - ls -lash .coverage
   - cat .coverage | sed s+/usr/src/app++g > .coverage2
   - ls -lash .coverage2
+  - rm -rf .coverage
   - mv .coverage2 .coverage
   - coveralls
