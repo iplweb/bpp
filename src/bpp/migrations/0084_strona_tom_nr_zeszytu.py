@@ -4,6 +4,8 @@ from __future__ import unicode_literals
 
 from django.db import migrations, models
 
+from bpp.models.abstract import wez_zakres_stron, parse_informacje
+
 
 def przerzuc_dane(apps, schema_editor):
     for model in ['Wydawnictwo_Ciagle', 'Wydawnictwo_Zwarte',
