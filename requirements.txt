@@ -60,7 +60,7 @@ Pillow==4.0.0
 olefile==0.44
 
 django-grappelli==2.9.1
-django-multiseek==0.9.20
+django-multiseek==0.9.23
 djorm-ext-filtered-contenttypes==0.4.1
 
 django_braces==1.8.1
@@ -70,7 +70,7 @@ django-loginas==0.3.2
 
 django-robots==3.0
 django-webmaster-verification==0.3.0
-django-favicon-plus==0.0.6
+django-favicon-plus==0.0.7
 
 dogslow==1.0.0
 

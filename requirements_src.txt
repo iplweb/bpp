@@ -1,3 +1,2 @@
 git+https://github.com/mpasternak/moai.git#egg=moai
 git+https://github.com/OpenTherapeutics/django-password-policies.git@feature/adds_django_1_10_compatibility#egg=django_password_policies
-git+https://github.com/arteria/django-favicon-plus.git#egg=django-favicon-plus
