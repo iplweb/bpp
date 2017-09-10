@@ -12,26 +12,30 @@ def przerzuc_dane(apps, schema_editor):
                   'Patent', 'Praca_Doktorska', 'Praca_Habilitacyjna']:
         klass = apps.get_model("bpp", model)
         for elem in klass.objects.all():
-            if elem.szczegoly:
-                s = wez_zakres_stron(elem.szczegoly)
-                if not elem.strony:
-                    if s != elem.strony:
-                        elem.strony = s
-                        changed = True
+
+            if hasattr(elem, 'strony'):
+                if elem.szczegoly:
+                    s = wez_zakres_stron(elem.szczegoly)
+                    if not elem.strony:
+                        if s != elem.strony:
+                            elem.strony = s
+                            changed = True
 
             if elem.informacje is not None:
                 tom = parse_informacje(elem.informacje, "tom")
                 nr_zeszytu = parse_informacje(elem.informacje, "numer")
 
-                if not elem.tom and tom:
-                    if tom != elem.tom:
-                        elem.tom = tom
-                        chagned = True
+                if hasattr(elem, 'tom'):
+                    if not elem.tom and tom:
+                        if tom != elem.tom:
+                            elem.tom = tom
+                            chagned = True
 
-                if not elem.nr_zeszytu and nr_zeszytu:
-                    if nr_zeszytu != elem.nr_zeszytu:
-                        elem.nr_zeszytu = nr_zeszytu
-                        changed = True
+                if hasattr(elem, 'nr_zeszytu'):
+                    if not elem.nr_zeszytu and nr_zeszytu:
+                        if nr_zeszytu != elem.nr_zeszytu:
+                            elem.nr_zeszytu = nr_zeszytu
+                            changed = True
 
             if changed:
                 elem.save()
