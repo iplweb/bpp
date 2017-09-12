@@ -11,7 +11,7 @@ server {
 
 server {
   listen        {{ django_nginx_http_port }} {% if django_set_as_default_http_in_nginx %}default{% endif %};
-  listen        {{ django_nginx_https_port }} default ssl;
+  listen        {{ django_nginx_https_port }} {%  if django_set_as_default_http_in_nginx %}default{% endif %} ssl;
   server_name 	{{ django_hostname }} {{ django_hostname_aliases|default("") }};
   access_log  	/var/log/nginx/{{ django_hostname }}-access.log;
   error_log    	/var/log/nginx/{{ django_hostname }}-error.log;
