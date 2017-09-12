@@ -332,6 +332,12 @@ class Autor_Jednostka(models.Model):
             if self.rozpoczal_prace >= self.zakonczyl_prace:
                 raise ValidationError("Początek pracy późniejszy lub równy, jak zakończenie")
 
+        if self.zakonczyl_prace is not None:
+            if self.zakonczyl_prace >= datetime.now().date():
+                raise ValidationError(
+                    "Czas zakończenia pracy w jednostce nie może być taki sam"
+                    " lub większy, jak obecna data")
+
     def __str__(self):
         buf = "%s ↔ %s" % (self.autor, self.jednostka.skrot)
         if self.funkcja:
