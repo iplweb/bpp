@@ -160,7 +160,7 @@ class AutorAutocomplete(GroupRequiredMixin, AutorAutocompleteBase):
         text = text.split(" ", 1)
         if len(text) != 2:
             class Error:
-                pk = None
+                pk = -1
 
                 def __str__(self):
                     return "Błąd. Wpisz nazwisko i imię oddzielone spacją"
