@@ -2,6 +2,7 @@
   lineinfile: dest={{ django_venv_dir }}/bin/activate line="{{ item }}"
   no_log: True
   with_items:
+    - export {{ django_envvar_prefix }}_BROKER_URL="{{ celery_broker_url }}"
     - export {{ django_envvar_prefix }}_HOSTNAME="{{ django_hostname }}"
     - export {{ django_envvar_prefix }}_SECRET_KEY="{{ django_secret_key }}"
     - export {{ django_envvar_prefix }}_DB_NAME="{{ django_db_name }}"
