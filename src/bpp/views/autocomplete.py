@@ -163,7 +163,8 @@ class AutorAutocomplete(GroupRequiredMixin, AutorAutocompleteBase):
                 pk = -1
 
                 def __str__(self):
-                    return "Błąd. Wpisz nazwisko i imię oddzielone spacją"
+                    return "Wpisz nazwisko, potem imię. " \
+                           "Wyrazy oddziel spacją. "
 
             return Error()
 
@@ -296,7 +297,9 @@ class ZapisanyJakoAutocomplete(autocomplete.Select2ListView):
             autor_id = int(autor)
             a = Autor.objects.get(pk=autor_id)
         except (KeyError, ValueError):
-            return []
+            return ['Błąd. Wpisz poprawne dane w pole "Autor".',]
+        except Autor.DoesNotExist:
+            return ['Błąd. Wpisz poprawne dane w pole "Autor".',]
         return list(
             warianty_zapisanego_nazwiska(a.imiona, a.nazwisko,
                                          a.poprzednie_nazwiska)
