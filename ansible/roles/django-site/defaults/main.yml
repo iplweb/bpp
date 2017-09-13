@@ -19,6 +19,9 @@ django_db_user: "{{ database_user }}"
 django_db_password: "{{ database_password }}"
 django_db_host: localhost
 
+django_set_as_default_http_in_nginx: false
+django_set_as_default_https_in_nginx: true
+
 django_db_port: 5432
 postgresql_version: 9.6
 
