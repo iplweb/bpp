@@ -3,6 +3,7 @@ from django.core.urlresolvers import reverse
 from django.template import Library
 from django import template
 import lxml.html
+from django.utils.safestring import mark_safe
 
 register = Library()
 
@@ -180,7 +181,12 @@ def opis_bibliograficzny_cache(pk):
         if pk.find("_") > 0:
             content_type_id, object_id = [int(x) for x in pk.split("_")]
             from bpp.models.cache import Rekord
-            return Rekord.objects.get(object_id=object_id, content_type_id=content_type_id).opis_bibliograficzny_cache
+            return mark_safe(
+                Rekord.objects.get(
+                    object_id=object_id,
+                    content_type_id=content_type_id
+                ).opis_bibliograficzny_cache
+            )
 
     return "(brak danych)"
 
