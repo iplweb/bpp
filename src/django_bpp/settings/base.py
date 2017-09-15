@@ -92,6 +92,7 @@ TEMPLATES = [
 ]
 
 MIDDLEWARE_CLASSES = (
+    'django.middleware.cache.UpdateCacheMiddleware',
 
     'htmlmin.middleware.HtmlMinifyMiddleware',
     'htmlmin.middleware.MarkRequestMiddleware',
@@ -111,7 +112,10 @@ MIDDLEWARE_CLASSES = (
 
     'session_security.middleware.SessionSecurityMiddleware',
     'notifications.middleware.NotificationsMiddleware',
-    'dogslow.WatchdogMiddleware'
+    'dogslow.WatchdogMiddleware',
+    
+    'django.middleware.cache.FetchFromCacheMiddleware',
+
 )
 
 DOGSLOW_LOGGER = 'dogslow'  # can be anything, but must match `logger` below
