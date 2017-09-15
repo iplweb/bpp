@@ -91,6 +91,8 @@ TEMPLATES = [
     },
 ]
 
+CACHE_MIDDLEWARE_SECONDS = 3600 * 24
+
 MIDDLEWARE_CLASSES = (
     'django.middleware.cache.UpdateCacheMiddleware',
 
@@ -113,7 +115,7 @@ MIDDLEWARE_CLASSES = (
     'session_security.middleware.SessionSecurityMiddleware',
     'notifications.middleware.NotificationsMiddleware',
     'dogslow.WatchdogMiddleware',
-    
+
     'django.middleware.cache.FetchFromCacheMiddleware',
 
 )
