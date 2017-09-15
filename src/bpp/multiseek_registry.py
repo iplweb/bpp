@@ -123,7 +123,10 @@ class ForeignKeyDescribeMixin:
         if value is None:
             return NULL_VALUE
 
-        return self.model.objects.get(pk=int(value))
+        try:
+            return self.model.objects.get(pk=int(value))
+        except self.model.DoesNotExist:
+            return "[powiązany obiekt nie istnieje]"
 
 
 class NazwiskoIImieQueryObject(ForeignKeyDescribeMixin,
