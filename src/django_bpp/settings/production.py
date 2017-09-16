@@ -32,3 +32,13 @@ CACHES = {
 }
 
 COMPRESS_CACHE_BACKEND = 'compressor'
+
+CACHE_MIDDLEWARE_SECONDS = 3600 * 24
+
+MIDDLEWARE_CLASSES = [
+    'django.middleware.cache.UpdateCacheMiddleware',
+] + MIDDLEWARE_CLASSES
+
+MIDDLEWARE_CLASSES.append(
+   'django.middleware.cache.FetchFromCacheMiddleware',
+)
