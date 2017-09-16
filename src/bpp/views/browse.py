@@ -30,62 +30,20 @@ def conditional(**kwargs):
     from django.utils.decorators import method_decorator
     return method_decorator(condition(**kwargs))
 
-def najnowszy_wydzial(*args, **kw):
-    try:
-        return max(
-            Wydzial.objects.filter(uczelnia__slug=kw['slug'])\
-                .latest("ostatnio_zmieniony").ostatnio_zmieniony,
-            Uczelnia.objects.get(slug=kw['slug']).ostatnio_zmieniony)
-    except (Wydzial.DoesNotExist, Uczelnia.DoesNotExist):
-        return None
-
-
-def najnowsza_jednostka(*args, **kw):
-    try:
-        return Jednostka.objects.all().latest("ostatnio_zmieniony")\
-            .ostatnio_zmieniony
-    except Jednostka.DoesNotExist:
-        return None
 
 class UczelniaView(DetailView):
     model = Uczelnia
     template_name = "browse/uczelnia.html"
 
-    @conditional(last_modified_func=najnowszy_wydzial)
-    def get(self, request, *args, **kwargs):
-        return super(UczelniaView, self).get(request, *args, **kwargs)
 
 
 
 class WydzialView(DetailView):
     template_name = "browse/wydzial.html"
     model = Wydzial
-    
-    @conditional(last_modified_func=najnowsza_jednostka)
-    def get(self, request, *args, **kw):
-        return super(WydzialView, self).get(request, *args, **kw)
-        
-
-class MyDetailView(DetailView):
-
-    @cached_property
-    def _object(self):
-        return super(MyDetailView, self).get_object()
-
-    def get_object(self, queryset=None):
-        return self._object
-
-    def get_last_modified(self, request, *args, **kw):
-        return self.get_object().ostatnio_zmieniony
-
-    def get(self, request, *args, **kw):
-        @condition(last_modified_func=self.get_last_modified)
-        def get(request, *args, **kw):
-            return super(DetailView, self).get(request, *args, **kw)
-        return get(request, *args, **kw)
 
 
-class JednostkaView(MyDetailView):
+class JednostkaView(DetailView):
     template_name = "browse/jednostka.html"
     model = Jednostka
 
@@ -94,7 +52,7 @@ class JednostkaView(MyDetailView):
             typy=TYPY, **kwargs)
 
 
-class AutorView(MyDetailView):
+class AutorView(DetailView):
     template_name = "browse/autor.html"
     model = Autor
 
@@ -105,13 +63,13 @@ class AutorView(MyDetailView):
 LITERKI = 'ABCDEFGHIJKLMNOPQRSTUVWYXZ'
 
 PODWOJNE = {
-    'A': ['A', 'Ą'],
-    'C': ['C', 'Ć'],
-    'E': ['E', 'Ę'],
-    'L': ['L', 'Ł'],
-    'N': ['N', 'Ń'],
-    'O': ['O', 'Ó'],
-    'Z': ['Z', 'Ź', 'Ż']
+    'A': ['A', 'Ą', 'ą'],
+    'C': ['C', 'Ć', 'ć'],
+    'E': ['E', 'Ę', 'ę'],
+    'L': ['L', 'Ł', 'ł'],
+    'N': ['N', 'Ń', 'ń'],
+    'O': ['O', 'Ó', 'ó'],
+    'Z': ['Z', 'Ź', 'Ż', 'ź', 'ż']
 }
 
 
@@ -157,18 +115,6 @@ class Browser(ListView):
             literki=LITERKI,
             wybrana=self.kwargs.pop('literka', None),
             *args, **kw)
-
-    def get(self, request, *args, **kwargs):
-        @condition(last_modified_func=self.get_last_modified)
-        def get(request, *args, **kw):
-            return super(Browser, self).get(request, *args, **kw)
-        return get(request, *args, **kwargs)
-
-    def get_last_modified(self, request, *args, **kw):
-        try:
-            return self.get_queryset().latest("ostatnio_zmieniony").ostatnio_zmieniony
-        except self.model.DoesNotExist:
-            return None
 
 
 class AutorzyView(Browser):
@@ -271,12 +217,11 @@ class BuildSearch(RedirectView):
         return super(BuildSearch, self).post(*args, **kw)
 
 
-class PracaView(MyDetailView):
+class PracaView(DetailView):
     template_name = "browse/praca.html"
     model = Rekord
 
-    @cached_property
-    def _object(self, queryset=None):
+    def get_object(self, queryset=None):
         try:
             obj = Rekord.objects.get(
                 content_type__app_label='bpp',
