@@ -17,7 +17,9 @@ class MyMultiseekResults(MultiseekResults):
         else:
             qset = super(MyMultiseekResults, self).get_queryset()
 
-        return qset.only(
+        return qset.select_related(
+            "charakter_formalny",
+            "typ_kbn").only(
             "content_type",
             "object_id",
             "charakter_formalny",
@@ -27,12 +29,10 @@ class MyMultiseekResults(MultiseekResults):
             "adnotacje",
             "uwagi",
             "punktacja_wewnetrzna",
-            "opis_bibliograficzny_cache"
-        ).select_related(
-            "content_type",
-            "charakter_formalny",
-            "typ_kbn"
-        )
+            "opis_bibliograficzny_cache",
+            "charakter_formalny__nazwa",
+            "typ_kbn__nazwa",
+            )
 
     @transaction.atomic
     def get_context_data(self, **kwargs):
