@@ -125,8 +125,9 @@ class ForeignKeyDescribeMixin:
 
         try:
             return self.model.objects.get(pk=int(value))
+
         except self.model.DoesNotExist:
-            return "[powiązany obiekt nie istnieje]"
+            return "[powiązany obiekt został usunięty]"
 
 
 class NazwiskoIImieQueryObject(ForeignKeyDescribeMixin,
