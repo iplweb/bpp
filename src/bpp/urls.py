@@ -9,7 +9,7 @@ from bpp.views.oai import OAIView
 from bpp.views.api import RokHabilitacjiView, PunktacjaZrodlaView, UploadPunktacjaZrodlaView, OstatniaJednostkaView
 from bpp.views.browse import UczelniaView, WydzialView, JednostkaView, \
     AutorView, ZrodlaView, ZrodloView, AutorzyView, BuildSearch, PracaView, \
-    JednostkiView
+    JednostkiView, RekordToPracaView
 from bpp.views.autocomplete import WidocznaJednostkaAutocomplete, \
     AutorZUczelniAutocopmlete, GlobalNavigationAutocomplete, \
     JednostkaAutocomplete, ZrodloAutocomplete, AutorAutocomplete, \
@@ -72,6 +72,8 @@ urlpatterns = [
         name='browse_zrodlo'),
 
     url(r'^(?P<model>[\w_]+)/(?P<pk>[\d]+)/$', PracaView.as_view(), name='browse_praca'),
+    url(r'^rekord/(?P<pk>[\d]+_[\d]+)/$', RekordToPracaView.as_view(),
+        name='browse_rekord'),
 
     url(r'^build_search/$', BuildSearch.as_view(), name='browse_build_search'),
 

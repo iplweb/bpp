@@ -8,6 +8,8 @@ from django.http import Http404
 from django.utils.functional import cached_property
 from django.views.decorators.http import condition
 from django.views.generic import DetailView, ListView, RedirectView
+from django.views.generic.detail import BaseDetailView
+
 from multiseek.logic import OR, AND
 from multiseek.util import make_field
 from multiseek.views import MULTISEEK_SESSION_KEY, MULTISEEK_SESSION_KEY_REMOVED
@@ -231,3 +233,12 @@ class PracaView(DetailView):
             raise Http404
 
         return obj
+
+
+class RekordToPracaView(RedirectView, BaseDetailView):
+    model = Rekord
+
+    def get_redirect_url(self, *args, **kw):
+        obj = self.get_object()
+        return reverse("bpp:browse_praca", args=(obj.content_type.model,
+                                                 obj.object_id))
