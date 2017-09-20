@@ -4,6 +4,8 @@ from django.http.response import HttpResponseNotAllowed, HttpResponseRedirect, \
     HttpResponseBadRequest
 from django.urls.base import reverse
 
+from bpp.models.cache import Rekord
+
 lookup_map_user = {
     "bpp.autor": (
         "bpp:browse_autor",
@@ -56,6 +58,12 @@ def global_nav_redir(request, param):
     lookup_map = lookup_map_user
     if source == "admin":
         lookup_map = lookup_map_admin
+
+    if klass.model == "rekord":
+        object_id = [int(x.strip())
+                     for x in object_id.replace("(", "")\
+                         .replace(")", "")\
+                         .split(",")]
 
     object = klass.get_object_for_this_type(pk=object_id)
 

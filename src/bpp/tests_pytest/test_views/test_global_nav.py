@@ -30,6 +30,7 @@ def test_global_nav_redir_err():
     ["model", "source"],
     [
         (Autor, "user"),
+        (Rekord, "user"),
         (Jednostka, "user"),
         (Zrodlo, "user"),
 
@@ -48,7 +49,11 @@ def test_global_nav_redir(model, source):
         method = "GET"
         GET = {"source": source}
 
-    a = mommy.make(model)
+    if model == Rekord:
+        mommy.make(Wydawnictwo_Ciagle)
+        a = Rekord.objects.first()
+    else:
+        a = mommy.make(model)
 
     res = global_nav_redir(FakeRequest(), "%s-%s" % (
         ContentType.objects.get_for_model(a).pk,
