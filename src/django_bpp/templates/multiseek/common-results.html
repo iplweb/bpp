@@ -134,7 +134,7 @@
 
                 <li class="multiseek-row" id="multiseek-row-{{ element.pk }}">
                     <span class="multiseek-element">
-                        <a href="{% url "bpp:browse_rekord" element.fake_id %}"
+                        <a href="{% url "bpp:browse_praca" element.id.0 element.id.1 %}"
                            target="_top">
                             {#                        {% include "opis_bibliograficzny/main.html" with praca=element.get_original_object %}#}
                             {{ element.opis_bibliograficzny_cache|safe }}
@@ -180,7 +180,7 @@
                     <td class="multiseek-row"
                           id="multiseek-row-{{ element.pk }}">
                     <span class="multiseek-element">
-                    <a href="{% url "bpp:browse_rekord" element.fake_id %}"
+                    <a href="{% url "bpp:browse_praca" element.id.0 element.id.1 %}"
                        target="_top">
                         {#                            {% include "opis_bibliograficzny/main.html" with praca=element.get_original_object %}#}
                         {{ element.opis_bibliograficzny_cache|safe }}
@@ -249,7 +249,7 @@
                           id="multiseek-row-{{ element.pk }}">
                     <span class="multiseek-element">
 
-                    <a href="{% url "bpp:browse_rekord" element.fake_id %}"
+                    <a href="{% url "bpp:browse_praca" element.id.0 element.id.1 %}"
                        target="_top">
                         {#                            {% include "opis_bibliograficzny/main.html" with praca=element.get_original_object %}#}
                         {{ element.opis_bibliograficzny_cache|safe }}

@@ -62,7 +62,7 @@ def test_caching_enabled(admin_app, zrodlo, standard_data):
 
     found = False
     for elem in page.html.find_all("a", href=True):
-        if elem['href'].find("/bpp/wydawnictwo_ciagle/") == 0:
+        if elem['href'].find("/bpp/rekord/") == 0:
             assert 'Takie tam' in elem.text
             found = True
 

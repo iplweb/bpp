@@ -153,6 +153,13 @@ def get_queries(autor, przed_habilitacja=True, rok_habilitacji=None):
     praca_habilitacyjna_content_type = ContentType.objects.get(
         app_label="bpp", model="praca_habilitacyjna").pk
 
+    publikacje_habilitacyjne = Q(
+        id__in=[
+            (praca_habilitacyjna_content_type, pk.pk)
+            for pk in
+            Publikacja_Habilitacyjna.objects.filter().distinct().only("id")
+        ])
+
     ret = {
         '1a': base_query.filter(**dict(impact, **kw1)).order_by(*order_if),
         '1b': base_query.filter(**dict(no_impact, **kw1)).order_by(*order_kbn),
@@ -167,21 +174,18 @@ def get_queries(autor, przed_habilitacja=True, rok_habilitacji=None):
         '4c1': Rekord.objects.prace_autor_i_typ(autor, 'aut.').filter(
             charakter_formalny__in=[charakter.KSZ, charakter.H],
             jezyk=jezyk['ang.']
-        ).exclude(content_type_id=praca_habilitacyjna_content_type,
-              object_id__in=Publikacja_Habilitacyjna.objects.all().only("id")),
+        ).exclude(publikacje_habilitacyjne),
+
         '4c2': Rekord.objects.prace_autor_i_typ(autor, 'aut.').filter(
             charakter_formalny__in=[charakter.KSZ, charakter.KSP, charakter.H]
-        ).exclude(jezyk=jezyk['ang.']).exclude(
-            content_type_id=praca_habilitacyjna_content_type,
-            object_id__in=Publikacja_Habilitacyjna.objects.all().only("id")),
+        ).exclude(jezyk=jezyk['ang.']).exclude(publikacje_habilitacyjne),
 
         '5': base_query.filter(
             Q(charakter_formalny__in=pkt_5_charaktery) |
             Q(typ_kbn=typ_kbn['000'], charakter_formalny=charakter.AC) |
             Q(typ_kbn=typ_kbn.PNP) |
             # Habilitacja-składak
-            Q(content_type_id=praca_habilitacyjna_content_type,
-              object_id__in=Publikacja_Habilitacyjna.objects.all().only("id")),
+            publikacje_habilitacyjne,
         ).exclude(charakter_formalny__in=[charakter.PSZ, charakter.ZSZ]),
 
         '6a': Redakcja_Zrodla.objects.filter(
@@ -419,7 +423,7 @@ def make_report_zipfile(autor_id, rok_habilitacji):
             dct = {'autor': raport.dct['autor'],
                    'stopien': raport.dct['stopien']}
             for postfix in ['przed', 'po']:
-                dct[postfix] = open(fn(base_fn, "punktacja", postfix)).read()
+                dct[postfix] = open(fn(base_fn, "punktacja", postfix), 'rb').read()
 
             data = render_to_string(
                 "raporty/raport_komisji_centralnej/punktacja_podwojna.html",

@@ -12,6 +12,7 @@ from selenium.webdriver.common.keys import Keys
 from bpp.models import Tytul, Autor, Jednostka, Wydawnictwo_Ciagle, \
     Wydawnictwo_Zwarte, Zrodlo, Wydzial, Uczelnia, Praca_Habilitacyjna, \
     Praca_Doktorska, Typ_KBN, Jezyk, Charakter_Formalny, Patent
+from bpp.models.cache import TupleField
 from bpp.models.system import Status_Korekty
 
 

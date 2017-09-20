@@ -166,7 +166,7 @@ class TestCacheSimple(TestCacheMixin, TestCase):
     def test_get_original_object(self):
         Rekord.objects.full_refresh()
         for model in self.wszystkie_modele:
-            c = Rekord.objects.get(original=model)
+            c = Rekord.objects.get_original(model)
             self.assertEqual(c.original, model)
 
     @with_cache
@@ -177,11 +177,11 @@ class TestCacheSimple(TestCacheMixin, TestCase):
         for model in self.wszystkie_modele:
             model.tytul_oryginalny = T1
             model.save()
-            self.assertEqual(Rekord.objects.get(original=model).tytul_oryginalny, T1)
+            self.assertEqual(Rekord.objects.get_original(model).tytul_oryginalny, T1)
 
             model.tytul_oryginalny = T2
             model.save()
-            self.assertEqual(Rekord.objects.get(original=model).tytul_oryginalny, T2)
+            self.assertEqual(Rekord.objects.get_original(model).tytul_oryginalny, T2)
 
 
     def assertInstanceEquals(self, instance, values_dict):
@@ -199,7 +199,7 @@ class TestCacheSimple(TestCacheMixin, TestCase):
             elem.save()
 
             self.assertEqual(
-                Rekord.objects.get(original=elem).tytul_oryginalny_sort,
+                Rekord.objects.get_original(elem).tytul_oryginalny_sort,
                 'approach')
 
             elem.tytul_oryginalny = "le 'test'"
@@ -210,7 +210,7 @@ class TestCacheSimple(TestCacheMixin, TestCase):
             #self.assertEquals(elem.tytul_oryginalny_sort, "test")
 
             self.assertEqual(
-                Rekord.objects.get(original=elem).tytul_oryginalny_sort,
+                Rekord.objects.get_original(elem).tytul_oryginalny_sort,
                 'test')
 
 class LoadFixturesMixin:
@@ -257,7 +257,7 @@ class TestCacheZapisani(TestCase):
 
 
         Rekord.objects.full_refresh()
-        c = Rekord.objects.get(original=wyd)
+        c = Rekord.objects.get_original(wyd)
 
         # Upewnij się, że w przypadku pracy z wieloma autorami do cache
         # zapisywane jest nie nazwisko z pól 'zapisany_jako' w bazie danych,
@@ -275,7 +275,7 @@ class TestCacheZapisani(TestCase):
         dok = mommy.make(Praca_Doktorska, tytul_oryginalny="Doktorat", autor=aut)
 
         Rekord.objects.full_refresh()
-        c = Rekord.objects.get(original=dok)
+        c = Rekord.objects.get_original(dok)
 
         # Upewnij się, że w przypadku pracy z jednym autorem do cache
         # zapisywana jest prawidłowa wartość

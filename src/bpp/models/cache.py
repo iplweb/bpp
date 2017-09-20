@@ -9,6 +9,7 @@
 import traceback
 
 from django.contrib.contenttypes.models import ContentType
+from django.contrib.postgres.fields.array import ArrayField
 from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models, transaction
@@ -16,9 +17,8 @@ from django.db.models.deletion import DO_NOTHING
 from django.db.models.signals import post_save, post_delete, pre_save, \
     pre_delete
 from django.utils import six
-from filtered_contenttypes.fields import FilteredGenericForeignKey
+from django.utils.functional import cached_property
 
-from bpp.admin.helpers import MODEL_Z_LICZBA_ZNAKOW_WYDAWNICZYCH
 from bpp.models import Patent, \
     Praca_Doktorska, Praca_Habilitacyjna, \
     Typ_Odpowiedzialnosci, Wydawnictwo_Zwarte, \
@@ -26,7 +26,8 @@ from bpp.models import Patent, \
     Patent_Autor, Zrodlo
 from bpp.models.abstract import ModelPunktowanyBaza, \
     ModelZRokiem, ModelZeSzczegolami, ModelRecenzowany, \
-    ModelZeZnakamiWydawniczymi, ModelZOpenAccess, ModelZKonferencja
+    ModelZeZnakamiWydawniczymi, ModelZOpenAccess, ModelZKonferencja, \
+    ModelTypowany, ModelZCharakterem
 from bpp.models.system import Charakter_Formalny, Jezyk
 from bpp.models.util import ModelZOpisemBibliograficznym
 from bpp.util import FulltextSearchMixin
@@ -118,13 +119,15 @@ def zrodlo_post_save(instance, *args, **kw):
 
 def zrodlo_pre_delete(instance, *args, **kw):
     # TODO: moze byc memory-consuming, lepiej byloby to wrzucic do bazy danych - moze?
-    instance._PRACE = list(Rekord.objects.filter(zrodlo__id=instance.pk).values_list("content_type__id", "object_id"))
+    instance._PRACE = list(Rekord.objects.filter(zrodlo__id=instance.pk).values_list("id", flat=True))
 
 def zrodlo_post_delete(instance, *args, **kw):
-    for content_type__id, object_id in instance._PRACE:
-        ct = ContentType.objects.get_for_id(content_type__id)
-        i = ct.get_object_for_this_type(pk=object_id)
-        defer_zaktualizuj_opis(i)
+    for pk in instance._PRACE:
+        try:
+            rekord = Rekord.objects.get(pk=pk)
+        except Rekord.DoesNotExist:
+            continue
+        defer_zaktualizuj_opis(rekord.original)
 
     pass
 _CACHE_ENABLED = False
@@ -177,16 +180,20 @@ def disable():
     _CACHE_ENABLED = False
 
 
+class TupleField(ArrayField):
+    def from_db_value(self, value, expression, connection, context):
+        return tuple(value)
+
+
+class AutorzyManager(models.Manager):
+    def filter_rekord(self, rekord):
+        return self.filter(rekord_id=rekord.pk)
 
 class AutorzyBase(models.Model):
-    fake_id = models.TextField(primary_key=True)
-
-    content_type = models.ForeignKey(ContentType)
-    object_id = models.PositiveIntegerField()
-    "Powiązanie z dowolnym rekordem z Wydawnictwo_Ciagle, _Zwarte, Patent, .."
-    rekord = FilteredGenericForeignKey('content_type', 'object_id')
-
-    "Powiązanie z tabelą bpp_rekord_mat"
+    id = TupleField(
+        models.IntegerField(),
+        size=2,
+        primary_key=True)
 
     autor = models.ForeignKey('Autor', on_delete=DO_NOTHING)
     jednostka = models.ForeignKey('Jednostka', on_delete=DO_NOTHING)
@@ -194,14 +201,21 @@ class AutorzyBase(models.Model):
     typ_odpowiedzialnosci = models.ForeignKey('Typ_Odpowiedzialnosci', on_delete=DO_NOTHING)
     zapisany_jako = models.TextField()
 
+    objects = AutorzyManager()
+
     class Meta:
         abstract = True
 
 
 class Autorzy(AutorzyBase):
-    fake_rekord = models.ForeignKey(
-        "bpp.Rekord",
-        on_delete=models.CASCADE)
+    rekord = models.ForeignKey(
+        'bpp.Rekord',
+        related_name="autorzy",
+        # tak na prawdę w bazie danych jest constraint dla ON_DELETE, ale
+        # dajemy to tutaj, żeby django się nie awanturowało i nie próbowało
+        # tego ręcznie kasować
+        on_delete=DO_NOTHING
+    )
 
     class Meta:
         managed = False
@@ -209,84 +223,62 @@ class Autorzy(AutorzyBase):
 
 
 class AutorzyView(AutorzyBase):
+    rekord = models.ForeignKey(
+        'bpp.RekordView',
+        related_name="autorzy",
+        # tak na prawdę w bazie danych jest constraint dla ON_DELETE, ale
+        # dajemy to tutaj, żeby django się nie awanturowało i nie próbowało
+        # tego ręcznie kasować
+        on_delete=DO_NOTHING
+    )
+
     class Meta:
         managed = False
         db_table = 'bpp_autorzy'
 
-# class RekordCountQuery(Query):
-#
-#     def add_count_column(self):
-#         """
-#         Converts the query to do count(...) or count(distinct(pk)) in order to
-#         get its size.
-#         """
-#         xxx tu skon
-#
-#         if not self.distinct:
-#             if not self.select:
-#                 count = self.aggregates_module.Count('*', is_summary=True)
-#             else:
-#                 assert len(self.select) == 1, \
-#                     "Cannot add count col with multiple cols in 'select': %r" % self.select
-#                 count = self.aggregates_module.Count("LOL")
-#         else:
-#             opts = self.get_meta()
-#             if not self.select:
-#                 count = self.aggregates_module.Count(
-#                     Rekord.original,
-#                     is_summary=True, distinct=True)
-#             else:
-#                 # Because of SQL portability issues, multi-column, distinct
-#                 # counts need a sub-query -- see get_count() for details.
-#                 assert len(self.select) == 1, \
-#                     "Cannot add count col with multiple cols in 'select'."
-#
-#                 count = self.aggregates_module.Count(
-#                     "WTF", distinct=True)
-#             # Distinct handling is done in Count(), so don't do it at this
-#             # level.
-#             self.distinct = False
-#
-#         # Set only aggregate to be the count column.
-#         # Clear out the select cache to reflect the new unmasked aggregates.
-#         self._aggregates = {None: count}
-#         self.set_aggregate_mask(None)
-#         self.group_by = None
 
 class RekordManager(FulltextSearchMixin, models.Manager):
     fts_field = 'search_index'
 
     def prace_autora(self, autor):
-        return self.filter(original__in_raw=Autorzy.objects.filter(autor=autor)).distinct()
+        return self.filter(autorzy__autor=autor).distinct()
 
     def prace_autora_z_afiliowanych_jednostek(self, autor):
-        return self.filter(original__in_raw=Autorzy.objects.filter(
-            autor_id=autor.pk,
-            jednostka__skupia_pracownikow=True
-        )).distinct()
+        return self.filter(
+            autorzy__autor=autor,
+            autorzy__jednostka__skupia_pracownikow=True
+        ).distinct()
 
     def prace_autor_i_typ(self, autor, skrot):
         return self.filter(
-            original__in_raw=Autorzy.objects.filter(
-                autor_id=autor.pk,
-                typ_odpowiedzialnosci_id=Typ_Odpowiedzialnosci.objects.get(skrot=skrot).pk
-            )).distinct()
+            autorzy__autor=autor,
+            autorzy__typ_odpowiedzialnosci_id=Typ_Odpowiedzialnosci.objects.get(
+                skrot=skrot).pk
+        ).distinct()
 
 
     def prace_jednostki(self, jednostka):
         return self.filter(
-            original__in_raw=Autorzy.objects.filter(jednostka=jednostka)).distinct()
+            autorzy__jednostka=jednostka
+        ).distinct()
 
     def prace_wydzialu(self, wydzial):
         return self.filter(
-            original__in_raw=Autorzy.objects.filter(jednostka__wydzial=wydzial)).distinct()
+            autorzy__jednostka__wydzial=wydzial
+        ).distinct()
 
     def redaktorzy_z_jednostki(self, jednostka):
         return self.filter(
-            original__in_raw=Autorzy.objects.filter(
-                jednostka=jednostka,
-                typ_odpowiedzialnosci=Typ_Odpowiedzialnosci.objects.get(skrot='red.')
-            )).distinct()
+            autorzy__jednostka=jednostka,
+            autorzy__typ_odpowiedzialnosci_id=Typ_Odpowiedzialnosci.objects.get(
+                skrot='red.').pk
+        ).distinct()
+
+    def get_original(self, model):
+        return self.get(pk=[
+            ContentType.objects.get_for_model(model).pk,
+            model.pk
+        ])
 
     @transaction.atomic
     def full_refresh(self):
@@ -319,26 +311,22 @@ class RekordManager(FulltextSearchMixin, models.Manager):
     #                     using=self._db, hints=self._hints)
     #
 
-@six.python_2_unicode_compatible
-class Rekord(ModelPunktowanyBaza, ModelZOpisemBibliograficznym,
-             ModelZRokiem, ModelZeSzczegolami, ModelRecenzowany,
-             ModelZeZnakamiWydawniczymi, ModelZOpenAccess,
-             ModelZKonferencja,
-             models.Model):
-    # XXX TODO: gdy będą compound keys w Django, można pozbyć się fake_id
-    fake_id = models.TextField(primary_key=True)
 
-    content_type = models.ForeignKey(ContentType)
-    object_id = models.PositiveIntegerField()
-    original = FilteredGenericForeignKey('content_type', 'object_id')
+@six.python_2_unicode_compatible
+class RekordBase(ModelPunktowanyBaza, ModelZOpisemBibliograficznym,
+                 ModelZRokiem, ModelZeSzczegolami, ModelRecenzowany,
+                 ModelZeZnakamiWydawniczymi, ModelZOpenAccess,
+                 ModelTypowany, ModelZCharakterem,
+                 ModelZKonferencja,
+                 models.Model):
+    id = TupleField(
+        models.IntegerField(),
+        size=2,
+        primary_key=True)
 
     tytul_oryginalny = models.TextField()
     tytul = models.TextField()
     search_index = VectorField()
-
-    jezyk = models.ForeignKey('Jezyk', on_delete=DO_NOTHING)
-    typ_kbn = models.ForeignKey('Typ_KBN', on_delete=DO_NOTHING)
-    charakter_formalny = models.ForeignKey('Charakter_Formalny', on_delete=DO_NOTHING)
 
     zrodlo = models.ForeignKey(Zrodlo, on_delete=DO_NOTHING)
 
@@ -365,19 +353,41 @@ class Rekord(ModelPunktowanyBaza, ModelZOpisemBibliograficznym,
         "charakter": "charakter_formalny__skrot",
         "typ_kbn": "typ_kbn__skrot",
         "typ_odpowiedzialnosci": "autorzy__typ_odpowiedzialnosci__skrot",
-        "autor": "autorzy__autor__pk",
+        "autor": "autorzy__autor_id",
         "jednostka": "autorzy__jednostka__pk",
         "wydzial": "autorzy__jednostka__wydzial__pk"
     }
 
+    class Meta:
+        abstract = True
+
+    def __str__(self):
+        return self.tytul_oryginalny
+
+    @cached_property
+    def content_type(self):
+        return ContentType.objects.get(pk=self.id[0])
+
+    @cached_property
+    def object_id(self):
+        return self.id[1]
+
+    @cached_property
+    def original(self):
+        return self.content_type.get_object_for_this_type(pk=self.object_id)
+
+
+class Rekord(RekordBase):
     class Meta:
         managed = False
         ordering = ['tytul_oryginalny_sort']
         db_table = 'bpp_rekord_mat'
 
 
-    def __str__(self):
-        return self.tytul_oryginalny
+class RekordView(RekordBase):
+    class Meta:
+        managed = False
+        db_table = 'bpp_rekord'
 
 
 def with_cache(fun):

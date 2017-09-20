@@ -161,13 +161,13 @@ class BPPOAIDatabase(object):
             klass = ident[0].lower()
 
             content_type_id = ContentType.objects.get(app_label='bpp', model=klass).pk
-            query = query.filter(content_type_id=content_type_id, object_id=ident[1])
+            query = query.filter(id=[content_type_id, ident[1]])
 
         if not from_date is None:
             query = query.filter(ostatnio_zmieniony__gte=from_date)
 
         for row in query.only(
-            "ostatnio_zmieniony", "object_id", "content_type__model", "tytul_oryginalny",
+            "ostatnio_zmieniony", "tytul_oryginalny",
             "tytul", "jezyk__nazwa", "rok", "wydawnictwo",
             "slowa_kluczowe", "zrodlo", "informacje", "szczegoly",
             "opis_bibliograficzny_autorzy_cache", "charakter_formalny__nazwa_w_primo",

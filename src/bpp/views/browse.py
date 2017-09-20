@@ -1,23 +1,21 @@
 # -*- encoding: utf-8 -*-
 import json
 
+from django.contrib.contenttypes.models import ContentType
 from django.core.urlresolvers import reverse
-from django.db.models.aggregates import Max
 from django.db.models.query_utils import Q
 from django.http import Http404
-from django.utils.functional import cached_property
-from django.views.decorators.http import condition
+from django.utils import six
 from django.views.generic import DetailView, ListView, RedirectView
 from django.views.generic.detail import BaseDetailView
-
-from multiseek.logic import OR, AND
-from multiseek.util import make_field
-from multiseek.views import MULTISEEK_SESSION_KEY, MULTISEEK_SESSION_KEY_REMOVED
 
 from bpp.models import Uczelnia, Jednostka, Wydzial, Autor, Zrodlo, Rekord
 from bpp.multiseek_registry import JednostkaQueryObject, RokQueryObject, \
     NazwiskoIImieQueryObject, TypRekorduObject, ZrodloQueryObject
-from django.utils import six
+from multiseek.logic import OR, AND
+from multiseek.util import make_field
+from multiseek.views import MULTISEEK_SESSION_KEY, \
+    MULTISEEK_SESSION_KEY_REMOVED
 
 PUBLIKACJE = 'publikacje'
 STRESZCZENIA = 'streszczenia'
@@ -226,19 +224,19 @@ class PracaView(DetailView):
     def get_object(self, queryset=None):
         try:
             obj = Rekord.objects.get(
-                content_type__app_label='bpp',
-                content_type__model=self.kwargs['model'],
-                object_id=self.kwargs['pk'])
+                pk=[ContentType.objects.get(app_label="bpp",
+                                            model=self.kwargs['model']).pk,
+                    self.kwargs['pk']])
         except Rekord.DoesNotExist:
             raise Http404
 
         return obj
 
 
-class RekordToPracaView(RedirectView, BaseDetailView):
+class RekordToPracaView(RedirectView):
     model = Rekord
 
     def get_redirect_url(self, *args, **kw):
-        obj = self.get_object()
-        return reverse("bpp:browse_praca", args=(obj.content_type.model,
-                                                 obj.object_id))
+        return reverse("bpp:browse_praca",
+                       args=(self.kwargs['content_type_id'],
+                             self.kwargs['object_id']))

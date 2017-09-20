@@ -211,7 +211,7 @@ class GlobalNavigationAutocomplete(Select2QuerySetSequenceView):
 
         querysets.append(
             Rekord.objects.fulltext_filter(self.q).only(
-                "tytul_oryginalny", "content_type__model", "object_id")
+                "tytul_oryginalny")
         )
 
         this_is_an_id = False
@@ -223,7 +223,7 @@ class GlobalNavigationAutocomplete(Select2QuerySetSequenceView):
         if this_is_an_id:
             querysets.append(
                 Rekord.objects.filter(object_id=this_is_an_id).only(
-                    "tytul_oryginalny", "content_type__model", "object_id")
+                    "tytul_oryginalny")
             )
 
         ret = QuerySetSequence(*querysets)

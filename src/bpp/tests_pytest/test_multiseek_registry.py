@@ -46,4 +46,4 @@ def test_ForeignKeyDescribeMixin_value_for_description():
     class Tst(ForeignKeyDescribeMixin):
         model = Autor
     x = Tst()
-    assert x.value_for_description("123").find("nie istnieje") > 0
+    assert x.value_for_description("123").find("został usunięty") > 0

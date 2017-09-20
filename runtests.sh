@@ -94,11 +94,11 @@ if [ "$NO_DJANGO" == "0" ]; then
 fi
 
 if [ "$NO_PYTEST" == "0" ]; then
-    py.test src/eksport_pbn
-    py.test src/integration_tests
-    py.test src/integrator2/tests
-    py.test src/bpp/tests_pytest
-    py.test src/nowe_raporty/tests.py
+    py.test src/eksport_pbn \
+        src/integration_tests \
+        src/integrator2/tests \
+        src/bpp/tests_pytest \
+        src/nowe_raporty/tests.py
 
     # mpasternak 17.1.2017 TODO: włączyć później
     # egeria/tests
@@ -118,14 +118,9 @@ if [ "$NO_COVERAGE" == "0" ]; then
     
     stellar restore $GIT_BRANCH_NAME    
     py.test --cov=src/eksport_pbn src/eksport_pbn/tests
-    ls -las .coverage    
     py.test --cov=src/bpp src/integration_tests
-    ls -las .coverage    
     py.test --cov=src/integrator2 src/integrator2/tests
-    ls -las .coverage    
     py.test --cov=src/bpp src/bpp/tests_pytest
-    ls -las .coverage    
     py.test --cov=src/nowe_raporty src/nowe_raporty/tests.py
-    ls -las .coverage    
     stellar restore $GIT_BRANCH_NAME    
 fi

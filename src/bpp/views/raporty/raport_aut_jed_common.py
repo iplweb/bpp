@@ -437,19 +437,13 @@ WSZYSTKIE_TABELE = SortedDict(
 
 
 def get_extra_kw_for_jednostka(jednostka, typ_autora_skrot):
-    return {'original__in_raw': Autorzy.objects.filter(
-        jednostka_id=jednostka.pk,
-        typ_odpowiedzialnosci_id=Typ_Odpowiedzialnosci.objects.get(
-            skrot=typ_autora_skrot)
-    ).distinct()}
+    return {'autorzy__jednostka_id': jednostka.pk,
+            'autorzy__typ_odpowiedzialnosci__skrot': typ_autora_skrot}
 
 
 def get_extra_kw_for_autor(autor, typ_autora_skrot):
-    return {'original__in_raw': Autorzy.objects.filter(
-        autor_id=autor.pk,
-        typ_odpowiedzialnosci_id=Typ_Odpowiedzialnosci.objects.get(
-            skrot=typ_autora_skrot)
-    ).distinct()}
+    return {'autorzy__autor_id': autor.pk,
+            'autorzy__typ_odpowiedzialnosci__skrot': typ_autora_skrot}
 
 
 def raport_common_tabela(key, base_query, jednostka=None, autor=None):

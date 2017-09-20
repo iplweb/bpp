@@ -24,7 +24,7 @@ from multiseek.logic import StringQueryObject, QueryObject, EQUALITY_OPS_ALL, \
 
 from bpp.models import Typ_Odpowiedzialnosci, Jezyk, Autor, Jednostka, \
     Charakter_Formalny, Zrodlo
-from bpp.models.cache import Autorzy, Rekord
+from bpp.models.cache import Rekord
 
 from bpp.models.system import Typ_KBN
 
@@ -142,7 +142,7 @@ class NazwiskoIImieQueryObject(ForeignKeyDescribeMixin,
     def real_query(self, value, operation):
 
         if operation in EQUALITY_OPS_ALL:
-            ret = Q(original__in_raw=Autorzy.objects.filter(autor=value))
+            ret = Q(autorzy__autor=value)
 
         else:
             raise UnknownOperation(operation)
@@ -177,7 +177,7 @@ class JednostkaQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
 
     def real_query(self, value, operation):
         if operation in EQUALITY_OPS_ALL:
-            ret = Q(original__in_raw=Autorzy.objects.filter(jednostka=value))
+            ret = Q(autorzy__jednostka=value)
 
         else:
             raise UnknownOperation(operation)
@@ -203,8 +203,7 @@ class WydzialQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
 
     def real_query(self, value, operation):
         if operation in EQUALITY_OPS_ALL:
-            ret = Q(original__in_raw=Autorzy.objects.filter(
-                jednostka__wydzial=value))
+            ret = Q(autorzy__jednostka__wydzial=value)
 
         else:
             raise UnknownOperation(operation)
@@ -229,8 +228,7 @@ class Typ_OdpowiedzialnosciQueryObject(QueryObject):
 
     def real_query(self, value, operation):
         if operation in EQUALITY_OPS_ALL:
-            ret = Q(original__in_raw=Autorzy.objects.filter(
-                typ_odpowiedzialnosci=value))
+            ret = Q(autorzy__typ_odpowiedzialnosci=value)
         else:
             raise UnknownOperation(operation)
 

@@ -2,6 +2,15 @@
 Historia zmian
 ==============
 
+0.11.77 (2017-09-19)
+--------------------
+
+* poprawiono liczenie punktacji sumarycznej w rankingu autorów
+
+* poprawiono wyszukiwanie dla podanych jednocześnie par autor + jednostka
+
+* poprawki wydajności wyszukiwania
+
 0.11.55 (2017-08-30)
 --------------------
 

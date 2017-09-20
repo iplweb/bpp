@@ -30,7 +30,6 @@ def test_global_nav_redir_err():
     ["model", "source"],
     [
         (Autor, "user"),
-        (Rekord, "user"),
         (Jednostka, "user"),
         (Zrodlo, "user"),
 
