@@ -49,7 +49,11 @@ class MyMultiseekResults(MultiseekResults):
                 "typ_kbn__nazwa",
             )
 
-        return qset.only(*flds)
+        ret = qset.only(*flds)
+        if 'bpp_autorzy_mat' in ret.query.tables:
+            ret = ret.distinct().select_related()
+
+        return ret
 
     def get_context_data(self, **kwargs):
         t = None
