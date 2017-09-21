@@ -1,6 +1,7 @@
 # -*- encoding: utf-8 -*-
 
 import pytest
+from django.contrib.contenttypes.models import ContentType
 from django.urls.base import reverse
 
 from bpp.models.fields import OpcjaWyswietlaniaField
@@ -13,7 +14,12 @@ from bpp.models.fields import OpcjaWyswietlaniaField
      ])
 def test_uczelnia_praca_pokazuj(uczelnia, wydawnictwo_ciagle, attr, s, client):
     url = reverse("bpp:browse_praca",
-                  args=("wydawnictwo_ciagle", wydawnictwo_ciagle.pk))
+                  args=(
+                      ContentType.objects.get(
+                          app_label="bpp",
+                          model="wydawnictwo_ciagle").pk,
+                      wydawnictwo_ciagle.pk)
+                  )
 
     setattr(uczelnia, attr, True)
     uczelnia.save()
@@ -29,7 +35,11 @@ def test_uczelnia_praca_pokazuj(uczelnia, wydawnictwo_ciagle, attr, s, client):
 def test_uczelnia_praca_pokazuj_status_korekty(uczelnia, wydawnictwo_ciagle,
                                                client, admin_client):
     url = reverse("bpp:browse_praca",
-                  args=("wydawnictwo_ciagle", wydawnictwo_ciagle.pk))
+                  args=(
+                      ContentType.objects.get(
+                          app_label="bpp",
+                          model="wydawnictwo_ciagle").pk,
+                      wydawnictwo_ciagle.pk))
     s = "Status"
 
     uczelnia.pokazuj_status_korekty = OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE
