@@ -224,9 +224,9 @@ class PracaView(DetailView):
     def get_object(self, queryset=None):
         try:
             obj = Rekord.objects.get(
-                pk=[ContentType.objects.get(app_label="bpp",
-                                            model=self.kwargs['model']).pk,
-                    self.kwargs['pk']])
+                pk=[self.kwargs['model'],
+                    self.kwargs['pk']]
+            )
         except Rekord.DoesNotExist:
             raise Http404
 
