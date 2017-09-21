@@ -17,8 +17,6 @@ before_install:
   - sudo apt-get update -qq > /dev/null
   - sudo apt-get install -y -qq yarn > /dev/null
   - node -v
-  - nodejs -v
-  - npm -v
   - sudo yarn global add bower grunt-cli npm 
 
   - sudo service postgresql stop
