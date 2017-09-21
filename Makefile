@@ -180,6 +180,8 @@ travis: distclean dockerclean build-test-container
 	mv artifacts/.coverage .
 
 rebuild-test:
+	docker-compose stop test
+	docker-compose rm -f test
 	docker-compose build test
 
 # cel: production-deps
