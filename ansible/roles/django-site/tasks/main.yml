@@ -38,8 +38,6 @@
     rsync_opts:
       - "--exclude-from=../rsync.exclude"
   tags: ['sync']
-  notify: 
-    - supervisor restart
 
 - name: Virtualenv is created
   command: virtualenv --python=python{{ django_python_version }} {{ django_venv_dir }}
@@ -85,9 +83,23 @@
   lineinfile: dest="{{ django_venv_dir }}/bin/activate" line="{{ item }}"
   with_items:
     - export {{ django_envvar_prefix }}_BROKER_URL="amqp://{{ rabbitmq_user }}:{{ rabbitmq_password }}@localhost:5672/{{ rabbitmq_vhost }}"
-  notify:
-    - supervisor restart
   tags: ['django-site', 'rabbitmq']
 
 - include: cron.yml
   tags: ['cron',]
+
+- name: Check if any processess running
+  shell: supervisorctl status {{ supervisor_group_name }}:* | grep RUNNING | wc -l
+  register: supervisor_processess_running
+  tags: ['supervisor',]
+
+- name: Send HUP signal to running processess
+  shell: supervisorctl signal HUP {{ supervisor_group_name }}:*
+  when: supervisor_processess_running.stdout|int == supervisor_no_processess
+  tags: ['supervisor',]
+
+- name: Restart supervisor if different number of running procs
+  shell: ls
+  notify: supervisor restart group
+  when: supervisor_processess_running.stdout|int != supervisor_no_processess
+  tags: ['supervisor',]
