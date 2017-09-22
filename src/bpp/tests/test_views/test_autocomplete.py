@@ -11,32 +11,34 @@ class TestAutocomplete(WebTestCase):
     def test_Wydawnictwo_NadrzedneAutocomplete(self):
         x = autocomplete.Wydawnictwo_NadrzedneAutocomplete()
         x.q = "foobar"
-        self.assertTrue(x.get_queryset() != None)
+        self.assertTrue(len(x.get_queryset()) != None)
 
     def test_JednostkaAutocomplete(self):
         x = autocomplete.JednostkaAutocomplete()
         x.q = "foobar"
-        self.assertTrue(x.get_queryset() != None)
+        self.assertTrue(len(x.get_queryset()) != None)
 
     def test_KonferencjaAutocomplete(self):
         x = autocomplete.KonferencjaAutocomplete()
         x.q = "foobar"
-        self.assertTrue(x.get_queryset() != None)
+        self.assertTrue(len(x.get_queryset()) != None)
 
     def test_Seria_WydawniczaAutocomplete(self):
         x = autocomplete.Seria_WydawniczaAutocomplete()
         x.q = "foobar"
-        self.assertTrue(x.get_queryset() != None)
+        self.assertTrue(len(x.get_queryset()) != None)
 
     def test_ZrodloAutocomplete(self):
         x = autocomplete.ZrodloAutocomplete()
         x.q = "foobar"
-        self.assertTrue(x.get_queryset() != None)
+        self.assertTrue(len(x.get_queryset()) != None)
 
     def test_AutorAutocomplete(self):
         x = autocomplete.AutorAutocomplete()
         x.q = "foobar"
-        self.assertTrue(x.get_queryset() != None)
+        self.assertTrue(len(x.get_queryset()) != None)
+        x.q = ":"
+        self.assertTrue(len(x.get_queryset()) != None)
 
     def test_GlobalNavigationAutocomplete(self):
         x = autocomplete.GlobalNavigationAutocomplete()
@@ -60,9 +62,9 @@ class TestAutocomplete(WebTestCase):
         x.forwarded = dict(autor=str(a.id))
 
         x.q = "foobar"
-        self.assertTrue(x.get_queryset() != None)
+        self.assertTrue(len(x.get_queryset()) != None)
 
     def test_GlobalNavigationAutocomplete(self):
         x = autocomplete.GlobalNavigationAutocomplete()
         x.q = "foobar"
-        self.assertTrue(x.get_queryset() != None)
+        self.assertTrue(len(x.get_queryset()) != None)

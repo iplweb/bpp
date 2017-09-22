@@ -139,8 +139,9 @@ class AutorAutocompleteBase(autocomplete.Select2QuerySetView):
     def get_queryset(self):
         qs = Autor.objects.all()
         if self.q:
+            tokens = [x.strip().replace(":", "") for x in self.q.split()]
             query = SearchQueryStartsWith(
-                "&".join([x.strip() + ":*" for x in self.q.split()]),
+                "&".join([token + ":*" for token in tokens if token]),
                 config="bpp_nazwy_wlasne")
 
             qs = qs.filter(search=query)
