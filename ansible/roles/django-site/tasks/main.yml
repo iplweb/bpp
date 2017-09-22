@@ -11,6 +11,7 @@
   apt: name={{ item }}
   with_items:
     - python-virtualenv
+    - python{{django_python_version}}-dev
     - zip # jest wymagany
     - pandoc
     - memcached
