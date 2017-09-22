@@ -44,7 +44,7 @@ command={{ django_home_dir }}/vexec {{ django_venv_dir }}/bin/uwsgi
     --harakiri=20
     --max-requests=40960
     --disable-logging
-    --chmod-socker=666
+    --chmod-socket=666
     -b 65535
 
 stdout_logfile={{ supervisor_logdir }}/{{ django_project_name }}/{{ django_hostname }}/uwsgi-stdout
