@@ -3,7 +3,7 @@ import pytest
 
 from bpp.models.autor import Autor
 from multiseek.logic import CONTAINS, NOT_CONTAINS, STARTS_WITH, \
-    NOT_STARTS_WITH
+    NOT_STARTS_WITH, AutocompleteQueryObject
 
 from bpp.models.cache import Rekord
 from bpp.models.openaccess import Wersja_Tekstu_OpenAccess, \
@@ -43,7 +43,8 @@ def test_multiseek_openaccess(klass, model, openaccess_data):
 
 @pytest.mark.django_db
 def test_ForeignKeyDescribeMixin_value_for_description():
-    class Tst(ForeignKeyDescribeMixin):
+    class Tst(ForeignKeyDescribeMixin, AutocompleteQueryObject):
+        field_name = 'foo'
         model = Autor
     x = Tst()
     assert x.value_for_description("123").find("został usunięty") > 0

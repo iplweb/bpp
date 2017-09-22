@@ -3,14 +3,14 @@ import json
 import re
 
 import pytest
+from bs4 import BeautifulSoup
+from django.contrib.contenttypes.models import ContentType
 from django.core.urlresolvers import reverse
+
+from bpp.views.browse import BuildSearch
 from multiseek.logic import EQUAL_NONE, EQUAL, EQUAL_FEMALE
 from multiseek.views import MULTISEEK_SESSION_KEY
 
-from bpp.tests.testutil import UserTestCase
-from bpp.views.browse import BuildSearch
-from bs4 import BeautifulSoup
-from django.utils.translation import LANGUAGE_SESSION_KEY
 
 def test_buildSearch(settings):
     dct = {
@@ -74,27 +74,35 @@ def test_darmowy_platny_dostep_www_wyswietlanie(client, wydawnictwo_ciagle):
     wydawnictwo_ciagle.www = ""
     wydawnictwo_ciagle.public_www = ""
     wydawnictwo_ciagle.save()
-    res = client.get(reverse("bpp:browse_praca", args=('wydawnictwo_ciagle', wydawnictwo_ciagle.pk,)))
+    res = client.get(reverse("bpp:browse_praca", args=(
+    ContentType.objects.get(app_label='bpp', model='wydawnictwo_ciagle').pk,
+    wydawnictwo_ciagle.pk,)))
     val = nastepna_komorka_po_strona_www(res.content)
     assert val == 'Brak danych'
 
     wydawnictwo_ciagle.www = "platny"
     wydawnictwo_ciagle.public_www = ""
     wydawnictwo_ciagle.save()
-    res = client.get(reverse("bpp:browse_praca", args=('wydawnictwo_ciagle', wydawnictwo_ciagle.pk,)))
+    res = client.get(reverse("bpp:browse_praca", args=(
+    ContentType.objects.get(app_label='bpp', model='wydawnictwo_ciagle').pk,
+    wydawnictwo_ciagle.pk,)))
     val = nastepna_komorka_po_strona_www(res.content)
     assert val == 'platny'
 
     wydawnictwo_ciagle.www = ""
     wydawnictwo_ciagle.public_www = "darmowy"
     wydawnictwo_ciagle.save()
-    res = client.get(reverse("bpp:browse_praca", args=('wydawnictwo_ciagle', wydawnictwo_ciagle.pk,)))
+    res = client.get(reverse("bpp:browse_praca", args=(
+    ContentType.objects.get(app_label='bpp', model='wydawnictwo_ciagle').pk,
+    wydawnictwo_ciagle.pk,)))
     val = nastepna_komorka_po_strona_www(res.content)
     assert val == 'darmowy'
 
     wydawnictwo_ciagle.www = "jezeli sa oba ma byc darmowy"
     wydawnictwo_ciagle.public_www = "darmowy"
     wydawnictwo_ciagle.save()
-    res = client.get(reverse("bpp:browse_praca", args=('wydawnictwo_ciagle', wydawnictwo_ciagle.pk,)))
+    res = client.get(reverse("bpp:browse_praca", args=(
+    ContentType.objects.get(app_label='bpp', model='wydawnictwo_ciagle').pk,
+    wydawnictwo_ciagle.pk,)))
     val = nastepna_komorka_po_strona_www(res.content)
     assert val == 'darmowy'
