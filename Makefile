@@ -130,7 +130,7 @@ release: bdist_wheel
 staging: # wymaga: wheels bdist_wheel
 	ansible-playbook ansible/webserver.yml --private-key=.vagrant/machines/staging/virtualbox/private_key
 
-update-staging: # wymaga: wheels bdist_wheel
+staging-update: # "szybka" ścieżka aktualizacji
 	ansible-playbook ansible/webserver.yml -t django-site --private-key=.vagrant/machines/staging/virtualbox/private_key
 
 pristine-staging:
@@ -198,7 +198,7 @@ production-deps: rebuild-test
 production: 
 	ansible-playbook -i "/Volumes/Dane zaszyfrowane/${CUSTOMER}/ansible/hosts.cfg" ansible/webserver.yml ${ANSIBLE_OPTIONS}
 
-update-production: 
+production-update: # "szybka" ścieżka aktualizacji
 	ansible-playbook -i "/Volumes/Dane zaszyfrowane/${CUSTOMER}/ansible/hosts.cfg" ansible/webserver.yml -t django-site ${ANSIBLE_OPTIONS}
 
 # cel: live-docs
