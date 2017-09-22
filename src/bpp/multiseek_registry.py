@@ -123,11 +123,8 @@ class ForeignKeyDescribeMixin:
         if value is None:
             return NULL_VALUE
 
-        try:
-            return self.model.objects.get(pk=int(value))
-
-        except self.model.DoesNotExist:
-            return "[powiązany obiekt został usunięty]"
+        return self.value_from_web(value) or \
+               "[powiązany obiekt został usunięty]"
 
 
 class NazwiskoIImieQueryObject(ForeignKeyDescribeMixin,
