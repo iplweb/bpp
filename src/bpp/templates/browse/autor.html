@@ -17,7 +17,7 @@
     {% if autor.praca_doktorska %}
         <p>
             Praca doktorska:
-            <a href="{% url "bpp:browse_praca" "praca_doktorska" autor.praca_doktorska.pk %}">
+            <a href="{% url "bpp:browse_praca_old" "praca_doktorska" autor.praca_doktorska.pk %}">
                 {{ autor.praca_doktorska|safe }}
             </a>
         </p>
@@ -26,7 +26,7 @@
     {% if autor.praca_habilitacyjna %}
         <p>
             Praca habilitacyjna:
-            <a href="{% url "bpp:browse_praca" "praca_habilitacyjna" autor.praca_habilitacyjna.pk %}">
+            <a href="{% url "bpp:browse_praca_old" "praca_habilitacyjna" autor.praca_habilitacyjna.pk %}">
                 {{ autor.praca_habilitacyjna|safe }}
             </a>
         </p>

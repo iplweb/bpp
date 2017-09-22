@@ -7,7 +7,6 @@ from django.db.models.query_utils import Q
 from django.http import Http404
 from django.utils import six
 from django.views.generic import DetailView, ListView, RedirectView
-from django.views.generic.detail import BaseDetailView
 
 from bpp.models import Uczelnia, Jednostka, Wydzial, Autor, Zrodlo, Rekord
 from bpp.multiseek_registry import JednostkaQueryObject, RokQueryObject, \
@@ -231,6 +230,20 @@ class PracaView(DetailView):
             raise Http404
 
         return obj
+
+
+class OldPracaView(RedirectView):
+    permanent = True
+
+    def get_redirect_url(self, *args, **kwargs):
+        return reverse(
+            "bpp:browse_praca",
+            args=(
+                ContentType.objects.get(
+                    app_label="bpp",
+                    model=self.kwargs['model']
+                ).pk,
+                self.kwargs['pk']))
 
 
 class RekordToPracaView(RedirectView):
