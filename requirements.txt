@@ -33,7 +33,7 @@ crispy-forms-foundation==0.3.5
 
 django-compressor==2.1.1
 
-gunicorn==19.7.1
+uwsgi==2.0.15
 
 zope.interface==4.1.1
 zope.component==4.1.0

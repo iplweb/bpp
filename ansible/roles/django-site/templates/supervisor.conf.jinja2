@@ -27,21 +27,28 @@ stdout_logfile={{ supervisor_logdir }}/{{ django_project_name }}/{{ django_hostn
 stderr_logfile={{ supervisor_logdir }}/{{ django_project_name }}/{{ django_hostname }}/celery-beat-stderr
 directory={{ django_home_dir }}
 
-[program:gunicorn-{{ django_hostname }}]
-command={{ django_home_dir }}/vexec {{ django_venv_dir }}/bin/gunicorn
-    --pid {{ django_home_dir }}/gunicorn.pid
-    -b 127.0.0.1:{{ django_gunicorn_port }}
-    --workers={{ ansible_processor_cores }}
-    --timeout=1800 django_bpp.wsgi
-    --max-requests=40960
-directory={{ django_home_dir }}
+[program:uwsgi-{{ django_hostname }}]
 user={{ django_user }}
 autostart=true
 autorestart=true
-numprocs=1
-stdout_logfile={{ supervisor_logdir }}/{{ django_project_name }}/{{ django_hostname }}/gunicorn-stdout
-stderr_logfile={{ supervisor_logdir }}/{{ django_project_name }}/{{ django_hostname }}/gunicorn-stderr
 environment=USER="{{ django_user }}"
+directory={{ django_home_dir }}
+command={{ django_home_dir }}/vexec {{ django_venv_dir }}/bin/uwsgi
+    --chdir={{ django_home_dir }}
+    --module=django_bpp.wsgi
+    --master
+    --pidfile={{ django_home_dir }}/uwsgi.pid
+    --socket={{ django_home_dir }}/uwsgi.sock
+    --processes={{ ansible_processor_cores }}
+    --uid={{ django_user }} --gid={{ django_user }}
+    --harakiri=20
+    --max-requests=40960
+    --disable-logging
+    --chmod-socker=666
+    -b 65535
 
-[group:{{ django_project_name }}_{{ django_hostname }}]
-programs=celery-worker-{{ django_hostname }},celery-beat-{{ django_hostname }},gunicorn-{{ django_hostname }}
+stdout_logfile={{ supervisor_logdir }}/{{ django_project_name }}/{{ django_hostname }}/uwsgi-stdout
+stderr_logfile={{ supervisor_logdir }}/{{ django_project_name }}/{{ django_hostname }}/uwsgi-stderr
+
+[group:{{ supervisor_group_name }}]
+programs=celery-worker-{{ django_hostname }},celery-beat-{{ django_hostname }},uwsgi-{{ django_hostname }}

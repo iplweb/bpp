@@ -1,5 +1,6 @@
 upstream app_server {
-    server 127.0.0.1:{{ django_gunicorn_port }} fail_timeout=0;
+    server unix://{{ django_home_dir }}/uwsgi.sock;
+    # server 127.0.0.1:{{ django_gunicorn_port }} fail_timeout=0;
 }
 
 server {
