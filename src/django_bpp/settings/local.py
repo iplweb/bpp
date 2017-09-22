@@ -49,3 +49,5 @@ MIDDLEWARE_CLASSES = MIDDLEWARE_CLASSES + [
 ]
 
 INSTALLED_APPS.append('debug_toolbar')
+
+DATABASES['default']['CONN_MAX_AGE'] = 0

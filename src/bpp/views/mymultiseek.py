@@ -31,11 +31,11 @@ class MyMultiseekResults(MultiseekResults):
         report_type = get_registry(self.registry).get_report_type(
             self.get_multiseek_data(), only_public=public)
 
+
         if report_type in EXTRA_TYPES:
-            qset = qset.select_related(
+            qset = qset.prefetch_related(
                 "charakter_formalny",
-                "typ_kbn"
-            )
+                "typ_kbn")
 
             flds = flds + (
                 "charakter_formalny",
@@ -50,8 +50,9 @@ class MyMultiseekResults(MultiseekResults):
             )
 
         ret = qset.only(*flds)
+
         if 'bpp_autorzy_mat' in ret.query.tables:
-            ret = ret.distinct().select_related()
+            ret = ret.distinct()
 
         return ret
 
