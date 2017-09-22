@@ -271,12 +271,6 @@ class PunktacjaWewnetrznaQueryObject(DecimalQueryObject):
     field_name = "punktacja_wewnetrzna"
 
 
-class KCPunktacjaWewnetrznaQueryObject(PunktacjaWewnetrznaQueryObject):
-    field_name = 'kc_punktacja_wewnetrzna'
-    label = "KC: Punktacja wewnętrzna"
-    public = False
-
-
 class PunktyKBNQueryObject(DecimalQueryObject):
     label = "Punkty PK"
     field_name = "punkty_kbn"
@@ -397,7 +391,6 @@ class BazaSCOPUS(BooleanQueryObject):
     label = "Konferencja w bazie Scopus"
 
 _pw = PunktacjaWewnetrznaQueryObject()
-_kc_pw = KCPunktacjaWewnetrznaQueryObject
 
 multiseek_fields = [
     TytulPracyQueryObject(),
@@ -420,7 +413,6 @@ multiseek_fields = [
 
     KCImpactQueryObject(),
     KCPunktyKBNQueryObject(),
-    _kc_pw,
 
     InformacjeQueryObject(),
     SzczegolyQueryObject(),
@@ -455,7 +447,6 @@ multiseek_report_types = [
 from django.conf import settings
 if not settings.UZYWAJ_PUNKTACJI_WEWNETRZNEJ:
     multiseek_fields.remove(_pw)
-    multiseek_fields.remove(_kc_pw)
     del multiseek_report_types[2]
 
 registry = create_registry(
