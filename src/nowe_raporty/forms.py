@@ -1,7 +1,10 @@
 # -*- encoding: utf-8 -*-
+from datetime import datetime
+
 from crispy_forms.helper import FormHelper
 from crispy_forms_foundation.layout import Layout, Fieldset, ButtonHolder, \
     Submit
+from crispy_forms_foundation.layout import Row, Column
 from dal import autocomplete
 from django import forms
 from django.core.exceptions import ValidationError
@@ -11,8 +14,7 @@ from django.db.models.aggregates import Min, Max
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
 from bpp.models.struktura import Wydzial, Jednostka
-
-from crispy_forms_foundation.layout import Row, Column
+from django.utils import timezone
 
 def wez_lata():
     lata = Rekord.objects.all() \
@@ -31,9 +33,15 @@ OUTPUT_FORMATS = [
 ]
 
 
+def last_year():
+    now = timezone.now().date()
+    if now.month >= 6:
+        return now.year
+    return now.year - 1
+
 class BaseRaportForm(forms.Form):
-    od_roku = forms.IntegerField()
-    do_roku = forms.IntegerField()
+    od_roku = forms.IntegerField(initial=last_year)
+    do_roku = forms.IntegerField(initial=last_year)
 
     _export = forms.ChoiceField(
         label="Format wyjściowy",
@@ -77,7 +85,6 @@ class BaseRaportForm(forms.Form):
                 field.field.validators.append(MinValueValidator(lata['rok__min']))
             if lata['rok__max'] is not None:
                 field.field.validators.append(MaxValueValidator(lata['rok__max']))
-
 
 class WydzialRaportForm(BaseRaportForm):
     obiekt = forms.ModelChoiceField(
