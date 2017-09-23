@@ -2,6 +2,15 @@
 Historia zmian
 ==============
 
+0.11.90 (2017-09-23)
+--------------------
+
+* opcjonalne rozbicie na jednostki i wydziały w rankingu autorów
+
+* możliwość ukrycia pola "Praca recenzowana"
+
+* poprawki wyświetlania podstron autora i jednostki
+
 0.11.77 (2017-09-19)
 --------------------
 
