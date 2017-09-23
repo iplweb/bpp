@@ -47,30 +47,16 @@ server {
     if ($ssl_protocol = "") {
       rewrite (.*) https://$server_name:{{ django_nginx_https_port }}$request_uri? permanent;
     }
-    proxy_pass_header Server;
-    proxy_set_header Host $http_host;
-    proxy_redirect off;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Scheme $scheme;
-    proxy_set_header X-Forwarded-Protocol $scheme;
-    proxy_connect_timeout 1800;
-    proxy_read_timeout 1800;
-    proxy_pass http://localhost:{{ django_gunicorn_port }}/admin;
+    include       uwsgi_params;
+    uwsgi_pass    app_server;
   }
 
   location /accounts {
     if ($ssl_protocol = "") {
       rewrite (.*) https://$server_name:{{ django_nginx_https_port }}$request_uri? permanent;
     }
-    proxy_pass_header Server;
-    proxy_set_header Host $http_host;
-    proxy_redirect off;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Scheme $scheme;
-    proxy_set_header X-Forwarded-Protocol $scheme;
-    proxy_connect_timeout 1800;
-    proxy_read_timeout 1800;
-    proxy_pass http://localhost:{{ django_gunicorn_port }}/accounts;
+    include       uwsgi_params;
+    uwsgi_pass    app_server;
   }
 
   location /media {
