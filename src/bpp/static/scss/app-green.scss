@@ -3,6 +3,8 @@
 @import "common";
 @import "checkbox";
 
+$info-color: #DEF3B6;
+
 input[type=checkbox]:checked + label {
   background-image: url(/static/bpp/images/lite-green-check.png);
   background-position: 0 -15px;
