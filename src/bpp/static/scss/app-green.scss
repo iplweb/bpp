@@ -3,9 +3,11 @@
 @import "common";
 @import "checkbox";
 
-input[type=checkbox] + label {
+input[type=checkbox]:checked + label {
   background-image: url(/static/bpp/images/lite-green-check.png);
+  background-position: 0 -15px;
 }
+
 
 .ui-state-focus {
   background: $primary-color !important;

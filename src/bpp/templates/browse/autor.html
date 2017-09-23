@@ -53,8 +53,7 @@
             </legend>
             <div clas="row">
                 {% for jednostka in autor.jednostki.all %}
-                    <div class="large-6 medium-6 small-12">
-
+                    <div class="large-6 small-12">
                             <input type="checkbox"
                                    name="jednostka"
                                    value="{{ jednostka.pk }}"
@@ -64,7 +63,6 @@
                             {{ jednostka.nazwa }}
                             <a href="{% url "bpp:browse_jednostka" jednostka.slug %}">►</a>
                         </label>
-                    <br/>
                     </div>
                 {% endfor %}
             </div>

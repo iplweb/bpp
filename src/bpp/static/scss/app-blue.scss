@@ -3,7 +3,8 @@
 @import "common";
 @import "checkbox";
 
-input[type=checkbox] + label {
+input[type=checkbox]:checked + label {
   background-image: url(/static/bpp/images/lite-blue-check.png);
+  background-position: 0 -15px;
 }
 

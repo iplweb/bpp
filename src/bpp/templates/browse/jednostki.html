@@ -20,10 +20,10 @@
     {% url "bpp:browse_jednostki" as browse_jednostki %}
 
     <div class="row hide-on-print">
-        <div class="large-4 medium-4 small-12 columns">
+        <div class="large-6 small-12 columns">
             {% include "browse/search_form.html" with url=browse_jednostki tekst="Wpisz część nazwy i wciśnij ENTER..." name="search" flt=flt %}
         </div>
-        <div class="large-8 medium-8 small-12 columns">
+        <div class="large-8 small-12 columns">
             {% include "pagination.html" %}
         </div>
     </div>
