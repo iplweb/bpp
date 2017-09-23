@@ -8,14 +8,19 @@ from model_mommy import mommy
 
 from bpp.models import Typ_KBN, Charakter_Formalny, Zasieg_Zrodla, Zrodlo, \
     Redakcja_Zrodla, Tytul, Rekord
+from bpp.models.autor import Autor
 from bpp.models.praca_habilitacyjna import Praca_Habilitacyjna, \
     Publikacja_Habilitacyjna
 from bpp.models.system import Jezyk
-from bpp.reports.komisja_centralna import RaportKomisjiCentralnej, get_queries, RokHabilitacjiNiePodany, make_report_zipfile
+from bpp.reports.komisja_centralna import RaportKomisjiCentralnej, get_queries, \
+    RokHabilitacjiNiePodany, make_report_zipfile, Raport_Dla_Komisji_Centralnej
 from bpp.tests.util import any_jednostka, any_autor, CURRENT_YEAR, any_ciagle, any_patent, any_zwarte, \
     any_habilitacja
 from bpp.util import Getter
 import tempfile
+
+from celeryui.models import Report
+
 
 class TestRKCMixin:
     # fixtures = ['charakter_formalny.json',
@@ -409,3 +414,13 @@ class TestRaportKomisjiCentralnejZipfile(TestRKCMixin, TestCase):
             self.assertEqual(
                 len(zip.infolist()), 3)
 
+
+    def test_raport_dla_komisji_centralnej(self):
+        autor = mommy.make(Autor)
+        r = mommy.make(Report, arguments={"rok_habilitacji": "2017",
+                                          "autor": autor.pk})
+        x = Raport_Dla_Komisji_Centralnej(r)
+        x.perform()
+
+        y = r.file.open()
+        self.assert_(True)

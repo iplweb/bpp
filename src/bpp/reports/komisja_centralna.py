@@ -468,8 +468,6 @@ class Raport_Dla_Komisji_Centralnej(ReportAdapter):
     title = property(_get_title)
 
     def perform(self):
-        report = self.original
-
         try:
             rok_habilitacji = int(self.original.arguments['rok_habilitacji'])
         except (TypeError, ValueError):
@@ -478,8 +476,11 @@ class Raport_Dla_Komisji_Centralnej(ReportAdapter):
         zipname = make_report_zipfile(
             autor_id=self.original.arguments['autor'],
             rok_habilitacji=rok_habilitacji)
+        from django.core.files import File as FileWrapper
+
         self.original.file.save(
-            zipname, File(open(zipname, 'rb'), zipname))
+            os.path.basename(zipname),
+            File(file=FileWrapper(open(zipname, 'rb'), zipname)))
         os.unlink(zipname)
 
 
