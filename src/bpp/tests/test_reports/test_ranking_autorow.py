@@ -91,3 +91,21 @@ class TestRankingAutorow(TestCase):
         self.assertIn("44,444", response.rendered_content)
         # wydział 1 - praca nie wejdzie do rankingu
         self.assertNotIn("33,333", response.rendered_content)
+
+    def test_bez_rozbicia(self):
+        "Zsumuje punktacje ze wszystkich prac bez rozbicia na jednostki"
+        response = self.client.get(
+            reverse("bpp:ranking-autorow", args=(str(CURRENT_YEAR), str(CURRENT_YEAR), )) + "?rozbij_na_jednostki=False",
+            follow=True
+        )
+        # suma punktacji
+        self.assertIn("77,777", response.rendered_content)
+
+    def test_eksport_csv(self):
+        "XLS"
+        response = self.client.get(
+            reverse("bpp:ranking-autorow", args=(str(CURRENT_YEAR), str(CURRENT_YEAR), )) + "?_export=csv",
+            follow=True
+        )
+        # suma punktacji
+        self.assertIn(b",44.444,", response.content)

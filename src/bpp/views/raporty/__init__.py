@@ -198,7 +198,16 @@ class RankingAutorowFormularz(RaportyFormMixin, FormView):
         if e:
             if url.find("?") < 0:
                 url += "?"
-            url += f"&_export={ e }"
+            else:
+                url += "&"
+            url += f"_export={ e }"
+
+        r = form.cleaned_data['rozbij_na_jednostki']
+        if url.find("?") < 0:
+            url += "?"
+        else:
+            url += "&"
+        url += f"rozbij_na_jednostki={ r }"
 
         return HttpResponseRedirect(url)
 

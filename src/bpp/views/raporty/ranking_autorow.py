@@ -4,6 +4,7 @@ import itertools
 from django.core.urlresolvers import reverse
 from django.db.models.aggregates import Sum
 from django.template.defaultfilters import safe
+from django.utils.functional import cached_property
 from django_tables2 import Column
 from django_tables2.export.views import ExportMixin
 from django_tables2.tables import Table
@@ -20,8 +21,6 @@ class RankingAutorowTable(Table):
         order_by = ('-impact_factor_sum', 'autor__nazwisko')
         fields = ('lp',
                   'autor',
-                  'jednostka',
-                  'wydzial',
                   'impact_factor_sum',
                   'punkty_kbn_sum')
 
@@ -33,8 +32,6 @@ class RankingAutorowTable(Table):
     autor = Column(order_by=("autor__nazwisko", "autor__imiona"))
     punkty_kbn_sum = Column("Punkty PK", "punkty_kbn_sum")
     impact_factor_sum = Column("Impact Factor", "impact_factor_sum")
-    jednostka = Column(accessor="jednostka.nazwa")
-    wydzial = Column(accessor="jednostka.wydzial.nazwa")
 
     def render_lp(self):
         self.lp_counter = getattr(self, "lp_counter",
@@ -50,9 +47,30 @@ class RankingAutorowTable(Table):
         return str(record.autor)
 
 
+class RankingAutorowJednostkaWydzialTable(RankingAutorowTable):
+    class Meta:
+        fields = ('lp',
+                  'autor',
+                  'jednostka',
+                  'wydzial',
+                  'impact_factor_sum',
+                  'punkty_kbn_sum')
+
+    jednostka = Column(accessor="jednostka.nazwa")
+    wydzial = Column(accessor="jednostka.wydzial.nazwa")
+
+
 class RankingAutorow(ExportMixin, SingleTableView):
     template_name = "raporty/ranking-autorow.html"
-    table_class = RankingAutorowTable
+
+    def get_table_class(self):
+        if self.rozbij_na_wydzialy:
+            return RankingAutorowJednostkaWydzialTable
+        return RankingAutorowTable
+
+    @cached_property
+    def rozbij_na_wydzialy(self):
+        return self.request.GET.get('rozbij_na_jednostki', "True") == 'True'
 
     def get_queryset(self):
         qset = Sumy.objects.all()
@@ -63,9 +81,15 @@ class RankingAutorow(ExportMixin, SingleTableView):
         wydzialy = self.get_wydzialy()
         if wydzialy:
             qset = qset.filter(jednostka__wydzial__in=wydzialy)
-        qset = qset.prefetch_related("jednostka__wydzial").select_related(
-            "autor", "jednostka")
-        qset = qset.group_by("autor", "jednostka")
+
+        if self.rozbij_na_wydzialy:
+            qset = qset.prefetch_related("jednostka__wydzial").select_related(
+                "autor", "jednostka")
+            qset = qset.group_by("autor", "jednostka")
+        else:
+            qset = qset.select_related("autor")
+            qset = qset.group_by("autor")
+
         qset = qset.annotate(
             impact_factor_sum=Sum('impact_factor'),
             punkty_kbn_sum=Sum('punkty_kbn'),
@@ -100,8 +124,10 @@ class RankingAutorow(ExportMixin, SingleTableView):
         if self.kwargs['od_roku'] == self.kwargs['do_roku']:
             context['rok'] = self.kwargs['od_roku']
             jeden_rok = True
+
         wydzialy = self.get_wydzialy()
         context['wydzialy'] = wydzialy
+
         if jeden_rok:
             context['table_title'] = "Ranking autorów za rok %s" % context[
                 'rok']
@@ -109,6 +135,6 @@ class RankingAutorow(ExportMixin, SingleTableView):
             context['table_title'] = "Ranking autorów za lata %s - %s" % (
             context['od_roku'], context['do_roku'])
         context['tab_subtitle'] = ''
-        # if wydzialy.count() != self.get_dostepne_wydzialy.count():
-        context['table_subtitle'] = ", ".join([x.nazwa for x in wydzialy])
+        if len(wydzialy) != len(self.get_dostepne_wydzialy()):
+            context['table_subtitle'] = ", ".join([x.nazwa for x in wydzialy])
         return context

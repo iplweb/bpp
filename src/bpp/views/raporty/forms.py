@@ -181,6 +181,11 @@ class RankingAutorowForm(forms.Form):
                   "CMD na Maku) gdy klikasz, aby wybrać więcej, niż jeden "
                   "wydział lub odznaczyć już zaznaczony wydział. ")
 
+    rozbij_na_jednostki = forms.BooleanField(
+        label="Rozbij punktację na jednostki i wydziały",
+        required=False,
+        initial=True)
+
     od_roku = forms.IntegerField()
     do_roku = forms.IntegerField()
 
@@ -203,6 +208,10 @@ class RankingAutorowForm(forms.Form):
                 ),
                 Row(
                     F4Column('_export', css_class='large-12 small-12')
+                ),
+                Row(
+                    F4Column('rozbij_na_jednostki',
+                             css_class='large-12 small-12')
                 ),
                 Row(
                     F4Column('wydzialy', css_class='large-12 small-12')
