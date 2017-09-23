@@ -71,6 +71,9 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         'Pokazuj raport dla Komisji Centralnej'
     )
 
+    pokazuj_praca_recenzowana = OpcjaWyswietlaniaField(
+        'Pokazuj opcję "Praca recenzowana"'
+    )
 
     class Meta:
         verbose_name = "uczelnia"

@@ -161,7 +161,7 @@
                 </td>
             </tr>
             {% endif %}
-            
+            {% if uczelnia.pokazuj_praca_recenzowana == "always" or uczelnia.pokazuj_praca_recenzowana == "logged-in" and not request.user.is_anonymous %}
             <tr>
                 <th>
                     Praca recenzowana?
@@ -170,7 +170,7 @@
                     {{ praca.recenzowana|yesno }}
                 </td>
             </tr>
-
+            {% endif %}
             <tr>
                 <th>
                     Rekord utworzony
