@@ -13,7 +13,8 @@ NULL_VALUE = "(brak wpisanej wartości)"
 from django.db.models import Q
 from django.db.models.expressions import F
 from multiseek import logic
-from multiseek.logic import DecimalQueryObject, BooleanQueryObject
+from multiseek.logic import DecimalQueryObject, BooleanQueryObject, EQUAL_NONE, \
+    EQUAL_FEMALE
 from multiseek.logic import StringQueryObject, QueryObject, EQUALITY_OPS_ALL, \
     UnknownOperation, DIFFERENT_ALL, AUTOCOMPLETE, EQUALITY_OPS_NONE, \
     EQUALITY_OPS_FEMALE, VALUE_LIST, EQUALITY_OPS_MALE, create_registry, \
@@ -131,7 +132,7 @@ class NazwiskoIImieQueryObject(ForeignKeyDescribeMixin,
                                AutocompleteQueryObject):
     label = 'Nazwisko i imię'
     type = AUTOCOMPLETE
-    ops = EQUALITY_OPS_NONE
+    ops = [EQUAL_NONE,]
     model = Autor
     search_fields = ['nazwisko', 'imiona']
     field_name = 'autor'
@@ -146,6 +147,7 @@ class NazwiskoIImieQueryObject(ForeignKeyDescribeMixin,
 
         if operation in DIFFERENT_ALL:
             return ~ret
+
         return ret
 
     def get_autocomplete_query(self, data):
@@ -167,7 +169,7 @@ class NazwaKonferencji(ForeignKeyDescribeMixin, AutocompleteQueryObject):
 class JednostkaQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
     label = 'Jednostka'
     type = AUTOCOMPLETE
-    ops = EQUALITY_OPS_FEMALE
+    ops = [EQUAL_FEMALE,]
     model = Jednostka
     search_fields = ['nazwa']
     field_name = 'jednostka'
@@ -193,7 +195,7 @@ class JednostkaQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
 class WydzialQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
     label = 'Wydział'
     type = AUTOCOMPLETE
-    ops = EQUALITY_OPS_MALE
+    ops = [EQUAL,]
     model = Wydzial
     search_fields = ['nazwa']
     field_name = 'wydzial'
@@ -217,7 +219,7 @@ class Typ_OdpowiedzialnosciQueryObject(QueryObject):
     label = 'Typ odpowiedzialności'
     type = VALUE_LIST
     values = Typ_Odpowiedzialnosci.objects.all()
-    ops = EQUALITY_OPS_MALE
+    ops = [EQUAL,]
     field_name = 'typ_odpowiedzialnosci'
 
     def value_from_web(self, value):
