@@ -59,7 +59,7 @@
                 bppNotifications.init(
                         '{{ NOTIFICATIONS_PUB_PREFIX }}-{{ request.user.username }}',
                         '{{ NOTIFICATIONS_HOST }}',
-                        window.location.port,
+                        {{ NOTIFICATIONS_PORT|default:"window.location.port" }},
                         null,
                         "{{ notifications_uuid }}",
                         "{% static "bpp/wav/alert.wav" %}"
