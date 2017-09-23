@@ -38,7 +38,7 @@ uwsgi==2.0.15
 zope.interface==4.1.1
 zope.component==4.1.0
 
-raven==5.1.1
+raven==6.2.1
 
 django-secure-input==0.9.3
 bleach==1.4.3
