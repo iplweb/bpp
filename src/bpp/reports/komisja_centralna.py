@@ -168,6 +168,11 @@ def get_queries(autor, przed_habilitacja=True, rok_habilitacji=None):
             Publikacja_Habilitacyjna.objects.filter().distinct().only("id")
         ])
 
+    try:
+        jezyk_angielski = jezyk['ang.']
+    except Jezyk.DoesNotExist:
+        jezyk_angielski = jezyk['ENG']
+
     ret = {
         '1a': base_query.filter(**dict(impact, **kw1)).order_by(*order_if),
         '1b': base_query.filter(**dict(no_impact, **kw1)).order_by(*order_kbn),
@@ -181,12 +186,12 @@ def get_queries(autor, przed_habilitacja=True, rok_habilitacji=None):
 
         '4c1': Rekord.objects.prace_autor_i_typ(autor, 'aut.').filter(
             charakter_formalny__in=[charakter.KSZ, charakter.H],
-            jezyk=jezyk['ang.']
+            jezyk=jezyk_angielski
         ).exclude(publikacje_habilitacyjne),
 
         '4c2': Rekord.objects.prace_autor_i_typ(autor, 'aut.').filter(
             charakter_formalny__in=[charakter.KSZ, charakter.KSP, charakter.H]
-        ).exclude(jezyk=jezyk['ang.']).exclude(publikacje_habilitacyjne),
+        ).exclude(jezyk=jezyk_angielski).exclude(publikacje_habilitacyjne),
 
         '5': base_query.filter(
             Q(charakter_formalny__in=pkt_5_charaktery) |
@@ -206,10 +211,10 @@ def get_queries(autor, przed_habilitacja=True, rok_habilitacji=None):
             'zrodlo_id').distinct(),
 
         '7a': Rekord.objects.prace_autor_i_typ(autor, 'red.').filter(
-            jezyk=jezyk['ang.'], charakter_formalny=charakter.KSZ),
+            jezyk=jezyk_angielski, charakter_formalny=charakter.KSZ),
         '7b': Rekord.objects.prace_autor_i_typ(autor, 'red.').filter(
             charakter_formalny__in=[charakter.KSP, charakter.KSZ]).exclude(
-            jezyk=jezyk['ang.']),
+            jezyk=jezyk_angielski),
 
         '8a': base_query.filter(charakter_formalny=charakter.ZSZ),
         '8b': base_query.filter(
