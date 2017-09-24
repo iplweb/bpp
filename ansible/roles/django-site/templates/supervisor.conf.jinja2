@@ -46,9 +46,9 @@ command={{ django_home_dir }}/vexec {{ django_venv_dir }}/bin/uwsgi
     --disable-logging
     --chmod-socket=666
     -b 65535
-
 stdout_logfile={{ supervisor_logdir }}/{{ django_project_name }}/{{ django_hostname }}/uwsgi-stdout
 stderr_logfile={{ supervisor_logdir }}/{{ django_project_name }}/{{ django_hostname }}/uwsgi-stderr
+stopsignal=HUP
 
 [group:{{ supervisor_group_name }}]
 programs=celery-worker-{{ django_hostname }},celery-beat-{{ django_hostname }},uwsgi-{{ django_hostname }}
