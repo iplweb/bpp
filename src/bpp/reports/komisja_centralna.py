@@ -1,4 +1,5 @@
 # -*- encoding: utf-8 -*-
+import warnings
 from decimal import Decimal
 import os
 import shutil
@@ -145,11 +146,18 @@ def get_queries(autor, przed_habilitacja=True, rok_habilitacji=None):
     impact = dict(impact_factor__gt=0)
     no_impact = dict(impact_factor=0)
 
-    pkt_5_charaktery = [
-        charakter.BR, charakter.frg, charakter.IN, charakter.KOM,
-        charakter.PAT, charakter.PZ, charakter.SKR, charakter['TŁ'],
-        charakter.DE, charakter.PRZ, charakter.ZRZ, charakter.R
-    ]
+    pkt_5_charaktery = []
+    for skrot in ['BR', 'FRG', 'IN', 'KOM', 'PAT', 'PZ', 'SKR', 'TŁ', 'DE', 'PRZ', 'ZRZ', 'R']:
+        try:
+            pkt_5_charaktery.append(
+                Charakter_Formalny.objects.get(skrot__upper=skrot)
+            )
+        except Charakter_Formalny.DoesNotExist:
+            warnings.warn("Brak charakteru formalnego %s dla punktu 5 raportu dla komisji centralnej" % skrot)
+        # charakter.BR, charakter.frg, charakter.IN, charakter.KOM,
+        # charakter.PAT, charakter.PZ, charakter.SKR, charakter['TŁ'],
+        # charakter.DE, charakter.PRZ, charakter.ZRZ, charakter.R
+
     praca_habilitacyjna_content_type = ContentType.objects.get(
         app_label="bpp", model="praca_habilitacyjna").pk
 
