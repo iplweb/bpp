@@ -24,9 +24,29 @@ server {
     expires 30d;
   }
 
-  error_page 404 {{ django_home_dir }}/env/lib/python{{ django_python_version }}/site-packages/bpp/templates/404.html;
-  error_page 403 {{ django_home_dir }}/env/lib/python{{ django_python_version }}/site-packages/bpp/templates/403.html;
-  error_page 500 502 503 504 {{ django_home_dir }}/env/lib/python{{ django_python_version }}/site-packages/bpp/templates/50x.html;
+  error_page 404 /404.html;
+
+  location /404.html {
+    root {{ django_home_dir }}/env/lib/python{{ django_python_version }}/site-packages/bpp/templates/;
+    internal;
+  }
+
+  error_page 403 /403.html;
+
+  location /403.html {
+    root {{ django_home_dir }}/env/lib/python{{ django_python_version }}/site-packages/bpp/templates/;
+    internal;
+  }
+
+  error_page 500 /50x.html;
+  error_page 502 /50x.html;
+  error_page 503 /50x.html;
+  error_page 504 /50x.html;
+
+  location /50x.html {
+    root {{ django_home_dir }}/env/lib/python{{ django_python_version }}/site-packages/bpp/templates/;
+    internal;
+  }
 
    location / {
       try_files $uri @proxy_to_app;
