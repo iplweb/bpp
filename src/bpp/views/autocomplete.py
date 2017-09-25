@@ -192,7 +192,8 @@ class GlobalNavigationAutocomplete(Select2QuerySetSequenceView):
 
         querysets = []
         querysets.append(
-            Jednostka.objects.fulltext_filter(self.q).only("pk", "nazwa")
+            Jednostka.objects.fulltext_filter(self.q).only(
+                "pk", "nazwa", "wydzial__skrot").select_related("wydzial")
         )
 
         querysets.append(
@@ -200,7 +201,7 @@ class GlobalNavigationAutocomplete(Select2QuerySetSequenceView):
                 .fulltext_filter(self.q)
                 .annotate(Count('wydawnictwo_ciagle'))
                 .only("pk", "nazwisko", "imiona", "poprzednie_nazwiska",
-                      "tytul")
+                      "tytul__skrot")
                 .select_related("tytul")
                 .order_by('-wydawnictwo_ciagle__count')
         )
