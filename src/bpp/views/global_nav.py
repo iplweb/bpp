@@ -20,7 +20,7 @@ lookup_map_user = {
         lambda x: (None, {'slug': getattr(x, "slug")})
     ),
     "bpp.rekord": (
-        "bpp:browse_praca",
+        "bpp:browse_praca_old",
         lambda x: (None,
                    {'model': x.content_type.model,
                     'pk': x.object_id})
