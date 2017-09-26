@@ -22,7 +22,7 @@ class Command(BaseCommand):
         # | Q(opis_bibliograficzny_zapisani_autorzy_cache="")
 
         action = True
-        for r in qset.only("content_type_id", "object_id"):
+        for r in qset:
             if action:
                 r.original.zaktualizuj_cache()
                 action = False
