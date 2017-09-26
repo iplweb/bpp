@@ -1,9 +1,9 @@
 # -*- encoding: utf-8 -*-
 from model_mommy import mommy
-from bpp.views import autocomplete
 
-from bpp.models import Autor, Jednostka, Zrodlo, Tytul, Autor_Jednostka
-from bpp.tests.util import any_jednostka
+from bpp.models import Autor, Jednostka, Zrodlo
+from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
+from bpp.views import autocomplete
 from ..testutil import WebTestCase
 
 
@@ -46,7 +46,37 @@ class TestAutocomplete(WebTestCase):
         x.get_result_label("foo", "bar")
         x.get(None)
         x.q = "foobar"
-        self.assertTrue(x.get_results() != None)
+        self.assertTrue(len(x.get_queryset()) != None)
+
+    def test_GlobalNavigationAutocomplete_query_for_id(self):
+        mommy.make(Wydawnictwo_Ciagle, pk=123)
+        x = autocomplete.GlobalNavigationAutocomplete()
+        x.q = "123"
+        self.assertTrue(len(x.get_queryset()) == 1)
+
+    def test_GlobalNavigationAutocomplete_test_every_url(self):
+        S = "Foobar 123"
+        mommy.make(Autor, nazwisko=S)
+        mommy.make(Wydawnictwo_Ciagle, tytul_oryginalny=S)
+        mommy.make(Zrodlo, nazwa=S)
+        mommy.make(Jednostka, nazwa=S)
+
+        x = autocomplete.GlobalNavigationAutocomplete()
+        x.q = "Foo"
+        res = x.get_results({'object_list': list(x.get_queryset())})
+
+        cnt = 0
+        for elem in res:
+            for child in elem['children']:
+                # Sprawdź, czy global-nav-redir wygeneruje poprawne przekierowanie
+                # dla tego zapytania
+                url = "/global-nav-redir/%s/" % child['id']
+                res = self.client.get(url)
+                self.assertEquals(res.status_code, 302)
+                cnt += 1
+
+        self.assertEquals(cnt, 4)
+
 
     def test_ZapisanyJakoAutocomplete(self):
         x = autocomplete.ZapisanyJakoAutocomplete()

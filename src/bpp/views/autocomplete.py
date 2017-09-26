@@ -187,6 +187,9 @@ class GlobalNavigationAutocomplete(Select2QuerySetSequenceView):
     paginate_by = 20
 
     def get_queryset(self):
+        if not hasattr(self, 'q'):
+            return []
+
         if not self.q:
             return []
 
@@ -224,7 +227,7 @@ class GlobalNavigationAutocomplete(Select2QuerySetSequenceView):
 
         if this_is_an_id:
             querysets.append(
-                Rekord.objects.filter(object_id=this_is_an_id).only(
+                Rekord.objects.extra(where=["id[2]=%s" % this_is_an_id]).only(
                     "tytul_oryginalny")
             )
 

@@ -61,3 +61,4 @@ def test_global_nav_redir(model, source):
     ))
 
     assert isinstance(res, HttpResponseRedirect)
+
