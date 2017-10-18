@@ -1,5 +1,6 @@
 version: '2'
 services:
+  
   rabbitmq: 
     image: rabbitmq
     ports:
@@ -7,26 +8,32 @@ services:
       - "5671:5671"
       - "5672:5672"
       - "25672:25672"
+
+      
   redis: 
     image: redis
     ports:
       - "6379:6379"
+
+      
   db:
     build:
       dockerfile: Dockerfile-db
-      context: .docker
+      context: docker
     ports:
       - "5432:5432"
+
+      
   selenium:
-    # image: selenium/standalone-chrome-debug
     image: selenium/standalone-firefox-debug
     ports:
       - "4444:4444"
       - "5900:5900"
+      
   nginx_http_push:
     build:
       dockerfile: Dockerfile-nginx
-      context: .docker
+      context: docker
     ports:
       - "9090:80"
 
@@ -45,17 +52,12 @@ services:
 #      - nginx_http_push
 
 
-  test: # Host używany do uruchamiania testów i budowania pakietów
+  web: # Host używany do uruchamiania testów i budowania pakietów
     build:
-      context: .
-      dockerfile: Dockerfile
-    ports: 
-      - "9015:9015"
+      context: docker
+      dockerfile: Dockerfile-web
     volumes: 
-      - ./src:/usr/src/app/src
-      - ./dist:/usr/src/app/dist
-      - ./artifacts:/usr/src/app/artifacts
-      - ./dist_dev:/usr/src/app/dist_dev
+      - .:/usr/src/app
     env_file: env.test.txt
     depends_on:
       - db
