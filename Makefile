@@ -104,21 +104,6 @@ full-tests: wheels install-wheels assets tests bdist_wheel-production
 	ls -alsh .coverage
 	cp .coverage artifacts/
 
-# cel: docker-up
-# Startuje usługi dockera wymagane do lokalnego developmentu
-# Zobacz też: setup-lo0
-docker-up: 
-	docker-compose up -d rabbitmq redis db selenium
-	docker-compose ps
-
-
-# cel: setup-lo0
-# Konfiguruje alias IP dla interfejsu lo0 aby kontener Dockera 'selenium'
-# miał dostęp do live-serwera uruchamianego na komputerze hosta. Użyteczne
-# pod Mac OS X
-setup-lo0:
-	sudo ifconfig lo0 alias 192.168.13.37
-
 # cel: release
 # PyPI release
 release: bdist_wheel
