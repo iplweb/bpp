@@ -390,7 +390,7 @@ class RaportKomisjiCentralnej:
         if partial:
             template_name = "raporty/raport_komisji_centralnej/punktacja.html"
 
-        return render_to_string(template_name, Context(dct))
+        return render_to_string(template_name, dct)
 
 
 def make_report_zipfile(autor_id, rok_habilitacji):
@@ -440,7 +440,7 @@ def make_report_zipfile(autor_id, rok_habilitacji):
 
             data = render_to_string(
                 "raporty/raport_komisji_centralnej/punktacja_podwojna.html",
-                Context(dct))
+                dct)
 
             f = open(fn(base_fn, "punktacja", "sumaryczna"), "wb")
             f.write(data.encode('utf-8'))
