@@ -1,0 +1,52 @@
+FROM ubuntu:16.04
+
+RUN	echo 'Acquire::HTTP::Proxy "http://docker.for.mac.localhost:3142";' >> /etc/apt/apt.conf.d/01proxy \
+    && 	echo 'Acquire::HTTPS::Proxy "false";' >> /etc/apt/apt.conf.d/01proxy
+  
+RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
+    software-properties-common
+
+RUN add-apt-repository -y ppa:jonathonf/python-3.6
+
+RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
+    build-essential \
+    libssl-dev \
+    libffi-dev \
+    apt-transport-https \
+    postgresql-client \
+    zip \
+    curl \
+    wget \
+    git \
+    telnet \
+    inetutils-ping \
+    net-tools \
+    gettext \
+    python \
+    python3.6 \
+    python3.6-dev
+
+# Install 3.6 as default
+RUN    update-alternatives --install /usr/bin/python python /usr/bin/python3.6 1 \
+    && update-alternatives --install /usr/bin/python python /usr/bin/python2.7 2 \
+    && update-alternatives  --set python /usr/bin/python3.6
+
+# Yarn repo and key                                                                              
+RUN apt-get install curl
+RUN curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -                            
+RUN echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list                                                                                                 
+# NodeJS 6 repo and key                                                                          
+RUN curl -sL https://deb.nodesource.com/setup_6.x | bash -
+RUN apt-get update && apt-get install -y yarn nodejs
+
+# Install bower and grunt-cli via yarn                                                           
+RUN yarn global add bower grunt-cli          
+
+# Install pip
+RUN wget https://bootstrap.pypa.io/get-pip.py
+RUN python3.6 get-pip.py
+
+# Install tox
+RUN pip install tox
+
+CMD sleep infinity
