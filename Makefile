@@ -102,7 +102,7 @@ full-tests: wheels install-wheels assets tests bdist_wheel-production
 	# For TravisCI coveralls & with docker
 	mkdir -p artifacts
 	ls -alsh .coverage
-	cp .coverage artifacts/
+	coveralls
 
 # cel: release
 # PyPI release
@@ -162,10 +162,9 @@ build-test-container: cleanup-pycs
 
 # cel: travis
 # Uruchamia wszystkie testy - dla TravisCI
-travis: distclean dockerclean build-test-container
-	docker-compose run --rm test "make full-tests"
-	ls -las artifacts
-	mv artifacts/.coverage .
+travis:
+	docker-compose up -d
+	docker-compose exec web bash -c "cd /usr/src/app && make full-tests"
 
 rebuild-test:
 	docker-compose stop test
