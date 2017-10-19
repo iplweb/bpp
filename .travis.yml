@@ -1,47 +1,7 @@
 sudo: required
 
-language:
-  - python
-  - node_js
-
-python: 
-  - "3.6"
-
-node_js:
-  - "6"
-
-before_install:
-  # Repo for newer Node.js versions
-  - curl -sL https://deb.nodesource.com/setup_6.x | sudo -E bash -
-  # Repo for Yarn
-  - sudo apt-key adv --keyserver pgp.mit.edu --recv D101F7899D41F3C3
-  - echo "deb http://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
-  - sudo apt-get update -qq
-  - sudo apt-get install -y -qq yarn
-
-  - sudo yarn global add bower grunt-cli npm 
-
-  - sudo service postgresql stop
-
-  # jak nie dam tego teraz, zrobi katalogi przez dockera, owner root:root
-  # a potem bedzie permission deny przy build_wheel wiec:
-  - mkdir -p dist dist_dev artifacts
-
-install:
-  - pip install -q -U tox pip setuptools virtualenv coveralls > /dev/null
-
 services:
   - docker
 
 script:
   - make travis
-  
-after_success:
-  - mv artifacts/.coverage .
-  - ls -lash .coverage
-  - cat .coverage | sed s+/usr/src/app/+$PWD/+g > .coverage2
-  - ls -lash .coverage2
-  - rm -rf .coverage
-  - mv .coverage2 .coverage
-  - cat .coverage
-  - coveralls
