@@ -128,8 +128,8 @@ WSGI_APPLICATION = 'django_bpp.wsgi.application'
 
 INSTALLED_APPS = [
     'django.contrib.humanize',
-    'django.contrib.auth',
     'django.contrib.contenttypes',
+    'django.contrib.auth',
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.sessions',
