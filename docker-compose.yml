@@ -58,7 +58,7 @@ services:
       dockerfile: Dockerfile-web
     volumes: 
       - .:/usr/src/app
-    env_file: env.test.txt
+    env_file: docker/env.web.txt
     depends_on:
       - db
       - redis
