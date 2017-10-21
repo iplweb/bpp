@@ -15,7 +15,7 @@ clean:
 	find . -name \*\\.log -print0 | xargs -0 rm -f 
 	find . -name \#\* -print0 | xargs -0 rm -f
 	rm -rf build dist/*django_bpp*whl __pycache__ *.log
-	rm -rf .eggs .cache .tox
+	rm -rf .eggs .cache .tox node_modules
 
 distclean: clean
 	rm -rf src/django_bpp/staticroot 
@@ -164,7 +164,7 @@ build-test-container: cleanup-pycs
 # Uruchamia wszystkie testy - dla TravisCI
 travis:
 	docker-compose up -d
-	docker-compose exec web bash -c "cd /usr/src/app && make full-tests"
+	docker-compose exec web bash -c "cd /usr/src/app && make clean full-tests"
 
 rebuild-test:
 	docker-compose stop test
