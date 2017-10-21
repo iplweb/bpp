@@ -1,7 +1,10 @@
 FROM ubuntu:16.04
 
-RUN	echo 'Acquire::HTTP::Proxy "http://docker.for.mac.localhost:3142";' >> /etc/apt/apt.conf.d/01proxy \
-    && 	echo 'Acquire::HTTPS::Proxy "false";' >> /etc/apt/apt.conf.d/01proxy
+
+RUN apt-get update -qq && apt-get install -y netcat
+
+COPY detect-http-proxy /etc/apt/
+COPY 30detectproxy /etc/apt/apt.conf.d/
   
 RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
     software-properties-common

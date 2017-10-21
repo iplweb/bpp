@@ -1,0 +1,4 @@
+
+Acquire::HTTP::Proxy-Auto-Detect "/etc/apt/detect-http-proxy";
+
+Acquire::HTTPS::Proxy "false";
