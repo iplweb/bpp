@@ -160,11 +160,19 @@ build-test-container: cleanup-pycs
 	docker-compose rm test
 	docker-compose build test > /dev/null
 
+docker-up:
+	docker-compose up -d
+
+docker-tests:
+	docker-compose exec web /bin/bash -c "cd /usr/src/app && make full-tests"
+
+docker-shell:
+	docker-compose exec web /bin/bash
+
 # cel: travis
 # Uruchamia wszystkie testy - dla TravisCI
-travis:
-	docker-compose up -d
-	docker-compose exec web bash -c "cd /usr/src/app && make clean full-tests"
+travis: clean docker-up docker-tests
+	@echo "Done"
 
 rebuild-test:
 	docker-compose stop test
