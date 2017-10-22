@@ -28,7 +28,7 @@ mock==2.0.0
 
 django-webtest==1.9.2
 beautifulsoup4==4.4.1
-webtest==2.0.27
+webtest==2.0.29
 
 stellar==0.4.3
 
