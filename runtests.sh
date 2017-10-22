@@ -64,6 +64,8 @@ if [ "$DEBUG" == "1" ]; then
     echo "------------------------------------------------------------------------------"
     echo -n "DJANGO_LIVE_TEST_SERVER_ADDRESS: "
     echo $DJANGO_LIVE_TEST_SERVER_ADDRESS 
+    echo -n "DJANGO_SETTINGS_MODULE: "
+    echo $DJANGO_SETTINGS_MODULE
     echo "------------------------------------------------------------------------------"
     echo "pytest.ini: "
     echo "------------------------------------------------------------------------------"
