@@ -166,14 +166,21 @@ docker-up:
 	docker-compose up -d
 
 docker-tests:
-	docker-compose exec web /bin/bash -c "cd /usr/src/app && make full-tests"
+	docker-compose exec /bin/bash -c "cd /usr/src/app && make full-tests"
 
 docker-shell:
 	docker-compose exec web /bin/bash
 
+travis-env:
+	echo TRAVIS="${TRAVIS}" >> docker/env.web.txt
+	echo TRAVIS_JOB_ID="${TRAVIS_JOB_ID}" >> docker/env.web.txt
+	echo TRAVIS_BRANCH="${TRAVIS_BRANCH}" >> docker/env.web.txt
+	echo TRAVIS_PULL_REQUEST="${TRAVIS_PULL_REQUEST}" >> docker/env.web.txt
+	cat docker/env.web.txt
+
 # cel: travis
 # Uruchamia wszystkie testy - dla TravisCI
-travis: clean docker-up docker-tests
+travis: clean travis-env docker-up docker-tests
 	@echo "Done"
 
 rebuild-test:
