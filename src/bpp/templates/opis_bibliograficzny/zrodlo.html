@@ -1,4 +1,4 @@
 {# dispBookSource #}
 {% if praca.zrodlo %}<i>{{ praca.zrodlo.skrot }}</i> {% endif %}
-{{ praca.informacje }}
+{{ praca.informacje|default:""|safe }}
 {# koniec dispBookSource #}

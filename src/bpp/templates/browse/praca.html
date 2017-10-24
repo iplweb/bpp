@@ -43,8 +43,8 @@
                     {% if praca.wydawnictwo_nadrzedne %}
                         <a href="{% url "bpp:browse_praca" "wydawnictwo_zwarte" praca.wydawnictwo_nadrzedne.pk %}">
                     {% endif %}
-                    {{ praca.informacje|default:""|znak_na_koncu:", " }}
-                    {{ praca.szczegoly }}
+                    {{ praca.informacje|default:""|znak_na_koncu:", "|safe }}
+                    {{ praca.szczegoly|safe }}
                     {% if praca.wydawnictwo_nadrzedne %}
                         </a>
                     {% endif %}
