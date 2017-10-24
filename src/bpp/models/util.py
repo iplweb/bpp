@@ -1,16 +1,14 @@
 # -*- encoding: utf-8 -*-
 
 """Funkcje pomocnicze dla klas w bpp.models"""
-from django.db import models
+from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.core.urlresolvers import reverse
-
+from django.db import models
 from django.db.models import Max, TextField
-from django.contrib.postgres.fields import ArrayField
-from django.template import Template, Context
+from django.template import Context
 from django.template.loader import get_template
 from django.utils import safestring
-from django.conf import settings
 
 
 def dodaj_autora(klass, rekord, autor, jednostka, zapisany_jako=None,
@@ -68,7 +66,7 @@ def renderuj_opis_bibliograficzny(praca):
             "opis_bibliograficzny/main.html")
 
     return opis_bibliograficzny_template.render(
-        Context(dict(praca=praca))).replace("\r\n", "").replace(
+        dict(praca=praca)).replace("\r\n", "").replace(
         "\n", "").replace("  ", " ").replace("  ", " ").replace(
         "  ", " ").replace("  ", " ").replace("  ", " ").replace(
         " , ", ", ").replace(" . ", ". ").replace(". . ", ". ").replace(

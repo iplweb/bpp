@@ -7,15 +7,17 @@ PIP=${PYTHON} -m pip
 DISTDIR=./dist
 DISTDIR_DEV=./dist_dev
 
-clean:
+clean-pycache:
 	find . -name __pycache__ -type d -print0 | xargs -0 rm -rf
+	find . -name \*pyc -print0 | xargs -0 rm -f
+
+clean: clean-pycache
 	find . -name \*~ -print0 | xargs -0 rm -f 
-	find . -name \*pyc -print0 | xargs -0 rm -f 
 	find . -name \*\\.log -print0 | xargs -0 rm -f 
 	find . -name \*\\.log -print0 | xargs -0 rm -f 
 	find . -name \#\* -print0 | xargs -0 rm -f
 	rm -rf build dist/*django_bpp*whl __pycache__ *.log
-	rm -rf .eggs .cache .tox
+	rm -rf .eggs .cache .tox node_modules
 
 distclean: clean
 	rm -rf src/django_bpp/staticroot 
@@ -102,22 +104,7 @@ full-tests: wheels install-wheels assets tests bdist_wheel-production
 	# For TravisCI coveralls & with docker
 	mkdir -p artifacts
 	ls -alsh .coverage
-	cp .coverage artifacts/
-
-# cel: docker-up
-# Startuje usługi dockera wymagane do lokalnego developmentu
-# Zobacz też: setup-lo0
-docker-up: 
-	docker-compose up -d rabbitmq redis db selenium
-	docker-compose ps
-
-
-# cel: setup-lo0
-# Konfiguruje alias IP dla interfejsu lo0 aby kontener Dockera 'selenium'
-# miał dostęp do live-serwera uruchamianego na komputerze hosta. Użyteczne
-# pod Mac OS X
-setup-lo0:
-	sudo ifconfig lo0 alias 192.168.13.37
+	coveralls
 
 # cel: release
 # PyPI release
@@ -175,12 +162,26 @@ build-test-container: cleanup-pycs
 	docker-compose rm test
 	docker-compose build test > /dev/null
 
+docker-up:
+	docker-compose up -d
+
+docker-tests:
+	docker-compose exec web /bin/bash -c "cd /usr/src/app && make full-tests"
+
+docker-shell:
+	docker-compose exec web /bin/bash
+
+travis-env:
+	echo TRAVIS="${TRAVIS}" >> docker/env.web.txt
+	echo TRAVIS_JOB_ID="${TRAVIS_JOB_ID}" >> docker/env.web.txt
+	echo TRAVIS_BRANCH="${TRAVIS_BRANCH}" >> docker/env.web.txt
+	echo TRAVIS_PULL_REQUEST="${TRAVIS_PULL_REQUEST}" >> docker/env.web.txt
+	cat docker/env.web.txt
+
 # cel: travis
 # Uruchamia wszystkie testy - dla TravisCI
-travis: distclean dockerclean build-test-container
-	docker-compose run --rm test "make full-tests"
-	ls -las artifacts
-	mv artifacts/.coverage .
+travis: clean travis-env docker-up docker-tests
+	@echo "Done"
 
 rebuild-test:
 	docker-compose stop test

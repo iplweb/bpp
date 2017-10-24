@@ -12,6 +12,7 @@ NO_PYTEST=0
 NO_DJANGO=0
 NO_REBUILD=0
 NO_COVERAGE=1
+PYTHON=python3.6
 
 export PYTHONIOENCODING=utf_8
 
@@ -63,6 +64,8 @@ if [ "$DEBUG" == "1" ]; then
     echo "------------------------------------------------------------------------------"
     echo -n "DJANGO_LIVE_TEST_SERVER_ADDRESS: "
     echo $DJANGO_LIVE_TEST_SERVER_ADDRESS 
+    echo -n "DJANGO_SETTINGS_MODULE: "
+    echo $DJANGO_SETTINGS_MODULE
     echo "------------------------------------------------------------------------------"
     echo "pytest.ini: "
     echo "------------------------------------------------------------------------------"
@@ -78,7 +81,7 @@ if [ "$NO_REBUILD" == "0" ]; then
     # Baza powinna być zazwyczaj utworzona od zera. 
     dropdb --if-exists test_bpp 
     createdb test_bpp
-    python src/manage.py create_test_db
+    $PYTHON src/manage.py create_test_db
     stellar replace $GIT_BRANCH_NAME || stellar snapshot $GIT_BRANCH_NAME
 else
     # --no-rebuild na command line, czyli baza danych została (prawdopodobnie) wcześniej
@@ -88,7 +91,7 @@ else
 fi
 
 if [ "$NO_DJANGO" == "0" ]; then
-    python src/manage.py test bpp --keepdb
+    $PYTHON src/manage.py test bpp --keepdb
     # Ewentualne następne testy muszą startować na czystej bazie danych, więc:
     stellar restore $GIT_BRANCH_NAME
 fi

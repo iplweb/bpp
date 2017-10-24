@@ -3,6 +3,7 @@
 from dal import autocomplete
 from django import forms
 from django.contrib import admin
+from django.forms.utils import flatatt
 from django.utils.safestring import mark_safe
 
 from bpp.admin.filters import LiczbaZnakowFilter
@@ -31,11 +32,11 @@ class Button(forms.Widget):
     def render(self, name, value, attrs=None):
         final_attrs = self.build_attrs(
             self.attrs,
-            type="button",
-            name=name)
+            dict(type="button",
+                name=name))
 
         return mark_safe('<input type="button"%s value="%s" />' % (
-            forms.widgets.flatatt(final_attrs),
+            flatatt(final_attrs),
             final_attrs['label'],
         ))
 
