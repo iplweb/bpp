@@ -25,16 +25,6 @@ distclean: clean
 	rm -rf node_modules src/node_modules src/django_bpp/staticroot 
 	rm -rf .vagrant splintershots src/components/bower_components src/media
 
-dockerclean:
-	docker-compose stop
-	docker-compose rm -f
-
-vagrantclean:
-	vagrant destroy -f
-
-vagrantup:
-	vagrant up
-
 # cel: wheels
 # Buduje pakiety WHL. Nie buduje samego pakietu django-bpp
 # Buduje pakiety WHL na bazie requirements.txt, zapisując je do katalogu 'dist',
@@ -101,9 +91,6 @@ tests:
 # cel: tests-full
 # Jak tests, ale całość
 full-tests: wheels install-wheels assets tests bdist_wheel-production
-	# For TravisCI coveralls & with docker
-	mkdir -p artifacts
-	ls -alsh .coverage
 	coveralls
 
 # cel: release
@@ -192,8 +179,8 @@ rebuild-test:
 # Tworzy zależności dla produkcyjnej wersji oprogramowania
 # (czyli: buduje wheels i bdist_wheel pod dockerem, na docelowej
 # dystrybucji Linuxa)
-production-deps: rebuild-test
-	docker-compose run --rm test "make wheels bdist_wheel"
+production-deps: 
+	docker-compose run --rm web /bin/bash -c "cd /usr/src/app && make wheels bdist_wheel"
 
 # cel: production -DCUSTOMER=... or CUSTOMER=... make production
 production: 
