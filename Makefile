@@ -7,10 +7,12 @@ PIP=${PYTHON} -m pip
 DISTDIR=./dist
 DISTDIR_DEV=./dist_dev
 
-clean:
+clean-pycache:
 	find . -name __pycache__ -type d -print0 | xargs -0 rm -rf
+	find . -name \*pyc -print0 | xargs -0 rm -f
+
+clean: clean-pycache
 	find . -name \*~ -print0 | xargs -0 rm -f 
-	find . -name \*pyc -print0 | xargs -0 rm -f 
 	find . -name \*\\.log -print0 | xargs -0 rm -f 
 	find . -name \*\\.log -print0 | xargs -0 rm -f 
 	find . -name \#\* -print0 | xargs -0 rm -f
