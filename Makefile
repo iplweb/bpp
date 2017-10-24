@@ -166,7 +166,7 @@ docker-up:
 	docker-compose up -d
 
 docker-tests:
-	docker-compose exec /bin/bash -c "cd /usr/src/app && make full-tests"
+	docker-compose exec web /bin/bash -c "cd /usr/src/app && make full-tests"
 
 docker-shell:
 	docker-compose exec web /bin/bash
