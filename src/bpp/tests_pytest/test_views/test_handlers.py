@@ -1,5 +1,6 @@
 # -*- encoding: utf-8 -*-
 
+<<<<<<< HEAD
 import pytest
 
 
@@ -24,3 +25,5 @@ def test_handler404_not_found(client):
         client.get("/bpp/this_page_does_not_exist_for_sure")
     except TypeError:
         assert False
+=======
+>>>>>>> 1fcd40ba022ab2e981d82f9f8122adea0be6ebf3
