@@ -1,19 +1,15 @@
 # -*- encoding: utf-8 -*-
 import bleach
 from django import shortcuts
-from django.db.models import Q
 from django.core.urlresolvers import reverse
-from django.contrib.auth import get_user_model
 from django.http.response import HttpResponse, JsonResponse
-from django.shortcuts import render_to_response
-from django.template.context import RequestContext
 from django.views.decorators.csrf import csrf_exempt
+from django.views.defaults import server_error, permission_denied, \
+    page_not_found
 from sendfile import sendfile
 
-from bpp.models.cache import Rekord
+from bpp.models import Uczelnia
 from bpp.views.utils import JSONResponseMixin
-from bpp.models import Autor, Jednostka, Zrodlo, \
-    Uczelnia
 
 
 def root(request):
@@ -94,27 +90,13 @@ def javascript_catalog(request, domain='djangojs', packages=None):
     return response
 
 
-
-def handler404(request):
-    response = render_to_response('404.html',
-        context=RequestContext(request)
-    )
-    response.status_code = 404
-    return response
+def handler404(request, exception):
+    return page_not_found(request, exception, "404.html")
 
 
 def handler403(request):
-    response = render_to_response('403.html',
-        context=RequestContext(request)
-    )
-    response.status_code = 403
-    return response
-
+    return permission_denied(request, "403.html")
 
 
 def handler500(request):
-    response = render_to_response('50x.html',
-        context=RequestContext(request)
-    )
-    response.status_code = 500
-    return response
+    return server_error(request, template_name="50x.html")
