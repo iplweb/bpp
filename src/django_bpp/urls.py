@@ -154,9 +154,14 @@ from django.conf.urls import include, url
 
 
 if settings.DEBUG:
+
+    def bad_page(request):
+        1/0
+
     import debug_toolbar
     urlpatterns += [
         url(r'^__debug__/', include(debug_toolbar.urls)),
+        url(r'test_500', bad_page, name="test_500")
     ]
 
 
