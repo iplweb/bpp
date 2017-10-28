@@ -14,6 +14,7 @@ from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models, transaction
 from django.db.models.deletion import DO_NOTHING
+from django.db.models.lookups import In
 from django.db.models.signals import post_save, post_delete, pre_save, \
     pre_delete
 from django.utils import six
@@ -185,9 +186,25 @@ class TupleField(ArrayField):
         return tuple(value)
 
 
+@TupleField.register_lookup
+class TupleInLookup(In):
+    def get_prep_lookup(self):
+        values = super(TupleInLookup, self).get_prep_lookup()
+        if hasattr(self.rhs, '_prepare'):
+            return values
+        prepared_values = []
+        for value in values:
+            if hasattr(value, 'resolve_expression'):
+                prepared_values.append(value)
+            else:
+                prepared_values.append(tuple(value))
+        return prepared_values
+
+
 class AutorzyManager(models.Manager):
     def filter_rekord(self, rekord):
         return self.filter(rekord_id=rekord.pk)
+
 
 class AutorzyBase(models.Model):
     id = TupleField(
