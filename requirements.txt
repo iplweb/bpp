@@ -42,7 +42,7 @@ raven==6.2.1
 
 django-secure-input==0.9.3
 bleach==2.1.1
-html5lib>=1.0b10
+
 django-session-security==2.5.1
 
 django-password-policies==0.4.3b0
