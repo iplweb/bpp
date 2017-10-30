@@ -202,4 +202,6 @@ class OAIView(View):
 
         db = BPPOAIDatabase(Rekord.objects.all().exclude(charakter_formalny__nazwa_w_primo=""))
         oai_server = OAIServerFactory(db, FeedConfig("bpp", base_url))
-        return HttpResponse(content=oai_server.handleRequest(request.GET))
+        return HttpResponse(
+            content=oai_server.handleRequest(request.GET),
+            content_type="application/xml")
