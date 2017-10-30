@@ -147,7 +147,9 @@ def test_admin_patent_toz(preauth_admin_browser, live_server):
 
 def test_admin_patent_tamze(preauth_admin_browser, live_server):
     c = any_patent(informacje="TO INFORMACJE")
-    preauth_admin_browser.visit(live_server + reverse("admin:bpp_patent_change", args=(c.pk,)))
+    with wait_for_page_load(preauth_admin_browser):
+        preauth_admin_browser.visit(
+            live_server + reverse("admin:bpp_patent_change", args=(c.pk,)))
 
     with wait_for_page_load(preauth_admin_browser):
         preauth_admin_browser.execute_script("$('#tamze').click()")
