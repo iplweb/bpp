@@ -17,6 +17,7 @@ from bpp.tests.util import any_zrodlo, CURRENT_YEAR, any_zwarte, any_patent, \
     select_select2_autocomplete, scroll_into_view, \
     select_select2_clear_selection
 from django_bpp.selenium_util import wait_for_page_load, wait_for
+from flaky import flaky
 
 ID = "id_tytul_oryginalny"
 
@@ -144,7 +145,7 @@ def test_admin_patent_toz(preauth_admin_browser, live_server):
     preauth_admin_browser.is_element_present_by_id('navigation-menu', 5000)
     assert wcc() == 2
 
-
+@flaky(max_runs=5)
 def test_admin_patent_tamze(preauth_admin_browser, live_server):
     c = any_patent(informacje="TO INFORMACJE")
     with wait_for_page_load(preauth_admin_browser):

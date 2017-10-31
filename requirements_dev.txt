@@ -13,6 +13,7 @@ pytest-splinter==1.8.5
 splinter==0.7.6
 selenium==3.6.0
 # >=3.4,<3.5
+flaky==3.4.0
 
 django-dynamic-fixture==1.8.0
 
