@@ -158,7 +158,7 @@
                 {% cookielaw_banner %}
 
                 {% if password_change_required %}
-                    <p class='help'>Twoje hasło wygasło. Proszę, zmień je używając formularza poniżej:</p>
+                    <p class='help'>Twoje hasło uległo przeterminowaniu. Proszę, zmień je używając formularza poniżej:</p>
                     <form action="." method="post">{% csrf_token %}
                     <fieldset>
                         <legend>Zmiana hasła</legend>
