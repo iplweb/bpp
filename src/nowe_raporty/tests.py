@@ -42,6 +42,8 @@ def test_view_raport_zdefiniowany(view, klass, report_slug):
     v = view(kwargs=dict(od_roku=2017, do_roku=2017))
     v.object = obj
     r = mommy.make(Report, slug=report_slug)
+
+    v.request = rf.get("/")
     ret = v.get_context_data()
 
     assert ret['report'] is not None
