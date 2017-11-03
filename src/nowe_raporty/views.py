@@ -2,9 +2,6 @@
 
 import os
 
-from bpp.models.autor import Autor
-from bpp.models.cache import Rekord
-from bpp.models.struktura import Wydzial, Jednostka
 from django.conf import settings
 from django.http.response import HttpResponse, FileResponse
 from django.http.response import HttpResponseRedirect
@@ -13,8 +10,11 @@ from django.views.generic import FormView, TemplateView
 from django.views.generic.detail import DetailView
 from django_tables2.export.export import TableExport
 
+from bpp.models.autor import Autor
+from bpp.models.cache import Rekord
+from bpp.models.struktura import Wydzial, Jednostka
 from flexible_reports.adapters.django_tables2 import as_docx, \
-    as_tablib_dataset, as_tablib_databook
+    as_tablib_databook
 from .forms import AutorRaportForm
 from .forms import JednostkaRaportForm, WydzialRaportForm
 
@@ -26,7 +26,8 @@ class BaseFormView(FormView):
     def form_valid(self, form):
         d = form.cleaned_data
         return HttpResponseRedirect(
-            f"./{ d['obiekt'].pk }/{ d['od_roku'] }/{ d['do_roku'] }/?_export={ d['_export'] }")
+            f"./{ d['obiekt'].pk }/{ d['od_roku'] }/{ d['do_roku'] }/?"
+            f"_export={ d['_export'] }")
 
     def get_context_data(self, **kwargs):
         kwargs['title'] = self.title
@@ -37,6 +38,12 @@ class AutorRaportFormView(BaseFormView):
     form_class = AutorRaportForm
     title = "Raport autorów"
 
+    def form_valid(self, form):
+        d = form.cleaned_data
+        return HttpResponseRedirect(
+            f"./{ d['obiekt'].pk }/{ d['od_roku'] }/{ d['do_roku'] }/?"
+            f"_export={ d['_export'] }&"
+            f"_tzju={ d['tylko_z_jednostek_uczelni'] }")
 
 class JednostkaRaportFormView(BaseFormView):
     form_class = JednostkaRaportForm
@@ -171,4 +178,7 @@ class GenerujRaportDlaWydzialu(GenerujRaportBase):
     model = Wydzial
 
     def get_base_queryset(self):
+        if self.request.GET['_tzju'] == "True":
+            return Rekord.objects.prace_autora_z_afiliowanych_jednostek(self.object)
+
         return Rekord.objects.prace_wydzialu(self.object)

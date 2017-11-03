@@ -218,6 +218,9 @@ class AutorzyBase(models.Model):
     typ_odpowiedzialnosci = models.ForeignKey('Typ_Odpowiedzialnosci', on_delete=DO_NOTHING)
     zapisany_jako = models.TextField()
 
+    afiliuje = models.BooleanField()
+    zatrudniony = models.BooleanField()
+
     objects = AutorzyManager()
 
     class Meta:
@@ -261,18 +264,20 @@ class RekordManager(FulltextSearchMixin, models.Manager):
         return self.filter(autorzy__autor=autor).distinct()
 
     def prace_autora_z_afiliowanych_jednostek(self, autor):
-        return self.filter(
-            autorzy__autor=autor,
-            autorzy__jednostka__skupia_pracownikow=True
+        """
+        Funkcja zwraca prace danego autora, należące tylko i wyłącznie
+        do jednostek skupiających pracowników, gdzie autor jest zaznaczony jako
+        afiliowany.
+        """
+        return self.prace_autora(autor).filter(
+            autorzy__jednostka__skupia_pracownikow=True,
+            autorzy__afiliuje=True
         ).distinct()
 
     def prace_autor_i_typ(self, autor, skrot):
-        return self.filter(
-            autorzy__autor=autor,
-            autorzy__typ_odpowiedzialnosci_id=Typ_Odpowiedzialnosci.objects.get(
-                skrot=skrot).pk
+        return self.prace_autora(autor).filter(
+            autorzy__typ_odpowiedzialnosci_id=Typ_Odpowiedzialnosci.objects.get(skrot=skrot).pk
         ).distinct()
-
 
     def prace_jednostki(self, jednostka):
         return self.filter(
