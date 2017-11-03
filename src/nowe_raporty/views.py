@@ -158,6 +158,9 @@ class GenerujRaportDlaAutora(GenerujRaportBase):
     model = Autor
 
     def get_base_queryset(self):
+        if self.request.GET['_tzju'] == "True":
+            return Rekord.objects.prace_autora_z_afiliowanych_jednostek(self.object)
+
         return Rekord.objects.prace_autora(self.object)
 
 
@@ -178,7 +181,4 @@ class GenerujRaportDlaWydzialu(GenerujRaportBase):
     model = Wydzial
 
     def get_base_queryset(self):
-        if self.request.GET['_tzju'] == "True":
-            return Rekord.objects.prace_autora_z_afiliowanych_jednostek(self.object)
-
         return Rekord.objects.prace_wydzialu(self.object)
