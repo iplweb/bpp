@@ -2,6 +2,19 @@
 Historia zmian
 ==============
 
+0.11.101 (2017-11-03)
+---------------------
+
+* opcjonalne uwzględnianie prac spoza jednostek uczelni w raportach autorów,
+
+* naprawiono działanie konektora OAI-PMH,
+
+* "prawdziwa" funkcja "pozostałe prace" dla raportów,
+
+* poprawione wyświetlanie rekordów (poprawna obsługa tagów "sup" i "sub"
+  w opisach bibliograficznych).
+
+
 0.11.90 (2017-09-23)
 --------------------
 

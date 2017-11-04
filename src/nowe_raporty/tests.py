@@ -1,14 +1,16 @@
 import pytest
 from django.test.client import RequestFactory
+from django.urls import reverse
 from model_mommy import mommy
 
 from bpp.models.autor import Autor
-from bpp.models.profile import BppUser
+from bpp.models.cache import Rekord
 from bpp.models.struktura import Jednostka, Wydzial
+from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
 from flexible_reports.models.report import Report
 from nowe_raporty.views import GenerujRaportDlaAutora, \
     GenerujRaportDlaJednostki, GenerujRaportDlaWydzialu
-from django.urls import reverse
+
 rf = RequestFactory()
 
 
@@ -40,8 +42,37 @@ def test_view_raport_zdefiniowany(view, klass, report_slug):
     v = view(kwargs=dict(od_roku=2017, do_roku=2017))
     v.object = obj
     r = mommy.make(Report, slug=report_slug)
+
+    v.request = rf.get("/")
     ret = v.get_context_data()
 
     assert ret['report'] is not None
 
     assert ret['report'].base_queryset.all().count() == 0
+
+
+@pytest.fixture
+def autor(typy_odpowiedzialnosci):
+    swoja_jednostka = mommy.make(Jednostka, skupia_pracownikow=True)
+    obca_jednostka = mommy.make(Jednostka, skupia_pracownikow=False)
+
+    autor = mommy.make(Autor)
+
+    wc1 = mommy.make(Wydawnictwo_Ciagle)
+    wc2 = mommy.make(Wydawnictwo_Ciagle)
+
+    wc1.dodaj_autora(autor, swoja_jednostka, zapisany_jako="lel")
+    wc2.dodaj_autora(autor, obca_jednostka, zapisany_jako="lol")
+
+    return autor
+
+
+@pytest.mark.django_db
+def test_rekord_prace_autora(autor):
+    assert Rekord.objects.prace_autora(autor).count() == 2
+
+
+@pytest.mark.django_db
+def test_rekord_prace_autora_z_afiliowanych_jednostek(autor):
+    assert Rekord.objects.prace_autora_z_afiliowanych_jednostek(
+        autor).count() == 1

@@ -1,5 +1,4 @@
 # -*- encoding: utf-8 -*-
-from datetime import datetime
 
 from crispy_forms.helper import FormHelper
 from crispy_forms_foundation.layout import Layout, Fieldset, ButtonHolder, \
@@ -10,11 +9,12 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db.models.aggregates import Min, Max
+from django.utils import timezone
 
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
 from bpp.models.struktura import Wydzial, Jednostka
-from django.utils import timezone
+
 
 def wez_lata():
     lata = Rekord.objects.all() \
@@ -113,3 +113,31 @@ class AutorRaportForm(BaseRaportForm):
         widget=autocomplete.ModelSelect2(
             url='bpp:public-autor-autocomplete')
     )
+
+    tylko_z_jednostek_uczelni = forms.BooleanField(
+        initial=True,
+        label="Tylko prace z jednostek uczelni",
+        help_text="Odznaczenie tego pola uwzględnia w raporcie rekordy "
+                  "w których autor przypisany jest do jednostek "
+                  "pozauczelnianych (obcych).",
+        required=False
+    )
+
+    def __init__(self, *args, **kwargs):
+        super(AutorRaportForm, self).__init__(*args, **kwargs)
+
+        self.helper.layout = Layout(
+            Fieldset(
+                'Wybierz parametry',
+                Row(Column('obiekt')),
+                Row(
+                    Column('od_roku', css_class='large-6 small-6'),
+                    Column('do_roku', css_class='large-6 small-6')
+                ),
+                Row(Column('_export')),
+                Row(Column('tylko_z_jednostek_uczelni')),
+            ),
+            ButtonHolder(
+                Submit('submit', 'Pobierz raport', css_id='id_submit',
+                       css_class="submit button"),
+            ))
