@@ -208,3 +208,31 @@ def test_eksport_pbn_book_bug(wydawnictwo_zwarte, wydzial):
     toplevel = Element("foo")
     wydawnictwo_zwarte.eksport_pbn_book(toplevel, wydzial)
     assert toplevel.getchildren()[0].getchildren()[0].text == "foobar"
+
+
+@pytest.mark.django_db
+def test_generowanie_opisu_bibliograficznego_informacje_wydawnictwo_nadrzedne():
+    wz1 = mommy.make(Wydawnictwo_Zwarte,
+                     tytul_oryginalny="Pięćset")
+    wz2 = mommy.make(Wydawnictwo_Zwarte,
+                     tytul_oryginalny="Plus")
+
+    wz1.informacje = "To sie ma pojawic"
+    wz1.wydawnictwo_nadrzedne = wz2
+    wz1.save()
+    wz1.zaktualizuj_cache()
+    assert "To sie ma pojawic" in wz1.opis_bibliograficzny_cache
+
+    wz1.informacje = ""
+    wz1.wydawnictwo_nadrzedne = wz2
+    wz1.save()
+    wz1.zaktualizuj_cache()
+    assert "Pięćset" in wz1.opis_bibliograficzny_cache
+    assert "W: Plus" in wz1.opis_bibliograficzny_cache
+
+    wz1.informacje = ""
+    wz1.wydawnictwo_nadrzedne = None
+    wz1.save()
+    wz1.zaktualizuj_cache()
+    assert "Pięćset" in wz1.opis_bibliograficzny_cache
+    assert "Plus" not in wz1.opis_bibliograficzny_cache

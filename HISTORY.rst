@@ -5,7 +5,11 @@ Historia zmian
 0.11.103 (2017-11-06)
 ---------------------
 
-* miniblog - możliwość umieszczenia aktualności na pierwszej stronie serwisu
+* od tej wersji, dla wydawnictw zwartych, gdzie określone jest wydawnictwo nadrzędne,
+  nie ma już potrzeby uzupełniania pola "Informacje", gdyż system w opisie
+  bibliograficznym użyje tytułu wydawnictwa nadrzędnego,
+  
+* miniblog - możliwość umieszczenia aktualności na pierwszej stronie serwisu.
 
 
 0.11.101 (2017-11-03)
