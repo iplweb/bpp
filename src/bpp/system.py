@@ -11,6 +11,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
 from django.db import transaction
 from favicon.models import Favicon, FaviconImg
+
+from miniblog.models import Article
 from multiseek.models import SearchForm
 from robots.models import Rule, Url
 
@@ -59,7 +61,7 @@ groups = {
         Nagroda],
     'indeks autorów': [Autor, Autor_Jednostka],
     'administracja': [User, Group, SearchForm],
-    'web': [Url, Rule, Site, Favicon, FaviconImg],
+    'web': [Url, Rule, Site, Favicon, FaviconImg, Article],
     'raporty': [
         flexible_models.Report,
         flexible_models.ReportElement,

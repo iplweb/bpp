@@ -10,10 +10,40 @@
 {% endblock %}
 
 {% block content %}
+    {% load humanize %}
 
-    <h1>{{ uczelnia }}</h1>
+    <div class="row">
+        {% if article %}
+            <div class="small-12 large-6 column">
+                <h2>{{ article.title }}</h2>
+                <p>opublikowano {{ article.published_on|naturalday }}</p>
+                <p>{{ article.article_body.content|safe }}</p>
+            <a href="..">wstecz</a>
+            </div>
+        {% else %}
+            {% if miniblog.exists %}
+                <div class="small-12 large-6 column">
+                    <h2>Aktualności</h2>
+                    {% for article in miniblog %}
+                        <h3><strong>{{ article.title }}</strong></h3>
+                        <p>
+                            opublikowano {{ article.published_on|naturalday }}</p>
+                        <p>{{ article.article_body.excerpt|safe }}</p>
+                        {% if article.article_body.has_more %}
+                            <p>
+                                <a href="{% url "bpp:browse_artykul" uczelnia.slug article.slug %}">
+                                    więcej
+                                </a>
+                            </p>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endif %}
+        <div class="small-12 large-6 column">
+
+            <h2>Wybierz wydział</h2>
     {% include "browse/edit_if_logged_in.html" with url="admin:bpp_uczelnia_change" pk=uczelnia.pk %}
-    Wybierz wydział:
     <ul class="no-bullet" style="line-height: 250%;">
         {% for wydzial in uczelnia.wydzialy %}
             <li>
@@ -21,4 +51,7 @@
             </li>
         {% endfor %}
     </ul>
+        </div>
+    </div>
+
 {% endblock %}

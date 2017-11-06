@@ -8,6 +8,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.urlresolvers import reverse
 
 from bpp.views.browse import BuildSearch
+from miniblog.models import Article
 from multiseek.logic import EQUAL_NONE, EQUAL, EQUAL_FEMALE
 from multiseek.views import MULTISEEK_SESSION_KEY
 
@@ -106,3 +107,42 @@ def test_darmowy_platny_dostep_www_wyswietlanie(client, wydawnictwo_ciagle):
     wydawnictwo_ciagle.pk,)))
     val = nastepna_komorka_po_strona_www(res.content)
     assert val == 'darmowy'
+
+
+@pytest.mark.django_db
+def test_artykuly(uczelnia, client):
+    res = client.get(reverse("bpp:browse_uczelnia", args=(uczelnia.slug,)))
+    assert res.status_code == 200
+
+    a = Article.objects.create(
+        title="123",
+        article_body="456",
+        status=Article.STATUS.draft,
+        slug="1"
+    )
+
+    res = client.get(reverse("bpp:browse_uczelnia", args=(uczelnia.slug,)))
+    assert b'123' not in res.content
+
+    a.status = Article.STATUS.published
+    a.save()
+
+    res = client.get(reverse("bpp:browse_uczelnia", args=(uczelnia.slug,)))
+    assert b'123' in res.content
+
+
+@pytest.mark.django_db
+def test_artykul_ze_skrotem(uczelnia, client):
+    a = Article.objects.create(
+        title="123",
+        article_body="456\n<!-- tutaj -->\n789",
+        status=Article.STATUS.published,
+        slug="1"
+    )
+
+    res = client.get(reverse("bpp:browse_uczelnia", args=(uczelnia.slug,)))
+    assert b'789' not in res.content
+    assert 'więcej' in res.rendered_content
+
+    res = client.get(reverse("bpp:browse_artykul", args=(uczelnia.slug, a.slug)))
+    assert b'789' in res.content

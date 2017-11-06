@@ -2,6 +2,12 @@
 Historia zmian
 ==============
 
+0.11.103 (2017-11-06)
+---------------------
+
+* miniblog - możliwość umieszczenia aktualności na pierwszej stronie serwisu
+
+
 0.11.101 (2017-11-03)
 ---------------------
 
