@@ -197,6 +197,8 @@ INSTALLED_APPS = [
     'webmaster_verification',
     'favicon',
 
+    'miniblog'
+
 ]
 
 if django.VERSION < (1,9):
@@ -517,3 +519,7 @@ PUNKTUJ_MONOGRAFIE = bool(int(os.getenv(
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 
 STATICSITEMAPS_ROOT_SITEMAP = 'django_bpp.sitemaps.django_bpp_sitemaps'
+
+
+# dla django-model-utils SplitField
+SPLIT_MARKER = '<!-- tutaj -->'

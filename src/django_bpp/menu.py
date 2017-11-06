@@ -44,7 +44,8 @@ RAPORTY_MENU = [
 WEB_MENU = [
     ("robots.txt - URLe", "/admin/robots/url/"),
     ("robots.txt - reguły", "/admin/robots/rule/"),
-    ("Strony", "/admin/sites/site/"),
+    ("Serwisy", "/admin/sites/site/"),
+    ("Miniblog", "/admin/miniblog/article/"),
     ("Favicon", "/admin/favicon/"),
 ]
 
@@ -101,7 +102,7 @@ class CustomMenu(Menu):
             if user.is_superuser or n1 in groups:
                 self.children += [submenu(n2, v), ]
 
-        flt("web", "Web", WEB_MENU)
+        flt("web", "WWW", WEB_MENU)
         flt("dane systemowe", "Dane systemowe", SYSTEM_MENU)
         flt("struktura", "Struktura", STRUKTURA_MENU)
         flt("wprowadzanie danych", "Wprowadzanie danych", REDAKTOR_MENU)

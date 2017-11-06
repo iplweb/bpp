@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block extratitle %}
+    {{ object.title }}
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li class="current"><a href="#">{{ object.title }}</a></li>
+{% endblock %}
+
+{% block content %}
+    {% load humanize %}
+
+{% endblock %}

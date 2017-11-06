@@ -5,12 +5,14 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.urlresolvers import reverse
 from django.db.models.query_utils import Q
 from django.http import Http404
+from django.shortcuts import get_object_or_404
 from django.utils import six
 from django.views.generic import DetailView, ListView, RedirectView
 
 from bpp.models import Uczelnia, Jednostka, Wydzial, Autor, Zrodlo, Rekord
 from bpp.multiseek_registry import JednostkaQueryObject, RokQueryObject, \
     NazwiskoIImieQueryObject, TypRekorduObject, ZrodloQueryObject
+from miniblog.models import Article
 from multiseek.logic import OR, AND
 from multiseek.util import make_field
 from multiseek.views import MULTISEEK_SESSION_KEY, \
@@ -33,8 +35,20 @@ def conditional(**kwargs):
 class UczelniaView(DetailView):
     model = Uczelnia
     template_name = "browse/uczelnia.html"
+    
+    def get_context_data(self, **kwargs):
+        context = {}
+        if 'article_slug' in self.kwargs:
+            context['article'] = get_object_or_404(
+                Article, slug=self.kwargs['article_slug']
+            )
+        else:
+            context['miniblog'] = Article.objects.filter(
+                status=Article.STATUS.published
+            )[:5]
 
-
+        context.update(kwargs)
+        return super(UczelniaView, self).get_context_data(**context)
 
 
 class WydzialView(DetailView):
