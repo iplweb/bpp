@@ -2,6 +2,12 @@
 Historia zmian
 ==============
 
+0.11.104 (2017-11-08)
+---------------------
+
+* usunięto błąd uniemożliwiający edycję już zapisanego autora w rekordach
+  wydawnictwa ciągłego i zwartego
+
 0.11.103 (2017-11-06)
 ---------------------
 
