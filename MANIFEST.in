@@ -16,6 +16,8 @@ recursive-exclude src/django_bpp/staticroot/node-gyp *
 recursive-exclude src/django_bpp/staticroot/sinon *
 recursive-exclude src/django_bpp/staticroot/globule * 
 
+recursive-include src/*/locale/* *mo *po
+
 recursive-include src/*/templates *.html *.css
 
 recursive-include src/bpp/migrations *.sql *.txt
