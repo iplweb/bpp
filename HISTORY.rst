@@ -11,6 +11,9 @@ Historia zmian
   
 * miniblog - możliwość umieszczenia aktualności na pierwszej stronie serwisu.
 
+* obsługa przycisku "Uzupełnij rok" dla wydawnictwa zwartego (uzupełnia dane
+  na podstawie pola "Szczegóły" bądź z "Wydawnictwo nadrzędne") oraz dla
+  wydawnictwa ciągłego (uzupełnia dane na podstawie pola "Informacje").
 
 0.11.101 (2017-11-03)
 ---------------------

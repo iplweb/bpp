@@ -56,6 +56,7 @@ def wydawnictwo_zwarte_autor_post_delete(sender, instance, **kwargs):
 
 post_delete.connect(wydawnictwo_zwarte_autor_post_delete, Wydawnictwo_Zwarte_Autor)
 
+MIEJSCE_I_ROK_MAX_LENGTH = 256
 
 class Wydawnictwo_Zwarte_Baza(
     Wydawnictwo_Baza, DwaTytuly, ModelZRokiem, ModelZeStatusem,
@@ -66,7 +67,8 @@ class Wydawnictwo_Zwarte_Baza(
     """
 
     miejsce_i_rok = models.CharField(
-        max_length=256, blank=True, null=True, help_text="""Przykładowo:
+        max_length=MIEJSCE_I_ROK_MAX_LENGTH,
+        blank=True, null=True, help_text="""Przykładowo:
         Warszawa 2012. Wpisz proszę najpierw miejsce potem rok; oddziel
         spacją.""")
 

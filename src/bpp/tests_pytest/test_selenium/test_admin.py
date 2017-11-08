@@ -18,6 +18,7 @@ from bpp.tests.util import any_zrodlo, CURRENT_YEAR, any_zwarte, any_patent, \
     select_select2_clear_selection
 from django_bpp.selenium_util import wait_for_page_load, wait_for
 from flaky import flaky
+from selenium.webdriver.support import expected_conditions as EC
 
 ID = "id_tytul_oryginalny"
 
@@ -415,3 +416,75 @@ def test_bug_on_user_add(preauth_admin_browser, live_server):
     with wait_for_page_load(preauth_admin_browser):
         preauth_admin_browser.find_by_name("_continue").click()
     assert "Zmień użytkownik" in preauth_admin_browser.html
+
+
+def test_admin_wydawnictwo_zwarte_uzupelnij_rok(
+        wydawnictwo_zwarte,
+        preauth_admin_browser,
+        live_server):
+    """
+    :type preauth_admin_browser: splinter.driver.webdriver.remote.WebDriver
+    """
+
+    browser = preauth_admin_browser
+
+    browser.visit(live_server + reverse('admin:bpp_wydawnictwo_zwarte_add'))
+
+    rok = browser.find_by_id("id_rok")
+    button = browser.find_by_id("id_rok_button")
+
+    assert rok.value == ""
+
+    browser.fill("miejsce_i_rok", "Lublin 2002")
+
+    proper_click(browser, "id_rok_button")
+
+    browser.wait_for_condition(
+        lambda browser: browser.find_by_id("id_rok").value == "2002"
+    )
+
+    wydawnictwo_zwarte.rok = 1997
+    wydawnictwo_zwarte.save()
+
+    select_select2_autocomplete(
+        browser,
+        "id_wydawnictwo_nadrzedne",
+        "Wydawnictwo Zwarte"
+    )
+
+    browser.fill("rok", "")
+    button.click()
+    browser.wait_for_condition(
+        lambda browser: browser.find_by_id("id_rok").value == "2002"
+    )
+
+    browser.fill("miejsce_i_rok", "")
+    button.click()
+    browser.wait_for_condition(
+        lambda browser: browser.find_by_id("id_rok").value == "1997"
+    )
+
+
+def test_admin_wydawnictwo_ciagle_uzupelnij_rok(
+        preauth_admin_browser,
+        live_server):
+    """
+    :type preauth_admin_browser: splinter.driver.webdriver.remote.WebDriver
+    """
+
+    browser = preauth_admin_browser
+
+    browser.visit(live_server + reverse('admin:bpp_wydawnictwo_ciagle_add'))
+
+    browser.fill("informacje", "Lublin 2002 test")
+    proper_click(browser, "id_rok_button")
+
+    browser.wait_for_condition(
+        lambda browser: browser.find_by_id("id_rok").value == "2002"
+    )
+
+    browser.fill("informacje", "")
+    proper_click(browser, "id_rok_button")
+    browser.wait_for_condition(
+        lambda browser: browser.find_by_id("id_rok_button").value == "Brak danych"
+    )

@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from bpp.views.api.pubmed import GetPubmedIDView
 from bpp.views.api.strona_tom_nr_zeszytu import StronaTomNrZeszytuView
+from bpp.views.api.uzupelnij_rok import ApiUzupelnijRokWydawnictwoZwarteView, ApiUzupelnijRokWydawnictwoCiagleView
 
 from bpp.views.oai import OAIView
 from bpp.views.api import RokHabilitacjiView, PunktacjaZrodlaView, UploadPunktacjaZrodlaView, OstatniaJednostkaView
@@ -49,6 +50,12 @@ urlpatterns = [
     url(r'^api/strona-tom-nr-zeszytu/$',
         csrf_exempt(StronaTomNrZeszytuView.as_view()),
         name='api_strona_tom_nr_zeszytu'),
+    url(r'^api/uzupelnij_rok_wydawnictwo_zwarte/$',
+        csrf_exempt(ApiUzupelnijRokWydawnictwoZwarteView.as_view()),
+        name='api_uzupelnij_rok_wydawnictwo_zwarte'),
+    url(r'^api/uzupelnij_rok_wydawnictwo_ciagle/$',
+        csrf_exempt(ApiUzupelnijRokWydawnictwoCiagleView.as_view()),
+        name='api_uzupelnij_rok_wydawnictwo_ciagle'),
 
     url(r'^oai/', OAIView.as_view(), name="oai"),
 

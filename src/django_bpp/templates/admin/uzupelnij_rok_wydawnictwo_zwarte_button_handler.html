@@ -1,0 +1,57 @@
+<script type="text/javascript">
+
+    /* Wytnij rok z pola "Miejsce i rok" lub z wydawnictwa nadrzędnego. */
+
+    $(document).ready(function () {
+        var i = $("#id_rok");
+
+        $("<input id='id_rok_button' type='button' value='Uzupełnij'/>").insertAfter(i);
+
+        var rok_button = $("#id_rok_button");
+
+        rok_button.click(function () {
+            var url = "{% url "bpp:api_uzupelnij_rok_wydawnictwo_zwarte" %}";
+
+            var data = {
+                'wydawnictwo_nadrzedne': $("#id_wydawnictwo_nadrzedne").val(),
+                'miejsce_i_rok': $("#id_miejsce_i_rok").val()
+            };
+
+            rok_button.val("Czekaj...");
+            rok_button.attr('disabled', true);
+
+            $.ajax({
+                type: "POST",
+                url: url,
+                data: data,
+                error: function (request, status, error) {
+                    alert('Wystąpił błąd (' + status + ', ' + error + ').');
+
+                    rok_button.val("Spróbuj jeszcze raz!");
+                    rok_button.attr('disabled', false);
+
+                    return;
+                },
+                success: function (data, text) {
+                    var found = false;
+
+                    rok_button.val("Uzupełniono!");
+                    rok_button.attr('disabled', false);
+
+                    if (data.rok) {
+                        $("#id_rok").val(data.rok);
+                        found = true;
+                    }
+
+                    if (!found)
+                        rok_button.val("Brak danych");
+                }
+            });
+
+        });
+
+
+    });
+
+
+</script>
