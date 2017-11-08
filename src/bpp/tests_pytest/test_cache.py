@@ -324,3 +324,23 @@ def test_defer_zaktualizuj_opis_task(settings):
 
     zaktualizuj_opis('bpp', 'wydawnictwo_ciagle', w.pk, called_by="tests")
 
+
+@pytest.mark.django_db
+def test_aktualizacja_rekordu_autora(typy_odpowiedzialnosci):
+    w = mommy.make(Wydawnictwo_Ciagle)
+
+    a = mommy.make(Autor)
+    b = mommy.make(Autor)
+
+    j = mommy.make(Jednostka)
+    r = w.dodaj_autora(a, j, zapisany_jako="Test")
+
+    assert b.pk not in Rekord.objects.all().first().autorzy.all().values_list(
+        "autor", flat=True)
+
+    r.autor = b
+    r.save()
+
+    # czy cache jest odświeżone
+    assert b.pk in Rekord.objects.all().first().autorzy.all().values_list(
+        "autor", flat=True)
