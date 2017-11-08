@@ -81,3 +81,4 @@ python-memcached==1.57
 django-static-sitemaps==4.3.0
 
 django-model-utils==3.0.0
+django-jsonview==1.1.0
