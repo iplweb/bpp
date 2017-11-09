@@ -47,10 +47,11 @@ class ApiUzupelnijRokWydawnictwoZwarteView(ApiJsonView):
 
     def get_data(self, data):
         if data.get('miejsce_i_rok'):
+            print(data['miejsce_i_rok'])
             try:
                 rok = re.search(r"\d{4}", data['miejsce_i_rok']).group(0)
                 return {'rok': rok}
-            except IndexError:
+            except (IndexError, AttributeError):
                 pass
 
         if data.get('wydawnictwo_nadrzedne'):
