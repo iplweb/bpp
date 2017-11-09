@@ -52,3 +52,6 @@ def test_ApiUzupelnijRokWydawnictwoCiagleView():
 
     res = x.get_data({'informacje': ''})
     assert res['rok'] == "b/d"
+
+    res = x.get_data({'informacje': 'Lublni 202'})
+    assert res['rok'] == "b/d"
