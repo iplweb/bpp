@@ -14,14 +14,21 @@ from bpp.admin.helpers import *
 from bpp.models import Jednostka, Autor, Wydawnictwo_Ciagle, \
     Wydawnictwo_Zwarte, Praca_Habilitacyjna, Patent  # Publikacja_Habilitacyjna
 from bpp.models.praca_habilitacyjna import Publikacja_Habilitacyjna
-from .praca_doktorska import Praca_Doktorska_Habilitacyjna_Admin_Base, \
-    HABILITACYJNA_FIELDS
+from .praca_doktorska import Praca_Doktorska_Habilitacyjna_Admin_Base
 
 
 #
 # Praca Habilitacyjna
 #
 #
+
+HABILITACYJNA_FIELDS = DWA_TYTULY \
+                       + MODEL_ZE_SZCZEGOLAMI \
+                       + ('miejsce_i_rok', 'wydawnictwo', 'autor', 'jednostka') \
+                       + MODEL_Z_ISBN \
+                       + MODEL_Z_ROKIEM
+
+
 
 class Publikacja_HabilitacyjnaForm(FutureModelForm):
     publikacja = QuerySetSequenceModelField(

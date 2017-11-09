@@ -15,12 +15,8 @@ DOKTORSKA_FIELDS = DWA_TYTULY \
                    + MODEL_ZE_SZCZEGOLAMI \
                    + ('miejsce_i_rok', 'wydawnictwo', 'autor', 'jednostka',
                       'promotor') \
+                   + MODEL_Z_ISBN \
                    + MODEL_Z_ROKIEM
-
-HABILITACYJNA_FIELDS = DWA_TYTULY \
-                       + MODEL_ZE_SZCZEGOLAMI \
-                       + ('miejsce_i_rok', 'wydawnictwo', 'autor', 'jednostka') \
-                       + MODEL_Z_ROKIEM
 
 
 class Praca_Doktorska_Habilitacyjna_Admin_Base(AdnotacjeZDatamiMixin,
