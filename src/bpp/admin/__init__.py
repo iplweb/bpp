@@ -40,7 +40,7 @@ from .konferencja import KonferencjaAdmin
 from .struktura import UczelniaAdmin, WydzialAdmin, JednostkaAdmin
 from .seria_wydawnicza import Seria_WydawniczaAdmin
 from .praca_doktorska import Praca_DoktorskaAdmin  # noqa
-from .praca_habilitacyjna import Praca_Habilitacyjna  # noqa
+from .praca_habilitacyjna import Praca_HabilitacyjnaAdmin  # noqa
 
 # Proste tabele
 from bpp.models.openaccess import Tryb_OpenAccess_Wydawnictwo_Ciagle, Tryb_OpenAccess_Wydawnictwo_Zwarte, \
