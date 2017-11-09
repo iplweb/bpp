@@ -39,6 +39,8 @@ from .wydawnictwo_ciagle import Wydawnictwo_CiagleAdmin
 from .konferencja import KonferencjaAdmin
 from .struktura import UczelniaAdmin, WydzialAdmin, JednostkaAdmin
 from .seria_wydawnicza import Seria_WydawniczaAdmin
+from .praca_doktorska import Praca_DoktorskaAdmin  # noqa
+from .praca_habilitacyjna import Praca_Habilitacyjna  # noqa
 
 # Proste tabele
 from bpp.models.openaccess import Tryb_OpenAccess_Wydawnictwo_Ciagle, Tryb_OpenAccess_Wydawnictwo_Zwarte, \
@@ -300,143 +302,6 @@ class ZrodloAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
 admin.site.register(Zrodlo, ZrodloAdmin)
 
 # Bibliografia
-
-DOKTORSKA_FIELDS = DWA_TYTULY \
-                   + MODEL_ZE_SZCZEGOLAMI \
-                   + ('miejsce_i_rok', 'wydawnictwo', 'autor', 'jednostka', 'promotor') \
-                   + MODEL_Z_ROKIEM
-
-HABILITACYJNA_FIELDS = DWA_TYTULY \
-                       + MODEL_ZE_SZCZEGOLAMI \
-                       + ('miejsce_i_rok', 'wydawnictwo', 'autor', 'jednostka') \
-                       + MODEL_Z_ROKIEM
-
-
-class Praca_Doktorska_Habilitacyjna_Admin_Base(AdnotacjeZDatamiMixin,
-                                               CommitedModelAdmin):
-    formfield_overrides = NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW
-
-    list_display = [
-        'tytul_oryginalny', 'autor', 'jednostka', 'wydawnictwo',
-        'typ_kbn', 'ostatnio_zmieniony']
-    list_select_related = ['autor', 'autor__tytul', 'jednostka', 'jednostka__wydzial', 'typ_kbn']
-
-    search_fields = [
-        'tytul', 'tytul_oryginalny', 'szczegoly', 'uwagi', 'informacje',
-        'slowa_kluczowe', 'rok', 'www', 'wydawnictwo', 'redakcja',
-        'autor__tytul__nazwa', 'jednostka__nazwa', 'adnotacje', 'id', ]
-
-    list_filter = ['status_korekty', 'recenzowana', 'typ_kbn']
-
-
-class Praca_DoktorskaForm(forms.ModelForm):
-    autor = forms.ModelChoiceField(
-        queryset=Autor.objects.all(),
-        widget=autocomplete.ModelSelect2(
-            url='bpp:autor-z-uczelni-autocomplete')
-    )
-
-    jednostka = forms.ModelChoiceField(
-        queryset=Jednostka.objects.all(),
-        widget=autocomplete.ModelSelect2(
-            url='bpp:jednostka-autocomplete')
-    )
-
-    promotor = forms.ModelChoiceField(
-        queryset=Autor.objects.all(),
-        widget=autocomplete.ModelSelect2(
-            url='bpp:autor-z-uczelni-autocomplete')
-    )
-
-    class Meta:
-        model = Praca_Doktorska
-        fields = "__all__"
-
-
-class Praca_DoktorskaAdmin(Praca_Doktorska_Habilitacyjna_Admin_Base):
-    form = Praca_DoktorskaForm
-
-    fieldsets = (
-        ('Praca doktorska', {
-            'fields': DOKTORSKA_FIELDS
-        }),
-        EKSTRA_INFORMACJE_DOKTORSKA_HABILITACYJNA_FIELDSET,
-        MODEL_TYPOWANY_BEZ_CHARAKTERU_FIELDSET,
-        MODEL_PUNKTOWANY_FIELDSET,
-        MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
-        POZOSTALE_MODELE_FIELDSET,
-        ADNOTACJE_Z_DATAMI_FIELDSET)
-
-
-admin.site.register(Praca_Doktorska, Praca_DoktorskaAdmin)
-
-
-#
-# Praca Habilitacyjna
-#
-#
-class Publikacja_HabilitacyjnaForm(FutureModelForm):
-    publikacja = QuerySetSequenceModelField(
-        queryset=QuerySetSequence(
-            Wydawnictwo_Zwarte.objects.all(),
-            Wydawnictwo_Ciagle.objects.all(),
-            Patent.objects.all()
-        ),
-        required=True,
-        widget=QuerySetSequenceSelect2(
-            'bpp:podrzedna-publikacja-habilitacyjna-autocomplete',
-            forward=['autor'],
-            attrs=dict(style="width: 764px;")
-        ),
-    )
-
-    class Meta:
-        model = Publikacja_Habilitacyjna
-        widgets = {'kolejnosc': HiddenInput}
-        fields = ['publikacja', 'kolejnosc']
-
-
-class Publikacja_Habilitacyjna_Inline(admin.TabularInline):
-    model = Publikacja_Habilitacyjna
-    form = Publikacja_HabilitacyjnaForm
-    extra = 1
-    sortable_field_name = "kolejnosc"
-
-
-class Praca_HabilitacyjnaForm(forms.ModelForm):
-    autor = forms.ModelChoiceField(
-        queryset=Autor.objects.all(),
-        widget=autocomplete.ModelSelect2(
-            url='bpp:autor-z-uczelni-autocomplete')
-    )
-
-    jednostka = forms.ModelChoiceField(
-        queryset=Jednostka.objects.all(),
-        widget=autocomplete.ModelSelect2(
-            url='bpp:jednostka-autocomplete')
-    )
-
-    class Meta:
-        fields = "__all__"
-
-class Praca_HabilitacyjnaAdmin(Praca_Doktorska_Habilitacyjna_Admin_Base):
-    inlines = [Publikacja_Habilitacyjna_Inline, ]
-
-    form = Praca_HabilitacyjnaForm
-
-    fieldsets = (
-        ('Praca habilitacyjna', {
-            'fields': HABILITACYJNA_FIELDS
-        }),
-        EKSTRA_INFORMACJE_DOKTORSKA_HABILITACYJNA_FIELDSET,
-        MODEL_TYPOWANY_BEZ_CHARAKTERU_FIELDSET,
-        MODEL_PUNKTOWANY_FIELDSET,
-        MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
-        POZOSTALE_MODELE_FIELDSET,
-        ADNOTACJE_Z_DATAMI_FIELDSET)
-
-
-admin.site.register(Praca_Habilitacyjna, Praca_HabilitacyjnaAdmin)
 
 
 class Patent_Admin(AdnotacjeZDatamiMixin, Wydawnictwo_ZwarteAdmin_Baza):
