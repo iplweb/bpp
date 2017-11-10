@@ -209,7 +209,7 @@ class AutorAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
     fieldsets = (
         (None, {
             'fields': (
-                'imiona', 'nazwisko', 'tytul', 'pokazuj_na_stronach_jednostek',
+                'imiona', 'nazwisko', 'tytul', 'pokazuj',
                 'email', 'www', 'orcid', 'pbn_id', 'pesel_md5')
         }),
         ('Biografia', {

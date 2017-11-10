@@ -10,7 +10,11 @@ Historia zmian
 
 * [kod] generowanie opisu bibliograficznego autorów za pomocą systemu
   templatek Django; usunięcie kodu generowania opisu bibliograficznego
-  autorów za pomocą własnych tagów.
+  autorów za pomocą własnych tagów,
+
+* pole "Pokazuj na stronach jednostek" dla Autorów staje się polem "Pokazuj"
+  i określa widoczność autora na stronie jednostki oraz w "Rankingu autorów"
+
 
 0.11.104 (2017-11-08)
 ---------------------

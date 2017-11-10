@@ -240,7 +240,7 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID):
     pracownicy = obecni_autorzy
 
     def autorzy_na_strone_jednostki(self):
-        return self.obecni_autorzy().filter(pokazuj_na_stronach_jednostek=True)
+        return self.obecni_autorzy().filter(pokazuj=True)
 
     def kierownik(self):
         try:

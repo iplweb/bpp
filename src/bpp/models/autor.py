@@ -52,7 +52,9 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
     aktualna_jednostka = models.ForeignKey('Jednostka', blank=True, null=True, related_name='aktualna_jednostka')
     aktualna_funkcja = models.ForeignKey('Funkcja_Autora', blank=True, null=True, related_name='aktualna_funkcja')
 
-    pokazuj_na_stronach_jednostek = models.BooleanField(default=True)
+    pokazuj = models.BooleanField(
+        default=True,
+        help_text="Pokazuj autora na stronach jednostek oraz w rankingu. ")
 
     email = models.EmailField("E-mail", max_length=128, blank=True, null=True)
     www = models.URLField("WWW", max_length=1024, blank=True, null=True)

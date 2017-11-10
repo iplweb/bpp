@@ -98,6 +98,10 @@ class RankingAutorow(ExportMixin, SingleTableView):
             impact_factor_sum=0,
             punkty_kbn_sum=0)
 
+        qset = qset.exclude(
+            autor__pokazuj=False
+        )
+
         return qset
 
     def get_dostepne_wydzialy(self):

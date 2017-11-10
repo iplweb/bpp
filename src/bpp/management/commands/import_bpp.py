@@ -619,7 +619,7 @@ def zrob_autorow(cur, initial_offset=0, skip=0):
                   www=convert_www(aut['www']),
                   urodzony=aut['urodzony'],
                   zmarl=aut['zmarl'],
-                  pokazuj_na_stronach_jednostek=int(aut['hide_on_unit']) == 0,
+                  pokazuj=int(aut['hide_on_unit']) == 0,
                   poprzednie_nazwiska=aut['dawne_nazwisko'])
 
         a = Autor.objects.create(**kw)
