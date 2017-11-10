@@ -345,16 +345,16 @@ def test_autorform_uzupelnianie_jednostki(autorform_browser, autorform_jednostka
     """)
     autorform_browser.find_by_css(".grp-add-handler").first.click()
     wait_for(
-        lambda: autorform_browser.find_by_id("id_wydawnictwo_ciagle_autor_set-0-autor")
+        lambda: autorform_browser.find_by_id("id_autorzy_set-0-autor")
     )
 
     select_select2_autocomplete(
         autorform_browser,
-        "id_wydawnictwo_ciagle_autor_set-0-autor",
+        "id_autorzy_set-0-autor",
         "KOWALSKI"
     )
 
-    sel = autorform_browser.find_by_id("id_wydawnictwo_ciagle_autor_set-0-jednostka")
+    sel = autorform_browser.find_by_id("id_autorzy_set-0-jednostka")
     assert sel.value == str(autorform_jednostka.pk)
 
 
@@ -378,18 +378,18 @@ def test_autorform_kasowanie_autora(autorform_browser, autorform_jednostka):
     """)
     autorform_browser.find_by_css(".grp-add-handler").first.click()
     wait_for(
-        lambda: autorform_browser.find_by_id("id_wydawnictwo_ciagle_autor_set-0-autor")
+        lambda: autorform_browser.find_by_id("id_autorzy_set-0-autor")
     )
 
     # uzupełnij autora
     select_select2_autocomplete(
         autorform_browser,
-        "id_wydawnictwo_ciagle_autor_set-0-autor",
+        "id_autorzy_set-0-autor",
         "KOW")
 
     start = time.time()
     while True:
-        jed = autorform_browser.find_by_id("id_wydawnictwo_ciagle_autor_set-0-jednostka")
+        jed = autorform_browser.find_by_id("id_autorzy_set-0-jednostka")
         if jed.value != '':
             break
         time.sleep(0.1)
@@ -399,10 +399,10 @@ def test_autorform_kasowanie_autora(autorform_browser, autorform_jednostka):
     # Jednostka ustawiona. Usuń autora:
     select_select2_clear_selection(
         autorform_browser,
-        "id_wydawnictwo_ciagle_autor_set-0-autor")
+        "id_autorzy_set-0-autor")
 
     # jednostka nie jest wybrana
-    jed = autorform_browser.find_by_id("id_wydawnictwo_ciagle_autor_set-0-jednostka")
+    jed = autorform_browser.find_by_id("id_autorzy_set-0-jednostka")
     assert jed.value.find("\n") != -1
 
     autorform_browser.execute_script("window.onbeforeunload = function(e) {};")
