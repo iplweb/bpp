@@ -45,20 +45,23 @@ class Wydawnictwo_ZwarteAdmin_Baza(CommitedModelAdmin):
                    'charakter_formalny', 'informacja_z', 'jezyk',
                    LiczbaZnakowFilter, 'rok']
 
-    fieldsets = (
-        ('Wydawnictwo zwarte', {
-            'fields':
-                DWA_TYTULY
-                + MODEL_ZE_SZCZEGOLAMI
-                + ('miejsce_i_rok', 'wydawnictwo',)
-                + MODEL_Z_ROKIEM
-        }),
-        EKSTRA_INFORMACJE_WYDAWNICTWO_ZWARTE_FIELDSET,
-        MODEL_TYPOWANY_FIELDSET,
-        MODEL_PUNKTOWANY_FIELDSET,
-        MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
-        POZOSTALE_MODELE_FIELDSET,
-        ADNOTACJE_Z_DATAMI_ORAZ_PBN_FIELDSET)
+    # Usunąć przed wcomitowaniem
+    
+    # fieldsets = (
+    #     ('Wydawnictwo zwarte', {
+    #         'fields':
+    #             DWA_TYTULY
+    #             + MODEL_ZE_SZCZEGOLAMI
+    #             + ('miejsce_i_rok', 'wydawnictwo',)
+    #             + MODEL_Z_ISBN
+    #             + MODEL_Z_ROKIEM
+    #     }),
+    #     EKSTRA_INFORMACJE_WYDAWNICTWO_ZWARTE_FIELDSET,
+    #     MODEL_TYPOWANY_FIELDSET,
+    #     MODEL_PUNKTOWANY_FIELDSET,
+    #     MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
+    #     POZOSTALE_MODELE_FIELDSET,
+    #     ADNOTACJE_Z_DATAMI_ORAZ_PBN_FIELDSET)
 
     def wydawnictwo_nadrzedne_col(self, obj):
         try:
@@ -142,6 +145,7 @@ class Wydawnictwo_ZwarteAdmin(KolumnyZeSkrotamiMixin,
                    'calkowita_liczba_redaktorow',
                    'miejsce_i_rok',
                    'wydawnictwo',)
+                + MODEL_Z_ISBN
                 + MODEL_Z_ROKIEM
         }),
         SERIA_WYDAWNICZA_FIELDSET,
