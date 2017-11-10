@@ -166,7 +166,7 @@ travis-env:
 	cat docker/env.web.txt
 
 travis-wait:
-	sleep 10
+	sleep 60
 
 # cel: travis
 # Uruchamia wszystkie testy - dla TravisCI
