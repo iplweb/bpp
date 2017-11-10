@@ -17,7 +17,7 @@ from bpp.models.abstract import \
     PBNSerializerHelperMixin, ModelZOpenAccess, ModelZPubmedID, ModelZDOI, \
     ModelZeZnakamiWydawniczymi, \
     ModelZAktualizacjaDlaPBN, ModelZKonferencja, \
-    ModelZSeria_Wydawnicza, ModelZISSN, ModelWybitny
+    ModelZSeria_Wydawnicza, ModelZISSN, ModelWybitny, ModelZAbsolutnymUrl
 from bpp.models.autor import Autor
 from bpp.models.util import ZapobiegajNiewlasciwymCharakterom
 from bpp.models.util import dodaj_autora
@@ -26,7 +26,7 @@ from bpp.models.util import dodaj_autora
 class Wydawnictwo_Zwarte_Autor(DirtyFieldsMixin, BazaModeluOdpowiedzialnosciAutorow):
     """Model zawierający informację o przywiązaniu autorów do wydawnictwa
     zwartego."""
-    rekord = models.ForeignKey('Wydawnictwo_Zwarte')
+    rekord = models.ForeignKey('Wydawnictwo_Zwarte', related_name="autorzy_set")
 
     class Meta:
         verbose_name = 'powiązanie autora z wyd. zwartym'
@@ -62,7 +62,7 @@ class Wydawnictwo_Zwarte_Baza(
     Wydawnictwo_Baza, DwaTytuly, ModelZRokiem, ModelZeStatusem,
     ModelZWWW, ModelZPubmedID, ModelZDOI, ModelRecenzowany,
     ModelPunktowany, ModelTypowany, ModelZeSzczegolami,
-    ModelZInformacjaZ, ModelZISBN, ModelZAdnotacjami):
+    ModelZInformacjaZ, ModelZISBN, ModelZAdnotacjami, ModelZAbsolutnymUrl):
     """Baza dla klas Wydawnictwo_Zwarte oraz Praca_Doktorska_Lub_Habilitacyjna
     """
 

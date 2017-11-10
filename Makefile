@@ -165,9 +165,12 @@ travis-env:
 	echo TRAVIS_PULL_REQUEST="${TRAVIS_PULL_REQUEST}" >> docker/env.web.txt
 	cat docker/env.web.txt
 
+travis-wait:
+	sleep 60
+
 # cel: travis
 # Uruchamia wszystkie testy - dla TravisCI
-travis: clean travis-env docker-up docker-tests
+travis: clean travis-env docker-up travis-wait docker-tests
 	@echo "Done"
 
 rebuild-test:

@@ -1,8 +1,10 @@
 # -*- encoding: utf-8 -*-
 
 from dirtyfields.dirtyfields import DirtyFieldsMixin
+from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.db.models.signals import post_delete
+from django.urls.base import reverse
 from django.utils import timezone
 from lxml.etree import SubElement, Element
 from secure_input.utils import safe_html
@@ -14,13 +16,14 @@ from bpp.models.abstract import BazaModeluOdpowiedzialnosciAutorow, DwaTytuly, \
     ModelZAdnotacjami, ModelZCharakterem, Wydawnictwo_Baza, \
     PBNSerializerHelperMixin, ModelZOpenAccess, ModelZPubmedID, \
     ModelZDOI, ModelZeZnakamiWydawniczymi, ModelZAktualizacjaDlaPBN, \
-    parse_informacje, ModelZNumeremZeszytu, ModelZKonferencja, ModelWybitny
+    parse_informacje, ModelZNumeremZeszytu, ModelZKonferencja, ModelWybitny, \
+    ModelZAbsolutnymUrl
 from bpp.models.util import dodaj_autora, ZapobiegajNiewlasciwymCharakterom
 
 
 class Wydawnictwo_Ciagle_Autor(DirtyFieldsMixin, BazaModeluOdpowiedzialnosciAutorow):
     """Powiązanie autora do wydawnictwa ciągłego."""
-    rekord = models.ForeignKey('Wydawnictwo_Ciagle')
+    rekord = models.ForeignKey('Wydawnictwo_Ciagle', related_name="autorzy_set")
 
     class Meta:
         verbose_name = 'powiązanie autora z wyd. ciągłym'
@@ -63,7 +66,7 @@ class ModelZOpenAccessWydawnictwoCiagle(ModelZOpenAccess):
 
 class Wydawnictwo_Ciagle(ZapobiegajNiewlasciwymCharakterom,
                          Wydawnictwo_Baza, DwaTytuly, ModelZRokiem,
-                         ModelZeStatusem,
+                         ModelZeStatusem, ModelZAbsolutnymUrl,
                          ModelZWWW, ModelZPubmedID, ModelZDOI, ModelRecenzowany,
                          ModelPunktowany, ModelTypowany, ModelZeSzczegolami,
                          ModelZISSN, ModelZInformacjaZ, ModelZAdnotacjami,

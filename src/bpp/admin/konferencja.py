@@ -2,10 +2,10 @@
 
 from django.contrib import admin
 
-from bpp.admin.helpers import ADNOTACJE_FIELDSET
-from bpp.models.konferencja import Konferencja
+from .core import CommitedModelAdmin
+from .helpers import ADNOTACJE_FIELDSET
+from ..models.konferencja import Konferencja
 
-from .common import CommitedModelAdmin
 
 class KonferencjaAdmin(CommitedModelAdmin):
     list_display = ['nazwa', 'rozpoczecie', 'zakonczenie', 'miasto',

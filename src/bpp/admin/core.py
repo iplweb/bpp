@@ -171,4 +171,3 @@ class RestrictDeletionToAdministracjaGroupMixin:
 class RestrictDeletionToAdministracjaGroupAdmin(
         RestrictDeletionToAdministracjaGroupMixin, admin.ModelAdmin):
     pass
-

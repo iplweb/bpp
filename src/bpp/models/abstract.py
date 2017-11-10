@@ -10,6 +10,7 @@ from django.contrib.postgres.fields import HStoreField
 from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.urls.base import reverse
 from django.utils import six
 from django.utils import timezone
 from lxml.etree import Element
@@ -152,6 +153,15 @@ class ModelZeStatusem(models.Model):
 
     class Meta:
         abstract = True
+
+
+class ModelZAbsolutnymUrl:
+    def get_absolute_url(self):
+        return reverse("bpp:browse_praca",
+                       args=(
+                           ContentType.objects.get_for_model(self).pk,
+                           self.pk
+                       ))
 
 
 class ModelZRokiem(models.Model):

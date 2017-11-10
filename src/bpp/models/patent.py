@@ -6,13 +6,13 @@ from bpp.models import BazaModeluOdpowiedzialnosciAutorow, Autor, \
     ModelZRokiem, ModelZeStatusem, ModelZWWW, ModelRecenzowany, \
     ModelZInformacjaZ, ModelZAdnotacjami, ModelZeSzczegolami, ModelPunktowany
 from bpp.models.abstract import ModelPrzeszukiwalny, ModelZLegacyData, \
-    RekordBPPBaza
+    RekordBPPBaza, ModelZAbsolutnymUrl
 from bpp.models.util import dodaj_autora, ModelZOpisemBibliograficznym
 from django.utils import six
 
 class Patent_Autor(BazaModeluOdpowiedzialnosciAutorow):
     """Powiązanie autora do patentu."""
-    rekord = models.ForeignKey('Patent')
+    rekord = models.ForeignKey('Patent', related_name="autorzy_set")
 
     class Meta:
         verbose_name = 'powiązanie autora z patentem'
@@ -33,7 +33,8 @@ class Patent(RekordBPPBaza,
              ModelPunktowany,
              ModelZeSzczegolami,
              ModelZInformacjaZ,
-             ModelZAdnotacjami):
+             ModelZAdnotacjami,
+             ModelZAbsolutnymUrl):
 
     tytul_oryginalny = models.TextField("Tytuł oryginalny", db_index=True)
 

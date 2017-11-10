@@ -11,7 +11,7 @@ from django.utils import timezone
 @pytest.mark.django_db
 def test_analyze_file(lmi):
     res = analyze_file(ListaMinisterialnaIntegration, pk=lmi.pk)
-    print(res)
+    assert res is None
 
 @pytest.mark.django_db
 def test_remove_old_integrator_files():

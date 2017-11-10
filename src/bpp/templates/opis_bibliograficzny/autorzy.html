@@ -1,4 +1,1 @@
-{% load prace %}
-{# dispBookAuthors #}
-{% autorzy praca %}
-{# koniec dispBookAuthors #}
+{% load prace %}{% spaceless %}{% for autor in praca.autorzy_set.all %}{% ifchanged autor.typ_odpowiedzialnosci %}[{{ autor.typ_odpowiedzialnosci.skrot|upper }}] {% endifchanged %}{% spaceless %}{% if links == "admin" %}<a href="{% url "admin:bpp_autor_change" autor.autor.pk %}">{% else %}{% if links == "normal" %}<a href="{% url "bpp:browse_autor" autor.autor.slug %}">{% else %}{% endif %}{% endif %}{% if links %}{{ autor.zapisany_jako }}{% else %}{{ autor.zapisany_jako|upper }}{% endif %}{% if links == "admin" or links == "normal" %}</a>{% endif %}{% endspaceless %}{% if not forloop.last %}, {% else %}. {% endif %}{% endfor %}{% endspaceless %}

@@ -1,4 +1,3 @@
-{# dispBookTitle #}
 {% load prace %}
 {% if praca.tytul %}
 {{ praca.tytul_oryginalny|safe }}
@@ -6,4 +5,3 @@
 {% else %}
 {{ praca.tytul_oryginalny|znak_na_koncu:"."|safe }}
 {% endif %}
-{# koniec dispBookTitle #}

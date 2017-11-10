@@ -1,8 +1,8 @@
 # -*- encoding: utf-8 -*-
 from django.contrib import admin
 
-from bpp.admin.common import CommitedModelAdmin
-from bpp.models.seria_wydawnicza import Seria_Wydawnicza
+from .core import CommitedModelAdmin
+from ..models.seria_wydawnicza import Seria_Wydawnicza
 
 
 class Seria_WydawniczaAdmin(CommitedModelAdmin):

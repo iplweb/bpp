@@ -32,8 +32,8 @@ from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte, \
          "admin:bpp_patent_change"),
     ]
 )
-def test_zapisz_wydawnictwo_ciagle(klass, autor_klass, name,
-                                   url, admin_app):
+def test_zapisz_wydawnictwo_w_adminie(klass, autor_klass, name,
+                                      url, admin_app):
 
     if klass == Wydawnictwo_Ciagle:
         wc = mommy.make(klass,
@@ -54,9 +54,9 @@ def test_zapisz_wydawnictwo_ciagle(klass, autor_klass, name,
     form = res.forms[name + "_form"]
 
     ZMIENIONE = "J[an] Kowalski"
-    form['%s_autor_set-0-zapisany_jako' % name].options.append(
+    form['autorzy_set-0-zapisany_jako'].options.append(
         (ZMIENIONE, False, ZMIENIONE))
-    form['%s_autor_set-0-zapisany_jako' % name].value = ZMIENIONE
+    form['autorzy_set-0-zapisany_jako'].value = ZMIENIONE
 
     res2 = form.submit().maybe_follow()
     assert res2.status_code == 200

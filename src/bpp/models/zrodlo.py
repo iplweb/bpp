@@ -6,6 +6,7 @@
 from autoslug import AutoSlugField
 
 from django.db import models
+from django.urls.base import reverse
 from lxml.etree import Element, SubElement
 from bpp.models.system import Jezyk
 from bpp.util import FulltextSearchMixin
@@ -135,6 +136,9 @@ class Zrodlo(ModelZAdnotacjami, ModelZISSN):
     slug = AutoSlugField(
         populate_from='nazwa',
         unique=True)
+
+    def get_absolute_url(self):
+        return reverse("bpp:browse_zrodlo", args=(self.slug,))
 
     def __str__(self):
         ret = "%s" % self.nazwa
