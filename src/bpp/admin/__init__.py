@@ -5,10 +5,9 @@ from dal_select2_queryset_sequence.widgets import \
     QuerySetSequenceSelect2
 from queryset_sequence import QuerySetSequence
 
-from bpp.admin.common import RestrictDeletionToAdministracjaGroupAdmin, \
+from .core import RestrictDeletionToAdministracjaGroupAdmin, \
     RestrictDeletionToAdministracjaGroupMixin
-from bpp.models.nagroda import OrganPrzyznajacyNagrody
-from bpp.models.praca_habilitacyjna import Publikacja_Habilitacyjna
+from ..models.nagroda import OrganPrzyznajacyNagrody
 
 from dal import autocomplete
 
@@ -20,19 +19,19 @@ from django.contrib.auth.forms import UserCreationForm
 from django.utils.safestring import mark_safe
 from multiseek.models import SearchForm
 
-from bpp.admin.filters import LiczbaZnakowFilter, CalkowitaLiczbaAutorowFilter, \
+from .filters import LiczbaZnakowFilter, CalkowitaLiczbaAutorowFilter, \
     JednostkaFilter, PBNIDObecnyFilter, \
     PeselMD5ObecnyFilter, OrcidObecnyFilter
-from bpp.admin.helpers import *
-from bpp.models import Jezyk, Typ_KBN, Uczelnia, Wydzial, \
+from .helpers import *
+from ..models import Jezyk, Typ_KBN, Uczelnia, Wydzial, \
     Jednostka, Tytul, Autor, Autor_Jednostka, Funkcja_Autora, Rodzaj_Zrodla, \
     Zrodlo, Punktacja_Zrodla, Typ_Odpowiedzialnosci, Status_Korekty, \
     Zrodlo_Informacji, Wydawnictwo_Ciagle, Charakter_Formalny, \
     Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor, Praca_Doktorska, \
     Praca_Habilitacyjna, Patent, Patent_Autor, BppUser # Publikacja_Habilitacyjna
-from bpp.models.system import Charakter_PBN
+from ..models.system import Charakter_PBN
 
-from .common import BaseBppAdmin, CommitedModelAdmin, \
+from .core import BaseBppAdmin, CommitedModelAdmin, \
     KolumnyZeSkrotamiMixin, generuj_inline_dla_autorow
 from .wydawnictwo_zwarte import Wydawnictwo_ZwarteAdmin_Baza, Wydawnictwo_ZwarteAdmin
 from .wydawnictwo_ciagle import Wydawnictwo_CiagleAdmin

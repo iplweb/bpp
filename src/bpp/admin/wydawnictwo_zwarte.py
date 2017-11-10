@@ -14,7 +14,7 @@ from bpp.models import Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor
 from bpp.models.konferencja import Konferencja
 from bpp.models.nagroda import Nagroda, OrganPrzyznajacyNagrody
 from bpp.models.seria_wydawnicza import Seria_Wydawnicza
-from .common import CommitedModelAdmin, generuj_inline_dla_autorow, \
+from .core import CommitedModelAdmin, generuj_inline_dla_autorow, \
     KolumnyZeSkrotamiMixin
 
 

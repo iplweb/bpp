@@ -13,7 +13,7 @@ from bpp.models import Zrodlo, Wydawnictwo_Ciagle  # Publikacja_Habilitacyjna
 # Proste tabele
 from bpp.models.konferencja import Konferencja
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
-from .common import CommitedModelAdmin, \
+from .core import CommitedModelAdmin, \
     KolumnyZeSkrotamiMixin, generuj_inline_dla_autorow
 
 

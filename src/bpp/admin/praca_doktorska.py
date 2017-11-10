@@ -4,9 +4,9 @@ from dal import autocomplete
 from django import forms
 from django.contrib import admin
 
-from bpp.admin.helpers import *
-from bpp.models import Jednostka, Autor, Praca_Doktorska
-from .common import CommitedModelAdmin
+from .core import CommitedModelAdmin
+from .helpers import *
+from ..models import Jednostka, Autor, Praca_Doktorska
 
 # Proste tabele
 

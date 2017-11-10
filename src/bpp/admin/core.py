@@ -6,6 +6,8 @@ from django import forms
 from django.contrib import admin
 from django.db.models.fields import BLANK_CHOICE_DASH
 from django.forms.widgets import HiddenInput
+from django.shortcuts import render
+from django_object_actions.utils import DjangoObjectActions
 
 from bpp.jezyk_polski import warianty_zapisanego_nazwiska
 from bpp.models import Jednostka, Autor, Typ_Odpowiedzialnosci
@@ -171,4 +173,3 @@ class RestrictDeletionToAdministracjaGroupMixin:
 class RestrictDeletionToAdministracjaGroupAdmin(
         RestrictDeletionToAdministracjaGroupMixin, admin.ModelAdmin):
     pass
-

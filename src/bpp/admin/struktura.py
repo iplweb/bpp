@@ -2,14 +2,14 @@
 
 # -*- encoding: utf-8 -*-
 
-from django.contrib import admin
 from django import forms
+from django.contrib import admin
 
-from bpp.admin.common import RestrictDeletionToAdministracjaGroupMixin
-from bpp.admin.helpers import *
-from bpp.models import Uczelnia, Wydzial  # Publikacja_Habilitacyjna
-from bpp.models.struktura import Jednostka, Jednostka_Wydzial
-from .common import CommitedModelAdmin
+from .core import CommitedModelAdmin
+from .core import RestrictDeletionToAdministracjaGroupMixin
+from .helpers import *
+from ..models import Uczelnia, Wydzial  # Publikacja_Habilitacyjna
+from ..models.struktura import Jednostka, Jednostka_Wydzial
 
 
 # Proste tabele
