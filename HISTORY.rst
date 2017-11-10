@@ -2,6 +2,16 @@
 Historia zmian
 ==============
 
+0.11.106 (2017-11-10)
+---------------------
+
+* możliwość łatwego przechodzenia z formularza edycji w module redagowania do
+  stron WWW dostepnych dla użytkownika końcowego
+
+* [kod] generowanie opisu bibliograficznego autorów za pomocą systemu
+  templatek Django; usunięcie kodu generowania opisu bibliograficznego
+  autorów za pomocą własnych tagów.
+
 0.11.104 (2017-11-08)
 ---------------------
 
