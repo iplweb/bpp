@@ -11,6 +11,7 @@ from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import models, IntegrityError
+from django.urls.base import reverse
 from django.utils import six
 from lxml.etree import Element, SubElement
 
@@ -100,6 +101,8 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
 
     jednostki = models.ManyToManyField('bpp.Jednostka', through='Autor_Jednostka')
 
+    def get_absolute_url(self):
+        return reverse("bpp:browse_autor", args=(self.slug,))
 
     class Meta:
         verbose_name = 'autor'

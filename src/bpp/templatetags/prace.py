@@ -1,80 +1,9 @@
 # -*- encoding: utf-8 -*-
-from django.core.urlresolvers import reverse
-from django.template import Library
-from django import template
 import lxml.html
+from django.template import Library
 from django.utils.safestring import mark_safe
 
 register = Library()
-
-
-class AutorzyNode(template.Node):
-    url = None
-
-    def __init__(self, varname):
-        self.variable = template.Variable(varname)
-
-    def render(self, context):
-        def moj_zapisany(s, slug):
-            pre = post = ''
-            if self.url:
-                pre = '<a href="' + reverse(self.url, args=(slug, )) + '">'
-                post = '</a>'
-                return pre + s + post
-            return s.upper()
-
-        value = self.variable.resolve(context)
-        if hasattr(value, 'autorzy'):
-            through = value.autorzy.through
-            autorzy_tej_pracy = through.objects.filter(rekord=value).order_by('typ_odpowiedzialnosci', 'kolejnosc')
-
-            ret = []
-            prev_typ = None
-            for autor in autorzy_tej_pracy:
-                azj = moj_zapisany(autor.zapisany_jako, autor.autor.slug)
-                if prev_typ != autor.typ_odpowiedzialnosci:
-                    prev_typ = autor.typ_odpowiedzialnosci
-                    ret.append("[%s] %s" % (prev_typ.skrot.upper(), azj))
-                    continue
-                ret.append(azj)
-
-            retval = ", ".join(ret)
-
-        elif hasattr(value, 'autor'):
-            retval = "[AUT.] " + moj_zapisany("%s %s" % (value.autor.nazwisko, value.autor.imiona),
-                                value.autor.slug)
-        else:
-            raise template.TemplateSyntaxError(
-                "%r wymaga obiektu z atrybutem autorzy lub autor, dostal %r" % (
-                self, value))
-
-        retval = retval.strip()
-
-        if retval.endswith("."):
-            return retval
-
-        if retval.endswith(".</a>"):
-            retval = retval[:-5] + "</a>"
-
-        return retval + ". "
-
-class AutorzyZLinkamiNode(AutorzyNode):
-    url = "bpp:browse_autor"
-
-
-def __autorzy(parser, token, klass):
-    try:
-        # split_contents() knows not to split quoted strings.
-        tag_name, varname = token.split_contents()
-    except ValueError:
-        raise template.TemplateSyntaxError("%r tag requires a single argument" % token.contents.split()[0])
-    return klass(varname)
-
-autorzy = lambda parser, token: __autorzy(parser, token, AutorzyNode)
-autorzy_z_linkami = lambda parser, token: __autorzy(parser, token, AutorzyZLinkamiNode)
-
-register.tag("autorzy", autorzy)
-register.tag("autorzy_z_linkami", autorzy_z_linkami)
 
 
 def strip_at_end(ciag, znaki=",."):

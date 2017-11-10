@@ -11,6 +11,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models.functions import Coalesce
 from django.db.models.query_utils import Q
+from django.urls.base import reverse
 from django.utils import six
 from django.utils import timezone
 
@@ -80,6 +81,9 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         verbose_name_plural = "uczelnie"
         app_label = 'bpp'
 
+    def get_absolute_url(self):
+        return reverse("bpp:browse_uczelnia", args=(self.slug,))
+
     def wydzialy(self):
         """Widoczne wydziały -- do pokazania na WWW"""
         return Wydzial.objects.filter(uczelnia=self, widoczny=True)
@@ -134,6 +138,9 @@ class Wydzial(ModelZAdnotacjami, ModelZPBN_ID):
 
     def __str__(self):
         return self.nazwa
+
+    def get_absolute_url(self):
+        return reverse("bpp:browse_wydzial", args=(self.slug,))
 
     def jednostki(self):
         """Lista jednostek - dla WWW"""
@@ -193,6 +200,9 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID):
         verbose_name_plural = 'jednostki'
         ordering = ['nazwa']
         app_label = 'bpp'
+
+    def get_absolute_url(self):
+        return reverse("bpp:browse_jednostka", args=(self.slug,))
 
     def __str__(self):
         ret = self.nazwa

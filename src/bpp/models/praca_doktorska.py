@@ -11,6 +11,17 @@ class Praca_Doktorska_Baza(Wydawnictwo_Zwarte_Baza):
     autor = models.OneToOneField(Autor)
     jednostka = models.ForeignKey(Jednostka)
 
+    @property
+    def autorzy_set(self):
+        class FakeAutorDoktoratuHabilitacji:
+            autor = self.autor
+            jednostka = self.jednostka
+            zapisany_jako = str(autor)
+
+        class FakeSet:
+            def all(self):
+                return [FakeAutorDoktoratuHabilitacji()]
+
     class Meta:
         abstract = True
 
