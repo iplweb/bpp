@@ -1,5 +1,4 @@
 {% load prace %}
-{# dispBookExtras #}
 {% if praca.charakter_formalny.skrot == 'ROZ' or praca.charakter_formalny.skrot == 'KSP' or praca.charakter_formalny.skrot == 'KSZ' %}
     {# szczególy i uwagi na końcu #}
     {{ praca.miejsce_i_rok|default:"" }}
@@ -13,4 +12,3 @@
     {{ praca.wydawnictwo|default:""|znak_na_poczatku:"," }}
     {{ praca.isbn|default:""|znak_na_poczatku:"," }}
 {% endif %}
-{# koniec dispBookExtras #}

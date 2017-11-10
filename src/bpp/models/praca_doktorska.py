@@ -2,8 +2,10 @@
 
 from django.db import models
 
-from bpp.models import Autor, Jednostka
-from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte_Baza
+from .autor import Autor
+from .struktura import Jednostka
+from .system import Typ_Odpowiedzialnosci
+from .wydawnictwo_zwarte import Wydawnictwo_Zwarte_Baza
 
 
 class Praca_Doktorska_Baza(Wydawnictwo_Zwarte_Baza):
@@ -20,7 +22,12 @@ class Praca_Doktorska_Baza(Wydawnictwo_Zwarte_Baza):
 
         class FakeSet:
             def all(self):
-                return [FakeAutorDoktoratuHabilitacji()]
+                ret = FakeAutorDoktoratuHabilitacji()
+                ret.typ_odpowiedzialnosci = Typ_Odpowiedzialnosci.objects.get(
+                    skrot="aut.")
+                return [ret]
+
+        return FakeSet()
 
     class Meta:
         abstract = True
