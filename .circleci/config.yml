@@ -10,6 +10,11 @@ jobs:
       - checkout
 
       - run:
+          name: Install curl
+          command: |
+            sudo apt-get update && apt-get dist-upgrade && apt-get install curl
+            
+      - run:
           name: Install Docker Compose
           command: |
             set -x
