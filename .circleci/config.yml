@@ -1,0 +1,40 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/python:3.6.1
+      
+    working_directory: ~/repo
+
+    steps:
+      - checkout
+
+      - run:
+          name: Install Docker Compose
+          command: |
+            set -x
+            curl -L https://github.com/docker/compose/releases/download/1.11.2/docker-compose-`uname -s`-`uname -m` > /usr/local/bin/docker-compose
+            chmod +x /usr/local/bin/docker-compose
+            
+#      - restore_cache:
+#          keys:
+#          - v1-dependencies-{{ checksum "requirements.txt" }}
+#          - v1-dependencies-
+
+      - run:
+          name: boot up docker
+          command: docker-compose up -d
+
+#      - save_cache:
+#          paths:
+#            - ./venv
+#          key: v1-dependencies-{{ checksum "requirements.txt" }}
+        
+      - run:
+          name: run tests
+          command: make travis
+
+#      - store_artifacts:
+#          path: test-reports
+#          destination: test-reports
+          
