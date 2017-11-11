@@ -1,19 +1,10 @@
 version: 2
 jobs:
   build:
-    docker:
-      - image: ubuntu:16.04
-      
-    working_directory: ~/repo
-
+    machine: true
     steps:
       - checkout
 
-      - run:
-          name: Install curl
-          command: |
-            apt-get update && apt-get install -y curl
-            
       - run:
           name: Install Docker Compose
           command: |
@@ -21,25 +12,10 @@ jobs:
             curl -L https://github.com/docker/compose/releases/download/1.11.2/docker-compose-`uname -s`-`uname -m` > /usr/local/bin/docker-compose
             chmod +x /usr/local/bin/docker-compose
             
-#      - restore_cache:
-#          keys:
-#          - v1-dependencies-{{ checksum "requirements.txt" }}
-#          - v1-dependencies-
-
       - run:
           name: boot up docker
           command: docker-compose up -d
 
-#      - save_cache:
-#          paths:
-#            - ./venv
-#          key: v1-dependencies-{{ checksum "requirements.txt" }}
-        
       - run:
           name: run tests
           command: make travis
-
-#      - store_artifacts:
-#          path: test-reports
-#          destination: test-reports
-          
