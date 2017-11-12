@@ -23,7 +23,6 @@ services:
     ports:
       - "5432:5432"
 
-      
   selenium:
     image: selenium/standalone-firefox-debug
     ports:
