@@ -170,8 +170,9 @@ class AutorAutocomplete(GroupRequiredMixin, AutorAutocompleteBase):
             return Error()
 
         return self.get_queryset().create(**dict(
-            nazwisko=text[0],
-            imiona=text[1]
+            nazwisko=text[0].title(),
+            imiona=text[1].title(),
+            pokazuj=False
         ))
 
 

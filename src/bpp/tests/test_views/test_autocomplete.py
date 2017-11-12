@@ -40,6 +40,19 @@ class TestAutocomplete(WebTestCase):
         x.q = ":"
         self.assertTrue(len(x.get_queryset()) != None)
 
+        self.assertEquals(x.create_object("test").pk, -1)
+
+        res = x.create_object("budnik jan")
+        y = Autor.objects.get(pk=res.pk)
+        assert y.imiona == "Jan"
+        assert y.nazwisko == "Budnik"
+
+        res = x.create_object("kotulowska-papis ilona joanna")
+        y = Autor.objects.get(pk=res.pk)
+        assert y.imiona == "Ilona Joanna"
+        assert y.nazwisko == "Kotulowska-Papis"
+
+
     def test_GlobalNavigationAutocomplete(self):
         x = autocomplete.GlobalNavigationAutocomplete()
         x.q = None
