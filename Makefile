@@ -165,10 +165,9 @@ travis-env:
 	echo TRAVIS_PULL_REQUEST="${TRAVIS_PULL_REQUEST}" >> docker/env.web.txt
 	cat docker/env.web.txt
 
-# cel: circle
-# Uruchamia wszystkie testy na CircleCI
-circleci: docker-up docker-tests
-	@echo "Done"	
+circle-env:
+	echo COVERALLS_REPO_TOKEN="${COVERALLS_REPO_TOKEN}" >> docker/env.web.txt
+	cat docker/env.web.txt
 
 # cel: travis
 # Uruchamia wszystkie testy - dla TravisCI
