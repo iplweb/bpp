@@ -1,2 +1,4 @@
-git+https://github.com/mpasternak/moai.git#egg=moai
-git+https://github.com/OpenTherapeutics/django-password-policies.git@feature/adds_django_1_10_compatibility#egg=django_password_policies
+#git+https://github.com/mpasternak/moai.git#egg=moai
+https://github.com/mpasternak/moai/archive/2.0.0-mpasternak.tar.gz#egg=moai
+#git+https://github.com/OpenTherapeutics/django-password-policies.git@feature/adds_django_1_10_compatibility#egg=django_password_policies
+https://github.com/mpasternak/django-password-policies/archive/django110compat-mpasternak.tar.gz#egg=django_password_policies
