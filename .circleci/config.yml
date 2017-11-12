@@ -5,13 +5,38 @@ jobs:
     steps:
       - checkout
 
+      - restore_cache:
+          keys:
+            - django-bpp-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}-{{ checksum "yarn.lock " }}
+            - django-bpp-
+            
       - run:
           name: Setup environment for CircleCI
           command: make circle-env
           
       - run:
-          name: build docker images
-          command: docker-compose build
+          name: build docker images - db
+          command: docker-compose build db
+
+      - run:
+          name: build docker images - nginx_http_push
+          command: docker-compose build nginx_http_push
+          
+      - run:
+          name: build docker images - redis
+          command: docker-compose build redis
+          
+      - run:
+          name: build docker images - rabbitmq
+          command: docker-compose build rabbitmq
+          
+      - run:
+          name: build docker images - selenium
+          command: docker-compose build selenium
+
+      - run:
+          name: build docker images - web
+          command: docker-compose build web
           
       - run:
           name: boot up docker
@@ -20,3 +45,11 @@ jobs:
       - run:
           name: run tests
           command: make docker-tests
+
+      - save_cache:
+          key: django-bpp-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}-{{ checksum "yarn.lock " }}
+          paths:
+            - dist
+            - dist_dev
+            - node_modules
+            
