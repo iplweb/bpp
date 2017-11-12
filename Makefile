@@ -64,8 +64,10 @@ _assets: install-wheels
 
 assets: yarn grunt _assets
 
-docker-assets: docker-wheels docker-yarn docker-grunt
+_docker-assets:
 	docker-compose run --rm python bash -c "cd /usr/src/app && chown root:root .pip_cache/http && make _assets"
+
+docker-assets: docker-wheels docker-yarn docker-grunt _docker-assets
 
 docker-grunt:
 	docker-compose run --rm node bash -c "cd /usr/src/app && make grunt"

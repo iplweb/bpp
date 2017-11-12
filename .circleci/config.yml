@@ -27,9 +27,33 @@ jobs:
           command: make docker-up
 
       - run:
-          name: run tests
-          command: make docker-tests
+          name: docker-wheels
+          command: make docker-wheels
 
+      - run:
+          name: docker-yarn
+          command: make docker-yarn
+          
+      - run:
+          name: docker-grunt
+          command: make docker-grunt
+
+      - run:
+          name: docker-grunt
+          command: make docker-grunt
+          
+      - run:
+          name: docekr-assets
+          command: make _docker-assets
+
+      - run:
+          name: Python tests
+          command: make docker-python-tests
+          
+      - run:
+          name: JS tests
+          command: make docker-js-tests
+          
       - save_cache:
           key: django-bpp-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}-{{ checksum "yarn.lock " }}
           paths:
