@@ -11,19 +11,11 @@ jobs:
 
       - run:
           name: Pull docker images from hub
-          command: docker-compose pull
-          
-      #- run:
-      #    name: Build local Docker images
-      #    command: docker-compose build db nginx_http_push node test
+          command: docker-compose pull db nginx_http_push node test python 
           
       - run:
           name: Boot docker 
           command: make docker-up
-
-      #- run:
-      #    name: docker-wheels
-      #    command: make docker-wheels
 
       - run:
           name: docker-yarn
