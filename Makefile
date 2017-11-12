@@ -46,6 +46,9 @@ wheels:
 install-wheels:
 	${PIP} install --no-index --only-binary=whl --find-links=./dist --find-links=./dist_dev -r requirements_dev.txt | cat
 
+install-wheels-devserver:
+	${PIP} install --extra-index-url http://dev.iplweb.pl:8080/ -r requirements_dev.txt | cat
+
 install-tox:
 	${PIP} install --no-index --only-binary=whl --find-links=./dist --find-links=./dist_dev tox | cat
 
@@ -58,7 +61,7 @@ yarn:
 yarn-production:
 	yarn --prod 
 
-_assets: install-wheels
+_assets: install-wheels-devserver
 	${PYTHON} src/manage.py collectstatic --noinput -v0 --traceback
 	${PYTHON} src/manage.py compress --force  -v0 --traceback
 
@@ -187,6 +190,7 @@ docker-tests: docker-assets docker-python-tests docker-js-tests
 
 docker-wheels:
 	docker-compose run --rm python bash -c "cd /usr/src/app && make wheels"
+	rsync dist/* dist_dev/* pypi@dev.iplweb.pl:~/packages
 
 travis-env:
 	echo TRAVIS="${TRAVIS}" >> docker/env.web.txt
