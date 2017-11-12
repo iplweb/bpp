@@ -99,7 +99,7 @@ _bdist_wheel:
 # Wymaga:
 # 1) zainstalowanych pakietów z requirements.txt i requirements_dev.txt przez pip
 # 2) yarn, grunt-cli, npm, bower
-bdist_wheel: clean install-wheels assets _bdist_wheel
+bdist_wheel: clean install-wheels assets _bdist_wheel rsync-dev
 
 
 # cel: bdist_wheel-production
@@ -121,7 +121,8 @@ js-tests:
 	grunt qunit -v
 
 docker-js-tests:
-	docker-compose run --rm node bash -c "cd /usr/src/app && make js-tests"
+	docker-compose exec test /bin/bash -c "cd /usr/src/app && make js-tests"
+	# docker-compose run --rm node bash -c "cd /usr/src/app && make js-tests"
 
 # cel: tests-full
 # Jak tests, ale całość
