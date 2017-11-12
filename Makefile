@@ -150,7 +150,7 @@ build-test-container: cleanup-pycs
 	docker-compose build test > /dev/null
 
 docker-up:
-	docker-compose up 
+	docker-compose up -d
 
 docker-tests:
 	docker-compose exec web /bin/bash -c "cd /usr/src/app && make full-tests"
@@ -165,9 +165,14 @@ travis-env:
 	echo TRAVIS_PULL_REQUEST="${TRAVIS_PULL_REQUEST}" >> docker/env.web.txt
 	cat docker/env.web.txt
 
+# cel: circle
+# Uruchamia wszystkie testy na CircleCI
+circleci: docker-up docker-tests
+	@echo "Done"	
+
 # cel: travis
 # Uruchamia wszystkie testy - dla TravisCI
-travis: clean travis-env docker-up docker-tests
+travisci: travis-env docker-up docker-tests
 	@echo "Done"
 
 rebuild-test:
