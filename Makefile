@@ -60,12 +60,10 @@ grunt:
 	grunt build
 
 yarn:
-	# yarn
-	npm install
+	yarn
 
 yarn-production:
-	# 	yarn --prod
-	npm install --prod
+	yarn --prod
 
 _assets: install-wheels-from-devserver
 	${PYTHON} src/manage.py collectstatic --noinput -v0 --traceback
