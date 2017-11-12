@@ -1,0 +1,7 @@
+BEGIN;
+
+DROP COLLATION IF EXISTS pl_PL;
+
+CREATE COLLATION pl_PL(locale='pl_PL.utf8');
+
+COMMIT;

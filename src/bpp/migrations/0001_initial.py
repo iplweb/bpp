@@ -21,6 +21,9 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        RunPython(
+            lambda *args, **kw: load_custom_sql("0001_collation", *args, **kw)),
+
         migrations.CreateModel(
             name='BppUser',
             fields=[
