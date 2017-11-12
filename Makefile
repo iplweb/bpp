@@ -47,10 +47,10 @@ install-wheels:
 	${PIP} install --no-index --only-binary=whl --find-links=./dist --find-links=./dist_dev -r requirements_dev.txt | cat
 
 install-wheels-devserver:
-	${PIP} install --extra-index-url http://dev.iplweb.pl:8080/ -r requirements_dev.txt | cat
+	${PIP} install --extra-index-url http://dev.iplweb.pl:8080/ --trusted-host dev.iplweb.pl -r requirements_dev.txt | cat
 
 install-tox:
-	${PIP} install --no-index --only-binary=whl --find-links=./dist --find-links=./dist_dev tox | cat
+	${PIP} install --extra-index-url http://dev.iplweb.pl:8080/ --trusted-host dev.iplweb.pl tox | cat
 
 grunt:
 	grunt build
