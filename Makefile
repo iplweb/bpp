@@ -33,21 +33,21 @@ wheels:
 	echo "Buduje wheels w ${DISTDIR}"
 
 	mkdir -p ${DISTDIR}
-	${PIP}  wheel --wheel-dir=${DISTDIR} --find-links=${DISTDIR} -r requirements_src.txt 
+	${PIP}  wheel --wheel-dir=${DISTDIR} --find-links=${DISTDIR} -r requirements_src.txt  | cat
 
 	mkdir -p ${DISTDIR}
-	${PIP} wheel --wheel-dir=${DISTDIR} --find-links=${DISTDIR} -r requirements.txt 
+	${PIP} wheel --wheel-dir=${DISTDIR} --find-links=${DISTDIR} -r requirements.txt | cat
 
 	mkdir -p ${DISTDIR_DEV}
-	${PIP} wheel --wheel-dir=${DISTDIR_DEV} --find-links=${DISTDIR} --find-links=${DISTDIR_DEV} -r requirements_dev.txt 
+	${PIP} wheel --wheel-dir=${DISTDIR_DEV} --find-links=${DISTDIR} --find-links=${DISTDIR_DEV} -r requirements_dev.txt | cat
 
 # cel: install-wheels
 # Instaluje wszystkie requirements
 install-wheels:
-	${PIP} install --no-index --only-binary=whl --find-links=./dist --find-links=./dist_dev -r requirements_dev.txt
+	${PIP} install --no-index --only-binary=whl --find-links=./dist --find-links=./dist_dev -r requirements_dev.txt | cat
 
 install-tox:
-	${PIP} install --no-index --only-binary=whl --find-links=./dist --find-links=./dist_dev tox
+	${PIP} install --no-index --only-binary=whl --find-links=./dist --find-links=./dist_dev tox | cat
 
 grunt:
 	grunt build
