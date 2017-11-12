@@ -109,11 +109,6 @@ if [ "$NO_PYTEST" == "0" ]; then
     stellar restore $GIT_BRANCH_NAME
 fi
 
-if [ "$NO_QUNIT" == "0" ]; then
-    npm rebuild
-    grunt qunit -v
-fi
-
 if [ "$NO_COVERAGE" == "0" ]; then
     echo "Running COVERAGE" 
     coverage run --source=src/bpp/ src/manage.py test bpp --keepdb

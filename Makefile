@@ -46,6 +46,9 @@ wheels:
 install-wheels:
 	${PIP} install --no-index --only-binary=whl --find-links=./dist --find-links=./dist_dev -r requirements_dev.txt
 
+install-tox:
+	${PIP} install --no-index --only-binary=whl --find-links=./dist --find-links=./dist_dev tox
+
 grunt:
 	grunt build
 
@@ -94,13 +97,19 @@ bdist_wheel: clean install-wheels assets _bdist_wheel
 # Jak bdist_wheel, ale pakuje tylko produkcyjne JS prezz yarn
 bdist_wheel-production: clean install-wheels assets-production _bdist_wheel
 
-# cel: tests
-# Uruchamia testy całego site'u za pomocą tox. Wymaga zbudowanych 
+# cel: python-tests
+# Uruchamia testy kodu pythona za pomocą tox.
 # pakietów WHL (cel: wheels), zainstalowanych pakietów wheels
 # (cel: install-wheels) oraz statycznych assets w katalogu 
 # src/django_bpp/staticroot (cel: assets)
-tests:
+python-tests:
 	tox
+
+js-tests:
+	grunt qunit -v
+
+docker-js-tests:
+	docker-compose run --rm node bash -c "cd /usr/src/app && make js-tests"
 
 # cel: tests-full
 # Jak tests, ale całość
@@ -168,11 +177,11 @@ build-test-container: cleanup-pycs
 docker-up:
 	docker-compose up redis rabbitmq selenium nginx_http_push
 
-_docker-tests:
+docker-python-tests:
 	docker-compose up -d test
-	docker-compose exec test /bin/bash -c "cd /usr/src/app && make install-wheels tests"
+	docker-compose exec test /bin/bash -c "cd /usr/src/app && make install-tox python-tests"
 
-docker-tests: docker-assets _docker-tests
+docker-tests: docker-assets docker-python-tests docker-js-tests
 
 docker-wheels:
 	docker-compose run --rm python bash -c "cd /usr/src/app && make wheels"
