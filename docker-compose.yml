@@ -49,7 +49,7 @@ services:
     build:
       context: docker
       dockerfile: Dockerfile-node
-    image: mpasternak79/django-bpp:node-9.1.0
+    image: mpasternak79/django-bpp:node-9.1.0-20171112
     volumes:
       - node_modules:/usr/src/app/node_modules
       - .:/usr/src/app
