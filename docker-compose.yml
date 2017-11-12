@@ -72,19 +72,22 @@ services:
       - rabbitmq
       - nginx_http_push
 
-  prod:
-    image: mpasternak79/django-bpp:prod-0.11.106
-    build:
-      context: docker
-      dockerfile: Dockerfile-prod
-    env_file: docker/env.prod.txt
-    ports:
-      - "8000:8000"
-    depends_on:
-      - db
-      - redis
-      - rabbitmq
-      - nginx_http_push
+#
+# prod == work in progress
+#
+#  prod:
+#    image: mpasternak79/django-bpp:prod-0.11.106
+#    build:
+#      context: docker
+#      dockerfile: Dockerfile-prod
+#    env_file: docker/env.prod.txt
+#    ports:
+#      - "8000:8000"
+#    depends_on:
+#      - db
+#      - redis
+#      - rabbitmq
+#      - nginx_http_push
 
 volumes:
   node_modules:
