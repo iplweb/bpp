@@ -2,6 +2,12 @@
 Historia zmian
 ==============
 
+0.11.107 (2017-11-12)
+---------------------
+
+* opcja "Stwórz autora" tworzy domyślnie autora niewidocznego na stronach
+  jednostek, kapitalizując nazwiska.
+
 0.11.106 (2017-11-10)
 ---------------------
 
