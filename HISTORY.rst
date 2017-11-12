@@ -6,7 +6,10 @@ Historia zmian
 ---------------------
 
 * opcja "Stwórz autora" tworzy domyślnie autora niewidocznego na stronach
-  jednostek, kapitalizując nazwiska.
+  jednostek, kapitalizując nazwiska,
+
+* poprawiono błąd powodujący niepoprawne działanie funkcji usuwania
+  pojedynczych rekordów z wyników wyszukiwania.
 
 0.11.106 (2017-11-10)
 ---------------------
