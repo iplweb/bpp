@@ -4,7 +4,9 @@ module.exports = function (grunt) {
 
         sass: {
             options: {
-                includePaths: ['src/django_bpp/staticroot/foundation-sites/scss']
+                includePaths: [
+		    'node_modules/foundation-sites/scss'
+		]
             },
             dist: {
                 options: {
