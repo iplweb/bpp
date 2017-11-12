@@ -3,7 +3,7 @@ BRANCH=`git branch | sed -n '/\* /s///p'`
 .PHONY: clean distclean build-wheels install-wheels wheels tests release
 
 PYTHON=python3.6
-PIP=${PYTHON} -m pip
+PIP=${PYTHON} -m pip --cache-dir=.pip-cache
 DISTDIR=./dist
 DISTDIR_DEV=./dist_dev
 
@@ -33,13 +33,13 @@ wheels:
 	echo "Buduje wheels w ${DISTDIR}"
 
 	mkdir -p ${DISTDIR}
-	${PIP} -q wheel --wheel-dir=${DISTDIR} --find-links=${DISTDIR} -r requirements_src.txt 
+	${PIP}  wheel --wheel-dir=${DISTDIR} --find-links=${DISTDIR} -r requirements_src.txt 
 
 	mkdir -p ${DISTDIR}
-	${PIP} -q wheel --wheel-dir=${DISTDIR} --find-links=${DISTDIR} -r requirements.txt 
+	${PIP} wheel --wheel-dir=${DISTDIR} --find-links=${DISTDIR} -r requirements.txt 
 
 	mkdir -p ${DISTDIR_DEV}
-	${PIP} -q wheel --wheel-dir=${DISTDIR_DEV} --find-links=${DISTDIR} --find-links=${DISTDIR_DEV} -r requirements_dev.txt 
+	${PIP} wheel --wheel-dir=${DISTDIR_DEV} --find-links=${DISTDIR} --find-links=${DISTDIR_DEV} -r requirements_dev.txt 
 
 # cel: install-wheels
 # Instaluje wszystkie requirements
@@ -49,15 +49,21 @@ install-wheels:
 assets-for-django:
 	rm -rf src/django_bpp/staticroot
 	${PYTHON} src/manage.py collectstatic --noinput -v0 --traceback
-	grunt build 
+	grunt build
 	${PYTHON} src/manage.py collectstatic --noinput -v0 --traceback
 	${PYTHON} src/manage.py compress --force  -v0 --traceback
 
 yarn: 
-	yarn > /dev/null
+	yarn 
 
 yarn-production:
-	yarn --prod > /dev/null
+	yarn --prod 
+
+docker-yarn:
+	docker-compose run --rm node bash -c "cd /usr/src/app && make yarn"
+
+docker-yarn-prod:
+	docker-compose run --rm node bash -c "cd /usr/src/app && make yarn-prod"
 
 # cel: assets
 # Pobiera i składa do kupy JS/CSS/Foundation
@@ -153,10 +159,10 @@ docker-up:
 	docker-compose up -d
 
 docker-tests:
-	docker-compose exec web /bin/bash -c "cd /usr/src/app && make full-tests"
+	docker-compose exec test /bin/bash -c "cd /usr/src/app && make full-tests"
 
-docker-shell:
-	docker-compose exec web /bin/bash
+docker-wheels:
+	docker-compose run --rm python bash -c "cd /usr/src/app && make wheels"
 
 travis-env:
 	echo TRAVIS="${TRAVIS}" >> docker/env.web.txt
