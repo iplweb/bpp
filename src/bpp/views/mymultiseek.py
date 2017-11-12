@@ -2,9 +2,11 @@
 # ding: utf-8 -*-
 from django.db import transaction
 from django.db.models import Sum
+from django.views.decorators.cache import never_cache
 
 from multiseek.logic import get_registry
-from multiseek.views import MultiseekResults, MULTISEEK_SESSION_KEY_REMOVED
+from multiseek.views import MultiseekResults, MULTISEEK_SESSION_KEY_REMOVED, \
+    manually_add_or_remove
 
 PKT_WEWN = 'pkt_wewn'
 PKT_WEWN_BEZ = 'pkt_wewn_bez'
@@ -87,3 +89,23 @@ class MyMultiseekResults(MultiseekResults):
                 self.request.session['MULTISEEK_TITLE'] = 'Rezultat wyszukiwania'
 
         return ctx
+
+
+@never_cache
+def bpp_remove_by_hand(request, pk):
+    """Add a record's PK to a list of manually removed records.
+
+    User, via the web ui, can add or remove a record to a list of records
+    removed "by hand". Those records will be explictly removed
+    from the search results in the query function. The list of those
+    records is cleaned when there is a form reset.
+    """
+    pk = tuple([int(x) for x in pk.split("_")])
+    return manually_add_or_remove(request, pk)
+
+
+@never_cache
+def bpp_remove_from_removed_by_hand(request, pk):
+    """Cancel manual record removal."""
+    pk = tuple([int(x) for x in pk.split("_")])
+    return manually_add_or_remove(request, pk, add=False)

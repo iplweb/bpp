@@ -64,12 +64,13 @@
                     <p>
                     <ul>
                         {% for elem in removed_ids %}
-                            <li id="multiseek-row-{{ elem }}" class="multiseek-row">
+                            <li id="multiseek-row-{{ elem.0 }}_{{ elem.1 }}" class="multiseek-row">
                                 <span class="multiseek-element" style="text-decoration: line-through">
                                 {% opis_bibliograficzny_cache elem %}
                                     </span>
-                                <a onclick="multiseek.removeFromResults('{{ elem }}')">
-                                    &nbsp;dodaj ponownie
+                                <a onclick="multiseek.removeFromResults('{{ elem.0 }}_{{ elem.1 }}')"
+                                style="font-size: 8pt;">
+                                    &nbsp;✅
                                 </a>
                             </li>
                         {% endfor %}
@@ -132,7 +133,7 @@
         <ol start="{{ page_obj.start_index }}">
             {% for element in object_list %}
 
-                <li class="multiseek-row" id="multiseek-row-{{ element.pk }}">
+                <li class="multiseek-row" id="multiseek-row-{{ element.js_safe_pk }}">
                     <span class="multiseek-element">
                         <a href="{% url "bpp:browse_praca" element.id.0 element.id.1 %}"
                            target="_top">
@@ -150,8 +151,8 @@
                     </span>
                 {% if not print_removed %}
                     <span class="multiseek-remove-from-results">
-                        <a onclick="multiseek.removeFromResults('{{ element.pk }}'); return false">
-                            wyrzuć
+                        <a onclick="multiseek.removeFromResults('{{ element.js_safe_pk }}'); return false" style="font-size: 8pt;">
+                            ❌
                         </a>
                     </span>
                 {% endif %}
@@ -178,7 +179,7 @@
                         {{ page_obj.start_index|add:forloop.counter|add:-1 }}.
                     </td>
                     <td class="multiseek-row"
-                          id="multiseek-row-{{ element.pk }}">
+                          id="multiseek-row-{{ element.js_safe_pk }}">
                     <span class="multiseek-element">
                     <a href="{% url "bpp:browse_praca" element.id.0 element.id.1 %}"
                        target="_top">
@@ -189,8 +190,8 @@
                     </span>
                         {% if not print_removed %}
                     <span class="multiseek-remove-from-results">
-                        <a onclick="multiseek.removeFromResults('{{ element.pk }}'); return false">
-                            wyrzuć
+                        <a onclick="multiseek.removeFromResults('{{ element.js_safe_pk }}'); return false" style="font-size: 8pt;">
+                            ❌
                         </a>
                     </span>
                         {% endif %}
@@ -246,7 +247,7 @@
                         {{ page_obj.start_index|add:forloop.counter|add:-1 }}.
                     </td>
                     <td class="multiseek-row"
-                          id="multiseek-row-{{ element.pk }}">
+                          id="multiseek-row-{{ element.js_safe_pk }}">
                     <span class="multiseek-element">
 
                     <a href="{% url "bpp:browse_praca" element.id.0 element.id.1 %}"
@@ -258,8 +259,8 @@
                     </span>
                         {% if not print_removed %}
                     <span class="multiseek-remove-from-results">
-                        <a onclick="multiseek.removeFromResults('{{ element.pk }}'); return false">
-                            wyrzuć
+                        <a onclick="multiseek.removeFromResults('{{ element.js_safe_pk }}'); return false" style="font-size: 8pt;">
+                            ❌
                         </a>
                     </span>
                         {% endif %}

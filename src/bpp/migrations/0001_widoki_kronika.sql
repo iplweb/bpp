@@ -9,7 +9,7 @@ CREATE OR REPLACE VIEW bpp_kronika_wydawnictwo_ciagle_view AS
     tytul_oryginalny_sort,
     bpp_wydawnictwo_ciagle.rok,
     bpp_wydawnictwo_ciagle_autor.kolejnosc,
-    ('bpp_wydawnictwo_ciagle' :: TEXT COLLATE "pl_pl") AS object,
+    ('bpp_wydawnictwo_ciagle' :: TEXT COLLATE "pl_PL") AS object,
     bpp_wydawnictwo_ciagle.id                          AS object_pk,
     bpp_wydawnictwo_ciagle.id                          AS id,
     bpp_wydawnictwo_ciagle.zrodlo_id                   AS zrodlo_id
@@ -43,7 +43,7 @@ CREATE OR REPLACE VIEW bpp_kronika_wydawnictwo_zwarte_view AS
     tytul_oryginalny_sort,
     bpp_wydawnictwo_zwarte.rok,
     bpp_wydawnictwo_zwarte_autor.kolejnosc,
-    ('bpp_wydawnictwo_zwarte' :: TEXT COLLATE "pl_pl") AS object,
+    ('bpp_wydawnictwo_zwarte' :: TEXT COLLATE "pl_PL") AS object,
     bpp_wydawnictwo_zwarte.id                          AS object_pk,
     bpp_wydawnictwo_zwarte.id                          AS id,
     NULL :: INTEGER                                    AS zrodlo_id
@@ -73,7 +73,7 @@ CREATE OR REPLACE VIEW bpp_kronika_patent_view AS
     tytul_oryginalny_sort,
     bpp_patent.rok,
     bpp_patent_autor.kolejnosc,
-    ('bpp_patent' :: TEXT COLLATE "pl_pl") AS object,
+    ('bpp_patent' :: TEXT COLLATE "pl_PL") AS object,
     bpp_patent.id                          AS object_pk,
     bpp_patent.id                          AS id,
     NULL :: INTEGER                        AS zrodlo_id
@@ -103,7 +103,7 @@ CREATE OR REPLACE VIEW bpp_kronika_praca_doktorska_view AS
     tytul_oryginalny_sort,
     bpp_praca_doktorska.rok,
     1                                               AS kolejnosc,
-    ('bpp_praca_doktorska' :: TEXT COLLATE "pl_pl") AS object,
+    ('bpp_praca_doktorska' :: TEXT COLLATE "pl_PL") AS object,
     bpp_praca_doktorska.id                          AS object_pk,
     bpp_praca_doktorska.id                          AS id,
     NULL :: INTEGER                                 AS zrodlo_id
@@ -134,7 +134,7 @@ CREATE OR REPLACE VIEW bpp_kronika_praca_habilitacyjna_view AS
     tytul_oryginalny_sort,
     bpp_praca_habilitacyjna.rok,
     1                                                   AS kolejnosc,
-    ('bpp_praca_habilitacyjna' :: TEXT COLLATE "pl_pl") AS object,
+    ('bpp_praca_habilitacyjna' :: TEXT COLLATE "pl_PL") AS object,
     bpp_praca_habilitacyjna.id                          AS object_pk,
     bpp_praca_habilitacyjna.id                          AS id,
     NULL :: INTEGER                                     AS zrodlo_id

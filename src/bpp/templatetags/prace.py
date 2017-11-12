@@ -106,16 +106,13 @@ register.filter(ladne_numery_prac)
 
 @register.simple_tag
 def opis_bibliograficzny_cache(pk):
-    if type(pk) in [str, str]:
-        if pk.find("_") > 0:
-            content_type_id, object_id = [int(x) for x in pk.split("_")]
-            from bpp.models.cache import Rekord
-            return mark_safe(
-                Rekord.objects.get(
-                    object_id=object_id,
-                    content_type_id=content_type_id
-                ).opis_bibliograficzny_cache
-            )
+    from bpp.models.cache import Rekord
+    try:
+        return mark_safe(
+            Rekord.objects.get(pk=pk).opis_bibliograficzny_cache
+        )
+    except Rekord.DoesNotExist:
+        pass
 
     return "(brak danych)"
 
