@@ -8,10 +8,14 @@ jobs:
       - run:
           name: Setup environment for CircleCI
           command: make circle-env
-          
+
       - run:
-          name: Build local Docker images
-          command: docker-compose build db nginx_http_push node test
+          name: Pull docker images from hub
+          command: docker-compose pull
+          
+      #- run:
+      #    name: Build local Docker images
+      #    command: docker-compose build db nginx_http_push node test
           
       - run:
           name: Boot docker 
