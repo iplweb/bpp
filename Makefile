@@ -207,16 +207,8 @@ rsync-dev:
 
 docker-wheels: _docker-wheels rsync-dev
 
-travis-env:
-	echo TRAVIS="${TRAVIS}" >> docker/env.web.txt
-	echo TRAVIS_JOB_ID="${TRAVIS_JOB_ID}" >> docker/env.web.txt
-	echo TRAVIS_BRANCH="${TRAVIS_BRANCH}" >> docker/env.web.txt
-	echo TRAVIS_PULL_REQUEST="${TRAVIS_PULL_REQUEST}" >> docker/env.web.txt
-	cat docker/env.web.txt
-
 circle-env:
-	echo COVERALLS_REPO_TOKEN="${COVERALLS_REPO_TOKEN}" >> docker/env.web.txt
-	cat docker/env.web.txt
+	echo COVERALLS_REPO_TOKEN="${COVERALLS_REPO_TOKEN}" >> docker/env.test.txt
 
 # cel: travis
 # Uruchamia wszystkie testy - dla TravisCI
