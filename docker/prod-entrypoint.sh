@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-export DJANGO_SETTINGS_MODULE=django_bpp.settings.production
+export DJANGO_SETTINGS_MODULE=django_bpp.settings.test
 
 echo "Waiting 5 seconds for PostgreSQL to start..."
 sleep 5 
