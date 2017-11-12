@@ -46,7 +46,7 @@ wheels:
 install-wheels:
 	${PIP} install --no-index --only-binary=whl --find-links=./dist --find-links=./dist_dev -r requirements_dev.txt | cat
 
-install-wheels-devserver:
+install-wheels-from-devserver:
 	${PIP} install --extra-index-url http://dev.iplweb.pl:8080/ --trusted-host dev.iplweb.pl -r requirements_dev.txt | cat
 
 docker-pip-cache:
@@ -65,7 +65,7 @@ yarn:
 yarn-production:
 	yarn --prod 
 
-_assets: install-wheels-devserver
+_assets: install-wheels-from-devserver
 	${PYTHON} src/manage.py collectstatic --noinput -v0 --traceback
 	${PYTHON} src/manage.py compress --force  -v0 --traceback
 
