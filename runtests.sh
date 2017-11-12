@@ -19,8 +19,6 @@ export PYTHONIOENCODING=utf_8
 while test $# -gt 0
 do
     case "$1" in
-        --no-qunit) NO_QUNIT=1
-            ;;
         --no-pytest) NO_PYTEST=1
             ;;
         --no-django) NO_DJANGO=1
@@ -31,7 +29,7 @@ do
             ;;
 	--debug) DEBUG=1
 	    ;;
-	--help) echo "--no-qunit, --no-pytest, --no-django, --no-rebuild, --debug, --coverage"
+	--help) echo "--no-pytest, --no-django, --no-rebuild, --debug, --coverage"
 	    exit 1
 	    ;;
         --*) echo "bad option $1"

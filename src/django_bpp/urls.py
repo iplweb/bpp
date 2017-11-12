@@ -17,7 +17,8 @@ from bpp.forms import MyAuthenticationForm
 from bpp.views.admin import WydawnictwoCiagleTozView, WydawnictwoZwarteTozView, \
     PatentTozView
 from bpp.views.global_nav import global_nav_redir
-from bpp.views.mymultiseek import MyMultiseekResults
+from bpp.views.mymultiseek import MyMultiseekResults, \
+    bpp_remove_from_removed_by_hand, bpp_remove_by_hand
 from django_bpp.forms import BppPasswordChangeForm
 from django_bpp.sitemaps import JednostkaSitemap, django_bpp_sitemaps
 
@@ -78,11 +79,11 @@ urlpatterns = [
 
 
     url(r'^multiseek/remove-from-results/(?P<pk>\w+)$',
-        remove_by_hand,
+        bpp_remove_by_hand,
         name="remove_from_results"),
 
     url(r'^multiseek/remove-from-removed-results/(?P<pk>\w+)$',
-        remove_from_removed_by_hand,
+        bpp_remove_from_removed_by_hand,
         name="remove_from_removed_results"),
 
     url(r'^admin_tools/', include('admin_tools.urls')),

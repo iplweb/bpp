@@ -398,6 +398,10 @@ class RekordBase(ModelPunktowanyBaza, ModelZOpisemBibliograficznym,
     def original(self):
         return self.content_type.get_object_for_this_type(pk=self.object_id)
 
+    @cached_property
+    def js_safe_pk(self):
+        return "%i_%i" % (self.pk[0], self.pk[1])
+
 
 class Rekord(RekordBase):
     class Meta:
