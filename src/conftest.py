@@ -258,7 +258,7 @@ def _zwarte_base_maker(klass, **kwargs):
     set_default('informacje', 'zrodlo-informacje dla zwarte', kwargs)
 
     if klass not in [Patent]:
-        set_default('miejsce_i_rok', 'Lublin %s' % rok, kwargs)
+        set_default('miejsce_i_rok', 'Lublin %s' % rok(), kwargs)
         set_default('wydawnictwo', 'Wydawnictwo FOLIUM', kwargs)
         set_default('isbn', '123-IS-BN-34', kwargs)
         set_default('redakcja', 'Redakcja', kwargs)
