@@ -3,7 +3,7 @@ BRANCH=`git branch | sed -n '/\* /s///p'`
 .PHONY: clean distclean build-wheels install-wheels wheels tests release
 
 PYTHON=python3.6
-PIP=${PYTHON} -m pip
+PIP=${PYTHON} -m pip --cache-dir=.pip-cache
 DISTDIR=./dist
 DISTDIR_DEV=./dist_dev
 
@@ -33,31 +33,45 @@ wheels:
 	echo "Buduje wheels w ${DISTDIR}"
 
 	mkdir -p ${DISTDIR}
-	${PIP} -q wheel --wheel-dir=${DISTDIR} --find-links=${DISTDIR} -r requirements_src.txt 
+	${PIP}  wheel --wheel-dir=${DISTDIR} --find-links=${DISTDIR} -r requirements_src.txt 
 
 	mkdir -p ${DISTDIR}
-	${PIP} -q wheel --wheel-dir=${DISTDIR} --find-links=${DISTDIR} -r requirements.txt 
+	${PIP} wheel --wheel-dir=${DISTDIR} --find-links=${DISTDIR} -r requirements.txt 
 
 	mkdir -p ${DISTDIR_DEV}
-	${PIP} -q wheel --wheel-dir=${DISTDIR_DEV} --find-links=${DISTDIR} --find-links=${DISTDIR_DEV} -r requirements_dev.txt 
+	${PIP} wheel --wheel-dir=${DISTDIR_DEV} --find-links=${DISTDIR} --find-links=${DISTDIR_DEV} -r requirements_dev.txt 
 
 # cel: install-wheels
 # Instaluje wszystkie requirements
 install-wheels:
-	${PIP} -q install --no-index --only-binary=whl --find-links=./dist --find-links=./dist_dev -r requirements_dev.txt
+	${PIP} install --no-index --only-binary=whl --find-links=./dist --find-links=./dist_dev -r requirements_dev.txt
 
-assets-for-django:
-	rm -rf src/django_bpp/staticroot
-	${PYTHON} src/manage.py collectstatic --noinput -v0 --traceback
-	grunt build 
+grunt:
+	grunt build
+
+yarn:
+	yarn
+
+yarn-production:
+	yarn --prod 
+
+_assets: install-wheels
 	${PYTHON} src/manage.py collectstatic --noinput -v0 --traceback
 	${PYTHON} src/manage.py compress --force  -v0 --traceback
 
-yarn: 
-	yarn > /dev/null
+assets: yarn grunt _assets
 
-yarn-production:
-	yarn --prod > /dev/null
+docker-assets: docker-wheels docker-yarn docker-grunt
+	docker-compose run --rm python bash -c "cd /usr/src/app && make _assets"
+
+docker-grunt:
+	docker-compose run --rm node bash -c "cd /usr/src/app && make grunt"
+
+docker-yarn:
+	docker-compose run --rm node bash -c "cd /usr/src/app && make yarn"
+
+docker-yarn-prod:
+	docker-compose run --rm node bash -c "cd /usr/src/app && make yarn-prod"
 
 # cel: assets
 # Pobiera i składa do kupy JS/CSS/Foundation
@@ -149,14 +163,19 @@ build-test-container: cleanup-pycs
 	docker-compose rm test
 	docker-compose build test > /dev/null
 
+# cel: docker-up
+# Podnosi wszystkie kontenery, które powinny działać w tle
 docker-up:
-	docker-compose up -d
+	docker-compose up redis rabbitmq selenium nginx_http_push
 
-docker-tests:
-	docker-compose exec web /bin/bash -c "cd /usr/src/app && make full-tests"
+_docker-tests:
+	docker-compose up -d test
+	docker-compose exec test /bin/bash -c "cd /usr/src/app && make install-wheels tests"
 
-docker-shell:
-	docker-compose exec web /bin/bash
+docker-tests: docker-assets _docker-tests
+
+docker-wheels:
+	docker-compose run --rm python bash -c "cd /usr/src/app && make wheels"
 
 travis-env:
 	echo TRAVIS="${TRAVIS}" >> docker/env.web.txt
@@ -165,12 +184,13 @@ travis-env:
 	echo TRAVIS_PULL_REQUEST="${TRAVIS_PULL_REQUEST}" >> docker/env.web.txt
 	cat docker/env.web.txt
 
-travis-wait:
-	sleep 60
+circle-env:
+	echo COVERALLS_REPO_TOKEN="${COVERALLS_REPO_TOKEN}" >> docker/env.web.txt
+	cat docker/env.web.txt
 
 # cel: travis
 # Uruchamia wszystkie testy - dla TravisCI
-travis: clean travis-env docker-up travis-wait docker-tests
+travisci: travis-env docker-up docker-tests
 	@echo "Done"
 
 rebuild-test:

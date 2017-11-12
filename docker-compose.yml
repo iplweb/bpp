@@ -8,21 +8,11 @@ services:
       - "5671:5671"
       - "5672:5672"
       - "25672:25672"
-
       
   redis: 
     image: redis
     ports:
       - "6379:6379"
-
-      
-  db:
-    build:
-      dockerfile: Dockerfile-db
-      context: docker
-    ports:
-      - "5432:5432"
-
       
   selenium:
     image: selenium/standalone-firefox-debug
@@ -30,38 +20,56 @@ services:
       - "4444:4444"
       - "5900:5900"
       
+  db:
+    build:
+      dockerfile: Dockerfile-db
+      context: docker
+    image: mpasternak79/django-bpp:postgres-9.6
+    ports:
+      - "5432:5432"
+
   nginx_http_push:
     build:
       dockerfile: Dockerfile-nginx
       context: docker
+    image: mpasternak79/django-bpp:nginx-http-push-1.12.0
     ports:
       - "9090:80"
 
-
-#  prod: # Host używany do pobierania/instalowania WHL z PyPI
-#    build:
-#      dockerfile: Dockerfile-prod
-#      context: .docker
-#    ports: 
-#      - "8000:8000"
-#    env_file: env.test.txt
-#    depends_on: 
-#      - db
-#      - redis
-#      - rabbitmq
-#      - nginx_http_push
-
-
-  web: # Host używany do uruchamiania testów i budowania pakietów
+  python:
+    image: mpasternak79/django-bpp:python-3.6
     build:
       context: docker
-      dockerfile: Dockerfile-web
+      dockerfile: Dockerfile-python
     volumes: 
+      - node_modules:/usr/src/app/node_modules
       - .:/usr/src/app
-    env_file: docker/env.web.txt
+
+  node:
+    build:
+      context: docker
+      dockerfile: Dockerfile-node
+    image: mpasternak79/django-bpp:node-9.1.0
+    volumes:
+      - node_modules:/usr/src/app/node_modules
+      - .:/usr/src/app
+      
+  test:
+    image: mpasternak79/django-bpp:test-0.11.106
+    build:
+      context: docker
+      dockerfile: Dockerfile-test
+    volumes: 
+      - node_modules:/usr/src/app/node_modules
+      - .:/usr/src/app
+    env_file: docker/env.test.txt
     depends_on:
       - db
       - redis
       - selenium
       - rabbitmq
       - nginx_http_push
+
+volumes:
+  node_modules:
+    

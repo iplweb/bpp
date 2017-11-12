@@ -1,0 +1,39 @@
+version: 2
+jobs:
+  build:
+    machine: true
+    steps:
+      - checkout
+
+      - restore_cache:
+          keys:
+            - django-bpp-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}-{{ checksum "yarn.lock " }}
+            - django-bpp-
+            
+      - run:
+          name: Setup environment for CircleCI
+          command: make circle-env
+          
+      - run:
+          name: Pull local Docker images
+          command: docker-compose pull
+
+      - run:
+          name: Build local Docker images
+          command: docker-compose build
+          
+      - run:
+          name: Boot docker 
+          command: make docker-up
+
+      - run:
+          name: run tests
+          command: make docker-tests
+
+      - save_cache:
+          key: django-bpp-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}-{{ checksum "yarn.lock " }}
+          paths:
+            - dist
+            - dist_dev
+            - node_modules
+            
