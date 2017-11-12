@@ -43,7 +43,8 @@ services:
       dockerfile: Dockerfile-python
     volumes: 
       - node_modules:/usr/src/app/node_modules
-      - pip_cache:/usr/src/app/.pip-cache      
+      - pip_cache:/usr/src/app/.pip-cache
+      - staticroot:/usr/src/app/src/django_bpp/staticroot
       - .:/usr/src/app
 
   node:
@@ -53,6 +54,7 @@ services:
     image: mpasternak79/django-bpp:node-9.1.0-20171112
     volumes:
       - node_modules:/usr/src/app/node_modules
+      - staticroot:/usr/src/app/src/django_bpp/staticroot
       - .:/usr/src/app
       
   test:
@@ -62,6 +64,7 @@ services:
       dockerfile: Dockerfile-test
     volumes: 
       - node_modules:/usr/src/app/node_modules
+      - staticroot:/usr/src/app/src/django_bpp/staticroot
       - pip_cache:/usr/src/app/.pip-cache            
       - .:/usr/src/app
     env_file: docker/env.test.txt
@@ -91,3 +94,5 @@ services:
 volumes:
   node_modules:
   pip_cache:
+  staticroot:
+    
