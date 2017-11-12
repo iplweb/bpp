@@ -1,20 +1,18 @@
-FROM ubuntu:16.04
+FROM python:3.6
 
-SHELL ["/bin/bash", "-c"]
+RUN apt-get update
+RUN apt-get install -y wget
+RUN wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
+RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ jessie-pgdg main" >> /etc/apt/sources.list
+RUN apt-get update
+RUN apt-get install -y --force-yes postgresql-client-9.6 zip
 
-RUN apt-get -qq update  && apt-get -qq install --yes \
-    python \
-    python-pip \ 
-    virtualenv \
-    virtualenvwrapper \
-    postgresql-client
-
-RUN . /etc/bash_completion.d/virtualenvwrapper && mkvirtualenv env-bpp
-
-RUN . ~/.virtualenvs/env-bpp/bin/activate && pip install -q -U pip && pip install -q django-bpp django-debug-toolbar==1.6
-
-ADD prod-entrypoint.sh /entrypoint.sh
+RUN pip install --upgrade --extra-index-url http://dev.iplweb.pl:8080/ --trusted-host dev.iplweb.pl django-bpp
 
 EXPOSE 8000
 
-ENTRYPOINT /entrypoint.sh
+COPY prod-entrypoint.sh .
+
+RUN chmod +x prod-entrypoint.sh
+
+ENTRYPOINT ["./prod-entrypoint.sh"]

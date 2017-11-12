@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-export DJANGO_SETTINGS_MODULE=django_bpp.settings.local
+export DJANGO_SETTINGS_MODULE=django_bpp.settings.production
 
 echo "Waiting 5 seconds for PostgreSQL to start..."
 sleep 5 
@@ -13,10 +13,10 @@ echo "--------------------------------------------------------------------------
 set | grep DJANGO_BPP
 
 echo -n "Running migrate... "
-~/.virtualenvs/env-bpp/bin/bpp-manage.py migrate -v0
+bpp-manage.py migrate -v0
 echo "done!" 
 
 export C_FORCE_ROOT=TRUE
-~/.virtualenvs/env-bpp/bin/celery worker --config=$DJANGO_SETTINGS_MODULE -DA django_bpp.celery_tasks &
+celery worker --config=$DJANGO_SETTINGS_MODULE -DA django_bpp.celery_tasks &
 
-~/.virtualenvs/env-bpp/bin/bpp-manage.py runserver 0.0.0.0:8000
+bpp-manage.py runserver 0.0.0.0:8000
