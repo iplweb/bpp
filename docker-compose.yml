@@ -56,7 +56,7 @@ services:
       - .:/usr/src/app
       
   test:
-    image: mpasternak79/django-bpp:test-mpasternak79/django-bpp:prod-'0.11.107'-20171112
+    image: mpasternak79/django-bpp:test-mpasternak79/django-bpp:test-0.11.106-20171112
     build:
       context: docker
       dockerfile: Dockerfile-test
@@ -76,7 +76,7 @@ services:
 # prod == work in progress
 #
 #  prod:
-#    image: mpasternak79/django-bpp:prod-mpasternak79/django-bpp:prod-'0.11.107'
+#    image: mpasternak79/django-bpp:prod-mpasternak79/django-bpp:prod-0.11.107
 #    build:
 #      context: docker
 #      dockerfile: Dockerfile-prod
