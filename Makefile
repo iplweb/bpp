@@ -118,6 +118,7 @@ python-coverage:
 	tox -e py36-coverage
 
 js-tests:
+	ls -las src/django_bpp/staticroot
 	grunt qunit -v
 
 docker-js-tests:
