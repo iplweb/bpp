@@ -87,7 +87,7 @@ docker-yarn-prod:
 
 # cel: assets
 # Pobiera i składa do kupy JS/CSS/Foundation
-assets: yarn assets-for-django 
+assets: yarn _assets
 
 assets-production: yarn-production assets-for-django
 
@@ -192,9 +192,13 @@ docker-python-tests:
 
 docker-tests: docker-assets docker-python-tests docker-js-tests
 
-docker-wheels:
+_docker-wheels:
 	docker-compose run --rm python bash -c "cd /usr/src/app && make wheels"
+
+rsync-dev:
 	rsync dist/* dist_dev/* pypi@dev.iplweb.pl:~/packages
+
+docker-wheels: _docker-wheels rsync-dev
 
 travis-env:
 	echo TRAVIS="${TRAVIS}" >> docker/env.web.txt
