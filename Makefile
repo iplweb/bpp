@@ -44,20 +44,28 @@ wheels:
 # cel: install-wheels
 # Instaluje wszystkie requirements
 install-wheels:
-	${PIP} -q install --no-index --only-binary=whl --find-links=./dist --find-links=./dist_dev -r requirements_dev.txt
+	${PIP} install --no-index --only-binary=whl --find-links=./dist --find-links=./dist_dev -r requirements_dev.txt
 
-assets-for-django:
-	rm -rf src/django_bpp/staticroot
-	${PYTHON} src/manage.py collectstatic --noinput -v0 --traceback
+grunt:
 	grunt build
-	${PYTHON} src/manage.py collectstatic --noinput -v0 --traceback
-	${PYTHON} src/manage.py compress --force  -v0 --traceback
 
-yarn: 
-	yarn 
+yarn:
+	yarn
 
 yarn-production:
 	yarn --prod 
+
+_assets: install-wheels
+	${PYTHON} src/manage.py collectstatic --noinput -v0 --traceback
+	${PYTHON} src/manage.py compress --force  -v0 --traceback
+
+assets: yarn grunt _assets
+
+docker-assets: docker-wheels docker-yarn docker-grunt
+	docker-compose run --rm python bash -c "cd /usr/src/app && make _assets"
+
+docker-grunt:
+	docker-compose run --rm node bash -c "cd /usr/src/app && make grunt"
 
 docker-yarn:
 	docker-compose run --rm node bash -c "cd /usr/src/app && make yarn"
@@ -155,11 +163,16 @@ build-test-container: cleanup-pycs
 	docker-compose rm test
 	docker-compose build test > /dev/null
 
+# cel: docker-up
+# Podnosi wszystkie kontenery, które powinny działać w tle
 docker-up:
-	docker-compose up -d
+	docker-compose up redis rabbitmq selenium nginx_http_push
 
-docker-tests:
-	docker-compose exec test /bin/bash -c "cd /usr/src/app && make full-tests"
+_docker-tests:
+	docker-compose up -d test
+	docker-compose exec test /bin/bash -c "cd /usr/src/app && make install-wheels tests"
+
+docker-tests: docker-assets _docker-tests
 
 docker-wheels:
 	docker-compose run --rm python bash -c "cd /usr/src/app && make wheels"
