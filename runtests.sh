@@ -120,5 +120,6 @@ if [ "$NO_COVERAGE" == "0" ]; then
     py.test --cov=src/integrator2 src/integrator2/tests
     py.test --cov=src/bpp src/bpp/tests_pytest
     py.test --cov=src/nowe_raporty src/nowe_raporty/tests.py
-    stellar restore $GIT_BRANCH_NAME    
+
+    coveralls
 fi

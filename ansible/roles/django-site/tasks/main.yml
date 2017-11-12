@@ -26,20 +26,6 @@
   set_fact: django_latest_version={{ django_latest_version_discovery_command.stdout }}
   tags: ['django-depends', 'django-migrate', 'supervisor', 'nginx', 'cron', 'sync']
 
-- name: Wheel repository is synchronized
-  synchronize:
-    src: ../dist/
-    dest: "{{django_home_dir}}/dist"
-    delete: yes
-    archive: no
-    compress: no
-    checksum: yes
-    recursive: yes
-    times: yes
-    rsync_opts:
-      - "--exclude-from=../rsync.exclude"
-  tags: ['sync']
-
 - name: Virtualenv is created
   command: virtualenv --python=python{{ django_python_version }} {{ django_venv_dir }}
   sudo_user: "{{ django_user }}"
@@ -62,7 +48,7 @@
   tags: ['config']
 
 - name: django-bpp package is installed
-  command: "{{ django_home_dir }}/vexec pip install --no-index django-bpp=={{django_latest_version}} --find-links=file://{{ django_home_dir }}/dist"
+  command: "{{ django_home_dir }}/vexec pip install --upgrade --extra-index-url http://dev.iplweb.pl:8080/ --trusted-host dev.iplweb.pl django-bpp=={{django_latest_version}}"
   sudo_user: "{{ django_user }}"
   tags: ['django-depends']
 

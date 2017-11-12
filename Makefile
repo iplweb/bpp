@@ -112,7 +112,10 @@ bdist_wheel-production: clean install-wheels assets-production _bdist_wheel
 # (cel: install-wheels) oraz statycznych assets w katalogu 
 # src/django_bpp/staticroot (cel: assets)
 python-tests:
-	tox
+	tox -e py36-tests
+
+python-coverage:
+	tox -e py36-coverage
 
 js-tests:
 	grunt qunit -v
@@ -189,6 +192,10 @@ docker-up:
 docker-python-tests:
 	docker-compose up -d test
 	docker-compose exec test /bin/bash -c "cd /usr/src/app && make docker-pip-cache install-tox python-tests"
+
+docker-python-coverage:
+	docker-compose up -d test
+	docker-compose exec test /bin/bash -c "cd /usr/src/app && make python-coverage"
 
 docker-tests: docker-assets docker-python-tests docker-js-tests
 
