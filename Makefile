@@ -49,6 +49,10 @@ install-wheels:
 install-wheels-devserver:
 	${PIP} install --extra-index-url http://dev.iplweb.pl:8080/ --trusted-host dev.iplweb.pl -r requirements_dev.txt | cat
 
+docker-pip-cache:
+	ls -las /usr/src/app/.pip-cache/http || true
+	chown -R root:root /usr/src/app/.pip-cache || true
+
 install-tox:
 	${PIP} install --extra-index-url http://dev.iplweb.pl:8080/ --trusted-host dev.iplweb.pl tox | cat
 
@@ -184,7 +188,7 @@ docker-up:
 
 docker-python-tests:
 	docker-compose up -d test
-	docker-compose exec test /bin/bash -c "cd /usr/src/app && make install-tox python-tests"
+	docker-compose exec test /bin/bash -c "cd /usr/src/app && make docker-pip-cache install-tox python-tests"
 
 docker-tests: docker-assets docker-python-tests docker-js-tests
 
