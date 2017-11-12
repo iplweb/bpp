@@ -72,7 +72,6 @@ services:
       - rabbitmq
       - nginx_http_push
 
-#
 # prod == work in progress
 #
 #  prod:
