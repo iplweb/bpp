@@ -150,7 +150,7 @@ build-test-container: cleanup-pycs
 	docker-compose build test > /dev/null
 
 docker-up:
-	docker-compose up -d
+	docker-compose up 
 
 docker-tests:
 	docker-compose exec web /bin/bash -c "cd /usr/src/app && make full-tests"
