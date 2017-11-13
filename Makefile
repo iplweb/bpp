@@ -99,7 +99,7 @@ _bdist_wheel:
 # Wymaga:
 # 1) zainstalowanych pakietów z requirements.txt i requirements_dev.txt przez pip
 # 2) yarn, grunt-cli, npm, bower
-bdist_wheel: clean install-wheels assets _bdist_wheel rsync-dev
+bdist_wheel: clean assets _bdist_wheel rsync-dev
 
 
 # cel: bdist_wheel-production
