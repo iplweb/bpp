@@ -3,7 +3,7 @@ BRANCH=`git branch | sed -n '/\* /s///p'`
 .PHONY: clean distclean build-wheels install-wheels wheels tests release
 
 PYTHON=python3.6
-PIP=${PYTHON} -m pip --cache-dir=.pip-cache
+PIP=${PYTHON} -m pip
 DISTDIR=./dist
 DISTDIR_DEV=./dist_dev
 
@@ -48,10 +48,6 @@ install-wheels:
 
 install-wheels-from-devserver:
 	${PIP} install --extra-index-url http://dev.iplweb.pl:8080/ --trusted-host dev.iplweb.pl -r requirements_dev.txt | cat
-
-docker-pip-cache:
-	ls -las /usr/src/app/.pip-cache/http || true
-	chown -R root:root /usr/src/app/.pip-cache || true
 
 install-tox:
 	${PIP} install --extra-index-url http://dev.iplweb.pl:8080/ --trusted-host dev.iplweb.pl tox | cat
@@ -192,7 +188,7 @@ docker-up:
 
 docker-python-tests:
 	docker-compose up -d test
-	docker-compose exec test /bin/bash -c "cd /usr/src/app && make docker-pip-cache install-tox python-tests"
+	docker-compose exec test /bin/bash -c "cd /usr/src/app && make install-tox python-tests"
 
 docker-python-coverage:
 	docker-compose up -d test
