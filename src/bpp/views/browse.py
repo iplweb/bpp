@@ -137,6 +137,10 @@ class AutorzyView(Browser):
     literka_field = 'nazwisko'
     paginate_by = 252
 
+    def get_queryset(self):
+        return Autor.objects.all()\
+            .only("nazwisko", "imiona", "slug", "poprzednie_nazwiska")
+
 
 class ZrodlaView(Browser):
     template_name = "browse/zrodla.html"
@@ -144,6 +148,9 @@ class ZrodlaView(Browser):
     param = 'search'
     literka_field = 'nazwa'
     paginate_by = 70
+
+    def get_queryset(self):
+        return Zrodlo.objects.all().only("nazwa", "poprzednia_nazwa", "slug")
 
 
 class JednostkiView(Browser):
@@ -155,7 +162,7 @@ class JednostkiView(Browser):
 
     def get_queryset(self):
         qry = super(JednostkiView, self).get_queryset()
-        return qry.filter(widoczna=True)
+        return qry.filter(widoczna=True).only("nazwa", "slug")
 
 
 class ZrodloView(DetailView):
