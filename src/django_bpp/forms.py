@@ -17,7 +17,7 @@ class BppPasswordChangeForm(PasswordPoliciesChangeForm):
                 Row(Column('new_password2')),
             ),
             ButtonHolder(
-                Submit('submit', 'Zmień', css_class='button white')
+                Submit('submit', 'Zmień hasło', css_class='button white')
             )
         )
 

@@ -3,6 +3,7 @@
 {% load staticfiles %}
 {% load just_single_quotes %}
 {% load bpp_version %}
+{% load crispy_forms_tags %}
 
 {% block extrahead %}
     {{ block.super }}
@@ -121,7 +122,6 @@
                     Pracowników <br/>
                     {{ uczelnia.nazwa_dopelniacz }}</a></h1>
                 {% block global-nav %}
-                    {% load crispy_forms_tags %}
                     {% crispy global_nav_form %}
 
                     <script type="text/javascript">
@@ -160,12 +160,8 @@
                 {% if password_change_required %}
                     <p class='help'>Twoje hasło uległo przeterminowaniu. Proszę, zmień je używając formularza poniżej:</p>
                     <form action="." method="post">{% csrf_token %}
-                    <fieldset>
-                        <legend>Zmiana hasła</legend>
-                        {{ form.as_table }}{% if next %}
+                        {% crispy form %}{% if next %}
                             <input type="hidden" name="next" value="{{ next }}" />{% endif %}
-                        <input type="submit" value="Zmień hasło" class="submit button" />
-                    </fieldset>
                     </form>
                 {% else %}
                     {% block content %}
