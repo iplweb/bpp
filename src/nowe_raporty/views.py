@@ -5,10 +5,12 @@ import os
 from django.conf import settings
 from django.http.response import HttpResponse, FileResponse
 from django.http.response import HttpResponseRedirect
+from django.shortcuts import get_object_or_404
 from django.template.context import RequestContext
 from django.views.generic import FormView, TemplateView
 from django.views.generic.detail import DetailView
 from django_tables2.export.export import TableExport
+from flexible_reports.models.report import Report
 
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
@@ -31,12 +33,15 @@ class BaseFormView(FormView):
 
     def get_context_data(self, **kwargs):
         kwargs['title'] = self.title
+        kwargs['report'] = get_object_or_404(
+            Report, slug=self.report_slug)
         return super(BaseFormView, self).get_context_data(**kwargs)
 
 
 class AutorRaportFormView(BaseFormView):
     form_class = AutorRaportForm
     title = "Raport autorów"
+    report_slug = "raport-autorow"
 
     def form_valid(self, form):
         d = form.cleaned_data
@@ -46,11 +51,13 @@ class AutorRaportFormView(BaseFormView):
             f"_tzju={ d['tylko_z_jednostek_uczelni'] }")
 
 class JednostkaRaportFormView(BaseFormView):
+    report_slug = "raport-jednostek"
     form_class = JednostkaRaportForm
     title = "Raport jednostek"
 
 
 class WydzialRaportFormView(BaseFormView):
+    report_slug = "raport-wydzialow"
     form_class = WydzialRaportForm
     title = "Raport wydziałów"
 

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load user_in_group %}
 
 {% block extratitle %}
     Uczelnia
@@ -16,14 +17,17 @@
         {% if article %}
             <div class="small-12 large-6 column">
                 <h2>{{ article.title }}</h2>
+                {% include "browse/go_to_admin_change.html" with group="web" url="admin:miniblog_article_change" pk=article.pk text="otwórz do edycji" %}
                 <p>opublikowano {{ article.published_on|naturalday }}</p>
                 <p>{{ article.article_body.content|safe }}</p>
             <a href="..">wstecz</a>
             </div>
         {% else %}
-            {% if miniblog.exists %}
+            {% if miniblog.exists or request.user.is_superuser or request.user|has_group:"web" %}
                 <div class="small-12 large-6 column">
                     <h2>Aktualności</h2>
+                    {% include "browse/go_to_admin_list.html" with group="web" url="admin:miniblog_article_changelist" %}
+                    {% include "browse/go_to_admin_list.html" with group="web" url="admin:miniblog_article_add" text="dodaj artykuł" %}
                     {% for article in miniblog %}
                         <h3><strong>{{ article.title }}</strong></h3>
                         <p>
@@ -43,7 +47,8 @@
         <div class="small-12 large-6 column">
 
             <h2>Wybierz wydział</h2>
-    {% include "browse/edit_if_logged_in.html" with url="admin:bpp_uczelnia_change" pk=uczelnia.pk %}
+            {% include "browse/go_to_admin_list.html" with group="struktura" url="admin:bpp_wydzial_changelist" %}
+            {% include "browse/go_to_admin_change.html" with url="admin:bpp_uczelnia_change" pk=uczelnia.pk group="struktura" text="ustawienia dla Uczelni" %}
     <ul class="no-bullet" style="line-height: 250%;">
         {% for wydzial in uczelnia.wydzialy %}
             <li>

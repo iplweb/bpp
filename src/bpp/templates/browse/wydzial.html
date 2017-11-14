@@ -13,7 +13,7 @@
 
 {% block content %}
     <h1>{{ wydzial }}</h1>
-    {% include "browse/edit_if_logged_in.html" with url="admin:bpp_wydzial_change" pk=wydzial.pk %}
+    {% include "browse/go_to_admin_change.html" with url="admin:bpp_wydzial_change" pk=wydzial.pk group="struktura" %}
     {#    <h2><a href="{% url "bpp:browse_uczelnia" wydzial.uczelnia.slug %}">#}
     {#    {{ wydzial.uczelnia }}#}
     {#    </a></h2>#}

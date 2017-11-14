@@ -12,7 +12,7 @@
 
 {% block content %}
     <h1>{{ autor }}</h1>
-    {% include "browse/edit_if_logged_in.html" with url="admin:bpp_autor_change" pk=autor.pk %}
+    {% include "browse/go_to_admin_change.html" with url="admin:bpp_autor_change" pk=autor.pk group="wprowadzanie danych" %}
 
     {% if autor.praca_doktorska %}
         <p>

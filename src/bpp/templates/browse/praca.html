@@ -9,7 +9,7 @@
 {% block breadcrumbs %}
     {{ block.super }}
     <li><a href="{% url "multiseek:index" %}">Wyszukiwanie</a></li>
-    <li class="current">{{ rekord.tytul_oryginalny|truncatewords:10|safe|close_tags}}</li>
+    <li class="current">{{ rekord.tytul_oryginalny|truncatewords:10|close_tags|safe}}</li>
 {% endblock %}
 
 
@@ -17,7 +17,8 @@
     {% include "browse/praca_tabela.html" with praca=rekord.original links="normal"%}
 
     {% with rekord as r %}
-        {% include "browse/edit_if_logged_in.html" with url="admin:"|add:r.content_type.app_label|add:"_"|add:r.content_type.model|add:"_change" pk=r.object_id %}
+        {% include "browse/go_to_admin_change.html" with url="admin:"|add:r.content_type.app_label|add:"_"|add:r.content_type.model|add:"_change" pk=r.object_id  group="wprowadzanie danych" %}
+        {% include "browse/go_to_admin_list.html" with url="admin:"|add:r.content_type.app_label|add:"_"|add:r.content_type.model|add:"_add" pk=r.object_id  group="wprowadzanie danych" text="dodaj nowy rekord" %}
     {% endwith %}
 
 {% endblock %}
