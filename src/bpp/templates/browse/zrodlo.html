@@ -12,7 +12,8 @@
 
 {% block content %}
     <h1>{{ zrodlo.nazwa }}</h1>
-    {% include "browse/edit_if_logged_in.html" with url="admin:bpp_zrodlo_change" pk=zrodlo.pk %}
+    {% include "browse/go_to_admin_change.html" with url="admin:bpp_zrodlo_change" pk=zrodlo.pk group="wprowadzanie danych" %}
+    {% include "browse/go_to_admin_list.html" with url="admin:bpp_zrodlo_add" group="wprowadzanie danych" text="dodaj nowy rekord" %}
 
     <form method="post"
           action="{% url "bpp:browse_build_search" %}" class="browserForm">

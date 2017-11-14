@@ -10,6 +10,13 @@
 {% endblock %}
 
 {% block content %}
+    <h2>{{ title }}</h2>
+    {# go_to_admin_change.html #}
+    {% load user_in_group %}{% if request.user.is_superuser or request.user|has_group:"raporty" %}
+        <div class="panel hide-on-print">
+            <a target="_blank" href="{% url "admin:flexible_reports_report_change" report.pk %}">{{ text|default:"otwórz do edycji" }}</a>
+        </div>
+    {% endif %}
     {% load crispy_forms_tags %}
     {% crispy form %}
 {% endblock %}

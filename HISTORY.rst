@@ -2,6 +2,15 @@
 Historia zmian
 ==============
 
+0.11.109 (2017-11-14)
+---------------------
+
+* możliwość przejścia do panelu redagowania z każdej strony serwisu, gdzie
+  tylko ma to sens (jednostki, autorzy, artykuły, wydziały),
+
+* kosmetyczne poprawki wyświetla raportów
+
+
 0.11.107 (2017-11-12)
 ---------------------
 

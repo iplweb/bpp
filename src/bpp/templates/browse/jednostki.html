@@ -16,6 +16,7 @@
 {% block content %}
     {% url "bpp:browse_jednostki" as browse_jednostki %}
     {% include "browse/literki.html" with pierwszy_tab="wszystkie" url=browse_jednostki %}
+    {% include "browse/go_to_admin_list.html" with url="admin:bpp_jednostka_changelist" group="struktura" text="wyświetl w module redagowania" %}
 
     {% url "bpp:browse_jednostki" as browse_jednostki %}
 

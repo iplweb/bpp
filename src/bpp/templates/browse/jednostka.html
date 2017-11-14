@@ -15,7 +15,7 @@
 
 {% block content %}
     <h1>{{ jednostka }}</h1>
-    {% include "browse/edit_if_logged_in.html" with url="admin:bpp_jednostka_change" pk=jednostka.pk %}
+    {% include "browse/go_to_admin_change.html" with url="admin:bpp_jednostka_change" pk=jednostka.pk group="struktura" %}
 
     {#    <h2><a href="{% url "bpp:browse_wydzial" jednostka.wydzial.slug %}">#}
     {#    {{ jednostka.wydzial }}</a></h2>#}
