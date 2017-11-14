@@ -184,7 +184,7 @@ build-test-container: cleanup-pycs
 # cel: docker-up
 # Podnosi wszystkie kontenery, które powinny działać w tle
 docker-up:
-	docker-compose up -d redis rabbitmq selenium nginx_http_push
+	docker-compose up -d redis rabbitmq selenium nginx_http_push db
 
 docker-python-tests:
 	docker-compose up -d test
