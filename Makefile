@@ -10,14 +10,15 @@ DISTDIR_DEV=./dist_dev
 clean-pycache:
 	find . -name __pycache__ -type d -print0 | xargs -0 rm -rf
 	find . -name \*pyc -print0 | xargs -0 rm -f
+	rm -rf .eggs .cache	
 
 clean: clean-pycache
 	find . -name \*~ -print0 | xargs -0 rm -f 
 	find . -name \*\\.log -print0 | xargs -0 rm -f 
 	find . -name \*\\.log -print0 | xargs -0 rm -f 
 	find . -name \#\* -print0 | xargs -0 rm -f
-	rm -rf build dist/*django_bpp*whl __pycache__ *.log
-	rm -rf .eggs .cache .tox
+	rm -rf build dist/*django_bpp*whl *.log
+	rm -rf .tox
 
 distclean: clean
 	rm -rf src/django_bpp/staticroot 
@@ -41,10 +42,17 @@ wheels:
 	mkdir -p ${DISTDIR_DEV}
 	${PIP} wheel --wheel-dir=${DISTDIR_DEV} --find-links=${DISTDIR} --find-links=${DISTDIR_DEV} -r requirements_dev.txt | cat
 
+# cel: install-production-wheels
+# Instaluje wszystkie requirements
+install-production-wheels:
+	${PIP} install --no-index --only-binary=whl --find-links=./dist -r requirements.txt | cat
+
+install-dev-wheels:
+	${PIP} install --no-index --only-binary=whl --find-links=./dist_dev -r requirements_dev.txt | cat
+
 # cel: install-wheels
 # Instaluje wszystkie requirements
-install-wheels:
-	${PIP} install --no-index --only-binary=whl --find-links=./dist --find-links=./dist_dev -r requirements_dev.txt | cat
+install-wheels: install-production-wheels install-dev-wheels
 
 install-wheels-from-devserver:
 	${PIP} install --extra-index-url http://dev.iplweb.pl:8080/ --trusted-host dev.iplweb.pl -r requirements_dev.txt | cat
@@ -217,12 +225,14 @@ rebuild-test:
 	docker-compose rm -f test
 	docker-compose build test
 
-# cel: production-deps
+_docker_production_deps:
+	docker-compose run --rm test /bin/bash -c "cd /usr/src/app && make install-production-wheels _bdist_wheel"
+
+# cel: docker-production-deps
 # Tworzy zależności dla produkcyjnej wersji oprogramowania
 # (czyli: buduje wheels i bdist_wheel pod dockerem, na docelowej
 # dystrybucji Linuxa)
-production-deps: 
-	docker-compose run --rm web /bin/bash -c "cd /usr/src/app && make wheels bdist_wheel"
+docker-production-deps: docker-assets clean _docker_production_deps rsync-dev
 
 # cel: production -DCUSTOMER=... or CUSTOMER=... make production
 production: 
