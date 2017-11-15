@@ -11,7 +11,7 @@ jobs:
 
       - run:
           name: Pull docker images from hub
-          command: docker-compose pull db nginx_http_push node test python 
+          command: make _circleci_pull
           
       - run:
           name: Boot docker 
@@ -21,10 +21,6 @@ jobs:
           name: docker-yarn
           command: make docker-yarn
           
-      - run:
-          name: docker-grunt
-          command: make docker-grunt
-
       - run:
           name: docker-grunt
           command: make docker-grunt

@@ -235,3 +235,11 @@ production-update: # "szybka" ścieżka aktualizacji
 # Uruchom sphinx-autobuild
 live-docs: 
 	sphinx-autobuild -p 8080 -D language=pl docs/ docs/_build
+
+_circleci_pull:
+	docker-compose pull db nginx_http_push node test python 
+
+# cel: cirlceci
+# Uruchom polecenia w kolejności takiej, jak w CircleCI, ale bez Coverage
+# Przydatne gdy chcemy lokalnie uruchomić testy, przed pchnięciem kodu na GitHub
+circleci: _circleci_pull docker-up docker-yarn docker-grunt _docker-assets docker-python-tests docker-js-tests
