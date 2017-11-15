@@ -138,7 +138,7 @@ class AutorzyView(Browser):
     paginate_by = 252
 
     def get_queryset(self):
-        return Autor.objects.all()\
+        return super(AutorzyView, self).get_queryset()\
             .only("nazwisko", "imiona", "slug", "poprzednie_nazwiska")
 
 
@@ -150,7 +150,8 @@ class ZrodlaView(Browser):
     paginate_by = 70
 
     def get_queryset(self):
-        return Zrodlo.objects.all().only("nazwa", "poprzednia_nazwa", "slug")
+        return super(ZrodlaView, self).get_queryset()\
+            .only("nazwa", "poprzednia_nazwa", "slug")
 
 
 class JednostkiView(Browser):
