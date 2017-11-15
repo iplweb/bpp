@@ -344,3 +344,26 @@ def test_aktualizacja_rekordu_autora(typy_odpowiedzialnosci):
     # czy cache jest odświeżone
     assert b.pk in Rekord.objects.all().first().autorzy.all().values_list(
         "autor", flat=True)
+
+@pytest.mark.django_db
+def test_prace_autora_z_afiliowanych_jednostek(typy_odpowiedzialnosci):
+    a1 = mommy.make(Autor, nazwisko="X", imiona="X")
+    a2 = mommy.make(Autor, nazwisko="Y", imiona="Y")
+
+    nasza = mommy.make(Jednostka, skupia_pracownikow=True)
+    obca = mommy.make(Jednostka, skupia_pracownikow=False)
+
+    wc1 = mommy.make(Wydawnictwo_Ciagle, impact_factor=10, rok=2017)
+    wc2 = mommy.make(Wydawnictwo_Ciagle, impact_factor=10, rok=2017)
+
+    wc1.dodaj_autora(a1, nasza)
+    wc1.dodaj_autora(a2, nasza)
+
+    wc2.dodaj_autora(a1, obca)
+    wc2.dodaj_autora(a2, nasza)
+
+    assert Rekord.objects.prace_autora(a1).count() == 2
+    assert Rekord.objects.prace_autora(a2).count() == 2
+
+    assert Rekord.objects.prace_autora_z_afiliowanych_jednostek(a1).count() == 1
+    assert Rekord.objects.prace_autora_z_afiliowanych_jednostek(a2).count() == 2

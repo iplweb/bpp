@@ -270,6 +270,7 @@ class RekordManager(FulltextSearchMixin, models.Manager):
         afiliowany.
         """
         return self.prace_autora(autor).filter(
+            autorzy__autor=autor,
             autorzy__jednostka__skupia_pracownikow=True,
             autorzy__afiliuje=True
         ).distinct()
