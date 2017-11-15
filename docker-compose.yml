@@ -60,7 +60,7 @@ services:
       - .:/usr/src/app
       
   test:
-    image: mpasternak79/django-bpp:test-0.11.106-20171112
+    image: mpasternak79/django-bpp:test-0.11.110
     build:
       context: docker
       dockerfile: Dockerfile-test
