@@ -242,10 +242,19 @@ class PracaView(DetailView):
     model = Rekord
 
     def get_object(self, queryset=None):
+        model = self.kwargs['model']
+
+        try:
+            int(model)
+        except ValueError:
+            try:
+                model = ContentType.objects.get_by_natural_key("bpp", model).pk
+            except ContentType.DoesNotExist:
+                raise Http404
+
         try:
             obj = Rekord.objects.get(
-                pk=[self.kwargs['model'],
-                    self.kwargs['pk']]
+                pk=[model, self.kwargs['pk']]
             )
         except Rekord.DoesNotExist:
             raise Http404
