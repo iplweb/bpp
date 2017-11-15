@@ -8,7 +8,10 @@ Historia zmian
 * możliwość przejścia do panelu redagowania z każdej strony serwisu, gdzie
   tylko ma to sens (jednostki, autorzy, artykuły, wydziały),
 
-* kosmetyczne poprawki wyświetla raportów
+* kosmetyczne poprawki wyświetla raportów,
+
+* poprawiony błędny warunek dla funkcji raportu autorów "uwzględniaj tylko
+  prace afiliowanych jednostek uczelni",
 
 
 0.11.107 (2017-11-12)
