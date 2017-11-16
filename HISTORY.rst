@@ -2,6 +2,15 @@
 Historia zmian
 ==============
 
+0.11.111 (2017-11-16)
+---------------------
+
+* poprawiony błąd związany z wyborem pola "tylko prace z afiliowanych jednostek"
+  występujący w formularzu raportu autorów
+
+* optymalizacja wyświetlania podstrony jednostki w przypadku, gdy zawiera
+  ona więcej, niż 100 autorów.
+
 0.11.109 (2017-11-14)
 ---------------------
 
