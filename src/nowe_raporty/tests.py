@@ -1,6 +1,7 @@
 import pytest
 from django.test.client import RequestFactory
 from django.urls import reverse
+from mock import patch
 from model_mommy import mommy
 
 from bpp.models.autor import Autor
@@ -76,3 +77,27 @@ def test_rekord_prace_autora(autor):
 def test_rekord_prace_autora_z_afiliowanych_jednostek(autor):
     assert Rekord.objects.prace_autora_z_afiliowanych_jednostek(
         autor).count() == 1
+
+
+def test_GenerujRaportDlaAutora_get_base_queryset():
+    with patch.object(Rekord.objects,
+                      "prace_autora_z_afiliowanych_jednostek") as prace_z_afiliowanych:
+        with patch.object(Rekord.objects, "prace_autora") as prace_autora:
+            x = GenerujRaportDlaAutora()
+            x.request = rf.get("/", data={"_tzju": "True"})
+            x.object = None
+            x.get_base_queryset()
+
+            prace_z_afiliowanych.assert_called_once()
+            prace_autora.assert_not_called()
+
+    with patch.object(Rekord.objects,
+                      "prace_autora_z_afiliowanych_jednostek") as prace_z_afiliowanych:
+        with patch.object(Rekord.objects, "prace_autora") as prace_autora:
+            x = GenerujRaportDlaAutora()
+            x.request = rf.get("/", data={"_tzju": "False"})
+            x.object = None
+            x.get_base_queryset()
+
+            prace_z_afiliowanych.assert_not_called()
+            prace_autora.assert_called_once()
