@@ -36,7 +36,7 @@
             {% include "browse/typy.html" %}
         </fieldset>
 
-        {% if jednostka.nazwa != "Obca jednostka" %}
+        {% if jednostka.autorzy_na_strone_jednostki.count < 100 %}
 
             <fieldset>
                 <legend>... napisane przez:</legend>

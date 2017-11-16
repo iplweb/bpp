@@ -6,7 +6,9 @@ import pytest
 from bs4 import BeautifulSoup
 from django.contrib.contenttypes.models import ContentType
 from django.core.urlresolvers import reverse
+from model_mommy import mommy
 
+from bpp.models.autor import Autor
 from bpp.views.browse import BuildSearch
 from miniblog.models import Article
 from multiseek.logic import EQUAL_NONE, EQUAL, EQUAL_FEMALE
@@ -146,3 +148,12 @@ def test_artykul_ze_skrotem(uczelnia, client):
 
     res = client.get(reverse("bpp:browse_artykul", args=(uczelnia.slug, a.slug)))
     assert b'789' in res.content
+
+
+@pytest.mark.django_db
+def test_jednostka_nie_wyswietlaj_autorow_gdy_wielu(client, jednostka):
+    for n in range(102):
+        jednostka.dodaj_autora(mommy.make(Autor))
+
+    res = client.get(reverse("bpp:browse_jednostka", args=(jednostka.slug,)))
+    assert "... napisane przez" not in res.rendered_content
