@@ -41,7 +41,7 @@ server {
   error_page 500 /50x.html;
   error_page 502 /50x.html;
   error_page 503 /50x.html;
-  error_page 504 /50x.html;
+  error_page 504 /504.html;
 
   location /50x.html {
     root {{ django_home_dir }}/env/lib/python{{ django_python_version }}/site-packages/bpp/templates/;
