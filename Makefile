@@ -96,7 +96,7 @@ assets: yarn _assets
 assets-production: yarn-production assets-for-django
 
 _bdist_wheel:
-	${PYTHON} setup.py -q bdist_wheel 
+	${PYTHON} setup.py bdist_wheel 
 
 # cel: bdist_wheel
 # Buduje pakiet WHL zawierający django_bpp i skompilowane, statyczne assets. 
@@ -225,14 +225,14 @@ rebuild-test:
 	docker-compose rm -f test
 	docker-compose build test
 
-_docker_production_deps:
+docker-production-deps: docker-assets clean
 	docker-compose run --rm test /bin/bash -c "cd /usr/src/app && make install-production-wheels _bdist_wheel"
 
-# cel: docker-production-deps
+# cel: docker-build
 # Tworzy zależności dla produkcyjnej wersji oprogramowania
 # (czyli: buduje wheels i bdist_wheel pod dockerem, na docelowej
-# dystrybucji Linuxa)
-docker-production-deps: docker-assets clean _docker_production_deps rsync-dev
+# dystrybucji Linuxa, następnie wpycha je do naszego "prywatnego" PyPI)
+docker-build: docker-production-deps rsync-dev
 
 # cel: production -DCUSTOMER=... or CUSTOMER=... make production
 production: 
