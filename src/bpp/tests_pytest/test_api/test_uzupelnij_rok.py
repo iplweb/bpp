@@ -3,7 +3,6 @@ import json
 
 import pytest
 from django import forms
-from django.test.client import RequestFactory
 
 from bpp.views.api.uzupelnij_rok import ApiUzupelnijRokWydawnictwoZwarteView, \
     ApiUzupelnijRokWydawnictwoCiagleView
@@ -27,14 +26,13 @@ def test_ApiUzupelnijRokWydawnictwoZwarteView_get_data(wydawnictwo_zwarte):
     assert res['rok'] == "2000"
 
 
-def test_ApiUzupelnijRokWydawnictwoZwarteView_post():
+def test_ApiUzupelnijRokWydawnictwoZwarteView_post(rf):
     x = ApiUzupelnijRokWydawnictwoZwarteView()
 
     class FakeForm(forms.Form):
         sss = forms.CharField(required=True)
 
     x.validation_form_class = FakeForm
-    rf = RequestFactory()
 
     res = x.post(rf.post("/"))
     assert json.loads(res.content)['error'] == 'form'

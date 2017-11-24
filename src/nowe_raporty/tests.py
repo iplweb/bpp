@@ -12,9 +12,6 @@ from flexible_reports.models.report import Report
 from nowe_raporty.views import GenerujRaportDlaAutora, \
     GenerujRaportDlaJednostki, GenerujRaportDlaWydzialu
 
-rf = RequestFactory()
-
-
 @pytest.mark.django_db
 @pytest.mark.parametrize(
     "view,klass",
@@ -38,7 +35,7 @@ def test_view_raport_nie_zdefiniowany(client, view, klass):
      (GenerujRaportDlaJednostki, Jednostka, "raport-jednostek"),
      (GenerujRaportDlaWydzialu, Wydzial, "raport-wydzialow")]
 )
-def test_view_raport_zdefiniowany(view, klass, report_slug):
+def test_view_raport_zdefiniowany(view, klass, report_slug, rf):
     obj = mommy.make(klass)
     v = view(kwargs=dict(od_roku=2017, do_roku=2017))
     v.object = obj
@@ -79,7 +76,7 @@ def test_rekord_prace_autora_z_afiliowanych_jednostek(autor):
         autor).count() == 1
 
 
-def test_GenerujRaportDlaAutora_get_base_queryset():
+def test_GenerujRaportDlaAutora_get_base_queryset(rf):
     with patch.object(Rekord.objects,
                       "prace_autora_z_afiliowanych_jednostek") as prace_z_afiliowanych:
         with patch.object(Rekord.objects, "prace_autora") as prace_autora:
