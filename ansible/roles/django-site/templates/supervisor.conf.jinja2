@@ -2,6 +2,7 @@
 command={{ django_home_dir }}/vexec {{ django_venv_dir }}/bin/celery
     worker
     -A django_bpp.celery_tasks
+    -c 1
     --pidfile={{ django_home_dir }}/celeryworker.pid
 user={{ django_user }}
 autostart=true
