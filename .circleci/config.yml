@@ -37,7 +37,3 @@ jobs:
           name: JS tests
           command: make docker-js-tests
 
-      - run:
-          name: Python coverage
-          command: make docker-python-coverage
-          

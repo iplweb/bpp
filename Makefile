@@ -57,9 +57,6 @@ install-wheels: install-production-wheels install-dev-wheels
 install-wheels-from-devserver:
 	${PIP} install --extra-index-url http://dev.iplweb.pl:8080/ --trusted-host dev.iplweb.pl -r requirements_dev.txt | cat
 
-install-tox:
-	${PIP} install --extra-index-url http://dev.iplweb.pl:8080/ --trusted-host dev.iplweb.pl tox | cat
-
 grunt:
 	grunt build
 
@@ -109,17 +106,6 @@ bdist_wheel: clean assets _bdist_wheel rsync-dev
 # cel: bdist_wheel-production
 # Jak bdist_wheel, ale pakuje tylko produkcyjne JS prezz yarn
 bdist_wheel-production: clean install-wheels assets-production _bdist_wheel
-
-# cel: python-tests
-# Uruchamia testy kodu pythona za pomocą tox.
-# pakietów WHL (cel: wheels), zainstalowanych pakietów wheels
-# (cel: install-wheels) oraz statycznych assets w katalogu 
-# src/django_bpp/staticroot (cel: assets)
-python-tests:
-	tox -e py36-tests
-
-python-coverage:
-	tox -e py36-coverage
 
 js-tests:
 	ls -las src/django_bpp/staticroot
@@ -196,11 +182,7 @@ docker-up:
 
 docker-python-tests:
 	docker-compose up -d test
-	docker-compose exec test /bin/bash -c "cd /usr/src/app && make install-tox python-tests"
-
-docker-python-coverage:
-	docker-compose up -d test
-	docker-compose exec test /bin/bash -c "cd /usr/src/app && make python-coverage"
+	docker-compose exec test /bin/bash -c "cd /usr/src/app && pip install tox && tox"
 
 docker-tests: docker-assets docker-python-tests docker-js-tests
 
