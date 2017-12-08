@@ -49,7 +49,7 @@ CREATE VIEW bpp_wydawnictwo_ciagle_view AS SELECT
   afiliowana,
   recenzowana,
 
-  '0' AS liczba_znakow_wydawniczych,
+  '0'::integer AS liczba_znakow_wydawniczych,
 
   www
 
@@ -80,7 +80,7 @@ CREATE VIEW bpp_wydawnictwo_zwarte_view AS SELECT
 
   charakter_formalny_id,
 
-  NULL AS zrodlo_id,
+  NULL::integer AS zrodlo_id,
 
   wydawnictwo,
 
@@ -120,10 +120,7 @@ FROM
 WHERE
   django_content_type.app_label = 'bpp' AND
   django_content_type.model = 'wydawnictwo_zwarte';
-  
 
-  
-  
   
 DROP VIEW IF EXISTS bpp_patent_view  CASCADE;
 
@@ -134,7 +131,7 @@ CREATE VIEW bpp_patent_view AS SELECT
   bpp_patent.id AS object_id,
 
   tytul_oryginalny,
-  NULL AS tytul,
+  NULL::text AS tytul,
   search_index,
 
   rok,
@@ -144,7 +141,7 @@ CREATE VIEW bpp_patent_view AS SELECT
 
   bpp_charakter_formalny.id AS charakter_formalny_id,
 
-  NULL AS zrodlo_id,
+  NULL::integer AS zrodlo_id,
 
   NULL::text AS wydawnictwo,
 
@@ -174,7 +171,7 @@ CREATE VIEW bpp_patent_view AS SELECT
   afiliowana,
   recenzowana,
 
-  '0' AS liczba_znakow_wydawniczych,
+  '0'::integer AS liczba_znakow_wydawniczych,
 
   www
 
@@ -239,7 +236,7 @@ CREATE VIEW bpp_praca_doktorska_view AS SELECT
   afiliowana,
   recenzowana,
 
-  '0' AS liczba_znakow_wydawniczych,
+  '0'::integer AS liczba_znakow_wydawniczych,
 
   www
 
@@ -303,7 +300,7 @@ CREATE VIEW bpp_praca_habilitacyjna_view AS SELECT
   afiliowana,
   recenzowana,
 
-  '0' AS liczba_znakow_wydawniczych,
+  '0'::integer AS liczba_znakow_wydawniczych,
 
   www
 
