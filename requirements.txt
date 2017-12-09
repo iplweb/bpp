@@ -49,7 +49,7 @@ django-password-policies==0.4.3b0
 dj_pagination==2.2.1
 
 requests==2.18.4
-pytz==2017.2
+pytz==2017.3
 
 django-extensions==1.7.9
 
