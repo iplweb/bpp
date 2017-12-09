@@ -259,6 +259,13 @@ class AdminNavigationAutocomplete(StaffRequired, Select2QuerySetSequenceView):
         )
 
         querysets.append(
+            Konferencja.objects.filter(
+                Q(nazwa__icontains=self.q) |
+                Q(skrocona_nazwa__icontains=self.q)
+            ).only("pk", "nazwa")
+        )
+
+        querysets.append(
             Autor.objects
                 .fulltext_filter(self.q)
                 .annotate(Count('wydawnictwo_ciagle'))
