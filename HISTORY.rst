@@ -2,6 +2,11 @@
 Historia zmian
 ==============
 
+0.11.112 (2017-12-09)
+---------------------
+
+* wyszukiwanie konferencji w globalnej nawigacji modułu redagowania
+
 0.11.111 (2017-11-16)
 ---------------------
 
