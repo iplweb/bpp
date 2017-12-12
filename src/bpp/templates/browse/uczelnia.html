@@ -11,14 +11,12 @@
 {% endblock %}
 
 {% block content %}
-    {% load humanize %}
-
     <div class="row">
         {% if article %}
             <div class="small-12 large-6 column">
                 <h2>{{ article.title }}</h2>
                 {% include "browse/go_to_admin_change.html" with group="web" url="admin:miniblog_article_change" pk=article.pk text="otwórz do edycji" %}
-                <p>opublikowano {{ article.published_on|naturalday }}</p>
+                <p>opublikowano {{ article.published_on }}</p>
                 <p>{{ article.article_body.content|safe }}</p>
             <a href="..">wstecz</a>
             </div>
@@ -31,7 +29,7 @@
                     {% for article in miniblog %}
                         <h3><strong>{{ article.title }}</strong></h3>
                         <p>
-                            opublikowano {{ article.published_on|naturalday }}</p>
+                            opublikowano {{ article.published_on }}</p>
                         <p>{{ article.article_body.excerpt|safe }}</p>
                         {% if article.article_body.has_more %}
                             <p>
