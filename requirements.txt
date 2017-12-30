@@ -1,4 +1,4 @@
-Django==1.11.5
+Django==1.11.8
 psycopg2==2.7.1
 
 django-flexible-reports==0.2.3
