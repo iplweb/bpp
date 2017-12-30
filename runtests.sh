@@ -9,6 +9,8 @@ popd > /dev/null
 NO_REBUILD=0
 PYTHON=python3.6
 
+export DJANGO_SETTINGS_MODULE="${DJANGO_SETTINGS_MODULE:-django_bpp.settings.local}"
+
 export PYTHONIOENCODING=utf_8
 
 while test $# -gt 0
