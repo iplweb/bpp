@@ -107,8 +107,6 @@ MIDDLEWARE_CLASSES = [
 
     'dj_pagination.middleware.PaginationMiddleware',
 
-    'django_tables2_reports.middleware.TableReportMiddleware',
-
     'session_security.middleware.SessionSecurityMiddleware',
     'notifications.middleware.NotificationsMiddleware',
     'dogslow.WatchdogMiddleware',
@@ -166,8 +164,7 @@ INSTALLED_APPS = [
     'admin_tools.dashboard',
 
     'django_tables2',
-    'django_tables2_reports',
-
+    
     # 'autocomplete_light',
 
     'messages_extends',

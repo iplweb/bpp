@@ -9,6 +9,8 @@ popd > /dev/null
 NO_REBUILD=0
 PYTHON=python3.6
 
+export DJANGO_SETTINGS_MODULE="${DJANGO_SETTINGS_MODULE:-django_bpp.settings.local}"
+
 export PYTHONIOENCODING=utf_8
 
 while test $# -gt 0
@@ -43,6 +45,8 @@ fi
 coverage run --source=src/bpp/ src/manage.py test bpp --keepdb
 # Ewentualne następne testy muszą startować na czystej bazie danych, więc:
 stellar restore $GIT_BRANCH_NAME
+
+make clean-pycache
 
 py.test --cov=src/eksport_pbn src/eksport_pbn/tests
 py.test --cov=src/bpp src/integration_tests
