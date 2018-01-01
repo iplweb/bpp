@@ -397,7 +397,7 @@ def int_or_None(value):
 DATABASES = {
     'default': {
         'ENGINE': django_getenv("DJANGO_BPP_DB_ENGINE", 'django.db.backends.postgresql_psycopg2'),
-        'NAME': django_getenv("DJANGO_BPP_DB_NAME", "bpp"),
+        'NAME': django_getenv("DJANGO_BPP_DB_NAME", "django-bpp"),
         'USER': django_getenv("DJANGO_BPP_DB_USER", "postgres"),
         'PASSWORD': django_getenv("DJANGO_BPP_DB_PASSWORD", "password"),
         'HOST': django_getenv("DJANGO_BPP_DB_HOST", "localhost"),

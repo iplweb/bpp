@@ -2,6 +2,15 @@
 Historia zmian
 ==============
 
+1.0.1 (2018-01-01)
+------------------
+
+* wyświetlanie danych OpenAccess na widoku pracy,
+
+* wyświetlanie DOI w opisach bibliograficznych, raportach oraz widoku pracy,
+
+* poprawiony błąd budowania zapytania SQL na potrzeby wyszukiwania pełnotekstowego
+
 0.11.112 (2017-12-09)
 ---------------------
 

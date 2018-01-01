@@ -33,6 +33,18 @@ class Licencja_OpenAccess(NazwaISkrot):
         ordering = ['nazwa']
         app_label = 'bpp'
 
+    def webname(self):
+        """
+        Zwróc nazwę licencji, którą możemy podlinkować na WWW. Generalnie oznacza to
+        zmniejszenie znaków i wyrzucenie początkowego CC- ze skrótu. Jeżeli skrót
+        nie jest zamienialny na nazwę linku licencji Creative Commons, zwracaj None.
+        """
+        if self.skrot == "OTHER":
+            return
+
+        if self.skrot is not None:
+            return self.skrot.lower().replace("cc-", "")
+
 
 class Wersja_Tekstu_OpenAccess(NazwaISkrot):
     class Meta:

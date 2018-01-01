@@ -29,6 +29,7 @@ from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, \
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte, \
     Wydawnictwo_Zwarte_Autor
 from bpp.models.zrodlo import Zrodlo
+from bpp.util import fulltext_tokenize
 
 
 class Wydawnictwo_NadrzedneAutocomplete(autocomplete.Select2QuerySetView):
@@ -139,7 +140,7 @@ class AutorAutocompleteBase(autocomplete.Select2QuerySetView):
     def get_queryset(self):
         qs = Autor.objects.all()
         if self.q:
-            tokens = [x.strip().replace(":", "") for x in self.q.split()]
+            tokens = fulltext_tokenize(self.q)
             query = SearchQueryStartsWith(
                 "&".join([token + ":*" for token in tokens if token]),
                 config="bpp_nazwy_wlasne")
