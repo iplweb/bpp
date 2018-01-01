@@ -6,6 +6,7 @@
     {{ praca.szczegoly|default:""|znak_na_poczatku:","|safe }}
     {{ praca.uwagi|default:""|znak_na_poczatku:","|safe }}
     {{ praca.isbn|default:""|znak_na_poczatku:"," }}
+    {{ praca.doi|default:""|znak_na_poczatku:". DOI: " }}
 {% else %}
     {# szczegóły i uwagi na poczatku #}
     {{ praca.szczegoly|default:""|znak_na_poczatku:" "|safe }}
@@ -13,4 +14,5 @@
     {{ praca.miejsce_i_rok|default:""|znak_na_poczatku:"." }}
     {{ praca.wydawnictwo|default:""|znak_na_poczatku:"," }}
     {{ praca.isbn|default:""|znak_na_poczatku:"," }}
+    {{ praca.doi|default:""|znak_na_poczatku:". DOI: " }}
 {% endif %}
