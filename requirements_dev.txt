@@ -10,6 +10,7 @@ pytest-instafail==0.3.0
 pytest-cov==2.5.1
 pytest-localserver==0.3.6
 pytest-splinter==1.8.5
+pytest-pythonpath==0.7.1
 splinter==0.7.6
 selenium==3.6.0
 # >=3.4,<3.5

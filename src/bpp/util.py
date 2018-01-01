@@ -18,15 +18,13 @@ def get_fixture(name):
     return dict([(x['skrot'].lower().strip(), x) for x in ret])
 
 
+def fulltext_tokenize(s):
+    s = s.replace(":", "").replace("\\", "").replace("(", "").replace(")", "")
+    return [x.strip() for x in s.split(" ") if x.strip()]
+
+
 class FulltextSearchMixin:
     fts_field = 'search'
-
-    def tokenize(self, qstr):
-        qstr = qstr.replace("\\", "")
-        ret = [x.strip() for x in qstr.split(" ") if x.strip()]
-        if six.PY2:
-            ret = [x.encode("utf-8") for x in ret]
-        return ret
 
     def fulltext_filter(self, qstr):
         #
@@ -68,7 +66,7 @@ class FulltextSearchMixin:
         if type(qstr) == bytes:
             qstr = qstr.decode("utf-8")
 
-        words = self.tokenize(qstr)
+        words = fulltext_tokenize(qstr)
         qstr = " & ".join(startswith(words))
         params = ('bpp_nazwy_wlasne', qstr)
 
