@@ -1,4 +1,5 @@
-{% load prace %}<table width="{{ width|default:"100%" }}"
+{% load prace %}
+<table width="{{ width|default:"100%" }}"
        class="{{ htmlclass|default:"naglowki_z_lewej" }}">
     <tr>
         <th width="12%">Tytuł:</th>
@@ -21,7 +22,7 @@
         <td>
             {% if praca.zrodlo %}
                 {% if links == "admin" %}
-                    <a href="{% url "admin:bpp_zrodlo_change" praca.zrodlo.pk%}">{{ praca.zrodlo }}</a>
+                    <a href="{% url "admin:bpp_zrodlo_change" praca.zrodlo.pk %}">{{ praca.zrodlo }}</a>
                 {% else %}
                     <a href="{% url "bpp:browse_zrodlo" praca.zrodlo.slug %}">{{ praca.zrodlo }}</a>
                 {% endif %}
@@ -51,6 +52,12 @@
             {% endif %}
         </td>
     </tr>
+    {% if praca.doi %}
+        <tr>
+            <th>DOI</th>
+            <td><a target="_blank" href="http://doi.org/{{ praca.doi }}">{{ praca.doi }}</a></td>
+        </tr>
+    {% endif %}
 
     <tr>
         <th>
