@@ -6,6 +6,8 @@ pushd `dirname $0` > /dev/null
 SCRIPTPATH=`pwd -P`
 popd > /dev/null
 
+TEST_DB_NAME=test_django-bpp
+
 NO_REBUILD=0
 NO_COVERAGE=0
 NO_DJANGO=0
@@ -37,8 +39,8 @@ done
 if [ "$NO_REBUILD" == "0" ]; then
     # Nie przebudowuj bazy danych przed uruchomieniem testów.
     # Baza powinna być zazwyczaj utworzona od zera. 
-    dropdb --if-exists test_bpp 
-    createdb test_bpp
+    dropdb --if-exists $TEST_DB_NAME 
+    createdb $TEST_DB_NAME
     $PYTHON src/manage.py create_test_db
     stellar replace $GIT_BRANCH_NAME || stellar snapshot $GIT_BRANCH_NAME
 else
