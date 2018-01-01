@@ -7,6 +7,8 @@ SCRIPTPATH=`pwd -P`
 popd > /dev/null
 
 NO_REBUILD=0
+NO_COVERAGE=0
+NO_DJANGO=0
 PYTHON=python3.6
 
 export DJANGO_SETTINGS_MODULE="${DJANGO_SETTINGS_MODULE:-django_bpp.settings.local}"
@@ -16,9 +18,13 @@ export PYTHONIOENCODING=utf_8
 while test $# -gt 0
 do
     case "$1" in
+	--no-django) NO_DJANGO=1
+	    ;;
+	--no-coverage) NO_COVERAGE=1
+	    ;;
         --no-rebuild) NO_REBUILD=1
             ;;
-	--help) echo "--no-rebuild"
+	--help) echo "--no-rebuild, --no-coverage, --no-django"
 	    exit 1
 	    ;;
         --*) echo "bad option $1"
@@ -42,21 +48,34 @@ else
     stellar restore $GIT_BRANCH_NAME
 fi
 
-coverage run --source=src/bpp/ src/manage.py test bpp --keepdb
-# Ewentualne następne testy muszą startować na czystej bazie danych, więc:
+MANAGE="src/manage.py test bpp --keepdb"
+
+if [ "$NO_DJANGO" == "0" ]; then
+    if [ "$NO_COVERAGE" == "1" ]; then
+	$PYTHON $MANAGE
+    else
+	coverage run --source=src/bpp/ $MANAGE
+    fi
+    
+    # Ewentualne następne testy muszą startować na czystej bazie danych, więc:
+    stellar restore $GIT_BRANCH_NAME
+fi
+
+PYTEST=py.test
+
+if [ "$NO_COVERAGE" == "0" ]; then
+    PYTEST="$PYTEST --cov=src"
+fi
+
+$PYTEST \
+	src/eksport_pbn/tests \
+	src/integration_tests \
+	src/integrator2/tests \
+	src/bpp/tests_pytest \
+	src/nowe_raporty/tests.py
+
 stellar restore $GIT_BRANCH_NAME
 
-make clean-pycache
-
-py.test --cov=src/eksport_pbn src/eksport_pbn/tests
-py.test --cov=src/bpp src/integration_tests
-py.test --cov=src/integrator2 src/integrator2/tests
-py.test --cov=src/bpp src/bpp/tests_pytest
-py.test --cov=src/nowe_raporty src/nowe_raporty/tests.py
-
-# mpasternak 17.1.2017 TODO: włączyć później
-# egeria/tests
-
-stellar restore $GIT_BRANCH_NAME
-
-coveralls
+if [ "$NO_COVERAGE" == "0" ]; then
+    coveralls
+fi    
