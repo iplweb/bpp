@@ -2,7 +2,7 @@
 <table width="{{ width|default:"100%" }}"
        class="{{ htmlclass|default:"naglowki_z_lewej" }}">
     <tr>
-        <th width="12%">Tytuł:</th>
+        <th width="20%">Tytuł:</th>
         <td>
             {% include "opis_bibliograficzny/tytul.html" %}
         </td>
@@ -106,6 +106,54 @@
         </td>
     </tr>
 
+    {% if praca.openaccess_tryb_dostepu or praca.openaccess_wersja_tekstu or praca.openaccess_licencja or praca.openaccess_czas_publikacji or praca.openaccess_ilosc_miesiecy %}
+        <tr>
+            <th style="vertical-align: top;">OpenAccess:</th>
+            <td>
+                {% if praca.openaccess_tryb_dostepu %}
+                    <b>- tryb dostępu: </b>
+                    {{ praca.openaccess_tryb_dostepu|lower }}
+                    <br/>
+                {% endif %}
+
+                {% if praca.openaccess_wersja_tekstu %}
+
+                    <b> - wersja tekstu: </b>
+                    {{ praca.openaccess_wersja_tekstu|lower }}<br/>
+
+                {% endif %}
+                {% if praca.openaccess_licencja %}
+
+                    <b> - licencja: </b>
+                    {% if praca.openaccess_licencja.webname %}
+                        <a target="_blank" href="https://creativecommons.org/licenses/{{ praca.openaccess_licencja.webname }}/3.0/pl/#content">
+                    {% endif %}
+                {{ praca.openaccess_licencja }}
+                {% if praca.openaccess_licencja.webname %}
+                    </a>
+                {% endif %}
+                    <br/>
+
+                {% endif %}
+                {% if praca.openaccess_czas_publikacji %}
+
+                    <b> - czas udostępnienia: </b>
+                    {{ praca.openaccess_czas_publikacji|lower }}<br/>
+
+                {% endif %}
+                {% if praca.openaccess_ilosc_miesiecy %}
+
+                    <b> - ilość miesięcy: </b>
+                    {{ praca.openaccess_ilosc_miesiecy }}
+                    <small>ilość miesięcy które upłynęły od momentu opublikowania do momentu udostępnienia
+                    </small>
+                    <br/>
+
+                {% endif %}
+            </td>
+            </td>
+        </tr>
+    {% endif %}
     <tr>
         <th>
             Punkty KBN/MNiSW:
