@@ -5,7 +5,7 @@ import pytest
 from model_mommy import mommy
 
 from bpp.models.konferencja import Konferencja
-from bpp.views.autocomplete import AdminNavigationAutocomplete
+from bpp.views.autocomplete import AdminNavigationAutocomplete, PublicAutorAutocomplete
 
 VALUES = [
     "Zi%C4%99ba+%5C",
@@ -18,6 +18,7 @@ VALUES = [
     "fa\\'fa",
     "Zięba \\",
     "Test ; test",
+    "test (test)",
     "test & test",
     "test &",
     "& test",
@@ -50,3 +51,10 @@ def test_admin_konferencje():
     a = AdminNavigationAutocomplete()
     a.q = "test 54"
     assert k in a.get_queryset()
+
+
+@pytest.mark.django_db
+def test_public_autor_autocomplete_bug_1():
+    a = PublicAutorAutocomplete()
+    a.q = "a (b)"
+    assert list(a.get_queryset()) is not None
