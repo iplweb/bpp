@@ -98,3 +98,4 @@ import_log_bez_habilitacji_bez_patentow.txt
 import_log_calosc.txt
 
 .pip-cache/http
+*.xz
