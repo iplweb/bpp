@@ -6,8 +6,19 @@ from django import forms
 from bpp.models.struktura import Wydzial
 from eksport_pbn.models import PlikEksportuPBN
 
+from django.utils.timezone import now
+
+
+def zakres_lat():
+    z = list(reversed(range(2013, now().date().year + 1)))
+    for elem in zip(z, map(str, z)):
+        yield elem
+
 
 class EksportDoPBNForm(forms.ModelForm):
+    od_roku = forms.ChoiceField(zakres_lat)
+    do_roku = forms.ChoiceField(zakres_lat)
+
     class Meta:
         model = PlikEksportuPBN
         fields = ['wydzial', 'od_roku', 'do_roku', 'artykuly', 'ksiazki', 'rozdzialy', 'rodzaj_daty', 'od_daty',
