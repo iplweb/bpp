@@ -46,4 +46,4 @@ def test_submit_report_form_validation_artykuly_ksiazki(admin_app, wydzial):
 
 
 def test_zakres_lat():
-    assert len(zakres_lat()) > 0
+    assert len(list(zakres_lat())) > 0
