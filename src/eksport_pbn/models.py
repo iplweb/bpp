@@ -17,20 +17,8 @@ class PlikEksportuPBN(models.Model):
     file = models.FileField(verbose_name="Plik", upload_to="eksport_pbn")
 
     wydzial = models.ForeignKey(Wydzial)
-    od_roku = models.IntegerField(choices=[(2013, '2013'),
-                                           (2014, '2014'),
-                                           (2015, '2015'),
-                                           (2016, '2016'),
-                                           (2017, '2017')
-                                           ],
-                                  default=2017)
-    do_roku = models.IntegerField(choices=[(2013, '2013'),
-                                           (2014, '2014'),
-                                           (2015, '2015'),
-                                           (2016, '2016'),
-                                           (2017, '2017')
-                                           ],
-                                  default=2017)
+    od_roku = models.IntegerField(choices=zakres_lat)
+    do_roku = models.IntegerField(choices=zakres_lat)
 
     artykuly = models.BooleanField("Artykuły", default=True)
     ksiazki = models.BooleanField("Książki", default=True)
