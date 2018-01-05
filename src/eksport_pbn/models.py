@@ -3,9 +3,13 @@ from django.conf import settings
 from django.db import models
 # Create your models here.
 from bpp.models.struktura import Wydzial
+from django.utils.timezone import now
 
 DATE_CREATED_ON, DATE_UPDATED_ON, DATE_UPDATED_ON_PBN = (1, 2, 3)
 
+def zakres_lat():
+    z = list(reversed(range(2013, now().date().year + 1)))
+    return list(zip(z, map(str, z)))
 
 class PlikEksportuPBN(models.Model):
     owner = models.ForeignKey(settings.AUTH_USER_MODEL)
