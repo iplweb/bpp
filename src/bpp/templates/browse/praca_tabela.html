@@ -171,7 +171,12 @@
             {{ praca.impact_factor }}
         </td>
     </tr>
-
+    {% if praca.liczba_znakow_wydawniczych %}
+        <tr>
+            <th>Liczba arkuszy wydawniczych:</th>
+            <td>{{ praca.wymiar_wydawniczy_w_arkuszach }}</td>
+        </tr>
+    {% endif %}
     {% if uczelnia.pokazuj_index_copernicus %}
         <tr>
             <th>
