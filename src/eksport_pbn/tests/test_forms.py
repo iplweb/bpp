@@ -4,6 +4,9 @@
 
 from django.core.urlresolvers import reverse
 
+from eksport_pbn.forms import zakres_lat
+
+
 def normalize_quotes(content):
     return content.decode("utf-8").replace("&#39;", "'")
 
@@ -40,3 +43,7 @@ def test_submit_report_form_validation_artykuly_ksiazki(admin_app, wydzial):
     page.form['rozdzialy'] = False
     res = page.form.submit()
     assert "Wybierz przynajmniej jedną" in res.content.decode('utf-8')
+
+
+def test_zakres_lat():
+    assert len(zakres_lat()) > 0
