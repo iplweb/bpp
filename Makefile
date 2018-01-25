@@ -90,7 +90,7 @@ docker-yarn-prod:
 # Pobiera i składa do kupy JS/CSS/Foundation
 assets: yarn _assets
 
-assets-production: yarn-production assets-for-django
+assets-production: yarn-production _assets
 
 _bdist_wheel:
 	${PYTHON} setup.py bdist_wheel 
