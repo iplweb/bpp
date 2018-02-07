@@ -301,6 +301,27 @@ class AdminNavigationAutocomplete(StaffRequired, Select2QuerySetSequenceView):
 
 
 class ZapisanyJakoAutocomplete(autocomplete.Select2ListView):
+    def get(self, request, *args, **kwargs):
+        # Celem spatchowania tej funkcji jest zmiana tekstu 'Create "%s"'
+        # na po prostu '%s'. Poza tym jest to kalka z autocomplete.Select2ListView
+        results = self.get_list()
+        create_option = []
+        if self.q:
+            results = [x for x in results if self.q.lower() in x.lower()]
+            if hasattr(self, 'create'):
+                create_option = [{
+                    'id': self.q,
+                    'text': self.q,
+                    'create_id': True
+                }]
+        return http.HttpResponse(json.dumps({
+            'results': [dict(id=x, text=x) for x in results] + create_option
+        }), content_type='application/json')
+
+
+    def create(self, text):
+        return text
+
     def get_list(self):
         autor = self.forwarded.get('autor', None)
 
@@ -314,17 +335,10 @@ class ZapisanyJakoAutocomplete(autocomplete.Select2ListView):
             return ['Błąd. Wpisz poprawne dane w pole "Autor".',]
         except Autor.DoesNotExist:
             return ['Błąd. Wpisz poprawne dane w pole "Autor".',]
-        return list(
+        return list(set(list(
             warianty_zapisanego_nazwiska(a.imiona, a.nazwisko,
                                          a.poprzednie_nazwiska)
-        )
-
-    def get(self, request, *args, **kwargs):
-        """"Return option list json response."""
-        results = self.get_list()
-        return http.HttpResponse(json.dumps({
-            'results': [dict(id=x, text=x) for x in results]
-        }), content_type='application/json')
+        )))
 
 
 class PodrzednaPublikacjaHabilitacyjnaAutocomplete(

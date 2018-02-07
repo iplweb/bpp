@@ -199,7 +199,12 @@ charakter = _lookup_fun(Charakter_Formalny)
 def scroll_into_view(browser, arg):
     return browser.execute_script("document.getElementById('" + arg + "').scrollIntoView(); window.scrollBy(0,-100);")
 
-def select_select2_autocomplete(browser, element_id, value):
+
+def show_element(browser, element):
+    browser.driver.execute_script("arguments[0].scrollIntoView();", element._element)
+
+
+def select_select2_autocomplete(browser, element_id, value, delay_before_enter=0.1):
     element = browser.find_by_id(element_id)[0]
     sibling = element.find_by_xpath("following-sibling::span")
     scroll_into_view(browser, element_id)
@@ -207,7 +212,7 @@ def select_select2_autocomplete(browser, element_id, value):
     time.sleep(0.1)
     active = element.parent.switch_to.active_element['value']
     active.send_keys(value)
-    time.sleep(0.1)
+    time.sleep(delay_before_enter)
     element.parent.switch_to.active_element['value'].send_keys(Keys.ENTER)
     time.sleep(0.2)
 
