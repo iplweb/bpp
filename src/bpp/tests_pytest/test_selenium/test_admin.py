@@ -146,7 +146,7 @@ def test_admin_patent_toz(preauth_admin_browser, live_server):
     preauth_admin_browser.is_element_present_by_id('navigation-menu', 5000)
     assert wcc() == 2
 
-@flaky(max_runs=10)
+@flaky(max_runs=15)
 def test_admin_patent_tamze(preauth_admin_browser, live_server):
     c = any_patent(informacje="TO INFORMACJE")
     with wait_for_page_load(preauth_admin_browser):
