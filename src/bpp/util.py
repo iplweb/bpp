@@ -19,7 +19,13 @@ def get_fixture(name):
 
 
 def fulltext_tokenize(s):
-    s = s.replace(":", "").replace("\\", "").replace("(", "").replace(")", "")
+    s = s.replace(":", "")\
+        .replace("\\", "")\
+        .replace("(", "")\
+        .replace(")", "")\
+        .replace("\t", " ")\
+        .replace("\n", " ")\
+        .replace("\r", " ")
     return [x.strip() for x in s.split(" ") if x.strip()]
 
 
