@@ -343,6 +343,7 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
 
     eksport_pbn_BOOK_FLDS = ["editor",
                              "isbn",
+                             "issn",
                              "series",
                              "number-in-series",
                              "edition",
