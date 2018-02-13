@@ -2,6 +2,7 @@
 
 
 from dal import autocomplete
+from dal_select2.fields import Select2ListCreateChoiceField
 from django import forms
 from django.contrib import admin
 from django.db.models.fields import BLANK_CHOICE_DASH
@@ -50,8 +51,8 @@ def generuj_inline_dla_autorow(baseModel):
                 url='bpp:jednostka-autocomplete')
         )
 
-        zapisany_jako = forms.ChoiceField(
-            choices=[],
+        zapisany_jako = Select2ListCreateChoiceField(
+            choice_list=[],
             widget=autocomplete.Select2(
                 url="bpp:zapisany-jako-autocomplete",
                 forward=['autor']
@@ -98,8 +99,8 @@ def generuj_inline_dla_autorow(baseModel):
 
             self.initial['zapisany_jako'] = initial
 
-            self.fields['zapisany_jako'] = forms.ChoiceField(
-                choices=list(zip(warianty, warianty)),
+            self.fields['zapisany_jako'] = Select2ListCreateChoiceField(
+                choice_list=list(warianty),
                 initial=initial,
                 widget=autocomplete.Select2(
                     url="bpp:zapisany-jako-autocomplete",

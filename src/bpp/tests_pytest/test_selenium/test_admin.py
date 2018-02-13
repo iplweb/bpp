@@ -15,7 +15,7 @@ from bpp.models.zrodlo import Punktacja_Zrodla
 from bpp.tests import any_ciagle, any_autor, any_jednostka
 from bpp.tests.util import any_zrodlo, CURRENT_YEAR, any_zwarte, any_patent, \
     select_select2_autocomplete, scroll_into_view, \
-    select_select2_clear_selection
+    select_select2_clear_selection, show_element
 from django_bpp.selenium_util import wait_for_page_load, wait_for
 from flaky import flaky
 from selenium.webdriver.support import expected_conditions as EC
@@ -146,7 +146,7 @@ def test_admin_patent_toz(preauth_admin_browser, live_server):
     preauth_admin_browser.is_element_present_by_id('navigation-menu', 5000)
     assert wcc() == 2
 
-@flaky(max_runs=10)
+@flaky(max_runs=25)
 def test_admin_patent_tamze(preauth_admin_browser, live_server):
     c = any_patent(informacje="TO INFORMACJE")
     with wait_for_page_load(preauth_admin_browser):
@@ -408,6 +408,7 @@ def test_autorform_kasowanie_autora(autorform_browser, autorform_jednostka):
     autorform_browser.execute_script("window.onbeforeunload = function(e) {};")
 
 
+@flaky(max_runs=15)
 def test_bug_on_user_add(preauth_admin_browser, live_server):
     preauth_admin_browser.visit(live_server + reverse('admin:bpp_bppuser_add'))
     preauth_admin_browser.fill("username", "as")
@@ -488,3 +489,36 @@ def test_admin_wydawnictwo_ciagle_uzupelnij_rok(
     browser.wait_for_condition(
         lambda browser: browser.find_by_id("id_rok_button").value == "Brak danych"
     )
+
+
+def test_admin_wydawnictwo_ciagle_dowolnie_zapisane_nazwisko(
+        preauth_admin_browser,
+        live_server,
+        autor_jan_kowalski):
+    """
+    :type preauth_admin_browser: splinter.driver.webdriver.remote.WebDriver
+    """
+
+    browser = preauth_admin_browser
+
+    browser.visit(live_server + reverse('admin:bpp_wydawnictwo_ciagle_add'))
+
+    elem = browser.find_by_xpath("/html/body/div[2]/article/div/form/div/div[1]/ul/li/a")
+    show_element(browser, elem)
+    elem.click()
+
+
+    select_select2_autocomplete(
+        browser,
+        "id_autorzy_set-0-autor",
+        "Kowalski Jan"
+    )
+
+    select_select2_autocomplete(
+        browser,
+        "id_autorzy_set-0-zapisany_jako",
+        "Dowolny tekst",
+        delay_before_enter=1.0
+    )
+
+    assert browser.find_by_id("id_autorzy_set-0-zapisany_jako").value == "Dowolny tekst"

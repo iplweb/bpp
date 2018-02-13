@@ -8,7 +8,7 @@
 
 - name: Create PostgreSQL user
   postgresql_user: name={{ database_user }} password={{ database_password }} role_attr_flags=CREATEDB,SUPERUSER state=present
-  sudo_user: postgres
+  become_user: postgres
 
 - name: CreatePostgreSQL database  
   postgresql_db: name={{ database_name }} 
@@ -19,15 +19,15 @@
     lc_collate: pl_PL.UTF-8
     lc_ctype: pl_PL.UTF-8
     template: template0
-  sudo_user: postgres
+  become_user: postgres
   
 - name: Create PostgreSQL plpython language
   postgresql_lang: db={{ database_name }} lang=plpythonu state=present
-  sudo_user: postgres
+  become_user: postgres
 
 - name: Create PostgreSQL collation for pl_PL
   shell: psql -c "CREATE COLLATION pl_PL(locale='pl_PL.utf8');" "{{ database_name }}"
-  sudo_user: postgres
+  become_user: postgres
   ignore_errors: yes
   register: psql_coll_err
 
@@ -37,7 +37,7 @@
 
 - name: Create PostgreSQL collation for pl_PL
   shell: psql -c "CREATE COLLATION \"pl_PL.utf8\"(locale='pl_PL.utf8');" "{{ database_name }}"
-  sudo_user: postgres
+  become_user: postgres
   ignore_errors: yes
   register: psql_coll_err_2
 

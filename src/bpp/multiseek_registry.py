@@ -157,6 +157,26 @@ class NazwiskoIImieQueryObject(ForeignKeyDescribeMixin,
         return Autor.objects.fulltext_filter(data)
 
 
+class PierwszeNazwiskoIImie(NazwiskoIImieQueryObject):
+    label = "Pierwsze nazwisko i imię"
+    ops = [EQUAL,]
+
+    def real_query(self, value, operation):
+
+        if operation in EQUALITY_OPS_ALL:
+            ret = Q(autorzy__autor=value,
+                    autorzy__kolejnosc=0)
+
+        else:
+            raise UnknownOperation(operation)
+
+        if operation in DIFFERENT_ALL:
+            return ~ret
+
+        return ret
+
+
+
 class NazwaKonferencji(ForeignKeyDescribeMixin, AutocompleteQueryObject):
     label = "Konferencja"
     type = AUTOCOMPLETE
@@ -407,6 +427,7 @@ multiseek_fields = [
     CharakterFormalnyQueryObject(),
     TypKBNQueryObject(),
     ZrodloQueryObject(),
+    PierwszeNazwiskoIImie(),
 
     ImpactQueryObject(),
     PunktyKBNQueryObject(),

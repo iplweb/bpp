@@ -41,7 +41,7 @@ def dodaj_autora(klass, rekord, autor, jednostka, zapisany_jako=None,
         kolejnosc = klass.objects.filter(rekord=rekord).aggregate(
             Max('kolejnosc'))['kolejnosc__max']
         if kolejnosc is None:
-            kolejnosc = 1
+            kolejnosc = 0
         else:
             kolejnosc += 1
 
