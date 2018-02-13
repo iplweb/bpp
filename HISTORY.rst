@@ -2,8 +2,8 @@
 Historia zmian
 ==============
 
-dev
----
+1.0.4 (2018-02-13)
+------------------
 
 * poprawienie błędu wyszukiwania autorów w przypadku, gdy w wyszukiwanym
   ciągu znajdzie się spacja,
