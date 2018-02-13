@@ -58,3 +58,6 @@ def test_public_autor_autocomplete_bug_1():
     a = PublicAutorAutocomplete()
     a.q = "a (b)"
     assert list(a.get_queryset()) is not None
+
+    a.q = "a\tb"
+    assert list(a.get_queryset()) is not None
