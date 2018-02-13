@@ -520,4 +520,4 @@ def test_admin_wydawnictwo_ciagle_dowolnie_zapisane_nazwisko(
         delay_before_enter=1.0
     )
 
-    assert browser.find_by_id("id_autorzy_set-0-zapisany_jako").text == "Dowolny tekst"
+    assert browser.find_by_id("id_autorzy_set-0-zapisany_jako").value == "Dowolny tekst"
