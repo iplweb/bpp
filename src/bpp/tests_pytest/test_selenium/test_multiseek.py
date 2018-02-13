@@ -1,5 +1,5 @@
 # -*- encoding: utf-8 -*-
-
+from flaky import flaky
 import pytest
 from django.urls.base import reverse
 
@@ -7,6 +7,7 @@ from bpp.models.cache import Rekord
 from django_bpp.selenium_util import wait_for_page_load
 
 
+@flaky(max_runs=15)
 def test_wyrzuc(wydawnictwo_zwarte, live_server, browser):
     browser.visit(
         live_server + reverse("multiseek:index")

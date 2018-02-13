@@ -9,7 +9,10 @@ dev
   ciągu znajdzie się spacja,
 
 * zezwalaj na dowolną wartość zapisanego imienia i nazwiska w module
-  redagowania
+  redagowania,
+
+* umożliwiaj wyszukiwanie po pierwszym nazwisku i imieniu (pierwszy autor,
+  redaktor, etc)
 
 1.0.1 (2018-01-01)
 ------------------
