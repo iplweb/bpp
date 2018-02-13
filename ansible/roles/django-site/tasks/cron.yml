@@ -4,13 +4,13 @@
 
 - name: Przebudowa cache bazy danych raz dziennie
   cron: name="Przebuduj cache bazy danych raz dziennie" minute="30" hour="22" job="{{ django_manage_py }} rebuild_cache"
-  sudo_user: "{{ django_user }}"
+  become_user: "{{ django_user }}"
 
 - name: Przebudowa sitemaps raz dziennie
   cron: name="Przebuduj sitemaps raz dziennie" minute="30" hour="1" job="{{ django_manage_py }} refresh_sitemap"
-  sudo_user: "{{ django_user }}"
+  become_user: "{{ django_user }}"
 
 - name: Przebudowa kolejnosci rekordow raz dziennie
   cron: name="Przebuduj kolejnosc rekordow raz dziennie" minute="30" hour="3" job="{{ django_manage_py }} rebuild_kolejnosc"
-  sudo_user: "{{ django_user }}"
+  become_user: "{{ django_user }}"
 

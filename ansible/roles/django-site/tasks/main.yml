@@ -19,7 +19,7 @@
 - name: Last version of sources is known
   local_action: shell python ../src/{{ django_project_name }}/version.py
   register: django_latest_version_discovery_command
-  sudo: false
+  become: false
   tags: ['django-depends', 'django-migrate', 'supervisor', 'nginx', 'cron', 'sync']
 
 - name: Ansible fact for latest version of sources is set
@@ -28,28 +28,28 @@
 
 - name: Virtualenv is created
   command: virtualenv --python=python{{ django_python_version }} {{ django_venv_dir }}
-  sudo_user: "{{ django_user }}"
+  become_user: "{{ django_user }}"
   args:
     creates: "{{ django_venv_dir }}"
 
 - name: Virtualenv wrapper for execution of scripts is created
   template: src=vexec dest={{ django_home_dir }}/vexec mode=755
-  sudo_user: "{{ django_user }}"
+  become_user: "{{ django_user }}"
 
 - name: Pip is upgraded in virtualenv
   command: "{{ django_home_dir }}/vexec pip install --upgrade pip"
-  sudo_user: "{{ django_user }}"
+  become_user: "{{ django_user }}"
 
 - name: Wheel is installed in virtual environment
   pip: virtualenv={{ django_venv_dir }} name=wheel
-  sudo_user: "{{ django_user }}"
+  become_user: "{{ django_user }}"
 
 - include: config.yml
   tags: ['config']
 
 - name: django-bpp package is installed
   command: "{{ django_home_dir }}/vexec pip install --extra-index-url http://dev.iplweb.pl:8080/ --trusted-host dev.iplweb.pl django-bpp=={{django_latest_version}}"
-  sudo_user: "{{ django_user }}"
+  become_user: "{{ django_user }}"
   tags: ['django-depends']
 
 - name: Database is migrated
