@@ -6,6 +6,7 @@ from dal import autocomplete
 from dal_select2_queryset_sequence.views import Select2QuerySetSequenceView
 from django import http
 from django.contrib.auth.mixins import UserPassesTestMixin
+from django.core.exceptions import ImproperlyConfigured
 from django.db.models.aggregates import Count
 from django.db.models.query_utils import Q
 from queryset_sequence import QuerySetSequence
@@ -317,6 +318,28 @@ class ZapisanyJakoAutocomplete(autocomplete.Select2ListView):
         return http.HttpResponse(json.dumps({
             'results': [dict(id=x, text=x) for x in results] + create_option
         }), content_type='application/json')
+
+    def post(self, request):
+        # Hotfix dla django-autocomplete-light w wersji 3.3.0-rc5, pull
+        # request dla problemu zgłoszony tutaj:
+        # https://github.com/yourlabs/django-autocomplete-light/issues/977
+        if not hasattr(self, 'create'):
+            raise ImproperlyConfigured('Missing "create()"')
+
+        text = request.POST.get('text', None)
+
+        if text is None:
+            return http.HttpResponseBadRequest()
+
+        text = self.create(text)
+
+        if text is None:
+            return http.HttpResponseBadRequest()
+
+        return http.JsonResponse({
+            'id': text,
+            'text': text,
+        })
 
 
     def create(self, text):
