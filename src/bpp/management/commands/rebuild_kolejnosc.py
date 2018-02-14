@@ -20,6 +20,12 @@ class Command(BaseCommand):
 
     @transaction.atomic
     def handle(self, *args, **options):
+        # Jeżeli będziemy to robić z włączonym cache, dojdzie do przyblokowania
+        # kolejki RabbitMQ. Realnie renumeracja kolejności nie pociąga za sobą zmiany
+        # w opisach bibliograficznych, więc musimy to wyłączyć:
+        from bpp.models import cache
+        cache.disable()
+
         for klass in [Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor, Patent_Autor]:
             if options['verbosity'] >= 2:
                 print(klass)
