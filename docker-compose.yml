@@ -68,7 +68,7 @@ services:
 # prod == work in progress
 #
 #  prod:
-#    image: mpasternak79/django-bpp:prod-mpasternak79/django-bpp:prod-1.0.7
+#    image: mpasternak79/django-bpp:prod-mpasternak79/django-bpp:prod-1.0.8
 #    build:
 #      context: docker
 #      dockerfile: Dockerfile-prod
