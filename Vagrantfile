@@ -22,7 +22,7 @@ Vagrant.configure(2) do |config|
 
       staging.vm.provider "virtualbox" do |vb|
         vb.cpus = 4
-        vb.memory = 2048
+        vb.memory = 3072
       end
 
       staging.vm.hostname = 'bpp-staging'
@@ -35,6 +35,9 @@ Vagrant.configure(2) do |config|
       end
 
       staging.vm.network "private_network", ip: "192.168.111.101"
+      staging.vm.provision "shell", inline: "sudo dd if=/dev/zero of=/swapfile bs=1M count=1024"
+      staging.vm.provision "shell", inline: "sudo mkswap /swapfile"
+      staging.vm.provision "shell", inline: "sudo swapon /swapfile"
       staging.vm.provision "shell", inline: "sudo apt update"      
       staging.vm.provision "shell", inline: "sudo apt install python-minimal -y"
 
