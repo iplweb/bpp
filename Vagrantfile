@@ -21,7 +21,8 @@ Vagrant.configure(2) do |config|
       staging.vm.box_check_update = false
 
       staging.vm.provider "virtualbox" do |vb|
-          vb.customize ["modifyvm", :id, "--cpus", "4"]
+        vb.cpus = 4
+        vb.memory = 2048
       end
 
       staging.vm.hostname = 'bpp-staging'
