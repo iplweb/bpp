@@ -50,6 +50,4 @@ class Command(BaseCommand):
                     elem.kolejnosc = next_kolejnosc
                     elem.save()
 
-                    next_kolejnosc += 1
-
-            # import pdb; pdb.set_trace()
+                next_kolejnosc += 1
