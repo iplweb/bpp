@@ -18,7 +18,8 @@ class Command(BaseCommand):
            'i zwartych jest poprawna, tzn. zaczyna sie od zera i jest ponumerowana w ' \
            'sposob ciagly.'
 
-    @transaction.atomic
+    # NIE robimy tego w transakcji, aby nie przyblokować bazy danyc na dłuższy czas
+    # @transaction.atomic
     def handle(self, *args, **options):
         # Jeżeli będziemy to robić z włączonym cache, dojdzie do przyblokowania
         # kolejki RabbitMQ. Realnie renumeracja kolejności nie pociąga za sobą zmiany
