@@ -148,6 +148,11 @@ INSTALLED_APPS = [
 
     'columns',
 
+    # Musi być PRZED django-autocomplete-light do momentu
+    # dal 3.3.0-release, musi być naprawiony o ten błąd:
+    # https://github.com/yourlabs/django-autocomplete-light/issues/981
+    'bpp',
+
     'dal',
     'dal_select2',
 
@@ -156,15 +161,13 @@ INSTALLED_APPS = [
 
     'dj_pagination',
 
-    'bpp',
-
     'admin_tools',
     'admin_tools.theming',
     'admin_tools.menu',
     'admin_tools.dashboard',
 
     'django_tables2',
-    
+
     # 'autocomplete_light',
 
     'messages_extends',
