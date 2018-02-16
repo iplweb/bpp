@@ -38,8 +38,9 @@ Vagrant.configure(2) do |config|
       staging.vm.provision "shell", inline: "sudo dd if=/dev/zero of=/swapfile bs=1M count=1024"
       staging.vm.provision "shell", inline: "sudo mkswap /swapfile"
       staging.vm.provision "shell", inline: "sudo swapon /swapfile"
+      staging.vm.provision "shell", inline: "echo swapon /swapfile | sudo tee /etc/rc.local"      
       staging.vm.provision "shell", inline: "sudo apt update"      
-      staging.vm.provision "shell", inline: "sudo apt install python-minimal -y"
+      staging.vm.provision "shell", inline: "sudo apt install python-minimal emacs24-nox -y"
 
       if Vagrant.has_plugin?("vagrant-cachier")
         staging.cache.scope = :box
