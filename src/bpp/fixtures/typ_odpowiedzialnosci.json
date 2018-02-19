@@ -62,5 +62,13 @@
 			"skrot": "oprac.",
 			"nazwa": "opracowa\u0142"
 		}
+	},
+	{
+		"pk": 9,
+		"model": "bpp.typ_odpowiedzialnosci",
+		"fields": {
+			"skrot": "aut. koresp.",
+			"nazwa": "autor korespondencyjny"
+		}
 	}
 ]
