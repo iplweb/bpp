@@ -4,6 +4,8 @@ import json
 
 from pathlib import Path
 
+from collections import defaultdict
+
 
 def load_custom_sql(mig_name, *args, **kw):
     import os
@@ -31,9 +33,19 @@ def find_fixture_path(fixture):
 
 
 def load_historic_fixture(apps, fixture_name, klass, app_name="bpp"):
+    max_id_map = defaultdict(int)
     for elem in load_fixture_as_json(fixture_name):
         app_name, klass = elem['model'].split(".")
         klassobj = apps.get_model(app_name, klass)
         kw = elem['fields']
-        kw["pk"] = elem['pk']
+        pk = int(elem['pk'])
+        kw["pk"] = pk
+        max_id_map[klassobj] = max(max_id_map[klassobj], pk)
         klassobj.objects.create(**kw)
+
+    from django.db import connection
+    cur = connection.cursor()
+    for klassobj, cnt in max_id_map.items():
+        qry = f"ALTER SEQUENCE { klassobj._meta.db_table }_id_seq RESTART WITH { cnt + 1 }"
+        print(qry)
+        cur.execute(qry)
