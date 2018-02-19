@@ -8,6 +8,7 @@ from django.db import models
 from django.utils import six
 
 from bpp.models.abstract import ModelZNazwa, NazwaISkrot
+from bpp.models import const
 
 NAZWY_PRIMO = [
     "",
@@ -98,11 +99,22 @@ class Zrodlo_Informacji(ModelZNazwa):
         verbose_name_plural = 'źródła informacji o bibliografii'
         app_label = 'bpp'
 
+
 @six.python_2_unicode_compatible
 class Typ_Odpowiedzialnosci(NazwaISkrot):
+    typ_pbn = models.SmallIntegerField(
+        "Typ odpowiedzialności dla PBN",
+        choices=[
+            (const.PBN_AUTOR, "autor"),
+            (const.PBN_REDAKTOR, "redaktor"),
+            (const.PBN_INNY, "inny")
+        ],
+        default=const.PBN_AUTOR
+    )
+    
     class Meta:
-        verbose_name = 'typ odpowiedzialności autora'
-        verbose_name_plural = 'typy odpowiedzialności autorów'
+        verbose_name = 'typ odpowiedzialności'
+        verbose_name_plural = 'typy odpowiedzialności'
         ordering = ['nazwa']
         app_label = 'bpp'
 

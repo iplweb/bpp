@@ -105,7 +105,7 @@ admin.site.register(Typ_KBN, Typ_KBNAdmin)
 
 
 class Typ_OdpowiedzialnosciAdmin(RestrictDeletionToAdministracjaGroupMixin, CommitedModelAdmin):
-    list_display = ['nazwa', 'skrot']
+    list_display = ['nazwa', 'skrot', 'typ_pbn']
 
 
 class Tryb_OpenAccess_Wydawnictwo_CiagleAdmin(RestrictDeletionToAdministracjaGroupMixin, CommitedModelAdmin):
