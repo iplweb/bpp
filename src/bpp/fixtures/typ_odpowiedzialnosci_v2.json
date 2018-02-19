@@ -1,0 +1,83 @@
+[
+	{
+		"pk": 1,
+		"model": "bpp.typ_odpowiedzialnosci",
+		"fields": {
+			"skrot": "aut.",
+			"nazwa": "autor",
+			"typ_pbn": 0
+		}
+	},
+	{
+		"pk": 2,
+		"model": "bpp.typ_odpowiedzialnosci",
+		"fields": {
+			"skrot": "red.",
+			"nazwa": "redaktor",
+			"typ_pbn": 1
+		}
+	},
+	{
+		"pk": 3,
+		"model": "bpp.typ_odpowiedzialnosci",
+		"fields": {
+			"skrot": "t\u0142.",
+			"nazwa": "t\u0142umacz",
+			"typ_pbn": 2
+		}
+	},
+	{
+		"pk": 4,
+		"model": "bpp.typ_odpowiedzialnosci",
+		"fields": {
+			"skrot": "kom.",
+			"nazwa": "komentator",
+			"typ_pbn": 2
+		}
+	},
+	{
+		"pk": 5,
+		"model": "bpp.typ_odpowiedzialnosci",
+		"fields": {
+			"skrot": "rec.",
+			"nazwa": "recenzent",
+			"typ_pbn": 2
+		}
+	},
+	{
+		"pk": 6,
+		"model": "bpp.typ_odpowiedzialnosci",
+		"fields": {
+			"skrot": "red. nauk. wyd. pol.",
+			"nazwa": "redaktor naukowy wydania polskiego",
+			"typ_pbn": 1
+		}
+	},
+	{
+		"pk": 7,
+		"model": "bpp.typ_odpowiedzialnosci",
+		"fields": {
+			"skrot": "t\u0142. ang.",
+			"nazwa": "t\u0142umacz z j\u0119zyka angielskiego",
+			"typ_pbn": 2
+		}
+	},
+	{
+		"pk": 8,
+		"model": "bpp.typ_odpowiedzialnosci",
+		"fields": {
+			"skrot": "oprac.",
+			"nazwa": "opracowa\u0142",
+			"typ_pbn": 2
+		}
+	},
+	{
+		"pk": 9,
+		"model": "bpp.typ_odpowiedzialnosci",
+		"fields": {
+			"skrot": "aut. koresp.",
+			"nazwa": "autor korespondencyjny",
+			"typ_pbn": 0
+		}
+	}
+]
