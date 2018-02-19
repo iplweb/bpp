@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 
 
-from django.db import models, migrations
-
 from django.core.management import call_command
-from django.db.utils import IntegrityError
+from django.db import migrations
 from django.db.migrations.operations.special import RunPython
+
+from bpp.migration_util import load_historic_fixture
 
 
 def load_fixtures(apps, schema_editor):
@@ -25,7 +25,8 @@ def load_fixtures(apps, schema_editor):
         # danych czy tworzenia jej od zera. Na produkcyjnej bazie danych nie zostanie uruchomiona już nigdy.
         #
         # "typ_kbn.json",
-        "typ_odpowiedzialnosci.json",
+
+        # "typ_odpowiedzialnosci.json",
         "tytul.json",
         # "um_lublin_uczelnia.json",
         # "um_lublin_wydzial.json",
@@ -33,12 +34,19 @@ def load_fixtures(apps, schema_editor):
         call_command('loaddata', fixture, app='bpp', verbosity=0)
 
 
-class Migration(migrations.Migration):
+def load_typ_odpowiedzialnosci(apps, schema_editor):
+    return load_historic_fixture(
+        apps,
+        "typ_odpowiedzialnosci",
+        "Typ_Odpowiedzialnosci")
 
+
+class Migration(migrations.Migration):
     dependencies = [
         ('bpp', '0034_auto_20151011_1514'),
     ]
 
     operations = [
-        RunPython(load_fixtures)
+        RunPython(load_fixtures),
+        RunPython(load_typ_odpowiedzialnosci)
     ]
