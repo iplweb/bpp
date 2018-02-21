@@ -27,6 +27,7 @@ def zmigruj_typy_odpowiedzialnosci(apps, schema_editor):
             "tłzjęzang": const.TO_TLUMACZ,
             "tł": const.TO_TLUMACZ,
             "tłang": const.TO_TLUMACZ,
+            "": const.TO_INNY
         })
 
     Typ_Odpowiedzialnosci = apps.get_model("bpp", "Typ_Odpowiedzialnosci")
