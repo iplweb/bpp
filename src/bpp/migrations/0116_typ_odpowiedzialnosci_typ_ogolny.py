@@ -31,7 +31,11 @@ def zmigruj_typy_odpowiedzialnosci(apps, schema_editor):
 
     Typ_Odpowiedzialnosci = apps.get_model("bpp", "Typ_Odpowiedzialnosci")
     for elem in Typ_Odpowiedzialnosci.objects.all():
-        v = elem.skrot.lower().replace(" ", "").replace(".", "").strip()
+        v = elem.skrot.lower() \
+            .replace(" ", "") \
+            .replace(".", "") \
+            .replace(":", "") \
+            .strip()
         elem.typ_ogolny = mapping.get(v)
         elem.save()
 
