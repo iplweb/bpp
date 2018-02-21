@@ -5,7 +5,7 @@
 		"fields": {
 			"skrot": "aut.",
 			"nazwa": "autor",
-			"typ_pbn": 0
+			"typ_ogolny": 0
 		}
 	},
 	{
@@ -14,7 +14,7 @@
 		"fields": {
 			"skrot": "red.",
 			"nazwa": "redaktor",
-			"typ_pbn": 1
+			"typ_ogolny": 1
 		}
 	},
 	{
@@ -23,7 +23,7 @@
 		"fields": {
 			"skrot": "t\u0142.",
 			"nazwa": "t\u0142umacz",
-			"typ_pbn": 2
+			"typ_ogolny": 3
 		}
 	},
 	{
@@ -32,7 +32,7 @@
 		"fields": {
 			"skrot": "kom.",
 			"nazwa": "komentator",
-			"typ_pbn": 2
+			"typ_ogolny": 4
 		}
 	},
 	{
@@ -41,7 +41,7 @@
 		"fields": {
 			"skrot": "rec.",
 			"nazwa": "recenzent",
-			"typ_pbn": 2
+			"typ_ogolny": 5
 		}
 	},
 	{
@@ -50,7 +50,7 @@
 		"fields": {
 			"skrot": "red. nauk. wyd. pol.",
 			"nazwa": "redaktor naukowy wydania polskiego",
-			"typ_pbn": 1
+			"typ_ogolny": 1
 		}
 	},
 	{
@@ -59,7 +59,7 @@
 		"fields": {
 			"skrot": "t\u0142. ang.",
 			"nazwa": "t\u0142umacz z j\u0119zyka angielskiego",
-			"typ_pbn": 2
+			"typ_ogolny": 3
 		}
 	},
 	{
@@ -68,7 +68,7 @@
 		"fields": {
 			"skrot": "oprac.",
 			"nazwa": "opracowa\u0142",
-			"typ_pbn": 2
+			"typ_ogolny": 6
 		}
 	},
 	{
@@ -77,7 +77,7 @@
 		"fields": {
 			"skrot": "aut. koresp.",
 			"nazwa": "autor korespondencyjny",
-			"typ_pbn": 0
+			"typ_ogolny": 0
 		}
 	}
 ]

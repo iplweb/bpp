@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 import pytest
 from model_mommy import mommy
 
+from bpp.models import TO_REDAKTOR
 from bpp.models.autor import Autor
 from bpp.models.struktura import Uczelnia, Wydzial, Jednostka
 from bpp.models.system import Typ_Odpowiedzialnosci, Charakter_Formalny
@@ -63,8 +64,11 @@ def test_id_zwartych_gdy_jest_ksiazka_z_w1_ale_rozdzialy_ma_w_w2(
     wz_child2 = mommy.make(Wydawnictwo_Zwarte, wydawnictwo_nadrzedne=wz_root, charakter_formalny=chf_roz,
                            szczegoly="s. 10-15", rok=2015, liczba_znakow_wydawniczych=5)
 
-    Typ_Odpowiedzialnosci.objects.get_or_create(skrot="aut.", nazwa="autor")
-    Typ_Odpowiedzialnosci.objects.get_or_create(skrot="red.", nazwa="redaktor")
+    Typ_Odpowiedzialnosci.objects.get_or_create(
+        skrot="aut.", nazwa="autor")
+
+    Typ_Odpowiedzialnosci.objects.get_or_create(
+        skrot="red.", nazwa="redaktor", typ_ogolny=TO_REDAKTOR)
 
     wz_root.dodaj_autora(a1, j1, typ_odpowiedzialnosci_skrot="red.")
     wz_child1.dodaj_autora(a2, j2, typ_odpowiedzialnosci_skrot="aut.")
