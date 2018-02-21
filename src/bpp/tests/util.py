@@ -210,10 +210,10 @@ def select_select2_autocomplete(browser, element_id, value, delay_before_enter=0
     scroll_into_view(browser, element_id)
     sibling.click()
     time.sleep(0.1)
-    active = element.parent.switch_to.active_element['value']
+    active = element.parent.switch_to.active_element
     active.send_keys(value)
     time.sleep(delay_before_enter)
-    element.parent.switch_to.active_element['value'].send_keys(Keys.ENTER)
+    element.parent.switch_to.active_element.send_keys(Keys.ENTER)
     time.sleep(0.2)
 
 def select_select2_clear_selection(browser, element_id):
