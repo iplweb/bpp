@@ -17,7 +17,6 @@ from bpp.tests.util import any_zrodlo, CURRENT_YEAR, any_zwarte, any_patent, \
     select_select2_autocomplete, scroll_into_view, \
     select_select2_clear_selection, show_element
 from django_bpp.selenium_util import wait_for_page_load, wait_for
-from flaky import flaky
 from selenium.webdriver.support import expected_conditions as EC
 
 ID = "id_tytul_oryginalny"
@@ -406,7 +405,6 @@ def test_autorform_kasowanie_autora(autorform_browser, autorform_jednostka):
     autorform_browser.execute_script("window.onbeforeunload = function(e) {};")
 
 
-@flaky(max_runs=15)
 def test_bug_on_user_add(preauth_admin_browser, live_server):
     preauth_admin_browser.visit(live_server + reverse('admin:bpp_bppuser_add'))
     preauth_admin_browser.fill("username", "as")
