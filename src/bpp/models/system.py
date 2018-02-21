@@ -8,6 +8,7 @@ from django.db import models
 from django.utils import six
 
 from bpp.models.abstract import ModelZNazwa, NazwaISkrot
+from bpp.models import const
 
 NAZWY_PRIMO = [
     "",
@@ -98,11 +99,30 @@ class Zrodlo_Informacji(ModelZNazwa):
         verbose_name_plural = 'źródła informacji o bibliografii'
         app_label = 'bpp'
 
+
 @six.python_2_unicode_compatible
 class Typ_Odpowiedzialnosci(NazwaISkrot):
+    typ_ogolny = models.SmallIntegerField(
+        "Typ odpowiedzialności dla PBN",
+        choices=[
+            (const.TO_AUTOR, "autor"),
+            (const.TO_REDAKTOR, "redaktor"),
+            (const.TO_INNY, "inny"),
+            (const.TO_TLUMACZ, "tłumacz"),
+            (const.TO_KOMENTATOR, "komentator"),
+            (const.TO_RECENZENT, "recenzent"),
+            (const.TO_OPRACOWAL, "opracował")
+    ],
+        default=const.TO_AUTOR,
+        help_text="""Pole to jest używane celem rozróżniania typu odpowiedzialności
+        na cele eksportu do PBN (autor i redaktor) oraz może być też wykorzystywane
+        np. w raportach autorów i jednostek. 
+        """
+    )
+    
     class Meta:
-        verbose_name = 'typ odpowiedzialności autora'
-        verbose_name_plural = 'typy odpowiedzialności autorów'
+        verbose_name = 'typ odpowiedzialności'
+        verbose_name_plural = 'typy odpowiedzialności'
         ordering = ['nazwa']
         app_label = 'bpp'
 

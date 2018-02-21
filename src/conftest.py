@@ -381,7 +381,7 @@ def fixture(name):
 
 @pytest.fixture(scope='function')
 def typy_odpowiedzialnosci():
-    for elem in fixture("typ_odpowiedzialnosci.json"):
+    for elem in fixture("typ_odpowiedzialnosci_v2.json"):
         Typ_Odpowiedzialnosci.objects.get_or_create(pk=elem['pk'], **elem['fields'])
 
 @pytest.fixture(scope='function')

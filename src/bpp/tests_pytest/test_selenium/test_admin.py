@@ -17,7 +17,6 @@ from bpp.tests.util import any_zrodlo, CURRENT_YEAR, any_zwarte, any_patent, \
     select_select2_autocomplete, scroll_into_view, \
     select_select2_clear_selection, show_element
 from django_bpp.selenium_util import wait_for_page_load, wait_for
-from flaky import flaky
 from selenium.webdriver.support import expected_conditions as EC
 
 ID = "id_tytul_oryginalny"
@@ -146,7 +145,6 @@ def test_admin_patent_toz(preauth_admin_browser, live_server):
     preauth_admin_browser.is_element_present_by_id('navigation-menu', 5000)
     assert wcc() == 2
 
-@flaky(max_runs=25)
 def test_admin_patent_tamze(preauth_admin_browser, live_server):
     c = any_patent(informacje="TO INFORMACJE")
     with wait_for_page_load(preauth_admin_browser):
@@ -156,8 +154,7 @@ def test_admin_patent_tamze(preauth_admin_browser, live_server):
     with wait_for_page_load(preauth_admin_browser):
         preauth_admin_browser.execute_script("$('#tamze').click()")
 
-    assert 'Dodaj patent' in preauth_admin_browser.html
-    assert 'TO INFORMACJE' in preauth_admin_browser.html
+    assert preauth_admin_browser.find_by_id("id_informacje").value == 'TO INFORMACJE'
 
 
 @pytest.mark.django_db(transaction=True)
@@ -408,7 +405,6 @@ def test_autorform_kasowanie_autora(autorform_browser, autorform_jednostka):
     autorform_browser.execute_script("window.onbeforeunload = function(e) {};")
 
 
-@flaky(max_runs=15)
 def test_bug_on_user_add(preauth_admin_browser, live_server):
     preauth_admin_browser.visit(live_server + reverse('admin:bpp_bppuser_add'))
     preauth_admin_browser.fill("username", "as")

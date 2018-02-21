@@ -2,6 +2,12 @@
 Historia zmian
 ==============
 
+dev
+---
+
+* dodatkowe pole dla typu odpowiedzialności, umożliwiające mapowanie charakterów
+  formalnych autorów na charaktery formalne dla PBN
+
 1.0.4 (2018-02-13)
 ------------------
 

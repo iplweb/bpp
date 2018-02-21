@@ -100,3 +100,4 @@ import_log_calosc.txt
 .pip-cache/http
 *.xz
 log
+.pytest_cache

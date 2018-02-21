@@ -4,7 +4,8 @@
 		"model": "bpp.typ_odpowiedzialnosci",
 		"fields": {
 			"skrot": "aut.",
-			"nazwa": "autor"
+			"nazwa": "autor",
+			"typ_ogolny": 0
 		}
 	},
 	{
@@ -12,7 +13,8 @@
 		"model": "bpp.typ_odpowiedzialnosci",
 		"fields": {
 			"skrot": "red.",
-			"nazwa": "redaktor"
+			"nazwa": "redaktor",
+			"typ_ogolny": 1
 		}
 	},
 	{
@@ -20,7 +22,8 @@
 		"model": "bpp.typ_odpowiedzialnosci",
 		"fields": {
 			"skrot": "t\u0142.",
-			"nazwa": "t\u0142umacz"
+			"nazwa": "t\u0142umacz",
+			"typ_ogolny": 3
 		}
 	},
 	{
@@ -28,7 +31,8 @@
 		"model": "bpp.typ_odpowiedzialnosci",
 		"fields": {
 			"skrot": "kom.",
-			"nazwa": "komentator"
+			"nazwa": "komentator",
+			"typ_ogolny": 4
 		}
 	},
 	{
@@ -36,7 +40,8 @@
 		"model": "bpp.typ_odpowiedzialnosci",
 		"fields": {
 			"skrot": "rec.",
-			"nazwa": "recenzent"
+			"nazwa": "recenzent",
+			"typ_ogolny": 5
 		}
 	},
 	{
@@ -44,7 +49,8 @@
 		"model": "bpp.typ_odpowiedzialnosci",
 		"fields": {
 			"skrot": "red. nauk. wyd. pol.",
-			"nazwa": "redaktor naukowy wydania polskiego"
+			"nazwa": "redaktor naukowy wydania polskiego",
+			"typ_ogolny": 1
 		}
 	},
 	{
@@ -52,7 +58,8 @@
 		"model": "bpp.typ_odpowiedzialnosci",
 		"fields": {
 			"skrot": "t\u0142. ang.",
-			"nazwa": "t\u0142umacz z j\u0119zyka angielskiego"
+			"nazwa": "t\u0142umacz z j\u0119zyka angielskiego",
+			"typ_ogolny": 3
 		}
 	},
 	{
@@ -60,7 +67,8 @@
 		"model": "bpp.typ_odpowiedzialnosci",
 		"fields": {
 			"skrot": "oprac.",
-			"nazwa": "opracowa\u0142"
+			"nazwa": "opracowa\u0142",
+			"typ_ogolny": 6
 		}
 	},
 	{
@@ -68,7 +76,8 @@
 		"model": "bpp.typ_odpowiedzialnosci",
 		"fields": {
 			"skrot": "aut. koresp.",
-			"nazwa": "autor korespondencyjny"
+			"nazwa": "autor korespondencyjny",
+			"typ_ogolny": 0
 		}
 	}
 ]
