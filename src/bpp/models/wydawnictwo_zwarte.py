@@ -8,6 +8,7 @@ from django.utils import timezone
 from django.utils.functional import cached_property
 from lxml.etree import Element, SubElement
 
+from bpp.models import TO_AUTOR
 from bpp.models.abstract import \
     BazaModeluOdpowiedzialnosciAutorow, DwaTytuly, ModelZRokiem, \
     ModelZWWW, ModelRecenzowany, ModelPunktowany, ModelTypowany, \
@@ -19,6 +20,7 @@ from bpp.models.abstract import \
     ModelZAktualizacjaDlaPBN, ModelZKonferencja, \
     ModelZSeria_Wydawnicza, ModelZISSN, ModelWybitny, ModelZAbsolutnymUrl
 from bpp.models.autor import Autor
+from bpp.models.const import TO_REDAKTOR
 from bpp.models.util import ZapobiegajNiewlasciwymCharakterom
 from bpp.models.util import dodaj_autora
 
@@ -241,7 +243,7 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
         if autorzy_klass == Wydawnictwo_Zwarte_Autor:
             for redaktor_wyd in autorzy_klass.objects.filter(
                     rekord=self,
-                    typ_odpowiedzialnosci__skrot__in=['red.', 'red. nauk. wyd. pol.']).select_related("jednostka"):
+                    typ_odpowiedzialnosci__typ_ogolny=TO_REDAKTOR).select_related("jednostka"):
                 if redaktor_wyd.jednostka.wydzial_id == wydzial.id:
                     # Afiliowany!
                     toplevel.append(
@@ -257,8 +259,8 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
 
             qry = autorzy_klass.objects.filter(
                 rekord=self,
-                typ_odpowiedzialnosci__skrot__in=['red.',
-                                                  'red. nauk. wyd. pol.'])
+                typ_odpowiedzialnosci__typ_ogolny=TO_REDAKTOR
+            )
 
             if wszyscy_redaktorzy is None:
                 wszyscy_redaktorzy = qry.count()
@@ -297,15 +299,20 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
         ret = set()
 
         if self.is_book:
-            for elem in autorzy_klass.objects.filter(
+            autorzy_powiazanych = autorzy_klass.objects.filter(
                     rekord__in=self.wydawnictwa_powiazane_set.all().values_list("pk", flat=True),
-                    typ_odpowiedzialnosci__skrot='aut.').select_related("jednostka"):
+                    typ_odpowiedzialnosci__typ_ogolny=TO_AUTOR).select_related("jednostka")
+
+            for elem in autorzy_powiazanych:
                 if elem.jednostka.wydzial_id == wydzial.pk and elem.autor_id not in ret:
                     ret.add(elem.autor_id)
                     yield elem
 
-            for elem in autorzy_klass.objects.filter(rekord=self, typ_odpowiedzialnosci__skrot='aut.').select_related(
-                    "jednostka"):
+            autorzy_tego = autorzy_klass.objects.filter(
+                rekord=self,
+                typ_odpowiedzialnosci__typ_ogolny=TO_AUTOR).select_related('jednostka')
+
+            for elem in autorzy_tego:
                 if elem.jednostka.wydzial_id == wydzial.pk and elem.autor_id not in ret:
                     ret.add(elem.autor_id)
                     yield elem
@@ -319,12 +326,14 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
         if self.is_book:
             for elem in autorzy_klass.objects.filter(
                     rekord=self.wydawnictwa_powiazane_set.all().values_list("pk", flat=True),
-                    typ_odpowiedzialnosci__skrot='aut.'):
+                    typ_odpowiedzialnosci__typ_ogolny=TO_AUTOR):
                 if elem.autor_id not in ret:
                     ret.add(elem.autor_id)
                     yield elem
 
-            for elem in autorzy_klass.objects.filter(rekord=self, typ_odpowiedzialnosci__skrot='aut.'):
+            for elem in autorzy_klass.objects.filter(
+                    rekord=self,
+                    typ_odpowiedzialnosci__typ_ogolny=TO_AUTOR):
                 if elem.autor_id not in ret:
                     ret.add(elem.autor_id)
                     yield elem

@@ -32,7 +32,9 @@ class Command(BaseCommand):
                 print(klass)
 
             old_id = None
-            q = klass.objects.all().order_by("rekord_id", "kolejnosc")
+            # Taki porządek sortowania, bo jeżeli się trafią dwa rekordy z tą
+            # samą kolejnością, to ten o mniejszym ID ma pierwszeństwo
+            q = klass.objects.all().order_by("rekord_id", "kolejnosc", "id")
 
             for elem in q:
 

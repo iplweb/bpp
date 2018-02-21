@@ -2,7 +2,6 @@
 import sys
 import time
 
-from flaky import flaky
 import pytest
 from django.core.urlresolvers import reverse
 from model_mommy import mommy
@@ -27,7 +26,6 @@ def test_autorzy_index(autorzy_browser):
     assert 'Atest' in autorzy_browser.html
 
 
-@flaky(max_runs=15)
 def test_autorzy_search_form(autorzy_browser):
     autorzy_browser.fill("search", "Atest")
 

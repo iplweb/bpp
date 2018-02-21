@@ -17,6 +17,7 @@ from lxml.etree import Element
 from lxml.etree import SubElement
 
 from bpp.fields import YearField, DOIField
+from bpp.models.const import TO_AUTOR
 from bpp.models.util import ModelZOpisemBibliograficznym
 
 ILOSC_ZNAKOW_NA_ARKUSZ = 40000.0
@@ -582,11 +583,13 @@ class PBNSerializerHelperMixin:
     def eksport_pbn_get_nasi_autorzy_iter(self, wydzial, autorzy_klass):
         # TODO: zrób sprawdzanie jednostki w kontekście ROKU do jakiego wydziału była WÓWCZAS przypisana
         return [elem for elem in autorzy_klass.objects.filter(
-            rekord=self, typ_odpowiedzialnosci__skrot='aut.').select_related("jednostka")
+            rekord=self, typ_odpowiedzialnosci__typ_ogolny=TO_AUTOR
+        ).select_related("jednostka")
                 if elem.jednostka.wydzial_id == wydzial.pk]
 
     def eksport_pbn_get_wszyscy_autorzy_iter(self, wydzial, autorzy_klass):
-        return [elem for elem in autorzy_klass.objects.filter(rekord=self, typ_odpowiedzialnosci__skrot='aut.')]
+        return [elem for elem in autorzy_klass.objects.filter(
+            rekord=self, typ_odpowiedzialnosci__typ_ogolny=TO_AUTOR)]
 
     def eksport_pbn_author(self, toplevel, wydzial, autorzy_klass):
         for autor_wyd in self.eksport_pbn_get_nasi_autorzy_iter(wydzial, autorzy_klass):
