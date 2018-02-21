@@ -117,7 +117,8 @@ class Typ_Odpowiedzialnosci(NazwaISkrot):
         help_text="""Pole to jest używane celem rozróżniania typu odpowiedzialności
         na cele eksportu do PBN (autor i redaktor) oraz może być też wykorzystywane
         np. w raportach autorów i jednostek. 
-        """
+        """,
+        db_index=True
     )
     
     class Meta:
