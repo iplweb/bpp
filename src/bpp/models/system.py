@@ -103,7 +103,7 @@ class Zrodlo_Informacji(ModelZNazwa):
 @six.python_2_unicode_compatible
 class Typ_Odpowiedzialnosci(NazwaISkrot):
     typ_ogolny = models.SmallIntegerField(
-        "Typ odpowiedzialności dla PBN",
+        "Ogólny typ odpowiedzialności",
         choices=[
             (const.TO_AUTOR, "autor"),
             (const.TO_REDAKTOR, "redaktor"),
