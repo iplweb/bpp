@@ -1,6 +1,7 @@
 # -*- encoding: utf-8 -*-
 import six
 from django.contrib.postgres.search import SearchQuery
+from django.urls import reverse
 from django.utils.itercompat import is_iterable
 
 from bpp.models.konferencja import Konferencja
@@ -136,6 +137,7 @@ class NazwiskoIImieQueryObject(ForeignKeyDescribeMixin,
     model = Autor
     search_fields = ['nazwisko', 'imiona']
     field_name = 'autor'
+    url = "bpp:public-autor-autocomplete"
 
     def real_query(self, value, operation):
 
@@ -149,12 +151,6 @@ class NazwiskoIImieQueryObject(ForeignKeyDescribeMixin,
             return ~ret
 
         return ret
-
-    def get_autocomplete_query(self, data):
-        if six.PY3:
-            if type(data) == bytes:
-                data = data.decode("utf-8")
-        return Autor.objects.fulltext_filter(data)
 
 
 class PierwszeNazwiskoIImie(NazwiskoIImieQueryObject):
@@ -184,6 +180,7 @@ class NazwaKonferencji(ForeignKeyDescribeMixin, AutocompleteQueryObject):
     model = Konferencja
     search_fields = ['nazwa']
     field_name = "konferencja"
+    url = "bpp:konferencja-autocomplete"
 
 
 class JednostkaQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
@@ -193,6 +190,7 @@ class JednostkaQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
     model = Jednostka
     search_fields = ['nazwa']
     field_name = 'jednostka'
+    url = "bpp:jednostka-widoczna-autocomplete"
 
     def real_query(self, value, operation):
         if operation in EQUALITY_OPS_ALL:
@@ -205,11 +203,6 @@ class JednostkaQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
             return ~ret
         return ret
 
-    def get_autocomplete_query(self, data):
-        if six.PY3:
-            if type(data) == bytes:
-                data = data.decode("utf-8")
-        return Jednostka.objects.fulltext_filter(data)
 
 
 class WydzialQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
@@ -219,6 +212,7 @@ class WydzialQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
     model = Wydzial
     search_fields = ['nazwa']
     field_name = 'wydzial'
+    url = "bpp:public-wydzial-autocomplete"
 
     def real_query(self, value, operation):
         if operation in EQUALITY_OPS_ALL:
@@ -230,9 +224,6 @@ class WydzialQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
         if operation in DIFFERENT_ALL:
             return ~ret
         return ret
-
-    def get_autocomplete_query(self, data):
-        return Wydzial.objects.filter(nazwa__icontains=data)
 
 
 class Typ_OdpowiedzialnosciQueryObject(QueryObject):
@@ -390,9 +381,7 @@ class ZrodloQueryObject(AutocompleteQueryObject):
     ops = EQUALITY_OPS_NONE
     model = Zrodlo
     field_name = 'zrodlo'
-
-    def get_autocomplete_query(self, data):
-        return Zrodlo.objects.fulltext_filter(data)
+    url = "bpp:zrodlo-autocomplete"
 
 
 class RecenzowanaQueryObject(BooleanQueryObject):

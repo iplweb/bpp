@@ -22,7 +22,7 @@
 
     {% url "bpp:browse_zrodlo" as browse_zrodlo %}
 
-    <div class="row hide-on-print">
+    <div class="row hide-for-print">
         <div class="large-4 medium-4 columns">
             {% include "browse/search_form.html" with url=browse_zrodla tekst="Wpisz część nazwy i wciśnij ENTER..." name="search" flt=flt %}
         </div>
@@ -44,7 +44,7 @@
             </div>
         {% endfor %}
         {% if not object_list %}
-            <div class="panel">
+            <div class="callout">
                 Nie znaleziono takich źródeł. <p></p>
                 <a href=".">Kliknij tutaj, aby spróbować ponownie.</a>
             </div>

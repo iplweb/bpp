@@ -16,7 +16,7 @@
         Skontaktuj się z administratorem systemu.
     {% else %}
         {% if request.user.is_staff %}
-            <div class="panel hide-on-print">
+            <div class="callout hide-for-print">
                 <a target="_blank"
                    href="{% url "admin:flexible_reports_report_change" report.pk %}"
                 >

@@ -92,6 +92,7 @@ body ol li {
 }
 
 @media print {
+  tr,  img { page-break-inside: auto !important; }
 
   table.kbntab tr td {
       page-break-inside: auto;
@@ -145,3 +146,5 @@ table.bpp-table tbody tr.even {
 
 div.table-container ul.pagination {
 }
+
+//$topbar-background: rgb(192, 192, 192, 0.8);

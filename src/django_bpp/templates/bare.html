@@ -22,18 +22,23 @@
         <link rel="stylesheet" type="text/css" href="{% static "cookielaw/css/cookielaw.css" %}"/>
         <link rel="stylesheet" type="text/css" href="{% static "multiseek/css/style.css" %}"/>
         <link rel="stylesheet" type="text/css" href="{% static 'session_security/style.css' %}"></link>
-        <link rel="stylesheet" type="text/css" href="{% static "foundation-datepicker/foundation/fonts/foundation-icons.css" %}"></link>
-        <link rel="stylesheet" type="text/css" href="{% static "foundation-datepicker/css/foundation-datepicker.min.css" %}"></link>
-        <link rel="stylesheet" type="text/css" href="{% static "autocomplete_light/vendor/select2/dist/css/select2.css" %}"></link>
+        <link rel="stylesheet" type="text/css"
+              href="{% static "foundation-datepicker/foundation/fonts/foundation-icons.css" %}"></link>
+        <link rel="stylesheet" type="text/css"
+              href="{% static "foundation-datepicker/css/foundation-datepicker.min.css" %}"></link>
+        <link rel="stylesheet" type="text/css"
+              href="{% static "autocomplete_light/vendor/select2/dist/css/select2.css" %}"></link>
         <link rel="stylesheet" type="text/css" href="{% static "autocomplete_light/select2.css" %}"></link>
     {% endcompress %}
 
     {% compress js %}
         {#        bare.html #}
         <script src="{% static 'jquery/dist/jquery.min.js' %}"></script>
+        <script src="{% static "what-input/dist/what-input.js" %}"></script>
+
+        <script src="{% static 'foundation-sites/dist/js/foundation.js' %}"></script>
+
         <script src="{% static "jquery.cookie/jquery.cookie.js" %}"></script>
-        <script src="{% static 'foundation-sites/js/vendor/modernizr.js' %}"></script>
-        <script src="{% static 'foundation-sites/js/foundation.min.js' %}"></script>
 
         {#        base.html #}
 
@@ -57,10 +62,21 @@
         {% block extrahead_js %}
         {% endblock %}
 
-        <script src="{% static "foundation-sites/js/foundation/foundation.accordion.js" %}"></script>
-        <script src="{% static "foundation-sites/js/foundation/foundation.tab.js" %}"></script>
-        <script src="{% static "foundation-sites/js/foundation/foundation.alert.js" %}"></script>
-        <script src="{% static "foundation-sites/js/foundation/foundation.magellan.js" %}"></script>
+{#        <script src="{% static "foundation-sites/dist/js/plugins/foundation.core.js" %}"></script>#}
+{##}
+{#        <script src="{% static "foundation-sites/dist/js/plugins/foundation.util.keyboard.js" %}"></script>#}
+{#        <script src="{% static "foundation-sites/dist/js/plugins/foundation.util.imageLoader.js" %}"></script>#}
+{#        <script src="{% static "foundation-sites/dist/js/plugins/foundation.util.triggers.js" %}"></script>#}
+{#        <script src="{% static "foundation-sites/dist/js/plugins/foundation.util.mediaQuery.js" %}"></script>#}
+{##}
+{#        <script src="{% static "foundation-sites/dist/js/plugins/foundation.sticky.js" %}"></script>#}
+{#        <script src="{% static "foundation-sites/dist/js/plugins/foundation.tabs.js" %}"></script>#}
+
+{#        <script src="{% static "foundation-sites/dist/js/plugins/foundation.responsiveMenu.js" %}"></script>#}
+
+        {#        TODO: brak zamiennika alert.js wtf #}
+        {#        <script src="{% static "foundation-sites/dist/js/plugins/foundation.alert.js" %}"></script>#}
+        {#        <script src="{% static "foundation-sites/dist/js/plugins/foundation.magellan.js" %}"></script>#}
 
         <script type="text/javascript" src="{% static 'session_security/script.js' %}"></script>
 
@@ -78,10 +94,10 @@
     {% load cache %}
     {% cache 3600 favicon %}
         {% load favtags %}
-        {% placeFavicon  %}
+        {% placeFavicon %}
     {% endcache %}
 </head>
-<body>
+<body class="no-js">
 {% block body %}
 {% endblock %}
 <script type="text/javascript">

@@ -33,15 +33,15 @@
 
 {% block breadcrumbs %}
     {{ block.super }}
-    <li class="current">Wyszukiwanie</li>
+    <li class="current">szukaj</li>
 {% endblock %}
 
 {% block content %}
 
     <form >
         {% include "multiseek/multiseek_fields.html" %}
-        <div class="row">
-            <div class="large-3 columns">
+        <div class="grid-x grid-margin-x">
+            <div class="large-3 cell">
 
                 <label for="id_report_type">Rodzaj raportu:</label>
 
@@ -60,13 +60,13 @@
             </div>
 
             {% for element in order_boxes %}
-                <div class="large-3 columns">
+                <div class="large-3 cell">
                     <label for="id_ordering_{{ forloop.counter0 }}">
                         {{ element }}
                     </label>
 
                     <div class="row">
-                        <div class="large-8 small-8 columns">
+                        <div class="large-8 small-8 cell">
                             <select name="{{ MULTISEEK_ORDERING_PREFIX }}{{ forloop.counter0 }}"
                                     class="multiseek-ordering"
                                     id="id_ordering_{{ forloop.counter0 }}">
@@ -77,7 +77,7 @@
 
                         </div>
 
-                        <div class="large-4 small-4 columns">
+                        <div class="large-4 small-4 cell">
                             <input type="checkbox"
                                    id="{{ MULTISEEK_ORDERING_PREFIX }}{{ forloop.counter0 }}_dir"
                                    name="{{ MULTISEEK_ORDERING_PREFIX }}{{ forloop.counter0 }}_dir"
@@ -110,26 +110,26 @@
         </div>
 
         <div class="row">
-            <div class="large-8 large-centered columns">
+            <div class="large-8 large-centered cell">
 
-                <button class="small"
+                <button type="button" class="small button success"
                         onclick="submitEventMine(this);return false;"
                         id="multiseek-szukaj">
-                    Szukaj
+                    <i class="fi-magnifying-glass"></i> Szukaj
                 </button>
 
-                <button class="small" onclick="submitEvent(this); return false;"
+                <button type="button" class="small button" onclick="submitEvent(this); return false;"
                         id="sendQueryButton">
-                    Odśwież
+                    <i class="fi-refresh"></i> Odśwież
                 </button>
 
-                <button class="small" onclick="resetMultiseekTitle(this); return false;"
+                <button type="button" class="small button alert" onclick="resetMultiseekTitle(this); return false;"
                         id="resetFormButton">
-                    Kasuj formularz
+                    <i class="fi-x"></i> Kasuj formularz
                 </button>
 
                 {% if user_allowed_to_save_forms %}
-                    <button class="small" onclick="saveForm(this);return false;"
+                    <button class="small button" type="button" onclick="saveForm(this);return false;"
                             id="saveFormButton">
                         Zapisz formularz
                     </button>

@@ -1,17 +1,17 @@
-<ul class="tabs hide-on-print" data-tab>
+<ul class="tabs hide-for-print" data-tabs id="literki-tabs">
 
-    <li class="tab-title
-    {% if wybrana == None %}active{% endif %}
-    ">
-    <a href="{{ url }}">{{ pierwszy_tab }}</a>
+    <li class="tabs-title {% if wybrana == None %}is-active{% endif %}">
+    <a href="{{ url }}" {% if wybrana == None %}aria-selected="true"{% endif %}>
+        {{ pierwszy_tab }}
+    </a>
 
     </li>
 
     {% for literka in literki %}
-        <li class="tab-title
-        {% if literka == wybrana %}active{% endif %}
+        <li class="tabs-title
+        {% if literka == wybrana %}is-active{% endif %}
         ">
-            <a {% if literka == wybrana %}class="wybrana"{% endif %}
+            <a {% if literka == wybrana %}class="wybrana" aria-selected="true"{% endif %}
                id="literka_{{ literka }}"
                href="{{ url }}{{ literka }}">{{ literka }}</a>
         </li>

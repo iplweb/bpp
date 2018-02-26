@@ -1,43 +1,35 @@
 {% load pagination_tags %}
-<div {% if magellan != "no" %}data-magellan-expedition="fixed"{% endif %} class="hide-on-print">
+<ul class="menu">
+    <li><a href="#"><i class="fi-database"></i> rekordów: {{ paginator_count }}</a></li>
+    {% if live == "0" %}
+        <li><a href=".."><i class="fi-arrow-left"></i> powrót do formularza</a>
+        </li>
+    {% endif %}
 
-    <dl class="sub-nav">
-        <dt>wynik:</dt>
-        <dd class="active">
-            {% if live == "1" %}
-                <a href="{% url "multiseek:results" %}" target="_top">
-            {% else %}
-                <a href=".">
+    {% if paginator_count > 0 and paginator_count < max_rows %}
+        {% if live == "1" %}
+            <li>
+                <a target="_blank"
+                   href="/multiseek/results/?all=1&print=1{% if print_removed %}&print-removed=1{% endif %}"><i
+                        class="fi-print"></i> drukuj</a>
+            </li>
+            {% if request.GET.all != "1" %}
+                <li>
+                    <a target="_blank" href="/multiseek/results/?all=1"><i class="fi-page-multiple"></i>
+                        wyświetl&nbsp;wszystkie</a>
+                </li>
             {% endif %}
-            rekordy: {{ paginator_count }}
-            </a>
-        </dd>
-
-        {% if live == "0" %}
-            <dd><a href="..">powrót</a></dd>
-        {% endif %}
-
-        {% if paginator_count > 0 and paginator_count < max_rows %}
-            {% if live == "1" %}
-                <dd><a target="_blank" href="/multiseek/results/?all=1&print=1{% if print_removed %}&print-removed=1{% endif %}">drukuj</a>
-                </dd>
-                {% if request.GET.all != "1" %}
-                    <dd><a target="_blank" href="/multiseek/results/?all=1">wyświetl&nbsp;wszystkie</a>
-                    </dd>
-                {% endif %}
-            {% else %}
-                <dd><a href="?all=1&print=1{% if print_removed %}&print-removed=1{% endif %}">drukuj</a></dd>
-                {% if request.GET.all != "1" and paginator.num_pages > 1 %}
-                    <dd><a href="?all=1">wszystkie</a></dd>
-                {% endif %}
+        {% else %}
+            <li>
+                <a href="?all=1&print=1{% if print_removed %}&print-removed=1{% endif %}"><i
+                        class="fi-print"></i> drukuj</a>
+            </li>
+            {% if request.GET.all != "1" and paginator.num_pages > 1 %}
+                <li><a href="?all=1"><i class="fi-page-multiple"></i> wyświetl wszystkie</a></li>
             {% endif %}
         {% endif %}
-        {% if not request.GET.all == "1" or paginator.num_pages > 1 %}
-            <dt>strony:</dt>
-            <dd>{% paginate %}</dd>
-        {% endif %}
-    </dl>
-
-
-</div>
-
+    {% endif %}
+</ul>
+{% if paginator.num_pages > 1 %}
+{% paginate %}
+{% endif %}

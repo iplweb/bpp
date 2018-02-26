@@ -12,7 +12,6 @@ def make_nav_form(url):
                 url=url,
                 attrs={
                     'data-html': True,
-                    'min-width': "300px",
                     'data-placeholder': 'Wpisz, aby wyszukać...'
                 })
         )

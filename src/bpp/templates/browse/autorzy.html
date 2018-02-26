@@ -25,7 +25,7 @@
 
     {% url "bpp:browse_autorzy" as browse_autorzy %}
 
-    <div class="row hide-on-print">
+    <div class="row hide-for-print">
         <div class="large-4 medium-4 small-12 columns">
             {% include "browse/search_form.html" with url=browse_autorzy tekst="Wpisz początek nazwiska i wciśnij ENTER..." name="search" flt=flt %}
         </div>
@@ -54,7 +54,7 @@
             </div>
         {% endfor %}
         {% if not object_list %}
-            <div class="panel">
+            <div class="callout">
                 Nie znaleziono takich autorów. <p></p>
                 <a href=".">Kliknij tutaj, aby spróbować ponownie.</a>
             </div>
