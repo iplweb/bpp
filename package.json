@@ -20,6 +20,7 @@
         "jquery.cookie": "1.4.1",
         "jqueryui": "1.11.1",
         "kbw-keypad": "https://github.com/kbwood/keypad/archive/2.1.0.tar.gz",
+        "select2-foundation_theme": "https://github.com/egemensarica/select2-foundation.git#v6",
         "what-input": "^5.0.5"
     }
 }
