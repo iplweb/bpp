@@ -207,7 +207,7 @@
             <div class="top-bar-right">
                 <ul class="dropdown menu" data-dropdown-menu>
                     {% block global-nav %}
-                        <li >
+                        <li>
                             {% crispy global_nav_form %}
                             <script type="text/javascript">
                                 $(document).ready(function () {
@@ -241,9 +241,6 @@
                 <div id="messagesPlaceholder"></div>
 
                 <div id="content">
-                    {% load cookielaw_tags %}
-                    {% cookielaw_banner %}
-
                     {% if password_change_required %}
                         <p class='help'>Twoje hasło uległo przeterminowaniu. Proszę, zmień je używając formularza
                             poniżej:</p>
@@ -270,7 +267,11 @@
             </div>
         </div>
 
+        {% load cookielaw_tags %}
+        {% cookielaw_banner %}
     </div>
+
+
     {% load cache %}
     {% cache 3600 google %}
         {% if GOOGLE_ANALYTICS_PROPERTY_ID %}
