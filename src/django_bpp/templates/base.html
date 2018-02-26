@@ -33,25 +33,28 @@
 {% block body %}
     {% if request.user.is_authenticated %}
 
-        <div id="messageTemplate" style="display: none;">{% verbatim messageTemplate %}
-        <div data-alert class="alert-box radius {{ cssClass }}{{^cssClass}}info{{/cssClass}}">
-        {{#clickURL}}<a href="{{ clickURL }}">{{/clickURL}}
-            {{{ text }}}
-            {{#clickURL}}</a>{{/clickURL}}
+        <div id="messageTemplate" style="display: none;">
+        {% verbatim messageTemplate %}
+        <div data-closable
+             data-url="{{closeURL}}"
+             class="ajax-on-close callout primary {{ cssClass }}{{^cssClass}}info{{/cssClass}}">
+        {{#clickURL}}
+        <a href="{{ clickURL }}">
+        {{/clickURL}}
+        {{{ text }}}
+        {{#clickURL}}</a>{{/clickURL}}
+            <button
+                type="button"
+                class="close-button"
+                aria-label="Zamknij powiadomienie"
+                data-close>
+             <span aria-hidden="true">&times;</span>
+             </button>
 
-            {{^hideCloseOption}}
-            {{#closeURL}}
-                <a href="{{{ closeURL }}}" class="{{ closeClass }}{{ ^closeClass }}close{{ /closeClass }}">
-            {{/closeURL}}
-            {{^closeURL}}
-                <a href="#" class="{{ closeClass }}{{ ^closeClass }}close{{ /closeClass }}">
-            {{/closeURL}}
-                {{{ closeText }}}{{ ^closeText }}&times;{{ /closeText }}
-            </a>
-            {{/hideCloseOption}}
-        </div>{% endverbatim messageTemplate %}
-    </div>
-{# fix pycharm highlighting #}
+        </div>
+        {% endverbatim messageTemplate %}
+        </div>
+        {# fix pycharm highlighting #}
         <script type="text/javascript">
             {% load notifications %}
             {% uuid notifications_uuid %}
@@ -66,13 +69,14 @@
                     "{% static "bpp/wav/alert.wav" %}"
                 );
 
-                $(document).on('close.fndtn.alert', function (event) {
-                    {#                    if (event.namespace!='alert.fndtn') // https://github.com/zurb/foundation/issues/5482#}
-                    {#                        return;#}
-                    $.get($(event.target).find("a").last().attr("href"));
-
+                $(document).on('closed.zf', function (event) {
+                    if ($(event.target).hasClass("ajax-on-close")) {
+                        var url = $(event.target).data("url");
+                        if (url) {
+                            $.get(url);
+                        }
+                    }
                 });
-
 
                 {% if messages %}
                     {% load notifications %}
@@ -84,7 +88,8 @@
                                 closeURL: '{% url "messages_extends:message_mark_read" message.pk %}',
                             {% endif %}
                             pk: '{{ message.pk }}',
-                            text: '{{ message.message|just_single_quotes|safe }}'
+                            text: '{{ message.message|just_single_quotes|safe }}',
+                            sound: false
                         });
                     {% endfor %}
                 {% endif %}

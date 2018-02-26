@@ -54,7 +54,8 @@ bppNotifications.addMessage = function(message){
         );
 
         if (bppNotifications.messageAlertSound)
-            bppNotifications.messageAlertSound.play();
+            if (message['sound'] != false)
+                bppNotifications.messageAlertSound.play();
 
     } else if (message['url']) {
         if (message['cookieId'] == bppNotifications.messageCookieId)
