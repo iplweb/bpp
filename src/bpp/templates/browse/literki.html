@@ -1,26 +1,21 @@
-<ul class="tabs hide-for-print" data-tabs id="literki-tabs">
+<div class="tabs hide-for-print" id="literki-tabs" style="margin-bottom: 10px;">
 
-    <li class="tabs-title {% if wybrana == None %}is-active{% endif %}">
-    <a href="{{ url }}" {% if wybrana == None %}aria-selected="true"{% endif %}>
-        {{ pierwszy_tab }}
+    <span class="tabs-title {% if wybrana == None %}is-active{% endif %}">
+    <a style="padding: 1.18rem" href="{{ url }}" {% if wybrana == None %}aria-selected="true"{% endif %}>
+        &hellip;
     </a>
 
-    </li>
+    </span>
 
     {% for literka in literki %}
-        <li class="tabs-title
+        <span class="tabs-title
         {% if literka == wybrana %}is-active{% endif %}
         ">
-            <a {% if literka == wybrana %}class="wybrana" aria-selected="true"{% endif %}
+            <a style="padding: 1.18rem" {% if literka == wybrana %}class="wybrana" aria-selected="true"{% endif %}
                id="literka_{{ literka }}"
                href="{{ url }}{{ literka }}">{{ literka }}</a>
-        </li>
+        </span>
     {% endfor %}
-</ul>
-<div class="tabs-content">
 </div>
-<script> $(document).foundation({ tab: { callback: function (tab) {
-    location.href = $(tab).children().first().attr("href");
-} } }); </script>
 
 
