@@ -187,7 +187,6 @@ INSTALLED_APPS = [
     'notifications',
     'integrator2',
 
-    'egeria',
     'eksport_pbn',
     'nowe_raporty',
 
