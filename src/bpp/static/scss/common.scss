@@ -148,3 +148,11 @@ div.table-container ul.pagination {
 }
 
 //$topbar-background: rgb(192, 192, 192, 0.8);
+
+.top-bar {
+  z-index: 10 !important;
+}
+
+#CookielawBanner {
+  margin-bottom: -10px !important;
+}

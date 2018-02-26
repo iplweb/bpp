@@ -54,7 +54,7 @@
                             </p>
                         {% endif %}
                     {% endfor %}
-                    {% include "browse/go_to_admin_list.html" with group="web" url="admin:miniblog_article_changelist" %}
+                    {% include "browse/go_to_admin_list.html" with group="web" url="admin:miniblog_article_changelist" text="zarządzaj aktualnościami" %}
                     {% include "browse/go_to_admin_list.html" with group="web" url="admin:miniblog_article_add" text="dodaj artykuł" %}
                 </div>
 
@@ -70,8 +70,8 @@
                     </li>
                 {% endfor %}
             </ul>
-            {% include "browse/go_to_admin_list.html" with group="struktura" url="admin:bpp_wydzial_changelist" %}
-            {% include "browse/go_to_admin_change.html" with url="admin:bpp_uczelnia_change" pk=uczelnia.pk group="struktura" text="ustawienia dla Uczelni" %}
+            {% include "browse/go_to_admin_list.html" with group="struktura" url="admin:bpp_wydzial_changelist" text="zarządzaj wydziałami" %}
+            {% include "browse/go_to_admin_change.html" with url="admin:bpp_uczelnia_change" pk=uczelnia.pk group="struktura" text="ustawienia dla uczelni" %}
         </div>
     </div>
 
