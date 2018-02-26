@@ -17,17 +17,16 @@
 
     {% compress css %}
         {#        base.html #}
-        <link rel="stylesheet" type="text/css" href="{% static "bpp/flick/theme.css" %}"/>
-        <link rel="stylesheet" type="text/css" href="{% static "bpp/flick/jquery-ui.min.css" %}"/>
-        <link rel="stylesheet" type="text/css" href="{% static "cookielaw/css/cookielaw.css" %}"/>
-        <link rel="stylesheet" type="text/css" href="{% static "multiseek/css/style.css" %}"/>
-        <link rel="stylesheet" type="text/css" href="{% static 'session_security/style.css' %}"></link>
+        <link rel="stylesheet" type="text/css" href="{% static "multiseek/css/style.css" %}">
+        <link rel="stylesheet" type="text/css" href="{% static 'session_security/style.css' %}">
         <link rel="stylesheet" type="text/css"
-              href="{% static "foundation-datepicker/foundation/fonts/foundation-icons.css" %}"></link>
+              href="{% static "foundation-datepicker/foundation/fonts/foundation-icons.css" %}">
         <link rel="stylesheet" type="text/css"
-              href="{% static "foundation-datepicker/css/foundation-datepicker.min.css" %}"></link>
+              href="{% static "foundation-datepicker/css/foundation-datepicker.min.css" %}">
         <link rel="stylesheet" type="text/css"
-              href="{% static "autocomplete_light/vendor/select2/dist/css/select2.css" %}"></link>
+              href="{% static "autocomplete_light/vendor/select2/dist/css/select2.css" %}">
+        <link rel="stylesheet" type="text/css"
+              href="{% static "select2-foundation_theme/dist/select2-foundation-theme.css" %}">
         <link rel="stylesheet" type="text/css" href="{% static "autocomplete_light/select2.css" %}"></link>
     {% endcompress %}
 
@@ -35,7 +34,6 @@
         {#        bare.html #}
         <script src="{% static 'jquery/dist/jquery.min.js' %}"></script>
         <script src="{% static "what-input/dist/what-input.js" %}"></script>
-
         <script src="{% static 'foundation-sites/dist/js/foundation.js' %}"></script>
 
         <script src="{% static "jquery.cookie/jquery.cookie.js" %}"></script>
@@ -62,17 +60,17 @@
         {% block extrahead_js %}
         {% endblock %}
 
-{#        <script src="{% static "foundation-sites/dist/js/plugins/foundation.core.js" %}"></script>#}
-{##}
-{#        <script src="{% static "foundation-sites/dist/js/plugins/foundation.util.keyboard.js" %}"></script>#}
-{#        <script src="{% static "foundation-sites/dist/js/plugins/foundation.util.imageLoader.js" %}"></script>#}
-{#        <script src="{% static "foundation-sites/dist/js/plugins/foundation.util.triggers.js" %}"></script>#}
-{#        <script src="{% static "foundation-sites/dist/js/plugins/foundation.util.mediaQuery.js" %}"></script>#}
-{##}
-{#        <script src="{% static "foundation-sites/dist/js/plugins/foundation.sticky.js" %}"></script>#}
-{#        <script src="{% static "foundation-sites/dist/js/plugins/foundation.tabs.js" %}"></script>#}
+        {#        <script src="{% static "foundation-sites/dist/js/plugins/foundation.core.js" %}"></script>#}
+        {##}
+        {#        <script src="{% static "foundation-sites/dist/js/plugins/foundation.util.keyboard.js" %}"></script>#}
+        {#        <script src="{% static "foundation-sites/dist/js/plugins/foundation.util.imageLoader.js" %}"></script>#}
+        {#        <script src="{% static "foundation-sites/dist/js/plugins/foundation.util.triggers.js" %}"></script>#}
+        {#        <script src="{% static "foundation-sites/dist/js/plugins/foundation.util.mediaQuery.js" %}"></script>#}
+        {##}
+        {#        <script src="{% static "foundation-sites/dist/js/plugins/foundation.sticky.js" %}"></script>#}
+        {#        <script src="{% static "foundation-sites/dist/js/plugins/foundation.tabs.js" %}"></script>#}
 
-{#        <script src="{% static "foundation-sites/dist/js/plugins/foundation.responsiveMenu.js" %}"></script>#}
+        {#        <script src="{% static "foundation-sites/dist/js/plugins/foundation.responsiveMenu.js" %}"></script>#}
 
         {#        TODO: brak zamiennika alert.js wtf #}
         {#        <script src="{% static "foundation-sites/dist/js/plugins/foundation.alert.js" %}"></script>#}
@@ -97,16 +95,29 @@
         {% placeFavicon %}
     {% endcache %}
 </head>
-<body>
+<body style="display: none;">
 {% block body %}
 {% endblock %}
 <script type="text/javascript">
     $(document).foundation();
     $.fn.select2.defaults.set('language', 'pl');
+    $.fn.select2.defaults.set('theme', 'foundation');
 </script>
 </body>
 <footer>
     {% load bpp_version %}
     <!-- wygenerowano dnia {% bpp_localtime %}, wersja {% bpp_version %} -->
 </footer>
+
+<!-----Flash of Unstyled Content---------->
+<script>
+    $('body').show();
+</script>
+<noscript>
+    <style>body {
+        display: block !important;
+    }</style>
+</noscript>
+<!-----Flash of Unstyled Content---------->
+
 </html>
