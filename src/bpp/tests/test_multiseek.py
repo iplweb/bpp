@@ -17,11 +17,3 @@ class TestMultiseekLoggedIn(UserTestCase):
     def test_multiseek(self):
         res = self.client.get(reverse("multiseek:index"))
         self.assertContains(res, 'Adnotacje', status_code=200)
-
-
-class TestMultiseekZrodlo(TestCase):
-    def test_get_autocomplete_query(self):
-        z = ZrodloQueryObject()
-        res = z.get_autocomplete_query(b'foobar')
-        assert res != None
-        assert list(res) != None
