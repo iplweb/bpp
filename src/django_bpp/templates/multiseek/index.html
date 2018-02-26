@@ -97,34 +97,34 @@
 
         </div>
 
-        <div class="row">
-            <div class="large-8 large-centered cell">
+        <div class="grid-x align-center-middle">
+            <div class="cell">
 
-                <button type="button" class="small button success"
+                <button type="button" class="button success"
                         onclick="submitEventMine(this);return false;"
                         id="multiseek-szukaj">
                     <i class="fi-magnifying-glass"></i> Szukaj
                 </button>
 
-                <button type="button" class="small button" onclick="submitEvent(this); return false;"
+                <button type="button" class="button" onclick="submitEvent(this); return false;"
                         id="sendQueryButton">
                     <i class="fi-refresh"></i> Odśwież
                 </button>
 
-                <button type="button" class="small button alert" onclick="resetMultiseekTitle(this); return false;"
+                <button type="button" class="button alert" onclick="resetMultiseekTitle(this); return false;"
                         id="resetFormButton">
                     <i class="fi-x"></i> Kasuj formularz
                 </button>
 
                 {% if user_allowed_to_save_forms %}
-                    <button class="small button" type="button" onclick="saveForm(this);return false;"
+                    <button class="button" type="button" onclick="saveForm(this);return false;"
                             id="saveFormButton">
                         Zapisz formularz
                     </button>
                 {% endif %}
 
                 {% if saved_forms %}
-                    <a class="button small" href="#" data-dropdown="drop2">Wczytaj</a>
+                    <a class="button" href="#" data-dropdown="drop2">Wczytaj</a>
                     <ul id="drop2" class="f-dropdown content"
                         data-dropdown-content>
                         {% for form in saved_forms %}
