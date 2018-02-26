@@ -1,5 +1,5 @@
 {% load user_in_group %}{% if request.user.is_superuser or request.user|has_group:group %}
-    <div class="panel hide-on-print">
+    <div class="callout warning hide-for-print">
         <a target="_blank" href="{% url url pk %}">{{ text|default:"otwórz do edycji" }}</a>
     </div>
 {% endif %}

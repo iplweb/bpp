@@ -4,8 +4,11 @@
 
 {% block breadcrumbs %}
     {{ block.super }}
-    <li {% if wybrana == None %}class="current"{% endif %}><a
-            href="{% url "bpp:browse_zrodla" %}">Źródła</a></li>
+    <li {% if wybrana == None %}class="current"{% endif %}>
+        {% if wybrana != None %}<a href="{% url "bpp:browse_zrodla" %}">{% endif %}
+        Źródła
+        {% if wybrana != None %}</a>{% endif %}
+    </li>
     {% if wybrana != None %}
         <li class="current">Litera {{ wybrana }}</a>
     {% endif %}
@@ -22,29 +25,28 @@
 
     {% url "bpp:browse_zrodlo" as browse_zrodlo %}
 
-    <div class="row hide-on-print">
-        <div class="large-4 medium-4 columns">
+    <div class="grid-x grid-margin-x hide-for-print" style="text-align: right;">
+        <div class="large-4 medium-4 cell">
             {% include "browse/search_form.html" with url=browse_zrodla tekst="Wpisz część nazwy i wciśnij ENTER..." name="search" flt=flt %}
         </div>
-        <div class="large-8 medium-8 columns">
+        <div class="large-8 medium-8 cell">
             {% include "pagination.html" %}
 
         </div>
     </div>
 
-
-
-    <div class="row">
+    <div class="grid-x grid-margin-x">
         {% for col in object_list|columns:2 %}
-            <div class="large-6 columns">
-                {% for item in col %}
-                    <a href="{% url "bpp:browse_zrodlo" item.slug %}">{{ item }}</a>
-                    <br/><br/>
-                {% endfor %}
+            <div class="large-6 cell">
+                <ul class="no-bullet">
+                    {% for item in col %}
+                        <li><a href="{% url "bpp:browse_zrodlo" item.slug %}">{{ item }}</a></li>
+                    {% endfor %}
+                </ul>
             </div>
         {% endfor %}
         {% if not object_list %}
-            <div class="panel">
+            <div class="callout warning cell">
                 Nie znaleziono takich źródeł. <p></p>
                 <a href=".">Kliknij tutaj, aby spróbować ponownie.</a>
             </div>

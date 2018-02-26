@@ -1,47 +1,46 @@
+{% if is_paginated %}
+    <ul class="pagination" role="navigation" aria-label="Pagination" style="display: inline">
+        {% if page_obj.has_previous %}
+            <li class="pagination-previous"><a href="?page={{ page_obj.previous_page_number }}">poprzednia
+            </a></li>
+        {% else %}
+            <li class="pagination-previous disabled"><span>poprzednia</span></li>
+        {% endif %}
 
-     {% if is_paginated %}
-        <ul class="pagination">
-            {% if page_obj.has_previous %}
-              <li class="arrow"><a href="?page={{ page_obj.previous_page_number }}">&laquo;
-              </a></li>
-            {% else %}
-              <li class="arrow unavailable"><span>&laquo;</span></li>
-            {% endif %}
 
-
-            {% if page_obj.number >= 5 %}
+        {% if page_obj.number >= 5 %}
             <li><a href="?page=1">1</a></li>
-            <li class="unavailable"><span>...</span></li>
-            {% elif page_obj.number == 4 %}
+            <li class="disabled"><span>...</span></li>
+        {% elif page_obj.number == 4 %}
             <li><a href="?page=1">1</a></li>
-            {% endif %}
-            {% if page_obj.number|add:"-2" >= 1  %}
+        {% endif %}
+        {% if page_obj.number|add:"-2" >= 1 %}
             <li><a href="?page={{ page_obj.number|add:"-2" }}">{{ page_obj.number|add:"-2" }}</a></li>
-            {% endif %}
-            {% if page_obj.number|add:"-1" >= 1  %}
+        {% endif %}
+        {% if page_obj.number|add:"-1" >= 1 %}
             <li><a href="?page={{ page_obj.number|add:"-1" }}">{{ page_obj.number|add:"-1" }}</a></li>
-            {% endif %}
-            <li class="current"><a href="?page={{ page_obj.number }}">{{ page_obj.number }}</a></li>
-            {% if page_obj.number|add:"1" <= paginator.num_pages  %}
+        {% endif %}
+        <li class="current">{{ page_obj.number }}</li>
+        {% if page_obj.number|add:"1" <= paginator.num_pages %}
             <li><a href="?page={{ page_obj.number|add:"1" }}">{{ page_obj.number|add:"1" }}</a></li>
-            {% endif %}
-            {% if page_obj.number|add:"2" <= paginator.num_pages %}
+        {% endif %}
+        {% if page_obj.number|add:"2" <= paginator.num_pages %}
             <li><a href="?page={{ page_obj.number|add:"2" }}">{{ page_obj.number|add:"2" }}</a></li>
-            {% endif %}
-            {% if page_obj.number|add:"2" <= paginator.num_pages|add:"-2" %}
-            <li class="unavailable"><span>...</span></li>
+        {% endif %}
+        {% if page_obj.number|add:"2" <= paginator.num_pages|add:"-2" %}
+            <li class="ellipsis" aria-hidden="true"></li>
             <li><a href="?page={{ paginator.num_pages }}">{{ paginator.num_pages }}</a></li>
-            {% elif page_obj.number|add:"1" <= paginator.num_pages|add:"-2" %}
+        {% elif page_obj.number|add:"1" <= paginator.num_pages|add:"-2" %}
             <li><a href="?page={{ paginator.num_pages }}">{{ paginator.num_pages }}</a></li>
-            {% endif %}
+        {% endif %}
 
 
-            {% if page_obj.has_next %}
-              <li class="arrow"><a href="?page={{ page_obj.next_page_number }}">&raquo;
-              </a></li>
-            {% else %}
-              <li class="arrow unavailable"><span>&raquo;</span></li>
-            {% endif %}
+        {% if page_obj.has_next %}
+            <li class="pagination-next"><a href="?page={{ page_obj.next_page_number }}">następna
+            </a></li>
+        {% else %}
+            <li class="pagination-next disabled"><span>następna</span></li>
+        {% endif %}
 
-        </ul>
+    </ul>
 {% endif %}

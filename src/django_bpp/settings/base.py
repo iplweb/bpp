@@ -187,7 +187,6 @@ INSTALLED_APPS = [
     'notifications',
     'integrator2',
 
-    'egeria',
     'eksport_pbn',
     'nowe_raporty',
 
@@ -315,9 +314,6 @@ def autoslug_gen():
 MOMMY_CUSTOM_FIELDS_GEN = {
     'autoslug.fields.AutoSlugField': autoslug_gen
 }
-
-CRISPY_ALLOWED_TEMPLATE_PACKS = ('foundation-5',)
-CRISPY_TEMPLATE_PACK = 'foundation-5'
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTOCOL', 'https')
 

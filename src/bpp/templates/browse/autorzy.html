@@ -9,8 +9,14 @@
 
 {% block breadcrumbs %}
     {{ block.super }}
-    <li {% if wybrana == None %}class="current"{% endif %}><a
-            href="{% url "bpp:browse_autorzy" %}">Autorzy</a></li>
+    <li {% if wybrana == None %}class="current"{% endif %}>
+        {% if wybrana != None %}
+            <a href="{% url "bpp:browse_autorzy" %}">
+        {% endif %}Autorzy
+        {% if wybrana != None %}
+            </a>
+        {% endif %}
+    </li>
 
     {% if wybrana != None %}
         <li class="current">litera {{ wybrana }}</li>
@@ -25,12 +31,12 @@
 
     {% url "bpp:browse_autorzy" as browse_autorzy %}
 
-    <div class="row hide-on-print">
+    <div class="grid-x hide-for-print">
         <div class="large-4 medium-4 small-12 columns">
             {% include "browse/search_form.html" with url=browse_autorzy tekst="Wpisz początek nazwiska i wciśnij ENTER..." name="search" flt=flt %}
         </div>
-        <div class="large-8 medium-8 small-12 columns">
-                        {% include "pagination.html" %}
+        <div class="large-8 medium-8 small-12 columns" style="text-align: right;">
+            {% include "pagination.html" %}
         </div>
     </div>
 
@@ -38,25 +44,26 @@
 
 
 
-    <div class="row">
+    <div class="grid-x grid-margin-x">
         {% for col in object_list|columns:4 %}
-            <div class="large-3 columns">
-                {% for item in col %}
+            <div class="large-3 cell">
+                <ul class="no-bullet">
+                    {% for item in col %}
+                        <li>
+                            <a href="{% url "bpp:browse_autor" item.slug %}">
+                                {{ item.get_full_name_surname_first }}
+                            </a>
 
-                    <a href="{% url "bpp:browse_autor" item.slug %}">
-                        {{ item.get_full_name_surname_first }}
-                    </a>
-
-                    <br/><br/>
+                        </li>
 
 
-                {% endfor %}
+                    {% endfor %}</ul>
             </div>
         {% endfor %}
         {% if not object_list %}
-            <div class="panel">
+            <div class="callout warning cell">
                 Nie znaleziono takich autorów. <p></p>
-                <a href=".">Kliknij tutaj, aby spróbować ponownie.</a>
+                <a href="{% url "bpp:browse_autorzy" %}">Kliknij tutaj, aby spróbować ponownie.</a>
             </div>
 
         {% endif %}
