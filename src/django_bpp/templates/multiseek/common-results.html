@@ -1,13 +1,8 @@
 {% load i18n %}
 {% load pagination_tags %}
 
-{% load static %}
 {% load compress %}
 {% load prace %}
-
-{% compress js %}
-    <script src="{% static 'jinplace/js/jinplace.js' %}"></script>
-{% endcompress %}
 
 {% if request.user.is_anonymous %}
     {#    anonim #}
