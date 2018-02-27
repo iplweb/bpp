@@ -12,11 +12,14 @@
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width"/>
 
-    {#        bare.html #}
-    <link rel="stylesheet" href="{% static THEME_NAME %}"/>
+    {% load i18n %}
+    <script type="text/javascript" src="/bpp/jsi18n/?language={{ LANGUAGE_CODE }}"></script>
 
+    {#        bare.html #}
     {% compress css %}
         {#        base.html #}
+        <link rel="stylesheet" type="text/css" href="{% static THEME_NAME %}"/>
+
         <link rel="stylesheet" type="text/css" href="{% static "multiseek/css/style.css" %}">
         <link rel="stylesheet" type="text/css" href="{% static 'session_security/style.css' %}">
         <link rel="stylesheet" type="text/css"
@@ -28,10 +31,15 @@
         <link rel="stylesheet" type="text/css"
               href="{% static "select2-foundation_theme/dist/select2-foundation-theme.css" %}">
         <link rel="stylesheet" type="text/css" href="{% static "autocomplete_light/select2.css" %}"></link>
+
+            <link rel="stylesheet" href="{% static "multiseek/css/style.css" %}"/>
+
+
     {% endcompress %}
 
     {% compress js %}
         {#        bare.html #}
+
         <script src="{% static 'jquery/dist/jquery.min.js' %}"></script>
         <script src="{% static "what-input/dist/what-input.js" %}"></script>
         <script src="{% static 'foundation-sites/dist/js/foundation.js' %}"></script>
@@ -75,6 +83,8 @@
         {#        TODO: brak zamiennika alert.js wtf #}
         {#        <script src="{% static "foundation-sites/dist/js/plugins/foundation.alert.js" %}"></script>#}
         {#        <script src="{% static "foundation-sites/dist/js/plugins/foundation.magellan.js" %}"></script>#}
+
+        <script src="{% static 'jinplace/js/jinplace.js' %}"></script>
 
         <script type="text/javascript" src="{% static 'session_security/script.js' %}"></script>
 
