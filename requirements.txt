@@ -30,7 +30,7 @@ moai==2.0.0
 django-crispy-forms==1.7.0
 crispy-forms-foundation==0.6.4
 
-django-compressor==2.1.1
+django-compressor==2.2
 
 uwsgi==2.0.15
 
