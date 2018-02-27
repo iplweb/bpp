@@ -328,6 +328,10 @@ STATIC_ROOT = os.path.join(SCRIPT_PATH, "..", "staticroot")
 
 
 COMPRESS_ROOT = STATIC_ROOT
+COMPRESS_OFFLINE_CONTEXT = [
+    {'THEME_NAME': 'scss/app-blue.css', 'STATIC_URL': STATIC_URL, 'LANGUAGE_CODE': 'pl'},
+    {'THEME_NAME': 'scss/app-green.css', 'STATIC_URL': STATIC_URL, 'LANGUAGE_CODE': 'pl'},
+]
 
 # Domyslnie, redis na Ubuntu pozwala na 16 baz danych
 REDIS_DB_BROKER = 1
