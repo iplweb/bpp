@@ -44,11 +44,14 @@ EMAIL_PORT = 2525
 
 PUNKTUJ_MONOGRAFIE = False
 
-MIDDLEWARE_CLASSES = MIDDLEWARE_CLASSES + [
-    'debug_toolbar.middleware.DebugToolbarMiddleware',
-    'bpp.middleware.NonHtmlDebugToolbarMiddleware'
-]
+DEBUG_TOOLBAR = False
 
-INSTALLED_APPS.append('debug_toolbar')
+if DEBUG_TOOLBAR:
+    MIDDLEWARE_CLASSES = MIDDLEWARE_CLASSES + [
+        'debug_toolbar.middleware.DebugToolbarMiddleware',
+        'bpp.middleware.NonHtmlDebugToolbarMiddleware'
+    ]
 
-DATABASES['default']['CONN_MAX_AGE'] = 0
+    INSTALLED_APPS.append('debug_toolbar')
+
+DATABASES['default']['CONN_MAX_AGE'] = 10
