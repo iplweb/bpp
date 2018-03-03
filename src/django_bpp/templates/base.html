@@ -101,15 +101,23 @@
         <div class="title-bar-title">Menu</div>
     </div>
 
-    <div class="grid-container-fluid" data-sticky-container>
+    <div class="grid-container-fluid hide-for-print" data-sticky-container>
 
         <div class="top-bar stacked-for-medium hide-for-print" id="example-menu" data-sticky data-options="marginTop:0;"
              style="width:100%;">
             <div class="top-bar-left">
                 <ul class="dropdown menu" data-dropdown-menu>
-                    <li class="menu-text hide-for-medium-down hide-for-small" style="cursor:pointer;"
+                    <li class="menu-text" style="cursor:pointer;"
                         onclick="location.href='/';">
-                        Bibliografia Publikacji Pracowników
+                        <div class="show-for-large">
+                            Bibliografia Publikacji Pracowników
+                        </div>
+                        <div class="show-for-medium-only">
+                            BPP
+                        </div>
+                        <div class="show-for-small-only">
+                            BPP
+                        </div>
                     </li>
                     <li><a href="{% url "multiseek:index" %}"><i class="fi-magnifying-glass"></i> szukaj</a>
                     </li>
