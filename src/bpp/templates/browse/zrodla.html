@@ -21,7 +21,7 @@
 {% block content %}
     {% url "bpp:browse_zrodla" as browse_zrodla %}
     {% include "browse/literki.html" with pierwszy_tab="wszystkie" url=browse_zrodla %}
-    {% include "browse/go_to_admin_list.html" with url="admin:bpp_zrodlo_changelist" group="wprowadzanie danych" text="wyświetl w module redagowania" %}
+    {% include "browse/go_to_admin_list.html" with url="admin:bpp_zrodlo_changelist" group="wprowadzanie danych" text="<i class='fi-wrench'></i> wyświetl w module redagowania" %}
 
     {% url "bpp:browse_zrodlo" as browse_zrodlo %}
 

@@ -1,5 +1,5 @@
 {% load user_in_group %}{% if request.user.is_superuser or request.user|has_group:group %}
     <div class="callout warning hide-for-print">
-        <a target="_blank" href="{% url url %}">{{ text|default:"pokaż w module redagowania" }}</a>
+        <a target="_blank" href="{% url url %}">{{ text|default:"<i class='fl-page-edit'></i> pokaż w module redagowania" }}</a>
     </div>
 {% endif %}
