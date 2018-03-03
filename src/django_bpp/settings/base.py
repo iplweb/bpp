@@ -523,3 +523,16 @@ STATICSITEMAPS_ROOT_SITEMAP = 'django_bpp.sitemaps.django_bpp_sitemaps'
 
 # dla django-model-utils SplitField
 SPLIT_MARKER = '<!-- tutaj -->'
+
+# django-crispy-forms: użyj crispy-forms-foundation
+
+CRISPY_ALLOWED_TEMPLATE_PACKS = (
+    'foundation-6'
+)
+
+CRISPY_TEMPLATE_PACK = 'foundation-6'
+
+CRISPY_CLASS_CONVERTERS = {
+    'inputelement': None,
+    'errorcondition': 'is-invalid-input',
+}
