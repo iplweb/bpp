@@ -10,6 +10,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db.models.aggregates import Min, Max
 from django.utils import timezone
+from django.utils.safestring import mark_safe
 
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
@@ -131,13 +132,15 @@ class AutorRaportForm(BaseRaportForm):
                 'Wybierz parametry',
                 Row(Column('obiekt')),
                 Row(
-                    Column('od_roku', css_class='large-6 small-6'),
-                    Column('do_roku', css_class='large-6 small-6')
+                    Column('od_roku', css_class='large-6 medium-6 small-12'),
+                    Column('do_roku', css_class='large-6 medium-6 small-12')
                 ),
                 Row(Column('_export')),
                 Row(Column('tylko_z_jednostek_uczelni')),
             ),
             ButtonHolder(
-                Submit('submit', 'Pobierz raport', css_id='id_submit',
+                Submit('submit',
+                       'Pobierz raport',
+                       css_id='id_submit',
                        css_class="submit button"),
             ))

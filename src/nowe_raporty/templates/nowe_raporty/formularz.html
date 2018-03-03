@@ -14,9 +14,15 @@
     {# go_to_admin_change.html #}
     {% load user_in_group %}{% if request.user.is_superuser or request.user|has_group:"raporty" %}
         <div class="callout warning hide-for-print">
-            <a target="_blank" href="{% url "admin:flexible_reports_report_change" report.pk %}">{{ text|default:"otwórz do edycji" }}</a>
+            <a target="_blank" href="{% url "admin:flexible_reports_report_change" report.pk %}">
+                <i class="fi-page-edit"></i>
+                {{ text|default:"otwórz do edycji" }}</a>
         </div>
     {% endif %}
-    {% load crispy_forms_tags %}
-    {% crispy form %}
+    <div class="grid-x">
+        <div class="large-8 medium-12 small-12 cell">
+            {% load crispy_forms_tags %}
+            {% crispy form %}
+        </div>
+    </div>
 {% endblock %}
