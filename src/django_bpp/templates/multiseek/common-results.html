@@ -30,7 +30,7 @@
 <div style="padding: 10px;">
 
     {% if description %}
-        <div class="callout information hide-for-print">
+        <div class="callout secondary">
             <strong>Parametry
                 zapytania: </strong>{{ description|default:"brak"|safe }}
         </div>
@@ -303,10 +303,12 @@
 
 </div>
 
-{% if request.user.is_anonymous %}
-    {% include "multiseek/paginator.html" with max_rows=200 magellan="no" suffix="_object_list" %}
-{% else %}
-    {% include "multiseek/paginator.html" with max_rows=10000 magellan="no" %}
+{% if live != "1" and paginator.num_pages > 1 %}
+    {% if request.user.is_anonymous %}
+        {% include "multiseek/paginator.html" with max_rows=200 magellan="no" suffix="_object_list" %}
+    {% else %}
+        {% include "multiseek/paginator.html" with max_rows=10000 magellan="no" %}
+    {% endif %}
 {% endif %}
 
 <script type="text/javascript">
