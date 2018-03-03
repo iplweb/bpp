@@ -1,5 +1,5 @@
 {% if is_paginated %}
-<ul class="pagination">
+<ul class="pagination hide-for-print">
     {% if page_obj.has_previous %}
         <li class="pagination-previous"><a
                 href="?page{{ page_suffix }}={{ page_obj.previous_page_number }}{{ getvars }}{{ hashtag }}">poprzednia</a>

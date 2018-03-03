@@ -1,5 +1,5 @@
 {% load pagination_tags %}
-<ul class="menu">
+<ul class="menu hide-for-print">
     <li><a href="#"><i class="fi-database"></i> rekordów: {{ paginator_count }}</a></li>
     {% if live == "0" %}
         <li><a href=".."><i class="fi-arrow-left"></i> powrót do formularza</a>
