@@ -103,17 +103,17 @@
                 <button type="button" class="button success"
                         onclick="submitEventMine(this);return false;"
                         id="multiseek-szukaj">
-                    <i class="fi-magnifying-glass"></i> Szukaj
+                    <i class="fi-magnifying-glass"></i> Wyświetl wyniki wyszukiwania
                 </button>
 
                 <button type="button" class="button" onclick="submitEvent(this); return false;"
                         id="sendQueryButton">
-                    <i class="fi-refresh"></i> Odśwież
+                    <i class="fi-refresh"></i> Odśwież podgląd
                 </button>
 
-                <button type="button" class="button alert" onclick="resetMultiseekTitle(this); return false;"
+                <button type="button" class="button alert" onclick="if (confirm('Czy na pewno? Zatwierdzenie tej opcji spowoduje zresetowanie formularza do stanu wyjściowego.')) { resetMultiseekTitle(this); return false; }"
                         id="resetFormButton">
-                    <i class="fi-x"></i> Kasuj formularz
+                    <i class="fi-x"></i> Resetuj formularz
                 </button>
 
                 {% if user_allowed_to_save_forms %}
