@@ -229,7 +229,7 @@ class ModelPunktowanyBaza(models.Model):
         default=Decimal("0.00"), db_index=True)
 
     kc_impact_factor = models.DecimalField(
-        "KC: Impact factor", max_digits=6, decimal_places=2,
+        "KC: Impact factor", max_digits=6, decimal_places=3,
         default=None, blank=True, null=True, help_text="""Jeżeli wpiszesz
         wartość w to pole, to zostanie ona użyta w raporcie dla Komisji
         Centralnej w punkcie IXa tego raportu.""", db_index=True)
