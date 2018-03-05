@@ -170,3 +170,11 @@ class Typ_KBN(NazwaISkrot):
         verbose_name_plural = 'typy KBN'
         ordering = ['nazwa']
         app_label = 'bpp'
+
+
+class Rodzaj_Prawa_Patentowego(ModelZNazwa):
+    class Meta:
+        verbose_name = "rodzaj prawa patentowego"
+        verbose_name_plural = "rodzaje praw patentowych"
+        ordering = ['nazwa',]
+        app_label = 'bpp'
