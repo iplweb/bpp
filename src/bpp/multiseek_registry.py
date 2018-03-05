@@ -120,6 +120,18 @@ class DataUtworzeniaQueryObject(DateQueryObject):
         return str(value)
 
 
+class OstatnioZmieniony(DataUtworzeniaQueryObject):
+    label = "Ostatnio zmieniony"
+    field_name = "ostatnio_zmieniony"
+    public = False
+
+
+class OstatnioZmienionyDlaPBN(DataUtworzeniaQueryObject):
+    label = "Ostatnio zmieniony (dla PBN)"
+    field_name = "ostatnio_zmieniony_dla_pbn"
+    public = False
+
+
 class ForeignKeyDescribeMixin:
     def value_for_description(self, value):
         if value is None:
@@ -433,6 +445,8 @@ multiseek_fields = [
 
     AdnotacjeQueryObject(),
     DataUtworzeniaQueryObject(),
+    OstatnioZmieniony(),
+    OstatnioZmienionyDlaPBN(),
 
     RecenzowanaQueryObject(),
 
