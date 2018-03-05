@@ -5,6 +5,7 @@ from dal_select2_queryset_sequence.widgets import \
     QuerySetSequenceSelect2
 from queryset_sequence import QuerySetSequence
 
+from bpp.models import Rodzaj_Prawa_Patentowego
 from .core import RestrictDeletionToAdministracjaGroupAdmin, \
     RestrictDeletionToAdministracjaGroupMixin
 from ..models.nagroda import OrganPrzyznajacyNagrody
@@ -40,6 +41,7 @@ from .struktura import UczelniaAdmin, WydzialAdmin, JednostkaAdmin
 from .seria_wydawnicza import Seria_WydawniczaAdmin
 from .praca_doktorska import Praca_DoktorskaAdmin  # noqa
 from .praca_habilitacyjna import Praca_HabilitacyjnaAdmin  # noqa
+from .patent import Patent  # noqa
 
 # Proste tabele
 from bpp.models.openaccess import Tryb_OpenAccess_Wydawnictwo_Ciagle, Tryb_OpenAccess_Wydawnictwo_Zwarte, \
@@ -57,6 +59,7 @@ admin.site.register(Funkcja_Autora, RestrictDeletionToAdministracjaGroupAdmin)
 admin.site.register(Rodzaj_Zrodla, RestrictDeletionToAdministracjaGroupAdmin)
 admin.site.register(Status_Korekty, RestrictDeletionToAdministracjaGroupAdmin)
 admin.site.register(Zrodlo_Informacji, RestrictDeletionToAdministracjaGroupAdmin)
+admin.site.register(Rodzaj_Prawa_Patentowego, RestrictDeletionToAdministracjaGroupAdmin)
 
 admin.site.register(OrganPrzyznajacyNagrody,
                     RestrictDeletionToAdministracjaGroupAdmin)
@@ -302,34 +305,6 @@ admin.site.register(Zrodlo, ZrodloAdmin)
 
 # Bibliografia
 
-
-class Patent_Admin(AdnotacjeZDatamiMixin, Wydawnictwo_ZwarteAdmin_Baza):
-    inlines = (generuj_inline_dla_autorow(Patent_Autor),)
-
-    list_display = ['tytul_oryginalny', 'ostatnio_zmieniony']
-
-    search_fields = [
-        'tytul_oryginalny', 'szczegoly', 'uwagi', 'informacje',
-        'slowa_kluczowe', 'rok', 'adnotacje', 'id', ]
-
-    list_filter = ['status_korekty', 'recenzowana', ]
-
-    fieldsets = (
-        ('Patent', {
-            'fields':
-                ('tytul_oryginalny',)
-                + MODEL_ZE_SZCZEGOLAMI
-                + ('numer', 'z_dnia',)
-                + MODEL_Z_ROKIEM
-                + MODEL_Z_WWW
-        }),
-        MODEL_PUNKTOWANY_FIELDSET,
-        MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
-        POZOSTALE_MODELE_FIELDSET,
-        ADNOTACJE_Z_DATAMI_FIELDSET)
-
-
-admin.site.register(Patent, Patent_Admin)
 
 from django.contrib.auth.admin import UserAdmin
 

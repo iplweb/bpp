@@ -38,8 +38,35 @@ class Patent(RekordBPPBaza,
 
     tytul_oryginalny = models.TextField("Tytuł oryginalny", db_index=True)
 
-    numer = models.CharField(max_length=255, null=True, blank=True)
-    z_dnia = models.DateField(null=True, blank=True)
+    data_zgloszenia = models.DateField(
+        "Data zgłoszenia", null=True, blank=True)
+
+    numer_zgloszenia = models.CharField(
+        "Numer zgłoszenia", max_length=255, null=True, blank=True)
+
+    data_decyzji = models.DateField(
+        null=True, blank=True
+    )
+
+    numer_prawa_wylacznego = models.CharField(
+        "Numer prawa wyłącznego", max_length=255, null=True, blank=True
+    )
+
+    rodzaj_prawa = models.ForeignKey(
+        "bpp.Rodzaj_Prawa_Patentowego",
+        null=True, blank=True
+    )
+
+    wdrozenie = models.NullBooleanField(
+        "Wdrożenie",
+    )
+
+    wydzial = models.ForeignKey(
+        "bpp.Wydzial",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL)
+
     autorzy = models.ManyToManyField(Autor, through=Patent_Autor)
 
     def dodaj_autora(self, autor, jednostka, zapisany_jako=None,
