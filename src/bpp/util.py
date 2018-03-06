@@ -20,6 +20,10 @@ def get_fixture(name):
 
 def fulltext_tokenize(s):
     s = s.replace(":", "")\
+        .replace('*', "")\
+        .replace('"', "")\
+        .replace("'", "")\
+        .replace("&", "")\
         .replace("\\", "")\
         .replace("(", "")\
         .replace(")", "")\
@@ -33,21 +37,6 @@ class FulltextSearchMixin:
     fts_field = 'search'
 
     def fulltext_filter(self, qstr):
-        #
-        # def quotes(wordlist):
-        #     ret = []
-        #     for x in wordlist:
-        #         x = x.replace("\\", "").replace("&", "").replace("*", "")
-        #         x = x.strip()
-        #         x = adapt(x)
-        #         if x:
-        #             ret.append(x)
-        #     return ret
-        #
-        # def startswith(wordlist):
-        #     return [x + u":*" for x in quotes(wordlist)]
-
-
         def quotes(wordlist):
             ret = []
             for elem in wordlist:
