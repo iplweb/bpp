@@ -42,7 +42,7 @@ command={{ django_home_dir }}/vexec {{ django_venv_dir }}/bin/uwsgi
     --socket={{ django_home_dir }}/uwsgi.sock
     --processes={{ ansible_processor_cores }}
     --uid={{ django_user }} --gid={{ django_user }}
-    --harakiri=20
+    --harakiri=30
     --max-requests=40960
     --disable-logging
     --chmod-socket=666
