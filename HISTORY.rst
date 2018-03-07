@@ -2,8 +2,8 @@
 Historia zmian
 ==============
 
-dev
----
+1.0.15 (2018-03-07)
+-------------------
 
 * dodatkowe pole dla typu odpowiedzialności, umożliwiające mapowanie charakterów
   formalnych autorów na charaktery formalne dla PBN
@@ -12,6 +12,10 @@ dev
   numer zgłoszenia, data decyzji, numer prawa wyłącznego, wdrożenie.
 
 * impact factor dla Komisji Centralnej ma 3 pola po przecinku (poprzednio 2)
+
+* zmiana sposobu nawigacji na menu na górze ekranu,
+
+* wyszukiwanie zyskuje nową szatę graficzną i animacje.
 
 1.0.4 (2018-02-13)
 ------------------
