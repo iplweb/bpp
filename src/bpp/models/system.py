@@ -117,7 +117,8 @@ class Typ_Odpowiedzialnosci(NazwaISkrot):
         help_text="""Pole to jest używane celem rozróżniania typu odpowiedzialności
         na cele eksportu do PBN (autor i redaktor) oraz może być też wykorzystywane
         np. w raportach autorów i jednostek. 
-        """
+        """,
+        db_index=True
     )
     
     class Meta:
@@ -168,4 +169,12 @@ class Typ_KBN(NazwaISkrot):
         verbose_name = 'typ KBN'
         verbose_name_plural = 'typy KBN'
         ordering = ['nazwa']
+        app_label = 'bpp'
+
+
+class Rodzaj_Prawa_Patentowego(ModelZNazwa):
+    class Meta:
+        verbose_name = "rodzaj prawa patentowego"
+        verbose_name_plural = "rodzaje praw patentowych"
+        ordering = ['nazwa',]
         app_label = 'bpp'

@@ -1,13 +1,8 @@
 {% load i18n %}
 {% load pagination_tags %}
 
-{% load static %}
 {% load compress %}
 {% load prace %}
-
-{% compress js %}
-    <script src="{% static 'jinplace/js/jinplace.js' %}"></script>
-{% endcompress %}
 
 {% if request.user.is_anonymous %}
     {#    anonim #}
@@ -35,7 +30,7 @@
 <div style="padding: 10px;">
 
     {% if description %}
-        <div class="panel info hide-on-print">
+        <div class="callout secondary">
             <strong>Parametry
                 zapytania: </strong>{{ description|default:"brak"|safe }}
         </div>
@@ -52,7 +47,7 @@
         });
         </script>
         {% if not print_removed %}
-            <div class="panel info hide-on-print" id="panel-removed-by-hand">
+            <div class="callout info hide-for-print" id="panel-removed-by-hand">
                 Z zapytania usunięto ręcznie <span id="no-removed-recs">{{ removed_ids|length }}</span> rekord(ów).
                 <a id="pokaz-jakie" onclick="togglePokaz()">Pokaż, jakie.</a>
                 | <a onclick="return confirm('Czy na pewno dodać wszystkie ręcznie usunięte prace do wyników wyszukiwania ponownie?');" href="../reenable-removed-ids/">Kliknij tutaj, aby dodać je wszystkie do wyszukiwania z powrotem.</a>
@@ -80,7 +75,7 @@
 
             </div>
         {% else %}
-           <div class="panel info hide-on-print" id="panel-removed-by-hand">
+           <div class="callout info hide-for-print" id="panel-removed-by-hand">
            <strong>Wyświetlam listę rekordów usuniętych ręcznie z zapytania. </strong><p></p>
            <a href=".">Kliknij tutaj, aby wyświetlić wszystkie rekordy.</a>
             </div>
@@ -101,7 +96,7 @@
                         title="Kliknij, aby zmienić tytuł wyszukiwania"
                         id="edit-activator"
                         src= width="24"
-                        class="button tiny hide-on-print">
+                        class="button tiny hide-for-print">
                     edycja
                     </button>
 
@@ -308,10 +303,12 @@
 
 </div>
 
-{% if request.user.is_anonymous %}
-    {% include "multiseek/paginator.html" with max_rows=200 magellan="no" suffix="_object_list" %}
-{% else %}
-    {% include "multiseek/paginator.html" with max_rows=10000 magellan="no" %}
+{% if live != "1" and paginator.num_pages > 1 %}
+    {% if request.user.is_anonymous %}
+        {% include "multiseek/paginator.html" with max_rows=200 magellan="no" suffix="_object_list" %}
+    {% else %}
+        {% include "multiseek/paginator.html" with max_rows=10000 magellan="no" %}
+    {% endif %}
 {% endif %}
 
 <script type="text/javascript">

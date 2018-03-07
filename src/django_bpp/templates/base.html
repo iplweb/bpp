@@ -8,9 +8,6 @@
 {% block extrahead %}
     {{ block.super }}
 
-    {% load i18n %}
-    <script type="text/javascript" src="/bpp/jsi18n/?language={{LANGUAGE_CODE}}"></script>
-
     {% load session_security_tags %}
     {% load l10n %}
 
@@ -33,46 +30,50 @@
 {% block body %}
     {% if request.user.is_authenticated %}
 
-    <div id="messageTemplate" style="display: none;">{% verbatim messageTemplate %}
-        <div data-alert class="alert-box radius {{ cssClass }}{{^cssClass}}info{{/cssClass}}">
-            {{#clickURL}}<a href="{{ clickURL }}">{{/clickURL}}
-            {{{ text }}}
-            {{#clickURL}}</a>{{/clickURL}}
+        <div id="messageTemplate" style="display: none;">
+        {% verbatim messageTemplate %}
+        <div data-closable
+             data-url="{{closeURL}}"
+             class="ajax-on-close callout primary {{ cssClass }}{{^cssClass}}info{{/cssClass}}">
+        {{#clickURL}}
+        <a href="{{ clickURL }}">
+        {{/clickURL}}
+        {{{ text }}}
+        {{#clickURL}}</a>{{/clickURL}}
+            <button
+                type="button"
+                class="close-button"
+                aria-label="Zamknij powiadomienie"
+                data-close>
+             <span aria-hidden="true">&times;</span>
+             </button>
 
-            {{^hideCloseOption}}
-            {{#closeURL}}
-                <a href="{{{ closeURL }}}" class="{{ closeClass }}{{ ^closeClass }}close{{ /closeClass }}">
-            {{/closeURL}}
-            {{^closeURL}}
-                <a href="#" class="{{ closeClass }}{{ ^closeClass }}close{{ /closeClass }}">
-            {{/closeURL}}
-                {{{ closeText }}}{{ ^closeText }}&times;{{ /closeText }}
-            </a>
-            {{/hideCloseOption}}
-        </div>{% endverbatim messageTemplate %}
-    </div>
-{# fix pycharm highlighting #}
-        <script type="text/javascript" >
+        </div>
+        {% endverbatim messageTemplate %}
+        </div>
+        {# fix pycharm highlighting #}
+        <script type="text/javascript">
             {% load notifications %}
             {% uuid notifications_uuid %}
-            $(document).ready(function(){
+            $(document).ready(function () {
 
                 bppNotifications.init(
-                        '{{ NOTIFICATIONS_PUB_PREFIX }}-{{ request.user.username }}',
-                        '{{ NOTIFICATIONS_HOST }}',
-                        {{ NOTIFICATIONS_PORT|default:"window.location.port" }},
-                        null,
-                        "{{ notifications_uuid }}",
-                        "{% static "bpp/wav/alert.wav" %}"
+                    '{{ NOTIFICATIONS_PUB_PREFIX }}-{{ request.user.username }}',
+                    '{{ NOTIFICATIONS_HOST }}',
+                    {{ NOTIFICATIONS_PORT|default:"window.location.port" }},
+                    null,
+                    "{{ notifications_uuid }}",
+                    "{% static "bpp/wav/alert.wav" %}"
                 );
 
-                $(document).on('close.fndtn.alert', function(event) {
-{#                    if (event.namespace!='alert.fndtn') // https://github.com/zurb/foundation/issues/5482#}
-{#                        return;#}
-                    $.get($(event.target).find("a").last().attr("href"));
-
+                $(document).on('closed.zf', function (event) {
+                    if ($(event.target).hasClass("ajax-on-close")) {
+                        var url = $(event.target).data("url");
+                        if (url) {
+                            $.get(url);
+                        }
+                    }
                 });
-
 
                 {% if messages %}
                     {% load notifications %}
@@ -80,202 +81,204 @@
                         bppNotifications.addMessage({
                             cssClass: '{{ message.level|message_level_to_css_class }}',
                             clickURL: '{{ message.url }}',
-                        {% if message.pk %}
-                            closeURL: '{% url "messages_extends:message_mark_read" message.pk %}',
-                        {% endif %}
+                            {% if message.pk %}
+                                closeURL: '{% url "messages_extends:message_mark_read" message.pk %}',
+                            {% endif %}
                             pk: '{{ message.pk }}',
-                            text: '{{ message.message|just_single_quotes|safe }}'
+                            text: '{{ message.message|just_single_quotes|safe }}',
+                            sound: false
                         });
                     {% endfor %}
                 {% endif %}
 
             });
 
-
-
         </script>
     {% endif %}
 
-    {% load cache %}
-    {% cache 3600 topbar %}
-    <div class="row" id="topBar">
-        {% include "print-title.html" %}
-
-        <div class="hide-on-print">
-
-            <div class="large-2 medium-2 small-3 columns" style="text-align:center;">
-                <a href="/">
-                {% if uczelnia.logo_www %}
-                <img src="/media/{{ uczelnia.logo_www }}"
-                     alt="Logo {{ uczelnia.nazwa_dopelniacz }}"
-                />
-                {% else %}
-                <img src="{% static "bpp/svg/wydawnictwo_ciagle.svg" %}"
-                     alt="Logo BPP"
-                />
-                {% endif %}
-                </a>
-            </div>
-
-            <div class="large-10 medium-10 small-9 columns">
-                <h1><a href="/" style="color: #222222;">Bibliografia Publikacji
-                    Pracowników <br/>
-                    {{ uczelnia.nazwa_dopelniacz }}</a></h1>
-                {% block global-nav %}
-                    {% crispy global_nav_form %}
-
-                    <script type="text/javascript">
-                        $(document).ready(function () {
-                            $(':input[name$=global_nav_value]').on('change', function () {
-                                location.href = "/global-nav-redir/" + $(this).val() +
-                                    "/?source=user";
-                            });
-                        });
-                    </script>
-                    <br/>
-                {% endblock %}
-            </div>
-        </div>
-    </div>
-    {% endcache %}
-
-    <div class="row hide-on-print">
-        <ul class="breadcrumbs hide-for-small">
-            {% block breadcrumbs %}
-                <li><a href="/">Strona główna</a></li>
-            {% endblock %}
-        </ul>
+    <div class="title-bar" data-responsive-toggle="example-menu" data-hide-for="medium">
+        <button class="menu-icon" type="button" data-toggle="example-menu"></button>
+        <div class="title-bar-title">Menu</div>
     </div>
 
-    <div class="row">
-        <div class="large-10 medium-10 push-2 columns">
+    <div class="grid-container-fluid hide-for-print" data-sticky-container>
 
-            <div id="messagesPlaceholder"></div>
-
-            <div id="content">
-
-                {% load cookielaw_tags %}
-                {% cookielaw_banner %}
-
-                {% if password_change_required %}
-                    <p class='help'>Twoje hasło uległo przeterminowaniu. Proszę, zmień je używając formularza poniżej:</p>
-                    <form action="." method="post">{% csrf_token %}
-                        {% crispy form %}{% if next %}
-                            <input type="hidden" name="next" value="{{ next }}" />{% endif %}
-                    </form>
-                {% else %}
-                    {% block content %}
-                    {% endblock %}
-                {% endif %}
-            </div>
-        </div>
-
-        <div class="large-2 medium-2 pull-10 columns hide-on-print">
-            <ul class="side-nav">
-                <li><a href="{% url "multiseek:index" %}">wyszukiwanie</a>
-                </li>
-                <li class="divider"></li>
-                <li><a href="/">uczelnia</a></li>
-                <li><a href="{% url "bpp:browse_jednostki" %}">jednostki</a>
-                </li>
-                <li><a href="{% url "bpp:browse_autorzy" %}">autorzy</a>
-                </li>
-                <li><a href="{% url "bpp:browse_zrodla" %}">źródła</a></li>
-                <li class="divider"></li>
-
-                {% if uczelnia.pokazuj_raport_dla_komisji_centralnej == "always" or uczelnia.pokazuj_raport_dla_komisji_centralnej == "logged-in" and request.user.is_anonymous == False %}
+        <div class="top-bar stacked-for-medium hide-for-print" id="example-menu" data-sticky data-options="marginTop:0;"
+             style="width:100%;">
+            <div class="top-bar-left">
+                <ul class="dropdown menu" data-dropdown-menu>
+                    <li class="menu-text" style="cursor:pointer;"
+                        onclick="location.href='/';">
+                        BPP
+                    </li>
+                    <li><a href="{% url "multiseek:index" %}"><i class="fi-magnifying-glass"></i> szukaj</a>
+                    </li>
                     <li>
-                        <a href="{% url "bpp:raport_dla_komisji_centralnej" %}">raport
-                            dla Komisji Centralnej</a></li>
-                {% endif %}
-
-                {% load user_in_group %}
-
-                {% if ENABLE_NEW_REPORTS %}
-                    {% if uczelnia.pokazuj_raport_wydzialow == "always" or uczelnia.pokazuj_raport_wydzialow == "logged-in" and request.user.is_anonymous == False %}
-                        <li>
-                            <a href="{% url "nowe_raporty:wydzial_form" %}">
-                                raport wydziałów
-                            </a>
-                        </li>
-                    {% endif %}
-                    {% if uczelnia.pokazuj_raport_jednostek == "always" or uczelnia.pokazuj_raport_jednostek == "logged-in" and request.user.is_anonymous == False %}
-                        <li>
-                            <a href="{% url "nowe_raporty:jednostka_form" %}">
-                                raport jednostek
-                            </a>
-                        </li>
-                    {% endif %}
-                    {% if uczelnia.pokazuj_raport_autorow == "always" or uczelnia.pokazuj_raport_autorow == "logged-in" and request.user.is_anonymous == False %}
-                        <li>
-                            <a href="{% url "nowe_raporty:autor_form" %}">
-                                raport autorów
-                            </a>
-                        </li>
-                    {% endif %}
-                {% else %}
-                    {% if uczelnia.pokazuj_raport_jednostek == "always" or uczelnia.pokazuj_raport_jednostek == "logged-in" and request.user.is_anonymous == False %}
-                        <li>
-                            <a href="{% url "bpp:raport_jednostek_formularz" %}">raport
-                                jednostek</a></li>
-                    {% endif %}
-                    {% if uczelnia.pokazuj_raport_autorow == "always" or uczelnia.pokazuj_raport_autorow == "logged-in" and request.user.is_anonymous == False %}
-
-                        <li><a href="{% url "bpp:raport_autorow_formularz" %}">raport
-                            autorów</a></li>
-                    {% endif %}
-                {% endif %}
-
-                {% if uczelnia.pokazuj_ranking_autorow == "always" or uczelnia.pokazuj_ranking_autorow == "logged-in" and request.user.is_anonymous == False %}
-                    <li><a href="{% url "bpp:ranking_autorow_formularz" %}">ranking
-                        autorów</a></li>
-                {% endif %}
-
-                {% if not request.user.is_anonymous %}
-{#                <li><a href="{% url "eksport_pbn:wybor_wydzialu" %}">eksport PBN</a></li>#}
-                <li><a href="{% url "eksport_pbn:zamow" %}">eksport PBN</a></li>
-                {% endif %}
-
-                <li class="divider"></li>
-                {% if request.user.is_anonymous %}
-                    <li><a href="{% url "login_form" %}?next={{ request.get_full_path }}">zaloguj</a></li>
-                {% else %}
-
-                    <li><a target="_blank"
-                           href="{% url "admin:index" %}">redagowanie</a>
+                        <a href="#"><i class="fi-list"></i> przeglądaj</a>
+                        <ul class="menu vertical">
+                            <li><a href="/">uczelnia</a></li>
+                            <li><a href="{% url "bpp:browse_jednostki" %}">jednostki</a></li>
+                            <li><a href="{% url "bpp:browse_autorzy" %}">autorzy</a></li>
+                            <li><a href="{% url "bpp:browse_zrodla" %}">źródła</a></li>
+                        </ul>
                     </li>
+                    <li>
+                        <a href="#"><i class="fi-graph-trend"></i> raporty</a>
+                        <ul class="menu vertical">
+                            {% if uczelnia.pokazuj_raport_dla_komisji_centralnej == "always" or uczelnia.pokazuj_raport_dla_komisji_centralnej == "logged-in" and request.user.is_anonymous == False %}
+                                <li>
+                                    <a href="{% url "bpp:raport_dla_komisji_centralnej" %}">raport
+                                        dla Komisji Centralnej</a></li>
+                            {% endif %}
 
-                    {% if request.user|has_group:"wprowadzanie danych" %}
-                        <li><a href="{% url "integrator2:main" %}">import danych</a></li>
-{#                        TODO: później włączyć mpasternak 2017.1.17 #}
-{#                        <li><a href="{% url "egeria:main" %}">import osób</a></li>#}
+                            {% load user_in_group %}
+
+                            {% if ENABLE_NEW_REPORTS %}
+                                {% if uczelnia.pokazuj_raport_wydzialow == "always" or uczelnia.pokazuj_raport_wydzialow == "logged-in" and request.user.is_anonymous == False %}
+                                    <li>
+                                        <a href="{% url "nowe_raporty:wydzial_form" %}">
+                                            raport wydziałów
+                                        </a>
+                                    </li>
+                                {% endif %}
+                                {% if uczelnia.pokazuj_raport_jednostek == "always" or uczelnia.pokazuj_raport_jednostek == "logged-in" and request.user.is_anonymous == False %}
+                                    <li>
+                                        <a href="{% url "nowe_raporty:jednostka_form" %}">
+                                            raport jednostek
+                                        </a>
+                                    </li>
+                                {% endif %}
+                                {% if uczelnia.pokazuj_raport_autorow == "always" or uczelnia.pokazuj_raport_autorow == "logged-in" and request.user.is_anonymous == False %}
+                                    <li>
+                                        <a href="{% url "nowe_raporty:autor_form" %}">
+                                            raport autorów
+                                        </a>
+                                    </li>
+                                {% endif %}
+                            {% else %}
+                                {% if uczelnia.pokazuj_raport_jednostek == "always" or uczelnia.pokazuj_raport_jednostek == "logged-in" and request.user.is_anonymous == False %}
+                                    <li>
+                                        <a href="{% url "bpp:raport_jednostek_formularz" %}">raport
+                                            jednostek</a></li>
+                                {% endif %}
+                                {% if uczelnia.pokazuj_raport_autorow == "always" or uczelnia.pokazuj_raport_autorow == "logged-in" and request.user.is_anonymous == False %}
+
+                                    <li><a href="{% url "bpp:raport_autorow_formularz" %}">raport
+                                        autorów</a></li>
+                                {% endif %}
+                            {% endif %}
+
+                            {% if uczelnia.pokazuj_ranking_autorow == "always" or uczelnia.pokazuj_ranking_autorow == "logged-in" and request.user.is_anonymous == False %}
+                                <li><a href="{% url "bpp:ranking_autorow_formularz" %}">ranking
+                                    autorów</a></li>
+                            {% endif %}
+
+
+                        </ul>
+                    </li>
+                    {% if not request.user.is_anonymous %}
+                        <li>
+                            <a href="#">operacje</a>
+                            <ul class="menu vertical">
+                                <li><a href="{% url "eksport_pbn:zamow" %}">eksport PBN</a></li>
+                                {% if request.user|has_group:"wprowadzanie danych" %}
+                                    <li><a href="{% url "integrator2:main" %}">import danych</a></li>
+                                {% endif %}
+
+                                <li><a id="password-change-link" href="{% url "password_change" %}">zmiana hasła</a>
+                                </li>
+                                <li><a href="{% url "logout" %}">wyloguj</a></li>
+                            </ul>
+                        </li>
+
+                        <li><a target="_blank"
+                               href="{% url "admin:index" %}">redagowanie</a>
+                        </li>
+
                     {% endif %}
 
-                    <li><a id="password-change-link"
-                           href="{% url "password_change" %}">zmiana
-                        hasła</a>
-                    </li>
-                    <li class="divider"></li>
+                    {% if request.user.is_anonymous %}
+                        <li><a href="{% url "login_form" %}?next={{ request.get_full_path }}">
+                            <i class="fi-lock"></i>
+                            zaloguj</a></li>
+                    {% endif %}
 
-                    <li><a href="{% url "logout" %}">wyloguj</a></li>
-                {% endif %}
 
+                </ul>
+            </div>
+            <div class="top-bar-right">
+                <ul class="dropdown menu" data-dropdown-menu>
+                    {% block global-nav %}
+                        <li>
+                            {% crispy global_nav_form %}
+                            <script type="text/javascript">
+                                $(document).ready(function () {
+                                    $(':input[name$=global_nav_value]').on('change', function () {
+                                        location.href = "/global-nav-redir/" + $(this).val() +
+                                            "/?source=user";
+                                    });
+                                });
+                            </script>
+                        </li>
+                    {% endblock %}
+
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid-container">
+        {% block before-breadcrumbs %}{% endblock %}
+        <div class="grid-x hide-for-print hide-for-small-only">
+            <ul class="breadcrumbs" style="margin-top: 10px;">
+                {% block breadcrumbs %}
+                    <li><a href="/">Strona główna</a></li>
+                {% endblock %}
             </ul>
         </div>
-    </div>
-    <div class="hide-on-print">
-    <hr size="1" />
-    <small style="float: right;">
-        {% if not request.user.is_anonymous %}
-        zalogowany/a jako {{ request.user.username }} -
-        {% endif %}
-        wersja {% bpp_version %}&nbsp;&nbsp;</small>
+
+        <div class="grid-x">
+            <div class="large-12 cell">
+
+                <div id="messagesPlaceholder"></div>
+
+                <div id="content">
+                    {% if password_change_required %}
+                        <p class='help'>Twoje hasło uległo przeterminowaniu. Proszę, zmień je używając formularza
+                            poniżej:</p>
+                        <form action="." method="post">{% csrf_token %}
+                            {% crispy form %}{% if next %}
+                                <input type="hidden" name="next" value="{{ next }}"/>{% endif %}
+                        </form>
+                    {% else %}
+                        {% block content %}
+                        {% endblock %}
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="hide-for-print cell">
+                <hr size="1"/>
+                <small style="float: right;">
+                    {% if not request.user.is_anonymous %}
+                        zalogowany/a jako {{ request.user.username }} -
+                    {% endif %}
+                    Oprogramowanie <a href="http://bpp.iplweb.pl/">Bibliografia Publikacji Pracowników</a> &copy;
+                    2004-2018 <a href="http://iplweb.pl">IPLweb</a>; wersja {% bpp_version %}
+                </small>
+            </div>
+        </div>
+
+        {% load cookielaw_tags %}
+        {% cookielaw_banner %}
     </div>
 
+
+    {% load cache %}
     {% cache 3600 google %}
-    {% if GOOGLE_ANALYTICS_PROPERTY_ID %}
-    {% include "ga.html" %}
-    {% endif %}
+        {% if GOOGLE_ANALYTICS_PROPERTY_ID %}
+            {% include "ga.html" %}
+        {% endif %}
     {% endcache %}
 
 {% endblock %}

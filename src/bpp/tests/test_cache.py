@@ -135,8 +135,10 @@ class TestCacheMixin:
             del wspolne_dane[elem]
 
         self.p = mommy.make(
-            Patent, tytul_oryginalny='patent',
-            numer="100", z_dnia=datetime.date(2012, 1, 1),
+            Patent,
+            tytul_oryginalny='patent',
+            numer_zgloszenia="100",
+            data_decyzji=datetime.date(2012, 1, 1),
             **wspolne_dane)
 
         Patent_Autor.objects.create(

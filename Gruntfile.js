@@ -10,7 +10,8 @@ module.exports = function (grunt) {
             },
             dist: {
                 options: {
-                    outputStyle: 'compressed'
+                    outputStyle: 'compressed',
+		    loadPath: ['node_modules/foundation-sites/scss'],
                 },
                 files: {
                     'src/bpp/static/scss/app-blue.css':

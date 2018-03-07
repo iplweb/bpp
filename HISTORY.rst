@@ -8,6 +8,11 @@ dev
 * dodatkowe pole dla typu odpowiedzialności, umożliwiające mapowanie charakterów
   formalnych autorów na charaktery formalne dla PBN
 
+* nowe pola dla patentów: wydział, rodzaj prawa patentowego, data zgłoszenia,
+  numer zgłoszenia, data decyzji, numer prawa wyłącznego, wdrożenie.
+
+* impact factor dla Komisji Centralnej ma 3 pola po przecinku (poprzednio 2)
+
 1.0.4 (2018-02-13)
 ------------------
 

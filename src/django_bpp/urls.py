@@ -58,9 +58,6 @@ urlpatterns = [
     url(r'^nowe_raporty/',
         include('nowe_raporty.urls', namespace='nowe_raporty')),
 
-    # mpasternak 17.01.2017 TODO: włączyć później
-    # url(r'^egeria/', include('egeria.urls', namespace='egeria')),
-
     url(r'^bpp/', include('bpp.urls', namespace='bpp')),
 
     url(r'^multiseek/results/$',
@@ -123,8 +120,6 @@ urlpatterns = [
     url(r'^.*/jsi18n/$', javascript_catalog, js_info_dict),
 
     url(r'session_security/', include('session_security.urls')),
-
-    url(r'egeria/', include('egeria.urls')),
 
     url(r"^login/user/(?P<user_id>.+)/$", user_login, name="loginas-user-login"),
 

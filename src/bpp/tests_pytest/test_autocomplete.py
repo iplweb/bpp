@@ -2,6 +2,7 @@
 
 
 import pytest
+from django.urls import reverse
 from model_mommy import mommy
 
 from bpp.models.konferencja import Konferencja
@@ -33,15 +34,19 @@ VALUES = [
     "\\ 123",
     "123 \\",
 ]
-AUTOCOMPLETES = ["Autor", "Jednostka"]
+AUTOCOMPLETES = [
+    "bpp:public-autor-autocomplete",
+    "bpp:jednostka-widoczna-autocomplete"
+]
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("autocomplete_name", AUTOCOMPLETES)
 @pytest.mark.parametrize("qstr", VALUES)
 def test_autocomplete_bug_1(autocomplete_name, qstr, client):
-    client.get(
-        "/multiseek/autocomplete/%s/" % autocomplete_name,
-        data={'qstr': qstr})
+    res = client.get(
+        reverse(autocomplete_name),
+        data={'q': qstr})
+    assert res.status_code == 200
 
 
 @pytest.mark.django_db

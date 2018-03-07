@@ -1,4 +1,4 @@
-Django==1.11.8
+Django==1.11.10
 psycopg2==2.7.1
 
 django-flexible-reports==0.2.3
@@ -27,10 +27,10 @@ pyoai==2.5.0
 moai==2.0.0
 
 
-django-crispy-forms==1.6.1
-crispy-forms-foundation==0.3.5
+django-crispy-forms==1.7.0
+crispy-forms-foundation==0.6.4
 
-django-compressor==2.1.1
+django-compressor==2.2
 
 uwsgi==2.0.15
 
@@ -59,7 +59,7 @@ Pillow==4.0.0
 olefile==0.44
 
 django-grappelli==2.9.1
-django-multiseek==0.9.30
+django-multiseek==0.9.34
 djorm-ext-filtered-contenttypes==0.4.1
 
 django_braces==1.8.1

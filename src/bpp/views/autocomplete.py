@@ -113,6 +113,11 @@ class WydzialAutocomplete(NazwaLubSkrotMixin,
     qset = Wydzial.objects.all()
 
 
+class PublicWydzialAutocomplete(NazwaLubSkrotMixin,
+                                autocomplete.Select2QuerySetView):
+    qset = Wydzial.objects.filter(widoczny=True)
+
+
 class OrganPrzyznajacyNagrodyAutocomplete(NazwaMixin,
                                           autocomplete.Select2QuerySetView):
     qset = OrganPrzyznajacyNagrody.objects.all()
@@ -341,7 +346,6 @@ class ZapisanyJakoAutocomplete(autocomplete.Select2ListView):
             'text': text,
         })
 
-
     def create(self, text):
         return text
 
@@ -355,9 +359,9 @@ class ZapisanyJakoAutocomplete(autocomplete.Select2ListView):
             autor_id = int(autor)
             a = Autor.objects.get(pk=autor_id)
         except (KeyError, ValueError):
-            return ['Błąd. Wpisz poprawne dane w pole "Autor".',]
+            return ['Błąd. Wpisz poprawne dane w pole "Autor".', ]
         except Autor.DoesNotExist:
-            return ['Błąd. Wpisz poprawne dane w pole "Autor".',]
+            return ['Błąd. Wpisz poprawne dane w pole "Autor".', ]
         return list(set(list(
             warianty_zapisanego_nazwiska(a.imiona, a.nazwisko,
                                          a.poprzednie_nazwiska)

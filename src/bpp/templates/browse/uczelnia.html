@@ -6,26 +6,41 @@
 {% endblock %}
 
 {% block breadcrumbs %}
-    {{ block.super }}
-    <li class="current"><a href="#">Uczelnia</a></li>
 {% endblock %}
 
 {% block content %}
-    <div class="row">
+    <div class="grid-x grid-padding-x align-middle align-center">
+        {% if uczelnia.logo_www %}
+            <div class="large-4 medium-2 cell">
+                <img src="/media/{{ uczelnia.logo_www }}"
+                     alt="Logo {{ uczelnia.nazwa_dopelniacz }}"
+                />
+            </div>
+        {% endif %}
+        <div class="large-6 medium-10 cell">
+            <h2>
+                Bibliografia Publikacji Pracowników<br/>
+                {{ uczelnia.nazwa_dopelniacz }}
+            </h2>
+        </div>
+    <div class="large-12 cell">
+        <hr size="1"><br/>
+    </div>
+    </div>
+
+    <div class="grid-x grid-margin-x">
         {% if article %}
-            <div class="small-12 large-6 column">
+            <div class="small-12 large-6 cell">
                 <h2>{{ article.title }}</h2>
                 {% include "browse/go_to_admin_change.html" with group="web" url="admin:miniblog_article_change" pk=article.pk text="otwórz do edycji" %}
                 <p>opublikowano {{ article.published_on }}</p>
                 <p>{{ article.article_body.content|safe }}</p>
-            <a href="..">wstecz</a>
+                <a href="..">wstecz</a>
             </div>
         {% else %}
             {% if miniblog.exists or request.user.is_superuser or request.user|has_group:"web" %}
-                <div class="small-12 large-6 column">
+                <div class="small-12 large-6 cell">
                     <h2>Aktualności</h2>
-                    {% include "browse/go_to_admin_list.html" with group="web" url="admin:miniblog_article_changelist" %}
-                    {% include "browse/go_to_admin_list.html" with group="web" url="admin:miniblog_article_add" text="dodaj artykuł" %}
                     {% for article in miniblog %}
                         <h3><strong>{{ article.title }}</strong></h3>
                         <p>
@@ -39,21 +54,24 @@
                             </p>
                         {% endif %}
                     {% endfor %}
+                    {% include "browse/go_to_admin_list.html" with group="web" url="admin:miniblog_article_changelist" text="<i class='fi-wrench'></i> zarządzaj aktualnościami" %}
+                    {% include "browse/go_to_admin_list.html" with group="web" url="admin:miniblog_article_add" text="<i class='fi-page-add'></i> dodaj artykuł" %}
                 </div>
+
             {% endif %}
         {% endif %}
-        <div class="small-12 large-6 column">
+        <div class="small-12 large-6 cell">
 
             <h2>Wybierz wydział</h2>
-            {% include "browse/go_to_admin_list.html" with group="struktura" url="admin:bpp_wydzial_changelist" %}
-            {% include "browse/go_to_admin_change.html" with url="admin:bpp_uczelnia_change" pk=uczelnia.pk group="struktura" text="ustawienia dla Uczelni" %}
-    <ul class="no-bullet" style="line-height: 250%;">
-        {% for wydzial in uczelnia.wydzialy %}
-            <li>
-                <a href="{% url "bpp:browse_wydzial" wydzial.slug %}">{{ wydzial }}</a>
-            </li>
-        {% endfor %}
-    </ul>
+            <ul class="no-bullet" style="line-height: 250%;">
+                {% for wydzial in uczelnia.wydzialy %}
+                    <li>
+                        <a href="{% url "bpp:browse_wydzial" wydzial.slug %}">{{ wydzial }}</a>
+                    </li>
+                {% endfor %}
+            </ul>
+            {% include "browse/go_to_admin_list.html" with group="struktura" url="admin:bpp_wydzial_changelist" text="<i class='fi-wrench'></i> zarządzaj wydziałami" %}
+            {% include "browse/go_to_admin_change.html" with url="admin:bpp_uczelnia_change" pk=uczelnia.pk group="struktura" text="ustawienia dla uczelni" %}
         </div>
     </div>
 

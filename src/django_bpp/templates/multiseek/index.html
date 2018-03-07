@@ -17,31 +17,19 @@
         var multiseekDateWeekStart = 1;
     </script>
 
-    {% compress css %}
-    <link rel="stylesheet" href="{% static "multiseek/css/style.css" %}"/>
-    <link rel="stylesheet" href="{% static "foundation-datepicker/css/foundation-datepicker.css" %}" />
-    <link rel="stylesheet" href="{% static "font-awesome/css/font-awesome.min.css" %}" />
-    {% endcompress %}
-
-    {% compress js %}
-    <script src="{% static "foundation-datepicker/js/foundation-datepicker.js" %}"></script>
-
-    <script src="{% static "multiseek/js/multiseek.js" %}" type="text/javascript"></script>
-    {% endcompress %}
-
 {% endblock %}
 
 {% block breadcrumbs %}
     {{ block.super }}
-    <li class="current">Wyszukiwanie</li>
+    <li class="current">szukaj</li>
 {% endblock %}
 
 {% block content %}
 
-    <form >
+    <form>
         {% include "multiseek/multiseek_fields.html" %}
-        <div class="row">
-            <div class="large-3 columns">
+        <div class="grid-x grid-margin-x">
+            <div class="large-3 medium-3 cell">
 
                 <label for="id_report_type">Rodzaj raportu:</label>
 
@@ -60,13 +48,13 @@
             </div>
 
             {% for element in order_boxes %}
-                <div class="large-3 columns">
+                <div class="large-3 medium-6 cell">
                     <label for="id_ordering_{{ forloop.counter0 }}">
                         {{ element }}
                     </label>
 
-                    <div class="row">
-                        <div class="large-8 small-8 columns">
+                    <div class="grid-x align-center-middle">
+                        <div class="large-8 small-8 cell">
                             <select name="{{ MULTISEEK_ORDERING_PREFIX }}{{ forloop.counter0 }}"
                                     class="multiseek-ordering"
                                     id="id_ordering_{{ forloop.counter0 }}">
@@ -77,12 +65,12 @@
 
                         </div>
 
-                        <div class="large-4 small-4 columns">
+                        <div class="large-4 small-4 cell">
                             <input type="checkbox"
                                    id="{{ MULTISEEK_ORDERING_PREFIX }}{{ forloop.counter0 }}_dir"
                                    name="{{ MULTISEEK_ORDERING_PREFIX }}{{ forloop.counter0 }}_dir"
                                    value="1"><label for="{{ MULTISEEK_ORDERING_PREFIX }}{{ forloop.counter0 }}_dir">malejąco
-                            </label>
+                        </label>
                         </div>
 
 
@@ -109,44 +97,51 @@
 
         </div>
 
-        <div class="row">
-            <div class="large-8 large-centered columns">
+        <div class="grid-x align-center-middle">
+            <div class="cell button-group">
 
-                <button class="small"
+                <button type="button" class="button success"
                         onclick="submitEventMine(this);return false;"
                         id="multiseek-szukaj">
-                    Szukaj
+                    <i class="fi-magnifying-glass"></i> Wyświetl wyniki wyszukiwania
                 </button>
 
-                <button class="small" onclick="submitEvent(this); return false;"
+                <button type="button" class="button" onclick="submitEvent(this); return false;"
                         id="sendQueryButton">
-                    Odśwież
+                    <i class="fi-refresh"></i> Odśwież podgląd
                 </button>
 
-                <button class="small" onclick="resetMultiseekTitle(this); return false;"
+                <button type="button" class="button alert" onclick="if (confirm('Czy na pewno? Zatwierdzenie tej opcji spowoduje zresetowanie formularza do stanu wyjściowego.')) { resetMultiseekTitle(this); return false; }"
                         id="resetFormButton">
-                    Kasuj formularz
+                    <i class="fi-x"></i> Resetuj formularz
                 </button>
 
                 {% if user_allowed_to_save_forms %}
-                    <button class="small" onclick="saveForm(this);return false;"
+                    <button class="button warning" type="button" onclick="saveForm(this);return false;"
                             id="saveFormButton">
-                        Zapisz formularz
+                        <i class="fi-save"></i> Zapisz formularz
                     </button>
                 {% endif %}
 
                 {% if saved_forms %}
-                    <a class="button small" href="#" data-dropdown="drop2">Wczytaj</a>
-                    <ul id="drop2" class="f-dropdown content"
-                        data-dropdown-content>
-                        {% for form in saved_forms %}
+                    <button type="button" class="secondary dropdown button" data-toggle="multiseek-form-menu" href="#"
+                            data-dropdown="drop2">
+                        <i class="fi-upload"></i> Wczytaj formularz</a>
+                    </button>
 
-                            <li>
-                                <a href="#"
-                                   onclick="location.href = multiseek.LOAD_FORM_URL + {{ form.pk }}">{{ form }}</a>
-                            </li>
-                        {% endfor %}
-                    </ul>
+                    <div class="dropdown-pane" id="multiseek-form-menu" data-dropdown>
+                        <ul class="no-bullet">
+                            {% for form in saved_forms %}
+                                <li>
+                                    <a href="#"
+                                       onclick="location.href = multiseek.LOAD_FORM_URL + {{ form.pk }}">{{ form }}</a>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+
+
+
                 {% endif %}
             </div>
         </div>
@@ -182,29 +177,26 @@
 
         </script>
     </form>
-
     <hr size="1"/>
     <iframe src="./live-results/" width="100%" id="if"
             name="list_frame" frameborder="0" scroll="no" scrolling="no"
-            height="300">
+            height="400" onload="resizeIframe(this)">
     </iframe>
     <script type="text/javascript">
-        iFrameResize({
-            heightCalculationMethod: 'bodyScroll',
-            messageCallback         : function(messageData){ // Callback fn when message is received
-					alert(messageData.message);
-				}});
 
-    function resetMultiseekTitle(form){
-        $.ajax({
-            method: 'POST',
-            url: '{% url 'bpp:update_multiseek_title' %}',
-            data: {'value': ''},
-            success: function(){
-                return resetForm(form);
-            }
-        });
-    }
+        function resizeIframe(obj) {
+            obj.style.height = obj.contentWindow.document.body.scrollHeight + 'px';
+        }
+        function resetMultiseekTitle(form) {
+            $.ajax({
+                method: 'POST',
+                url: '{% url 'bpp:update_multiseek_title' %}',
+                data: {'value': ''},
+                success: function () {
+                    return resetForm(form);
+                }
+            });
+        }
     </script>
 
 {% endblock %}

@@ -11,8 +11,8 @@
 
 {% load humanize %}
 {% block content %}
-    <div class="row">
-        <div class="large-6 columns">
+    <div class="grid-x">
+        <div class="large-6 small-12 cell">
             <h1>Wybór wydziału</h1>
             {% for wydzial in object_list %}
                 <h3>{{ wydzial }}</h3>
@@ -23,7 +23,7 @@
                 </div>
             {% endfor %}
         </div>
-        <div class="large-6 columns">
+        <div class="large-6 small-12 cell">
             <h1>Ostatnio wygenerowano</h1>
             <ul>
                 {% for plik in ostatnie_raporty %}

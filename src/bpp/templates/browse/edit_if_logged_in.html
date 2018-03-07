@@ -1,5 +1,5 @@
 {% if request.user.is_staff %}
-    <div class="panel hide-on-print">
-        <a target="_blank" href="{% url url pk %}">otwórz do edycji</a>
+    <div class="callout warning hide-for-print">
+        <a target="_blank" href="{% url url pk %}"><i class="fi-page-edit"></i> otwórz do edycji</a>
     </div>
 {% endif %}

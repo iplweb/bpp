@@ -187,7 +187,6 @@ INSTALLED_APPS = [
     'notifications',
     'integrator2',
 
-    'egeria',
     'eksport_pbn',
     'nowe_raporty',
 
@@ -316,9 +315,6 @@ MOMMY_CUSTOM_FIELDS_GEN = {
     'autoslug.fields.AutoSlugField': autoslug_gen
 }
 
-CRISPY_ALLOWED_TEMPLATE_PACKS = ('foundation-5',)
-CRISPY_TEMPLATE_PACK = 'foundation-5'
-
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTOCOL', 'https')
 
 MAT_VIEW_REFRESH_COUNTDOWN = 30
@@ -332,6 +328,10 @@ STATIC_ROOT = os.path.join(SCRIPT_PATH, "..", "staticroot")
 
 
 COMPRESS_ROOT = STATIC_ROOT
+COMPRESS_OFFLINE_CONTEXT = [
+    {'THEME_NAME': 'scss/app-blue.css', 'STATIC_URL': STATIC_URL, 'LANGUAGE_CODE': 'pl'},
+    {'THEME_NAME': 'scss/app-green.css', 'STATIC_URL': STATIC_URL, 'LANGUAGE_CODE': 'pl'},
+]
 
 # Domyslnie, redis na Ubuntu pozwala na 16 baz danych
 REDIS_DB_BROKER = 1
@@ -523,3 +523,16 @@ STATICSITEMAPS_ROOT_SITEMAP = 'django_bpp.sitemaps.django_bpp_sitemaps'
 
 # dla django-model-utils SplitField
 SPLIT_MARKER = '<!-- tutaj -->'
+
+# django-crispy-forms: użyj crispy-forms-foundation
+
+CRISPY_ALLOWED_TEMPLATE_PACKS = (
+    'foundation-6'
+)
+
+CRISPY_TEMPLATE_PACK = 'foundation-6'
+
+CRISPY_CLASS_CONVERTERS = {
+    'inputelement': None,
+    'errorcondition': 'is-invalid-input',
+}

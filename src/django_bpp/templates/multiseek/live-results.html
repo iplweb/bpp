@@ -4,18 +4,6 @@
 {% load staticfiles %}
 {% load static %}
 
-{% block extrahead %}
-
-    <link rel="stylesheet" href="{% static "multiseek/css/style.css" %}"/>
-
-    {% compress js %}
-    <script src="{% static 'jqueryui/jquery-ui.min.js' %}"></script>
-    <script src="{% static "multiseek/js/multiseek.js" %}" type="text/javascript"></script>
-    <script type="text/javascript" src="{% static "bpp/js/bpp.js" %}"></script>
-    <script type="text/javascript" src="{% static 'iframe-resizer/js/iframeResizer.contentWindow.min.js' %}"></script>
-    {% endcompress %}
-{% endblock %}
-
 {% block extratitle %}
     Rezultat wyszukiwania
 {% endblock %}
