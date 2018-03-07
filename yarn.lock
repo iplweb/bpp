@@ -1061,10 +1061,6 @@ iconv-lite@~0.4.13:
   version "0.4.19"
   resolved "https://registry.yarnpkg.com/iconv-lite/-/iconv-lite-0.4.19.tgz#f7468f60135f5e5dad3399c0a81be9a1603a082b"
 
-iframe-resizer@2.8.10:
-  version "2.8.10"
-  resolved "https://registry.yarnpkg.com/iframe-resizer/-/iframe-resizer-2.8.10.tgz#c95acdba1700226eeddb22f29d5bf47c9c4d407b"
-
 in-publish@^2.0.0:
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/in-publish/-/in-publish-2.0.0.tgz#e20ff5e3a2afc2690320b6dc552682a9c7fadf51"
