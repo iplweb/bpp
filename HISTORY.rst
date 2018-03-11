@@ -2,6 +2,13 @@
 Historia zmian
 ==============
 
+dev
+---
+
+* błąd wyświetlania strony w przeglądarce Edge został naprawiony,
+
+* data ostatniej modyfikacji dla PBN wyświetla się dla zalogowanych użytkowników
+
 1.0.15 (2018-03-07)
 -------------------
 
