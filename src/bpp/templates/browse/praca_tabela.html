@@ -235,5 +235,15 @@
             {{ praca.ostatnio_zmieniony }}
         </td>
     </tr>
+    {% if request.user.is_authenticated %}
+    <tr>
+        <th>
+            Rekord zaktualizowany dla PBN:
+        </th>
+        <td>
+            {{ praca.ostatnio_zmieniony_dla_pbn }}
+        </td>
+    </tr>
+    {% endif %}
 
 </table>
