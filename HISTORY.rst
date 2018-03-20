@@ -2,8 +2,8 @@
 Historia zmian
 ==============
 
-dev
----
+1.0.16 (2018-03-20)
+-------------------
 
 * błąd wyświetlania strony w przeglądarce Edge został naprawiony,
 
