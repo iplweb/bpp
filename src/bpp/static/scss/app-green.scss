@@ -1,7 +1,9 @@
 @import "settings_green";
+// $primary-color: #1E90F3;
 @import "common";
 @import "checkbox";
-@import "foundation";
+@import 'foundation';
+
 @include foundation-global-styles;
 @include foundation-xy-grid-classes;
 @include foundation-grid;
@@ -43,7 +45,6 @@
 @include foundation-visibility-classes;
 @include foundation-float-classes;
 
-
 $info-color: #DEF3B6;
 
 input[type=checkbox]:checked + label {
@@ -51,8 +52,12 @@ input[type=checkbox]:checked + label {
   background-position: 0 -15px;
 }
 
-
 .ui-state-focus {
   background: $primary-color !important;
   border: 1px white !important;
+}
+
+.select2-results__option--highlighted {
+  background: darkgreen !important;
+  color: white;
 }

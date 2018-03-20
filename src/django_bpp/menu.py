@@ -27,6 +27,7 @@ SYSTEM_MENU = [
     ('Organy przyznające nagrody', '/admin/bpp/organprzyznajacynagrody/'),
 
     ('Rodzaje źródeł', '/admin/bpp/rodzaj_zrodla/'),
+    ('Rodzaje praw patentowych', '/admin/bpp/rodzaj_prawa_patentowego/'),
     ('Statusy korekt', '/admin/bpp/status_korekty/'),
     ('Typy KBN', '/admin/bpp/typ_kbn/'),
     ('Typy odpowiedzialności', '/admin/bpp/typ_odpowiedzialnosci/'),
