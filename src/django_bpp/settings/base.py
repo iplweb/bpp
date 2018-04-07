@@ -519,6 +519,7 @@ PUNKTUJ_MONOGRAFIE = bool(int(os.getenv(
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 
 STATICSITEMAPS_ROOT_SITEMAP = 'django_bpp.sitemaps.django_bpp_sitemaps'
+STATICSITEMAPS_REFRESH_AFTER = 24 * 60
 
 
 # dla django-model-utils SplitField
