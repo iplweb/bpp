@@ -16,6 +16,7 @@ from bpp.lookups import SearchQueryStartsWith
 from bpp.models import Jednostka
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
+from bpp.models.const import GR_WPROWADZANIE_DANYCH
 from bpp.models.konferencja import Konferencja
 from bpp.models.nagroda import OrganPrzyznajacyNagrody
 from bpp.models.patent import Patent, Patent_Autor
@@ -162,7 +163,7 @@ class AutorAutocompleteBase(autocomplete.Select2QuerySetView):
 
 class AutorAutocomplete(GroupRequiredMixin, AutorAutocompleteBase):
     create_field = 'nonzero'
-    group_required = 'wprowadzanie danych'
+    group_required = GR_WPROWADZANIE_DANYCH
 
     def create_object(self, text):
         text = text.split(" ", 1)

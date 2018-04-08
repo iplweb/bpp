@@ -34,6 +34,7 @@ from bpp.models.profile import BppUser
 from bpp.models.seria_wydawnicza import Seria_Wydawnicza
 from bpp.models.struktura import Jednostka_Wydzial
 from bpp.models.system import Charakter_PBN
+from bpp.models.const import GR_WPROWADZANIE_DANYCH
 from flexible_reports import models as flexible_models
 
 User = get_user_model()
@@ -54,7 +55,7 @@ groups = {
 
     ],
     'struktura': [Uczelnia, Wydzial, Jednostka, Jednostka_Wydzial],
-    'wprowadzanie danych': [
+    GR_WPROWADZANIE_DANYCH: [
         Zrodlo, Autor, Wydawnictwo_Ciagle, Wydawnictwo_Zwarte,
         Punktacja_Zrodla, Wydawnictwo_Ciagle_Autor,
         Wydawnictwo_Zwarte_Autor, Autor_Jednostka, Redakcja_Zrodla,

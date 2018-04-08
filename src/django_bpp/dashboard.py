@@ -16,6 +16,8 @@ from django.core.urlresolvers import reverse
 from admin_tools.dashboard import modules, Dashboard, AppIndexDashboard
 from admin_tools.utils import get_admin_site_name
 
+from bpp.models.const import GR_WPROWADZANIE_DANYCH
+
 
 class CustomIndexDashboard(Dashboard):
     def init_with_context(self, context):
@@ -50,7 +52,7 @@ class CustomIndexDashboard(Dashboard):
                 )
             )
 
-        if user.groups.filter(name="wprowadzanie danych"):
+        if user.groups.filter(name=GR_WPROWADZANIE_DANYCH):
             self.children.append(
             modules.ModelList(
                 "Wprowadzanie danych",
