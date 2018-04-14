@@ -11,6 +11,7 @@ pytest-cov==2.5.1
 pytest-localserver==0.3.6
 pytest-splinter==1.8.5
 pytest-pythonpath==0.7.1
+pytest-mock==1.9.0
 splinter==0.7.7
 selenium==3.9.0
 
