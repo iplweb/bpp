@@ -1,10 +1,92 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>$Title$</title>
-</head>
-<body>
-$END$
-</body>
-</html>
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block extratitle %}
+    Import dyscyplin naukowych
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="../../">import dyscyplin</a></li>
+    <li class="current">import pliku {{ object.plik }} dla roku {{ object.rok }}</li>
+{% endblock %}
+
+
+{% block content %}
+    <h2>Import dyscyplin</h2>
+    <h3>Plik wejściowy: {{ object.plik }}</h3>
+    Utworzono: {{ object.created }}.<br/>
+    Ostatnia zmiana: {{ object.modified }}<br/>
+    <p>
+        <script type="text/javascript">
+            function usunImport() {
+                if (confirm('Czy na pewno usunąć ten plik z systemu?'))
+                    location.href = "{% url "import_dyscyplin:usun" object.pk %}";
+            }
+        </script>
+        <button class="button warning small" onclick="usunImport()">
+            <i class="fi-page-remove"></i> usuń plik
+        </button>
+    </p>
+
+    {% if object.stan == "nowy" %}
+        Plik został dodany do systemu i będzie analizowany za chwilę.
+
+
+        <div class="reveal" id="modal1" data-reveal>
+            <h1>Przetwarzanie danych</h1>
+            <p class="lead">Poproszę o dwie chwile cierpliwości...</p>
+            <p>W tym momencie do serwera wysyłane zostaje zadanie przetwarzania pliku. Gdy
+                przetwarzanie zakończy się, ta strona zostanie odświeżona.</p>
+            <p>Prosimy, pozostań na tej stronie. </p>
+            <button class="close-button" data-close aria-label="Zamknij okienko" type="button">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+
+        <script type="text/javascript">
+            $(document).ready(function () {
+                $("#modal1").foundation('open');
+                $.ajax({
+                    url: "{% url "import_dyscyplin:przetwarzaj" object.pk %}",
+                    method: "GET",
+                    data: {"web_page_uid": bppNotifications.messageCookieId}
+                });
+            });
+        </script>
+
+    {% endif %}
+
+    {% if object.stan == "błędny" %}
+        {% if notification == "1" %}
+            <div class="flash-on-notification">
+        {% endif %}
+    Wystąpił błąd podczas analizy pliku - {{ object.info }}.
+    {% if notification == "1" %}
+        </div>
+    {% endif %}
+    {% endif %}
+
+    {% if object.stan == "przeanalizowany" %}
+        TODO: live-tabela z rekordami zintegrowanymi i niezintegrowanymi.
+    {% endif %}
+
+    <script type="text/javascript">
+        $(document).ready(function () {
+            var original_color = $('div.flash-on-notification').css('background-color');
+            $('div.flash-on-notification')
+                .animate({'background-color': 'green'}, 300, 'linear')
+                .delay(200)
+                .animate({'background-color': original_color}, 300, 'easeOutCirc')
+                .delay(200)
+                .animate({'background-color': 'green'}, 300, 'linear')
+                .delay(200)
+                .animate({'background-color': original_color}, 300, 'easeOutCirc')
+                .delay(200)
+                .animate({'background-color': 'green'}, 300, 'linear')
+                .delay(200)
+                .animate({'background-color': original_color}, 300, 'easeOutCirc')
+                .delay(200);
+        });
+    </script>
+{% endblock %}

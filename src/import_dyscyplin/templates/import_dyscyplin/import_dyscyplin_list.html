@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block extratitle %}
+    Import dyscyplin naukowych
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li class="current">import dyscyplin</li>
+{% endblock %}
+
+
+{% block content %}
+    <h2>Import dyscyplin
+        <a class="button success small" href="./create">
+            <i class="fi-page-add"></i>
+            dodaj nowy plik
+        </a>
+    </h2>
+
+    <br/>
+    {% if object_list.exists %}
+        <p>
+            Poniżej znajduje się lista plików zaimportowanych przez Ciebie do systemu wraz z
+            ich obecnym stanem oraz datą ostatnich zmian.
+        </p>
+        <ul>
+            {% for object in object_list %}
+                <li>
+                    <a href="{% url "import_dyscyplin:detail" object.pk %}">
+                        plik <strong>{{ object.plik.name }}</strong>
+                        {{ object.plik.size|filesizeformat }}
+                        zmodyfikowany {{ object.modified }}
+                    </a> - stan analizy:
+                    {{ object.stan }}{% if object.stan == "błędny" %} ({{ object.info }}){% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        Brak informacji o importowanych plikach z danymi dyscyplin w systemie.
+    {% endif %}
+
+{% endblock %}
