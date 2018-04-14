@@ -74,7 +74,8 @@ $PYTEST \
 	src/integration_tests \
 	src/integrator2/tests \
 	src/bpp/tests_pytest \
-	src/nowe_raporty/tests.py
+	src/nowe_raporty/tests.py \
+	src/import_dyscyplin/tests
 
 stellar restore $GIT_BRANCH_NAME
 
