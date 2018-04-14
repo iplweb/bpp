@@ -56,7 +56,7 @@
             {% load notifications %}
             {% uuid notifications_uuid %}
             $(document).ready(function () {
-
+                // tests_need_this:messageCookieID:{{ notifications_uuid }}:
                 bppNotifications.init(
                     '{{ NOTIFICATIONS_PUB_PREFIX }}-{{ request.user.username }}',
                     '{{ NOTIFICATIONS_HOST }}',
