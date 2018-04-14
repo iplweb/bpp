@@ -82,6 +82,5 @@ def send_redirect(username, redirect_url,  messageCookieId, ignore_proxy_setting
     if ignore_proxy_settings:
         session.trust_env = False
 
-    res = session.post(url=url, data=data)
+    return session.post(url=url, data=data)
 
-    return HttpResponseRedirect(redirect_url)
