@@ -196,7 +196,11 @@ INSTALLED_APPS = [
     'webmaster_verification',
     'favicon',
 
-    'miniblog'
+    'miniblog',
+
+    'import_dyscyplin',
+
+    'mptt'
 
 ]
 
