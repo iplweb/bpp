@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load humanize %}
+{% load humanize staticfiles %}
 
 {% block extratitle %}
     Import dyscyplin naukowych
@@ -13,13 +13,15 @@
 
 {% block content %}
     <h2>Import dyscyplin
-        <a class="button success small" href="./create">
+        <a class="button success" id="add-new-file" href="./create">
             <i class="fi-page-add"></i>
             dodaj nowy plik
         </a>
+        <a class="button secondary" id="download-example-file" href="{% static "import_dyscyplin/xlsx/default.xlsx" %}">
+            <i class="fi-page-edit"></i>
+            pobierz plik wzorcowy
+        </a>
     </h2>
-
-    <br/>
     {% if object_list.exists %}
         <p>
             Poniżej znajduje się lista plików zaimportowanych przez Ciebie do systemu wraz z
@@ -33,7 +35,7 @@
                         {{ object.plik.size|filesizeformat }}
                         zmodyfikowany {{ object.modified }}
                     </a> - stan analizy:
-                    {{ object.stan }}{% if object.stan == "błędny" %} ({{ object.info }}){% endif %}
+                    <strong>{{ object.stan }}</strong>
                 </li>
             {% endfor %}
         </ul>
