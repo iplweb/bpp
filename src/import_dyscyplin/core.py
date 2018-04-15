@@ -105,7 +105,6 @@ def przeanalizuj_plik_xls(sciezka, parent):
 
         del original['pesel']
 
-
         wydzial = wydzial_cache.get(original['wydział'])
         if not wydzial:
             wydzial = wydzial_cache[original['wydział']] = matchuj_wydzial(original['wydział'])
@@ -126,7 +125,9 @@ def przeanalizuj_plik_xls(sciezka, parent):
             original=original,
             nazwisko=original['nazwisko'],
             imiona=original['imię'],
+            nazwa_jednostki=original['nazwa_jednostki'],
             jednostka=jednostka,
+            nazwa_wydzialu=original['wydział'],
             wydzial=wydzial,
             autor=autor,
             info=info,

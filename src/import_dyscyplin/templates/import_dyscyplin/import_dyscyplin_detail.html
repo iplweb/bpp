@@ -63,7 +63,9 @@
         {% if notification == "1" %}
             <div class="flash-on-notification">
         {% endif %}
-    <p>Wystąpił błąd podczas analizy pliku - {{ object.info }}.</p>
+    <p>Wystąpił błąd podczas analizy pliku.
+    <pre>
+{{ object.info }}</pre>.</p>
     {% if notification == "1" %}
         </div>
     {% endif %}
@@ -72,15 +74,24 @@
     {% if object.stan == "przeanalizowany" or object.stan == "zintegrowany" %}
 
         <ul class="tabs" data-tabs id="example-tabs">
-            <li class="tabs-title {% if object.stan == "przeanalizowany" and object.poprawne_wiersze.exist %}is-active{% endif %}">
-                <a href="#panel1" aria-selected="true">Rekordy do integracji
-                    ({{ object.poprawne_wiersze_do_integracji.count }})</a></li>
-            <li class="tabs-title {% if object.stan == "przeanalizowany" and not object.poprawne_wiersze.exist %}is-active{% endif %}">
-                <a data-tabs-target="panel2" href="#panel2">Rekordy nie do integracji
-                    ({{ object.niepoprawne_wiersze.count }})</a></li>
+            <li class="tabs-title {% if object.stan == "przeanalizowany" and object.poprawne_wiersze_do_integracji.count > 0 %}is-active{% endif %}">
+                <a href="#panel1" aria-selected="true">
+                    Rekordy do integracji
+                    ({{ object.poprawne_wiersze_do_integracji.count }})
+                </a>
+            </li>
+            <li class="tabs-title {% if object.stan == "przeanalizowany" and object.poprawne_wiersze_do_integracji.count == 0 %}is-active{% endif %}">
+                <a data-tabs-target="panel2" href="#panel2">
+                    Rekordy nie do integracji
+                    ({{ object.niepoprawne_wiersze.count }})
+                </a>
+            </li>
             <li class="tabs-title {% if object.stan == "zintegrowany" %}is-active{% endif %}">
-                <a data-tabs-target="panel3" href="#panel2">Rekordy zintegrowane
-                    ({{ object.zintegrowane_wiersze.count }})</a></li>
+                <a data-tabs-target="panel3" href="#panel2">
+                    Rekordy zintegrowane
+                    ({{ object.zintegrowane_wiersze.count }})
+                </a>
+            </li>
         </ul>
 
         <script type="text/javascript">
@@ -96,10 +107,10 @@
             }</script>
 
         <div class="tabs-content" data-tabs-content="example-tabs">
-            <div class="tabs-panel {% if object.stan == "przeanalizowany" and object.poprawne_wiersze.exist %}is-active{% endif %}"
+            <div class="tabs-panel {% if object.stan == "przeanalizowany" and object.poprawne_wiersze_do_integracji.count > 0 %}is-active{% endif %}"
                  id="panel1">
                 <h2>Rekordy do integracji - rok {{ object.rok }}
-                    {% if object.stan == "przeanalizowany" and object.poprawne_wiersze.exist %}
+                    {% if object.poprawne_wiersze_do_integracji.count > 0 and object.stan == "przeanalizowany" %}
                         <button class="button secondary" onclick="zintegruj()">
                             <i class="fi-arrows-in"></i> zintegruj dane
                         </button>
@@ -119,10 +130,14 @@
 
 
             </div>
-            <div class="tabs-panel {% if object.stan == "przeanalizowany" and not object.poprawne_wiersze.exist %}is-active{% endif %}"
+            <div class="tabs-panel {% if object.stan == "przeanalizowany" and object.poprawne_wiersze_do_integracji.count == 0 %}is-active{% endif %}"
                  id="panel2">
                 <h2>Rekordy nie do integracji</h2>
                 <strong>Przyczyny</strong>:
+                <a href="#"
+                   onclick="$('#nie_do_integracji_filter input').val('').trigger('paste'); return false">
+                    wszystkie ({{ object.niepoprawne_wiersze.count }})
+                </a> |
                 {% for elem in object.niepoprawne_wiersze_przyczyny %}
                     <a href="#"
                        onclick="$('#nie_do_integracji_filter input').val('{{ elem.info }}').trigger('paste'); return false">
@@ -148,6 +163,17 @@
 
             <div class="tabs-panel {% if object.stan == "zintegrowany" %}is-active{% endif %}" id="panel3">
                 <h2>Rekordy zintegrowane</h2>
+                <strong>Rezultaty</strong>:
+                <a href="#"
+                   onclick="$('#zintegrowane_filter input').val('').trigger('paste'); return false">
+                    wszystko ({{ object.zintegrowane_wiersze.count }})
+                </a> |
+                {% for elem in object.zintegrowane_wiersze_przyczyny %}
+                    <a href="#"
+                       onclick="$('#zintegrowane_filter input').val('{{ elem.info }}').trigger('paste'); return false">
+                        {{ elem.info|truncatechars:"50"  }} ({{ elem.icount }})
+                    </a> |
+                {% endfor %}
 
                 <table id="zintegrowane" width="100%">
                     <thead>
@@ -168,6 +194,7 @@
         <script type="text/javascript">
             $(document).ready(function () {
                 $('#do_integracji').DataTable({
+                    "serverSide": true,
                     "ajax": "{% url "import_dyscyplin:api_do_integracji" object.pk %}",
                     "columns": [
                         {"data": "dopasowanie_autora"},
@@ -179,6 +206,7 @@
                 });
 
                 $('#nie_do_integracji').DataTable({
+                    "serverSide": true,
                     "ajax": "{% url "import_dyscyplin:api_nie_do_integracji" object.pk %}",
                     "columns": [
                         {"data": "nazwisko"},
@@ -192,6 +220,7 @@
                 });
 
                 $('#zintegrowane').DataTable({
+                    "serverSide": true,
                     "ajax": "{% url "import_dyscyplin:api_zintegrowane" object.pk %}",
                     "columns": [
                         {"data": "dopasowanie_autora"},

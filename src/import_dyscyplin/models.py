@@ -2,9 +2,6 @@ from datetime import date
 
 from django.contrib.postgres.fields import JSONField
 from django.db import models, transaction, IntegrityError
-# 4) opcja zatwierdzenia importu
-# 1) task usuwający importy po 24 godzinach
-#
 from django.db.models import Q, Count
 from django.urls import reverse
 from django_fsm import FSMField, transition, GET_STATE
@@ -88,12 +85,17 @@ class Import_Dyscyplin(TimeStampedModel):
             Q(dyscyplina_naukowa=None, subdyscyplina_naukowa=None)
         )
 
-    def niepoprawne_wiersze_przyczyny(self):
-        return self.niepoprawne_wiersze() \
-            .order_by("info") \
+    def distinct_info_dla_qs(self, qs):
+        return qs.order_by("info") \
             .values("info") \
             .annotate(icount=Count('info')) \
             .distinct()
+
+    def niepoprawne_wiersze_przyczyny(self):
+        return self.distinct_info_dla_qs(self.niepoprawne_wiersze())
+
+    def zintegrowane_wiersze_przyczyny(self):
+        return self.distinct_info_dla_qs(self.zintegrowane_wiersze())
 
     def zintegrowane_wiersze(self):
         return self.wiersze().filter(
@@ -166,6 +168,10 @@ class Import_Dyscyplin(TimeStampedModel):
                 r.subdyscyplina_naukowa = sd
                 r.save()
 
+        for r in self.wiersze():
+            r.dyscyplina_ostateczna = r.subdyscyplina_naukowa or r.dyscyplina_naukowa
+            r.save()
+
     def sprawdz_czy_konieczne(self):
         """Sprawdza wszystkie wiersze, po przeanalizowaniu oraz po
         integracji dyscyplin, czy wprowadzanie ich jest konieczne do bazy. To znaczy,
@@ -220,7 +226,7 @@ class Import_Dyscyplin(TimeStampedModel):
                 )
 
                 if ad.dyscyplina != res:
-                    elem.info = "Wcześniej istniejące przypisanie dla roku %i zmieniono z %s na %s" % (
+                    elem.info = "istniejące dla roku %i zmieniono z %s na %s" % (
                         self.rok,
                         ad.dyscyplina,
                         res)
@@ -229,7 +235,7 @@ class Import_Dyscyplin(TimeStampedModel):
                     ad.save()
 
                 else:
-                    elem.info = "Przypisanie do dyscypliny %s dla roku %s już istniało" % (
+                    elem.info = "przypisanie %s dla roku %s już istniało" % (
                         ad.dyscyplina,
                         self.rok
                     )
@@ -240,7 +246,7 @@ class Import_Dyscyplin(TimeStampedModel):
                     rok=self.rok,
                     dyscyplina=res
                 )
-                elem.info = "Utworzono nowe przypisanie dla roku %i: %s" % (self.rok, res)
+                elem.info = "nowe przypisanie dla %i: %s" % (self.rok, res)
 
             elem.stan = Import_Dyscyplin_Row.STAN.ZINTEGROWANY
             elem.save()
@@ -285,11 +291,15 @@ class Import_Dyscyplin_Row(models.Model):
         null=True,
         on_delete=models.SET_NULL)
 
+    nazwa_jednostki = models.CharField(
+        max_length=512, blank=True, null=True)
     jednostka = models.ForeignKey(
         Jednostka,
         null=True,
         on_delete=models.SET_NULL)
 
+    nazwa_wydzialu = models.CharField(
+        max_length=512, blank=True, null=True)
     wydzial = models.ForeignKey(
         Wydzial,
         null=True,
@@ -309,6 +319,14 @@ class Import_Dyscyplin_Row(models.Model):
     subdyscyplina = models.CharField(max_length=200, null=True, blank=True, db_index=True)
     kod_subdyscypliny = models.CharField(max_length=20, null=True, blank=True, db_index=True)
     subdyscyplina_naukowa = models.ForeignKey(
+        Dyscyplina_Naukowa,
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name='+'
+    )
+
+    dyscyplina_ostateczna = models.ForeignKey(
         Dyscyplina_Naukowa,
         blank=True,
         null=True,
@@ -342,7 +360,7 @@ class Import_Dyscyplin_Row(models.Model):
                 reverse("bpp:browse_autor", args=(self.autor.slug,)),
                 self.autor.nazwisko, self.autor.imiona)
 
-        dyscyplina_ostateczna = self.subdyscyplina_naukowa or self.dyscyplina_naukowa
+        dyscyplina_ostateczna = self.dyscyplina_ostateczna
         if dyscyplina_ostateczna is not None:
             ret["dyscyplina_ostateczna"] = str(dyscyplina_ostateczna)
 
