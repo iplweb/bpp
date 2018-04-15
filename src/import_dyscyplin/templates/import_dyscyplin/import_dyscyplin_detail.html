@@ -29,26 +29,23 @@
     </div>
 
 
-    <h2>Import dyscyplin</h2>
-    <h3>Plik wejściowy: {{ object.plik }}</h3>
-    Rok: {{ object.rok }}.<br/>
-    Utworzono: {{ object.created }}.<br/>
-    Ostatnia zmiana: {{ object.modified }}<br/>
-    <p>
-        <script type="text/javascript">
-            function usunImport() {
-                if (confirm('Czy na pewno usunąć ten plik z systemu?'))
-                    location.href = "{% url "import_dyscyplin:usun" object.pk %}";
-            }
-        </script>
-        <button class="button warning small" onclick="usunImport()">
+    <script type="text/javascript">
+        function usunImport() {
+            if (confirm('Czy na pewno usunąć ten plik z systemu?'))
+                location.href = "{% url "import_dyscyplin:usun" object.pk %}";
+        }
+    </script>
+    <h2>Import dyscyplin - plik {{ object.plik }}
+        <button class="button warning" onclick="usunImport()">
             <i class="fi-page-remove"></i> usuń plik
         </button>
-    </p>
+    </h2>
+    Rok: <strong>{{ object.rok }}</strong>.
+    Utworzono: <strong>{{ object.created }}</strong>.
+    Ostatnia zmiana: <strong>{{ object.modified }}</strong>. Stan: <strong>{{ object.stan }}</strong>.
 
     {% if object.stan == "nowy" %}
-        Plik został dodany do systemu i będzie analizowany za chwilę.
-
+        <p>Plik został dodany do systemu i będzie analizowany za chwilę.</p>
 
         <script type="text/javascript">
             $(document).ready(function () {
@@ -60,14 +57,13 @@
                 });
             });
         </script>
-
     {% endif %}
 
     {% if object.stan == "błędny" %}
         {% if notification == "1" %}
             <div class="flash-on-notification">
         {% endif %}
-    Wystąpił błąd podczas analizy pliku - {{ object.info }}.
+    <p>Wystąpił błąd podczas analizy pliku - {{ object.info }}.</p>
     {% if notification == "1" %}
         </div>
     {% endif %}
@@ -75,16 +71,16 @@
 
     {% if object.stan == "przeanalizowany" or object.stan == "zintegrowany" %}
 
-
         <ul class="tabs" data-tabs id="example-tabs">
-            <li class="tabs-title {% if object.stan == "przeanalizowany" %}is-active{% endif %}">
+            <li class="tabs-title {% if object.stan == "przeanalizowany" and object.poprawne_wiersze.exist %}is-active{% endif %}">
                 <a href="#panel1" aria-selected="true">Rekordy do integracji
-                ({{ object.poprawne_wiersze_do_integracji.count }})</a></li>
-            <li class="tabs-title"><a data-tabs-target="panel2" href="#panel2">Rekordy nie do integracji
-                ({{ object.niepoprawne_wiersze.count }})</a></li>
+                    ({{ object.poprawne_wiersze_do_integracji.count }})</a></li>
+            <li class="tabs-title {% if object.stan == "przeanalizowany" and not object.poprawne_wiersze.exist %}is-active{% endif %}">
+                <a data-tabs-target="panel2" href="#panel2">Rekordy nie do integracji
+                    ({{ object.niepoprawne_wiersze.count }})</a></li>
             <li class="tabs-title {% if object.stan == "zintegrowany" %}is-active{% endif %}">
                 <a data-tabs-target="panel3" href="#panel2">Rekordy zintegrowane
-                ({{ object.zintegrowane_wiersze.count }})</a></li>
+                    ({{ object.zintegrowane_wiersze.count }})</a></li>
         </ul>
 
         <script type="text/javascript">
@@ -100,11 +96,12 @@
             }</script>
 
         <div class="tabs-content" data-tabs-content="example-tabs">
-            <div class="tabs-panel {% if object.stan == "przeanalizowany" %}is-active{% endif %}" id="panel1">
+            <div class="tabs-panel {% if object.stan == "przeanalizowany" and object.poprawne_wiersze.exist %}is-active{% endif %}"
+                 id="panel1">
                 <h2>Rekordy do integracji - rok {{ object.rok }}
-                    {% if object.stan == "przeanalizowany" %}
+                    {% if object.stan == "przeanalizowany" and object.poprawne_wiersze.exist %}
                         <button class="button secondary" onclick="zintegruj()">
-                            zintegruj dane
+                            <i class="fi-arrows-in"></i> zintegruj dane
                         </button>
                     {% endif %}
                 </h2>
@@ -122,7 +119,8 @@
 
 
             </div>
-            <div class="tabs-panel" id="panel2">
+            <div class="tabs-panel {% if object.stan == "przeanalizowany" and not object.poprawne_wiersze.exist %}is-active{% endif %}"
+                 id="panel2">
                 <h2>Rekordy nie do integracji</h2>
                 <strong>Przyczyny</strong>:
                 {% for elem in object.niepoprawne_wiersze_przyczyny %}
