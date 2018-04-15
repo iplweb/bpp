@@ -3,6 +3,7 @@ Historia zmian
 ==============
 
 **dev**
+**v1.0.17-dev**
 -------
 
 * import dyscyplin naukowych
