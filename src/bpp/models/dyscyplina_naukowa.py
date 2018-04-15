@@ -5,6 +5,8 @@ from mptt.models import MPTTModel, TreeForeignKey
 
 class Dyscyplina_Naukowa(MPTTModel):
     nazwa = models.CharField(max_length=200)
+    widoczna = models.BooleanField(default=True)
+
     dyscyplina_nadrzedna = TreeForeignKey(
         'self',
         null=True,
