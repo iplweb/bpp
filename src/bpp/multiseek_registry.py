@@ -25,7 +25,7 @@ from multiseek.logic import StringQueryObject, QueryObject, EQUALITY_OPS_ALL, \
     DateQueryObject
 
 from bpp.models import Typ_Odpowiedzialnosci, Jezyk, Autor, Jednostka, \
-    Charakter_Formalny, Zrodlo
+    Charakter_Formalny, Zrodlo, Dyscyplina_Naukowa
 from bpp.models.cache import Rekord
 
 from bpp.models.system import Typ_KBN
@@ -183,6 +183,23 @@ class PierwszeNazwiskoIImie(NazwiskoIImieQueryObject):
 
         return ret
 
+
+class DyscyplinaAutoraQueryObject(ForeignKeyDescribeMixin,
+                               AutocompleteQueryObject):
+    label = 'Dyscyplina naukowa autora'
+    type = AUTOCOMPLETE
+    ops = [EQUAL_NONE,]
+    model = Dyscyplina_Naukowa
+    url = "bpp:dyscyplina-autocomplete"
+
+    def real_query(self, value, operation):
+        if operation in EQUALITY_OPS_ALL:
+            ret = Q(autorzy__autor__autor_dyscyplina__dyscyplina=value)
+        else:
+            raise UnknownOperation(operation)
+        if operation in DIFFERENT_ALL:
+            return ~ret
+        return ret
 
 
 class NazwaKonferencji(ForeignKeyDescribeMixin, AutocompleteQueryObject):
@@ -460,6 +477,7 @@ multiseek_fields = [
     OpenaccessLicencjaQueryObject(),
     OpenaccessCzasPublikacjiQueryObject(),
 
+    DyscyplinaAutoraQueryObject(),
 ]
 
 multiseek_report_types = [

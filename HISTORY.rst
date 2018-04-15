@@ -2,6 +2,12 @@
 Historia zmian
 ==============
 
+**dev**
+**v1.0.17-dev**
+-------
+
+* import dyscyplin naukowych
+
 1.0.16 (2018-03-20)
 -------------------
 

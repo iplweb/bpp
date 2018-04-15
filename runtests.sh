@@ -24,8 +24,6 @@ do
 	    ;;
 	--no-coverage) NO_COVERAGE=1
 	    ;;
-        --no-rebuild) NO_REBUILD=1
-            ;;
 	--help) echo "--no-rebuild, --no-coverage, --no-django"
 	    exit 1
 	    ;;
@@ -36,19 +34,7 @@ do
     shift
 done
 
-if [ "$NO_REBUILD" == "0" ]; then
-    # Nie przebudowuj bazy danych przed uruchomieniem testów.
-    # Baza powinna być zazwyczaj utworzona od zera. 
-    dropdb --if-exists $TEST_DB_NAME 
-    createdb $TEST_DB_NAME
-    $PYTHON src/manage.py create_test_db
-    stellar replace $GIT_BRANCH_NAME || stellar snapshot $GIT_BRANCH_NAME
-else
-    # --no-rebuild na command line, czyli baza danych została (prawdopodobnie) wcześniej
-    # utworzona. Jednakże, dla zachowania integralności testów, chcemy pozbyć się 
-    # ewentualnych artefaktów z testów, więc: 
-    stellar restore $GIT_BRANCH_NAME
-fi
+dropdb --if-exists $TEST_DB_NAME
 
 MANAGE="src/manage.py test bpp --keepdb"
 
@@ -60,7 +46,7 @@ if [ "$NO_DJANGO" == "0" ]; then
     fi
     
     # Ewentualne następne testy muszą startować na czystej bazie danych, więc:
-    stellar restore $GIT_BRANCH_NAME
+#    stellar restore $GIT_BRANCH_NAME
 fi
 
 PYTEST=py.test
@@ -74,9 +60,8 @@ $PYTEST \
 	src/integration_tests \
 	src/integrator2/tests \
 	src/bpp/tests_pytest \
-	src/nowe_raporty/tests.py
-
-stellar restore $GIT_BRANCH_NAME
+	src/nowe_raporty/tests.py \
+	src/import_dyscyplin/tests
 
 if [ "$NO_COVERAGE" == "0" ]; then
     coveralls

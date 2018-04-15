@@ -36,6 +36,7 @@ from bpp.models.opi_2012 import *
 
 from bpp.models.openaccess import *
 
+from bpp.models.dyscyplina_naukowa import *
 
 TABLE_TO_MODEL = {
     "bpp_wydawnictwo_ciagle": Wydawnictwo_Ciagle,

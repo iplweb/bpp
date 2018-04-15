@@ -1,9 +1,5 @@
 {% extends "bare.html" %}
-{% load static %}
-{% load staticfiles %}
-{% load just_single_quotes %}
-{% load bpp_version %}
-{% load crispy_forms_tags %}
+{% load static staticfiles cache just_single_quotes bpp_version crispy_forms_tags %}
 
 {% block extrahead %}
     {{ block.super }}
@@ -33,7 +29,7 @@
         <div id="messageTemplate" style="display: none;">
         {% verbatim messageTemplate %}
         <div data-closable
-             data-url="{{closeURL}}"
+             data-url="{{ closeURL }}"
              class="ajax-on-close callout primary {{ cssClass }}{{^cssClass}}info{{/cssClass}}">
         {{#clickURL}}
         <a href="{{ clickURL }}">
@@ -56,7 +52,7 @@
             {% load notifications %}
             {% uuid notifications_uuid %}
             $(document).ready(function () {
-
+                // tests_need_this:messageCookieID:{{ notifications_uuid }}:
                 bppNotifications.init(
                     '{{ NOTIFICATIONS_PUB_PREFIX }}-{{ request.user.username }}',
                     '{{ NOTIFICATIONS_HOST }}',
@@ -183,6 +179,7 @@
                                 <li><a href="{% url "eksport_pbn:zamow" %}">eksport PBN</a></li>
                                 {% if request.user|has_group:"wprowadzanie danych" %}
                                     <li><a href="{% url "integrator2:main" %}">import danych</a></li>
+                                    <li><a href="{% url "import_dyscyplin:index" %}">import dyscyplin</a></li>
                                 {% endif %}
 
                                 <li><a id="password-change-link" href="{% url "password_change" %}">zmiana hasła</a>
@@ -273,8 +270,6 @@
         {% cookielaw_banner %}
     </div>
 
-
-    {% load cache %}
     {% cache 3600 google %}
         {% if GOOGLE_ANALYTICS_PROPERTY_ID %}
             {% include "ga.html" %}

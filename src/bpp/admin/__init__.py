@@ -43,6 +43,9 @@ from .praca_doktorska import Praca_DoktorskaAdmin  # noqa
 from .praca_habilitacyjna import Praca_HabilitacyjnaAdmin  # noqa
 from .patent import Patent  # noqa
 
+from .dyscyplina_naukowa import Dyscyplina_NaukowaAdmin  # noqa
+from .autor import AutorAdmin  # noqa
+
 # Proste tabele
 from bpp.models.openaccess import Tryb_OpenAccess_Wydawnictwo_Ciagle, Tryb_OpenAccess_Wydawnictwo_Zwarte, \
     Czas_Udostepnienia_OpenAccess, Licencja_OpenAccess, Wersja_Tekstu_OpenAccess
@@ -148,81 +151,6 @@ admin.site.register(Wersja_Tekstu_OpenAccess, Wersja_Tekstu_OpenAccessAdmin)
 admin.site.register(Typ_Odpowiedzialnosci, Typ_OdpowiedzialnosciAdmin)
 
 
-# Autor_Jednostka
-
-class Autor_JednostkaInlineForm(forms.ModelForm):
-    autor = forms.ModelChoiceField(
-        queryset=Autor.objects.all(),
-        widget=autocomplete.ModelSelect2(
-            url='bpp:autor-autocomplete')
-    )
-
-    jednostka = forms.ModelChoiceField(
-        queryset=Jednostka.objects.all(),
-        widget=autocomplete.ModelSelect2(
-            url='bpp:jednostka-autocomplete')
-    )
-
-    class Meta:
-        fields = "__all__"
-
-class Autor_JednostkaInline(admin.TabularInline):
-    model = Autor_Jednostka
-    form = Autor_JednostkaInlineForm
-    extra = 1
-
-# Autorzy
-
-CHARMAP_SINGLE_LINE = forms.TextInput(
-        attrs={'class': 'charmap', 'style': "width: 500px"})
-
-
-class AutorForm(forms.ModelForm):
-    class Meta:
-        fields = "__all__"
-        model = Autor
-        widgets = {
-            'imiona': CHARMAP_SINGLE_LINE,
-            'nazwisko': CHARMAP_SINGLE_LINE
-        }
-
-
-class AutorAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
-    form = AutorForm
-
-    list_display = ['nazwisko',
-                    'imiona',
-                    'tytul',
-                    'poprzednie_nazwiska',
-                    'email',
-                    'pbn_id',
-                    'orcid']
-    list_select_related = ['tytul',]
-    fields = None
-    inlines = [Autor_JednostkaInline, ]
-    list_filter = [JednostkaFilter,
-                   'aktualna_jednostka__wydzial',
-                   'tytul',
-                   PBNIDObecnyFilter,
-                   OrcidObecnyFilter,
-                   PeselMD5ObecnyFilter]
-    search_fields = ['imiona', 'nazwisko', 'poprzednie_nazwiska', 'email', 'www', 'id', 'pbn_id']
-    readonly_fields = ('pesel_md5', 'ostatnio_zmieniony')
-
-    fieldsets = (
-        (None, {
-            'fields': (
-                'imiona', 'nazwisko', 'tytul', 'pokazuj',
-                'email', 'www', 'orcid', 'pbn_id', 'pesel_md5')
-        }),
-        ('Biografia', {
-            'classes': ('grp-collapse grp-closed',),
-            'fields': ('urodzony', 'zmarl', 'poprzednie_nazwiska')
-        }),
-        ADNOTACJE_FIELDSET)
-
-
-admin.site.register(Autor, AutorAdmin)
 
 
 # Źródła indeksowane

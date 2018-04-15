@@ -19,7 +19,8 @@ from bpp.views.autocomplete import WidocznaJednostkaAutocomplete, \
     PodrzednaPublikacjaHabilitacyjnaAutocomplete, \
     AdminNavigationAutocomplete, KonferencjaAutocomplete, \
     Seria_WydawniczaAutocomplete, OrganPrzyznajacyNagrodyAutocomplete, \
-    WydzialAutocomplete, PublicAutorAutocomplete, LataAutocomplete, PublicWydzialAutocomplete
+    WydzialAutocomplete, PublicAutorAutocomplete, LataAutocomplete, PublicWydzialAutocomplete, \
+    Dyscyplina_NaukowaAutocomplete
 from bpp.views.raporty import RankingAutorow, \
     PobranieRaportu, PodgladRaportu, KasowanieRaportu, \
     RaportJednostek2012, RaportKronikaUczelni, RaportJednostek, \
@@ -162,6 +163,12 @@ urlpatterns = [
         r'^jednostka-autocomplete/$',
         JednostkaAutocomplete.as_view(),
         name='jednostka-autocomplete',
+    ),
+
+    url(
+        r'^dyscyplina-autocomplete/$',
+        Dyscyplina_NaukowaAutocomplete.as_view(),
+        name='dyscyplina-autocomplete',
     ),
 
     url(

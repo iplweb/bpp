@@ -1,7 +1,11 @@
 # -*- encoding: utf-8 -*-
 
 from django.db import models
+from django import forms
 from django.forms.widgets import Textarea
+
+CHARMAP_SINGLE_LINE = forms.TextInput(
+    attrs={'class': 'charmap', 'style': "width: 500px"})
 
 
 # Pomocnik dla klasy ModelZMetryczka
