@@ -14,7 +14,7 @@ services:
     build:
       dockerfile: Dockerfile-db
       context: docker
-    image: mpasternak79/django-bpp:postgres-9.6
+    image: mpasternak79/django-bpp:postgres-10
 
   nginx_http_push:
     build:
