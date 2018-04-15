@@ -1,3 +1,5 @@
+import traceback
+
 from celery.utils.log import get_task_logger
 from django.db import transaction
 from django.urls import reverse
@@ -24,7 +26,7 @@ def przeanalizuj_import_dyscyplin(self, pk):
                 i.sprawdz_czy_konieczne()
             except Exception as e:
                 logger.exception("Podczas analizy pliku")
-                i.info = str(e)
+                i.info = traceback.format_exc()
             finally:
                 i.save(update_fields=['stan', 'modified', 'info'])
     finally:
@@ -68,7 +70,7 @@ def integruj_import_dyscyplin(self, pk):
                 i.integruj_wiersze()
             except Exception as e:
                 logger.exception("Podczas integracji wierszy")
-                i.info = str(e)
+                i.info = traceback.format_exc()
             finally:
                 i.save(update_fields=['stan', 'modified', 'info'])
 
