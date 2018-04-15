@@ -1,6 +1,3 @@
-## git+https://github.com/fastmonkeys/stellar.git
-# https://github.com/mpasternak/stellar/archive/psql10.zip#egg=stellar
-
 # git+https://github.com/mpasternak/moai.git#egg=moai
 https://github.com/mpasternak/moai/archive/2.0.0-mpasternak.tar.gz#egg=moai
 
