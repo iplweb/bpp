@@ -3,6 +3,7 @@ from celery import uuid
 from celery.result import AsyncResult
 from django.contrib import messages
 from django.db import transaction
+from django.db.models import Q
 from django.http import HttpResponseRedirect
 from django.urls import reverse, reverse_lazy
 from django.views.generic import CreateView, DetailView, ListView
@@ -121,8 +122,57 @@ class API_Do_IntegracjiView(WprowadzanieDanychRequiredMixin, TylkoMojeMixin, JSO
 
     def get(self, *args, **kw):
         self.object = self.get_object()
-        fn = getattr(self.object, self.func)
-        return self.render_json_response({"data": [x.serialize_dict() for x in fn()]})
+
+        fn = getattr(self.object, self.func)()
+
+        fn_filtered = fn
+        search = self.request.GET.get("search[value]", "")
+        if search:
+            fn_filtered = fn_filtered.filter(
+                Q(nazwisko__icontains=search) |
+                Q(imiona__icontains=search) |
+                Q(original__nazwa_jednostki__icontains=search) |
+                Q(original__wydział__icontains=search) |
+                Q(info__icontains=search) |
+                Q(dyscyplina__icontains=search) |
+                Q(subdyscyplina__icontains=search) |
+                Q(kod_dyscypliny__icontains=search) |
+                Q(kod_subdyscypliny__icontains=search)
+            )
+
+        start = int(self.request.GET.get("start", 0))
+        draw = int(self.request.GET.get("draw", 1))
+        length = int(self.request.GET.get("length", 10))
+
+        ordering = int(self.request.GET.get("order[0][column]", 0))
+        direction =  self.request.GET.get("order[0][dir]", "asc")
+        fld = self.request.GET.get("columns[%i][data]" % ordering, "dopasowanie_autora")
+        if fld:
+            ordering_mapping = {
+                "dopasowanie_autora": "autor__nazwisko",
+                "jednostka": "nazwa_jednostki",
+                "wydzial": "nazwa_wydzialu",
+                "dyscyplina_ostateczna": "dyscyplina_ostateczna__nazwa"
+            }
+            fld = ordering_mapping.get(fld, fld)
+        if direction != 'asc':
+            fld = '-' + fld
+
+        fn_output = fn_filtered
+        if fld:
+            fn_output = fn_output.order_by(fld)
+        fn_output = fn_output[start:start + length]
+
+        recordsTotal = fn.count()
+        recordsFiltered = fn_filtered.count()
+        return self.render_json_response(
+            {
+                "data": [x.serialize_dict() for x in fn_output],
+                "draw": draw,
+                "recordsTotal": recordsTotal,
+                "recordsFiltered": recordsFiltered,
+            }
+        )
 
 
 class API_Nie_Do_IntegracjiView(API_Do_IntegracjiView):
