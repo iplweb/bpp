@@ -1,9 +1,5 @@
 {% extends "bare.html" %}
-{% load static %}
-{% load staticfiles %}
-{% load just_single_quotes %}
-{% load bpp_version %}
-{% load crispy_forms_tags %}
+{% load static staticfiles cache just_single_quotes bpp_version crispy_forms_tags %}
 
 {% block extrahead %}
     {{ block.super }}
@@ -33,7 +29,7 @@
         <div id="messageTemplate" style="display: none;">
         {% verbatim messageTemplate %}
         <div data-closable
-             data-url="{{closeURL}}"
+             data-url="{{ closeURL }}"
              class="ajax-on-close callout primary {{ cssClass }}{{^cssClass}}info{{/cssClass}}">
         {{#clickURL}}
         <a href="{{ clickURL }}">
@@ -274,8 +270,6 @@
         {% cookielaw_banner %}
     </div>
 
-
-    {% load cache %}
     {% cache 3600 google %}
         {% if GOOGLE_ANALYTICS_PROPERTY_ID %}
             {% include "ga.html" %}

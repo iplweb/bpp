@@ -37,7 +37,7 @@ NOTIFICATIONS_PROTOCOL = 'http'
 
 HTML_MINIFY = False
 
-CELERY_ALWAYS_EAGER = True
+CELERY_ALWAYS_EAGER = False # True # False
 CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
 
 EMAIL_PORT = 2525
@@ -55,3 +55,51 @@ if DEBUG_TOOLBAR:
     INSTALLED_APPS.append('debug_toolbar')
 
 DATABASES['default']['CONN_MAX_AGE'] = 10
+
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': True,
+    'root': {
+        'level': 'WARNING',
+        'handlers': ['console'],
+    },
+    'formatters': {
+        'verbose': {
+            'format': '%(levelname)s %(asctime)s %(module)s %(process)d %(thread)d %(message)s'
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose'
+        }
+    },
+    'loggers': {
+        'django.db.backends': {
+            'level': 'ERROR',
+            'handlers': ['console'],
+            'propagate': False,
+        },
+        'raven': {
+            'level': 'DEBUG',
+            'handlers': ['console'],
+            'propagate': False,
+        },
+        'django.request': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+        'celery.worker.job': {
+            'level': 'ERROR',
+            'handlers': ['console'],
+            'propagate': False
+        },
+        'django': {
+            'handlers': ['console'],
+            'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
+        },
+    },
+}

@@ -50,4 +50,4 @@ def conftest_py(parent_path):
 
 @pytest.fixture
 def import_dyscyplin(db):
-    return mommy.make(Import_Dyscyplin)
+    return mommy.make(Import_Dyscyplin, rok=2018)

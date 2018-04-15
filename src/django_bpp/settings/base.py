@@ -373,8 +373,9 @@ BROKER_URL = django_getenv("DJANGO_BPP_BROKER_URL",
                                                       CELERY_HOST,
                                                       CELERY_PORT,
                                                       CELERY_VHOST))
-# BYłO: redis://%s:%s/%s' % (REDIS_HOST, REDIS_PORT, REDIS_DB_BROKER)
+
 # CELERY_RESULT_BACKEND = 'redis://%s:%s/%s' % (REDIS_HOST, REDIS_PORT, REDIS_DB_CELERY)
+CELERY_RESULT_BACKEND = "rpc://"
 
 #
 SESSION_REDIS_HOST = REDIS_HOST
@@ -454,6 +455,8 @@ if TESTING:
     CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
 
 CELERYD_HIJACK_ROOT_LOGGER = False
+
+CELERY_TRACK_STARTED = True
 
 CELERYBEAT_SCHEDULE = {
 

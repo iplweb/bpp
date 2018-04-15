@@ -59,7 +59,7 @@ def test_matchuj_autora_pesel_md5(autor_jan_nowak):
     autor_jan_nowak.pesel_md5 = "foobar"
     autor_jan_nowak.save()
 
-    a = matchuj_autora(
+    a, info = matchuj_autora(
         imiona="",
         nazwisko="",
         jednostka=None,
@@ -69,7 +69,7 @@ def test_matchuj_autora_pesel_md5(autor_jan_nowak):
 
 
 def test_matchuj_autora_imiona_nazwisko(autor_jan_nowak):
-    a = matchuj_autora("Jan", "Nowak", jednostka=None)
+    a, info = matchuj_autora("Jan", "Nowak", jednostka=None)
     assert a == autor_jan_nowak
 
 
@@ -84,21 +84,21 @@ def test_matchuj_autora_po_aktualnej_jednostce():
     a2 = mommy.make(Autor, imiona="Jan", nazwisko="Kowalski")
     a2.dodaj_jednostke(j2)
 
-    a = matchuj_autora(
+    a, info = matchuj_autora(
         imiona="Jan",
         nazwisko="Kowalski",
         jednostka=None
     )
     assert a == None
 
-    a = matchuj_autora(
+    a, info = matchuj_autora(
         imiona="Jan",
         nazwisko="Kowalski",
         jednostka=j1
     )
     assert a == a1
 
-    a = matchuj_autora(
+    a, info = matchuj_autora(
         imiona="Jan",
         nazwisko="Kowalski",
         jednostka=j2

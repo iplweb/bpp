@@ -36,7 +36,7 @@ def matchuj_jednostke(nazwa):
 def matchuj_autora(imiona, nazwisko, jednostka, pesel_md5=None):
     if pesel_md5:
         try:
-            return Autor.objects.get(pesel_md5__iexact=pesel_md5.strip())
+            return (Autor.objects.get(pesel_md5__iexact=pesel_md5.strip()), "")
         except Autor.DoesNotExist:
             pass
 
@@ -46,19 +46,20 @@ def matchuj_autora(imiona, nazwisko, jednostka, pesel_md5=None):
             Q(nazwisko__iexact=nazwisko.strip()) | Q(poprzednie_nazwiska__icontains=nazwisko.strip()),
             imiona__iexact=imiona.strip())
 
-        return Autor.objects.get(qry)
+        return (Autor.objects.get(qry), "")
 
     except Autor.MultipleObjectsReturned:
 
         try:
-            return Autor.objects.get(qry & Q(aktualna_jednostka=jednostka))
+            return (Autor.objects.get(qry & Q(aktualna_jednostka=jednostka)), "")
         except Autor.MultipleObjectsReturned:
-            pass
+            return (None, "wielu autorów pasuje do tego rekordu (dopasowanie po imieniu, nazwisku i aktualnej jednostce)")
+
         except Autor.DoesNotExist:
-            pass
+            return (None, "taki autor nie istnieje (dopasowanie po imieniu, nazwisku i aktualnej jednostce)")
 
     except Autor.DoesNotExist:
-        pass
+        return (None, "taki autor nie istnieje (dopasowanie po imieniu i nazwisku)")
 
 
 def przeanalizuj_plik_xls(sciezka, parent):
@@ -88,6 +89,9 @@ def przeanalizuj_plik_xls(sciezka, parent):
     if naglowek_row is None:
         raise HeaderNotFoundException()
 
+    wydzial_cache = {}
+    jednostka_cache = {}
+
     for n in range(naglowek_row + 1, s.nrows):
         original = dict(zip(
             naglowek, [elem.value for elem in s.row(n)]
@@ -97,22 +101,39 @@ def przeanalizuj_plik_xls(sciezka, parent):
             continue
 
         original['pesel_md5'] = md5(str(original['pesel']).encode("utf-8")).hexdigest()
+        original['nazwa_jednostki'] = original['nazwa jednostki'] # templatka wymaga
+
         del original['pesel']
 
-        wydzial = matchuj_wydzial(original['wydział'])
-        jednostka = matchuj_jednostke(original['nazwa jednostki'])
-        autor = matchuj_autora(
+
+        wydzial = wydzial_cache.get(original['wydział'])
+        if not wydzial:
+            wydzial = wydzial_cache[original['wydział']] = matchuj_wydzial(original['wydział'])
+
+        jednostka = jednostka_cache.get(original['nazwa jednostki'])
+        if not jednostka:
+            jednostka = jednostka_cache[original['nazwa jednostki']] = matchuj_jednostke(original['nazwa jednostki'])
+
+        autor, info = matchuj_autora(
             original['imię'],
             original['nazwisko'],
             jednostka,
             original['pesel_md5'])
 
-        i = Import_Dyscyplin_Row.objects.create(
+        Import_Dyscyplin_Row.objects.create(
             row_no=n,
             parent=parent,
             original=original,
+            nazwisko=original['nazwisko'],
+            imiona=original['imię'],
             jednostka=jednostka,
             wydzial=wydzial,
-            autor=autor)
+            autor=autor,
+            info=info,
+            dyscyplina=original['dyscyplina'],
+            kod_dyscypliny=original['kod dyscypliny'],
+            subdyscyplina=original['subdyscyplina'],
+            kod_subdyscypliny=original['kod subdyscypliny']
+        )
 
     return (True, "przeanalizowano %i rekordow" % (n - naglowek_row))

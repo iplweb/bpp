@@ -1,7 +1,7 @@
 from django.db import transaction
 from django.urls import reverse
 
-from import_dyscyplin.models import Import_Dyscyplin
+from import_dyscyplin.models import Import_Dyscyplin, Import_Dyscyplin_Row
 
 
 def extract_messageCookieId(html_source):
@@ -71,3 +71,45 @@ def test_UsunImport_Dyscyplin(wd_app, test1_xlsx, transactional_db):
     g = wd_app.get(reverse("import_dyscyplin:usun", args=(i.pk,))).maybe_follow()
     assert "Brak informacji o importowanych" in g.testbody
     assert Import_Dyscyplin.objects.all().count() == 0
+
+
+def test_API_Do_IntegracjiView(wd_app, test1_xlsx, autor_jan_nowak):
+    i = wyslij_i_przeanalizuj(wd_app, test1_xlsx)
+    i.integruj_dyscypliny()
+
+    r = Import_Dyscyplin_Row.objects.all().first()
+    r.autor = autor_jan_nowak
+    r.stan = Import_Dyscyplin_Row.STAN.NOWY
+    r.save()
+
+    res = wd_app.get(reverse("import_dyscyplin:api_do_integracji", args=(i.pk,)))
+    assert len(res.json['data']) == 1
+    assert res.json['data'][0]['nazwisko'] == "Kowalski"
+
+
+def test_API_Nie_Do_IntegracjiView(wd_app, test1_xlsx):
+    i = wyslij_i_przeanalizuj(wd_app, test1_xlsx)
+
+    res = wd_app.get(reverse("import_dyscyplin:api_nie_do_integracji", args=(i.pk,)))
+    assert len(res.json['data']) == 6
+
+
+def test_API_Zintegrowane(wd_app, test1_xlsx):
+    i = wyslij_i_przeanalizuj(wd_app, test1_xlsx)
+
+    r = Import_Dyscyplin_Row.objects.all().first()
+    r.stan = Import_Dyscyplin_Row.STAN.ZINTEGROWANY
+    r.save()
+
+    res = wd_app.get(reverse("import_dyscyplin:api_zintegrowane", args=(i.pk,)))
+    assert len(res.json['data']) == 1
+
+
+def test_UruchomIntegracjeImport_DyscyplinView(wd_app, wprowadzanie_danych_user, test1_xlsx):
+    i = wyslij_i_przeanalizuj(wd_app, test1_xlsx)
+    i.integruj_dyscypliny()
+    i.owner = wprowadzanie_danych_user
+    i.save()
+
+    res = wd_app.get(reverse("import_dyscyplin:integruj", args=(i.pk,)))
+    assert res.json['status'] == "ok"

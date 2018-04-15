@@ -36,7 +36,8 @@ VALUES = [
 ]
 AUTOCOMPLETES = [
     "bpp:public-autor-autocomplete",
-    "bpp:jednostka-widoczna-autocomplete"
+    "bpp:jednostka-widoczna-autocomplete",
+    "bpp:dyscyplina-autocomplete"
 ]
 
 @pytest.mark.django_db

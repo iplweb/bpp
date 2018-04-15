@@ -13,7 +13,7 @@ from queryset_sequence import QuerySetSequence
 
 from bpp.jezyk_polski import warianty_zapisanego_nazwiska
 from bpp.lookups import SearchQueryStartsWith
-from bpp.models import Jednostka
+from bpp.models import Jednostka, Dyscyplina_Naukowa
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
 from bpp.models.const import GR_WPROWADZANIE_DANYCH
@@ -412,4 +412,12 @@ class PodrzednaPublikacjaHabilitacyjnaAutocomplete(
 
         qs = self.mixup_querysets(qs)
 
+        return qs
+
+
+class Dyscyplina_NaukowaAutocomplete(autocomplete.Select2QuerySetView):
+    def get_queryset(self):
+        qs = Dyscyplina_Naukowa.objects.all()
+        if self.q:
+            qs = qs.filter(Q(nazwa__icontains=self.q) | Q(kod__icontains=self.q))
         return qs

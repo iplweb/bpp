@@ -17,6 +17,7 @@ from bpp.models.const import GR_WPROWADZANIE_DANYCH
 SYSTEM_MENU = [
     ('Charaktery formalne', '/admin/bpp/charakter_formalny/'),
     ('Charakter PBN', '/admin/bpp/charakter_pbn/'),
+    ('Dyscypliny naukowe', '/admin/bpp/dyscyplina_naukowa/'),
     ('Funkcje w jednostce', '/admin/bpp/funkcja_autora/'),
     ('Języki', '/admin/bpp/jezyk/'),
 
