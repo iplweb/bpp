@@ -2,11 +2,10 @@
 Historia zmian
 ==============
 
-**dev**
-**v1.0.17-dev**
--------
+1.0.17-dev (2018-04-16)
+-----------------------
 
-* import dyscyplin naukowych
+* import i wyszukiwanie dyscyplin naukowych
 
 1.0.16 (2018-03-20)
 -------------------
