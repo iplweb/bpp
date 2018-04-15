@@ -36,22 +36,24 @@ do
     shift
 done
 
-if [ "$NO_REBUILD" == "0" ]; then
-    # Nie przebudowuj bazy danych przed uruchomieniem testów.
-    # Baza powinna być zazwyczaj utworzona od zera. 
-    dropdb --if-exists $TEST_DB_NAME 
-    createdb $TEST_DB_NAME
-    $PYTHON src/manage.py create_test_db
-    
-    echo "select * from pg_stat_activity;" | psql template1
-    
-    stellar replace $GIT_BRANCH_NAME || stellar snapshot $GIT_BRANCH_NAME
-else
-    # --no-rebuild na command line, czyli baza danych została (prawdopodobnie) wcześniej
-    # utworzona. Jednakże, dla zachowania integralności testów, chcemy pozbyć się 
-    # ewentualnych artefaktów z testów, więc: 
-    stellar restore $GIT_BRANCH_NAME
-fi
+#if [ "$NO_REBUILD" == "0" ]; then
+#    # Nie przebudowuj bazy danych przed uruchomieniem testów.
+#    # Baza powinna być zazwyczaj utworzona od zera. 
+#    dropdb --if-exists $TEST_DB_NAME 
+#    createdb $TEST_DB_NAME
+#    $PYTHON src/manage.py create_test_db
+#    
+#    echo "select * from pg_stat_activity;" | psql template1
+#    
+#    stellar replace $GIT_BRANCH_NAME || stellar snapshot $GIT_BRANCH_NAME
+#else
+#    # --no-rebuild na command line, czyli baza danych została (prawdopodobnie) wcześniej
+#    # utworzona. Jednakże, dla zachowania integralności testów, chcemy pozbyć się 
+#    # ewentualnych artefaktów z testów, więc: 
+#    stellar restore $GIT_BRANCH_NAME
+#fi
+
+dropdb --if-exists $TEST_DB_NAME
 
 MANAGE="src/manage.py test bpp --keepdb"
 
@@ -63,13 +65,13 @@ if [ "$NO_DJANGO" == "0" ]; then
     fi
     
     # Ewentualne następne testy muszą startować na czystej bazie danych, więc:
-    stellar restore $GIT_BRANCH_NAME
+#    stellar restore $GIT_BRANCH_NAME
 fi
 
 PYTEST=py.test
 
 if [ "$NO_COVERAGE" == "0" ]; then
-    PYTEST="$PYTEST --cov=src"
+    PYTEST="$PYTEST --cov=src --create-db"
 fi
 
 $PYTEST \
