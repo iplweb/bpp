@@ -42,6 +42,9 @@ if [ "$NO_REBUILD" == "0" ]; then
     dropdb --if-exists $TEST_DB_NAME 
     createdb $TEST_DB_NAME
     $PYTHON src/manage.py create_test_db
+    
+    echo "select * from pg_stat_activity;" | psql template1
+    
     stellar replace $GIT_BRANCH_NAME || stellar snapshot $GIT_BRANCH_NAME
 else
     # --no-rebuild na command line, czyli baza danych została (prawdopodobnie) wcześniej
