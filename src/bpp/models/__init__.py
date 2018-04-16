@@ -4,7 +4,6 @@
 from bpp.models.abstract import *
 from bpp.models.struktura import *
 from bpp.models.autor import *
-from bpp.models.patent import *
 from bpp.models.profile import *
 from bpp.models.system import *
 from bpp.models.wydawnictwo_ciagle import *
