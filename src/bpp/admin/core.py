@@ -125,7 +125,7 @@ def generuj_inline_dla_autorow(baseModel):
 
     class baseModel_AutorInline(admin.StackedInline):
         model = baseModel
-        extra = 0
+        extra = 1
         form = baseModel_AutorForm
         sortable_field_name = "kolejnosc"
 
