@@ -37,6 +37,21 @@
             {% endif %}
         </td>
     </tr>
+    {% if praca.charakter_formalny.skrot == "PAT" %}
+        <tr>
+            <th>Patent:</th>
+            <td>
+                <b>- numer zgłoszenia:</b> {{ praca.numer_zgloszenia|default:"brak" }}. <br/>
+                <b>- wydział:</b> {{ praca.wydzial|default:"brak" }}<br/>
+                <b>- rodzaj prawa:</b> {{ praca.rodzaj_prawa|default:"brak" }}<br/>
+                <b>- data zgłoszenia:</b> {{ praca.data_zgloszenia|default:"brak" }}<br/>
+                <b>- numer zgłoszenia:</b> {{ praca.numer_zgloszenia|default:"brak" }}<br/>
+                <b>- data decyzji:</b> {{ praca.data_decyzji|default:"brak" }}<br/>
+                <b>- numer prawa wyłącznego:</b> {{ praca.numer_prawa_wylacznego|default:"brak" }}<br/>
+                <b>- wdrożenie:</b> {% if praca.wdrozenie %}tak{% else %}nie{% endif %}
+            </td>
+        </tr>
+    {% endif %}
     <tr>
         <th>
             Strona WWW:
@@ -78,7 +93,6 @@
             {{ praca.rok }}
         </td>
     </tr>
-
     <tr>
         <th>
             Charakter formalny:
@@ -96,16 +110,16 @@
             {{ praca.jezyk }}
         </td>
     </tr>
-
-    <tr>
-        <th>
-            Typ KBN:
-        </th>
-        <td>
-            {{ praca.typ_kbn }}
-        </td>
-    </tr>
-
+    {% if praca.typ_kbn %}
+        <tr>
+            <th>
+                Typ KBN:
+            </th>
+            <td>
+                {{ praca.typ_kbn }}
+            </td>
+        </tr>
+    {% endif %}
     {% if praca.openaccess_tryb_dostepu or praca.openaccess_wersja_tekstu or praca.openaccess_licencja or praca.openaccess_czas_publikacji or praca.openaccess_ilosc_miesiecy %}
         <tr>
             <th style="vertical-align: top;">OpenAccess:</th>
@@ -126,7 +140,8 @@
 
                     <b> - licencja: </b>
                     {% if praca.openaccess_licencja.webname %}
-                        <a target="_blank" href="https://creativecommons.org/licenses/{{ praca.openaccess_licencja.webname }}/3.0/pl/#content">
+                        <a target="_blank"
+                           href="https://creativecommons.org/licenses/{{ praca.openaccess_licencja.webname }}/3.0/pl/#content">
                     {% endif %}
                 {{ praca.openaccess_licencja }}
                 {% if praca.openaccess_licencja.webname %}
@@ -236,14 +251,14 @@
         </td>
     </tr>
     {% if request.user.is_authenticated %}
-    <tr>
-        <th>
-            Rekord zaktualizowany dla PBN:
-        </th>
-        <td>
-            {{ praca.ostatnio_zmieniony_dla_pbn }}
-        </td>
-    </tr>
+        <tr>
+            <th>
+                Rekord zaktualizowany dla PBN:
+            </th>
+            <td>
+                {{ praca.ostatnio_zmieniony_dla_pbn }}
+            </td>
+        </tr>
     {% endif %}
 
 </table>
