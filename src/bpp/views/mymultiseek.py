@@ -53,7 +53,7 @@ class MyMultiseekResults(MultiseekResults):
 
         ret = qset.only(*flds)
 
-        if 'bpp_autorzy_mat' in ret.query.tables:
+        if 'bpp_autorzy_mat' in ret.query.tables or 'bpp_zewnetrzne_bazy_view' in ret.query.tables:
             ret = ret.distinct()
 
         return ret

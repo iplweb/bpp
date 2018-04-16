@@ -35,6 +35,7 @@ SYSTEM_MENU = [
     ('Typy KBN', '/admin/bpp/typ_kbn/'),
     ('Typy odpowiedzialności', '/admin/bpp/typ_odpowiedzialnosci/'),
     ('Tytuły', '/admin/bpp/tytul/'),
+    ('Zewnętrzne bazy danych', '/admin/bpp/zewnetrzna_baza_danych/'),
     ('Źródło informacji', '/admin/bpp/zrodlo_informacji/'),
 
 ]

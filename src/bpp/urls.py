@@ -20,7 +20,7 @@ from bpp.views.autocomplete import WidocznaJednostkaAutocomplete, \
     AdminNavigationAutocomplete, KonferencjaAutocomplete, \
     Seria_WydawniczaAutocomplete, OrganPrzyznajacyNagrodyAutocomplete, \
     WydzialAutocomplete, PublicAutorAutocomplete, LataAutocomplete, PublicWydzialAutocomplete, \
-    Dyscyplina_NaukowaAutocomplete
+    Dyscyplina_NaukowaAutocomplete, Zewnetrzna_Baza_DanychAutocomplete
 from bpp.views.raporty import RankingAutorow, \
     PobranieRaportu, PodgladRaportu, KasowanieRaportu, \
     RaportJednostek2012, RaportKronikaUczelni, RaportJednostek, \
@@ -164,6 +164,13 @@ urlpatterns = [
         JednostkaAutocomplete.as_view(),
         name='jednostka-autocomplete',
     ),
+
+    url(
+        r'^zewnetrzna-baza-danych-autocomplete/$',
+        Zewnetrzna_Baza_DanychAutocomplete.as_view(),
+        name='zewnetrzna-baza-danych-autocomplete',
+    ),
+
 
     url(
         r'^dyscyplina-autocomplete/$',

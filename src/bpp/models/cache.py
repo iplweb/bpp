@@ -102,8 +102,8 @@ def zrodlo_pre_save(instance, *args, **kw):
     except Zrodlo.DoesNotExist:
         return
 
-    if old.skrot != instance.skrot: # sprawdz skrot, bo on idzie do opisu
-        instance._BPP_CHANGED_FIELDS = ['skrot',]
+    if old.skrot != instance.skrot:  # sprawdz skrot, bo on idzie do opisu
+        instance._BPP_CHANGED_FIELDS = ['skrot', ]
 
 
 def zrodlo_post_save(instance, *args, **kw):
@@ -118,9 +118,11 @@ def zrodlo_post_save(instance, *args, **kw):
         from bpp.tasks import zaktualizuj_zrodlo
         zaktualizuj_zrodlo.delay(instance.pk)
 
+
 def zrodlo_pre_delete(instance, *args, **kw):
     # TODO: moze byc memory-consuming, lepiej byloby to wrzucic do bazy danych - moze?
     instance._PRACE = list(Rekord.objects.filter(zrodlo__id=instance.pk).values_list("id", flat=True))
+
 
 def zrodlo_post_delete(instance, *args, **kw):
     for pk in instance._PRACE:
@@ -131,17 +133,20 @@ def zrodlo_post_delete(instance, *args, **kw):
         defer_zaktualizuj_opis(rekord.original)
 
     pass
+
+
 _CACHE_ENABLED = False
+
 
 class AlreadyEnabledException(Exception):
     pass
+
 
 class AlreadyDisabledException(Exception):
     pass
 
 
 def enable():
-
     global _CACHE_ENABLED
 
     if _CACHE_ENABLED: raise AlreadyEnabledException()
@@ -159,6 +164,7 @@ def enable():
         post_save.connect(defer_zaktualizuj_opis, sender=model)
 
     _CACHE_ENABLED = True
+
 
 def disable():
     global _CACHE_ENABLED
@@ -255,6 +261,24 @@ class AutorzyView(AutorzyBase):
     class Meta:
         managed = False
         db_table = 'bpp_autorzy'
+
+
+class ZewnetrzneBazyDanychView(models.Model):
+    rekord = models.ForeignKey(
+        'bpp.Rekord',
+        related_name='zewnetrzne_bazy',
+        on_delete=DO_NOTHING)
+
+    baza = models.ForeignKey(
+        'bpp.Zewnetrzna_Baza_Danych',
+        on_delete=DO_NOTHING
+    )
+
+    info = models.TextField()
+
+    class Meta:
+        managed = False
+        db_table = "bpp_zewnetrzne_bazy_view"
 
 
 class RekordManager(FulltextSearchMixin, models.Manager):
@@ -367,7 +391,7 @@ class RekordBase(ModelPunktowanyBaza, ModelZOpisemBibliograficznym,
     objects = RekordManager()
 
     strony = None
-    nr_zeszytu =  None
+    nr_zeszytu = None
     tom = None
 
     # Skróty dla django-dsl
@@ -419,6 +443,7 @@ class RekordView(RekordBase):
 
 def with_cache(fun):
     """Użyj jako dekorator do funkcji testujących"""
+
     def _wrapped(*args, **kw):
         enable_failure = None
         try:
