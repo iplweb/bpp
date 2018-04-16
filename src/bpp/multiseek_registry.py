@@ -25,7 +25,7 @@ from multiseek.logic import StringQueryObject, QueryObject, EQUALITY_OPS_ALL, \
     DateQueryObject
 
 from bpp.models import Typ_Odpowiedzialnosci, Jezyk, Autor, Jednostka, \
-    Charakter_Formalny, Zrodlo, Dyscyplina_Naukowa
+    Charakter_Formalny, Zrodlo, Dyscyplina_Naukowa, Zewnetrzna_Baza_Danych
 from bpp.models.cache import Rekord
 
 from bpp.models.system import Typ_KBN
@@ -212,6 +212,24 @@ class NazwaKonferencji(ForeignKeyDescribeMixin, AutocompleteQueryObject):
     search_fields = ['nazwa']
     field_name = "konferencja"
     url = "bpp:konferencja-autocomplete"
+
+
+class ZewnetrznaBazaDanychQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
+    label = "Zewnętrzna baza danych"
+    type = AUTOCOMPLETE
+    ops = EQUALITY_OPS_FEMALE
+    model = Zewnetrzna_Baza_Danych
+    search_fields = ['nazwa']
+    url = "bpp:zewnetrzna-baza-danych-autocomplete"
+
+    def real_query(self, value, operation, validate_operation=True):
+        if operation in EQUALITY_OPS_ALL:
+            ret = Q(zewnetrzne_bazy__baza=value)
+        else:
+            raise UnknownOperation(operation)
+        if operation in DIFFERENT_ALL:
+            return ~ret
+        return ret
 
 
 class JednostkaQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
@@ -480,6 +498,8 @@ multiseek_fields = [
     OpenaccessCzasPublikacjiQueryObject(),
 
     DyscyplinaAutoraQueryObject(),
+
+    ZewnetrznaBazaDanychQueryObject()
 ]
 
 multiseek_report_types = [

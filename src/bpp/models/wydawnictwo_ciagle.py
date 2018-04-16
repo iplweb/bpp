@@ -1,10 +1,8 @@
 # -*- encoding: utf-8 -*-
 
 from dirtyfields.dirtyfields import DirtyFieldsMixin
-from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.db.models.signals import post_delete
-from django.urls.base import reverse
 from django.utils import timezone
 from lxml.etree import SubElement, Element
 from secure_input.utils import safe_html
@@ -18,6 +16,7 @@ from bpp.models.abstract import BazaModeluOdpowiedzialnosciAutorow, DwaTytuly, \
     ModelZDOI, ModelZeZnakamiWydawniczymi, ModelZAktualizacjaDlaPBN, \
     parse_informacje, ModelZNumeremZeszytu, ModelZKonferencja, ModelWybitny, \
     ModelZAbsolutnymUrl
+from bpp.models.system import Zewnetrzna_Baza_Danych
 from bpp.models.util import dodaj_autora, ZapobiegajNiewlasciwymCharakterom
 
 
@@ -63,7 +62,6 @@ class ModelZOpenAccessWydawnictwoCiagle(ModelZOpenAccess):
         abstract = True
 
 
-
 class Wydawnictwo_Ciagle(ZapobiegajNiewlasciwymCharakterom,
                          Wydawnictwo_Baza, DwaTytuly, ModelZRokiem,
                          ModelZeStatusem, ModelZAbsolutnymUrl,
@@ -90,7 +88,6 @@ class Wydawnictwo_Ciagle(ZapobiegajNiewlasciwymCharakterom,
     # się okazuje, przy używaniu standardowych procedur w Django jest to
     # z tego co na dziś dzień umiem, mocno utrudnione.
     uzupelnij_punktacje = models.BooleanField(default=False)
-
 
     def dodaj_autora(self, autor, jednostka, zapisany_jako=None,
                      typ_odpowiedzialnosci_skrot='aut.', kolejnosc=None):
@@ -149,3 +146,17 @@ class Wydawnictwo_Ciagle(ZapobiegajNiewlasciwymCharakterom,
         super(Wydawnictwo_Ciagle, self).eksport_pbn_serializuj(toplevel, wydzial, Wydawnictwo_Ciagle_Autor)
         self.eksport_pbn_run_serialization_functions(self.eksport_pbn_FLDS, toplevel, wydzial, Wydawnictwo_Ciagle_Autor)
         return toplevel
+
+
+class Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych(models.Model):
+    rekord = models.ForeignKey(Wydawnictwo_Ciagle)
+    baza = models.ForeignKey(Zewnetrzna_Baza_Danych)
+    info = models.CharField(
+        verbose_name="Informacje dodatkowe",
+        max_length=512,
+        blank=True,
+        null=True)
+
+    class Meta:
+        verbose_name = "powiązanie wydawnictwa ciągłego z zewnętrznymi bazami danych"
+        verbose_name_plural = "powiązania wydawnictw ciągłych z zewnętrznymi bazami danych"

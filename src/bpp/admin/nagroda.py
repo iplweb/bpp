@@ -25,5 +25,5 @@ class NagrodaForm(forms.ModelForm):
 
 class NagrodaInline(GenericTabularInline):
     model = Nagroda
-    extra = 0
+    extra = 1
     form = NagrodaForm

@@ -7,8 +7,8 @@ Małe klasy pomocnicze dla całego systemu
 from django.db import models
 from django.utils import six
 
-from bpp.models.abstract import ModelZNazwa, NazwaISkrot
 from bpp.models import const
+from bpp.models.abstract import ModelZNazwa, NazwaISkrot
 
 NAZWY_PRIMO = [
     "",
@@ -120,7 +120,7 @@ class Typ_Odpowiedzialnosci(NazwaISkrot):
         """,
         db_index=True
     )
-    
+
     class Meta:
         verbose_name = 'typ odpowiedzialności'
         verbose_name_plural = 'typy odpowiedzialności'
@@ -177,4 +177,12 @@ class Rodzaj_Prawa_Patentowego(ModelZNazwa):
         verbose_name = "rodzaj prawa patentowego"
         verbose_name_plural = "rodzaje praw patentowych"
         ordering = ['nazwa',]
+        app_label = 'bpp'
+
+
+class Zewnetrzna_Baza_Danych(NazwaISkrot):
+    class Meta:
+        verbose_name = "zewnętrzna baza danych"
+        verbose_name_plural = "zenwętrzne bazy danych"
+        ordering = ['nazwa', ]
         app_label = 'bpp'

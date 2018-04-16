@@ -5,7 +5,7 @@ from dal_select2_queryset_sequence.widgets import \
     QuerySetSequenceSelect2
 from queryset_sequence import QuerySetSequence
 
-from bpp.models import Rodzaj_Prawa_Patentowego
+from bpp.models import Rodzaj_Prawa_Patentowego, Zewnetrzna_Baza_Danych
 from .core import RestrictDeletionToAdministracjaGroupAdmin, \
     RestrictDeletionToAdministracjaGroupMixin
 from ..models.nagroda import OrganPrzyznajacyNagrody
@@ -66,6 +66,11 @@ admin.site.register(Rodzaj_Prawa_Patentowego, RestrictDeletionToAdministracjaGro
 
 admin.site.register(OrganPrzyznajacyNagrody,
                     RestrictDeletionToAdministracjaGroupAdmin)
+
+
+@admin.register(Zewnetrzna_Baza_Danych)
+class Zewnetrzna_Baza_DanychAdmin(RestrictDeletionToAdministracjaGroupAdmin, CommitedModelAdmin):
+    list_display = ['nazwa', 'skrot']
 
 
 class Charakter_PBNAdmin(RestrictDeletionToAdministracjaGroupMixin,
