@@ -3,8 +3,17 @@ Historia zmian
 ==============
 
 **dev**
-**v1.0.18-dev** (2018-04-16)
------------------------
+
+* lepsze wyświetlanie rekordu patentu w widoku rekordu
+
+* poprawka formularza edycji autorów powiązanych z rekordem w module redagowania -
+  obecnie edycja odbywa się za pomocą formularzy poziomych, co zwiększyło czytelnosć
+
+* możliwość oznaczania i wyszukiwania rekordów indeksowanych w zewnętrznych bazach danych
+  (np. WoS, Scopus) dla wydawnictw ciągłych
+
+**v1.0.18-dev**
+---------------
 
 * import i wyszukiwanie dyscyplin naukowych
 
