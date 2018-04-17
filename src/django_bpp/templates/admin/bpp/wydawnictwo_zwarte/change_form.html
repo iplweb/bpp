@@ -9,6 +9,13 @@
     {%  include "admin/uzupelnij_rok_wydawnictwo_zwarte_button_handler.html" %}
 
     <script type="text/javascript">
+        // Gramatyka
+        $('a').each(function () {
+            var html = $(this).html();
+            if (html.includes("Dodaj kolejne nagroda")) {}
+                $(this).html(html.replace('Dodaj kolejne nagroda', 'Dodaj kolejną nagrodę'));
+        });
+
         pub_id = $("#id_autorzy_set-__prefix__-rekord").val()
 
         if (pub_id) {
