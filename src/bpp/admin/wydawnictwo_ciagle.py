@@ -82,9 +82,9 @@ class Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychForm(forms.ModelForm):
         fields = ["baza", "info"]
 
 
-class Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychInline(admin.TabularInline):
+class Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychInline(admin.StackedInline):
     model = Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych
-    extra = 1
+    extra = 0
     form = Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychForm
 
 
