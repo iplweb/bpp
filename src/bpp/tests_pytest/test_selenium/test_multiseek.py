@@ -17,8 +17,7 @@ def test_wyrzuc(wydawnictwo_zwarte, live_server, browser):
         "multiseek.removeFromResults('%s')" % Rekord.objects.all().first().js_safe_pk)
 
     with wait_for_page_load(browser):
-        browser.reload()
-        browser.switch_to.alert.accept()
+        browser.visit(live_server + reverse("multiseek:results"))
 
     assert "Z zapytania usunięto" in browser.html
 
@@ -28,7 +27,6 @@ def test_wyrzuc(wydawnictwo_zwarte, live_server, browser):
         "multiseek.removeFromResults('%s')" % Rekord.objects.all().first().js_safe_pk)
 
     with wait_for_page_load(browser):
-        browser.reload()
-        browser.switch_to.alert.accept()
+        browser.visit(live_server + reverse("multiseek:results"))
 
     assert "Z zapytania usunięto" not in browser.html
