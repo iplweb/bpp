@@ -814,13 +814,6 @@ class ModelZOpenAccess(models.Model):
         abstract = True
 
 
-class ModelZDOI(models.Model):
-    doi = DOIField("DOI", null=True, blank=True, db_index=True)
-
-    class Meta:
-        abstract = True
-
-
 class ModelZAktualizacjaDlaPBN(models.Model):
     #
     # Obiekt subklasujący tę klasę musi subklasować również DirtyFieldsMixin
