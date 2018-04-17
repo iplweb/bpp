@@ -2,7 +2,7 @@
 Historia zmian
 ==============
 
-**dev**
+**1.0.18-dev**
 
 * lepsze wyświetlanie rekordu patentu w widoku rekordu
 
@@ -12,8 +12,8 @@ Historia zmian
 * możliwość oznaczania i wyszukiwania rekordów indeksowanych w zewnętrznych bazach danych
   (np. WoS, Scopus) dla wydawnictw ciągłych
 
-**v1.0.18-dev**
----------------
+1.0.17
+------
 
 * import i wyszukiwanie dyscyplin naukowych
 
