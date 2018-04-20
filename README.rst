@@ -49,3 +49,5 @@ pracy, jak równiez bogatą ofertę wsparcia komercyjnego. Szczegóły na stroni
 projektu http://bpp.iplweb.pl/
 
 .. _IPLWeb: http://bpp.iplweb.pl/
+.. _licencja MIT: https://pl.wikipedia.org/wiki/Licencja_MIT
+
