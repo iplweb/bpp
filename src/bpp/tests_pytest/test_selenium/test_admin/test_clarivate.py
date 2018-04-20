@@ -58,7 +58,8 @@ def test_admin_get_wos_information_clarivate_err(uczelnia, browser_z_wydawnictwe
     assertPopupContains(browser, "lel")
 
 
-def test_admin_get_wos_information_clarivate_misconfigured(uczelnia, browser_z_wydawnictwem, mocker):
+def test_admin_get_wos_information_clarivate_misconfigured(
+        uczelnia, browser_z_wydawnictwem, mocker):
     uczelnia.clarivate_password = uczelnia.clarivate_username = ""
     uczelnia.save()
 
