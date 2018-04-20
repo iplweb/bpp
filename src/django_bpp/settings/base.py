@@ -473,7 +473,13 @@ CELERYBEAT_SCHEDULE = {
     'cleanup-report-files': {
         'task': 'bpp.tasks.remove_old_report_files',
         'schedule': timedelta(days=1),
+    },
+
+    'zaktualizuj-liczbe-cytowan': {
+        'task': 'bpp.tasks.zaktualizuj_liczbe_cytowan',
+        'schedule': timedelta(days=5)
     }
+    
 }
 
 CAN_LOGIN_AS = lambda request, target_user: request.user.is_superuser
