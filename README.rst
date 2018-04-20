@@ -1,11 +1,11 @@
-django-bpp
-==========
+Bibliografia Publikacji Pracowników
+===================================
 
 .. image:: https://circleci.com/gh/iplweb/bpp.svg?style=shield
    :target: https://circleci.com/gh/iplweb/bpp
 
-.. image:: https://readthedocs.org/projects/django-bpp/badge/?version=latest
-   :target: http://django-bpp.readthedocs.io/pl/latest/?badge=latest
+.. image:: https://readthedocs.org/projects/bpp/badge/?version=latest
+   :target: http://bpp.readthedocs.io/pl/latest/?badge=latest
    :alt: Dokumentacja
 
 .. image:: https://coveralls.io/repos/github/iplweb/bpp/badge.svg
@@ -15,9 +15,8 @@ django-bpp
 .. role:: bash(code)
    :language: bash
 
-.. image:: https://github.com/iplweb/bpp/raw/dev/src/bpp/static/bpp/images/logo.png
-  :height: 128 px
-  :width: 128 px
+.. image:: https://github.com/iplweb/bpp/raw/dev/src/bpp/static/bpp/images/logo_bpp.png
+  :width: 480 px
   :align: center
   :alt: Logo projektu
 
