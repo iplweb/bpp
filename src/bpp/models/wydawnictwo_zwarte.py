@@ -18,7 +18,7 @@ from bpp.models.abstract import \
     PBNSerializerHelperMixin, ModelZOpenAccess, ModelZPubmedID, ModelZDOI, \
     ModelZeZnakamiWydawniczymi, \
     ModelZAktualizacjaDlaPBN, ModelZKonferencja, \
-    ModelZSeria_Wydawnicza, ModelZISSN, ModelWybitny, ModelZAbsolutnymUrl
+    ModelZSeria_Wydawnicza, ModelZISSN, ModelWybitny, ModelZAbsolutnymUrl, ModelZLiczbaCytowan
 from bpp.models.autor import Autor
 from bpp.models.const import TO_REDAKTOR
 from bpp.models.util import ZapobiegajNiewlasciwymCharakterom
@@ -64,7 +64,8 @@ class Wydawnictwo_Zwarte_Baza(
     Wydawnictwo_Baza, DwaTytuly, ModelZRokiem, ModelZeStatusem,
     ModelZWWW, ModelZPubmedID, ModelZDOI, ModelRecenzowany,
     ModelPunktowany, ModelTypowany, ModelZeSzczegolami,
-    ModelZInformacjaZ, ModelZISBN, ModelZAdnotacjami, ModelZAbsolutnymUrl):
+    ModelZInformacjaZ, ModelZISBN, ModelZAdnotacjami, ModelZAbsolutnymUrl,
+    ModelZLiczbaCytowan):
     """Baza dla klas Wydawnictwo_Zwarte oraz Praca_Doktorska_Lub_Habilitacyjna
     """
 

@@ -1,0 +1,64 @@
+<script type="text/javascript">
+
+    $(document).ready(function () {
+        var i = $("#id_liczba_cytowan");
+
+        $("<input id='id_liczba_cytowan_get' type='button' value='Pobierz z Web of Science'/>").insertAfter(i);
+
+        var liczba_cytowan_button = $("#id_liczba_cytowan_get");
+        var orig = liczba_cytowan_button.val();
+
+        liczba_cytowan_button.click(function () {
+            var pubmed_id = $("#id_pubmed_id").val()
+            var doi = $("#id_doi").val()
+            if (!doi && !pubmed_id) {
+                alert("Aby wykonać zapytanie, potrzebne jest PubMedID lub DOI.");
+                return;
+            }
+
+            liczba_cytowan_button.val("Czekaj...");
+            liczba_cytowan_button.attr('disabled', true);
+
+            $.ajax({
+                type: "POST",
+                url: "{% url "bpp:api_wos_amr" uczelnia.slug %}",
+                data: {pmid: pubmed_id, doi: doi},
+                error: function (request, status, error) {
+                    alert('Wystąpił błąd (' + status + ', ' + error + '). Najpewniej może być on związany z ' +
+                        'problemem połączenia z internetem. Spróbuj za chwilę jeszcze raz.');
+
+                    liczba_cytowan_button.val("Spróbuj jeszcze raz!");
+                    liczba_cytowan_button.attr('disabled', false);
+
+                    return;
+                },
+                success: function (data, text) {
+                    var found = false;
+                    liczba_cytowan_button.attr('disabled', false);
+
+                    if (data.status == 'error') {
+                        liczba_cytowan_button.val(orig);
+                        alert('Wystąpił błąd (' + data.info + '). Spróbuj jeszcze raz lub skontaktuj się' +
+                            'z administratorem. ');
+                        return;
+                    }
+
+                    liczba_cytowan_button.val("Pobrano!");
+
+                    if (data.timesCited) {
+                        $("#id_liczba_cytowan").val(data.timesCited);
+                        found = true;
+                    }
+
+                    if (!found)
+                        liczba_cytowan_button.val("Brak danych w WoS!");
+
+
+                }
+            });
+
+        });
+
+
+    });
+</script>

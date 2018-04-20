@@ -37,7 +37,8 @@ from .core import BaseBppAdmin, CommitedModelAdmin, \
 from .wydawnictwo_zwarte import Wydawnictwo_ZwarteAdmin_Baza, Wydawnictwo_ZwarteAdmin
 from .wydawnictwo_ciagle import Wydawnictwo_CiagleAdmin
 from .konferencja import KonferencjaAdmin
-from .struktura import UczelniaAdmin, WydzialAdmin, JednostkaAdmin
+from .struktura import WydzialAdmin, JednostkaAdmin  # NOQA
+from .uczelnia import UczelniaAdmin  # NOQA
 from .seria_wydawnicza import Seria_WydawniczaAdmin
 from .praca_doktorska import Praca_DoktorskaAdmin  # noqa
 from .praca_habilitacyjna import Praca_HabilitacyjnaAdmin  # noqa

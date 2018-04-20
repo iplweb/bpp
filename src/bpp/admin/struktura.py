@@ -2,66 +2,13 @@
 
 # -*- encoding: utf-8 -*-
 
-from django import forms
 from django.contrib import admin
 
 from .core import CommitedModelAdmin
 from .core import RestrictDeletionToAdministracjaGroupMixin
 from .helpers import *
-from ..models import Uczelnia, Wydzial  # Publikacja_Habilitacyjna
+from ..models import Wydzial  # Publikacja_Habilitacyjna
 from ..models.struktura import Jednostka, Jednostka_Wydzial
-
-
-# Proste tabele
-
-# Uczelnia
-
-class WydzialInlineForm(forms.ModelForm):
-    class Meta:
-        fields = ['nazwa', 'skrot', 'widoczny', 'kolejnosc']
-        model = Wydzial
-        widgets = {'kolejnosc': forms.HiddenInput}
-
-class WydzialInline(admin.TabularInline):
-    model = Wydzial
-    form = WydzialInlineForm
-    extra = 0
-    sortable_field_name = 'kolejnosc'
-
-class UczelniaAdmin(RestrictDeletionToAdministracjaGroupMixin,
-                    ZapiszZAdnotacjaMixin, CommitedModelAdmin):
-    list_display = ['nazwa', 'nazwa_dopelniacz_field', 'skrot', 'pbn_id']
-    fieldsets = (
-        (None, {
-            'fields': (
-                'nazwa',
-                'nazwa_dopelniacz_field',
-                'skrot',
-                'pbn_id',
-                'favicon_ico',
-                'obca_jednostka',
-            )}),
-        ('Strona wizualna', {
-            'classes': ('grp-collapse grp-closed',),
-            'fields': (
-                'logo_www',
-                'logo_svg',
-                'pokazuj_punktacje_wewnetrzna',
-                'pokazuj_index_copernicus',
-                'pokazuj_status_korekty',
-                'pokazuj_ranking_autorow',
-                'pokazuj_raport_autorow',
-                'pokazuj_raport_jednostek',
-                'pokazuj_raport_wydzialow',
-                'pokazuj_raport_dla_komisji_centralnej',
-                'pokazuj_praca_recenzowana'
-        )}),
-        ADNOTACJE_FIELDSET
-    )
-
-    inlines = [WydzialInline,]
-
-admin.site.register(Uczelnia, UczelniaAdmin)
 
 
 # Wydział
@@ -96,19 +43,17 @@ class WydzialAdmin(RestrictDeletionToAdministracjaGroupMixin,
 admin.site.register(Wydzial, WydzialAdmin)
 
 
-
-
-
 # Jednostka
 
 class Jednostka_WydzialInline(admin.TabularInline):
     model = Jednostka_Wydzial
     extra = 1
 
+
 class JednostkaAdmin(RestrictDeletionToAdministracjaGroupMixin, ZapiszZAdnotacjaMixin, CommitedModelAdmin):
     list_display = ('nazwa', 'skrot', 'wydzial', 'widoczna',
                     'wchodzi_do_raportow', 'skupia_pracownikow', 'zarzadzaj_automatycznie', 'pbn_id')
-    list_select_related = ['wydzial',]
+    list_select_related = ['wydzial', ]
     fields = None
     list_filter = ('wydzial', 'widoczna', 'wchodzi_do_raportow', 'skupia_pracownikow', 'zarzadzaj_automatycznie')
     search_fields = ['nazwa', 'skrot', 'wydzial__nazwa']
@@ -127,5 +72,6 @@ class JednostkaAdmin(RestrictDeletionToAdministracjaGroupMixin, ZapiszZAdnotacja
                 'zarzadzaj_automatycznie', 'email', 'www'),
         }),
         ADNOTACJE_FIELDSET)
+
 
 admin.site.register(Jednostka, JednostkaAdmin)
