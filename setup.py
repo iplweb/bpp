@@ -69,13 +69,13 @@ requirements = list(parse_reqs("requirements.txt"))
 test_requirements = list(parse_reqs("requirements_dev.txt")) + requirements
 
 setup(
-    name='django-bpp',
+    name='bpp',
     version='1.0.18-dev',
     description="System informatyczny do zarządzania bibliografią publikacji pracowników naukowych",
     long_description=readme + '\n\n' + history,
     author="Michał Pasternak",
     author_email='michal.dtz@gmail.com',
-    url='https://github.com/mpasternak/django-bpp',
+    url='https://github.com/iplweb/bpp',
     packages=find_packages("src"),
     package_dir={
         '': 'src'
@@ -85,7 +85,7 @@ setup(
     install_requires=requirements,
     license="MIT license",
     zip_safe=False,
-    keywords='django_bpp',
+    keywords='bibliografia naukowa bpp',
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Developers',
