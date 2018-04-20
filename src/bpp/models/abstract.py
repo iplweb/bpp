@@ -855,3 +855,14 @@ class ModelZAktualizacjaDlaPBN(models.Model):
 
     class Meta:
         abstract = True
+
+
+class ModelZLiczbaCytowan(models.Model):
+    liczba_cytowan = models.PositiveIntegerField(
+        verbose_name="Liczba cytowań",
+        null=True,
+        blank=True,
+    )
+
+    class Meta:
+        abstract = True

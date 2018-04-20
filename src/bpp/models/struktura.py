@@ -7,7 +7,7 @@ from datetime import date, timedelta
 
 from autoslug import AutoSlugField
 from django.contrib.postgres.search import SearchVectorField as VectorField
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError, ImproperlyConfigured
 from django.db import models
 from django.db.models.functions import Coalesce
 from django.db.models.query_utils import Q
@@ -76,6 +76,18 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         'Pokazuj opcję "Praca recenzowana"'
     )
 
+    clarivate_username = models.CharField(
+        verbose_name="Nazwa użytkownika",
+        null=True,
+        blank=True,
+        max_length=50)
+
+    clarivate_password = models.CharField(
+        verbose_name="Hasło",
+        null=True,
+        blank=True,
+        max_length=50)
+
     class Meta:
         verbose_name = "uczelnia"
         verbose_name_plural = "uczelnie"
@@ -87,6 +99,21 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
     def wydzialy(self):
         """Widoczne wydziały -- do pokazania na WWW"""
         return Wydzial.objects.filter(uczelnia=self, widoczny=True)
+
+    def wosclient(self):
+        """
+        :rtype: wosclient.wosclient.WoSClient
+        """
+        if not self.clarivate_username:
+            raise ImproperlyConfigured("Brak użytkownika API w konfiguracji serwera")
+
+        if not self.clarivate_password:
+            raise ImproperlyConfigured("Brak hasła do API w konfiguracji serwera")
+
+        from wosclient.wosclient import WoSClient
+        return WoSClient(
+            self.clarivate_username,
+            self.clarivate_password)
 
 @six.python_2_unicode_compatible
 class Wydzial(ModelZAdnotacjami, ModelZPBN_ID):

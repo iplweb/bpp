@@ -1,11 +1,11 @@
 # -*- encoding: utf-8 -*-
 import time
-
+from mock import Mock
 import pytest
 from django.core.urlresolvers import reverse
 from django.db import transaction
 from selenium.common.exceptions import WebDriverException
-from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.expected_conditions import alert_is_present
 from selenium.webdriver.support.wait import WebDriverWait
 
 from bpp.models import Wydawnictwo_Ciagle
@@ -17,45 +17,12 @@ from bpp.tests.util import any_zrodlo, CURRENT_YEAR, any_zwarte, any_patent, \
     select_select2_autocomplete, scroll_into_view, \
     select_select2_clear_selection, show_element
 from django_bpp.selenium_util import wait_for_page_load, wait_for
-from selenium.webdriver.support import expected_conditions as EC
+from .helpers import *
 
 ID = "id_tytul_oryginalny"
 
 pytestmark = [pytest.mark.slow, pytest.mark.selenium]
 
-
-def proper_click(browser, arg):
-    # Czy ta metoda jest potrzebna? Kiedyś był bug, który
-    # uniemożliwiał kliknięcie elementu, który nei był widoczny
-    # na stronie, stąd konieczność przescrollowania do niego
-    #
-    # 2017.07.18 jest potrzebna (mpasternak)
-    #
-    scroll_into_view(browser, arg)
-    browser.execute_script("document.getElementById('" + arg + "').click()")
-
-
-def clickButtonBuggyMarionetteDriver(browser, id):
-    try:
-        browser.execute_script("$('#" + id + "').click()")
-    except WebDriverException as e:
-        if e.msg.startswith("Failed to find value field"):
-            pass
-        else:
-            raise e
-
-
-# url = "/admin/"
-
-def assertPopupContains(browser, text, accept=True):
-    """Switch to popup, assert it contains at least a part
-    of the text, close the popup. Error otherwise.
-    """
-    alert = browser.driver.switch_to.alert
-    if text not in alert.text:
-        raise AssertionError("%r not found in %r" % (text, alert.text))
-    if accept:
-        alert.accept()
 
 
 def test_admin_wydawnictwo_ciagle_toz(preauth_admin_browser, live_server):
@@ -145,6 +112,7 @@ def test_admin_patent_toz(preauth_admin_browser, live_server):
     preauth_admin_browser.is_element_present_by_id('navigation-menu', 5000)
     assert wcc() == 2
 
+
 def test_admin_patent_tamze(preauth_admin_browser, live_server):
     c = any_patent(informacje="TO INFORMACJE")
     with wait_for_page_load(preauth_admin_browser):
@@ -180,6 +148,7 @@ def test_uzupelnij_strona_tom_nr_zeszytu(url,
 
     if url == "wydawnictwo_ciagle":
         assert preauth_admin_browser.find_by_name("nr_zeszytu").value == "1"
+
 
 def test_liczba_znakow_wydawniczych_liczba_arkuszy_wydawniczych(
         preauth_admin_browser, live_server):
@@ -355,7 +324,6 @@ def test_autorform_uzupelnianie_jednostki(autorform_browser, autorform_jednostka
     assert sel.value == str(autorform_jednostka.pk)
 
 
-
 def find_autocomplete_widget(browser, id):
     for elem in browser.find_by_css(".yourlabs-autocomplete"):
         try:
@@ -368,7 +336,6 @@ def find_autocomplete_widget(browser, id):
 
 
 def test_autorform_kasowanie_autora(autorform_browser, autorform_jednostka):
-
     # kliknij "dodaj powiazanie autor-wydawnictwo"
     autorform_browser.execute_script("""
     document.getElementsByClassName("grp-add-handler")[0].scrollIntoView()
