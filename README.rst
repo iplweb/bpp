@@ -1,5 +1,11 @@
-Bibliografia Publikacji Pracowników
-===================================
+
+.. role:: bash(code)
+   :language: bash
+
+.. image:: https://github.com/iplweb/bpp/raw/dev/src/bpp/static/bpp/images/logo_bpp.png
+  :width: 480 px
+  :align: center
+  :alt: Logo projektu
 
 .. image:: https://circleci.com/gh/iplweb/bpp.svg?style=shield
    :target: https://circleci.com/gh/iplweb/bpp
@@ -12,13 +18,6 @@ Bibliografia Publikacji Pracowników
    :target: https://coveralls.io/github/iplweb/bpp
    :alt: Coverage
 
-.. role:: bash(code)
-   :language: bash
-
-.. image:: https://github.com/iplweb/bpp/raw/dev/src/bpp/static/bpp/images/logo_bpp.png
-  :width: 480 px
-  :align: center
-  :alt: Logo projektu
 
 O projekcie
 -----------
