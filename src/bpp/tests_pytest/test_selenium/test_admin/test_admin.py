@@ -17,6 +17,7 @@ from bpp.tests.util import any_zrodlo, CURRENT_YEAR, any_zwarte, any_patent, \
     select_select2_autocomplete, scroll_into_view, \
     select_select2_clear_selection, show_element
 from django_bpp.selenium_util import wait_for_page_load, wait_for
+from .helpers import *
 
 ID = "id_tytul_oryginalny"
 
