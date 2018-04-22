@@ -103,11 +103,31 @@ def _zaktualizuj_liczbe_cytowan(klasy=None):
 
             for grp in client.query_multiple(filtered):
                 for k, item in grp.items():
-                    timesCited = int(item.get('timesCited', 0))
+                    changed = False
+
+                    timesCited = item.get('timesCited')
+                    doi = item.get("doi")
+                    pubmed_id = item.get("pmid")
 
                     obj = klass.objects.get(pk=k)
-                    obj.liczba_cytowan = timesCited
-                    obj.save()
+
+                    if timesCited is not None:
+                        if obj.liczba_cytowan != timesCited:
+                            obj.liczba_cytowan = timesCited
+                            changed = True
+
+                    if pubmed_id is not None:
+                        if obj.pubmed_id != pubmed_id:
+                            obj.pubmed_id = pubmed_id
+                            changed = True
+
+                    if doi is not None:
+                        if obj.doi != doi:
+                            obj.doi = doi
+                            changed = True
+
+                    if changed:
+                        obj.save()
 
 
 @app.task

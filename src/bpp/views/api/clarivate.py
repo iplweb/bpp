@@ -28,8 +28,11 @@ class GetWoSAMRInformation(JSONResponseMixin, GroupRequiredMixin, BaseDetailView
             return {'status': 'error',
                     'info': '%s' % e}
 
+        if res.get("message") == 'No Result Found':
+            return {'status': 'ok', 'timesCited': None}
+
         return {'status': 'ok',
-                'timesCited': res['timesCited']}
+                'timesCited': res.get('timesCited')}
 
     def post(self, request, *args, **kw):
         self.object = self.get_object()
