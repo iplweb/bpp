@@ -102,6 +102,10 @@ class KonferencjaAutocomplete(NazwaMixin,
     qset = Konferencja.objects.all()
 
 
+class PublicKonferencjaAutocomplete(NazwaMixin, autocomplete.Select2QuerySetView):
+    qset = Konferencja.objects.all()
+
+
 class Seria_WydawniczaAutocomplete(NazwaMixin,
                                    LoginRequiredMixin,
                                    autocomplete.Select2QuerySetView):

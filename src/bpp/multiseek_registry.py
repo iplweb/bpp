@@ -220,7 +220,7 @@ class NazwaKonferencji(ForeignKeyDescribeMixin, AutocompleteQueryObject):
     model = Konferencja
     search_fields = ['nazwa']
     field_name = "konferencja"
-    url = "bpp:konferencja-autocomplete"
+    url = "bpp:public-konferencja-autocomplete"
 
 
 class ZewnetrznaBazaDanychQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):

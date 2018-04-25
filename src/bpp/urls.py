@@ -22,7 +22,7 @@ from bpp.views.autocomplete import WidocznaJednostkaAutocomplete, \
     AdminNavigationAutocomplete, KonferencjaAutocomplete, \
     Seria_WydawniczaAutocomplete, OrganPrzyznajacyNagrodyAutocomplete, \
     WydzialAutocomplete, PublicAutorAutocomplete, LataAutocomplete, PublicWydzialAutocomplete, \
-    Dyscyplina_NaukowaAutocomplete, Zewnetrzna_Baza_DanychAutocomplete
+    Dyscyplina_NaukowaAutocomplete, Zewnetrzna_Baza_DanychAutocomplete, PublicKonferencjaAutocomplete
 from bpp.views.raporty import RankingAutorow, \
     PobranieRaportu, PodgladRaportu, KasowanieRaportu, \
     RaportJednostek2012, RaportKronikaUczelni, RaportJednostek, \
@@ -137,6 +137,11 @@ urlpatterns = [
         r'^konferencja-autocomplete/$',
         KonferencjaAutocomplete.as_view(),
         name='konferencja-autocomplete',
+    ),
+    url(
+        r'^public-konferencja-autocomplete/$',
+        PublicKonferencjaAutocomplete.as_view(),
+        name='public-konferencja-autocomplete',
     ),
     url(
         r'^wydzial-autocomplete/$',
