@@ -22,3 +22,11 @@ def test_serialize_konferencja():
         panstwo="bar")
     ret = konf.eksport_pbn_serializuj()
     assert ret != None
+
+
+@pytest.mark.django_db
+def test_konferencja___str__():
+    konf = Konferencja.objects.create(
+        nazwa="Konferencja", baza_scopus=True, baza_wos=True)
+
+    assert str(konf) == "Konferencja [Scopus] [WoS]"

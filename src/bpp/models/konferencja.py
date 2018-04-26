@@ -71,7 +71,12 @@ class Konferencja(ModelZNazwa, ModelZAdnotacjami):
         verbose_name_plural = 'konferencje'
 
     def __str__(self):
-        return self.nazwa
+        ret = self.nazwa
+        if self.baza_scopus:
+            ret += " [Scopus]"
+        if self.baza_wos:
+            ret += " [WoS]"
+        return ret
 
     def eksport_pbn_serializuj(self, tagname='conference'):
         element = Element(tagname)
