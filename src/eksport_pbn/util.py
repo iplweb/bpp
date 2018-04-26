@@ -1,4 +1,5 @@
 # -*- encoding: utf-8 -*-
+from datetime import timedelta
 
 from bpp.models.system import Charakter_Formalny, Typ_KBN
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
@@ -30,7 +31,8 @@ def data_kw(rodzaj_daty, od_daty, do_daty=None):
         raise BrakTakiegoRodzajuDatyException(rodzaj_daty)
 
     if do_daty:
-        ret['rekord__%s__lte' % flds[rodzaj_daty]] = do_daty
+        ret['rekord__%s__lte' % flds[rodzaj_daty]] = \
+            do_daty + timedelta(days=1)
 
     return ret
 

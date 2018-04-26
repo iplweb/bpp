@@ -1,8 +1,6 @@
 # -*- encoding: utf-8 -*-
 
 
-
-
 from datetime import datetime, timedelta
 
 import pytest
@@ -13,7 +11,7 @@ from bpp.models.autor import Autor
 from bpp.models.struktura import Uczelnia, Wydzial, Jednostka
 from bpp.models.system import Typ_Odpowiedzialnosci, Charakter_Formalny
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
-from eksport_pbn.models import PlikEksportuPBN, DATE_CREATED_ON
+from eksport_pbn.models import PlikEksportuPBN, DATE_CREATED_ON, DATE_UPDATED_ON_PBN
 from eksport_pbn.tasks import id_zwartych, id_ciaglych
 
 
@@ -98,6 +96,14 @@ def test_id_ciaglych(wydawnictwo_ciagle_z_autorem, wydzial, rok):
 
 
 def test_z_datami(jednostka, autor_jan_kowalski, wydawnictwo_ciagle, wydawnictwo_zwarte, rok):
+    cf = wydawnictwo_ciagle.charakter_formalny
+    cf.artykul_pbn = True
+    cf.save()
+
+    tk = wydawnictwo_ciagle.typ_kbn
+    tk.artykul_pbn = True
+    tk.save()
+
     autor_jan_kowalski.dodaj_jednostke(jednostka=jednostka)
     wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
     wydawnictwo_zwarte.dodaj_autora(autor_jan_kowalski, jednostka)
@@ -128,3 +134,89 @@ def test_z_datami_2(db):
     p.do_daty = d
     s = p.get_fn()
     assert str(d).replace("-", "_") in s
+
+
+@pytest.mark.django_db
+def test_ta_sama_data_id_ciaglych(jednostka, autor_jan_kowalski, wydawnictwo_ciagle, rok):
+    cf = wydawnictwo_ciagle.charakter_formalny
+    cf.artykul_pbn = True
+    cf.save()
+
+    tk = wydawnictwo_ciagle.typ_kbn
+    tk.artykul_pbn = True
+    tk.save()
+
+    autor_jan_kowalski.dodaj_jednostke(jednostka=jednostka)
+    wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
+
+    d = wydawnictwo_ciagle.ostatnio_zmieniony_dla_pbn
+
+    od_daty = d.date()
+    do_daty = d.date()
+
+    res = id_ciaglych(
+        jednostka.wydzial,
+        od_roku=rok,
+        do_roku=rok,
+        rodzaj_daty=DATE_UPDATED_ON_PBN,
+        od_daty=od_daty,
+        do_daty=do_daty + timedelta(days=1),
+    )
+
+    assert wydawnictwo_ciagle.pk in list(res)
+
+    res = id_ciaglych(
+        jednostka.wydzial,
+        od_roku=rok,
+        do_roku=rok,
+        rodzaj_daty=DATE_UPDATED_ON_PBN,
+        od_daty=od_daty,
+        do_daty=do_daty
+    )
+
+    assert wydawnictwo_ciagle.pk in list(res)
+
+
+@pytest.mark.django_db
+def test_ta_sama_data_id_zwartych(jednostka, autor_jan_kowalski, wydawnictwo_zwarte, rok):
+    cf = wydawnictwo_zwarte.charakter_formalny
+    cf.ksiazka_pbn = True
+    cf.save()
+
+    wydawnictwo_zwarte.liczba_znakow_wydawniczych = 240000
+    wydawnictwo_zwarte.save()
+
+    autor_jan_kowalski.dodaj_jednostke(jednostka=jednostka)
+    wydawnictwo_zwarte.dodaj_autora(autor_jan_kowalski, jednostka)
+
+    d = wydawnictwo_zwarte.ostatnio_zmieniony_dla_pbn
+
+    od_daty = d.date()
+    do_daty = d.date()
+
+    res = id_zwartych(
+        jednostka.wydzial,
+        od_roku=rok,
+        do_roku=rok,
+        ksiazki=True,
+        rozdzialy=False,
+        rodzaj_daty=DATE_UPDATED_ON_PBN,
+        od_daty=od_daty,
+        do_daty=do_daty + timedelta(days=1),
+    )
+
+    assert wydawnictwo_zwarte.pk in list(res)
+
+    res = id_zwartych(
+        jednostka.wydzial,
+        od_roku=rok,
+        do_roku=rok,
+        ksiazki=True,
+        rozdzialy=False,
+
+        rodzaj_daty=DATE_UPDATED_ON_PBN,
+        od_daty=od_daty,
+        do_daty=do_daty
+    )
+
+    assert wydawnictwo_zwarte.pk in list(res)
