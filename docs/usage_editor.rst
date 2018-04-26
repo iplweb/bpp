@@ -23,6 +23,9 @@ lub w dół. Przycisk przeciągania wygląda w następujący sposób:
 .. image:: images/editor/przycisk_przeciagania.png
    :alt: Przycisk przeciągania
 
+Możesz "zwinąć" formularz powiązania autora z rekordem aby zmiana kolejności autorów
+była łatwiejsza, co ma szczególne znaczenie na monitorach o niewielkiej rozdzielczości.
+
 Działania te również prezentuje film `Zmiana kolejności autorów`_ .
 
 .. raw:: html
