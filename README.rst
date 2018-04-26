@@ -28,8 +28,7 @@ jest dla bibliotek naukowych i uniwersyteckich w Polsce.
 
 Oprogramowanie dystrybuowane jest na zasadach otwartoźródłowej `licencja MIT`_.
 
-Dokumentacja dostępna jest na stronie https://readthedocs.org/projects/django-bpp/badge/?version=latest . Jest tam dostępna aktualna,
-rozwijana dokumentacja zarówno dla najnowszej wersi systemu BPP, przeznaczona zarówno dla administratora systemu jak i dla użytkownika końcowego.
+Dokumentacja dostępna jest na stronie https://bpp.readthedocs.io/ .
 
 Wersja demo serwisu
 -------------------
@@ -37,7 +36,6 @@ Wersja demo serwisu
 Live-demo serwisu dostępne jest pod adresem http://bppdemo.iplweb.pl . W razie
 pytań lub problemów z dostępem do serwisu demonstracyjnego prosimy o kontakt
 pod adresem e-mail michal.dtz@gmail.com.
-
 
 Obsługa komercyjna
 ------------------
