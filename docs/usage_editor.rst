@@ -23,15 +23,14 @@ lub w dół. Przycisk przeciągania wygląda w następujący sposób:
 .. image:: images/editor/przycisk_przeciagania.png
    :alt: Przycisk przeciągania
 
-Działania te również prezentuje film "Zmiana kolejności autorów"_ : 
+Działania te również prezentuje film `Zmiana kolejności autorów`_ .
 
-.. raw:
+.. raw:: html
 
-  <iframe width="560" height="315" src="https://www.youtube.com/embed/oruEX3CykH8" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+    <iframe width="560" height="315" src="https://www.youtube.com/embed/oruEX3CykH8" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
 
 
-.. _film "Zmiana kolejności autorów": https://www.youtube.com/embed/oruEX3CykH8
-
+.. _Zmiana kolejności autorów: https://www.youtube.com/embed/oruEX3CykH8
 
 Wyszukiwanie i filtrowanie rekordów w module Redagowanie
 --------------------------------------------------------
