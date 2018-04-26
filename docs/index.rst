@@ -8,7 +8,7 @@ Contents:
 
    readme
    installation
-   usage
+   usage_editor
    usage_admin
    contributing
    faq
