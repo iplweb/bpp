@@ -110,15 +110,28 @@ def test_z_datami(jednostka, autor_jan_kowalski, wydawnictwo_ciagle, wydawnictwo
 
     rok = wydawnictwo_ciagle.rok
 
-    assert list(id_ciaglych(jednostka.wydzial, od_roku=rok, do_roku=rok, rodzaj_daty=DATE_CREATED_ON,
-                            od_daty=(datetime.now() + timedelta(days=20)).date())) == []
+    assert list(
+        id_ciaglych(
+            jednostka.wydzial,
+            od_roku=rok,
+            do_roku=rok,
+            rodzaj_daty=DATE_CREATED_ON,
+            od_daty=(datetime.now() + timedelta(days=20)).date())) == []
+
     assert list(id_zwartych(jednostka.wydzial, od_roku=rok, do_roku=rok, ksiazki=True, rozdzialy=True,
                             rodzaj_daty=DATE_CREATED_ON, do_daty=(datetime.now() + timedelta(days=20)).date())) == []
 
     assert list(id_ciaglych(jednostka.wydzial, od_roku=rok, do_roku=rok, rodzaj_daty=DATE_CREATED_ON,
                             do_daty=(datetime.now() + timedelta(days=20)).date())) == []
-    assert list(id_zwartych(jednostka.wydzial, od_roku=rok, do_roku=rok, ksiazki=True, rozdzialy=True,
-                            rodzaj_daty=DATE_CREATED_ON, do_daty=(datetime.now() + timedelta(days=20)).date())) == []
+    assert list(
+        id_zwartych(
+            jednostka.wydzial,
+            od_roku=rok,
+            do_roku=rok,
+            ksiazki=True,
+            rozdzialy=True,
+            rodzaj_daty=DATE_CREATED_ON,
+            do_daty=(datetime.now() + timedelta(days=20)).date())) == [wydawnictwo_ciagle.pk]
 
 
 def test_z_datami_2(db):
