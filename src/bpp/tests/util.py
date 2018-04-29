@@ -204,7 +204,7 @@ def show_element(browser, element):
     browser.driver.execute_script("arguments[0].scrollIntoView();", element._element)
 
 
-def select_select2_autocomplete(browser, element_id, value, delay_before_enter=0.1):
+def select_select2_autocomplete(browser, element_id, value, delay_before_enter=0.1, delay_after_selection=0.2):
     element = browser.find_by_id(element_id)[0]
     sibling = element.find_by_xpath("following-sibling::span")
     scroll_into_view(browser, element_id)
@@ -214,7 +214,7 @@ def select_select2_autocomplete(browser, element_id, value, delay_before_enter=0
     active.send_keys(value)
     time.sleep(delay_before_enter)
     element.parent.switch_to.active_element.send_keys(Keys.ENTER)
-    time.sleep(0.2)
+    time.sleep(delay_after_selection)
 
 def select_select2_clear_selection(browser, element_id):
     element = browser.find_by_id(element_id)[0]
