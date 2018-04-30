@@ -2,7 +2,8 @@
 Historia zmian
 ==============
 
-**1.0.18-dev**
+1.0.18
+------
 
 * lepsze wyświetlanie rekordu patentu w widoku rekordu
 
@@ -11,6 +12,11 @@ Historia zmian
 
 * możliwość oznaczania i wyszukiwania rekordów indeksowanych w zewnętrznych bazach danych
   (np. WoS, Scopus) dla wydawnictw ciągłych
+
+* nazwa konferencji zawiera etykietę "WoS" lub "Scopus" w przypadku, gdy konferencja
+  jest indeksowana,
+
+* eksport PBN działa poprawnie w przypadku podania tej samej daty w polu "od" i "do"
 
 1.0.17
 ------
