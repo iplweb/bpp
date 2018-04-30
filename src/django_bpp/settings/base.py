@@ -405,7 +405,7 @@ def int_or_None(value):
 DATABASES = {
     'default': {
         'ENGINE': django_getenv("DJANGO_BPP_DB_ENGINE", 'django.db.backends.postgresql_psycopg2'),
-        'NAME': django_getenv("DJANGO_BPP_DB_NAME", "django-bpp"),
+        'NAME': django_getenv("DJANGO_BPP_DB_NAME", "bpp"),
         'USER': django_getenv("DJANGO_BPP_DB_USER", "postgres"),
         'PASSWORD': django_getenv("DJANGO_BPP_DB_PASSWORD", "password"),
         'HOST': django_getenv("DJANGO_BPP_DB_HOST", "localhost"),
@@ -493,7 +493,7 @@ NOTIFICATIONS_PROTOCOL = django_getenv("DJANGO_BPP_NOTIFICATIONS_PROTOCOL", 'htt
 
 MEDIA_ROOT = django_getenv(
     "DJANGO_BPP_MEDIA_ROOT",
-    os.getenv("HOME", "C:/django-bpp-media")
+    os.getenv("HOME", "C:/bpp-media")
 )
 
 SENDFILE_ROOT = MEDIA_ROOT
