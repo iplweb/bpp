@@ -48,8 +48,13 @@ class Wydawnictwo_NadrzedneAutocomplete(autocomplete.Select2QuerySetView):
         return qs
 
 
-class JednostkaAutocomplete(autocomplete.Select2QuerySetView):
-    qset = Jednostka.objects.all()
+class JednostkaMixin:
+    def get_result_label(self, result):
+        return f"{ result.nazwa } ({ result.wydzial.skrot })"
+
+
+class JednostkaAutocomplete(JednostkaMixin, autocomplete.Select2QuerySetView):
+    qset = Jednostka.objects.all().select_related("wydzial")
 
     def get_queryset(self):
         qs = self.qset
@@ -129,7 +134,7 @@ class OrganPrzyznajacyNagrodyAutocomplete(NazwaMixin,
 
 
 class WidocznaJednostkaAutocomplete(JednostkaAutocomplete):
-    qset = Jednostka.objects.filter(widoczna=True)
+    qset = Jednostka.objects.filter(widoczna=True).select_related("wydzial")
 
 
 class ZrodloAutocomplete(autocomplete.Select2QuerySetView):

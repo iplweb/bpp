@@ -38,7 +38,7 @@
                     {% for item in col %}
                         <li>
                             <a href="{% url "bpp:browse_jednostka" item.slug %}">
-                                {{ item.nazwa }}</a>
+                                {{ item.nazwa }} ({{ item.wydzial.skrot }})</a>
                         </li>
                     {% endfor %}
                 </ul>

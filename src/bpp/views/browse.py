@@ -163,7 +163,8 @@ class JednostkiView(Browser):
 
     def get_queryset(self):
         qry = super(JednostkiView, self).get_queryset()
-        return qry.filter(widoczna=True).only("nazwa", "slug")
+        return qry.filter(widoczna=True).only(
+            "nazwa", "slug", "wydzial").select_related("wydzial")
 
 
 class ZrodloView(DetailView):
