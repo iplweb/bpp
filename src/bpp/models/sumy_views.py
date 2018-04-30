@@ -16,9 +16,9 @@ class Nowe_SumyQuerySet(QuerySet, GroupByMixin):
 
 
 class Nowe_Sumy_View(ModelPunktowany, models.Model):
-    autor = models.ForeignKey('Autor', primary_key=True, on_delete=DO_NOTHING)
-    jednostka = models.ForeignKey('Jednostka', primary_key=True,
-                                  on_delete=DO_NOTHING)
+    autor = models.OneToOneField('Autor', primary_key=True, on_delete=DO_NOTHING)
+    jednostka = models.OneToOneField('Jednostka', primary_key=True,
+                                     on_delete=DO_NOTHING)
     wydzial = models.ForeignKey('Wydzial', on_delete=DO_NOTHING)
     rok = models.IntegerField()
 

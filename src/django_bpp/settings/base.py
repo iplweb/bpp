@@ -549,3 +549,5 @@ CRISPY_CLASS_CONVERTERS = {
     'inputelement': None,
     'errorcondition': 'is-invalid-input',
 }
+
+SILENCED_SYSTEM_CHECKS = ["urls.W003"]
