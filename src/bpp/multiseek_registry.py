@@ -23,7 +23,7 @@ from multiseek.logic import StringQueryObject, QueryObject, EQUALITY_OPS_ALL, \
     DateQueryObject
 
 from bpp.models import Typ_Odpowiedzialnosci, Jezyk, Autor, Jednostka, \
-    Charakter_Formalny, Zrodlo, Dyscyplina_Naukowa, Zewnetrzna_Baza_Danych, Autorzy
+    Charakter_Formalny, Zrodlo, Dyscyplina_Naukowa, Zewnetrzna_Baza_Danych, Autorzy, Uczelnia
 from bpp.models.cache import Rekord
 
 from bpp.models.system import Typ_KBN
@@ -362,6 +362,12 @@ class IndexCopernicusQueryObject(DecimalQueryObject):
     label = "Index Copernicus"
     field_name = "index_copernicus"
 
+    def enabled(self, request):
+        u = Uczelnia.objects.first()
+        if u is not None:
+            return u.pokazuj_index_copernicus
+        return True
+
 
 class LiczbaZnakowWydawniczychQueryObject(IntegerQueryObject):
     label = 'Liczba znaków wydawniczych'
@@ -528,6 +534,7 @@ multiseek_report_types = [
 from django.conf import settings
 
 if not settings.UZYWAJ_PUNKTACJI_WEWNETRZNEJ:
+    # TODO można by to zrobic przez QueryObject.enabled
     multiseek_fields.remove(_pw)
     del multiseek_report_types[2]
 

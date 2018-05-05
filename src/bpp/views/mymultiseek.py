@@ -29,9 +29,8 @@ class MyMultiseekResults(MultiseekResults):
                 )
 
         # wycięte z multiseek/views.py, get_context_data
-        public = self.request.user.is_anonymous()
         report_type = get_registry(self.registry).get_report_type(
-            self.get_multiseek_data(), only_public=public)
+            self.get_multiseek_data(), request=self.request)
 
 
         if report_type in EXTRA_TYPES:
