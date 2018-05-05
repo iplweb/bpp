@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
 
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 
 import pytest
 from model_mommy import mommy
@@ -163,7 +163,10 @@ def test_z_datami_2(db):
 
 
 @pytest.mark.django_db
-def test_ta_sama_data_id_ciaglych(jednostka, autor_jan_kowalski, wydawnictwo_ciagle, rok):
+
+def test_ta_sama_data_id_ciaglych(jednostka, autor_jan_kowalski, wydawnictwo_ciagle, rok, settings):
+    settings.TIME_ZONE = "UTC"
+
     cf = wydawnictwo_ciagle.charakter_formalny
     cf.artykul_pbn = True
     cf.save()
@@ -186,17 +189,6 @@ def test_ta_sama_data_id_ciaglych(jednostka, autor_jan_kowalski, wydawnictwo_cia
         do_roku=rok,
         rodzaj_daty=DATE_UPDATED_ON_PBN,
         od_daty=od_daty,
-        do_daty=do_daty + timedelta(days=1),
-    )
-
-    assert wydawnictwo_ciagle.pk in list(res)
-
-    res = id_ciaglych(
-        jednostka.wydzial,
-        od_roku=rok,
-        do_roku=rok,
-        rodzaj_daty=DATE_UPDATED_ON_PBN,
-        od_daty=od_daty,
         do_daty=do_daty
     )
 
@@ -204,7 +196,9 @@ def test_ta_sama_data_id_ciaglych(jednostka, autor_jan_kowalski, wydawnictwo_cia
 
 
 @pytest.mark.django_db
-def test_ta_sama_data_id_zwartych(jednostka, autor_jan_kowalski, wydawnictwo_zwarte, rok):
+def test_ta_sama_data_id_zwartych(jednostka, autor_jan_kowalski, wydawnictwo_zwarte, rok, settings):
+    settings.TIME_ZONE = "UTC"
+
     cf = wydawnictwo_zwarte.charakter_formalny
     cf.ksiazka_pbn = True
     cf.save()
@@ -226,20 +220,6 @@ def test_ta_sama_data_id_zwartych(jednostka, autor_jan_kowalski, wydawnictwo_zwa
         do_roku=rok,
         ksiazki=True,
         rozdzialy=False,
-        rodzaj_daty=DATE_UPDATED_ON_PBN,
-        od_daty=od_daty,
-        do_daty=do_daty + timedelta(days=1),
-    )
-
-    assert wydawnictwo_zwarte.pk in list(res)
-
-    res = id_zwartych(
-        jednostka.wydzial,
-        od_roku=rok,
-        do_roku=rok,
-        ksiazki=True,
-        rozdzialy=False,
-
         rodzaj_daty=DATE_UPDATED_ON_PBN,
         od_daty=od_daty,
         do_daty=do_daty
