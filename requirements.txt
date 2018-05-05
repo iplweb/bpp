@@ -59,7 +59,7 @@ Pillow==4.0.0
 olefile==0.44
 
 django-grappelli==2.10.2
-django-multiseek==0.9.36
+django-multiseek==0.9.37
 djorm-ext-filtered-contenttypes==0.4.1
 
 django_braces==1.8.1
