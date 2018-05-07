@@ -1,5 +1,6 @@
 # -*- encoding: utf-8 -*-
 import pytest
+from django.urls import reverse
 from multiseek import logic
 
 from bpp.models import Wydawnictwo_Zwarte
@@ -61,3 +62,5 @@ def test_PierwszeNazwiskoIImie_real_query(wydawnictwo_zwarte, autor_jan_kowalski
     )
 
     assert len(r) == 1
+
+
