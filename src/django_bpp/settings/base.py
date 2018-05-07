@@ -196,7 +196,11 @@ INSTALLED_APPS = [
     'webmaster_verification',
     'favicon',
 
-    'miniblog'
+    'miniblog',
+
+    'import_dyscyplin',
+
+    'mptt'
 
 ]
 
@@ -369,8 +373,9 @@ BROKER_URL = django_getenv("DJANGO_BPP_BROKER_URL",
                                                       CELERY_HOST,
                                                       CELERY_PORT,
                                                       CELERY_VHOST))
-# BYłO: redis://%s:%s/%s' % (REDIS_HOST, REDIS_PORT, REDIS_DB_BROKER)
+
 # CELERY_RESULT_BACKEND = 'redis://%s:%s/%s' % (REDIS_HOST, REDIS_PORT, REDIS_DB_CELERY)
+CELERY_RESULT_BACKEND = "rpc://"
 
 #
 SESSION_REDIS_HOST = REDIS_HOST
@@ -400,7 +405,7 @@ def int_or_None(value):
 DATABASES = {
     'default': {
         'ENGINE': django_getenv("DJANGO_BPP_DB_ENGINE", 'django.db.backends.postgresql_psycopg2'),
-        'NAME': django_getenv("DJANGO_BPP_DB_NAME", "django-bpp"),
+        'NAME': django_getenv("DJANGO_BPP_DB_NAME", "bpp"),
         'USER': django_getenv("DJANGO_BPP_DB_USER", "postgres"),
         'PASSWORD': django_getenv("DJANGO_BPP_DB_PASSWORD", "password"),
         'HOST': django_getenv("DJANGO_BPP_DB_HOST", "localhost"),
@@ -408,10 +413,10 @@ DATABASES = {
     },
     # 'test': {
     #     'ENGINE': django_getenv("DJANGO_BPP_DB_ENGINE", 'django.db.backends.postgresql_psycopg2'),
-    #     'NAME': "test_" + django_getenv("DJANGO_BPP_DB_NAME", "bpp"),
-    #     'USER': django_getenv("DJANGO_BPP_DB_USER", "bpp"),
+    #     'NAME': django_getenv("DJANGO_BPP_DB_NAME", "test_django-bpp"),
+    #     'USER': django_getenv("DJANGO_BPP_DB_USER", "postgres"),
     #     'PASSWORD': django_getenv("DJANGO_BPP_DB_PASSWORD", "password"),
-    #     'HOST': django_getenv("DJANGO_BPP_DB_HOST", "bpp-db"),
+    #     'HOST': django_getenv("DJANGO_BPP_DB_HOST", "localhost"),
     #     'PORT': int_or_None(django_getenv("DJANGO_BPP_DB_PORT", "5432")),
     # },
 }
@@ -451,6 +456,8 @@ if TESTING:
 
 CELERYD_HIJACK_ROOT_LOGGER = False
 
+CELERY_TRACK_STARTED = True
+
 CELERYBEAT_SCHEDULE = {
 
     'cleanup-integrator2-files': {
@@ -466,7 +473,13 @@ CELERYBEAT_SCHEDULE = {
     'cleanup-report-files': {
         'task': 'bpp.tasks.remove_old_report_files',
         'schedule': timedelta(days=1),
+    },
+
+    'zaktualizuj-liczbe-cytowan': {
+        'task': 'bpp.tasks.zaktualizuj_liczbe_cytowan',
+        'schedule': timedelta(days=5)
     }
+    
 }
 
 CAN_LOGIN_AS = lambda request, target_user: request.user.is_superuser
@@ -480,7 +493,7 @@ NOTIFICATIONS_PROTOCOL = django_getenv("DJANGO_BPP_NOTIFICATIONS_PROTOCOL", 'htt
 
 MEDIA_ROOT = django_getenv(
     "DJANGO_BPP_MEDIA_ROOT",
-    os.getenv("HOME", "C:/django-bpp-media")
+    os.getenv("HOME", "C:/bpp-media")
 )
 
 SENDFILE_ROOT = MEDIA_ROOT
@@ -516,9 +529,9 @@ PUNKTUJ_MONOGRAFIE = bool(int(os.getenv(
     "DJANGO_BPP_PUNKTUJ_MONOGRAFIE", "1"
 )))
 
-SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 
 STATICSITEMAPS_ROOT_SITEMAP = 'django_bpp.sitemaps.django_bpp_sitemaps'
+STATICSITEMAPS_REFRESH_AFTER = 24 * 60
 
 
 # dla django-model-utils SplitField
@@ -536,3 +549,5 @@ CRISPY_CLASS_CONVERTERS = {
     'inputelement': None,
     'errorcondition': 'is-invalid-input',
 }
+
+SILENCED_SYSTEM_CHECKS = ["urls.W003"]

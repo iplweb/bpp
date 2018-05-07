@@ -19,7 +19,7 @@
     {% compress css %}
         {#        base.html #}
         <link rel="stylesheet" type="text/css" href="{% static THEME_NAME %}"/>
-
+        <link rel="stylesheet" type="text/css" href="{% static "jqueryui/jquery-ui.css" %}">
         <link rel="stylesheet" type="text/css" href="{% static "multiseek/css/style.css" %}">
         <link rel="stylesheet" type="text/css" href="{% static 'session_security/style.css' %}">
         <link rel="stylesheet" type="text/css"
@@ -32,7 +32,10 @@
               href="{% static "select2-foundation_theme/dist/select2-foundation-theme.css" %}">
         <link rel="stylesheet" type="text/css" href="{% static "autocomplete_light/select2.css" %}"></link>
 
-            <link rel="stylesheet" href="{% static "multiseek/css/style.css" %}"/>
+        <link rel="stylesheet" href="{% static "multiseek/css/style.css" %}"/>
+
+{#        <link rel="stylesheet" href="{% static "datatables.net-dt/css/jquery.dataTables.css" %}"/>#}
+        <link rel="stylesheet" href="{% static "datatables.net-zf/css/dataTables.foundation.css" %}"/>
 
 
     {% endcompress %}
@@ -63,18 +66,20 @@
         <script src="{% static "foundation-datepicker/js/foundation-datepicker.min.js" %}"></script>
         <script src="{% static "foundation-datepicker/js/locales/foundation-datepicker.pl.js" %}"></script>
 
+        <script src="{% static "datatables.net/js/jquery.dataTables.js" %}"></script>
+        <script src="{% static "datatables.net-zf/js/dataTables.foundation.js" %}"></script>
         {% block extrahead_js %}
         {% endblock %}
 
-        {#        <script src="{% static "foundation-sites/dist/js/plugins/foundation.core.js" %}"></script>#}
+{#                <script src="{% static "foundation-sites/dist/js/plugins/foundation.core.js" %}"></script>#}
         {##}
-        {#        <script src="{% static "foundation-sites/dist/js/plugins/foundation.util.keyboard.js" %}"></script>#}
-        {#        <script src="{% static "foundation-sites/dist/js/plugins/foundation.util.imageLoader.js" %}"></script>#}
+{#                <script src="{% static "foundation-sites/dist/js/plugins/foundation.util.keyboard.js" %}"></script>#}
+{#                <script src="{% static "foundation-sites/dist/js/plugins/foundation.util.imageLoader.js" %}"></script>#}
         {#        <script src="{% static "foundation-sites/dist/js/plugins/foundation.util.triggers.js" %}"></script>#}
         {#        <script src="{% static "foundation-sites/dist/js/plugins/foundation.util.mediaQuery.js" %}"></script>#}
         {##}
         {#        <script src="{% static "foundation-sites/dist/js/plugins/foundation.sticky.js" %}"></script>#}
-        {#        <script src="{% static "foundation-sites/dist/js/plugins/foundation.tabs.js" %}"></script>#}
+{#                <script src="{% static "foundation-sites/dist/js/plugins/foundation.tabs.js" %}"></script>#}
 
         {#        <script src="{% static "foundation-sites/dist/js/plugins/foundation.responsiveMenu.js" %}"></script>#}
 
@@ -110,6 +115,16 @@
     $(document).foundation();
     $.fn.select2.defaults.set('language', 'pl');
     $.fn.select2.defaults.set('theme', 'foundation');
+
+
+    $.extend(true, $.fn.dataTable.defaults, {
+        // Przetłumacz wszystkie tabelki DataTables
+        "language": {
+            "url": "{% static "bpp/js/Polish.json" %}"
+        },
+        "lengthMenu": [ [10, 25, 50, 100, -1], [10, 25, 50, 100, "wszystkie"] ]
+    });
+
 </script>
 </body>
 <footer>
@@ -119,7 +134,7 @@
 
 <!-----Flash of Unstyled Content---------->
 <script>
-    $('body').show();
+    document.getElementsByTagName("body")[0].style.display = '';
 </script>
 <noscript>
     <style>body {

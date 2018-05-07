@@ -6,13 +6,14 @@ from datetime import datetime
 
 import django_webtest
 import pytest
-from django.core.urlresolvers import reverse
+from django.contrib.auth.models import Group
 from django.contrib.contenttypes.models import ContentType
-from django.db.utils import IntegrityError
+from django.core.urlresolvers import reverse
 from model_mommy import mommy
 
 from bpp.fixtures import get_openaccess_data
 from bpp.models.autor import Autor, Tytul, Funkcja_Autora
+from bpp.models.const import GR_WPROWADZANIE_DANYCH
 from bpp.models.patent import Patent
 from bpp.models.praca_doktorska import Praca_Doktorska
 from bpp.models.praca_habilitacyjna import Praca_Habilitacyjna
@@ -92,8 +93,8 @@ def preauth_browser(normal_django_user, client, browser, live_server,
 def preauth_admin_browser(admin_user, client, browser, live_server,
                           django_user_model, django_username_field):
     browser = _preauth_session_id_helper('admin', 'password', client, browser,
-                                      live_server, django_user_model,
-                                      django_username_field)
+                                         live_server, django_user_model,
+                                         django_username_field)
     yield browser
     browser.execute_script("window.onbeforeunload = function(e) {};")
     browser.quit()
@@ -102,14 +103,14 @@ def preauth_admin_browser(admin_user, client, browser, live_server,
 @pytest.fixture
 def uczelnia(db):
     return \
-    Uczelnia.objects.get_or_create(skrot='TE', nazwa='Testowa uczelnia')[0]
+        Uczelnia.objects.get_or_create(skrot='TE', nazwa='Testowa uczelnia')[0]
 
 
 @pytest.mark.django_db
 def _wydzial_maker(nazwa, skrot, uczelnia, **kwargs):
     return \
-    Wydzial.objects.get_or_create(uczelnia=uczelnia, skrot=skrot, nazwa=nazwa,
-                                  **kwargs)[0]
+        Wydzial.objects.get_or_create(uczelnia=uczelnia, skrot=skrot, nazwa=nazwa,
+                                      **kwargs)[0]
 
 
 @pytest.mark.django_db
@@ -128,8 +129,8 @@ def wydzial(uczelnia, db):
 def _autor_maker(imiona, nazwisko, tytul="dr", **kwargs):
     tytul = Tytul.objects.get(skrot=tytul)
     return \
-    Autor.objects.get_or_create(tytul=tytul, imiona=imiona, nazwisko=nazwisko,
-                                **kwargs)[0]
+        Autor.objects.get_or_create(tytul=tytul, imiona=imiona, nazwisko=nazwisko,
+                                    **kwargs)[0]
 
 
 @pytest.fixture
@@ -207,6 +208,7 @@ def set_default(varname, value, dct):
     if varname not in dct:
         dct[varname] = value
 
+
 def _wydawnictwo_maker(klass, **kwargs):
     if 'rok' not in kwargs:
         kwargs['rok'] = rok()
@@ -243,6 +245,7 @@ def _wydawnictwo_ciagle_maker(**kwargs):
 
 def wydawnictwo_ciagle_maker(db):
     return _wydawnictwo_ciagle_maker
+
 
 @pytest.fixture(scope="function")
 def wydawnictwo_ciagle(jezyki, charaktery_formalne, typy_kbn,
@@ -357,9 +360,23 @@ def _webtest_login(webtest_app, username, password, login_form='login_form'):
 
 
 @pytest.fixture(scope='function')
+def wprowadzanie_danych_user(normal_django_user):
+    grp = Group.objects.get_or_create(name=GR_WPROWADZANIE_DANYCH)[0]
+    normal_django_user.groups.add(grp)
+    return normal_django_user
+
+
+@pytest.fixture(scope='function')
 def app(webtest_app, normal_django_user):
     return _webtest_login(webtest_app, NORMAL_DJANGO_USER_LOGIN,
                           NORMAL_DJANGO_USER_PASSWORD)
+
+
+@pytest.fixture(scope='function')
+def wd_app(webtest_app, wprowadzanie_danych_user):
+    return _webtest_login(webtest_app, NORMAL_DJANGO_USER_LOGIN,
+                          NORMAL_DJANGO_USER_PASSWORD)
+
 
 @pytest.fixture(scope='function')
 def admin_app(webtest_app, admin_user):
@@ -379,19 +396,21 @@ def fixture(name):
                     "bpp", "fixtures", name)
             ), "rb"))
 
+
 @pytest.fixture(scope='function')
 def typy_odpowiedzialnosci():
     for elem in fixture("typ_odpowiedzialnosci_v2.json"):
         Typ_Odpowiedzialnosci.objects.get_or_create(pk=elem['pk'], **elem['fields'])
+
 
 @pytest.fixture(scope='function')
 def tytuly():
     for elem in fixture("tytul.json"):
         Tytul.objects.get_or_create(pk=elem['pk'], **elem['fields'])
 
+
 @pytest.fixture(scope='function')
 def jezyki():
-
     pl, created = Jezyk.objects.get_or_create(
         pk=1, skrot='pol.', nazwa='polski')
     pl.skrot_dla_pbn = 'PL'
@@ -407,6 +426,7 @@ def jezyki():
     for elem in fixture("jezyk.json"):
         Jezyk.objects.get_or_create(pk=elem['pk'], **elem['fields'])
 
+
 @pytest.fixture(scope='function')
 def charaktery_formalne():
     Charakter_Formalny.objects.all().delete()
@@ -421,20 +441,24 @@ def charaktery_formalne():
     chf_roz.rozdzial_pbn = True
     chf_roz.save()
 
+
 @pytest.fixture(scope='function')
 def typy_kbn():
     for elem in fixture("typ_kbn.json"):
         Typ_KBN.objects.get_or_create(pk=elem['pk'], **elem['fields'])
+
 
 @pytest.fixture(scope='function')
 def statusy_korekt():
     for elem in fixture("status_korekty.json"):
         Status_Korekty.objects.get_or_create(pk=elem['pk'], **elem['fields'])
 
+
 @pytest.fixture(scope='function')
 def funkcje_autorow():
     for elem in fixture("funkcja_autora.json"):
         Funkcja_Autora.objects.get_or_create(pk=elem['pk'], **elem['fields'])
+
 
 @pytest.fixture(scope='function')
 def standard_data(typy_odpowiedzialnosci, tytuly, jezyki,
@@ -487,9 +511,8 @@ def pytest_configure():
     Rekord._meta.managed = True
     Autorzy._meta.managed = True
 
-
-#@pytest.fixture(scope="session")
-#def splinter_driver_kwargs(splinter_webdriver):
+# @pytest.fixture(scope="session")
+# def splinter_driver_kwargs(splinter_webdriver):
 #    if splinter_webdriver == "remote":
 #        from selenium import webdriver
 

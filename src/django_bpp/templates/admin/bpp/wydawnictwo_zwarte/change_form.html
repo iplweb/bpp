@@ -4,11 +4,19 @@
     {{ block.super }}
 
     {%  include "admin/pubmed_id_button_handler.html" %}
+    {%  include "admin/liczba_cytowan_button_handler.html" %}
     {%  include "admin/strona_tom_nr_zeszytu_button_handler.html" %}
     {%  include "admin/liczba_arkuszy_wydawniczych.html" %}
     {%  include "admin/uzupelnij_rok_wydawnictwo_zwarte_button_handler.html" %}
 
     <script type="text/javascript">
+        // Gramatyka
+        $('a').each(function () {
+            var html = $(this).html();
+            if (html.includes("Dodaj kolejne nagroda")) {}
+                $(this).html(html.replace('Dodaj kolejne nagroda', 'Dodaj kolejną nagrodę'));
+        });
+
         pub_id = $("#id_autorzy_set-__prefix__-rekord").val()
 
         if (pub_id) {

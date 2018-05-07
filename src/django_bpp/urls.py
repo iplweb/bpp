@@ -55,6 +55,14 @@ urlpatterns = [
     url(r'^eksport_pbn/',
         include('eksport_pbn.urls', namespace='eksport_pbn')),
 
+    url(
+        r'^import_dyscyplin/',
+        include(
+            'import_dyscyplin.urls',
+            namespace='import_dyscyplin'
+        )
+    ),
+
     url(r'^nowe_raporty/',
         include('nowe_raporty.urls', namespace='nowe_raporty')),
 
@@ -133,7 +141,7 @@ urlpatterns = [
     #     cache_page(7*24*3600)(sitemaps_views.sitemap), {'sitemaps': django_bpp_sitemaps},
     #     name='sitemaps'),
 
-    url(r'^sitemap\.xml$', include('static_sitemaps.urls')),
+    url(r'^sitemap\.xml', include('static_sitemaps.urls')),
 
     url(r'', include('webmaster_verification.urls')),
 

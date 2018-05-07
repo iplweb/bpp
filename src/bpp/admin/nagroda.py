@@ -2,7 +2,7 @@
 
 from dal import autocomplete
 from django import forms
-from django.contrib.contenttypes.admin import GenericTabularInline
+from django.contrib.contenttypes.admin import GenericTabularInline, GenericStackedInline
 
 from bpp.models.nagroda import Nagroda, OrganPrzyznajacyNagrody
 
@@ -23,7 +23,7 @@ class NagrodaForm(forms.ModelForm):
         model = Nagroda
 
 
-class NagrodaInline(GenericTabularInline):
+class NagrodaInline(GenericStackedInline):
     model = Nagroda
     extra = 0
     form = NagrodaForm

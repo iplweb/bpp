@@ -12,7 +12,7 @@ Możesz dołożyć się do tego projektu na różne sposoby:
 Zgłaszanie błędów
 ~~~~~~~~~~~~~~~~~
 
-Zgłaszaj błędy w oprogramowaniu pod adresem https://github.com/mpasternak/django-bpp/issues.
+Zgłaszaj błędy w oprogramowaniu pod adresem https://github.com/iplweb/bpp/issues.
 
 Jeżeli zgłaszasz bład, prosimy, opisz:
 
@@ -42,7 +42,7 @@ Zgłoś uwagi
 ~~~~~~~~~~~
 
 Najlepszy sposób na zgłoszenie swoich uwag to wypełnienie formularza pod adresem
- https://github.com/mpasternak/django-bpp/issues.
+ https://github.com/iplweb/bpp/issues.
 
 Jeżeli proponujesz nową funkcję:
 

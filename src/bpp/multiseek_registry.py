@@ -1,7 +1,5 @@
 # -*- encoding: utf-8 -*-
-import six
 from django.contrib.postgres.search import SearchQuery
-from django.urls import reverse
 from django.utils.itercompat import is_iterable
 
 from bpp.models.konferencja import Konferencja
@@ -25,7 +23,7 @@ from multiseek.logic import StringQueryObject, QueryObject, EQUALITY_OPS_ALL, \
     DateQueryObject
 
 from bpp.models import Typ_Odpowiedzialnosci, Jezyk, Autor, Jednostka, \
-    Charakter_Formalny, Zrodlo
+    Charakter_Formalny, Zrodlo, Dyscyplina_Naukowa, Zewnetrzna_Baza_Danych, Autorzy, Uczelnia
 from bpp.models.cache import Rekord
 
 from bpp.models.system import Typ_KBN
@@ -145,7 +143,7 @@ class NazwiskoIImieQueryObject(ForeignKeyDescribeMixin,
                                AutocompleteQueryObject):
     label = 'Nazwisko i imię'
     type = AUTOCOMPLETE
-    ops = [EQUAL_NONE,]
+    ops = [EQUAL_NONE, ]
     model = Autor
     search_fields = ['nazwisko', 'imiona']
     field_name = 'autor'
@@ -154,7 +152,10 @@ class NazwiskoIImieQueryObject(ForeignKeyDescribeMixin,
     def real_query(self, value, operation):
 
         if operation in EQUALITY_OPS_ALL:
-            ret = Q(autorzy__autor=value)
+            autorzy = Autorzy.objects.filter(
+                autor=value
+            ).values("rekord_id")
+            ret = Q(pk__in=autorzy)
 
         else:
             raise UnknownOperation(operation)
@@ -167,13 +168,17 @@ class NazwiskoIImieQueryObject(ForeignKeyDescribeMixin,
 
 class PierwszeNazwiskoIImie(NazwiskoIImieQueryObject):
     label = "Pierwsze nazwisko i imię"
-    ops = [EQUAL,]
+    ops = [EQUAL, ]
 
     def real_query(self, value, operation):
 
         if operation in EQUALITY_OPS_ALL:
-            ret = Q(autorzy__autor=value,
-                    autorzy__kolejnosc=0)
+            autorzy = Autorzy.objects.filter(
+                autor=value,
+                kolejnosc=0
+            ).values("rekord_id")
+
+            ret = Q(pk__in=autorzy)
 
         else:
             raise UnknownOperation(operation)
@@ -183,6 +188,29 @@ class PierwszeNazwiskoIImie(NazwiskoIImieQueryObject):
 
         return ret
 
+
+class DyscyplinaAutoraQueryObject(ForeignKeyDescribeMixin,
+                                  AutocompleteQueryObject):
+    label = 'Dyscyplina naukowa autora'
+    type = AUTOCOMPLETE
+    ops = [EQUAL_NONE, ]
+    model = Dyscyplina_Naukowa
+    url = "bpp:dyscyplina-autocomplete"
+
+    def real_query(self, value, operation):
+        if operation in EQUALITY_OPS_ALL:
+            autorzy = Autorzy.objects.filter(
+                autor_dyscyplina__dyscyplina=value,
+                autor_dyscyplina__rok=F("rok")
+            ).values("rekord_id")
+
+            ret = Q(pk__in=autorzy)
+
+        else:
+            raise UnknownOperation(operation)
+        if operation in DIFFERENT_ALL:
+            return ~ret
+        return ret
 
 
 class NazwaKonferencji(ForeignKeyDescribeMixin, AutocompleteQueryObject):
@@ -192,13 +220,31 @@ class NazwaKonferencji(ForeignKeyDescribeMixin, AutocompleteQueryObject):
     model = Konferencja
     search_fields = ['nazwa']
     field_name = "konferencja"
-    url = "bpp:konferencja-autocomplete"
+    url = "bpp:public-konferencja-autocomplete"
+
+
+class ZewnetrznaBazaDanychQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
+    label = "Zewnętrzna baza danych"
+    type = AUTOCOMPLETE
+    ops = EQUALITY_OPS_FEMALE
+    model = Zewnetrzna_Baza_Danych
+    search_fields = ['nazwa']
+    url = "bpp:zewnetrzna-baza-danych-autocomplete"
+
+    def real_query(self, value, operation, validate_operation=True):
+        if operation in EQUALITY_OPS_ALL:
+            ret = Q(zewnetrzne_bazy__baza=value)
+        else:
+            raise UnknownOperation(operation)
+        if operation in DIFFERENT_ALL:
+            return ~ret
+        return ret
 
 
 class JednostkaQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
     label = 'Jednostka'
     type = AUTOCOMPLETE
-    ops = [EQUAL_FEMALE,]
+    ops = [EQUAL_FEMALE, ]
     model = Jednostka
     search_fields = ['nazwa']
     field_name = 'jednostka'
@@ -206,7 +252,10 @@ class JednostkaQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
 
     def real_query(self, value, operation):
         if operation in EQUALITY_OPS_ALL:
-            ret = Q(autorzy__jednostka=value)
+            autorzy = Autorzy.objects.filter(
+                jednostka=value
+            ).values_list("rekord_id")
+            ret = Q(pk__in=autorzy)
 
         else:
             raise UnknownOperation(operation)
@@ -216,11 +265,10 @@ class JednostkaQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
         return ret
 
 
-
 class WydzialQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
     label = 'Wydział'
     type = AUTOCOMPLETE
-    ops = [EQUAL,]
+    ops = [EQUAL, ]
     model = Wydzial
     search_fields = ['nazwa']
     field_name = 'wydzial'
@@ -228,7 +276,10 @@ class WydzialQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
 
     def real_query(self, value, operation):
         if operation in EQUALITY_OPS_ALL:
-            ret = Q(autorzy__jednostka__wydzial=value)
+            autorzy = Autorzy.objects.filter(
+                jednostka__wydzial=value
+            ).values_list("rekord_id")
+            ret = Q(pk__in=autorzy)
 
         else:
             raise UnknownOperation(operation)
@@ -239,10 +290,10 @@ class WydzialQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
 
 
 class Typ_OdpowiedzialnosciQueryObject(QueryObject):
-    label = 'Typ odpowiedzialności'
+    label = 'Typ odpowiedzialności dowolnego autora'
     type = VALUE_LIST
     values = Typ_Odpowiedzialnosci.objects.all()
-    ops = [EQUAL,]
+    ops = [EQUAL, ]
     field_name = 'typ_odpowiedzialnosci'
 
     def value_from_web(self, value):
@@ -310,6 +361,12 @@ class KCPunktyKBNQueryObject(PunktyKBNQueryObject):
 class IndexCopernicusQueryObject(DecimalQueryObject):
     label = "Index Copernicus"
     field_name = "index_copernicus"
+
+    def enabled(self, request):
+        u = Uczelnia.objects.first()
+        if u is not None:
+            return u.pokazuj_index_copernicus
+        return True
 
 
 class LiczbaZnakowWydawniczychQueryObject(IntegerQueryObject):
@@ -413,6 +470,7 @@ class BazaSCOPUS(BooleanQueryObject):
     field_name = "konferencja__baza_scopus"
     label = "Konferencja w bazie Scopus"
 
+
 _pw = PunktacjaWewnetrznaQueryObject()
 
 multiseek_fields = [
@@ -460,6 +518,9 @@ multiseek_fields = [
     OpenaccessLicencjaQueryObject(),
     OpenaccessCzasPublikacjiQueryObject(),
 
+    DyscyplinaAutoraQueryObject(),
+
+    ZewnetrznaBazaDanychQueryObject()
 ]
 
 multiseek_report_types = [
@@ -471,7 +532,9 @@ multiseek_report_types = [
 ]
 
 from django.conf import settings
+
 if not settings.UZYWAJ_PUNKTACJI_WEWNETRZNEJ:
+    # TODO można by to zrobic przez QueryObject.enabled
     multiseek_fields.remove(_pw)
     del multiseek_report_types[2]
 

@@ -1,14 +1,14 @@
 # -*- encoding: utf-8 -*-
-from django.contrib.postgres.search import SearchVector
 from django.db import models
+from django.utils import six
 
 from bpp.models import BazaModeluOdpowiedzialnosciAutorow, Autor, \
     ModelZRokiem, ModelZeStatusem, ModelZWWW, ModelRecenzowany, \
-    ModelZInformacjaZ, ModelZAdnotacjami, ModelZeSzczegolami, ModelPunktowany
-from bpp.models.abstract import ModelPrzeszukiwalny, ModelZLegacyData, \
-    RekordBPPBaza, ModelZAbsolutnymUrl
-from bpp.models.util import dodaj_autora, ModelZOpisemBibliograficznym
-from django.utils import six
+    ModelZInformacjaZ, ModelZAdnotacjami, ModelZeSzczegolami, ModelPunktowany, \
+    Charakter_Formalny, Jezyk
+from bpp.models.abstract import RekordBPPBaza, ModelZAbsolutnymUrl
+from bpp.models.util import dodaj_autora
+
 
 class Patent_Autor(BazaModeluOdpowiedzialnosciAutorow):
     """Powiązanie autora do patentu."""
@@ -18,11 +18,12 @@ class Patent_Autor(BazaModeluOdpowiedzialnosciAutorow):
         verbose_name = 'powiązanie autora z patentem'
         verbose_name_plural = 'powiązania autorów z patentami'
         app_label = 'bpp'
-        ordering = ('kolejnosc', )
+        ordering = ('kolejnosc',)
         unique_together = \
             [('rekord', 'autor', 'typ_odpowiedzialnosci'),
-              # Tu musi być autor, inaczej admin nie pozwoli wyedytować
+             # Tu musi być autor, inaczej admin nie pozwoli wyedytować
              ('rekord', 'autor', 'kolejnosc')]
+
 
 @six.python_2_unicode_compatible
 class Patent(RekordBPPBaza,
@@ -35,7 +36,6 @@ class Patent(RekordBPPBaza,
              ModelZInformacjaZ,
              ModelZAdnotacjami,
              ModelZAbsolutnymUrl):
-
     tytul_oryginalny = models.TextField("Tytuł oryginalny", db_index=True)
 
     data_zgloszenia = models.DateField(
@@ -72,7 +72,7 @@ class Patent(RekordBPPBaza,
     def dodaj_autora(self, autor, jednostka, zapisany_jako=None,
                      typ_odpowiedzialnosci_skrot='aut.', kolejnosc=None):
         return dodaj_autora(Patent_Autor, self, autor, jednostka, zapisany_jako,
-            typ_odpowiedzialnosci_skrot, kolejnosc)
+                            typ_odpowiedzialnosci_skrot, kolejnosc)
 
     class Meta:
         verbose_name = "patent"
@@ -82,3 +82,8 @@ class Patent(RekordBPPBaza,
     def __str__(self):
         return self.tytul_oryginalny
 
+    def charakter_formalny(self):
+        return Charakter_Formalny.objects.get(skrot="PAT")
+
+    def jezyk(self):
+        return Jezyk.objects.get(skrot_dla_pbn="PL")

@@ -61,6 +61,7 @@ def test_zapisz_wydawnictwo_w_adminie(klass, autor_klass, name,
     res2 = form.submit().maybe_follow()
     assert res2.status_code == 200
     assert "Please correct the error" not in res2.text
+    assert "Proszę, popraw poniższe błędy." not in res2.text
 
     wca.refresh_from_db()
     assert wca.zapisany_jako == ZMIENIONE

@@ -4,7 +4,6 @@
 from bpp.models.abstract import *
 from bpp.models.struktura import *
 from bpp.models.autor import *
-from bpp.models.patent import *
 from bpp.models.profile import *
 from bpp.models.system import *
 from bpp.models.wydawnictwo_ciagle import *
@@ -36,6 +35,7 @@ from bpp.models.opi_2012 import *
 
 from bpp.models.openaccess import *
 
+from bpp.models.dyscyplina_naukowa import *
 
 TABLE_TO_MODEL = {
     "bpp_wydawnictwo_ciagle": Wydawnictwo_Ciagle,

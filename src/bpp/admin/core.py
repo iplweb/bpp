@@ -123,7 +123,7 @@ def generuj_inline_dla_autorow(baseModel):
                 'kolejnosc': HiddenInput
             }
 
-    class baseModel_AutorInline(admin.TabularInline):
+    class baseModel_AutorInline(admin.StackedInline):
         model = baseModel
         extra = 0
         form = baseModel_AutorForm

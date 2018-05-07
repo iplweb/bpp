@@ -12,9 +12,12 @@ from admin_tools.menu import items, Menu
 from django.core.urlresolvers import reverse
 from django.utils.translation import ugettext_lazy as _
 
+from bpp.models.const import GR_WPROWADZANIE_DANYCH
+
 SYSTEM_MENU = [
     ('Charaktery formalne', '/admin/bpp/charakter_formalny/'),
     ('Charakter PBN', '/admin/bpp/charakter_pbn/'),
+    ('Dyscypliny naukowe', '/admin/bpp/dyscyplina_naukowa/'),
     ('Funkcje w jednostce', '/admin/bpp/funkcja_autora/'),
     ('Języki', '/admin/bpp/jezyk/'),
 
@@ -32,6 +35,7 @@ SYSTEM_MENU = [
     ('Typy KBN', '/admin/bpp/typ_kbn/'),
     ('Typy odpowiedzialności', '/admin/bpp/typ_odpowiedzialnosci/'),
     ('Tytuły', '/admin/bpp/tytul/'),
+    ('Zewnętrzne bazy danych', '/admin/bpp/zewnetrzna_baza_danych/'),
     ('Źródło informacji', '/admin/bpp/zrodlo_informacji/'),
 
 ]
@@ -106,7 +110,7 @@ class CustomMenu(Menu):
         flt("web", "WWW", WEB_MENU)
         flt("dane systemowe", "Dane systemowe", SYSTEM_MENU)
         flt("struktura", "Struktura", STRUKTURA_MENU)
-        flt("wprowadzanie danych", "Wprowadzanie danych", REDAKTOR_MENU)
+        flt(GR_WPROWADZANIE_DANYCH, "Wprowadzanie danych", REDAKTOR_MENU)
         flt("raporty", "Raporty", RAPORTY_MENU)
         flt("administracja", "Administracja", ADMIN_MENU)
 

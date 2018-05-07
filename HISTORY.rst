@@ -2,6 +2,34 @@
 Historia zmian
 ==============
 
+**dev**
+-------
+
+
+1.0.18
+-------
+
+* lepsze wyświetlanie rekordu patentu w widoku rekordu
+
+* poprawka formularza edycji autorów powiązanych z rekordem w module redagowania -
+  obecnie edycja odbywa się za pomocą formularzy poziomych, co zwiększyło czytelnosć
+
+* możliwość oznaczania i wyszukiwania rekordów indeksowanych w zewnętrznych bazach danych
+  (np. WoS, Scopus) dla wydawnictw ciągłych
+
+* nazwa konferencji zawiera etykietę "WoS" lub "Scopus" w przypadku, gdy konferencja
+  jest indeksowana,
+
+* eksport PBN działa poprawnie w przypadku podania tej samej daty w polu "od" i "do"
+
+* ukrywanie pól w "wyszukiwaniu" oraz brak dostępu do raportów zgodnie z ustawieniami
+  systemu dokonanymi w module "Redagowanie"
+
+1.0.17
+------
+
+* import i wyszukiwanie dyscyplin naukowych
+
 1.0.16 (2018-03-20)
 -------------------
 

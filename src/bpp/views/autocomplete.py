@@ -13,9 +13,10 @@ from queryset_sequence import QuerySetSequence
 
 from bpp.jezyk_polski import warianty_zapisanego_nazwiska
 from bpp.lookups import SearchQueryStartsWith
-from bpp.models import Jednostka
+from bpp.models import Jednostka, Dyscyplina_Naukowa, Zewnetrzna_Baza_Danych
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
+from bpp.models.const import GR_WPROWADZANIE_DANYCH
 from bpp.models.konferencja import Konferencja
 from bpp.models.nagroda import OrganPrzyznajacyNagrody
 from bpp.models.patent import Patent, Patent_Autor
@@ -47,8 +48,13 @@ class Wydawnictwo_NadrzedneAutocomplete(autocomplete.Select2QuerySetView):
         return qs
 
 
-class JednostkaAutocomplete(autocomplete.Select2QuerySetView):
-    qset = Jednostka.objects.all()
+class JednostkaMixin:
+    def get_result_label(self, result):
+        return f"{ result.nazwa } ({ result.wydzial.skrot })"
+
+
+class JednostkaAutocomplete(JednostkaMixin, autocomplete.Select2QuerySetView):
+    qset = Jednostka.objects.all().select_related("wydzial")
 
     def get_queryset(self):
         qs = self.qset
@@ -101,6 +107,10 @@ class KonferencjaAutocomplete(NazwaMixin,
     qset = Konferencja.objects.all()
 
 
+class PublicKonferencjaAutocomplete(NazwaMixin, autocomplete.Select2QuerySetView):
+    qset = Konferencja.objects.all()
+
+
 class Seria_WydawniczaAutocomplete(NazwaMixin,
                                    LoginRequiredMixin,
                                    autocomplete.Select2QuerySetView):
@@ -124,7 +134,7 @@ class OrganPrzyznajacyNagrodyAutocomplete(NazwaMixin,
 
 
 class WidocznaJednostkaAutocomplete(JednostkaAutocomplete):
-    qset = Jednostka.objects.filter(widoczna=True)
+    qset = Jednostka.objects.filter(widoczna=True).select_related("wydzial")
 
 
 class ZrodloAutocomplete(autocomplete.Select2QuerySetView):
@@ -162,7 +172,7 @@ class AutorAutocompleteBase(autocomplete.Select2QuerySetView):
 
 class AutorAutocomplete(GroupRequiredMixin, AutorAutocompleteBase):
     create_field = 'nonzero'
-    group_required = 'wprowadzanie danych'
+    group_required = GR_WPROWADZANIE_DANYCH
 
     def create_object(self, text):
         text = text.split(" ", 1)
@@ -411,4 +421,20 @@ class PodrzednaPublikacjaHabilitacyjnaAutocomplete(
 
         qs = self.mixup_querysets(qs)
 
+        return qs
+
+
+class Dyscyplina_NaukowaAutocomplete(autocomplete.Select2QuerySetView):
+    def get_queryset(self):
+        qs = Dyscyplina_Naukowa.objects.all()
+        if self.q:
+            qs = qs.filter(Q(nazwa__icontains=self.q) | Q(kod__icontains=self.q))
+        return qs
+
+
+class Zewnetrzna_Baza_DanychAutocomplete(autocomplete.Select2QuerySetView):
+    def get_queryset(self):
+        qs = Zewnetrzna_Baza_Danych.objects.all()
+        if self.q:
+            qs = qs.filter(Q(nazwa__icontains=self.q) | Q(skrot__icontains=self.q))
         return qs

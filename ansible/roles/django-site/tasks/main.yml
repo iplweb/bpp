@@ -47,8 +47,8 @@
 - include: config.yml
   tags: ['config']
 
-- name: django-bpp package is installed
-  command: "{{ django_home_dir }}/vexec pip install --extra-index-url http://dev.iplweb.pl:8080/ --trusted-host dev.iplweb.pl django-bpp=={{django_latest_version}}"
+- name: BPP package is installed
+  command: "{{ django_home_dir }}/vexec pip install --extra-index-url http://dev.iplweb.pl:8080/ --trusted-host dev.iplweb.pl bpp=={{django_latest_version}}"
   become_user: "{{ django_user }}"
   tags: ['django-depends']
 

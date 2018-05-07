@@ -1,7 +1,6 @@
 # -*- encoding: utf-8 -*-
 
 from dal import autocomplete
-from django import forms
 from django.contrib import admin
 from django.forms.utils import flatatt
 from django.utils.safestring import mark_safe
@@ -9,7 +8,7 @@ from django.utils.safestring import mark_safe
 from bpp.admin.filters import LiczbaZnakowFilter
 from bpp.admin.helpers import *
 from bpp.admin.nagroda import NagrodaInline
-from bpp.models import Zrodlo, Wydawnictwo_Ciagle  # Publikacja_Habilitacyjna
+from bpp.models import Zrodlo, Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych  # Publikacja_Habilitacyjna
 # Proste tabele
 from bpp.models.konferencja import Konferencja
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
@@ -33,7 +32,7 @@ class Button(forms.Widget):
         final_attrs = self.build_attrs(
             self.attrs,
             dict(type="button",
-                name=name))
+                 name=name))
 
         return mark_safe('<input type="button"%s value="%s" />' % (
             flatatt(final_attrs),
@@ -78,6 +77,17 @@ class Wydawnictwo_CiagleForm(forms.ModelForm):
         }
 
 
+class Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychForm(forms.ModelForm):
+    class Meta:
+        fields = ["baza", "info"]
+
+
+class Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychInline(admin.StackedInline):
+    model = Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych
+    extra = 0
+    form = Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychForm
+
+
 class Wydawnictwo_CiagleAdmin(KolumnyZeSkrotamiMixin,
                               AdnotacjeZDatamiOrazPBNMixin,
                               CommitedModelAdmin):
@@ -100,10 +110,10 @@ class Wydawnictwo_CiagleAdmin(KolumnyZeSkrotamiMixin,
         'slowa_kluczowe', 'rok', 'id',
         'issn', 'e_issn', 'zrodlo__nazwa', 'zrodlo__skrot', 'adnotacje',
         'liczba_znakow_wydawniczych',
-        'konferencja__nazwa'
+        'konferencja__nazwa',
     ]
 
-    list_filter = ['status_korekty',  'recenzowana', 'typ_kbn',
+    list_filter = ['status_korekty', 'recenzowana', 'typ_kbn',
                    'charakter_formalny', 'jezyk', LiczbaZnakowFilter, 'rok',
                    'openaccess_tryb_dostepu',
                    'openaccess_wersja_tekstu',
@@ -131,7 +141,8 @@ class Wydawnictwo_CiagleAdmin(KolumnyZeSkrotamiMixin,
 
     inlines = (
         generuj_inline_dla_autorow(Wydawnictwo_Ciagle_Autor),
-        NagrodaInline
+        NagrodaInline,
+        Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychInline
     )
 
     def zrodlo_col(self, obj):

@@ -14,7 +14,7 @@ services:
     build:
       dockerfile: Dockerfile-db
       context: docker
-    image: mpasternak79/django-bpp:postgres-9.6
+    image: mpasternak79/django-bpp:postgres-10
 
   nginx_http_push:
     build:
@@ -68,7 +68,7 @@ services:
 # prod == work in progress
 #
 #  prod:
-#    image: mpasternak79/django-bpp:prod-mpasternak79/django-bpp:prod-1.0.16
+#    image: mpasternak79/django-bpp:prod-mpasternak79/django-bpp:prod-1.0.18
 #    build:
 #      context: docker
 #      dockerfile: Dockerfile-prod

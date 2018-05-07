@@ -6,15 +6,14 @@ from django.views.generic.detail import DetailView
 from django.views.generic.edit import FormView
 from django.views.generic.list import ListView
 
+from bpp.models.const import GR_WPROWADZANIE_DANYCH
 from integrator2.forms import FormListaMinisterialna
 from integrator2.models.lista_ministerialna import ListaMinisterialnaIntegration
 from integrator2.tasks import analyze_file
 
-WPROWADZANIE_DANYCH = "wprowadzanie danych"
-
 class Main(GroupRequiredMixin, ListView):
     paginate_by = 10
-    group_required = WPROWADZANIE_DANYCH
+    group_required = GR_WPROWADZANIE_DANYCH
     template_name = "main.html"
 
     def get_queryset(self):
@@ -22,7 +21,7 @@ class Main(GroupRequiredMixin, ListView):
 
 
 class UploadListaMinisterialna(GroupRequiredMixin, FormView):
-    group_required = WPROWADZANIE_DANYCH
+    group_required = GR_WPROWADZANIE_DANYCH
     template_name = "new.html"
     form_class = FormListaMinisterialna
     success_url = ".."
@@ -41,7 +40,7 @@ class DetailBase(GroupRequiredMixin, ListView):
 
     paginate_by = 100
 
-    group_required = WPROWADZANIE_DANYCH
+    group_required = GR_WPROWADZANIE_DANYCH
 
     @cached_property
     def object(self):

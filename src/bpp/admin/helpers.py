@@ -1,7 +1,11 @@
 # -*- encoding: utf-8 -*-
 
 from django.db import models
+from django import forms
 from django.forms.widgets import Textarea
+
+CHARMAP_SINGLE_LINE = forms.TextInput(
+    attrs={'class': 'charmap', 'style': "width: 500px"})
 
 
 # Pomocnik dla klasy ModelZMetryczka
@@ -83,6 +87,10 @@ MODEL_Z_PUBMEDID = (
 
 MODEL_Z_DOI = (
     'doi',
+)
+
+MODEL_Z_LICZBA_CYTOWAN = (
+    'liczba_cytowan',
 )
 
 MODEL_Z_ROKIEM = (
@@ -184,7 +192,7 @@ PRACA_WYBITNA_FIELDSET = ('Praca wybitna', {
 
 EKSTRA_INFORMACJE_WYDAWNICTWO_CIAGLE_FIELDSET = ('Ekstra informacje', {
     'classes': ('grp-collapse grp-closed', ),
-    'fields': MODEL_Z_ISSN + MODEL_Z_WWW + MODEL_Z_PUBMEDID + MODEL_Z_DOI
+    'fields': MODEL_Z_ISSN + MODEL_Z_WWW + MODEL_Z_PUBMEDID + MODEL_Z_DOI + MODEL_Z_LICZBA_CYTOWAN
 })
 
 EKSTRA_INFORMACJE_WYDAWNICTWO_ZWARTE_FIELDSET = ('Ekstra informacje', {
@@ -192,14 +200,16 @@ EKSTRA_INFORMACJE_WYDAWNICTWO_ZWARTE_FIELDSET = ('Ekstra informacje', {
     'fields': MODEL_Z_ISSN +
               MODEL_Z_WWW +
               MODEL_Z_PUBMEDID +
-              MODEL_Z_DOI
+              MODEL_Z_DOI +
+              MODEL_Z_LICZBA_CYTOWAN
 })
 
 EKSTRA_INFORMACJE_DOKTORSKA_HABILITACYJNA_FIELDSET = ('Ekstra informacje', {
     'classes': ('grp-collapse grp-closed', ),
     'fields': MODEL_Z_WWW +
               MODEL_Z_PUBMEDID +
-              MODEL_Z_DOI
+              MODEL_Z_DOI +
+              MODEL_Z_LICZBA_CYTOWAN
 })
 
 

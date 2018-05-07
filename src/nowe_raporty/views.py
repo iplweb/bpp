@@ -3,6 +3,8 @@
 import os
 
 from django.conf import settings
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.http import Http404
 from django.http.response import HttpResponse, FileResponse
 from django.http.response import HttpResponseRedirect
 from django.shortcuts import get_object_or_404
@@ -10,15 +12,44 @@ from django.template.context import RequestContext
 from django.views.generic import FormView, TemplateView
 from django.views.generic.detail import DetailView
 from django_tables2.export.export import TableExport
+from flexible_reports.adapters.django_tables2 import as_docx, \
+    as_tablib_databook
 from flexible_reports.models.report import Report
 
+from bpp.models import Uczelnia, OpcjaWyswietlaniaField
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
 from bpp.models.struktura import Wydzial, Jednostka
-from flexible_reports.adapters.django_tables2 import as_docx, \
-    as_tablib_databook
 from .forms import AutorRaportForm
 from .forms import JednostkaRaportForm, WydzialRaportForm
+
+
+class UczelniaSettingRequiredMixin(LoginRequiredMixin):
+    uczelnia_attr = None
+
+    def dispatch(self, request, *args, **kwargs):
+        res = OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE
+
+        # TODO: w przypadku wielu uczelni, zmień to
+        uczelnia = Uczelnia.objects.first()
+
+        if uczelnia:
+            res = getattr(uczelnia, self.uczelnia_attr)
+
+        if res == OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE:
+            pass
+
+        elif res == OpcjaWyswietlaniaField.POKAZUJ_NIGDY:
+            raise Http404
+
+        elif res == OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM:
+            if not request.user.is_authenticated:
+                return self.handle_no_permission()
+
+        else:
+            raise NotImplementedError
+
+        return super(LoginRequiredMixin, self).dispatch(request, *args, **kwargs)
 
 
 class BaseFormView(FormView):
@@ -38,10 +69,11 @@ class BaseFormView(FormView):
         return super(BaseFormView, self).get_context_data(**kwargs)
 
 
-class AutorRaportFormView(BaseFormView):
+class AutorRaportFormView(UczelniaSettingRequiredMixin, BaseFormView):
     form_class = AutorRaportForm
     title = "Raport autorów"
     report_slug = "raport-autorow"
+    uczelnia_attr = "pokazuj_raport_autorow"
 
     def form_valid(self, form):
         d = form.cleaned_data
@@ -50,13 +82,14 @@ class AutorRaportFormView(BaseFormView):
             f"_export={ d['_export'] }&"
             f"_tzju={ d['tylko_z_jednostek_uczelni'] }")
 
-class JednostkaRaportFormView(BaseFormView):
+
+class JednostkaRaportFormView(LoginRequiredMixin, BaseFormView):
     report_slug = "raport-jednostek"
     form_class = JednostkaRaportForm
     title = "Raport jednostek"
 
 
-class WydzialRaportFormView(BaseFormView):
+class WydzialRaportFormView(LoginRequiredMixin, BaseFormView):
     report_slug = "raport-wydzialow"
     form_class = WydzialRaportForm
     title = "Raport wydziałów"
@@ -158,11 +191,12 @@ class GenerujRaportBase(DetailView):
             context, **response_kwargs)
 
 
-class GenerujRaportDlaAutora(GenerujRaportBase):
+class GenerujRaportDlaAutora(UczelniaSettingRequiredMixin, GenerujRaportBase):
     report_slug = 'raport-autorow'
     form_link = 'nowe_raporty:autor_form'
     form_title = "Raport autorów"
     model = Autor
+    uczelnia_attr = "pokazuj_raport_autorow"
 
     def get_base_queryset(self):
         if self.request.GET.get("_tzju", "True") == "True":
@@ -171,7 +205,7 @@ class GenerujRaportDlaAutora(GenerujRaportBase):
         return Rekord.objects.prace_autora(self.object)
 
 
-class GenerujRaportDlaJednostki(GenerujRaportBase):
+class GenerujRaportDlaJednostki(LoginRequiredMixin, GenerujRaportBase):
     report_slug = 'raport-jednostek'
     form_link = 'nowe_raporty:jednostka_form'
     form_title = "Raport jednostek"
@@ -181,7 +215,7 @@ class GenerujRaportDlaJednostki(GenerujRaportBase):
         return Rekord.objects.prace_jednostki(self.object)
 
 
-class GenerujRaportDlaWydzialu(GenerujRaportBase):
+class GenerujRaportDlaWydzialu(LoginRequiredMixin, GenerujRaportBase):
     report_slug = 'raport-wydzialow'
     form_link = 'nowe_raporty:wydzial_form'
     form_title = "Raport wydziałów"

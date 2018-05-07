@@ -1,16 +1,17 @@
 import pytest
-from django.test.client import RequestFactory
 from django.urls import reverse
+from flexible_reports.models.report import Report
 from mock import patch
 from model_mommy import mommy
 
+from bpp.models import OpcjaWyswietlaniaField
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
 from bpp.models.struktura import Jednostka, Wydzial
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
-from flexible_reports.models.report import Report
 from nowe_raporty.views import GenerujRaportDlaAutora, \
     GenerujRaportDlaJednostki, GenerujRaportDlaWydzialu
+
 
 @pytest.mark.django_db
 @pytest.mark.parametrize(
@@ -19,13 +20,13 @@ from nowe_raporty.views import GenerujRaportDlaAutora, \
      ("jednostka_generuj", Jednostka),
      ("wydzial_generuj", Wydzial)]
 )
-def test_view_raport_nie_zdefiniowany(client, view, klass):
+def test_view_raport_nie_zdefiniowany(app, view, klass):
     obj = mommy.make(klass)
     v = reverse("nowe_raporty:" + view,
-        args=(obj.pk, 2017, 2017))
-    res = client.get(v)
+                args=(obj.pk, 2017, 2017))
+    res = app.get(v)
 
-    assert "Nie znaleziono definicji" in res.rendered_content
+    assert "Nie znaleziono definicji" in res.text
 
 
 @pytest.mark.django_db
@@ -98,3 +99,129 @@ def test_GenerujRaportDlaAutora_get_base_queryset(rf):
 
             prace_z_afiliowanych.assert_not_called()
             prace_autora.assert_called_once()
+
+
+@pytest.mark.django_db
+def test_czy_jednostka_form_niewidoczny_dla_anonimow(webtest_app):
+    mommy.make(Report, slug="raport-jednostek")
+    res = webtest_app.get(reverse("nowe_raporty:jednostka_form"))
+    assert res.status_code == 302
+    assert "login" in res.location
+
+
+@pytest.mark.django_db
+def test_czy_jednostka_form_widoczny_dla_zalogowanych(app):
+    mommy.make(Report, slug="raport-jednostek")
+    res = app.get(reverse("nowe_raporty:jednostka_form"))
+    assert res.status_code == 200
+
+
+@pytest.mark.django_db
+def test_czy_generuj_jednostka_niewidoczny_dla_anonimow(webtest_app, jednostka):
+    mommy.make(Report, slug="raport-jednostek")
+    res = webtest_app.get(
+        reverse("nowe_raporty:jednostka_generuj", args=(jednostka.pk, 2018, 2020))
+    )
+    assert res.status_code == 302
+    assert "login" in res.location
+
+
+@pytest.mark.django_db
+def test_czy_generuj_jednostka_widoczny_dla_zalogowanych(app, jednostka):
+    mommy.make(Report, slug="raport-jednostek")
+    res = app.get(
+        reverse("nowe_raporty:jednostka_generuj", args=(jednostka.pk, 2018, 2020))
+    )
+    assert res.status_code == 200
+
+
+@pytest.mark.django_db
+def test_czy_wydzial_form_niewidoczny_dla_anonimow(webtest_app):
+    mommy.make(Report, slug="raport-wydzialow")
+    res = webtest_app.get(reverse("nowe_raporty:wydzial_form"))
+    assert res.status_code == 302
+    assert "login" in res.location
+
+
+@pytest.mark.django_db
+def test_czy_wydzial_form_widoczny_dla_zalogowanych(app):
+    mommy.make(Report, slug="raport-wydzialow")
+    res = app.get(reverse("nowe_raporty:wydzial_form"))
+    assert res.status_code == 200
+
+
+@pytest.mark.django_db
+def test_czy_generuj_wydzial_niewidoczny_dla_anonimow(webtest_app, wydzial):
+    mommy.make(Report, slug="raport-wydzialow")
+    res = webtest_app.get(
+        reverse("nowe_raporty:wydzial_generuj", args=(wydzial.pk, 2018, 2020))
+    )
+    assert res.status_code == 302
+    assert "login" in res.location
+
+
+@pytest.mark.django_db
+def test_czy_generuj_wydzial_widoczny_dla_zalogowanych(app, wydzial):
+    mommy.make(Report, slug="raport-wydzialow")
+    res = app.get(
+        reverse("nowe_raporty:wydzial_generuj", args=(wydzial.pk, 2018, 2020))
+    )
+    assert res.status_code == 200
+
+
+@pytest.mark.django_db
+def test_czy_raport_autorow_generuj_i_form_przestrzegaja_ustawien_anonim(
+        webtest_app, uczelnia, autor_jan_kowalski):
+    mommy.make(Report, slug="raport-autorow")
+
+    urls = [
+        reverse("nowe_raporty:autor_generuj", args=(autor_jan_kowalski.pk, 2018, 2020)),
+        reverse("nowe_raporty:autor_form")
+    ]
+
+    for url in urls:
+        uczelnia.pokazuj_raport_autorow = OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM
+        uczelnia.save()
+
+        res = webtest_app.get(url)
+        assert res.status_code == 302
+        assert "login" in res.location
+
+        uczelnia.pokazuj_raport_autorow = OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE
+        uczelnia.save()
+
+        res = webtest_app.get(url)
+        assert res.status_code == 200
+
+        uczelnia.pokazuj_raport_autorow = OpcjaWyswietlaniaField.POKAZUJ_NIGDY
+        uczelnia.save()
+
+        webtest_app.get(url, status=404)
+
+@pytest.mark.django_db
+def test_czy_raport_autorow_generuj_i_form_przestrzegaja_ustawien_zalogowany(
+        app, uczelnia, autor_jan_kowalski):
+    mommy.make(Report, slug="raport-autorow")
+
+    urls = [
+        reverse("nowe_raporty:autor_generuj", args=(autor_jan_kowalski.pk, 2018, 2020)),
+        reverse("nowe_raporty:autor_form")
+    ]
+
+    for url in urls:
+        uczelnia.pokazuj_raport_autorow = OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM
+        uczelnia.save()
+
+        res = app.get(url)
+        assert res.status_code == 200
+
+        uczelnia.pokazuj_raport_autorow = OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE
+        uczelnia.save()
+
+        res = app.get(url)
+        assert res.status_code == 200
+
+        uczelnia.pokazuj_raport_autorow = OpcjaWyswietlaniaField.POKAZUJ_NIGDY
+        uczelnia.save()
+
+        app.get(url, status=404)

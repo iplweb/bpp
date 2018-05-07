@@ -2,6 +2,8 @@
 from django.conf.urls import url
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
+
+from bpp.views.api.clarivate import GetWoSAMRInformation
 from bpp.views.api.pubmed import GetPubmedIDView
 from bpp.views.api.strona_tom_nr_zeszytu import StronaTomNrZeszytuView
 from bpp.views.api.uzupelnij_rok import ApiUzupelnijRokWydawnictwoZwarteView, ApiUzupelnijRokWydawnictwoCiagleView
@@ -19,7 +21,8 @@ from bpp.views.autocomplete import WidocznaJednostkaAutocomplete, \
     PodrzednaPublikacjaHabilitacyjnaAutocomplete, \
     AdminNavigationAutocomplete, KonferencjaAutocomplete, \
     Seria_WydawniczaAutocomplete, OrganPrzyznajacyNagrodyAutocomplete, \
-    WydzialAutocomplete, PublicAutorAutocomplete, LataAutocomplete, PublicWydzialAutocomplete
+    WydzialAutocomplete, PublicAutorAutocomplete, LataAutocomplete, PublicWydzialAutocomplete, \
+    Dyscyplina_NaukowaAutocomplete, Zewnetrzna_Baza_DanychAutocomplete, PublicKonferencjaAutocomplete
 from bpp.views.raporty import RankingAutorow, \
     PobranieRaportu, PodgladRaportu, KasowanieRaportu, \
     RaportJednostek2012, RaportKronikaUczelni, RaportJednostek, \
@@ -47,6 +50,9 @@ urlpatterns = [
     url(r'^api/pubmed-id/$',
         csrf_exempt(GetPubmedIDView.as_view()),
         name='api_pubmed_id'),
+    url(r'^api/(?P<slug>[\w-]+)/wos-amr/$',
+        csrf_exempt(GetWoSAMRInformation.as_view()),
+        name='api_wos_amr'),
     url(r'^api/strona-tom-nr-zeszytu/$',
         csrf_exempt(StronaTomNrZeszytuView.as_view()),
         name='api_strona_tom_nr_zeszytu'),
@@ -133,6 +139,11 @@ urlpatterns = [
         name='konferencja-autocomplete',
     ),
     url(
+        r'^public-konferencja-autocomplete/$',
+        PublicKonferencjaAutocomplete.as_view(),
+        name='public-konferencja-autocomplete',
+    ),
+    url(
         r'^wydzial-autocomplete/$',
         WydzialAutocomplete.as_view(),
         name='wydzial-autocomplete',
@@ -162,6 +173,19 @@ urlpatterns = [
         r'^jednostka-autocomplete/$',
         JednostkaAutocomplete.as_view(),
         name='jednostka-autocomplete',
+    ),
+
+    url(
+        r'^zewnetrzna-baza-danych-autocomplete/$',
+        Zewnetrzna_Baza_DanychAutocomplete.as_view(),
+        name='zewnetrzna-baza-danych-autocomplete',
+    ),
+
+
+    url(
+        r'^dyscyplina-autocomplete/$',
+        Dyscyplina_NaukowaAutocomplete.as_view(),
+        name='dyscyplina-autocomplete',
     ),
 
     url(

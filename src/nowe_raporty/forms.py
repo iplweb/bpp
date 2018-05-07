@@ -34,15 +34,15 @@ OUTPUT_FORMATS = [
 ]
 
 
-def last_year():
+def year_last_month():
     now = timezone.now().date()
-    if now.month >= 6:
+    if now.month >= 2:
         return now.year
     return now.year - 1
 
 class BaseRaportForm(forms.Form):
-    od_roku = forms.IntegerField(initial=last_year)
-    do_roku = forms.IntegerField(initial=last_year)
+    od_roku = forms.IntegerField(initial=year_last_month)
+    do_roku = forms.IntegerField(initial=year_last_month)
 
     _export = forms.ChoiceField(
         label="Format wyjściowy",

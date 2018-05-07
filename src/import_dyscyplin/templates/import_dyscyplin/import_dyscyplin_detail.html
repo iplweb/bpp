@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+{% load humanize staticfiles %}
+
+{% block extratitle %}
+    Import dyscyplin naukowych
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="../../">import dyscyplin</a></li>
+    <li class="current">import pliku {{ object.plik }} dla roku {{ object.rok }}</li>
+{% endblock %}
+
+
+{% block content %}
+    <div class="reveal" id="modal1" data-reveal>
+        <h1>Przetwarzanie danych</h1>
+        <p class="lead">Poproszę o dwie chwile cierpliwości...</p>
+        <div class="spinner">
+            <div class="bounce1"></div>
+            <div class="bounce2"></div>
+            <div class="bounce3"></div>
+        </div>
+        <p>Trwa przetwarzanie danych. Możesz zamknąć to okno dialogowe, kontynuować pracę normalnie
+            i wrócić ponownie tą stronę w późniejszym czasie. </p>
+        <button class="close-button" data-close aria-label="Zamknij okienko" type="button">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+
+
+    <script type="text/javascript">
+        function usunImport() {
+            if (confirm('Czy na pewno usunąć ten plik z systemu?'))
+                location.href = "{% url "import_dyscyplin:usun" object.pk %}";
+        }
+    </script>
+    <h2>Import dyscyplin - plik {{ object.plik }}
+        <button class="button warning" onclick="usunImport()">
+            <i class="fi-page-remove"></i> usuń plik
+        </button>
+    </h2>
+    Rok: <strong>{{ object.rok }}</strong>.
+    Utworzono: <strong>{{ object.created }}</strong>.
+    Ostatnia zmiana: <strong>{{ object.modified }}</strong>. Stan: <strong>{{ object.stan }}</strong>.
+
+    {% if object.stan == "nowy" %}
+        <p>Plik został dodany do systemu i będzie analizowany za chwilę.</p>
+
+        <script type="text/javascript">
+            $(document).ready(function () {
+                $("#modal1").foundation('open');
+                $.ajax({
+                    url: "{% url "import_dyscyplin:przetwarzaj" object.pk %}",
+                    method: "GET",
+                    data: {"web_page_uid": bppNotifications.messageCookieId}
+                });
+            });
+        </script>
+    {% endif %}
+
+    {% if object.stan == "błędny" %}
+        {% if notification == "1" %}
+            <div class="flash-on-notification">
+        {% endif %}
+    <p>Wystąpił błąd podczas analizy pliku.
+    <pre>
+{{ object.info }}</pre>.</p>
+    {% if notification == "1" %}
+        </div>
+    {% endif %}
+    {% endif %}
+
+    {% if object.stan == "przeanalizowany" or object.stan == "zintegrowany" %}
+
+        <ul class="tabs" data-tabs id="example-tabs">
+            <li class="tabs-title {% if object.stan == "przeanalizowany" and object.poprawne_wiersze_do_integracji.count > 0 %}is-active{% endif %}">
+                <a href="#panel1" aria-selected="true">
+                    Rekordy do integracji
+                    ({{ object.poprawne_wiersze_do_integracji.count }})
+                </a>
+            </li>
+            <li class="tabs-title {% if object.stan == "przeanalizowany" and object.poprawne_wiersze_do_integracji.count == 0 %}is-active{% endif %}">
+                <a data-tabs-target="panel2" href="#panel2">
+                    Rekordy nie do integracji
+                    ({{ object.niepoprawne_wiersze.count }})
+                </a>
+            </li>
+            <li class="tabs-title {% if object.stan == "zintegrowany" %}is-active{% endif %}">
+                <a data-tabs-target="panel3" href="#panel2">
+                    Rekordy zintegrowane
+                    ({{ object.zintegrowane_wiersze.count }})
+                </a>
+            </li>
+        </ul>
+
+        <script type="text/javascript">
+            function zintegruj() {
+                if (confirm("Po zatwierdzeniu, informacje wyświetlane zostaną wprowadzone do bazy danych")) {
+                    $("#modal1").foundation('open');
+                    $.ajax({
+                        url: "{% url "import_dyscyplin:integruj" object.pk %}",
+                        method: "GET",
+                        data: {"web_page_uid": bppNotifications.messageCookieId}
+                    });
+                }
+            }</script>
+
+        <div class="tabs-content" data-tabs-content="example-tabs">
+            <div class="tabs-panel {% if object.stan == "przeanalizowany" and object.poprawne_wiersze_do_integracji.count > 0 %}is-active{% endif %}"
+                 id="panel1">
+                <h2>Rekordy do integracji - rok {{ object.rok }}
+                    {% if object.poprawne_wiersze_do_integracji.count > 0 and object.stan == "przeanalizowany" %}
+                        <button class="button secondary" onclick="zintegruj()">
+                            <i class="fi-arrows-in"></i> zintegruj dane
+                        </button>
+                    {% endif %}
+                </h2>
+
+                <table id="do_integracji" width="100%">
+                    <thead>
+                    <tr>
+                        <th>Autor</th>
+                        <th>Jednostka</th>
+                        <th>Wydział</th>
+                        <th>Dyscyplina</th>
+                    </tr>
+                    </thead>
+                </table>
+
+
+            </div>
+            <div class="tabs-panel {% if object.stan == "przeanalizowany" and object.poprawne_wiersze_do_integracji.count == 0 %}is-active{% endif %}"
+                 id="panel2">
+                <h2>Rekordy nie do integracji</h2>
+                <strong>Przyczyny</strong>:
+                <a href="#"
+                   onclick="$('#nie_do_integracji_filter input').val('').trigger('paste'); return false">
+                    wszystkie ({{ object.niepoprawne_wiersze.count }})
+                </a> |
+                {% for elem in object.niepoprawne_wiersze_przyczyny %}
+                    <a href="#"
+                       onclick="$('#nie_do_integracji_filter input').val('{{ elem.info }}').trigger('paste'); return false">
+                        {{ elem.info|truncatechars:"50"  }} ({{ elem.icount }})
+                    </a> |
+                {% endfor %}
+                <table id="nie_do_integracji" width="100%">
+                    <thead>
+                    <tr>
+                        <th>Nazwisko</th>
+                        <th>Imiona</th>
+
+                        <th>Jednostka</th>
+                        <th>Wydział</th>
+
+                        <th>Dyscyplina</th>
+                        <th>Subdyscyplina</th>
+                        <th>Info</th>
+                    </tr>
+                    </thead>
+                </table>
+            </div>
+
+            <div class="tabs-panel {% if object.stan == "zintegrowany" %}is-active{% endif %}" id="panel3">
+                <h2>Rekordy zintegrowane</h2>
+                <strong>Rezultaty</strong>:
+                <a href="#"
+                   onclick="$('#zintegrowane_filter input').val('').trigger('paste'); return false">
+                    wszystko ({{ object.zintegrowane_wiersze.count }})
+                </a> |
+                {% for elem in object.zintegrowane_wiersze_przyczyny %}
+                    <a href="#"
+                       onclick="$('#zintegrowane_filter input').val('{{ elem.info }}').trigger('paste'); return false">
+                        {{ elem.info|truncatechars:"50"  }} ({{ elem.icount }})
+                    </a> |
+                {% endfor %}
+
+                <table id="zintegrowane" width="100%">
+                    <thead>
+                    <tr>
+                        <th>Autor</th>
+                        <th>Jednostka</th>
+                        <th>Wydział</th>
+                        <th>Dyscyplina</th>
+                        <th>Info</th>
+                    </tr>
+                    </thead>
+                </table>
+
+            </div>
+        </div>
+
+
+        <script type="text/javascript">
+            $(document).ready(function () {
+                $('#do_integracji').DataTable({
+                    "serverSide": true,
+                    "ajax": "{% url "import_dyscyplin:api_do_integracji" object.pk %}",
+                    "columns": [
+                        {"data": "dopasowanie_autora"},
+                        {"data": "jednostka"},
+                        {"data": "wydzial"},
+                        {"data": "dyscyplina_ostateczna"},
+
+                    ]
+                });
+
+                $('#nie_do_integracji').DataTable({
+                    "serverSide": true,
+                    "ajax": "{% url "import_dyscyplin:api_nie_do_integracji" object.pk %}",
+                    "columns": [
+                        {"data": "nazwisko"},
+                        {"data": "imiona"},
+                        {"data": "jednostka"},
+                        {"data": "wydzial"},
+                        {"data": "dyscyplina"},
+                        {"data": "subdyscyplina"},
+                        {"data": "info"}
+                    ]
+                });
+
+                $('#zintegrowane').DataTable({
+                    "serverSide": true,
+                    "ajax": "{% url "import_dyscyplin:api_zintegrowane" object.pk %}",
+                    "columns": [
+                        {"data": "dopasowanie_autora"},
+                        {"data": "jednostka"},
+                        {"data": "wydzial"},
+                        {"data": "dyscyplina_ostateczna"},
+                        {"data": "info"}
+                    ]
+                });
+
+
+            });
+        </script>
+    {% endif %}
+
+    <script type="text/javascript">
+        $(document).ready(function () {
+            var original_color = $('div.flash-on-notification').css('background-color');
+            $('div.flash-on-notification')
+                .animate({'background-color': 'green'}, 300, 'linear')
+                .delay(200)
+                .animate({'background-color': original_color}, 300, 'easeOutCirc')
+                .delay(200)
+                .animate({'background-color': 'green'}, 300, 'linear')
+                .delay(200)
+                .animate({'background-color': original_color}, 300, 'easeOutCirc')
+                .delay(200)
+                .animate({'background-color': 'green'}, 300, 'linear')
+                .delay(200)
+                .animate({'background-color': original_color}, 300, 'easeOutCirc')
+                .delay(200);
+        });
+    </script>
+{% endblock %}

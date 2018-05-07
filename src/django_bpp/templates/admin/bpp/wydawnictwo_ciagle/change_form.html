@@ -10,6 +10,25 @@
     <script type="text/javascript">
         pub_id = $("#id_autorzy_set-__prefix__-rekord").val()
 
+        // Otwórz niewidoczny stacked inline z nagrodą - tak, aby
+        // po kliknięciu "dodaj nagrodę" dodał się otwarty formularz, a nie
+        // linia z napisem "nagroda"
+        $("#bpp-nagroda-content_type-object_id-empty")
+            .removeClass("grp-closed")
+            .addClass("grp-open");
+
+        $("#wydawnictwo_ciagle_zewnetrzna_baza_danych_set-empty")
+            .removeClass("grp-closed")
+            .addClass("grp-open");
+
+        // Gramatyka
+        $('a').each(function () {
+            var html = $(this).html();
+            if (html.includes("Dodaj kolejne nagroda")) {}
+                $(this).html(html.replace('Dodaj kolejne nagroda', 'Dodaj kolejną nagrodę'));
+        });
+
+
         if (pub_id) {
             btn = $("input[name=_continue]");
             tamze = $("<input/>")
@@ -62,6 +81,7 @@
     </script>
 
     {%  include "admin/pubmed_id_button_handler.html" %}
+    {%  include "admin/liczba_cytowan_button_handler.html" %}
 
     <script type="text/javascript">
 

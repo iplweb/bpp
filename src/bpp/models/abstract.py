@@ -814,13 +814,6 @@ class ModelZOpenAccess(models.Model):
         abstract = True
 
 
-class ModelZDOI(models.Model):
-    doi = DOIField("DOI", null=True, blank=True, db_index=True)
-
-    class Meta:
-        abstract = True
-
-
 class ModelZAktualizacjaDlaPBN(models.Model):
     #
     # Obiekt subklasujący tę klasę musi subklasować również DirtyFieldsMixin
@@ -859,6 +852,17 @@ class ModelZAktualizacjaDlaPBN(models.Model):
                     self.ostatnio_zmieniony_dla_pbn = timezone.now()
 
         super(ModelZAktualizacjaDlaPBN, self).save(*args, **kw)
+
+    class Meta:
+        abstract = True
+
+
+class ModelZLiczbaCytowan(models.Model):
+    liczba_cytowan = models.PositiveIntegerField(
+        verbose_name="Liczba cytowań",
+        null=True,
+        blank=True,
+    )
 
     class Meta:
         abstract = True
