@@ -18,6 +18,9 @@ Historia zmian
 
 * eksport PBN działa poprawnie w przypadku podania tej samej daty w polu "od" i "do"
 
+* ukrywanie pól w "wyszukiwaniu" oraz brak dostępu do raportów zgodnie z ustawieniami
+  systemu dokonanymi w module "Redagowanie"
+
 1.0.17
 ------
 
