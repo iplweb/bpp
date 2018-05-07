@@ -2,8 +2,8 @@
 Historia zmian
 ==============
 
-1.0.18
-------
+**1.0.18-dev**
+--------------
 
 * lepsze wyświetlanie rekordu patentu w widoku rekordu
 
@@ -17,6 +17,9 @@ Historia zmian
   jest indeksowana,
 
 * eksport PBN działa poprawnie w przypadku podania tej samej daty w polu "od" i "do"
+
+* ukrywanie pól w "wyszukiwaniu" oraz brak dostępu do raportów zgodnie z ustawieniami
+  systemu dokonanymi w module "Redagowanie"
 
 1.0.17
 ------
