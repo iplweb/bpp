@@ -2,7 +2,8 @@
 Historia zmian
 ==============
 
-**1.0.18-dev**
+****dev**
+**v1.0.18****
 --------------
 
 * lepsze wyświetlanie rekordu patentu w widoku rekordu
