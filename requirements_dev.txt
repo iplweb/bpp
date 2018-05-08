@@ -33,7 +33,7 @@ webtest==2.0.29
 
 Fabric3==1.13.1.post1
 
-ansible==2.4.3.0
+ansible==2.5.2
 
 tox==2.7.0
 
