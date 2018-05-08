@@ -128,6 +128,7 @@ release: bdist_wheel
 # cel: staging
 # Konfiguruje system django-bpp za pomocą Ansible na komputerze 'staging' (vagrant)
 staging: # wymaga: wheels bdist_wheel
+	vagrant up
 	ansible-playbook ansible/webserver.yml --private-key=.vagrant/machines/staging/virtualbox/private_key
 
 staging-update: # "szybka" ścieżka aktualizacji
