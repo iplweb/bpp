@@ -123,9 +123,17 @@ def generuj_inline_dla_autorow(baseModel):
                 'kolejnosc': HiddenInput
             }
 
-    class baseModel_AutorInline(admin.StackedInline):
+    baseClass = admin.StackedInline
+    extraRows = 0
+
+    from django.conf import settings
+    if getattr(settings, "INLINE_DLA_AUTOROW", "stacked") == "tabular":
+        baseClass = admin.TabularInline
+        extraRows = 1
+
+    class baseModel_AutorInline(baseClass):
         model = baseModel
-        extra = 0
+        extra = extraRows
         form = baseModel_AutorForm
         sortable_field_name = "kolejnosc"
 

@@ -56,6 +56,7 @@ django_password_history_count: 12
 
 django_bpp_punktuj_monografie: 1
 
+django_bpp_inline_dla_autorow: stacked
 
 supervisor_group_name: "{{ django_project_name }}_{{ django_hostname }}"
 supervisor_no_processess: 3
