@@ -5,6 +5,11 @@ Historia zmian
 dev
 ---
 
+*
+
+1.0.19-dev
+-------------
+
 * możliwość globalnej konfiguracji sposobu wprowadzania powiązań autorów z rekordami
 
 1.0.18
