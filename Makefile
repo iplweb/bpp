@@ -45,10 +45,10 @@ wheels:
 # cel: install-production-wheels
 # Instaluje wszystkie requirements
 install-production-wheels:
-	${PIP} install --no-index --only-binary=whl --find-links=./dist -r requirements.txt | cat
+	${PIP} install -q --no-index --only-binary=whl --find-links=./dist -r requirements.txt
 
 install-dev-wheels:
-	${PIP} install --no-index --only-binary=whl --find-links=./dist_dev -r requirements_dev.txt | cat
+	${PIP} install -q --no-index --only-binary=whl --find-links=./dist_dev -r requirements_dev.txt
 
 # cel: install-wheels
 # Instaluje wszystkie requirements
@@ -56,6 +56,9 @@ install-wheels: install-production-wheels install-dev-wheels
 
 install-wheels-from-devserver:
 	${PIP} install --extra-index-url http://dev.iplweb.pl:8080/ --trusted-host dev.iplweb.pl -r requirements_dev.txt | cat
+
+install-wheels-from-localdir:
+	${PIP} install -f file://`pwd`/dist/ -f file://`pwd`/dist_dev/ -r requirements_dev.txt | cat
 
 grunt:
 	grunt build
@@ -66,16 +69,23 @@ yarn:
 yarn-production:
 	yarn --prod
 
-_assets: install-wheels-from-devserver
+_real_assets: 
 	${PYTHON} src/manage.py collectstatic --noinput -v0 --traceback
 	${PYTHON} src/manage.py compress --force  -v0 --traceback
+
+_assets: install-wheels-from-devserver _real_assets
+
+_assets-localdir: install-wheels-from-localdir _real_assets
 
 assets: yarn grunt _assets
 
 _docker-assets:
 	docker-compose run --rm python bash -c "cd /usr/src/app && make _assets"
 
-docker-assets: docker-wheels docker-yarn docker-grunt _docker-assets
+_docker-assets-localdir:
+	docker-compose run --rm python bash -c "cd /usr/src/app && make _assets-localdir"
+
+docker-assets: docker-wheels docker-yarn docker-grunt _docker-assets-localdir
 
 docker-grunt:
 	docker-compose run --rm node bash -c "cd /usr/src/app && make grunt"
@@ -93,7 +103,7 @@ assets: yarn _assets
 assets-production: yarn-production _assets
 
 _bdist_wheel:
-	${PYTHON} setup.py bdist_wheel 
+	${PYTHON} setup.py -q bdist_wheel
 
 # cel: bdist_wheel
 # Buduje pakiet WHL zawierający django_bpp i skompilowane, statyczne assets. 
@@ -183,7 +193,7 @@ docker-up:
 
 docker-python-tests:
 	docker-compose up -d test
-	docker-compose exec test /bin/bash -c "cd /usr/src/app && pip install tox && tox"
+	docker-compose exec test /bin/bash -c "cd /usr/src/app && pip install -q tox && tox"
 
 docker-tests: docker-assets docker-python-tests docker-js-tests
 
@@ -208,8 +218,11 @@ rebuild-test:
 	docker-compose rm -f test
 	docker-compose build test
 
-docker-production-deps: docker-assets clean
+_docker-production-deps:
 	docker-compose run --rm test /bin/bash -c "cd /usr/src/app && make install-production-wheels _bdist_wheel"
+
+docker-production-deps: docker-assets clean _docker-production-deps
+
 
 # cel: docker-build
 # Tworzy zależności dla produkcyjnej wersji oprogramowania
