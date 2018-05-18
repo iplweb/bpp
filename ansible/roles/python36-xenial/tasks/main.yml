@@ -7,6 +7,3 @@
 
 - name: Install package
   apt: name="python3.6" state="present"
-
-- name: Install package
-  apt: name="python3-distutils" state="present"
