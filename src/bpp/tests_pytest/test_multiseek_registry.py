@@ -4,20 +4,18 @@ from datetime import datetime
 import pytest
 from model_mommy import mommy
 from multiseek import logic
-from multiseek.logic import AutocompleteQueryObject
+from multiseek.logic import CONTAINS, NOT_CONTAINS, STARTS_WITH, \
+    NOT_STARTS_WITH, AutocompleteQueryObject
 
-from bpp.models import Dyscyplina_Naukowa, Zewnetrzna_Baza_Danych, Typ_Odpowiedzialnosci, Jezyk, Charakter_Formalny, \
-    Typ_KBN
+from bpp.models import Typ_Odpowiedzialnosci, const
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
 from bpp.models.openaccess import Wersja_Tekstu_OpenAccess, \
     Licencja_OpenAccess, Czas_Udostepnienia_OpenAccess
 from bpp.multiseek_registry import TytulPracyQueryObject, \
     OpenaccessWersjaTekstuQueryObject, OpenaccessLicencjaQueryObject, \
-    OpenaccessCzasPublikacjiQueryObject, ForeignKeyDescribeMixin, PierwszeNazwiskoIImie, DataUtworzeniaQueryObject, \
-    NazwiskoIImieQueryObject, DyscyplinaAutoraQueryObject, ZewnetrznaBazaDanychQueryObject, JednostkaQueryObject, \
-    WydzialQueryObject, Typ_OdpowiedzialnosciQueryObject, JezykQueryObject, TypRekorduObject, \
-    CharakterFormalnyQueryObject, TypKBNQueryObject
+    OpenaccessCzasPublikacjiQueryObject, ForeignKeyDescribeMixin, PierwszeNazwiskoIImie, \
+    TypOgolnyAutorQueryObject, TypOgolnyRedaktorQueryObject, TypOgolnyTlumaczQueryObject, TypOgolnyRecenzentQueryObject
 
 
 @pytest.mark.django_db
@@ -85,71 +83,30 @@ def test_PierwszeNazwiskoIImie_real_query(wydawnictwo_zwarte, autor_jan_kowalski
 
     assert len(r) == 1
 
-    r = Rekord.objects.filter(
-        PierwszeNazwiskoIImie().real_query(autor_jan_kowalski.pk, logic.DIFFERENT)
-    )
-
-    assert len(r) == 0
-
 
 @pytest.mark.django_db
-def test_DyscyplinaNaukowaAutoraQueryObject():
-    d = DyscyplinaAutoraQueryObject()
-    dyscyplina = mommy.make(Dyscyplina_Naukowa)
-    res = d.real_query(dyscyplina, logic.DIFFERENT)
+def test_TypOgolnyAutorQueryObject(autor_jan_nowak):
+    t = mommy.make(Typ_Odpowiedzialnosci, typ_ogolny=const.TO_AUTOR)
+    res = TypOgolnyAutorQueryObject().real_query(autor_jan_nowak, logic.DIFFERENT)
     assert res is not None
 
 
 @pytest.mark.django_db
-def test_ZewnetrznaBazaDanychQueryObject():
-    d = mommy.make(Zewnetrzna_Baza_Danych)
-    z = ZewnetrznaBazaDanychQueryObject()
-    z.real_query(d, logic.DIFFERENT)
-
-
-@pytest.mark.django_db
-def test_JednostkaQueryObject(jednostka):
-    z = JednostkaQueryObject()
-    z.real_query(jednostka, logic.DIFFERENT)
-
-
-@pytest.mark.django_db
-def test_WydzialQueryObject(wydzial):
-    z = WydzialQueryObject()
-    z.real_query(wydzial, logic.DIFFERENT)
-
-
-@pytest.mark.django_db
-def test_Typ_OdpowiedzialnosciQueryObject():
-    t = mommy.make(Typ_Odpowiedzialnosci)
-    z = Typ_OdpowiedzialnosciQueryObject()
-    z.real_query(t, logic.DIFFERENT)
-
-
-@pytest.mark.django_db
-def test_JezykQueryObject():
-    j = mommy.make(Jezyk, nazwa="foo")
-    assert j == JezykQueryObject().value_from_web("foo")
-
-
-@pytest.mark.django_db
-@pytest.mark.parametrize("typ_pracy", ["streszczenia", "publikacje", "inne"])
-def test_TypRekorduObject(typ_pracy):
-    t = TypRekorduObject()
-    assert t.value_from_web(typ_pracy) == typ_pracy
-    t.real_query(typ_pracy, logic.DIFFERENT)
-
-
-@pytest.mark.django_db
-def test_CharakterFormalnyQueryObject():
-    cf = mommy.make(Charakter_Formalny)
-    res = CharakterFormalnyQueryObject().real_query(cf, logic.DIFFERENT)
+def test_TypOgolnyRedaktorQueryObject(autor_jan_nowak):
+    t = mommy.make(Typ_Odpowiedzialnosci, typ_ogolny=const.TO_REDAKTOR)
+    res = TypOgolnyRedaktorQueryObject().real_query(autor_jan_nowak, logic.DIFFERENT)
     assert res is not None
 
 
+@pytest.mark.django_db
+def test_TypOgolnyTlumaczQueryObject(autor_jan_nowak):
+    t = mommy.make(Typ_Odpowiedzialnosci, typ_ogolny=const.TO_TLUMACZ)
+    res = TypOgolnyTlumaczQueryObject().real_query(autor_jan_nowak, logic.DIFFERENT)
+    assert res is not None
+
 
 @pytest.mark.django_db
-def test_TypKBNQueryObject():
-    tk = mommy.make(Typ_KBN)
-    res = TypKBNQueryObject().real_query(tk, logic.DIFFERENT)
+def test_TypOgolnyRecenzentQueryObject(autor_jan_nowak):
+    t = mommy.make(Typ_Odpowiedzialnosci, typ_ogolny=const.TO_RECENZENT)
+    res = TypOgolnyRecenzentQueryObject().real_query(autor_jan_nowak, logic.DIFFERENT)
     assert res is not None

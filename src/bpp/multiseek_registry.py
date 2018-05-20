@@ -24,7 +24,7 @@ from multiseek.logic import StringQueryObject, QueryObject, EQUALITY_OPS_ALL, \
     DateQueryObject
 
 from bpp.models import Typ_Odpowiedzialnosci, Jezyk, Autor, Jednostka, \
-    Charakter_Formalny, Zrodlo, Dyscyplina_Naukowa, Zewnetrzna_Baza_Danych, Autorzy, Uczelnia
+    Charakter_Formalny, Zrodlo, Dyscyplina_Naukowa, Zewnetrzna_Baza_Danych, Autorzy, Uczelnia, const
 from bpp.models.cache import Rekord
 
 from bpp.models.system import Typ_KBN
@@ -184,6 +184,46 @@ class PierwszeNazwiskoIImie(NazwiskoIImieQueryObject):
         return ret
 
 
+class TypOgolnyAutorQueryObject(NazwiskoIImieQueryObject):
+    ops = [EQUAL, DIFFERENT]
+
+    label = "Autor"
+    typ_ogolny = const.TO_AUTOR
+
+    def real_query(self, value, operation):
+
+        if operation in EQUALITY_OPS_ALL:
+            autorzy = Autorzy.objects.filter(
+                autor=value,
+                typ_odpowiedzialnosci__typ_ogolny=self.typ_ogolny
+            ).values("rekord_id")
+
+            ret = Q(pk__in=autorzy)
+
+        else:
+            raise UnknownOperation(operation)
+
+        if operation in DIFFERENT_ALL:
+            return ~ret
+
+        return ret
+
+
+class TypOgolnyRedaktorQueryObject(TypOgolnyAutorQueryObject):
+    typ_ogolny = const.TO_REDAKTOR
+    label = "Redaktor"
+
+
+class TypOgolnyTlumaczQueryObject(TypOgolnyAutorQueryObject):
+    typ_ogolny = const.TO_TLUMACZ
+    label = "Tłumacz"
+
+
+class TypOgolnyRecenzentQueryObject(TypOgolnyAutorQueryObject):
+    typ_ogolny = const.TO_RECENZENT
+    label = "Recenzent"
+
+
 class DyscyplinaAutoraQueryObject(ForeignKeyDescribeMixin,
                                   AutocompleteQueryObject):
     label = 'Dyscyplina naukowa autora'
@@ -290,6 +330,7 @@ class Typ_OdpowiedzialnosciQueryObject(QueryObject):
     values = Typ_Odpowiedzialnosci.objects.all()
     ops = [EQUAL, ]
     field_name = 'typ_odpowiedzialnosci'
+    public = False
 
     def value_from_web(self, value):
         return Typ_Odpowiedzialnosci.objects.get(nazwa=value)
@@ -478,6 +519,10 @@ multiseek_fields = [
     JednostkaQueryObject(),
     WydzialQueryObject(),
     Typ_OdpowiedzialnosciQueryObject(),
+    TypOgolnyAutorQueryObject(),
+    TypOgolnyRedaktorQueryObject(),
+    TypOgolnyTlumaczQueryObject(),
+    TypOgolnyRecenzentQueryObject(),
     ZakresLatQueryObject(),
     JezykQueryObject(),
     RokQueryObject(),
