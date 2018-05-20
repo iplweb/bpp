@@ -1,4 +1,5 @@
 # -*- encoding: utf-8 -*-
+from django.conf import settings
 from django.contrib.postgres.search import SearchQuery
 from django.utils.itercompat import is_iterable
 
@@ -342,7 +343,13 @@ class KCImpactQueryObject(ImpactQueryObject):
     public = False
 
 
-class PunktacjaWewnetrznaQueryObject(DecimalQueryObject):
+class PunktacjaWewnetrznaEnabledMixin:
+    def enabled(self, request):
+        return settings.UZYWAJ_PUNKTACJI_WEWNETRZNEJ
+
+
+class PunktacjaWewnetrznaQueryObject(PunktacjaWewnetrznaEnabledMixin,
+                                     DecimalQueryObject):
     label = "Punktacja wewnętrzna"
     field_name = "punktacja_wewnetrzna"
 
@@ -471,8 +478,6 @@ class BazaSCOPUS(BooleanQueryObject):
     label = "Konferencja w bazie Scopus"
 
 
-_pw = PunktacjaWewnetrznaQueryObject()
-
 multiseek_fields = [
     TytulPracyQueryObject(),
     NazwiskoIImieQueryObject(),
@@ -491,7 +496,7 @@ multiseek_fields = [
     ImpactQueryObject(),
     PunktyKBNQueryObject(),
     IndexCopernicusQueryObject(),
-    _pw,
+    PunktacjaWewnetrznaQueryObject(),
 
     KCImpactQueryObject(),
     KCPunktyKBNQueryObject(),
@@ -523,20 +528,18 @@ multiseek_fields = [
     ZewnetrznaBazaDanychQueryObject()
 ]
 
+
+class PunktacjaWewnetrznaReportType(PunktacjaWewnetrznaEnabledMixin, ReportType):
+    pass
+
+
 multiseek_report_types = [
     ReportType("list", "lista"),
     ReportType("table", "tabela"),
-    ReportType("pkt_wewn", "punktacja sumaryczna z punktacją wewnętrzna"),
+    PunktacjaWewnetrznaReportType("pkt_wewn", "punktacja sumaryczna z punktacją wewnętrzna"),
     ReportType("pkt_wewn_bez", "punktacja sumaryczna"),
     ReportType("numer_list", "numerowana lista z uwagami", public=False)
 ]
-
-from django.conf import settings
-
-if not settings.UZYWAJ_PUNKTACJI_WEWNETRZNEJ:
-    # TODO można by to zrobic przez QueryObject.enabled
-    multiseek_fields.remove(_pw)
-    del multiseek_report_types[2]
 
 registry = create_registry(
     Rekord,
