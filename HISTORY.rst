@@ -15,6 +15,8 @@ dev
 1.0.18
 -------
 
+* obsługa API WOS-AMR od Clarivate Analytics
+
 * lepsze wyświetlanie rekordu patentu w widoku rekordu
 
 * poprawka formularza edycji autorów powiązanych z rekordem w module redagowania -
