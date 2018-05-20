@@ -4,8 +4,7 @@ from datetime import datetime
 import pytest
 from model_mommy import mommy
 from multiseek import logic
-from multiseek.logic import CONTAINS, NOT_CONTAINS, STARTS_WITH, \
-    NOT_STARTS_WITH, AutocompleteQueryObject
+from multiseek.logic import AutocompleteQueryObject
 
 from bpp.models import Typ_Odpowiedzialnosci, const
 from bpp.models.autor import Autor
@@ -15,7 +14,8 @@ from bpp.models.openaccess import Wersja_Tekstu_OpenAccess, \
 from bpp.multiseek_registry import TytulPracyQueryObject, \
     OpenaccessWersjaTekstuQueryObject, OpenaccessLicencjaQueryObject, \
     OpenaccessCzasPublikacjiQueryObject, ForeignKeyDescribeMixin, PierwszeNazwiskoIImie, \
-    TypOgolnyAutorQueryObject, TypOgolnyRedaktorQueryObject, TypOgolnyTlumaczQueryObject, TypOgolnyRecenzentQueryObject
+    TypOgolnyAutorQueryObject, TypOgolnyRedaktorQueryObject, TypOgolnyTlumaczQueryObject, TypOgolnyRecenzentQueryObject, \
+    NazwiskoIImieQueryObject, DataUtworzeniaQueryObject
 
 
 @pytest.mark.django_db
