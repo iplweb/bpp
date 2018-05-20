@@ -396,7 +396,7 @@ class TypRekorduObject(ValueListQueryObject):
             charaktery = Charakter_Formalny.objects.filter(publikacja=True)
         elif value == 'streszczenia':
             charaktery = Charakter_Formalny.objects.filter(streszczenie=True)
-        elif value == 'inne':
+        else:
             charaktery = Charakter_Formalny.objects.all().exclude(
                 streszczenie=True).exclude(publikacja=True)
 
