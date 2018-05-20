@@ -30,14 +30,6 @@ from bpp.models.cache import Rekord
 from bpp.models.system import Typ_KBN
 
 
-#
-# class StringQueryObject(OrigStringQueryObject):
-#     def value_for_description(self, value):
-#         if not value:
-#             return
-#         return OrigStringQueryObject.value_for_description(self, value)
-
-
 class TytulPracyQueryObject(StringQueryObject):
     label = 'Tytuł pracy'
     field_name = "tytul_oryginalny"
@@ -50,21 +42,23 @@ class TytulPracyQueryObject(StringQueryObject):
             return ret
 
         elif operation in [logic.CONTAINS, logic.NOT_CONTAINS]:
-
             if not value:
                 return Q(pk=F('pk'))
 
-            value = [x.strip() for x in value.split(" ") if x.strip()]
-
             query = None
-            for elem in value:
-                if query is None:
-                    query = SearchQuery(elem, config="bpp_nazwy_wlasne")
-                else:
-                    query &= SearchQuery(elem, config="bpp_nazwy_wlasne")
 
-            if operation == logic.NOT_CONTAINS:
-                query = ~query
+            if operation == logic.CONTAINS:
+                value = [x.strip() for x in value.split(" ") if x.strip()]
+                for elem in value:
+                    elem = SearchQuery(elem, config="bpp_nazwy_wlasne")
+                    if query is None:
+                        query = elem
+                        continue
+                    query &= elem
+
+            else:
+                # Jeżeli "nie zawiera", to nie tokenizuj spacjami
+                query = ~SearchQuery(value, config="bpp_nazwy_wlasne")
 
             ret = Q(search_index=query)
 
