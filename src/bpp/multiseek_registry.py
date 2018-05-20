@@ -195,8 +195,8 @@ class DyscyplinaAutoraQueryObject(ForeignKeyDescribeMixin,
     def real_query(self, value, operation):
         if operation in EQUALITY_OPS_ALL:
             autorzy = Autorzy.objects.filter(
-                autor_dyscyplina__dyscyplina=value,
-                autor_dyscyplina__rok=F("rok")
+                autor__autor_dyscyplina__dyscyplina=value,
+                autor__autor_dyscyplina__rok=F("rekord__rok")
             ).values("rekord_id")
 
             ret = Q(pk__in=autorzy)
