@@ -1,6 +1,6 @@
-{% if praca.zrodlo %}<i>{{ praca.zrodlo.skrot }}</i> {% endif %}
+{% if praca.zrodlo %} <i>{{ praca.zrodlo.skrot }}</i> {% endif %}
 {% if praca.informacje %}
 {{ praca.informacje|default:""|safe }}
 {% else %}
-W: {{ praca.wydawnictwo_nadrzedne.tytul_oryginalny }}.
+ W: {{ praca.wydawnictwo_nadrzedne.tytul_oryginalny }}.
 {% endif %}

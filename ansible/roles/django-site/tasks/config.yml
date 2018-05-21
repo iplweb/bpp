@@ -22,6 +22,7 @@
     - export {{ django_envvar_prefix }}_USE_PASSWORD_HISTORY="{{ django_password_use_history }}"
     - export {{ django_envvar_prefix }}_PASSWORD_HISTORY_COUNT="{{ django_password_history_count }}"
     - export {{ django_envvar_prefix }}_PUNKTUJ_MONOGRAFIE="{{ django_bpp_punktuj_monografie }}"
+    - export {{ django_envvar_prefix }}_INLINE_DLA_AUTOROW="{{ django_bpp_inline_dla_autorow }}"
     - export PGDATABASE="{{ django_db_name}}"
     - export PGUSER="{{ django_db_user}}"
     - export PGPASSWORD="{{ django_db_password}}"

@@ -11,10 +11,15 @@ recursive-include src/django_bpp/staticroot *
 
 recursive-exclude src/django_bpp/staticroot/*grunt* *
 recursive-exclude src/django_bpp/staticroot/*sass* *
+recursive-exclude src/django_bpp/staticroot/fsevents *
 recursive-exclude src/django_bpp/staticroot/phantomjs-prebuilt *
 recursive-exclude src/django_bpp/staticroot/node-gyp *
+recursive-exclude src/django_bpp/staticroot/node-pre-gyp *
+recursive-exclude src/django_bpp/staticroot/ajv *
+recursive-exclude src/django_bpp/staticroot/lodash *
+recursive-exclude src/django_bpp/staticroot/nise *
 recursive-exclude src/django_bpp/staticroot/sinon *
-recursive-exclude src/django_bpp/staticroot/globule * 
+recursive-exclude src/django_bpp/staticroot/globule *
 
 recursive-include src/*/locale/* *mo *po
 

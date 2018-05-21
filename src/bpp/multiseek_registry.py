@@ -1,4 +1,5 @@
 # -*- encoding: utf-8 -*-
+from django.conf import settings
 from django.contrib.postgres.search import SearchQuery
 from django.utils.itercompat import is_iterable
 
@@ -23,18 +24,10 @@ from multiseek.logic import StringQueryObject, QueryObject, EQUALITY_OPS_ALL, \
     DateQueryObject
 
 from bpp.models import Typ_Odpowiedzialnosci, Jezyk, Autor, Jednostka, \
-    Charakter_Formalny, Zrodlo, Dyscyplina_Naukowa, Zewnetrzna_Baza_Danych, Autorzy, Uczelnia
+    Charakter_Formalny, Zrodlo, Dyscyplina_Naukowa, Zewnetrzna_Baza_Danych, Autorzy, Uczelnia, const
 from bpp.models.cache import Rekord
 
 from bpp.models.system import Typ_KBN
-
-
-#
-# class StringQueryObject(OrigStringQueryObject):
-#     def value_for_description(self, value):
-#         if not value:
-#             return
-#         return OrigStringQueryObject.value_for_description(self, value)
 
 
 class TytulPracyQueryObject(StringQueryObject):
@@ -49,21 +42,23 @@ class TytulPracyQueryObject(StringQueryObject):
             return ret
 
         elif operation in [logic.CONTAINS, logic.NOT_CONTAINS]:
-
             if not value:
                 return Q(pk=F('pk'))
 
-            value = [x.strip() for x in value.split(" ") if x.strip()]
-
             query = None
-            for elem in value:
-                if query is None:
-                    query = SearchQuery(elem, config="bpp_nazwy_wlasne")
-                else:
-                    query &= SearchQuery(elem, config="bpp_nazwy_wlasne")
 
-            if operation == logic.NOT_CONTAINS:
-                query = ~query
+            if operation == logic.CONTAINS:
+                value = [x.strip() for x in value.split(" ") if x.strip()]
+                for elem in value:
+                    elem = SearchQuery(elem, config="bpp_nazwy_wlasne")
+                    if query is None:
+                        query = elem
+                        continue
+                    query &= elem
+
+            else:
+                # Jeżeli "nie zawiera", to nie tokenizuj spacjami
+                query = ~SearchQuery(value, config="bpp_nazwy_wlasne")
 
             ret = Q(search_index=query)
 
@@ -189,6 +184,46 @@ class PierwszeNazwiskoIImie(NazwiskoIImieQueryObject):
         return ret
 
 
+class TypOgolnyAutorQueryObject(NazwiskoIImieQueryObject):
+    ops = [EQUAL, DIFFERENT]
+
+    label = "Autor"
+    typ_ogolny = const.TO_AUTOR
+
+    def real_query(self, value, operation):
+
+        if operation in EQUALITY_OPS_ALL:
+            autorzy = Autorzy.objects.filter(
+                autor=value,
+                typ_odpowiedzialnosci__typ_ogolny=self.typ_ogolny
+            ).values("rekord_id")
+
+            ret = Q(pk__in=autorzy)
+
+        else:
+            raise UnknownOperation(operation)
+
+        if operation in DIFFERENT_ALL:
+            return ~ret
+
+        return ret
+
+
+class TypOgolnyRedaktorQueryObject(TypOgolnyAutorQueryObject):
+    typ_ogolny = const.TO_REDAKTOR
+    label = "Redaktor"
+
+
+class TypOgolnyTlumaczQueryObject(TypOgolnyAutorQueryObject):
+    typ_ogolny = const.TO_TLUMACZ
+    label = "Tłumacz"
+
+
+class TypOgolnyRecenzentQueryObject(TypOgolnyAutorQueryObject):
+    typ_ogolny = const.TO_RECENZENT
+    label = "Recenzent"
+
+
 class DyscyplinaAutoraQueryObject(ForeignKeyDescribeMixin,
                                   AutocompleteQueryObject):
     label = 'Dyscyplina naukowa autora'
@@ -200,8 +235,8 @@ class DyscyplinaAutoraQueryObject(ForeignKeyDescribeMixin,
     def real_query(self, value, operation):
         if operation in EQUALITY_OPS_ALL:
             autorzy = Autorzy.objects.filter(
-                autor_dyscyplina__dyscyplina=value,
-                autor_dyscyplina__rok=F("rok")
+                autor__autor_dyscyplina__dyscyplina=value,
+                autor__autor_dyscyplina__rok=F("rekord__rok")
             ).values("rekord_id")
 
             ret = Q(pk__in=autorzy)
@@ -295,6 +330,7 @@ class Typ_OdpowiedzialnosciQueryObject(QueryObject):
     values = Typ_Odpowiedzialnosci.objects.all()
     ops = [EQUAL, ]
     field_name = 'typ_odpowiedzialnosci'
+    public = False
 
     def value_from_web(self, value):
         return Typ_Odpowiedzialnosci.objects.get(nazwa=value)
@@ -342,7 +378,13 @@ class KCImpactQueryObject(ImpactQueryObject):
     public = False
 
 
-class PunktacjaWewnetrznaQueryObject(DecimalQueryObject):
+class PunktacjaWewnetrznaEnabledMixin:
+    def enabled(self, request):
+        return settings.UZYWAJ_PUNKTACJI_WEWNETRZNEJ
+
+
+class PunktacjaWewnetrznaQueryObject(PunktacjaWewnetrznaEnabledMixin,
+                                     DecimalQueryObject):
     label = "Punktacja wewnętrzna"
     field_name = "punktacja_wewnetrzna"
 
@@ -389,7 +431,7 @@ class TypRekorduObject(ValueListQueryObject):
             charaktery = Charakter_Formalny.objects.filter(publikacja=True)
         elif value == 'streszczenia':
             charaktery = Charakter_Formalny.objects.filter(streszczenie=True)
-        elif value == 'inne':
+        else:
             charaktery = Charakter_Formalny.objects.all().exclude(
                 streszczenie=True).exclude(publikacja=True)
 
@@ -471,14 +513,16 @@ class BazaSCOPUS(BooleanQueryObject):
     label = "Konferencja w bazie Scopus"
 
 
-_pw = PunktacjaWewnetrznaQueryObject()
-
 multiseek_fields = [
     TytulPracyQueryObject(),
     NazwiskoIImieQueryObject(),
     JednostkaQueryObject(),
     WydzialQueryObject(),
     Typ_OdpowiedzialnosciQueryObject(),
+    TypOgolnyAutorQueryObject(),
+    TypOgolnyRedaktorQueryObject(),
+    TypOgolnyTlumaczQueryObject(),
+    TypOgolnyRecenzentQueryObject(),
     ZakresLatQueryObject(),
     JezykQueryObject(),
     RokQueryObject(),
@@ -491,7 +535,7 @@ multiseek_fields = [
     ImpactQueryObject(),
     PunktyKBNQueryObject(),
     IndexCopernicusQueryObject(),
-    _pw,
+    PunktacjaWewnetrznaQueryObject(),
 
     KCImpactQueryObject(),
     KCPunktyKBNQueryObject(),
@@ -523,20 +567,18 @@ multiseek_fields = [
     ZewnetrznaBazaDanychQueryObject()
 ]
 
+
+class PunktacjaWewnetrznaReportType(PunktacjaWewnetrznaEnabledMixin, ReportType):
+    pass
+
+
 multiseek_report_types = [
     ReportType("list", "lista"),
     ReportType("table", "tabela"),
-    ReportType("pkt_wewn", "punktacja sumaryczna z punktacją wewnętrzna"),
+    PunktacjaWewnetrznaReportType("pkt_wewn", "punktacja sumaryczna z punktacją wewnętrzna"),
     ReportType("pkt_wewn_bez", "punktacja sumaryczna"),
     ReportType("numer_list", "numerowana lista z uwagami", public=False)
 ]
-
-from django.conf import settings
-
-if not settings.UZYWAJ_PUNKTACJI_WEWNETRZNEJ:
-    # TODO można by to zrobic przez QueryObject.enabled
-    multiseek_fields.remove(_pw)
-    del multiseek_report_types[2]
 
 registry = create_registry(
     Rekord,

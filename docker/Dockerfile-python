@@ -11,3 +11,5 @@ RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq 
     libffi-dev \
     git \
     gettext 
+
+RUN pip install --upgrade pip

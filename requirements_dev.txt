@@ -18,7 +18,7 @@ selenium==3.9.0
 django-dynamic-fixture==1.8.0
 
 flake8==2.4.1
-pep8==1.6.2
+pep8==1.7.1
 pyflakes==0.8.1
 
 bumpversion==0.5.3
@@ -33,7 +33,7 @@ webtest==2.0.29
 
 Fabric3==1.13.1.post1
 
-ansible==2.4.3.0
+ansible==2.5.2
 
 tox==2.7.0
 

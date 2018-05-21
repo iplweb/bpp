@@ -2,12 +2,20 @@
 Historia zmian
 ==============
 
-**dev**
--------
+dev
+---
 
+*
+
+1.0.19
+--------------------
+
+* możliwość globalnej konfiguracji sposobu wprowadzania powiązań autorów z rekordami
 
 1.0.18
 -------
+
+* obsługa API WOS-AMR od Clarivate Analytics
 
 * lepsze wyświetlanie rekordu patentu w widoku rekordu
 

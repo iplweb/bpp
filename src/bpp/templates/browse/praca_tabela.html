@@ -79,11 +79,19 @@
             ID:
         </th>
         <td>
-            {{ praca.pk }}{% if praca.pbn_id %}
-                PBN ID: {{ praca.pbn_id }}
-            {% endif %}
+            {{ praca.pk }}
         </td>
     </tr>
+    {% if praca.pbn_id %}
+        <tr>
+            <th>
+                PBN ID:
+            </th>
+            <td>
+                {{ praca.pbn_id }}
+            </td>
+        </tr>
+    {% endif %}
 
     <tr>
         <th>
