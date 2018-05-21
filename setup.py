@@ -70,7 +70,7 @@ test_requirements = list(parse_reqs("requirements_dev.txt")) + requirements
 
 setup(
     name='bpp',
-    version='1.0.19-dev',
+    version='1.0.19',
     description="System informatyczny do zarządzania bibliografią publikacji pracowników naukowych",
     long_description=readme + '\n\n' + history,
     author="Michał Pasternak",
