@@ -12,6 +12,7 @@ database_password: "password"
 
 django_group: ubuntu
 django_user: ubuntu
+django_home_dir: /home/{{ django_user }}
 
 django_hostname: bpp-staging.localnet
 django_site_name: "Staging BPP"
