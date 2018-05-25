@@ -161,16 +161,18 @@ class NazwiskoIImieQueryObject(ForeignKeyDescribeMixin,
         return ret
 
 
-class PierwszeNazwiskoIImie(NazwiskoIImieQueryObject):
-    label = "Pierwsze nazwisko i imię"
+class NazwiskoIImieWZakresieKolejnosci(NazwiskoIImieQueryObject):
     ops = [EQUAL, ]
+    kolejnosc_gte = None
+    kolejnosc_lt = None
 
     def real_query(self, value, operation):
 
         if operation in EQUALITY_OPS_ALL:
             autorzy = Autorzy.objects.filter(
                 autor=value,
-                kolejnosc=0
+                kolejnosc__gte=self.kolejnosc_gte,
+                kolejnosc__lt=self.kolejnosc_lt
             ).values("rekord_id")
 
             ret = Q(pk__in=autorzy)
@@ -182,6 +184,32 @@ class PierwszeNazwiskoIImie(NazwiskoIImieQueryObject):
             return ~ret
 
         return ret
+
+
+class PierwszeNazwiskoIImie(NazwiskoIImieWZakresieKolejnosci):
+    kolejnosc_gte = 0
+    kolejnosc_lt = 1
+    label = "Pierwsze nazwisko i imię"
+
+
+class OstatnieNazwiskoIImie(NazwiskoIImieWZakresieKolejnosci):
+    kolejnosc_gte = F('rekord__liczba_autorow') - 1
+    kolejnosc_lt = F('rekord__liczba_autorow')
+    label = "Ostatnie nazwisko i imię"
+    public = False
+
+class NazwiskoIImie1do3(NazwiskoIImieWZakresieKolejnosci):
+    kolejnosc_gte = 0
+    kolejnosc_lt = 3
+    label = "Nazwisko i imię (od 1 do 3)"
+    public = False
+
+
+class NazwiskoIImie1do5(NazwiskoIImieWZakresieKolejnosci):
+    kolejnosc_gte = 0
+    kolejnosc_lt = 5
+    label = "Nazwisko i imię (od 1 do 5)"
+    public = False
 
 
 class TypOgolnyAutorQueryObject(NazwiskoIImieQueryObject):
@@ -531,6 +559,9 @@ multiseek_fields = [
     TypKBNQueryObject(),
     ZrodloQueryObject(),
     PierwszeNazwiskoIImie(),
+    NazwiskoIImie1do3(),
+    NazwiskoIImie1do5(),
+    OstatnieNazwiskoIImie(),
 
     ImpactQueryObject(),
     PunktyKBNQueryObject(),

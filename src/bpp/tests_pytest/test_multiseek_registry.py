@@ -15,7 +15,7 @@ from bpp.multiseek_registry import TytulPracyQueryObject, \
     OpenaccessWersjaTekstuQueryObject, OpenaccessLicencjaQueryObject, \
     OpenaccessCzasPublikacjiQueryObject, ForeignKeyDescribeMixin, PierwszeNazwiskoIImie, \
     TypOgolnyAutorQueryObject, TypOgolnyRedaktorQueryObject, TypOgolnyTlumaczQueryObject, TypOgolnyRecenzentQueryObject, \
-    NazwiskoIImieQueryObject, DataUtworzeniaQueryObject
+    NazwiskoIImieQueryObject, DataUtworzeniaQueryObject, OstatnieNazwiskoIImie
 
 
 @pytest.mark.django_db
@@ -109,4 +109,11 @@ def test_TypOgolnyTlumaczQueryObject(autor_jan_nowak):
 def test_TypOgolnyRecenzentQueryObject(autor_jan_nowak):
     t = mommy.make(Typ_Odpowiedzialnosci, typ_ogolny=const.TO_RECENZENT)
     res = TypOgolnyRecenzentQueryObject().real_query(autor_jan_nowak, logic.DIFFERENT)
+    assert res is not None
+
+
+
+@pytest.mark.django_db
+def test_OstatnieNazwiskoIImie(autor_jan_nowak):
+    res = OstatnieNazwiskoIImie().real_query(autor_jan_nowak, logic.DIFFERENT)
     assert res is not None
