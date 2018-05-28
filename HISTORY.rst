@@ -13,8 +13,18 @@ dev
 
 *
 
-1.0.20-dev
+1.0.20
 -------------
+
+*
+
+1.0.20-dev
+---
+
+*
+
+1.0.20
+-----------------------
 --------------------
 
 * możliwość globalnej konfiguracji sposobu wprowadzania powiązań autorów z rekordami
