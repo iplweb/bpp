@@ -2,10 +2,11 @@
 Historia zmian
 ==============
 
-dev
----
+1.0.20
+------
 
-*
+* możliwość wyszukiwania nazwiska autora dla pozycji 1-3, 1-5 oraz dla ostatniej
+  pozycji - dla użytkowników zalogowanych
 
 1.0.19
 --------------------
