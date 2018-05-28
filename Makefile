@@ -162,13 +162,19 @@ demo-vm-ansible:
 demo-vm-clone:
 	-rm bpp-`python src/django_bpp/version.py`.ova
 	vagrant halt staging
-	VBoxManage clonevm `VBoxManage list vms|grep django-bpp_staging|cut -f 2 -d\  ` --name Demo\ BPP\ `python src/django_bpp/version.py` --register
+	VBoxManage clonevm `VBoxManage list vms|grep bpp_staging|cut -f 2 -d\  ` --name Demo\ BPP\ `python src/django_bpp/version.py` --register
 	VBoxManage export Demo\ BPP\ `python src/django_bpp/version.py` -o bpp-`python src/django_bpp/version.py`.ova --options nomacs --options manifest --vsys 0 --product "Maszyna wirtualna BPP" --producturl http://iplweb.pl/kontakt/ --vendor IPLWeb --vendorurl http://iplweb.pl --version `python src/django_bpp/version.py` --eulafile LICENSE
 
 # cel: demo-vm-cleanup
 # Usuwa klon demo-maszyny wirutalnej
 demo-vm-cleanup:
 	VBoxManage unregistervm Demo\ BPP\ `python src/django_bpp/version.py` --delete
+
+vagrantclean:
+	vagrant destroy -f
+
+vagrantup:
+	vagrant up 
 
 demo-vm: vagrantclean vagrantup staging demo-vm-ansible demo-vm-clone demo-vm-cleanup
 

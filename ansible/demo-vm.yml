@@ -10,14 +10,25 @@
 
     - name: "Usuń wzsystko z bpp_bppuser"
       shell: . env/bin/activate && psql -c "delete from bpp_bppuser;"
+      become_user: "{{django_user}}"
+      args:
+        chdir: "{{django_home_dir}}"
 
     - name: "** NIE UŻYWAĆ NA PRODUKCJI ** Domyślny użytkownik systemu zostaje utworzony"
       shell: . env/bin/activate && bpp-manage.py createsuperuser --email michal.dtz@gmail.com  --username admin --noinput
+      become_user: "{{django_user}}"
+      args:
+        chdir: "{{django_home_dir}}"
 
     - name: "** NIE UŻYWAĆ NA PRODUKCJI ** Hasło domyślnego użytkownika systemu zostaje ustalone"
       shell:  . ./env/bin/activate && python -c  "import django; django.setup(); from bpp.models import BppUser; u = BppUser.objects.all()[0]; u.set_password('admin'); u.save()"
+      become_user: "{{django_user}}"
+      args:
+        chdir: "{{django_home_dir}}"
+        
     - name: "** NIE UŻYWAĆ NA PRODUKCJI ** Wpuszczamy wszystkie hosty"
-      lineinfile: name=./env/lib/python3.6/site-packages/django_bpp/settings/base.py line="ALLOWED_HOSTS.append('*')"
+      lineinfile: name={{django_home_dir}}/env/lib/python3.6/site-packages/django_bpp/settings/base.py line="ALLOWED_HOSTS.append('*')"
+      become_user: "{{django_user}}"
 
     - name: supervisor restart
       shell: supervisorctl restart all
