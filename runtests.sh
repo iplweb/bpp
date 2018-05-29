@@ -36,18 +36,29 @@ done
 
 dropdb --if-exists $TEST_DB_NAME
 
-MANAGE="src/manage.py test bpp --keepdb"
+MANAGE_CMD="src/manage.py"
+
+TEST_CMD="$MANAGE_CMD test bpp --keepdb"
 
 if [ "$NO_DJANGO" == "0" ]; then
     if [ "$NO_COVERAGE" == "1" ]; then
-	$PYTHON $MANAGE
+	$PYTHON $TEST_CMD
     else
-	coverage run --source=src/bpp/ $MANAGE
+	coverage run --source=src/bpp/ $TEST_CMD
     fi
     
     # Ewentualne następne testy muszą startować na czystej bazie danych, więc:
 #    stellar restore $GIT_BRANCH_NAME
 fi
+
+# Utwórz bazę testową "bpp" - wymaga jej jeden test integracyjny
+# integration_tests/test_celery. Ewentualnie mógłby być to klon
+# bazy testowej, jeżeli moglibyśmy utworzyć go równie łatwo jak
+# przy pomocy polecenia Stellar. Jednakże, w momencie pisania tego
+# komentarza, najłatwiej będzie uruchomić po prostu 'manage.py migrate'
+# dla "głównej" bazy danych
+
+$PYTHON $MANAGE_CMD migrate
 
 PYTEST=py.test
 
