@@ -43,3 +43,5 @@ sphinx-autobuild==0.7.1
 pdbpp==0.9.1
 
 coveralls==1.2.0
+
+psutil==5.4.5
