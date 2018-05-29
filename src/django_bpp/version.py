@@ -1,4 +1,4 @@
-VERSION = "1.0.19"
+VERSION = "1.0.20"
 
 if __name__ == "__main__":
     import sys
