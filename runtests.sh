@@ -57,7 +57,7 @@ fi
 # przy pomocy polecenia Stellar. Jednakże, w momencie pisania tego
 # komentarza, najłatwiej będzie uruchomić po prostu 'manage.py migrate'
 # dla "głównej" bazy danych
-
+createdb bpp || true
 $PYTHON $MANAGE_CMD migrate
 
 PYTEST=py.test
