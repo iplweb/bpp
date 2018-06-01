@@ -241,12 +241,17 @@
 
                 <div id="content">
                     {% if password_change_required %}
-                        <p class='help'>Twoje hasło uległo przeterminowaniu. Proszę, zmień je używając formularza
-                            poniżej:</p>
-                        <form action="." method="post">{% csrf_token %}
-                            {% crispy form %}{% if next %}
-                                <input type="hidden" name="next" value="{{ next }}"/>{% endif %}
-                        </form>
+                        <div class="grid-x align-center">
+                            <div class="large-6 medium-8 small-12 cell">
+
+                                <div class='callout primary'>Twoje hasło uległo przeterminowaniu.
+                                    Proszę, zmień je używając poniższego formularza.</div>
+                                <form action="." method="post">{% csrf_token %}
+                                    {% crispy form %}{% if next %}
+                                        <input type="hidden" name="next" value="{{ next }}"/>{% endif %}
+                                </form>
+                            </div>
+                        </div>
                     {% else %}
                         {% block content %}
                         {% endblock %}
