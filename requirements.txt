@@ -42,7 +42,7 @@ raven==6.2.1
 django-secure-input==0.9.3
 bleach==2.1.2
 
-django-session-security==2.5.1
+django-session-security==2.6.0
 
 django-password-policies-iplweb==0.4.4b0
 
