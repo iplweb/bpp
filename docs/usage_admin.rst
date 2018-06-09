@@ -21,7 +21,7 @@ Kolejnośc i zakres wyświetlanych wydziałów
 
 * aby ustalić kolejność i zakres wyświetlanych wydziałów uczelni, potrzebujesz
   przejrzeć obiekty "Wydział" znajdujące się poniżej formularza dla rekordu
-  Uczelni. Skorzystaj z funkcji Redagowanie➡Struktura➡Uczelnia. Wydziały mogą
+  Uczelni. Skorzystaj z funkcji Redagowanie➡Struktura➡Uczelnie. Wydziały mogą
   być wyświetlane lub nie, możesz za pomocą tej funkcji ustawić je w określonej
   kolejności.
 
@@ -47,3 +47,18 @@ Po wybraniu dowolnego autora w module Redagowanie➡Wprowadzanie danych➡Autorz
 odznacz to pole i zapisz rekord, aby nie wyświetlać autora na stronie jednostki.
 
 .. image:: images/admin/pokazuj_na_stronach_jednostek.png
+
+Ukrywanie lub wyświetlanie raportów na stronie głównej
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Celem konfiguracji sposobu wyświetlania strony głównej jak i innych elementów
+serwisu, skorzystaj z opcji Redagowanie➡Struktura➡Uczelnie, a następnie w sekcji
+"Strona wizualna" wyedytuj ustawienia dotyczące pokazywania różnych opcji
+(rankingi, raporty, opcje rekordu). Niektóre ustawienia umożliwiają wyświetlanie
+lub chowanie danego elementu, niektóre umożliwiają wyświetlenie danego elementu
+tylko dla użytkowników zalogowanych.
+
+.. image:: images/admin/uczelnia_strona_wizualna.png
+
+
+
