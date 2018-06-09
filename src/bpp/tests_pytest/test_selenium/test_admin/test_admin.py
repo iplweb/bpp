@@ -1,28 +1,24 @@
 # -*- encoding: utf-8 -*-
 import time
-from mock import Mock
-import pytest
+
 from django.core.urlresolvers import reverse
 from django.db import transaction
-from selenium.common.exceptions import WebDriverException
-from selenium.webdriver.support.expected_conditions import alert_is_present
+from model_mommy import mommy
 from selenium.webdriver.support.wait import WebDriverWait
 
-from bpp.models import Wydawnictwo_Ciagle
+from bpp.models import Wydawnictwo_Ciagle, Uczelnia, Autor, Jednostka, Typ_Odpowiedzialnosci, TO_AUTOR
 from bpp.models.patent import Patent
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 from bpp.models.zrodlo import Punktacja_Zrodla
 from bpp.tests import any_ciagle, any_autor, any_jednostka
 from bpp.tests.util import any_zrodlo, CURRENT_YEAR, any_zwarte, any_patent, \
-    select_select2_autocomplete, scroll_into_view, \
-    select_select2_clear_selection, show_element
+    select_select2_autocomplete, select_select2_clear_selection, show_element
 from django_bpp.selenium_util import wait_for_page_load, wait_for
 from .helpers import *
 
 ID = "id_tytul_oryginalny"
 
 pytestmark = [pytest.mark.slow, pytest.mark.selenium]
-
 
 
 def test_admin_wydawnictwo_ciagle_toz(preauth_admin_browser, live_server):
@@ -489,3 +485,73 @@ def test_admin_wydawnictwo_ciagle_dowolnie_zapisane_nazwisko(
     )
 
     assert browser.find_by_id("id_autorzy_set-0-zapisany_jako").value == "Dowolny tekst"
+
+
+@pytest.mark.parametrize(
+    "expected", [True, False]
+)
+@pytest.mark.parametrize(
+    "url", ["wydawnictwo_ciagle", "wydawnictwo_zwarte", "patent"],
+)
+def test_admin_domyslnie_afiliuje_nowy_rekord(preauth_admin_browser, live_server, url, expected):
+    # twórz nowy obiekt, nie używaj z fixtury, bo db i transactional_db
+    uczelnia = mommy.make(Uczelnia, domyslnie_afiliuje=expected)
+
+    browser = preauth_admin_browser
+    browser.visit(live_server + reverse(f"admin:bpp_{ url }_add"))
+
+    browser.execute_script("""
+    document.getElementsByClassName("grp-add-handler")[0].scrollIntoView()
+    """)
+    time.sleep(0.5)
+    browser.find_by_css(".grp-add-handler")[0].click()
+    time.sleep(0.5)
+
+    v = browser.find_by_id("id_autorzy_set-0-afiliuje")
+    assert v.checked == expected
+
+
+@pytest.mark.parametrize(
+    "afiliowany", [True, False]
+)
+@pytest.mark.parametrize(
+    "expected", [True, False]
+)
+@pytest.mark.parametrize(
+    "url,klasa", [("wydawnictwo_ciagle", Wydawnictwo_Ciagle),
+                  ("wydawnictwo_zwarte", Wydawnictwo_Zwarte),
+                  ("patent", Patent)],
+)
+@pytest.mark.django_db(transaction=True)
+def test_admin_domyslnie_afiliuje_istniejacy_rekord(
+        preauth_admin_browser,
+        live_server,
+        url,
+        klasa,
+        expected,
+        afiliowany):
+
+    # twórz nowy obiekt, nie używaj z fixtury, bo db i transactional_db
+    uczelnia = mommy.make(Uczelnia, domyslnie_afiliuje=expected)
+    autor = mommy.make(Autor, nazwisko="Kowal", imiona="Ski")
+    jednostka = mommy.make(Jednostka, nazwa="Lol", skrot="WT")
+    wydawnictwo = mommy.make(klasa, tytul_oryginalny="test")
+    Typ_Odpowiedzialnosci.objects.get_or_create(
+        skrot="aut.", nazwa="autor", typ_ogolny=TO_AUTOR)
+    wa = wydawnictwo.dodaj_autora(autor, jednostka, zapisany_jako="Wutlolski")
+    wa.afiliowany = afiliowany
+    wa.save()
+
+    browser = preauth_admin_browser
+    browser.visit(live_server + reverse(f"admin:bpp_{ url }_change",
+                                        args=(wydawnictwo.pk,)))
+
+    browser.execute_script("""
+    document.getElementsByClassName("grp-add-handler")[1].scrollIntoView()
+    """)
+    time.sleep(0.5)
+    browser.find_by_css(".grp-add-handler")[1].click()
+    time.sleep(0.5)
+
+    v = browser.find_by_id("id_autorzy_set-1-afiliuje")
+    assert v.checked == expected
