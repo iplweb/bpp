@@ -386,6 +386,8 @@ class RekordBase(ModelPunktowanyBaza, ModelZOpisemBibliograficznym,
 
     liczba_autorow = models.SmallIntegerField()
 
+    liczba_cytowan = models.SmallIntegerField()
+
     # nie dziedziczymy z ModelZWWW, poniewaz tam jest pole dostep_dnia,
     # ktore to obecnie nie jest potrzebne w Cache, wiec:
     www = models.URLField("Adres WWW", max_length=1024, blank=True, null=True)

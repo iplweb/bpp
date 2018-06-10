@@ -400,6 +400,11 @@ class ImpactQueryObject(DecimalQueryObject):
     field_name = 'impact_factor'
 
 
+class LiczbaCytowanQueryObject(IntegerQueryObject):
+    label = 'Liczba cytowań'
+    field_name = 'liczba_cytowan'
+
+
 class KCImpactQueryObject(ImpactQueryObject):
     field_name = 'kc_impact_factor'
     label = "KC: Impact factor"
@@ -564,6 +569,7 @@ multiseek_fields = [
     OstatnieNazwiskoIImie(),
 
     ImpactQueryObject(),
+    LiczbaCytowanQueryObject(),
     PunktyKBNQueryObject(),
     IndexCopernicusQueryObject(),
     PunktacjaWewnetrznaQueryObject(),
@@ -621,6 +627,7 @@ registry = create_registry(
         Ordering("tytul_oryginalny", "tytuł oryginalny"),
         Ordering("rok", "rok"),
         Ordering("impact_factor", "impact factor"),
+        Ordering("liczba_cytowan", "liczba cytowań"),
         Ordering("punkty_kbn", "punkty PK"),
         Ordering("charakter_formalny__nazwa", "charakter formalny"),
         Ordering("typ_kbn__nazwa", "typ KBN"),

@@ -77,8 +77,11 @@ class MyMultiseekResults(MultiseekResults):
 
         if ctx['report_type'] in EXTRA_TYPES:
             ctx['sumy'] = qset.aggregate(
-                Sum('impact_factor'), Sum('punkty_kbn'),
-                Sum('index_copernicus'), Sum('punktacja_wewnetrzna'))
+                Sum('impact_factor'),
+                Sum('liczba_cytowan'),
+                Sum('punkty_kbn'),
+                Sum('index_copernicus'),
+                Sum('punktacja_wewnetrzna'))
 
         keys = list(self.request.session.keys())
         if 'MULTISEEK_TITLE' not in keys:
