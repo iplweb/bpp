@@ -2,5 +2,7 @@
 {% if praca.informacje %}
 {{ praca.informacje|default:""|safe }}
 {% else %}
+{% if praca.wydawnictwo_nadrzedne.tytul_oryginalny %}
  W: {{ praca.wydawnictwo_nadrzedne.tytul_oryginalny }}.
+{% endif %}
 {% endif %}
