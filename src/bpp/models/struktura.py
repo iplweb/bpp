@@ -76,6 +76,13 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         'Pokazuj opcję "Praca recenzowana"'
     )
 
+    domyslnie_afiliuje = models.BooleanField(
+        'Domyślnie zaznaczaj, że autor afiliuje',
+        help_text="""Przy powiązaniach autor + wydawnictwo, zaznaczaj domyślnie,
+        że autor afiliuje do jednostki, która jest wpisywana.""",
+        default=True,
+    )
+
     clarivate_username = models.CharField(
         verbose_name="Nazwa użytkownika",
         null=True,

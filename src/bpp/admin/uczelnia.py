@@ -35,6 +35,12 @@ class UczelniaAdmin(RestrictDeletionToAdministracjaGroupMixin,
                 'favicon_ico',
                 'obca_jednostka',
             )}),
+        ('Opcje edycji', {
+            'classes': ('grp-collapse grp-closed',),
+            'fields': (
+                'domyslnie_afiliuje',
+            ),
+        }),
         ('Strona wizualna', {
             'classes': ('grp-collapse grp-closed',),
             'fields': (

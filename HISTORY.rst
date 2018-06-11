@@ -5,7 +5,8 @@ Historia zmian
 dev
 ---
 
-*
+* możliwość ustalenia domyślnej wartości pola "Afiliuje" dla rekordów wiążących
+  rekord pracy z rekordem autora
 
 1.0.20
 ------

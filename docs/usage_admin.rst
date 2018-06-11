@@ -16,6 +16,9 @@ Ustawienia globalne - rekord uczelni
   zmniejszoną ikonę strony wyświetlającą się w pasku adresu przeglądarki oraz
   na urządzeniach przenośnych),
 
+* za pomocą tej opcji ustawić możesz domyślą wartość pola "afiliuje" dla rekordów
+  wiążących rekordy prac (wydawnictwo ciągłe, zwarte i patent) z autorami
+
 Kolejnośc i zakres wyświetlanych wydziałów
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
