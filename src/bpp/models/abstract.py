@@ -862,6 +862,9 @@ class ModelZLiczbaCytowan(models.Model):
         verbose_name="Liczba cytowań",
         null=True,
         blank=True,
+        help_text="""Wartość aktualizowana jest automatycznie raz na kilka dni w przypadku 
+        skonfigurowania dostępu do API WOS AMR (przez obiekt 'Uczelnia'). Możesz również
+        czaktualizować tą wartość ręcznie, naciskając przycisk. """
     )
 
     class Meta:

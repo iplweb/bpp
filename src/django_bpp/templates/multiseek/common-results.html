@@ -164,6 +164,7 @@
                 <th>Lp.</th>
                 <th>Tytuł, autorzy, źródło</th>
                 <th>IF</th>
+                <th>Liczba cytowań</th>
                 <th>PK</th>
                 <th>Charakter</th>
                 <th>Typ KBN/MNiSW</th>
@@ -192,6 +193,7 @@
                         {% endif %}
                     </td>
                     <td>{{ element.impact_factor }}</td>
+                    <td>{{ element.liczba_cytowan }}</td>
                     <td>{{ element.punkty_kbn }}</td>
                     <td>{{ element.charakter_formalny }}</td>
                     <td>{{ element.typ_kbn }}</td>
@@ -213,6 +215,9 @@
                         {{ sumy.impact_factor__sum|default_if_none:"0.00" }}
                     </td>
                     <td>
+                        {{ sumy.liczba_cytowan__sum|default_if_none:"0.00" }}
+                    </td>
+                    <td>
                         {{ sumy.punkty_kbn__sum|default_if_none:"0.00" }}
                     </td>
                     <td>&nbsp;</td>
@@ -230,6 +235,7 @@
                 <th>Lp.</th>
                 <th>Tytuł, autorzy, źródło</th>
                 <th>IF</th>
+                <th>Liczba cytowań</th>
                 <th>PK</th>
                 {% if report_type == "pkt_wewn" %}
                     <th>pkt. wewn.</th>
@@ -261,6 +267,7 @@
                         {% endif %}
                     </td>
                     <td>{{ element.impact_factor }}</td>
+                    <td>{{ element.liczba_cytowan }}</td>
                     <td>{{ element.punkty_kbn }}</td>
                     {% if report_type == "pkt_wewn" %}
                         <td>{{ element.punktacja_wewnetrzna }}</td>
@@ -284,6 +291,7 @@
                     <td>
                         {{ sumy.impact_factor__sum|default_if_none:"0.00" }}
                     </td>
+                    <td>{{ sumy.liczba_cytowan__sum|default_if_none:"0.00" }}</td>
                     <td>
                         {{ sumy.punkty_kbn__sum|default_if_none:"0.00" }}
                     </td>
