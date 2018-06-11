@@ -10,7 +10,7 @@ from bpp.migration_util import load_custom_sql
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('bpp', '0132_unique_rekord_id_kolejnosc'),
+        ('bpp', '0133_liczba_autorow'),
     ]
 
     operations = [
