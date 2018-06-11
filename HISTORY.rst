@@ -8,6 +8,9 @@ dev
 * możliwość ustalenia domyślnej wartości pola "Afiliuje" dla rekordów wiążących
   rekord pracy z rekordem autora
 
+* możliwość wyszukiwania po liczbie cytowań; wyświetlanie liczby cytowań w tabelkach
+  wyszukiwania
+
 1.0.20
 ------
 
