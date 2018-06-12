@@ -11,6 +11,9 @@ dev
 * możliwość wyszukiwania po liczbie cytowań; wyświetlanie liczby cytowań w tabelkach
   wyszukiwania
 
+* możliwość pokazywania liczby cytowań w rankingu autorów z opcjonalnym ukrywaniem
+  tego parametru za pomocą modułu redagowania (opcje obiektu Uczelnia)
+
 1.0.20
 ------
 

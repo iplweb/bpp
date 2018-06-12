@@ -10,7 +10,7 @@ from django_tables2.export.views import ExportMixin
 from django_tables2.tables import Table
 from django_tables2.views import SingleTableView
 
-from bpp.models import Autor, Sumy
+from bpp.models import Autor, Sumy, OpcjaWyswietlaniaField, Uczelnia
 from bpp.models.struktura import Wydzial
 
 
@@ -22,6 +22,7 @@ class RankingAutorowTable(Table):
         fields = ('lp',
                   'autor',
                   'impact_factor_sum',
+                  'liczba_cytowan_sum',
                   'punkty_kbn_sum')
 
     lp = Column(empty_values=(),
@@ -32,6 +33,7 @@ class RankingAutorowTable(Table):
     autor = Column(order_by=("autor__nazwisko", "autor__imiona"))
     punkty_kbn_sum = Column("Punkty PK", "punkty_kbn_sum")
     impact_factor_sum = Column("Impact Factor", "impact_factor_sum")
+    liczba_cytowan_sum = Column("Liczba cytowań", "liczba_cytowan_sum")
 
     def render_lp(self):
         self.lp_counter = getattr(self, "lp_counter",
@@ -54,6 +56,7 @@ class RankingAutorowJednostkaWydzialTable(RankingAutorowTable):
                   'jednostka',
                   'wydzial',
                   'impact_factor_sum',
+                  'liczba_cytowan_sum',
                   'punkty_kbn_sum')
 
     jednostka = Column(accessor="jednostka.nazwa")
@@ -92,10 +95,12 @@ class RankingAutorow(ExportMixin, SingleTableView):
 
         qset = qset.annotate(
             impact_factor_sum=Sum('impact_factor'),
+            liczba_cytowan_sum=Sum('liczba_cytowan'),
             punkty_kbn_sum=Sum('punkty_kbn'),
         )
         qset = qset.exclude(
             impact_factor_sum=0,
+            liczba_cytowan_sum=0,
             punkty_kbn_sum=0)
 
         qset = qset.exclude(
@@ -142,3 +147,16 @@ class RankingAutorow(ExportMixin, SingleTableView):
         if len(wydzialy) != len(self.get_dostepne_wydzialy()):
             context['table_subtitle'] = ", ".join([x.nazwa for x in wydzialy])
         return context
+
+    def get_table_kwargs(self):
+        uczelnia = Uczelnia.objects.all().first()
+        pokazuj = uczelnia.pokazuj_liczbe_cytowan_w_rankingu
+
+        if pokazuj == OpcjaWyswietlaniaField.POKAZUJ_NIGDY or (
+            pokazuj == OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM and
+            self.request.user.is_anonymous
+        ) :
+            return {
+                'exclude': ('liczba_cytowan_sum',)
+            }
+        return {}

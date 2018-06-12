@@ -3,7 +3,7 @@ from django.db import models
 from django.db.models import DO_NOTHING, QuerySet
 from django_group_by.mixin import GroupByMixin
 
-from bpp.models import ModelPunktowany
+from bpp.models import ModelPunktowany, ModelZLiczbaCytowan
 
 
 # Poniżej ważne jest to on_delete=DO_NOTHING, ponieważ bez tego Django
@@ -15,7 +15,7 @@ class Nowe_SumyQuerySet(QuerySet, GroupByMixin):
     pass
 
 
-class Nowe_Sumy_View(ModelPunktowany, models.Model):
+class Nowe_Sumy_View(ModelZLiczbaCytowan, ModelPunktowany, models.Model):
     autor = models.OneToOneField('Autor', primary_key=True, on_delete=DO_NOTHING)
     jednostka = models.OneToOneField('Jednostka', primary_key=True,
                                      on_delete=DO_NOTHING)
