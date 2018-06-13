@@ -14,6 +14,9 @@ dev
 * możliwość pokazywania liczby cytowań w rankingu autorów z opcjonalnym ukrywaniem
   tego parametru za pomocą modułu redagowania (opcje obiektu Uczelnia)
 
+* możliwość pokazywania liczby cytowań na podstronie autora z opcjonalnym ukrywaniem
+  tego parametru za pomocą modułu redagowania (opcje obiektu Uczelnia)
+
 1.0.20
 ------
 
