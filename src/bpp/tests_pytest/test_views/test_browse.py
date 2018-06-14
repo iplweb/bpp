@@ -10,7 +10,7 @@ from model_mommy import mommy
 from multiseek.logic import EQUAL_NONE, EQUAL, EQUAL_FEMALE
 from multiseek.views import MULTISEEK_SESSION_KEY
 
-from bpp.models import Jednostka, Wydawnictwo_Ciagle, OpcjaWyswietlaniaField
+from bpp.models import Jednostka, Wydawnictwo_Ciagle, OpcjaWyswietlaniaField, Typ_Odpowiedzialnosci
 from bpp.models.autor import Autor
 from bpp.views.browse import BuildSearch
 from conftest import NORMAL_DJANGO_USER_PASSWORD, NORMAL_DJANGO_USER_LOGIN
@@ -166,6 +166,8 @@ def test_jednostka_nie_wyswietlaj_autorow_gdy_wielu(client, jednostka):
 
 @pytest.fixture
 def test_browse_autor():
+    mommy.make(Typ_Odpowiedzialnosci, nazwa="autor", skrot="aut.")
+
     autor = mommy.make(Autor)
     jednostka = mommy.make(Jednostka, skupia_pracownikow=True)
     wc = mommy.make(Wydawnictwo_Ciagle, liczba_cytowan=200)
