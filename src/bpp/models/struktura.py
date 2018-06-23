@@ -87,6 +87,11 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         "Pokazuj liczbę cytowań w rankingu"
     )
 
+    pokazuj_liczbe_cytowan_na_stronie_autora = OpcjaWyswietlaniaField(
+        "Pokazuj liczbę cytowań na podstronie autora",
+        help_text="""Liczba cytowań będzie wyświetlana, gdy większa od 0"""
+    )
+
     clarivate_username = models.CharField(
         verbose_name="Nazwa użytkownika",
         null=True,

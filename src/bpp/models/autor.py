@@ -11,6 +11,7 @@ from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import models, IntegrityError
+from django.db.models import Sum
 from django.urls.base import reverse
 from django.utils import six
 from lxml.etree import Element, SubElement
@@ -259,6 +260,23 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
             employed_in_unit.text = 'false'
 
         return author
+
+    def liczba_cytowan(self):
+        """Zwraca liczbę cytowań prac danego autora
+        """
+        from bpp.models.cache import Rekord
+        return Rekord.objects.prace_autora(self)\
+            .distinct()\
+            .aggregate(s=Sum('liczba_cytowan'))['s']
+
+    def liczba_cytowan_afiliowane(self):
+        """Zwraca liczbę cytowań prac danego autora tam,
+        gdzie została podana afiliacja na jednostkę uczelni"""
+        from bpp.models.cache import Rekord
+        return Rekord.objects.prace_autora_z_afiliowanych_jednostek(self)\
+            .distinct()\
+            .aggregate(s=Sum('liczba_cytowan'))['s']
+
 
 class Funkcja_Autora(NazwaISkrot):
     """Funkcja autora w jednostce"""
