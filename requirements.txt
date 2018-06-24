@@ -8,6 +8,7 @@ django-group-by==0.3.1
 django-columns==0.1.0
 
 tablib==0.11.5
+openpyxl==2.4.9
 
 django-dirtyfields==1.2.1
 django-messages-extends==0.5
