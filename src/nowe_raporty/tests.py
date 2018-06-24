@@ -1,5 +1,8 @@
 import pytest
+import xlrd
+from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
+from flexible_reports.models import ReportElement, DATA_FROM_DATASOURCE, Datasource, Table, Column
 from flexible_reports.models.report import Report
 from mock import patch
 from model_mommy import mommy
@@ -344,3 +347,32 @@ def test_czy_raport_wydzialow_generuj_i_form_przestrzegaja_ustawien_zalogowany(
         uczelnia.save()
 
         app.get(url, status=404)
+
+
+@pytest.mark.django_db
+def test_generowanie_xls(uczelnia, autor_jan_kowalski, client, rok, jednostka, wydawnictwo_ciagle, wydawnictwo_zwarte,
+                         typ_odpowiedzialnosci_autor):
+    wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
+    wydawnictwo_zwarte.dodaj_autora(autor_jan_kowalski, jednostka)
+
+    r = mommy.make(Report, slug="raport-autorow")
+    ds = mommy.make(Datasource, dsl_query='tytul_oryginalny = "fa"', distinct=True)
+
+    base_model = ContentType.objects.get_for_model(Rekord)
+
+    t = mommy.make(Table, base_model=base_model)
+    c = mommy.make(Column, parent=t, attr_name="tytul_oryginalny")
+
+    mommy.make(ReportElement,
+               parent=r,
+               data_from=DATA_FROM_DATASOURCE,
+               base_model=base_model,
+               datasource=ds,
+               table=t)
+
+    url = reverse("nowe_raporty:autor_generuj", args=(autor_jan_kowalski.pk, rok, rok)) + "?_export=xlsx&_tzju=True"
+    res = client.get(url)
+
+    # Sprawdź, czy to XLS
+    wb = xlrd.open_workbook(file_contents=res.content)
+    assert len(wb.sheets()) == 1
