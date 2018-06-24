@@ -96,8 +96,6 @@ def test_uczelnia_pokazuj_menu_zawsze(uczelnia, attr, s, client, admin_client):
     res = client.get(url, follow=True)
     assert s in res.rendered_content
 
-    import pytest; pytest.set_trace()
-
     res = admin_client.get(url, follow=True)
     assert s in res.rendered_content
 
