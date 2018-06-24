@@ -106,6 +106,9 @@ class KonferencjaAutocomplete(NazwaMixin,
     create_field = 'nazwa'
     qset = Konferencja.objects.all()
 
+    def get_result_label(self, result):
+        return f"{ Konferencja.TK_SYMBOLE[result.typ_konferencji] } { str(result) }"
+
 
 class PublicKonferencjaAutocomplete(NazwaMixin, autocomplete.Select2QuerySetView):
     qset = Konferencja.objects.all()
