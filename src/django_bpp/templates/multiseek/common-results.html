@@ -29,8 +29,21 @@
 
 <div style="padding: 10px;">
 
+    {% if uczelnia.wydruk_logo %}
+        <table class="show-for-print" border="0" style="border:none !important;" cellpadding="0" cellspacing="0">
+            <tr>
+                <td><img width="250"
+                         src="/media/{{ uczelnia.logo_www }}"
+                         alt="Logo {{ uczelnia.nazwa_dopelniacz }}"
+                /></td>
+                <td><h4>Bibliografia Publikacji Pracowników<br/>
+                    {{ uczelnia.nazwa_dopelniacz }}</h4></td>
+            </tr>
+        </table>
+    {% endif %}
+
     {% if description %}
-        <div class="callout secondary">
+        <div class="callout secondary {% if not uczelnia.wydruk_parametry_zapytania %}hide-for-print{% endif %}">
             <strong>Parametry
                 zapytania: </strong>{{ description|default:"brak"|safe }}
         </div>
