@@ -15,7 +15,8 @@ from bpp.multiseek_registry import TytulPracyQueryObject, \
     OpenaccessWersjaTekstuQueryObject, OpenaccessLicencjaQueryObject, \
     OpenaccessCzasPublikacjiQueryObject, ForeignKeyDescribeMixin, PierwszeNazwiskoIImie, \
     TypOgolnyAutorQueryObject, TypOgolnyRedaktorQueryObject, TypOgolnyTlumaczQueryObject, TypOgolnyRecenzentQueryObject, \
-    NazwiskoIImieQueryObject, DataUtworzeniaQueryObject, OstatnieNazwiskoIImie
+    NazwiskoIImieQueryObject, DataUtworzeniaQueryObject, OstatnieNazwiskoIImie, OstatnioZmieniony, \
+    OstatnioZmienionyDlaPBN
 
 
 @pytest.mark.django_db
@@ -88,32 +89,43 @@ def test_PierwszeNazwiskoIImie_real_query(wydawnictwo_zwarte, autor_jan_kowalski
 def test_TypOgolnyAutorQueryObject(autor_jan_nowak):
     t = mommy.make(Typ_Odpowiedzialnosci, typ_ogolny=const.TO_AUTOR)
     res = TypOgolnyAutorQueryObject().real_query(autor_jan_nowak, logic.DIFFERENT)
-    assert res is not None
+    assert Rekord.objects.filter(res).count() == 0
 
 
 @pytest.mark.django_db
 def test_TypOgolnyRedaktorQueryObject(autor_jan_nowak):
     t = mommy.make(Typ_Odpowiedzialnosci, typ_ogolny=const.TO_REDAKTOR)
     res = TypOgolnyRedaktorQueryObject().real_query(autor_jan_nowak, logic.DIFFERENT)
-    assert res is not None
+    assert Rekord.objects.filter(res).count() == 0
 
 
 @pytest.mark.django_db
 def test_TypOgolnyTlumaczQueryObject(autor_jan_nowak):
     t = mommy.make(Typ_Odpowiedzialnosci, typ_ogolny=const.TO_TLUMACZ)
     res = TypOgolnyTlumaczQueryObject().real_query(autor_jan_nowak, logic.DIFFERENT)
-    assert res is not None
+    assert Rekord.objects.filter(res).count() == 0
 
 
 @pytest.mark.django_db
 def test_TypOgolnyRecenzentQueryObject(autor_jan_nowak):
     t = mommy.make(Typ_Odpowiedzialnosci, typ_ogolny=const.TO_RECENZENT)
     res = TypOgolnyRecenzentQueryObject().real_query(autor_jan_nowak, logic.DIFFERENT)
-    assert res is not None
-
+    assert Rekord.objects.filter(res).count() == 0
 
 
 @pytest.mark.django_db
 def test_OstatnieNazwiskoIImie(autor_jan_nowak):
     res = OstatnieNazwiskoIImie().real_query(autor_jan_nowak, logic.DIFFERENT)
-    assert res is not None
+    assert Rekord.objects.filter(res).count() == 0
+
+
+@pytest.mark.django_db
+def test_OstatnioZmieniony():
+    res = OstatnioZmieniony().real_query(datetime.now(), logic.EQUAL)
+    assert Rekord.objects.filter(res).count() == 0
+
+
+@pytest.mark.django_db
+def test_OstatnioZmienionyDlaPBN():
+    res = OstatnioZmienionyDlaPBN().real_query(datetime.now(), logic.EQUAL)
+    assert Rekord.objects.filter(res).count() == 0
