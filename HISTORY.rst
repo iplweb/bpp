@@ -27,6 +27,9 @@ dev
 
 * poprawione generowanie plików XLS w niektórych środowiskach (#601)
 
+* możliwość określania rodzaju konferencji w module redagowanie: lokalna, krajowa,
+  międzynarodowa oraz wyszukiwania po typach konferencji (#620)
+
 1.0.20
 ------
 
