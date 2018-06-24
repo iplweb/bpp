@@ -25,6 +25,8 @@ dev
 
 * poprawne eksportowanie do PBN konferencji indeksowanych w WOS/Scopus (#621)
 
+* poprawione generowanie plików XLS w niektórych środowiskach (#601)
+
 1.0.20
 ------
 
