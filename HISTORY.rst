@@ -17,6 +17,9 @@ dev
 * możliwość pokazywania liczby cytowań na podstronie autora z opcjonalnym ukrywaniem
   tego parametru za pomocą modułu redagowania (opcje obiektu Uczelnia)
 
+* poprawne wyświetlanie raportów jednostek i wydziałów, zgodne z ustawieniami
+  obiektu "Uczelnia"
+
 1.0.20
 ------
 
