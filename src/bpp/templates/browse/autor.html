@@ -37,6 +37,10 @@
             <p><strong>Liczba cytowań: </strong>{{ autor.liczba_cytowan }}</p>
             <p><strong>Liczba cytowań z jednostek afiliowanych: </strong>{{ autor.liczba_cytowan_afiliowane }}</p>
         {% endif %}
+        {% if autor.orcid %}
+            <p><strong>ORCID: </strong><a href="https://orcid.org/{{ autor.orcid }}"
+                                          target="_blank">{{ autor.orcid }}</a></p>
+        {% endif %}
     {% endif %}
 
     <form method="post"
