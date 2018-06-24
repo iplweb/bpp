@@ -147,6 +147,7 @@ def generuj_inline_dla_autorow(baseModel):
         extra = extraRows
         form = baseModel_AutorForm
         sortable_field_name = "kolejnosc"
+        sortable_excludes = ["typ_odpowiedzialnosci", "zapisany_jako", "afiliuje",]
 
     return baseModel_AutorInline
 
