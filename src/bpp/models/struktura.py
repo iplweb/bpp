@@ -61,11 +61,13 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
     )
 
     pokazuj_raport_jednostek = OpcjaWyswietlaniaField(
-        'Pokazuj ranking jednostek'
+        'Pokazuj raport jednostek',
+        default=OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM
     )
 
     pokazuj_raport_wydzialow = OpcjaWyswietlaniaField(
-        'Pokazuj ranking wydziałów'
+        'Pokazuj raport wydziałów',
+        default=OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM
     )
 
     pokazuj_raport_dla_komisji_centralnej = OpcjaWyswietlaniaField(
@@ -74,6 +76,22 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
 
     pokazuj_praca_recenzowana = OpcjaWyswietlaniaField(
         'Pokazuj opcję "Praca recenzowana"'
+    )
+
+    domyslnie_afiliuje = models.BooleanField(
+        'Domyślnie zaznaczaj, że autor afiliuje',
+        help_text="""Przy powiązaniach autor + wydawnictwo, zaznaczaj domyślnie,
+        że autor afiliuje do jednostki, która jest wpisywana.""",
+        default=True,
+    )
+
+    pokazuj_liczbe_cytowan_w_rankingu = OpcjaWyswietlaniaField(
+        "Pokazuj liczbę cytowań w rankingu"
+    )
+
+    pokazuj_liczbe_cytowan_na_stronie_autora = OpcjaWyswietlaniaField(
+        "Pokazuj liczbę cytowań na podstronie autora",
+        help_text="""Liczba cytowań będzie wyświetlana, gdy większa od 0"""
     )
 
     clarivate_username = models.CharField(
@@ -114,6 +132,7 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         return WoSClient(
             self.clarivate_username,
             self.clarivate_password)
+
 
 @six.python_2_unicode_compatible
 class Wydzial(ModelZAdnotacjami, ModelZPBN_ID):
@@ -181,6 +200,7 @@ class JednostkaManager(FulltextSearchMixin, models.Manager):
             # dla obecności jednostki w wydziałach
             kw['uczelnia'] = kw['wydzial'].uczelnia
         return super(JednostkaManager, self).create(*args, **kw)
+
 
 @six.python_2_unicode_compatible
 class Jednostka(ModelZAdnotacjami, ModelZPBN_ID):
@@ -390,6 +410,7 @@ class Jednostka_Wydzial_Manager(models.Manager):
                 jw.od = parent_do + timedelta(days=1)
                 jw.save()
                 continue
+
 
 @six.python_2_unicode_compatible
 class Jednostka_Wydzial(models.Model):

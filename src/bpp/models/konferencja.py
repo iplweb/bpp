@@ -1,9 +1,10 @@
 # -*- encoding: utf-8 -*-
+from collections import defaultdict
 
 from django.db import models
+from lxml.etree import Element, SubElement
 
 from bpp.models.abstract import ModelZAdnotacjami, ModelZNazwa
-from lxml.etree import Element, SubElement
 
 
 class Konferencja(ModelZNazwa, ModelZAdnotacjami):
@@ -58,10 +59,37 @@ class Konferencja(ModelZNazwa, ModelZAdnotacjami):
     baza_inna = models.CharField(
         "Indeksowana w...",
         max_length=200,
-        help_text="Wpisz nazwę innej bazy w której indeksowana jest ta "
-                  "konferencja",
+        help_text="Wpisz listę innych baz czasopism i abstraktów, w których indeksowana "
+                  "była ta konferencja. Rozdziel średnikiem.",
         blank=True,
         null=True,
+    )
+
+    TK_KRAJOWA = 1
+    TK_MIEDZYNARODOWA = 2
+    TK_LOKALNA = 3
+
+    TK_KRAJOWA_SYMBOL = "🚆 "
+    TK_MIEDZYNARODOWA_SYMBOL = "✈ "
+    TK_LOKALNA_SYMBOL = "🚲 "
+
+    TK_SYMBOLE = defaultdict(
+        lambda: "",
+        {
+            TK_KRAJOWA: TK_KRAJOWA_SYMBOL,
+            TK_MIEDZYNARODOWA: TK_MIEDZYNARODOWA_SYMBOL,
+            TK_LOKALNA: TK_LOKALNA_SYMBOL
+        })
+
+    TYP_KONFERENCJI_CHOICES = (
+        (TK_KRAJOWA, TK_SYMBOLE[TK_KRAJOWA] + 'krajowa'),
+        (TK_MIEDZYNARODOWA, TK_SYMBOLE[TK_MIEDZYNARODOWA] + '️międzynarodowa'),
+        (TK_LOKALNA, TK_SYMBOLE[TK_LOKALNA] + 'lokalna')
+    )
+
+    typ_konferencji = models.SmallIntegerField(
+        choices=TYP_KONFERENCJI_CHOICES,
+        null=True, blank=True
     )
 
     class Meta:
@@ -76,6 +104,8 @@ class Konferencja(ModelZNazwa, ModelZAdnotacjami):
             ret += " [Scopus]"
         if self.baza_wos:
             ret += " [WoS]"
+        if self.baza_inna:
+            ret += f" [{ self.baza_inna }]"
         return ret
 
     def eksport_pbn_serializuj(self, tagname='conference'):
@@ -103,5 +133,17 @@ class Konferencja(ModelZNazwa, ModelZAdnotacjami):
         if self.panstwo:
             panstwo = SubElement(element, "country")
             panstwo.text = self.panstwo
+
+        if self.baza_wos:
+            bw = SubElement(element, "web-of-science-indexed")
+            bw.text = "true"
+
+        if self.baza_scopus:
+            bs = SubElement(element, "scopus-indexed")
+            bs.text = "true"
+
+        if self.baza_inna:
+            bi = SubElement(element, "other-indexes")
+            bi.text = self.baza_inna
 
         return element

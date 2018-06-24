@@ -5,11 +5,13 @@ from dal import autocomplete
 from dal_select2.fields import Select2ListCreateChoiceField
 from django import forms
 from django.contrib import admin
+from django.db.models import BooleanField
 from django.db.models.fields import BLANK_CHOICE_DASH
+from django.forms import BooleanField
 from django.forms.widgets import HiddenInput
 
 from bpp.jezyk_polski import warianty_zapisanego_nazwiska
-from bpp.models import Jednostka, Autor, Typ_Odpowiedzialnosci
+from bpp.models import Jednostka, Autor, Typ_Odpowiedzialnosci, Uczelnia
 
 # Proste tabele
 
@@ -66,6 +68,14 @@ def generuj_inline_dla_autorow(baseModel):
 
         def __init__(self, *args, **kwargs):
             super(baseModel_AutorForm, self).__init__(*args, **kwargs)
+
+            # Ustaw inicjalną wartość dla pola 'afiliuje'
+            domyslnie_afiliuje = True
+            uczelnia = Uczelnia.objects.first()
+            if uczelnia is not None:
+                domyslnie_afiliuje = uczelnia.domyslnie_afiliuje
+            self.fields['afiliuje'].initial = domyslnie_afiliuje
+
             # Nowy rekord
             instance = kwargs.get('instance')
             data = kwargs.get("data")
@@ -108,6 +118,7 @@ def generuj_inline_dla_autorow(baseModel):
                 )
             )
 
+
         class Media:
             js = ["/static/bpp/js/autorform_dependant.js"]
 
@@ -136,6 +147,7 @@ def generuj_inline_dla_autorow(baseModel):
         extra = extraRows
         form = baseModel_AutorForm
         sortable_field_name = "kolejnosc"
+        sortable_excludes = ["typ_odpowiedzialnosci", "zapisany_jako", "afiliuje",]
 
     return baseModel_AutorInline
 

@@ -76,16 +76,18 @@ def test_uczelnia_praca_pokazuj_pozostale(uczelnia, wydawnictwo_ciagle, client,
     assert s not in res.rendered_content
 
 
-@pytest.mark.parametrize(
-    "attr,s",
-    [('pokazuj_ranking_autorow', "ranking-autorow"),
-     ('pokazuj_raport_autorow', "nowe_raporty/autor"),
-     ('pokazuj_raport_jednostek', "nowe_raporty/jednostka"),
-     ('pokazuj_raport_wydzialow', "nowe_raporty/wydzial"),
-     ('pokazuj_raport_dla_komisji_centralnej',
-      "raporty/dla-komisji-centralnej"),
-     ])
-def test_uczelnia_pokazuj_menu(uczelnia, attr, s, client, admin_client):
+lista_stron_raportow = [
+    ('pokazuj_ranking_autorow', "ranking-autorow"),
+    ('pokazuj_raport_autorow', "nowe_raporty/autor"),
+    ('pokazuj_raport_jednostek', "nowe_raporty/jednostka"),
+    ('pokazuj_raport_wydzialow', "nowe_raporty/wydzial"),
+    ('pokazuj_raport_dla_komisji_centralnej',
+     "raporty/dla-komisji-centralnej"),
+]
+
+
+@pytest.mark.parametrize("attr,s", lista_stron_raportow)
+def test_uczelnia_pokazuj_menu_zawsze(uczelnia, attr, s, client, admin_client):
     url = "/"
 
     setattr(uczelnia, attr, OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE)
@@ -97,6 +99,11 @@ def test_uczelnia_pokazuj_menu(uczelnia, attr, s, client, admin_client):
     res = admin_client.get(url, follow=True)
     assert s in res.rendered_content
 
+
+@pytest.mark.parametrize("attr,s", lista_stron_raportow)
+def test_uczelnia_pokazuj_menu_zalogowani(uczelnia, attr, s, client, admin_client):
+    url = "/"
+
     setattr(uczelnia, attr, OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM)
     uczelnia.save()
 
@@ -105,6 +112,11 @@ def test_uczelnia_pokazuj_menu(uczelnia, attr, s, client, admin_client):
 
     res = admin_client.get(url, follow=True)
     assert s in res.rendered_content
+
+
+@pytest.mark.parametrize("attr,s", lista_stron_raportow)
+def test_uczelnia_pokazuj_menu_nigdy(uczelnia, attr, s, client, admin_client):
+    url = "/"
 
     setattr(uczelnia, attr, OpcjaWyswietlaniaField.POKAZUJ_NIGDY)
     uczelnia.save()

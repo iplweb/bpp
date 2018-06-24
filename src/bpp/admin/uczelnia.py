@@ -35,6 +35,12 @@ class UczelniaAdmin(RestrictDeletionToAdministracjaGroupMixin,
                 'favicon_ico',
                 'obca_jednostka',
             )}),
+        ('Opcje edycji', {
+            'classes': ('grp-collapse grp-closed',),
+            'fields': (
+                'domyslnie_afiliuje',
+            ),
+        }),
         ('Strona wizualna', {
             'classes': ('grp-collapse grp-closed',),
             'fields': (
@@ -48,7 +54,8 @@ class UczelniaAdmin(RestrictDeletionToAdministracjaGroupMixin,
                 'pokazuj_raport_jednostek',
                 'pokazuj_raport_wydzialow',
                 'pokazuj_raport_dla_komisji_centralnej',
-                'pokazuj_praca_recenzowana'
+                'pokazuj_praca_recenzowana',
+                'pokazuj_liczbe_cytowan_w_rankingu'
             )}),
         ADNOTACJE_FIELDSET,
         ('Clarivate Analytics API', {

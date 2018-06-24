@@ -105,6 +105,8 @@ class Wydawnictwo_ZwarteForm(forms.ModelForm):
         )
     )
 
+    status_korekty = DomyslnyStatusKorektyMixin.status_korekty
+
     class Meta:
         fields = "__all__"
         widgets = {

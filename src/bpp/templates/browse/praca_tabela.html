@@ -194,6 +194,12 @@
             {{ praca.impact_factor }}
         </td>
     </tr>
+    {% if praca.liczba_cytowan %}
+        <tr>
+            <th>Liczba cytowań:</th>
+            <td>{{ praca.liczba_cytowan }}</td>
+        </tr>
+    {% endif %}
     {% if praca.liczba_znakow_wydawniczych %}
         <tr>
             <th>Liczba arkuszy wydawniczych:</th>

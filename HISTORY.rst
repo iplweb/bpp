@@ -2,10 +2,33 @@
 Historia zmian
 ==============
 
-dev
----
+1.0.21
+------
 
-*
+* możliwość ustalenia domyślnej wartości pola "Afiliuje" dla rekordów wiążących
+  rekord pracy z rekordem autora
+
+* możliwość wyszukiwania po liczbie cytowań; wyświetlanie liczby cytowań w tabelkach
+  wyszukiwania
+
+* możliwość pokazywania liczby cytowań w rankingu autorów z opcjonalnym ukrywaniem
+  tego parametru za pomocą modułu redagowania (opcje obiektu Uczelnia)
+
+* możliwość pokazywania liczby cytowań na podstronie autora z opcjonalnym ukrywaniem
+  tego parametru za pomocą modułu redagowania (opcje obiektu Uczelnia)
+
+* poprawiono błąd powodujący niewłaściwe generowanie eksportów PBN dla rekordów książek
+  w których skład wchodziło powyżej 1 rozdziału (#623)
+
+* poprawne wyświetlanie raportów jednostek i wydziałów, zgodne z ustawieniami
+  obiektu "Uczelnia"
+
+* poprawne eksportowanie do PBN konferencji indeksowanych w WOS/Scopus (#621)
+
+* poprawione generowanie plików XLS w niektórych środowiskach (#601)
+
+* możliwość określania rodzaju konferencji w module redagowanie: lokalna, krajowa,
+  międzynarodowa oraz wyszukiwania po typach konferencji (#620)
 
 1.0.20
 ------

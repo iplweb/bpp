@@ -381,10 +381,13 @@ class RekordBase(ModelPunktowanyBaza, ModelZOpisemBibliograficznym,
 
     adnotacje = models.TextField()
     ostatnio_zmieniony = models.DateTimeField()
+    ostatnio_zmieniony_dla_pbn = models.DateTimeField()
 
     tytul_oryginalny_sort = models.TextField()
 
     liczba_autorow = models.SmallIntegerField()
+
+    liczba_cytowan = models.SmallIntegerField()
 
     # nie dziedziczymy z ModelZWWW, poniewaz tam jest pole dostep_dnia,
     # ktore to obecnie nie jest potrzebne w Cache, wiec:

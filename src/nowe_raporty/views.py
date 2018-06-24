@@ -69,11 +69,22 @@ class BaseFormView(FormView):
         return super(BaseFormView, self).get_context_data(**kwargs)
 
 
-class AutorRaportFormView(UczelniaSettingRequiredMixin, BaseFormView):
+class AutorRaportAuthMixin(UczelniaSettingRequiredMixin):
+    uczelnia_attr = "pokazuj_raport_autorow"
+
+
+class JednostkaRaportAuthMixin(UczelniaSettingRequiredMixin):
+    uczelnia_attr = "pokazuj_raport_jednostek"
+
+
+class WydzialRaportAuthMixin(UczelniaSettingRequiredMixin):
+    uczelnia_attr = "pokazuj_raport_wydzialow"
+
+
+class AutorRaportFormView(AutorRaportAuthMixin, BaseFormView):
     form_class = AutorRaportForm
     title = "Raport autorów"
     report_slug = "raport-autorow"
-    uczelnia_attr = "pokazuj_raport_autorow"
 
     def form_valid(self, form):
         d = form.cleaned_data
@@ -83,13 +94,13 @@ class AutorRaportFormView(UczelniaSettingRequiredMixin, BaseFormView):
             f"_tzju={ d['tylko_z_jednostek_uczelni'] }")
 
 
-class JednostkaRaportFormView(LoginRequiredMixin, BaseFormView):
+class JednostkaRaportFormView(JednostkaRaportAuthMixin, BaseFormView):
     report_slug = "raport-jednostek"
     form_class = JednostkaRaportForm
     title = "Raport jednostek"
 
 
-class WydzialRaportFormView(LoginRequiredMixin, BaseFormView):
+class WydzialRaportFormView(WydzialRaportAuthMixin, BaseFormView):
     report_slug = "raport-wydzialow"
     form_class = WydzialRaportForm
     title = "Raport wydziałów"
@@ -191,12 +202,11 @@ class GenerujRaportBase(DetailView):
             context, **response_kwargs)
 
 
-class GenerujRaportDlaAutora(UczelniaSettingRequiredMixin, GenerujRaportBase):
+class GenerujRaportDlaAutora(AutorRaportAuthMixin, GenerujRaportBase):
     report_slug = 'raport-autorow'
     form_link = 'nowe_raporty:autor_form'
     form_title = "Raport autorów"
     model = Autor
-    uczelnia_attr = "pokazuj_raport_autorow"
 
     def get_base_queryset(self):
         if self.request.GET.get("_tzju", "True") == "True":
@@ -205,7 +215,7 @@ class GenerujRaportDlaAutora(UczelniaSettingRequiredMixin, GenerujRaportBase):
         return Rekord.objects.prace_autora(self.object)
 
 
-class GenerujRaportDlaJednostki(LoginRequiredMixin, GenerujRaportBase):
+class GenerujRaportDlaJednostki(JednostkaRaportAuthMixin, GenerujRaportBase):
     report_slug = 'raport-jednostek'
     form_link = 'nowe_raporty:jednostka_form'
     form_title = "Raport jednostek"
@@ -215,7 +225,7 @@ class GenerujRaportDlaJednostki(LoginRequiredMixin, GenerujRaportBase):
         return Rekord.objects.prace_jednostki(self.object)
 
 
-class GenerujRaportDlaWydzialu(LoginRequiredMixin, GenerujRaportBase):
+class GenerujRaportDlaWydzialu(WydzialRaportAuthMixin, GenerujRaportBase):
     report_slug = 'raport-wydzialow'
     form_link = 'nowe_raporty:wydzial_form'
     form_title = "Raport wydziałów"

@@ -47,5 +47,4 @@ def load_historic_fixture(apps, fixture_name, klass, app_name="bpp"):
     cur = connection.cursor()
     for klassobj, cnt in max_id_map.items():
         qry = f"ALTER SEQUENCE { klassobj._meta.db_table }_id_seq RESTART WITH { cnt + 1 }"
-        print(qry)
         cur.execute(qry)

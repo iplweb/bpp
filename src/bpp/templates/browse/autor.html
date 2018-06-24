@@ -32,6 +32,17 @@
         </p>
     {% endif %}
 
+    {% if uczelnia.pokazuj_liczbe_cytowan_na_stronie_autora == "always" or uczelnia.pokazuj_liczbe_cytowan_na_stronie_autora == "logged-in" and request.user.is_anonymous == False %}
+        {% if autor.liczba_cytowan %}
+            <p><strong>Liczba cytowań: </strong>{{ autor.liczba_cytowan }}</p>
+            <p><strong>Liczba cytowań z jednostek afiliowanych: </strong>{{ autor.liczba_cytowan_afiliowane }}</p>
+        {% endif %}
+        {% if autor.orcid %}
+            <p><strong>ORCID: </strong><a href="https://orcid.org/{{ autor.orcid }}"
+                                          target="_blank">{{ autor.orcid }}</a></p>
+        {% endif %}
+    {% endif %}
+
     <form method="post"
           action="{% url "bpp:browse_build_search" %}"
           class="browserForm">
@@ -54,11 +65,11 @@
             <div clas="row">
                 {% for jednostka in autor.jednostki.all %}
                     <div class="large-6 small-12">
-                            <input type="checkbox"
-                                   name="jednostka"
-                                   value="{{ jednostka.pk }}"
-                                   id="jednostka_{{ jednostka.pk }}"
-                                    />
+                        <input type="checkbox"
+                               name="jednostka"
+                               value="{{ jednostka.pk }}"
+                               id="jednostka_{{ jednostka.pk }}"
+                        />
                         <label for="jednostka_{{ jednostka.pk }}">
                             {{ jednostka.nazwa }}
                             <a href="{% url "bpp:browse_jednostka" jednostka.slug %}">►</a>

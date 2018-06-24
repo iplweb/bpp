@@ -8,10 +8,10 @@ from ..models.konferencja import Konferencja
 
 
 class KonferencjaAdmin(CommitedModelAdmin):
-    list_display = ['nazwa', 'rozpoczecie', 'zakonczenie', 'miasto',
+    list_display = ['nazwa', 'typ_konferencji', 'rozpoczecie', 'zakonczenie', 'miasto',
                     'panstwo', 'baza_scopus', 'baza_wos']
     list_filter = ['miasto', 'panstwo', 'rozpoczecie', 'zakonczenie',
-                   'baza_scopus', 'baza_wos', 'baza_inna']
+                   'baza_scopus', 'baza_wos', 'baza_inna', 'typ_konferencji']
     search_fields = ['nazwa', 'rozpoczecie', 'zakonczenie', 'miasto',
                      'panstwo']
     fieldsets = (
@@ -19,6 +19,7 @@ class KonferencjaAdmin(CommitedModelAdmin):
             'fields': (
                 'nazwa',
                 'skrocona_nazwa',
+                'typ_konferencji',
                 'rozpoczecie',
                 'zakonczenie',
                 'miasto',
