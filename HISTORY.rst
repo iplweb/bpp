@@ -20,6 +20,9 @@ dev
 * poprawiono błąd powodujący niewłaściwe generowanie eksportów PBN dla rekordów książek
   w których skład wchodziło powyżej 1 rozdziału (#623)
 
+* poprawne wyświetlanie raportów jednostek i wydziałów, zgodne z ustawieniami
+  obiektu "Uczelnia"
+
 1.0.20
 ------
 

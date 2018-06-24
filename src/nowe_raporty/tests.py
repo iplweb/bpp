@@ -102,7 +102,7 @@ def test_GenerujRaportDlaAutora_get_base_queryset(rf):
 
 
 @pytest.mark.django_db
-def test_czy_jednostka_form_niewidoczny_dla_anonimow(webtest_app):
+def test_czy_jednostka_form_niewidoczny_dla_anonimow(webtest_app, uczelnia):
     mommy.make(Report, slug="raport-jednostek")
     res = webtest_app.get(reverse("nowe_raporty:jednostka_form"))
     assert res.status_code == 302
@@ -136,7 +136,7 @@ def test_czy_generuj_jednostka_widoczny_dla_zalogowanych(app, jednostka):
 
 
 @pytest.mark.django_db
-def test_czy_wydzial_form_niewidoczny_dla_anonimow(webtest_app):
+def test_czy_wydzial_form_niewidoczny_dla_anonimow(webtest_app, uczelnia):
     mommy.make(Report, slug="raport-wydzialow")
     res = webtest_app.get(reverse("nowe_raporty:wydzial_form"))
     assert res.status_code == 302
@@ -198,6 +198,67 @@ def test_czy_raport_autorow_generuj_i_form_przestrzegaja_ustawien_anonim(
 
         webtest_app.get(url, status=404)
 
+
+@pytest.mark.django_db
+def test_czy_raport_jednostek_generuj_i_form_przestrzegaja_ustawien_anonim(
+        webtest_app, uczelnia, jednostka):
+    mommy.make(Report, slug="raport-jednostek")
+
+    urls = [
+        reverse("nowe_raporty:jednostka_generuj", args=(jednostka.pk, 2018, 2020)),
+        reverse("nowe_raporty:jednostka_form")
+    ]
+
+    for url in urls:
+        uczelnia.pokazuj_raport_jednostek = OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM
+        uczelnia.save()
+
+        res = webtest_app.get(url)
+        assert res.status_code == 302
+        assert "login" in res.location
+
+        uczelnia.pokazuj_raport_jednostek = OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE
+        uczelnia.save()
+
+        res = webtest_app.get(url)
+        assert res.status_code == 200
+
+        uczelnia.pokazuj_raport_jednostek = OpcjaWyswietlaniaField.POKAZUJ_NIGDY
+        uczelnia.save()
+
+        webtest_app.get(url, status=404)
+
+
+@pytest.mark.django_db
+def test_czy_raport_wydzialow_generuj_i_form_przestrzegaja_ustawien_anonim(
+        webtest_app, uczelnia, wydzial):
+    mommy.make(Report, slug="raport-wydzialow")
+
+    urls = [
+        reverse("nowe_raporty:wydzial_generuj", args=(wydzial.pk, 2018, 2020)),
+        reverse("nowe_raporty:wydzial_form")
+    ]
+
+    for url in urls:
+        uczelnia.pokazuj_raport_wydzialow = OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM
+        uczelnia.save()
+
+        res = webtest_app.get(url)
+        assert res.status_code == 302
+        assert "login" in res.location
+
+        uczelnia.pokazuj_raport_wydzialow = OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE
+        uczelnia.save()
+
+        res = webtest_app.get(url)
+        assert res.status_code == 200
+
+        uczelnia.pokazuj_raport_wydzialow = OpcjaWyswietlaniaField.POKAZUJ_NIGDY
+        uczelnia.save()
+
+        webtest_app.get(url, status=404)
+
+
 @pytest.mark.django_db
 def test_czy_raport_autorow_generuj_i_form_przestrzegaja_ustawien_zalogowany(
         app, uczelnia, autor_jan_kowalski):
@@ -222,6 +283,64 @@ def test_czy_raport_autorow_generuj_i_form_przestrzegaja_ustawien_zalogowany(
         assert res.status_code == 200
 
         uczelnia.pokazuj_raport_autorow = OpcjaWyswietlaniaField.POKAZUJ_NIGDY
+        uczelnia.save()
+
+        app.get(url, status=404)
+
+
+@pytest.mark.django_db
+def test_czy_raport_jednostek_generuj_i_form_przestrzegaja_ustawien_zalogowany(
+        app, uczelnia, jednostka):
+    mommy.make(Report, slug="raport-jednostek")
+
+    urls = [
+        reverse("nowe_raporty:jednostka_generuj", args=(jednostka.pk, 2018, 2020)),
+        reverse("nowe_raporty:jednostka_form")
+    ]
+
+    for url in urls:
+        uczelnia.pokazuj_raport_jednostek = OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM
+        uczelnia.save()
+
+        res = app.get(url)
+        assert res.status_code == 200
+
+        uczelnia.pokazuj_raport_jednostek = OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE
+        uczelnia.save()
+
+        res = app.get(url)
+        assert res.status_code == 200
+
+        uczelnia.pokazuj_raport_jednostek = OpcjaWyswietlaniaField.POKAZUJ_NIGDY
+        uczelnia.save()
+
+        app.get(url, status=404)
+
+
+@pytest.mark.django_db
+def test_czy_raport_wydzialow_generuj_i_form_przestrzegaja_ustawien_zalogowany(
+        app, uczelnia, wydzial):
+    mommy.make(Report, slug="raport-wydzialow")
+
+    urls = [
+        reverse("nowe_raporty:wydzial_generuj", args=(wydzial.pk, 2018, 2020)),
+        reverse("nowe_raporty:wydzial_form")
+    ]
+
+    for url in urls:
+        uczelnia.pokazuj_raport_wydzialow = OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM
+        uczelnia.save()
+
+        res = app.get(url)
+        assert res.status_code == 200
+
+        uczelnia.pokazuj_raport_wydzialow = OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE
+        uczelnia.save()
+
+        res = app.get(url)
+        assert res.status_code == 200
+
+        uczelnia.pokazuj_raport_wydzialow = OpcjaWyswietlaniaField.POKAZUJ_NIGDY
         uczelnia.save()
 
         app.get(url, status=404)
