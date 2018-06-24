@@ -6,6 +6,13 @@ from .helpers import *
 from .wydawnictwo_zwarte import Wydawnictwo_ZwarteAdmin_Baza
 
 
+class Patent_Form(forms.ModelForm):
+    status_korekty = DomyslnyStatusKorektyMixin.status_korekty
+
+    class Meta:
+        fields = "__all__"
+
+
 class Patent_Admin(AdnotacjeZDatamiMixin, Wydawnictwo_ZwarteAdmin_Baza):
     inlines = (generuj_inline_dla_autorow(Patent_Autor),)
 
@@ -16,6 +23,8 @@ class Patent_Admin(AdnotacjeZDatamiMixin, Wydawnictwo_ZwarteAdmin_Baza):
         'slowa_kluczowe', 'rok', 'adnotacje', 'id', ]
 
     list_filter = ['status_korekty', 'recenzowana', ]
+
+    form = Patent_Form
 
     fieldsets = (
         ('Patent', {

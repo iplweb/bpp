@@ -56,6 +56,8 @@ class Praca_DoktorskaForm(forms.ModelForm):
             url='bpp:autor-z-uczelni-autocomplete')
     )
 
+    status_korekty = DomyslnyStatusKorektyMixin.status_korekty
+
     class Meta:
         model = Praca_Doktorska
         fields = "__all__"
