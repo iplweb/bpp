@@ -17,6 +17,9 @@ dev
 * możliwość pokazywania liczby cytowań na podstronie autora z opcjonalnym ukrywaniem
   tego parametru za pomocą modułu redagowania (opcje obiektu Uczelnia)
 
+* poprawiono błąd powodujący niewłaściwe generowanie eksportów PBN dla rekordów książek
+  w których skład wchodziło powyżej 1 rozdziału (#623)
+
 1.0.20
 ------
 
