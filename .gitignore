@@ -103,3 +103,4 @@ log
 .pytest_cache
 /src/bpp/static/scss/app-blue.css
 /src/bpp/static/scss/app-green.css
+dump-*.dump
