@@ -8,7 +8,8 @@ from django.utils.safestring import mark_safe
 from bpp.admin.filters import LiczbaZnakowFilter
 from bpp.admin.helpers import *
 from bpp.admin.nagroda import NagrodaInline
-from bpp.models import Zrodlo, Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych  # Publikacja_Habilitacyjna
+from bpp.models import Zrodlo, Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych, \
+    Status_Korekty  # Publikacja_Habilitacyjna
 # Proste tabele
 from bpp.models.konferencja import Konferencja
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
@@ -66,6 +67,8 @@ class Wydawnictwo_CiagleForm(forms.ModelForm):
             attrs=dict(style="width: 746px;")
         )
     )
+
+    status_korekty = DomyslnyStatusKorektyMixin.status_korekty
 
     class Meta:
         fields = "__all__"

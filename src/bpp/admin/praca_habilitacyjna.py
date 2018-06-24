@@ -71,6 +71,8 @@ class Praca_HabilitacyjnaForm(forms.ModelForm):
             url='bpp:jednostka-autocomplete')
     )
 
+    status_korekty = DomyslnyStatusKorektyMixin.status_korekty
+
     class Meta:
         fields = "__all__"
 

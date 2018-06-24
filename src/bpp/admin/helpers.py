@@ -4,6 +4,8 @@ from django.db import models
 from django import forms
 from django.forms.widgets import Textarea
 
+from bpp.models import Status_Korekty
+
 CHARMAP_SINGLE_LINE = forms.TextInput(
     attrs={'class': 'charmap', 'style': "width: 500px"})
 
@@ -223,4 +225,13 @@ NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW = {
     models.TextField: {
         'widget': Textarea(attrs={'rows':2, 'cols': 90, 'class': 'charmap'})},
     }
+
+
+
+class DomyslnyStatusKorektyMixin:
+    status_korekty = forms.ModelChoiceField(
+        required=True,
+        queryset=Status_Korekty.objects.all(),
+        initial=lambda: Status_Korekty.objects.first()
+    )
 
