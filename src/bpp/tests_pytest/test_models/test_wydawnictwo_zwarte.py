@@ -4,6 +4,7 @@ import pytest
 from lxml.etree import Element
 from model_mommy import mommy
 
+from bpp.models import Wydawnictwo_Zwarte_Autor
 from bpp.models.autor import Autor
 from bpp.models.struktura import Wydzial, Jednostka, Uczelnia
 from bpp.models.system import Typ_Odpowiedzialnosci, Charakter_Formalny
@@ -236,3 +237,41 @@ def test_generowanie_opisu_bibliograficznego_informacje_wydawnictwo_nadrzedne():
     wz1.zaktualizuj_cache()
     assert "Pięćset" in wz1.opis_bibliograficzny_cache
     assert "Plus" not in wz1.opis_bibliograficzny_cache
+
+
+@pytest.mark.djagno_db
+def test_eksport_pbn_get_wszyscy_autorzy_iter(wydzial, jednostka, typ_odpowiedzialnosci_autor):
+    nadrzedne = mommy.make(
+        Wydawnictwo_Zwarte,
+        charakter_formalny__ksiazka_pbn=True
+    )
+
+    podrzedne1 = mommy.make(Wydawnictwo_Zwarte, wydawnictwo_nadrzedne=nadrzedne)
+    podrzedne1.dodaj_autora(
+        mommy.make(Autor),
+        jednostka=jednostka,
+        zapisany_jako="Foo Bar"
+    )
+
+    podrzedne2 = mommy.make(Wydawnictwo_Zwarte, wydawnictwo_nadrzedne=nadrzedne)
+    podrzedne2.dodaj_autora(
+        mommy.make(Autor),
+        jednostka=jednostka,
+        zapisany_jako="Foo Bar 2"
+    )
+
+    podrzedne3 = mommy.make(Wydawnictwo_Zwarte, wydawnictwo_nadrzedne=nadrzedne)
+    podrzedne3.dodaj_autora(
+        mommy.make(Autor),
+        jednostka=jednostka,
+        zapisany_jako="Foo Bar 3"
+    )
+
+    res = list(
+        nadrzedne.eksport_pbn_get_wszyscy_autorzy_iter(
+            wydzial, Wydawnictwo_Zwarte_Autor)
+    )
+    assert len(res) == 3
+
+
+

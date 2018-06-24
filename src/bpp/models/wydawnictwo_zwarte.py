@@ -326,7 +326,7 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
 
         if self.is_book:
             for elem in autorzy_klass.objects.filter(
-                    rekord=self.wydawnictwa_powiazane_set.all().values_list("pk", flat=True),
+                    rekord__in=self.wydawnictwa_powiazane_set.all().values_list("pk", flat=True),
                     typ_odpowiedzialnosci__typ_ogolny=TO_AUTOR):
                 if elem.autor_id not in ret:
                     ret.add(elem.autor_id)

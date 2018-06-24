@@ -12,6 +12,7 @@ from django.core.urlresolvers import reverse
 from model_mommy import mommy
 
 from bpp.fixtures import get_openaccess_data
+from bpp.models import TO_AUTOR
 from bpp.models.autor import Autor, Tytul, Funkcja_Autora
 from bpp.models.const import GR_WPROWADZANIE_DANYCH
 from bpp.models.patent import Patent
@@ -147,6 +148,12 @@ def autor_jan_nowak(db, tytuly):
 def autor(db, tytuly):
     return mommy.make(Autor)
 
+@pytest.fixture(scope="function")
+def typ_odpowiedzialnosci_autor(db):
+    return Typ_Odpowiedzialnosci.objects.get_or_create(
+        skrot="aut.", nazwa="autor",
+        typ_ogolny=TO_AUTOR
+    )
 
 @pytest.fixture(scope="function")
 def autor_jan_kowalski(db, tytuly):
