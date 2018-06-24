@@ -23,6 +23,8 @@ dev
 * poprawne wyświetlanie raportów jednostek i wydziałów, zgodne z ustawieniami
   obiektu "Uczelnia"
 
+* poprawne eksportowanie do PBN konferencji indeksowanych w WOS/Scopus (#621)
+
 1.0.20
 ------
 
