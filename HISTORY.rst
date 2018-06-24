@@ -2,6 +2,14 @@
 Historia zmian
 ==============
 
+dev
+---
+
+* możliwość skonfigurowania, czy na wydrukach z "Wyszukiwania" ma pojawiać się logo
+  i nazwa uczelni oraz parametry zapytania
+
+* poprawki wydruków - mniejsza czcionka i marginesy
+
 1.0.21
 ------
 

@@ -56,6 +56,18 @@ form.custom .custom.checkbox.checked:before {
   tfoot {
     display: table-row-group;
   }
+
+  @page {
+    margin-top: 1cm !important;
+    margin-bottom: 1.5cm !important;
+    margin-left: 0.5cm !important;
+    margin-right: 1cm !important;
+  }
+
+  body, p, div {
+    font-size: 9pt;
+  }
+
 }
 
 .alert-box {

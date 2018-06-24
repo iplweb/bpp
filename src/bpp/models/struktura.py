@@ -94,6 +94,16 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         help_text="""Liczba cytowań będzie wyświetlana, gdy większa od 0"""
     )
 
+    wydruk_logo = models.BooleanField(
+        'Pokazuj logo na wydrukach',
+        default=False
+    )
+
+    wydruk_parametry_zapytania = models.BooleanField(
+        'Pokazuj parametry zapytania na wydrukach',
+        default=True
+    )
+
     clarivate_username = models.CharField(
         verbose_name="Nazwa użytkownika",
         null=True,
