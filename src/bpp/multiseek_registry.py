@@ -198,6 +198,7 @@ class OstatnieNazwiskoIImie(NazwiskoIImieWZakresieKolejnosci):
     label = "Ostatnie nazwisko i imię"
     public = False
 
+
 class NazwiskoIImie1do3(NazwiskoIImieWZakresieKolejnosci):
     kolejnosc_gte = 0
     kolejnosc_lt = 3
@@ -546,6 +547,29 @@ class BazaSCOPUS(BooleanQueryObject):
     label = "Konferencja w bazie Scopus"
 
 
+class RodzajKonferenckjiQueryObject(ValueListQueryObject):
+    label = 'Rodzaj konferencji'
+    values = ['krajowa', 'międzynarodowa', 'lokalna']
+
+    def value_from_web(self, value):
+        if value not in self.values:
+            return
+        return value
+
+    def real_query(self, value, operation):
+        if value == 'krajowa':
+            tk = Konferencja.TK_KRAJOWA
+        elif value == 'międzynarodowa':
+            tk = Konferencja.TK_MIEDZYNARODOWA
+        else:
+            tk = Konferencja.TK_LOKALNA
+
+        q = Q(**{'konferencja__typ_konferencji': tk})
+        if operation == DIFFERENT:
+            return ~q
+        return q
+
+
 multiseek_fields = [
     TytulPracyQueryObject(),
     NazwiskoIImieQueryObject(),
@@ -592,6 +616,7 @@ multiseek_fields = [
     LiczbaZnakowWydawniczychQueryObject(),
 
     NazwaKonferencji(),
+    RodzajKonferenckjiQueryObject(),
     BazaWOS(),
     BazaSCOPUS(),
 

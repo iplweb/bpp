@@ -1,4 +1,5 @@
 # -*- encoding: utf-8 -*-
+from collections import defaultdict
 
 from django.db import models
 from lxml.etree import Element, SubElement
@@ -62,6 +63,33 @@ class Konferencja(ModelZNazwa, ModelZAdnotacjami):
                   "była ta konferencja. Rozdziel średnikiem.",
         blank=True,
         null=True,
+    )
+
+    TK_KRAJOWA = 1
+    TK_MIEDZYNARODOWA = 2
+    TK_LOKALNA = 3
+
+    TK_KRAJOWA_SYMBOL = "🚆 "
+    TK_MIEDZYNARODOWA_SYMBOL = "✈ "
+    TK_LOKALNA_SYMBOL = "🚲 "
+
+    TK_SYMBOLE = defaultdict(
+        lambda: "",
+        {
+            TK_KRAJOWA: TK_KRAJOWA_SYMBOL,
+            TK_MIEDZYNARODOWA: TK_MIEDZYNARODOWA_SYMBOL,
+            TK_LOKALNA: TK_LOKALNA_SYMBOL
+        })
+
+    TYP_KONFERENCJI_CHOICES = (
+        (TK_KRAJOWA, TK_SYMBOLE[TK_KRAJOWA] + 'krajowa'),
+        (TK_MIEDZYNARODOWA, TK_SYMBOLE[TK_MIEDZYNARODOWA] + '️międzynarodowa'),
+        (TK_LOKALNA, TK_SYMBOLE[TK_LOKALNA] + 'lokalna')
+    )
+
+    typ_konferencji = models.SmallIntegerField(
+        choices=TYP_KONFERENCJI_CHOICES,
+        null=True, blank=True
     )
 
     class Meta:
