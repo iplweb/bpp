@@ -64,4 +64,19 @@ tylko dla użytkowników zalogowanych.
 .. image:: images/admin/uczelnia_strona_wizualna.png
 
 
+Ukrywanie lub wyświetlanie formularzy wyszukiwania
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Gdy stworzysz formularz wyszukiwania w opcji Wyszukaj, możesz go zapisać. W ten
+sposób formularz będzie dostępny w późniejszym czasie. Podczas zapisywania formularza
+(opcja ta dostępna jest jedynie dla zalogowanych użytkowników) masz możliwość
+określenia, czy chcesz, aby ten formularz widoczny był również dla innych
+osób.
+
+Jeżeli chcesz później schować lub pokazać takie formularze, skorzystaj z opcji
+Redagowanie➡Administracja➡Formularze wyszukiwania. Kliknij nazwę takiego
+formularza, następnie zaznacz lub odznacz opcję "Publiczny" i zapisz rekord
+
+
+
 
