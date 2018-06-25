@@ -69,11 +69,12 @@ def defer_zaktualizuj_opis(instance, *args, **kw):
 
     called_by = "X".join(traceback.format_stack())
 
-    zaktualizuj_opis.delay(
-        app_label=instance._meta.app_label,
-        model_name=instance._meta.model_name,
-        pk=instance.pk,
-        called_by=called_by)
+    transaction.on_commit(
+        lambda: zaktualizuj_opis.delay(
+            app_label=instance._meta.app_label,
+            model_name=instance._meta.model_name,
+            pk=instance.pk,
+            called_by=called_by))
 
 
 def defer_zaktualizuj_opis_rekordu(instance, *args, **kw):
