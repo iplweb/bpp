@@ -5,6 +5,11 @@ Historia zmian
 dev
 ---
 
+*
+
+1.0.22-dev
+-------------
+
 * możliwość skonfigurowania, czy na wydrukach z "Wyszukiwania" ma pojawiać się logo
   i nazwa uczelni oraz parametry zapytania
 
