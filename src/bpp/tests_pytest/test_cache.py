@@ -1,6 +1,7 @@
 # -*- encoding: utf-8 -*-
 # TODO: przenies do bpp/tests/test_cache.py
 import pytest
+from django.db import transaction
 from model_mommy import mommy
 
 from bpp.models.autor import Autor
@@ -300,8 +301,9 @@ def test_caching_kolejnosc(transactional_db, wydawnictwo_ciagle_z_dwoma_autorami
     k = a[0].kolejnosc
     a[0].kolejnosc = a[1].kolejnosc
     a[1].kolejnosc = k
-    a[0].save()
-    a[1].save()
+    with transaction.atomic():
+        a[0].save()
+        a[1].save()
 
     x = Rekord.objects.get_original(wydawnictwo_ciagle_z_dwoma_autorami)
     assert "[AUT.] NOWAK JAN, KOWALSKI JAN" in x.opis_bibliograficzny_cache
