@@ -61,6 +61,7 @@ class UczelniaAdmin(RestrictDeletionToAdministracjaGroupMixin,
             'classes': ('grp-collapse grp-closed',),
             'fields': (
                 'wydruk_logo',
+                'wydruk_logo_szerokosc',
                 'wydruk_parametry_zapytania'
             )
         }),
