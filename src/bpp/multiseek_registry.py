@@ -414,7 +414,9 @@ class KCImpactQueryObject(ImpactQueryObject):
 
 class PunktacjaWewnetrznaEnabledMixin:
     def enabled(self, request):
-        return settings.UZYWAJ_PUNKTACJI_WEWNETRZNEJ
+        if self.public:
+            return settings.UZYWAJ_PUNKTACJI_WEWNETRZNEJ
+        return ReportType.enabled(self, request)
 
 
 class PunktacjaWewnetrznaQueryObject(PunktacjaWewnetrznaEnabledMixin,
@@ -639,7 +641,11 @@ multiseek_report_types = [
     ReportType("table", "tabela"),
     PunktacjaWewnetrznaReportType("pkt_wewn", "punktacja sumaryczna z punktacją wewnętrzna"),
     ReportType("pkt_wewn_bez", "punktacja sumaryczna"),
-    ReportType("numer_list", "numerowana lista z uwagami", public=False)
+    ReportType("numer_list", "numerowana lista z uwagami", public=False),
+
+    ReportType("table_cytowania", "tabela z liczbą cytowań", public=False),
+    PunktacjaWewnetrznaReportType("pkt_wewn_cytowania", "punktacja sumaryczna z punktacją wewnętrzna z liczbą cytowań", public=False),
+    ReportType("pkt_wewn_bez_cytowania", "punktacja sumaryczna z liczbą cytowań", public=False),
 ]
 
 registry = create_registry(
