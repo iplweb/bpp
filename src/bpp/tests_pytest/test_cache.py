@@ -1,6 +1,7 @@
 # -*- encoding: utf-8 -*-
 # TODO: przenies do bpp/tests/test_cache.py
 import pytest
+from django.db import transaction
 from model_mommy import mommy
 
 from bpp.models.autor import Autor
@@ -20,7 +21,7 @@ def pierwszy_rekord():
     return Rekord.objects.all()[0].opis_bibliograficzny_cache
 
 
-def test_opis_bibliograficzny(db, standard_data):
+def test_opis_bibliograficzny(transactional_db, standard_data):
     wc = mommy.make(Wydawnictwo_Ciagle, szczegoly='Sz', uwagi='U')
 
     rekord_opis = Rekord.objects.all()[0].opis_bibliograficzny_cache
@@ -38,7 +39,7 @@ def test_kasowanie(db, standard_data):
     assert Rekord.objects.count() == 0
 
 
-def test_opis_bibliograficzny_dependent(db, standard_data):
+def test_opis_bibliograficzny_dependent(transactional_db, standard_data):
     """Stwórz i skasuj Wydawnictwo_Ciagle_Autor i sprawdź, jak to
     wpłynie na opis."""
 
@@ -57,7 +58,7 @@ def test_opis_bibliograficzny_dependent(db, standard_data):
     assert 'KOWALSKI' not in pierwszy_rekord()
 
 
-def test_opis_bibliograficzny_zrodlo(db, standard_data):
+def test_opis_bibliograficzny_zrodlo(transactional_db, standard_data):
     """Zmień nazwę źródła i sprawdź, jak to wpłynie na opis."""
     from bpp.models import cache
     assert cache._CACHE_ENABLED
@@ -111,8 +112,8 @@ def test_deletion_cache(doktorat):
     doktorat.delete()
     assert Rekord.objects.all().count() == 0
 
-@pytest.mark.django_db
-def test_wca_delete_cache(wydawnictwo_ciagle_z_dwoma_autorami):
+
+def test_wca_delete_cache(transactional_db, wydawnictwo_ciagle_z_dwoma_autorami):
     """Czy skasowanie obiektu Wydawnictwo_Ciagle_Autor zmieni opis
     wydawnictwa ciągłego w Rekordy materialized view?"""
 
@@ -160,8 +161,7 @@ def test_caching_kasowanie_typu_odpowiedzialnosci_autorow(wydawnictwo_ciagle_z_d
     assert 'KOWALSKI' not in r.opis_bibliograficzny_cache
 
 
-@pytest.mark.django_db
-def test_caching_kasowanie_zrodla(wydawnictwo_ciagle_z_dwoma_autorami):
+def test_caching_kasowanie_zrodla(transactional_db, wydawnictwo_ciagle_z_dwoma_autorami):
     assert Zrodlo.objects.all().count() == 1
 
     z = Zrodlo.objects.all()[0]
@@ -289,8 +289,8 @@ def test_caching_full_refresh(wydawnictwo_ciagle_z_dwoma_autorami):
     Rekord.objects.full_refresh()
     assert Rekord.objects.all().count() == 1
 
-@pytest.mark.django_db
-def test_caching_kolejnosc(wydawnictwo_ciagle_z_dwoma_autorami):
+
+def test_caching_kolejnosc(transactional_db, wydawnictwo_ciagle_z_dwoma_autorami):
 
     a = list(Wydawnictwo_Ciagle_Autor.objects.all().order_by('kolejnosc'))
     assert len(a) == 2
@@ -301,8 +301,9 @@ def test_caching_kolejnosc(wydawnictwo_ciagle_z_dwoma_autorami):
     k = a[0].kolejnosc
     a[0].kolejnosc = a[1].kolejnosc
     a[1].kolejnosc = k
-    a[0].save()
-    a[1].save()
+    with transaction.atomic():
+        a[0].save()
+        a[1].save()
 
     x = Rekord.objects.get_original(wydawnictwo_ciagle_z_dwoma_autorami)
     assert "[AUT.] NOWAK JAN, KOWALSKI JAN" in x.opis_bibliograficzny_cache
@@ -325,8 +326,7 @@ def test_defer_zaktualizuj_opis_task(settings):
     zaktualizuj_opis('bpp', 'wydawnictwo_ciagle', w.pk, called_by="tests")
 
 
-@pytest.mark.django_db
-def test_aktualizacja_rekordu_autora(typy_odpowiedzialnosci):
+def test_aktualizacja_rekordu_autora(transactional_db, typy_odpowiedzialnosci):
     w = mommy.make(Wydawnictwo_Ciagle)
 
     a = mommy.make(Autor)
