@@ -15,6 +15,9 @@ dev
 
 * poprawki wydruków - mniejsza czcionka i marginesy
 
+* ukryj liczbę cytowań dla użytkowników niezalogowanych w wyszukiwaniu; dodaj raporty
+  z opcjonalnie widoczną liczbą cytowań
+
 1.0.21
 ------
 
