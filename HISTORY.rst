@@ -18,6 +18,8 @@ dev
 * ukryj liczbę cytowań dla użytkowników niezalogowanych w wyszukiwaniu; dodaj raporty
   z opcjonalnie widoczną liczbą cytowań
 
+* pozwalaj na określanie szerokości logo na wydrukach przez edycję obiektu "Uczelnia"
+
 1.0.21
 ------
 

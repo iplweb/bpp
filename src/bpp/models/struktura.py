@@ -99,6 +99,13 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         default=False
     )
 
+    wydruk_logo_szerokosc = models.BooleanField(
+        "Szerokość logo na wydrukach",
+        default=250,
+        help_text="Podaj wartość w pikselach. Wysokość zostanie przeskalowana"
+                  "proporcjonalnie. "
+    )
+
     wydruk_parametry_zapytania = models.BooleanField(
         'Pokazuj parametry zapytania na wydrukach',
         default=True
