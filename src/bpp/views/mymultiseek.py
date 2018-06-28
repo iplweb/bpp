@@ -1,6 +1,5 @@
 # -*- enco
 # ding: utf-8 -*-
-from django.db import transaction
 from django.db.models import Sum
 from django.views.decorators.cache import never_cache
 
@@ -12,7 +11,16 @@ PKT_WEWN = 'pkt_wewn'
 PKT_WEWN_BEZ = 'pkt_wewn_bez'
 TABLE = 'table'
 
-EXTRA_TYPES = [PKT_WEWN, PKT_WEWN_BEZ, TABLE]
+EXTRA_TYPES = [
+    PKT_WEWN,
+    PKT_WEWN_BEZ,
+    TABLE,
+    PKT_WEWN + "_cytowania",
+    PKT_WEWN_BEZ + "_cytowania",
+    TABLE + "_cytowania"
+
+]
+
 
 class MyMultiseekResults(MultiseekResults):
     registry = 'bpp.multiseek.registry'
