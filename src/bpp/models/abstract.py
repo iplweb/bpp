@@ -848,6 +848,13 @@ class ModelZAktualizacjaDlaPBN(models.Model):
                     if elem in flds_keys:
                         flds_keys.remove(elem)
 
+                # Specjalny case: jeżeli jedyne zmienione pole to "informacje"
+                # i z pola "informacje" zostało wycięte "W: " na początku, to
+                # nie aktualizuj pola
+                if "informacje" in flds_keys:
+                    if "w: " + self.informacje.lower().strip() == flds['informacje'].lower().strip():
+                        flds_keys.remove("informacje")
+
                 if flds_keys:
                     self.ostatnio_zmieniony_dla_pbn = timezone.now()
 
