@@ -34,6 +34,9 @@ dev
 * definiowana ilość rekordów przy której pojawia się opcja "drukuj" i "pokaż wszystkie"
   dla użytkowników zalogowanych i anonimowych, poprzez edycję obiektu Uczelnia (#610)
 
+* możliwość podglądania do 100 rekordów wydawnictw zwartych i ciągłych powiązanych
+  do konferencji
+
 1.0.21
 ------
 

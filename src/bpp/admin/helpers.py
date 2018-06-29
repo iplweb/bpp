@@ -2,6 +2,7 @@
 
 from django import forms
 from django.db import models
+from django.forms import BaseInlineFormSet
 from django.forms.widgets import Textarea
 
 from bpp.models import Status_Korekty
@@ -247,3 +248,11 @@ class Wycinaj_W_z_InformacjiMixin:
             if n:
                 return i[n:].strip()
         return i
+
+
+class LimitingFormset(BaseInlineFormSet):
+    def get_queryset(self):
+        if not hasattr(self, '_queryset_limited'):
+            qs = super(LimitingFormset, self).get_queryset()
+            self._queryset_limited = qs[:100]
+        return self._queryset_limited
