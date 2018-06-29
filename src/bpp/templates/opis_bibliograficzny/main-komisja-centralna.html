@@ -1,4 +1,4 @@
 <b>{{ praca.tytul_oryginalny|safe }}</b>
 {% include "opis_bibliograficzny/autorzy.html" with praca=praca %}
 {% include "opis_bibliograficzny/zrodlo.html" with praca=praca %}
-{% include "opis_bibliograficzny/extras-bez-pola-uwagi.html" with praca=praca %}
+{% include "opis_bibliograficzny/extras.html" with praca=praca uwagi=0 %}

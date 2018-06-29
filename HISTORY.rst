@@ -20,6 +20,9 @@ dev
 
 * pozwalaj na określanie szerokości logo na wydrukach przez edycję obiektu "Uczelnia"
 
+* automatycznie dodawaj ciąg znaków "W: " dla opisu bibliograficznego wydawnictwa
+  zwartego
+
 1.0.21
 ------
 
