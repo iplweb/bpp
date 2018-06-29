@@ -149,10 +149,11 @@ class Wydawnictwo_CiagleAdmin(KolumnyZeSkrotamiMixin,
     )
 
     def zrodlo_col(self, obj):
-        try:
-            return obj.zrodlo.nazwa
-        except Zrodlo.DoesNotExist:
-            return ''
+        if obj.zrodlo:
+            try:
+                return obj.zrodlo.nazwa
+            except Zrodlo.DoesNotExist:
+                return ''
 
     zrodlo_col.admin_order_field = 'zrodlo__nazwa'
     zrodlo_col.short_description = "Źródło"
