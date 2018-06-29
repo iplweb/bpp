@@ -666,10 +666,15 @@ registry = create_registry(
         Ordering("rok", "rok"),
         Ordering("impact_factor", "impact factor"),
         Ordering("liczba_cytowan", "liczba cytowań"),
+        Ordering("liczba_autorow", "liczba autorów"),
         Ordering("punkty_kbn", "punkty PK"),
         Ordering("charakter_formalny__nazwa", "charakter formalny"),
         Ordering("typ_kbn__nazwa", "typ KBN"),
         Ordering("zrodlo__nazwa", "źródło"),
+        Ordering("utworzono", "utworzono"),
+        Ordering("ostatnio_zmieniony", "ostatnio zmieniony"),
+        Ordering("ostatnio_zmieniony_dla_pbn", "ostatnio zmieniony (dla PBN)"),
+
     ],
     default_ordering=['-rok', '-impact_factor', '-punkty_kbn'],
     report_types=multiseek_report_types)

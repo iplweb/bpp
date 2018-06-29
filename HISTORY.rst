@@ -26,6 +26,11 @@ dev
 * wyszukiwanie po liczbie autorów, możliwość wyszukiwania rekordów bez uzupełnionych
   autorów (#598)
 
+* możliwość sortowania przy użyciu pól liczba autorów, liczba cytowań, data ostatniej
+  zmiany, data utworzenia rekordu i innych (#589)
+
+* kropka na końcu opisu bibliograficznego, prócz rekordów z DOI (#604)
+
 1.0.21
 ------
 
