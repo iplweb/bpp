@@ -7,8 +7,18 @@ dev
 
 *
 
-1.0.23-dev
+1.0.23
 -------------
+
+*
+
+1.0.23-dev
+---
+
+*
+
+1.0.23
+-----------------------
 
 *
 
@@ -17,8 +27,18 @@ dev
 
 *
 
+1.0.23
+-------------
+
+*
+
 1.0.23-dev
------------------------
+---
+
+*
+
+1.0.23
+---------------------------------
 
 * możliwość skonfigurowania, czy na wydrukach z "Wyszukiwania" ma pojawiać się logo
   i nazwa uczelni oraz parametry zapytania (#603)
