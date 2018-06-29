@@ -15,6 +15,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='uczelnia',
             name='wydruk_logo_szerokosc',
-            field=models.BooleanField(default=250, help_text='Podaj wartość w pikselach. Wysokość zostanie przeskalowanaproporcjonalnie. ', verbose_name='Szerokość logo na wydrukach'),
+            field=models.SmallIntegerField(default=250, help_text='Podaj wartość w pikselach. Wysokość zostanie przeskalowanaproporcjonalnie. ', verbose_name='Szerokość logo na wydrukach'),
         ),
     ]
