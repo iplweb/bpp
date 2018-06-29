@@ -33,6 +33,7 @@ VALUES = [
     "123 \\ 123",
     "\\ 123",
     "123 \\",
+    "|K"
 ]
 AUTOCOMPLETES = [
     "bpp:public-autor-autocomplete",
