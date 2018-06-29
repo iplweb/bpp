@@ -30,7 +30,7 @@ HABILITACYJNA_FIELDS = DWA_TYTULY \
 
 
 
-class Publikacja_HabilitacyjnaForm(FutureModelForm):
+class Publikacja_HabilitacyjnaForm(Wycinaj_W_z_InformacjiMixin, FutureModelForm):
     publikacja = QuerySetSequenceModelField(
         queryset=QuerySetSequence(
             Wydawnictwo_Zwarte.objects.all(),

@@ -6,7 +6,7 @@ from .helpers import *
 from .wydawnictwo_zwarte import Wydawnictwo_ZwarteAdmin_Baza
 
 
-class Patent_Form(forms.ModelForm):
+class Patent_Form(Wycinaj_W_z_InformacjiMixin, forms.ModelForm):
     status_korekty = DomyslnyStatusKorektyMixin.status_korekty
 
     class Meta:
