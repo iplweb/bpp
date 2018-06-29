@@ -56,6 +56,8 @@ class UczelniaAdmin(RestrictDeletionToAdministracjaGroupMixin,
                 'pokazuj_raport_dla_komisji_centralnej',
                 'pokazuj_praca_recenzowana',
                 'pokazuj_liczbe_cytowan_w_rankingu',
+                'wyszukiwanie_rekordy_na_strone_anonim',
+                'wyszukiwanie_rekordy_na_strone_zalogowany',
             )}),
         ('Wydruki', {
             'classes': ('grp-collapse grp-closed',),

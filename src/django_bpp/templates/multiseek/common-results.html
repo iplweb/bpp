@@ -7,14 +7,14 @@
 {% if request.user.is_anonymous %}
     {#    anonim #}
     {% if request.GET.all == "1" %}
-        {% autopaginate object_list paging 200 %}
+        {% autopaginate object_list paging uczelnia.wyszukiwanie_rekordy_na_strone_anonim %}
     {% else %}
         {% autopaginate object_list paging %}
     {% endif %}
 {% else %}
     {#    zalogowany #}
     {% if request.GET.all == "1" %}
-        {% autopaginate object_list paging 10000 %}
+        {% autopaginate object_list paging uczelnia.wyszukiwanie_rekordy_na_strone_zalogowany %}
     {% else %}
         {% autopaginate object_list paging %}
     {% endif %}
@@ -22,9 +22,9 @@
 {% endif %}
 
 {% if request.user.is_anonymous %}
-    {% include "multiseek/paginator.html" with max_rows=200 %}
+    {% include "multiseek/paginator.html" with max_rows=uczelnia.wyszukiwanie_rekordy_na_strone_anonim %}
 {% else %}
-    {% include "multiseek/paginator.html" with max_rows=10000 %}
+    {% include "multiseek/paginator.html" with max_rows=uczelnia.wyszukiwanie_rekordy_na_strone_zalogowany %}
 {% endif %}
 
 <div style="padding: 10px;">
@@ -274,9 +274,9 @@
 
 {% if live != "1" and paginator.num_pages > 1 %}
     {% if request.user.is_anonymous %}
-        {% include "multiseek/paginator.html" with max_rows=200 magellan="no" suffix="_object_list" %}
+        {% include "multiseek/paginator.html" with max_rows=uczelnia.wyszukiwanie_rekordy_na_strone_anonim magellan="no" suffix="_object_list" %}
     {% else %}
-        {% include "multiseek/paginator.html" with max_rows=10000 magellan="no" %}
+        {% include "multiseek/paginator.html" with max_rows=uczelnia.wyszukiwanie_rekordy_na_strone_zalogowany magellan="no" %}
     {% endif %}
 {% endif %}
 

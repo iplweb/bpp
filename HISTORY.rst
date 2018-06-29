@@ -13,7 +13,7 @@ dev
 * możliwość skonfigurowania, czy na wydrukach z "Wyszukiwania" ma pojawiać się logo
   i nazwa uczelni oraz parametry zapytania (#603)
 
-* poprawki wydruków - mniejsza czcionka i marginesy (#603)
+* poprawki wydruków - mniejsza czcionka i marginesy (#619)
 
 * ukryj liczbę cytowań dla użytkowników niezalogowanych w wyszukiwaniu; dodaj raporty
   z opcjonalnie widoczną liczbą cytowań (#626)
@@ -30,6 +30,9 @@ dev
   zmiany, data utworzenia rekordu i innych (#589)
 
 * kropka na końcu opisu bibliograficznego, prócz rekordów z DOI (#604)
+
+* definiowana ilość rekordów przy której pojawia się opcja "drukuj" i "pokaż wszystkie"
+  dla użytkowników zalogowanych i anonimowych, poprzez edycję obiektu Uczelnia (#610)
 
 1.0.21
 ------
