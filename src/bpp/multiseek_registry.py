@@ -406,6 +406,11 @@ class LiczbaCytowanQueryObject(IntegerQueryObject):
     field_name = 'liczba_cytowan'
 
 
+class LiczbaAutorowQueryObject(IntegerQueryObject):
+    label = 'Liczba autorów'
+    field_name = 'liczba_autorow'
+
+
 class KCImpactQueryObject(ImpactQueryObject):
     field_name = 'kc_impact_factor'
     label = "KC: Impact factor"
@@ -596,6 +601,7 @@ multiseek_fields = [
 
     ImpactQueryObject(),
     LiczbaCytowanQueryObject(),
+    LiczbaAutorowQueryObject(),
     PunktyKBNQueryObject(),
     IndexCopernicusQueryObject(),
     PunktacjaWewnetrznaQueryObject(),
@@ -644,7 +650,8 @@ multiseek_report_types = [
     ReportType("numer_list", "numerowana lista z uwagami", public=False),
 
     ReportType("table_cytowania", "tabela z liczbą cytowań", public=False),
-    PunktacjaWewnetrznaReportType("pkt_wewn_cytowania", "punktacja sumaryczna z punktacją wewnętrzna z liczbą cytowań", public=False),
+    PunktacjaWewnetrznaReportType("pkt_wewn_cytowania", "punktacja sumaryczna z punktacją wewnętrzna z liczbą cytowań",
+                                  public=False),
     ReportType("pkt_wewn_bez_cytowania", "punktacja sumaryczna z liczbą cytowań", public=False),
 ]
 

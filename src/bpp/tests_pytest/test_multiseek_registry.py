@@ -16,7 +16,7 @@ from bpp.multiseek_registry import TytulPracyQueryObject, \
     OpenaccessCzasPublikacjiQueryObject, ForeignKeyDescribeMixin, PierwszeNazwiskoIImie, \
     TypOgolnyAutorQueryObject, TypOgolnyRedaktorQueryObject, TypOgolnyTlumaczQueryObject, TypOgolnyRecenzentQueryObject, \
     NazwiskoIImieQueryObject, DataUtworzeniaQueryObject, OstatnieNazwiskoIImie, OstatnioZmieniony, \
-    OstatnioZmienionyDlaPBN, RodzajKonferenckjiQueryObject
+    OstatnioZmienionyDlaPBN, RodzajKonferenckjiQueryObject, LiczbaAutorowQueryObject
 
 
 @pytest.mark.django_db
@@ -134,4 +134,10 @@ def test_OstatnioZmienionyDlaPBN():
 @pytest.mark.django_db
 def test_RodzajKonferenckjiQueryObject():
     res = RodzajKonferenckjiQueryObject().real_query("krajowa", logic.DIFFERENT)
+    assert Rekord.objects.filter(res).count() == 0
+
+
+@pytest.mark.django_db
+def test_LiczbaAutorowQueryObject():
+    res = LiczbaAutorowQueryObject().real_query(5, logic.DIFFERENT)
     assert Rekord.objects.filter(res).count() == 0
