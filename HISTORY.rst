@@ -11,17 +11,20 @@ dev
 -------------
 
 * możliwość skonfigurowania, czy na wydrukach z "Wyszukiwania" ma pojawiać się logo
-  i nazwa uczelni oraz parametry zapytania
+  i nazwa uczelni oraz parametry zapytania (#603)
 
-* poprawki wydruków - mniejsza czcionka i marginesy
+* poprawki wydruków - mniejsza czcionka i marginesy (#603)
 
 * ukryj liczbę cytowań dla użytkowników niezalogowanych w wyszukiwaniu; dodaj raporty
-  z opcjonalnie widoczną liczbą cytowań
+  z opcjonalnie widoczną liczbą cytowań (#626)
 
 * pozwalaj na określanie szerokości logo na wydrukach przez edycję obiektu "Uczelnia"
 
 * automatycznie dodawaj ciąg znaków "W: " dla opisu bibliograficznego wydawnictwa
-  zwartego
+  zwartego (#618)
+
+* wyszukiwanie po liczbie autorów, możliwość wyszukiwania rekordów bez uzupełnionych
+  autorów (#598)
 
 1.0.21
 ------
