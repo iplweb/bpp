@@ -114,6 +114,19 @@ class Wydawnictwo_ZwarteForm(forms.ModelForm):
             'tom': forms.TextInput(attrs=dict(style="width: 150px")),
         }
 
+    def clean_informacje(self):
+        i = self.cleaned_data.get("informacje")
+        if i:
+            l = i.lower()
+            n = 0
+            if l.startswith("w:"):
+                n = 2
+            if l.startswith("w :"):
+                n = 3
+            if n:
+                return i[n:].strip()
+        return i
+
 
 class Wydawnictwo_ZwarteAdmin(KolumnyZeSkrotamiMixin,
                               AdnotacjeZDatamiOrazPBNMixin,
