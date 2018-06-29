@@ -37,6 +37,9 @@ dev
 * możliwość podglądania do 100 rekordów wydawnictw zwartych i ciągłych powiązanych
   do konferencji
 
+* możliwość jednoczasowej edycji do 100 rekordów powiązań autora i jednostki w module
+  redagowanie, przy edycji obiektu Jednostka
+
 1.0.21
 ------
 
