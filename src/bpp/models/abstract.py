@@ -851,7 +851,7 @@ class ModelZAktualizacjaDlaPBN(models.Model):
                 # Specjalny case: jeżeli jedyne zmienione pole to "informacje"
                 # i z pola "informacje" zostało wycięte "W: " na początku, to
                 # nie aktualizuj pola
-                if "informacje" in flds_keys:
+                if "informacje" in flds_keys and self.informacje is not None:
                     if "w: " + self.informacje.lower().strip() == flds['informacje'].lower().strip():
                         flds_keys.remove("informacje")
 
