@@ -2,6 +2,60 @@
 Historia zmian
 ==============
 
+dev
+---
+
+*
+
+1.0.25-dev
+-------------
+
+*
+
+1.0.24-dev
+---
+
+*
+
+1.0.25-dev
+-----------------------
+
+*
+
+
+1.0.23
+---------------------------------
+
+* możliwość skonfigurowania, czy na wydrukach z "Wyszukiwania" ma pojawiać się logo
+  i nazwa uczelni oraz parametry zapytania (#603)
+
+* poprawki wydruków - mniejsza czcionka i marginesy (#619)
+
+* ukryj liczbę cytowań dla użytkowników niezalogowanych w wyszukiwaniu; dodaj raporty
+  z opcjonalnie widoczną liczbą cytowań (#626)
+
+* pozwalaj na określanie szerokości logo na wydrukach przez edycję obiektu "Uczelnia"
+
+* automatycznie dodawaj ciąg znaków "W: " dla opisu bibliograficznego wydawnictwa
+  zwartego (#618)
+
+* wyszukiwanie po liczbie autorów, możliwość wyszukiwania rekordów bez uzupełnionych
+  autorów (#598)
+
+* możliwość sortowania przy użyciu pól liczba autorów, liczba cytowań, data ostatniej
+  zmiany, data utworzenia rekordu i innych (#589)
+
+* kropka na końcu opisu bibliograficznego, prócz rekordów z DOI (#604)
+
+* definiowana ilość rekordów przy której pojawia się opcja "drukuj" i "pokaż wszystkie"
+  dla użytkowników zalogowanych i anonimowych, poprzez edycję obiektu Uczelnia (#610)
+
+* możliwość podglądania do 100 rekordów wydawnictw zwartych i ciągłych powiązanych
+  do konferencji
+
+* możliwość jednoczasowej edycji do 100 rekordów powiązań autora i jednostki w module
+  redagowanie, przy edycji obiektu Jednostka
+
 1.0.21
 ------
 

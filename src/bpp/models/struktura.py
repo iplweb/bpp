@@ -94,6 +94,39 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         help_text="""Liczba cytowań będzie wyświetlana, gdy większa od 0"""
     )
 
+    wydruk_logo = models.BooleanField(
+        'Pokazuj logo na wydrukach',
+        default=False
+    )
+
+    wydruk_logo_szerokosc = models.SmallIntegerField(
+        "Szerokość logo na wydrukach",
+        default=250,
+        help_text="Podaj wartość w pikselach. Wysokość zostanie przeskalowana"
+                  "proporcjonalnie. "
+    )
+
+    wydruk_parametry_zapytania = models.BooleanField(
+        'Pokazuj parametry zapytania na wydrukach',
+        default=True
+    )
+
+    wyszukiwanie_rekordy_na_strone_anonim = models.SmallIntegerField(
+        "Ilość rekordów na stronę - anonim",
+        default=200,
+        help_text='Ilość rekordów w wyszukiwaniu powyżej której znika opcja'
+                  '"Pokaż wszystkie" i "Drukuj" dla użytkownika anonimowego. '
+                  'Nie jest zalecane ustawianie powyżej 500. '
+    )
+
+    wyszukiwanie_rekordy_na_strone_zalogowany = models.SmallIntegerField(
+        "Ilość rekordów na stronę - anonim",
+        default=10000,
+        help_text='Ilość rekordów w wyszukiwaniu powyżej której znika opcja'
+                  '"Pokaż wszystkie" i "Drukuj" dla użytkownika zalogowanego. '
+                  'Nie jest zalecane ustawianie powyżej 10000. '
+    )
+
     clarivate_username = models.CharField(
         verbose_name="Nazwa użytkownika",
         null=True,

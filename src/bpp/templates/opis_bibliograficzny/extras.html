@@ -1,18 +1,18 @@
 {% load prace %}
-{% if praca.charakter_formalny.skrot == 'ROZ' or praca.charakter_formalny.skrot == 'KSP' or praca.charakter_formalny.skrot == 'KSZ' %}
+{% if praca.charakter_formalny.skrot == 'ROZ' or praca.charakter_formalny.skrot == 'ROZP' or praca.charakter_formalny.skrot == 'ROZS' or praca.charakter_formalny.skrot == 'KSP' or praca.charakter_formalny.skrot == 'KSZ' or praca.charakter_formalny.skrot == 'KS' %}
     {# szczególy i uwagi na końcu #}
     {{ praca.miejsce_i_rok|default:"" }}
     {{ praca.wydawnictwo|default:""|znak_na_poczatku:"," }}
     {{ praca.szczegoly|default:""|znak_na_poczatku:","|safe }}
-    {{ praca.uwagi|default:""|znak_na_poczatku:","|safe }}
+    {% if uwagi == 1 %}{{ praca.uwagi|default:""|znak_na_poczatku:","|safe }}{% endif %}
     {{ praca.isbn|default:""|znak_na_poczatku:"," }}
-    {{ praca.doi|default:""|znak_na_poczatku:". DOI: " }}
+    {{ praca.doi|default:""|znak_na_poczatku:". DOI: "|default:". " }}
 {% else %}
     {# szczegóły i uwagi na poczatku #}
     {{ praca.szczegoly|default:""|znak_na_poczatku:" "|safe }}
-    {{ praca.uwagi|default:""|znak_na_poczatku:","|safe }}
+    {% if uwagi == 1 %}{{ praca.uwagi|default:""|znak_na_poczatku:","|safe }}{% endif %}
     {{ praca.miejsce_i_rok|default:""|znak_na_poczatku:"." }}
     {{ praca.wydawnictwo|default:""|znak_na_poczatku:"," }}
     {{ praca.isbn|default:""|znak_na_poczatku:"," }}
-    {{ praca.doi|default:""|znak_na_poczatku:". DOI: " }}
+    {{ praca.doi|default:""|znak_na_poczatku:". DOI: "|default:". " }}
 {% endif %}

@@ -95,8 +95,14 @@ def generuj_inline_dla_autorow(baseModel):
                 if not zapisany_jako:
                     return
 
-                autor = Autor.objects.get(pk=int(
-                    data[kwargs['prefix'] + '-autor']))
+                try:
+                    autor = Autor.objects.get(pk=int(
+                        data[kwargs['prefix'] + '-autor']))
+                except Autor.DoesNotExist:
+                    class autor:
+                        imiona = "TakiAutor"
+                        nazwisko = "NieIstnieje"
+                        poprzednie_nazwiska = ""
 
             warianty = warianty_zapisanego_nazwiska(
                 autor.imiona,

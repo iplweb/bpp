@@ -55,8 +55,18 @@ class UczelniaAdmin(RestrictDeletionToAdministracjaGroupMixin,
                 'pokazuj_raport_wydzialow',
                 'pokazuj_raport_dla_komisji_centralnej',
                 'pokazuj_praca_recenzowana',
-                'pokazuj_liczbe_cytowan_w_rankingu'
+                'pokazuj_liczbe_cytowan_w_rankingu',
+                'wyszukiwanie_rekordy_na_strone_anonim',
+                'wyszukiwanie_rekordy_na_strone_zalogowany',
             )}),
+        ('Wydruki', {
+            'classes': ('grp-collapse grp-closed',),
+            'fields': (
+                'wydruk_logo',
+                'wydruk_logo_szerokosc',
+                'wydruk_parametry_zapytania'
+            )
+        }),
         ADNOTACJE_FIELDSET,
         ('Clarivate Analytics API', {
             'classes': ('grp-collapse grp-closed',),

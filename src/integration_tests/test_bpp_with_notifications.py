@@ -31,7 +31,7 @@ from django_bpp.selenium_util import wait_for_page_load
 pytestmark = [pytest.mark.slow, pytest.mark.selenium]
 
 
-def test_caching_enabled(admin_app, zrodlo, standard_data):
+def test_caching_enabled(admin_app, zrodlo, standard_data, transactional_db):
     """
     1) wejdź do redagowania
     2) dopisz publikację, zapisz

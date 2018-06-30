@@ -406,6 +406,11 @@ class LiczbaCytowanQueryObject(IntegerQueryObject):
     field_name = 'liczba_cytowan'
 
 
+class LiczbaAutorowQueryObject(IntegerQueryObject):
+    label = 'Liczba autorów'
+    field_name = 'liczba_autorow'
+
+
 class KCImpactQueryObject(ImpactQueryObject):
     field_name = 'kc_impact_factor'
     label = "KC: Impact factor"
@@ -414,7 +419,9 @@ class KCImpactQueryObject(ImpactQueryObject):
 
 class PunktacjaWewnetrznaEnabledMixin:
     def enabled(self, request):
-        return settings.UZYWAJ_PUNKTACJI_WEWNETRZNEJ
+        if self.public:
+            return settings.UZYWAJ_PUNKTACJI_WEWNETRZNEJ
+        return ReportType.enabled(self, request)
 
 
 class PunktacjaWewnetrznaQueryObject(PunktacjaWewnetrznaEnabledMixin,
@@ -594,6 +601,7 @@ multiseek_fields = [
 
     ImpactQueryObject(),
     LiczbaCytowanQueryObject(),
+    LiczbaAutorowQueryObject(),
     PunktyKBNQueryObject(),
     IndexCopernicusQueryObject(),
     PunktacjaWewnetrznaQueryObject(),
@@ -639,7 +647,12 @@ multiseek_report_types = [
     ReportType("table", "tabela"),
     PunktacjaWewnetrznaReportType("pkt_wewn", "punktacja sumaryczna z punktacją wewnętrzna"),
     ReportType("pkt_wewn_bez", "punktacja sumaryczna"),
-    ReportType("numer_list", "numerowana lista z uwagami", public=False)
+    ReportType("numer_list", "numerowana lista z uwagami", public=False),
+
+    ReportType("table_cytowania", "tabela z liczbą cytowań", public=False),
+    PunktacjaWewnetrznaReportType("pkt_wewn_cytowania", "punktacja sumaryczna z punktacją wewnętrzna z liczbą cytowań",
+                                  public=False),
+    ReportType("pkt_wewn_bez_cytowania", "punktacja sumaryczna z liczbą cytowań", public=False),
 ]
 
 registry = create_registry(
@@ -653,10 +666,15 @@ registry = create_registry(
         Ordering("rok", "rok"),
         Ordering("impact_factor", "impact factor"),
         Ordering("liczba_cytowan", "liczba cytowań"),
+        Ordering("liczba_autorow", "liczba autorów"),
         Ordering("punkty_kbn", "punkty PK"),
         Ordering("charakter_formalny__nazwa", "charakter formalny"),
         Ordering("typ_kbn__nazwa", "typ KBN"),
         Ordering("zrodlo__nazwa", "źródło"),
+        Ordering("utworzono", "utworzono"),
+        Ordering("ostatnio_zmieniony", "ostatnio zmieniony"),
+        Ordering("ostatnio_zmieniony_dla_pbn", "ostatnio zmieniony (dla PBN)"),
+
     ],
     default_ordering=['-rok', '-impact_factor', '-punkty_kbn'],
     report_types=multiseek_report_types)

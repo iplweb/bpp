@@ -37,7 +37,7 @@ class Praca_Doktorska_Habilitacyjna_Admin_Base(AdnotacjeZDatamiMixin,
     list_filter = ['status_korekty', 'recenzowana', 'typ_kbn']
 
 
-class Praca_DoktorskaForm(forms.ModelForm):
+class Praca_DoktorskaForm(Wycinaj_W_z_InformacjiMixin, forms.ModelForm):
     autor = forms.ModelChoiceField(
         queryset=Autor.objects.all(),
         widget=autocomplete.ModelSelect2(

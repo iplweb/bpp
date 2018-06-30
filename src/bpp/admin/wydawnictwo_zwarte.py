@@ -3,19 +3,16 @@
 # -*- encoding: utf-8 -*-
 
 from dal import autocomplete
-from django import forms
 from django.contrib import admin
-from django.contrib.contenttypes.admin import GenericTabularInline
 
 from bpp.admin.filters import LiczbaZnakowFilter, CalkowitaLiczbaAutorowFilter
 from bpp.admin.helpers import *
-from .nagroda import NagrodaInline
 from bpp.models import Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor
 from bpp.models.konferencja import Konferencja
-from bpp.models.nagroda import Nagroda, OrganPrzyznajacyNagrody
 from bpp.models.seria_wydawnicza import Seria_Wydawnicza
 from .core import CommitedModelAdmin, generuj_inline_dla_autorow, \
     KolumnyZeSkrotamiMixin
+from .nagroda import NagrodaInline
 
 
 # Proste tabele
@@ -46,7 +43,7 @@ class Wydawnictwo_ZwarteAdmin_Baza(CommitedModelAdmin):
                    LiczbaZnakowFilter, 'rok']
 
     # Usunąć przed wcomitowaniem
-    
+
     # fieldsets = (
     #     ('Wydawnictwo zwarte', {
     #         'fields':
@@ -75,8 +72,7 @@ class Wydawnictwo_ZwarteAdmin_Baza(CommitedModelAdmin):
     wydawnictwo_nadrzedne_col.admin_order_field = "wydawnictwo_nadrzedne__tytul_oryginalny"
 
 
-
-class Wydawnictwo_ZwarteForm(forms.ModelForm):
+class Wydawnictwo_ZwarteForm(Wycinaj_W_z_InformacjiMixin, forms.ModelForm):
     wydawnictwo_nadrzedne = forms.ModelChoiceField(
         required=False,
         queryset=Wydawnictwo_Zwarte.objects.all(),

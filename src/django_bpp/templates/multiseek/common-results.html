@@ -7,14 +7,14 @@
 {% if request.user.is_anonymous %}
     {#    anonim #}
     {% if request.GET.all == "1" %}
-        {% autopaginate object_list paging 200 %}
+        {% autopaginate object_list paging uczelnia.wyszukiwanie_rekordy_na_strone_anonim %}
     {% else %}
         {% autopaginate object_list paging %}
     {% endif %}
 {% else %}
     {#    zalogowany #}
     {% if request.GET.all == "1" %}
-        {% autopaginate object_list paging 10000 %}
+        {% autopaginate object_list paging uczelnia.wyszukiwanie_rekordy_na_strone_zalogowany %}
     {% else %}
         {% autopaginate object_list paging %}
     {% endif %}
@@ -22,15 +22,28 @@
 {% endif %}
 
 {% if request.user.is_anonymous %}
-    {% include "multiseek/paginator.html" with max_rows=200 %}
+    {% include "multiseek/paginator.html" with max_rows=uczelnia.wyszukiwanie_rekordy_na_strone_anonim %}
 {% else %}
-    {% include "multiseek/paginator.html" with max_rows=10000 %}
+    {% include "multiseek/paginator.html" with max_rows=uczelnia.wyszukiwanie_rekordy_na_strone_zalogowany %}
 {% endif %}
 
 <div style="padding: 10px;">
 
+    {% if uczelnia.wydruk_logo %}
+        <table class="show-for-print" border="0" style="border:none !important;" cellpadding="0" cellspacing="0">
+            <tr>
+                <td><img width="{{ uczelnia.wydruk_logo_szerokosc }}"
+                         src="/media/{{ uczelnia.logo_www }}"
+                         alt="Logo {{ uczelnia.nazwa_dopelniacz }}"
+                /></td>
+                <td><h4>Bibliografia Publikacji Pracowników<br/>
+                    {{ uczelnia.nazwa_dopelniacz }}</h4></td>
+            </tr>
+        </table>
+    {% endif %}
+
     {% if description %}
-        <div class="callout secondary">
+        <div class="callout secondary {% if not uczelnia.wydruk_parametry_zapytania %}hide-for-print{% endif %}">
             <strong>Parametry
                 zapytania: </strong>{{ description|default:"brak"|safe }}
         </div>
@@ -156,90 +169,27 @@
                 {% trans "No elements" %}
             {% endfor %}
         </ol>
-    {% endif %}
-
-    {% if report_type == "table" %}
+    {% else %}
         <table class="kbntab">
             <tr>
                 <th>Lp.</th>
                 <th>Tytuł, autorzy, źródło</th>
                 <th>IF</th>
-                <th>Liczba cytowań</th>
+
+                {% if report_type == "table_cytowania" or report_type == "pkt_wewn_cytowania" or report_type == "pkt_wewn_bez_cytowania" %}
+                    <th>Liczba cytowań</th>
+                {% endif %}
+
                 <th>PK</th>
-                <th>Charakter</th>
-                <th>Typ KBN/MNiSW</th>
-            </tr>
-            {% for element in object_list %}
-                <tr>
-                    <td valign="top">
-                        {{ page_obj.start_index|add:forloop.counter|add:-1 }}.
-                    </td>
-                    <td class="multiseek-row"
-                          id="multiseek-row-{{ element.js_safe_pk }}">
-                    <span class="multiseek-element">
-                    <a href="{% url "bpp:browse_praca" element.id.0 element.id.1 %}"
-                       target="_top">
-                        {#                            {% include "opis_bibliograficzny/main.html" with praca=element.get_original_object %}#}
-                        {{ element.opis_bibliograficzny_cache|safe }}
 
-                    </a>
-                    </span>
-                        {% if not print_removed %}
-                    <span class="multiseek-remove-from-results">
-                        <a onclick="multiseek.removeFromResults('{{ element.js_safe_pk }}'); return false" style="font-size: 8pt;">
-                            ❌
-                        </a>
-                    </span>
-                        {% endif %}
-                    </td>
-                    <td>{{ element.impact_factor }}</td>
-                    <td>{{ element.liczba_cytowan }}</td>
-                    <td>{{ element.punkty_kbn }}</td>
-                    <td>{{ element.charakter_formalny }}</td>
-                    <td>{{ element.typ_kbn }}</td>
-                </tr>
-            {% empty %}
-                <tr>
-                    <td>{% trans "No elements" %}
-                    </td>
-                </tr>
-            {% endfor %}
-
-            {% if page_obj.number == page_obj.paginator.num_pages %}
-                <tfoot>
-                <tr>
-                    <td colspan="2">
-                        Suma:
-                    </td>
-                    <td>
-                        {{ sumy.impact_factor__sum|default_if_none:"0.00" }}
-                    </td>
-                    <td>
-                        {{ sumy.liczba_cytowan__sum|default_if_none:"0.00" }}
-                    </td>
-                    <td>
-                        {{ sumy.punkty_kbn__sum|default_if_none:"0.00" }}
-                    </td>
-                    <td>&nbsp;</td>
-                    <td>&nbsp;</td>
-                </tr>
-                </tfoot>
-            {% endif %}
-
-        </table>
-    {% endif %}
-
-    {% if report_type == "pkt_wewn" or report_type == "pkt_wewn_bez" %}
-        <table class="kbntab" width="100%">
-            <tr>
-                <th>Lp.</th>
-                <th>Tytuł, autorzy, źródło</th>
-                <th>IF</th>
-                <th>Liczba cytowań</th>
-                <th>PK</th>
-                {% if report_type == "pkt_wewn" %}
+                {% if report_type == "pkt_wewn" or report_type == "pkt_wewn_cytowania" %}
                     <th>pkt. wewn.</th>
                 {% endif %}
+
+                {% if report_type != "pkt_wewn" and report_type != "pkt_wewn_bez" and report_type != "pkt_wewn_cytowania" and report_type != "pkt_wewn_bez_cytowania" %}
+                    <th>Charakter</th>
+                {% endif %}
+
                 <th>Typ KBN/MNiSW</th>
             </tr>
             {% for element in object_list %}
@@ -250,7 +200,6 @@
                     <td class="multiseek-row"
                           id="multiseek-row-{{ element.js_safe_pk }}">
                     <span class="multiseek-element">
-
                     <a href="{% url "bpp:browse_praca" element.id.0 element.id.1 %}"
                        target="_top">
                         {#                            {% include "opis_bibliograficzny/main.html" with praca=element.get_original_object %}#}
@@ -267,21 +216,28 @@
                         {% endif %}
                     </td>
                     <td>{{ element.impact_factor }}</td>
-                    <td>{{ element.liczba_cytowan }}</td>
+                    {% if report_type == "table_cytowania" or report_type == "pkt_wewn_cytowania" or report_type == "pkt_wewn_bez_cytowania" %}
+                        <td>{{ element.liczba_cytowan }}</td>
+                    {% endif %}
+
                     <td>{{ element.punkty_kbn }}</td>
-                    {% if report_type == "pkt_wewn" %}
+
+                    {% if report_type == "pkt_wewn" or report_type == "pkt_wewn_cytowania" %}
                         <td>{{ element.punktacja_wewnetrzna }}</td>
                     {% endif %}
+
+                {% if report_type != "pkt_wewn" and report_type != "pkt_wewn_bez" and report_type != "pkt_wewn_cytowania" and report_type != "pkt_wewn_bez_cytowania" %}
+                    <td>{{ element.charakter_formalny }}</td>
+                {% endif %}
                     <td>{{ element.typ_kbn }}</td>
                 </tr>
             {% empty %}
                 <tr>
-                    <td align="center"
-                        colspan="{% if report_type == "pkt_wewn" %}6{% else %}5{% endif %}">{% trans "No elements" %}
+                    <td colspan="10" style="text-align: center;">{% trans "No elements" %}
                     </td>
                 </tr>
             {% endfor %}
-            {#        Stopka tylko na ostatniej stronie #}
+
             {% if page_obj.number == page_obj.paginator.num_pages %}
                 <tfoot>
                 <tr>
@@ -291,31 +247,36 @@
                     <td>
                         {{ sumy.impact_factor__sum|default_if_none:"0.00" }}
                     </td>
-                    <td>{{ sumy.liczba_cytowan__sum|default_if_none:"0.00" }}</td>
+                    {% if report_type == "table_cytowania" or report_type == "pkt_wewn_cytowania" or report_type == "pkt_wewn_bez_cytowania" %}
+                        <td>
+                            {{ sumy.liczba_cytowan__sum|default_if_none:"0.00" }}
+                        </td>
+                    {% endif %}
                     <td>
                         {{ sumy.punkty_kbn__sum|default_if_none:"0.00" }}
                     </td>
-                    {% if report_type == "pkt_wewn" %}
+                    {% if report_type == "pkt_wewn" or report_type == "pkt_wewn_cytowania" %}
                         <td>
                             {{ sumy.punktacja_wewnetrzna__sum|default_if_none:"0.00" }}
                         </td>
                     {% endif %}
                     <td>&nbsp;</td>
-
+                    <td>&nbsp;</td>
                 </tr>
                 </tfoot>
             {% endif %}
-        </table>
 
+        </table>
     {% endif %}
+
 
 </div>
 
 {% if live != "1" and paginator.num_pages > 1 %}
     {% if request.user.is_anonymous %}
-        {% include "multiseek/paginator.html" with max_rows=200 magellan="no" suffix="_object_list" %}
+        {% include "multiseek/paginator.html" with max_rows=uczelnia.wyszukiwanie_rekordy_na_strone_anonim magellan="no" suffix="_object_list" %}
     {% else %}
-        {% include "multiseek/paginator.html" with max_rows=10000 magellan="no" %}
+        {% include "multiseek/paginator.html" with max_rows=uczelnia.wyszukiwanie_rekordy_na_strone_zalogowany magellan="no" %}
     {% endif %}
 {% endif %}
 

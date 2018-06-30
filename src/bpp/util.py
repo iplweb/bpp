@@ -22,6 +22,7 @@ def fulltext_tokenize(s):
     s = s.replace(":", "")\
         .replace('*', "")\
         .replace('"', "")\
+        .replace('|', " ")\
         .replace("'", "")\
         .replace("&", "")\
         .replace("\\", "")\

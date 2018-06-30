@@ -1,7 +1,8 @@
 # -*- encoding: utf-8 -*-
 
-from django.db import models
 from django import forms
+from django.db import models
+from django.forms import BaseInlineFormSet
 from django.forms.widgets import Textarea
 
 from bpp.models import Status_Korekty
@@ -14,7 +15,7 @@ CHARMAP_SINGLE_LINE = forms.TextInput(
 
 
 class ZapiszZAdnotacjaMixin:
-    readonly_fields = ('ostatnio_zmieniony', )
+    readonly_fields = ('ostatnio_zmieniony',)
 
 
 class AdnotacjeZDatamiMixin:
@@ -31,16 +32,16 @@ class AdnotacjeZDatamiOrazPBNMixin:
 
 
 ADNOTACJE_FIELDSET = ('Adnotacje', {
-    'classes': ('grp-collapse grp-closed', ),
+    'classes': ('grp-collapse grp-closed',),
     'fields': (ZapiszZAdnotacjaMixin.readonly_fields + ('adnotacje',))})
 
 ADNOTACJE_Z_DATAMI_FIELDSET = ('Adnotacje', {
-    'classes': ('grp-collapse grp-closed', ),
+    'classes': ('grp-collapse grp-closed',),
     'fields': AdnotacjeZDatamiMixin.readonly_fields + ('adnotacje',)
 })
 
 ADNOTACJE_Z_DATAMI_ORAZ_PBN_FIELDSET = ('Adnotacje', {
-    'classes': ('grp-collapse grp-closed', ),
+    'classes': ('grp-collapse grp-closed',),
     'fields': AdnotacjeZDatamiOrazPBNMixin.readonly_fields + ('adnotacje',)
 })
 
@@ -54,8 +55,7 @@ OPENACCESS_FIELDSET = ("OpenAccess", {
 DWA_TYTULY = (
     'tytul_oryginalny',
     'tytul',
-    )
-
+)
 
 MODEL_ZE_SZCZEGOLAMI = (
     'informacje',
@@ -64,24 +64,24 @@ MODEL_ZE_SZCZEGOLAMI = (
     'slowa_kluczowe',
     'strony',
     'tom'
-    )
+)
 
 MODEL_Z_ISSN = (
     'issn',
     'e_issn',
-    )
+)
 
 MODEL_Z_ISBN = (
     'isbn',
     'e_isbn',
-    )
+)
 
 MODEL_Z_WWW = (
     'www',
     'dostep_dnia',
     'public_www',
     'public_dostep_dnia',
-    )
+)
 
 MODEL_Z_PUBMEDID = (
     'pubmed_id',
@@ -97,12 +97,12 @@ MODEL_Z_LICZBA_CYTOWAN = (
 
 MODEL_Z_ROKIEM = (
     'rok',
-    )
+)
 
 MODEL_TYPOWANY = (
     'jezyk',
     'typ_kbn',
-    )
+)
 
 MODEL_PUNKTOWANY = (
     'punkty_kbn',
@@ -110,7 +110,7 @@ MODEL_PUNKTOWANY = (
     'index_copernicus',
     'punktacja_wewnetrzna',
     'weryfikacja_punktacji',
-    )
+)
 
 MODEL_PUNKTOWANY_KOMISJA_CENTRALNA = (
     'kc_impact_factor',
@@ -120,7 +120,7 @@ MODEL_PUNKTOWANY_KOMISJA_CENTRALNA = (
 
 MODEL_Z_INFORMACJA_Z = (
     'informacja_z',
-    )
+)
 
 MODEL_Z_LICZBA_ZNAKOW_WYDAWNICZYCH = (
     'liczba_znakow_wydawniczych',
@@ -128,31 +128,31 @@ MODEL_Z_LICZBA_ZNAKOW_WYDAWNICZYCH = (
 
 MODEL_ZE_STATUSEM = (
     'status_korekty',
-    )
+)
 
 MODEL_RECENZOWANY = (
     'recenzowana',
-    )
+)
 
 MODEL_TYPOWANY_BEZ_CHARAKTERU_FIELDSET = ('Typ', {
-    'classes': ('', ),
+    'classes': ('',),
     'fields': MODEL_TYPOWANY})
 
 MODEL_TYPOWANY_FIELDSET = ('Typ', {
-    'classes': ('', ),
+    'classes': ('',),
     'fields': ('charakter_formalny',) + MODEL_TYPOWANY})
 
 MODEL_PUNKTOWANY_FIELDSET = ('Punktacja', {
-    'classes': ('', ),
+    'classes': ('',),
     'fields': MODEL_PUNKTOWANY})
 
 MODEL_PUNKTOWANY_WYDAWNICTWO_CIAGLE_FIELDSET = ('Punktacja', {
-    'classes': ('', ),
-    'fields': MODEL_PUNKTOWANY + ('uzupelnij_punktacje', )})
+    'classes': ('',),
+    'fields': MODEL_PUNKTOWANY + ('uzupelnij_punktacje',)})
 
 MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET = (
     'Punktacja Komisji Centralnej', {
-        'classes': ('grp-collapse grp-closed', ),
+        'classes': ('grp-collapse grp-closed',),
         'fields': MODEL_PUNKTOWANY_KOMISJA_CENTRALNA})
 
 POZOSTALE_MODELE_FIELDSET = ('Pozostałe informacje', {
@@ -193,12 +193,12 @@ PRACA_WYBITNA_FIELDSET = ('Praca wybitna', {
 })
 
 EKSTRA_INFORMACJE_WYDAWNICTWO_CIAGLE_FIELDSET = ('Ekstra informacje', {
-    'classes': ('grp-collapse grp-closed', ),
+    'classes': ('grp-collapse grp-closed',),
     'fields': MODEL_Z_ISSN + MODEL_Z_WWW + MODEL_Z_PUBMEDID + MODEL_Z_DOI + MODEL_Z_LICZBA_CYTOWAN
 })
 
 EKSTRA_INFORMACJE_WYDAWNICTWO_ZWARTE_FIELDSET = ('Ekstra informacje', {
-    'classes': ('grp-collapse grp-closed', ),
+    'classes': ('grp-collapse grp-closed',),
     'fields': MODEL_Z_ISSN +
               MODEL_Z_WWW +
               MODEL_Z_PUBMEDID +
@@ -207,7 +207,7 @@ EKSTRA_INFORMACJE_WYDAWNICTWO_ZWARTE_FIELDSET = ('Ekstra informacje', {
 })
 
 EKSTRA_INFORMACJE_DOKTORSKA_HABILITACYJNA_FIELDSET = ('Ekstra informacje', {
-    'classes': ('grp-collapse grp-closed', ),
+    'classes': ('grp-collapse grp-closed',),
     'fields': MODEL_Z_WWW +
               MODEL_Z_PUBMEDID +
               MODEL_Z_DOI +
@@ -215,17 +215,16 @@ EKSTRA_INFORMACJE_DOKTORSKA_HABILITACYJNA_FIELDSET = ('Ekstra informacje', {
 })
 
 
-
 def js_openwin(url, handle, options):
     options = ",".join(["%s=%s" % (a, b) for a, b in list(options.items())])
     d = dict(url=url, handle=handle, options=options)
     return "window.open(\'%(url)s\','\%(handle)s\',\'%(options)s\')" % d
 
+
 NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW = {
     models.TextField: {
-        'widget': Textarea(attrs={'rows':2, 'cols': 90, 'class': 'charmap'})},
-    }
-
+        'widget': Textarea(attrs={'rows': 2, 'cols': 90, 'class': 'charmap'})},
+}
 
 
 class DomyslnyStatusKorektyMixin:
@@ -235,3 +234,25 @@ class DomyslnyStatusKorektyMixin:
         initial=lambda: Status_Korekty.objects.first()
     )
 
+
+class Wycinaj_W_z_InformacjiMixin:
+    def clean_informacje(self):
+        i = self.cleaned_data.get("informacje")
+        if i:
+            l = i.lower()
+            n = 0
+            if l.startswith("w:"):
+                n = 2
+            if l.startswith("w :"):
+                n = 3
+            if n:
+                return i[n:].strip()
+        return i
+
+
+class LimitingFormset(BaseInlineFormSet):
+    def get_queryset(self):
+        if not hasattr(self, '_queryset_limited'):
+            qs = super(LimitingFormset, self).get_queryset()
+            self._queryset_limited = qs[:100]
+        return self._queryset_limited
