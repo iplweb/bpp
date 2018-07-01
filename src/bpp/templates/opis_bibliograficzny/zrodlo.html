@@ -1,8 +1,12 @@
-{% load prace %}{% if praca.zrodlo %} <i>{{ praca.zrodlo.skrot }}</i> {% endif %}
-{% if praca.informacje %}
- {{ praca.informacje|default:""|znak_na_poczatku:" W: "|safe }}
+{% load prace %}
+{% if praca.zrodlo %}
+    <i>{{ praca.zrodlo.skrot }}</i> {{ praca.informacje|default:""|safe }}
 {% else %}
-{% if praca.wydawnictwo_nadrzedne.tytul_oryginalny %}
- W: {{ praca.wydawnictwo_nadrzedne.tytul_oryginalny }}.
-{% endif %}
+    {% if praca.informacje %}
+        {{ praca.informacje|default:""|znak_na_poczatku:" W: "|safe }}
+    {% else %}
+        {% if praca.wydawnictwo_nadrzedne.tytul_oryginalny %}
+            W: {{ praca.wydawnictwo_nadrzedne.tytul_oryginalny }}.
+        {% endif %}
+    {% endif %}
 {% endif %}
