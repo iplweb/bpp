@@ -5,7 +5,11 @@ Małe klasy pomocnicze dla całego systemu
 """
 
 from django.db import models
+from django.db.models.signals import post_migrate
+from django.dispatch import receiver
 from django.utils import six
+from mptt.fields import TreeForeignKey
+from mptt.models import MPTTModel
 
 from bpp.models import const
 from bpp.models.abstract import ModelZNazwa, NazwaISkrot
@@ -54,8 +58,8 @@ class Charakter_PBN(models.Model):
         return self.opis
 
 
-class Charakter_Formalny(NazwaISkrot):
-    """Bazowa klasa dla charakterów formalnych. """
+class Charakter_Formalny(NazwaISkrot, MPTTModel):
+    parent = TreeForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='children')
 
     publikacja = models.BooleanField(help_text="""Jest charakterem dla publikacji""", default=False)
     streszczenie = models.BooleanField(help_text="""Jest charakterem dla streszczeń""", default=False)
@@ -84,6 +88,19 @@ class Charakter_Formalny(NazwaISkrot):
         app_label = 'bpp'
         verbose_name = "charakter formalny"
         verbose_name_plural = 'charaktery formalne'
+
+    class MPTTMeta:
+        order_insertion_by = ['nazwa']
+
+
+@receiver(post_migrate)
+def rebuild_handler(sender, **kwargs):
+    # Ponieważ przechodzimy z modelu bez-MPTT na model z-MPTT, wypełniamy
+    # mu defaultowe wartości dla poziomu, parents, itp. Stąd też, po migracji
+    # potrzebne jest przebudowanie obiektów, aby relacje rodzic-dziecko
+    # realizowane byłyprawidłowo
+    if sender.name == "bpp":
+        Charakter_Formalny.objects.rebuild()
 
 
 class Status_Korekty(ModelZNazwa):

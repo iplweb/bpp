@@ -1,59 +1,41 @@
 # -*- encoding: utf-8 -*-
-from dal.forms import FutureModelForm
-from dal_queryset_sequence.fields import QuerySetSequenceModelField
-from dal_select2_queryset_sequence.widgets import \
-    QuerySetSequenceSelect2
-from queryset_sequence import QuerySetSequence
-
-from bpp.models import Rodzaj_Prawa_Patentowego, Zewnetrzna_Baza_Danych
-from .core import RestrictDeletionToAdministracjaGroupAdmin, \
-    RestrictDeletionToAdministracjaGroupMixin
-from ..models.nagroda import OrganPrzyznajacyNagrody
 
 from dal import autocomplete
-
-from django import forms
 from django.contrib import admin
-from django.forms.widgets import HiddenInput
-
 from django.contrib.auth.forms import UserCreationForm
-from django.utils.safestring import mark_safe
 from multiseek.models import SearchForm
 
+from bpp.models import Rodzaj_Prawa_Patentowego, Zewnetrzna_Baza_Danych
+# Proste tabele
+from bpp.models.openaccess import Tryb_OpenAccess_Wydawnictwo_Ciagle, Tryb_OpenAccess_Wydawnictwo_Zwarte, \
+    Czas_Udostepnienia_OpenAccess, Licencja_OpenAccess, Wersja_Tekstu_OpenAccess
+from bpp.models.zrodlo import Redakcja_Zrodla
+from .autor import AutorAdmin  # noqa
+from .core import BaseBppAdmin, CommitedModelAdmin, \
+    KolumnyZeSkrotamiMixin, generuj_inline_dla_autorow
+from .core import RestrictDeletionToAdministracjaGroupAdmin, \
+    RestrictDeletionToAdministracjaGroupMixin
+from .dyscyplina_naukowa import Dyscyplina_NaukowaAdmin  # noqa
 from .filters import LiczbaZnakowFilter, CalkowitaLiczbaAutorowFilter, \
     JednostkaFilter, PBNIDObecnyFilter, \
     PeselMD5ObecnyFilter, OrcidObecnyFilter
 from .helpers import *
-from ..models import Jezyk, Typ_KBN, Uczelnia, Wydzial, \
-    Jednostka, Tytul, Autor, Autor_Jednostka, Funkcja_Autora, Rodzaj_Zrodla, \
-    Zrodlo, Punktacja_Zrodla, Typ_Odpowiedzialnosci, Status_Korekty, \
-    Zrodlo_Informacji, Wydawnictwo_Ciagle, Charakter_Formalny, \
-    Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor, Praca_Doktorska, \
-    Praca_Habilitacyjna, Patent, Patent_Autor, BppUser # Publikacja_Habilitacyjna
-from ..models.system import Charakter_PBN
-
-from .core import BaseBppAdmin, CommitedModelAdmin, \
-    KolumnyZeSkrotamiMixin, generuj_inline_dla_autorow
-from .wydawnictwo_zwarte import Wydawnictwo_ZwarteAdmin_Baza, Wydawnictwo_ZwarteAdmin
-from .wydawnictwo_ciagle import Wydawnictwo_CiagleAdmin
-from .konferencja import KonferencjaAdmin
-from .wydzial import WydzialAdmin
 from .jednostka import JednostkaAdmin  # NOQA
-from .uczelnia import UczelniaAdmin  # NOQA
-from .seria_wydawnicza import Seria_WydawniczaAdmin
+from .konferencja import KonferencjaAdmin
 from .praca_doktorska import Praca_DoktorskaAdmin  # noqa
 from .praca_habilitacyjna import Praca_HabilitacyjnaAdmin  # noqa
-from .patent import Patent  # noqa
+from .seria_wydawnicza import Seria_WydawniczaAdmin
+from .uczelnia import UczelniaAdmin  # NOQA
+from .charakter_formalny import Charakter_FormalnyAdmin  # noqa
+from .wydawnictwo_ciagle import Wydawnictwo_CiagleAdmin
+from .wydawnictwo_zwarte import Wydawnictwo_ZwarteAdmin_Baza, Wydawnictwo_ZwarteAdmin
+from .wydzial import WydzialAdmin
+from ..models import Jezyk, Typ_KBN, Tytul, Autor, Funkcja_Autora, Rodzaj_Zrodla, \
+    Zrodlo, Punktacja_Zrodla, Typ_Odpowiedzialnosci, Status_Korekty, \
+    Zrodlo_Informacji, BppUser  # Publikacja_Habilitacyjna
+from ..models.nagroda import OrganPrzyznajacyNagrody
+from ..models.system import Charakter_PBN
 
-from .dyscyplina_naukowa import Dyscyplina_NaukowaAdmin  # noqa
-from .autor import AutorAdmin  # noqa
-
-# Proste tabele
-from bpp.models.openaccess import Tryb_OpenAccess_Wydawnictwo_Ciagle, Tryb_OpenAccess_Wydawnictwo_Zwarte, \
-    Czas_Udostepnienia_OpenAccess, Licencja_OpenAccess, Wersja_Tekstu_OpenAccess
-from bpp.models.struktura import Jednostka_Wydzial
-from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
-from bpp.models.zrodlo import Redakcja_Zrodla
 
 class JezykAdmin(RestrictDeletionToAdministracjaGroupAdmin):
     list_display = ['nazwa', 'skrot', 'skrot_dla_pbn']
@@ -83,25 +65,15 @@ class Charakter_PBNAdmin(RestrictDeletionToAdministracjaGroupMixin,
     readonly_fields = ['identyfikator', 'wlasciwy_dla', 'opis', 'help_text']
 
     def charaktery_formalne(self, rec):
-        return ", ".join(["%s (%s)" % (x.nazwa, x.skrot)for x in
+        return ", ".join(["%s (%s)" % (x.nazwa, x.skrot) for x in
                           rec.charakter_formalny_set.all()])
 
     def typy_kbn(self, rec):
         return ", ".join(["%s (%s)" % (x.nazwa, x.skrot) for x in
-                                       rec.typ_kbn_set.all()])
+                          rec.typ_kbn_set.all()])
+
 
 admin.site.register(Charakter_PBN, Charakter_PBNAdmin)
-
-
-class Charakter_FormalnyAdmin(RestrictDeletionToAdministracjaGroupMixin, CommitedModelAdmin):
-    list_display = ['skrot', 'nazwa', 'publikacja', 'streszczenie', 'nazwa_w_primo',
-                    'charakter_pbn', 'artykul_pbn', 'ksiazka_pbn', 'rozdzial_pbn']
-    list_filter = ('publikacja', 'streszczenie', 'nazwa_w_primo', 'charakter_pbn',
-                   'artykul_pbn', 'ksiazka_pbn', 'rozdzial_pbn')
-    search_fields = ['skrot', 'nazwa']
-
-
-admin.site.register(Charakter_Formalny, Charakter_FormalnyAdmin)
 
 
 class NazwaISkrotAdmin(RestrictDeletionToAdministracjaGroupMixin, CommitedModelAdmin):
@@ -111,8 +83,10 @@ class NazwaISkrotAdmin(RestrictDeletionToAdministracjaGroupMixin, CommitedModelA
 
 admin.site.register(Tytul, NazwaISkrotAdmin)
 
+
 class Typ_KBNAdmin(RestrictDeletionToAdministracjaGroupAdmin, CommitedModelAdmin):
     list_display = ['nazwa', 'skrot', 'artykul_pbn', 'charakter_pbn']
+
 
 admin.site.register(Typ_KBN, Typ_KBNAdmin)
 
@@ -158,8 +132,6 @@ admin.site.register(Wersja_Tekstu_OpenAccess, Wersja_Tekstu_OpenAccessAdmin)
 admin.site.register(Typ_Odpowiedzialnosci, Typ_OdpowiedzialnosciAdmin)
 
 
-
-
 # Źródła indeksowane
 
 class Punktacja_ZrodlaForm(forms.ModelForm):
@@ -178,7 +150,6 @@ class Punktacja_ZrodlaInline(admin.TabularInline):
     extra = 1
 
 
-
 class Redakcja_ZrodlaForm(forms.ModelForm):
     redaktor = forms.ModelChoiceField(
         queryset=Autor.objects.all(),
@@ -193,6 +164,7 @@ class Redakcja_ZrodlaInline(admin.TabularInline):
     model = Redakcja_Zrodla
     extra = 1
     form = Redakcja_ZrodlaForm
+
     class Meta:
         fields = "__all__"
 
@@ -258,8 +230,8 @@ class BppUserCreationForm(UserCreationForm):
         except BppUser.DoesNotExist:
             return username
         raise forms.ValidationError(
-                self.error_messages['duplicate_username'],
-                code='duplicate_username',
+            self.error_messages['duplicate_username'],
+            code='duplicate_username',
         )
 
 
