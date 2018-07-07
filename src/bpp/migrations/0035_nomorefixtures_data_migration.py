@@ -6,11 +6,15 @@ from django.db import migrations
 from django.db.migrations.operations.special import RunPython
 
 from bpp.migration_util import load_historic_fixture
+from bpp.util import get_fixture
 
 
 def load_fixtures(apps, schema_editor):
+    Charakter_Formalny = apps.get_model("bpp", "Charakter_Formalny")
+    for elem in get_fixture("charakter_formalny").values():
+        Charakter_Formalny.objects.create(**elem)
+
     for fixture in [
-        "charakter_formalny.json",
         "funkcja_autora.json",
         "jezyk.json",
         "plec.json",
