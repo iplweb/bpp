@@ -10,6 +10,9 @@ dev
 * tytuł naukowy autora nie wchodzi do elementu opisu bibliograficznego rekordu
   (#633)
 
+* możliwość określania drzewiastej struktury dla charakterów formalnych - określanie
+  charakterów nadrzędnych, wraz z możliwością wyszukiwania z uwwzględnieniem
+  tej struktury (#630)
 
 1.0.23
 ------
