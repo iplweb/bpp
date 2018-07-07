@@ -59,7 +59,10 @@ class Charakter_PBN(models.Model):
 
 
 class Charakter_Formalny(NazwaISkrot, MPTTModel):
-    parent = TreeForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='children')
+    parent = TreeForeignKey(
+        'self',
+        verbose_name="Charakter nadrzędny",
+        on_delete=models.CASCADE, null=True, blank=True, related_name='children')
 
     publikacja = models.BooleanField(help_text="""Jest charakterem dla publikacji""", default=False)
     streszczenie = models.BooleanField(help_text="""Jest charakterem dla streszczeń""", default=False)
