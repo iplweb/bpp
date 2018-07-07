@@ -21,7 +21,8 @@ from .filters import LiczbaZnakowFilter, CalkowitaLiczbaAutorowFilter, \
     PeselMD5ObecnyFilter, OrcidObecnyFilter
 from .helpers import *
 from .jednostka import JednostkaAdmin  # NOQA
-from .konferencja import KonferencjaAdmin
+from .konferencja import KonferencjaAdmin  # noqa
+from .patent import Patent_Admin  # noqa
 from .praca_doktorska import Praca_DoktorskaAdmin  # noqa
 from .praca_habilitacyjna import Praca_HabilitacyjnaAdmin  # noqa
 from .seria_wydawnicza import Seria_WydawniczaAdmin
