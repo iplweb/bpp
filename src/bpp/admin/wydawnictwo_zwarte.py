@@ -4,10 +4,11 @@
 
 from dal import autocomplete
 from django.contrib import admin
+from mptt.forms import TreeNodeChoiceField
 
 from bpp.admin.filters import LiczbaZnakowFilter, CalkowitaLiczbaAutorowFilter
 from bpp.admin.helpers import *
-from bpp.models import Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor
+from bpp.models import Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor, Charakter_Formalny
 from bpp.models.konferencja import Konferencja
 from bpp.models.seria_wydawnicza import Seria_Wydawnicza
 from .core import CommitedModelAdmin, generuj_inline_dla_autorow, \
@@ -97,8 +98,12 @@ class Wydawnictwo_ZwarteForm(Wycinaj_W_z_InformacjiMixin, forms.ModelForm):
         widget=autocomplete.ModelSelect2(
             url='bpp:seria-wydawnicza-autocomplete',
             attrs=dict(style="width: 746px;"),
-
         )
+    )
+
+    charakter_formalny = TreeNodeChoiceField(
+        required=True,
+        queryset=Charakter_Formalny.objects.all()
     )
 
     status_korekty = DomyslnyStatusKorektyMixin.status_korekty
