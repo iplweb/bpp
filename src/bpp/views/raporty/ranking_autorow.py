@@ -75,6 +75,10 @@ class RankingAutorow(ExportMixin, SingleTableView):
     def rozbij_na_wydzialy(self):
         return self.request.GET.get('rozbij_na_jednostki', "True") == 'True'
 
+    @cached_property
+    def tylko_afiliowane(self):
+        return self.request.GET.get('tylko_afiliowane', "False") == 'True'
+
     def get_queryset(self):
         qset = Sumy.objects.all()
         qset = qset.filter(
@@ -84,6 +88,10 @@ class RankingAutorow(ExportMixin, SingleTableView):
         wydzialy = self.get_wydzialy()
         if wydzialy:
             qset = qset.filter(jednostka__wydzial__in=wydzialy)
+
+        if self.tylko_afiliowane:
+            qset = qset.filter(jednostka__skupia_pracownikow=True)
+            qset = qset.filter(afiliuje=True)
 
         if self.rozbij_na_wydzialy:
             qset = qset.prefetch_related("jednostka__wydzial").select_related(

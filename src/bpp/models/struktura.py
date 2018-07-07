@@ -253,7 +253,8 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID):
 
     widoczna = models.BooleanField(default=True, db_index=True)
     wchodzi_do_raportow = models.BooleanField(
-        "Wchodzi do raportów", default=True, db_index=True)
+        "Wchodzi do raportów", default=True, db_index=True,
+        help_text="Jeżeli odznaczone, prace z jednostki nie sumują się w rankingu autorów.")
     email = models.EmailField("E-mail", max_length=128, blank=True, null=True)
     www = models.URLField("WWW", max_length=1024, blank=True, null=True)
 
