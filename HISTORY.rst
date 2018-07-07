@@ -5,26 +5,11 @@ Historia zmian
 dev
 ---
 
-*
-
-1.0.25-dev
--------------
-
-*
-
-1.0.24-dev
----
-
-*
-
-1.0.25-dev
------------------------
-
-*
+* mniejsza wielkość tytułu na wydruku z opcji "Wyszukiwanie"
 
 
 1.0.23
----------------------------------
+------
 
 * możliwość skonfigurowania, czy na wydrukach z "Wyszukiwania" ma pojawiać się logo
   i nazwa uczelni oraz parametry zapytania (#603)
