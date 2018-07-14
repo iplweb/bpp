@@ -25,7 +25,7 @@ services:
       - "9090:80"
 
   python:
-    image: mpasternak79/django-bpp:python-3.6
+    image: mpasternak79/python-3.6
     build:
       context: docker
       dockerfile: Dockerfile-python
@@ -41,7 +41,6 @@ services:
     build:
       context: docker
       dockerfile: Dockerfile-node
-    image: mpasternak79/django-bpp:node-9.1.0-20171112
     volumes:
       - node_modules:/usr/src/app/node_modules
       - build:/usr/src/app/build/
@@ -50,7 +49,7 @@ services:
       - .:/usr/src/app
       
   test:
-    image: mpasternak79/django-bpp:test-0.11.110
+    image: mpasternak79/python-3.6
     build:
       context: docker
       dockerfile: Dockerfile-test
@@ -67,22 +66,6 @@ services:
       - selenium
       - rabbitmq
       - nginx_http_push
-
-# prod == work in progress
-#
-#  prod:
-#    image: mpasternak79/django-bpp:prod-mpasternak79/django-bpp:prod-1.0.25-dev
-#    build:
-#      context: docker
-#      dockerfile: Dockerfile-prod
-#    env_file: docker/env.prod.txt
-#    ports:
-#      - "8000:8000"
-#    depends_on:
-#      - db
-#      - redis
-#      - rabbitmq
-#      - nginx_http_push
 
 volumes:
   node_modules:
