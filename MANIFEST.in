@@ -22,6 +22,7 @@ recursive-exclude src/django_bpp/staticroot/lodash *
 recursive-exclude src/django_bpp/staticroot/nise *
 recursive-exclude src/django_bpp/staticroot/sinon *
 recursive-exclude src/django_bpp/staticroot/globule *
+exclude src/django_bpp/staticroot/sitemap-*
 
 recursive-include src/*/locale/* *mo *po
 
