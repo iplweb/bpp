@@ -1,7 +1,7 @@
 Django==1.11.12
 psycopg2==2.7.1
 
-django-flexible-reports==0.2.3
+django-flexible-reports==0.2.7
 
 django-group-by==0.3.1
 
@@ -25,7 +25,7 @@ unidecode==0.4.20
 django-cookie-law==1.0.13
 
 pyoai==2.5.0
-moai==2.0.0
+moai-iplweb==2.0.0
 
 
 django-crispy-forms==1.7.0
