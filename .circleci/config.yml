@@ -27,7 +27,7 @@ jobs:
           
       - run:
           name: docekr-assets
-          command: make _docker-assets
+          command: make docker-assets
 
       - run:
           name: Python tests
