@@ -22,10 +22,6 @@ jobs:
           command: make docker-up
 
       - run:
-          name: docker-yarn
-          command: make docker-yarn
-          
-      - run:
           name: docker-grunt
           command: make docker-grunt
           
