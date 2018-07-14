@@ -133,8 +133,9 @@ cleanup-pycs:
 docker-up:
 	docker-compose up -d redis rabbitmq selenium nginx_http_push db
 
-docker-python-tests: requirements.txt
+docker-python-tests: 
 	docker-compose up -d test
+	docker-compose exec test /bin/bash -c "cd /usr/src/app && make requirements.txt"
 	docker-compose exec test /bin/bash -c "cd /usr/src/app && tox"
 
 docker-tests: docker-assets docker-python-tests docker-js-tests
