@@ -43,7 +43,9 @@ class compile_translations(Command):
 
 
 class build(_build):
-    sub_commands = [('compile_translations', None)] + _build.sub_commands
+    sub_commands = [
+        ('compile_translations', None),
+    ] + _build.sub_commands
 
 
 class install_lib(_install_lib):
@@ -52,7 +54,7 @@ class install_lib(_install_lib):
         _install_lib.run(self)
 
 setup(
-    name='bpp',
+    name='bpp-iplweb',
     version='1.0.25-dev',
     description="System informatyczny do zarządzania bibliografią publikacji pracowników naukowych",
     long_description=readme + '\n\n' + history,
@@ -60,6 +62,7 @@ setup(
     author_email='michal.dtz@gmail.com',
     url='http://bpp.iplweb.pl/',
     packages=find_packages("src"),
+    install_requires=open("requirements.txt").read().splitlines(),
     package_dir={
         '': 'src'
         },
@@ -85,7 +88,6 @@ setup(
     cmdclass={
         'build': build,
         'install_lib': install_lib,
-        'compile_translations': compile_translations
+        'compile_translations': compile_translations,
     }
-
 )
