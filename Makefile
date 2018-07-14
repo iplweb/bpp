@@ -54,8 +54,10 @@ assets: yarn _assets
 
 assets-production: yarn-production _assets
 
-_bdist_wheel:
+requirements.txt:
 	pipenv lock -r > requirements.txt
+
+_bdist_wheel: requirements.txt
 	${PYTHON} setup.py -q bdist_wheel
 
 # cel: bdist_wheel
@@ -131,7 +133,7 @@ cleanup-pycs:
 docker-up:
 	docker-compose up -d redis rabbitmq selenium nginx_http_push db
 
-docker-python-tests:
+docker-python-tests: requirements.txt
 	docker-compose up -d test
 	docker-compose exec test /bin/bash -c "cd /usr/src/app && tox"
 
