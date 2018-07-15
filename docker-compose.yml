@@ -50,7 +50,7 @@ services:
       - .:/usr/src/app
       
   test:
-    image: mpasternak79/python-3.6
+    image: mpasternak79/bpp-test-3.6
     build:
       context: docker
       dockerfile: Dockerfile-test
