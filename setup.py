@@ -53,6 +53,11 @@ class install_lib(_install_lib):
         self.run_command('compile_translations')
         _install_lib.run(self)
 
+        
+def requirements(fn="requirements.txt"):
+    return [l for l in open(fn).read().splitlines() if l and l[0] not in "#-"]
+
+
 setup(
     name='bpp-iplweb',
     version='1.0.25-dev',
@@ -62,7 +67,7 @@ setup(
     author_email='michal.dtz@gmail.com',
     url='http://bpp.iplweb.pl/',
     packages=find_packages("src"),
-    install_requires=open("requirements.txt").read().splitlines(),
+    install_requires=requirements(),
     package_dir={
         '': 'src'
         },
