@@ -9,13 +9,9 @@ jobs:
           name: Setup environment for CircleCI
           command: make circle-env
 
-#      - run:
-#          name: Pull docker images from hub
-#          command: make _circleci_pull
-          
       - run:
-          name: Build docker images
-          command: docker-compose build 
+          name: Pull docker images from hub
+          command: docker-compose pull
           
       - run:
           name: Boot docker 
