@@ -54,10 +54,10 @@ assets: yarn _assets
 
 assets-production: yarn-production _assets
 
-requirements.txt:
+requirements:
 	pipenv lock -r > requirements.txt
 
-_bdist_wheel: requirements.txt
+_bdist_wheel: requirements
 	${PYTHON} setup.py -q bdist_wheel
 
 # cel: bdist_wheel
@@ -135,7 +135,7 @@ docker-up:
 
 docker-python-tests: 
 	docker-compose up -d test
-	docker-compose exec test /bin/bash -c "cd /usr/src/app && make requirements.txt"
+	docker-compose exec test /bin/bash -c "cd /usr/src/app && make requirements"
 	docker-compose exec test /bin/bash -c "cd /usr/src/app && tox"
 
 docker-tests: docker-assets docker-python-tests docker-js-tests
