@@ -144,6 +144,7 @@ docker-python-tests:
 	# komentarza, najłatwiej będzie uruchomić po prostu 'manage.py migrate'
 	# dla "głównej" bazy danych
 	docker-compose exec test /bin/bash -c "cd /usr/src/app && createdb bpp"
+	docker-compose exec test /bin/bash -c "cd /usr/src/app && pipenv install"
 	docker-compose exec test /bin/bash -c "cd /usr/src/app && python src/manage.py migrate"
 
 	docker-compose exec test /bin/bash -c "cd /usr/src/app && tox"
