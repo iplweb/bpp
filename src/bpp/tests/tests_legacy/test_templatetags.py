@@ -7,8 +7,8 @@ from django.test import TestCase
 from bpp.models import Jednostka, Wydawnictwo_Ciagle, Autor, Praca_Doktorska, Typ_Odpowiedzialnosci
 from bpp.models.system import Jezyk
 from bpp.templatetags.prace import strip_at_end, znak_na_koncu
-from bpp.tests import any_jednostka
-from bpp.tests.test_reports.util import autor_ciaglego
+from bpp.tests.util import any_jednostka
+from bpp.tests.tests_legacy.test_reports.util import autor_ciaglego
 from bpp.tests.util import any_doktorat
 
 

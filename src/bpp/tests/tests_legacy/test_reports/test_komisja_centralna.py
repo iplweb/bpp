@@ -14,7 +14,7 @@ from bpp.models.praca_habilitacyjna import Publikacja_Habilitacyjna
 from bpp.models.system import Jezyk
 from bpp.reports.komisja_centralna import RaportKomisjiCentralnej, get_queries, \
     RokHabilitacjiNiePodany, make_report_zipfile, Raport_Dla_Komisji_Centralnej
-from bpp.tests.test_reports.util import stworz_obiekty_dla_raportow
+from bpp.tests.tests_legacy.test_reports.util import stworz_obiekty_dla_raportow
 from bpp.tests.util import any_jednostka, any_autor, CURRENT_YEAR, any_ciagle, any_patent, any_zwarte, \
     any_habilitacja
 from bpp.util import Getter

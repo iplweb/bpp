@@ -4,7 +4,7 @@ from model_mommy import mommy
 from bpp.models import Autor, Jednostka, Zrodlo, Charakter_Formalny
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
 from bpp.views import autocomplete
-from ..testutil import WebTestCase
+from bpp.tests.tests_legacy.testutil import WebTestCase
 
 
 class TestAutocomplete(WebTestCase):

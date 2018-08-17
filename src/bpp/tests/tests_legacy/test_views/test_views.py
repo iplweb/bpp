@@ -14,7 +14,7 @@ from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, \
 from bpp.tests.util import any_doktorat, any_habilitacja, any_ciagle, any_autor, \
     any_jednostka
 
-from bpp.tests.testutil import UserTestCase, SuperuserTestCase
+from bpp.tests.tests_legacy.testutil import UserTestCase, SuperuserTestCase
 from bpp.util import rebuild_contenttypes
 from bpp.views.browse import AutorzyView, AutorView
 from bpp.views.utils import JsonResponse

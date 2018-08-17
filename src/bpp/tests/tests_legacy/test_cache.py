@@ -11,7 +11,7 @@ from bpp.models import Patent_Autor, Jednostka, Typ_Odpowiedzialnosci, \
     Charakter_Formalny, Jezyk, Typ_KBN, Status_Korekty, Zrodlo_Informacji, \
     Wydawnictwo_Ciagle_Autor, Uczelnia, Wydzial
 from bpp.models.cache import Rekord, with_cache, Autorzy, AutorzyView
-from bpp.tests.test_reports.util import ciagle, zwarte, autor
+from bpp.tests.tests_legacy.test_reports.util import ciagle, zwarte, autor
 from bpp.tests.util import any_ciagle, any_autor
 
 CHANGED = 'foo-123-changed'

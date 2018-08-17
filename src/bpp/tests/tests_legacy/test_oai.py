@@ -2,7 +2,7 @@
 from django.core.urlresolvers import reverse
 from bpp.models.cache import Rekord
 from bpp.tests.util import any_ciagle
-from .testutil import WebTestCase
+from bpp.tests.tests_legacy.testutil import WebTestCase
 
 
 class TestOAI(WebTestCase):

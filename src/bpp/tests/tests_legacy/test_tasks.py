@@ -4,7 +4,7 @@ from django.test import TestCase
 from bpp.models import Rekord, Charakter_Formalny
 from bpp.models.cache import with_cache
 from bpp.tasks import zaktualizuj_opis
-from bpp.tests import any_ciagle
+from bpp.tests.util import any_ciagle
 
 
 class TestTasks(TestCase):

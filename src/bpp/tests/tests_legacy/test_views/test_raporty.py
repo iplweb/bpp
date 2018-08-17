@@ -15,7 +15,7 @@ from django.utils import timezone
 from model_mommy import mommy
 
 from bpp.models import Typ_KBN, Jezyk, Charakter_Formalny, Typ_Odpowiedzialnosci
-from bpp.tests.testutil import UserTestCase, UserTransactionTestCase
+from bpp.tests.tests_legacy.testutil import UserTestCase, UserTransactionTestCase
 from bpp.tests.util import any_jednostka, any_autor, any_ciagle
 from bpp.util import rebuild_contenttypes
 from bpp.views.raporty import RaportSelector, PodgladRaportu, KasowanieRaportu

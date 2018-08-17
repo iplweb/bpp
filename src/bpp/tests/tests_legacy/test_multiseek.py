@@ -1,10 +1,8 @@
 # -*- encoding: utf-8 -*-
-from unittest.case import TestCase
 
 from django.core.urlresolvers import reverse
 
-from bpp.multiseek_registry import ZrodloQueryObject
-from .testutil import WebTestCase, UserTestCase
+from bpp.tests.tests_legacy.testutil import WebTestCase, UserTestCase
 
 
 class TestMultiseekAnonymous(WebTestCase):
