@@ -2,7 +2,7 @@
 from model_mommy import mommy
 from bpp.models import Autor, Typ_Odpowiedzialnosci, Wydawnictwo_Zwarte, \
     Wydawnictwo_Zwarte_Autor, Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor, \
-    Autor_Jednostka, Funkcja_Autora
+    Autor_Jednostka, Funkcja_Autora, Zasieg_Zrodla, Typ_KBN, Charakter_Formalny, Jezyk, Tytul
 from bpp.tests.util import any_autor
 
 
@@ -69,3 +69,34 @@ def zwarte(autor, jednostka, typ_odpowiedzialnosci, **kw):
     autor_zwartego(autor, jednostka, z, typ_odpowiedzialnosci,
                   zapisany_jako="%s %s" % (autor.nazwisko, autor.imiona[0]))
     return z
+
+
+def stworz_obiekty_dla_raportow():
+    Zasieg_Zrodla.objects.get_or_create(nazwa="krajowy")
+    Zasieg_Zrodla.objects.get_or_create(nazwa="międzynarodowy")
+
+    Typ_KBN.objects.get_or_create(skrot="000", nazwa="inne")
+    Typ_KBN.objects.get_or_create(skrot="PO", nazwa="Praca Oryginalna")
+    Typ_KBN.objects.get_or_create(skrot="PNP", nazwa="Publikacja popularnonaukowa")
+    Typ_KBN.objects.get_or_create(skrot="CR", nazwa="Opis Przypadku")
+    Typ_KBN.objects.get_or_create(skrot="PP", nazwa="Praca Przeglądowa")
+    Typ_KBN.objects.get_or_create(skrot="PW", nazwa="Praca wieloośrodkowa")
+
+    Charakter_Formalny.objects.get_or_create(skrot="AC", nazwa="Artykuł w czasopismie")
+    Charakter_Formalny.objects.get_or_create(skrot="KSZ", nazwa="Książka w języku obcym")
+    Charakter_Formalny.objects.get_or_create(skrot="KSP", nazwa="Książka w języku polskim")
+    Charakter_Formalny.objects.get_or_create(skrot="ZSZ", nazwa="Streszczenie zjazdowe konferencji międzynarodowej")
+    Charakter_Formalny.objects.get_or_create(skrot="PSZ", nazwa="Polskie streszczenie zjazdowe")
+    Charakter_Formalny.objects.get_or_create(skrot="H", nazwa="Praca habilitacyjna")
+    Charakter_Formalny.objects.get_or_create(skrot="D", nazwa="Praca doktorska")
+    Charakter_Formalny.objects.get_or_create(skrot="Supl", nazwa="Publikacja w suplemencie")
+    Charakter_Formalny.objects.get_or_create(skrot="L", nazwa="List do redakcji")
+    Charakter_Formalny.objects.get_or_create(skrot="PAT", nazwa="Patent")
+
+    Jezyk.objects.get_or_create(skrot="ang.", nazwa="angielski")
+    Jezyk.objects.get_or_create(skrot="pol.", nazwa="polski")
+
+    Typ_Odpowiedzialnosci.objects.get_or_create(skrot="aut.", nazwa="autor")
+    Typ_Odpowiedzialnosci.objects.get_or_create(skrot="red.", nazwa="redaktor")
+
+    Tytul.objects.get_or_create(skrot='dr', nazwa='doktor')

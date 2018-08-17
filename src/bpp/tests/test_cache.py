@@ -1,24 +1,18 @@
 # -*- encoding: utf-8 -*-
 import datetime
-from decimal import Decimal
 
-from django.core.management import call_command
-from django.db import transaction, DEFAULT_DB_ALIAS, connections
-
-from django.test import TransactionTestCase, TestCase
-from model_mommy import mommy
 from django.conf import settings
+from django.core.management import call_command
+from django.test import TestCase
+from model_mommy import mommy
 
-from bpp.tests.util import any_uczelnia, any_wydzial, any_doktorat
-
-from bpp.models import Autor, Patent_Autor, Jednostka, Typ_Odpowiedzialnosci, \
+from bpp.models import Patent_Autor, Jednostka, Typ_Odpowiedzialnosci, \
     Patent, Praca_Doktorska, Praca_Habilitacyjna, Tytul, Zrodlo, \
     Charakter_Formalny, Jezyk, Typ_KBN, Status_Korekty, Zrodlo_Informacji, \
-    Wydawnictwo_Ciagle_Autor, Uczelnia, Wydzial, Wydawnictwo_Zwarte_Autor, Wydawnictwo_Ciagle
+    Wydawnictwo_Ciagle_Autor, Uczelnia, Wydzial
 from bpp.models.cache import Rekord, with_cache, Autorzy, AutorzyView
 from bpp.tests.test_reports.util import ciagle, zwarte, autor
-from bpp.tests.util import any_ciagle, any_jednostka, any_autor, any_zrodlo
-from bpp.models import cache
+from bpp.tests.util import any_ciagle, any_autor
 
 CHANGED = 'foo-123-changed'
 
@@ -33,6 +27,15 @@ def clean_dict(ret):
     del ret['ostatnio_zmieniony']
     del ret['tytul_oryginalny_sort']
     return ret
+
+
+class LoadFixturesMixin:
+    def loadFixtures(self):
+        for db_name in self._databases_names(include_mirrors=False):
+            if hasattr(self, 'fixtures'):
+                call_command('loaddata', *self.fixtures,
+                             **{'verbosity': 0, 'database': db_name,
+                                'skip_validation': True})
 
 
 class TestCacheMixin:
@@ -163,6 +166,15 @@ class TestCacheRebuildBug(TestCase):
 
 
 class TestCacheSimple(TestCacheMixin, TestCase):
+    def setUp(self):
+        Typ_Odpowiedzialnosci.objects.get_or_create(skrot='aut.', nazwa='autor')
+        Charakter_Formalny.objects.get_or_create(skrot='PAT')
+        for skrot, nazwa in [('ang.', 'angielski'), ('fr.', 'francuski')]:
+            Jezyk.objects.get_or_create(skrot=skrot, nazwa=nazwa)
+        for klass in [Typ_KBN, Zrodlo_Informacji, Status_Korekty]:
+            mommy.make(klass)
+
+        super(TestCacheSimple, self).setUp()
 
     @with_cache
     def test_get_original_object(self):
@@ -185,7 +197,6 @@ class TestCacheSimple(TestCacheMixin, TestCase):
             model.save()
             self.assertEqual(Rekord.objects.get_original(model).tytul_oryginalny, T2)
 
-
     def assertInstanceEquals(self, instance, values_dict):
         for key, value in list(values_dict.items()):
             instance_value = getattr(instance, key)
@@ -195,7 +206,7 @@ class TestCacheSimple(TestCacheMixin, TestCase):
 
     @with_cache
     def test_tytul_sorted_version(self):
-        for elem in [self.d, self.h, self.c, self.z]: #  self.p]:
+        for elem in [self.d, self.h, self.c, self.z]:  # self.p]:
             elem.tytul_oryginalny = "The 'APPROACH'"
             elem.jezyk = Jezyk.objects.get(skrot='ang.')
             elem.save()
@@ -208,37 +219,16 @@ class TestCacheSimple(TestCacheMixin, TestCase):
             elem.jezyk = Jezyk.objects.get(skrot='fr.')
             elem.save()
 
-            #elem = elem.__class__.objects.get(pk=elem.pk) #reload
-            #self.assertEquals(elem.tytul_oryginalny_sort, "test")
+            # elem = elem.__class__.objects.get(pk=elem.pk) #reload
+            # self.assertEquals(elem.tytul_oryginalny_sort, "test")
 
             self.assertEqual(
                 Rekord.objects.get_original(elem).tytul_oryginalny_sort,
                 'test')
 
-class LoadFixturesMixin:
-    def _databases_names(self, include_mirrors=True):
-        # If the test case has a multi_db=True flag, act on all databases,
-        # including mirrors or not. Otherwise, just on the default DB.
-        if getattr(self, 'multi_db', False):
-            return [alias for alias in connections
-                    if include_mirrors or not connections[alias].settings_dict[
-                    'TEST_MIRROR']]
-        else:
-            return [DEFAULT_DB_ALIAS]
 
-    def loadFixtures(self):
-        for db_name in self._databases_names(include_mirrors=False):
-            if hasattr(self, 'fixtures'):
-                call_command('loaddata', *self.fixtures,
-                             **{'verbosity': 0, 'database': db_name,
-                                'skip_validation': True})
-
-
-class TestCacheZapisani(TestCase):
-    # fixtures = [
-    #     'typ_odpowiedzialnosci.json', 'tytul.json', 'zrodlo_informacji.json',
-    #     'charakter_formalny.json', 'status_korekty.json', 'typ_kbn.json',
-    #     'jezyk.json']
+class TestCacheZapisani(LoadFixturesMixin, TestCase):
+    fixtures = ['typ_odpowiedzialnosci.json']
 
     def test_zapisani_wielu(self):
         aut = any_autor("Kowalski", "Jan")
@@ -257,7 +247,6 @@ class TestCacheZapisani(TestCase):
                 kolejnosc=kolejnosc
             )
 
-
         Rekord.objects.full_refresh()
         c = Rekord.objects.get_original(wyd)
 
@@ -265,12 +254,12 @@ class TestCacheZapisani(TestCase):
         # zapisywane jest nie nazwisko z pól 'zapisany_jako' w bazie danych,
         # a oryginalne
         self.assertEqual(c.opis_bibliograficzny_autorzy_cache,
-                          ['Kowalski Jan', 'Nowak Jan'])
+                         ['Kowalski Jan', 'Nowak Jan'])
 
         # Upewnij się, że pole 'opis_bibliograficzny_zapisani_autorzy_cache'
         # zapisywane jest prawidłowo
         self.assertEqual(c.opis_bibliograficzny_zapisani_autorzy_cache,
-                          'FOO BAR, FOO BAR')
+                         'FOO BAR, FOO BAR')
 
     def test_zapisani_jeden(self):
         aut = any_autor("Kowalski", "Jan")
@@ -285,16 +274,15 @@ class TestCacheZapisani(TestCase):
 
         self.assertEqual(c.opis_bibliograficzny_zapisani_autorzy_cache, 'Kowalski Jan')
 
-class TestMinimalCachingProblem(TestCase):
-    # fixtures = [
-    #     "status_korekty.json",
-    #     "charakter_formalny.json",
-    #     "jezyk.json",
-    #     "typ_odpowiedzialnosci.json"]
+
+class TestMinimalCachingProblem(LoadFixturesMixin, TestCase):
+    fixtures = [
+        "status_korekty.json",
+        "jezyk.json",
+        "typ_odpowiedzialnosci.json"]
 
     @with_cache
     def test_tworzenie(self):
-
         self.j = mommy.make(Jednostka)
         self.a = any_autor()
 
@@ -310,7 +298,6 @@ class TestMinimalCachingProblem(TestCase):
 
     @with_cache
     def test_usuwanie(self):
-
         self.j = mommy.make(Jednostka)
         self.a = any_autor()
 

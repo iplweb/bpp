@@ -35,6 +35,10 @@ class TestWydzial(TestCase):
 
 
 class TestJednostka(TestCase):
+    def setUp(self):
+        Typ_Odpowiedzialnosci.objects.get_or_create(nazwa="autor", skrot="aut.")
+        Funkcja_Autora.objects.get_or_create(nazwa='kierownik', skrot="kier.")
+
     def test_jednostka(self):
         w = any_wydzial(skrot="BAR")
         j = any_jednostka(nazwa="foo", wydzial_skrot="BAR")
@@ -210,6 +214,11 @@ class TestAutor(TestCase):
 
 
 class TestAutor_Jednostka(TestCase):
+    def setUp(self):
+        Typ_Odpowiedzialnosci.objects.get_or_create(nazwa="autor", skrot="aut.")
+        Funkcja_Autora.objects.get_or_create(skrot="kier.", nazwa="kierownik")
+
+
     def test_autor_jednostka(self):
         f = Funkcja_Autora.objects.get(skrot="kier.")
         a = mommy.make(Autor, imiona='Omg', nazwisko='Lol', tytul=None)
@@ -308,6 +317,11 @@ class TestZrodlo(TestCase):
 
 class TestRedakcjaZrodla(TestCase):
     # fixtures = ['plec.json']
+    def setUp(self):
+        Typ_Odpowiedzialnosci.objects.get_or_create(nazwa="autor", skrot="aut.")
+        Plec.objects.get_or_create(skrot='M', nazwa="mężczyzna")
+        Plec.objects.get_or_create(skrot='K', nazwa="kobieta")
+        Tytul.objects.get_or_create(skrot='dr')
 
     def test_redakcja_zrodla(self):
         a = mommy.make(
@@ -359,6 +373,11 @@ class TestAbstract(TestCase):
 
 
 class TestTworzenieModeliAutorJednostka(TestCase):
+    def setUp(self):
+        Typ_Odpowiedzialnosci.objects.get_or_create(
+            nazwa="autor", skrot="aut."
+        )
+
     def test_tworzenie_modeli_autor_jednostka(self):
         a = any_autor()
         j = any_jednostka()

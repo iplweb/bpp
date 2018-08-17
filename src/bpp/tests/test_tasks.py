@@ -8,7 +8,8 @@ from bpp.tests import any_ciagle
 
 
 class TestTasks(TestCase):
-    # fixtures = ["charakter_formalny.json", ]
+    def setUp(self):
+        Charakter_Formalny.objects.get_or_create(skrot='ZSZ', nazwa="Streszczenie zjazdowe konferencji międzynarodowej")
 
     def test_zaktualizuj_opis(self):
 

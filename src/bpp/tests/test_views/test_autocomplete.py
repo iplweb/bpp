@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
 from model_mommy import mommy
 
-from bpp.models import Autor, Jednostka, Zrodlo
+from bpp.models import Autor, Jednostka, Zrodlo, Charakter_Formalny
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
 from bpp.views import autocomplete
 from ..testutil import WebTestCase
@@ -9,6 +9,9 @@ from ..testutil import WebTestCase
 
 class TestAutocomplete(WebTestCase):
     def test_Wydawnictwo_NadrzedneAutocomplete(self):
+        Charakter_Formalny.objects.get_or_create(skrot='ROZ', nazwa='Rozdział książki')
+        Charakter_Formalny.objects.get_or_create(skrot='ROZS', nazwa='Rozdział skryptu')
+
         x = autocomplete.Wydawnictwo_NadrzedneAutocomplete()
         x.q = "foobar"
         self.assertTrue(len(x.get_queryset()) != None)
