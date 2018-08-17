@@ -136,6 +136,16 @@ docker-up:
 docker-python-tests: 
 	docker-compose up -d test
 	docker-compose exec test /bin/bash -c "cd /usr/src/app && make requirements"
+
+	# Utwórz bazę testową "bpp" - wymaga jej jeden test integracyjny
+	# integration_tests/test_celery. Ewentualnie mógłby być to klon
+	# bazy testowej, jeżeli moglibyśmy utworzyć go równie łatwo jak
+	# przy pomocy polecenia Stellar. Jednakże, w momencie pisania tego
+	# komentarza, najłatwiej będzie uruchomić po prostu 'manage.py migrate'
+	# dla "głównej" bazy danych
+	docker-compose exec test /bin/bash -c "cd /usr/src/app && createdb bpp"
+	docker-compose exec test /bin/bash -c "cd /usr/src/app && python src/manage.py migrate"
+
 	docker-compose exec test /bin/bash -c "cd /usr/src/app && tox"
 
 docker-tests: docker-assets docker-python-tests docker-js-tests
