@@ -5,6 +5,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import json
+
+from django.apps import apps
 from psycopg2.extensions import QuotedString
 from unidecode import unidecode
 from django.utils import six
@@ -175,3 +177,8 @@ def remove_old_objects(klass, file_field="file", field_name="created_on", days=7
             except OSError:
                 pass
 
+
+def rebuild_contenttypes():
+    app_config = apps.get_app_config('bpp')
+    from django.contrib.contenttypes.management import create_contenttypes
+    create_contenttypes(app_config, verbosity=0)
