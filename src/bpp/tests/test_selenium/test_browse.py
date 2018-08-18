@@ -31,12 +31,17 @@ def test_autorzy_search_form(autorzy_browser):
 
     with wait_for_page_load(autorzy_browser):
         autorzy_browser.find_by_name("search").type(Keys.RETURN)
-    assert 'Atest' in autorzy_browser.html
+    autorzy_browser.wait_for_condition(
+        lambda browser: 'Atest' in browser.html
+    )
 
     autorzy_browser.fill("search", "Btest")
     with wait_for_page_load(autorzy_browser):
         autorzy_browser.find_by_name("search").type(Keys.RETURN)
-    assert 'Atest' not in autorzy_browser.html
+
+    autorzy_browser.wait_for_condition(
+        lambda browser: 'Atest' not in browser.html
+    )
 
 
 def test_autorzy_literki(autorzy_browser):
