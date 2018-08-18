@@ -43,7 +43,7 @@ assets: yarn grunt _assets
 
 
 docker-assets: docker-grunt
-	docker-compose run --rm python bash -c "cd /usr/src/app && pipenv --bare install --system && make _assets"
+	docker-compose run --rm python bash -c "cd /usr/src/app && pip install -r requirements.txt && make _assets"
 
 docker-grunt:
 	docker-compose run --rm node bash -c "cd /usr/src/app && make yarn grunt"
