@@ -19,7 +19,10 @@ def test_global_search_user(live_server, browser, transactional_db):
             delay_after_selection=0.5
         )
 
-    assert "Źródło" in browser.html
+    browser.wait_for_condition(
+        lambda browser: "Źródło" in browser.html
+    )
+
     assert "Strona WWW" in browser.html
 
 
