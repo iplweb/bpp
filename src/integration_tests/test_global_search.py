@@ -41,7 +41,10 @@ def test_global_search_logged_in(live_server, preauth_admin_browser, transaction
             delay_after_selection=0.5
         )
 
-    assert "Źródło" in browser.html
+    browser.wait_for_condition(
+        lambda browser: "Źródło" in browser.html
+    )
+
     assert "Strona WWW" in browser.html
 
 
@@ -60,4 +63,7 @@ def test_global_search_in_admin(live_server, preauth_admin_browser, transactiona
             delay_before_enter=0.5,
             delay_after_selection=0.5
         )
-    assert "Zmień wydawnictwo ciągłe" in browser.html
+
+    browser.wait_for_condition(
+        lambda browser: "Zmień wydawnictwo ciągłe" in browser.html
+    )
