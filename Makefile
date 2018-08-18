@@ -56,6 +56,7 @@ assets-production: yarn-production _assets
 
 requirements:
 	pipenv lock -r > requirements.txt
+	pipenv lock -dr > requirements_dev.txt
 
 _bdist_wheel: requirements
 	${PYTHON} setup.py -q bdist_wheel
