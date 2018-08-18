@@ -375,7 +375,10 @@ def test_bug_on_user_add(preauth_admin_browser, live_server):
     preauth_admin_browser.fill("password2", "as")
     with wait_for_page_load(preauth_admin_browser):
         preauth_admin_browser.find_by_name("_continue").click()
-    assert "Zmień użytkownik" in preauth_admin_browser.html
+
+    preauth_admin_browser.wait_for_condition(
+        lambda browser: "Zmień użytkownik" in browser.html
+    )
 
 
 def test_admin_wydawnictwo_zwarte_uzupelnij_rok(
