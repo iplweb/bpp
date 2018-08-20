@@ -42,7 +42,7 @@ _assets:
 assets: yarn grunt _assets
 
 
-docker-assets: docker-grunt requirements
+docker-assets: docker-grunt
 	docker-compose run --rm python bash -c "cd /usr/src/app && pip install -r requirements.txt && make _assets"
 
 docker-grunt:
@@ -145,7 +145,7 @@ docker-python-tests:
 	# komentarza, najłatwiej będzie uruchomić po prostu 'manage.py migrate'
 	# dla "głównej" bazy danych
 	docker-compose exec test /bin/bash -c "cd /usr/src/app && createdb bpp"
-	docker-compose exec test /bin/bash -c "cd /usr/src/app && pip install -r requirements_dev.txt -r requirements.txt"
+	docker-compose exec test /bin/bash -c "cd /usr/src/app && pipenv --bare install --system --dev"
 	docker-compose exec test /bin/bash -c "cd /usr/src/app && python src/manage.py migrate"
 
 	docker-compose exec test /bin/bash -c "cd /usr/src/app && tox"
