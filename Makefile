@@ -30,10 +30,10 @@ grunt:
 	grunt build
 
 yarn:
-	yarn
+	yarn install --no-progress --emoji false -s
 
 yarn-prod:
-	yarn --prod
+	yarn install --no-progress --emoji false -s --prod
 
 _assets:
 	${PYTHON} src/manage.py collectstatic --noinput -v0 --traceback
