@@ -18,10 +18,6 @@ jobs:
           command: make docker-up
 
       - run:
-          name: docker-grunt
-          command: make docker-grunt
-          
-      - run:
           name: docekr-assets
           command: make docker-assets
 
