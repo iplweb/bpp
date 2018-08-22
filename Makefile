@@ -141,6 +141,10 @@ createdb:
 	createdb bpp
 
 clone-bpp-to-other-dbs:
+	dropdb --if-exists test_bpp
+	dropdb --if-exists test_bpp_gw0
+	dropdb --if-exists test_bpp_gw1
+
 	echo 'CREATE DATABASE "test_bpp" WITH TEMPLATE "bpp"' | psql
 	echo 'CREATE DATABASE "test_bpp_gw0" WITH TEMPLATE "bpp"' | psql
 	echo 'CREATE DATABASE "test_bpp_gw1" WITH TEMPLATE "bpp"' | psql
