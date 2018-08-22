@@ -134,21 +134,37 @@ cleanup-pycs:
 docker-up:
 	docker-compose up -d redis rabbitmq selenium nginx_http_push db
 
+pipenv-install:
+	pipenv --bare install --system --dev
+
+createdb:
+	createdb bpp
+
+clone-bpp-to-other-dbs:
+	echo 'CREATE DATABASE "test_bpp" WITH TEMPLATE "bpp"' | psql
+	echo 'CREATE DATABASE "test_bpp_gw0" WITH TEMPLATE "bpp"' | psql
+	echo 'CREATE DATABASE "test_bpp_gw1" WITH TEMPLATE "bpp"' | psql
+
+migrate:
+	python src/manage.py migrate
+
+# Cel: python-tests
+#
+# Uwaga dotycząca tworzenia bazy "bpp" (_nie_ "test_bpp") w tym celu
+# poniżej:
+#
+# Utwórz bazę testową "bpp" - wymaga jej jeden test integracyjny
+# integration_tests/test_celery. Ewentualnie mógłby być to klon
+# bazy testowej, jeżeli moglibyśmy utworzyć go równie łatwo jak
+# przy pomocy polecenia Stellar. Jednakże, w momencie pisania tego
+# komentarza, najłatwiej będzie uruchomić po prostu 'manage.py migrate'
+# dla "głównej" bazy danych
+tox: requirements pipenv-install createdb migrate
+	tox
+
 docker-python-tests: 
 	docker-compose up -d test
-	docker-compose exec test /bin/bash -c "cd /usr/src/app && make requirements"
-
-	# Utwórz bazę testową "bpp" - wymaga jej jeden test integracyjny
-	# integration_tests/test_celery. Ewentualnie mógłby być to klon
-	# bazy testowej, jeżeli moglibyśmy utworzyć go równie łatwo jak
-	# przy pomocy polecenia Stellar. Jednakże, w momencie pisania tego
-	# komentarza, najłatwiej będzie uruchomić po prostu 'manage.py migrate'
-	# dla "głównej" bazy danych
-	docker-compose exec test /bin/bash -c "cd /usr/src/app && createdb bpp"
-	docker-compose exec test /bin/bash -c "cd /usr/src/app && pipenv --bare install --system --dev"
-	docker-compose exec test /bin/bash -c "cd /usr/src/app && python src/manage.py migrate"
-
-	docker-compose exec test /bin/bash -c "cd /usr/src/app && tox"
+	docker-compose exec test /bin/bash -c "cd /usr/src/app && make tox"
 
 docker-tests: docker-assets docker-python-tests docker-js-tests
 
