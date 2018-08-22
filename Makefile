@@ -41,11 +41,15 @@ _assets:
 
 assets: yarn grunt _assets
 
+install-pipenv:
+	pip install pipenv
 
-docker-assets: docker-grunt
-	docker-compose run --rm python bash -c "cd /usr/src/app && pip install -r requirements.txt && make _assets"
+_docker_assets: install-pipenv pipenv-install _assets
 
-docker-grunt:
+docker-assets: docker-yarn-grunt 
+	docker-compose run --rm python bash -c "cd /usr/src/app && make _docker_assets"
+
+docker-yarn-grunt:
 	docker-compose run --rm node bash -c "cd /usr/src/app && make yarn grunt"
 
 # cel: assets
@@ -163,7 +167,7 @@ migrate:
 # przy pomocy polecenia Stellar. Jednakże, w momencie pisania tego
 # komentarza, najłatwiej będzie uruchomić po prostu 'manage.py migrate'
 # dla "głównej" bazy danych
-tox: requirements pipenv-install createdb migrate
+tox: pipenv-install createdb migrate clone-bpp-to-other-dbs
 	tox
 
 docker-python-tests: 
