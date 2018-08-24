@@ -142,7 +142,7 @@ pipenv-install:
 	pipenv --bare install --system --dev
 
 dropdb:
-	dropdb bpp
+	dropdb --if-exists bpp
 
 createdb:
 	createdb bpp
