@@ -141,8 +141,13 @@ docker-up:
 pipenv-install:
 	pipenv --bare install --system --dev
 
+dropdb:
+	dropdb bpp
+
 createdb:
 	createdb bpp
+
+recreatedb: dropdb createdb 
 
 clone-bpp-to-other-dbs:
 	dropdb --if-exists test_bpp
@@ -167,17 +172,14 @@ migrate:
 # przy pomocy polecenia Stellar. Jednakże, w momencie pisania tego
 # komentarza, najłatwiej będzie uruchomić po prostu 'manage.py migrate'
 # dla "głównej" bazy danych
-tox: pipenv-install createdb migrate clone-bpp-to-other-dbs
+tox: pipenv-install recreatedb migrate clone-bpp-to-other-dbs
 	tox
 
 docker-python-tests: 
 	docker-compose up -d test
 	docker-compose exec test /bin/bash -c "cd /usr/src/app && make tox"
 
-docker-tests: docker-assets docker-python-tests docker-js-tests
-
-circle-env:
-	echo COVERALLS_REPO_TOKEN="${COVERALLS_REPO_TOKEN}" >> docker/env.test.txt
+docker-tests: clean docker-assets docker-python-tests docker-js-tests
 
 # cel: production -DCUSTOMER=... or CUSTOMER=... make production
 production: 
