@@ -58,6 +58,7 @@ class RankingAutorowJednostkaWydzialTable(RankingAutorowTable):
                   'impact_factor_sum',
                   'liczba_cytowan_sum',
                   'punkty_kbn_sum')
+        order_by = ('-impact_factor_sum', 'autor__nazwisko')
 
     jednostka = Column(accessor="jednostka.nazwa")
     wydzial = Column(accessor="jednostka.wydzial.nazwa")
