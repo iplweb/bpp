@@ -7,7 +7,7 @@ import webbrowser
 from django.test import TestCase
 
 from bpp.reports.kronika_uczelni import Kronika_Uczelni
-from bpp.tests.test_reports.util import USUAL_FIXTURES
+from bpp.tests.tests_legacy.test_reports.util import USUAL_FIXTURES, stworz_obiekty_dla_raportow
 from bpp.tests.util import any_autor, any_jednostka, any_ciagle, any_zwarte, CURRENT_YEAR, any_uczelnia, any_wydzial
 
 
@@ -15,6 +15,8 @@ class TestKronikaUczelni(TestCase):
     # fixtures = USUAL_FIXTURES
 
     def setUp(self):
+        stworz_obiekty_dla_raportow()
+
         u = any_uczelnia()
         w = any_wydzial()
 

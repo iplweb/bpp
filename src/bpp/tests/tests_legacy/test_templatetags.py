@@ -7,8 +7,8 @@ from django.test import TestCase
 from bpp.models import Jednostka, Wydawnictwo_Ciagle, Autor, Praca_Doktorska, Typ_Odpowiedzialnosci
 from bpp.models.system import Jezyk
 from bpp.templatetags.prace import strip_at_end, znak_na_koncu
-from bpp.tests import any_jednostka
-from bpp.tests.test_reports.util import autor_ciaglego
+from bpp.tests.util import any_jednostka
+from bpp.tests.tests_legacy.test_reports.util import autor_ciaglego
 from bpp.tests.util import any_doktorat
 
 
@@ -28,9 +28,10 @@ class TestTemplateTags(TestCase):
         self.a2 = a2
         self.a3 = a3
 
-        jezyk = Jezyk.objects.all()[0]
+        jezyk = mommy.make(Jezyk)
         c = mommy.make(Wydawnictwo_Ciagle, tytul="foo", tytul_oryginalny="bar", uwagi='fo', jezyk=jezyk)
-        t = Typ_Odpowiedzialnosci.objects.get(skrot='aut.')
+        t, _ign = Typ_Odpowiedzialnosci.objects.get_or_create(skrot='aut.', nazwa='autor')
+        _ign, _ign = Typ_Odpowiedzialnosci.objects.get_or_create(skrot='red.', nazwa='redaktor')
         autor_ciaglego(a1, j, c, zapisany_jako='Jan Budnik', typ_odpowiedzialnosci=t, kolejnosc=1)
         autor_ciaglego(a2, j, c, zapisany_jako='Stefan Kolbe', typ_odpowiedzialnosci=Typ_Odpowiedzialnosci.objects.get(skrot='red.'), kolejnosc=2)
         autor_ciaglego(a3, j, c, zapisany_jako='Testowy Autor', kolejnosc=-1, typ_odpowiedzialnosci=t)

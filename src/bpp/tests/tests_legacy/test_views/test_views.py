@@ -1,9 +1,12 @@
 # -*- encoding: utf-8 -*-
+from django.apps import apps
 from django.contrib import auth
 from django.core.urlresolvers import reverse
 from model_mommy import mommy
+from django.contrib.auth.models import Group
+
 from bpp.models import Autor, Zrodlo, Uczelnia, Wydzial, Jednostka, \
-    Praca_Doktorska, Praca_Habilitacyjna
+    Praca_Doktorska, Praca_Habilitacyjna, with_cache
 from bpp.models.cache import Rekord
 from bpp.models.system import Typ_Odpowiedzialnosci, Charakter_Formalny
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, \
@@ -11,7 +14,8 @@ from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, \
 from bpp.tests.util import any_doktorat, any_habilitacja, any_ciagle, any_autor, \
     any_jednostka
 
-from bpp.tests.testutil import UserTestCase, SuperuserTestCase
+from bpp.tests.tests_legacy.testutil import UserTestCase, SuperuserTestCase
+from bpp.util import rebuild_contenttypes
 from bpp.views.browse import AutorzyView, AutorView
 from bpp.views.utils import JsonResponse
 
@@ -22,6 +26,9 @@ class TestUtils(UserTestCase):
 
 
 class TestRoot(UserTestCase):
+    def setUp(self):
+        Group.objects.get_or_create(name="wprowadzanie danych")
+
     def test_root(self):
         res = self.client.get("/")
         self.assertContains(res, "W systemie nie ma", status_code=200)
@@ -35,6 +42,9 @@ class TestRoot(UserTestCase):
 
 
 class TestBrowse(UserTestCase):
+    def setUp(self):
+        Group.objects.get_or_create(name="wprowadzanie danych")
+
     def test_wydzial(self):
         u = Uczelnia.objects.create(nazwa="uczelnia", skrot="uu")
         w = Wydzial.objects.create(nazwa="wydzial", uczelnia=u)
@@ -59,6 +69,8 @@ class FakeUnauthenticatedUser:
 class TestBrowseAutorzy(UserTestCase):
     def setUp(self):
         super(TestBrowseAutorzy, self).setUp()
+
+        Group.objects.get_or_create(name="wprowadzanie danych")
 
         self.view = AutorzyView()
 
@@ -86,6 +98,12 @@ class TestBrowseAutor(UserTestCase):
     # fixtures = ['charakter_formalny.json', 'tytul.json',
     #             'typ_odpowiedzialnosci.json']
 
+    def setUp(self):
+        Group.objects.get_or_create(name="wprowadzanie danych")
+
+        rebuild_contenttypes()
+
+
     def test_get_context_data(self):
         av = AutorView()
         av.object = mommy.make(Autor)
@@ -108,6 +126,11 @@ class TestBrowseAutor(UserTestCase):
 
 
 class TestBrowseAutorStaff(SuperuserTestCase):
+
+    def setUp(self):
+        super(TestBrowseAutorStaff, self).setUp()
+        Group.objects.get_or_create(name="wprowadzanie danych")
+        
     def test_autor(self):
         a = mommy.make(Autor)
         res = self.client.get(reverse("bpp:browse_autor", args=(a.slug,)))
@@ -115,10 +138,13 @@ class TestBrowseAutorStaff(SuperuserTestCase):
 
 
 class TestOAI(UserTestCase):
-    # fixtures = ['charakter_formalny.json', 'tytul.json',
-    #             'typ_odpowiedzialnosci.json', 'status_korekty.json']
-
     def setUp(self):
+        super(TestOAI, self).setUp()
+
+        rebuild_contenttypes()
+
+        aut, ign = Typ_Odpowiedzialnosci.objects.get_or_create(skrot="aut.", nazwa="autor")
+
         ch, ign = Charakter_Formalny.objects.get_or_create(
             skrot="AC",
             nazwa="Artykuł w czasopismie",
@@ -140,14 +166,14 @@ class TestOAI(UserTestCase):
         for rekord in c, c2:
             Wydawnictwo_Ciagle_Autor.objects.create(
                 rekord=rekord, autor=a, jednostka=j,
-                typ_odpowiedzialnosci=Typ_Odpowiedzialnosci.objects.all()[0]
+                typ_odpowiedzialnosci=aut
             )
 
         Rekord.objects.full_refresh()
 
-        self.assertEqual(Rekord.objects.all().count(), 2)
+        cnt = Rekord.objects.all().count()
+        self.assertEqual(cnt, 2)
 
-        #Wydawnictwo_Ciagle.objects.raw("SELECT update_cache('bpp_wydawnictwo_ciagle', '%s')" % c.pk)
         self.c = c
 
     def test_get_record(self):
@@ -157,7 +183,6 @@ class TestOAI(UserTestCase):
                                          'metadataPrefix': 'oai_dc',
                                          'identifier': identifier})
         self.assertContains(res, "foo", status_code=200)
-
 
     def test_list_records(self):
         url = reverse("bpp:oai")

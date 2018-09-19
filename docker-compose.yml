@@ -61,6 +61,8 @@ services:
       - build:/usr/src/app/build/
       - .:/usr/src/app
     env_file: docker/env.test.txt
+    environment:
+      - COVERALLS_REPO_TOKEN
     depends_on:
       - db
       - redis

@@ -6,6 +6,7 @@ from bpp.models import cache
 from bpp.models.cache import with_cache
 from bpp.models.system import Charakter_Formalny, Jezyk, Typ_KBN
 from bpp.models.abstract import ILOSC_ZNAKOW_NA_ARKUSZ
+from bpp.tests.tests_legacy.test_reports.util import stworz_obiekty_dla_raportow
 from bpp.tests.util import any_jednostka, any_autor, any_ciagle, CURRENT_YEAR, any_zwarte
 from bpp.views.raporty import get_base_query_jednostka, raport_jednostek_tabela
 
@@ -34,6 +35,10 @@ class TestRaportJednostek2012(TestCase):
     #             "status_korekty.json"]
 
     def setUp(self):
+        stworz_obiekty_dla_raportow()
+        Charakter_Formalny.objects.get_or_create(skrot="KS", nazwa="Książka")
+        Charakter_Formalny.objects.get_or_create(skrot="ROZ", nazwa="Rozdział książki")
+
         self.j = any_jednostka()
         self.j2 = any_jednostka()
         self.a = any_autor()

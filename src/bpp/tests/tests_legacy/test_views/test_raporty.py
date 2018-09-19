@@ -3,6 +3,9 @@
 import os
 import sys
 
+import pytest
+from django.apps import apps
+from django.contrib.auth.models import Group
 from django.core.files.base import ContentFile
 from django.core.urlresolvers import reverse
 from django.db import transaction
@@ -11,8 +14,10 @@ from django.test.utils import override_settings
 from django.utils import timezone
 from model_mommy import mommy
 
-from bpp.tests.testutil import UserTestCase, UserTransactionTestCase
+from bpp.models import Typ_KBN, Jezyk, Charakter_Formalny, Typ_Odpowiedzialnosci
+from bpp.tests.tests_legacy.testutil import UserTestCase, UserTransactionTestCase
 from bpp.tests.util import any_jednostka, any_autor, any_ciagle
+from bpp.util import rebuild_contenttypes
 from bpp.views.raporty import RaportSelector, PodgladRaportu, KasowanieRaportu
 from celeryui.models import Report
 
@@ -154,35 +159,6 @@ class TestKasowanieRaportu(KasowanieRaportuMixin, RaportMixin, UserTestCase):
 from django.conf import settings
 
 
-class TestKasowanieRaportuFileDeletion(
-    KasowanieRaportuMixin, RaportMixin, UserTransactionTestCase):
-    available_apps = settings.INSTALLED_APPS  # dla sqlfluhs
-
-    def setUp(self):
-        UserTransactionTestCase.setUp(self)
-        KasowanieRaportuMixin.setUp(self)
-
-    def test_kasowanieraportu_file_deletion(self):
-        self.skipTest("To jeszcze nie dziala")
-
-        self.r.file.save("fubar", ContentFile("foo"))
-
-        self.assertTrue(os.path.exists(self.r.file.path))
-
-        self.assertEqual(Report.objects.count(), 1)
-        url = reverse('bpp:kasowanie-raportu', kwargs=dict(uid=self.r.uid))
-        resp = self.client.get(url)
-        self.assertRedirects(resp, reverse("bpp:raporty"))
-        self.assertEqual(Report.objects.count(), 0)
-        transaction.commit()
-
-        # hgw, jak to wywołać, transcation.commit, musiałby być
-        # w trybie ręcznym czy coś, problem z tym testem
-        self.assertTrue(not os.path.exists(self.r.file.path))
-
-        pass
-
-
 class TestWidokiRaportJednostek2012(UserTestCase):
     # fixtures = ['charakter_formalny.json',
     #             'jezyk.json',
@@ -192,6 +168,13 @@ class TestWidokiRaportJednostek2012(UserTestCase):
     def setUp(self):
         UserTestCase.setUp(self)
         self.j = any_jednostka()
+        Typ_KBN.objects.get_or_create(skrot="PW", nazwa="Praca wieloośrodkowa")
+        Jezyk.objects.get_or_create(skrot='pol.', nazwa='polski')
+        Charakter_Formalny.objects.get_or_create(skrot='KSZ', nazwa='Książka w języku obcym')
+        Charakter_Formalny.objects.get_or_create(skrot='KSP', nazwa='Książka w języku polskim')
+        Charakter_Formalny.objects.get_or_create(skrot='KS', nazwa='Książka')
+        Charakter_Formalny.objects.get_or_create(skrot='ROZ', nazwa='Rozdział książki')
+        Group.objects.get_or_create(name="wprowadzanie danych")
 
     def test_jeden_rok(self):
         url = reverse("bpp:raport-jednostek-rok-min-max",
@@ -216,6 +199,12 @@ class TestWidokiRaportJednostek2012(UserTestCase):
 class TestRankingAutorow(UserTestCase):
     def setUp(self):
         UserTestCase.setUp(self)
+
+        rebuild_contenttypes()
+
+        Typ_Odpowiedzialnosci.objects.get_or_create(skrot='aut.', nazwa='autor')
+        Group.objects.get_or_create(name="wprowadzanie danych")
+
         j = any_jednostka()
         a = any_autor(nazwisko="Kowalski")
         c = any_ciagle(impact_factor=200, rok=2000)

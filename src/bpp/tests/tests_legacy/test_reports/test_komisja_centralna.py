@@ -1,6 +1,7 @@
 # -*- encoding: utf-8 -*-
 import os
 import sys
+import tempfile
 from zipfile import ZipFile
 
 from django.test import TestCase
@@ -9,27 +10,18 @@ from model_mommy import mommy
 from bpp.models import Typ_KBN, Charakter_Formalny, Zasieg_Zrodla, Zrodlo, \
     Redakcja_Zrodla, Tytul, Rekord
 from bpp.models.autor import Autor
-from bpp.models.praca_habilitacyjna import Praca_Habilitacyjna, \
-    Publikacja_Habilitacyjna
+from bpp.models.praca_habilitacyjna import Publikacja_Habilitacyjna
 from bpp.models.system import Jezyk
 from bpp.reports.komisja_centralna import RaportKomisjiCentralnej, get_queries, \
     RokHabilitacjiNiePodany, make_report_zipfile, Raport_Dla_Komisji_Centralnej
+from bpp.tests.tests_legacy.test_reports.util import stworz_obiekty_dla_raportow
 from bpp.tests.util import any_jednostka, any_autor, CURRENT_YEAR, any_ciagle, any_patent, any_zwarte, \
     any_habilitacja
 from bpp.util import Getter
-import tempfile
-
 from celeryui.models import Report
 
 
 class TestRKCMixin:
-    # fixtures = ['charakter_formalny.json',
-    #             'typ_kbn.json',
-    #             'jezyk.json',
-    #             'rodzaj_zrodla.json',
-    #             'tytul.json',
-    #             'typ_odpowiedzialnosci.json']
-
     def odpal_browser(self, res):
         handle, fn = tempfile.mkstemp(".html")
         os.write(handle, res.encode('utf-8'))
@@ -41,17 +33,15 @@ class TestRKCMixin:
             os.system('open "%s"' % fn)
 
 
-typ_kbn = Getter(Typ_KBN)
-charakter = Getter(Charakter_Formalny)
-zasieg = Getter(Zasieg_Zrodla, 'nazwa')
-tytul = Getter(Tytul)
-jezyk = Getter(Jezyk)
-
-
 class TestRaportKomisjiCentralnej(TestRKCMixin, TestCase):
-    @classmethod
-    def setUpClass(self):
-        super(TestRaportKomisjiCentralnej, self).setUpClass()
+    def setUp(self):
+        stworz_obiekty_dla_raportow()
+
+        typ_kbn = Getter(Typ_KBN)
+        charakter = Getter(Charakter_Formalny)
+        zasieg = Getter(Zasieg_Zrodla, 'nazwa')
+        tytul = Getter(Tytul)
+        jezyk = Getter(Jezyk)
 
         self.jednostka = any_jednostka()
 
@@ -219,7 +209,6 @@ class TestRaportKomisjiCentralnej(TestRKCMixin, TestCase):
 
         self._zrob()
 
-    @classmethod
     def _zrob(self):
         self.raport = RaportKomisjiCentralnej(self.autor)
         self.s = self.raport.make_prace()
@@ -326,6 +315,14 @@ class TestRaportKomisjiCentralnej(TestRKCMixin, TestCase):
 
 class TestRaportKomisjiCentralnejPrzedPoHabilitacji(TestRKCMixin, TestCase):
     def setUp(self):
+        stworz_obiekty_dla_raportow()
+
+        typ_kbn = Getter(Typ_KBN)
+        charakter = Getter(Charakter_Formalny)
+        zasieg = Getter(Zasieg_Zrodla, 'nazwa')
+        tytul = Getter(Tytul)
+        jezyk = Getter(Jezyk)
+
         self.jednostka = any_jednostka()
         self.habilitowany = any_autor()
 
@@ -380,6 +377,14 @@ class TestRaportKomisjiCentralnejPrzedPoHabilitacji(TestRKCMixin, TestCase):
 
 class TestRaportKomisjiCentralnejZipfile(TestRKCMixin, TestCase):
     def setUp(self):
+        stworz_obiekty_dla_raportow()
+
+        typ_kbn = Getter(Typ_KBN)
+        charakter = Getter(Charakter_Formalny)
+        zasieg = Getter(Zasieg_Zrodla, 'nazwa')
+        tytul = Getter(Tytul)
+        jezyk = Getter(Jezyk)
+
         self.jednostka = any_jednostka()
         # Takie nazwisko, bo używamy potem autor.slug do wygnerowania nazwy pliku
         self.habilitowany = any_autor(

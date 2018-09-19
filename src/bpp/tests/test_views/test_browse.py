@@ -166,7 +166,7 @@ def test_jednostka_nie_wyswietlaj_autorow_gdy_wielu(client, jednostka):
 
 @pytest.fixture
 def test_browse_autor():
-    mommy.make(Typ_Odpowiedzialnosci, nazwa="autor", skrot="aut.")
+    Typ_Odpowiedzialnosci.objects.get_or_create(nazwa="autor", skrot="aut.")
 
     autor = mommy.make(Autor)
     jednostka = mommy.make(Jednostka, skupia_pracownikow=True)

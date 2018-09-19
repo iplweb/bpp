@@ -6,6 +6,7 @@ from bpp.models.profile import BppUser
 from bpp.models.struktura import Wydzial
 from bpp.models.system import Typ_Odpowiedzialnosci, Charakter_Formalny, Typ_KBN
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor, Wydawnictwo_Ciagle
+from bpp.tests.tests_legacy.test_reports.util import stworz_obiekty_dla_raportow
 from bpp.tests.util import any_wydzial, any_autor, any_ciagle, any_jednostka, \
     CURRENT_YEAR
 from bpp.views.raporty.ranking_autorow import RankingAutorow
@@ -18,6 +19,8 @@ class TestRankingAutorow(TestCase):
     #             'typ_kbn.json']
 
     def setUp(self):
+        stworz_obiekty_dla_raportow()
+
         w1 = any_wydzial(nazwa="Wydzial 1", skrot="W9")
         w1.zezwalaj_na_ranking_autorow = True
         w1.save()

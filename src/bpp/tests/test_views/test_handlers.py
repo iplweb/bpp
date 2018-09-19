@@ -10,11 +10,13 @@ def test_handler403_permission_denied(client):
         assert False
 
 
+@pytest.mark.django_db
+@pytest.mark.urls("bpp.tests.test_views.urls_test_handlers")
 def test_handler500(client):
     with pytest.raises(ZeroDivisionError):
         try:
             client.get("/test_500")
-        except TypeError:
+        except TypeError as e:
             assert False
 
 
