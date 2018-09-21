@@ -14,6 +14,10 @@ dev
   charakterów nadrzędnych, wraz z możliwością wyszukiwania z uwwzględnieniem
   tej struktury (#630)
 
+* możliwość określenia dla rankingu autorów, aby wybierane były jedynie prace
+  afiliowane na jednostkę uczelni (= czyli taką, która ma zaznaczone "skupia
+  pracowników" w module Redagowanie - Struktura) (#584)
+
 1.0.23
 ------
 
