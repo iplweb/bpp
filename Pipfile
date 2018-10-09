@@ -90,8 +90,8 @@ sphinx-autobuild = "==0.7.1"
 pdbpp = "==0.9.1"
 coveralls = "==1.2.0"
 psutil = "==5.4.5"
-detox = "*"
 pytest-xdist = "*"
+tox = "*"
 
 [requires]
 python_version = "3.6"
