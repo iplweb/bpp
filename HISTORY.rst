@@ -5,6 +5,11 @@ Historia zmian
 dev
 ---
 
+*
+
+1.0.25
+-------------
+
 * mniejsza wielkość tytułu na wydruku z opcji "Wyszukiwanie" (#632)
 
 * tytuł naukowy autora nie wchodzi do elementu opisu bibliograficznego rekordu
