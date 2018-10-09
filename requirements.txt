@@ -93,5 +93,6 @@ wsgi-intercept==1.8.0
 wsgiutils==0.7.1
 xlrd==1.1.0
 xlwt==1.3.0
-zope-component==4.1.0 -i https://pypi.python.org/simple
-zope-interface==4.1.1 -i https://pypi.python.org/simple
+zope-component==4.4.1
+zope-event==4.4
+zope-interface==4.4.2
