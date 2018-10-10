@@ -1,29 +1,5 @@
-FROM debian:jessie
-
-RUN apt-get update
-
-RUN apt-get install -y wget
-
-RUN wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
-
-RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ jessie-pgdg main" >> /etc/apt/sources.list
-
-RUN apt-get update
-
-RUN apt-get install -y --force-yes locales postgresql-10 postgresql-plpython-10
-
-RUN echo "pl_PL.UTF-8 UTF-8" >> /etc/locale.gen
-
-RUN locale-gen
-
-ENV LANG pl_PL.UTF-8
-ENV LANGUAGE pl_PL:pl 
-ENV LC_ALL pl_PL.UTF-8
-
-RUN echo "host all all all trust" >> /etc/postgresql/10/main/pg_hba.conf
-RUN echo "listen_addresses = '*'" >> /etc/postgresql/10/main/postgresql.conf
-
-COPY db-entrypoint.sh .
-RUN chmod +x db-entrypoint.sh
-
-ENTRYPOINT [ "./db-entrypoint.sh" ]
+FROM postgres:10
+RUN localedef -i pl_PL -c -f UTF-8 -A /usr/share/locale/locale.alias pl_PL.UTF-8
+ENV LANG pl_PL.utf8
+RUN apt-mark hold postgresql-10 postgresql-client-10 postgresql-common postgresql-client-common
+RUN apt-get update -qq && apt-get install postgresql-plpython-10 -qq -y

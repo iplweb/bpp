@@ -167,6 +167,10 @@ def enable():
     _CACHE_ENABLED = True
 
 
+def enabled():
+    global _CACHE_ENABLED
+    return _CACHE_ENABLED
+
 def disable():
     global _CACHE_ENABLED
 
@@ -452,11 +456,18 @@ def with_cache(fun):
 
     def _wrapped(*args, **kw):
         enable_failure = None
+
+        # Cache było włączone, uruchom owiniętą funkcję
+        if enabled():
+            return fun(*args, **kw)
+
+        # Cache było wyłączone, włącz, uruchom owiniętą funkcję,
+        # wyłącz cache.
         try:
             enable_failure = True
             enable()
             enable_failure = False
-            fun(*args, **kw)
+            return fun(*args, **kw)
         finally:
             if not enable_failure:
                 disable()

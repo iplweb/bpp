@@ -538,3 +538,8 @@ def pytest_configure():
 #        })
 #        return {'browser': "chrome",
 #                "desired_capabilities": chrome_op.to_capabilities()}
+
+collect_ignore = [
+    os.path.join(os.path.dirname(__file__), "media")
+]
+

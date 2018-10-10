@@ -22,6 +22,8 @@ class Nowe_Sumy_View(ModelZLiczbaCytowan, ModelPunktowany, models.Model):
     wydzial = models.ForeignKey('Wydzial', on_delete=DO_NOTHING)
     rok = models.IntegerField()
 
+    afiliuje = models.BooleanField()
+
     objects = Nowe_SumyQuerySet.as_manager()
 
     class Meta:

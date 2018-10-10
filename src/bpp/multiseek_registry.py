@@ -2,6 +2,8 @@
 from django.conf import settings
 from django.contrib.postgres.search import SearchQuery
 from django.utils.itercompat import is_iterable
+from mptt.forms import TreeNodeChoiceFieldMixin
+from mptt.settings import DEFAULT_LEVEL_INDICATOR
 
 from bpp.models.konferencja import Konferencja
 from bpp.models.openaccess import Wersja_Tekstu_OpenAccess, \
@@ -482,13 +484,44 @@ class TypRekorduObject(ValueListQueryObject):
         return q
 
 
-class CharakterFormalnyQueryObject(ValueListQueryObject):
+class CharakterFormalnyQueryObject(TreeNodeChoiceFieldMixin, ValueListQueryObject):
     field_name = 'charakter_formalny'
-    values = Charakter_Formalny.objects.all()
     label = "Charakter formalny"
 
+    def _values(self):
+        for elem in self.queryset:
+            yield self.label_from_instance(elem)
+
+    values = property(_values)
+
     def value_from_web(self, value):
-        return Charakter_Formalny.objects.get(nazwa=value)
+        return Charakter_Formalny.objects.get(nazwa=value.lstrip("-").lstrip(" "))
+
+    def __init__(self, *args, **kwargs):
+        ValueListQueryObject.__init__(self, *args, **kwargs)
+
+        self.level_indicator = kwargs.pop('level_indicator', DEFAULT_LEVEL_INDICATOR)
+        queryset = Charakter_Formalny.objects.all()
+        # if a queryset is supplied, enforce ordering
+        if hasattr(queryset, 'model'):
+            mptt_opts = queryset.model._mptt_meta
+            queryset = queryset.order_by(mptt_opts.tree_id_attr, mptt_opts.left_attr)
+        self.queryset = queryset
+
+    def real_query(self, value, operation, validate_operation=True):
+        ret = None
+
+        if operation in [str(x) for x in EQUALITY_OPS_ALL]:
+            ret = Q(**{self.field_name + "__in": value.get_descendants(include_self=True)})
+
+        else:
+            if validate_operation:
+                raise UnknownOperation(operation)
+
+        if operation in DIFFERENT_ALL:
+            return ~ret
+
+        return ret
 
 
 class OpenaccessWersjaTekstuQueryObject(ValueListQueryObject):

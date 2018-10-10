@@ -7,24 +7,24 @@ dev
 
 *
 
-1.0.25-dev
+1.0.25
 -------------
 
-*
+* mniejsza wielkość tytułu na wydruku z opcji "Wyszukiwanie" (#632)
 
-1.0.24-dev
----
+* tytuł naukowy autora nie wchodzi do elementu opisu bibliograficznego rekordu
+  (#633)
 
-*
+* możliwość określania drzewiastej struktury dla charakterów formalnych - określanie
+  charakterów nadrzędnych, wraz z możliwością wyszukiwania z uwwzględnieniem
+  tej struktury (#630)
 
-1.0.25-dev
------------------------
-
-*
-
+* możliwość określenia dla rankingu autorów, aby wybierane były jedynie prace
+  afiliowane na jednostkę uczelni (= czyli taką, która ma zaznaczone "skupia
+  pracowników" w module Redagowanie - Struktura) (#584)
 
 1.0.23
----------------------------------
+------
 
 * możliwość skonfigurowania, czy na wydrukach z "Wyszukiwania" ma pojawiać się logo
   i nazwa uczelni oraz parametry zapytania (#603)

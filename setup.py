@@ -23,19 +23,6 @@ with open('README.rst', encoding="utf-8") as readme_file:
 with open('HISTORY.rst') as history_file:
     history = history_file.read()
     
-def parse_reqs(fn):
-    for line in open(fn).readlines():
-        line = line.strip()
-        if line:
-
-            if line.startswith("#") or line.startswith("-r"):
-                continue
-
-            if line.startswith("git+https"):
-                _ignore, line = line.split("#egg=", 2)
-
-            yield line
-
 
 class compile_translations(Command):
     description = 'compile message catalogs to MO files via django compilemessages'
@@ -56,7 +43,9 @@ class compile_translations(Command):
 
 
 class build(_build):
-    sub_commands = [('compile_translations', None)] + _build.sub_commands
+    sub_commands = [
+        ('compile_translations', None),
+    ] + _build.sub_commands
 
 
 class install_lib(_install_lib):
@@ -64,28 +53,28 @@ class install_lib(_install_lib):
         self.run_command('compile_translations')
         _install_lib.run(self)
 
-requirements = list(parse_reqs("requirements.txt"))
+        
+def requirements(fn="requirements.txt"):
+    return [l for l in open(fn).read().splitlines() if l and l[0] not in "#-"]
 
-test_requirements = list(parse_reqs("requirements_dev.txt")) + requirements
 
 setup(
-    name='bpp',
-    version='1.0.25-dev',
+    name='bpp-iplweb',
+    version='1.0.25',
     description="System informatyczny do zarządzania bibliografią publikacji pracowników naukowych",
     long_description=readme + '\n\n' + history,
     author="Michał Pasternak",
     author_email='michal.dtz@gmail.com',
-    url='https://github.com/iplweb/bpp',
+    url='http://bpp.iplweb.pl/',
     packages=find_packages("src"),
+    install_requires=requirements(),
     package_dir={
         '': 'src'
         },
-    # package_data={'django_bpp': ['src/staticroot/*']},
     include_package_data=True,
-    install_requires=requirements,
     license="MIT license",
     zip_safe=False,
-    keywords='bibliografia naukowa bpp',
+    keywords='bibliografia naukowa bpp publikacje pracowników institutional repository repozytorium',
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Developers',
@@ -99,21 +88,11 @@ setup(
         'Programming Language :: JavaScript',
         'Programming Language :: PL/SQL',        
     ],
-# Someday: 
-#    test_suite=[
-#        'functional_tests', 
-#        'bpp.tests', 
-#        'egeria.tests', 
-#        'eksport_pbn.tests', 
-#        'integrator2.tests'
-#    ],
-    tests_require=test_requirements,
     scripts=["src/bin/bpp-manage.py"],
     python_requires=">=3.6,<4",
     cmdclass={
         'build': build,
         'install_lib': install_lib,
-        'compile_translations': compile_translations
+        'compile_translations': compile_translations,
     }
-
 )

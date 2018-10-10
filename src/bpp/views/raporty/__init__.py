@@ -209,6 +209,13 @@ class RankingAutorowFormularz(RaportyFormMixin, FormView):
             url += "&"
         url += f"rozbij_na_jednostki={ r }"
 
+        ta = form.cleaned_data['tylko_afiliowane']
+        if url.find("?") < 0:
+            url += "?"
+        else:
+            url += "&"
+        url += f"tylko_afiliowane={ ta }"
+
         return HttpResponseRedirect(url)
 
 

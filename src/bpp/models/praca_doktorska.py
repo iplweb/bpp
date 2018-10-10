@@ -18,7 +18,7 @@ class Praca_Doktorska_Baza(Wydawnictwo_Zwarte_Baza):
         class FakeAutorDoktoratuHabilitacji:
             autor = self.autor
             jednostka = self.jednostka
-            zapisany_jako = str(autor)
+            zapisany_jako = f"{ autor.nazwisko or '' } { autor.imiona or '' }"
 
         class FakeSet:
             def all(self):

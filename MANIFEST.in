@@ -3,6 +3,8 @@ include CONTRIBUTING.rst
 include HISTORY.rst
 include LICENSE
 include README.rst
+include Pipfile
+include Pipfile.lock
 
 include requirements.txt
 include requirements_dev.txt
@@ -20,6 +22,7 @@ recursive-exclude src/django_bpp/staticroot/lodash *
 recursive-exclude src/django_bpp/staticroot/nise *
 recursive-exclude src/django_bpp/staticroot/sinon *
 recursive-exclude src/django_bpp/staticroot/globule *
+exclude src/django_bpp/staticroot/sitemap-*
 
 recursive-include src/*/locale/* *mo *po
 

@@ -174,7 +174,7 @@ class RankingAutorowForm(forms.Form):
     wydzialy = WydzialChoiceField(
         label="Ogranicz do wydziału (wydziałów):",
         required=False,
-        widget=forms.SelectMultiple(attrs={'size': '15'}),
+        widget=forms.SelectMultiple(attrs={'size': '8'}),
         queryset=Wydzial.objects.filter(widoczny=True, zezwalaj_na_ranking_autorow=True),
         help_text="Jeżeli nie wybierzesz żadnego wydziału, system wygeneruje "
                   "dane dla wszystkich wydziałów. Przytrzymaj przycisk CTRL ("
@@ -185,6 +185,14 @@ class RankingAutorowForm(forms.Form):
         label="Rozbij punktację na jednostki i wydziały",
         required=False,
         initial=True)
+
+    tylko_afiliowane = forms.BooleanField(
+        label="Tylko prace afiliowane na jednostki uczelni",
+        required=False,
+        initial=False,
+        help_text="Pokaż tylko prace, gdzie autor afiliował na jednostkę "
+                  "wchodzącą w struktury uczelni"
+    )
 
     od_roku = forms.IntegerField()
     do_roku = forms.IntegerField()
@@ -211,6 +219,10 @@ class RankingAutorowForm(forms.Form):
                 ),
                 Row(
                     F4Column('rozbij_na_jednostki',
+                             css_class='large-12 small-12')
+                ),
+                Row(
+                    F4Column('tylko_afiliowane',
                              css_class='large-12 small-12')
                 ),
                 Row(

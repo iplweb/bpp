@@ -4,12 +4,13 @@ from dal import autocomplete
 from django.contrib import admin
 from django.forms.utils import flatatt
 from django.utils.safestring import mark_safe
+from mptt.forms import TreeNodeChoiceField
 
 from bpp.admin.filters import LiczbaZnakowFilter
 from bpp.admin.helpers import *
 from bpp.admin.nagroda import NagrodaInline
 from bpp.models import Zrodlo, Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych, \
-    Status_Korekty  # Publikacja_Habilitacyjna
+    Status_Korekty, Charakter_Formalny  # Publikacja_Habilitacyjna
 # Proste tabele
 from bpp.models.konferencja import Konferencja
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
@@ -66,6 +67,11 @@ class Wydawnictwo_CiagleForm(forms.ModelForm):
             url='bpp:konferencja-autocomplete',
             attrs=dict(style="width: 746px;")
         )
+    )
+
+    charakter_formalny = TreeNodeChoiceField(
+        required=True,
+        queryset=Charakter_Formalny.objects.all()
     )
 
     status_korekty = DomyslnyStatusKorektyMixin.status_korekty

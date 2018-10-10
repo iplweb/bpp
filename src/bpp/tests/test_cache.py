@@ -1,327 +1,369 @@
 # -*- encoding: utf-8 -*-
-import datetime
-from decimal import Decimal
-
-from django.core.management import call_command
-from django.db import transaction, DEFAULT_DB_ALIAS, connections
-
-from django.test import TransactionTestCase, TestCase
+# TODO: przenies do bpp/tests/test_cache.py
+import pytest
+from django.db import transaction
 from model_mommy import mommy
-from django.conf import settings
-
-from bpp.tests.util import any_uczelnia, any_wydzial, any_doktorat
-
-from bpp.models import Autor, Patent_Autor, Jednostka, Typ_Odpowiedzialnosci, \
-    Patent, Praca_Doktorska, Praca_Habilitacyjna, Tytul, Zrodlo, \
-    Charakter_Formalny, Jezyk, Typ_KBN, Status_Korekty, Zrodlo_Informacji, \
-    Wydawnictwo_Ciagle_Autor, Uczelnia, Wydzial, Wydawnictwo_Zwarte_Autor, Wydawnictwo_Ciagle
-from bpp.models.cache import Rekord, with_cache, Autorzy, AutorzyView
-from bpp.tests.test_reports.util import ciagle, zwarte, autor
-from bpp.tests.util import any_ciagle, any_jednostka, any_autor, any_zrodlo
-from bpp.models import cache
-
-CHANGED = 'foo-123-changed'
-
-
-def ramka(msg):
-    print("+" + ("-" * 78) + "+")
-    print("+ " + msg)
-    print("+" + ("-" * 78) + "+")
-
-
-def clean_dict(ret):
-    del ret['ostatnio_zmieniony']
-    del ret['tytul_oryginalny_sort']
-    return ret
-
-
-class TestCacheMixin:
-    # fixtures = [
-    #     'typ_odpowiedzialnosci.json', 'tytul.json', 'zrodlo_informacji.json',
-    #     'charakter_formalny.json', 'status_korekty.json', 'typ_kbn.json',
-    #     'jezyk.json']
-
-    def setUp(self):
-        self.maxDiff = None
-
-        aut = Typ_Odpowiedzialnosci.objects.get(skrot='aut.')
-        self.typ_odpowiedzialnosci = aut
-
-        self.uczelnia = mommy.make(Uczelnia)
-        self.wydzial = mommy.make(Wydzial, uczelnia=self.uczelnia)
-        self.j = mommy.make(Jednostka, nazwa='Foo Bar', uczelnia=self.uczelnia, wydzial=self.wydzial)
-
-        self.a = autor(self.j)
-        self.a.nazwisko = 'Kowalski'
-        self.a.imiona = 'Jan'
-        self.a.tytul = Tytul.objects.get(skrot='dr')
-        self.a.save()
-
-        wspolne_dane = dict(
-            adnotacje='adnotacje',
-            informacja_z=Zrodlo_Informacji.objects.all()[0],
-            status_korekty=Status_Korekty.objects.all()[0],
-            rok='2000',
-            www='http://127.0.0.1/',
-            recenzowana=True,
-            impact_factor=5,
-            punkty_kbn=5,
-            index_copernicus=5,
-            punktacja_wewnetrzna=5,
-            weryfikacja_punktacji=True,
-            typ_kbn=Typ_KBN.objects.all()[0],
-            jezyk=Jezyk.objects.all()[0],
-            informacje='informacje',
-            szczegoly='szczegoly',
-            uwagi='uwagi',
-            slowa_kluczowe='slowa kluczowe'
-        )
-
-        zwarte_dane = dict(
-            miejsce_i_rok="Lublin 2012",
-            wydawnictwo="Pholium",
-            redakcja="Redkacja",
-            isbn='isbn',
-            e_isbn='e_isbn',
-            tytul='tytul'
-        )
-
-        self.z = zwarte(
-            self.a, self.j, aut, tytul_oryginalny='zwarte',
-            liczba_znakow_wydawniczych=40000,
-            charakter_formalny=Charakter_Formalny.objects.all()[0],
-            **dict(list(zwarte_dane.items()) + list(wspolne_dane.items()))
-        )
-
-        self.zr = mommy.make(Zrodlo, nazwa='Zrodlo')
-
-        self.c = ciagle(
-            self.a, self.j,
-            tytul_oryginalny='ciągłe',
-            zrodlo=self.zr,
-            tytul='tytul',
-            issn='issn',
-            e_issn='e_issn',
-            charakter_formalny=Charakter_Formalny.objects.all()[0],
-            **wspolne_dane)
-        self.assertEqual(Wydawnictwo_Ciagle_Autor.objects.all().count(), 1)
-
-        wca = Wydawnictwo_Ciagle_Autor.objects.all()[0]
-        wca.typ_odpowiedzialnosci = self.typ_odpowiedzialnosci
-        wca.save()
 
-        settings.BPP_CACHE_ENABLED = True
+from bpp.models.autor import Autor
+from bpp.models.cache import Rekord, Autorzy, defer_zaktualizuj_opis
+from bpp.models.openaccess import Wersja_Tekstu_OpenAccess, \
+    Licencja_OpenAccess, Czas_Udostepnienia_OpenAccess
+from bpp.models.struktura import Jednostka
+from bpp.models.system import Typ_Odpowiedzialnosci, Jezyk, Charakter_Formalny, \
+    Typ_KBN
+from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, \
+    Wydawnictwo_Ciagle_Autor
+from bpp.models.zrodlo import Zrodlo
+from bpp.tasks import zaktualizuj_opis
 
-        # Doktorat i habilitacja
 
-        doktorat_kw = dict(list(zwarte_dane.items()) + list(wspolne_dane.items()))
+def pierwszy_rekord():
+    return Rekord.objects.all()[0].opis_bibliograficzny_cache
 
-        self.d = mommy.make(
-            Praca_Doktorska, tytul_oryginalny='doktorat',
-            autor=self.a,
-            jednostka=self.j,
-            **doktorat_kw)
 
-        self.h = mommy.make(
-            Praca_Habilitacyjna, tytul_oryginalny='habilitacja',
-            autor=self.a, jednostka=self.j,
-            **doktorat_kw)
+def test_opis_bibliograficzny(transactional_db, standard_data):
+    wc = mommy.make(Wydawnictwo_Ciagle, szczegoly='Sz', uwagi='U')
 
-        # Patent
-
-        chf_pat = Charakter_Formalny.objects.get(skrot='PAT')
-
-        for elem in ['typ_kbn', 'jezyk']:
-            del wspolne_dane[elem]
-
-        self.p = mommy.make(
-            Patent,
-            tytul_oryginalny='patent',
-            numer_zgloszenia="100",
-            data_decyzji=datetime.date(2012, 1, 1),
-            **wspolne_dane)
-
-        Patent_Autor.objects.create(
-            autor=self.a, jednostka=self.j, rekord=self.p,
-            typ_odpowiedzialnosci=aut, zapisany_jako="Kowalski")
-
-        self.wszystkie_modele = [self.d, self.h, self.p, self.c, self.z]
-
+    rekord_opis = Rekord.objects.all()[0].opis_bibliograficzny_cache
+    wc_opis = wc.opis_bibliograficzny()
+    assert rekord_opis == wc_opis
 
-class TestCacheRebuildBug(TestCase):
-    @with_cache
-    def test_liczba_znakow_bug(self):
-        Rekord.objects.full_refresh()
-        self.assertEqual(Rekord.objects.all().count(), 0)
-
-        c = any_ciagle(tytul="foo", liczba_znakow_wydawniczych=31337)
-        Rekord.objects.full_refresh()
-
-        self.assertEqual(Rekord.objects.all().count(), 1)
-        self.assertEqual(Rekord.objects.all()[0].tytul, "foo")
-        self.assertEqual(Rekord.objects.all()[0].liczba_znakow_wydawniczych, 31337)
-
-
-class TestCacheSimple(TestCacheMixin, TestCase):
-
-    @with_cache
-    def test_get_original_object(self):
-        Rekord.objects.full_refresh()
-        for model in self.wszystkie_modele:
-            c = Rekord.objects.get_original(model)
-            self.assertEqual(c.original, model)
-
-    @with_cache
-    def test_cache_triggers(self):
-        T1 = 'OMG ROXX'
-        T2 = 'LOL'
-
-        for model in self.wszystkie_modele:
-            model.tytul_oryginalny = T1
-            model.save()
-            self.assertEqual(Rekord.objects.get_original(model).tytul_oryginalny, T1)
-
-            model.tytul_oryginalny = T2
-            model.save()
-            self.assertEqual(Rekord.objects.get_original(model).tytul_oryginalny, T2)
-
-
-    def assertInstanceEquals(self, instance, values_dict):
-        for key, value in list(values_dict.items()):
-            instance_value = getattr(instance, key)
-            self.assertEqual(
-                instance_value, value,
-                msg="key=%s, %s!=%s" % (key, value, instance_value))
-
-    @with_cache
-    def test_tytul_sorted_version(self):
-        for elem in [self.d, self.h, self.c, self.z]: #  self.p]:
-            elem.tytul_oryginalny = "The 'APPROACH'"
-            elem.jezyk = Jezyk.objects.get(skrot='ang.')
-            elem.save()
-
-            self.assertEqual(
-                Rekord.objects.get_original(elem).tytul_oryginalny_sort,
-                'approach')
 
-            elem.tytul_oryginalny = "le 'test'"
-            elem.jezyk = Jezyk.objects.get(skrot='fr.')
-            elem.save()
+def test_kasowanie(db, standard_data):
+    assert Rekord.objects.count() == 0
 
-            #elem = elem.__class__.objects.get(pk=elem.pk) #reload
-            #self.assertEquals(elem.tytul_oryginalny_sort, "test")
+    wc = mommy.make(Wydawnictwo_Ciagle)
+    assert Rekord.objects.count() == 1
 
-            self.assertEqual(
-                Rekord.objects.get_original(elem).tytul_oryginalny_sort,
-                'test')
+    wc.delete()
+    assert Rekord.objects.count() == 0
 
-class LoadFixturesMixin:
-    def _databases_names(self, include_mirrors=True):
-        # If the test case has a multi_db=True flag, act on all databases,
-        # including mirrors or not. Otherwise, just on the default DB.
-        if getattr(self, 'multi_db', False):
-            return [alias for alias in connections
-                    if include_mirrors or not connections[alias].settings_dict[
-                    'TEST_MIRROR']]
-        else:
-            return [DEFAULT_DB_ALIAS]
 
-    def loadFixtures(self):
-        for db_name in self._databases_names(include_mirrors=False):
-            if hasattr(self, 'fixtures'):
-                call_command('loaddata', *self.fixtures,
-                             **{'verbosity': 0, 'database': db_name,
-                                'skip_validation': True})
+def test_opis_bibliograficzny_dependent(transactional_db, standard_data):
+    """Stwórz i skasuj Wydawnictwo_Ciagle_Autor i sprawdź, jak to
+    wpłynie na opis."""
 
+    c = mommy.make(Wydawnictwo_Ciagle, szczegoly='sz', uwagi='u')
+    assert 'KOWALSKI' not in c.opis_bibliograficzny()
+    assert 'KOWALSKI' not in pierwszy_rekord()
 
-class TestCacheZapisani(TestCase):
-    # fixtures = [
-    #     'typ_odpowiedzialnosci.json', 'tytul.json', 'zrodlo_informacji.json',
-    #     'charakter_formalny.json', 'status_korekty.json', 'typ_kbn.json',
-    #     'jezyk.json']
+    a = mommy.make(Autor, imiona='Jan', nazwisko='Kowalski')
+    j = mommy.make(Jednostka)
+    wca = c.dodaj_autora(a, j)
+    assert 'KOWALSKI' in c.opis_bibliograficzny()
+    assert 'KOWALSKI' in pierwszy_rekord()
 
-    def test_zapisani_wielu(self):
-        aut = any_autor("Kowalski", "Jan")
-        aut2 = any_autor("Nowak", "Jan")
+    wca.delete()
+    assert 'KOWALSKI' not in c.opis_bibliograficzny()
+    assert 'KOWALSKI' not in pierwszy_rekord()
 
-        jed = mommy.make(Jednostka)
-        wyd = any_ciagle(tytul_oryginalny="Wydawnictwo ciagle")
 
-        for kolejnosc, autor in enumerate([aut, aut2]):
-            Wydawnictwo_Ciagle_Autor.objects.create(
-                autor=autor,
-                jednostka=jed,
-                rekord=wyd,
-                typ_odpowiedzialnosci_id=1,
-                zapisany_jako='FOO BAR',
-                kolejnosc=kolejnosc
-            )
+def test_opis_bibliograficzny_zrodlo(transactional_db, standard_data):
+    """Zmień nazwę źródła i sprawdź, jak to wpłynie na opis."""
+    from bpp.models import cache
+    assert cache._CACHE_ENABLED
 
+    from django.conf import settings
+    assert settings.TESTING == True
+    assert settings.CELERY_ALWAYS_EAGER == True
 
-        Rekord.objects.full_refresh()
-        c = Rekord.objects.get_original(wyd)
+    z = mommy.make(Zrodlo, nazwa='OMG', skrot='wutlolski')
+    c = mommy.make(Wydawnictwo_Ciagle, szczegoly='SZ', uwagi='U', zrodlo=z)
 
-        # Upewnij się, że w przypadku pracy z wieloma autorami do cache
-        # zapisywane jest nie nazwisko z pól 'zapisany_jako' w bazie danych,
-        # a oryginalne
-        self.assertEqual(c.opis_bibliograficzny_autorzy_cache,
-                          ['Kowalski Jan', 'Nowak Jan'])
+    assert 'wutlolski' in c.opis_bibliograficzny()
+    assert 'wutlolski' in pierwszy_rekord()
 
-        # Upewnij się, że pole 'opis_bibliograficzny_zapisani_autorzy_cache'
-        # zapisywane jest prawidłowo
-        self.assertEqual(c.opis_bibliograficzny_zapisani_autorzy_cache,
-                          'FOO BAR, FOO BAR')
+    z.nazwa = 'LOL'
+    z.skrot = 'FOKA'
 
-    def test_zapisani_jeden(self):
-        aut = any_autor("Kowalski", "Jan")
-        dok = mommy.make(Praca_Doktorska, tytul_oryginalny="Doktorat", autor=aut)
+    assert 'wutlolski' not in c.opis_bibliograficzny()
+    assert 'FOKA' in c.opis_bibliograficzny()
 
-        Rekord.objects.full_refresh()
-        c = Rekord.objects.get_original(dok)
+    assert 'wutlolski' in pierwszy_rekord()
 
-        # Upewnij się, że w przypadku pracy z jednym autorem do cache
-        # zapisywana jest prawidłowa wartość
-        self.assertEqual(c.opis_bibliograficzny_autorzy_cache, ['Kowalski Jan'])
 
-        self.assertEqual(c.opis_bibliograficzny_zapisani_autorzy_cache, 'Kowalski Jan')
+    assert cache._CACHE_ENABLED
 
-class TestMinimalCachingProblem(TestCase):
-    # fixtures = [
-    #     "status_korekty.json",
-    #     "charakter_formalny.json",
-    #     "jezyk.json",
-    #     "typ_odpowiedzialnosci.json"]
+    z.save()
 
-    @with_cache
-    def test_tworzenie(self):
+    assert 'FOKA' in c.opis_bibliograficzny()
+    assert 'FOKA' in pierwszy_rekord()
 
-        self.j = mommy.make(Jednostka)
-        self.a = any_autor()
+    z.nazwa = 'LOL 2'
+    z.skrot = "foka 2"
+    z.save()
 
-        self.assertEqual(Autorzy.objects.all().count(), 0)
+    assert 'foka 2' in c.opis_bibliograficzny()
+    assert 'foka 2' in pierwszy_rekord()
 
-        c = any_ciagle(impact_factor=5, punktacja_wewnetrzna=0)
-        self.assertEqual(Rekord.objects.all().count(), 1)
+@pytest.mark.django_db
+def test_post_save_cache(doktorat):
+    assert Rekord.objects.all().count() == 1
 
-        c.dodaj_autora(self.a, self.j)
+    doktorat.tytul = 'zmieniono'
+    doktorat.save()
 
-        self.assertEqual(AutorzyView.objects.all().count(), 1)
-        self.assertEqual(Autorzy.objects.all().count(), 1)
+    assert Rekord.objects.get_original(doktorat).tytul == 'zmieniono'
 
-    @with_cache
-    def test_usuwanie(self):
 
-        self.j = mommy.make(Jednostka)
-        self.a = any_autor()
+def test_deletion_cache(doktorat):
+    assert Rekord.objects.all().count() == 1
 
-        self.assertEqual(Autorzy.objects.all().count(), 0)
+    doktorat.delete()
+    assert Rekord.objects.all().count() == 0
 
-        c = any_ciagle(impact_factor=5, punktacja_wewnetrzna=0)
-        self.assertEqual(Rekord.objects.all().count(), 1)
 
-        c.dodaj_autora(self.a, self.j)
+def test_wca_delete_cache(transactional_db, wydawnictwo_ciagle_z_dwoma_autorami):
+    """Czy skasowanie obiektu Wydawnictwo_Ciagle_Autor zmieni opis
+    wydawnictwa ciągłego w Rekordy materialized view?"""
 
-        c.delete()
+    assert Rekord.objects.all().count() == 1
+    assert Wydawnictwo_Ciagle_Autor.objects.all().count() == 2
 
-        self.assertEqual(AutorzyView.objects.all().count(), 0)
-        self.assertEqual(Autorzy.objects.all().count(), 0)
+    r = Rekord.objects.all()[0]
+    assert 'NOWAK' in r.opis_bibliograficzny_cache
+    assert 'KOWALSKI' in r.opis_bibliograficzny_cache
+
+    Wydawnictwo_Ciagle_Autor.objects.all()[0].delete()
+    aca = Wydawnictwo_Ciagle_Autor.objects.all()[0]
+    aca.delete()
+
+    assert Autorzy.objects.filter_rekord(aca).count() == 0
+    assert Rekord.objects.all().count() == 1
+
+    r = Rekord.objects.all()[0]
+    assert 'NOWAK' not in r.opis_bibliograficzny_cache
+    assert 'KOWALSKI' not in r.opis_bibliograficzny_cache
+
+@pytest.mark.django_db
+def test_caching_kasowanie_autorow(wydawnictwo_ciagle_z_dwoma_autorami):
+    for wca in Wydawnictwo_Ciagle_Autor.objects.all().only('autor'):
+        wca.autor.delete()
+
+    assert Wydawnictwo_Ciagle_Autor.objects.count() == 0
+    assert Rekord.objects.all().count() == 1
+
+    r = Rekord.objects.all()[0]
+    assert 'NOWAK' not in r.opis_bibliograficzny_cache
+    assert 'KOWALSKI' not in r.opis_bibliograficzny_cache
+
+@pytest.mark.django_db
+def test_caching_kasowanie_typu_odpowiedzialnosci_autorow(wydawnictwo_ciagle_z_dwoma_autorami):
+    assert Wydawnictwo_Ciagle_Autor.objects.filter(rekord=wydawnictwo_ciagle_z_dwoma_autorami).count() == 2
+
+    Typ_Odpowiedzialnosci.objects.all().delete()
+
+    assert Wydawnictwo_Ciagle_Autor.objects.count() == 0
+    assert Rekord.objects.all().count() == 1
+
+    r = Rekord.objects.all()[0]
+    assert 'NOWAK' not in r.opis_bibliograficzny_cache
+    assert 'KOWALSKI' not in r.opis_bibliograficzny_cache
+
+
+def test_caching_kasowanie_zrodla(transactional_db, wydawnictwo_ciagle_z_dwoma_autorami):
+    assert Zrodlo.objects.all().count() == 1
+
+    z = Zrodlo.objects.all()[0]
+    z.delete()  # WCA ma zrodlo.on_delete=SET_NULL
+
+    assert Rekord.objects.all().count() == 1
+    assert Wydawnictwo_Ciagle.objects.all().count() == 1
+
+    r = Rekord.objects.all()[0]
+    assert 'NOWAK' in r.opis_bibliograficzny_cache
+    assert 'KOWALSKI' in r.opis_bibliograficzny_cache
+    assert z.skrot not in r.opis_bibliograficzny_cache
+    assert "None" not in r.opis_bibliograficzny_cache
+
+
+@pytest.mark.django_db
+def test_caching_kasowanie_jezyka(wydawnictwo_ciagle_z_dwoma_autorami):
+    xng = Jezyk.objects.create(skrot="xng.", nazwa="taki", pk=500)
+    wydawnictwo_ciagle_z_dwoma_autorami.jezyk = xng
+    wydawnictwo_ciagle_z_dwoma_autorami.save()
+
+    assert Rekord.objects.all().count() == 1
+    xng.delete()
+
+    assert Rekord.objects.all().count() == 0
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "attrname, klass, skrot, ma_zostac",
+    [("typ_kbn", Typ_KBN, "PO", 0),
+     ("charakter_formalny", Charakter_Formalny, "PAT", 0),
+     ("openaccess_wersja_tekstu", Wersja_Tekstu_OpenAccess, "FINAL_AUTHOR", 1),
+     ("openaccess_licencja", Licencja_OpenAccess, "CC-BY-ND", 1),
+     ("openaccess_czas_publikacji", Czas_Udostepnienia_OpenAccess,
+      "AT_PUBLICATION", 1)])
+def test_usuwanie_powiazanych_vs_rekord(
+        wydawnictwo_ciagle_z_dwoma_autorami,
+        patent,
+        standard_data,
+        openaccess_data,
+        attrname,
+        klass,
+        skrot,
+        ma_zostac):
+
+    o = klass.objects.get(skrot=skrot)
+    setattr(wydawnictwo_ciagle_z_dwoma_autorami, attrname, o)
+    wydawnictwo_ciagle_z_dwoma_autorami.save()
+
+    setattr(patent, attrname, o)
+    patent.save()
+
+    assert Rekord.objects.all().count() == 2
+    o.delete()
+    assert Rekord.objects.all().count() == ma_zostac
+
+
+@pytest.mark.django_db
+def test_caching_kasowanie_typu_kbn(
+        wydawnictwo_ciagle_z_dwoma_autorami,
+        standard_data):
+    tk = Typ_KBN.objects.all().first()
+
+    wydawnictwo_ciagle_z_dwoma_autorami.typ_kbn = tk
+    wydawnictwo_ciagle_z_dwoma_autorami.save()
+
+    assert Rekord.objects.all().count() == 1
+    tk.delete()
+
+    assert Rekord.objects.all().count() == 0
+
+
+@pytest.mark.django_db
+def test_caching_kasowanie_charakteru_formalnego(
+        wydawnictwo_ciagle_z_dwoma_autorami, patent, autor_jan_kowalski,
+        jednostka, standard_data):
+    patent.dodaj_autora(autor_jan_kowalski, jednostka)
+
+    cf = Charakter_Formalny.objects.all().first()
+
+    wydawnictwo_ciagle_z_dwoma_autorami.charakter_formalny = cf
+    wydawnictwo_ciagle_z_dwoma_autorami.save()
+
+    assert Rekord.objects.all().count() == 2
+    Charakter_Formalny.objects.all().delete()
+
+    assert Rekord.objects.all().count() == 0
+
+@pytest.mark.django_db
+def test_caching_kasowanie_wydzialu(autor_jan_kowalski, jednostka, wydzial,
+                                    wydawnictwo_ciagle,
+                                    typy_odpowiedzialnosci):
+    assert jednostka.wydzial == wydzial
+
+    wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
+
+    assert Rekord.objects.all().count() == 1
+    assert Jednostka.objects.all().count() == 1
+    wydzial.delete()
+
+    assert Rekord.objects.all().count() == 1
+    assert Rekord.objects.all()[0].original.autorzy.all().count() == 0
+    assert Jednostka.objects.all().count() == 0
+
+@pytest.mark.django_db
+def test_caching_kasowanie_uczelni(autor_jan_kowalski, jednostka, wydzial,
+                                   uczelnia, wydawnictwo_ciagle,
+                                   typy_odpowiedzialnosci):
+    assert wydzial.uczelnia == uczelnia
+    assert jednostka.wydzial == wydzial
+    wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
+
+    assert Rekord.objects.all().count() == 1
+    assert Jednostka.objects.all().count() == 1
+    uczelnia.delete()
+
+    assert Rekord.objects.all().count() == 1
+    assert Rekord.objects.all()[0].original.autorzy.all().count() == 0
+    assert Jednostka.objects.all().count() == 0
+
+
+@pytest.mark.django_db
+def test_caching_full_refresh(wydawnictwo_ciagle_z_dwoma_autorami):
+    assert Rekord.objects.all().count() == 1
+    Rekord.objects.full_refresh()
+    assert Rekord.objects.all().count() == 1
+
+
+def test_caching_kolejnosc(transactional_db, wydawnictwo_ciagle_z_dwoma_autorami):
+
+    a = list(Wydawnictwo_Ciagle_Autor.objects.all().order_by('kolejnosc'))
+    assert len(a) == 2
+
+    x = Rekord.objects.get_original(wydawnictwo_ciagle_z_dwoma_autorami)
+    assert "[AUT.] KOWALSKI JAN, NOWAK JAN" in x.opis_bibliograficzny_cache
+
+    k = a[0].kolejnosc
+    a[0].kolejnosc = a[1].kolejnosc
+    a[1].kolejnosc = k
+    with transaction.atomic():
+        a[0].save()
+        a[1].save()
+
+    x = Rekord.objects.get_original(wydawnictwo_ciagle_z_dwoma_autorami)
+    assert "[AUT.] NOWAK JAN, KOWALSKI JAN" in x.opis_bibliograficzny_cache
+
+
+@pytest.mark.django_db
+def test_defer_zaktualizuj_opis(settings):
+    settings.CELERY_ALWAYS_EAGER = False
+    w = mommy.make(Wydawnictwo_Ciagle)
+    w.tytul_oryginalny = "foobar"
+    defer_zaktualizuj_opis(w)
+    settings.CELERY_ALWAYS_EAGER = True
+
+@pytest.mark.django_db
+def test_defer_zaktualizuj_opis_task(settings):
+    w = mommy.make(Wydawnictwo_Ciagle)
+    w.tytul_oryginalny = "foobar"
+    w.save()
+
+    zaktualizuj_opis('bpp', 'wydawnictwo_ciagle', w.pk, called_by="tests")
+
+
+def test_aktualizacja_rekordu_autora(transactional_db, typy_odpowiedzialnosci):
+    w = mommy.make(Wydawnictwo_Ciagle)
+
+    a = mommy.make(Autor)
+    b = mommy.make(Autor)
+
+    j = mommy.make(Jednostka)
+    r = w.dodaj_autora(a, j, zapisany_jako="Test")
+
+    assert b.pk not in Rekord.objects.all().first().autorzy.all().values_list(
+        "autor", flat=True)
+
+    r.autor = b
+    r.save()
+
+    # czy cache jest odświeżone
+    assert b.pk in Rekord.objects.all().first().autorzy.all().values_list(
+        "autor", flat=True)
+
+@pytest.mark.django_db
+def test_prace_autora_z_afiliowanych_jednostek(typy_odpowiedzialnosci):
+    a1 = mommy.make(Autor, nazwisko="X", imiona="X")
+    a2 = mommy.make(Autor, nazwisko="Y", imiona="Y")
+
+    nasza = mommy.make(Jednostka, skupia_pracownikow=True)
+    obca = mommy.make(Jednostka, skupia_pracownikow=False)
+
+    wc1 = mommy.make(Wydawnictwo_Ciagle, impact_factor=10, rok=2017)
+    wc2 = mommy.make(Wydawnictwo_Ciagle, impact_factor=10, rok=2017)
+
+    wc1.dodaj_autora(a1, nasza)
+    wc1.dodaj_autora(a2, nasza)
+
+    wc2.dodaj_autora(a1, obca)
+    wc2.dodaj_autora(a2, nasza)
+
+    assert Rekord.objects.prace_autora(a1).count() == 2
+    assert Rekord.objects.prace_autora(a2).count() == 2
+
+    assert Rekord.objects.prace_autora_z_afiliowanych_jednostek(a1).count() == 1
+    assert Rekord.objects.prace_autora_z_afiliowanych_jednostek(a2).count() == 2

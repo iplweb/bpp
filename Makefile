@@ -1,6 +1,6 @@
 BRANCH=`git branch | sed -n '/\* /s///p'`
 
-.PHONY: clean distclean build-wheels install-wheels wheels tests release
+.PHONY: clean distclean tests release
 
 PYTHON=python3.6
 PIP=${PYTHON} -m pip
@@ -26,75 +26,31 @@ distclean: clean
 	rm -rf node_modules src/node_modules src/django_bpp/staticroot 
 	rm -rf .vagrant splintershots src/components/bower_components src/media
 
-# cel: wheels
-# Buduje pakiety WHL. Nie buduje samego pakietu django-bpp
-# Buduje pakiety WHL na bazie requirements.txt, zapisując je do katalogu 'dist',
-# buduje pakiety WHL na bazie requirements_dev.txt, zapisując je do katalogu 'dist_dev'.
-wheels:
-	echo "Buduje wheels w ${DISTDIR}"
-
-	mkdir -p ${DISTDIR}
-	${PIP}  wheel --wheel-dir=${DISTDIR} --find-links=${DISTDIR} -r requirements_src.txt  | cat
-
-	mkdir -p ${DISTDIR}
-	${PIP} wheel --wheel-dir=${DISTDIR} --find-links=${DISTDIR} -r requirements.txt | cat
-
-	mkdir -p ${DISTDIR_DEV}
-	${PIP} wheel --wheel-dir=${DISTDIR_DEV} --find-links=${DISTDIR} --find-links=${DISTDIR_DEV} -r requirements_dev.txt | cat
-
-# cel: install-production-wheels
-# Instaluje wszystkie requirements
-install-production-wheels:
-	${PIP} install -q --no-index --only-binary=whl --find-links=./dist -r requirements.txt
-
-install-dev-wheels:
-	${PIP} install -q --no-index --only-binary=whl --find-links=./dist_dev -r requirements_dev.txt
-
-# cel: install-wheels
-# Instaluje wszystkie requirements
-install-wheels: install-production-wheels install-dev-wheels
-
-install-wheels-from-devserver:
-	${PIP} install --extra-index-url http://dev.iplweb.pl:8080/ --trusted-host dev.iplweb.pl -r requirements_dev.txt | cat
-
-install-wheels-from-localdir:
-	${PIP} install -f file://`pwd`/dist/ -f file://`pwd`/dist_dev/ -r requirements_dev.txt | cat
-
 grunt:
 	grunt build
 
 yarn:
-	yarn
+	yarn install --no-progress --emoji false -s
 
-yarn-production:
-	yarn --prod
+yarn-prod:
+	yarn install --no-progress --emoji false -s --prod
 
-_real_assets: 
+_assets:
 	${PYTHON} src/manage.py collectstatic --noinput -v0 --traceback
 	${PYTHON} src/manage.py compress --force  -v0 --traceback
 
-_assets: install-wheels-from-devserver _real_assets
-
-_assets-localdir: install-wheels-from-localdir _real_assets
-
 assets: yarn grunt _assets
 
-_docker-assets:
-	docker-compose run --rm python bash -c "cd /usr/src/app && make _assets"
+install-pipenv:
+	pip install pipenv
 
-_docker-assets-localdir:
-	docker-compose run --rm python bash -c "cd /usr/src/app && make _assets-localdir"
+_docker_assets: install-pipenv pipenv-install _assets
 
-docker-assets: docker-wheels docker-yarn docker-grunt _docker-assets-localdir
+docker-assets: docker-yarn-grunt 
+	docker-compose run --rm python bash -c "cd /usr/src/app && make _docker_assets"
 
-docker-grunt:
-	docker-compose run --rm node bash -c "cd /usr/src/app && make grunt"
-
-docker-yarn:
-	docker-compose run --rm node bash -c "cd /usr/src/app && make yarn"
-
-docker-yarn-prod:
-	docker-compose run --rm node bash -c "cd /usr/src/app && make yarn-prod"
+docker-yarn-grunt:
+	docker-compose run --rm node bash -c "cd /usr/src/app && make yarn grunt"
 
 # cel: assets
 # Pobiera i składa do kupy JS/CSS/Foundation
@@ -102,7 +58,11 @@ assets: yarn _assets
 
 assets-production: yarn-production _assets
 
-_bdist_wheel:
+requirements:
+	pipenv lock -r > requirements.txt
+	pipenv lock -dr > requirements_dev.txt
+
+_bdist_wheel: requirements
 	${PYTHON} setup.py -q bdist_wheel
 
 # cel: bdist_wheel
@@ -110,24 +70,13 @@ _bdist_wheel:
 # Wymaga:
 # 1) zainstalowanych pakietów z requirements.txt i requirements_dev.txt przez pip
 # 2) yarn, grunt-cli, npm, bower
-bdist_wheel: clean assets _bdist_wheel rsync-dev
-
-
-# cel: bdist_wheel-production
-# Jak bdist_wheel, ale pakuje tylko produkcyjne JS prezz yarn
-bdist_wheel-production: clean install-wheels assets-production _bdist_wheel
+bdist_wheel: clean assets _bdist_wheel
 
 js-tests:
-	ls -las src/django_bpp/staticroot
-	grunt qunit -v
+	grunt qunit
 
 docker-js-tests:
 	docker-compose run --rm node bash -c "cd /usr/src/app && make js-tests"
-
-# cel: tests-full
-# Jak tests, ale całość
-full-tests: wheels install-wheels assets tests bdist_wheel-production
-	coveralls
 
 # cel: release
 # PyPI release
@@ -151,7 +100,6 @@ pristine-staging:
 	echo " done!" 
 
 rebuild-staging: bdist_wheel pristine-staging staging
-
 
 demo-vm-ansible: 
 	ansible-playbook ansible/demo-vm.yml --private-key=.vagrant/machines/staging/virtualbox/private_key
@@ -185,56 +133,53 @@ cleanup-pycs:
 	find . -name \*\\.log -print0 | xargs -0 rm -f 
 	rm -rf build __pycache__ *.log
 
-# cel: build-test-container
-# Buduje testowy kontener
-build-test-container: cleanup-pycs
-	docker-compose stop test
-	docker-compose rm test
-	docker-compose build test > /dev/null
-
 # cel: docker-up
 # Podnosi wszystkie kontenery, które powinny działać w tle
 docker-up:
 	docker-compose up -d redis rabbitmq selenium nginx_http_push db
 
-docker-python-tests:
+pipenv-install:
+	pipenv --bare install --system --dev
+
+dropdb:
+	dropdb --if-exists bpp
+
+createdb:
+	createdb bpp
+
+recreatedb: dropdb createdb 
+
+clone-bpp-to-other-dbs:
+	dropdb --if-exists test_bpp
+	dropdb --if-exists test_bpp_gw0
+	dropdb --if-exists test_bpp_gw1
+
+	echo 'CREATE DATABASE "test_bpp" WITH TEMPLATE "bpp"' | psql
+	echo 'CREATE DATABASE "test_bpp_gw0" WITH TEMPLATE "bpp"' | psql
+	echo 'CREATE DATABASE "test_bpp_gw1" WITH TEMPLATE "bpp"' | psql
+
+migrate:
+	python src/manage.py migrate
+
+# Cel: python-tests
+#
+# Uwaga dotycząca tworzenia bazy "bpp" (_nie_ "test_bpp") w tym celu
+# poniżej:
+#
+# Utwórz bazę testową "bpp" - wymaga jej jeden test integracyjny
+# integration_tests/test_celery. Ewentualnie mógłby być to klon
+# bazy testowej, jeżeli moglibyśmy utworzyć go równie łatwo jak
+# przy pomocy polecenia Stellar. Jednakże, w momencie pisania tego
+# komentarza, najłatwiej będzie uruchomić po prostu 'manage.py migrate'
+# dla "głównej" bazy danych
+tox: pipenv-install recreatedb migrate clone-bpp-to-other-dbs
+	tox
+
+docker-python-tests: 
 	docker-compose up -d test
-	docker-compose exec test /bin/bash -c "cd /usr/src/app && pip install -q tox && tox"
+	docker-compose exec test /bin/bash -c "cd /usr/src/app && make tox"
 
-docker-tests: docker-assets docker-python-tests docker-js-tests
-
-_docker-wheels:
-	docker-compose run --rm python bash -c "cd /usr/src/app && make wheels"
-
-rsync-dev:
-	rsync dist/* dist_dev/* pypi@dev.iplweb.pl:~/packages
-
-docker-wheels: _docker-wheels rsync-dev
-
-circle-env:
-	echo COVERALLS_REPO_TOKEN="${COVERALLS_REPO_TOKEN}" >> docker/env.test.txt
-
-# cel: travis
-# Uruchamia wszystkie testy - dla TravisCI
-travisci: travis-env docker-up docker-tests
-	@echo "Done"
-
-rebuild-test:
-	docker-compose stop test
-	docker-compose rm -f test
-	docker-compose build test
-
-_docker-production-deps:
-	docker-compose run --rm test /bin/bash -c "cd /usr/src/app && make install-production-wheels _bdist_wheel"
-
-docker-production-deps: docker-assets clean _docker-production-deps
-
-
-# cel: docker-build
-# Tworzy zależności dla produkcyjnej wersji oprogramowania
-# (czyli: buduje wheels i bdist_wheel pod dockerem, na docelowej
-# dystrybucji Linuxa, następnie wpycha je do naszego "prywatnego" PyPI)
-docker-build: docker-production-deps rsync-dev
+docker-tests: clean docker-assets docker-python-tests docker-js-tests
 
 # cel: production -DCUSTOMER=... or CUSTOMER=... make production
 production: 
@@ -247,11 +192,3 @@ production-update: # "szybka" ścieżka aktualizacji
 # Uruchom sphinx-autobuild
 live-docs: 
 	sphinx-autobuild -p 8080 -D language=pl docs/ docs/_build
-
-_circleci_pull:
-	docker-compose pull db nginx_http_push node test python 
-
-# cel: cirlceci
-# Uruchom polecenia w kolejności takiej, jak w CircleCI, ale bez Coverage
-# Przydatne gdy chcemy lokalnie uruchomić testy, przed pchnięciem kodu na GitHub
-circleci: _circleci_pull docker-up docker-yarn docker-grunt _docker-assets docker-python-tests docker-js-tests

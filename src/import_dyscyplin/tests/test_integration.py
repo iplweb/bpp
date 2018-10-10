@@ -23,6 +23,6 @@ def test_integracyjny(preauth_admin_browser, live_server):
     with wait_for_page_load(preauth_admin_browser):
         preauth_admin_browser.find_by_id("id_submit").click()
 
-    time.sleep(2)
-
-    assert "Lubelski" in preauth_admin_browser.html
+    preauth_admin_browser.wait_for_condition(
+        lambda browser: "Lubelski" in preauth_admin_browser.html
+    )
