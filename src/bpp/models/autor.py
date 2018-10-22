@@ -83,7 +83,7 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
                   "vide http://www.orcid.org",
         validators=[
             RegexValidator(
-                regex='^\d\d\d\d-\d\d\d\d-\d\d\d\d-\d\d\d\d$',
+                regex='^\d\d\d\d-\d\d\d\d-\d\d\d\d-\d\d\d(\d|X)$',
                 message='Identyfikator ORCID to 4 grupy po 4 cyfry w każdej, '
                         'oddzielone myślnikami',
                 code='orcid_invalid_format'
