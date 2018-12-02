@@ -1,16 +1,15 @@
 # -*- encoding: utf-8 -*-
 from django.db import transaction
-from django.http import Http404
+from django.http import Http404, JsonResponse
 from django.http.response import HttpResponseNotFound
 from django.views.generic import View
 from bpp.models import Autor, Zrodlo
 from bpp.models.abstract import POLA_PUNKTACJI
 from bpp.models.praca_habilitacyjna import Praca_Habilitacyjna
 from bpp.models.zrodlo import Punktacja_Zrodla
-from bpp.views.utils import JSONResponseMixin
 
 
-class RokHabilitacjiView(JSONResponseMixin, View):
+class RokHabilitacjiView(View):
     def post(self, request, *args, **kw):
         try:
             autor = Autor.objects.get(pk=int(request.POST.get('autor_pk')))
@@ -22,10 +21,10 @@ class RokHabilitacjiView(JSONResponseMixin, View):
         except Praca_Habilitacyjna.DoesNotExist:
             return HttpResponseNotFound("Habilitacja")
 
-        return self.render_to_response({"rok": habilitacja.rok})
+        return JsonResponse({"rok": habilitacja.rok})
 
 
-class PunktacjaZrodlaView(JSONResponseMixin, View):
+class PunktacjaZrodlaView(View):
     def post(self, request, zrodlo_id, rok, *args, **kw):
 
         try:
@@ -38,13 +37,14 @@ class PunktacjaZrodlaView(JSONResponseMixin, View):
         except Punktacja_Zrodla.DoesNotExist:
             return HttpResponseNotFound("Rok")
 
-        d = dict([(pole, str(getattr(pz, pole))) for pole in POLA_PUNKTACJI])
-        return self.render_to_response(d)
+        #d = dict([(pole, str(getattr(pz, pole))) for pole in POLA_PUNKTACJI])
+        d = dict([(pole, getattr(pz, pole)) for pole in POLA_PUNKTACJI])
+        return JsonResponse(d)
 
 
-class UploadPunktacjaZrodlaView(JSONResponseMixin, View):
+class UploadPunktacjaZrodlaView(View):
     def ok(self):
-        return self.render_to_response(dict(result='ok'))
+        return JsonResponse({'result': 'ok'})
 
     @transaction.atomic
     def post(self, request, zrodlo_id, rok, *args, **kw):
@@ -57,7 +57,7 @@ class UploadPunktacjaZrodlaView(JSONResponseMixin, View):
         for element in list(request.POST.keys()):
             if element in POLA_PUNKTACJI:
                 if request.POST.get(element) != '':
-                    kw_punktacji[element] = request.POST.get(element)
+                    kw_punktacji[element] = request.POST.get(element) or "0.0"
 
         try:
             pz = Punktacja_Zrodla.objects.get(zrodlo=z, rok=rok)
@@ -68,13 +68,13 @@ class UploadPunktacjaZrodlaView(JSONResponseMixin, View):
 
         if request.POST.get("overwrite") == "1":
             for key, value in list(kw_punktacji.items()):
-                setattr(pz, key, value)
+                setattr(pz, key, value or "0.0")
             pz.save()
             return self.ok()
-        return self.render_to_response(dict(result="exists"))
+        return JsonResponse(dict(result="exists"))
 
 
-class OstatniaJednostkaView(JSONResponseMixin, View):
+class OstatniaJednostkaView(View):
     def post(self, request, *args, **kw):
         try:
             a = Autor.objects.get(pk=request.POST.get('autor_id', None))
@@ -85,5 +85,5 @@ class OstatniaJednostkaView(JSONResponseMixin, View):
         if jed is None:
             return HttpResponseNotFound("Jednostka")
 
-        return self.render_to_response(
+        return JsonResponse(
             dict(jednostka_id=jed.pk, nazwa=jed.nazwa))

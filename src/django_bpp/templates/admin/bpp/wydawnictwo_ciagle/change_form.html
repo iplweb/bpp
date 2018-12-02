@@ -61,6 +61,7 @@
                     "impact_factor": $("input[name=impact_factor]").val(),
                     "index_copernicus": $("input[name=index_copernicus]").val(),
                     "punktacja_wewnetrzna": $("input[name=punktacja_wewnetrzna]").val(),
+                    "punktacja_snip": $("input[name=punktacja_snip]").val(),
 
                     "kc_punkty_kbn": $("input[name=kc_punkty_kbn]").val(),
                     "kc_impact_factor": $("input[name=kc_impact_factor]").val(),
@@ -93,7 +94,7 @@
             names = ['impact_factor', 'index_copernicus',
                 'kc_impact_factor', 'kc_index_copernicus',
                 'kc_punkty_kbn', 'punktacja_wewnetrzna',
-                'punkty_kbn'];
+                'punkty_kbn', 'punktacja_snip'];
             /*
              W razie zmiany źródła LUB roku, ustaw domyślne wartości tekstu
              na przyciskach punktacji.
@@ -220,7 +221,7 @@
                             names = ['impact_factor', 'index_copernicus',
                                 'kc_impact_factor', 'kc_index_copernicus',
                                 'kc_punkty_kbn', 'punktacja_wewnetrzna',
-                                'punkty_kbn'];
+                                'punkty_kbn', 'punktacja_snip'];
 
                             names.forEach(function (n) {
                                 $("#id_" + n).val(data[n]);

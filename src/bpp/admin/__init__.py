@@ -1,6 +1,5 @@
 # -*- encoding: utf-8 -*-
 
-from dal import autocomplete
 from django.contrib import admin
 from django.contrib.auth.forms import UserCreationForm
 from multiseek.models import SearchForm
@@ -9,8 +8,8 @@ from bpp.models import Rodzaj_Prawa_Patentowego, Zewnetrzna_Baza_Danych
 # Proste tabele
 from bpp.models.openaccess import Tryb_OpenAccess_Wydawnictwo_Ciagle, Tryb_OpenAccess_Wydawnictwo_Zwarte, \
     Czas_Udostepnienia_OpenAccess, Licencja_OpenAccess, Wersja_Tekstu_OpenAccess
-from bpp.models.zrodlo import Redakcja_Zrodla
 from .autor import AutorAdmin  # noqa
+from .charakter_formalny import Charakter_FormalnyAdmin  # noqa
 from .core import BaseBppAdmin, CommitedModelAdmin, \
     KolumnyZeSkrotamiMixin, generuj_inline_dla_autorow
 from .core import RestrictDeletionToAdministracjaGroupAdmin, \
@@ -27,12 +26,12 @@ from .praca_doktorska import Praca_DoktorskaAdmin  # noqa
 from .praca_habilitacyjna import Praca_HabilitacyjnaAdmin  # noqa
 from .seria_wydawnicza import Seria_WydawniczaAdmin
 from .uczelnia import UczelniaAdmin  # NOQA
-from .charakter_formalny import Charakter_FormalnyAdmin  # noqa
+from . import zrodlo
 from .wydawnictwo_ciagle import Wydawnictwo_CiagleAdmin
 from .wydawnictwo_zwarte import Wydawnictwo_ZwarteAdmin_Baza, Wydawnictwo_ZwarteAdmin
 from .wydzial import WydzialAdmin
-from ..models import Jezyk, Typ_KBN, Tytul, Autor, Funkcja_Autora, Rodzaj_Zrodla, \
-    Zrodlo, Punktacja_Zrodla, Typ_Odpowiedzialnosci, Status_Korekty, \
+from ..models import Jezyk, Typ_KBN, Tytul, Funkcja_Autora, Rodzaj_Zrodla, \
+    Typ_Odpowiedzialnosci, Status_Korekty, \
     Zrodlo_Informacji, BppUser  # Publikacja_Habilitacyjna
 from ..models.nagroda import OrganPrzyznajacyNagrody
 from ..models.system import Charakter_PBN
@@ -132,84 +131,6 @@ admin.site.register(Wersja_Tekstu_OpenAccess, Wersja_Tekstu_OpenAccessAdmin)
 
 admin.site.register(Typ_Odpowiedzialnosci, Typ_OdpowiedzialnosciAdmin)
 
-
-# Źródła indeksowane
-
-class Punktacja_ZrodlaForm(forms.ModelForm):
-    def __init__(self, *args, **kwargs):
-        super(Punktacja_ZrodlaForm, self).__init__(*args, **kwargs)
-        for field in self.fields:
-            self.fields[field].help_text = ''
-
-
-class Punktacja_ZrodlaInline(admin.TabularInline):
-    model = Punktacja_Zrodla
-    form = Punktacja_ZrodlaForm
-    fields = ['rok', 'impact_factor', 'punkty_kbn', 'index_copernicus',
-              'punktacja_wewnetrzna', 'kc_impact_factor', 'kc_punkty_kbn',
-              'kc_index_copernicus']
-    extra = 1
-
-
-class Redakcja_ZrodlaForm(forms.ModelForm):
-    redaktor = forms.ModelChoiceField(
-        queryset=Autor.objects.all(),
-        widget=autocomplete.ModelSelect2(
-            url='bpp:autor-autocomplete')
-    )
-
-    model = Redakcja_Zrodla
-
-
-class Redakcja_ZrodlaInline(admin.TabularInline):
-    model = Redakcja_Zrodla
-    extra = 1
-    form = Redakcja_ZrodlaForm
-
-    class Meta:
-        fields = "__all__"
-
-
-class ZrodloForm(forms.ModelForm):
-    class Meta:
-        model = Zrodlo
-        widgets = {
-            'nazwa': CHARMAP_SINGLE_LINE,
-            'skrot': CHARMAP_SINGLE_LINE,
-            'nazwa_alternatywna': CHARMAP_SINGLE_LINE,
-            'skrot_nazwy_alternatywnej': CHARMAP_SINGLE_LINE,
-            'poprzednia_nazwa': CHARMAP_SINGLE_LINE
-        }
-        fields = "__all__"
-
-
-class ZrodloAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
-    form = ZrodloForm
-
-    fields = None
-    inlines = (Punktacja_ZrodlaInline, Redakcja_ZrodlaInline,)
-    search_fields = ['nazwa', 'skrot', 'nazwa_alternatywna',
-                     'skrot_nazwy_alternatywnej', 'issn', 'e_issn', 'www',
-                     'poprzednia_nazwa', 'doi']
-    list_display = ['nazwa', 'skrot', 'rodzaj', 'www', 'issn', 'e_issn']
-    list_filter = ['rodzaj', 'zasieg', 'openaccess_tryb_dostepu', 'openaccess_licencja']
-    list_select_related = ['openaccess_licencja', 'rodzaj']
-    fieldsets = (
-        (None, {
-            'fields': (
-                'nazwa', 'skrot', 'rodzaj', 'nazwa_alternatywna',
-                'skrot_nazwy_alternatywnej', 'issn', 'e_issn', 'www', 'doi',
-                'zasieg', 'poprzednia_nazwa', 'jezyk', 'wydawca',),
-        }),
-        ADNOTACJE_FIELDSET,
-        ("OpenAccess", {
-            'classes': ('grp-collapse grp-closed',),
-            'fields': ('openaccess_tryb_dostepu', 'openaccess_licencja',)
-        })
-    )
-
-
-admin.site.register(Zrodlo, ZrodloAdmin)
 
 # Bibliografia
 

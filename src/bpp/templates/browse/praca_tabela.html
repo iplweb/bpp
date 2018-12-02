@@ -206,6 +206,12 @@
             <td>{{ praca.wymiar_wydawniczy_w_arkuszach }}</td>
         </tr>
     {% endif %}
+    {% if uczelnia.pokazuj_punktacja_snip %}
+        <tr>
+            <th>Punktacja SNIP:</th>
+            <td>{{ praca.punktacja_snip }}</td>
+        </tr>
+    {% endif %}
     {% if uczelnia.pokazuj_index_copernicus %}
         <tr>
             <th>

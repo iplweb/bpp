@@ -6,8 +6,6 @@ from datetime import datetime
 
 import django_webtest
 import pytest
-from django.contrib.auth.models import Group
-from django.contrib.contenttypes.models import ContentType
 from django.core.urlresolvers import reverse
 from model_mommy import mommy
 
@@ -368,6 +366,7 @@ def _webtest_login(webtest_app, username, password, login_form='login_form'):
 
 @pytest.fixture(scope='function')
 def wprowadzanie_danych_user(normal_django_user):
+    from django.contrib.auth.models import Group
     grp = Group.objects.get_or_create(name=GR_WPROWADZANIE_DANYCH)[0]
     normal_django_user.groups.add(grp)
     return normal_django_user
@@ -477,6 +476,7 @@ def standard_data(typy_odpowiedzialnosci, tytuly, jezyki,
 @pytest.mark.django_db
 @pytest.fixture(scope='function')
 def openaccess_data():
+    from django.contrib.contenttypes.models import ContentType
     for model_name, skrot, nazwa in get_openaccess_data():
         klass = ContentType.objects.get_by_natural_key(
             "bpp", model_name).model_class()

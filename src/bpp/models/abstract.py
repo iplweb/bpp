@@ -227,6 +227,11 @@ class ModelPunktowanyBaza(models.Model):
     punktacja_wewnetrzna = models.DecimalField(
         "Punktacja wewnętrzna", max_digits=6, decimal_places=2,
         default=Decimal("0.00"), db_index=True)
+    punktacja_snip = models.DecimalField(
+        "Punktacja SNIP",
+        max_digits=6, decimal_places=3, default=Decimal("0.000"), db_index=True,
+        help_text="""CiteScore SNIP (Source Normalized Impact per Paper)"""
+    )
 
     kc_impact_factor = models.DecimalField(
         "KC: Impact factor", max_digits=6, decimal_places=3,

@@ -10,7 +10,7 @@
 #  when: nginx_ppa|changed
 
 - name: Install PPA with nginx + nginx-push-stream-module
-  apt: name="nginx=1.12.0-1+xenial1+pushtream0" state="present"
+  apt: name="nginx=1.14.1-0+xenial0+pushstream1" state="present"
 
 - name: Install scripts for nginx_ensite
   copy: src=nginx_ensite dest=/usr/bin/nginx_ensite mode=755
@@ -18,6 +18,15 @@
 
 - name: Install symlink for nginx_dissite
   file: src=/usr/bin/nginx_ensite dest=/usr/bin/nginx_dissite state=link
+
+- name: Enable nginx service
+  service: name=nginx state=started enabled=yes
+
+- name: Really enable nginx service (ansible bug, maybe)
+  shell: systemctl enable nginx.service
+
+- name: Really start nginx service (ansible bug, maybe)
+  shell: systemctl start nginx.service
 
 - name: Update main nginx config file
   lineinfile: dest="/etc/nginx/nginx.conf" insertafter="http {" line="push_stream_shared_memory_size 32M;"

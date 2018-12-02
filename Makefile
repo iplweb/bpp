@@ -86,8 +86,12 @@ release: bdist_wheel
 
 # cel: staging
 # Konfiguruje system django-bpp za pomocą Ansible na komputerze 'staging' (vagrant)
-staging: # wymaga: wheels bdist_wheel
+staging: staging-up staging-ansible
+
+staging-up: 
 	vagrant up
+
+staging-ansible:
 	ansible-playbook ansible/webserver.yml --private-key=.vagrant/machines/staging/virtualbox/private_key
 
 staging-update: # "szybka" ścieżka aktualizacji
@@ -95,9 +99,6 @@ staging-update: # "szybka" ścieżka aktualizacji
 
 pristine-staging:
 	vagrant pristine -f staging
-	echo -n "Sleeping for 10 secs..."
-	sleep 10
-	echo " done!" 
 
 rebuild-staging: bdist_wheel pristine-staging staging
 
@@ -111,7 +112,7 @@ demo-vm-clone:
 	-rm bpp-`python src/django_bpp/version.py`.ova
 	vagrant halt staging
 	VBoxManage clonevm `VBoxManage list vms|grep bpp_staging|cut -f 2 -d\  ` --name Demo\ BPP\ `python src/django_bpp/version.py` --register
-	VBoxManage export Demo\ BPP\ `python src/django_bpp/version.py` -o bpp-`python src/django_bpp/version.py`.ova --options nomacs --options manifest --vsys 0 --product "Maszyna wirtualna BPP" --producturl http://iplweb.pl/kontakt/ --vendor IPLWeb --vendorurl http://iplweb.pl --version `python src/django_bpp/version.py` --eulafile LICENSE
+	VBoxManage export Demo\ BPP\ `python src/django_bpp/version.py` -o bpp-`python src/django_bpp/version.py`-`date +%Y%m%d%H%M`.ova --options nomacs --options manifest --vsys 0 --product "Maszyna wirtualna BPP" --producturl http://iplweb.pl/kontakt/ --vendor IPLWeb --vendorurl http://iplweb.pl --version `python src/django_bpp/version.py` --eulafile LICENSE
 
 # cel: demo-vm-cleanup
 # Usuwa klon demo-maszyny wirutalnej

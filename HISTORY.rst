@@ -7,8 +7,13 @@ dev
 
 *
 
+1.0.26-dev
+----------
+
+* obsługa punktacji SNIP
+
 1.0.25
--------------
+------
 
 * mniejsza wielkość tytułu na wydruku z opcji "Wyszukiwanie" (#632)
 
