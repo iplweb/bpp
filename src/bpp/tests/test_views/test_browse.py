@@ -214,3 +214,33 @@ def test_browse_autor_podstrona_liczba_cytowan_zalogowani(client, uczelnia, test
         password=NORMAL_DJANGO_USER_PASSWORD)
     res = client.get(reverse("bpp:browse_autor", args=(test_browse_autor.slug,)))
     assert "Liczba cytowań" in res.rendered_content
+
+
+@pytest.mark.django_db
+def test_browse_snip_visible(client, uczelnia, wydawnictwo_ciagle):
+    wydawnictwo_ciagle.punktacja_snip = 50
+    wydawnictwo_ciagle.save()
+
+    uczelnia.pokazuj_punktacja_snip = True
+    uczelnia.save()
+
+    res = client.get(reverse("bpp:browse_praca", args=(
+        ContentType.objects.get(app_label='bpp', model='wydawnictwo_ciagle').pk,
+        wydawnictwo_ciagle.pk,)))
+
+    assert b"SNIP" in res.content
+
+
+@pytest.mark.django_db
+def test_browse_snip_invisible(client, uczelnia, wydawnictwo_ciagle):
+    wydawnictwo_ciagle.punktacja_snip = 50
+    wydawnictwo_ciagle.save()
+
+    uczelnia.pokazuj_punktacja_snip = False
+    uczelnia.save()
+
+    res = client.get(reverse("bpp:browse_praca", args=(
+        ContentType.objects.get(app_label='bpp', model='wydawnictwo_ciagle').pk,
+        wydawnictwo_ciagle.pk,)))
+
+    assert b"SNIP" not in res.content

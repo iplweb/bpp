@@ -2,6 +2,7 @@
 import bleach
 from django import shortcuts
 from django.core.urlresolvers import reverse
+from django.http import JsonResponse
 from django.http.response import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.defaults import server_error, permission_denied, \
@@ -9,7 +10,6 @@ from django.views.defaults import server_error, permission_denied, \
 from sendfile import sendfile
 
 from bpp.models import Uczelnia
-from bpp.views.utils import JSONResponseMixin
 
 
 def root(request):

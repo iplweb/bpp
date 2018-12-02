@@ -1,10 +1,10 @@
 # -*- encoding: utf-8 -*-
 
 import requests
+from django.http import JsonResponse
 from django.http.response import HttpResponseServerError
 from django.views.generic.base import View
 
-from bpp.views.utils import JSONResponseMixin
 from lxml import etree
 
 # multiple: http://www.ncbi.nlm.nih.gov/pubmed/?term=test+&report=xml&format=text
@@ -54,7 +54,7 @@ class PubmedConnectionFailure(HttpResponseServerError):
     pass
 
 
-class GetPubmedIDView(JSONResponseMixin, View):
+class GetPubmedIDView(View):
     def post(self, request, *args, **kw):
         tytul = request.POST.get('t', '').strip()
 
@@ -64,6 +64,6 @@ class GetPubmedIDView(JSONResponseMixin, View):
                 return PubmedConnectionFailure()
 
             if len(data) == 1:
-                return self.render_to_response(parse_data_from_ncbi(data[0]))
+                return JsonResponse(parse_data_from_ncbi(data[0]))
 
-        return self.render_to_response({})
+        return JsonResponse({})
