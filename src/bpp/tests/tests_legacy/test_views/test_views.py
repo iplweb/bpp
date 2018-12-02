@@ -17,12 +17,6 @@ from bpp.tests.util import any_doktorat, any_habilitacja, any_ciagle, any_autor,
 from bpp.tests.tests_legacy.testutil import UserTestCase, SuperuserTestCase
 from bpp.util import rebuild_contenttypes
 from bpp.views.browse import AutorzyView, AutorView
-from bpp.views.utils import JsonResponse
-
-
-class TestUtils(UserTestCase):
-    def test_jsonresponse(self):
-        JsonResponse('foo')
 
 
 class TestRoot(UserTestCase):

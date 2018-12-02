@@ -104,11 +104,15 @@ MODEL_TYPOWANY = (
     'typ_kbn',
 )
 
-MODEL_PUNKTOWANY = (
+MODEL_PUNKTOWANY_BAZA = (
     'punkty_kbn',
     'impact_factor',
     'index_copernicus',
+    'punktacja_snip',
     'punktacja_wewnetrzna',
+)
+
+MODEL_PUNKTOWANY = MODEL_PUNKTOWANY_BAZA + (
     'weryfikacja_punktacji',
 )
 

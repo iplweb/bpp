@@ -432,6 +432,11 @@ class PunktacjaWewnetrznaQueryObject(PunktacjaWewnetrznaEnabledMixin,
     field_name = "punktacja_wewnetrzna"
 
 
+class PunktacjaSNIP(DecimalQueryObject):
+    label = "Punktacja SNIP"
+    field_name = "punktacja_snip"
+
+
 class PunktyKBNQueryObject(DecimalQueryObject):
     label = "Punkty PK"
     field_name = "punkty_kbn"
@@ -637,6 +642,7 @@ multiseek_fields = [
     LiczbaAutorowQueryObject(),
     PunktyKBNQueryObject(),
     IndexCopernicusQueryObject(),
+    PunktacjaSNIP(),
     PunktacjaWewnetrznaQueryObject(),
 
     KCImpactQueryObject(),
