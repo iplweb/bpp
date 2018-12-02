@@ -8,7 +8,7 @@ dev
 *
 
 1.0.26-dev
--------------
+----------
 
 * obsługa punktacji SNIP
 
