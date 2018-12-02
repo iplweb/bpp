@@ -60,7 +60,7 @@ def requirements(fn="requirements.txt"):
 
 setup(
     name='bpp-iplweb',
-    version='1.0.25',
+    version='1.0.26-dev',
     description="System informatyczny do zarządzania bibliografią publikacji pracowników naukowych",
     long_description=readme + '\n\n' + history,
     author="Michał Pasternak",
