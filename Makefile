@@ -17,7 +17,8 @@ clean: clean-pycache
 	find . -name \*\\.log -print0 | xargs -0 rm -f 
 	find . -name \*\\.log -print0 | xargs -0 rm -f 
 	find . -name \#\* -print0 | xargs -0 rm -f
-	rm -rf build dist/*django_bpp*whl *.log
+	rm -rf build dist/*django_bpp*whl dist/*bpp_iplweb*whl *.log
+	rm -rf src/django_bpp/staticroot/CACHE
 	rm -rf .tox
 
 distclean: clean
