@@ -16,7 +16,7 @@ from django.db.models import Q
 from django.db.models.expressions import F
 from multiseek import logic
 from multiseek.logic import DecimalQueryObject, BooleanQueryObject, EQUAL_NONE, \
-    EQUAL_FEMALE
+    EQUAL_FEMALE, DIFFERENT_NONE, DIFFERENT_FEMALE
 from multiseek.logic import StringQueryObject, QueryObject, EQUALITY_OPS_ALL, \
     UnknownOperation, DIFFERENT_ALL, AUTOCOMPLETE, EQUALITY_OPS_NONE, \
     EQUALITY_OPS_FEMALE, VALUE_LIST, EQUALITY_OPS_MALE, create_registry, \
@@ -140,7 +140,7 @@ class NazwiskoIImieQueryObject(ForeignKeyDescribeMixin,
                                AutocompleteQueryObject):
     label = 'Nazwisko i imię'
     type = AUTOCOMPLETE
-    ops = [EQUAL_NONE, ]
+    ops = [EQUAL_NONE, DIFFERENT_NONE]
     model = Autor
     search_fields = ['nazwisko', 'imiona']
     field_name = 'autor'
@@ -149,10 +149,7 @@ class NazwiskoIImieQueryObject(ForeignKeyDescribeMixin,
     def real_query(self, value, operation):
 
         if operation in EQUALITY_OPS_ALL:
-            autorzy = Autorzy.objects.filter(
-                autor=value
-            ).values("rekord_id")
-            ret = Q(pk__in=autorzy)
+            ret = Q(autorzy__autor__pk=value.pk)
 
         else:
             raise UnknownOperation(operation)
@@ -171,13 +168,11 @@ class NazwiskoIImieWZakresieKolejnosci(NazwiskoIImieQueryObject):
     def real_query(self, value, operation):
 
         if operation in EQUALITY_OPS_ALL:
-            autorzy = Autorzy.objects.filter(
-                autor=value,
-                kolejnosc__gte=self.kolejnosc_gte,
-                kolejnosc__lt=self.kolejnosc_lt
-            ).values("rekord_id")
-
-            ret = Q(pk__in=autorzy)
+            ret = Q(
+                autorzy__autor__pk=value.pk,
+                autorzy__kolejnosc__gte=self.kolejnosc_gte,
+                autorzy__kolejnosc__lt=self.kolejnosc_lt
+            )
 
         else:
             raise UnknownOperation(operation)
@@ -224,12 +219,10 @@ class TypOgolnyAutorQueryObject(NazwiskoIImieQueryObject):
     def real_query(self, value, operation):
 
         if operation in EQUALITY_OPS_ALL:
-            autorzy = Autorzy.objects.filter(
-                autor=value,
-                typ_odpowiedzialnosci__typ_ogolny=self.typ_ogolny
-            ).values("rekord_id")
-
-            ret = Q(pk__in=autorzy)
+            ret = Q(
+                autorzy__autor__pk=value.pk,
+                autorzy__typ_odpowiedzialnosci__typ_ogolny=self.typ_ogolny
+            )
 
         else:
             raise UnknownOperation(operation)
@@ -310,7 +303,7 @@ class ZewnetrznaBazaDanychQueryObject(ForeignKeyDescribeMixin, AutocompleteQuery
 class JednostkaQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
     label = 'Jednostka'
     type = AUTOCOMPLETE
-    ops = [EQUAL_FEMALE, ]
+    ops = [EQUAL_FEMALE, DIFFERENT_FEMALE]
     model = Jednostka
     search_fields = ['nazwa']
     field_name = 'jednostka'
@@ -318,10 +311,7 @@ class JednostkaQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
 
     def real_query(self, value, operation):
         if operation in EQUALITY_OPS_ALL:
-            autorzy = Autorzy.objects.filter(
-                jednostka=value
-            ).values_list("rekord_id")
-            ret = Q(pk__in=autorzy)
+            ret = Q(autorzy__jednostka__pk=value.pk)
 
         else:
             raise UnknownOperation(operation)
@@ -334,7 +324,7 @@ class JednostkaQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
 class WydzialQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
     label = 'Wydział'
     type = AUTOCOMPLETE
-    ops = [EQUAL, ]
+    ops = [EQUAL, DIFFERENT]
     model = Wydzial
     search_fields = ['nazwa']
     field_name = 'wydzial'
@@ -342,10 +332,7 @@ class WydzialQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
 
     def real_query(self, value, operation):
         if operation in EQUALITY_OPS_ALL:
-            autorzy = Autorzy.objects.filter(
-                jednostka__wydzial=value
-            ).values_list("rekord_id")
-            ret = Q(pk__in=autorzy)
+            ret = Q(autorzy__jednostka__wydzial__pk=value.pk)
 
         else:
             raise UnknownOperation(operation)
@@ -356,7 +343,7 @@ class WydzialQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
 
 
 class Typ_OdpowiedzialnosciQueryObject(QueryObject):
-    label = 'Typ odpowiedzialności dowolnego autora'
+    label = 'Typ odpowiedzialności'
     type = VALUE_LIST
     values = Typ_Odpowiedzialnosci.objects.all()
     ops = [EQUAL, ]
