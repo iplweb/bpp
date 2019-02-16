@@ -3,18 +3,31 @@ services:
   
   rabbitmq: 
     image: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
       
   redis: 
     image: redis
+    ports:
+      - "6379:6379"
       
   selenium:
     image: selenium/standalone-firefox-debug
+    ports:
+      - "4444:4444"
+      - "5900:5900"
       
   db:
     build:
-      dockerfile: Dockerfile-db
+      dockerfile: Dockerfile-db-psql10
       context: docker
     image: mpasternak79/django-bpp:postgres-10
+    ports:
+      - "5432:5432"
+    volumes:
+      - psql_db:/var/lib/postgresql/data
+        
 
   nginx_http_push:
     build:
@@ -22,7 +35,7 @@ services:
       context: docker
     image: mpasternak79/django-bpp:nginx-http-push-1.12.0
     ports:
-      - "9090:80"
+      - "9080:80"
 
   python:
     image: mpasternak79/python-3.6
@@ -76,3 +89,4 @@ volumes:
   yarn_cache:
   staticroot:
   build:
+  psql_db:
