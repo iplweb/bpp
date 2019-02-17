@@ -16,7 +16,8 @@ from bpp.multiseek_registry import TytulPracyQueryObject, \
     OpenaccessCzasPublikacjiQueryObject, ForeignKeyDescribeMixin, PierwszeNazwiskoIImie, \
     TypOgolnyAutorQueryObject, TypOgolnyRedaktorQueryObject, TypOgolnyTlumaczQueryObject, TypOgolnyRecenzentQueryObject, \
     NazwiskoIImieQueryObject, DataUtworzeniaQueryObject, OstatnieNazwiskoIImie, OstatnioZmieniony, \
-    OstatnioZmienionyDlaPBN, RodzajKonferenckjiQueryObject, LiczbaAutorowQueryObject, UNION
+    OstatnioZmienionyDlaPBN, RodzajKonferenckjiQueryObject, LiczbaAutorowQueryObject, UNION, JednostkaQueryObject, \
+    WydzialQueryObject
 
 
 @pytest.mark.django_db
@@ -78,6 +79,32 @@ def test_NazwiskoIImieQueryObject(autor_jan_nowak):
     assert ret is not None
 
     ret = n.real_query(autor_jan_nowak, UNION)
+    assert ret is not None
+
+
+def test_JednostkaQueryObject(jednostka):
+    n = JednostkaQueryObject()
+
+    ret = n.real_query(jednostka, logic.EQUAL)
+    assert ret is not None
+
+    ret = n.real_query(jednostka, logic.DIFFERENT)
+    assert ret is not None
+
+    ret = n.real_query(jednostka, UNION)
+    assert ret is not None
+
+
+def test_WydzialQueryObject(wydzial):
+    n = WydzialQueryObject()
+
+    ret = n.real_query(wydzial, logic.EQUAL)
+    assert ret is not None
+
+    ret = n.real_query(wydzial, logic.DIFFERENT)
+    assert ret is not None
+
+    ret = n.real_query(wydzial, UNION)
     assert ret is not None
 
 

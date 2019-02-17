@@ -208,9 +208,9 @@ class PierwszeNazwiskoIImie(NazwiskoIImieWZakresieKolejnosci):
 
 
 class OstatnieNazwiskoIImie(NazwiskoIImieWZakresieKolejnosci):
-    ops = [EQUAL,]
+    ops = [EQUAL, ]
     # bez operatora UNION, bo F('liczba_autorow') nie istnieje, gdy
-    # generujemy zapytanie dla niego. 
+    # generujemy zapytanie dla niego.
     kolejnosc_gte = F('liczba_autorow') - 1
     kolejnosc_lt = F('liczba_autorow')
     label = "Ostatnie nazwisko i imię"
@@ -340,9 +340,10 @@ class JednostkaQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
     def real_query(self, value, operation):
         if operation in EQUALITY_OPS_ALL:
             ret = Q(autorzy__jednostka__pk=value.pk)
+
         elif operation in UNION_OPS_ALL:
             q = Autorzy.objects.filter(
-                autor__jednostka__pk=value.pk
+                jednostka__pk=value.pk
             ).values("rekord_id")
             ret = Q(pk__in=q)
         else:
@@ -365,9 +366,10 @@ class WydzialQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
     def real_query(self, value, operation):
         if operation in EQUALITY_OPS_ALL:
             ret = Q(autorzy__jednostka__wydzial__pk=value.pk)
+
         elif operation in UNION_OPS_ALL:
             q = Autorzy.objects.filter(
-                jednostka__pk=value.pk
+                jednostka__wydzial__pk=value.pk
             ).values("rekord_id")
             ret = Q(pk__in=q)
 
