@@ -19,6 +19,9 @@ dev
 * kosmetyka wyświetlania szczegółów rekordu: pole "Zewnętrzna baza danych", justowanie
   nagłówków do prawej strony.
 
+* wyszukiwanie: prawidłowo obsługuj zapytania o rekordy zarejestrowane
+  w kilku zewnętrznych bazach danych
+
 1.0.26-dev
 ----------
 

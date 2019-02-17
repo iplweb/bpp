@@ -6,7 +6,7 @@ from model_mommy import mommy
 from multiseek import logic
 from multiseek.logic import AutocompleteQueryObject
 
-from bpp.models import Typ_Odpowiedzialnosci, const
+from bpp.models import Typ_Odpowiedzialnosci, const, Zewnetrzna_Baza_Danych
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
 from bpp.models.openaccess import Wersja_Tekstu_OpenAccess, \
@@ -17,7 +17,7 @@ from bpp.multiseek_registry import TytulPracyQueryObject, \
     TypOgolnyAutorQueryObject, TypOgolnyRedaktorQueryObject, TypOgolnyTlumaczQueryObject, TypOgolnyRecenzentQueryObject, \
     NazwiskoIImieQueryObject, DataUtworzeniaQueryObject, OstatnieNazwiskoIImie, OstatnioZmieniony, \
     OstatnioZmienionyDlaPBN, RodzajKonferenckjiQueryObject, LiczbaAutorowQueryObject, UNION, JednostkaQueryObject, \
-    WydzialQueryObject
+    WydzialQueryObject, ZewnetrznaBazaDanychQueryObject
 
 
 @pytest.mark.django_db
@@ -196,4 +196,11 @@ def test_RodzajKonferenckjiQueryObject():
 @pytest.mark.django_db
 def test_LiczbaAutorowQueryObject():
     res = LiczbaAutorowQueryObject().real_query(5, logic.DIFFERENT)
+    assert Rekord.objects.filter(res).count() == 0
+
+
+@pytest.mark.django_db
+def test_ZewnetrznaBazaDanychQueryObject():
+    zbd = mommy.make(Zewnetrzna_Baza_Danych)
+    res = ZewnetrznaBazaDanychQueryObject().real_query(zbd, logic.DIFFERENT)
     assert Rekord.objects.filter(res).count() == 0

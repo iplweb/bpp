@@ -317,10 +317,10 @@ class ZewnetrznaBazaDanychQueryObject(ForeignKeyDescribeMixin, AutocompleteQuery
     url = "bpp:zewnetrzna-baza-danych-autocomplete"
 
     def real_query(self, value, operation, validate_operation=True):
-        if operation in UNION_OPS_ALL:
+        if operation in EQUALITY_OPS_ALL:
             q = ZewnetrzneBazyDanychView.objects.filter(
                 baza=value
-            ).values('rekord_id')
+            ).values("rekord_id")
             ret = Q(pk__in=q)
         else:
             raise UnknownOperation(operation)
