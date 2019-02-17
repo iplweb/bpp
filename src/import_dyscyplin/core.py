@@ -1,7 +1,6 @@
 from hashlib import md5
 
 import xlrd
-from django.db import transaction
 from django.db.models import Q
 from xlrd import XLRDError
 
@@ -53,13 +52,31 @@ def matchuj_autora(imiona, nazwisko, jednostka, pesel_md5=None):
         try:
             return (Autor.objects.get(qry & Q(aktualna_jednostka=jednostka)), "")
         except Autor.MultipleObjectsReturned:
-            return (None, "wielu autorów pasuje do tego rekordu (dopasowanie po imieniu, nazwisku i aktualnej jednostce)")
+            return (
+            None, "wielu autorów pasuje do tego rekordu (dopasowanie po imieniu, nazwisku i aktualnej jednostce)")
 
         except Autor.DoesNotExist:
             return (None, "taki autor nie istnieje (dopasowanie po imieniu, nazwisku i aktualnej jednostce)")
 
     except Autor.DoesNotExist:
         return (None, "taki autor nie istnieje (dopasowanie po imieniu i nazwisku)")
+
+
+def pesel_md5(value_from_xls):
+    """Zakoduj wartość PESEL z XLS, która to może być np liczbą
+    zmiennoprzecinkową do sumy kontrolnej MD5.
+    """
+    original_pesel = value_from_xls
+
+    if type(original_pesel) == int:
+        original_pesel = str(original_pesel)
+    elif type(original_pesel) == float:
+        original_pesel = str(int(original_pesel))
+    else:
+        original_pesel = str(original_pesel)
+    original_pesel = original_pesel.encode("utf-8")
+
+    return md5(original_pesel).hexdigest()
 
 
 def przeanalizuj_plik_xls(sciezka, parent):
@@ -100,8 +117,9 @@ def przeanalizuj_plik_xls(sciezka, parent):
         if not original['nazwisko'].strip():
             continue
 
-        original['pesel_md5'] = md5(str(original['pesel']).encode("utf-8")).hexdigest()
-        original['nazwa_jednostki'] = original['nazwa jednostki'] # templatka wymaga
+        original['pesel_md5'] = pesel_md5(original['pesel'])
+
+        original['nazwa_jednostki'] = original['nazwa jednostki']  # templatka wymaga
 
         del original['pesel']
 
