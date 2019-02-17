@@ -8,7 +8,7 @@ dev
 *
 
 1.0.26
--------------
+------
 
 * wyszukiwanie zaawansowane: gdy podane jest imię i nazwisko ORAZ np jednostka lub
   typ autora, wyniki będą poprawne tzn związane ze sobą (autor + afiliacja), a nie
@@ -28,12 +28,7 @@ dev
   w kilku zewnętrznych bazach danych
 
 1.0.26-dev
----
-
-*
-
-1.0.26
---------------------
+----------
 
 * obsługa punktacji SNIP
 
