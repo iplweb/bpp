@@ -1,6 +1,6 @@
 {% load prace %}
 <table width="{{ width|default:"100%" }}"
-       class="{{ htmlclass|default:"naglowki_z_lewej" }}">
+       class="szczegolyRekordu {{ htmlclass|default:"naglowki_z_lewej" }}">
     <tr>
         <th width="20%">Tytuł:</th>
         <td>
@@ -278,6 +278,15 @@
             <td>
                 {{ praca.ostatnio_zmieniony_dla_pbn }}
             </td>
+        </tr>
+    {% endif %}
+    {% if praca.zewnetrzna_baza_danych.exists %}
+        <tr>
+            <th>Zewnętrzna<br/>baza danych:</th>
+        <td><ul>{% for db in praca.zewnetrzna_baza_danych.all %}
+            <li>{{ db.baza.nazwa }}</li>
+            {% endfor %}
+        </ul></td>
         </tr>
     {% endif %}
 

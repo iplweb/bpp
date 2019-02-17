@@ -17,7 +17,8 @@ clean: clean-pycache
 	find . -name \*\\.log -print0 | xargs -0 rm -f 
 	find . -name \*\\.log -print0 | xargs -0 rm -f 
 	find . -name \#\* -print0 | xargs -0 rm -f
-	rm -rf build dist/*django_bpp*whl *.log
+	rm -rf build dist/*django_bpp*whl dist/*bpp_iplweb*whl *.log
+	rm -rf src/django_bpp/staticroot/CACHE
 	rm -rf .tox
 
 distclean: clean
@@ -32,7 +33,7 @@ grunt:
 yarn:
 	yarn install --no-progress --emoji false -s
 
-yarn-prod:
+yarn-production:
 	yarn install --no-progress --emoji false -s --prod
 
 _assets:
@@ -62,15 +63,22 @@ requirements:
 	pipenv lock -r > requirements.txt
 	pipenv lock -dr > requirements_dev.txt
 
-_bdist_wheel: requirements
+_bdist_wheel: 
 	${PYTHON} setup.py -q bdist_wheel
+
+_bdist_wheel_upload:
+	${PYTHON} setup.py -q bdist_wheel upload
+
+_prod_assets: distclean assets-production
 
 # cel: bdist_wheel
 # Buduje pakiet WHL zawierający django_bpp i skompilowane, statyczne assets. 
 # Wymaga:
 # 1) zainstalowanych pakietów z requirements.txt i requirements_dev.txt przez pip
 # 2) yarn, grunt-cli, npm, bower
-bdist_wheel: clean assets _bdist_wheel
+bdist_wheel: _prod_assets requirements _bdist_wheel
+
+bdist_wheel_upload: _prod_assets requirements _bdist_wheel_upload
 
 js-tests:
 	grunt qunit

@@ -7,6 +7,26 @@ dev
 
 *
 
+1.0.26
+------
+
+* wyszukiwanie zaawansowane: gdy podane jest imię i nazwisko ORAZ np jednostka lub
+  typ autora, wyniki będą poprawne tzn związane ze sobą (autor + afiliacja), a nie
+  tak jak do tej pory pochodzące z dowolnych powiązań autora do rekordu,
+
+* nowy operator dla pól autor, jednostka, wydział, typ odpowiedzialności "równy+wspólny",
+  który zachowuje się tak, jak do tej pory zachowywał się operator "równy". Gdy chcemy
+  znaleźć rekordy wspólne opublikowane przez dwóch lub więcej autorów/jednostki/wydziały,
+  gdy chcemy znaleźć rekordy, które np. mają typ autora "redaktor" i "tłumacz" - korzystamy
+  z tego operatora; gdy chcemy znaleźć prace autora afiliowane na konkretną jednostkę,
+  korzystamy z operatora "równy"
+
+* kosmetyka wyświetlania szczegółów rekordu: pole "Zewnętrzna baza danych", justowanie
+  nagłówków do prawej strony.
+
+* wyszukiwanie: prawidłowo obsługuj zapytania o rekordy zarejestrowane
+  w kilku zewnętrznych bazach danych
+
 1.0.26-dev
 ----------
 

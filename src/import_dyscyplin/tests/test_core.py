@@ -2,7 +2,7 @@ import pytest
 from model_mommy import mommy
 
 from bpp.models import Wydzial, Jednostka, Autor
-from import_dyscyplin.core import przeanalizuj_plik_xls, matchuj_wydzial, matchuj_jednostke, matchuj_autora
+from import_dyscyplin.core import przeanalizuj_plik_xls, matchuj_wydzial, matchuj_jednostke, matchuj_autora, pesel_md5
 from import_dyscyplin.exceptions import ImproperFileException, HeaderNotFoundException, BadNoOfSheetsException
 from import_dyscyplin.models import Import_Dyscyplin_Row
 
@@ -104,3 +104,7 @@ def test_matchuj_autora_po_aktualnej_jednostce():
         jednostka=j2
     )
     assert a == a2
+
+
+def test_pesel_md5():
+    assert pesel_md5(1.0) == pesel_md5(1) == pesel_md5('1')

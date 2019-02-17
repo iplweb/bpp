@@ -150,7 +150,7 @@ class Wydawnictwo_Ciagle(ZapobiegajNiewlasciwymCharakterom,
 
 
 class Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych(models.Model):
-    rekord = models.ForeignKey(Wydawnictwo_Ciagle)
+    rekord = models.ForeignKey(Wydawnictwo_Ciagle, related_name="zewnetrzna_baza_danych")
     baza = models.ForeignKey(Zewnetrzna_Baza_Danych)
     info = models.CharField(
         verbose_name="Informacje dodatkowe",

@@ -140,7 +140,7 @@ body ol li {
     page-break-after: avoid;
   }
 
-  table.bpp-table tr td{
+  table.bpp-table tr td {
     page-break-inside: auto;
     page-break-after: avoid;
   }
@@ -204,7 +204,6 @@ div.table-container ul.pagination {
 .flash-on-notification {
 }
 
-
 // SPINNER
 
 .spinner {
@@ -235,16 +234,30 @@ div.table-container ul.pagination {
 }
 
 @-webkit-keyframes sk-bouncedelay {
-  0%, 80%, 100% { -webkit-transform: scale(0) }
-  40% { -webkit-transform: scale(1.0) }
+  0%, 80%, 100% {
+    -webkit-transform: scale(0)
+  }
+  40% {
+    -webkit-transform: scale(1.0)
+  }
 }
 
 @keyframes sk-bouncedelay {
   0%, 80%, 100% {
     -webkit-transform: scale(0);
     transform: scale(0);
-  } 40% {
+  }
+  40% {
     -webkit-transform: scale(1.0);
     transform: scale(1.0);
   }
+}
+
+.dropdown.menu li a {
+  background: none !important;
+}
+
+.szczegolyRekordu tr th {
+  vertical-align: top;
+  text-align: right;
 }

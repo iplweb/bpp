@@ -31,8 +31,8 @@ COMPRESS_ENABLED = False # not DEBUG
 COMPRESS_OFFLINE = False
 
 # host dla HTMLu oraz linii polecen, reszta dla linii polecen (bo HTML sie autokonfiguruje...)
-NOTIFICATIONS_HOST = 'mac'
-NOTIFICATIONS_PORT = 9090
+NOTIFICATIONS_HOST = 'localhost'
+NOTIFICATIONS_PORT = 9080
 NOTIFICATIONS_PROTOCOL = 'http'
 
 HTML_MINIFY = False
