@@ -26,7 +26,8 @@ from multiseek.logic import StringQueryObject, QueryObject, EQUALITY_OPS_ALL, \
     DateQueryObject
 
 from bpp.models import Typ_Odpowiedzialnosci, Jezyk, Autor, Jednostka, \
-    Charakter_Formalny, Zrodlo, Dyscyplina_Naukowa, Zewnetrzna_Baza_Danych, Autorzy, Uczelnia, const
+    Charakter_Formalny, Zrodlo, Dyscyplina_Naukowa, Zewnetrzna_Baza_Danych, Autorzy, Uczelnia, const, \
+    ZewnetrzneBazyDanychView
 from bpp.models.cache import Rekord
 
 from bpp.models.system import Typ_KBN
@@ -298,7 +299,10 @@ class ZewnetrznaBazaDanychQueryObject(ForeignKeyDescribeMixin, AutocompleteQuery
 
     def real_query(self, value, operation, validate_operation=True):
         if operation in EQUALITY_OPS_ALL:
-            ret = Q(zewnetrzne_bazy__baza=value)
+            q = ZewnetrzneBazyDanychView.objects.filter(
+                baza=value
+            ).values("rekord_id")
+            ret = Q(pk__in=q)
         else:
             raise UnknownOperation(operation)
         if operation in DIFFERENT_ALL:

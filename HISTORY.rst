@@ -5,7 +5,8 @@ Historia zmian
 dev
 ---
 
-*
+* wyszukiwanie: prawidłowo obsługuj zapytania o rekordy zarejestrowane
+  w kilku zewnętrznych bazach danych
 
 1.0.26-dev
 ----------
