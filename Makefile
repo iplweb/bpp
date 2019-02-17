@@ -145,7 +145,7 @@ cleanup-pycs:
 # cel: docker-up
 # Podnosi wszystkie kontenery, które powinny działać w tle
 docker-up:
-	docker-compose up -d redis rabbitmq selenium nginx_http_push db
+	docker-compose up -d redis rabbitmq selenium webserver db
 
 pipenv-install:
 	pipenv --bare install --system --dev
