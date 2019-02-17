@@ -63,15 +63,22 @@ requirements:
 	pipenv lock -r > requirements.txt
 	pipenv lock -dr > requirements_dev.txt
 
-_bdist_wheel: requirements
+_bdist_wheel: 
 	${PYTHON} setup.py -q bdist_wheel
+
+_bdist_wheel_upload:
+	${PYTHON} setup.py -q bdist_wheel upload
+
+_prod_assets: distclean assets-production
 
 # cel: bdist_wheel
 # Buduje pakiet WHL zawierający django_bpp i skompilowane, statyczne assets. 
 # Wymaga:
 # 1) zainstalowanych pakietów z requirements.txt i requirements_dev.txt przez pip
 # 2) yarn, grunt-cli, npm, bower
-bdist_wheel: distclean assets-production _bdist_wheel
+bdist_wheel: _prod_assets requirements _bdist_wheel
+
+bdist_wheel_upload: _prod_assets requirements _bdist_wheel_upload
 
 js-tests:
 	grunt qunit
