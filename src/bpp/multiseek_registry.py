@@ -311,7 +311,7 @@ class NazwaKonferencji(ForeignKeyDescribeMixin, AutocompleteQueryObject):
 class ZewnetrznaBazaDanychQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
     label = "Zewnętrzna baza danych"
     type = AUTOCOMPLETE
-    ops = [UNION_FEMALE, ]
+    ops = [EQUAL_FEMALE, ]
     model = Zewnetrzna_Baza_Danych
     search_fields = ['nazwa']
     url = "bpp:zewnetrzna-baza-danych-autocomplete"
