@@ -33,7 +33,7 @@ grunt:
 yarn:
 	yarn install --no-progress --emoji false -s
 
-yarn-prod:
+yarn-production:
 	yarn install --no-progress --emoji false -s --prod
 
 _assets:
@@ -71,7 +71,7 @@ _bdist_wheel: requirements
 # Wymaga:
 # 1) zainstalowanych pakietów z requirements.txt i requirements_dev.txt przez pip
 # 2) yarn, grunt-cli, npm, bower
-bdist_wheel: clean assets _bdist_wheel
+bdist_wheel: distclean assets-production _bdist_wheel
 
 js-tests:
 	grunt qunit
