@@ -79,7 +79,7 @@ def test_PierwszeNazwiskoIImie_real_query(wydawnictwo_zwarte, autor_jan_kowalski
     wydawnictwo_zwarte.dodaj_autora(autor_jan_kowalski, jednostka)
 
     r = Rekord.objects.filter(
-        PierwszeNazwiskoIImie().real_query(autor_jan_kowalski.pk, logic.EQUAL)
+        PierwszeNazwiskoIImie().real_query(autor_jan_kowalski, logic.EQUAL)
     )
 
     assert len(r) == 1

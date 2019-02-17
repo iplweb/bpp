@@ -190,8 +190,8 @@ class PierwszeNazwiskoIImie(NazwiskoIImieWZakresieKolejnosci):
 
 
 class OstatnieNazwiskoIImie(NazwiskoIImieWZakresieKolejnosci):
-    kolejnosc_gte = F('rekord__liczba_autorow') - 1
-    kolejnosc_lt = F('rekord__liczba_autorow')
+    kolejnosc_gte = F('liczba_autorow') - 1
+    kolejnosc_lt = F('liczba_autorow')
     label = "Ostatnie nazwisko i imię"
     public = False
 
