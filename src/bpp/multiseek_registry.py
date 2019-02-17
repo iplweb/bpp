@@ -169,7 +169,6 @@ class NazwiskoIImieWZakresieKolejnosci(NazwiskoIImieQueryObject):
     kolejnosc_lt = None
 
     def real_query(self, value, operation):
-
         if operation in EQUALITY_OPS_ALL:
             autorzy = Autorzy.objects.filter(
                 autor=value,
