@@ -16,7 +16,8 @@ from bpp.multiseek_registry import TytulPracyQueryObject, \
     OpenaccessCzasPublikacjiQueryObject, ForeignKeyDescribeMixin, PierwszeNazwiskoIImie, \
     TypOgolnyAutorQueryObject, TypOgolnyRedaktorQueryObject, TypOgolnyTlumaczQueryObject, TypOgolnyRecenzentQueryObject, \
     NazwiskoIImieQueryObject, DataUtworzeniaQueryObject, OstatnieNazwiskoIImie, OstatnioZmieniony, \
-    OstatnioZmienionyDlaPBN, RodzajKonferenckjiQueryObject, LiczbaAutorowQueryObject
+    OstatnioZmienionyDlaPBN, RodzajKonferenckjiQueryObject, LiczbaAutorowQueryObject, UNION, JednostkaQueryObject, \
+    WydzialQueryObject
 
 
 @pytest.mark.django_db
@@ -70,7 +71,40 @@ def test_ForeignKeyDescribeMixin_value_for_description():
 
 def test_NazwiskoIImieQueryObject(autor_jan_nowak):
     n = NazwiskoIImieQueryObject()
+
+    ret = n.real_query(autor_jan_nowak, logic.EQUAL)
+    assert ret is not None
+
     ret = n.real_query(autor_jan_nowak, logic.DIFFERENT)
+    assert ret is not None
+
+    ret = n.real_query(autor_jan_nowak, UNION)
+    assert ret is not None
+
+
+def test_JednostkaQueryObject(jednostka):
+    n = JednostkaQueryObject()
+
+    ret = n.real_query(jednostka, logic.EQUAL)
+    assert ret is not None
+
+    ret = n.real_query(jednostka, logic.DIFFERENT)
+    assert ret is not None
+
+    ret = n.real_query(jednostka, UNION)
+    assert ret is not None
+
+
+def test_WydzialQueryObject(wydzial):
+    n = WydzialQueryObject()
+
+    ret = n.real_query(wydzial, logic.EQUAL)
+    assert ret is not None
+
+    ret = n.real_query(wydzial, logic.DIFFERENT)
+    assert ret is not None
+
+    ret = n.real_query(wydzial, UNION)
     assert ret is not None
 
 
@@ -79,7 +113,13 @@ def test_PierwszeNazwiskoIImie_real_query(wydawnictwo_zwarte, autor_jan_kowalski
     wydawnictwo_zwarte.dodaj_autora(autor_jan_kowalski, jednostka)
 
     r = Rekord.objects.filter(
-        PierwszeNazwiskoIImie().real_query(autor_jan_kowalski.pk, logic.EQUAL)
+        PierwszeNazwiskoIImie().real_query(autor_jan_kowalski, logic.EQUAL)
+    )
+
+    assert len(r) == 1
+
+    r = Rekord.objects.filter(
+        PierwszeNazwiskoIImie().real_query(autor_jan_kowalski, UNION)
     )
 
     assert len(r) == 1
@@ -88,28 +128,44 @@ def test_PierwszeNazwiskoIImie_real_query(wydawnictwo_zwarte, autor_jan_kowalski
 @pytest.mark.django_db
 def test_TypOgolnyAutorQueryObject(autor_jan_nowak):
     t = mommy.make(Typ_Odpowiedzialnosci, typ_ogolny=const.TO_AUTOR)
+
     res = TypOgolnyAutorQueryObject().real_query(autor_jan_nowak, logic.DIFFERENT)
+    assert Rekord.objects.filter(res).count() == 0
+
+    res = TypOgolnyAutorQueryObject().real_query(autor_jan_nowak, UNION)
     assert Rekord.objects.filter(res).count() == 0
 
 
 @pytest.mark.django_db
 def test_TypOgolnyRedaktorQueryObject(autor_jan_nowak):
     t = mommy.make(Typ_Odpowiedzialnosci, typ_ogolny=const.TO_REDAKTOR)
+
     res = TypOgolnyRedaktorQueryObject().real_query(autor_jan_nowak, logic.DIFFERENT)
+    assert Rekord.objects.filter(res).count() == 0
+
+    res = TypOgolnyRedaktorQueryObject().real_query(autor_jan_nowak, UNION)
     assert Rekord.objects.filter(res).count() == 0
 
 
 @pytest.mark.django_db
 def test_TypOgolnyTlumaczQueryObject(autor_jan_nowak):
     t = mommy.make(Typ_Odpowiedzialnosci, typ_ogolny=const.TO_TLUMACZ)
+
     res = TypOgolnyTlumaczQueryObject().real_query(autor_jan_nowak, logic.DIFFERENT)
+    assert Rekord.objects.filter(res).count() == 0
+
+    res = TypOgolnyTlumaczQueryObject().real_query(autor_jan_nowak, UNION)
     assert Rekord.objects.filter(res).count() == 0
 
 
 @pytest.mark.django_db
 def test_TypOgolnyRecenzentQueryObject(autor_jan_nowak):
     t = mommy.make(Typ_Odpowiedzialnosci, typ_ogolny=const.TO_RECENZENT)
+
     res = TypOgolnyRecenzentQueryObject().real_query(autor_jan_nowak, logic.DIFFERENT)
+    assert Rekord.objects.filter(res).count() == 0
+
+    res = TypOgolnyRecenzentQueryObject().real_query(autor_jan_nowak, UNION)
     assert Rekord.objects.filter(res).count() == 0
 
 
