@@ -80,13 +80,15 @@ def test_bpp_notifications(preauth_browser):
     assert preauth_browser.is_text_present(s)
 
 
-def test_bpp_notifications_and_messages(preauth_browser):
+def test_bpp_notifications_and_messages(preauth_browser, nginx_live_server, settings):
     """Sprawdz, czy notyfikacje dochodza.
     Wymaga uruchomionego staging-server.
     """
+    settings.NOTIFICATIONS_HOST = nginx_live_server.host
+    settings.NOTIFICATIONS_PORT = nginx_live_server.port
+
     s = "test notyfikacji 123 456 902309093209092"
     assert preauth_browser.is_text_not_present(s)
-
     call_command('send_message', preauth_browser.authorized_user.username, s)
     WebDriverWait(preauth_browser, 10).until(
         lambda browser: browser.is_text_present(s))
@@ -119,29 +121,3 @@ def test_webtest(webtest_app, normal_django_user):
     res = form.submit().follow()
     assert res.context['user'].username == normal_django_user.username
 
-
-@pytest.mark.xfail
-def test_admin_display_persistent_messages():
-    """Testuj komunikaty w adminie: czy sie wyswietlaja?"""
-    pass
-
-
-@pytest.mark.xfail
-def test_admin_notifications():
-    """Testuj komunikaty w adminie: czy dochodza notyfikacje?"""
-    pass
-
-
-@pytest.mark.xfail
-def test_admin_close_messages():
-    """Testuj komunikaty w adminie: czy javascript do zamykania komunikatow dziala?"""
-    pass
-
-
-@pytest.mark.xfail
-def test_generowanie_raportu_notyfikacja():
-    """Testuj, czy klikniecie w generowanie raportu KC wyswietli notyfikacje
-    ORAZ czy po odswiezeniu strony zostanie persistent-komunikat
-    ORAZ czy po kliknieciu mu 'close' zostanie poprawnie zamkniety.
-    """
-    pass

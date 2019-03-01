@@ -65,13 +65,14 @@ def normal_django_user(request, db,
 
 
 def _preauth_session_id_helper(username, password, client, browser,
-                               live_server, django_user_model,
+                               nginx_live_server, django_user_model,
                                django_username_field):
+
     res = client.login(username=username, password=password)
     assert res is True
 
     with wait_for_page_load(browser):
-        browser.visit(live_server + "/")
+        browser.visit(nginx_live_server.url + "/")
     browser.cookies.add({'sessionid': client.cookies['sessionid'].value})
     browser.authorized_user = django_user_model.objects.get(
         **{django_username_field: username})
@@ -81,21 +82,27 @@ def _preauth_session_id_helper(username, password, client, browser,
 
 
 @pytest.fixture
-def preauth_browser(normal_django_user, client, browser, live_server,
-                    django_user_model, django_username_field):
+def preauth_browser(normal_django_user, client, browser, nginx_live_server,
+                    django_user_model, django_username_field, settings):
     browser = _preauth_session_id_helper(
         NORMAL_DJANGO_USER_LOGIN, NORMAL_DJANGO_USER_PASSWORD, client,
-        browser, live_server, django_user_model, django_username_field)
+        browser, nginx_live_server, django_user_model, django_username_field)
+
+    settings.NOTIFICATIONS_HOST = nginx_live_server.host
+    settings.NOTIFICATIONS_PORT = nginx_live_server.port
+
     yield browser
     browser.quit()
 
 
 @pytest.fixture
-def preauth_admin_browser(admin_user, client, browser, live_server,
-                          django_user_model, django_username_field):
+def preauth_admin_browser(admin_user, client, browser, nginx_live_server,
+                          django_user_model, django_username_field, settings):
     browser = _preauth_session_id_helper('admin', 'password', client, browser,
-                                         live_server, django_user_model,
+                                         nginx_live_server, django_user_model,
                                          django_username_field)
+    settings.NOTIFICATIONS_HOST = nginx_live_server.host
+    settings.NOTIFICATIONS_PORT = nginx_live_server.port
     yield browser
     browser.execute_script("window.onbeforeunload = function(e) {};")
     browser.quit()
@@ -545,3 +552,160 @@ collect_ignore = [
     os.path.join(os.path.dirname(__file__), "media")
 ]
 
+import subprocess
+import os
+import pytest
+from pytest_nginx.factories import init_nginx, get_random_port, wait_for_socket_check_processes, \
+    NginxProcess, daemon
+
+
+@pytest.fixture(scope="session")
+def nginx_server_root(tmpdir_factory):
+    return tmpdir_factory.mktemp("nginx-server-root")
+
+
+DEFAULT_NGINX_TEMPLATE = """
+daemon off;
+pid %TMPDIR%/nginx.pid;
+error_log %TMPDIR%/error.log;
+worker_processes auto;
+worker_cpu_affinity auto;
+
+events {
+    worker_connections  1024;
+}
+
+http {
+    default_type  application/octet-stream;
+    access_log off;
+    sendfile on;
+    charset utf-8;
+    push_stream_shared_memory_size 32M;
+	tcp_nopush on;
+	tcp_nodelay on;
+
+    server {
+        listen       %PORT%;
+        server_name  %HOST%;
+
+        location @proxy_to_app {
+            proxy_pass http://%LIVESERVER_HOST%:%LIVESERVER_PORT%;
+
+            proxy_set_header  X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header  X-Forwarded-Host $server_name;
+            proxy_set_header  X-Real-IP $remote_addr;
+            proxy_set_header  X-Scheme $scheme;
+            proxy_set_header  Host $http_host;
+
+            proxy_redirect    off;
+        }
+
+        # the /auth location will send a subrequest to Django each time someone wants
+        # to subscribe to a nginx-push-stream channel (see /ws/ location definition below)
+        location = /auth {
+            internal;
+
+            proxy_pass http://%LIVESERVER_HOST%:%LIVESERVER_PORT%;
+
+            proxy_pass_request_body off;
+            proxy_set_header Content-Length "";
+            proxy_set_header X-Original-URI $request_uri;
+            proxy_set_header Cookie $http_cookie;
+        }
+
+        location /channels-stats {
+            push_stream_channels_statistics;
+            push_stream_channels_path               $arg_id;
+        }
+
+        location /pub {
+            push_stream_publisher admin;
+            push_stream_channels_path               $arg_id;
+        }
+
+        location ~ /sub/(.*) {
+            push_stream_subscriber;
+            push_stream_channels_path                   $1;
+        }
+
+        location ~ /ws/(.*) {
+            # mpasternak 17.02.2019 na ten moment NIE używaj tego /auth do
+            # momentu podpięcia django-reciprocity. Potem włączyć.
+            # auth_request                                /auth;
+
+            push_stream_subscriber websocket;
+            push_stream_channels_path                   $1;
+            push_stream_message_template                "{\\"id\\":~id~,\\"channel\\":\\"~channel~\\",\\"text\\":~text~, \\"time\\":\\"~time~\\", \\"eventid\\":\\"~event-id~\\"}";
+
+        }
+        location ~ /ev/(.*) {
+            push_stream_subscriber                      eventsource;
+            push_stream_channels_path                   $1;
+            push_stream_message_template                "{\\"id\\":~id~,\\"channel\\":\\"~channel~\\",\\"text\\":~text~}";
+        }
+
+        root /var/www/html;
+
+        # Add index.php to the list if you are using PHP
+        index index.html index.htm index.nginx-debian.html;
+
+        location / {
+            try_files $uri @proxy_to_app;
+        }
+    }
+}
+"""
+
+
+def nginx_liveserver_proc(
+        server_root_fixture_name="nginx_server_root",
+        host=None, port=None, nginx_exec=None, nginx_params=None,
+        config_template=None, template_str=DEFAULT_NGINX_TEMPLATE,
+        template_extra_params=None):
+    @pytest.fixture(scope='session')
+    def nginx_proc_fixture(request, tmpdir_factory, live_server):
+        nonlocal host, port, nginx_exec, nginx_params, config_template, template_extra_params, template_str
+
+        server_root = request.getfixturevalue(server_root_fixture_name)
+
+        def get_option(option_name):
+            return request.config.getoption(option_name) or request.config.getini(option_name)
+
+        host = host or get_option('nginx_host')
+        port = port or get_option('nginx_port')
+        if not port:
+            port = get_random_port(port)
+        nginx_exec = nginx_exec or get_option('nginx_exec')
+        nginx_params = nginx_params or get_option('nginx_params')
+        config_template = config_template or get_option('nginx_config_template')
+
+        if not os.path.isdir(server_root):
+            raise ValueError("Specified server root ('{}') is not an existing directory.".format(server_root))
+        if config_template and not os.path.isfile(config_template):
+            raise ValueError("Specified config template ('{}') is not an existing file.".format(config_template))
+
+        tmpdir = tmpdir_factory.mktemp("nginx-data")
+
+        extra_params = {"liveserver_host": str(live_server.thread.host),
+                        "liveserver_port": str(live_server.thread.port)}
+        if template_extra_params:
+            extra_params.update(template_extra_params)
+
+        config_path = init_nginx(tmpdir, config_template, host, port, server_root,
+                                 template_str=template_str,
+                                 template_extra_params=extra_params)
+
+        cmd = "{} -c {} {}".format(nginx_exec, config_path, nginx_params)
+        with daemon(cmd,
+                    shell=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    universal_newlines=True,
+                    ) as proc:
+            wait_for_socket_check_processes(host, port, [proc])
+            yield NginxProcess(host, port, server_root)
+
+    return nginx_proc_fixture
+
+
+nginx_live_server = nginx_liveserver_proc()

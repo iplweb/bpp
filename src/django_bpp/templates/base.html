@@ -55,8 +55,8 @@
                 // tests_need_this:messageCookieID:{{ notifications_uuid }}:
                 bppNotifications.init(
                     '{{ NOTIFICATIONS_PUB_PREFIX }}-{{ request.user.username }}',
-                    '{{ NOTIFICATIONS_HOST }}',
-                    {{ NOTIFICATIONS_PORT|default:"window.location.port" }},
+                    window.location.hostname,
+                    window.location.port,
                     null,
                     "{{ notifications_uuid }}",
                     "{% static "bpp/wav/alert.wav" %}"
