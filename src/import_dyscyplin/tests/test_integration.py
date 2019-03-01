@@ -20,6 +20,8 @@ def test_integracyjny(preauth_admin_browser, live_server):
         preauth_admin_browser.find_by_id("add-new-file").click()
 
     home = Path.home()
+    import os
+    os.system("find %s" % home)
 
     preauth_admin_browser.find_by_id("id_plik").type(str(home / "Downloads/default.xlsx"))
 
