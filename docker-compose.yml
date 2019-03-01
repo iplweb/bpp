@@ -36,9 +36,9 @@ services:
 
   python:
     build:
-      dockerfile: Dockerfile-circleci-python
+      dockerfile: Dockerfile-circleci-python-3.6-node-browsers-nginx-http-push
       context: docker
-    image: mpasternak79/circleci-python:3.6-node-browsers
+    image: mpasternak79/circleci-python:3.6-node-browsers-nginx-http-push
     environment:
       PGUSER: postgres
       PGHOST: localhost
