@@ -5,6 +5,7 @@ from model_mommy import mommy
 
 from bpp.models import Uczelnia
 from django_bpp.selenium_util import wait_for_page_load
+from pathlib import Path
 
 
 @pytest.mark.django_db(transaction=True)
@@ -18,7 +19,9 @@ def test_integracyjny(preauth_admin_browser, live_server):
     with wait_for_page_load(preauth_admin_browser):
         preauth_admin_browser.find_by_id("add-new-file").click()
 
-    preauth_admin_browser.find_by_id("id_plik").type("/home/seluser/Downloads/default.xlsx")
+    home = str(Path.home())
+
+    preauth_admin_browser.find_by_id("id_plik").type(str(home / "Downloads/default.xlsx"))
 
     with wait_for_page_load(preauth_admin_browser):
         preauth_admin_browser.find_by_id("id_submit").click()

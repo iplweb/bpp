@@ -17,9 +17,9 @@ from django_bpp.selenium_util import wait_for_page_load
 
 
 @pytest.fixture
-def raporty_browser(preauth_browser, nginx_nginx_live_server):
+def raporty_browser(preauth_browser, nginx_live_server):
     with wait_for_page_load(preauth_browser):
-        preauth_browser.visit(nginx_nginx_live_server.url + reverse("bpp:raporty"))
+        preauth_browser.visit(nginx_live_server.url + reverse("bpp:raporty"))
     return preauth_browser
 
 def wybrany(browser):
