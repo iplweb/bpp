@@ -7,12 +7,12 @@ import requests
 from django.contrib.messages import DEFAULT_TAGS
 from django.http.response import HttpResponseRedirect
 
-from .conf import settings
-
+from .conf import defaults
 
 def get_pub_path(username):
-    path = getattr(settings, "NOTIFICATIONS_PUB_PATH")
-    prefix = getattr(settings, "NOTIFICATIONS_PUB_PREFIX")
+    from django.conf import settings
+    path = getattr(settings, "NOTIFICATIONS_PUB_PATH", defaults.NOTIFICATIONS_PUB_PATH)
+    prefix = getattr(settings, "NOTIFICATIONS_PUB_PREFIX", defaults.NOTIFICATIONS_PUB_PREFIX)
     return path % dict(username=username, prefix=prefix)
 
 
@@ -20,10 +20,11 @@ Message = namedtuple("Message", "text cssClass clickURL hideCloseOption closeURL
 Message.__new__.__defaults__ = (      'info',  None,    False,          None,    '&times;')
 
 def send_notification(request_or_username, level, text, get_pub_path=get_pub_path, verbose=False, closeURL=None, ignore_proxy_settings=False):
+    from django.conf import settings
 
-    proto = getattr(settings, "NOTIFICATIONS_PROTOCOL")
-    host = getattr(settings, "NOTIFICATIONS_HOST")
-    port = getattr(settings, "NOTIFICATIONS_PORT")
+    proto = getattr(settings, "NOTIFICATIONS_PROTOCOL", defaults.NOTIFICATIONS_PROTOCOL)
+    host = getattr(settings, "NOTIFICATIONS_HOST", defaults.NOTIFICATIONS_HOST)
+    port = getattr(settings, "NOTIFICATIONS_PORT", defaults.NOTIFICATIONS_PORT)
 
     username = request_or_username
     if hasattr(username, 'user') and hasattr(username.user, 'username'):

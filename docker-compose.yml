@@ -23,6 +23,13 @@ services:
     ports:
       - "4444:4444"
       - "5900:5900"
+
+  python:
+    image: circleci/python:3.6-node-browsers
+    volumes:
+      - .:/app
+      - pipenv_cache:/home/circleci/.cache/pipenv/
+      - pip_cache:/home/circleci/.cache/pip/
       
   db:
     build:
@@ -33,68 +40,8 @@ services:
       - "5432:5432"
     volumes:
       - psql_db:/var/lib/postgresql/data
-        
-
-  webserver:
-    build:
-      dockerfile: Dockerfile-nginx
-      context: docker
-    image: mpasternak79/django-bpp:nginx-http-push-1.14.1
-    depends_on:
-      - dockerhost
-    ports:
-      - "80:80"
-
-  python:
-    image: mpasternak79/python-3.6
-    build:
-      context: docker
-      dockerfile: Dockerfile-python
-    volumes: 
-      - node_modules:/usr/src/app/node_modules
-      - cache:/root/.cache
-      - build:/usr/src/app/build/      
-      - yarn_cache:/usr/local/share/.cache/yarn/v1
-      - staticroot:/usr/src/app/src/django_bpp/staticroot
-      - .:/usr/src/app
-
-  node:
-    image: mpasternak79/node
-    build:
-      context: docker
-      dockerfile: Dockerfile-node
-    volumes:
-      - node_modules:/usr/src/app/node_modules
-      - build:/usr/src/app/build/
-      - yarn_cache:/usr/local/share/.cache/yarn/v1
-      - staticroot:/usr/src/app/src/django_bpp/staticroot
-      - .:/usr/src/app
-      
-  test:
-    image: mpasternak79/bpp-test-3.6
-    build:
-      context: docker
-      dockerfile: Dockerfile-test
-    volumes: 
-      - node_modules:/usr/src/app/node_modules
-      - staticroot:/usr/src/app/src/django_bpp/staticroot
-      - cache:/root/.cache
-      - build:/usr/src/app/build/
-      - .:/usr/src/app
-    env_file: docker/env.test.txt
-    environment:
-      - COVERALLS_REPO_TOKEN
-    depends_on:
-      - db
-      - redis
-      - selenium
-      - rabbitmq
-      - webserver
 
 volumes:
-  node_modules:
-  cache:
-  yarn_cache:
-  staticroot:
-  build:
   psql_db:
+  pipenv_cache:
+  pip_cache:

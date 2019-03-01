@@ -91,7 +91,7 @@ pdbpp = "==0.9.1"
 coveralls = "==1.2.0"
 psutil = "==5.4.5"
 pytest-xdist = "*"
-tox = "*"
+pytest-nginx = "*"
 
 [requires]
 python_version = "3.6"

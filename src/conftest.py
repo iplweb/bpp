@@ -63,13 +63,14 @@ def normal_django_user(request, db,
 
 
 def _preauth_session_id_helper(username, password, client, browser,
-                               live_server, django_user_model,
+                               nginx_live_server, django_user_model,
                                django_username_field):
+
     res = client.login(username=username, password=password)
     assert res is True
 
     with wait_for_page_load(browser):
-        browser.visit(live_server + "/")
+        browser.visit(nginx_live_server.url + "/")
     browser.cookies.add({'sessionid': client.cookies['sessionid'].value})
     browser.authorized_user = django_user_model.objects.get(
         **{django_username_field: username})
@@ -79,21 +80,27 @@ def _preauth_session_id_helper(username, password, client, browser,
 
 
 @pytest.fixture
-def preauth_browser(normal_django_user, client, browser, live_server,
-                    django_user_model, django_username_field):
+def preauth_browser(normal_django_user, client, browser, nginx_live_server,
+                    django_user_model, django_username_field, settings):
     browser = _preauth_session_id_helper(
         NORMAL_DJANGO_USER_LOGIN, NORMAL_DJANGO_USER_PASSWORD, client,
-        browser, live_server, django_user_model, django_username_field)
+        browser, nginx_live_server, django_user_model, django_username_field)
+
+    settings.NOTIFICATIONS_HOST = nginx_live_server.host
+    settings.NOTIFICATIONS_PORT = nginx_live_server.port
+
     yield browser
     browser.quit()
 
 
 @pytest.fixture
-def preauth_admin_browser(admin_user, client, browser, live_server,
-                          django_user_model, django_username_field):
+def preauth_admin_browser(admin_user, client, browser, nginx_live_server,
+                          django_user_model, django_username_field, settings):
     browser = _preauth_session_id_helper('admin', 'password', client, browser,
-                                         live_server, django_user_model,
+                                         nginx_live_server, django_user_model,
                                          django_username_field)
+    settings.NOTIFICATIONS_HOST = nginx_live_server.host
+    settings.NOTIFICATIONS_PORT = nginx_live_server.port
     yield browser
     browser.execute_script("window.onbeforeunload = function(e) {};")
     browser.quit()
@@ -699,4 +706,4 @@ def nginx_liveserver_proc(
     return nginx_proc_fixture
 
 
-nginx_liveserver = nginx_liveserver_proc()
+nginx_live_server = nginx_liveserver_proc()
