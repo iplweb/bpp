@@ -89,7 +89,7 @@ pytest-splinter = "*"
 pytest-pythonpath = "*"
 pytest-mock = "*"
 pytest-xdist = "*"
-pytest-nginx = "*"
+pytest-nginx-iplweb = "*"
 
 [requires]
 python_version = "3.6"
