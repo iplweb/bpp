@@ -1,4 +1,4 @@
-FROM postgres:10
+FROM circleci/postgres:10
 RUN localedef -i pl_PL -c -f UTF-8 -A /usr/share/locale/locale.alias pl_PL.UTF-8
 ENV LANG pl_PL.utf8
 RUN apt-mark hold postgresql-10 postgresql-client-10 postgresql-common postgresql-client-common
