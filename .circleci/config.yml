@@ -31,7 +31,7 @@ jobs:
       - run: echo 'CREATE DATABASE "test_bpp_gw1" WITH TEMPLATE "bpp"' | psql
 
       # Uruchamiaj na lokalnym firefoxie używając dwóch CPU
-      - run: pytest --cov=src --splinter-webdriver=firefox -n2
+      - run: pytest --cov=src --splinter-webdriver=firefox -n2 --nginx-host=localhost --liveserver=localhost
 
       # Testy JavaScript
       - run: make js-tests
