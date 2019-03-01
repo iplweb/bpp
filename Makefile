@@ -201,9 +201,3 @@ production-update: # "szybka" ścieżka aktualizacji
 # Uruchom sphinx-autobuild
 live-docs: 
 	sphinx-autobuild -p 8080 -D language=pl docs/ docs/_build
-
-circleci:
-	sudo chown -R circleci:circleci /home/circleci/.cache
-	pipenv install -d
-	pipenv run pytest
-
