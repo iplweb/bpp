@@ -11,7 +11,7 @@ from django_bpp.selenium_util import wait_for_page_load
 @pytest.mark.django_db(transaction=True)
 def test_integracyjny(preauth_admin_browser, nginx_live_server):
     mommy.make(Uczelnia)
-    preauth_admin_browser.visit(nginx_live_server + reverse("import_dyscyplin:index"))
+    preauth_admin_browser.visit(nginx_live_server.url + reverse("import_dyscyplin:index"))
 
     with wait_for_page_load(preauth_admin_browser):
         preauth_admin_browser.find_by_id("add-new-file").click()
