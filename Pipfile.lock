@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "2bd96716bc544eea90cfa83fad9883c7932da7de5862f8b858681040622893bf"
+            "sha256": "1f849574b5869e7d483a1686279813a64f88800bc3d2339fc8c818a10407b817"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -1428,12 +1428,12 @@
             "index": "pypi",
             "version": "==1.10.1"
         },
-        "pytest-nginx": {
+        "pytest-nginx-iplweb": {
             "hashes": [
-                "sha256:b459519dd57c1ba5c21193898de79a4d2eabd9ddc19405ab298fa9eaa1bd2081"
+                "sha256:4e3c6004d412264464ab1bf1e8b1253d050c93bafd87c2f458cbc56680de143e"
             ],
             "index": "pypi",
-            "version": "==1.1"
+            "version": "==1.1.1"
         },
         "pytest-pythonpath": {
             "hashes": [
