@@ -3,7 +3,7 @@ jobs:
   build:
     
     docker:
-      - image: mpasternak79/circleci-python:3.6-node-browsers
+      - image: mpasternak79/circleci-python:3.6-node-browsers-nginx-http-push
         environment:
           PGUSER: postgres
           PGHOST: localhost
@@ -11,16 +11,11 @@ jobs:
           PGDATABASE: bpp
           DJANGO_BPP_SECRET_KEY: foobar
           DJANGO_SETTINGS_MODULE: django_bpp.settings.test
-      - image: mpasternak79/circleci-nginx:1.14.1
       - image: mpasternak79/circleci-postgres:10
       - image: rabbitmq:latest
         
     steps:
       - checkout
-
-      - run: sudo add-apt-repository -y "ppa:dotz/nginx-with-push-stream-module"
-      - run: sudo apt-get update
-      - run: sudo apt-get install -y nginx-full=1.14.1-0+xenial0+pushstream1
 
       - run: sudo npm install -g grunt-cli
       - run: sudo pipenv install --system -d
