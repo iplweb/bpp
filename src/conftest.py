@@ -576,6 +576,10 @@ events {
 }
 
 http {
+    proxy_buffering off;
+    client_body_buffer_size 10m;
+    client_max_body_size    10m;
+
     default_type  application/octet-stream;
     access_log off;
     sendfile on;
@@ -598,8 +602,6 @@ http {
             proxy_set_header  Host $http_host;
 
             proxy_redirect    off;
-            proxy_buffering off;
-
         }
 
         # the /auth location will send a subrequest to Django each time someone wants
@@ -613,8 +615,6 @@ http {
             proxy_set_header Content-Length "";
             proxy_set_header X-Original-URI $request_uri;
             proxy_set_header Cookie $http_cookie;
-            proxy_buffering off;
-
         }
 
         location /channels-stats {
