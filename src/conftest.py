@@ -36,10 +36,12 @@ setup_mommy()
 def pytest_configure(config):
     setattr(settings, 'CELERY_ALWAYS_EAGER', True)
 
+def current_rok():
+    return datetime.now().date().year
 
 @pytest.fixture
 def rok():
-    return datetime.now().date().year
+    return current_rok()
 
 
 @pytest.fixture
@@ -216,7 +218,7 @@ def set_default(varname, value, dct):
 
 def _wydawnictwo_maker(klass, **kwargs):
     if 'rok' not in kwargs:
-        kwargs['rok'] = rok()
+        kwargs['rok'] = current_rok()
 
     c = time.time()
     kl = str(klass).split('.')[-1].replace("'>", "")
@@ -266,7 +268,7 @@ def _zwarte_base_maker(klass, **kwargs):
     set_default('informacje', 'zrodlo-informacje dla zwarte', kwargs)
 
     if klass not in [Patent]:
-        set_default('miejsce_i_rok', 'Lublin %s' % rok(), kwargs)
+        set_default('miejsce_i_rok', 'Lublin %s' % current_rok(), kwargs)
         set_default('wydawnictwo', 'Wydawnictwo FOLIUM', kwargs)
         set_default('isbn', '123-IS-BN-34', kwargs)
         set_default('redakcja', 'Redakcja', kwargs)
