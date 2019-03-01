@@ -9,6 +9,8 @@ jobs:
           PGHOST: localhost
           PGPORT: 5432
           PGDATABASE: bpp
+          DJANGO_BPP_SECRET_KEY: foobar
+          DJANGO_SETTINGS_MODULE: django_bpp.settings.test
       - image: mpasternak79/circleci-nginx:1.14.1
       - image: mpasternak79/circleci-postgres:10
       - image: rabbitmq:latest
