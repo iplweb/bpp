@@ -15,7 +15,10 @@ from eksport_pbn.tasks import eksport_pbn, remove_old_eksport_pbn_files
 
 
 def test_eksport_pbn(normal_django_user, jednostka, autor_jan_kowalski, rok,
-                     typy_odpowiedzialnosci):
+                     typy_odpowiedzialnosci, nginx_live_server, settings):
+    settings.NOTIFICATIONS_HOST = nginx_live_server.host
+    settings.NOTIFICATIONS_PORT = nginx_live_server.port
+
     assert PlikEksportuPBN.objects.all().count() == 0
 
     autor_jan_kowalski.dodaj_jednostke(jednostka=jednostka)
