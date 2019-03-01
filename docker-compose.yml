@@ -41,11 +41,14 @@ services:
     image: mpasternak79/circleci-python:3.6-node-browsers-nginx-http-push
     environment:
       PGUSER: postgres
-      PGHOST: localhost
+      PGHOST: db
       PGPORT: 5432
       PGDATABASE: bpp
       DJANGO_BPP_SECRET_KEY: foobar
       DJANGO_SETTINGS_MODULE: django_bpp.settings.test
+      DJANGO_BPP_DB_HOST: db
+    volumes:
+      - ./:/app
 
 volumes:
   psql_db:
