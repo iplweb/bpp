@@ -18,5 +18,5 @@ RUN sudo apt-get update && sudo apt install postgresql-client
 COPY --from=0 /home/circleci/nginx_1.14.2-1~stretch_amd64.deb / 
 RUN sudo dpkg -i /nginx_1.14.2-1~stretch_amd64.deb
 
-RUN chown circleci:circleci -Rv /var/log/nginx
-RUN chown circleci:circleci -Rv /var/cache/nginx
+RUN sudo chown circleci:circleci -Rv /var/log/nginx
+RUN sudo chown circleci:circleci -Rv /var/cache/nginx
