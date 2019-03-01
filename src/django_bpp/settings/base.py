@@ -556,3 +556,5 @@ SILENCED_SYSTEM_CHECKS = ["urls.W003"]
 # publikacji
 
 INLINE_DLA_AUTOROW = os.getenv("DJANGO_BPP_INLINE_DLA_AUTOROW", "stacked")
+
+DEBUG_TOOLBAR = False
