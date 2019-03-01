@@ -24,24 +24,28 @@ services:
       - "4444:4444"
       - "5900:5900"
 
-  python:
-    image: circleci/python:3.6-node-browsers
-    volumes:
-      - .:/app
-      - pipenv_cache:/home/circleci/.cache/pipenv/
-      - pip_cache:/home/circleci/.cache/pip/
-      
   db:
     build:
       dockerfile: Dockerfile-db-psql10
       context: docker
-    image: mpasternak79/django-bpp:postgres-10
+    image: mpasternak79/circleci-postgres:10
     ports:
       - "5432:5432"
     volumes:
       - psql_db:/var/lib/postgresql/data
 
+  python:
+    build:
+      dockerfile: Dockerfile-circleci-python
+      context: docker
+    image: mpasternak79/circleci-python:3.6-node-browsers
+    environment:
+      PGUSER: postgres
+      PGHOST: localhost
+      PGPORT: 5432
+      PGDATABASE: bpp
+      DJANGO_BPP_SECRET_KEY: foobar
+      DJANGO_SETTINGS_MODULE: django_bpp.settings.test
+
 volumes:
   psql_db:
-  pipenv_cache:
-  pip_cache:
