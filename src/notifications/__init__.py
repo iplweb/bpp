@@ -66,9 +66,10 @@ def send_redirect(username, redirect_url,  messageCookieId, ignore_proxy_setting
     :return:
     """
 
-    proto = getattr(settings, "NOTIFICATIONS_PROTOCOL")
-    host = getattr(settings, "NOTIFICATIONS_HOST")
-    port = getattr(settings, "NOTIFICATIONS_PORT")
+    from django.conf import settings
+    proto = getattr(settings, "NOTIFICATIONS_PROTOCOL", defaults.NOTIFICATIONS_PROTOCOL)
+    host = getattr(settings, "NOTIFICATIONS_HOST", defaults.NOTIFICATIONS_HOST)
+    port = getattr(settings, "NOTIFICATIONS_PORT", defaults.NOTIFICATIONS_PORT)
 
     path = get_pub_path(username)
 
