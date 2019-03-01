@@ -3,9 +3,13 @@ BRANCH=`git branch | sed -n '/\* /s///p'`
 .PHONY: clean distclean tests release
 
 PYTHON=python3.6
-PIP=${PYTHON} -m pip
-DISTDIR=./dist
-DISTDIR_DEV=./dist_dev
+
+cleanup-pycs:
+	find . -name __pycache__ -type d -print0 | xargs -0 rm -rf
+	find . -name \*~ -print0 | xargs -0 rm -f 
+	find . -name \*pyc -print0 | xargs -0 rm -f 
+	find . -name \*\\.log -print0 | xargs -0 rm -f 
+	rm -rf build __pycache__ *.log
 
 clean-pycache:
 	find . -name __pycache__ -type d -print0 | xargs -0 rm -rf
@@ -42,22 +46,7 @@ _assets:
 
 assets: yarn grunt _assets
 
-install-pipenv:
-	pip install pipenv
-
-_docker_assets: install-pipenv pipenv-install _assets
-
-docker-assets: docker-yarn-grunt 
-	docker-compose run --rm python bash -c "cd /usr/src/app && make _docker_assets"
-
-docker-yarn-grunt:
-	docker-compose run --rm node bash -c "cd /usr/src/app && make yarn grunt"
-
-# cel: assets
-# Pobiera i składa do kupy JS/CSS/Foundation
-assets: yarn _assets
-
-assets-production: yarn-production _assets
+assets-production: yarn-production grunt _assets
 
 requirements:
 	pipenv lock -r > requirements.txt
@@ -71,26 +60,12 @@ _bdist_wheel_upload:
 
 _prod_assets: distclean assets-production
 
-# cel: bdist_wheel
-# Buduje pakiet WHL zawierający django_bpp i skompilowane, statyczne assets. 
-# Wymaga:
-# 1) zainstalowanych pakietów z requirements.txt i requirements_dev.txt przez pip
-# 2) yarn, grunt-cli, npm, bower
 bdist_wheel: _prod_assets requirements _bdist_wheel
 
 bdist_wheel_upload: _prod_assets requirements _bdist_wheel_upload
 
 js-tests:
 	grunt qunit
-
-docker-js-tests:
-	docker-compose run --rm node bash -c "cd /usr/src/app && make js-tests"
-
-# cel: release
-# PyPI release
-release: bdist_wheel
-	${PYTHON} setup.py -q sdist upload
-	${PYTHON} setup.py -q bdist_wheel upload
 
 # cel: staging
 # Konfiguruje system django-bpp za pomocą Ansible na komputerze 'staging' (vagrant)
@@ -134,61 +109,6 @@ vagrantup:
 	vagrant up 
 
 demo-vm: vagrantclean vagrantup staging demo-vm-ansible demo-vm-clone demo-vm-cleanup
-
-cleanup-pycs:
-	find . -name __pycache__ -type d -print0 | xargs -0 rm -rf
-	find . -name \*~ -print0 | xargs -0 rm -f 
-	find . -name \*pyc -print0 | xargs -0 rm -f 
-	find . -name \*\\.log -print0 | xargs -0 rm -f 
-	rm -rf build __pycache__ *.log
-
-# cel: docker-up
-# Podnosi wszystkie kontenery, które powinny działać w tle
-docker-up:
-	docker-compose up -d redis rabbitmq selenium webserver db
-
-pipenv-install:
-	pipenv --bare install --system --dev
-
-dropdb:
-	dropdb --if-exists bpp
-
-createdb:
-	createdb bpp
-
-recreatedb: dropdb createdb 
-
-clone-bpp-to-other-dbs:
-	dropdb --if-exists test_bpp
-	dropdb --if-exists test_bpp_gw0
-	dropdb --if-exists test_bpp_gw1
-
-	echo 'CREATE DATABASE "test_bpp" WITH TEMPLATE "bpp"' | psql
-	echo 'CREATE DATABASE "test_bpp_gw0" WITH TEMPLATE "bpp"' | psql
-	echo 'CREATE DATABASE "test_bpp_gw1" WITH TEMPLATE "bpp"' | psql
-
-migrate:
-	python src/manage.py migrate
-
-# Cel: python-tests
-#
-# Uwaga dotycząca tworzenia bazy "bpp" (_nie_ "test_bpp") w tym celu
-# poniżej:
-#
-# Utwórz bazę testową "bpp" - wymaga jej jeden test integracyjny
-# integration_tests/test_celery. Ewentualnie mógłby być to klon
-# bazy testowej, jeżeli moglibyśmy utworzyć go równie łatwo jak
-# przy pomocy polecenia Stellar. Jednakże, w momencie pisania tego
-# komentarza, najłatwiej będzie uruchomić po prostu 'manage.py migrate'
-# dla "głównej" bazy danych
-tox: pipenv-install recreatedb migrate clone-bpp-to-other-dbs
-	tox
-
-docker-python-tests: 
-	docker-compose up -d test
-	docker-compose exec test /bin/bash -c "cd /usr/src/app && make tox"
-
-docker-tests: clean docker-assets docker-python-tests docker-js-tests
 
 # cel: production -DCUSTOMER=... or CUSTOMER=... make production
 production: 
