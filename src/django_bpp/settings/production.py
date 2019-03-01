@@ -3,7 +3,7 @@
 from .base import *
 
 DEBUG = False
-
+DEBUG_TOOLBAR = False
 SENDFILE_BACKEND = 'sendfile.backends.nginx'
 
 SESSION_COOKIE_SECURE = False
