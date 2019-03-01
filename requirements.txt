@@ -67,7 +67,7 @@ pastedeploy==2.0.1
 pastescript==3.0.0
 pillow==4.0.0
 ply==3.11
-psycopg2==2.7.1
+psycopg2==2.7.7
 pylibmc==1.6.0
 pyoai==2.5.0
 pypandoc==1.4
