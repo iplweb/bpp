@@ -1,3 +1,0 @@
----
-- name: Redis server package is installed
-  apt: name=redis-server state=present

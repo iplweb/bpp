@@ -1,9 +1,0 @@
----
-- name: Install supervisor apt package
-  apt: name=supervisor
-
-- name: Enable supervisor service via systemd
-  systemd: name=supervisor state=started enabled=yes
-
-- name: Ensure supervisor starts on boot
-  command: systemctl enable supervisor
