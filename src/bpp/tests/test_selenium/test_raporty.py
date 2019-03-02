@@ -2,7 +2,10 @@
 import time
 
 from django.contrib.auth import get_user_model
-from django.core.urlresolvers import reverse
+try:
+    from django.core.urlresolvers import reverse
+except ImportError:
+    from django.urls import reverse
 from django.test.testcases import LiveServerTestCase
 from selenium.webdriver.common.keys import Keys
 from splinter.browser import Browser

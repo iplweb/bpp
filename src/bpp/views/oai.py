@@ -4,7 +4,10 @@
 import datetime
 from django.contrib.contenttypes.models import ContentType
 
-from django.core.urlresolvers import reverse
+try:
+    from django.core.urlresolvers import reverse
+except ImportError:
+    from django.urls import reverse
 from django.db.models.aggregates import Min
 from django.http.response import HttpResponse, HttpResponseServerError
 from django.utils.timezone import make_naive

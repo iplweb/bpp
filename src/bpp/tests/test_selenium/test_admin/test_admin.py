@@ -1,7 +1,10 @@
 # -*- encoding: utf-8 -*-
 import time
 
-from django.core.urlresolvers import reverse
+try:
+    from django.core.urlresolvers import reverse
+except ImportError:
+    from django.urls import reverse
 from django.db import transaction
 from model_mommy import mommy
 from selenium.webdriver.support.wait import WebDriverWait

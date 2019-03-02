@@ -19,7 +19,10 @@ from django.core.management import call_command
 #
 # POTEM AUTORYZACJA JAKAS MOZE na te komunikaty
 # tzn. najbardziej to na WYSYLANIE by sie przydala.
-from django.core.urlresolvers import reverse
+try:
+    from django.core.urlresolvers import reverse
+except ImportError:
+    from django.urls import reverse
 import pytest
 from selenium.webdriver.support.wait import WebDriverWait
 

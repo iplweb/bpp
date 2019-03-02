@@ -6,7 +6,10 @@ from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ImproperlyConfigured
 from django.core.management import call_command
-from django.core.urlresolvers import reverse
+try:
+    from django.core.urlresolvers import reverse
+except ImportError:
+    from django.urls import reverse
 
 from bpp.models import Uczelnia, Wydawnictwo_Ciagle, Wydawnictwo_Zwarte, Praca_Doktorska, Praca_Habilitacyjna
 from bpp.util import remove_old_objects

@@ -10,6 +10,7 @@ from django.contrib.postgres.fields import HStoreField
 from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models import CASCADE, SET_NULL
 from django.urls.base import reverse
 from django.utils import six
 from django.utils import timezone
@@ -131,7 +132,7 @@ class ModelZISBN(models.Model):
 class ModelZInformacjaZ(models.Model):
     """Model zawierający pole 'Informacja z' - czyli od kogo została
     dostarczona informacja o publikacji (np. od autora, od redakcji)."""
-    informacja_z = models.ForeignKey('Zrodlo_Informacji', null=True, blank=True)
+    informacja_z = models.ForeignKey('Zrodlo_Informacji', null=True, blank=True, on_delete=SET_NULL)
 
     class Meta:
         abstract = True
@@ -150,7 +151,7 @@ class DwaTytuly(models.Model):
 class ModelZeStatusem(models.Model):
     """Model zawierający pole statusu korekty, oraz informację, czy
     punktacja została zweryfikowana."""
-    status_korekty = models.ForeignKey('Status_Korekty')
+    status_korekty = models.ForeignKey('Status_Korekty', on_delete=SET_NULL)
 
     class Meta:
         abstract = True
@@ -290,8 +291,8 @@ from bpp.models.system import Charakter_Formalny
 
 class ModelTypowany(models.Model):
     """Model zawierający typ KBN oraz język."""
-    typ_kbn = models.ForeignKey('Typ_KBN', verbose_name="Typ KBN")
-    jezyk = models.ForeignKey('Jezyk', verbose_name="Język")
+    typ_kbn = models.ForeignKey('Typ_KBN', verbose_name="Typ KBN", on_delete=SET_NULL)
+    jezyk = models.ForeignKey('Jezyk', verbose_name="Język", on_delete=SET_NULL)
 
     class Meta:
         abstract = True
@@ -302,11 +303,12 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
     autora do czegokolwiek innego). Zawiera wszystkie informacje dla autora,
     czyli: powiązanie ForeignKey, jednostkę, rodzaj zapisu nazwiska, ale
     nie zawiera podstawowej informacji, czyli powiązania"""
-    autor = models.ForeignKey('Autor')
-    jednostka = models.ForeignKey('Jednostka')
+    autor = models.ForeignKey('Autor', on_delete=CASCADE)
+    jednostka = models.ForeignKey('Jednostka', on_delete=CASCADE)
     kolejnosc = models.IntegerField('Kolejność', default=0)
     typ_odpowiedzialnosci = models.ForeignKey('Typ_Odpowiedzialnosci',
-                                              verbose_name="Typ odpowiedzialności")
+                                              verbose_name="Typ odpowiedzialności",
+                                              on_delete=SET_NULL)
     zapisany_jako = models.CharField(max_length=512)
     afiliuje = models.BooleanField(default=True, help_text="""Afiliuje 
     się do jednostki podanej w przypisaniu""")
@@ -390,7 +392,7 @@ class ModelZNumeremZeszytu(models.Model):
 
 class ModelZCharakterem(models.Model):
     charakter_formalny = models.ForeignKey(
-        Charakter_Formalny, verbose_name='Charakter formalny')
+        Charakter_Formalny, verbose_name='Charakter formalny', on_delete=SET_NULL)
 
     class Meta:
         abstract = True
@@ -768,7 +770,8 @@ class ModelZSeria_Wydawnicza(models.Model):
     seria_wydawnicza = models.ForeignKey(
         'bpp.Seria_Wydawnicza',
         blank=True,
-        null=True
+        null=True,
+        on_delete=SET_NULL
     )
 
     numer_w_serii = models.PositiveIntegerField(
@@ -784,7 +787,8 @@ class ModelZKonferencja(models.Model):
     konferencja = models.ForeignKey(
         'bpp.Konferencja',
         blank=True,
-        null=True)
+        null=True,
+        on_delete=SET_NULL)
 
     class Meta:
         abstract = True
@@ -794,19 +798,22 @@ class ModelZOpenAccess(models.Model):
     openaccess_wersja_tekstu = models.ForeignKey(
         'Wersja_Tekstu_OpenAccess',
         verbose_name="OpenAccess: wersja tekstu",
-        blank=True, null=True)
+        blank=True, null=True,
+        on_delete=CASCADE)
 
     openaccess_licencja = models.ForeignKey(
         "Licencja_OpenAccess",
         verbose_name="OpenAccess: licencja",
         blank=True,
-        null=True)
+        null=True,
+        on_delete=CASCADE)
 
     openaccess_czas_publikacji = models.ForeignKey(
         "Czas_Udostepnienia_OpenAccess",
         verbose_name="OpenAccess: czas udostępnienia",
         blank=True,
-        null=True)
+        null=True,
+        on_delete=CASCADE)
 
     openaccess_ilosc_miesiecy = models.PositiveIntegerField(
         "OpenAccess: ilość miesięcy",

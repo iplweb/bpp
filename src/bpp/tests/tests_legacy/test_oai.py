@@ -1,5 +1,8 @@
 # -*- encoding: utf-8 -*-
-from django.core.urlresolvers import reverse
+try:
+    from django.core.urlresolvers import reverse
+except ImportError:
+    from django.urls import reverse
 from bpp.models.cache import Rekord
 from bpp.tests.util import any_ciagle
 from bpp.tests.tests_legacy.testutil import WebTestCase

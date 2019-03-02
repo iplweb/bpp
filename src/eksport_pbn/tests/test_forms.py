@@ -2,7 +2,10 @@
 
 
 
-from django.core.urlresolvers import reverse
+try:
+    from django.core.urlresolvers import reverse
+except ImportError:
+    from django.urls import reverse
 
 from eksport_pbn.forms import zakres_lat
 

@@ -2,7 +2,10 @@
 import json
 
 from django.contrib.contenttypes.models import ContentType
-from django.core.urlresolvers import reverse
+try:
+    from django.core.urlresolvers import reverse
+except ImportError:
+    from django.urls import reverse
 from django.db.models.query_utils import Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404

@@ -5,7 +5,10 @@ import re
 import pytest
 from bs4 import BeautifulSoup
 from django.contrib.contenttypes.models import ContentType
-from django.core.urlresolvers import reverse
+try:
+    from django.core.urlresolvers import reverse
+except ImportError:
+    from django.urls import reverse
 from model_mommy import mommy
 from multiseek.logic import EQUAL_NONE, EQUAL, EQUAL_FEMALE
 from multiseek.views import MULTISEEK_SESSION_KEY

@@ -1,6 +1,9 @@
 # -*- encoding: utf-8 -*
 from optparse import make_option
-from django.core.urlresolvers import reverse
+try:
+    from django.core.urlresolvers import reverse
+except ImportError:
+    from django.urls import reverse
 from django.db import transaction
 
 import messages_extends as messages
