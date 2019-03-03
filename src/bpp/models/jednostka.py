@@ -9,7 +9,7 @@ from autoslug import AutoSlugField
 from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import PROTECT
+from django.db.models import CASCADE
 from django.db.models.functions import Coalesce
 from django.db.models.query_utils import Q
 from django.urls.base import reverse
@@ -35,9 +35,9 @@ class JednostkaManager(FulltextSearchMixin, models.Manager):
 
 @six.python_2_unicode_compatible
 class Jednostka(ModelZAdnotacjami, ModelZPBN_ID):
-    uczelnia = models.ForeignKey(Uczelnia, PROTECT)
+    uczelnia = models.ForeignKey(Uczelnia, CASCADE)
 
-    wydzial = models.ForeignKey(Wydzial, PROTECT, verbose_name="Wydział", blank=True, null=True)
+    wydzial = models.ForeignKey(Wydzial, CASCADE, verbose_name="Wydział", blank=True, null=True)
     aktualna = models.BooleanField(default=False, help_text="""Jeżeli dana jednostka wchodzi w struktury wydziału
     (czyli jej obecność w strukturach wydziału nie została zakończona z określoną datą), to pole to będzie miało
     wartość 'PRAWDA'.""")
@@ -246,8 +246,8 @@ class Jednostka_Wydzial_Manager(models.Manager):
 
 @six.python_2_unicode_compatible
 class Jednostka_Wydzial(models.Model):
-    jednostka = models.ForeignKey(Jednostka, PROTECT)
-    wydzial = models.ForeignKey(Wydzial, PROTECT)
+    jednostka = models.ForeignKey(Jednostka, CASCADE)
+    wydzial = models.ForeignKey(Wydzial, CASCADE)
     od = models.DateField(null=True, blank=True)
     do = models.DateField(null=True, blank=True)
 

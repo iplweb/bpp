@@ -1,5 +1,5 @@
 from django.db import models, transaction
-from django.db.models import PositiveSmallIntegerField, PROTECT, CASCADE
+from django.db.models import PositiveSmallIntegerField, CASCADE, CASCADE
 from mptt.models import MPTTModel, TreeForeignKey
 
 
@@ -51,7 +51,7 @@ class Autor_DyscyplinaManager(models.Manager):
 class Autor_Dyscyplina(models.Model):
     rok = PositiveSmallIntegerField()
     autor = models.ForeignKey("bpp.Autor", CASCADE)
-    dyscyplina = models.ForeignKey("bpp.Dyscyplina_Naukowa", PROTECT)
+    dyscyplina = models.ForeignKey("bpp.Dyscyplina_Naukowa", CASCADE)
 
     objects = Autor_DyscyplinaManager()
 

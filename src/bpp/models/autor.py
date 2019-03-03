@@ -11,7 +11,7 @@ from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import models, IntegrityError
-from django.db.models import Sum, PROTECT, CASCADE
+from django.db.models import Sum, CASCADE, CASCADE
 from django.urls.base import reverse
 from django.utils import six
 from lxml.etree import Element, SubElement
@@ -43,15 +43,15 @@ class AutorManager(FulltextSearchMixin, models.Manager):
 class Autor(ModelZAdnotacjami, ModelZPBN_ID):
     imiona = models.CharField(max_length=512, db_index=True)
     nazwisko = models.CharField(max_length=256, db_index=True)
-    tytul = models.ForeignKey(Tytul, PROTECT, blank=True, null=True)
+    tytul = models.ForeignKey(Tytul, CASCADE, blank=True, null=True)
 
     aktualny = models.BooleanField("Aktualny?", default=False, help_text="""Jeżeli zaznaczone, pole to oznacza,
     że autor jest aktualnie - na dziś dzień - przypisany do jakiejś jednostki w bazie danych i jego przypisanie
     do tej jednostki nie zostało zakończone wraz z konkretną datą w 
     przeszłości.""", db_index=True)
 
-    aktualna_jednostka = models.ForeignKey('Jednostka', PROTECT, blank=True, null=True, related_name='aktualna_jednostka')
-    aktualna_funkcja = models.ForeignKey('Funkcja_Autora', PROTECT, blank=True, null=True, related_name='aktualna_funkcja')
+    aktualna_jednostka = models.ForeignKey('Jednostka', CASCADE, blank=True, null=True, related_name='aktualna_jednostka')
+    aktualna_funkcja = models.ForeignKey('Funkcja_Autora', CASCADE, blank=True, null=True, related_name='aktualna_funkcja')
 
     pokazuj = models.BooleanField(
         default=True,
@@ -60,7 +60,7 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
     email = models.EmailField("E-mail", max_length=128, blank=True, null=True)
     www = models.URLField("WWW", max_length=1024, blank=True, null=True)
 
-    plec = models.ForeignKey(Plec, PROTECT, null=True, blank=True)
+    plec = models.ForeignKey(Plec, CASCADE, null=True, blank=True)
 
     urodzony = models.DateField(blank=True, null=True)
     zmarl = models.DateField(blank=True, null=True)
@@ -346,7 +346,7 @@ class Autor_Jednostka(models.Model):
                                        blank=True, null=True, db_index=True)
     zakonczyl_prace = models.DateField(
         "Zakończył pracę", null=True, blank=True, db_index=True)
-    funkcja = models.ForeignKey(Funkcja_Autora, PROTECT, null=True, blank=True)
+    funkcja = models.ForeignKey(Funkcja_Autora, CASCADE, null=True, blank=True)
 
     objects = Autor_Jednostka_Manager()
 

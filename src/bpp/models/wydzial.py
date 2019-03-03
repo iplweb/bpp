@@ -6,7 +6,7 @@ Struktura uczelni.
 
 from autoslug import AutoSlugField
 from django.db import models
-from django.db.models import PROTECT
+from django.db.models import CASCADE
 from django.urls.base import reverse
 from django.utils import six
 
@@ -18,7 +18,7 @@ from .uczelnia import Uczelnia
 
 @six.python_2_unicode_compatible
 class Wydzial(ModelZAdnotacjami, ModelZPBN_ID):
-    uczelnia = models.ForeignKey(Uczelnia, PROTECT)
+    uczelnia = models.ForeignKey(Uczelnia, CASCADE)
     nazwa = models.CharField(
         max_length=512,
         unique=True,

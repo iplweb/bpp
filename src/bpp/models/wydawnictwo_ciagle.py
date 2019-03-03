@@ -2,7 +2,7 @@
 
 from dirtyfields.dirtyfields import DirtyFieldsMixin
 from django.db import models
-from django.db.models import SET_NULL, PROTECT, CASCADE
+from django.db.models import SET_NULL, CASCADE, CASCADE
 from django.db.models.signals import post_delete
 from django.utils import timezone
 from lxml.etree import SubElement, Element
@@ -152,7 +152,7 @@ class Wydawnictwo_Ciagle(ZapobiegajNiewlasciwymCharakterom,
 
 class Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych(models.Model):
     rekord = models.ForeignKey(Wydawnictwo_Ciagle, CASCADE, related_name="zewnetrzna_baza_danych")
-    baza = models.ForeignKey(Zewnetrzna_Baza_Danych, PROTECT)
+    baza = models.ForeignKey(Zewnetrzna_Baza_Danych, CASCADE)
     info = models.CharField(
         verbose_name="Informacje dodatkowe",
         max_length=512,

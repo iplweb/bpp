@@ -5,7 +5,7 @@ Małe klasy pomocnicze dla całego systemu
 """
 
 from django.db import models
-from django.db.models import SET_NULL, PROTECT
+from django.db.models import SET_NULL, CASCADE
 from django.db.models.signals import post_migrate
 from django.dispatch import receiver
 from django.utils import six
@@ -79,7 +79,7 @@ class Charakter_Formalny(NazwaISkrot, MPTTModel):
                                       blank=True, null=True, default=None,
                                       help_text="""Wartość wybrana w tym polu zostanie użyta jako zawartość tagu <is>
                                       w plikach eksportu do PBN""",
-                                      on_delete=PROTECT)
+                                      on_delete=CASCADE)
 
     artykul_pbn = models.BooleanField(verbose_name="Artykuł w PBN", help_text="""Wydawnictwa ciągłe posiadające
      ten charakter formalny zostaną włączone do eksportu PBN jako artykuły""", default=False)
@@ -185,7 +185,7 @@ class Typ_KBN(NazwaISkrot):
         fallback, tzn. jeżeli dla charakteru formalnego danego rekordu nie 
         określono odpowiedniego charakteru PBN, to zostanie użyta wartość 
         tego pola, o ile wybrana. """,
-        on_delete=PROTECT
+        on_delete=CASCADE
     )
 
     class Meta:

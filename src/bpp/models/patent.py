@@ -1,6 +1,6 @@
 # -*- encoding: utf-8 -*-
 from django.db import models
-from django.db.models import CASCADE, PROTECT, SET_NULL
+from django.db.models import CASCADE, CASCADE, SET_NULL
 from django.utils import six
 
 from bpp.models import BazaModeluOdpowiedzialnosciAutorow, Autor, \
@@ -54,7 +54,7 @@ class Patent(RekordBPPBaza,
     )
 
     rodzaj_prawa = models.ForeignKey(
-        "bpp.Rodzaj_Prawa_Patentowego", PROTECT,
+        "bpp.Rodzaj_Prawa_Patentowego", CASCADE,
         null=True, blank=True
     )
 

@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
 
 from django.db import models
-from django.db.models import PROTECT, CASCADE, SET_NULL
+from django.db.models import CASCADE, CASCADE, SET_NULL
 
 from .autor import Autor
 from .struktura import Jednostka
@@ -12,7 +12,7 @@ from .wydawnictwo_zwarte import Wydawnictwo_Zwarte_Baza
 class Praca_Doktorska_Baza(Wydawnictwo_Zwarte_Baza):
 
     autor = models.OneToOneField(Autor, CASCADE)
-    jednostka = models.ForeignKey(Jednostka, PROTECT)
+    jednostka = models.ForeignKey(Jednostka, CASCADE)
 
     @property
     def autorzy_set(self):

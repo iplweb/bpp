@@ -6,7 +6,7 @@
 from autoslug import AutoSlugField
 
 from django.db import models
-from django.db.models import CASCADE, PROTECT, SET_NULL
+from django.db.models import CASCADE, CASCADE, SET_NULL
 from django.urls.base import reverse
 from lxml.etree import Element, SubElement
 from bpp.models.system import Jezyk
@@ -40,7 +40,7 @@ class Redakcja_Zrodla(models.Model):
     zrodlo = models.ForeignKey('bpp.Zrodlo', CASCADE)
     od_roku = YearField()
     do_roku = YearField(null=True, blank=True)
-    redaktor = models.ForeignKey('bpp.Autor', PROTECT)
+    redaktor = models.ForeignKey('bpp.Autor', CASCADE)
 
     class Meta:
         app_label = 'bpp'
@@ -93,7 +93,7 @@ class Zrodlo(ModelZAdnotacjami, ModelZISSN):
     nazwa = models.CharField(max_length=1024, db_index=True)
     skrot = models.CharField("Skrót", max_length=512, db_index=True)
 
-    rodzaj = models.ForeignKey(Rodzaj_Zrodla, PROTECT)
+    rodzaj = models.ForeignKey(Rodzaj_Zrodla, CASCADE)
 
     nazwa_alternatywna = models.CharField(
         max_length=1024, db_index=True, blank=True, null=True)
@@ -122,12 +122,12 @@ class Zrodlo(ModelZAdnotacjami, ModelZISSN):
     )
 
     openaccess_licencja = models.ForeignKey(
-        "Licencja_OpenAccess", PROTECT,
+        "Licencja_OpenAccess", CASCADE,
         verbose_name="OpenAccess: licencja",
         blank=True,
         null=True)
 
-    jezyk = models.ForeignKey(Jezyk, PROTECT, null=True, blank=True)
+    jezyk = models.ForeignKey(Jezyk, CASCADE, null=True, blank=True)
     wydawca = models.CharField(max_length=250, blank=True)
 
     search = VectorField()
