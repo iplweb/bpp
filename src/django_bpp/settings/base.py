@@ -29,7 +29,7 @@ LANGUAGES = (
     ('pl', 'Polish'),
 )
 
-SITE_ID = 1
+SITE_ID = 1  # dla static-sitemaps
 USE_I18N = True
 USE_L10N = True
 USE_TZ = True

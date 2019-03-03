@@ -139,7 +139,8 @@ urlpatterns = [
     #     cache_page(7*24*3600)(sitemaps_views.sitemap), {'sitemaps': django_bpp_sitemaps},
     #     name='sitemaps'),
 
-    url(r'^sitemap\.xml', include('static_sitemaps.urls')),
+    # url(r'^sitemap\.xml', include('static_sitemaps.urls')),
+    path('', include('static_sitemaps.urls')),
 
     url(r'', include('webmaster_verification.urls')),
 
