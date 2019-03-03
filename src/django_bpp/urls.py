@@ -4,6 +4,7 @@ from django.conf.urls import include, url
 from django.conf.urls.static import static
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.views import LoginView
 from django.urls import path
 from django.views.decorators.cache import cache_page
 from django.views.decorators.csrf import csrf_exempt
@@ -92,8 +93,8 @@ urlpatterns = [
     url(r'^$', root, name="root"),
 
 
-    url(r'^accounts/login/$', login,
-        name="login_form", kwargs={'authentication_form':MyAuthenticationForm}),
+    url(r'^accounts/login/$', LoginView.as_view(
+        authentication_form=MyAuthenticationForm), name="login_form"),
 
     url(r'^password_change_done/$',
         PasswordChangeDoneView.as_view(),
