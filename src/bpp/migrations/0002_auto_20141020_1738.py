@@ -233,7 +233,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='autor',
             name='aktualna_jednostka',
-            field=models.ForeignKey(related_name=b'aktualna_jednostka', blank=True, to='bpp.Jednostka', null=True),
+            field=models.ForeignKey(on_delete=models.CASCADE, related_name='aktualna_jednostka', blank=True, to='bpp.Jednostka', null=True),
         ),
         migrations.AlterField(
             model_name='bppuser',

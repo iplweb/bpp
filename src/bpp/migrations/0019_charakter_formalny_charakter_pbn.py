@@ -14,7 +14,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='charakter_formalny',
             name='charakter_pbn',
-            field=models.ForeignKey(default=None, blank=True, to='bpp.Charakter_PBN', null=True),
+            field=models.ForeignKey(on_delete=models.CASCADE, default=None, blank=True, to='bpp.Charakter_PBN', null=True),
             preserve_default=True,
         ),
     ]

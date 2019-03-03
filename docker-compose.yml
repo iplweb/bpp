@@ -34,6 +34,17 @@ services:
     volumes:
       - psql_db:/var/lib/postgresql/data
 
+  webserver:
+    build:
+      dockerfile: Dockerfile-nginx
+      context: docker
+    image: mpasternak79/bpp-nginx:1.14.1
+    ports:
+      - "8080:80"
+    depends_on:
+      - dockerhost
+    
+
   python:
     build:
       dockerfile: Dockerfile-circleci-python-3.6-node-browsers-nginx-http-push

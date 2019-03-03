@@ -14,7 +14,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='praca_doktorska',
             name='promotor',
-            field=models.ForeignKey(related_name=b'promotor_doktoratu', blank=True, to='bpp.Autor', null=True),
+            field=models.ForeignKey(on_delete=models.CASCADE, related_name='promotor_doktoratu', blank=True, to='bpp.Autor', null=True),
             preserve_default=True,
         ),
         migrations.AlterField(

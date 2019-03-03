@@ -49,7 +49,7 @@ PUNKTUJ_MONOGRAFIE = False
 DEBUG_TOOLBAR = False
 
 if DEBUG_TOOLBAR and DEBUG:
-    MIDDLEWARE_CLASSES = MIDDLEWARE_CLASSES + [
+    MIDDLEWARE = MIDDLEWARE  + [
         'debug_toolbar.middleware.DebugToolbarMiddleware',
         'bpp.middleware.NonHtmlDebugToolbarMiddleware'
     ]

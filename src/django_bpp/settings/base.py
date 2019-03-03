@@ -92,30 +92,27 @@ TEMPLATES = [
 ]
 
 
-MIDDLEWARE_CLASSES = [
+MIDDLEWARE  = [
     'htmlmin.middleware.HtmlMinifyMiddleware',
     'htmlmin.middleware.MarkRequestMiddleware',
 
     'django.middleware.locale.LocaleMiddleware',
 
-    'django.middleware.common.CommonMiddleware',
+    'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+
     'password_policies.middleware.PasswordChangeMiddleware',
 
     'dj_pagination.middleware.PaginationMiddleware',
 
     'session_security.middleware.SessionSecurityMiddleware',
     'notifications.middleware.NotificationsMiddleware',
-    'dogslow.WatchdogMiddleware',
-
 ]
-
-DOGSLOW_LOGGER = 'dogslow'  # can be anything, but must match `logger` below
-DOGSLOW_LOG_TO_SENTRY = True
-DOGSLOW_LOG_LEVEL = 'WARNING'  # optional, defaults to 'WARNING'
 
 INTERNAL_IPS = ('127.0.0.1',)
 
@@ -253,10 +250,6 @@ LOGGING = {
             'level': 'ERROR',
             'class': 'raven.contrib.django.raven_compat.handlers.SentryHandler',
         },
-        'dogslow': {
-            'level': 'WARNING',
-            'class': 'raven.contrib.django.handlers.SentryHandler',
-        },
         'console': {
             'level': 'DEBUG',
             'class': 'logging.StreamHandler',
@@ -273,10 +266,6 @@ LOGGING = {
             'level': 'DEBUG',
             'handlers': ['console'],
             'propagate': False,
-        },
-        'dogslow': {
-            'level': 'WARNING',
-            'handlers': ['dogslow'],  # or whatever you named your handler
         },
         'sentry.errors': {
             'level': 'DEBUG',

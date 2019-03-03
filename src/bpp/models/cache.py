@@ -223,10 +223,10 @@ class AutorzyBase(models.Model):
         size=2,
         primary_key=True)
 
-    autor = models.ForeignKey('Autor', on_delete=DO_NOTHING)
-    jednostka = models.ForeignKey('Jednostka', on_delete=DO_NOTHING)
+    autor = models.ForeignKey('Autor', DO_NOTHING)
+    jednostka = models.ForeignKey('Jednostka', DO_NOTHING)
     kolejnosc = models.IntegerField()
-    typ_odpowiedzialnosci = models.ForeignKey('Typ_Odpowiedzialnosci', on_delete=DO_NOTHING)
+    typ_odpowiedzialnosci = models.ForeignKey('Typ_Odpowiedzialnosci', DO_NOTHING)
     zapisany_jako = models.TextField()
 
     afiliuje = models.BooleanField()

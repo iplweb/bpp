@@ -16,8 +16,8 @@ def zakres_lat():
 
 
 class EksportDoPBNForm(forms.ModelForm):
-    od_roku = forms.ChoiceField(zakres_lat)
-    do_roku = forms.ChoiceField(zakres_lat)
+    od_roku = forms.ChoiceField(choices=zakres_lat)
+    do_roku = forms.ChoiceField(choices=zakres_lat)
 
     class Meta:
         model = PlikEksportuPBN

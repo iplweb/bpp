@@ -2,6 +2,8 @@
 
 
 from django.db import models, migrations
+from django.db.models import CASCADE, SET_NULL
+
 import integrator2.models.lista_ministerialna
 from django.conf import settings
 
@@ -43,7 +45,7 @@ class Migration(migrations.Migration):
                 ('status', models.IntegerField(default=0, choices=[(0, b'dodany'), (1, b'w trakcie analizy'), (2, b'przetworzony'), (3, b'przetworzony z b\xc5\x82\xc4\x99dami')])),
                 ('extra_info', models.TextField()),
                 ('year', models.IntegerField(default=integrator2.models.lista_ministerialna.last_year)),
-                ('owner', models.ForeignKey(to=settings.AUTH_USER_MODEL)),
+                ('owner', models.ForeignKey(to=settings.AUTH_USER_MODEL, on_delete=CASCADE)),
             ],
             options={
                 'verbose_name': 'Integracja list ministerialnych',
@@ -53,13 +55,13 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='listaministerialnaelement',
             name='parent',
-            field=models.ForeignKey(to='integrator2.ListaMinisterialnaIntegration'),
+            field=models.ForeignKey(to='integrator2.ListaMinisterialnaIntegration', on_delete=CASCADE),
             preserve_default=True,
         ),
         migrations.AddField(
             model_name='listaministerialnaelement',
             name='zrodlo',
-            field=models.ForeignKey(blank=True, to='bpp.Zrodlo', null=True),
+            field=models.ForeignKey(blank=True, to='bpp.Zrodlo', null=True, on_delete=SET_NULL),
             preserve_default=True,
         ),
     ]

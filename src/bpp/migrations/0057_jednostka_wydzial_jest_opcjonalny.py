@@ -14,6 +14,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='jednostka',
             name='wydzial',
-            field=models.ForeignKey(verbose_name=b'Wydzia\xc5\x82', blank=True, to='bpp.Wydzial', null=True),
+            field=models.ForeignKey(on_delete=models.CASCADE, verbose_name=b'Wydzia\xc5\x82', blank=True, to='bpp.Wydzial', null=True),
         ),
     ]

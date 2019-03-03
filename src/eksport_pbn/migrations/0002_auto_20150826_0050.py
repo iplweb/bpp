@@ -2,6 +2,7 @@
 
 
 from django.db import models, migrations
+from django.db.models import CASCADE
 
 
 class Migration(migrations.Migration):
@@ -21,7 +22,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='plikeksportupbn',
             name='wydzial',
-            field=models.ForeignKey(default=1, to='bpp.Wydzial'),
+            field=models.ForeignKey(default=1, to='bpp.Wydzial', on_delete=CASCADE),
             preserve_default=False,
         ),
     ]

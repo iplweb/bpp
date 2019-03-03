@@ -4,6 +4,7 @@ import os
 
 from django.conf import settings
 from django.db import models
+from django.db.models import CASCADE
 
 from bpp.models.profile import BppUser
 
@@ -40,7 +41,7 @@ class BaseIntegration(models.Model):
     name = models.CharField("Nazwa pliku", max_length=255)
 
     file = models.FileField(verbose_name="Plik", upload_to="integrator2")
-    owner = models.ForeignKey(BppUser)
+    owner = models.ForeignKey(BppUser, CASCADE)
 
     uploaded_on = models.DateTimeField(auto_now_add=True)
     last_updated_on = models.DateTimeField(auto_now=True)
