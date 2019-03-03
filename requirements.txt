@@ -28,7 +28,7 @@ django-extensions==1.7.9
 django-favicon-plus==0.0.8
 django-flexible-reports==0.2.8
 django-fsm==2.6.0
-django-grappelli==2.10.2
+django-grappelli==2.12.2
 django-group-by==0.3.1
 django-htmlmin==0.10.0
 django-js-asset==1.2.2
@@ -44,7 +44,7 @@ django-robots==3.1.0
 django-secure-input==0.9.3
 django-sendfile==0.3.11
 django-session-security==2.6.5
-django-static-sitemaps==4.3.0
+django-static-sitemaps==4.6.0
 django-tables2==1.16.0
 django-webmaster-verification==0.3.0
 django==2.1.7
