@@ -6,7 +6,10 @@ from datetime import datetime
 
 import django_webtest
 import pytest
-from django.core.urlresolvers import reverse
+try:
+    from django.core.urlresolvers import reverse
+except ImportError:
+    from django.urls import reverse
 from model_mommy import mommy
 
 from bpp.fixtures import get_openaccess_data

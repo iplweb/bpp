@@ -82,7 +82,7 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('rozpoczal_prace', models.DateField(db_index=True, null=True, verbose_name=b'Rozpocz\xc4\x85\xc5\x82 prac\xc4\x99', blank=True)),
                 ('zakonczyl_prace', models.DateField(db_index=True, null=True, verbose_name=b'Zako\xc5\x84czy\xc5\x82 prac\xc4\x99', blank=True)),
-                ('autor', models.ForeignKey(to='bpp.Autor')),
+                ('autor', models.ForeignKey(to='bpp.Autor', on_delete=models.CASCADE)),
             ],
             options={
                 'ordering': [b'autor__nazwisko', b'jednostka__nazwa', b'rozpoczal_prace'],
@@ -124,7 +124,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='autor_jednostka',
             name='funkcja',
-            field=models.ForeignKey(blank=True, to='bpp.Funkcja_Autora', null=True),
+            field=models.ForeignKey(blank=True, to='bpp.Funkcja_Autora', null=True, on_delete=models.CASCADE),
             preserve_default=True,
         ),
         migrations.CreateModel(
@@ -155,7 +155,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='autor_jednostka',
             name='jednostka',
-            field=models.ForeignKey(to='bpp.Jednostka'),
+            field=models.ForeignKey(to='bpp.Jednostka', on_delete=models.CASCADE),
             preserve_default=True,
         ),
         migrations.AlterUniqueTogether(
@@ -171,7 +171,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='autor',
             name='aktualna_jednostka',
-            field=models.ForeignKey(blank=True, to='bpp.Jednostka', null=True),
+            field=models.ForeignKey(blank=True, to='bpp.Jednostka', null=True, on_delete=models.CASCADE),
             preserve_default=True,
         ),
         migrations.CreateModel(
@@ -193,7 +193,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('rok', models.IntegerField(db_index=True)),
-                ('autor', models.ForeignKey(to='bpp.Autor')),
+                ('autor', models.ForeignKey(to='bpp.Autor', on_delete=models.CASCADE)),
             ],
             options={
             },
@@ -253,8 +253,8 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('kolejnosc', models.IntegerField(default=0, verbose_name=b'Kolejno\xc5\x9b\xc4\x87')),
                 ('zapisany_jako', models.CharField(max_length=512)),
-                ('autor', models.ForeignKey(to='bpp.Autor')),
-                ('jednostka', models.ForeignKey(to='bpp.Jednostka')),
+                ('autor', models.ForeignKey(on_delete=models.CASCADE, to='bpp.Autor')),
+                ('jednostka', models.ForeignKey(on_delete=models.CASCADE, to='bpp.Jednostka')),
             ],
             options={
                 'ordering': ('kolejnosc',),
@@ -272,7 +272,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='patent_autor',
             name='rekord',
-            field=models.ForeignKey(to='bpp.Patent'),
+            field=models.ForeignKey(on_delete=models.CASCADE, to='bpp.Patent'),
             preserve_default=True,
         ),
         migrations.CreateModel(
@@ -291,7 +291,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='autor',
             name='plec',
-            field=models.ForeignKey(blank=True, to='bpp.Plec', null=True),
+            field=models.ForeignKey(on_delete=models.CASCADE, blank=True, to='bpp.Plec', null=True),
             preserve_default=True,
         ),
         migrations.CreateModel(
@@ -329,9 +329,9 @@ class Migration(migrations.Migration):
                 ('miejsce_i_rok', models.CharField(help_text=b'Przyk\xc5\x82adowo:\n        Warszawa 2012. Wpisz prosz\xc4\x99 najpierw miejsce potem rok; oddziel\n        spacj\xc4\x85.', max_length=256, null=True, blank=True)),
                 ('wydawnictwo', models.CharField(max_length=256, null=True, blank=True)),
                 ('redakcja', models.TextField(null=True, blank=True)),
-                ('autor', models.ForeignKey(to='bpp.Autor')),
-                ('jednostka', models.ForeignKey(to='bpp.Jednostka')),
-                ('jezyk', models.ForeignKey(verbose_name=b'J\xc4\x99zyk', to='bpp.Jezyk')),
+                ('autor', models.ForeignKey(on_delete=models.CASCADE, to='bpp.Autor')),
+                ('jednostka', models.ForeignKey(on_delete=models.CASCADE, to='bpp.Jednostka')),
+                ('jezyk', models.ForeignKey(on_delete=models.CASCADE, verbose_name=b'J\xc4\x99zyk', to='bpp.Jezyk')),
             ],
             options={
                 'verbose_name': b'praca doktorska',
@@ -374,9 +374,9 @@ class Migration(migrations.Migration):
                 ('miejsce_i_rok', models.CharField(help_text=b'Przyk\xc5\x82adowo:\n        Warszawa 2012. Wpisz prosz\xc4\x99 najpierw miejsce potem rok; oddziel\n        spacj\xc4\x85.', max_length=256, null=True, blank=True)),
                 ('wydawnictwo', models.CharField(max_length=256, null=True, blank=True)),
                 ('redakcja', models.TextField(null=True, blank=True)),
-                ('autor', models.ForeignKey(to='bpp.Autor')),
-                ('jednostka', models.ForeignKey(to='bpp.Jednostka')),
-                ('jezyk', models.ForeignKey(verbose_name=b'J\xc4\x99zyk', to='bpp.Jezyk')),
+                ('autor', models.ForeignKey(on_delete=models.CASCADE, to='bpp.Autor')),
+                ('jednostka', models.ForeignKey(on_delete=models.CASCADE, to='bpp.Jednostka')),
+                ('jezyk', models.ForeignKey(on_delete=models.CASCADE, verbose_name=b'J\xc4\x99zyk', to='bpp.Jezyk')),
             ],
             options={
                 'verbose_name': b'praca habilitacyjna',
@@ -390,8 +390,8 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('kolejnosc', models.IntegerField(default=0, verbose_name=b'Kolejno\xc5\x9b\xc4\x87')),
                 ('object_id', models.PositiveIntegerField()),
-                ('content_type', models.ForeignKey(to='contenttypes.ContentType')),
-                ('praca_habilitacyjna', models.ForeignKey(to='bpp.Praca_Habilitacyjna')),
+                ('content_type', models.ForeignKey(on_delete=models.CASCADE, to='contenttypes.ContentType')),
+                ('praca_habilitacyjna', models.ForeignKey(on_delete=models.CASCADE, to='bpp.Praca_Habilitacyjna')),
             ],
             options={
                 'ordering': ('kolejnosc',),
@@ -426,7 +426,7 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('od_roku', models.IntegerField()),
                 ('do_roku', models.IntegerField(null=True, blank=True)),
-                ('redaktor', models.ForeignKey(to='bpp.Autor')),
+                ('redaktor', models.ForeignKey(on_delete=models.CASCADE, to='bpp.Autor')),
             ],
             options={
                 'verbose_name': b'redaktor \xc5\xbar\xc3\xb3d\xc5\x82a',
@@ -461,19 +461,19 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='praca_habilitacyjna',
             name='status_korekty',
-            field=models.ForeignKey(default=1, to='bpp.Status_Korekty'),
+            field=models.ForeignKey(on_delete=models.CASCADE, default=1, to='bpp.Status_Korekty'),
             preserve_default=True,
         ),
         migrations.AddField(
             model_name='praca_doktorska',
             name='status_korekty',
-            field=models.ForeignKey(default=1, to='bpp.Status_Korekty'),
+            field=models.ForeignKey(on_delete=models.CASCADE, default=1, to='bpp.Status_Korekty'),
             preserve_default=True,
         ),
         migrations.AddField(
             model_name='patent',
             name='status_korekty',
-            field=models.ForeignKey(default=1, to='bpp.Status_Korekty'),
+            field=models.ForeignKey(on_delete=models.CASCADE, default=1, to='bpp.Status_Korekty'),
             preserve_default=True,
         ),
         migrations.CreateModel(
@@ -493,13 +493,13 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='praca_habilitacyjna',
             name='typ_kbn',
-            field=models.ForeignKey(verbose_name=b'Typ KBN', to='bpp.Typ_KBN'),
+            field=models.ForeignKey(on_delete=models.CASCADE, verbose_name=b'Typ KBN', to='bpp.Typ_KBN'),
             preserve_default=True,
         ),
         migrations.AddField(
             model_name='praca_doktorska',
             name='typ_kbn',
-            field=models.ForeignKey(verbose_name=b'Typ KBN', to='bpp.Typ_KBN'),
+            field=models.ForeignKey(on_delete=models.CASCADE, verbose_name=b'Typ KBN', to='bpp.Typ_KBN'),
             preserve_default=True,
         ),
         migrations.CreateModel(
@@ -519,7 +519,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='patent_autor',
             name='typ_odpowiedzialnosci',
-            field=models.ForeignKey(verbose_name=b'Typ odpowiedzialno\xc5\x9bci', to='bpp.Typ_Odpowiedzialnosci'),
+            field=models.ForeignKey(on_delete=models.CASCADE, verbose_name=b'Typ odpowiedzialno\xc5\x9bci', to='bpp.Typ_Odpowiedzialnosci'),
             preserve_default=True,
         ),
         migrations.AlterUniqueTogether(
@@ -542,7 +542,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='autor',
             name='tytul',
-            field=models.ForeignKey(blank=True, to='bpp.Tytul', null=True),
+            field=models.ForeignKey(on_delete=models.CASCADE, blank=True, to='bpp.Tytul', null=True),
             preserve_default=True,
         ),
         migrations.CreateModel(
@@ -598,10 +598,10 @@ class Migration(migrations.Migration):
                 ('search_index', SearchVectorField(default=b'', serialize=False, null=True, editable=False, db_index=True)),
                 ('tytul_oryginalny_sort', models.TextField(default=b'', db_index=True)),
                 ('uzupelnij_punktacje', models.BooleanField(default=False)),
-                ('charakter_formalny', models.ForeignKey(verbose_name=b'Charakter formalny', to='bpp.Charakter_Formalny')),
-                ('jezyk', models.ForeignKey(verbose_name=b'J\xc4\x99zyk', to='bpp.Jezyk')),
-                ('status_korekty', models.ForeignKey(default=1, to='bpp.Status_Korekty')),
-                ('typ_kbn', models.ForeignKey(verbose_name=b'Typ KBN', to='bpp.Typ_KBN')),
+                ('charakter_formalny', models.ForeignKey(on_delete=models.CASCADE, verbose_name=b'Charakter formalny', to='bpp.Charakter_Formalny')),
+                ('jezyk', models.ForeignKey(on_delete=models.CASCADE, verbose_name=b'J\xc4\x99zyk', to='bpp.Jezyk')),
+                ('status_korekty', models.ForeignKey(on_delete=models.CASCADE, default=1, to='bpp.Status_Korekty')),
+                ('typ_kbn', models.ForeignKey(on_delete=models.CASCADE, verbose_name=b'Typ KBN', to='bpp.Typ_KBN')),
             ],
             options={
                 'verbose_name': b'wydawnictwo ci\xc4\x85g\xc5\x82e',
@@ -615,8 +615,8 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('kolejnosc', models.IntegerField(default=0, verbose_name=b'Kolejno\xc5\x9b\xc4\x87')),
                 ('zapisany_jako', models.CharField(max_length=512)),
-                ('autor', models.ForeignKey(to='bpp.Autor')),
-                ('jednostka', models.ForeignKey(to='bpp.Jednostka')),
+                ('autor', models.ForeignKey(on_delete=models.CASCADE, to='bpp.Autor')),
+                ('jednostka', models.ForeignKey(on_delete=models.CASCADE, to='bpp.Jednostka')),
             ],
             options={
                 'ordering': (b'kolejnosc',),
@@ -634,13 +634,13 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='wydawnictwo_ciagle_autor',
             name='rekord',
-            field=models.ForeignKey(to='bpp.Wydawnictwo_Ciagle'),
+            field=models.ForeignKey(on_delete=models.CASCADE, to='bpp.Wydawnictwo_Ciagle'),
             preserve_default=True,
         ),
         migrations.AddField(
             model_name='wydawnictwo_ciagle_autor',
             name='typ_odpowiedzialnosci',
-            field=models.ForeignKey(verbose_name=b'Typ odpowiedzialno\xc5\x9bci', to='bpp.Typ_Odpowiedzialnosci'),
+            field=models.ForeignKey(on_delete=models.CASCADE, verbose_name=b'Typ odpowiedzialno\xc5\x9bci', to='bpp.Typ_Odpowiedzialnosci'),
             preserve_default=True,
         ),
         migrations.AlterUniqueTogether(
@@ -683,11 +683,11 @@ class Migration(migrations.Migration):
                 ('wydawnictwo', models.CharField(max_length=256, null=True, blank=True)),
                 ('redakcja', models.TextField(null=True, blank=True)),
                 ('liczba_znakow_wydawniczych', models.IntegerField(null=True, verbose_name=b'Liczba znak\xc3\xb3w wydawniczych', blank=True)),
-                ('charakter_formalny', models.ForeignKey(verbose_name=b'Charakter formalny', to='bpp.Charakter_Formalny')),
-                ('jezyk', models.ForeignKey(verbose_name=b'J\xc4\x99zyk', to='bpp.Jezyk')),
-                ('status_korekty', models.ForeignKey(default=1, to='bpp.Status_Korekty')),
-                ('typ_kbn', models.ForeignKey(verbose_name=b'Typ KBN', to='bpp.Typ_KBN')),
-                ('wydawnictwo_nadrzedne', models.ForeignKey(blank=True, to='bpp.Wydawnictwo_Zwarte', help_text=b'Je\xc5\xbceli dodajesz rozdzia\xc5\x82,\n        tu wybierz prac\xc4\x99, w ramach kt\xc3\xb3rej dany rozdzia\xc5\x82 wyst\xc4\x99puje.', null=True)),
+                ('charakter_formalny', models.ForeignKey(on_delete=models.CASCADE, verbose_name=b'Charakter formalny', to='bpp.Charakter_Formalny')),
+                ('jezyk', models.ForeignKey(on_delete=models.CASCADE, verbose_name=b'J\xc4\x99zyk', to='bpp.Jezyk')),
+                ('status_korekty', models.ForeignKey(on_delete=models.CASCADE, default=1, to='bpp.Status_Korekty')),
+                ('typ_kbn', models.ForeignKey(on_delete=models.CASCADE, verbose_name=b'Typ KBN', to='bpp.Typ_KBN')),
+                ('wydawnictwo_nadrzedne', models.ForeignKey(on_delete=models.CASCADE, blank=True, to='bpp.Wydawnictwo_Zwarte', help_text=b'Je\xc5\xbceli dodajesz rozdzia\xc5\x82,\n        tu wybierz prac\xc4\x99, w ramach kt\xc3\xb3rej dany rozdzia\xc5\x82 wyst\xc4\x99puje.', null=True)),
             ],
             options={
                 'verbose_name': b'wydawnictwo zwarte',
@@ -698,7 +698,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='opi_2012_tytul_cache',
             name='wydawnictwo_zwarte',
-            field=models.ForeignKey(to='bpp.Wydawnictwo_Zwarte'),
+            field=models.ForeignKey(on_delete=models.CASCADE, to='bpp.Wydawnictwo_Zwarte'),
             preserve_default=True,
         ),
         migrations.CreateModel(
@@ -707,8 +707,8 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('kolejnosc', models.IntegerField(default=0, verbose_name=b'Kolejno\xc5\x9b\xc4\x87')),
                 ('zapisany_jako', models.CharField(max_length=512)),
-                ('autor', models.ForeignKey(to='bpp.Autor')),
-                ('jednostka', models.ForeignKey(to='bpp.Jednostka')),
+                ('autor', models.ForeignKey(on_delete=models.CASCADE, to='bpp.Autor')),
+                ('jednostka', models.ForeignKey(on_delete=models.CASCADE, to='bpp.Jednostka')),
             ],
             options={
                 'ordering': (b'kolejnosc',),
@@ -726,13 +726,13 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='wydawnictwo_zwarte_autor',
             name='rekord',
-            field=models.ForeignKey(to='bpp.Wydawnictwo_Zwarte'),
+            field=models.ForeignKey(on_delete=models.CASCADE, to='bpp.Wydawnictwo_Zwarte'),
             preserve_default=True,
         ),
         migrations.AddField(
             model_name='wydawnictwo_zwarte_autor',
             name='typ_odpowiedzialnosci',
-            field=models.ForeignKey(verbose_name=b'Typ odpowiedzialno\xc5\x9bci', to='bpp.Typ_Odpowiedzialnosci'),
+            field=models.ForeignKey(on_delete=models.CASCADE, verbose_name=b'Typ odpowiedzialno\xc5\x9bci', to='bpp.Typ_Odpowiedzialnosci'),
             preserve_default=True,
         ),
         migrations.AlterUniqueTogether(
@@ -753,7 +753,7 @@ class Migration(migrations.Migration):
                 ('slug', autoslug.fields.AutoSlugField(unique=True, max_length=512, editable=False)),
                 ('kolejnosc', models.IntegerField(default=0, verbose_name=b'Kolejno\xc5\x9b\xc4\x87')),
                 ('widoczny', models.BooleanField(default=True)),
-                ('uczelnia', models.ForeignKey(to='bpp.Uczelnia')),
+                ('uczelnia', models.ForeignKey(on_delete=models.CASCADE, to='bpp.Uczelnia')),
             ],
             options={
                 'ordering': [b'kolejnosc', b'skrot'],
@@ -765,7 +765,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='opi_2012_afiliacja_do_wydzialu',
             name='wydzial',
-            field=models.ForeignKey(to='bpp.Wydzial'),
+            field=models.ForeignKey(on_delete=models.CASCADE, to='bpp.Wydzial'),
             preserve_default=True,
         ),
         migrations.AlterUniqueTogether(
@@ -775,7 +775,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='jednostka',
             name='wydzial',
-            field=models.ForeignKey(verbose_name=b'Wydzia\xc5\x82', to='bpp.Wydzial'),
+            field=models.ForeignKey(on_delete=models.CASCADE, verbose_name=b'Wydzia\xc5\x82', to='bpp.Wydzial'),
             preserve_default=True,
         ),
         migrations.CreateModel(
@@ -804,8 +804,8 @@ class Migration(migrations.Migration):
                 ('poprzednia_nazwa', models.CharField(db_index=True, max_length=1024, null=True, verbose_name=b'Poprzedni tytu\xc5\x82', blank=True)),
                 ('search', SearchVectorField(default=b'', serialize=False, null=True, editable=False, db_index=True)),
                 ('slug', autoslug.fields.AutoSlugField(unique=True, editable=False)),
-                ('rodzaj', models.ForeignKey(to='bpp.Rodzaj_Zrodla')),
-                ('zasieg', models.ForeignKey(default=None, blank=True, to='bpp.Zasieg_Zrodla', null=True)),
+                ('rodzaj', models.ForeignKey(on_delete=models.CASCADE, to='bpp.Rodzaj_Zrodla')),
+                ('zasieg', models.ForeignKey(on_delete=models.CASCADE, default=None, blank=True, to='bpp.Zasieg_Zrodla', null=True)),
             ],
             options={
                 'ordering': [b'nazwa'],
@@ -817,19 +817,19 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='wydawnictwo_ciagle',
             name='zrodlo',
-            field=models.ForeignKey(verbose_name=b'\xc5\xb9r\xc3\xb3d\xc5\x82o', to='bpp.Zrodlo', null=True),
+            field=models.ForeignKey(on_delete=models.CASCADE, verbose_name=b'\xc5\xb9r\xc3\xb3d\xc5\x82o', to='bpp.Zrodlo', null=True),
             preserve_default=True,
         ),
         migrations.AddField(
             model_name='redakcja_zrodla',
             name='zrodlo',
-            field=models.ForeignKey(to='bpp.Zrodlo'),
+            field=models.ForeignKey(on_delete=models.CASCADE, to='bpp.Zrodlo'),
             preserve_default=True,
         ),
         migrations.AddField(
             model_name='punktacja_zrodla',
             name='zrodlo',
-            field=models.ForeignKey(to='bpp.Zrodlo'),
+            field=models.ForeignKey(on_delete=models.CASCADE, to='bpp.Zrodlo'),
             preserve_default=True,
         ),
         migrations.AlterUniqueTogether(
@@ -851,31 +851,31 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='wydawnictwo_zwarte',
             name='informacja_z',
-            field=models.ForeignKey(blank=True, to='bpp.Zrodlo_Informacji', null=True),
+            field=models.ForeignKey(on_delete=models.CASCADE, blank=True, to='bpp.Zrodlo_Informacji', null=True),
             preserve_default=True,
         ),
         migrations.AddField(
             model_name='wydawnictwo_ciagle',
             name='informacja_z',
-            field=models.ForeignKey(blank=True, to='bpp.Zrodlo_Informacji', null=True),
+            field=models.ForeignKey(on_delete=models.CASCADE, blank=True, to='bpp.Zrodlo_Informacji', null=True),
             preserve_default=True,
         ),
         migrations.AddField(
             model_name='praca_habilitacyjna',
             name='informacja_z',
-            field=models.ForeignKey(blank=True, to='bpp.Zrodlo_Informacji', null=True),
+            field=models.ForeignKey(on_delete=models.CASCADE, blank=True, to='bpp.Zrodlo_Informacji', null=True),
             preserve_default=True,
         ),
         migrations.AddField(
             model_name='praca_doktorska',
             name='informacja_z',
-            field=models.ForeignKey(blank=True, to='bpp.Zrodlo_Informacji', null=True),
+            field=models.ForeignKey(on_delete=models.CASCADE, blank=True, to='bpp.Zrodlo_Informacji', null=True),
             preserve_default=True,
         ),
         migrations.AddField(
             model_name='patent',
             name='informacja_z',
-            field=models.ForeignKey(blank=True, to='bpp.Zrodlo_Informacji', null=True),
+            field=models.ForeignKey(on_delete=models.CASCADE, blank=True, to='bpp.Zrodlo_Informacji', null=True),
             preserve_default=True,
         ),
 

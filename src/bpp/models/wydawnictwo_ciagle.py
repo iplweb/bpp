@@ -2,6 +2,7 @@
 
 from dirtyfields.dirtyfields import DirtyFieldsMixin
 from django.db import models
+from django.db.models import SET_NULL, CASCADE, CASCADE
 from django.db.models.signals import post_delete
 from django.utils import timezone
 from lxml.etree import SubElement, Element
@@ -22,7 +23,7 @@ from bpp.models.util import dodaj_autora, ZapobiegajNiewlasciwymCharakterom
 
 class Wydawnictwo_Ciagle_Autor(DirtyFieldsMixin, BazaModeluOdpowiedzialnosciAutorow):
     """Powiązanie autora do wydawnictwa ciągłego."""
-    rekord = models.ForeignKey('Wydawnictwo_Ciagle', related_name="autorzy_set")
+    rekord = models.ForeignKey('Wydawnictwo_Ciagle', CASCADE, related_name="autorzy_set")
 
     class Meta:
         verbose_name = 'powiązanie autora z wyd. ciągłym'
@@ -56,7 +57,7 @@ post_delete.connect(wydawnictwo_ciagle_autor_post_delete, Wydawnictwo_Ciagle_Aut
 
 class ModelZOpenAccessWydawnictwoCiagle(ModelZOpenAccess):
     openaccess_tryb_dostepu = models.ForeignKey(
-        "Tryb_OpenAccess_Wydawnictwo_Ciagle", verbose_name="OpenAccess: tryb dostępu", blank=True, null=True)
+        "Tryb_OpenAccess_Wydawnictwo_Ciagle", SET_NULL, verbose_name="OpenAccess: tryb dostępu", blank=True, null=True)
 
     class Meta:
         abstract = True
@@ -150,8 +151,8 @@ class Wydawnictwo_Ciagle(ZapobiegajNiewlasciwymCharakterom,
 
 
 class Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych(models.Model):
-    rekord = models.ForeignKey(Wydawnictwo_Ciagle, related_name="zewnetrzna_baza_danych")
-    baza = models.ForeignKey(Zewnetrzna_Baza_Danych)
+    rekord = models.ForeignKey(Wydawnictwo_Ciagle, CASCADE, related_name="zewnetrzna_baza_danych")
+    baza = models.ForeignKey(Zewnetrzna_Baza_Danych, CASCADE)
     info = models.CharField(
         verbose_name="Informacje dodatkowe",
         max_length=512,

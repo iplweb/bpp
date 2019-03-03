@@ -2,7 +2,10 @@
 
 
 from django.contrib.sitemaps import Sitemap
-from django.core.urlresolvers import reverse
+try:
+    from django.core.urlresolvers import reverse
+except ImportError:
+    from django.urls import reverse
 
 from bpp.models import Jednostka
 from bpp.models.autor import Autor

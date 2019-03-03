@@ -1,7 +1,10 @@
 # -*- encoding: utf-8 -*-
 from django.apps import apps
 from django.contrib import auth
-from django.core.urlresolvers import reverse
+try:
+    from django.core.urlresolvers import reverse
+except ImportError:
+    from django.urls import reverse
 from model_mommy import mommy
 from django.contrib.auth.models import Group
 

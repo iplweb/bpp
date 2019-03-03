@@ -1,5 +1,6 @@
 # -*- encoding: utf-8 -*-
 from django.db import models
+from django.db.models import CASCADE, CASCADE, SET_NULL
 from django.utils import six
 
 from bpp.models import BazaModeluOdpowiedzialnosciAutorow, Autor, \
@@ -12,7 +13,7 @@ from bpp.models.util import dodaj_autora
 
 class Patent_Autor(BazaModeluOdpowiedzialnosciAutorow):
     """Powiązanie autora do patentu."""
-    rekord = models.ForeignKey('Patent', related_name="autorzy_set")
+    rekord = models.ForeignKey('Patent', CASCADE, related_name="autorzy_set")
 
     class Meta:
         verbose_name = 'powiązanie autora z patentem'
@@ -53,7 +54,7 @@ class Patent(RekordBPPBaza,
     )
 
     rodzaj_prawa = models.ForeignKey(
-        "bpp.Rodzaj_Prawa_Patentowego",
+        "bpp.Rodzaj_Prawa_Patentowego", CASCADE,
         null=True, blank=True
     )
 
@@ -62,10 +63,9 @@ class Patent(RekordBPPBaza,
     )
 
     wydzial = models.ForeignKey(
-        "bpp.Wydzial",
+        "bpp.Wydzial", SET_NULL,
         null=True,
-        blank=True,
-        on_delete=models.SET_NULL)
+        blank=True)
 
     autorzy = models.ManyToManyField(Autor, through=Patent_Autor)
 

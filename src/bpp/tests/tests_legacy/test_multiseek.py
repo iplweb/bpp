@@ -1,6 +1,9 @@
 # -*- encoding: utf-8 -*-
 
-from django.core.urlresolvers import reverse
+try:
+    from django.core.urlresolvers import reverse
+except ImportError:
+    from django.urls import reverse
 
 from bpp.tests.tests_legacy.testutil import WebTestCase, UserTestCase
 

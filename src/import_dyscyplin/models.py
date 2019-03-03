@@ -2,7 +2,7 @@ from datetime import date
 
 from django.contrib.postgres.fields import JSONField
 from django.db import models, transaction, IntegrityError
-from django.db.models import Q, Count
+from django.db.models import Q, Count, CASCADE
 from django.urls import reverse
 from django_fsm import FSMField, transition, GET_STATE
 from model_utils.models import TimeStampedModel
@@ -30,7 +30,7 @@ class Import_Dyscyplin(TimeStampedModel):
              STAN.BLEDNY,
              STAN.ZINTEGROWANY)
 
-    owner = models.ForeignKey(AUTH_USER_MODEL)
+    owner = models.ForeignKey(AUTH_USER_MODEL, CASCADE)
     web_page_uid = models.CharField(max_length=36, blank=True, null=True)
     web_page_uid.__doc__ = "UUID4 strony internetowej która może być używana do notyfikacji. "
 
@@ -271,7 +271,7 @@ class Import_Dyscyplin_Row(models.Model):
 
     STANY = (STAN.NOWY, STAN.BLEDNY, STAN.ZINTEGROWANY)
 
-    parent = models.ForeignKey(Import_Dyscyplin)
+    parent = models.ForeignKey(Import_Dyscyplin, CASCADE)
 
     stan = models.CharField(
         max_length=50,

@@ -4,7 +4,7 @@
 from django.core.exceptions import MultipleObjectsReturned
 from django.db import models
 from django.db import transaction
-from django.db.models import Transform
+from django.db.models import Transform, CASCADE, SET_NULL
 
 from bpp import fields
 from bpp.models.zrodlo import Zrodlo, Punktacja_Zrodla
@@ -28,13 +28,13 @@ TextField.register_lookup(UpperCase)
 
 
 class ListaMinisterialnaElement(BaseIntegrationElement):
-    parent = models.ForeignKey("ListaMinisterialnaIntegration")
+    parent = models.ForeignKey("ListaMinisterialnaIntegration", CASCADE)
 
     nazwa = models.TextField()
     issn = models.CharField("ISSN", max_length=32, blank=True, null=True)
     e_issn = models.CharField("e-ISSN", max_length=32, blank=True, null=True)
     punkty_kbn = models.IntegerField()
-    zrodlo = models.ForeignKey(Zrodlo, blank=True, null=True)
+    zrodlo = models.ForeignKey(Zrodlo, SET_NULL, blank=True, null=True)
 
     class Meta:
         ordering = ['nazwa',]

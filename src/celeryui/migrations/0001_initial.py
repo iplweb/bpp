@@ -5,6 +5,7 @@ from django.db import migrations, models
 from django.conf import settings
 import django_extensions.db.fields
 import django_extensions.db.fields.json
+from django.db.models import CASCADE
 
 
 class Migration(migrations.Migration):
@@ -28,7 +29,7 @@ class Migration(migrations.Migration):
                 ('progress', models.FloatField(default=0.0, null=True, blank=True)),
                 ('error', models.BooleanField(default=False)),
                 ('traceback', models.TextField(max_length=10240, null=True, blank=True)),
-                ('ordered_by', models.ForeignKey(to=settings.AUTH_USER_MODEL)),
+                ('ordered_by', models.ForeignKey(to=settings.AUTH_USER_MODEL, on_delete=CASCADE)),
             ],
             options={
                 'ordering': ['-ordered_on'],

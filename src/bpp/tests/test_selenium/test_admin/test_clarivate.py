@@ -1,5 +1,8 @@
 # -*- encoding: utf-8 -*-
-from django.core.urlresolvers import reverse
+try:
+    from django.core.urlresolvers import reverse
+except ImportError:
+    from django.urls import reverse
 from mock import Mock
 from selenium.webdriver.support.expected_conditions import alert_is_present
 

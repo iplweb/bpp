@@ -1,7 +1,10 @@
 # -*- encoding: utf-8 -*-
 
 import pytest
-from django.core.urlresolvers import reverse
+try:
+    from django.core.urlresolvers import reverse
+except ImportError:
+    from django.urls import reverse
 from model_mommy import mommy
 
 from bpp.models.system import Charakter_Formalny, Jezyk

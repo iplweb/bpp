@@ -2,7 +2,10 @@
 
 from celery.utils.log import get_task_logger
 from django.core.management import call_command
-from django.core.urlresolvers import reverse
+try:
+    from django.core.urlresolvers import reverse
+except ImportError:
+    from django.urls import reverse
 from requests.exceptions import ConnectionError
 
 from bpp.util import remove_old_objects

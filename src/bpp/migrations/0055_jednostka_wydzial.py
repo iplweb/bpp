@@ -2,6 +2,7 @@
 
 
 from django.db import migrations, models
+from django.db.models import CASCADE
 
 
 class Migration(migrations.Migration):
@@ -17,8 +18,8 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('od', models.DateField(null=True, blank=True)),
                 ('do', models.DateField(null=True, blank=True)),
-                ('jednostka', models.ForeignKey(to='bpp.Jednostka')),
-                ('wydzial', models.ForeignKey(to='bpp.Wydzial')),
+                ('jednostka', models.ForeignKey(on_delete=models.CASCADE, to='bpp.Jednostka')),
+                ('wydzial', models.ForeignKey(on_delete=models.CASCADE, to='bpp.Wydzial')),
             ],
         ),
     ]

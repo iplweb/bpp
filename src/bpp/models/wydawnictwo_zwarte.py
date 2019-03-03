@@ -3,6 +3,7 @@ import re
 
 from dirtyfields.dirtyfields import DirtyFieldsMixin
 from django.db import models
+from django.db.models import CASCADE, CASCADE
 from django.db.models.signals import post_delete
 from django.utils import timezone
 from django.utils.functional import cached_property
@@ -28,7 +29,7 @@ from bpp.models.util import dodaj_autora
 class Wydawnictwo_Zwarte_Autor(DirtyFieldsMixin, BazaModeluOdpowiedzialnosciAutorow):
     """Model zawierający informację o przywiązaniu autorów do wydawnictwa
     zwartego."""
-    rekord = models.ForeignKey('Wydawnictwo_Zwarte', related_name="autorzy_set")
+    rekord = models.ForeignKey('Wydawnictwo_Zwarte', CASCADE, related_name="autorzy_set")
 
     class Meta:
         verbose_name = 'powiązanie autora z wyd. zwartym'
@@ -84,7 +85,7 @@ class Wydawnictwo_Zwarte_Baza(
 
 
 class ModelZOpenAccessWydawnictwoZwarte(ModelZOpenAccess):
-    openaccess_tryb_dostepu = models.ForeignKey("Tryb_OpenAccess_Wydawnictwo_Zwarte", blank=True, null=True)
+    openaccess_tryb_dostepu = models.ForeignKey("Tryb_OpenAccess_Wydawnictwo_Zwarte", CASCADE, blank=True, null=True)
 
     class Meta:
         abstract = True
@@ -110,7 +111,7 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
     autorzy = models.ManyToManyField(Autor, through=Wydawnictwo_Zwarte_Autor)
 
     wydawnictwo_nadrzedne = models.ForeignKey(
-        'self', blank=True, null=True, help_text="""Jeżeli dodajesz rozdział,
+        'self', CASCADE, blank=True, null=True, help_text="""Jeżeli dodajesz rozdział,
         tu wybierz pracę, w ramach której dany rozdział występuje.""",
         related_name="wydawnictwa_powiazane_set")
 

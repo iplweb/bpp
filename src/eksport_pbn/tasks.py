@@ -5,7 +5,10 @@ from tempfile import mkdtemp, mkstemp
 
 from django.core.files.base import File
 from django.core.management import call_command
-from django.core.urlresolvers import reverse
+try:
+    from django.core.urlresolvers import reverse
+except ImportError:
+    from django.urls import reverse
 from lxml.etree import tostring
 
 from bpp.models.system import Charakter_Formalny

@@ -7,7 +7,10 @@ import pytest
 from django.apps import apps
 from django.contrib.auth.models import Group
 from django.core.files.base import ContentFile
-from django.core.urlresolvers import reverse
+try:
+    from django.core.urlresolvers import reverse
+except ImportError:
+    from django.urls import reverse
 from django.db import transaction
 from django.http import Http404
 from django.test.utils import override_settings

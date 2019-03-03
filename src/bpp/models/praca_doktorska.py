@@ -1,6 +1,7 @@
 # -*- encoding: utf-8 -*-
 
 from django.db import models
+from django.db.models import CASCADE, CASCADE, SET_NULL
 
 from .autor import Autor
 from .struktura import Jednostka
@@ -10,8 +11,8 @@ from .wydawnictwo_zwarte import Wydawnictwo_Zwarte_Baza
 
 class Praca_Doktorska_Baza(Wydawnictwo_Zwarte_Baza):
 
-    autor = models.OneToOneField(Autor)
-    jednostka = models.ForeignKey(Jednostka)
+    autor = models.OneToOneField(Autor, CASCADE)
+    jednostka = models.ForeignKey(Jednostka, CASCADE)
 
     @property
     def autorzy_set(self):
@@ -35,7 +36,7 @@ class Praca_Doktorska_Baza(Wydawnictwo_Zwarte_Baza):
 
 class Praca_Doktorska(Praca_Doktorska_Baza):
 
-    promotor = models.ForeignKey(Autor, related_name="promotor_doktoratu", blank=True, null=True)
+    promotor = models.ForeignKey(Autor, SET_NULL, related_name="promotor_doktoratu", blank=True, null=True)
 
     class Meta:
         verbose_name = 'praca doktorska'

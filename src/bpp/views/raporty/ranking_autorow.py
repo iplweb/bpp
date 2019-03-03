@@ -1,7 +1,10 @@
 # -*- encoding: utf-8 -*-
 import itertools
 
-from django.core.urlresolvers import reverse
+try:
+    from django.core.urlresolvers import reverse
+except ImportError:
+    from django.urls import reverse
 from django.db.models.aggregates import Sum
 from django.template.defaultfilters import safe
 from django.utils.functional import cached_property
