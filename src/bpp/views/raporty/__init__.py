@@ -97,7 +97,7 @@ class RaportyFormMixin(RaportyMixin):
     def get_context_data(self, **kwargs):
         data = FormView.get_context_data(self, **kwargs)
         data['raporty'] = []
-        if not self.request.user.is_anonymous():
+        if not self.request.user.is_anonymous:
             data['raporty'] = self.get_raporty()
         data['nazwa_raportu'] = self.nazwa_raportu
         return data
