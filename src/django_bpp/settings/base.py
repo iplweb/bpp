@@ -337,7 +337,10 @@ from django_bpp.version import VERSION
 if os.getenv("DJANGO_BPP_RAVEN_CONFIG_URL", None):
     RAVEN_CONFIG = {
         'dsn': django_getenv("DJANGO_BPP_RAVEN_CONFIG_URL"),
-        'release': VERSION
+        'release': VERSION,
+        'IGNORE_EXCEPTIONS': [
+            'SuspiciousOperation',
+        ],
     }
 
     INSTALLED_APPS.append('raven.contrib.django.raven_compat')
