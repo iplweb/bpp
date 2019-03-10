@@ -64,10 +64,10 @@ def my_limit(fun):
 
 
 @app.task(ignore_result=True)
-def zaktualizuj_opis(app_label, model_name, pk, called_by=""):
+def zaktualizuj_opis(app_label, model_name, pk):
     ctype = ContentType.objects.get_by_natural_key(app_label, model_name)
     klass = ctype.model_class()
-    obj = wait_for_object(klass, pk, called_by=called_by)
+    obj = wait_for_object(klass, pk)
     obj.zaktualizuj_cache(tylko_opis=True)
 
 
