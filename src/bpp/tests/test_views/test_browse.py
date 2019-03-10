@@ -124,21 +124,23 @@ def test_artykuly(uczelnia, client):
     res = client.get(reverse("bpp:browse_uczelnia", args=(uczelnia.slug,)))
     assert res.status_code == 200
 
+    TYTUL = "Tytul testowego artykulu"
+
     a = Article.objects.create(
-        title="123",
+        title=TYTUL,
         article_body="456",
         status=Article.STATUS.draft,
         slug="1"
     )
 
     res = client.get(reverse("bpp:browse_uczelnia", args=(uczelnia.slug,)))
-    assert b'123' not in res.content
+    assert TYTUL.encode("utf-8") not in res.content
 
     a.status = Article.STATUS.published
     a.save()
 
     res = client.get(reverse("bpp:browse_uczelnia", args=(uczelnia.slug,)))
-    assert b'123' in res.content
+    assert TYTUL.encode("utf-8") in res.content
 
 
 @pytest.mark.django_db
