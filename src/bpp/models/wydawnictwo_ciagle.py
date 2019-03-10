@@ -18,7 +18,6 @@ from bpp.models.abstract import BazaModeluOdpowiedzialnosciAutorow, DwaTytuly, \
     ModelZDOI, ModelZeZnakamiWydawniczymi, ModelZAktualizacjaDlaPBN, \
     parse_informacje, ModelZNumeremZeszytu, ModelZKonferencja, ModelWybitny, \
     ModelZAbsolutnymUrl, ModelZLiczbaCytowan
-from bpp.models.const import DELETED_ATTR_NAME
 from bpp.models.system import Zewnetrzna_Baza_Danych
 from bpp.models.util import dodaj_autora, ZapobiegajNiewlasciwymCharakterom
 

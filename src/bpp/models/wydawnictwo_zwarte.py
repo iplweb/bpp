@@ -10,7 +10,7 @@ from django.utils import timezone
 from django.utils.functional import cached_property
 from lxml.etree import Element, SubElement
 
-from bpp.models import TO_AUTOR, DELETED_ATTR_NAME
+from bpp.models import TO_AUTOR
 from bpp.models.abstract import \
     BazaModeluOdpowiedzialnosciAutorow, DwaTytuly, ModelZRokiem, \
     ModelZWWW, ModelRecenzowany, ModelPunktowany, ModelTypowany, \
