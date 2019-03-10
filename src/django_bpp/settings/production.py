@@ -25,12 +25,6 @@ CACHES = {
         'BACKEND': 'django.core.cache.backends.memcached.PyLibMCCache',
         'LOCATION': django_getenv("DJANGO_BPP_MEMCACHE_HOST", '127.0.0.1') + ':11211',
     },
-    # This is required for django-compressor 'compress --offline --force'
-    # memcache bug
-    'compressor': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'compressor'
-    }
 }
 
 COMPRESS_CACHE_BACKEND = 'compressor'
