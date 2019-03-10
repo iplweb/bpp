@@ -5,7 +5,7 @@ import sys
 from datetime import timedelta
 
 import django
-from django.core.exceptions import ImproperlyConfigured
+from django.core.exceptions import ImproperlyConfigured, DisallowedHost
 
 
 def django_getenv(varname, default=None):
@@ -339,7 +339,7 @@ if os.getenv("DJANGO_BPP_RAVEN_CONFIG_URL", None):
         'dsn': django_getenv("DJANGO_BPP_RAVEN_CONFIG_URL"),
         'release': VERSION,
         'IGNORE_EXCEPTIONS': [
-            'SuspiciousOperation',
+            DisallowedHost,
         ],
     }
 
