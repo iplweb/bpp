@@ -3,13 +3,14 @@ import re
 
 from dirtyfields.dirtyfields import DirtyFieldsMixin
 from django.db import models
-from django.db.models import CASCADE, CASCADE
-from django.db.models.signals import post_delete
+from django.db.models import CASCADE
+from django.db.models.signals import post_delete, pre_delete
+from django.dispatch import receiver
 from django.utils import timezone
 from django.utils.functional import cached_property
 from lxml.etree import Element, SubElement
 
-from bpp.models import TO_AUTOR
+from bpp.models import TO_AUTOR, DELETED_ATTR_NAME
 from bpp.models.abstract import \
     BazaModeluOdpowiedzialnosciAutorow, DwaTytuly, ModelZRokiem, \
     ModelZWWW, ModelRecenzowany, ModelPunktowany, ModelTypowany, \
@@ -52,14 +53,8 @@ class Wydawnictwo_Zwarte_Autor(DirtyFieldsMixin, BazaModeluOdpowiedzialnosciAuto
         super(Wydawnictwo_Zwarte_Autor, self).save(*args, **kw)
 
 
-def wydawnictwo_zwarte_autor_post_delete(sender, instance, **kwargs):
-    instance.rekord.ostatnio_zmieniony_dla_pbn = timezone.now()
-    instance.rekord.save(update_fields=['ostatnio_zmieniony_dla_pbn'])
-
-
-post_delete.connect(wydawnictwo_zwarte_autor_post_delete, Wydawnictwo_Zwarte_Autor)
-
 MIEJSCE_I_ROK_MAX_LENGTH = 256
+
 
 class Wydawnictwo_Zwarte_Baza(
     Wydawnictwo_Baza, DwaTytuly, ModelZRokiem, ModelZeStatusem,
@@ -206,7 +201,6 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
             tag = SubElement(toplevel, 'number-in-series')
             tag.text = str(self.numer_w_serii)
 
-
     def eksport_pbn_book(self, toplevel, wydzial, autorzy_klass=None):
         def add_wydawnictwo_nadrzedne_data(book, wydawnictwo_nadrzedne, title_text=None):
             title = SubElement(book, 'title')
@@ -302,8 +296,8 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
 
         if self.is_book:
             autorzy_powiazanych = autorzy_klass.objects.filter(
-                    rekord__in=self.wydawnictwa_powiazane_set.all().values_list("pk", flat=True),
-                    typ_odpowiedzialnosci__typ_ogolny=TO_AUTOR).select_related("jednostka")
+                rekord__in=self.wydawnictwa_powiazane_set.all().values_list("pk", flat=True),
+                typ_odpowiedzialnosci__typ_ogolny=TO_AUTOR).select_related("jednostka")
 
             for elem in autorzy_powiazanych:
                 if elem.jednostka.wydzial_id == wydzial.pk and elem.autor_id not in ret:
@@ -387,3 +381,9 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
         self.eksport_pbn_run_serialization_functions(flds, toplevel, wydzial, Wydawnictwo_Zwarte_Autor)
         return toplevel
 
+
+@receiver(post_delete, sender=Wydawnictwo_Zwarte_Autor)
+def wydawnictwo_zwarte_autor_post_delete(sender, instance, **kwargs):
+    rec = instance.rekord
+    rec.ostatnio_zmieniony_dla_pbn = timezone.now()
+    rec.save(update_fields=['ostatnio_zmieniony_dla_pbn'])

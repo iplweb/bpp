@@ -1,7 +1,10 @@
 # -*- encoding: utf-8 -*-
 from django.db import models
-from django.db.models import CASCADE, CASCADE, SET_NULL
+from django.db.models import CASCADE, SET_NULL
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 from django.utils import six
+from django.utils import timezone
 
 from bpp.models import BazaModeluOdpowiedzialnosciAutorow, Autor, \
     ModelZRokiem, ModelZeStatusem, ModelZWWW, ModelRecenzowany, \
@@ -87,3 +90,10 @@ class Patent(RekordBPPBaza,
 
     def jezyk(self):
         return Jezyk.objects.get(skrot_dla_pbn="PL")
+
+
+@receiver(post_delete, sender=Patent_Autor)
+def patent_autor_post_delete(sender, instance, **kwargs):
+    rec = instance.rekord
+    rec.ostatnio_zmieniony_dla_pbn = timezone.now()
+    rec.save(update_fields=['ostatnio_zmieniony_dla_pbn'])
