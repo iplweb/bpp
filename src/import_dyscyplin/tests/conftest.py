@@ -34,6 +34,11 @@ def test1_xlsx(parent_path):
 
 
 @pytest.fixture
+def default_xlsx(parent_path):
+    return str(parent_path / ".." / "static" / "import_dyscyplin" / "xlsx" / "default.xlsx")
+
+
+@pytest.fixture
 def test2_bad_header_xlsx(parent_path):
     return str(parent_path / "test2_bad_header.xlsx")
 

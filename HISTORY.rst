@@ -5,7 +5,9 @@ Historia zmian
 dev
 ---
 
-*
+* dyscyplina główna i subdyscyplina wraz z procentowym udziałem
+
+* możliwość identyfikowania autorów po ORCID
 
 1.0.26
 ------

@@ -2,7 +2,7 @@ from django.conf.urls import url
 
 from import_dyscyplin.views import CreateImport_Dyscyplin, DetailImport_Dyscyplin, UruchomPrzetwarzanieImport_Dyscyplin, \
     ListImport_Dyscyplin, UsunImport_Dyscyplin, API_Do_IntegracjiView, API_Nie_Do_IntegracjiView, API_Zintegrowane, \
-    UruchomIntegracjeImport_DyscyplinView
+    UruchomIntegracjeImport_DyscyplinView, KolumnyImport_Dyscyplin, UruchomTworzenieKolumnImport_Dyscyplin
 
 urlpatterns = [
     url(
@@ -21,6 +21,18 @@ urlpatterns = [
         r'^detail/(?P<pk>\d+)/$',
         DetailImport_Dyscyplin.as_view(),
         name='detail'
+    ),
+
+    url(
+        r'^okresl-kolumny/(?P<pk>\d+)/$',
+        KolumnyImport_Dyscyplin.as_view(),
+        name='okresl_kolumny'
+    ),
+
+    url(
+        r'^api/stworz-kolumny/(?P<pk>\d+)/$',
+        UruchomTworzenieKolumnImport_Dyscyplin.as_view(),
+        name='stworz_kolumny'
     ),
 
     url(

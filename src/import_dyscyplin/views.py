@@ -6,12 +6,13 @@ from django.db import transaction
 from django.db.models import Q
 from django.http import HttpResponseRedirect
 from django.urls import reverse, reverse_lazy
-from django.views.generic import CreateView, DetailView, ListView
+from django.views.generic import CreateView, DetailView, ListView, UpdateView
 from django.views.generic.detail import BaseDetailView
 from django.views.generic.edit import BaseDeleteView
 
 from bpp.models.const import GR_WPROWADZANIE_DANYCH
-from import_dyscyplin.tasks import przeanalizuj_import_dyscyplin, integruj_import_dyscyplin
+from import_dyscyplin.forms import Import_Dyscyplin_KolumnaForm, KolumnaFormSet, KolumnaFormSetHelper
+from import_dyscyplin.tasks import przeanalizuj_import_dyscyplin, integruj_import_dyscyplin, stworz_kolumny
 from .forms import Import_DyscyplinForm
 from .models import Import_Dyscyplin
 
@@ -43,6 +44,49 @@ class CreateImport_Dyscyplin(GroupRequiredMixin, CreateView):
         self.object.owner = self.request.user
         self.object.save()
         return HttpResponseRedirect(self.get_success_url())
+
+
+class KolumnyImport_Dyscyplin(GroupRequiredMixin, TylkoMojeMixin, UpdateView):
+    group_required = GR_WPROWADZANIE_DANYCH
+    model = Import_Dyscyplin
+    template_name = "import_dyscyplin/import_dyscyplin_kolumny.html"
+    form_class = Import_Dyscyplin_KolumnaForm
+
+    def get_context_data(self, **kwargs):
+        data = super(KolumnyImport_Dyscyplin, self).get_context_data(**kwargs)
+        if self.request.POST:
+            data['kolumny'] = KolumnaFormSet(self.request.POST)
+        else:
+            data['kolumny'] = KolumnaFormSet()
+        return data
+
+    def get_context_data(self, **kwargs):
+        context = super(KolumnyImport_Dyscyplin, self).get_context_data(**kwargs)
+        if self.request.POST:
+            context['kolumny_formset'] = KolumnaFormSet(self.request.POST, instance=self.object)
+            context['kolumny_formset'].full_clean()
+        else:
+            context['kolumny_formset'] = KolumnaFormSet(instance=self.object)
+        context['kolumny_formset_helper'] = KolumnaFormSetHelper()
+        return context
+
+    @transaction.atomic
+    def form_valid(self, form):
+        context = self.get_context_data(form=form)
+        formset = context['kolumny_formset']
+        if formset.is_valid():
+            self.object.zatwierdz_kolumny()
+
+            response = super().form_valid(form)
+
+            formset.instance = self.object
+            formset.save()
+            return response
+        else:
+            return super().form_invalid(form)
+
+    def get_success_url(self):
+        return reverse("import_dyscyplin:detail", args=(self.object.pk,))
 
 
 class DetailImport_Dyscyplin(GroupRequiredMixin, TylkoMojeMixin, DetailView):
@@ -87,11 +131,18 @@ class UruchomZadaniePrzetwarzania(GroupRequiredMixin, TylkoMojeMixin, DetailView
         return self.render_json_response({"status": "ok"})
 
 
+class UruchomTworzenieKolumnImport_Dyscyplin(UruchomZadaniePrzetwarzania):
+    group_required = GR_WPROWADZANIE_DANYCH
+    model = Import_Dyscyplin
+    task = stworz_kolumny
+    stan = Import_Dyscyplin.STAN.NOWY
+
+
 class UruchomPrzetwarzanieImport_Dyscyplin(UruchomZadaniePrzetwarzania):
     group_required = GR_WPROWADZANIE_DANYCH
     model = Import_Dyscyplin
     task = przeanalizuj_import_dyscyplin
-    stan = Import_Dyscyplin.STAN.NOWY
+    stan = Import_Dyscyplin.STAN.OPCJE_IMPORTU_OKRESLONE
 
 
 class UruchomIntegracjeImport_DyscyplinView(UruchomZadaniePrzetwarzania):
@@ -145,7 +196,7 @@ class API_Do_IntegracjiView(WprowadzanieDanychRequiredMixin, TylkoMojeMixin, JSO
         length = int(self.request.GET.get("length", 10))
 
         ordering = int(self.request.GET.get("order[0][column]", 0))
-        direction =  self.request.GET.get("order[0][dir]", "asc")
+        direction = self.request.GET.get("order[0][dir]", "asc")
         fld = self.request.GET.get("columns[%i][data]" % ordering, "dopasowanie_autora")
         if fld:
             ordering_mapping = {
