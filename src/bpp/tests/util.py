@@ -273,6 +273,7 @@ def submit_admin_form(browser):
 def add_extra_autor_inline(browser, no_current_inlines=0):
     elem = browser.find_by_css("a.grp-add-handler")[1]
     elem._element.location_once_scrolled_into_view
+    browser.execute_script("window.scrollBy(0,-100);")
     elem.click()
     wait_for(lambda: browser.find_by_id(f"id_autorzy_set-{no_current_inlines}-autor"))
 
