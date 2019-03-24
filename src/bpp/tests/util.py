@@ -12,8 +12,8 @@ from selenium.webdriver.common.keys import Keys
 from bpp.models import Tytul, Autor, Jednostka, Wydawnictwo_Ciagle, \
     Wydawnictwo_Zwarte, Zrodlo, Wydzial, Uczelnia, Praca_Habilitacyjna, \
     Praca_Doktorska, Typ_KBN, Jezyk, Charakter_Formalny, Patent
-from bpp.models.cache import TupleField
 from bpp.models.system import Status_Korekty
+from django_bpp.selenium_util import wait_for_page_load, wait_for
 
 
 def setup_mommy():
@@ -22,7 +22,6 @@ def setup_mommy():
 
     mommy.generators.add('django.contrib.postgres.search.SearchVectorField',
                          lambda x=None: None)
-
 
 
 def set_default(varname, value, dct):
@@ -39,8 +38,9 @@ def any_autor(nazwisko='Kowalski', imiona='Jan Maria', tytul='dr', **kw):
 def any_uczelnia(nazwa="Uczelnia", skrot="UCL"):
     return Uczelnia.objects.create(nazwa=nazwa, skrot=skrot)
 
-                     
-wydzial_cnt = 0                     
+
+wydzial_cnt = 0
+
 
 def any_wydzial(nazwa=None, skrot=None, uczelnia_skrot="UCL", **kw):
     global wydzial_cnt
@@ -54,7 +54,7 @@ def any_wydzial(nazwa=None, skrot=None, uczelnia_skrot="UCL", **kw):
 
     if skrot is None:
         skrot = "W%s" % wydzial_cnt
-        
+
     wydzial_cnt += 1
 
     set_default('uczelnia', uczelnia, kw)
@@ -166,6 +166,7 @@ def any_doktorat(**kw):
         kw['jednostka'] = any_jednostka()
     return any_zwarte_base(Praca_Doktorska, **kw)
 
+
 def any_patent(**kw):
     """
     :rtype: bpp.models.Patent
@@ -189,12 +190,14 @@ def any_zrodlo(**kw):
 def _lookup_fun(klass):
     def fun(skrot):
         return klass.objects.filter(skrot=skrot)
+
     return fun
 
 
 typ_kbn = _lookup_fun(Typ_KBN)
 jezyk = _lookup_fun(Jezyk)
 charakter = _lookup_fun(Charakter_Formalny)
+
 
 def scroll_into_view(browser, arg):
     return browser.execute_script("document.getElementById('" + arg + "').scrollIntoView(); window.scrollBy(0,-100);")
@@ -204,20 +207,138 @@ def show_element(browser, element):
     browser.driver.execute_script("arguments[0].scrollIntoView();", element._element)
 
 
-def select_select2_autocomplete(browser, element_id, value, delay_before_enter=0.1, delay_after_selection=0.2):
+def select_select2_autocomplete(browser, element_id, value):
+    # Znajdź interesujący nas select2-autocomplete
     element = browser.find_by_id(element_id)[0]
     sibling = element.find_by_xpath("following-sibling::span")
+
+    # Umieść go na widoku
     scroll_into_view(browser, element_id)
-    sibling.click()
-    time.sleep(0.1)
-    active = element.parent.switch_to.active_element
-    active.send_keys(value)
-    time.sleep(delay_before_enter)
-    element.parent.switch_to.active_element.send_keys(Keys.ENTER)
-    time.sleep(delay_after_selection)
+
+    # Kliknij w aktywny element, następnie wyślij klawisze do aktywnego
+    # elementu, który się pojawił (wyskakujący pop-up select2)
+    # następnie wyślij ENTER, następnie sprawdź, czy ustawiona została
+    # nowa wartość. Jeżeli nie, to powtórz, maksimum 3 razy:
+
+    no_tries = 0
+    while no_tries < 3:
+        # Kliknij w select2 tak, aby pojawiło się okienko do wpisywania tekstu
+        active = element.parent.switch_to.active_element
+        sibling.click()
+        # ... czekaj na pojawienie się okienka
+        wait_for(lambda: element.parent.switch_to.active_element != active)
+
+        old_value = browser.find_by_id(f"select2-{element_id}-container").text
+
+        active = element.parent.switch_to.active_element
+        active.send_keys(value)
+
+        wait_for(lambda: "Trwa wyszukiwanie…" not in browser.find_by_id(f"select2-{element_id}-results").value)
+        active.send_keys(Keys.ENTER)
+
+        try:
+            wait_for(lambda: browser.find_by_id(f"select2-{element_id}-container").text != old_value)
+            break
+        except TimeoutError as e:
+            if no_tries >= 3:
+                raise e
+
+        no_tries += 1
+
 
 def select_select2_clear_selection(browser, element_id):
     element = browser.find_by_id(element_id)[0]
     browser.execute_script(
         "$('#" + element_id + "').val(null).trigger('change')")
     time.sleep(0.2)
+
+
+def select_element_by_text(browser, element_id, text):
+    scroll_into_view(browser, element_id)
+    element = browser.find_by_id(element_id)
+    element.select_by_text(text)
+
+
+def set_element(browser, element_id, text):
+    scroll_into_view(browser, element_id)
+    element = browser.find_by_id(element_id)
+    element.type(text)
+
+
+def submit_admin_form(browser):
+    with wait_for_page_load(browser):
+        browser.execute_script('$("input[type=submit].grp-default").click()')
+
+
+def add_extra_autor_inline(browser, no_current_inlines=0):
+    elem = browser.find_by_css("a.grp-add-handler")[1]
+    elem._element.location_once_scrolled_into_view
+    elem.click()
+    wait_for(lambda: browser.find_by_id(f"id_autorzy_set-{no_current_inlines}-autor"))
+
+
+def randomobj(model):
+    return model.objects.order_by("?").first()
+
+
+def fill_admin_form(browser, zrodlo=None, tytul_oryginalny="tytul oryginalny", jezyk=None, charakter_formalny=None,
+                    typ_kbn=None, status_korekty=None, rok=None):
+    set_element(browser, "id_tytul_oryginalny", tytul_oryginalny)
+
+    if browser.find_by_id("id_zrodlo"):
+        if zrodlo is None:
+            # from bpp.models import Zrodlo
+            zrodlo = randomobj(Zrodlo)
+        select_select2_autocomplete(browser, "id_zrodlo", zrodlo.nazwa)
+
+    if browser.find_by_id("id_jezyk"):
+        if jezyk is None:
+            # from bpp.models import Jezk
+            jezyk = randomobj(Jezyk)
+        select_element_by_text(browser, "id_jezyk", jezyk.nazwa)
+
+    if browser.find_by_id("id_charakter_formalny"):
+        if charakter_formalny is None:
+            charakter_formalny = randomobj(Charakter_Formalny)
+        select_element_by_text(browser, "id_charakter_formalny", " " + charakter_formalny.nazwa)
+
+    if browser.find_by_id("id_typ_kbn"):
+        if typ_kbn is None:
+            typ_kbn = randomobj(Typ_KBN)
+        select_element_by_text(browser, "id_typ_kbn", typ_kbn.nazwa)
+
+    if status_korekty is None:
+        status_korekty = randomobj(Status_Korekty)
+    select_element_by_text(browser, "id_status_korekty", "przed korektą")
+
+    if rok is None:
+        rok = random.randint(1, 2100)
+    set_element(browser, "id_rok", rok)
+
+
+def fill_admin_inline(browser, autor, jednostka, zapisany_jako=None, procent=None, no=0):
+    # Poza tymi wypełnianymi poniżej sa jeszcze:
+    # autorzy_set-0-typ_odpowiedzialnosci
+    # autorzy_set-0-afiliuje
+    # autorzy_set-0-zatrudniony
+    # autorzy_set-0-kolejnosc
+    # autorzy_set-0-rekord
+    # autorzy_set-0-id
+
+    select_select2_autocomplete(browser, f"id_autorzy_set-{no}-autor", f"{autor.nazwisko} {autor.imiona}")
+    select_select2_autocomplete(browser, f"id_autorzy_set-{no}-jednostka", jednostka.nazwa)
+    if zapisany_jako is None:
+        zapisany_jako = f"{autor.nazwisko} {autor.imiona}"
+    select_select2_autocomplete(browser, f"id_autorzy_set-{no}-zapisany_jako", zapisany_jako)
+    if procent is not None:
+        set_element(browser, f"id_autorzy_set-{no}-procent", procent)
+    if procent == -1:
+        set_element(browser, f"id_autorzy_set-{no}-procent", str(random.randint(1, 100)) + ".00")
+
+
+def submitted_form_bad(browser):
+    return wait_for(lambda: "Prosimy poprawić" in browser.html)
+
+
+def submitted_form_good(browser):
+    return wait_for(lambda: "został dodany pomyślnie" in browser.html)
