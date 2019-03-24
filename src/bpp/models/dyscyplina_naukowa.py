@@ -1,3 +1,6 @@
+from decimal import Decimal
+
+from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.db.models import PositiveSmallIntegerField, CASCADE, CASCADE
 from mptt.models import MPTTModel, TreeForeignKey
@@ -70,3 +73,11 @@ class Autor_Dyscyplina(models.Model):
         ]
         verbose_name = "powiązanie autora z dyscypliną naukową"
         verbose_name_plural = "powiązania autorów z dyscyplinami naukowymi"
+
+
+    def clean(self):
+        p1 = self.procent_dyscypliny or Decimal("0.00")
+        p2 = self.procent_subdyscypliny or Decimal("0.00")
+
+        if p1 + p2 > Decimal("100.00"):
+            raise ValidationError({"procent_dyscypliny": "Suma procentów przekracza 100."})

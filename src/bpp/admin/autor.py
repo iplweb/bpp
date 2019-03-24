@@ -15,16 +15,17 @@ from ..models import Jednostka, Autor, Autor_Jednostka, Autor_Dyscyplina, Dyscyp
 # Autor_Dyscyplina
 
 class Autor_DyscyplinaInlineForm(forms.ModelForm):
-    autor = forms.ModelChoiceField(
-        queryset=Autor.objects.all(),
-        widget=autocomplete.ModelSelect2(
-            url='bpp:autor-autocomplete')
-    )
-
-    dyscyplina = forms.ModelChoiceField(
+    dyscyplina_naukowa = forms.ModelChoiceField(
         queryset=Dyscyplina_Naukowa.objects.all(),
         widget=autocomplete.ModelSelect2(
             url='bpp:dyscyplina-autocomplete')
+    )
+
+    subdyscyplina_naukowa = forms.ModelChoiceField(
+        queryset=Dyscyplina_Naukowa.objects.all(),
+        widget=autocomplete.ModelSelect2(
+            url='bpp:dyscyplina-autocomplete'),
+        required=False
     )
 
     class Meta:
