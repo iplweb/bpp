@@ -10,7 +10,7 @@ from django.contrib.postgres.fields import HStoreField
 from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import CASCADE, SET_NULL, CASCADE
+from django.db.models import CASCADE, SET_NULL, CASCADE, Sum
 from django.urls.base import reverse
 from django.utils import six
 from django.utils import timezone
@@ -314,6 +314,11 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
     zatrudniony = models.BooleanField(default=False, help_text="""Pracownik 
     jednostki podanej w przypisaniu""")
 
+    procent = models.DecimalField(
+        "Udział w opracowaniu (procent)",
+        max_digits=5, decimal_places=2,
+        null=True, blank=True)
+
     class Meta:
         abstract = True
         ordering = ('kolejnosc', 'typ_odpowiedzialnosci__skrot')
@@ -323,6 +328,23 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
             self.jednostka.skrot)
 
     # XXX TODO sprawdzanie, żęby nie było dwóch autorów o tej samej kolejności
+
+    def clean(self):
+        super(BazaModeluOdpowiedzialnosciAutorow, self).clean()
+        # Znajdź inne obiekty z tego rekordu, które są już w bazie danych, ewentualnie
+        # utrudniając ich zapisanie w sytuacji, gdyby ilość procent przekroczyła 100:
+        inne = self.__class__.objects.filter(rekord=self.rekord)
+        if self.pk:
+            inne = inne.exclude(pk=self.pk)
+        suma = inne.aggregate(Sum("procent"))['procent__sum'] or Decimal("0.00")
+        procent = self.procent or Decimal("0.00")
+
+        if suma + procent > Decimal("100.00"):
+            raise ValidationError({"procent": "Suma podanych odpowiedzialności przekracza 100. "
+                                              "Jeżeli edytujesz rekord, spróbuj zrobić to w dwóch etapach. W pierwszym "
+                                              "zmniejsz punkty procentowe innym, zapisz, w następnym zwiększ punkty "
+                                              "procentowe i zapisz ponownie. Rekordy nie zostały zapisane. "})
+            pass
 
     def save(self, *args, **kw):
         if self.autor.jednostki.filter(pk=self.jednostka.pk).count() == 0:

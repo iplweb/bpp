@@ -1,5 +1,5 @@
 # -*- encoding: utf-8 -*-
-
+from decimal import Decimal
 
 from dal import autocomplete
 from dal_select2.fields import Select2ListCreateChoiceField
@@ -39,6 +39,21 @@ def get_first_typ_odpowiedzialnosci():
 
 
 def generuj_inline_dla_autorow(baseModel):
+    class baseModel_AutorFormset(forms.BaseInlineFormSet):
+        def clean(self):
+            # get forms that actually have valid data
+            percent = Decimal("0.00")
+            for form in self.forms:
+                try:
+                    if form.cleaned_data:
+                        percent += form.cleaned_data.get('procent', Decimal("0.00")) or Decimal("0.00")
+                except AttributeError:
+                    # annoyingly, if a subform is invalid Django explicity raises
+                    # an AttributeError for cleaned_data
+                    pass
+            if percent > Decimal("100.00"):
+                raise forms.ValidationError('Liczba podanych procent odpowiedzialności przekracza 100.0')
+
     class baseModel_AutorForm(forms.ModelForm):
 
         autor = forms.ModelChoiceField(
@@ -134,6 +149,7 @@ def generuj_inline_dla_autorow(baseModel):
                       "zapisany_jako",
                       "afiliuje",
                       "zatrudniony",
+                      "procent",
                       "kolejnosc"]
             model = baseModel
             widgets = {
@@ -152,6 +168,7 @@ def generuj_inline_dla_autorow(baseModel):
         model = baseModel
         extra = extraRows
         form = baseModel_AutorForm
+        formset = baseModel_AutorFormset
         sortable_field_name = "kolejnosc"
         sortable_excludes = ["typ_odpowiedzialnosci", "zapisany_jako", "afiliuje",]
 
