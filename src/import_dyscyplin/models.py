@@ -17,6 +17,36 @@ def obecny_rok():
     return date.today().year
 
 
+class Kolumna(models.Model):
+    parent = models.ForeignKey('import_dyscyplin.Import_Dyscyplin', models.CASCADE)
+
+    class RODZAJ:
+        POMIJAJ = 'pomiń'
+
+        NAZWISKO = 'nazwisko'
+        IMIE = 'imię'
+        PESEL = 'pesel'
+        ORCID = 'orcid'
+        NAZWA_JEDNOSTKI = 'nazwa jednostki'
+        WYDZIAL = 'wydział'
+
+        DYSCYPLINA = 'dyscyplina'
+        KOD_DYSCYPLINY = 'kod dyscypliny'
+        PROCENT_DYSCYPLINY = 'procent dyscypliny'
+
+        SUBDYSCYPLINA = 'subdyscyplina'
+        KOD_SUBDYSCYPLINY = 'kod subdyscypliny'
+        PROCENT_SUBDYSCYPLINY = 'procent subdyscypliny'
+
+    RODZAJE = [RODZAJ.NAZWISKO, RODZAJ.IMIE, RODZAJ.PESEL, RODZAJ.ORCID,
+               RODZAJ.NAZWA_JEDNOSTKI, RODZAJ.WYDZIAL, RODZAJ.DYSCYPLINA,
+               RODZAJ.KOD_DYSCYPLINY, RODZAJ.PROCENT_DYSCYPLINY,
+               RODZAJ.SUBDYSCYPLINA, RODZAJ.KOD_SUBDYSCYPLINY, RODZAJ.PROCENT_SUBDYSCYPLINY]
+
+    nazwa_w_pliku = models.CharField(max_length=250, help_text="Nazwa kolumny po stronie pliku importu")
+    rodzaj_pola = models.CharField(max_lenght=50, choices=zip(RODZAJE, RODZAJE))
+
+
 class Import_Dyscyplin(TimeStampedModel):
     class STAN:
         NOWY = 'nowy'
@@ -46,6 +76,8 @@ class Import_Dyscyplin(TimeStampedModel):
 
     bledny = models.BooleanField(default=False)
     info = models.TextField(blank=True, null=True)
+
+    kolumny = models.ManyToManyField(Kolumna)
 
     @transition(field=stan,
                 source=STAN.NOWY,
@@ -168,9 +200,6 @@ class Import_Dyscyplin(TimeStampedModel):
                 r.subdyscyplina_naukowa = sd
                 r.save()
 
-        for r in self.wiersze():
-            r.dyscyplina_ostateczna = r.subdyscyplina_naukowa or r.dyscyplina_naukowa
-            r.save()
 
     def sprawdz_czy_konieczne(self):
         """Sprawdza wszystkie wiersze, po przeanalizowaniu oraz po
@@ -307,6 +336,7 @@ class Import_Dyscyplin_Row(models.Model):
 
     dyscyplina = models.CharField(max_length=200, db_index=True)
     kod_dyscypliny = models.CharField(max_length=20, db_index=True)
+    procent_dyscypliny = models.DecimalField(max_digits=5, decimal_places=2)
     dyscyplina_naukowa = models.ForeignKey(
         Dyscyplina_Naukowa,
         null=True,
@@ -318,15 +348,8 @@ class Import_Dyscyplin_Row(models.Model):
 
     subdyscyplina = models.CharField(max_length=200, null=True, blank=True, db_index=True)
     kod_subdyscypliny = models.CharField(max_length=20, null=True, blank=True, db_index=True)
+    procent_subdyscypliny = models.DecimalField(max_digits=5, decimal_places=2)
     subdyscyplina_naukowa = models.ForeignKey(
-        Dyscyplina_Naukowa,
-        blank=True,
-        null=True,
-        on_delete=models.SET_NULL,
-        related_name='+'
-    )
-
-    dyscyplina_ostateczna = models.ForeignKey(
         Dyscyplina_Naukowa,
         blank=True,
         null=True,
@@ -343,11 +366,10 @@ class Import_Dyscyplin_Row(models.Model):
 
             "info": self.info,
 
-            "dyscyplina": f"{ self.dyscyplina } ({ self.kod_dyscypliny })",
-            "subdyscyplina": f"{ self.subdyscyplina } ({ self.kod_subdyscypliny })",
+            "dyscyplina": f"{self.dyscyplina} ({self.kod_dyscypliny})",
+            "subdyscyplina": f"{self.subdyscyplina} ({self.kod_subdyscypliny})",
 
             "dopasowanie_autora": "-",
-            "dyscyplina_ostateczna": "-"
         }
 
         for elem in "dyscyplina", "subdyscyplina":
@@ -359,10 +381,6 @@ class Import_Dyscyplin_Row(models.Model):
             ret["dopasowanie_autora"] = "<a target=_blank href='%s'>%s %s</a>" % (
                 reverse("bpp:browse_autor", args=(self.autor.slug,)),
                 self.autor.nazwisko, self.autor.imiona)
-
-        dyscyplina_ostateczna = self.dyscyplina_ostateczna
-        if dyscyplina_ostateczna is not None:
-            ret["dyscyplina_ostateczna"] = str(dyscyplina_ostateczna)
 
         return ret
 

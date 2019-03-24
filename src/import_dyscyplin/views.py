@@ -152,7 +152,10 @@ class API_Do_IntegracjiView(WprowadzanieDanychRequiredMixin, TylkoMojeMixin, JSO
                 "dopasowanie_autora": "autor__nazwisko",
                 "jednostka": "nazwa_jednostki",
                 "wydzial": "nazwa_wydzialu",
-                "dyscyplina_ostateczna": "dyscyplina_ostateczna__nazwa"
+                "dyscyplina": "dyscyplina__nazwa",
+                "procent_dyscypliny": "procent_dyscypliny",
+                "subdyscyplina": "subdyscyplina__nazwa",
+                "procent_subdyscypliny": "procent_subdyscypliny"
             }
             fld = ordering_mapping.get(fld, fld)
         if direction != 'asc':

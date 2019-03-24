@@ -51,7 +51,12 @@ class Autor_DyscyplinaManager(models.Manager):
 class Autor_Dyscyplina(models.Model):
     rok = PositiveSmallIntegerField()
     autor = models.ForeignKey("bpp.Autor", CASCADE)
+
     dyscyplina = models.ForeignKey("bpp.Dyscyplina_Naukowa", CASCADE)
+    procent_dyscypliny = models.DecimalField(max_digits=5, decimal_places=2)
+
+    subdyscyplina = models.ForeignKey("bpp.Dyscyplina_Naukowa", CASCADE)
+    procent_subdyscypliny = models.DecimalField(max_digits=5, decimal_places=2)
 
     objects = Autor_DyscyplinaManager()
 
