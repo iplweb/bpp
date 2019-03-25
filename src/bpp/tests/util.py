@@ -273,7 +273,6 @@ def submit_admin_form(browser):
 def add_extra_autor_inline(browser, no_current_inlines=0):
     elem = browser.find_by_css("a.grp-add-handler")[1]
     elem._element.location_once_scrolled_into_view
-    browser.execute_script("window.scrollBy(0,-100);")
     elem.click()
     wait_for(lambda: browser.find_by_id(f"id_autorzy_set-{no_current_inlines}-autor"))
 
@@ -300,7 +299,8 @@ def fill_admin_form(browser, zrodlo=None, tytul_oryginalny="tytul oryginalny", j
 
     if browser.find_by_id("id_charakter_formalny"):
         if charakter_formalny is None:
-            charakter_formalny = randomobj(Charakter_Formalny)
+            # charakter_formalny = randomobj(Charakter_Formalny)
+            charakter_formalny = Charakter_Formalny.objects.get(nazwa="Broszura")
         select_element_by_text(browser, "id_charakter_formalny", " " + charakter_formalny.nazwa)
 
     if browser.find_by_id("id_typ_kbn"):
