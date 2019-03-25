@@ -12,7 +12,7 @@ def wait_for(condition_function):
             return True
         else:
             time.sleep(0.1)
-    raise Exception(
+    raise TimeoutError(
         'Timeout waiting for {}'.format(condition_function.__name__)
     )
 

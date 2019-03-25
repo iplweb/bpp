@@ -9,6 +9,9 @@ dev
 
 * możliwość identyfikowania autorów po ORCID
 
+* możliwosć wprowadzania procentowego udziału odpowiedzialności autora w powstaniu
+  publikacji
+
 1.0.26
 ------
 

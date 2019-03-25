@@ -15,8 +15,6 @@ def test_global_search_user(live_server, browser, transactional_db):
             browser,
             "id_global_nav_value",
             "Test",
-            delay_before_enter=0.5,
-            delay_after_selection=0.5
         )
 
     browser.wait_for_condition(
@@ -37,8 +35,6 @@ def test_global_search_logged_in(live_server, preauth_admin_browser, transaction
             browser,
             "id_global_nav_value",
             "Test",
-            delay_before_enter=0.5,
-            delay_after_selection=0.5
         )
 
     browser.wait_for_condition(
@@ -60,8 +56,6 @@ def test_global_search_in_admin(live_server, preauth_admin_browser, transactiona
             browser,
             "id_global_nav_value",
             "Test",
-            delay_before_enter=0.5,
-            delay_after_selection=0.5
         )
 
     browser.wait_for_condition(

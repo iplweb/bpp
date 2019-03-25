@@ -79,11 +79,11 @@ class OstatniaJednostkaView(View):
         try:
             a = Autor.objects.get(pk=request.POST.get('autor_id', None))
         except Autor.DoesNotExist:
-            return HttpResponseNotFound("Autor")
+            return JsonResponse({"status": "error", "reason": "autor nie istnieje"})
 
         jed = a.aktualna_jednostka
         if jed is None:
-            return HttpResponseNotFound("Jednostka")
+            return JsonResponse({"status": "error", "reason": "aktualna jednostka nie istnieje"})
 
         return JsonResponse(
-            dict(jednostka_id=jed.pk, nazwa=jed.nazwa))
+            dict(jednostka_id=jed.pk, nazwa=jed.nazwa, status="ok"))
