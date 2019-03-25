@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block extratitle %}
+    Import dyscyplin naukowych
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "import_dyscyplin:index" %}">import dyscyplin</a></li>
+    <li class="current">określ kolumny</li>
+{% endblock %}
+
+
+{% block content %}
+    <h1>Zweryfikuj kolumny</h1>
+    Dane po lewej stronie to nazwy kolumn z pliku wejściowego. Dane po prawej stronie to informacja,
+    w jaki sposób zostaną one zinterpretowane przez program importujący.
+    {% load crispy_forms_tags %}
+    {% crispy form %}
+    {% crispy kolumny_formset kolumny_formset_helper %}
+    <script>
+        $(document).ready(function () {
+            document.getElementsByName("web_page_uid")[0].value = bppNotifications.messageCookieId;
+        });
+    </script>
+{% endblock %}

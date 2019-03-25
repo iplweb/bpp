@@ -1,3 +1,6 @@
+from decimal import Decimal
+
+from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.db.models import PositiveSmallIntegerField, CASCADE, CASCADE
 from mptt.models import MPTTModel, TreeForeignKey
@@ -35,23 +38,32 @@ class Autor_DyscyplinaManager(models.Manager):
             elem.widoczna = False
             elem.save()
 
-        for elem in self.all().values("dyscyplina").distinct():
-            elem = Dyscyplina_Naukowa.objects.get(pk=elem['dyscyplina'])
-            elem.widoczna = True
-            elem.save()
+        for attr in "dyscyplina_naukowa", "subdyscyplina_naukowa":
+            for elem in self.all().values(attr).distinct():
+                if elem[attr] is None:
+                    continue
 
-            i = elem.dyscyplina_nadrzedna
-            while i is not None:
-                if not i.widoczna:
-                    i.widoczna = True
-                    i.save()
-                i = i.dyscyplina_nadrzedna
+                elem = Dyscyplina_Naukowa.objects.get(pk=elem[attr])
+                elem.widoczna = True
+                elem.save()
+
+                i = elem.dyscyplina_nadrzedna
+                while i is not None:
+                    if not i.widoczna:
+                        i.widoczna = True
+                        i.save()
+                    i = i.dyscyplina_nadrzedna
 
 
 class Autor_Dyscyplina(models.Model):
     rok = PositiveSmallIntegerField()
     autor = models.ForeignKey("bpp.Autor", CASCADE)
-    dyscyplina = models.ForeignKey("bpp.Dyscyplina_Naukowa", CASCADE)
+
+    dyscyplina_naukowa = models.ForeignKey("bpp.Dyscyplina_Naukowa", models.SET_NULL, related_name="dyscyplina", blank=True, null=True)
+    procent_dyscypliny = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+
+    subdyscyplina_naukowa = models.ForeignKey("bpp.Dyscyplina_Naukowa", models.SET_NULL, related_name="subdyscyplina", blank=True, null=True)
+    procent_subdyscypliny = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
 
     objects = Autor_DyscyplinaManager()
 
@@ -61,3 +73,11 @@ class Autor_Dyscyplina(models.Model):
         ]
         verbose_name = "powiązanie autora z dyscypliną naukową"
         verbose_name_plural = "powiązania autorów z dyscyplinami naukowymi"
+
+
+    def clean(self):
+        p1 = self.procent_dyscypliny or Decimal("0.00")
+        p2 = self.procent_subdyscypliny or Decimal("0.00")
+
+        if p1 + p2 > Decimal("100.00"):
+            raise ValidationError({"procent_dyscypliny": "Suma procentów przekracza 100."})

@@ -51,6 +51,29 @@
             $(document).ready(function () {
                 $("#modal1").foundation('open');
                 $.ajax({
+                    url: "{% url "import_dyscyplin:stworz_kolumny" object.pk %}",
+                    method: "GET",
+                    data: {"web_page_uid": bppNotifications.messageCookieId}
+                });
+            });
+        </script>
+    {% endif %}
+
+    {% if object.stan == "określanie opcji importu" %}
+        <script>
+            location.href = '{% url "import_dyscyplin:okresl_kolumny" object.pk %}'
+        </script>
+        <a href="{% url "import_dyscyplin:okresl_kolumny" object.pk %}">Przejdź pod ten adres. </a>
+    {% endif %}
+
+
+    {% if object.stan == "opcje importu określone" %}
+        <p>Opcje importu zostały określone - nastąpi analiza pliku. </p>
+
+        <script type="text/javascript">
+            $(document).ready(function () {
+                $("#modal1").foundation('open');
+                $.ajax({
                     url: "{% url "import_dyscyplin:przetwarzaj" object.pk %}",
                     method: "GET",
                     data: {"web_page_uid": bppNotifications.messageCookieId}
@@ -124,6 +147,9 @@
                         <th>Jednostka</th>
                         <th>Wydział</th>
                         <th>Dyscyplina</th>
+                        <th>Procent dyscypliny</th>
+                        <th>Subdyscyplina</th>
+                        <th>Procent subdyscypliny</th>
                     </tr>
                     </thead>
                 </table>
@@ -154,7 +180,9 @@
                         <th>Wydział</th>
 
                         <th>Dyscyplina</th>
+                        <th>Procent dyscypliny</th>
                         <th>Subdyscyplina</th>
+                        <th>Procent subdyscypliny</th>
                         <th>Info</th>
                     </tr>
                     </thead>
@@ -181,7 +209,12 @@
                         <th>Autor</th>
                         <th>Jednostka</th>
                         <th>Wydział</th>
+
                         <th>Dyscyplina</th>
+                        <th>Procent dyscypliny</th>
+                        <th>Subdyscyplina</th>
+                        <th>Procent subdyscypliny</th>
+
                         <th>Info</th>
                     </tr>
                     </thead>
@@ -200,8 +233,10 @@
                         {"data": "dopasowanie_autora"},
                         {"data": "jednostka"},
                         {"data": "wydzial"},
-                        {"data": "dyscyplina_ostateczna"},
-
+                        {"data": "dyscyplina"},
+                        {"data": "procent_dyscypliny"},
+                        {"data": "subdyscyplina"},
+                        {"data": "procent_subdyscypliny"},
                     ]
                 });
 
@@ -214,7 +249,9 @@
                         {"data": "jednostka"},
                         {"data": "wydzial"},
                         {"data": "dyscyplina"},
+                        {"data": "procent_dyscypliny"},
                         {"data": "subdyscyplina"},
+                        {"data": "procent_subdyscypliny"},
                         {"data": "info"}
                     ]
                 });
@@ -226,7 +263,10 @@
                         {"data": "dopasowanie_autora"},
                         {"data": "jednostka"},
                         {"data": "wydzial"},
-                        {"data": "dyscyplina_ostateczna"},
+                        {"data": "dyscyplina"},
+                        {"data": "procent_dyscypliny"},
+                        {"data": "subdyscyplina"},
+                        {"data": "procent_subdyscypliny"},
                         {"data": "info"}
                     ]
                 });

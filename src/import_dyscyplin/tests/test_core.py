@@ -2,7 +2,8 @@ import pytest
 from model_mommy import mommy
 
 from bpp.models import Wydzial, Jednostka, Autor
-from import_dyscyplin.core import przeanalizuj_plik_xls, matchuj_wydzial, matchuj_jednostke, matchuj_autora, pesel_md5
+from import_dyscyplin.core import przeanalizuj_plik_xls, matchuj_wydzial, matchuj_jednostke, matchuj_autora, pesel_md5, \
+    znajdz_naglowek
 from import_dyscyplin.exceptions import ImproperFileException, HeaderNotFoundException, BadNoOfSheetsException
 from import_dyscyplin.models import Import_Dyscyplin_Row
 
@@ -12,19 +13,31 @@ def test_przeanalizuj_plik_xls_zly_plik(conftest_py):
         przeanalizuj_plik_xls(conftest_py, parent=None)
 
 
-def test_przeanalizuj_plik_xls_zly_naglowek(test2_bad_header_xlsx):
-    with pytest.raises(HeaderNotFoundException):
-        przeanalizuj_plik_xls(test2_bad_header_xlsx, parent=None)
-
-
 def test_przeanalizuj_plik_xls_wiele_skoroszytow(test3_multiple_sheets_xlsx):
     with pytest.raises(BadNoOfSheetsException):
         przeanalizuj_plik_xls(test3_multiple_sheets_xlsx, parent=None)
 
 
 def test_przeanalizuj_plik_xls_dobry(test1_xlsx, import_dyscyplin):
+    import_dyscyplin.plik.save("test.xlsx", open(test1_xlsx, "rb"))
+    import_dyscyplin.stworz_kolumny()
+
     przeanalizuj_plik_xls(test1_xlsx, parent=import_dyscyplin)
     assert Import_Dyscyplin_Row.objects.count() == 6
+
+
+def test_znajdz_naglowek_dobry(test1_xlsx):
+    row, no = znajdz_naglowek(test1_xlsx)
+    assert no == 0
+
+
+def test_znajdz_naglowek_zly(test2_bad_header_xlsx):
+    with pytest.raises(HeaderNotFoundException):
+        znajdz_naglowek(test2_bad_header_xlsx)
+
+
+def test_znajdz_naglowek_default(default_xlsx):
+    znajdz_naglowek(default_xlsx)
 
 
 @pytest.mark.parametrize(

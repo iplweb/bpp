@@ -8,12 +8,12 @@ from bpp.models import Wydzial, Jednostka, Autor
 from import_dyscyplin.exceptions import BadNoOfSheetsException, HeaderNotFoundException, ImproperFileException
 from import_dyscyplin.models import Import_Dyscyplin_Row
 
-naglowek = [
-    "lp", "tytuł/stopień", "nazwisko", "imię", "pesel",
-    "nazwa jednostki", "wydział",
-    "dyscyplina", "kod dyscypliny",
-    "subdyscyplina", "kod subdyscypliny"
-]
+# naglowek = [
+#     "lp", "tytuł/stopień", "nazwisko", "imię", "pesel",
+#     "nazwa jednostki", "wydział",
+#     "dyscyplina", "kod dyscypliny",
+#     "subdyscyplina", "kod subdyscypliny"
+# ]
 
 
 def matchuj_wydzial(nazwa):
@@ -53,7 +53,7 @@ def matchuj_autora(imiona, nazwisko, jednostka, pesel_md5=None):
             return (Autor.objects.get(qry & Q(aktualna_jednostka=jednostka)), "")
         except Autor.MultipleObjectsReturned:
             return (
-            None, "wielu autorów pasuje do tego rekordu (dopasowanie po imieniu, nazwisku i aktualnej jednostce)")
+                None, "wielu autorów pasuje do tego rekordu (dopasowanie po imieniu, nazwisku i aktualnej jednostce)")
 
         except Autor.DoesNotExist:
             return (None, "taki autor nie istnieje (dopasowanie po imieniu, nazwisku i aktualnej jednostce)")
@@ -79,6 +79,35 @@ def pesel_md5(value_from_xls):
     return md5(original_pesel).hexdigest()
 
 
+def znajdz_naglowek(sciezka, try_names=['imię', 'imie', 'imiona', 'nazwisko', 'nazwiska', 'orcid', 'pesel'],
+                    min_points=3):
+    """
+    :return: ([str, str...], no_row)
+    """
+    try:
+        f = xlrd.open_workbook(sciezka)
+    except XLRDError as e:
+        raise ImproperFileException(e)
+
+    # Sprawdź, ile jest skoroszytów
+    if len(f.sheets()) != 1:
+        raise BadNoOfSheetsException()
+
+    naglowek_row = None
+    s = f.sheet_by_index(0)
+
+    for n in range(s.nrows):
+        r = [str(elem.value).lower() for elem in s.row(n)]
+        points = 0
+        for elem in try_names:
+            if elem in r:
+                points += 1
+        if points >= min_points:
+            return r, n
+
+    raise HeaderNotFoundException()
+
+
 def przeanalizuj_plik_xls(sciezka, parent):
     """
     :param sciezka:
@@ -97,19 +126,16 @@ def przeanalizuj_plik_xls(sciezka, parent):
 
     naglowek_row = None
     s = f.sheet_by_index(0)
-    for n in range(s.nrows):
-        r = [str(elem.value).lower() for elem in s.row(n)]
-        if r == naglowek:
-            naglowek_row = n
-            break
 
-    if naglowek_row is None:
+    if parent.kolumna_set.all().count() == 0:
         raise HeaderNotFoundException()
+
+    naglowek = [k.rodzaj_pola for k in parent.kolumna_set.all()]
 
     wydzial_cache = {}
     jednostka_cache = {}
 
-    for n in range(naglowek_row + 1, s.nrows):
+    for n in range(parent.wiersz_naglowka + 1, s.nrows):
         original = dict(zip(
             naglowek, [elem.value for elem in s.row(n)]
         ))
@@ -155,4 +181,4 @@ def przeanalizuj_plik_xls(sciezka, parent):
             kod_subdyscypliny=original['kod subdyscypliny']
         )
 
-    return (True, "przeanalizowano %i rekordow" % (n - naglowek_row))
+    return (True, "przeanalizowano %i rekordow" % (n - parent.wiersz_naglowka))

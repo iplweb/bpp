@@ -24,6 +24,12 @@ def test_integracyjny(preauth_admin_browser, nginx_live_server):
     with wait_for_page_load(preauth_admin_browser):
         preauth_admin_browser.find_by_id("id_submit").click()
 
+    btn = preauth_admin_browser.find_by_id("submit-id-submit")
+    btn[0]._element.location_once_scrolled_into_view
+
+    with wait_for_page_load(preauth_admin_browser):
+        btn.click()
+
     preauth_admin_browser.wait_for_condition(
         lambda browser: "Lubelski" in preauth_admin_browser.html
     )

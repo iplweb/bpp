@@ -23,9 +23,15 @@ def wyslij_i_przeanalizuj(wd_app, plik):
     wyslij(wd_app, plik)
 
     i = Import_Dyscyplin.objects.all().first()
-    i.przeanalizuj()
-    i.save()
+    i.stworz_kolumny()
 
+    if not i.stan == Import_Dyscyplin.STAN.BLEDNY:
+        i.zatwierdz_kolumny()
+
+        if not i.stan == Import_Dyscyplin.STAN.BLEDNY:
+            i.przeanalizuj()
+
+    i.save()
     return i
 
 
@@ -60,6 +66,15 @@ def test_UruchomPrzetwarzanieImport_Dyscyplin(wd_app, test1_xlsx):
     wyslij(wd_app, test1_xlsx)
 
     i = Import_Dyscyplin.objects.all().first()
+    g = wd_app.get(reverse("import_dyscyplin:stworz_kolumny", args=(i.pk,)))
+    assert g.json['status'] == "ok"
+
+
+    i = Import_Dyscyplin.objects.all().first()
+    i.stworz_kolumny()
+    i.zatwierdz_kolumny()
+    i.save()
+
     g = wd_app.get(reverse("import_dyscyplin:przetwarzaj", args=(i.pk,)))
     assert g.json['status'] == "ok"
 
