@@ -31,7 +31,7 @@ def stworz_kolumny(self, pk):
 
         res = notifications.send_redirect(
             i.owner.username,
-            "%s?notification=1" % reverse("import_dyscyplin:stworz_kolumny", args=(i.pk,)),
+            "%s?notification=1" % reverse("import_dyscyplin:detail", args=(i.pk,)),
             i.web_page_uid,
         )
 
