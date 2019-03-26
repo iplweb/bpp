@@ -58,7 +58,10 @@ _bdist_wheel:
 _bdist_wheel_upload:
 	${PYTHON} setup.py -q bdist_wheel upload
 
-_prod_assets: distclean assets-production
+clean-node-dir:
+	rm -rf node_modules
+
+_prod_assets: distclean assets clean-node-dir assets-production 
 
 bdist_wheel: _prod_assets requirements _bdist_wheel
 
