@@ -5,6 +5,11 @@ Historia zmian
 dev
 ---
 
+*
+
+1.0.27-dev
+-------------
+
 * dyscyplina główna i subdyscyplina wraz z procentowym udziałem
 
 * możliwość identyfikowania autorów po ORCID
@@ -33,7 +38,12 @@ dev
   w kilku zewnętrznych bazach danych
 
 1.0.26-dev
-----------
+---
+
+*
+
+1.0.27-dev
+--------------------
 
 * obsługa punktacji SNIP
 
