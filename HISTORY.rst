@@ -38,11 +38,6 @@ dev
   w kilku zewnętrznych bazach danych
 
 1.0.26-dev
----
-
-*
-
-1.0.27-dev
 --------------------
 
 * obsługa punktacji SNIP
