@@ -7,6 +7,7 @@ import time
 from datetime import datetime
 
 from model_mommy import mommy
+from selenium.common.exceptions import ElementClickInterceptedException
 from selenium.webdriver.common.keys import Keys
 
 from bpp.models import Tytul, Autor, Jednostka, Wydawnictwo_Ciagle, \
@@ -273,7 +274,15 @@ def submit_admin_form(browser):
 def add_extra_autor_inline(browser, no_current_inlines=0):
     elem = browser.find_by_css("a.grp-add-handler")[1]
     elem._element.location_once_scrolled_into_view
-    elem.click()
+    no_moves = 0
+    while no_moves < 5:
+        try:
+            elem.click()
+            break
+        except ElementClickInterceptedException:
+            browser.execute_script("window.scrollBy(0, 50);")
+            no_moves += 1
+
     wait_for(lambda: browser.find_by_id(f"id_autorzy_set-{no_current_inlines}-autor"))
 
 
