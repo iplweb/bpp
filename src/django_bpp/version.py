@@ -1,4 +1,4 @@
-VERSION = "1.0.27-alpha"
+VERSION = "1.0.27-beta"
 
 if __name__ == "__main__":
     import sys
