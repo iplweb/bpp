@@ -8,13 +8,7 @@ dev
 *
 
 1.0.27
--------------
-
-*
-
-
-1.0.27-alpha
-------------
+------
 
 * dyscyplina główna i subdyscyplina wraz z procentowym udziałem
 
