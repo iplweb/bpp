@@ -7,35 +7,22 @@ dev
 
 *
 
-1.0.27-beta
--------------
-
-*
 
 1.0.27-alpha
--------------
-
-*
-
-1.0.27-dev
----
-
-*
-
-1.0.27-beta
--------------
-
-*
-
-1.0.27-alpha
------------------------
+------------
 
 * dyscyplina główna i subdyscyplina wraz z procentowym udziałem
 
-* możliwość identyfikowania autorów po ORCID
+* możliwość identyfikowania autorów po ORCID przy imporcie dyscyplin
+
+* nowy plik z przykładowymi informacjami dla importu dyscyplin,
+
+* możliwość przypisywania rodzaju kolumny przy imporcie dyscyplin,
 
 * możliwosć wprowadzania procentowego udziału odpowiedzialności autora w powstaniu
   publikacji
+
+* Django 2.1
 
 1.0.26
 ------
