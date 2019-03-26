@@ -27,8 +27,6 @@ CACHES = {
     },
 }
 
-COMPRESS_CACHE_BACKEND = 'compressor'
-
 CACHE_MIDDLEWARE_SECONDS = 3600 * 24
 
 DATABASES['default']['CONN_MAX_AGE'] = None
