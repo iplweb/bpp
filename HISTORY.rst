@@ -7,8 +7,18 @@ dev
 
 *
 
-1.0.27-dev
+1.0.27-alpha
 -------------
+
+*
+
+1.0.27-dev
+---
+
+*
+
+1.0.27-alpha
+-----------------------
 
 * dyscyplina główna i subdyscyplina wraz z procentowym udziałem
 
@@ -38,7 +48,12 @@ dev
   w kilku zewnętrznych bazach danych
 
 1.0.26-dev
---------------------
+---
+
+*
+
+1.0.27-alpha
+------------------------------
 
 * obsługa punktacji SNIP
 
