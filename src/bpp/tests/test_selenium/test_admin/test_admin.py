@@ -1,7 +1,16 @@
 # -*- encoding: utf-8 -*-
 import time
 
-from django.core.urlresolvers import reverse
+from django.apps import apps
+from selenium.webdriver import ActionChains
+from splinter.driver import element_present
+
+from bpp.tests.test_selenium.test_raporty import submit_page
+
+try:
+    from django.core.urlresolvers import reverse
+except ImportError:
+    from django.urls import reverse
 from django.db import transaction
 from model_mommy import mommy
 from selenium.webdriver.support.wait import WebDriverWait
@@ -10,7 +19,8 @@ from bpp.models import Wydawnictwo_Ciagle, Uczelnia, Autor, Jednostka, Typ_Odpow
 from bpp.models.patent import Patent
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 from bpp.models.zrodlo import Punktacja_Zrodla
-from bpp.tests import any_ciagle, any_autor, any_jednostka
+from bpp.tests import any_ciagle, any_autor, any_jednostka, select_element_by_text, set_element, submit_admin_form, \
+    add_extra_autor_inline, fill_admin_inline, fill_admin_form, submitted_form_bad, submitted_form_good
 from bpp.tests.util import any_zrodlo, CURRENT_YEAR, any_zwarte, any_patent, \
     select_select2_autocomplete, select_select2_clear_selection, show_element
 from django_bpp.selenium_util import wait_for_page_load, wait_for
@@ -483,8 +493,7 @@ def test_admin_wydawnictwo_ciagle_dowolnie_zapisane_nazwisko(
     select_select2_autocomplete(
         browser,
         "id_autorzy_set-0-zapisany_jako",
-        "Dowolny tekst",
-        delay_before_enter=1.0
+        "Dowolny tekst"
     )
 
     assert browser.find_by_id("id_autorzy_set-0-zapisany_jako").value == "Dowolny tekst"
@@ -501,7 +510,7 @@ def test_admin_domyslnie_afiliuje_nowy_rekord(preauth_admin_browser, live_server
     uczelnia = mommy.make(Uczelnia, domyslnie_afiliuje=expected)
 
     browser = preauth_admin_browser
-    browser.visit(live_server + reverse(f"admin:bpp_{ url }_add"))
+    browser.visit(live_server + reverse(f"admin:bpp_{url}_add"))
 
     browser.execute_script("""
     document.getElementsByClassName("grp-add-handler")[0].scrollIntoView()
@@ -533,7 +542,6 @@ def test_admin_domyslnie_afiliuje_istniejacy_rekord(
         klasa,
         expected,
         afiliowany):
-
     # twórz nowy obiekt, nie używaj z fixtury, bo db i transactional_db
     uczelnia = mommy.make(Uczelnia, domyslnie_afiliuje=expected)
     autor = mommy.make(Autor, nazwisko="Kowal", imiona="Ski")
@@ -546,7 +554,7 @@ def test_admin_domyslnie_afiliuje_istniejacy_rekord(
     wa.save()
 
     browser = preauth_admin_browser
-    browser.visit(live_server + reverse(f"admin:bpp_{ url }_change",
+    browser.visit(live_server + reverse(f"admin:bpp_{url}_change",
                                         args=(wydawnictwo.pk,)))
 
     browser.execute_script("""
@@ -558,3 +566,127 @@ def test_admin_domyslnie_afiliuje_istniejacy_rekord(
 
     v = browser.find_by_id("id_autorzy_set-1-afiliuje")
     assert v.checked == expected
+
+
+@pytest.mark.parametrize(
+    "klass",
+    ["wydawnictwo_ciagle", "wydawnictwo_zwarte", "patent"]
+)
+def test_procent_odpowiedzialnosci_baseModel_AutorFormset_jeden_autor(
+        nginx_live_server, preauth_admin_browser, autor_jan_kowalski, autor_jan_nowak,
+        jednostka, typ_odpowiedzialnosci_autor, zrodlo, charaktery_formalne,
+        typy_kbn, statusy_korekt, jezyki, klass):
+
+    url = nginx_live_server.url + reverse("admin:bpp_%s_add" % klass)
+
+    with wait_for_page_load(preauth_admin_browser):
+        preauth_admin_browser.visit(url)
+    fill_admin_form(preauth_admin_browser)
+    add_extra_autor_inline(preauth_admin_browser)
+    fill_admin_inline(preauth_admin_browser, autor=autor_jan_kowalski, jednostka=jednostka, zapisany_jako="Kopara", procent="100.00")
+    submit_admin_form(preauth_admin_browser)
+    assert submitted_form_good(preauth_admin_browser)
+
+
+@pytest.mark.parametrize(
+    "klass",
+    ["wydawnictwo_ciagle", "wydawnictwo_zwarte", "patent"]
+)
+def test_procent_odpowiedzialnosci_baseModel_AutorFormset_problem_jeden_autor(
+        nginx_live_server, preauth_admin_browser, autor_jan_kowalski, autor_jan_nowak,
+        jednostka, typ_odpowiedzialnosci_autor, zrodlo, charaktery_formalne,
+        typy_kbn, statusy_korekt, jezyki, klass):
+
+    url = nginx_live_server.url + reverse("admin:bpp_%s_add" % klass)
+
+    with wait_for_page_load(preauth_admin_browser):
+        preauth_admin_browser.visit(url)
+    fill_admin_form(preauth_admin_browser)
+    add_extra_autor_inline(preauth_admin_browser)
+    fill_admin_inline(preauth_admin_browser, autor=autor_jan_kowalski, jednostka=jednostka, zapisany_jako="Kopara", procent="100.01")
+    submit_admin_form(preauth_admin_browser)
+    assert submitted_form_bad(preauth_admin_browser)
+
+
+@pytest.mark.parametrize(
+    "klass",
+    ["wydawnictwo_ciagle", "wydawnictwo_zwarte", "patent"]
+)
+def test_procent_odpowiedzialnosci_baseModel_AutorFormset_dwoch_autorow(
+        nginx_live_server, preauth_admin_browser, autor_jan_kowalski, autor_jan_nowak,
+        jednostka, typ_odpowiedzialnosci_autor, zrodlo, charaktery_formalne,
+        typy_kbn, statusy_korekt, jezyki, klass):
+
+    url = nginx_live_server.url + reverse("admin:bpp_%s_add" % klass)
+
+    with wait_for_page_load(preauth_admin_browser):
+        preauth_admin_browser.visit(url)
+    fill_admin_form(preauth_admin_browser)
+    add_extra_autor_inline(preauth_admin_browser)
+    fill_admin_inline(preauth_admin_browser, autor=autor_jan_kowalski, jednostka=jednostka, zapisany_jako="Kopara", procent="50.00")
+    add_extra_autor_inline(preauth_admin_browser, 1)
+    fill_admin_inline(preauth_admin_browser, autor=autor_jan_nowak, jednostka=jednostka, zapisany_jako="Kopara", procent="50.00", no=1)
+    submit_admin_form(preauth_admin_browser)
+    assert submitted_form_good(preauth_admin_browser)
+
+
+@pytest.mark.parametrize(
+    "klass",
+    ["wydawnictwo_ciagle", "wydawnictwo_zwarte", "patent"]
+)
+def test_procent_odpowiedzialnosci_baseModel_AutorFormset_problem_dwoch_autorow(
+        nginx_live_server, preauth_admin_browser, autor_jan_kowalski, autor_jan_nowak,
+        jednostka, typ_odpowiedzialnosci_autor, zrodlo, charaktery_formalne,
+        typy_kbn, statusy_korekt, jezyki, klass):
+
+    url = nginx_live_server.url + reverse("admin:bpp_%s_add" % klass)
+
+    with wait_for_page_load(preauth_admin_browser):
+        preauth_admin_browser.visit(url)
+    fill_admin_form(preauth_admin_browser)
+    add_extra_autor_inline(preauth_admin_browser)
+    fill_admin_inline(preauth_admin_browser, autor=autor_jan_kowalski, jednostka=jednostka, zapisany_jako="Kopara", procent="50.00")
+    add_extra_autor_inline(preauth_admin_browser, 1)
+    fill_admin_inline(preauth_admin_browser, autor=autor_jan_nowak, jednostka=jednostka, zapisany_jako="Kopara", procent="50.01", no=1)
+    submit_admin_form(preauth_admin_browser)
+    assert submitted_form_bad(preauth_admin_browser)
+
+
+@pytest.mark.parametrize(
+    "klass",
+    ["wydawnictwo_ciagle", "wydawnictwo_zwarte", "patent"]
+)
+def test_procent_odpowiedzialnosci_baseModel_AutorFormset_dobrze_potem_zle_dwoch_autorow(
+        nginx_live_server, preauth_admin_browser, autor_jan_kowalski, autor_jan_nowak,
+        jednostka, typ_odpowiedzialnosci_autor, zrodlo, charaktery_formalne,
+        typy_kbn, statusy_korekt, jezyki, klass):
+
+    url = nginx_live_server.url + reverse("admin:bpp_%s_add" % klass)
+
+    with wait_for_page_load(preauth_admin_browser):
+        preauth_admin_browser.visit(url)
+
+    fill_admin_form(preauth_admin_browser)
+
+    add_extra_autor_inline(preauth_admin_browser)
+    fill_admin_inline(preauth_admin_browser, autor=autor_jan_kowalski, jednostka=jednostka, zapisany_jako="Kopara", procent="50.00")
+
+    add_extra_autor_inline(preauth_admin_browser)
+    fill_admin_inline(preauth_admin_browser, autor=autor_jan_nowak, jednostka=jednostka, zapisany_jako="Kopara", procent="50.00", no=1)
+
+    submit_admin_form(preauth_admin_browser)
+
+    assert submitted_form_good(preauth_admin_browser)
+
+    model = apps.get_app_config("bpp").get_model(klass)
+
+    url = nginx_live_server.url + reverse("admin:bpp_%s_change" % klass, args=(model.objects.first().pk,))
+
+    with wait_for_page_load(preauth_admin_browser):
+        preauth_admin_browser.visit(url)
+
+    set_element(preauth_admin_browser, f"id_autorzy_set-0-procent", "50.01")
+
+    submit_admin_form(preauth_admin_browser)
+    assert submitted_form_bad(preauth_admin_browser)
+

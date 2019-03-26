@@ -20,7 +20,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='zrodlo',
             name='jezyk',
-            field=models.ForeignKey(blank=True, to='bpp.Jezyk', null=True),
+            field=models.ForeignKey(on_delete=models.CASCADE, blank=True, to='bpp.Jezyk', null=True),
             preserve_default=True,
         ),
         migrations.AddField(

@@ -1,6 +1,10 @@
 # -*- encoding: utf-8 -*-
 from django.db import models
+from django.db.models import CASCADE, SET_NULL
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 from django.utils import six
+from django.utils import timezone
 
 from bpp.models import BazaModeluOdpowiedzialnosciAutorow, Autor, \
     ModelZRokiem, ModelZeStatusem, ModelZWWW, ModelRecenzowany, \
@@ -12,7 +16,7 @@ from bpp.models.util import dodaj_autora
 
 class Patent_Autor(BazaModeluOdpowiedzialnosciAutorow):
     """Powiązanie autora do patentu."""
-    rekord = models.ForeignKey('Patent', related_name="autorzy_set")
+    rekord = models.ForeignKey('Patent', CASCADE, related_name="autorzy_set")
 
     class Meta:
         verbose_name = 'powiązanie autora z patentem'
@@ -53,7 +57,7 @@ class Patent(RekordBPPBaza,
     )
 
     rodzaj_prawa = models.ForeignKey(
-        "bpp.Rodzaj_Prawa_Patentowego",
+        "bpp.Rodzaj_Prawa_Patentowego", CASCADE,
         null=True, blank=True
     )
 
@@ -62,10 +66,9 @@ class Patent(RekordBPPBaza,
     )
 
     wydzial = models.ForeignKey(
-        "bpp.Wydzial",
+        "bpp.Wydzial", SET_NULL,
         null=True,
-        blank=True,
-        on_delete=models.SET_NULL)
+        blank=True)
 
     autorzy = models.ManyToManyField(Autor, through=Patent_Autor)
 
@@ -87,3 +90,10 @@ class Patent(RekordBPPBaza,
 
     def jezyk(self):
         return Jezyk.objects.get(skrot_dla_pbn="PL")
+
+
+@receiver(post_delete, sender=Patent_Autor)
+def patent_autor_post_delete(sender, instance, **kwargs):
+    rec = instance.rekord
+    rec.ostatnio_zmieniony_dla_pbn = timezone.now()
+    rec.save(update_fields=['ostatnio_zmieniony_dla_pbn'])

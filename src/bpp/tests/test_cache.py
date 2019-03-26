@@ -323,7 +323,7 @@ def test_defer_zaktualizuj_opis_task(settings):
     w.tytul_oryginalny = "foobar"
     w.save()
 
-    zaktualizuj_opis('bpp', 'wydawnictwo_ciagle', w.pk, called_by="tests")
+    zaktualizuj_opis('bpp', 'wydawnictwo_ciagle', w.pk)
 
 
 def test_aktualizacja_rekordu_autora(transactional_db, typy_odpowiedzialnosci):

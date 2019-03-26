@@ -30,7 +30,7 @@ class Button(forms.Widget):
     A widget that handles a submit button.
     """
 
-    def render(self, name, value, attrs=None):
+    def render(self, name, value, attrs=None, renderer=None):
         final_attrs = self.build_attrs(
             self.attrs,
             dict(type="button",

@@ -1,7 +1,6 @@
 {
-    "_comment": "    # Musi być Jquery 2.1.4, bo Foundation 5.5.3 nie wspólpracuje z Jquery 2.2.0, nie da się odpalic dialogu modalnego Reveal, chyba, że zaktualizuję Foudnation do wersji 6.x, wówczsa można by użyć wyższego jquery",
-    "name": "django-bpp",
-    "version": "0.0.1",
+    "name": "bpp-iplweb",
+    "version": "1.0.27",
     "devDependencies": {
         "grunt": "^1.0.2",
         "grunt-contrib-qunit": "^2.0.0",

@@ -7,6 +7,7 @@ Struktura uczelni.
 from autoslug import AutoSlugField
 from django.core.exceptions import ImproperlyConfigured
 from django.db import models
+from django.db.models import SET_NULL
 from django.urls.base import reverse
 
 from bpp.models import ModelZAdnotacjami, NazwaISkrot
@@ -27,7 +28,7 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
     favicon_ico = models.FileField(
         "Ikona ulubionych (favicon)", upload_to="favicon", blank=True, null=True)
 
-    obca_jednostka = models.ForeignKey('bpp.Jednostka', null=True, blank=True, help_text="""
+    obca_jednostka = models.ForeignKey('bpp.Jednostka', SET_NULL, null=True, blank=True, help_text="""
     Jednostka skupiająca autorów nieindeksowanych, nie będących pracownikami uczelni. Procedury importujące
     dane z zewnętrznych systemów informatycznych będą przypisywać do tej jednostki osoby, które zakończyły
     pracę na uczelni. """, related_name="obca_jednostka")

@@ -9,7 +9,10 @@ To activate your custom menu add the following to your settings.py::
 """
 
 from admin_tools.menu import items, Menu
-from django.core.urlresolvers import reverse
+try:
+    from django.core.urlresolvers import reverse
+except ImportError:
+    from django.urls import reverse
 from django.utils.translation import ugettext_lazy as _
 
 from bpp.models.const import GR_WPROWADZANIE_DANYCH

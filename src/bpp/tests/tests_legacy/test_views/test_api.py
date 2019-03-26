@@ -99,13 +99,13 @@ class TestOstatniaJednostkaView(TestCase):
         fr = FakeRequest(dict(autor_id=None))
 
         res = ojv.post(fr)
-        self.assertContains(res, "Autor", status_code=404)
+        assert json.loads(res.content)['status'] == 'error'
 
         fr = FakeRequest(dict(autor_id=10))
         res = ojv.post(fr)
-        self.assertContains(res, "Autor", status_code=404)
+        assert json.loads(res.content)['status'] == 'error'
 
         a = any_autor()
         fr = FakeRequest(dict(autor_id=a.pk))
         res = ojv.post(fr)
-        self.assertContains(res, "Jednostka", status_code=404)
+        assert json.loads(res.content)['status'] == 'error'

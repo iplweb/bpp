@@ -20,7 +20,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='charakter_formalny',
             name='charakter_pbn',
-            field=models.ForeignKey(default=None, to='bpp.Charakter_PBN', blank=True, help_text=b'Warto\xc5\x9b\xc4\x87 wybrana w tym polu zostanie u\xc5\xbcyta jako zawarto\xc5\x9b\xc4\x87 tagu <is>\n                                      w plikach eksportu do PBN', null=True, verbose_name=b'Charakter PBN'),
+            field=models.ForeignKey(on_delete=models.CASCADE, default=None, to='bpp.Charakter_PBN', blank=True, help_text=b'Warto\xc5\x9b\xc4\x87 wybrana w tym polu zostanie u\xc5\xbcyta jako zawarto\xc5\x9b\xc4\x87 tagu <is>\n                                      w plikach eksportu do PBN', null=True, verbose_name=b'Charakter PBN'),
             preserve_default=True,
         ),
         migrations.AlterField(

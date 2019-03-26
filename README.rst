@@ -7,7 +7,7 @@
   :align: center
   :alt: Logo projektu
 
-.. image:: https://circleci.com/gh/iplweb/bpp.svg?style=shield
+.. image:: https://circleci.com/gh/iplweb/bpp/tree/master.svg?style=svg
    :target: https://circleci.com/gh/iplweb/bpp
 
 .. image:: https://readthedocs.org/projects/bpp/badge/?version=latest

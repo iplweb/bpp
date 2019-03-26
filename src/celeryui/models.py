@@ -5,6 +5,7 @@ import sys
 
 from django.conf import settings
 from django.db import models
+from django.db.models import CASCADE
 from django_extensions.db.fields import UUIDField
 from django_extensions.db.fields.json import JSONField
 from django.utils.translation import gettext_lazy as _
@@ -32,7 +33,7 @@ class Report(models.Model):
     function = models.TextField()
     arguments = JSONField(null=True, blank=True)
 
-    ordered_by = models.ForeignKey(settings.AUTH_USER_MODEL)
+    ordered_by = models.ForeignKey(settings.AUTH_USER_MODEL, CASCADE)
     ordered_on = models.DateTimeField(auto_now_add=True)
 
     file = models.FileField(upload_to=REPORTS_PATH, null=True, blank=True)

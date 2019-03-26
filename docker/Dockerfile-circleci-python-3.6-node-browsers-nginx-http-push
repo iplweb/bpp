@@ -1,0 +1,22 @@
+FROM circleci/python:3.6-node-browsers
+
+RUN sudo apt-get update && sudo apt install curl gnupg2 ca-certificates lsb-release devscripts build-essential lintian
+RUN echo "deb-src http://nginx.org/packages/debian `lsb_release -cs` nginx" \
+    | sudo tee /etc/apt/sources.list.d/nginx.list
+RUN curl -fsSL https://nginx.org/keys/nginx_signing.key | sudo apt-key add -
+
+WORKDIR /home/circleci/
+RUN sudo apt-get update && apt-get source nginx-full && sudo apt-get build-dep nginx-full
+RUN git clone https://github.com/wandenberg/nginx-push-stream-module.git
+
+WORKDIR nginx-1.14.2
+RUN sed -i 's/--with-http_auth_request_module/--with-http_auth_request_module --add-module=\/home\/circleci\/nginx-push-stream-module/g' debian/rules
+RUN debuild -i -us -uc -b
+
+FROM circleci/python:3.6-node-browsers
+RUN sudo apt-get update && sudo apt install postgresql-client
+COPY --from=0 /home/circleci/nginx_1.14.2-1~stretch_amd64.deb / 
+RUN sudo dpkg -i /nginx_1.14.2-1~stretch_amd64.deb
+
+RUN sudo chown circleci:circleci -Rv /var/log/nginx
+RUN sudo chown circleci:circleci -Rv /var/cache/nginx

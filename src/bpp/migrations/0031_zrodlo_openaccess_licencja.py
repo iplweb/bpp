@@ -14,7 +14,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='zrodlo',
             name='openaccess_licencja',
-            field=models.ForeignKey(verbose_name=b'OpenAccess: licencja', blank=True, to='bpp.Licencja_OpenAccess', null=True),
+            field=models.ForeignKey(on_delete=models.CASCADE, verbose_name=b'OpenAccess: licencja', blank=True, to='bpp.Licencja_OpenAccess', null=True),
             preserve_default=True,
         ),
     ]

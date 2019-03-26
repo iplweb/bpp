@@ -10,6 +10,7 @@ from django.contrib.postgres.fields import HStoreField
 from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models import CASCADE, SET_NULL, CASCADE, Sum
 from django.urls.base import reverse
 from django.utils import six
 from django.utils import timezone
@@ -131,7 +132,7 @@ class ModelZISBN(models.Model):
 class ModelZInformacjaZ(models.Model):
     """Model zawierający pole 'Informacja z' - czyli od kogo została
     dostarczona informacja o publikacji (np. od autora, od redakcji)."""
-    informacja_z = models.ForeignKey('Zrodlo_Informacji', null=True, blank=True)
+    informacja_z = models.ForeignKey('Zrodlo_Informacji', SET_NULL, null=True, blank=True)
 
     class Meta:
         abstract = True
@@ -150,7 +151,7 @@ class DwaTytuly(models.Model):
 class ModelZeStatusem(models.Model):
     """Model zawierający pole statusu korekty, oraz informację, czy
     punktacja została zweryfikowana."""
-    status_korekty = models.ForeignKey('Status_Korekty')
+    status_korekty = models.ForeignKey('Status_Korekty', CASCADE)
 
     class Meta:
         abstract = True
@@ -290,8 +291,8 @@ from bpp.models.system import Charakter_Formalny
 
 class ModelTypowany(models.Model):
     """Model zawierający typ KBN oraz język."""
-    typ_kbn = models.ForeignKey('Typ_KBN', verbose_name="Typ KBN")
-    jezyk = models.ForeignKey('Jezyk', verbose_name="Język")
+    typ_kbn = models.ForeignKey('Typ_KBN', CASCADE, verbose_name="Typ KBN")
+    jezyk = models.ForeignKey('Jezyk', CASCADE, verbose_name="Język")
 
     class Meta:
         abstract = True
@@ -302,16 +303,21 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
     autora do czegokolwiek innego). Zawiera wszystkie informacje dla autora,
     czyli: powiązanie ForeignKey, jednostkę, rodzaj zapisu nazwiska, ale
     nie zawiera podstawowej informacji, czyli powiązania"""
-    autor = models.ForeignKey('Autor')
-    jednostka = models.ForeignKey('Jednostka')
+    autor = models.ForeignKey('Autor', CASCADE)
+    jednostka = models.ForeignKey('Jednostka', CASCADE)
     kolejnosc = models.IntegerField('Kolejność', default=0)
-    typ_odpowiedzialnosci = models.ForeignKey('Typ_Odpowiedzialnosci',
-                                              verbose_name="Typ odpowiedzialności")
+    typ_odpowiedzialnosci = models.ForeignKey(
+        'Typ_Odpowiedzialnosci', CASCADE, verbose_name="Typ odpowiedzialności")
     zapisany_jako = models.CharField(max_length=512)
     afiliuje = models.BooleanField(default=True, help_text="""Afiliuje 
     się do jednostki podanej w przypisaniu""")
     zatrudniony = models.BooleanField(default=False, help_text="""Pracownik 
     jednostki podanej w przypisaniu""")
+
+    procent = models.DecimalField(
+        "Udział w opracowaniu (procent)",
+        max_digits=5, decimal_places=2,
+        null=True, blank=True)
 
     class Meta:
         abstract = True
@@ -322,6 +328,23 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
             self.jednostka.skrot)
 
     # XXX TODO sprawdzanie, żęby nie było dwóch autorów o tej samej kolejności
+
+    def clean(self):
+        super(BazaModeluOdpowiedzialnosciAutorow, self).clean()
+        # Znajdź inne obiekty z tego rekordu, które są już w bazie danych, ewentualnie
+        # utrudniając ich zapisanie w sytuacji, gdyby ilość procent przekroczyła 100:
+        inne = self.__class__.objects.filter(rekord=self.rekord)
+        if self.pk:
+            inne = inne.exclude(pk=self.pk)
+        suma = inne.aggregate(Sum("procent"))['procent__sum'] or Decimal("0.00")
+        procent = self.procent or Decimal("0.00")
+
+        if suma + procent > Decimal("100.00"):
+            raise ValidationError({"procent": "Suma podanych odpowiedzialności przekracza 100. "
+                                              "Jeżeli edytujesz rekord, spróbuj zrobić to w dwóch etapach. W pierwszym "
+                                              "zmniejsz punkty procentowe innym, zapisz, w następnym zwiększ punkty "
+                                              "procentowe i zapisz ponownie. Rekordy nie zostały zapisane. "})
+            pass
 
     def save(self, *args, **kw):
         if self.autor.jednostki.filter(pk=self.jednostka.pk).count() == 0:
@@ -390,7 +413,7 @@ class ModelZNumeremZeszytu(models.Model):
 
 class ModelZCharakterem(models.Model):
     charakter_formalny = models.ForeignKey(
-        Charakter_Formalny, verbose_name='Charakter formalny')
+        Charakter_Formalny, CASCADE, verbose_name='Charakter formalny')
 
     class Meta:
         abstract = True
@@ -767,6 +790,7 @@ class PBNSerializerHelperMixin:
 class ModelZSeria_Wydawnicza(models.Model):
     seria_wydawnicza = models.ForeignKey(
         'bpp.Seria_Wydawnicza',
+        CASCADE,
         blank=True,
         null=True
     )
@@ -783,6 +807,7 @@ class ModelZSeria_Wydawnicza(models.Model):
 class ModelZKonferencja(models.Model):
     konferencja = models.ForeignKey(
         'bpp.Konferencja',
+        CASCADE,
         blank=True,
         null=True)
 
@@ -792,18 +817,18 @@ class ModelZKonferencja(models.Model):
 
 class ModelZOpenAccess(models.Model):
     openaccess_wersja_tekstu = models.ForeignKey(
-        'Wersja_Tekstu_OpenAccess',
+        'Wersja_Tekstu_OpenAccess', CASCADE,
         verbose_name="OpenAccess: wersja tekstu",
         blank=True, null=True)
 
     openaccess_licencja = models.ForeignKey(
-        "Licencja_OpenAccess",
+        "Licencja_OpenAccess", CASCADE,
         verbose_name="OpenAccess: licencja",
         blank=True,
         null=True)
 
     openaccess_czas_publikacji = models.ForeignKey(
-        "Czas_Udostepnienia_OpenAccess",
+        "Czas_Udostepnienia_OpenAccess", CASCADE,
         verbose_name="OpenAccess: czas udostępnienia",
         blank=True,
         null=True)

@@ -1,7 +1,10 @@
 # -*- encoding: utf-8 -*-
 import bleach
 from django import shortcuts
-from django.core.urlresolvers import reverse
+try:
+    from django.core.urlresolvers import reverse
+except ImportError:
+    from django.urls import reverse
 from django.http import JsonResponse
 from django.http.response import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt

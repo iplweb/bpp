@@ -3,7 +3,7 @@
 from .base import *
 
 DEBUG = False
-
+DEBUG_TOOLBAR = False
 SENDFILE_BACKEND = 'sendfile.backends.nginx'
 
 SESSION_COOKIE_SECURE = False
@@ -22,18 +22,10 @@ SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 
 CACHES = {
     'default': {
-        'BACKEND': 'django.core.cache.backends.memcached.MemcachedCache',
-        'LOCATION': '127.0.0.1:11211',
+        'BACKEND': 'django.core.cache.backends.memcached.PyLibMCCache',
+        'LOCATION': django_getenv("DJANGO_BPP_MEMCACHE_HOST", '127.0.0.1') + ':11211',
     },
-    # This is required for django-compressor 'compress --offline --force'
-    # memcache bug
-    'compressor': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'compressor'
-    }
 }
-
-COMPRESS_CACHE_BACKEND = 'compressor'
 
 CACHE_MIDDLEWARE_SECONDS = 3600 * 24
 

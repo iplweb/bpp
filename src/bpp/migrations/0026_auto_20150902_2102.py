@@ -14,13 +14,13 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='praca_doktorska',
             name='autor',
-            field=models.ForeignKey(to='bpp.Autor', unique=True),
+            field=models.ForeignKey(on_delete=models.CASCADE, to='bpp.Autor', unique=True),
             preserve_default=True,
         ),
         migrations.AlterField(
             model_name='praca_habilitacyjna',
             name='autor',
-            field=models.ForeignKey(to='bpp.Autor', unique=True),
+            field=models.ForeignKey(on_delete=models.CASCADE, to='bpp.Autor', unique=True),
             preserve_default=True,
         ),
     ]

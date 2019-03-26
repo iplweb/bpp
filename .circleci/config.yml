@@ -1,27 +1,39 @@
 version: 2
 jobs:
   build:
-    machine: true
+    
+    docker:
+      - image: mpasternak79/circleci-python:3.6-node-browsers-nginx-http-push
+        environment:
+          PGUSER: postgres
+          PGHOST: localhost
+          PGPORT: 5432
+          PGDATABASE: bpp
+          DJANGO_BPP_SECRET_KEY: foobar
+          DJANGO_SETTINGS_MODULE: django_bpp.settings.test
+      - image: mpasternak79/circleci-postgres:10
+      - image: rabbitmq:latest
+        
     steps:
       - checkout
 
-      - run:
-          name: Pull docker images from hub
-          command: docker-compose pull
-          
-      - run:
-          name: Boot docker 
-          command: make docker-up
+      - run: sudo npm install -g grunt-cli
+      - run: sudo pipenv install --system -d
+      - run: make assets
 
-      - run:
-          name: docekr-assets
-          command: make docker-assets
+      # Baza musi istnieć - worker celery potem wymaga; sklonujemy od razu, żeby
+      # nie tracić czasu na tworzenie testowej bazy danych
+      - run: createdb bpp
+      - run: python src/manage.py migrate
+      - run: echo 'CREATE DATABASE "test_bpp" WITH TEMPLATE "bpp"' | psql
+      - run: echo 'CREATE DATABASE "test_bpp_gw0" WITH TEMPLATE "bpp"' | psql
+      - run: echo 'CREATE DATABASE "test_bpp_gw1" WITH TEMPLATE "bpp"' | psql
 
-      - run:
-          name: Python tests
-          command: make docker-python-tests
-          
-      - run:
-          name: JS tests
-          command: make docker-js-tests
+      # Uruchamiaj na lokalnym firefoxie używając dwóch CPU
+      - run: pytest --cov=src --splinter-webdriver=firefox -n2 --nginx-host=localhost --liveserver=localhost
 
+      # Testy JavaScript
+      - run: make js-tests
+
+      # Wyślij statystyki pokrycia kodu testami do coveralls.io  
+      - run: coveralls

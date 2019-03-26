@@ -5,7 +5,13 @@ from django.core.files.base import ContentFile
 from django.db import transaction
 
 from bpp.models import Dyscyplina_Naukowa, Autor_Dyscyplina
-from import_dyscyplin.models import Import_Dyscyplin, Import_Dyscyplin_Row
+from import_dyscyplin.models import Import_Dyscyplin, Import_Dyscyplin_Row, Kolumna, guess_rodzaj
+
+
+def test_guess_rodzaj():
+    assert guess_rodzaj("nazwisko") == Kolumna.RODZAJ.NAZWISKO
+    assert guess_rodzaj("kopara") == Kolumna.RODZAJ.POMIJAJ
+    assert guess_rodzaj("lp") == Kolumna.RODZAJ.POMIJAJ
 
 
 def test_Import_Dyscyplin_post_delete_handler(test1_xlsx, normal_django_user, transactional_db):

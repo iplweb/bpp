@@ -13,6 +13,9 @@ var autorform_dependant = function () {
             method: "POST",
             data: {'autor_id': $(this).val()}
         }).done(function (data) {
+            if (data.status == 'error')
+                return;
+
             $(':input[name=' + prefix + 'jednostka]').append(
                 '<option selected="selected" value=' + data['jednostka_id'] + '>'
                 + data['nazwa'] + '</option>');

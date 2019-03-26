@@ -1,6 +1,7 @@
+from django.utils.deprecation import MiddlewareMixin
 from messages_extends.models import Message
 
-class NotificationsMiddleware(object):
+class NotificationsMiddleware(MiddlewareMixin):
     def process_request(self, request):
         """After entering a web page, we may want to mark some messages as read
         basing on the URL they contain.

@@ -1,7 +1,7 @@
 import time
 
 
-def wait_for_object(klass, pk, no_tries=10, called_by=""):
+def wait_for_object(klass, pk, no_tries=3):
     obj = None
 
     while no_tries > 0:
@@ -13,7 +13,7 @@ def wait_for_object(klass, pk, no_tries=10, called_by=""):
             no_tries = no_tries - 1
 
     if obj is None:
-        raise klass.DoesNotExist("Cannot fetch klass %r with pk %r, TB: %r" % (klass, pk, called_by))
+        raise klass.DoesNotExist("Cannot fetch klass %r with pk %r" % (klass, pk))
 
     return obj
 

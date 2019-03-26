@@ -2,7 +2,7 @@ from datetime import date
 
 from django.contrib.postgres.fields import JSONField
 from django.db import models, transaction, IntegrityError
-from django.db.models import Q, Count
+from django.db.models import Q, Count, CASCADE
 from django.urls import reverse
 from django_fsm import FSMField, transition, GET_STATE
 from model_utils.models import TimeStampedModel
@@ -17,20 +17,91 @@ def obecny_rok():
     return date.today().year
 
 
+class Kolumna(models.Model):
+    parent = models.ForeignKey('import_dyscyplin.Import_Dyscyplin', models.CASCADE)
+
+    class RODZAJ:
+        POMIJAJ = 'pomiń'
+
+        NAZWISKO = 'nazwisko'
+        IMIE = 'imię'
+        PESEL = 'pesel'
+        ORCID = 'orcid'
+        NAZWA_JEDNOSTKI = 'nazwa jednostki'
+        WYDZIAL = 'wydział'
+
+        DYSCYPLINA = 'dyscyplina'
+        KOD_DYSCYPLINY = 'kod dyscypliny'
+        PROCENT_DYSCYPLINY = 'procent dyscypliny'
+
+        SUBDYSCYPLINA = 'subdyscyplina'
+        KOD_SUBDYSCYPLINY = 'kod subdyscypliny'
+        PROCENT_SUBDYSCYPLINY = 'procent subdyscypliny'
+
+    RODZAJE = [RODZAJ.NAZWISKO, RODZAJ.IMIE, RODZAJ.PESEL, RODZAJ.ORCID,
+               RODZAJ.NAZWA_JEDNOSTKI, RODZAJ.WYDZIAL, RODZAJ.DYSCYPLINA,
+               RODZAJ.KOD_DYSCYPLINY, RODZAJ.PROCENT_DYSCYPLINY,
+               RODZAJ.SUBDYSCYPLINA, RODZAJ.KOD_SUBDYSCYPLINY, RODZAJ.PROCENT_SUBDYSCYPLINY,
+               RODZAJ.POMIJAJ]
+
+    kolejnosc = models.PositiveSmallIntegerField()
+    nazwa_w_pliku = models.CharField(max_length=250)
+    rodzaj_pola = models.CharField(max_length=50, choices=zip(RODZAJE, RODZAJE))
+
+    class Meta:
+        ordering = ['kolejnosc', ]
+
+
+def guess_rodzaj(s):
+    s = s.lower().replace(" ", "")
+    if s in ['nazwisko', 'nazwiska']:
+        return Kolumna.RODZAJ.NAZWISKO
+    if s in ['imię', 'imie', 'imiona']:
+        return Kolumna.RODZAJ.IMIE
+    if s in ['pesel', 'nrpesel', 'nr.pesel', 'identyfikatorpesel']:
+        return Kolumna.RODZAJ.PESEL
+    if s in ['orcid', 'identyfikatororcid', 'ident.orcid']:
+        return Kolumna.RODZAJ.ORCID
+    if s in ['jednostka', 'nazwajednostki']:
+        return Kolumna.RODZAJ.NAZWA_JEDNOSTKI
+    if s in ['wydzial', 'wydz.', 'wydział']:
+        return Kolumna.RODZAJ.WYDZIAL
+
+    if s in ['dyscyplina', 'dyscyplina1', 'dyscyplinagłówna', 'dyscyplinaglowna']:
+        return Kolumna.RODZAJ.DYSCYPLINA
+    if s in ['koddyscypliny', 'koddyscyplinyglownej', 'koddyscyplinygłównej', 'kod1']:
+        return Kolumna.RODZAJ.KOD_DYSCYPLINY
+    if s in ['procentdyscypliny', 'procentdyscypliny1', 'procentdyscyplinygłównej', 'procentdyscyplinyglownej']:
+        return Kolumna.RODZAJ.PROCENT_DYSCYPLINY
+
+    if s in ['subdyscyplina', 'dyscyplina2', 'dyscyplinapoboczna', 'dyscyplinapoboczna']:
+        return Kolumna.RODZAJ.SUBDYSCYPLINA
+    if s in ['kodsubdyscypliny', 'koddyscyplinypoboczej', 'koddyscyplinydrugiej', 'kod2']:
+        return Kolumna.RODZAJ.KOD_SUBDYSCYPLINY
+    if s in ['procentsubdyscypliny', 'procentdyscypliny2', 'procentdyscyplinypobocznej']:
+        return Kolumna.RODZAJ.PROCENT_SUBDYSCYPLINY
+
+    return Kolumna.RODZAJ.POMIJAJ
+
+
 class Import_Dyscyplin(TimeStampedModel):
     class STAN:
         NOWY = 'nowy'
+        OKRESLANIE_OPCJI_IMPORTU = "określanie opcji importu"
+        OPCJE_IMPORTU_OKRESLONE = "opcje importu określone"
         BLEDNY = 'błędny'
         PRZEANALIZOWANY = 'przeanalizowany'
 
         ZINTEGROWANY = 'zintegrowany'
 
     STANY = (STAN.NOWY,
+             STAN.OKRESLANIE_OPCJI_IMPORTU,
+             STAN.OPCJE_IMPORTU_OKRESLONE,
              STAN.PRZEANALIZOWANY,
              STAN.BLEDNY,
              STAN.ZINTEGROWANY)
 
-    owner = models.ForeignKey(AUTH_USER_MODEL)
+    owner = models.ForeignKey(AUTH_USER_MODEL, CASCADE)
     web_page_uid = models.CharField(max_length=36, blank=True, null=True)
     web_page_uid.__doc__ = "UUID4 strony internetowej która może być używana do notyfikacji. "
 
@@ -47,26 +118,59 @@ class Import_Dyscyplin(TimeStampedModel):
     bledny = models.BooleanField(default=False)
     info = models.TextField(blank=True, null=True)
 
+    wiersz_naglowka = models.PositiveSmallIntegerField(null=True, blank=True)
+
+    kolumny = models.ManyToManyField(Kolumna)
+
     @transition(field=stan,
                 source=STAN.NOWY,
+                target=GET_STATE(
+                    lambda self: self.STAN.BLEDNY if self.bledny else self.STAN.OKRESLANIE_OPCJI_IMPORTU,
+                    states=[STAN.BLEDNY, STAN.OKRESLANIE_OPCJI_IMPORTU]),
+                on_error=STAN.BLEDNY)
+    def stworz_kolumny(self):
+        from .core import znajdz_naglowek
+        try:
+            kolumny, wiersz = znajdz_naglowek(self.plik.path)
+        except ImproperFileException as e:
+            self.bledny = True
+            self.info = "niepoprawny plik - %s" % e
+            return
+        except BadNoOfSheetsException as e:
+            self.bledny = True
+            self.info = "Plik musi zawierać tylko jeden arkusz"
+            return
+        except HeaderNotFoundException:
+            self.bledny = True
+            self.info = "Nagłówek nie został znaleziony"
+            return
+
+        self.kolumna_set.all().delete()
+        for n, kolumna in enumerate(kolumny):
+            Kolumna.objects.create(
+                parent=self,
+                kolejnosc=n,
+                nazwa_w_pliku=kolumna,
+                rodzaj_pola=guess_rodzaj(kolumna) or Kolumna.RODZAJ.POMIJAJ
+            )
+        self.wiersz_naglowka = wiersz
+        self.save()
+
+    @transition(field=stan,
+                source=STAN.OKRESLANIE_OPCJI_IMPORTU,
+                target=STAN.OPCJE_IMPORTU_OKRESLONE)
+    def zatwierdz_kolumny(self):
+        self.save()
+
+    @transition(field=stan,
+                source=STAN.OPCJE_IMPORTU_OKRESLONE,
                 target=GET_STATE(
                     lambda self: "błędny" if self.bledny else "przeanalizowany",
                     states=[STAN.BLEDNY, STAN.PRZEANALIZOWANY]),
                 on_error=STAN.BLEDNY)
     def przeanalizuj(self):
         from import_dyscyplin.core import przeanalizuj_plik_xls
-
-        try:
-            res = przeanalizuj_plik_xls(self.plik.path, parent=self)
-        except ImproperFileException as e:
-            self.bledny = True
-            self.info = "niepoprawny plik - %s" % e
-        except BadNoOfSheetsException as e:
-            self.bledny = True
-            self.info = "Plik musi zawierać tylko jeden arkusz"
-        except HeaderNotFoundException:
-            self.bledny = True
-            self.info = "Nagłówek nie został znaleziony"
+        przeanalizuj_plik_xls(self.plik.path, parent=self)
 
     def wiersze(self):
         return Import_Dyscyplin_Row.objects.filter(parent=self)
@@ -168,10 +272,6 @@ class Import_Dyscyplin(TimeStampedModel):
                 r.subdyscyplina_naukowa = sd
                 r.save()
 
-        for r in self.wiersze():
-            r.dyscyplina_ostateczna = r.subdyscyplina_naukowa or r.dyscyplina_naukowa
-            r.save()
-
     def sprawdz_czy_konieczne(self):
         """Sprawdza wszystkie wiersze, po przeanalizowaniu oraz po
         integracji dyscyplin, czy wprowadzanie ich jest konieczne do bazy. To znaczy,
@@ -217,7 +317,6 @@ class Import_Dyscyplin(TimeStampedModel):
 
     def _integruj_wiersze(self):
         for elem in self.poprawne_wiersze_do_integracji().select_related():
-            res = elem.subdyscyplina_naukowa or elem.dyscyplina_naukowa
 
             try:
                 ad = Autor_Dyscyplina.objects.get(
@@ -225,28 +324,41 @@ class Import_Dyscyplin(TimeStampedModel):
                     rok=self.rok
                 )
 
-                if ad.dyscyplina != res:
-                    elem.info = "istniejące dla roku %i zmieniono z %s na %s" % (
-                        self.rok,
-                        ad.dyscyplina,
-                        res)
+                changed = False
+                for attr in ['dyscyplina_naukowa', 'procent_dyscypliny', 'subdyscyplina_naukowa',
+                             'procent_subdyscypliny']:
+                    source = getattr(elem, attr)
+                    target = getattr(elem, attr)
 
-                    ad.dyscyplina = res
+                    if source != target:
+                        setattr(elem, attr, source)
+                        if elem.info is None:
+                            elem.info = ''
+
+                        elem.info += "Istniejące %s dla roku %i zmieniono z %s na %s. " % (
+                            attr,
+                            self.rok,
+                            target,
+                            source)
+
+                        changed = True
+
+                if changed:
                     ad.save()
-
                 else:
-                    elem.info = "przypisanie %s dla roku %s już istniało" % (
-                        ad.dyscyplina,
-                        self.rok
-                    )
+                    elem.info = "stan w bazie zgodny jak w pliku importu"
 
             except Autor_Dyscyplina.DoesNotExist:
                 Autor_Dyscyplina.objects.create(
                     autor=elem.autor,
                     rok=self.rok,
-                    dyscyplina=res
+                    dyscyplina_naukowa=elem.dyscyplina_naukowa,
+                    procent_dyscypliny=elem.procent_dyscypliny,
+                    subdyscyplina_naukowa=elem.subdyscyplina_naukowa,
+                    procent_subdyscypliny=elem.procent_subdyscypliny
                 )
-                elem.info = "nowe przypisanie dla %i: %s" % (self.rok, res)
+                elem.info = "nowe przypisanie dla %i: %s, %s." % (
+                    self.rok, elem.dyscyplina_naukowa, elem.subdyscyplina_naukowa)
 
             elem.stan = Import_Dyscyplin_Row.STAN.ZINTEGROWANY
             elem.save()
@@ -271,7 +383,7 @@ class Import_Dyscyplin_Row(models.Model):
 
     STANY = (STAN.NOWY, STAN.BLEDNY, STAN.ZINTEGROWANY)
 
-    parent = models.ForeignKey(Import_Dyscyplin)
+    parent = models.ForeignKey(Import_Dyscyplin, CASCADE)
 
     stan = models.CharField(
         max_length=50,
@@ -307,6 +419,7 @@ class Import_Dyscyplin_Row(models.Model):
 
     dyscyplina = models.CharField(max_length=200, db_index=True)
     kod_dyscypliny = models.CharField(max_length=20, db_index=True)
+    procent_dyscypliny = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     dyscyplina_naukowa = models.ForeignKey(
         Dyscyplina_Naukowa,
         null=True,
@@ -318,15 +431,8 @@ class Import_Dyscyplin_Row(models.Model):
 
     subdyscyplina = models.CharField(max_length=200, null=True, blank=True, db_index=True)
     kod_subdyscypliny = models.CharField(max_length=20, null=True, blank=True, db_index=True)
+    procent_subdyscypliny = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     subdyscyplina_naukowa = models.ForeignKey(
-        Dyscyplina_Naukowa,
-        blank=True,
-        null=True,
-        on_delete=models.SET_NULL,
-        related_name='+'
-    )
-
-    dyscyplina_ostateczna = models.ForeignKey(
         Dyscyplina_Naukowa,
         blank=True,
         null=True,
@@ -343,11 +449,13 @@ class Import_Dyscyplin_Row(models.Model):
 
             "info": self.info,
 
-            "dyscyplina": f"{ self.dyscyplina } ({ self.kod_dyscypliny })",
-            "subdyscyplina": f"{ self.subdyscyplina } ({ self.kod_subdyscypliny })",
+            "dyscyplina": f"{self.dyscyplina} ({self.kod_dyscypliny})",
+            "procent_dyscypliny": self.procent_dyscypliny or "",
+
+            "subdyscyplina": f"{self.subdyscyplina} ({self.kod_subdyscypliny})",
+            "procent_subdyscypliny": self.procent_subdyscypliny or "",
 
             "dopasowanie_autora": "-",
-            "dyscyplina_ostateczna": "-"
         }
 
         for elem in "dyscyplina", "subdyscyplina":
@@ -359,10 +467,6 @@ class Import_Dyscyplin_Row(models.Model):
             ret["dopasowanie_autora"] = "<a target=_blank href='%s'>%s %s</a>" % (
                 reverse("bpp:browse_autor", args=(self.autor.slug,)),
                 self.autor.nazwisko, self.autor.imiona)
-
-        dyscyplina_ostateczna = self.dyscyplina_ostateczna
-        if dyscyplina_ostateczna is not None:
-            ret["dyscyplina_ostateczna"] = str(dyscyplina_ostateczna)
 
         return ret
 

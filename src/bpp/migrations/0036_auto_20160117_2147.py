@@ -67,7 +67,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='praca_doktorska',
             name='autor',
-            field=models.OneToOneField(to='bpp.Autor'),
+            field=models.OneToOneField(to='bpp.Autor', on_delete=models.CASCADE),
         ),
         migrations.AlterField(
             model_name='praca_doktorska',
@@ -82,7 +82,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='praca_habilitacyjna',
             name='autor',
-            field=models.OneToOneField(to='bpp.Autor'),
+            field=models.OneToOneField(to='bpp.Autor', on_delete=django.db.models.deletion.CASCADE),
         ),
         migrations.AlterField(
             model_name='praca_habilitacyjna',

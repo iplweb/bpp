@@ -2,11 +2,14 @@
 
 from django.conf.urls import include, url
 from django.conf.urls.static import static
+from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.views import login
+from django.contrib.auth.views import LoginView
+from django.urls import path
 from django.views.decorators.cache import cache_page
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
+from django.views.i18n import JavaScriptCatalog
 
 from loginas.views import user_login
 from multiseek.views import remove_by_hand, remove_from_removed_by_hand
@@ -28,14 +31,6 @@ from django.contrib.sitemaps import views as sitemaps_views
 admin.autodiscover()
 
 
-js_info_dict = {
-    'packages': (
-        'django.conf',
-        'multiseek',
-        'monitio'
-    ),
-}
-
 import multiseek, loginas, django
 from bpp.views import favicon, root, javascript_catalog
 
@@ -47,26 +42,27 @@ urlpatterns = [
     url(r'^admin/bpp/wydawnictwo_zwarte/toz/(?P<pk>[\d]+)/$', login_required(WydawnictwoZwarteTozView.as_view()), name="admin_bpp_wydawnictwo_ciagle_toz"),
     url(r'^admin/bpp/patent/toz/(?P<pk>[\d]+)/$', login_required(PatentTozView.as_view()), name="admin_bpp_wydawnictwo_ciagle_toz"),
 
-    url(r'^admin/', include(admin.site.urls)),
+    #url(r'^admin/', include(admin.site.urls)),
+    path('admin/', admin.site.urls),
 
     url(r'^integrator2/',
-        include('integrator2.urls', namespace='integrator2')),
+        include(('integrator2.urls', 'integrator2'), namespace='integrator2')),
 
     url(r'^eksport_pbn/',
-        include('eksport_pbn.urls', namespace='eksport_pbn')),
+        include(('eksport_pbn.urls', 'eksport_pbn'), namespace='eksport_pbn')),
 
     url(
         r'^import_dyscyplin/',
         include(
-            'import_dyscyplin.urls',
+            ('import_dyscyplin.urls', 'import_dyscyplin'),
             namespace='import_dyscyplin'
         )
     ),
 
     url(r'^nowe_raporty/',
-        include('nowe_raporty.urls', namespace='nowe_raporty')),
+        include(('nowe_raporty.urls', 'nowe_raporty'), namespace='nowe_raporty')),
 
-    url(r'^bpp/', include('bpp.urls', namespace='bpp')),
+    url(r'^bpp/', include(('bpp.urls', 'bpp'), namespace='bpp')),
 
     url(r'^multiseek/results/$',
         csrf_exempt(MyMultiseekResults.as_view(
@@ -74,7 +70,7 @@ urlpatterns = [
             template_name="multiseek/results.html"
         )), name="multiseek:results"),
 
-    url(r'^multiseek/', include('multiseek.urls', namespace='multiseek')),
+    url(r'^multiseek/', include(('multiseek.urls', 'multiseek'), namespace='multiseek')),
 
     url(r'^multiseek/live-results/$',
         csrf_exempt(MyMultiseekResults.as_view(
@@ -97,8 +93,8 @@ urlpatterns = [
     url(r'^$', root, name="root"),
 
 
-    url(r'^accounts/login/$', login,
-        name="login_form", kwargs={'authentication_form':MyAuthenticationForm}),
+    url(r'^accounts/login/$', LoginView.as_view(
+        authentication_form=MyAuthenticationForm), name="login_form"),
 
     url(r'^password_change_done/$',
         PasswordChangeDoneView.as_view(),
@@ -120,12 +116,14 @@ urlpatterns = [
          PasswordResetCompleteView.as_view(),
          name="password_reset_complete"),
 
-    url(r'^logout/$', django.contrib.auth.views.logout, name="logout"),
+    url(r'^logout/$', logout, name="logout"),
 
-    url(r'^messages/', include('messages_extends.urls',
+    url(r'^messages/', include(('messages_extends.urls', 'messages_extends'),
                              namespace='messages_extends')),
 
-    url(r'^.*/jsi18n/$', javascript_catalog, js_info_dict),
+    url(r'^.*/jsi18n/$', JavaScriptCatalog.as_view(packages=[
+        'multiseek',
+    ])),
 
     url(r'session_security/', include('session_security.urls')),
 
@@ -141,7 +139,8 @@ urlpatterns = [
     #     cache_page(7*24*3600)(sitemaps_views.sitemap), {'sitemaps': django_bpp_sitemaps},
     #     name='sitemaps'),
 
-    url(r'^sitemap\.xml', include('static_sitemaps.urls')),
+    # url(r'^sitemap\.xml', include('static_sitemaps.urls')),
+    path('', include('static_sitemaps.urls')),
 
     url(r'', include('webmaster_verification.urls')),
 
@@ -156,7 +155,7 @@ urlpatterns = [
 from django.conf import settings
 from django.conf.urls import include, url
 
-if settings.DEBUG:
+if settings.DEBUG and settings.DEBUG_TOOLBAR:
     import debug_toolbar
     urlpatterns += [
         url(r'^__debug__/', include(debug_toolbar.urls)),

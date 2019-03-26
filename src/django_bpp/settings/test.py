@@ -6,6 +6,8 @@ from .base import *
 
 DEBUG = True
 
+DEBUG_TOOLBAR = False
+
 SENDFILE_BACKEND = 'sendfile.backends.simple'
 
 SELENIUM_DRIVER = "Firefox"

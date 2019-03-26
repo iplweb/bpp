@@ -155,11 +155,13 @@ class NazwiskoIImieQueryObject(ForeignKeyDescribeMixin,
     def real_query(self, value, operation):
 
         if operation in EQUALITY_OPS_ALL:
-            ret = Q(autorzy__autor__pk=value.pk)
+            ret = Q(autorzy__autor=value)
+
         elif operation in UNION_OPS_ALL:
             q = Autorzy.objects.filter(
                 autor=value
             ).values('rekord_id')
+
             ret = Q(pk__in=q)
         else:
             raise UnknownOperation(operation)
@@ -178,14 +180,14 @@ class NazwiskoIImieWZakresieKolejnosci(NazwiskoIImieQueryObject):
     def real_query(self, value, operation):
         if operation in EQUALITY_OPS_ALL:
             ret = Q(
-                autorzy__autor__pk=value.pk,
+                autorzy__autor=value,
                 autorzy__kolejnosc__gte=self.kolejnosc_gte,
                 autorzy__kolejnosc__lt=self.kolejnosc_lt
             )
 
         elif operation in UNION_OPS_ALL:
             q = Autorzy.objects.filter(
-                autor__pk=value.pk,
+                autor=value,
                 kolejnosc__gte=self.kolejnosc_gte,
                 kolejnosc__lt=self.kolejnosc_lt
             ).values("rekord_id")
@@ -240,12 +242,13 @@ class TypOgolnyAutorQueryObject(NazwiskoIImieQueryObject):
 
         if operation in EQUALITY_OPS_ALL:
             ret = Q(
-                autorzy__autor__pk=value.pk,
+                autorzy__autor=value,
                 autorzy__typ_odpowiedzialnosci__typ_ogolny=self.typ_ogolny
             )
+
         elif operation in UNION_OPS_ALL:
             q = Autorzy.objects.filter(
-                autor__pk=value.pk,
+                autor=value,
                 typ_odpowiedzialnosci__typ_ogolny=self.typ_ogolny
             ).values("rekord_id")
             ret = Q(pk__in=q)
@@ -338,13 +341,14 @@ class JednostkaQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
 
     def real_query(self, value, operation):
         if operation in EQUALITY_OPS_ALL:
-            ret = Q(autorzy__jednostka__pk=value.pk)
+            ret = Q(autorzy__jednostka=value)
 
         elif operation in UNION_OPS_ALL:
             q = Autorzy.objects.filter(
-                jednostka__pk=value.pk
+                jednostka=value
             ).values("rekord_id")
             ret = Q(pk__in=q)
+
         else:
             raise UnknownOperation(operation)
 
@@ -364,11 +368,11 @@ class WydzialQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
 
     def real_query(self, value, operation):
         if operation in EQUALITY_OPS_ALL:
-            ret = Q(autorzy__jednostka__wydzial__pk=value.pk)
+            ret = Q(autorzy__jednostka__wydzial=value)
 
         elif operation in UNION_OPS_ALL:
             q = Autorzy.objects.filter(
-                jednostka__wydzial__pk=value.pk
+                jednostka__wydzial=value
             ).values("rekord_id")
             ret = Q(pk__in=q)
 
@@ -377,6 +381,7 @@ class WydzialQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
 
         if operation in DIFFERENT_ALL:
             return ~ret
+
         return ret
 
 
@@ -394,16 +399,19 @@ class Typ_OdpowiedzialnosciQueryObject(QueryObject):
     def real_query(self, value, operation):
         if operation in EQUALITY_OPS_ALL:
             ret = Q(autorzy__typ_odpowiedzialnosci=value)
+
         elif operation in UNION_OPS_ALL:
             q = Autorzy.objects.filter(
                 typ_odpowiedzialnosci=value
             ).values("rekord_id")
             ret = Q(pk__in=q)
+
         else:
             raise UnknownOperation(operation)
 
         if operation in DIFFERENT_ALL:
             return ~ret
+
         return ret
 
 

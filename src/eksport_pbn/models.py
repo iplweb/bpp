@@ -2,17 +2,19 @@
 from django.conf import settings
 from django.db import models
 # Create your models here.
+from django.db.models import CASCADE
+
 from bpp.models.struktura import Wydzial
 
 DATE_CREATED_ON, DATE_UPDATED_ON, DATE_UPDATED_ON_PBN = (1, 2, 3)
 
 
 class PlikEksportuPBN(models.Model):
-    owner = models.ForeignKey(settings.AUTH_USER_MODEL)
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, CASCADE)
     created_on = models.DateTimeField(auto_now_add=True)
     file = models.FileField(verbose_name="Plik", upload_to="eksport_pbn")
 
-    wydzial = models.ForeignKey(Wydzial)
+    wydzial = models.ForeignKey(Wydzial, CASCADE)
     od_roku = models.IntegerField()
     do_roku = models.IntegerField()
 

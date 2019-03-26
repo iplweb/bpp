@@ -17,7 +17,7 @@ from bpp.multiseek_registry import TytulPracyQueryObject, \
     TypOgolnyAutorQueryObject, TypOgolnyRedaktorQueryObject, TypOgolnyTlumaczQueryObject, TypOgolnyRecenzentQueryObject, \
     NazwiskoIImieQueryObject, DataUtworzeniaQueryObject, OstatnieNazwiskoIImie, OstatnioZmieniony, \
     OstatnioZmienionyDlaPBN, RodzajKonferenckjiQueryObject, LiczbaAutorowQueryObject, UNION, JednostkaQueryObject, \
-    WydzialQueryObject, ZewnetrznaBazaDanychQueryObject
+    WydzialQueryObject, ZewnetrznaBazaDanychQueryObject, Typ_OdpowiedzialnosciQueryObject
 
 
 @pytest.mark.django_db
@@ -81,6 +81,15 @@ def test_NazwiskoIImieQueryObject(autor_jan_nowak):
     ret = n.real_query(autor_jan_nowak, UNION)
     assert ret is not None
 
+    ret = n.real_query(None, logic.EQUAL)
+    assert ret is not None
+
+    ret = n.real_query(None, logic.DIFFERENT)
+    assert ret is not None
+
+    ret = n.real_query(None, UNION)
+    assert ret is not None
+
 
 def test_JednostkaQueryObject(jednostka):
     n = JednostkaQueryObject()
@@ -92,6 +101,15 @@ def test_JednostkaQueryObject(jednostka):
     assert ret is not None
 
     ret = n.real_query(jednostka, UNION)
+    assert ret is not None
+
+    ret = n.real_query(None, logic.EQUAL)
+    assert ret is not None
+
+    ret = n.real_query(None, logic.DIFFERENT)
+    assert ret is not None
+
+    ret = n.real_query(None, UNION)
     assert ret is not None
 
 
@@ -107,22 +125,53 @@ def test_WydzialQueryObject(wydzial):
     ret = n.real_query(wydzial, UNION)
     assert ret is not None
 
+    ret = n.real_query(None, logic.EQUAL)
+    assert ret is not None
+
+    ret = n.real_query(None, logic.DIFFERENT)
+    assert ret is not None
+
+    ret = n.real_query(None, UNION)
+    assert ret is not None
+
 
 @pytest.mark.django_db
-def test_PierwszeNazwiskoIImie_real_query(wydawnictwo_zwarte, autor_jan_kowalski, jednostka):
+@pytest.mark.parametrize("logic_arg", [logic.EQUAL, UNION])
+def test_PierwszeNazwiskoIImie_real_query(wydawnictwo_zwarte, autor_jan_kowalski, jednostka, logic_arg):
     wydawnictwo_zwarte.dodaj_autora(autor_jan_kowalski, jednostka)
 
     r = Rekord.objects.filter(
-        PierwszeNazwiskoIImie().real_query(autor_jan_kowalski, logic.EQUAL)
+        PierwszeNazwiskoIImie().real_query(autor_jan_kowalski, logic_arg)
     )
 
     assert len(r) == 1
 
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("logic_arg", [logic.EQUAL, UNION])
+def test_PierwszeNazwiskoIImie_real_query(logic_arg):
     r = Rekord.objects.filter(
-        PierwszeNazwiskoIImie().real_query(autor_jan_kowalski, UNION)
+        PierwszeNazwiskoIImie().real_query(None, logic_arg)
     )
 
-    assert len(r) == 1
+    assert len(r) == 0
+
+
+@pytest.mark.django_db
+def test_Typ_OdpowiedzialnosciQueryObject():
+    t = mommy.make(Typ_Odpowiedzialnosci, typ_ogolny=const.TO_AUTOR)
+
+    res = Typ_OdpowiedzialnosciQueryObject().real_query(t, logic.DIFFERENT)
+    assert Rekord.objects.filter(res).count() == 0
+
+    res = Typ_OdpowiedzialnosciQueryObject().real_query(t, logic.DIFFERENT)
+    assert Rekord.objects.filter(res).count() == 0
+
+    res = Typ_OdpowiedzialnosciQueryObject().real_query(None, logic.DIFFERENT)
+    assert Rekord.objects.filter(res).count() == 0
+
+    res = Typ_OdpowiedzialnosciQueryObject().real_query(None, UNION)
+    assert Rekord.objects.filter(res).count() == 0
 
 
 @pytest.mark.django_db
@@ -133,6 +182,12 @@ def test_TypOgolnyAutorQueryObject(autor_jan_nowak):
     assert Rekord.objects.filter(res).count() == 0
 
     res = TypOgolnyAutorQueryObject().real_query(autor_jan_nowak, UNION)
+    assert Rekord.objects.filter(res).count() == 0
+
+    res = TypOgolnyAutorQueryObject().real_query(None, logic.DIFFERENT)
+    assert Rekord.objects.filter(res).count() == 0
+
+    res = TypOgolnyAutorQueryObject().real_query(None, UNION)
     assert Rekord.objects.filter(res).count() == 0
 
 

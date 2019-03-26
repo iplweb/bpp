@@ -1,7 +1,10 @@
 # -*- encoding: utf-8 -*-
 
 import copy
-from django.core.urlresolvers import reverse
+try:
+    from django.core.urlresolvers import reverse
+except ImportError:
+    from django.urls import reverse
 from django.db import transaction
 from django.http.response import Http404
 from django.views.generic import RedirectView

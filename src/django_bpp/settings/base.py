@@ -5,7 +5,7 @@ import sys
 from datetime import timedelta
 
 import django
-from django.core.exceptions import ImproperlyConfigured
+from django.core.exceptions import ImproperlyConfigured, DisallowedHost
 
 
 def django_getenv(varname, default=None):
@@ -29,7 +29,7 @@ LANGUAGES = (
     ('pl', 'Polish'),
 )
 
-SITE_ID = 1
+SITE_ID = 1  # dla static-sitemaps
 USE_I18N = True
 USE_L10N = True
 USE_TZ = True
@@ -92,30 +92,27 @@ TEMPLATES = [
 ]
 
 
-MIDDLEWARE_CLASSES = [
+MIDDLEWARE  = [
     'htmlmin.middleware.HtmlMinifyMiddleware',
     'htmlmin.middleware.MarkRequestMiddleware',
 
     'django.middleware.locale.LocaleMiddleware',
 
-    'django.middleware.common.CommonMiddleware',
+    'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+
     'password_policies.middleware.PasswordChangeMiddleware',
 
     'dj_pagination.middleware.PaginationMiddleware',
 
     'session_security.middleware.SessionSecurityMiddleware',
     'notifications.middleware.NotificationsMiddleware',
-    'dogslow.WatchdogMiddleware',
-
 ]
-
-DOGSLOW_LOGGER = 'dogslow'  # can be anything, but must match `logger` below
-DOGSLOW_LOG_TO_SENTRY = True
-DOGSLOW_LOG_LEVEL = 'WARNING'  # optional, defaults to 'WARNING'
 
 INTERNAL_IPS = ('127.0.0.1',)
 
@@ -253,10 +250,6 @@ LOGGING = {
             'level': 'ERROR',
             'class': 'raven.contrib.django.raven_compat.handlers.SentryHandler',
         },
-        'dogslow': {
-            'level': 'WARNING',
-            'class': 'raven.contrib.django.handlers.SentryHandler',
-        },
         'console': {
             'level': 'DEBUG',
             'class': 'logging.StreamHandler',
@@ -273,10 +266,6 @@ LOGGING = {
             'level': 'DEBUG',
             'handlers': ['console'],
             'propagate': False,
-        },
-        'dogslow': {
-            'level': 'WARNING',
-            'handlers': ['dogslow'],  # or whatever you named your handler
         },
         'sentry.errors': {
             'level': 'DEBUG',
@@ -348,7 +337,10 @@ from django_bpp.version import VERSION
 if os.getenv("DJANGO_BPP_RAVEN_CONFIG_URL", None):
     RAVEN_CONFIG = {
         'dsn': django_getenv("DJANGO_BPP_RAVEN_CONFIG_URL"),
-        'release': VERSION
+        'release': VERSION,
+        'IGNORE_EXCEPTIONS': [
+            DisallowedHost,
+        ],
     }
 
     INSTALLED_APPS.append('raven.contrib.django.raven_compat')
@@ -556,3 +548,5 @@ SILENCED_SYSTEM_CHECKS = ["urls.W003"]
 # publikacji
 
 INLINE_DLA_AUTOROW = os.getenv("DJANGO_BPP_INLINE_DLA_AUTOROW", "stacked")
+
+DEBUG_TOOLBAR = False

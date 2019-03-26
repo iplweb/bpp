@@ -11,10 +11,12 @@ RUN apt-get -qq update \
      nginx-full=1.14.1-0+xenial0+pushstream1
 
 COPY default /etc/nginx/sites-available
+
 COPY nginx.conf /etc/nginx/
+
+COPY nginx-entrypoint.sh /
+RUN chmod +x /nginx-entrypoint.sh
 
 EXPOSE 80
 
-RUN nginx -t
-
-ENTRYPOINT nginx && tail -f /var/log/nginx/*
+ENTRYPOINT bash -c /nginx-entrypoint.sh && tail -f /var/log/nginx/*

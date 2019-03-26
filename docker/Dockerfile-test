@@ -1,4 +1,0 @@
-FROM python:3.6
-RUN pip install --upgrade pipenv tox
-RUN apt-get update -qq && apt-get install postgresql-client zip -qq -y
-CMD sleep infinity
