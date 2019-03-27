@@ -7,11 +7,6 @@ dev
 
 *
 
-1.0.28-beta
--------------
-
-*
-
 1.0.28-alpha
 ------------
 
@@ -19,13 +14,9 @@ dev
 
 * procent odpowiedzialności za powstanie pracy wyświetla się na podstronie pracy
 
+
 1.0.28-dev
----
-
-*
-
-1.0.28-beta
---------------------
+----------
 
 * poprawki importu dyscyplin: lepsze dopasowywanie autora z jednostką z pliku wejściowego
   do danych w systemie
