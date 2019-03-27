@@ -5,7 +5,14 @@ Historia zmian
 dev
 ---
 
-*
+* poprawki importu dyscyplin: lepsze dopasowywanie autora z jednostką z pliku wejściowego
+  do danych w systemie
+
+* poprawiony błąd importu dyscyplin utrudniający poprawne wprowadzenie pliku do bazy
+
+* możliwość wyszukiwania przez ORCID w multiwyszukiwarce oraz w globalnym wyszukiwaniu
+
+* numer ORCID staje się unikalny dla autora
 
 1.0.27
 ------
