@@ -906,3 +906,16 @@ class ModelZLiczbaCytowan(models.Model):
 
     class Meta:
         abstract = True
+
+
+class MaProcentyMixin:
+    def ma_procenty(self):
+        for autor in self.autorzy_set.all():
+            if autor.procent:
+                return True
+        return False
+
+
+class NieMaProcentowMixin:
+    def ma_procenty(self):
+        return False

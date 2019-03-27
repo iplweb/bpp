@@ -32,7 +32,9 @@
                 <li>
                     <a href="{% url "import_dyscyplin:detail" object.pk %}">
                         plik <strong>{{ object.plik.name }}</strong>
+                        {% if object.plik.exists %}
                         {{ object.plik.size|filesizeformat }}
+                        {% endif %}
                         zmodyfikowany {{ object.modified }}
                     </a> - stan analizy:
                     <strong>{{ object.stan }}</strong>

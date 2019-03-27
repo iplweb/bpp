@@ -3,13 +3,14 @@
 from django.db import models
 from django.db.models import CASCADE, CASCADE, SET_NULL
 
+from bpp.models import NieMaProcentowMixin
 from .autor import Autor
 from .struktura import Jednostka
 from .system import Typ_Odpowiedzialnosci
 from .wydawnictwo_zwarte import Wydawnictwo_Zwarte_Baza
 
 
-class Praca_Doktorska_Baza(Wydawnictwo_Zwarte_Baza):
+class Praca_Doktorska_Baza(NieMaProcentowMixin, Wydawnictwo_Zwarte_Baza):
 
     autor = models.OneToOneField(Autor, CASCADE)
     jednostka = models.ForeignKey(Jednostka, CASCADE)

@@ -253,6 +253,20 @@
             </td>
         </tr>
     {% endif %}
+    {% if praca.ma_procenty %}
+        <tr>
+            <th>Odpowiedzialność za powstanie pracy</th>
+            <td>
+                {% for autor in praca.autorzy_set.all %}
+                    {% if autor.procent %}
+                        {{ autor.procent }}% {{ autor.zapisany_jako }}<br/>
+                    {% endif %}
+                {% endfor %}
+
+            </td>
+        </tr>
+    {% endif %}
+
     <tr>
         <th>
             Rekord utworzony:
@@ -283,10 +297,12 @@
     {% if praca.zewnetrzna_baza_danych.exists %}
         <tr>
             <th>Zewnętrzna<br/>baza danych:</th>
-        <td><ul>{% for db in praca.zewnetrzna_baza_danych.all %}
-            <li>{{ db.baza.nazwa }}</li>
-            {% endfor %}
-        </ul></td>
+            <td>
+                <ul>{% for db in praca.zewnetrzna_baza_danych.all %}
+                    <li>{{ db.baza.nazwa }}</li>
+                {% endfor %}
+                </ul>
+            </td>
         </tr>
     {% endif %}
 
