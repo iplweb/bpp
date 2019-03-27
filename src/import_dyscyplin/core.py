@@ -1,12 +1,14 @@
+from _decimal import InvalidOperation, Decimal
 from hashlib import md5
 
 import xlrd
 from django.db.models import Q
 from xlrd import XLRDError
 
-from bpp.models import Wydzial, Jednostka, Autor
+from bpp.models import Wydzial, Jednostka, Autor, Autor_Jednostka
 from import_dyscyplin.exceptions import BadNoOfSheetsException, HeaderNotFoundException, ImproperFileException
 from import_dyscyplin.models import Import_Dyscyplin_Row
+
 
 # naglowek = [
 #     "lp", "tytuł/stopień", "nazwisko", "imię", "pesel",
@@ -32,18 +34,26 @@ def matchuj_jednostke(nazwa):
         pass
 
 
-def matchuj_autora(imiona, nazwisko, jednostka, pesel_md5=None):
+def matchuj_autora(imiona, nazwisko, jednostka, pesel_md5=None, orcid=None):
     if pesel_md5:
         try:
             return (Autor.objects.get(pesel_md5__iexact=pesel_md5.strip()), "")
         except Autor.DoesNotExist:
             pass
 
+    if orcid:
+        try:
+            return (Autor.objects.get(orcid__iexact=orcid.strip()), "")
+        except Autor.DoesNotExist:
+            pass
+
     try:
 
         qry = Q(
-            Q(nazwisko__iexact=nazwisko.strip()) | Q(poprzednie_nazwiska__icontains=nazwisko.strip()),
-            imiona__iexact=imiona.strip())
+            Q(nazwisko__iexact=nazwisko.strip()) |
+            Q(poprzednie_nazwiska__icontains=nazwisko.strip()),
+            imiona__iexact=imiona.strip()
+        )
 
         return (Autor.objects.get(qry), "")
 
@@ -51,12 +61,24 @@ def matchuj_autora(imiona, nazwisko, jednostka, pesel_md5=None):
 
         try:
             return (Autor.objects.get(qry & Q(aktualna_jednostka=jednostka)), "")
-        except Autor.MultipleObjectsReturned:
-            return (
-                None, "wielu autorów pasuje do tego rekordu (dopasowanie po imieniu, nazwisku i aktualnej jednostce)")
+        except (Autor.MultipleObjectsReturned, Autor.DoesNotExist):
+            try:
+                return (jednostka.autor_jednostka_set.get(
+                    Q(
+                        Q(autor__nazwisko__iexact=nazwisko.strip()) |
+                        Q(autor__poprzednie_nazwiska__icontains=nazwisko.strip()),
+                        autor__imiona__iexact=imiona.strip()
+                    )
+                ).autor, "")
+            except Autor_Jednostka.MultipleObjectsReturned:
+                return (
+                    None,
+                    "wielu autorów pasuje do tego rekordu (dopasowanie po imieniu, nazwisku i aktualnej jednostce)")
+            except Autor_Jednostka.DoesNotExist:
+                return (
+                    None,
+                    "taki autor nie istnieje (dopasowanie po imieniu, nazwisku i jednostce)")
 
-        except Autor.DoesNotExist:
-            return (None, "taki autor nie istnieje (dopasowanie po imieniu, nazwisku i aktualnej jednostce)")
 
     except Autor.DoesNotExist:
         return (None, "taki autor nie istnieje (dopasowanie po imieniu i nazwisku)")
@@ -143,11 +165,13 @@ def przeanalizuj_plik_xls(sciezka, parent):
         if not original['nazwisko'].strip():
             continue
 
-        original['pesel_md5'] = pesel_md5(original['pesel'])
+        try:
+            original['pesel_md5'] = pesel_md5(original['pesel'])
+            del original['pesel']
+        except KeyError:
+            original['pesel_md5'] = None
 
         original['nazwa_jednostki'] = original['nazwa jednostki']  # templatka wymaga
-
-        del original['pesel']
 
         wydzial = wydzial_cache.get(original['wydział'])
         if not wydzial:
@@ -161,24 +185,54 @@ def przeanalizuj_plik_xls(sciezka, parent):
             original['imię'],
             original['nazwisko'],
             jednostka,
-            original['pesel_md5'])
+            original.get('pesel_md5', None),
+            original.get('orcid', None)
+        )
 
-        Import_Dyscyplin_Row.objects.create(
+        bledny = False
+
+        for elem in ['procent dyscypliny', 'procent subdyscypliny']:
+            v = original.get(elem)
+
+            if v is None:
+                continue
+
+            if str(v) == '':
+                original[elem] = None
+                continue
+
+            try:
+                original[elem] = Decimal(original.get(elem))
+            except (TypeError, InvalidOperation):
+                original[elem] = None
+                bledny = True
+
+        # import pdb; pdb.set_trace()
+        i = Import_Dyscyplin_Row.objects.create(
             row_no=n,
             parent=parent,
             original=original,
             nazwisko=original['nazwisko'],
             imiona=original['imię'],
-            nazwa_jednostki=original['nazwa_jednostki'],
+            nazwa_jednostki=original.get('nazwa_jednostki'),
             jednostka=jednostka,
-            nazwa_wydzialu=original['wydział'],
+            nazwa_wydzialu=original.get('wydział'),
             wydzial=wydzial,
             autor=autor,
             info=info,
-            dyscyplina=original['dyscyplina'],
-            kod_dyscypliny=original['kod dyscypliny'],
-            subdyscyplina=original['subdyscyplina'],
-            kod_subdyscypliny=original['kod subdyscypliny']
+
+            dyscyplina=original.get('dyscyplina'),
+            kod_dyscypliny=original.get('kod dyscypliny'),
+            procent_dyscypliny=original.get('procent dyscypliny'),
+
+            subdyscyplina=original.get('subdyscyplina'),
+            kod_subdyscypliny=original.get('kod subdyscypliny'),
+            procent_subdyscypliny=original.get('procent subdyscypliny')
         )
+
+        if bledny:
+            i.stan = Import_Dyscyplin_Row.STAN.BLEDNY
+            i.info = "niepoprawna wartość w polu procent dyscypliny lub subdyscyliny"
+            i.save()
 
     return (True, "przeanalizowano %i rekordow" % (n - parent.wiersz_naglowka))
