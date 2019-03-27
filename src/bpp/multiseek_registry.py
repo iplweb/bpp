@@ -172,6 +172,14 @@ class NazwiskoIImieQueryObject(ForeignKeyDescribeMixin,
         return ret
 
 
+class ORCIDQueryObject(StringQueryObject):
+    label = 'ORCID'
+    ops = [EQUAL_NONE, DIFFERENT_NONE]
+    field_name = 'autorzy__autor__orcid'
+
+
+
+
 class NazwiskoIImieWZakresieKolejnosci(NazwiskoIImieQueryObject):
     ops = [EQUAL, UNION_NONE]
     kolejnosc_gte = None
@@ -674,6 +682,7 @@ multiseek_fields = [
     NazwiskoIImie1do3(),
     NazwiskoIImie1do5(),
     OstatnieNazwiskoIImie(),
+    ORCIDQueryObject(),
 
     ImpactQueryObject(),
     LiczbaCytowanQueryObject(),

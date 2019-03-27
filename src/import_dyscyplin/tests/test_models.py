@@ -76,7 +76,6 @@ def test_Import_Dyscyplin_integruj_dyscypliny_pusta_baza(import_dyscyplin, id_ro
 
     assert Dyscyplina_Naukowa.objects.all().count() == 2
     dn = Dyscyplina_Naukowa.objects.get(nazwa="Testowa")
-    assert dn.subdyscypliny.all().count() == 1
 
     for elem in Dyscyplina_Naukowa.objects.all():
         assert elem.widoczna
@@ -106,20 +105,6 @@ def test_Import_Dyscyplin_integruj_dyscypliny_ta_sama_nazwa_inny_kod_sub(import_
 
     assert Dyscyplina_Naukowa.objects.all().count() == 2
 
-    id_row_1.refresh_from_db()
-    assert id_row_1.stan == Import_Dyscyplin_Row.STAN.BLEDNY
-
-
-def test_Import_Dyscyplin_integruj_dyscypliny_ta_sama_nazwa_inny_poziom_drzewa(import_dyscyplin, id_row_1):
-    Dyscyplina_Naukowa.objects.create(
-        nazwa="Jakaś",
-        kod="3.2.1",
-        dyscyplina_nadrzedna=None
-    )
-
-    import_dyscyplin.integruj_dyscypliny()
-
-    assert Dyscyplina_Naukowa.objects.all().count() == 2
     id_row_1.refresh_from_db()
     assert id_row_1.stan == Import_Dyscyplin_Row.STAN.BLEDNY
 

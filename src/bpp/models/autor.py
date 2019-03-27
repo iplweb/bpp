@@ -78,7 +78,7 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
     orcid = models.CharField(
         "Identyfikator ORCID",
         max_length=19,
-        blank=True, null=True,
+        blank=True, null=True, unique=True,
         help_text="Open Researcher and Contributor ID, "
                   "vide http://www.orcid.org",
         validators=[

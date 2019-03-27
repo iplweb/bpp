@@ -230,6 +230,17 @@ class GlobalNavigationAutocomplete(Select2QuerySetSequenceView):
                 .order_by('-wydawnictwo_ciagle__count')
         )
 
+        if len(self.q) == len("0000-0003-1240-323X"):
+            querysets.append(
+                Autor.objects
+                    .filter(orcid__icontains=self.q)
+                    .annotate(Count('wydawnictwo_ciagle'))
+                    .only("pk", "nazwisko", "imiona", "poprzednie_nazwiska",
+                          "tytul__skrot")
+                    .select_related("tytul")
+                    .order_by('-wydawnictwo_ciagle__count')
+            )
+
         querysets.append(
             Zrodlo.objects.fulltext_filter(self.q).only(
                 "pk", "nazwa", "poprzednia_nazwa")
@@ -294,6 +305,17 @@ class AdminNavigationAutocomplete(StaffRequired, Select2QuerySetSequenceView):
                 .select_related("tytul")
                 .order_by('-wydawnictwo_ciagle__count')
         )
+
+        if len(self.q) == len("0000-0003-1240-323X"):
+            querysets.append(
+                Autor.objects
+                    .filter(orcid__icontains=self.q)
+                    .annotate(Count('wydawnictwo_ciagle'))
+                    .only("pk", "nazwisko", "imiona", "poprzednie_nazwiska",
+                          "tytul__skrot")
+                    .select_related("tytul")
+                    .order_by('-wydawnictwo_ciagle__count')
+            )
 
         querysets.append(
             Zrodlo.objects.fulltext_filter(self.q).only(

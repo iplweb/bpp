@@ -1,6 +1,7 @@
 from datetime import date
 
 from django.contrib.postgres.fields import JSONField
+from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models, transaction, IntegrityError
 from django.db.models import Q, Count, CASCADE
 from django.urls import reverse
@@ -22,6 +23,8 @@ class Kolumna(models.Model):
 
     class RODZAJ:
         POMIJAJ = 'pomiń'
+
+        TYTUL = "tytuł"
 
         NAZWISKO = 'nazwisko'
         IMIE = 'imię'
@@ -54,6 +57,9 @@ class Kolumna(models.Model):
 
 def guess_rodzaj(s):
     s = s.lower().replace(" ", "")
+    if s in ['tytuł', 'tytułnaukowy', 'tytuł/stopień', 'tytułstopień', 'stopieńnaukowy', 'stopień', 'stopien', 'tytul', 'tytulnaukowy']:
+        return Kolumna.RODZAJ.TYTUL
+
     if s in ['nazwisko', 'nazwiska']:
         return Kolumna.RODZAJ.NAZWISKO
     if s in ['imię', 'imie', 'imiona']:
@@ -69,16 +75,16 @@ def guess_rodzaj(s):
 
     if s in ['dyscyplina', 'dyscyplina1', 'dyscyplinagłówna', 'dyscyplinaglowna']:
         return Kolumna.RODZAJ.DYSCYPLINA
-    if s in ['koddyscypliny', 'koddyscyplinyglownej', 'koddyscyplinygłównej', 'kod1']:
+    if s in ['koddyscypliny', 'koddyscyplinyglownej', 'koddyscyplinygłównej', 'kod1', 'koddyscypliny1']:
         return Kolumna.RODZAJ.KOD_DYSCYPLINY
-    if s in ['procentdyscypliny', 'procentdyscypliny1', 'procentdyscyplinygłównej', 'procentdyscyplinyglownej']:
+    if s in ['procentdyscypliny', 'procentdyscypliny1', 'procentdyscyplinygłównej', 'procentdyscyplinyglownej', 'udziałprocentowy1']:
         return Kolumna.RODZAJ.PROCENT_DYSCYPLINY
 
     if s in ['subdyscyplina', 'dyscyplina2', 'dyscyplinapoboczna', 'dyscyplinapoboczna']:
         return Kolumna.RODZAJ.SUBDYSCYPLINA
-    if s in ['kodsubdyscypliny', 'koddyscyplinypoboczej', 'koddyscyplinydrugiej', 'kod2']:
+    if s in ['kodsubdyscypliny', 'koddyscyplinypoboczej', 'koddyscyplinydrugiej', 'kod2', 'koddyscypliny2']:
         return Kolumna.RODZAJ.KOD_SUBDYSCYPLINY
-    if s in ['procentsubdyscypliny', 'procentdyscypliny2', 'procentdyscyplinypobocznej']:
+    if s in ['procentsubdyscypliny', 'procentdyscypliny2', 'procentdyscyplinypobocznej', 'udziałprocentowy2']:
         return Kolumna.RODZAJ.PROCENT_SUBDYSCYPLINY
 
     return Kolumna.RODZAJ.POMIJAJ
@@ -223,9 +229,7 @@ class Import_Dyscyplin(TimeStampedModel):
             try:
                 d, _c = Dyscyplina_Naukowa.objects.get_or_create(
                     nazwa=elem['dyscyplina'],
-                    kod=elem['kod_dyscypliny'],
-                    dyscyplina_nadrzedna=None
-                )
+                    kod=elem['kod_dyscypliny'])
             except IntegrityError:
                 for r in self.wiersze().filter(
                         dyscyplina=elem['dyscyplina'],
@@ -250,9 +254,7 @@ class Import_Dyscyplin(TimeStampedModel):
             try:
                 sd, _c = Dyscyplina_Naukowa.objects.get_or_create(
                     nazwa=elem['subdyscyplina'],
-                    kod=elem['kod_subdyscypliny'],
-                    dyscyplina_nadrzedna=d
-                )
+                    kod=elem['kod_subdyscypliny'])
             except IntegrityError:
                 for r in self.wiersze().filter(
                         subdyscyplina=elem['subdyscyplina'],
@@ -283,7 +285,10 @@ class Import_Dyscyplin(TimeStampedModel):
                 Autor_Dyscyplina.objects.get(
                     autor=elem.autor,
                     rok=self.rok,
-                    dyscyplina=elem.subdyscyplina_naukowa or elem.dyscyplina_naukowa
+                    dyscyplina_naukowa=elem.subdyscyplina_naukowa,
+                    procent_dyscypliny=elem.procent_dyscypliny,
+                    subdyscyplina_naukowa=elem.subdyscyplina_naukowa,
+                    procent_subdyscypliny=elem.procent_subdyscypliny,
                 )
                 elem.stan = Import_Dyscyplin_Row.STAN.BLEDNY
                 elem.info = "Już istnieje takie przypisanie"
@@ -325,8 +330,8 @@ class Import_Dyscyplin(TimeStampedModel):
                 )
 
                 changed = False
-                for attr in ['dyscyplina_naukowa', 'procent_dyscypliny', 'subdyscyplina_naukowa',
-                             'procent_subdyscypliny']:
+                for attr in ['dyscyplina_naukowa', 'procent_dyscypliny',
+                             'subdyscyplina_naukowa', 'procent_subdyscypliny']:
                     source = getattr(elem, attr)
                     target = getattr(elem, attr)
 
@@ -393,7 +398,7 @@ class Import_Dyscyplin_Row(models.Model):
     info = models.TextField(blank=True, null=True)
 
     row_no = models.IntegerField()
-    original = JSONField()
+    original = JSONField(encoder=DjangoJSONEncoder)
 
     nazwisko = models.CharField(max_length=200)
     imiona = models.CharField(max_length=200)
