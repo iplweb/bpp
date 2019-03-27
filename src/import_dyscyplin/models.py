@@ -24,6 +24,8 @@ class Kolumna(models.Model):
     class RODZAJ:
         POMIJAJ = 'pomiń'
 
+        TYTUL = "tytuł"
+
         NAZWISKO = 'nazwisko'
         IMIE = 'imię'
         PESEL = 'pesel'
@@ -55,6 +57,9 @@ class Kolumna(models.Model):
 
 def guess_rodzaj(s):
     s = s.lower().replace(" ", "")
+    if s in ['tytuł', 'tytułnaukowy', 'tytuł/stopień', 'tytułstopień', 'stopieńnaukowy', 'stopień', 'stopien', 'tytul', 'tytulnaukowy']:
+        return Kolumna.RODZAJ.TYTUL
+
     if s in ['nazwisko', 'nazwiska']:
         return Kolumna.RODZAJ.NAZWISKO
     if s in ['imię', 'imie', 'imiona']:

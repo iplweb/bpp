@@ -34,7 +34,7 @@ def matchuj_jednostke(nazwa):
         pass
 
 
-def matchuj_autora(imiona, nazwisko, jednostka, pesel_md5=None, orcid=None):
+def matchuj_autora(imiona, nazwisko, jednostka=None, pesel_md5=None, orcid=None, tytul_str=None):
     if pesel_md5:
         try:
             return (Autor.objects.get(pesel_md5__iexact=pesel_md5.strip()), "")
@@ -47,41 +47,51 @@ def matchuj_autora(imiona, nazwisko, jednostka, pesel_md5=None, orcid=None):
         except Autor.DoesNotExist:
             pass
 
-    try:
+    queries = [Q(
+        Q(nazwisko__iexact=nazwisko.strip()) | Q(poprzednie_nazwiska__icontains=nazwisko.strip()),
+        imiona__iexact=imiona.strip()
+    )]
+    if tytul_str:
+        queries.append(queries[0] & Q(tytul__skrot=tytul_str))
 
-        qry = Q(
-            Q(nazwisko__iexact=nazwisko.strip()) |
-            Q(poprzednie_nazwiska__icontains=nazwisko.strip()),
-            imiona__iexact=imiona.strip()
-        )
+    for qry in queries:
+        try:
+            return (Autor.objects.get(qry), "")
+        except (Autor.DoesNotExist, Autor.MultipleObjectsReturned):
+            pass
 
-        return (Autor.objects.get(qry), "")
-
-    except Autor.MultipleObjectsReturned:
+        # wdrozyc matchowanie po tytule
+        # wdrozyc matchowanie po jednostce
+        # testy mają przejść
+        # commit do głównego brancha
+        # mbockowska odpisać na zgłoszenie w mantis
 
         try:
             return (Autor.objects.get(qry & Q(aktualna_jednostka=jednostka)), "")
         except (Autor.MultipleObjectsReturned, Autor.DoesNotExist):
+            pass
+
+    # Jesteśmy tutaj. Najwyraźniej poszukiwanie po aktualnej jednostce, imieniu, nazwisku,
+    # tytule itp nie bardzo się powiodło. Spróbujmy innej strategii -- jednostka jest
+    # określona, poszukajmy w jej autorach. Wszak nie musi być ta jednostka jednostką
+    # aktualną...
+
+    if jednostka:
+
+        queries = [Q(
+            Q(autor__nazwisko__iexact=nazwisko.strip()) | Q(autor__poprzednie_nazwiska__icontains=nazwisko.strip()),
+            autor__imiona__iexact=imiona.strip()
+        )]
+        if tytul_str:
+            queries.append(queries[0] & Q(tytul__skrot=tytul_str))
+
+        for qry in queries:
             try:
-                return (jednostka.autor_jednostka_set.get(
-                    Q(
-                        Q(autor__nazwisko__iexact=nazwisko.strip()) |
-                        Q(autor__poprzednie_nazwiska__icontains=nazwisko.strip()),
-                        autor__imiona__iexact=imiona.strip()
-                    )
-                ).autor, "")
-            except Autor_Jednostka.MultipleObjectsReturned:
-                return (
-                    None,
-                    "wielu autorów pasuje do tego rekordu (dopasowanie po imieniu, nazwisku i aktualnej jednostce)")
-            except Autor_Jednostka.DoesNotExist:
-                return (
-                    None,
-                    "taki autor nie istnieje (dopasowanie po imieniu, nazwisku i jednostce)")
+                return (jednostka.autor_jednostka_set.get(qry).autor, "")
+            except (Autor_Jednostka.MultipleObjectsReturned, Autor_Jednostka.DoesNotExist):
+                pass
 
-
-    except Autor.DoesNotExist:
-        return (None, "taki autor nie istnieje (dopasowanie po imieniu i nazwisku)")
+    return (None, "nie udało się dopasować")
 
 
 def pesel_md5(value_from_xls):
@@ -184,9 +194,10 @@ def przeanalizuj_plik_xls(sciezka, parent):
         autor, info = matchuj_autora(
             original['imię'],
             original['nazwisko'],
-            jednostka,
-            original.get('pesel_md5', None),
-            original.get('orcid', None)
+            jednostka=jednostka,
+            pesel_md5=original.get('pesel_md5', None),
+            orcid=original.get('orcid', None),
+            tytul_str=original['tytuł']
         )
 
         bledny = False
