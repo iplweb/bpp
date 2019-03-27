@@ -5,7 +5,9 @@ Historia zmian
 dev
 ---
 
-*
+* poprawne wyszukiwanie po dyscyplinach
+
+* procent odpowiedzialności za powstanie pracy wyświetla się na podstronie pracy
 
 1.0.28-dev
 -------------
@@ -18,6 +20,7 @@ dev
 * możliwość wyszukiwania przez ORCID w multiwyszukiwarce oraz w globalnym wyszukiwaniu
 
 * numer ORCID staje się unikalny dla autora
+
 
 1.0.27
 ------
