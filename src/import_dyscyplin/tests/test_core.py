@@ -1,7 +1,7 @@
 import pytest
 from model_mommy import mommy
 
-from bpp.models import Wydzial, Jednostka, Autor
+from bpp.models import Wydzial, Jednostka, Autor, Tytul
 from import_dyscyplin.core import przeanalizuj_plik_xls, matchuj_wydzial, matchuj_jednostke, matchuj_autora, pesel_md5, \
     znajdz_naglowek
 from import_dyscyplin.exceptions import ImproperFileException, HeaderNotFoundException, BadNoOfSheetsException
@@ -117,6 +117,62 @@ def test_matchuj_autora_po_aktualnej_jednostce():
         jednostka=j2
     )
     assert a == a2
+
+
+@pytest.mark.django_db
+def test_matchuj_autora_po_jednostce():
+    j1 = mommy.make(Jednostka)
+    j2 = mommy.make(Jednostka)
+
+    a1 = mommy.make(Autor, imiona="Jan", nazwisko="Kowalski")
+    a1.dodaj_jednostke(j1)
+    a1.aktualna_jednostka = None
+    a1.save()
+
+    a2 = mommy.make(Autor, imiona="Jan", nazwisko="Kowalski")
+    a2.dodaj_jednostke(j2)
+    a2.aktualna_jednostka = None
+    a2.save()
+
+    a, info = matchuj_autora(
+        imiona="Jan",
+        nazwisko="Kowalski",
+        jednostka=j1
+    )
+    assert a == a1
+
+    a, info = matchuj_autora(
+        imiona="Jan",
+        nazwisko="Kowalski",
+        jednostka=j2
+    )
+    assert a == a2
+
+
+@pytest.mark.django_db
+def test_matchuj_autora_po_tytule():
+    t = Tytul.objects.create(nazwa="prof hab", skrot="lol.")
+
+    j1 = mommy.make(Jednostka)
+
+    a1 = mommy.make(Autor, imiona="Jan", nazwisko="Kowalski")
+    a1.tytul = t
+    a1.save()
+
+    a2 = mommy.make(Autor, imiona="Jan", nazwisko="Kowalski")
+
+    a, info = matchuj_autora(
+        imiona="Jan",
+        nazwisko="Kowalski",
+    )
+    assert a == None
+
+    a, info = matchuj_autora(
+        imiona="Jan",
+        nazwisko="Kowalski",
+        tytul_str="lol."
+    )
+    assert a == a1
 
 
 def test_pesel_md5():

@@ -5,6 +5,11 @@ Historia zmian
 dev
 ---
 
+*
+
+1.0.28-dev
+-------------
+
 * poprawki importu dyscyplin: lepsze dopasowywanie autora z jednostką z pliku wejściowego
   do danych w systemie
 
@@ -52,6 +57,11 @@ dev
 
 1.0.26-dev
 ---
+
+*
+
+1.0.28-dev
+-------------
 
 *
 
