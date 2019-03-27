@@ -291,12 +291,14 @@ class DyscyplinaAutoraQueryObject(ForeignKeyDescribeMixin,
     type = AUTOCOMPLETE
     ops = [EQUAL_NONE, ]
     model = Dyscyplina_Naukowa
+    field_name = "nazwa"
     url = "bpp:dyscyplina-autocomplete"
 
     def real_query(self, value, operation):
         if operation in EQUALITY_OPS_ALL:
+
             autorzy = Autorzy.objects.filter(
-                autor__autor_dyscyplina__dyscyplina=value,
+                Q(autor__autor_dyscyplina__dyscyplina_naukowa=value) | Q(autor__autor_dyscyplina__subdyscyplina_naukowa=value),
                 autor__autor_dyscyplina__rok=F("rekord__rok")
             ).values("rekord_id")
 

@@ -4,9 +4,9 @@ from datetime import datetime
 import pytest
 from model_mommy import mommy
 from multiseek import logic
-from multiseek.logic import AutocompleteQueryObject
+from multiseek.logic import AutocompleteQueryObject, EQUAL
 
-from bpp.models import Typ_Odpowiedzialnosci, const, Zewnetrzna_Baza_Danych
+from bpp.models import Typ_Odpowiedzialnosci, const, Zewnetrzna_Baza_Danych, Dyscyplina_Naukowa, Autor_Dyscyplina
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
 from bpp.models.openaccess import Wersja_Tekstu_OpenAccess, \
@@ -17,7 +17,7 @@ from bpp.multiseek_registry import TytulPracyQueryObject, \
     TypOgolnyAutorQueryObject, TypOgolnyRedaktorQueryObject, TypOgolnyTlumaczQueryObject, TypOgolnyRecenzentQueryObject, \
     NazwiskoIImieQueryObject, DataUtworzeniaQueryObject, OstatnieNazwiskoIImie, OstatnioZmieniony, \
     OstatnioZmienionyDlaPBN, RodzajKonferenckjiQueryObject, LiczbaAutorowQueryObject, UNION, JednostkaQueryObject, \
-    WydzialQueryObject, ZewnetrznaBazaDanychQueryObject, Typ_OdpowiedzialnosciQueryObject
+    WydzialQueryObject, ZewnetrznaBazaDanychQueryObject, Typ_OdpowiedzialnosciQueryObject, DyscyplinaAutoraQueryObject
 
 
 @pytest.mark.django_db
@@ -42,6 +42,15 @@ def test_DataUtworzeniaQueryObject():
     assert d.value_for_description('[""]') == str(datetime.now().date())
     d.value_for_description('["2018-01-01 12:00:00"]') == "2018-01-01"
     d.value_for_description('["2018-01-01 12:00:00", "2018-01-01 12:00:00"]') == "od 2018-01-01 do 2018-01-01"
+
+
+@pytest.mark.django_db
+def test_DyscyplinaAutoraQueryObject(autor_jan_kowalski):
+    dn = mommy.make(Dyscyplina_Naukowa)
+    ad = Autor_Dyscyplina.objects.create(autor=autor_jan_kowalski, dyscyplina_naukowa=dn, rok=2019)
+    d = DyscyplinaAutoraQueryObject()
+    res = d.real_query(dn, EQUAL)
+    assert res
 
 
 @pytest.mark.django_db
