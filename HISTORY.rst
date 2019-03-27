@@ -8,19 +8,14 @@ dev
 *
 
 1.0.28-alpha
--------------
+------------
 
 * poprawne wyszukiwanie po dyscyplinach
 
 * procent odpowiedzialności za powstanie pracy wyświetla się na podstronie pracy
 
 1.0.28-dev
----
-
-*
-
-1.0.28-alpha
------------------------
+----------
 
 * poprawki importu dyscyplin: lepsze dopasowywanie autora z jednostką z pliku wejściowego
   do danych w systemie
