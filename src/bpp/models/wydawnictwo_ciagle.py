@@ -9,6 +9,7 @@ from django.utils import timezone
 from lxml.etree import SubElement, Element
 from secure_input.utils import safe_html
 
+from bpp.models import MaProcentyMixin
 from bpp.models.abstract import BazaModeluOdpowiedzialnosciAutorow, DwaTytuly, \
     ModelZRokiem, \
     ModelZWWW, ModelRecenzowany, ModelPunktowany, ModelTypowany, \
@@ -69,6 +70,7 @@ class Wydawnictwo_Ciagle(ZapobiegajNiewlasciwymCharakterom,
                          ModelZKonferencja,
                          ModelWybitny,
                          ModelZLiczbaCytowan,
+                         MaProcentyMixin,
                          DirtyFieldsMixin):
     """Wydawnictwo ciągłe, czyli artykuły z czasopism, komentarze, listy
     do redakcji, publikacje w suplemencie, etc. """

@@ -9,7 +9,7 @@ from django.utils import timezone
 from bpp.models import BazaModeluOdpowiedzialnosciAutorow, Autor, \
     ModelZRokiem, ModelZeStatusem, ModelZWWW, ModelRecenzowany, \
     ModelZInformacjaZ, ModelZAdnotacjami, ModelZeSzczegolami, ModelPunktowany, \
-    Charakter_Formalny, Jezyk
+    Charakter_Formalny, Jezyk, MaProcentyMixin
 from bpp.models.abstract import RekordBPPBaza, ModelZAbsolutnymUrl
 from bpp.models.util import dodaj_autora
 
@@ -39,6 +39,7 @@ class Patent(RekordBPPBaza,
              ModelZeSzczegolami,
              ModelZInformacjaZ,
              ModelZAdnotacjami,
+             MaProcentyMixin,
              ModelZAbsolutnymUrl):
     tytul_oryginalny = models.TextField("Tytuł oryginalny", db_index=True)
 
