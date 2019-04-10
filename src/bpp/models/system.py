@@ -77,7 +77,7 @@ class Charakter_Formalny(NazwaISkrot, MPTTModel):
     charakter_pbn = models.ForeignKey(Charakter_PBN,
                                       verbose_name="Charakter PBN",
                                       blank=True, null=True, default=None,
-                                      help_text="""Wartość wybrana w tym polu zostanie użyta jako zawartość tagu <is>
+                                      help_text="""Wartość wybrana w tym polu zostanie użyta jako zawartość tagu &lt;is>
                                       w plikach eksportu do PBN""",
                                       on_delete=CASCADE)
 
