@@ -5,7 +5,9 @@ Historia zmian
 dev
 ---
 
-*
+* umożliwiaj konfigurację opcji "pokazuj liczbę cytowań na stronie autora",
+
+
 
 1.0.28-alpha
 ------------
