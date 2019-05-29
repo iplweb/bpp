@@ -4,25 +4,26 @@ import subprocess
 import time
 
 import psutil
+import pytest
 
 from bpp.tasks import remove_old_report_files
 
 
+@pytest.mark.django_db
 def test_celery(settings):
-
     # UWAGA UWAGA UWAGA
-    # Worker uruchomiony w poniższy sposób korzysta z bazy danych "bpp",
-    # nie zaś "test_bpp". Stąd, jezeli chcielibyśmy uruchamiać jakiekolwiek
-    # testy i sprawdzać ich rezutlat, to to nie wyjdzie.
-    # Po co zatem ten test? Ano po to, żeby sprawdzić, czy workera da się
+    # Po co ten test? Ano po to, żeby sprawdzić, czy workera da się
     # w ogóle uruchomić i czy da mu się wysłać komunikat. Jakiś czas temu,
     # z uwagi na problemy z zależnościami (celery miało określone wymaganie
     # kombu>=4.0;<5; był bug w kombu).
     #
     # tl;dr: ten test sprawdza uruchamianie workera i wywoływanie zadań;
-    # nie badaj zawartości bazy dancyh w przebiegu tego testu, bo worker
-    # działa najprawdopodobniej na bazie danych "głównej", a ten test -
-    # na testowej.
+
+    from django.db import connection
+    db_name = connection.settings_dict['NAME']
+
+    my_env = os.environ.copy()
+    my_env['DJANGO_BPP_DB_NAME'] = db_name
 
     cwd = os.path.abspath(
         os.path.join(os.path.dirname(__file__), ".."))
@@ -33,7 +34,7 @@ def test_celery(settings):
         # Nie może być stdout/stderr, bo nie będzie uruchomiony w tle
         # stdout=subprocess.PIPE,
         # stderr=subprocess.PIPE,
-        cwd=cwd)
+        cwd=cwd, env=my_env)
 
     time.sleep(3)
 

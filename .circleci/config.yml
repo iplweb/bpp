@@ -21,14 +21,6 @@ jobs:
       - run: sudo pipenv install --system -d
       - run: make assets
 
-      # Baza musi istnieć - worker celery potem wymaga; sklonujemy od razu, żeby
-      # nie tracić czasu na tworzenie testowej bazy danych
-      - run: createdb bpp
-      - run: python src/manage.py migrate
-      - run: echo 'CREATE DATABASE "test_bpp" WITH TEMPLATE "bpp"' | psql
-      - run: echo 'CREATE DATABASE "test_bpp_gw0" WITH TEMPLATE "bpp"' | psql
-      - run: echo 'CREATE DATABASE "test_bpp_gw1" WITH TEMPLATE "bpp"' | psql
-
       # Uruchamiaj na lokalnym firefoxie używając dwóch CPU
       - run: pytest --cov=src --splinter-webdriver=firefox -n2 --nginx-host=localhost --liveserver=localhost
 

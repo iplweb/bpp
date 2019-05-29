@@ -7,7 +7,7 @@ dev
 
 * umożliwiaj konfigurację opcji "pokazuj liczbę cytowań na stronie autora",
 
-
+* poprawione kasowanie patentów
 
 1.0.28-alpha
 ------------
