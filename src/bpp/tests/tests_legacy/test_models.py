@@ -5,14 +5,13 @@ from django.core.exceptions import ValidationError
 from django.test import TestCase
 from model_mommy import mommy
 
-from bpp.models import NazwaISkrot, Wydzial, Uczelnia, Jednostka, \
-    Tytul, Autor, Punktacja_Zrodla, Zrodlo, Redakcja_Zrodla, Plec, Typ_Odpowiedzialnosci, \
-    Wydawnictwo_Ciagle_Autor, Wydawnictwo_Ciagle, Jezyk, Rekord, Praca_Doktorska, Praca_Habilitacyjna
+from bpp.models import NazwaISkrot, Tytul, Autor, Punktacja_Zrodla, Zrodlo, Redakcja_Zrodla, Plec, \
+    Typ_Odpowiedzialnosci, \
+    Wydawnictwo_Ciagle_Autor, Wydawnictwo_Ciagle, Jezyk, Patent
 from bpp.models.autor import Funkcja_Autora, Autor_Jednostka
 from bpp.models.system import Charakter_Formalny
-from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
-from bpp.tests.util import any_uczelnia, any_autor, CURRENT_YEAR, any_ciagle, any_wydzial, any_doktorat, any_habilitacja, any_zwarte
 from bpp.tests.util import any_jednostka
+from bpp.tests.util import any_uczelnia, any_autor, any_ciagle, any_wydzial, any_zwarte
 
 
 class TestNazwaISkrot(TestCase):
@@ -140,7 +139,6 @@ class TestAutor(TestCase):
         j = any_jednostka(wydzial=w)
         j2 = any_jednostka(wydzial=w2)
 
-
         def ma_byc(ile=1):
             self.assertEqual(Autor_Jednostka.objects.count(), ile)
 
@@ -212,12 +210,10 @@ class TestAutor(TestCase):
             ROK)
 
 
-
 class TestAutor_Jednostka(TestCase):
     def setUp(self):
         Typ_Odpowiedzialnosci.objects.get_or_create(nazwa="autor", skrot="aut.")
         Funkcja_Autora.objects.get_or_create(skrot="kier.", nazwa="kierownik")
-
 
     def test_autor_jednostka(self):
         f = Funkcja_Autora.objects.get(skrot="kier.")
@@ -236,7 +232,6 @@ class TestAutor_Jednostka(TestCase):
         aj.rozpoczal_prace = datetime(2013, 1, 1)
         aj.zakonczyl_prace = datetime(2011, 1, 1)
         self.assertRaises(ValidationError, aj.full_clean)
-
 
     def test_defragmentuj(self):
         w = any_wydzial()
@@ -404,4 +399,10 @@ class TestWydawnictwoCiagleTestWydawnictwoZwarte(TestCase):
                 self.assertRaises(
                     ValidationError,
                     instance.clean_fields
-                    )
+                )
+
+
+def test_patent_kasowanie(autor_jan_kowalski, jednostka, typy_odpowiedzialnosci):
+    p = mommy.make(Patent)
+    p.dodaj_autora(autor_jan_kowalski, jednostka)
+    p.delete()
