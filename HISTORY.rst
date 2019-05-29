@@ -8,12 +8,7 @@ dev
 *
 
 1.0.29-dev
--------------
-
-*
-
-1.0.28-gamma
--------------
+----------
 
 * umożliwiaj konfigurację opcji "pokazuj liczbę cytowań na stronie autora",
 
