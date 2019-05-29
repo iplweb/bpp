@@ -5,6 +5,11 @@ Historia zmian
 dev
 ---
 
+*
+
+1.0.28-gamma
+-------------
+
 * umożliwiaj konfigurację opcji "pokazuj liczbę cytowań na stronie autora",
 
 * poprawione kasowanie patentów
@@ -18,7 +23,12 @@ dev
 
 
 1.0.28-dev
-----------
+---
+
+*
+
+1.0.28-gamma
+--------------------
 
 * poprawki importu dyscyplin: lepsze dopasowywanie autora z jednostką z pliku wejściowego
   do danych w systemie
@@ -71,6 +81,11 @@ dev
 
 *
 
+1.0.28-gamma
+-------------
+
+*
+
 1.0.28-beta
 -------------
 
@@ -83,6 +98,11 @@ dev
 
 1.0.28-dev
 ---
+
+*
+
+1.0.28-gamma
+-------------
 
 *
 
