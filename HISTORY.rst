@@ -7,15 +7,20 @@ dev
 
 *
 
-1.0.28-alpha
-------------
+1.0.29-dev
+----------
+
+* umożliwiaj konfigurację opcji "pokazuj liczbę cytowań na stronie autora",
+
+* poprawione kasowanie patentów
 
 * poprawne wyszukiwanie po dyscyplinach
 
 * procent odpowiedzialności za powstanie pracy wyświetla się na podstronie pracy
 
-1.0.28-dev
-----------
+
+1.0.28
+------
 
 * poprawki importu dyscyplin: lepsze dopasowywanie autora z jednostką z pliku wejściowego
   do danych w systemie
@@ -68,6 +73,31 @@ dev
 
 *
 
+1.0.29-dev
+-------------
+
+*
+
+1.0.29-dev
+---
+
+*
+
+1.0.29-dev
+-----------------------
+
+*
+
+1.0.28-gamma
+-------------
+
+*
+
+1.0.28-beta
+-------------
+
+*
+
 1.0.28-alpha
 -------------
 
@@ -75,6 +105,31 @@ dev
 
 1.0.28-dev
 ---
+
+*
+
+1.0.29-dev
+-------------
+
+*
+
+1.0.29-dev
+---
+
+*
+
+1.0.29-dev
+-----------------------
+
+*
+
+1.0.28-gamma
+-------------
+
+*
+
+1.0.28-beta
+-------------
 
 *
 

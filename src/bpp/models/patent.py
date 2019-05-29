@@ -91,10 +91,3 @@ class Patent(RekordBPPBaza,
 
     def jezyk(self):
         return Jezyk.objects.get(skrot_dla_pbn="PL")
-
-
-@receiver(post_delete, sender=Patent_Autor)
-def patent_autor_post_delete(sender, instance, **kwargs):
-    rec = instance.rekord
-    rec.ostatnio_zmieniony_dla_pbn = timezone.now()
-    rec.save(update_fields=['ostatnio_zmieniony_dla_pbn'])
