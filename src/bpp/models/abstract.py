@@ -10,7 +10,7 @@ from django.contrib.postgres.fields import HStoreField
 from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import CASCADE, SET_NULL, CASCADE, Sum
+from django.db.models import CASCADE, SET_NULL, CASCADE, Sum, Q
 from django.urls.base import reverse
 from django.utils import six
 from django.utils import timezone
@@ -18,6 +18,8 @@ from lxml.etree import Element
 from lxml.etree import SubElement
 
 from bpp.fields import YearField, DOIField
+from bpp.models.dyscyplina_naukowa import Dyscyplina_Naukowa
+from bpp.models.dyscyplina_naukowa import Autor_Dyscyplina
 from bpp.models.const import TO_AUTOR
 from bpp.models.util import ModelZOpisemBibliograficznym
 
@@ -319,6 +321,10 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
         max_digits=5, decimal_places=2,
         null=True, blank=True)
 
+    dyscyplina_naukowa = models.ForeignKey(
+        Dyscyplina_Naukowa, on_delete=SET_NULL, null=True, blank=True
+    )
+
     class Meta:
         abstract = True
         ordering = ('kolejnosc', 'typ_odpowiedzialnosci__skrot')
@@ -330,7 +336,33 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
     # XXX TODO sprawdzanie, żęby nie było dwóch autorów o tej samej kolejności
 
     def clean(self):
-        super(BazaModeluOdpowiedzialnosciAutorow, self).clean()
+        # --- Walidacja dyscypliny ---
+        # Czy jest określona dyscyplina? Jeżeli tak, to:
+        # - rekord nadrzędny musi być określony i mieć jakąś wartość w polu 'Rok'
+        # - musi istnieć takie przypisanie autora do dyscypliny dla danego roku
+        if self.dyscyplina_naukowa is not None:
+
+            if self.rekord is None:
+                raise ValidationError(
+                    {"dyscyplina_naukowa": "Określono dyscyplinę naukową, ale brak publikacji nadrzędnej. "})
+
+            if self.rekord is not None and self.rekord.rok is None:
+                raise ValidationError(
+                    {"dyscyplina_naukowa": "Publikacja nadrzędna nie ma określonego roku."})
+
+            try:
+                Autor_Dyscyplina.objects.get(
+                    Q(dyscyplina_naukowa=self.dyscyplina_naukowa)
+                    | Q(subdyscyplina_naukowa=self.dyscyplina_naukowa),
+                    autor=self.autor,
+                    rok=self.rekord.rok,
+                )
+            except Autor_Dyscyplina.DoesNotExist:
+                raise ValidationError(
+                    {"dyscyplina_naukowa": "Autor nie ma przypisania na dany rok do takiej dyscypliny."}
+                )
+
+        # --- Walidacja procentów ---
         # Znajdź inne obiekty z tego rekordu, które są już w bazie danych, ewentualnie
         # utrudniając ich zapisanie w sytuacji, gdyby ilość procent przekroczyła 100:
         inne = self.__class__.objects.filter(rekord=self.rekord)
