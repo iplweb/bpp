@@ -499,9 +499,13 @@ class Dyscyplina_Naukowa_PrzypisanieAutocomplete(autocomplete.Select2ListView):
         except Autor_Dyscyplina.DoesNotExist:
             return [(None, "Brak przypisania dla roku %s" % rok)]
 
-        res = [(ad.dyscyplina_naukowa_id, ad.dyscyplina_naukowa.nazwa),
-               (ad.subdyscyplina_naukowa_id, ad.subdyscyplina_naukowa.nazwa)]
+        res = set()
+        for elem in ["dyscyplina_naukowa", "subdyscyplina_naukowa"]:
+            id = getattr(ad, "%s_id" % elem)
+            if id is not None:
+                res.add((id, getattr(ad, elem).nazwa))
 
+        res = list(res)
         res.sort(key=lambda obj: obj[1])
 
         return res
