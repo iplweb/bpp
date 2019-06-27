@@ -9,7 +9,7 @@ from bpp.views.api.strona_tom_nr_zeszytu import StronaTomNrZeszytuView
 from bpp.views.api.uzupelnij_rok import ApiUzupelnijRokWydawnictwoZwarteView, ApiUzupelnijRokWydawnictwoCiagleView
 
 from bpp.views.oai import OAIView
-from bpp.views.api import RokHabilitacjiView, PunktacjaZrodlaView, UploadPunktacjaZrodlaView, OstatniaJednostkaView
+from bpp.views.api import RokHabilitacjiView, PunktacjaZrodlaView, UploadPunktacjaZrodlaView, OstatniaJednostkaIDyscyplinaView
 from bpp.views.browse import UczelniaView, WydzialView, JednostkaView, \
     AutorView, ZrodlaView, ZrodloView, AutorzyView, BuildSearch, PracaView, \
     JednostkiView, \
@@ -45,9 +45,9 @@ urlpatterns = [
     url(r'^api/upload-punktacja-zrodla/(?P<zrodlo_id>[\d]+)/(?P<rok>[\d]+)/$',
         csrf_exempt(UploadPunktacjaZrodlaView.as_view()),
         name='api_upload_punktacja_zrodla'),
-    url(r'^api/ostatnia-jednostka/$',
-        csrf_exempt(OstatniaJednostkaView.as_view()),
-        name='api_ostatnia_jednostka'),
+    url(r'^api/ostatnia-jednostka-i-dyscyplina/$',
+        csrf_exempt(OstatniaJednostkaIDyscyplinaView.as_view()),
+        name='api_ostatnia_jednostka_i_dyscyplina'),
     url(r'^api/pubmed-id/$',
         csrf_exempt(GetPubmedIDView.as_view()),
         name='api_pubmed_id'),
