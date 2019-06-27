@@ -5,7 +5,8 @@ Historia zmian
 dev
 ---
 
-*
+* powiązanie rekordu publikacji z autorem pozwala również wprowadzić informację
+  na temat dyscypliny
 
 1.0.29-dev
 ----------
