@@ -73,7 +73,8 @@ def generuj_inline_dla_autorow(baseModel):
             widget=autocomplete.ModelSelect2(
                 forward=['autor', 'rok'],
                 url='bpp:dyscyplina-naukowa-przypisanie-autocomplete'
-            )
+            ),
+            required=False
         )
 
         zapisany_jako = Select2ListCreateChoiceField(
