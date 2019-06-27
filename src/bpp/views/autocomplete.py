@@ -13,7 +13,7 @@ from queryset_sequence import QuerySetSequence
 
 from bpp.jezyk_polski import warianty_zapisanego_nazwiska
 from bpp.lookups import SearchQueryStartsWith
-from bpp.models import Jednostka, Dyscyplina_Naukowa, Zewnetrzna_Baza_Danych
+from bpp.models import Jednostka, Dyscyplina_Naukowa, Zewnetrzna_Baza_Danych, Autor_Dyscyplina
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
 from bpp.models.const import GR_WPROWADZANIE_DANYCH
@@ -50,7 +50,7 @@ class Wydawnictwo_NadrzedneAutocomplete(autocomplete.Select2QuerySetView):
 
 class JednostkaMixin:
     def get_result_label(self, result):
-        return f"{ result.nazwa } ({ result.wydzial.skrot })"
+        return f"{result.nazwa} ({result.wydzial.skrot})"
 
 
 class JednostkaAutocomplete(JednostkaMixin, autocomplete.Select2QuerySetView):
@@ -107,7 +107,7 @@ class KonferencjaAutocomplete(NazwaMixin,
     qset = Konferencja.objects.all()
 
     def get_result_label(self, result):
-        return f"{ Konferencja.TK_SYMBOLE[result.typ_konferencji] } { str(result) }"
+        return f"{Konferencja.TK_SYMBOLE[result.typ_konferencji]} {str(result)}"
 
 
 class PublicKonferencjaAutocomplete(NazwaMixin, autocomplete.Select2QuerySetView):
@@ -463,3 +463,45 @@ class Zewnetrzna_Baza_DanychAutocomplete(autocomplete.Select2QuerySetView):
         if self.q:
             qs = qs.filter(Q(nazwa__icontains=self.q) | Q(skrot__icontains=self.q))
         return qs
+
+
+class Dyscyplina_Naukowa_PrzypisanieAutocomplete(autocomplete.Select2ListView):
+
+    def results(self, results):
+        """Return data for the 'results' key of the response."""
+        return [
+            {
+                'id': _id,
+                'text': value
+            } for _id, value in results
+        ]
+
+    def autocomplete_results(self, results):
+        return [(x, y) for x,y in results if self.q.lower() in y.lower()]
+
+    def get_list(self):
+        autor = self.forwarded.get("autor", None)
+        if autor is None:
+            return [(None, "Podaj autora")]
+
+        rok = self.forwarded.get("rok", None)
+        if rok is None:
+            return [(None, "Podaj rok")]
+        try:
+            rok = int(rok)
+        except (TypeError, ValueError):
+            return [(None, "Nieprawidłowy rok")]
+        if rok < 0 or rok > 9999:
+            return [(None, "Nieprawidłowy rok")]
+
+        try:
+            ad = Autor_Dyscyplina.objects.get(rok=rok, autor=autor)
+        except Autor_Dyscyplina.DoesNotExist:
+            return [(None, "Brak przypisania dla roku %s" % rok)]
+
+        res = [(ad.dyscyplina_naukowa_id, ad.dyscyplina_naukowa.nazwa),
+               (ad.subdyscyplina_naukowa_id, ad.subdyscyplina_naukowa.nazwa)]
+
+        res.sort(key=lambda obj: obj[1])
+
+        return res

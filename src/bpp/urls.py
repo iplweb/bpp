@@ -22,7 +22,8 @@ from bpp.views.autocomplete import WidocznaJednostkaAutocomplete, \
     AdminNavigationAutocomplete, KonferencjaAutocomplete, \
     Seria_WydawniczaAutocomplete, OrganPrzyznajacyNagrodyAutocomplete, \
     WydzialAutocomplete, PublicAutorAutocomplete, LataAutocomplete, PublicWydzialAutocomplete, \
-    Dyscyplina_NaukowaAutocomplete, Zewnetrzna_Baza_DanychAutocomplete, PublicKonferencjaAutocomplete
+    Dyscyplina_NaukowaAutocomplete, Zewnetrzna_Baza_DanychAutocomplete, PublicKonferencjaAutocomplete, \
+    Dyscyplina_Naukowa_PrzypisanieAutocomplete
 from bpp.views.raporty import RankingAutorow, \
     PobranieRaportu, PodgladRaportu, KasowanieRaportu, \
     RaportJednostek2012, RaportKronikaUczelni, RaportJednostek, \
@@ -243,6 +244,12 @@ urlpatterns = [
         r'^podrzedna-publikacja-habilitacyjna-autocomplete/$',
         PodrzednaPublikacjaHabilitacyjnaAutocomplete.as_view(),
         name='podrzedna-publikacja-habilitacyjna-autocomplete'
+    ),
+
+    url(
+        r'^dyscyplina-naukowa-przypisanie-autocomplete/$',
+        Dyscyplina_Naukowa_PrzypisanieAutocomplete.as_view(),
+        name='dyscyplina-naukowa-przypisanie-autocomplete'
     )
 
 
