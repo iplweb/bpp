@@ -2,24 +2,19 @@
 Historia zmian
 ==============
 
-dev
+git
 ---
 
 *
 
 1.0.29-dev2
--------------
+-----------
 
 * powiązanie rekordu publikacji z autorem pozwala również wprowadzić informację
   na temat dyscypliny
 
-1.0.29-dev
----
-
-*
-
-1.0.29-dev2
---------------------
+1.0.29-dev1
+-----------
 
 * umożliwiaj konfigurację opcji "pokazuj liczbę cytowań na stronie autora",
 
