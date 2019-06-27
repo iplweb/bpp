@@ -6,6 +6,7 @@ from datetime import datetime
 
 import django_webtest
 import pytest
+
 try:
     from django.core.urlresolvers import reverse
 except ImportError:
@@ -13,7 +14,7 @@ except ImportError:
 from model_mommy import mommy
 
 from bpp.fixtures import get_openaccess_data
-from bpp.models import TO_AUTOR
+from bpp.models import TO_AUTOR, Dyscyplina_Naukowa
 from bpp.models.autor import Autor, Tytul, Funkcja_Autora
 from bpp.models.const import GR_WPROWADZANIE_DANYCH
 from bpp.models.patent import Patent
@@ -39,12 +40,28 @@ setup_mommy()
 def pytest_configure(config):
     setattr(settings, 'CELERY_ALWAYS_EAGER', True)
 
+
 def current_rok():
     return datetime.now().date().year
+
 
 @pytest.fixture
 def rok():
     return current_rok()
+
+
+@pytest.fixture
+def dyscyplina1(db):
+    return Dyscyplina_Naukowa.objects.create(
+        nazwa="memetyka stosowana", kod="MS"
+    )
+
+
+@pytest.fixture
+def dyscyplina2(db):
+    return Dyscyplina_Naukowa.objects.create(
+        nazwa="druga dyscyplina", kod="DD"
+    )
 
 
 @pytest.fixture
@@ -70,7 +87,6 @@ def normal_django_user(request, db,
 def _preauth_session_id_helper(username, password, client, browser,
                                nginx_live_server, django_user_model,
                                django_username_field):
-
     res = client.login(username=username, password=password)
     assert res is True
 
@@ -265,6 +281,7 @@ def wydawnictwo_ciagle_maker(db):
 
 
 @pytest.fixture(scope="function")
+@pytest.mark.django_db
 def wydawnictwo_ciagle(jezyki, charaktery_formalne, typy_kbn,
                        statusy_korekt, typy_odpowiedzialnosci):
     ret = _wydawnictwo_ciagle_maker()
@@ -416,7 +433,7 @@ def fixture(name):
 
 
 @pytest.fixture(scope='function')
-def typy_odpowiedzialnosci():
+def typy_odpowiedzialnosci(db):
     for elem in fixture("typ_odpowiedzialnosci_v2.json"):
         Typ_Odpowiedzialnosci.objects.get_or_create(pk=elem['pk'], **elem['fields'])
 
