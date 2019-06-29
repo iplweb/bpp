@@ -3,11 +3,13 @@ from collections import namedtuple
 import json
 
 from django.test import TestCase
+
+from bpp.models import Autor_Dyscyplina, Dyscyplina_Naukowa
 from bpp.models.zrodlo import Punktacja_Zrodla
 from bpp.tests.util import any_zrodlo, CURRENT_YEAR, any_autor, \
     any_habilitacja, any_jednostka
 from bpp.views.api import PunktacjaZrodlaView, RokHabilitacjiView, \
-    UploadPunktacjaZrodlaView, OstatniaJednostkaView
+    UploadPunktacjaZrodlaView, OstatniaJednostkaIDyscyplinaView
 
 FakeRequest = namedtuple("FakeRequest", ["POST"])
 
@@ -83,19 +85,29 @@ class TestUploadPunktacjaZrodlaView(TestCase):
         self.assertEqual(Punktacja_Zrodla.objects.all()[0].impact_factor, 60)
 
 
-class TestOstatniaJednostkaView(TestCase):
+class TestOstatniaJednostkaIDyscyplinaView(TestCase):
     def test_ostatnia_jednostka_view(self):
-        ojv = OstatniaJednostkaView()
+        ojv = OstatniaJednostkaIDyscyplinaView()
         a = any_autor()
         j = any_jednostka()
         j.dodaj_autora(a)
 
-        fr = FakeRequest(dict(autor_id=a.pk))
+        d = Dyscyplina_Naukowa.objects.create(
+            nazwa="x", kod="y"
+        )
+
+        Autor_Dyscyplina.objects.create(
+            rok=2000, autor=a, dyscyplina_naukowa=d
+        )
+
+        fr = FakeRequest(dict(autor_id=a.pk, rok=2000))
         res = ojv.post(fr)
         self.assertContains(res, "jednostka_id", status_code=200)
+        self.assertContains(res, "dyscyplina_id", status_code=200)
+
 
     def test_ostatnia_jednostka_errors(self):
-        ojv = OstatniaJednostkaView()
+        ojv = OstatniaJednostkaIDyscyplinaView()
         fr = FakeRequest(dict(autor_id=None))
 
         res = ojv.post(fr)

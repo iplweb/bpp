@@ -1,8 +1,10 @@
 # -*- encoding: utf-8 -*-
 import pytest
+from django.core.exceptions import ValidationError
 from lxml.etree import Element
 from model_mommy import mommy
 
+from bpp.models import Autor_Dyscyplina, Wydawnictwo_Ciagle_Autor, Typ_Odpowiedzialnosci
 from bpp.models.konferencja import Konferencja
 from bpp.models.nagroda import Nagroda
 from bpp.models.seria_wydawnicza import Seria_Wydawnicza
@@ -11,6 +13,52 @@ from bpp.models.system import Charakter_PBN, Charakter_Formalny, Typ_KBN
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte_Autor, \
     Wydawnictwo_Zwarte
+
+
+@pytest.mark.django_db
+def test_baza_modelu_odpowiedzialnosci_zapisywanie(
+        wydawnictwo_ciagle, autor_jan_nowak, rok, jednostka,
+        dyscyplina1, dyscyplina2, typy_odpowiedzialnosci, db):
+    wydawnictwo_ciagle.rok = rok
+    wydawnictwo_ciagle.save()
+
+    ad = Autor_Dyscyplina.objects.create(
+        autor=autor_jan_nowak,
+        rok=rok,
+        dyscyplina_naukowa=dyscyplina1,
+        procent_dyscypliny=50,
+    )
+
+    wca = Wydawnictwo_Ciagle_Autor.objects.create(
+        rekord=wydawnictwo_ciagle,
+        autor=autor_jan_nowak,
+        jednostka=jednostka,
+        typ_odpowiedzialnosci=Typ_Odpowiedzialnosci.objects.get(skrot="aut."),
+        zapisany_jako="Foobar",
+        dyscyplina_naukowa=None
+    )
+    wca.save()
+
+    wca.clean()
+
+    wca.dyscyplina_naukowa = dyscyplina2
+    with pytest.raises(ValidationError):
+        wca.clean()
+
+    wca.dyscyplina_naukowa = dyscyplina1
+    wydawnictwo_ciagle.rok = 50
+    wydawnictwo_ciagle.save()
+    with pytest.raises(ValidationError):
+        wca.clean()
+
+    wydawnictwo_ciagle.rok = rok
+    wydawnictwo_ciagle.save()
+    wca.clean()
+
+    ad.dyscyplina_naukowa = dyscyplina2
+    ad.subdyscyplina_naukowa = dyscyplina1
+    ad.save()
+    wca.clean()
 
 
 @pytest.mark.django_db
@@ -26,6 +74,7 @@ def test_eksport_pbn_outstanding():
     wz.eksport_pbn_outstanding(toplevel)
     assert len(toplevel.getchildren()) == 0
 
+
 @pytest.mark.django_db
 def test_eksport_pbn_outstanding():
     wz = mommy.make(Wydawnictwo_Zwarte)
@@ -35,14 +84,14 @@ def test_eksport_pbn_outstanding():
     assert len(toplevel.getchildren()) == 0
 
     n1 = mommy.make(Nagroda,
-                   object=wz,
-                   rok_przyznania=2000,
-                   uzasadnienie="foobar")
+                    object=wz,
+                    rok_przyznania=2000,
+                    uzasadnienie="foobar")
 
     n1 = mommy.make(Nagroda,
-                   object=wz,
-                   rok_przyznania=2001,
-                   uzasadnienie="baz quux")
+                    object=wz,
+                    rok_przyznania=2001,
+                    uzasadnienie="baz quux")
 
     toplevel = Element('test')
     wz.eksport_pbn_award(toplevel)
@@ -81,6 +130,7 @@ def test_eksport_pbn_seria():
     wz.eksport_pbn_series(toplevel)
     wz.eksport_pbn_number_in_series(toplevel)
     assert len(toplevel.getchildren()) == 0
+
 
 @pytest.mark.django_db
 def test_eksport_pbn_conference():
@@ -171,6 +221,7 @@ def test_eksport_pbn_author_afiliacja_w_kontekscie_wydzialu(uczelnia,
     toplevel = []
     wydawnictwo_zwarte.eksport_pbn_other_contributors(toplevel, w2, Wydawnictwo_Zwarte_Autor)
     assert toplevel[0].text == "0"
+
 
 @pytest.mark.django_db
 def test_eksport_pbn_editor_afiliacja_w_kontekscie_wydzialu(

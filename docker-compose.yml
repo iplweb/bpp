@@ -19,13 +19,11 @@ services:
       - "6379:6379"
 
   selenium:
-    network_mode: "host"
     image: selenium/hub:latest
     ports:
       - "4444:4444"
       
   selenium-node-1:
-    network_mode: "host"    
     image: selenium/node-firefox-debug ## standalone-firefox-debug
     volumes:
       - /dev/shm:/dev/shm
@@ -37,7 +35,6 @@ services:
       - HUB_HOST=selenium
       
   selenium-node-2:
-    network_mode: "host"
     image: selenium/node-firefox-debug ## standalone-firefox-debug
     volumes:
       - /dev/shm:/dev/shm

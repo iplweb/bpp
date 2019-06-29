@@ -177,7 +177,7 @@
                             <a href="#">operacje</a>
                             <ul class="menu vertical">
                                 <li><a href="{% url "eksport_pbn:zamow" %}">eksport PBN</a></li>
-                                {% if request.user|has_group:"wprowadzanie danych" %}
+                                {% if request.user|has_group:"wprowadzanie danych" or request.user.is_superuser %}
                                     <li><a href="{% url "integrator2:main" %}">import danych</a></li>
                                     <li><a href="{% url "import_dyscyplin:index" %}">import dyscyplin</a></li>
                                 {% endif %}

@@ -11,7 +11,7 @@ from django.forms import BooleanField
 from django.forms.widgets import HiddenInput
 
 from bpp.jezyk_polski import warianty_zapisanego_nazwiska
-from bpp.models import Jednostka, Autor, Typ_Odpowiedzialnosci, Uczelnia
+from bpp.models import Jednostka, Autor, Typ_Odpowiedzialnosci, Uczelnia, Dyscyplina_Naukowa
 
 # Proste tabele
 
@@ -66,6 +66,15 @@ def generuj_inline_dla_autorow(baseModel):
             queryset=Jednostka.objects.all(),
             widget=autocomplete.ModelSelect2(
                 url='bpp:jednostka-autocomplete')
+        )
+
+        dyscyplina_naukowa = forms.ModelChoiceField(
+            queryset=Dyscyplina_Naukowa.objects.all(),
+            widget=autocomplete.ModelSelect2(
+                forward=['autor', 'rok'],
+                url='bpp:dyscyplina-naukowa-przypisanie-autocomplete'
+            ),
+            required=False
         )
 
         zapisany_jako = Select2ListCreateChoiceField(

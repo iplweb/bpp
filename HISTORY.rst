@@ -2,13 +2,19 @@
 Historia zmian
 ==============
 
-dev
+git
 ---
 
 *
 
-1.0.29-dev
-----------
+1.0.29-dev2
+-----------
+
+* powiązanie rekordu publikacji z autorem pozwala również wprowadzić informację
+  na temat dyscypliny
+
+1.0.29-dev1
+-----------
 
 * umożliwiaj konfigurację opcji "pokazuj liczbę cytowań na stronie autora",
 
@@ -67,86 +73,6 @@ dev
 
 * wyszukiwanie: prawidłowo obsługuj zapytania o rekordy zarejestrowane
   w kilku zewnętrznych bazach danych
-
-1.0.26-dev
----
-
-*
-
-1.0.29-dev
--------------
-
-*
-
-1.0.29-dev
----
-
-*
-
-1.0.29-dev
------------------------
-
-*
-
-1.0.28-gamma
--------------
-
-*
-
-1.0.28-beta
--------------
-
-*
-
-1.0.28-alpha
--------------
-
-*
-
-1.0.28-dev
----
-
-*
-
-1.0.29-dev
--------------
-
-*
-
-1.0.29-dev
----
-
-*
-
-1.0.29-dev
------------------------
-
-*
-
-1.0.28-gamma
--------------
-
-*
-
-1.0.28-beta
--------------
-
-*
-
-1.0.28-alpha
------------------------
-
-*
-
-1.0.27
--------------
-
-*
-
-1.0.27-beta
--------------
-
-*
 
 1.0.27-alpha
 ------------------------------

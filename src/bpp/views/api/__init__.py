@@ -1,9 +1,10 @@
 # -*- encoding: utf-8 -*-
 from django.db import transaction
-from django.http import Http404, JsonResponse
+from django.http import JsonResponse
 from django.http.response import HttpResponseNotFound
 from django.views.generic import View
-from bpp.models import Autor, Zrodlo
+
+from bpp.models import Autor, Zrodlo, Autor_Dyscyplina
 from bpp.models.abstract import POLA_PUNKTACJI
 from bpp.models.praca_habilitacyjna import Praca_Habilitacyjna
 from bpp.models.zrodlo import Punktacja_Zrodla
@@ -37,7 +38,7 @@ class PunktacjaZrodlaView(View):
         except Punktacja_Zrodla.DoesNotExist:
             return HttpResponseNotFound("Rok")
 
-        #d = dict([(pole, str(getattr(pz, pole))) for pole in POLA_PUNKTACJI])
+        # d = dict([(pole, str(getattr(pz, pole))) for pole in POLA_PUNKTACJI])
         d = dict([(pole, getattr(pz, pole)) for pole in POLA_PUNKTACJI])
         return JsonResponse(d)
 
@@ -74,7 +75,11 @@ class UploadPunktacjaZrodlaView(View):
         return JsonResponse(dict(result="exists"))
 
 
-class OstatniaJednostkaView(View):
+class OstatniaJednostkaIDyscyplinaView(View):
+    """Zwraca jako JSON ostatnią jednostkę danego autora oraz ewentualnie jego
+    dyscyplinę naukową, w sytuacji gdy jest ona jedna i określona na dany rok.
+    """
+
     def post(self, request, *args, **kw):
         try:
             a = Autor.objects.get(pk=request.POST.get('autor_id', None))
@@ -85,5 +90,26 @@ class OstatniaJednostkaView(View):
         if jed is None:
             return JsonResponse({"status": "error", "reason": "aktualna jednostka nie istnieje"})
 
-        return JsonResponse(
-            dict(jednostka_id=jed.pk, nazwa=jed.nazwa, status="ok"))
+        ret = dict(jednostka_id=jed.pk, nazwa=jed.nazwa, status="ok")
+
+        try:
+            rok = int(request.POST.get("rok"))
+        except (TypeError, ValueError):
+            rok = None
+            ad = None
+
+        if rok:
+            try:
+                ad = Autor_Dyscyplina.objects.get(
+                    autor=a, rok=rok
+                )
+            except Autor_Dyscyplina.DoesNotExist:
+                ad = None
+
+        if ad is not None:
+            d = ad.dyscyplina_naukowa or ad.subdyscyplina_naukowa
+            if d is not None:
+                ret['dyscyplina_nazwa'] = d.nazwa
+                ret['dyscyplina_id'] = d.pk
+
+        return JsonResponse(ret)
