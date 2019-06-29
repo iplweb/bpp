@@ -156,3 +156,14 @@ def test_autor_dyscyplina_zmiana_autora(autor_jan_kowalski, autor_jan_nowak, dys
     ad.autor = autor_jan_nowak
     with pytest.raises(InternalError):
         ad.save()
+
+
+def test_autor_dyscyplina_zmiana_z_none_na_cos(autor_jan_kowalski, autor_jan_nowak, dyscyplina1, dyscyplina2, rok):
+    ad = Autor_Dyscyplina.objects.create(
+        rok=rok,
+        autor=autor_jan_kowalski,
+        dyscyplina_naukowa=dyscyplina1
+    )
+
+    ad.subdyscyplina_naukowa = dyscyplina2
+    ad.save()

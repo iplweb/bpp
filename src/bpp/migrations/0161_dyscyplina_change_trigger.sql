@@ -44,7 +44,7 @@ $$
   qry = """
     CREATE TEMP TABLE %(temp_table)s AS
     SELECT %(table)s_autor.id FROM %(table)s, %(table)s_autor
-    WHERE dyscyplina_naukowa_id = %(dyscyplina_id)i
+    WHERE dyscyplina_naukowa_id = %(dyscyplina_id)s
       AND %(table)s.rok = %(rok)i
       AND %(table)s.id = %(table)s_autor.rekord_id
       AND %(table)s_autor.autor_id = %(autor_id)i
@@ -54,17 +54,17 @@ $$
                 'bpp_wydawnictwo_zwarte',
                 'bpp_patent']:
 
-    if diff_f1:
+    if diff_f1 and val_f1_old != None:
       plpy.execute(qry % dict(temp_table="dys", table=table, dyscyplina_id=val_f1_old, rok=rok, autor_id=autor_id))
 
-    if diff_f2:
+    if diff_f2 and val_f2_old != None:
       plpy.execute(qry % dict(temp_table="subdys", table=table, dyscyplina_id=val_f2_old, rok=rok, autor_id=autor_id))
 
-    if diff_f1:
+    if diff_f1 and val_f1_old != None:
       plpy.execute("UPDATE %s_autor SET dyscyplina_naukowa_id = %s WHERE id IN (SELECT id FROM dys)" % (table, val_f1_new))
       plpy.execute("DROP TABLE dys")
 
-    if diff_f2:
+    if diff_f2 and val_f2_old != None:
       plpy.execute("UPDATE %s_autor SET dyscyplina_naukowa_id = %s WHERE id IN (SELECT id FROM subdys)" % (table, val_f2_new))
       plpy.execute("DROP TABLE subdys")
 $$;
