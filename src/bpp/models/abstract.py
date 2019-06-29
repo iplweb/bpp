@@ -10,7 +10,7 @@ from django.contrib.postgres.fields import HStoreField
 from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import CASCADE, SET_NULL, CASCADE, Sum, Q
+from django.db.models import SET_NULL, CASCADE, Sum, Q
 from django.urls.base import reverse
 from django.utils import six
 from django.utils import timezone
@@ -18,15 +18,18 @@ from lxml.etree import Element
 from lxml.etree import SubElement
 
 from bpp.fields import YearField, DOIField
-from bpp.models.dyscyplina_naukowa import Dyscyplina_Naukowa
-from bpp.models.dyscyplina_naukowa import Autor_Dyscyplina
 from bpp.models.const import TO_AUTOR
+from bpp.models.dyscyplina_naukowa import Autor_Dyscyplina
+from bpp.models.dyscyplina_naukowa import Dyscyplina_Naukowa
 from bpp.models.util import ModelZOpisemBibliograficznym
+from bpp.models.util import dodaj_autora
 
 ILOSC_ZNAKOW_NA_ARKUSZ = 40000.0
 
+
 def get_liczba_arkuszy_wydawniczych(liczba_znakow_wydawniczych):
     return round(liczba_znakow_wydawniczych / ILOSC_ZNAKOW_NA_ARKUSZ, 2)
+
 
 class ModelZeZnakamiWydawniczymi(models.Model):
     liczba_znakow_wydawniczych = models.IntegerField(
@@ -75,6 +78,7 @@ class ModelZPBN_ID(models.Model):
 
     class Meta:
         abstract = True
+
 
 @six.python_2_unicode_compatible
 class ModelZNazwa(models.Model):
@@ -299,6 +303,7 @@ class ModelTypowany(models.Model):
     class Meta:
         abstract = True
 
+
 @six.python_2_unicode_compatible
 class BazaModeluOdpowiedzialnosciAutorow(models.Model):
     """Bazowa klasa dla odpowiedzialności autorów (czyli dla przypisania
@@ -472,6 +477,7 @@ class ModelZLegacyData(models.Model):
     class Meta:
         abstract = True
 
+
 class RekordBPPBaza(
     ModelZPBN_ID,
     ModelZOpisemBibliograficznym,
@@ -525,6 +531,7 @@ alt_strony_regex = re.compile(
     flags=re.IGNORECASE)
 
 BRAK_PAGINACJI = ("[b. pag.]", "[b.pag.]", "[b. pag]", "[b. bag.]")
+
 
 def wez_zakres_stron(szczegoly):
     """Funkcja wycinająca informacje o stronach z pola 'Szczegóły'"""
@@ -786,8 +793,8 @@ class PBNSerializerHelperMixin:
         from bpp.models.nagroda import Nagroda
 
         for nagroda in Nagroda.objects.filter(
-            content_type=ContentType.objects.get_for_model(self),
-            object_id=self.pk):
+                content_type=ContentType.objects.get_for_model(self),
+                object_id=self.pk):
             tag = nagroda.eksport_pbn_serializuj()
             toplevel.append(tag)
 
@@ -897,16 +904,16 @@ class ModelZAktualizacjaDlaPBN(models.Model):
                 from bpp.admin.helpers import MODEL_PUNKTOWANY, MODEL_PUNKTOWANY_KOMISJA_CENTRALNA
 
                 for elem in MODEL_PUNKTOWANY + MODEL_PUNKTOWANY_KOMISJA_CENTRALNA + \
-                        ('adnotacje',
-                         'ostatnio_zmieniony',
-                         # Nie wyrzucaj poniższego pola. Jeżeli jest jedynym
-                         # zmienionym polem to zmiana prawdopodobnie idzie z
-                         # powodu dodania lub usunięcia autora rekordu
-                         # podrzędnego
-                         # 'ostatnio_zmieniony_dla_pbn',
-                         'opis_bibliograficzny_cache',
-                         'search_index',
-                         'tytul_oryginalny_sort'):
+                            ('adnotacje',
+                             'ostatnio_zmieniony',
+                             # Nie wyrzucaj poniższego pola. Jeżeli jest jedynym
+                             # zmienionym polem to zmiana prawdopodobnie idzie z
+                             # powodu dodania lub usunięcia autora rekordu
+                             # podrzędnego
+                             # 'ostatnio_zmieniony_dla_pbn',
+                             'opis_bibliograficzny_cache',
+                             'search_index',
+                             'tytul_oryginalny_sort'):
                     if elem in flds_keys:
                         flds_keys.remove(elem)
 
@@ -951,3 +958,28 @@ class MaProcentyMixin:
 class NieMaProcentowMixin:
     def ma_procenty(self):
         return False
+
+
+class DodajAutoraMixin:
+    """Funkcja pomocnicza z dodawaniem autora do rekordu, raczej na 99%
+    używana tylko i wyłącznie przez testy. Musisz określić self.autor_rekordu_class
+    czyli np dla Wydawnictwo_Zwarte ta zmienna powinna przyjąć wartość
+    Wydawnictwo_Zwarte_Autor. """
+
+    autor_rekordu_klass = None
+
+    def dodaj_autora(self, autor, jednostka, zapisany_jako=None,
+                     typ_odpowiedzialnosci_skrot='aut.', kolejnosc=None,
+                     dyscyplina_naukowa=None):
+        """
+        :rtype: bpp.models.abstract.BazaModeluOdpowiedzialnosciAutorow
+        """
+        return dodaj_autora(
+            klass=self.autor_rekordu_klass,
+            rekord=self,
+            autor=autor,
+            jednostka=jednostka,
+            zapisany_jako=zapisany_jako,
+            typ_odpowiedzialnosci_skrot=typ_odpowiedzialnosci_skrot,
+            kolejnosc=kolejnosc,
+            dyscyplina_naukowa=dyscyplina_naukowa)

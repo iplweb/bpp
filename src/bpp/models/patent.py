@@ -9,7 +9,7 @@ from django.utils import timezone
 from bpp.models import BazaModeluOdpowiedzialnosciAutorow, Autor, \
     ModelZRokiem, ModelZeStatusem, ModelZWWW, ModelRecenzowany, \
     ModelZInformacjaZ, ModelZAdnotacjami, ModelZeSzczegolami, ModelPunktowany, \
-    Charakter_Formalny, Jezyk, MaProcentyMixin
+    Charakter_Formalny, Jezyk, MaProcentyMixin, DodajAutoraMixin
 from bpp.models.abstract import RekordBPPBaza, ModelZAbsolutnymUrl
 from bpp.models.util import dodaj_autora
 
@@ -40,6 +40,7 @@ class Patent(RekordBPPBaza,
              ModelZInformacjaZ,
              ModelZAdnotacjami,
              MaProcentyMixin,
+             DodajAutoraMixin,
              ModelZAbsolutnymUrl):
     tytul_oryginalny = models.TextField("Tytuł oryginalny", db_index=True)
 
@@ -71,12 +72,8 @@ class Patent(RekordBPPBaza,
         null=True,
         blank=True)
 
-    autorzy = models.ManyToManyField(Autor, through=Patent_Autor)
-
-    def dodaj_autora(self, autor, jednostka, zapisany_jako=None,
-                     typ_odpowiedzialnosci_skrot='aut.', kolejnosc=None):
-        return dodaj_autora(Patent_Autor, self, autor, jednostka, zapisany_jako,
-                            typ_odpowiedzialnosci_skrot, kolejnosc)
+    autor_rekordu_klass = Patent_Autor
+    autorzy = models.ManyToManyField(Autor, through=autor_rekordu_klass)
 
     class Meta:
         verbose_name = "patent"
