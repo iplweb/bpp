@@ -38,7 +38,7 @@ def get_first_typ_odpowiedzialnosci():
     return Typ_Odpowiedzialnosci.objects.filter(skrot='aut.').first()
 
 
-def generuj_inline_dla_autorow(baseModel):
+def generuj_inline_dla_autorow(baseModel, include_dyscyplina=True):
     class baseModel_AutorFormset(forms.BaseInlineFormSet):
         def clean(self):
             # get forms that actually have valid data
@@ -68,14 +68,15 @@ def generuj_inline_dla_autorow(baseModel):
                 url='bpp:jednostka-autocomplete')
         )
 
-        dyscyplina_naukowa = forms.ModelChoiceField(
-            queryset=Dyscyplina_Naukowa.objects.all(),
-            widget=autocomplete.ModelSelect2(
-                forward=['autor', 'rok'],
-                url='bpp:dyscyplina-naukowa-przypisanie-autocomplete'
-            ),
-            required=False
-        )
+        if include_dyscyplina:
+            dyscyplina_naukowa = forms.ModelChoiceField(
+                queryset=Dyscyplina_Naukowa.objects.all(),
+                widget=autocomplete.ModelSelect2(
+                    forward=['autor', 'rok'],
+                    url='bpp:dyscyplina-naukowa-przypisanie-autocomplete'
+                ),
+                required=False
+            )
 
         zapisany_jako = Select2ListCreateChoiceField(
             choice_list=[],
