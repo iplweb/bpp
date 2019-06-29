@@ -10,7 +10,7 @@ from django.utils import timezone
 from django.utils.functional import cached_property
 from lxml.etree import Element, SubElement
 
-from bpp.models import TO_AUTOR, MaProcentyMixin
+from bpp.models import TO_AUTOR, MaProcentyMixin, DodajAutoraMixin
 from bpp.models.abstract import \
     BazaModeluOdpowiedzialnosciAutorow, DwaTytuly, ModelZRokiem, \
     ModelZWWW, ModelRecenzowany, ModelPunktowany, ModelTypowany, \
@@ -100,11 +100,13 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
                          ModelZISSN,
                          ModelWybitny,
                          MaProcentyMixin,
+                         DodajAutoraMixin,
                          DirtyFieldsMixin):
     """Wydawnictwo zwarte, czyli: książki, broszury, skrypty, fragmenty,
     doniesienia zjazdowe."""
 
-    autorzy = models.ManyToManyField(Autor, through=Wydawnictwo_Zwarte_Autor)
+    autor_rekordu_klass = Wydawnictwo_Zwarte_Autor
+    autorzy = models.ManyToManyField(Autor, through=autor_rekordu_klass)
 
     wydawnictwo_nadrzedne = models.ForeignKey(
         'self', CASCADE, blank=True, null=True, help_text="""Jeżeli dodajesz rozdział,
@@ -127,11 +129,6 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
         przypisanych do danej monografii"""
     )
 
-    def dodaj_autora(self, autor, jednostka, zapisany_jako=None,
-                     typ_odpowiedzialnosci_skrot='aut.', kolejnosc=None):
-        return dodaj_autora(
-            Wydawnictwo_Zwarte_Autor, self, autor, jednostka, zapisany_jako,
-            typ_odpowiedzialnosci_skrot, kolejnosc)
 
     class Meta:
         verbose_name = 'wydawnictwo zwarte'

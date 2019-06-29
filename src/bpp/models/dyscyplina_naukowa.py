@@ -59,10 +59,10 @@ class Autor_Dyscyplina(models.Model):
     rok = PositiveSmallIntegerField()
     autor = models.ForeignKey("bpp.Autor", CASCADE)
 
-    dyscyplina_naukowa = models.ForeignKey("bpp.Dyscyplina_Naukowa", models.SET_NULL, related_name="dyscyplina", blank=True, null=True)
+    dyscyplina_naukowa = models.ForeignKey("bpp.Dyscyplina_Naukowa", models.PROTECT, related_name="dyscyplina")
     procent_dyscypliny = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
 
-    subdyscyplina_naukowa = models.ForeignKey("bpp.Dyscyplina_Naukowa", models.SET_NULL, related_name="subdyscyplina", blank=True, null=True)
+    subdyscyplina_naukowa = models.ForeignKey("bpp.Dyscyplina_Naukowa", models.PROTECT, related_name="subdyscyplina", blank=True, null=True)
     procent_subdyscypliny = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
 
     objects = Autor_DyscyplinaManager()
