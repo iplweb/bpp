@@ -10,7 +10,6 @@ from bpp.models import BazaModeluOdpowiedzialnosciAutorow, Autor, \
     ModelZRokiem, ModelZeStatusem, ModelZWWW, ModelRecenzowany, \
     ModelZInformacjaZ, ModelZAdnotacjami, ModelZeSzczegolami, ModelPunktowany, \
     Charakter_Formalny, Jezyk
-from bpp.models.sloty import SlotMixin
 from bpp.models.abstract import RekordBPPBaza, ModelZAbsolutnymUrl, DodajAutoraMixin, MaProcentyMixin
 from bpp.models.util import dodaj_autora
 
