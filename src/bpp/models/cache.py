@@ -6,13 +6,14 @@
 # - Patent
 # - Praca_Doktorska
 # - Praca_Habilitacyjna
-import traceback
 
+from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields.array import ArrayField
 from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models, transaction
+from django.db.models import Func
 from django.db.models.deletion import DO_NOTHING
 from django.db.models.lookups import In
 from django.db.models.signals import post_save, post_delete, pre_save, \
@@ -67,11 +68,16 @@ def defer_zaktualizuj_opis(instance, *args, **kw):
             # models.util.ModelZOpisemBibliograficznym.zaktualizuj_opis
             return
 
-    transaction.on_commit(
-        lambda: zaktualizuj_opis.delay(
-            app_label=instance._meta.app_label,
-            model_name=instance._meta.model_name,
-            pk=instance.pk))
+    # transaction.on_commit(
+    #     lambda: zaktualizuj_opis.delay(
+    #         app_label=instance._meta.app_label,
+    #         model_name=instance._meta.model_name,
+    #         pk=instance.pk))
+
+    CacheQueue.objects.add(instance)
+    # transaction.on_commit(
+    #    lambda instance=instance:
+    #
 
 
 def defer_zaktualizuj_opis_rekordu(instance, *args, **kw):
@@ -167,6 +173,7 @@ def enable():
 def enabled():
     global _CACHE_ENABLED
     return _CACHE_ENABLED
+
 
 def disable():
     global _CACHE_ENABLED
@@ -472,3 +479,45 @@ def with_cache(fun):
                 raise Exception("Enable failure, trace enable function, there was a bug there...")
 
     return _wrapped
+
+
+class CacheManager(models.Manager):
+    def add(self, obj):
+        from bpp.tasks import aktualizuj_cache
+
+        obj, created = self.get_or_create(
+            created_on=Func(function='NOW'),
+            object_id=obj.pk,
+            content_type=ContentType.objects.get_for_model(obj._meta.model))
+        if created:
+            transaction.on_commit(
+                lambda: aktualizuj_cache.delay()
+            )
+
+        return obj
+
+    def ready(self):
+        return self.filter(started_on=None)
+
+
+class CacheQueue(models.Model):
+    # Pole created_on dostanie po stronie SQL defaultową wartość "NOW()";
+    # niestety na ten moment zrobienie tego w Django nie jest trywialne, więc
+    # temat zostaje załatwiony po stronie migracji przez RunSQL
+    created_on = models.DateTimeField(blank=True)
+    last_updated_on = models.DateTimeField(auto_now=True)
+
+    completed_on = models.DateTimeField(null=True, blank=True)
+    started_on = models.DateTimeField(null=True, blank=True)
+
+    error = models.BooleanField(default=False)
+    info = models.TextField(blank=True, null=True)
+
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    rekord = GenericForeignKey('content_type', 'object_id')
+
+    objects = CacheManager()
+
+    class Meta:
+        ordering = ('-created_on',)
