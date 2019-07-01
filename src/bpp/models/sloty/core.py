@@ -1,6 +1,9 @@
 from bpp.models import Wydawnictwo_Zwarte, Wydawnictwo_Ciagle
+from bpp.models.sloty.wydawnictwo_ciagle import SlotKalkulator_Wydawnictwo_Ciagle_Prog3
+from bpp.models.sloty.wydawnictwo_zwarte import SlotKalkulator_Wydawnictwo_Zwarte_Tier0
 
 from .wydawnictwo_ciagle import SlotKalkulator_Wydawnictwo_Ciagle_Prog1, SlotKalkulator_Wydawnictwo_Ciagle_Prog2
+
 
 def ISlot(original):
     if isinstance(original, Wydawnictwo_Ciagle):
@@ -9,8 +12,18 @@ def ISlot(original):
                 return SlotKalkulator_Wydawnictwo_Ciagle_Prog1(original)
             elif original.punkty_kbn in [20, 25]:
                 return SlotKalkulator_Wydawnictwo_Ciagle_Prog2(original)
-            elif original.punkty_bkn < 20:
-                raise NotImplementedError
+            elif original.punkty_kbn < 20:
+                return SlotKalkulator_Wydawnictwo_Ciagle_Prog3(original)
+        elif original.rok in [2019, 2020]:
+
+            if original.punkty_kbn in [200, 140, 100]:
+                return SlotKalkulator_Wydawnictwo_Ciagle_Prog1(original)
+            elif original.punkty_kbn in [70, 40]:
+                return SlotKalkulator_Wydawnictwo_Ciagle_Prog2(original)
+            elif original.punkty_kbn <= 20:
+                return SlotKalkulator_Wydawnictwo_Ciagle_Prog3(original)
+
+
         else:
             raise NotImplementedError
 

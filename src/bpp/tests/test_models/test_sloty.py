@@ -115,21 +115,20 @@ def test_slot_wszyscy_slot_wszystkie_dyscypliny(
 
     slot = ISlot(rekord)
 
-    assert slot.dyscypliny().count() == 2
+    assert slot.dyscypliny.count() == 2
     assert slot.wszyscy() == 2
 
 
 @pytest.mark.django_db
-def test_2017_2018_artykul_zakres_1(
+def test_autorzy_z_dyscypliny(
         ciagle_z_dyscyplinami,
         autor_jan_nowak,
         autor_jan_kowalski,
         dyscyplina1,
         dyscyplina2,
         dyscyplina3):
-    PUNKTY = 30
 
-    ciagle_z_dyscyplinami.punkty_kbn = PUNKTY
+    ciagle_z_dyscyplinami.punkty_kbn = 30
     ciagle_z_dyscyplinami.rok = 2017
     ciagle_z_dyscyplinami.save()
 
@@ -147,38 +146,37 @@ def test_2017_2018_artykul_zakres_1(
     assert slot.autorzy_z_dyscypliny(dyscyplina2, TO_REDAKTOR).count() == 0
     assert slot.autorzy_z_dyscypliny(dyscyplina3, TO_REDAKTOR).count() == 0
 
-    assert slot.punkty_pkd(dyscyplina1) == PUNKTY
-    assert slot.punkty_pkd(dyscyplina2) == PUNKTY
-    assert slot.punkty_pkd(dyscyplina3) == None
-
-    assert slot.pkd_dla_autora(autor_jan_kowalski) == 30
-    assert slot.pkd_dla_autora(autor_jan_nowak) == 30
-
-    assert slot.slot_dla_autora(autor_jan_kowalski) == 1
-    assert slot.slot_dla_autora(autor_jan_nowak) == 1
-    assert slot.slot_dla_autora_z_dyscypliny(dyscyplina3) == None
-
-    assert slot.slot_dla_dyscypliny(dyscyplina1) == 1
-    assert slot.slot_dla_dyscypliny(dyscyplina2) == 1
-    assert slot.slot_dla_dyscypliny(dyscyplina3) == None
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("punkty,ma_byc_1,ma_byc_2", [
-    (20, "14.1421", "0.7071"),
-    (25, "17.6777", "0.7071"),
+@pytest.mark.parametrize("ustaw_rok,punkty,ma_byc_1,ma_byc_2", [
+    (2017, 30, "30.0000", "1.0000"),
+    (2017, 20, "14.1421", "0.7071"),
+    (2017, 25, "17.6777", "0.7071"),
+    (2017, 15, "7.5000", "0.5000"),
+    (2017, 5, "2.5000", "0.5000"),
+
+    (2019, 200, "200.0000", "1.0000"),
+    (2019, 140, "140.0000", "1.0000"),
+    (2019, 100, "100.0000", "1.0000"),
+
+    (2019, 70, "49.4975", "0.7071"),
+    (2019, 40, "28.2843", "0.7071"),
+
+    (2019, 20, "10.0000", "0.5000"),
+    (2019, 5, "2.5000", "0.5000"),
+
 ])
-def test_2017_2018_artykul_zakres_2(
+def test_slot_artykuly(
         ciagle_z_dyscyplinami,
         autor_jan_nowak,
         autor_jan_kowalski,
         dyscyplina1,
         dyscyplina2,
         dyscyplina3,
-        punkty, ma_byc_1, ma_byc_2):
-
+        ustaw_rok, punkty, ma_byc_1, ma_byc_2):
     ciagle_z_dyscyplinami.punkty_kbn = punkty
-    ciagle_z_dyscyplinami.rok = 2017
+    ciagle_z_dyscyplinami.rok = ustaw_rok
     ciagle_z_dyscyplinami.save()
 
     slot = ISlot(ciagle_z_dyscyplinami)
@@ -197,3 +195,4 @@ def test_2017_2018_artykul_zakres_2(
     assert f"{slot.slot_dla_dyscypliny(dyscyplina1):.4f}" == ma_byc_2
     assert f"{slot.slot_dla_dyscypliny(dyscyplina2):.4f}" == ma_byc_2
     assert slot.slot_dla_dyscypliny(dyscyplina3) == None
+
