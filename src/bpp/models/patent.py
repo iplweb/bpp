@@ -9,8 +9,8 @@ from django.utils import timezone
 from bpp.models import BazaModeluOdpowiedzialnosciAutorow, Autor, \
     ModelZRokiem, ModelZeStatusem, ModelZWWW, ModelRecenzowany, \
     ModelZInformacjaZ, ModelZAdnotacjami, ModelZeSzczegolami, ModelPunktowany, \
-    Charakter_Formalny, Jezyk, MaProcentyMixin, DodajAutoraMixin
-from bpp.models.abstract import RekordBPPBaza, ModelZAbsolutnymUrl
+    Charakter_Formalny, Jezyk
+from bpp.models.abstract import RekordBPPBaza, ModelZAbsolutnymUrl, DodajAutoraMixin, MaProcentyMixin
 from bpp.models.util import dodaj_autora
 
 

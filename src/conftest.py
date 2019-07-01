@@ -317,6 +317,9 @@ def _zwarte_maker(**kwargs):
 @pytest.fixture(scope="function")
 def wydawnictwo_zwarte(jezyki, charaktery_formalne, typy_kbn,
                        statusy_korekt, typy_odpowiedzialnosci):
+    """
+    :rtype: bpp.models.Wydawnictwo_Zwarte
+    """
     return _zwarte_maker(tytul_oryginalny=u'Wydawnictwo Zwarte ĄćłłóńŹ')
 
 

@@ -338,6 +338,27 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
         return six.text_type(self.autor) + " - " + six.text_type(
             self.jednostka.skrot)
 
+    def okresl_dyscypline(self):
+        # Zwróć dyscyplinę, jeżeli określona:
+        if self.dyscyplina_naukowa:
+            return self.dyscyplina_naukowa
+
+        # Jeżeli nie, sprawdź, czy dla danego autora jest określona dyscyplina
+        # na dany rok:
+        try:
+            ad = Autor_Dyscyplina.objects.get(
+                autor_id=self.autor_id,
+                rok=self.rekord.rok,
+            )
+        except Autor_Dyscyplina.DoesNotExist:
+            return
+
+        # Zwróć przypisaną dyscyplinę naukową tylko w sytuacji, gdy jest
+        # określona jedna. Jeżeli są dwie, to nie można określić z automatu
+        if ad.subdyscyplina_naukowa is None:
+            return ad.dyscyplina_naukowa
+
+
     # XXX TODO sprawdzanie, żęby nie było dwóch autorów o tej samej kolejności
 
     def clean(self):

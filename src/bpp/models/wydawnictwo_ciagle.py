@@ -9,7 +9,7 @@ from django.utils import timezone
 from lxml.etree import SubElement, Element
 from secure_input.utils import safe_html
 
-from bpp.models import MaProcentyMixin, DodajAutoraMixin
+from bpp.models import MaProcentyMixin
 from bpp.models.abstract import BazaModeluOdpowiedzialnosciAutorow, DwaTytuly, \
     ModelZRokiem, \
     ModelZWWW, ModelRecenzowany, ModelPunktowany, ModelTypowany, \
@@ -20,6 +20,7 @@ from bpp.models.abstract import BazaModeluOdpowiedzialnosciAutorow, DwaTytuly, \
     parse_informacje, ModelZNumeremZeszytu, ModelZKonferencja, ModelWybitny, \
     ModelZAbsolutnymUrl, ModelZLiczbaCytowan
 from bpp.models.system import Zewnetrzna_Baza_Danych
+from bpp.models.abstract import DodajAutoraMixin
 from bpp.models.util import dodaj_autora, ZapobiegajNiewlasciwymCharakterom
 
 

@@ -14,7 +14,7 @@ class Patent_Form(Wycinaj_W_z_InformacjiMixin, forms.ModelForm):
 
 
 class Patent_Admin(AdnotacjeZDatamiMixin, Wydawnictwo_ZwarteAdmin_Baza):
-    inlines = (generuj_inline_dla_autorow(Patent_Autor),)
+    inlines = (generuj_inline_dla_autorow(Patent_Autor, include_dyscyplina=False),)
 
     list_display = ['tytul_oryginalny', 'ostatnio_zmieniony']
 
