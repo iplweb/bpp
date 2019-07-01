@@ -77,8 +77,11 @@ def test_baza_modelu_odpowiedzialnosci_autorow_dyscyplina(
     wca = wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka, zapisany_jako="Kowalski")
     assert wca.okresl_dyscypline() == None
 
-    ad.rok = rok
-    ad.save()
+    ad = Autor_Dyscyplina.objects.create(
+        rok=rok, autor=autor_jan_kowalski,
+        dyscyplina_naukowa=dyscyplina1
+    )
+
     assert wca.okresl_dyscypline() == dyscyplina1
 
     wca.dyscyplina_naukowa = dyscyplina2
