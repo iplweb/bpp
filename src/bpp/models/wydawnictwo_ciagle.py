@@ -20,6 +20,7 @@ from bpp.models.abstract import BazaModeluOdpowiedzialnosciAutorow, DwaTytuly, \
     parse_informacje, ModelZNumeremZeszytu, ModelZKonferencja, ModelWybitny, \
     ModelZAbsolutnymUrl, ModelZLiczbaCytowan
 from bpp.models.system import Zewnetrzna_Baza_Danych
+from bpp.models.abstract import DodajAutoraMixin
 from bpp.models.util import dodaj_autora, ZapobiegajNiewlasciwymCharakterom
 
 
@@ -71,11 +72,13 @@ class Wydawnictwo_Ciagle(ZapobiegajNiewlasciwymCharakterom,
                          ModelWybitny,
                          ModelZLiczbaCytowan,
                          MaProcentyMixin,
+                         DodajAutoraMixin,
                          DirtyFieldsMixin):
     """Wydawnictwo ciągłe, czyli artykuły z czasopism, komentarze, listy
     do redakcji, publikacje w suplemencie, etc. """
 
-    autorzy = models.ManyToManyField('Autor', through=Wydawnictwo_Ciagle_Autor)
+    autor_rekordu_klass = Wydawnictwo_Ciagle_Autor
+    autorzy = models.ManyToManyField('Autor', through=autor_rekordu_klass)
 
     zrodlo = models.ForeignKey('Zrodlo', null=True, verbose_name="Źródło", on_delete=models.SET_NULL)
 
@@ -84,12 +87,6 @@ class Wydawnictwo_Ciagle(ZapobiegajNiewlasciwymCharakterom,
     # się okazuje, przy używaniu standardowych procedur w Django jest to
     # z tego co na dziś dzień umiem, mocno utrudnione.
     uzupelnij_punktacje = models.BooleanField(default=False)
-
-    def dodaj_autora(self, autor, jednostka, zapisany_jako=None,
-                     typ_odpowiedzialnosci_skrot='aut.', kolejnosc=None):
-        return dodaj_autora(
-            Wydawnictwo_Ciagle_Autor, self, autor, jednostka, zapisany_jako,
-            typ_odpowiedzialnosci_skrot, kolejnosc)
 
     def clean(self):
         self.tytul_oryginalny = safe_html(self.tytul_oryginalny)

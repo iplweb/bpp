@@ -2,7 +2,7 @@
 
 import pytest
 import time
-from selenium.common.exceptions import NoAlertPresentException
+from selenium.common.exceptions import NoAlertPresentException, TimeoutException
 
 
 def test_zmiany_formularza(preauth_browser, live_server):
@@ -17,5 +17,5 @@ def test_zmiany_formularza(preauth_browser, live_server):
 
     preauth_browser.find_link_by_href("/bpp/zrodla/").click()
 
-    with pytest.raises(NoAlertPresentException):
+    with pytest.raises(TimeoutException):
         preauth_browser.get_alert()

@@ -305,5 +305,32 @@
             </td>
         </tr>
     {% endif %}
-
 </table>
+
+{% if rekord.ma_punktacje_sloty and request.user.is_staff %}
+    <h4>Punktacja dyscyplin i sloty</h4>
+    <table>
+        <tr>
+            <th>Autor</th>
+            <th>Dyscyplina</th>
+            <th>PkD / PkDAut</th>
+            <th>Slot</th>
+        </tr>
+        {% for pd in rekord.punktacja_dyscypliny %}
+            <tr>
+                <td>praca</td>
+                <td>{{ pd.dyscyplina.nazwa }}</td>
+                <td>{{ pd.pkd }}</td>
+                <td>{{ pd.slot }}</td>
+            </tr>
+        {% endfor %}
+        {% for pa in rekord.punktacja_autora %}
+            <tr>
+                <td>{{ pa.autor }}</td>
+                <td>{{ pa.dyscyplina.nazwa }}</td>
+                <td>{{ pa.pkdaut }}</td>
+                <td>{{ pa.slot }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+{% endif %}

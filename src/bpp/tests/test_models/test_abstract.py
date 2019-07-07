@@ -62,6 +62,40 @@ def test_baza_modelu_odpowiedzialnosci_zapisywanie(
 
 
 @pytest.mark.django_db
+def test_baza_modelu_odpowiedzialnosci_autorow_dyscyplina(
+        wydawnictwo_ciagle,
+        jednostka,
+        autor_jan_kowalski,
+        dyscyplina1,
+        dyscyplina2,
+        typy_odpowiedzialnosci, rok):
+    ad = Autor_Dyscyplina.objects.create(
+        rok=rok + 50, autor=autor_jan_kowalski,
+        dyscyplina_naukowa=dyscyplina1
+    )
+
+    wca = wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka, zapisany_jako="Kowalski")
+    assert wca.okresl_dyscypline() == None
+
+    ad = Autor_Dyscyplina.objects.create(
+        rok=rok, autor=autor_jan_kowalski,
+        dyscyplina_naukowa=dyscyplina1
+    )
+
+    assert wca.okresl_dyscypline() == dyscyplina1
+
+    wca.dyscyplina_naukowa = dyscyplina2
+    wca.save()
+    assert wca.okresl_dyscypline() == dyscyplina2
+
+    wca.dyscyplina_naukowa = None
+    wca.save()
+    ad.subdyscyplina_naukowa = dyscyplina2
+    ad.save()
+    assert wca.okresl_dyscypline() == None
+
+
+@pytest.mark.django_db
 def test_eksport_pbn_outstanding():
     wz = mommy.make(Wydawnictwo_Zwarte, praca_wybitna=True,
                     uzasadnienie_wybitnosci="foobar")

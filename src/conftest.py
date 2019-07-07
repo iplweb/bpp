@@ -65,6 +65,13 @@ def dyscyplina2(db):
 
 
 @pytest.fixture
+def dyscyplina3(db):
+    return Dyscyplina_Naukowa.objects.create(
+        nazwa="trzecia dyscyplina", kod="TD"
+    )
+
+
+@pytest.fixture
 def normal_django_user(request, db,
                        django_user_model):  # , django_username_field):
     """
@@ -310,6 +317,9 @@ def _zwarte_maker(**kwargs):
 @pytest.fixture(scope="function")
 def wydawnictwo_zwarte(jezyki, charaktery_formalne, typy_kbn,
                        statusy_korekt, typy_odpowiedzialnosci):
+    """
+    :rtype: bpp.models.Wydawnictwo_Zwarte
+    """
     return _zwarte_maker(tytul_oryginalny=u'Wydawnictwo Zwarte ĄćłłóńŹ')
 
 

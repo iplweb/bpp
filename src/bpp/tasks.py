@@ -1,17 +1,23 @@
 # -*- encoding: utf-8 -*-
 import os
+import traceback
 
 from celery.utils.log import get_task_logger
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ImproperlyConfigured
 from django.core.management import call_command
+from django.utils import timezone
+
+from bpp.models.sloty.core import IPunktacjaCacher
+
 try:
     from django.core.urlresolvers import reverse
 except ImportError:
     from django.urls import reverse
 
 from bpp.models import Uczelnia, Wydawnictwo_Ciagle, Wydawnictwo_Zwarte, Praca_Doktorska, Praca_Habilitacyjna
+from bpp.models.cache import CacheQueue
 from bpp.util import remove_old_objects
 from celeryui.interfaces import IWebTask
 from celeryui.models import Report
@@ -136,3 +142,40 @@ def _zaktualizuj_liczbe_cytowan(klasy=None):
 @app.task
 def zaktualizuj_liczbe_cytowan():
     _zaktualizuj_liczbe_cytowan()
+
+
+@app.task
+def aktualizuj_cache():
+    while True:
+        obj = CacheQueue.objects.ready().first()
+        if obj is None:
+            break
+        try:
+            obj.started_on = timezone.now()
+            obj.save()
+            obj.rekord.zaktualizuj_cache()
+
+            ipc = IPunktacjaCacher(obj.rekord)
+            if ipc.canAdapt():
+                ipc.rebuildEntries()
+
+        except Exception as e:
+            obj.info = traceback.format_exc()
+            obj.error = True
+        finally:
+            n = timezone.now()
+            obj.completed_on = n
+
+        obj.save()
+
+        if not obj.error:
+            for elem in CacheQueue.objects.filter(
+                started_on=None,
+                object_id=obj.object_id,
+                content_type_id=obj.content_type_id,
+                created_on__lt=obj.created_on
+            ):
+                elem.started_on = n
+                elem.completed_on = n
+                elem.info = '%s' % obj.pk
+                elem.save()

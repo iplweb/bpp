@@ -15,7 +15,8 @@ from django.utils import safestring
 
 
 def dodaj_autora(klass, rekord, autor, jednostka, zapisany_jako=None,
-                 typ_odpowiedzialnosci_skrot='aut.', kolejnosc=None):
+                 typ_odpowiedzialnosci_skrot='aut.', kolejnosc=None,
+                 dyscyplina_naukowa=None):
     """
     Utility function, dodająca autora do danego rodzaju klasy (Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte, Patent); funkcja używana przez te klasy, niejako
@@ -52,7 +53,8 @@ def dodaj_autora(klass, rekord, autor, jednostka, zapisany_jako=None,
         rekord=rekord, autor=autor, jednostka=jednostka,
         typ_odpowiedzialnosci=typ_odpowiedzialnosci,
         kolejnosc=kolejnosc,
-        zapisany_jako=zapisany_jako)
+        zapisany_jako=zapisany_jako,
+        dyscyplina_naukowa=dyscyplina_naukowa)
 
 
 opis_bibliograficzny_template = None

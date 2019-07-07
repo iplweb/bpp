@@ -5,7 +5,7 @@ name = "pypi"
 
 [packages]
 Django = "==2.1.7"
-psycopg2-binary = ">=2.7.7"
+psycopg2-binary = "==2.8.3"
 django-flexible-reports = "==0.2.8"
 django-group-by = "==0.3.1"
 django-columns = "==0.1.0"
@@ -88,6 +88,7 @@ pytest-pythonpath = "*"
 pytest-mock = "*"
 pytest-xdist = "*"
 pytest-nginx-iplweb = "*"
+pytest-lazy-fixture = "*"
 
 [requires]
 python_version = "3.6"

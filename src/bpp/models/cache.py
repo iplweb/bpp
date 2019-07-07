@@ -6,13 +6,14 @@
 # - Patent
 # - Praca_Doktorska
 # - Praca_Habilitacyjna
-import traceback
 
+from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields.array import ArrayField
 from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models, transaction
+from django.db.models import Func, ForeignKey, CASCADE
 from django.db.models.deletion import DO_NOTHING
 from django.db.models.lookups import In
 from django.db.models.signals import post_save, post_delete, pre_save, \
@@ -24,7 +25,7 @@ from bpp.models import Patent, \
     Praca_Doktorska, Praca_Habilitacyjna, \
     Typ_Odpowiedzialnosci, Wydawnictwo_Zwarte, \
     Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor, \
-    Patent_Autor, Zrodlo
+    Patent_Autor, Zrodlo, Dyscyplina_Naukowa, Autor
 from bpp.models.abstract import ModelPunktowanyBaza, \
     ModelZRokiem, ModelZeSzczegolami, ModelRecenzowany, \
     ModelZeZnakamiWydawniczymi, ModelZOpenAccess, ModelZKonferencja, \
@@ -48,8 +49,6 @@ OTHER_DEPENDENT_MODELS = [Typ_Odpowiedzialnosci, Jezyk, Charakter_Formalny, Zrod
 def defer_zaktualizuj_opis(instance, *args, **kw):
     """Obiekt typu Wydawnictwo_..., Patent, Praca_... został zapisany.
     Zaktualizuj jego opis bibliograficzny."""
-    from bpp.tasks import zaktualizuj_opis
-
     flds = kw.get('update_fields', [])
 
     if flds:
@@ -67,11 +66,16 @@ def defer_zaktualizuj_opis(instance, *args, **kw):
             # models.util.ModelZOpisemBibliograficznym.zaktualizuj_opis
             return
 
-    transaction.on_commit(
-        lambda: zaktualizuj_opis.delay(
-            app_label=instance._meta.app_label,
-            model_name=instance._meta.model_name,
-            pk=instance.pk))
+    # transaction.on_commit(
+    #     lambda: zaktualizuj_opis.delay(
+    #         app_label=instance._meta.app_label,
+    #         model_name=instance._meta.model_name,
+    #         pk=instance.pk))
+
+    CacheQueue.objects.add(instance)
+    # transaction.on_commit(
+    #    lambda instance=instance:
+    #
 
 
 def defer_zaktualizuj_opis_rekordu(instance, *args, **kw):
@@ -167,6 +171,7 @@ def enable():
 def enabled():
     global _CACHE_ENABLED
     return _CACHE_ENABLED
+
 
 def disable():
     global _CACHE_ENABLED
@@ -434,6 +439,19 @@ class RekordBase(ModelPunktowanyBaza, ModelZOpisemBibliograficznym,
     def js_safe_pk(self):
         return "%i_%i" % (self.pk[0], self.pk[1])
 
+    @cached_property
+    def ma_punktacje_sloty(self):
+        return Cache_Punktacja_Autora.objects.filter(rekord_id=self.id).exists() or \
+               Cache_Punktacja_Dyscypliny.objects.filter(rekord_id=self.id).exists()
+
+    @cached_property
+    def punktacja_dyscypliny(self):
+        return Cache_Punktacja_Dyscypliny.objects.filter(rekord_id=self.id)
+
+    @cached_property
+    def punktacja_autora(self):
+        return Cache_Punktacja_Autora.objects.filter(rekord_id=self.id)
+
 
 class Rekord(RekordBase):
     class Meta:
@@ -472,3 +490,66 @@ def with_cache(fun):
                 raise Exception("Enable failure, trace enable function, there was a bug there...")
 
     return _wrapped
+
+
+class CacheManager(models.Manager):
+    def add(self, obj):
+        from bpp.tasks import aktualizuj_cache
+
+        obj, created = self.get_or_create(
+            created_on=Func(function='NOW'),
+            object_id=obj.pk,
+            content_type=ContentType.objects.get_for_model(obj._meta.model))
+        if created:
+            transaction.on_commit(
+                lambda: aktualizuj_cache.delay()
+            )
+
+        return obj
+
+    def ready(self):
+        return self.filter(started_on=None)
+
+
+class CacheQueue(models.Model):
+    # Pole created_on dostanie po stronie SQL defaultową wartość "NOW()";
+    # niestety na ten moment zrobienie tego w Django nie jest trywialne, więc
+    # temat zostaje załatwiony po stronie migracji przez RunSQL
+    created_on = models.DateTimeField(blank=True)
+    last_updated_on = models.DateTimeField(auto_now=True)
+
+    completed_on = models.DateTimeField(null=True, blank=True)
+    started_on = models.DateTimeField(null=True, blank=True)
+
+    error = models.BooleanField(default=False)
+    info = models.TextField(blank=True, null=True)
+
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    rekord = GenericForeignKey('content_type', 'object_id')
+
+    objects = CacheManager()
+
+    class Meta:
+        ordering = ('-created_on',)
+
+
+class Cache_Punktacja_Dyscypliny(models.Model):
+    rekord_id = TupleField(models.IntegerField(), size=2, db_index=True)
+    dyscyplina = ForeignKey(Dyscyplina_Naukowa, CASCADE)
+    pkd = models.DecimalField(max_digits=20, decimal_places=4)
+    slot = models.DecimalField(max_digits=20, decimal_places=4)
+
+    class Meta:
+        ordering = ('dyscyplina__nazwa',)
+
+
+class Cache_Punktacja_Autora(models.Model):
+    rekord_id = TupleField(models.IntegerField(), size=2, db_index=True)
+    autor = ForeignKey(Autor, CASCADE)
+    dyscyplina = ForeignKey(Dyscyplina_Naukowa, CASCADE)
+    pkdaut = models.DecimalField(max_digits=20, decimal_places=4)
+    slot = models.DecimalField(max_digits=20, decimal_places=4)
+
+    class Meta:
+        ordering = ('autor__nazwisko', 'dyscyplina__nazwa')
