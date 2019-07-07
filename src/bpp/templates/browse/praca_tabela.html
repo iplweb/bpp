@@ -307,7 +307,7 @@
     {% endif %}
 </table>
 
-{% if rekord.ma_punktacje_sloty %}
+{% if rekord.ma_punktacje_sloty and request.user.is_staff %}
     <h4>Punktacja dyscyplin i sloty</h4>
     <table>
         <tr>
