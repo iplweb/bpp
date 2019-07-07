@@ -439,6 +439,19 @@ class RekordBase(ModelPunktowanyBaza, ModelZOpisemBibliograficznym,
     def js_safe_pk(self):
         return "%i_%i" % (self.pk[0], self.pk[1])
 
+    @cached_property
+    def ma_punktacje_sloty(self):
+        return Cache_Punktacja_Autora.objects.filter(rekord_id=self.id).exists() or \
+               Cache_Punktacja_Dyscypliny.objects.filter(rekord_id=self.id).exists()
+
+    @cached_property
+    def punktacja_dyscypliny(self):
+        return Cache_Punktacja_Dyscypliny.objects.filter(rekord_id=self.id)
+
+    @cached_property
+    def punktacja_autora(self):
+        return Cache_Punktacja_Autora.objects.filter(rekord_id=self.id)
+
 
 class Rekord(RekordBase):
     class Meta:
@@ -527,6 +540,9 @@ class Cache_Punktacja_Dyscypliny(models.Model):
     pkd = models.DecimalField(max_digits=20, decimal_places=4)
     slot = models.DecimalField(max_digits=20, decimal_places=4)
 
+    class Meta:
+        ordering = ('dyscyplina__nazwa',)
+
 
 class Cache_Punktacja_Autora(models.Model):
     rekord_id = TupleField(models.IntegerField(), size=2, db_index=True)
@@ -534,3 +550,6 @@ class Cache_Punktacja_Autora(models.Model):
     dyscyplina = ForeignKey(Dyscyplina_Naukowa, CASCADE)
     pkdaut = models.DecimalField(max_digits=20, decimal_places=4)
     slot = models.DecimalField(max_digits=20, decimal_places=4)
+
+    class Meta:
+        ordering = ('autor__nazwisko', 'dyscyplina__nazwa')
