@@ -15,7 +15,7 @@ class SlotKalkulator_Wydawnictwo_Ciagle_Prog1(SlotMixin):
             return self.original.punkty_kbn
 
     def slot_dla_autora_z_dyscypliny(self, dyscyplina):
-        azd = self.autorzy_z_dyscypliny(dyscyplina).count()
+        azd = len(self.autorzy_z_dyscypliny(dyscyplina))
         if azd == 0:
             return
         return Decimal("1") / azd
@@ -29,7 +29,7 @@ class KPrzezMMixin:
     def k_przez_m(self, dyscyplina):
         if self.wszyscy() == 0:
             return
-        return Decimal(self.autorzy_z_dyscypliny(dyscyplina).count() / self.wszyscy())
+        return Decimal(len(self.autorzy_z_dyscypliny(dyscyplina)) / self.wszyscy())
 
 
 class SlotKalkulator_Wydawnictwo_Ciagle_Prog2(KPrzezMMixin, SlotMixin):
@@ -53,7 +53,7 @@ class SlotKalkulator_Wydawnictwo_Ciagle_Prog2(KPrzezMMixin, SlotMixin):
         if not self.ma_dyscypline(dyscyplina):
             return
 
-        azd = self.autorzy_z_dyscypliny(dyscyplina).count()
+        azd = len(self.autorzy_z_dyscypliny(dyscyplina))
         if azd > 0:
             return self.pierwiastek_k_przez_m(dyscyplina) * 1 / azd
 
@@ -92,4 +92,4 @@ class SlotKalkulator_Wydawnictwo_Ciagle_Prog3(KPrzezMMixin, SlotMixin):
     def slot_dla_dyscypliny(self, dyscyplina):
         if not self.ma_dyscypline(dyscyplina):
             return
-        return self.jeden_przez_wszyscy() * self.autorzy_z_dyscypliny(dyscyplina).count()
+        return self.jeden_przez_wszyscy() * len(self.autorzy_z_dyscypliny(dyscyplina))

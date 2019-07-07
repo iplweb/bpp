@@ -134,17 +134,17 @@ def test_autorzy_z_dyscypliny(
 
     slot = ISlot(ciagle_z_dyscyplinami)
 
-    assert slot.autorzy_z_dyscypliny(dyscyplina1).count() == 1
-    assert slot.autorzy_z_dyscypliny(dyscyplina2).count() == 1
-    assert slot.autorzy_z_dyscypliny(dyscyplina3).count() == 0
+    assert len(slot.autorzy_z_dyscypliny(dyscyplina1)) == 1
+    assert len(slot.autorzy_z_dyscypliny(dyscyplina2)) == 1
+    assert len(slot.autorzy_z_dyscypliny(dyscyplina3)) == 0
 
-    assert slot.autorzy_z_dyscypliny(dyscyplina1, TO_AUTOR).count() == 1
-    assert slot.autorzy_z_dyscypliny(dyscyplina2, TO_AUTOR).count() == 1
-    assert slot.autorzy_z_dyscypliny(dyscyplina3, TO_AUTOR).count() == 0
+    assert len(slot.autorzy_z_dyscypliny(dyscyplina1, TO_AUTOR)) == 1
+    assert len(slot.autorzy_z_dyscypliny(dyscyplina2, TO_AUTOR)) == 1
+    assert len(slot.autorzy_z_dyscypliny(dyscyplina3, TO_AUTOR)) == 0
 
-    assert slot.autorzy_z_dyscypliny(dyscyplina1, TO_REDAKTOR).count() == 0
-    assert slot.autorzy_z_dyscypliny(dyscyplina2, TO_REDAKTOR).count() == 0
-    assert slot.autorzy_z_dyscypliny(dyscyplina3, TO_REDAKTOR).count() == 0
+    assert len(slot.autorzy_z_dyscypliny(dyscyplina1, TO_REDAKTOR)) == 0
+    assert len(slot.autorzy_z_dyscypliny(dyscyplina2, TO_REDAKTOR)) == 0
+    assert len(slot.autorzy_z_dyscypliny(dyscyplina3, TO_REDAKTOR)) == 0
 
 
 

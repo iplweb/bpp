@@ -14,14 +14,15 @@ class SlotMixin:
         return self.original.autorzy_set.count()
 
     def autorzy_z_dyscypliny(self, dyscyplina_naukowa, typ_ogolny=None):
-        qset = self.original.autorzy_set.filter(
-            dyscyplina_naukowa=dyscyplina_naukowa
-        )
+        ret = []
 
-        if typ_ogolny is not None:
-            qset = qset.filter(typ_odpowiedzialnosci__typ_ogolny=typ_ogolny)
-
-        return qset
+        for elem in self.original.autorzy_set.all():
+            if elem.okresl_dyscypline() == dyscyplina_naukowa:
+                if typ_ogolny is not None:
+                    if elem.typ_odpowiedzialnosci.typ_ogolny != typ_ogolny:
+                        continue
+                ret.append(elem)
+        return ret
 
     def wszyscy_autorzy(self, typ_ogolny=None):
         # TODO: czy wszyscy, czy wszyscy redaktorzy, czy ... ?
@@ -45,7 +46,10 @@ class SlotMixin:
     def dyscypliny(self):
         ret = set()
         for wa in self.original.autorzy_set.all():
-            ret.add(wa.okresl_dyscypline())
+            d = wa.okresl_dyscypline()
+            if d is None:
+                continue
+            ret.add(d)
         return ret
 
     def ma_dyscypline(self, dyscyplina):
@@ -77,7 +81,7 @@ class SlotMixin:
         wca = self.ensure_autor_rekordu_klass(wca)
 
         dyscyplina = wca.okresl_dyscypline()
-        azd = self.autorzy_z_dyscypliny(dyscyplina).count()
+        azd = len(self.autorzy_z_dyscypliny(dyscyplina))
         if azd == 0:
             return
 
