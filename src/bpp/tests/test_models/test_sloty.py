@@ -115,7 +115,7 @@ def test_slot_wszyscy_slot_wszystkie_dyscypliny(
 
     slot = ISlot(rekord)
 
-    assert slot.dyscypliny.count() == 2
+    assert len(slot.dyscypliny) == 2
     assert slot.wszyscy() == 2
 
 

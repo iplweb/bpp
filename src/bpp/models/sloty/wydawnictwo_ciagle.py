@@ -29,7 +29,7 @@ class KPrzezMMixin:
     def k_przez_m(self, dyscyplina):
         if self.wszyscy() == 0:
             return
-        return self.autorzy_z_dyscypliny(dyscyplina).count() / self.wszyscy()
+        return Decimal(self.autorzy_z_dyscypliny(dyscyplina).count() / self.wszyscy())
 
 
 class SlotKalkulator_Wydawnictwo_Ciagle_Prog2(KPrzezMMixin, SlotMixin):
@@ -47,7 +47,7 @@ class SlotKalkulator_Wydawnictwo_Ciagle_Prog2(KPrzezMMixin, SlotMixin):
 
     def punkty_pkd(self, dyscyplina):
         if self.ma_dyscypline(dyscyplina):
-            return self.original.punkty_kbn * max(self.pierwiastek_k_przez_m(dyscyplina), 0.1)
+            return self.original.punkty_kbn * max(self.pierwiastek_k_przez_m(dyscyplina), Decimal("0.1"))
 
     def slot_dla_autora_z_dyscypliny(self, dyscyplina):
         if not self.ma_dyscypline(dyscyplina):
@@ -76,7 +76,7 @@ class SlotKalkulator_Wydawnictwo_Ciagle_Prog3(KPrzezMMixin, SlotMixin):
             k_przez_m = self.k_przez_m(dyscyplina)
             if k_przez_m is None:
                 return
-            return self.original.punkty_kbn * max(k_przez_m, 0.1)
+            return self.original.punkty_kbn * max(k_przez_m, Decimal("0.1"))
 
     def jeden_przez_wszyscy(self):
         w = self.wszyscy()

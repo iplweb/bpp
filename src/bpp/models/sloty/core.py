@@ -1,8 +1,10 @@
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 
-from bpp.models import Wydawnictwo_Zwarte, Wydawnictwo_Ciagle, Cache_Punktacja_Dyscypliny, Cache_Punktacja_Autora, \
-    Dyscyplina_Naukowa
+from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
+from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
+from bpp.models.cache import Cache_Punktacja_Dyscypliny, Cache_Punktacja_Autora
+from bpp.models.dyscyplina_naukowa import Dyscyplina_Naukowa
 from bpp.models.sloty.wydawnictwo_ciagle import SlotKalkulator_Wydawnictwo_Ciagle_Prog3
 from bpp.models.sloty.wydawnictwo_zwarte import SlotKalkulator_Wydawnictwo_Zwarte_Tier0
 
@@ -77,11 +79,8 @@ class IPunktacjaCacher:
         Cache_Punktacja_Autora.objects.filter(rekord_id=pk).delete()
 
         _slot_cache = {}
-        dyscypliny = dict([(x.pk, x) for x in Dyscyplina_Naukowa.objects.all()])
 
-        for dyscyplina_id in self.slot.dyscypliny:
-            dyscyplina = dyscypliny[dyscyplina_id]
-
+        for dyscyplina in self.slot.dyscypliny:
             _slot_cache[dyscyplina] = self.slot.slot_dla_dyscypliny(dyscyplina)
             Cache_Punktacja_Dyscypliny.objects.create(
                 rekord_id=pk,
@@ -95,10 +94,14 @@ class IPunktacjaCacher:
             if dyscyplina is None:
                 continue
 
+            pkdaut = self.slot.pkd_dla_autora(wa)
+            if pkdaut is None:
+                continue
+
             Cache_Punktacja_Autora.objects.create(
                 rekord_id=pk,
                 autor_id=wa.autor_id,
                 dyscyplina_id=dyscyplina.pk,
-                pkdaut=self.slot.pkd_dla_autora(wa),
+                pkdaut=pkdaut,
                 slot=self.slot.slot_dla_autora_z_dyscypliny(dyscyplina)
             )

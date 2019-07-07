@@ -1,7 +1,5 @@
 from django.utils.functional import cached_property
 
-from django.utils.functional import cached_property
-
 from bpp.models import TO_AUTOR, TO_REDAKTOR, Autor
 
 
@@ -45,11 +43,13 @@ class SlotMixin:
 
     @cached_property
     def dyscypliny(self):
-        return self.original.autorzy_set.exclude(dyscyplina_naukowa=None).values(
-            "dyscyplina_naukowa").distinct().values_list('dyscyplina_naukowa', flat=True)
+        ret = set()
+        for wa in self.original.autorzy_set.all():
+            ret.add(wa.okresl_dyscypline())
+        return ret
 
     def ma_dyscypline(self, dyscyplina):
-        return dyscyplina.pk in self.dyscypliny
+        return dyscyplina in self.dyscypliny
 
     def ensure_autor_rekordu_klass(self, a):
         """
@@ -104,4 +104,3 @@ class SlotMixin:
         wca = self.ensure_autor_rekordu_klass(wca)
         dyscyplina = wca.okresl_dyscypline()
         return self.slot_dla_autora_z_dyscypliny(dyscyplina)
-

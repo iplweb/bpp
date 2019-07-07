@@ -160,6 +160,7 @@ def aktualizuj_cache():
                 ipc.rebuildEntries()
 
         except Exception as e:
+            logger.exception("Podczas generowania cache opisu / punktow")
             obj.info = traceback.format_exc()
             obj.error = True
         finally:
