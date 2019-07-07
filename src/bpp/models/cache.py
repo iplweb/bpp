@@ -13,7 +13,7 @@ from django.contrib.postgres.fields.array import ArrayField
 from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models, transaction
-from django.db.models import Func
+from django.db.models import Func, ForeignKey, CASCADE
 from django.db.models.deletion import DO_NOTHING
 from django.db.models.lookups import In
 from django.db.models.signals import post_save, post_delete, pre_save, \
@@ -25,7 +25,7 @@ from bpp.models import Patent, \
     Praca_Doktorska, Praca_Habilitacyjna, \
     Typ_Odpowiedzialnosci, Wydawnictwo_Zwarte, \
     Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor, \
-    Patent_Autor, Zrodlo
+    Patent_Autor, Zrodlo, Dyscyplina_Naukowa, Autor
 from bpp.models.abstract import ModelPunktowanyBaza, \
     ModelZRokiem, ModelZeSzczegolami, ModelRecenzowany, \
     ModelZeZnakamiWydawniczymi, ModelZOpenAccess, ModelZKonferencja, \
@@ -49,8 +49,6 @@ OTHER_DEPENDENT_MODELS = [Typ_Odpowiedzialnosci, Jezyk, Charakter_Formalny, Zrod
 def defer_zaktualizuj_opis(instance, *args, **kw):
     """Obiekt typu Wydawnictwo_..., Patent, Praca_... został zapisany.
     Zaktualizuj jego opis bibliograficzny."""
-    from bpp.tasks import zaktualizuj_opis
-
     flds = kw.get('update_fields', [])
 
     if flds:
@@ -441,6 +439,19 @@ class RekordBase(ModelPunktowanyBaza, ModelZOpisemBibliograficznym,
     def js_safe_pk(self):
         return "%i_%i" % (self.pk[0], self.pk[1])
 
+    @cached_property
+    def ma_punktacje_sloty(self):
+        return Cache_Punktacja_Autora.objects.filter(rekord_id=self.id).exists() or \
+               Cache_Punktacja_Dyscypliny.objects.filter(rekord_id=self.id).exists()
+
+    @cached_property
+    def punktacja_dyscypliny(self):
+        return Cache_Punktacja_Dyscypliny.objects.filter(rekord_id=self.id)
+
+    @cached_property
+    def punktacja_autora(self):
+        return Cache_Punktacja_Autora.objects.filter(rekord_id=self.id)
+
 
 class Rekord(RekordBase):
     class Meta:
@@ -521,3 +532,24 @@ class CacheQueue(models.Model):
 
     class Meta:
         ordering = ('-created_on',)
+
+
+class Cache_Punktacja_Dyscypliny(models.Model):
+    rekord_id = TupleField(models.IntegerField(), size=2, db_index=True)
+    dyscyplina = ForeignKey(Dyscyplina_Naukowa, CASCADE)
+    pkd = models.DecimalField(max_digits=20, decimal_places=4)
+    slot = models.DecimalField(max_digits=20, decimal_places=4)
+
+    class Meta:
+        ordering = ('dyscyplina__nazwa',)
+
+
+class Cache_Punktacja_Autora(models.Model):
+    rekord_id = TupleField(models.IntegerField(), size=2, db_index=True)
+    autor = ForeignKey(Autor, CASCADE)
+    dyscyplina = ForeignKey(Dyscyplina_Naukowa, CASCADE)
+    pkdaut = models.DecimalField(max_digits=20, decimal_places=4)
+    slot = models.DecimalField(max_digits=20, decimal_places=4)
+
+    class Meta:
+        ordering = ('autor__nazwisko', 'dyscyplina__nazwa')

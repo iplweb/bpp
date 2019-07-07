@@ -1,7 +1,7 @@
 import pytest
 
-from bpp.models import TO_REDAKTOR, TO_AUTOR, Typ_Odpowiedzialnosci
-from bpp.models.sloty.core import ISlot
+from bpp.models import TO_REDAKTOR, TO_AUTOR, Typ_Odpowiedzialnosci, Cache_Punktacja_Autora, Cache_Punktacja_Dyscypliny
+from bpp.models.sloty.core import ISlot, IPunktacjaCacher
 
 
 @pytest.fixture
@@ -196,3 +196,24 @@ def test_slot_artykuly(
     assert f"{slot.slot_dla_dyscypliny(dyscyplina2):.4f}" == ma_byc_2
     assert slot.slot_dla_dyscypliny(dyscyplina3) == None
 
+
+@pytest.mark.django_db
+def test_IPunktacjaCacher(
+        ciagle_z_dyscyplinami,
+        autor_jan_nowak,
+        autor_jan_kowalski,
+        dyscyplina1,
+        dyscyplina2,
+        dyscyplina3):
+
+    ciagle_z_dyscyplinami.punkty_kbn =30
+    ciagle_z_dyscyplinami.rok = 2017
+    ciagle_z_dyscyplinami.save()
+
+    ipc = IPunktacjaCacher(ciagle_z_dyscyplinami)
+    assert ipc.canAdapt()
+
+    ipc.rebuildEntries()
+
+    assert Cache_Punktacja_Dyscypliny.objects.count() == 2
+    assert Cache_Punktacja_Autora.objects.count() == 2

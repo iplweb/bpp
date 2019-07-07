@@ -9,6 +9,8 @@ from django.core.exceptions import ImproperlyConfigured
 from django.core.management import call_command
 from django.utils import timezone
 
+from bpp.models.sloty.core import IPunktacjaCacher
+
 try:
     from django.core.urlresolvers import reverse
 except ImportError:
@@ -152,6 +154,11 @@ def aktualizuj_cache():
             obj.started_on = timezone.now()
             obj.save()
             obj.rekord.zaktualizuj_cache()
+
+            ipc = IPunktacjaCacher(obj.rekord)
+            if ipc.canAdapt():
+                ipc.rebuildEntries()
+
         except Exception as e:
             obj.info = traceback.format_exc()
             obj.error = True
