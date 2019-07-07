@@ -5,7 +5,7 @@ Historia zmian
 git
 ---
 
-*
+* wyświetlanie informacji o punktacji dla dyscyplin i slotach
 
 1.0.29-dev2
 -----------
