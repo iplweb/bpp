@@ -10,7 +10,7 @@ git
 1.0.30-dev2
 -------------
 
-*
+* poprawki drobnych błędów
 
 1.0.30-dev1
 -------------
