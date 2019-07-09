@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 import pytest
 
 from bpp.models import TO_REDAKTOR, TO_AUTOR, Typ_Odpowiedzialnosci, Cache_Punktacja_Autora, Cache_Punktacja_Dyscypliny
@@ -243,7 +245,8 @@ def test_slotkalkulator_wydawnictwo_ciagle_prog2_punkty_pkd(
 
     slot = SlotKalkulator_Wydawnictwo_Ciagle_Prog2(ciagle_z_dyscyplinami)
 
-    assert slot.punkty_pkd(dyscyplina1) == 14.142135623730951
-    assert slot.slot_dla_autora_z_dyscypliny(dyscyplina1) == 0.7071067811865476
-    assert slot.slot_dla_dyscypliny(dyscyplina1) == 0.7071067811865476
+    assert str(round(slot.punkty_pkd(dyscyplina1), 4)) == "14.1421"
+    assert str(round(slot.slot_dla_autora_z_dyscypliny(dyscyplina1), 4)) == "0.7071"
+    assert str(round(slot.slot_dla_dyscypliny(dyscyplina1), 4)) == "0.7071"
 
+    assert type(slot.pierwiastek_k_przez_m(dyscyplina1)) == Decimal

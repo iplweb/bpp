@@ -43,7 +43,7 @@ class SlotKalkulator_Wydawnictwo_Ciagle_Prog2(KPrzezMMixin, SlotMixin):
         k_przez_m = self.k_przez_m(dyscyplina)
         if k_przez_m is None:
             return
-        return sqrt(k_przez_m)
+        return Decimal(sqrt(k_przez_m))
 
     def punkty_pkd(self, dyscyplina):
         if self.ma_dyscypline(dyscyplina):
