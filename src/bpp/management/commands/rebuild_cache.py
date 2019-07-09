@@ -3,6 +3,7 @@
 from django.core.management import BaseCommand
 
 from bpp.models.cache import Rekord
+from bpp.tasks import aktualizuj_cache_rekordu
 
 
 class Command(BaseCommand):
@@ -24,7 +25,8 @@ class Command(BaseCommand):
         action = True
         for r in qset:
             if action:
-                r.original.zaktualizuj_cache()
+                aktualizuj_cache_rekordu(r)
+
                 action = False
                 skip = options['skip'] + 1
 

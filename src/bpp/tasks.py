@@ -7,6 +7,7 @@ from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ImproperlyConfigured
 from django.core.management import call_command
+from django.db import transaction
 from django.utils import timezone
 
 from bpp.models.sloty.core import IPunktacjaCacher
@@ -144,6 +145,14 @@ def zaktualizuj_liczbe_cytowan():
     _zaktualizuj_liczbe_cytowan()
 
 
+@transaction.atomic
+def aktualizuj_cache_rekordu(rekord):
+    rekord.original.zaktualizuj_cache()
+    ipc = IPunktacjaCacher(rekord)
+    if ipc.canAdapt():
+        ipc.rebuildEntries()
+
+
 @app.task
 def aktualizuj_cache():
     while True:
@@ -153,16 +162,13 @@ def aktualizuj_cache():
         try:
             obj.started_on = timezone.now()
             obj.save()
-            obj.rekord.zaktualizuj_cache()
-
-            ipc = IPunktacjaCacher(obj.rekord)
-            if ipc.canAdapt():
-                ipc.rebuildEntries()
+            aktualizuj_cache_rekordu(obj.rekord)
 
         except Exception as e:
             logger.exception("Podczas generowania cache opisu / punktow")
             obj.info = traceback.format_exc()
             obj.error = True
+
         finally:
             n = timezone.now()
             obj.completed_on = n
@@ -171,10 +177,10 @@ def aktualizuj_cache():
 
         if not obj.error:
             for elem in CacheQueue.objects.filter(
-                started_on=None,
-                object_id=obj.object_id,
-                content_type_id=obj.content_type_id,
-                created_on__lt=obj.created_on
+                    started_on=None,
+                    object_id=obj.object_id,
+                    content_type_id=obj.content_type_id,
+                    created_on__lt=obj.created_on
             ):
                 elem.started_on = n
                 elem.completed_on = n
