@@ -146,9 +146,9 @@ def zaktualizuj_liczbe_cytowan():
 
 
 @transaction.atomic
-def aktualizuj_cache_rekordu(rekord):
-    rekord.original.zaktualizuj_cache()
-    ipc = IPunktacjaCacher(rekord)
+def aktualizuj_cache_rekordu(model):
+    model.zaktualizuj_cache()
+    ipc = IPunktacjaCacher(model)
     if ipc.canAdapt():
         ipc.rebuildEntries()
 

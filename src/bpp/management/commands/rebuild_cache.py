@@ -25,7 +25,7 @@ class Command(BaseCommand):
         action = True
         for r in qset:
             if action:
-                aktualizuj_cache_rekordu(r)
+                aktualizuj_cache_rekordu(r.original)
 
                 action = False
                 skip = options['skip'] + 1
