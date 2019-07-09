@@ -1,7 +1,6 @@
 import pytest
 from django.core.exceptions import ValidationError
 from django.db import InternalError
-from psycopg2._psycopg import DatabaseError
 
 from bpp.models import Autor_Dyscyplina
 
@@ -78,6 +77,22 @@ def test_autor_dyscyplina_change_trigger_single(autor_jan_kowalski, jednostka, d
 
     wza.refresh_from_db()
     assert wza.dyscyplina_naukowa == dyscyplina1
+
+
+def test_autor_dyscyplina_change_trigger_subdys_from_none_bug(
+        autor_jan_kowalski, dyscyplina1, dyscyplina2, rok):
+    """Sprawdź, czy zmiana przypisania Autor_Dyscyplina na dany rok pociągnie zmianę w wydawnictwach
+    ciągłych, zwartych i patentach. Skasowanie przypisania z kolei ustawi przypisanie na NULL. """
+
+    ad = Autor_Dyscyplina.objects.create(
+        rok=rok + 5,
+        autor=autor_jan_kowalski,
+        dyscyplina_naukowa=dyscyplina1,
+        subdyscyplina_naukowa=None
+    )
+
+    ad.subdyscyplina_naukowa = dyscyplina2
+    ad.save()  # Tu był bug przy zmianie z None na coś.
 
 
 def test_autor_dyscyplina_change_trigger_double(autor_jan_kowalski, jednostka, dyscyplina1, dyscyplina2, rok,
