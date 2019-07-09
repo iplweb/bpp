@@ -2,6 +2,8 @@ import pytest
 
 from bpp.models import TO_REDAKTOR, TO_AUTOR, Typ_Odpowiedzialnosci, Cache_Punktacja_Autora, Cache_Punktacja_Dyscypliny
 from bpp.models.sloty.core import ISlot, IPunktacjaCacher
+from bpp.models.sloty.wydawnictwo_ciagle import SlotKalkulator_Wydawnictwo_Ciagle_Prog3, \
+    SlotKalkulator_Wydawnictwo_Ciagle_Prog2
 
 
 @pytest.fixture
@@ -217,3 +219,31 @@ def test_IPunktacjaCacher(
 
     assert Cache_Punktacja_Dyscypliny.objects.count() == 2
     assert Cache_Punktacja_Autora.objects.count() == 2
+
+
+@pytest.mark.django_db
+def test_slotkalkulator_wydawnictwo_ciagle_prog3_punkty_pkd(
+        ciagle_z_dyscyplinami, dyscyplina1):
+    ciagle_z_dyscyplinami.rok = 2018
+    ciagle_z_dyscyplinami.punkty_kbn = 5
+    ciagle_z_dyscyplinami.save()
+
+    slot = SlotKalkulator_Wydawnictwo_Ciagle_Prog3(ciagle_z_dyscyplinami)
+
+    assert slot.punkty_pkd(dyscyplina1) == 2.5
+    assert slot.slot_dla_autora_z_dyscypliny(dyscyplina1) == 0.5
+    assert slot.slot_dla_dyscypliny(dyscyplina1) == 0.5
+
+@pytest.mark.django_db
+def test_slotkalkulator_wydawnictwo_ciagle_prog2_punkty_pkd(
+        ciagle_z_dyscyplinami, dyscyplina1):
+    ciagle_z_dyscyplinami.rok = 2018
+    ciagle_z_dyscyplinami.punkty_kbn = 20
+    ciagle_z_dyscyplinami.save()
+
+    slot = SlotKalkulator_Wydawnictwo_Ciagle_Prog2(ciagle_z_dyscyplinami)
+
+    assert slot.punkty_pkd(dyscyplina1) == 14.142135623730951
+    assert slot.slot_dla_autora_z_dyscypliny(dyscyplina1) == 0.7071067811865476
+    assert slot.slot_dla_dyscypliny(dyscyplina1) == 0.7071067811865476
+
