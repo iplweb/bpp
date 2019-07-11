@@ -340,6 +340,7 @@ if os.getenv("DJANGO_BPP_RAVEN_CONFIG_URL", None):
         'release': VERSION,
         'IGNORE_EXCEPTIONS': [
             DisallowedHost,
+            "django.core.exceptions.DisallowedHost"
         ],
     }
 

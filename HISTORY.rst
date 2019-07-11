@@ -7,6 +7,21 @@ git
 
 *
 
+1.0.30-dev2
+-------------
+
+* poprawki drobnych błędów
+
+1.0.30-dev1
+-------------
+
+* drobne poprawki
+
+1.0.30-dev0
+-------------
+
+* poprawki
+
 1.0.29-dev3
 -------------
 

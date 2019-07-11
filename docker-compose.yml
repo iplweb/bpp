@@ -23,8 +23,8 @@ services:
     ports:
       - "4444:4444"
       
-  selenium-node-1:
-    image: selenium/node-firefox-debug ## standalone-firefox-debug
+  selenium-node:
+    image: selenium/node-firefox-debug
     volumes:
       - /dev/shm:/dev/shm
     depends_on:
@@ -34,17 +34,6 @@ services:
     environment:
       - HUB_HOST=selenium
       
-  selenium-node-2:
-    image: selenium/node-firefox-debug ## standalone-firefox-debug
-    volumes:
-      - /dev/shm:/dev/shm
-    depends_on:
-      - selenium
-    ports:
-      - "5902:5900"
-    environment:
-      - HUB_HOST=selenium
-
   webserver:
     build:
       dockerfile: Dockerfile-nginx
