@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "3757ae58c999445c3170d10044a71994469ad4afcba4b93f797369f63a8845f8"
+            "sha256": "fe27053642861a16732d190008c29994938cec64de9e5572b23c2f385b8fd148"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -98,11 +98,11 @@
         },
         "django": {
             "hashes": [
-                "sha256:275bec66fd2588dd517ada59b8bfb23d4a9abc5a362349139ddda3c7ff6f5ade",
-                "sha256:939652e9d34d7d53d74d5d8ef82a19e5f8bb2de75618f7e5360691b6e9667963"
+                "sha256:65e2a548a52fca560cdd4e35f4fa1a79140f405af48950e59702a37e4227e958",
+                "sha256:d4244e2c9653e1349b37ab0cdf108607ba9d1e41f71d0711ac71360e4026ce94"
             ],
             "index": "pypi",
-            "version": "==2.1.7"
+            "version": "==2.1.10"
         },
         "django-admin-tools": {
             "hashes": [
@@ -1088,11 +1088,11 @@
         },
         "django": {
             "hashes": [
-                "sha256:275bec66fd2588dd517ada59b8bfb23d4a9abc5a362349139ddda3c7ff6f5ade",
-                "sha256:939652e9d34d7d53d74d5d8ef82a19e5f8bb2de75618f7e5360691b6e9667963"
+                "sha256:65e2a548a52fca560cdd4e35f4fa1a79140f405af48950e59702a37e4227e958",
+                "sha256:d4244e2c9653e1349b37ab0cdf108607ba9d1e41f71d0711ac71360e4026ce94"
             ],
             "index": "pypi",
-            "version": "==2.1.7"
+            "version": "==2.1.10"
         },
         "django-debug-toolbar": {
             "hashes": [
@@ -1628,10 +1628,10 @@
         },
         "zipp": {
             "hashes": [
-                "sha256:8c1019c6aad13642199fbe458275ad6a84907634cc9f0989877ccc4a2840139d",
-                "sha256:ca943a7e809cc12257001ccfb99e3563da9af99d52f261725e96dfe0f9275bc3"
+                "sha256:4970c3758f4e89a7857a973b1e2a5d75bcdc47794442f2e2dd4fe8e0466e809a",
+                "sha256:8a5712cfd3bb4248015eb3b0b3c54a5f6ee3f2425963ef2a0125b8bc40aafaec"
             ],
-            "version": "==0.5.1"
+            "version": "==0.5.2"
         }
     }
 }
