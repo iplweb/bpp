@@ -78,5 +78,37 @@ Redagowanie➡Administracja➡Formularze wyszukiwania. Kliknij nazwę takiego
 formularza, następnie zaznacz lub odznacz opcję "Publiczny" i zapisz rekord
 
 
+Zachowanie procedur utrzymujących integrację danych (triggerów) dla przypisań autora do dyscypliny
+--------------------------------------------------------------------------------------------------
 
+Założenia
+=========
 
+1. przypisanie autora do dyscypliny (rekord ``Autor_Dyscyplina``) na dany rok musi mieć główną dyscyplinę;
+
+2. pole subdyscyplina może być puste,
+
+3. procenty udziału dyscypliny i subdyscypliny, zsumowane, nie mogą przekroczyć 100%
+
+Zachowanie
+==========
+
+1. **dopisanie dyscypliny** (utworzenie rekordu ``Autor_Dyscyplina``) na dany rok **nie powoduje** żadnych
+   zmian w rekordach powiązanych; jeżeli autor miał jakieś przypisania do rekordów, pole "Dyscyplina"
+   pozostaje w nich puste tzn ma nadal
+
+   Rekordy te można będzie za pomocą zapytania bazodanowego przypisać do zadanych dyscyplin,
+   jeżeli taka jest wola i decyzja redaktora / osób odpowiedzialnych za merytoryczną zawartość bazy
+   danych.
+
+2. **zmiana dyscypliny lub subdyscypliny** na **inną** powoduje zmianę dyscypliny przypisanej dla
+   powiązań autor + rekord dla danego roku, dla danego autora - we wszystkich rekordach, które
+   mają „starą” dyscyplinę lub subdyscyplinę - na nową
+
+3. **zmiana subdyscypliny** na **pustą** powoduje zmianę dyscypliny przypisanej dla
+   powiązań autor + rekord dla danego roku, dla danego autora - we wszystkich rekordach, które
+   mają „starą” subdyscyplinę - na pustą.
+
+4. **usunięcie przypisania** autora do dyscypliny (rekord ``Autor_Dyscyplina``)  powoduje ustawienie
+    wartości pustej (``NULL``) dla danego roku, dla danego autora - we wszystkich rekordach, do
+    których przypisany jest dany autor.
