@@ -1,4 +1,3 @@
-
 =============================
 Instrukcja dla administratora
 =============================
@@ -77,6 +76,32 @@ Jeżeli chcesz później schować lub pokazać takie formularze, skorzystaj z op
 Redagowanie➡Administracja➡Formularze wyszukiwania. Kliknij nazwę takiego
 formularza, następnie zaznacz lub odznacz opcję "Publiczny" i zapisz rekord
 
+Sposób kalkulacji dyscyplin
+---------------------------
+
+1. Dyscyplina i subdyscyplina naukowa przypisana autorowi na dany rok zawiera się w rekordzie ``Autor_Dyscyplina``.
+
+2. Dyscyplina naukowa którą autor deklaruje dla danej publikacji jest określana przez bibliotekarza
+   każdorazowo dla powiązania autora do rekordu.
+
+3. Zachowanie systemu podczas zmiany przypisań dyscyplin na dany rok opisuje niniejsza instrukcja
+   w części :ref:`zachowanie-procedur`.
+
+4. Od wersji oprogramowania ``1.0.30-dev3`` system nie domniemuje automatycznie dyscypliny
+   dla danego przypisania autora do rekordu w przypadku braku takiej informacji. Innymi słowy,
+   **pole "Dyscyplina" przy powiązaniu autora z rekordem musi być wypełnione**. Jeżeli jest puste,
+   system nie bierze takiego autora pod uwagę przy kalkulacji dyscypliny. Zatem:
+
+5. Dyscyplina dla danego autora przy przypisaniu do rekordu istniejącego musi być explicte wpisana.
+
+6. Dyscyplina naukowa dla nowych rekordów: system podczas wpisywania nowego rekordu, po wybraniu
+   imienia i nazwiska autora przy powiązaniu autora do rekordu będzie starał się podpowiedzieć dyscyplinę
+   dla danego roku - w sytuacji, gdy autor ma wpisaną jedną.
+
+7. W sytuacji gdy autor ma wpisane dwie dyscypliny dla danego roku, system nie podpowiada dyscypliny,
+   pozostawiając to do decyzji bibliotekarza.
+
+.. _zachowanie-procedur:
 
 Zachowanie procedur utrzymujących integrację danych (triggerów) dla przypisań autora do dyscypliny
 --------------------------------------------------------------------------------------------------
