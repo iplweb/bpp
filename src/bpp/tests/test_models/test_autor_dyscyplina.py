@@ -22,6 +22,18 @@ def test_autor_dyscyplina_save_ta_sama_clean(autor_jan_kowalski, dyscyplina1, dy
         ad.clean()
 
 
+def test_autor_dyscyplina_save_ta_sama_clean_nie_wpisano(autor_jan_kowalski, dyscyplina1, dyscyplina2, rok):
+    """Sprawdź funkcjonowanie funkcji 'clean' gdy nie wpisano dyscypliny"""
+    ad = Autor_Dyscyplina(
+        rok=rok,
+        autor=autor_jan_kowalski,
+        dyscyplina_naukowa=None,
+        subdyscyplina_naukowa=None
+    )
+
+    ad.clean()
+
+
 def test_autor_dyscyplina_save_ta_sama_trigger(autor_jan_kowalski, dyscyplina1, dyscyplina2, rok):
     """Sprawdź funkcjonowanie triggera bazodanowego przy wrzuceniu tej samej
         dyscypliny do Autor_Dyscyplina (czyli nie 'save' tylko testujemy trigger
@@ -34,7 +46,6 @@ def test_autor_dyscyplina_save_ta_sama_trigger(autor_jan_kowalski, dyscyplina1, 
             dyscyplina_naukowa=dyscyplina1,
             subdyscyplina_naukowa=dyscyplina1
         )
-
 
 
 def test_autor_dyscyplina_procent_ponad(autor_jan_kowalski, dyscyplina1, dyscyplina2, rok):

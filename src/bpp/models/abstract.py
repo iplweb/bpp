@@ -339,24 +339,28 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
             self.jednostka.skrot)
 
     def okresl_dyscypline(self):
-        # Zwróć dyscyplinę, jeżeli określona:
-        if self.dyscyplina_naukowa:
-            return self.dyscyplina_naukowa
+        return self.dyscyplina_naukowa
 
-        # Jeżeli nie, sprawdź, czy dla danego autora jest określona dyscyplina
-        # na dany rok:
-        try:
-            ad = Autor_Dyscyplina.objects.get(
-                autor_id=self.autor_id,
-                rok=self.rekord.rok,
-            )
-        except Autor_Dyscyplina.DoesNotExist:
-            return
+        # Ponizej wykomentowane automatyczne zachowanie, obecne w systemie do wersji 1.0.30-dev2,
+        # którego po tej wersji NIE chcemy. Chcemy mieć explicte określoną dyscyplinę naukową.
+        # Jednakże, gdyby się okazało, że należy powrócić do jakiejś automatyki w tym temacie,
+        # API .okresl_dyscyplinę na ten moment zostaje, jak i resztka z tego kodu, któro
+        # zapewniało zachowanie automatyczne:
 
-        # Zwróć przypisaną dyscyplinę naukową tylko w sytuacji, gdy jest
-        # określona jedna. Jeżeli są dwie, to nie można określić z automatu
-        if ad.subdyscyplina_naukowa is None:
-            return ad.dyscyplina_naukowa
+        # # Jeżeli nie, sprawdź, czy dla danego autora jest określona dyscyplina
+        # # na dany rok:
+        # try:
+        #     ad = Autor_Dyscyplina.objects.get(
+        #         autor_id=self.autor_id,
+        #         rok=self.rekord.rok,
+        #     )
+        # except Autor_Dyscyplina.DoesNotExist:
+        #     return
+        #
+        # # Zwróć przypisaną dyscyplinę naukową tylko w sytuacji, gdy jest
+        # # określona jedna. Jeżeli są dwie, to nie można określić z automatu
+        # if ad.subdyscyplina_naukowa is None:
+        #     return ad.dyscyplina_naukowa
 
 
     # XXX TODO sprawdzanie, żęby nie było dwóch autorów o tej samej kolejności
