@@ -7,12 +7,12 @@ from pathlib import Path
 from collections import defaultdict
 
 
-def load_custom_sql(mig_name, *args, **kw):
+def load_custom_sql(mig_name, app_name='bpp', *args, **kw):
     import os
     from django.conf import settings
     from django.db import connection
 
-    fn = os.path.join(os.path.dirname(__file__), 'migrations', mig_name + ".sql")
+    fn = os.path.join(os.path.dirname(__file__), '..', app_name, 'migrations', mig_name + ".sql")
     # print "Loading %s... " % fn,
     data = open(fn, "rb").read().decode(settings.FILE_CHARSET)
 

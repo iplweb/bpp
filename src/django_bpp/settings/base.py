@@ -186,6 +186,7 @@ INSTALLED_APPS = [
 
     'eksport_pbn',
     'nowe_raporty',
+    'rozbieznosci_dyscyplin',
 
     'loginas',
 
