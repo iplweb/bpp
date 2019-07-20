@@ -13,7 +13,7 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.RunPython(
-            lambda *args, **kw: load_custom_sql("0168_dyscyplina_w_autorzy_mat", *args, **kw)
+            lambda *args, **kw: load_custom_sql("0168_dyscyplina_w_autorzy_mat")
         ),
 
     ]

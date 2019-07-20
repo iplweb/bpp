@@ -15,6 +15,6 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.RunPython(
-            lambda *args, **kw: load_custom_sql("0133_liczba_autorow", *args, **kw)
+            lambda *args, **kw: load_custom_sql("0133_liczba_autorow")
         ),
     ]

@@ -12,6 +12,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(lambda *args, **kw: load_custom_sql("0064_autor_jednostka_aktualna", *args, **kw)),
+        migrations.RunPython(lambda *args, **kw: load_custom_sql("0064_autor_jednostka_aktualna")),
 
     ]

@@ -13,6 +13,6 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.RunPython(
-            lambda *args, **kw: load_custom_sql("0161_dyscyplina_change_trigger", *args, **kw)
+            lambda *args, **kw: load_custom_sql("0161_dyscyplina_change_trigger")
         ),
     ]

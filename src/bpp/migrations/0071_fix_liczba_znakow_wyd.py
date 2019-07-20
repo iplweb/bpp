@@ -13,5 +13,5 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(lambda *args, **kw: load_custom_sql("0071_fix_liczba_znakow_wyd", *args, **kw)),
+        migrations.RunPython(lambda *args, **kw: load_custom_sql("0071_fix_liczba_znakow_wyd")),
     ]

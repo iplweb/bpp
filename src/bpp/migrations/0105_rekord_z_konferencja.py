@@ -14,7 +14,6 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.RunPython(
-            lambda *args, **kw: load_custom_sql("0105_rekord_z_konferencja",
-                                                *args, **kw)),
+            lambda *args, **kw: load_custom_sql("0105_rekord_z_konferencja")),
 
     ]
