@@ -189,4 +189,4 @@ def aktualizuj_cache():
                 elem.info = '%s' % obj.pk
                 elem.save()
 
-    CacheQueue.objects.filter(error=False).delete()
+    CacheQueue.objects.filter(error=False).exclude(completed_on=None).delete()
