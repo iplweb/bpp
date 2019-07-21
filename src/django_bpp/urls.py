@@ -64,6 +64,8 @@ urlpatterns = [
 
     url(r'^bpp/', include(('bpp.urls', 'bpp'), namespace='bpp')),
 
+    path('rozbieznosci_dyscyplin/', include('rozbieznosci_dyscyplin.urls')),
+
     url(r'^multiseek/results/$',
         csrf_exempt(MyMultiseekResults.as_view(
             registry=settings.MULTISEEK_REGISTRY,

@@ -5,7 +5,8 @@ Historia zmian
 git
 ---
 
-*
+* "rozbieżności dyscyplin" - moduł umożliwiający podejrzenie różnic pomiędzy dyscyplinami
+  przypisanymi na dany rok dla autora a dyscyplinami przypisanymi do rekordów
 
 1.0.30-dev2
 -------------

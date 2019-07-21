@@ -15,6 +15,6 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.RunPython(
-            lambda *args, **kw: load_custom_sql("0128_zewnetrzne_bazy_view", *args, **kw)
+            lambda *args, **kw: load_custom_sql("0128_zewnetrzne_bazy_view")
         ),
     ]

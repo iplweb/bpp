@@ -52,23 +52,23 @@ def rok():
 
 @pytest.fixture
 def dyscyplina1(db):
-    return Dyscyplina_Naukowa.objects.create(
+    return Dyscyplina_Naukowa.objects.get_or_create(
         nazwa="memetyka stosowana", kod="MS"
-    )
+    )[0]
 
 
 @pytest.fixture
 def dyscyplina2(db):
-    return Dyscyplina_Naukowa.objects.create(
+    return Dyscyplina_Naukowa.objects.get_or_create(
         nazwa="druga dyscyplina", kod="DD"
-    )
+    )[0]
 
 
 @pytest.fixture
 def dyscyplina3(db):
-    return Dyscyplina_Naukowa.objects.create(
+    return Dyscyplina_Naukowa.objects.get_or_create(
         nazwa="trzecia dyscyplina", kod="TD"
-    )
+    )[0]
 
 
 @pytest.fixture
