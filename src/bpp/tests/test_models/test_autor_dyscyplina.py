@@ -2,7 +2,7 @@ import pytest
 from django.core.exceptions import ValidationError
 from django.db import InternalError
 
-from bpp.models import Autor_Dyscyplina
+from bpp.models import Autor_Dyscyplina, CacheQueue
 
 
 def test_autor_dyscyplina_save_ta_sama_clean(autor_jan_kowalski, dyscyplina1, dyscyplina2, rok):
@@ -285,3 +285,45 @@ def test_autor_dyscyplina_zmiana_z_none_na_cos(autor_jan_kowalski, autor_jan_now
 
     ad.subdyscyplina_naukowa = dyscyplina2
     ad.save()
+
+
+def test_autor_dyscyplina_cacher_zmiana(autor_jan_kowalski, jednostka, wydawnictwo_ciagle, rok, dyscyplina1, dyscyplina2):
+    ad = Autor_Dyscyplina.objects.create(
+        rok=rok,
+        autor=autor_jan_kowalski,
+        dyscyplina_naukowa=dyscyplina1
+    )
+    assert CacheQueue.objects.count() == 1
+
+    wca = wydawnictwo_ciagle.dodaj_autora(
+        autor_jan_kowalski, jednostka,
+        dyscyplina_naukowa=dyscyplina1
+    )
+
+    ad.dyscyplina_naukowa = dyscyplina2
+    ad.save()
+
+    wca.refresh_from_db()
+    assert wca.dyscyplina_naukowa == dyscyplina2
+    assert CacheQueue.objects.count() == 2
+
+
+
+def test_autor_dyscyplina_cacher_skasowanie(autor_jan_kowalski, jednostka, wydawnictwo_ciagle, rok, dyscyplina1, dyscyplina2):
+    ad = Autor_Dyscyplina.objects.create(
+        rok=rok,
+        autor=autor_jan_kowalski,
+        dyscyplina_naukowa=dyscyplina1
+    )
+    assert CacheQueue.objects.count() == 1
+
+    wca = wydawnictwo_ciagle.dodaj_autora(
+        autor_jan_kowalski, jednostka,
+        dyscyplina_naukowa=dyscyplina1
+    )
+
+    ad.delete()
+
+    wca.refresh_from_db()
+    assert wca.dyscyplina_naukowa == None
+    assert CacheQueue.objects.count() == 2

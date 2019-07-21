@@ -29,13 +29,14 @@ def ISlot(original):
                 return SlotKalkulator_Wydawnictwo_Ciagle_Prog3(original)
 
     elif isinstance(original, Wydawnictwo_Zwarte):
-        if original.rok in [2017, 2018]:
-            if original.punkty_kbn in [200, 100, 50]:
-                raise NotImplementedError("Monografia - tier 2")
-            elif original.punkty_kbn in [80, ]:  # 20]:
-                raise NotImplementedError("Monografia - tier 1")
-            elif original.punkty_kbn in [20, 5]:
-                return SlotKalkulator_Wydawnictwo_Zwarte_Tier0(original)
+        pass
+        # if original.rok in [2017, 2018]:
+        #     if original.punkty_kbn in [200, 100, 50]:
+        #         raise NotImplementedError("Monografia - tier 2")
+        #     elif original.punkty_kbn in [80, ]:  # 20]:
+        #         raise NotImplementedError("Monografia - tier 1")
+        #     elif original.punkty_kbn in [20, 5]:
+        #         return SlotKalkulator_Wydawnictwo_Zwarte_Tier0(original)
 
     raise CannotAdapt(
         "Nie umiem policzyc dla %s rok %s punkty_kbn %s" % (
