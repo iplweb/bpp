@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block extratitle %}
+    Rozbieżności przypisań dyscyplin naukowych
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li class="current">rozbieżności przypisań dyscypllin</li>
+{% endblock %}
+
+{% block content %}
+
+    <table id="rozbieznosci_dyscyplin" width="100%">
+        <thead>
+        <tr>
+            <th>Tytuł</th>
+            <th>Rok</th>
+            <th>Autor</th>
+            <th>Dyscyplina rekordu</th>
+            <th>Dyscyplina autora #1</th>
+            <th>Dyscyplina autora #2</th>
+        </tr>
+        </thead>
+    </table>
+
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $('#rozbieznosci_dyscyplin').DataTable({
+                "serverSide": true,
+                "ajax": "{% url "rozbieznosci_dyscyplin:api-rozbieznosci-dyscyplin" %}",
+                "searchDelay": 750,
+                "columns": [
+                    {"data": "tytul_oryginalny"},
+                    {"data": "rok"},
+                    {"data": "autor"},
+                    {"data": "dyscyplina_rekordu"},
+                    {"data": "dyscyplina_autora"},
+                    {"data": "subdyscyplina_autora"}
+                ]
+            });
+        });
+    </script>
+
+{% endblock %}
