@@ -91,7 +91,7 @@ def test_slot_wszyscy_autorzy(zwarte_z_dyscyplinami):
 
 @pytest.mark.parametrize(
     "rekord,ustaw_rok,punkty_kbn", [
-        (pytest.lazy_fixture("wydawnictwo_zwarte"), 2017, 20),
+        # (pytest.lazy_fixture("wydawnictwo_zwarte"), 2017, 20),
         (pytest.lazy_fixture("wydawnictwo_ciagle"), 2017, 30)
     ]
 )
