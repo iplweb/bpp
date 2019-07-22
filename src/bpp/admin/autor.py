@@ -34,8 +34,6 @@ class Autor_DyscyplinaInlineForm(forms.ModelForm):
     def __init__(self, *args, **kw):
         super(Autor_DyscyplinaInlineForm, self).__init__(*args, **kw)
         if kw.get('instance'):
-            print("INSTANCE", kw['instance'])
-            # self.base_fields['rok'].disabled = True
             self.fields['rok'].disabled = True
 
 

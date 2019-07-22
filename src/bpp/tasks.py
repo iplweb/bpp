@@ -162,7 +162,9 @@ def aktualizuj_cache():
         try:
             obj.started_on = timezone.now()
             obj.save()
-            aktualizuj_cache_rekordu(obj.rekord)
+
+            with transaction.atomic():
+                aktualizuj_cache_rekordu(obj.rekord)
 
         except Exception as e:
             logger.exception("Podczas generowania cache opisu / punktow")
@@ -186,3 +188,5 @@ def aktualizuj_cache():
                 elem.completed_on = n
                 elem.info = '%s' % obj.pk
                 elem.save()
+
+    CacheQueue.objects.filter(error=False).exclude(completed_on=None).delete()
