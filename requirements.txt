@@ -47,7 +47,7 @@ django-session-security==2.6.5
 django-static-sitemaps==4.6.0
 django-tables2==1.16.0
 django-webmaster-verification==0.3.0
-django==2.1.7
+django==2.1.10
 et-xmlfile==1.0.1
 future==0.17.1
 html5lib==1.0.1
