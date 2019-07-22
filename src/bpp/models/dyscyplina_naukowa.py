@@ -82,6 +82,6 @@ class Autor_Dyscyplina(models.Model):
         if p1 + p2 > Decimal("100.00"):
             raise ValidationError({"procent_dyscypliny": "Suma procentów przekracza 100."})
 
-        if self.dyscyplina_naukowa is not None and self.subdyscyplina_naukowa is not None:
+        if hasattr(self, 'dyscyplina_naukowa') and hasattr(self, 'subdyscyplina_naukowa'):
             if self.dyscyplina_naukowa_id == self.subdyscyplina_naukowa_id:
                 raise ValidationError({"subdyscyplina_naukowa": "Wpisano tą samą dyscyplinę dwukrotnie."})

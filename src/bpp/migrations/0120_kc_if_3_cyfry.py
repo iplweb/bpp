@@ -63,10 +63,10 @@ class Migration(migrations.Migration):
 
         # Wczytaj ponownie ostatnie poprawne widoki
         migrations.RunPython(
-            lambda *args, **kw: load_custom_sql("0103_widoki_nowe_sumy", *args, **kw)
+            lambda *args, **kw: load_custom_sql("0103_widoki_nowe_sumy")
         ),
 
         migrations.RunPython(
-            lambda *args, **kw: load_custom_sql("108_bpp_nowe_sumy_view_bug", *args, **kw)
+            lambda *args, **kw: load_custom_sql("108_bpp_nowe_sumy_view_bug")
         )
     ]

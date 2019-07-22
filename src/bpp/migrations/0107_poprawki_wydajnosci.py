@@ -15,14 +15,14 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.RunPython(
-            lambda *args, **kw: load_custom_sql("107_bpp_rekord", *args, **kw)
+            lambda *args, **kw: load_custom_sql("107_bpp_rekord")
         ),
 
         migrations.RunPython(
-            lambda *args, **kw: load_custom_sql("107_bpp_autorzy", *args, **kw)
+            lambda *args, **kw: load_custom_sql("107_bpp_autorzy")
         ),
 
         migrations.RunPython(
-            lambda *args, **kw: load_custom_sql("107_cache_functions", *args, **kw)
+            lambda *args, **kw: load_custom_sql("107_cache_functions")
         ),
     ]

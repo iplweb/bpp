@@ -31,11 +31,19 @@ class Autor_DyscyplinaInlineForm(forms.ModelForm):
     class Meta:
         fields = "__all__"
 
+    def __init__(self, *args, **kw):
+        super(Autor_DyscyplinaInlineForm, self).__init__(*args, **kw)
+        if kw.get('instance'):
+            self.fields['rok'].disabled = True
+
 
 class Autor_DyscyplinaInline(admin.TabularInline):
     model = Autor_Dyscyplina
     form = Autor_DyscyplinaInlineForm
     extra = 1
+    fields = ('rok',
+              'dyscyplina_naukowa', 'procent_dyscypliny',
+              'subdyscyplina_naukowa', 'procent_subdyscypliny')
 
 
 # Autor_Jednostka

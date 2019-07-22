@@ -14,8 +14,7 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.RunPython(
-            lambda *args, **kw: load_custom_sql("0112_fix_refresh_cache",
-                                                *args, **kw)
+            lambda *args, **kw: load_custom_sql("0112_fix_refresh_cache")
         ),
 
     ]

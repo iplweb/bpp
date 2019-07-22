@@ -63,7 +63,7 @@ class Migration(migrations.Migration):
                                       verbose_name='Punktacja SNIP'),
         ),
         migrations.RunPython(
-            lambda *args, **kw: load_custom_sql("0151_snip", *args, **kw)
+            lambda *args, **kw: load_custom_sql("0151_snip")
         ),
 
     ]

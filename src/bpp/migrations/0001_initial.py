@@ -22,7 +22,7 @@ class Migration(migrations.Migration):
 
     operations = [
         RunPython(
-            lambda *args, **kw: load_custom_sql("0001_collation", *args, **kw)),
+            lambda *args, **kw: load_custom_sql("0001_collation")),
 
         migrations.CreateModel(
             name='BppUser',
@@ -880,14 +880,14 @@ class Migration(migrations.Migration):
         ),
 
         RunSQL("CREATE OR REPLACE LANGUAGE plpythonu"),
-        RunPython(lambda *args, **kw: load_custom_sql("0001_indeksy", *args, **kw)),
-        RunPython(lambda *args, **kw: load_custom_sql("0001_tytul_oryginalny_sort_triggers", *args, **kw)),
-        RunPython(lambda *args, **kw: load_custom_sql("0001_widoki_kronika", *args, **kw)),
-        RunPython(lambda *args, **kw: load_custom_sql("0001_widoki_sumy", *args, **kw)),
-        RunPython(lambda *args, **kw: load_custom_sql("0001_widoki_rekord", *args, **kw)),
-        RunPython(lambda *args, **kw: load_custom_sql("0001_widoki_autorzy", *args, **kw)),
-        RunPython(lambda *args, **kw: load_custom_sql("0001_fulltext", *args, **kw)),
+        RunPython(lambda *args, **kw: load_custom_sql("0001_indeksy")),
+        RunPython(lambda *args, **kw: load_custom_sql("0001_tytul_oryginalny_sort_triggers")),
+        RunPython(lambda *args, **kw: load_custom_sql("0001_widoki_kronika")),
+        RunPython(lambda *args, **kw: load_custom_sql("0001_widoki_sumy")),
+        RunPython(lambda *args, **kw: load_custom_sql("0001_widoki_rekord")),
+        RunPython(lambda *args, **kw: load_custom_sql("0001_widoki_autorzy")),
+        RunPython(lambda *args, **kw: load_custom_sql("0001_fulltext")),
 
-        RunPython(lambda *args, **kw: load_custom_sql("0001_cache_init", *args, **kw)),
-        RunPython(lambda *args, **kw: load_custom_sql("0001_cache_functions", *args, **kw))
+        RunPython(lambda *args, **kw: load_custom_sql("0001_cache_init")),
+        RunPython(lambda *args, **kw: load_custom_sql("0001_cache_functions"))
     ]

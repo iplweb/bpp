@@ -14,7 +14,6 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.RunPython(
-            lambda *args, **kw: load_custom_sql("108_bpp_nowe_sumy_view_bug",
-                                            *args, **kw)
+            lambda *args, **kw: load_custom_sql("108_bpp_nowe_sumy_view_bug")
         )
     ]

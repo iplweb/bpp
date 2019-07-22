@@ -230,6 +230,7 @@ class AutorzyBase(models.Model):
     kolejnosc = models.IntegerField()
     typ_odpowiedzialnosci = models.ForeignKey('Typ_Odpowiedzialnosci', DO_NOTHING)
     zapisany_jako = models.TextField()
+    dyscyplina_naukowa = models.ForeignKey('Dyscyplina_Naukowa', DO_NOTHING)
 
     afiliuje = models.BooleanField()
     zatrudniony = models.BooleanField()
