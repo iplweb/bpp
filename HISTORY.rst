@@ -13,6 +13,8 @@ git
 * "rozbieżności dyscyplin" - moduł umożliwiający podejrzenie różnic pomiędzy dyscyplinami
   przypisanymi na dany rok dla autora a dyscyplinami przypisanymi do rekordów
 
+* lepsza obsługa kolejki cache
+
 1.0.30-dev2
 -------------
 
