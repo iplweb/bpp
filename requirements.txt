@@ -54,13 +54,13 @@ html5lib==1.0.1
 idna==2.7
 jdcal==1.4.1
 kombu==4.6.3
-lxml==4.3.4
+lxml==4.4.0
 markdown==2.3.1
 moai-iplweb==2.0.0
 odfpy==1.4.0
 olefile==0.44
 openpyxl==2.4.9
-paste==3.0.8
+paste==3.1.0
 pastedeploy==2.0.1
 pastescript==3.1.0
 pillow==4.0.0
