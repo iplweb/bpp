@@ -82,7 +82,7 @@ jenkins:
 	pipenv install -d
 	make assets
 
-	pytest --ds=django_bpp.settings.local -n8 --splinter-webdriver=firefox --nginx-host=localhost --liveserver=localhost --create-db
+	pytest --ds=django_bpp.settings.local -n8 --splinter-webdriver=remote --splinter-remote-url=http://localhost:4444/wd/hub --nginx-host=localhost --liveserver=localhost --create-db
 
 	yarn
 	make js-tests
