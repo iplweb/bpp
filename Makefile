@@ -74,3 +74,15 @@ js-tests:
 # Uruchom sphinx-autobuild
 live-docs: 
 	sphinx-autobuild -p 8080 -D language=pl docs/ docs/_build
+
+# cel: Jenkins
+# Wywołaj "make jenkins" pod Jenkinsem, cel "Virtualenv Builder"
+jenkins:
+	pip install pipenv
+	pipenv install -d
+	make assets
+
+	pytest --ds=django_bpp.settings.local -n8 --splinter-webdriver=firefox --nginx-host=localhost --liveserver=localhost --create-db
+
+	yarn
+	make js-tests
