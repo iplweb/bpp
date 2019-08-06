@@ -124,7 +124,7 @@ $$
                 'bpp_praca_doktorska',
                 'bpp_praca_habilitacyjna',]:
 
-    rv = plpy.execute(qry % dict(table=table, wydawca_id=wydawca_id, rok=rok))
+    rv = plpy.execute(count_qry % dict(table=table, wydawca_id=wydawca_id, rok=rok))
     cnt = rv[0]['cnt']
     if cnt:
       plpy.execute(qry % dict(temp_table="wyd", table=table, wydawca_id=wydawca_id, rok=rok))
@@ -141,7 +141,7 @@ $$
       plpy.execute(cqueue % dict(temp_table="wyd", content_type_id=content_type_id))
       notification = True
 
-    plpy.execute("DROP TABLE wyd")
+      plpy.execute("DROP TABLE wyd")
 
   if notification:
     plpy.execute("NOTIFY cachequeue")
