@@ -16,6 +16,6 @@ class Migration(migrations.Migration):
             field=models.IntegerField(db_index=True),
         ),
         migrations.RunSQL("CREATE INDEX bpp_wydawnictwo_zwarte_wydawca_rok ON bpp_wydawnictwo_zwarte(wydawca_id, rok)"),
-        migrations.RunSQL("CREATE INDEX bpp_wydawnictwo_zwarte_wydawca_rok ON bpp_praca_doktorska(wydawca_id, rok)"),
-        migrations.RunSQL("CREATE INDEX bpp_wydawnictwo_zwarte_wydawca_rok ON bpp_praca_habilitacyjna(wydawca_id, rok)"),
+        migrations.RunSQL("CREATE INDEX bpp_praca_doktorska_wydawca_rok ON bpp_praca_doktorska(wydawca_id, rok)"),
+        migrations.RunSQL("CREATE INDEX bpp_praca_habilitacyjna_wydawca_rok ON bpp_praca_habilitacyjna(wydawca_id, rok)"),
     ]
