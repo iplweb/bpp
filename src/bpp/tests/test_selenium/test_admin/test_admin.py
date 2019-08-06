@@ -87,7 +87,7 @@ def test_admin_wydawnictwo_zwarte_tamze(preauth_admin_browser, live_server):
         informacje="TO INFORMACJE",
         uwagi='te uwagi',
         miejsce_i_rok='te miejsce i rok',
-        wydawnictwo='te wydawnictwo',
+        wydawca_opis='te wydawnictwo',
         www='ten adres WWW',
         isbn='Z_ISBN',
         e_isbn='E_ISBN')

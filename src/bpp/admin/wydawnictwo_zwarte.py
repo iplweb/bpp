@@ -32,7 +32,8 @@ class Wydawnictwo_ZwarteAdmin_Baza(CommitedModelAdmin):
     search_fields = [
         'tytul', 'tytul_oryginalny', 'szczegoly', 'uwagi', 'informacje',
         'slowa_kluczowe', 'rok', 'isbn', 'id',
-        'wydawnictwo', 'redakcja', 'adnotacje',
+        'wydawca__nazwa',
+        'wydawca_opis', 'redakcja', 'adnotacje',
         'liczba_znakow_wydawniczych',
         'wydawnictwo_nadrzedne__tytul_oryginalny',
         'konferencja__nazwa',
