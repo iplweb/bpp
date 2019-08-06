@@ -7,8 +7,6 @@ import re
 from celeryui.registry import ReportAdapter, registerAdapter
 
 # Bo padną importy reports/__init__.py w chwili importowania formularzy
-from bpp import autocomplete_light_registry
-autocomplete_light_registry
 
 numery_stron_regex = re.compile(
     ".*((s|str)\.\s*(?P<strony>((\w+)\-(\w+)|(\w+)))).*")

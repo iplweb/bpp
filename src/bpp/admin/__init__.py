@@ -4,11 +4,12 @@ from django.contrib import admin
 from django.contrib.auth.forms import UserCreationForm
 from multiseek.models import SearchForm
 
-from bpp.models import Rodzaj_Prawa_Patentowego, Zewnetrzna_Baza_Danych
+from bpp.models import Rodzaj_Prawa_Patentowego, Zewnetrzna_Baza_Danych, Wydawca
 # Proste tabele
 from bpp.models.openaccess import Tryb_OpenAccess_Wydawnictwo_Ciagle, Tryb_OpenAccess_Wydawnictwo_Zwarte, \
     Czas_Udostepnienia_OpenAccess, Licencja_OpenAccess, Wersja_Tekstu_OpenAccess
 from .autor import AutorAdmin  # noqa
+from .wydawca import WydawcaAdmin  # noqa
 from .charakter_formalny import Charakter_FormalnyAdmin  # noqa
 from .core import BaseBppAdmin, CommitedModelAdmin, \
     KolumnyZeSkrotamiMixin, generuj_inline_dla_autorow

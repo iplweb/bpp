@@ -39,7 +39,8 @@ VALUES = [
 AUTOCOMPLETES = [
     "bpp:public-autor-autocomplete",
     "bpp:jednostka-widoczna-autocomplete",
-    "bpp:dyscyplina-autocomplete"
+    "bpp:dyscyplina-autocomplete",
+    "bpp:wydawca-autocomplete"
 ]
 
 

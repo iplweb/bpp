@@ -1,6 +1,5 @@
 from autoslug.fields import AutoSlugField
-from bpp import autocomplete_light_registry
-autocomplete_light_registry # Leave this alone, PyCharm!
+
 
 from django_bpp import urls
 urls

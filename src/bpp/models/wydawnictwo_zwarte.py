@@ -1,9 +1,10 @@
 # -*- encoding: utf-8 -*-
 import re
+import warnings
 
 from dirtyfields.dirtyfields import DirtyFieldsMixin
 from django.db import models
-from django.db.models import CASCADE
+from django.db.models import CASCADE, PROTECT
 from django.db.models.signals import post_delete, pre_delete
 from django.dispatch import receiver
 from django.utils import timezone
@@ -25,6 +26,7 @@ from bpp.models.autor import Autor
 from bpp.models.const import TO_REDAKTOR
 from bpp.models.util import ZapobiegajNiewlasciwymCharakterom
 from bpp.models.util import dodaj_autora
+from bpp.models.wydawca import Wydawca
 
 
 class Wydawnictwo_Zwarte_Autor(DirtyFieldsMixin, BazaModeluOdpowiedzialnosciAutorow):
@@ -71,7 +73,33 @@ class Wydawnictwo_Zwarte_Baza(
         Warszawa 2012. Wpisz proszę najpierw miejsce potem rok; oddziel
         spacją.""")
 
-    wydawnictwo = models.CharField(max_length=256, null=True, blank=True)
+    wydawca = models.ForeignKey(Wydawca, PROTECT, null=True, blank=True)
+    wydawca_opis = models.CharField("Wydawca - szczegóły", max_length=256, null=True, blank=True)
+
+    def get_wydawnictwo(self):
+        # Zwróć nazwę wydawcy + pole wydawca_opis lub samo pole wydawca_opis, jeżeli
+        # wydawca (indeksowany) nie jest ustalony
+        if self.wydawca_id is None:
+            return self.wydawca_opis
+
+        opis = self.wydawca_opis or ''
+        try:
+            if opis[0] in ".;-/,":
+            # Nie wstawiaj spacji między wydawcę a opis jeżeli zaczyna się od kropki, przecinka itp
+                return f"{self.wydawca.nazwa}{opis}".strip()
+        except IndexError:
+            pass
+
+        return f"{self.wydawca.nazwa} {opis}".strip()
+
+    def set_wydawnictwo(self, value):
+        warnings.warn(
+            "W przyszlosci uzyj 'wydawca_opis'",
+            DeprecationWarning
+        )
+        self.wydawca_opis = value
+
+    wydawnictwo = property(get_wydawnictwo, set_wydawnictwo)
 
     redakcja = models.TextField(null=True, blank=True)
 

@@ -4,11 +4,13 @@ import pytest
 from lxml.etree import Element
 from model_mommy import mommy
 
-from bpp.models import Wydawnictwo_Zwarte_Autor
+from bpp.models import Wydawnictwo_Zwarte_Autor, CacheQueue
 from bpp.models.autor import Autor
 from bpp.models.struktura import Wydzial, Jednostka, Uczelnia
-from bpp.models.system import Typ_Odpowiedzialnosci, Charakter_Formalny
+from bpp.models.system import Charakter_Formalny
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
+from bpp.tasks import aktualizuj_cache
+
 
 @pytest.mark.django_db
 def test_serializuj_pbn_zwarte(wydawnictwo_zwarte_z_autorem, wydzial):
@@ -176,6 +178,7 @@ def test_eksport_pbn_wydawnictwo_nadrzedne_liczba_autorow_trzech(
     assert len(ret.findall("author")) == 2
     assert ret.find("other-contributors").text == "48"
 
+
 @pytest.mark.django_db
 def test_eksport_pbn_publication_place(wydawnictwo_zwarte):
     wydawnictwo_zwarte.miejsce_i_rok = "Lublin 1993"
@@ -274,4 +277,15 @@ def test_eksport_pbn_get_wszyscy_autorzy_iter(wydzial, jednostka, typ_odpowiedzi
     assert len(res) == 3
 
 
+@pytest.mark.django_db
+def test_wydawnictwo_zwarte_wydawca_wydawnictwo_property(wydawnictwo_zwarte, wydawca):
+    wydawnictwo_zwarte.wydawca = None
+    wydawnictwo_zwarte.wydawca_opis = "123"
+    assert wydawnictwo_zwarte.wydawnictwo == "123"
+
+    wydawnictwo_zwarte.wydawca = wydawca
+    assert wydawnictwo_zwarte.wydawnictwo == "Wydawca 123"
+
+    wydawnictwo_zwarte.wydawca_opis = None
+    assert wydawnictwo_zwarte.wydawnictwo == "Wydawca"
 
