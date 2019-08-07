@@ -68,6 +68,7 @@ REDAKTOR_MENU = [
     ('Źródła', '/admin/bpp/zrodlo/'),
     ('Serie wydawnicze', '/admin/bpp/seria_wydawnicza/'),
     ('Konferencje', '/admin/bpp/konferencja/'),
+    ('Wydawcy', '/admin/bpp/wydawca/'),
     ('Wydawnictwa ciągłe', '/admin/bpp/wydawnictwo_ciagle/'),
     ('Wydawnictwa zwarte', '/admin/bpp/wydawnictwo_zwarte/'),
     ('Prace doktorskie', '/admin/bpp/praca_doktorska/'),

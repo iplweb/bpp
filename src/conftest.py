@@ -14,7 +14,7 @@ except ImportError:
 from model_mommy import mommy
 
 from bpp.fixtures import get_openaccess_data
-from bpp.models import TO_AUTOR, Dyscyplina_Naukowa
+from bpp.models import TO_AUTOR, Dyscyplina_Naukowa, Wydawca
 from bpp.models.autor import Autor, Tytul, Funkcja_Autora
 from bpp.models.const import GR_WPROWADZANIE_DANYCH
 from bpp.models.patent import Patent
@@ -181,12 +181,14 @@ def autor_jan_nowak(db, tytuly):
 def autor(db, tytuly):
     return mommy.make(Autor)
 
+
 @pytest.fixture(scope="function")
 def typ_odpowiedzialnosci_autor(db):
     return Typ_Odpowiedzialnosci.objects.get_or_create(
         skrot="aut.", nazwa="autor",
         typ_ogolny=TO_AUTOR
     )
+
 
 @pytest.fixture(scope="function")
 def autor_jan_kowalski(db, tytuly):
@@ -326,6 +328,11 @@ def wydawnictwo_zwarte(jezyki, charaktery_formalne, typy_kbn,
 @pytest.fixture
 def zwarte_maker(db):
     return _zwarte_maker
+
+
+@pytest.fixture
+def wydawca(db):
+    return Wydawca.objects.get_or_create(nazwa="Wydawca Testowy")[0]
 
 
 def _habilitacja_maker(**kwargs):
@@ -556,6 +563,7 @@ def pytest_configure():
     from bpp.models.cache import Rekord, Autorzy
     Rekord._meta.managed = True
     Autorzy._meta.managed = True
+
 
 # @pytest.fixture(scope="session")
 # def splinter_driver_kwargs(splinter_webdriver):

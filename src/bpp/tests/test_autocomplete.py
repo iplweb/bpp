@@ -39,7 +39,7 @@ VALUES = [
 AUTOCOMPLETES = [
     "bpp:public-autor-autocomplete",
     "bpp:jednostka-widoczna-autocomplete",
-    "bpp:dyscyplina-autocomplete"
+    "bpp:dyscyplina-autocomplete",
 ]
 
 
@@ -120,3 +120,8 @@ def test_dyscyplina_naukowa_przypisanie_autocomplete_brak_drugiej(app, autor_jan
     f = json.dumps({'autor': autor_jan_kowalski.id, "rok": rok})
     res = app.get(reverse("bpp:dyscyplina-naukowa-przypisanie-autocomplete"), {'forward': f})
     assert res.json['results'][0]['text'] == 'druga dyscyplina'
+
+
+def test_wydawca_autocomplete(admin_client):
+    res = admin_client.get(reverse("bpp:wydawca-autocomplete"))
+    assert res.status_code == 200
