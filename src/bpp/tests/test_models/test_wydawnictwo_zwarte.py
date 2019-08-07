@@ -284,8 +284,11 @@ def test_wydawnictwo_zwarte_wydawca_wydawnictwo_property(wydawnictwo_zwarte, wyd
     assert wydawnictwo_zwarte.wydawnictwo == "123"
 
     wydawnictwo_zwarte.wydawca = wydawca
-    assert wydawnictwo_zwarte.wydawnictwo == "Wydawca 123"
+    assert wydawnictwo_zwarte.wydawnictwo == "Wydawca Testowy 123"
+
+    wydawnictwo_zwarte.wydawca_opis = '. Lol'
+    assert wydawnictwo_zwarte.wydawnictwo == "Wydawca Testowy. Lol"
 
     wydawnictwo_zwarte.wydawca_opis = None
-    assert wydawnictwo_zwarte.wydawnictwo == "Wydawca"
+    assert wydawnictwo_zwarte.wydawnictwo == "Wydawca Testowy"
 
