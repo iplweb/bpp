@@ -332,7 +332,7 @@ def zwarte_maker(db):
 
 @pytest.fixture
 def wydawca(db):
-    return Wydawca.objects.get_or_create(nazwa="Wydawca")[0]
+    return Wydawca.objects.get_or_create(nazwa="Wydawca Testowy")[0]
 
 
 def _habilitacja_maker(**kwargs):
