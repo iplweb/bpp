@@ -5,10 +5,11 @@ Małe klasy pomocnicze dla całego systemu
 """
 
 from django.db import models
-from django.db.models import SET_NULL, CASCADE
+from django.db.models import CASCADE
 from django.db.models.signals import post_migrate
 from django.dispatch import receiver
 from django.utils import six
+from model_utils import Choices
 from mptt.fields import TreeForeignKey
 from mptt.models import MPTTModel
 
@@ -59,6 +60,10 @@ class Charakter_PBN(models.Model):
         return self.opis
 
 
+CHARAKTER_SLOTY = Choices((const.CHARAKTER_SLOTY_KSIAZKA, 'ksiazka', 'Książka'),
+                          (const.CHARAKTER_SLOTY_ROZDZIAL, 'rozdzial', 'Rozdział'))
+
+
 class Charakter_Formalny(NazwaISkrot, MPTTModel):
     parent = TreeForeignKey(
         'self',
@@ -87,6 +92,12 @@ class Charakter_Formalny(NazwaISkrot, MPTTModel):
     charakter formalny zostaną włączone do eksportu PBN jako ksiażki""", default=False)
     rozdzial_pbn = models.BooleanField(verbose_name="Rozdział w PBN", help_text="""Wydawnictwa zwarte posiadające ten
     charakter formalny zostaną włączone do eksportu PBN jako rozdziały""", default=False)
+
+    charakter_sloty = models.PositiveSmallIntegerField(
+        "Charakter dla slotów", null=True, blank=True, default=None,
+        choices=CHARAKTER_SLOTY,
+        help_text="""Jak potraktować ten charakter przy kalkulacji slotów dla wydawnictwa zwartego?"""
+    )
 
     class Meta:
         ordering = ['nazwa']
@@ -134,7 +145,7 @@ class Typ_Odpowiedzialnosci(NazwaISkrot):
             (const.TO_KOMENTATOR, "komentator"),
             (const.TO_RECENZENT, "recenzent"),
             (const.TO_OPRACOWAL, "opracował")
-    ],
+        ],
         default=const.TO_AUTOR,
         help_text="""Pole to jest używane celem rozróżniania typu odpowiedzialności
         na cele eksportu do PBN (autor i redaktor) oraz może być też wykorzystywane
@@ -199,7 +210,7 @@ class Rodzaj_Prawa_Patentowego(ModelZNazwa):
     class Meta:
         verbose_name = "rodzaj prawa patentowego"
         verbose_name_plural = "rodzaje praw patentowych"
-        ordering = ['nazwa',]
+        ordering = ['nazwa', ]
         app_label = 'bpp'
 
 
