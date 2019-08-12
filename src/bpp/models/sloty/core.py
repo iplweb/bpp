@@ -31,7 +31,7 @@ def ISlot(original):
                 return SlotKalkulator_Wydawnictwo_Ciagle_Prog3(original)
 
     elif isinstance(original, Wydawnictwo_Zwarte):
-        if original.rok < 2017 and original.rok > 2020:
+        if original.rok < 2017 or original.rok > 2020:
             raise CannotAdapt("Rok poza zakresem procedur liczacych (%s). " % original.rok)
 
         rozdzial = ksiazka = autorstwo = redakcja = False
