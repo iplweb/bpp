@@ -10,7 +10,11 @@ class Wydawca(ModelZNazwa):
         verbose_name_plural = 'wydawcy'
         verbose_name = 'wydawca'
 
-    pass
+    def get_tier(self, rok):
+        ret = self.poziom_wydawcy_set.filter(rok=rok).first()
+        if ret is None:
+            return -1
+        return ret.poziom
 
 
 class Poziom_Wydawcy(models.Model):

@@ -14,7 +14,7 @@ except ImportError:
 from model_mommy import mommy
 
 from bpp.fixtures import get_openaccess_data
-from bpp.models import TO_AUTOR, Dyscyplina_Naukowa, Wydawca
+from bpp.models import TO_AUTOR, Dyscyplina_Naukowa, Wydawca, const
 from bpp.models.autor import Autor, Tytul, Funkcja_Autora
 from bpp.models.const import GR_WPROWADZANIE_DANYCH
 from bpp.models.patent import Patent
@@ -487,10 +487,12 @@ def charaktery_formalne():
 
     chf_ksp = Charakter_Formalny.objects.get(skrot='KSP')
     chf_ksp.ksiazka_pbn = True
+    chf_ksp.charakter_sloty = const.CHARAKTER_SLOTY_KSIAZKA
     chf_ksp.save()
 
     chf_roz = Charakter_Formalny.objects.get(skrot="ROZ")
     chf_roz.rozdzial_pbn = True
+    chf_roz.charakter_sloty = const.CHARAKTER_SLOTY_ROZDZIAL
     chf_roz.save()
 
 

@@ -100,3 +100,16 @@ def test_poziom_wydawcy_zmiana_id_wydawcy(wydawca, rok):
     pw.wydawca = w2
     with pytest.raises(InternalError):
         pw.save()
+
+
+@pytest.mark.django_db
+def test_wydawca_get_tier(wydawca, rok):
+    assert wydawca.get_tier(rok) == -1
+
+    pw = wydawca.poziom_wydawcy_set.create(rok=rok, poziom=None)
+    assert wydawca.get_tier(rok) == None
+
+    pw.poziom = 1
+    pw.save()
+    assert wydawca.get_tier(rok) == 1
+
