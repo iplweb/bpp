@@ -82,23 +82,24 @@ def test_admin_wydawnictwo_ciagle_tamze(preauth_admin_browser, live_server):
         assert elem in preauth_admin_browser.html, 'BRAK %r' % elem
 
 
-def test_admin_wydawnictwo_zwarte_tamze(preauth_admin_browser, live_server):
+def test_admin_wydawnictwo_zwarte_tamze(preauth_admin_browser, live_server, wydawca):
     c = any_zwarte(
         informacje="TO INFORMACJE",
         uwagi='te uwagi',
         miejsce_i_rok='te miejsce i rok',
-        wydawnictwo='te wydawnictwo',
+        wydawca=wydawca,
+        wydawca_opis='te wydawnictwo',
         www='ten adres WWW',
         isbn='Z_ISBN',
         e_isbn='E_ISBN')
     preauth_admin_browser.visit(live_server + reverse("admin:bpp_wydawnictwo_zwarte_change", args=(c.pk,)))
-
     tamze = preauth_admin_browser.find_by_id('tamze')
     tamze.click()
     time.sleep(1)
     assert 'Dodaj wydawnictwo' in preauth_admin_browser.html
     for elem in ['TO INFORMACJE', 'te uwagi', 'te miejsce i rok',
-                 'te wydawnictwo', 'ten adres WWW', 'Z_ISBN', 'E_ISBN']:
+                 'te wydawnictwo', 'ten adres WWW', 'Z_ISBN', 'E_ISBN',
+                 'Wydawca Testowy']:
         assert elem in preauth_admin_browser.html, 'BRAK %r' % elem
 
 

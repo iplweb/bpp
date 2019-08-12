@@ -2,10 +2,14 @@ from decimal import Decimal
 
 import pytest
 
-from bpp.models import TO_REDAKTOR, TO_AUTOR, Typ_Odpowiedzialnosci, Cache_Punktacja_Autora, Cache_Punktacja_Dyscypliny
+from bpp.models import TO_REDAKTOR, TO_AUTOR, Typ_Odpowiedzialnosci, Cache_Punktacja_Autora, Cache_Punktacja_Dyscypliny, \
+    Charakter_Formalny
 from bpp.models.sloty.core import ISlot, IPunktacjaCacher
+from bpp.models.sloty.exceptions import CannotAdapt
 from bpp.models.sloty.wydawnictwo_ciagle import SlotKalkulator_Wydawnictwo_Ciagle_Prog3, \
     SlotKalkulator_Wydawnictwo_Ciagle_Prog2
+from bpp.models.sloty.wydawnictwo_zwarte import SlotKalkulator_Wydawnictwo_Zwarte_Prog3, \
+    SlotKalkulator_Wydawnictwo_Zwarte_Prog2, SlotKalkulator_Wydawnictwo_Zwarte_Prog1
 
 
 @pytest.fixture
@@ -17,6 +21,8 @@ def zwarte_z_dyscyplinami(
         jednostka,
         dyscyplina1,
         dyscyplina2,
+        charaktery_formalne,
+        wydawca,
         typy_odpowiedzialnosci):
     wydawnictwo_zwarte.dodaj_autora(
         autor_jan_nowak, jednostka, dyscyplina_naukowa=dyscyplina1
@@ -25,6 +31,12 @@ def zwarte_z_dyscyplinami(
     wydawnictwo_zwarte.dodaj_autora(
         autor_jan_kowalski, jednostka, dyscyplina_naukowa=dyscyplina2
     )
+
+    # domyslnie: ksiazka/autorstwo/wydawca spoza wykazu
+    wydawnictwo_zwarte.punkty_kbn = 20
+    wydawnictwo_zwarte.wydawca = wydawca
+    wydawnictwo_zwarte.charakter_formalny = Charakter_Formalny.objects.get(skrot='KSP')
+    wydawnictwo_zwarte.save()
 
     return wydawnictwo_zwarte
 
@@ -132,7 +144,6 @@ def test_autorzy_z_dyscypliny(
         dyscyplina1,
         dyscyplina2,
         dyscyplina3):
-
     ciagle_z_dyscyplinami.punkty_kbn = 30
     ciagle_z_dyscyplinami.rok = 2017
     ciagle_z_dyscyplinami.save()
@@ -150,7 +161,6 @@ def test_autorzy_z_dyscypliny(
     assert len(slot.autorzy_z_dyscypliny(dyscyplina1, TO_REDAKTOR)) == 0
     assert len(slot.autorzy_z_dyscypliny(dyscyplina2, TO_REDAKTOR)) == 0
     assert len(slot.autorzy_z_dyscypliny(dyscyplina3, TO_REDAKTOR)) == 0
-
 
 
 @pytest.mark.django_db
@@ -210,8 +220,7 @@ def test_IPunktacjaCacher(
         dyscyplina1,
         dyscyplina2,
         dyscyplina3):
-
-    ciagle_z_dyscyplinami.punkty_kbn =30
+    ciagle_z_dyscyplinami.punkty_kbn = 30
     ciagle_z_dyscyplinami.rok = 2017
     ciagle_z_dyscyplinami.save()
 
@@ -237,6 +246,7 @@ def test_slotkalkulator_wydawnictwo_ciagle_prog3_punkty_pkd(
     assert slot.slot_dla_autora_z_dyscypliny(dyscyplina1) == 0.5
     assert slot.slot_dla_dyscypliny(dyscyplina1) == 0.5
 
+
 @pytest.mark.django_db
 def test_slotkalkulator_wydawnictwo_ciagle_prog2_punkty_pkd(
         ciagle_z_dyscyplinami, dyscyplina1):
@@ -251,3 +261,66 @@ def test_slotkalkulator_wydawnictwo_ciagle_prog2_punkty_pkd(
     assert str(round(slot.slot_dla_dyscypliny(dyscyplina1), 4)) == "0.7071"
 
     assert type(slot.pierwiastek_k_przez_m(dyscyplina1)) == Decimal
+
+
+@pytest.mark.django_db
+def test_ISlot_wydawnictwo_zwarte_zakres_lat_nie_ten(zwarte_z_dyscyplinami):
+    zwarte_z_dyscyplinami.rok = 2016
+
+    with pytest.raises(CannotAdapt):
+        ISlot(zwarte_z_dyscyplinami)
+
+    zwarte_z_dyscyplinami.rok = 2021
+
+    with pytest.raises(CannotAdapt):
+        ISlot(zwarte_z_dyscyplinami)
+
+    zwarte_z_dyscyplinami.rok = 2020
+    ISlot(zwarte_z_dyscyplinami)
+
+
+@pytest.mark.django_db
+def test_ISlot_wydawnictwo_zwarte_redakcja_i_autorstwo(zwarte_z_dyscyplinami):
+    a1 = zwarte_z_dyscyplinami.autorzy_set.first()
+    a1.typ_odpowiedzialnosci = Typ_Odpowiedzialnosci.objects.get(skrot="red.")
+    a1.save()
+
+    with pytest.raises(CannotAdapt, match="ma jednocześnie"):
+        ISlot(zwarte_z_dyscyplinami)
+
+
+@pytest.mark.django_db
+def test_ISlot_wydawnictwo_zwarte_bez_red_bez_aut(zwarte_z_dyscyplinami):
+    zwarte_z_dyscyplinami.autorzy_set.all().delete()
+
+    with pytest.raises(CannotAdapt, match="nie posiada"):
+        ISlot(zwarte_z_dyscyplinami)
+
+
+@pytest.mark.django_db
+def test_ISlot_wydawnictwo_Zwarte_nie_te_punkty(zwarte_z_dyscyplinami):
+    zwarte_z_dyscyplinami.punkty_kbn = 12345
+    with pytest.raises(CannotAdapt, match="nie można dopasować do żadnej z grup"):
+        ISlot(zwarte_z_dyscyplinami)
+
+
+@pytest.mark.django_db
+def test_ISlot_wydawnictwo_zwarte_tier3(zwarte_z_dyscyplinami):
+    i = ISlot(zwarte_z_dyscyplinami)
+    assert isinstance(i, SlotKalkulator_Wydawnictwo_Zwarte_Prog3)
+
+
+@pytest.mark.django_db
+def test_ISlot_wydawnictwo_zwarte_tier2(zwarte_z_dyscyplinami, wydawca, rok):
+    wydawca.poziom_wydawcy_set.create(rok=rok, poziom=1)
+    zwarte_z_dyscyplinami.punkty_kbn = 80
+    i = ISlot(zwarte_z_dyscyplinami)
+    assert isinstance(i, SlotKalkulator_Wydawnictwo_Zwarte_Prog2)
+
+
+@pytest.mark.django_db
+def test_ISlot_wydawnictwo_zwarte_tier1(zwarte_z_dyscyplinami, wydawca, rok):
+    wydawca.poziom_wydawcy_set.create(rok=rok, poziom=2)
+    zwarte_z_dyscyplinami.punkty_kbn = 200
+    i = ISlot(zwarte_z_dyscyplinami)
+    assert isinstance(i, SlotKalkulator_Wydawnictwo_Zwarte_Prog1)

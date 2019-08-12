@@ -8,7 +8,7 @@ from mptt.forms import TreeNodeChoiceField
 
 from bpp.admin.filters import LiczbaZnakowFilter, CalkowitaLiczbaAutorowFilter
 from bpp.admin.helpers import *
-from bpp.models import Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor, Charakter_Formalny
+from bpp.models import Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor, Charakter_Formalny, Wydawca
 from bpp.models.konferencja import Konferencja
 from bpp.models.seria_wydawnicza import Seria_Wydawnicza
 from .core import CommitedModelAdmin, generuj_inline_dla_autorow, \
@@ -32,7 +32,8 @@ class Wydawnictwo_ZwarteAdmin_Baza(CommitedModelAdmin):
     search_fields = [
         'tytul', 'tytul_oryginalny', 'szczegoly', 'uwagi', 'informacje',
         'slowa_kluczowe', 'rok', 'isbn', 'id',
-        'wydawnictwo', 'redakcja', 'adnotacje',
+        'wydawca__nazwa',
+        'wydawca_opis', 'redakcja', 'adnotacje',
         'liczba_znakow_wydawniczych',
         'wydawnictwo_nadrzedne__tytul_oryginalny',
         'konferencja__nazwa',
@@ -79,6 +80,15 @@ class Wydawnictwo_ZwarteForm(Wycinaj_W_z_InformacjiMixin, forms.ModelForm):
         queryset=Wydawnictwo_Zwarte.objects.all(),
         widget=autocomplete.ModelSelect2(
             url='bpp:wydawnictwo-nadrzedne-autocomplete',
+            attrs=dict(style="width: 746px;")
+        )
+    )
+
+    wydawca = forms.ModelChoiceField(
+        required=False,
+        queryset=Wydawca.objects.all(),
+        widget=autocomplete.ModelSelect2(
+            url='bpp:wydawca-autocomplete',
             attrs=dict(style="width: 746px;")
         )
     )
@@ -135,7 +145,7 @@ class Wydawnictwo_ZwarteAdmin(KolumnyZeSkrotamiMixin,
     ]
 
     list_select_related = ['charakter_formalny', 'typ_kbn',
-                           'wydawnictwo_nadrzedne', ]
+                           'wydawnictwo_nadrzedne', 'wydawca']
 
     fieldsets = (
         ('Wydawnictwo zwarte', {
@@ -147,7 +157,8 @@ class Wydawnictwo_ZwarteAdmin(KolumnyZeSkrotamiMixin,
                    'calkowita_liczba_autorow',
                    'calkowita_liczba_redaktorow',
                    'miejsce_i_rok',
-                   'wydawnictwo',)
+                   'wydawca',
+                   'wydawca_opis',)
                 + MODEL_Z_ISBN
                 + MODEL_Z_ROKIEM
         }),
@@ -160,6 +171,16 @@ class Wydawnictwo_ZwarteAdmin(KolumnyZeSkrotamiMixin,
         ADNOTACJE_Z_DATAMI_ORAZ_PBN_FIELDSET,
         OPENACCESS_FIELDSET,
         PRACA_WYBITNA_FIELDSET)
+
+    def save_model(self, request, obj, form, change):
+        super(Wydawnictwo_ZwarteAdmin, self).save_model(request, obj, form, change)
+        if obj.rok >= 2017 and obj.rok <= 2020 and obj.charakter_formalny.charakter_sloty is None:
+            messages.warning(
+                request,
+                'Punkty dla dyscyplin dla "%s" nie będą liczone, gdyż jest to ani książka, ani rozdział' % link_do_obiektu(
+                    obj))
+        else:
+            sprobuj_policzyc_sloty(request, obj)
 
 
 admin.site.register(Wydawnictwo_Zwarte, Wydawnictwo_ZwarteAdmin)

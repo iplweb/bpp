@@ -7,6 +7,15 @@ git
 
 *
 
+1.0.31-dev0
+-------------
+
+* liczenie punktów i slotów dla wydawnictw zwartych
+
+* "charakter dla slotów" dla charakteru formalnego
+
+* informacja o możliwości (lub niemożliwości) policzenia punktów dyscyplin dla rekordu w panelu administracyjnym
+
 1.0.30-dev3
 -------------
 

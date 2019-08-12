@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
 
 from dal import autocomplete
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.forms.utils import flatatt
 from django.utils.safestring import mark_safe
 from mptt.forms import TreeNodeChoiceField
@@ -10,9 +10,11 @@ from bpp.admin.filters import LiczbaZnakowFilter
 from bpp.admin.helpers import *
 from bpp.admin.nagroda import NagrodaInline
 from bpp.models import Zrodlo, Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych, \
-    Status_Korekty, Charakter_Formalny  # Publikacja_Habilitacyjna
+    Charakter_Formalny  # Publikacja_Habilitacyjna
 # Proste tabele
 from bpp.models.konferencja import Konferencja
+from bpp.models.sloty.core import ISlot
+from bpp.models.sloty.exceptions import CannotAdapt
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
 from .core import CommitedModelAdmin, \
     KolumnyZeSkrotamiMixin, generuj_inline_dla_autorow
@@ -164,5 +166,8 @@ class Wydawnictwo_CiagleAdmin(KolumnyZeSkrotamiMixin,
     zrodlo_col.admin_order_field = 'zrodlo__nazwa'
     zrodlo_col.short_description = "Źródło"
 
+    def save_model(self, request, obj, form, change):
+        super(Wydawnictwo_CiagleAdmin, self).save_model(request, obj, form, change)
+        sprobuj_policzyc_sloty(request, obj)
 
 admin.site.register(Wydawnictwo_Ciagle, Wydawnictwo_CiagleAdmin)

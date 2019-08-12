@@ -13,7 +13,7 @@ from queryset_sequence import QuerySetSequence
 
 from bpp.jezyk_polski import warianty_zapisanego_nazwiska
 from bpp.lookups import SearchQueryStartsWith
-from bpp.models import Jednostka, Dyscyplina_Naukowa, Zewnetrzna_Baza_Danych, Autor_Dyscyplina
+from bpp.models import Jednostka, Dyscyplina_Naukowa, Zewnetrzna_Baza_Danych, Autor_Dyscyplina, Wydawca
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
 from bpp.models.const import GR_WPROWADZANIE_DANYCH
@@ -108,6 +108,11 @@ class KonferencjaAutocomplete(NazwaMixin,
 
     def get_result_label(self, result):
         return f"{Konferencja.TK_SYMBOLE[result.typ_konferencji]} {str(result)}"
+
+
+class WydawcaAutocomplete(NazwaMixin, LoginRequiredMixin, autocomplete.Select2QuerySetView):
+    create_field = 'nazwa'
+    qset = Wydawca.objects.all()
 
 
 class PublicKonferencjaAutocomplete(NazwaMixin, autocomplete.Select2QuerySetView):
@@ -477,7 +482,7 @@ class Dyscyplina_Naukowa_PrzypisanieAutocomplete(autocomplete.Select2ListView):
         ]
 
     def autocomplete_results(self, results):
-        return [(x, y) for x,y in results if self.q.lower() in y.lower()]
+        return [(x, y) for x, y in results if self.q.lower() in y.lower()]
 
     def get_list(self):
         autor = self.forwarded.get("autor", None)

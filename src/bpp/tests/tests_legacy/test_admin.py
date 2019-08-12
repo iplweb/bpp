@@ -9,7 +9,6 @@ except ImportError:
 from mock import Mock
 from model_mommy import mommy
 
-from bpp import autocomplete_light_registry  # Bez tego następny import się wywali
 from bpp.admin import LiczbaZnakowFilter, Wydawnictwo_ZwarteAdmin
 from bpp.admin.filters import CalkowitaLiczbaAutorowFilter
 from bpp.models import Jednostka, Autor, Zrodlo, Wydawnictwo_Zwarte, Praca_Doktorska, Praca_Habilitacyjna, Patent, \
@@ -18,8 +17,6 @@ from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
 from bpp.system import groups
 from bpp.tests.util import any_ciagle
 from bpp.tests.tests_legacy.testutil import SuperuserTestCase, UserTestCase, TestCase
-
-autocomplete_light_registry  # Pycharm, zostaw to w spokoju
 
 from bpp.views.admin import WydawnictwoCiagleTozView
 

@@ -27,8 +27,8 @@ recursive-include src/*/locale/* *mo *po
 
 recursive-include src/*/templates *.html *.css
 
-recursive-include src/bpp/migrations *.sql *.txt
-recursive-include src/bpp/fixtures *
+recursive-include src/*/migrations *.sql *.txt
+recursive-include src/*/fixtures *
 
 recursive-include src/*/fixtures *.json
 

@@ -1,7 +1,6 @@
 # -*- encoding: utf-8 -*-
 
 from dal import autocomplete
-from django import forms
 from django.contrib import admin
 
 from .core import CommitedModelAdmin
@@ -26,12 +25,12 @@ class Praca_Doktorska_Habilitacyjna_Admin_Base(AdnotacjeZDatamiMixin,
     list_display = [
         'tytul_oryginalny', 'autor', 'jednostka', 'wydawnictwo',
         'typ_kbn', 'ostatnio_zmieniony']
-    list_select_related = ['autor', 'autor__tytul', 'jednostka',
+    list_select_related = ['autor', 'autor__tytul', 'jednostka', 'wydawca',
                            'jednostka__wydzial', 'typ_kbn']
 
     search_fields = [
         'tytul', 'tytul_oryginalny', 'szczegoly', 'uwagi', 'informacje',
-        'slowa_kluczowe', 'rok', 'www', 'wydawnictwo', 'redakcja',
+        'slowa_kluczowe', 'rok', 'www', 'wydawca_opis', 'wydawca__nazwa', 'redakcja',
         'autor__tytul__nazwa', 'jednostka__nazwa', 'adnotacje', 'id', ]
 
     list_filter = ['status_korekty', 'recenzowana', 'typ_kbn']

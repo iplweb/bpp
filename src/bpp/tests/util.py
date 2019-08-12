@@ -136,7 +136,7 @@ def any_zwarte_base(klass, **kw):
 
     if klass not in [Patent]:
         set_default('miejsce_i_rok', 'Lublin %s' % CURRENT_YEAR, kw)
-        set_default('wydawnictwo', 'Wydawnictwo FOLIUM', kw)
+        set_default('wydawca_opis', 'Wydawnictwo FOLIUM', kw)
         set_default('isbn', '123-IS-BN-34', kw)
         set_default('redakcja', 'Redakcja', kw)
 
