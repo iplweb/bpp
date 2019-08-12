@@ -1,3 +1,4 @@
+import math
 from decimal import Decimal
 
 from django.utils.functional import cached_property
@@ -120,11 +121,10 @@ class SlotMixin:
         k_przez_m = self.k_przez_m(dyscyplina)
         if k_przez_m is None:
             return
-        return Decimal(sqrt(k_przez_m))
+        return Decimal(math.sqrt(k_przez_m))
 
     def jeden_przez_wszyscy(self):
         w = self.wszyscy()
         if w == 0:
             return
         return 1 / w
-
