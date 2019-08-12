@@ -5,12 +5,9 @@ Historia zmian
 git
 ---
 
-*
+* liczenie punktów i slotów dla wydawnictw zwartych
 
-1.0.30
--------------
-
-*
+* "charakter dla slotów" dla charakteru formalnego
 
 1.0.30-dev3
 -------------
