@@ -30,6 +30,10 @@ def ISlot(original):
             elif original.punkty_kbn <= 20:
                 return SlotKalkulator_Wydawnictwo_Ciagle_Prog3(original)
 
+        raise CannotAdapt(
+            "Punkty KBN rekordu (%s) i rok (%s) nie pozwalają na dopasowanie tego rekordu do jakiejkolwiek grupy" % (
+            original.punkty_kbn, original.rok))
+
     elif isinstance(original, Wydawnictwo_Zwarte):
         if original.rok < 2017 or original.rok > 2020:
             raise CannotAdapt("Rok poza zakresem procedur liczacych (%s). " % original.rok)

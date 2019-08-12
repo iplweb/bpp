@@ -9,6 +9,8 @@ git
 
 * "charakter dla slotów" dla charakteru formalnego
 
+* informacja o możliwości (lub niemożliwości) policzenia punktów dyscyplin dla rekordu w panelu administracyjnym
+
 1.0.30-dev3
 -------------
 

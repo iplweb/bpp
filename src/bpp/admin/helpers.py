@@ -1,11 +1,19 @@
 # -*- encoding: utf-8 -*-
 
+from urllib.parse import quote as urlquote
+
 from django import forms
+from django.contrib import messages
+from django.contrib.admin.utils import quote
 from django.db import models
 from django.forms import BaseInlineFormSet
 from django.forms.widgets import Textarea
+from django.urls import reverse
+from django.utils.html import format_html
 
 from bpp.models import Status_Korekty
+from bpp.models.sloty.core import ISlot
+from bpp.models.sloty.exceptions import CannotAdapt
 
 CHARMAP_SINGLE_LINE = forms.TextInput(
     attrs={'class': 'charmap', 'style': "width: 500px"})
@@ -260,3 +268,30 @@ class LimitingFormset(BaseInlineFormSet):
             qs = super(LimitingFormset, self).get_queryset()
             self._queryset_limited = qs[:100]
         return self._queryset_limited
+
+
+def link_do_obiektu(obj):
+    opts = obj._meta
+    obj_url = reverse(
+        'admin:%s_%s_change' % (opts.app_label, opts.model_name),
+        args=(quote(obj.pk),),
+        # current_app=self.admin_site.name,
+    )
+    # Add a link to the object's change form if the user can edit the obj.
+    return format_html('<a href="{}">{}</a>', urlquote(obj_url), obj)
+
+
+def sprobuj_policzyc_sloty(request, obj):
+    if obj.rok >= 2017 and obj.rok <= 2020:
+        try:
+            ISlot(obj)
+            messages.success(request, 'Punkty dla dyscyplin dla "%s" będą mogły być obliczone.' % link_do_obiektu(obj))
+        except CannotAdapt as e:
+            messages.error(request, 'Nie można obliczyć punktów dla dyscyplin dla "%s": %s' % (
+                link_do_obiektu(obj), e))
+    else:
+        messages.warning(
+            request,
+            'Punkty dla dyscyplin dla "%s" nie będą liczone - rok poza zakresem (%i)' % (
+                link_do_obiektu(obj), obj.rok)
+        )

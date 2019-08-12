@@ -172,5 +172,15 @@ class Wydawnictwo_ZwarteAdmin(KolumnyZeSkrotamiMixin,
         OPENACCESS_FIELDSET,
         PRACA_WYBITNA_FIELDSET)
 
+    def save_model(self, request, obj, form, change):
+        super(Wydawnictwo_ZwarteAdmin, self).save_model(request, obj, form, change)
+        if obj.rok >= 2017 and obj.rok <= 2020 and obj.charakter_formalny.charakter_sloty is None:
+            messages.warning(
+                request,
+                'Punkty dla dyscyplin dla "%s" nie będą liczone, gdyż jest to ani książka, ani rozdział' % link_do_obiektu(
+                    obj))
+        else:
+            sprobuj_policzyc_sloty(request, obj)
+
 
 admin.site.register(Wydawnictwo_Zwarte, Wydawnictwo_ZwarteAdmin)
