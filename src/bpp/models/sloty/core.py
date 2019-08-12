@@ -1,9 +1,11 @@
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 
+from bpp.models import const, Typ_Odpowiedzialnosci
 from bpp.models.cache import Cache_Punktacja_Dyscypliny, Cache_Punktacja_Autora
 from bpp.models.sloty.wydawnictwo_ciagle import SlotKalkulator_Wydawnictwo_Ciagle_Prog3
-from bpp.models.sloty.wydawnictwo_zwarte import SlotKalkulator_Wydawnictwo_Zwarte_Tier0
+from bpp.models.sloty.wydawnictwo_zwarte import SlotKalkulator_Wydawnictwo_Zwarte_Prog3, \
+    SlotKalkulator_Wydawnictwo_Zwarte_Prog2, SlotKalkulator_Wydawnictwo_Zwarte_Prog1
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 from .exceptions import CannotAdapt
@@ -29,20 +31,78 @@ def ISlot(original):
                 return SlotKalkulator_Wydawnictwo_Ciagle_Prog3(original)
 
     elif isinstance(original, Wydawnictwo_Zwarte):
-        pass
-        # if original.rok in [2017, 2018]:
-        #     if original.punkty_kbn in [200, 100, 50]:
-        #         raise NotImplementedError("Monografia - tier 2")
-        #     elif original.punkty_kbn in [80, ]:  # 20]:
-        #         raise NotImplementedError("Monografia - tier 1")
-        #     elif original.punkty_kbn in [20, 5]:
-        #         return SlotKalkulator_Wydawnictwo_Zwarte_Tier0(original)
+        if original.rok < 2017 or original.rok > 2020:
+            raise CannotAdapt("Rok poza zakresem procedur liczacych (%s). " % original.rok)
 
-    raise CannotAdapt(
-        "Nie umiem policzyc dla %s rok %s punkty_kbn %s" % (
-            original,
-            original.rok,
-            original.punkty_kbn))
+        rozdzial = ksiazka = autorstwo = redakcja = False
+
+        poziom_wydawcy = -1
+
+        if original.charakter_formalny.charakter_sloty == const.CHARAKTER_SLOTY_ROZDZIAL:
+            rozdzial = True
+
+        if original.charakter_formalny.charakter_sloty == const.CHARAKTER_SLOTY_KSIAZKA:
+            ksiazka = True
+
+        if ksiazka and rozdzial:
+            raise NotImplementedError("To sie nie powinno wydarzyc)")
+
+        if ksiazka:
+            for elem in Typ_Odpowiedzialnosci.objects.filter(
+                    pk__in=original.autorzy_set.values_list("typ_odpowiedzialnosci_id")).distinct():
+                if elem.typ_ogolny == const.TO_AUTOR:
+                    autorstwo = True
+                    continue
+                if elem.typ_ogolny == const.TO_REDAKTOR:
+                    redakcja = True
+                    continue
+
+            if autorstwo and redakcja:
+                raise CannotAdapt("Rekord ma jednocześnie autorów i redaktorów.")
+
+            if not autorstwo and not redakcja:
+                raise CannotAdapt("Rekord nie posiada autorów ani redaktorów.")
+
+        if original.wydawca_id is not None:
+            poziom_wydawcy = original.wydawca.get_tier(original.rok)
+
+        if poziom_wydawcy == 2:
+            if (ksiazka and autorstwo and original.punkty_kbn == 200) or \
+                    (ksiazka and redakcja and original.punkty_kbn == 100) or \
+                    (rozdzial and original.punkty_kbn == 50):
+                return SlotKalkulator_Wydawnictwo_Zwarte_Prog1(original)
+
+        elif poziom_wydawcy == 1:
+            if (ksiazka and autorstwo and original.punkty_kbn == 80) or \
+                    (ksiazka and redakcja and original.punkty_kbn == 20) or \
+                    (rozdzial and original.punkty_kbn == 20):
+                return SlotKalkulator_Wydawnictwo_Zwarte_Prog2(original)
+
+        else:
+            if (ksiazka and autorstwo and original.punkty_kbn == 20) or \
+                    (ksiazka and redakcja and original.punkty_kbn == 5) or \
+                    (rozdzial and original.punkty_kbn == 5):
+                return SlotKalkulator_Wydawnictwo_Zwarte_Prog3(original)
+
+        raise CannotAdapt("Rekordu nie można dopasować do żadnej z grup monografii. Poziom "
+                          "wydawcy: %(poziom_wydawcy)s, ksiazka: %(ksiazka)s, rozdzial: %(rozdzial)s, "
+                          "autorstwo: %(autorstwo)s, redakcja: %(redakcja)s, punkty kbn: %(punkty_kbn)s" % dict(
+            poziom_wydawcy=poziom_wydawcy,
+            ksiazka=ksiazka,
+            rozdzial=rozdzial,
+            autorstwo=autorstwo,
+            redakcja=redakcja,
+            punkty_kbn=original.punkty_kbn
+        ))
+
+    if hasattr(original, 'rok') and hasattr(original, 'punkty_kbn'):
+        raise CannotAdapt(
+            "Nie umiem policzyc dla %s rok %s punkty_kbn %s" % (
+                original,
+                original.rok,
+                original.punkty_kbn))
+
+    raise CannotAdapt("Nie umiem policzyć dla obiektu: %r" % original)
 
 
 class IPunktacjaCacher:

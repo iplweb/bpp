@@ -1,3 +1,6 @@
+import math
+from decimal import Decimal
+
 from django.utils.functional import cached_property
 
 from bpp.models import TO_AUTOR, TO_REDAKTOR, Autor
@@ -108,3 +111,20 @@ class SlotMixin:
         wca = self.ensure_autor_rekordu_klass(wca)
         dyscyplina = wca.okresl_dyscypline()
         return self.slot_dla_autora_z_dyscypliny(dyscyplina)
+
+    def k_przez_m(self, dyscyplina):
+        if self.wszyscy() == 0:
+            return
+        return Decimal(len(self.autorzy_z_dyscypliny(dyscyplina)) / self.wszyscy())
+
+    def pierwiastek_k_przez_m(self, dyscyplina):
+        k_przez_m = self.k_przez_m(dyscyplina)
+        if k_przez_m is None:
+            return
+        return Decimal(math.sqrt(k_przez_m))
+
+    def jeden_przez_wszyscy(self):
+        w = self.wszyscy()
+        if w == 0:
+            return
+        return 1 / w
