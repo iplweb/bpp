@@ -69,6 +69,12 @@ class UczelniaAdmin(RestrictDeletionToAdministracjaGroupMixin,
                 'wydruk_parametry_zapytania'
             )
         }),
+        ('Podpowiadanie dyscyplin', {
+           'classes': ('grp-collapse grp-opened',),
+           'fields': (
+               'podpowiadaj_dyscypliny',
+           )
+        }),
         ADNOTACJE_FIELDSET,
         ('Clarivate Analytics API', {
             'classes': ('grp-collapse grp-closed',),

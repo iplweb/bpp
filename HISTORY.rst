@@ -5,7 +5,8 @@ Historia zmian
 git
 ---
 
-*
+* konfigurowalne podpowiadanie dyscypliny autora (w sytuacji gdy ma tylko jedną na dany rok) podczas
+  przypisywania autora do rekordu publikacji; zmiana konfiguracji za pomoca obiektu 'Uczelnia',
 
 1.0.31-dev0
 -------------

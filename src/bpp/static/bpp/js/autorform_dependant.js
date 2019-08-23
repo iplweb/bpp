@@ -17,18 +17,21 @@ var autorform_dependant = function () {
             if (data.status == 'error')
                 return;
 
-            $(':input[name=' + prefix + 'jednostka]').append(
-                '<option selected="selected" value=' + data['jednostka_id'] + '>'
-                + data['nazwa'] + '</option>');
+            if (data.jednostka_id && data.nazwa) {
+                $(':input[name=' + prefix + 'jednostka]').append(
+                    '<option selected="selected" value=' + data['jednostka_id'] + '>'
+                    + data['nazwa'] + '</option>');
 
-            $(':input[name=' + prefix + 'jednostka]').trigger("change");
+                $(':input[name=' + prefix + 'jednostka]').trigger("change");
+            }
 
-            if (data['dyscyplina_id'])
+            if (data['dyscyplina_id']) {
                 $(':input[name=' + prefix + 'dyscyplina_naukowa]').append(
                     '<option selected="selected" value=' + data['dyscyplina_id'] + '>'
                     + data['dyscyplina_nazwa'] + '</option>');
 
-            $(':input[name=' + prefix + 'jednostka]').trigger("change");
+                $(':input[name=' + prefix + 'dyscyplina_naukowa]').trigger("change");
+            }
 
             $(':input[name=' + prefix + 'zapisany_jako]').val(null).trigger('change');
 
