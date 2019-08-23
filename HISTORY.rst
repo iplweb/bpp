@@ -5,7 +5,8 @@ Historia zmian
 git
 ---
 
-*
+* nie wymagaj ilości znaków wydawniczych od rozdziałów i monografii przy eksporcie dla PBN
+
 
 1.0.31-dev0
 -------------
