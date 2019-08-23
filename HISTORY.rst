@@ -6,7 +6,14 @@ git
 ---
 
 * konfigurowalne podpowiadanie dyscypliny autora (w sytuacji gdy ma tylko jedną na dany rok) podczas
-  przypisywania autora do rekordu publikacji; zmiana konfiguracji za pomoca obiektu 'Uczelnia',
+  przypisywania autora do rekordu publikacji; zmiana konfiguracji za pomoca obiektu 'Uczelnia' (#728),
+
+* poprawka błędu gdzie dla autorow z dwoma dyscyplinami była podpowiedź dyscypliny a nie powinno jej byc
+  (#729)
+
+* rozbicie pliku test_admin.py na klika mniejszych celem usprawnienia efektywności testow uruchamianych
+  za pomocą pytest-xdist (na wielu procesorach)
+
 
 1.0.31-dev0
 -------------
