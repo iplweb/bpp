@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, time
 import pytest
 from model_mommy import mommy
 
-from bpp.models import TO_REDAKTOR
+from bpp.models import TO_REDAKTOR, const
 from bpp.models.autor import Autor
 from bpp.models.struktura import Uczelnia, Wydzial, Jednostka
 from bpp.models.system import Typ_Odpowiedzialnosci, Charakter_Formalny
@@ -25,7 +25,7 @@ def test_id_zwartych(wydawnictwo_zwarte_z_autorem, wydzial, rok):
 
     cf = wydawnictwo_zwarte_z_autorem.charakter_formalny
 
-    cf.ksiazka_pbn = True
+    cf.rodzaj_pbn = const.RODZAJ_PBN_KSIAZKA
     cf.save()
 
     l = id_zwartych(wydzial, rok, rok, True, True)
@@ -84,11 +84,11 @@ def test_id_zwartych_gdy_jest_ksiazka_z_w1_ale_rozdzialy_ma_w_w2(
 @pytest.mark.django_db
 def test_id_ciaglych(wydawnictwo_ciagle_z_autorem, wydzial, rok):
     cf = wydawnictwo_ciagle_z_autorem.charakter_formalny
-    cf.artykul_pbn = True
+    cf.rodzaj_pbn = const.RODZAJ_PBN_ARTYKUL
     cf.save()
 
     tk = wydawnictwo_ciagle_z_autorem.typ_kbn
-    tk.artykul_pbn = True
+    tk.rodzaj_pbn = const.RODZAJ_PBN_ARTYKUL
     tk.save()
 
     l = id_ciaglych(wydzial, rok, rok)
@@ -97,7 +97,7 @@ def test_id_ciaglych(wydawnictwo_ciagle_z_autorem, wydzial, rok):
 
 def test_z_datami(jednostka, autor_jan_kowalski, wydawnictwo_ciagle, wydawnictwo_zwarte, rok):
     cf = wydawnictwo_ciagle.charakter_formalny
-    cf.artykul_pbn = True
+    cf.rodzaj_pbn = const.RODZAJ_PBN_ARTYKUL
     cf.save()
 
     tk = wydawnictwo_ciagle.typ_kbn
@@ -168,7 +168,7 @@ def test_ta_sama_data_id_ciaglych(jednostka, autor_jan_kowalski, wydawnictwo_cia
     settings.TIME_ZONE = "UTC"
 
     cf = wydawnictwo_ciagle.charakter_formalny
-    cf.artykul_pbn = True
+    cf.rodzaj_pbn = const.RODZAJ_PBN_ARTYKUL
     cf.save()
 
     tk = wydawnictwo_ciagle.typ_kbn
@@ -200,7 +200,7 @@ def test_ta_sama_data_id_zwartych(jednostka, autor_jan_kowalski, wydawnictwo_zwa
     settings.TIME_ZONE = "UTC"
 
     cf = wydawnictwo_zwarte.charakter_formalny
-    cf.ksiazka_pbn = True
+    cf.rodzaj_pbn = const.RODZAJ_PBN_KSIAZKA
     cf.save()
 
     wydawnictwo_zwarte.liczba_znakow_wydawniczych = 240000
