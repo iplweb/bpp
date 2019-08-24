@@ -116,9 +116,6 @@ class Charakter_Formalny(NazwaISkrot, MPTTModel):
     class MPTTMeta:
         order_insertion_by = ['nazwa']
 
-    def _fail(self, value):
-        raise AttributeError("Uzyj jednej z wartosci dla pola rodzaj_pbn")
-
     #
     # Kompatybilne API dla .artykul_pbn, .rozdzial_pbn, .ksiazka_pbn
     #
@@ -159,7 +156,6 @@ class Charakter_Formalny(NazwaISkrot, MPTTModel):
     artykul_pbn = property(get_artykul_pbn, set_artykul_pbn)
     ksiazka_pbn = property(get_ksiazka_pbn, set_ksiazka_pbn)
     rozdzial_pbn = property(get_rozdzial_pbn, set_rozdzial_pbn)
-
 
 @receiver(post_migrate)
 def rebuild_handler(sender, **kwargs):
