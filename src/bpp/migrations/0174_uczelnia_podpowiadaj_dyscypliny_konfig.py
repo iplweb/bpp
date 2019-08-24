@@ -15,9 +15,4 @@ class Migration(migrations.Migration):
             name='podpowiadaj_dyscypliny',
             field=models.BooleanField(default=True, help_text='W sytuacji gdy to pole ma wartość "PRAWDA", system będzie podpowiadał dyscyplinę\n        naukową dla powiązania rekordu wydawnictwa i autora w sytuacji, gdy autor ma na dany rok\n        określoną tylko jedną dyscyplinę. W sytuacji przypisania dla autora dwóch dyscyplin na dany rok, \n        pożądaną dyscyplinę będzie trzeba wybrać ręcznie, niezależnie od ustawienia tego pola. '),
         ),
-        migrations.AlterField(
-            model_name='charakter_formalny',
-            name='charakter_sloty',
-            field=models.PositiveSmallIntegerField(blank=True, choices=[(1, 'Książka'), (2, 'Rozdział')], default=None, help_text='Jak potraktować ten charakter przy kalkulacji slotów dla wydawnictwa zwartego?', null=True, verbose_name='Charakter dla slotów'),
-        ),
     ]
