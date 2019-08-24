@@ -86,12 +86,18 @@ class Charakter_Formalny(NazwaISkrot, MPTTModel):
                                       w plikach eksportu do PBN""",
                                       on_delete=CASCADE)
 
-    artykul_pbn = models.BooleanField(verbose_name="Artykuł w PBN", help_text="""Wydawnictwa ciągłe posiadające
-     ten charakter formalny zostaną włączone do eksportu PBN jako artykuły""", default=False)
-    ksiazka_pbn = models.BooleanField(verbose_name="Książka w PBN", help_text="""Wydawnictwa zwarte posiadające ten
-    charakter formalny zostaną włączone do eksportu PBN jako ksiażki""", default=False)
-    rozdzial_pbn = models.BooleanField(verbose_name="Rozdział w PBN", help_text="""Wydawnictwa zwarte posiadające ten
-    charakter formalny zostaną włączone do eksportu PBN jako rozdziały""", default=False)
+    rodzaj_pbn = models.PositiveSmallIntegerField(
+        verbose_name="Rodzaj dla PBN",
+        choices=[
+            (None, "nie eksportuj do PBN"),
+            (const.RODZAJ_PBN_ARTYKUL, "artykuł"),
+            (const.RODZAJ_PBN_KSIAZKA, "książka"),
+            (const.RODZAJ_PBN_ROZDZIAL, "rozdział")
+        ],
+        null=True, blank=True,
+        help_text="""Pole określające, czy wydawnictwa posiadające dany charakter formalny zostaną włączone
+        do eksportu PBN jako artykuły, rozdziały czy książki. """, default=None
+    )
 
     charakter_sloty = models.PositiveSmallIntegerField(
         "Charakter dla slotów", null=True, blank=True, default=None,
@@ -108,6 +114,11 @@ class Charakter_Formalny(NazwaISkrot, MPTTModel):
     class MPTTMeta:
         order_insertion_by = ['nazwa']
 
+    def _fail(self, value):
+        raise AttributeError("Uzyj jednej z wartosci dla pola rodzaj_pbn")
+    artykul_pbn = property(fset=_fail)
+    ksiazka_pbn = property(fset=_fail)
+    rozdzial_pbn = property(fset=_fail)
 
 @receiver(post_migrate)
 def rebuild_handler(sender, **kwargs):

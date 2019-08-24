@@ -11,7 +11,7 @@ from django.utils import timezone
 from django.utils.functional import cached_property
 from lxml.etree import Element, SubElement
 
-from bpp.models import TO_AUTOR, MaProcentyMixin, DodajAutoraMixin
+from bpp.models import TO_AUTOR, MaProcentyMixin, DodajAutoraMixin, const
 from bpp.models.abstract import \
     BazaModeluOdpowiedzialnosciAutorow, DwaTytuly, ModelZRokiem, \
     ModelZWWW, ModelRecenzowany, ModelPunktowany, ModelTypowany, \
@@ -180,11 +180,11 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
 
     @cached_property
     def is_chapter(self):
-        return self.charakter_formalny.rozdzial_pbn
+        return self.charakter_formalny.rodzaj_pbn == const.RODZAJ_PBN_ROZDZIAL
 
     @cached_property
     def is_book(self):
-        return self.charakter_formalny.ksiazka_pbn
+        return self.charakter_formalny.rodzaj_pbn == const.RODZAJ_PBN_KSIAZKA
 
     def eksport_pbn_isbn(self, toplevel, wydzial=None, autorzy_klass=None):
         if self.isbn:

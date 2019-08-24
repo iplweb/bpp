@@ -7,6 +7,12 @@ git
 
 * nie wymagaj ilości znaków wydawniczych od rozdziałów i monografii przy eksporcie dla PBN
 
+* połącz 3 pola obiektu Charakter Formalny: "Artykuł w PBN", "Rozdział w PBN", "Ksiażka w PBN" w jedno
+  pole "Rodzaj dla PBN", które to może przyjąć jedną z 3 powyższych wartości; wcześniejszy model umożliwiał
+  eksportowanie jednego charkateru formalnego jako rozdział bądź książka, jednakże po usunięciu
+  warunku dotyczącego liczby znaków wydawniczych, niektóre rekordy mogłyby w takiej sytuacji być
+  eksportowane więcej, niż jeden raz.
+
 
 1.0.31-dev0
 -------------

@@ -7,6 +7,7 @@ from datetime import timedelta
 from django.utils import timezone
 from model_mommy import mommy
 
+from bpp.models import const
 from bpp.models.system import Charakter_Formalny, Typ_KBN
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
@@ -23,17 +24,10 @@ def test_eksport_pbn(normal_django_user, jednostka, autor_jan_kowalski, rok,
 
     autor_jan_kowalski.dodaj_jednostke(jednostka=jednostka)
 
-    cf_ciagle = mommy.make(Charakter_Formalny,
-                           artykul_pbn=True,
-                           ksiazka_pbn=False,
-                           rozdzial_pbn=False)
-    cf_zwarte = mommy.make(Charakter_Formalny,
-                           artykul_pbn=False,
-                           ksiazka_pbn=True,
-                           rozdzial_pbn=True)
+    cf_ciagle = mommy.make(Charakter_Formalny, rodzaj_pbn=const.RODZAJ_PBN_ARTYKUL)
+    cf_zwarte = mommy.make(Charakter_Formalny, rodzaj_pbn=const.RODZAJ_PBN_KSIAZKA)
 
-    typ_ciagle = mommy.make(Typ_KBN,
-                            artykul_pbn=True)
+    typ_ciagle = mommy.make(Typ_KBN, artykul_pbn=True)
 
     typ_zwarte = mommy.make(Typ_KBN, artykul_pbn=False)
 
