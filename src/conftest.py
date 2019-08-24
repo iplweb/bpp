@@ -486,12 +486,12 @@ def charaktery_formalne():
         Charakter_Formalny.objects.get_or_create(pk=elem['pk'], **elem['fields'])
 
     chf_ksp = Charakter_Formalny.objects.get(skrot='KSP')
-    chf_ksp.ksiazka_pbn = True
+    chf_ksp.rodzaj_pbn = const.RODZAJ_PBN_KSIAZKA
     chf_ksp.charakter_sloty = const.CHARAKTER_SLOTY_KSIAZKA
     chf_ksp.save()
 
     chf_roz = Charakter_Formalny.objects.get(skrot="ROZ")
-    chf_roz.rozdzial_pbn = True
+    chf_roz.rodzaj_pbn = const.RODZAJ_PBN_ROZDZIAL
     chf_roz.charakter_sloty = const.CHARAKTER_SLOTY_ROZDZIAL
     chf_roz.save()
 
