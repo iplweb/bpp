@@ -88,7 +88,7 @@ def test_id_ciaglych(wydawnictwo_ciagle_z_autorem, wydzial, rok):
     cf.save()
 
     tk = wydawnictwo_ciagle_z_autorem.typ_kbn
-    tk.rodzaj_pbn = const.RODZAJ_PBN_ARTYKUL
+    tk.artykul_pbn = True
     tk.save()
 
     l = id_ciaglych(wydzial, rok, rok)
