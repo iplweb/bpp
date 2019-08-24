@@ -1,12 +1,6 @@
 # -*- encoding: utf-8 -*-
 import time
 
-from django.apps import apps
-from selenium.webdriver import ActionChains
-from splinter.driver import element_present
-
-from bpp.tests.test_selenium.test_raporty import submit_page
-
 try:
     from django.core.urlresolvers import reverse
 except ImportError:
@@ -19,117 +13,15 @@ from bpp.models import Wydawnictwo_Ciagle, Uczelnia, Autor, Jednostka, Typ_Odpow
 from bpp.models.patent import Patent
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 from bpp.models.zrodlo import Punktacja_Zrodla
-from bpp.tests import any_ciagle, any_autor, any_jednostka, select_element_by_text, set_element, submit_admin_form, \
-    add_extra_autor_inline, fill_admin_inline, fill_admin_form, submitted_form_bad, submitted_form_good
-from bpp.tests.util import any_zrodlo, CURRENT_YEAR, any_zwarte, any_patent, \
-    select_select2_autocomplete, select_select2_clear_selection, show_element
+from bpp.tests import any_ciagle, any_autor, any_jednostka
+from bpp.tests.util import any_zrodlo, CURRENT_YEAR, select_select2_autocomplete, select_select2_clear_selection, \
+    show_element
 from django_bpp.selenium_util import wait_for_page_load, wait_for
 from .helpers import *
 
 ID = "id_tytul_oryginalny"
 
 pytestmark = [pytest.mark.slow, pytest.mark.selenium]
-
-
-def test_admin_wydawnictwo_ciagle_toz(preauth_admin_browser, live_server):
-    Wydawnictwo_Ciagle.objects.all().delete()
-    c = any_ciagle(informacje='TO INFORMACJE')
-
-    preauth_admin_browser.visit(live_server + reverse("admin:bpp_wydawnictwo_ciagle_change", args=(c.pk,)))
-
-    wcc = Wydawnictwo_Ciagle.objects.count
-    assert wcc() == 1
-
-    toz = preauth_admin_browser.find_by_id('toz')
-    toz.click()
-
-    assertPopupContains(preauth_admin_browser, "Utworzysz kopię tego rekordu")
-    time.sleep(2)
-    assert preauth_admin_browser.is_element_present_by_id('navigation-menu', wait_time=5000)
-
-    assert wcc() == 2
-
-
-def test_admin_wydawnictwo_zwarte_toz(preauth_admin_browser, live_server):
-    c = any_zwarte(informacje="TO INFOMRACJE")
-
-    preauth_admin_browser.visit(live_server + reverse("admin:bpp_wydawnictwo_zwarte_change", args=(c.pk,)))
-
-    wcc = Wydawnictwo_Zwarte.objects.count
-    assert wcc() == 1
-
-    toz = preauth_admin_browser.find_by_id('toz')
-    toz.click()
-
-    assertPopupContains(preauth_admin_browser, "Utworzysz kopię tego rekordu")
-    time.sleep(2)
-    preauth_admin_browser.is_element_present_by_id('navigation-menu', 5000)
-    assert wcc() == 2
-
-
-def test_admin_wydawnictwo_ciagle_tamze(preauth_admin_browser, live_server):
-    c = any_ciagle(informacje='TO INFORMACJE', uwagi='te uwagi', www='te www')
-    preauth_admin_browser.visit(live_server + reverse("admin:bpp_wydawnictwo_ciagle_change", args=(c.pk,)))
-
-    tamze = preauth_admin_browser.find_by_id('tamze')
-
-    with wait_for_page_load(preauth_admin_browser):
-        tamze.click()
-
-    assert 'Dodaj wydawnictwo' in preauth_admin_browser.html
-
-    for elem in ['TO INFORMACJE', 'te uwagi', 'te www']:
-        assert elem in preauth_admin_browser.html, 'BRAK %r' % elem
-
-
-def test_admin_wydawnictwo_zwarte_tamze(preauth_admin_browser, live_server, wydawca):
-    c = any_zwarte(
-        informacje="TO INFORMACJE",
-        uwagi='te uwagi',
-        miejsce_i_rok='te miejsce i rok',
-        wydawca=wydawca,
-        wydawca_opis='te wydawnictwo',
-        www='ten adres WWW',
-        isbn='Z_ISBN',
-        e_isbn='E_ISBN')
-    preauth_admin_browser.visit(live_server + reverse("admin:bpp_wydawnictwo_zwarte_change", args=(c.pk,)))
-    tamze = preauth_admin_browser.find_by_id('tamze')
-    tamze.click()
-    time.sleep(1)
-    assert 'Dodaj wydawnictwo' in preauth_admin_browser.html
-    for elem in ['TO INFORMACJE', 'te uwagi', 'te miejsce i rok',
-                 'te wydawnictwo', 'ten adres WWW', 'Z_ISBN', 'E_ISBN',
-                 'Wydawca Testowy']:
-        assert elem in preauth_admin_browser.html, 'BRAK %r' % elem
-
-
-def test_admin_patent_toz(preauth_admin_browser, live_server):
-    c = any_patent(informacje="TO INFORMACJE")
-    preauth_admin_browser.visit(live_server + reverse("admin:bpp_patent_change", args=(c.pk,)))
-
-    wcc = Patent.objects.count
-    assert wcc() == 1
-
-    toz = preauth_admin_browser.find_by_id('toz')
-    toz.click()
-
-    assertPopupContains(preauth_admin_browser, "Utworzysz kopię tego rekordu")
-    time.sleep(2)
-
-    preauth_admin_browser.is_element_present_by_id('navigation-menu', 5000)
-    assert wcc() == 2
-
-
-def test_admin_patent_tamze(preauth_admin_browser, live_server):
-    c = any_patent(informacje="TO INFORMACJE")
-    with wait_for_page_load(preauth_admin_browser):
-        preauth_admin_browser.visit(
-            live_server + reverse("admin:bpp_patent_change", args=(c.pk,)))
-
-    with wait_for_page_load(preauth_admin_browser):
-        preauth_admin_browser.execute_script("$('#tamze').click()")
-
-    assert preauth_admin_browser.find_by_id("id_informacje").value == 'TO INFORMACJE'
 
 
 @pytest.mark.django_db(transaction=True)
@@ -567,127 +459,3 @@ def test_admin_domyslnie_afiliuje_istniejacy_rekord(
 
     v = browser.find_by_id("id_autorzy_set-1-afiliuje")
     assert v.checked == expected
-
-
-@pytest.mark.parametrize(
-    "klass",
-    ["wydawnictwo_ciagle", "wydawnictwo_zwarte", "patent"]
-)
-def test_procent_odpowiedzialnosci_baseModel_AutorFormset_jeden_autor(
-        nginx_live_server, preauth_admin_browser, autor_jan_kowalski, autor_jan_nowak,
-        jednostka, typ_odpowiedzialnosci_autor, zrodlo, charaktery_formalne,
-        typy_kbn, statusy_korekt, jezyki, klass):
-
-    url = nginx_live_server.url + reverse("admin:bpp_%s_add" % klass)
-
-    with wait_for_page_load(preauth_admin_browser):
-        preauth_admin_browser.visit(url)
-    fill_admin_form(preauth_admin_browser)
-    add_extra_autor_inline(preauth_admin_browser)
-    fill_admin_inline(preauth_admin_browser, autor=autor_jan_kowalski, jednostka=jednostka, zapisany_jako="Kopara", procent="100.00")
-    submit_admin_form(preauth_admin_browser)
-    assert submitted_form_good(preauth_admin_browser)
-
-
-@pytest.mark.parametrize(
-    "klass",
-    ["wydawnictwo_ciagle", "wydawnictwo_zwarte", "patent"]
-)
-def test_procent_odpowiedzialnosci_baseModel_AutorFormset_problem_jeden_autor(
-        nginx_live_server, preauth_admin_browser, autor_jan_kowalski, autor_jan_nowak,
-        jednostka, typ_odpowiedzialnosci_autor, zrodlo, charaktery_formalne,
-        typy_kbn, statusy_korekt, jezyki, klass):
-
-    url = nginx_live_server.url + reverse("admin:bpp_%s_add" % klass)
-
-    with wait_for_page_load(preauth_admin_browser):
-        preauth_admin_browser.visit(url)
-    fill_admin_form(preauth_admin_browser)
-    add_extra_autor_inline(preauth_admin_browser)
-    fill_admin_inline(preauth_admin_browser, autor=autor_jan_kowalski, jednostka=jednostka, zapisany_jako="Kopara", procent="100.01")
-    submit_admin_form(preauth_admin_browser)
-    assert submitted_form_bad(preauth_admin_browser)
-
-
-@pytest.mark.parametrize(
-    "klass",
-    ["wydawnictwo_ciagle", "wydawnictwo_zwarte", "patent"]
-)
-def test_procent_odpowiedzialnosci_baseModel_AutorFormset_dwoch_autorow(
-        nginx_live_server, preauth_admin_browser, autor_jan_kowalski, autor_jan_nowak,
-        jednostka, typ_odpowiedzialnosci_autor, zrodlo, charaktery_formalne,
-        typy_kbn, statusy_korekt, jezyki, klass):
-
-    url = nginx_live_server.url + reverse("admin:bpp_%s_add" % klass)
-
-    with wait_for_page_load(preauth_admin_browser):
-        preauth_admin_browser.visit(url)
-    fill_admin_form(preauth_admin_browser)
-    add_extra_autor_inline(preauth_admin_browser)
-    fill_admin_inline(preauth_admin_browser, autor=autor_jan_kowalski, jednostka=jednostka, zapisany_jako="Kopara", procent="50.00")
-    add_extra_autor_inline(preauth_admin_browser, 1)
-    fill_admin_inline(preauth_admin_browser, autor=autor_jan_nowak, jednostka=jednostka, zapisany_jako="Kopara", procent="50.00", no=1)
-    submit_admin_form(preauth_admin_browser)
-    assert submitted_form_good(preauth_admin_browser)
-
-
-@pytest.mark.parametrize(
-    "klass",
-    ["wydawnictwo_ciagle", "wydawnictwo_zwarte", "patent"]
-)
-def test_procent_odpowiedzialnosci_baseModel_AutorFormset_problem_dwoch_autorow(
-        nginx_live_server, preauth_admin_browser, autor_jan_kowalski, autor_jan_nowak,
-        jednostka, typ_odpowiedzialnosci_autor, zrodlo, charaktery_formalne,
-        typy_kbn, statusy_korekt, jezyki, klass):
-
-    url = nginx_live_server.url + reverse("admin:bpp_%s_add" % klass)
-
-    with wait_for_page_load(preauth_admin_browser):
-        preauth_admin_browser.visit(url)
-    fill_admin_form(preauth_admin_browser)
-    add_extra_autor_inline(preauth_admin_browser)
-    fill_admin_inline(preauth_admin_browser, autor=autor_jan_kowalski, jednostka=jednostka, zapisany_jako="Kopara", procent="50.00")
-    add_extra_autor_inline(preauth_admin_browser, 1)
-    fill_admin_inline(preauth_admin_browser, autor=autor_jan_nowak, jednostka=jednostka, zapisany_jako="Kopara", procent="50.01", no=1)
-    submit_admin_form(preauth_admin_browser)
-    assert submitted_form_bad(preauth_admin_browser)
-
-
-@pytest.mark.parametrize(
-    "klass",
-    ["wydawnictwo_ciagle", "wydawnictwo_zwarte", "patent"]
-)
-def test_procent_odpowiedzialnosci_baseModel_AutorFormset_dobrze_potem_zle_dwoch_autorow(
-        nginx_live_server, preauth_admin_browser, autor_jan_kowalski, autor_jan_nowak,
-        jednostka, typ_odpowiedzialnosci_autor, zrodlo, charaktery_formalne,
-        typy_kbn, statusy_korekt, jezyki, klass):
-
-    url = nginx_live_server.url + reverse("admin:bpp_%s_add" % klass)
-
-    with wait_for_page_load(preauth_admin_browser):
-        preauth_admin_browser.visit(url)
-
-    fill_admin_form(preauth_admin_browser)
-
-    add_extra_autor_inline(preauth_admin_browser)
-    fill_admin_inline(preauth_admin_browser, autor=autor_jan_kowalski, jednostka=jednostka, zapisany_jako="Kopara", procent="50.00")
-
-    add_extra_autor_inline(preauth_admin_browser)
-    fill_admin_inline(preauth_admin_browser, autor=autor_jan_nowak, jednostka=jednostka, zapisany_jako="Kopara", procent="50.00", no=1)
-
-    submit_admin_form(preauth_admin_browser)
-
-    assert submitted_form_good(preauth_admin_browser)
-
-    model = apps.get_app_config("bpp").get_model(klass)
-
-    url = nginx_live_server.url + reverse("admin:bpp_%s_change" % klass, args=(model.objects.first().pk,))
-
-    with wait_for_page_load(preauth_admin_browser):
-        preauth_admin_browser.visit(url)
-
-    set_element(preauth_admin_browser, f"id_autorzy_set-0-procent", "50.01")
-
-    submit_admin_form(preauth_admin_browser)
-    assert submitted_form_bad(preauth_admin_browser)
-

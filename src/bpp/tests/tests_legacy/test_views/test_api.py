@@ -120,4 +120,7 @@ class TestOstatniaJednostkaIDyscyplinaView(TestCase):
         a = any_autor()
         fr = FakeRequest(dict(autor_id=a.pk))
         res = ojv.post(fr)
-        assert json.loads(res.content)['status'] == 'error'
+
+        res = json.loads(res.content)
+        assert res['status'] == 'ok'
+        assert res['jednostka_id'] == None

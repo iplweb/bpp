@@ -4,6 +4,7 @@ from django.http import JsonResponse
 from django.http.response import HttpResponseNotFound
 from django.views.generic import View
 
+from bpp.context_processors.uczelnia import uczelnia
 from bpp.models import Autor, Zrodlo, Autor_Dyscyplina
 from bpp.models.abstract import POLA_PUNKTACJI
 from bpp.models.praca_habilitacyjna import Praca_Habilitacyjna
@@ -88,28 +89,33 @@ class OstatniaJednostkaIDyscyplinaView(View):
 
         jed = a.aktualna_jednostka
         if jed is None:
-            return JsonResponse({"status": "error", "reason": "aktualna jednostka nie istnieje"})
+            ret = dict(jednostka_id=None, nazwa=None, status="ok")
+        else:
+            ret = dict(jednostka_id=jed.pk, nazwa=jed.nazwa, status="ok")
 
-        ret = dict(jednostka_id=jed.pk, nazwa=jed.nazwa, status="ok")
-
-        try:
-            rok = int(request.POST.get("rok"))
-        except (TypeError, ValueError):
-            rok = None
-            ad = None
-
-        if rok:
+        if uczelnia(request)['uczelnia'].podpowiadaj_dyscypliny:
             try:
-                ad = Autor_Dyscyplina.objects.get(
-                    autor=a, rok=rok
-                )
-            except Autor_Dyscyplina.DoesNotExist:
+                rok = int(request.POST.get("rok"))
+            except (TypeError, ValueError):
+                rok = None
                 ad = None
 
-        if ad is not None:
-            d = ad.dyscyplina_naukowa or ad.subdyscyplina_naukowa
-            if d is not None:
-                ret['dyscyplina_nazwa'] = d.nazwa
-                ret['dyscyplina_id'] = d.pk
+            if rok:
+                try:
+                    ad = Autor_Dyscyplina.objects.get(
+                        autor=a, rok=rok
+                    )
+                except Autor_Dyscyplina.DoesNotExist:
+                    ad = None
+
+            if ad is not None:
+                # Jest wpis Autor_Dyscyplina dla tego autora i roku.
+
+                if not (ad.dyscyplina_naukowa_id is not None and ad.subdyscyplina_naukowa_id is not None):
+                    # W sytuacji gdy określona jest tylko jedna z nich:
+
+                    d = ad.dyscyplina_naukowa or ad.subdyscyplina_naukowa
+                    ret['dyscyplina_nazwa'] = d.nazwa
+                    ret['dyscyplina_id'] = d.pk
 
         return JsonResponse(ret)
