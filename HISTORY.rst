@@ -5,6 +5,11 @@ Historia zmian
 git
 ---
 
+*
+
+1.0.31-dev1
+-------------
+
 * nie wymagaj ilości znaków wydawniczych od rozdziałów i monografii przy eksporcie dla PBN
 
 * połącz 3 pola obiektu Charakter Formalny: "Artykuł w PBN", "Rozdział w PBN", "Ksiażka w PBN" w jedno
