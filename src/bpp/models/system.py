@@ -3,6 +3,7 @@
 """
 Małe klasy pomocnicze dla całego systemu
 """
+import warnings
 
 from django.db import models
 from django.db.models import CASCADE
@@ -40,6 +41,7 @@ NAZWY_PRIMO = list(zip(NAZWY_PRIMO, NAZWY_PRIMO))
 RODZAJE_DOKUMENTOW_PBN = [("article", "Artykuł"),
                           ("book", "Książka"),
                           ("chapter", "Rozdział")]
+
 
 @six.python_2_unicode_compatible
 class Charakter_PBN(models.Model):
@@ -86,12 +88,18 @@ class Charakter_Formalny(NazwaISkrot, MPTTModel):
                                       w plikach eksportu do PBN""",
                                       on_delete=CASCADE)
 
-    artykul_pbn = models.BooleanField(verbose_name="Artykuł w PBN", help_text="""Wydawnictwa ciągłe posiadające
-     ten charakter formalny zostaną włączone do eksportu PBN jako artykuły""", default=False)
-    ksiazka_pbn = models.BooleanField(verbose_name="Książka w PBN", help_text="""Wydawnictwa zwarte posiadające ten
-    charakter formalny zostaną włączone do eksportu PBN jako ksiażki""", default=False)
-    rozdzial_pbn = models.BooleanField(verbose_name="Rozdział w PBN", help_text="""Wydawnictwa zwarte posiadające ten
-    charakter formalny zostaną włączone do eksportu PBN jako rozdziały""", default=False)
+    rodzaj_pbn = models.PositiveSmallIntegerField(
+        verbose_name="Rodzaj dla PBN",
+        choices=[
+            (None, "nie eksportuj do PBN"),
+            (const.RODZAJ_PBN_ARTYKUL, "artykuł"),
+            (const.RODZAJ_PBN_KSIAZKA, "książka"),
+            (const.RODZAJ_PBN_ROZDZIAL, "rozdział")
+        ],
+        null=True, blank=True,
+        help_text="""Pole określające, czy wydawnictwa posiadające dany charakter formalny zostaną włączone
+        do eksportu PBN jako artykuły, rozdziały czy książki. """, default=None
+    )
 
     charakter_sloty = models.PositiveSmallIntegerField(
         "Charakter dla slotów", null=True, blank=True, default=None,
@@ -108,6 +116,46 @@ class Charakter_Formalny(NazwaISkrot, MPTTModel):
     class MPTTMeta:
         order_insertion_by = ['nazwa']
 
+    #
+    # Kompatybilne API dla .artykul_pbn, .rozdzial_pbn, .ksiazka_pbn
+    #
+
+    def get_rodzaj(self, typ):
+        warnings.warn("W przyszlosci uzyj pola 'rodzaj_pbn'", DeprecationWarning)
+        v = getattr(const, "RODZAJ_PBN_%s" % typ.upper())
+        if self.rodzaj_pbn == v:
+            return True
+        return False
+
+    def set_rodzaj(self, typ, value):
+        warnings.warn("W przyszlosci uzyj pola 'rodzaj_pbn'", DeprecationWarning)
+        v = getattr(const, "RODZAJ_PBN_%s" % typ.upper())
+        if value is True:
+            self.rodzaj_pbn = v
+        else:
+            raise NotImplementedError("Nie wiem jak sie zachowac, gdy atrybut self.%s_pbn jest ustawiany na False" % typ)
+
+    def get_artykul_pbn(self):
+        return self.get_rodzaj("artykul")
+
+    def get_ksiazka_pbn(self):
+        return self.get_rodzaj("ksiazka")
+
+    def get_rozdzial_pbn(self):
+        return self.get_rodzaj("rozdzial")
+
+    def set_artykul_pbn(self, v):
+        return self.set_rodzaj("artykul", v)
+
+    def set_ksiazka_pbn(self, v):
+        return self.set_rodzaj("ksiazka", v)
+
+    def set_rozdzial_pbn(self, v):
+        return self.set_rodzaj("rozdzial", v)
+
+    artykul_pbn = property(get_artykul_pbn, set_artykul_pbn)
+    ksiazka_pbn = property(get_ksiazka_pbn, set_ksiazka_pbn)
+    rozdzial_pbn = property(get_rozdzial_pbn, set_rozdzial_pbn)
 
 @receiver(post_migrate)
 def rebuild_handler(sender, **kwargs):
@@ -184,7 +232,6 @@ class Jezyk(NazwaISkrot):
 class Typ_KBN(NazwaISkrot):
     artykul_pbn = models.BooleanField("Artykuł w PBN", help_text="""Wydawnictwa ciągłe posiadające
     ten typ KBN zostaną włączone do eksportu PBN jako artykuły""", default=False)
-
 
     charakter_pbn = models.ForeignKey(
         Charakter_PBN,

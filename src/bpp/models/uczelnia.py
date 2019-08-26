@@ -124,6 +124,14 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
                   'Nie jest zalecane ustawianie powyżej 10000. '
     )
 
+    podpowiadaj_dyscypliny = models.BooleanField(
+        default=True,
+        help_text="""W sytuacji gdy to pole ma wartość "PRAWDA", system będzie podpowiadał dyscyplinę
+        naukową dla powiązania rekordu wydawnictwa i autora w sytuacji, gdy autor ma na dany rok
+        określoną tylko jedną dyscyplinę. W sytuacji przypisania dla autora dwóch dyscyplin na dany rok, 
+        pożądaną dyscyplinę będzie trzeba wybrać ręcznie, niezależnie od ustawienia tego pola. """
+    )
+
     clarivate_username = models.CharField(
         verbose_name="Nazwa użytkownika",
         null=True,

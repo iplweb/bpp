@@ -12,6 +12,7 @@ class NiezdefiniowanaUczelnia:
     nazwa = "[niezdefiniowana uczelnia]"
     nazwa_dopelniacz = "[niezdefiniowanej uczelni]"
     slug = 'niezdefiniowana-uczelnia'
+    podpowiadaj_dyscypliny = False
 
 
 BRAK_UCZELNI = {'uczelnia': NiezdefiniowanaUczelnia}

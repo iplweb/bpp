@@ -4,7 +4,7 @@ import pytest
 from lxml.etree import Element
 from model_mommy import mommy
 
-from bpp.models import Wydawnictwo_Zwarte_Autor, CacheQueue
+from bpp.models import Wydawnictwo_Zwarte_Autor, CacheQueue, const
 from bpp.models.autor import Autor
 from bpp.models.struktura import Wydzial, Jednostka, Uczelnia
 from bpp.models.system import Charakter_Formalny
@@ -246,7 +246,7 @@ def test_generowanie_opisu_bibliograficznego_informacje_wydawnictwo_nadrzedne():
 def test_eksport_pbn_get_wszyscy_autorzy_iter(wydzial, jednostka, typ_odpowiedzialnosci_autor):
     nadrzedne = mommy.make(
         Wydawnictwo_Zwarte,
-        charakter_formalny__ksiazka_pbn=True
+        charakter_formalny__rodzaj_pbn=const.RODZAJ_PBN_KSIAZKA
     )
 
     podrzedne1 = mommy.make(Wydawnictwo_Zwarte, wydawnictwo_nadrzedne=nadrzedne)
