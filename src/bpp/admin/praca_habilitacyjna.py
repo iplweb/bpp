@@ -24,7 +24,7 @@ from .praca_doktorska import Praca_Doktorska_Habilitacyjna_Admin_Base
 
 HABILITACYJNA_FIELDS = DWA_TYTULY \
                        + MODEL_ZE_SZCZEGOLAMI \
-                       + ('miejsce_i_rok', 'wydawnictwo', 'autor', 'jednostka') \
+                       + ('miejsce_i_rok', 'wydawca', 'wydawca_opis', 'autor', 'jednostka') \
                        + MODEL_Z_ISBN \
                        + MODEL_Z_ROKIEM
 
