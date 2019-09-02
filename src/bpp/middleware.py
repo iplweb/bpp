@@ -2,8 +2,10 @@
 from django.http import HttpResponse
 import json
 
+from django.utils.deprecation import MiddlewareMixin
 
-class NonHtmlDebugToolbarMiddleware(object):
+
+class NonHtmlDebugToolbarMiddleware(MiddlewareMixin):
     """
     The Django Debug Toolbar usually only works for views that return HTML.
     This middleware wraps any non-HTML response in HTML if the request

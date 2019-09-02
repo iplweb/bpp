@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block extratitle %}
+    {{ title }}
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li class="current">raport dyscyplin</li>
+    <li class="current">{{ title }}</li>
+{% endblock %}
+
+{% block content %}
+    <h2>{{ title }}</h2>
+    <div class="grid-x">
+        <div class="large-8 medium-12 small-12 cell">
+            {% load crispy_forms_tags %}
+            {% crispy form %}
+        </div>
+    </div>
+{% endblock %}

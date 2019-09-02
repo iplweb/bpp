@@ -52,7 +52,8 @@ def test_podpowiedzi_dyscyplin_autor_ma_jedna_uczelnia_podpowiada(
     preauth_admin_browser.type("rok", "2018")
 
     preauth_admin_browser.execute_script("""
-    document.getElementsByClassName("grp-add-handler")[0].scrollIntoView()
+    document.getElementsByClassName("grp-add-handler")[0].scrollIntoView();
+    window.scrollBy(0, 500)
     """)
 
     preauth_admin_browser.find_by_css(".grp-add-handler").first.click()
@@ -85,7 +86,7 @@ def test_podpowiedzi_dyscyplin_autor_ma_jedna_uczelnia_nie_podpowiada(
 
     preauth_admin_browser.execute_script("""
     document.getElementsByClassName("grp-add-handler")[0].scrollIntoView();
-    window.scrollBy(0, 400);
+    window.scrollBy(0, 500);
     """)
 
     preauth_admin_browser.find_by_css(".grp-add-handler").first.click()

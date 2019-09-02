@@ -12,7 +12,7 @@ from ..models import Jednostka, Autor, Praca_Doktorska
 
 DOKTORSKA_FIELDS = DWA_TYTULY \
                    + MODEL_ZE_SZCZEGOLAMI \
-                   + ('miejsce_i_rok', 'wydawnictwo', 'autor', 'jednostka',
+                   + ('miejsce_i_rok', 'wydawca', 'wydawca_opis', 'autor', 'jednostka',
                       'promotor') \
                    + MODEL_Z_ISBN \
                    + MODEL_Z_ROKIEM
@@ -23,7 +23,7 @@ class Praca_Doktorska_Habilitacyjna_Admin_Base(AdnotacjeZDatamiMixin,
     formfield_overrides = NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW
 
     list_display = [
-        'tytul_oryginalny', 'autor', 'jednostka', 'wydawnictwo',
+        'tytul_oryginalny', 'autor', 'jednostka', 'wydawca', 'wydawca_opis',
         'typ_kbn', 'ostatnio_zmieniony']
     list_select_related = ['autor', 'autor__tytul', 'jednostka', 'wydawca',
                            'jednostka__wydzial', 'typ_kbn']

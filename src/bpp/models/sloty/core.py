@@ -130,8 +130,8 @@ class IPunktacjaCacher:
             self.original.pk
         )
 
-        Cache_Punktacja_Dyscypliny.objects.filter(rekord_id=pk).delete()
-        Cache_Punktacja_Autora.objects.filter(rekord_id=pk).delete()
+        Cache_Punktacja_Dyscypliny.objects.filter(rekord_id=[pk[0], pk[1]]).delete()
+        Cache_Punktacja_Autora.objects.filter(rekord_id=[pk[0], pk[1]]).delete()
 
         # Jeżeli nie można zaadaptować danego rekordu do kalkulatora
         # punktacji, to po skasowaniu ewentualnej scache'owanej punktacji
@@ -144,7 +144,7 @@ class IPunktacjaCacher:
         for dyscyplina in self.slot.dyscypliny:
             _slot_cache[dyscyplina] = self.slot.slot_dla_dyscypliny(dyscyplina)
             Cache_Punktacja_Dyscypliny.objects.create(
-                rekord_id=pk,
+                rekord_id=[pk[0], pk[1]],
                 dyscyplina=dyscyplina,
                 pkd=self.slot.punkty_pkd(dyscyplina),
                 slot=_slot_cache[dyscyplina]
@@ -160,7 +160,7 @@ class IPunktacjaCacher:
                 continue
 
             Cache_Punktacja_Autora.objects.create(
-                rekord_id=pk,
+                rekord_id=[pk[0], pk[1]],
                 autor_id=wa.autor_id,
                 dyscyplina_id=dyscyplina.pk,
                 pkdaut=pkdaut,

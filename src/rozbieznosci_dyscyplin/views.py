@@ -46,7 +46,7 @@ class API_RozbieznosciDyscyplin(WprowadzanieDanychRequiredMixin, JSONResponseMix
         return ret
 
     def get(self, *args, **kw):
-        records = RozbieznosciView.objects.all().select_related()
+        records = RozbieznosciView.objects.all().select_related("autor", "rekord", "dyscyplina_rekordu", "dyscyplina_autora", "subdyscyplina_autora")
         recordsTotal = records.count()
 
         start = int(self.request.GET.get("start", 0))
@@ -72,6 +72,8 @@ class API_RozbieznosciDyscyplin(WprowadzanieDanychRequiredMixin, JSONResponseMix
             fld = '-' + fld
 
         recordsFiltered = records
+        recordsFilteredCount = recordsTotal
+
         search = self.request.GET.get("search[value]", "")
         if search:
             for elem in search.split(" "):
@@ -95,12 +97,14 @@ class API_RozbieznosciDyscyplin(WprowadzanieDanychRequiredMixin, JSONResponseMix
                         Q(dyscyplina_autora__kod__icontains=elem)
                     )
 
+            recordsFilteredCount = recordsFiltered.count()
+
         return self.render_json_response(
             {
                 "data": [self.serialize_row(obj) for obj in recordsFiltered.order_by(fld)[start:start + length]],
                 "draw": draw,
-                "recordsTotal": records.count(),
-                "recordsFiltered": recordsFiltered.count(),
+                "recordsTotal": recordsTotal,
+                "recordsFiltered": recordsFilteredCount,
             }
         )
 
