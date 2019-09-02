@@ -5,6 +5,11 @@ Historia zmian
 git
 ---
 
+*
+
+1.0.31-dev2
+-------------
+
 * polecenie do automatycznego przypisywania dyscyplin - dla autorów, którzy mają przypisaną tylko
   jedną dyscyplinę dla danego roku, można za pomocą polecenia command-line przypisać z automatu
   tą dyscyplinę do wszystkich ich prac, które nie mają przypisanej dyscypliny
