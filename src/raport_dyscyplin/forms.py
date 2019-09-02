@@ -16,7 +16,7 @@ def year_last_month():
 
 OUTPUT_FORMATS = [
     ('html', 'wyświetl w przeglądarce'),
-    ('xlsx', 'Microsoft Excel (XLSX)'),
+    # ('xlsx', 'Microsoft Excel (XLSX)'),
 ]
 
 
