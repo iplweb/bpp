@@ -4,7 +4,7 @@ from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.views.generic import FormView, ListView
 
-from bpp.models import Cache_Punktacja_Autora, Autor
+from bpp.models import Cache_Punktacja_Autora, Autor, Cache_Punktacja_Autora_Query
 from raport_dyscyplin.forms import AutorRaportDyscyplinForm
 
 
@@ -43,7 +43,7 @@ class RaportDyscyplin(ListView, LoginRequiredMixin):
         except (TypeError, ValueError):
             raise Http404
 
-        return Cache_Punktacja_Autora.objects.filter(autor=self.autor, rekord__rok=self.rok, pkdaut__gt=0).select_related(
+        return Cache_Punktacja_Autora_Query.objects.filter(autor=self.autor, rekord__rok=self.rok, pkdaut__gt=0).select_related(
             "rekord", "dyscyplina",
         )
 
