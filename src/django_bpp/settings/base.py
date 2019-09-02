@@ -198,7 +198,9 @@ INSTALLED_APPS = [
 
     'import_dyscyplin',
 
-    'mptt'
+    'mptt',
+
+    'raport_dyscyplin'
 
 ]
 

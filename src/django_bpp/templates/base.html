@@ -169,6 +169,10 @@
                                     autorów</a></li>
                             {% endif %}
 
+                            {% if request.user.is_anonymous == False %}
+                                <li><a href="{% url "raport_dyscyplin:index" %}">raport dyscyplin</a></li>
+                            {% endif %}
+
 
                         </ul>
                     </li>

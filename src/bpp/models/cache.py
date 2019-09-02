@@ -442,16 +442,16 @@ class RekordBase(ModelPunktowanyBaza, ModelZOpisemBibliograficznym,
 
     @cached_property
     def ma_punktacje_sloty(self):
-        return Cache_Punktacja_Autora.objects.filter(rekord_id=self.id).exists() or \
-               Cache_Punktacja_Dyscypliny.objects.filter(rekord_id=self.id).exists()
+        return Cache_Punktacja_Autora.objects.filter(rekord_id=[self.id[0], self.id[1]]).exists() or \
+               Cache_Punktacja_Dyscypliny.objects.filter(rekord_id=[self.id[0], self.id[1]]).exists()
 
     @cached_property
     def punktacja_dyscypliny(self):
-        return Cache_Punktacja_Dyscypliny.objects.filter(rekord_id=self.id)
+        return Cache_Punktacja_Dyscypliny.objects.filter(rekord_id=[self.id[0], self.id[1]])
 
     @cached_property
     def punktacja_autora(self):
-        return Cache_Punktacja_Autora.objects.filter(rekord_id=self.id)
+        return Cache_Punktacja_Autora.objects.filter(rekord_id=[self.id[0], self.id[1]])
 
 
 class Rekord(RekordBase):
@@ -546,7 +546,8 @@ class Cache_Punktacja_Dyscypliny(models.Model):
 
 
 class Cache_Punktacja_Autora(models.Model):
-    rekord_id = TupleField(models.IntegerField(), size=2, db_index=True)
+    # rekord_id = TupleField(models.IntegerField(), size=2, db_index=True)
+    rekord = ForeignKey(Rekord, CASCADE)
     autor = ForeignKey(Autor, CASCADE)
     dyscyplina = ForeignKey(Dyscyplina_Naukowa, CASCADE)
     pkdaut = models.DecimalField(max_digits=20, decimal_places=4)
