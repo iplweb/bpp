@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block extratitle %}
+    Raport dyscyplin - {{ autor }} za {{ rok }}
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "raport_dyscyplin:index" %}">raport dyscyplin</a></li>
+    <li class="current">{{ autor }} za {{ rok }}</li>
+{% endblock %}
+
+{% block content %}
+    <h1>Raport dyscyplin</h1>
+    <h2>{{ autor }} za {{ rok }}</h2>
+    <table>
+        <tr>
+            <th>Tytuł</th>
+            <th>Autorzy</th>
+            <th>Źródło</th>
+            <th>dyscyplina</th>
+            <th>PKDaut</th>
+            <th>Slot</th>
+        </tr>
+        {% for elem in lista %}
+            <tr>
+                <td>
+                    <a href="{% url "bpp:browse_praca" elem.rekord.pk.0 elem.rekord.pk.1 %}">{{ elem.rekord.tytul_oryginalny }}</a>
+                </td>
+                <td>{{ elem.rekord.opis_bibliograficzny_zapisani_autorzy_cache }}</td>
+                <td>{{ elem.rekord.zrodlo }}</td>
+                <td>{{ elem.dyscyplina }}</td>
+                <td>{{ elem.pkdaut }}</td>
+                <td>{{ elem.slot }}</td>
+            </tr>
+        {% empty %}
+            <tr>
+                <td colspan="6" align="center">
+                    Brak takich elementów.
+                </td>
+            </tr>
+        {% endfor %}
+    </table>
+{% endblock %}
