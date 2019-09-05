@@ -83,7 +83,7 @@ def matchuj_autora(imiona, nazwisko, jednostka=None, pesel_md5=None, orcid=None,
             autor__imiona__iexact=imiona.strip()
         )]
         if tytul_str:
-            queries.append(queries[0] & Q(tytul__skrot=tytul_str))
+            queries.append(queries[0] & Q(autor__tytul__skrot=tytul_str))
 
         for qry in queries:
             try:
