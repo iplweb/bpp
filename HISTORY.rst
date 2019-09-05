@@ -5,6 +5,16 @@ Historia zmian
 git
 ---
 
+*
+
+1.0.31
+-------------
+
+* drobne poprawki zmiany nazwy raportu slotów
+
+1.0.31-dev3
+-------------
+
 * w przypadku braku wpisanej wartości w pole "liczba znakow wydawniczych", do paczek dla PBN
   wrzucaj wartosc 0 (zero). Pole wg Bibliotekarzy nie jest już wymagane przez Ministerstwo,
   zas oprogramowanie PBN na ten moment jeszcze tego pola wymaga.
