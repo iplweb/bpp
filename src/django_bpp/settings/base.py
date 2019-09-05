@@ -200,7 +200,7 @@ INSTALLED_APPS = [
 
     'mptt',
 
-    'raport_dyscyplin'
+    'raport_slotow'
 
 ]
 

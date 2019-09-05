@@ -23,7 +23,7 @@ from bpp.views.global_nav import global_nav_redir
 from bpp.views.mymultiseek import MyMultiseekResults, \
     bpp_remove_from_removed_by_hand, bpp_remove_by_hand
 from django_bpp.forms import BppPasswordChangeForm
-from raport_dyscyplin import urls as raport_dyscyplin_urls
+from raport_slotow import urls as raport_slotow_urls
 
 admin.autodiscover()
 
@@ -60,7 +60,7 @@ urlpatterns = [
                   url(r'^nowe_raporty/',
                       include(('nowe_raporty.urls', 'nowe_raporty'), namespace='nowe_raporty')),
 
-                  path('raport_dyscyplin/', include('raport_dyscyplin.urls')),
+                  path('raport_slotow/', include('raport_slotow.urls')),
 
                   url(r'^bpp/', include(('bpp.urls', 'bpp'), namespace='bpp')),
 
