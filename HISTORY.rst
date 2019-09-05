@@ -11,6 +11,9 @@ git
 
 * kolumna z PK dla raportu slotów
 
+* poprawiono matchowanie autorów dla importu dyscyplin w sytuacji szukania autora po tytule
+  naukowym (#742)
+
 1.0.31-dev2
 -------------
 
