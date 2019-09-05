@@ -9,7 +9,7 @@ git
   wrzucaj wartosc 0 (zero). Pole wg Bibliotekarzy nie jest już wymagane przez Ministerstwo,
   zas oprogramowanie PBN na ten moment jeszcze tego pola wymaga.
 
-* kolumna z PK dla raportu dyscyplin
+* kolumna z PK dla raportu slotów
 
 1.0.31-dev2
 -------------
@@ -18,7 +18,7 @@ git
   jedną dyscyplinę dla danego roku, można za pomocą polecenia command-line przypisać z automatu
   tą dyscyplinę do wszystkich ich prac, które nie mają przypisanej dyscypliny
 
-* raport dyscyplin
+* raport slotów
 
 1.0.31-dev1
 -------------
