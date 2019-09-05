@@ -9,6 +9,8 @@ git
   wrzucaj wartosc 0 (zero). Pole wg Bibliotekarzy nie jest już wymagane przez Ministerstwo,
   zas oprogramowanie PBN na ten moment jeszcze tego pola wymaga.
 
+* kolumna z PK dla raportu dyscyplin
+
 1.0.31-dev2
 -------------
 
