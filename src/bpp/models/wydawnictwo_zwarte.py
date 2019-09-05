@@ -212,9 +212,11 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
                 publication_place.text = rok_regex.sub("", miejsce.strip()).strip()
 
     def eksport_pbn_size(self, toplevel, wydzial=None, autorzy_klass=None):
+        size = SubElement(toplevel, 'size', unit="sheets")
         if self.ma_wymiar_wydawniczy():
-            size = SubElement(toplevel, 'size', unit="sheets")
             size.text = self.wymiar_wydawniczy_w_arkuszach()
+        else:
+            size.text = "0"
 
     def eksport_pbn_series(self, toplevel, wydzial=None, autorzy_klass=None):
         if self.seria_wydawnicza is not None:
