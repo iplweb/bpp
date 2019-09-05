@@ -1,4 +1,4 @@
-VERSION = "1.0.31-dev2"
+VERSION = "1.0.31-dev3"
 
 if __name__ == "__main__":
     import sys
