@@ -54,12 +54,10 @@ class AutorRaportSlotowForm(forms.Form):
         self.helper.layout = Layout(
             Fieldset(
                 'Wybierz parametry',
+                Row(Column('obiekt')),
                 Row(
                     Column('od_roku', css_class='large-6 small-6'),
-                    Column('do_roku', css_class='large-6 small-6')
-                ),
-                Row(
-                    Column('rok', css_class='large-6 small-6'),
+                    Column('do_roku', css_class='large-6 small-6'),
                 ),
                 Row(Column('_export'))
             ),

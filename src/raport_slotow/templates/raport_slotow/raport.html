@@ -26,7 +26,7 @@
         {% for elem in lista %}
             <tr>
                 <td>
-                    <a href="{% url "bpp:browse_praca" elem.rekord.pk.0 elem.rekord.pk.1 %}">{{ elem.rekord.tytul_oryginalny }}</a>
+                    <a href="{% url "bpp:browse_praca" elem.rekord.pk.0 elem.rekord.pk.1 %}">{{ elem.rekord.tytul_oryginalny|safe }}</a>
                 </td>
                 <td>{{ elem.rekord.opis_bibliograficzny_zapisani_autorzy_cache }}</td>
                 <td>{{ elem.rekord.zrodlo }}</td>

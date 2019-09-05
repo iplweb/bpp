@@ -21,7 +21,8 @@ class WyborOsoby(FormView, LoginRequiredMixin):
         """If the form is valid, redirect to the supplied URL."""
         return HttpResponseRedirect(
             reverse("raport_slotow:raport", kwargs={"autor": form.cleaned_data['obiekt'].slug,
-                                                    "rok": form.cleaned_data['rok'],
+                                                    "od_roku": form.cleaned_data['od_roku'],
+                                                    "do_roku": form.cleaned_data['do_roku'],
                                                     "export": form.cleaned_data['_export']})
         )
 
@@ -33,17 +34,21 @@ class RaportSlotow(ListView, LoginRequiredMixin):
     def get_context_data(self, *, object_list=None, **kwargs):
         context = super(RaportSlotow, self).get_context_data(**kwargs)
         context['autor'] = self.autor
-        context['rok'] = self.rok
+        context['od_roku'] = self.od_roku
+        context['do_roku'] = self.do_roku
         return context
 
     def get_queryset(self):
         self.autor = get_object_or_404(Autor, slug=self.kwargs.get("autor"))
         try:
-            self.rok = int(self.kwargs.get("rok"))
+            self.od_roku = int(self.kwargs.get("od_roku"))
+            self.do_roku = int(self.kwargs.get("do_roku"))
         except (TypeError, ValueError):
             raise Http404
 
-        return Cache_Punktacja_Autora_Query.objects.filter(autor=self.autor, rekord__rok=self.rok,
+        return Cache_Punktacja_Autora_Query.objects.filter(autor=self.autor,
+                                                           rekord__rok__gte=self.od_roku,
+                                                           rekord__rok__lte=self.do_roku,
                                                            pkdaut__gt=0).select_related(
             "rekord", "dyscyplina",
         )
