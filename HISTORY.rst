@@ -10,7 +10,7 @@ git
 1.0.31
 -------------
 
-*
+* drobne poprawki zmiany nazwy raportu slotów
 
 1.0.31-dev3
 -------------
