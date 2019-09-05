@@ -177,3 +177,9 @@ def test_matchuj_autora_po_tytule():
 
 def test_pesel_md5():
     assert pesel_md5(1.0) == pesel_md5(1) == pesel_md5('1')
+
+
+@pytest.mark.django_db
+def test_matchuj_autora_tytul_bug(jednostka):
+    matchuj_autora("Kowalski", "Jan", jednostka, tytul_str="Doktur")
+    assert True

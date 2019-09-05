@@ -7,6 +7,23 @@ git
 
 *
 
+1.0.31
+-------------
+
+* drobne poprawki zmiany nazwy raportu slotów
+
+1.0.31-dev3
+-------------
+
+* w przypadku braku wpisanej wartości w pole "liczba znakow wydawniczych", do paczek dla PBN
+  wrzucaj wartosc 0 (zero). Pole wg Bibliotekarzy nie jest już wymagane przez Ministerstwo,
+  zas oprogramowanie PBN na ten moment jeszcze tego pola wymaga.
+
+* kolumna z PK dla raportu slotów
+
+* poprawiono matchowanie autorów dla importu dyscyplin w sytuacji szukania autora po tytule
+  naukowym (#742)
+
 1.0.31-dev2
 -------------
 
@@ -14,11 +31,7 @@ git
   jedną dyscyplinę dla danego roku, można za pomocą polecenia command-line przypisać z automatu
   tą dyscyplinę do wszystkich ich prac, które nie mają przypisanej dyscypliny
 
-* w przypadku braku wpisanej wartości w pole "liczba znakow wydawniczych", do paczek dla PBN
-  wrzucaj wartosc 0 (zero). Pole wg Bibliotekarzy nie jest już wymagane przez Ministerstwo,
-  zas oprogramowanie PBN na ten moment jeszcze tego pola wymaga.
-
-* raport dyscyplin
+* raport slotów
 
 1.0.31-dev1
 -------------

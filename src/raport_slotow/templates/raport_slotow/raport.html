@@ -1,23 +1,24 @@
 {% extends "base.html" %}
 
 {% block extratitle %}
-    Raport dyscyplin - {{ autor }} za {{ rok }}
+    Raport slotów - {{ autor }} za {{ od_roku }} - {{ do_roku }}
 {% endblock %}
 
 {% block breadcrumbs %}
     {{ block.super }}
-    <li><a href="{% url "raport_dyscyplin:index" %}">raport dyscyplin</a></li>
-    <li class="current">{{ autor }} za {{ rok }}</li>
+    <li><a href="{% url "raport_slotow:index" %}">raport slotów</a></li>
+    <li class="current">{{ autor }} za {{ od_roku }} - {{ do_roku }}</li>
 {% endblock %}
 
 {% block content %}
-    <h1>Raport dyscyplin</h1>
-    <h2>{{ autor }} za {{ rok }}</h2>
+    <h1>Raport slotów</h1>
+    <h2>{{ autor }} za {{ od_roku }} - {{ do_roku }}</h2>
     <table>
         <tr>
             <th>Tytuł</th>
             <th>Autorzy</th>
             <th>Źródło</th>
+            <th>Punkty PK</th>
             <th>dyscyplina</th>
             <th>PKDaut</th>
             <th>Slot</th>
@@ -25,10 +26,11 @@
         {% for elem in lista %}
             <tr>
                 <td>
-                    <a href="{% url "bpp:browse_praca" elem.rekord.pk.0 elem.rekord.pk.1 %}">{{ elem.rekord.tytul_oryginalny }}</a>
+                    <a href="{% url "bpp:browse_praca" elem.rekord.pk.0 elem.rekord.pk.1 %}">{{ elem.rekord.tytul_oryginalny|safe }}</a>
                 </td>
                 <td>{{ elem.rekord.opis_bibliograficzny_zapisani_autorzy_cache }}</td>
                 <td>{{ elem.rekord.zrodlo }}</td>
+                <td>{{ elem.rekord.punkty_kbn }}</td>
                 <td>{{ elem.dyscyplina }}</td>
                 <td>{{ elem.pkdaut }}</td>
                 <td>{{ elem.slot }}</td>

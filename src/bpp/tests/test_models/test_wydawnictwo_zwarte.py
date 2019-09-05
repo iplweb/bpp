@@ -42,6 +42,11 @@ def test_eksport_pbn_size(wydawnictwo_zwarte_z_autorem):
     wydawnictwo_zwarte_z_autorem.eksport_pbn_size(toplevel)
     assert toplevel.getchildren()[0].text == "0.50"
 
+    wydawnictwo_zwarte_z_autorem.liczba_znakow_wydawniczych = None
+    toplevel = Element("fa")
+    wydawnictwo_zwarte_z_autorem.eksport_pbn_size(toplevel)
+    assert toplevel.getchildren()[0].text == "0"
+
 
 @pytest.mark.django_db
 def test_eksport_pbn_wydawnictwo_nadrzedne_liczba_autorow(

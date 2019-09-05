@@ -2,6 +2,7 @@ from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Fieldset, Row, Column, ButtonHolder, Submit
 from dal import autocomplete
 from django import forms
+from django.core.exceptions import ValidationError
 from django.utils import timezone
 
 from bpp.models import Autor
@@ -20,7 +21,7 @@ OUTPUT_FORMATS = [
 ]
 
 
-class AutorRaportDyscyplinForm(forms.Form):
+class AutorRaportSlotowForm(forms.Form):
     obiekt = forms.ModelChoiceField(
         label="Autor",
         queryset=Autor.objects.all(),
@@ -28,13 +29,23 @@ class AutorRaportDyscyplinForm(forms.Form):
             url='bpp:public-autor-autocomplete')
     )
 
-    rok = forms.IntegerField(initial=year_last_month)
+    od_roku = forms.IntegerField(initial=year_last_month)
+    do_roku = forms.IntegerField(initial=year_last_month)
 
     _export = forms.ChoiceField(
         label="Format wyjściowy",
         choices=OUTPUT_FORMATS,
         required=True
     )
+
+    def clean(self):
+        if 'od_roku' in self.cleaned_data and 'do_roku' in self.cleaned_data:
+            if self.cleaned_data['od_roku'] > self.cleaned_data['do_roku']:
+                raise ValidationError(
+                    {"od_roku": ValidationError(
+                        'Pole musi być większe lub równe jak pole "Do roku".')
+                    }
+                )
 
     def __init__(self, *args, **kwargs):
         self.helper = FormHelper()
@@ -45,7 +56,8 @@ class AutorRaportDyscyplinForm(forms.Form):
                 'Wybierz parametry',
                 Row(Column('obiekt')),
                 Row(
-                    Column('rok', css_class='large-6 small-6'),
+                    Column('od_roku', css_class='large-6 small-6'),
+                    Column('do_roku', css_class='large-6 small-6'),
                 ),
                 Row(Column('_export'))
             ),
@@ -54,4 +66,4 @@ class AutorRaportDyscyplinForm(forms.Form):
                        css_class="submit button"),
             ))
 
-        super(AutorRaportDyscyplinForm, self).__init__(*args, **kwargs)
+        super(AutorRaportSlotowForm, self).__init__(*args, **kwargs)
