@@ -8,6 +8,9 @@ git
 * opcje wyświetlania raportu slotów i tabelki z punktacją slotów na podstronie pracy -- dla wszystkich,
   tylko dla zalogowanych lub dla nikogo. 
 
+* nie licz slotów dla punkty PK = 0 dla wydawnictw ciągłych
+
+
 1.0.31
 -------------
 
