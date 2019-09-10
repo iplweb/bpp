@@ -5,7 +5,7 @@ Historia zmian
 git
 ---
 
-*
+* możliwość umieszczenia dowolnego tekstu przed i po liście autorów w opisie bibliograficznym
 
 1.0.31
 -------------
