@@ -324,3 +324,11 @@ def test_ISlot_wydawnictwo_zwarte_tier1(zwarte_z_dyscyplinami, wydawca, rok):
     zwarte_z_dyscyplinami.punkty_kbn = 200
     i = ISlot(zwarte_z_dyscyplinami)
     assert isinstance(i, SlotKalkulator_Wydawnictwo_Zwarte_Prog1)
+
+
+@pytest.mark.django_db
+def test_ISlot_wydawnictwo_ciagle_bez_punktow_kbn(ciagle_z_dyscyplinami):
+    ciagle_z_dyscyplinami.punkty_kbn = 0
+
+    with pytest.raises(CannotAdapt, match="nie pozwalają"):
+        ISlot(ciagle_z_dyscyplinami)

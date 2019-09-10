@@ -5,7 +5,7 @@ Historia zmian
 git
 ---
 
-*
+* nie licz slotów dla punkty PK = 0 dla wydawnictw ciągłych
 
 1.0.31
 -------------
