@@ -6,6 +6,8 @@ import random
 import time
 from datetime import datetime
 
+from django.contrib.contenttypes.models import ContentType
+from django.urls import reverse
 from model_mommy import mommy
 from selenium.common.exceptions import ElementClickInterceptedException
 from selenium.webdriver.common.keys import Keys
@@ -352,3 +354,7 @@ def submitted_form_bad(browser):
 
 def submitted_form_good(browser):
     return wait_for(lambda: "został dodany pomyślnie" in browser.html)
+
+
+def browse_praca_url(model):
+    return reverse("bpp:browse_praca", args=(ContentType.objects.get_for_model(model).pk, model.pk))

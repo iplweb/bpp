@@ -5,12 +5,14 @@ from django.urls import reverse
 from django.views.generic import FormView, ListView
 
 from bpp.models import Autor, Cache_Punktacja_Autora_Query
+from bpp.views.mixins import UczelniaSettingRequiredMixin
 from raport_slotow.forms import AutorRaportSlotowForm
 
 
-class WyborOsoby(FormView, LoginRequiredMixin):
+class WyborOsoby(UczelniaSettingRequiredMixin, FormView):
     template_name = "raport_slotow/index.html"
     form_class = AutorRaportSlotowForm
+    uczelnia_attr = "pokazuj_raport_slotow"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -27,9 +29,10 @@ class WyborOsoby(FormView, LoginRequiredMixin):
         )
 
 
-class RaportSlotow(ListView, LoginRequiredMixin):
+class RaportSlotow(UczelniaSettingRequiredMixin, ListView):
     template_name = "raport_slotow/raport.html"
     context_object_name = "lista"
+    uczelnia_attr = "pokazuj_raport_slotow"
 
     def get_context_data(self, *, object_list=None, **kwargs):
         context = super(RaportSlotow, self).get_context_data(**kwargs)
