@@ -5,11 +5,13 @@ Historia zmian
 git
 ---
 
+<<<<<<< HEAD
 * opcje wyświetlania raportu slotów i tabelki z punktacją slotów na podstronie pracy -- dla wszystkich,
   tylko dla zalogowanych lub dla nikogo. 
 
 * nie licz slotów dla punkty PK = 0 dla wydawnictw ciągłych
 
+* możliwość umieszczenia dowolnego tekstu przed i po liście autorów w opisie bibliograficznym
 
 1.0.31
 -------------

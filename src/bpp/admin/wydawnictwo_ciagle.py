@@ -148,7 +148,8 @@ class Wydawnictwo_CiagleAdmin(KolumnyZeSkrotamiMixin,
         POZOSTALE_MODELE_WYDAWNICTWO_CIAGLE_FIELDSET,
         ADNOTACJE_Z_DATAMI_ORAZ_PBN_FIELDSET,
         OPENACCESS_FIELDSET,
-        PRACA_WYBITNA_FIELDSET)
+        PRACA_WYBITNA_FIELDSET,
+        PRZED_PO_LISCIE_AUTOROW_FIELDSET)
 
     inlines = (
         generuj_inline_dla_autorow(Wydawnictwo_Ciagle_Autor),

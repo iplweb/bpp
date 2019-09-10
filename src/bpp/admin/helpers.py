@@ -204,6 +204,14 @@ PRACA_WYBITNA_FIELDSET = ('Praca wybitna', {
         'uzasadnienie_wybitnosci')
 })
 
+PRZED_PO_LISCIE_AUTOROW_FIELDSET = ('Dowolny tekst przed lub po liście autorów', {
+    'classes': ('grp-collapse grp-closed',),
+    'fields': (
+        'tekst_przed_pierwszym_autorem',
+        'tekst_po_ostatnim_autorze'
+    )
+})
+
 EKSTRA_INFORMACJE_WYDAWNICTWO_CIAGLE_FIELDSET = ('Ekstra informacje', {
     'classes': ('grp-collapse grp-closed',),
     'fields': MODEL_Z_ISSN + MODEL_Z_WWW + MODEL_Z_PUBMEDID + MODEL_Z_DOI + MODEL_Z_LICZBA_CYTOWAN
