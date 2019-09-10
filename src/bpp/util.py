@@ -1,17 +1,16 @@
 # -*- encoding: utf-8 -*-
+import json
 import os
 import re
 from datetime import datetime, timedelta
 from pathlib import Path
 
-import json
-
 from django.apps import apps
 from psycopg2.extensions import QuotedString
 from unidecode import unidecode
-from django.utils import six
 
 non_url = re.compile(r'[^\w-]+')
+
 
 def get_fixture(name):
     p = Path(__file__).parent / "fixtures" / ("%s.json" % name)
@@ -21,17 +20,17 @@ def get_fixture(name):
 
 
 def fulltext_tokenize(s):
-    s = s.replace(":", "")\
-        .replace('*', "")\
-        .replace('"', "")\
-        .replace('|', " ")\
-        .replace("'", "")\
-        .replace("&", "")\
-        .replace("\\", "")\
-        .replace("(", "")\
-        .replace(")", "")\
-        .replace("\t", " ")\
-        .replace("\n", " ")\
+    s = s.replace(":", "") \
+        .replace('*', "") \
+        .replace('"', "") \
+        .replace('|', " ") \
+        .replace("'", "") \
+        .replace("&", "") \
+        .replace("\\", "") \
+        .replace("(", "") \
+        .replace(")", "") \
+        .replace("\t", " ") \
+        .replace("\n", " ") \
         .replace("\r", " ")
     return [x.strip() for x in s.split(" ") if x.strip()]
 
@@ -70,13 +69,11 @@ class FulltextSearchMixin:
 
         return self.all().extra(
             select={self.model._meta.db_table + '__rank':
-                        "ts_rank_cd(" +self.model._meta.db_table + "." + self.fts_field + ", to_tsquery(%s::regconfig, %s), 16)"},
+                        "ts_rank_cd(" + self.model._meta.db_table + "." + self.fts_field + ", to_tsquery(%s::regconfig, %s), 16)"},
             select_params=params,
             where=[self.model._meta.db_table + "." + self.fts_field + " @@ to_tsquery(%s::regconfig, %s)"],
             params=params,
             order_by=['-' + self.model._meta.db_table + '__rank'])
-
-
 
 
 def slugify_function(s):
@@ -128,6 +125,7 @@ class Getter:
     >>> kbn.PO == Typ_KBN.objects.get(skrot='PO')
     True
     """
+
     def __init__(self, klass, field='skrot'):
         self.field = field
         self.klass = klass
@@ -137,6 +135,7 @@ class Getter:
         return self.klass.objects.get(**kw)
 
     __getattr__ = __getitem__
+
 
 class NewGetter(Getter):
     """Zwraca KeyError zamiast DoesNotExist."""
@@ -149,6 +148,7 @@ class NewGetter(Getter):
             raise KeyError(e)
 
     __getattr__ = __getitem__
+
 
 def zrob_cache(t):
     zle_znaki = [" ", ":", ";", "-", ",", "-", ".", "(", ")", "?", "!", "ę", "ą", "ł", "ń", "ó", "ź", "ż"]

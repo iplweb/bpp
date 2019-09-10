@@ -3,8 +3,6 @@
 import os
 
 from django.conf import settings
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.http import Http404
 from django.http.response import HttpResponse, FileResponse
 from django.http.response import HttpResponseRedirect
 from django.shortcuts import get_object_or_404
@@ -16,40 +14,12 @@ from flexible_reports.adapters.django_tables2 import as_docx, \
     as_tablib_databook
 from flexible_reports.models.report import Report
 
-from bpp.models import Uczelnia, OpcjaWyswietlaniaField
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
 from bpp.models.struktura import Wydzial, Jednostka
+from bpp.views.mixins import UczelniaSettingRequiredMixin
 from .forms import AutorRaportForm
 from .forms import JednostkaRaportForm, WydzialRaportForm
-
-
-class UczelniaSettingRequiredMixin(LoginRequiredMixin):
-    uczelnia_attr = None
-
-    def dispatch(self, request, *args, **kwargs):
-        res = OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE
-
-        # TODO: w przypadku wielu uczelni, zmień to
-        uczelnia = Uczelnia.objects.first()
-
-        if uczelnia:
-            res = getattr(uczelnia, self.uczelnia_attr)
-
-        if res == OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE:
-            pass
-
-        elif res == OpcjaWyswietlaniaField.POKAZUJ_NIGDY:
-            raise Http404
-
-        elif res == OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM:
-            if not request.user.is_authenticated:
-                return self.handle_no_permission()
-
-        else:
-            raise NotImplementedError
-
-        return super(LoginRequiredMixin, self).dispatch(request, *args, **kwargs)
 
 
 class BaseFormView(FormView):

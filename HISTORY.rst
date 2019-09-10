@@ -5,7 +5,8 @@ Historia zmian
 git
 ---
 
-*
+* opcje wyświetlania raportu slotów i tabelki z punktacją slotów na podstronie pracy -- dla wszystkich,
+  tylko dla zalogowanych lub dla nikogo. 
 
 1.0.31
 -------------
