@@ -50,6 +50,16 @@ class TestTemplateTags(TestCase):
         ret = t.render(c).strip()
         self.assertEqual(ret, "[AUT.] KOWALSKI JAN.")
 
+    def test_autorzy_z_linkami_tekst_przed_po(self):
+        t = get_template("opis_bibliograficzny/autorzy.html")
+        self.ciagle.tekst_przed_pierwszym_autorem = "PRZED"
+        self.ciagle.tekst_po_ostatnim_autorze = "PO"
+
+        c = {"praca": self.ciagle, "links": "normal"}
+        ret = t.render(c).strip()
+        self.assertEqual(ret,  'PRZED[AUT.] <a href="/bpp/autor/C/">Testowy Autor</a>, <a href="/bpp/autor/A/">Jan Budnik</a>, [RED.] <a href="/bpp/autor/B/">Stefan Kolbe</a>PO.')
+
+
     def test_autorzy_z_linkami(self):
         t = get_template("opis_bibliograficzny/autorzy.html")
 

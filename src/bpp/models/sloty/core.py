@@ -27,7 +27,7 @@ def ISlot(original):
                 return SlotKalkulator_Wydawnictwo_Ciagle_Prog1(original)
             elif original.punkty_kbn in [70, 40]:
                 return SlotKalkulator_Wydawnictwo_Ciagle_Prog2(original)
-            elif original.punkty_kbn <= 20:
+            elif original.punkty_kbn <= 20 and original.punkty_kbn > 0:
                 return SlotKalkulator_Wydawnictwo_Ciagle_Prog3(original)
 
         raise CannotAdapt(

@@ -1,6 +1,6 @@
 {
     "name": "bpp-iplweb",
-    "version": "1.0.31",
+    "version": "v201909.0002-alpha",
     "devDependencies": {
         "grunt": "^1.0.2",
         "grunt-contrib-qunit": "^2.0.0",

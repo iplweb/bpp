@@ -91,6 +91,16 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         help_text="""Liczba cytowań będzie wyświetlana, gdy większa od 0"""
     )
 
+    pokazuj_tabele_slotow_na_stronie_rekordu = OpcjaWyswietlaniaField(
+        "Pokazuj tabelę slotów na stronie rekordu",
+        default=OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM
+    )
+
+    pokazuj_raport_slotow = OpcjaWyswietlaniaField(
+        "Pokazuj raport slotów",
+        default=OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM
+    )
+
     wydruk_logo = models.BooleanField(
         'Pokazuj logo na wydrukach',
         default=False

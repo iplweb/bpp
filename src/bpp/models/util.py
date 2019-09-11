@@ -112,6 +112,9 @@ class ModelZOpisemBibliograficznym(models.Model):
     def opis_bibliograficzny_autorzy(self):
         return renderuj_opis_autorow(self)
 
+    tekst_przed_pierwszym_autorem = models.TextField(blank=True, null=True)
+    tekst_po_ostatnim_autorze = models.TextField(blank=True, null=True)
+
     opis_bibliograficzny_cache = models.TextField(default='')
 
     # To pole używane jest na ten moment jedynie przez moduł OAI, do szybkiego

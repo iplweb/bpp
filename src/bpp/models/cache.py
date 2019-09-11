@@ -379,6 +379,9 @@ class RekordBase(ModelPunktowanyBaza, ModelZOpisemBibliograficznym,
         size=2,
         primary_key=True)
 
+    tekst_przed_pierwszym_autorem = None
+    tekst_po_ostatnim_autorze = None
+
     tytul_oryginalny = models.TextField()
     tytul = models.TextField()
     search_index = VectorField()

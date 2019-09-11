@@ -170,7 +170,8 @@ class Wydawnictwo_ZwarteAdmin(KolumnyZeSkrotamiMixin,
         POZOSTALE_MODELE_WYDAWNICTWO_ZWARTE_FIELDSET,
         ADNOTACJE_Z_DATAMI_ORAZ_PBN_FIELDSET,
         OPENACCESS_FIELDSET,
-        PRACA_WYBITNA_FIELDSET)
+        PRACA_WYBITNA_FIELDSET,
+        PRZED_PO_LISCIE_AUTOROW_FIELDSET)
 
     def save_model(self, request, obj, form, change):
         super(Wydawnictwo_ZwarteAdmin, self).save_model(request, obj, form, change)
