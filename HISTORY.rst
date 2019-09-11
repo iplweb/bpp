@@ -2,19 +2,20 @@
 Historia zmian
 ==============
 
-git
----
+v201909.0001-alpha
+------------------
 
-<<<<<<< HEAD
+* przełączenie na system wersji numerowanych od kalendarza (calver, #746)
+
 * opcje wyświetlania raportu slotów i tabelki z punktacją slotów na podstronie pracy -- dla wszystkich,
-  tylko dla zalogowanych lub dla nikogo. 
+  tylko dla zalogowanych lub dla nikogo.
 
 * nie licz slotów dla punkty PK = 0 dla wydawnictw ciągłych
 
 * możliwość umieszczenia dowolnego tekstu przed i po liście autorów w opisie bibliograficznym
 
 1.0.31
--------------
+------
 
 * drobne poprawki zmiany nazwy raportu slotów
 
