@@ -132,6 +132,7 @@ def test_uczelnia_pokazuj_menu_nigdy(uczelnia, attr, s, client, admin_client):
 
 @pytest.fixture
 def praca_z_dyscyplina(wydawnictwo_ciagle_z_autorem, dyscyplina1):
+    wydawnictwo_ciagle_z_autorem.punkty_kbn = 5
     wca = wydawnictwo_ciagle_z_autorem.autorzy_set.first()
     wca.dyscyplina_naukowa = dyscyplina1
     wca.save()
@@ -144,6 +145,14 @@ def test_pokazuj_tabele_slotow_na_stronie_rekordu(uczelnia, admin_client, client
     url = browse_praca_url(praca_z_dyscyplina)
 
     S = "Punktacja dyscyplin i sloty"
+
+    uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu = OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE
+    uczelnia.save()
+
+    res = client.get(url)
+    assert S in res.rendered_content
+    res = admin_client.get(url)
+    assert S in res.rendered_content
 
     uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu = OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM
     uczelnia.save()
@@ -160,14 +169,6 @@ def test_pokazuj_tabele_slotow_na_stronie_rekordu(uczelnia, admin_client, client
     assert S not in res.rendered_content
     res = admin_client.get(url)
     assert S not in res.rendered_content
-
-    uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu = OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE
-    uczelnia.save()
-
-    res = client.get(url)
-    assert S in res.rendered_content
-    res = admin_client.get(url)
-    assert S in res.rendered_content
 
 
 @pytest.mark.django_db
