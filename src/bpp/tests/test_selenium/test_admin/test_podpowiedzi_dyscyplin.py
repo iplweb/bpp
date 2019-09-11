@@ -1,10 +1,22 @@
 import pytest
 from django.urls import reverse
+from selenium.common.exceptions import ElementClickInterceptedException
 
 from bpp.models import Autor_Dyscyplina
 from bpp.tests import select_select2_autocomplete
 from django_bpp.selenium_util import wait_for
 
+
+def scroll_until_handler_clicked_successfully(browser, handler="grp-add-handler"):
+    browser.execute_script('document.getElementsByClassName("%s")[0].scrollIntoView();' % handler)
+    no_tries = 0
+    while no_tries < 20:
+        try:
+            browser.find_by_css(".grp-add-handler").first.click()
+            break
+        except ElementClickInterceptedException:
+            browser.execute_script("window.scrollBy(0, 25)")
+        no_tries += 1
 
 @pytest.mark.parametrize(
     "url", ["wydawnictwo_ciagle", "wydawnictwo_zwarte"]
@@ -18,12 +30,8 @@ def test_podpowiedzi_dyscyplin_autor_ma_dwie(
 
     preauth_admin_browser.type("rok", "2018")
 
-    preauth_admin_browser.execute_script("""
-    document.getElementsByClassName("grp-add-handler")[0].scrollIntoView();
-    window.scrollBy(0, 300);
-    """)
+    scroll_until_handler_clicked_successfully(preauth_admin_browser)
 
-    preauth_admin_browser.find_by_css(".grp-add-handler").first.click()
     wait_for(
         lambda: preauth_admin_browser.find_by_id("id_autorzy_set-0-autor")
     )
@@ -51,12 +59,8 @@ def test_podpowiedzi_dyscyplin_autor_ma_jedna_uczelnia_podpowiada(
 
     preauth_admin_browser.type("rok", "2018")
 
-    preauth_admin_browser.execute_script("""
-    document.getElementsByClassName("grp-add-handler")[0].scrollIntoView();
-    window.scrollBy(0, 300)
-    """)
+    scroll_until_handler_clicked_successfully(preauth_admin_browser)
 
-    preauth_admin_browser.find_by_css(".grp-add-handler").first.click()
     wait_for(
         lambda: preauth_admin_browser.find_by_id("id_autorzy_set-0-autor")
     )
@@ -84,12 +88,8 @@ def test_podpowiedzi_dyscyplin_autor_ma_jedna_uczelnia_nie_podpowiada(
 
     preauth_admin_browser.type("rok", "2018")
 
-    preauth_admin_browser.execute_script("""
-    document.getElementsByClassName("grp-add-handler")[0].scrollIntoView();
-    window.scrollBy(0, 300);
-    """)
+    scroll_until_handler_clicked_successfully(preauth_admin_browser)
 
-    preauth_admin_browser.find_by_css(".grp-add-handler").first.click()
     wait_for(
         lambda: preauth_admin_browser.find_by_id("id_autorzy_set-0-autor")
     )
