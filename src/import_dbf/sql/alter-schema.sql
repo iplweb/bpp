@@ -1,0 +1,17 @@
+BEGIN;
+
+ALTER TABLE b_a ADD COLUMN IF NOT EXISTS id SERIAL;
+
+ALTER TABLE bib ALTER COLUMN idt SET DATA TYPE INT USING idt::integer;
+CREATE UNIQUE INDEX bib_idt ON bib(idt);
+
+ALTER TABLE aut ALTER COLUMN idt_aut SET DATA TYPE INT USING idt_aut::integer;
+CREATE UNIQUE INDEX aut_idt ON aut(idt_aut);
+
+-- ALTER TABLE jed ALTER COLUMN idt_jed SET DATA TYPE INT USING idt_jed::integer;
+CREATE UNIQUE INDEX jed_idt ON jed(idt_jed);
+
+ALTER TABLE b_a ALTER COLUMN idt_aut SET DATA TYPE INT USING idt_aut::integer;
+ALTER TABLE b_a ALTER COLUMN idt SET DATA TYPE INT USING idt::integer;
+
+COMMIT;

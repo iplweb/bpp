@@ -200,7 +200,9 @@ INSTALLED_APPS = [
 
     'mptt',
 
-    'raport_slotow'
+    'raport_slotow',
+
+    'import_dbf'
 
 ]
 
