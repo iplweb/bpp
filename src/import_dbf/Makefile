@@ -1,24 +1,22 @@
-PSQL=psql --echo-errors | grep -v "INSERT 0 1"
+PSQL=psql -t --echo-errors | grep -v "INSERT 0 1"
 MANAGE=python ../manage.py
 IMPORT_DBF=$(MANAGE) import_dbf 
 
-all: import-dbfs create-schema
+rebuild: remove-dbfs import-dbfs alter-schema
+
+TABELE=AUT.DB   B_B.DB   B_N.DB   DYS.DB   IXE.DB   JER.DB   KAD.DB   LOC.DB   PBC.DB   PUB.DB   SCI.DB   SYS.DB   WSX.DB   WYD.DB   ldy.dat BIB.DB   B_E.DB   B_P.DB    IXP.DB   JEZ.DB   KBN.DB   PBA.DB   PBD.DB   RTF.DB   SCI.DBT  S_B.DB   WSY.DB   ixb.db   lis.dat B_A.DB   B_L.DB   B_U.DB   EXT.DB   JED.DB   J_H.DB   KBR.DB   PBB.DB   POZ.DB   RTF.DBT  SES.DB   USI.DB   WX2.DB   ixn.db
 
 import-dbfs:
-	$(IMPORT_DBF) db/bib/BIB.DB | $(PSQL)
-	$(IMPORT_DBF) db/bib/B_A.DB | $(PSQL)
-	$(IMPORT_DBF) db/bib/AUT.DB | $(PSQL)
-	$(IMPORT_DBF) db/bib/POZ.DB | $(PSQL)
-	$(IMPORT_DBF) db/bib/B_U.DB | $(PSQL)
-	$(IMPORT_DBF) db/bib/USI.DB | $(PSQL)
-	$(IMPORT_DBF) db/bib/SES.DB | $(PSQL)
-	$(IMPORT_DBF) db/bib/JED.DB | $(PSQL)
+	for tabela in $(TABELE); do  $(IMPORT_DBF) db/bib/$$tabela | $(PSQL); done
 
 remove-dbfs:
-	cat sql/remove-dbfs.sql | $(PSQL)
+	echo "select 'drop table '||tablename||';' from pg_tables where tablename like 'import_dbf_%'" | \
+    	psql -U postgres -d bpp -t | \
+    	psql -U postgres -d bpp
 
 alter-schema:
-	cat sql/alter-schemq.sql | $(PSQL)
+	cat sql/alter-schema.sql | $(PSQL)
 
 create-schema:
-	$(MANAGE) inspectdb bib b_a aut poz b_u usi ses jed
+	echo "select tablename from pg_tables where tablename like 'import_dbf_%'" | $(PSQL)  | xargs $(MANAGE) inspectdb
+
