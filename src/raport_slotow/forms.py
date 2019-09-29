@@ -17,7 +17,7 @@ def year_last_month():
 
 OUTPUT_FORMATS = [
     ('html', 'wyświetl w przeglądarce'),
-    # ('xlsx', 'Microsoft Excel (XLSX)'),
+    ('xlsx', 'Microsoft Excel (XLSX)'),
 ]
 
 
@@ -54,7 +54,7 @@ class AutorRaportSlotowForm(forms.Form):
         self.helper.layout = Layout(
             Fieldset(
                 'Wybierz parametry',
-                Row(Column('obiekt')),
+                Row(Column('obiekt', css_class='large-12 small-12')),
                 Row(
                     Column('od_roku', css_class='large-6 small-6'),
                     Column('do_roku', css_class='large-6 small-6'),

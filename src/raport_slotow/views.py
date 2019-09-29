@@ -1,12 +1,14 @@
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpResponseRedirect, Http404
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
-from django.views.generic import FormView, ListView
+from django.views.generic import FormView
+from django_tables2 import SingleTableView
+from django_tables2.export import ExportMixin
 
 from bpp.models import Autor, Cache_Punktacja_Autora_Query
 from bpp.views.mixins import UczelniaSettingRequiredMixin
 from raport_slotow.forms import AutorRaportSlotowForm
+from raport_slotow.tables import Cache_Punktacja_Autora_QueryTable
 
 
 class WyborOsoby(UczelniaSettingRequiredMixin, FormView):
@@ -22,17 +24,19 @@ class WyborOsoby(UczelniaSettingRequiredMixin, FormView):
     def form_valid(self, form):
         """If the form is valid, redirect to the supplied URL."""
         return HttpResponseRedirect(
-            reverse("raport_slotow:raport", kwargs={"autor": form.cleaned_data['obiekt'].slug,
-                                                    "od_roku": form.cleaned_data['od_roku'],
-                                                    "do_roku": form.cleaned_data['do_roku'],
-                                                    "export": form.cleaned_data['_export']})
+            reverse("raport_slotow:raport",
+                    kwargs={"autor": form.cleaned_data['obiekt'].slug,
+                            "od_roku": form.cleaned_data['od_roku'],
+                            "do_roku": form.cleaned_data['do_roku'],
+                            }) + "?_export=" + form.cleaned_data['_export']
         )
 
 
-class RaportSlotow(UczelniaSettingRequiredMixin, ListView):
+class RaportSlotow(UczelniaSettingRequiredMixin, ExportMixin, SingleTableView):
     template_name = "raport_slotow/raport.html"
-    context_object_name = "lista"
+    table_class = Cache_Punktacja_Autora_QueryTable
     uczelnia_attr = "pokazuj_raport_slotow"
+    export_formats =['html', 'xlsx']
 
     def get_context_data(self, *, object_list=None, **kwargs):
         context = super(RaportSlotow, self).get_context_data(**kwargs)
@@ -40,6 +44,9 @@ class RaportSlotow(UczelniaSettingRequiredMixin, ListView):
         context['od_roku'] = self.od_roku
         context['do_roku'] = self.do_roku
         return context
+
+    def get_export_filename(self, export_format):
+        return f'raport_slotow_{self.autor.slug}_{self.od_roku}-{self.do_roku}.{export_format}'
 
     def get_queryset(self):
         self.autor = get_object_or_404(Autor, slug=self.kwargs.get("autor"))

@@ -14,7 +14,7 @@ urlpatterns = [
 
     path("index/", WyborOsoby.as_view(), name='index'),
 
-    path(r'<slug:autor>/<int:od_roku>/<int:do_roku>/<slug:export>/',
+    path(r'<slug:autor>/<int:od_roku>/<int:do_roku>/',
         RaportSlotow.as_view(),
         name='raport'),
 
