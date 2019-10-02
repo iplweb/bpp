@@ -204,7 +204,7 @@ def test_pokazuj_raport_slotow_menu_na_glownej(uczelnia, admin_client, client):
 @pytest.mark.django_db
 def test_pokazuj_raport_slotow_czy_mozna_kliknac(uczelnia, admin_client, client, autor):
     for url in [reverse("raport_slotow:index"),
-                reverse("raport_slotow:raport", args=(autor.slug, 2000, 2010, "html"))]:
+                reverse("raport_slotow:raport", args=(autor.slug, 2000, 2010))]:
         uczelnia.pokazuj_raport_slotow = OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM
         uczelnia.save()
 
