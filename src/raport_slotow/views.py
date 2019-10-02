@@ -72,6 +72,11 @@ class RaportSlotow(UczelniaSettingRequiredMixin, ExportMixin, MultiTableMixin, T
                 data=cpaq.filter(dyscyplina_id=elem.dyscyplina_id).select_related("rekord", "dyscyplina"))
             RequestConfig(self.request, paginate=self.get_table_pagination(table)).configure(table)
             ret.append(table)
+        else:
+            table_class = self.get_table_class()
+            table = table_class(data=cpaq.select_related("rekord", "dyscyplina"))
+            RequestConfig(self.request, paginate=self.get_table_pagination(table)).configure(table)
+            ret.append(table)
 
         return ret
 
