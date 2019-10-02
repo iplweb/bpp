@@ -575,6 +575,8 @@ class Cache_Punktacja_Autora_Query(Cache_Punktacja_Autora_Base):
 
 class Cache_Punktacja_Autora_Sum(Cache_Punktacja_Autora_Base):
     rekord = ForeignKey('bpp.Rekord', DO_NOTHING)
+    autor = ForeignKey(Autor, DO_NOTHING)
+    dyscyplina = ForeignKey(Dyscyplina_Naukowa, DO_NOTHING)
     pkdautslot = models.FloatField()
     pkdautsum = models.FloatField()
     pkdautslotsum = models.FloatField()
@@ -586,8 +588,8 @@ class Cache_Punktacja_Autora_Sum(Cache_Punktacja_Autora_Base):
 
 
 class Cache_Punktacja_Autora_Sum_Gruop(models.Model):
-    autor = ForeignKey(Autor, CASCADE, primary_key=True)
-    dyscyplina = ForeignKey(Dyscyplina_Naukowa, CASCADE)
+    autor = ForeignKey(Autor, DO_NOTHING, primary_key=True)
+    dyscyplina = ForeignKey(Dyscyplina_Naukowa, DO_NOTHING)
     pkdautsum = models.FloatField()
     pkdautslotsum = models.FloatField()
 
