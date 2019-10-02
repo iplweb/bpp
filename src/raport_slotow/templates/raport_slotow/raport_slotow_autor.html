@@ -14,6 +14,8 @@
     <h1>Raport slotów</h1>
     <h2>{{ autor }} za {{ od_roku }} - {{ do_roku }}</h2>
 
-    <a href="?_export=xlsx">pobierz XLS</a>
-    {% render_table table %}
+    {% for table in tables %}
+        <a href="?_export=xlsx&n={{ forloop.counter0 }}">pobierz XLS</a>
+        {% render_table table %}
+    {% endfor %}
 {% endblock %}

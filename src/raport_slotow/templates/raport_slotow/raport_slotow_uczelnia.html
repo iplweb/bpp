@@ -1,0 +1,17 @@
+{% extends "base.html" %}{% load render_table from django_tables2 %}
+
+{% block extratitle %}
+    Raport slotów - uczelnia - za {{ od_roku }} do {{ do_roku }}
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "raport_slotow:index-uczelnia" %}">raport slotów - uczelnia</a></li>
+    <li class="current">raport slotów za {{ od_roku }} - {{ do_roku }}</li>
+{% endblock %}
+
+{% block content %}
+    <h1>Raport slotów za {{ od_roku }} - {{ do_roku }}</h1>
+    <a href="?_export=xlsx">pobierz XLS</a>
+    {% render_table table %}
+{% endblock %}

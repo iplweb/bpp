@@ -67,3 +67,42 @@ class AutorRaportSlotowForm(forms.Form):
             ))
 
         super(AutorRaportSlotowForm, self).__init__(*args, **kwargs)
+
+
+class WybierzRokForm(forms.Form):
+    od_roku = forms.IntegerField(initial=year_last_month)
+    do_roku = forms.IntegerField(initial=year_last_month)
+
+    _export = forms.ChoiceField(
+        label="Format wyjściowy",
+        choices=OUTPUT_FORMATS,
+        required=True
+    )
+
+    def clean(self):
+        if 'od_roku' in self.cleaned_data and 'do_roku' in self.cleaned_data:
+            if self.cleaned_data['od_roku'] > self.cleaned_data['do_roku']:
+                raise ValidationError(
+                    {"od_roku": ValidationError(
+                        'Pole musi być większe lub równe jak pole "Do roku".')
+                    }
+                )
+
+    def __init__(self, *args, **kwargs):
+        self.helper = FormHelper()
+        self.helper.form_class = "custom"
+        self.helper.form_action = '.'
+        self.helper.layout = Layout(
+            Fieldset(
+                'Wybierz parametry',
+                Row(Column('od_roku', css_class='large-6 small-6'),
+                    Column('do_roku', css_class='large-6 small-6'),
+                    ),
+                Row(Column('_export'))
+            ),
+            ButtonHolder(
+                Submit('submit', 'Pobierz raport', css_id='id_submit',
+                       css_class="submit button"),
+            ))
+
+        super(WybierzRokForm, self).__init__(*args, **kwargs)

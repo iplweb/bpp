@@ -2,6 +2,11 @@
 Historia zmian
 ==============
 
+v201910.1a0
+-----------
+
+* tabelki z możliwością eksportu XLS - punkty i sloty dla autorów i uczelni
+
 v201909.0001-alpha
 ------------------
 
