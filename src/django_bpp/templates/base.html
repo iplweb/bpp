@@ -170,7 +170,8 @@
                             {% endif %}
 
                             {% if uczelnia.pokazuj_raport_slotow == "always" or uczelnia.pokazuj_raport_slotow == "logged-in" and request.user.is_anonymous == False %}
-                                <li><a href="{% url "raport_slotow:index" %}">raport slotów</a></li>
+                                <li><a href="{% url "raport_slotow:index" %}">raport slotów - autor</a></li>
+                                <li><a href="{% url "raport_slotow:index-uczelnia" %}">raport slotów - uczelnia</a></li>
                             {% endif %}
 
 
