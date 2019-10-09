@@ -59,3 +59,6 @@ class RaportSlotowUczelniaTable(tables.Table):
     def render_autor(self, value):
         url = reverse("raport_slotow:raport", args=(value.slug, self.od_roku, self.do_roku))
         return safe("<a href=%s>%s</a>" % (url, value))
+
+    def value_autor(self, value):
+        return value
