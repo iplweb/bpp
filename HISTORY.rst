@@ -2,6 +2,12 @@
 Historia zmian
 ==============
 
+v201910.5a0
+-----------
+
+* raport slotów - uczelnia: eksport do XLS bez tagów HTML, możliwość filtrowania
+* usunięto zdublowaną tabelę dla raportu slotów autorów
+
 v201910.1a0
 -----------
 

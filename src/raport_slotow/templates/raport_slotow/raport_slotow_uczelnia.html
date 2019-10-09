@@ -12,6 +12,35 @@
 
 {% block content %}
     <h1>Raport slotów za {{ od_roku }} - {{ do_roku }}</h1>
-    <a href="?_export=xlsx">pobierz XLS</a>
+    <style>
+        form.filtry input[type=number] {
+            width: 40%;
+            display: inline;
+        }
+    </style>
+    {% if filter %}
+        <form action="" method="get" class="filtry">
+            <table>
+                <tr>
+                    <td>Filtruj po nazwisku autora:</td>
+                    <td>Filtruj po dyscyplinie:</td>
+                    <td>Filtruj slot:</td>
+                    <td>Filtruj średnią:</td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td>{{ filter.form.autor__nazwisko }}</td>
+                    <td>{{ filter.form.dyscyplina }}</td>
+                    <td width="15%">{{ filter.form.slot__min }}&nbsp;{{ filter.form.slot__max }}</td>
+                    <td width="15%">{{ filter.form.avg__min }}&nbsp;{{ filter.form.avg__max }}</td>
+
+                    <td><input type="submit" value="Filtruj"/>
+                        <input type="reset" value="Usuń filtry" onclick="location.href='?';" />
+                        <input type="button" value="Pobierz XLS" onclick="location.href='?{{ export_link }}';" />
+                    </td>
+                </tr>
+            </table>
+        </form>
+    {% endif %}
     {% render_table table %}
 {% endblock %}
