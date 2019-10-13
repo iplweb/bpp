@@ -1,4 +1,3 @@
-import cached_property
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.utils.functional import cached_property
