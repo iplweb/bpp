@@ -10,14 +10,14 @@ from django.urls import reverse
 from django.views.generic import FormView, TemplateView
 from django_filters.views import FilterView
 from django_tables2 import RequestConfig, MultiTableMixin, SingleTableMixin
-from django_tables2.export import ExportMixin, TableExport
+from django_tables2.export import TableExport
 
 from bpp.models import Autor, Cache_Punktacja_Autora_Query, Cache_Punktacja_Autora_Sum, \
     Cache_Punktacja_Autora_Sum_Gruop, Dyscyplina_Naukowa
 from bpp.views.mixins import UczelniaSettingRequiredMixin
 from raport_slotow.forms import AutorRaportSlotowForm, WybierzRokForm
 from raport_slotow.tables import RaportSlotowAutorTable, RaportSlotowUczelniaTable
-from raport_slotow.util import create_temporary_table_as
+from raport_slotow.util import create_temporary_table_as, MyExportMixin, MyTableExport
 
 
 class WyborOsoby(UczelniaSettingRequiredMixin, FormView):
@@ -41,7 +41,7 @@ class WyborOsoby(UczelniaSettingRequiredMixin, FormView):
         )
 
 
-class RaportSlotow(UczelniaSettingRequiredMixin, ExportMixin, MultiTableMixin, TemplateView):
+class RaportSlotow(UczelniaSettingRequiredMixin, MyExportMixin, MultiTableMixin, TemplateView):
     template_name = "raport_slotow/raport_slotow_autor.html"
     table_class = RaportSlotowAutorTable
     uczelnia_attr = "pokazuj_raport_slotow_autor"
@@ -50,7 +50,7 @@ class RaportSlotow(UczelniaSettingRequiredMixin, ExportMixin, MultiTableMixin, T
     def create_export(self, export_format):
         tables = self.get_tables()
         n = int(self.request.GET.get("n", 0))
-        exporter = TableExport(
+        exporter = MyTableExport(
             export_format=export_format,
             table=tables[n]
         )
@@ -72,8 +72,6 @@ class RaportSlotow(UczelniaSettingRequiredMixin, ExportMixin, MultiTableMixin, T
 
         ret = []
         for elem in cpaq.distinct('dyscyplina'):
-            print("X" * 90)
-            print(elem)
             table_class = self.get_table_class()
             table = table_class(
                 data=cpaq.filter(dyscyplina_id=elem.dyscyplina_id).select_related("rekord", "dyscyplina"))
@@ -151,7 +149,7 @@ class RaportSlotowUczelniaFilter(django_filters.FilterSet):
         fields = ['autor__nazwisko', 'dyscyplina__nazwa']
 
 
-class RaportSlotowUczelnia(UczelniaSettingRequiredMixin, ExportMixin, SingleTableMixin, FilterView):
+class RaportSlotowUczelnia(UczelniaSettingRequiredMixin, MyExportMixin, SingleTableMixin, FilterView):
     template_name = "raport_slotow/raport_slotow_uczelnia.html"
     table_class = RaportSlotowUczelniaTable
     uczelnia_attr = "pokazuj_raport_slotow_uczelnia"
