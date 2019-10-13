@@ -6,6 +6,7 @@ v201910.6
 ---------
 
 * możliwość niezależnego ustalenia opcji widoku raportów "raport slotów - uczelnia" i "raport slotów - autor"
+* poprawki pobierania arkuszy XLS dla raportu slotow - poprawnie eksportowane liczby, szerokośc kolumn
 
 v201910.5a0
 -----------
