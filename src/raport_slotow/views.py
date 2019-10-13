@@ -23,7 +23,7 @@ from raport_slotow.util import create_temporary_table_as
 class WyborOsoby(UczelniaSettingRequiredMixin, FormView):
     template_name = "raport_slotow/index.html"
     form_class = AutorRaportSlotowForm
-    uczelnia_attr = "pokazuj_raport_slotow"
+    uczelnia_attr = "pokazuj_raport_slotow_autor"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -44,7 +44,7 @@ class WyborOsoby(UczelniaSettingRequiredMixin, FormView):
 class RaportSlotow(UczelniaSettingRequiredMixin, ExportMixin, MultiTableMixin, TemplateView):
     template_name = "raport_slotow/raport_slotow_autor.html"
     table_class = RaportSlotowAutorTable
-    uczelnia_attr = "pokazuj_raport_slotow"
+    uczelnia_attr = "pokazuj_raport_slotow_autor"
     export_formats = ['html', 'xlsx']
 
     def create_export(self, export_format):
@@ -107,7 +107,7 @@ class RaportSlotow(UczelniaSettingRequiredMixin, ExportMixin, MultiTableMixin, T
 class WyborRoku(UczelniaSettingRequiredMixin, FormView):
     template_name = "raport_slotow/index.html"
     form_class = WybierzRokForm
-    uczelnia_attr = "pokazuj_raport_slotow"
+    uczelnia_attr = "pokazuj_raport_slotow_uczelnia"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -154,7 +154,7 @@ class RaportSlotowUczelniaFilter(django_filters.FilterSet):
 class RaportSlotowUczelnia(UczelniaSettingRequiredMixin, ExportMixin, SingleTableMixin, FilterView):
     template_name = "raport_slotow/raport_slotow_uczelnia.html"
     table_class = RaportSlotowUczelniaTable
-    uczelnia_attr = "pokazuj_raport_slotow"
+    uczelnia_attr = "pokazuj_raport_slotow_uczelnia"
     export_formats = ['html', 'xlsx']
     filterset_class = RaportSlotowUczelniaFilter
 

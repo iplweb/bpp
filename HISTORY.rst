@@ -2,6 +2,11 @@
 Historia zmian
 ==============
 
+v201910.6
+---------
+
+* możliwość niezależnego ustalenia opcji widoku raportów "raport slotów - uczelnia" i "raport slotów - autor"
+
 v201910.5a0
 -----------
 
