@@ -96,8 +96,13 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         default=OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM
     )
 
-    pokazuj_raport_slotow = OpcjaWyswietlaniaField(
-        "Pokazuj raport slotów",
+    pokazuj_raport_slotow_autor = OpcjaWyswietlaniaField(
+        "Pokazuj raport slotów - autor",
+        default=OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM
+    )
+
+    pokazuj_raport_slotow_uczelnia = OpcjaWyswietlaniaField(
+        "Pokazuj raport slotów - uczelnia",
         default=OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM
     )
 
