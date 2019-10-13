@@ -2,6 +2,8 @@
 Historia zmian
 ==============
 
+* poprawne kasowanie wcześniej zapisanej informacji o slotach i punktach
+
 v201910.5a0
 -----------
 

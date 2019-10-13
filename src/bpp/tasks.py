@@ -149,6 +149,7 @@ def zaktualizuj_liczbe_cytowan():
 def aktualizuj_cache_rekordu(model):
     model.zaktualizuj_cache()
     ipc = IPunktacjaCacher(model)
+    ipc.removeEntries()
     if ipc.canAdapt():
         ipc.rebuildEntries()
 

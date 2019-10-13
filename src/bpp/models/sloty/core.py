@@ -1,5 +1,7 @@
+import cached_property
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
+from django.utils.functional import cached_property
 
 from bpp.models import const, Typ_Odpowiedzialnosci
 from bpp.models.cache import Cache_Punktacja_Dyscypliny, Cache_Punktacja_Autora
@@ -19,7 +21,7 @@ def ISlot(original):
                 return SlotKalkulator_Wydawnictwo_Ciagle_Prog1(original)
             elif original.punkty_kbn in [20, 25]:
                 return SlotKalkulator_Wydawnictwo_Ciagle_Prog2(original)
-            elif original.punkty_kbn < 20:
+            elif original.punkty_kbn < 20 and original.punkty_kbn > 0:
                 return SlotKalkulator_Wydawnictwo_Ciagle_Prog3(original)
 
         elif original.rok in [2019, 2020]:
@@ -32,7 +34,7 @@ def ISlot(original):
 
         raise CannotAdapt(
             "Punkty KBN rekordu (%s) i rok (%s) nie pozwalają na dopasowanie tego rekordu do jakiejkolwiek grupy" % (
-            original.punkty_kbn, original.rok))
+                original.punkty_kbn, original.rok))
 
     elif isinstance(original, Wydawnictwo_Zwarte):
         if original.rok < 2017 or original.rok > 2020:
@@ -122,16 +124,19 @@ class IPunktacjaCacher:
         except CannotAdapt:
             return False
 
+    @cached_property
+    def ctype(self):
+        return ContentType.objects.get_for_model(self.original).pk
+
+    @transaction.atomic
+    def removeEntries(self):
+        Cache_Punktacja_Dyscypliny.objects.filter(rekord_id=[self.ctype, self.original.pk]).delete()
+        Cache_Punktacja_Autora.objects.filter(rekord_id=[self.ctype, self.original.pk]).delete()
+
     @transaction.atomic
     def rebuildEntries(self):
 
-        pk = (
-            ContentType.objects.get_for_model(self.original).pk,
-            self.original.pk
-        )
-
-        Cache_Punktacja_Dyscypliny.objects.filter(rekord_id=[pk[0], pk[1]]).delete()
-        Cache_Punktacja_Autora.objects.filter(rekord_id=[pk[0], pk[1]]).delete()
+        pk = (self.ctype, self.original.pk)
 
         # Jeżeli nie można zaadaptować danego rekordu do kalkulatora
         # punktacji, to po skasowaniu ewentualnej scache'owanej punktacji
