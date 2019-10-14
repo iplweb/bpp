@@ -595,7 +595,7 @@ class Cache_Punktacja_Autora_Sum(Cache_Punktacja_Autora_Base):
 
 
 class Cache_Punktacja_Autora_Sum_Gruop(models.Model):
-    autor = ForeignKey(Autor, DO_NOTHING, primary_key=True)
+    autor = models.OneToOneField(Autor, DO_NOTHING, primary_key=True)
     dyscyplina = ForeignKey(Dyscyplina_Naukowa, DO_NOTHING)
     pkdautsum = models.FloatField()
     pkdautslotsum = models.FloatField()
