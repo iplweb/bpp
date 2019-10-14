@@ -292,6 +292,13 @@ class ZewnetrzneBazyDanychView(models.Model):
 class RekordManager(FulltextSearchMixin, models.Manager):
     fts_field = 'search_index'
 
+    def get_for_model(self, model):
+        pk = (
+            ContentType.objects.get_for_model(model).pk,
+            model.pk
+        )
+        return self.get(pk=pk)
+
     def prace_autora(self, autor):
         return self.filter(autorzy__autor=autor).distinct()
 
