@@ -7,14 +7,15 @@ from django.forms import TextInput, NumberInput
 from django.http import HttpResponseRedirect, Http404
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
+from django.utils import timezone
 from django.views.generic import FormView, TemplateView
 from django_filters.views import FilterView
 from django_tables2 import RequestConfig, MultiTableMixin, SingleTableMixin
-from django_tables2.export import TableExport
 
 from bpp.models import Autor, Cache_Punktacja_Autora_Query, Cache_Punktacja_Autora_Sum, \
     Cache_Punktacja_Autora_Sum_Gruop, Dyscyplina_Naukowa
 from bpp.views.mixins import UczelniaSettingRequiredMixin
+from django_bpp.version import VERSION
 from raport_slotow.forms import AutorRaportSlotowForm, WybierzRokForm
 from raport_slotow.tables import RaportSlotowAutorTable, RaportSlotowUczelniaTable
 from raport_slotow.util import create_temporary_table_as, MyExportMixin, MyTableExport
@@ -52,7 +53,16 @@ class RaportSlotow(UczelniaSettingRequiredMixin, MyExportMixin, MultiTableMixin,
         n = int(self.request.GET.get("n", 0))
         exporter = MyTableExport(
             export_format=export_format,
-            table=tables[n]
+            table=tables[n],
+            export_description=[
+                ("Nazwa raportu:", "raport slotów - autor"),
+                ("Autor:", str(self.autor)),
+                (f"Dyscyplina:", str(tables[n].dyscyplina_naukowa or 'żadna')),
+                (f"Od roku:", self.od_roku),
+                (f"Do roku:", self.do_roku),
+                ("Wygenerowano:", timezone.now()),
+                ("Wersja oprogramowania BPP", VERSION)
+            ]
         )
         return exporter.response(filename=self.get_export_filename(export_format, n))
 
@@ -76,12 +86,14 @@ class RaportSlotow(UczelniaSettingRequiredMixin, MyExportMixin, MultiTableMixin,
             table = table_class(
                 data=cpaq.filter(dyscyplina_id=elem.dyscyplina_id).select_related("rekord", "dyscyplina"))
             RequestConfig(self.request, paginate=self.get_table_pagination(table)).configure(table)
+            table.dyscyplina_naukowa = elem.dyscyplina
             ret.append(table)
 
         if not ret:
             table_class = self.get_table_class()
             table = table_class(data=cpaq.select_related("rekord", "dyscyplina"))
             RequestConfig(self.request, paginate=self.get_table_pagination(table)).configure(table)
+            table.dyscyplina_naukowa = None
             ret.append(table)
 
         return ret
@@ -161,6 +173,13 @@ class RaportSlotowUczelnia(UczelniaSettingRequiredMixin, MyExportMixin, SingleTa
         table = table_class(data=self.get_table_data(), od_roku=self.od_roku, do_roku=self.do_roku, **kwargs)
         RequestConfig(self.request, paginate=self.get_table_pagination(table)).configure(table)
         return table
+
+    def get_export_description(self):
+        return [("Nazwa raportu:", "raport slotów - uczelnia"),
+                (f"Od roku:", self.od_roku),
+                (f"Do roku:", self.do_roku),
+                ("Wygenerowano:", timezone.now()),
+                ("Wersja oprogramowania BPP", VERSION)]
 
     def get_context_data(self, *, object_list=None, **kwargs):
         context = super(RaportSlotowUczelnia, self).get_context_data(**kwargs)

@@ -292,6 +292,13 @@ class ZewnetrzneBazyDanychView(models.Model):
 class RekordManager(FulltextSearchMixin, models.Manager):
     fts_field = 'search_index'
 
+    def get_for_model(self, model):
+        pk = (
+            ContentType.objects.get_for_model(model).pk,
+            model.pk
+        )
+        return self.get(pk=pk)
+
     def prace_autora(self, autor):
         return self.filter(autorzy__autor=autor).distinct()
 
@@ -588,7 +595,7 @@ class Cache_Punktacja_Autora_Sum(Cache_Punktacja_Autora_Base):
 
 
 class Cache_Punktacja_Autora_Sum_Gruop(models.Model):
-    autor = ForeignKey(Autor, DO_NOTHING, primary_key=True)
+    autor = models.OneToOneField(Autor, DO_NOTHING, primary_key=True)
     dyscyplina = ForeignKey(Dyscyplina_Naukowa, DO_NOTHING)
     pkdautsum = models.FloatField()
     pkdautslotsum = models.FloatField()

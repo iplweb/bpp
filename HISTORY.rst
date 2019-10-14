@@ -2,6 +2,8 @@
 Historia zmian
 ==============
 
+* niezwykle eleganckie tabele w XLS wraz z opisem (#766)
+
 v201910.6
 ---------
 
