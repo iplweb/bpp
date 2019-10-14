@@ -1,5 +1,7 @@
 # -*- encoding: utf-8 -*-
 import pytest
+from django.core.exceptions import PermissionDenied
+from django.urls import NoReverseMatch
 
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord, Autorzy
@@ -68,3 +70,43 @@ def test_zapisz_wydawnictwo_w_adminie(klass, autor_klass, name,
 
     Rekord.objects.all().delete()
     Autorzy.objects.all().delete()
+
+from django.apps import apps
+
+
+@pytest.mark.django_db
+def test_widok_admina(admin_client):
+    """Wejdź na podstrony admina 'changelist' oraz 'add' dla każdego modelu z aplikacji
+    'bpp' który to istnieje w adminie (został zarejestrowany) i do którego to admin_client
+    ma uprawnienia.
+
+    W ten sposób możemy wyłapać błędy z nazwami pól w adminie, których to Django nie wyłapie
+    przed uruchomieniem aplikacji.
+    """
+
+    for model in apps.get_models():
+        app_label = model._meta.app_label
+        model_name = model._meta.model_name
+
+        if app_label != "bpp":
+            continue
+
+        url_name = "admin:%s_%s_changelist" % (app_label, model_name)
+        try:
+            url = reverse(url_name)
+        except NoReverseMatch:
+            continue
+
+        res = admin_client.get(url)
+        assert res.status_code == 200, "changelist failed for %r" % model
+
+        res = admin_client.get(url + "?q=fafa")
+        assert res.status_code == 200, "changelist query failed for %r" % model
+
+
+        url_name = "admin:%s_%s_add" % (app_label, model_name)
+        url = reverse(url_name)
+        res = admin_client.get(url)
+
+        assert res.status_code == 200, "add failed for %r" % model
+
