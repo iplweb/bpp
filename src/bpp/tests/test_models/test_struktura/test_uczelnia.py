@@ -171,12 +171,18 @@ def test_pokazuj_tabele_slotow_na_stronie_rekordu(uczelnia, admin_client, client
     assert S not in res.rendered_content
 
 
+@pytest.mark.parametrize(
+    "poszukiwany_ciag,atrybut_uczelni",
+    [
+        ("raport slotów - autor", "pokazuj_raport_slotow_autor"),
+        ("raport slotów - uczelnia", "pokazuj_raport_slotow_uczelnia"),
+    ])
 @pytest.mark.django_db
-def test_pokazuj_raport_slotow_menu_na_glownej(uczelnia, admin_client, client):
+def test_pokazuj_raport_slotow_menu_na_glownej(uczelnia, admin_client, client, poszukiwany_ciag, atrybut_uczelni, db):
     url = reverse("bpp:browse_uczelnia", args=(uczelnia.slug,))
-    S = "raport slot"
+    S = poszukiwany_ciag
 
-    uczelnia.pokazuj_raport_slotow = OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM
+    setattr(uczelnia, atrybut_uczelni, OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM)
     uczelnia.save()
 
     res = client.get(url)
@@ -184,7 +190,7 @@ def test_pokazuj_raport_slotow_menu_na_glownej(uczelnia, admin_client, client):
     res = admin_client.get(url)
     assert S in res.rendered_content
 
-    uczelnia.pokazuj_raport_slotow = OpcjaWyswietlaniaField.POKAZUJ_NIGDY
+    setattr(uczelnia, atrybut_uczelni, OpcjaWyswietlaniaField.POKAZUJ_NIGDY)
     uczelnia.save()
 
     res = client.get(url)
@@ -192,7 +198,7 @@ def test_pokazuj_raport_slotow_menu_na_glownej(uczelnia, admin_client, client):
     res = admin_client.get(url)
     assert S not in res.rendered_content
 
-    uczelnia.pokazuj_raport_slotow = OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE
+    setattr(uczelnia, atrybut_uczelni, OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE)
     uczelnia.save()
 
     res = client.get(url)
@@ -201,30 +207,47 @@ def test_pokazuj_raport_slotow_menu_na_glownej(uczelnia, admin_client, client):
     assert S in res.rendered_content
 
 
+@pytest.mark.parametrize(
+    "nazwa_url,args_url,atrybut_uczelni",
+    [
+        ("raport_slotow:index", [], "pokazuj_raport_slotow_autor"),
+        ("raport_slotow:raport", ["autor.slug", 2000, 2010], "pokazuj_raport_slotow_autor"),
+        ("raport_slotow:index-uczelnia", [], "pokazuj_raport_slotow_uczelnia"),
+        ("raport_slotow:raport-uczelnia", [2000, 2010], "pokazuj_raport_slotow_uczelnia")
+    ]
+)
 @pytest.mark.django_db
-def test_pokazuj_raport_slotow_czy_mozna_kliknac(uczelnia, admin_client, client, autor):
-    for url in [reverse("raport_slotow:index"),
-                reverse("raport_slotow:raport", args=(autor.slug, 2000, 2010))]:
-        uczelnia.pokazuj_raport_slotow = OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM
-        uczelnia.save()
+def test_pokazuj_raport_slotow_czy_mozna_kliknac(uczelnia, admin_client, client, autor, nazwa_url, args_url,
+                                                 atrybut_uczelni):
+    new_args_url = []
+    for elem in args_url:
+        if elem == "autor.slug":
+            new_args_url.append(autor.slug)
+            continue
+        new_args_url.append(elem)
 
-        res = client.get(url)
-        assert res.status_code == 302
-        res = admin_client.get(url)
-        assert res.status_code == 200
+    url = reverse(nazwa_url, args=tuple(new_args_url))
 
-        uczelnia.pokazuj_raport_slotow = OpcjaWyswietlaniaField.POKAZUJ_NIGDY
-        uczelnia.save()
+    setattr(uczelnia, atrybut_uczelni, OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM)
+    uczelnia.save()
 
-        res = client.get(url)
-        assert res.status_code == 404
-        res = admin_client.get(url)
-        assert res.status_code == 404
+    res = client.get(url)
+    assert res.status_code == 302
+    res = admin_client.get(url)
+    assert res.status_code == 200
 
-        uczelnia.pokazuj_raport_slotow = OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE
-        uczelnia.save()
+    setattr(uczelnia, atrybut_uczelni, OpcjaWyswietlaniaField.POKAZUJ_NIGDY)
+    uczelnia.save()
 
-        res = client.get(url)
-        assert res.status_code == 200
-        res = admin_client.get(url)
-        assert res.status_code == 200
+    res = client.get(url)
+    assert res.status_code == 404
+    res = admin_client.get(url)
+    assert res.status_code == 404
+
+    setattr(uczelnia, atrybut_uczelni, OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE)
+    uczelnia.save()
+
+    res = client.get(url)
+    assert res.status_code == 200
+    res = admin_client.get(url)
+    assert res.status_code == 200

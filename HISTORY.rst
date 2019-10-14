@@ -2,6 +2,19 @@
 Historia zmian
 ==============
 
+v201910.6
+---------
+
+* możliwość niezależnego ustalenia opcji widoku raportów "raport slotów - uczelnia" i "raport slotów - autor"
+* poprawne kasowanie wcześniej zapisanej informacji o slotach i punktach
+* poprawki pobierania arkuszy XLS dla raportu slotow - poprawnie eksportowane liczby, szerokośc kolumn
+
+v201910.5a0
+-----------
+
+* raport slotów - uczelnia: eksport do XLS bez tagów HTML, możliwość filtrowania
+* usunięto zdublowaną tabelę dla raportu slotów autorów
+
 v201910.1a0
 -----------
 

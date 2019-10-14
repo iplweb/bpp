@@ -1,24 +1,29 @@
+import urllib
 from datetime import datetime
 
+import django_filters
 from django.db.models import Window, Sum, F, Min
+from django.forms import TextInput, NumberInput
 from django.http import HttpResponseRedirect, Http404
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.views.generic import FormView, TemplateView
-from django_tables2 import SingleTableView, RequestConfig, MultiTableMixin
-from django_tables2.export import ExportMixin, TableExport
+from django_filters.views import FilterView
+from django_tables2 import RequestConfig, MultiTableMixin, SingleTableMixin
+from django_tables2.export import TableExport
 
-from bpp.models import Autor, Cache_Punktacja_Autora_Query, Cache_Punktacja_Autora_Sum, Cache_Punktacja_Autora_Sum_Gruop
+from bpp.models import Autor, Cache_Punktacja_Autora_Query, Cache_Punktacja_Autora_Sum, \
+    Cache_Punktacja_Autora_Sum_Gruop, Dyscyplina_Naukowa
 from bpp.views.mixins import UczelniaSettingRequiredMixin
 from raport_slotow.forms import AutorRaportSlotowForm, WybierzRokForm
 from raport_slotow.tables import RaportSlotowAutorTable, RaportSlotowUczelniaTable
-from raport_slotow.util import create_temporary_table_as
+from raport_slotow.util import create_temporary_table_as, MyExportMixin, MyTableExport
 
 
 class WyborOsoby(UczelniaSettingRequiredMixin, FormView):
     template_name = "raport_slotow/index.html"
     form_class = AutorRaportSlotowForm
-    uczelnia_attr = "pokazuj_raport_slotow"
+    uczelnia_attr = "pokazuj_raport_slotow_autor"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -36,16 +41,16 @@ class WyborOsoby(UczelniaSettingRequiredMixin, FormView):
         )
 
 
-class RaportSlotow(UczelniaSettingRequiredMixin, ExportMixin, MultiTableMixin, TemplateView):
+class RaportSlotow(UczelniaSettingRequiredMixin, MyExportMixin, MultiTableMixin, TemplateView):
     template_name = "raport_slotow/raport_slotow_autor.html"
     table_class = RaportSlotowAutorTable
-    uczelnia_attr = "pokazuj_raport_slotow"
+    uczelnia_attr = "pokazuj_raport_slotow_autor"
     export_formats = ['html', 'xlsx']
 
     def create_export(self, export_format):
         tables = self.get_tables()
         n = int(self.request.GET.get("n", 0))
-        exporter = TableExport(
+        exporter = MyTableExport(
             export_format=export_format,
             table=tables[n]
         )
@@ -72,7 +77,8 @@ class RaportSlotow(UczelniaSettingRequiredMixin, ExportMixin, MultiTableMixin, T
                 data=cpaq.filter(dyscyplina_id=elem.dyscyplina_id).select_related("rekord", "dyscyplina"))
             RequestConfig(self.request, paginate=self.get_table_pagination(table)).configure(table)
             ret.append(table)
-        else:
+
+        if not ret:
             table_class = self.get_table_class()
             table = table_class(data=cpaq.select_related("rekord", "dyscyplina"))
             RequestConfig(self.request, paginate=self.get_table_pagination(table)).configure(table)
@@ -99,7 +105,7 @@ class RaportSlotow(UczelniaSettingRequiredMixin, ExportMixin, MultiTableMixin, T
 class WyborRoku(UczelniaSettingRequiredMixin, FormView):
     template_name = "raport_slotow/index.html"
     form_class = WybierzRokForm
-    uczelnia_attr = "pokazuj_raport_slotow"
+    uczelnia_attr = "pokazuj_raport_slotow_uczelnia"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -115,11 +121,40 @@ class WyborRoku(UczelniaSettingRequiredMixin, FormView):
         )
 
 
-class RaportSlotowUczelnia(UczelniaSettingRequiredMixin, ExportMixin, SingleTableView):
+class RaportSlotowUczelniaFilter(django_filters.FilterSet):
+    autor__nazwisko = django_filters.CharFilter(
+        lookup_expr='icontains', widget=TextInput(attrs={'placeholder': 'Podaj nazwisko'}))
+
+    dyscyplina = django_filters.ModelChoiceFilter(queryset=Dyscyplina_Naukowa.objects.all())
+    #        lookup_expr='icontains', widget=TextInput(attrs={'placeholder': 'Podaj nazwę dyscypliny'}))
+
+    slot__min = django_filters.NumberFilter(
+        "pkdautslotsum", lookup_expr="gte",
+        widget=NumberInput(attrs={"placeholder": "min"}))
+
+    slot__max = django_filters.NumberFilter(
+        "pkdautslotsum", lookup_expr="lte",
+        widget=NumberInput(attrs={"placeholder": "max"}))
+
+    avg__min = django_filters.NumberFilter(
+        "avg", lookup_expr="gte",
+        widget=NumberInput(attrs={"placeholder": "min"}))
+
+    avg__max = django_filters.NumberFilter(
+        "avg", lookup_expr="lte",
+        widget=NumberInput(attrs={"placeholder": "max"}))
+
+    class Meta:
+        model = Cache_Punktacja_Autora_Sum_Gruop
+        fields = ['autor__nazwisko', 'dyscyplina__nazwa']
+
+
+class RaportSlotowUczelnia(UczelniaSettingRequiredMixin, MyExportMixin, SingleTableMixin, FilterView):
     template_name = "raport_slotow/raport_slotow_uczelnia.html"
     table_class = RaportSlotowUczelniaTable
-    uczelnia_attr = "pokazuj_raport_slotow"
+    uczelnia_attr = "pokazuj_raport_slotow_uczelnia"
     export_formats = ['html', 'xlsx']
+    filterset_class = RaportSlotowUczelniaFilter
 
     def get_table(self, **kwargs):
         table_class = self.get_table_class()
@@ -131,6 +166,7 @@ class RaportSlotowUczelnia(UczelniaSettingRequiredMixin, ExportMixin, SingleTabl
         context = super(RaportSlotowUczelnia, self).get_context_data(**kwargs)
         context['od_roku'] = self.od_roku
         context['do_roku'] = self.do_roku
+        context['export_link'] = urllib.parse.urlencode(dict(self.request.GET, **{"_export": "xlsx"}), doseq=True)
         return context
 
     def get_export_filename(self, export_format):
@@ -160,12 +196,12 @@ class RaportSlotowUczelnia(UczelniaSettingRequiredMixin, ExportMixin, SingleTabl
             pkdautsum=Window(
                 expression=Sum('pkdaut'),
                 partition_by=[F('autor_id'), F('dyscyplina_id')],
-                order_by=[(F('pkdaut') / F('slot')).desc(), "rekord__tytul_oryginalny",],
+                order_by=[(F('pkdaut') / F('slot')).desc(), "rekord__tytul_oryginalny", ],
             ),
             pkdautslotsum=Window(
                 expression=Sum('slot'),
                 partition_by=[F('autor_id'), F('dyscyplina_id')],
-                order_by=[(F('pkdaut') / F('slot')).desc(), "rekord__tytul_oryginalny",]
+                order_by=[(F('pkdaut') / F('slot')).desc(), "rekord__tytul_oryginalny", ]
             )
         ).order_by(
             "autor",
