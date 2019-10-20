@@ -385,3 +385,8 @@ def test_sloty_prace_wieloosrodkowe(zwarte_z_dyscyplinami, typy_kbn):
 
     with pytest.raises(CannotAdapt, match="dla prac wielo"):
         ISlot(zwarte_z_dyscyplinami)
+
+@pytest.mark.django_db
+def test_ISlot_patent(patent):
+    with pytest.raises(CannotAdapt):
+        ISlot(patent)

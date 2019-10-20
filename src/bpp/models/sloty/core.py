@@ -14,7 +14,7 @@ from .wydawnictwo_ciagle import SlotKalkulator_Wydawnictwo_Ciagle_Prog1, SlotKal
 
 
 def ISlot(original):
-    if original.typ_kbn.skrot == "PW":
+    if hasattr(original, 'typ_kbn') and original.typ_kbn.skrot == "PW":
         raise CannotAdapt("Sloty dla prac wieloośrodkowych nie są liczone.")
 
     if isinstance(original, Wydawnictwo_Ciagle):
