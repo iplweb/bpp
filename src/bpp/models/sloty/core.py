@@ -78,7 +78,7 @@ def ISlot(original):
                 return SlotKalkulator_Wydawnictwo_Zwarte_Prog1(original)
 
         elif poziom_wydawcy == 1:
-            if (ksiazka and autorstwo and original.punkty_kbn == 80) or \
+            if (ksiazka and autorstwo and original.punkty_kbn in [80, 100]) or \
                     (ksiazka and redakcja and original.punkty_kbn == 20) or \
                     (rozdzial and original.punkty_kbn == 20):
                 return SlotKalkulator_Wydawnictwo_Zwarte_Prog2(original)
