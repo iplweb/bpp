@@ -12,6 +12,7 @@ Historia zmian
 * zmiana nazwy kolumny "PKdAut" na "punkty dla autora" (#754)
 * wyświetlaj punkty PK w raporcie autora (#769)
 * nie kopiuj linku do płatnego dostępu w opcji "tamże" (#722)
+* konfigurowalne "Rozbij punktację na jednostki" dla rankingu autorów (#750)
 
 v201910.6
 ---------
