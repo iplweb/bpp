@@ -4,6 +4,7 @@ Historia zmian
 
 * niezwykle eleganckie tabele w XLS wraz z opisem (#766)
 * bardziej widoczny indeks wydawców w module redagowania (#771)
+* uwzględniaj prace posiadające 100 punktów PK dla "Monografia – wydawnictwo poziom I" (#770)
 
 v201910.6
 ---------
