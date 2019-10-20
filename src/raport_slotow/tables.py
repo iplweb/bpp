@@ -16,6 +16,7 @@ class RaportSlotowAutorTable(tables.Table):
                   "rok",
                   "zrodlo",
                   "dyscyplina",
+                  "punkty_kbn",
                   "pkdaut",
                   "slot")
 
@@ -23,8 +24,9 @@ class RaportSlotowAutorTable(tables.Table):
     autorzy = Column("Autorzy", "rekord.opis_bibliograficzny_zapisani_autorzy_cache", orderable=False)
     rok = Column("Rok", "rekord.rok", orderable=True)
     dyscyplina = Column(orderable=False)
+    punkty_kbn = Column("Punkty PK", "rekord.punkty_kbn")
     zrodlo = Column("Źródło", "rekord.zrodlo", empty_values=())
-    pkdaut = SummingColumn("PKdAut", "pkdaut")
+    pkdaut = SummingColumn("Punkty dla autora", "pkdaut")
     slot = SummingColumn("Slot")
 
     def render_tytul_oryginalny(self, value):
@@ -50,9 +52,9 @@ class RaportSlotowUczelniaTable(tables.Table):
                   "pkdautslotsum",
                   "avg")
 
-    pkdautsum = DecimalColumn("Suma PKd Aut")
+    pkdautsum = DecimalColumn("Suma punktów dla autora")
     pkdautslotsum = DecimalColumn("Slot")
-    avg = Column("Średnio PKd na slot")
+    avg = Column("Średnio punktów dla autora na slot")
     dyscyplina = Column()
 
     def __init__(self, od_roku, do_roku, *args, **kw):
