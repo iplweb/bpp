@@ -3,6 +3,7 @@ Historia zmian
 ==============
 
 * niezwykle eleganckie tabele w XLS wraz z opisem (#766)
+* bardziej widoczny indeks wydawców w module redagowania (#771)
 
 v201910.6
 ---------
