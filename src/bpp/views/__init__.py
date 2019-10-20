@@ -97,7 +97,7 @@ def handler404(request, exception):
     return page_not_found(request, exception, "404.html")
 
 
-def handler403(request):
+def handler403(request, exception=None):
     return permission_denied(request, "403.html")
 
 

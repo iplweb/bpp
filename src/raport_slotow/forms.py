@@ -69,9 +69,19 @@ class AutorRaportSlotowForm(forms.Form):
         super(AutorRaportSlotowForm, self).__init__(*args, **kwargs)
 
 
-class WybierzRokForm(forms.Form):
+class ParametryRaportSlotowUczelniaForm(forms.Form):
     od_roku = forms.IntegerField(initial=year_last_month)
     do_roku = forms.IntegerField(initial=year_last_month)
+
+    minimalny_slot = forms.IntegerField(
+        label="Minimalny slot",
+        initial=1,
+        max_value=10, min_value=1)
+
+    pokazuj_ponizej = forms.BooleanField(
+        label="Uwzględnij autorów poniżej minimalnego slotu",
+        initial=False, required=False
+    )
 
     _export = forms.ChoiceField(
         label="Format wyjściowy",
@@ -98,6 +108,8 @@ class WybierzRokForm(forms.Form):
                 Row(Column('od_roku', css_class='large-6 small-6'),
                     Column('do_roku', css_class='large-6 small-6'),
                     ),
+                Row(Column('minimalny_slot', css_class='large-12 small-12')),
+                Row(Column('pokazuj_ponizej')),
                 Row(Column('_export'))
             ),
             ButtonHolder(
@@ -105,4 +117,4 @@ class WybierzRokForm(forms.Form):
                        css_class="submit button"),
             ))
 
-        super(WybierzRokForm, self).__init__(*args, **kwargs)
+        super(ParametryRaportSlotowUczelniaForm, self).__init__(*args, **kwargs)

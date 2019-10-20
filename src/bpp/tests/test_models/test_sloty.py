@@ -5,7 +5,7 @@ from asn1crypto.cms import ContentType
 from django.contrib.contenttypes.models import ContentType
 
 from bpp.models import TO_REDAKTOR, TO_AUTOR, Typ_Odpowiedzialnosci, Cache_Punktacja_Autora, Cache_Punktacja_Dyscypliny, \
-    Charakter_Formalny
+    Charakter_Formalny, Typ_KBN
 from bpp.models.sloty.core import ISlot, IPunktacjaCacher
 from bpp.models.sloty.exceptions import CannotAdapt
 from bpp.models.sloty.wydawnictwo_ciagle import SlotKalkulator_Wydawnictwo_Ciagle_Prog3, \
@@ -339,7 +339,6 @@ def test_ISlot_wydawnictwo_ciagle_bez_punktow_kbn(ciagle_z_dyscyplinami):
 
 @pytest.mark.django_db
 def test_cache_slotow_kasowanie_wpisow_przy_zmianie_pk_ciagle(ciagle_z_dyscyplinami):
-
     ciagle_z_dyscyplinami.punkty_kbn = 30
     ciagle_z_dyscyplinami.rok = 2017
     ciagle_z_dyscyplinami.save()
@@ -360,7 +359,6 @@ def test_cache_slotow_kasowanie_wpisow_przy_zmianie_pk_ciagle(ciagle_z_dyscyplin
 
 @pytest.mark.django_db
 def test_cache_slotow_kasowanie_wpisow_przy_zmianie_pk_zwarte(zwarte_z_dyscyplinami):
-
     zwarte_z_dyscyplinami.punkty_kbn = 20
     zwarte_z_dyscyplinami.rok = 2017
     zwarte_z_dyscyplinami.save()
@@ -378,3 +376,12 @@ def test_cache_slotow_kasowanie_wpisow_przy_zmianie_pk_zwarte(zwarte_z_dyscyplin
     aktualizuj_cache_rekordu(zwarte_z_dyscyplinami)
 
     assert Cache_Punktacja_Autora.objects.filter(rekord_id=[ctype, zwarte_z_dyscyplinami.pk]).count() == 0
+
+
+@pytest.mark.django_db
+def test_sloty_prace_wieloosrodkowe(zwarte_z_dyscyplinami, typy_kbn):
+    zwarte_z_dyscyplinami.typ_kbn = Typ_KBN.objects.get(skrot='PW')
+    zwarte_z_dyscyplinami.save()
+
+    with pytest.raises(CannotAdapt, match="dla prac wielo"):
+        ISlot(zwarte_z_dyscyplinami)

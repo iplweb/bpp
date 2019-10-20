@@ -2,6 +2,21 @@
 Historia zmian
 ==============
 
+v201910.7
+---------
+
+* niezwykle eleganckie tabele w XLS wraz z opisem (#766)
+* bardziej widoczny indeks wydawców w module redagowania (#771)
+* uwzględniaj prace posiadające 100 punktów PK dla "Monografia – wydawnictwo poziom I" (#770)
+* klikalny tytuł pracy w raporcie slotów (#772)
+* raport slotów z możliwością podania parametru poszukiwanej ilości slotów i opcjonalnym
+  wyświetlaniem autorów poniżej zadanego slotu (#765)
+* nie licz slotów dla prac wieloośrodkowych (typ KBN=PW) (#761)
+* zmiana nazwy kolumny "PKdAut" na "punkty dla autora" (#754)
+* wyświetlaj punkty PK w raporcie autora (#769)
+* nie kopiuj linku do płatnego dostępu w opcji "tamże" (#722)
+* konfigurowalne "Rozbij punktację na jednostki" dla rankingu autorów (#750)
+
 v201910.6
 ---------
 
