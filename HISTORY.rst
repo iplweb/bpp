@@ -8,6 +8,7 @@ Historia zmian
 * klikalny tytuł pracy w raporcie slotów (#772)
 * raport slotów z możliwością podania parametru poszukiwanej ilości slotów i opcjonalnym
   wyświetlaniem autorów poniżej zadanego slotu (#765)
+* nie licz slotów dla prac wieloośrodkowych (typ KBN=PW) (#761)
 
 v201910.6
 ---------
