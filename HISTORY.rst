@@ -6,6 +6,7 @@ Historia zmian
 * bardziej widoczny indeks wydawców w module redagowania (#771)
 * uwzględniaj prace posiadające 100 punktów PK dla "Monografia – wydawnictwo poziom I" (#770)
 * klikalny tytuł pracy w raporcie slotów (#772)
+* nie licz slotów dla prac wieloośrodkowych (typ KBN=PW) (#761)
 
 v201910.6
 ---------

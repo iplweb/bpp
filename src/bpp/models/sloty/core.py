@@ -14,6 +14,9 @@ from .wydawnictwo_ciagle import SlotKalkulator_Wydawnictwo_Ciagle_Prog1, SlotKal
 
 
 def ISlot(original):
+    if original.typ_kbn.skrot == "PW":
+        raise CannotAdapt("Sloty dla prac wieloośrodkowych nie są liczone.")
+
     if isinstance(original, Wydawnictwo_Ciagle):
         if original.rok in [2017, 2018]:
             if original.punkty_kbn >= 30:
