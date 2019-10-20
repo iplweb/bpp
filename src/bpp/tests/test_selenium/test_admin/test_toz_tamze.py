@@ -66,8 +66,9 @@ def test_admin_wydawnictwo_ciagle_tamze(preauth_admin_browser, live_server):
 
     assert 'Dodaj wydawnictwo' in preauth_admin_browser.html
 
-    for elem in ['TO INFORMACJE', 'te uwagi', 'te www']:
+    for elem in ['TO INFORMACJE', 'te uwagi', ]:
         assert elem in preauth_admin_browser.html, 'BRAK %r' % elem
+    assert 'te www' not in preauth_admin_browser.html
 
 
 def test_admin_wydawnictwo_zwarte_tamze(preauth_admin_browser, live_server, wydawca):
@@ -86,9 +87,10 @@ def test_admin_wydawnictwo_zwarte_tamze(preauth_admin_browser, live_server, wyda
     time.sleep(1)
     assert 'Dodaj wydawnictwo' in preauth_admin_browser.html
     for elem in ['TO INFORMACJE', 'te uwagi', 'te miejsce i rok',
-                 'te wydawnictwo', 'ten adres WWW', 'Z_ISBN', 'E_ISBN',
+                 'te wydawnictwo', 'Z_ISBN', 'E_ISBN',
                  'Wydawca Testowy']:
         assert elem in preauth_admin_browser.html, 'BRAK %r' % elem
+    assert 'ten adres WWW' not in preauth_admin_browser.html
 
 
 def test_admin_patent_toz(preauth_admin_browser, live_server):
