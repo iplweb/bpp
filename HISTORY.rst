@@ -3,6 +3,7 @@ Historia zmian
 ==============
 
 * niezwykle eleganckie tabele w XLS wraz z opisem (#766)
+* klikalny tytuł pracy w raporcie slotów (#772)
 
 v201910.6
 ---------

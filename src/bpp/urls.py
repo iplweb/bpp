@@ -13,7 +13,7 @@ from bpp.views.api import RokHabilitacjiView, PunktacjaZrodlaView, UploadPunktac
 from bpp.views.browse import UczelniaView, WydzialView, JednostkaView, \
     AutorView, ZrodlaView, ZrodloView, AutorzyView, BuildSearch, PracaView, \
     JednostkiView, \
-    OldPracaView
+    OldPracaView, RekordToPracaView
 from bpp.views.autocomplete import WidocznaJednostkaAutocomplete, \
     AutorZUczelniAutocopmlete, GlobalNavigationAutocomplete, \
     JednostkaAutocomplete, ZrodloAutocomplete, AutorAutocomplete, \
@@ -92,8 +92,8 @@ urlpatterns = [
     url(r'^(?P<model>[\w_]+)/(?P<pk>[\d]+)/$', OldPracaView.as_view(), name='browse_praca_old'),
     url(r'^rekord/(?P<model>[\w_]+),(?P<pk>[\d]+)/$', PracaView.as_view(),
         name='browse_praca'),
-    # url(r'^rekord/(?P<content_type_id>[\d]+),(?P<object_id>[\d]+)/$', RekordToPracaView.as_view(),
-    #     name='browse_rekord'),
+    url(r'^rekord/(?P<content_type_id>[\d]+),(?P<object_id>[\d]+)/$', RekordToPracaView.as_view(),
+        name='browse_rekord'),
 
     url(r'^build_search/$', BuildSearch.as_view(), name='browse_build_search'),
 

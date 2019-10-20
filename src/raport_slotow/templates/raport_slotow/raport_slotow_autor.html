@@ -12,7 +12,7 @@
 
 {% block content %}
     <h1>Raport slotów</h1>
-    <h2>{{ autor }} za {{ od_roku }} - {{ do_roku }}</h2>
+    <h2><a href="{% url "bpp:browse_autor" autor.slug %}">{{ autor }}</a> za {{ od_roku }} - {{ do_roku }}</h2>
 
     {% for table in tables %}
         <a href="?_export=xlsx&n={{ forloop.counter0 }}">pobierz XLS</a>

@@ -19,7 +19,7 @@ class RaportSlotowAutorTable(tables.Table):
                   "pkdaut",
                   "slot")
 
-    tytul_oryginalny = Column("Tytuł oryginalny", "rekord.tytul_oryginalny")
+    tytul_oryginalny = Column("Tytuł oryginalny", "rekord")
     autorzy = Column("Autorzy", "rekord.opis_bibliograficzny_zapisani_autorzy_cache", orderable=False)
     rok = Column("Rok", "rekord.rok", orderable=True)
     dyscyplina = Column(orderable=False)
@@ -28,13 +28,16 @@ class RaportSlotowAutorTable(tables.Table):
     slot = SummingColumn("Slot")
 
     def render_tytul_oryginalny(self, value):
-        return safe(value)
+        url = reverse("bpp:browse_rekord", args=(value.pk[0], value.pk[1]))
+        return safe("<a href=%s>%s</a>" % (url, value))
+
+    def value_tytul_oryginalny(self, value):
+        return value.tytul_oryginalny
 
     def render_zrodlo(self, value):
         if value is None:
             return "-"
         return value
-
 
 
 class RaportSlotowUczelniaTable(tables.Table):
@@ -59,9 +62,6 @@ class RaportSlotowUczelniaTable(tables.Table):
 
     def render_avg(self, value):
         return round(value, 4)
-
-    # def value_avg(self, value):
-    #     return round(value, 4)
 
     def render_autor(self, value):
         url = reverse("raport_slotow:raport", args=(value.slug, self.od_roku, self.do_roku))
