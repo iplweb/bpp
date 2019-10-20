@@ -6,6 +6,8 @@ Historia zmian
 * bardziej widoczny indeks wydawców w module redagowania (#771)
 * uwzględniaj prace posiadające 100 punktów PK dla "Monografia – wydawnictwo poziom I" (#770)
 * klikalny tytuł pracy w raporcie slotów (#772)
+* raport slotów z możliwością podania parametru poszukiwanej ilości slotów i opcjonalnym
+  wyświetlaniem autorów poniżej zadanego slotu (#765)
 
 v201910.6
 ---------

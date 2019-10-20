@@ -35,8 +35,13 @@
                     <td width="15%">{{ filter.form.avg__min }}&nbsp;{{ filter.form.avg__max }}</td>
 
                     <td><input type="submit" value="Filtruj"/>
-                        <input type="reset" value="Usuń filtry" onclick="location.href='?';" />
-                        <input type="button" value="Pobierz XLS" onclick="location.href='?{{ export_link }}';" />
+
+                        {% for key, value in data.items %}
+                            <input type="hidden" name="{{ key }}" value="{{ value }}"/>
+                        {% endfor %}
+
+                        <input type="reset" value="Usuń filtry" onclick="location.href='?';"/>
+                        <input type="button" value="Pobierz XLS" onclick="location.href='?{{ export_link }}';"/>
                     </td>
                 </tr>
             </table>

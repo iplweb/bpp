@@ -1,4 +1,5 @@
 # -*- encoding: utf-8 -*-
+from urllib.parse import urlencode
 
 import pytest
 from django.contrib.contenttypes.models import ContentType
@@ -208,17 +209,20 @@ def test_pokazuj_raport_slotow_menu_na_glownej(uczelnia, admin_client, client, p
 
 
 @pytest.mark.parametrize(
-    "nazwa_url,args_url,atrybut_uczelni",
+    "nazwa_url,args_url,atrybut_uczelni,params",
     [
-        ("raport_slotow:index", [], "pokazuj_raport_slotow_autor"),
-        ("raport_slotow:raport", ["autor.slug", 2000, 2010], "pokazuj_raport_slotow_autor"),
-        ("raport_slotow:index-uczelnia", [], "pokazuj_raport_slotow_uczelnia"),
-        ("raport_slotow:raport-uczelnia", [2000, 2010], "pokazuj_raport_slotow_uczelnia")
+        ("raport_slotow:index", [], "pokazuj_raport_slotow_autor", {}),
+        ("raport_slotow:raport", ["autor.slug", 2000, 2010], "pokazuj_raport_slotow_autor", {}),
+        ("raport_slotow:index-uczelnia", [], "pokazuj_raport_slotow_uczelnia", {}),
+        ("raport_slotow:raport-uczelnia", [], "pokazuj_raport_slotow_uczelnia", {"od_roku": 2000,
+                                                                                 "do_roku": 2000,
+                                                                                 "minimalny_slot": 1,
+                                                                                 "_export": "html"})
     ]
 )
 @pytest.mark.django_db
 def test_pokazuj_raport_slotow_czy_mozna_kliknac(uczelnia, admin_client, client, autor, nazwa_url, args_url,
-                                                 atrybut_uczelni):
+                                                 atrybut_uczelni, params):
     new_args_url = []
     for elem in args_url:
         if elem == "autor.slug":
@@ -227,6 +231,8 @@ def test_pokazuj_raport_slotow_czy_mozna_kliknac(uczelnia, admin_client, client,
         new_args_url.append(elem)
 
     url = reverse(nazwa_url, args=tuple(new_args_url))
+    if params:
+        url += "?" + urlencode(params)
 
     setattr(uczelnia, atrybut_uczelni, OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM)
     uczelnia.save()

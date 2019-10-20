@@ -2,7 +2,7 @@
 
 from django.urls import path
 
-from raport_slotow.views import WyborOsoby, RaportSlotow, WyborRoku, RaportSlotowUczelnia
+from raport_slotow.views import WyborOsoby, RaportSlotow, ParametryRaportSlotowUczelnia, RaportSlotowUczelnia
 
 app_name = 'raport_slotow'
 
@@ -13,9 +13,7 @@ urlpatterns = [
          RaportSlotow.as_view(),
          name='raport'),
 
-    path("raport-slotow-uczelnia/", WyborRoku.as_view(), name='index-uczelnia'),
-    path("raport-slotow-uczelnia/<int:od_roku>/<int:do_roku>/",
-         RaportSlotowUczelnia.as_view(),
-         name='raport-uczelnia'),
+    path("raport-slotow-uczelnia/", ParametryRaportSlotowUczelnia.as_view(), name='index-uczelnia'),
+    path("raport-slotow-uczelnia/raport/", RaportSlotowUczelnia.as_view(), name='raport-uczelnia'),
 
 ]

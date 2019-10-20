@@ -8,7 +8,7 @@ from openpyxl.worksheet.table import Table, TableStyleInfo
 
 
 def drop_table(table_name, using=DEFAULT_DB_ALIAS):
-    connection = connections[DEFAULT_DB_ALIAS]
+    connection = connections[using]
     with connection.cursor() as cursor:
         cursor.execute("DROP TABLE IF EXISTS " + connection.ops.quote_name(table_name))
 
@@ -16,11 +16,29 @@ def drop_table(table_name, using=DEFAULT_DB_ALIAS):
 def create_temporary_table_as(table_name, queryset, using=DEFAULT_DB_ALIAS):
     compiler = queryset.query.get_compiler(using=using)
     sql, params = compiler.as_sql()
-    connection = connections[DEFAULT_DB_ALIAS]
+    connection = connections[using]
     sql = "CREATE TEMPORARY TABLE " + connection.ops.quote_name(table_name) + " AS " + sql
-    drop_table(table_name, using=DEFAULT_DB_ALIAS)
+    drop_table(table_name, using=using)
     with connection.cursor() as cursor:
         cursor.execute(sql, params)
+
+
+def insert_into(table_name, queryset, using=DEFAULT_DB_ALIAS):
+    compiler = queryset.query.get_compiler(using=using)
+    sql, params = compiler.as_sql()
+    connection = connections[using]
+    sql = "INSERT INTO " + connection.ops.quote_name(table_name) + " " + sql
+    with connection.cursor() as cursor:
+        cursor.execute(sql, params)
+
+
+def clone_temporary_table(source_table, target_table, using=DEFAULT_DB_ALIAS):
+    connection = connections[using]
+    sql = "CREATE TEMPORARY TABLE " + connection.ops.quote_name(
+        target_table) + " AS SELECT * FROM " + connection.ops.quote_name(source_table)
+    drop_table(target_table, using=using)
+    with connection.cursor() as cursor:
+        cursor.execute(sql)
 
 
 import openpyxl, openpyxl.styles
