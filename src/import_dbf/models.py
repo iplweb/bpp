@@ -225,27 +225,21 @@ class Wx2(models.Model):
         db_table = 'import_dbf_wx2'
 
 
-
-XXX tu skonczylem -- na IXN
-
 class Ixn(models.Model):
-    idt_pbn = models.TextField(blank=True, null=True)
+    idt_pbn = models.TextField(blank=True, primary_key=True)
     pbn = models.TextField(blank=True, null=True)
 
     class Meta:
         managed = False
+        verbose_name = "zaimportowany identyfikator PBN"
+        verbose_name_plural = "zaimportowane identyfikatory PBN"
         db_table = 'import_dbf_ixn'
 
 
-# XXX dopisuj do system.py oraz do menu.py
-
-
 class B_B(models.Model):
-    idt = models.TextField(blank=True, null=True)
+    idt = models.TextField(primary_key=True)
     lp = models.TextField(blank=True, null=True)
     idt_bazy = models.TextField(blank=True, null=True)
-    field_ignore_me = models.TextField(db_column='_ignore_me', blank=True,
-                                       null=True)  # Field renamed because it started with '_'.
 
     class Meta:
         managed = False
@@ -253,11 +247,9 @@ class B_B(models.Model):
 
 
 class B_N(models.Model):
-    idt = models.TextField(blank=True, null=True)
+    idt = models.TextField(primary_key=True)
     lp = models.TextField(blank=True, null=True)
     idt_pbn = models.TextField(blank=True, null=True)
-    field_ignore_me = models.TextField(db_column='_ignore_me', blank=True,
-                                       null=True)  # Field renamed because it started with '_'.
 
     class Meta:
         managed = False
@@ -265,7 +257,7 @@ class B_N(models.Model):
 
 
 class Dys(models.Model):
-    orcid_id = models.TextField(blank=True, null=True)
+    orcid_id = models.TextField(primary_key=True)
     a_n = models.TextField(blank=True, null=True)
     a_w_etatu = models.TextField(blank=True, null=True)
     a_dysc_1 = models.TextField(blank=True, null=True)
@@ -290,34 +282,35 @@ class Dys(models.Model):
     d_dysc_2 = models.TextField(blank=True, null=True)
     d_dysc_1_e = models.TextField(blank=True, null=True)
     d_dysc_2_e = models.TextField(blank=True, null=True)
-    field_ignore_me = models.TextField(db_column='_ignore_me', blank=True,
-                                       null=True)  # Field renamed because it started with '_'.
 
     class Meta:
         managed = False
+        verbose_name = 'zaimportowana dyscyplina pracownika'
+        verbose_name_plural = 'zaimportowane dyscypliny pracowników'
         db_table = 'import_dbf_dys'
 
 
 class Ixe(models.Model):
-    idt_eng = models.TextField(blank=True, null=True)
+    idt_eng = models.TextField(primary_key=True)
     haslo = models.TextField(blank=True, null=True)
-    field_ignore_me = models.TextField(db_column='_ignore_me', blank=True,
-                                       null=True)  # Field renamed because it started with '_'.
+
+    def __str__(self):
+        return self.haslo
 
     class Meta:
         managed = False
+        verbose_name = "zaimportowane hasło naukowe"
+        verbose_name_plural = "zaimportowane hasła naukowe"
         db_table = 'import_dbf_ixe'
 
 
 class Jer(models.Model):
-    nr = models.TextField(blank=True, null=True)
+    nr = models.TextField(primary_key=True)
     od_roku = models.TextField(blank=True, null=True)
     skrot = models.TextField(blank=True, null=True)
     nazwa = models.TextField(blank=True, null=True)
     wyd_skrot = models.TextField(blank=True, null=True)
     id_u = models.TextField(blank=True, null=True)
-    field_ignore_me = models.TextField(db_column='_ignore_me', blank=True,
-                                       null=True)  # Field renamed because it started with '_'.
 
     class Meta:
         managed = False
@@ -325,13 +318,11 @@ class Jer(models.Model):
 
 
 class Kad(models.Model):
-    nr = models.TextField(blank=True, null=True)
+    nr = models.TextField(primary_key=True)
     na = models.TextField(blank=True, null=True)
     im1 = models.TextField(blank=True, null=True)
     im2 = models.TextField(blank=True, null=True)
     s_jed = models.TextField(blank=True, null=True)
-    field_ignore_me = models.TextField(db_column='_ignore_me', blank=True,
-                                       null=True)  # Field renamed because it started with '_'.
 
     class Meta:
         managed = False
@@ -339,10 +330,8 @@ class Kad(models.Model):
 
 
 class Loc(models.Model):
-    ident = models.TextField(blank=True, null=True)
+    ident = models.TextField(primary_key=True)
     ext = models.TextField(blank=True, null=True)
-    field_ignore_me = models.TextField(db_column='_ignore_me', blank=True,
-                                       null=True)  # Field renamed because it started with '_'.
 
     class Meta:
         managed = False
@@ -350,13 +339,11 @@ class Loc(models.Model):
 
 
 class Pbc(models.Model):
-    idt = models.TextField(blank=True, null=True)
+    idt = models.TextField(primary_key=True)
     wyd_skrot = models.TextField(blank=True, null=True)
     date = models.TextField(blank=True, null=True)
     category = models.TextField(blank=True, null=True)
     details = models.TextField(blank=True, null=True)
-    field_ignore_me = models.TextField(db_column='_ignore_me', blank=True,
-                                       null=True)  # Field renamed because it started with '_'.
 
     class Meta:
         managed = False
@@ -364,7 +351,7 @@ class Pbc(models.Model):
 
 
 class Pub(models.Model):
-    idt_pub = models.TextField(blank=True, null=True)
+    idt_pub = models.TextField(primary_key=True)
     skrot = models.TextField(blank=True, null=True)
     nazwa = models.TextField(blank=True, null=True)
     to_print = models.TextField(blank=True, null=True)
@@ -372,16 +359,16 @@ class Pub(models.Model):
     to_print3 = models.TextField(blank=True, null=True)
     to_print4 = models.TextField(blank=True, null=True)
     to_print5 = models.TextField(blank=True, null=True)
-    field_ignore_me = models.TextField(db_column='_ignore_me', blank=True,
-                                       null=True)  # Field renamed because it started with '_'.
 
     class Meta:
         managed = False
+        verbose_name = 'zaimportowany charakter publikacji'
+        verbose_name_plural = 'zaimportowane charaktery publikacji'
         db_table = 'import_dbf_pub'
 
 
 class Sci(models.Model):
-    idt_sci = models.TextField(blank=True, null=True)
+    idt_sci = models.TextField(primary_key=True)
     au = models.TextField(blank=True, null=True)
     ti = models.TextField(blank=True, null=True)
     src = models.TextField(blank=True, null=True)

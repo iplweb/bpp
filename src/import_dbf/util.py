@@ -1,6 +1,6 @@
 import os
 
-from dbfread import DBF
+from dbfread import DBF, FieldParser
 
 from .codecs import custom_search_function  # noqa
 
@@ -15,9 +15,15 @@ def addslashes(v):
     return v.replace("'", "''")
 
 
+class BPPFieldParser(FieldParser):
+    def parse0(self, field, data):
+        import pdb; pdb.set_trace()
+        return data.rstrip(b' 0').decode()
+
+
 def import_dbf(filename, appname="import_dbf"):
     tablename = appname + "_" + os.path.basename(filename.split(".")[0]).lower()
-    dbf = DBF(filename, encoding="my_cp1250")
+    dbf = DBF(filename, encoding="my_cp1250", parserclass=BPPFieldParser)
 
     print("DROP TABLE IF EXISTS %s;" % tablename)
     print("CREATE TABLE %s(" % tablename)

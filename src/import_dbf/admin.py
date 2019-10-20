@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.admin.sites import AlreadyRegistered
 
 from import_dbf import models as import_dbf_models
-from import_dbf.models import Bib, Aut, Jed, B_A, B_U, Poz, Usi, Ses, Wx2, Ixn, Wyd, Ldy, B_E, Lis, B_L, J_H
+from import_dbf.models import Bib, Aut, Jed, B_A, B_U, Poz, Usi, Ses, Wx2, Ixn, Wyd, Ldy, B_E, Lis, B_L, J_H, Pub
 
 
 class ImportDbfBaseAdmin(admin.ModelAdmin):
@@ -100,6 +100,11 @@ class B_LAdmin(ImportDbfBaseAdmin):
 @admin.register(J_H)
 class J_HAdmin(ImportDbfBaseAdmin):
     list_display = ['idt_jed_f', 'idt_jed_t', 'rok']
+
+
+@admin.register(Pub)
+class PubAdmin(ImportDbfBaseAdmin):
+    list_display = ['idt_pub', 'skrot', 'nazwa', 'to_print']
 
 
 for elem in import_dbf_models.__all__:
