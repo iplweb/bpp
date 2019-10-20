@@ -3,6 +3,8 @@ Historia zmian
 ==============
 
 * niezwykle eleganckie tabele w XLS wraz z opisem (#766)
+* raport slotów z możliwością podania parametru poszukiwanej ilości slotów i opcjonalnym
+  wyświetlaniem autorów poniżej zadanego slotu (#765)
 
 v201910.6
 ---------

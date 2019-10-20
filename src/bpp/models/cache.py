@@ -566,6 +566,7 @@ class Cache_Punktacja_Autora_Base(models.Model):
         ordering = ('autor__nazwisko', 'dyscyplina__nazwa')
         abstract = True
 
+
 class Cache_Punktacja_Autora(Cache_Punktacja_Autora_Base):
     rekord_id = TupleField(models.IntegerField(), size=2, db_index=True)
 
@@ -580,6 +581,7 @@ class Cache_Punktacja_Autora_Query(Cache_Punktacja_Autora_Base):
         db_table = 'bpp_cache_punktacja_autora'
         managed = False
 
+
 class Cache_Punktacja_Autora_Sum(Cache_Punktacja_Autora_Base):
     rekord = ForeignKey('bpp.Rekord', DO_NOTHING)
     autor = ForeignKey(Autor, DO_NOTHING)
@@ -592,6 +594,32 @@ class Cache_Punktacja_Autora_Sum(Cache_Punktacja_Autora_Base):
         db_table = 'bpp_temporary_cpaq'
         managed = False
         ordering = ('autor', 'dyscyplina', '-pkdautslot',)
+
+
+class Cache_Punktacja_Autora_Sum_Ponizej(Cache_Punktacja_Autora_Base):
+    rekord = ForeignKey('bpp.Rekord', DO_NOTHING)
+    autor = ForeignKey(Autor, DO_NOTHING)
+    dyscyplina = ForeignKey(Dyscyplina_Naukowa, DO_NOTHING)
+    pkdautslot = models.FloatField()
+    pkdautsum = models.FloatField()
+    pkdautslotsum = models.FloatField()
+
+    class Meta:
+        db_table = 'bpp_temporary_cpaq_2'
+        managed = False
+        ordering = ('autor', 'dyscyplina', 'pkdautslot',)
+
+
+class Cache_Punktacja_Autora_Sum_Group_Ponizej(models.Model):
+    autor = models.OneToOneField(Autor, DO_NOTHING, primary_key=True)
+    dyscyplina = ForeignKey(Dyscyplina_Naukowa, DO_NOTHING)
+    pkdautsum = models.FloatField()
+    pkdautslotsum = models.FloatField()
+
+    class Meta:
+        db_table = 'bpp_temporary_cpasg_2'
+        managed = False
+        ordering = ('autor', 'dyscyplina',)
 
 
 class Cache_Punktacja_Autora_Sum_Gruop(models.Model):
