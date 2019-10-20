@@ -33,6 +33,11 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
     dane z zewnętrznych systemów informatycznych będą przypisywać do tej jednostki osoby, które zakończyły
     pracę na uczelni. """, related_name="obca_jednostka")
 
+    ranking_autorow_rozbij_domyslnie = models.BooleanField(
+        'Zaznacz domyślnie "Rozbij punktację na jednostki i wydziały" dla rankingu autorów',
+        default=False,
+    )
+
     pokazuj_punktacje_wewnetrzna = models.BooleanField(
         'Pokazuj punktację wewnętrzną na stronie rekordu',
         default=True
@@ -96,8 +101,13 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         default=OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM
     )
 
-    pokazuj_raport_slotow = OpcjaWyswietlaniaField(
-        "Pokazuj raport slotów",
+    pokazuj_raport_slotow_autor = OpcjaWyswietlaniaField(
+        "Pokazuj raport slotów - autor",
+        default=OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM
+    )
+
+    pokazuj_raport_slotow_uczelnia = OpcjaWyswietlaniaField(
+        "Pokazuj raport slotów - uczelnia",
         default=OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM
     )
 

@@ -1,0 +1,51 @@
+{% extends "base.html" %}{% load render_table from django_tables2 %}
+
+{% block extratitle %}
+    Raport slotów - uczelnia - za {{ od_roku }} do {{ do_roku }}
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "raport_slotow:index-uczelnia" %}">raport slotów - uczelnia</a></li>
+    <li class="current">raport slotów za {{ od_roku }} - {{ do_roku }}</li>
+{% endblock %}
+
+{% block content %}
+    <h1>Raport slotów za {{ od_roku }} - {{ do_roku }}</h1>
+    <style>
+        form.filtry input[type=number] {
+            width: 40%;
+            display: inline;
+        }
+    </style>
+    {% if filter %}
+        <form action="" method="get" class="filtry">
+            <table>
+                <tr>
+                    <td>Filtruj po nazwisku autora:</td>
+                    <td>Filtruj po dyscyplinie:</td>
+                    <td>Filtruj slot:</td>
+                    <td>Filtruj średnią:</td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td>{{ filter.form.autor__nazwisko }}</td>
+                    <td>{{ filter.form.dyscyplina }}</td>
+                    <td width="15%">{{ filter.form.slot__min }}&nbsp;{{ filter.form.slot__max }}</td>
+                    <td width="15%">{{ filter.form.avg__min }}&nbsp;{{ filter.form.avg__max }}</td>
+
+                    <td><input type="submit" value="Filtruj"/>
+
+                        {% for key, value in data.items %}
+                            <input type="hidden" name="{{ key }}" value="{{ value }}"/>
+                        {% endfor %}
+
+                        <input type="reset" value="Usuń filtry" onclick="location.href='?';"/>
+                        <input type="button" value="Pobierz XLS" onclick="location.href='?{{ export_link }}';"/>
+                    </td>
+                </tr>
+            </table>
+        </form>
+    {% endif %}
+    {% render_table table %}
+{% endblock %}

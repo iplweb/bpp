@@ -15,6 +15,7 @@ class Command(BaseCommand):
             if model._meta.app_label != 'bpp' or \
                 model._meta.object_name in ['Jednostka', 'Wydzial'] or \
                 model._meta.object_name.find('View') >= 0 or \
+                model._meta.db_table.startswith("bpp_temporary") or \
                 model == Sumy:
                 continue
 

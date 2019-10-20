@@ -1,0 +1,21 @@
+{% extends "base.html" %}{% load render_table from django_tables2 %}
+
+{% block extratitle %}
+    Raport slotów - {{ autor }} za {{ od_roku }} - {{ do_roku }}
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "raport_slotow:index" %}">raport slotów</a></li>
+    <li class="current">{{ autor }} za {{ od_roku }} - {{ do_roku }}</li>
+{% endblock %}
+
+{% block content %}
+    <h1>Raport slotów</h1>
+    <h2><a href="{% url "bpp:browse_autor" autor.slug %}">{{ autor }}</a> za {{ od_roku }} - {{ do_roku }}</h2>
+
+    {% for table in tables %}
+        <a href="?_export=xlsx&n={{ forloop.counter0 }}">pobierz XLS</a>
+        {% render_table table %}
+    {% endfor %}
+{% endblock %}

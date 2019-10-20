@@ -11,7 +11,7 @@ from django import forms
 from django.core import validators
 from django_tables2.export.export import TableExport
 
-from bpp.models import Wydzial
+from bpp.models import Wydzial, Uczelnia
 from bpp.models.autor import Autor
 from bpp.models.struktura import Jednostka
 
@@ -184,7 +184,7 @@ class RankingAutorowForm(forms.Form):
     rozbij_na_jednostki = forms.BooleanField(
         label="Rozbij punktację na jednostki i wydziały",
         required=False,
-        initial=True)
+        initial=lambda: Uczelnia.objects.first().ranking_autorow_rozbij_domyslnie)
 
     tylko_afiliowane = forms.BooleanField(
         label="Tylko prace afiliowane na jednostki uczelni",

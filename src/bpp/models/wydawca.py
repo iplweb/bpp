@@ -9,6 +9,7 @@ class Wydawca(ModelZNazwa):
     class Meta:
         verbose_name_plural = 'wydawcy'
         verbose_name = 'wydawca'
+        ordering = ('nazwa',)
 
     def get_tier(self, rok):
         ret = self.poziom_wydawcy_set.filter(rok=rok).first()
@@ -32,3 +33,4 @@ class Poziom_Wydawcy(models.Model):
         unique_together = ('rok', 'wydawca')
         verbose_name = 'poziom wydawcy'
         verbose_name_plural = 'poziomy wydawcy'
+        ordering = ('rok',)

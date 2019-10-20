@@ -59,7 +59,7 @@ wosclient = "==0.1.5"
 MOAI-iplweb = "==2.0.0"
 zope-interface = "==4.4.2"
 pylibmc = "*"
-dbfread = "*"
+django-filter = "*"
 
 [dev-packages]
 django-debug-toolbar = "==1.8"
