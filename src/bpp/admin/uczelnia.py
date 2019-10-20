@@ -46,6 +46,7 @@ class UczelniaAdmin(RestrictDeletionToAdministracjaGroupMixin,
             'fields': (
                 'logo_www',
                 'logo_svg',
+                'ranking_autorow_rozbij_domyslnie',
                 'pokazuj_punktacje_wewnetrzna',
                 'pokazuj_index_copernicus',
                 'pokazuj_punktacja_snip',

@@ -9,6 +9,7 @@ Historia zmian
 * raport slotów z możliwością podania parametru poszukiwanej ilości slotów i opcjonalnym
   wyświetlaniem autorów poniżej zadanego slotu (#765)
 * nie licz slotów dla prac wieloośrodkowych (typ KBN=PW) (#761)
+* konfigurowalne "Rozbij punktację na jednostki" dla rankingu autorów (#750)
 
 v201910.6
 ---------
