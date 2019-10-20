@@ -9,6 +9,8 @@ Historia zmian
 * raport slotów z możliwością podania parametru poszukiwanej ilości slotów i opcjonalnym
   wyświetlaniem autorów poniżej zadanego slotu (#765)
 * nie licz slotów dla prac wieloośrodkowych (typ KBN=PW) (#761)
+* zmiana nazwy kolumny "PKdAut" na "punkty dla autora" (#754)
+* wyświetlaj punkty PK w raporcie autora (#769)
 
 v201910.6
 ---------
