@@ -11,6 +11,7 @@ Historia zmian
 * nie licz slotów dla prac wieloośrodkowych (typ KBN=PW) (#761)
 * zmiana nazwy kolumny "PKdAut" na "punkty dla autora" (#754)
 * wyświetlaj punkty PK w raporcie autora (#769)
+* nie kopiuj linku do płatnego dostępu w opcji "tamże" (#722)
 
 v201910.6
 ---------
