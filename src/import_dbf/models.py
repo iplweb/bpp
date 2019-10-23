@@ -1,6 +1,6 @@
 from django.db import models
-from django.db.models import DO_NOTHING
-
+from django.db.models import DO_NOTHING, CASCADE, SET_NULL
+from bpp import models as bpp
 
 class Bib(models.Model):
     idt = models.TextField(primary_key=True)
@@ -88,7 +88,7 @@ class Aut(models.Model):
     imiona = models.TextField(blank=True, null=True)
     nazwisko = models.TextField(blank=True, null=True)
     ref = models.TextField(blank=True, null=True)
-    idt_jed = models.TextField(blank=True, null=True)
+    idt_jed = models.ForeignKey('import_dbf.Jed', blank=True, null=True, db_column='idt_jed', on_delete=CASCADE)
     kad_nr = models.TextField(blank=True, null=True)
     tel = models.TextField(blank=True, null=True)
     email = models.TextField(blank=True, null=True)
@@ -115,12 +115,20 @@ class Aut(models.Model):
     uwagi = models.TextField(blank=True, null=True)
     graf = models.TextField(blank=True, null=True)
 
+    bpp_autor = models.ForeignKey('bpp.Autor', null=True, blank=True, on_delete=SET_NULL)
+
     class Meta:
         managed = False
         db_table = 'import_dbf_aut'
+        verbose_name = 'zaimportowany autor'
+        verbose_name_plural = 'zaimportowani autorzy'
+        ordering = ('nazwisko', 'imiona')
 
     def __str__(self):
         return f"{self.nazwisko} {self.imiona}, {self.tytul}"
+
+    def get_bpp(self):
+        return self.bpp_autor
 
 
 class Jed(models.Model):
@@ -138,6 +146,11 @@ class Jed(models.Model):
     email = models.TextField(blank=True, null=True)
     www = models.TextField(blank=True, null=True)
     id_u = models.TextField(blank=True, null=True)
+
+    bpp_jednostka = models.ForeignKey('bpp.Jednostka', SET_NULL, blank=True, null=True)
+
+    def get_bpp(self):
+        return self.bpp_jednostka
 
     class Meta:
         managed = False

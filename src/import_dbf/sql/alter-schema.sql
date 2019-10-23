@@ -40,9 +40,15 @@ ALTER TABLE import_dbf_bib ALTER COLUMN idt SET DATA TYPE INT USING idt::integer
 CREATE UNIQUE INDEX  import_dbf_bib_idt ON  import_dbf_bib(idt);
 
 ALTER TABLE import_dbf_aut ALTER COLUMN idt_aut SET DATA TYPE INT USING idt_aut::integer;
+ALTER TABLE import_dbf_aut ADD COLUMN bpp_autor_id INTEGER;
 CREATE UNIQUE INDEX import_dbf_aut_idt ON import_dbf_aut(idt_aut);
 
+ALTER TABLE import_dbf_aut ALTER COLUMN exp_id SET DATA TYPE INT USING exp_id::integer;
+update import_dbf_aut set pbn_id = NULL where pbn_id = '';
+ALTER TABLE import_dbf_aut ALTER COLUMN pbn_id SET DATA TYPE INT USING pbn_id::integer;
+
 -- ALTER TABLE jed ALTER COLUMN idt_jed SET DATA TYPE INT USING idt_jed::integer;
+ALTER TABLE import_dbf_jed ADD COLUMN bpp_jednostka_id INTEGER;
 CREATE UNIQUE INDEX import_dbf_jed_idt ON import_dbf_jed(idt_jed);
 
 ALTER TABLE import_dbf_b_a ALTER COLUMN idt_aut SET DATA TYPE INT USING idt_aut::integer;

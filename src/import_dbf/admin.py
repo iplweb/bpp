@@ -26,12 +26,18 @@ class BibAdmin(ImportDbfBaseAdmin):
 
 @admin.register(Aut)
 class AutAdmin(ImportDbfBaseAdmin):
-    list_display = ['nazwisko', 'imiona', 'ref', 'kad_nr', 'tel', 'email']
+    list_display = ['nazwisko', 'imiona', 'tytul', 'stanowisko', 'prac_od', 'dat_zwol', 'orcid_id', 'exp_id', 'ref',
+                    'kad_nr', 'idt_jed', 'tel', 'email', 'fg', 'pbn_id']
+    search_fields = ['nazwisko', 'imiona', 'ref', 'tel', 'email']
+    autocomplete_fields = ['idt_jed']
+    list_filter = ['fg', 'tytul']
 
 
 @admin.register(Jed)
 class JedAdmin(ImportDbfBaseAdmin):
-    list_display = ['nazwa', 'skrot', 'wyd_skrot']
+    list_display = ['nazwa', 'skrot', 'wyd_skrot', 'email', 'www', 'to_print']
+    search_fields = ['nazwa', 'skrot']
+    list_filter = ['to_print', 'wyd_skrot']
 
 
 @admin.register(B_A)
