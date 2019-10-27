@@ -183,8 +183,13 @@ class B_A(models.Model):
     stanowisko = models.TextField(blank=True, null=True)
     uwagi = models.TextField(blank=True, null=True)
 
+    object_id = models.PositiveIntegerField(null=True, blank=True)
+    content_type = models.ForeignKey(ContentType, SET_NULL, null=True, blank=True)
+    object = GenericForeignKey()
+
     class Meta:
         managed = False
+        ordering = ('idt__tytul_or_s', 'lp')
         db_table = 'import_dbf_b_a'
 
 

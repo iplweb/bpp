@@ -4,7 +4,7 @@ from django.core.management import BaseCommand
 from django.db import transaction
 
 from import_dbf.util import integruj_wydzialy, integruj_jednostki, integruj_uczelnia, integruj_autorow, \
-    integruj_publikacje, integruj_charaktery, integruj_jezyki, integruj_kbn, integruj_zrodla
+    integruj_publikacje, integruj_charaktery, integruj_jezyki, integruj_kbn, integruj_zrodla, integruj_b_a
 
 
 class Command(BaseCommand):
@@ -22,7 +22,9 @@ class Command(BaseCommand):
         parser.add_argument("--enable-publikacja", action="store_true")
         parser.add_argument("--enable-charakter-kbn-jezyk", action="store_true")
         parser.add_argument("--enable-zrodlo", action="store_true")
+        parser.add_argument("--enable-b-a", action="store_true")
 
+    # @transaction.atomic
     def handle(self, uczelnia, skrot, disable_all, *args, **options):
         uczelnia = integruj_uczelnia(nazwa=uczelnia, skrot=skrot)
 
@@ -45,3 +47,6 @@ class Command(BaseCommand):
 
         if not disable_all or options['enable_publikacja']:
             integruj_publikacje()
+
+        if not disable_all or options['enable_b_a']:
+            integruj_b_a()

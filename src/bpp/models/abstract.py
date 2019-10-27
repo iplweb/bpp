@@ -997,7 +997,7 @@ class DodajAutoraMixin:
 
     def dodaj_autora(self, autor, jednostka, zapisany_jako=None,
                      typ_odpowiedzialnosci_skrot='aut.', kolejnosc=None,
-                     dyscyplina_naukowa=None):
+                     dyscyplina_naukowa=None, afiliuje=None):
         """
         :rtype: bpp.models.abstract.BazaModeluOdpowiedzialnosciAutorow
         """
@@ -1009,4 +1009,5 @@ class DodajAutoraMixin:
             zapisany_jako=zapisany_jako,
             typ_odpowiedzialnosci_skrot=typ_odpowiedzialnosci_skrot,
             kolejnosc=kolejnosc,
-            dyscyplina_naukowa=dyscyplina_naukowa)
+            dyscyplina_naukowa=dyscyplina_naukowa,
+            afiliuje=afiliuje)

@@ -1,4 +1,4 @@
-PSQL=psql -t --echo-errors | grep -v "INSERT 0 1"
+PSQL=psql -t --echo-errors bpp | grep -v "INSERT 0 1"
 MANAGE=python ../manage.py
 IMPORT_DBF=$(MANAGE) import_dbf
 

@@ -37,7 +37,7 @@ class BibAdmin(ImportDbfBaseAdmin):
 @admin.register(Aut)
 class AutAdmin(ImportDbfBaseAdmin):
     list_display = ['nazwisko', 'imiona', 'tytul', 'stanowisko', 'prac_od', 'dat_zwol', 'orcid_id', 'exp_id', 'ref',
-                    'kad_nr', 'idt_jed', 'tel', 'email', 'fg', 'pbn_id']
+                    'kad_nr', 'idt_jed', 'tel', 'email', 'fg', 'pbn_id', 'bpp_autor', 'bpp_autor_id']
     search_fields = ['nazwisko', 'imiona', 'ref', 'tel', 'email']
     autocomplete_fields = ['idt_jed']
     list_filter = ['fg', 'tytul']
@@ -68,7 +68,10 @@ class JedAdmin(ImportDbfBaseAdmin):
 @admin.register(B_A)
 class B_AAdmin(ImportDbfBaseAdmin):
     list_display = ['idt', 'idt_aut', 'idt_jed', 'lp']
-
+    autocomplete_fields = ['idt', 'idt_aut', 'idt_jed']
+    # list_select_related = ['idt', 'idt_aut', 'idt_jed']
+    search_fields = ['idt', 'idt__tytul_or']
+    list_filter = ['afiliacja', 'tytul', 'stanowisko']
 
 @admin.register(Poz)
 class PozAdmin(ImportDbfBaseAdmin):

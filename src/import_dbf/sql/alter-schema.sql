@@ -39,8 +39,11 @@ ALTER TABLE import_dbf_b_p ALTER COLUMN idt SET DATA TYPE INT USING idt::integer
 
 ALTER TABLE import_dbf_bib ALTER COLUMN idt SET DATA TYPE INT USING idt::integer;
 CREATE UNIQUE INDEX  import_dbf_bib_idt ON  import_dbf_bib(idt);
-
+UPDATE import_dbf_aut SET idt_jed = NULL where idt_jed = '';
 ALTER TABLE import_dbf_aut ALTER COLUMN idt_aut SET DATA TYPE INT USING idt_aut::integer;
+
+ALTER TABLE import_dbf_aut ALTER COLUMN idt_jed SET DATA TYPE INT USING idt_jed::integer;
+
 ALTER TABLE import_dbf_aut ADD COLUMN bpp_autor_id INTEGER;
 CREATE UNIQUE INDEX import_dbf_aut_idt ON import_dbf_aut(idt_aut);
 
@@ -60,7 +63,13 @@ ALTER TABLE import_dbf_bib ADD COLUMN object_id INTEGER;
 ALTER TABLE import_dbf_bib ADD COLUMN content_type_id INTEGER;
 CREATE INDEX ON import_dbf_bib(object_id);
 
--- ALTER TABLE jed ALTER COLUMN idt_jed SET DATA TYPE INT USING idt_jed::integer;
+ALTER TABLE import_dbf_b_a ADD COLUMN object_id INTEGER;
+ALTER TABLE import_dbf_b_a ADD COLUMN content_type_id INTEGER;
+UPDATE import_dbf_b_a SET idt_jed = NULL where idt_jed = '';
+ALTER TABLE import_dbf_b_a ALTER COLUMN idt_jed SET DATA TYPE INT USING idt_jed::integer;
+CREATE INDEX ON import_dbf_b_a(object_id);
+
+ALTER TABLE import_dbf_jed ALTER COLUMN idt_jed SET DATA TYPE INT USING idt_jed::integer;
 ALTER TABLE import_dbf_jed ADD COLUMN bpp_jednostka_id INTEGER;
 CREATE UNIQUE INDEX import_dbf_jed_idt ON import_dbf_jed(idt_jed);
 
@@ -77,5 +86,8 @@ ALTER TABLE import_dbf_poz RENAME new_lp TO lp;
 CREATE INDEX import_dbf_poz_idt_idx ON import_dbf_poz(idt);
 
 CREATE UNIQUE INDEX import_dbf_idt_wyd ON import_dbf_wyd(idt_wyd);
+
+update import_dbf_aut set idt_jed = (select idt_jed from import_dbf_jed where skrot = '000') where idt_jed is NULL;
+update import_dbf_b_a set idt_jed = (select idt_jed from import_dbf_jed where skrot = '000') where idt_jed is NULL;
 
 COMMIT;
