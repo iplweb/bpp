@@ -7,7 +7,6 @@ from django.db.models import Q
 from bpp import models as bpp
 from bpp.models import Status_Korekty, wez_zakres_stron, parse_informacje
 from bpp.system import User
-from bpp.tasks import aktualizuj_cache_rekordu
 from import_dbf import models as dbf
 from .codecs import custom_search_function  # noqa
 
@@ -71,6 +70,9 @@ def exp_parse_str(input):
     ret['id'] = int(s[1:4])
 
     s = s[5:].strip()
+
+    if s[0] != '#':
+        raise ValueError(input)
 
     literki = "abcdefghij"
     cnt = 0
@@ -217,7 +219,7 @@ def pbar(query, count):
         widgets=[progressbar.AnimatedMarker(), " ",
                  progressbar.SimpleProgress(), " ",
                  progressbar.Timer(), " ",
-                 progressbar.AdaptiveETA()])
+                 progressbar.ETA()])
 
 
 def integruj_autorow(uczelnia):
@@ -417,6 +419,14 @@ def integruj_publikacje():
 
     base_query = dbf.Bib.objects.filter(object_id=None).select_related()
 
+    typy_kbn = dict([(x.skrot, x.bpp_id) for x in dbf.Kbn.objects.all()])
+    typ_kbn_pusty = bpp.Typ_KBN.objects.get(skrot='000')
+
+    jezyk_pusty = bpp.Jezyk.objects.get(skrot='000')
+    jezyki = dict([(x.skrot, x.bpp_id) for x in dbf.Jez.objects.all()])
+
+    charaktery_formalne = dict([(x.skrot, x.bpp_id) for x in dbf.Pub.objects.all()])
+
     for rec in pbar(base_query, base_query.count()):
         kw = {}
 
@@ -428,32 +438,33 @@ def integruj_publikacje():
 
         title = None
 
-        if rec.title == '#207$ A case of epithelial, malignant, peripheral Schwannoma in 10 year old patient #a$ #b$':
-            continue
-
         if rec.title:
-            title = exp_parse_str(rec.title)
+            try:
+                title = exp_parse_str(rec.title)
+            except ValueError:
+                continue
+
             kw['tytul'] = exp_combine(title.get('a'), title.get('b'), sep=": ")
             for literka in 'cdefgh':
                 if literka in title.keys():
                     raise NotImplementedError("co mam z tym zrobic %r" % title)
 
-        kw['charakter_formalny'] = dbf.Pub.objects.get(skrot=rec.charakter).bpp_id
+        kw['charakter_formalny'] = charaktery_formalne[rec.charakter]
 
         try:
-            kw['typ_kbn'] = dbf.Kbn.objects.get(skrot=rec.kbn).bpp_id
-        except dbf.Kbn.DoesNotExist:
-            kw['typ_kbn'] = bpp.Typ_KBN.objects.get(skrot='000')
+            kw['typ_kbn'] = typy_kbn[rec.kbn]
+        except KeyError:
+            kw['typ_kbn'] = typ_kbn_pusty
 
         if not rec.jezyk:
-            jez = bpp.Jezyk.objects.get(skrot='000')
+            jez = jezyk_pusty
         else:
-            jez = dbf.Jez.objects.get(skrot=rec.jezyk).bpp_id
+            jez = jezyki[rec.jezyk]
 
         kw['jezyk'] = jez
 
         if rec.jezyk2:
-            kw['jezyk_alt'] = dbf.Jez.objects.get(skrot=rec.jezyk2).bpp_id
+            kw['jezyk_alt'] = jezyki[rec.jezyk2]
 
         kw['rok'] = rec.rok
         kw['recenzowana'] = rec.recenzowan.strip() == '1'
@@ -590,11 +601,11 @@ def integruj_publikacje():
                 assert not kw.get('tekst_po_ostatnim_autorze'), (kw, elem, rec)
                 kw['tekst_po_ostatnim_autorze'] = tytul.get('c')
 
-            if tytul.get('d'):
-                assert not kw.get('tytyul'), (kw, elem, rec)
-                kw['tytul'] = elem.get('d')
+            if tytul.get('d') and tytul['d'] != '`':
+                assert not kw.get('tytul'), (kw, tytul, rec)
+                kw['tytul'] = tytul.get('d')
 
-            for literka in 'def':
+            for literka in 'ef':
                 assert not tytul.get(literka), "co mam robic z %r" % tytul
 
         elif tytul['id'] == 150:
@@ -663,6 +674,8 @@ def integruj_publikacje():
                         kw['e_isbn'] = elem['a'].split("e-ISBN ")[1].strip()
                     elif isbn.find("ISBN:") >= 0:
                         kw['isbn'] = elem['a'].split("ISBN:")[1].strip()
+                    elif isbn.find("ISBN-13") >= 0:
+                        kw['isbn'] = elem['a'].split("ISBN-13")[1].strip()
                     elif isbn.find("ISBN") >= 0:
                         kw['isbn'] = elem['a'].split("ISBN ")[1].strip()
                     else:
@@ -735,14 +748,38 @@ def integruj_publikacje():
 
                 elif elem['id'] in [155, 156]:
                     # 155 "Komunikat tegoż w ... / 156 "toż w wersji polskiej"
-                    assert not kw.get('adnotacje')
-                    kw['adnotacje'] = elem.get('a')
+
+                    isbn = elem['a']
+                    if isbn.find("e-ISBN:") >= 0:
+                        kw['e_isbn'] = elem['a'].split("e-ISBN:")[1].strip()
+                    elif isbn.find("e-ISBN") >= 0:
+                        kw['e_isbn'] = elem['a'].split("e-ISBN ")[1].strip()
+                    elif isbn.find("ISBN:") >= 0:
+                        kw['isbn'] = elem['a'].split("ISBN:")[1].strip()
+                    elif isbn.find("ISBN") >= 0:
+                        kw['isbn'] = elem['a'].split("ISBN")[1].strip()
+                    else:
+                        assert not kw.get('adnotacje'), (kw, elem, rec)
+                        kw['adnotacje'] = elem.get('a')
 
                 elif elem['id'] == 995:
                     assert not kw.get('www'), (elem, rec, kw)
                     kw['www'] = elem['a']
                     for literka in "bcd":
                         assert not elem.get(literka), (elem, rec, rec.idt)
+
+                elif elem['id'] == 991:
+                    # DOI
+                    kw['doi'] = elem['a']
+
+                elif elem['id'] == 969:
+                    # NotImplementedError:
+                    # ({'id': 969, 'a': '|0000005187', 'b': '|0000005493', 'c': '|0000005494', 'd': '', 'e': '|0000005496'}, <Bib: Mediators of pruritus in psoriasis>, 38163)
+                    # open-access-text-version: FINAL_PUBLISHED
+                    # open-access-licence: CC BY
+                    # open-access-release-time: AT_PUBLICATION
+                    # open-access-article-mode: OPEN_JOURNAL
+                    raise NotImplementedError
 
                 else:
                     raise NotImplementedError(elem, rec, rec.idt)
@@ -807,15 +844,19 @@ def integruj_publikacje():
 
         if kw['tytul_oryginalny'].find('=') >= 0 and not (
                 kw['tytul_oryginalny'].find('I=532') >= 0
-            or kw['tytul_oryginalny'].find('Rudolf Weigl') >= 0):
+                or kw['tytul_oryginalny'].find('Rudolf Weigl') >= 0
+                or kw['tytul_oryginalny'].find('complex = obraz kliniczny, ') >= 0):
 
-            t1, t2 = [x.strip() for x in kw['tytul_oryginalny'].split("=")]
+            t1, t2 = [x.strip() for x in kw['tytul_oryginalny'].split("=", 1)]
 
             if kw.get('tytul'):
                 if t2 != kw['tytul']:
-                    raise NotImplementedError(
-                        "jest tytul_oryginalny %r a jest i tytul %r i sie ROZNIA!" % (
-                            kw['tytul_oryginalny'], kw['tytul']))
+                    if t1 == kw['tytul']:
+                        t1, t2, = t2, t1
+                    else:
+                        raise NotImplementedError(
+                            "jest tytul_oryginalny %r a jest i tytul %r i sie ROZNIA!" % (
+                                kw['tytul_oryginalny'], kw['tytul']))
 
             kw['tytul_oryginalny'] = t1
             kw['tytul'] = t2
@@ -836,7 +877,8 @@ def integruj_b_a():
         bpp_jednostka = rec.idt_jed.bpp_jednostka
 
         zapisany_jako = f"{rec.idt_aut.imiona} {rec.idt_aut.nazwisko}"
-        wxa = bpp_rec.dodaj_autora(bpp_autor, bpp_jednostka, zapisany_jako, afiliuje=rec.afiliacja=='*')
+
+        wxa = bpp_rec.dodaj_autora(bpp_autor, bpp_jednostka, zapisany_jako, afiliuje=rec.afiliacja == '*')
 
         rec.object = wxa
         rec.save()

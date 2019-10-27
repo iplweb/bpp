@@ -417,6 +417,8 @@ class RekordBase(ModelPunktowanyBaza, ModelZOpisemBibliograficznym,
     nr_zeszytu = None
     tom = None
 
+    jezyk_alt = None
+
     # Skróty dla django-dsl
 
     django_dsl_shortcuts = {

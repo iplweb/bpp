@@ -46,6 +46,8 @@ class Command(BaseCommand):
             integruj_zrodla()
 
         if not disable_all or options['enable_publikacja']:
+            from bpp.models import cache
+            cache.disable()
             integruj_publikacje()
 
         if not disable_all or options['enable_b_a']:
