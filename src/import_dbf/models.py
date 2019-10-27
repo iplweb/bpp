@@ -1,6 +1,8 @@
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.db.models import DO_NOTHING, CASCADE, SET_NULL
-from bpp import models as bpp
+
 
 class Bib(models.Model):
     idt = models.TextField(primary_key=True)
@@ -72,6 +74,10 @@ class Bib(models.Model):
     cites = models.TextField(blank=True, null=True)
     if5 = models.TextField(blank=True, null=True)
     lis_numer = models.TextField(blank=True, null=True)
+
+    object_id = models.PositiveIntegerField(null=True, blank=True)
+    content_type = models.ForeignKey(ContentType, SET_NULL, null=True, blank=True)
+    object = GenericForeignKey()
 
     class Meta:
         managed = False
@@ -182,25 +188,40 @@ class B_A(models.Model):
         db_table = 'import_dbf_b_a'
 
 
+class PozManager(models.Manager):
+    def get_for_model(self, idt, rec_type):
+        ret = ""
+        for elem in self.filter(idt=idt, kod_opisu=rec_type):
+            ret += elem.tresc
+        return ret
+
+
 class Poz(models.Model):
     id = models.IntegerField(primary_key=True)
     idt = models.ForeignKey("import_dbf.Bib", db_column="idt", on_delete=DO_NOTHING)
     kod_opisu = models.TextField(blank=True, null=True)
-    lp = models.TextField(blank=True, null=True)
+    lp = models.PositiveSmallIntegerField()
     tresc = models.TextField(blank=True, null=True)
+
+    objects = PozManager()
 
     class Meta:
         managed = False
+        ordering = ('idt', 'kod_opisu', 'lp')
         db_table = 'import_dbf_poz'
+        verbose_name = 'zaimportowany opis rekordu'
+        verbose_name_plural = 'zaimportowane opisy rekordow'
 
 
 class B_U(models.Model):
-    idt = models.TextField(blank=True, null=True)
-    idt_usi = models.TextField(blank=True, null=True)
+    idt = models.ForeignKey('import_dbf.Bib', DO_NOTHING, db_column='idt')
+    idt_usi = models.ForeignKey('import_dbf.Usi', DO_NOTHING, db_column='idt_usi')
     comm = models.TextField(blank=True, null=True)
 
     class Meta:
         managed = False
+        verbose_name_plural = 'zaimportowane cechy źródeł'
+        verbose_name = 'zaimportowana cecha źródła'
         db_table = 'import_dbf_b_u'
 
 
@@ -210,10 +231,19 @@ class Usi(models.Model):
     usm_sf = models.TextField(blank=True, null=True)
     skrot = models.TextField(blank=True, null=True)
     nazwa = models.TextField(blank=True, null=True)
+    bpp_id = models.ForeignKey('bpp.Zrodlo', SET_NULL, db_column='bpp_id', null=True)
+    bpp_wydawca_id = models.ForeignKey('bpp.Wydawca', SET_NULL, db_column='bpp_wydawca_id', null=True)
+    bpp_seria_wydawnicza_id = models.ForeignKey('bpp.Seria_Wydawnicza', SET_NULL, db_column='bpp_seria_wydawnicza_id',
+                                                null=True)
 
     class Meta:
         managed = False
+        verbose_name_plural = 'zaimportowane źródła'
+        verbose_name = 'zaimportowane źródło'
         db_table = 'import_dbf_usi'
+
+    def __str__(self):
+        return self.nazwa
 
 
 class Ses(models.Model):
@@ -372,6 +402,7 @@ class Pub(models.Model):
     to_print3 = models.TextField(blank=True, null=True)
     to_print4 = models.TextField(blank=True, null=True)
     to_print5 = models.TextField(blank=True, null=True)
+    bpp_id = models.ForeignKey('bpp.Charakter_Formalny', SET_NULL, db_column='bpp_id', null=True)
 
     class Meta:
         managed = False
@@ -453,7 +484,7 @@ class Ldy(models.Model):
 
 
 class B_E(models.Model):
-    idt = models.ForeignKey("import_dbf.Bib", db_column='idt', on_delete=DO_NOTHING)
+    idt = models.IntegerField()
     lp = models.TextField(blank=True, null=True)
     idt_eng = models.TextField(blank=True, null=True)
 
@@ -463,7 +494,7 @@ class B_E(models.Model):
 
 
 class B_P(models.Model):
-    idt = models.ForeignKey("import_dbf.Bib", db_column='idt', on_delete=DO_NOTHING)
+    idt = models.IntegerField()  # ForeignKey("import_dbf.Bib", db_column='idt', on_delete=DO_NOTHING)
     lp = models.TextField(blank=True, null=True)
     idt_pol = models.ForeignKey("import_dbf.Ixp", db_column='idt_pol', on_delete=DO_NOTHING)
 
@@ -490,6 +521,7 @@ class Ixp(models.Model):
 class Jez(models.Model):
     skrot = models.TextField(primary_key=True)
     nazwa = models.TextField(blank=True, null=True)
+    bpp_id = models.ForeignKey('bpp.Jezyk', SET_NULL, db_column='bpp_id', null=True)
 
     class Meta:
         managed = False
@@ -510,6 +542,8 @@ class Kbn(models.Model):
     to_print3 = models.TextField(blank=True, null=True)
     to_print4 = models.TextField(blank=True, null=True)
     to_print5 = models.TextField(blank=True, null=True)
+
+    bpp_id = models.ForeignKey('bpp.Typ_KBN', SET_NULL, db_column='bpp_id', null=True)
 
     class Meta:
         managed = False
@@ -624,7 +658,7 @@ class Lis(models.Model):
 
 
 class B_L(models.Model):
-    idt = models.ForeignKey("import_dbf.Bib", on_delete=DO_NOTHING, db_column='idt')
+    idt = models.IntegerField()  # ForeignKey("import_dbf.Bib", on_delete=DO_NOTHING, db_column='idt')
     idt_l = models.TextField(blank=True, null=True)
 
     class Meta:

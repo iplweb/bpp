@@ -299,6 +299,7 @@ class ModelTypowany(models.Model):
     """Model zawierający typ KBN oraz język."""
     typ_kbn = models.ForeignKey('Typ_KBN', CASCADE, verbose_name="Typ KBN")
     jezyk = models.ForeignKey('Jezyk', CASCADE, verbose_name="Język")
+    jezyk_alt = models.ForeignKey('Jezyk', SET_NULL,  verbose_name='Język alternatywny', null=True, blank=True, related_name='+')
 
     class Meta:
         abstract = True
@@ -859,7 +860,8 @@ class ModelZSeria_Wydawnicza(models.Model):
         null=True
     )
 
-    numer_w_serii = models.PositiveIntegerField(
+    numer_w_serii = models.CharField(
+        max_length=512,
         blank=True,
         null=True
     )

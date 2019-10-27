@@ -2,7 +2,8 @@ from django.contrib import admin
 from django.contrib.admin.sites import AlreadyRegistered
 
 from import_dbf import models as import_dbf_models
-from import_dbf.models import Bib, Aut, Jed, B_A, B_U, Poz, Usi, Ses, Wx2, Ixn, Wyd, Ldy, B_E, Lis, B_L, J_H, Pub
+from import_dbf.models import Bib, Aut, Jed, B_A, B_U, Poz, Usi, Ses, Wx2, Ixn, Wyd, Ldy, B_E, Lis, B_L, J_H, Pub, Kbn, \
+    Jez, Loc
 
 
 class ImportDbfBaseAdmin(admin.ModelAdmin):
@@ -19,9 +20,18 @@ class ImportDbfBaseAdmin(admin.ModelAdmin):
         return super(ImportDbfBaseAdmin, self).changeform_view(request, object_id, extra_context=extra_context)
 
 
+class PozInline(admin.TabularInline):
+    model = Poz
+    extra = 0
+
 @admin.register(Bib)
 class BibAdmin(ImportDbfBaseAdmin):
-    list_display = ['tytul_or', 'title', 'zrodlo', 'szczegoly', 'uwagi']
+    list_display = ['idt', 'tytul_or', 'title', 'zrodlo', 'szczegoly', 'uwagi']
+    search_fields = ['tytul_or', 'title', 'zrodlo', 'szczegoly', 'uwagi', "zrodlo_s"]
+    list_filter = ['kbr', 'lf', 'study_gr', 'kwartyl']
+    readonly_fields = ['object_id', 'content_type']
+
+    inlines = [PozInline]
 
 
 @admin.register(Aut)
@@ -31,6 +41,20 @@ class AutAdmin(ImportDbfBaseAdmin):
     search_fields = ['nazwisko', 'imiona', 'ref', 'tel', 'email']
     autocomplete_fields = ['idt_jed']
     list_filter = ['fg', 'tytul']
+    readonly_fields = ['bpp_autor', ]
+
+
+@admin.register(Kbn)
+class KbnAdmin(ImportDbfBaseAdmin):
+    list_display = ['idt_kbn', 'nazwa', 'skrot', 'to_print', 'to_print2', 'to_print3']
+    list_filter = ['to_print', 'to_print2']
+    readonly_fields = ['bpp_id']
+
+
+@admin.register(Jez)
+class JezAdmin(ImportDbfBaseAdmin):
+    list_display = ['nazwa', 'skrot', ]
+    readonly_fields = ['bpp_id']
 
 
 @admin.register(Jed)
@@ -38,6 +62,7 @@ class JedAdmin(ImportDbfBaseAdmin):
     list_display = ['nazwa', 'skrot', 'wyd_skrot', 'email', 'www', 'to_print']
     search_fields = ['nazwa', 'skrot']
     list_filter = ['to_print', 'wyd_skrot']
+    readonly_fields = ['bpp_jednostka']
 
 
 @admin.register(B_A)
@@ -48,16 +73,24 @@ class B_AAdmin(ImportDbfBaseAdmin):
 @admin.register(Poz)
 class PozAdmin(ImportDbfBaseAdmin):
     list_display = ['idt', 'kod_opisu', 'lp', 'tresc']
+    search_fields = ['idt__tytul_or', 'tresc']
+    autocomplete_fields = ['idt']
+    list_select_related = ['idt']
+    list_filter = ['kod_opisu']
 
 
 @admin.register(B_U)
 class BUAdmin(ImportDbfBaseAdmin):
     list_display = ['idt', 'idt_usi', 'comm']
+    autocomplete_fields = ['idt_usi', 'idt']
 
 
 @admin.register(Usi)
 class UsiAdmin(ImportDbfBaseAdmin):
     list_display = ['idt_usi', 'usm_f', 'usm_sf', 'skrot', 'nazwa']
+    search_fields = ['idt_usi', 'skrot', 'nazwa']
+    list_filter = ['usm_f', 'usm_sf']
+    autocomplete_fields = ['bpp_id']
 
 
 @admin.register(Ses)
@@ -100,7 +133,7 @@ class LisAdmin(ImportDbfBaseAdmin):
 
 @admin.register(B_L)
 class B_LAdmin(ImportDbfBaseAdmin):
-    list_display = ['idt', ]
+    list_display = ['idt', 'idt_l']
 
 
 @admin.register(J_H)
@@ -111,6 +144,12 @@ class J_HAdmin(ImportDbfBaseAdmin):
 @admin.register(Pub)
 class PubAdmin(ImportDbfBaseAdmin):
     list_display = ['idt_pub', 'skrot', 'nazwa', 'to_print']
+    readonly_fields = ['bpp_id']
+
+
+@admin.register(Loc)
+class LocAdmin(ImportDbfBaseAdmin):
+    list_display = ['ident', 'ext']
 
 
 for elem in import_dbf_models.__all__:
