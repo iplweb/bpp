@@ -1,7 +1,7 @@
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
-from django.db.models import DO_NOTHING, SET_NULL
+from django.db.models import DO_NOTHING
 
 
 class Bib(models.Model):
@@ -76,7 +76,7 @@ class Bib(models.Model):
     lis_numer = models.TextField(blank=True, null=True)
 
     object_id = models.PositiveIntegerField(null=True, blank=True)
-    content_type = models.ForeignKey(ContentType, SET_NULL, null=True, blank=True)
+    content_type = models.ForeignKey(ContentType, DO_NOTHING, null=True, blank=True)
     object = GenericForeignKey()
 
     class Meta:
@@ -121,7 +121,7 @@ class Aut(models.Model):
     uwagi = models.TextField(blank=True, null=True)
     graf = models.TextField(blank=True, null=True)
 
-    bpp_autor = models.ForeignKey('bpp.Autor', null=True, blank=True, on_delete=SET_NULL)
+    bpp_autor = models.ForeignKey('bpp.Autor', null=True, blank=True, on_delete=DO_NOTHING)
 
     class Meta:
         managed = False
@@ -153,7 +153,7 @@ class Jed(models.Model):
     www = models.TextField(blank=True, null=True)
     id_u = models.TextField(blank=True, null=True)
 
-    bpp_jednostka = models.ForeignKey('bpp.Jednostka', SET_NULL, blank=True, null=True)
+    bpp_jednostka = models.ForeignKey('bpp.Jednostka', DO_NOTHING, blank=True, null=True)
 
     def get_bpp(self):
         return self.bpp_jednostka
@@ -184,7 +184,7 @@ class B_A(models.Model):
     uwagi = models.TextField(blank=True, null=True)
 
     object_id = models.PositiveIntegerField(null=True, blank=True)
-    content_type = models.ForeignKey(ContentType, SET_NULL, null=True, blank=True)
+    content_type = models.ForeignKey(ContentType, DO_NOTHING, null=True, blank=True)
     object = GenericForeignKey()
 
     class Meta:
@@ -236,9 +236,9 @@ class Usi(models.Model):
     usm_sf = models.TextField(blank=True, null=True)
     skrot = models.TextField(blank=True, null=True)
     nazwa = models.TextField(blank=True, null=True)
-    bpp_id = models.ForeignKey('bpp.Zrodlo', SET_NULL, db_column='bpp_id', null=True)
-    bpp_wydawca_id = models.ForeignKey('bpp.Wydawca', SET_NULL, db_column='bpp_wydawca_id', null=True)
-    bpp_seria_wydawnicza_id = models.ForeignKey('bpp.Seria_Wydawnicza', SET_NULL, db_column='bpp_seria_wydawnicza_id',
+    bpp_id = models.ForeignKey('bpp.Zrodlo', DO_NOTHING, db_column='bpp_id', null=True)
+    bpp_wydawca_id = models.ForeignKey('bpp.Wydawca', DO_NOTHING, db_column='bpp_wydawca_id', null=True)
+    bpp_seria_wydawnicza_id = models.ForeignKey('bpp.Seria_Wydawnicza', DO_NOTHING, db_column='bpp_seria_wydawnicza_id',
                                                 null=True)
 
     class Meta:
@@ -407,7 +407,7 @@ class Pub(models.Model):
     to_print3 = models.TextField(blank=True, null=True)
     to_print4 = models.TextField(blank=True, null=True)
     to_print5 = models.TextField(blank=True, null=True)
-    bpp_id = models.ForeignKey('bpp.Charakter_Formalny', SET_NULL, db_column='bpp_id', null=True)
+    bpp_id = models.ForeignKey('bpp.Charakter_Formalny', DO_NOTHING, db_column='bpp_id', null=True)
 
     class Meta:
         managed = False
@@ -526,7 +526,7 @@ class Ixp(models.Model):
 class Jez(models.Model):
     skrot = models.TextField(primary_key=True)
     nazwa = models.TextField(blank=True, null=True)
-    bpp_id = models.ForeignKey('bpp.Jezyk', SET_NULL, db_column='bpp_id', null=True)
+    bpp_id = models.ForeignKey('bpp.Jezyk', DO_NOTHING, db_column='bpp_id', null=True)
 
     class Meta:
         managed = False
@@ -548,7 +548,7 @@ class Kbn(models.Model):
     to_print4 = models.TextField(blank=True, null=True)
     to_print5 = models.TextField(blank=True, null=True)
 
-    bpp_id = models.ForeignKey('bpp.Typ_KBN', SET_NULL, db_column='bpp_id', null=True)
+    bpp_id = models.ForeignKey('bpp.Typ_KBN', DO_NOTHING, db_column='bpp_id', null=True)
 
     class Meta:
         managed = False
