@@ -187,6 +187,9 @@ class B_A(models.Model):
     content_type = models.ForeignKey(ContentType, DO_NOTHING, null=True, blank=True)
     object = GenericForeignKey()
 
+    def __str__(self):
+        return f"Przypisanie autora {self.idt_aut} w jednostce {self.idt_jed} do rekordu {self.idt}"
+
     class Meta:
         managed = False
         ordering = ('idt__tytul_or_s', 'lp')

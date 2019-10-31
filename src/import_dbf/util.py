@@ -2,7 +2,8 @@ import os
 
 import progressbar
 from dbfread import DBF
-from django.db.models import Q
+from django.contrib.contenttypes.models import ContentType
+from django.db.models import Q, Count
 
 from bpp import models as bpp
 from bpp.models import Status_Korekty, wez_zakres_stron, parse_informacje, Zewnetrzna_Baza_Danych
@@ -874,14 +875,16 @@ def integruj_publikacje():
 
                     del elem['id']
 
-                    if elem =={'a': '|0000005187', 'b': '|0000005188', 'c': '', 'd': '|0000005189', 'e': ''}:
+                    if elem == {'a': '|0000005187', 'b': '|0000005188', 'c': '', 'd': '|0000005189', 'e': ''}:
                         # Rekordy z takim schematem informacji pojawiaja sie co jakis czas
                         # i nie bardzo widze ich powiazanie z informacja wyswietlana na stornie
                         # Najprawdopodobniej te informacje OpenAccess beda zaimportowane w sposob
                         # nieprawidlowy. Na ten moment (31.10.2019) zostaje jak-jest:
-                        kw['openaccess_wersja_tekstu'] = bpp.Wersja_Tekstu_OpenAccess.objects.get(skrot="FINAL_PUBLISHED")
+                        kw['openaccess_wersja_tekstu'] = bpp.Wersja_Tekstu_OpenAccess.objects.get(
+                            skrot="FINAL_PUBLISHED")
                         kw['openaccess_licencja'] = bpp.Licencja_OpenAccess.objects.get(skrot="CC-BY-NC-SA")
-                        kw['openaccess_czas_publikacji'] = bpp.Czas_Udostepnienia_OpenAccess.objects.get(skrot="AT_PUBLICATION")
+                        kw['openaccess_czas_publikacji'] = bpp.Czas_Udostepnienia_OpenAccess.objects.get(
+                            skrot="AT_PUBLICATION")
                         kw['openaccess_tryb_dostepu'] = oa_klass.objects.get(skrot="OPEN_JOURNAL")
                     else:
 
@@ -1128,18 +1131,92 @@ def integruj_publikacje():
             klass_ext.objects.create(rekord=res, baza=Zewnetrzna_Baza_Danych.objects.get(skrot="WOS"))
 
 
+def wyswietl_prace_bez_dopasowania():
+    bez = dbf.Bib.objects.filter(object_id=None)
+    if bez.exists():
+        print("Prace bez dopasowania: %i rekordow. " % bez.count())
+        for rec in bez:
+            print(rec.idt, rec.rok, rec.tytul_or_s)
+
+
 def integruj_b_a():
+
+    ctype_to_klass_map = {
+        ContentType.objects.get_by_natural_key("bpp", "wydawnictwo_ciagle").pk: bpp.Wydawnictwo_Ciagle_Autor,
+        ContentType.objects.get_by_natural_key("bpp", "wydawnictwo_zwarte").pk: bpp.Wydawnictwo_Zwarte_Autor,
+    }
+
+    ctype_to_ctype_map = {
+        ContentType.objects.get_by_natural_key("bpp", "wydawnictwo_ciagle").pk: ContentType.objects.get_by_natural_key(
+            "bpp", "wydawnictwo_ciagle_autor"),
+        ContentType.objects.get_by_natural_key("bpp", "wydawnictwo_zwarte").pk: ContentType.objects.get_by_natural_key(
+            "bpp", "wydawnictwo_zwarte_autor"),
+    }
+
+    ta_id = bpp.Typ_Odpowiedzialnosci.objects.get(skrot="aut.").pk
+
+    from django.db import reset_queries, connection
+
+    for elem in dbf.B_A.objects.values("idt_id", "idt_aut_id", ).annotate(cnt=Count('*')).order_by('idt_id', 'idt_aut_id').filter(cnt__gt=1):
+        cnt = elem['cnt']
+        for melem in dbf.B_A.objects.filter(idt_id=elem['idt_id'], idt_aut_id=elem['idt_aut_id']):
+            print("Kasuje", melem)
+            melem.delete()
+            cnt -= 1
+            if cnt == 1:
+                break
+
     base_query = dbf.B_A.objects.filter(object_id=None).exclude(idt__object_id=None)
 
-    for rec in pbar(base_query.select_related(), base_query.count()):
-        bpp_rec = rec.idt.object
+    for rec in pbar(
+            base_query.select_related("idt", "idt_aut", "idt_jed").only(
+                "idt__content_type_id",
+                "idt__object_id",
 
-        bpp_autor = rec.idt_aut.bpp_autor
-        bpp_jednostka = rec.idt_jed.bpp_jednostka
+                "idt_aut__bpp_autor_id",
+                "idt_aut__imiona",
+                "idt_aut__nazwisko",
 
-        zapisany_jako = f"{rec.idt_aut.imiona} {rec.idt_aut.nazwisko}"
+                "idt_jed__bpp_jednostka_id",
 
-        wxa = bpp_rec.dodaj_autora(bpp_autor, bpp_jednostka, zapisany_jako, afiliuje=rec.afiliacja == '*')
+                "afiliacja",
 
-        rec.object = wxa
-        rec.save()
+                "lp"
+            ).distinct(),
+            base_query.count()):
+
+        reset_queries()
+
+        bpp_ctype_id = rec.idt.content_type_id
+        bpp_rec_id = rec.idt.object_id
+
+        klass = ctype_to_klass_map.get(bpp_ctype_id)
+
+        bpp_autor_id = rec.idt_aut.bpp_autor_id
+        bpp_jednostka_id = rec.idt_jed.bpp_jednostka_id
+
+        lp = 0
+        if rec.lp:
+            try:
+                lp = ord(rec.lp)
+            except TypeError:
+                lp = int(rec.lp)
+
+        klass.objects.create(
+            rekord_id=bpp_rec_id,
+            autor_id=bpp_autor_id,
+            jednostka_id=bpp_jednostka_id,
+            zapisany_jako=f"{rec.idt_aut.imiona} {rec.idt_aut.nazwisko}",
+            afiliuje=rec.afiliacja == '*',
+            kolejnosc=lp,
+            typ_odpowiedzialnosci_id=ta_id
+        )
+
+        if len(connection.queries) > 1:
+            for elem in connection.queries:
+                print(elem)
+            import pdb; pdb.set_trace()
+
+        # rec.object_id = wxa.pk
+        # rec.content_type_id = ctype_to_ctype_map.get(bpp_ctype_id)
+        # rec.save(update_fields=['object_id', 'content_type_id'])

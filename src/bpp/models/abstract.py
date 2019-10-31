@@ -4,6 +4,7 @@
 Klasy abstrakcyjne
 """
 from decimal import Decimal
+from dirtyfields import DirtyFieldsMixin
 
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields import HStoreField
@@ -23,6 +24,8 @@ from bpp.models.dyscyplina_naukowa import Autor_Dyscyplina
 from bpp.models.dyscyplina_naukowa import Dyscyplina_Naukowa
 from bpp.models.util import ModelZOpisemBibliograficznym
 from bpp.models.util import dodaj_autora
+from django.conf import settings
+
 
 ILOSC_ZNAKOW_NA_ARKUSZ = 40000.0
 
@@ -1012,3 +1015,15 @@ class DodajAutoraMixin:
             kolejnosc=kolejnosc,
             dyscyplina_naukowa=dyscyplina_naukowa,
             afiliuje=afiliuje)
+
+
+class AktualizujDatePBNNadrzednegoMixin:
+    def save(self, *args, **kw):
+        if getattr(settings, 'ENABLE_DATA_AKT_PBN_UPDATE', True) and (self.pk is None or self.is_dirty()):
+            # W sytuacji gdy dodajemy nowego autora lub zmieniamy jego dane,
+            # rekord "nadrzędny" publikacji powinien mieć zaktualizowany
+            # czas ostatniej aktualizacji na potrzeby PBN:
+            r = self.rekord
+            r.ostatnio_zmieniony_dla_pbn = timezone.now()
+            r.save(update_fields=['ostatnio_zmieniony_dla_pbn'])
+        super(BazaModeluOdpowiedzialnosciAutorow, self).save(*args, **kw)
