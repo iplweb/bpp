@@ -93,6 +93,7 @@ MODEL_Z_WWW = (
 
 MODEL_Z_PUBMEDID = (
     'pubmed_id',
+    'pmc_id'
 )
 
 MODEL_Z_DOI = (

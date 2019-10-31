@@ -200,6 +200,7 @@ class ModelZWWW(models.Model):
 
 class ModelZPubmedID(models.Model):
     pubmed_id = models.BigIntegerField("PubMed ID", blank=True, null=True, help_text="Identyfikator PubMed (PMID)")
+    pmc_id = models.CharField("PubMed Central ID", max_length=32, blank=True, null=True)
 
     class Meta:
         abstract = True

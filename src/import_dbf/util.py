@@ -5,7 +5,7 @@ from dbfread import DBF
 from django.db.models import Q
 
 from bpp import models as bpp
-from bpp.models import Status_Korekty, wez_zakres_stron, parse_informacje
+from bpp.models import Status_Korekty, wez_zakres_stron, parse_informacje, Zewnetrzna_Baza_Danych
 from bpp.system import User
 from import_dbf import models as dbf
 from .codecs import custom_search_function  # noqa
@@ -384,6 +384,13 @@ def integruj_zrodla():
         rec.save()
 
 
+def znajdz_separator_isbn(s):
+    for elem in ["e-ISBN:", "e-ISBN", "ISBN:", "ISBN", "ISSN:", "ISSN"]:
+        if elem.find(s)>=0:
+            return elem
+
+
+
 def integruj_publikacje():
     # zagadnienie nr 1 BPP: prace mają rok i rok_punkt inny: select rok, rok_punkt from import_dbf_bib where rok_punkt != rok and rok_punkt != '' order by rok;
 
@@ -428,6 +435,7 @@ def integruj_publikacje():
     charaktery_formalne = dict([(x.skrot, x.bpp_id) for x in dbf.Pub.objects.all()])
 
     for rec in pbar(base_query, base_query.count()):
+        wos = False
         kw = {}
 
         poz_a = dbf.Poz.objects.get_for_model(rec.idt, "A")
@@ -464,7 +472,11 @@ def integruj_publikacje():
         kw['jezyk'] = jez
 
         if rec.jezyk2:
-            kw['jezyk_alt'] = jezyki[rec.jezyk2]
+            try:
+                kw['jezyk_alt'] = jezyki[rec.jezyk2]
+            except KeyError:
+                assert not kw.get("adnotacje")
+                kw['adnotacje'] = "Praca deklaruje jezyk2 jako " + rec.jezyk2
 
         kw['rok'] = rec.rok
         kw['recenzowana'] = rec.recenzowan.strip() == '1'
@@ -555,7 +567,10 @@ def integruj_publikacje():
             kw['impact_factor'] = rec.impact
 
         if rec.link:
-            kw['www'] = rec.link
+            if rec.link.startswith("dx.doi.org/"):
+                kw['doi'] = rec.link[len("dx.doi.org/"):].strip()
+            else:
+                kw['www'] = rec.link
 
         if rec.uwagi2:
             kw['adnotacje'] = rec.uwagi2
@@ -567,12 +582,13 @@ def integruj_publikacje():
             kw['issn'] = rec.issn
 
         if rec.eissn:
-            kw['e_issn'] = rec.e_issn
+            kw['e_issn'] = rec.eissn
 
         klass = None
 
         if tytul['id'] == 204:
             klass = bpp.Wydawnictwo_Zwarte
+            klass_ext = bpp.Wydawnictwo_Zwarte_Zewnetrzna_Baza_Danych
             kw['tytul_oryginalny'] = exp_combine(tytul['a'], tytul.get('b'), sep=": ")
 
             kw['szczegoly'] = exp_add_spacing(tytul['e'])
@@ -592,6 +608,7 @@ def integruj_publikacje():
 
         elif tytul['id'] == 102:
             klass = bpp.Wydawnictwo_Ciagle
+            klass_ext = bpp.Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych
             kw['tytul_oryginalny'] = tytul['a']
 
             if tytul.get("b"):
@@ -610,8 +627,9 @@ def integruj_publikacje():
 
         elif tytul['id'] == 150:
             klass = bpp.Wydawnictwo_Zwarte
+            klass_ext = bpp.Wydawnictwo_Zwarte_Zewnetrzna_Baza_Danych
             kw['tytul_oryginalny'] = exp_combine(tytul['a'], exp_combine(tytul.get('b'), tytul.get('d')), sep=" ")
-            kw['informacje'] = tytul['c']  # "wstep i oprac. Edmund Waszynski"
+            kw['informacje'] = tytul.get('c', None)  # "wstep i oprac. Edmund Waszynski"
 
         else:
             raise NotImplementedError(tytul)
@@ -645,6 +663,10 @@ def integruj_publikacje():
                     seria_wydawnicza_id = int(elem['a'][1:])
                     kw['seria_wydawnicza'] = dbf.Usi.objects.get(idt_usi=seria_wydawnicza_id).bpp_seria_wydawnicza_id
 
+                    if elem.get('d') and elem['d'].startswith("ISSN"):
+                        kw['issn'] = elem['d'].split("ISSN")[1].strip()
+                        del elem['d']
+
                     if elem.get('d') and elem.get('c'):
                         raise NotImplementedError(elem, rec, rec.idt)
 
@@ -653,6 +675,10 @@ def integruj_publikacje():
                     for literka in "bcd":
                         if elem.get(literka):
                             kw['numer_w_serii'] = exp_combine(kw['numer_w_serii'], elem.get(literka))
+
+                    if elem['e'].find("ISSN") > -1:
+                        kw['issn'] = elem['e'][4:].strip()
+                        del elem['e']
 
                     for literka in "ef":
                         assert not elem.get(literka), (elem, rec)
@@ -666,20 +692,38 @@ def integruj_publikacje():
                         assert not elem.get(literka), elem
 
                 elif elem['id'] == 205:
-
                     isbn = elem['a']
+                    
+                    if isbn.find(". [Dostęp 4.11.2015]. Dostępny w: ")>=0:
+                        isbn, www = isbn.split(". [Dostęp 4.11.2015]. Dostępny w: ")                        
+                        kw['www'] = www
+
+                    marker = znajdz_separator_isbn(isbn)
+                    if marker:
+                        l = isbn.split(marker)
+                        if l[0].strip():
+                            raise NotImplementedError("Tekst przed ISBN", l, rec, elem)
+                        if len(l[1])>15:
+                            raise NotImplementedError("Tekst PO ISBN", l, rec, elem)
+
                     if isbn.find("e-ISBN:") >= 0:
-                        kw['e_isbn'] = elem['a'].split("e-ISBN:")[1].strip()
+                        kw['e_isbn'] = isbn.split("e-ISBN:")[1].strip()
                     elif isbn.find("e-ISBN") >= 0:
-                        kw['e_isbn'] = elem['a'].split("e-ISBN ")[1].strip()
+                        kw['e_isbn'] = isbn.split("e-ISBN ")[1].strip()
                     elif isbn.find("ISBN:") >= 0:
-                        kw['isbn'] = elem['a'].split("ISBN:")[1].strip()
+                        kw['isbn'] = isbn.split("ISBN:")[1].strip()
                     elif isbn.find("ISBN-13") >= 0:
-                        kw['isbn'] = elem['a'].split("ISBN-13")[1].strip()
+                        kw['isbn'] = isbn.split("ISBN-13")[1].strip()
                     elif isbn.find("ISBN") >= 0:
-                        kw['isbn'] = elem['a'].split("ISBN ")[1].strip()
+                        kw['isbn'] = isbn.split("ISBN")[1].strip()
                     else:
                         kw['uwagi'] = exp_combine(kw.get('uwagi'), elem.get('a'), sep=", ")
+
+                    if kw.get('isbn') and kw['isbn'].find(";") >= 0:
+                        isbn, uwagi = kw['isbn'].split(";")
+                        kw['isbn'] = isbn.strip()
+                        assert not kw.get("uwagi"), (elem, kw, rec)
+                        kw['uwagi'] = uwagi.strip()
 
                     for literka in "bcde":
                         assert not elem.get(literka)
@@ -739,7 +783,7 @@ def integruj_publikacje():
 
                 elif elem['id'] == 151:
                     # w ksiazkach, wydanie i "pod redakcja'
-                    if kw['tytul_oryginalny'].find('=') >= 0:
+                    if kw['tytul_oryginalny'].find('=') >= 0 and not elem.get('a', '').startswith("2nd ed., bilingual"):
                         raise NotImplementedError
                     kw['tytul_oryginalny'] = (kw['tytul_oryginalny'] + ". " + elem['a'] + " " + elem['b']).strip()
 
@@ -750,6 +794,15 @@ def integruj_publikacje():
                     # 155 "Komunikat tegoż w ... / 156 "toż w wersji polskiej"
 
                     isbn = elem['a']
+
+                    marker = znajdz_separator_isbn(isbn)
+                    if marker:
+                        l = isbn.split(marker)
+                        if l[0].strip():
+                            raise NotImplementedError("Tekst przed ISBN", l, rec, elem)
+                        if len(l[1])>15:
+                            raise NotImplementedError("Tekst PO ISBN", l, rec, elem)
+
                     if isbn.find("e-ISBN:") >= 0:
                         kw['e_isbn'] = elem['a'].split("e-ISBN:")[1].strip()
                     elif isbn.find("e-ISBN") >= 0:
@@ -758,11 +811,32 @@ def integruj_publikacje():
                         kw['isbn'] = elem['a'].split("ISBN:")[1].strip()
                     elif isbn.find("ISBN") >= 0:
                         kw['isbn'] = elem['a'].split("ISBN")[1].strip()
+                    elif isbn.find("e-ISSN") >= 0:
+                        kw['e_issn'] = elem['a'].split("e-ISSN")[1].strip()
+                    elif isbn.find("ISSN") >= 0:
+                        kw['issn'] = elem['a'].split("ISSN")[1].strip()
                     else:
                         assert not kw.get('adnotacje'), (kw, elem, rec)
                         kw['adnotacje'] = elem.get('a')
 
+                    if kw.get('isbn', '').find(". Wersja ang.:") > 0:
+                        isbn, adnotacje = kw['isbn'].split(". ")
+                        kw['isbn'] = isbn.strip()
+                        assert not kw.get('adnotacje'), (kw, elem, rec)
+                        kw['adnotacje'] = adnotacje.strip()
+
+                    if kw.get('isbn', '').find(". Dostępny w: ") > 0:
+                        isbn, www = kw['isbn'].split(". Dostępny w: ")
+                        kw['isbn'] = isbn
+                        kw['www'] = www
+
                 elif elem['id'] == 995:
+                    if kw.get("www"):
+                        if "http://" + kw['www'] == elem['a'] or kw['www'] == elem['a']:
+                            del kw['www']
+                        else:
+                            raise NotImplementedError("dwa adresy www?", elem, kw, rec)
+
                     assert not kw.get('www'), (elem, rec, kw)
                     kw['www'] = elem['a']
                     for literka in "bcd":
@@ -773,74 +847,151 @@ def integruj_publikacje():
                     kw['doi'] = elem['a']
 
                 elif elem['id'] == 969:
-                    # NotImplementedError:
-                    # ({'id': 969, 'a': '|0000005187', 'b': '|0000005493', 'c': '|0000005494', 'd': '', 'e': '|0000005496'}, <Bib: Mediators of pruritus in psoriasis>, 38163)
+                    # ({'id': 969, 'a': '|0000005187', 'b': '|0000005493',
+                    # 'c': '|0000005494', 'd': '', 'e': '|0000005496'},
+                    # <Bib: Mediators of pruritus in psoriasis>, 38163)
                     # open-access-text-version: FINAL_PUBLISHED
                     # open-access-licence: CC BY
                     # open-access-release-time: AT_PUBLICATION
                     # open-access-article-mode: OPEN_JOURNAL
-                    raise NotImplementedError
+
+                    s = dbf.Usi.objects.get(idt_usi=elem['a'][1:])
+                    o = bpp.Wersja_Tekstu_OpenAccess.objects.get(skrot=s.nazwa)
+                    kw['openaccess_wersja_tekstu'] = o
+
+                    if elem.get('b'):
+                        s = dbf.Usi.objects.get(idt_usi=elem['b'][1:])
+                        o = bpp.Licencja_OpenAccess.objects.get(skrot=s.nazwa.replace(" ", "-"))
+                        kw['openaccess_licencja'] = o
+
+                    if elem.get('c'):
+                        s = dbf.Usi.objects.get(idt_usi=elem['c'][1:])
+                        o = bpp.Czas_Udostepnienia_OpenAccess.objects.get(skrot=s.nazwa)
+                        kw['openaccess_czas_publikacji'] = o
+
+                    if klass == bpp.Wydawnictwo_Ciagle:
+                        oa_klass = bpp.Tryb_OpenAccess_Wydawnictwo_Ciagle
+                    elif klass == bpp.Wydawnictwo_Zwarte:
+                        oa_klass = bpp.Tryb_OpenAccess_Wydawnictwo_Zwarte
+                    else:
+                        raise NotImplementedError(klass)
+
+                    if elem.get('e'):
+                        s = dbf.Usi.objects.get(idt_usi=elem['e'][1:])
+                        o = oa_klass.objects.get(skrot=s.nazwa)
+                        kw['openaccess_tryb_dostepu'] = o
+
+                    if not ((rec.idt == 75935 and rec.tytul_or_s.startswith("Ocena kifozy piersiowej"))
+                            or (rec.idt==76255 and rec.tytul_or_s.startswith("The intima with early")):
+                        assert not elem.get('d'), (elem, kw, rec)
+
+                elif elem['id'] == 107:
+                    s = dbf.Usi.objects.get(idt_usi=elem['a'][1:])
+                    if s.nazwa.startswith("ISSN"):
+                        kw['issn'] = s.nazwa[4:].strip()
+                    elif s.nazwa.find("-") in [4, 5]:  # sam "goły" nr ISSN
+                        kw['issn'] = s.nazwa
+                    else:
+                        raise NotImplementedError(elem, kw, rec)
+
+                    for literka in 'bcd':
+                        assert not elem.get(literka), (elem, kw, rec)
+
+                elif elem['id'] == 997:
+                    if elem['a'] == '3786' or elem['a'] == '':
+                        assert not kw.get('adnotacje'), (elem, kw, rec)
+                        kw['adnotacje'] = "Import bazy danych: niejasny element POZ_G: %s" % elem
+                    elif elem['a'] == "Publikacja uwzględniona w Web of Science":
+                        wos = True
+                    elif elem['a'].startswith("http"):
+                        assert not kw.get('www'), (elem, kw, rec)
+                        kw['www'] = elem['a']
+                    else:
+                        raise NotImplementedError(elem, rec)
+
+                elif elem['id'] == 884:
+                    # PubMedID
+                    if elem.get('a'):
+                        kw['pubmed_id'] = elem['a']
+                    kw['pmc_id'] = elem['b']
+                    for literka in "cde":
+                        assert not elem.get(literka)
+
+                elif elem['id'] == 983:
+                    assert not kw.get('adnotacje'), (elem, kw, rec)
+                    kw['adnotacje'] = "Import bazy danych. Niejasny element POZ_G: %s" % elem
 
                 else:
                     raise NotImplementedError(elem, rec, rec.idt)
 
-        assert not poz_n, "nie gotowy na poz_n %r %r %s" % (poz_a, rec, rec.idt)
+        if poz_n:
+            elem = exp_parse_str(poz_n)
+            if elem['id'] == 206:
+                if kw.get('uwagi'):
+                    kw['adnotacje'] = exp_combine(kw.get('adnotacje', ''), elem['a'], ". ")
+                else:
+                    kw['uwagi'] = elem['a']
+                for literka in "bcd":
+                    assert not elem.get(literka), (elem, rec, kw)
+            else:
+                raise NotImplementedError(elem, rec, kw)
 
-        zrodlo = exp_parse_str(rec.zrodlo)
-        if zrodlo['id'] == 200:
-            # Wydawnictwo zwarte
-            assert klass == bpp.Wydawnictwo_Zwarte
+        if rec.zrodlo:
+            zrodlo = exp_parse_str(rec.zrodlo)
+            if zrodlo['id'] == 200:
+                # Wydawnictwo zwarte
+                assert klass == bpp.Wydawnictwo_Zwarte
 
-            for literka in 'efg':
-                assert not zrodlo.get(literka), "co mam z tym zrobic literka %s w %r" % (literka, zrodlo)
+                for literka in 'efg':
+                    assert not zrodlo.get(literka), "co mam z tym zrobic literka %s w %r" % (literka, zrodlo)
 
-            assert not kw.get('informacje'), (kw['informacje'], rec, rec.idt)
-            kw['informacje'] = zrodlo['a']
-            if zrodlo.get('b'):
-                kw['informacje'] += ": " + zrodlo.get('b')
+                assert not kw.get('informacje'), (kw['informacje'], rec, rec.idt)
+                kw['informacje'] = zrodlo['a']
+                if zrodlo.get('b'):
+                    kw['informacje'] += ": " + zrodlo.get('b')
 
-            if zrodlo.get('c'):
-                kw['informacje'] += "; " + zrodlo.get("c")
+                if zrodlo.get('c'):
+                    kw['informacje'] += "; " + zrodlo.get("c")
 
-            if zrodlo.get('d'):
-                kw['informacje'] += "; " + zrodlo.get('d')
+                if zrodlo.get('d'):
+                    kw['informacje'] += "; " + zrodlo.get('d')
 
-            if kw['informacje']:
-                res = parse_informacje(kw['informacje'], "tom")
-                if res:
-                    assert not kw.get('tom')
-                    kw['tom'] = res
+                if kw['informacje']:
+                    res = parse_informacje(kw['informacje'], "tom")
+                    if res:
+                        assert not kw.get('tom')
+                        kw['tom'] = res
 
-                    # Zwarte NIE ma numeru zeszytu
-                # kw['nr_zeszytu'] = parse_informacje(kw['informacje'], "numer")
+                        # Zwarte NIE ma numeru zeszytu
+                    # kw['nr_zeszytu'] = parse_informacje(kw['informacje'], "numer")
 
-        elif zrodlo['id'] == 100:
-            # Wydawnictwo_Ciagle
-            assert klass == bpp.Wydawnictwo_Ciagle
-            for literka in 'bcde':
-                if literka in zrodlo.keys():
-                    raise NotImplementedError("co mam z tym zrobic %r" % zrodlo)
+            elif zrodlo['id'] == 100:
+                # Wydawnictwo_Ciagle
+                assert klass == bpp.Wydawnictwo_Ciagle
+                for literka in 'bcde':
+                    if literka in zrodlo.keys():
+                        raise NotImplementedError("co mam z tym zrobic %r" % zrodlo)
 
-            kw['zrodlo'] = dbf.Usi.objects.get(idt_usi=zrodlo['a'][1:]).bpp_id
+                kw['zrodlo'] = dbf.Usi.objects.get(idt_usi=zrodlo['a'][1:]).bpp_id
 
-        elif zrodlo['id'] == 152:
-            # Wydawca indeksowany
-            assert klass == bpp.Wydawnictwo_Zwarte
+            elif zrodlo['id'] == 152:
+                # Wydawca indeksowany
+                assert klass == bpp.Wydawnictwo_Zwarte
 
-            for literka in "ac":
-                # w literce "b" może nie byc tekstu
-                assert zrodlo.get(literka), "brak tekstu w literce %s zrodlo %r" % (literka, zrodlo)
-            for elem in "def":
-                assert elem not in zrodlo.keys()
+                for literka in "ac":
+                    # w literce "b" może nie byc tekstu
+                    assert zrodlo.get(literka), "brak tekstu w literce %s zrodlo %r" % (literka, zrodlo)
+                for elem in "def":
+                    assert elem not in zrodlo.keys()
 
-            if zrodlo.get("b"):
-                if kw.get("wydawca"):
-                    raise NotImplementedError("Juz jest wydawca, prawdopodobnie z tabeli Poz")
-                kw['wydawca'] = dbf.Usi.objects.get(idt_usi=zrodlo['b'][1:]).bpp_wydawca_id
+                if zrodlo.get("b"):
+                    if kw.get("wydawca"):
+                        raise NotImplementedError("Juz jest wydawca, prawdopodobnie z tabeli Poz")
+                    kw['wydawca'] = dbf.Usi.objects.get(idt_usi=zrodlo['b'][1:]).bpp_wydawca_id
 
-            kw['miejsce_i_rok'] = f"{zrodlo['a']} {zrodlo['c']}"
-        else:
-            raise NotImplementedError(zrodlo)
+                kw['miejsce_i_rok'] = f"{zrodlo['a']} {zrodlo['c']}"
+            else:
+                raise NotImplementedError(zrodlo)
 
         if kw['tytul_oryginalny'].find('=') >= 0 and not (
                 kw['tytul_oryginalny'].find('I=532') >= 0
@@ -854,9 +1005,12 @@ def integruj_publikacje():
                     if t1 == kw['tytul']:
                         t1, t2, = t2, t1
                     else:
-                        raise NotImplementedError(
-                            "jest tytul_oryginalny %r a jest i tytul %r i sie ROZNIA!" % (
-                                kw['tytul_oryginalny'], kw['tytul']))
+                        if t2.find("with oneyear prospective") and kw['tytul'].find("with one-year prospective"):
+                            pass
+                        else:
+                            raise NotImplementedError(
+                                "jest tytul_oryginalny %r a jest i tytul %r i sie ROZNIA!" % (
+                                    kw['tytul_oryginalny'], kw['tytul']))
 
             kw['tytul_oryginalny'] = t1
             kw['tytul'] = t2
@@ -866,6 +1020,8 @@ def integruj_publikacje():
         rec.object = res
         rec.save()
 
+        if wos:
+            klass_ext.objects.create(rekord=res, baza=Zewnetrzna_Baza_Danych.objects.get(skrot="WOS"))
 
 def integruj_b_a():
     base_query = dbf.B_A.objects.filter(object_id=None).exclude(idt__object_id=None)

@@ -11,7 +11,7 @@ from django.utils import timezone
 from django.utils.functional import cached_property
 from lxml.etree import Element, SubElement
 
-from bpp.models import TO_AUTOR, MaProcentyMixin, DodajAutoraMixin, const
+from bpp.models import TO_AUTOR, MaProcentyMixin, DodajAutoraMixin, const, Zewnetrzna_Baza_Danych
 from bpp.models.abstract import \
     BazaModeluOdpowiedzialnosciAutorow, DwaTytuly, ModelZRokiem, \
     ModelZWWW, ModelRecenzowany, ModelPunktowany, ModelTypowany, \
@@ -415,3 +415,18 @@ def wydawnictwo_zwarte_autor_post_delete(sender, instance, **kwargs):
     rec = instance.rekord
     rec.ostatnio_zmieniony_dla_pbn = timezone.now()
     rec.save(update_fields=['ostatnio_zmieniony_dla_pbn'])
+
+
+class Wydawnictwo_Zwarte_Zewnetrzna_Baza_Danych(models.Model):
+    rekord = models.ForeignKey(Wydawnictwo_Zwarte, CASCADE, related_name="zewnetrzna_baza_danych")
+    baza = models.ForeignKey(Zewnetrzna_Baza_Danych, CASCADE)
+    info = models.CharField(
+        verbose_name="Informacje dodatkowe",
+        max_length=512,
+        blank=True,
+        null=True)
+
+    class Meta:
+        verbose_name = "powiązanie wydawnictwa zwartego z zewnętrznymi bazami danych"
+        verbose_name_plural = "powiązania wydawnictw zwartych z zewnętrznymi bazami danych"
+

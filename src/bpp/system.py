@@ -24,7 +24,7 @@ from bpp.models import Funkcja_Autora, Zrodlo_Informacji, Jezyk, \
     Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor, \
     Redakcja_Zrodla, Praca_Doktorska, Praca_Habilitacyjna, Patent, Patent_Autor, \
     Rodzaj_Prawa_Patentowego, Dyscyplina_Naukowa, Zewnetrzna_Baza_Danych, Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych, \
-    Autor_Dyscyplina, Wydawca
+    Autor_Dyscyplina, Wydawca, Wydawnictwo_Zwarte_Zewnetrzna_Baza_Danych
 from bpp.models.const import GR_WPROWADZANIE_DANYCH
 from bpp.models.konferencja import Konferencja
 from bpp.models.nagroda import OrganPrzyznajacyNagrody, Nagroda
@@ -68,6 +68,7 @@ groups = {
         Praca_Doktorska, Praca_Habilitacyjna, Patent, Patent_Autor,
         Publikacja_Habilitacyjna, Konferencja, Seria_Wydawnicza,
         Nagroda, Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych,
+        Wydawnictwo_Zwarte_Zewnetrzna_Baza_Danych,
         Wydawca],
     'indeks autorów': [Autor, Autor_Jednostka],
     'administracja': [User, Group, SearchForm],
