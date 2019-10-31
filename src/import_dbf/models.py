@@ -1,7 +1,7 @@
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
-from django.db.models import DO_NOTHING, CASCADE, SET_NULL
+from django.db.models import DO_NOTHING, SET_NULL
 
 
 class Bib(models.Model):
@@ -94,7 +94,7 @@ class Aut(models.Model):
     imiona = models.TextField(blank=True, null=True)
     nazwisko = models.TextField(blank=True, null=True)
     ref = models.TextField(blank=True, null=True)
-    idt_jed = models.ForeignKey('import_dbf.Jed', blank=True, null=True, db_column='idt_jed', on_delete=CASCADE)
+    idt_jed = models.ForeignKey('import_dbf.Jed', blank=True, null=True, db_column='idt_jed', on_delete=DO_NOTHING)
     kad_nr = models.TextField(blank=True, null=True)
     tel = models.TextField(blank=True, null=True)
     email = models.TextField(blank=True, null=True)
