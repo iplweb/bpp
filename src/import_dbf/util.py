@@ -456,7 +456,10 @@ def integruj_publikacje():
                 if literka in title.keys():
                     raise NotImplementedError("co mam z tym zrobic %r" % title)
 
-        kw['charakter_formalny'] = charaktery_formalne[rec.charakter]
+        try:
+            kw['charakter_formalny'] = charaktery_formalne[rec.charakter]
+        except KeyError:
+            kw['charakter_formalny'] = bpp.Charakter_Formalny.objects.get(skrot='000')
 
         try:
             kw['typ_kbn'] = typy_kbn[rec.kbn]
@@ -850,6 +853,7 @@ def integruj_publikacje():
 
                 elif elem['id'] == 991:
                     # DOI
+                    assert not kw.get('doi')
                     kw['doi'] = elem['a']
 
                 elif elem['id'] == 969:
@@ -1019,6 +1023,17 @@ def integruj_publikacje():
 
                 assert not kw.get('www'), (elem, rec, kw)
                 kw['www'] = elem['a']
+                for literka in "bcd":
+                    assert not elem.get(literka), (elem, rec, rec.idt)
+
+            elif elem['id'] == 991:
+                # DOI
+                if kw.get("doi"):
+                    assert not kw.get("adnotacje")
+                    kw['adnotacje'] = "Drugie DOI? " + elem['a']
+                else:
+                    kw['doi'] = elem['a']
+
                 for literka in "bcd":
                     assert not elem.get(literka), (elem, rec, rec.idt)
 
