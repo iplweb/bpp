@@ -1,6 +1,9 @@
 version: 2
 jobs:
   build:
+    branches:
+      only:
+        - master
     
     docker:
       - image: mpasternak79/circleci-python:3.6-node-browsers-nginx-http-push
