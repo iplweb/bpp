@@ -386,9 +386,8 @@ def integruj_zrodla():
 
 def znajdz_separator_isbn(s):
     for elem in ["e-ISBN:", "e-ISBN", "ISBN:", "ISBN", "ISSN:", "ISSN"]:
-        if elem.find(s)>=0:
+        if elem.find(s) >= 0:
             return elem
-
 
 
 def integruj_publikacje():
@@ -693,9 +692,9 @@ def integruj_publikacje():
 
                 elif elem['id'] == 205:
                     isbn = elem['a']
-                    
-                    if isbn.find(". [Dostęp 4.11.2015]. Dostępny w: ")>=0:
-                        isbn, www = isbn.split(". [Dostęp 4.11.2015]. Dostępny w: ")                        
+
+                    if isbn.find(". [Dostęp 4.11.2015]. Dostępny w: ") >= 0:
+                        isbn, www = isbn.split(". [Dostęp 4.11.2015]. Dostępny w: ")
                         kw['www'] = www
 
                     marker = znajdz_separator_isbn(isbn)
@@ -703,7 +702,7 @@ def integruj_publikacje():
                         l = isbn.split(marker)
                         if l[0].strip():
                             raise NotImplementedError("Tekst przed ISBN", l, rec, elem)
-                        if len(l[1])>15:
+                        if len(l[1]) > 15:
                             raise NotImplementedError("Tekst PO ISBN", l, rec, elem)
 
                     if isbn.find("e-ISBN:") >= 0:
@@ -800,7 +799,7 @@ def integruj_publikacje():
                         l = isbn.split(marker)
                         if l[0].strip():
                             raise NotImplementedError("Tekst przed ISBN", l, rec, elem)
-                        if len(l[1])>15:
+                        if len(l[1]) > 15:
                             raise NotImplementedError("Tekst PO ISBN", l, rec, elem)
 
                     if isbn.find("e-ISBN:") >= 0:
@@ -835,7 +834,12 @@ def integruj_publikacje():
                         if "http://" + kw['www'] == elem['a'] or kw['www'] == elem['a']:
                             del kw['www']
                         else:
-                            raise NotImplementedError("dwa adresy www?", elem, kw, rec)
+                            kw['adnotacje'] = exp_combine(
+                                kw.get('adnotacje', ''),
+                                "Drugi adres WWW? " + kw['www'],
+                                sep="\n"
+                            )
+                            del kw['www']
 
                     assert not kw.get('www'), (elem, rec, kw)
                     kw['www'] = elem['a']
@@ -855,20 +859,6 @@ def integruj_publikacje():
                     # open-access-release-time: AT_PUBLICATION
                     # open-access-article-mode: OPEN_JOURNAL
 
-                    s = dbf.Usi.objects.get(idt_usi=elem['a'][1:])
-                    o = bpp.Wersja_Tekstu_OpenAccess.objects.get(skrot=s.nazwa)
-                    kw['openaccess_wersja_tekstu'] = o
-
-                    if elem.get('b'):
-                        s = dbf.Usi.objects.get(idt_usi=elem['b'][1:])
-                        o = bpp.Licencja_OpenAccess.objects.get(skrot=s.nazwa.replace(" ", "-"))
-                        kw['openaccess_licencja'] = o
-
-                    if elem.get('c'):
-                        s = dbf.Usi.objects.get(idt_usi=elem['c'][1:])
-                        o = bpp.Czas_Udostepnienia_OpenAccess.objects.get(skrot=s.nazwa)
-                        kw['openaccess_czas_publikacji'] = o
-
                     if klass == bpp.Wydawnictwo_Ciagle:
                         oa_klass = bpp.Tryb_OpenAccess_Wydawnictwo_Ciagle
                     elif klass == bpp.Wydawnictwo_Zwarte:
@@ -876,14 +866,42 @@ def integruj_publikacje():
                     else:
                         raise NotImplementedError(klass)
 
-                    if elem.get('e'):
-                        s = dbf.Usi.objects.get(idt_usi=elem['e'][1:])
-                        o = oa_klass.objects.get(skrot=s.nazwa)
-                        kw['openaccess_tryb_dostepu'] = o
+                    del elem['id']
 
-                    if not ((rec.idt == 75935 and rec.tytul_or_s.startswith("Ocena kifozy piersiowej"))
-                            or (rec.idt==76255 and rec.tytul_or_s.startswith("The intima with early"))):
-                        assert not elem.get('d'), (elem, kw, rec)
+                    if elem =={'a': '|0000005187', 'b': '|0000005188', 'c': '', 'd': '|0000005189', 'e': ''}:
+                        # Rekordy z takim schematem informacji pojawiaja sie co jakis czas
+                        # i nie bardzo widze ich powiazanie z informacja wyswietlana na stornie
+                        # Najprawdopodobniej te informacje OpenAccess beda zaimportowane w sposob
+                        # nieprawidlowy. Na ten moment (31.10.2019) zostaje jak-jest:
+                        kw['openaccess_wersja_tekstu'] = bpp.Wersja_Tekstu_OpenAccess.objects.get(skrot="FINAL_PUBLISHED")
+                        kw['openaccess_licencja'] = bpp.Licencja_OpenAccess.objects.get(skrot="CC-BY-NC-SA")
+                        kw['openaccess_czas_publikacji'] = bpp.Czas_Udostepnienia_OpenAccess.objects.get(skrot="AT_PUBLICATION")
+                        kw['openaccess_tryb_dostepu'] = oa_klass.objects.get(skrot="OPEN_JOURNAL")
+                    else:
+
+                        s = dbf.Usi.objects.get(idt_usi=elem['a'][1:])
+                        o = bpp.Wersja_Tekstu_OpenAccess.objects.get(skrot=s.nazwa)
+                        kw['openaccess_wersja_tekstu'] = o
+
+                        if elem.get('b'):
+                            s = dbf.Usi.objects.get(idt_usi=elem['b'][1:])
+                            o = bpp.Licencja_OpenAccess.objects.get(skrot=s.nazwa.replace(" ", "-"))
+                            kw['openaccess_licencja'] = o
+
+                        if elem.get('c'):
+                            s = dbf.Usi.objects.get(idt_usi=elem['c'][1:])
+                            o = bpp.Czas_Udostepnienia_OpenAccess.objects.get(skrot=s.nazwa)
+                            kw['openaccess_czas_publikacji'] = o
+
+                        if elem.get('d'):
+                            # Zazwyczaj prowadzi do pustego wpisu
+                            s = dbf.Usi.objects.get(idt_usi=elem['d'][1:])
+                            assert not s.nazwa, (elem, kw, rec)
+
+                        if elem.get('e'):
+                            s = dbf.Usi.objects.get(idt_usi=elem['e'][1:])
+                            o = oa_klass.objects.get(skrot=s.nazwa)
+                            kw['openaccess_tryb_dostepu'] = o
 
                 elif elem['id'] == 107:
                     s = dbf.Usi.objects.get(idt_usi=elem['a'][1:])
@@ -918,8 +936,29 @@ def integruj_publikacje():
                         assert not elem.get(literka)
 
                 elif elem['id'] == 983:
-                    assert not kw.get('adnotacje'), (elem, kw, rec)
-                    kw['adnotacje'] = "Import bazy danych. Niejasny element POZ_G: %s" % elem
+                    kw['adnotacje'] = exp_combine(
+                        kw.get('adnotacje', ''),
+                        "Import bazy danych. Niejasny element POZ_G: %s" % elem,
+                        sep="\n")
+
+                elif elem['id'] == 988:
+                    if rec.idt == 77270:
+                        # dwa numery ISBN, do tego z problemem w zapisie
+                        kw['isbn'] = dbf.Usi.objects.get(idt_usi=elem['a'][1:]).nazwa
+                        kw['e_isbn'] = dbf.Usi.objects.get(idt_usi=elem['b'][1:11]).nazwa
+                    else:
+                        if elem.get('a'):
+                            kw['isbn'] = dbf.Usi.objects.get(idt_usi=elem['a'][1:]).nazwa
+
+                        if elem.get('b'):
+                            if elem['b'].startswith("#"):
+                                assert not kw.get('adnotacje')
+                                kw['adnotacje'] = "Niejasny element importu: %r" % elem['b']
+                            else:
+                                kw['e_isbn'] = dbf.Usi.objects.get(idt_usi=elem['b'][1:11]).nazwa
+
+                        for literka in "cde":
+                            assert not elem.get(literka), (elem, kw, rec)
 
                 else:
                     raise NotImplementedError(elem, rec, rec.idt)
@@ -931,6 +970,13 @@ def integruj_publikacje():
                     kw['adnotacje'] = exp_combine(kw.get('adnotacje', ''), elem['a'], ". ")
                 else:
                     kw['uwagi'] = elem['a']
+                for literka in "bcd":
+                    assert not elem.get(literka), (elem, rec, kw)
+            elif elem['id'] == 205:
+                if elem['a'].startswith("ISBN "):
+                    kw['isbn'] = elem['a'][5:].strip()
+                else:
+                    raise NotImplementedError(elem, rec, kw)
                 for literka in "bcd":
                     assert not elem.get(literka), (elem, rec, kw)
             else:
@@ -1022,6 +1068,7 @@ def integruj_publikacje():
 
         if wos:
             klass_ext.objects.create(rekord=res, baza=Zewnetrzna_Baza_Danych.objects.get(skrot="WOS"))
+
 
 def integruj_b_a():
     base_query = dbf.B_A.objects.filter(object_id=None).exclude(idt__object_id=None)
