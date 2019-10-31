@@ -824,10 +824,12 @@ def integruj_publikacje():
                         assert not kw.get('adnotacje'), (kw, elem, rec)
                         kw['adnotacje'] = adnotacje.strip()
 
-                    if kw.get('isbn', '').find(". Dostępny w: ") > 0:
-                        isbn, www = kw['isbn'].split(". Dostępny w: ")
-                        kw['isbn'] = isbn
-                        kw['www'] = www
+                    for dostepnyw in [". Dostępny w: ", " ; dostępny w: "]:
+                        if kw.get('isbn', '').find(dostepnyw) > 0:
+                            isbn, www = kw['isbn'].split(dostepnyw)
+                            kw['isbn'] = isbn
+                            assert not kw.get('www'), (elem, kw, rec)
+                            kw['www'] = www
 
                 elif elem['id'] == 995:
                     if kw.get("www"):
@@ -975,10 +977,39 @@ def integruj_publikacje():
             elif elem['id'] == 205:
                 if elem['a'].startswith("ISBN "):
                     kw['isbn'] = elem['a'][5:].strip()
+                elif elem['a'].startswith("Toż w:"):
+                    kw['uwagi'] = exp_combine(
+                        kw.get('uwagi', ''),
+                        elem.get('a')
+                    )
+                elif elem['a'].startswith("https"):
+                    kw['adnotacje'] = exp_combine(
+                        kw.get('adnotacje', ''),
+                        "Drugi adres strony WWW: " + elem.get('a')
+                    )
                 else:
                     raise NotImplementedError(elem, rec, kw)
+
                 for literka in "bcd":
                     assert not elem.get(literka), (elem, rec, kw)
+
+            elif elem['id'] == 995:
+                if kw.get("www"):
+                    if "http://" + kw['www'] == elem['a'] or kw['www'] == elem['a']:
+                        del kw['www']
+                    else:
+                        kw['adnotacje'] = exp_combine(
+                            kw.get('adnotacje', ''),
+                            "Drugi adres WWW? " + kw['www'],
+                            sep="\n"
+                        )
+                        del kw['www']
+
+                assert not kw.get('www'), (elem, rec, kw)
+                kw['www'] = elem['a']
+                for literka in "bcd":
+                    assert not elem.get(literka), (elem, rec, rec.idt)
+
             else:
                 raise NotImplementedError(elem, rec, kw)
 
