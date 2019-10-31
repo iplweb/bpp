@@ -1,8 +1,10 @@
 import os
 
 import progressbar
+import sys
 from dbfread import DBF
 from django.contrib.contenttypes.models import ContentType
+from django.db import IntegrityError
 from django.db.models import Q, Count
 
 from bpp import models as bpp
@@ -1160,7 +1162,16 @@ def integruj_b_a():
     for elem in dbf.B_A.objects.values("idt_id", "idt_aut_id", ).annotate(cnt=Count('*')).order_by('idt_id', 'idt_aut_id').filter(cnt__gt=1):
         cnt = elem['cnt']
         for melem in dbf.B_A.objects.filter(idt_id=elem['idt_id'], idt_aut_id=elem['idt_aut_id']):
-            print("Kasuje", melem)
+            print("1 Podwojne przypisanie", melem.idt.tytul_or_s, "(", melem.idt.rok, ") - ", melem.idt_aut)
+            melem.delete()
+            cnt -= 1
+            if cnt == 1:
+                break
+
+    for elem in dbf.B_A.objects.values("idt_id", "idt_aut__bpp_autor_id", ).annotate(cnt=Count('*')).order_by('idt_id', 'idt_aut__bpp_autor_id').filter(cnt__gt=1):
+        cnt = elem['cnt']
+        for melem in dbf.B_A.objects.filter(idt_id=elem['idt_id'], idt_aut__bpp_autor_id=elem['idt_aut__bpp_autor_id']):
+            print("2 Podwojne przypisanie", melem.idt.tytul_or_s, "(", melem.idt.rok, ") - ", melem.idt_aut)
             melem.delete()
             cnt -= 1
             if cnt == 1:
@@ -1181,7 +1192,10 @@ def integruj_b_a():
 
                 "afiliacja",
 
-                "lp"
+                "lp",
+
+                "idt__idt",
+                "idt__tytul_or_s"
             ).distinct(),
             base_query.count()):
 
@@ -1202,15 +1216,19 @@ def integruj_b_a():
             except TypeError:
                 lp = int(rec.lp)
 
-        klass.objects.create(
-            rekord_id=bpp_rec_id,
-            autor_id=bpp_autor_id,
-            jednostka_id=bpp_jednostka_id,
-            zapisany_jako=f"{rec.idt_aut.imiona} {rec.idt_aut.nazwisko}",
-            afiliuje=rec.afiliacja == '*',
-            kolejnosc=lp,
-            typ_odpowiedzialnosci_id=ta_id
-        )
+        try:
+            klass.objects.create(
+                rekord_id=bpp_rec_id,
+                autor_id=bpp_autor_id,
+                jednostka_id=bpp_jednostka_id,
+                zapisany_jako=f"{rec.idt_aut.imiona} {rec.idt_aut.nazwisko}",
+                afiliuje=rec.afiliacja == '*',
+                kolejnosc=lp,
+                typ_odpowiedzialnosci_id=ta_id
+            )
+        except IntegrityError as e:
+            print("Rekord: %s, %s -> IntegrityError" % (rec.idt.tytul_or_s, rec.idt.idt))
+            sys.exit(1)
 
         if len(connection.queries) > 1:
             for elem in connection.queries:

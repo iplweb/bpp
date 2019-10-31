@@ -131,7 +131,10 @@ class Aut(models.Model):
         ordering = ('nazwisko', 'imiona')
 
     def __str__(self):
-        return f"{self.nazwisko} {self.imiona}, {self.tytul}"
+        ret = f"{self.nazwisko} {self.imiona}"
+        if self.tytul:
+            ret += ", {self.tytul}"
+        return ret
 
     def get_bpp(self):
         return self.bpp_autor
