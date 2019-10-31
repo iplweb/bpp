@@ -882,7 +882,7 @@ def integruj_publikacje():
                         kw['openaccess_tryb_dostepu'] = o
 
                     if not ((rec.idt == 75935 and rec.tytul_or_s.startswith("Ocena kifozy piersiowej"))
-                            or (rec.idt==76255 and rec.tytul_or_s.startswith("The intima with early")):
+                            or (rec.idt==76255 and rec.tytul_or_s.startswith("The intima with early"))):
                         assert not elem.get('d'), (elem, kw, rec)
 
                 elif elem['id'] == 107:
