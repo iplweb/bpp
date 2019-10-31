@@ -962,6 +962,18 @@ def integruj_publikacje():
                         for literka in "cde":
                             assert not elem.get(literka), (elem, kw, rec)
 
+                elif elem['id'] == 985:
+                    # elem['a'] prowadzi do IDT_USI ktorego nazwa to
+                    # PubMed ID
+                    pmid = dbf.Usi.objects.get(idt_usi=elem['a'][1:11]).nazwa
+                    if kw.get('pubmed_id'):
+                        assert kw['pubmed_id'] == pmid, (elem, kw, rec)
+                    else:
+                        kw['pubmed_id'] = pmid
+
+                    for literka in "bcde":
+                        assert not elem.get(literka), (elem, kw, rec)
+
                 else:
                     raise NotImplementedError(elem, rec, rec.idt)
 
