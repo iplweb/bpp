@@ -90,4 +90,10 @@ CREATE UNIQUE INDEX import_dbf_idt_wyd ON import_dbf_wyd(idt_wyd);
 update import_dbf_aut set idt_jed = (select idt_jed from import_dbf_jed where skrot = '000') where idt_jed is NULL;
 update import_dbf_b_a set idt_jed = (select idt_jed from import_dbf_jed where skrot = '000') where idt_jed is NULL;
 
+update import_dbf_poz set tresc = '884$ #a$ 28940458 #b$' || E'\r\n' ||
+'#985$ #a$|0000005891#b$#c$'|| E'\r\n' ||
+'#969$ #a$|00000' where idt = 81868 and lp = 3;
+
+
+
 COMMIT;
