@@ -11,7 +11,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Q, Count, Max, Min
 
 from bpp import models as bpp
-from bpp.models import Status_Korekty, wez_zakres_stron, parse_informacje, Zewnetrzna_Baza_Danych
+from bpp.models import Status_Korekty, wez_zakres_stron, parse_informacje, Zewnetrzna_Baza_Danych, cache
 from bpp.system import User
 from import_dbf import models as dbf
 from .codecs import custom_search_function  # noqa
@@ -407,8 +407,110 @@ def integruj_zrodla():
 
 
 @transaction.atomic
-def integruj_publikacje(idt_min=None, idt_max=None):
-    print(idt_min, idt_max)
+def mapuj_elementy_publikacji(offset, limit):
+    # Zbiera elementy 'zrodlo', 'poz_', 'b_u' do jednej tabeli
+
+    print(offset, limit)
+    ids_list = dbf.Bib.objects.all().exclude(analyzed=True).values_list('pk')[offset:limit]
+
+    base_query = dbf.Bib.objects.filter(pk__in=ids_list).select_for_update()
+
+    iter = base_query
+    if offset == 0:
+        iter = pbar(base_query, base_query.count())
+
+    for rec in iter:
+
+        poz_a = dbf.Poz.objects.get_for_model(rec.idt, "A")
+        if poz_a:
+            rec.tytul_or += poz_a
+
+        # Jeżeli pole 'zrodlo' jest dosc dlugie, reszta tego pola moze znalezc
+        # sie w tabeli "Poz" z oznaczeniem literowym 'C'
+        zrodlo_cd = dbf.Poz.objects.get_for_model(rec.idt, "C")
+        if zrodlo_cd:
+            rec.zrodlo += zrodlo_cd
+
+        # Dodaj elementy z B_U do POZ_G tak, aby były na koncu czyli
+        # były zaimportowane jako najaktualniejsze
+        # bpp=# select distinct(substr(comm, 1, 3)) from import_dbf_b_u;
+        #  substr
+        # --------
+        #  985 -> jeden rekord z numerkiem 28940458 -> pubmed ID?
+        #  988 -> ISBN, niekiedy punktacja, niekiedy DWA ISBN
+        #  202 -> b#Polskie Towrazystwo Walki z Kalectwem; Akad. Med; Wydaw. Continuo etc
+        #  154 -> "Rozprawy Habilitacyjne", "Zdrowe Życie",
+        #  100 -> Źródło indeksowane
+        #  203 -> Onkologia Kliniczna, Biblioteka Polskiego Przeglądu Chir
+        #  107 -> ISSN
+        #  969 -> OpenAccess
+        #  152 -> Wydawnictwo (Volumed, GEOPOL, Akad. Med)
+        # (9 rows)
+
+        for source, data in [
+            ('poz_g', dbf.Poz.objects.get_for_model(rec.idt, "G")),
+            ('poz_n', dbf.Poz.objects.get_for_model(rec.idt, "N"))
+        ]:
+            for element in [elem.strip() for elem in data.split('\r\n') if elem.strip()]:
+                parsed = exp_parse_str(element)
+                id = parsed['id']
+                del parsed['id']
+
+                dbf.Bib_Desc.objects.create(
+                    idt=rec,
+                    elem_id=id,
+                    value=parsed,
+                    source=source
+                )
+
+        bu = defaultdict(dict)
+        for elem in rec.b_u_set.all():
+            id, literka, wartosc = elem.comm.split('#')
+            id = int(id)
+            bu[id]['id'] = int(id)
+            bu[id][literka] = "|" + "%.10i" % elem.idt_usi_id
+            bu[id]['source'] = "b_u"
+
+        if bu:
+            for id, value in bu.items():
+                # id = element['id']
+                del value['id']
+                dbf.Bib_Desc.objects.create(
+                    idt=rec,
+                    elem_id=id,
+                    value=value,
+                    source='b_u'
+                )
+
+        if rec.zrodlo:
+            zrodlo = exp_parse_str(rec.zrodlo)
+            id = zrodlo['id']
+            del zrodlo['id']
+            dbf.Bib_Desc.objects.create(
+                idt=rec,
+                elem_id=id,
+                value=element,
+                source='b_u'
+            )
+
+        rec.analyzed = True
+        rec.save()
+
+
+@transaction.atomic
+def ekstrakcja_konferencji():
+    for elem in dbf.Bib_Desc.objects.filter(id=103):
+        bpp.Konferencja.objects.get_or_create(nazwa=elem.value['a'])
+        for literka in "bcde":
+            assert not elem.value.get(literka)
+
+
+@transaction.atomic
+def integruj_publikacje(offset=None, limit=None):
+    print(offset, limit)
+
+    if cache.enabled():
+        cache.disable()
 
     # zagadnienie nr 1 BPP: prace mają rok i rok_punkt inny: select rok, rok_punkt from import_dbf_bib where rok_punkt != rok and rok_punkt != '' order by rok;
 
@@ -442,9 +544,9 @@ def integruj_publikacje(idt_min=None, idt_max=None):
         'ű': 'po korekcie'
     }
 
-    base_query = dbf.Bib.objects.filter(object_id=None)
-    if idt_min is not None and idt_max is not None:
-        base_query = base_query.filter(idt__gte=idt_min, idt__lt=idt_max).select_for_update(nowait=True)
+    id_list = dbf.Bib.objects.filter(object_id=None, analyzed=True)[offset:limit].values_list('pk')
+
+    base_query = dbf.Bib.objects.filter(pk__in=id_list).select_for_update(nowait=True)
 
     base_query = base_query.select_related()
 
@@ -457,20 +559,14 @@ def integruj_publikacje(idt_min=None, idt_max=None):
     charaktery_formalne = dict([(x.skrot, x.bpp_id) for x in dbf.Pub.objects.all()])
 
     iter = base_query
-    if idt_min < 100:
+    if offset == 0:
         iter = pbar(base_query, base_query.count())
 
     for rec in iter:
         wos = False
         kw = {}
 
-        poz_a = dbf.Poz.objects.get_for_model(rec.idt, "A")
-        if poz_a:
-            rec.tytul_or += poz_a
-
         tytul = exp_parse_str(rec.tytul_or)
-
-        title = None
 
         if rec.title:
             try:
@@ -665,49 +761,10 @@ def integruj_publikacje(idt_min=None, idt_max=None):
         else:
             raise NotImplementedError(tytul)
 
-        # Jeżeli pole 'zrodlo' jest dosc dlugie, reszta tego pola moze znalezc
-        # sie w tabeli "Poz" z oznaczeniem literowym 'C'
-        zrodlo_cd = dbf.Poz.objects.get_for_model(rec.idt, "C")
-        if zrodlo_cd:
-            rec.zrodlo += zrodlo_cd
+        for bdesc in rec.bib_desc_set.all():
 
-        poz_g = dbf.Poz.objects.get_for_model(rec.idt, "G")
-        poz_n = dbf.Poz.objects.get_for_model(rec.idt, "N")
-
-        # Dodaj elementy z B_U do POZ_G tak, aby były na koncu czyli
-        # były zaimportowane jako najaktualniejsze
-        # bpp=# select distinct(substr(comm, 1, 3)) from import_dbf_b_u;
-        #  substr
-        # --------
-        #  985 -> jeden rekord z numerkiem 28940458 -> pubmed ID?
-        #  988 -> ISBN, niekiedy punktacja, niekiedy DWA ISBN
-        #  202 -> b#Polskie Towrazystwo Walki z Kalectwem; Akad. Med; Wydaw. Continuo etc
-        #  154 -> "Rozprawy Habilitacyjne", "Zdrowe Życie",
-        #  100 -> Źródło indeksowane
-        #  203 -> Onkologia Kliniczna, Biblioteka Polskiego Przeglądu Chir
-        #  107 -> ISSN
-        #  969 -> OpenAccess
-        #  152 -> Wydawnictwo (Volumed, GEOPOL, Akad. Med)
-        # (9 rows)
-
-        bu = defaultdict(dict)
-        for elem in rec.b_u_set.all():
-            id, literka, wartosc = elem.comm.split('#')
-            id = int(id)
-            bu[id]['id'] = int(id)
-            bu[id][literka] = "|" + "%.10i" % elem.idt_usi_id
-
-        elementy = []
-        if poz_g:
-            for element in [elem.strip() for elem in poz_g.split('\r\n') if elem.strip()]:
-                elementy.append(exp_parse_str(element))
-        if bu:
-            for element in bu:
-                elementy.append(bu[element])
-        if rec.zrodlo:
-            elementy.append(exp_parse_str(rec.zrodlo))
-
-        for elem in elementy:
+            elem = bdesc.value
+            elem['id'] = bdesc.elem_id
 
             if elem['id'] == 202:
                 wydawca_id = None
@@ -789,16 +846,11 @@ def integruj_publikacje(idt_min=None, idt_max=None):
 
             elif elem['id'] == 103:
                 # Konferencja
-                try:
-                    konferencja = bpp.Konferencja.objects.get(nazwa=elem['a'])
-                except bpp.Konferencja.DoesNotExist:
-                    konferencja = bpp.Konferencja.objects.create(nazwa=elem['a'])
+                konferencja = bpp.Konferencja.objects.get(nazwa=elem['a'])
 
                 assert not kw.get('konferencja'), (elem, rec)
 
                 kw['konferencja'] = konferencja
-                for literka in "bcde":
-                    assert not elem.get(literka)
 
             elif elem['id'] == 153:
                 assert not kw.get('szczegoly')
@@ -1034,12 +1086,11 @@ def integruj_publikacje(idt_min=None, idt_max=None):
 
             # Koniec rec.zrodlo
 
-            else:
-                raise NotImplementedError(elem, rec, rec.idt)
+            #
+            # poz_n
+            #
 
-        if poz_n:
-            elem = exp_parse_str(poz_n)
-            if elem['id'] == 206:
+            elif elem['id'] == 206:
                 if kw.get('uwagi'):
                     kw['adnotacje'] = exp_combine(kw.get('adnotacje', ''), elem['a'], ". ")
                 else:
@@ -1093,8 +1144,12 @@ def integruj_publikacje(idt_min=None, idt_max=None):
                 for literka in "bcd":
                     assert not elem.get(literka), (elem, rec, rec.idt)
 
+            #
+            # Koniec Poz_n
+            #
+
             else:
-                raise NotImplementedError(elem, rec, kw)
+                raise NotImplementedError(elem, rec, rec.idt)
 
         if kw['tytul_oryginalny'].find('=') >= 0 and not (
                 kw['tytul_oryginalny'].find('I=532') >= 0
@@ -1137,6 +1192,9 @@ def wyswietl_prace_bez_dopasowania():
 
 @transaction.atomic
 def usun_podwojne_przypisania_b_a():
+    from django.conf import settings
+    setattr(settings, 'ENABLE_DATA_AKT_PBN_UPDATE', False)
+
     for elem in dbf.B_A.objects.values("idt_id", "idt_aut_id", ).annotate(cnt=Count('*')).order_by('idt_id',
                                                                                                    'idt_aut_id').filter(
         cnt__gt=1):
@@ -1160,8 +1218,8 @@ def usun_podwojne_przypisania_b_a():
                 break
 
 
-def partition(min, max, num_proc):
-    s = int(ceil((max - min) / num_proc))
+def partition(min, max, num_proc, fun=ceil):
+    s = int(fun((max - min) / num_proc))
     cnt = min
     ret = []
     while cnt < max:
@@ -1175,11 +1233,15 @@ def partition_ids(model, num_proc, attr="idt"):
     return partition(d['min'], d['max'], num_proc)
 
 
-def partition_count(model, num_proc):
-    return partition(0, model.objects.count(), num_proc)
+def partition_count(objects, num_proc):
+    return partition(0, objects.count(), num_proc, fun=ceil)
+
 
 @transaction.atomic
 def integruj_b_a(idt_min=None, idt_max=None):
+    from django.conf import settings
+    setattr(settings, 'ENABLE_DATA_AKT_PBN_UPDATE', False)
+
     ctype_to_klass_map = {
         ContentType.objects.get_by_natural_key("bpp", "wydawnictwo_ciagle").pk: bpp.Wydawnictwo_Ciagle_Autor,
         ContentType.objects.get_by_natural_key("bpp", "wydawnictwo_zwarte").pk: bpp.Wydawnictwo_Zwarte_Autor,

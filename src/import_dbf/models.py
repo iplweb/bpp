@@ -1,7 +1,8 @@
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
+from django.contrib.postgres.fields import JSONField
 from django.db import models
-from django.db.models import DO_NOTHING
+from django.db.models import DO_NOTHING, CASCADE
 
 
 class Bib(models.Model):
@@ -79,6 +80,8 @@ class Bib(models.Model):
     content_type = models.ForeignKey(ContentType, DO_NOTHING, null=True, blank=True)
     object = GenericForeignKey()
 
+    analyzed = models.BooleanField(default=False)
+
     class Meta:
         managed = False
         db_table = 'import_dbf_bib'
@@ -88,6 +91,14 @@ class Bib(models.Model):
     def __str__(self):
         return self.tytul_or_s
 
+class Bib_Desc(models.Model):
+    idt = models.ForeignKey(Bib, CASCADE)
+    elem_id = models.PositiveSmallIntegerField()
+    value = JSONField()
+    source = models.CharField(max_length=10)
+
+    class Meta:
+        ordering = ('idt', 'source')
 
 class Aut(models.Model):
     idt_aut = models.TextField(primary_key=True)

@@ -13,7 +13,7 @@ from import_dbf.models import Bib, B_A, Aut
 from import_dbf.util import integruj_wydzialy, integruj_jednostki, integruj_uczelnia, integruj_autorow, \
     integruj_publikacje, integruj_charaktery, integruj_jezyki, integruj_kbn, integruj_zrodla, integruj_b_a, \
     wyswietl_prace_bez_dopasowania, usun_podwojne_przypisania_b_a, partition_ids, integruj_tytuly_autorow, \
-    integruj_funkcje_autorow
+    integruj_funkcje_autorow, partition_count, mapuj_elementy_publikacji, ekstrakcja_konferencji
 
 import logging
 
@@ -49,7 +49,7 @@ class Command(BaseCommand):
         db.connections.close_all()
 
         cpu_count = multiprocessing.cpu_count()
-        num_proc = int(floor(cpu_count * 0.875)) or 1
+        num_proc = int(floor(cpu_count * 0.75)) or 1
         pool = multiprocessing.Pool(processes=num_proc)
 
         pool.apply(integruj_uczelnia, (uczelnia, skrot))
@@ -78,16 +78,20 @@ class Command(BaseCommand):
             logger.debug("Zrodla")
             pool.apply(integruj_zrodla)
 
-        if cache.enabled():
-            cache.disable()
-
         if enable_all or options['enable_publikacja']:
             logger.debug("Publikacje")
-            pool.starmap(integruj_publikacje, partition_ids(Bib, num_proc))
+
+            pool.starmap(mapuj_elementy_publikacji, partition_count(
+                Bib.objects.all().exclude(analyzed=True), num_proc))
+
+            pool.aply(ekstrakcja_konferencji)
+
+            pool.starmap(integruj_publikacje, partition_count(
+                Bib.objects.filter(object_id=None, analyzed=True), num_proc))
+
             pool.apply(wyswietl_prace_bez_dopasowania)
 
         if enable_all or options['enable_b_a']:
-            setattr(settings, 'ENABLE_DATA_AKT_PBN_UPDATE', False)
             pool.apply(usun_podwojne_przypisania_b_a)
             logger.debug("Integracja B_A")
             pool.map(integruj_b_a, partition_ids(B_A, num_proc, "id"))

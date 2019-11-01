@@ -152,7 +152,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Bib',
             fields=[
-                ('idt', models.TextField(primary_key=True, serialize=False)),
+                ('idt', models.IntegerField(primary_key=True, serialize=False)),
                 ('tytul_or', models.TextField(blank=True, null=True)),
                 ('title', models.TextField(blank=True, null=True)),
                 ('zrodlo', models.TextField(blank=True, null=True)),

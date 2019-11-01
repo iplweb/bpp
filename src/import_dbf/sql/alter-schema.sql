@@ -62,6 +62,8 @@ ALTER TABLE import_dbf_usi ADD COLUMN bpp_seria_wydawnicza_id INTEGER;
 
 ALTER TABLE import_dbf_bib ADD COLUMN object_id INTEGER;
 ALTER TABLE import_dbf_bib ADD COLUMN content_type_id INTEGER;
+ALTER TABLE import_dbf_bib ADD COLUMN analyzed BOOLEAN DEFAULT 'f';
+CREATE INDEX ON import_dbf_bib(analyzed);
 CREATE INDEX ON import_dbf_bib(object_id);
 
 ALTER TABLE import_dbf_b_a ADD COLUMN object_id INTEGER;
@@ -95,6 +97,7 @@ update import_dbf_poz set tresc = '884$ #a$ 28940458 #b$' || E'\r\n' ||
 '#985$ #a$|0000005891#b$#c$'|| E'\r\n' ||
 '#969$ #a$|00000' where idt = 81868 and lp = 3;
 
-
+create index on import_dbf_poz(idt, kod_opisu);
+create index on import_dbf_poz(idt, kod_opisu, lp);
 
 COMMIT;
