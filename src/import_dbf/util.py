@@ -1,12 +1,14 @@
 import os
-import sys
 from collections import defaultdict
+from math import ceil
 
 import progressbar
+import sys
+from builtins import NotImplementedError
 from dbfread import DBF
 from django.contrib.contenttypes.models import ContentType
-from django.db import IntegrityError
-from django.db.models import Q, Count
+from django.db import IntegrityError, transaction
+from django.db.models import Q, Count, Max, Min
 
 from bpp import models as bpp
 from bpp.models import Status_Korekty, wez_zakres_stron, parse_informacje, Zewnetrzna_Baza_Danych
@@ -40,22 +42,25 @@ def exp_combine(a, b, sep=", "):
     return ret
 
 
-def import_dbf(filename, appname="import_dbf"):
+def dbf2sql(filename, appname="import_dbf"):
     tablename = appname + "_" + os.path.basename(filename.split(".")[0]).lower()
     dbf = DBF(filename, encoding="my_cp1250")
 
-    print("BEGIN;")
-    print("DROP TABLE IF EXISTS %s;" % tablename)
-    print("CREATE TABLE %s(" % tablename)
+    output = open(filename + ".sql", "w")
+    output.write("BEGIN;\n")
+    output.write("DROP TABLE IF EXISTS %s;\n" % tablename)
+    output.write("CREATE TABLE %s(\n" % tablename)
     for field in dbf.fields:
-        print("\t%s text," % field.name.lower())
-    print("\t_ignore_me text);")
+        output.write("\t%s text,\n" % field.name.lower())
+    output.write("\t_ignore_me text);\n")
 
     for record in dbf:
-        print("INSERT INTO %s(%s) VALUES(%s);" % (tablename, ", ".join([f.lower() for f in record]),
-                                                  ", ".join(["'%s'" % addslashes(v or '') for v in record.values()])))
+        output.write("INSERT INTO %s(%s) VALUES(%s);\n" % (tablename, ", ".join([f.lower() for f in record]),
+                                                           ", ".join(["'%s'" % addslashes(v or '') for v in
+                                                                      record.values()])))
 
-    print("COMMIT;")
+    output.write("COMMIT;\n")
+    output.close()
 
 
 def exp_parse_str(input):
@@ -142,13 +147,15 @@ def integruj_uczelnia(nazwa="Domyślna Uczelnia", skrot="DU"):
     return uczelnia
 
 
-def integruj_wydzialy(uczelnia):
+def integruj_wydzialy():
     """Utwórz wydziały na podstawie importu DBF"""
+    uczelnia = bpp.Uczelnia.objects.first()
     for wydzial in dbf.Wyd.objects.all():
         bpp.Wydzial.objects.get_or_create(uczelnia=uczelnia, nazwa=wydzial.nazwa, skrot=wydzial.skrot)
 
 
-def integruj_jednostki(uczelnia):
+def integruj_jednostki():
+    uczelnia = bpp.Uczelnia.objects.first()
     for jednostka in dbf.Jed.objects.all():
         if bpp.Jednostka.objects.filter(nazwa=jednostka.nazwa, skrot=jednostka.skrot).exists():
             # Jeżeli istnieje jednostka o dokładnie takiej nazwie, to przejdź dalej
@@ -226,17 +233,28 @@ def pbar(query, count):
                  progressbar.ETA()])
 
 
-def integruj_autorow(uczelnia):
-    integruj_tytuly_autorow()
-    integruj_funkcje_autorow()
-
+@transaction.atomic
+def integruj_autorow(literka=None, orcid=False, pbn_id=False):
     tytuly = get_dict(bpp.Tytul, "skrot")
     funkcje = get_dict(bpp.Funkcja_Autora, "skrot")
 
     base_query = dbf.Aut.objects.all()
-    count = base_query.count()
+    if literka is not None:
+        base_query = base_query.filter(Q(nazwisko__istartswith=literka) |
+                                       Q(nazwisko__istartswith="<" + literka) |
+                                       Q(nazwisko__istartswith=" " + literka))
 
-    for autor in pbar(base_query.select_related("idt_jed", "idt_jed__bpp_jednostka"), count):
+    if orcid:
+        base_query = base_query.exclude(orcid_id='')
+
+    if pbn_id:
+        base_query = base_query.exclude(pbn_id='')
+
+    base_query = base_query.select_for_update()
+
+    # base_query = base_query.select_related("idt_jed", "idt_jed__bpp_jednostka")
+
+    for autor in pbar(base_query, base_query.count()):
         bpp_autor = None
 
         if not bpp_autor and autor.exp_id:
@@ -388,13 +406,10 @@ def integruj_zrodla():
         rec.save()
 
 
-def znajdz_separator_isbn(s):
-    for elem in ["e-ISBN:", "e-ISBN", "ISBN:", "ISBN", "ISSN:", "ISSN"]:
-        if elem.find(s) >= 0:
-            return elem
+@transaction.atomic
+def integruj_publikacje(idt_min=None, idt_max=None):
+    print(idt_min, idt_max)
 
-
-def integruj_publikacje(offset=0, skip=0):
     # zagadnienie nr 1 BPP: prace mają rok i rok_punkt inny: select rok, rok_punkt from import_dbf_bib where rok_punkt != rok and rok_punkt != '' order by rok;
 
     # zagadnienie nr 2: kody w polach tekstowych:
@@ -427,7 +442,11 @@ def integruj_publikacje(offset=0, skip=0):
         'ű': 'po korekcie'
     }
 
-    base_query = dbf.Bib.objects.filter(object_id=None).select_related()
+    base_query = dbf.Bib.objects.filter(object_id=None)
+    if idt_min is not None and idt_max is not None:
+        base_query = base_query.filter(idt__gte=idt_min, idt__lt=idt_max).select_for_update(nowait=True)
+
+    base_query = base_query.select_related()
 
     typy_kbn = dict([(x.skrot, x.bpp_id) for x in dbf.Kbn.objects.all()])
     typ_kbn_pusty = bpp.Typ_KBN.objects.get(skrot='000')
@@ -437,13 +456,12 @@ def integruj_publikacje(offset=0, skip=0):
 
     charaktery_formalne = dict([(x.skrot, x.bpp_id) for x in dbf.Pub.objects.all()])
 
-    cnt = 0
-    for rec in pbar(base_query[offset:], base_query.count()-offset):
-        cnt += 1
-        if cnt == skip:
-            cnt = 0
-            continue
-            
+    iter = base_query
+    if idt_min < 100:
+        iter = pbar(base_query, base_query.count())
+
+    for rec in iter:
+        print(rec.idt)
         wos = False
         kw = {}
 
@@ -630,7 +648,9 @@ def integruj_publikacje(offset=0, skip=0):
                 assert not kw.get('tekst_po_ostatnim_autorze'), (kw, elem, rec)
                 kw['tekst_po_ostatnim_autorze'] = tytul.get('c')
 
-            if tytul.get('d') and tytul['d'] != '`':
+            if tytul.get('d') and tytul['d'] != '`' and \
+                    (tytul['a'].find(tytul['d'].split("#b$ #c$ #d$")[0].strip()) < 0 and
+                     tytul['c'].find(tytul['d'].split("#d$")[0].strip()) < 0):
                 assert not kw.get('tytul'), (kw, tytul, rec)
                 kw['tytul'] = tytul.get('d')
 
@@ -737,39 +757,7 @@ def integruj_publikacje(offset=0, skip=0):
                     assert not elem.get(literka), elem
 
             elif elem['id'] == 205:
-                isbn = elem['a']
-
-                if isbn.find(". [Dostęp 4.11.2015]. Dostępny w: ") >= 0:
-                    isbn, www = isbn.split(". [Dostęp 4.11.2015]. Dostępny w: ")
-                    kw['www'] = www
-
-                marker = znajdz_separator_isbn(isbn)
-                if marker:
-                    l = isbn.split(marker)
-                    if l[0].strip():
-                        raise NotImplementedError("Tekst przed ISBN", l, rec, elem)
-                    if len(l[1]) > 15:
-                        raise NotImplementedError("Tekst PO ISBN", l, rec, elem)
-
-                if isbn.find("e-ISBN:") >= 0:
-                    kw['e_isbn'] = isbn.split("e-ISBN:")[1].strip()
-                elif isbn.find("e-ISBN") >= 0:
-                    kw['e_isbn'] = isbn.split("e-ISBN ")[1].strip()
-                elif isbn.find("ISBN:") >= 0:
-                    kw['isbn'] = isbn.split("ISBN:")[1].strip()
-                elif isbn.find("ISBN-13") >= 0:
-                    kw['isbn'] = isbn.split("ISBN-13")[1].strip()
-                elif isbn.find("ISBN") >= 0:
-                    kw['isbn'] = isbn.split("ISBN")[1].strip()
-                else:
-                    kw['uwagi'] = exp_combine(kw.get('uwagi'), elem.get('a'), sep=", ")
-
-                if kw.get('isbn') and kw['isbn'].find(";") >= 0:
-                    isbn, uwagi = kw['isbn'].split(";")
-                    kw['isbn'] = isbn.strip()
-                    assert not kw.get("uwagi"), (elem, kw, rec)
-                    kw['uwagi'] = uwagi.strip()
-
+                kw['uwagi'] = exp_combine(kw.get('uwagi'), elem['a'], sep=". ")
                 for literka in "bcde":
                     assert not elem.get(literka)
 
@@ -837,45 +825,9 @@ def integruj_publikacje(offset=0, skip=0):
 
             elif elem['id'] in [155, 156]:
                 # 155 "Komunikat tegoż w ... / 156 "toż w wersji polskiej"
-
-                isbn = elem['a']
-
-                marker = znajdz_separator_isbn(isbn)
-                if marker:
-                    l = isbn.split(marker)
-                    if l[0].strip():
-                        raise NotImplementedError("Tekst przed ISBN", l, rec, elem)
-                    if len(l[1]) > 15:
-                        raise NotImplementedError("Tekst PO ISBN", l, rec, elem)
-
-                if isbn.find("e-ISBN:") >= 0:
-                    kw['e_isbn'] = elem['a'].split("e-ISBN:")[1].strip()
-                elif isbn.find("e-ISBN") >= 0:
-                    kw['e_isbn'] = elem['a'].split("e-ISBN ")[1].strip()
-                elif isbn.find("ISBN:") >= 0:
-                    kw['isbn'] = elem['a'].split("ISBN:")[1].strip()
-                elif isbn.find("ISBN") >= 0:
-                    kw['isbn'] = elem['a'].split("ISBN")[1].strip()
-                elif isbn.find("e-ISSN") >= 0:
-                    kw['e_issn'] = elem['a'].split("e-ISSN")[1].strip()
-                elif isbn.find("ISSN") >= 0:
-                    kw['issn'] = elem['a'].split("ISSN")[1].strip()
-                else:
-                    assert not kw.get('adnotacje'), (kw, elem, rec)
-                    kw['adnotacje'] = elem.get('a')
-
-                if kw.get('isbn', '').find(". Wersja ang.:") > 0:
-                    isbn, adnotacje = kw['isbn'].split(". ")
-                    kw['isbn'] = isbn.strip()
-                    assert not kw.get('adnotacje'), (kw, elem, rec)
-                    kw['adnotacje'] = adnotacje.strip()
-
-                for dostepnyw in [". Dostępny w: ", " ; dostępny w: "]:
-                    if kw.get('isbn', '').find(dostepnyw) > 0:
-                        isbn, www = kw['isbn'].split(dostepnyw)
-                        kw['isbn'] = isbn
-                        assert not kw.get('www'), (elem, kw, rec)
-                        kw['www'] = www
+                kw['uwagi'] = exp_combine(kw.get('uwagi'), elem['a'], sep=". ")
+                for literka in "bcde":
+                    assert not elem.get(literka)
 
             elif elem['id'] == 995:
                 if kw.get("www"):
@@ -896,7 +848,9 @@ def integruj_publikacje(offset=0, skip=0):
 
             elif elem['id'] == 991:
                 # DOI
-                assert not kw.get('doi')
+                if kw.get('doi'):
+                    if kw['doi'] != elem['a']:
+                        raise NotImplementedError("DOI roznia sie", kw, elem, rec)
                 kw['doi'] = elem['a']
 
             elif elem['id'] == 969:
@@ -1182,7 +1136,44 @@ def wyswietl_prace_bez_dopasowania():
             print(rec.idt, rec.rok, rec.tytul_or_s)
 
 
-def integruj_b_a():
+@transaction.atomic
+def usun_podwojne_przypisania_b_a():
+    for elem in dbf.B_A.objects.values("idt_id", "idt_aut_id", ).annotate(cnt=Count('*')).order_by('idt_id',
+                                                                                                   'idt_aut_id').filter(
+        cnt__gt=1):
+        cnt = elem['cnt']
+        for melem in dbf.B_A.objects.filter(idt_id=elem['idt_id'], idt_aut_id=elem['idt_aut_id']):
+            print("1 Podwojne przypisanie", melem.idt.tytul_or_s, "(", melem.idt.rok, ") - ", melem.idt_aut)
+            melem.delete()
+            cnt -= 1
+            if cnt == 1:
+                break
+
+    for elem in dbf.B_A.objects.values("idt_id", "idt_aut__bpp_autor_id", ).annotate(cnt=Count('*')).order_by('idt_id',
+                                                                                                              'idt_aut__bpp_autor_id').filter(
+        cnt__gt=1):
+        cnt = elem['cnt']
+        for melem in dbf.B_A.objects.filter(idt_id=elem['idt_id'], idt_aut__bpp_autor_id=elem['idt_aut__bpp_autor_id']):
+            print("2 Podwojne przypisanie", melem.idt.tytul_or_s, "(", melem.idt.rok, ") - ", melem.idt_aut)
+            melem.delete()
+            cnt -= 1
+            if cnt == 1:
+                break
+
+
+def partition_ids(model, num_proc, attr="idt"):
+    d = model.objects.aggregate(min=Min(attr), max=Max(attr))
+    s = int(ceil((d['max'] - d['min']) / num_proc))
+    cnt = d['min']
+    ret = []
+    while cnt < d['max']:
+        ret.append((cnt, cnt + s))
+        cnt += s
+    return ret
+
+
+@transaction.atomic
+def integruj_b_a(idt_min=None, idt_max=None):
     ctype_to_klass_map = {
         ContentType.objects.get_by_natural_key("bpp", "wydawnictwo_ciagle").pk: bpp.Wydawnictwo_Ciagle_Autor,
         ContentType.objects.get_by_natural_key("bpp", "wydawnictwo_zwarte").pk: bpp.Wydawnictwo_Zwarte_Autor,
@@ -1199,52 +1190,36 @@ def integruj_b_a():
 
     from django.db import reset_queries, connection
 
-    for elem in dbf.B_A.objects.values("idt_id", "idt_aut_id", ).annotate(cnt=Count('*')).order_by('idt_id',
-                                                                                                   'idt_aut_id').filter(
-            cnt__gt=1):
-        cnt = elem['cnt']
-        for melem in dbf.B_A.objects.filter(idt_id=elem['idt_id'], idt_aut_id=elem['idt_aut_id']):
-            print("1 Podwojne przypisanie", melem.idt.tytul_or_s, "(", melem.idt.rok, ") - ", melem.idt_aut)
-            melem.delete()
-            cnt -= 1
-            if cnt == 1:
-                break
-
-    for elem in dbf.B_A.objects.values("idt_id", "idt_aut__bpp_autor_id", ).annotate(cnt=Count('*')).order_by('idt_id',
-                                                                                                              'idt_aut__bpp_autor_id').filter(
-            cnt__gt=1):
-        cnt = elem['cnt']
-        for melem in dbf.B_A.objects.filter(idt_id=elem['idt_id'], idt_aut__bpp_autor_id=elem['idt_aut__bpp_autor_id']):
-            print("2 Podwojne przypisanie", melem.idt.tytul_or_s, "(", melem.idt.rok, ") - ", melem.idt_aut)
-            melem.delete()
-            cnt -= 1
-            if cnt == 1:
-                break
-
     base_query = dbf.B_A.objects.filter(object_id=None).exclude(idt__object_id=None)
+
+    if idt_min is not None and idt_max is not None:
+        base_query = base_query.filter(id__gte=idt_min, id__lt=idt_max)
 
     count_queries = True
 
-    for rec in pbar(
-            base_query.select_related("idt", "idt_aut", "idt_jed").only(
-                "idt__content_type_id",
-                "idt__object_id",
+    base_query = base_query.select_related("idt", "idt_aut", "idt_jed").only(
+        "idt__content_type_id",
+        "idt__object_id",
 
-                "idt_aut__bpp_autor_id",
-                "idt_aut__imiona",
-                "idt_aut__nazwisko",
+        "idt_aut__bpp_autor_id",
+        "idt_aut__imiona",
+        "idt_aut__nazwisko",
 
-                "idt_jed__bpp_jednostka_id",
+        "idt_jed__bpp_jednostka_id",
 
-                "afiliacja",
+        "afiliacja",
 
-                "lp",
+        "lp",
 
-                "idt__idt",
-                "idt__tytul_or_s"
-            ).distinct(),
-            base_query.count()):
+        "idt__idt",
+        "idt__tytul_or_s"
+    ).distinct()
 
+    iter = base_query
+    if idt_min is not None and idt_min < 1000:
+        iter = pbar(base_query, base_query.count())
+
+    for rec in iter:
         if count_queries:
             reset_queries()
 

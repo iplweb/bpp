@@ -5,7 +5,7 @@ from django.db.models import DO_NOTHING
 
 
 class Bib(models.Model):
-    idt = models.TextField(primary_key=True)
+    idt = models.IntegerField(primary_key=True)
     tytul_or = models.TextField(blank=True, null=True)
     title = models.TextField(blank=True, null=True)
     zrodlo = models.TextField(blank=True, null=True)

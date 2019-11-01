@@ -1,10 +1,10 @@
 # -*- encoding: utf-8 -*-
 import argparse
+import multiprocessing
 
 from django.core.management import BaseCommand
-from django.db import transaction
 
-from import_dbf.util import import_dbf
+from import_dbf.util import dbf2sql
 
 
 class Command(BaseCommand):
@@ -13,8 +13,6 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("plik", nargs="+", type=argparse.FileType('rb'))
 
-    @transaction.atomic
     def handle(self, plik, *args, **options):
-        for plik in plik:
-            print("-- plik: ", plik.name)
-            import_dbf(plik.name)
+        p = multiprocessing.Pool(processes=multiprocessing.cpu_count())
+        p.map(dbf2sql, [x.name for x in plik])

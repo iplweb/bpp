@@ -1,4 +1,5 @@
 # -*- encoding: utf-8 -*-
+import multiprocessing
 
 from django.core.management import BaseCommand
 
@@ -9,27 +10,16 @@ from bpp.tasks import aktualizuj_cache_rekordu
 class Command(BaseCommand):
     help = 'Odbudowuje cache'
 
-    def add_arguments(self, parser):
-        parser.add_argument("--initial-offset", action="store", type=int,
-                            default=0)
-        parser.add_argument("--skip", action="store", type=int, default=0)
 
     def handle(self, *args, **options):
-        qset = Rekord.objects.all()[options['initial_offset']:]
+        from django import db
+        db.connections.close_all()
 
-        # .filter(
-        #     Q(opis_bibliograficzny_cache='') |
-        #     Q(opis_bibliograficzny_autorzy_cache=[]))
-        # | Q(opis_bibliograficzny_zapisani_autorzy_cache="")
+        cpu_count = multiprocessing.cpu_count()
+        num_proc = int(floor(cpu_count * 0.75)) or 1
+        pool = multiprocessing.Pool(processes=num_proc)
+        pool.starmap(self.rebuild, )
 
-        action = True
-        for r in qset:
-            if action:
-                aktualizuj_cache_rekordu(r.original)
-
-                action = False
-                skip = options['skip'] + 1
-
-            skip -= 1
-            if skip == 0:
-                action = True
+    def rebuild(self, offset=None, limit=None):
+        for r in Rekord.objects.all()[offset:limit]:
+            aktualizuj_cache_rekordu(r.original)

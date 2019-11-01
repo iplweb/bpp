@@ -48,18 +48,20 @@ def test_util_import_dbf():
       ),
 
      ('#150$ #a$Neurologia #c$Howard L. Weiner, Lawrence P. Levitt	',
-      {'id':150,
+      {'id': 150,
        'a': 'Neurologia',
        'c': 'Howard L. Weiner, Lawrence P. Levitt'}),
 
-     ('#103$#a$ Abstracts of the 5-th World Congress on Heart Failure - Mechanisms and Managment. Washinfton, USA, 11-14 May, 1997',
-      {'id': 103,
-       'a': 'Abstracts of the 5-th World Congress on Heart Failure - Mechanisms and Managment. Washinfton, USA, 11-14 May, 1997'}),
+     (
+     '#103$#a$ Abstracts of the 5-th World Congress on Heart Failure - Mechanisms and Managment. Washinfton, USA, 11-14 May, 1997',
+     {'id': 103,
+      'a': 'Abstracts of the 5-th World Congress on Heart Failure - Mechanisms and Managment. Washinfton, USA, 11-14 May, 1997'}),
 
      ]
 )
 def test_util_exp_parse_str(input, output):
     assert exp_parse_str(input) == output
+
 
 def test_util_exp_parse_str_raises():
     bad = '#105$ Electrophysiological estimation of the peripheral nerves conduction parameters and the autonomic nervous system function in the course of amyotrophic lateral sclerosis #b$'
@@ -69,3 +71,4 @@ def test_util_exp_parse_str_raises():
 
 def test_util_exp_add_spacing():
     assert exp_add_spacing("te.st.this.(act.)") == "te. st. this. (act.)"
+

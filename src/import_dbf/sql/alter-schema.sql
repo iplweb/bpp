@@ -46,6 +46,7 @@ ALTER TABLE import_dbf_aut ALTER COLUMN idt_jed SET DATA TYPE INT USING idt_jed:
 
 ALTER TABLE import_dbf_aut ADD COLUMN bpp_autor_id INTEGER;
 CREATE UNIQUE INDEX import_dbf_aut_idt ON import_dbf_aut(idt_aut);
+create index import_dbf_aut_nazwisko on import_dbf_aut(nazwisko);
 
 ALTER TABLE import_dbf_aut ALTER COLUMN exp_id SET DATA TYPE INT USING exp_id::integer;
 update import_dbf_aut set pbn_id = NULL where pbn_id = '';
