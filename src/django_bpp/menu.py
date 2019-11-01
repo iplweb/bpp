@@ -20,10 +20,15 @@ from bpp.models.const import GR_WPROWADZANIE_DANYCH
 
 IMPORT_DBF_MENU_1 = [
     ('Zaimportowana bibliografia', '/admin/import_dbf/bib/',),
-    ('Zaimportowani autorzy', '/admin/import_dbf/aut/',),
-    ('Zaimportowane jednostki', '/admin/import_dbf/jed/',),
-    ('Zaimportowane powiązania autor-rekord', '/admin/import_dbf/b_a/',),
+    ('Zaimportowane dane Open Access', '/admin/import_dbf/b_u/',),
+    ('Zaimportowane opisy rekordów', '/admin/import_dbf/poz/',),
+
     ('Zaimportowane źródła', '/admin/import_dbf/usi/',),
+
+    ('Zaimportowane jednostki', '/admin/import_dbf/jed/',),
+    ('Zaimportowani autorzy', '/admin/import_dbf/aut/',),
+
+    ('Zaimportowane powiązania autor-rekord', '/admin/import_dbf/b_a/',),
     # Tabela sesji - zbędna
     # ('Zaimportowane Ses', '/admin/import_dbf/ses/',),
     ('Zaimportowane identyfikatory PBN', '/admin/import_dbf/ixn/',),
@@ -39,11 +44,9 @@ IMPORT_DBF_MENU_1 = [
     ('Zaimportowane listy wydawców', '/admin/import_dbf/lis/',),
     ('Zaimportowane historia jednostek', '/admin/import_dbf/j_h/',),
     ('Zaimportowane rekordy KBR', '/admin/import_dbf/kbr/',),
-    ('Zaimportowane opisy rekordów', '/admin/import_dbf/poz/',),
 ]
 
 IMPORT_DBF_MENU_2 = [
-    ('Zaimportowane B_U', '/admin/import_dbf/b_u/',),
     ('Zaimportowane Wx2', '/admin/import_dbf/wx2/',),
     ('Zaimportowane B_B', '/admin/import_dbf/b_b/',),
     ('Zaimportowane B_N', '/admin/import_dbf/b_n/',),

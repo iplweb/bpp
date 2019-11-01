@@ -1,7 +1,8 @@
 import os
+import sys
+from collections import defaultdict
 
 import progressbar
-import sys
 from dbfread import DBF
 from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError
@@ -393,7 +394,7 @@ def znajdz_separator_isbn(s):
             return elem
 
 
-def integruj_publikacje():
+def integruj_publikacje(offset=0, skip=0):
     # zagadnienie nr 1 BPP: prace mają rok i rok_punkt inny: select rok, rok_punkt from import_dbf_bib where rok_punkt != rok and rok_punkt != '' order by rok;
 
     # zagadnienie nr 2: kody w polach tekstowych:
@@ -436,7 +437,13 @@ def integruj_publikacje():
 
     charaktery_formalne = dict([(x.skrot, x.bpp_id) for x in dbf.Pub.objects.all()])
 
-    for rec in pbar(base_query, base_query.count()):
+    cnt = 0
+    for rec in pbar(base_query[offset:], base_query.count()-offset):
+        cnt += 1
+        if cnt == skip:
+            cnt = 0
+            continue
+            
         wos = False
         kw = {}
 
@@ -648,343 +655,434 @@ def integruj_publikacje():
         poz_g = dbf.Poz.objects.get_for_model(rec.idt, "G")
         poz_n = dbf.Poz.objects.get_for_model(rec.idt, "N")
 
-        if poz_g:
-            for elem in [elem.strip() for elem in poz_g.split('\r\n') if elem.strip()]:
-                elem = exp_parse_str(elem)
+        # Dodaj elementy z B_U do POZ_G tak, aby były na koncu czyli
+        # były zaimportowane jako najaktualniejsze
+        # bpp=# select distinct(substr(comm, 1, 3)) from import_dbf_b_u;
+        #  substr
+        # --------
+        #  985 -> jeden rekord z numerkiem 28940458 -> pubmed ID?
+        #  988 -> ISBN, niekiedy punktacja, niekiedy DWA ISBN
+        #  202 -> b#Polskie Towrazystwo Walki z Kalectwem; Akad. Med; Wydaw. Continuo etc
+        #  154 -> "Rozprawy Habilitacyjne", "Zdrowe Życie",
+        #  100 -> Źródło indeksowane
+        #  203 -> Onkologia Kliniczna, Biblioteka Polskiego Przeglądu Chir
+        #  107 -> ISSN
+        #  969 -> OpenAccess
+        #  152 -> Wydawnictwo (Volumed, GEOPOL, Akad. Med)
+        # (9 rows)
 
-                if elem['id'] == 202:
-                    wydawca_id = None
-                    try:
-                        wydawca_id = int(elem['b'][1:])
-                    except:
-                        pass
-                    if wydawca_id is not None:
-                        kw['wydawca'] = dbf.Usi.objects.get(idt_usi=wydawca_id).bpp_wydawca_id
+        bu = defaultdict(dict)
+        for elem in rec.b_u_set.all():
+            id, literka, wartosc = elem.comm.split('#')
+            id = int(id)
+            bu[id]['id'] = int(id)
+            bu[id][literka] = "|" + "%.10i" % elem.idt_usi_id
+
+        elementy = []
+        if poz_g:
+            for element in [elem.strip() for elem in poz_g.split('\r\n') if elem.strip()]:
+                elementy.append(exp_parse_str(element))
+        if bu:
+            for element in bu:
+                elementy.append(bu[element])
+        if rec.zrodlo:
+            elementy.append(exp_parse_str(rec.zrodlo))
+
+        for elem in elementy:
+
+            if elem['id'] == 202:
+                wydawca_id = None
+                try:
+                    wydawca_id = int(elem['b'][1:])
+                except:
+                    pass
+                if wydawca_id is not None:
+                    kw['wydawca'] = dbf.Usi.objects.get(idt_usi=wydawca_id).bpp_wydawca_id
+
+                if elem.get('a'):
                     kw['miejsce_i_rok'] = f"{elem['a']} {elem['c']}"
 
-                elif elem['id'] in [203, 154]:
-                    # Seria wydawnicza
+            elif elem['id'] in [203, 154]:
+                # Seria wydawnicza
 
-                    seria_wydawnicza_id = int(elem['a'][1:])
-                    kw['seria_wydawnicza'] = dbf.Usi.objects.get(idt_usi=seria_wydawnicza_id).bpp_seria_wydawnicza_id
+                seria_wydawnicza_id = int(elem['a'][1:])
+                kw['seria_wydawnicza'] = dbf.Usi.objects.get(idt_usi=seria_wydawnicza_id).bpp_seria_wydawnicza_id
 
-                    if elem.get('d') and elem['d'].startswith("ISSN"):
-                        kw['issn'] = elem['d'].split("ISSN")[1].strip()
-                        del elem['d']
+                if elem.get('d') and elem['d'].startswith("ISSN"):
+                    kw['issn'] = elem['d'].split("ISSN")[1].strip()
+                    del elem['d']
 
-                    if elem.get('d') and elem.get('c'):
-                        raise NotImplementedError(elem, rec, rec.idt)
+                if elem.get('d') and elem.get('c'):
+                    raise NotImplementedError(elem, rec, rec.idt)
 
-                    kw['numer_w_serii'] = ''
+                kw['numer_w_serii'] = ''
 
-                    for literka in "bcd":
-                        if elem.get(literka):
-                            kw['numer_w_serii'] = exp_combine(kw['numer_w_serii'], elem.get(literka))
+                for literka in "bcd":
+                    if elem.get(literka):
+                        kw['numer_w_serii'] = exp_combine(kw['numer_w_serii'], elem.get(literka))
 
-                    if elem['e'].find("ISSN") > -1:
-                        kw['issn'] = elem['e'][4:].strip()
-                        del elem['e']
+                if elem.get('e', '').find("ISSN") > -1:
+                    kw['issn'] = elem['e'][4:].strip()
+                    del elem['e']
 
-                    for literka in "ef":
-                        assert not elem.get(literka), (elem, rec)
+                for literka in "ef":
+                    assert not elem.get(literka), (elem, rec)
 
-                elif elem['id'] in [201, 206]:
-                    # wydanie
-                    kw['uwagi'] = exp_combine(kw.get('uwagi', ''), elem.get('a'), sep=" ")  # Wyd 1 pol
-                    kw['uwagi'] = exp_combine(kw.get('uwagi', ''), elem.get('b'), sep=" ")  # pod red A. Kowalski
+            elif elem['id'] in [201, 206]:
+                # wydanie
+                kw['uwagi'] = exp_combine(kw.get('uwagi', ''), elem.get('a'), sep=" ")  # Wyd 1 pol
+                kw['uwagi'] = exp_combine(kw.get('uwagi', ''), elem.get('b'), sep=" ")  # pod red A. Kowalski
 
-                    for literka in "cde":
-                        assert not elem.get(literka), elem
+                for literka in "cde":
+                    assert not elem.get(literka), elem
 
-                elif elem['id'] == 205:
-                    isbn = elem['a']
+            elif elem['id'] == 205:
+                isbn = elem['a']
 
-                    if isbn.find(". [Dostęp 4.11.2015]. Dostępny w: ") >= 0:
-                        isbn, www = isbn.split(". [Dostęp 4.11.2015]. Dostępny w: ")
+                if isbn.find(". [Dostęp 4.11.2015]. Dostępny w: ") >= 0:
+                    isbn, www = isbn.split(". [Dostęp 4.11.2015]. Dostępny w: ")
+                    kw['www'] = www
+
+                marker = znajdz_separator_isbn(isbn)
+                if marker:
+                    l = isbn.split(marker)
+                    if l[0].strip():
+                        raise NotImplementedError("Tekst przed ISBN", l, rec, elem)
+                    if len(l[1]) > 15:
+                        raise NotImplementedError("Tekst PO ISBN", l, rec, elem)
+
+                if isbn.find("e-ISBN:") >= 0:
+                    kw['e_isbn'] = isbn.split("e-ISBN:")[1].strip()
+                elif isbn.find("e-ISBN") >= 0:
+                    kw['e_isbn'] = isbn.split("e-ISBN ")[1].strip()
+                elif isbn.find("ISBN:") >= 0:
+                    kw['isbn'] = isbn.split("ISBN:")[1].strip()
+                elif isbn.find("ISBN-13") >= 0:
+                    kw['isbn'] = isbn.split("ISBN-13")[1].strip()
+                elif isbn.find("ISBN") >= 0:
+                    kw['isbn'] = isbn.split("ISBN")[1].strip()
+                else:
+                    kw['uwagi'] = exp_combine(kw.get('uwagi'), elem.get('a'), sep=", ")
+
+                if kw.get('isbn') and kw['isbn'].find(";") >= 0:
+                    isbn, uwagi = kw['isbn'].split(";")
+                    kw['isbn'] = isbn.strip()
+                    assert not kw.get("uwagi"), (elem, kw, rec)
+                    kw['uwagi'] = uwagi.strip()
+
+                for literka in "bcde":
+                    assert not elem.get(literka)
+
+            elif elem['id'] == 101:
+                # A: rok,
+                # B: tom
+                # C: numer
+                # D: strony
+                # E: bibliogr. poz
+
+                kw['informacje'] = elem.get('a')
+                kw['informacje'] = exp_combine(kw['informacje'], elem.get('b'))
+
+                if elem.get('b'):
+                    assert not kw.get('tom')
+                    kw['tom'] = elem.get('b')
+
+                assert not kw.get('szczegoly')
+                kw['szczegoly'] = elem.get('c')
+                if elem.get('d'):
+                    if kw['szczegoly']:
+                        kw['szczegoly'] += ", "
+                    kw['szczegoly'] += elem.get('d')
+
+                assert not kw.get('uwagi')
+                if elem.get('e'):
+                    if kw['szczegoly']:
+                        kw['szczegoly'] += ", "
+                    kw['szczegoly'] += elem.get('e')
+
+            elif elem['id'] == 103:
+                # Konferencja
+                try:
+                    konferencja = bpp.Konferencja.objects.get(nazwa=elem['a'])
+                except bpp.Konferencja.DoesNotExist:
+                    konferencja = bpp.Konferencja.objects.create(nazwa=elem['a'])
+
+                assert not kw.get('konferencja'), (elem, rec)
+
+                kw['konferencja'] = konferencja
+                for literka in "bcde":
+                    assert not elem.get(literka)
+
+            elif elem['id'] == 153:
+                assert not kw.get('szczegoly')
+                kw['szczegoly'] = elem['a']
+
+                assert not kw.get('uwagi')
+                kw['uwagi'] = exp_combine(elem.get('b'), elem.get('c'))
+
+            elif elem['id'] == 104:
+                assert not kw.get('uwagi'), (kw['uwagi'], elem, rec, rec.idt)
+                kw['uwagi'] = elem['a']
+                for literka in "bcd":
+                    assert not elem.get(literka), (elem, rec, rec.idt)
+
+            elif elem['id'] == 151:
+                # w ksiazkach, wydanie i "pod redakcja'
+                if kw['tytul_oryginalny'].find('=') >= 0 and not elem.get('a', '').startswith("2nd ed., bilingual"):
+                    raise NotImplementedError
+                kw['tytul_oryginalny'] = (kw['tytul_oryginalny'] + ". " + elem['a'] + " " + elem['b']).strip()
+
+                for literka in "cde":
+                    assert not elem.get(literka), (elem, rec, rec.idt)
+
+            elif elem['id'] in [155, 156]:
+                # 155 "Komunikat tegoż w ... / 156 "toż w wersji polskiej"
+
+                isbn = elem['a']
+
+                marker = znajdz_separator_isbn(isbn)
+                if marker:
+                    l = isbn.split(marker)
+                    if l[0].strip():
+                        raise NotImplementedError("Tekst przed ISBN", l, rec, elem)
+                    if len(l[1]) > 15:
+                        raise NotImplementedError("Tekst PO ISBN", l, rec, elem)
+
+                if isbn.find("e-ISBN:") >= 0:
+                    kw['e_isbn'] = elem['a'].split("e-ISBN:")[1].strip()
+                elif isbn.find("e-ISBN") >= 0:
+                    kw['e_isbn'] = elem['a'].split("e-ISBN ")[1].strip()
+                elif isbn.find("ISBN:") >= 0:
+                    kw['isbn'] = elem['a'].split("ISBN:")[1].strip()
+                elif isbn.find("ISBN") >= 0:
+                    kw['isbn'] = elem['a'].split("ISBN")[1].strip()
+                elif isbn.find("e-ISSN") >= 0:
+                    kw['e_issn'] = elem['a'].split("e-ISSN")[1].strip()
+                elif isbn.find("ISSN") >= 0:
+                    kw['issn'] = elem['a'].split("ISSN")[1].strip()
+                else:
+                    assert not kw.get('adnotacje'), (kw, elem, rec)
+                    kw['adnotacje'] = elem.get('a')
+
+                if kw.get('isbn', '').find(". Wersja ang.:") > 0:
+                    isbn, adnotacje = kw['isbn'].split(". ")
+                    kw['isbn'] = isbn.strip()
+                    assert not kw.get('adnotacje'), (kw, elem, rec)
+                    kw['adnotacje'] = adnotacje.strip()
+
+                for dostepnyw in [". Dostępny w: ", " ; dostępny w: "]:
+                    if kw.get('isbn', '').find(dostepnyw) > 0:
+                        isbn, www = kw['isbn'].split(dostepnyw)
+                        kw['isbn'] = isbn
+                        assert not kw.get('www'), (elem, kw, rec)
                         kw['www'] = www
 
-                    marker = znajdz_separator_isbn(isbn)
-                    if marker:
-                        l = isbn.split(marker)
-                        if l[0].strip():
-                            raise NotImplementedError("Tekst przed ISBN", l, rec, elem)
-                        if len(l[1]) > 15:
-                            raise NotImplementedError("Tekst PO ISBN", l, rec, elem)
-
-                    if isbn.find("e-ISBN:") >= 0:
-                        kw['e_isbn'] = isbn.split("e-ISBN:")[1].strip()
-                    elif isbn.find("e-ISBN") >= 0:
-                        kw['e_isbn'] = isbn.split("e-ISBN ")[1].strip()
-                    elif isbn.find("ISBN:") >= 0:
-                        kw['isbn'] = isbn.split("ISBN:")[1].strip()
-                    elif isbn.find("ISBN-13") >= 0:
-                        kw['isbn'] = isbn.split("ISBN-13")[1].strip()
-                    elif isbn.find("ISBN") >= 0:
-                        kw['isbn'] = isbn.split("ISBN")[1].strip()
+            elif elem['id'] == 995:
+                if kw.get("www"):
+                    if "http://" + kw['www'] == elem['a'] or kw['www'] == elem['a']:
+                        del kw['www']
                     else:
-                        kw['uwagi'] = exp_combine(kw.get('uwagi'), elem.get('a'), sep=", ")
+                        kw['adnotacje'] = exp_combine(
+                            kw.get('adnotacje', ''),
+                            "Drugi adres WWW? " + kw['www'],
+                            sep="\n"
+                        )
+                        del kw['www']
 
-                    if kw.get('isbn') and kw['isbn'].find(";") >= 0:
-                        isbn, uwagi = kw['isbn'].split(";")
-                        kw['isbn'] = isbn.strip()
-                        assert not kw.get("uwagi"), (elem, kw, rec)
-                        kw['uwagi'] = uwagi.strip()
+                assert not kw.get('www'), (elem, rec, kw)
+                kw['www'] = elem['a']
+                for literka in "bcd":
+                    assert not elem.get(literka), (elem, rec, rec.idt)
 
-                    for literka in "bcde":
-                        assert not elem.get(literka)
+            elif elem['id'] == 991:
+                # DOI
+                assert not kw.get('doi')
+                kw['doi'] = elem['a']
 
-                elif elem['id'] == 101:
-                    # A: rok,
-                    # B: tom
-                    # C: numer
-                    # D: strony
-                    # E: bibliogr. poz
+            elif elem['id'] == 969:
+                # ({'id': 969, 'a': '|0000005187', 'b': '|0000005493',
+                # 'c': '|0000005494', 'd': '', 'e': '|0000005496'},
+                # <Bib: Mediators of pruritus in psoriasis>, 38163)
+                # open-access-text-version: FINAL_PUBLISHED
+                # open-access-licence: CC BY
+                # open-access-release-time: AT_PUBLICATION
+                # open-access-article-mode: OPEN_JOURNAL
 
-                    kw['informacje'] = elem.get('a')
-                    kw['informacje'] = exp_combine(kw['informacje'], elem.get('b'))
+                if klass == bpp.Wydawnictwo_Ciagle:
+                    oa_klass = bpp.Tryb_OpenAccess_Wydawnictwo_Ciagle
+                elif klass == bpp.Wydawnictwo_Zwarte:
+                    oa_klass = bpp.Tryb_OpenAccess_Wydawnictwo_Zwarte
+                else:
+                    raise NotImplementedError(klass)
+
+                del elem['id']
+
+                if elem == {'a': '|0000005187', 'b': '|0000005188', 'c': '', 'd': '|0000005189', 'e': ''}:
+                    # Rekordy z takim schematem informacji pojawiaja sie co jakis czas
+                    # i nie bardzo widze ich powiazanie z informacja wyswietlana na stornie
+                    # Najprawdopodobniej te informacje OpenAccess beda zaimportowane w sposob
+                    # nieprawidlowy. Na ten moment (31.10.2019) zostaje jak-jest:
+                    kw['openaccess_wersja_tekstu'] = bpp.Wersja_Tekstu_OpenAccess.objects.get(
+                        skrot="FINAL_PUBLISHED")
+                    kw['openaccess_licencja'] = bpp.Licencja_OpenAccess.objects.get(skrot="CC-BY-NC-SA")
+                    kw['openaccess_czas_publikacji'] = bpp.Czas_Udostepnienia_OpenAccess.objects.get(
+                        skrot="AT_PUBLICATION")
+                    kw['openaccess_tryb_dostepu'] = oa_klass.objects.get(skrot="OPEN_JOURNAL")
+                else:
+
+                    s = dbf.Usi.objects.get(idt_usi=elem['a'][1:])
+                    o = bpp.Wersja_Tekstu_OpenAccess.objects.get(skrot=s.nazwa)
+                    kw['openaccess_wersja_tekstu'] = o
 
                     if elem.get('b'):
-                        assert not kw.get('tom')
-                        kw['tom'] = elem.get('b')
+                        s = dbf.Usi.objects.get(idt_usi=elem['b'][1:])
+                        o = bpp.Licencja_OpenAccess.objects.get(skrot=s.nazwa.replace(" ", "-"))
+                        kw['openaccess_licencja'] = o
 
-                    assert not kw.get('szczegoly')
-                    kw['szczegoly'] = elem.get('c')
+                    if elem.get('c'):
+                        s = dbf.Usi.objects.get(idt_usi=elem['c'][1:])
+                        o = bpp.Czas_Udostepnienia_OpenAccess.objects.get(skrot=s.nazwa)
+                        kw['openaccess_czas_publikacji'] = o
+
                     if elem.get('d'):
-                        if kw['szczegoly']:
-                            kw['szczegoly'] += ", "
-                        kw['szczegoly'] += elem.get('d')
+                        # Zazwyczaj prowadzi do pustego wpisu
+                        s = dbf.Usi.objects.get(idt_usi=elem['d'][1:])
+                        assert not s.nazwa, (elem, kw, rec)
 
-                    assert not kw.get('uwagi')
                     if elem.get('e'):
-                        if kw['szczegoly']:
-                            kw['szczegoly'] += ", "
-                        kw['szczegoly'] += elem.get('e')
+                        s = dbf.Usi.objects.get(idt_usi=elem['e'][1:])
+                        o = oa_klass.objects.get(skrot=s.nazwa)
+                        kw['openaccess_tryb_dostepu'] = o
 
-                elif elem['id'] == 103:
-                    # Konferencja
-                    try:
-                        konferencja = bpp.Konferencja.objects.get(nazwa=elem['a'])
-                    except bpp.Konferencja.DoesNotExist:
-                        konferencja = bpp.Konferencja.objects.create(nazwa=elem['a'])
-
-                    assert not kw.get('konferencja'), (elem, rec)
-
-                    kw['konferencja'] = konferencja
-                    for literka in "bcde":
-                        assert not elem.get(literka)
-
-                elif elem['id'] == 153:
-                    assert not kw.get('szczegoly')
-                    kw['szczegoly'] = elem['a']
-
-                    assert not kw.get('uwagi')
-                    kw['uwagi'] = exp_combine(elem.get('b'), elem.get('c'))
-
-                elif elem['id'] == 104:
-                    assert not kw.get('uwagi'), (kw['uwagi'], elem, rec, rec.idt)
-                    kw['uwagi'] = elem['a']
-                    for literka in "bcd":
-                        assert not elem.get(literka), (elem, rec, rec.idt)
-
-                elif elem['id'] == 151:
-                    # w ksiazkach, wydanie i "pod redakcja'
-                    if kw['tytul_oryginalny'].find('=') >= 0 and not elem.get('a', '').startswith("2nd ed., bilingual"):
-                        raise NotImplementedError
-                    kw['tytul_oryginalny'] = (kw['tytul_oryginalny'] + ". " + elem['a'] + " " + elem['b']).strip()
-
-                    for literka in "cde":
-                        assert not elem.get(literka), (elem, rec, rec.idt)
-
-                elif elem['id'] in [155, 156]:
-                    # 155 "Komunikat tegoż w ... / 156 "toż w wersji polskiej"
-
-                    isbn = elem['a']
-
-                    marker = znajdz_separator_isbn(isbn)
-                    if marker:
-                        l = isbn.split(marker)
-                        if l[0].strip():
-                            raise NotImplementedError("Tekst przed ISBN", l, rec, elem)
-                        if len(l[1]) > 15:
-                            raise NotImplementedError("Tekst PO ISBN", l, rec, elem)
-
-                    if isbn.find("e-ISBN:") >= 0:
-                        kw['e_isbn'] = elem['a'].split("e-ISBN:")[1].strip()
-                    elif isbn.find("e-ISBN") >= 0:
-                        kw['e_isbn'] = elem['a'].split("e-ISBN ")[1].strip()
-                    elif isbn.find("ISBN:") >= 0:
-                        kw['isbn'] = elem['a'].split("ISBN:")[1].strip()
-                    elif isbn.find("ISBN") >= 0:
-                        kw['isbn'] = elem['a'].split("ISBN")[1].strip()
-                    elif isbn.find("e-ISSN") >= 0:
-                        kw['e_issn'] = elem['a'].split("e-ISSN")[1].strip()
-                    elif isbn.find("ISSN") >= 0:
-                        kw['issn'] = elem['a'].split("ISSN")[1].strip()
-                    else:
-                        assert not kw.get('adnotacje'), (kw, elem, rec)
-                        kw['adnotacje'] = elem.get('a')
-
-                    if kw.get('isbn', '').find(". Wersja ang.:") > 0:
-                        isbn, adnotacje = kw['isbn'].split(". ")
-                        kw['isbn'] = isbn.strip()
-                        assert not kw.get('adnotacje'), (kw, elem, rec)
-                        kw['adnotacje'] = adnotacje.strip()
-
-                    for dostepnyw in [". Dostępny w: ", " ; dostępny w: "]:
-                        if kw.get('isbn', '').find(dostepnyw) > 0:
-                            isbn, www = kw['isbn'].split(dostepnyw)
-                            kw['isbn'] = isbn
-                            assert not kw.get('www'), (elem, kw, rec)
-                            kw['www'] = www
-
-                elif elem['id'] == 995:
-                    if kw.get("www"):
-                        if "http://" + kw['www'] == elem['a'] or kw['www'] == elem['a']:
-                            del kw['www']
-                        else:
-                            kw['adnotacje'] = exp_combine(
-                                kw.get('adnotacje', ''),
-                                "Drugi adres WWW? " + kw['www'],
-                                sep="\n"
-                            )
-                            del kw['www']
-
-                    assert not kw.get('www'), (elem, rec, kw)
-                    kw['www'] = elem['a']
-                    for literka in "bcd":
-                        assert not elem.get(literka), (elem, rec, rec.idt)
-
-                elif elem['id'] == 991:
-                    # DOI
-                    assert not kw.get('doi')
-                    kw['doi'] = elem['a']
-
-                elif elem['id'] == 969:
-                    # ({'id': 969, 'a': '|0000005187', 'b': '|0000005493',
-                    # 'c': '|0000005494', 'd': '', 'e': '|0000005496'},
-                    # <Bib: Mediators of pruritus in psoriasis>, 38163)
-                    # open-access-text-version: FINAL_PUBLISHED
-                    # open-access-licence: CC BY
-                    # open-access-release-time: AT_PUBLICATION
-                    # open-access-article-mode: OPEN_JOURNAL
-
-                    if klass == bpp.Wydawnictwo_Ciagle:
-                        oa_klass = bpp.Tryb_OpenAccess_Wydawnictwo_Ciagle
-                    elif klass == bpp.Wydawnictwo_Zwarte:
-                        oa_klass = bpp.Tryb_OpenAccess_Wydawnictwo_Zwarte
-                    else:
-                        raise NotImplementedError(klass)
-
-                    del elem['id']
-
-                    if elem == {'a': '|0000005187', 'b': '|0000005188', 'c': '', 'd': '|0000005189', 'e': ''}:
-                        # Rekordy z takim schematem informacji pojawiaja sie co jakis czas
-                        # i nie bardzo widze ich powiazanie z informacja wyswietlana na stornie
-                        # Najprawdopodobniej te informacje OpenAccess beda zaimportowane w sposob
-                        # nieprawidlowy. Na ten moment (31.10.2019) zostaje jak-jest:
-                        kw['openaccess_wersja_tekstu'] = bpp.Wersja_Tekstu_OpenAccess.objects.get(
-                            skrot="FINAL_PUBLISHED")
-                        kw['openaccess_licencja'] = bpp.Licencja_OpenAccess.objects.get(skrot="CC-BY-NC-SA")
-                        kw['openaccess_czas_publikacji'] = bpp.Czas_Udostepnienia_OpenAccess.objects.get(
-                            skrot="AT_PUBLICATION")
-                        kw['openaccess_tryb_dostepu'] = oa_klass.objects.get(skrot="OPEN_JOURNAL")
-                    else:
-
-                        s = dbf.Usi.objects.get(idt_usi=elem['a'][1:])
-                        o = bpp.Wersja_Tekstu_OpenAccess.objects.get(skrot=s.nazwa)
-                        kw['openaccess_wersja_tekstu'] = o
-
-                        if elem.get('b'):
-                            s = dbf.Usi.objects.get(idt_usi=elem['b'][1:])
-                            o = bpp.Licencja_OpenAccess.objects.get(skrot=s.nazwa.replace(" ", "-"))
-                            kw['openaccess_licencja'] = o
-
-                        if elem.get('c'):
-                            s = dbf.Usi.objects.get(idt_usi=elem['c'][1:])
-                            o = bpp.Czas_Udostepnienia_OpenAccess.objects.get(skrot=s.nazwa)
-                            kw['openaccess_czas_publikacji'] = o
-
-                        if elem.get('d'):
-                            # Zazwyczaj prowadzi do pustego wpisu
-                            s = dbf.Usi.objects.get(idt_usi=elem['d'][1:])
-                            assert not s.nazwa, (elem, kw, rec)
-
-                        if elem.get('e'):
-                            s = dbf.Usi.objects.get(idt_usi=elem['e'][1:])
-                            o = oa_klass.objects.get(skrot=s.nazwa)
-                            kw['openaccess_tryb_dostepu'] = o
-
-                elif elem['id'] == 107:
-                    s = dbf.Usi.objects.get(idt_usi=elem['a'][1:])
-                    if s.nazwa.startswith("ISSN"):
-                        kw['issn'] = s.nazwa[4:].strip()
-                    elif s.nazwa.find("-") in [4, 5]:  # sam "goły" nr ISSN
-                        kw['issn'] = s.nazwa
-                    else:
-                        raise NotImplementedError(elem, kw, rec)
-
-                    for literka in 'bcd':
-                        assert not elem.get(literka), (elem, kw, rec)
-
-                elif elem['id'] == 997:
-                    if elem['a'] == '3786' or elem['a'] == '':
-                        assert not kw.get('adnotacje'), (elem, kw, rec)
-                        kw['adnotacje'] = "Import bazy danych: niejasny element POZ_G: %s" % elem
-                    elif elem['a'] == "Publikacja uwzględniona w Web of Science":
-                        wos = True
-                    elif elem['a'].startswith("http"):
-                        assert not kw.get('www'), (elem, kw, rec)
-                        kw['www'] = elem['a']
-                    else:
-                        raise NotImplementedError(elem, rec)
-
-                elif elem['id'] == 884:
-                    # PubMedID
-                    if elem.get('a'):
-                        kw['pubmed_id'] = elem['a']
-                    kw['pmc_id'] = elem['b']
-                    for literka in "cde":
-                        assert not elem.get(literka)
-
-                elif elem['id'] == 983:
-                    kw['adnotacje'] = exp_combine(
-                        kw.get('adnotacje', ''),
-                        "Import bazy danych. Niejasny element POZ_G: %s" % elem,
-                        sep="\n")
-
-                elif elem['id'] == 988:
-                    if rec.idt == 77270:
-                        # dwa numery ISBN, do tego z problemem w zapisie
-                        kw['isbn'] = dbf.Usi.objects.get(idt_usi=elem['a'][1:]).nazwa
-                        kw['e_isbn'] = dbf.Usi.objects.get(idt_usi=elem['b'][1:11]).nazwa
-                    else:
-                        if elem.get('a'):
-                            kw['isbn'] = dbf.Usi.objects.get(idt_usi=elem['a'][1:]).nazwa
-
-                        if elem.get('b'):
-                            if elem['b'].startswith("#"):
-                                assert not kw.get('adnotacje')
-                                kw['adnotacje'] = "Niejasny element importu: %r" % elem['b']
-                            else:
-                                kw['e_isbn'] = dbf.Usi.objects.get(idt_usi=elem['b'][1:11]).nazwa
-
-                        for literka in "cde":
-                            assert not elem.get(literka), (elem, kw, rec)
-
-                elif elem['id'] == 985:
-                    # elem['a'] prowadzi do IDT_USI ktorego nazwa to
-                    # PubMed ID
-                    pmid = dbf.Usi.objects.get(idt_usi=elem['a'][1:11]).nazwa
-                    if kw.get('pubmed_id'):
-                        assert kw['pubmed_id'] == pmid, (elem, kw, rec)
-                    else:
-                        kw['pubmed_id'] = pmid
-
-                    for literka in "bcde":
-                        assert not elem.get(literka), (elem, kw, rec)
-
+            elif elem['id'] == 107:
+                s = dbf.Usi.objects.get(idt_usi=elem['a'][1:])
+                if s.nazwa.startswith("ISSN"):
+                    kw['issn'] = s.nazwa[4:].strip()
+                elif s.nazwa.find("-") in [4, 5]:  # sam "goły" nr ISSN
+                    kw['issn'] = s.nazwa
                 else:
-                    raise NotImplementedError(elem, rec, rec.idt)
+                    raise NotImplementedError(elem, kw, rec)
+
+                for literka in 'bcd':
+                    assert not elem.get(literka), (elem, kw, rec)
+
+            elif elem['id'] == 997:
+                if elem['a'] == '3786' or elem['a'] == '':
+                    assert not kw.get('adnotacje'), (elem, kw, rec)
+                    kw['adnotacje'] = "Import bazy danych: niejasny element POZ_G: %s" % elem
+                elif elem['a'] == "Publikacja uwzględniona w Web of Science":
+                    wos = True
+                elif elem['a'].startswith("http"):
+                    assert not kw.get('www'), (elem, kw, rec)
+                    kw['www'] = elem['a']
+                else:
+                    raise NotImplementedError(elem, rec)
+
+            elif elem['id'] == 884:
+                # PubMedID
+                if elem.get('a'):
+                    kw['pubmed_id'] = elem['a']
+                kw['pmc_id'] = elem['b']
+                for literka in "cde":
+                    assert not elem.get(literka)
+
+            elif elem['id'] == 983:
+                kw['adnotacje'] = exp_combine(
+                    kw.get('adnotacje', ''),
+                    "Import bazy danych. Niejasny element POZ_G: %s" % elem,
+                    sep="\n")
+
+            elif elem['id'] == 988:
+                if rec.idt == 77270:
+                    # dwa numery ISBN, do tego z problemem w zapisie
+                    kw['isbn'] = dbf.Usi.objects.get(idt_usi=elem['a'][1:]).nazwa
+                    kw['e_isbn'] = dbf.Usi.objects.get(idt_usi=elem['b'][1:11]).nazwa
+                else:
+                    if elem.get('a'):
+                        kw['isbn'] = dbf.Usi.objects.get(idt_usi=elem['a'][1:]).nazwa
+
+                    if elem.get('b'):
+                        if elem['b'].startswith("#"):
+                            assert not kw.get('adnotacje')
+                            kw['adnotacje'] = "Niejasny element importu: %r" % elem['b']
+                        else:
+                            kw['e_isbn'] = dbf.Usi.objects.get(idt_usi=elem['b'][1:11]).nazwa
+
+                    for literka in "cde":
+                        assert not elem.get(literka), (elem, kw, rec)
+
+            elif elem['id'] == 985:
+                # elem['a'] prowadzi do IDT_USI ktorego nazwa to
+                # PubMed ID
+                pmid = dbf.Usi.objects.get(idt_usi=elem['a'][1:11]).nazwa
+                if kw.get('pubmed_id'):
+                    assert kw['pubmed_id'] == pmid, (elem, kw, rec)
+                else:
+                    kw['pubmed_id'] = pmid
+
+                for literka in "bcde":
+                    assert not elem.get(literka), (elem, kw, rec)
+
+            #
+            # rec.zrodlo
+            #
+
+            elif elem['id'] == 200:
+                # Wydawnictwo zwarte
+                assert klass == bpp.Wydawnictwo_Zwarte
+
+                for literka in 'efg':
+                    assert not elem.get(literka), "co mam z tym zrobic literka %s w %r" % (literka, elem)
+
+                assert not kw.get('informacje'), (kw['informacje'], rec, rec.idt)
+                kw['informacje'] = elem['a']
+                if elem.get('b'):
+                    kw['informacje'] += ": " + elem.get('b')
+
+                if elem.get('c'):
+                    kw['informacje'] += "; " + elem.get("c")
+
+                if elem.get('d'):
+                    kw['informacje'] += "; " + elem.get('d')
+
+                if kw['informacje']:
+                    res = parse_informacje(kw['informacje'], "tom")
+                    if res:
+                        assert not kw.get('tom')
+                        kw['tom'] = res
+
+                    # Zwarte NIE ma numeru zeszytu
+                    # kw['nr_zeszytu'] = parse_informacje(kw['informacje'], "numer")
+
+            elif elem['id'] == 100:
+                # Wydawnictwo_Ciagle
+                assert klass == bpp.Wydawnictwo_Ciagle
+                for literka in 'bcde':
+                    if literka in elem.keys():
+                        raise NotImplementedError("co mam z tym zrobic %r" % elem)
+
+                kw['zrodlo'] = dbf.Usi.objects.get(idt_usi=elem['a'][1:]).bpp_id
+
+            elif elem['id'] == 152:
+                # Wydawca indeksowany
+                assert klass == bpp.Wydawnictwo_Zwarte
+
+                for literka in "def":
+                    assert literka not in elem.keys()
+
+                if elem.get("b"):
+                    wydawca = dbf.Usi.objects.get(idt_usi=elem['b'][1:]).bpp_wydawca_id
+                    if kw.get("wydawca") and kw['wydawca'] != wydawca:
+                        raise NotImplementedError("Juz jest wydawca, prawdopodobnie z tabeli Poz")
+                    kw['wydawca'] = wydawca
+
+                if elem.get('a'):
+                    kw['miejsce_i_rok'] = f"{elem.get('a', '')} {elem.get('c', '')}".strip()
+
+            # Koniec rec.zrodlo
+
+            else:
+                raise NotImplementedError(elem, rec, rec.idt)
 
         if poz_n:
             elem = exp_parse_str(poz_n)
@@ -1045,63 +1143,6 @@ def integruj_publikacje():
             else:
                 raise NotImplementedError(elem, rec, kw)
 
-        if rec.zrodlo:
-            zrodlo = exp_parse_str(rec.zrodlo)
-            if zrodlo['id'] == 200:
-                # Wydawnictwo zwarte
-                assert klass == bpp.Wydawnictwo_Zwarte
-
-                for literka in 'efg':
-                    assert not zrodlo.get(literka), "co mam z tym zrobic literka %s w %r" % (literka, zrodlo)
-
-                assert not kw.get('informacje'), (kw['informacje'], rec, rec.idt)
-                kw['informacje'] = zrodlo['a']
-                if zrodlo.get('b'):
-                    kw['informacje'] += ": " + zrodlo.get('b')
-
-                if zrodlo.get('c'):
-                    kw['informacje'] += "; " + zrodlo.get("c")
-
-                if zrodlo.get('d'):
-                    kw['informacje'] += "; " + zrodlo.get('d')
-
-                if kw['informacje']:
-                    res = parse_informacje(kw['informacje'], "tom")
-                    if res:
-                        assert not kw.get('tom')
-                        kw['tom'] = res
-
-                        # Zwarte NIE ma numeru zeszytu
-                    # kw['nr_zeszytu'] = parse_informacje(kw['informacje'], "numer")
-
-            elif zrodlo['id'] == 100:
-                # Wydawnictwo_Ciagle
-                assert klass == bpp.Wydawnictwo_Ciagle
-                for literka in 'bcde':
-                    if literka in zrodlo.keys():
-                        raise NotImplementedError("co mam z tym zrobic %r" % zrodlo)
-
-                kw['zrodlo'] = dbf.Usi.objects.get(idt_usi=zrodlo['a'][1:]).bpp_id
-
-            elif zrodlo['id'] == 152:
-                # Wydawca indeksowany
-                assert klass == bpp.Wydawnictwo_Zwarte
-
-                for literka in "ac":
-                    # w literce "b" może nie byc tekstu
-                    assert zrodlo.get(literka), "brak tekstu w literce %s zrodlo %r" % (literka, zrodlo)
-                for elem in "def":
-                    assert elem not in zrodlo.keys()
-
-                if zrodlo.get("b"):
-                    if kw.get("wydawca"):
-                        raise NotImplementedError("Juz jest wydawca, prawdopodobnie z tabeli Poz")
-                    kw['wydawca'] = dbf.Usi.objects.get(idt_usi=zrodlo['b'][1:]).bpp_wydawca_id
-
-                kw['miejsce_i_rok'] = f"{zrodlo['a']} {zrodlo['c']}"
-            else:
-                raise NotImplementedError(zrodlo)
-
         if kw['tytul_oryginalny'].find('=') >= 0 and not (
                 kw['tytul_oryginalny'].find('I=532') >= 0
                 or kw['tytul_oryginalny'].find('Rudolf Weigl') >= 0
@@ -1142,7 +1183,6 @@ def wyswietl_prace_bez_dopasowania():
 
 
 def integruj_b_a():
-
     ctype_to_klass_map = {
         ContentType.objects.get_by_natural_key("bpp", "wydawnictwo_ciagle").pk: bpp.Wydawnictwo_Ciagle_Autor,
         ContentType.objects.get_by_natural_key("bpp", "wydawnictwo_zwarte").pk: bpp.Wydawnictwo_Zwarte_Autor,
@@ -1159,7 +1199,9 @@ def integruj_b_a():
 
     from django.db import reset_queries, connection
 
-    for elem in dbf.B_A.objects.values("idt_id", "idt_aut_id", ).annotate(cnt=Count('*')).order_by('idt_id', 'idt_aut_id').filter(cnt__gt=1):
+    for elem in dbf.B_A.objects.values("idt_id", "idt_aut_id", ).annotate(cnt=Count('*')).order_by('idt_id',
+                                                                                                   'idt_aut_id').filter(
+            cnt__gt=1):
         cnt = elem['cnt']
         for melem in dbf.B_A.objects.filter(idt_id=elem['idt_id'], idt_aut_id=elem['idt_aut_id']):
             print("1 Podwojne przypisanie", melem.idt.tytul_or_s, "(", melem.idt.rok, ") - ", melem.idt_aut)
@@ -1168,7 +1210,9 @@ def integruj_b_a():
             if cnt == 1:
                 break
 
-    for elem in dbf.B_A.objects.values("idt_id", "idt_aut__bpp_autor_id", ).annotate(cnt=Count('*')).order_by('idt_id', 'idt_aut__bpp_autor_id').filter(cnt__gt=1):
+    for elem in dbf.B_A.objects.values("idt_id", "idt_aut__bpp_autor_id", ).annotate(cnt=Count('*')).order_by('idt_id',
+                                                                                                              'idt_aut__bpp_autor_id').filter(
+            cnt__gt=1):
         cnt = elem['cnt']
         for melem in dbf.B_A.objects.filter(idt_id=elem['idt_id'], idt_aut__bpp_autor_id=elem['idt_aut__bpp_autor_id']):
             print("2 Podwojne przypisanie", melem.idt.tytul_or_s, "(", melem.idt.rok, ") - ", melem.idt_aut)
@@ -1178,6 +1222,8 @@ def integruj_b_a():
                 break
 
     base_query = dbf.B_A.objects.filter(object_id=None).exclude(idt__object_id=None)
+
+    count_queries = True
 
     for rec in pbar(
             base_query.select_related("idt", "idt_aut", "idt_jed").only(
@@ -1199,7 +1245,8 @@ def integruj_b_a():
             ).distinct(),
             base_query.count()):
 
-        reset_queries()
+        if count_queries:
+            reset_queries()
 
         bpp_ctype_id = rec.idt.content_type_id
         bpp_rec_id = rec.idt.object_id
@@ -1230,10 +1277,13 @@ def integruj_b_a():
             print("Rekord: %s, %s -> IntegrityError" % (rec.idt.tytul_or_s, rec.idt.idt))
             sys.exit(1)
 
-        if len(connection.queries) > 1:
-            for elem in connection.queries:
-                print(elem)
-            import pdb; pdb.set_trace()
+        if count_queries:
+            if len(connection.queries) > 1:
+                for elem in connection.queries:
+                    print(elem)
+                import pdb;
+                pdb.set_trace()
+            count_queries = False
 
         # rec.object_id = wxa.pk
         # rec.content_type_id = ctype_to_ctype_map.get(bpp_ctype_id)

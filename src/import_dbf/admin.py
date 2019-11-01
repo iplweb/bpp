@@ -32,6 +32,10 @@ class B_AInline(admin.TabularInline):
     fields = ['lp', 'idt_aut', 'idt_jed', 'afiliacja']
 
 
+class B_UInline(admin.TabularInline):
+    model = B_U
+    extra = 0
+
 @admin.register(Bib)
 class BibAdmin(ImportDbfBaseAdmin):
     list_display = ['idt', 'tytul_or', 'title', 'zrodlo', 'szczegoly', 'uwagi']
@@ -39,7 +43,7 @@ class BibAdmin(ImportDbfBaseAdmin):
     list_filter = ['kbr', 'lf', 'study_gr', 'kwartyl']
     readonly_fields = ['object_id', 'content_type']
 
-    inlines = [B_AInline, PozInline]
+    inlines = [B_AInline, PozInline, B_UInline]
 
 
 @admin.register(Aut)
@@ -95,6 +99,7 @@ class PozAdmin(ImportDbfBaseAdmin):
 class BUAdmin(ImportDbfBaseAdmin):
     list_display = ['idt', 'idt_usi', 'comm']
     autocomplete_fields = ['idt_usi', 'idt']
+    search_fields = [ 'idt__tytul_or', 'idt__pk']
 
 
 @admin.register(Usi)

@@ -133,7 +133,7 @@ class Aut(models.Model):
     def __str__(self):
         ret = f"{self.nazwisko} {self.imiona}"
         if self.tytul:
-            ret += ", {self.tytul}"
+            ret += f", {self.tytul}"
         return ret
 
     def get_bpp(self):
@@ -231,9 +231,10 @@ class B_U(models.Model):
 
     class Meta:
         managed = False
-        verbose_name_plural = 'zaimportowane cechy źródeł'
-        verbose_name = 'zaimportowana cecha źródła'
+        verbose_name_plural = 'zaimportowane dane OA rekordow'
+        verbose_name = 'zaimportowane dane OA rekordu'
         db_table = 'import_dbf_b_u'
+        ordering = ('idt', 'comm',)
 
 
 class Usi(models.Model):
