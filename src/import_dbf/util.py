@@ -461,7 +461,6 @@ def integruj_publikacje(idt_min=None, idt_max=None):
         iter = pbar(base_query, base_query.count())
 
     for rec in iter:
-        print(rec.idt)
         wos = False
         kw = {}
 
@@ -1161,16 +1160,23 @@ def usun_podwojne_przypisania_b_a():
                 break
 
 
-def partition_ids(model, num_proc, attr="idt"):
-    d = model.objects.aggregate(min=Min(attr), max=Max(attr))
-    s = int(ceil((d['max'] - d['min']) / num_proc))
-    cnt = d['min']
+def partition(min, max, num_proc):
+    s = int(ceil((max - min) / num_proc))
+    cnt = min
     ret = []
-    while cnt < d['max']:
+    while cnt < max:
         ret.append((cnt, cnt + s))
         cnt += s
     return ret
 
+
+def partition_ids(model, num_proc, attr="idt"):
+    d = model.objects.aggregate(min=Min(attr), max=Max(attr))
+    return partition(d['min'], d['max'], num_proc)
+
+
+def partition_count(model, num_proc):
+    return partition(0, model.objects.count(), num_proc)
 
 @transaction.atomic
 def integruj_b_a(idt_min=None, idt_max=None):
