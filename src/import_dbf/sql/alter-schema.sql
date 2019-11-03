@@ -40,10 +40,12 @@ ALTER TABLE import_dbf_b_p ALTER COLUMN idt SET DATA TYPE INT USING idt::integer
 ALTER TABLE import_dbf_bib ALTER COLUMN idt SET DATA TYPE INT USING idt::integer;
 CREATE UNIQUE INDEX  import_dbf_bib_idt ON  import_dbf_bib(idt);
 UPDATE import_dbf_aut SET idt_jed = NULL where idt_jed = '';
+UPDATE import_dbf_aut SET orcid_id = NULL where orcid_id = '';
 ALTER TABLE import_dbf_aut ALTER COLUMN idt_aut SET DATA TYPE INT USING idt_aut::integer;
 
 ALTER TABLE import_dbf_aut ALTER COLUMN idt_jed SET DATA TYPE INT USING idt_jed::integer;
-
+CREATE INDEX ON import_dbf_aut(orcid_id);
+CREATE INDEX ON import_dbf_aut(pbn_id);
 ALTER TABLE import_dbf_aut ADD COLUMN bpp_autor_id INTEGER;
 CREATE UNIQUE INDEX import_dbf_aut_idt ON import_dbf_aut(idt_aut);
 create index import_dbf_aut_nazwisko on import_dbf_aut(nazwisko);
@@ -92,10 +94,6 @@ CREATE UNIQUE INDEX import_dbf_idt_wyd ON import_dbf_wyd(idt_wyd);
 
 update import_dbf_aut set idt_jed = (select idt_jed from import_dbf_jed where skrot = '000') where idt_jed is NULL;
 update import_dbf_b_a set idt_jed = (select idt_jed from import_dbf_jed where skrot = '000') where idt_jed is NULL;
-
-update import_dbf_poz set tresc = '884$ #a$ 28940458 #b$' || E'\r\n' ||
-'#985$ #a$|0000005891#b$#c$'|| E'\r\n' ||
-'#969$ #a$|00000' where idt = 81868 and lp = 3;
 
 create index on import_dbf_poz(idt, kod_opisu);
 create index on import_dbf_poz(idt, kod_opisu, lp);

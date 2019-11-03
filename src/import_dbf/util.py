@@ -1,14 +1,11 @@
 import os
 from collections import defaultdict
-from math import ceil
 
-import progressbar
 import sys
-from builtins import NotImplementedError
 from dbfread import DBF
 from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError, transaction
-from django.db.models import Q, Count, Max, Min
+from django.db.models import Q, Count, F
 
 from bpp import models as bpp
 from bpp.models import Status_Korekty, wez_zakres_stron, parse_informacje, Zewnetrzna_Baza_Danych, cache
@@ -224,40 +221,39 @@ def integruj_funkcje_autorow():
             bpp.Funkcja_Autora.objects.create(nazwa=funkcja, skrot=funkcja)
 
 
-def pbar(query, count):
-    return progressbar.progressbar(
-        query, max_value=query.count(),
-        widgets=[progressbar.AnimatedMarker(), " ",
-                 progressbar.SimpleProgress(), " ",
-                 progressbar.Timer(), " ",
-                 progressbar.ETA()])
-
-
 @transaction.atomic
-def integruj_autorow(literka=None, orcid=False, pbn_id=False):
+def integruj_autorow(literka=None, orcid=False, pbn_id=False, rootlevel=False):
     tytuly = get_dict(bpp.Tytul, "skrot")
     funkcje = get_dict(bpp.Funkcja_Autora, "skrot")
 
     base_query = dbf.Aut.objects.all()
     if literka is not None:
+        print(literka)
+        # Włącz "rootlevel" dla każdego z literką
+        rootlevel = True
         base_query = base_query.filter(Q(nazwisko__istartswith=literka) |
                                        Q(nazwisko__istartswith="<" + literka) |
                                        Q(nazwisko__istartswith=" " + literka))
 
     if orcid:
-        base_query = base_query.exclude(orcid_id='')
-
-    if pbn_id:
+        base_query = base_query.exclude(orcid_id=None)
+    elif pbn_id:
         base_query = base_query.exclude(pbn_id='')
+    elif rootlevel:
+        # przy rootlevel=True analizuj rekordy ktore maja exp_id takie samo jak idt_aut
+        base_query = base_query.filter(idt_aut=F('exp_id'))
 
     base_query = base_query.select_for_update()
 
-    # base_query = base_query.select_related("idt_jed", "idt_jed__bpp_jednostka")
+    iter = base_query
 
-    for autor in pbar(base_query, base_query.count()):
+    if literka is None or literka in ['AMZ']:
+        iter = pbar(base_query, base_query.count())
+
+    for autor in iter:
         bpp_autor = None
 
-        if not bpp_autor and autor.exp_id:
+        if not bpp_autor and autor.exp_id and autor.exp_id != autor.idt_aut:
             try:
                 bpp_autor = bpp.Autor.objects.get(expertus_id=autor.exp_id)
             except bpp.Autor.DoesNotExist:
@@ -423,12 +419,16 @@ def mapuj_elementy_publikacji(offset, limit):
 
         poz_a = dbf.Poz.objects.get_for_model(rec.idt, "A")
         if poz_a:
+            if rec.tytul_or.find(poz_a) > 0:
+                raise ValueError("rec.tytul_or zawiera juz poz_a?", rec.tytul_or, poz_a, rec.idt)
             rec.tytul_or += poz_a
 
         # Jeżeli pole 'zrodlo' jest dosc dlugie, reszta tego pola moze znalezc
         # sie w tabeli "Poz" z oznaczeniem literowym 'C'
         zrodlo_cd = dbf.Poz.objects.get_for_model(rec.idt, "C")
         if zrodlo_cd:
+            if rec.zrodlo.find(zrodlo_cd) > 0:
+                raise ValueError("rec.zrodlo zawiera juz poz_c?", rec.zrodlo, zrodlo_cd, rec.idt)
             rec.zrodlo += zrodlo_cd
 
         # Dodaj elementy z B_U do POZ_G tak, aby były na koncu czyli
@@ -489,7 +489,7 @@ def mapuj_elementy_publikacji(offset, limit):
             dbf.Bib_Desc.objects.create(
                 idt=rec,
                 elem_id=id,
-                value=element,
+                value=zrodlo,
                 source='b_u'
             )
 
@@ -499,7 +499,8 @@ def mapuj_elementy_publikacji(offset, limit):
 
 @transaction.atomic
 def ekstrakcja_konferencji():
-    for elem in dbf.Bib_Desc.objects.filter(id=103):
+    print("Ekstrakcja konferencji")
+    for elem in dbf.Bib_Desc.objects.filter(elem_id=103):
         bpp.Konferencja.objects.get_or_create(nazwa=elem.value['a'])
         for literka in "bcde":
             assert not elem.value.get(literka)
@@ -507,8 +508,6 @@ def ekstrakcja_konferencji():
 
 @transaction.atomic
 def integruj_publikacje(offset=None, limit=None):
-    print(offset, limit)
-
     if cache.enabled():
         cache.disable()
 
@@ -546,7 +545,8 @@ def integruj_publikacje(offset=None, limit=None):
 
     id_list = dbf.Bib.objects.filter(object_id=None, analyzed=True)[offset:limit].values_list('pk')
 
-    base_query = dbf.Bib.objects.filter(pk__in=id_list).select_for_update(nowait=True)
+    base_query = dbf.Bib.objects.filter(pk__in=id_list)
+    # base_query = base_query.select_for_update(nowait=True)
 
     base_query = base_query.select_related()
 
@@ -559,7 +559,7 @@ def integruj_publikacje(offset=None, limit=None):
     charaktery_formalne = dict([(x.skrot, x.bpp_id) for x in dbf.Pub.objects.all()])
 
     iter = base_query
-    if offset == 0:
+    if offset == 0 or offset is None:
         iter = pbar(base_query, base_query.count())
 
     for rec in iter:
@@ -838,7 +838,6 @@ def integruj_publikacje(offset=None, limit=None):
                         kw['szczegoly'] += ", "
                     kw['szczegoly'] += elem.get('d')
 
-                assert not kw.get('uwagi')
                 if elem.get('e'):
                     if kw['szczegoly']:
                         kw['szczegoly'] += ", "
@@ -847,17 +846,14 @@ def integruj_publikacje(offset=None, limit=None):
             elif elem['id'] == 103:
                 # Konferencja
                 konferencja = bpp.Konferencja.objects.get(nazwa=elem['a'])
-
                 assert not kw.get('konferencja'), (elem, rec)
-
                 kw['konferencja'] = konferencja
 
             elif elem['id'] == 153:
                 assert not kw.get('szczegoly')
                 kw['szczegoly'] = elem['a']
 
-                assert not kw.get('uwagi')
-                kw['uwagi'] = exp_combine(elem.get('b'), elem.get('c'))
+                kw['szczegoly'] = exp_combine(elem.get('b'), elem.get('c'))
 
             elif elem['id'] == 104:
                 assert not kw.get('uwagi'), (kw['uwagi'], elem, rec, rec.idt)
@@ -901,8 +897,9 @@ def integruj_publikacje(offset=None, limit=None):
                 # DOI
                 if kw.get('doi'):
                     if kw['doi'] != elem['a']:
-                        raise NotImplementedError("DOI roznia sie", kw, elem, rec)
-                kw['doi'] = elem['a']
+                        kw['adnotacje'] = exp_combine(kw.get('adnotacje'), 'Drugi nr DOI: %s' % elem['a'], sep=". ")
+                else:
+                    kw['doi'] = elem['a']
 
             elif elem['id'] == 969:
                 # ({'id': 969, 'a': '|0000005187', 'b': '|0000005493',
@@ -1008,8 +1005,9 @@ def integruj_publikacje(offset=None, limit=None):
 
                     if elem.get('b'):
                         if elem['b'].startswith("#"):
-                            assert not kw.get('adnotacje')
-                            kw['adnotacje'] = "Niejasny element importu: %r" % elem['b']
+                            kw['adnotacje'] = exp_combine(
+                                kw.get('adnotacje'),
+                                "Niejasny element importu: %r" % elem['b'])
                         else:
                             kw['e_isbn'] = dbf.Usi.objects.get(idt_usi=elem['b'][1:11]).nazwa
 
@@ -1182,12 +1180,12 @@ def integruj_publikacje(offset=None, limit=None):
             klass_ext.objects.create(rekord=res, baza=Zewnetrzna_Baza_Danych.objects.get(skrot="WOS"))
 
 
-def wyswietl_prace_bez_dopasowania():
+def wyswietl_prace_bez_dopasowania(logger):
     bez = dbf.Bib.objects.filter(object_id=None)
     if bez.exists():
-        print("Prace bez dopasowania: %i rekordow. " % bez.count())
-        for rec in bez:
-            print(rec.idt, rec.rok, rec.tytul_or_s)
+        logger.info("Prace bez dopasowania: %i rekordow. " % bez.count())
+        for rec in bez[:30]:
+            logger.info((rec.idt, rec.rok, rec.tytul_or_s))
 
 
 @transaction.atomic
@@ -1218,40 +1216,17 @@ def usun_podwojne_przypisania_b_a():
                 break
 
 
-def partition(min, max, num_proc, fun=ceil):
-    s = int(fun((max - min) / num_proc))
-    cnt = min
-    ret = []
-    while cnt < max:
-        ret.append((cnt, cnt + s))
-        cnt += s
-    return ret
-
-
-def partition_ids(model, num_proc, attr="idt"):
-    d = model.objects.aggregate(min=Min(attr), max=Max(attr))
-    return partition(d['min'], d['max'], num_proc)
-
-
-def partition_count(objects, num_proc):
-    return partition(0, objects.count(), num_proc, fun=ceil)
-
-
 @transaction.atomic
-def integruj_b_a(idt_min=None, idt_max=None):
+def integruj_b_a(offset, limit):
     from django.conf import settings
     setattr(settings, 'ENABLE_DATA_AKT_PBN_UPDATE', False)
+
+    if cache.enabled():
+        cache.disable()
 
     ctype_to_klass_map = {
         ContentType.objects.get_by_natural_key("bpp", "wydawnictwo_ciagle").pk: bpp.Wydawnictwo_Ciagle_Autor,
         ContentType.objects.get_by_natural_key("bpp", "wydawnictwo_zwarte").pk: bpp.Wydawnictwo_Zwarte_Autor,
-    }
-
-    ctype_to_ctype_map = {
-        ContentType.objects.get_by_natural_key("bpp", "wydawnictwo_ciagle").pk: ContentType.objects.get_by_natural_key(
-            "bpp", "wydawnictwo_ciagle_autor"),
-        ContentType.objects.get_by_natural_key("bpp", "wydawnictwo_zwarte").pk: ContentType.objects.get_by_natural_key(
-            "bpp", "wydawnictwo_zwarte_autor"),
     }
 
     ta_id = bpp.Typ_Odpowiedzialnosci.objects.get(skrot="aut.").pk
@@ -1260,8 +1235,8 @@ def integruj_b_a(idt_min=None, idt_max=None):
 
     base_query = dbf.B_A.objects.filter(object_id=None).exclude(idt__object_id=None)
 
-    if idt_min is not None and idt_max is not None:
-        base_query = base_query.filter(id__gte=idt_min, id__lt=idt_max)
+    if offset is not None and limit is not None:
+        base_query = base_query[offset:limit]
 
     count_queries = True
 
@@ -1281,10 +1256,10 @@ def integruj_b_a(idt_min=None, idt_max=None):
 
         "idt__idt",
         "idt__tytul_or_s"
-    ).distinct()
+    )
 
     iter = base_query
-    if idt_min is not None and idt_min < 1000:
+    if offset is not None and offset == 0:
         iter = pbar(base_query, base_query.count())
 
     for rec in iter:
@@ -1321,6 +1296,10 @@ def integruj_b_a(idt_min=None, idt_max=None):
             sys.exit(1)
 
         if count_queries:
+            #
+            # Jeżeli wewnątrz pętli będzie więcej, niż jedno zapytanie SQL, to zbuntuj się.
+            # W ten sposb sprawdzamy regresję + wyłączenie mechanizmw cache
+            #
             if len(connection.queries) > 1:
                 for elem in connection.queries:
                     print(elem)

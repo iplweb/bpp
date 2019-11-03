@@ -3,6 +3,8 @@
 """Funkcje pomocnicze dla klas w bpp.models"""
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
+from django.utils.functional import cached_property
+
 try:
     from django.core.urlresolvers import reverse
 except ImportError:
@@ -129,6 +131,11 @@ class ModelZOpisemBibliograficznym(models.Model):
     # listy zapisanych nazwisk
     opis_bibliograficzny_zapisani_autorzy_cache = models.TextField(default='')
 
+    @cached_property
+    def autorzy_dla_opisu(self):
+        # autorzy_set.all tylko na potrzeby opisu bibliograficznego
+        return self.autorzy_set.select_related("autor", "typ_odpowiedzialnosci").order_by('kolejnosc')
+
     def zaktualizuj_cache(self, tylko_opis=False):
         self.opis_bibliograficzny_cache = self.opis_bibliograficzny()
 
@@ -141,7 +148,7 @@ class ModelZOpisemBibliograficznym(models.Model):
                 zapisani = ["%s %s" % (self.autor.nazwisko, self.autor.imiona)]
 
             else:
-                autorzy = self.autorzy.through.objects.filter(rekord=self).order_by('kolejnosc')
+                autorzy = self.autorzy_dla_opisu
                 zapisani = [x.zapisany_jako for x in autorzy]
                 autorzy = [x.autor for x in autorzy]
 
@@ -159,6 +166,7 @@ class ModelZOpisemBibliograficznym(models.Model):
     class Meta:
         abstract = True
 
+
 class ZapobiegajNiewlasciwymCharakterom(models.Model):
     class Meta:
         abstract = True
@@ -173,6 +181,8 @@ class ZapobiegajNiewlasciwymCharakterom(models.Model):
             if self.charakter_formalny.skrot in ['D', 'H', 'PAT']:
                 raise ValidationError({'charakter_formalny': [
                     safestring.mark_safe('Jeżeli chcesz dodać rekord o typie "%s"'
-                    ', <a href="%s">kliknij tutaj</a>.' % (
-                        self.charakter_formalny.nazwa,
-                        reverse("admin:bpp_%s_add" % self.charakter_formalny.nazwa.lower().replace(" ", "_"))))]})
+                                         ', <a href="%s">kliknij tutaj</a>.' % (
+                                             self.charakter_formalny.nazwa,
+                                             reverse(
+                                                 "admin:bpp_%s_add" % self.charakter_formalny.nazwa.lower().replace(" ",
+                                                                                                                    "_"))))]})

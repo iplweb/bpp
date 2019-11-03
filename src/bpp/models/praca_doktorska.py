@@ -31,6 +31,9 @@ class Praca_Doktorska_Baza(NieMaProcentowMixin, Wydawnictwo_Zwarte_Baza):
 
         return FakeSet()
 
+    def autorzy_dla_opisu(self):
+        return self.autorzy_set
+
     class Meta:
         abstract = True
 

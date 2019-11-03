@@ -22,6 +22,7 @@ remove-dbfs:
 
 alter-schema:
 	cat sql/alter-schema.sql | $(PSQL)
+	cat sql/alter-umw.sql | $(PSQL)
 
 delete-imported-data:
 	cat sql/remove-imported.sql | $(PSQL)

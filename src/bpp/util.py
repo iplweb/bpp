@@ -1,11 +1,15 @@
 # -*- encoding: utf-8 -*-
 import json
+import multiprocessing
 import os
 import re
 from datetime import datetime, timedelta
+from math import ceil, floor
 from pathlib import Path
 
+import progressbar
 from django.apps import apps
+from django.db.models import Max, Min
 from psycopg2.extensions import QuotedString
 from unidecode import unidecode
 
@@ -182,3 +186,43 @@ def rebuild_contenttypes():
     app_config = apps.get_app_config('bpp')
     from django.contrib.contenttypes.management import create_contenttypes
     create_contenttypes(app_config, verbosity=0)
+
+
+#
+# Progress bar
+#
+
+def pbar(query, count=None):
+    return progressbar.progressbar(
+        query, max_value=count or query.count(),
+        widgets=[progressbar.AnimatedMarker(), " ",
+                 progressbar.SimpleProgress(), " ",
+                 progressbar.Timer(), " ",
+                 progressbar.ETA()])
+
+
+#
+# Multiprocessing stuff
+#
+
+def partition(min, max, num_proc, fun=ceil):
+    s = int(fun((max - min) / num_proc))
+    cnt = min
+    ret = []
+    while cnt < max:
+        ret.append((cnt, cnt + s))
+        cnt += s
+    return ret
+
+
+def partition_ids(model, num_proc, attr="idt"):
+    d = model.objects.aggregate(min=Min(attr), max=Max(attr))
+    return partition(d['min'], d['max'], num_proc)
+
+
+def partition_count(objects, num_proc):
+    return partition(0, objects.count(), num_proc, fun=ceil)
+
+
+def no_threads(multiplier=0.75):
+    return max(int(floor(multiprocessing.cpu_count() * multiplier)), 1)

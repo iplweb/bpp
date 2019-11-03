@@ -1,21 +1,10 @@
 # -*- encoding: utf-8 -*-
 import multiprocessing
-from math import floor
 
 from django.core.management import BaseCommand
-from django.db import transaction
 
-from bpp.models.cache import Rekord
-from bpp.tasks import aktualizuj_cache_rekordu
-from import_dbf.util import partition_count
-
-
-@transaction.atomic
-def rebuild(offset=None, limit=None):
-    print(offset, limit)
-    ids = Rekord.objects.all()[offset:limit].values_list('pk')
-    for r in Rekord.objects.filter(pk__in=ids).select_for_update():
-        aktualizuj_cache_rekordu(r.original)
+from bpp.models import Wydawnictwo_Zwarte, Wydawnictwo_Ciagle, rebuild_ciagle, rebuild_zwarte
+from bpp.util import partition_count, no_threads
 
 
 class Command(BaseCommand):
@@ -25,7 +14,8 @@ class Command(BaseCommand):
         from django import db
         db.connections.close_all()
 
-        cpu_count = multiprocessing.cpu_count()
-        num_proc = int(floor(cpu_count * 0.75)) or 1
-        pool = multiprocessing.Pool(processes=num_proc)
-        pool.starmap(rebuild, partition_count(Rekord.objects.all(), num_proc))
+        pool_size = no_threads(0.75)
+        pool = multiprocessing.Pool(processes=pool_size)
+
+        pool.starmap(rebuild_ciagle, partition_count(Wydawnictwo_Ciagle.objects, pool_size))
+        pool.starmap(rebuild_zwarte, partition_count(Wydawnictwo_Zwarte.objects, pool_size))

@@ -3,22 +3,18 @@ import multiprocessing
 from math import floor
 
 import django
-django.setup()
-from django.conf import settings
-from django.core.management import BaseCommand
-from django.db import transaction
 
-from bpp.models import cache
-from import_dbf.models import Bib, B_A, Aut
+django.setup()
+from django.core.management import BaseCommand
+
+from bpp.models import Konferencja
+from import_dbf.models import Bib, B_A
 from import_dbf.util import integruj_wydzialy, integruj_jednostki, integruj_uczelnia, integruj_autorow, \
     integruj_publikacje, integruj_charaktery, integruj_jezyki, integruj_kbn, integruj_zrodla, integruj_b_a, \
-    wyswietl_prace_bez_dopasowania, usun_podwojne_przypisania_b_a, partition_ids, integruj_tytuly_autorow, \
-    integruj_funkcje_autorow, partition_count, mapuj_elementy_publikacji, ekstrakcja_konferencji
-
+    wyswietl_prace_bez_dopasowania, usun_podwojne_przypisania_b_a, integruj_tytuly_autorow, \
+    integruj_funkcje_autorow, mapuj_elementy_publikacji, ekstrakcja_konferencji
+from bpp.util import partition_count
 import logging
-
-# Get an instance of a logger
-
 
 
 class Command(BaseCommand):
@@ -41,7 +37,7 @@ class Command(BaseCommand):
 
     def handle(self, uczelnia, skrot, enable_all, disable_transaction, *args, **options):
         verbosity = int(options['verbosity'])
-        logger = logging.getLogger("")
+        logger = logging.getLogger("main")
         if verbosity > 1:
             logger.setLevel(logging.DEBUG)
 
@@ -65,9 +61,20 @@ class Command(BaseCommand):
         if enable_all or options['enable_autor']:
             pool.apply(integruj_tytuly_autorow)
             pool.apply(integruj_funkcje_autorow)
-            logger.debug("Autorzy")
-            # Nie rownolegle, bo potem mamy podwonje Expertus_ID
-            pool.apply(integruj_autorow) #
+
+            logger.debug("Autorzy z ORCID")
+            pool.apply(integruj_autorow, {"orcid": True, "rootlevel": True})
+            pool.apply(integruj_autorow, {"orcid": True})
+
+            logger.debug("Autorzy z PBN ID")
+            pool.apply(integruj_autorow, {"pbn_id": True, "rootlevel": True})
+            pool.apply(integruj_autorow, {"pbn_id": True})
+
+            logger.debug("Autorzy z Expertus ID == idt_aut")
+            pool.map(integruj_autorow, "AĄBCĆDEĘFGHIJKLŁMNŃOÓPQRSŚTUVWXYZŹŻ01234567890")
+
+            logger.debug("Pozostali autorzy")
+            pool.apply(integruj_autorow, {"pbn_id": True})
 
         if enable_all or options['enable_charakter_kbn_jezyk']:
             pool.apply(integruj_charaktery)
@@ -82,16 +89,20 @@ class Command(BaseCommand):
             logger.debug("Publikacje")
 
             pool.starmap(mapuj_elementy_publikacji, partition_count(
-                Bib.objects.all().exclude(analyzed=True), num_proc))
+                Bib.objects.exclude(analyzed=True), num_proc))
 
-            pool.aply(ekstrakcja_konferencji)
+            logger.info("Integruje konferencje")
+            if Konferencja.objects.count() < 100:
+                pool.apply(ekstrakcja_konferencji)
 
+            logger.info("Integruje publikacjie")
             pool.starmap(integruj_publikacje, partition_count(
                 Bib.objects.filter(object_id=None, analyzed=True), num_proc))
 
-            pool.apply(wyswietl_prace_bez_dopasowania)
+            pool.apply(wyswietl_prace_bez_dopasowania, logger)
 
         if enable_all or options['enable_b_a']:
+            logger.info("Usuwanie podwojnych przypisan")
             pool.apply(usun_podwojne_przypisania_b_a)
             logger.debug("Integracja B_A")
-            pool.map(integruj_b_a, partition_ids(B_A, num_proc, "id"))
+            pool.starmap(integruj_b_a, partition_count(B_A.objects, num_proc))

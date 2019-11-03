@@ -83,7 +83,6 @@ class Bib(models.Model):
     analyzed = models.BooleanField(default=False)
 
     class Meta:
-        managed = False
         db_table = 'import_dbf_bib'
         verbose_name = 'zaimportowany rekord bibliografi'
         verbose_name_plural = 'zaimportowane rekordy bibliografi'
@@ -93,7 +92,7 @@ class Bib(models.Model):
 
 class Bib_Desc(models.Model):
     idt = models.ForeignKey(Bib, CASCADE)
-    elem_id = models.PositiveSmallIntegerField()
+    elem_id = models.PositiveSmallIntegerField(db_index=True)
     value = JSONField()
     source = models.CharField(max_length=10)
 
