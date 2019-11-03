@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from import_dbf.util import addslashes, import_dbf, exp_parse_str, exp_add_spacing
+from import_dbf.util import addslashes, exp_parse_str, exp_add_spacing, dbf2sql
 
 
 def test_util_addslashes():
@@ -12,7 +12,8 @@ def test_util_addslashes():
 
 
 def test_util_import_dbf():
-    import_dbf(os.path.join(os.path.dirname(__file__), "test.dbf"))
+    dbf2sql(os.path.join(os.path.dirname(__file__), "test.dbf"))
+    open(os.path.join(os.path.dirname(__file__), "test.dbf") + ".sql")
 
 
 @pytest.mark.parametrize(

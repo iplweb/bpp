@@ -246,12 +246,7 @@ def integruj_autorow(literka=None, orcid=False, pbn_id=False, rootlevel=False):
 
     base_query = base_query.select_for_update()
 
-    iter = base_query
-
-    if literka is None or literka in ['AMZ']:
-        iter = pbar(base_query, base_query.count())
-
-    for autor in iter:
+    for autor in base_query:
         bpp_autor = None
 
         if not bpp_autor and autor.exp_id and autor.exp_id != autor.idt_aut:

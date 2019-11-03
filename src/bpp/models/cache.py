@@ -12,8 +12,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields.array import ArrayField
 from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ObjectDoesNotExist
-from django.db import connection
-from django.db import models, transaction, reset_queries
+from django.db import models, transaction
 from django.db.models import Func, ForeignKey, CASCADE
 from django.db.models.deletion import DO_NOTHING
 from django.db.models.lookups import In
@@ -33,7 +32,7 @@ from bpp.models.abstract import ModelPunktowanyBaza, \
     ModelTypowany, ModelZCharakterem
 from bpp.models.system import Charakter_Formalny, Jezyk
 from bpp.models.util import ModelZOpisemBibliograficznym
-from bpp.util import FulltextSearchMixin, pbar
+from bpp.util import FulltextSearchMixin
 
 # zmiana CACHED_MODELS powoduje zmiane opisu bibliograficznego wszystkich rekordow
 CACHED_MODELS = [Wydawnictwo_Ciagle, Wydawnictwo_Zwarte, Praca_Doktorska,
@@ -641,13 +640,7 @@ class Cache_Punktacja_Autora_Sum_Gruop(models.Model):
 # Rebuilder
 #
 
-def rebuild(klass, offset=None, limit=None, install_cached_loader=True, extra_flds=None, extra_tables=None):
-    if install_cached_loader:
-        from django.conf import settings
-        settings.TEMPLATES[0]['OPTIONS']['loaders'] = [
-            ('django.template.loaders.cached.Loader', settings.TEMPLATES[0]['OPTIONS']['loaders'])
-        ]
-
+def rebuild(klass, offset=None, limit=None, extra_flds=None, extra_tables=None):
     if extra_flds is None:
         extra_flds = ()
 

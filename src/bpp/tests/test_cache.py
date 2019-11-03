@@ -44,7 +44,7 @@ def test_opis_bibliograficzny_dependent(transactional_db, standard_data):
     """Stwórz i skasuj Wydawnictwo_Ciagle_Autor i sprawdź, jak to
     wpłynie na opis."""
 
-    c = mommy.make(Wydawnictwo_Ciagle, szczegoly='sz', uwagi='u')
+    c = mommy.make(Wydawnictwo_Ciagle, tytul_oryginalny='Test', szczegoly='sz', uwagi='u')
     assert 'KOWALSKI' not in c.opis_bibliograficzny()
     assert 'KOWALSKI' not in pierwszy_rekord()
 

@@ -131,9 +131,8 @@ class ModelZOpisemBibliograficznym(models.Model):
     # listy zapisanych nazwisk
     opis_bibliograficzny_zapisani_autorzy_cache = models.TextField(default='')
 
-    @cached_property
     def autorzy_dla_opisu(self):
-        # autorzy_set.all tylko na potrzeby opisu bibliograficznego
+        # takie 'autorzy_set.all()' tylko na potrzeby opisu bibliograficznego
         return self.autorzy_set.select_related("autor", "typ_odpowiedzialnosci").order_by('kolejnosc')
 
     def zaktualizuj_cache(self, tylko_opis=False):
@@ -148,7 +147,7 @@ class ModelZOpisemBibliograficznym(models.Model):
                 zapisani = ["%s %s" % (self.autor.nazwisko, self.autor.imiona)]
 
             else:
-                autorzy = self.autorzy_dla_opisu
+                autorzy = self.autorzy_dla_opisu()
                 zapisani = [x.zapisany_jako for x in autorzy]
                 autorzy = [x.autor for x in autorzy]
 

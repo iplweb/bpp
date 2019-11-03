@@ -455,6 +455,7 @@ TESTING = ('test' in sys.argv) or ('jenkins' in sys.argv) or \
 
 if TESTING:
     CELERY_ALWAYS_EAGER = True
+    CELERY_TASK_ALWAYS_EAGER = True
     CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
 
 CELERYD_HIJACK_ROOT_LOGGER = False

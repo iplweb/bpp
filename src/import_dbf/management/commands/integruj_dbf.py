@@ -62,6 +62,10 @@ class Command(BaseCommand):
             pool.apply(integruj_tytuly_autorow)
             pool.apply(integruj_funkcje_autorow)
 
+            # 'Jose Miguel', 'Caldas' <==> 'Jose', 'Miguel Caldas'
+            # with fuj as (select imiona || ' ' || nazwisko as x, idt_aut as y from import_dbf_aut where exp_id = idt_aut) select x, array_agg(y) from fuj group by x having count(*) > 1
+
+
             logger.debug("Autorzy z ORCID")
             pool.apply(integruj_autorow, {"orcid": True, "rootlevel": True})
             pool.apply(integruj_autorow, {"orcid": True})
@@ -71,7 +75,8 @@ class Command(BaseCommand):
             pool.apply(integruj_autorow, {"pbn_id": True})
 
             logger.debug("Autorzy z Expertus ID == idt_aut")
-            pool.map(integruj_autorow, "AĄBCĆDEĘFGHIJKLŁMNŃOÓPQRSŚTUVWXYZŹŻ01234567890")
+            for literka in "AĄBCĆDEĘFGHIJKLŁMNŃOÓPQRSŚTUVWXYZŹŻ01234567890":
+                pool.apply(integruj_autorow, literka)
 
             logger.debug("Pozostali autorzy")
             pool.apply(integruj_autorow, {"rootlevel": True})
