@@ -35,4 +35,7 @@ recreate-db:
 	createdb bpp
 	$(MANAGE) migrate
 
-rebuild-db: recreate-db convert-dbfs import-converted-dbfs alter-schema integruj-dbf
+rebuild-cache:
+	$(MANAGE) rebuild_cache
+
+rebuild-db: recreate-db convert-dbfs import-converted-dbfs alter-schema integruj-dbf rebuild-cache

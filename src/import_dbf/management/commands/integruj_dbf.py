@@ -45,7 +45,7 @@ class Command(BaseCommand):
         db.connections.close_all()
 
         cpu_count = multiprocessing.cpu_count()
-        num_proc = int(floor(cpu_count * 0.75)) or 1
+        num_proc = int(floor(cpu_count * 0.875)) or 1
         pool = multiprocessing.Pool(processes=num_proc)
 
         pool.apply(integruj_uczelnia, (uczelnia, skrot))

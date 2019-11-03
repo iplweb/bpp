@@ -413,7 +413,8 @@ def mapuj_elementy_publikacji(offset, limit):
 
         poz_a = dbf.Poz.objects.get_for_model(rec.idt, "A")
         if poz_a:
-            if rec.tytul_or.find(poz_a) > 0:
+            poz_a_pos = rec.tytul_or.find(poz_a)
+            if poz_a_pos > 5 and len(poz_a) > 1:
                 raise ValueError("rec.tytul_or zawiera juz poz_a?", rec.tytul_or, poz_a, rec.idt)
             rec.tytul_or += poz_a
 
