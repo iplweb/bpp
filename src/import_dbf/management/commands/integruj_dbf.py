@@ -105,10 +105,10 @@ class Command(BaseCommand):
             pool.starmap(integruj_publikacje, partition_count(
                 Bib.objects.filter(object_id=None, analyzed=True), num_proc))
 
-            pool.apply(wyswietl_prace_bez_dopasowania, logger)
+            pool.apply(wyswietl_prace_bez_dopasowania, (logger,))
 
         if enable_all or options['enable_b_a']:
             logger.info("Usuwanie podwojnych przypisan")
-            pool.apply(usun_podwojne_przypisania_b_a, logger)
+            pool.apply(usun_podwojne_przypisania_b_a, (logger,))
             logger.debug("Integracja B_A")
             pool.starmap(integruj_b_a, partition_count(B_A.objects, num_proc))

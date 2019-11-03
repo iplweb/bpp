@@ -422,7 +422,8 @@ def mapuj_elementy_publikacji(offset, limit):
         # sie w tabeli "Poz" z oznaczeniem literowym 'C'
         zrodlo_cd = dbf.Poz.objects.get_for_model(rec.idt, "C")
         if zrodlo_cd:
-            if rec.zrodlo.find(zrodlo_cd) > 0:
+            poz_c_pos = rec.zrodlo.find(zrodlo_cd)
+            if poz_c_pos > 4 and len(zrodlo_cd) > 1:
                 raise ValueError("rec.zrodlo zawiera juz poz_c?", rec.zrodlo, zrodlo_cd, rec.idt)
             rec.zrodlo += zrodlo_cd
 
