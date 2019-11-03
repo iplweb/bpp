@@ -1,6 +1,7 @@
 # -*- encoding: utf-8 -*-
 import multiprocessing
 
+from django.conf import settings
 from django.core.management import BaseCommand
 
 from bpp.models import Wydawnictwo_Zwarte, Wydawnictwo_Ciagle, rebuild_ciagle, rebuild_zwarte
@@ -11,8 +12,9 @@ class Command(BaseCommand):
     help = 'Odbudowuje cache'
 
     def handle(self, *args, **options):
-        from django import db
-        db.connections.close_all()
+        if not settings.TESTING:
+            from django import db
+            db.connections.close_all()
 
         pool_size = no_threads(0.75)
         pool = multiprocessing.Pool(processes=pool_size)

@@ -42,7 +42,7 @@ class TestTemplateTags(TestCase):
 
     def test_autorzy(self):
         t = get_template("opis_bibliograficzny/autorzy.html")
-        c = {"praca": self.ciagle}
+        c = {"praca": self.ciagle, "autorzy": self.ciagle.autorzy_dla_opisu()}
         ret = t.render(c).strip()
         self.assertEqual(ret, "[aut.] Testowy Autor, Jan Budnik, [red.] Stefan Kolbe.".upper())
 
@@ -55,7 +55,7 @@ class TestTemplateTags(TestCase):
         self.ciagle.tekst_przed_pierwszym_autorem = "PRZED"
         self.ciagle.tekst_po_ostatnim_autorze = "PO"
 
-        c = {"praca": self.ciagle, "links": "normal"}
+        c = {"praca": self.ciagle, "links": "normal", "autorzy": self.ciagle.autorzy_dla_opisu()}
         ret = t.render(c).strip()
         self.assertEqual(ret,  'PRZED[AUT.] <a href="/bpp/autor/C/">Testowy Autor</a>, <a href="/bpp/autor/A/">Jan Budnik</a>, [RED.] <a href="/bpp/autor/B/">Stefan Kolbe</a>PO.')
 
@@ -63,7 +63,7 @@ class TestTemplateTags(TestCase):
     def test_autorzy_z_linkami(self):
         t = get_template("opis_bibliograficzny/autorzy.html")
 
-        c = {"praca": self.ciagle, "links": "normal"}
+        c = {"praca": self.ciagle, "links": "normal", "autorzy": self.ciagle.autorzy_dla_opisu()}
         ret = t.render(c).strip()
         self.assertEqual(ret,  '[AUT.] <a href="/bpp/autor/C/">Testowy Autor</a>, <a href="/bpp/autor/A/">Jan Budnik</a>, [RED.] <a href="/bpp/autor/B/">Stefan Kolbe</a>.')
 
