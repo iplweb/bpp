@@ -74,7 +74,7 @@ class Command(BaseCommand):
             pool.map(integruj_autorow, "AĄBCĆDEĘFGHIJKLŁMNŃOÓPQRSŚTUVWXYZŹŻ01234567890")
 
             logger.debug("Pozostali autorzy")
-            pool.apply(integruj_autorow, {"pbn_id": True})
+            pool.apply(integruj_autorow, {"rootlevel": True})
 
         if enable_all or options['enable_charakter_kbn_jezyk']:
             pool.apply(integruj_charaktery)

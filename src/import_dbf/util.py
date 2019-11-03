@@ -10,6 +10,7 @@ from django.db.models import Q, Count, F
 from bpp import models as bpp
 from bpp.models import Status_Korekty, wez_zakres_stron, parse_informacje, Zewnetrzna_Baza_Danych, cache
 from bpp.system import User
+from bpp.util import pbar
 from import_dbf import models as dbf
 from .codecs import custom_search_function  # noqa
 
@@ -45,7 +46,7 @@ def dbf2sql(filename, appname="import_dbf"):
 
     output = open(filename + ".sql", "w")
     output.write("BEGIN;\n")
-    output.write("DROP TABLE IF EXISTS %s;\n" % tablename)
+    output.write("DROP TABLE IF EXISTS %s CASCADE;\n" % tablename)
     output.write("CREATE TABLE %s(\n" % tablename)
     for field in dbf.fields:
         output.write("\t%s text,\n" % field.name.lower())
@@ -226,7 +227,7 @@ def integruj_autorow(literka=None, orcid=False, pbn_id=False, rootlevel=False):
     tytuly = get_dict(bpp.Tytul, "skrot")
     funkcje = get_dict(bpp.Funkcja_Autora, "skrot")
 
-    base_query = dbf.Aut.objects.all()
+    base_query = dbf.Aut.objects.filter(bpp_autor_id=None)
     if literka is not None:
         print(literka)
         # Włącz "rootlevel" dla każdego z literką
