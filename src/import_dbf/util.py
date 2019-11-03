@@ -229,7 +229,6 @@ def integruj_autorow(literka=None, orcid=False, pbn_id=False, rootlevel=False):
 
     base_query = dbf.Aut.objects.filter(bpp_autor_id=None)
     if literka is not None:
-        print(literka)
         # Włącz "rootlevel" dla każdego z literką
         rootlevel = True
         base_query = base_query.filter(Q(nazwisko__istartswith=literka) |
@@ -402,7 +401,6 @@ def integruj_zrodla():
 def mapuj_elementy_publikacji(offset, limit):
     # Zbiera elementy 'zrodlo', 'poz_', 'b_u' do jednej tabeli
 
-    print(offset, limit)
     ids_list = dbf.Bib.objects.all().exclude(analyzed=True).values_list('pk')[offset:limit]
 
     base_query = dbf.Bib.objects.filter(pk__in=ids_list).select_for_update()
@@ -495,7 +493,6 @@ def mapuj_elementy_publikacji(offset, limit):
 
 @transaction.atomic
 def ekstrakcja_konferencji():
-    print("Ekstrakcja konferencji")
     for elem in dbf.Bib_Desc.objects.filter(elem_id=103):
         bpp.Konferencja.objects.get_or_create(nazwa=elem.value['a'])
         for literka in "bcde":
@@ -1185,7 +1182,7 @@ def wyswietl_prace_bez_dopasowania(logger):
 
 
 @transaction.atomic
-def usun_podwojne_przypisania_b_a():
+def usun_podwojne_przypisania_b_a(logger):
     from django.conf import settings
     setattr(settings, 'ENABLE_DATA_AKT_PBN_UPDATE', False)
 
@@ -1194,7 +1191,7 @@ def usun_podwojne_przypisania_b_a():
         cnt__gt=1):
         cnt = elem['cnt']
         for melem in dbf.B_A.objects.filter(idt_id=elem['idt_id'], idt_aut_id=elem['idt_aut_id']):
-            print("1 Podwojne przypisanie", melem.idt.tytul_or_s, "(", melem.idt.rok, ") - ", melem.idt_aut)
+            logger.info(("1 Podwojne przypisanie", melem.idt.tytul_or_s, "(", melem.idt.rok, ") - ", melem.idt_aut))
             melem.delete()
             cnt -= 1
             if cnt == 1:
@@ -1205,7 +1202,7 @@ def usun_podwojne_przypisania_b_a():
         cnt__gt=1):
         cnt = elem['cnt']
         for melem in dbf.B_A.objects.filter(idt_id=elem['idt_id'], idt_aut__bpp_autor_id=elem['idt_aut__bpp_autor_id']):
-            print("2 Podwojne przypisanie", melem.idt.tytul_or_s, "(", melem.idt.rok, ") - ", melem.idt_aut)
+            logger.info(("2 Podwojne przypisanie", melem.idt.tytul_or_s, "(", melem.idt.rok, ") - ", melem.idt_aut))
             melem.delete()
             cnt -= 1
             if cnt == 1:

@@ -76,6 +76,7 @@ class Command(BaseCommand):
 
             logger.debug("Autorzy z Expertus ID == idt_aut")
             for literka in "AĄBCĆDEĘFGHIJKLŁMNŃOÓPQRSŚTUVWXYZŹŻ01234567890":
+                logger.debug(literka)
                 pool.apply(integruj_autorow, literka)
 
             logger.debug("Pozostali autorzy")
@@ -108,6 +109,6 @@ class Command(BaseCommand):
 
         if enable_all or options['enable_b_a']:
             logger.info("Usuwanie podwojnych przypisan")
-            pool.apply(usun_podwojne_przypisania_b_a)
+            pool.apply(usun_podwojne_przypisania_b_a, logger)
             logger.debug("Integracja B_A")
             pool.starmap(integruj_b_a, partition_count(B_A.objects, num_proc))

@@ -65,7 +65,7 @@ opis_bibliograficzny_komisja_centralna_template = None
 opis_bibliograficzny_autorzy_template = None
 
 
-def renderuj_opis_bibliograficzny(praca):
+def renderuj_opis_bibliograficzny(praca, autorzy):
     """Renderuje opis bibliograficzny dla danej klasy, używając template."""
     global opis_bibliograficzny_template
 
@@ -74,7 +74,7 @@ def renderuj_opis_bibliograficzny(praca):
             "opis_bibliograficzny/main.html")
 
     return opis_bibliograficzny_template.render(
-        dict(praca=praca)).replace("\r\n", "").replace(
+        dict(praca=praca, autorzy=autorzy)).replace("\r\n", "").replace(
         "\n", "").replace("  ", " ").replace("  ", " ").replace(
         "  ", " ").replace("  ", " ").replace("  ", " ").replace(
         " , ", ", ").replace(" . ", ". ").replace(". . ", ". ").replace(
@@ -106,8 +106,10 @@ class ModelZOpisemBibliograficznym(models.Model):
     """Mixin, umożliwiający renderowanie opisu bibliograficznego dla danego
     obiektu przy pomocy template."""
 
-    def opis_bibliograficzny(self):
-        return renderuj_opis_bibliograficzny(self)
+    def opis_bibliograficzny(self, autorzy=None):
+        if autorzy is None:
+            autorzy = self.autorzy_dla_opisu()
+        return renderuj_opis_bibliograficzny(self, autorzy)
 
     def opis_bibliograficzny_komisja_centralna(self):
         return renderuj_opis_bibliograficzny_komisja_centralna(self)
@@ -136,7 +138,9 @@ class ModelZOpisemBibliograficznym(models.Model):
         return self.autorzy_set.select_related("autor", "typ_odpowiedzialnosci").order_by('kolejnosc')
 
     def zaktualizuj_cache(self, tylko_opis=False):
-        self.opis_bibliograficzny_cache = self.opis_bibliograficzny()
+
+        autorzy = self.autorzy_dla_opisu()
+        self.opis_bibliograficzny_cache = self.opis_bibliograficzny(autorzy)
 
         flds = ['opis_bibliograficzny_cache']
 
@@ -147,7 +151,6 @@ class ModelZOpisemBibliograficznym(models.Model):
                 zapisani = ["%s %s" % (self.autor.nazwisko, self.autor.imiona)]
 
             else:
-                autorzy = self.autorzy_dla_opisu()
                 zapisani = [x.zapisany_jako for x in autorzy]
                 autorzy = [x.autor for x in autorzy]
 
