@@ -26,7 +26,7 @@ from bpp.models.util import dodaj_autora, ZapobiegajNiewlasciwymCharakterom
 from django.conf import settings
 
 
-class Wydawnictwo_Ciagle_Autor(AktualizujDatePBNNadrzednegoMixin, DirtyFieldsMixin, BazaModeluOdpowiedzialnosciAutorow):
+class Wydawnictwo_Ciagle_Autor(DirtyFieldsMixin, BazaModeluOdpowiedzialnosciAutorow, AktualizujDatePBNNadrzednegoMixin):
     """Powiązanie autora do wydawnictwa ciągłego."""
     rekord = models.ForeignKey('Wydawnictwo_Ciagle', CASCADE, related_name="autorzy_set")
 
