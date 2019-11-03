@@ -223,26 +223,11 @@ def integruj_funkcje_autorow():
 
 
 @transaction.atomic
-def integruj_autorow(literka=None, orcid=False, pbn_id=False, rootlevel=False):
+def integruj_autorow():
     tytuly = get_dict(bpp.Tytul, "skrot")
     funkcje = get_dict(bpp.Funkcja_Autora, "skrot")
 
     base_query = dbf.Aut.objects.filter(bpp_autor_id=None)
-    if literka is not None:
-        # Włącz "rootlevel" dla każdego z literką
-        rootlevel = True
-        base_query = base_query.filter(Q(nazwisko__istartswith=literka) |
-                                       Q(nazwisko__istartswith="<" + literka) |
-                                       Q(nazwisko__istartswith=" " + literka))
-
-    if orcid:
-        base_query = base_query.exclude(orcid_id=None)
-    elif pbn_id:
-        base_query = base_query.exclude(pbn_id='')
-    elif rootlevel:
-        # przy rootlevel=True analizuj rekordy ktore maja exp_id takie samo jak idt_aut
-        base_query = base_query.filter(idt_aut=F('exp_id'))
-
     base_query = base_query.select_for_update()
 
     for autor in base_query:
@@ -309,6 +294,7 @@ def integruj_autorow(literka=None, orcid=False, pbn_id=False, rootlevel=False):
                 zakonczyl_prace=data_or_null(autor.dat_zwol)
             )
 
+    assert dbf.Aut.objects.filter(bpp_autor=None).count() == 0
 
 def integruj_charaktery():
     for rec in dbf.Pub.objects.all():
@@ -1188,9 +1174,7 @@ def usun_podwojne_przypisania_b_a(logger):
     from django.conf import settings
     setattr(settings, 'ENABLE_DATA_AKT_PBN_UPDATE', False)
 
-    for elem in dbf.B_A.objects.values("idt_id", "idt_aut_id", ).annotate(cnt=Count('*')).order_by('idt_id',
-                                                                                                   'idt_aut_id').filter(
-        cnt__gt=1):
+    for elem in dbf.B_A.objects.order_by().values("idt_id", "idt_aut_id", ).annotate(cnt=Count('*')).filter(cnt__gt=1):
         cnt = elem['cnt']
         for melem in dbf.B_A.objects.filter(idt_id=elem['idt_id'], idt_aut_id=elem['idt_aut_id']):
             logger.info(("1 Podwojne przypisanie", melem.idt.tytul_or_s, "(", melem.idt.rok, ") - ", melem.idt_aut))
@@ -1199,9 +1183,13 @@ def usun_podwojne_przypisania_b_a(logger):
             if cnt == 1:
                 break
 
-    for elem in dbf.B_A.objects.values("idt_id", "idt_aut__bpp_autor_id", ).annotate(cnt=Count('*')).order_by('idt_id',
-                                                                                                              'idt_aut__bpp_autor_id').filter(
-        cnt__gt=1):
+    query = dbf.B_A.objects.order_by().\
+            values("idt_id","idt_aut__bpp_autor_id").\
+            order_by().\
+            annotate(cnt=Count('*')).\
+            filter(cnt__gt=1)
+    for elem in query:
+        print(elem)
         cnt = elem['cnt']
         for melem in dbf.B_A.objects.filter(idt_id=elem['idt_id'], idt_aut__bpp_autor_id=elem['idt_aut__bpp_autor_id']):
             logger.info(("2 Podwojne przypisanie", melem.idt.tytul_or_s, "(", melem.idt.rok, ") - ", melem.idt_aut))
@@ -1215,6 +1203,7 @@ def usun_podwojne_przypisania_b_a(logger):
 def integruj_b_a(offset, limit):
     from django.conf import settings
     setattr(settings, 'ENABLE_DATA_AKT_PBN_UPDATE', False)
+    setattr(settings, "BPP_DODAWAJ_JEDNOSTKE_PRZY_ZAPISIE_PRACY", False)
 
     if cache.enabled():
         cache.disable()
@@ -1298,8 +1287,7 @@ def integruj_b_a(offset, limit):
             if len(connection.queries) > 1:
                 for elem in connection.queries:
                     print(elem)
-                import pdb;
-                pdb.set_trace()
+                sys.exit(-1)
             count_queries = False
 
         # rec.object_id = wxa.pk

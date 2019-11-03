@@ -66,21 +66,8 @@ class Command(BaseCommand):
             # with fuj as (select imiona || ' ' || nazwisko as x, idt_aut as y from import_dbf_aut where exp_id = idt_aut) select x, array_agg(y) from fuj group by x having count(*) > 1
 
 
-            logger.debug("Autorzy z ORCID")
-            pool.apply(integruj_autorow, {"orcid": True, "rootlevel": True})
-            pool.apply(integruj_autorow, {"orcid": True})
-
-            logger.debug("Autorzy z PBN ID")
-            pool.apply(integruj_autorow, {"pbn_id": True, "rootlevel": True})
-            pool.apply(integruj_autorow, {"pbn_id": True})
-
-            logger.debug("Autorzy z Expertus ID == idt_aut")
-            for literka in "AĄBCĆDEĘFGHIJKLŁMNŃOÓPQRSŚTUVWXYZŹŻ01234567890":
-                logger.debug(literka)
-                pool.apply(integruj_autorow, literka)
-
-            logger.debug("Pozostali autorzy")
-            pool.apply(integruj_autorow, {"rootlevel": True})
+            logger.debug("Autorzy")
+            pool.apply(integruj_autorow)
 
         if enable_all or options['enable_charakter_kbn_jezyk']:
             pool.apply(integruj_charaktery)
