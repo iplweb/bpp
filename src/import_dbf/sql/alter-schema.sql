@@ -98,4 +98,43 @@ update import_dbf_b_a set idt_jed = (select idt_jed from import_dbf_jed where sk
 create index on import_dbf_poz(idt, kod_opisu);
 create index on import_dbf_poz(idt, kod_opisu, lp);
 
+UPDATE import_dbf_bib SET tytul_or = REPLACE(tytul_or, '<UP>', '<sup>') WHERE tytul_or LIKE '%<UP>%';
+UPDATE import_dbf_bib SET tytul_or = REPLACE(tytul_or, '<up>', '<sup>') WHERE tytul_or LIKE '%<up>%';
+UPDATE import_dbf_bib SET tytul_or = REPLACE(tytul_or, '<dn>', '<sub>') WHERE tytul_or LIKE '%<dn>%';
+UPDATE import_dbf_bib SET tytul_or = REPLACE(tytul_or, '<DN>', '<sub>') WHERE tytul_or LIKE '%<DN>%';
+UPDATE import_dbf_bib SET tytul_or = REPLACE(tytul_or, '</UP>', '</sup>') WHERE tytul_or LIKE '%</UP>%';
+UPDATE import_dbf_bib SET tytul_or = REPLACE(tytul_or, '</up>', '</sup>') WHERE tytul_or LIKE '%</up>%';
+UPDATE import_dbf_bib SET tytul_or = REPLACE(tytul_or, '</dn>', '</sub>') WHERE tytul_or LIKE '%</dn>%';
+UPDATE import_dbf_bib SET tytul_or = REPLACE(tytul_or, '</DN>', '</sub>') WHERE tytul_or LIKE '%</DN>%';
+
+UPDATE import_dbf_bib SET title = REPLACE(title, '<UP>', '<sup>') WHERE title LIKE '%<UP>%';
+UPDATE import_dbf_bib SET title = REPLACE(title, '<up>', '<sup>') WHERE title LIKE '%<up>%';
+UPDATE import_dbf_bib SET title = REPLACE(title, '<dn>', '<sub>') WHERE title LIKE '%<dn>%';
+UPDATE import_dbf_bib SET title = REPLACE(title, '<DN>', '<sub>') WHERE title LIKE '%<DN>%';
+UPDATE import_dbf_bib SET title = REPLACE(title, '</UP>', '</sup>') WHERE title LIKE '%</UP>%';
+UPDATE import_dbf_bib SET title = REPLACE(title, '</up>', '</sup>') WHERE title LIKE '%</up>%';
+UPDATE import_dbf_bib SET title = REPLACE(title, '</dn>', '</sub>') WHERE title LIKE '%</dn>%';
+UPDATE import_dbf_bib SET title = REPLACE(title, '</DN>', '</sub>') WHERE title LIKE '%</DN>%';
+
+UPDATE import_dbf_bib SET tytul_or = REPLACE(tytul_or, 'a~00', 'α'), title = REPLACE(title, 'a~00', 'α') WHERE (tytul_or LIKE '%a~00%' or title LIKE '%a~00%');
+UPDATE import_dbf_bib SET tytul_or = REPLACE(tytul_or, 'b~00', 'β'), title = REPLACE(title, 'b~00', 'β') WHERE (tytul_or LIKE '%b~00%' or title LIKE '%b~00%');
+UPDATE import_dbf_bib SET tytul_or = REPLACE(tytul_or, 'g~00', 'γ'), title = REPLACE(title, 'g~00', 'γ') WHERE (tytul_or LIKE '%g~00%' or title LIKE '%g~00%');
+UPDATE import_dbf_bib SET tytul_or = REPLACE(tytul_or, 'd~00', 'δ'), title = REPLACE(title, 'd~00', 'δ') WHERE (tytul_or LIKE '%d~00%' or title LIKE '%d~00%');
+UPDATE import_dbf_bib SET tytul_or = REPLACE(tytul_or, 'k~00', 'κ'), title = REPLACE(title, 'k~00', 'κ') WHERE (tytul_or LIKE '%k~00%' or title LIKE '%k~00%');
+
+UPDATE import_dbf_bib SET tytul_or = REPLACE(tytul_or, 'D~00', 'Δ'), title = REPLACE(title, 'D~00', 'Δ') WHERE (tytul_or LIKE '%D~00%' or title LIKE '%D~00%');
+UPDATE import_dbf_bib SET tytul_or = REPLACE(tytul_or, 'w~00', 'ω'), title = REPLACE(title, 'w~00', 'ω') WHERE (tytul_or LIKE '%w~00%' or title LIKE '%w~00%');
+UPDATE import_dbf_bib SET tytul_or = REPLACE(tytul_or, 'W~00', 'Ω'), title = REPLACE(title, 'W~00', 'Ω') WHERE (tytul_or LIKE '%W~00%' or title LIKE '%W~00%');
+UPDATE import_dbf_bib SET tytul_or = REPLACE(tytul_or, 'r~00', 'ρ'), title = REPLACE(title, 'r~00', 'ρ') WHERE (tytul_or LIKE '%r~00%' or title LIKE '%r~00%');
+
+UPDATE import_dbf_bib SET tytul_or = REPLACE(tytul_or, 'm~00', 'μ'), title = REPLACE(title, 'm~00', 'μ') WHERE (tytul_or LIKE '%m~00%' or title LIKE '%m~00%');
+UPDATE import_dbf_bib SET tytul_or = REPLACE(tytul_or, 'e~00', 'ε'), title = REPLACE(title, 'e~00', 'ε') WHERE (tytul_or LIKE '%e~00%' or title LIKE '%e~00%');
+UPDATE import_dbf_bib SET tytul_or = REPLACE(tytul_or, 'z~00', 'ζ'), title = REPLACE(title, 'z~00', 'ζ') WHERE (tytul_or LIKE '%z~00%' or title LIKE '%z~00%');
+UPDATE import_dbf_bib SET tytul_or = REPLACE(tytul_or, 'p~00', 'π'), title = REPLACE(title, 'p~00', 'π') WHERE (tytul_or LIKE '%p~00%' or title LIKE '%p~00%');
+UPDATE import_dbf_bib SET tytul_or = REPLACE(tytul_or, 'j~00', 'θ'), title = REPLACE(title, 'j~00', 'θ') WHERE (tytul_or LIKE '%j~00%' or title LIKE '%j~00%');
+UPDATE import_dbf_bib SET tytul_or = REPLACE(tytul_or, 'l~00', 'λ'), title = REPLACE(title, 'l~00', 'λ') WHERE (tytul_or LIKE '%l~00%' or title LIKE '%l~00%');
+UPDATE import_dbf_bib SET tytul_or = REPLACE(tytul_or, 'l~~00', 'λ'), title = REPLACE(title, 'l~~00', 'λ') WHERE (tytul_or LIKE '%l~~00%' or title LIKE '%l~~00%');
+
+select tytul_or, title from import_dbf_bib where tytul_or like '%~00%' or title like '%~00%';
+
 COMMIT;
