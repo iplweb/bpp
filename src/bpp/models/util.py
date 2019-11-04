@@ -152,7 +152,7 @@ class ModelZOpisemBibliograficznym(models.Model):
 
             if hasattr(self, 'autor'):
                 autorzy = [autorzy[0]]
-                zapisani = ["%s %s" % (autorzy[0].nazwisko, autorzy[0].imiona)]
+                zapisani = ["%s %s" % (autorzy[0].autor.nazwisko, autorzy[0].autor.imiona)]
 
             else:
                 zapisani = [x.zapisany_jako for x in autorzy]
