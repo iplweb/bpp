@@ -151,14 +151,11 @@ class ModelZOpisemBibliograficznym(models.Model):
         if not tylko_opis:
 
             if hasattr(self, 'autor'):
-                autorzy = [autorzy[0]]
                 zapisani = ["%s %s" % (autorzy[0].autor.nazwisko, autorzy[0].autor.imiona)]
-
             else:
                 zapisani = [x.zapisany_jako for x in autorzy]
-                autorzy = [x.autor for x in autorzy]
 
-            oac = ["%s %s" % (x.nazwisko, x.imiona) for x in autorzy]
+            oac = ["%s %s" % (x.autor.nazwisko, x.autor.imiona) for x in autorzy]
             if self.opis_bibliograficzny_autorzy_cache != oac:
                 self.opis_bibliograficzny_autorzy_cache = oac
                 flds.append('opis_bibliograficzny_autorzy_cache')
