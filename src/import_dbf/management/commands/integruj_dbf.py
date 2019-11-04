@@ -67,11 +67,10 @@ class Command(BaseCommand):
             # 'Jose Miguel', 'Caldas' <==> 'Jose', 'Miguel Caldas'
             # with fuj as (select imiona || ' ' || nazwisko as x, idt_aut as y from import_dbf_aut where exp_id = idt_aut) select x, array_agg(y) from fuj group by x having count(*) > 1
 
-
             logger.debug("Autorzy")
-            integruj_autorow()
+            pool.apply(integruj_autorow)
+            logger.debug("Sprawdzam czy wszyscy sa przypisani")
             pool.apply(sprawdz_zamapowanie_autorow)
-            #pool.apply(integruj_autorow)
 
         if enable_all or options['enable_charakter_kbn_jezyk']:
             pool.apply(integruj_charaktery)

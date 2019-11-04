@@ -29,15 +29,12 @@ EXECUTE PROCEDURE bpp_refresh_cache();
 
 
 
-DROP TRIGGER IF EXISTS bpp_patent_cache_trigger ON bpp_patent;
-
 CREATE TRIGGER bpp_patent_cache_trigger
     AFTER INSERT OR UPDATE OR DELETE
     ON bpp_patent
     FOR EACH ROW
 EXECUTE PROCEDURE bpp_refresh_cache();
 
-DROP TRIGGER IF EXISTS bpp_patent_autor_cache_trigger ON bpp_patent_autor;
 
 CREATE TRIGGER bpp_patent_autor_cache_trigger
     AFTER INSERT OR UPDATE OR DELETE

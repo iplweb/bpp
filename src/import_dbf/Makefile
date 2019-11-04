@@ -63,6 +63,6 @@ rebuild-cache:
 
 pre-import: recreate-db convert-dbfs import-converted-dbfs alter-schema
 
-import: disable-trigger integruj-dbf rebuild-cache
+import: disable-trigger integruj-dbf rebuild-cache enable-trigger
 
 rebuild-db: pre-import import

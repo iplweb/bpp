@@ -246,7 +246,7 @@ def exp_autor(base_aut, already_seen=None):
     return already_seen
 
 
-# @transaction.atomic
+@transaction.atomic
 def integruj_autorow():
     tytuly = get_dict(bpp.Tytul, "skrot")
     funkcje = get_dict(bpp.Funkcja_Autora, "skrot")
