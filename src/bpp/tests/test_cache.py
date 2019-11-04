@@ -4,7 +4,7 @@ import pytest
 from django.db import transaction
 from model_mommy import mommy
 
-from bpp.models import rebuild_ciagle, rebuild_zwarte
+from bpp.models import rebuild_ciagle, rebuild_zwarte, cache
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord, Autorzy, defer_zaktualizuj_opis
 from bpp.models.openaccess import Wersja_Tekstu_OpenAccess, \
@@ -386,12 +386,12 @@ def test_rebuild_ciagle(django_assert_num_queries, wydawnictwo_ciagle_z_dwoma_au
     # - 3xrelease savepoint
     # - ... co w sumie daje: 11 zapytan
 
-    with django_assert_num_queries(11):
+    with django_assert_num_queries(9):
         rebuild_ciagle()
 
 
 @pytest.mark.django_db
 def test_rebuild_zwarte(django_assert_num_queries, wydawnictwo_zwarte_z_autorem):
-    with django_assert_num_queries(11):
+    with django_assert_num_queries(9):
         rebuild_zwarte()
 

@@ -661,6 +661,11 @@ def rebuild(klass, offset=None, limit=None, extra_flds=None, extra_tables=None):
              "doi",
              "tekst_przed_pierwszym_autorem",
              "tekst_po_ostatnim_autorze",
+
+             "opis_bibliograficzny_cache",
+             "opis_bibliograficzny_autorzy_cache",
+             "opis_bibliograficzny_zapisani_autorzy_cache",
+
              "typ_kbn__nazwa",
              "typ_kbn__skrot",
              "rok",
