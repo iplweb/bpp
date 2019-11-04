@@ -5,7 +5,7 @@ import sys
 from dbfread import DBF
 from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError, transaction
-from django.db.models import Q, Count, F
+from django.db.models import Q, Count
 
 from bpp import models as bpp
 from bpp.models import Status_Korekty, wez_zakres_stron, parse_informacje, Zewnetrzna_Baza_Danych, cache
@@ -230,10 +230,10 @@ def integruj_autorow():
     base_query = dbf.Aut.objects.filter(bpp_autor_id=None)
     base_query = base_query.select_for_update()
 
-    for autor in base_query:
+    for autor in pbar(base_query):
         bpp_autor = None
 
-        if not bpp_autor and autor.exp_id and autor.exp_id != autor.idt_aut:
+        if not bpp_autor and autor.exp_id:
             try:
                 bpp_autor = bpp.Autor.objects.get(expertus_id=autor.exp_id)
             except bpp.Autor.DoesNotExist:
@@ -295,6 +295,7 @@ def integruj_autorow():
             )
 
     assert dbf.Aut.objects.filter(bpp_autor=None).count() == 0
+
 
 def integruj_charaktery():
     for rec in dbf.Pub.objects.all():
@@ -1183,11 +1184,11 @@ def usun_podwojne_przypisania_b_a(logger):
             if cnt == 1:
                 break
 
-    query = dbf.B_A.objects.order_by().\
-            values("idt_id","idt_aut__bpp_autor_id").\
-            order_by().\
-            annotate(cnt=Count('*')).\
-            filter(cnt__gt=1)
+    query = dbf.B_A.objects.order_by(). \
+        values("idt_id", "idt_aut__bpp_autor_id"). \
+        order_by(). \
+        annotate(cnt=Count('*')). \
+        filter(cnt__gt=1)
     for elem in query:
         print(elem)
         cnt = elem['cnt']
@@ -1200,7 +1201,7 @@ def usun_podwojne_przypisania_b_a(logger):
 
 
 @transaction.atomic
-def integruj_b_a(offset, limit):
+def integruj_b_a(offset=None, limit=None):
     from django.conf import settings
     setattr(settings, 'ENABLE_DATA_AKT_PBN_UPDATE', False)
     setattr(settings, "BPP_DODAWAJ_JEDNOSTKE_PRZY_ZAPISIE_PRACY", False)
@@ -1211,6 +1212,11 @@ def integruj_b_a(offset, limit):
     ctype_to_klass_map = {
         ContentType.objects.get_by_natural_key("bpp", "wydawnictwo_ciagle").pk: bpp.Wydawnictwo_Ciagle_Autor,
         ContentType.objects.get_by_natural_key("bpp", "wydawnictwo_zwarte").pk: bpp.Wydawnictwo_Zwarte_Autor,
+    }
+
+    klass_to_ctype_map = {
+        bpp.Wydawnictwo_Ciagle_Autor: ContentType.objects.get_by_natural_key("bpp", "wydawnictwo_ciagle_autor").pk,
+        bpp.Wydawnictwo_Zwarte_Autor: ContentType.objects.get_by_natural_key("bpp", "wydawnictwo_zwarte_autor").pk
     }
 
     ta_id = bpp.Typ_Odpowiedzialnosci.objects.get(skrot="aut.").pk
@@ -1224,7 +1230,9 @@ def integruj_b_a(offset, limit):
 
     count_queries = True
 
-    base_query = base_query.select_related("idt", "idt_aut", "idt_jed").only(
+    base_query = base_query. \
+        select_related("idt", "idt_aut", "idt_jed"). \
+        only(
         "idt__content_type_id",
         "idt__object_id",
 
@@ -1260,13 +1268,13 @@ def integruj_b_a(offset, limit):
 
         lp = 0
         if rec.lp:
-            try:
+            if len(rec.lp) == 1:
                 lp = ord(rec.lp)
-            except TypeError:
+            else:
                 lp = int(rec.lp)
 
         try:
-            klass.objects.create(
+            wxa = klass.objects.create(
                 rekord_id=bpp_rec_id,
                 autor_id=bpp_autor_id,
                 jednostka_id=bpp_jednostka_id,
@@ -1276,8 +1284,8 @@ def integruj_b_a(offset, limit):
                 typ_odpowiedzialnosci_id=ta_id
             )
         except IntegrityError as e:
-            print("Rekord: %s, %s -> IntegrityError" % (rec.idt.tytul_or_s, rec.idt.idt))
-            sys.exit(1)
+            print("Rekord: %s, %s, %s, %s -> IntegrityError" % (rec.idt.tytul_or_s, rec.idt.idt, rec.idt_aut.nazwisko, lp))
+            raise e
 
         if count_queries:
             #
@@ -1291,5 +1299,12 @@ def integruj_b_a(offset, limit):
             count_queries = False
 
         # rec.object_id = wxa.pk
-        # rec.content_type_id = ctype_to_ctype_map.get(bpp_ctype_id)
+        # rec.content_type_id = klass_to_ctype_map.get(klass)
         # rec.save(update_fields=['object_id', 'content_type_id'])
+
+
+@transaction.atomic
+def przypisz_jednostki():
+    query = dbf.B_A.objects.values_list("idt_aut__bpp_autor_id", "idt_jed__bpp_jednostka_id").order_by().distinct()
+    for elem in pbar(query, query.count()):
+        bpp.Autor_Jednostka.objects.get_or_create(autor_id=elem[0], jednostka_id=elem[1])

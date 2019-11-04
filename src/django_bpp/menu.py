@@ -167,8 +167,8 @@ class CustomMenu(Menu):
                 self.children += [submenu(n2, v), ]
 
         flt("web", "WWW", WEB_MENU)
-        flt('import DBF', "import DBF #1", IMPORT_DBF_MENU_1)
-        flt('import DBF', "import DBF #2", IMPORT_DBF_MENU_2)
+        flt('import DBF', "import DBF", IMPORT_DBF_MENU_1)
+        # flt('import DBF', "import DBF #2", IMPORT_DBF_MENU_2)
         flt("dane systemowe", "Dane systemowe", SYSTEM_MENU)
         flt("struktura", "Struktura", STRUKTURA_MENU)
         flt(GR_WPROWADZANIE_DANYCH, "Wprowadzanie danych", REDAKTOR_MENU)

@@ -139,31 +139,38 @@ class ModelZOpisemBibliograficznym(models.Model):
 
     def zaktualizuj_cache(self, tylko_opis=False):
 
-        autorzy = self.autorzy_dla_opisu()
-        self.opis_bibliograficzny_cache = self.opis_bibliograficzny(autorzy)
+        flds = []
 
-        flds = ['opis_bibliograficzny_cache']
+        autorzy = self.autorzy_dla_opisu()
+        opis = self.opis_bibliograficzny(autorzy)
+
+        if self.opis_bibliograficzny_cache != opis:
+            self.opis_bibliograficzny_cache = opis
+            flds = ['opis_bibliograficzny_cache']
 
         if not tylko_opis:
 
             if hasattr(self, 'autor'):
-                autorzy = [self.autor]
-                zapisani = ["%s %s" % (self.autor.nazwisko, self.autor.imiona)]
+                autorzy = [autorzy[0]]
+                zapisani = ["%s %s" % (autorzy[0].nazwisko, autorzy[0].imiona)]
 
             else:
                 zapisani = [x.zapisany_jako for x in autorzy]
                 autorzy = [x.autor for x in autorzy]
 
-            self.opis_bibliograficzny_autorzy_cache = [
-                "%s %s" % (x.nazwisko, x.imiona) for x in autorzy]
+            oac = ["%s %s" % (x.nazwisko, x.imiona) for x in autorzy]
+            if self.opis_bibliograficzny_autorzy_cache != oac:
+                self.opis_bibliograficzny_autorzy_cache = oac
+                flds.append('opis_bibliograficzny_autorzy_cache')
 
-            self.opis_bibliograficzny_zapisani_autorzy_cache = ", ".join(zapisani)
-
-            flds.append('opis_bibliograficzny_autorzy_cache')
-            flds.append('opis_bibliograficzny_zapisani_autorzy_cache')
+            ozac = ", ".join(zapisani)
+            if self.opis_bibliograficzny_zapisani_autorzy_cache != ozac:
+                self.opis_bibliograficzny_zapisani_autorzy_cache = ozac
+                flds.append('opis_bibliograficzny_zapisani_autorzy_cache')
 
         # Podaj parametr flds aby uniknąć pętli wywoływania sygnału post_save
-        self.save(update_fields=flds)
+        if flds:
+            self.save(update_fields=flds)
 
     class Meta:
         abstract = True

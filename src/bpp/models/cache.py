@@ -12,7 +12,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields.array import ArrayField
 from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ObjectDoesNotExist
-from django.db import models, transaction
+from django.db import models, transaction, reset_queries, connection
 from django.db.models import Func, ForeignKey, CASCADE
 from django.db.models.deletion import DO_NOTHING
 from django.db.models.lookups import In
@@ -32,7 +32,7 @@ from bpp.models.abstract import ModelPunktowanyBaza, \
     ModelTypowany, ModelZCharakterem
 from bpp.models.system import Charakter_Formalny, Jezyk
 from bpp.models.util import ModelZOpisemBibliograficznym
-from bpp.util import FulltextSearchMixin
+from bpp.util import FulltextSearchMixin, pbar
 
 # zmiana CACHED_MODELS powoduje zmiane opisu bibliograficznego wszystkich rekordow
 CACHED_MODELS = [Wydawnictwo_Ciagle, Wydawnictwo_Zwarte, Praca_Doktorska,
@@ -640,6 +640,7 @@ class Cache_Punktacja_Autora_Sum_Gruop(models.Model):
 # Rebuilder
 #
 
+@transaction.atomic
 def rebuild(klass, offset=None, limit=None, extra_flds=None, extra_tables=None):
     if extra_flds is None:
         extra_flds = ()
@@ -665,26 +666,25 @@ def rebuild(klass, offset=None, limit=None, extra_flds=None, extra_tables=None):
              "rok",
              "punkty_kbn", *extra_flds)
 
-    # if offset is not None and offset == 0:
-    #     query = pbar(query)  # , limit - offset)
+    if offset is not None and offset == 0:
+        query = pbar(query)  # , limit - offset)
 
     from bpp.tasks import aktualizuj_cache_rekordu
 
-    # max_conn = []
+    max_conn = []
     for r in query:
-        # reset_queries()
+        reset_queries()
         aktualizuj_cache_rekordu(r)
-    #     if len(connection.queries) > len(max_conn):
-    #         for elem in connection.queries:
-    #             max_conn = []
-    #             max_conn.append(elem)
-    #
-    # if len(max_conn) > 10:
-    #     for elem in max_conn:
-    #         print(elem)
+        if len(connection.queries) > len(max_conn):
+            for elem in connection.queries:
+                max_conn = []
+                max_conn.append(elem)
+
+    if len(max_conn) > 10:
+        for elem in max_conn:
+            print(elem)
 
 
-@transaction.atomic
 def rebuild_zwarte(offset=None, limit=None):
     return rebuild(
         Wydawnictwo_Zwarte, offset=offset, limit=limit,
@@ -692,7 +692,6 @@ def rebuild_zwarte(offset=None, limit=None):
         extra_flds=['miejsce_i_rok', 'wydawca__nazwa', 'wydawca_opis', 'isbn'])
 
 
-@transaction.atomic
 def rebuild_ciagle(offset=None, limit=None):
     return rebuild(Wydawnictwo_Ciagle, offset=offset, limit=limit,
                    extra_tables=['zrodlo'],

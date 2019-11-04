@@ -12,7 +12,7 @@ from import_dbf.models import Bib, B_A
 from import_dbf.util import integruj_wydzialy, integruj_jednostki, integruj_uczelnia, integruj_autorow, \
     integruj_publikacje, integruj_charaktery, integruj_jezyki, integruj_kbn, integruj_zrodla, integruj_b_a, \
     wyswietl_prace_bez_dopasowania, usun_podwojne_przypisania_b_a, integruj_tytuly_autorow, \
-    integruj_funkcje_autorow, mapuj_elementy_publikacji, ekstrakcja_konferencji
+    integruj_funkcje_autorow, mapuj_elementy_publikacji, ekstrakcja_konferencji, przypisz_jednostki
 from bpp.util import partition_count
 import logging
 
@@ -34,6 +34,7 @@ class Command(BaseCommand):
         parser.add_argument("--enable-charakter-kbn-jezyk", action="store_true")
         parser.add_argument("--enable-zrodlo", action="store_true")
         parser.add_argument("--enable-b-a", action="store_true")
+        parser.add_argument("--enable-przypisz-jednostki", action="store_true")
 
     def handle(self, uczelnia, skrot, enable_all, disable_transaction, *args, **options):
         verbosity = int(options['verbosity'])
@@ -79,7 +80,7 @@ class Command(BaseCommand):
             pool.apply(integruj_zrodla)
 
         if enable_all or options['enable_publikacja']:
-            logger.debug("Publikacje")
+            logger.debug("Publikacje - wyciągam dane")
 
             pool.starmap(mapuj_elementy_publikacji, partition_count(
                 Bib.objects.exclude(analyzed=True), num_proc))
@@ -88,7 +89,7 @@ class Command(BaseCommand):
             if Konferencja.objects.count() < 100:
                 pool.apply(ekstrakcja_konferencji)
 
-            logger.info("Integruje publikacjie")
+            logger.info("Integruje publikacje")
             pool.starmap(integruj_publikacje, partition_count(
                 Bib.objects.filter(object_id=None, analyzed=True), num_proc))
 
@@ -99,3 +100,8 @@ class Command(BaseCommand):
             pool.apply(usun_podwojne_przypisania_b_a, (logger,))
             logger.debug("Integracja B_A")
             pool.starmap(integruj_b_a, partition_count(B_A.objects, num_proc))
+            logger.debug("Przypisuje jednostki do autorow")
+
+        if enable_all or options['enable_przypisz_jednostki']:
+            logger.debug("Przypisuje Autor_Jednostka masowo")
+            pool.apply(przypisz_jednostki)

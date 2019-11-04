@@ -31,7 +31,7 @@ create-schema:
 	echo "select tablename from pg_tables where tablename like 'import_dbf_%'" | $(PSQL)  | xargs $(MANAGE) inspectdb
 
 recreate-db:
-	dropdb bpp
+	dropdb bpp || true
 	createdb bpp
 	$(MANAGE) migrate
 
