@@ -81,6 +81,9 @@ CREATE UNIQUE INDEX import_dbf_jed_idt ON import_dbf_jed(idt_jed);
 ALTER TABLE import_dbf_b_a ALTER COLUMN idt_aut SET DATA TYPE INT USING idt_aut::integer;
 ALTER TABLE import_dbf_b_a ALTER COLUMN idt SET DATA TYPE INT USING idt::integer;
 
+UPDATE import_dbf_aut SET ref = NULL where ref = '';
+ALTER TABLE import_dbf_aut ALTER COLUMN ref SET DATA TYPE INT USING ref::integer;
+
 ALTER TABLE import_dbf_b_u ALTER COLUMN idt SET DATA TYPE INT USING idt::integer;
 ALTER TABLE import_dbf_poz ALTER COLUMN idt SET DATA TYPE INT USING idt::integer;
 
@@ -136,5 +139,8 @@ UPDATE import_dbf_bib SET tytul_or = REPLACE(tytul_or, 'l~00', 'λ'), title = RE
 UPDATE import_dbf_bib SET tytul_or = REPLACE(tytul_or, 'l~~00', 'λ'), title = REPLACE(title, 'l~~00', 'λ') WHERE (tytul_or LIKE '%l~~00%' or title LIKE '%l~~00%');
 
 select tytul_or, title from import_dbf_bib where tytul_or like '%~00%' or title like '%~00%';
+
+
+UPDATE import_dbf_aut SET ref = NULL WHERE ref not in (select idt_aut from import_dbf_aut);
 
 COMMIT;

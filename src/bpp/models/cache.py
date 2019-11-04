@@ -648,8 +648,10 @@ def rebuild(klass, offset=None, limit=None, extra_flds=None, extra_tables=None):
     if extra_tables is None:
         extra_tables = ()
 
-    ids = klass.objects.all()[offset:limit].values_list('pk').select_for_update()
+    ids = klass.objects.all().values_list('pk')[offset:limit]
+
     query = klass.objects.filter(pk__in=ids). \
+        select_for_update(nowait=True, of=('self',)). \
         select_related("charakter_formalny", "typ_kbn", *extra_tables). \
         only("tytul_oryginalny",
              "tytul",

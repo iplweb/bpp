@@ -48,12 +48,22 @@ class BibAdmin(ImportDbfBaseAdmin):
 
 @admin.register(Aut)
 class AutAdmin(ImportDbfBaseAdmin):
-    list_display = ['nazwisko', 'imiona', 'tytul', 'stanowisko', 'prac_od', 'dat_zwol', 'orcid_id', 'exp_id', 'ref',
+    list_display = ['idt_aut', 'nazwisko', 'imiona', 'tytul', 'pokaz_exp_id', 'pokaz_ref', 'orcid_id', 'stanowisko', 'prac_od', 'dat_zwol',
                     'kad_nr', 'idt_jed', 'tel', 'email', 'fg', 'pbn_id', 'bpp_autor', 'bpp_autor_id']
     search_fields = ['nazwisko', 'imiona', 'ref', 'tel', 'email']
-    autocomplete_fields = ['idt_jed']
+    autocomplete_fields = ['idt_jed', 'ref', 'exp_id']
     list_filter = ['fg', 'tytul']
     readonly_fields = ['bpp_autor', ]
+
+    def pokaz_exp_id(self, obj):
+        if obj.exp_id is None:
+            return ""
+        return str(obj.exp_id) + " (ID: " + str(obj.exp_id_id) + ")"
+
+    def pokaz_ref(self, obj):
+        if obj.ref is None:
+            return ""
+        return str(obj.ref) + " (ID: " + str(obj.ref_id) + ")"
 
 
 @admin.register(Kbn)

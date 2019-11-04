@@ -5,7 +5,7 @@ import sys
 from dbfread import DBF
 from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError, transaction
-from django.db.models import Q, Count
+from django.db.models import Q, Count, F
 
 from bpp import models as bpp
 from bpp.models import Status_Korekty, wez_zakres_stron, parse_informacje, Zewnetrzna_Baza_Danych, cache
@@ -222,57 +222,91 @@ def integruj_funkcje_autorow():
             bpp.Funkcja_Autora.objects.create(nazwa=funkcja, skrot=funkcja)
 
 
-@transaction.atomic
+def exp_autor(base_aut, already_seen=None):
+    if already_seen is None:
+        already_seen = set()
+
+    already_seen.add(base_aut)
+
+    if base_aut.ref_id is not None and base_aut.ref_id != base_aut.idt_aut:
+        if base_aut.ref not in already_seen:
+            already_seen.add(base_aut.ref)
+            already_seen.update(exp_autor(base_aut.ref, already_seen))
+
+    if base_aut.exp_id_id is not None and base_aut.exp_id_id != base_aut.idt_aut:
+        base_aut_exp_id = None
+        try:
+            base_aut_exp_id = base_aut.exp_id
+        except dbf.Aut.DoesNotExist:
+            pass
+        if base_aut_exp_id is not None and base_aut_exp_id not in already_seen:
+            already_seen.add(base_aut.exp_id)
+            already_seen.update(exp_autor(base_aut.exp_id, already_seen))
+
+    return already_seen
+
+
+# @transaction.atomic
 def integruj_autorow():
     tytuly = get_dict(bpp.Tytul, "skrot")
     funkcje = get_dict(bpp.Funkcja_Autora, "skrot")
 
-    base_query = dbf.Aut.objects.filter(bpp_autor_id=None)
-    base_query = base_query.select_for_update()
+    base_query = dbf.Aut.objects.filter(bpp_autor_id=None).values_list("idt_aut").order_by("idt_aut")
 
-    for autor in pbar(base_query):
+    for autor_id, in pbar(base_query):
+        a = dbf.Aut.objects.get(pk=autor_id)
+        if a.bpp_autor_id is not None:
+            continue
+
+        autorzy = list(exp_autor(a))
+        autorzy.sort(key=lambda x: x.idt_aut)
+        autor = autorzy.pop(0)
+
         bpp_autor = None
 
-        if not bpp_autor and autor.exp_id:
-            try:
-                bpp_autor = bpp.Autor.objects.get(expertus_id=autor.exp_id)
-            except bpp.Autor.DoesNotExist:
-                pass
+        if autor.bpp_autor_id is not None:
+            # ten autor byl juz widziany; sprawdz czy jest ustalony taki sam dla calej grupy
+            bpp_autor = autor.bpp_autor
 
-        if not bpp_autor and autor.orcid_id:
-            try:
-                bpp_autor = bpp.Autor.objects.get(orcid=autor.orcid_id)
-            except bpp.Autor.DoesNotExist:
-                pass
 
-        if not bpp_autor and autor.pbn_id:
-            try:
-                bpp_autor = bpp.Autor.objects.get(pbn_id=autor.pbn_id)
-            except bpp.Autor.DoesNotExist:
-                pass
+        if bpp_autor is None:
+            if autor.pbn_id or autor.orcid_id:
+                if autor.pbn_id:
+                    try:
+                        bpp_autor = bpp.Autor.objects.get(pbn_id=autor.pbn_id)
+                    except bpp.Autor.DoesNotExist:
+                        pass
 
-        if bpp_autor is not None:
-            # Istnieje już autor z takim ORCID lub PBN ID, nie tworzymy
+                elif autor.orcid_id:
+                    try:
+                        bpp_autor = bpp.Autor.objects.get(orcid=autor.orcid_id)
+                    except bpp.Autor.DoesNotExist:
+                        pass
+
+                else:
+                    raise NotImplementedError
+
+            if bpp_autor is None:
+                tytul = None
+                if autor.tytul:
+                    tytul = tytuly.get(autor.tytul)
+                # import pdb; pdb.set_trace()
+                bpp_autor = bpp.Autor.objects.create(
+                    nazwisko=autor.nazwisk_bz,
+                    imiona=autor.imiona_bz,
+                    tytul=tytul,
+                    pbn_id=autor.pbn_id or None,
+                    orcid=autor.orcid_id or None,
+                    expertus_id=autor.exp_id_id or None
+                )
+
             autor.bpp_autor = bpp_autor
             autor.save()
 
-        if bpp_autor is None:
-            # Nie istnieje taki autor; tworzymy
-            tytul = None
-            if autor.tytul:
-                tytul = tytuly.get(autor.tytul)
-
-            bpp_autor = bpp.Autor.objects.create(
-                nazwisko=autor.nazwisk_bz,
-                imiona=autor.imiona_bz,
-                tytul=tytul,
-                pbn_id=autor.pbn_id or None,
-                orcid=autor.orcid_id or None,
-                expertus_id=autor.exp_id or None
-            )
-
-        autor.bpp_autor = bpp_autor
-        autor.save()
+        for elem in autorzy:
+            if (elem.bpp_autor_id is None) or (elem.bpp_autor_id is not None and elem.bpp_autor_id != bpp_autor.pk):
+                elem.bpp_autor = bpp_autor
+                elem.save()
 
         # Jeżeli nie ma tego przypisania do jednostki, to utworz:
         if not autor.idt_jed_id:
@@ -294,6 +328,8 @@ def integruj_autorow():
                 zakonczyl_prace=data_or_null(autor.dat_zwol)
             )
 
+
+def sprawdz_zamapowanie_autorow():
     assert dbf.Aut.objects.filter(bpp_autor=None).count() == 0
 
 
@@ -528,7 +564,8 @@ def integruj_publikacje(offset=None, limit=None):
     id_list = dbf.Bib.objects.filter(object_id=None, analyzed=True)[offset:limit].values_list('pk')
 
     base_query = dbf.Bib.objects.filter(pk__in=id_list)
-    # base_query = base_query.select_for_update(nowait=True)
+
+    base_query = base_query.select_for_update(nowait=True, of=('self',))
 
     base_query = base_query.select_related()
 
@@ -1284,7 +1321,8 @@ def integruj_b_a(offset=None, limit=None):
                 typ_odpowiedzialnosci_id=ta_id
             )
         except IntegrityError as e:
-            print("Rekord: %s, %s, %s, %s -> IntegrityError" % (rec.idt.tytul_or_s, rec.idt.idt, rec.idt_aut.nazwisko, lp))
+            print("Rekord: %s, %s, %s, %s -> IntegrityError" % (
+                rec.idt.tytul_or_s, rec.idt.idt, rec.idt_aut.nazwisko, lp))
             raise e
 
         if count_queries:

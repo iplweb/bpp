@@ -12,8 +12,24 @@ convert-dbfs:
 import-converted-dbfs:
 	for tabela in $(TABELE); do psql --echo-errors --quiet -t bpp -f db/bib/$$tabela.sql & done && wait
 
-integruj-dbf:
-	$(MANAGE) integruj_dbf --enable-all -v 3
+usun-integracje-autorow:
+	echo "begin; delete from bpp_autor_jednostka; delete from bpp_autor;update import_dbf_aut set bpp_autor_id = NULL where bpp_autor_id IS NOT NULL;commit;" | $(PSQL)
+
+integruj-dbf-autorzy:
+
+	$(MANAGE) integruj_dbf --enable-wydzial
+	$(MANAGE) integruj_dbf --enable-jednostka
+	$(MANAGE) integruj_dbf --enable-autor
+
+integruj-dbf-publikacje:
+	$(MANAGE) integruj_dbf --enable-charakter-kbn-jezyk
+	$(MANAGE) integruj_dbf --enable-zrodlo
+	$(MANAGE) integruj_dbf --enable-publikacja
+	$(MANAGE) integruj_dbf --enable-b-a
+	$(MANAGE) integruj_dbf --enable-przypisz-jednostki
+
+integruj-dbf: integruj-dbf-autorzy integruj-dbf-publikacje
+
 
 remove-dbfs:
 	echo "select 'drop table '||tablename||';' from pg_tables where tablename like 'import_dbf_%'" | \
@@ -27,6 +43,13 @@ alter-schema:
 delete-imported-data:
 	cat sql/remove-imported.sql | $(PSQL)
 
+disable-trigger:
+	cat sql/disable-trigger.sql | $(PSQL)
+
+enable-trigger:
+	cat sql/enable-trigger.sql | $(PSQL)
+
+
 create-schema:
 	echo "select tablename from pg_tables where tablename like 'import_dbf_%'" | $(PSQL)  | xargs $(MANAGE) inspectdb
 
@@ -38,4 +61,8 @@ recreate-db:
 rebuild-cache:
 	$(MANAGE) rebuild_cache
 
-rebuild-db: recreate-db convert-dbfs import-converted-dbfs alter-schema integruj-dbf rebuild-cache
+pre-import: recreate-db convert-dbfs import-converted-dbfs alter-schema
+
+import: disable-trigger integruj-dbf rebuild-cache
+
+rebuild-db: pre-import import

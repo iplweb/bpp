@@ -12,7 +12,8 @@ from import_dbf.models import Bib, B_A
 from import_dbf.util import integruj_wydzialy, integruj_jednostki, integruj_uczelnia, integruj_autorow, \
     integruj_publikacje, integruj_charaktery, integruj_jezyki, integruj_kbn, integruj_zrodla, integruj_b_a, \
     wyswietl_prace_bez_dopasowania, usun_podwojne_przypisania_b_a, integruj_tytuly_autorow, \
-    integruj_funkcje_autorow, mapuj_elementy_publikacji, ekstrakcja_konferencji, przypisz_jednostki
+    integruj_funkcje_autorow, mapuj_elementy_publikacji, ekstrakcja_konferencji, przypisz_jednostki, \
+    sprawdz_zamapowanie_autorow
 from bpp.util import partition_count
 import logging
 
@@ -68,7 +69,9 @@ class Command(BaseCommand):
 
 
             logger.debug("Autorzy")
-            pool.apply(integruj_autorow)
+            integruj_autorow()
+            pool.apply(sprawdz_zamapowanie_autorow)
+            #pool.apply(integruj_autorow)
 
         if enable_all or options['enable_charakter_kbn_jezyk']:
             pool.apply(integruj_charaktery)
