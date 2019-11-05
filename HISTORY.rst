@@ -2,6 +2,15 @@
 Historia zmian
 ==============
 
+v201911.1
+---------
+
+* import baz danych z systemów zewnętrznych
+* równolegle działające polecenie rebuild_cache, przyspieszające czas nocnej przebudowy cache bazy
+
+v201910.7
+---------
+
 * niezwykle eleganckie tabele w XLS wraz z opisem (#766)
 * bardziej widoczny indeks wydawców w module redagowania (#771)
 * uwzględniaj prace posiadające 100 punktów PK dla "Monografia – wydawnictwo poziom I" (#770)
