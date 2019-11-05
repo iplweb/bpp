@@ -18,10 +18,8 @@ def test_global_search_user(live_server, browser, transactional_db):
         )
 
     browser.wait_for_condition(
-        lambda browser: "Źródło" in browser.html
+        lambda browser: "Strona WWW" in browser.html
     )
-
-    assert "Strona WWW" in browser.html
 
 
 def test_global_search_logged_in(live_server, preauth_admin_browser, transactional_db):
@@ -38,11 +36,8 @@ def test_global_search_logged_in(live_server, preauth_admin_browser, transaction
         )
 
     browser.wait_for_condition(
-        lambda browser: "Źródło" in browser.html
+        lambda browser: "Strona WWW" in browser.html
     )
-
-    assert "Strona WWW" in browser.html
-
 
 
 def test_global_search_in_admin(live_server, preauth_admin_browser, transactional_db):

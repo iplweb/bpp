@@ -12,7 +12,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields.array import ArrayField
 from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ObjectDoesNotExist
-from django.db import models, transaction
+from django.db import models, transaction, reset_queries, connection
 from django.db.models import Func, ForeignKey, CASCADE
 from django.db.models.deletion import DO_NOTHING
 from django.db.models.lookups import In
@@ -32,7 +32,7 @@ from bpp.models.abstract import ModelPunktowanyBaza, \
     ModelTypowany, ModelZCharakterem
 from bpp.models.system import Charakter_Formalny, Jezyk
 from bpp.models.util import ModelZOpisemBibliograficznym
-from bpp.util import FulltextSearchMixin
+from bpp.util import FulltextSearchMixin, pbar
 
 # zmiana CACHED_MODELS powoduje zmiane opisu bibliograficznego wszystkich rekordow
 CACHED_MODELS = [Wydawnictwo_Ciagle, Wydawnictwo_Zwarte, Praca_Doktorska,
@@ -417,6 +417,8 @@ class RekordBase(ModelPunktowanyBaza, ModelZOpisemBibliograficznym,
     nr_zeszytu = None
     tom = None
 
+    jezyk_alt = None
+
     # Skróty dla django-dsl
 
     django_dsl_shortcuts = {
@@ -632,3 +634,72 @@ class Cache_Punktacja_Autora_Sum_Gruop(models.Model):
         db_table = 'bpp_temporary_cpasg'
         managed = False
         ordering = ('autor', 'dyscyplina',)
+
+
+#
+# Rebuilder
+#
+
+@transaction.atomic
+def rebuild(klass, offset=None, limit=None, extra_flds=None, extra_tables=None):
+    if extra_flds is None:
+        extra_flds = ()
+
+    if extra_tables is None:
+        extra_tables = ()
+
+    ids = klass.objects.all().values_list('pk')[offset:limit]
+
+    query = klass.objects.filter(pk__in=ids). \
+        select_for_update(nowait=True, of=('self',)). \
+        select_related("charakter_formalny", "typ_kbn", *extra_tables). \
+        only("tytul_oryginalny",
+             "tytul",
+             "informacje",
+             "charakter_formalny__skrot",
+             "charakter_formalny__charakter_sloty",
+             "szczegoly",
+             "uwagi",
+             "doi",
+             "tekst_przed_pierwszym_autorem",
+             "tekst_po_ostatnim_autorze",
+
+             "opis_bibliograficzny_cache",
+             "opis_bibliograficzny_autorzy_cache",
+             "opis_bibliograficzny_zapisani_autorzy_cache",
+
+             "typ_kbn__nazwa",
+             "typ_kbn__skrot",
+             "rok",
+             "punkty_kbn", *extra_flds)
+
+    if offset is not None and offset == 0:
+        query = pbar(query)  # , limit - offset)
+
+    from bpp.tasks import aktualizuj_cache_rekordu
+
+    max_conn = []
+    for r in query:
+        reset_queries()
+        aktualizuj_cache_rekordu(r)
+        if len(connection.queries) > len(max_conn):
+            for elem in connection.queries:
+                max_conn = []
+                max_conn.append(elem)
+
+    if len(max_conn) > 10:
+        for elem in max_conn:
+            print(elem)
+
+
+def rebuild_zwarte(offset=None, limit=None):
+    return rebuild(
+        Wydawnictwo_Zwarte, offset=offset, limit=limit,
+        extra_tables=['wydawca', ],
+        extra_flds=['miejsce_i_rok', 'wydawca__nazwa', 'wydawca_opis', 'isbn'])
+
+
+def rebuild_ciagle(offset=None, limit=None):
+    return rebuild(Wydawnictwo_Ciagle, offset=offset, limit=limit,
+                   extra_tables=['zrodlo'],
+                   extra_flds=['zrodlo__nazwa', 'zrodlo__skrot'])

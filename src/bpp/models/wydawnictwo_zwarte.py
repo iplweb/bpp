@@ -11,7 +11,8 @@ from django.utils import timezone
 from django.utils.functional import cached_property
 from lxml.etree import Element, SubElement
 
-from bpp.models import TO_AUTOR, MaProcentyMixin, DodajAutoraMixin, const
+from bpp.models import TO_AUTOR, MaProcentyMixin, DodajAutoraMixin, const, Zewnetrzna_Baza_Danych, \
+    AktualizujDatePBNNadrzednegoMixin
 from bpp.models.abstract import \
     BazaModeluOdpowiedzialnosciAutorow, DwaTytuly, ModelZRokiem, \
     ModelZWWW, ModelRecenzowany, ModelPunktowany, ModelTypowany, \
@@ -29,7 +30,7 @@ from bpp.models.util import dodaj_autora
 from bpp.models.wydawca import Wydawca
 
 
-class Wydawnictwo_Zwarte_Autor(DirtyFieldsMixin, BazaModeluOdpowiedzialnosciAutorow):
+class Wydawnictwo_Zwarte_Autor(AktualizujDatePBNNadrzednegoMixin, DirtyFieldsMixin, BazaModeluOdpowiedzialnosciAutorow):
     """Model zawierający informację o przywiązaniu autorów do wydawnictwa
     zwartego."""
     rekord = models.ForeignKey('Wydawnictwo_Zwarte', CASCADE, related_name="autorzy_set")
@@ -43,17 +44,6 @@ class Wydawnictwo_Zwarte_Autor(DirtyFieldsMixin, BazaModeluOdpowiedzialnosciAuto
             [('rekord', 'autor', 'typ_odpowiedzialnosci'),
              # Tu musi być autor, inaczej admin nie pozwoli wyedytować
              ('rekord', 'autor', 'kolejnosc')]
-
-    def save(self, *args, **kw):
-        if self.pk is None or self.is_dirty():
-            # W sytuacji gdy dodajemy nowego autora lub zmieniamy jego dane,
-            # rekord "nadrzędny" publikacji powinien mieć zaktualizowany
-            # czas ostatniej aktualizacji na potrzeby PBN:
-            r = self.rekord
-            r.ostatnio_zmieniony_dla_pbn = timezone.now()
-            r.save(update_fields=['ostatnio_zmieniony_dla_pbn'])
-        super(Wydawnictwo_Zwarte_Autor, self).save(*args, **kw)
-
 
 MIEJSCE_I_ROK_MAX_LENGTH = 256
 
@@ -415,3 +405,18 @@ def wydawnictwo_zwarte_autor_post_delete(sender, instance, **kwargs):
     rec = instance.rekord
     rec.ostatnio_zmieniony_dla_pbn = timezone.now()
     rec.save(update_fields=['ostatnio_zmieniony_dla_pbn'])
+
+
+class Wydawnictwo_Zwarte_Zewnetrzna_Baza_Danych(models.Model):
+    rekord = models.ForeignKey(Wydawnictwo_Zwarte, CASCADE, related_name="zewnetrzna_baza_danych")
+    baza = models.ForeignKey(Zewnetrzna_Baza_Danych, CASCADE)
+    info = models.CharField(
+        verbose_name="Informacje dodatkowe",
+        max_length=512,
+        blank=True,
+        null=True)
+
+    class Meta:
+        verbose_name = "powiązanie wydawnictwa zwartego z zewnętrznymi bazami danych"
+        verbose_name_plural = "powiązania wydawnictw zwartych z zewnętrznymi bazami danych"
+

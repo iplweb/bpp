@@ -4,12 +4,12 @@ from django.contrib import admin
 from django.contrib.auth.forms import UserCreationForm
 from multiseek.models import SearchForm
 
-from bpp.models import Rodzaj_Prawa_Patentowego, Zewnetrzna_Baza_Danych, Wydawca
+from bpp.models import Rodzaj_Prawa_Patentowego, Zewnetrzna_Baza_Danych
 # Proste tabele
 from bpp.models.openaccess import Tryb_OpenAccess_Wydawnictwo_Ciagle, Tryb_OpenAccess_Wydawnictwo_Zwarte, \
     Czas_Udostepnienia_OpenAccess, Licencja_OpenAccess, Wersja_Tekstu_OpenAccess
+from . import zrodlo
 from .autor import AutorAdmin  # noqa
-from .wydawca import WydawcaAdmin  # noqa
 from .charakter_formalny import Charakter_FormalnyAdmin  # noqa
 from .core import BaseBppAdmin, CommitedModelAdmin, \
     KolumnyZeSkrotamiMixin, generuj_inline_dla_autorow
@@ -27,7 +27,7 @@ from .praca_doktorska import Praca_DoktorskaAdmin  # noqa
 from .praca_habilitacyjna import Praca_HabilitacyjnaAdmin  # noqa
 from .seria_wydawnicza import Seria_WydawniczaAdmin
 from .uczelnia import UczelniaAdmin  # NOQA
-from . import zrodlo
+from .wydawca import WydawcaAdmin  # noqa
 from .wydawnictwo_ciagle import Wydawnictwo_CiagleAdmin
 from .wydawnictwo_zwarte import Wydawnictwo_ZwarteAdmin_Baza, Wydawnictwo_ZwarteAdmin
 from .wydzial import WydzialAdmin
@@ -42,8 +42,12 @@ class JezykAdmin(RestrictDeletionToAdministracjaGroupAdmin):
     list_display = ['nazwa', 'skrot', 'skrot_dla_pbn']
 
 
+class Funkcja_AutoraAdmin(RestrictDeletionToAdministracjaGroupAdmin):
+    list_display = ['nazwa', 'skrot']
+
+
 admin.site.register(Jezyk, JezykAdmin)
-admin.site.register(Funkcja_Autora, RestrictDeletionToAdministracjaGroupAdmin)
+admin.site.register(Funkcja_Autora, Funkcja_AutoraAdmin)
 admin.site.register(Rodzaj_Zrodla, RestrictDeletionToAdministracjaGroupAdmin)
 admin.site.register(Status_Korekty, RestrictDeletionToAdministracjaGroupAdmin)
 admin.site.register(Zrodlo_Informacji, RestrictDeletionToAdministracjaGroupAdmin)
@@ -131,7 +135,6 @@ class Wersja_Tekstu_OpenAccessAdmin(RestrictDeletionToAdministracjaGroupMixin, C
 admin.site.register(Wersja_Tekstu_OpenAccess, Wersja_Tekstu_OpenAccessAdmin)
 
 admin.site.register(Typ_Odpowiedzialnosci, Typ_OdpowiedzialnosciAdmin)
-
 
 # Bibliografia
 

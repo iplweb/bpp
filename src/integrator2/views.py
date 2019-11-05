@@ -1,6 +1,7 @@
 # -*- encoding: utf-8 -*-
 from django.contrib import messages
 from braces.views import GroupRequiredMixin
+from django.db import transaction
 from django.utils.functional import cached_property
 from django.views.generic.detail import DetailView
 from django.views.generic.edit import FormView
@@ -30,7 +31,9 @@ class UploadListaMinisterialna(GroupRequiredMixin, FormView):
         form.instance.owner = self.request.user
         self.object = form.save()
         messages.add_message(self.request, messages.INFO, 'Plik został dodany do kolejki przetwarzania.')
-        analyze_file.delay(ListaMinisterialnaIntegration, self.object.pk)
+        transaction.on_commit(
+            lambda: analyze_file.delay(self.object.pk)
+        )
         return super(FormView, self).form_valid(form)
 
 

@@ -1,5 +1,5 @@
 <b>{% include "opis_bibliograficzny/tytul.html" with praca=praca %}</b>
-{% include "opis_bibliograficzny/autorzy.html" with praca=praca %}
+{% include "opis_bibliograficzny/autorzy.html" with praca=praca autorzy=autorzy %}
 {% include "opis_bibliograficzny/zrodlo.html" with praca=praca %}
 {% include "opis_bibliograficzny/extras.html" with praca=praca uwagi=1 %}
 {# dispSeriaWydawnicza #}

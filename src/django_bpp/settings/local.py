@@ -56,4 +56,4 @@ if DEBUG_TOOLBAR and DEBUG:
 
     INSTALLED_APPS.append('debug_toolbar')
 
-DATABASES['default']['CONN_MAX_AGE'] = 10
+DATABASES['default']['CONN_MAX_AGE'] = 0

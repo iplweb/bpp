@@ -1,7 +1,7 @@
 version: 2
 jobs:
   build:
-    
+
     docker:
       - image: mpasternak79/circleci-python:3.6-node-browsers-nginx-http-push
         environment:

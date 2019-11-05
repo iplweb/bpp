@@ -1,35 +1,23 @@
 # -*- encoding: utf-8 -*-
+import multiprocessing
 
+from django.conf import settings
 from django.core.management import BaseCommand
 
-from bpp.models.cache import Rekord
-from bpp.tasks import aktualizuj_cache_rekordu
+from bpp.models import Wydawnictwo_Zwarte, Wydawnictwo_Ciagle, rebuild_ciagle, rebuild_zwarte
+from bpp.util import partition_count, no_threads
 
 
 class Command(BaseCommand):
     help = 'Odbudowuje cache'
 
-    def add_arguments(self, parser):
-        parser.add_argument("--initial-offset", action="store", type=int,
-                            default=0)
-        parser.add_argument("--skip", action="store", type=int, default=0)
-
     def handle(self, *args, **options):
-        qset = Rekord.objects.all()[options['initial_offset']:]
+        if not settings.TESTING:
+            from django import db
+            db.connections.close_all()
 
-        # .filter(
-        #     Q(opis_bibliograficzny_cache='') |
-        #     Q(opis_bibliograficzny_autorzy_cache=[]))
-        # | Q(opis_bibliograficzny_zapisani_autorzy_cache="")
+        pool_size = no_threads(0.75)
+        pool = multiprocessing.Pool(processes=pool_size)
 
-        action = True
-        for r in qset:
-            if action:
-                aktualizuj_cache_rekordu(r.original)
-
-                action = False
-                skip = options['skip'] + 1
-
-            skip -= 1
-            if skip == 0:
-                action = True
+        pool.starmap(rebuild_ciagle, partition_count(Wydawnictwo_Ciagle.objects, pool_size))
+        pool.starmap(rebuild_zwarte, partition_count(Wydawnictwo_Zwarte.objects, pool_size))

@@ -11,8 +11,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
 from django.db import transaction
 from favicon.models import Favicon, FaviconImg
-
-from miniblog.models import Article
+from flexible_reports import models as flexible_models
 from multiseek.models import SearchForm
 from robots.models import Rule, Url
 
@@ -25,7 +24,8 @@ from bpp.models import Funkcja_Autora, Zrodlo_Informacji, Jezyk, \
     Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor, \
     Redakcja_Zrodla, Praca_Doktorska, Praca_Habilitacyjna, Patent, Patent_Autor, \
     Rodzaj_Prawa_Patentowego, Dyscyplina_Naukowa, Zewnetrzna_Baza_Danych, Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych, \
-    Autor_Dyscyplina, Wydawca
+    Autor_Dyscyplina, Wydawca, Wydawnictwo_Zwarte_Zewnetrzna_Baza_Danych
+from bpp.models.const import GR_WPROWADZANIE_DANYCH
 from bpp.models.konferencja import Konferencja
 from bpp.models.nagroda import OrganPrzyznajacyNagrody, Nagroda
 from bpp.models.openaccess import Tryb_OpenAccess_Wydawnictwo_Ciagle, Tryb_OpenAccess_Wydawnictwo_Zwarte, \
@@ -35,12 +35,15 @@ from bpp.models.profile import BppUser
 from bpp.models.seria_wydawnicza import Seria_Wydawnicza
 from bpp.models.struktura import Jednostka_Wydzial
 from bpp.models.system import Charakter_PBN
-from bpp.models.const import GR_WPROWADZANIE_DANYCH
-from flexible_reports import models as flexible_models
+from import_dbf.models import Bib, B_A, Aut, Jed, Poz, B_U, Usi, Ses, Wx2, Ixn
+from miniblog.models import Article
 
 User = get_user_model()
 
 groups = {
+    'import DBF': [
+        Bib, B_A, Aut, Jed, Poz, B_U, Usi, Ses, Wx2, Ixn
+    ],
     'dane systemowe': [
         Charakter_Formalny, Charakter_PBN,
         Funkcja_Autora, Zrodlo_Informacji,
@@ -65,6 +68,7 @@ groups = {
         Praca_Doktorska, Praca_Habilitacyjna, Patent, Patent_Autor,
         Publikacja_Habilitacyjna, Konferencja, Seria_Wydawnicza,
         Nagroda, Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych,
+        Wydawnictwo_Zwarte_Zewnetrzna_Baza_Danych,
         Wydawca],
     'indeks autorów': [Autor, Autor_Jednostka],
     'administracja': [User, Group, SearchForm],

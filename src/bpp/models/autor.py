@@ -11,7 +11,7 @@ from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import models, IntegrityError
-from django.db.models import Sum, CASCADE, CASCADE
+from django.db.models import Sum, CASCADE
 from django.urls.base import reverse
 from django.utils import six
 from lxml.etree import Element, SubElement
@@ -39,6 +39,7 @@ class Plec(NazwaISkrot):
 class AutorManager(FulltextSearchMixin, models.Manager):
     pass
 
+
 @six.python_2_unicode_compatible
 class Autor(ModelZAdnotacjami, ModelZPBN_ID):
     imiona = models.CharField(max_length=512, db_index=True)
@@ -50,8 +51,10 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
     do tej jednostki nie zostało zakończone wraz z konkretną datą w 
     przeszłości.""", db_index=True)
 
-    aktualna_jednostka = models.ForeignKey('Jednostka', CASCADE, blank=True, null=True, related_name='aktualna_jednostka')
-    aktualna_funkcja = models.ForeignKey('Funkcja_Autora', CASCADE, blank=True, null=True, related_name='aktualna_funkcja')
+    aktualna_jednostka = models.ForeignKey('Jednostka', CASCADE, blank=True, null=True,
+                                           related_name='aktualna_jednostka')
+    aktualna_funkcja = models.ForeignKey('Funkcja_Autora', CASCADE, blank=True, null=True,
+                                         related_name='aktualna_funkcja')
 
     pokazuj = models.BooleanField(
         default=True,
@@ -88,8 +91,12 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
                         'oddzielone myślnikami',
                 code='orcid_invalid_format'
             ),
-        ]
+        ],
+        db_index=True
     )
+
+    expertus_id = models.CharField("Identyfikator w bazie Expertus", max_length=10, null=True, blank=True,
+                                   db_index=True, unique=True)
 
     search = VectorField()
 
@@ -201,7 +208,7 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
         # gdy jest rozszerzona afiliacja:
 
         if Autor_Jednostka.objects.filter(
-            autor=self, jednostka__wydzial=wydzial):
+                autor=self, jednostka__wydzial=wydzial):
             return True
 
     def get_full_name(self):
@@ -265,16 +272,16 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
         """Zwraca liczbę cytowań prac danego autora
         """
         from bpp.models.cache import Rekord
-        return Rekord.objects.prace_autora(self)\
-            .distinct()\
+        return Rekord.objects.prace_autora(self) \
+            .distinct() \
             .aggregate(s=Sum('liczba_cytowan'))['s']
 
     def liczba_cytowan_afiliowane(self):
         """Zwraca liczbę cytowań prac danego autora tam,
         gdzie została podana afiliacja na jednostkę uczelni"""
         from bpp.models.cache import Rekord
-        return Rekord.objects.prace_autora_z_afiliowanych_jednostek(self)\
-            .distinct()\
+        return Rekord.objects.prace_autora_z_afiliowanych_jednostek(self) \
+            .distinct() \
             .aggregate(s=Sum('liczba_cytowan'))['s']
 
 
@@ -317,7 +324,7 @@ class Autor_Jednostka_Manager(models.Manager):
                 if rec.rozpoczal_prace is None and poprzedni_rekord.rozpoczal_prace is not None:
                     if rec.zakonczyl_prace == poprzedni_rekord.rozpoczal_prace:
                         usun.append(rec)
-                        poprzedni_rekord.rozpoczal_prace=rec.rozpoczal_prace
+                        poprzedni_rekord.rozpoczal_prace = rec.rozpoczal_prace
                         poprzedni_rekord.save()
                         continue
 
@@ -336,6 +343,7 @@ class Autor_Jednostka_Manager(models.Manager):
 
         for aj in usun:
             aj.delete()
+
 
 @six.python_2_unicode_compatible
 class Autor_Jednostka(models.Model):

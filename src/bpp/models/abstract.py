@@ -5,6 +5,7 @@ Klasy abstrakcyjne
 """
 from decimal import Decimal
 
+from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields import HStoreField
 from django.contrib.postgres.search import SearchVectorField as VectorField
@@ -200,6 +201,7 @@ class ModelZWWW(models.Model):
 
 class ModelZPubmedID(models.Model):
     pubmed_id = models.BigIntegerField("PubMed ID", blank=True, null=True, help_text="Identyfikator PubMed (PMID)")
+    pmc_id = models.CharField("PubMed Central ID", max_length=32, blank=True, null=True)
 
     class Meta:
         abstract = True
@@ -299,6 +301,8 @@ class ModelTypowany(models.Model):
     """Model zawierający typ KBN oraz język."""
     typ_kbn = models.ForeignKey('Typ_KBN', CASCADE, verbose_name="Typ KBN")
     jezyk = models.ForeignKey('Jezyk', CASCADE, verbose_name="Język")
+    jezyk_alt = models.ForeignKey('Jezyk', SET_NULL, verbose_name='Język alternatywny', null=True, blank=True,
+                                  related_name='+')
 
     class Meta:
         abstract = True
@@ -362,7 +366,6 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
         # if ad.subdyscyplina_naukowa is None:
         #     return ad.dyscyplina_naukowa
 
-
     # XXX TODO sprawdzanie, żęby nie było dwóch autorów o tej samej kolejności
 
     def clean(self):
@@ -409,8 +412,17 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
             pass
 
     def save(self, *args, **kw):
-        if self.autor.jednostki.filter(pk=self.jednostka.pk).count() == 0:
-            self.jednostka.dodaj_autora(self.autor)
+        from bpp.models import Autor_Jednostka
+
+        if getattr(settings, "BPP_DODAWAJ_JEDNOSTKE_PRZY_ZAPISIE_PRACY", True) and not Autor_Jednostka.objects.filter(
+                autor_id=self.autor_id,
+                jednostka_id=self.jednostka_id).exists():
+            Autor_Jednostka.objects.create(
+                autor_id=self.autor_id,
+                jednostka_id=self.jednostka_id,
+            )
+            # olewamy refresh_from_db i autor.aktualna_jednostka
+
         return super(BazaModeluOdpowiedzialnosciAutorow, self).save(*args, **kw)
 
 
@@ -859,7 +871,8 @@ class ModelZSeria_Wydawnicza(models.Model):
         null=True
     )
 
-    numer_w_serii = models.PositiveIntegerField(
+    numer_w_serii = models.CharField(
+        max_length=512,
         blank=True,
         null=True
     )
@@ -995,7 +1008,7 @@ class DodajAutoraMixin:
 
     def dodaj_autora(self, autor, jednostka, zapisany_jako=None,
                      typ_odpowiedzialnosci_skrot='aut.', kolejnosc=None,
-                     dyscyplina_naukowa=None):
+                     dyscyplina_naukowa=None, afiliuje=True):
         """
         :rtype: bpp.models.abstract.BazaModeluOdpowiedzialnosciAutorow
         """
@@ -1007,4 +1020,20 @@ class DodajAutoraMixin:
             zapisany_jako=zapisany_jako,
             typ_odpowiedzialnosci_skrot=typ_odpowiedzialnosci_skrot,
             kolejnosc=kolejnosc,
-            dyscyplina_naukowa=dyscyplina_naukowa)
+            dyscyplina_naukowa=dyscyplina_naukowa,
+            afiliuje=afiliuje)
+
+
+class AktualizujDatePBNNadrzednegoMixin:
+    class Meta:
+        abstract = True
+
+    def save(self, *args, **kw):
+        if getattr(settings, 'ENABLE_DATA_AKT_PBN_UPDATE', True) and (self.pk is None or self.is_dirty()):
+            # W sytuacji gdy dodajemy nowego autora lub zmieniamy jego dane,
+            # rekord "nadrzędny" publikacji powinien mieć zaktualizowany
+            # czas ostatniej aktualizacji na potrzeby PBN:
+            r = self.rekord
+            r.ostatnio_zmieniony_dla_pbn = timezone.now()
+            r.save(update_fields=['ostatnio_zmieniony_dla_pbn'])
+        super(AktualizujDatePBNNadrzednegoMixin, self).save(*args, **kw)

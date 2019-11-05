@@ -1,7 +1,6 @@
 from decimal import Decimal
 
 import pytest
-from asn1crypto.cms import ContentType
 from django.contrib.contenttypes.models import ContentType
 
 from bpp.models import TO_REDAKTOR, TO_AUTOR, Typ_Odpowiedzialnosci, Cache_Punktacja_Autora, Cache_Punktacja_Dyscypliny, \

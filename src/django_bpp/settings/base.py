@@ -200,7 +200,9 @@ INSTALLED_APPS = [
 
     'mptt',
 
-    'raport_slotow'
+    'raport_slotow',
+
+    'import_dbf'
 
 ]
 
@@ -245,7 +247,7 @@ LOGGING = {
     },
     'formatters': {
         'verbose': {
-            'format': '%(levelname)s %(asctime)s %(module)s %(process)d %(thread)d %(message)s'
+            'format': '%(levelname)s %(asctime)s %(module)s %(message)s'
         },
     },
     'handlers': {
@@ -256,10 +258,15 @@ LOGGING = {
         'console': {
             'level': 'DEBUG',
             'class': 'logging.StreamHandler',
-            'formatter': 'verbose'
-        }
+            'formatter': 'verbose',
+        },
     },
     'loggers': {
+        'main': {
+            'handlers': ['console',],
+            'propagate': True,
+            'level': 'INFO',
+        },
         'django.db.backends': {
             'level': 'ERROR',
             'handlers': ['console'],
@@ -448,6 +455,7 @@ TESTING = ('test' in sys.argv) or ('jenkins' in sys.argv) or \
 
 if TESTING:
     CELERY_ALWAYS_EAGER = True
+    CELERY_TASK_ALWAYS_EAGER = True
     CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
 
 CELERYD_HIJACK_ROOT_LOGGER = False
@@ -554,3 +562,5 @@ SILENCED_SYSTEM_CHECKS = ["urls.W003"]
 INLINE_DLA_AUTOROW = os.getenv("DJANGO_BPP_INLINE_DLA_AUTOROW", "stacked")
 
 DEBUG_TOOLBAR = False
+
+BPP_DODAWAJ_JEDNOSTKE_PRZY_ZAPISIE_PRACY = True

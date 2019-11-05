@@ -12,31 +12,34 @@
             Autorzy:
         </th>
         <td>
-            {% include "opis_bibliograficzny/autorzy.html" with links=links %}
+            {% include "opis_bibliograficzny/autorzy.html" with links=links autorzy=autorzy %}
         </td>
     </tr>
-    <tr>
-        <th>
-            Źródło:
-        </th>
-        <td>
-            {% if praca.zrodlo %}
-                {% if links == "admin" %}
-                    <a href="{% url "admin:bpp_zrodlo_change" praca.zrodlo.pk %}">{{ praca.zrodlo }}</a>
-                {% else %}
-                    <a href="{% url "bpp:browse_zrodlo" praca.zrodlo.slug %}">{{ praca.zrodlo }}</a>
+    {% if praca.zrodlo or praca.wydawnictwo_nadrzedne or praca.informacje or praca.szczegoly %}
+        <tr>
+            <th>
+                Szczegóły:
+            </th>
+            <td>
+                {% if praca.zrodlo %}
+                    {% if links == "admin" %}
+                        <a href="{% url "admin:bpp_zrodlo_change" praca.zrodlo.pk %}">{{ praca.zrodlo }}</a>
+                    {% else %}
+                        <a href="{% url "bpp:browse_zrodlo" praca.zrodlo.slug %}">{{ praca.zrodlo }}</a>
+                    {% endif %}
                 {% endif %}
-            {% endif %}
-            {% if praca.wydawnictwo_nadrzedne %}
-                <a href="{% url "bpp:browse_praca" "wydawnictwo_zwarte" praca.wydawnictwo_nadrzedne.pk %}">
-            {% endif %}
-            {{ praca.informacje|default:""|znak_na_koncu:", "|safe }}
-            {{ praca.szczegoly|safe }}
-            {% if praca.wydawnictwo_nadrzedne %}
-                </a>
-            {% endif %}
-        </td>
-    </tr>
+                {% if praca.wydawnictwo_nadrzedne %}
+                    <a href="{% url "bpp:browse_praca" "wydawnictwo_zwarte" praca.wydawnictwo_nadrzedne.pk %}">
+                {% endif %}
+                {{ praca.informacje|default:""|znak_na_koncu:", "|safe }}
+                {{ praca.szczegoly|safe }}
+                {% if praca.wydawnictwo_nadrzedne %}
+                    </a>
+                {% endif %}
+            </td>
+        </tr>
+    {% endif %}
+
     {% if praca.charakter_formalny.skrot == "PAT" %}
         <tr>
             <th>Patent:</th>

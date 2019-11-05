@@ -4,6 +4,7 @@ import pytest
 from django.db import transaction
 from model_mommy import mommy
 
+from bpp.models import rebuild_ciagle, rebuild_zwarte, cache
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord, Autorzy, defer_zaktualizuj_opis
 from bpp.models.openaccess import Wersja_Tekstu_OpenAccess, \
@@ -43,7 +44,7 @@ def test_opis_bibliograficzny_dependent(transactional_db, standard_data):
     """Stwórz i skasuj Wydawnictwo_Ciagle_Autor i sprawdź, jak to
     wpłynie na opis."""
 
-    c = mommy.make(Wydawnictwo_Ciagle, szczegoly='sz', uwagi='u')
+    c = mommy.make(Wydawnictwo_Ciagle, tytul_oryginalny='Test', szczegoly='sz', uwagi='u')
     assert 'KOWALSKI' not in c.opis_bibliograficzny()
     assert 'KOWALSKI' not in pierwszy_rekord()
 
@@ -367,3 +368,30 @@ def test_prace_autora_z_afiliowanych_jednostek(typy_odpowiedzialnosci):
 
     assert Rekord.objects.prace_autora_z_afiliowanych_jednostek(a1).count() == 1
     assert Rekord.objects.prace_autora_z_afiliowanych_jednostek(a2).count() == 2
+
+
+@pytest.mark.django_db
+def test_rebuild_ciagle(django_assert_num_queries, wydawnictwo_ciagle_z_dwoma_autorami):
+    #
+    # procedura rebuild_ciagle czy rebuild_zwarte (to aliasy do rebuild) ma prawo miec nastepujace
+    # zapytania:
+    #
+    # - savepoint nr 1 (transakcja rebuild_caigle)
+    # - select na wszystkie rekordy z tabeli + select_related co potrzebne + only
+    # - savepoint nr 2 (transakcja na 1 rekord)
+    # - select z autorzy_Set
+    # - update
+    # - savepoint na punktacje dyscyplin
+    # - 2x delete z tabeli bpp_cache_punktacja_dyscypliny
+    # - 3xrelease savepoint
+    # - ... co w sumie daje: 11 zapytan
+
+    with django_assert_num_queries(9):
+        rebuild_ciagle()
+
+
+@pytest.mark.django_db
+def test_rebuild_zwarte(django_assert_num_queries, wydawnictwo_zwarte_z_autorem):
+    with django_assert_num_queries(9):
+        rebuild_zwarte()
+

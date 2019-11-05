@@ -2,6 +2,12 @@
 Historia zmian
 ==============
 
+v201911.1
+---------
+
+* import baz danych z systemów zewnętrznych
+* równolegle działające polecenie rebuild_cache, przyspieszające czas nocnej przebudowy cache bazy
+
 v201910.7
 ---------
 
