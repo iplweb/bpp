@@ -20,7 +20,7 @@ AS $$
 
       assert r1[0]["uczelnia_id"] == r2[0]["uczelnia_id"], "Uczelnia jednostki i wydzialu musi byc identyczna"
 
-$$ LANGUAGE plpythonu;
+$$ LANGUAGE plpython3u;
 
 
 DROP TRIGGER IF EXISTS bpp_jednostka_wydzial_sprawdz_uczelnia_id_trigger ON bpp_jednostka_wydzial;
@@ -45,7 +45,7 @@ AS $$
         r = plpy.execute(q)
         assert r[0]["uczelnia_id"] == uczelnia_id, "Uczelnia jednostki i wydzialu musi byc identyczna"
 
-$$ LANGUAGE plpythonu;
+$$ LANGUAGE plpython3u;
 
 
 DROP TRIGGER IF EXISTS bpp_jednostka_sprawdz_uczelnia_id_trigger ON bpp_jednostka;
@@ -104,7 +104,7 @@ AS $$
         # Ustaw wydział=NULL i aktualna=False jeżeli nie ma żadnych wpisów
         plpy.execute(p2, [None, False, jednostka_id])
 
-$$ LANGUAGE plpythonu;
+$$ LANGUAGE plpython3u;
 
 DROP TRIGGER IF EXISTS bpp_jednostka_ustaw_wydzial_aktualna_trigger ON bpp_jednostka_wydzial;
 

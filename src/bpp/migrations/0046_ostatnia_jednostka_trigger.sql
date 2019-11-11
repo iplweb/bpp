@@ -4,7 +4,7 @@ BEGIN;
 
 CREATE OR REPLACE FUNCTION bpp_autor_jednostka_aktualna_jednostka()
   RETURNS TRIGGER
-  LANGUAGE plpythonu
+  LANGUAGE plpython3u
   AS $$
     # Ta funkcja odświeża pole 'ostatnia jednostka' modelu bpp.Autor
 
