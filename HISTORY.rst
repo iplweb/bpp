@@ -2,7 +2,7 @@
 Historia zmian
 ==============
 
-v201911.1
+v201911.9
 ---------
 
 * import baz danych z systemów zewnętrznych
