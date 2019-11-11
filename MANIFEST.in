@@ -9,6 +9,9 @@ include Pipfile.lock
 include requirements.txt
 include requirements_dev.txt
 
+include src/import_dbf/Makefile
+recursive-include src/import_dbf/sql *
+
 recursive-include src/*/static *
 
 recursive-include src/django_bpp/staticroot *
