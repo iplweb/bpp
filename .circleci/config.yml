@@ -11,7 +11,7 @@ jobs:
           PGDATABASE: bpp
           DJANGO_BPP_SECRET_KEY: foobar
           DJANGO_SETTINGS_MODULE: django_bpp.settings.test
-      - image: mpasternak79/circleci-postgres:10
+      - image: mpasternak79/circleci-postgres:12
       - image: rabbitmq:latest
         
     steps:
