@@ -7,6 +7,7 @@ v201911.1
 
 * import baz danych z systemów zewnętrznych
 * równolegle działające polecenie rebuild_cache, przyspieszające czas nocnej przebudowy cache bazy
+* obsługa dziedzin dla dyscyplin naukowych - inna punktacja dla
 
 v201910.7
 ---------

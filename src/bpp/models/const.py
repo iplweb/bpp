@@ -1,3 +1,5 @@
+from collections import OrderedDict
+
 TO_AUTOR = 0
 TO_REDAKTOR = 1
 TO_INNY = 2
@@ -14,3 +16,17 @@ CHARAKTER_SLOTY_ROZDZIAL = 2
 RODZAJ_PBN_ARTYKUL = 1
 RODZAJ_PBN_ROZDZIAL = 2
 RODZAJ_PBN_KSIAZKA = 3
+
+DZIEDZINA_NAUK_HUMANISTYCZNYCH = 1
+DZIEDZINA_NAUK_SPOLECZNYCH = 5
+DZIEDZINA_NAUK_TEOLOGICZNYCH = 7
+
+DZIEDZINY = OrderedDict()
+DZIEDZINY[DZIEDZINA_NAUK_HUMANISTYCZNYCH] = "Nauki humanistyczne"
+DZIEDZINY[2] = "Nauki inżynieryjno-techniczne"
+DZIEDZINY[3] = "Nauki medyczne i o zdrowiu"
+DZIEDZINY[4] = "Nauki rolnicze"
+DZIEDZINY[DZIEDZINA_NAUK_SPOLECZNYCH] = "Nauki społeczne"
+DZIEDZINY[6] = "Nauki ścisłe i przyrodnicze"
+DZIEDZINY[DZIEDZINA_NAUK_TEOLOGICZNYCH] = "Nauki teologiczne"
+DZIEDZINY[8] = "Sztuka"

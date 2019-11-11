@@ -2,32 +2,42 @@ from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
-from django.db.models import PositiveSmallIntegerField, CASCADE, CASCADE
-from mptt.models import MPTTModel, TreeForeignKey
+from django.db.models import PositiveSmallIntegerField, CASCADE
+
+from bpp.models import const
+
+# bpp=# select distinct substr(id, 1, 2), dziedzina from import_dbf_ldy;
+#  substr |                 dziedzina
+# --------+--------------------------------------------
+#  01     | Dziedzina nauk humanistycznych
+#  02     | Dziedzina nauk inżynieryjno-technicznych
+#  03     | Dziedzina nauk medycznych i nauk o zdrowiu
+#  04     | Dziedzina nauk rolniczych
+#  05     | Dziedzina nauk społecznych
+#  06     | Dziedzina nauk ścisłych i przyrodniczych
+#  07     | Dziedzina nauk teologicznych
+#  08     | Dziedzina sztuki
+# (8 rows)
 
 
-class Dyscyplina_Naukowa(MPTTModel):
+class Dyscyplina_Naukowa(models.Model):
+    kod = models.CharField(max_length=20, unique=True)
     nazwa = models.CharField(max_length=200, unique=True)
-    kod = models.CharField(max_length=20, null=True, blank=True, unique=True)
     widoczna = models.BooleanField(default=True)
 
-    dyscyplina_nadrzedna = TreeForeignKey(
-        'self', CASCADE,
-        null=True,
-        blank=True,
-        related_name='subdyscypliny',
-        db_index=True)
-
-    class MPTTMeta:
-        order_insertion_by = ['nazwa']
-        parent_attr = 'dyscyplina_nadrzedna'
-
     def __str__(self):
-        return f"{ self.nazwa } ({ self.kod })"
+        return f"{self.nazwa} ({self.kod})"
 
     class Meta:
         verbose_name_plural = "dyscypliny naukowe"
         verbose_name = "dyscyplina naukowa"
+
+    def dziedzina(self):
+        try:
+            nadkod = int(self.kod.lstrip("0").strip().split(".")[0])
+            return const.DZIEDZINY.get(nadkod)
+        except (ValueError, TypeError, KeyError):
+            pass
 
 
 class Autor_DyscyplinaManager(models.Manager):
@@ -47,13 +57,6 @@ class Autor_DyscyplinaManager(models.Manager):
                 elem.widoczna = True
                 elem.save()
 
-                i = elem.dyscyplina_nadrzedna
-                while i is not None:
-                    if not i.widoczna:
-                        i.widoczna = True
-                        i.save()
-                    i = i.dyscyplina_nadrzedna
-
 
 class Autor_Dyscyplina(models.Model):
     rok = PositiveSmallIntegerField()
@@ -62,7 +65,8 @@ class Autor_Dyscyplina(models.Model):
     dyscyplina_naukowa = models.ForeignKey("bpp.Dyscyplina_Naukowa", models.PROTECT, related_name="dyscyplina")
     procent_dyscypliny = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
 
-    subdyscyplina_naukowa = models.ForeignKey("bpp.Dyscyplina_Naukowa", models.PROTECT, related_name="subdyscyplina", blank=True, null=True)
+    subdyscyplina_naukowa = models.ForeignKey("bpp.Dyscyplina_Naukowa", models.PROTECT, related_name="subdyscyplina",
+                                              blank=True, null=True)
     procent_subdyscypliny = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
 
     objects = Autor_DyscyplinaManager()
@@ -73,7 +77,6 @@ class Autor_Dyscyplina(models.Model):
         ]
         verbose_name = "powiązanie autora z dyscypliną naukową"
         verbose_name_plural = "powiązania autorów z dyscyplinami naukowymi"
-
 
     def clean(self):
         p1 = self.procent_dyscypliny or Decimal("0.00")
