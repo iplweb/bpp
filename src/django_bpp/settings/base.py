@@ -1,10 +1,10 @@
 # -*- encoding: utf-8 -*-
 
 import os
-import sys
 from datetime import timedelta
 
 import django
+import sys
 from django.core.exceptions import ImproperlyConfigured, DisallowedHost
 
 
@@ -91,8 +91,7 @@ TEMPLATES = [
     },
 ]
 
-
-MIDDLEWARE  = [
+MIDDLEWARE = [
     'htmlmin.middleware.HtmlMinifyMiddleware',
     'htmlmin.middleware.MarkRequestMiddleware',
 
@@ -206,8 +205,8 @@ INSTALLED_APPS = [
 
 ]
 
-if django.VERSION < (1,9):
-    INSTALLED_APPS += ['django_18_fast_migrations',]
+if django.VERSION < (1, 9):
+    INSTALLED_APPS += ['django_18_fast_migrations', ]
 
 # Profile użytkowników
 AUTH_USER_MODEL = "bpp.BppUser"
@@ -263,7 +262,7 @@ LOGGING = {
     },
     'loggers': {
         'main': {
-            'handlers': ['console',],
+            'handlers': ['console', ],
             'propagate': True,
             'level': 'INFO',
         },
@@ -328,7 +327,6 @@ SITE_ROOT = os.path.abspath(
     os.path.join(SCRIPT_PATH, '..', '..'))
 
 STATIC_ROOT = os.path.join(SCRIPT_PATH, "..", "staticroot")
-
 
 COMPRESS_ROOT = STATIC_ROOT
 COMPRESS_OFFLINE_CONTEXT = [
@@ -483,7 +481,7 @@ CELERYBEAT_SCHEDULE = {
         'task': 'bpp.tasks.zaktualizuj_liczbe_cytowan',
         'schedule': timedelta(days=5)
     }
-    
+
 }
 
 CAN_LOGIN_AS = lambda request, target_user: request.user.is_superuser
@@ -533,10 +531,8 @@ PUNKTUJ_MONOGRAFIE = bool(int(os.getenv(
     "DJANGO_BPP_PUNKTUJ_MONOGRAFIE", "1"
 )))
 
-
 STATICSITEMAPS_ROOT_SITEMAP = 'django_bpp.sitemaps.django_bpp_sitemaps'
 STATICSITEMAPS_REFRESH_AFTER = 24 * 60
-
 
 # dla django-model-utils SplitField
 SPLIT_MARKER = '<!-- tutaj -->'
@@ -564,3 +560,25 @@ INLINE_DLA_AUTOROW = os.getenv("DJANGO_BPP_INLINE_DLA_AUTOROW", "stacked")
 DEBUG_TOOLBAR = False
 
 BPP_DODAWAJ_JEDNOSTKE_PRZY_ZAPISIE_PRACY = True
+
+YARN_FILE_PATTERNS = {
+    'jquery': ['dist/jquery.min.js'],
+    'jqueryui': ['jquery-ui.min.js', 'jquery-ui.css'],
+    'what-input': ['dist/what-input.js'],
+    'jquery.cookie': ['jquery.cookie.js'],
+    'foundation-sites': [
+        'dist/js/foundation.js',
+        'dist/js/foundation.js.map'
+    ],
+    'foundation-datepicker': [
+        'foundation/fonts/*',
+        'css/foundation-datepicker.min.css',
+        'js/foundation-datepicker.min.js',
+        'js/locales/foundation-datepicker.pl.js'],
+    'datatables.net': ['js/jquery.dataTables.js'],
+    'datatables.net-zf': [
+        'js/dataTables.foundation.js',
+        'css/dataTables.foundation.css'],
+    'jinplace': ['js/jinplace.js'],
+    'select2-foundation_theme': ['dist/select2-foundation-theme.css']
+}

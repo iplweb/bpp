@@ -2,6 +2,8 @@
 Historia zmian
 ==============
 
+* mniejszy rozmiar pliku wynikowego (whl)
+
 v201911.9
 ---------
 
