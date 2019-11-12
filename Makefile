@@ -2,7 +2,7 @@ BRANCH=`git branch | sed -n '/\* /s///p'`
 
 .PHONY: clean distclean tests release
 
-PYTHON=python3.6
+PYTHON=python3
 
 cleanup-pycs:
 	find . -name __pycache__ -type d -print0 | xargs -0 rm -rf
