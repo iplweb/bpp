@@ -580,5 +580,6 @@ YARN_FILE_PATTERNS = {
         'js/dataTables.foundation.js',
         'css/dataTables.foundation.css'],
     'jinplace': ['js/jinplace.js'],
-    'select2-foundation_theme': ['dist/select2-foundation-theme.css']
+    'select2-foundation_theme': ['dist/select2-foundation-theme.css'],
+    'kbw-keypad': ['dist/*']
 }
