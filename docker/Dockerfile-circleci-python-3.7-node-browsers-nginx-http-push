@@ -1,4 +1,4 @@
-FROM circleci/python:3.6-node-browsers
+FROM circleci/python:3.7-node-browsers
 
 RUN sudo apt-get update && sudo apt install curl gnupg2 ca-certificates lsb-release devscripts build-essential lintian
 RUN echo "deb-src http://nginx.org/packages/debian `lsb_release -cs` nginx" \
