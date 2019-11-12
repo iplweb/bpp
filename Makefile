@@ -54,7 +54,7 @@ _bdist_wheel_upload:
 clean-node-dir:
 	rm -rf node_modules
 
-bdist_wheel: distclean assets clean-node-dir assets-production requirements _bdist_wheel
+bdist_wheel: distclean assets requirements _bdist_wheel
 
 bdist_wheel_upload: _prod_assets requirements _bdist_wheel_upload
 

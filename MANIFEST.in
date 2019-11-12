@@ -15,15 +15,8 @@ recursive-include src/import_dbf/sql *
 recursive-include src/*/static *
 
 recursive-include src/django_bpp/staticroot *
-prune src/django_bpp/staticroot/foundation-sites/docs
-prune src/django_bpp/staticroot/foundation-sites/test
-prune src/django_bpp/staticroot/phantomjs
-prune src/django_bpp/staticroot/fsevents
-prune src/django_bpp/staticroot/phantomjs-prebuilt
-prune src/django_bpp/staticroot/lodash
-prune src/django_bpp/staticroot/node-sass
-prune src/django_bpp/staticroot/node-gyp
 prune src/django_bpp/staticroot/sinon
+prune src/django_bpp/staticroot/qunitjs
 recursive-exclude src/django_bpp/staticroot/ sitemap-*
 
 recursive-include src/*/locale/* *mo *po

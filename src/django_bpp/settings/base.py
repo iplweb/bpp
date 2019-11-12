@@ -568,7 +568,11 @@ YARN_FILE_PATTERNS = {
     'jquery.cookie': ['jquery.cookie.js'],
     'foundation-sites': [
         'dist/js/foundation.js',
-        'dist/js/foundation.js.map'
+        'dist/js/foundation.js.map',
+
+        # testy
+        'css/normalize.min.css',
+        'css/foundation.min.css',
     ],
     'foundation-datepicker': [
         'foundation/fonts/*',
@@ -581,5 +585,9 @@ YARN_FILE_PATTERNS = {
         'css/dataTables.foundation.css'],
     'jinplace': ['js/jinplace.js'],
     'select2-foundation_theme': ['dist/select2-foundation-theme.css'],
-    'kbw-keypad': ['dist/*']
+    'kbw-keypad': ['dist/*'],
+
+    # Zostana pozniej usuniete przez MANIFEST.in
+    'qunitjs': ['qunit/qunit.js', 'qunit/qunit.css'],
+    'sinon': ['pkg/sinon.js']
 }
