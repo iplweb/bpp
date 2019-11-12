@@ -45,18 +45,16 @@ requirements:
 	pipenv lock -r > requirements.txt
 	pipenv lock -dr > requirements_dev.txt
 
-_bdist_wheel: 
-	${PYTHON} setup.py -q bdist_wheel
-
-_bdist_wheel_upload:
-	${PYTHON} setup.py -q bdist_wheel upload
-
 clean-node-dir:
 	rm -rf node_modules
 
-bdist_wheel: distclean assets requirements _bdist_wheel
+pre-wheel: distclean assets requirements
 
-bdist_wheel_upload: _prod_assets requirements _bdist_wheel_upload
+bdist_wheel: pre-wheel
+	${PYTHON} setup.py -q bdist_wheel
+
+bdist_wheel_upload: pre-wheel
+	${PYTHON} setup.py -q bdist_wheel upload
 
 js-tests:
 	grunt qunit
@@ -73,7 +71,7 @@ jenkins:
 	pipenv install -d
 	make assets
 
-	pytest --ds=django_bpp.settings.local -n6 --splinter-webdriver=firefox --nginx-host=localhost --liveserver=localhost --create-db
+	pytest --ds=django_bpp.settings.local -n6 --splinter-webdriver=firefox --nginx-host=localhost --liveserver=localhost --create-db --maxfail=20
 
 	yarn
 	make js-tests
