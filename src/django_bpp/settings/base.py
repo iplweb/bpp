@@ -567,8 +567,8 @@ YARN_FILE_PATTERNS = {
     'what-input': ['dist/what-input.js'],
     'jquery.cookie': ['jquery.cookie.js'],
     'foundation-sites': [
-        'dist/js/foundation.js',
-        'dist/js/foundation.js.map',
+        'dist/js/foundation.min.js',
+        'dist/js/foundation.min.js.map',
 
         # testy
         'css/normalize.min.css',
