@@ -4,7 +4,7 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-Django = "==2.1.13"
+Django = "==2.2.7"
 psycopg2 = "==2.8.4"
 django-flexible-reports = "==0.2.9"
 django-group-by = "==0.3.1"

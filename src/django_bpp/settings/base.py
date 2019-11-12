@@ -571,8 +571,8 @@ YARN_FILE_PATTERNS = {
         'dist/js/foundation.min.js.map',
 
         # testy
-        'css/normalize.min.css',
-        'css/foundation.min.css',
+        'dist/css/normalize.min.css',
+        'dist/css/foundation.min.css',
     ],
     'foundation-datepicker': [
         'foundation/fonts/*',
@@ -588,6 +588,6 @@ YARN_FILE_PATTERNS = {
     'kbw-keypad': ['dist/*'],
 
     # Zostana pozniej usuniete przez MANIFEST.in
-    'qunitjs': ['qunit/qunit.js', 'qunit/qunit.css'],
+    'qunit': ['qunit/qunit.js', 'qunit/qunit.css'],
     'sinon': ['pkg/sinon.js']
 }
