@@ -37,16 +37,9 @@ grunt:
 yarn:
 	yarn install --no-progress --emoji false -s
 
-yarn-production:
-	yarn install --no-progress --emoji false -s --prod
-
-_assets:
+assets: yarn grunt
 	${PYTHON} src/manage.py collectstatic --noinput -v0 --traceback
 	${PYTHON} src/manage.py compress --force  -v0 --traceback
-
-assets: yarn grunt _assets
-
-assets-production: yarn-production grunt _assets
 
 requirements:
 	pipenv lock -r > requirements.txt
@@ -61,9 +54,7 @@ _bdist_wheel_upload:
 clean-node-dir:
 	rm -rf node_modules
 
-_prod_assets: distclean assets clean-node-dir assets-production 
-
-bdist_wheel: _prod_assets requirements _bdist_wheel
+bdist_wheel: distclean assets requirements _bdist_wheel
 
 bdist_wheel_upload: _prod_assets requirements _bdist_wheel_upload
 
