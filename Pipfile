@@ -4,9 +4,9 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-Django = "==2.1.13"
-psycopg2-binary = "==2.8.3"
-django-flexible-reports = "==0.2.8"
+Django = "==2.2.7"
+psycopg2 = "==2.8.4"
+django-flexible-reports = "==0.2.9"
 django-group-by = "==0.3.1"
 django-columns = "==0.1.0"
 tablib = "==0.11.5"
@@ -39,7 +39,7 @@ requests = "==2.20.0"
 pytz = "==2018.4"
 django-extensions = "==1.7.9"
 django-htmlmin = "==0.10.0"
-Pillow = "==4.0.0"
+Pillow = ">=6.2.0"
 olefile = "==0.44"
 django-grappelli = "==2.12.2"
 django-multiseek = "==0.9.38"
@@ -93,4 +93,4 @@ pyparsing = "==2.4.1.1"
 pycalver = "*"
 
 [requires]
-python_version = "3.6"
+python_version = "3.7"

@@ -2,7 +2,7 @@ BRANCH=`git branch | sed -n '/\* /s///p'`
 
 .PHONY: clean distclean tests release
 
-PYTHON=python3.6
+PYTHON=python3
 
 cleanup-pycs:
 	find . -name __pycache__ -type d -print0 | xargs -0 rm -rf
@@ -37,35 +37,24 @@ grunt:
 yarn:
 	yarn install --no-progress --emoji false -s
 
-yarn-production:
-	yarn install --no-progress --emoji false -s --prod
-
-_assets:
+assets: yarn grunt
 	${PYTHON} src/manage.py collectstatic --noinput -v0 --traceback
 	${PYTHON} src/manage.py compress --force  -v0 --traceback
-
-assets: yarn grunt _assets
-
-assets-production: yarn-production grunt _assets
 
 requirements:
 	pipenv lock -r > requirements.txt
 	pipenv lock -dr > requirements_dev.txt
 
-_bdist_wheel: 
-	${PYTHON} setup.py -q bdist_wheel
-
-_bdist_wheel_upload:
-	${PYTHON} setup.py -q bdist_wheel upload
-
 clean-node-dir:
 	rm -rf node_modules
 
-_prod_assets: distclean assets clean-node-dir assets-production 
+pre-wheel: distclean assets requirements
 
-bdist_wheel: _prod_assets requirements _bdist_wheel
+bdist_wheel: pre-wheel
+	${PYTHON} setup.py -q bdist_wheel
 
-bdist_wheel_upload: _prod_assets requirements _bdist_wheel_upload
+bdist_wheel_upload: pre-wheel
+	${PYTHON} setup.py -q bdist_wheel upload
 
 js-tests:
 	grunt qunit
@@ -82,7 +71,7 @@ jenkins:
 	pipenv install -d
 	make assets
 
-	pytest --ds=django_bpp.settings.local -n6 --splinter-webdriver=firefox --nginx-host=localhost --liveserver=localhost --create-db
+	pytest --ds=django_bpp.settings.local -n6 --splinter-webdriver=firefox --nginx-host=localhost --liveserver=localhost --create-db --maxfail=20
 
 	yarn
 	make js-tests

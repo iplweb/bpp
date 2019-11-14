@@ -879,7 +879,7 @@ class Migration(migrations.Migration):
             preserve_default=True,
         ),
 
-        RunSQL("CREATE OR REPLACE LANGUAGE plpythonu"),
+        RunSQL("CREATE OR REPLACE LANGUAGE plpython3u"),
         RunPython(lambda *args, **kw: load_custom_sql("0001_indeksy")),
         RunPython(lambda *args, **kw: load_custom_sql("0001_tytul_oryginalny_sort_triggers")),
         RunPython(lambda *args, **kw: load_custom_sql("0001_widoki_kronika")),

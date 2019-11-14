@@ -2,7 +2,9 @@
 Historia zmian
 ==============
 
-v201911.1
+* mniejszy rozmiar pliku wynikowego (whl)
+
+v201911.9
 ---------
 
 * import baz danych z systemów zewnętrznych
