@@ -1,6 +1,0 @@
-logging: 30
-migrate_from_0_3_2: false
-project_name: bpp
-stellar_url: postgresql://localhost:5432/stellar_data
-tracked_databases: [bpp]
-url: postgresql://localhost:5432/bpp
