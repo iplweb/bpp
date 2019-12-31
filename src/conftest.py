@@ -7,6 +7,8 @@ from datetime import datetime
 import django_webtest
 import pytest
 
+from bpp.models.wydawca import Poziom_Wydawcy
+
 try:
     from django.core.urlresolvers import reverse
 except ImportError:
@@ -408,6 +410,12 @@ def _webtest_login(webtest_app, username, password, login_form='login_form'):
     assert res.context[
                'user'].username == username  # normal_django_user.username
     return webtest_app
+
+@pytest.fixture
+def wydawca(db):
+    return Wydawca.objects.create(
+        nazwa="Testowy wydawca"
+    )
 
 
 @pytest.fixture(scope='function')

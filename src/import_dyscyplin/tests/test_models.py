@@ -31,7 +31,6 @@ def test_Import_Dyscyplin_post_delete_handler(test1_xlsx, normal_django_user, tr
 @pytest.fixture
 def testowe_dyscypliny():
     dn = Dyscyplina_Naukowa.objects.create(
-        dziedzina=XXX MEDYCYN
         nazwa="Testowa",
         kod="3.2",
         widoczna=False

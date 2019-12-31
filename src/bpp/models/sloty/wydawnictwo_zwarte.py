@@ -1,8 +1,24 @@
+from bpp.models import mnoznik_dla_monografii, const
 from bpp.models.sloty.wydawnictwo_ciagle import SlotKalkulator_Wydawnictwo_Ciagle_Prog3, \
     SlotKalkulator_Wydawnictwo_Ciagle_Prog2, SlotKalkulator_Wydawnictwo_Ciagle_Prog1
 
 
-class SlotKalkulator_Wydawnictwo_Zwarte_Prog3(SlotKalkulator_Wydawnictwo_Ciagle_Prog3):
+class SKWZMixin:
+    def __init__(self, original, tryb_kalkulacji):
+        self.original = original
+        self.tryb_kalkulacji = tryb_kalkulacji
+
+    def mnoznik(self, dyscyplina):
+        if self.tryb_kalkulacji is None:
+            return 1.0
+
+        return mnoznik_dla_monografii(
+            const.DZIEDZINA(dyscyplina.kod_dziedziny()),
+            self.tryb_kalkulacji,
+            self.original.punkty_kbn)
+
+
+class SlotKalkulator_Wydawnictwo_Zwarte_Prog3(SKWZMixin, SlotKalkulator_Wydawnictwo_Ciagle_Prog3):
     """
     Wydawnictwo zwarte - próg trzeci, ostatni
     Monografia - wydawnictwo spoza wykazu wydawców
@@ -14,7 +30,7 @@ class SlotKalkulator_Wydawnictwo_Zwarte_Prog3(SlotKalkulator_Wydawnictwo_Ciagle_
     pass
 
 
-class SlotKalkulator_Wydawnictwo_Zwarte_Prog2(SlotKalkulator_Wydawnictwo_Ciagle_Prog2):
+class SlotKalkulator_Wydawnictwo_Zwarte_Prog2(SKWZMixin, SlotKalkulator_Wydawnictwo_Ciagle_Prog2):
     """
     Wydawnictwo zwarte - próg drugi,
     Monografia - wydawnictwo poziom 1,
@@ -26,7 +42,7 @@ class SlotKalkulator_Wydawnictwo_Zwarte_Prog2(SlotKalkulator_Wydawnictwo_Ciagle_
     pass
 
 
-class SlotKalkulator_Wydawnictwo_Zwarte_Prog1(SlotKalkulator_Wydawnictwo_Ciagle_Prog1):
+class SlotKalkulator_Wydawnictwo_Zwarte_Prog1(SKWZMixin, SlotKalkulator_Wydawnictwo_Ciagle_Prog1):
     """
     Wydawnictwo zwarte - próg pierwszy
     Monogafia - wydawnictwo poziom 2,

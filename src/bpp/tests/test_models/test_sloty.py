@@ -4,7 +4,7 @@ import pytest
 from django.contrib.contenttypes.models import ContentType
 
 from bpp.models import TO_REDAKTOR, TO_AUTOR, Typ_Odpowiedzialnosci, Cache_Punktacja_Autora, Cache_Punktacja_Dyscypliny, \
-    Charakter_Formalny, Typ_KBN
+    Charakter_Formalny, Typ_KBN, Dyscyplina_Naukowa
 from bpp.models.sloty.core import ISlot, IPunktacjaCacher
 from bpp.models.sloty.exceptions import CannotAdapt
 from bpp.models.sloty.wydawnictwo_ciagle import SlotKalkulator_Wydawnictwo_Ciagle_Prog3, \
@@ -389,3 +389,29 @@ def test_sloty_prace_wieloosrodkowe(zwarte_z_dyscyplinami, typy_kbn):
 def test_ISlot_patent(patent):
     with pytest.raises(CannotAdapt):
         ISlot(patent)
+
+
+@pytest.mark.django_db
+def test_ISlot_mnozniki_dla_dyscyplin_z_dziedziony_np_humanistycznych(wydawnictwo_zwarte, autor_jan_kowalski, jednostka, typy_kbn, charaktery_formalne, wydawca):
+    d_teologia = Dyscyplina_Naukowa.objects.create(
+        kod="07.001",
+        nazwa="Teologia stosowana"
+    )
+
+    ROK = 2019
+
+    wydawca.poziom_wydawcy_set.create(rok=ROK, poziom=2)
+
+    wydawnictwo_zwarte.punkty_kbn = 200
+    wydawnictwo_zwarte.rok = ROK
+    wydawnictwo_zwarte.wydawca = wydawca
+    wydawnictwo_zwarte.charakter_formalny = Charakter_Formalny.objects.get(skrot="KSP")
+    wydawnictwo_zwarte.save()
+
+    wydawnictwo_zwarte.dodaj_autora(autor_jan_kowalski, jednostka, dyscyplina_naukowa=d_teologia)
+
+    ISlot(wydawnictwo_zwarte)
+    aktualizuj_cache_rekordu(wydawnictwo_zwarte)
+
+    assert Cache_Punktacja_Autora.objects.first()
+    raise NotImplementedError

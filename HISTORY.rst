@@ -2,6 +2,10 @@
 Historia zmian
 ==============
 
+dev
+---
+
+* poprawne obliczanie punktacji dla dyscyplin z dziedziny nauk humanistycznych, społecznych i teologicznych (#775)
 * mniejszy rozmiar pliku wynikowego (whl)
 
 v201911.9
