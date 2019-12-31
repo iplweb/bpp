@@ -21,8 +21,8 @@ jobs:
       - run: sudo pipenv install --system -d
       - run: make assets
 
-      # Uruchamiaj na lokalnym firefoxie używając dwóch CPU
-      - run: pytest --cov=src --splinter-webdriver=firefox -n2 --nginx-host=localhost --liveserver=localhost
+      # Uruchamiaj na lokalnym firefoxie używając jednego CPU
+      - run: pytest --cov=src --splinter-webdriver=firefox  --nginx-host=localhost --liveserver=localhost
 
       # Testy JavaScript
       - run: make js-tests
