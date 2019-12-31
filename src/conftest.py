@@ -411,12 +411,6 @@ def _webtest_login(webtest_app, username, password, login_form='login_form'):
                'user'].username == username  # normal_django_user.username
     return webtest_app
 
-@pytest.fixture
-def wydawca(db):
-    return Wydawca.objects.create(
-        nazwa="Testowy wydawca"
-    )
-
 
 @pytest.fixture(scope='function')
 def wprowadzanie_danych_user(normal_django_user):
