@@ -413,5 +413,4 @@ def test_ISlot_mnozniki_dla_dyscyplin_z_dziedziony_np_humanistycznych(wydawnictw
     ISlot(wydawnictwo_zwarte)
     aktualizuj_cache_rekordu(wydawnictwo_zwarte)
 
-    assert Cache_Punktacja_Autora.objects.first()
-    raise NotImplementedError
+    assert Cache_Punktacja_Autora.objects.first().pkdaut == 300

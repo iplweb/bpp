@@ -9,13 +9,15 @@ class SKWZMixin:
         self.tryb_kalkulacji = tryb_kalkulacji
 
     def mnoznik(self, dyscyplina):
-        if self.tryb_kalkulacji is None:
-            return 1.0
+        if self.tryb_kalkulacji is not None:
+            kod_dziedziny = dyscyplina.kod_dziedziny()
+            if kod_dziedziny is not None:
+                return mnoznik_dla_monografii(
+                    const.DZIEDZINA(kod_dziedziny),
+                    self.tryb_kalkulacji,
+                    self.original.punkty_kbn)
 
-        return mnoznik_dla_monografii(
-            const.DZIEDZINA(dyscyplina.kod_dziedziny()),
-            self.tryb_kalkulacji,
-            self.original.punkty_kbn)
+        return 1
 
 
 class SlotKalkulator_Wydawnictwo_Zwarte_Prog3(SKWZMixin, SlotKalkulator_Wydawnictwo_Ciagle_Prog3):
