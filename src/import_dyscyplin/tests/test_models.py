@@ -38,7 +38,7 @@ def testowe_dyscypliny():
 
     Dyscyplina_Naukowa.objects.create(
         nazwa="Jakaś",
-        kod="5.0",
+        kod="3.2.1",
         widoczna=False
     )
 
