@@ -35,12 +35,12 @@ def testowe_dyscypliny():
         kod="3.2",
         widoczna=False
     )
-    #
-    # Dyscyplina_Naukowa.objects.create(
-    #     nazwa="Jakaś",
-    #     kod="5.0",
-    #     widoczna=False
-    # )
+
+    Dyscyplina_Naukowa.objects.create(
+        nazwa="Jakaś",
+        kod="5.0",
+        widoczna=False
+    )
 
 @pytest.fixture
 def id_row_1(import_dyscyplin, autor_jan_nowak):
