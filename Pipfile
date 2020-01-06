@@ -91,6 +91,7 @@ pytest-nginx-iplweb = "*"
 pytest-lazy-fixture = "*"
 pyparsing = "==2.4.1.1"
 pycalver = "*"
+coverage = "==5.0.2"
 
 [requires]
 python_version = "3.7"
