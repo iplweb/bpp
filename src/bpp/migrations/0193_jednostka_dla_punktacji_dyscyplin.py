@@ -12,10 +12,11 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.RunSQL("DELETE FROM bpp_cache_punktacja_autora;"),
         migrations.AddField(
             model_name='cache_punktacja_autora',
             name='jednostka',
-            field=models.ForeignKey(default=Uczelnia.objects.first().obca_jednostka_id, on_delete=django.db.models.deletion.CASCADE, to='bpp.Jednostka'),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='bpp.Jednostka'),
             preserve_default=False,
         ),
     ]
