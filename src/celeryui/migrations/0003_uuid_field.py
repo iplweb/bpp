@@ -11,7 +11,7 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.RunSQL("""
-        drop index celeryui_report_uid_like;
+        drop index if exists celeryui_report_uid_like;
         alter table celeryui_report alter column uid type uuid using uid::uuid;
         create index on celeryui_report(uid);
         """, None, [
