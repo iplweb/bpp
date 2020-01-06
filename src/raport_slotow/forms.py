@@ -76,7 +76,7 @@ class ParametryRaportSlotowUczelniaForm(forms.Form):
     minimalny_slot = forms.IntegerField(
         label="Minimalny slot",
         initial=1,
-        max_value=10, min_value=1)
+        min_value=1)
 
     pokazuj_ponizej = forms.BooleanField(
         label="Uwzględnij autorów poniżej minimalnego slotu",
