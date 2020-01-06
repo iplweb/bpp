@@ -71,8 +71,8 @@ jenkins:
 	pipenv install -d
 	make assets
 
-	pytest -m "not serial" --ds=django_bpp.settings.local -n6 --splinter-webdriver=firefox --nginx-host=localhost --liveserver=localhost --create-db --maxfail=20
-	python src/manage.py test bpp.tests.tests_legacy.test_commands --noinput --keepdb
+	pytest --ds=django_bpp.settings.local -n6 --splinter-webdriver=firefox --nginx-host=localhost --liveserver=localhost --create-db --maxfail=20
+	# python -m pytest -m serial --ds=django_bpp.settings.local --ds django_bpp.settings.local
 
 	yarn
 	make js-tests
