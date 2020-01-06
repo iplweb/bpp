@@ -74,23 +74,34 @@ def ISlot(original):
         if original.wydawca_id is not None:
             poziom_wydawcy = original.wydawca.get_tier(original.rok)
 
+        tryb_kalkulacji = None
+
+        if ksiazka and autorstwo:
+            tryb_kalkulacji = const.TRYB_KALKULACJI.AUTORSTWO_MONOGRAFII
+
+        elif ksiazka and redakcja:
+            tryb_kalkulacji = const.TRYB_KALKULACJI.REDAKCJA_MONOGRAFI
+
+        elif rozdzial and autorstwo:
+            tryb_kalkulacji = const.TRYB_KALKULACJI.ROZDZIAL_W_MONOGRAFI
+
         if poziom_wydawcy == 2:
             if (ksiazka and autorstwo and original.punkty_kbn == 200) or \
                     (ksiazka and redakcja and original.punkty_kbn == 100) or \
                     (rozdzial and original.punkty_kbn == 50):
-                return SlotKalkulator_Wydawnictwo_Zwarte_Prog1(original)
+                return SlotKalkulator_Wydawnictwo_Zwarte_Prog1(original, tryb_kalkulacji)
 
         elif poziom_wydawcy == 1:
             if (ksiazka and autorstwo and original.punkty_kbn in [80, 100]) or \
                     (ksiazka and redakcja and original.punkty_kbn == 20) or \
                     (rozdzial and original.punkty_kbn == 20):
-                return SlotKalkulator_Wydawnictwo_Zwarte_Prog2(original)
+                return SlotKalkulator_Wydawnictwo_Zwarte_Prog2(original, tryb_kalkulacji)
 
         else:
             if (ksiazka and autorstwo and original.punkty_kbn == 20) or \
                     (ksiazka and redakcja and original.punkty_kbn == 5) or \
                     (rozdzial and original.punkty_kbn == 5):
-                return SlotKalkulator_Wydawnictwo_Zwarte_Prog3(original)
+                return SlotKalkulator_Wydawnictwo_Zwarte_Prog3(original, tryb_kalkulacji)
 
         raise CannotAdapt("Rekordu nie można dopasować do żadnej z grup monografii. Poziom "
                           "wydawcy: %(poziom_wydawcy)s, ksiazka: %(ksiazka)s, rozdzial: %(rozdzial)s, "
