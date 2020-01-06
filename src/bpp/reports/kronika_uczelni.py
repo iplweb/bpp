@@ -77,6 +77,6 @@ class Kronika_Uczelni(ReportAdapter):
                 jednostka.numery_prac = jednostka_lookup[jednostka.pk].numery_prac
 
         myfile = ContentFile(render_to_string("raporty/kronika_uczelni.html", dct))
-        report.file.save(self.original.uid + ".html", myfile)
+        report.file.save(str(self.original.uid) + ".html", myfile)
 
 addToRegistry(Kronika_Uczelni)

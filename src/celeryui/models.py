@@ -1,4 +1,5 @@
 # -*- encoding: utf-8 -*-
+import uuid
 from datetime import datetime
 import traceback
 import sys
@@ -28,7 +29,7 @@ class Status:
 
 
 class Report(models.Model):
-    uid = UUIDField(unique=True)
+    uid = UUIDField(unique=True, editable=False, blank=True, default=uuid.uuid4)
 
     function = models.TextField()
     arguments = JSONField(null=True, blank=True)
