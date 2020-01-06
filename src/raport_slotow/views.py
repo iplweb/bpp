@@ -188,7 +188,7 @@ class RaportSlotowUczelnia(UczelniaSettingRequiredMixin, MyExportMixin, SingleTa
     def get_queryset(self):
         self.min_slot = self.data['minimalny_slot']
 
-        partition_by = [F('autor_id'), F('dyscyplina_id')]
+        partition_by = [F('autor_id'), F('jednostka_id'), F('dyscyplina_id')]
         order_by = "autor", "jednostka", "dyscyplina", (F('pkdaut') / F('slot')).desc()
         group_by = 'autor_id', 'jednostka_id', 'dyscyplina_id',
         select_related = "autor", "jednostka", "dyscyplina"
