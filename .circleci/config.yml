@@ -22,7 +22,7 @@ jobs:
       - run: make assets
 
       # Uruchamiaj na lokalnym firefoxie używając jednego CPU
-      - run: pytest --cov=src --splinter-webdriver=firefox  --nginx-host=localhost --liveserver=localhost src/import_dyscyplin/tests/
+      - run: pytest --cov=src --splinter-webdriver=firefox  --nginx-host=localhost --liveserver=localhost 
 
       # Testy JavaScript
       - run: make js-tests
