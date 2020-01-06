@@ -25,14 +25,14 @@ from bpp.models import Patent, \
     Praca_Doktorska, Praca_Habilitacyjna, \
     Typ_Odpowiedzialnosci, Wydawnictwo_Zwarte, \
     Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor, \
-    Patent_Autor, Zrodlo, Dyscyplina_Naukowa, Autor
+    Patent_Autor, Zrodlo, Dyscyplina_Naukowa, Autor, Jednostka
 from bpp.models.abstract import ModelPunktowanyBaza, \
     ModelZRokiem, ModelZeSzczegolami, ModelRecenzowany, \
     ModelZeZnakamiWydawniczymi, ModelZOpenAccess, ModelZKonferencja, \
     ModelTypowany, ModelZCharakterem
 from bpp.models.system import Charakter_Formalny, Jezyk
 from bpp.models.util import ModelZOpisemBibliograficznym
-from bpp.util import FulltextSearchMixin, pbar
+from bpp.util import FulltextSearchMixin
 
 # zmiana CACHED_MODELS powoduje zmiane opisu bibliograficznego wszystkich rekordow
 CACHED_MODELS = [Wydawnictwo_Ciagle, Wydawnictwo_Zwarte, Praca_Doktorska,
@@ -560,6 +560,7 @@ class Cache_Punktacja_Dyscypliny(models.Model):
 
 class Cache_Punktacja_Autora_Base(models.Model):
     autor = ForeignKey(Autor, CASCADE)
+    jednostka = ForeignKey(Jednostka, CASCADE)
     dyscyplina = ForeignKey(Dyscyplina_Naukowa, CASCADE)
     pkdaut = models.DecimalField(max_digits=20, decimal_places=4)
     slot = models.DecimalField(max_digits=20, decimal_places=4)
@@ -587,6 +588,7 @@ class Cache_Punktacja_Autora_Query(Cache_Punktacja_Autora_Base):
 class Cache_Punktacja_Autora_Sum(Cache_Punktacja_Autora_Base):
     rekord = ForeignKey('bpp.Rekord', DO_NOTHING)
     autor = ForeignKey(Autor, DO_NOTHING)
+    jednostka = ForeignKey(Jednostka, DO_NOTHING)
     dyscyplina = ForeignKey(Dyscyplina_Naukowa, DO_NOTHING)
     pkdautslot = models.FloatField()
     pkdautsum = models.FloatField()
@@ -601,6 +603,7 @@ class Cache_Punktacja_Autora_Sum(Cache_Punktacja_Autora_Base):
 class Cache_Punktacja_Autora_Sum_Ponizej(Cache_Punktacja_Autora_Base):
     rekord = ForeignKey('bpp.Rekord', DO_NOTHING)
     autor = ForeignKey(Autor, DO_NOTHING)
+    jednostka = ForeignKey(Jednostka, DO_NOTHING)
     dyscyplina = ForeignKey(Dyscyplina_Naukowa, DO_NOTHING)
     pkdautslot = models.FloatField()
     pkdautsum = models.FloatField()
@@ -614,6 +617,7 @@ class Cache_Punktacja_Autora_Sum_Ponizej(Cache_Punktacja_Autora_Base):
 
 class Cache_Punktacja_Autora_Sum_Group_Ponizej(models.Model):
     autor = models.OneToOneField(Autor, DO_NOTHING, primary_key=True)
+    jednostka = ForeignKey(Jednostka, DO_NOTHING)
     dyscyplina = ForeignKey(Dyscyplina_Naukowa, DO_NOTHING)
     pkdautsum = models.FloatField()
     pkdautslotsum = models.FloatField()
@@ -626,6 +630,7 @@ class Cache_Punktacja_Autora_Sum_Group_Ponizej(models.Model):
 
 class Cache_Punktacja_Autora_Sum_Gruop(models.Model):
     autor = models.OneToOneField(Autor, DO_NOTHING, primary_key=True)
+    jednostka = ForeignKey(Jednostka, DO_NOTHING)
     dyscyplina = ForeignKey(Dyscyplina_Naukowa, DO_NOTHING)
     pkdautsum = models.FloatField()
     pkdautslotsum = models.FloatField()
@@ -672,9 +677,6 @@ def rebuild(klass, offset=None, limit=None, extra_flds=None, extra_tables=None):
              "typ_kbn__skrot",
              "rok",
              "punkty_kbn", *extra_flds)
-
-    if offset is not None and offset == 0:
-        query = pbar(query)  # , limit - offset)
 
     from bpp.tasks import aktualizuj_cache_rekordu
 

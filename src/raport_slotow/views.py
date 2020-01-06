@@ -16,9 +16,10 @@ from future.backports.urllib.parse import urlencode
 
 from bpp.models import Autor, Cache_Punktacja_Autora_Query, Cache_Punktacja_Autora_Sum, \
     Cache_Punktacja_Autora_Sum_Gruop, Dyscyplina_Naukowa, Cache_Punktacja_Autora_Sum_Ponizej, \
-    Cache_Punktacja_Autora_Sum_Group_Ponizej
+    Cache_Punktacja_Autora_Sum_Group_Ponizej, Jednostka
 from bpp.views.mixins import UczelniaSettingRequiredMixin
 from django_bpp.version import VERSION
+from raport_slotow.filters import RaportSlotowUczelniaFilter
 from raport_slotow.forms import AutorRaportSlotowForm, ParametryRaportSlotowUczelniaForm
 from raport_slotow.tables import RaportSlotowAutorTable, RaportSlotowUczelniaTable
 from raport_slotow.util import create_temporary_table_as, MyExportMixin, MyTableExport, clone_temporary_table, \
@@ -134,33 +135,6 @@ class ParametryRaportSlotowUczelnia(UczelniaSettingRequiredMixin, FormView):
         )
 
 
-class RaportSlotowUczelniaFilter(django_filters.FilterSet):
-    autor__nazwisko = django_filters.CharFilter(
-        lookup_expr='icontains', widget=TextInput(attrs={'placeholder': 'Podaj nazwisko'}))
-
-    dyscyplina = django_filters.ModelChoiceFilter(queryset=Dyscyplina_Naukowa.objects.all())
-    #        lookup_expr='icontains', widget=TextInput(attrs={'placeholder': 'Podaj nazwę dyscypliny'}))
-
-    slot__min = django_filters.NumberFilter(
-        "pkdautslotsum", lookup_expr="gte",
-        widget=NumberInput(attrs={"placeholder": "min"}))
-
-    slot__max = django_filters.NumberFilter(
-        "pkdautslotsum", lookup_expr="lte",
-        widget=NumberInput(attrs={"placeholder": "max"}))
-
-    avg__min = django_filters.NumberFilter(
-        "avg", lookup_expr="gte",
-        widget=NumberInput(attrs={"placeholder": "min"}))
-
-    avg__max = django_filters.NumberFilter(
-        "avg", lookup_expr="lte",
-        widget=NumberInput(attrs={"placeholder": "max"}))
-
-    class Meta:
-        model = Cache_Punktacja_Autora_Sum_Gruop
-        fields = ['autor__nazwisko', 'dyscyplina__nazwa']
-
 
 class RaportSlotowUczelnia(UczelniaSettingRequiredMixin, MyExportMixin, SingleTableMixin, FilterView):
     template_name = "raport_slotow/raport_slotow_uczelnia.html"
@@ -214,6 +188,11 @@ class RaportSlotowUczelnia(UczelniaSettingRequiredMixin, MyExportMixin, SingleTa
     def get_queryset(self):
         self.min_slot = self.data['minimalny_slot']
 
+        partition_by = [F('autor_id'), F('dyscyplina_id')]
+        order_by = "autor", "jednostka", "dyscyplina", (F('pkdaut') / F('slot')).desc()
+        group_by = 'autor_id', 'jednostka_id', 'dyscyplina_id',
+        select_related = "autor", "jednostka", "dyscyplina"
+
         qset1 = Cache_Punktacja_Autora_Query.objects.filter(
             rekord__rok__gte=self.data['od_roku'],
             rekord__rok__lte=self.data['do_roku'],
@@ -222,19 +201,16 @@ class RaportSlotowUczelnia(UczelniaSettingRequiredMixin, MyExportMixin, SingleTa
             pkdautslot=F('pkdaut') / F('slot'),
             pkdautsum=Window(
                 expression=Sum('pkdaut'),
-                partition_by=[F('autor_id'), F('dyscyplina_id')],
+                partition_by=partition_by,
                 order_by=[(F('pkdaut') / F('slot')).desc(), "rekord__tytul_oryginalny", ],
             ),
             pkdautslotsum=Window(
                 expression=Sum('slot'),
-                partition_by=[F('autor_id'), F('dyscyplina_id')],
+                partition_by=partition_by,
                 order_by=[(F('pkdaut') / F('slot')).desc(), "rekord__tytul_oryginalny", ]
             )
-        ).order_by(
-            "autor",
-            "dyscyplina",
-            (F('pkdaut') / F('slot')).desc()
-        )
+        ).order_by(*order_by)
+
 
         create_temporary_table_as("bpp_temporary_cpaq", qset1)
 
@@ -249,7 +225,7 @@ class RaportSlotowUczelnia(UczelniaSettingRequiredMixin, MyExportMixin, SingleTa
 
         # Wrzuć do tabeli 'wyjściowej' najmniejsze wartości z tabeli sumowania
         create_temporary_table_as("bpp_temporary_cpasg", Cache_Punktacja_Autora_Sum.objects.values(
-            'autor_id', 'dyscyplina_id',
+            *group_by
         ).annotate(pkdautslotsum=Min('pkdautslotsum'), pkdautsum=Min('pkdautsum')).order_by())
 
         if pokazuj_ponizej:
@@ -257,16 +233,16 @@ class RaportSlotowUczelnia(UczelniaSettingRequiredMixin, MyExportMixin, SingleTa
             Cache_Punktacja_Autora_Sum_Ponizej.objects.filter(pkdautslotsum__gte=self.min_slot).delete()
             # Wrzuć do tabelki grupowania najwyższe wyniki
             insert_into("bpp_temporary_cpasg", Cache_Punktacja_Autora_Sum_Ponizej.objects.values(
-                'autor_id', 'dyscyplina_id',
+                *group_by
             ).annotate(pkdautslotsum=Max('pkdautslotsum'), pkdautsum=Max('pkdautsum')).order_by())
 
             clone_temporary_table("bpp_temporary_cpasg", "bpp_temporary_cpasg_2")
             create_temporary_table_as(
                 "bpp_temporary_cpasg",
                 Cache_Punktacja_Autora_Sum_Group_Ponizej.objects.values(
-                    'autor_id', 'dyscyplina_id'
+                    *group_by
                 ).annotate(pkdautslotsum=Max('pkdautslotsum'), pkdautsum=Max('pkdautsum')).order_by())
 
         return Cache_Punktacja_Autora_Sum_Gruop.objects.all().annotate(
             avg=F('pkdautsum') / F('pkdautslotsum')
-        ).select_related("autor", "dyscyplina")
+        ).select_related(*select_related)

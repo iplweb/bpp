@@ -8,6 +8,7 @@ dev
 * poprawne obliczanie punktacji dla dyscyplin z dziedziny nauk humanistycznych, społecznych i teologicznych (#775)
 * mniejszy rozmiar pliku wynikowego (whl)
 * usunięto minimalną ilośc slotów dla raportu slotów - uczelnia (#781)
+* rozbijanie raportu slotów - uczelnia na jednostki i wydziały (#784)
 
 v201911.9
 ---------

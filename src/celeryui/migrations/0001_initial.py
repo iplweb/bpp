@@ -19,7 +19,7 @@ class Migration(migrations.Migration):
             name='Report',
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
-                ('uid', django_extensions.db.fields.UUIDField(unique=True, editable=False, blank=True)),
+                ('uid', models.UUIDField(unique=True, editable=False, blank=True)),
                 ('function', models.TextField()),
                 ('arguments', django_extensions.db.fields.json.JSONField(null=True, blank=True)),
                 ('ordered_on', models.DateTimeField(auto_now_add=True)),
