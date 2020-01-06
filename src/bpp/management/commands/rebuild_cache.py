@@ -16,7 +16,7 @@ class Command(BaseCommand):
             from django import db
             db.connections.close_all()
 
-        pool_size = no_threads(0.75)
+        pool_size = no_threads(0.5)
         pool = multiprocessing.Pool(processes=pool_size)
 
         pool.starmap(rebuild_ciagle, partition_count(Wydawnictwo_Ciagle.objects, pool_size))
