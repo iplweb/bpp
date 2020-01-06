@@ -7,6 +7,8 @@ from datetime import datetime
 import django_webtest
 import pytest
 
+from bpp.models.wydawca import Poziom_Wydawcy
+
 try:
     from django.core.urlresolvers import reverse
 except ImportError:

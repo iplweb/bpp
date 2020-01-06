@@ -2,32 +2,90 @@ from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
-from django.db.models import PositiveSmallIntegerField, CASCADE, CASCADE
-from mptt.models import MPTTModel, TreeForeignKey
+from django.db.models import PositiveSmallIntegerField, CASCADE
+
+from bpp.models import const
 
 
-class Dyscyplina_Naukowa(MPTTModel):
+# bpp=# select distinct substr(id, 1, 2), dziedzina from import_dbf_ldy;
+#  substr |                 dziedzina
+# --------+--------------------------------------------
+#  01     | Dziedzina nauk humanistycznych
+#  02     | Dziedzina nauk inżynieryjno-technicznych
+#  03     | Dziedzina nauk medycznych i nauk o zdrowiu
+#  04     | Dziedzina nauk rolniczych
+#  05     | Dziedzina nauk społecznych
+#  06     | Dziedzina nauk ścisłych i przyrodniczych
+#  07     | Dziedzina nauk teologicznych
+#  08     | Dziedzina sztuki
+# (8 rows)
+
+def mnoznik_dla_monografii(kod_dziedziny, tryb_kalkulacji, punktacja_monografii):
+    """
+    § 12.
+    5. W przypadku działalności naukowej prowadzonej w ramach dyscyplin naukowych
+    należących do dziedziny nauk humanistycznych, dziedziny nauk społecznych i
+    dziedziny nauk teologicznych całkowitą wartość punktową:
+
+    1) monografii naukowej wynoszącą – zgodnie z przepisem ust. 2 pkt 1:
+        a) 200 pkt, zwiększa się o 50%,
+        b) 80 pkt, zwiększa się o 25%;
+
+    2) redakcji naukowej monografii naukowej wynoszącą – zgodnie z przepisem ust. 3
+        pkt 1 – 100 pkt, zwiększa się o 50%;
+
+    3) rozdziału w monografii naukowej wynoszącą – zgodnie z przepisem ust. 4 pkt 1
+        – 50 pkt, zwiększa się o 50%.
+
+    :return:
+    """
+    if kod_dziedziny in const.WYZSZA_PUNKTACJA:
+
+        if tryb_kalkulacji == const.TRYB_KALKULACJI.AUTORSTWO_MONOGRAFII:
+            if punktacja_monografii == 200:
+                return 1.5
+            elif punktacja_monografii == 80:
+                return 1.25
+
+        elif tryb_kalkulacji == const.TRYB_KALKULACJI.REDAKCJA_MONOGRAFI:
+            if punktacja_monografii == 100:
+                return 1.5
+
+        elif tryb_kalkulacji == const.TRYB_KALKULACJI.ROZDZIAL_W_MONOGRAFI:
+            if punktacja_monografii == 50:
+                return 1.5
+
+        else:
+            raise NotImplementedError(f"Nieobsługiwany tryb kalkulacji: {tryb_kalkulacji}")
+
+    return 1
+
+
+class Dyscyplina_Naukowa(models.Model):
+    kod = models.CharField(max_length=20, unique=True)
     nazwa = models.CharField(max_length=200, unique=True)
-    kod = models.CharField(max_length=20, null=True, blank=True, unique=True)
     widoczna = models.BooleanField(default=True)
 
-    dyscyplina_nadrzedna = TreeForeignKey(
-        'self', CASCADE,
-        null=True,
-        blank=True,
-        related_name='subdyscypliny',
-        db_index=True)
-
-    class MPTTMeta:
-        order_insertion_by = ['nazwa']
-        parent_attr = 'dyscyplina_nadrzedna'
-
     def __str__(self):
-        return f"{ self.nazwa } ({ self.kod })"
+        return f"{self.nazwa} ({self.kod})"
 
     class Meta:
         verbose_name_plural = "dyscypliny naukowe"
         verbose_name = "dyscyplina naukowa"
+
+    def kod_dziedziny(self):
+        try:
+            return int(self.kod.lstrip("0").strip().split(".")[0])
+        except (ValueError, TypeError, KeyError):
+            pass
+
+    def dziedzina(self):
+        kod_dziedziny = self.kod_dziedziny()
+        if kod_dziedziny is not None:
+            return const.DZIEDZINY.get(const.DZIEDZINA(kod_dziedziny))
+
+    def mnoznik_dla_monografi(self, tryb_kalkulacji, punktacja_monografi):
+        return mnoznik_dla_monografii(self.kod_dziedziny(), tryb_kalkulacji, punktacja_monografi)
 
 
 class Autor_DyscyplinaManager(models.Manager):
@@ -47,13 +105,6 @@ class Autor_DyscyplinaManager(models.Manager):
                 elem.widoczna = True
                 elem.save()
 
-                i = elem.dyscyplina_nadrzedna
-                while i is not None:
-                    if not i.widoczna:
-                        i.widoczna = True
-                        i.save()
-                    i = i.dyscyplina_nadrzedna
-
 
 class Autor_Dyscyplina(models.Model):
     rok = PositiveSmallIntegerField()
@@ -62,7 +113,8 @@ class Autor_Dyscyplina(models.Model):
     dyscyplina_naukowa = models.ForeignKey("bpp.Dyscyplina_Naukowa", models.PROTECT, related_name="dyscyplina")
     procent_dyscypliny = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
 
-    subdyscyplina_naukowa = models.ForeignKey("bpp.Dyscyplina_Naukowa", models.PROTECT, related_name="subdyscyplina", blank=True, null=True)
+    subdyscyplina_naukowa = models.ForeignKey("bpp.Dyscyplina_Naukowa", models.PROTECT, related_name="subdyscyplina",
+                                              blank=True, null=True)
     procent_subdyscypliny = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
 
     objects = Autor_DyscyplinaManager()
@@ -73,7 +125,6 @@ class Autor_Dyscyplina(models.Model):
         ]
         verbose_name = "powiązanie autora z dyscypliną naukową"
         verbose_name_plural = "powiązania autorów z dyscyplinami naukowymi"
-
 
     def clean(self):
         p1 = self.procent_dyscypliny or Decimal("0.00")

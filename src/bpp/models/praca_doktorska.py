@@ -2,6 +2,7 @@
 
 from django.db import models
 from django.db.models import CASCADE, CASCADE, SET_NULL
+from django.utils.functional import cached_property
 
 from bpp.models import NieMaProcentowMixin
 from .autor import Autor
@@ -22,14 +23,16 @@ class Praca_Doktorska_Baza(NieMaProcentowMixin, Wydawnictwo_Zwarte_Baza):
             jednostka = self.jednostka
             zapisany_jako = f"{ autor.nazwisko or '' } { autor.imiona or '' }"
 
-        class FakeSet:
+        class FakeSet(list):
             def all(self):
-                ret = FakeAutorDoktoratuHabilitacji()
-                ret.typ_odpowiedzialnosci = Typ_Odpowiedzialnosci.objects.get(
-                    skrot="aut.")
-                return [ret]
+                return self
 
-        return FakeSet()
+        ret = FakeAutorDoktoratuHabilitacji()
+        ret.typ_odpowiedzialnosci = Typ_Odpowiedzialnosci.objects.get(skrot="aut.")
+        return FakeSet([ret])
+
+    def autorzy_dla_opisu(self):
+        return self.autorzy_set
 
     class Meta:
         abstract = True

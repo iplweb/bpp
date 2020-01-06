@@ -47,6 +47,8 @@ class RaportSlotowUczelniaTable(tables.Table):
         empty_text = "Brak danych"
         model = Cache_Punktacja_Autora_Query
         fields = ("autor",
+                  "jednostka",
+                  "wydzial",
                   "dyscyplina",
                   "pkdautsum",
                   "pkdautslotsum",
@@ -55,6 +57,7 @@ class RaportSlotowUczelniaTable(tables.Table):
     pkdautsum = DecimalColumn("Suma punktów dla autora")
     pkdautslotsum = DecimalColumn("Slot")
     avg = Column("Średnio punktów dla autora na slot")
+    wydzial = Column("Wydział", accessor="jednostka.wydzial.nazwa")
     dyscyplina = Column()
 
     def __init__(self, od_roku, do_roku, *args, **kw):

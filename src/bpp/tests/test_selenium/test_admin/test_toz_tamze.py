@@ -66,8 +66,10 @@ def test_admin_wydawnictwo_ciagle_tamze(preauth_admin_browser, live_server):
 
     assert 'Dodaj wydawnictwo' in preauth_admin_browser.html
 
-    for elem in ['TO INFORMACJE', 'te uwagi', ]:
+    for elem in ['TO INFORMACJE', 'te uwagi']:
         assert elem in preauth_admin_browser.html, 'BRAK %r' % elem
+    assert 'te www' not in preauth_admin_browser.html
+
     assert 'te www' not in preauth_admin_browser.html
 
 

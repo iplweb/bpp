@@ -383,6 +383,16 @@ class TestTworzenieModeliAutorJednostka(TestCase):
         # Autor_Jednostka, będący powiązaniem autora a z jednostką j
         self.assertEqual(Autor_Jednostka.objects.filter(autor=a).count(), 1)
 
+    def test_tworzenie_modeli_autor_jednostka_zwarte(self):
+        a = any_autor()
+        j = any_jednostka()
+        c = any_zwarte()
+        c.dodaj_autora(a, j)
+
+        # Utworzenie modelu Wydawnictwo_Zwarte_Autor powinno utworzyć model
+        # Autor_Jednostka, będący powiązaniem autora a z jednostką j
+        self.assertEqual(Autor_Jednostka.objects.filter(autor=a).count(), 1)
+
 
 class TestWydawnictwoCiagleTestWydawnictwoZwarte(TestCase):
     # fixtures = ['charakter_formalny.json']

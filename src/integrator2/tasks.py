@@ -17,8 +17,8 @@ from django_bpp.celery_tasks import app
 
 
 @app.task
-def analyze_file(klass, pk):
-    obj = wait_for_object(klass, pk)
+def analyze_file(pk):
+    obj = wait_for_object(ListaMinisterialnaIntegration, pk)
 
     def informuj(komunikat, dont_persist=True):
         try:

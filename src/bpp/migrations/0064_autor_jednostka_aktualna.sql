@@ -14,7 +14,7 @@ DROP FUNCTION IF EXISTS bpp_autor_ustaw_jednostka_aktualna();
 
 CREATE OR REPLACE FUNCTION bpp_autor_ustaw_jednostka_aktualna()
     RETURNS trigger
-    LANGUAGE 'plpythonu'
+    LANGUAGE 'plpython3u'
 AS $BODY$
 
     action = "new"

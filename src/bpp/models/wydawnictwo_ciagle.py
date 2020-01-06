@@ -9,7 +9,7 @@ from django.utils import timezone
 from lxml.etree import SubElement, Element
 from secure_input.utils import safe_html
 
-from bpp.models import MaProcentyMixin
+from bpp.models import MaProcentyMixin, AktualizujDatePBNNadrzednegoMixin
 from bpp.models.abstract import BazaModeluOdpowiedzialnosciAutorow, DwaTytuly, \
     ModelZRokiem, \
     ModelZWWW, ModelRecenzowany, ModelPunktowany, ModelTypowany, \
@@ -23,8 +23,10 @@ from bpp.models.system import Zewnetrzna_Baza_Danych
 from bpp.models.abstract import DodajAutoraMixin
 from bpp.models.util import dodaj_autora, ZapobiegajNiewlasciwymCharakterom
 
+from django.conf import settings
 
-class Wydawnictwo_Ciagle_Autor(DirtyFieldsMixin, BazaModeluOdpowiedzialnosciAutorow):
+
+class Wydawnictwo_Ciagle_Autor(AktualizujDatePBNNadrzednegoMixin, DirtyFieldsMixin, BazaModeluOdpowiedzialnosciAutorow):
     """Powiązanie autora do wydawnictwa ciągłego."""
     rekord = models.ForeignKey('Wydawnictwo_Ciagle', CASCADE, related_name="autorzy_set")
 
@@ -37,16 +39,6 @@ class Wydawnictwo_Ciagle_Autor(DirtyFieldsMixin, BazaModeluOdpowiedzialnosciAuto
             [('rekord', 'autor', 'typ_odpowiedzialnosci'),
              # Tu musi być autor, inaczej admin nie pozwoli wyedytować
              ('rekord', 'autor', 'kolejnosc')]
-
-    def save(self, *args, **kw):
-        if self.pk is None or self.is_dirty():
-            # W sytuacji gdy dodajemy nowego autora lub zmieniamy jego dane,
-            # rekord "nadrzędny" publikacji powinien mieć zaktualizowany
-            # czas ostatniej aktualizacji na potrzeby PBN:
-            r = self.rekord
-            r.ostatnio_zmieniony_dla_pbn = timezone.now()
-            r.save(update_fields=['ostatnio_zmieniony_dla_pbn'])
-        super(Wydawnictwo_Ciagle_Autor, self).save(*args, **kw)
 
 
 class ModelZOpenAccessWydawnictwoCiagle(ModelZOpenAccess):

@@ -14,7 +14,6 @@ from bpp.models import ModelZAdnotacjami, NazwaISkrot
 from bpp.models.abstract import NazwaWDopelniaczu, ModelZPBN_ID
 from .fields import OpcjaWyswietlaniaField
 
-
 class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
     slug = AutoSlugField(populate_from='skrot',
                          unique=True)

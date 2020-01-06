@@ -1,10 +1,10 @@
 # -*- encoding: utf-8 -*-
 
 import os
-import sys
 from datetime import timedelta
 
 import django
+import sys
 from django.core.exceptions import ImproperlyConfigured, DisallowedHost
 
 
@@ -91,8 +91,7 @@ TEMPLATES = [
     },
 ]
 
-
-MIDDLEWARE  = [
+MIDDLEWARE = [
     'htmlmin.middleware.HtmlMinifyMiddleware',
     'htmlmin.middleware.MarkRequestMiddleware',
 
@@ -200,12 +199,14 @@ INSTALLED_APPS = [
 
     'mptt',
 
-    'raport_slotow'
+    'raport_slotow',
+
+    'import_dbf'
 
 ]
 
-if django.VERSION < (1,9):
-    INSTALLED_APPS += ['django_18_fast_migrations',]
+if django.VERSION < (1, 9):
+    INSTALLED_APPS += ['django_18_fast_migrations', ]
 
 # Profile użytkowników
 AUTH_USER_MODEL = "bpp.BppUser"
@@ -245,7 +246,7 @@ LOGGING = {
     },
     'formatters': {
         'verbose': {
-            'format': '%(levelname)s %(asctime)s %(module)s %(process)d %(thread)d %(message)s'
+            'format': '%(levelname)s %(asctime)s %(module)s %(message)s'
         },
     },
     'handlers': {
@@ -256,10 +257,15 @@ LOGGING = {
         'console': {
             'level': 'DEBUG',
             'class': 'logging.StreamHandler',
-            'formatter': 'verbose'
-        }
+            'formatter': 'verbose',
+        },
     },
     'loggers': {
+        'main': {
+            'handlers': ['console', ],
+            'propagate': True,
+            'level': 'INFO',
+        },
         'django.db.backends': {
             'level': 'ERROR',
             'handlers': ['console'],
@@ -321,7 +327,6 @@ SITE_ROOT = os.path.abspath(
     os.path.join(SCRIPT_PATH, '..', '..'))
 
 STATIC_ROOT = os.path.join(SCRIPT_PATH, "..", "staticroot")
-
 
 COMPRESS_ROOT = STATIC_ROOT
 COMPRESS_OFFLINE_CONTEXT = [
@@ -448,6 +453,7 @@ TESTING = ('test' in sys.argv) or ('jenkins' in sys.argv) or \
 
 if TESTING:
     CELERY_ALWAYS_EAGER = True
+    CELERY_TASK_ALWAYS_EAGER = True
     CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
 
 CELERYD_HIJACK_ROOT_LOGGER = False
@@ -475,7 +481,7 @@ CELERYBEAT_SCHEDULE = {
         'task': 'bpp.tasks.zaktualizuj_liczbe_cytowan',
         'schedule': timedelta(days=5)
     }
-    
+
 }
 
 CAN_LOGIN_AS = lambda request, target_user: request.user.is_superuser
@@ -525,10 +531,8 @@ PUNKTUJ_MONOGRAFIE = bool(int(os.getenv(
     "DJANGO_BPP_PUNKTUJ_MONOGRAFIE", "1"
 )))
 
-
 STATICSITEMAPS_ROOT_SITEMAP = 'django_bpp.sitemaps.django_bpp_sitemaps'
 STATICSITEMAPS_REFRESH_AFTER = 24 * 60
-
 
 # dla django-model-utils SplitField
 SPLIT_MARKER = '<!-- tutaj -->'
@@ -554,3 +558,36 @@ SILENCED_SYSTEM_CHECKS = ["urls.W003"]
 INLINE_DLA_AUTOROW = os.getenv("DJANGO_BPP_INLINE_DLA_AUTOROW", "stacked")
 
 DEBUG_TOOLBAR = False
+
+BPP_DODAWAJ_JEDNOSTKE_PRZY_ZAPISIE_PRACY = True
+
+YARN_FILE_PATTERNS = {
+    'jquery': ['dist/jquery.min.js'],
+    'jqueryui': ['jquery-ui.min.js', 'jquery-ui.css'],
+    'what-input': ['dist/what-input.js'],
+    'jquery.cookie': ['jquery.cookie.js'],
+    'foundation-sites': [
+        'dist/js/foundation.min.js',
+        'dist/js/foundation.min.js.map',
+
+        # testy
+        'dist/css/normalize.min.css',
+        'dist/css/foundation.min.css',
+    ],
+    'foundation-datepicker': [
+        'foundation/fonts/*',
+        'css/foundation-datepicker.min.css',
+        'js/foundation-datepicker.min.js',
+        'js/locales/foundation-datepicker.pl.js'],
+    'datatables.net': ['js/jquery.dataTables.js'],
+    'datatables.net-zf': [
+        'js/dataTables.foundation.js',
+        'css/dataTables.foundation.css'],
+    'jinplace': ['js/jinplace.js'],
+    'select2-foundation_theme': ['dist/select2-foundation-theme.css'],
+    'kbw-keypad': ['dist/*'],
+
+    # Zostana pozniej usuniete przez MANIFEST.in
+    'qunit': ['qunit/qunit.js', 'qunit/qunit.css'],
+    'sinon': ['pkg/sinon.js']
+}

@@ -2,6 +2,20 @@
 Historia zmian
 ==============
 
+v202001.12
+----------
+
+* poprawne obliczanie punktacji dla dyscyplin z dziedziny nauk humanistycznych, społecznych i teologicznych (#775)
+* mniejszy rozmiar pliku wynikowego (whl)
+* usunięto minimalną ilośc slotów dla raportu slotów - uczelnia (#781)
+* rozbijanie raportu slotów - uczelnia na jednostki i wydziały (#784)
+
+v201911.9
+---------
+
+* import baz danych z systemów zewnętrznych
+* równolegle działające polecenie rebuild_cache, przyspieszające czas nocnej przebudowy cache bazy
+
 v201910.7
 ---------
 

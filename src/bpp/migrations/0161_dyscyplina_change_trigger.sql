@@ -4,7 +4,7 @@ BEGIN;
 
 CREATE OR REPLACE FUNCTION bpp_autor_dyscyplina_change()
   RETURNS TRIGGER
-  LANGUAGE plpythonu
+  LANGUAGE plpython3u
 AS
 $$
   # Uruchamiane w przypadku zmiany dyscypliny obiektu Autor_Dyscyplina
@@ -72,7 +72,7 @@ $$;
 
 CREATE OR REPLACE FUNCTION bpp_autor_dyscyplina_delete()
   RETURNS TRIGGER
-  LANGUAGE plpythonu
+  LANGUAGE plpython3u
 AS
 $$
   # Uruchamiane w przypadku skasowania wpisu dla roku czyli obiektu Autor_Dyscyplina
@@ -104,7 +104,7 @@ $$;
 
 CREATE OR REPLACE FUNCTION bpp_autor_dyscyplina_rozne()
   RETURNS TRIGGER
-  LANGUAGE plpythonu
+  LANGUAGE plpython3u
 AS
 $$
   # Sprawdz czy dyscyplina_naukowa i subdyscyplina_naukowa sa rozne

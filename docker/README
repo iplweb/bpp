@@ -1,0 +1,6 @@
+Tu znajdują się pliki pomocnicze w rozwijaniu projektu, a konkretnie obrazy dockera
+używane do budowania i testowania pakietu na CircleCI.
+
+To repozytorium NIE zawiera plików umożliwiających uruchamianie oprogramowania BPP
+za pomocą Dockera. Jeżeli chcesz uruchamiać BPP za pomoca Dockera, zapoznaj się z
+https://github.com/iplweb/bpp-on-docker . 

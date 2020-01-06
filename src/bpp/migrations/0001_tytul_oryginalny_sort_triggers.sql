@@ -8,7 +8,7 @@ BEGIN;
 
 CREATE OR REPLACE FUNCTION trigger_tytul_sort()
   RETURNS TRIGGER
-  LANGUAGE plpythonu
+  LANGUAGE plpython3u
 AS $$
     if TD["new"]["tytul_oryginalny_sort"]:
       # Jeżeli jest coś w tym polu, to sprawdź, może nie warto go zmieniać

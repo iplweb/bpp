@@ -12,7 +12,7 @@ BEGIN;
 
 CREATE OR REPLACE FUNCTION bpp_wydawca_change()
   RETURNS TRIGGER
-  LANGUAGE plpythonu
+  LANGUAGE plpython3u
 AS
 $$
   # Uruchamiane w przypadku zmiany nazwy obiektu Wydawca
@@ -79,7 +79,7 @@ EXECUTE PROCEDURE bpp_wydawca_change();
 
 CREATE OR REPLACE FUNCTION bpp_poziom_wydawcy_change_trigger()
   RETURNS TRIGGER
-  LANGUAGE plpythonu
+  LANGUAGE plpython3u
 AS
 $$
   # Uruchamiane w przypadku zmiany nazwy obiektu Poziom_Wydawcy

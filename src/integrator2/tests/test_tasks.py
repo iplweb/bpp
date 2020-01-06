@@ -10,7 +10,7 @@ from django.utils import timezone
 
 @pytest.mark.django_db
 def test_analyze_file(lmi):
-    res = analyze_file(ListaMinisterialnaIntegration, pk=lmi.pk)
+    res = analyze_file(pk=lmi.pk)
     assert res is None
 
 @pytest.mark.django_db

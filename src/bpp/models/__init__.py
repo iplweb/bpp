@@ -37,6 +37,10 @@ from bpp.models.openaccess import *
 
 from bpp.models.dyscyplina_naukowa import *
 
+from bpp.models.seria_wydawnicza import *
+
+from bpp.models.konferencja import *
+
 TABLE_TO_MODEL = {
     "bpp_wydawnictwo_ciagle": Wydawnictwo_Ciagle,
     "bpp_wydawnictwo_zwarte": Wydawnictwo_Zwarte,

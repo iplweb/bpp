@@ -64,14 +64,31 @@ def test_podpowiedzi_dyscyplin_autor_ma_jedna_uczelnia_podpowiada(
     wait_for(
         lambda: preauth_admin_browser.find_by_id("id_autorzy_set-0-autor")
     )
-    select_select2_autocomplete(
-        preauth_admin_browser,
-        "id_autorzy_set-0-autor",
-        "KOWALSKI"
-    )
 
-    sel = preauth_admin_browser.find_by_id("id_autorzy_set-0-dyscyplina_naukowa")
-    assert int(sel.value) == dyscyplina1.pk
+    no_tries = 0
+
+    while no_tries < 10:
+        select_select2_autocomplete(
+            preauth_admin_browser,
+            "id_autorzy_set-0-autor",
+            "KOWALSKI"
+        )
+
+        sel = preauth_admin_browser.find_by_id("id_autorzy_set-0-dyscyplina_naukowa")
+
+        i = None
+        try:
+            i = int(sel.value)
+        except:
+            pass
+
+        if i == dyscyplina1.pk:
+            break
+
+        no_tries += 1
+
+    if no_tries == 10:
+        assert False
 
 
 @pytest.mark.parametrize(

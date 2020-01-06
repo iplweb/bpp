@@ -1,3 +1,4 @@
+import pytest
 from model_mommy import mommy
 from django.core.management import call_command
 
@@ -21,6 +22,7 @@ class TestImportBpp(TestCase):
         afiliacja(d1, kw)
         self.assertEqual(kw['recenzowana'], False)
 
+    @pytest.mark.serial
     def test_rebuild_cache(self):
         mommy.make(Wydawnictwo_Ciagle)
         call_command("rebuild_cache")

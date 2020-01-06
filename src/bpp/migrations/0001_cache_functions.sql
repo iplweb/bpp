@@ -4,7 +4,7 @@ BEGIN;
 
 CREATE OR REPLACE FUNCTION bpp_refresh_cache()
   RETURNS TRIGGER
-  LANGUAGE plpythonu
+  LANGUAGE plpython3u
   AS $$
     # Ta funkcja odświeża tabele bpp_rekord_mat oraz bpp_autorzy_mat na podstawie
     # selectu z widoków bpp_rekord oraz bpp_autorzy. Kluczem do rozpoznania

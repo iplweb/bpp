@@ -93,6 +93,7 @@ MODEL_Z_WWW = (
 
 MODEL_Z_PUBMEDID = (
     'pubmed_id',
+    'pmc_id'
 )
 
 MODEL_Z_DOI = (
@@ -109,6 +110,7 @@ MODEL_Z_ROKIEM = (
 
 MODEL_TYPOWANY = (
     'jezyk',
+    'jezyk_alt',
     'typ_kbn',
 )
 

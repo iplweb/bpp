@@ -3,6 +3,8 @@
 """Funkcje pomocnicze dla klas w bpp.models"""
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
+from django.utils.functional import cached_property
+
 try:
     from django.core.urlresolvers import reverse
 except ImportError:
@@ -16,7 +18,7 @@ from django.utils import safestring
 
 def dodaj_autora(klass, rekord, autor, jednostka, zapisany_jako=None,
                  typ_odpowiedzialnosci_skrot='aut.', kolejnosc=None,
-                 dyscyplina_naukowa=None):
+                 dyscyplina_naukowa=None, afiliuje=True):
     """
     Utility function, dodająca autora do danego rodzaju klasy (Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte, Patent); funkcja używana przez te klasy, niejako
@@ -54,7 +56,8 @@ def dodaj_autora(klass, rekord, autor, jednostka, zapisany_jako=None,
         typ_odpowiedzialnosci=typ_odpowiedzialnosci,
         kolejnosc=kolejnosc,
         zapisany_jako=zapisany_jako,
-        dyscyplina_naukowa=dyscyplina_naukowa)
+        dyscyplina_naukowa=dyscyplina_naukowa,
+        afiliuje=afiliuje)
 
 
 opis_bibliograficzny_template = None
@@ -62,7 +65,7 @@ opis_bibliograficzny_komisja_centralna_template = None
 opis_bibliograficzny_autorzy_template = None
 
 
-def renderuj_opis_bibliograficzny(praca):
+def renderuj_opis_bibliograficzny(praca, autorzy):
     """Renderuje opis bibliograficzny dla danej klasy, używając template."""
     global opis_bibliograficzny_template
 
@@ -71,7 +74,7 @@ def renderuj_opis_bibliograficzny(praca):
             "opis_bibliograficzny/main.html")
 
     return opis_bibliograficzny_template.render(
-        dict(praca=praca)).replace("\r\n", "").replace(
+        dict(praca=praca, autorzy=autorzy)).replace("\r\n", "").replace(
         "\n", "").replace("  ", " ").replace("  ", " ").replace(
         "  ", " ").replace("  ", " ").replace("  ", " ").replace(
         " , ", ", ").replace(" . ", ". ").replace(". . ", ". ").replace(
@@ -103,8 +106,10 @@ class ModelZOpisemBibliograficznym(models.Model):
     """Mixin, umożliwiający renderowanie opisu bibliograficznego dla danego
     obiektu przy pomocy template."""
 
-    def opis_bibliograficzny(self):
-        return renderuj_opis_bibliograficzny(self)
+    def opis_bibliograficzny(self, autorzy=None):
+        if autorzy is None:
+            autorzy = self.autorzy_dla_opisu()
+        return renderuj_opis_bibliograficzny(self, autorzy)
 
     def opis_bibliograficzny_komisja_centralna(self):
         return renderuj_opis_bibliograficzny_komisja_centralna(self)
@@ -128,35 +133,45 @@ class ModelZOpisemBibliograficznym(models.Model):
     # listy zapisanych nazwisk
     opis_bibliograficzny_zapisani_autorzy_cache = models.TextField(default='')
 
-    def zaktualizuj_cache(self, tylko_opis=False):
-        self.opis_bibliograficzny_cache = self.opis_bibliograficzny()
+    def autorzy_dla_opisu(self):
+        # takie 'autorzy_set.all()' tylko na potrzeby opisu bibliograficznego
+        return self.autorzy_set.select_related("autor", "typ_odpowiedzialnosci").order_by('kolejnosc')
 
-        flds = ['opis_bibliograficzny_cache']
+    def zaktualizuj_cache(self, tylko_opis=False):
+
+        flds = []
+
+        autorzy = self.autorzy_dla_opisu()
+        opis = self.opis_bibliograficzny(autorzy)
+
+        if self.opis_bibliograficzny_cache != opis:
+            self.opis_bibliograficzny_cache = opis
+            flds = ['opis_bibliograficzny_cache']
 
         if not tylko_opis:
 
             if hasattr(self, 'autor'):
-                autorzy = [self.autor]
-                zapisani = ["%s %s" % (self.autor.nazwisko, self.autor.imiona)]
-
+                zapisani = ["%s %s" % (autorzy[0].autor.nazwisko, autorzy[0].autor.imiona)]
             else:
-                autorzy = self.autorzy.through.objects.filter(rekord=self).order_by('kolejnosc')
                 zapisani = [x.zapisany_jako for x in autorzy]
-                autorzy = [x.autor for x in autorzy]
 
-            self.opis_bibliograficzny_autorzy_cache = [
-                "%s %s" % (x.nazwisko, x.imiona) for x in autorzy]
+            oac = ["%s %s" % (x.autor.nazwisko, x.autor.imiona) for x in autorzy]
+            if self.opis_bibliograficzny_autorzy_cache != oac:
+                self.opis_bibliograficzny_autorzy_cache = oac
+                flds.append('opis_bibliograficzny_autorzy_cache')
 
-            self.opis_bibliograficzny_zapisani_autorzy_cache = ", ".join(zapisani)
-
-            flds.append('opis_bibliograficzny_autorzy_cache')
-            flds.append('opis_bibliograficzny_zapisani_autorzy_cache')
+            ozac = ", ".join(zapisani)
+            if self.opis_bibliograficzny_zapisani_autorzy_cache != ozac:
+                self.opis_bibliograficzny_zapisani_autorzy_cache = ozac
+                flds.append('opis_bibliograficzny_zapisani_autorzy_cache')
 
         # Podaj parametr flds aby uniknąć pętli wywoływania sygnału post_save
-        self.save(update_fields=flds)
+        if flds:
+            self.save(update_fields=flds)
 
     class Meta:
         abstract = True
+
 
 class ZapobiegajNiewlasciwymCharakterom(models.Model):
     class Meta:
@@ -172,6 +187,8 @@ class ZapobiegajNiewlasciwymCharakterom(models.Model):
             if self.charakter_formalny.skrot in ['D', 'H', 'PAT']:
                 raise ValidationError({'charakter_formalny': [
                     safestring.mark_safe('Jeżeli chcesz dodać rekord o typie "%s"'
-                    ', <a href="%s">kliknij tutaj</a>.' % (
-                        self.charakter_formalny.nazwa,
-                        reverse("admin:bpp_%s_add" % self.charakter_formalny.nazwa.lower().replace(" ", "_"))))]})
+                                         ', <a href="%s">kliknij tutaj</a>.' % (
+                                             self.charakter_formalny.nazwa,
+                                             reverse(
+                                                 "admin:bpp_%s_add" % self.charakter_formalny.nazwa.lower().replace(" ",
+                                                                                                                    "_"))))]})
