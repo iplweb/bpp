@@ -14,7 +14,6 @@ class RaportSlotowUczelniaFilter(django_filters.FilterSet):
     jednostka__wydzial = django_filters.ModelChoiceFilter(queryset=Wydzial.objects.all())
 
     dyscyplina = django_filters.ModelChoiceFilter(queryset=Dyscyplina_Naukowa.objects.all())
-    #        lookup_expr='icontains', widget=TextInput(attrs={'placeholder': 'Podaj nazwę dyscypliny'}))
 
     slot__min = django_filters.NumberFilter(
         "pkdautslotsum", lookup_expr="gte",
