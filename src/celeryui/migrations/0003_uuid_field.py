@@ -18,7 +18,7 @@ class Migration(migrations.Migration):
             migrations.AlterField(
                 model_name='Report',
                 name='uuid',
-                field=models.UUIDField(db_index=True, unique=True),
+                field=models.UUIDField(unique=True, editable=False, blank=True, db_index=True),
             ),
         ]),
     ]
