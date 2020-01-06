@@ -72,7 +72,7 @@ jenkins:
 	make assets
 
 	pytest -m "not serial" --ds=django_bpp.settings.local -n6 --splinter-webdriver=firefox --nginx-host=localhost --liveserver=localhost --create-db --maxfail=20
-	pytest -m "serial" --ds=django_bpp.settings.local -n0 --create-db
+	pytest -m "serial" --ds=django_bpp.settings.local -n0
 
 	yarn
 	make js-tests
