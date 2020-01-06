@@ -1,12 +1,13 @@
 # -*- encoding: utf-8 -*-
+import uuid
 from datetime import datetime
 import traceback
 import sys
 
 from django.conf import settings
 from django.db import models
-from django.db.models import CASCADE
-from django_extensions.db.fields import UUIDField
+from django.db.models import CASCADE, UUIDField
+# from django_extensions.db.fields import UUIDField
 from django_extensions.db.fields.json import JSONField
 from django.utils.translation import gettext_lazy as _
 from zope.interface import classImplements
@@ -28,7 +29,7 @@ class Status:
 
 
 class Report(models.Model):
-    uid = UUIDField(unique=True)
+    uid = UUIDField(unique=True, editable=False, blank=True, default=uuid.uuid4)
 
     function = models.TextField()
     arguments = JSONField(null=True, blank=True)

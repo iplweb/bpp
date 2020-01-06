@@ -2,6 +2,7 @@
 
 import os
 import sys
+import uuid
 
 import pytest
 from django.apps import apps
@@ -34,7 +35,7 @@ class TestRaportSelector(UserTestCase):
     def test_raportselector_with_reports(self):
         for x, kiedy_ukonczono in enumerate([timezone.now(), None]):
             mommy.make(
-                Report, uid='foo' + str(x), arguments={},
+                Report, arguments={},
                 file=None, finished_on=kiedy_ukonczono)
 
         self.client.get(reverse('bpp:raporty'))
@@ -70,7 +71,7 @@ class TestRaportSelector(UserTestCase):
 class RaportMixin:
     def zrob_raport(self):
         r = mommy.make(
-            Report, uid='foo', file=None,
+            Report, file=None,
             function="kronika-uczelni",
             arguments='{"rok":"2013"}')
         return r
@@ -115,7 +116,7 @@ class TestPodgladRaportu(RaportMixin, UserTestCase):
 
         self.assertEqual(p.get_object(), self.r)
 
-        p.kwargs['uid'] = 'nonexistent'
+        p.kwargs['uid'] = str(uuid.uuid4())
         self.assertRaises(Http404, p.get_object)
 
     def test_podgladraportu_client(self):

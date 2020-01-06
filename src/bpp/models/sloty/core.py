@@ -180,6 +180,7 @@ class IPunktacjaCacher:
             Cache_Punktacja_Autora.objects.create(
                 rekord_id=[pk[0], pk[1]],
                 autor_id=wa.autor_id,
+                jednostka_id=wa.jednostka_id,
                 dyscyplina_id=dyscyplina.pk,
                 pkdaut=pkdaut,
                 slot=self.slot.slot_dla_autora_z_dyscypliny(dyscyplina)
