@@ -385,6 +385,7 @@ def test_sloty_prace_wieloosrodkowe(zwarte_z_dyscyplinami, typy_kbn):
     with pytest.raises(CannotAdapt, match="dla prac wielo"):
         ISlot(zwarte_z_dyscyplinami)
 
+
 @pytest.mark.django_db
 def test_ISlot_patent(patent):
     with pytest.raises(CannotAdapt):
@@ -392,7 +393,9 @@ def test_ISlot_patent(patent):
 
 
 @pytest.mark.django_db
-def test_ISlot_mnozniki_dla_dyscyplin_z_dziedziony_np_humanistycznych(wydawnictwo_zwarte, autor_jan_kowalski, jednostka, typy_kbn, charaktery_formalne, wydawca):
+def test_ISlot_mnozniki_dla_dyscyplin_z_dziedziony_np_humanistycznych_zwarte(wydawnictwo_zwarte, autor_jan_kowalski,
+                                                                             jednostka, typy_kbn, charaktery_formalne,
+                                                                             wydawca):
     d_teologia = Dyscyplina_Naukowa.objects.create(
         kod="07.001",
         nazwa="Teologia stosowana"
@@ -402,7 +405,7 @@ def test_ISlot_mnozniki_dla_dyscyplin_z_dziedziony_np_humanistycznych(wydawnictw
 
     wydawca.poziom_wydawcy_set.create(rok=ROK, poziom=2)
 
-    wydawnictwo_zwarte.punkty_kbn = 200
+    wydawnictwo_zwarte.punkty_kbn = 200.0
     wydawnictwo_zwarte.rok = ROK
     wydawnictwo_zwarte.wydawca = wydawca
     wydawnictwo_zwarte.charakter_formalny = Charakter_Formalny.objects.get(skrot="KSP")
@@ -414,3 +417,38 @@ def test_ISlot_mnozniki_dla_dyscyplin_z_dziedziony_np_humanistycznych(wydawnictw
     aktualizuj_cache_rekordu(wydawnictwo_zwarte)
 
     assert Cache_Punktacja_Autora.objects.first().pkdaut == 300
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("punktacja,oczekiwana",
+                         [(30, 30),
+                          (20, 20),
+                          (0.5, 0.5)])
+def test_ISlot_mnozniki_dla_dyscyplin_z_dziedziony_np_humanistycznych_ciagle(wydawnictwo_ciagle,
+                                                                             autor_jan_kowalski,
+                                                                             jednostka, typy_kbn,
+                                                                             charaktery_formalne,
+                                                                             wydawca, punktacja, oczekiwana):
+    d_teologia = Dyscyplina_Naukowa.objects.create(
+        kod="07.001",
+        nazwa="Teologia stosowana"
+    )
+
+    ROK = 2018
+
+    wydawca.poziom_wydawcy_set.create(rok=ROK, poziom=2)
+
+    wydawnictwo_ciagle.punkty_kbn = Decimal(punktacja)
+    wydawnictwo_ciagle.rok = ROK
+    wydawnictwo_ciagle.charakter_formalny = Charakter_Formalny.objects.get(skrot="AC")
+    wydawnictwo_ciagle.save()
+
+
+    wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka, dyscyplina_naukowa=d_teologia)
+
+    wydawnictwo_ciagle.refresh_from_db()
+
+    ISlot(wydawnictwo_ciagle)
+    aktualizuj_cache_rekordu(wydawnictwo_ciagle)
+
+    assert Cache_Punktacja_Autora.objects.first().pkdaut == oczekiwana

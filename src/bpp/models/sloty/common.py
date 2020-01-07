@@ -95,7 +95,7 @@ class SlotMixin:
         if azd == 0:
             return
 
-        pkd = self.punkty_pkd(dyscyplina) * self.mnoznik(dyscyplina)
+        pkd = Decimal(self.punkty_pkd(dyscyplina)) * Decimal(self.mnoznik(dyscyplina))
         if pkd is None:
             return
 
