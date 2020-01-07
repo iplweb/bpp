@@ -2,6 +2,12 @@
 Historia zmian
 ==============
 
+v202001.14
+----------
+
+* poprawiony błąd związany z obliczaniem punktów dla dyscyplin z dziedziny nauk humanistycznych, etc.
+  (sentry:BPP-UP-8Q)
+
 v202001.12
 ----------
 
