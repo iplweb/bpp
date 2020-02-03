@@ -21,6 +21,7 @@ jobs:
         key: bpp-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}
         paths:
           - "~/.cache/pip"
+          - "/.cache/pip"          
 
       - run: sudo npm install -g grunt-cli
       - run: sudo pip install --upgrade pip
@@ -30,6 +31,7 @@ jobs:
         key: bpp-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}
         paths:
           - "~/.cache/pip"
+          - "/.cache/pip"          
 
       - run: make assets
         
