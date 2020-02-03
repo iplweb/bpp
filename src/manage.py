@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 
-
-
 import os
 import sys
+
 
 def entry_point():
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "django_bpp.settings.local")
