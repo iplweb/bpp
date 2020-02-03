@@ -20,8 +20,8 @@ jobs:
       - run: sudo chmod -R 777 /usr/local/lib/python3.7/site-packages/ /usr/local/bin
 
       - restore_cache:
-        user: root
-        key: cache-456-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}
+          user: root
+          key: cache-456-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}
 
       - run: sudo npm install -g grunt-cli
       - run: sudo pip install --upgrade pip
