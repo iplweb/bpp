@@ -57,7 +57,9 @@ jobs:
       # Wyślij statystyki pokrycia kodu testami do coveralls.io  
       - run: 
           name: Submit coverage to coveralls.io
-          command: coveralls
+          command: |
+            . venv/bin/activate
+            coveralls
 
       # Skonfiguruj PyPI
       - run:
