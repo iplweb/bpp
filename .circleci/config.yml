@@ -19,25 +19,30 @@ jobs:
     steps:
       - checkout
 
-      - run: sudo chmod -R 777 /root
-        
       - restore_cache:
-          key: cache-4-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}
-          
-      - run: sudo find /root
+          key: cache-5-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}-{{ checksum "yarn.lock" }}
 
       - run: sudo npm install -g grunt-cli
       - run: sudo pip install --upgrade pip
-      - run: sudo pip install -r requirements.txt -r requirements_dev.txt --quiet
 
-      - run: sudo chmod -R 777 /root
-
+      - run:
+          name: venv
+          command: |
+            mkdir -p ./venv
+            virtualenv ./venv
+            . venv/bin/activate
+            pip install -r requirements.txt -r requirements_dev.txt --quiet
+            
       - save_cache: # cache Python dependencies using checksum of Pipfile as the cache-key
-          key: cache-4-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}
+          key: cache-5-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}-{{ checksum "yarn.lock" }}
           paths:
-            - "/root"
+            - "/home/circleci/.cache"
 
-      - run: make assets
+      - run:
+          name: make assets
+          command: |
+            . venv/bin/activate
+            make assets
         
       # # Uruchamiaj na lokalnym firefoxie używając jednego CPU
       # - run: pytest -n 2 --cov=src --splinter-webdriver=firefox  --nginx-host=localhost --liveserver=localhost 
