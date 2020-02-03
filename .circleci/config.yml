@@ -15,9 +15,15 @@ jobs:
       - image: rabbitmq:latest
         
     steps:
+      - type: cache-restore
+        key: bpp-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}
+        paths:
+          - "~/.cache/pip"
+
       - checkout
 
       - run: sudo npm install -g grunt-cli
+      - run: sudo pip install --upgrade pip
       - run: sudo pip install -r requirements.txt -r requirements_dev.txt --quiet
       - run: make assets
 
@@ -44,3 +50,8 @@ jobs:
           name: create and upload packages -- only on MASTER
           command: |
             if [ $CIRCLE_BRANCH = 'master' ]; then make bdist_wheel_upload; fi
+
+      - type: cache-save
+        key: bpp-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}
+        paths:
+          - "~/.cache/pip"
