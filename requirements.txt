@@ -146,9 +146,9 @@ django-tables2==1.16.0 \
     --hash=sha256:367d79bbe0a7968ce2a8b8e8e3586f51027abde2954521c978baa57642737375
 django-webmaster-verification==0.3.0 \
     --hash=sha256:b1a62d468825710e57f072ed1fa1ae540b3ad95dcc08a8bdfaa37e2d6d529837
-django==2.2.8 \
-    --hash=sha256:a4ad4f6f9c6a4b7af7e2deec8d0cbff28501852e5010d6c2dc695d3d1fae7ca0 \
-    --hash=sha256:fa98ec9cc9bf5d72a08ebf3654a9452e761fbb8566e3f80de199cbc15477e891
+django==2.2.10 \
+    --hash=sha256:1226168be1b1c7efd0e66ee79b0e0b58b2caa7ed87717909cd8a57bb13a7079a \
+    --hash=sha256:9a4635813e2d498a3c01b10c701fe4a515d76dd290aaa792ccb65ca4ccb6b038
 django_compressor==2.2 \
     --hash=sha256:7732676cfb9d58498dfb522b036f75f3f253f72ea1345ac036434fdc418c2e57 \
     --hash=sha256:9616570e5b08e92fa9eadc7a1b1b49639cce07ef392fc27c74230ab08075b30f
