@@ -76,3 +76,7 @@ jenkins:
 
 	yarn
 	make js-tests
+
+pip-compile:
+	pip-compile --generate-hashes --output-file requirements.txt requirements.in
+	pip-compile --generate-hashes --output-file requirements_dev.txt requirements_dev.in
