@@ -18,18 +18,17 @@ jobs:
       - checkout
 
       - type: cache-restore
-        key: bppcachex-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}
-        paths:
-          - "~/.cache/pip"
+        key: cache-123-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}
 
       - run: sudo npm install -g grunt-cli
       - run: sudo pip install --upgrade pip
       - run: sudo pip install --cache-dir=~/.cache/pip -r requirements.txt -r requirements_dev.txt --quiet
 
-      - type: cache-save
-        key: bppcachex-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}
-        paths:
-          - "~/.cache/pip"
+      - save_cache: # cache Python dependencies using checksum of Pipfile as the cache-key
+          key: cache-123-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}
+          paths:
+            - "/usr/local/bin"
+            - "/usr/local/lib/python3.7/site-packages"
 
       - run: make assets
         
