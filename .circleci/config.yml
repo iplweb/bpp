@@ -33,37 +33,44 @@ jobs:
             . venv/bin/activate
             pip install -r requirements.txt -r requirements_dev.txt
             
-      - save_cache: # cache Python dependencies using checksum of Pipfile as the cache-key
-          key: cache-5-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}-{{ checksum "yarn.lock" }}
-          paths:
-            - "/home/circleci/.cache"
-
       - run:
           name: make assets
           command: |
             . venv/bin/activate
             make assets
         
-      # # Uruchamiaj na lokalnym firefoxie używając jednego CPU
-      # - run: pytest -n 2 --cov=src --splinter-webdriver=firefox  --nginx-host=localhost --liveserver=localhost 
+      - save_cache: # cache Python dependencies using checksum of Pipfile as the cache-key
+          key: cache-5-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}-{{ checksum "yarn.lock" }}
+          paths:
+            - "/home/circleci/.cache"
 
-      # # Testy JavaScript
-      # - run: make js-tests
+      # Uruchamiaj na lokalnym firefoxie używając jednego CPU
+      - run: 
+          name: pytest
+          command: |
+            . venv/bin/activate
+            pytest -n 2 --cov=src --splinter-webdriver=firefox  --nginx-host=localhost --liveserver=localhost 
 
-      # # Wyślij statystyki pokrycia kodu testami do coveralls.io  
-      # - run: coveralls
+      # Testy JavaScript
+      - run: make js-tests
 
-      # # Skonfiguruj PyPI
-      # - run:
-      #     name: init .pypirc
-      #     command: |
-      #       echo -e "[pypi]" > ~/.pypirc
-      #       echo -e "repository = https://upload.pypi.org/legacy/" >> ~/.pypirc
-      #       echo -e "username = dotz" >> ~/.pypirc
-      #       echo -e "password = $PYPI_PASSWORD" >> ~/.pypirc
+      # Wyślij statystyki pokrycia kodu testami do coveralls.io  
+      - run: 
+          name: Submit coverage to coveralls.io
+          command: coveralls
 
-      # # Zbuduj pakiet
-      # - run:
-      #     name: create and upload packages -- only on MASTER
-      #     command: |
-      #       if [ $CIRCLE_BRANCH = 'master' ]; then make bdist_wheel_upload; fi
+      # Skonfiguruj PyPI
+      - run:
+          name: init .pypirc
+          command: |
+            echo -e "[pypi]" > ~/.pypirc
+            echo -e "repository = https://upload.pypi.org/legacy/" >> ~/.pypirc
+            echo -e "username = dotz" >> ~/.pypirc
+            echo -e "password = $PYPI_PASSWORD" >> ~/.pypirc
+
+      # Zbuduj pakiet
+      - run:
+          name: create and upload packages -- only on MASTER
+          command: |
+            . venv/bin/activate
+            if [ $CIRCLE_BRANCH = 'master' ]; then make bdist_wheel_upload; fi
