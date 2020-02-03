@@ -35,26 +35,26 @@ jobs:
 
       - run: make assets
         
-      # Uruchamiaj na lokalnym firefoxie używając jednego CPU
-      - run: pytest -n 2 --cov=src --splinter-webdriver=firefox  --nginx-host=localhost --liveserver=localhost 
+      # # Uruchamiaj na lokalnym firefoxie używając jednego CPU
+      # - run: pytest -n 2 --cov=src --splinter-webdriver=firefox  --nginx-host=localhost --liveserver=localhost 
 
-      # Testy JavaScript
-      - run: make js-tests
+      # # Testy JavaScript
+      # - run: make js-tests
 
-      # Wyślij statystyki pokrycia kodu testami do coveralls.io  
-      - run: coveralls
+      # # Wyślij statystyki pokrycia kodu testami do coveralls.io  
+      # - run: coveralls
 
-      # Skonfiguruj PyPI
-      - run:
-          name: init .pypirc
-          command: |
-            echo -e "[pypi]" > ~/.pypirc
-            echo -e "repository = https://upload.pypi.org/legacy/" >> ~/.pypirc
-            echo -e "username = dotz" >> ~/.pypirc
-            echo -e "password = $PYPI_PASSWORD" >> ~/.pypirc
+      # # Skonfiguruj PyPI
+      # - run:
+      #     name: init .pypirc
+      #     command: |
+      #       echo -e "[pypi]" > ~/.pypirc
+      #       echo -e "repository = https://upload.pypi.org/legacy/" >> ~/.pypirc
+      #       echo -e "username = dotz" >> ~/.pypirc
+      #       echo -e "password = $PYPI_PASSWORD" >> ~/.pypirc
 
-      # Zbuduj pakiet
-      - run:
-          name: create and upload packages -- only on MASTER
-          command: |
-            if [ $CIRCLE_BRANCH = 'master' ]; then make bdist_wheel_upload; fi
+      # # Zbuduj pakiet
+      # - run:
+      #     name: create and upload packages -- only on MASTER
+      #     command: |
+      #       if [ $CIRCLE_BRANCH = 'master' ]; then make bdist_wheel_upload; fi
