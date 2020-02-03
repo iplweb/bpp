@@ -23,7 +23,7 @@ jobs:
           - "~/.cache/pip"
           - "/.cache/pip"          
 
-      - run: npm install -g grunt-cli
+      - run: sudo npm install -g grunt-cli
       - run: pip install --upgrade pip
       - run: pip install -r requirements.txt -r requirements_dev.txt --quiet
 
