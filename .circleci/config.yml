@@ -18,7 +18,7 @@ jobs:
       - checkout
 
       - type: cache-restore
-        key: bpp-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}
+        key: bppcache-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}
         paths:
           - "~/.cache/pip"
           - "/.cache/pip"          
@@ -28,7 +28,7 @@ jobs:
       - run: sudo pip install -r requirements.txt -r requirements_dev.txt --quiet
 
       - type: cache-save
-        key: bpp-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}
+        key: bppcache-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}
         paths:
           - "~/.cache/pip"
           - "/.cache/pip"          
