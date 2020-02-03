@@ -17,7 +17,7 @@ jobs:
     steps:
       - checkout
 
-      - run: sudo chmod -R 777 /usr/local/lib/python3.7/site-packages/
+      - run: sudo chmod -R 777 /usr/local/lib/python3.7/site-packages/ /usr/local/bin
 
       - type: cache-restore
         key: cache-123-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}
