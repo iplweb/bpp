@@ -18,7 +18,8 @@ jobs:
       - checkout
 
       - run: sudo npm install -g grunt-cli
-      - run: sudo pip install -r requirements_dev.txt
+      - run: sudo pip install pip-tools
+      - run: sudo pip-sync requirements.txt requirements_dev.txt
       - run: make assets
 
       # Uruchamiaj na lokalnym firefoxie używając jednego CPU
