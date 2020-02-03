@@ -31,7 +31,7 @@ jobs:
             mkdir -p ./venv
             virtualenv ./venv
             . venv/bin/activate
-            pip install -r requirements.txt -r requirements_dev.txt --quiet
+            pip install -r requirements.txt -r requirements_dev.txt
             
       - save_cache: # cache Python dependencies using checksum of Pipfile as the cache-key
           key: cache-5-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}-{{ checksum "yarn.lock" }}
