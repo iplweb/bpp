@@ -19,6 +19,8 @@ jobs:
     steps:
       - checkout
 
+      - run: sudo chmod -R 777 /root
+        
       - restore_cache:
           key: cache-4-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}
           
