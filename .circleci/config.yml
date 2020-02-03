@@ -19,18 +19,19 @@ jobs:
 
       - run: sudo chmod -R 777 /usr/local/lib/python3.7/site-packages/ /usr/local/bin
 
-      - type: cache-restore
-        key: cache-123-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}
+      - restore_cache:
+        user: root
+        key: cache-456-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}
 
       - run: sudo npm install -g grunt-cli
       - run: sudo pip install --upgrade pip
       - run: sudo pip install --cache-dir=~/.cache/pip -r requirements.txt -r requirements_dev.txt --quiet
 
       - save_cache: # cache Python dependencies using checksum of Pipfile as the cache-key
-          key: cache-123-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}
+          key: cache-456-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}
+          user: root
           paths:
-            - "/usr/local/bin"
-            - "/usr/local/lib/python3.7/site-packages"
+            - "/root/.cache/pip"
 
       - run: make assets
         
