@@ -19,7 +19,8 @@ jobs:
 
       - restore_cache:
           user: root
-          key: cache-1-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}
+          key: cache-2-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}
+          
       - run: sudo find /root/
 
       - run: sudo npm install -g grunt-cli
@@ -28,10 +29,10 @@ jobs:
       - run: sudo du -h /root/.cache/pip
 
       - save_cache: # cache Python dependencies using checksum of Pipfile as the cache-key
-          key: cache-1-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}
+          key: cache-2-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}
           user: root
           paths:
-            - "/root/.cache/pip"
+            - "/root/.cache"
 
       - run: make assets
         
