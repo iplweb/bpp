@@ -67,12 +67,11 @@ live-docs:
 # cel: Jenkins
 # Wywołaj "make jenkins" pod Jenkinsem, cel "Virtualenv Builder"
 jenkins:
-	pip install pipenv
-	pipenv install -d
+	pip install --upgrade pip
+	pip install -r requirements.txt -r requirements_dev.txt
 	make assets
 
 	pytest --ds=django_bpp.settings.local -n6 --splinter-webdriver=firefox --nginx-host=localhost --liveserver=localhost --create-db --maxfail=20
-	# python -m pytest -m serial --ds=django_bpp.settings.local --ds django_bpp.settings.local
 
 	yarn
 	make js-tests
