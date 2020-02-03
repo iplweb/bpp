@@ -18,17 +18,17 @@ jobs:
       - checkout
 
       - type: cache-restore
-        key: bppcache-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}
+        key: bppcachez-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}
         paths:
           - "~/.cache/pip"
           - "/.cache/pip"          
 
-      - run: sudo npm install -g grunt-cli
-      - run: sudo pip install --upgrade pip
-      - run: sudo pip install -r requirements.txt -r requirements_dev.txt --quiet
+      - run: npm install -g grunt-cli
+      - run: pip install --upgrade pip
+      - run: pip install -r requirements.txt -r requirements_dev.txt --quiet
 
       - type: cache-save
-        key: bppcache-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}
+        key: bppcachez-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}
         paths:
           - "~/.cache/pip"
           - "/.cache/pip"          
