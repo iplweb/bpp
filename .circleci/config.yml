@@ -25,8 +25,14 @@ jobs:
       - run: sudo npm install -g grunt-cli
       - run: sudo pip install --upgrade pip
       - run: sudo pip install -r requirements.txt -r requirements_dev.txt --quiet
-      - run: make assets
 
+      - type: cache-save
+        key: bpp-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}
+        paths:
+          - "~/.cache/pip"
+
+      - run: make assets
+        
       # Uruchamiaj na lokalnym firefoxie używając jednego CPU
       - run: pytest -n 2 --cov=src --splinter-webdriver=firefox  --nginx-host=localhost --liveserver=localhost 
 
@@ -50,8 +56,3 @@ jobs:
           name: create and upload packages -- only on MASTER
           command: |
             if [ $CIRCLE_BRANCH = 'master' ]; then make bdist_wheel_upload; fi
-
-      - type: cache-save
-        key: bpp-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}
-        paths:
-          - "~/.cache/pip"
