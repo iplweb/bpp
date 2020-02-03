@@ -15,12 +15,12 @@ jobs:
       - image: rabbitmq:latest
         
     steps:
+      - checkout
+
       - type: cache-restore
         key: bpp-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}
         paths:
           - "~/.cache/pip"
-
-      - checkout
 
       - run: sudo npm install -g grunt-cli
       - run: sudo pip install --upgrade pip
