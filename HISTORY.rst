@@ -2,6 +2,11 @@
 Historia zmian
 ==============
 
+wersja rozwojowa
+----------------
+
+* rezygnacja z Pipfile na rzecz pip-tools
+
 v202001.14
 ----------
 
