@@ -3,38 +3,40 @@ from django.conf.urls import url
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 
+import bpp
+from bpp import reports  # noqa
+from bpp.views.api import (OstatniaJednostkaIDyscyplinaView,
+                           PunktacjaZrodlaView, RokHabilitacjiView,
+                           UploadPunktacjaZrodlaView)
 from bpp.views.api.clarivate import GetWoSAMRInformation
 from bpp.views.api.pubmed import GetPubmedIDView
 from bpp.views.api.strona_tom_nr_zeszytu import StronaTomNrZeszytuView
-from bpp.views.api.uzupelnij_rok import ApiUzupelnijRokWydawnictwoZwarteView, ApiUzupelnijRokWydawnictwoCiagleView
-
+from bpp.views.api.uzupelnij_rok import (ApiUzupelnijRokWydawnictwoCiagleView,
+                                         ApiUzupelnijRokWydawnictwoZwarteView)
+from bpp.views.autocomplete import (
+    AdminNavigationAutocomplete, AutorAutocomplete, AutorZUczelniAutocopmlete,
+    Dyscyplina_Naukowa_PrzypisanieAutocomplete, Dyscyplina_NaukowaAutocomplete,
+    GlobalNavigationAutocomplete, JednostkaAutocomplete,
+    KonferencjaAutocomplete, LataAutocomplete,
+    OrganPrzyznajacyNagrodyAutocomplete,
+    PodrzednaPublikacjaHabilitacyjnaAutocomplete, PublicAutorAutocomplete,
+    PublicKonferencjaAutocomplete, PublicWydzialAutocomplete,
+    Seria_WydawniczaAutocomplete, WidocznaJednostkaAutocomplete,
+    WydawcaAutocomplete, Wydawnictwo_NadrzedneAutocomplete,
+    WydzialAutocomplete, ZapisanyJakoAutocomplete,
+    Zewnetrzna_Baza_DanychAutocomplete, ZrodloAutocomplete)
+from bpp.views.browse import (AutorView, AutorzyView, BuildSearch,
+                              JednostkaView, JednostkiView, OldPracaView,
+                              PracaView, RekordToPracaView, UczelniaView,
+                              WydzialView, ZrodlaView, ZrodloView)
 from bpp.views.oai import OAIView
-from bpp.views.api import RokHabilitacjiView, PunktacjaZrodlaView, UploadPunktacjaZrodlaView, OstatniaJednostkaIDyscyplinaView
-from bpp.views.browse import UczelniaView, WydzialView, JednostkaView, \
-    AutorView, ZrodlaView, ZrodloView, AutorzyView, BuildSearch, PracaView, \
-    JednostkiView, \
-    OldPracaView, RekordToPracaView
-from bpp.views.autocomplete import WidocznaJednostkaAutocomplete, \
-    AutorZUczelniAutocopmlete, GlobalNavigationAutocomplete, \
-    JednostkaAutocomplete, ZrodloAutocomplete, AutorAutocomplete, \
-    ZapisanyJakoAutocomplete, Wydawnictwo_NadrzedneAutocomplete, \
-    PodrzednaPublikacjaHabilitacyjnaAutocomplete, \
-    AdminNavigationAutocomplete, KonferencjaAutocomplete, \
-    Seria_WydawniczaAutocomplete, OrganPrzyznajacyNagrodyAutocomplete, \
-    WydzialAutocomplete, PublicAutorAutocomplete, LataAutocomplete, PublicWydzialAutocomplete, \
-    Dyscyplina_NaukowaAutocomplete, Zewnetrzna_Baza_DanychAutocomplete, PublicKonferencjaAutocomplete, \
-    Dyscyplina_Naukowa_PrzypisanieAutocomplete, WydawcaAutocomplete
-from bpp.views.raporty import RankingAutorow, \
-    PobranieRaportu, PodgladRaportu, KasowanieRaportu, \
-    RaportJednostek2012, RaportKronikaUczelni, RaportJednostek, \
-    RankingAutorowFormularz, RaportDlaKomisjiCentralnejFormularz, RaportSelector, \
-    RaportAutorow
+from bpp.views.raporty import (KasowanieRaportu, PobranieRaportu,
+                               PodgladRaportu, RankingAutorow,
+                               RankingAutorowFormularz, RaportAutorow,
+                               RaportDlaKomisjiCentralnejFormularz,
+                               RaportJednostek, RaportJednostek2012,
+                               RaportKronikaUczelni, RaportSelector)
 from bpp.views.raporty.raport_autorow_2012 import RaportAutorow2012
-from bpp import reports
-
-reports # PyCharm, leave that import alone, it is IMPORTANT to import it
-import bpp
-from django.conf import settings
 
 urlpatterns = [
     url(r'^api/rok-habilitacji/$', csrf_exempt(RokHabilitacjiView.as_view()),
@@ -102,7 +104,9 @@ urlpatterns = [
     url(r'^raporty/jednostek/$', RaportJednostek.as_view(), name='raport_jednostek_formularz'),
     url(r'^raporty/autorow/$', RaportAutorow.as_view(), name='raport_autorow_formularz'),
     url(r'^raporty/ranking-autorow/wybierz/$', RankingAutorowFormularz.as_view(), name='ranking_autorow_formularz'),
-    url(r'^raporty/dla-komisji-centralnej/$', login_required(RaportDlaKomisjiCentralnejFormularz.as_view()), name='raport_dla_komisji_centralnej'),
+    url(r'^raporty/dla-komisji-centralnej/$', 
+        login_required(RaportDlaKomisjiCentralnejFormularz.as_view()), 
+        name='raport_dla_komisji_centralnej'),
 
 
     url(r'^raporty/pobranie/(?P<uid>[\w-]+)/$',
@@ -255,8 +259,5 @@ urlpatterns = [
         r'^dyscyplina-naukowa-przypisanie-autocomplete/$',
         Dyscyplina_Naukowa_PrzypisanieAutocomplete.as_view(),
         name='dyscyplina-naukowa-przypisanie-autocomplete'
-    )
-
-
+    ),
 ]
-from bpp import reports
