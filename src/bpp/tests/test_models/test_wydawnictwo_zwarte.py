@@ -77,7 +77,6 @@ def test_eksport_pbn_wydawnictwo_nadrzedne_liczba_autorow(
     assert ret.find("other-editors").text == "1"
 
     assert len(ret.findall("author")) == 1
-    assert ret.find("other-contributors").text == "49"
 
 
 @pytest.mark.django_db
@@ -165,7 +164,6 @@ def test_eksport_pbn_wydawnictwo_nadrzedne_liczba_autorow_trzech(
     assert ret.find("other-editors").text == "1"
 
     assert len(ret.findall("author")) == 2
-    assert ret.find("other-contributors").text == "48"
 
 
 @pytest.mark.django_db
