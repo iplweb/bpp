@@ -857,7 +857,6 @@ class PBNSerializerHelperMixin:
              "public-uri",
              "publication-date",
              "conference",
-             "size",
              "is",
              "system-identifier"],
             toplevel, wydzial, autorzy_klass)
