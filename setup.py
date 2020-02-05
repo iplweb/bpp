@@ -48,7 +48,11 @@ class install_lib(_install_lib):
 
 
 def requirements(fn="requirements.txt"):
-    return [l for l in open(fn).read().splitlines() if l and l[0] not in "#-"]
+    return [
+        l.replace("\\", "").strip()
+        for l in open(fn).read().splitlines()
+        if l and l.find("==") > 0 and not l.strip().startswith("#")
+    ]
 
 
 setup(
