@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
 
 
-from datetime import datetime, time, timedelta
+from datetime import datetime, timedelta
 
 import pytest
 from model_mommy import mommy
@@ -30,8 +30,8 @@ def test_id_zwartych(wydawnictwo_zwarte_z_autorem, wydzial, rok):
     cf.rodzaj_pbn = const.RODZAJ_PBN_KSIAZKA
     cf.save()
 
-    l = id_zwartych(wydzial, rok, rok, True, True)
-    assert len(list(l)) == 1
+    res = id_zwartych(wydzial, rok, rok, True, True)
+    assert len(list(res)) == 1
 
 
 @pytest.mark.django_db
@@ -113,8 +113,8 @@ def test_id_ciaglych(wydawnictwo_ciagle_z_autorem, wydzial, rok):
     tk.artykul_pbn = True
     tk.save()
 
-    l = id_ciaglych(wydzial, rok, rok)
-    assert l.count() == 1
+    res = id_ciaglych(wydzial, rok, rok)
+    assert res.count() == 1
 
 
 def test_z_datami(
