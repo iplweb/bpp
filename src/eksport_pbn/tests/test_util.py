@@ -21,10 +21,12 @@ def test_id_zwartych(wydawnictwo_zwarte_z_autorem, wydzial, rok):
     :type wydawnictwo_zwarte_z_autorem: bpp.models.Wydawnictwo_Zwarte
     """
     wydawnictwo_zwarte_z_autorem.liczba_znakow_wydawniczych = 240000
+    wydawnictwo_zwarte_z_autorem.punkty_kbn = 5
     wydawnictwo_zwarte_z_autorem.save()
 
     cf = wydawnictwo_zwarte_z_autorem.charakter_formalny
-
+    cf.liczba_znakow_wydawniczych = 240000
+    cf.punkty_kbn = 4
     cf.rodzaj_pbn = const.RODZAJ_PBN_KSIAZKA
     cf.save()
 
@@ -56,11 +58,11 @@ def test_id_zwartych_gdy_jest_ksiazka_z_w1_ale_rozdzialy_ma_w_w2(
     j2 = mommy.make(Jednostka, wydzial=w2, uczelnia=u)
 
     wz_root = mommy.make(Wydawnictwo_Zwarte, charakter_formalny=chf_ksp, szczegoly="s. 123",
-                         calkowita_liczba_autorow=50, rok=2015, liczba_znakow_wydawniczych=240000)
+                         calkowita_liczba_autorow=50, rok=2015, liczba_znakow_wydawniczych=240000, punkty_kbn=5)
     wz_child1 = mommy.make(Wydawnictwo_Zwarte, wydawnictwo_nadrzedne=wz_root, charakter_formalny=chf_roz,
-                           szczegoly="s. 10-15", rok=2015, liczba_znakow_wydawniczych=5)
+                           szczegoly="s. 10-15", rok=2015, liczba_znakow_wydawniczych=5, punkty_kbn=10)
     wz_child2 = mommy.make(Wydawnictwo_Zwarte, wydawnictwo_nadrzedne=wz_root, charakter_formalny=chf_roz,
-                           szczegoly="s. 10-15", rok=2015, liczba_znakow_wydawniczych=5)
+                           szczegoly="s. 10-15", rok=2015, liczba_znakow_wydawniczych=5, punkty_kbn=10)
 
     Typ_Odpowiedzialnosci.objects.get_or_create(
         skrot="aut.", nazwa="autor")

@@ -232,23 +232,15 @@ def test_eksport_pbn_author_afiliacja_w_kontekscie_wydzialu(uczelnia,
     # W pracy określ afiliację do drugiego wydziału
     wydawnictwo_zwarte.dodaj_autora(autor_jan_kowalski, j2)
 
-    # I teraz:
+    # I teraz wyrzuca wszystkich:
     toplevel = []
     wydawnictwo_zwarte.eksport_pbn_author(toplevel, w1, Wydawnictwo_Zwarte_Autor)
-    assert len(toplevel) == 0
+    assert len(toplevel) == 1
 
-    toplevel = []
-    wydawnictwo_zwarte.eksport_pbn_other_contributors(toplevel, w1, Wydawnictwo_Zwarte_Autor)
-    assert toplevel[0].text == "1"
-
-    # Zaś dla drugiego wydziału
+    # Zaś dla drugiego wydziału też wszyscy
     toplevel = []
     wydawnictwo_zwarte.eksport_pbn_author(toplevel, w2, Wydawnictwo_Zwarte_Autor)
     assert len(toplevel) == 1
-
-    toplevel = []
-    wydawnictwo_zwarte.eksport_pbn_other_contributors(toplevel, w2, Wydawnictwo_Zwarte_Autor)
-    assert toplevel[0].text == "0"
 
 
 @pytest.mark.django_db
@@ -268,31 +260,16 @@ def test_eksport_pbn_editor_afiliacja_w_kontekscie_wydzialu(
     # W pracy określ afiliację do drugiego wydziału
     wydawnictwo_zwarte.dodaj_autora(autor_jan_kowalski, j2, typ_odpowiedzialnosci_skrot="red.")
 
-    # I teraz:
+    # I teraz ma wyrzucić wszystkich redaktorów
     toplevel = []
     wydawnictwo_zwarte.eksport_pbn_editor(toplevel, w1, Wydawnictwo_Zwarte_Autor)
-    assert len(toplevel) == 0
+    assert len(toplevel) == 1
 
-    toplevel = []
-    wydawnictwo_zwarte.eksport_pbn_other_contributors(toplevel, w1, Wydawnictwo_Zwarte_Autor)
-    assert toplevel[0].text == "0"
-
-    toplevel = []
-    wydawnictwo_zwarte.eksport_pbn_other_editors(toplevel, w1, Wydawnictwo_Zwarte_Autor)
-    assert toplevel[0].text == "1"
-
-    # Zaś dla drugiego wydziału
+    # Zaś dla drugiego wydziału też wszyscy
     toplevel = []
     wydawnictwo_zwarte.eksport_pbn_editor(toplevel, w2, Wydawnictwo_Zwarte_Autor)
     assert len(toplevel) == 1
 
-    toplevel = []
-    wydawnictwo_zwarte.eksport_pbn_other_contributors(toplevel, w2, Wydawnictwo_Zwarte_Autor)
-    assert toplevel[0].text == "0"
-
-    toplevel = []
-    wydawnictwo_zwarte.eksport_pbn_other_editors(toplevel, w2, Wydawnictwo_Zwarte_Autor)
-    assert toplevel[0].text == "0"
 
 
 @pytest.mark.django_db
