@@ -841,7 +841,6 @@ class PBNSerializerHelperMixin:
         self.eksport_pbn_run_serialization_functions(
             ['title',
              'author',
-             "other-editors",
              "doi",
              "lang",
              "abstract",

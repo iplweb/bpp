@@ -73,7 +73,6 @@ def test_eksport_pbn_wydawnictwo_nadrzedne_liczba_autorow(
     ret = wz_root.eksport_pbn_serializuj(w1)
 
     assert len(ret.findall("editor")) == 1
-    assert ret.find("other-editors").text == "1"
 
     assert len(ret.findall("author")) == 1
 
@@ -160,7 +159,6 @@ def test_eksport_pbn_wydawnictwo_nadrzedne_liczba_autorow_trzech(
     ret = wz_root.eksport_pbn_serializuj(w1)
 
     assert len(ret.findall("editor")) == 1
-    assert ret.find("other-editors").text == "1"
 
     assert len(ret.findall("author")) == 2
 
