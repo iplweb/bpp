@@ -260,12 +260,6 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
         else:
             affiliated_to_unit.text = 'false'
 
-        employed_in_unit = SubElement(author, 'employed-in-unit')
-        if employed:
-            employed_in_unit.text = 'true'
-        else:
-            employed_in_unit.text = 'false'
-
         return author
 
     def liczba_cytowan(self):
