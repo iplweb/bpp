@@ -2,8 +2,8 @@
 Historia zmian
 ==============
 
-wersja rozwojowa
-----------------
+v202002.15
+----------
 
 * rezygnacja z Pipfile na rzecz pip-tools
 * rezygnacja z Raven na rzecz sentry-sdk
@@ -453,7 +453,7 @@ v201909.0001-alpha
 * od tej wersji, dla wydawnictw zwartych, gdzie określone jest wydawnictwo nadrzędne,
   nie ma już potrzeby uzupełniania pola "Informacje", gdyż system w opisie
   bibliograficznym użyje tytułu wydawnictwa nadrzędnego,
-  
+
 * miniblog - możliwość umieszczenia aktualności na pierwszej stronie serwisu.
 
 * obsługa przycisku "Uzupełnij rok" dla wydawnictwa zwartego (uzupełnia dane
