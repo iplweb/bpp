@@ -18,7 +18,7 @@ jobs:
           DJANGO_SETTINGS_MODULE: django_bpp.settings.test
       - image: mpasternak79/circleci-postgres:12
       - image: rabbitmq:latest
-        
+
     steps:
       - checkout
 
@@ -35,30 +35,30 @@ jobs:
             virtualenv ./venv
             . venv/bin/activate
             pip install -r requirements.txt -r requirements_dev.txt
-            
+
       - run:
           name: make assets
           command: |
             . venv/bin/activate
             make assets
-        
+
       - save_cache: # cache Python dependencies using checksum of Pipfile as the cache-key
           key: cache-5-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}-{{ checksum "yarn.lock" }}
           paths:
             - "/home/circleci/.cache"
 
       # Uruchamiaj na lokalnym firefoxie używając jednego CPU
-      - run: 
+      - run:
           name: pytest
           command: |
             . venv/bin/activate
-            pytest -n 2 --cov=src --splinter-webdriver=firefox  --nginx-host=localhost --liveserver=localhost 
+            pytest -n 2 --cov=src --splinter-webdriver=firefox  --nginx-host=localhost --liveserver=localhost
 
       # Testy JavaScript
       - run: make js-tests
 
-      # Wyślij statystyki pokrycia kodu testami do coveralls.io  
-      - run: 
+      # Wyślij statystyki pokrycia kodu testami do coveralls.io
+      - run:
           name: Submit coverage to coveralls.io
           command: |
             . venv/bin/activate
@@ -72,6 +72,13 @@ jobs:
             echo -e "repository = https://upload.pypi.org/legacy/" >> ~/.pypirc
             echo -e "username = dotz" >> ~/.pypirc
             echo -e "password = $PYPI_PASSWORD" >> ~/.pypirc
+
+      # Zbuduj pakiet WHL -- bez wrzucania go na serwer (próbnie)
+      - run:
+          name: create ONLY whl package -- only on DEV
+          command: |
+            . venv/bin/activate
+            if [ $CIRCLE_BRANCH = 'dev' ]; then make bdist_wheel; fi
 
       # Zbuduj pakiet
       - run:

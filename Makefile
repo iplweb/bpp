@@ -6,29 +6,29 @@ PYTHON=python3
 
 cleanup-pycs:
 	find . -name __pycache__ -type d -print0 | xargs -0 rm -rf
-	find . -name \*~ -print0 | xargs -0 rm -f 
-	find . -name \*pyc -print0 | xargs -0 rm -f 
-	find . -name \*\\.log -print0 | xargs -0 rm -f 
+	find . -name \*~ -print0 | xargs -0 rm -f
+	find . -name \*pyc -print0 | xargs -0 rm -f
+	find . -name \*\\.log -print0 | xargs -0 rm -f
 	rm -rf build __pycache__ *.log
 
 clean-pycache:
 	find . -name __pycache__ -type d -print0 | xargs -0 rm -rf
 	find . -name \*pyc -print0 | xargs -0 rm -f
-	rm -rf .eggs .cache	
+	rm -rf .eggs .cache
 
 clean: clean-pycache
-	find . -name \*~ -print0 | xargs -0 rm -f 
-	find . -name \*\\.log -print0 | xargs -0 rm -f 
-	find . -name \*\\.log -print0 | xargs -0 rm -f 
+	find . -name \*~ -print0 | xargs -0 rm -f
+	find . -name \*\\.log -print0 | xargs -0 rm -f
+	find . -name \*\\.log -print0 | xargs -0 rm -f
 	find . -name \#\* -print0 | xargs -0 rm -f
 	rm -rf build dist/*django_bpp*whl dist/*bpp_iplweb*whl *.log
 	rm -rf src/django_bpp/staticroot/CACHE
 	rm -rf .tox
 
 distclean: clean
-	rm -rf src/django_bpp/staticroot 
-	rm -rf *backup 
-	rm -rf node_modules src/node_modules src/django_bpp/staticroot 
+	rm -rf src/django_bpp/staticroot
+	rm -rf *backup
+	rm -rf node_modules src/node_modules src/django_bpp/staticroot
 	rm -rf .vagrant splintershots src/components/bower_components src/media
 
 grunt:
@@ -44,7 +44,7 @@ assets: yarn grunt
 clean-node-dir:
 	rm -rf node_modules
 
-pre-wheel: distclean assets requirements
+pre-wheel: distclean assets
 
 bdist_wheel: pre-wheel
 	${PYTHON} setup.py -q bdist_wheel
@@ -57,7 +57,7 @@ js-tests:
 
 # cel: live-docs
 # Uruchom sphinx-autobuild
-live-docs: 
+live-docs:
 	sphinx-autobuild -p 8080 -D language=pl docs/ docs/_build
 
 # cel: Jenkins
