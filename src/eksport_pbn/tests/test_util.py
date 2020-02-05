@@ -205,7 +205,7 @@ def test_ta_sama_data_id_zwartych(jednostka, autor_jan_kowalski, wydawnictwo_zwa
     cf.rodzaj_pbn = const.RODZAJ_PBN_KSIAZKA
     cf.save()
 
-    wydawnictwo_zwarte.liczba_znakow_wydawniczych = 240000
+    wydawnictwo_zwarte.punkty_kbn = 10
     wydawnictwo_zwarte.save()
 
     autor_jan_kowalski.dodaj_jednostke(jednostka=jednostka)
