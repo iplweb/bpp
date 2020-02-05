@@ -417,7 +417,11 @@ CELERYBEAT_SCHEDULE = {
 
 }
 
-CAN_LOGIN_AS = lambda request, target_user: request.user.is_superuser
+
+def can_login_as(request, target_user):
+    return request.user.is_superuser
+
+CAN_LOGIN_AS = can_login_as
 
 #
 

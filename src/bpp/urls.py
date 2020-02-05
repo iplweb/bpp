@@ -104,8 +104,8 @@ urlpatterns = [
     url(r'^raporty/jednostek/$', RaportJednostek.as_view(), name='raport_jednostek_formularz'),
     url(r'^raporty/autorow/$', RaportAutorow.as_view(), name='raport_autorow_formularz'),
     url(r'^raporty/ranking-autorow/wybierz/$', RankingAutorowFormularz.as_view(), name='ranking_autorow_formularz'),
-    url(r'^raporty/dla-komisji-centralnej/$', 
-        login_required(RaportDlaKomisjiCentralnejFormularz.as_view()), 
+    url(r'^raporty/dla-komisji-centralnej/$',
+        login_required(RaportDlaKomisjiCentralnejFormularz.as_view()),
         name='raport_dla_komisji_centralnej'),
 
 
