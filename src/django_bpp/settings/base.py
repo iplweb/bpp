@@ -1,11 +1,17 @@
 # -*- encoding: utf-8 -*-
 
 import os
+import random
+import string
+import sys
 from datetime import timedelta
 
-import django
-import sys
-from django.core.exceptions import ImproperlyConfigured, DisallowedHost
+import sentry_sdk
+from django.core.exceptions import DisallowedHost, ImproperlyConfigured
+from sentry_sdk.integrations.django import DjangoIntegration
+
+from bpp.util import slugify_function
+from django_bpp.version import VERSION
 
 
 def django_getenv(varname, default=None):
@@ -15,13 +21,8 @@ def django_getenv(varname, default=None):
     return value
 
 
-# pycharm, leave this
-os
-
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
-# Django
-import random, string
 
 TIME_ZONE = 'Europe/Warsaw'
 LANGUAGE_CODE = 'pl'
@@ -205,9 +206,6 @@ INSTALLED_APPS = [
 
 ]
 
-if django.VERSION < (1, 9):
-    INSTALLED_APPS += ['django_18_fast_migrations', ]
-
 # Profile użytkowników
 AUTH_USER_MODEL = "bpp.BppUser"
 
@@ -219,7 +217,6 @@ PROJECT_ROOT = BASE_DIR
 
 MULTISEEK_REGISTRY = 'bpp.multiseek_registry'
 
-from bpp.util import slugify_function
 
 AUTOSLUG_SLUGIFY_FUNCTION = slugify_function
 
@@ -237,68 +234,6 @@ DJORM_POOL_OPTIONS = {
     "recycle": 3600,  # the default value
 }
 
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': True,
-    'root': {
-        'level': 'WARNING',
-        'handlers': ['sentry'],
-    },
-    'formatters': {
-        'verbose': {
-            'format': '%(levelname)s %(asctime)s %(module)s %(message)s'
-        },
-    },
-    'handlers': {
-        'sentry': {
-            'level': 'ERROR',
-            'class': 'raven.contrib.django.raven_compat.handlers.SentryHandler',
-        },
-        'console': {
-            'level': 'DEBUG',
-            'class': 'logging.StreamHandler',
-            'formatter': 'verbose',
-        },
-    },
-    'loggers': {
-        'main': {
-            'handlers': ['console', ],
-            'propagate': True,
-            'level': 'INFO',
-        },
-        'django.db.backends': {
-            'level': 'ERROR',
-            'handlers': ['console'],
-            'propagate': False,
-        },
-        'raven': {
-            'level': 'DEBUG',
-            'handlers': ['console'],
-            'propagate': False,
-        },
-        'sentry.errors': {
-            'level': 'DEBUG',
-            'handlers': ['console'],
-            'propagate': False,
-        },
-        'django.request': {
-            'handlers': ['console'],
-            'level': 'DEBUG',
-            'propagate': True,
-        },
-        'celery.worker.job': {
-            'level': 'ERROR',
-            'handlers': ['sentry', 'console'],
-            'propagate': False
-        },
-        'django': {
-            'handlers': ['console'],
-            'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
-        },
-    },
-}
-
-TOPLEVEL = 'common'
 
 TEST_RUNNER = 'django.test.runner.DiscoverRunner'
 
@@ -340,19 +275,17 @@ REDIS_DB_CELERY = 2
 REDIS_DB_SESSION = 4
 REDIS_DB_LOCKS = 6
 
-from django_bpp.version import VERSION
+SENTRYSDK_CONFIG_URL = os.getenv("DJANGO_BPP_RAVEN_CONFIG_URL", None) or \
+    os.getenv("DJANGO_BPP_SENTRYSDK_CONFIG_URL", None)
 
-if os.getenv("DJANGO_BPP_RAVEN_CONFIG_URL", None):
-    RAVEN_CONFIG = {
-        'dsn': django_getenv("DJANGO_BPP_RAVEN_CONFIG_URL"),
-        'release': VERSION,
-        'IGNORE_EXCEPTIONS': [
-            DisallowedHost,
-            "django.core.exceptions.DisallowedHost"
-        ],
-    }
-
-    INSTALLED_APPS.append('raven.contrib.django.raven_compat')
+if SENTRYSDK_CONFIG_URL:
+    sentry_sdk.init(
+        dsn=SENTRYSDK_CONFIG_URL,
+        integrations=[DjangoIntegration()],
+        release=VERSION,
+        ignore_errors=[DisallowedHost],
+        send_default_pii=True,
+    )
 
 ALLOWED_HOSTS = [
     "127.0.0.1",
@@ -484,7 +417,11 @@ CELERYBEAT_SCHEDULE = {
 
 }
 
-CAN_LOGIN_AS = lambda request, target_user: request.user.is_superuser
+
+def can_login_as(request, target_user):
+    return request.user.is_superuser
+
+CAN_LOGIN_AS = can_login_as
 
 #
 

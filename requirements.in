@@ -23,7 +23,7 @@ django_compressor==2.2
 uWSGI==2.0.18
 zope.interface==4.6.0
 zope.component==4.5
-raven==6.10.0
+sentry-sdk==0.14.1
 django-secure-input==0.9.3
 bleach==2.1.3
 django-session-security==2.6.5
