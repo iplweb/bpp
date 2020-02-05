@@ -1,4 +1,4 @@
-VERSION = "202001.12"
+VERSION = "202002.15"
 
 if __name__ == "__main__":
     import sys
@@ -7,6 +7,7 @@ if __name__ == "__main__":
 
     if "--json" in sys.argv:
         import json
+
         OUTPUT = json.dumps({"VERSION": VERSION})
 
     sys.stdout.write(OUTPUT)

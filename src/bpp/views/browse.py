@@ -26,6 +26,7 @@ STRESZCZENIA = 'streszczenia'
 INNE = 'inne'
 TYPY = [PUBLIKACJE, STRESZCZENIA, INNE]
 
+
 def conditional(**kwargs):
     '''A wrapper around :func:`django.views.decorators.http.condition` that
     works for methods (i.e. class-based views).
@@ -38,7 +39,7 @@ def conditional(**kwargs):
 class UczelniaView(DetailView):
     model = Uczelnia
     template_name = "browse/uczelnia.html"
-    
+
     def get_context_data(self, **kwargs):
         context = {}
         if 'article_slug' in self.kwargs:
@@ -212,7 +213,7 @@ def zrob_formularz(*args):
 
 class BuildSearch(RedirectView):
     def get_redirect_url(self, **kwargs):
-        url =  self.request.build_absolute_uri(reverse("multiseek:index"))
+        url = self.request.build_absolute_uri(reverse("multiseek:index"))
         scheme = self.request.META.get("HTTP_X_SCHEME", "").lower()
         if scheme == "https":
             url = url.replace("http://", "https://").replace("HTTP://", "HTTPS://")

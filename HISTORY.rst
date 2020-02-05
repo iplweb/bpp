@@ -2,6 +2,24 @@
 Historia zmian
 ==============
 
+v202002.15
+----------
+
+* rezygnacja z Pipfile na rzecz pip-tools
+* rezygnacja z Raven na rzecz sentry-sdk
+* zmiany eksportu do PBN:
+  - wyrzucono pole eksport-pbn-size,
+  - wyrzucono pole employed-in-unit dla autorów/redaktorów,
+  - wykasowano pola "other-contributors", generują się wszyscy autorzy (również obcy)
+  - dla książek pod redakcją generują się wszyscy redaktorzy oraz nie generują się autorzy rozdziałów
+  - dla książek i rozdziałów generują się tylko publikacje z punktacją PK>5
+
+v202001.14
+----------
+
+* poprawiony błąd związany z obliczaniem punktów dla dyscyplin z dziedziny nauk humanistycznych, etc.
+  (sentry:BPP-UP-8Q)
+
 v202001.12
 ----------
 
@@ -435,7 +453,7 @@ v201909.0001-alpha
 * od tej wersji, dla wydawnictw zwartych, gdzie określone jest wydawnictwo nadrzędne,
   nie ma już potrzeby uzupełniania pola "Informacje", gdyż system w opisie
   bibliograficznym użyje tytułu wydawnictwa nadrzędnego,
-  
+
 * miniblog - możliwość umieszczenia aktualności na pierwszej stronie serwisu.
 
 * obsługa przycisku "Uzupełnij rok" dla wydawnictwa zwartego (uzupełnia dane

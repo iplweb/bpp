@@ -176,6 +176,12 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
     def is_book(self):
         return self.charakter_formalny.rodzaj_pbn == const.RODZAJ_PBN_KSIAZKA
 
+    def is_pod_redakcja(self):        
+        res = set(self.autorzy_set.all().values_list("typ_odpowiedzialnosci__typ_ogolny", flat=True))
+        if len(res) == 1 and TO_REDAKTOR in res:
+            return True
+        return False
+
     def eksport_pbn_isbn(self, toplevel, wydzial=None, autorzy_klass=None):
         if self.isbn:
             isbn = SubElement(toplevel, 'isbn')
@@ -200,13 +206,6 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
             if miejsce:
                 publication_place = SubElement(toplevel, 'publication-place')
                 publication_place.text = rok_regex.sub("", miejsce.strip()).strip()
-
-    def eksport_pbn_size(self, toplevel, wydzial=None, autorzy_klass=None):
-        size = SubElement(toplevel, 'size', unit="sheets")
-        if self.ma_wymiar_wydawniczy():
-            size.text = self.wymiar_wydawniczy_w_arkuszach()
-        else:
-            size.text = "0"
 
     def eksport_pbn_series(self, toplevel, wydzial=None, autorzy_klass=None):
         if self.seria_wydawnicza is not None:
@@ -255,57 +254,13 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
     def eksport_pbn_editor(self, toplevel, wydzial, autorzy_klass):
         from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte_Autor
         if autorzy_klass == Wydawnictwo_Zwarte_Autor:
-            for redaktor_wyd in autorzy_klass.objects.filter(
-                    rekord=self,
-                    typ_odpowiedzialnosci__typ_ogolny=TO_REDAKTOR).select_related("jednostka"):
-                if redaktor_wyd.jednostka.wydzial_id == wydzial.id:
-                    # Afiliowany!
-                    toplevel.append(
-                        redaktor_wyd.autor.eksport_pbn_serializuj(
-                            affiliated=redaktor_wyd.afiliuje,
-                            employed=redaktor_wyd.zatrudniony,
-                            tagname='editor'))
+            for redaktor_wyd in autorzy_klass.objects.filter(rekord=self, typ_odpowiedzialnosci__typ_ogolny=TO_REDAKTOR):
+                toplevel.append(
+                    redaktor_wyd.autor.eksport_pbn_serializuj(
+                        affiliated=redaktor_wyd.afiliuje,
+                        employed=redaktor_wyd.zatrudniony,
+                        tagname='editor'))
 
-    def eksport_pbn_other_editors(self, toplevel, wydzial, autorzy_klass):
-        from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte_Autor
-        if autorzy_klass == Wydawnictwo_Zwarte_Autor:
-            wszyscy_redaktorzy = self.calkowita_liczba_redaktorow
-
-            qry = autorzy_klass.objects.filter(
-                rekord=self,
-                typ_odpowiedzialnosci__typ_ogolny=TO_REDAKTOR
-            )
-
-            if wszyscy_redaktorzy is None:
-                wszyscy_redaktorzy = qry.count()
-
-            nasi_redaktorzy = qry.filter(jednostka__wydzial_id=wydzial.id).count()
-
-            other_editors = Element('other-editors')
-            other_editors.text = str(wszyscy_redaktorzy - nasi_redaktorzy)
-            toplevel.append(other_editors)
-
-    #
-    # def eksport_pbn_get_autorzy_iter(self, wydzial, autorzy_klass):
-    #     # Jeżeli KSIĄŻKA ma jakiekolwiek wydawnictwa POWIĄZANE, to wyrzuć tutaj WSZYSTKICH AUTORÓW
-    #     # przypisanych do jednostek znajdujących się w danym WYDZIALE dla tych powiązanych REKORDÓW.
-    #     if not self.is_chapter:
-    #         raise NotImplementedError
-    #
-    #     # Jeżeli nie ma, to standardowo:
-    #     return super(Wydawnictwo_Zwarte, self).eksport_pbn_get_autorzy_iter(self, wydzial, autorzy_klass)
-    #
-    #
-    # def eksport_pbn_get_other_contributors_cnt(self, wydzial, autorzy_klass):
-    #     # Jeżeli KSIĄŻKA ma jakiekolwiek wydawnictwa POWIĄZANE, to poczli tutaj WSZYSTKICH AUTORÓW
-    #     # OPRÓCZ przypisanych do jednostek znajdujących się w danym WYDZIALE dla tych powiązanych REKORDÓW.
-    #     if not self.is_chapter:
-    #         if self.wydawnictwa_powiazane_set.count():
-    #             autorzy_klass.objects.
-    #             raise NotImplementedError
-    #
-    #     # Jeżeli nie jest to książką, to standardowo:
-    #     super(Wydawnictwo_Zwarte, self).eksport_pbn_get_other_contributors_cnt(wydzial, autorzy_klass)
 
     def eksport_pbn_get_nasi_autorzy_iter(self, wydzial, autorzy_klass):
         # TODO: zrób sprawdzanie jednostki w kontekście ROKU do jakiego wydziału była WÓWCZAS przypisana
@@ -338,12 +293,16 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
         ret = set()
 
         if self.is_book:
-            for elem in autorzy_klass.objects.filter(
-                    rekord__in=self.wydawnictwa_powiazane_set.all().values_list("pk", flat=True),
-                    typ_odpowiedzialnosci__typ_ogolny=TO_AUTOR):
-                if elem.autor_id not in ret:
-                    ret.add(elem.autor_id)
-                    yield elem
+            # Jeżeli jest to książka "pod redakcją", to nie generuj autorów rozdziałów
+            if not self.is_pod_redakcja():
+                # Jeżeli książka nie jest 'pod redakcją', to wyrzuć
+                # wszystkich autorów (z powiązanych rozdziałów)
+                for elem in autorzy_klass.objects.filter(
+                        rekord__in=self.wydawnictwa_powiazane_set.all().values_list("pk", flat=True),
+                        typ_odpowiedzialnosci__typ_ogolny=TO_AUTOR):
+                    if elem.autor_id not in ret:
+                        ret.add(elem.autor_id)
+                        yield elem
 
             for elem in autorzy_klass.objects.filter(
                     rekord=self,

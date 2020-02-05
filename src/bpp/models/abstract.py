@@ -696,7 +696,7 @@ class PBNSerializerHelperMixin:
             rekord=self, typ_odpowiedzialnosci__typ_ogolny=TO_AUTOR)]
 
     def eksport_pbn_author(self, toplevel, wydzial, autorzy_klass):
-        for autor_wyd in self.eksport_pbn_get_nasi_autorzy_iter(wydzial, autorzy_klass):
+        for autor_wyd in self.eksport_pbn_get_wszyscy_autorzy_iter(wydzial, autorzy_klass):
             toplevel.append(autor_wyd.autor.eksport_pbn_serializuj(
                 affiliated=autor_wyd.afiliuje, employed=autor_wyd.zatrudniony))
 
@@ -710,11 +710,6 @@ class PBNSerializerHelperMixin:
         wszyscy_autorzy = self.eksport_pbn_get_wszyscy_autorzy_count(wydzial, autorzy_klass)
         nasi_autorzy = self.eksport_pbn_get_nasi_autorzy_count(wydzial, autorzy_klass)
         return wszyscy_autorzy - nasi_autorzy
-
-    def eksport_pbn_other_contributors(self, toplevel, wydzial, autorzy_klass):
-        other_contributors = Element('other-contributors')
-        other_contributors.text = str(self.eksport_pbn_get_other_contributors_cnt(wydzial, autorzy_klass))
-        toplevel.append(other_contributors)
 
     def eksport_pbn_lang(self, toplevel, wydzial=None, autorzy_klass=None):
         lang = SubElement(toplevel, 'lang')
@@ -846,8 +841,6 @@ class PBNSerializerHelperMixin:
         self.eksport_pbn_run_serialization_functions(
             ['title',
              'author',
-             "other-contributors",
-             "other-editors",
              "doi",
              "lang",
              "abstract",
@@ -857,7 +850,6 @@ class PBNSerializerHelperMixin:
              "public-uri",
              "publication-date",
              "conference",
-             "size",
              "is",
              "system-identifier"],
             toplevel, wydzial, autorzy_klass)

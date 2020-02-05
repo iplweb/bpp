@@ -41,10 +41,6 @@ assets: yarn grunt
 	${PYTHON} src/manage.py collectstatic --noinput -v0 --traceback
 	${PYTHON} src/manage.py compress --force  -v0 --traceback
 
-requirements:
-	pipenv lock -r > requirements.txt
-	pipenv lock -dr > requirements_dev.txt
-
 clean-node-dir:
 	rm -rf node_modules
 
@@ -67,12 +63,15 @@ live-docs:
 # cel: Jenkins
 # Wywołaj "make jenkins" pod Jenkinsem, cel "Virtualenv Builder"
 jenkins:
-	pip install pipenv
-	pipenv install -d
+	pip install --upgrade pip --quiet
+	pip install -r requirements.txt -r requirements_dev.txt --quiet
 	make assets
 
-	pytest -m "not serial" --ds=django_bpp.settings.local -n6 --splinter-webdriver=firefox --nginx-host=localhost --liveserver=localhost --create-db --maxfail=20
-	python src/manage.py test bpp.tests.tests_legacy.test_commands --noinput --keepdb
+	pytest --ds=django_bpp.settings.local -n6 --splinter-webdriver=firefox --nginx-host=localhost --liveserver=localhost --create-db --maxfail=20
 
 	yarn
 	make js-tests
+
+pip-compile:
+	pip-compile --generate-hashes --output-file requirements.txt requirements.in
+	pip-compile --generate-hashes --output-file requirements_dev.txt requirements_dev.in
