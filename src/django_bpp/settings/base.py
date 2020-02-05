@@ -275,17 +275,16 @@ REDIS_DB_CELERY = 2
 REDIS_DB_SESSION = 4
 REDIS_DB_LOCKS = 6
 
+SENTRYSDK_CONFIG_URL = os.getenv("DJANGO_BPP_RAVEN_CONFIG_URL", None) or \
+    os.getenv("DJANGO_BPP_SENTRYSDK_CONFIG_URL", None)
 
-if os.getenv("DJANGO_BPP_RAVEN_CONFIG_URL", None):
+if SENTRYSDK_CONFIG_URL:
     sentry_sdk.init(
-        dsn=os.getenv("DJANGO_BPP_RAVEN_CONFIG_URL"), 
+        dsn=SENTRYSDK_CONFIG_URL,
         integrations=[DjangoIntegration()],
         release=VERSION,
         ignore_errors=[DisallowedHost],
-        # If you wish to associate users to errors (assuming you are using
-        # django.contrib.auth) you may enable sending PII data.
         send_default_pii=True,
-
     )
 
 ALLOWED_HOSTS = [
