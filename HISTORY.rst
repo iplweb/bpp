@@ -6,6 +6,7 @@ wersja rozwojowa
 ----------------
 
 * rezygnacja z Pipfile na rzecz pip-tools
+* rezygnacja z Raven na rzecz sentry-sdk
 
 v202001.14
 ----------
