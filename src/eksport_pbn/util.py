@@ -54,7 +54,8 @@ def id_zwartych(wydzial, od_roku, do_roku, ksiazki, rozdzialy, rodzaj_daty=None,
         jednostka__wydzial=wydzial,
         rekord__rok__gte=od_roku,
         rekord__rok__lte=do_roku,
-        rekord__charakter_formalny__in=Charakter_Formalny.objects.filter(rodzaj_pbn=const.RODZAJ_PBN_KSIAZKA),
+        rekord__punkty_kbn__gte=5, 
+        rekord__charakter_formalny__in=Charakter_Formalny.objects.filter(rodzaj_pbn=const.RODZAJ_PBN_KSIAZKA),        
         **data_kw(rodzaj_daty, od_daty, do_daty)
     ).order_by("rekord_id").distinct("rekord_id").only("rekord_id")
 
@@ -68,6 +69,7 @@ def id_zwartych(wydzial, od_roku, do_roku, ksiazki, rozdzialy, rodzaj_daty=None,
             jednostka__wydzial=wydzial,
             rekord__rok__gte=od_roku,
             rekord__rok__lte=do_roku,
+            rekord__punkty_kbn__gte=5,
             rekord__charakter_formalny__in=Charakter_Formalny.objects.filter(rodzaj_pbn=const.RODZAJ_PBN_ROZDZIAL),
             **data_kw(rodzaj_daty, od_daty, do_daty)
         ).order_by("rekord_id").distinct("rekord_id").only("rekord_id")
