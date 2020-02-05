@@ -231,6 +231,10 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
             'rok', flat=True).distinct().order_by('rok')
 
     def eksport_pbn_serializuj(self, tagname='author', affiliated=True, employed=True):
+        """
+        @param employed: obecnie nie uzywamy
+        """
+
         author = Element(tagname)
 
         imiona = self.imiona.replace(".", " ")
@@ -259,12 +263,6 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
             affiliated_to_unit.text = 'true'
         else:
             affiliated_to_unit.text = 'false'
-
-        employed_in_unit = SubElement(author, 'employed-in-unit')
-        if employed:
-            employed_in_unit.text = 'true'
-        else:
-            employed_in_unit.text = 'false'
 
         return author
 
