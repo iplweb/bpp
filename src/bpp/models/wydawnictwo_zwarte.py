@@ -176,6 +176,12 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
     def is_book(self):
         return self.charakter_formalny.rodzaj_pbn == const.RODZAJ_PBN_KSIAZKA
 
+    def is_pod_redakcja(self):        
+        res = set(self.autorzy_set.all().values_list("typ_odpowiedzialnosci__typ_ogolny", flat=True))
+        if len(res) == 1 and TO_REDAKTOR in res:
+            return True
+        return False
+
     def eksport_pbn_isbn(self, toplevel, wydzial=None, autorzy_klass=None):
         if self.isbn:
             isbn = SubElement(toplevel, 'isbn')
@@ -331,12 +337,16 @@ class Wydawnictwo_Zwarte(ZapobiegajNiewlasciwymCharakterom,
         ret = set()
 
         if self.is_book:
-            for elem in autorzy_klass.objects.filter(
-                    rekord__in=self.wydawnictwa_powiazane_set.all().values_list("pk", flat=True),
-                    typ_odpowiedzialnosci__typ_ogolny=TO_AUTOR):
-                if elem.autor_id not in ret:
-                    ret.add(elem.autor_id)
-                    yield elem
+            # Jeżeli jest to książka "pod redakcją", to nie generuj autorów rozdziałów
+            if not self.is_pod_redakcja():
+                # Jeżeli książka nie jest 'pod redakcją', to wyrzuć
+                # wszystkich autorów (z powiązanych rozdziałów)
+                for elem in autorzy_klass.objects.filter(
+                        rekord__in=self.wydawnictwa_powiazane_set.all().values_list("pk", flat=True),
+                        typ_odpowiedzialnosci__typ_ogolny=TO_AUTOR):
+                    if elem.autor_id not in ret:
+                        ret.add(elem.autor_id)
+                        yield elem
 
             for elem in autorzy_klass.objects.filter(
                     rekord=self,

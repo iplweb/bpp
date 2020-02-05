@@ -4,12 +4,11 @@ import pytest
 from lxml.etree import Element
 from model_mommy import mommy
 
-from bpp.models import Wydawnictwo_Zwarte_Autor, CacheQueue, const
+from bpp.models import Wydawnictwo_Zwarte_Autor, const
 from bpp.models.autor import Autor
-from bpp.models.struktura import Wydzial, Jednostka, Uczelnia
-from bpp.models.system import Charakter_Formalny
+from bpp.models.struktura import Jednostka, Uczelnia, Wydzial
+from bpp.models.system import Charakter_Formalny, Typ_Odpowiedzialnosci
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
-from bpp.tasks import aktualizuj_cache
 
 
 @pytest.mark.django_db
@@ -279,3 +278,14 @@ def test_wydawnictwo_zwarte_wydawca_wydawnictwo_property(wydawnictwo_zwarte, wyd
     wydawnictwo_zwarte.wydawca_opis = None
     assert wydawnictwo_zwarte.wydawnictwo == "Wydawca Testowy"
 
+
+@pytest.mark.django_db
+def test_wydawnictwo_zwarte_is_pod_redakcja(wydawnictwo_zwarte, autor_jan_kowalski, autor_jan_nowak, typy_odpowiedzialnosci, jednostka):
+    for elem in autor_jan_kowalski, autor_jan_nowak:
+        wza = wydawnictwo_zwarte.dodaj_autora(elem, jednostka, typ_odpowiedzialnosci_skrot="red.")
+    assert wydawnictwo_zwarte.is_pod_redakcja()
+
+    wza.typ_odpowiedzialnosci = Typ_Odpowiedzialnosci.objects.get(skrot="aut.")
+    wza.save()
+
+    assert not wydawnictwo_zwarte.is_pod_redakcja()
