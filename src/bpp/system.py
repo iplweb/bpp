@@ -24,7 +24,7 @@ from bpp.models import Funkcja_Autora, Zrodlo_Informacji, Jezyk, \
     Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor, \
     Redakcja_Zrodla, Praca_Doktorska, Praca_Habilitacyjna, Patent, Patent_Autor, \
     Rodzaj_Prawa_Patentowego, Dyscyplina_Naukowa, Zewnetrzna_Baza_Danych, Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych, \
-    Autor_Dyscyplina, Wydawca, Wydawnictwo_Zwarte_Zewnetrzna_Baza_Danych
+    Autor_Dyscyplina, Wydawnictwo_Zwarte_Zewnetrzna_Baza_Danych
 from bpp.models.const import GR_WPROWADZANIE_DANYCH
 from bpp.models.konferencja import Konferencja
 from bpp.models.nagroda import OrganPrzyznajacyNagrody, Nagroda
@@ -35,6 +35,7 @@ from bpp.models.profile import BppUser
 from bpp.models.seria_wydawnicza import Seria_Wydawnicza
 from bpp.models.struktura import Jednostka_Wydzial
 from bpp.models.system import Charakter_PBN
+from bpp.models.wydawca import Wydawca, Poziom_Wydawcy
 from import_dbf.models import Bib, B_A, Aut, Jed, Poz, B_U, Usi, Ses, Wx2, Ixn
 from miniblog.models import Article
 
@@ -57,8 +58,8 @@ groups = {
         OrganPrzyznajacyNagrody,
         Rodzaj_Prawa_Patentowego,
         Dyscyplina_Naukowa,
-        Zewnetrzna_Baza_Danych
-
+        Zewnetrzna_Baza_Danych, 
+        Wydawca, Poziom_Wydawcy
     ],
     'struktura': [Uczelnia, Wydzial, Jednostka, Jednostka_Wydzial],
     GR_WPROWADZANIE_DANYCH: [
@@ -68,8 +69,7 @@ groups = {
         Praca_Doktorska, Praca_Habilitacyjna, Patent, Patent_Autor,
         Publikacja_Habilitacyjna, Konferencja, Seria_Wydawnicza,
         Nagroda, Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych,
-        Wydawnictwo_Zwarte_Zewnetrzna_Baza_Danych,
-        Wydawca],
+        Wydawnictwo_Zwarte_Zewnetrzna_Baza_Danych],
     'indeks autorów': [Autor, Autor_Jednostka],
     'administracja': [User, Group, SearchForm],
     'web': [Url, Rule, Site, Favicon, FaviconImg, Article],
