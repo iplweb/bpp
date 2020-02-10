@@ -2,6 +2,7 @@
 
 
 from django.contrib.sitemaps import Sitemap
+
 try:
     from django.core.urlresolvers import reverse
 except ImportError:
@@ -42,6 +43,10 @@ class UczelniaSitemap(BppSitemap):
     klass = Uczelnia
     url = "bpp:browse_uczelnia"
     url_obj_field = "slug"
+
+    def items(self):
+        # Funkcja musi zwrócić posortowane wyniki, w przeciwnym wypadku będzie ostrzeżenie
+        return super().items().order_by("slug")
 
 
 class WydzialSitemap(BppSitemap):
@@ -106,16 +111,18 @@ class PatentSitemap(PracaBppSitemap):
 
 
 django_bpp_sitemaps = {
-    'jednostka': JednostkaSitemap,
-    'uczelnia': UczelniaSitemap,
-    'wydzial': WydzialSitemap,
+    "jednostka": JednostkaSitemap,
+    "uczelnia": UczelniaSitemap,
+    "wydzial": WydzialSitemap,
 }
 
 for litera in "aąbcćdefghijklłmnńoópqrsśtuvwxyzźż":
-    for label, klasa in [("wydawnictwo-zwarte", Wydawnictwo_ZwarteSitemap),
-                         ("wydawnictwo-ciagle", Wydawnictwo_CiagleSitemap),
-                         ("praca-doktorska", Praca_DoktorskaSitemap),
-                         ("praca-habilitacyjna", Praca_HabilitacyjnaSitemap),
-                         ("autor", AutorSitemap),
-                         ("patent", PatentSitemap)]:
+    for label, klasa in [
+        ("wydawnictwo-zwarte", Wydawnictwo_ZwarteSitemap),
+        ("wydawnictwo-ciagle", Wydawnictwo_CiagleSitemap),
+        ("praca-doktorska", Praca_DoktorskaSitemap),
+        ("praca-habilitacyjna", Praca_HabilitacyjnaSitemap),
+        ("autor", AutorSitemap),
+        ("patent", PatentSitemap),
+    ]:
         django_bpp_sitemaps[label + "-" + litera] = klasa(litera)
