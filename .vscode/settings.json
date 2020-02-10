@@ -12,5 +12,6 @@
     "python.jediEnabled": false,
     "python.autoComplete.extraPaths": [
         "${workspaceFolder}/src/"
-    ]
+    ],
+    "restructuredtext.confPath": ""
 }
