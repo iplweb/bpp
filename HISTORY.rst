@@ -2,6 +2,12 @@
 Historia zmian
 ==============
 
+v202002.16
+----------
+
+* raport slotów "zerowy", pokazujący autorów z zadeklarowaną dyscypliną, ale bez prac w tej
+  dyscyplinie (#785)
+
 v202002.15
 ----------
 
