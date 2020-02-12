@@ -5,23 +5,28 @@ from django_tables2 import Column
 
 from bpp.models.cache import Cache_Punktacja_Autora_Query
 from raport_slotow.columns import DecimalColumn, SummingColumn
+from raport_slotow.models import RaportZerowyEntry
 
 
 class RaportSlotowAutorTable(tables.Table):
     class Meta:
         empty_text = "Brak danych"
         model = Cache_Punktacja_Autora_Query
-        fields = ("tytul_oryginalny",
-                  "autorzy",
-                  "rok",
-                  "zrodlo",
-                  "dyscyplina",
-                  "punkty_kbn",
-                  "pkdaut",
-                  "slot")
+        fields = (
+            "tytul_oryginalny",
+            "autorzy",
+            "rok",
+            "zrodlo",
+            "dyscyplina",
+            "punkty_kbn",
+            "pkdaut",
+            "slot",
+        )
 
     tytul_oryginalny = Column("Tytuł oryginalny", "rekord")
-    autorzy = Column("Autorzy", "rekord.opis_bibliograficzny_zapisani_autorzy_cache", orderable=False)
+    autorzy = Column(
+        "Autorzy", "rekord.opis_bibliograficzny_zapisani_autorzy_cache", orderable=False
+    )
     rok = Column("Rok", "rekord.rok", orderable=True)
     dyscyplina = Column(orderable=False)
     punkty_kbn = Column("Punkty PK", "rekord.punkty_kbn")
@@ -46,13 +51,15 @@ class RaportSlotowUczelniaTable(tables.Table):
     class Meta:
         empty_text = "Brak danych"
         model = Cache_Punktacja_Autora_Query
-        fields = ("autor",
-                  "jednostka",
-                  "wydzial",
-                  "dyscyplina",
-                  "pkdautsum",
-                  "pkdautslotsum",
-                  "avg")
+        fields = (
+            "autor",
+            "jednostka",
+            "wydzial",
+            "dyscyplina",
+            "pkdautsum",
+            "pkdautslotsum",
+            "avg",
+        )
 
     pkdautsum = DecimalColumn("Suma punktów dla autora")
     pkdautslotsum = DecimalColumn("Slot")
@@ -69,8 +76,17 @@ class RaportSlotowUczelniaTable(tables.Table):
         return round(value, 4)
 
     def render_autor(self, value):
-        url = reverse("raport_slotow:raport", args=(value.slug, self.od_roku, self.do_roku))
+        url = reverse(
+            "raport_slotow:raport", args=(value.slug, self.od_roku, self.do_roku)
+        )
         return safe("<a href=%s>%s</a>" % (url, value))
 
     def value_autor(self, value):
         return value
+
+
+class RaportSlotowZerowyTable(tables.Table):
+    class Meta:
+        empty_text = "Brak danych"
+        model = RaportZerowyEntry
+        fields = ("autor", "rok", "dyscyplina_naukowa")
