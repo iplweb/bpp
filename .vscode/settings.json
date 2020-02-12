@@ -12,5 +12,9 @@
     "python.jediEnabled": false,
     "python.autoComplete.extraPaths": [
         "${workspaceFolder}/src/"
-    ]
+    ],
+    "restructuredtext.confPath": "",
+    "djangointellisense.projectRoot": "${workspaceFolder}/src/",
+    "djangointellisense.settingsModule": "django_bpp.settings.local",
+    "djangointellisense.debugMessages": false,
 }

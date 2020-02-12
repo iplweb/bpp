@@ -1,0 +1,50 @@
+{% extends "base.html" %}{% load render_table from django_tables2 %}
+
+{% block extratitle %}
+    Raport slotów - zerowy
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li class="current">raport slotów - zerowy</li>
+{% endblock %}
+
+{% block content %}
+    <h1>Raport slotów - zerowy</h1>
+    Raport slotów - zerowy wyświetla autorów, którzy zadeklarowali dyscyplinę naukową i rok, ale nie posiadają
+    dla danego roku żadnych prac w tej dyscyplinie.
+    <style>
+        form.filtry input[type=number] {
+            width: 40%;
+            display: inline;
+        }
+    </style>
+    {% if filter %}
+        <form action="" method="get" class="filtry">
+            <table>
+                <tr>
+                    <td>Filtruj po nazwisku autora:</td>
+                    <td>Filtruj po roku:</td>
+                    <td>Filtruj po dyscyplinie:</td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td>{{ filter.form.autor__nazwisko }}</td>
+                    <td>{{ filter.form.rok__min }}&nbsp;{{ filter.form.rok__max }}</td>
+                    <td>{{  filter.form.dyscyplina_naukowa }}</td>
+
+                    <td><input type="submit" value="Filtruj"/>
+
+                        {% for key, value in data.items %}
+                            <input type="hidden" name="{{ key }}" value="{{ value }}"/>
+                        {% endfor %}
+
+                        <input type="reset" value="Usuń filtry" onclick="location.href='?';"/>
+                        <input type="button" value="Pobierz XLS" onclick="location.href='?{{ export_link }}';"/>
+                    </td>
+                </tr>
+            </table>
+        </form>
+    {% endif %}
+    {% render_table table %}
+{% endblock %}

@@ -78,6 +78,7 @@ jobs:
           name: create ONLY whl package -- only on DEV
           command: |
             . venv/bin/activate
+            sudo apt --quiet install -y --quiet gettext
             if [ $CIRCLE_BRANCH = 'dev' ]; then make bdist_wheel; fi
 
       # Zbuduj pakiet
@@ -85,4 +86,5 @@ jobs:
           name: create and upload packages -- only on MASTER
           command: |
             . venv/bin/activate
+            sudo apt --quiet install -y --quiet gettext
             if [ $CIRCLE_BRANCH = 'master' ]; then make bdist_wheel_upload; fi

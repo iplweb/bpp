@@ -2,17 +2,24 @@
 Historia zmian
 ==============
 
+v202002.16
+----------
+
+* raport slotów "zerowy", pokazujący autorów z zadeklarowaną dyscypliną, ale bez prac w tej
+  dyscyplinie (#785)
+
 v202002.15
 ----------
 
 * rezygnacja z Pipfile na rzecz pip-tools
 * rezygnacja z Raven na rzecz sentry-sdk
 * zmiany eksportu do PBN:
-  - wyrzucono pole eksport-pbn-size,
-  - wyrzucono pole employed-in-unit dla autorów/redaktorów,
-  - wykasowano pola "other-contributors", generują się wszyscy autorzy (również obcy)
-  - dla książek pod redakcją generują się wszyscy redaktorzy oraz nie generują się autorzy rozdziałów
-  - dla książek i rozdziałów generują się tylko publikacje z punktacją PK>5
+
+  * wyrzucono pole eksport-pbn-size,
+  * wyrzucono pole employed-in-unit dla autorów/redaktorów,
+  * wykasowano pola "other-contributors", generują się wszyscy autorzy (również obcy)
+  * dla książek pod redakcją generują się wszyscy redaktorzy oraz nie generują się autorzy rozdziałów
+  * dla książek i rozdziałów generują się tylko publikacje z punktacją PK>5
 
 v202001.14
 ----------
