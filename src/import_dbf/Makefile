@@ -1,4 +1,5 @@
 PSQL=psql -t --echo-errors bpp | grep -v "INSERT 0 1"
+PSQL_VERBOSE=psql -t --echo-errors -a bpp
 MANAGE=python ../manage.py
 DBF2SQL=python ../../../manage.py dbf2sql
 
@@ -37,8 +38,8 @@ remove-dbfs:
 	psql -U postgres -d bpp
 
 alter-schema:
-	cat sql/alter-schema.sql | $(PSQL)
-	cat sql/alter-umw.sql | $(PSQL)
+	cat sql/alter-schema.sql | $(PSQL_VERBOSE)
+	cat sql/alter-umw.sql | $(PSQL_VERBOSE)
 
 delete-imported-data:
 	cat sql/remove-imported.sql | $(PSQL)
