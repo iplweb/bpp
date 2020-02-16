@@ -2,8 +2,8 @@
 Historia zmian
 ==============
 
-dev
----
+202002.17
+---------
 
 * umożliwiaj poprawne wylogowanie użytkownika z systemu, bez wyświetlania strony błędu (#714)
 * nie zgłaszaj awarii dla eksportu XLS pustych skoroszytów dla raportu slotów - autor (#782)
