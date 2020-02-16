@@ -2,6 +2,11 @@
 Historia zmian
 ==============
 
+dev
+---
+
+* umożliwiaj poprawne wylogowanie użytkownika z systemu, bez wyświetlania strony błędu (#714)
+
 v202002.16
 ----------
 
