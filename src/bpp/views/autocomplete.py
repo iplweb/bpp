@@ -5,7 +5,6 @@ from braces.views import GroupRequiredMixin, LoginRequiredMixin
 from dal import autocomplete
 from dal_select2_queryset_sequence.views import Select2QuerySetSequenceView
 from django import http
-from django.contrib.auth.mixins import UserPassesTestMixin
 from django.core.exceptions import ImproperlyConfigured
 from django.db.models.aggregates import Count
 from django.db.models.query_utils import Q
@@ -13,7 +12,13 @@ from queryset_sequence import QuerySetSequence
 
 from bpp.jezyk_polski import warianty_zapisanego_nazwiska
 from bpp.lookups import SearchQueryStartsWith
-from bpp.models import Jednostka, Dyscyplina_Naukowa, Zewnetrzna_Baza_Danych, Autor_Dyscyplina, Wydawca
+from bpp.models import (
+    Autor_Dyscyplina,
+    Dyscyplina_Naukowa,
+    Jednostka,
+    Wydawca,
+    Zewnetrzna_Baza_Danych,
+)
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
 from bpp.models.const import GR_WPROWADZANIE_DANYCH
@@ -26,12 +31,12 @@ from bpp.models.profile import BppUser
 from bpp.models.seria_wydawnicza import Seria_Wydawnicza
 from bpp.models.struktura import Wydzial
 from bpp.models.system import Charakter_Formalny
-from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, \
-    Wydawnictwo_Ciagle_Autor
-from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte, \
-    Wydawnictwo_Zwarte_Autor
+from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor
+from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor
 from bpp.models.zrodlo import Zrodlo
 from bpp.util import fulltext_tokenize
+
+from django.contrib.auth.mixins import UserPassesTestMixin
 
 
 class Wydawnictwo_NadrzedneAutocomplete(autocomplete.Select2QuerySetView):
@@ -59,15 +64,14 @@ class JednostkaAutocomplete(JednostkaMixin, autocomplete.Select2QuerySetView):
     def get_queryset(self):
         qs = self.qset
         if self.q:
-            qs = qs.filter(Q(nazwa__icontains=self.q) |
-                           Q(skrot__icontains=self.q))
+            qs = qs.filter(Q(nazwa__icontains=self.q) | Q(skrot__icontains=self.q))
         return qs
 
 
 class LataAutocomplete(autocomplete.Select2QuerySetView):
-    qset = Rekord.objects.all().values_list('rok',
-                                            flat=True).distinct().order_by(
-        '-rok')
+    qset = (
+        Rekord.objects.all().values_list("rok", flat=True).distinct().order_by("-rok")
+    )
 
     def get_queryset(self):
         qs = self.qset
@@ -94,24 +98,24 @@ class NazwaLubSkrotMixin:
     def get_queryset(self):
         qs = self.qset
         if self.q:
-            qs = qs.filter(
-                Q(nazwa__icontains=self.q) |
-                Q(skrot__icontains=self.q))
+            qs = qs.filter(Q(nazwa__icontains=self.q) | Q(skrot__icontains=self.q))
         return qs
 
 
-class KonferencjaAutocomplete(NazwaMixin,
-                              LoginRequiredMixin,
-                              autocomplete.Select2QuerySetView):
-    create_field = 'nazwa'
+class KonferencjaAutocomplete(
+    NazwaMixin, LoginRequiredMixin, autocomplete.Select2QuerySetView
+):
+    create_field = "nazwa"
     qset = Konferencja.objects.all()
 
     def get_result_label(self, result):
         return f"{Konferencja.TK_SYMBOLE[result.typ_konferencji]} {str(result)}"
 
 
-class WydawcaAutocomplete(NazwaMixin, LoginRequiredMixin, autocomplete.Select2QuerySetView):
-    create_field = 'nazwa'
+class WydawcaAutocomplete(
+    NazwaMixin, LoginRequiredMixin, autocomplete.Select2QuerySetView
+):
+    create_field = "nazwa"
     qset = Wydawca.objects.all()
 
 
@@ -119,25 +123,22 @@ class PublicKonferencjaAutocomplete(NazwaMixin, autocomplete.Select2QuerySetView
     qset = Konferencja.objects.all()
 
 
-class Seria_WydawniczaAutocomplete(NazwaMixin,
-                                   LoginRequiredMixin,
-                                   autocomplete.Select2QuerySetView):
-    create_field = 'nazwa'
+class Seria_WydawniczaAutocomplete(
+    NazwaMixin, LoginRequiredMixin, autocomplete.Select2QuerySetView
+):
+    create_field = "nazwa"
     qset = Seria_Wydawnicza.objects.all()
 
 
-class WydzialAutocomplete(NazwaLubSkrotMixin,
-                          autocomplete.Select2QuerySetView):
+class WydzialAutocomplete(NazwaLubSkrotMixin, autocomplete.Select2QuerySetView):
     qset = Wydzial.objects.all()
 
 
-class PublicWydzialAutocomplete(NazwaLubSkrotMixin,
-                                autocomplete.Select2QuerySetView):
+class PublicWydzialAutocomplete(NazwaLubSkrotMixin, autocomplete.Select2QuerySetView):
     qset = Wydzial.objects.filter(widoczny=True)
 
 
-class OrganPrzyznajacyNagrodyAutocomplete(NazwaMixin,
-                                          autocomplete.Select2QuerySetView):
+class OrganPrzyznajacyNagrodyAutocomplete(NazwaMixin, autocomplete.Select2QuerySetView):
     qset = OrganPrzyznajacyNagrody.objects.all()
 
 
@@ -151,11 +152,11 @@ class ZrodloAutocomplete(autocomplete.Select2QuerySetView):
         if self.q:
             for token in [x.strip() for x in self.q.split(" ") if x.strip()]:
                 qs = qs.filter(
-                    Q(nazwa__icontains=token) |
-                    Q(poprzednia_nazwa__icontains=token) |
-                    Q(nazwa_alternatywna__icontains=token) |
-                    Q(skrot__istartswith=token) |
-                    Q(skrot_nazwy_alternatywnej__istartswith=token)
+                    Q(nazwa__icontains=token)
+                    | Q(poprzednia_nazwa__icontains=token)
+                    | Q(nazwa_alternatywna__icontains=token)
+                    | Q(skrot__istartswith=token)
+                    | Q(skrot_nazwy_alternatywnej__istartswith=token)
                 )
         return qs
 
@@ -167,38 +168,39 @@ class AutorAutocompleteBase(autocomplete.Select2QuerySetView):
             tokens = fulltext_tokenize(self.q)
             query = SearchQueryStartsWith(
                 "&".join([token + ":*" for token in tokens if token]),
-                config="bpp_nazwy_wlasne")
+                config="bpp_nazwy_wlasne",
+            )
 
             qs = qs.filter(search=query)
 
-            qs = qs.annotate(Count('wydawnictwo_ciagle')) \
-                .select_related("tytul") \
-                .order_by('-wydawnictwo_ciagle__count')
+            qs = (
+                qs.annotate(Count("wydawnictwo_ciagle"))
+                .select_related("tytul")
+                .order_by("-wydawnictwo_ciagle__count")
+            )
 
         return qs
 
 
 class AutorAutocomplete(GroupRequiredMixin, AutorAutocompleteBase):
-    create_field = 'nonzero'
+    create_field = "nonzero"
     group_required = GR_WPROWADZANIE_DANYCH
 
     def create_object(self, text):
         text = text.split(" ", 1)
         if len(text) != 2:
+
             class Error:
                 pk = -1
 
                 def __str__(self):
-                    return "Wpisz nazwisko, potem imię. " \
-                           "Wyrazy oddziel spacją. "
+                    return "Wpisz nazwisko, potem imię. " "Wyrazy oddziel spacją. "
 
             return Error()
 
-        return self.get_queryset().create(**dict(
-            nazwisko=text[0].title(),
-            imiona=text[1].title(),
-            pokazuj=False
-        ))
+        return self.get_queryset().create(
+            **dict(nazwisko=text[0].title(), imiona=text[1].title(), pokazuj=False)
+        )
 
 
 class PublicAutorAutocomplete(AutorAutocompleteBase):
@@ -213,7 +215,7 @@ class GlobalNavigationAutocomplete(Select2QuerySetSequenceView):
     paginate_by = 20
 
     def get_queryset(self):
-        if not hasattr(self, 'q'):
+        if not hasattr(self, "q"):
             return []
 
         if not self.q:
@@ -221,51 +223,49 @@ class GlobalNavigationAutocomplete(Select2QuerySetSequenceView):
 
         querysets = []
         querysets.append(
-            Jednostka.objects.fulltext_filter(self.q).only(
-                "pk", "nazwa", "wydzial__skrot").select_related("wydzial")
+            Jednostka.objects.fulltext_filter(self.q)
+            .only("pk", "nazwa", "wydzial__skrot")
+            .select_related("wydzial")
         )
 
         querysets.append(
-            Autor.objects
-                .fulltext_filter(self.q)
-                .annotate(Count('wydawnictwo_ciagle'))
-                .only("pk", "nazwisko", "imiona", "poprzednie_nazwiska",
-                      "tytul__skrot")
-                .select_related("tytul")
-                .order_by('-wydawnictwo_ciagle__count')
+            Autor.objects.fulltext_filter(self.q)
+            .annotate(Count("wydawnictwo_ciagle"))
+            .only("pk", "nazwisko", "imiona", "poprzednie_nazwiska", "tytul__skrot")
+            .select_related("tytul")
+            .order_by("-wydawnictwo_ciagle__count")
         )
 
         if len(self.q) == len("0000-0003-1240-323X"):
             querysets.append(
-                Autor.objects
-                    .filter(orcid__icontains=self.q)
-                    .annotate(Count('wydawnictwo_ciagle'))
-                    .only("pk", "nazwisko", "imiona", "poprzednie_nazwiska",
-                          "tytul__skrot")
-                    .select_related("tytul")
-                    .order_by('-wydawnictwo_ciagle__count')
+                Autor.objects.filter(orcid__icontains=self.q)
+                .annotate(Count("wydawnictwo_ciagle"))
+                .only("pk", "nazwisko", "imiona", "poprzednie_nazwiska", "tytul__skrot")
+                .select_related("tytul")
+                .order_by("-wydawnictwo_ciagle__count")
             )
 
         querysets.append(
             Zrodlo.objects.fulltext_filter(self.q).only(
-                "pk", "nazwa", "poprzednia_nazwa")
+                "pk", "nazwa", "poprzednia_nazwa"
+            )
         )
 
         querysets.append(
-            Rekord.objects.fulltext_filter(self.q).only(
-                "tytul_oryginalny")
+            Rekord.objects.fulltext_filter(self.q).only("tytul_oryginalny")
         )
 
         this_is_an_id = False
         try:
             this_is_an_id = int(self.q)
-        except:
+        except (TypeError, ValueError):
             pass
 
         if this_is_an_id:
             querysets.append(
                 Rekord.objects.extra(where=["id[2]=%s" % this_is_an_id]).only(
-                    "tytul_oryginalny")
+                    "tytul_oryginalny"
+                )
             )
 
         ret = QuerySetSequence(*querysets)
@@ -287,60 +287,57 @@ class AdminNavigationAutocomplete(StaffRequired, Select2QuerySetSequenceView):
         querysets = []
 
         querysets.append(
-            BppUser.objects.filter(username__icontains=self.q).only(
-                "pk", "username"))
-
-        querysets.append(
-            Jednostka.objects.fulltext_filter(self.q).only("pk", "nazwa")
+            BppUser.objects.filter(username__icontains=self.q).only("pk", "username")
         )
+
+        querysets.append(Jednostka.objects.fulltext_filter(self.q).only("pk", "nazwa"))
 
         querysets.append(
             Konferencja.objects.filter(
-                Q(nazwa__icontains=self.q) |
-                Q(skrocona_nazwa__icontains=self.q)
+                Q(nazwa__icontains=self.q) | Q(skrocona_nazwa__icontains=self.q)
             ).only("pk", "nazwa")
         )
 
         querysets.append(
-            Autor.objects
-                .fulltext_filter(self.q)
-                .annotate(Count('wydawnictwo_ciagle'))
-                .only("pk", "nazwisko", "imiona", "poprzednie_nazwiska",
-                      "tytul")
-                .select_related("tytul")
-                .order_by('-wydawnictwo_ciagle__count')
+            Autor.objects.fulltext_filter(self.q)
+            .annotate(Count("wydawnictwo_ciagle"))
+            .only("pk", "nazwisko", "imiona", "poprzednie_nazwiska", "tytul")
+            .select_related("tytul")
+            .order_by("-wydawnictwo_ciagle__count")
         )
 
         if len(self.q) == len("0000-0003-1240-323X"):
             querysets.append(
-                Autor.objects
-                    .filter(orcid__icontains=self.q)
-                    .annotate(Count('wydawnictwo_ciagle'))
-                    .only("pk", "nazwisko", "imiona", "poprzednie_nazwiska",
-                          "tytul__skrot")
-                    .select_related("tytul")
-                    .order_by('-wydawnictwo_ciagle__count')
+                Autor.objects.filter(orcid__icontains=self.q)
+                .annotate(Count("wydawnictwo_ciagle"))
+                .only("pk", "nazwisko", "imiona", "poprzednie_nazwiska", "tytul__skrot")
+                .select_related("tytul")
+                .order_by("-wydawnictwo_ciagle__count")
             )
 
         querysets.append(
             Zrodlo.objects.fulltext_filter(self.q).only(
-                "pk", "nazwa", "poprzednia_nazwa")
+                "pk", "nazwa", "poprzednia_nazwa"
+            )
         )
 
-        for klass in [Wydawnictwo_Zwarte, Wydawnictwo_Ciagle, Patent,
-                      Praca_Doktorska, Praca_Habilitacyjna]:
+        for klass in [
+            Wydawnictwo_Zwarte,
+            Wydawnictwo_Ciagle,
+            Patent,
+            Praca_Doktorska,
+            Praca_Habilitacyjna,
+        ]:
 
             filter = Q(tytul_oryginalny__icontains=self.q)
 
             try:
                 int(self.q)
                 filter |= Q(pk=self.q)
-            except:
+            except (TypeError, ValueError):
                 pass
 
-            querysets.append(
-                klass.objects.filter(filter).only("tytul_oryginalny")
-            )
+            querysets.append(klass.objects.filter(filter).only("tytul_oryginalny"))
 
         ret = QuerySetSequence(*querysets)
         return self.mixup_querysets(ret)
@@ -354,24 +351,23 @@ class ZapisanyJakoAutocomplete(autocomplete.Select2ListView):
         create_option = []
         if self.q:
             results = [x for x in results if self.q.lower() in x.lower()]
-            if hasattr(self, 'create'):
-                create_option = [{
-                    'id': self.q,
-                    'text': self.q,
-                    'create_id': True
-                }]
-        return http.HttpResponse(json.dumps({
-            'results': [dict(id=x, text=x) for x in results] + create_option
-        }), content_type='application/json')
+            if hasattr(self, "create"):
+                create_option = [{"id": self.q, "text": self.q, "create_id": True}]
+        return http.HttpResponse(
+            json.dumps(
+                {"results": [dict(id=x, text=x) for x in results] + create_option}
+            ),
+            content_type="application/json",
+        )
 
     def post(self, request):
         # Hotfix dla django-autocomplete-light w wersji 3.3.0-rc5, pull
         # request dla problemu zgłoszony tutaj:
         # https://github.com/yourlabs/django-autocomplete-light/issues/977
-        if not hasattr(self, 'create'):
+        if not hasattr(self, "create"):
             raise ImproperlyConfigured('Missing "create()"')
 
-        text = request.POST.get('text', None)
+        text = request.POST.get("text", None)
 
         if text is None:
             return http.HttpResponseBadRequest()
@@ -381,45 +377,48 @@ class ZapisanyJakoAutocomplete(autocomplete.Select2ListView):
         if text is None:
             return http.HttpResponseBadRequest()
 
-        return http.JsonResponse({
-            'id': text,
-            'text': text,
-        })
+        return http.JsonResponse({"id": text, "text": text,})
 
     def create(self, text):
         return text
 
     def get_list(self):
-        autor = self.forwarded.get('autor', None)
+        autor = self.forwarded.get("autor", None)
 
         if autor is None:
-            return ['(... może najpierw wybierz autora)']
+            return ["(... może najpierw wybierz autora)"]
 
         try:
             autor_id = int(autor)
             a = Autor.objects.get(pk=autor_id)
         except (KeyError, ValueError):
-            return ['Błąd. Wpisz poprawne dane w pole "Autor".', ]
+            return [
+                'Błąd. Wpisz poprawne dane w pole "Autor".',
+            ]
         except Autor.DoesNotExist:
-            return ['Błąd. Wpisz poprawne dane w pole "Autor".', ]
-        return list(set(list(
-            warianty_zapisanego_nazwiska(a.imiona, a.nazwisko,
-                                         a.poprzednie_nazwiska)
-        )))
+            return [
+                'Błąd. Wpisz poprawne dane w pole "Autor".',
+            ]
+        return list(
+            set(
+                list(
+                    warianty_zapisanego_nazwiska(
+                        a.imiona, a.nazwisko, a.poprzednie_nazwiska
+                    )
+                )
+            )
+        )
 
 
-class PodrzednaPublikacjaHabilitacyjnaAutocomplete(
-    Select2QuerySetSequenceView):
+class PodrzednaPublikacjaHabilitacyjnaAutocomplete(Select2QuerySetSequenceView):
     def get_queryset(self):
         wydawnictwa_zwarte = Wydawnictwo_Zwarte.objects.all()
         wydawnictwa_ciagle = Wydawnictwo_Ciagle.objects.all()
         patenty = Patent.objects.all()
 
-        qs = QuerySetSequence(wydawnictwa_ciagle,
-                              wydawnictwa_zwarte,
-                              patenty)
+        qs = QuerySetSequence(wydawnictwa_ciagle, wydawnictwa_zwarte, patenty)
 
-        autor_id = self.forwarded.get('autor', None)
+        autor_id = self.forwarded.get("autor", None)
         if autor_id is None:
             return qs.none()
 
@@ -429,22 +428,17 @@ class PodrzednaPublikacjaHabilitacyjnaAutocomplete(
             return qs.none()
 
         wydawnictwa_zwarte = Wydawnictwo_Zwarte.objects.filter(
-            pk__in=Wydawnictwo_Zwarte_Autor.objects.filter(
-                autor=autor).only('rekord')
+            pk__in=Wydawnictwo_Zwarte_Autor.objects.filter(autor=autor).only("rekord")
         )
         wydawnictwa_ciagle = Wydawnictwo_Ciagle.objects.filter(
-            pk__in=Wydawnictwo_Ciagle_Autor.objects.filter(
-                autor=autor).only("rekord")
+            pk__in=Wydawnictwo_Ciagle_Autor.objects.filter(autor=autor).only("rekord")
         )
 
         patenty = Patent.objects.filter(
-            pk__in=Patent_Autor.objects.filter(
-                autor=autor).only("rekord")
+            pk__in=Patent_Autor.objects.filter(autor=autor).only("rekord")
         )
 
-        qs = QuerySetSequence(wydawnictwa_ciagle,
-                              wydawnictwa_zwarte,
-                              patenty)
+        qs = QuerySetSequence(wydawnictwa_ciagle, wydawnictwa_zwarte, patenty)
 
         if self.q:
             qs = qs.filter(tytul_oryginalny__icontains=self.q)
@@ -471,15 +465,9 @@ class Zewnetrzna_Baza_DanychAutocomplete(autocomplete.Select2QuerySetView):
 
 
 class Dyscyplina_Naukowa_PrzypisanieAutocomplete(autocomplete.Select2ListView):
-
     def results(self, results):
         """Return data for the 'results' key of the response."""
-        return [
-            {
-                'id': _id,
-                'text': value
-            } for _id, value in results
-        ]
+        return [{"id": _id, "text": value} for _id, value in results]
 
     def autocomplete_results(self, results):
         return [(x, y) for x, y in results if self.q.lower() in y.lower()]

@@ -107,6 +107,7 @@ dump-*.dump
 *.pgdump
 
 src/import_dbf/db/
+src/import_dbf/db-old/
 /src/import_dbf/tests/test.dbf.sql
 /stellar.yaml
 

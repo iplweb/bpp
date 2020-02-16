@@ -13,55 +13,54 @@ from django.db.models import Max, Min
 from psycopg2.extensions import QuotedString
 from unidecode import unidecode
 
-non_url = re.compile(r'[^\w-]+')
+non_url = re.compile(r"[^\w-]+")
 
 
 def get_fixture(name):
     p = Path(__file__).parent / "fixtures" / ("%s.json" % name)
-    ret = json.load(open(p, 'rb'))
-    ret = [x['fields'] for x in ret if x['model'] == ("bpp.%s" % name)]
-    return dict([(x['skrot'].lower().strip(), x) for x in ret])
+    ret = json.load(open(p, "rb"))
+    ret = [x["fields"] for x in ret if x["model"] == ("bpp.%s" % name)]
+    return dict([(x["skrot"].lower().strip(), x) for x in ret])
 
 
 def fulltext_tokenize(s):
-    s = s.replace(":", "") \
-        .replace('*', "") \
-        .replace('"', "") \
-        .replace('|', " ") \
-        .replace("'", "") \
-        .replace("&", "") \
-        .replace("\\", "") \
-        .replace("(", "") \
-        .replace(")", "") \
-        .replace("\t", " ") \
-        .replace("\n", " ") \
+    s = (
+        s.replace(":", "")
+        .replace("*", "")
+        .replace('"', "")
+        .replace("|", " ")
+        .replace("'", "")
+        .replace("&", "")
+        .replace("\\", "")
+        .replace("(", "")
+        .replace(")", "")
+        .replace("\t", " ")
+        .replace("\n", " ")
         .replace("\r", " ")
+        .replace("-", " ")
+        .replace("<", " ")
+        .replace(">", " ")
+    )
     return [x.strip() for x in s.split(" ") if x.strip()]
 
 
 class FulltextSearchMixin:
-    fts_field = 'search'
+    fts_field = "search"
 
     def fulltext_filter(self, qstr):
         def quotes(wordlist):
             ret = []
             for elem in wordlist:
-                ret.append(
-                    str(
-                        QuotedString(
-                            elem.replace("\\", "").encode("utf-8")
-                        )
-                    )
-                )
+                ret.append(str(QuotedString(elem.replace("\\", "").encode("utf-8"))))
             return ret
 
         def startswith(wordlist):
             return [x + ":*" for x in quotes(wordlist)]
 
         def negative(wordlist):
-            return ['!' + x for x in startswith(wordlist)]
+            return ["!" + x for x in startswith(wordlist)]
 
-        if qstr == None:
+        if qstr is None:
             qstr = ""
 
         if type(qstr) == bytes:
@@ -69,24 +68,37 @@ class FulltextSearchMixin:
 
         words = fulltext_tokenize(qstr)
         qstr = " & ".join(startswith(words))
-        params = ('bpp_nazwy_wlasne', qstr)
+        params = ("bpp_nazwy_wlasne", qstr)
 
         return self.all().extra(
-            select={self.model._meta.db_table + '__rank':
-                        "ts_rank_cd(" + self.model._meta.db_table + "." + self.fts_field + ", to_tsquery(%s::regconfig, %s), 16)"},
+            select={
+                self.model._meta.db_table
+                + "__rank": "ts_rank_cd("
+                + self.model._meta.db_table
+                + "."
+                + self.fts_field
+                + ", to_tsquery(%s::regconfig, %s), 16)"
+            },
             select_params=params,
-            where=[self.model._meta.db_table + "." + self.fts_field + " @@ to_tsquery(%s::regconfig, %s)"],
+            where=[
+                self.model._meta.db_table
+                + "."
+                + self.fts_field
+                + " @@ to_tsquery(%s::regconfig, %s)"
+            ],
             params=params,
-            order_by=['-' + self.model._meta.db_table + '__rank'])
+            order_by=["-" + self.model._meta.db_table + "__rank"],
+        )
 
 
 def slugify_function(s):
     s = unidecode(s).replace(" ", "-")
-    return non_url.sub('', s)
+    return non_url.sub("", s)
 
 
 def get_original_object(object_name, object_pk):
     from bpp.models import TABLE_TO_MODEL
+
     klass = TABLE_TO_MODEL.get(object_name)
     try:
         return klass.objects.get(pk=object_pk)
@@ -130,7 +142,7 @@ class Getter:
     True
     """
 
-    def __init__(self, klass, field='skrot'):
+    def __init__(self, klass, field="skrot"):
         self.field = field
         self.klass = klass
 
@@ -155,7 +167,26 @@ class NewGetter(Getter):
 
 
 def zrob_cache(t):
-    zle_znaki = [" ", ":", ";", "-", ",", "-", ".", "(", ")", "?", "!", "ę", "ą", "ł", "ń", "ó", "ź", "ż"]
+    zle_znaki = [
+        " ",
+        ":",
+        ";",
+        "-",
+        ",",
+        "-",
+        ".",
+        "(",
+        ")",
+        "?",
+        "!",
+        "ę",
+        "ą",
+        "ł",
+        "ń",
+        "ó",
+        "ź",
+        "ż",
+    ]
     for znak in zle_znaki:
         t = t.replace(znak, "")
     return t.lower()
@@ -183,8 +214,9 @@ def remove_old_objects(klass, file_field="file", field_name="created_on", days=7
 
 
 def rebuild_contenttypes():
-    app_config = apps.get_app_config('bpp')
+    app_config = apps.get_app_config("bpp")
     from django.contrib.contenttypes.management import create_contenttypes
+
     create_contenttypes(app_config, verbosity=0)
 
 
@@ -192,18 +224,27 @@ def rebuild_contenttypes():
 # Progress bar
 #
 
+
 def pbar(query, count=None):
     return progressbar.progressbar(
-        query, max_value=count or query.count(),
-        widgets=[progressbar.AnimatedMarker(), " ",
-                 progressbar.SimpleProgress(), " ",
-                 progressbar.Timer(), " ",
-                 progressbar.ETA()])
+        query,
+        max_value=count or query.count(),
+        widgets=[
+            progressbar.AnimatedMarker(),
+            " ",
+            progressbar.SimpleProgress(),
+            " ",
+            progressbar.Timer(),
+            " ",
+            progressbar.ETA(),
+        ],
+    )
 
 
 #
 # Multiprocessing stuff
 #
+
 
 def partition(min, max, num_proc, fun=ceil):
     s = int(fun((max - min) / num_proc))
@@ -217,7 +258,7 @@ def partition(min, max, num_proc, fun=ceil):
 
 def partition_ids(model, num_proc, attr="idt"):
     d = model.objects.aggregate(min=Min(attr), max=Max(attr))
-    return partition(d['min'], d['max'], num_proc)
+    return partition(d["min"], d["max"], num_proc)
 
 
 def partition_count(objects, num_proc):

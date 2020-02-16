@@ -14,7 +14,7 @@ class RaportSlotowUczelniaFilter(django_filters.FilterSet):
         widget=TextInput(attrs={"placeholder": "Podaj nazwisko"}),
     )
 
-    jednostka = django_filters.CharFilter(
+    jednostka__nazwa = django_filters.CharFilter(
         lookup_expr="icontains",
         widget=TextInput(attrs={"placeholder": "Podaj jednostkę"}),
     )
