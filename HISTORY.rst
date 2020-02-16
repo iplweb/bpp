@@ -8,6 +8,7 @@ dev
 * umożliwiaj poprawne wylogowanie użytkownika z systemu, bez wyświetlania strony błędu (#714)
 * nie zgłaszaj awarii dla eksportu XLS pustych skoroszytów dla raportu slotów - autor (#782)
 * umożliwiaj poprawne resetowanie hasła użytkownika (#675)
+* napraw błąd w wyszukiwaniu pełnotekstowym (#683)
 
 v202002.16
 ----------
