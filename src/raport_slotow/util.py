@@ -5,6 +5,8 @@ from django.utils.itercompat import is_iterable
 from django_tables2.export import TableExport, ExportMixin
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.table import Table, TableStyleInfo
+import openpyxl
+import openpyxl.styles
 
 
 def drop_table(table_name, using=DEFAULT_DB_ALIAS):
@@ -17,7 +19,9 @@ def create_temporary_table_as(table_name, queryset, using=DEFAULT_DB_ALIAS):
     compiler = queryset.query.get_compiler(using=using)
     sql, params = compiler.as_sql()
     connection = connections[using]
-    sql = "CREATE TEMPORARY TABLE " + connection.ops.quote_name(table_name) + " AS " + sql
+    sql = (
+        "CREATE TEMPORARY TABLE " + connection.ops.quote_name(table_name) + " AS " + sql
+    )
     drop_table(table_name, using=using)
     with connection.cursor() as cursor:
         cursor.execute(sql, params)
@@ -34,14 +38,15 @@ def insert_into(table_name, queryset, using=DEFAULT_DB_ALIAS):
 
 def clone_temporary_table(source_table, target_table, using=DEFAULT_DB_ALIAS):
     connection = connections[using]
-    sql = "CREATE TEMPORARY TABLE " + connection.ops.quote_name(
-        target_table) + " AS SELECT * FROM " + connection.ops.quote_name(source_table)
+    sql = (
+        "CREATE TEMPORARY TABLE "
+        + connection.ops.quote_name(target_table)
+        + " AS SELECT * FROM "
+        + connection.ops.quote_name(source_table)
+    )
     drop_table(target_table, using=using)
     with connection.cursor() as cursor:
         cursor.execute(sql)
-
-
-import openpyxl, openpyxl.styles
 
 
 class MyTableExport(TableExport):
@@ -50,12 +55,16 @@ class MyTableExport(TableExport):
     """
 
     def is_valid_format(self, export_format):
-        if export_format != 'xlsx':
+        if export_format != "xlsx":
             return False
         return True
 
-    def __init__(self, export_format, table, exclude_columns=None, export_description=None):
-        super(MyTableExport, self).__init__(export_format=export_format, table=table, exclude_columns=exclude_columns)
+    def __init__(
+        self, export_format, table, exclude_columns=None, export_description=None
+    ):
+        super(MyTableExport, self).__init__(
+            export_format=export_format, table=table, exclude_columns=exclude_columns
+        )
         self.export_description = export_description
 
     def export(self):
@@ -73,15 +82,19 @@ class MyTableExport(TableExport):
                     ws.append(elem)
                     if len(elem) == 2:
                         ws[ws.max_row][0].font = openpyxl.styles.Font(bold=True)
-                        ws[ws.max_row][0].alignment = openpyxl.styles.Alignment(horizontal='right')
-                        ws[ws.max_row][1].alignment = openpyxl.styles.Alignment(horizontal='left')
+                        ws[ws.max_row][0].alignment = openpyxl.styles.Alignment(
+                            horizontal="right"
+                        )
+                        ws[ws.max_row][1].alignment = openpyxl.styles.Alignment(
+                            horizontal="left"
+                        )
                 else:
                     ws.append([elem])
 
             ws.append([])
 
         ws.append(tablib_dataset.headers)
-        for cell in ws[ws.max_row:ws.max_row]:
+        for cell in ws[ws.max_row : ws.max_row]:
             cell.font = openpyxl.styles.Font(bold=True)
 
         first_table_row = ws.max_row
@@ -89,12 +102,21 @@ class MyTableExport(TableExport):
             ws.append(row)
         last_table_row = ws.max_row
 
-        literka = get_column_letter(len(row))
-        tab = Table(displayName="Table1", ref="A%i:%s%i" % (first_table_row, literka, last_table_row))
-        style = TableStyleInfo(name="TableStyleMedium9", showFirstColumn=False,
-                               showLastColumn=False, showRowStripes=True, showColumnStripes=True)
-        tab.tableStyleInfo = style
-        ws.add_table(tab)
+        if tablib_dataset:
+            literka = get_column_letter(len(row))
+            tab = Table(
+                displayName="Table1",
+                ref="A%i:%s%i" % (first_table_row, literka, last_table_row),
+            )
+            style = TableStyleInfo(
+                name="TableStyleMedium9",
+                showFirstColumn=False,
+                showLastColumn=False,
+                showRowStripes=True,
+                showColumnStripes=True,
+            )
+            tab.tableStyleInfo = style
+            ws.add_table(tab)
 
         max_width = 75
         for ncol, col in enumerate(ws.columns):
@@ -105,7 +127,7 @@ class MyTableExport(TableExport):
                 try:  # Necessary to avoid error on empty cells
                     if len(str(cell.value)) > max_length:
                         max_length = len(cell.value)
-                except:
+                except (ValueError, TypeError):
                     pass
             adjusted_width = (max_length + 2) * 1.1
             if adjusted_width > max_width:
@@ -130,7 +152,7 @@ class MyExportMixin(ExportMixin):
             export_format=export_format,
             table=self.get_table(**self.get_table_kwargs()),
             exclude_columns=self.exclude_columns,
-            export_description=self.get_export_description()
+            export_description=self.get_export_description(),
         )
 
         return exporter.response(filename=self.get_export_filename(export_format))
