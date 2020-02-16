@@ -80,9 +80,9 @@ django-dsl==0.1.11 \
     --hash=sha256:22731a0e4372c06112db7a356d6a154c6e57b768e3d712af8d94a001b0828f32 \
     --hash=sha256:453da1fb963780c8a007fcb7b78a2f7628c1153b99b6287a2eefa3e9a2cc5c03 \
     # via django-flexible-reports
-django-easysettings==2.0.1 \
-    --hash=sha256:4d472d6b64c4f9f91432da943bcc30d5dd1f2c62b2f5b457310bfa4929b08fca \
-    --hash=sha256:59bbbd2d369a98ee9b265180cfa4f5ec1c5af557cb7984d21b05e86f915d0d2c \
+django-easysettings==1.1 \
+    --hash=sha256:344efac12275e1d0231c49c6bba23cf19928efd65ffaf9542a05b412eb6e3c67 \
+    --hash=sha256:b00649fd849deec220b6de1513520992cf75bf5b0397715d4352fdf96e4b7edc \
     # via django-password-policies-iplweb
 django-extensions==2.2.5 \
     --hash=sha256:a9db7c56a556d244184f589f2437b4228de86ee45e5ebb837fb20c6d54e95ea5 \
@@ -126,9 +126,8 @@ django-mptt==0.9.0 \
     --hash=sha256:feef466f9ba6849d2f1581c94d8550d5554945a8d05a2660da19193140cd8a35
 django-multiseek==0.9.38 \
     --hash=sha256:af23bf4731bbfc55cfa86d531bbc48bb9856819f9a643e31eab3b7ea9834aab9
-django-password-policies-iplweb==0.4.4b1 \
-    --hash=sha256:c554d3c4ade31e2e51b337929cb5d3481e1278164601b585cb3a42f5a1d0ea44 \
-    --hash=sha256:f09bf9c87665f6e603194a966742977ee5adacae0da9e5bcd180fb9ddeea1a1c
+django-password-policies-iplweb==0.7.0 \
+    --hash=sha256:d62d31876ea01ba87c07e17e5253a9401f86c017f97129afbf53eb64a4093f95
 django-querysetsequence==0.8 \
     --hash=sha256:55b696d0fa3ac9cf25543b36b567fc0a521e0b73efdc0d11469b2b64b423df78
 django-robots==3.1.0 \
