@@ -125,6 +125,7 @@ class Command(BaseCommand):
             pool.apply(wyswietl_prace_bez_dopasowania, (logger,))
 
         if enable_all or options["enable_b_a"]:
+            integruj_b_a()
             logger.info("Usuwanie podwojnych przypisan")
             pool.apply(usun_podwojne_przypisania_b_a, (logger,))
             logger.debug("Integracja B_A")

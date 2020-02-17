@@ -1419,6 +1419,7 @@ def integruj_b_a(offset=None, limit=None):
     # }
 
     ta_id = bpp.Typ_Odpowiedzialnosci.objects.get(skrot="aut.").pk
+    tr_id = bpp.Typ_Odpowiedzialnosci.objects.get(skrot="red.").pk
 
     from django.db import reset_queries, connection
 
@@ -1465,15 +1466,24 @@ def integruj_b_a(offset=None, limit=None):
             else:
                 lp = int(rec.lp)
 
+        typ_odp = ta_id
+        zj = f"{rec.idt_aut.imiona} {rec.idt_aut.nazwisko}"
+
+        red1 = rec.idt_aut.imiona.strip().startswith("<")
+        red2 = rec.idt_aut.nazwisko.strip().startswith("<")
+        if red1 and red2:
+            typ_odp = tr_id
+            zj = zj.replace("<", "").replace(">", "")
+
         try:
             klass.objects.create(
                 rekord_id=bpp_rec_id,
                 autor_id=bpp_autor_id,
                 jednostka_id=bpp_jednostka_id,
-                zapisany_jako=f"{rec.idt_aut.imiona} {rec.idt_aut.nazwisko}",
+                zapisany_jako=zj,
                 afiliuje=rec.afiliacja == "*",
                 kolejnosc=lp,
-                typ_odpowiedzialnosci_id=ta_id,
+                typ_odpowiedzialnosci_id=typ_odp,
             )
         except IntegrityError as e:
             print(

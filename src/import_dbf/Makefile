@@ -17,10 +17,15 @@ usun-integracje-autorow:
 	echo "begin; delete from bpp_autor_jednostka; delete from bpp_autor;update import_dbf_aut set bpp_autor_id = NULL where bpp_autor_id IS NOT NULL;commit;" | $(PSQL)
 
 integruj-dbf-autorzy:
-
 	$(MANAGE) integruj_dbf --enable-wydzial
 	$(MANAGE) integruj_dbf --enable-jednostka
 	$(MANAGE) integruj_dbf --enable-autor
+
+importuj-dyscypliny:
+	$(MANAGE) importuj_dyscypliny 2017 /Volumes/Dane\ zaszyfrowane/UMWroclaw/dyscypliny_BPP.xlsx
+	$(MANAGE) importuj_dyscypliny 2018 /Volumes/Dane\ zaszyfrowane/UMWroclaw/dyscypliny_BPP.xlsx
+	$(MANAGE) importuj_dyscypliny 2019 /Volumes/Dane\ zaszyfrowane/UMWroclaw/dyscypliny_BPP.xlsx
+	$(MANAGE) importuj_dyscypliny 2020 /Volumes/Dane\ zaszyfrowane/UMWroclaw/dyscypliny_BPP.xlsx -v3
 
 integruj-dbf-publikacje:
 	$(MANAGE) integruj_dbf --enable-charakter-kbn-jezyk
@@ -29,8 +34,13 @@ integruj-dbf-publikacje:
 	$(MANAGE) integruj_dbf --enable-b-a
 	$(MANAGE) integruj_dbf --enable-przypisz-jednostki
 
-integruj-dbf: integruj-dbf-autorzy integruj-dbf-publikacje
+przypisz-dyscypliny:
+	$(MANAGE) przypisz_dyscypliny 2017 --ustawiaj-pierwsza-gdy-dwie
+	$(MANAGE) przypisz_dyscypliny 2018 --ustawiaj-pierwsza-gdy-dwie
+	$(MANAGE) przypisz_dyscypliny 2019 --ustawiaj-pierwsza-gdy-dwie
+	$(MANAGE) przypisz_dyscypliny 2020 --ustawiaj-pierwsza-gdy-dwie
 
+integruj-dbf: integruj-dbf-autorzy importuj-dyscypliny integruj-dbf-publikacje przypisz-dyscypliny
 
 remove-dbfs:
 	echo "select 'drop table '||tablename||';' from pg_tables where tablename like 'import_dbf_%'" | \
