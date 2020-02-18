@@ -7,8 +7,10 @@ from django.core.management import BaseCommand
 from bpp.models import (
     Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
+    Patent,
     rebuild_ciagle,
     rebuild_zwarte,
+    rebuild_patent,
 )
 from bpp.util import no_threads, partition_count
 
@@ -36,3 +38,6 @@ class Command(BaseCommand):
 
         pc = pool.apply(partition_count, args=(Wydawnictwo_Zwarte.objects, pool_size))
         pool.starmap(rebuild_zwarte, pc)
+
+        pc = pool.apply(partition_count, args=(Patent.objects, pool_size))
+        pool.starmap(rebuild_patent, pc)

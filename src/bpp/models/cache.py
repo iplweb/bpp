@@ -767,3 +767,7 @@ def rebuild_ciagle(offset=None, limit=None):
         extra_tables=["zrodlo"],
         extra_flds=["zrodlo__nazwa", "zrodlo__skrot"],
     )
+
+
+def rebuild_patent(offset=None, limit=None):
+    return rebuild(Patent, offset=offset, limit=limit,)

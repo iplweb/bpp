@@ -28,17 +28,17 @@ importuj-dyscypliny:
 	$(MANAGE) importuj_dyscypliny 2020 /Volumes/Dane\ zaszyfrowane/UMWroclaw/dyscypliny_BPP.xlsx -v3
 
 integruj-dbf-publikacje:
-	$(MANAGE) integruj_dbf --enable-charakter-kbn-jezyk
+	$(MANAGE) integruj_dbf --enable-charakter-kbn-jezyk --charaktery-enrichment-xls /Volumes/Dane\ zaszyfrowane/UMWroclaw/charaktery.xlsx
 	$(MANAGE) integruj_dbf --enable-zrodlo
 	$(MANAGE) integruj_dbf --enable-publikacja
 	$(MANAGE) integruj_dbf --enable-b-a
 	$(MANAGE) integruj_dbf --enable-przypisz-jednostki
 
 przypisz-dyscypliny:
-	$(MANAGE) przypisz_dyscypliny 2017 --ustawiaj-pierwsza-gdy-dwie
-	$(MANAGE) przypisz_dyscypliny 2018 --ustawiaj-pierwsza-gdy-dwie
-	$(MANAGE) przypisz_dyscypliny 2019 --ustawiaj-pierwsza-gdy-dwie
-	$(MANAGE) przypisz_dyscypliny 2020 --ustawiaj-pierwsza-gdy-dwie
+	$(MANAGE) przypisz_dyscypliny 2017 --ustawiaj-pierwsza-gdy-dwie --disable-cache
+	$(MANAGE) przypisz_dyscypliny 2018 --ustawiaj-pierwsza-gdy-dwie --disable-cache
+	$(MANAGE) przypisz_dyscypliny 2019 --ustawiaj-pierwsza-gdy-dwie --disable-cache
+	$(MANAGE) przypisz_dyscypliny 2020 --ustawiaj-pierwsza-gdy-dwie --disable-cache
 
 integruj-dbf: integruj-dbf-autorzy importuj-dyscypliny integruj-dbf-publikacje przypisz-dyscypliny
 

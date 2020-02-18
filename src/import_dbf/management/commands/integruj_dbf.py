@@ -51,7 +51,7 @@ class Command(BaseCommand):
         parser.add_argument("--enable-publikacja", action="store_true")
         parser.add_argument("--enable-charakter-kbn-jezyk", action="store_true")
         parser.add_argument(
-            "--charaktery-enrichment-xls", nargs="?", type=argparse.FileType("rb")
+            "--charaktery-enrichment-xls", type=argparse.FileType("rb"), nargs="+"
         )
 
         parser.add_argument("--enable-zrodlo", action="store_true")
@@ -62,7 +62,7 @@ class Command(BaseCommand):
         self, uczelnia, skrot, enable_all, disable_transaction, *args, **options
     ):
         verbosity = int(options["verbosity"])
-        logger = logging.getLogger("main")
+        logger = logging.getLogger("django")
         if verbosity > 1:
             logger.setLevel(logging.DEBUG)
 
@@ -101,9 +101,9 @@ class Command(BaseCommand):
         if enable_all or options["enable_charakter_kbn_jezyk"]:
             pool.apply(integruj_charaktery)
 
-            fp = options.get("charaktery_enrichment_xls").name
+            fp = options.get("charaktery_enrichment_xls")
             if fp:
-                pool.apply(wzbogacaj_charaktery, fp)
+                pool.apply(wzbogacaj_charaktery, args=(fp[0].name,))
 
             pool.apply(integruj_kbn)
             pool.apply(integruj_jezyki)
@@ -136,7 +136,6 @@ class Command(BaseCommand):
             pool.apply(wyswietl_prace_bez_dopasowania, (logger,))
 
         if enable_all or options["enable_b_a"]:
-            integruj_b_a()
             logger.info("Usuwanie podwojnych przypisan")
             pool.apply(usun_podwojne_przypisania_b_a, (logger,))
             logger.debug("Integracja B_A")
