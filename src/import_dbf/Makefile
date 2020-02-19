@@ -49,6 +49,10 @@ remove-dbfs:
 
 alter-schema:
 	cat sql/alter-schema.sql | $(PSQL_VERBOSE)
+	cat sql/translate-title.sql | $(PSQL_VERBOSE)
+	cat sql/translate-autor.sql | $(PSQL_VERBOSE)
+	cat sql/translate-poz.sql | $(PSQL_VERBOSE)
+	cat sql/translate-usi.sql | $(PSQL_VERBOSE)
 	cat sql/alter-umw.sql | $(PSQL_VERBOSE)
 
 delete-imported-data:
