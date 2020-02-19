@@ -1,36 +1,38 @@
 # -*- encoding: utf-8 -*-
+import argparse
+import logging
 import multiprocessing
 from math import floor
 
 import django
-
-django.setup()
 from django.core.management import BaseCommand
 
 from bpp.models import Konferencja
-from import_dbf.models import Bib, B_A
+from bpp.util import partition_count
+from import_dbf.models import B_A, Bib
 from import_dbf.util import (
-    integruj_wydzialy,
-    integruj_jednostki,
-    integruj_uczelnia,
+    ekstrakcja_konferencji,
     integruj_autorow,
-    integruj_publikacje,
+    integruj_b_a,
     integruj_charaktery,
+    integruj_funkcje_autorow,
+    integruj_jednostki,
     integruj_jezyki,
     integruj_kbn,
-    integruj_zrodla,
-    integruj_b_a,
-    wyswietl_prace_bez_dopasowania,
-    usun_podwojne_przypisania_b_a,
+    integruj_publikacje,
     integruj_tytuly_autorow,
-    integruj_funkcje_autorow,
+    integruj_uczelnia,
+    integruj_wydzialy,
+    integruj_zrodla,
     mapuj_elementy_publikacji,
-    ekstrakcja_konferencji,
     przypisz_jednostki,
     sprawdz_zamapowanie_autorow,
+    usun_podwojne_przypisania_b_a,
+    wyswietl_prace_bez_dopasowania,
+    wzbogacaj_charaktery,
 )
-from bpp.util import partition_count
-import logging
+
+django.setup()
 
 
 class Command(BaseCommand):
@@ -48,6 +50,10 @@ class Command(BaseCommand):
         parser.add_argument("--enable-autor", action="store_true")
         parser.add_argument("--enable-publikacja", action="store_true")
         parser.add_argument("--enable-charakter-kbn-jezyk", action="store_true")
+        parser.add_argument(
+            "--charaktery-enrichment-xls", type=argparse.FileType("rb"), nargs="+"
+        )
+
         parser.add_argument("--enable-zrodlo", action="store_true")
         parser.add_argument("--enable-b-a", action="store_true")
         parser.add_argument("--enable-przypisz-jednostki", action="store_true")
@@ -56,7 +62,7 @@ class Command(BaseCommand):
         self, uczelnia, skrot, enable_all, disable_transaction, *args, **options
     ):
         verbosity = int(options["verbosity"])
-        logger = logging.getLogger("main")
+        logger = logging.getLogger("django")
         if verbosity > 1:
             logger.setLevel(logging.DEBUG)
 
@@ -94,6 +100,11 @@ class Command(BaseCommand):
 
         if enable_all or options["enable_charakter_kbn_jezyk"]:
             pool.apply(integruj_charaktery)
+
+            fp = options.get("charaktery_enrichment_xls")
+            if fp:
+                pool.apply(wzbogacaj_charaktery, args=(fp[0].name,))
+
             pool.apply(integruj_kbn)
             pool.apply(integruj_jezyki)
 

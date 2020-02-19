@@ -1,7 +1,8 @@
 import os
+import sys
 from collections import defaultdict
 
-import sys
+import xlrd
 from dbfread import DBF
 from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError, transaction
@@ -10,14 +11,16 @@ from django.db.models import Count, Q
 from bpp import models as bpp
 from bpp.models import (
     Status_Korekty,
-    wez_zakres_stron,
-    parse_informacje,
     Zewnetrzna_Baza_Danych,
     cache,
+    const,
+    parse_informacje,
+    wez_zakres_stron,
 )
 from bpp.system import User
 from bpp.util import pbar
 from import_dbf import models as dbf
+
 from .codecs import custom_search_function  # noqa
 
 custom_search_function  # noqa
@@ -372,6 +375,41 @@ def integruj_charaktery():
             )
         rec.bpp_id = charakter
         rec.save()
+
+
+def wzbogacaj_charaktery(fp):
+    for elem in xls2dict(fp):
+        ch = bpp.Charakter_Formalny.objects.get(skrot=elem["skrot"])
+        save = False
+
+        if elem["charakter_pbn"]:
+            ch.charakter_pbn = bpp.Charakter_PBN.objects.get(opis=elem["charakter_pbn"])
+            save = True
+
+        if elem["rodzaj_dla_pbn"]:
+            if elem["rodzaj_dla_pbn"] == "Książka":
+                ch.rodzaj_pbn = const.RODZAJ_PBN_KSIAZKA
+            elif elem["rodzaj_dla_pbn"] == "Artykuł":
+                ch.rodzaj_pbn = const.RODZAJ_PBN_ARTYKUL
+            elif elem["rodzaj_dla_pbn"] == "Rozdział":
+                ch.rodzaj_pbn = const.RODZAJ_PBN_ROZDZIAL
+            else:
+                raise ValueError("Niezdefiniowany rodzaj: %r" % elem["rodzaj_dla_pbn"])
+            save = True
+
+        if elem["charakter_dla_slotów"]:
+            if elem["charakter_dla_slotów"] == "Książka":
+                ch.charakter_sloty = const.CHARAKTER_SLOTY_KSIAZKA
+            elif elem["charakter_dla_slotów"] == "Rozdział":
+                ch.charakter_sloty = const.CHARAKTER_SLOTY_ROZDZIAL
+            else:
+                raise ValueError(
+                    "Niezdefiniowany rozdaj: %r" % elem["charakter_dla_slotow"]
+                )
+            save = True
+
+        if save:
+            ch.save()
 
 
 def integruj_kbn():
@@ -1045,7 +1083,7 @@ def integruj_publikacje(offset=None, limit=None):
                     if elem.get("b"):
                         s = dbf.Usi.objects.get(idt_usi=elem["b"][1:])
                         if s.nazwa == "CC":
-                            s.nazwa = "CC-BY"
+                            s.nazwa = "CC-ZERO"
 
                         try:
                             o = bpp.Licencja_OpenAccess.objects.get(
@@ -1419,6 +1457,7 @@ def integruj_b_a(offset=None, limit=None):
     # }
 
     ta_id = bpp.Typ_Odpowiedzialnosci.objects.get(skrot="aut.").pk
+    tr_id = bpp.Typ_Odpowiedzialnosci.objects.get(skrot="red.").pk
 
     from django.db import reset_queries, connection
 
@@ -1465,15 +1504,24 @@ def integruj_b_a(offset=None, limit=None):
             else:
                 lp = int(rec.lp)
 
+        typ_odp = ta_id
+        zj = f"{rec.idt_aut.imiona} {rec.idt_aut.nazwisko}"
+
+        red1 = rec.idt_aut.imiona.strip().startswith("<")
+        red2 = rec.idt_aut.nazwisko.strip().startswith("<")
+        if red1 and red2:
+            typ_odp = tr_id
+            zj = zj.replace("<", "").replace(">", "")
+
         try:
             klass.objects.create(
                 rekord_id=bpp_rec_id,
                 autor_id=bpp_autor_id,
                 jednostka_id=bpp_jednostka_id,
-                zapisany_jako=f"{rec.idt_aut.imiona} {rec.idt_aut.nazwisko}",
+                zapisany_jako=zj,
                 afiliuje=rec.afiliacja == "*",
                 kolejnosc=lp,
-                typ_odpowiedzialnosci_id=ta_id,
+                typ_odpowiedzialnosci_id=typ_odp,
             )
         except IntegrityError as e:
             print(
@@ -1511,3 +1559,19 @@ def przypisz_jednostki():
         bpp.Autor_Jednostka.objects.get_or_create(
             autor_id=elem[0], jednostka_id=elem[1]
         )
+
+
+def xls2dict(fp):
+    """Wczytuje plik XLS do słownika. Tylko pierwszy skoroszyt.
+    Pierwszy wiersz w pliku XLS to nazwy kolumn, które będą użyte
+    w zwracanych słownikach."""
+
+    book = xlrd.open_workbook(fp)
+    first_sheet = book.sheet_by_index(0)
+    headers = [x.lower().replace(" ", "_") for x in first_sheet.row_values(0)]
+
+    for row_idx in range(1, first_sheet.nrows):
+        ret = {}
+        for col_idx, header in zip(range(0, first_sheet.ncols), headers):
+            ret[header] = first_sheet.cell(row_idx, col_idx).value
+        yield ret

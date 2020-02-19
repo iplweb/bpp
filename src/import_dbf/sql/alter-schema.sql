@@ -51,7 +51,8 @@ CREATE UNIQUE INDEX import_dbf_aut_idt ON import_dbf_aut(idt_aut);
 create index import_dbf_aut_nazwisko on import_dbf_aut(nazwisko);
 
 ALTER TABLE import_dbf_aut ALTER COLUMN exp_id SET DATA TYPE INT USING exp_id::integer;
-update import_dbf_aut set pbn_id = NULL where pbn_id IN ('', '1981-02-01',  '2004-09-15', '3988552 Za', '3996174 Z',  '3996174 Z');
+update import_dbf_aut set pbn_id = NULL where pbn_id = '';
+-- IN ('', '1981-02-01',  '2004-09-15', '3988552 Za', '3996174 Z',  '3996174 Z');
 ALTER TABLE import_dbf_aut ALTER COLUMN pbn_id SET DATA TYPE INT USING pbn_id::integer;
 
 ALTER TABLE import_dbf_jez ADD COLUMN bpp_id INTEGER;
