@@ -137,12 +137,11 @@ class Command(BaseCommand):
             pool.apply(wyswietl_prace_bez_dopasowania, (logger,))
 
         if enable_all or options["enable_zatwierdz_podwojne_przypisania"]:
-            logger.info("Zatwierdzanie podwójnych podwojnych przypisan")
-            zatwierdz_podwojne_przypisania(logger)
-            # pool.apply(zatwierdz_podwojne_przypisania, (logger,))
+            logger.debug("Zatwierdzanie podwójnych podwojnych przypisan")
+            pool.apply(zatwierdz_podwojne_przypisania, (logger,))
 
         if enable_all or options["enable_b_a"]:
-            logger.info("Usuwanie podwojnych przypisan")
+            logger.debug("Usuwanie podwojnych przypisan")
             pool.apply(usun_podwojne_przypisania_b_a, (logger,))
             logger.debug("Integracja B_A")
             pool.starmap(integruj_b_a, partition_count(B_A.objects, num_proc))

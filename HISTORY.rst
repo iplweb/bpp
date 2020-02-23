@@ -10,6 +10,8 @@ Historia zmian
 * umożliwiaj oddzielne zarządzanie widocznością raportu slotów zerowych (#785)
 * nie dodawaj pola 103 do konferencji przy imporcie DBF (#794)
 * akceptuj podwójnych autorów przy imporcie DBF (#792)
+* poprawnie rozpoznawaj formę główną autora (#806)
+* poprawnie importuj z plików DBF numery stron i pola szczegółów (#795, #796)
 
 202002.17
 ---------

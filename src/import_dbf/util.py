@@ -293,8 +293,18 @@ def integruj_autorow(silent=False):
 
         autorzy = list(exp_autor(a))
         autorzy.sort(key=lambda x: x.idt_aut)
-        autor = autorzy.pop(0)
 
+        autor = None
+        forma_glowna = [autor for autor in autorzy if autor.fg == "*"]
+        if forma_glowna and len(forma_glowna) == 1:
+            autor = forma_glowna[0]
+        else:
+            autor = autorzy[0]
+
+        if len(forma_glowna) > 1:
+            print("*** Autor ma dwie lub więcej formy główne: %s" % autor)
+
+        autorzy.remove(autor)
         bpp_autor = None
 
         if autor.bpp_autor_id is not None:
@@ -811,7 +821,7 @@ def integruj_publikacje(offset=None, limit=None):
             klass_ext = bpp.Wydawnictwo_Zwarte_Zewnetrzna_Baza_Danych
             kw["tytul_oryginalny"] = exp_combine(tytul["a"], tytul.get("b"), sep=": ")
 
-            kw["szczegoly"] = exp_add_spacing(tytul["e"])
+            kw["strony"] = exp_add_spacing(tytul["e"])
             if tytul.get("f"):
                 if kw["szczegoly"]:
                     kw["szczegoly"] += ", "
@@ -827,7 +837,7 @@ def integruj_publikacje(offset=None, limit=None):
                     kw["tytul_oryginalny"], tytul.get("d")
                 )
 
-            if kw["szczegoly"]:
+            if kw["szczegoly"] and not kw.get("strony"):
                 kw["strony"] = wez_zakres_stron(kw["szczegoly"])
 
         elif tytul["id"] == 102:
@@ -940,24 +950,22 @@ def integruj_publikacje(offset=None, limit=None):
                 # D: strony
                 # E: bibliogr. poz
 
-                kw["informacje"] = elem.get("a")
+                kw["szczegoly"] = elem.get("a")
                 kw["informacje"] = exp_combine(kw["informacje"], elem.get("b"))
 
                 if elem.get("b"):
                     assert not kw.get("tom")
                     kw["tom"] = elem.get("b")
 
-                assert not kw.get("szczegoly")
-                kw["szczegoly"] = elem.get("c")
+                kw["szczegoly"] = exp_combine(kw["szczegoly"], elem.get("c"))
+
                 if elem.get("d"):
-                    if kw["szczegoly"]:
-                        kw["szczegoly"] += ", "
-                    kw["szczegoly"] += elem.get("d")
+                    if kw["strony"]:
+                        kw["strony"] += ", "
+                    kw["strony"] += elem.get("d")
 
                 if elem.get("e"):
-                    if kw["szczegoly"]:
-                        kw["szczegoly"] += ", "
-                    kw["szczegoly"] += elem.get("e")
+                    kw["szczegoly"] = exp_combine(kw["szczegoly"], elem.get("e"))
 
             elif elem["id"] == 103:
                 # Uwagi (nie: konferencja)
