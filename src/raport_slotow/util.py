@@ -1,12 +1,13 @@
 from tempfile import NamedTemporaryFile
 
-from django.db import DEFAULT_DB_ALIAS, connections
-from django.utils.itercompat import is_iterable
-from django_tables2.export import TableExport, ExportMixin
-from openpyxl.utils import get_column_letter
-from openpyxl.worksheet.table import Table, TableStyleInfo
 import openpyxl
 import openpyxl.styles
+from django.db import DEFAULT_DB_ALIAS, connections
+from django.db.models import Aggregate, CharField, Value
+from django.utils.itercompat import is_iterable
+from django_tables2.export import ExportMixin, TableExport
+from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.table import Table, TableStyleInfo
 
 
 def drop_table(table_name, using=DEFAULT_DB_ALIAS):
@@ -15,16 +16,25 @@ def drop_table(table_name, using=DEFAULT_DB_ALIAS):
         cursor.execute("DROP TABLE IF EXISTS " + connection.ops.quote_name(table_name))
 
 
-def create_temporary_table_as(table_name, queryset, using=DEFAULT_DB_ALIAS):
+def _create_table_as(table_name, queryset, using=DEFAULT_DB_ALIAS, temporary=True):
     compiler = queryset.query.get_compiler(using=using)
     sql, params = compiler.as_sql()
     connection = connections[using]
-    sql = (
-        "CREATE TEMPORARY TABLE " + connection.ops.quote_name(table_name) + " AS " + sql
-    )
+    crt = "CREATE TABLE "
+    if temporary:
+        crt = "CREATE TEMPORARY TABLE "
+    sql = crt + connection.ops.quote_name(table_name) + " AS " + sql
     drop_table(table_name, using=using)
     with connection.cursor() as cursor:
         cursor.execute(sql, params)
+
+
+def create_temporary_table_as(table_name, queryset, using=DEFAULT_DB_ALIAS):
+    return _create_table_as(table_name, queryset, using=using, temporary=True)
+
+
+def create_table_as(table_name, queryset, using=DEFAULT_DB_ALIAS):
+    return _create_table_as(table_name, queryset, using=using, temporary=False)
 
 
 def insert_into(table_name, queryset, using=DEFAULT_DB_ALIAS):
@@ -156,3 +166,19 @@ class MyExportMixin(ExportMixin):
         )
 
         return exporter.response(filename=self.get_export_filename(export_format))
+
+
+class GroupConcat(Aggregate):
+    function = "GROUP_CONCAT"
+    template = "%(function)s(%(expressions)s)"
+
+    def __init__(self, expression, delimiter, **extra):
+        output_field = extra.pop("output_field", CharField())
+        delimiter = Value(delimiter)
+        super(GroupConcat, self).__init__(
+            expression, delimiter, output_field=output_field, **extra
+        )
+
+    def as_postgresql(self, compiler, connection):
+        self.function = "STRING_AGG"
+        return super(GroupConcat, self).as_sql(compiler, connection)

@@ -3,6 +3,9 @@ import pytest
 from django.urls import reverse
 
 from bpp.models.dyscyplina_naukowa import Autor_Dyscyplina
+from bpp.models.sloty.core import IPunktacjaCacher
+from bpp.models.system import Charakter_Formalny
+from bpp.models.wydawca import Wydawca
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 from raport_slotow.views import RaportSlotowZerowy
 
@@ -14,20 +17,35 @@ def fikstura_raportu_slotow(
     jednostka,
     dyscyplina1,
     wydawnictwo_zwarte: Wydawnictwo_Zwarte,
+    charaktery_formalne,
+    typy_odpowiedzialnosci,
 ):
     # Nowak ma przypisanie na dany rok i ma prace
     Autor_Dyscyplina.objects.create(
-        autor=autor_jan_nowak, rok=2000, dyscyplina_naukowa=dyscyplina1
+        autor=autor_jan_nowak, rok=2020, dyscyplina_naukowa=dyscyplina1
     )
+
+    wydawca = Wydawca.objects.create(nazwa="Wydawca")
+    wydawca.poziom_wydawcy_set.create(rok=2020, poziom=1)
+
+    wydawnictwo_zwarte.wydawca = wydawca
+    wydawnictwo_zwarte.charakter_formalny = Charakter_Formalny.objects.get(skrot="KSP")
+    wydawnictwo_zwarte.rok = 2020
+    wydawnictwo_zwarte.punkty_kbn = 100
     wydawnictwo_zwarte.dodaj_autora(
-        autor_jan_nowak, jednostka, dyscyplina_naukowa=dyscyplina1
+        autor=autor_jan_nowak,
+        jednostka=jednostka,
+        typ_odpowiedzialnosci_skrot="aut.",
+        dyscyplina_naukowa=dyscyplina1,
     )
-    wydawnictwo_zwarte.rok = 2000
+
     wydawnictwo_zwarte.save()
+
+    IPunktacjaCacher(wydawnictwo_zwarte).rebuildEntries()
 
     # Kowalski ma przypisanie i nie ma żadnych prac
     Autor_Dyscyplina.objects.create(
-        autor=autor_jan_kowalski, rok=2000, dyscyplina_naukowa=dyscyplina1
+        autor=autor_jan_kowalski, rok=2020, dyscyplina_naukowa=dyscyplina1
     )
 
     return (autor_jan_kowalski, autor_jan_nowak)

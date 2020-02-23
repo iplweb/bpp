@@ -89,4 +89,4 @@ class RaportSlotowZerowyTable(tables.Table):
     class Meta:
         empty_text = "Brak danych"
         model = RaportZerowyEntry
-        fields = ("autor", "rok", "dyscyplina_naukowa")
+        fields = ("autor", "lata", "dyscyplina_naukowa")

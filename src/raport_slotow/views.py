@@ -2,7 +2,10 @@ import urllib
 from datetime import datetime
 from urllib.parse import urlencode
 
+from django.db import connection
 from django.db.models import F, Max, Min, Sum, Window
+from django.db.models.fields import TextField
+from django.db.models.functions import Cast
 from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
@@ -18,7 +21,6 @@ from bpp.models import (
     Cache_Punktacja_Autora_Sum_Gruop,
     Cache_Punktacja_Autora_Sum_Ponizej,
 )
-from bpp.models.cache import Autorzy
 from bpp.models.dyscyplina_naukowa import Autor_Dyscyplina
 from bpp.views.mixins import UczelniaSettingRequiredMixin
 from django_bpp.version import VERSION
@@ -37,6 +39,8 @@ from raport_slotow.util import (
     create_temporary_table_as,
     insert_into,
 )
+
+from django.contrib.postgres.aggregates.general import StringAgg
 
 from django.utils import timezone
 
@@ -330,7 +334,7 @@ class RaportSlotowZerowy(
     """
 
     template_name = "raport_slotow/raport_slotow_zerowy.html"
-    uczelnia_attr = "pokazuj_raport_slotow_autor"
+    uczelnia_attr = "pokazuj_raport_slotow_zerowy"
     filterset_class = RaportZerowyFilter
     table_class = RaportSlotowZerowyTable
 
@@ -354,13 +358,19 @@ class RaportSlotowZerowy(
         )
 
         # zestawy autor/rok/dyscyplina z całej bazy danych
-        existent = (
-            Autorzy.objects.all()
-            .values("autor_id", "rekord__rok", "dyscyplina_naukowa_id")
-            .exclude(dyscyplina_naukowa_id=None)
-            .distinct()
+        existent = Cache_Punktacja_Autora_Query.objects.all().values(
+            "autor_id", "rekord__rok", "dyscyplina_id"
         )
 
         res = defined.difference(existent)
         create_temporary_table_as("raport_slotow_raportzerowyentry", res)
-        return RaportZerowyEntry.objects.all()
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "ALTER TABLE raport_slotow_raportzerowyentry ADD COLUMN id SERIAL"
+            )
+
+        qset = RaportZerowyEntry.objects.group_by(
+            "autor", "dyscyplina_naukowa"
+        ).annotate(lata=StringAgg(Cast("rok", TextField()), ", ", ordering=("rok")))
+
+        return qset
