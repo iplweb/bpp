@@ -1,23 +1,27 @@
 import os
+import sys
 from collections import defaultdict
 
-import sys
+import xlrd
 from dbfread import DBF
 from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Q
+from django.forms.models import model_to_dict
 
 from bpp import models as bpp
 from bpp.models import (
     Status_Korekty,
-    wez_zakres_stron,
-    parse_informacje,
     Zewnetrzna_Baza_Danych,
     cache,
+    const,
+    parse_informacje,
+    wez_zakres_stron,
 )
 from bpp.system import User
 from bpp.util import pbar
 from import_dbf import models as dbf
+
 from .codecs import custom_search_function  # noqa
 
 custom_search_function  # noqa
@@ -269,7 +273,7 @@ def exp_autor(base_aut, already_seen=None):
 
 
 @transaction.atomic
-def integruj_autorow():
+def integruj_autorow(silent=False):
     tytuly = get_dict(bpp.Tytul, "skrot")
     funkcje = get_dict(bpp.Funkcja_Autora, "skrot")
 
@@ -279,15 +283,28 @@ def integruj_autorow():
         .order_by("idt_aut")
     )
 
-    for (autor_id,) in pbar(base_query):
+    if not silent:
+        base_query = pbar(base_query)
+
+    for (autor_id,) in base_query:
         a = dbf.Aut.objects.get(pk=autor_id)
         if a.bpp_autor_id is not None:
             continue
 
         autorzy = list(exp_autor(a))
         autorzy.sort(key=lambda x: x.idt_aut)
-        autor = autorzy.pop(0)
 
+        autor = None
+        forma_glowna = [autor for autor in autorzy if autor.fg == "*"]
+        if forma_glowna and len(forma_glowna) == 1:
+            autor = forma_glowna[0]
+        else:
+            autor = autorzy[0]
+
+        if len(forma_glowna) > 1:
+            print("*** Autor ma dwie lub więcej formy główne: %s" % autor)
+
+        autorzy.remove(autor)
         bpp_autor = None
 
         if autor.bpp_autor_id is not None:
@@ -372,6 +389,41 @@ def integruj_charaktery():
             )
         rec.bpp_id = charakter
         rec.save()
+
+
+def wzbogacaj_charaktery(fp):
+    for elem in xls2dict(fp):
+        ch = bpp.Charakter_Formalny.objects.get(skrot=elem["skrot"])
+        save = False
+
+        if elem["charakter_pbn"]:
+            ch.charakter_pbn = bpp.Charakter_PBN.objects.get(opis=elem["charakter_pbn"])
+            save = True
+
+        if elem["rodzaj_dla_pbn"]:
+            if elem["rodzaj_dla_pbn"] == "Książka":
+                ch.rodzaj_pbn = const.RODZAJ_PBN_KSIAZKA
+            elif elem["rodzaj_dla_pbn"] == "Artykuł":
+                ch.rodzaj_pbn = const.RODZAJ_PBN_ARTYKUL
+            elif elem["rodzaj_dla_pbn"] == "Rozdział":
+                ch.rodzaj_pbn = const.RODZAJ_PBN_ROZDZIAL
+            else:
+                raise ValueError("Niezdefiniowany rodzaj: %r" % elem["rodzaj_dla_pbn"])
+            save = True
+
+        if elem["charakter_dla_slotów"]:
+            if elem["charakter_dla_slotów"] == "Książka":
+                ch.charakter_sloty = const.CHARAKTER_SLOTY_KSIAZKA
+            elif elem["charakter_dla_slotów"] == "Rozdział":
+                ch.charakter_sloty = const.CHARAKTER_SLOTY_ROZDZIAL
+            else:
+                raise ValueError(
+                    "Niezdefiniowany rozdaj: %r" % elem["charakter_dla_slotow"]
+                )
+            save = True
+
+        if save:
+            ch.save()
 
 
 def integruj_kbn():
@@ -536,14 +588,6 @@ def mapuj_elementy_publikacji(offset, limit):
 
         rec.analyzed = True
         rec.save()
-
-
-@transaction.atomic
-def ekstrakcja_konferencji():
-    for elem in dbf.Bib_Desc.objects.filter(elem_id=103):
-        bpp.Konferencja.objects.get_or_create(nazwa=elem.value["a"])
-        for literka in "bcde":
-            assert not elem.value.get(literka)
 
 
 def to_pubmed_id(ident):
@@ -777,11 +821,9 @@ def integruj_publikacje(offset=None, limit=None):
             klass_ext = bpp.Wydawnictwo_Zwarte_Zewnetrzna_Baza_Danych
             kw["tytul_oryginalny"] = exp_combine(tytul["a"], tytul.get("b"), sep=": ")
 
-            kw["szczegoly"] = exp_add_spacing(tytul["e"])
+            kw["strony"] = exp_add_spacing(tytul["e"])
             if tytul.get("f"):
-                if kw["szczegoly"]:
-                    kw["szczegoly"] += ", "
-                kw["szczegoly"] += tytul["f"]
+                kw["szczegoly"] = exp_combine(kw.get("szczegoly"), tytul["f"])
 
             if tytul.get("c"):
                 kw["tytul_oryginalny"] = exp_combine(
@@ -793,7 +835,7 @@ def integruj_publikacje(offset=None, limit=None):
                     kw["tytul_oryginalny"], tytul.get("d")
                 )
 
-            if kw["szczegoly"]:
+            if kw.get("szczegoly") and kw.get("strony") is None:
                 kw["strony"] = wez_zakres_stron(kw["szczegoly"])
 
         elif tytul["id"] == 102:
@@ -906,30 +948,31 @@ def integruj_publikacje(offset=None, limit=None):
                 # D: strony
                 # E: bibliogr. poz
 
-                kw["informacje"] = elem.get("a")
-                kw["informacje"] = exp_combine(kw["informacje"], elem.get("b"))
+                kw["szczegoly"] = elem.get("a")
+                kw["informacje"] = exp_combine(kw.get("informacje"), elem.get("b"))
 
                 if elem.get("b"):
                     assert not kw.get("tom")
                     kw["tom"] = elem.get("b")
 
-                assert not kw.get("szczegoly")
-                kw["szczegoly"] = elem.get("c")
+                kw["szczegoly"] = exp_combine(kw["szczegoly"], elem.get("c"))
+
                 if elem.get("d"):
-                    if kw["szczegoly"]:
-                        kw["szczegoly"] += ", "
-                    kw["szczegoly"] += elem.get("d")
+                    kw["strony"] = exp_combine(kw.get("strony"), elem.get("d"))
 
                 if elem.get("e"):
-                    if kw["szczegoly"]:
-                        kw["szczegoly"] += ", "
-                    kw["szczegoly"] += elem.get("e")
+                    kw["szczegoly"] = exp_combine(kw.get("szczegoly"), elem.get("e"))
 
             elif elem["id"] == 103:
-                # Konferencja
-                konferencja = bpp.Konferencja.objects.get(nazwa=elem["a"])
-                assert not kw.get("konferencja"), (elem, rec)
-                kw["konferencja"] = konferencja
+                # Uwagi (nie: konferencja)
+                # Zgłoszenie #794 Przy imporcie wszystkie uwagi w opisach artykułów z czasopism
+                # (pole 103) stały informacjami o konferencjach, a spora część dotyczy czegoś
+                # innego. Pole to należy przenieść przy imporcie do pola "Informacje"
+                # (lub innego odpowiadającego uwadze).
+                if kw.get("uwagi") is None:
+                    kw["uwagi"] = elem["a"]
+                else:
+                    kw["uwagi"] += elem["a"]
 
             elif elem["id"] == 153:
                 assert not kw.get("szczegoly")
@@ -938,8 +981,19 @@ def integruj_publikacje(offset=None, limit=None):
                 kw["szczegoly"] = exp_combine(elem.get("b"), elem.get("c"))
 
             elif elem["id"] == 104:
-                assert not kw.get("uwagi"), (kw["uwagi"], elem, rec, rec.idt)
-                kw["uwagi"] = elem["a"]
+                # assert not kw.get("uwagi"), (kw["uwagi"], elem, rec, rec.idt)
+                if kw.get("uwagi") is None:
+                    kw["uwagi"] = elem["a"]
+                else:
+                    print(
+                        "Łączę pola UWAGI: %s | %s | %s "
+                        % (rec.idt, kw.get("uwagi"), elem["a"])
+                    )
+                    kw["uwagi"] = exp_combine(kw.get("uwagi"), elem["a"], sep=". ")
+                    kw["adnotacje"] = exp_combine(
+                        kw.get("adnotacje"), "połączone pola uwag", sep=". "
+                    )
+
                 for literka in "bcd":
                     assert not elem.get(literka), (elem, rec, rec.idt)
 
@@ -1045,7 +1099,7 @@ def integruj_publikacje(offset=None, limit=None):
                     if elem.get("b"):
                         s = dbf.Usi.objects.get(idt_usi=elem["b"][1:])
                         if s.nazwa == "CC":
-                            s.nazwa = "CC-BY"
+                            s.nazwa = "CC-ZERO"
 
                         try:
                             o = bpp.Licencja_OpenAccess.objects.get(
@@ -1311,6 +1365,9 @@ def integruj_publikacje(offset=None, limit=None):
             kw["tytul_oryginalny"] = t1
             kw["tytul"] = t2
 
+        import pprint
+
+        pprint.pprint(kw)
         res = klass.objects.create(**kw)
 
         rec.object = res
@@ -1328,6 +1385,62 @@ def wyswietl_prace_bez_dopasowania(logger):
         logger.info("Prace bez dopasowania: %i rekordow. " % bez.count())
         for rec in bez[:30]:
             logger.info((rec.idt, rec.rok, rec.tytul_or_s))
+
+
+@transaction.atomic
+def zatwierdz_podwojne_przypisania(logger):
+    """Zakładamy, że podwójne przypisania w bazie danych są POPRAWNE. Expertus
+    nie umożliwia sytuacji, gdzie dwóch Janów Kowalskich ma dwa rekordy
+    (zdaniem BG UMW), stąd w przypadku podwójnych przypisań autorów, utwórz
+    nowy rekord dla drugiego(czy na pewno?) autora
+
+    Genialnie byłoby tu upewnić się, że każdy tworzony dodatkowy rekord
+    to rekord w obcej jednostce
+    """
+    from django.conf import settings
+
+    setattr(settings, "ENABLE_DATA_AKT_PBN_UPDATE", False)
+
+    for elem in (
+        dbf.B_A.objects.order_by()
+        .values("idt_id", "idt_aut_id",)
+        .annotate(cnt=Count("*"))
+        .filter(cnt__gt=1)
+    ):
+        elem["cnt"]
+        for melem in dbf.B_A.objects.filter(
+            idt_id=elem["idt_id"], idt_aut_id=elem["idt_aut_id"]
+        )[1:]:
+            logger.info(
+                (
+                    "Tworzę dodatkowe (podwójne) przypisanie",
+                    melem.idt.tytul_or_s,
+                    "(",
+                    melem.idt.rok,
+                    ") - ",
+                    melem.idt_aut,
+                    ", jedn. ",
+                    melem.idt_jed,
+                )
+            )
+
+            kw = model_to_dict(melem.idt_aut)
+            kw["idt_jed_id"] = kw.pop("idt_jed")
+            kw["exp_id"] = None
+            kw["bpp_autor"] = None
+            kw["bpp_autor_id"] = None
+            kw["orcid_id"] = None
+            kw["pbn_id"] = None
+            kw["ref"] = None
+            from django.db.models import Max
+
+            kw["idt_aut"] = dbf.Aut.objects.all().aggregate(c=Max("idt_aut"))["c"] + 1
+            idt_aut = dbf.Aut.objects.create(**kw)
+
+            melem.idt_aut = idt_aut
+            melem.save()
+
+    integruj_autorow()
 
 
 @transaction.atomic
@@ -1419,6 +1532,7 @@ def integruj_b_a(offset=None, limit=None):
     # }
 
     ta_id = bpp.Typ_Odpowiedzialnosci.objects.get(skrot="aut.").pk
+    tr_id = bpp.Typ_Odpowiedzialnosci.objects.get(skrot="red.").pk
 
     from django.db import reset_queries, connection
 
@@ -1465,15 +1579,24 @@ def integruj_b_a(offset=None, limit=None):
             else:
                 lp = int(rec.lp)
 
+        typ_odp = ta_id
+        zj = f"{rec.idt_aut.imiona} {rec.idt_aut.nazwisko}"
+
+        red1 = rec.idt_aut.imiona.strip().startswith("<")
+        red2 = rec.idt_aut.nazwisko.strip().startswith("<")
+        if red1 and red2:
+            typ_odp = tr_id
+            zj = zj.replace("<", "").replace(">", "")
+
         try:
             klass.objects.create(
                 rekord_id=bpp_rec_id,
                 autor_id=bpp_autor_id,
                 jednostka_id=bpp_jednostka_id,
-                zapisany_jako=f"{rec.idt_aut.imiona} {rec.idt_aut.nazwisko}",
+                zapisany_jako=zj,
                 afiliuje=rec.afiliacja == "*",
                 kolejnosc=lp,
-                typ_odpowiedzialnosci_id=ta_id,
+                typ_odpowiedzialnosci_id=typ_odp,
             )
         except IntegrityError as e:
             print(
@@ -1511,3 +1634,19 @@ def przypisz_jednostki():
         bpp.Autor_Jednostka.objects.get_or_create(
             autor_id=elem[0], jednostka_id=elem[1]
         )
+
+
+def xls2dict(fp):
+    """Wczytuje plik XLS do słownika. Tylko pierwszy skoroszyt.
+    Pierwszy wiersz w pliku XLS to nazwy kolumn, które będą użyte
+    w zwracanych słownikach."""
+
+    book = xlrd.open_workbook(fp)
+    first_sheet = book.sheet_by_index(0)
+    headers = [x.lower().replace(" ", "_") for x in first_sheet.row_values(0)]
+
+    for row_idx in range(1, first_sheet.nrows):
+        ret = {}
+        for col_idx, header in zip(range(0, first_sheet.ncols), headers):
+            ret[header] = first_sheet.cell(row_idx, col_idx).value
+        yield ret

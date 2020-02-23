@@ -59,5 +59,6 @@ CREATE TRIGGER bpp_praca_habilitacyjna_cache_trigger
 EXECUTE PROCEDURE bpp_refresh_cache();
 
 insert into bpp_rekord_mat select * from bpp_rekord;
+insert into bpp_autorzy_mat select * from bpp_autorzy;
 
 COMMIT;

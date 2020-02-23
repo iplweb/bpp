@@ -1,4 +1,4 @@
-PSQL=psql -t --echo-errors bpp | grep -v "INSERT 0 1"
+PSQL=psql -q -t --echo-errors bpp | grep -v "INSERT 0 1"
 PSQL_VERBOSE=psql -t --echo-errors -a bpp
 MANAGE=python ../manage.py
 DBF2SQL=python ../../../manage.py dbf2sql
@@ -17,20 +17,31 @@ usun-integracje-autorow:
 	echo "begin; delete from bpp_autor_jednostka; delete from bpp_autor;update import_dbf_aut set bpp_autor_id = NULL where bpp_autor_id IS NOT NULL;commit;" | $(PSQL)
 
 integruj-dbf-autorzy:
-
 	$(MANAGE) integruj_dbf --enable-wydzial
 	$(MANAGE) integruj_dbf --enable-jednostka
 	$(MANAGE) integruj_dbf --enable-autor
 
+importuj-dyscypliny:
+	$(MANAGE) importuj_dyscypliny -v0 2017 /Volumes/Dane\ zaszyfrowane/UMWroclaw/dyscypliny_BPP.xlsx
+	$(MANAGE) importuj_dyscypliny -v0 2018 /Volumes/Dane\ zaszyfrowane/UMWroclaw/dyscypliny_BPP.xlsx
+	$(MANAGE) importuj_dyscypliny -v0 2019 /Volumes/Dane\ zaszyfrowane/UMWroclaw/dyscypliny_BPP.xlsx
+	$(MANAGE) importuj_dyscypliny -v0 2020 /Volumes/Dane\ zaszyfrowane/UMWroclaw/dyscypliny_BPP.xlsx
+
 integruj-dbf-publikacje:
-	$(MANAGE) integruj_dbf --enable-charakter-kbn-jezyk
+	$(MANAGE) integruj_dbf --enable-charakter-kbn-jezyk --charaktery-enrichment-xls /Volumes/Dane\ zaszyfrowane/UMWroclaw/charaktery.xlsx
 	$(MANAGE) integruj_dbf --enable-zrodlo
-	$(MANAGE) integruj_dbf --enable-publikacja
+	$(MANAGE) integruj_dbf --enable-publikacja > integruj-dbf-publikacja-log.txt
+	$(MANAGE) integruj_dbf --enable-zatwierdz-podwojne-przypisania
 	$(MANAGE) integruj_dbf --enable-b-a
 	$(MANAGE) integruj_dbf --enable-przypisz-jednostki
 
-integruj-dbf: integruj-dbf-autorzy integruj-dbf-publikacje
+przypisz-dyscypliny:
+	$(MANAGE) przypisz_dyscypliny -v0 2017 --ustawiaj-pierwsza-gdy-dwie --disable-cache
+	$(MANAGE) przypisz_dyscypliny -v0 2018 --ustawiaj-pierwsza-gdy-dwie --disable-cache
+	$(MANAGE) przypisz_dyscypliny -v0 2019 --ustawiaj-pierwsza-gdy-dwie --disable-cache
+	$(MANAGE) przypisz_dyscypliny -v0 2020 --ustawiaj-pierwsza-gdy-dwie --disable-cache
 
+integruj-dbf: integruj-dbf-autorzy importuj-dyscypliny integruj-dbf-publikacje przypisz-dyscypliny
 
 remove-dbfs:
 	echo "select 'drop table '||tablename||';' from pg_tables where tablename like 'import_dbf_%'" | \
@@ -39,16 +50,21 @@ remove-dbfs:
 
 alter-schema:
 	cat sql/alter-schema.sql | $(PSQL_VERBOSE)
-	cat sql/alter-umw.sql | $(PSQL_VERBOSE)
+	cat sql/translate-title.sql | $(PSQL)
+	cat sql/translate-autor.sql | $(PSQL)
+	cat sql/translate-poz.sql | $(PSQL)
+	cat sql/translate-usi.sql | $(PSQL)
+	cat sql/translate-zrodlo.sql | $(PSQL)
+	cat sql/alter-umw.sql | $(PSQL)
 
 delete-imported-data:
 	cat sql/remove-imported.sql | $(PSQL)
 
 disable-trigger:
-	cat sql/disable-trigger.sql | $(PSQL)
+	cat sql/disable-trigger.sql | $(PSQL_VERBOSE)
 
 enable-trigger:
-	cat sql/enable-trigger.sql | $(PSQL)
+	cat sql/enable-trigger.sql | $(PSQL_VERBOSE)
 
 
 create-schema:
@@ -62,8 +78,8 @@ recreate-db:
 rebuild-cache:
 	$(MANAGE) rebuild_cache
 
-pre-import: recreate-db convert-dbfs import-converted-dbfs alter-schema
+import-dbf: recreate-db import-converted-dbfs alter-schema
 
-import: disable-trigger integruj-dbf rebuild-cache enable-trigger
+integrate: disable-trigger integruj-dbf rebuild-cache enable-trigger
 
-rebuild-db: pre-import import
+rebuild: convert-dbfs import-dbf integrate

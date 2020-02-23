@@ -16,31 +16,55 @@ from django.db import models, transaction, reset_queries, connection
 from django.db.models import Func, ForeignKey, CASCADE
 from django.db.models.deletion import DO_NOTHING
 from django.db.models.lookups import In
-from django.db.models.signals import post_save, post_delete, pre_save, \
-    pre_delete
+from django.db.models.signals import post_save, post_delete, pre_save, pre_delete
 from django.utils import six
 from django.utils.functional import cached_property
 
-from bpp.models import Patent, \
-    Praca_Doktorska, Praca_Habilitacyjna, \
-    Typ_Odpowiedzialnosci, Wydawnictwo_Zwarte, \
-    Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor, \
-    Patent_Autor, Zrodlo, Dyscyplina_Naukowa, Autor, Jednostka
-from bpp.models.abstract import ModelPunktowanyBaza, \
-    ModelZRokiem, ModelZeSzczegolami, ModelRecenzowany, \
-    ModelZeZnakamiWydawniczymi, ModelZOpenAccess, ModelZKonferencja, \
-    ModelTypowany, ModelZCharakterem
+from bpp.models import (
+    Patent,
+    Praca_Doktorska,
+    Praca_Habilitacyjna,
+    Typ_Odpowiedzialnosci,
+    Wydawnictwo_Zwarte,
+    Wydawnictwo_Ciagle,
+    Wydawnictwo_Ciagle_Autor,
+    Wydawnictwo_Zwarte_Autor,
+    Patent_Autor,
+    Zrodlo,
+    Dyscyplina_Naukowa,
+    Autor,
+    Jednostka,
+)
+from bpp.models.abstract import (
+    ModelPunktowanyBaza,
+    ModelZRokiem,
+    ModelZeSzczegolami,
+    ModelRecenzowany,
+    ModelZeZnakamiWydawniczymi,
+    ModelZOpenAccess,
+    ModelZKonferencja,
+    ModelTypowany,
+    ModelZCharakterem,
+)
 from bpp.models.system import Charakter_Formalny, Jezyk
 from bpp.models.util import ModelZOpisemBibliograficznym
 from bpp.util import FulltextSearchMixin
 
 # zmiana CACHED_MODELS powoduje zmiane opisu bibliograficznego wszystkich rekordow
-CACHED_MODELS = [Wydawnictwo_Ciagle, Wydawnictwo_Zwarte, Praca_Doktorska,
-                 Praca_Habilitacyjna, Patent]
+CACHED_MODELS = [
+    Wydawnictwo_Ciagle,
+    Wydawnictwo_Zwarte,
+    Praca_Doktorska,
+    Praca_Habilitacyjna,
+    Patent,
+]
 
 # zmiana DEPENDEND_REKORD_MODELS powoduje zmiane opisu bibliograficznego rekordu z pola z ich .rekord
-DEPENDENT_REKORD_MODELS = [Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor,
-                           Patent_Autor]
+DEPENDENT_REKORD_MODELS = [
+    Wydawnictwo_Ciagle_Autor,
+    Wydawnictwo_Zwarte_Autor,
+    Patent_Autor,
+]
 
 # Other dependent -- czyli skasowanie tych obiektów pociąga za sobą odbudowanie tabeli cache
 OTHER_DEPENDENT_MODELS = [Typ_Odpowiedzialnosci, Jezyk, Charakter_Formalny, Zrodlo]
@@ -49,13 +73,15 @@ OTHER_DEPENDENT_MODELS = [Typ_Odpowiedzialnosci, Jezyk, Charakter_Formalny, Zrod
 def defer_zaktualizuj_opis(instance, *args, **kw):
     """Obiekt typu Wydawnictwo_..., Patent, Praca_... został zapisany.
     Zaktualizuj jego opis bibliograficzny."""
-    flds = kw.get('update_fields', [])
+    flds = kw.get("update_fields", [])
 
     if flds:
         flds = list(flds)
-        for elem in ['opis_bibliograficzny_cache',
-                     'opis_bibliograficzny_autorzy_cache',
-                     'opis_bibliograficzny_zapisani_autorzy_cache']:
+        for elem in [
+            "opis_bibliograficzny_cache",
+            "opis_bibliograficzny_autorzy_cache",
+            "opis_bibliograficzny_zapisani_autorzy_cache",
+        ]:
             try:
                 flds.remove(elem)
             except ValueError:
@@ -105,7 +131,9 @@ def zrodlo_pre_save(instance, *args, **kw):
         return
 
     if old.skrot != instance.skrot:  # sprawdz skrot, bo on idzie do opisu
-        instance._BPP_CHANGED_FIELDS = ['skrot', ]
+        instance._BPP_CHANGED_FIELDS = [
+            "skrot",
+        ]
 
 
 def zrodlo_post_save(instance, *args, **kw):
@@ -114,16 +142,19 @@ def zrodlo_post_save(instance, *args, **kw):
 
     changed = getattr(instance, "_BPP_CHANGED_FIELDS", [])
     if not changed:
-        changed = kw.get('update_fields') or []
+        changed = kw.get("update_fields") or []
 
-    if 'skrot' in changed:
+    if "skrot" in changed:
         from bpp.tasks import zaktualizuj_zrodlo
+
         zaktualizuj_zrodlo.delay(instance.pk)
 
 
 def zrodlo_pre_delete(instance, *args, **kw):
     # TODO: moze byc memory-consuming, lepiej byloby to wrzucic do bazy danych - moze?
-    instance._PRACE = list(Rekord.objects.filter(zrodlo__id=instance.pk).values_list("id", flat=True))
+    instance._PRACE = list(
+        Rekord.objects.filter(zrodlo__id=instance.pk).values_list("id", flat=True)
+    )
 
 
 def zrodlo_post_delete(instance, *args, **kw):
@@ -133,8 +164,6 @@ def zrodlo_post_delete(instance, *args, **kw):
         except Rekord.DoesNotExist:
             continue
         defer_zaktualizuj_opis(rekord.original)
-
-    pass
 
 
 _CACHE_ENABLED = False
@@ -151,7 +180,8 @@ class AlreadyDisabledException(Exception):
 def enable():
     global _CACHE_ENABLED
 
-    if _CACHE_ENABLED: raise AlreadyEnabledException()
+    if _CACHE_ENABLED:
+        raise AlreadyEnabledException()
 
     pre_save.connect(zrodlo_pre_save, sender=Zrodlo)
     post_save.connect(zrodlo_post_save, sender=Zrodlo)
@@ -203,11 +233,11 @@ class TupleField(ArrayField):
 class TupleInLookup(In):
     def get_prep_lookup(self):
         values = super(TupleInLookup, self).get_prep_lookup()
-        if hasattr(self.rhs, '_prepare'):
+        if hasattr(self.rhs, "_prepare"):
             return values
         prepared_values = []
         for value in values:
-            if hasattr(value, 'resolve_expression'):
+            if hasattr(value, "resolve_expression"):
                 prepared_values.append(value)
             else:
                 prepared_values.append(tuple(value))
@@ -220,17 +250,14 @@ class AutorzyManager(models.Manager):
 
 
 class AutorzyBase(models.Model):
-    id = TupleField(
-        models.IntegerField(),
-        size=2,
-        primary_key=True)
+    id = TupleField(models.IntegerField(), size=2, primary_key=True)
 
-    autor = models.ForeignKey('Autor', DO_NOTHING)
-    jednostka = models.ForeignKey('Jednostka', DO_NOTHING)
+    autor = models.ForeignKey("Autor", DO_NOTHING)
+    jednostka = models.ForeignKey("Jednostka", DO_NOTHING)
     kolejnosc = models.IntegerField()
-    typ_odpowiedzialnosci = models.ForeignKey('Typ_Odpowiedzialnosci', DO_NOTHING)
+    typ_odpowiedzialnosci = models.ForeignKey("Typ_Odpowiedzialnosci", DO_NOTHING)
     zapisany_jako = models.TextField()
-    dyscyplina_naukowa = models.ForeignKey('Dyscyplina_Naukowa', DO_NOTHING)
+    dyscyplina_naukowa = models.ForeignKey("Dyscyplina_Naukowa", DO_NOTHING)
 
     afiliuje = models.BooleanField()
     zatrudniony = models.BooleanField()
@@ -243,44 +270,40 @@ class AutorzyBase(models.Model):
 
 class Autorzy(AutorzyBase):
     rekord = models.ForeignKey(
-        'bpp.Rekord',
+        "bpp.Rekord",
         related_name="autorzy",
         # tak na prawdę w bazie danych jest constraint dla ON_DELETE, ale
         # dajemy to tutaj, żeby django się nie awanturowało i nie próbowało
         # tego ręcznie kasować
-        on_delete=DO_NOTHING
+        on_delete=DO_NOTHING,
     )
 
     class Meta:
         managed = False
-        db_table = 'bpp_autorzy_mat'
+        db_table = "bpp_autorzy_mat"
 
 
 class AutorzyView(AutorzyBase):
     rekord = models.ForeignKey(
-        'bpp.RekordView',
+        "bpp.RekordView",
         related_name="autorzy",
         # tak na prawdę w bazie danych jest constraint dla ON_DELETE, ale
         # dajemy to tutaj, żeby django się nie awanturowało i nie próbowało
         # tego ręcznie kasować
-        on_delete=DO_NOTHING
+        on_delete=DO_NOTHING,
     )
 
     class Meta:
         managed = False
-        db_table = 'bpp_autorzy'
+        db_table = "bpp_autorzy"
 
 
 class ZewnetrzneBazyDanychView(models.Model):
     rekord = models.ForeignKey(
-        'bpp.Rekord',
-        related_name='zewnetrzne_bazy',
-        on_delete=DO_NOTHING)
-
-    baza = models.ForeignKey(
-        'bpp.Zewnetrzna_Baza_Danych',
-        on_delete=DO_NOTHING
+        "bpp.Rekord", related_name="zewnetrzne_bazy", on_delete=DO_NOTHING
     )
+
+    baza = models.ForeignKey("bpp.Zewnetrzna_Baza_Danych", on_delete=DO_NOTHING)
 
     info = models.TextField()
 
@@ -290,13 +313,10 @@ class ZewnetrzneBazyDanychView(models.Model):
 
 
 class RekordManager(FulltextSearchMixin, models.Manager):
-    fts_field = 'search_index'
+    fts_field = "search_index"
 
     def get_for_model(self, model):
-        pk = (
-            ContentType.objects.get_for_model(model).pk,
-            model.pk
-        )
+        pk = (ContentType.objects.get_for_model(model).pk, model.pk)
         return self.get(pk=pk)
 
     def prace_autora(self, autor):
@@ -308,39 +328,43 @@ class RekordManager(FulltextSearchMixin, models.Manager):
         do jednostek skupiających pracowników, gdzie autor jest zaznaczony jako
         afiliowany.
         """
-        return self.prace_autora(autor).filter(
-            autorzy__autor=autor,
-            autorzy__jednostka__skupia_pracownikow=True,
-            autorzy__afiliuje=True
-        ).distinct()
+        return (
+            self.prace_autora(autor)
+            .filter(
+                autorzy__autor=autor,
+                autorzy__jednostka__skupia_pracownikow=True,
+                autorzy__afiliuje=True,
+            )
+            .distinct()
+        )
 
     def prace_autor_i_typ(self, autor, skrot):
-        return self.prace_autora(autor).filter(
-            autorzy__typ_odpowiedzialnosci_id=Typ_Odpowiedzialnosci.objects.get(skrot=skrot).pk
-        ).distinct()
+        return (
+            self.prace_autora(autor)
+            .filter(
+                autorzy__typ_odpowiedzialnosci_id=Typ_Odpowiedzialnosci.objects.get(
+                    skrot=skrot
+                ).pk
+            )
+            .distinct()
+        )
 
     def prace_jednostki(self, jednostka):
-        return self.filter(
-            autorzy__jednostka=jednostka
-        ).distinct()
+        return self.filter(autorzy__jednostka=jednostka).distinct()
 
     def prace_wydzialu(self, wydzial):
-        return self.filter(
-            autorzy__jednostka__wydzial=wydzial
-        ).distinct()
+        return self.filter(autorzy__jednostka__wydzial=wydzial).distinct()
 
     def redaktorzy_z_jednostki(self, jednostka):
         return self.filter(
             autorzy__jednostka=jednostka,
             autorzy__typ_odpowiedzialnosci_id=Typ_Odpowiedzialnosci.objects.get(
-                skrot='red.').pk
+                skrot="red."
+            ).pk,
         ).distinct()
 
     def get_original(self, model):
-        return self.get(pk=[
-            ContentType.objects.get_for_model(model).pk,
-            model.pk
-        ])
+        return self.get(pk=[ContentType.objects.get_for_model(model).pk, model.pk])
 
     @transaction.atomic
     def full_refresh(self):
@@ -375,16 +399,20 @@ class RekordManager(FulltextSearchMixin, models.Manager):
 
 
 @six.python_2_unicode_compatible
-class RekordBase(ModelPunktowanyBaza, ModelZOpisemBibliograficznym,
-                 ModelZRokiem, ModelZeSzczegolami, ModelRecenzowany,
-                 ModelZeZnakamiWydawniczymi, ModelZOpenAccess,
-                 ModelTypowany, ModelZCharakterem,
-                 ModelZKonferencja,
-                 models.Model):
-    id = TupleField(
-        models.IntegerField(),
-        size=2,
-        primary_key=True)
+class RekordBase(
+    ModelPunktowanyBaza,
+    ModelZOpisemBibliograficznym,
+    ModelZRokiem,
+    ModelZeSzczegolami,
+    ModelRecenzowany,
+    ModelZeZnakamiWydawniczymi,
+    ModelZOpenAccess,
+    ModelTypowany,
+    ModelZCharakterem,
+    ModelZKonferencja,
+    models.Model,
+):
+    id = TupleField(models.IntegerField(), size=2, primary_key=True)
 
     tekst_przed_pierwszym_autorem = None
     tekst_po_ostatnim_autorze = None
@@ -427,7 +455,7 @@ class RekordBase(ModelPunktowanyBaza, ModelZOpisemBibliograficznym,
         "typ_odpowiedzialnosci": "autorzy__typ_odpowiedzialnosci__skrot",
         "autor": "autorzy__autor_id",
         "jednostka": "autorzy__jednostka__pk",
-        "wydzial": "autorzy__jednostka__wydzial__pk"
+        "wydzial": "autorzy__jednostka__wydzial__pk",
     }
 
     class Meta:
@@ -454,12 +482,20 @@ class RekordBase(ModelPunktowanyBaza, ModelZOpisemBibliograficznym,
 
     @cached_property
     def ma_punktacje_sloty(self):
-        return Cache_Punktacja_Autora.objects.filter(rekord_id=[self.id[0], self.id[1]]).exists() or \
-               Cache_Punktacja_Dyscypliny.objects.filter(rekord_id=[self.id[0], self.id[1]]).exists()
+        return (
+            Cache_Punktacja_Autora.objects.filter(
+                rekord_id=[self.id[0], self.id[1]]
+            ).exists()
+            or Cache_Punktacja_Dyscypliny.objects.filter(
+                rekord_id=[self.id[0], self.id[1]]
+            ).exists()
+        )
 
     @cached_property
     def punktacja_dyscypliny(self):
-        return Cache_Punktacja_Dyscypliny.objects.filter(rekord_id=[self.id[0], self.id[1]])
+        return Cache_Punktacja_Dyscypliny.objects.filter(
+            rekord_id=[self.id[0], self.id[1]]
+        )
 
     @cached_property
     def punktacja_autora(self):
@@ -469,14 +505,14 @@ class RekordBase(ModelPunktowanyBaza, ModelZOpisemBibliograficznym,
 class Rekord(RekordBase):
     class Meta:
         managed = False
-        ordering = ['tytul_oryginalny_sort']
-        db_table = 'bpp_rekord_mat'
+        ordering = ["tytul_oryginalny_sort"]
+        db_table = "bpp_rekord_mat"
 
 
 class RekordView(RekordBase):
     class Meta:
         managed = False
-        db_table = 'bpp_rekord'
+        db_table = "bpp_rekord"
 
 
 def with_cache(fun):
@@ -500,7 +536,9 @@ def with_cache(fun):
             if not enable_failure:
                 disable()
             else:
-                raise Exception("Enable failure, trace enable function, there was a bug there...")
+                raise Exception(
+                    "Enable failure, trace enable function, there was a bug there..."
+                )
 
     return _wrapped
 
@@ -510,13 +548,12 @@ class CacheManager(models.Manager):
         from bpp.tasks import aktualizuj_cache
 
         obj, created = self.get_or_create(
-            created_on=Func(function='NOW'),
+            created_on=Func(function="NOW"),
             object_id=obj.pk,
-            content_type=ContentType.objects.get_for_model(obj._meta.model))
+            content_type=ContentType.objects.get_for_model(obj._meta.model),
+        )
         if created:
-            transaction.on_commit(
-                lambda: aktualizuj_cache.delay()
-            )
+            transaction.on_commit(lambda: aktualizuj_cache.delay())
 
         return obj
 
@@ -539,12 +576,12 @@ class CacheQueue(models.Model):
 
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField()
-    rekord = GenericForeignKey('content_type', 'object_id')
+    rekord = GenericForeignKey("content_type", "object_id")
 
     objects = CacheManager()
 
     class Meta:
-        ordering = ('-created_on',)
+        ordering = ("-created_on",)
 
 
 class Cache_Punktacja_Dyscypliny(models.Model):
@@ -555,7 +592,7 @@ class Cache_Punktacja_Dyscypliny(models.Model):
     slot = models.DecimalField(max_digits=20, decimal_places=4)
 
     class Meta:
-        ordering = ('dyscyplina__nazwa',)
+        ordering = ("dyscyplina__nazwa",)
 
 
 class Cache_Punktacja_Autora_Base(models.Model):
@@ -566,7 +603,7 @@ class Cache_Punktacja_Autora_Base(models.Model):
     slot = models.DecimalField(max_digits=20, decimal_places=4)
 
     class Meta:
-        ordering = ('autor__nazwisko', 'dyscyplina__nazwa')
+        ordering = ("autor__nazwisko", "dyscyplina__nazwa")
         abstract = True
 
 
@@ -574,19 +611,19 @@ class Cache_Punktacja_Autora(Cache_Punktacja_Autora_Base):
     rekord_id = TupleField(models.IntegerField(), size=2, db_index=True)
 
     class Meta:
-        ordering = ('autor__nazwisko', 'dyscyplina__nazwa')
+        ordering = ("autor__nazwisko", "dyscyplina__nazwa")
 
 
 class Cache_Punktacja_Autora_Query(Cache_Punktacja_Autora_Base):
-    rekord = ForeignKey('bpp.Rekord', DO_NOTHING)
+    rekord = ForeignKey("bpp.Rekord", DO_NOTHING)
 
     class Meta:
-        db_table = 'bpp_cache_punktacja_autora'
+        db_table = "bpp_cache_punktacja_autora"
         managed = False
 
 
 class Cache_Punktacja_Autora_Sum(Cache_Punktacja_Autora_Base):
-    rekord = ForeignKey('bpp.Rekord', DO_NOTHING)
+    rekord = ForeignKey("bpp.Rekord", DO_NOTHING)
     autor = ForeignKey(Autor, DO_NOTHING)
     jednostka = ForeignKey(Jednostka, DO_NOTHING)
     dyscyplina = ForeignKey(Dyscyplina_Naukowa, DO_NOTHING)
@@ -595,13 +632,17 @@ class Cache_Punktacja_Autora_Sum(Cache_Punktacja_Autora_Base):
     pkdautslotsum = models.FloatField()
 
     class Meta:
-        db_table = 'bpp_temporary_cpaq'
+        db_table = "bpp_temporary_cpaq"
         managed = False
-        ordering = ('autor', 'dyscyplina', '-pkdautslot',)
+        ordering = (
+            "autor",
+            "dyscyplina",
+            "-pkdautslot",
+        )
 
 
 class Cache_Punktacja_Autora_Sum_Ponizej(Cache_Punktacja_Autora_Base):
-    rekord = ForeignKey('bpp.Rekord', DO_NOTHING)
+    rekord = ForeignKey("bpp.Rekord", DO_NOTHING)
     autor = ForeignKey(Autor, DO_NOTHING)
     jednostka = ForeignKey(Jednostka, DO_NOTHING)
     dyscyplina = ForeignKey(Dyscyplina_Naukowa, DO_NOTHING)
@@ -610,9 +651,13 @@ class Cache_Punktacja_Autora_Sum_Ponizej(Cache_Punktacja_Autora_Base):
     pkdautslotsum = models.FloatField()
 
     class Meta:
-        db_table = 'bpp_temporary_cpaq_2'
+        db_table = "bpp_temporary_cpaq_2"
         managed = False
-        ordering = ('autor', 'dyscyplina', 'pkdautslot',)
+        ordering = (
+            "autor",
+            "dyscyplina",
+            "pkdautslot",
+        )
 
 
 class Cache_Punktacja_Autora_Sum_Group_Ponizej(models.Model):
@@ -623,9 +668,12 @@ class Cache_Punktacja_Autora_Sum_Group_Ponizej(models.Model):
     pkdautslotsum = models.FloatField()
 
     class Meta:
-        db_table = 'bpp_temporary_cpasg_2'
+        db_table = "bpp_temporary_cpasg_2"
         managed = False
-        ordering = ('autor', 'dyscyplina',)
+        ordering = (
+            "autor",
+            "dyscyplina",
+        )
 
 
 class Cache_Punktacja_Autora_Sum_Gruop(models.Model):
@@ -636,14 +684,18 @@ class Cache_Punktacja_Autora_Sum_Gruop(models.Model):
     pkdautslotsum = models.FloatField()
 
     class Meta:
-        db_table = 'bpp_temporary_cpasg'
+        db_table = "bpp_temporary_cpasg"
         managed = False
-        ordering = ('autor', 'dyscyplina',)
+        ordering = (
+            "autor",
+            "dyscyplina",
+        )
 
 
 #
 # Rebuilder
 #
+
 
 @transaction.atomic
 def rebuild(klass, offset=None, limit=None, extra_flds=None, extra_tables=None):
@@ -653,30 +705,33 @@ def rebuild(klass, offset=None, limit=None, extra_flds=None, extra_tables=None):
     if extra_tables is None:
         extra_tables = ()
 
-    ids = klass.objects.all().values_list('pk')[offset:limit]
+    ids = klass.objects.all().values_list("pk").order_by("pk")[offset:limit]
 
-    query = klass.objects.filter(pk__in=ids). \
-        select_for_update(nowait=True, of=('self',)). \
-        select_related("charakter_formalny", "typ_kbn", *extra_tables). \
-        only("tytul_oryginalny",
-             "tytul",
-             "informacje",
-             "charakter_formalny__skrot",
-             "charakter_formalny__charakter_sloty",
-             "szczegoly",
-             "uwagi",
-             "doi",
-             "tekst_przed_pierwszym_autorem",
-             "tekst_po_ostatnim_autorze",
-
-             "opis_bibliograficzny_cache",
-             "opis_bibliograficzny_autorzy_cache",
-             "opis_bibliograficzny_zapisani_autorzy_cache",
-
-             "typ_kbn__nazwa",
-             "typ_kbn__skrot",
-             "rok",
-             "punkty_kbn", *extra_flds)
+    query = (
+        klass.objects.filter(pk__in=ids)
+        .select_for_update(nowait=True, of=("self",))
+        .select_related("charakter_formalny", "typ_kbn", *extra_tables)
+        .only(
+            "tytul_oryginalny",
+            "tytul",
+            "informacje",
+            "charakter_formalny__skrot",
+            "charakter_formalny__charakter_sloty",
+            "szczegoly",
+            "uwagi",
+            "doi",
+            "tekst_przed_pierwszym_autorem",
+            "tekst_po_ostatnim_autorze",
+            "opis_bibliograficzny_cache",
+            "opis_bibliograficzny_autorzy_cache",
+            "opis_bibliograficzny_zapisani_autorzy_cache",
+            "typ_kbn__nazwa",
+            "typ_kbn__skrot",
+            "rok",
+            "punkty_kbn",
+            *extra_flds
+        )
+    )
 
     from bpp.tasks import aktualizuj_cache_rekordu
 
@@ -696,12 +751,23 @@ def rebuild(klass, offset=None, limit=None, extra_flds=None, extra_tables=None):
 
 def rebuild_zwarte(offset=None, limit=None):
     return rebuild(
-        Wydawnictwo_Zwarte, offset=offset, limit=limit,
-        extra_tables=['wydawca', ],
-        extra_flds=['miejsce_i_rok', 'wydawca__nazwa', 'wydawca_opis', 'isbn'])
+        Wydawnictwo_Zwarte,
+        offset=offset,
+        limit=limit,
+        extra_tables=["wydawca",],
+        extra_flds=["miejsce_i_rok", "wydawca__nazwa", "wydawca_opis", "isbn"],
+    )
 
 
 def rebuild_ciagle(offset=None, limit=None):
-    return rebuild(Wydawnictwo_Ciagle, offset=offset, limit=limit,
-                   extra_tables=['zrodlo'],
-                   extra_flds=['zrodlo__nazwa', 'zrodlo__skrot'])
+    return rebuild(
+        Wydawnictwo_Ciagle,
+        offset=offset,
+        limit=limit,
+        extra_tables=["zrodlo"],
+        extra_flds=["zrodlo__nazwa", "zrodlo__skrot"],
+    )
+
+
+def rebuild_patent(offset=None, limit=None):
+    return rebuild(Patent, offset=offset, limit=limit,)

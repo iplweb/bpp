@@ -41,8 +41,29 @@ def matchuj_jednostke(nazwa):
 
 
 def matchuj_autora(
-    imiona, nazwisko, jednostka=None, pesel_md5=None, orcid=None, tytul_str=None
+    imiona,
+    nazwisko,
+    jednostka=None,
+    pesel_md5=None,
+    pbn_id=None,
+    orcid=None,
+    tytul_str=None,
 ):
+    if pbn_id is not None:
+        if type(pbn_id) == str:
+            pbn_id = pbn_id.strip()
+
+        try:
+            pbn_id = int(pbn_id)
+        except (TypeError, ValueError):
+            pbn_id = None
+
+        if pbn_id is not None:
+            try:
+                return (Autor.objects.get(pbn_id=pbn_id), "")
+            except Autor.DoesNotExist:
+                pass
+
     if pesel_md5:
         try:
             return (Autor.objects.get(pesel_md5__iexact=pesel_md5.strip()), "")
@@ -51,6 +72,7 @@ def matchuj_autora(
 
     if orcid:
         try:
+
             return (Autor.objects.get(orcid__iexact=orcid.strip()), "")
         except Autor.DoesNotExist:
             pass
@@ -130,7 +152,18 @@ def pesel_md5(value_from_xls):
 
 def znajdz_naglowek(
     sciezka,
-    try_names=["imię", "imie", "imiona", "nazwisko", "nazwiska", "orcid", "pesel"],
+    try_names=[
+        "imię",
+        "imie",
+        "imiona",
+        "nazwisko",
+        "nazwiska",
+        "orcid",
+        "pesel",
+        "pbn-id",
+        "pbn_id",
+        "pbn id",
+    ],
     min_points=3,
 ):
     """
@@ -217,6 +250,7 @@ def przeanalizuj_plik_xls(sciezka, parent):
             jednostka=jednostka,
             pesel_md5=original.get("pesel_md5", None),
             orcid=original.get("orcid", None),
+            pbn_id=original.get("pbn_id", None),
             tytul_str=original["tytuł"],
         )
 
@@ -237,6 +271,9 @@ def przeanalizuj_plik_xls(sciezka, parent):
             except (TypeError, InvalidOperation):
                 original[elem] = None
                 bledny = True
+
+        if original.get("dyscyplina").strip() == "":
+            bledny = True
 
         # import pdb; pdb.set_trace()
         i = Import_Dyscyplin_Row.objects.create(
