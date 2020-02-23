@@ -7,11 +7,9 @@ from math import floor
 import django
 from django.core.management import BaseCommand
 
-from bpp.models import Konferencja
 from bpp.util import partition_count
 from import_dbf.models import B_A, Bib
 from import_dbf.util import (
-    ekstrakcja_konferencji,
     integruj_autorow,
     integruj_b_a,
     integruj_charaktery,
@@ -126,10 +124,6 @@ class Command(BaseCommand):
                 mapuj_elementy_publikacji,
                 partition_count(Bib.objects.exclude(analyzed=True), num_proc),
             )
-
-            logger.info("Integruje konferencje")
-            if Konferencja.objects.count() < 100:
-                pool.apply(ekstrakcja_konferencji)
 
             logger.info("Integruje publikacje")
             # pool.apply(integruj_publikacje)

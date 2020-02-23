@@ -580,14 +580,6 @@ def mapuj_elementy_publikacji(offset, limit):
         rec.save()
 
 
-@transaction.atomic
-def ekstrakcja_konferencji():
-    for elem in dbf.Bib_Desc.objects.filter(elem_id=103):
-        bpp.Konferencja.objects.get_or_create(nazwa=elem.value["a"])
-        for literka in "bcde":
-            assert not elem.value.get(literka)
-
-
 def to_pubmed_id(ident):
     if not ident.strip() == "":
         return
@@ -968,10 +960,15 @@ def integruj_publikacje(offset=None, limit=None):
                     kw["szczegoly"] += elem.get("e")
 
             elif elem["id"] == 103:
-                # Konferencja
-                konferencja = bpp.Konferencja.objects.get(nazwa=elem["a"])
-                assert not kw.get("konferencja"), (elem, rec)
-                kw["konferencja"] = konferencja
+                # Uwagi (nie: konferencja)
+                # Zgłoszenie #794 Przy imporcie wszystkie uwagi w opisach artykułów z czasopism
+                # (pole 103) stały informacjami o konferencjach, a spora część dotyczy czegoś
+                # innego. Pole to należy przenieść przy imporcie do pola "Informacje"
+                # (lub innego odpowiadającego uwadze).
+                if kw.get("uwagi") is None:
+                    kw["uwagi"] = elem["a"]
+                else:
+                    kw["uwagi"] += elem["a"]
 
             elif elem["id"] == 153:
                 assert not kw.get("szczegoly")
@@ -980,8 +977,19 @@ def integruj_publikacje(offset=None, limit=None):
                 kw["szczegoly"] = exp_combine(elem.get("b"), elem.get("c"))
 
             elif elem["id"] == 104:
-                assert not kw.get("uwagi"), (kw["uwagi"], elem, rec, rec.idt)
-                kw["uwagi"] = elem["a"]
+                # assert not kw.get("uwagi"), (kw["uwagi"], elem, rec, rec.idt)
+                if kw.get("uwagi") is None:
+                    kw["uwagi"] = elem["a"]
+                else:
+                    print(
+                        "Łączę pola UWAGI: %s | %s | %s "
+                        % (rec.idt, kw.get("uwagi"), elem["a"])
+                    )
+                    kw["uwagi"] = exp_combine(kw.get("uwagi"), elem["a"], sep=". ")
+                    kw["adnotacje"] = exp_combine(
+                        kw.get("adnotacje"), "połączone pola uwag", sep=". "
+                    )
+
                 for literka in "bcd":
                     assert not elem.get(literka), (elem, rec, rec.idt)
 

@@ -1,4 +1,4 @@
-PSQL=psql -t --echo-errors bpp | grep -v "INSERT 0 1"
+PSQL=psql -q -t --echo-errors bpp | grep -v "INSERT 0 1"
 PSQL_VERBOSE=psql -t --echo-errors -a bpp
 MANAGE=python ../manage.py
 DBF2SQL=python ../../../manage.py dbf2sql
@@ -25,12 +25,12 @@ importuj-dyscypliny:
 	$(MANAGE) importuj_dyscypliny -v0 2017 /Volumes/Dane\ zaszyfrowane/UMWroclaw/dyscypliny_BPP.xlsx
 	$(MANAGE) importuj_dyscypliny -v0 2018 /Volumes/Dane\ zaszyfrowane/UMWroclaw/dyscypliny_BPP.xlsx
 	$(MANAGE) importuj_dyscypliny -v0 2019 /Volumes/Dane\ zaszyfrowane/UMWroclaw/dyscypliny_BPP.xlsx
-	$(MANAGE) importuj_dyscypliny -v0 2020 /Volumes/Dane\ zaszyfrowane/UMWroclaw/dyscypliny_BPP.xlsx -v3
+	$(MANAGE) importuj_dyscypliny -v0 2020 /Volumes/Dane\ zaszyfrowane/UMWroclaw/dyscypliny_BPP.xlsx
 
 integruj-dbf-publikacje:
 	$(MANAGE) integruj_dbf --enable-charakter-kbn-jezyk --charaktery-enrichment-xls /Volumes/Dane\ zaszyfrowane/UMWroclaw/charaktery.xlsx
 	$(MANAGE) integruj_dbf --enable-zrodlo
-	$(MANAGE) integruj_dbf --enable-publikacja
+	$(MANAGE) integruj_dbf --enable-publikacja > integruj-dbf-publikacja-log.txt
 	$(MANAGE) integruj_dbf --enable-zatwierdz-podwojne-przypisania
 	$(MANAGE) integruj_dbf --enable-b-a
 	$(MANAGE) integruj_dbf --enable-przypisz-jednostki
@@ -83,9 +83,3 @@ import-dbf: recreate-db import-converted-dbfs alter-schema
 integrate: disable-trigger integruj-dbf rebuild-cache enable-trigger
 
 rebuild: convert-dbfs import-dbf integrate
-
-moj-etap: import-dbf disable-trigger integruj-dbf-autorzy
-	$(MANAGE) integruj_dbf --enable-charakter-kbn-jezyk --charaktery-enrichment-xls /Volumes/Dane\ zaszyfrowane/UMWroclaw/charaktery.xlsx
-	$(MANAGE) integruj_dbf --enable-zrodlo
-	$(MANAGE) integruj_dbf --enable-publikacja
-	$(MANAGE) integruj_dbf --enable-zatwierdz-podwojne-przypisania

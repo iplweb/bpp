@@ -2,6 +2,12 @@
 Historia zmian
 ==============
 
+202002.18
+---------
+
+* nie dodawaj pola 103 do konferencji przy imporcie DBF (#794)
+* akceptuj podwójnych autorów przy imporcie DBF (#792)
+
 202002.17
 ---------
 
