@@ -53,6 +53,7 @@ alter-schema:
 	cat sql/translate-autor.sql | $(PSQL_VERBOSE)
 	cat sql/translate-poz.sql | $(PSQL_VERBOSE)
 	cat sql/translate-usi.sql | $(PSQL_VERBOSE)
+	cat sql/translate-zrodlo.sql | $(PSQL_VERBOSE)
 	cat sql/alter-umw.sql | $(PSQL_VERBOSE)
 
 delete-imported-data:
@@ -76,8 +77,8 @@ recreate-db:
 rebuild-cache:
 	$(MANAGE) rebuild_cache
 
-pre-import: recreate-db convert-dbfs import-converted-dbfs alter-schema
+import-dbf: recreate-db import-converted-dbfs alter-schema
 
-import: disable-trigger integruj-dbf rebuild-cache enable-trigger
+integrate: disable-trigger integruj-dbf rebuild-cache enable-trigger
 
-rebuild-db: pre-import import
+rebuild: convert-dbfs import-dbf integrate
