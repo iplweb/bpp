@@ -33,7 +33,7 @@ class Command(BaseCommand):
         if verbosity > 1:
             logger.setLevel(logging.DEBUG)
 
-        logger.info("ID autora\tAutor\tRok\tDyscyplina\tTytul pracy\tID pracy")
+        logger.debug("ID autora\tAutor\tRok\tDyscyplina\tTytul pracy\tID pracy")
         query = Autor_Dyscyplina.objects.all().exclude(dyscyplina_naukowa=None)
 
         if not options["ustawiaj_pierwsza_gdy_dwie"]:
@@ -47,7 +47,7 @@ class Command(BaseCommand):
                 for instance in klass.objects.filter(
                     autor=ad.autor, rekord__rok=ad.rok, dyscyplina_naukowa=None
                 ):
-                    logger.info(
+                    logger.debug(
                         f"{ad.autor.pk}\t{ad.autor}\t{ad.rok}\t"
                         f"{ad.dyscyplina_naukowa}\t{instance.rekord.tytul_oryginalny}"
                         f"\t{instance.rekord.pk}"

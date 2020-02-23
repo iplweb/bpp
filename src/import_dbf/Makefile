@@ -49,7 +49,7 @@ remove-dbfs:
 	psql -U postgres -d bpp
 
 alter-schema:
-	cat sql/alter-schema.sql | $(PSQL)
+	cat sql/alter-schema.sql | $(PSQL_VERBOSE)
 	cat sql/translate-title.sql | $(PSQL)
 	cat sql/translate-autor.sql | $(PSQL)
 	cat sql/translate-poz.sql | $(PSQL)
@@ -61,10 +61,10 @@ delete-imported-data:
 	cat sql/remove-imported.sql | $(PSQL)
 
 disable-trigger:
-	cat sql/disable-trigger.sql | $(PSQL)
+	cat sql/disable-trigger.sql | $(PSQL_VERBOSE)
 
 enable-trigger:
-	cat sql/enable-trigger.sql | $(PSQL)
+	cat sql/enable-trigger.sql | $(PSQL_VERBOSE)
 
 
 create-schema:
