@@ -823,9 +823,7 @@ def integruj_publikacje(offset=None, limit=None):
 
             kw["strony"] = exp_add_spacing(tytul["e"])
             if tytul.get("f"):
-                if kw["szczegoly"]:
-                    kw["szczegoly"] += ", "
-                kw["szczegoly"] += tytul["f"]
+                kw["szczegoly"] = exp_combine(kw.get("szczegoly"), tytul["f"])
 
             if tytul.get("c"):
                 kw["tytul_oryginalny"] = exp_combine(
@@ -837,7 +835,7 @@ def integruj_publikacje(offset=None, limit=None):
                     kw["tytul_oryginalny"], tytul.get("d")
                 )
 
-            if kw["szczegoly"] and not kw.get("strony"):
+            if kw.get("szczegoly") and kw.get("strony") is None:
                 kw["strony"] = wez_zakres_stron(kw["szczegoly"])
 
         elif tytul["id"] == 102:
@@ -951,7 +949,7 @@ def integruj_publikacje(offset=None, limit=None):
                 # E: bibliogr. poz
 
                 kw["szczegoly"] = elem.get("a")
-                kw["informacje"] = exp_combine(kw["informacje"], elem.get("b"))
+                kw["informacje"] = exp_combine(kw.get("informacje"), elem.get("b"))
 
                 if elem.get("b"):
                     assert not kw.get("tom")
@@ -960,12 +958,10 @@ def integruj_publikacje(offset=None, limit=None):
                 kw["szczegoly"] = exp_combine(kw["szczegoly"], elem.get("c"))
 
                 if elem.get("d"):
-                    if kw["strony"]:
-                        kw["strony"] += ", "
-                    kw["strony"] += elem.get("d")
+                    kw["strony"] = exp_combine(kw.get("strony"), elem.get("d"))
 
                 if elem.get("e"):
-                    kw["szczegoly"] = exp_combine(kw["szczegoly"], elem.get("e"))
+                    kw["szczegoly"] = exp_combine(kw.get("szczegoly"), elem.get("e"))
 
             elif elem["id"] == 103:
                 # Uwagi (nie: konferencja)
@@ -1369,6 +1365,9 @@ def integruj_publikacje(offset=None, limit=None):
             kw["tytul_oryginalny"] = t1
             kw["tytul"] = t2
 
+        import pprint
+
+        pprint.pprint(kw)
         res = klass.objects.create(**kw)
 
         rec.object = res
