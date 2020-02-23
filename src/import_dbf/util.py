@@ -1369,6 +1369,47 @@ def wyswietl_prace_bez_dopasowania(logger):
 
 
 @transaction.atomic
+def zatwierdz_podwojne_przypisania(logger):
+    """Zakładamy, że podwójne przypisania w bazie danych są POPRAWNE. Expertus
+    nie umożliwia sytuacji, gdzie dwóch Janów Kowalskich ma dwa rekordy
+    (zdaniem BG UMW), stąd w przypadku podwójnych przypisań autorów, utwórz
+    nowy rekord dla drugiego(czy na pewno?) autora
+    """
+    from django.conf import settings
+
+    setattr(settings, "ENABLE_DATA_AKT_PBN_UPDATE", False)
+
+    for elem in (
+        dbf.B_A.objects.order_by()
+        .values("idt_id", "idt_aut_id",)
+        .annotate(cnt=Count("*"))
+        .filter(cnt__gt=1)
+    ):
+        cnt = elem["cnt"]
+        for melem in dbf.B_A.objects.filter(
+            idt_id=elem["idt_id"], idt_aut_id=elem["idt_aut_id"]
+        ):
+            logger.info(
+                (
+                    "1 Podwojne przypisanie",
+                    melem.idt.tytul_or_s,
+                    "(",
+                    melem.idt.rok,
+                    ") - ",
+                    melem.idt_aut,
+                )
+            )
+            import pdb
+
+            pdb.set_trace()
+            raise NotImplementedError()
+            melem.delete()
+            cnt -= 1
+            if cnt == 1:
+                break
+
+
+@transaction.atomic
 def usun_podwojne_przypisania_b_a(logger):
     from django.conf import settings
 

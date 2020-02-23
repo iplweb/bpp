@@ -30,6 +30,7 @@ from import_dbf.util import (
     usun_podwojne_przypisania_b_a,
     wyswietl_prace_bez_dopasowania,
     wzbogacaj_charaktery,
+    zatwierdz_podwojne_przypisania,
 )
 
 django.setup()
@@ -136,6 +137,7 @@ class Command(BaseCommand):
             pool.apply(wyswietl_prace_bez_dopasowania, (logger,))
 
         if enable_all or options["enable_b_a"]:
+            zatwierdz_podwojne_przypisania()
             logger.info("Usuwanie podwojnych przypisan")
             pool.apply(usun_podwojne_przypisania_b_a, (logger,))
             logger.debug("Integracja B_A")
