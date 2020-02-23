@@ -22,23 +22,24 @@ integruj-dbf-autorzy:
 	$(MANAGE) integruj_dbf --enable-autor
 
 importuj-dyscypliny:
-	$(MANAGE) importuj_dyscypliny 2017 /Volumes/Dane\ zaszyfrowane/UMWroclaw/dyscypliny_BPP.xlsx
-	$(MANAGE) importuj_dyscypliny 2018 /Volumes/Dane\ zaszyfrowane/UMWroclaw/dyscypliny_BPP.xlsx
-	$(MANAGE) importuj_dyscypliny 2019 /Volumes/Dane\ zaszyfrowane/UMWroclaw/dyscypliny_BPP.xlsx
-	$(MANAGE) importuj_dyscypliny 2020 /Volumes/Dane\ zaszyfrowane/UMWroclaw/dyscypliny_BPP.xlsx -v3
+	$(MANAGE) importuj_dyscypliny -v0 2017 /Volumes/Dane\ zaszyfrowane/UMWroclaw/dyscypliny_BPP.xlsx
+	$(MANAGE) importuj_dyscypliny -v0 2018 /Volumes/Dane\ zaszyfrowane/UMWroclaw/dyscypliny_BPP.xlsx
+	$(MANAGE) importuj_dyscypliny -v0 2019 /Volumes/Dane\ zaszyfrowane/UMWroclaw/dyscypliny_BPP.xlsx
+	$(MANAGE) importuj_dyscypliny -v0 2020 /Volumes/Dane\ zaszyfrowane/UMWroclaw/dyscypliny_BPP.xlsx -v3
 
 integruj-dbf-publikacje:
 	$(MANAGE) integruj_dbf --enable-charakter-kbn-jezyk --charaktery-enrichment-xls /Volumes/Dane\ zaszyfrowane/UMWroclaw/charaktery.xlsx
 	$(MANAGE) integruj_dbf --enable-zrodlo
 	$(MANAGE) integruj_dbf --enable-publikacja
+	$(MANAGE) integruj_dbf --enable-zatwierdz-podwojne-przypisania
 	$(MANAGE) integruj_dbf --enable-b-a
 	$(MANAGE) integruj_dbf --enable-przypisz-jednostki
 
 przypisz-dyscypliny:
-	$(MANAGE) przypisz_dyscypliny 2017 --ustawiaj-pierwsza-gdy-dwie --disable-cache
-	$(MANAGE) przypisz_dyscypliny 2018 --ustawiaj-pierwsza-gdy-dwie --disable-cache
-	$(MANAGE) przypisz_dyscypliny 2019 --ustawiaj-pierwsza-gdy-dwie --disable-cache
-	$(MANAGE) przypisz_dyscypliny 2020 --ustawiaj-pierwsza-gdy-dwie --disable-cache
+	$(MANAGE) przypisz_dyscypliny -v0 2017 --ustawiaj-pierwsza-gdy-dwie --disable-cache
+	$(MANAGE) przypisz_dyscypliny -v0 2018 --ustawiaj-pierwsza-gdy-dwie --disable-cache
+	$(MANAGE) przypisz_dyscypliny -v0 2019 --ustawiaj-pierwsza-gdy-dwie --disable-cache
+	$(MANAGE) przypisz_dyscypliny -v0 2020 --ustawiaj-pierwsza-gdy-dwie --disable-cache
 
 integruj-dbf: integruj-dbf-autorzy importuj-dyscypliny integruj-dbf-publikacje przypisz-dyscypliny
 
@@ -48,13 +49,13 @@ remove-dbfs:
 	psql -U postgres -d bpp
 
 alter-schema:
-	cat sql/alter-schema.sql | $(PSQL_VERBOSE)
-	cat sql/translate-title.sql | $(PSQL_VERBOSE)
-	cat sql/translate-autor.sql | $(PSQL_VERBOSE)
-	cat sql/translate-poz.sql | $(PSQL_VERBOSE)
-	cat sql/translate-usi.sql | $(PSQL_VERBOSE)
-	cat sql/translate-zrodlo.sql | $(PSQL_VERBOSE)
-	cat sql/alter-umw.sql | $(PSQL_VERBOSE)
+	cat sql/alter-schema.sql | $(PSQL)
+	cat sql/translate-title.sql | $(PSQL)
+	cat sql/translate-autor.sql | $(PSQL)
+	cat sql/translate-poz.sql | $(PSQL)
+	cat sql/translate-usi.sql | $(PSQL)
+	cat sql/translate-zrodlo.sql | $(PSQL)
+	cat sql/alter-umw.sql | $(PSQL)
 
 delete-imported-data:
 	cat sql/remove-imported.sql | $(PSQL)
@@ -82,3 +83,9 @@ import-dbf: recreate-db import-converted-dbfs alter-schema
 integrate: disable-trigger integruj-dbf rebuild-cache enable-trigger
 
 rebuild: convert-dbfs import-dbf integrate
+
+moj-etap: import-dbf disable-trigger integruj-dbf-autorzy
+	$(MANAGE) integruj_dbf --enable-charakter-kbn-jezyk --charaktery-enrichment-xls /Volumes/Dane\ zaszyfrowane/UMWroclaw/charaktery.xlsx
+	$(MANAGE) integruj_dbf --enable-zrodlo
+	$(MANAGE) integruj_dbf --enable-publikacja
+	$(MANAGE) integruj_dbf --enable-zatwierdz-podwojne-przypisania

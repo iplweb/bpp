@@ -7,6 +7,7 @@ from dbfread import DBF
 from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Q
+from django.forms.models import model_to_dict
 
 from bpp import models as bpp
 from bpp.models import (
@@ -272,7 +273,7 @@ def exp_autor(base_aut, already_seen=None):
 
 
 @transaction.atomic
-def integruj_autorow():
+def integruj_autorow(silent=False):
     tytuly = get_dict(bpp.Tytul, "skrot")
     funkcje = get_dict(bpp.Funkcja_Autora, "skrot")
 
@@ -282,7 +283,10 @@ def integruj_autorow():
         .order_by("idt_aut")
     )
 
-    for (autor_id,) in pbar(base_query):
+    if not silent:
+        base_query = pbar(base_query)
+
+    for (autor_id,) in base_query:
         a = dbf.Aut.objects.get(pk=autor_id)
         if a.bpp_autor_id is not None:
             continue
@@ -1374,6 +1378,9 @@ def zatwierdz_podwojne_przypisania(logger):
     nie umożliwia sytuacji, gdzie dwóch Janów Kowalskich ma dwa rekordy
     (zdaniem BG UMW), stąd w przypadku podwójnych przypisań autorów, utwórz
     nowy rekord dla drugiego(czy na pewno?) autora
+
+    Genialnie byłoby tu upewnić się, że każdy tworzony dodatkowy rekord
+    to rekord w obcej jednostce
     """
     from django.conf import settings
 
@@ -1385,28 +1392,40 @@ def zatwierdz_podwojne_przypisania(logger):
         .annotate(cnt=Count("*"))
         .filter(cnt__gt=1)
     ):
-        cnt = elem["cnt"]
+        elem["cnt"]
         for melem in dbf.B_A.objects.filter(
             idt_id=elem["idt_id"], idt_aut_id=elem["idt_aut_id"]
-        ):
+        )[1:]:
             logger.info(
                 (
-                    "1 Podwojne przypisanie",
+                    "Tworzę dodatkowe (podwójne) przypisanie",
                     melem.idt.tytul_or_s,
                     "(",
                     melem.idt.rok,
                     ") - ",
                     melem.idt_aut,
+                    ", jedn. ",
+                    melem.idt_jed,
                 )
             )
-            import pdb
 
-            pdb.set_trace()
-            raise NotImplementedError()
-            melem.delete()
-            cnt -= 1
-            if cnt == 1:
-                break
+            kw = model_to_dict(melem.idt_aut)
+            kw["idt_jed_id"] = kw.pop("idt_jed")
+            kw["exp_id"] = None
+            kw["bpp_autor"] = None
+            kw["bpp_autor_id"] = None
+            kw["orcid_id"] = None
+            kw["pbn_id"] = None
+            kw["ref"] = None
+            from django.db.models import Max
+
+            kw["idt_aut"] = dbf.Aut.objects.all().aggregate(c=Max("idt_aut"))["c"] + 1
+            idt_aut = dbf.Aut.objects.create(**kw)
+
+            melem.idt_aut = idt_aut
+            melem.save()
+
+    integruj_autorow()
 
 
 @transaction.atomic

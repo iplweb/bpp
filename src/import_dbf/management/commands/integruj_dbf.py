@@ -57,6 +57,12 @@ class Command(BaseCommand):
 
         parser.add_argument("--enable-zrodlo", action="store_true")
         parser.add_argument("--enable-b-a", action="store_true")
+        parser.add_argument(
+            "--enable-zatwierdz-podwojne-przypisania",
+            action="store_true",
+            help="""W przypadku, gdyby podwójne przypisania w bazie danych były OK, podaj ten argument
+            aby utworzyć dodatkowe rekordy dla prawidłowo zdublowanych autorów""",
+        )
         parser.add_argument("--enable-przypisz-jednostki", action="store_true")
 
     def handle(
@@ -136,8 +142,12 @@ class Command(BaseCommand):
 
             pool.apply(wyswietl_prace_bez_dopasowania, (logger,))
 
+        if enable_all or options["enable_zatwierdz_podwojne_przypisania"]:
+            logger.info("Zatwierdzanie podwójnych podwojnych przypisan")
+            zatwierdz_podwojne_przypisania(logger)
+            # pool.apply(zatwierdz_podwojne_przypisania, (logger,))
+
         if enable_all or options["enable_b_a"]:
-            zatwierdz_podwojne_przypisania()
             logger.info("Usuwanie podwojnych przypisan")
             pool.apply(usun_podwojne_przypisania_b_a, (logger,))
             logger.debug("Integracja B_A")

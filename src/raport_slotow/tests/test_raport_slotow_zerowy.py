@@ -27,7 +27,7 @@ def fikstura_raportu_slotow(
 
     # Kowalski ma przypisanie i nie ma żadnych prac
     Autor_Dyscyplina.objects.create(
-        autor=autor_jan_kowalski, rok=2000, dyscyplina_naukowa=dyscyplina1
+        autor=autor_jan_kowalski, rok=2020, dyscyplina_naukowa=dyscyplina1
     )
 
     return (autor_jan_kowalski, autor_jan_nowak)
