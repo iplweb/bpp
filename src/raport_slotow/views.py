@@ -334,7 +334,7 @@ class RaportSlotowZerowy(
     """
 
     template_name = "raport_slotow/raport_slotow_zerowy.html"
-    uczelnia_attr = "pokazuj_raport_slotow_autor"
+    uczelnia_attr = "pokazuj_raport_slotow_zerowy"
     filterset_class = RaportZerowyFilter
     table_class = RaportSlotowZerowyTable
 
