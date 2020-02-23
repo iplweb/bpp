@@ -8,6 +8,8 @@ Historia zmian
 * wyświetlaj lata dla raportu zerowego w jednej kolumnie (#812)
 * nie uwzględniaj wpisów dyscyplin bez punktacji w raporcie zerowym (#785)
 * umożliwiaj oddzielne zarządzanie widocznością raportu slotów zerowych (#785)
+* nie dodawaj pola 103 do konferencji przy imporcie DBF (#794)
+* akceptuj podwójnych autorów przy imporcie DBF (#792)
 
 202002.17
 ---------

@@ -112,3 +112,4 @@ src/import_dbf/db-old/
 /stellar.yaml
 
 .env
+src/import_dbf/integruj-dbf-enable-publikacja.log.txt

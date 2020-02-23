@@ -7,6 +7,7 @@ from dbfread import DBF
 from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Q
+from django.forms.models import model_to_dict
 
 from bpp import models as bpp
 from bpp.models import (
@@ -272,7 +273,7 @@ def exp_autor(base_aut, already_seen=None):
 
 
 @transaction.atomic
-def integruj_autorow():
+def integruj_autorow(silent=False):
     tytuly = get_dict(bpp.Tytul, "skrot")
     funkcje = get_dict(bpp.Funkcja_Autora, "skrot")
 
@@ -282,7 +283,10 @@ def integruj_autorow():
         .order_by("idt_aut")
     )
 
-    for (autor_id,) in pbar(base_query):
+    if not silent:
+        base_query = pbar(base_query)
+
+    for (autor_id,) in base_query:
         a = dbf.Aut.objects.get(pk=autor_id)
         if a.bpp_autor_id is not None:
             continue
@@ -574,14 +578,6 @@ def mapuj_elementy_publikacji(offset, limit):
 
         rec.analyzed = True
         rec.save()
-
-
-@transaction.atomic
-def ekstrakcja_konferencji():
-    for elem in dbf.Bib_Desc.objects.filter(elem_id=103):
-        bpp.Konferencja.objects.get_or_create(nazwa=elem.value["a"])
-        for literka in "bcde":
-            assert not elem.value.get(literka)
 
 
 def to_pubmed_id(ident):
@@ -964,10 +960,15 @@ def integruj_publikacje(offset=None, limit=None):
                     kw["szczegoly"] += elem.get("e")
 
             elif elem["id"] == 103:
-                # Konferencja
-                konferencja = bpp.Konferencja.objects.get(nazwa=elem["a"])
-                assert not kw.get("konferencja"), (elem, rec)
-                kw["konferencja"] = konferencja
+                # Uwagi (nie: konferencja)
+                # Zgłoszenie #794 Przy imporcie wszystkie uwagi w opisach artykułów z czasopism
+                # (pole 103) stały informacjami o konferencjach, a spora część dotyczy czegoś
+                # innego. Pole to należy przenieść przy imporcie do pola "Informacje"
+                # (lub innego odpowiadającego uwadze).
+                if kw.get("uwagi") is None:
+                    kw["uwagi"] = elem["a"]
+                else:
+                    kw["uwagi"] += elem["a"]
 
             elif elem["id"] == 153:
                 assert not kw.get("szczegoly")
@@ -976,8 +977,19 @@ def integruj_publikacje(offset=None, limit=None):
                 kw["szczegoly"] = exp_combine(elem.get("b"), elem.get("c"))
 
             elif elem["id"] == 104:
-                assert not kw.get("uwagi"), (kw["uwagi"], elem, rec, rec.idt)
-                kw["uwagi"] = elem["a"]
+                # assert not kw.get("uwagi"), (kw["uwagi"], elem, rec, rec.idt)
+                if kw.get("uwagi") is None:
+                    kw["uwagi"] = elem["a"]
+                else:
+                    print(
+                        "Łączę pola UWAGI: %s | %s | %s "
+                        % (rec.idt, kw.get("uwagi"), elem["a"])
+                    )
+                    kw["uwagi"] = exp_combine(kw.get("uwagi"), elem["a"], sep=". ")
+                    kw["adnotacje"] = exp_combine(
+                        kw.get("adnotacje"), "połączone pola uwag", sep=". "
+                    )
+
                 for literka in "bcd":
                     assert not elem.get(literka), (elem, rec, rec.idt)
 
@@ -1366,6 +1378,62 @@ def wyswietl_prace_bez_dopasowania(logger):
         logger.info("Prace bez dopasowania: %i rekordow. " % bez.count())
         for rec in bez[:30]:
             logger.info((rec.idt, rec.rok, rec.tytul_or_s))
+
+
+@transaction.atomic
+def zatwierdz_podwojne_przypisania(logger):
+    """Zakładamy, że podwójne przypisania w bazie danych są POPRAWNE. Expertus
+    nie umożliwia sytuacji, gdzie dwóch Janów Kowalskich ma dwa rekordy
+    (zdaniem BG UMW), stąd w przypadku podwójnych przypisań autorów, utwórz
+    nowy rekord dla drugiego(czy na pewno?) autora
+
+    Genialnie byłoby tu upewnić się, że każdy tworzony dodatkowy rekord
+    to rekord w obcej jednostce
+    """
+    from django.conf import settings
+
+    setattr(settings, "ENABLE_DATA_AKT_PBN_UPDATE", False)
+
+    for elem in (
+        dbf.B_A.objects.order_by()
+        .values("idt_id", "idt_aut_id",)
+        .annotate(cnt=Count("*"))
+        .filter(cnt__gt=1)
+    ):
+        elem["cnt"]
+        for melem in dbf.B_A.objects.filter(
+            idt_id=elem["idt_id"], idt_aut_id=elem["idt_aut_id"]
+        )[1:]:
+            logger.info(
+                (
+                    "Tworzę dodatkowe (podwójne) przypisanie",
+                    melem.idt.tytul_or_s,
+                    "(",
+                    melem.idt.rok,
+                    ") - ",
+                    melem.idt_aut,
+                    ", jedn. ",
+                    melem.idt_jed,
+                )
+            )
+
+            kw = model_to_dict(melem.idt_aut)
+            kw["idt_jed_id"] = kw.pop("idt_jed")
+            kw["exp_id"] = None
+            kw["bpp_autor"] = None
+            kw["bpp_autor_id"] = None
+            kw["orcid_id"] = None
+            kw["pbn_id"] = None
+            kw["ref"] = None
+            from django.db.models import Max
+
+            kw["idt_aut"] = dbf.Aut.objects.all().aggregate(c=Max("idt_aut"))["c"] + 1
+            idt_aut = dbf.Aut.objects.create(**kw)
+
+            melem.idt_aut = idt_aut
+            melem.save()
+
+    integruj_autorow()
 
 
 @transaction.atomic

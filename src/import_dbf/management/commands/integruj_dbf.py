@@ -7,11 +7,9 @@ from math import floor
 import django
 from django.core.management import BaseCommand
 
-from bpp.models import Konferencja
 from bpp.util import partition_count
 from import_dbf.models import B_A, Bib
 from import_dbf.util import (
-    ekstrakcja_konferencji,
     integruj_autorow,
     integruj_b_a,
     integruj_charaktery,
@@ -30,6 +28,7 @@ from import_dbf.util import (
     usun_podwojne_przypisania_b_a,
     wyswietl_prace_bez_dopasowania,
     wzbogacaj_charaktery,
+    zatwierdz_podwojne_przypisania,
 )
 
 django.setup()
@@ -56,6 +55,12 @@ class Command(BaseCommand):
 
         parser.add_argument("--enable-zrodlo", action="store_true")
         parser.add_argument("--enable-b-a", action="store_true")
+        parser.add_argument(
+            "--enable-zatwierdz-podwojne-przypisania",
+            action="store_true",
+            help="""W przypadku, gdyby podwójne przypisania w bazie danych były OK, podaj ten argument
+            aby utworzyć dodatkowe rekordy dla prawidłowo zdublowanych autorów""",
+        )
         parser.add_argument("--enable-przypisz-jednostki", action="store_true")
 
     def handle(
@@ -120,10 +125,6 @@ class Command(BaseCommand):
                 partition_count(Bib.objects.exclude(analyzed=True), num_proc),
             )
 
-            logger.info("Integruje konferencje")
-            if Konferencja.objects.count() < 100:
-                pool.apply(ekstrakcja_konferencji)
-
             logger.info("Integruje publikacje")
             # pool.apply(integruj_publikacje)
             pool.starmap(
@@ -134,6 +135,11 @@ class Command(BaseCommand):
             )
 
             pool.apply(wyswietl_prace_bez_dopasowania, (logger,))
+
+        if enable_all or options["enable_zatwierdz_podwojne_przypisania"]:
+            logger.info("Zatwierdzanie podwójnych podwojnych przypisan")
+            zatwierdz_podwojne_przypisania(logger)
+            # pool.apply(zatwierdz_podwojne_przypisania, (logger,))
 
         if enable_all or options["enable_b_a"]:
             logger.info("Usuwanie podwojnych przypisan")
