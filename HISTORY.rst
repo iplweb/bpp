@@ -2,6 +2,13 @@
 Historia zmian
 ==============
 
+202002.18
+---------
+
+* wyświetlaj lata dla raportu zerowego w jednej kolumnie (#812)
+* nie uwzględniaj wpisów dyscyplin bez punktacji w raporcie zerowym (#785)
+* umożliwiaj oddzielne zarządzanie widocznością raportu slotów zerowych (#785)
+
 202002.17
 ---------
 
