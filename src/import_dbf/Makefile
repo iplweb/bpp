@@ -1,5 +1,6 @@
 PSQL=psql -q -t --echo-errors bpp | grep -v "INSERT 0 1"
 PSQL_VERBOSE=psql -t --echo-errors -a bpp
+PG_DUMP=pg_dump bpp
 MANAGE=python ../manage.py
 DBF2SQL=python ../../../manage.py dbf2sql
 
@@ -78,8 +79,21 @@ recreate-db:
 rebuild-cache:
 	$(MANAGE) rebuild_cache
 
-import-dbf: recreate-db import-converted-dbfs alter-schema
+create-bib-desc:
+	$(MANAGE) integruj_dbf --enable-mapuj-publikacja
+	cat sql/translate-bib-desc.sql | $(PSQL)
 
-integrate: disable-trigger integruj-dbf rebuild-cache enable-trigger
+import-dbf: recreate-db import-converted-dbfs alter-schema create-bib-desc
+	$(PG_DUMP) > post-import-dbf.sql
+
+pobierz-liste-wydawcow:
+	if [ -d "/tmp/bpp-assets" ]; then cd /tmp/bpp-assets && git pull; else cd /tmp && git clone https://github.com/iplweb/bpp-assets; fi
+
+importuj-liste-wydawcow:
+	$(MANAGE) import_wydawca_poziom /tmp/bpp-assets/poziomy-wydawcow-2017-2020.xlsx
+
+integruj-liste-wydawcow: pobierz-liste-wydawcow importuj-liste-wydawcow
+
+integrate: disable-trigger integruj-dbf integruj-liste-wydawcow rebuild-cache enable-trigger
 
 rebuild: convert-dbfs import-dbf integrate
