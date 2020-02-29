@@ -11,19 +11,39 @@ class Poziom_WydawcyInlineForm(forms.ModelForm):
 
     def __init__(self, *args, **kw):
         super(Poziom_WydawcyInlineForm, self).__init__(*args, **kw)
-        if kw.get('instance'):
-            self.fields['rok'].disabled = True
+        if kw.get("instance"):
+            self.fields["rok"].disabled = True
 
 
 class Poziom_WydawcyInline(admin.TabularInline):
     model = Poziom_Wydawcy
     form = Poziom_WydawcyInlineForm
     extra = 1
-    pass
+
+
+class MaAliasListFilter(admin.SimpleListFilter):
+    title = "ma alias"
+    parameter_name = "ma_alias"
+
+    def lookups(self, request, model_admin):
+        return [
+            ("0", "nie"),
+            ("1", "tak"),
+        ]
+
+    def queryset(self, request, queryset):
+        if self.value() == "0":
+            return queryset.filter(alias_dla=None)
+        elif self.value() == "1":
+            return queryset.exclude(alias_dla=None)
 
 
 @admin.register(Wydawca)
 class WydawcaAdmin(admin.ModelAdmin):
-    search_fields = ['nazwa']
-    inlines = [Poziom_WydawcyInline, ]
-    pass
+    search_fields = ["nazwa", "alias_dla__nazwa"]
+    autocomplete_fields = ["alias_dla"]
+    list_display = ["nazwa", "alias_dla"]
+    list_filter = [MaAliasListFilter]
+    inlines = [
+        Poziom_WydawcyInline,
+    ]

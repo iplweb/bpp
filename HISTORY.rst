@@ -9,7 +9,7 @@ Historia zmian
 * autorom przypisanym do rekordów patentów można przypisywać dyscypliny naukowe (b/n),
 * aktualizacja pakietów zależnych z przyczyn bezpieczeństwa (bleach3) (b/n),
 * eksport PBN: eksportuj prace z PK większym, niż 5 (poprzedni warunek: większe lub równe) (b/n),
-
+* aliasy wydawców (b/n),
 
 202002.18
 ---------

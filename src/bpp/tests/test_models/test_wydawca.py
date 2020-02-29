@@ -1,9 +1,9 @@
 # -*- encoding: utf-8 -*-
 
 import pytest
-from django.db import DatabaseError, InternalError
+from django.core.exceptions import ValidationError
+from django.db import InternalError
 from django.db.models import ProtectedError
-from psycopg2._psycopg import DatabaseError
 
 from bpp.models import CacheQueue, Wydawca
 from bpp.tasks import aktualizuj_cache
@@ -21,6 +21,7 @@ def test_wydawnictwo_zwarte_wydawca_delete(wydawnictwo_zwarte, wydawca):
         wydawca.delete()
 
     from django.db import connection
+
     cursor = connection.cursor()
     cursor.execute("DELETE FROM bpp_wydawca WHERE id = %i" % wydawca.id)
     assert CacheQueue.objects.all().count() == 1
@@ -44,7 +45,9 @@ def test_wydawnictwo_zwarte_wydawca_change_nazwa(wydawnictwo_zwarte, wydawca):
 
 
 @pytest.mark.django_db
-def test_wydawnictwo_zwarte_wydawca_change_poziom_ten_sam_rok(wydawnictwo_zwarte, wydawca, rok):
+def test_wydawnictwo_zwarte_wydawca_change_poziom_ten_sam_rok(
+    wydawnictwo_zwarte, wydawca, rok
+):
     wydawnictwo_zwarte.wydawca = wydawca
     wydawnictwo_zwarte.rok = rok
     wydawnictwo_zwarte.save()
@@ -52,9 +55,7 @@ def test_wydawnictwo_zwarte_wydawca_change_poziom_ten_sam_rok(wydawnictwo_zwarte
     aktualizuj_cache.delay()
     assert CacheQueue.objects.all().count() == 0
 
-    pw = wydawca.poziom_wydawcy_set.create(
-        rok=rok,
-        poziom=1)
+    pw = wydawca.poziom_wydawcy_set.create(rok=rok, poziom=1)
 
     assert CacheQueue.objects.all().count() == 1
 
@@ -65,7 +66,9 @@ def test_wydawnictwo_zwarte_wydawca_change_poziom_ten_sam_rok(wydawnictwo_zwarte
 
 
 @pytest.mark.django_db
-def test_wydawnictwo_zwarte_wydawca_change_poziom_rozny_rok(wydawnictwo_zwarte, wydawca, rok):
+def test_wydawnictwo_zwarte_wydawca_change_poziom_rozny_rok(
+    wydawnictwo_zwarte, wydawca, rok
+):
     wydawnictwo_zwarte.wydawca = wydawca
     wydawnictwo_zwarte.rok = rok
     wydawnictwo_zwarte.save()
@@ -73,9 +76,7 @@ def test_wydawnictwo_zwarte_wydawca_change_poziom_rozny_rok(wydawnictwo_zwarte, 
     aktualizuj_cache.delay()
     assert CacheQueue.objects.all().count() == 0
 
-    pw = wydawca.poziom_wydawcy_set.create(
-        rok=rok + 1,
-        poziom=1)
+    pw = wydawca.poziom_wydawcy_set.create(rok=rok + 1, poziom=1)
 
     assert CacheQueue.objects.all().count() == 0
 
@@ -96,7 +97,7 @@ def test_poziom_wydawcy_zmiana_roku(wydawca, rok):
 @pytest.mark.django_db
 def test_poziom_wydawcy_zmiana_id_wydawcy(wydawca, rok):
     pw = wydawca.poziom_wydawcy_set.create(rok=rok, poziom=2)
-    w2 = Wydawca.objects.create(nazwa='fubar')
+    w2 = Wydawca.objects.create(nazwa="fubar")
     pw.wydawca = w2
     with pytest.raises(InternalError):
         pw.save()
@@ -107,9 +108,22 @@ def test_wydawca_get_tier(wydawca, rok):
     assert wydawca.get_tier(rok) == -1
 
     pw = wydawca.poziom_wydawcy_set.create(rok=rok, poziom=None)
-    assert wydawca.get_tier(rok) == None
+    assert wydawca.get_tier(rok) is None
 
     pw.poziom = 1
     pw.save()
     assert wydawca.get_tier(rok) == 1
 
+
+@pytest.mark.django_db
+def test_wydawca_alias_get_tier(wydawca, alias_wydawcy, rok):
+    wydawca.poziom_wydawcy_set.create(rok=rok, poziom=1)
+    assert wydawca.get_tier(rok) == 1
+
+    assert alias_wydawcy.get_tier(rok) == 1
+    assert alias_wydawcy.get_tier(rok + 10) == -1
+
+
+def test_wydawca_alias_nie_pozwol_stworzyc_poziomu_dla_aliasu(alias_wydawcy):
+    with pytest.raises(ValidationError):
+        alias_wydawcy.poziom_wydawcy_set.create(rok=2020, poziom=1)
