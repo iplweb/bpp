@@ -1339,32 +1339,6 @@ def integruj_publikacje(offset=None, limit=None):
             else:
                 raise NotImplementedError(elem, rec, rec.idt)
 
-        if kw["tytul_oryginalny"].find("=") >= 0 and not (
-            kw["tytul_oryginalny"].find("I=532") >= 0
-            or kw["tytul_oryginalny"].find("Rudolf Weigl") >= 0
-            or kw["tytul_oryginalny"].find("complex = obraz kliniczny, ") >= 0
-        ):
-
-            t1, t2 = [x.strip() for x in kw["tytul_oryginalny"].split("=", 1)]
-
-            if kw.get("tytul"):
-                if t2 != kw["tytul"]:
-                    if t1 == kw["tytul"]:
-                        t1, t2, = t2, t1
-                    else:
-                        if t2.find("with oneyear prospective") and kw["tytul"].find(
-                            "with one-year prospective"
-                        ):
-                            pass
-                        else:
-                            raise NotImplementedError(
-                                "jest tytul_oryginalny %r a jest i tytul %r i sie ROZNIA!"
-                                % (kw["tytul_oryginalny"], kw["tytul"])
-                            )
-
-            kw["tytul_oryginalny"] = t1
-            kw["tytul"] = t2
-
         import pprint
 
         pprint.pprint(kw)
