@@ -127,3 +127,9 @@ def test_wydawca_alias_get_tier(wydawca, alias_wydawcy, rok):
 def test_wydawca_alias_nie_pozwol_stworzyc_poziomu_dla_aliasu(alias_wydawcy):
     with pytest.raises(ValidationError):
         alias_wydawcy.poziom_wydawcy_set.create(rok=2020, poziom=1)
+
+
+def test_wydawca_alias_sam_do_siebie(wydawca):
+    wydawca.alias_dla = wydawca
+    with pytest.raises(ValidationError):
+        wydawca.save()

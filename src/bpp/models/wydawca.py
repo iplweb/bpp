@@ -15,6 +15,15 @@ class Wydawca(ModelZNazwa):
         verbose_name = "wydawca"
         ordering = ("nazwa",)
 
+    def clean(self):
+        if self.pk:
+            if hasattr(self, "alias_dla_id") and self.pk == self.alias_dla_id:
+                raise ValidationError("Rekord nie może być aliasem sam dla siebie")
+
+    def save(self, *args, **kw):
+        self.clean()
+        return super().save(*args, **kw)
+
     def get_tier(self, rok):
         if self.alias_dla is not None:
             return self.alias_dla.get_tier(rok)
