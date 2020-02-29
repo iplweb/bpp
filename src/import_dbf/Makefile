@@ -3,6 +3,7 @@ PSQL_VERBOSE=psql -t --echo-errors -a bpp
 PG_DUMP=pg_dump bpp
 MANAGE=python ../manage.py
 DBF2SQL=python ../../../manage.py dbf2sql
+ASSETS_DIR=/tmp/bpp-assets
 
 rebuild: remove-dbfs import-dbfs alter-schema
 
@@ -17,6 +18,9 @@ import-converted-dbfs:
 usun-integracje-autorow:
 	echo "begin; delete from bpp_autor_jednostka; delete from bpp_autor;update import_dbf_aut set bpp_autor_id = NULL where bpp_autor_id IS NOT NULL;commit;" | $(PSQL)
 
+get-assets:
+	if [ -d $(ASSETS_DIR) ]; then cd $(ASSETS_DIR) && git pull; else git clone https://github.com/iplweb/bpp-assets $(ASSETS_DIR); fi
+
 integruj-dbf-autorzy:
 	$(MANAGE) integruj_dbf --enable-wydzial
 	$(MANAGE) integruj_dbf --enable-jednostka
@@ -28,8 +32,8 @@ importuj-dyscypliny:
 	$(MANAGE) importuj_dyscypliny -v0 2019 /Volumes/Dane\ zaszyfrowane/UMWroclaw/dyscypliny_BPP.xlsx
 	$(MANAGE) importuj_dyscypliny -v0 2020 /Volumes/Dane\ zaszyfrowane/UMWroclaw/dyscypliny_BPP.xlsx
 
-integruj-dbf-publikacje:
-	$(MANAGE) integruj_dbf --enable-charakter-kbn-jezyk --charaktery-enrichment-xls /Volumes/Dane\ zaszyfrowane/UMWroclaw/charaktery.xlsx
+integruj-dbf-publikacje: get-assets
+	$(MANAGE) integruj_dbf --enable-charakter-kbn-jezyk --charaktery-enrichment-xls $(ASSETS_DIR)/bg-umw/charaktery_formalne.xlsx
 	$(MANAGE) integruj_dbf --enable-zrodlo
 	$(MANAGE) integruj_dbf --enable-publikacja > integruj-dbf-publikacja-log.txt
 	$(MANAGE) integruj_dbf --enable-zatwierdz-podwojne-przypisania
@@ -86,13 +90,8 @@ create-bib-desc:
 import-dbf: recreate-db import-converted-dbfs alter-schema create-bib-desc
 	$(PG_DUMP) > post-import-dbf.sql
 
-pobierz-liste-wydawcow:
-	if [ -d "/tmp/bpp-assets" ]; then cd /tmp/bpp-assets && git pull; else cd /tmp && git clone https://github.com/iplweb/bpp-assets; fi
-
-importuj-liste-wydawcow:
-	$(MANAGE) import_wydawca_poziom /tmp/bpp-assets/poziomy-wydawcow-2017-2020.xlsx
-
-integruj-liste-wydawcow: pobierz-liste-wydawcow importuj-liste-wydawcow
+integruj-liste-wydawcow: get-assets
+	$(MANAGE) import_wydawca_poziom $(ASSETS_DIR)/poziomy-wydawcow-2017-2020.xlsx
 
 integrate: disable-trigger integruj-dbf integruj-liste-wydawcow rebuild-cache enable-trigger
 
