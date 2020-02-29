@@ -4,6 +4,7 @@ import logging
 
 import xlrd
 from django.core.management import BaseCommand
+from django.core.exceptions import ValidationError
 
 from bpp.models import Wydawca
 
@@ -19,8 +20,9 @@ class Command(BaseCommand):
     def handle(
         self, plik, verbosity, *args, **options,
     ):
+        logger.setLevel(logging.WARNING)
         if verbosity > 1:
-            logger.setLevel(logging.DEBUG)
+            logger.setLevel(logging.INFO)
 
         book = xlrd.open_workbook(plik)
         sheet = book.sheet_by_index(0)
@@ -32,14 +34,20 @@ class Command(BaseCommand):
             try:
                 w = Wydawca.objects.get(nazwa=wydawca.strip())
             except Wydawca.DoesNotExist:
-                logger.debug(f"{wydawca} zdefiniowany w pliku XLS nie istnieje")
+                logger.info(f"{wydawca} zdefiniowany w pliku XLS nie istnieje")
                 continue
 
-            alias = Wydawca.objects.get_or_create(nazwa=alias.strip())[0]
+            a = Wydawca.objects.get_or_create(nazwa=alias.strip())[0]
 
-            if alias.alias_dla != w:
-                alias.alias_dla = w
-                alias.save()
-                logger.debug(f"{w.nazwa} dopisuje alias {alias.nazwa}")
+            if a.alias_dla != w:
+                a.alias_dla = w
+                try:
+                    a.save()
+                except ValidationError:
+                    logger.warn(
+                        f"** alias {alias} rozpoznany jako {a} to alias do samego siebie {w}, idę dalej"
+                    )
+                    continue
+                logger.info(f"{w.nazwa} dopisuje alias {a.nazwa}")
             else:
-                logger.debug(f"{w.nazwa} już miał {alias.nazwa}")
+                logger.info(f"{w.nazwa} już miał {a.nazwa}")
