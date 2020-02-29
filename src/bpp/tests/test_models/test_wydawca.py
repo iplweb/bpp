@@ -4,6 +4,7 @@ import pytest
 from django.core.exceptions import ValidationError
 from django.db import InternalError
 from django.db.models import ProtectedError
+from model_mommy import mommy
 
 from bpp.models import CacheQueue, Wydawca
 from bpp.tasks import aktualizuj_cache
@@ -39,6 +40,22 @@ def test_wydawnictwo_zwarte_wydawca_change_nazwa(wydawnictwo_zwarte, wydawca):
     assert CacheQueue.objects.all().count() == 0
 
     wydawca.nazwa = wydawca.nazwa + "X"
+    wydawca.save()
+
+    assert CacheQueue.objects.all().count() == 1
+
+
+@pytest.mark.django_db
+def test_wydawnictwo_zwarte_wydawca_change_alias_dla(wydawnictwo_zwarte, wydawca):
+    wydawnictwo_zwarte.wydawca = wydawca
+    wydawnictwo_zwarte.save()
+
+    aktualizuj_cache.delay()
+    assert CacheQueue.objects.all().count() == 0
+
+    wydawca2 = mommy.make(Wydawca)
+
+    wydawca.alias_dla = wydawca2
     wydawca.save()
 
     assert CacheQueue.objects.all().count() == 1
@@ -127,6 +144,14 @@ def test_wydawca_alias_get_tier(wydawca, alias_wydawcy, rok):
 def test_wydawca_alias_nie_pozwol_stworzyc_poziomu_dla_aliasu(alias_wydawcy):
     with pytest.raises(ValidationError):
         alias_wydawcy.poziom_wydawcy_set.create(rok=2020, poziom=1)
+
+
+def test_wydawca_alias_nie_pozwol_zrobic_aliasu_dla_posiadajacego_poziomy(wydawca):
+    wydawca.poziom_wydawcy_set.create(rok=2020, poziom=2)
+    w2 = mommy.make(Wydawca)
+    wydawca.alias_dla = w2
+    with pytest.raises(ValidationError):
+        wydawca.save()
 
 
 def test_wydawca_alias_sam_do_siebie(wydawca):
