@@ -2,6 +2,13 @@
 Historia zmian
 ==============
 
+202002.19
+---------
+
+* import pliku DBF nie dzieli tytułu po znaku równości na oryginalny i pozostały (b/n),
+* autorom przypisanym do rekordów patentów można przypisywać dyscypliny naukowe (b/n),
+
+
 202002.18
 ---------
 
