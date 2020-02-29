@@ -1,4 +1,5 @@
 import os
+import pprint
 import sys
 from collections import defaultdict
 
@@ -1339,10 +1340,11 @@ def integruj_publikacje(offset=None, limit=None):
             else:
                 raise NotImplementedError(elem, rec, rec.idt)
 
-        import pprint
-
-        pprint.pprint(kw)
-        res = klass.objects.create(**kw)
+        try:
+            res = klass.objects.create(**kw)
+        except Exception as e:
+            pprint.pprint(kw)
+            raise e
 
         rec.object = res
         rec.save()
