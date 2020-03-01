@@ -23,6 +23,7 @@ from import_dbf.models import (
     Kbn,
     Jez,
     Loc,
+    Bib_Desc,
 )
 
 
@@ -149,6 +150,15 @@ class PozAdmin(ImportDbfBaseAdmin):
     autocomplete_fields = ["idt"]
     list_select_related = ["idt"]
     list_filter = ["kod_opisu"]
+
+
+@admin.register(Bib_Desc)
+class Bib_DescAdmin(ImportDbfBaseAdmin):
+    list_display = ["idt", "elem_id", "value", "source"]
+    search_fields = ["idt__tytul_or", "elem_id", "value"]
+    autocomplete_fields = ["idt"]
+    list_select_related = ["idt"]
+    list_filter = ["elem_id"]
 
 
 @admin.register(B_U)

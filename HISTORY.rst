@@ -12,6 +12,7 @@ Historia zmian
 * aliasy wydawców (b/n),
 * tworzenie źródła wprost z formularza dodawania wydawnictwa ciągłego w module redagowania (#800),
   tak utworzone źródło dostanie zawsze rodzaj źródła równy: periodyk,
+* wyświetlanie PubMed ID, PMC ID oraz ISBN i ISSN w opisie bibliograficznym (#801, #799),
 
 202002.18
 ---------
