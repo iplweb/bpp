@@ -2,7 +2,7 @@
 Historia zmian
 ==============
 
-202002.19
+202003.19
 ---------
 
 * import pliku DBF nie dzieli tytułu po znaku równości na oryginalny i pozostały (b/n),
@@ -10,6 +10,7 @@ Historia zmian
 * aktualizacja pakietów zależnych z przyczyn bezpieczeństwa (bleach3) (b/n),
 * eksport PBN: eksportuj prace z PK większym, niż 5 (poprzedni warunek: większe lub równe) (b/n),
 * aliasy wydawców (b/n),
+* wyświetlanie PubMed ID, PMC ID oraz ISBN i ISSN w opisie bibliograficznym (#801, #800),
 
 202002.18
 ---------
