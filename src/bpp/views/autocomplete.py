@@ -33,7 +33,7 @@ from bpp.models.struktura import Wydzial
 from bpp.models.system import Charakter_Formalny
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor
-from bpp.models.zrodlo import Zrodlo
+from bpp.models.zrodlo import Zrodlo, Rodzaj_Zrodla
 from bpp.util import fulltext_tokenize
 
 from django.contrib.auth.mixins import UserPassesTestMixin
@@ -146,7 +146,17 @@ class WidocznaJednostkaAutocomplete(JednostkaAutocomplete):
     qset = Jednostka.objects.filter(widoczna=True).select_related("wydzial")
 
 
-class ZrodloAutocomplete(autocomplete.Select2QuerySetView):
+def autocomplete_create_error(msg):
+    class Error:
+        pk = -1
+
+        def __str__(self):
+            return msg
+
+    return Error
+
+
+class PublicZrodloAutocomplete(autocomplete.Select2QuerySetView):
     def get_queryset(self):
         qs = Zrodlo.objects.all()
         if self.q:
@@ -159,6 +169,22 @@ class ZrodloAutocomplete(autocomplete.Select2QuerySetView):
                     | Q(skrot_nazwy_alternatywnej__istartswith=token)
                 )
         return qs
+
+
+class ZrodloAutocomplete(GroupRequiredMixin, PublicZrodloAutocomplete):
+    create_field = "nazwa"
+    group_required = GR_WPROWADZANIE_DANYCH
+
+    def create_object(self, text):
+        try:
+            rz = Rodzaj_Zrodla.objects.get(nazwa="periodyk")
+        except Rodzaj_Zrodla.DoesNotExist:
+            return autocomplete_create_error(
+                "Nie można utworzyć źródła - brak zdefiniowanego"
+                " rodzaju źródła 'periodyk'"
+            )
+
+        return self.get_queryset().create(nazwa=text.strip(), rodzaj=rz)
 
 
 class AutorAutocompleteBase(autocomplete.Select2QuerySetView):
@@ -189,14 +215,9 @@ class AutorAutocomplete(GroupRequiredMixin, AutorAutocompleteBase):
     def create_object(self, text):
         text = text.split(" ", 1)
         if len(text) != 2:
-
-            class Error:
-                pk = -1
-
-                def __str__(self):
-                    return "Wpisz nazwisko, potem imię. " "Wyrazy oddziel spacją. "
-
-            return Error()
+            return autocomplete_create_error(
+                "Wpisz nazwisko, potem imię. " "Wyrazy oddziel spacją. "
+            )
 
         return self.get_queryset().create(
             **dict(nazwisko=text[0].title(), imiona=text[1].title(), pokazuj=False)
