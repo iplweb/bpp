@@ -592,18 +592,13 @@ def mapuj_elementy_publikacji(offset, limit):
 
 
 def to_pubmed_id(ident):
-    if not ident.strip() == "":
+    if not ident.strip():
         return
 
     try:
         return int(ident)
-    except TypeError:
+    except (TypeError, ValueError):
         return
-    except ValueError:
-        try:
-            return int(ident.replace("PMC", ""))
-        except ValueError as e:
-            raise e
 
 
 @transaction.atomic
