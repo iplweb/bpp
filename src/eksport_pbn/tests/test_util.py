@@ -21,12 +21,12 @@ def test_id_zwartych(wydawnictwo_zwarte_z_autorem, wydzial, rok):
     :type wydawnictwo_zwarte_z_autorem: bpp.models.Wydawnictwo_Zwarte
     """
     wydawnictwo_zwarte_z_autorem.liczba_znakow_wydawniczych = 240000
-    wydawnictwo_zwarte_z_autorem.punkty_kbn = 5
+    wydawnictwo_zwarte_z_autorem.punkty_kbn = 6
     wydawnictwo_zwarte_z_autorem.save()
 
     cf = wydawnictwo_zwarte_z_autorem.charakter_formalny
     cf.liczba_znakow_wydawniczych = 240000
-    cf.punkty_kbn = 4
+    cf.punkty_kbn = 6
     cf.rodzaj_pbn = const.RODZAJ_PBN_KSIAZKA
     cf.save()
 
@@ -63,7 +63,7 @@ def test_id_zwartych_gdy_jest_ksiazka_z_w1_ale_rozdzialy_ma_w_w2(charaktery_form
         calkowita_liczba_autorow=50,
         rok=2015,
         liczba_znakow_wydawniczych=240000,
-        punkty_kbn=5,
+        punkty_kbn=6,
     )
     wz_child1 = mommy.make(
         Wydawnictwo_Zwarte,

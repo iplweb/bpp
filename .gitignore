@@ -114,3 +114,4 @@ src/import_dbf/db-old/
 .env
 src/import_dbf/integruj-dbf-enable-publikacja.log.txt
 src/import_dbf/integruj-dbf-publikacja-log.txt
+src/import_dbf/post-import-dbf.sql

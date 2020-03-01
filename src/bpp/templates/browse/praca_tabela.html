@@ -40,6 +40,20 @@
         </tr>
     {% endif %}
 
+    {% if praca.isbn %}
+        <tr><th>ISBN:</th><td>{{praca.isbn}}</td></tr>
+    {%endif%}
+    {% if praca.e_isbn %}
+        <tr><th>e-ISBN:</th><td>{{praca.e_isbn}}</td></tr>
+    {%endif%}
+
+    {% if praca.issn %}
+        <tr><th>ISSN:</th><td>{{praca.issn}}</td></tr>
+    {%endif%}
+    {% if praca.issn %}
+        <tr><th>e-ISSN:</th><td>{{praca.e_issn}}</td></tr>
+    {%endif%}
+
     {% if praca.charakter_formalny.skrot == "PAT" %}
         <tr>
             <th>Patent:</th>
@@ -74,6 +88,20 @@
         <tr>
             <th>DOI</th>
             <td><a target="_blank" href="http://doi.org/{{ praca.doi }}">{{ praca.doi }}</a></td>
+        </tr>
+    {% endif %}
+
+    {% if praca.pubmed_id %}
+        <tr>
+            <th>PubMed ID:</th>
+            <td><a target="_blank" href="https://www.ncbi.nlm.nih.gov/pubmed/{{ praca.pubmed_id }}">{{ praca.pubmed_id }}</a></td>
+        </tr>
+    {% endif %}
+
+    {% if praca.pmc_id %}
+        <tr>
+            <th>PMC ID:</th>
+            <td>{{ praca.pmc_id  }}</td>
         </tr>
     {% endif %}
 

@@ -19,6 +19,7 @@ IMPORT_DBF_MENU_1 = [
     ("Zaimportowana bibliografia", "/admin/import_dbf/bib/",),
     ("Zaimportowane dane Open Access", "/admin/import_dbf/b_u/",),
     ("Zaimportowane opisy rekordów", "/admin/import_dbf/poz/",),
+    ("Zaimportowane i zanalizowane opisy rekordów", "/admin/import_dbf/bib_desc/",),
     ("Zaimportowane źródła", "/admin/import_dbf/usi/",),
     ("Zaimportowane jednostki", "/admin/import_dbf/jed/",),
     ("Zaimportowani autorzy", "/admin/import_dbf/aut/",),

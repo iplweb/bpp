@@ -710,23 +710,17 @@ def rebuild(klass, offset=None, limit=None, extra_flds=None, extra_tables=None):
     query = (
         klass.objects.filter(pk__in=ids)
         .select_for_update(nowait=True, of=("self",))
-        .select_related("charakter_formalny", "typ_kbn", *extra_tables)
+        .select_related(*extra_tables)
         .only(
             "tytul_oryginalny",
-            "tytul",
             "informacje",
-            "charakter_formalny__skrot",
-            "charakter_formalny__charakter_sloty",
             "szczegoly",
             "uwagi",
-            "doi",
             "tekst_przed_pierwszym_autorem",
             "tekst_po_ostatnim_autorze",
             "opis_bibliograficzny_cache",
             "opis_bibliograficzny_autorzy_cache",
             "opis_bibliograficzny_zapisani_autorzy_cache",
-            "typ_kbn__nazwa",
-            "typ_kbn__skrot",
             "rok",
             "punkty_kbn",
             *extra_flds
@@ -754,8 +748,19 @@ def rebuild_zwarte(offset=None, limit=None):
         Wydawnictwo_Zwarte,
         offset=offset,
         limit=limit,
-        extra_tables=["wydawca",],
-        extra_flds=["miejsce_i_rok", "wydawca__nazwa", "wydawca_opis", "isbn"],
+        extra_tables=["wydawca", "charakter_formalny", "typ_kbn",],
+        extra_flds=[
+            "tytul",
+            "doi",
+            "miejsce_i_rok",
+            "wydawca__nazwa",
+            "wydawca_opis",
+            "isbn",
+            "typ_kbn__nazwa",
+            "typ_kbn__skrot",
+            "charakter_formalny__skrot",
+            "charakter_formalny__charakter_sloty",
+        ],
     )
 
 
@@ -764,8 +769,17 @@ def rebuild_ciagle(offset=None, limit=None):
         Wydawnictwo_Ciagle,
         offset=offset,
         limit=limit,
-        extra_tables=["zrodlo"],
-        extra_flds=["zrodlo__nazwa", "zrodlo__skrot"],
+        extra_tables=["zrodlo", "charakter_formalny", "typ_kbn",],
+        extra_flds=[
+            "tytul",
+            "doi",
+            "zrodlo__nazwa",
+            "zrodlo__skrot",
+            "typ_kbn__nazwa",
+            "typ_kbn__skrot",
+            "charakter_formalny__skrot",
+            "charakter_formalny__charakter_sloty",
+        ],
     )
 
 

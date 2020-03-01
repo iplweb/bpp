@@ -1,7 +1,9 @@
 PSQL=psql -q -t --echo-errors bpp | grep -v "INSERT 0 1"
 PSQL_VERBOSE=psql -t --echo-errors -a bpp
+PG_DUMP=pg_dump bpp
 MANAGE=python ../manage.py
 DBF2SQL=python ../../../manage.py dbf2sql
+ASSETS_DIR=/tmp/bpp-assets
 
 rebuild: remove-dbfs import-dbfs alter-schema
 
@@ -16,19 +18,22 @@ import-converted-dbfs:
 usun-integracje-autorow:
 	echo "begin; delete from bpp_autor_jednostka; delete from bpp_autor;update import_dbf_aut set bpp_autor_id = NULL where bpp_autor_id IS NOT NULL;commit;" | $(PSQL)
 
+get-assets:
+	if [ -d $(ASSETS_DIR) ]; then cd $(ASSETS_DIR) && git pull; else git clone https://github.com/iplweb/bpp-assets $(ASSETS_DIR); fi
+
 integruj-dbf-autorzy:
 	$(MANAGE) integruj_dbf --enable-wydzial
 	$(MANAGE) integruj_dbf --enable-jednostka
 	$(MANAGE) integruj_dbf --enable-autor
 
 importuj-dyscypliny:
-	$(MANAGE) importuj_dyscypliny -v0 2017 /Volumes/Dane\ zaszyfrowane/UMWroclaw/dyscypliny_BPP.xlsx
-	$(MANAGE) importuj_dyscypliny -v0 2018 /Volumes/Dane\ zaszyfrowane/UMWroclaw/dyscypliny_BPP.xlsx
-	$(MANAGE) importuj_dyscypliny -v0 2019 /Volumes/Dane\ zaszyfrowane/UMWroclaw/dyscypliny_BPP.xlsx
-	$(MANAGE) importuj_dyscypliny -v0 2020 /Volumes/Dane\ zaszyfrowane/UMWroclaw/dyscypliny_BPP.xlsx
+	$(MANAGE) importuj_dyscypliny -v0 2017 "/Volumes/Dane zaszyfrowane/UMWroclaw/bpp-assets/dyscypliny/2017.xlsx"
+	$(MANAGE) importuj_dyscypliny -v0 2018 "/Volumes/Dane zaszyfrowane/UMWroclaw/bpp-assets/dyscypliny/2018.xlsx"
+	$(MANAGE) importuj_dyscypliny -v0 2019 "/Volumes/Dane zaszyfrowane/UMWroclaw/bpp-assets/dyscypliny/2019.xlsx"
+	$(MANAGE) importuj_dyscypliny -v0 2020 "/Volumes/Dane zaszyfrowane/UMWroclaw/bpp-assets/dyscypliny/2020.xlsx"
 
-integruj-dbf-publikacje:
-	$(MANAGE) integruj_dbf --enable-charakter-kbn-jezyk --charaktery-enrichment-xls /Volumes/Dane\ zaszyfrowane/UMWroclaw/charaktery.xlsx
+integruj-dbf-publikacje: get-assets
+	$(MANAGE) integruj_dbf --enable-charakter-kbn-jezyk --charaktery-enrichment-xls $(ASSETS_DIR)/bg-umw/charaktery_formalne.xlsx
 	$(MANAGE) integruj_dbf --enable-zrodlo
 	$(MANAGE) integruj_dbf --enable-publikacja > integruj-dbf-publikacja-log.txt
 	$(MANAGE) integruj_dbf --enable-zatwierdz-podwojne-przypisania
@@ -78,8 +83,17 @@ recreate-db:
 rebuild-cache:
 	$(MANAGE) rebuild_cache
 
-import-dbf: recreate-db import-converted-dbfs alter-schema
+create-bib-desc:
+	$(MANAGE) integruj_dbf --enable-mapuj-publikacja
+	cat sql/translate-bib-desc.sql | $(PSQL)
 
-integrate: disable-trigger integruj-dbf rebuild-cache enable-trigger
+import-dbf: recreate-db import-converted-dbfs alter-schema create-bib-desc
+	$(PG_DUMP) > post-import-dbf.sql
+
+integruj-liste-wydawcow: get-assets
+	$(MANAGE) import_wydawca_poziom $(ASSETS_DIR)/poziomy-wydawcow-2017-2020.xlsx
+	$(MANAGE) import_wydawca_alias $(ASSETS_DIR)/bg-umw/aliasy_wydawcow.xlsx
+
+integrate: disable-trigger integruj-dbf integruj-liste-wydawcow rebuild-cache enable-trigger
 
 rebuild: convert-dbfs import-dbf integrate

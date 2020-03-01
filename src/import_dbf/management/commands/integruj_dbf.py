@@ -48,6 +48,7 @@ class Command(BaseCommand):
         parser.add_argument("--enable-jednostka", action="store_true")
         parser.add_argument("--enable-autor", action="store_true")
         parser.add_argument("--enable-publikacja", action="store_true")
+        parser.add_argument("--enable-mapuj-publikacja", action="store_true")
         parser.add_argument("--enable-charakter-kbn-jezyk", action="store_true")
         parser.add_argument(
             "--charaktery-enrichment-xls", type=argparse.FileType("rb"), nargs="+"
@@ -117,7 +118,7 @@ class Command(BaseCommand):
             logger.debug("Zrodla")
             pool.apply(integruj_zrodla)
 
-        if enable_all or options["enable_publikacja"]:
+        if enable_all or options["enable_mapuj_publikacja"]:
             logger.debug("Publikacje - wyciągam dane")
 
             pool.starmap(
@@ -125,6 +126,7 @@ class Command(BaseCommand):
                 partition_count(Bib.objects.exclude(analyzed=True), num_proc),
             )
 
+        if enable_all or options["enable_publikacja"]:
             logger.info("Integruje publikacje")
             # pool.apply(integruj_publikacje)
             pool.starmap(

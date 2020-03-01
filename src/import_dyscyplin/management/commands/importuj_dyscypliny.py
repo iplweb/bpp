@@ -35,27 +35,27 @@ class Command(BaseCommand):
 
         i_d.plik.save(name=Path(path.name).name, content=File(path))
 
-        logger.info("Tworzę kolumny")
+        logger.debug("Tworzę kolumny")
         stworz_kolumny.apply(args=(i_d.pk,))
 
         i_d = Import_Dyscyplin.objects.get(pk=i_d.pk)
         i_d.zatwierdz_kolumny()
         i_d.save()
 
-        logger.info("Analizuję plik")
+        logger.debug("Analizuję plik")
         przeanalizuj_import_dyscyplin.apply(args=(i_d.pk,))
 
-        logger.info(
+        logger.debug(
             "Poprawne wiersze:    %s" % i_d.poprawne_wiersze_do_integracji().count()
         )
-        logger.info("Niepoprawne wiersze: %s" % i_d.niepoprawne_wiersze().count())
+        logger.debug("Niepoprawne wiersze: %s" % i_d.niepoprawne_wiersze().count())
 
         for elem in i_d.niepoprawne_wiersze().order_by("row_no"):
-            logger.info(
+            logger.debug(
                 f"{elem.row_no}: {elem.stan} {elem.info} {elem.nazwisko} {elem.imiona}"
             )
 
-        logger.info("Integruję plik")
+        logger.debug("Integruję plik")
         integruj_import_dyscyplin.apply(args=(i_d.pk,))
 
         i_d.delete()

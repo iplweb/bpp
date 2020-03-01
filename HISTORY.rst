@@ -2,6 +2,18 @@
 Historia zmian
 ==============
 
+202003.19
+---------
+
+* import pliku DBF nie dzieli tytułu po znaku równości na oryginalny i pozostały (b/n),
+* autorom przypisanym do rekordów patentów można przypisywać dyscypliny naukowe (b/n),
+* aktualizacja pakietów zależnych z przyczyn bezpieczeństwa (bleach3) (b/n),
+* eksport PBN: eksportuj prace z PK większym, niż 5 (poprzedni warunek: większe lub równe) (b/n),
+* aliasy wydawców (b/n),
+* tworzenie źródła wprost z formularza dodawania wydawnictwa ciągłego w module redagowania (#800),
+  tak utworzone źródło dostanie zawsze rodzaj źródła równy: periodyk,
+* wyświetlanie PubMed ID, PMC ID oraz ISBN i ISSN w opisie bibliograficznym (#801, #799),
+
 202002.18
 ---------
 
