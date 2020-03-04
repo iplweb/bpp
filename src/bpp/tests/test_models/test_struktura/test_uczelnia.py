@@ -2,12 +2,14 @@
 from urllib.parse import urlencode
 
 import pytest
-from django.contrib.contenttypes.models import ContentType
 from django.urls.base import reverse
 
 from bpp.models.fields import OpcjaWyswietlaniaField
 from bpp.tasks import aktualizuj_cache_rekordu
 from bpp.tests import browse_praca_url
+from bpp.views.autocomplete import Autor_Dyscyplina
+
+from django.contrib.contenttypes.models import ContentType
 
 
 @pytest.mark.parametrize(
@@ -137,9 +139,12 @@ def test_uczelnia_pokazuj_menu_nigdy(uczelnia, attr, s, client, admin_client):
 
 
 @pytest.fixture
-def praca_z_dyscyplina(wydawnictwo_ciagle_z_autorem, dyscyplina1):
+def praca_z_dyscyplina(wydawnictwo_ciagle_z_autorem, dyscyplina1, rok):
     wydawnictwo_ciagle_z_autorem.punkty_kbn = 5
     wca = wydawnictwo_ciagle_z_autorem.autorzy_set.first()
+    Autor_Dyscyplina.objects.create(
+        autor=wca.autor, rok=wca.rekord.rok, dyscyplina_naukowa=dyscyplina1
+    )
     wca.dyscyplina_naukowa = dyscyplina1
     wca.save()
     aktualizuj_cache_rekordu(wydawnictwo_ciagle_z_autorem)
