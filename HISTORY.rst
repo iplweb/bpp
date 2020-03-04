@@ -2,6 +2,12 @@
 Historia zmian
 ==============
 
+202003.20
+---------
+
+* ORCID i PBN ID w raport slotów - uczelnia (#808),
+* wyświetlanie numeru PBN ID na stronie autora (b/n),
+
 202003.19
 ---------
 
