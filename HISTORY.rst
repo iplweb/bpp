@@ -7,6 +7,7 @@ Historia zmian
 
 * ORCID i PBN ID w raport slotów - uczelnia (#808),
 * wyświetlanie numeru PBN ID na stronie autora (b/n),
+* w przypadku zaznaczenia opcji 'afiliuje' przy obcej jednostce, zgłaszaj błąd (b/n),
 
 202003.19
 ---------
