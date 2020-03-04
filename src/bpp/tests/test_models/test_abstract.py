@@ -113,7 +113,7 @@ def test_eksport_pbn_outstanding():
     wz.praca_wybitna = False
     toplevel = Element("test")
     wz.eksport_pbn_outstanding(toplevel)
-    assert len(toplevel.getchildren()) == 0
+    assert len(toplevel.getchildren()) == 1
 
 
 @pytest.mark.django_db

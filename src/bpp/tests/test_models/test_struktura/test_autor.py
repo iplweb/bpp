@@ -27,7 +27,7 @@ def test_Autor_liczba_cytowan():
 
     j2 = mommy.make(Jednostka, skupia_pracownikow=False)
     wc2 = mommy.make(Wydawnictwo_Ciagle, liczba_cytowan=300)
-    wc2.dodaj_autora(autor, j2, zapisany_jako="Jan K2")
+    wc2.dodaj_autora(autor, j2, zapisany_jako="Jan K2", afiliuje=False)
 
     assert autor.liczba_cytowan() == 500
 
@@ -42,6 +42,6 @@ def test_liczba_cytowan_afiliowane():
 
     j2 = mommy.make(Jednostka, skupia_pracownikow=False)
     wc2 = mommy.make(Wydawnictwo_Ciagle, liczba_cytowan=300)
-    wc2.dodaj_autora(autor, j2, zapisany_jako="Jan K2")
+    wc2.dodaj_autora(autor, j2, zapisany_jako="Jan K2", afiliuje=False)
 
     assert autor.liczba_cytowan_afiliowane() == 200
