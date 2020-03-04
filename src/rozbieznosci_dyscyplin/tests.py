@@ -8,38 +8,58 @@ from rozbieznosci_dyscyplin.models import RozbieznosciView
 
 
 @pytest.fixture
-def zle_przypisana_praca(autor_jan_kowalski, jednostka, dyscyplina1, dyscyplina2, dyscyplina3,
-                         wydawnictwo_ciagle, rok):
+def zle_przypisana_praca(
+    autor_jan_kowalski,
+    jednostka,
+    dyscyplina1,
+    dyscyplina2,
+    dyscyplina3,
+    wydawnictwo_ciagle,
+    rok,
+):
     Autor_Dyscyplina.objects.create(
         autor=autor_jan_kowalski,
         rok=rok,
         dyscyplina_naukowa=dyscyplina1,
-        subdyscyplina_naukowa=dyscyplina2
+        subdyscyplina_naukowa=dyscyplina2,
     )
 
-    wca = wydawnictwo_ciagle.dodaj_autora(
-        autor_jan_kowalski,
-        jednostka,
-        dyscyplina_naukowa=dyscyplina3)
+    wca = wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
+
+    from django.db import connection
+
+    cursor = connection.cursor()
+    cursor.execute(
+        "UPDATE bpp_wydawnictwo_ciagle_autor SET dyscyplina_naukowa_id = %s WHERE id = %s"
+        % (dyscyplina3.pk, wca.pk)
+    )
+
+    # wca.dyscyplina_naukowa_id = dyscyplina3
+    #     dyscyplina_naukowa=dyscyplina3)
 
     return wydawnictwo_ciagle
 
 
 @pytest.mark.django_db
 def test_znajdz_rozbieznosci_gdy_przypisanie_autor_dyscyplina(
-        autor_jan_kowalski, jednostka, dyscyplina1, dyscyplina2, dyscyplina3,
-        wydawnictwo_ciagle, rok):
+    autor_jan_kowalski,
+    jednostka,
+    dyscyplina1,
+    dyscyplina2,
+    dyscyplina3,
+    wydawnictwo_ciagle,
+    rok,
+):
     Autor_Dyscyplina.objects.create(
         autor=autor_jan_kowalski,
         rok=rok,
         dyscyplina_naukowa=dyscyplina1,
-        subdyscyplina_naukowa=dyscyplina2
+        subdyscyplina_naukowa=dyscyplina2,
     )
 
     wca = wydawnictwo_ciagle.dodaj_autora(
-        autor_jan_kowalski,
-        jednostka,
-        dyscyplina_naukowa=dyscyplina1)
+        autor_jan_kowalski, jednostka, dyscyplina_naukowa=dyscyplina1
+    )
 
     assert RozbieznosciView.objects.count() == 0
 
@@ -48,8 +68,13 @@ def test_znajdz_rozbieznosci_gdy_przypisanie_autor_dyscyplina(
 
     assert RozbieznosciView.objects.count() == 0
 
-    wca.dyscyplina_naukowa = dyscyplina3
-    wca.save()
+    from django.db import connection
+
+    cur = connection.cursor()
+    cur.execute(
+        "UPDATE bpp_wydawnictwo_ciagle_autor SET dyscyplina_naukowa_id = %s WHERE id = %s"
+        % (dyscyplina3.pk, wca.pk)
+    )
 
     assert RozbieznosciView.objects.first().autor == autor_jan_kowalski
 
@@ -61,12 +86,23 @@ def test_znajdz_rozbieznosci_gdy_przypisanie_autor_dyscyplina(
 
 @pytest.mark.django_db
 def test_znajdz_rozbieznosci_bez_przypisania_autor_dyscyplina(
-        autor_jan_kowalski, jednostka, dyscyplina1, dyscyplina2, dyscyplina3,
-        wydawnictwo_ciagle, rok):
-    wca = wydawnictwo_ciagle.dodaj_autora(
-        autor_jan_kowalski,
-        jednostka,
-        dyscyplina_naukowa=dyscyplina1)
+    autor_jan_kowalski,
+    jednostka,
+    dyscyplina1,
+    dyscyplina2,
+    dyscyplina3,
+    wydawnictwo_ciagle,
+    rok,
+):
+    wca = wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
+
+    from django.db import connection
+
+    cursor = connection.cursor()
+    cursor.execute(
+        "UPDATE bpp_wydawnictwo_ciagle_autor SET dyscyplina_naukowa_id = %s WHERE id = %s"
+        % (dyscyplina1.pk, wca.pk)
+    )
 
     assert RozbieznosciView.objects.count() == 1
 
@@ -84,30 +120,34 @@ def test_api_rozbieznoscidyscyplin_view_niezalogowany(client, zle_przypisana_pra
 
 @pytest.mark.django_db
 def test_api_rozbieznoscidyscyplin_view(client, admin_user, zle_przypisana_praca):
-    client.login(username=admin_user, password='password')
+    client.login(username=admin_user, password="password")
     res = client.get(reverse("rozbieznosci_dyscyplin:api-rozbieznosci-dyscyplin"))
     assert res.status_code == 200
-    assert res.json()['data'][0]['tytul_oryginalny'].find("target") > 0
+    assert res.json()["data"][0]["tytul_oryginalny"].find("target") > 0
 
     res = client.get(
-        reverse("rozbieznosci_dyscyplin:api-rozbieznosci-dyscyplin"), {
-            'search[value]': 'foo'
-        })
+        reverse("rozbieznosci_dyscyplin:api-rozbieznosci-dyscyplin"),
+        {"search[value]": "foo"},
+    )
     assert res.status_code == 200
 
 
 @pytest.mark.django_db
 def test_redirect_to_admin_view(wydawnictwo_ciagle, client, admin_user):
-    res = client.get(reverse(
-        "rozbieznosci_dyscyplin:redirect-to-admin",
-        kwargs={
-            'content_type_id': ContentType.objects.get_for_model(wydawnictwo_ciagle).pk,
-            'object_id': wydawnictwo_ciagle.pk
-        }
-    ))
+    res = client.get(
+        reverse(
+            "rozbieznosci_dyscyplin:redirect-to-admin",
+            kwargs={
+                "content_type_id": ContentType.objects.get_for_model(
+                    wydawnictwo_ciagle
+                ).pk,
+                "object_id": wydawnictwo_ciagle.pk,
+            },
+        )
+    )
     assert res.status_code == 302
 
-    client.login(username=admin_user, password='password')
+    client.login(username=admin_user, password="password")
     res2 = client.get(res.url)
 
     assert res2.status_code == 200
@@ -118,16 +158,15 @@ def test_main_view(zle_przypisana_praca, client, admin_user):
     res = client.get(reverse("rozbieznosci_dyscyplin:main-view"))
     assert res.status_code == 302
 
-    client.login(username=admin_user, password='password')
+    client.login(username=admin_user, password="password")
 
     res = client.get(reverse("rozbieznosci_dyscyplin:main-view"))
     assert res.status_code == 200
 
 
 @pytest.mark.django_db
-def test_main_view(zle_przypisana_praca, preauth_admin_browser, live_server):
+def test_main_view_admin(zle_przypisana_praca, preauth_admin_browser, live_server):
     preauth_admin_browser.visit(
-        live_server + reverse("rozbieznosci_dyscyplin:main-view"))
-    wait_for(
-        lambda: 'Kowalski' in preauth_admin_browser.html
+        live_server + reverse("rozbieznosci_dyscyplin:main-view")
     )
+    wait_for(lambda: "Kowalski" in preauth_admin_browser.html)

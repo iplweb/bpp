@@ -7,48 +7,51 @@
 # - Praca_Doktorska
 # - Praca_Habilitacyjna
 
-from django.contrib.contenttypes.fields import GenericForeignKey
-from django.contrib.contenttypes.models import ContentType
-from django.contrib.postgres.fields.array import ArrayField
-from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ObjectDoesNotExist
-from django.db import models, transaction, reset_queries, connection
-from django.db.models import Func, ForeignKey, CASCADE
+from django.db import connection, models, reset_queries, transaction
+from django.db.models import CASCADE, ForeignKey, Func
 from django.db.models.deletion import DO_NOTHING
 from django.db.models.lookups import In
-from django.db.models.signals import post_save, post_delete, pre_save, pre_delete
-from django.utils import six
-from django.utils.functional import cached_property
+from django.db.models.signals import post_delete, post_save, pre_delete, pre_save
 
 from bpp.models import (
+    Autor,
+    Dyscyplina_Naukowa,
+    Jednostka,
     Patent,
+    Patent_Autor,
     Praca_Doktorska,
     Praca_Habilitacyjna,
     Typ_Odpowiedzialnosci,
-    Wydawnictwo_Zwarte,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Ciagle_Autor,
+    Wydawnictwo_Zwarte,
     Wydawnictwo_Zwarte_Autor,
-    Patent_Autor,
     Zrodlo,
-    Dyscyplina_Naukowa,
-    Autor,
-    Jednostka,
 )
 from bpp.models.abstract import (
     ModelPunktowanyBaza,
-    ModelZRokiem,
-    ModelZeSzczegolami,
     ModelRecenzowany,
-    ModelZeZnakamiWydawniczymi,
-    ModelZOpenAccess,
-    ModelZKonferencja,
     ModelTypowany,
     ModelZCharakterem,
+    ModelZeSzczegolami,
+    ModelZeZnakamiWydawniczymi,
+    ModelZKonferencja,
+    ModelZOpenAccess,
+    ModelZRokiem,
+    ModelZWWW,
 )
 from bpp.models.system import Charakter_Formalny, Jezyk
 from bpp.models.util import ModelZOpisemBibliograficznym
 from bpp.util import FulltextSearchMixin
+
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
+from django.contrib.postgres.fields.array import ArrayField
+from django.contrib.postgres.search import SearchVectorField as VectorField
+
+from django.utils import six
+from django.utils.functional import cached_property
 
 # zmiana CACHED_MODELS powoduje zmiane opisu bibliograficznego wszystkich rekordow
 CACHED_MODELS = [
@@ -403,6 +406,7 @@ class RekordBase(
     ModelPunktowanyBaza,
     ModelZOpisemBibliograficznym,
     ModelZRokiem,
+    ModelZWWW,
     ModelZeSzczegolami,
     ModelRecenzowany,
     ModelZeZnakamiWydawniczymi,
@@ -434,10 +438,6 @@ class RekordBase(
     liczba_autorow = models.SmallIntegerField()
 
     liczba_cytowan = models.SmallIntegerField()
-
-    # nie dziedziczymy z ModelZWWW, poniewaz tam jest pole dostep_dnia,
-    # ktore to obecnie nie jest potrzebne w Cache, wiec:
-    www = models.URLField("Adres WWW", max_length=1024, blank=True, null=True)
 
     objects = RekordManager()
 
