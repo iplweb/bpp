@@ -68,6 +68,7 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID):
         default=True,
         help_text="""Ta jednostka skupia osoby będące faktycznymi pracownikami uczelni. Odznacz dla jednostek
          typu 'Studenci', 'Doktoranci', 'Pracownicy emerytowani' itp. Odznacz dla 'obcych' jednostek. """,
+        db_index=True,
     )
 
     zarzadzaj_automatycznie = models.BooleanField(
