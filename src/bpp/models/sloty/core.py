@@ -206,6 +206,12 @@ class IPunktacjaCacher:
             )
 
         for wa in self.original.autorzy_set.all():
+            if not wa.afiliuje or not wa.jednostka.skupia_pracownikow:
+                # Jeżeli autor NIE afiliuje lub afiliuje, ale jednostka nie skupia
+                # pracowników (czyli jest OBCA, czyli realnie wpis błędny), to nie
+                # licz punktów dla takiego autora
+                continue
+
             dyscyplina = wa.okresl_dyscypline()
             if dyscyplina is None:
                 continue
