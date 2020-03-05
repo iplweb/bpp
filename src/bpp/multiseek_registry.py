@@ -6,8 +6,11 @@ from mptt.forms import TreeNodeChoiceFieldMixin
 from mptt.settings import DEFAULT_LEVEL_INDICATOR
 
 from bpp.models.konferencja import Konferencja
-from bpp.models.openaccess import Wersja_Tekstu_OpenAccess, \
-    Licencja_OpenAccess, Czas_Udostepnienia_OpenAccess
+from bpp.models.openaccess import (
+    Wersja_Tekstu_OpenAccess,
+    Licencja_OpenAccess,
+    Czas_Udostepnienia_OpenAccess,
+)
 from bpp.models.struktura import Wydzial
 
 NULL_VALUE = "(brak wpisanej wartości)"
@@ -15,19 +18,51 @@ NULL_VALUE = "(brak wpisanej wartości)"
 from django.db.models import Q
 from django.db.models.expressions import F
 from multiseek import logic
-from multiseek.logic import DecimalQueryObject, BooleanQueryObject, EQUAL_NONE, \
-    EQUAL_FEMALE, DIFFERENT_NONE, DIFFERENT_FEMALE
-from multiseek.logic import StringQueryObject, QueryObject, EQUALITY_OPS_ALL, \
-    UnknownOperation, DIFFERENT_ALL, AUTOCOMPLETE, EQUALITY_OPS_NONE, \
-    EQUALITY_OPS_FEMALE, VALUE_LIST, EQUALITY_OPS_MALE, create_registry, \
-    IntegerQueryObject, ValueListQueryObject, \
-    EQUAL, DIFFERENT, \
-    AutocompleteQueryObject, Ordering, ReportType, RangeQueryObject, \
-    DateQueryObject
+from multiseek.logic import (
+    DecimalQueryObject,
+    BooleanQueryObject,
+    EQUAL_NONE,
+    EQUAL_FEMALE,
+    DIFFERENT_NONE,
+    DIFFERENT_FEMALE,
+)
+from multiseek.logic import (
+    StringQueryObject,
+    QueryObject,
+    EQUALITY_OPS_ALL,
+    UnknownOperation,
+    DIFFERENT_ALL,
+    AUTOCOMPLETE,
+    EQUALITY_OPS_NONE,
+    EQUALITY_OPS_FEMALE,
+    VALUE_LIST,
+    EQUALITY_OPS_MALE,
+    create_registry,
+    IntegerQueryObject,
+    ValueListQueryObject,
+    EQUAL,
+    DIFFERENT,
+    AutocompleteQueryObject,
+    Ordering,
+    ReportType,
+    RangeQueryObject,
+    DateQueryObject,
+)
 
-from bpp.models import Typ_Odpowiedzialnosci, Jezyk, Autor, Jednostka, \
-    Charakter_Formalny, Zrodlo, Dyscyplina_Naukowa, Zewnetrzna_Baza_Danych, Autorzy, Uczelnia, const, \
-    ZewnetrzneBazyDanychView
+from bpp.models import (
+    Typ_Odpowiedzialnosci,
+    Jezyk,
+    Autor,
+    Jednostka,
+    Charakter_Formalny,
+    Zrodlo,
+    Dyscyplina_Naukowa,
+    Zewnetrzna_Baza_Danych,
+    Autorzy,
+    Uczelnia,
+    const,
+    ZewnetrzneBazyDanychView,
+)
 from bpp.models.cache import Rekord
 
 from bpp.models.system import Typ_KBN
@@ -39,19 +74,20 @@ UNION_OPS_ALL = [UNION, UNION_FEMALE, UNION_NONE]
 
 
 class TytulPracyQueryObject(StringQueryObject):
-    label = 'Tytuł pracy'
+    label = "Tytuł pracy"
     field_name = "tytul_oryginalny"
 
     def real_query(self, value, operation):
         ret = super(StringQueryObject, self).real_query(
-            value, operation, validate_operation=False)
+            value, operation, validate_operation=False
+        )
 
         if ret is not None:
             return ret
 
         elif operation in [logic.CONTAINS, logic.NOT_CONTAINS]:
             if not value:
-                return Q(pk=F('pk'))
+                return Q(pk=F("pk"))
 
             query = None
 
@@ -82,34 +118,34 @@ class TytulPracyQueryObject(StringQueryObject):
 
 
 class AdnotacjeQueryObject(StringQueryObject):
-    label = 'Adnotacje'
-    field_name = 'adnotacje'
+    label = "Adnotacje"
+    field_name = "adnotacje"
     public = False
 
 
 class InformacjeQueryObject(StringQueryObject):
-    label = 'Informacje'
-    field_name = 'informacje'
+    label = "Informacje"
+    field_name = "informacje"
 
 
 class SzczegolyQueryObject(StringQueryObject):
-    label = 'Szczegóły'
-    field_name = 'szczegoly'
+    label = "Szczegóły"
+    field_name = "szczegoly"
 
 
 class UwagiQueryObject(StringQueryObject):
-    label = 'Uwagi'
-    field_name = 'uwagi'
+    label = "Uwagi"
+    field_name = "uwagi"
 
 
 class SlowaKluczoweQueryObject(StringQueryObject):
-    label = 'Słowa kluczowe'
-    field_name = 'slowa_kluczowe'
+    label = "Słowa kluczowe"
+    field_name = "slowa_kluczowe"
 
 
 class DataUtworzeniaQueryObject(DateQueryObject):
-    label = 'Data utworzenia'
-    field_name = 'utworzono'
+    label = "Data utworzenia"
+    field_name = "utworzono"
     public = False
 
     def value_for_description(self, value):
@@ -138,18 +174,16 @@ class ForeignKeyDescribeMixin:
         if value is None:
             return NULL_VALUE
 
-        return self.value_from_web(value) or \
-               "[powiązany obiekt został usunięty]"
+        return self.value_from_web(value) or "[powiązany obiekt został usunięty]"
 
 
-class NazwiskoIImieQueryObject(ForeignKeyDescribeMixin,
-                               AutocompleteQueryObject):
-    label = 'Nazwisko i imię'
+class NazwiskoIImieQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
+    label = "Nazwisko i imię"
     type = AUTOCOMPLETE
     ops = [EQUAL_NONE, DIFFERENT_NONE, UNION_NONE]
     model = Autor
-    search_fields = ['nazwisko', 'imiona']
-    field_name = 'autor'
+    search_fields = ["nazwisko", "imiona"]
+    field_name = "autor"
     url = "bpp:public-autor-autocomplete"
 
     def real_query(self, value, operation):
@@ -158,9 +192,7 @@ class NazwiskoIImieQueryObject(ForeignKeyDescribeMixin,
             ret = Q(autorzy__autor=value)
 
         elif operation in UNION_OPS_ALL:
-            q = Autorzy.objects.filter(
-                autor=value
-            ).values('rekord_id')
+            q = Autorzy.objects.filter(autor=value).values("rekord_id")
 
             ret = Q(pk__in=q)
         else:
@@ -173,11 +205,9 @@ class NazwiskoIImieQueryObject(ForeignKeyDescribeMixin,
 
 
 class ORCIDQueryObject(StringQueryObject):
-    label = 'ORCID'
+    label = "ORCID"
     ops = [EQUAL_NONE, DIFFERENT_NONE]
-    field_name = 'autorzy__autor__orcid'
-
-
+    field_name = "autorzy__autor__orcid"
 
 
 class NazwiskoIImieWZakresieKolejnosci(NazwiskoIImieQueryObject):
@@ -190,14 +220,14 @@ class NazwiskoIImieWZakresieKolejnosci(NazwiskoIImieQueryObject):
             ret = Q(
                 autorzy__autor=value,
                 autorzy__kolejnosc__gte=self.kolejnosc_gte,
-                autorzy__kolejnosc__lt=self.kolejnosc_lt
+                autorzy__kolejnosc__lt=self.kolejnosc_lt,
             )
 
         elif operation in UNION_OPS_ALL:
             q = Autorzy.objects.filter(
                 autor=value,
                 kolejnosc__gte=self.kolejnosc_gte,
-                kolejnosc__lt=self.kolejnosc_lt
+                kolejnosc__lt=self.kolejnosc_lt,
             ).values("rekord_id")
             ret = Q(pk__in=q)
 
@@ -217,11 +247,13 @@ class PierwszeNazwiskoIImie(NazwiskoIImieWZakresieKolejnosci):
 
 
 class OstatnieNazwiskoIImie(NazwiskoIImieWZakresieKolejnosci):
-    ops = [EQUAL, ]
+    ops = [
+        EQUAL,
+    ]
     # bez operatora UNION, bo F('liczba_autorow') nie istnieje, gdy
     # generujemy zapytanie dla niego.
-    kolejnosc_gte = F('liczba_autorow') - 1
-    kolejnosc_lt = F('liczba_autorow')
+    kolejnosc_gte = F("liczba_autorow") - 1
+    kolejnosc_lt = F("liczba_autorow")
     label = "Ostatnie nazwisko i imię"
     public = False
 
@@ -251,13 +283,12 @@ class TypOgolnyAutorQueryObject(NazwiskoIImieQueryObject):
         if operation in EQUALITY_OPS_ALL:
             ret = Q(
                 autorzy__autor=value,
-                autorzy__typ_odpowiedzialnosci__typ_ogolny=self.typ_ogolny
+                autorzy__typ_odpowiedzialnosci__typ_ogolny=self.typ_ogolny,
             )
 
         elif operation in UNION_OPS_ALL:
             q = Autorzy.objects.filter(
-                autor=value,
-                typ_odpowiedzialnosci__typ_ogolny=self.typ_ogolny
+                autor=value, typ_odpowiedzialnosci__typ_ogolny=self.typ_ogolny
             ).values("rekord_id")
             ret = Q(pk__in=q)
 
@@ -285,11 +316,12 @@ class TypOgolnyRecenzentQueryObject(TypOgolnyAutorQueryObject):
     label = "Recenzent"
 
 
-class DyscyplinaAutoraQueryObject(ForeignKeyDescribeMixin,
-                                  AutocompleteQueryObject):
-    label = 'Dyscyplina naukowa autora'
+class DyscyplinaAutoraQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
+    label = "Dyscyplina naukowa autora"
     type = AUTOCOMPLETE
-    ops = [EQUAL_NONE, ]
+    ops = [
+        EQUAL_NONE,
+    ]
     model = Dyscyplina_Naukowa
     field_name = "nazwa"
     url = "bpp:dyscyplina-autocomplete"
@@ -298,8 +330,9 @@ class DyscyplinaAutoraQueryObject(ForeignKeyDescribeMixin,
         if operation in EQUALITY_OPS_ALL:
 
             autorzy = Autorzy.objects.filter(
-                Q(autor__autor_dyscyplina__dyscyplina_naukowa=value) | Q(autor__autor_dyscyplina__subdyscyplina_naukowa=value),
-                autor__autor_dyscyplina__rok=F("rekord__rok")
+                Q(autor__autor_dyscyplina__dyscyplina_naukowa=value)
+                | Q(autor__autor_dyscyplina__subdyscyplina_naukowa=value),
+                autor__autor_dyscyplina__rok=F("rekord__rok"),
             ).values("rekord_id")
 
             ret = Q(pk__in=autorzy)
@@ -316,7 +349,7 @@ class NazwaKonferencji(ForeignKeyDescribeMixin, AutocompleteQueryObject):
     type = AUTOCOMPLETE
     ops = EQUALITY_OPS_FEMALE
     model = Konferencja
-    search_fields = ['nazwa']
+    search_fields = ["nazwa"]
     field_name = "konferencja"
     url = "bpp:public-konferencja-autocomplete"
 
@@ -324,16 +357,16 @@ class NazwaKonferencji(ForeignKeyDescribeMixin, AutocompleteQueryObject):
 class ZewnetrznaBazaDanychQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
     label = "Zewnętrzna baza danych"
     type = AUTOCOMPLETE
-    ops = [EQUAL_FEMALE, ]
+    ops = [
+        EQUAL_FEMALE,
+    ]
     model = Zewnetrzna_Baza_Danych
-    search_fields = ['nazwa']
+    search_fields = ["nazwa"]
     url = "bpp:zewnetrzna-baza-danych-autocomplete"
 
     def real_query(self, value, operation, validate_operation=True):
         if operation in EQUALITY_OPS_ALL:
-            q = ZewnetrzneBazyDanychView.objects.filter(
-                baza=value
-            ).values("rekord_id")
+            q = ZewnetrzneBazyDanychView.objects.filter(baza=value).values("rekord_id")
             ret = Q(pk__in=q)
         else:
             raise UnknownOperation(operation)
@@ -341,12 +374,12 @@ class ZewnetrznaBazaDanychQueryObject(ForeignKeyDescribeMixin, AutocompleteQuery
 
 
 class JednostkaQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
-    label = 'Jednostka'
+    label = "Jednostka"
     type = AUTOCOMPLETE
     ops = [EQUAL_FEMALE, DIFFERENT_FEMALE, UNION_FEMALE]
     model = Jednostka
-    search_fields = ['nazwa']
-    field_name = 'jednostka'
+    search_fields = ["nazwa"]
+    field_name = "jednostka"
     url = "bpp:jednostka-widoczna-autocomplete"
 
     def real_query(self, value, operation):
@@ -354,9 +387,7 @@ class JednostkaQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
             ret = Q(autorzy__jednostka=value)
 
         elif operation in UNION_OPS_ALL:
-            q = Autorzy.objects.filter(
-                jednostka=value
-            ).values("rekord_id")
+            q = Autorzy.objects.filter(jednostka=value).values("rekord_id")
             ret = Q(pk__in=q)
 
         else:
@@ -368,12 +399,12 @@ class JednostkaQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
 
 
 class WydzialQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
-    label = 'Wydział'
+    label = "Wydział"
     type = AUTOCOMPLETE
     ops = [EQUAL, DIFFERENT, UNION]
     model = Wydzial
-    search_fields = ['nazwa']
-    field_name = 'wydzial'
+    search_fields = ["nazwa"]
+    field_name = "wydzial"
     url = "bpp:public-wydzial-autocomplete"
 
     def real_query(self, value, operation):
@@ -381,9 +412,7 @@ class WydzialQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
             ret = Q(autorzy__jednostka__wydzial=value)
 
         elif operation in UNION_OPS_ALL:
-            q = Autorzy.objects.filter(
-                jednostka__wydzial=value
-            ).values("rekord_id")
+            q = Autorzy.objects.filter(jednostka__wydzial=value).values("rekord_id")
             ret = Q(pk__in=q)
 
         else:
@@ -396,11 +425,11 @@ class WydzialQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
 
 
 class Typ_OdpowiedzialnosciQueryObject(QueryObject):
-    label = 'Typ odpowiedzialności'
+    label = "Typ odpowiedzialności"
     type = VALUE_LIST
     values = Typ_Odpowiedzialnosci.objects.all()
     ops = [EQUAL, DIFFERENT, UNION]
-    field_name = 'typ_odpowiedzialnosci'
+    field_name = "typ_odpowiedzialnosci"
     public = False
 
     def value_from_web(self, value):
@@ -411,9 +440,7 @@ class Typ_OdpowiedzialnosciQueryObject(QueryObject):
             ret = Q(autorzy__typ_odpowiedzialnosci=value)
 
         elif operation in UNION_OPS_ALL:
-            q = Autorzy.objects.filter(
-                typ_odpowiedzialnosci=value
-            ).values("rekord_id")
+            q = Autorzy.objects.filter(typ_odpowiedzialnosci=value).values("rekord_id")
             ret = Q(pk__in=q)
 
         else:
@@ -426,12 +453,12 @@ class Typ_OdpowiedzialnosciQueryObject(QueryObject):
 
 
 class ZakresLatQueryObject(RangeQueryObject):
-    label = 'Zakres lat'
-    field_name = 'rok'
+    label = "Zakres lat"
+    field_name = "rok"
 
 
 class JezykQueryObject(QueryObject):
-    label = 'Język'
+    label = "Język"
     type = VALUE_LIST
     ops = EQUALITY_OPS_MALE
     values = Jezyk.objects.all()
@@ -442,27 +469,27 @@ class JezykQueryObject(QueryObject):
 
 
 class RokQueryObject(IntegerQueryObject):
-    label = 'Rok'
-    field_name = 'rok'
+    label = "Rok"
+    field_name = "rok"
 
 
 class ImpactQueryObject(DecimalQueryObject):
-    label = 'Impact factor'
-    field_name = 'impact_factor'
+    label = "Impact factor"
+    field_name = "impact_factor"
 
 
 class LiczbaCytowanQueryObject(IntegerQueryObject):
-    label = 'Liczba cytowań'
-    field_name = 'liczba_cytowan'
+    label = "Liczba cytowań"
+    field_name = "liczba_cytowan"
 
 
 class LiczbaAutorowQueryObject(IntegerQueryObject):
-    label = 'Liczba autorów'
-    field_name = 'liczba_autorow'
+    label = "Liczba autorów"
+    field_name = "liczba_autorow"
 
 
 class KCImpactQueryObject(ImpactQueryObject):
-    field_name = 'kc_impact_factor'
+    field_name = "kc_impact_factor"
     label = "KC: Impact factor"
     public = False
 
@@ -474,8 +501,9 @@ class PunktacjaWewnetrznaEnabledMixin:
         return ReportType.enabled(self, request)
 
 
-class PunktacjaWewnetrznaQueryObject(PunktacjaWewnetrznaEnabledMixin,
-                                     DecimalQueryObject):
+class PunktacjaWewnetrznaQueryObject(
+    PunktacjaWewnetrznaEnabledMixin, DecimalQueryObject
+):
     label = "Punktacja wewnętrzna"
     field_name = "punktacja_wewnetrzna"
 
@@ -492,7 +520,7 @@ class PunktyKBNQueryObject(DecimalQueryObject):
 
 class KCPunktyKBNQueryObject(PunktyKBNQueryObject):
     label = "KC: Punkty PK"
-    field_name = 'kc_punkty_kbn'
+    field_name = "kc_punkty_kbn"
     public = False
 
 
@@ -508,13 +536,13 @@ class IndexCopernicusQueryObject(DecimalQueryObject):
 
 
 class LiczbaZnakowWydawniczychQueryObject(IntegerQueryObject):
-    label = 'Liczba znaków wydawniczych'
-    field_name = 'liczba_znakow_wydawniczych'
+    label = "Liczba znaków wydawniczych"
+    field_name = "liczba_znakow_wydawniczych"
 
 
 class TypRekorduObject(ValueListQueryObject):
-    label = 'Typ rekordu'
-    values = ['publikacje', 'streszczenia', 'inne']
+    label = "Typ rekordu"
+    values = ["publikacje", "streszczenia", "inne"]
     ops = [EQUAL, DIFFERENT]
 
     def value_from_web(self, value):
@@ -523,22 +551,25 @@ class TypRekorduObject(ValueListQueryObject):
         return value
 
     def real_query(self, value, operation):
-        if value == 'publikacje':
+        if value == "publikacje":
             charaktery = Charakter_Formalny.objects.filter(publikacja=True)
-        elif value == 'streszczenia':
+        elif value == "streszczenia":
             charaktery = Charakter_Formalny.objects.filter(streszczenie=True)
         else:
-            charaktery = Charakter_Formalny.objects.all().exclude(
-                streszczenie=True).exclude(publikacja=True)
+            charaktery = (
+                Charakter_Formalny.objects.all()
+                .exclude(streszczenie=True)
+                .exclude(publikacja=True)
+            )
 
-        q = Q(**{'charakter_formalny__in': charaktery})
+        q = Q(**{"charakter_formalny__in": charaktery})
         if operation == DIFFERENT:
             return ~q
         return q
 
 
 class CharakterFormalnyQueryObject(TreeNodeChoiceFieldMixin, ValueListQueryObject):
-    field_name = 'charakter_formalny'
+    field_name = "charakter_formalny"
     label = "Charakter formalny"
 
     def _values(self):
@@ -553,10 +584,10 @@ class CharakterFormalnyQueryObject(TreeNodeChoiceFieldMixin, ValueListQueryObjec
     def __init__(self, *args, **kwargs):
         ValueListQueryObject.__init__(self, *args, **kwargs)
 
-        self.level_indicator = kwargs.pop('level_indicator', DEFAULT_LEVEL_INDICATOR)
+        self.level_indicator = kwargs.pop("level_indicator", DEFAULT_LEVEL_INDICATOR)
         queryset = Charakter_Formalny.objects.all()
         # if a queryset is supplied, enforce ordering
-        if hasattr(queryset, 'model'):
+        if hasattr(queryset, "model"):
             mptt_opts = queryset.model._mptt_meta
             queryset = queryset.order_by(mptt_opts.tree_id_attr, mptt_opts.left_attr)
         self.queryset = queryset
@@ -565,7 +596,9 @@ class CharakterFormalnyQueryObject(TreeNodeChoiceFieldMixin, ValueListQueryObjec
         ret = None
 
         if operation in [str(x) for x in EQUALITY_OPS_ALL]:
-            ret = Q(**{self.field_name + "__in": value.get_descendants(include_self=True)})
+            ret = Q(
+                **{self.field_name + "__in": value.get_descendants(include_self=True)}
+            )
 
         else:
             if validate_operation:
@@ -578,17 +611,16 @@ class CharakterFormalnyQueryObject(TreeNodeChoiceFieldMixin, ValueListQueryObjec
 
 
 class OpenaccessWersjaTekstuQueryObject(ValueListQueryObject):
-    field_name = 'openaccess_wersja_tekstu'
+    field_name = "openaccess_wersja_tekstu"
     values = Wersja_Tekstu_OpenAccess.objects.all()
     label = "OpenAccess: wersja tekstu"
 
     def value_from_web(self, value):
-        return Wersja_Tekstu_OpenAccess.objects.get(
-            nazwa=value)
+        return Wersja_Tekstu_OpenAccess.objects.get(nazwa=value)
 
 
 class OpenaccessLicencjaQueryObject(ValueListQueryObject):
-    field_name = 'openaccess_licencja'
+    field_name = "openaccess_licencja"
     values = Licencja_OpenAccess.objects.all()
     label = "OpenAccess: licencja"
 
@@ -597,7 +629,7 @@ class OpenaccessLicencjaQueryObject(ValueListQueryObject):
 
 
 class OpenaccessCzasPublikacjiQueryObject(ValueListQueryObject):
-    field_name = 'openaccess_czas_publikacji'
+    field_name = "openaccess_czas_publikacji"
     values = Czas_Udostepnienia_OpenAccess.objects.all()
     label = "OpenAccess: czas udostępnienia"
 
@@ -615,10 +647,10 @@ class TypKBNQueryObject(ValueListQueryObject):
 
 
 class ZrodloQueryObject(AutocompleteQueryObject):
-    label = 'Źródło'
+    label = "Źródło"
     ops = EQUALITY_OPS_NONE
     model = Zrodlo
-    field_name = 'zrodlo'
+    field_name = "zrodlo"
     url = "bpp:zrodlo-autocomplete"
 
 
@@ -641,8 +673,8 @@ class BazaSCOPUS(BooleanQueryObject):
 
 
 class RodzajKonferenckjiQueryObject(ValueListQueryObject):
-    label = 'Rodzaj konferencji'
-    values = ['krajowa', 'międzynarodowa', 'lokalna']
+    label = "Rodzaj konferencji"
+    values = ["krajowa", "międzynarodowa", "lokalna"]
 
     def value_from_web(self, value):
         if value not in self.values:
@@ -650,17 +682,111 @@ class RodzajKonferenckjiQueryObject(ValueListQueryObject):
         return value
 
     def real_query(self, value, operation):
-        if value == 'krajowa':
+        if value == "krajowa":
             tk = Konferencja.TK_KRAJOWA
-        elif value == 'międzynarodowa':
+        elif value == "międzynarodowa":
             tk = Konferencja.TK_MIEDZYNARODOWA
         else:
             tk = Konferencja.TK_LOKALNA
 
-        q = Q(**{'konferencja__typ_konferencji': tk})
+        q = Q(**{"konferencja__typ_konferencji": tk})
         if operation == DIFFERENT:
             return ~q
         return q
+
+
+class ObcaJednostkaQueryObject(BooleanQueryObject):
+    label = "Obca jednostka"
+    ops = EQUALITY_OPS_FEMALE
+    public = False
+
+    def real_query(self, value, operation):
+        if operation in EQUALITY_OPS_ALL:
+            ret = Q(autorzy__jednostka__skupia_pracownikow=value)
+        else:
+            raise UnknownOperation(operation)
+
+        if operation in DIFFERENT_ALL:
+            return ~ret
+
+        return ret
+
+
+class AfiliujeQueryObject(BooleanQueryObject):
+    label = "Afiliuje"
+    ops = EQUALITY_OPS_MALE
+    public = False
+
+    def real_query(self, value, operation):
+        if operation in EQUALITY_OPS_ALL:
+            ret = Q(autorzy__afiliuje=value)
+        else:
+            raise UnknownOperation(operation)
+
+        if operation in DIFFERENT_ALL:
+            return ~ret
+
+        return ret
+
+
+class DyscyplinaUstawionaQueryObject(BooleanQueryObject):
+    label = "Dyscyplina ustawiona"
+    ops = EQUALITY_OPS_FEMALE
+    public = False
+
+    def real_query(self, value, operation):
+        if operation in EQUALITY_OPS_ALL:
+            if value:
+                ret = ~Q(autorzy__dyscyplina_naukowa=None)
+            else:
+                ret = Q(autorzy__dyscyplina_naukowa=None)
+        else:
+            raise UnknownOperation(operation)
+
+        if operation in DIFFERENT_ALL:
+            return ~ret
+
+        return ret
+
+
+class LicencjaOpenAccessUstawionaQueryObject(BooleanQueryObject):
+    label = "Licencja OpenAccess ustawiona"
+    ops = EQUALITY_OPS_FEMALE
+    public = False
+
+    def real_query(self, value, operation):
+        if operation in EQUALITY_OPS_ALL:
+            if value:
+                ret = ~Q(openaccess_licencja=None)
+            else:
+                ret = Q(openaccess_licencja=None)
+        else:
+            raise UnknownOperation(operation)
+
+        if operation in DIFFERENT_ALL:
+            return ~ret
+
+        return ret
+
+
+class DostepDniaQueryObject(BooleanQueryObject):
+    label = "Dostęp dnia ustawiony"
+    field_name = "dostep_dnia"
+    public = False
+
+    def real_query(self, value, operation):
+        if operation in EQUALITY_OPS_ALL:
+            if value:
+                ret = ~Q(dostep_dnia=None)
+            else:
+                ret = Q(dostep_dnia=None)
+        else:
+            raise UnknownOperation(operation)
+
+        if operation in DIFFERENT_ALL:
+            return ~ret
+
+        return ret
 
 
 multiseek_fields = [
@@ -685,7 +811,6 @@ multiseek_fields = [
     NazwiskoIImie1do5(),
     OstatnieNazwiskoIImie(),
     ORCIDQueryObject(),
-
     ImpactQueryObject(),
     LiczbaCytowanQueryObject(),
     LiczbaAutorowQueryObject(),
@@ -693,36 +818,32 @@ multiseek_fields = [
     IndexCopernicusQueryObject(),
     PunktacjaSNIP(),
     PunktacjaWewnetrznaQueryObject(),
-
     KCImpactQueryObject(),
     KCPunktyKBNQueryObject(),
-
     InformacjeQueryObject(),
     SzczegolyQueryObject(),
     UwagiQueryObject(),
     SlowaKluczoweQueryObject(),
-
     AdnotacjeQueryObject(),
     DataUtworzeniaQueryObject(),
     OstatnioZmieniony(),
     OstatnioZmienionyDlaPBN(),
-
     RecenzowanaQueryObject(),
-
     LiczbaZnakowWydawniczychQueryObject(),
-
     NazwaKonferencji(),
     RodzajKonferenckjiQueryObject(),
     BazaWOS(),
     BazaSCOPUS(),
-
     OpenaccessWersjaTekstuQueryObject(),
     OpenaccessLicencjaQueryObject(),
     OpenaccessCzasPublikacjiQueryObject(),
-
     DyscyplinaAutoraQueryObject(),
-
-    ZewnetrznaBazaDanychQueryObject()
+    ZewnetrznaBazaDanychQueryObject(),
+    ObcaJednostkaQueryObject(),
+    AfiliujeQueryObject(),
+    DyscyplinaUstawionaQueryObject(),
+    LicencjaOpenAccessUstawionaQueryObject(),
+    DostepDniaQueryObject(),
 ]
 
 
@@ -733,21 +854,25 @@ class PunktacjaWewnetrznaReportType(PunktacjaWewnetrznaEnabledMixin, ReportType)
 multiseek_report_types = [
     ReportType("list", "lista"),
     ReportType("table", "tabela"),
-    PunktacjaWewnetrznaReportType("pkt_wewn", "punktacja sumaryczna z punktacją wewnętrzna"),
+    PunktacjaWewnetrznaReportType(
+        "pkt_wewn", "punktacja sumaryczna z punktacją wewnętrzna"
+    ),
     ReportType("pkt_wewn_bez", "punktacja sumaryczna"),
     ReportType("numer_list", "numerowana lista z uwagami", public=False),
-
     ReportType("table_cytowania", "tabela z liczbą cytowań", public=False),
-    PunktacjaWewnetrznaReportType("pkt_wewn_cytowania", "punktacja sumaryczna z punktacją wewnętrzna z liczbą cytowań",
-                                  public=False),
-    ReportType("pkt_wewn_bez_cytowania", "punktacja sumaryczna z liczbą cytowań", public=False),
+    PunktacjaWewnetrznaReportType(
+        "pkt_wewn_cytowania",
+        "punktacja sumaryczna z punktacją wewnętrzna z liczbą cytowań",
+        public=False,
+    ),
+    ReportType(
+        "pkt_wewn_bez_cytowania", "punktacja sumaryczna z liczbą cytowań", public=False
+    ),
 ]
 
 registry = create_registry(
     Rekord,
-
     *multiseek_fields,
-
     ordering=[
         Ordering("", "(nieistotne)"),
         Ordering("tytul_oryginalny", "tytuł oryginalny"),
@@ -762,7 +887,7 @@ registry = create_registry(
         Ordering("utworzono", "utworzono"),
         Ordering("ostatnio_zmieniony", "ostatnio zmieniony"),
         Ordering("ostatnio_zmieniony_dla_pbn", "ostatnio zmieniony (dla PBN)"),
-
     ],
-    default_ordering=['-rok', '-impact_factor', '-punkty_kbn'],
-    report_types=multiseek_report_types)
+    default_ordering=["-rok", "-impact_factor", "-punkty_kbn"],
+    report_types=multiseek_report_types
+)

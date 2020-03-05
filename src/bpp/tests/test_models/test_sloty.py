@@ -3,29 +3,51 @@ from decimal import Decimal
 import pytest
 from django.contrib.contenttypes.models import ContentType
 
-from bpp.models import TO_REDAKTOR, TO_AUTOR, Typ_Odpowiedzialnosci, Cache_Punktacja_Autora, Cache_Punktacja_Dyscypliny, \
-    Charakter_Formalny, Typ_KBN, Dyscyplina_Naukowa
+from bpp.models import (
+    TO_REDAKTOR,
+    TO_AUTOR,
+    Typ_Odpowiedzialnosci,
+    Cache_Punktacja_Autora,
+    Cache_Punktacja_Dyscypliny,
+    Charakter_Formalny,
+    Typ_KBN,
+    Dyscyplina_Naukowa,
+    Autor_Dyscyplina,
+)
 from bpp.models.sloty.core import ISlot, IPunktacjaCacher
 from bpp.models.sloty.exceptions import CannotAdapt
-from bpp.models.sloty.wydawnictwo_ciagle import SlotKalkulator_Wydawnictwo_Ciagle_Prog3, \
-    SlotKalkulator_Wydawnictwo_Ciagle_Prog2
-from bpp.models.sloty.wydawnictwo_zwarte import SlotKalkulator_Wydawnictwo_Zwarte_Prog3, \
-    SlotKalkulator_Wydawnictwo_Zwarte_Prog2, SlotKalkulator_Wydawnictwo_Zwarte_Prog1
+from bpp.models.sloty.wydawnictwo_ciagle import (
+    SlotKalkulator_Wydawnictwo_Ciagle_Prog3,
+    SlotKalkulator_Wydawnictwo_Ciagle_Prog2,
+)
+from bpp.models.sloty.wydawnictwo_zwarte import (
+    SlotKalkulator_Wydawnictwo_Zwarte_Prog3,
+    SlotKalkulator_Wydawnictwo_Zwarte_Prog2,
+    SlotKalkulator_Wydawnictwo_Zwarte_Prog1,
+)
 from bpp.tasks import aktualizuj_cache_rekordu
 
 
 @pytest.fixture
 @pytest.mark.django_db
 def zwarte_z_dyscyplinami(
-        wydawnictwo_zwarte,
-        autor_jan_nowak,
-        autor_jan_kowalski,
-        jednostka,
-        dyscyplina1,
-        dyscyplina2,
-        charaktery_formalne,
-        wydawca,
-        typy_odpowiedzialnosci):
+    wydawnictwo_zwarte,
+    autor_jan_nowak,
+    autor_jan_kowalski,
+    jednostka,
+    dyscyplina1,
+    dyscyplina2,
+    charaktery_formalne,
+    wydawca,
+    typy_odpowiedzialnosci,
+    rok,
+):
+    Autor_Dyscyplina.objects.create(
+        autor=autor_jan_nowak, dyscyplina_naukowa=dyscyplina1, rok=rok
+    )
+    Autor_Dyscyplina.objects.create(
+        autor=autor_jan_kowalski, dyscyplina_naukowa=dyscyplina2, rok=rok
+    )
     wydawnictwo_zwarte.dodaj_autora(
         autor_jan_nowak, jednostka, dyscyplina_naukowa=dyscyplina1
     )
@@ -37,7 +59,7 @@ def zwarte_z_dyscyplinami(
     # domyslnie: ksiazka/autorstwo/wydawca spoza wykazu
     wydawnictwo_zwarte.punkty_kbn = 20
     wydawnictwo_zwarte.wydawca = wydawca
-    wydawnictwo_zwarte.charakter_formalny = Charakter_Formalny.objects.get(skrot='KSP')
+    wydawnictwo_zwarte.charakter_formalny = Charakter_Formalny.objects.get(skrot="KSP")
     wydawnictwo_zwarte.save()
 
     return wydawnictwo_zwarte
@@ -46,13 +68,24 @@ def zwarte_z_dyscyplinami(
 @pytest.fixture
 @pytest.mark.django_db
 def ciagle_z_dyscyplinami(
-        wydawnictwo_ciagle,
-        autor_jan_nowak,
-        autor_jan_kowalski,
-        jednostka,
-        dyscyplina1,
-        dyscyplina2,
-        typy_odpowiedzialnosci):
+    wydawnictwo_ciagle,
+    autor_jan_nowak,
+    autor_jan_kowalski,
+    jednostka,
+    dyscyplina1,
+    dyscyplina2,
+    typy_odpowiedzialnosci,
+    rok,
+):
+
+    # Przypisz autorów do dyscyplin na ten rok albo będzie awaria:
+    Autor_Dyscyplina.objects.create(
+        autor=autor_jan_nowak, dyscyplina_naukowa=dyscyplina1, rok=rok
+    )
+    Autor_Dyscyplina.objects.create(
+        autor=autor_jan_kowalski, dyscyplina_naukowa=dyscyplina2, rok=rok
+    )
+
     wydawnictwo_ciagle.dodaj_autora(
         autor_jan_nowak, jednostka, dyscyplina_naukowa=dyscyplina1
     )
@@ -104,33 +137,38 @@ def test_slot_wszyscy_autorzy(zwarte_z_dyscyplinami):
 
 
 @pytest.mark.parametrize(
-    "rekord,ustaw_rok,punkty_kbn", [
+    "rekord,ustaw_rok,punkty_kbn",
+    [
         # (pytest.lazy_fixture("wydawnictwo_zwarte"), 2017, 20),
         (pytest.lazy_fixture("wydawnictwo_ciagle"), 2017, 30)
-    ]
+    ],
 )
 @pytest.mark.django_db
 def test_slot_wszyscy_slot_wszystkie_dyscypliny(
-        rekord,
-        ustaw_rok,
-        punkty_kbn,
-        autor_jan_kowalski,
-        autor_jan_nowak,
-        dyscyplina1,
-        dyscyplina2,
-        jednostka,
-        typy_odpowiedzialnosci):
+    rekord,
+    ustaw_rok,
+    punkty_kbn,
+    autor_jan_kowalski,
+    autor_jan_nowak,
+    dyscyplina1,
+    dyscyplina2,
+    jednostka,
+    typy_odpowiedzialnosci,
+):
     rekord.rok = ustaw_rok
     rekord.punkty_kbn = punkty_kbn
     rekord.save()
 
-    rekord.dodaj_autora(
-        autor_jan_nowak, jednostka, dyscyplina_naukowa=dyscyplina1
+    Autor_Dyscyplina.objects.create(
+        autor=autor_jan_nowak, dyscyplina_naukowa=dyscyplina1, rok=ustaw_rok,
     )
 
-    rekord.dodaj_autora(
-        autor_jan_kowalski, jednostka, dyscyplina_naukowa=dyscyplina2
+    rekord.dodaj_autora(autor_jan_nowak, jednostka, dyscyplina_naukowa=dyscyplina1)
+
+    Autor_Dyscyplina.objects.create(
+        autor=autor_jan_kowalski, dyscyplina_naukowa=dyscyplina2, rok=ustaw_rok,
     )
+    rekord.dodaj_autora(autor_jan_kowalski, jednostka, dyscyplina_naukowa=dyscyplina2)
 
     slot = ISlot(rekord)
 
@@ -140,12 +178,13 @@ def test_slot_wszyscy_slot_wszystkie_dyscypliny(
 
 @pytest.mark.django_db
 def test_autorzy_z_dyscypliny(
-        ciagle_z_dyscyplinami,
-        autor_jan_nowak,
-        autor_jan_kowalski,
-        dyscyplina1,
-        dyscyplina2,
-        dyscyplina3):
+    ciagle_z_dyscyplinami,
+    autor_jan_nowak,
+    autor_jan_kowalski,
+    dyscyplina1,
+    dyscyplina2,
+    dyscyplina3,
+):
     ciagle_z_dyscyplinami.punkty_kbn = 30
     ciagle_z_dyscyplinami.rok = 2017
     ciagle_z_dyscyplinami.save()
@@ -166,32 +205,35 @@ def test_autorzy_z_dyscypliny(
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("ustaw_rok,punkty,ma_byc_1,ma_byc_2", [
-    (2017, 30, "30.0000", "1.0000"),
-    (2017, 20, "14.1421", "0.7071"),
-    (2017, 25, "17.6777", "0.7071"),
-    (2017, 15, "7.5000", "0.5000"),
-    (2017, 5, "2.5000", "0.5000"),
-
-    (2019, 200, "200.0000", "1.0000"),
-    (2019, 140, "140.0000", "1.0000"),
-    (2019, 100, "100.0000", "1.0000"),
-
-    (2019, 70, "49.4975", "0.7071"),
-    (2019, 40, "28.2843", "0.7071"),
-
-    (2019, 20, "10.0000", "0.5000"),
-    (2019, 5, "2.5000", "0.5000"),
-
-])
+@pytest.mark.parametrize(
+    "ustaw_rok,punkty,ma_byc_1,ma_byc_2",
+    [
+        (2017, 30, "30.0000", "1.0000"),
+        (2017, 20, "14.1421", "0.7071"),
+        (2017, 25, "17.6777", "0.7071"),
+        (2017, 15, "7.5000", "0.5000"),
+        (2017, 5, "2.5000", "0.5000"),
+        (2019, 200, "200.0000", "1.0000"),
+        (2019, 140, "140.0000", "1.0000"),
+        (2019, 100, "100.0000", "1.0000"),
+        (2019, 70, "49.4975", "0.7071"),
+        (2019, 40, "28.2843", "0.7071"),
+        (2019, 20, "10.0000", "0.5000"),
+        (2019, 5, "2.5000", "0.5000"),
+    ],
+)
 def test_slot_artykuly(
-        ciagle_z_dyscyplinami,
-        autor_jan_nowak,
-        autor_jan_kowalski,
-        dyscyplina1,
-        dyscyplina2,
-        dyscyplina3,
-        ustaw_rok, punkty, ma_byc_1, ma_byc_2):
+    ciagle_z_dyscyplinami,
+    autor_jan_nowak,
+    autor_jan_kowalski,
+    dyscyplina1,
+    dyscyplina2,
+    dyscyplina3,
+    ustaw_rok,
+    punkty,
+    ma_byc_1,
+    ma_byc_2,
+):
     ciagle_z_dyscyplinami.punkty_kbn = punkty
     ciagle_z_dyscyplinami.rok = ustaw_rok
     ciagle_z_dyscyplinami.save()
@@ -200,28 +242,29 @@ def test_slot_artykuly(
 
     assert f"{slot.punkty_pkd(dyscyplina1):.4f}" == ma_byc_1
     assert f"{slot.punkty_pkd(dyscyplina2):.4f}" == ma_byc_1
-    assert slot.punkty_pkd(dyscyplina3) == None
+    assert slot.punkty_pkd(dyscyplina3) is None
 
     assert f"{slot.pkd_dla_autora(autor_jan_kowalski):.4f}" == ma_byc_1
     assert f"{slot.pkd_dla_autora(autor_jan_nowak):.4f}" == ma_byc_1
 
     assert f"{slot.slot_dla_autora(autor_jan_kowalski):.4f}" == ma_byc_2
     assert f"{slot.slot_dla_autora(autor_jan_nowak):.4f}" == ma_byc_2
-    assert slot.slot_dla_autora_z_dyscypliny(dyscyplina3) == None
+    assert slot.slot_dla_autora_z_dyscypliny(dyscyplina3) is None
 
     assert f"{slot.slot_dla_dyscypliny(dyscyplina1):.4f}" == ma_byc_2
     assert f"{slot.slot_dla_dyscypliny(dyscyplina2):.4f}" == ma_byc_2
-    assert slot.slot_dla_dyscypliny(dyscyplina3) == None
+    assert slot.slot_dla_dyscypliny(dyscyplina3) is None
 
 
 @pytest.mark.django_db
 def test_IPunktacjaCacher(
-        ciagle_z_dyscyplinami,
-        autor_jan_nowak,
-        autor_jan_kowalski,
-        dyscyplina1,
-        dyscyplina2,
-        dyscyplina3):
+    ciagle_z_dyscyplinami,
+    autor_jan_nowak,
+    autor_jan_kowalski,
+    dyscyplina1,
+    dyscyplina2,
+    dyscyplina3,
+):
     ciagle_z_dyscyplinami.punkty_kbn = 30
     ciagle_z_dyscyplinami.rok = 2017
     ciagle_z_dyscyplinami.save()
@@ -237,7 +280,8 @@ def test_IPunktacjaCacher(
 
 @pytest.mark.django_db
 def test_slotkalkulator_wydawnictwo_ciagle_prog3_punkty_pkd(
-        ciagle_z_dyscyplinami, dyscyplina1):
+    ciagle_z_dyscyplinami, dyscyplina1
+):
     ciagle_z_dyscyplinami.rok = 2018
     ciagle_z_dyscyplinami.punkty_kbn = 5
     ciagle_z_dyscyplinami.save()
@@ -251,7 +295,8 @@ def test_slotkalkulator_wydawnictwo_ciagle_prog3_punkty_pkd(
 
 @pytest.mark.django_db
 def test_slotkalkulator_wydawnictwo_ciagle_prog2_punkty_pkd(
-        ciagle_z_dyscyplinami, dyscyplina1):
+    ciagle_z_dyscyplinami, dyscyplina1
+):
     ciagle_z_dyscyplinami.rok = 2018
     ciagle_z_dyscyplinami.punkty_kbn = 20
     ciagle_z_dyscyplinami.save()
@@ -347,13 +392,23 @@ def test_cache_slotow_kasowanie_wpisow_przy_zmianie_pk_ciagle(ciagle_z_dyscyplin
     aktualizuj_cache_rekordu(ciagle_z_dyscyplinami)
 
     ctype = ContentType.objects.get_for_model(ciagle_z_dyscyplinami).pk
-    assert Cache_Punktacja_Autora.objects.filter(rekord_id=[ctype, ciagle_z_dyscyplinami.pk]).count() == 2
+    assert (
+        Cache_Punktacja_Autora.objects.filter(
+            rekord_id=[ctype, ciagle_z_dyscyplinami.pk]
+        ).count()
+        == 2
+    )
 
     ciagle_z_dyscyplinami.punkty_kbn = 0
     ciagle_z_dyscyplinami.save()
 
     aktualizuj_cache_rekordu(ciagle_z_dyscyplinami)
-    assert Cache_Punktacja_Autora.objects.filter(rekord_id=[ctype, ciagle_z_dyscyplinami.pk]).count() == 0
+    assert (
+        Cache_Punktacja_Autora.objects.filter(
+            rekord_id=[ctype, ciagle_z_dyscyplinami.pk]
+        ).count()
+        == 0
+    )
 
 
 @pytest.mark.django_db
@@ -367,19 +422,29 @@ def test_cache_slotow_kasowanie_wpisow_przy_zmianie_pk_zwarte(zwarte_z_dyscyplin
     aktualizuj_cache_rekordu(zwarte_z_dyscyplinami)
 
     ctype = ContentType.objects.get_for_model(zwarte_z_dyscyplinami).pk
-    assert Cache_Punktacja_Autora.objects.filter(rekord_id=[ctype, zwarte_z_dyscyplinami.pk]).count() == 2
+    assert (
+        Cache_Punktacja_Autora.objects.filter(
+            rekord_id=[ctype, zwarte_z_dyscyplinami.pk]
+        ).count()
+        == 2
+    )
 
     zwarte_z_dyscyplinami.punkty_kbn = 0
     zwarte_z_dyscyplinami.save()
 
     aktualizuj_cache_rekordu(zwarte_z_dyscyplinami)
 
-    assert Cache_Punktacja_Autora.objects.filter(rekord_id=[ctype, zwarte_z_dyscyplinami.pk]).count() == 0
+    assert (
+        Cache_Punktacja_Autora.objects.filter(
+            rekord_id=[ctype, zwarte_z_dyscyplinami.pk]
+        ).count()
+        == 0
+    )
 
 
 @pytest.mark.django_db
 def test_sloty_prace_wieloosrodkowe(zwarte_z_dyscyplinami, typy_kbn):
-    zwarte_z_dyscyplinami.typ_kbn = Typ_KBN.objects.get(skrot='PW')
+    zwarte_z_dyscyplinami.typ_kbn = Typ_KBN.objects.get(skrot="PW")
     zwarte_z_dyscyplinami.save()
 
     with pytest.raises(CannotAdapt, match="dla prac wielo"):
@@ -393,12 +458,16 @@ def test_ISlot_patent(patent):
 
 
 @pytest.mark.django_db
-def test_ISlot_mnozniki_dla_dyscyplin_z_dziedziony_np_humanistycznych_zwarte(wydawnictwo_zwarte, autor_jan_kowalski,
-                                                                             jednostka, typy_kbn, charaktery_formalne,
-                                                                             wydawca):
+def test_ISlot_mnozniki_dla_dyscyplin_z_dziedziony_np_humanistycznych_zwarte(
+    wydawnictwo_zwarte,
+    autor_jan_kowalski,
+    jednostka,
+    typy_kbn,
+    charaktery_formalne,
+    wydawca,
+):
     d_teologia = Dyscyplina_Naukowa.objects.create(
-        kod="07.001",
-        nazwa="Teologia stosowana"
+        kod="07.001", nazwa="Teologia stosowana"
     )
 
     ROK = 2019
@@ -411,7 +480,13 @@ def test_ISlot_mnozniki_dla_dyscyplin_z_dziedziony_np_humanistycznych_zwarte(wyd
     wydawnictwo_zwarte.charakter_formalny = Charakter_Formalny.objects.get(skrot="KSP")
     wydawnictwo_zwarte.save()
 
-    wydawnictwo_zwarte.dodaj_autora(autor_jan_kowalski, jednostka, dyscyplina_naukowa=d_teologia)
+    Autor_Dyscyplina.objects.create(
+        autor=autor_jan_kowalski, rok=ROK, dyscyplina_naukowa=d_teologia
+    )
+
+    wydawnictwo_zwarte.dodaj_autora(
+        autor_jan_kowalski, jednostka, dyscyplina_naukowa=d_teologia
+    )
 
     ISlot(wydawnictwo_zwarte)
     aktualizuj_cache_rekordu(wydawnictwo_zwarte)
@@ -420,18 +495,19 @@ def test_ISlot_mnozniki_dla_dyscyplin_z_dziedziony_np_humanistycznych_zwarte(wyd
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("punktacja,oczekiwana",
-                         [(30, 30),
-                          (20, 20),
-                          (0.5, 0.5)])
-def test_ISlot_mnozniki_dla_dyscyplin_z_dziedziony_np_humanistycznych_ciagle(wydawnictwo_ciagle,
-                                                                             autor_jan_kowalski,
-                                                                             jednostka, typy_kbn,
-                                                                             charaktery_formalne,
-                                                                             wydawca, punktacja, oczekiwana):
+@pytest.mark.parametrize("punktacja,oczekiwana", [(30, 30), (20, 20), (0.5, 0.5)])
+def test_ISlot_mnozniki_dla_dyscyplin_z_dziedziony_np_humanistycznych_ciagle(
+    wydawnictwo_ciagle,
+    autor_jan_kowalski,
+    jednostka,
+    typy_kbn,
+    charaktery_formalne,
+    wydawca,
+    punktacja,
+    oczekiwana,
+):
     d_teologia = Dyscyplina_Naukowa.objects.create(
-        kod="07.001",
-        nazwa="Teologia stosowana"
+        kod="07.001", nazwa="Teologia stosowana"
     )
 
     ROK = 2018
@@ -443,8 +519,13 @@ def test_ISlot_mnozniki_dla_dyscyplin_z_dziedziony_np_humanistycznych_ciagle(wyd
     wydawnictwo_ciagle.charakter_formalny = Charakter_Formalny.objects.get(skrot="AC")
     wydawnictwo_ciagle.save()
 
+    Autor_Dyscyplina.objects.create(
+        autor=autor_jan_kowalski, dyscyplina_naukowa=d_teologia, rok=ROK
+    )
 
-    wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka, dyscyplina_naukowa=d_teologia)
+    wydawnictwo_ciagle.dodaj_autora(
+        autor_jan_kowalski, jednostka, dyscyplina_naukowa=d_teologia
+    )
 
     wydawnictwo_ciagle.refresh_from_db()
 

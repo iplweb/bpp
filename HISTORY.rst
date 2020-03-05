@@ -2,6 +2,16 @@
 Historia zmian
 ==============
 
+202003.20
+---------
+
+* ORCID i PBN ID w raport slotów - uczelnia (#808),
+* wyświetlanie numeru PBN ID na stronie autora (b/n),
+* licz sloty tylko dla autorów afiliowanych (#810)
+* w przypadku zaznaczenia opcji 'afiliuje' przy obcej jednostce, zgłaszaj błąd (b/n),
+* operatory do multiwyszukiwarki: afiliuje TAK/NIE, dyscyplina ustawiona TAK/NIE,
+  obca jednostka TAK/NIE (umożliwia zapytania z #816, #817, #814, #815)
+
 202003.19
 ---------
 

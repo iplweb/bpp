@@ -398,7 +398,7 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
     afiliuje = models.BooleanField(
         default=True,
         help_text="""Afiliuje
-    się do jednostki podanej w przypisaniu""",
+    się do jednostki podanej w przypisaniu. Jednostka nie może być obcą. """,
     )
     zatrudniony = models.BooleanField(
         default=False,
@@ -505,7 +505,20 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
                 }
             )
 
+        # --- Walidacja afiliacji ---
+        # Jeżeli autor afiliuje na jednostkę która jest obca (skupia_pracownikow=False),
+        # to zgłoś błąd
+
+        if self.afiliuje and self.jednostka.skupia_pracownikow is False:
+            raise ValidationError(
+                {
+                    "afiliuje": "Jeżeli autor opracował tą pracę w obcej jednostce, to pole "
+                    "'Afiliuje' nie powinno być zaznaczone."
+                }
+            )
+
     def save(self, *args, **kw):
+        self.clean()
         from bpp.models import Autor_Jednostka
 
         if (

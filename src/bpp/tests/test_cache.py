@@ -398,7 +398,7 @@ def test_prace_autora_z_afiliowanych_jednostek(typy_odpowiedzialnosci):
     wc1.dodaj_autora(a1, nasza)
     wc1.dodaj_autora(a2, nasza)
 
-    wc2.dodaj_autora(a1, obca)
+    wc2.dodaj_autora(a1, obca, afiliuje=False)
     wc2.dodaj_autora(a2, nasza)
 
     assert Rekord.objects.prace_autora(a1).count() == 2

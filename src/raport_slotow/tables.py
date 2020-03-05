@@ -53,6 +53,8 @@ class RaportSlotowUczelniaTable(tables.Table):
         model = Cache_Punktacja_Autora_Query
         fields = (
             "autor",
+            "pbn_id",
+            "orcid",
             "jednostka",
             "wydzial",
             "dyscyplina",
@@ -66,6 +68,8 @@ class RaportSlotowUczelniaTable(tables.Table):
     avg = Column("Średnio punktów dla autora na slot")
     wydzial = Column("Wydział", accessor="jednostka.wydzial.nazwa")
     dyscyplina = Column()
+    pbn_id = Column("PBN ID", "autor.pbn_id")
+    orcid = Column("ORCID", "autor.orcid")
 
     def __init__(self, od_roku, do_roku, *args, **kw):
         self.od_roku = od_roku
