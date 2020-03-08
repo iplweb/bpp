@@ -2,6 +2,21 @@
 Historia zmian
 ==============
 
+202003.21
+---------
+
+* regresja: wyszukuj po polu "Dostęp dnia (wolny dostęp)" (#815)
+* regresja: wyszukuj prawidłowo prace w obcych jednostkach (#816) + poprawki
+  wydajności,
+* ustalaj obcą jednostkę w uczelni przy imporcie (b/d),
+* nie pozwalaj na ustalenie nie-obcej jednostki jako obcej dla uczelni (b/d),
+* regresja: wyszukuj prawidłowo prace w obcych jednostkach (#816)
+* poprawnie wyszukuj przypisania autora do dyscypliny w multiwyszukiwarce (b/d),
+* mniejsza ilość zapytań o grupy użytkownika w redagowaniu (b/d),
+* pozwalaj na nie rozbijanie raportu slotów autora na jednostki i wydziały (#811),
+* w przypadku wpisania dwóch spacji przy dodawaniu autora z modułu redagowania,
+  nie pozwól na utworzenie rekordu bez nazwiska (#818)
+
 202003.20
 ---------
 

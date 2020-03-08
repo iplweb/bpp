@@ -6,8 +6,13 @@ from django.urls import reverse
 from model_mommy import mommy
 
 from bpp.models import Autor_Dyscyplina
+from bpp.models.autor import Autor
 from bpp.models.konferencja import Konferencja
-from bpp.views.autocomplete import AdminNavigationAutocomplete, PublicAutorAutocomplete
+from bpp.views.autocomplete import (
+    AdminNavigationAutocomplete,
+    AutorAutocomplete,
+    PublicAutorAutocomplete,
+)
 
 VALUES = [
     "Zi%C4%99ba+%5C",
@@ -169,3 +174,25 @@ def test_tsquery_bug1(admin_client):
         "%2C3333%090%2C3333"
     )
     assert res.status_code == 200
+
+
+@pytest.mark.django_db
+def test_AutorAutocomplete_create_bug_1():
+    assert Autor.objects.count() == 0
+
+    def autocomplete(s):
+        a = AutorAutocomplete()
+        a.q = s
+        res = a.create_object(s)
+        return res
+
+    res = autocomplete("  fubar")
+
+    assert res.pk == -1
+    assert Autor.objects.count() == 0
+
+    res = autocomplete("  fubar baz quux")
+    assert res.pk != -1
+    assert Autor.objects.count() == 1
+    assert Autor.objects.first().nazwisko == "Fubar"
+    assert Autor.objects.first().imiona == "Baz Quux"

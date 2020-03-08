@@ -316,7 +316,7 @@ class TypOgolnyRecenzentQueryObject(TypOgolnyAutorQueryObject):
     label = "Recenzent"
 
 
-class DyscyplinaAutoraQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
+class DyscyplinaQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
     label = "Dyscyplina naukowa autora"
     type = AUTOCOMPLETE
     ops = [
@@ -328,17 +328,10 @@ class DyscyplinaAutoraQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObje
 
     def real_query(self, value, operation):
         if operation in EQUALITY_OPS_ALL:
-
-            autorzy = Autorzy.objects.filter(
-                Q(autor__autor_dyscyplina__dyscyplina_naukowa=value)
-                | Q(autor__autor_dyscyplina__subdyscyplina_naukowa=value),
-                autor__autor_dyscyplina__rok=F("rekord__rok"),
-            ).values("rekord_id")
-
-            ret = Q(pk__in=autorzy)
-
+            ret = Q(autorzy__dyscyplina_naukowa=value)
         else:
             raise UnknownOperation(operation)
+
         if operation in DIFFERENT_ALL:
             return ~ret
         return ret
@@ -701,6 +694,8 @@ class ObcaJednostkaQueryObject(BooleanQueryObject):
     public = False
 
     def real_query(self, value, operation):
+        value = not value
+
         if operation in EQUALITY_OPS_ALL:
             ret = Q(autorzy__jednostka__skupia_pracownikow=value)
         else:
@@ -766,20 +761,20 @@ class LicencjaOpenAccessUstawionaQueryObject(BooleanQueryObject):
         if operation in DIFFERENT_ALL:
             return ~ret
 
-        return ret
+            return ret
 
 
-class DostepDniaQueryObject(BooleanQueryObject):
+class PublicDostepDniaQueryObject(BooleanQueryObject):
     label = "Dostęp dnia ustawiony"
-    field_name = "dostep_dnia"
+    field_name = "public_dostep_dnia"
     public = False
 
     def real_query(self, value, operation):
         if operation in EQUALITY_OPS_ALL:
             if value:
-                ret = ~Q(dostep_dnia=None)
+                ret = ~Q(public_dostep_dnia=None)
             else:
-                ret = Q(dostep_dnia=None)
+                ret = Q(public_dostep_dnia=None)
         else:
             raise UnknownOperation(operation)
 
@@ -837,13 +832,13 @@ multiseek_fields = [
     OpenaccessWersjaTekstuQueryObject(),
     OpenaccessLicencjaQueryObject(),
     OpenaccessCzasPublikacjiQueryObject(),
-    DyscyplinaAutoraQueryObject(),
+    DyscyplinaQueryObject(),
     ZewnetrznaBazaDanychQueryObject(),
     ObcaJednostkaQueryObject(),
     AfiliujeQueryObject(),
     DyscyplinaUstawionaQueryObject(),
     LicencjaOpenAccessUstawionaQueryObject(),
-    DostepDniaQueryObject(),
+    PublicDostepDniaQueryObject(),
 ]
 
 

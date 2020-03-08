@@ -3,6 +3,7 @@ from urllib.parse import urlencode
 
 import pytest
 from django.urls.base import reverse
+from django.core.exceptions import ValidationError
 
 from bpp.models.fields import OpcjaWyswietlaniaField
 from bpp.tasks import aktualizuj_cache_rekordu
@@ -288,3 +289,12 @@ def test_pokazuj_raport_slotow_czy_mozna_kliknac(
     assert res.status_code == 200
     res = admin_client.get(url)
     assert res.status_code == 200
+
+
+def test_uczelnia_obca_jednostka(uczelnia, jednostka, obca_jednostka):
+    uczelnia.obca_jednostka = obca_jednostka
+    uczelnia.save()
+
+    uczelnia.obca_jednostka = jednostka
+    with pytest.raises(ValidationError):
+        uczelnia.save()

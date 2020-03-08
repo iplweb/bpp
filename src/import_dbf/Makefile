@@ -1,3 +1,6 @@
+
+NAZWA_OBCEJ_JEDNOSTKI=obcy
+
 PSQL=psql -q -t --echo-errors bpp | grep -v "INSERT 0 1"
 PSQL_VERBOSE=psql -t --echo-errors -a bpp
 PG_DUMP=pg_dump bpp
@@ -94,6 +97,9 @@ integruj-liste-wydawcow: get-assets
 	$(MANAGE) import_wydawca_poziom $(ASSETS_DIR)/poziomy-wydawcow-2017-2020.xlsx
 	$(MANAGE) import_wydawca_alias $(ASSETS_DIR)/bg-umw/aliasy_wydawcow.xlsx
 
-integrate: disable-trigger integruj-dbf integruj-liste-wydawcow rebuild-cache enable-trigger
+ustaw-obca-jednostke:
+	$(MANAGE) ustaw_obca_jednostke "$(NAZWA_OBCEJ_JEDNOSTKI)"
+
+integrate: disable-trigger integruj-dbf integruj-liste-wydawcow ustaw-obca-jednostke rebuild-cache enable-trigger
 
 rebuild: convert-dbfs import-dbf integrate

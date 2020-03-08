@@ -5,7 +5,7 @@ Struktura uczelni.
 """
 
 from autoslug import AutoSlugField
-from django.core.exceptions import ImproperlyConfigured
+from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.db import models
 from django.db.models import SET_NULL
 from django.urls.base import reverse
@@ -176,6 +176,20 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         from .wydzial import Wydzial
 
         return Wydzial.objects.filter(uczelnia=self, widoczny=True)
+
+    def clean(self):
+        if self.obca_jednostka is not None:
+            if self.obca_jednostka.skupia_pracownikow:
+                raise ValidationError(
+                    {
+                        "obca_jednostka": "Obca jednostka musi faktycznei być obca. Wybrana ma ustaloną wartość "
+                        "'skupia pracowników' na PRAWDA, czyli nie jest obcą jednostką. "
+                    }
+                )
+
+    def save(self, *args, **kw):
+        self.clean()
+        return super().save(*args, **kw)
 
     def wosclient(self):
         """

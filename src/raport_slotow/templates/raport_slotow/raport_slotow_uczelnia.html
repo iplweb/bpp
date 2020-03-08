@@ -23,8 +23,10 @@
             <table>
                 <tr>
                     <td>Filtruj po nazwisku autora:</td>
+                    {% if data.dziel_na_jednostki_i_wydzialy %}
                     <td>Filtruj po jednostce:</td>
                     <td>Filtruj po wydziale:</td>
+                    {%endif%}
                     <td>Filtruj po dyscyplinie:</td>
                     <td>Filtruj slot:</td>
                     <td>Filtruj średnią:</td>
@@ -32,8 +34,10 @@
                 </tr>
                 <tr>
                     <td>{{ filter.form.autor__nazwisko }}</td>
+                    {%if data.dziel_na_jednostki_i_wydzialy%}
                     <td>{{ filter.form.jednostka__nazwa }}</td>
                     <td>{{ filter.form.jednostka__wydzial }}</td>
+                    {%endif%}
                     <td>{{ filter.form.dyscyplina }}</td>
                     <td width="15%">{{ filter.form.slot__min }}&nbsp;{{ filter.form.slot__max }}</td>
                     <td width="15%">{{ filter.form.avg__min }}&nbsp;{{ filter.form.avg__max }}</td>

@@ -11,7 +11,7 @@
     "python.linting.enabled": true,
     "python.jediEnabled": false,
     "python.autoComplete.extraPaths": [
-        "${workspaceFolder}/src/"
+        "${workspaceFolder}/src/",
     ],
     "restructuredtext.confPath": "",
     "djangointellisense.projectRoot": "${workspaceFolder}/src/",

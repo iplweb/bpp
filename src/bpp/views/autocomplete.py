@@ -212,16 +212,15 @@ class AutorAutocomplete(GroupRequiredMixin, AutorAutocompleteBase):
     create_field = "nonzero"
     group_required = GR_WPROWADZANIE_DANYCH
 
-    def create_object(self, text):
-        text = text.split(" ", 1)
-        if len(text) != 2:
-            return autocomplete_create_error(
-                "Wpisz nazwisko, potem imię. " "Wyrazy oddziel spacją. "
-            )
+    err = autocomplete_create_error(
+        "Wpisz nazwisko, potem imiona. Wyrazy oddziel spacją. "
+    )
 
-        return self.get_queryset().create(
-            **dict(nazwisko=text[0].title(), imiona=text[1].title(), pokazuj=False)
-        )
+    def create_object(self, text):
+        try:
+            return Autor.objects.create_from_string(text)
+        except ValueError:
+            return self.err
 
 
 class PublicAutorAutocomplete(AutorAutocompleteBase):

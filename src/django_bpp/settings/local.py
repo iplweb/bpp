@@ -52,10 +52,10 @@ PUNKTUJ_MONOGRAFIE = False
 DEBUG_TOOLBAR = False
 
 if DEBUG_TOOLBAR and DEBUG:
-    MIDDLEWARE = MIDDLEWARE + [
+    MIDDLEWARE = [
         "debug_toolbar.middleware.DebugToolbarMiddleware",
         "bpp.middleware.NonHtmlDebugToolbarMiddleware",
-    ]
+    ] + MIDDLEWARE
 
     INSTALLED_APPS.append("debug_toolbar")
 
