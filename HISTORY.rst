@@ -10,6 +10,8 @@ Historia zmian
   wydajności,
 * ustalaj obcą jednostkę w uczelni przy imporcie (b/d),
 * nie pozwalaj na ustalenie nie-obcej jednostki jako obcej dla uczelni (b/d),
+* regresja: wyszukuj prawidłowo prace w obcych jednostkach (#816)
+* poprawnie wyszukuj przypisania autora do dyscypliny w multiwyszukiwarce (b/d),
 
 202003.20
 ---------
