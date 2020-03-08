@@ -6,7 +6,10 @@ Historia zmian
 ---------
 
 * regresja: wyszukuj po polu "Dostęp dnia (wolny dostęp)" (#815)
-* regresja: wyszukuj prawidłowo prace w obcych jednostkach (#816)
+* regresja: wyszukuj prawidłowo prace w obcych jednostkach (#816) + poprawki
+  wydajności,
+* ustalaj obcą jednostkę w uczelni przy imporcie (b/d),
+* nie pozwalaj na ustalenie nie-obcej jednostki jako obcej dla uczelni (b/d),
 
 202003.20
 ---------

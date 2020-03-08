@@ -49,13 +49,13 @@ EMAIL_PORT = 2525
 
 PUNKTUJ_MONOGRAFIE = False
 
-DEBUG_TOOLBAR = False
+DEBUG_TOOLBAR = True
 
 if DEBUG_TOOLBAR and DEBUG:
-    MIDDLEWARE = MIDDLEWARE + [
+    MIDDLEWARE = [
         "debug_toolbar.middleware.DebugToolbarMiddleware",
         "bpp.middleware.NonHtmlDebugToolbarMiddleware",
-    ]
+    ] + MIDDLEWARE
 
     INSTALLED_APPS.append("debug_toolbar")
 
