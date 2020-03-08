@@ -77,8 +77,8 @@ class AutAdmin(ImportDbfBaseAdmin):
         "nazwisko",
         "imiona",
         "tytul",
-        "pokaz_exp_id",
-        "pokaz_ref",
+        # "pokaz_exp_id",
+        # "pokaz_ref",
         "orcid_id",
         "stanowisko",
         "prac_od",
@@ -97,6 +97,11 @@ class AutAdmin(ImportDbfBaseAdmin):
     list_filter = ["fg", "tytul"]
     readonly_fields = [
         "bpp_autor",
+    ]
+    list_select_related = [
+        "idt_jed",
+        "bpp_autor",
+        "bpp_autor__tytul",
     ]
 
     def pokaz_exp_id(self, obj):
