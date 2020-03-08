@@ -13,6 +13,7 @@ Historia zmian
 * regresja: wyszukuj prawidłowo prace w obcych jednostkach (#816)
 * poprawnie wyszukuj przypisania autora do dyscypliny w multiwyszukiwarce (b/d),
 * mniejsza ilość zapytań o grupy użytkownika w redagowaniu (b/d),
+* pozwalaj na nie rozbijanie raportu slotów autora na jednostki i wydziały (#811),
 
 202003.20
 ---------

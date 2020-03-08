@@ -24,11 +24,16 @@ from bpp.models import (
 from bpp.models.dyscyplina_naukowa import Autor_Dyscyplina
 from bpp.views.mixins import UczelniaSettingRequiredMixin
 from django_bpp.version import VERSION
-from raport_slotow.filters import RaportSlotowUczelniaFilter, RaportZerowyFilter
+from raport_slotow.filters import (
+    RaportSlotowUczelniaFilter,
+    RaportZerowyFilter,
+    RaportSlotowUczelniaBezJednostekIWydzialowFilter,
+)
 from raport_slotow.forms import AutorRaportSlotowForm, ParametryRaportSlotowUczelniaForm
 from raport_slotow.models import RaportZerowyEntry
 from raport_slotow.tables import (
     RaportSlotowAutorTable,
+    RaportSlotowUczelniaBezJednostekIWydzialowTable,
     RaportSlotowUczelniaTable,
     RaportSlotowZerowyTable,
 )
@@ -173,10 +178,19 @@ class RaportSlotowUczelnia(
     UczelniaSettingRequiredMixin, MyExportMixin, SingleTableMixin, FilterView
 ):
     template_name = "raport_slotow/raport_slotow_uczelnia.html"
-    table_class = RaportSlotowUczelniaTable
     uczelnia_attr = "pokazuj_raport_slotow_uczelnia"
     export_formats = ["html", "xlsx"]
     filterset_class = RaportSlotowUczelniaFilter
+
+    def get_table_class(self):
+        if self.data["dziel_na_jednostki_i_wydzialy"]:
+            return RaportSlotowUczelniaTable
+        return RaportSlotowUczelniaBezJednostekIWydzialowTable
+
+    def get_filterset_class(self):
+        if self.data["dziel_na_jednostki_i_wydzialy"]:
+            return RaportSlotowUczelniaFilter
+        return RaportSlotowUczelniaBezJednostekIWydzialowFilter
 
     def get_table(self, **kwargs):
         table_class = self.get_table_class()
@@ -200,6 +214,10 @@ class RaportSlotowUczelnia(
             (
                 "Uwzględnij autorów poniżej minimalnego slotu:",
                 "tak" if self.data["pokazuj_ponizej"] else "nie",
+            ),
+            (
+                "Dziel na jednostki:",
+                "tak" if self.data["dziel_na_jednostki_i_wydzialy"] else "nie",
             ),
             ("Wygenerowano:", timezone.now()),
             ("Wersja oprogramowania BPP", VERSION),
@@ -236,14 +254,28 @@ class RaportSlotowUczelnia(
     def get_queryset(self):
         self.min_slot = self.data["minimalny_slot"]
 
-        partition_by = [F("autor_id"), F("jednostka_id"), F("dyscyplina_id")]
-        order_by = "autor", "jednostka", "dyscyplina", (F("pkdaut") / F("slot")).desc()
-        group_by = (
-            "autor_id",
-            "jednostka_id",
-            "dyscyplina_id",
-        )
-        select_related = "autor", "jednostka", "dyscyplina"
+        if self.data["dziel_na_jednostki_i_wydzialy"]:
+            partition_by = [F("autor_id"), F("jednostka_id"), F("dyscyplina_id")]
+            order_by = (
+                "autor",
+                "jednostka",
+                "dyscyplina",
+                (F("pkdaut") / F("slot")).desc(),
+            )
+            group_by = (
+                "autor_id",
+                "jednostka_id",
+                "dyscyplina_id",
+            )
+            select_related = "autor", "jednostka", "dyscyplina"
+        else:
+            partition_by = [F("autor_id"), F("dyscyplina_id")]
+            order_by = "autor", "dyscyplina", (F("pkdaut") / F("slot")).desc()
+            group_by = (
+                "autor_id",
+                "dyscyplina_id",
+            )
+            select_related = "autor", "dyscyplina"
 
         qset1 = (
             Cache_Punktacja_Autora_Query.objects.filter(
@@ -294,6 +326,14 @@ class RaportSlotowUczelnia(
             .order_by(),
         )
 
+        if not self.data["dziel_na_jednostki_i_wydzialy"]:
+            from django.db import connection
+
+            cur = connection.cursor()
+            cur.execute(
+                "ALTER TABLE bpp_temporary_cpasg ADD COLUMN jednostka_id INT DEFAULT NULL;"
+            )
+
         if pokazuj_ponizej:
             # Usuń wszystkie wyniki powjżej
             Cache_Punktacja_Autora_Sum_Ponizej.objects.filter(
@@ -319,11 +359,13 @@ class RaportSlotowUczelnia(
                 .order_by(),
             )
 
-        return (
+        res = (
             Cache_Punktacja_Autora_Sum_Gruop.objects.all()
             .annotate(avg=F("pkdautsum") / F("pkdautslotsum"))
             .select_related(*select_related)
         )
+
+        return res
 
 
 class RaportSlotowZerowy(
