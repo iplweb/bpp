@@ -203,6 +203,13 @@ class IPunktacjaCacher:
                 dyscyplina=dyscyplina,
                 pkd=self.slot.punkty_pkd(dyscyplina),
                 slot=_slot_cache[dyscyplina],
+                zapisani_autorzy_z_dyscypliny=[
+                    azd.zapisany_jako
+                    for azd in self.slot.autorzy_z_dyscypliny(dyscyplina)
+                ],
+                zapisani_wszyscy_autorzy=[
+                    w.zapisany_jako for w in self.slot.original.autorzy_set.all()
+                ],
             )
 
         for wa in self.original.autorzy_set.all():

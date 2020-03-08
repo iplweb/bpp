@@ -590,6 +590,10 @@ class Cache_Punktacja_Dyscypliny(models.Model):
     dyscyplina = ForeignKey(Dyscyplina_Naukowa, CASCADE)
     pkd = models.DecimalField(max_digits=20, decimal_places=4)
     slot = models.DecimalField(max_digits=20, decimal_places=4)
+    zapisani_autorzy_z_dyscypliny = ArrayField(
+        models.TextField(), blank=True, null=True
+    )
+    zapisani_wszyscy_autorzy = ArrayField(models.TextField(), blank=True, null=True)
 
     class Meta:
         ordering = ("dyscyplina__nazwa",)
