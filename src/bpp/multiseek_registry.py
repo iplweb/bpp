@@ -766,20 +766,20 @@ class LicencjaOpenAccessUstawionaQueryObject(BooleanQueryObject):
         if operation in DIFFERENT_ALL:
             return ~ret
 
-        return ret
+            return ret
 
 
-class DostepDniaQueryObject(BooleanQueryObject):
+class PublicDostepDniaQueryObject(BooleanQueryObject):
     label = "Dostęp dnia ustawiony"
-    field_name = "dostep_dnia"
+    field_name = "public_dostep_dnia"
     public = False
 
     def real_query(self, value, operation):
         if operation in EQUALITY_OPS_ALL:
             if value:
-                ret = ~Q(dostep_dnia=None)
+                ret = ~Q(public_dostep_dnia=None)
             else:
-                ret = Q(dostep_dnia=None)
+                ret = Q(public_dostep_dnia=None)
         else:
             raise UnknownOperation(operation)
 
@@ -843,7 +843,7 @@ multiseek_fields = [
     AfiliujeQueryObject(),
     DyscyplinaUstawionaQueryObject(),
     LicencjaOpenAccessUstawionaQueryObject(),
-    DostepDniaQueryObject(),
+    PublicDostepDniaQueryObject(),
 ]
 
 

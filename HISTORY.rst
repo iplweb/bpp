@@ -2,6 +2,11 @@
 Historia zmian
 ==============
 
+202003.21
+---------
+
+* wyszukuj po polu "Dostęp dnia (wolny dostęp)" (#815)
+
 202003.20
 ---------
 

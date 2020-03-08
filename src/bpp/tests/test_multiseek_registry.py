@@ -44,6 +44,7 @@ from bpp.multiseek_registry import (
     ZewnetrznaBazaDanychQueryObject,
     Typ_OdpowiedzialnosciQueryObject,
     DyscyplinaAutoraQueryObject,
+    PublicDostepDniaQueryObject,
 )
 
 
@@ -300,4 +301,10 @@ def test_LiczbaAutorowQueryObject():
 def test_ZewnetrznaBazaDanychQueryObject():
     zbd = mommy.make(Zewnetrzna_Baza_Danych)
     res = ZewnetrznaBazaDanychQueryObject().real_query(zbd, logic.DIFFERENT)
+    assert Rekord.objects.filter(res).count() == 0
+
+
+@pytest.mark.django_db
+def test_DostepDniaQueryObject():
+    res = PublicDostepDniaQueryObject().real_query(True, logic.EQUAL)
     assert Rekord.objects.filter(res).count() == 0
