@@ -316,7 +316,7 @@ class TypOgolnyRecenzentQueryObject(TypOgolnyAutorQueryObject):
     label = "Recenzent"
 
 
-class DyscyplinaAutoraQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
+class DyscyplinaQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
     label = "Dyscyplina naukowa autora"
     type = AUTOCOMPLETE
     ops = [
@@ -328,17 +328,10 @@ class DyscyplinaAutoraQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObje
 
     def real_query(self, value, operation):
         if operation in EQUALITY_OPS_ALL:
-
-            autorzy = Autorzy.objects.filter(
-                Q(autor__autor_dyscyplina__dyscyplina_naukowa=value)
-                | Q(autor__autor_dyscyplina__subdyscyplina_naukowa=value),
-                autor__autor_dyscyplina__rok=F("rekord__rok"),
-            ).values("rekord_id")
-
-            ret = Q(pk__in=autorzy)
-
+            ret = Q(autorzy__dyscyplina_naukowa=value)
         else:
             raise UnknownOperation(operation)
+
         if operation in DIFFERENT_ALL:
             return ~ret
         return ret
@@ -837,7 +830,7 @@ multiseek_fields = [
     OpenaccessWersjaTekstuQueryObject(),
     OpenaccessLicencjaQueryObject(),
     OpenaccessCzasPublikacjiQueryObject(),
-    DyscyplinaAutoraQueryObject(),
+    DyscyplinaQueryObject(),
     ZewnetrznaBazaDanychQueryObject(),
     ObcaJednostkaQueryObject(),
     AfiliujeQueryObject(),

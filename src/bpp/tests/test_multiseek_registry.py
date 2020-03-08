@@ -4,7 +4,7 @@ from datetime import datetime
 import pytest
 from model_mommy import mommy
 from multiseek import logic
-from multiseek.logic import EQUAL, AutocompleteQueryObject
+from multiseek.logic import EQUAL, DIFFERENT, AutocompleteQueryObject
 
 from bpp.models import (
     Autor_Dyscyplina,
@@ -23,7 +23,7 @@ from bpp.models.openaccess import (
 from bpp.multiseek_registry import (
     UNION,
     DataUtworzeniaQueryObject,
-    DyscyplinaAutoraQueryObject,
+    DyscyplinaQueryObject,
     ForeignKeyDescribeMixin,
     JednostkaQueryObject,
     LiczbaAutorowQueryObject,
@@ -78,14 +78,20 @@ def test_DataUtworzeniaQueryObject():
 
 
 @pytest.mark.django_db
-def test_DyscyplinaAutoraQueryObject(autor_jan_kowalski):
+def test_DyscyplinaQueryObject(autor_jan_kowalski, wydawnictwo_zwarte, rok, jednostka):
     dn = mommy.make(Dyscyplina_Naukowa)
     Autor_Dyscyplina.objects.create(
-        autor=autor_jan_kowalski, dyscyplina_naukowa=dn, rok=2019
+        autor=autor_jan_kowalski, dyscyplina_naukowa=dn, rok=rok
     )
-    d = DyscyplinaAutoraQueryObject()
-    res = d.real_query(dn, EQUAL)
-    assert res
+    wydawnictwo_zwarte.dodaj_autora(
+        autor_jan_kowalski, jednostka, dyscyplina_naukowa=dn
+    )
+
+    res = DyscyplinaQueryObject().real_query(dn, EQUAL)
+    assert Rekord.objects.filter(res).count() == 1
+
+    res = DyscyplinaQueryObject().real_query(dn, DIFFERENT)
+    assert Rekord.objects.filter(res).count() == 0
 
 
 @pytest.mark.django_db

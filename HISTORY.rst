@@ -7,6 +7,7 @@ Historia zmian
 
 * regresja: wyszukuj po polu "Dostęp dnia (wolny dostęp)" (#815)
 * regresja: wyszukuj prawidłowo prace w obcych jednostkach (#816)
+* poprawnie wyszukuj przypisania autora do dyscypliny w multiwyszukiwarce (b/d),
 
 202003.20
 ---------
