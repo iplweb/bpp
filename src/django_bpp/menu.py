@@ -145,7 +145,7 @@ class CustomMenu(Menu):
     def init_with_context(self, context):
         user = context["request"].user
         if not hasattr(user, "__admin_menu_groups"):
-            user.__admin_menu_groups = [x.name for x in user.groups.all()]
+            user.__admin_menu_groups = [x.name for x in user.cached_groups]
         groups = user.__admin_menu_groups
 
         def flt(n1, n2, v):

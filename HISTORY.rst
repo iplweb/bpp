@@ -12,6 +12,7 @@ Historia zmian
 * nie pozwalaj na ustalenie nie-obcej jednostki jako obcej dla uczelni (b/d),
 * regresja: wyszukuj prawidłowo prace w obcych jednostkach (#816)
 * poprawnie wyszukuj przypisania autora do dyscypliny w multiwyszukiwarce (b/d),
+* mniejsza ilość zapytań o grupy użytkownika w redagowaniu (b/d),
 
 202003.20
 ---------
