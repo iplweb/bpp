@@ -14,6 +14,8 @@ Historia zmian
 * poprawnie wyszukuj przypisania autora do dyscypliny w multiwyszukiwarce (b/d),
 * mniejsza ilość zapytań o grupy użytkownika w redagowaniu (b/d),
 * pozwalaj na nie rozbijanie raportu slotów autora na jednostki i wydziały (#811),
+* w przypadku wpisania dwóch spacji przy dodawaniu autora z modułu redagowania,
+  nie pozwól na utworzenie rekordu bez nazwiska (#818)
 
 202003.20
 ---------
