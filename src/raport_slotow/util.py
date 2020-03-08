@@ -3,7 +3,6 @@ from tempfile import NamedTemporaryFile
 import openpyxl
 import openpyxl.styles
 from django.db import DEFAULT_DB_ALIAS, connections
-from django.db.models import Aggregate, CharField, Value
 from django.utils.itercompat import is_iterable
 from django_tables2.export import ExportMixin, TableExport
 from openpyxl.utils import get_column_letter
@@ -166,19 +165,3 @@ class MyExportMixin(ExportMixin):
         )
 
         return exporter.response(filename=self.get_export_filename(export_format))
-
-
-class GroupConcat(Aggregate):
-    function = "GROUP_CONCAT"
-    template = "%(function)s(%(expressions)s)"
-
-    def __init__(self, expression, delimiter, **extra):
-        output_field = extra.pop("output_field", CharField())
-        delimiter = Value(delimiter)
-        super(GroupConcat, self).__init__(
-            expression, delimiter, output_field=output_field, **extra
-        )
-
-    def as_postgresql(self, compiler, connection):
-        self.function = "STRING_AGG"
-        return super(GroupConcat, self).as_sql(compiler, connection)
