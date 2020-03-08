@@ -702,7 +702,7 @@ class ObcaJednostkaQueryObject(BooleanQueryObject):
 
     def real_query(self, value, operation):
         if operation in EQUALITY_OPS_ALL:
-            ret = Q(autorzy__jednostka__skupia_pracownikow=value)
+            ret = ~Q(autorzy__jednostka__skupia_pracownikow=value)
         else:
             raise UnknownOperation(operation)
 

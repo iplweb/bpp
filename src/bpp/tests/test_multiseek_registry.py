@@ -4,47 +4,48 @@ from datetime import datetime
 import pytest
 from model_mommy import mommy
 from multiseek import logic
-from multiseek.logic import AutocompleteQueryObject, EQUAL
+from multiseek.logic import EQUAL, AutocompleteQueryObject
 
 from bpp.models import (
-    Typ_Odpowiedzialnosci,
-    const,
-    Zewnetrzna_Baza_Danych,
-    Dyscyplina_Naukowa,
     Autor_Dyscyplina,
+    Dyscyplina_Naukowa,
+    Typ_Odpowiedzialnosci,
+    Zewnetrzna_Baza_Danych,
+    const,
 )
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
 from bpp.models.openaccess import (
-    Wersja_Tekstu_OpenAccess,
-    Licencja_OpenAccess,
     Czas_Udostepnienia_OpenAccess,
+    Licencja_OpenAccess,
+    Wersja_Tekstu_OpenAccess,
 )
 from bpp.multiseek_registry import (
-    TytulPracyQueryObject,
-    OpenaccessWersjaTekstuQueryObject,
-    OpenaccessLicencjaQueryObject,
-    OpenaccessCzasPublikacjiQueryObject,
-    ForeignKeyDescribeMixin,
-    PierwszeNazwiskoIImie,
-    TypOgolnyAutorQueryObject,
-    TypOgolnyRedaktorQueryObject,
-    TypOgolnyTlumaczQueryObject,
-    TypOgolnyRecenzentQueryObject,
-    NazwiskoIImieQueryObject,
+    UNION,
     DataUtworzeniaQueryObject,
+    DyscyplinaAutoraQueryObject,
+    ForeignKeyDescribeMixin,
+    JednostkaQueryObject,
+    LiczbaAutorowQueryObject,
+    NazwiskoIImieQueryObject,
+    ObcaJednostkaQueryObject,
+    OpenaccessCzasPublikacjiQueryObject,
+    OpenaccessLicencjaQueryObject,
+    OpenaccessWersjaTekstuQueryObject,
     OstatnieNazwiskoIImie,
     OstatnioZmieniony,
     OstatnioZmienionyDlaPBN,
+    PierwszeNazwiskoIImie,
+    PublicDostepDniaQueryObject,
     RodzajKonferenckjiQueryObject,
-    LiczbaAutorowQueryObject,
-    UNION,
-    JednostkaQueryObject,
+    Typ_OdpowiedzialnosciQueryObject,
+    TypOgolnyAutorQueryObject,
+    TypOgolnyRecenzentQueryObject,
+    TypOgolnyRedaktorQueryObject,
+    TypOgolnyTlumaczQueryObject,
+    TytulPracyQueryObject,
     WydzialQueryObject,
     ZewnetrznaBazaDanychQueryObject,
-    Typ_OdpowiedzialnosciQueryObject,
-    DyscyplinaAutoraQueryObject,
-    PublicDostepDniaQueryObject,
 )
 
 
@@ -308,3 +309,13 @@ def test_ZewnetrznaBazaDanychQueryObject():
 def test_DostepDniaQueryObject():
     res = PublicDostepDniaQueryObject().real_query(True, logic.EQUAL)
     assert Rekord.objects.filter(res).count() == 0
+
+
+@pytest.mark.django_db
+def test_ObcaJednostkaQueryObject(
+    wydawnictwo_zwarte, autor_jan_kowalski, obca_jednostka,
+):
+    wydawnictwo_zwarte.dodaj_autora(autor_jan_kowalski, obca_jednostka, afiliuje=False)
+
+    res = ObcaJednostkaQueryObject().real_query(True, logic.EQUAL)
+    assert Rekord.objects.filter(res).count() == 1

@@ -5,7 +5,8 @@ Historia zmian
 202003.21
 ---------
 
-* wyszukuj po polu "Dostęp dnia (wolny dostęp)" (#815)
+* regresja: wyszukuj po polu "Dostęp dnia (wolny dostęp)" (#815)
+* regresja: wyszukuj prawidłowo prace w obcych jednostkach (#816)
 
 202003.20
 ---------
