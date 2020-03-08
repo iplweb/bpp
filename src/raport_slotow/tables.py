@@ -47,7 +47,48 @@ class RaportSlotowAutorTable(tables.Table):
         return value
 
 
-class RaportSlotowUczelniaTable(tables.Table):
+class RaportSlotowUczelniaBezJednostekIWydzialowTable(tables.Table):
+    class Meta:
+        empty_text = "Brak danych"
+        model = Cache_Punktacja_Autora_Query
+        fields = (
+            "autor",
+            "pbn_id",
+            "orcid",
+            "dyscyplina",
+            "pkdautsum",
+            "pkdautslotsum",
+            "avg",
+        )
+
+    pkdautsum = DecimalColumn("Suma punktów dla autora")
+    pkdautslotsum = DecimalColumn("Slot")
+    avg = Column("Średnio punktów dla autora na slot")
+    dyscyplina = Column()
+    pbn_id = Column("PBN ID", "autor.pbn_id")
+    orcid = Column("ORCID", "autor.orcid")
+
+    def __init__(self, od_roku, do_roku, *args, **kw):
+        self.od_roku = od_roku
+        self.do_roku = do_roku
+        super(RaportSlotowUczelniaBezJednostekIWydzialowTable, self).__init__(
+            *args, **kw
+        )
+
+    def render_avg(self, value):
+        return round(value, 4)
+
+    def render_autor(self, value):
+        url = reverse(
+            "raport_slotow:raport", args=(value.slug, self.od_roku, self.do_roku)
+        )
+        return safe("<a href=%s>%s</a>" % (url, value))
+
+    def value_autor(self, value):
+        return value
+
+
+class RaportSlotowUczelniaTable(RaportSlotowUczelniaBezJednostekIWydzialowTable):
     class Meta:
         empty_text = "Brak danych"
         model = Cache_Punktacja_Autora_Query
@@ -63,30 +104,7 @@ class RaportSlotowUczelniaTable(tables.Table):
             "avg",
         )
 
-    pkdautsum = DecimalColumn("Suma punktów dla autora")
-    pkdautslotsum = DecimalColumn("Slot")
-    avg = Column("Średnio punktów dla autora na slot")
     wydzial = Column("Wydział", accessor="jednostka.wydzial.nazwa")
-    dyscyplina = Column()
-    pbn_id = Column("PBN ID", "autor.pbn_id")
-    orcid = Column("ORCID", "autor.orcid")
-
-    def __init__(self, od_roku, do_roku, *args, **kw):
-        self.od_roku = od_roku
-        self.do_roku = do_roku
-        super(RaportSlotowUczelniaTable, self).__init__(*args, **kw)
-
-    def render_avg(self, value):
-        return round(value, 4)
-
-    def render_autor(self, value):
-        url = reverse(
-            "raport_slotow:raport", args=(value.slug, self.od_roku, self.do_roku)
-        )
-        return safe("<a href=%s>%s</a>" % (url, value))
-
-    def value_autor(self, value):
-        return value
 
 
 class RaportSlotowZerowyTable(tables.Table):

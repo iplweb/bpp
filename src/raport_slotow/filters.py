@@ -8,19 +8,10 @@ from bpp.models import (
 )
 
 
-class RaportSlotowUczelniaFilter(django_filters.FilterSet):
+class RaportSlotowUczelniaBezJednostekIWydzialowFilter(django_filters.FilterSet):
     autor__nazwisko = django_filters.CharFilter(
         lookup_expr="icontains",
         widget=TextInput(attrs={"placeholder": "Podaj nazwisko"}),
-    )
-
-    jednostka__nazwa = django_filters.CharFilter(
-        lookup_expr="icontains",
-        widget=TextInput(attrs={"placeholder": "Podaj jednostkę"}),
-    )
-
-    jednostka__wydzial = django_filters.ModelChoiceFilter(
-        queryset=Wydzial.objects.all()
     )
 
     dyscyplina = django_filters.ModelChoiceFilter(
@@ -45,6 +36,21 @@ class RaportSlotowUczelniaFilter(django_filters.FilterSet):
 
     avg__max = django_filters.NumberFilter(
         "avg", lookup_expr="lte", widget=NumberInput(attrs={"placeholder": "max"})
+    )
+
+    class Meta:
+        model = Cache_Punktacja_Autora_Sum_Gruop
+        fields = ["autor__nazwisko", "dyscyplina__nazwa"]
+
+
+class RaportSlotowUczelniaFilter(RaportSlotowUczelniaBezJednostekIWydzialowFilter):
+    jednostka__nazwa = django_filters.CharFilter(
+        lookup_expr="icontains",
+        widget=TextInput(attrs={"placeholder": "Podaj jednostkę"}),
+    )
+
+    jednostka__wydzial = django_filters.ModelChoiceFilter(
+        queryset=Wydzial.objects.all()
     )
 
     class Meta:
