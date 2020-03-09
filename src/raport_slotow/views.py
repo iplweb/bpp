@@ -326,14 +326,6 @@ class RaportSlotowUczelnia(
             .order_by(),
         )
 
-        if not self.data["dziel_na_jednostki_i_wydzialy"]:
-            from django.db import connection
-
-            cur = connection.cursor()
-            cur.execute(
-                "ALTER TABLE bpp_temporary_cpasg ADD COLUMN jednostka_id INT DEFAULT NULL;"
-            )
-
         if pokazuj_ponizej:
             # Usuń wszystkie wyniki powjżej
             Cache_Punktacja_Autora_Sum_Ponizej.objects.filter(
@@ -357,6 +349,14 @@ class RaportSlotowUczelnia(
                     pkdautslotsum=Max("pkdautslotsum"), pkdautsum=Max("pkdautsum")
                 )
                 .order_by(),
+            )
+
+        if self.data["dziel_na_jednostki_i_wydzialy"] is False:
+            from django.db import connection
+
+            cur = connection.cursor()
+            cur.execute(
+                "ALTER TABLE bpp_temporary_cpasg ADD COLUMN jednostka_id INT DEFAULT NULL;"
             )
 
         res = (

@@ -2,6 +2,11 @@
 Historia zmian
 ==============
 
+202003.22
+---------
+
+* regresja: błędy raportu slotów (#811)
+
 202003.21
 ---------
 
