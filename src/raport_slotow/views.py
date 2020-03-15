@@ -12,18 +12,6 @@ from django.urls import reverse
 from django.views.generic import FormView, TemplateView
 from django_filters.views import FilterView
 from django_tables2 import MultiTableMixin, RequestConfig, SingleTableMixin
-
-from bpp.models import (
-    Autor,
-    Cache_Punktacja_Autora_Query,
-    Cache_Punktacja_Autora_Sum,
-    Cache_Punktacja_Autora_Sum_Group_Ponizej,
-    Cache_Punktacja_Autora_Sum_Gruop,
-    Cache_Punktacja_Autora_Sum_Ponizej,
-)
-from bpp.models.dyscyplina_naukowa import Autor_Dyscyplina
-from bpp.views.mixins import UczelniaSettingRequiredMixin
-from django_bpp.version import VERSION
 from raport_slotow.filters import RaportSlotowUczelniaFilter, RaportZerowyFilter
 from raport_slotow.forms import AutorRaportSlotowForm, ParametryRaportSlotowUczelniaForm
 from raport_slotow.models import RaportZerowyEntry
@@ -43,6 +31,20 @@ from raport_slotow.util import (
 from django.contrib.postgres.aggregates.general import StringAgg
 
 from django.utils import timezone
+
+from bpp.models import (
+    Autor,
+    Cache_Punktacja_Autora_Query,
+    Cache_Punktacja_Autora_Query_View,
+    Cache_Punktacja_Autora_Sum,
+    Cache_Punktacja_Autora_Sum_Group_Ponizej,
+    Cache_Punktacja_Autora_Sum_Gruop,
+    Cache_Punktacja_Autora_Sum_Ponizej,
+)
+from bpp.models.dyscyplina_naukowa import Autor_Dyscyplina
+from bpp.views.mixins import UczelniaSettingRequiredMixin
+
+from django_bpp.version import VERSION
 
 
 class WyborOsoby(UczelniaSettingRequiredMixin, FormView):
@@ -105,7 +107,7 @@ class RaportSlotow(
         except (TypeError, ValueError):
             raise Http404
 
-        cpaq = Cache_Punktacja_Autora_Query.objects.filter(
+        cpaq = Cache_Punktacja_Autora_Query_View.objects.filter(
             autor=self.autor,
             rekord__rok__gte=self.od_roku,
             rekord__rok__lte=self.do_roku,
@@ -358,7 +360,7 @@ class RaportSlotowZerowy(
         )
 
         # zestawy autor/rok/dyscyplina z całej bazy danych
-        existent = Cache_Punktacja_Autora_Query.objects.all().values(
+        existent = Cache_Punktacja_Autora_Query_View.objects.all().values(
             "autor_id", "rekord__rok", "dyscyplina_id"
         )
 

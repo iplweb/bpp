@@ -2,6 +2,11 @@
 Historia zmian
 ==============
 
+202003.22
+---------
+
+* wyświetlaj dodatkowe kolumny w raporcie slotów - autor (#807)
+
 202003.21
 ---------
 

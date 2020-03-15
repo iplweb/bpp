@@ -629,6 +629,21 @@ class Cache_Punktacja_Autora_Query(Cache_Punktacja_Autora_Base):
         managed = False
 
 
+class Cache_Punktacja_Autora_Query_View(Cache_Punktacja_Autora_Base):
+    """W porównaniu do CAche_Punktacja_Autora, mam jeszcze listę zapisanych
+    autorów z dyscypliny. A skąd? A z widoku bazodanowego, który bierze
+    też pod uwagę Cache_Punktacja_Dyscypliny.
+    """
+
+    rekord = ForeignKey("bpp.Rekord", DO_NOTHING)
+
+    zapisani_autorzy_z_dyscypliny = ArrayField(models.TextField())
+
+    class Meta:
+        db_table = "bpp_cache_punktacja_autora_view"
+        managed = False
+
+
 class Cache_Punktacja_Autora_Sum(Cache_Punktacja_Autora_Base):
     rekord = ForeignKey("bpp.Rekord", DO_NOTHING)
     autor = ForeignKey(Autor, DO_NOTHING)
