@@ -14,6 +14,14 @@ from django.db.models.deletion import DO_NOTHING
 from django.db.models.lookups import In
 from django.db.models.signals import post_delete, post_save, pre_delete, pre_save
 
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
+from django.contrib.postgres.fields.array import ArrayField
+from django.contrib.postgres.search import SearchVectorField as VectorField
+
+from django.utils import six
+from django.utils.functional import cached_property
+
 from bpp.models import (
     Autor,
     Dyscyplina_Naukowa,
@@ -44,14 +52,6 @@ from bpp.models.abstract import (
 from bpp.models.system import Charakter_Formalny, Jezyk
 from bpp.models.util import ModelZOpisemBibliograficznym
 from bpp.util import FulltextSearchMixin
-
-from django.contrib.contenttypes.fields import GenericForeignKey
-from django.contrib.contenttypes.models import ContentType
-from django.contrib.postgres.fields.array import ArrayField
-from django.contrib.postgres.search import SearchVectorField as VectorField
-
-from django.utils import six
-from django.utils.functional import cached_property
 
 # zmiana CACHED_MODELS powoduje zmiane opisu bibliograficznego wszystkich rekordow
 CACHED_MODELS = [
@@ -590,10 +590,13 @@ class Cache_Punktacja_Dyscypliny(models.Model):
     dyscyplina = ForeignKey(Dyscyplina_Naukowa, CASCADE)
     pkd = models.DecimalField(max_digits=20, decimal_places=4)
     slot = models.DecimalField(max_digits=20, decimal_places=4)
+
+    autorzy_z_dyscypliny = ArrayField(
+        models.PositiveIntegerField(), blank=True, null=True
+    )
     zapisani_autorzy_z_dyscypliny = ArrayField(
         models.TextField(), blank=True, null=True
     )
-    zapisani_wszyscy_autorzy = ArrayField(models.TextField(), blank=True, null=True)
 
     class Meta:
         ordering = ("dyscyplina__nazwa",)
