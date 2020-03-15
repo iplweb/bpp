@@ -7,18 +7,16 @@
 # - Praca_Doktorska
 # - Praca_Habilitacyjna
 
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
+from django.contrib.postgres.fields.array import ArrayField
+from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import connection, models, reset_queries, transaction
 from django.db.models import CASCADE, ForeignKey, Func
 from django.db.models.deletion import DO_NOTHING
 from django.db.models.lookups import In
 from django.db.models.signals import post_delete, post_save, pre_delete, pre_save
-
-from django.contrib.contenttypes.fields import GenericForeignKey
-from django.contrib.contenttypes.models import ContentType
-from django.contrib.postgres.fields.array import ArrayField
-from django.contrib.postgres.search import SearchVectorField as VectorField
-
 from django.utils import six
 from django.utils.functional import cached_property
 
@@ -629,17 +627,22 @@ class Cache_Punktacja_Autora_Query(Cache_Punktacja_Autora_Base):
         managed = False
 
 
-class Cache_Punktacja_Autora_Query_View(Cache_Punktacja_Autora_Base):
-    """W porównaniu do CAche_Punktacja_Autora, mam jeszcze listę zapisanych
+class Cache_Punktacja_Autora_Query_View(models.Model):
+    """W porównaniu do Cache_Punktacja_Autora, mam jeszcze listę zapisanych
     autorów z dyscypliny. A skąd? A z widoku bazodanowego, który bierze
     też pod uwagę Cache_Punktacja_Dyscypliny.
     """
 
     rekord = ForeignKey("bpp.Rekord", DO_NOTHING)
-
+    autor = ForeignKey(Autor, DO_NOTHING)
+    jednostka = ForeignKey(Jednostka, DO_NOTHING)
+    dyscyplina = ForeignKey(Dyscyplina_Naukowa, DO_NOTHING)
+    pkdaut = models.DecimalField(max_digits=20, decimal_places=4)
+    slot = models.DecimalField(max_digits=20, decimal_places=4)
     zapisani_autorzy_z_dyscypliny = ArrayField(models.TextField())
 
     class Meta:
+        ordering = ("autor__nazwisko", "dyscyplina__nazwa")
         db_table = "bpp_cache_punktacja_autora_view"
         managed = False
 
