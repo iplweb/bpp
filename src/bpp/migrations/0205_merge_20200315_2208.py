@@ -6,9 +6,8 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('bpp', '0202_fix_autorzy_bez_nazwisk'),
-        ('bpp', '0204_cache_punktacja_autora_query_view'),
+        ("bpp", "0202_fix_autorzy_bez_nazwisk"),
+        ("bpp", "0204_cache_punktacja_autora_query_view"),
     ]
 
-    operations = [
-    ]
+    operations = []

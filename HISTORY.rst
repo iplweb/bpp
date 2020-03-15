@@ -2,11 +2,15 @@
 Historia zmian
 ==============
 
+202003.23
+---------
+
+* wyświetlaj dodatkowe kolumny w raporcie slotów - autor (#807)
+
 202003.22
 ---------
 
 * regresja: błędy raportu slotów (#811)
-* wyświetlaj dodatkowe kolumny w raporcie slotów - autor (#807)
 
 202003.21
 ---------
