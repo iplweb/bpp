@@ -2,6 +2,7 @@ import urllib
 from datetime import datetime
 from urllib.parse import urlencode
 
+from django.contrib.postgres.aggregates.general import StringAgg
 from django.db import connection
 from django.db.models import F, Max, Min, Sum, Window
 from django.db.models.fields import TextField
@@ -9,6 +10,7 @@ from django.db.models.functions import Cast
 from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
+from django.utils import timezone
 from django.views.generic import FormView, TemplateView
 from django_filters.views import FilterView
 from django_tables2 import MultiTableMixin, RequestConfig, SingleTableMixin
@@ -16,6 +18,7 @@ from django_tables2 import MultiTableMixin, RequestConfig, SingleTableMixin
 from bpp.models import (
     Autor,
     Cache_Punktacja_Autora_Query,
+    Cache_Punktacja_Autora_Query_View,
     Cache_Punktacja_Autora_Sum,
     Cache_Punktacja_Autora_Sum_Group_Ponizej,
     Cache_Punktacja_Autora_Sum_Gruop,
@@ -44,10 +47,6 @@ from raport_slotow.util import (
     create_temporary_table_as,
     insert_into,
 )
-
-from django.contrib.postgres.aggregates.general import StringAgg
-
-from django.utils import timezone
 
 
 class WyborOsoby(UczelniaSettingRequiredMixin, FormView):
@@ -400,7 +399,7 @@ class RaportSlotowZerowy(
         )
 
         # zestawy autor/rok/dyscyplina z całej bazy danych
-        existent = Cache_Punktacja_Autora_Query.objects.all().values(
+        existent = Cache_Punktacja_Autora_Query_View.objects.all().values(
             "autor_id", "rekord__rok", "dyscyplina_id"
         )
 
