@@ -2,6 +2,7 @@ import urllib
 from datetime import datetime
 from urllib.parse import urlencode
 
+from django.contrib.postgres.aggregates.general import StringAgg
 from django.db import connection
 from django.db.models import F, Max, Min, Sum, Window
 from django.db.models.fields import TextField
@@ -9,9 +10,23 @@ from django.db.models.functions import Cast
 from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
+from django.utils import timezone
 from django.views.generic import FormView, TemplateView
 from django_filters.views import FilterView
 from django_tables2 import MultiTableMixin, RequestConfig, SingleTableMixin
+
+from bpp.models import (
+    Autor,
+    Cache_Punktacja_Autora_Query,
+    Cache_Punktacja_Autora_Query_View,
+    Cache_Punktacja_Autora_Sum,
+    Cache_Punktacja_Autora_Sum_Group_Ponizej,
+    Cache_Punktacja_Autora_Sum_Gruop,
+    Cache_Punktacja_Autora_Sum_Ponizej,
+)
+from bpp.models.dyscyplina_naukowa import Autor_Dyscyplina
+from bpp.views.mixins import UczelniaSettingRequiredMixin
+from django_bpp.version import VERSION
 from raport_slotow.filters import RaportSlotowUczelniaFilter, RaportZerowyFilter
 from raport_slotow.forms import AutorRaportSlotowForm, ParametryRaportSlotowUczelniaForm
 from raport_slotow.models import RaportZerowyEntry
@@ -27,24 +42,6 @@ from raport_slotow.util import (
     create_temporary_table_as,
     insert_into,
 )
-
-from django.contrib.postgres.aggregates.general import StringAgg
-
-from django.utils import timezone
-
-from bpp.models import (
-    Autor,
-    Cache_Punktacja_Autora_Query,
-    Cache_Punktacja_Autora_Query_View,
-    Cache_Punktacja_Autora_Sum,
-    Cache_Punktacja_Autora_Sum_Group_Ponizej,
-    Cache_Punktacja_Autora_Sum_Gruop,
-    Cache_Punktacja_Autora_Sum_Ponizej,
-)
-from bpp.models.dyscyplina_naukowa import Autor_Dyscyplina
-from bpp.views.mixins import UczelniaSettingRequiredMixin
-
-from django_bpp.version import VERSION
 
 
 class WyborOsoby(UczelniaSettingRequiredMixin, FormView):
@@ -107,7 +104,7 @@ class RaportSlotow(
         except (TypeError, ValueError):
             raise Http404
 
-        cpaq = Cache_Punktacja_Autora_Query_View.objects.filter(
+        cpaq = Cache_Punktacja_Autora_Query.objects.filter(
             autor=self.autor,
             rekord__rok__gte=self.od_roku,
             rekord__rok__lte=self.do_roku,
