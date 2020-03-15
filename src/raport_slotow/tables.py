@@ -2,21 +2,27 @@ import django_tables2 as tables
 from django.template.defaultfilters import safe
 from django.urls import reverse
 from django_tables2 import Column
-
-from bpp.models.cache import Cache_Punktacja_Autora_Query
 from raport_slotow.columns import DecimalColumn, SummingColumn
 from raport_slotow.models import RaportZerowyEntry
+
+from bpp.models.cache import (
+    Cache_Punktacja_Autora_Query_View,
+    Cache_Punktacja_Autora_Query,
+)
 
 
 class RaportSlotowAutorTable(tables.Table):
     class Meta:
         empty_text = "Brak danych"
-        model = Cache_Punktacja_Autora_Query
+        model = Cache_Punktacja_Autora_Query_View
         fields = (
             "tytul_oryginalny",
             "autorzy",
+            "autorzy_z_dyscypliny",
+            "liczba_autorow_z_dyscypliny",
             "rok",
             "zrodlo",
+            "szczegoly",
             "dyscyplina",
             "punkty_kbn",
             "pkdaut",
@@ -31,8 +37,15 @@ class RaportSlotowAutorTable(tables.Table):
     dyscyplina = Column(orderable=False)
     punkty_kbn = Column("Punkty PK", "rekord.punkty_kbn")
     zrodlo = Column("Źródło", "rekord.zrodlo", empty_values=())
+    szczegoly = Column("Szczegóły", "rekord.szczegoly")
     pkdaut = SummingColumn("Punkty dla autora", "pkdaut")
     slot = SummingColumn("Slot")
+    autorzy_z_dyscypliny = Column(
+        "Autorzy z dyscypliny", "zapisani_autorzy_z_dyscypliny", orderable=False
+    )
+    liczba_autorow_z_dyscypliny = Column(
+        "Liczba autorów z dyscypliny", "zapisani_autorzy_z_dyscypliny", orderable=False
+    )
 
     def render_tytul_oryginalny(self, value):
         url = reverse("bpp:browse_rekord", args=(value.pk[0], value.pk[1]))
@@ -46,11 +59,19 @@ class RaportSlotowAutorTable(tables.Table):
             return "-"
         return value
 
+    def render_autorzy_z_dyscypliny(self, value):
+        if value:
+            return ", ".join(value)
+
+    def render_liczba_autorow_z_dyscypliny(self, value):
+        if value:
+            return len(value)
+
 
 class RaportSlotowUczelniaBezJednostekIWydzialowTable(tables.Table):
     class Meta:
         empty_text = "Brak danych"
-        model = Cache_Punktacja_Autora_Query
+        model = Cache_Punktacja_Autora_Query_View
         fields = (
             "autor",
             "pbn_id",
