@@ -5,7 +5,10 @@ from django_tables2 import Column
 from raport_slotow.columns import DecimalColumn, SummingColumn
 from raport_slotow.models import RaportZerowyEntry
 
-from bpp.models.cache import Cache_Punktacja_Autora_Query_View
+from bpp.models.cache import (
+    Cache_Punktacja_Autora_Query_View,
+    Cache_Punktacja_Autora_Query,
+)
 
 
 class RaportSlotowAutorTable(tables.Table):
