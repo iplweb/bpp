@@ -23,6 +23,7 @@ from bpp.models import (
     Cache_Punktacja_Autora_Sum_Group_Ponizej,
     Cache_Punktacja_Autora_Sum_Gruop,
     Cache_Punktacja_Autora_Sum_Ponizej,
+    Dyscyplina_Naukowa,
 )
 from bpp.models.dyscyplina_naukowa import Autor_Dyscyplina
 from bpp.views.mixins import UczelniaSettingRequiredMixin
@@ -109,7 +110,7 @@ class RaportSlotow(
         except (TypeError, ValueError):
             raise Http404
 
-        cpaq = Cache_Punktacja_Autora_Query.objects.filter(
+        cpaq = Cache_Punktacja_Autora_Query_View.objects.filter(
             autor=self.autor,
             rekord__rok__gte=self.od_roku,
             rekord__rok__lte=self.do_roku,
@@ -117,17 +118,17 @@ class RaportSlotow(
         )
 
         ret = []
-        for elem in cpaq.distinct("dyscyplina"):
+        for elem in cpaq.values_list("dyscyplina", flat=True).order_by().distinct():
             table_class = self.get_table_class()
             table = table_class(
-                data=cpaq.filter(dyscyplina_id=elem.dyscyplina_id).select_related(
+                data=cpaq.filter(dyscyplina_id=elem).select_related(
                     "rekord", "dyscyplina"
                 )
             )
             RequestConfig(
                 self.request, paginate=self.get_table_pagination(table)
             ).configure(table)
-            table.dyscyplina_naukowa = elem.dyscyplina
+            table.dyscyplina_naukowa = Dyscyplina_Naukowa.objects.get(pk=elem)
             ret.append(table)
 
         if not ret:
