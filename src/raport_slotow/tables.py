@@ -37,7 +37,9 @@ class RaportSlotowAutorTable(tables.Table):
     rok = Column("Rok", "rekord.rok", orderable=True)
     dyscyplina = Column(orderable=False)
     punkty_kbn = Column("Punkty PK", "rekord.punkty_kbn")
-    zrodlo_informacje = Column("Źródło / informacje", "rekord", empty_values=())
+    zrodlo_informacje = Column(
+        "Źródło / informacje", "rekord", empty_values=(), orderable=False
+    )
     pkdaut = SummingColumn("Punkty dla autora", "pkdaut")
     slot = SummingColumn("Slot")
     autorzy_z_dyscypliny = Column(
