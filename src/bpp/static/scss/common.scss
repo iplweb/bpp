@@ -33,6 +33,14 @@ form.custom .custom.checkbox.checked:before {
   font-size: 70%;
 }
 
+.very-small-table tbody tr td {
+  font-size: 60%;
+}
+
+.very-small-table thead tr th {
+  font-size: 50%;
+}
+
 // test
 
 @media print {

@@ -178,6 +178,7 @@
 
                             {% if uczelnia.pokazuj_raport_slotow_uczelnia == "always" or uczelnia.pokazuj_raport_slotow_uczelnia == "logged-in" and request.user.is_anonymous == False %}
                                 <li><a href="{% url "raport_slotow:index-uczelnia" %}">raport slotów - uczelnia</a></li>
+                                <li><a href="{% url "raport_slotow:index-ewaluacja" %}">raport slotów - ewaluacja</a></li>
                             {% endif %}
 
 

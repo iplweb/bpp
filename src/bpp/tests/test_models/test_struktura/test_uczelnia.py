@@ -139,19 +139,6 @@ def test_uczelnia_pokazuj_menu_nigdy(uczelnia, attr, s, client, admin_client):
     assert s not in res.rendered_content
 
 
-@pytest.fixture
-def praca_z_dyscyplina(wydawnictwo_ciagle_z_autorem, dyscyplina1, rok):
-    wydawnictwo_ciagle_z_autorem.punkty_kbn = 5
-    wca = wydawnictwo_ciagle_z_autorem.autorzy_set.first()
-    Autor_Dyscyplina.objects.create(
-        autor=wca.autor, rok=wca.rekord.rok, dyscyplina_naukowa=dyscyplina1
-    )
-    wca.dyscyplina_naukowa = dyscyplina1
-    wca.save()
-    aktualizuj_cache_rekordu(wydawnictwo_ciagle_z_autorem)
-    return wydawnictwo_ciagle_z_autorem
-
-
 @pytest.mark.django_db
 def test_pokazuj_tabele_slotow_na_stronie_rekordu(
     uczelnia, admin_client, client, praca_z_dyscyplina

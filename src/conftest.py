@@ -7,6 +7,7 @@ from datetime import datetime
 import django_webtest
 import pytest
 
+from bpp.tasks import aktualizuj_cache_rekordu
 
 try:
     from django.core.urlresolvers import reverse
@@ -15,7 +16,7 @@ except ImportError:
 from model_mommy import mommy
 
 from bpp.fixtures import get_openaccess_data
-from bpp.models import TO_AUTOR, Dyscyplina_Naukowa, Wydawca, const
+from bpp.models import TO_AUTOR, Dyscyplina_Naukowa, Wydawca, const, Autor_Dyscyplina
 from bpp.models.autor import Autor, Tytul, Funkcja_Autora
 from bpp.models.const import GR_WPROWADZANIE_DANYCH
 from bpp.models.patent import Patent
@@ -832,3 +833,16 @@ def nginx_liveserver_proc(
 
 
 nginx_live_server = nginx_liveserver_proc()
+
+
+@pytest.fixture
+def praca_z_dyscyplina(wydawnictwo_ciagle_z_autorem, dyscyplina1, rok, db):
+    wydawnictwo_ciagle_z_autorem.punkty_kbn = 5
+    wca = wydawnictwo_ciagle_z_autorem.autorzy_set.first()
+    Autor_Dyscyplina.objects.create(
+        autor=wca.autor, rok=wca.rekord.rok, dyscyplina_naukowa=dyscyplina1
+    )
+    wca.dyscyplina_naukowa = dyscyplina1
+    wca.save()
+    aktualizuj_cache_rekordu(wydawnictwo_ciagle_z_autorem)
+    return wydawnictwo_ciagle_z_autorem
