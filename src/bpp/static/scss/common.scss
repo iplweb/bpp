@@ -25,6 +25,14 @@ form.custom .custom.checkbox.checked:before {
   content: "\2714";
 }
 
+.small-table tbody tr td {
+  font-size: 80%;
+}
+
+.small-table thead tr th {
+  font-size: 70%;
+}
+
 // test
 
 @media print {
