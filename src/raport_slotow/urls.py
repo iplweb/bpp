@@ -6,8 +6,9 @@ from raport_slotow.views import (
     WyborOsoby,
     RaportSlotow,
     ParametryRaportSlotowUczelnia,
-    RaportSlotowUczelnia,
     RaportSlotowZerowy,
+    ParametryRaportSlotowEwaluacja,
+    RaportSlotowEwaluacja,
 )
 
 app_name = "raport_slotow"
@@ -25,9 +26,14 @@ urlpatterns = [
         name="index-uczelnia",
     ),
     path(
-        "raport-slotow-uczelnia/raport/",
-        RaportSlotowUczelnia.as_view(),
-        name="raport-uczelnia",
+        "raport-slotow-ewaluacja/",
+        ParametryRaportSlotowEwaluacja.as_view(),
+        name="index-ewaluacja",
+    ),
+    path(
+        r"raport-slotow-ewaluacja/raport/",
+        RaportSlotowEwaluacja.as_view(),
+        name="raport-ewaluacja",
     ),
     path(
         "raport-slotow-zerowy/",
