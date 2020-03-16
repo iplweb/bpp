@@ -2,17 +2,18 @@ import django_tables2 as tables
 from django.template.defaultfilters import safe
 from django.urls import reverse
 from django_tables2 import Column
-from raport_slotow.columns import DecimalColumn, SummingColumn
-from raport_slotow.models import RaportZerowyEntry
 
 from bpp.models.cache import (
     Cache_Punktacja_Autora_Query_View,
     Cache_Punktacja_Autora_Query,
 )
+from raport_slotow.columns import DecimalColumn, SummingColumn
+from raport_slotow.models import RaportZerowyEntry
 
 
 class RaportSlotowAutorTable(tables.Table):
     class Meta:
+        attrs = {"class": "small-table"}
         empty_text = "Brak danych"
         model = Cache_Punktacja_Autora_Query_View
         fields = (
@@ -20,6 +21,7 @@ class RaportSlotowAutorTable(tables.Table):
             "autorzy",
             "autorzy_z_dyscypliny",
             "liczba_autorow_z_dyscypliny",
+            "liczba_wszystkich_autorow",
             "rok",
             "zrodlo",
             "szczegoly",
@@ -46,6 +48,11 @@ class RaportSlotowAutorTable(tables.Table):
     liczba_autorow_z_dyscypliny = Column(
         "Liczba autorów z dyscypliny", "zapisani_autorzy_z_dyscypliny", orderable=False
     )
+    liczba_wszystkich_autorow = Column(
+        "Liczba wszystkich autorów",
+        "rekord.opis_bibliograficzny_autorzy_cache",
+        orderable=False,
+    )
 
     def render_tytul_oryginalny(self, value):
         url = reverse("bpp:browse_rekord", args=(value.pk[0], value.pk[1]))
@@ -63,9 +70,12 @@ class RaportSlotowAutorTable(tables.Table):
         if value:
             return ", ".join(value)
 
-    def render_liczba_autorow_z_dyscypliny(self, value):
+    def len(self, value):
         if value:
             return len(value)
+
+    render_liczba_autorow_z_dyscypliny = len
+    render_liczba_wszystkich_autorow = len
 
 
 class RaportSlotowUczelniaBezJednostekIWydzialowTable(tables.Table):
