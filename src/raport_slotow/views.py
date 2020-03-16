@@ -122,7 +122,7 @@ class RaportSlotow(
             table_class = self.get_table_class()
             table = table_class(
                 data=cpaq.filter(dyscyplina_id=elem).select_related(
-                    "rekord", "dyscyplina"
+                    "rekord", "dyscyplina", "rekord__zrodlo"
                 )
             )
             RequestConfig(

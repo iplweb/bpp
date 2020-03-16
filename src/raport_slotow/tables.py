@@ -23,8 +23,7 @@ class RaportSlotowAutorTable(tables.Table):
             "liczba_autorow_z_dyscypliny",
             "liczba_wszystkich_autorow",
             "rok",
-            "zrodlo",
-            "szczegoly",
+            "zrodlo_informacje",
             "dyscyplina",
             "punkty_kbn",
             "pkdaut",
@@ -38,15 +37,14 @@ class RaportSlotowAutorTable(tables.Table):
     rok = Column("Rok", "rekord.rok", orderable=True)
     dyscyplina = Column(orderable=False)
     punkty_kbn = Column("Punkty PK", "rekord.punkty_kbn")
-    zrodlo = Column("Źródło", "rekord.zrodlo", empty_values=())
-    szczegoly = Column("Szczegóły", "rekord.szczegoly")
+    zrodlo_informacje = Column("Źródło / informacje", "rekord", empty_values=())
     pkdaut = SummingColumn("Punkty dla autora", "pkdaut")
     slot = SummingColumn("Slot")
     autorzy_z_dyscypliny = Column(
-        "Autorzy z dyscypliny", "zapisani_autorzy_z_dyscypliny", orderable=False
+        "Autorzy z dyscypliny", "zapisani_autorzy_z_dyscypliny", orderable=False,
     )
     liczba_autorow_z_dyscypliny = Column(
-        "Liczba autorów z dyscypliny", "zapisani_autorzy_z_dyscypliny", orderable=False
+        "Liczba autorów z dyscypliny", "zapisani_autorzy_z_dyscypliny", orderable=False,
     )
     liczba_wszystkich_autorow = Column(
         "Liczba wszystkich autorów",
@@ -61,10 +59,10 @@ class RaportSlotowAutorTable(tables.Table):
     def value_tytul_oryginalny(self, value):
         return value.tytul_oryginalny
 
-    def render_zrodlo(self, value):
-        if value is None:
-            return "-"
-        return value
+    def render_zrodlo_informacje(self, value):
+        if hasattr(value, "zrodlo_id"):
+            return f"{value.zrodlo} {value.szczegoly}"
+        return f"{value.informacje} {value.szczegoly}"
 
     def render_autorzy_z_dyscypliny(self, value):
         if value:
