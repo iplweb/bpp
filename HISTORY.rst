@@ -2,6 +2,13 @@
 Historia zmian
 ==============
 
+202003.25
+---------
+
+* wyświetlaj kolumnę z ilością wszystkich autorów w raporcie slotów - autor (#807)
+* wyświetlaj mniejsze czcionki w raporcie slotów - autor
+* raport slotów - ewaluacja (#809)
+
 202003.23
 ---------
 

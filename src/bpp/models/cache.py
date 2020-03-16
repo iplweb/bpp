@@ -642,7 +642,7 @@ class Cache_Punktacja_Autora_Query_View(models.Model):
     zapisani_autorzy_z_dyscypliny = ArrayField(models.TextField())
 
     class Meta:
-        ordering = ("autor__nazwisko", "dyscyplina__nazwa")
+        ordering = ("rekord__tytul_oryginalny", "dyscyplina__nazwa")
         db_table = "bpp_cache_punktacja_autora_view"
         managed = False
 

@@ -2,17 +2,40 @@ import django_tables2 as tables
 from django.template.defaultfilters import safe
 from django.urls import reverse
 from django_tables2 import Column
-from raport_slotow.columns import DecimalColumn, SummingColumn
-from raport_slotow.models import RaportZerowyEntry
 
 from bpp.models.cache import (
     Cache_Punktacja_Autora_Query_View,
     Cache_Punktacja_Autora_Query,
 )
+from raport_slotow.columns import DecimalColumn, SummingColumn
+from raport_slotow.models import RaportZerowyEntry, RaportUczelniaEwaluacjaView
 
 
-class RaportSlotowAutorTable(tables.Table):
+class RaportCommonMixin:
+    def render_tytul_oryginalny(self, value):
+        url = reverse("bpp:browse_rekord", args=(value.pk[0], value.pk[1]))
+        return safe("<a href=%s>%s</a>" % (url, value))
+
+    def value_tytul_oryginalny(self, value):
+        return value.tytul_oryginalny
+
+    def render_zrodlo_informacje(self, value):
+        if hasattr(value, "zrodlo_id") and value.zrodlo_id is not None:
+            return f"{value.zrodlo} {value.szczegoly}"
+        return f"{value.informacje} {value.szczegoly}"
+
+    def render_autorzy_z_dyscypliny(self, value):
+        if value:
+            return ", ".join(value)
+
+    def render_liczba_wszystkich_autorow(self, value):
+        if value:
+            return len(value)
+
+
+class RaportSlotowAutorTable(RaportCommonMixin, tables.Table):
     class Meta:
+        attrs = {"class": "small-table"}
         empty_text = "Brak danych"
         model = Cache_Punktacja_Autora_Query_View
         fields = (
@@ -20,9 +43,9 @@ class RaportSlotowAutorTable(tables.Table):
             "autorzy",
             "autorzy_z_dyscypliny",
             "liczba_autorow_z_dyscypliny",
+            "liczba_wszystkich_autorow",
             "rok",
-            "zrodlo",
-            "szczegoly",
+            "zrodlo_informacje",
             "dyscyplina",
             "punkty_kbn",
             "pkdaut",
@@ -36,32 +59,22 @@ class RaportSlotowAutorTable(tables.Table):
     rok = Column("Rok", "rekord.rok", orderable=True)
     dyscyplina = Column(orderable=False)
     punkty_kbn = Column("Punkty PK", "rekord.punkty_kbn")
-    zrodlo = Column("Źródło", "rekord.zrodlo", empty_values=())
-    szczegoly = Column("Szczegóły", "rekord.szczegoly")
+    zrodlo_informacje = Column(
+        "Źródło / informacje", "rekord", empty_values=(), orderable=False
+    )
     pkdaut = SummingColumn("Punkty dla autora", "pkdaut")
     slot = SummingColumn("Slot")
     autorzy_z_dyscypliny = Column(
-        "Autorzy z dyscypliny", "zapisani_autorzy_z_dyscypliny", orderable=False
+        "Autorzy z dyscypliny", "zapisani_autorzy_z_dyscypliny", orderable=False,
     )
     liczba_autorow_z_dyscypliny = Column(
-        "Liczba autorów z dyscypliny", "zapisani_autorzy_z_dyscypliny", orderable=False
+        "Liczba autorów z dyscypliny", "zapisani_autorzy_z_dyscypliny", orderable=False,
     )
-
-    def render_tytul_oryginalny(self, value):
-        url = reverse("bpp:browse_rekord", args=(value.pk[0], value.pk[1]))
-        return safe("<a href=%s>%s</a>" % (url, value))
-
-    def value_tytul_oryginalny(self, value):
-        return value.tytul_oryginalny
-
-    def render_zrodlo(self, value):
-        if value is None:
-            return "-"
-        return value
-
-    def render_autorzy_z_dyscypliny(self, value):
-        if value:
-            return ", ".join(value)
+    liczba_wszystkich_autorow = Column(
+        "Liczba wszystkich autorów",
+        "rekord.opis_bibliograficzny_autorzy_cache",
+        orderable=False,
+    )
 
     def render_liczba_autorow_z_dyscypliny(self, value):
         if value:
@@ -133,3 +146,73 @@ class RaportSlotowZerowyTable(tables.Table):
         empty_text = "Brak danych"
         model = RaportZerowyEntry
         fields = ("autor", "lata", "dyscyplina_naukowa")
+
+
+class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
+    class Meta:
+        attrs = {"class": "very-small-table"}
+        empty_text = "Brak danych"
+        model = RaportUczelniaEwaluacjaView
+        fields = (
+            "id",
+            "tytul_oryginalny",
+            "autorzy",
+            "rok",
+            "zrodlo_informacje",
+            "rodzaj_publikacji",
+            "liczba_autorow_z_dyscypliny",
+            "liczba_wszystkich_autorow",
+            "punkty_pk",
+            "autor",
+            "pbn_id",
+            "orcid",
+            "dyscyplina",
+            "procent_dyscypliny",
+            "subdyscyplina",
+            "procent_subdyscypliny",
+            "dyscyplina_rekordu",
+            "pkdaut",
+            "slot",
+        )
+
+    id = Column("ID", "rekord.id")
+    tytul_oryginalny = Column("Tytuł oryginalny", "rekord")
+    autorzy = Column(
+        "Autorzy", "rekord.opis_bibliograficzny_zapisani_autorzy_cache", orderable=False
+    )
+    rok = Column("Rok", "rekord.rok", orderable=True)
+    zrodlo_informacje = Column(
+        "Źródło / informacje", "rekord", empty_values=(), orderable=False
+    )
+    rodzaj_publikacji = Column("Rodzaj", "rekord.charakter_formalny.charakter_sloty")
+    liczba_autorow_z_dyscypliny = Column(
+        "Liczba autorów z dyscypliny", "autorzy_z_dyscypliny", orderable=False,
+    )
+    liczba_wszystkich_autorow = Column(
+        "Liczba wszystkich autorów",
+        "rekord.opis_bibliograficzny_autorzy_cache",
+        orderable=False,
+    )
+    punkty_pk = Column("PK", "rekord.punkty_kbn")
+    autor = Column("Autor", "autorzy.autor")
+    pbn_id = Column("PBN ID", "autorzy.autor.pbn_id")
+    orcid = Column("ORCID", "autorzy.autor.orcid")
+    dyscyplina = Column(
+        "Dyscyplina 1", "autor_dyscyplina.dyscyplina_naukowa", orderable=False
+    )
+    procent_dyscypliny = Column(
+        "% dyscypliny 1", "autor_dyscyplina.procent_dyscypliny", orderable=False
+    )
+    subdyscyplina = Column(
+        "Dyscyplina 2", "autor_dyscyplina.subdyscyplina_naukowa", orderable=False
+    )
+    procent_subdyscypliny = Column(
+        "% dyscypliny 2", "autor_dyscyplina.procent_subdyscypliny", orderable=False,
+    )
+    dyscyplina_rekordu = Column("dyscyplina rekordu", "autorzy.dyscyplina_naukowa")
+    pkdaut = SummingColumn("Punkty dla autora", "pkdaut")
+    slot = SummingColumn("Slot")
+
+    def render_liczba_autorow_z_dyscypliny(self, value):
+        if value:
+            return len(value)
