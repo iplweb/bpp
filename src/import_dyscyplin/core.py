@@ -14,6 +14,7 @@ from import_dyscyplin.exceptions import (
 )
 from import_dyscyplin.models import Import_Dyscyplin_Row
 
+
 # naglowek = [
 #     "lp", "tytuł/stopień", "nazwisko", "imię", "pesel",
 #     "nazwa jednostki", "wydział",
@@ -230,19 +231,37 @@ def przeanalizuj_plik_xls(sciezka, parent):
         except KeyError:
             original["pesel_md5"] = None
 
-        original["nazwa_jednostki"] = original["nazwa jednostki"]  # templatka wymaga
+        try:
+            # templatka wymaga
+            original["nazwa_jednostki"] = original["nazwa jednostki"]
+        except KeyError:
+            original["nazwa_jednostki"] = None
 
-        wydzial = wydzial_cache.get(original["wydział"])
+        try:
+            wydzial = wydzial_cache.get(original["wydział"])
+        except KeyError:
+            wydzial = None
+
         if not wydzial:
-            wydzial = wydzial_cache[original["wydział"]] = matchuj_wydzial(
-                original["wydział"]
-            )
+            try:
+                wydzial = wydzial_cache[original["wydział"]] = matchuj_wydzial(
+                    original["wydział"]
+                )
+            except KeyError:
+                pass
 
-        jednostka = jednostka_cache.get(original["nazwa jednostki"])
+        try:
+            jednostka = jednostka_cache.get(original["nazwa jednostki"])
+        except KeyError:
+            jednostka = None
+
         if not jednostka:
-            jednostka = jednostka_cache[
-                original["nazwa jednostki"]
-            ] = matchuj_jednostke(original["nazwa jednostki"])
+            try:
+                jednostka = jednostka_cache[
+                    original["nazwa jednostki"]
+                ] = matchuj_jednostke(original["nazwa jednostki"])
+            except KeyError:
+                jednostka = None
 
         autor, info = matchuj_autora(
             original["imię"],
