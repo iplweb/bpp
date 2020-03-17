@@ -73,3 +73,14 @@ class RaportZerowyFilter(django_filters.FilterSet):
     dyscyplina_naukowa = django_filters.ModelChoiceFilter(
         queryset=Dyscyplina_Naukowa.objects.all()
     )
+
+
+class RaportSlotowUczelniaEwaluacjaFilter(django_filters.FilterSet):
+    autorzy__autor__nazwisko = django_filters.CharFilter(
+        lookup_expr="icontains",
+        widget=TextInput(attrs={"placeholder": "Podaj nazwisko"}),
+    )
+
+    autorzy__dyscyplina_naukowa = django_filters.ModelChoiceFilter(
+        queryset=Dyscyplina_Naukowa.objects.all()
+    )

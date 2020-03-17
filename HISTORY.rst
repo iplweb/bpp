@@ -2,6 +2,13 @@
 Historia zmian
 ==============
 
+202003.26
+---------
+
+* wyświetlaj również wydawnictwa zwarte w raporcie slotów - ewaluacja (b/n),
+* skracaj listę autorów gdy powyżej 100 znaków dla widoku HTML w raporcie slotów - ewaluacja (b/n),
+* umożliwiaj filtrowanie raportu slotów - ewaluacja (b/n),
+
 202003.25
 ---------
 

@@ -3,6 +3,7 @@ from django.template.defaultfilters import safe
 from django.urls import reverse
 from django_tables2 import Column
 
+from bpp.models import CHARAKTER_SLOTY
 from bpp.models.cache import (
     Cache_Punktacja_Autora_Query_View,
     Cache_Punktacja_Autora_Query,
@@ -184,7 +185,7 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
     zrodlo_informacje = Column(
         "Źródło / informacje", "rekord", empty_values=(), orderable=False
     )
-    rodzaj_publikacji = Column("Rodzaj", "rekord.charakter_formalny.charakter_sloty")
+    rodzaj_publikacji = Column("Rodzaj", "rekord")
     liczba_autorow_z_dyscypliny = Column(
         "Liczba autorów z dyscypliny", "autorzy_z_dyscypliny", orderable=False,
     )
@@ -216,3 +217,18 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
     def render_liczba_autorow_z_dyscypliny(self, value):
         if value:
             return len(value)
+
+    def render_rodzaj_publikacji(self, value):
+        if value.charakter_formalny.charakter_sloty:
+            return CHARAKTER_SLOTY[value.charakter_formalny.charakter_sloty]
+        if hasattr(value, "zrodlo_id") and value.zrodlo_id is not None:
+            return "Artykuł"
+
+    def render_autorzy(self, value):
+        if value:
+            if len(value) > 100:
+                return value[:100] + "(...)"
+            return value
+
+    def value_autorzy(self, value):
+        return value
