@@ -140,17 +140,6 @@ class ParametryRaportSlotowEwaluacjaForm(forms.Form):
         label="Format wyjściowy", choices=OUTPUT_FORMATS, required=True
     )
 
-    # def clean(self):
-    #     if "od_roku" in self.cleaned_data and "do_roku" in self.cleaned_data:
-    #         if self.cleaned_data["od_roku"] > self.cleaned_data["do_roku"]:
-    #             raise ValidationError(
-    #                 {
-    #                     "od_roku": ValidationError(
-    #                         'Pole musi być większe lub równe jak pole "Do roku".'
-    #                     )
-    #                 }
-    #             )
-
     def __init__(self, *args, **kwargs):
         self.helper = FormHelper()
         self.helper.form_class = "custom"
