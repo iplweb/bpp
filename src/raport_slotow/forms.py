@@ -147,7 +147,7 @@ class ParametryRaportSlotowEwaluacjaForm(forms.Form):
         self.helper.layout = Layout(
             Fieldset(
                 "Wybierz parametry",
-                Row(Column("rok", css_class="large-6 small-6"), ),
+                Row(Column("rok", css_class="large-6 small-6"),),
                 Row(Column("_export")),
             ),
             ButtonHolder(

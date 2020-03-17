@@ -14,9 +14,7 @@ from raport_slotow.filters import RaportSlotowUczelniaEwaluacjaFilter
 from raport_slotow.forms import ParametryRaportSlotowEwaluacjaForm
 from raport_slotow.models import RaportUczelniaEwaluacjaView
 from raport_slotow.tables import RaportSlotowEwaluacjaTable
-from raport_slotow.util import (
-    MyExportMixin,
-)
+from raport_slotow.util import MyExportMixin
 
 
 class ParametryRaportSlotowEwaluacja(UczelniaSettingRequiredMixin, FormView):
@@ -71,8 +69,8 @@ class RaportSlotowEwaluacja(
 
     def get_queryset(self):
         return (
-            RaportUczelniaEwaluacjaView.objects.filter(rekord__rok=self.data["rok"], )
-                .select_related(
+            RaportUczelniaEwaluacjaView.objects.filter(rekord__rok=self.data["rok"],)
+            .select_related(
                 "rekord",
                 "autorzy",
                 "autor_dyscyplina__dyscyplina_naukowa",
@@ -82,7 +80,7 @@ class RaportSlotowEwaluacja(
                 "autorzy__autor",
                 "autorzy__autor__tytul",
             )
-                .prefetch_related("rekord__zrodlo")
+            .prefetch_related("rekord__zrodlo")
         )
 
     def get_context_data(self, *, object_list=None, **kwargs):
