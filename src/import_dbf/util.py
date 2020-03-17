@@ -1089,7 +1089,12 @@ def integruj_publikacje(offset=None, limit=None):
                 else:
 
                     s = dbf.Usi.objects.get(idt_usi=elem["a"][1:])
-                    o = bpp.Wersja_Tekstu_OpenAccess.objects.get(skrot=s.nazwa)
+                    try:
+                        o = bpp.Wersja_Tekstu_OpenAccess.objects.get(skrot=s.nazwa)
+                    except bpp.Wersja_Tekstu_OpenAccess.DoesNotExist:
+                        raise ValueError(
+                            f"Nie ma takiej wersji tekstu openaccess: {s.nazwa}, rekord {kw}"
+                        )
                     kw["openaccess_wersja_tekstu"] = o
 
                     if elem.get("b"):

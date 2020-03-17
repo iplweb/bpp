@@ -8,8 +8,6 @@ MANAGE=python ../manage.py
 DBF2SQL=python ../../../manage.py dbf2sql
 ASSETS_DIR=/tmp/bpp-assets
 
-rebuild: remove-dbfs import-dbfs alter-schema
-
 TABELE=AUT.DB   B_B.DB   B_N.DB   DYS.DB   IXE.DB   JER.DB   KAD.DB   LOC.DB   PBC.DB   PUB.DB   SCI.DB   SYS.DB   WSX.DB   WYD.DB   ldy.dat BIB.DB   B_E.DB   B_P.DB    IXP.DB   JEZ.DB   KBN.DB   PBA.DB   PBD.DB   RTF.DB   S_B.DB   WSY.DB   ixb.db   lis.dat B_A.DB   B_L.DB   B_U.DB   EXT.DB   JED.DB   J_H.DB   KBR.DB   PBB.DB   POZ.DB   SES.DB   USI.DB   WX2.DB   ixn.db
 
 convert-dbfs:
