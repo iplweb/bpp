@@ -509,7 +509,11 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
         # Jeżeli autor afiliuje na jednostkę która jest obca (skupia_pracownikow=False),
         # to zgłoś błąd
 
-        if self.afiliuje and self.jednostka.skupia_pracownikow is False:
+        if (
+            self.afiliuje
+            and self.jednostka_id is not None
+            and self.jednostka.skupia_pracownikow is False
+        ):
             raise ValidationError(
                 {
                     "afiliuje": "Jeżeli autor opracował tą pracę w obcej jednostce, to pole "

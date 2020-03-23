@@ -2,6 +2,24 @@
 Historia zmian
 ==============
 
+202003.27
+---------
+
+* napraw błąd importu pliku dyscyplin uniemożliwiający zmianę zaimportowanych już
+  dyscyplin (b/n),
+* drobne poprawki zachowania admina (nie wyświetlaj listy tabel z importem danych z
+  pliku DBF jeżeli nie są zaimportowane, nie pozwalaj na usuwanie własnego konta,
+  nie pozwalaj na usunięcie ostatniego konta superużytkownika, nie wyświetlaj
+  komunikatu błędu gdy próbujemy dopisać rekord z powiązaniem autora do rekordu
+  w sytuacji gdy nie podano jednostki) (b/n),
+
+202003.26
+---------
+
+* wyświetlaj również wydawnictwa zwarte w raporcie slotów - ewaluacja (b/n),
+* skracaj listę autorów gdy powyżej 100 znaków dla widoku HTML w raporcie slotów - ewaluacja (b/n),
+* umożliwiaj filtrowanie raportu slotów - ewaluacja (b/n),
+
 202003.25
 ---------
 
