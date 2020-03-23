@@ -1567,7 +1567,7 @@ def integruj_b_a(offset=None, limit=None):
             zj = zj.replace("<", "").replace(">", "")
 
         try:
-            klass.objects.create(
+            k = klass(
                 rekord_id=bpp_rec_id,
                 autor_id=bpp_autor_id,
                 jednostka_id=bpp_jednostka_id,
@@ -1576,6 +1576,7 @@ def integruj_b_a(offset=None, limit=None):
                 kolejnosc=lp,
                 typ_odpowiedzialnosci_id=typ_odp,
             )
+            k.save(__disable_bmoa_clean_method=True)
         except IntegrityError as e:
             print(
                 "Rekord: %s, %s, %s, %s -> IntegrityError"
