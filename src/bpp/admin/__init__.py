@@ -5,6 +5,7 @@ from django.contrib.auth.forms import UserCreationForm
 from multiseek.models import SearchForm
 
 from bpp.models import Rodzaj_Prawa_Patentowego, Zewnetrzna_Baza_Danych
+
 # Proste tabele
 from bpp.models.openaccess import (
     Tryb_OpenAccess_Wydawnictwo_Ciagle,
