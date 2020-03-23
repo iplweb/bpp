@@ -2,6 +2,12 @@
 Historia zmian
 ==============
 
+202003.27
+---------
+
+* napraw błąd importu pliku dyscyplin uniemożliwiający zmianę zaimportowanych już
+  dyscyplin (b/n),
+
 202003.26
 ---------
 
