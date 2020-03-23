@@ -57,7 +57,7 @@ def requirements(fn="requirements.txt"):
 
 setup(
     name="bpp-iplweb",
-    version="202003.26",
+    version="202003.27",
     description="System informatyczny do zarządzania bibliografią publikacji pracowników naukowych",
     long_description=readme,
     long_description_content_type="text/x-rst",
