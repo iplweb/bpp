@@ -522,7 +522,10 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
             )
 
     def save(self, *args, **kw):
-        self.clean()
+        if "__disable_bmoa_clean_method" in kw:
+            del kw["__disable_bmoa_clean_method"]
+        else:
+            self.clean()
         from bpp.models import Autor_Jednostka
 
         if (

@@ -125,9 +125,9 @@ class RaportSlotow(
         for elem in cpaq.values_list("dyscyplina", flat=True).order_by().distinct():
             table_class = self.get_table_class()
             table = table_class(
-                data=cpaq.filter(dyscyplina_id=elem).select_related(
-                    "rekord", "dyscyplina", "rekord__zrodlo"
-                )
+                data=cpaq.filter(dyscyplina_id=elem)
+                .select_related("rekord", "dyscyplina",)
+                .prefetch_related("rekord__zrodlo")
             )
             RequestConfig(
                 self.request, paginate=self.get_table_pagination(table)
