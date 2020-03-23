@@ -426,16 +426,21 @@ class Import_Dyscyplin(TimeStampedModel):
                     "procent_subdyscypliny",
                 ]:
                     source = getattr(elem, attr)
-                    target = getattr(elem, attr)
+                    target = getattr(ad, attr)
 
                     if source != target:
-                        setattr(elem, attr, source)
+                        setattr(ad, attr, source)
                         if elem.info is None:
                             elem.info = ""
 
                         elem.info += (
                             "Istniejące %s dla roku %i zmieniono z %s na %s. "
-                            % (attr, self.rok, target, source)
+                            % (
+                                attr.replace("_", " "),
+                                self.rok,
+                                target or "[brak]",
+                                source or "[brak]",
+                            )
                         )
 
                         changed = True

@@ -5,7 +5,11 @@ from django.contrib.auth.models import Group
 from model_mommy import mommy
 
 from bpp.models.const import GR_WPROWADZANIE_DANYCH
-from conftest import _webtest_login, NORMAL_DJANGO_USER_LOGIN, NORMAL_DJANGO_USER_PASSWORD
+from conftest import (
+    _webtest_login,
+    NORMAL_DJANGO_USER_LOGIN,
+    NORMAL_DJANGO_USER_PASSWORD,
+)
 from import_dyscyplin.models import Import_Dyscyplin
 
 
@@ -18,9 +22,9 @@ def wprowadzanie_danych_user(normal_django_user):
 
 @pytest.fixture
 def wd_app(webtest_app, wprowadzanie_danych_user):
-    return _webtest_login(webtest_app,
-                          NORMAL_DJANGO_USER_LOGIN,
-                          NORMAL_DJANGO_USER_PASSWORD)
+    return _webtest_login(
+        webtest_app, NORMAL_DJANGO_USER_LOGIN, NORMAL_DJANGO_USER_PASSWORD
+    )
 
 
 @pytest.fixture
@@ -35,7 +39,9 @@ def test1_xlsx(parent_path):
 
 @pytest.fixture
 def default_xlsx(parent_path):
-    return str(parent_path / ".." / "static" / "import_dyscyplin" / "xlsx" / "default.xlsx")
+    return str(
+        parent_path / ".." / "static" / "import_dyscyplin" / "xlsx" / "default.xlsx"
+    )
 
 
 @pytest.fixture
@@ -54,5 +60,5 @@ def conftest_py(parent_path):
 
 
 @pytest.fixture
-def import_dyscyplin(db):
-    return mommy.make(Import_Dyscyplin, rok=2018)
+def import_dyscyplin(db, rok):
+    return mommy.make(Import_Dyscyplin, rok=rok)
