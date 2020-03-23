@@ -72,6 +72,10 @@ CREATE INDEX ON import_dbf_bib(object_id);
 ALTER TABLE import_dbf_b_a ADD COLUMN object_id INTEGER;
 ALTER TABLE import_dbf_b_a ADD COLUMN content_type_id INTEGER;
 UPDATE import_dbf_b_a SET idt_jed = NULL where idt_jed = '';
+
+SELECT * FROM import_dbf_b_a WHERE idt_jed LIKE 'X%';
+DELETE FROM import_dbf_b_a WHERE idt_jed LIKE 'X%';
+
 ALTER TABLE import_dbf_b_a ALTER COLUMN idt_jed SET DATA TYPE INT USING idt_jed::integer;
 CREATE INDEX ON import_dbf_b_a(object_id);
 
