@@ -1147,6 +1147,7 @@ def integruj_publikacje(offset=None, limit=None):
                 elif elem["a"] == "Publikacja uwzględniona w Web of Science":
                     wos = True
                 elif elem["a"] == "Publikacja w wydawnictwie spoza listy MNiSW":
+                    kw["uwagi"] = exp_combine(kw.get("uwagi", ""), elem.get("a"))
                     pass
                 elif elem["a"].startswith("http"):
                     if kw.get("www"):
