@@ -145,8 +145,9 @@ django-session-security==2.6.5 \
     --hash=sha256:1b78b304fc1481f71addaba6b24bd30f7731478ba30c32f04f534dc2c0976d46
 django-static-sitemaps==4.6.0 \
     --hash=sha256:5f017df9f5fd6fb2f66bb4e20196e1cafb2a7ebeee29d96af16158df66312de5
-django-tables2==1.16.0 \
-    --hash=sha256:367d79bbe0a7968ce2a8b8e8e3586f51027abde2954521c978baa57642737375
+django-tables2==2.2.1 \
+    --hash=sha256:0d9b17f5c030ba1b5fcaeb206d8397bf58f1fdfc6beaf56e7874841b8647aa94 \
+    --hash=sha256:6afa0496695e15b332e98537265d09fe01a55b28c75a85323d8e6b0dc2350280
 django-webmaster-verification==0.3.0 \
     --hash=sha256:b1a62d468825710e57f072ed1fa1ae540b3ad95dcc08a8bdfaa37e2d6d529837
 django==3.0.4 \
