@@ -125,9 +125,9 @@ django-messages-extends==0.6.0 \
     --hash=sha256:da14cc1b7b133ef11a6f8ff435b12146c55d932782112dfe7ff356c1ed25817d
 django-model-utils==3.0.0 \
     --hash=sha256:60ead1ba50e1353f38bde12ab8b4a80b6a0f825a8e53c348fe259548cbd1a312
-django-mptt==0.9.0 \
-    --hash=sha256:6aaa0268c0d994d77dda501b64257b5d6f1e170fcdfe2f0674f80861dc30c0f4 \
-    --hash=sha256:feef466f9ba6849d2f1581c94d8550d5554945a8d05a2660da19193140cd8a35
+django-mptt==0.11.0 \
+    --hash=sha256:90eb236eb4f1a92124bd7c37852bbe09c0d21158477cc237556d59842a91c509 \
+    --hash=sha256:dfdb3af75ad27cdd4458b0544ec8574174f2b90f99bc2cafab6a15b4bc1895a8
 django-multiseek==0.9.38 \
     --hash=sha256:af23bf4731bbfc55cfa86d531bbc48bb9856819f9a643e31eab3b7ea9834aab9
 django-password-policies-iplweb==0.7.0 \
