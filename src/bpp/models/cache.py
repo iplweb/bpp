@@ -17,7 +17,6 @@ from django.db.models import CASCADE, ForeignKey, Func
 from django.db.models.deletion import DO_NOTHING
 from django.db.models.lookups import In
 from django.db.models.signals import post_delete, post_save, pre_delete, pre_save
-from django.utils import six
 from django.utils.functional import cached_property
 
 from bpp.models import (
@@ -399,7 +398,6 @@ class RekordManager(FulltextSearchMixin, models.Manager):
     #
 
 
-@six.python_2_unicode_compatible
 class RekordBase(
     ModelPunktowanyBaza,
     ModelZOpisemBibliograficznym,

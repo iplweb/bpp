@@ -23,7 +23,6 @@ from bpp.models.abstract import (
     RekordBPPBaza,
 )
 
-from django.utils import six
 from django.utils.functional import cached_property
 
 
@@ -44,7 +43,6 @@ class Patent_Autor(BazaModeluOdpowiedzialnosciAutorow):
         ]
 
 
-@six.python_2_unicode_compatible
 class Patent(
     RekordBPPBaza,
     ModelZRokiem,

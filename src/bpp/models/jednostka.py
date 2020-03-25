@@ -13,7 +13,6 @@ from django.db.models import CASCADE
 from django.db.models.functions import Coalesce
 from django.db.models.query_utils import Q
 from django.urls.base import reverse
-from django.utils import six
 from django.utils import timezone
 
 from bpp.models import ModelZAdnotacjami
@@ -34,7 +33,6 @@ class JednostkaManager(FulltextSearchMixin, models.Manager):
         return super(JednostkaManager, self).create(*args, **kw)
 
 
-@six.python_2_unicode_compatible
 class Jednostka(ModelZAdnotacjami, ModelZPBN_ID):
     uczelnia = models.ForeignKey(Uczelnia, CASCADE)
 
@@ -274,7 +272,6 @@ class Jednostka_Wydzial_Manager(models.Manager):
                 continue
 
 
-@six.python_2_unicode_compatible
 class Jednostka_Wydzial(models.Model):
     jednostka = models.ForeignKey(Jednostka, CASCADE)
     wydzial = models.ForeignKey(Wydzial, CASCADE)

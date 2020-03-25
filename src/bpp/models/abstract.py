@@ -13,7 +13,6 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import SET_NULL, CASCADE, Sum, Q
 from django.urls.base import reverse
-from django.utils import six
 from django.utils import timezone
 from lxml.etree import SubElement
 
@@ -84,7 +83,6 @@ class ModelZPBN_ID(models.Model):
         abstract = True
 
 
-@six.python_2_unicode_compatible
 class ModelZNazwa(models.Model):
     """Nazwany model."""
 
@@ -381,7 +379,6 @@ class ModelTypowany(models.Model):
         abstract = True
 
 
-@six.python_2_unicode_compatible
 class BazaModeluOdpowiedzialnosciAutorow(models.Model):
     """Bazowa klasa dla odpowiedzialności autorów (czyli dla przypisania
     autora do czegokolwiek innego). Zawiera wszystkie informacje dla autora,
@@ -423,7 +420,7 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
         ordering = ("kolejnosc", "typ_odpowiedzialnosci__skrot")
 
     def __str__(self):
-        return six.text_type(self.autor) + " - " + six.text_type(self.jednostka.skrot)
+        return str(self.autor) + " - " + str(self.jednostka.skrot)
 
     def okresl_dyscypline(self):
         return self.dyscyplina_naukowa
@@ -656,7 +653,6 @@ class ModelWybitny(models.Model):
         abstract = True
 
 
-@six.python_2_unicode_compatible
 class Wydawnictwo_Baza(RekordBPPBaza):
     """Klasa bazowa wydawnictw (prace doktorskie, habilitacyjne, wydawnictwa
     ciągłe, zwarte -- bez patentów)."""
