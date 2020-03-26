@@ -119,10 +119,9 @@ django-jsonview==1.1.0 \
 django-loginas==0.3.2 \
     --hash=sha256:11439011a55147540b6b57b0ccfba1c0c818ae32eb008fb46dc53e48d5ee27ad \
     --hash=sha256:cba86dc559f8679b6e92cced0fd408b840af66557a445d3f4e9855571a785ff0
-django-messages-extends==0.6.0 \
-    --hash=sha256:42ad0e831d43807b893c5a6146cedb3ca4d02372ffae451dbd0ccfed0ae4594f \
-    --hash=sha256:8662063c6f506419a8886070abe15ab32d346463ad6972490ec7a8743a4dd382 \
-    --hash=sha256:da14cc1b7b133ef11a6f8ff435b12146c55d932782112dfe7ff356c1ed25817d
+# WARNING: pip install will require the following package to be hashed.
+# Consider using a hashable URL like https://github.com/jazzband/pip-tools/archive/SOMECOMMIT.zip
+git+https://github.com/AliLozano/django-messages-extends.git@42c064b71ebfce67bf83f4bc30cbf16cf8370ebb#egg=django-messages-extends==0.6.1
 django-model-utils==3.0.0 \
     --hash=sha256:60ead1ba50e1353f38bde12ab8b4a80b6a0f825a8e53c348fe259548cbd1a312
 django-mptt==0.11.0 \
