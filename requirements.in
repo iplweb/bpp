@@ -37,8 +37,7 @@ django-htmlmin==0.10.0
 Pillow>=6.2.0
 olefile==0.44
 django-grappelli==2.12.2
-# django-multiseek==0.9.41
-https://github.com/mpasternak/django-multiseek/archive/0.9.41.zip#egg=django-multiseek==0.9.41
+django-multiseek==0.9.40
 django-braces==1.13.0
 django-loginas==0.3.2
 django-robots==3.1.0
