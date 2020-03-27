@@ -140,7 +140,7 @@ INSTALLED_APPS = [
     "admin_tools.menu",
     "admin_tools.dashboard",
     "django_tables2",
-    # 'autocomplete_light',
+    # 'FOR_REMOVAL_autocomplete_light',
     "messages_extends",
     "multiseek",
     "django_extensions",
