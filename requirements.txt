@@ -126,8 +126,8 @@ django-model-utils==3.0.0 \
 django-mptt==0.11.0 \
     --hash=sha256:90eb236eb4f1a92124bd7c37852bbe09c0d21158477cc237556d59842a91c509 \
     --hash=sha256:dfdb3af75ad27cdd4458b0544ec8574174f2b90f99bc2cafab6a15b4bc1895a8
-django-multiseek==0.9.40 \
-    --hash=sha256:029ac650e51c33b0a80f83c7f43909d75ff16979e23d54b3ea2eee7dfd61a115
+django-multiseek==0.9.41 \
+    --hash=sha256:8a7e32ba3ec206749eb9c06564c9a99006ee4385d7f97e5ed8ebfa4d7f55d901
 django-password-policies-iplweb==0.7.0 \
     --hash=sha256:d62d31876ea01ba87c07e17e5253a9401f86c017f97129afbf53eb64a4093f95
 django-querysetsequence==0.8 \
