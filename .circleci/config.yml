@@ -25,6 +25,7 @@ jobs:
       - restore_cache:
           key: cache-5-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}-{{ checksum "yarn.lock" }}
 
+      - run: sudo apt --quiet install -y --quiet gettext
       - run: sudo npm install -g grunt-cli
       - run: sudo pip install --upgrade pip
 
@@ -78,7 +79,6 @@ jobs:
           name: create ONLY whl package -- only on DEV
           command: |
             . venv/bin/activate
-            sudo apt --quiet install -y --quiet gettext
             if [ $CIRCLE_BRANCH = 'dev' ]; then make bdist_wheel; fi
 
       # Zbuduj pakiet
@@ -86,5 +86,4 @@ jobs:
           name: create and upload packages -- only on MASTER
           command: |
             . venv/bin/activate
-            sudo apt --quiet install -y --quiet gettext
             if [ $CIRCLE_BRANCH = 'master' ]; then make bdist_wheel_upload; fi
