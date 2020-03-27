@@ -225,7 +225,7 @@ def disable():
 
 
 class TupleField(ArrayField):
-    def from_db_value(self, value, expression, connection, context):
+    def from_db_value(self, value, expression, connection):
         return tuple(value)
 
 
