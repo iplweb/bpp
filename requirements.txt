@@ -58,8 +58,8 @@ django-appconf==1.0.3 \
     --hash=sha256:35f13ca4d567f132b960e2cd4c832c2d03cb6543452d34e29b7ba10371ba80e3 \
     --hash=sha256:c98a7af40062e996b921f5962a1c4f3f0c979fa7885f7be4710cceb90ebe13a6 \
     # via django-compressor
-django-autocomplete-light==3.3.0rc5 \
-    --hash=sha256:97d38da0a8c19b0cc6c768d2e29318e2eb5a921913c53cb9e5776af2006fa090
+django-autocomplete-light==3.5.1 \
+    --hash=sha256:52e8d468060a5911c44300a374d74058c90e65bfdf87ace151abac67279c4ae5
 django-autoslug-iplweb==1.9.5 \
     --hash=sha256:ddfeebde991bc49588650ccae41f5f940d583d5af08cb14f8968d1fa71d5ae07
 django-braces==1.13.0 \
@@ -126,8 +126,8 @@ django-model-utils==3.0.0 \
 django-mptt==0.11.0 \
     --hash=sha256:90eb236eb4f1a92124bd7c37852bbe09c0d21158477cc237556d59842a91c509 \
     --hash=sha256:dfdb3af75ad27cdd4458b0544ec8574174f2b90f99bc2cafab6a15b4bc1895a8
-django-multiseek==0.9.38 \
-    --hash=sha256:af23bf4731bbfc55cfa86d531bbc48bb9856819f9a643e31eab3b7ea9834aab9
+https://github.com/mpasternak/django-multiseek/archive/0.9.40.zip#egg=django-multiseek==0.9.40 \
+    --hash=sha256:029ac650e51c33b0a80f83c7f43909d75ff16979e23d54b3ea2eee7dfd61a115
 django-password-policies-iplweb==0.7.0 \
     --hash=sha256:d62d31876ea01ba87c07e17e5253a9401f86c017f97129afbf53eb64a4093f95
 django-querysetsequence==0.8 \
@@ -294,8 +294,7 @@ pypandoc==1.4 \
     --hash=sha256:e914e6d5f84a76764887e4d909b09d63308725f0cbb5293872c2c92f07c11a5b
 python-dateutil==2.6.1 \
     --hash=sha256:891c38b2a02f5bb1be3e4793866c8df49c7d19baabf9c1bad62547e0b4866aca \
-    --hash=sha256:95511bae634d69bc7329ba55e646499a842bc4ec342ad54a8cdb65645a0aad3c \
-    # via django-multiseek
+    --hash=sha256:95511bae634d69bc7329ba55e646499a842bc4ec342ad54a8cdb65645a0aad3c
 python-utils==2.3.0 \
     --hash=sha256:34aaf26b39b0b86628008f2ae0ac001b30e7986a8d303b61e1357dfcdad4f6d3 \
     --hash=sha256:e25f840564554eaded56eaa395bca507b0b9e9f0ae5ecb13a8cb785305c56d25 \
@@ -331,7 +330,7 @@ sentry-sdk==0.14.1 \
 six==1.13.0 \
     --hash=sha256:1f1b7d42e254082a9db6279deae68afb421ceba6158efa6131de7b3003ee93fd \
     --hash=sha256:30f610279e8b2578cab6db20741130331735c781b56053c59c4076da27f06b66 \
-    # via bleach, django-appconf, django-compat, django-extensions, django-static-sitemaps, html5lib, moai-iplweb, paste, pastescript, progressbar2, pyoai, python-dateutil, python-utils, wsgi-intercept
+    # via bleach, django-appconf, django-autocomplete-light, django-compat, django-extensions, django-static-sitemaps, html5lib, moai-iplweb, paste, pastescript, progressbar2, pyoai, python-dateutil, python-utils, wsgi-intercept
 soupsieve==1.9.5 \
     --hash=sha256:bdb0d917b03a1369ce964056fc195cfdff8819c40de04695a80bc813c3cfa1f5 \
     --hash=sha256:e2c1c5dee4a1c36bcb790e0fabd5492d874b8ebd4617622c4f6a731701060dda \
