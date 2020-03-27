@@ -18,8 +18,9 @@ django-sendfile==0.3.11
 Unidecode==0.4.20
 django-cookie-law==1.0.13
 pyoai==2.5.0
-django-crispy-forms==1.7.0
-crispy-forms-foundation==0.7.0
+django-crispy-forms==1.9.0
+# crispy-forms-foundation==0.8.0
+https://github.com/mpasternak/crispy-forms-foundation/archive/0.8.0-dev.zip#egg=crispy-forms-foundation==0.8.0
 django_compressor==2.2
 uWSGI==2.0.18
 zope.interface==4.6.0
@@ -40,15 +41,15 @@ django-grappelli==2.12.2
 django-multiseek==0.9.41
 django-braces==1.13.0
 django-loginas==0.3.2
-django-robots==3.1.0
+django-robots==4.0
 django-webmaster-verification==0.3.0
 django-favicon-plus==0.0.8
-django-querysetsequence==0.8
+django-querysetsequence==0.12
 pypandoc==1.4
 django-static-sitemaps==4.6.0
-django-model-utils==3.0.0
+django-model-utils==4.0.0
 django-jsonview==1.1.0
-django-fsm==2.6.0
+django-fsm==2.7.0
 django-mptt==0.11.0
 wosclient==0.1.5
 MOAI-iplweb==2.0.0
