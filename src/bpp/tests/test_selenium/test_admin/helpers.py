@@ -22,7 +22,7 @@ def proper_click(browser, arg):
 
 def clickButtonBuggyMarionetteDriver(browser, id):
     try:
-        browser.execute_script("$('#" + id + "').click()")
+        browser.execute_script("django.jQuery('#" + id + "').click()")
     except WebDriverException as e:
         if e.msg.startswith("Failed to find value field"):
             pass

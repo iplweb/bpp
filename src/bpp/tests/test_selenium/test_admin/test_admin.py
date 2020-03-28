@@ -46,7 +46,7 @@ def test_uzupelnij_strona_tom_nr_zeszytu(url, preauth_admin_browser, live_server
     preauth_admin_browser.find_by_name("informacje").type("1993 vol. 5 z. 1")
     preauth_admin_browser.find_by_name("szczegoly").type("s. 4-3")
 
-    preauth_admin_browser.execute_script("$('#id_strony_get').click()")
+    preauth_admin_browser.execute_script("django.jQuery('#id_strony_get').click()")
     WebDriverWait(preauth_admin_browser, 10).until(
         lambda browser: browser.find_by_name("tom").value != ""
     )
@@ -66,7 +66,7 @@ def test_liczba_znakow_wydawniczych_liczba_arkuszy_wydawniczych(
         preauth_admin_browser.visit(live_server + url)
 
     preauth_admin_browser.execute_script(
-        "$('#id_liczba_znakow_wydawniczych').val('40000').change()"
+        "django.jQuery('#id_liczba_znakow_wydawniczych').val('40000').change()"
     )
     assert (
         preauth_admin_browser.find_by_id("id_liczba_arkuszy_wydawniczych").value
@@ -74,7 +74,7 @@ def test_liczba_znakow_wydawniczych_liczba_arkuszy_wydawniczych(
     )
 
     preauth_admin_browser.execute_script(
-        "$('#id_liczba_arkuszy_wydawniczych').val('0.5').change()"
+        "django.jQuery('#id_liczba_arkuszy_wydawniczych').val('0.5').change()"
     )
     assert (
         preauth_admin_browser.find_by_id("id_liczba_znakow_wydawniczych").value
