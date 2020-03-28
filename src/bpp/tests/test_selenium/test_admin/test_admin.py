@@ -85,22 +85,21 @@ def test_liczba_znakow_wydawniczych_liczba_arkuszy_wydawniczych(
     )
 
 
+@flaky(max_runs=5)
 @pytest.mark.django_db(transaction=True)
 def test_automatycznie_uzupelnij_punkty(preauth_admin_browser, live_server):
     url = reverse("admin:bpp_wydawnictwo_ciagle_add")
-    preauth_admin_browser.visit(live_server + url)
 
-    z = any_zrodlo(nazwa="FOO BAR")
-    clickButtonBuggyMarionetteDriver(
-        preauth_admin_browser, "id_wypelnij_pola_punktacji_button"
-    )
+    with wait_for_page_load(preauth_admin_browser):
+        preauth_admin_browser.visit(live_server + url)
+
+    any_zrodlo(nazwa="FOO BAR")
+    proper_click(preauth_admin_browser, "id_wypelnij_pola_punktacji_button")
     assertPopupContains(preauth_admin_browser, "Najpierw wybierz jakie")
 
     select_select2_autocomplete(preauth_admin_browser, "id_zrodlo", "FOO")
 
-    clickButtonBuggyMarionetteDriver(
-        preauth_admin_browser, "id_wypelnij_pola_punktacji_button"
-    )
+    proper_click(preauth_admin_browser, "id_wypelnij_pola_punktacji_button")
     assertPopupContains(preauth_admin_browser, "Uzupełnij pole")
 
     preauth_admin_browser.execute_script("window.onbeforeunload = function(e) {};")
@@ -341,8 +340,8 @@ def test_admin_wydawnictwo_ciagle_uzupelnij_rok(preauth_admin_browser, live_serv
 
     browser = preauth_admin_browser
 
-    browser.visit(live_server + reverse("admin:bpp_wydawnictwo_ciagle_add"))
-
+    with wait_for_page_load(browser):
+        browser.visit(live_server + reverse("admin:bpp_wydawnictwo_ciagle_add"))
     browser.fill("informacje", "Lublin 2002 test")
     proper_click(browser, "id_rok_button")
 

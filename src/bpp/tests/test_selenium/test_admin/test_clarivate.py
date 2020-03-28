@@ -1,4 +1,6 @@
 # -*- encoding: utf-8 -*-
+from flaky import flaky
+
 try:
     from django.core.urlresolvers import reverse
 except ImportError:
@@ -28,6 +30,7 @@ def browser_z_wydawnictwem(preauth_admin_browser, live_server, wydawnictwo_ciagl
     return browser
 
 
+@flaky(max_runs=5)
 def test_admin_get_wos_information_clarivate_brak_danych(browser_z_wydawnictwem):
     browser = browser_z_wydawnictwem
     scroll_into_view(browser_z_wydawnictwem, "id_liczba_cytowan_get")

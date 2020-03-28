@@ -1,4 +1,6 @@
 # -*- encoding: utf-8 -*-
+import time
+
 import pytest
 from selenium.common.exceptions import WebDriverException
 
@@ -10,27 +12,8 @@ pytestmark = [pytest.mark.slow, pytest.mark.selenium]
 
 
 def proper_click(browser, arg):
-    # Czy ta metoda jest potrzebna? Kiedyś był bug, który
-    # uniemożliwiał kliknięcie elementu, który nei był widoczny
-    # na stronie, stąd konieczność przescrollowania do niego
-    #
-    # 2017.07.18 jest potrzebna (mpasternak)
-    #
     scroll_into_view(browser, arg)
     browser.execute_script(f"document.getElementById('{arg}').click()")
-
-
-def clickButtonBuggyMarionetteDriver(browser, id):
-    try:
-        browser.execute_script("django.jQuery('#" + id + "').click()")
-    except WebDriverException as e:
-        if e.msg.startswith("Failed to find value field"):
-            pass
-        else:
-            raise e
-
-
-# url = "/admin/"
 
 
 def assertPopupContains(browser, text, accept=True):
