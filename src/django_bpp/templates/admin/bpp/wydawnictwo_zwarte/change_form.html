@@ -10,67 +10,71 @@
     {%  include "admin/uzupelnij_rok_wydawnictwo_zwarte_button_handler.html" %}
 
     <script type="text/javascript">
-        // Gramatyka
-        $('a').each(function () {
-            var html = $(this).html();
-            if (html.includes("Dodaj kolejne nagroda")) {}
+        (function($) {
+            // Gramatyka
+            $('a').each(function () {
+                var html = $(this).html();
+                if (html.includes("Dodaj kolejne nagroda")) {
+                }
                 $(this).html(html.replace('Dodaj kolejne nagroda', 'Dodaj kolejną nagrodę'));
-        });
+            });
 
-        pub_id = $("#id_autorzy_set-__prefix__-rekord").val()
+            pub_id = $("#id_autorzy_set-__prefix__-rekord").val()
 
-        if (pub_id) {
-            btn = $("input[name=_continue]");
-            tamze = $("<input/>")
+            if (pub_id) {
+                btn = $("input[name=_continue]");
+                tamze = $("<input/>")
                     .attr("id", "tamze")
                     .attr("class", "grp-button")
                     .attr("type", "button")
                     .attr("value", "Tamże");
 
-            toz = tamze.clone()
+                toz = tamze.clone()
                     .attr("id", "toz")
                     .attr("value", "Toż");
 
-            btn.parent().parent().append($("<li/>").append(tamze));
-            btn.parent().parent().append($("<li/>").append(toz));
+                btn.parent().parent().append($("<li/>").append(tamze));
+                btn.parent().parent().append($("<li/>").append(toz));
 
-            $("#tamze").click(function () {
-                data = {
-                    "informacje": $("textarea[name=informacje]").val(),
-                    "uwagi": $("textarea[name=uwagi]").val(),
-                    "miejsce_i_rok": $("input[name=miejsce_i_rok]").val(),
-                    "wydawca": $("select[name=wydawca]").val(),
-                    "wydawca_opis": $("input[name=wydawca_opis]").val(),
-                    // "www": $("input[name=www]").val(),
-                    "isbn": $("input[name=isbn]").val(),
-                    "e_isbn": $("input[name=e_isbn]").val(),
-                    "rok": $("input[name=rok]").val(),
+                $("#tamze").click(function () {
+                    data = {
+                        "informacje": $("textarea[name=informacje]").val(),
+                        "uwagi": $("textarea[name=uwagi]").val(),
+                        "miejsce_i_rok": $("input[name=miejsce_i_rok]").val(),
+                        "wydawca": $("select[name=wydawca]").val(),
+                        "wydawca_opis": $("input[name=wydawca_opis]").val(),
+                        // "www": $("input[name=www]").val(),
+                        "isbn": $("input[name=isbn]").val(),
+                        "e_isbn": $("input[name=e_isbn]").val(),
+                        "rok": $("input[name=rok]").val(),
 
-                    "charakter_formalny": $("select[name=charakter_formalny]").val(),
-                    "jezyk": $("select[name=jezyk]").val(),
-                    "typ_kbn": $("select[name=typ_kbn]").val(),
+                        "charakter_formalny": $("select[name=charakter_formalny]").val(),
+                        "jezyk": $("select[name=jezyk]").val(),
+                        "typ_kbn": $("select[name=typ_kbn]").val(),
 
-                    "punkty_kbn": $("input[name=punkty_kbn]").val(),
-                    "impact_factor": $("input[name=impact_factor]").val(),
-                    "index_copernicus": $("input[name=index_copernicus]").val(),
-                    "punktacja_wewnetrzna": $("input[name=punktacja_wewnetrzna]").val(),
-                    "punktacja_snip": $("input[name=punktacja_snip]").val(),
+                        "punkty_kbn": $("input[name=punkty_kbn]").val(),
+                        "impact_factor": $("input[name=impact_factor]").val(),
+                        "index_copernicus": $("input[name=index_copernicus]").val(),
+                        "punktacja_wewnetrzna": $("input[name=punktacja_wewnetrzna]").val(),
+                        "punktacja_snip": $("input[name=punktacja_snip]").val(),
 
-                    "kc_punkty_kbn": $("input[name=kc_punkty_kbn]").val(),
-                    "kc_impact_factor": $("input[name=kc_impact_factor]").val(),
-                    "kc_index_copernicus": $("input[name=kc_index_copernicus]").val()
-                }
-                window.onbeforeunload = function(e) {};
-                location.href = "../../add/?" + $.param(data);
-            });
+                        "kc_punkty_kbn": $("input[name=kc_punkty_kbn]").val(),
+                        "kc_impact_factor": $("input[name=kc_impact_factor]").val(),
+                        "kc_index_copernicus": $("input[name=kc_index_copernicus]").val()
+                    }
+                    window.onbeforeunload = function (e) {
+                    };
+                    location.href = "../../add/?" + $.param(data);
+                });
 
-            $("#toz").click(function () {
-                if (confirm('Utworzysz kopię tego rekordu. Czy kontynuować?')) {
-                    window.onbeforeunload = function(e) {};
-                    location.href = "../../toz/" + pub_id;
-                }
-            });
-        }
-
+                $("#toz").click(function () {
+                    if (confirm('Utworzysz kopię tego rekordu. Czy kontynuować?')) {
+                        window.onbeforeunload = function (e) {
+                        };
+                        location.href = "../../toz/" + pub_id;
+                    }
+                });
+            }
+        }(django.jQuery));
     </script>
 {% endblock %}

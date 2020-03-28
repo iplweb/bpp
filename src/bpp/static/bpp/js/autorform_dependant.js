@@ -1,3 +1,4 @@
+(function($){
 var autorform_dependant = function () {
     var prefix = $(this).getFormPrefix();
     var value = $(this).val();
@@ -44,3 +45,4 @@ $(document).on('autocompleteLightInitialize', '[data-autocomplete-light-function
     $(':input[name$=autor]').off('change', autorform_dependant);
     $(':input[name$=autor]').on('change', autorform_dependant);
 })
+}(django.jQuery));
