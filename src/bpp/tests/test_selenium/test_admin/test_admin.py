@@ -9,13 +9,25 @@ from django.db import transaction
 from model_mommy import mommy
 from selenium.webdriver.support.wait import WebDriverWait
 
-from bpp.models import Wydawnictwo_Ciagle, Uczelnia, Autor, Jednostka, Typ_Odpowiedzialnosci, TO_AUTOR
+from bpp.models import (
+    Wydawnictwo_Ciagle,
+    Uczelnia,
+    Autor,
+    Jednostka,
+    Typ_Odpowiedzialnosci,
+    TO_AUTOR,
+)
 from bpp.models.patent import Patent
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 from bpp.models.zrodlo import Punktacja_Zrodla
 from bpp.tests import any_ciagle, any_autor, any_jednostka
-from bpp.tests.util import any_zrodlo, CURRENT_YEAR, select_select2_autocomplete, select_select2_clear_selection, \
-    show_element
+from bpp.tests.util import (
+    any_zrodlo,
+    CURRENT_YEAR,
+    select_select2_autocomplete,
+    select_select2_clear_selection,
+    show_element,
+)
 from django_bpp.selenium_util import wait_for_page_load, wait_for
 from .helpers import *
 
@@ -25,12 +37,8 @@ pytestmark = [pytest.mark.slow, pytest.mark.selenium]
 
 
 @pytest.mark.django_db(transaction=True)
-@pytest.mark.parametrize(
-    "url", ["wydawnictwo_ciagle", "wydawnictwo_zwarte"]
-)
-def test_uzupelnij_strona_tom_nr_zeszytu(url,
-                                         preauth_admin_browser,
-                                         live_server):
+@pytest.mark.parametrize("url", ["wydawnictwo_ciagle", "wydawnictwo_zwarte"])
+def test_uzupelnij_strona_tom_nr_zeszytu(url, preauth_admin_browser, live_server):
     url = reverse("admin:bpp_%s_add" % url)
     with wait_for_page_load(preauth_admin_browser):
         preauth_admin_browser.visit(live_server + url)
@@ -40,7 +48,8 @@ def test_uzupelnij_strona_tom_nr_zeszytu(url,
 
     preauth_admin_browser.execute_script("$('#id_strony_get').click()")
     WebDriverWait(preauth_admin_browser, 10).until(
-        lambda browser: browser.find_by_name("tom").value != "")
+        lambda browser: browser.find_by_name("tom").value != ""
+    )
 
     assert preauth_admin_browser.find_by_name("strony").value == "4-3"
     assert preauth_admin_browser.find_by_name("tom").value == "5"
@@ -50,20 +59,27 @@ def test_uzupelnij_strona_tom_nr_zeszytu(url,
 
 
 def test_liczba_znakow_wydawniczych_liczba_arkuszy_wydawniczych(
-        preauth_admin_browser, live_server):
+    preauth_admin_browser, live_server
+):
     url = reverse("admin:bpp_wydawnictwo_zwarte_add")
     with wait_for_page_load(preauth_admin_browser):
         preauth_admin_browser.visit(live_server + url)
 
     preauth_admin_browser.execute_script(
-        "$('#id_liczba_znakow_wydawniczych').val('40000').change()")
-    assert preauth_admin_browser.find_by_id(
-        "id_liczba_arkuszy_wydawniczych").value == "1.00"
+        "$('#id_liczba_znakow_wydawniczych').val('40000').change()"
+    )
+    assert (
+        preauth_admin_browser.find_by_id("id_liczba_arkuszy_wydawniczych").value
+        == "1.00"
+    )
 
     preauth_admin_browser.execute_script(
-        "$('#id_liczba_arkuszy_wydawniczych').val('0.5').change()")
-    assert preauth_admin_browser.find_by_id(
-        "id_liczba_znakow_wydawniczych").value == "20000"
+        "$('#id_liczba_arkuszy_wydawniczych').val('0.5').change()"
+    )
+    assert (
+        preauth_admin_browser.find_by_id("id_liczba_znakow_wydawniczych").value
+        == "20000"
+    )
 
 
 @pytest.mark.django_db(transaction=True)
@@ -73,19 +89,15 @@ def test_automatycznie_uzupelnij_punkty(preauth_admin_browser, live_server):
 
     z = any_zrodlo(nazwa="FOO BAR")
     clickButtonBuggyMarionetteDriver(
-        preauth_admin_browser,
-        "id_wypelnij_pola_punktacji_button")
+        preauth_admin_browser, "id_wypelnij_pola_punktacji_button"
+    )
     assertPopupContains(preauth_admin_browser, "Najpierw wybierz jakie")
 
-    select_select2_autocomplete(
-        preauth_admin_browser,
-        "id_zrodlo",
-        "FOO"
-    )
+    select_select2_autocomplete(preauth_admin_browser, "id_zrodlo", "FOO")
 
     clickButtonBuggyMarionetteDriver(
-        preauth_admin_browser,
-        "id_wypelnij_pola_punktacji_button")
+        preauth_admin_browser, "id_wypelnij_pola_punktacji_button"
+    )
     assertPopupContains(preauth_admin_browser, "Uzupełnij pole")
 
     preauth_admin_browser.execute_script("window.onbeforeunload = function(e) {};")
@@ -94,8 +106,10 @@ def test_automatycznie_uzupelnij_punkty(preauth_admin_browser, live_server):
 def trigger_event(elem, event):
     # import pytest; pytest.set_trace()e
     elem.parent.driver.execute_script(
-        "return $(arguments[0]).trigger(arguments[1]).get();",
-        "#" + elem['id'], event)
+        "return django.jQuery(arguments[0]).trigger(arguments[1]).get();",
+        "#" + elem["id"],
+        event,
+    )
 
 
 def test_admin_uzupelnij_punkty(preauth_admin_browser, live_server):
@@ -152,11 +166,7 @@ def test_upload_punkty(preauth_admin_browser, live_server):
     url = reverse("admin:bpp_wydawnictwo_ciagle_add")
     preauth_admin_browser.visit(live_server + url)
 
-    select_select2_autocomplete(
-        preauth_admin_browser,
-        "id_zrodlo",
-        "WTF"
-    )
+    select_select2_autocomplete(preauth_admin_browser, "id_zrodlo", "WTF")
 
     scroll_into_view(preauth_admin_browser, "id_rok")
     preauth_admin_browser.fill("rok", str(CURRENT_YEAR))
@@ -205,19 +215,15 @@ def autorform_browser(preauth_admin_browser, db, live_server):
 
 
 def test_autorform_uzupelnianie_jednostki(autorform_browser, autorform_jednostka):
-    autorform_browser.execute_script("""
+    autorform_browser.execute_script(
+        """
     document.getElementsByClassName("grp-add-handler")[0].scrollIntoView()
-    """)
+    """
+    )
     autorform_browser.find_by_css(".grp-add-handler").first.click()
-    wait_for(
-        lambda: autorform_browser.find_by_id("id_autorzy_set-0-autor")
-    )
+    wait_for(lambda: autorform_browser.find_by_id("id_autorzy_set-0-autor"))
 
-    select_select2_autocomplete(
-        autorform_browser,
-        "id_autorzy_set-0-autor",
-        "KOWALSKI"
-    )
+    select_select2_autocomplete(autorform_browser, "id_autorzy_set-0-autor", "KOWALSKI")
 
     sel = autorform_browser.find_by_id("id_autorzy_set-0-jednostka")
     assert sel.value == str(autorform_jednostka.pk)
@@ -226,7 +232,7 @@ def test_autorform_uzupelnianie_jednostki(autorform_browser, autorform_jednostka
 def find_autocomplete_widget(browser, id):
     for elem in browser.find_by_css(".yourlabs-autocomplete"):
         try:
-            dii = elem['data-input-id']
+            dii = elem["data-input-id"]
         except KeyError:
             continue
 
@@ -236,33 +242,28 @@ def find_autocomplete_widget(browser, id):
 
 def test_autorform_kasowanie_autora(autorform_browser, autorform_jednostka):
     # kliknij "dodaj powiazanie autor-wydawnictwo"
-    autorform_browser.execute_script("""
+    autorform_browser.execute_script(
+        """
     document.getElementsByClassName("grp-add-handler")[0].scrollIntoView()
-    """)
-    autorform_browser.find_by_css(".grp-add-handler").first.click()
-    wait_for(
-        lambda: autorform_browser.find_by_id("id_autorzy_set-0-autor")
+    """
     )
+    autorform_browser.find_by_css(".grp-add-handler").first.click()
+    wait_for(lambda: autorform_browser.find_by_id("id_autorzy_set-0-autor"))
 
     # uzupełnij autora
-    select_select2_autocomplete(
-        autorform_browser,
-        "id_autorzy_set-0-autor",
-        "KOW")
+    select_select2_autocomplete(autorform_browser, "id_autorzy_set-0-autor", "KOW")
 
     start = time.time()
     while True:
         jed = autorform_browser.find_by_id("id_autorzy_set-0-jednostka")
-        if jed.value != '':
+        if jed.value != "":
             break
         time.sleep(0.1)
         if time.time() - start >= 3:
             raise Exception("Timeout")
 
     # Jednostka ustawiona. Usuń autora:
-    select_select2_clear_selection(
-        autorform_browser,
-        "id_autorzy_set-0-autor")
+    select_select2_clear_selection(autorform_browser, "id_autorzy_set-0-autor")
 
     # jednostka nie jest wybrana
     jed = autorform_browser.find_by_id("id_autorzy_set-0-jednostka")
@@ -272,7 +273,7 @@ def test_autorform_kasowanie_autora(autorform_browser, autorform_jednostka):
 
 
 def test_bug_on_user_add(preauth_admin_browser, live_server):
-    preauth_admin_browser.visit(live_server + reverse('admin:bpp_bppuser_add'))
+    preauth_admin_browser.visit(live_server + reverse("admin:bpp_bppuser_add"))
     preauth_admin_browser.fill("username", "as")
     preauth_admin_browser.fill("password1", "as")
     preauth_admin_browser.fill("password2", "as")
@@ -285,16 +286,15 @@ def test_bug_on_user_add(preauth_admin_browser, live_server):
 
 
 def test_admin_wydawnictwo_zwarte_uzupelnij_rok(
-        wydawnictwo_zwarte,
-        preauth_admin_browser,
-        live_server):
+    wydawnictwo_zwarte, preauth_admin_browser, live_server
+):
     """
     :type preauth_admin_browser: splinter.driver.webdriver.remote.WebDriver
     """
 
     browser = preauth_admin_browser
 
-    browser.visit(live_server + reverse('admin:bpp_wydawnictwo_zwarte_add'))
+    browser.visit(live_server + reverse("admin:bpp_wydawnictwo_zwarte_add"))
 
     rok = browser.find_by_id("id_rok")
     button = browser.find_by_id("id_rok_button")
@@ -313,9 +313,7 @@ def test_admin_wydawnictwo_zwarte_uzupelnij_rok(
     wydawnictwo_zwarte.save()
 
     select_select2_autocomplete(
-        browser,
-        "id_wydawnictwo_nadrzedne",
-        "Wydawnictwo Zwarte"
+        browser, "id_wydawnictwo_nadrzedne", "Wydawnictwo Zwarte"
     )
 
     browser.fill("rok", "")
@@ -331,16 +329,14 @@ def test_admin_wydawnictwo_zwarte_uzupelnij_rok(
     )
 
 
-def test_admin_wydawnictwo_ciagle_uzupelnij_rok(
-        preauth_admin_browser,
-        live_server):
+def test_admin_wydawnictwo_ciagle_uzupelnij_rok(preauth_admin_browser, live_server):
     """
     :type preauth_admin_browser: splinter.driver.webdriver.remote.WebDriver
     """
 
     browser = preauth_admin_browser
 
-    browser.visit(live_server + reverse('admin:bpp_wydawnictwo_ciagle_add'))
+    browser.visit(live_server + reverse("admin:bpp_wydawnictwo_ciagle_add"))
 
     browser.fill("informacje", "Lublin 2002 test")
     proper_click(browser, "id_rok_button")
@@ -357,57 +353,54 @@ def test_admin_wydawnictwo_ciagle_uzupelnij_rok(
 
 
 def test_admin_wydawnictwo_ciagle_dowolnie_zapisane_nazwisko(
-        preauth_admin_browser,
-        live_server,
-        autor_jan_kowalski):
+    preauth_admin_browser, live_server, autor_jan_kowalski
+):
     """
     :type preauth_admin_browser: splinter.driver.webdriver.remote.WebDriver
     """
 
     browser = preauth_admin_browser
 
-    browser.visit(live_server + reverse('admin:bpp_wydawnictwo_ciagle_add'))
+    browser.visit(live_server + reverse("admin:bpp_wydawnictwo_ciagle_add"))
 
-    elem = browser.find_by_xpath("/html/body/div[2]/article/div/form/div/div[1]/ul/li/a")
+    elem = browser.find_by_xpath(
+        "/html/body/div[2]/article/div/form/div/div[1]/ul/li/a"
+    )
     show_element(browser, elem)
     elem.click()
 
-    browser.find_by_xpath("/html/body/div[2]/article/div/form/div/div[1]/div[2]/div/a").click()
-    wait_for(
-        lambda: browser.find_by_id("id_autorzy_set-0-autor")
-    )
+    browser.find_by_xpath(
+        "/html/body/div[2]/article/div/form/div/div[1]/div[2]/div/a"
+    ).click()
+    wait_for(lambda: browser.find_by_id("id_autorzy_set-0-autor"))
+
+    select_select2_autocomplete(browser, "id_autorzy_set-0-autor", "Kowalski Jan")
 
     select_select2_autocomplete(
-        browser,
-        "id_autorzy_set-0-autor",
-        "Kowalski Jan"
-    )
-
-    select_select2_autocomplete(
-        browser,
-        "id_autorzy_set-0-zapisany_jako",
-        "Dowolny tekst"
+        browser, "id_autorzy_set-0-zapisany_jako", "Dowolny tekst"
     )
 
     assert browser.find_by_id("id_autorzy_set-0-zapisany_jako").value == "Dowolny tekst"
 
 
-@pytest.mark.parametrize(
-    "expected", [True, False]
-)
+@pytest.mark.parametrize("expected", [True, False])
 @pytest.mark.parametrize(
     "url", ["wydawnictwo_ciagle", "wydawnictwo_zwarte", "patent"],
 )
-def test_admin_domyslnie_afiliuje_nowy_rekord(preauth_admin_browser, live_server, url, expected):
+def test_admin_domyslnie_afiliuje_nowy_rekord(
+    preauth_admin_browser, live_server, url, expected
+):
     # twórz nowy obiekt, nie używaj z fixtury, bo db i transactional_db
     uczelnia = mommy.make(Uczelnia, domyslnie_afiliuje=expected)
 
     browser = preauth_admin_browser
     browser.visit(live_server + reverse(f"admin:bpp_{url}_add"))
 
-    browser.execute_script("""
+    browser.execute_script(
+        """
     document.getElementsByClassName("grp-add-handler")[0].scrollIntoView()
-    """)
+    """
+    )
     time.sleep(0.5)
     browser.find_by_css(".grp-add-handler")[0].click()
     time.sleep(0.5)
@@ -416,43 +409,42 @@ def test_admin_domyslnie_afiliuje_nowy_rekord(preauth_admin_browser, live_server
     assert v.checked == expected
 
 
+@pytest.mark.parametrize("afiliowany", [True, False])
+@pytest.mark.parametrize("expected", [True, False])
 @pytest.mark.parametrize(
-    "afiliowany", [True, False]
-)
-@pytest.mark.parametrize(
-    "expected", [True, False]
-)
-@pytest.mark.parametrize(
-    "url,klasa", [("wydawnictwo_ciagle", Wydawnictwo_Ciagle),
-                  ("wydawnictwo_zwarte", Wydawnictwo_Zwarte),
-                  ("patent", Patent)],
+    "url,klasa",
+    [
+        ("wydawnictwo_ciagle", Wydawnictwo_Ciagle),
+        ("wydawnictwo_zwarte", Wydawnictwo_Zwarte),
+        ("patent", Patent),
+    ],
 )
 @pytest.mark.django_db(transaction=True)
 def test_admin_domyslnie_afiliuje_istniejacy_rekord(
-        preauth_admin_browser,
-        live_server,
-        url,
-        klasa,
-        expected,
-        afiliowany):
+    preauth_admin_browser, live_server, url, klasa, expected, afiliowany
+):
     # twórz nowy obiekt, nie używaj z fixtury, bo db i transactional_db
     uczelnia = mommy.make(Uczelnia, domyslnie_afiliuje=expected)
     autor = mommy.make(Autor, nazwisko="Kowal", imiona="Ski")
     jednostka = mommy.make(Jednostka, nazwa="Lol", skrot="WT")
     wydawnictwo = mommy.make(klasa, tytul_oryginalny="test")
     Typ_Odpowiedzialnosci.objects.get_or_create(
-        skrot="aut.", nazwa="autor", typ_ogolny=TO_AUTOR)
+        skrot="aut.", nazwa="autor", typ_ogolny=TO_AUTOR
+    )
     wa = wydawnictwo.dodaj_autora(autor, jednostka, zapisany_jako="Wutlolski")
     wa.afiliowany = afiliowany
     wa.save()
 
     browser = preauth_admin_browser
-    browser.visit(live_server + reverse(f"admin:bpp_{url}_change",
-                                        args=(wydawnictwo.pk,)))
+    browser.visit(
+        live_server + reverse(f"admin:bpp_{url}_change", args=(wydawnictwo.pk,))
+    )
 
-    browser.execute_script("""
+    browser.execute_script(
+        """
     document.getElementsByClassName("grp-add-handler")[1].scrollIntoView()
-    """)
+    """
+    )
     time.sleep(0.5)
     browser.find_by_css(".grp-add-handler")[1].click()
     time.sleep(0.5)

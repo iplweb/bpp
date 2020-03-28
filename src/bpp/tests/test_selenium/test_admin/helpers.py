@@ -17,7 +17,7 @@ def proper_click(browser, arg):
     # 2017.07.18 jest potrzebna (mpasternak)
     #
     scroll_into_view(browser, arg)
-    browser.execute_script("document.getElementById('" + arg + "').click()")
+    browser.execute_script(f"document.getElementById('{arg}').click()")
 
 
 def clickButtonBuggyMarionetteDriver(browser, id):
@@ -31,6 +31,7 @@ def clickButtonBuggyMarionetteDriver(browser, id):
 
 
 # url = "/admin/"
+
 
 def assertPopupContains(browser, text, accept=True):
     """Switch to popup, assert it contains at least a part

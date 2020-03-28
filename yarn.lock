@@ -1015,6 +1015,11 @@ jinplace@1.0.1:
   dependencies:
     jquery-untouched ">=1.7"
 
+jquery-plugin@^0.0.0-ignored:
+  version "0.0.0-ignored"
+  resolved "https://registry.yarnpkg.com/jquery-plugin/-/jquery-plugin-0.0.0-ignored.tgz#9608347aad6a973f7b0818b91bc50553f33e2158"
+  integrity sha1-lgg0eq1qlz97CBi5G8UFU/M+IVg=
+
 jquery-untouched@>=1.7:
   version "1.10.2"
   resolved "https://registry.yarnpkg.com/jquery-untouched/-/jquery-untouched-1.10.2.tgz#3974a4dfe15595f164c745e11fd9331674355cce"
@@ -1095,9 +1100,9 @@ just-extend@^4.0.2:
   resolved "https://registry.yarnpkg.com/just-extend/-/just-extend-4.0.2.tgz#f3f47f7dfca0f989c55410a7ebc8854b07108afc"
   integrity sha512-FrLwOgm+iXrPV+5zDU6Jqu4gCRXbWEQg2O3SKONsWE4w7AXFRkryS53bpWdaL9cNol+AmR3AEYz6kn+o0fCPnw==
 
-"kbw-keypad@https://github.com/kbwood/keypad/archive/2.1.0.tar.gz":
+"kbw-keypad@https://github.com/kbwood/keypad/archive/2.1.1.tar.gz":
   version "2.1.0"
-  resolved "https://github.com/kbwood/keypad/archive/2.1.0.tar.gz#6579a597a7eecad62206408d3ea1d0e72bbc2833"
+  resolved "https://github.com/kbwood/keypad/archive/2.1.1.tar.gz#4ee32928372d08c4f28f60d8282d3ad02468070f"
 
 kew@^0.7.0:
   version "0.7.0"

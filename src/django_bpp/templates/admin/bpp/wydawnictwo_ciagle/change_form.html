@@ -8,6 +8,8 @@
     {%  include "admin/uzupelnij_rok_wydawnictwo_ciagle_button_handler.html" %}
 
     <script type="text/javascript">
+
+        (function ($) {
         pub_id = $("#id_autorzy_set-__prefix__-rekord").val()
 
         // Otwórz niewidoczny stacked inline z nagrodą - tak, aby
@@ -24,22 +26,23 @@
         // Gramatyka
         $('a').each(function () {
             var html = $(this).html();
-            if (html.includes("Dodaj kolejne nagroda")) {}
-                $(this).html(html.replace('Dodaj kolejne nagroda', 'Dodaj kolejną nagrodę'));
+            if (html.includes("Dodaj kolejne nagroda")) {
+            }
+            $(this).html(html.replace('Dodaj kolejne nagroda', 'Dodaj kolejną nagrodę'));
         });
 
 
         if (pub_id) {
             btn = $("input[name=_continue]");
             tamze = $("<input/>")
-                    .attr("id", "tamze")
-                    .attr("class", "grp-button")
-                    .attr("type", "button")
-                    .attr("value", "Tamże");
+                .attr("id", "tamze")
+                .attr("class", "grp-button")
+                .attr("type", "button")
+                .attr("value", "Tamże");
 
             toz = tamze.clone()
-                    .attr("id", "toz")
-                    .attr("value", "Toż");
+                .attr("id", "toz")
+                .attr("value", "Toż");
 
             btn.parent().parent().append($("<li/>").append(tamze));
             btn.parent().parent().append($("<li/>").append(toz));
@@ -67,25 +70,27 @@
                     "kc_impact_factor": $("input[name=kc_impact_factor]").val(),
                     "kc_index_copernicus": $("input[name=kc_index_copernicus]").val()
                 }
-                window.onbeforeunload = function(e) {};
+                window.onbeforeunload = function (e) {
+                };
                 location.href = "../../add/?" + $.param(data);
             });
 
             $("#toz").click(function () {
                 if (confirm('Utworzysz kopię tego rekordu. Czy kontynuować?')) {
-                    window.onbeforeunload = function(e) {};
+                    window.onbeforeunload = function (e) {
+                    };
                     location.href = "../../toz/" + pub_id;
                 }
             });
         }
-
+    }(django.jQuery));
     </script>
 
     {%  include "admin/pubmed_id_button_handler.html" %}
     {%  include "admin/liczba_cytowan_button_handler.html" %}
 
     <script type="text/javascript">
-
+        (function($){
         $(document).ready(function () {
             var wypelnij_pola_punktacji, dodaj_punktacje_do_zrodla, names;
 
@@ -171,7 +176,7 @@
                                             }
                                     );
 
-                                    x.error(
+                                    x.fail(
                                             function (err) {
                                                 alert("Wystąpił błąd, status: " + err.status);
                                             }
@@ -185,7 +190,7 @@
                                 $("#id_dodaj_punktacje_do_zrodla_button").text("Dodana!!");
                         });
 
-                y.error(
+                y.fail(
                         function (err) {
                             if (err.status == 404) {
                                 if (err.response == "Zrodlo") {
@@ -230,7 +235,7 @@
                             $("#id_wypelnij_pola_punktacji_button").text("Wypełniona!");
                         });
 
-                z.error(
+                z.fail(
                         function (err) {
                             if (err.status == 404) {
                                 if (err.responseText == "Rok") {
@@ -250,5 +255,6 @@
                 return false;
             });
         });
+        }(django.jQuery));
     </script>
 {% endblock %}
