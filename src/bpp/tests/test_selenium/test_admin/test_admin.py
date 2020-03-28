@@ -394,7 +394,8 @@ def test_admin_domyslnie_afiliuje_nowy_rekord(
     uczelnia = mommy.make(Uczelnia, domyslnie_afiliuje=expected)
 
     browser = preauth_admin_browser
-    browser.visit(live_server + reverse(f"admin:bpp_{url}_add"))
+    with wait_for_page_load(browser):
+        browser.visit(live_server + reverse(f"admin:bpp_{url}_add"))
 
     browser.execute_script(
         """
