@@ -397,12 +397,13 @@ def test_admin_domyslnie_afiliuje_nowy_rekord(
     with wait_for_page_load(browser):
         browser.visit(live_server + reverse(f"admin:bpp_{url}_add"))
 
+    time.sleep(0.5)
     browser.execute_script(
-        """
-    document.getElementsByClassName("grp-add-handler")[0].scrollIntoView()
-    """
+        "document.getElementsByClassName('grp-add-handler')[0].scrollIntoView(); "
     )
     time.sleep(0.5)
+    browser.execute_script("window.scrollBy(0,window.innerHeight/2);")
+    # time.sleep(0.5)
     browser.find_by_css(".grp-add-handler")[0].click()
     time.sleep(0.5)
 
