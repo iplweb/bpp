@@ -1,6 +1,8 @@
 # -*- encoding: utf-8 -*-
 import time
 
+from flaky import flaky
+
 try:
     from django.core.urlresolvers import reverse
 except ImportError:
@@ -58,6 +60,7 @@ def test_uzupelnij_strona_tom_nr_zeszytu(url, preauth_admin_browser, live_server
         assert preauth_admin_browser.find_by_name("nr_zeszytu").value == "1"
 
 
+@flaky(max_runs=5)
 def test_liczba_znakow_wydawniczych_liczba_arkuszy_wydawniczych(
     preauth_admin_browser, live_server
 ):
@@ -214,10 +217,12 @@ def autorform_browser(preauth_admin_browser, db, live_server):
     return preauth_admin_browser
 
 
+@flaky(max_runs=5)
 def test_autorform_uzupelnianie_jednostki(autorform_browser, autorform_jednostka):
     autorform_browser.execute_script(
         """
-    document.getElementsByClassName("grp-add-handler")[0].scrollIntoView()
+    document.getElementsByClassName("grp-add-handler")[0].scrollIntoView();
+    window.scrollBy(0, -100);
     """
     )
     autorform_browser.find_by_css(".grp-add-handler").first.click()
