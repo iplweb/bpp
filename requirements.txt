@@ -169,8 +169,8 @@ django-secure-input==0.9.3 \
 django-sendfile==0.3.11 \
     --hash=sha256:f3065a55e602d002af327fe785449ff0a619b6f46ad2cb84730ccb49b31a73ca \
     # via -r requirements.in
-django-session-security==2.6.5 \
-    --hash=sha256:1b78b304fc1481f71addaba6b24bd30f7731478ba30c32f04f534dc2c0976d46 \
+django-session-security==2.6.6 \
+    --hash=sha256:3b263e16e21e0a1d0e91a2b4c44c48d2ee3aeb86e8c4c33d72ef7f5ac1204a1b \
     # via -r requirements.in
 django-static-sitemaps==4.6.0 \
     --hash=sha256:5f017df9f5fd6fb2f66bb4e20196e1cafb2a7ebeee29d96af16158df66312de5 \
