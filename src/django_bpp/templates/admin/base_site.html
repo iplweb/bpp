@@ -18,7 +18,7 @@
             <div style="float: right; ">
             {% crispy global_nav_form %}
             <script type="text/javascript">
-                $(':input[name$=global_nav_value]').on('change', function () {
+                django.jQuery(':input[name$=global_nav_value]').on('change', function () {
                     location.href = "/global-nav-redir/" + $(this).val() +
                         "?source=admin";
                 });
