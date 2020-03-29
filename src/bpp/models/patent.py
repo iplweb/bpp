@@ -25,6 +25,8 @@ from bpp.models.abstract import (
 
 from django.utils.functional import cached_property
 
+from bpp.util import safe_html
+
 
 class Patent_Autor(BazaModeluOdpowiedzialnosciAutorow):
     """Powiązanie autora do patentu."""
@@ -97,3 +99,6 @@ class Patent(
     @cached_property
     def jezyk(self):
         return Jezyk.objects.get(skrot_dla_pbn="PL")
+
+    def clean(self):
+        self.tytul_oryginalny = safe_html(self.tytul_oryginalny)
