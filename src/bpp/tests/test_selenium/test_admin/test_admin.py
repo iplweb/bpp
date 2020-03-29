@@ -1,6 +1,8 @@
 # -*- encoding: utf-8 -*-
 import time
 
+from flaky import flaky
+
 try:
     from django.core.urlresolvers import reverse
 except ImportError:
@@ -280,6 +282,7 @@ def test_bug_on_user_add(preauth_admin_browser, nginx_live_server):
     )
 
 
+@flaky(max_runs=5)
 def test_admin_wydawnictwo_zwarte_uzupelnij_rok(
     wydawnictwo_zwarte, preauth_admin_browser, nginx_live_server
 ):
