@@ -23,8 +23,9 @@ from bpp.models.abstract import (
     RekordBPPBaza,
 )
 
-from django.utils import six
 from django.utils.functional import cached_property
+
+from bpp.util import safe_html
 
 
 class Patent_Autor(BazaModeluOdpowiedzialnosciAutorow):
@@ -44,7 +45,6 @@ class Patent_Autor(BazaModeluOdpowiedzialnosciAutorow):
         ]
 
 
-@six.python_2_unicode_compatible
 class Patent(
     RekordBPPBaza,
     ModelZRokiem,
@@ -99,3 +99,6 @@ class Patent(
     @cached_property
     def jezyk(self):
         return Jezyk.objects.get(skrot_dla_pbn="PL")
+
+    def clean(self):
+        self.tytul_oryginalny = safe_html(self.tytul_oryginalny)

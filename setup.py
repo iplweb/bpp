@@ -48,16 +48,20 @@ class install_lib(_install_lib):
 
 
 def requirements(fn="requirements.txt"):
-    return [
+    for elem in [
         l.replace("\\", "").strip()
         for l in open(fn).read().splitlines()
         if l and l.find("==") > 0 and not l.strip().startswith("#")
-    ]
+    ]:
+        if elem.find("#egg=") >= 0:
+            yield elem.split("#egg=")[1]
+            continue
+        yield elem
 
 
 setup(
     name="bpp-iplweb",
-    version="202003.28",
+    version="202003.29",
     description="System informatyczny do zarządzania bibliografią publikacji pracowników naukowych",
     long_description=readme,
     long_description_content_type="text/x-rst",

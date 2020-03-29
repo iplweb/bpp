@@ -13,7 +13,6 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import SET_NULL, CASCADE, Sum, Q
 from django.urls.base import reverse
-from django.utils import six
 from django.utils import timezone
 from lxml.etree import SubElement
 
@@ -23,6 +22,7 @@ from bpp.models.dyscyplina_naukowa import Autor_Dyscyplina
 from bpp.models.dyscyplina_naukowa import Dyscyplina_Naukowa
 from bpp.models.util import ModelZOpisemBibliograficznym
 from bpp.models.util import dodaj_autora
+from bpp.util import safe_html
 
 ILOSC_ZNAKOW_NA_ARKUSZ = 40000.0
 
@@ -84,7 +84,6 @@ class ModelZPBN_ID(models.Model):
         abstract = True
 
 
-@six.python_2_unicode_compatible
 class ModelZNazwa(models.Model):
     """Nazwany model."""
 
@@ -163,6 +162,10 @@ class DwaTytuly(models.Model):
 
     tytul_oryginalny = models.TextField("Tytuł oryginalny", db_index=True)
     tytul = models.TextField("Tytuł", null=True, blank=True, db_index=True)
+
+    def clean(self):
+        self.tytul_oryginalny = safe_html(self.tytul_oryginalny)
+        self.tytul = safe_html(self.tytul)
 
     class Meta:
         abstract = True
@@ -381,7 +384,6 @@ class ModelTypowany(models.Model):
         abstract = True
 
 
-@six.python_2_unicode_compatible
 class BazaModeluOdpowiedzialnosciAutorow(models.Model):
     """Bazowa klasa dla odpowiedzialności autorów (czyli dla przypisania
     autora do czegokolwiek innego). Zawiera wszystkie informacje dla autora,
@@ -423,7 +425,7 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
         ordering = ("kolejnosc", "typ_odpowiedzialnosci__skrot")
 
     def __str__(self):
-        return six.text_type(self.autor) + " - " + six.text_type(self.jednostka.skrot)
+        return str(self.autor) + " - " + str(self.jednostka.skrot)
 
     def okresl_dyscypline(self):
         return self.dyscyplina_naukowa
@@ -656,7 +658,6 @@ class ModelWybitny(models.Model):
         abstract = True
 
 
-@six.python_2_unicode_compatible
 class Wydawnictwo_Baza(RekordBPPBaza):
     """Klasa bazowa wydawnictw (prace doktorskie, habilitacyjne, wydawnictwa
     ciągłe, zwarte -- bez patentów)."""

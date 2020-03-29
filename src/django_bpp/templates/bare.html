@@ -26,11 +26,10 @@
               href="{% static "foundation-datepicker/foundation/fonts/foundation-icons.css" %}">
         <link rel="stylesheet" type="text/css"
               href="{% static "foundation-datepicker/css/foundation-datepicker.min.css" %}">
-        <link rel="stylesheet" type="text/css"
-              href="{% static "autocomplete_light/vendor/select2/dist/css/select2.css" %}">
+        <link rel="stylesheet" type="text/css" href="{% static "vendor/select2/dist/css/select2.css" %}">
+        <link rel="stylesheet" type="text/css" href="{% static "autocomplete_light/select2.css" %}">
         <link rel="stylesheet" type="text/css"
               href="{% static "select2-foundation_theme/dist/select2-foundation-theme.css" %}">
-        <link rel="stylesheet" type="text/css" href="{% static "autocomplete_light/select2.css" %}"></link>
 
         <link rel="stylesheet" href="{% static "multiseek/css/style.css" %}"/>
 
@@ -93,10 +92,12 @@
 
         <script src="{% static "autocomplete_light/jquery.init.js" %}"></script>
         <script src="{% static "autocomplete_light/autocomplete.init.js" %}"></script>
-        <script src="{% static "autocomplete_light/vendor/select2/dist/js/select2.full.js" %}"></script>
-        <script src="{% static "autocomplete_light/vendor/select2/dist/js/i18n/pl.js" %}"></script>
-        <script src="{% static "autocomplete_light/forward.js" %}"></script>
+        <script src="{% static "vendor/select2/dist/js/select2.full.js" %}"></script>
+        <script src="{% static "vendor/select2/dist/js/i18n/pl.js" %}"></script>
         <script src="{% static "autocomplete_light/select2.js" %}"></script>
+        <script src="{% static "autocomplete_light/forward.js" %}"></script>
+        <script src="{% static "autocomplete_light/jquery.post-setup.js" %}"></script>
+
 
     {% endcompress %}
 

@@ -96,7 +96,7 @@ integruj-liste-wydawcow: get-assets
 	$(MANAGE) import_wydawca_alias $(ASSETS_DIR)/bg-umw/aliasy_wydawcow.xlsx
 
 ustaw-obca-jednostke:
-	$(MANAGE) ustaw_obca_jednostke "$(NAZWA_OBCEJ_JEDNOSTKI)"
+	$(MANAGE) ustaw_obca_jednostke --wymuszaj "$(NAZWA_OBCEJ_JEDNOSTKI)"
 
 integrate: disable-trigger integruj-dbf integruj-liste-wydawcow ustaw-obca-jednostke rebuild-cache enable-trigger
 

@@ -7,8 +7,10 @@ from datetime import datetime, timedelta
 from math import ceil, floor
 from pathlib import Path
 
+import bleach
 import progressbar
 from django.apps import apps
+from django.conf import settings
 from django.db.models import Max, Min
 from psycopg2.extensions import QuotedString
 from unidecode import unidecode
@@ -267,3 +269,80 @@ def partition_count(objects, num_proc):
 
 def no_threads(multiplier=0.75):
     return max(int(floor(multiprocessing.cpu_count() * multiplier)), 1)
+
+
+class safe_html_defaults:
+    ALLOWED_TAGS = (
+        "a",
+        "abbr",
+        "acronym",
+        "b",
+        "blockquote",
+        "code",
+        "em",
+        "i",
+        "li",
+        "ol",
+        "strong",
+        "ul",
+        "font",
+        "div",
+        "span",
+        "br",
+        "strike",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "p",
+        "table",
+        "tr",
+        "td",
+        "th",
+        "thead",
+        "tbody",
+        "dl",
+        "dd",
+        "u",
+    )
+
+    ALLOWED_ATTRIBUTES = {
+        "*": ["class"],
+        "a": ["href", "title", "rel"],
+        "abbr": ["title"],
+        "acronym": ["title"],
+        "font": ["face", "size",],
+        "div": ["style",],
+        "span": ["style",],
+        "ul": ["style",],
+    }
+
+    ALLOWED_STYLES = [
+        "font-size",
+        "color",
+        "text-align",
+        "text-decoration",
+        "font-weight",
+    ]
+
+
+def safe_html(html):
+    html = html or ""
+
+    ALLOWED_TAGS = getattr(settings, "ALLOWED_TAGS", safe_html_defaults.ALLOWED_TAGS)
+    ALLOWED_ATTRIBUTES = getattr(
+        settings, "ALLOWED_ATTRIBUTES", safe_html_defaults.ALLOWED_ATTRIBUTES
+    )
+    ALLOWED_STYLES = getattr(
+        settings, "ALLOWED_STYLES", safe_html_defaults.ALLOWED_STYLES
+    )
+    STRIP_TAGS = getattr(settings, "STRIP_TAGS", True)
+    cleaned_html = bleach.clean(
+        html,
+        tags=ALLOWED_TAGS,
+        attributes=ALLOWED_ATTRIBUTES,
+        styles=ALLOWED_STYLES,
+        strip=STRIP_TAGS,
+    )
+    return bleach.linkify(cleaned_html)
