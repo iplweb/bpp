@@ -124,10 +124,6 @@ imagesize==1.2.0 \
     --hash=sha256:6965f19a6a2039c7d48bca7dba2473069ff854c36ae6f19d2cde309d998228a1 \
     --hash=sha256:b1f6b5a4eab1f73479a50fb79fcf729514a900c341d8503d62a62dbc4127a2b1 \
     # via sphinx
-importlib-metadata==1.3.0 \
-    --hash=sha256:073a852570f92da5f744a3472af1b61e28e9f78ccf0c9117658dc32b15de7b45 \
-    --hash=sha256:d95141fbfa7ef2ec65cfd945e2af7e5a6ddbd7c8d9a25e66ff3be8e3daf9f60f \
-    # via -c requirements.txt, pluggy, pytest
 jinja2==2.10.3 \
     --hash=sha256:74320bb91f31270f9551d46522e33af46a80c3d619f4a4bf42b3164d30b5911f \
     --hash=sha256:9fe95f19286cfefaa917656583d020be14e7859c6b0252588391e47db34527de \
@@ -195,16 +191,18 @@ pluggy==0.13.1 \
     --hash=sha256:15b2acde666561e1298d71b523007ed7364de07029219b604cf808bfa1c765b0 \
     --hash=sha256:966c145cd83c96502c3c3868f50408687b38434af77734af1e9ca461a4081d2d \
     # via pytest
-psutil==5.4.5 \
-    --hash=sha256:325c334596ad2d8a178d0e7b4eecc91748096a87489b3701ee16986173000aaa \
-    --hash=sha256:33384065f0014351fa70187548e3e95952c4df4bc5c38648bd0e647d21eaaf01 \
-    --hash=sha256:51e12aa74509832443862373a2655052b20c83cad7322f49d217452500b9a405 \
-    --hash=sha256:52a91ba928a5e86e0249b4932d6e36972a72d1ad8dcc5b7f753a2ae14825a4ba \
-    --hash=sha256:99029b6af386b22882f0b6d537ffed5a9c3d5ff31782974aeaa1d683262d8543 \
-    --hash=sha256:b10703a109cc9225cd588c207f7f93480a420ade35c13515ea8f20063b42a392 \
-    --hash=sha256:ddba952ed256151844d82fb13c8fb1019fe11ecaeacbd659d67ba5661ae73d0d \
-    --hash=sha256:ebe293be36bb24b95cdefc5131635496e88b17fabbcf1e4bc9b5c01f5e489cfe \
-    --hash=sha256:f24cd52bafa06917935fe1b68c5a45593abe1f3097dc35b2dfc4718236795890 \
+psutil==5.6.6 \
+    --hash=sha256:06660136ab88762309775fd47290d7da14094422d915f0466e0adf8e4b22214e \
+    --hash=sha256:0c11adde31011a286197630ba2671e34651f004cc418d30ae06d2033a43c9e20 \
+    --hash=sha256:0c211eec4185725847cb6c28409646c7cfa56fdb531014b35f97b5dc7fe04ff9 \
+    --hash=sha256:0fc7a5619b47f74331add476fbc6022d7ca801c22865c7069ec0867920858963 \
+    --hash=sha256:3004361c6b93dbad71330d992c1ae409cb8314a6041a0b67507cc882357f583e \
+    --hash=sha256:5e8dbf31871b0072bcba8d1f2861c0ec6c84c78f13c723bb6e981bce51b58f12 \
+    --hash=sha256:6d81b9714791ef9a3a00b2ca846ee547fc5e53d259e2a6258c3d2054928039ff \
+    --hash=sha256:724390895cff80add7a1c4e7e0a04d9c94f3ee61423a2dcafd83784fabbd1ee9 \
+    --hash=sha256:ad21281f7bd6c57578dd53913d2d44218e9e29fd25128d10ff7819ef16fa46e7 \
+    --hash=sha256:f21a7bb4b207e4e7c60b3c40ffa89d790997619f04bbecec9db8e3696122bc78 \
+    --hash=sha256:f60042bef7dc50a78c06334ca8e25580455948ba2fa98f240d034a4fed9141a5 \
     # via -r requirements_dev.in
 py==1.8.1 \
     --hash=sha256:5e27081401262157467ad6e7f851b7aa402c5852dbcb3dae06768434de5752aa \
@@ -376,10 +374,6 @@ werkzeug==0.16.0 \
     --hash=sha256:7280924747b5733b246fe23972186c6b348f9ae29724135a6dfc1e53cea433e7 \
     --hash=sha256:e5f4a1f98b52b18a93da705a7458e55afb26f32bff83ff5d19189f92462d65c4 \
     # via pytest-localserver
-zipp==0.6.0 \
-    --hash=sha256:3718b1cbcd963c7d4c5511a8240812904164b7f381b647143a89d3b98f9bcd8e \
-    --hash=sha256:f06903e9f1f43b12d371004b4ac7b06ab39a44adc747266928ae6debfa7b3335 \
-    # via -c requirements.txt, importlib-metadata
 
 # WARNING: The following packages were not pinned, but pip requires them to be
 # pinned when the requirements file includes hashes. Consider using the --allow-unsafe flag.
