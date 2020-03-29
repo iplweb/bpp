@@ -3,7 +3,6 @@
 {% load i18n django_tables2 %}
 
 {% block table.tfoot %}{% spaceless %}
-    {% if table.rows %}
         <tr>
             <td colspan="3">
                 <table class="bez_ramki" style="width:100%;">
@@ -16,9 +15,8 @@
                     </tr>
                 </table>
             </td>
-            <td align="right">{{ table.sum_punkty_kbn }}</td>
+            <td align="right">{{ table.columns.punkty_kbn.footer }}</td>
         </tr>
-    {% endif %}
 {% endspaceless %}{% endblock %}
 
 {% block pagination %}

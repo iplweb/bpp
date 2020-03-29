@@ -3,43 +3,78 @@ import pytest
 from django.core.exceptions import PermissionDenied
 from django.urls import NoReverseMatch
 
+from bpp.models import Praca_Doktorska, Praca_Habilitacyjna, Zrodlo
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord, Autorzy
 from django.urls.base import reverse
 from model_mommy import mommy
 
 from bpp.models.patent import Patent, Patent_Autor
-from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, \
-    Wydawnictwo_Ciagle_Autor
-from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte, \
-    Wydawnictwo_Zwarte_Autor
+from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor
+from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor
+from django_bpp.sitemaps import Praca_HabilitacyjnaSitemap
+
+
+@pytest.mark.parametrize(
+    "klass",
+    [
+        Wydawnictwo_Ciagle,
+        Wydawnictwo_Zwarte,
+        Patent,
+        Praca_Doktorska,
+        Praca_Habilitacyjna,
+    ],
+)
+def test_safe_html_dwa_tytuly_DwaTytuly(klass, admin_app):
+    """Upewnij sie, ze bleach jest uruchamiany dla tych dwóch pól z DwaTytuly"""
+    i = mommy.make(klass)
+    if hasattr(i, "zrodlo"):
+        z = mommy.make(Zrodlo)
+        i.zrodlo = z
+        i.save()
+
+    if hasattr(i, "promotor"):
+        p = mommy.make(Autor)
+        i.promotor = p
+        i.save()
+
+    url = reverse(f"admin:bpp_{klass._meta.model_name}_change", args=(i.pk,))
+    page = admin_app.get(url)
+
+    page.forms[1]["tytul_oryginalny"].value = "<script>hi</script>"
+    if hasattr(i, "tytul"):
+        page.forms[1]["tytul"].value = "<script>hi</script>"
+    res = page.forms[1].submit()
+
+    i.refresh_from_db()
+
+    assert i.tytul_oryginalny == "hi"
+    if hasattr(i, "tytul"):
+        assert i.tytul == "hi"
 
 
 @pytest.mark.parametrize(
     "klass,autor_klass,name,url",
     [
-        (Wydawnictwo_Ciagle,
-         Wydawnictwo_Ciagle_Autor,
-         "wydawnictwo_ciagle",
-         "admin:bpp_wydawnictwo_ciagle_change"),
-
-        (Wydawnictwo_Zwarte,
-         Wydawnictwo_Zwarte_Autor,
-         "wydawnictwo_zwarte",
-         "admin:bpp_wydawnictwo_zwarte_change"),
-
-        (Patent,
-         Patent_Autor,
-         "patent",
-         "admin:bpp_patent_change"),
-    ]
+        (
+            Wydawnictwo_Ciagle,
+            Wydawnictwo_Ciagle_Autor,
+            "wydawnictwo_ciagle",
+            "admin:bpp_wydawnictwo_ciagle_change",
+        ),
+        (
+            Wydawnictwo_Zwarte,
+            Wydawnictwo_Zwarte_Autor,
+            "wydawnictwo_zwarte",
+            "admin:bpp_wydawnictwo_zwarte_change",
+        ),
+        (Patent, Patent_Autor, "patent", "admin:bpp_patent_change"),
+    ],
 )
-def test_zapisz_wydawnictwo_w_adminie(klass, autor_klass, name,
-                                      url, admin_app):
+def test_zapisz_wydawnictwo_w_adminie(klass, autor_klass, name, url, admin_app):
 
     if klass == Wydawnictwo_Ciagle:
-        wc = mommy.make(klass,
-                        zrodlo__nazwa="Kopara")
+        wc = mommy.make(klass, zrodlo__nazwa="Kopara")
     else:
         wc = mommy.make(klass)
 
@@ -48,7 +83,8 @@ def test_zapisz_wydawnictwo_w_adminie(klass, autor_klass, name,
         autor__imiona="Jan",
         autor__nazwisko="Kowalski",
         zapisany_jako="Jan Kowalski",
-        rekord=wc)
+        rekord=wc,
+    )
 
     url = reverse(url, args=(wc.pk,))
     res = admin_app.get(url)
@@ -56,9 +92,8 @@ def test_zapisz_wydawnictwo_w_adminie(klass, autor_klass, name,
     form = res.forms[name + "_form"]
 
     ZMIENIONE = "J[an] Kowalski"
-    form['autorzy_set-0-zapisany_jako'].options.append(
-        (ZMIENIONE, False, ZMIENIONE))
-    form['autorzy_set-0-zapisany_jako'].value = ZMIENIONE
+    form["autorzy_set-0-zapisany_jako"].options.append((ZMIENIONE, False, ZMIENIONE))
+    form["autorzy_set-0-zapisany_jako"].value = ZMIENIONE
 
     res2 = form.submit().maybe_follow()
     assert res2.status_code == 200
@@ -70,6 +105,7 @@ def test_zapisz_wydawnictwo_w_adminie(klass, autor_klass, name,
 
     Rekord.objects.all().delete()
     Autorzy.objects.all().delete()
+
 
 from django.apps import apps
 
@@ -103,10 +139,8 @@ def test_widok_admina(admin_client):
         res = admin_client.get(url + "?q=fafa")
         assert res.status_code == 200, "changelist query failed for %r" % model
 
-
         url_name = "admin:%s_%s_add" % (app_label, model_name)
         url = reverse(url_name)
         res = admin_client.get(url)
 
         assert res.status_code == 200, "add failed for %r" % model
-

@@ -148,7 +148,6 @@ INSTALLED_APPS = [
     "crispy_forms",
     "crispy_forms_foundation",
     "compressor",
-    "secure_input",
     "session_security",
     "notifications",
     "integrator2",
@@ -164,6 +163,9 @@ INSTALLED_APPS = [
     "mptt",
     "raport_slotow",
     "import_dbf",
+    "rest_framework",
+    "django_filters",
+    "api_v1",
 ]
 
 # Profile użytkowników
@@ -487,4 +489,16 @@ YARN_FILE_PATTERNS = {
     # Zostana pozniej usuniete przez MANIFEST.in
     "qunit": ["qunit/qunit.js", "qunit/qunit.css"],
     "sinon": ["pkg/sinon.js"],
+}
+
+
+REST_FRAMEWORK = {
+    # Use Django's standard `django.contrib.auth` permissions,
+    # or allow read-only access for unauthenticated users.
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly"
+    ],
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.LimitOffsetPagination",
+    "PAGE_SIZE": 10,
+    "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
 }

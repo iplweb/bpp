@@ -27,15 +27,14 @@ uWSGI==2.0.18
 zope.interface==4.6.0
 zope.component==4.5
 sentry-sdk==0.14.1
-django-secure-input==0.9.3
-bleach==3.1.1
+bleach==3.1.2
 django-session-security==2.6.6
 django-password-policies-iplweb==0.7.0
 dj-pagination==2.4.0
 requests==2.20.0
 pytz==2018.4
 django-extensions==2.2.5
-django-htmlmin==0.10.0
+django-htmlmin==0.11.0
 Pillow>=6.2.0
 olefile==0.44
 django-grappelli==2.14.1
@@ -57,3 +56,5 @@ pylibmc
 django-filter
 progressbar2
 dbfread
+djangorestframework==3.11.0
+markdown==3.2.1
