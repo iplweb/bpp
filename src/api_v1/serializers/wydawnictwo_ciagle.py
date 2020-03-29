@@ -15,11 +15,14 @@ from bpp.models import (
 
 
 class Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychSerializer(serializers.ModelSerializer):
+    rekord = serializers.HyperlinkedRelatedField(
+        view_name="api_v1:wydawnictwo_ciagle-detail", read_only=True
+    )
     baza = serializers.StringRelatedField()
 
     class Meta:
         model = Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych
-        fields = ["baza", "info"]
+        fields = ["rekord", "baza", "info"]
 
 
 class Wydawnictwo_Ciagle_AutorSerializer(
