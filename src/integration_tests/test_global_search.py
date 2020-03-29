@@ -18,11 +18,13 @@ def test_global_search_user(live_server, browser, transactional_db):
     browser.wait_for_condition(lambda browser: "Strona WWW" in browser.html)
 
 
-def test_global_search_logged_in(live_server, preauth_admin_browser, transactional_db):
+def test_global_search_logged_in(
+    nginx_live_server, preauth_admin_browser, transactional_db
+):
     browser = preauth_admin_browser
     mommy.make(Wydawnictwo_Ciagle, tytul_oryginalny="Test")
 
-    browser.visit(live_server.url)
+    browser.visit(nginx_live_server.url)
 
     with wait_for_page_load(browser):
         select_select2_autocomplete(
@@ -32,12 +34,13 @@ def test_global_search_logged_in(live_server, preauth_admin_browser, transaction
     browser.wait_for_condition(lambda browser: "Strona WWW" in browser.html)
 
 
-def test_global_search_in_admin(live_server, preauth_admin_browser, transactional_db):
+def test_global_search_in_admin(
+    nginx_live_server, preauth_admin_browser, transactional_db
+):
     browser = preauth_admin_browser
     mommy.make(Wydawnictwo_Ciagle, tytul_oryginalny="Test")
 
-    with wait_for_page_load(browser):
-        browser.visit(live_server.url + "/admin/")
+    browser.visit(nginx_live_server.url + "/admin/")
 
     with wait_for_page_load(browser):
         select_select2_autocomplete(
