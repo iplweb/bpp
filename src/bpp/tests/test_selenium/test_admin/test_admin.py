@@ -62,11 +62,11 @@ def test_uzupelnij_strona_tom_nr_zeszytu(url, preauth_admin_browser, nginx_live_
 
 @flaky(max_runs=5)
 def test_liczba_znakow_wydawniczych_liczba_arkuszy_wydawniczych(
-    preauth_admin_browser, live_server
+    preauth_admin_browser, nginx_live_server
 ):
     url = reverse("admin:bpp_wydawnictwo_zwarte_add")
     with wait_for_page_load(preauth_admin_browser):
-        preauth_admin_browser.visit(live_server + url)
+        preauth_admin_browser.visit(nginx_live_server.url + url)
 
     preauth_admin_browser.execute_script(
         "django.jQuery('#id_liczba_znakow_wydawniczych').val('40000').change()"

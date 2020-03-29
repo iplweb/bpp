@@ -43,11 +43,12 @@ def test_admin_wydawnictwo_ciagle_toz(preauth_admin_browser, nginx_live_server):
     assert wcc() == 2
 
 
-def test_admin_wydawnictwo_zwarte_toz(preauth_admin_browser, live_server):
+def test_admin_wydawnictwo_zwarte_toz(preauth_admin_browser, nginx_live_server):
     c = any_zwarte(informacje="TO INFOMRACJE")
 
     preauth_admin_browser.visit(
-        live_server + reverse("admin:bpp_wydawnictwo_zwarte_change", args=(c.pk,))
+        nginx_live_server.url
+        + reverse("admin:bpp_wydawnictwo_zwarte_change", args=(c.pk,))
     )
 
     wcc = Wydawnictwo_Zwarte.objects.count
@@ -62,10 +63,11 @@ def test_admin_wydawnictwo_zwarte_toz(preauth_admin_browser, live_server):
     assert wcc() == 2
 
 
-def test_admin_wydawnictwo_ciagle_tamze(preauth_admin_browser, live_server):
+def test_admin_wydawnictwo_ciagle_tamze(preauth_admin_browser, nginx_live_server):
     c = any_ciagle(informacje="TO INFORMACJE", uwagi="te uwagi", www="te www")
     preauth_admin_browser.visit(
-        live_server + reverse("admin:bpp_wydawnictwo_ciagle_change", args=(c.pk,))
+        nginx_live_server.url
+        + reverse("admin:bpp_wydawnictwo_ciagle_change", args=(c.pk,))
     )
 
     tamze = preauth_admin_browser.find_by_id("tamze")
@@ -82,7 +84,9 @@ def test_admin_wydawnictwo_ciagle_tamze(preauth_admin_browser, live_server):
     assert "te www" not in preauth_admin_browser.html
 
 
-def test_admin_wydawnictwo_zwarte_tamze(preauth_admin_browser, live_server, wydawca):
+def test_admin_wydawnictwo_zwarte_tamze(
+    preauth_admin_browser, nginx_live_server, wydawca
+):
     c = any_zwarte(
         informacje="TO INFORMACJE",
         uwagi="te uwagi",
@@ -94,7 +98,8 @@ def test_admin_wydawnictwo_zwarte_tamze(preauth_admin_browser, live_server, wyda
         e_isbn="E_ISBN",
     )
     preauth_admin_browser.visit(
-        live_server + reverse("admin:bpp_wydawnictwo_zwarte_change", args=(c.pk,))
+        nginx_live_server.url
+        + reverse("admin:bpp_wydawnictwo_zwarte_change", args=(c.pk,))
     )
     tamze = preauth_admin_browser.find_by_id("tamze")
     tamze.click()
@@ -113,10 +118,10 @@ def test_admin_wydawnictwo_zwarte_tamze(preauth_admin_browser, live_server, wyda
     assert "ten adres WWW" not in preauth_admin_browser.html
 
 
-def test_admin_patent_toz(preauth_admin_browser, live_server):
+def test_admin_patent_toz(preauth_admin_browser, nginx_live_server):
     c = any_patent(informacje="TO INFORMACJE")
     preauth_admin_browser.visit(
-        live_server + reverse("admin:bpp_patent_change", args=(c.pk,))
+        nginx_live_server.url + reverse("admin:bpp_patent_change", args=(c.pk,))
     )
 
     wcc = Patent.objects.count
@@ -132,11 +137,11 @@ def test_admin_patent_toz(preauth_admin_browser, live_server):
     assert wcc() == 2
 
 
-def test_admin_patent_tamze(preauth_admin_browser, live_server):
+def test_admin_patent_tamze(preauth_admin_browser, nginx_live_server):
     c = any_patent(informacje="TO INFORMACJE")
     with wait_for_page_load(preauth_admin_browser):
         preauth_admin_browser.visit(
-            live_server + reverse("admin:bpp_patent_change", args=(c.pk,))
+            nginx_live_server.url + reverse("admin:bpp_patent_change", args=(c.pk,))
         )
 
     with wait_for_page_load(preauth_admin_browser):
