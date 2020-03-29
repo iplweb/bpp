@@ -395,7 +395,7 @@ def test_admin_wydawnictwo_ciagle_dowolnie_zapisane_nazwisko(
     "url", ["wydawnictwo_ciagle", "wydawnictwo_zwarte", "patent"],
 )
 def test_admin_domyslnie_afiliuje_nowy_rekord(
-    preauth_admin_browser, nginx_live_server, url, expected
+    preauth_admin_browser, nginx_live_server, url, expected,
 ):
     # twórz nowy obiekt, nie używaj z fixtury, bo db i transactional_db
     mommy.make(Uczelnia, domyslnie_afiliuje=expected)
@@ -404,9 +404,7 @@ def test_admin_domyslnie_afiliuje_nowy_rekord(
     with wait_for_page_load(browser):
         browser.visit(nginx_live_server.url + reverse(f"admin:bpp_{url}_add"))
 
-    add_handler = browser.find_by_css(".grp-add-handler")[0]
-    show_element(browser, add_handler)
-    add_handler.click()
+    add_extra_autor_inline(browser)
 
     v = browser.find_by_id("id_autorzy_set-0-afiliuje")
     assert v.checked == expected

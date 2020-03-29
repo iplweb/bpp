@@ -11,6 +11,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 from model_mommy import mommy
 from selenium.webdriver.common.keys import Keys
+from splinter.exceptions import ElementDoesNotExist
 
 from bpp.models import (
     Tytul,
@@ -335,7 +336,18 @@ def assertPopupContains(browser, text, accept=True):
 
 
 def add_extra_autor_inline(browser, no_current_inlines=0):
-    elem = browser.find_by_css("a.grp-add-handler")[1]
+    elems = browser.find_by_css(".grp-add-handler")
+    e = None
+    for e in elems:
+        if (
+            e.visible
+            and e.text.find("Dodaj") >= 0
+            and e.text.find("powiązanie autora") >= 0
+        ):
+            elem = e
+    if e is None:
+        raise ElementDoesNotExist("element .grp-add-handler nie istnieje")
+
     proper_click_element(browser, elem)
     wait_for(lambda: browser.find_by_id(f"id_autorzy_set-{no_current_inlines}-autor"))
 
