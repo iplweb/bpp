@@ -15,7 +15,7 @@ class Rodzaj_ZrodlaSerializer(serializers.ModelSerializer):
 
 class ZrodloSerializer(serializers.HyperlinkedModelSerializer):
     rodzaj = serializers.HyperlinkedRelatedField(
-        read_only=True, view_name="api_v1:rodzaj_zrodla-detail"
+        view_name="api_v1:rodzaj_zrodla-detail", read_only=True
     )
 
     class Meta:
