@@ -17,7 +17,7 @@ from bpp.tests import (
     submitted_form_good,
 )
 from django_bpp.selenium_util import wait_for_page_load
-from .helpers import *
+import pytest
 
 ID = "id_tytul_oryginalny"
 

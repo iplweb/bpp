@@ -4,12 +4,12 @@
 do ustawiania testów."""
 import random
 import time
+import warnings
 from datetime import datetime
 
 from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 from model_mommy import mommy
-from selenium.common.exceptions import ElementClickInterceptedException
 from selenium.webdriver.common.keys import Keys
 
 from bpp.models import (
@@ -220,12 +220,26 @@ charakter = _lookup_fun(Charakter_Formalny)
 
 
 def scroll_into_view(browser, arg):
+    warnings.warn("Uzyj show_element zamiast", DeprecationWarning, stacklevel=2)
     s = f"document.getElementById('{arg}').scrollIntoView(); window.scrollBy(0,-100);"
     return browser.execute_script(s)
 
 
 def show_element(browser, element):
-    browser.driver.execute_script("arguments[0].scrollIntoView();", element._element)
+    s = """
+        console.log('enter---');
+        window.scrollTo(0, 0);
+        var viewPortHeight = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
+        console.log(viewPortHeight);
+        var elementTop = arguments[0].getBoundingClientRect().top;
+        console.log(elementTop);
+        if (elementTop < (viewPortHeight/2)*0.5 || elementTop > (viewPortHeight/2)*1.5 ) {
+            console.log("scrolling");
+            window.scrollTo(0, Math.max(0, elementTop-(viewPortHeight/2)));
+            console.log(Math.max(0, elementTop-(viewPortHeight/2)));    
+        }    
+        """
+    return browser.execute_script(s, element._element)
 
 
 def select_select2_autocomplete(browser, element_id, value):
@@ -234,7 +248,7 @@ def select_select2_autocomplete(browser, element_id, value):
     sibling = element.find_by_xpath("following-sibling::span")
 
     # Umieść go na widoku
-    scroll_into_view(browser, element_id)
+    show_element(browser, element)
 
     # Kliknij w aktywny element, następnie wyślij klawisze do aktywnego
     # elementu, który się pojawił (wyskakujący pop-up select2)
@@ -300,18 +314,30 @@ def submit_admin_form(browser):
         )
 
 
+def proper_click(browser, arg):
+    scroll_into_view(browser, arg)
+    browser.execute_script(f"document.getElementById('{arg}').click()")
+
+
+def proper_click_element(browser, element):
+    show_element(browser, element)
+    return element.click()
+
+
+def assertPopupContains(browser, text, accept=True):
+    """Switch to popup, assert it contains at least a part
+    of the text, close the popup. Error otherwise.
+    """
+    alert = browser.driver.switch_to.alert
+    if text not in alert.text:
+        raise AssertionError("%r not found in %r" % (text, alert.text))
+    if accept:
+        alert.accept()
+
+
 def add_extra_autor_inline(browser, no_current_inlines=0):
     elem = browser.find_by_css("a.grp-add-handler")[1]
-    elem._element.location_once_scrolled_into_view
-    no_moves = 0
-    while no_moves < 5:
-        try:
-            elem.click()
-            break
-        except ElementClickInterceptedException:
-            browser.execute_script("window.scrollBy(0, 50);")
-            no_moves += 1
-
+    proper_click_element(browser, elem)
     wait_for(lambda: browser.find_by_id(f"id_autorzy_set-{no_current_inlines}-autor"))
 
 

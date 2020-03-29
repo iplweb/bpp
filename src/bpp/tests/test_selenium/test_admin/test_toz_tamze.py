@@ -10,9 +10,9 @@ from bpp.models import Wydawnictwo_Ciagle
 from bpp.models.patent import Patent
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 from bpp.tests import any_ciagle
-from bpp.tests.util import any_zwarte, any_patent
+from bpp.tests.util import any_zwarte, any_patent, assertPopupContains
 from django_bpp.selenium_util import wait_for_page_load
-from .helpers import *
+import pytest
 
 ID = "id_tytul_oryginalny"
 

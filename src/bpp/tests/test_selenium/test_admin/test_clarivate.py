@@ -8,9 +8,9 @@ except ImportError:
 from mock import Mock
 from selenium.webdriver.support.expected_conditions import alert_is_present
 
-from bpp.tests.util import scroll_into_view
+from bpp.tests.util import scroll_into_view, assertPopupContains
 from django_bpp.selenium_util import wait_for, wait_for_page_load
-from .helpers import *
+import pytest
 
 ID = "id_tytul_oryginalny"
 

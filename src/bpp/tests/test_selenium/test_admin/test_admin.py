@@ -22,7 +22,12 @@ from bpp.models import (
 from bpp.models.patent import Patent
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 from bpp.models.zrodlo import Punktacja_Zrodla
-from bpp.tests import any_ciagle, any_autor, any_jednostka
+from bpp.tests import (
+    any_ciagle,
+    any_autor,
+    any_jednostka,
+    add_extra_autor_inline,
+)
 from bpp.tests.util import (
     any_zrodlo,
     CURRENT_YEAR,
@@ -31,7 +36,7 @@ from bpp.tests.util import (
     show_element,
 )
 from django_bpp.selenium_util import wait_for_page_load, wait_for
-from .helpers import *
+import pytest
 
 ID = "id_tytul_oryginalny"
 
@@ -218,19 +223,12 @@ def autorform_browser(preauth_admin_browser, db, nginx_live_server):
 
 @flaky(max_runs=5)
 def test_autorform_uzupelnianie_jednostki(autorform_browser, autorform_jednostka):
-    autorform_browser.execute_script(
-        """
-    document.getElementsByClassName("grp-add-handler")[0].scrollIntoView();
-    window.scrollBy(0, -100);
-    """
-    )
-    autorform_browser.find_by_css(".grp-add-handler").first.click()
-    wait_for(lambda: autorform_browser.find_by_id("id_autorzy_set-0-autor"))
+    add_extra_autor_inline(autorform_browser)
 
     select_select2_autocomplete(autorform_browser, "id_autorzy_set-0-autor", "KOWALSKI")
 
     sel = autorform_browser.find_by_id("id_autorzy_set-0-jednostka")
-    assert sel.value == str(autorform_jednostka.pk)
+    assert str(sel.value) == str(autorform_jednostka.pk)
 
 
 def find_autocomplete_widget(browser, id):
@@ -246,25 +244,17 @@ def find_autocomplete_widget(browser, id):
 
 def test_autorform_kasowanie_autora(autorform_browser, autorform_jednostka):
     # kliknij "dodaj powiazanie autor-wydawnictwo"
-    autorform_browser.execute_script(
-        """
-    document.getElementsByClassName("grp-add-handler")[0].scrollIntoView()
-    """
-    )
-    autorform_browser.find_by_css(".grp-add-handler").first.click()
-    wait_for(lambda: autorform_browser.find_by_id("id_autorzy_set-0-autor"))
+    add_extra_autor_inline(autorform_browser)
 
     # uzupełnij autora
     select_select2_autocomplete(autorform_browser, "id_autorzy_set-0-autor", "KOW")
 
-    start = time.time()
-    while True:
+    def jednostka_ustawiona():
         jed = autorform_browser.find_by_id("id_autorzy_set-0-jednostka")
         if jed.value != "":
-            break
-        time.sleep(0.1)
-        if time.time() - start >= 3:
-            raise Exception("Timeout")
+            return jed.value
+
+    wait_for(jednostka_ustawiona)
 
     # Jednostka ustawiona. Usuń autora:
     select_select2_clear_selection(autorform_browser, "id_autorzy_set-0-autor")
@@ -309,7 +299,7 @@ def test_admin_wydawnictwo_zwarte_uzupelnij_rok(
 
     browser.fill("miejsce_i_rok", "Lublin 2002")
 
-    proper_click(browser, "id_rok_button")
+    proper_click_element(browser, button)
 
     browser.wait_for_condition(
         lambda browser: browser.find_by_id("id_rok").value == "2002"
@@ -323,13 +313,13 @@ def test_admin_wydawnictwo_zwarte_uzupelnij_rok(
     )
 
     browser.fill("rok", "")
-    button.click()
+    proper_click_element(browser, button)
     browser.wait_for_condition(
         lambda browser: browser.find_by_id("id_rok").value == "2002"
     )
 
     browser.fill("miejsce_i_rok", "")
-    button.click()
+    proper_click_element(browser, button)
     browser.wait_for_condition(
         lambda browser: browser.find_by_id("id_rok").value == "1997"
     )
@@ -363,7 +353,7 @@ def test_admin_wydawnictwo_ciagle_uzupelnij_rok(
 
 
 def test_admin_wydawnictwo_ciagle_dowolnie_zapisane_nazwisko(
-    preauth_admin_browser, live_server, autor_jan_kowalski
+    preauth_admin_browser, nginx_live_server, autor_jan_kowalski
 ):
     """
     :type preauth_admin_browser: splinter.driver.webdriver.remote.WebDriver
@@ -371,12 +361,15 @@ def test_admin_wydawnictwo_ciagle_dowolnie_zapisane_nazwisko(
 
     browser = preauth_admin_browser
 
-    browser.visit(live_server + reverse("admin:bpp_wydawnictwo_ciagle_add"))
+    with wait_for_page_load(browser):
+        browser.visit(
+            nginx_live_server.url + reverse("admin:bpp_wydawnictwo_ciagle_add")
+        )
 
-    elem = browser.find_by_xpath(
-        "/html/body/div[2]/article/div/form/div/div[1]/ul/li/a"
-    )
-    show_element(browser, elem)
+    xp1 = "/html/body/div[2]/article/div/form/div/div[1]/ul/li/a"
+    wait_for(lambda: len(browser.find_by_xpath(xp1)) > 0)
+    elem = browser.find_by_xpath(xp1)
+    show_element(browser, elem[0])
     elem.click()
 
     browser.find_by_xpath(
@@ -398,24 +391,18 @@ def test_admin_wydawnictwo_ciagle_dowolnie_zapisane_nazwisko(
     "url", ["wydawnictwo_ciagle", "wydawnictwo_zwarte", "patent"],
 )
 def test_admin_domyslnie_afiliuje_nowy_rekord(
-    preauth_admin_browser, live_server, url, expected
+    preauth_admin_browser, nginx_live_server, url, expected
 ):
     # twórz nowy obiekt, nie używaj z fixtury, bo db i transactional_db
-    uczelnia = mommy.make(Uczelnia, domyslnie_afiliuje=expected)
+    mommy.make(Uczelnia, domyslnie_afiliuje=expected)
 
     browser = preauth_admin_browser
     with wait_for_page_load(browser):
-        browser.visit(live_server + reverse(f"admin:bpp_{url}_add"))
+        browser.visit(nginx_live_server.url + reverse(f"admin:bpp_{url}_add"))
 
-    time.sleep(0.5)
-    browser.execute_script(
-        "document.getElementsByClassName('grp-add-handler')[0].scrollIntoView(); "
-    )
-    time.sleep(0.5)
-    browser.execute_script("window.scrollBy(0,window.innerHeight/2);")
-    # time.sleep(0.5)
-    browser.find_by_css(".grp-add-handler")[0].click()
-    time.sleep(0.5)
+    add_handler = browser.find_by_css(".grp-add-handler")[0]
+    show_element(browser, add_handler)
+    add_handler.click()
 
     v = browser.find_by_id("id_autorzy_set-0-afiliuje")
     assert v.checked == expected
