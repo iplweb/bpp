@@ -66,6 +66,13 @@ CHARAKTER_SLOTY = Choices(
     (const.CHARAKTER_SLOTY_ROZDZIAL, "rozdzial", "Rozdział"),
 )
 
+RODZAJ_PBN_CHOICES = [
+    (None, "nie eksportuj do PBN"),
+    (const.RODZAJ_PBN_ARTYKUL, "artykuł"),
+    (const.RODZAJ_PBN_KSIAZKA, "książka"),
+    (const.RODZAJ_PBN_ROZDZIAL, "rozdział"),
+]
+
 
 class Charakter_Formalny(NazwaISkrot, MPTTModel):
     parent = TreeForeignKey(
@@ -111,12 +118,7 @@ class Charakter_Formalny(NazwaISkrot, MPTTModel):
 
     rodzaj_pbn = models.PositiveSmallIntegerField(
         verbose_name="Rodzaj dla PBN",
-        choices=[
-            (None, "nie eksportuj do PBN"),
-            (const.RODZAJ_PBN_ARTYKUL, "artykuł"),
-            (const.RODZAJ_PBN_KSIAZKA, "książka"),
-            (const.RODZAJ_PBN_ROZDZIAL, "rozdział"),
-        ],
+        choices=RODZAJ_PBN_CHOICES,
         null=True,
         blank=True,
         help_text="""Pole określające, czy wydawnictwa posiadające dany charakter formalny zostaną włączone

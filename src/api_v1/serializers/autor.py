@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from api_v1.serializers.util import AbsoluteUrlSerializerMixin
 from bpp.models import Autor, Tytul, Funkcja_Autora, Autor_Jednostka
 
 
@@ -38,7 +39,11 @@ class Autor_JednostkaSerializer(serializers.HyperlinkedModelSerializer):
         ]
 
 
-class AutorSerializer(serializers.HyperlinkedModelSerializer):
+class AutorSerializer(
+    AbsoluteUrlSerializerMixin, serializers.HyperlinkedModelSerializer
+):
+    absolute_url = serializers.SerializerMethodField("get_absolute_url")
+
     aktualna_jednostka = serializers.HyperlinkedRelatedField(
         view_name="api_v1:jednostka-detail", read_only=True
     )
@@ -76,4 +81,5 @@ class AutorSerializer(serializers.HyperlinkedModelSerializer):
             "expertus_id",
             "slug",
             "jednostki",
+            "absolute_url",
         ]

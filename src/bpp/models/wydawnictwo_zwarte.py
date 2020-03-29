@@ -3,6 +3,7 @@ import re
 import warnings
 
 from dirtyfields.dirtyfields import DirtyFieldsMixin
+from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models
 from django.db.models import CASCADE, PROTECT
 from django.db.models.signals import post_delete, pre_delete
@@ -49,6 +50,7 @@ from bpp.models.abstract import (
 )
 from bpp.models.autor import Autor
 from bpp.models.const import TO_REDAKTOR
+from bpp.models.nagroda import Nagroda
 from bpp.models.util import ZapobiegajNiewlasciwymCharakterom
 from bpp.models.util import dodaj_autora
 from bpp.models.wydawca import Wydawca
@@ -207,6 +209,8 @@ class Wydawnictwo_Zwarte(
         zostanie obliczona i będzie to ilość wszystkich redaktorów 
         przypisanych do danej monografii""",
     )
+
+    nagrody = GenericRelation(Nagroda)
 
     class Meta:
         verbose_name = "wydawnictwo zwarte"
