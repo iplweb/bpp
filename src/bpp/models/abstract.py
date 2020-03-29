@@ -22,6 +22,7 @@ from bpp.models.dyscyplina_naukowa import Autor_Dyscyplina
 from bpp.models.dyscyplina_naukowa import Dyscyplina_Naukowa
 from bpp.models.util import ModelZOpisemBibliograficznym
 from bpp.models.util import dodaj_autora
+from bpp.util import safe_html
 
 ILOSC_ZNAKOW_NA_ARKUSZ = 40000.0
 
@@ -161,6 +162,10 @@ class DwaTytuly(models.Model):
 
     tytul_oryginalny = models.TextField("Tytuł oryginalny", db_index=True)
     tytul = models.TextField("Tytuł", null=True, blank=True, db_index=True)
+
+    def clean(self):
+        self.tytul_oryginalny = safe_html(self.tytul_oryginalny)
+        self.tytul = safe_html(self.tytul)
 
     class Meta:
         abstract = True

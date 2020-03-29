@@ -148,7 +148,6 @@ INSTALLED_APPS = [
     "crispy_forms",
     "crispy_forms_foundation",
     "compressor",
-    "secure_input",
     "session_security",
     "notifications",
     "integrator2",
