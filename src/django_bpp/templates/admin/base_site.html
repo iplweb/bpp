@@ -18,7 +18,7 @@
             <div style="float: right; ">
             {% crispy global_nav_form %}
             <script type="text/javascript">
-                $(':input[name$=global_nav_value]').on('change', function () {
+                django.jQuery(':input[name$=global_nav_value]').on('change', function () {
                     location.href = "/global-nav-redir/" + $(this).val() +
                         "?source=admin";
                 });
@@ -53,14 +53,14 @@
             $("#grp-admin-title").html(
                     '<a href="/">' + txt + '</a>');
 
-            $('.charmap').keypad({
+            grp.jQuery('.charmap').keypad({
                 keypadOnly: false,
                 layout: [
                     'αβγδεζ ©® àáâãäåæçß ъяшертыу',
                     'ηθικλμ ™℠ èéêëìííî  иопющэас',
                     'νξοπρσ €£ ïñòóôõöø  дфгчйкль',
                     'τυφχψω ¥¢ ùúûüýÿðþ  жзхцвбнм',
-                    $.keypad.SHIFT + $.keypad.CLOSE
+                    grp.jQuery.keypad.SHIFT + grp.jQuery.keypad.CLOSE
                 ],
                 showAnim: 'fadeIn',
                 duration: 'fast',

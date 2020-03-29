@@ -165,8 +165,10 @@ def test_main_view(zle_przypisana_praca, client, admin_user):
 
 
 @pytest.mark.django_db
-def test_main_view_admin(zle_przypisana_praca, preauth_admin_browser, live_server):
+def test_main_view_admin(
+    zle_przypisana_praca, preauth_admin_browser, nginx_live_server
+):
     preauth_admin_browser.visit(
-        live_server + reverse("rozbieznosci_dyscyplin:main-view")
+        nginx_live_server.url + reverse("rozbieznosci_dyscyplin:main-view")
     )
     wait_for(lambda: "Kowalski" in preauth_admin_browser.html)

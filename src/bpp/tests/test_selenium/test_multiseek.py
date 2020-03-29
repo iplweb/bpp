@@ -1,6 +1,7 @@
 # -*- encoding: utf-8 -*-
 import pytest
 from django.urls.base import reverse
+from flaky import flaky
 
 from bpp.models.cache import Rekord
 from django_bpp.selenium_util import wait_for_page_load
@@ -8,12 +9,11 @@ from django_bpp.selenium_util import wait_for_page_load
 
 @pytest.fixture
 def multiseek_browser(browser, live_server):
-    browser.visit(
-        live_server + reverse("multiseek:index")
-    )
+    browser.visit(live_server + reverse("multiseek:index"))
     return browser
 
 
+@flaky(max_runs=5)
 def test_wyrzuc(wydawnictwo_zwarte, multiseek_browser, live_server):
     browser = multiseek_browser
 
@@ -21,7 +21,8 @@ def test_wyrzuc(wydawnictwo_zwarte, multiseek_browser, live_server):
         browser.find_by_id("multiseek-szukaj").click()
 
     browser.execute_script(
-        "multiseek.removeFromResults('%s')" % Rekord.objects.all().first().js_safe_pk)
+        "multiseek.removeFromResults('%s')" % Rekord.objects.all().first().js_safe_pk
+    )
 
     with wait_for_page_load(browser):
         browser.visit(live_server + reverse("multiseek:results"))
@@ -31,7 +32,8 @@ def test_wyrzuc(wydawnictwo_zwarte, multiseek_browser, live_server):
     browser.find_by_id("pokaz-jakie").click()
 
     browser.execute_script(
-        "multiseek.removeFromResults('%s')" % Rekord.objects.all().first().js_safe_pk)
+        "multiseek.removeFromResults('%s')" % Rekord.objects.all().first().js_safe_pk
+    )
 
     with wait_for_page_load(browser):
         browser.visit(live_server + reverse("multiseek:results"))
