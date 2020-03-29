@@ -19,12 +19,13 @@ ID = "id_tytul_oryginalny"
 pytestmark = [pytest.mark.slow, pytest.mark.selenium]
 
 
-def test_admin_wydawnictwo_ciagle_toz(preauth_admin_browser, live_server):
+def test_admin_wydawnictwo_ciagle_toz(preauth_admin_browser, nginx_live_server):
     Wydawnictwo_Ciagle.objects.all().delete()
     c = any_ciagle(informacje="TO INFORMACJE")
 
     preauth_admin_browser.visit(
-        live_server + reverse("admin:bpp_wydawnictwo_ciagle_change", args=(c.pk,))
+        nginx_live_server.url
+        + reverse("admin:bpp_wydawnictwo_ciagle_change", args=(c.pk,))
     )
 
     wcc = Wydawnictwo_Ciagle.objects.count

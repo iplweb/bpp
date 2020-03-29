@@ -40,10 +40,10 @@ pytestmark = [pytest.mark.slow, pytest.mark.selenium]
 
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.parametrize("url", ["wydawnictwo_ciagle", "wydawnictwo_zwarte"])
-def test_uzupelnij_strona_tom_nr_zeszytu(url, preauth_admin_browser, live_server):
+def test_uzupelnij_strona_tom_nr_zeszytu(url, preauth_admin_browser, nginx_live_server):
     url = reverse("admin:bpp_%s_add" % url)
     with wait_for_page_load(preauth_admin_browser):
-        preauth_admin_browser.visit(live_server + url)
+        preauth_admin_browser.visit(nginx_live_server.url + url)
 
     preauth_admin_browser.find_by_name("informacje").type("1993 vol. 5 z. 1")
     preauth_admin_browser.find_by_name("szczegoly").type("s. 4-3")
@@ -87,11 +87,11 @@ def test_liczba_znakow_wydawniczych_liczba_arkuszy_wydawniczych(
 
 @flaky(max_runs=5)
 @pytest.mark.django_db(transaction=True)
-def test_automatycznie_uzupelnij_punkty(preauth_admin_browser, live_server):
+def test_automatycznie_uzupelnij_punkty(preauth_admin_browser, nginx_live_server):
     url = reverse("admin:bpp_wydawnictwo_ciagle_add")
 
     with wait_for_page_load(preauth_admin_browser):
-        preauth_admin_browser.visit(live_server + url)
+        preauth_admin_browser.visit(nginx_live_server.url + url)
 
     any_zrodlo(nazwa="FOO BAR")
     proper_click(preauth_admin_browser, "id_wypelnij_pola_punktacji_button")
@@ -114,7 +114,7 @@ def trigger_event(elem, event):
     )
 
 
-def test_admin_uzupelnij_punkty(preauth_admin_browser, live_server):
+def test_admin_uzupelnij_punkty(preauth_admin_browser, nginx_live_server):
     z = any_zrodlo(nazwa="WTF LOL")
 
     kw = dict(zrodlo=z)
@@ -125,7 +125,7 @@ def test_admin_uzupelnij_punkty(preauth_admin_browser, live_server):
     c = any_ciagle(zrodlo=z, impact_factor=5, punkty_kbn=5)
 
     url = reverse("admin:bpp_wydawnictwo_ciagle_change", args=(c.pk,))
-    preauth_admin_browser.visit(live_server + url)
+    preauth_admin_browser.visit(nginx_live_server.url + url)
 
     rok = preauth_admin_browser.find_by_id("id_rok")
     punkty_kbn = preauth_admin_browser.find_by_id("id_punkty_kbn")
@@ -163,10 +163,10 @@ def test_admin_uzupelnij_punkty(preauth_admin_browser, live_server):
     preauth_admin_browser.execute_script("window.onbeforeunload = function(e) {};")
 
 
-def test_upload_punkty(preauth_admin_browser, live_server):
+def test_upload_punkty(preauth_admin_browser, nginx_live_server):
     z = any_zrodlo(nazwa="WTF LOL")
     url = reverse("admin:bpp_wydawnictwo_ciagle_add")
-    preauth_admin_browser.visit(live_server + url)
+    preauth_admin_browser.visit(nginx_live_server.url + url)
 
     select_select2_autocomplete(preauth_admin_browser, "id_zrodlo", "WTF")
 
@@ -207,10 +207,10 @@ def autorform_jednostka(db):
 
 
 @pytest.fixture
-def autorform_browser(preauth_admin_browser, db, live_server):
+def autorform_browser(preauth_admin_browser, db, nginx_live_server):
     url = reverse("admin:bpp_wydawnictwo_ciagle_add")
     with wait_for_page_load(preauth_admin_browser):
-        preauth_admin_browser.visit(live_server + url)
+        preauth_admin_browser.visit(nginx_live_server.url + url)
 
     preauth_admin_browser.execute_script("window.onbeforeunload = function(e) {};")
     return preauth_admin_browser
@@ -276,8 +276,10 @@ def test_autorform_kasowanie_autora(autorform_browser, autorform_jednostka):
     autorform_browser.execute_script("window.onbeforeunload = function(e) {};")
 
 
-def test_bug_on_user_add(preauth_admin_browser, live_server):
-    preauth_admin_browser.visit(live_server + reverse("admin:bpp_bppuser_add"))
+def test_bug_on_user_add(preauth_admin_browser, nginx_live_server):
+    preauth_admin_browser.visit(
+        nginx_live_server.url + reverse("admin:bpp_bppuser_add")
+    )
     preauth_admin_browser.fill("username", "as")
     preauth_admin_browser.fill("password1", "as")
     preauth_admin_browser.fill("password2", "as")
@@ -290,7 +292,7 @@ def test_bug_on_user_add(preauth_admin_browser, live_server):
 
 
 def test_admin_wydawnictwo_zwarte_uzupelnij_rok(
-    wydawnictwo_zwarte, preauth_admin_browser, live_server
+    wydawnictwo_zwarte, preauth_admin_browser, nginx_live_server
 ):
     """
     :type preauth_admin_browser: splinter.driver.webdriver.remote.WebDriver
@@ -298,7 +300,7 @@ def test_admin_wydawnictwo_zwarte_uzupelnij_rok(
 
     browser = preauth_admin_browser
 
-    browser.visit(live_server + reverse("admin:bpp_wydawnictwo_zwarte_add"))
+    browser.visit(nginx_live_server.url + reverse("admin:bpp_wydawnictwo_zwarte_add"))
 
     rok = browser.find_by_id("id_rok")
     button = browser.find_by_id("id_rok_button")
@@ -333,7 +335,9 @@ def test_admin_wydawnictwo_zwarte_uzupelnij_rok(
     )
 
 
-def test_admin_wydawnictwo_ciagle_uzupelnij_rok(preauth_admin_browser, live_server):
+def test_admin_wydawnictwo_ciagle_uzupelnij_rok(
+    preauth_admin_browser, nginx_live_server
+):
     """
     :type preauth_admin_browser: splinter.driver.webdriver.remote.WebDriver
     """
@@ -341,7 +345,9 @@ def test_admin_wydawnictwo_ciagle_uzupelnij_rok(preauth_admin_browser, live_serv
     browser = preauth_admin_browser
 
     with wait_for_page_load(browser):
-        browser.visit(live_server + reverse("admin:bpp_wydawnictwo_ciagle_add"))
+        browser.visit(
+            nginx_live_server.url + reverse("admin:bpp_wydawnictwo_ciagle_add")
+        )
     browser.fill("informacje", "Lublin 2002 test")
     proper_click(browser, "id_rok_button")
 
