@@ -369,9 +369,9 @@ webob==1.8.6 \
     --hash=sha256:a3c89a8e9ba0aeb17382836cdb73c516d0ecf6630ec40ec28288f3ed459ce87b \
     --hash=sha256:aa3a917ed752ba3e0b242234b2a373f9c4e2a75d35291dcbe977649bd21fd108 \
     # via -c requirements.txt, webtest
-webtest==2.0.29 \
-    --hash=sha256:9136514159a2e76a21751bf4ab5d3371e539c8ada8b950fcf68e307d9e584a07 \
-    --hash=sha256:dbbccc15ac2465066c95dc3a7de0d30cde3791e886ccbd7e91d5d2a2580c922d \
+webtest==2.0.34 \
+    --hash=sha256:71114cd778a7d7b237ec5c8a5c32084f447d869ae62e48bcd5b73af211133e74 \
+    --hash=sha256:da9cf14c103ff51a40dee4cac7657840d1317456eb8f0ca81289b5cbff175f4b \
     # via -r requirements_dev.in, django-webtest
 werkzeug==1.0.0 \
     --hash=sha256:169ba8a33788476292d04186ab33b01d6add475033dfc07215e6d219cc077096 \

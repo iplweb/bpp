@@ -448,7 +448,7 @@ def _webtest_login(webtest_app, username, password, login_form="login_form"):
     form = webtest_app.get(reverse(login_form)).form
     form["username"] = username  # normal_django_user.username
     form["password"] = password  # NORMAL_DJANGO_USER_PASSWORD
-    res = form.submit().follow()
+    res = form.submit().maybe_follow()
     assert res.context["user"].username == username  # normal_django_user.username
     return webtest_app
 
