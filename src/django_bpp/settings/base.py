@@ -165,7 +165,7 @@ INSTALLED_APPS = [
     "import_dbf",
     "rest_framework",
     "django_filters",
-    "bpp_api_v1",
+    "api_v1",
 ]
 
 # Profile użytkowników

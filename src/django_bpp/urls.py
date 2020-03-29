@@ -63,10 +63,7 @@ urlpatterns = (
             r"^integrator2/",
             include(("integrator2.urls", "integrator2"), namespace="integrator2"),
         ),
-        url(
-            r"^bpp_api/v1/",
-            include(("bpp_api_v1.urls", "bpp_api_v1"), namespace="bpp_api_v1"),
-        ),
+        url(r"^api/v1/", include(("api_v1.urls", "api_v1"), namespace="api_v1"),),
         url(
             r"^eksport_pbn/",
             include(("eksport_pbn.urls", "eksport_pbn"), namespace="eksport_pbn"),

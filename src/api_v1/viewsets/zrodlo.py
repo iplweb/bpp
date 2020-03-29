@@ -1,7 +1,7 @@
 from rest_framework import viewsets
 
 from bpp.models import Zrodlo, Rodzaj_Zrodla
-from bpp_api_v1.serializers import ZrodloSerializer, Rodzaj_ZrodlaSerializer
+from api_v1.serializers.zrodlo import ZrodloSerializer, Rodzaj_ZrodlaSerializer
 
 
 class ZrodloViewSet(viewsets.ReadOnlyModelViewSet):
