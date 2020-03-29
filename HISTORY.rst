@@ -2,6 +2,13 @@
 Historia zmian
 ==============
 
+202003.29
+---------
+
+* Django 3.0 (b/n),
+* REST API (b/n),
+* narzędzie do dzielenia "podwójnych" wydawców po imporcie (b/n)
+
 202003.27
 ---------
 
