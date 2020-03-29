@@ -196,8 +196,7 @@ class Tabela_Konferencji_Miedzynarodowej(TypowaTabelaMixin, SumyImpactKbnMixin, 
     zakres = Column("Zakres stron ref.", A("szczegoly"), orderable=False)
 
     def __init__(self, *args, **kwargs):
-        Table.__init__(self, *args, **kwargs)
-        TypowaTabelaMixin.__init__(self)
+        super(Tabela_Konferencji_Miedzynarodowej, self).__init__(*args, **kwargs)
         self.zrodlo_counter = itertools.count(1)
         self.output_zrodlo = False
         self.old_zrodlo = None
@@ -267,10 +266,6 @@ class Tabela_Monografii(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
         if record.uwagi:
             buf += ", " + record.uwagi
         return buf
-
-    def __init__(self, *args, **kwargs):
-        Table.__init__(self, *args, **kwargs)
-        TypowaTabelaMixin.__init__(self)
 
 
 class Tabela_Redakcji_Naukowej(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
@@ -374,7 +369,7 @@ class Tabela_Rozdzialu_Monografii(TypowaTabelaMixin, SumyImpactKbnMixin, Table):
     lp_rozdzialu = Column("Lp. rozdziału", A("szczegoly"))
 
     def __init__(self, *args, **kwargs):
-        super(Tabela_Rozdzialu_Monografii, self).__init__(*args, **kw)
+        super(Tabela_Rozdzialu_Monografii, self).__init__(*args, **kwargs)
 
         self.counter = 0
         self.old_tm = None
