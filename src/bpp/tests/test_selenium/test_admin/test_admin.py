@@ -1,8 +1,6 @@
 # -*- encoding: utf-8 -*-
 import time
 
-from flaky import flaky
-
 try:
     from django.core.urlresolvers import reverse
 except ImportError:
@@ -69,7 +67,6 @@ def test_uzupelnij_strona_tom_nr_zeszytu(url, preauth_admin_browser, nginx_live_
         assert preauth_admin_browser.find_by_name("nr_zeszytu").value == "1"
 
 
-@flaky(max_runs=5)
 def test_liczba_znakow_wydawniczych_liczba_arkuszy_wydawniczych(
     preauth_admin_browser, nginx_live_server
 ):
@@ -94,7 +91,6 @@ def test_liczba_znakow_wydawniczych_liczba_arkuszy_wydawniczych(
     )
 
 
-@flaky(max_runs=5)
 @pytest.mark.django_db(transaction=True)
 def test_automatycznie_uzupelnij_punkty(preauth_admin_browser, nginx_live_server):
     url = reverse("admin:bpp_wydawnictwo_ciagle_add")
@@ -225,7 +221,6 @@ def autorform_browser(preauth_admin_browser, db, nginx_live_server):
     return preauth_admin_browser
 
 
-@flaky(max_runs=5)
 def test_autorform_uzupelnianie_jednostki(autorform_browser, autorform_jednostka):
     add_extra_autor_inline(autorform_browser)
 
