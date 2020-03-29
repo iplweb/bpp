@@ -69,7 +69,7 @@ setup(
     author_email="michal.dtz@gmail.com",
     url="http://bpp.iplweb.pl/",
     packages=find_packages("src"),
-    install_requires=requirements(),
+    install_requires=list(requirements()),
     package_dir={"": "src"},
     include_package_data=True,
     license="MIT license",
