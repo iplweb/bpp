@@ -27,6 +27,10 @@ from bpp.tests import (
     any_autor,
     any_jednostka,
     add_extra_autor_inline,
+    proper_click_element,
+    scroll_into_view,
+    assertPopupContains,
+    proper_click_by_id,
 )
 from bpp.tests.util import (
     any_zrodlo,
@@ -99,12 +103,12 @@ def test_automatycznie_uzupelnij_punkty(preauth_admin_browser, nginx_live_server
         preauth_admin_browser.visit(nginx_live_server.url + url)
 
     any_zrodlo(nazwa="FOO BAR")
-    proper_click(preauth_admin_browser, "id_wypelnij_pola_punktacji_button")
+    proper_click_by_id(preauth_admin_browser, "id_wypelnij_pola_punktacji_button")
     assertPopupContains(preauth_admin_browser, "Najpierw wybierz jakie")
 
     select_select2_autocomplete(preauth_admin_browser, "id_zrodlo", "FOO")
 
-    proper_click(preauth_admin_browser, "id_wypelnij_pola_punktacji_button")
+    proper_click_by_id(preauth_admin_browser, "id_wypelnij_pola_punktacji_button")
     assertPopupContains(preauth_admin_browser, "Uzupełnij pole")
 
     preauth_admin_browser.execute_script("window.onbeforeunload = function(e) {};")
@@ -138,25 +142,22 @@ def test_admin_uzupelnij_punkty(preauth_admin_browser, nginx_live_server):
     assert rok.value == str(CURRENT_YEAR)
     assert punkty_kbn.value == "5.00"
 
-    proper_click(preauth_admin_browser, "id_wypelnij_pola_punktacji_button")
-    time.sleep(1)
+    button = preauth_admin_browser.find_by_id("id_wypelnij_pola_punktacji_button")
+
+    proper_click_element(preauth_admin_browser, button)
 
     assert punkty_kbn.value == "10.20"
-    button = preauth_admin_browser.find_by_id("id_wypelnij_pola_punktacji_button")
     assert button.value == "Wypełniona!"
 
     trigger_event(rok, "change")
-    time.sleep(1)
     # Po zmianie roku LUB źródła przycisk ma się zmienić
-    assert button.value == "Wypełnij pola punktacji"
+    wait_for(lambda: button.value == "Wypełnij pola punktacji")
 
     # Zwiększymy rok o 1 i sprawdzimy, czy zmieni się punktacja
     preauth_admin_browser.fill("rok", str(CURRENT_YEAR + 1))
 
-    proper_click(preauth_admin_browser, "id_wypelnij_pola_punktacji_button")
-    time.sleep(1)
-
-    assert punkty_kbn.value == "11.20"
+    proper_click_element(preauth_admin_browser, button)
+    wait_for(lambda: punkty_kbn.value == "11.20")
 
     # Teraz usuniemy źródło i sprawdzimy, czy przycisk zmieni nazwę
     assert button.value == "Wypełniona!"
@@ -175,21 +176,24 @@ def test_upload_punkty(preauth_admin_browser, nginx_live_server):
 
     select_select2_autocomplete(preauth_admin_browser, "id_zrodlo", "WTF")
 
-    scroll_into_view(preauth_admin_browser, "id_rok")
+    rok = preauth_admin_browser.find_by_id("id_rok")
+    show_element(preauth_admin_browser, rok)
     preauth_admin_browser.fill("rok", str(CURRENT_YEAR))
 
-    scroll_into_view(preauth_admin_browser, "id_impact_factor")
+    show_element(
+        preauth_admin_browser, preauth_admin_browser.find_by_id("id_impact_factor")
+    )
     preauth_admin_browser.fill("impact_factor", "1")
 
-    proper_click(preauth_admin_browser, "id_dodaj_punktacje_do_zrodla_button")
-    # preauth_admin_browser.find_by_id("id_dodaj_punktacje_do_zrodla_button").click()
+    proper_click_by_id(preauth_admin_browser, "id_dodaj_punktacje_do_zrodla_button")
+
     time.sleep(2)
 
     assert Punktacja_Zrodla.objects.count() == 1
     assert Punktacja_Zrodla.objects.all()[0].impact_factor == 1
 
     preauth_admin_browser.fill("impact_factor", "2")
-    proper_click(preauth_admin_browser, "id_dodaj_punktacje_do_zrodla_button")
+    proper_click_by_id(preauth_admin_browser, "id_dodaj_punktacje_do_zrodla_button")
     # preauth_admin_browser.find_by_id("id_dodaj_punktacje_do_zrodla_button").click()
     time.sleep(2)
 
@@ -339,14 +343,14 @@ def test_admin_wydawnictwo_ciagle_uzupelnij_rok(
             nginx_live_server.url + reverse("admin:bpp_wydawnictwo_ciagle_add")
         )
     browser.fill("informacje", "Lublin 2002 test")
-    proper_click(browser, "id_rok_button")
+    proper_click_by_id(browser, "id_rok_button")
 
     browser.wait_for_condition(
         lambda browser: browser.find_by_id("id_rok").value == "2002"
     )
 
     browser.fill("informacje", "")
-    proper_click(browser, "id_rok_button")
+    proper_click_by_id(browser, "id_rok_button")
     browser.wait_for_condition(
         lambda browser: browser.find_by_id("id_rok_button").value == "Brak danych"
     )
