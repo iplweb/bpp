@@ -127,9 +127,8 @@ django-group-by==0.3.1 \
     --hash=sha256:4f1a17b61c7d16924a1c7afcea3ceb42c217c5c845fd03ad6e54fda4b6c710db \
     --hash=sha256:b4e554c0eb9eed39c0cdc64de20fa7b2906ad92408d6a47b5bc55764711fc2e5 \
     # via -r requirements.in
-django-htmlmin==0.10.0 \
-    --hash=sha256:0278aeb581cfc5d6a25fe6d3b3a19e4fabe7615d7bd1fcef77ce44931dc25b7c \
-    --hash=sha256:d01d525a266dc04d439fb7dc4a3701f70fd4601cf7ba8977047b4f4e9cf70aa3 \
+django-htmlmin==0.11.0 \
+    --hash=sha256:e41b2a2157570846645cc636a9bddde8aa3e03f6834a9211e61a17f2ed42b87e \
     # via -r requirements.in
 django-js-asset==1.2.2 \
     --hash=sha256:8ec12017f26eec524cab436c64ae73033368a372970af4cf42d9354fcb166bdd \

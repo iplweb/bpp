@@ -34,7 +34,7 @@ dj-pagination==2.4.0
 requests==2.20.0
 pytz==2018.4
 django-extensions==2.2.5
-django-htmlmin==0.10.0
+django-htmlmin==0.11.0
 Pillow>=6.2.0
 olefile==0.44
 django-grappelli==2.14.1
