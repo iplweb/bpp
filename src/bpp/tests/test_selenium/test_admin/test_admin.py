@@ -422,10 +422,10 @@ def test_admin_domyslnie_afiliuje_nowy_rekord(
 )
 @pytest.mark.django_db(transaction=True)
 def test_admin_domyslnie_afiliuje_istniejacy_rekord(
-    preauth_admin_browser, live_server, url, klasa, expected, afiliowany
+    preauth_admin_browser, nginx_live_server, url, klasa, expected, afiliowany
 ):
     # twórz nowy obiekt, nie używaj z fixtury, bo db i transactional_db
-    uczelnia = mommy.make(Uczelnia, domyslnie_afiliuje=expected)
+    mommy.make(Uczelnia, domyslnie_afiliuje=expected)
     autor = mommy.make(Autor, nazwisko="Kowal", imiona="Ski")
     jednostka = mommy.make(Jednostka, nazwa="Lol", skrot="WT")
     wydawnictwo = mommy.make(klasa, tytul_oryginalny="test")
@@ -438,17 +438,11 @@ def test_admin_domyslnie_afiliuje_istniejacy_rekord(
 
     browser = preauth_admin_browser
     browser.visit(
-        live_server + reverse(f"admin:bpp_{url}_change", args=(wydawnictwo.pk,))
+        nginx_live_server.url
+        + reverse(f"admin:bpp_{url}_change", args=(wydawnictwo.pk,))
     )
 
-    browser.execute_script(
-        """
-    document.getElementsByClassName("grp-add-handler")[1].scrollIntoView()
-    """
-    )
-    time.sleep(0.5)
-    browser.find_by_css(".grp-add-handler")[1].click()
-    time.sleep(0.5)
+    add_extra_autor_inline(browser)
 
     v = browser.find_by_id("id_autorzy_set-1-afiliuje")
     assert v.checked == expected
