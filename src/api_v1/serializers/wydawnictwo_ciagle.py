@@ -5,18 +5,32 @@ from api_v1.serializers.util import (
     Wydawnictwo_AutorSerializerMixin,
     WydawnictwoSerializerMixin,
 )
-from bpp.models import Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor
+from bpp.models import (
+    Wydawnictwo_Zwarte,
+    Wydawnictwo_Zwarte_Autor,
+    Wydawnictwo_Ciagle_Autor,
+    Wydawnictwo_Ciagle,
+    Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych,
+)
 
 
-class Wydawnictwo_Zwarte_AutorSerializer(
+class Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychSerializer(serializers.ModelSerializer):
+    baza = serializers.StringRelatedField()
+
+    class Meta:
+        model = Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych
+        fields = ["baza", "info"]
+
+
+class Wydawnictwo_Ciagle_AutorSerializer(
     Wydawnictwo_AutorSerializerMixin, serializers.HyperlinkedModelSerializer
 ):
     rekord = serializers.HyperlinkedRelatedField(
-        view_name="api_v1:wydawnictwo_zwarte-detail", read_only=True
+        view_name="api_v1:wydawnictwo_ciagle-detail", read_only=True
     )
 
     class Meta:
-        model = Wydawnictwo_Zwarte_Autor
+        model = Wydawnictwo_Ciagle_Autor
         fields = [
             "id",
             "autor",
@@ -32,34 +46,32 @@ class Wydawnictwo_Zwarte_AutorSerializer(
         ]
 
 
-class Wydawnictwo_ZwarteSerializer(
+class Wydawnictwo_CiagleSerializer(
     AbsoluteUrlSerializerMixin,
     WydawnictwoSerializerMixin,
     serializers.HyperlinkedModelSerializer,
 ):
 
-    wydawca = serializers.HyperlinkedRelatedField(
-        view_name="api_v1:wydawca-detail", read_only=True
+    zrodlo = serializers.HyperlinkedRelatedField(
+        view_name="api_v1:zrodlo-detail", read_only=True
     )
 
     autorzy_set = serializers.HyperlinkedRelatedField(
-        many=True, view_name="api_v1:wydawnictwo_zwarte_autor-detail", read_only=True
+        many=True, view_name="api_v1:wydawnictwo_ciagle_autor-detail", read_only=True
     )
 
     konferencja = serializers.HyperlinkedRelatedField(
         view_name="api_v1:konferencja-detail", read_only=True
     )
 
-    seria_wydawnicza = serializers.HyperlinkedRelatedField(
-        view_name="api_v1:seria_wydawnicza-detail", read_only=True
-    )
-
-    wydawnictwo_nadrzedne = serializers.HyperlinkedRelatedField(
-        view_name="api_v1:wydanwictwo_zwarte-detail", read_only=True
+    zewnetrzna_baza_danych = serializers.HyperlinkedRelatedField(
+        many=True,
+        view_name="api_v1:wydawnictwo_ciagle_zewnetrzna_baza_danych-detail",
+        read_only=True,
     )
 
     class Meta:
-        model = Wydawnictwo_Zwarte
+        model = Wydawnictwo_Ciagle
         fields = [
             "id",
             #
@@ -69,12 +81,12 @@ class Wydawnictwo_ZwarteSerializer(
             "rok",
             "status_korekty",
             #
-            "wydawnictwo_nadrzedne",
-            #
             "jezyk",
             "jezyk_alt",
             "charakter_formalny",
             "typ_kbn",
+            #
+            "zrodlo",
             #
             "www",
             "dostep_dnia",
@@ -89,10 +101,9 @@ class Wydawnictwo_ZwarteSerializer(
             "praca_wybitna",
             "uzasadnienie_wybitnosci",
             #
-            "konferencja",
+            "nr_zeszytu",
             #
-            "seria_wydawnicza",
-            "numer_w_serii",
+            "konferencja",
             #
             "impact_factor",
             "punkty_kbn",
@@ -104,15 +115,10 @@ class Wydawnictwo_ZwarteSerializer(
             "strony",
             "tom",
             #
-            "isbn",
-            "e_isbn",
+            "issn",
+            "e_issn",
             #
             "liczba_cytowan",
-            #
-            "miejsce_i_rok",
-            "wydawca",
-            "wydawca_opis",
-            "redakcja",
             #
             "openaccess_tryb_dostepu",
             "openaccess_wersja_tekstu",
@@ -128,5 +134,5 @@ class Wydawnictwo_ZwarteSerializer(
             "autorzy_set",
             "tekst_po_ostatnim_autorze",
             #
-            "nagrody",
+            "zewnetrzna_baza_danych",
         ]

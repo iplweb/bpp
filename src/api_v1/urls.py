@@ -18,6 +18,11 @@ from api_v1.viewsets.system import (
     Seria_WydawniczaViewSet,
 )
 from api_v1.viewsets.wydawca import Poziom_WydawcyViewSet, WydawcaViewSet
+from api_v1.viewsets.wydawnictwo_ciagle import (
+    Wydawnictwo_CiagleViewSet,
+    Wydawnictwo_Ciagle_AutorViewSet,
+    Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychViewSet,
+)
 from api_v1.viewsets.wydawnictwo_zwarte import (
     Wydawnictwo_ZwarteViewSet,
     Wydawnictwo_Zwarte_AutorViewSet,
@@ -41,6 +46,13 @@ router.register(r"wydawca", WydawcaViewSet)
 
 router.register(r"wydawnictwo_zwarte", Wydawnictwo_ZwarteViewSet)
 router.register(r"wydawnictwo_zwarte_autor", Wydawnictwo_Zwarte_AutorViewSet)
+
+router.register(r"wydawnictwo_ciagle", Wydawnictwo_CiagleViewSet)
+router.register(r"wydawnictwo_ciagle_autor", Wydawnictwo_Ciagle_AutorViewSet)
+router.register(
+    r"wydawnictwo_ciagle_zewnetrzna_baza_danych",
+    Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychViewSet,
+)
 
 router.register(r"rodzaj_zrodla", Rodzaj_ZrodlaViewSet)
 router.register(r"zrodlo", ZrodloViewSet)
