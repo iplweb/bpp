@@ -55,3 +55,5 @@ pylibmc
 django-filter
 progressbar2
 dbfread
+djangorestframework==3.11.0
+markdown==3.2.1
