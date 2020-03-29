@@ -123,7 +123,7 @@ class RaportSlotow(
 
         ret = []
         for elem in cpaq.values_list("dyscyplina", flat=True).order_by().distinct():
-            table_class = self.get_table_class()
+            table_class = self.table_class
             table = table_class(
                 data=cpaq.filter(dyscyplina_id=elem)
                 .select_related("rekord", "dyscyplina",)
@@ -136,7 +136,7 @@ class RaportSlotow(
             ret.append(table)
 
         if not ret:
-            table_class = self.get_table_class()
+            table_class = self.table_class
             table = table_class(data=cpaq.select_related("rekord", "dyscyplina"))
             RequestConfig(
                 self.request, paginate=self.get_table_pagination(table)

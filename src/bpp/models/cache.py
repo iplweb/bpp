@@ -17,7 +17,6 @@ from django.db.models import CASCADE, ForeignKey, Func
 from django.db.models.deletion import DO_NOTHING
 from django.db.models.lookups import In
 from django.db.models.signals import post_delete, post_save, pre_delete, pre_save
-from django.utils import six
 from django.utils.functional import cached_property
 
 from bpp.models import (
@@ -226,23 +225,8 @@ def disable():
 
 
 class TupleField(ArrayField):
-    def from_db_value(self, value, expression, connection, context):
+    def from_db_value(self, value, expression, connection):
         return tuple(value)
-
-
-@TupleField.register_lookup
-class TupleInLookup(In):
-    def get_prep_lookup(self):
-        values = super(TupleInLookup, self).get_prep_lookup()
-        if hasattr(self.rhs, "_prepare"):
-            return values
-        prepared_values = []
-        for value in values:
-            if hasattr(value, "resolve_expression"):
-                prepared_values.append(value)
-            else:
-                prepared_values.append(tuple(value))
-        return prepared_values
 
 
 class AutorzyManager(models.Manager):
@@ -399,7 +383,6 @@ class RekordManager(FulltextSearchMixin, models.Manager):
     #
 
 
-@six.python_2_unicode_compatible
 class RekordBase(
     ModelPunktowanyBaza,
     ModelZOpisemBibliograficznym,

@@ -1,6 +1,6 @@
 <script type="text/javascript">
-
-        $(document).ready(function(){
+    (function ($) {
+        $(document).ready(function () {
             var i = $("#id_pubmed_id");
 
             $("<input id='id_pubmed_id_get' type='button' value='Pobierz PubmedID'/>").insertAfter(i);
@@ -8,9 +8,9 @@
             var pubmed_button = $("#id_pubmed_id_get");
             var orig = pubmed_button.val();
 
-            pubmed_button.click(function(){
+            pubmed_button.click(function () {
                 var t = $("#id_tytul_oryginalny").val();
-                if (!t){
+                if (!t) {
                     alert("Aby wykonać zapytanie, potrzebny jest tytuł w polu 'Tytuł oryginalny'.");
                     return;
                 }
@@ -22,16 +22,16 @@
                     type: "POST",
                     url: "{% url "bpp:api_pubmed_id" %}",
                     data: {t: t},
-                    error: function(request, status, error){
+                    error: function (request, status, error) {
                         alert('Wystąpił błąd (' + status + ', ' + error + '). Najpewniej może być on związany z ' +
-                                'problemem połączenia z bazą PubMed. Spróbuj za chwilę jeszcze raz.');
+                            'problemem połączenia z bazą PubMed. Spróbuj za chwilę jeszcze raz.');
 
                         pubmed_button.val("Spróbuj jeszcze raz!");
                         pubmed_button.attr('disabled', false);
 
                         return;
                     },
-                    success: function(data, text) {
+                    success: function (data, text) {
                         var found = false;
 
                         pubmed_button.val("Pobrano!");
@@ -58,4 +58,5 @@
 
 
         });
+    }(django.jQuery));
 </script>
