@@ -55,7 +55,7 @@ class Wydawnictwo_ZwarteSerializer(
     )
 
     wydawnictwo_nadrzedne = serializers.HyperlinkedRelatedField(
-        view_name="api_v1:wydanwictwo_zwarte-detail", read_only=True
+        view_name="api_v1:wydawnictwo_zwarte-detail", read_only=True
     )
 
     class Meta:
