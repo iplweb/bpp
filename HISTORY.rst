@@ -8,6 +8,8 @@ Historia zmian
 * filtrowanie po dacie w REST API dla obiektów Autor,
   Wydawnictwo_Ciagle, Wydawnictwo_Zwarte, Zrodlo (b/n),
 * dodatkowe pola ISSN / EISSN w REST API (b/n),
+* eksportuj identyfikator ORCID autora do PBN, datę modyfikacji rekordu
+  dla wydawnictw, datę dostępu dla OpenAccess (#824)
 
 202003.29
 ---------

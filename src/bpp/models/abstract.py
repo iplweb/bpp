@@ -14,6 +14,8 @@ from django.db import models
 from django.db.models import SET_NULL, CASCADE, Sum, Q
 from django.urls.base import reverse
 from django.utils import timezone
+from django.utils.functional import cached_property
+from django.utils.timezone import localtime
 from lxml.etree import SubElement
 
 from bpp.fields import YearField, DOIField
@@ -892,43 +894,37 @@ class PBNSerializerHelperMixin:
                 #     exp_www(self.www)
 
     def eksport_pbn_open_access(self, toplevel, wydzial=None, autorzy_klass=None):
+        class NodeMaker:
+            @cached_property
+            def node(self):
+                return SubElement(toplevel, "open-access")
 
-        open_access = None
+        nm = NodeMaker()
 
         if self.openaccess_wersja_tekstu is not None:
-            if open_access is None:
-                open_access = SubElement(toplevel, "open-access")
-
-            text_version = SubElement(open_access, "open-access-text-version")
+            text_version = SubElement(nm.node, "open-access-text-version")
             text_version.text = self.openaccess_wersja_tekstu.skrot
 
         if self.openaccess_licencja is not None:
-            if open_access is None:
-                open_access = SubElement(toplevel, "open-access")
-
-            license = SubElement(open_access, "open-access-license")
+            license = SubElement(nm.node, "open-access-license")
             license.text = self.openaccess_licencja.skrot
 
         if self.openaccess_czas_publikacji is not None:
-            if open_access is None:
-                open_access = SubElement(toplevel, "open-access")
-
-            release_time = SubElement(open_access, "open-access-release-time")
+            release_time = SubElement(nm.node, "open-access-release-time")
             release_time.text = self.openaccess_czas_publikacji.skrot
 
         if self.openaccess_ilosc_miesiecy:
-            if open_access is None:
-                open_access = SubElement(toplevel, "open-access")
-
-            months = SubElement(open_access, "open-access-months")
+            months = SubElement(nm.node, "open-access-months")
             months.text = str(self.openaccess_ilosc_miesiecy)
 
         if self.openaccess_tryb_dostepu is not None:
-            if open_access is None:
-                open_access = SubElement(toplevel, "open-access")
-
-            mode = SubElement(open_access, "open-access-mode")
+            mode = SubElement(nm.node, "open-access-mode")
             mode.text = self.openaccess_tryb_dostepu.skrot
+
+        # Dostęp dnia (wolny dostęp) idzie jako creation-date
+        if self.public_dostep_dnia is not None:
+            pdd = SubElement(nm.node, "creation-date")
+            pdd.text = str(self.public_dostep_dnia)
 
     def eksport_pbn_publication_date(self, toplevel, wydzial=None, autorzy_klass=None):
         publication_date = SubElement(toplevel, "publication-date")
@@ -962,6 +958,12 @@ class PBNSerializerHelperMixin:
             tag = nagroda.eksport_pbn_serializuj()
             toplevel.append(tag)
 
+    def eksport_pbn_modification_date(self, toplevel, wydzial=None, autorzy_klass=None):
+        md = SubElement(toplevel, "modification-date")
+        md.text = localtime(self.ostatnio_zmieniony_dla_pbn).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
+
     def eksport_pbn_run_serialization_functions(
         self, names, toplevel, wydzial, autorzy_klass
     ):
@@ -974,6 +976,7 @@ class PBNSerializerHelperMixin:
     def eksport_pbn_serializuj(self, toplevel, wydzial, autorzy_klass):
         self.eksport_pbn_run_serialization_functions(
             [
+                "modification-date",
                 "title",
                 "author",
                 "doi",
