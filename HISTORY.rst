@@ -2,6 +2,13 @@
 Historia zmian
 ==============
 
+202004.31
+---------
+
+* filtrowanie po dacie w REST API dla obiektów Autor,
+  Wydawnictwo_Ciagle, Wydawnictwo_Zwarte, Zrodlo (b/n),
+* dodatkowe pola ISSN / EISSN w REST API (b/n),
+
 202003.29
 ---------
 

@@ -6,6 +6,7 @@ from datetime import datetime
 
 import django_webtest
 import pytest
+from rest_framework.test import APIClient
 
 from bpp.tasks import aktualizuj_cache_rekordu
 
@@ -846,3 +847,8 @@ def praca_z_dyscyplina(wydawnictwo_ciagle_z_autorem, dyscyplina1, rok, db):
     wca.save()
     aktualizuj_cache_rekordu(wydawnictwo_ciagle_z_autorem)
     return wydawnictwo_ciagle_z_autorem
+
+
+@pytest.fixture
+def api_client(client):
+    return APIClient()

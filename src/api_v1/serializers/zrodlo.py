@@ -49,5 +49,10 @@ class ZrodloSerializer(
             "openaccess_tryb_dostepu",
             "openaccess_licencja",
             #
+            "issn",
+            "e_issn",
+            #
             "absolute_url",
+            #
+            "ostatnio_zmieniony",
         ]
