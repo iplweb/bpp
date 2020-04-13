@@ -1,10 +1,20 @@
 # -*- encoding: utf-8 -*-
 import pytest
 from django.core.exceptions import ValidationError
+from django.views.generic.dates import timezone_today
 from lxml.etree import Element
 from model_mommy import mommy
 
-from bpp.models import Autor_Dyscyplina, Wydawnictwo_Ciagle_Autor, Typ_Odpowiedzialnosci
+from bpp.admin import Wersja_Tekstu_OpenAccessAdmin
+from bpp.models import (
+    Autor_Dyscyplina,
+    Wydawnictwo_Ciagle_Autor,
+    Typ_Odpowiedzialnosci,
+    Wersja_Tekstu_OpenAccess,
+    Licencja_OpenAccess,
+    Czas_Udostepnienia_OpenAccess,
+    Tryb_OpenAccess_Wydawnictwo_Zwarte,
+)
 from bpp.models.konferencja import Konferencja
 from bpp.models.nagroda import Nagroda
 from bpp.models.seria_wydawnicza import Seria_Wydawnicza
@@ -346,3 +356,37 @@ def test_eksport_pbn_get_volume(wydawnictwo_ciagle):
     wydawnictwo_ciagle.tom = None
     wydawnictwo_ciagle.informacje = "1992 vol. 5"
     assert wydawnictwo_ciagle.eksport_pbn_get_volume() == "5"
+
+
+@pytest.mark.django_db
+def test_eksport_pbn_open_access_nic(wydawnictwo_zwarte):
+    toplevel = Element("test")
+    assert len(toplevel.getchildren()) == 0
+    wydawnictwo_zwarte.eksport_pbn_open_access(toplevel)
+    assert len(toplevel.getchildren()) == 0
+
+
+@pytest.mark.django_db
+def test_eksport_pbn_open_access(wydawnictwo_zwarte, openaccess_data):
+    wydawnictwo_zwarte.openaccess_wersja_tekstu = (
+        Wersja_Tekstu_OpenAccess.objects.first()
+    )
+    wydawnictwo_zwarte.openaccess_licencja = Licencja_OpenAccess.objects.first()
+
+    wydawnictwo_zwarte.openaccess_czas_publikacji = (
+        Czas_Udostepnienia_OpenAccess.objects.first()
+    )
+
+    wydawnictwo_zwarte.openaccess_ilosc_miesiecy = 5
+
+    wydawnictwo_zwarte.openaccess_tryb_dostepu = (
+        Tryb_OpenAccess_Wydawnictwo_Zwarte.objects.first()
+    )
+
+    wydawnictwo_zwarte.public_dostep_dnia = timezone_today()
+
+    wydawnictwo_zwarte.save()
+
+    toplevel = Element("test")
+    wydawnictwo_zwarte.eksport_pbn_open_access(toplevel)
+    assert len(toplevel.getchildren()[0].getchildren()) == 6

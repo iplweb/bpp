@@ -314,6 +314,12 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
             )
             pbn_id_system_identifier.text = str(self.pbn_id)
 
+        if self.orcid:
+            orcid_system_identifier = SubElement(
+                author, "system-identifier", system="ORCID"
+            )
+            orcid_system_identifier.text = self.orcid
+
         affiliated_to_unit = SubElement(author, "affiliated-to-unit")
         if affiliated:
             affiliated_to_unit.text = "true"
