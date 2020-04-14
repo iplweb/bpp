@@ -2,6 +2,11 @@
 Historia zmian
 ==============
 
+202004.32
+---------
+
+* filtrowanie po charakterze formalnym w API (b/n)
+
 202004.31
 ---------
 
