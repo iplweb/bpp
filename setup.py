@@ -61,7 +61,7 @@ def requirements(fn="requirements.txt"):
 
 setup(
     name="bpp-iplweb",
-    version="202003.29",
+    version="202004.31",
     description="System informatyczny do zarządzania bibliografią publikacji pracowników naukowych",
     long_description=readme,
     long_description_content_type="text/x-rst",
@@ -69,7 +69,7 @@ setup(
     author_email="michal.dtz@gmail.com",
     url="http://bpp.iplweb.pl/",
     packages=find_packages("src"),
-    install_requires=requirements(),
+    install_requires=list(requirements()),
     package_dir={"": "src"},
     include_package_data=True,
     license="MIT license",

@@ -82,4 +82,6 @@ class AutorSerializer(
             "slug",
             "jednostki",
             "absolute_url",
+            #
+            "ostatnio_zmieniony",
         ]

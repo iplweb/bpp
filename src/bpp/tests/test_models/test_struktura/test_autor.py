@@ -2,15 +2,24 @@
 import pytest
 from model_mommy import mommy
 
-from bpp.models import Autor, Jednostka, Wydawnictwo_Ciagle, Typ_Odpowiedzialnosci
+from bpp.models import Autor, Jednostka, Typ_Odpowiedzialnosci, Wydawnictwo_Ciagle
 
 
-def test_autor_eksport_pbn_serialize(autor_jan_kowalski):
+def test_autor_eksport_pbn_serialize_bez_orcid(autor_jan_kowalski):
     autor_jan_kowalski.pbn_id = 31337
     autor_jan_kowalski.save()
 
     ret = autor_jan_kowalski.eksport_pbn_serializuj()
     assert len(ret.findall("system-identifier")) == 2
+
+
+def test_autor_eksport_pbn_serialize(autor_jan_kowalski):
+    autor_jan_kowalski.pbn_id = 31337
+    autor_jan_kowalski.orcid = "foobar"
+    autor_jan_kowalski.save()
+
+    ret = autor_jan_kowalski.eksport_pbn_serializuj()
+    assert len(ret.findall("system-identifier")) == 3
 
     autor_jan_kowalski.nazwisko = "Kowalski*"
     ret = autor_jan_kowalski.eksport_pbn_serializuj()
