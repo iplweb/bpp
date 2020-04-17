@@ -137,7 +137,7 @@ def exp_parse_str(input):
 
 
 def exp_add_spacing(s):
-    s = s.replace(".", ". ")
+    # s = s.replace(".", ". ")
     while s.find("  ") >= 0:
         s = s.replace("  ", " ")
     s = s.replace(". )", ".)")
