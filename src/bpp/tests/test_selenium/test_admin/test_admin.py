@@ -243,6 +243,7 @@ def find_autocomplete_widget(browser, id):
             return elem
 
 
+@flaky(max_runs=5)
 def test_autorform_kasowanie_autora(autorform_browser, autorform_jednostka):
     # kliknij "dodaj powiazanie autor-wydawnictwo"
     add_extra_autor_inline(autorform_browser)
