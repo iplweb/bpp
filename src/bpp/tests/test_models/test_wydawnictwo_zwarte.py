@@ -375,3 +375,39 @@ def test_wydawnictwo_zwarte_is_pod_redakcja(
     wza.save()
 
     assert not wydawnictwo_zwarte.is_pod_redakcja()
+
+
+@pytest.mark.django_db
+def test_wydawnictwo_zwarte_book_with_chapters_nie_redakcyjna(
+    wydawnictwo_zwarte,
+    autor_jan_kowalski,
+    typy_odpowiedzialnosci,
+    charaktery_formalne,
+    jednostka,
+):
+    wydawnictwo_zwarte.dodaj_autora(autor_jan_kowalski, jednostka)
+    wydawnictwo_zwarte.charakter_formalny = charaktery_formalne["KSP"]
+    wydawnictwo_zwarte.save()
+
+    toplevel = Element("a")
+    wydawnictwo_zwarte.eksport_pbn_book_with_chapters(toplevel)
+    assert list(toplevel.getchildren())[0].text == "false"
+
+
+@pytest.mark.django_db
+def test_wydawnictwo_zwarte_book_with_chapters_redakcyjna(
+    wydawnictwo_zwarte,
+    autor_jan_kowalski,
+    typy_odpowiedzialnosci,
+    charaktery_formalne,
+    jednostka,
+):
+    wydawnictwo_zwarte.dodaj_autora(
+        autor_jan_kowalski, jednostka, typ_odpowiedzialnosci_skrot="red."
+    )
+    wydawnictwo_zwarte.charakter_formalny = charaktery_formalne["KSP"]
+    wydawnictwo_zwarte.save()
+
+    toplevel = Element("a")
+    wydawnictwo_zwarte.eksport_pbn_book_with_chapters(toplevel)
+    assert list(toplevel.getchildren())[0].text == "true"

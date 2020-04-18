@@ -416,8 +416,18 @@ class Wydawnictwo_Zwarte(
             wydzial, autorzy_klass
         )
 
+    def eksport_pbn_book_with_chapters(
+        self, toplevel, wydzial=None, autorzy_klass=None
+    ):
+        if self.is_book:
+            if self.is_pod_redakcja():
+                SubElement(toplevel, "book-with-chapters").text = "true"
+                return
+        SubElement(toplevel, "book-with-chapters").text = "false"
+
     eksport_pbn_BOOK_FLDS = [
         "editor",
+        "book-with-chapters",
         "isbn",
         "issn",
         "series",

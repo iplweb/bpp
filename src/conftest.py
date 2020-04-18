@@ -501,6 +501,7 @@ def fixture(name):
 def typy_odpowiedzialnosci(db):
     for elem in fixture("typ_odpowiedzialnosci_v2.json"):
         Typ_Odpowiedzialnosci.objects.get_or_create(pk=elem["pk"], **elem["fields"])
+    return dict([(x.skrot, x) for x in Typ_Odpowiedzialnosci.objects.all()])
 
 
 @pytest.fixture(scope="function")
@@ -540,6 +541,8 @@ def charaktery_formalne():
     chf_roz.rodzaj_pbn = const.RODZAJ_PBN_ROZDZIAL
     chf_roz.charakter_sloty = const.CHARAKTER_SLOTY_ROZDZIAL
     chf_roz.save()
+
+    return dict([(x.skrot, x) for x in Charakter_Formalny.objects.all()])
 
 
 @pytest.fixture(scope="function")
