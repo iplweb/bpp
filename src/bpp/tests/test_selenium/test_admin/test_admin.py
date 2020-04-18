@@ -121,6 +121,7 @@ def trigger_event(elem, event):
     )
 
 
+@flaky(max_runs=5)
 def test_admin_uzupelnij_punkty(preauth_admin_browser, nginx_live_server):
     z = any_zrodlo(nazwa="WTF LOL")
 
