@@ -2,6 +2,14 @@
 Historia zmian
 ==============
 
+202004.33
+---------
+
+* eksport pola public-uri do PBNu eksportuje w pierwszej kolejnosci adres publiczny,
+  w drugiej - płatny, adresy generowane na podstawie PubMedID nie są już wysyłane (#834)
+* eksportowane jest pole book-with-chapters do PBN (#824)
+* nie usuwaj spacji przed kropką przy imporcie publikacji (b/n),
+
 202004.32
 ---------
 
