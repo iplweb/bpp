@@ -100,7 +100,7 @@ ustaw-obca-jednostke:
 	$(MANAGE) ustaw_obca_jednostke --wymuszaj "$(NAZWA_OBCEJ_JEDNOSTKI)"
 
 dodaj-aktualnosc:
-    $(MANAGE) integruj_dbf --enable-dodaj-aktualnosc
+	$(MANAGE) integruj_dbf --enable-dodaj-aktualnosc
 
 integrate: disable-trigger integruj-dbf integruj-liste-wydawcow ustaw-obca-jednostke rebuild-cache enable-trigger dodaj-aktualnosc
 
