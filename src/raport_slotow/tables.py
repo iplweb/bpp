@@ -176,7 +176,7 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
             "slot",
         )
 
-    id = Column("ID", "rekord.id")
+    id = Column("ID publikacji", "rekord.id")
     tytul_oryginalny = Column("Tytuł oryginalny", "rekord")
     autorzy = Column(
         "Autorzy", "rekord.opis_bibliograficzny_zapisani_autorzy_cache", orderable=False
@@ -195,7 +195,7 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
         orderable=False,
     )
     punkty_pk = Column("PK", "rekord.punkty_kbn")
-    autor = Column("Autor", "autorzy.autor")
+    autor = Column("Autor ewaluowany", "autorzy.autor")
     pbn_id = Column("PBN ID", "autorzy.autor.pbn_id")
     orcid = Column("ORCID", "autorzy.autor.orcid")
     dyscyplina = Column(

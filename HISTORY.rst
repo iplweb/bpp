@@ -2,6 +2,8 @@
 Historia zmian
 ==============
 
+* zmiany nazw kolumn raportu ewaluacji (#830)
+
 202004.33
 ---------
 
