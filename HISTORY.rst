@@ -2,7 +2,12 @@
 Historia zmian
 ==============
 
+202004.34
+---------
+
 * zmiany nazw kolumn raportu ewaluacji (#830)
+* dodatkowe pola metryczki rekordu oraz sumowanie w XLS w raportach slotów
+  (#829),
 
 202004.33
 ---------

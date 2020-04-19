@@ -7,6 +7,7 @@ from math import floor
 import django
 from django.core.management import BaseCommand
 
+import miniblog
 from bpp.util import partition_count
 from import_dbf.models import B_A, Bib
 from import_dbf.util import (
@@ -29,6 +30,7 @@ from import_dbf.util import (
     wyswietl_prace_bez_dopasowania,
     wzbogacaj_charaktery,
     zatwierdz_podwojne_przypisania,
+    dodaj_aktualnosc,
 )
 
 django.setup()
@@ -63,6 +65,7 @@ class Command(BaseCommand):
             aby utworzyć dodatkowe rekordy dla prawidłowo zdublowanych autorów""",
         )
         parser.add_argument("--enable-przypisz-jednostki", action="store_true")
+        parser.add_argument("--enable-dodaj-aktualnosc", action="store_true")
 
     def handle(
         self, uczelnia, skrot, enable_all, disable_transaction, *args, **options
@@ -152,3 +155,6 @@ class Command(BaseCommand):
         if enable_all or options["enable_przypisz_jednostki"]:
             logger.debug("Przypisuje Autor_Jednostka masowo")
             pool.apply(przypisz_jednostki)
+
+        if enable_all or options["enable_dodaj_aktualnosc"]:
+            pool.apply(dodaj_aktualnosc)
