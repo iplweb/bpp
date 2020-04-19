@@ -744,13 +744,13 @@ class PBNSerializerHelperMixin:
                 return self.strony
         return wez_zakres_stron(self.szczegoly)
 
-    def eksport_pbn_pages(self, toplevel, wydzial=None, autorzy_klass=None):
+    def eksport_pbn_pages(self, toplevel, autorzy_klass=None):
         zakres = self.eksport_pbn_zakres_stron()
         if zakres:
             pages = SubElement(toplevel, "pages")
             pages.text = zakres
 
-    def eksport_pbn_is(self, toplevel, wydzial=None, autorzy_klass=None):
+    def eksport_pbn_is(self, toplevel, autorzy_klass=None):
         is_text = None
 
         if self.charakter_formalny.charakter_pbn is not None:
@@ -763,7 +763,7 @@ class PBNSerializerHelperMixin:
             _is = SubElement(toplevel, "is")
             _is.text = is_text
 
-    def eksport_pbn_system_identifier(self, toplevel, wydzial=None, autorzy_klass=None):
+    def eksport_pbn_system_identifier(self, toplevel, autorzy_klass=None):
         # W zależności od rodzaju klasy 'self', dodaj cyferkę i kilka zer. W ten sposób
         # symlujemy unikalne ID dla każdej oodzielnej tabeli. Generalnie w systemie bpp
         # Wydawnictwo_Zwarte oraz Wydawnictwo_Ciagle może mieć ten sam numer ID, ponieważ
@@ -802,21 +802,21 @@ class PBNSerializerHelperMixin:
 
         system_identifier.text = "%i%.9i" % (global_id, self.pk)
 
-    def eksport_pbn_title(self, toplevel, wydzial=None, autorzy_klass=None):
+    def eksport_pbn_title(self, toplevel, autorzy_klass=None):
         title = SubElement(toplevel, "title")
         title.text = self.tytul_oryginalny
 
-    def eksport_pbn_get_nasi_autorzy_iter(self, wydzial, autorzy_klass):
+    def eksport_pbn_get_nasi_autorzy_iter(self, autorzy_klass):
         # TODO: zrób sprawdzanie jednostki w kontekście ROKU do jakiego wydziału była WÓWCZAS przypisana
         return [
             elem
             for elem in autorzy_klass.objects.filter(
                 rekord=self, typ_odpowiedzialnosci__typ_ogolny=TO_AUTOR
             ).select_related("jednostka")
-            if elem.jednostka.wydzial_id == wydzial.pk
+            if elem.jednostka.skupia_pracownikow
         ]
 
-    def eksport_pbn_get_wszyscy_autorzy_iter(self, wydzial, autorzy_klass):
+    def eksport_pbn_get_wszyscy_autorzy_iter(self, autorzy_klass):
         return [
             elem
             for elem in autorzy_klass.objects.filter(
@@ -824,36 +824,30 @@ class PBNSerializerHelperMixin:
             )
         ]
 
-    def eksport_pbn_author(self, toplevel, wydzial, autorzy_klass):
-        for autor_wyd in self.eksport_pbn_get_wszyscy_autorzy_iter(
-            wydzial, autorzy_klass
-        ):
+    def eksport_pbn_author(self, toplevel, autorzy_klass):
+        for autor_wyd in self.eksport_pbn_get_wszyscy_autorzy_iter(autorzy_klass):
             toplevel.append(
                 autor_wyd.autor.eksport_pbn_serializuj(
                     affiliated=autor_wyd.afiliuje, employed=autor_wyd.zatrudniony
                 )
             )
 
-    def eksport_pbn_get_nasi_autorzy_count(self, wydzial, autorzy_klass):
-        return len(list(self.eksport_pbn_get_nasi_autorzy_iter(wydzial, autorzy_klass)))
+    def eksport_pbn_get_nasi_autorzy_count(self, autorzy_klass):
+        return len(list(self.eksport_pbn_get_nasi_autorzy_iter(autorzy_klass)))
 
-    def eksport_pbn_get_wszyscy_autorzy_count(self, wydzial, autorzy_klass):
-        return len(
-            list(self.eksport_pbn_get_wszyscy_autorzy_iter(wydzial, autorzy_klass))
-        )
+    def eksport_pbn_get_wszyscy_autorzy_count(self, autorzy_klass):
+        return len(list(self.eksport_pbn_get_wszyscy_autorzy_iter(autorzy_klass)))
 
-    def eksport_pbn_get_other_contributors_cnt(self, wydzial, autorzy_klass):
-        wszyscy_autorzy = self.eksport_pbn_get_wszyscy_autorzy_count(
-            wydzial, autorzy_klass
-        )
-        nasi_autorzy = self.eksport_pbn_get_nasi_autorzy_count(wydzial, autorzy_klass)
+    def eksport_pbn_get_other_contributors_cnt(self, autorzy_klass):
+        wszyscy_autorzy = self.eksport_pbn_get_wszyscy_autorzy_count(autorzy_klass)
+        nasi_autorzy = self.eksport_pbn_get_nasi_autorzy_count(autorzy_klass)
         return wszyscy_autorzy - nasi_autorzy
 
-    def eksport_pbn_lang(self, toplevel, wydzial=None, autorzy_klass=None):
+    def eksport_pbn_lang(self, toplevel, autorzy_klass=None):
         lang = SubElement(toplevel, "lang")
         lang.text = self.jezyk.get_skrot_dla_pbn()
 
-    def eksport_pbn_keywords(self, toplevel, wydzial=None, autorzy_klass=None):
+    def eksport_pbn_keywords(self, toplevel, autorzy_klass=None):
         if self.slowa_kluczowe:
             lang = self.jezyk.get_skrot_dla_pbn()
             keywords = SubElement(toplevel, "keywords", lang=lang)
@@ -875,7 +869,7 @@ class PBNSerializerHelperMixin:
         elif self.www:
             exp_www(self.www)
 
-    def eksport_pbn_open_access(self, toplevel, wydzial=None, autorzy_klass=None):
+    def eksport_pbn_open_access(self, toplevel, autorzy_klass=None):
         class NodeMaker:
             @cached_property
             def node(self):
@@ -912,17 +906,17 @@ class PBNSerializerHelperMixin:
         publication_date = SubElement(toplevel, "publication-date")
         publication_date.text = str(self.rok)
 
-    def eksport_pbn_doi(self, toplevel, wydzial=None, autorzy_klass=None):
+    def eksport_pbn_doi(self, toplevel, autorzy_klass=None):
         if self.doi:
             doi = SubElement(toplevel, "doi")
             doi.text = self.doi
 
-    def eksport_pbn_conference(self, toplevel, wydzial=None, autorzy_klass=None):
+    def eksport_pbn_conference(self, toplevel, autorzy_klass=None):
         if self.konferencja is not None:
             tag = self.konferencja.eksport_pbn_serializuj()
             toplevel.append(tag)
 
-    def eksport_pbn_outstanding(self, toplevel, wydzial=None, autorzy_klass=None):
+    def eksport_pbn_outstanding(self, toplevel, autorzy_klass=None):
         if self.praca_wybitna:
             outstanding = SubElement(toplevel, "outstanding")
             outstanding.text = "1"
@@ -940,22 +934,20 @@ class PBNSerializerHelperMixin:
             tag = nagroda.eksport_pbn_serializuj()
             toplevel.append(tag)
 
-    def eksport_pbn_modification_date(self, toplevel, wydzial=None, autorzy_klass=None):
+    def eksport_pbn_modification_date(self, toplevel, autorzy_klass=None):
         md = SubElement(toplevel, "modification-date")
         md.text = localtime(self.ostatnio_zmieniony_dla_pbn).strftime(
             "%Y-%m-%d %H:%M:%S"
         )
 
-    def eksport_pbn_run_serialization_functions(
-        self, names, toplevel, wydzial, autorzy_klass
-    ):
+    def eksport_pbn_run_serialization_functions(self, names, toplevel, autorzy_klass):
         for elem in names:
             func = "eksport_pbn_" + elem.replace("-", "_")
             f = getattr(self, func, None)
             if f and hasattr(f, "__call__"):
-                f(toplevel, wydzial, autorzy_klass)
+                f(toplevel, autorzy_klass)
 
-    def eksport_pbn_serializuj(self, toplevel, wydzial, autorzy_klass):
+    def eksport_pbn_serializuj(self, toplevel, autorzy_klass):
         self.eksport_pbn_run_serialization_functions(
             [
                 "modification-date",
@@ -974,7 +966,6 @@ class PBNSerializerHelperMixin:
                 "system-identifier",
             ],
             toplevel,
-            wydzial,
             autorzy_klass,
         )
 

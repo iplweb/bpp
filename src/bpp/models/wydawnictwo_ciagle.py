@@ -135,7 +135,7 @@ class Wydawnictwo_Ciagle(
 
     eksport_pbn_FLDS = ["journal", "issue", "volume", "pages", "open-access"]
 
-    def eksport_pbn_journal(self, toplevel, wydzial=None, autorzy_klass=None):
+    def eksport_pbn_journal(self, toplevel, autorzy_klass=None):
         if self.zrodlo:
             toplevel.append(self.zrodlo.eksport_pbn_serializuj())
 
@@ -148,7 +148,7 @@ class Wydawnictwo_Ciagle(
                 return self.nr_zeszytu
         return self.eksport_pbn__get_informacje_by_key("numer")
 
-    def eksport_pbn_issue(self, toplevel, wydzial=None, autorzy_klass=None):
+    def eksport_pbn_issue(self, toplevel, autorzy_klass=None):
         v = self.eksport_pbn_get_issue()
         issue = SubElement(toplevel, "issue")
         if v is not None:
@@ -170,13 +170,13 @@ class Wydawnictwo_Ciagle(
         else:
             volume.text = "brak"
 
-    def eksport_pbn_serializuj(self, wydzial):
+    def eksport_pbn_serializuj(self):
         toplevel = Element("article")
         super(Wydawnictwo_Ciagle, self).eksport_pbn_serializuj(
-            toplevel, wydzial, Wydawnictwo_Ciagle_Autor
+            toplevel, Wydawnictwo_Ciagle_Autor
         )
         self.eksport_pbn_run_serialization_functions(
-            self.eksport_pbn_FLDS, toplevel, wydzial, Wydawnictwo_Ciagle_Autor
+            self.eksport_pbn_FLDS, toplevel, Wydawnictwo_Ciagle_Autor
         )
         return toplevel
 

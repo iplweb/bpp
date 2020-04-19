@@ -16,7 +16,7 @@ from eksport_pbn.tasks import id_ciaglych, id_zwartych
 
 
 @pytest.mark.django_db
-def test_id_zwartych(wydawnictwo_zwarte_z_autorem, wydzial, rok):
+def test_id_zwartych(wydawnictwo_zwarte_z_autorem, rok):
     """
     :type wydawnictwo_zwarte_z_autorem: bpp.models.Wydawnictwo_Zwarte
     """
@@ -30,81 +30,12 @@ def test_id_zwartych(wydawnictwo_zwarte_z_autorem, wydzial, rok):
     cf.rodzaj_pbn = const.RODZAJ_PBN_KSIAZKA
     cf.save()
 
-    res = id_zwartych(wydzial, rok, rok, True, True)
+    res = id_zwartych(rok, rok, True, True)
     assert len(list(res)) == 1
 
 
 @pytest.mark.django_db
-def test_id_zwartych_gdy_jest_ksiazka_z_w1_ale_rozdzialy_ma_w_w2(charaktery_formalne):
-    """
-    Książka "nadrzędna" redagowana przez autora z W1 ma się NIE znaleźć w eksporcie dla W2
-    jeżeli w przypisanych rozdziałach jest rozdział opracowany dla W2.
-    :return:
-    """
-
-    chf_ksp = Charakter_Formalny.objects.get(skrot="KSP")
-    chf_roz = Charakter_Formalny.objects.get(skrot="ROZ")
-
-    u = mommy.make(Uczelnia)
-
-    w1 = mommy.make(Wydzial, uczelnia=u)
-    w2 = mommy.make(Wydzial, uczelnia=u)
-
-    a1 = mommy.make(Autor, imiona="Jan", nazwisko="Kowalski")
-    a2 = mommy.make(Autor, imiona="Stefan", nazwisko="Nowak")
-
-    j1 = mommy.make(Jednostka, wydzial=w1, uczelnia=u)
-    j2 = mommy.make(Jednostka, wydzial=w2, uczelnia=u)
-
-    wz_root = mommy.make(
-        Wydawnictwo_Zwarte,
-        charakter_formalny=chf_ksp,
-        szczegoly="s. 123",
-        calkowita_liczba_autorow=50,
-        rok=2015,
-        liczba_znakow_wydawniczych=240000,
-        punkty_kbn=6,
-    )
-    wz_child1 = mommy.make(
-        Wydawnictwo_Zwarte,
-        wydawnictwo_nadrzedne=wz_root,
-        charakter_formalny=chf_roz,
-        szczegoly="s. 10-15",
-        rok=2015,
-        liczba_znakow_wydawniczych=5,
-        punkty_kbn=10,
-    )
-    wz_child2 = mommy.make(
-        Wydawnictwo_Zwarte,
-        wydawnictwo_nadrzedne=wz_root,
-        charakter_formalny=chf_roz,
-        szczegoly="s. 10-15",
-        rok=2015,
-        liczba_znakow_wydawniczych=5,
-        punkty_kbn=10,
-    )
-
-    Typ_Odpowiedzialnosci.objects.get_or_create(skrot="aut.", nazwa="autor")
-
-    Typ_Odpowiedzialnosci.objects.get_or_create(
-        skrot="red.", nazwa="redaktor", typ_ogolny=TO_REDAKTOR
-    )
-
-    wz_root.dodaj_autora(a1, j1, typ_odpowiedzialnosci_skrot="red.")
-    wz_child1.dodaj_autora(a2, j2, typ_odpowiedzialnosci_skrot="aut.")
-    wz_child2.dodaj_autora(a1, j2, typ_odpowiedzialnosci_skrot="aut.")
-
-    assert wz_root.pk in list(id_zwartych(w1, 2015, 2015, True, True))
-    assert wz_child1.pk not in list(id_zwartych(w1, 2015, 2015, True, True))
-    assert wz_child2.pk not in list(id_zwartych(w1, 2015, 2015, True, True))
-
-    assert wz_root.pk not in list(id_zwartych(w2, 2015, 2015, True, True))
-    assert wz_child1.pk in list(id_zwartych(w2, 2015, 2015, True, True))
-    assert wz_child2.pk in list(id_zwartych(w2, 2015, 2015, True, True))
-
-
-@pytest.mark.django_db
-def test_id_ciaglych(wydawnictwo_ciagle_z_autorem, wydzial, rok):
+def test_id_ciaglych(wydawnictwo_ciagle_z_autorem, rok):
     cf = wydawnictwo_ciagle_z_autorem.charakter_formalny
     cf.rodzaj_pbn = const.RODZAJ_PBN_ARTYKUL
     cf.save()
@@ -113,7 +44,7 @@ def test_id_ciaglych(wydawnictwo_ciagle_z_autorem, wydzial, rok):
     tk.artykul_pbn = True
     tk.save()
 
-    res = id_ciaglych(wydzial, rok, rok)
+    res = id_ciaglych(rok, rok)
     assert res.count() == 1
 
 
@@ -137,7 +68,6 @@ def test_z_datami(
     assert (
         list(
             id_ciaglych(
-                jednostka.wydzial,
                 od_roku=rok,
                 do_roku=rok,
                 rodzaj_daty=DATE_CREATED_ON,
@@ -150,7 +80,6 @@ def test_z_datami(
     assert (
         list(
             id_zwartych(
-                jednostka.wydzial,
                 od_roku=rok,
                 do_roku=rok,
                 ksiazki=True,
@@ -165,7 +94,6 @@ def test_z_datami(
     assert (
         list(
             id_ciaglych(
-                jednostka.wydzial,
                 od_roku=rok,
                 do_roku=rok,
                 rodzaj_daty=DATE_CREATED_ON,
@@ -178,7 +106,6 @@ def test_z_datami(
     assert (
         list(
             id_zwartych(
-                jednostka.wydzial,
                 od_roku=rok,
                 do_roku=rok,
                 ksiazki=True,
@@ -229,7 +156,6 @@ def test_ta_sama_data_id_ciaglych(
     do_daty = d.date()
 
     res = id_ciaglych(
-        jednostka.wydzial,
         od_roku=rok,
         do_roku=rok,
         rodzaj_daty=DATE_UPDATED_ON_PBN,
@@ -262,7 +188,6 @@ def test_ta_sama_data_id_zwartych(
     do_daty = d.date()
 
     res = id_zwartych(
-        jednostka.wydzial,
         od_roku=rok,
         do_roku=rok,
         ksiazki=True,
