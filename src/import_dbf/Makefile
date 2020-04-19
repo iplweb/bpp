@@ -36,6 +36,7 @@ importuj-dyscypliny:
 integruj-dbf-publikacje: get-assets
 	$(MANAGE) integruj_dbf --enable-charakter-kbn-jezyk --charaktery-enrichment-xls $(ASSETS_DIR)/bg-umw/charaktery_formalne.xlsx
 	$(MANAGE) integruj_dbf --enable-zrodlo
+	$(MANAGE) rozszerz_skroty_zrodel $(ASSETS_DIR)/bg-umw/zrodla.xlsx
 	$(MANAGE) integruj_dbf --enable-publikacja > integruj-dbf-publikacja-log.txt
 	$(MANAGE) integruj_dbf --enable-zatwierdz-podwojne-przypisania
 	$(MANAGE) integruj_dbf --enable-b-a
