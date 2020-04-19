@@ -259,8 +259,8 @@ odfpy==1.4.1 \
 olefile==0.44 \
     --hash=sha256:61f2ca0cd0aa77279eb943c07f607438edf374096b66332fae1ee64a6f0f73ad \
     # via -r requirements.in
-openpyxl==2.4.9 \
-    --hash=sha256:95e007f4d121f4fd73f39a6d74a883c75e9fa9d96de91d43c1641c103c3a9b18 \
+openpyxl==3.0.3 \
+    --hash=sha256:547a9fc6aafcf44abe358b89ed4438d077e9d92e4f182c87e2dc294186dc4b64 \
     # via -r requirements.in, tablib
 paste==3.4.0 \
     --hash=sha256:0330d22d1a5cc7202109151322d681f06e14552d43cb99957a21320f3764519b \

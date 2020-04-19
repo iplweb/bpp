@@ -6,7 +6,8 @@ from django.db import DEFAULT_DB_ALIAS, connections
 from django.utils.itercompat import is_iterable
 from django_tables2.export import ExportMixin, TableExport
 from openpyxl.utils import get_column_letter
-from openpyxl.worksheet.table import Table, TableStyleInfo
+from openpyxl.worksheet.filters import AutoFilter
+from openpyxl.worksheet.table import Table, TableStyleInfo, TableColumn, TableFormula
 
 
 def drop_table(table_name, using=DEFAULT_DB_ALIAS):
@@ -74,6 +75,7 @@ class MyTableExport(TableExport):
         super(MyTableExport, self).__init__(
             export_format=export_format, table=table, exclude_columns=exclude_columns
         )
+        self.table = table
         self.export_description = export_description
 
     def export(self):
@@ -81,6 +83,8 @@ class MyTableExport(TableExport):
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = "Sheet 1"
+
+        table_name = "Table1"
 
         # Write the header row and make cells bold
         tablib_dataset = self.dataset
@@ -103,20 +107,49 @@ class MyTableExport(TableExport):
             ws.append([])
 
         ws.append(tablib_dataset.headers)
+
+        table_columns = tuple(
+            TableColumn(id=h, name=header)
+            for h, header in enumerate(tablib_dataset.headers, start=1)
+        )
+
+        # Sumowana kolumna po stronie XLSX tworzona jest w taki sposób, że jeżeli jakakolwiek
+        # kolumna tabeli ma footer, to jest tam wstawiana suma za pomocą funkcji =SUBTOTAL(9, ...)
+        #
+        # W przypadku gdyby to nie wystarczało w przyszłości, to do django_tables2.TableColumn
+        # należałoby dopisać kod funkcji XLSa.
+        #
+        # Do tego, pierwsza kolumna (o indeksie zerowym) uzywana jest dla napisu "Suma"
+
+        footer_row = []
+        for no, elem in enumerate(self.table.columns):
+            if no == 0:
+                footer_row.append("Suma")
+                total_column = table_columns[0]
+                total_column.totalsRowLabel = footer_row[0]
+                continue
+
+            if elem.has_footer():
+                count_column = table_columns[no]
+                count_column.totalsRowFunction = "sum"
+                footer_row.append(f"=SUBTOTAL(109,{table_name}[{elem.header}])")
+                continue
+
+            footer_row.append("")
+
         for cell in ws[ws.max_row : ws.max_row]:
             cell.font = openpyxl.styles.Font(bold=True)
 
         first_table_row = ws.max_row
         for row in tablib_dataset:
             ws.append(row)
-        last_table_row = ws.max_row
+        ws.append(footer_row)
 
         if tablib_dataset:
-            literka = get_column_letter(len(row))
-            tab = Table(
-                displayName="Table1",
-                ref="A%i:%s%i" % (first_table_row, literka, last_table_row),
-            )
+            max_column = ws.max_column
+            max_column_letter = get_column_letter(max_column)
+            max_row = ws.max_row
+
             style = TableStyleInfo(
                 name="TableStyleMedium9",
                 showFirstColumn=False,
@@ -124,13 +157,24 @@ class MyTableExport(TableExport):
                 showRowStripes=True,
                 showColumnStripes=True,
             )
-            tab.tableStyleInfo = style
+            tab = Table(
+                displayName=table_name,
+                ref=f"A{first_table_row}:{max_column_letter}{max_row }",
+                autoFilter=AutoFilter(
+                    ref=f"A{first_table_row}:{max_column_letter}{max_row - 1}"
+                ),
+                totalsRowShown=True,
+                totalsRowCount=1,
+                tableStyleInfo=style,
+                tableColumns=table_columns,
+            )
+
             ws.add_table(tab)
 
         max_width = 75
         for ncol, col in enumerate(ws.columns):
             max_length = 0
-            column = col[0].column  # Get the column name
+            column = col[0].column_letter  # Get the column name
             # Since Openpyxl 2.6, the column name is  ".column_letter" as .column became the column number (1-based)
             for cell in col:
                 try:  # Necessary to avoid error on empty cells

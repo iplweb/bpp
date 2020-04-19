@@ -2,6 +2,12 @@
 Historia zmian
 ==============
 
+202004.34
+---------
+
+* dodatkowe pola metryczki rekordu oraz sumowanie w XLS w raportach slotów
+  (#829),
+
 202004.33
 ---------
 

@@ -1,56 +1,22 @@
-import urllib
-from datetime import datetime
-from urllib.parse import urlencode
-
-from django.contrib.postgres.aggregates.general import StringAgg
-from django.db import connection
-from django.db.models import F, Max, Min, Sum, Window
-from django.db.models.fields import TextField
-from django.db.models.functions import Cast
 from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.utils import timezone
 from django.views.generic import FormView, TemplateView
-from django_filters.views import FilterView
-from django_tables2 import MultiTableMixin, RequestConfig, SingleTableMixin
+from django_tables2 import MultiTableMixin, RequestConfig
 
 from bpp.models import (
     Autor,
-    Cache_Punktacja_Autora_Query,
     Cache_Punktacja_Autora_Query_View,
-    Cache_Punktacja_Autora_Sum,
-    Cache_Punktacja_Autora_Sum_Group_Ponizej,
-    Cache_Punktacja_Autora_Sum_Gruop,
-    Cache_Punktacja_Autora_Sum_Ponizej,
     Dyscyplina_Naukowa,
 )
-from bpp.models.dyscyplina_naukowa import Autor_Dyscyplina
 from bpp.views.mixins import UczelniaSettingRequiredMixin
 from django_bpp.version import VERSION
-from raport_slotow.filters import (
-    RaportSlotowUczelniaFilter,
-    RaportZerowyFilter,
-    RaportSlotowUczelniaBezJednostekIWydzialowFilter,
-)
-from raport_slotow.forms import (
-    AutorRaportSlotowForm,
-    ParametryRaportSlotowUczelniaForm,
-    ParametryRaportSlotowEwaluacjaForm,
-)
-from raport_slotow.models import RaportZerowyEntry
-from raport_slotow.tables import (
-    RaportSlotowAutorTable,
-    RaportSlotowUczelniaBezJednostekIWydzialowTable,
-    RaportSlotowUczelniaTable,
-    RaportSlotowZerowyTable,
-)
+from raport_slotow.forms import AutorRaportSlotowForm
+from raport_slotow.tables import RaportSlotowAutorTable
 from raport_slotow.util import (
     MyExportMixin,
     MyTableExport,
-    clone_temporary_table,
-    create_temporary_table_as,
-    insert_into,
 )
 
 
@@ -91,13 +57,32 @@ class RaportSlotow(
     def create_export(self, export_format):
         tables = self.get_tables()
         n = int(self.request.GET.get("n", 0))
+
+        dg = []
+        dpb = []
+        for ad in self.autor.autor_dyscyplina_set.filter(
+            rok__range=(self.od_roku, self.do_roku)
+        ).order_by("rok"):
+            dg.append((ad.rok, ad.dyscyplina_naukowa.nazwa, ad.procent_dyscypliny))
+            if ad.subdyscyplina_naukowa is not None:
+                dpb.append(
+                    (ad.rok, ad.subdyscyplina_naukowa.nazwa, ad.procent_subdyscypliny)
+                )
+
+        dg = ", ".join([f"{rok} - {nazwa} ({procent})" for rok, nazwa, procent in dg])
+        dpb = ", ".join([f"{rok} - {nazwa} ({procent})" for rok, nazwa, procent in dpb])
+
         exporter = MyTableExport(
             export_format=export_format,
             table=tables[n],
             export_description=[
                 ("Nazwa raportu:", "raport slotów - autor"),
                 ("Autor:", str(self.autor)),
-                (f"Dyscyplina:", str(tables[n].dyscyplina_naukowa or "żadna")),
+                ("ORCID:", str(self.autor.orcid or "brak")),
+                ("PBN ID:", str(self.autor.pbn_id or "brak")),
+                ("Dyscypliny autora:", dg),
+                ("Subdyscypliny autora:", dpb or "żadne"),
+                (f"Dyscyplina tabeli:", str(tables[n].dyscyplina_naukowa or "żadna")),
                 (f"Od roku:", self.od_roku),
                 (f"Do roku:", self.do_roku),
                 ("Wygenerowano:", timezone.now()),
