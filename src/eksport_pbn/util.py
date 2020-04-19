@@ -39,12 +39,9 @@ def data_kw(rodzaj_daty, od_daty, do_daty=None):
     return ret
 
 
-def id_ciaglych(
-    wydzial, od_roku, do_roku, rodzaj_daty=None, od_daty=None, do_daty=None
-):
+def id_ciaglych(od_roku, do_roku, rodzaj_daty=None, od_daty=None, do_daty=None):
     return (
         Wydawnictwo_Ciagle_Autor.objects.filter(
-            jednostka__wydzial=wydzial,
             rekord__rok__gte=od_roku,
             rekord__rok__lte=do_roku,
             rekord__charakter_formalny__in=Charakter_Formalny.objects.filter(
@@ -61,18 +58,10 @@ def id_ciaglych(
 
 
 def id_zwartych(
-    wydzial,
-    od_roku,
-    do_roku,
-    ksiazki,
-    rozdzialy,
-    rodzaj_daty=None,
-    od_daty=None,
-    do_daty=None,
+    od_roku, do_roku, ksiazki, rozdzialy, rodzaj_daty=None, od_daty=None, do_daty=None,
 ):
     ksiazki_query = (
         Wydawnictwo_Zwarte_Autor.objects.filter(
-            jednostka__wydzial=wydzial,
             rekord__rok__gte=od_roku,
             rekord__rok__lte=do_roku,
             rekord__punkty_kbn__gt=5,
@@ -94,7 +83,6 @@ def id_zwartych(
 
         rozdzialy_query = (
             Wydawnictwo_Zwarte_Autor.objects.filter(
-                jednostka__wydzial=wydzial,
                 rekord__rok__gte=od_roku,
                 rekord__rok__lte=do_roku,
                 rekord__punkty_kbn__gt=5,
