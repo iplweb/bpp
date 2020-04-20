@@ -60,5 +60,5 @@ class Command(BaseCommand):
                     needs_saving = True
 
                 if needs_saving:
-                    print("zmieniam %s" % tytul)
+                    print("zmieniam %s" % z.nazwa)
                     z.save()
