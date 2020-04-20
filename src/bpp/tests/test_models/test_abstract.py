@@ -253,12 +253,12 @@ def test_eksport_pbn_editor_afiliacja_w_kontekscie_wydzialu(
 
     # I teraz ma wyrzucić wszystkich redaktorów
     toplevel = []
-    wydawnictwo_zwarte.eksport_pbn_editor(toplevel, w1, Wydawnictwo_Zwarte_Autor)
+    wydawnictwo_zwarte.eksport_pbn_editor(toplevel, Wydawnictwo_Zwarte_Autor)
     assert len(toplevel) == 1
 
     # Zaś dla drugiego wydziału też wszyscy
     toplevel = []
-    wydawnictwo_zwarte.eksport_pbn_editor(toplevel, w2, Wydawnictwo_Zwarte_Autor)
+    wydawnictwo_zwarte.eksport_pbn_editor(toplevel, Wydawnictwo_Zwarte_Autor)
     assert len(toplevel) == 1
 
 

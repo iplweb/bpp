@@ -2,6 +2,8 @@
 Historia zmian
 ==============
 
+* nie wymagaj wydziału przy eksporcie do PBN (#828)
+
 202004.33
 ---------
 
