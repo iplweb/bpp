@@ -31,15 +31,7 @@ class Command(BaseCommand):
                 try:
                     z = Zrodlo.objects.get(skrot=skrot)
                 except Zrodlo.DoesNotExist:
-                    print("Tworze %s" % nazwa)
-                    Zrodlo.objects.create(
-                        rodzaj=Rodzaj_Zrodla.objects.get(nazwa="periodyk"),
-                        skrot=skrot,
-                        nazwa=nazwa,
-                        poprzednia_nazwa=poprzednia_nazwa,
-                        issn=issn,
-                        e_issn=e_issn,
-                    )
+                    print(f"Nie ma takiego zrodla jak {skrot}")
                     continue
 
                 needs_saving = False
