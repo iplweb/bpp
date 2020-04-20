@@ -6,6 +6,8 @@ from tempfile import mkdtemp, mkstemp
 from django.core.files.base import File
 from django.core.management import call_command
 
+from bpp.models import Uczelnia
+
 try:
     from django.core.urlresolvers import reverse
 except ImportError:
@@ -35,7 +37,7 @@ def zipdir(path, ziph):
 
 
 header = """<?xml version="1.0" encoding="UTF-8"?>
-<works 
+<works pbn-unit-id="%s" 
     xmlns="http://pbn.nauka.gov.pl/-/ns/bibliography"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://pbn.nauka.gov.pl/-/ns/bibliography PBN-report.xsd ">
     """
@@ -103,7 +105,10 @@ def eksport_pbn(pk, max_file_size=1024 * 1024):
         outfile.write("</works>")
         outfile.close()
 
-    hdr = header
+    class FakeUczelnia:
+        pbn_id = 'Ustaw PBN ID dla uczelni w module redagowania'
+
+    hdr = header % (Uczelnia.objects.first() or FakeUczelnia).pbn_id or FakeUczelnia.pbn_id
 
     for element in list(gen_ser()):
 
