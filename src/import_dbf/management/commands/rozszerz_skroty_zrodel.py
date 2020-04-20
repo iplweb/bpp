@@ -26,7 +26,22 @@ class Command(BaseCommand):
 
         for sheet in wb.worksheets:
             for row in list(sheet.rows)[1:]:
-                skrot, nazwa, poprzednia_nazwa, issn, e_issn = [x.value for x in row]
+                skrot = row[0].value
+                nazwa = row[1].value
+                poprzednia_nazwa = row[2].value
+                try:
+                    issn = row[3].value
+                except IndexError:
+                    issn = None
+
+                try:
+                    e_issn = row[4].value
+                except IndexError:
+                    e_issn = None
+
+                if skrot is None or nazwa is None:
+                    print(f"Niepoprawna linia: {[x.value for x in row]}, skrot lub nazwa sa puste")
+                    continue
 
                 try:
                     z = Zrodlo.objects.get(skrot=skrot)
@@ -34,23 +49,23 @@ class Command(BaseCommand):
                     print(f"Nie ma takiego zrodla jak {skrot}")
                     continue
 
-                needs_saving = False
+                needs_saving = []
                 if z.nazwa != nazwa:
                     z.nazwa = nazwa
-                    needs_saving = True
+                    needs_saving.append("nazwa")
 
-                if z.issn != issn:
+                if issn is not None and z.issn != str(issn):
                     z.issn = issn
-                    needs_saving = True
+                    needs_saving.append("issn")
 
-                if z.e_issn != e_issn:
+                if e_issn is not None and z.e_issn != str(e_issn):
                     z.e_issn = e_issn
-                    needs_saving = True
+                    needs_saving.append("e_issn")
 
-                if z.poprzednia_nazwa != poprzednia_nazwa:
+                if poprzednia_nazwa is not None and z.poprzednia_nazwa != poprzednia_nazwa:
                     z.poprzednia_nazwa = poprzednia_nazwa
-                    needs_saving = True
+                    needs_saving.append("poprzednia")
 
                 if needs_saving:
-                    print("zmieniam %s" % z.nazwa)
+                    print(f"zmieniam {z.nazwa, z.pk} bo {needs_saving}")
                     z.save()
