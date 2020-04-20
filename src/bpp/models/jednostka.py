@@ -32,9 +32,17 @@ class JednostkaManager(FulltextSearchMixin, models.Manager):
             kw["uczelnia"] = kw["wydzial"].uczelnia
         return super(JednostkaManager, self).create(*args, **kw)
 
+    def get_default_ordering(self):
+        ordering = ("kolejnosc", "nazwa")
+        if Uczelnia.objects.first().sortuj_jednostki_alfabetycznie:
+            ordering = ("nazwa",)
+        return ordering
+
 
 class Jednostka(ModelZAdnotacjami, ModelZPBN_ID):
-    uczelnia = models.ForeignKey(Uczelnia, CASCADE)
+    uczelnia = models.ForeignKey(
+        Uczelnia, CASCADE, default=lambda: Uczelnia.objects.first()
+    )
 
     wydzial = models.ForeignKey(
         Wydzial, CASCADE, verbose_name="Wydział", blank=True, null=True
@@ -78,12 +86,14 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID):
 
     search = VectorField(blank=True, null=True)
 
+    kolejnosc = models.PositiveIntegerField(default=0, blank=False, null=False)
+
     objects = JednostkaManager()
 
     class Meta:
         verbose_name = "jednostka"
         verbose_name_plural = "jednostki"
-        ordering = ["nazwa"]
+        ordering = ["kolejnosc", "nazwa"]
         app_label = "bpp"
 
     def get_absolute_url(self):

@@ -3,7 +3,7 @@ import pytest
 from django.core.exceptions import PermissionDenied
 from django.urls import NoReverseMatch
 
-from bpp.models import Praca_Doktorska, Praca_Habilitacyjna, Zrodlo
+from bpp.models import Praca_Doktorska, Praca_Habilitacyjna, Zrodlo, Jednostka
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord, Autorzy
 from django.urls.base import reverse
@@ -144,3 +144,22 @@ def test_widok_admina(admin_client):
         res = admin_client.get(url)
 
         assert res.status_code == 200, "add failed for %r" % model
+
+
+@pytest.mark.django_db
+def test_admin_jednostka_sortowanie(uczelnia, admin_client):
+    url_name = reverse("admin:bpp_jednostka_changelist")
+
+    mommy.make(Jednostka)
+    mommy.make(Jednostka)
+    mommy.make(Jednostka)
+
+    uczelnia.sortuj_jednostki_alfabetycznie = True
+    uczelnia.save()
+
+    assert admin_client.get(url_name).status_code == 200
+
+    uczelnia.sortuj_jednostki_alfabetycznie = False
+    uczelnia.save()
+
+    assert admin_client.get(url_name).status_code == 200

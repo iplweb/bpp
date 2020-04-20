@@ -155,6 +155,12 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         pożądaną dyscyplinę będzie trzeba wybrać ręcznie, niezależnie od ustawienia tego pola. """,
     )
 
+    sortuj_jednostki_alfabetycznie = models.BooleanField(
+        default=True,
+        help_text="""Jeżeli ustawione na 'FAŁSZ', sortowanie jednostek będzie odbywało się ręcznie 
+        tzn za pomocą ustalonej przez administratora systemu kolejności. """
+    )
+
     clarivate_username = models.CharField(
         verbose_name="Nazwa użytkownika", null=True, blank=True, max_length=50
     )

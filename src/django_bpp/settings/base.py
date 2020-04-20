@@ -166,6 +166,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "django_filters",
     "api_v1",
+    "adminsortable2"
 ]
 
 # Profile użytkowników

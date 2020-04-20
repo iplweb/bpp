@@ -110,6 +110,12 @@ dodaj-aktualnosc:
 ustaw-date-aktualizacji:
 	cat sql/ustaw-date-aktualizacji.sql | $(PSQL)
 
-integrate: disable-trigger integruj-dbf integruj-liste-wydawcow ustaw-obca-jednostke rebuild-cache ustaw-date-aktualizacji enable-trigger dodaj-aktualnosc
+wylacz-alfabetyczne-sortowanie-jednostek:
+	echo "UPDATE bpp_uczelnia SET sortuj_jednostki_alfabetycznie = 'f'" | $(PSQL_VERBOSE)
+
+przenies-sortowanie-jednostek:
+	echo "UPDATE bpp_jednostka SET kolejnosc = import_dbf_jed.sort::integer FROM import_dbf_jed WHERE import_dbf_jed.bpp_jednostka_id = bpp_jednostka.id" | $(PSQL_VERBOSE)
+
+integrate: disable-trigger integruj-dbf integruj-liste-wydawcow ustaw-obca-jednostke rebuild-cache ustaw-date-aktualizacji wylacz-alfabetyczne-sortowanie-jednostek przenies-sortowanie-jednostek enable-trigger dodaj-aktualnosc
 
 rebuild: convert-dbfs import-dbf integrate

@@ -74,6 +74,7 @@ class UczelniaAdmin(
                     "pokazuj_raport_slotow_uczelnia",
                     "wyszukiwanie_rekordy_na_strone_anonim",
                     "wyszukiwanie_rekordy_na_strone_zalogowany",
+                    "sortuj_jednostki_alfabetycznie"
                 ),
             },
         ),

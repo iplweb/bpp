@@ -52,6 +52,9 @@ dj-pagination==2.4.0 \
     --hash=sha256:1de28af33acafe1898e2d9c80a0669b492f582ec711c13864eff00e9b16479b8 \
     --hash=sha256:fd89e97fa49a4ec7712926477d255e646213cdb0349a29b73b67510ceae4d44d \
     # via -r requirements.in
+django-admin-sortable2==0.7.6 \
+    --hash=sha256:caf158310cba75888d5e2494f0a7e52b9b43b90d22e12798023bbe8dae51243b \
+    # via -r requirements.in
 django-admin-tools==0.9.0 \
     --hash=sha256:428d1b6a572ee364c35086d7bec34344cc43105839e5637dbb900b9cabd6adf8 \
     --hash=sha256:d1ecc7664b17110c4c1a38e9709de932b7f711521951720b95705205983218a2 \
@@ -177,7 +180,7 @@ django-webmaster-verification==0.3.0 \
 django==3.0.4 \
     --hash=sha256:50b781f6cbeb98f673aa76ed8e572a019a45e52bdd4ad09001072dfd91ab07c8 \
     --hash=sha256:89e451bfbb815280b137e33e454ddd56481fdaa6334054e6e031041ee1eda360 \
-    # via -r requirements.in, crispy-forms-foundation, django-appconf, django-braces, django-classy-tags, django-columns, django-cookie-law, django-dirtyfields, django-dsl, django-favicon-plus, django-filter, django-flexible-reports, django-model-utils, django-mptt, django-multiseek, django-password-policies-iplweb, django-querysetsequence, django-sendfile, django-session-security, django-static-sitemaps, django-tables2, django-webmaster-verification, djangorestframework
+    # via -r requirements.in, crispy-forms-foundation, django-admin-sortable2, django-appconf, django-braces, django-classy-tags, django-columns, django-cookie-law, django-dirtyfields, django-dsl, django-favicon-plus, django-filter, django-flexible-reports, django-model-utils, django-mptt, django-multiseek, django-password-policies-iplweb, django-querysetsequence, django-sendfile, django-session-security, django-static-sitemaps, django-tables2, django-webmaster-verification, djangorestframework
 django_compressor==2.4 \
     --hash=sha256:57ac0a696d061e5fc6fbc55381d2050f353b973fb97eee5593f39247bc0f30af \
     --hash=sha256:d2ed1c6137ddaac5536233ec0a819e14009553fee0a869bea65d03e5285ba74f \
