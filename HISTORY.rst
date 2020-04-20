@@ -8,6 +8,7 @@ Historia zmian
 * zmiany nazw kolumn raportu ewaluacji (#830)
 * dodatkowe pola metryczki rekordu oraz sumowanie w XLS w raportach slotów
   (#829),
+* rozszerzanie listy źródeł przy imporcie plików DBF (b/n),
 
 202004.33
 ---------
