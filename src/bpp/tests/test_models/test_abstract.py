@@ -233,34 +233,6 @@ def test_eksport_pbn_system_identifier(klass, pbn_id, expected):
 
 
 @pytest.mark.django_db
-def test_eksport_pbn_author_afiliacja_w_kontekscie_wydzialu(
-    uczelnia, autor_jan_kowalski, wydawnictwo_zwarte, standard_data
-):
-    w1 = mommy.make(Wydzial, uczelnia=uczelnia)
-    w2 = mommy.make(Wydzial, uczelnia=uczelnia)
-
-    j1 = mommy.make(Jednostka, wydzial=w1, uczelnia=uczelnia)
-    j2 = mommy.make(Jednostka, wydzial=w2, uczelnia=uczelnia)
-
-    # Przypisz autora do DWÓCH jednostek z różnych wydziałów
-    autor_jan_kowalski.dodaj_jednostke(j1)
-    autor_jan_kowalski.dodaj_jednostke(j2)
-
-    # W pracy określ afiliację do drugiego wydziału
-    wydawnictwo_zwarte.dodaj_autora(autor_jan_kowalski, j2)
-
-    # I teraz wyrzuca wszystkich:
-    toplevel = []
-    wydawnictwo_zwarte.eksport_pbn_author(toplevel, w1, Wydawnictwo_Zwarte_Autor)
-    assert len(toplevel) == 1
-
-    # Zaś dla drugiego wydziału też wszyscy
-    toplevel = []
-    wydawnictwo_zwarte.eksport_pbn_author(toplevel, w2, Wydawnictwo_Zwarte_Autor)
-    assert len(toplevel) == 1
-
-
-@pytest.mark.django_db
 def test_eksport_pbn_editor_afiliacja_w_kontekscie_wydzialu(
     uczelnia, autor_jan_kowalski, wydawnictwo_zwarte, typy_odpowiedzialnosci
 ):
@@ -281,12 +253,12 @@ def test_eksport_pbn_editor_afiliacja_w_kontekscie_wydzialu(
 
     # I teraz ma wyrzucić wszystkich redaktorów
     toplevel = []
-    wydawnictwo_zwarte.eksport_pbn_editor(toplevel, w1, Wydawnictwo_Zwarte_Autor)
+    wydawnictwo_zwarte.eksport_pbn_editor(toplevel, Wydawnictwo_Zwarte_Autor)
     assert len(toplevel) == 1
 
     # Zaś dla drugiego wydziału też wszyscy
     toplevel = []
-    wydawnictwo_zwarte.eksport_pbn_editor(toplevel, w2, Wydawnictwo_Zwarte_Autor)
+    wydawnictwo_zwarte.eksport_pbn_editor(toplevel, Wydawnictwo_Zwarte_Autor)
     assert len(toplevel) == 1
 
 

@@ -1,7 +1,6 @@
 # -*- encoding: utf-8 -*-
 
 
-
 from datetime import timedelta
 
 from django.utils import timezone
@@ -15,8 +14,15 @@ from eksport_pbn.models import PlikEksportuPBN
 from eksport_pbn.tasks import eksport_pbn, remove_old_eksport_pbn_files
 
 
-def test_eksport_pbn(normal_django_user, jednostka, autor_jan_kowalski, rok,
-                     typy_odpowiedzialnosci, nginx_live_server, settings):
+def test_eksport_pbn(
+    normal_django_user,
+    jednostka,
+    autor_jan_kowalski,
+    rok,
+    typy_odpowiedzialnosci,
+    nginx_live_server,
+    settings,
+):
     settings.NOTIFICATIONS_HOST = nginx_live_server.host
     settings.NOTIFICATIONS_PORT = nginx_live_server.port
 
@@ -36,20 +42,20 @@ def test_eksport_pbn(normal_django_user, jednostka, autor_jan_kowalski, rok,
             Wydawnictwo_Ciagle,
             charakter_formalny=cf_ciagle,
             typ_kbn=typ_ciagle,
-            rok=rok)
+            rok=rok,
+        )
         wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
 
         wydawnictwo_zwarte = mommy.make(
             Wydawnictwo_Zwarte,
             charakter_formalny=cf_zwarte,
             rok=rok,
-            typ_kbn=typ_zwarte)
+            typ_kbn=typ_zwarte,
+        )
         wydawnictwo_zwarte.dodaj_autora(autor_jan_kowalski, jednostka)
 
     obj = PlikEksportuPBN.objects.create(
-        owner=normal_django_user,
-        wydzial=jednostka.wydzial,
-        od_roku=rok, do_roku=rok
+        owner=normal_django_user, od_roku=rok, do_roku=rok
     )
 
     ret = eksport_pbn(obj.pk, max_file_size=1)

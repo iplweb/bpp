@@ -13,12 +13,11 @@ def normalize_quotes(content):
     return content.decode("utf-8").replace("&#x27;", "'")
 
 
-def test_submit_report_form(admin_app, wydzial, nginx_live_server, settings):
+def test_submit_report_form(admin_app, nginx_live_server, settings):
     settings.NOTIFICATIONS_HOST = nginx_live_server.host
     settings.NOTIFICATIONS_PORT = nginx_live_server.port
 
     page = admin_app.get(reverse("eksport_pbn:zamow"))
-    page.form["wydzial"] = wydzial.pk
     res = page.form.submit().maybe_follow()
     assert res.status_code == 200
 
@@ -30,7 +29,6 @@ def test_submit_report_form_validation_data_od_do(
     settings.NOTIFICATIONS_PORT = nginx_live_server.port
 
     page = admin_app.get(reverse("eksport_pbn:zamow"))
-    page.form["wydzial"] = wydzial.pk
     page.form["od_daty"] = "2010-01-01"
     page.form["do_daty"] = "2009-01-01"
     res = page.form.submit()
@@ -44,7 +42,6 @@ def test_submit_report_form_validation_rok_od_do(
     settings.NOTIFICATIONS_PORT = nginx_live_server.port
 
     page = admin_app.get(reverse("eksport_pbn:zamow"))
-    page.form["wydzial"] = wydzial.pk
     page.form["od_roku"] = "2015"
     page.form["do_roku"] = "2014"
     res = page.form.submit()
@@ -58,7 +55,6 @@ def test_submit_report_form_validation_artykuly_ksiazki(
     settings.NOTIFICATIONS_PORT = nginx_live_server.port
 
     page = admin_app.get(reverse("eksport_pbn:zamow"))
-    page.form["wydzial"] = wydzial.pk
     page.form["artykuly"] = False
     page.form["ksiazki"] = False
     page.form["rozdzialy"] = False

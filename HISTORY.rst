@@ -9,6 +9,7 @@ Historia zmian
 * dodatkowe pola metryczki rekordu oraz sumowanie w XLS w raportach slotów
   (#829),
 * rozszerzanie listy źródeł przy imporcie plików DBF (b/n),
+* nie wymagaj wydziału przy eksporcie do PBN - eksportuj całą uczelnię (#828)
 
 202004.33
 ---------
