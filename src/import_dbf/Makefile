@@ -77,9 +77,11 @@ enable-trigger:
 create-schema:
 	echo "select tablename from pg_tables where tablename like 'import_dbf_%'" | $(PSQL)  | xargs $(MANAGE) inspectdb
 
-recreate-db:
+dropdb-createdb:
 	dropdb bpp || true
 	createdb bpp
+
+recreate-db: dropdb-createdb
 	$(MANAGE) migrate
 
 rebuild-cache:
@@ -92,6 +94,9 @@ create-bib-desc:
 import-dbf: recreate-db import-converted-dbfs alter-schema create-bib-desc
 	$(PG_DUMP) > post-import-dbf.sql
 
+restore-import-dbf-state: dropdb-createdb
+	cat post-import-dbf.sql | $(PSQL)
+
 integruj-liste-wydawcow: get-assets
 	$(MANAGE) import_wydawca_poziom $(ASSETS_DIR)/poziomy-wydawcow-2017-2020.xlsx
 	$(MANAGE) import_wydawca_alias $(ASSETS_DIR)/bg-umw/aliasy_wydawcow.xlsx
@@ -102,6 +107,9 @@ ustaw-obca-jednostke:
 dodaj-aktualnosc:
 	$(MANAGE) integruj_dbf --enable-dodaj-aktualnosc
 
-integrate: disable-trigger integruj-dbf integruj-liste-wydawcow ustaw-obca-jednostke rebuild-cache enable-trigger dodaj-aktualnosc
+ustaw-date-aktualizacji:
+	cat sql/ustaw-date-aktualizacji.sql | $(PSQL)
+
+integrate: disable-trigger integruj-dbf integruj-liste-wydawcow ustaw-obca-jednostke rebuild-cache ustaw-date-aktualizacji enable-trigger dodaj-aktualnosc
 
 rebuild: convert-dbfs import-dbf integrate
