@@ -41,7 +41,7 @@ def test_kasowanie(db, standard_data):
     assert Rekord.objects.count() == 0
 
 
-def test_opis_bibliograficzny_dependent(transactional_db, standard_data):
+def test_opis_bibliograficzny_dependent(transactional_db, standard_data, uczelnia):
     """Stwórz i skasuj Wydawnictwo_Ciagle_Autor i sprawdź, jak to
     wpłynie na opis."""
 
@@ -362,7 +362,9 @@ def test_defer_zaktualizuj_opis_task(settings):
     zaktualizuj_opis("bpp", "wydawnictwo_ciagle", w.pk)
 
 
-def test_aktualizacja_rekordu_autora(transactional_db, typy_odpowiedzialnosci):
+def test_aktualizacja_rekordu_autora(
+    transactional_db, typy_odpowiedzialnosci, uczelnia
+):
     w = mommy.make(Wydawnictwo_Ciagle)
 
     a = mommy.make(Autor)
@@ -385,7 +387,7 @@ def test_aktualizacja_rekordu_autora(transactional_db, typy_odpowiedzialnosci):
 
 
 @pytest.mark.django_db
-def test_prace_autora_z_afiliowanych_jednostek(typy_odpowiedzialnosci):
+def test_prace_autora_z_afiliowanych_jednostek(typy_odpowiedzialnosci, uczelnia):
     a1 = mommy.make(Autor, nazwisko="X", imiona="X")
     a2 = mommy.make(Autor, nazwisko="Y", imiona="Y")
 

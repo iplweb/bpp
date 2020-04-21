@@ -27,7 +27,7 @@ def test_autor_eksport_pbn_serialize(autor_jan_kowalski):
 
 
 @pytest.mark.django_db
-def test_Autor_liczba_cytowan():
+def test_Autor_liczba_cytowan(uczelnia):
     Typ_Odpowiedzialnosci.objects.get_or_create(skrot="aut.", nazwa="autor")
     autor = mommy.make(Autor)
     jednostka = mommy.make(Jednostka, skupia_pracownikow=True)
@@ -42,7 +42,7 @@ def test_Autor_liczba_cytowan():
 
 
 @pytest.mark.django_db
-def test_liczba_cytowan_afiliowane():
+def test_liczba_cytowan_afiliowane(uczelnia):
     Typ_Odpowiedzialnosci.objects.get_or_create(skrot="aut.", nazwa="autor")
     autor = mommy.make(Autor)
     jednostka = mommy.make(Jednostka, skupia_pracownikow=True)
