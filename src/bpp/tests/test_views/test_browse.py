@@ -205,7 +205,7 @@ def test_jednostka_nie_wyswietlaj_autorow_gdy_wielu(client, jednostka):
 
 
 @pytest.fixture
-def test_browse_autor(uczelnia):
+def test_browse_autor():
     Typ_Odpowiedzialnosci.objects.get_or_create(nazwa="autor", skrot="aut.")
 
     autor = mommy.make(Autor)

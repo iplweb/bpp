@@ -94,7 +94,7 @@ def test_matchuj_autora_imiona_nazwisko(autor_jan_nowak):
 
 
 @pytest.mark.django_db
-def test_matchuj_autora_po_aktualnej_jednostce(uczelnia):
+def test_matchuj_autora_po_aktualnej_jednostce():
     j1 = mommy.make(Jednostka)
     j2 = mommy.make(Jednostka)
 
@@ -115,7 +115,7 @@ def test_matchuj_autora_po_aktualnej_jednostce(uczelnia):
 
 
 @pytest.mark.django_db
-def test_matchuj_autora_po_jednostce(uczelnia):
+def test_matchuj_autora_po_jednostce():
     j1 = mommy.make(Jednostka)
     j2 = mommy.make(Jednostka)
 
@@ -137,7 +137,7 @@ def test_matchuj_autora_po_jednostce(uczelnia):
 
 
 @pytest.mark.django_db
-def test_matchuj_autora_po_tytule(uczelnia):
+def test_matchuj_autora_po_tytule():
     t = Tytul.objects.create(nazwa="prof hab", skrot="lol.")
 
     j1 = mommy.make(Jednostka)

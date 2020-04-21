@@ -71,7 +71,6 @@ class TestAutocomplete(WebTestCase):
 
     def test_GlobalNavigationAutocomplete_test_every_url(self):
         S = "Foobar 123"
-        mommy.make(Uczelnia)
         mommy.make(Autor, nazwisko=S)
         mommy.make(Wydawnictwo_Ciagle, tytul_oryginalny=S)
         mommy.make(Zrodlo, nazwa=S)

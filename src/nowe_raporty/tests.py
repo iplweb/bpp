@@ -66,7 +66,7 @@ def test_view_raport_zdefiniowany(view, klass, report_slug, rf):
 
 
 @pytest.fixture
-def autor(typy_odpowiedzialnosci, uczelnia):
+def autor(typy_odpowiedzialnosci):
     swoja_jednostka = mommy.make(Jednostka, skupia_pracownikow=True)
     obca_jednostka = mommy.make(Jednostka, skupia_pracownikow=False)
 

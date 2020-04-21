@@ -9,7 +9,7 @@ from bpp.models.struktura import Jednostka, Wydzial, Jednostka_Wydzial
 
 
 @pytest.mark.django_db
-def test_jednostka_test_wydzial_dnia_pusty(uczelnia):
+def test_jednostka_test_wydzial_dnia_pusty():
     j = mommy.make(Jednostka, nazwa="Jednostka")
     w = mommy.make(Wydzial, nazwa="Wydzial", uczelnia=j.uczelnia)
 

@@ -158,7 +158,7 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
     sortuj_jednostki_alfabetycznie = models.BooleanField(
         default=True,
         help_text="""Jeżeli ustawione na 'FAŁSZ', sortowanie jednostek będzie odbywało się ręcznie 
-        tzn za pomocą ustalonej przez administratora systemu kolejności. """
+        tzn za pomocą ustalonej przez administratora systemu kolejności. """,
     )
 
     clarivate_username = models.CharField(

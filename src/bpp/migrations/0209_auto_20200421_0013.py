@@ -6,17 +6,21 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('bpp', '0208_auto_20200329_1719'),
+        ("bpp", "0208_auto_20200329_1719"),
     ]
 
     operations = [
-        migrations.AlterModelOptions(
-            name='jednostka',
-            options={'ordering': ['kolejnosc', 'nazwa'], 'verbose_name': 'jednostka', 'verbose_name_plural': 'jednostki'},
-        ),
         migrations.AddField(
-            model_name='jednostka',
-            name='kolejnosc',
+            model_name="jednostka",
+            name="kolejnosc",
             field=models.PositiveIntegerField(default=0),
+        ),
+        migrations.AlterModelOptions(
+            name="jednostka",
+            options={
+                "ordering": ["kolejnosc", "nazwa"],
+                "verbose_name": "jednostka",
+                "verbose_name_plural": "jednostki",
+            },
         ),
     ]

@@ -319,7 +319,6 @@ class TestMinimalCachingProblem(LoadFixturesMixin, TestCase):
 
     @with_cache
     def test_tworzenie(self):
-        mommy.make(Uczelnia)
         self.j = mommy.make(Jednostka)
         self.a = any_autor()
 
@@ -335,7 +334,6 @@ class TestMinimalCachingProblem(LoadFixturesMixin, TestCase):
 
     @with_cache
     def test_usuwanie(self):
-        mommy.make(Uczelnia)
         self.j = mommy.make(Jednostka)
         self.a = any_autor()
 
