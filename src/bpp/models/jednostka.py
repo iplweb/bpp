@@ -42,7 +42,13 @@ class JednostkaManager(FulltextSearchMixin, models.Manager):
 
 class Jednostka(ModelZAdnotacjami, ModelZPBN_ID):
     uczelnia = models.ForeignKey(
-        Uczelnia, CASCADE, default=lambda: Uczelnia.objects.first()
+        Uczelnia,
+        CASCADE,
+        # Jeżeli dam tu rozsądny default, żeby w adminie się wyświetlało prawidłowo,
+        # to z kolei wysiądzie mi cała masa testów, korzystająca z model_mommy
+        # i tworząca obiekt 'Uczelnia' na poczekaniu (pole nie może być NULL).
+        # Zatem, zostawiamy to wyłączone i w adminie ustawimy wartośći inicjalne.
+        # default=lambda: Uczelnia.objects.first()
     )
 
     wydzial = models.ForeignKey(

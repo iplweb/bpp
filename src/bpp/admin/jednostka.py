@@ -106,5 +106,12 @@ class JednostkaAdmin(
 
         return self.list_display
 
+    def get_changeform_initial_data(self, request):
+        # Zobacz na komentarz do Jednostka.uczelnia.default
+        data = super(JednostkaAdmin, self).get_changeform_initial_data(request)
+        if "uczelnia" not in data:
+            data["uczelnia"] = Uczelnia.objects.first()
+        return data
+
 
 admin.site.register(Jednostka, JednostkaAdmin)
