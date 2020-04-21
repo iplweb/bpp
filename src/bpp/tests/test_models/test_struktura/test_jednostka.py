@@ -4,6 +4,7 @@ from datetime import date
 import pytest
 from model_mommy import mommy
 
+from bpp.models import Uczelnia
 from bpp.models.struktura import Jednostka, Wydzial, Jednostka_Wydzial
 
 
@@ -57,9 +58,10 @@ def test_jednostka_test_przypisania_dla_czasokresu():
 
 
 @pytest.mark.django_db
-def test_jednostka_get_default_ordering(uczelnia):
-    uczelnia.sortuj_jednostki_alfabetycznie = True
-    uczelnia.save()
+def test_jednostka_get_default_ordering():
+    assert Jednostka.objects.get_default_ordering() == ("nazwa",)
+
+    uczelnia = mommy.make(Uczelnia, sortuj_jednostki_alfabetycznie=True)
 
     assert Jednostka.objects.get_default_ordering() == ("nazwa",)
 

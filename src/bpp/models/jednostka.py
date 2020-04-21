@@ -35,9 +35,14 @@ class JednostkaManager(FulltextSearchMixin, models.Manager):
     def get_default_ordering(self):
         uczelnia = Uczelnia.objects.first()
 
-        if uczelnia is not None and uczelnia.sortuj_jednostki_alfabetycznie:
+        ordering = ("kolejnosc", "nazwa")
+        if uczelnia is None:
             ordering = ("nazwa",)
-        return ("kolejnosc", "nazwa")
+        else:
+            if uczelnia.sortuj_jednostki_alfabetycznie:
+                ordering = ("nazwa",)
+
+        return ordering
 
 
 class Jednostka(ModelZAdnotacjami, ModelZPBN_ID):
