@@ -5,15 +5,15 @@
     <meta charset="utf-8" />
     {% block blockbots %}<meta name="robots" content="NONE,NOARCHIVE" />{% endblock %}
     <!-- STYLESHEETS -->
-    {% block stylesheets %}
-        {% compress css %}
-        <link href="{% static "grappelli/jquery/ui/jquery-ui.min.css" %}" rel="stylesheet" type="text/css" media="screen" />
-        <link href="{% static "grappelli/stylesheets/screen.css" %}" rel="stylesheet" type="text/css" media="all" />
-        <link href="{% static "grappelli/stylesheets/mueller/grid/output.css" %}" rel="stylesheet" type="text/css" media="screen" />
-        <link rel="stylesheet" type="text/css" href="{% static 'kbw-keypad/dist/css/jquery.keypad.css' %}" />
-        <link rel="stylesheet" type="text/css" href="{% static "vendor/select2/dist/css/select2.css" %}" />
-        {% endcompress %}
-    {% endblock %}
+    {% compress css %}
+        {% block stylesheets %}
+            <link href="{% static "grappelli/jquery/ui/jquery-ui.min.css" %}" rel="stylesheet" type="text/css" media="screen" />
+            <link href="{% static "grappelli/stylesheets/mueller/grid/output.css" %}" rel="stylesheet" type="text/css" media="screen" />
+            <link href="{% static "grappelli/stylesheets/screen.css" %}" rel="stylesheet" type="text/css" media="all" />
+            <link rel="stylesheet" type="text/css" href="{% static 'kbw-keypad/dist/css/jquery.keypad.css' %}" media="all" />
+            <link rel="stylesheet" type="text/css" href="{% static "vendor/select2/dist/css/select2.css" %}" media="all" />
+        {% endblock %}
+    {% endcompress %}
     <!-- EXTRASTYLES -->
     <!-- EXTRASTYLES -->
     {% block extrastyle %}{% endblock %}
