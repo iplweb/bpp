@@ -23,6 +23,9 @@ from bpp.util import FulltextSearchMixin
 from .uczelnia import Uczelnia
 from .wydzial import Wydzial
 
+SORTUJ_RECZNIE = ("kolejnosc", "nazwa")
+SORTUJ_ALFABETYCZNIE = ("nazwa",)
+
 
 class JednostkaManager(FulltextSearchMixin, models.Manager):
     def create(self, *args, **kw):
@@ -35,12 +38,12 @@ class JednostkaManager(FulltextSearchMixin, models.Manager):
     def get_default_ordering(self):
         uczelnia = Uczelnia.objects.first()
 
-        ordering = ("kolejnosc", "nazwa")
+        ordering = SORTUJ_RECZNIE
         if uczelnia is None:
-            ordering = ("nazwa",)
+            ordering = SORTUJ_ALFABETYCZNIE
         else:
             if uczelnia.sortuj_jednostki_alfabetycznie:
-                ordering = ("nazwa",)
+                ordering = SORTUJ_ALFABETYCZNIE
 
         return ordering
 

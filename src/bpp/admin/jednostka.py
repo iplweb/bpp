@@ -4,7 +4,7 @@
 from adminsortable2.admin import SortableAdminMixin
 from django.contrib import admin
 
-from bpp.models import Autor_Jednostka, Uczelnia
+from bpp.models import Autor_Jednostka, Uczelnia, SORTUJ_ALFABETYCZNIE
 from miniblog.admin import SmallerTextarea
 from .core import CommitedModelAdmin
 from .core import RestrictDeletionToAdministracjaGroupMixin
@@ -99,7 +99,7 @@ class JednostkaAdmin(
         return Jednostka.objects.get_default_ordering()
 
     def get_list_display(self, request):
-        if Uczelnia.objects.first().sortuj_jednostki_alfabetycznie:
+        if Jednostka.objects.get_default_ordering() == SORTUJ_ALFABETYCZNIE:
             ret = self.list_display[:]
             ret.remove("_reorder")
             return ret

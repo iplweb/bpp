@@ -108,7 +108,7 @@ dodaj-aktualnosc:
 	$(MANAGE) integruj_dbf --enable-dodaj-aktualnosc
 
 ustaw-date-aktualizacji:
-	cat sql/ustaw-date-aktualizacji.sql | $(PSQL)
+	cat sql/ustaw-date-aktualizacji.sql | $(PSQL_VERBOSE)
 
 wylacz-alfabetyczne-sortowanie-jednostek:
 	echo "UPDATE bpp_uczelnia SET sortuj_jednostki_alfabetycznie = 'f'" | $(PSQL_VERBOSE)
