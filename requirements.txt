@@ -44,6 +44,9 @@ click==7.1.1 \
 https://github.com/mpasternak/crispy-forms-foundation/archive/0.8.1.tar.gz#egg=crispy-forms-foundation==0.8.1 \
     --hash=sha256:6c480e2ad7e2963f2956a8b8f6526d81dcbc29ad17e9d64eb323fa372925da5a \
     # via -r requirements.in
+cssmin==0.2.0 \
+    --hash=sha256:e012f0cc8401efcf2620332339011564738ae32be8c84b2e43ce8beaec1067b6 \
+    # via -r requirements.in
 dbfread==2.0.7 \
     --hash=sha256:07c8a9af06ffad3f6f03e8fe91ad7d2733e31a26d2b72c4dd4cfbae07ee3b73d \
     --hash=sha256:f604def58c59694fa0160d7be5d0b8d594467278d2bb6a47d46daf7162c84cec \
@@ -367,7 +370,7 @@ rjsmin==1.1.0 \
     --hash=sha256:e3908b21ebb584ce74a6ac233bdb5f29485752c9d3be5e50c5484ed74169232c \
     --hash=sha256:e487a7783ac4339e79ec610b98228eb9ac72178973e3dee16eba0e3feef25924 \
     --hash=sha256:ecd29f1b3e66a4c0753105baec262b331bcbceefc22fbe6f7e8bcd2067bcb4d7 \
-    # via django-compressor
+    # via -r requirements.in, django-compressor
 sentry-sdk==0.14.1 \
     --hash=sha256:b06dd27391fd11fb32f84fe054e6a64736c469514a718a99fb5ce1dff95d6b28 \
     --hash=sha256:e023da07cfbead3868e1e2ba994160517885a32dfd994fc455b118e37989479b \
