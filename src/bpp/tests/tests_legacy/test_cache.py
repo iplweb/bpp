@@ -301,6 +301,7 @@ class TestCacheZapisani(LoadFixturesMixin, TestCase):
 
     def test_zapisani_jeden(self):
         aut = any_autor("Kowalski", "Jan")
+        mommy.make(Uczelnia)
         dok = mommy.make(Praca_Doktorska, tytul_oryginalny="Doktorat", autor=aut)
 
         Rekord.objects.full_refresh()
