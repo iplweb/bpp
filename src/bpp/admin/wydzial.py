@@ -19,7 +19,7 @@ class WydzialAdmin(
     list_display = [
         "nazwa",
         "skrot",
-        "uczelnia",
+        "kolejnosc",
         "widoczny",
         "ranking_autorow",
         "zarzadzaj_automatycznie",

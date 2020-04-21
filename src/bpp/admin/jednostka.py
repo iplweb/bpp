@@ -39,10 +39,10 @@ class JednostkaAdmin(
     CommitedModelAdmin,
 ):
     list_display = (
-        "kolejnosc",
         "nazwa",
         "skrot",
         "wydzial",
+        "kolejnosc",
         "widoczna",
         "wchodzi_do_raportow",
         "skupia_pracownikow",
