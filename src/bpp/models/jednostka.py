@@ -23,6 +23,9 @@ from bpp.util import FulltextSearchMixin
 from .uczelnia import Uczelnia
 from .wydzial import Wydzial
 
+SORTUJ_RECZNIE = ("kolejnosc", "nazwa")
+SORTUJ_ALFABETYCZNIE = ("nazwa",)
+
 
 class JednostkaManager(FulltextSearchMixin, models.Manager):
     def create(self, *args, **kw):
@@ -32,9 +35,29 @@ class JednostkaManager(FulltextSearchMixin, models.Manager):
             kw["uczelnia"] = kw["wydzial"].uczelnia
         return super(JednostkaManager, self).create(*args, **kw)
 
+    def get_default_ordering(self):
+        uczelnia = Uczelnia.objects.first()
+
+        ordering = SORTUJ_RECZNIE
+        if uczelnia is None:
+            ordering = SORTUJ_ALFABETYCZNIE
+        else:
+            if uczelnia.sortuj_jednostki_alfabetycznie:
+                ordering = SORTUJ_ALFABETYCZNIE
+
+        return ordering
+
 
 class Jednostka(ModelZAdnotacjami, ModelZPBN_ID):
-    uczelnia = models.ForeignKey(Uczelnia, CASCADE)
+    uczelnia = models.ForeignKey(
+        Uczelnia,
+        CASCADE,
+        # Jeżeli dam tu rozsądny default, żeby w adminie się wyświetlało prawidłowo,
+        # to z kolei wysiądzie mi cała masa testów, korzystająca z model_mommy
+        # i tworząca obiekt 'Uczelnia' na poczekaniu (pole nie może być NULL).
+        # Zatem, zostawiamy to wyłączone i w adminie ustawimy wartośći inicjalne.
+        # default=lambda: Uczelnia.objects.first()
+    )
 
     wydzial = models.ForeignKey(
         Wydzial, CASCADE, verbose_name="Wydział", blank=True, null=True
@@ -78,12 +101,14 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID):
 
     search = VectorField(blank=True, null=True)
 
+    kolejnosc = models.PositiveIntegerField(default=0, blank=False, null=False)
+
     objects = JednostkaManager()
 
     class Meta:
         verbose_name = "jednostka"
         verbose_name_plural = "jednostki"
-        ordering = ["nazwa"]
+        ordering = ["kolejnosc", "nazwa"]
         app_label = "bpp"
 
     def get_absolute_url(self):

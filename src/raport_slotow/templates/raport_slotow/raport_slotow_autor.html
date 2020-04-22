@@ -13,6 +13,9 @@
 {% block content %}
     <h1>Raport slotów</h1>
     <h2><i class="fi-results-demographics"></i> <a href="{% url "bpp:browse_autor" autor.slug %}">{{ autor }}</a> za {{ od_roku }} - {{ do_roku }}</h2>
+    <strong>ORCID:</strong> {{ autor.orcid }}<br/>
+    <strong>PBN ID:</strong> {{ autor.pbn_id }}<br/>
+
 
     {% for table in tables %}
         <a href="?_export=xlsx&n={{ forloop.counter0 }}"><i class="fi-page-export-csv"></i> pobierz XLS</a>

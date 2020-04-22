@@ -250,21 +250,21 @@ class Wydawnictwo_Zwarte(
             return True
         return False
 
-    def eksport_pbn_isbn(self, toplevel, wydzial=None, autorzy_klass=None):
+    def eksport_pbn_isbn(self, toplevel, autorzy_klass=None):
         if self.isbn:
             isbn = SubElement(toplevel, "isbn")
             isbn.text = self.isbn.replace(".", "").strip()
 
-    def eksport_pbn_issn(self, toplevel, wydzial=None, autorzy_klass=None):
+    def eksport_pbn_issn(self, toplevel, autorzy_klass=None):
         if self.issn:
             issn = SubElement(toplevel, "issn")
             issn.text = self.issn.replace(".", "").strip()
 
-    def eksport_pbn_publisher_name(self, toplevel, wydzial=None, autorzy_klass=None):
+    def eksport_pbn_publisher_name(self, toplevel, autorzy_klass=None):
         publisher_name = SubElement(toplevel, "publisher-name")
         publisher_name.text = self.wydawnictwo
 
-    def eksport_pbn_publication_place(self, toplevel, wydzial=None, autorzy_klass=None):
+    def eksport_pbn_publication_place(self, toplevel, autorzy_klass=None):
         if self.miejsce_i_rok:
             try:
                 miejsce, rok = self.miejsce_i_rok.split(" ")
@@ -280,12 +280,12 @@ class Wydawnictwo_Zwarte(
             series = SubElement(toplevel, "series")
             series.text = self.seria_wydawnicza.nazwa
 
-    def eksport_pbn_number_in_series(self, toplevel, wydzial=None, autorzy_klass=None):
+    def eksport_pbn_number_in_series(self, toplevel, autorzy_klass=None):
         if self.numer_w_serii is not None:
             tag = SubElement(toplevel, "number-in-series")
             tag.text = str(self.numer_w_serii)
 
-    def eksport_pbn_book(self, toplevel, wydzial, autorzy_klass=None):
+    def eksport_pbn_book(self, toplevel, autorzy_klass=None):
         def add_wydawnictwo_nadrzedne_data(
             book, wydawnictwo_nadrzedne, title_text=None
         ):
@@ -308,9 +308,7 @@ class Wydawnictwo_Zwarte(
         book = SubElement(toplevel, "book")
 
         if self.wydawnictwo_nadrzedne:
-            self.wydawnictwo_nadrzedne.eksport_pbn_serializuj(
-                wydzial=wydzial, toplevel=book
-            )
+            self.wydawnictwo_nadrzedne.eksport_pbn_serializuj(toplevel=book)
 
         else:
             title_text = None
@@ -322,7 +320,7 @@ class Wydawnictwo_Zwarte(
             if title_text:
                 add_wydawnictwo_nadrzedne_data(book, self, title_text=title_text)
 
-    def eksport_pbn_editor(self, toplevel, wydzial, autorzy_klass):
+    def eksport_pbn_editor(self, toplevel, autorzy_klass):
         from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte_Autor
 
         if autorzy_klass == Wydawnictwo_Zwarte_Autor:
@@ -366,10 +364,10 @@ class Wydawnictwo_Zwarte(
         else:
             for elem in super(
                 Wydawnictwo_Zwarte, self
-            ).eksport_pbn_get_nasi_autorzy_iter(wydzial, autorzy_klass):
+            ).eksport_pbn_get_nasi_autorzy_iter(autorzy_klass):
                 yield elem
 
-    def eksport_pbn_get_wszyscy_autorzy_iter(self, wydzial, autorzy_klass):
+    def eksport_pbn_get_wszyscy_autorzy_iter(self, autorzy_klass):
         ret = set()
 
         if self.is_book:
@@ -397,7 +395,7 @@ class Wydawnictwo_Zwarte(
         else:
             for elem in super(
                 Wydawnictwo_Zwarte, self
-            ).eksport_pbn_get_wszyscy_autorzy_iter(wydzial, autorzy_klass):
+            ).eksport_pbn_get_wszyscy_autorzy_iter(autorzy_klass):
                 yield elem
 
     def eksport_pbn_get_wszyscy_autorzy_count(self, wydzial, autorzy_klass):
@@ -448,7 +446,7 @@ class Wydawnictwo_Zwarte(
         "open-access",
     ]
 
-    def eksport_pbn_serializuj(self, wydzial, toplevel=None):
+    def eksport_pbn_serializuj(self, toplevel=None):
         if toplevel is None:
             my_toplevel = Element("book")
         flds = self.eksport_pbn_BOOK_FLDS
@@ -462,10 +460,10 @@ class Wydawnictwo_Zwarte(
             toplevel = my_toplevel
 
         super(Wydawnictwo_Zwarte, self).eksport_pbn_serializuj(
-            toplevel, wydzial, Wydawnictwo_Zwarte_Autor
+            toplevel, Wydawnictwo_Zwarte_Autor
         )
         self.eksport_pbn_run_serialization_functions(
-            flds, toplevel, wydzial, Wydawnictwo_Zwarte_Autor
+            flds, toplevel, Wydawnictwo_Zwarte_Autor
         )
         return toplevel
 

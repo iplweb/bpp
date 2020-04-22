@@ -2,6 +2,17 @@
 Historia zmian
 ==============
 
+202004.34
+---------
+
+* zmiany nazw kolumn raportu ewaluacji (#830)
+* dodatkowe pola metryczki rekordu oraz sumowanie w XLS w raportach slotów
+  (#829),
+* rozszerzanie listy źródeł przy imporcie plików DBF (b/n),
+* nie wymagaj wydziału przy eksporcie do PBN - eksportuj całą uczelnię (#828)
+* wygodniejsze sortowanie wydziałów w module redagowania oraz możliwość
+  ręcznego sortowania jednostek (#802)
+
 202004.33
 ---------
 

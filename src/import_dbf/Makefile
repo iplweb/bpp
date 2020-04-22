@@ -36,6 +36,7 @@ importuj-dyscypliny:
 integruj-dbf-publikacje: get-assets
 	$(MANAGE) integruj_dbf --enable-charakter-kbn-jezyk --charaktery-enrichment-xls $(ASSETS_DIR)/bg-umw/charaktery_formalne.xlsx
 	$(MANAGE) integruj_dbf --enable-zrodlo
+	$(MANAGE) rozszerz_skroty_zrodel $(ASSETS_DIR)/bg-umw/zrodla.xlsx
 	$(MANAGE) integruj_dbf --enable-publikacja > integruj-dbf-publikacja-log.txt
 	$(MANAGE) integruj_dbf --enable-zatwierdz-podwojne-przypisania
 	$(MANAGE) integruj_dbf --enable-b-a
@@ -76,9 +77,11 @@ enable-trigger:
 create-schema:
 	echo "select tablename from pg_tables where tablename like 'import_dbf_%'" | $(PSQL)  | xargs $(MANAGE) inspectdb
 
-recreate-db:
+dropdb-createdb:
 	dropdb bpp || true
 	createdb bpp
+
+recreate-db: dropdb-createdb
 	$(MANAGE) migrate
 
 rebuild-cache:
@@ -91,6 +94,9 @@ create-bib-desc:
 import-dbf: recreate-db import-converted-dbfs alter-schema create-bib-desc
 	$(PG_DUMP) > post-import-dbf.sql
 
+restore-import-dbf-state: dropdb-createdb
+	cat post-import-dbf.sql | $(PSQL)
+
 integruj-liste-wydawcow: get-assets
 	$(MANAGE) import_wydawca_poziom $(ASSETS_DIR)/poziomy-wydawcow-2017-2020.xlsx
 	$(MANAGE) import_wydawca_alias $(ASSETS_DIR)/bg-umw/aliasy_wydawcow.xlsx
@@ -98,6 +104,18 @@ integruj-liste-wydawcow: get-assets
 ustaw-obca-jednostke:
 	$(MANAGE) ustaw_obca_jednostke --wymuszaj "$(NAZWA_OBCEJ_JEDNOSTKI)"
 
-integrate: disable-trigger integruj-dbf integruj-liste-wydawcow ustaw-obca-jednostke rebuild-cache enable-trigger
+dodaj-aktualnosc:
+	$(MANAGE) integruj_dbf --enable-dodaj-aktualnosc
+
+ustaw-date-aktualizacji:
+	cat sql/ustaw-date-aktualizacji.sql | $(PSQL_VERBOSE)
+
+wylacz-alfabetyczne-sortowanie-jednostek:
+	echo "UPDATE bpp_uczelnia SET sortuj_jednostki_alfabetycznie = 'f'" | $(PSQL_VERBOSE)
+
+przenies-sortowanie-jednostek:
+	echo "UPDATE bpp_jednostka SET kolejnosc = import_dbf_jed.sort::integer FROM import_dbf_jed WHERE import_dbf_jed.bpp_jednostka_id = bpp_jednostka.id" | $(PSQL_VERBOSE)
+
+integrate: disable-trigger integruj-dbf integruj-liste-wydawcow ustaw-obca-jednostke rebuild-cache ustaw-date-aktualizacji wylacz-alfabetyczne-sortowanie-jednostek przenies-sortowanie-jednostek enable-trigger dodaj-aktualnosc
 
 rebuild: convert-dbfs import-dbf integrate

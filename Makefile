@@ -40,7 +40,7 @@ yarn:
 
 assets: yarn grunt
 	${PYTHON} src/manage.py collectstatic --noinput -v0 --traceback
-	${PYTHON} src/manage.py compress --force  -v0 --traceback
+	# ${PYTHON} src/manage.py compress --force  -v0 --traceback
 
 clean-node-dir:
 	rm -rf node_modules

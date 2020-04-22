@@ -1,10 +1,10 @@
 # -*- encoding: utf-8 -*-
 from django.conf import settings
 from django.db import models
+
 # Create your models here.
 from django.db.models import CASCADE
 
-from bpp.models.struktura import Wydzial
 
 DATE_CREATED_ON, DATE_UPDATED_ON, DATE_UPDATED_ON_PBN = (1, 2, 3)
 
@@ -14,7 +14,6 @@ class PlikEksportuPBN(models.Model):
     created_on = models.DateTimeField(auto_now_add=True)
     file = models.FileField(verbose_name="Plik", upload_to="eksport_pbn")
 
-    wydzial = models.ForeignKey(Wydzial, CASCADE)
     od_roku = models.IntegerField()
     do_roku = models.IntegerField()
 
@@ -27,12 +26,15 @@ class PlikEksportuPBN(models.Model):
     do_daty = models.DateField(verbose_name="Do daty", blank=True, null=True)
 
     rodzaj_daty = models.SmallIntegerField(
-            verbose_name="Rodzaj pola daty",
-            choices=[(DATE_CREATED_ON, "data utworzenia"),
-                     (DATE_UPDATED_ON, "data aktualizacji"),
-                     (DATE_UPDATED_ON_PBN, "data aktualizacji dla PBN")],
-            default=3,
-            help_text="""Jakie pole z datą będzie używane do wybierania rekordów?""")
+        verbose_name="Rodzaj pola daty",
+        choices=[
+            (DATE_CREATED_ON, "data utworzenia"),
+            (DATE_UPDATED_ON, "data aktualizacji"),
+            (DATE_UPDATED_ON_PBN, "data aktualizacji dla PBN"),
+        ],
+        default=3,
+        help_text="""Jakie pole z datą będzie używane do wybierania rekordów?""",
+    )
 
     # PLAN
     #
@@ -47,32 +49,35 @@ class PlikEksportuPBN(models.Model):
         return "%s" % self.od_roku
 
     def get_fn(self):
-        buf = "PBN-%s-%s" % (self.wydzial.skrot, self.get_rok_string())
+        buf = f"PBN-{self.get_rok_string}"
 
         if not (self.artykuly and self.ksiazki and self.rozdzialy):
 
             extra = [
                 (self.artykuly, "art"),
                 (self.ksiazki, "ksi"),
-                (self.rozdzialy, "roz")
+                (self.rozdzialy, "roz"),
             ]
 
             for b, val in extra:
                 if b:
                     buf += "-" + val
 
-        flds = {DATE_CREATED_ON: 'utw',
-                DATE_UPDATED_ON: 'zm',
-                DATE_UPDATED_ON_PBN: 'zm_pbn'}
+        flds = {
+            DATE_CREATED_ON: "utw",
+            DATE_UPDATED_ON: "zm",
+            DATE_UPDATED_ON_PBN: "zm_pbn",
+        }
 
         if self.od_daty:
             try:
                 buf += "-" + flds[self.rodzaj_daty]
             except KeyError:
                 from .tasks import BrakTakiegoRodzajuDatyException
+
                 raise BrakTakiegoRodzajuDatyException(self.rodzaj_daty)
 
-            for label, wartosc in [('od', self.od_daty), ('do', self.do_daty)]:
+            for label, wartosc in [("od", self.od_daty), ("do", self.do_daty)]:
                 if wartosc is None:
                     continue
                 buf += "-" + label + "-"

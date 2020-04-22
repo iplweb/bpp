@@ -9,6 +9,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Q
 from django.forms.models import model_to_dict
+from django.utils import timezone
 
 from bpp import models as bpp
 from bpp.models import (
@@ -22,6 +23,7 @@ from bpp.models import (
 from bpp.system import User
 from bpp.util import pbar
 from import_dbf import models as dbf
+from miniblog.models import Article
 
 from .codecs import custom_search_function  # noqa
 
@@ -1630,3 +1632,12 @@ def xls2dict(fp):
         for col_idx, header in zip(range(0, first_sheet.ncols), headers):
             ret[header] = first_sheet.cell(row_idx, col_idx).value
         yield ret
+
+
+def dodaj_aktualnosc():
+    """Dodaje do 'Aktualności' wpis z datą i czasem importu. """
+    a = Article.objects.get_or_create(
+        status=Article.STATUS.published, title="Informacja o imporcie bazy danych",
+    )[0]
+    a.article_body = "Bazę danych zaimportowano: %s" % timezone.localtime()
+    a.save()

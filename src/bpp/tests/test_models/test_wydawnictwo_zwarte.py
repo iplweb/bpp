@@ -12,8 +12,8 @@ from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 
 
 @pytest.mark.django_db
-def test_serializuj_pbn_zwarte(wydawnictwo_zwarte_z_autorem, wydzial):
-    wydawnictwo_zwarte_z_autorem.eksport_pbn_serializuj(wydzial)
+def test_serializuj_pbn_zwarte(wydawnictwo_zwarte_z_autorem):
+    wydawnictwo_zwarte_z_autorem.eksport_pbn_serializuj()
 
 
 @pytest.mark.django_db
@@ -83,7 +83,7 @@ def test_eksport_pbn_wydawnictwo_nadrzedne_liczba_autorow(
     wz_child2.dodaj_autora(a1, j1, typ_odpowiedzialnosci_skrot="aut.")
     wz_child2.dodaj_autora(a2, j2, typ_odpowiedzialnosci_skrot="aut.")
 
-    ret = wz_root.eksport_pbn_serializuj(w1)
+    ret = wz_root.eksport_pbn_serializuj()
 
     assert len(ret.findall("editor")) == 2
 
@@ -126,7 +126,7 @@ def test_eksport_pbn_wydawnictwo_nadrzedne_liczba_redaktorow(
     wz_root.dodaj_autora(a1, j1, typ_odpowiedzialnosci_skrot="red.")
     wz_root.dodaj_autora(a2, j2, typ_odpowiedzialnosci_skrot="red.")
 
-    ret = wz_root.eksport_pbn_serializuj(w1)
+    ret = wz_root.eksport_pbn_serializuj()
 
     assert len(ret.findall("editor")) == 2
 
@@ -183,7 +183,7 @@ def test_eksport_pbn_wydawnictwo_nadrzedne_liczba_autorow_trzech(standard_data):
     wz_child2.dodaj_autora(a1, j1, typ_odpowiedzialnosci_skrot="aut.")
     wz_child2.dodaj_autora(a2, j2, typ_odpowiedzialnosci_skrot="aut.")
 
-    ret = wz_root.eksport_pbn_serializuj(w1)
+    ret = wz_root.eksport_pbn_serializuj()
 
     assert len(ret.findall("editor")) == 2
 
@@ -244,7 +244,7 @@ def test_eksport_pbn_wydawnictwo_nadrzedne_liczba_autorow_ksiazka_nie_redaktorsk
     wz_child2.dodaj_autora(a1, j1, typ_odpowiedzialnosci_skrot="aut.")
     wz_child2.dodaj_autora(a2, j2, typ_odpowiedzialnosci_skrot="aut.")
 
-    ret = wz_root.eksport_pbn_serializuj(w1)
+    ret = wz_root.eksport_pbn_serializuj()
 
     assert len(ret.findall("author")) == 3
 
@@ -333,11 +333,7 @@ def test_eksport_pbn_get_wszyscy_autorzy_iter(
         mommy.make(Autor), jednostka=jednostka, zapisany_jako="Foo Bar 3"
     )
 
-    res = list(
-        nadrzedne.eksport_pbn_get_wszyscy_autorzy_iter(
-            wydzial, Wydawnictwo_Zwarte_Autor
-        )
-    )
+    res = list(nadrzedne.eksport_pbn_get_wszyscy_autorzy_iter(Wydawnictwo_Zwarte_Autor))
     assert len(res) == 3
 
 
