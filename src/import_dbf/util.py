@@ -1347,7 +1347,7 @@ def integruj_publikacje(offset=None, limit=None):
 
         if rec.idt2 is not None:
             if klass == bpp.Wydawnictwo_Zwarte:
-                kw["wydawnictwo_nadrzedne"] = rec.idt2
+                kw["wydawnictwo_nadrzedne"] = rec.idt2.object
             else:
                 raise Exception("Mam wydawnictwo nadrzedne dla wydawnictwa ciągłego..?")
 
