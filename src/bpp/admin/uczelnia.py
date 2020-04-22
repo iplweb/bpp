@@ -1,4 +1,6 @@
 from django import forms
+from django.core.management import call_command
+from django.db import transaction
 
 from ..models import Uczelnia, Wydzial
 from .core import CommitedModelAdmin, RestrictDeletionToAdministracjaGroupMixin
@@ -74,6 +76,7 @@ class UczelniaAdmin(
                     "pokazuj_raport_slotow_uczelnia",
                     "wyszukiwanie_rekordy_na_strone_anonim",
                     "wyszukiwanie_rekordy_na_strone_zalogowany",
+                    "sortuj_jednostki_alfabetycznie",
                 ),
             },
         ),
@@ -108,6 +111,18 @@ class UczelniaAdmin(
     inlines = [
         WydzialInline,
     ]
+
+    def save_model(self, request, obj, form, change):
+        """Przy zmianie parametru 'sortuj_jednostki_alfabetycznie' wywołaj polecenie
+        'reorder' dla bpp.Jednostki z django-adminsortable2. """
+
+        if "sortuj_jednostki_alfabetycznie" in form.changed_data:
+            if form.cleaned_data["sortuj_jednostki_alfabetycznie"] is True:
+                transaction.on_commit(
+                    lambda: call_command("reorder", "bpp.Jednostka", "bpp.Wydzial")
+                )
+
+        return super(UczelniaAdmin, self).save_model(request, obj, form, change)
 
 
 admin.site.register(Uczelnia, UczelniaAdmin)

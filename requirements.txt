@@ -44,6 +44,9 @@ click==7.1.1 \
 https://github.com/mpasternak/crispy-forms-foundation/archive/0.8.1.tar.gz#egg=crispy-forms-foundation==0.8.1 \
     --hash=sha256:6c480e2ad7e2963f2956a8b8f6526d81dcbc29ad17e9d64eb323fa372925da5a \
     # via -r requirements.in
+cssmin==0.2.0 \
+    --hash=sha256:e012f0cc8401efcf2620332339011564738ae32be8c84b2e43ce8beaec1067b6 \
+    # via -r requirements.in
 dbfread==2.0.7 \
     --hash=sha256:07c8a9af06ffad3f6f03e8fe91ad7d2733e31a26d2b72c4dd4cfbae07ee3b73d \
     --hash=sha256:f604def58c59694fa0160d7be5d0b8d594467278d2bb6a47d46daf7162c84cec \
@@ -51,6 +54,9 @@ dbfread==2.0.7 \
 dj-pagination==2.4.0 \
     --hash=sha256:1de28af33acafe1898e2d9c80a0669b492f582ec711c13864eff00e9b16479b8 \
     --hash=sha256:fd89e97fa49a4ec7712926477d255e646213cdb0349a29b73b67510ceae4d44d \
+    # via -r requirements.in
+django-admin-sortable2==0.7.6 \
+    --hash=sha256:caf158310cba75888d5e2494f0a7e52b9b43b90d22e12798023bbe8dae51243b \
     # via -r requirements.in
 django-admin-tools==0.9.0 \
     --hash=sha256:428d1b6a572ee364c35086d7bec34344cc43105839e5637dbb900b9cabd6adf8 \
@@ -177,7 +183,7 @@ django-webmaster-verification==0.3.0 \
 django==3.0.4 \
     --hash=sha256:50b781f6cbeb98f673aa76ed8e572a019a45e52bdd4ad09001072dfd91ab07c8 \
     --hash=sha256:89e451bfbb815280b137e33e454ddd56481fdaa6334054e6e031041ee1eda360 \
-    # via -r requirements.in, crispy-forms-foundation, django-appconf, django-braces, django-classy-tags, django-columns, django-cookie-law, django-dirtyfields, django-dsl, django-favicon-plus, django-filter, django-flexible-reports, django-model-utils, django-mptt, django-multiseek, django-password-policies-iplweb, django-querysetsequence, django-sendfile, django-session-security, django-static-sitemaps, django-tables2, django-webmaster-verification, djangorestframework
+    # via -r requirements.in, crispy-forms-foundation, django-admin-sortable2, django-appconf, django-braces, django-classy-tags, django-columns, django-cookie-law, django-dirtyfields, django-dsl, django-favicon-plus, django-filter, django-flexible-reports, django-model-utils, django-mptt, django-multiseek, django-password-policies-iplweb, django-querysetsequence, django-sendfile, django-session-security, django-static-sitemaps, django-tables2, django-webmaster-verification, djangorestframework
 django_compressor==2.4 \
     --hash=sha256:57ac0a696d061e5fc6fbc55381d2050f353b973fb97eee5593f39247bc0f30af \
     --hash=sha256:d2ed1c6137ddaac5536233ec0a819e14009553fee0a869bea65d03e5285ba74f \
@@ -364,7 +370,7 @@ rjsmin==1.1.0 \
     --hash=sha256:e3908b21ebb584ce74a6ac233bdb5f29485752c9d3be5e50c5484ed74169232c \
     --hash=sha256:e487a7783ac4339e79ec610b98228eb9ac72178973e3dee16eba0e3feef25924 \
     --hash=sha256:ecd29f1b3e66a4c0753105baec262b331bcbceefc22fbe6f7e8bcd2067bcb4d7 \
-    # via django-compressor
+    # via -r requirements.in, django-compressor
 sentry-sdk==0.14.1 \
     --hash=sha256:b06dd27391fd11fb32f84fe054e6a64736c469514a718a99fb5ce1dff95d6b28 \
     --hash=sha256:e023da07cfbead3868e1e2ba994160517885a32dfd994fc455b118e37989479b \

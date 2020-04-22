@@ -65,7 +65,7 @@ class JednostkaAutocomplete(JednostkaMixin, autocomplete.Select2QuerySetView):
         qs = self.qset
         if self.q:
             qs = qs.filter(Q(nazwa__icontains=self.q) | Q(skrot__icontains=self.q))
-        return qs
+        return qs.order_by(*Jednostka.objects.get_default_ordering())
 
 
 class LataAutocomplete(autocomplete.Select2QuerySetView):

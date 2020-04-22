@@ -77,7 +77,9 @@ class Wydzial(ModelZAdnotacjami, ModelZPBN_ID):
         """Lista jednostek - dla WWW"""
         from .jednostka import Jednostka
 
-        return Jednostka.objects.filter(wydzial=self, widoczna=True)
+        return Jednostka.objects.filter(wydzial=self, widoczna=True).order_by(
+            *Jednostka.objects.get_default_ordering()
+        )
 
 
 class JednostkaManager(FulltextSearchMixin, models.Manager):
