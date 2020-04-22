@@ -1,21 +1,17 @@
 # -*- encoding: utf-8 -*-
 from crispy_forms.helper import FormHelper
-from dal import autocomplete
+from dal_select2.widgets import ListSelect2
 from django import forms
-
-from bpp.forms import MediaLessListSelect2
 
 
 def make_nav_form(url):
     class GlobalNavForm(forms.Form):
         global_nav_value = forms.CharField(
             label="",
-            widget=MediaLessListSelect2(
+            widget=ListSelect2(
                 url=url,
-                attrs={
-                    'data-html': True,
-                    'data-placeholder': 'Wpisz, aby wyszukać...'
-                })
+                attrs={"data-html": True, "data-placeholder": "Wpisz, aby wyszukać..."},
+            ),
         )
 
         def __init__(self):
@@ -28,9 +24,9 @@ def make_nav_form(url):
     return GlobalNavForm
 
 
-GlobalNavForm = make_nav_form('bpp:navigation-autocomplete')
+GlobalNavForm = make_nav_form("bpp:navigation-autocomplete")
 
-AdminNavForm = make_nav_form('bpp:admin-navigation-autocomplete')
+AdminNavForm = make_nav_form("bpp:admin-navigation-autocomplete")
 
 
 def user(request):
