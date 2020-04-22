@@ -37,6 +37,10 @@ ALTER TABLE import_dbf_b_e ALTER COLUMN idt SET DATA TYPE INT USING idt::integer
 ALTER TABLE import_dbf_b_p ADD COLUMN IF NOT EXISTS id SERIAL;
 ALTER TABLE import_dbf_b_p ALTER COLUMN idt SET DATA TYPE INT USING idt::integer;
 
+
+update import_dbf_bib set idt2 = null where idt2 = '';
+alter table import_dbf_bib alter column idt2 set data type integer using idt2::integer;
+
 ALTER TABLE import_dbf_bib ALTER COLUMN idt SET DATA TYPE INT USING idt::integer;
 CREATE UNIQUE INDEX  import_dbf_bib_idt ON  import_dbf_bib(idt);
 UPDATE import_dbf_aut SET idt_jed = NULL where idt_jed = '';
