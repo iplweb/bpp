@@ -20,8 +20,9 @@ class Bib(models.Model):
     sort = models.TextField(blank=True, null=True)
     sort2 = models.TextField(blank=True, null=True)
     export = models.TextField(blank=True, null=True)
-    import_field = models.TextField(db_column='import', blank=True,
-                                    null=True)  # Field renamed because it was a Python reserved word.
+    import_field = models.TextField(
+        db_column="import", blank=True, null=True
+    )  # Field renamed because it was a Python reserved word.
     naz_imie = models.TextField(blank=True, null=True)
     redaktor = models.TextField(blank=True, null=True)
     redaktor0 = models.TextField(blank=True, null=True)
@@ -37,7 +38,7 @@ class Bib(models.Model):
     recenzowan = models.TextField(blank=True, null=True)
     jezyk = models.TextField(blank=True, null=True)
     jezyk2 = models.TextField(blank=True, null=True)
-    punkty_kbn = models.TextField(db_column='pk', blank=True, null=True)
+    punkty_kbn = models.TextField(db_column="pk", blank=True, null=True)
     x_skrot = models.TextField(blank=True, null=True)
     wspx = models.TextField(blank=True, null=True)
     x2_skrot = models.TextField(blank=True, null=True)
@@ -57,9 +58,10 @@ class Bib(models.Model):
     pun_wl = models.TextField(blank=True, null=True)
     study_gr = models.TextField(blank=True, null=True)
     sort_fixed = models.TextField(blank=True, null=True)
-    zaznacz_field = models.TextField(db_column='zaznacz_', blank=True,
-                                     null=True)  # Field renamed because it ended with '_'.
-    idt2 = models.ForeignKey('self', CASCADE, db_column='idt2', blank=True, null=True)
+    zaznacz_field = models.TextField(
+        db_column="zaznacz_", blank=True, null=True
+    )  # Field renamed because it ended with '_'.
+    idt2 = models.ForeignKey("self", CASCADE, db_column="idt2", blank=True, null=True)
     pun_max = models.TextField(blank=True, null=True)
     pun_erih = models.TextField(blank=True, null=True)
     kwartyl = models.TextField(blank=True, null=True)
@@ -83,12 +85,13 @@ class Bib(models.Model):
     analyzed = models.BooleanField(default=False)
 
     class Meta:
-        db_table = 'import_dbf_bib'
-        verbose_name = 'zaimportowany rekord bibliografi'
-        verbose_name_plural = 'zaimportowane rekordy bibliografi'
+        db_table = "import_dbf_bib"
+        verbose_name = "zaimportowany rekord bibliografi"
+        verbose_name_plural = "zaimportowane rekordy bibliografi"
 
     def __str__(self):
         return self.tytul_or_s
+
 
 class Bib_Desc(models.Model):
     idt = models.ForeignKey(Bib, CASCADE)
@@ -97,15 +100,29 @@ class Bib_Desc(models.Model):
     source = models.CharField(max_length=10)
 
     class Meta:
-        ordering = ('idt', 'source')
+        ordering = ("idt", "source")
+
 
 class Aut(models.Model):
     idt_aut = models.TextField(primary_key=True)
     imiona = models.TextField(blank=True, null=True)
     nazwisko = models.TextField(blank=True, null=True)
     # 'ref' to odnośnik do sposobu zapisania danego autora w publikacji (myśl: b_a)
-    ref = models.ForeignKey('import_dbf.Aut', blank=True, null=True, db_column='ref', on_delete=DO_NOTHING, related_name='aut_ref')
-    idt_jed = models.ForeignKey('import_dbf.Jed', blank=True, null=True, db_column='idt_jed', on_delete=DO_NOTHING)
+    ref = models.ForeignKey(
+        "import_dbf.Aut",
+        blank=True,
+        null=True,
+        db_column="ref",
+        on_delete=DO_NOTHING,
+        related_name="aut_ref",
+    )
+    idt_jed = models.ForeignKey(
+        "import_dbf.Jed",
+        blank=True,
+        null=True,
+        db_column="idt_jed",
+        on_delete=DO_NOTHING,
+    )
     kad_nr = models.TextField(blank=True, null=True)
     tel = models.TextField(blank=True, null=True)
     email = models.TextField(blank=True, null=True)
@@ -125,7 +142,14 @@ class Aut(models.Model):
     scop_id = models.TextField(blank=True, null=True)
     orcid_id = models.TextField(blank=True, null=True)
     # exp_id to autor "nadrzędny"(?)
-    exp_id = models.ForeignKey('import_dbf.Aut', blank=True, null=True, db_column='exp_id', on_delete=DO_NOTHING, related_name='aut_exp')
+    exp_id = models.ForeignKey(
+        "import_dbf.Aut",
+        blank=True,
+        null=True,
+        db_column="exp_id",
+        on_delete=DO_NOTHING,
+        related_name="aut_exp",
+    )
     polon_id = models.TextField(blank=True, null=True)
     usos_id = models.TextField(blank=True, null=True)
     udf_id = models.TextField(blank=True, null=True)
@@ -133,14 +157,16 @@ class Aut(models.Model):
     uwagi = models.TextField(blank=True, null=True)
     graf = models.TextField(blank=True, null=True)
 
-    bpp_autor = models.ForeignKey('bpp.Autor', null=True, blank=True, on_delete=DO_NOTHING)
+    bpp_autor = models.ForeignKey(
+        "bpp.Autor", null=True, blank=True, on_delete=DO_NOTHING
+    )
 
     class Meta:
         managed = False
-        db_table = 'import_dbf_aut'
-        verbose_name = 'zaimportowany autor'
-        verbose_name_plural = 'zaimportowani autorzy'
-        ordering = ('nazwisko', 'imiona')
+        db_table = "import_dbf_aut"
+        verbose_name = "zaimportowany autor"
+        verbose_name_plural = "zaimportowani autorzy"
+        ordering = ("nazwisko", "imiona")
 
     def __str__(self):
         ret = f"{self.nazwisko} {self.imiona}"
@@ -168,14 +194,16 @@ class Jed(models.Model):
     www = models.TextField(blank=True, null=True)
     id_u = models.TextField(blank=True, null=True)
 
-    bpp_jednostka = models.ForeignKey('bpp.Jednostka', DO_NOTHING, blank=True, null=True)
+    bpp_jednostka = models.ForeignKey(
+        "bpp.Jednostka", DO_NOTHING, blank=True, null=True
+    )
 
     def get_bpp(self):
         return self.bpp_jednostka
 
     class Meta:
         managed = False
-        db_table = 'import_dbf_jed'
+        db_table = "import_dbf_jed"
 
     def __str__(self):
         return self.nazwa
@@ -185,8 +213,12 @@ class B_A(models.Model):
     id = models.IntegerField(primary_key=True)
     idt = models.ForeignKey("import_dbf.Bib", db_column="idt", on_delete=DO_NOTHING)
     lp = models.TextField(blank=True, null=True)
-    idt_aut = models.ForeignKey("import_dbf.Aut", db_column="idt_aut", on_delete=DO_NOTHING)
-    idt_jed = models.ForeignKey("import_dbf.Jed", db_column="idt_jed", on_delete=DO_NOTHING)
+    idt_aut = models.ForeignKey(
+        "import_dbf.Aut", db_column="idt_aut", on_delete=DO_NOTHING
+    )
+    idt_jed = models.ForeignKey(
+        "import_dbf.Jed", db_column="idt_jed", on_delete=DO_NOTHING
+    )
     wspz = models.TextField(blank=True, null=True)
     pkt_dod = models.TextField(blank=True, null=True)
     wspz2 = models.TextField(blank=True, null=True)
@@ -207,8 +239,8 @@ class B_A(models.Model):
 
     class Meta:
         managed = False
-        ordering = ('idt__tytul_or_s', 'lp')
-        db_table = 'import_dbf_b_a'
+        ordering = ("idt__tytul_or_s", "lp")
+        db_table = "import_dbf_b_a"
 
 
 class PozManager(models.Manager):
@@ -230,23 +262,26 @@ class Poz(models.Model):
 
     class Meta:
         managed = False
-        ordering = ('idt', 'kod_opisu', 'lp')
-        db_table = 'import_dbf_poz'
-        verbose_name = 'zaimportowany opis rekordu'
-        verbose_name_plural = 'zaimportowane opisy rekordow'
+        ordering = ("idt", "kod_opisu", "lp")
+        db_table = "import_dbf_poz"
+        verbose_name = "zaimportowany opis rekordu"
+        verbose_name_plural = "zaimportowane opisy rekordow"
 
 
 class B_U(models.Model):
-    idt = models.ForeignKey('import_dbf.Bib', DO_NOTHING, db_column='idt')
-    idt_usi = models.ForeignKey('import_dbf.Usi', DO_NOTHING, db_column='idt_usi')
+    idt = models.ForeignKey("import_dbf.Bib", DO_NOTHING, db_column="idt")
+    idt_usi = models.ForeignKey("import_dbf.Usi", DO_NOTHING, db_column="idt_usi")
     comm = models.TextField(blank=True, null=True)
 
     class Meta:
         managed = False
-        verbose_name_plural = 'zaimportowane dane OA rekordow'
-        verbose_name = 'zaimportowane dane OA rekordu'
-        db_table = 'import_dbf_b_u'
-        ordering = ('idt', 'comm',)
+        verbose_name_plural = "zaimportowane dane OA rekordow"
+        verbose_name = "zaimportowane dane OA rekordu"
+        db_table = "import_dbf_b_u"
+        ordering = (
+            "idt",
+            "comm",
+        )
 
 
 class Usi(models.Model):
@@ -255,16 +290,22 @@ class Usi(models.Model):
     usm_sf = models.TextField(blank=True, null=True)
     skrot = models.TextField(blank=True, null=True)
     nazwa = models.TextField(blank=True, null=True)
-    bpp_id = models.ForeignKey('bpp.Zrodlo', DO_NOTHING, db_column='bpp_id', null=True)
-    bpp_wydawca_id = models.ForeignKey('bpp.Wydawca', DO_NOTHING, db_column='bpp_wydawca_id', null=True)
-    bpp_seria_wydawnicza_id = models.ForeignKey('bpp.Seria_Wydawnicza', DO_NOTHING, db_column='bpp_seria_wydawnicza_id',
-                                                null=True)
+    bpp_id = models.ForeignKey("bpp.Zrodlo", DO_NOTHING, db_column="bpp_id", null=True)
+    bpp_wydawca_id = models.ForeignKey(
+        "bpp.Wydawca", DO_NOTHING, db_column="bpp_wydawca_id", null=True
+    )
+    bpp_seria_wydawnicza_id = models.ForeignKey(
+        "bpp.Seria_Wydawnicza",
+        DO_NOTHING,
+        db_column="bpp_seria_wydawnicza_id",
+        null=True,
+    )
 
     class Meta:
         managed = False
-        verbose_name_plural = 'zaimportowane źródła'
-        verbose_name = 'zaimportowane źródło'
-        db_table = 'import_dbf_usi'
+        verbose_name_plural = "zaimportowane źródła"
+        verbose_name = "zaimportowane źródło"
+        db_table = "import_dbf_usi"
 
     def __str__(self):
         return self.nazwa
@@ -278,7 +319,7 @@ class Ses(models.Model):
 
     class Meta:
         managed = False
-        db_table = 'import_dbf_ses'
+        db_table = "import_dbf_ses"
 
 
 class Wx2(models.Model):
@@ -289,7 +330,7 @@ class Wx2(models.Model):
 
     class Meta:
         managed = False
-        db_table = 'import_dbf_wx2'
+        db_table = "import_dbf_wx2"
 
 
 class Ixn(models.Model):
@@ -300,7 +341,7 @@ class Ixn(models.Model):
         managed = False
         verbose_name = "zaimportowany identyfikator PBN"
         verbose_name_plural = "zaimportowane identyfikatory PBN"
-        db_table = 'import_dbf_ixn'
+        db_table = "import_dbf_ixn"
 
 
 class B_B(models.Model):
@@ -310,7 +351,7 @@ class B_B(models.Model):
 
     class Meta:
         managed = False
-        db_table = 'import_dbf_b_b'
+        db_table = "import_dbf_b_b"
 
 
 class B_N(models.Model):
@@ -320,7 +361,7 @@ class B_N(models.Model):
 
     class Meta:
         managed = False
-        db_table = 'import_dbf_b_n'
+        db_table = "import_dbf_b_n"
 
 
 class Dys(models.Model):
@@ -352,9 +393,9 @@ class Dys(models.Model):
 
     class Meta:
         managed = False
-        verbose_name = 'zaimportowana dyscyplina pracownika'
-        verbose_name_plural = 'zaimportowane dyscypliny pracowników'
-        db_table = 'import_dbf_dys'
+        verbose_name = "zaimportowana dyscyplina pracownika"
+        verbose_name_plural = "zaimportowane dyscypliny pracowników"
+        db_table = "import_dbf_dys"
 
 
 class Ixe(models.Model):
@@ -368,7 +409,7 @@ class Ixe(models.Model):
         managed = False
         verbose_name = "zaimportowane hasło naukowe"
         verbose_name_plural = "zaimportowane hasła naukowe"
-        db_table = 'import_dbf_ixe'
+        db_table = "import_dbf_ixe"
 
 
 class Jer(models.Model):
@@ -381,7 +422,7 @@ class Jer(models.Model):
 
     class Meta:
         managed = False
-        db_table = 'import_dbf_jer'
+        db_table = "import_dbf_jer"
 
 
 class Kad(models.Model):
@@ -393,7 +434,7 @@ class Kad(models.Model):
 
     class Meta:
         managed = False
-        db_table = 'import_dbf_kad'
+        db_table = "import_dbf_kad"
 
 
 class Loc(models.Model):
@@ -402,7 +443,7 @@ class Loc(models.Model):
 
     class Meta:
         managed = False
-        db_table = 'import_dbf_loc'
+        db_table = "import_dbf_loc"
 
 
 class Pbc(models.Model):
@@ -414,7 +455,7 @@ class Pbc(models.Model):
 
     class Meta:
         managed = False
-        db_table = 'import_dbf_pbc'
+        db_table = "import_dbf_pbc"
 
 
 class Pub(models.Model):
@@ -426,13 +467,15 @@ class Pub(models.Model):
     to_print3 = models.TextField(blank=True, null=True)
     to_print4 = models.TextField(blank=True, null=True)
     to_print5 = models.TextField(blank=True, null=True)
-    bpp_id = models.ForeignKey('bpp.Charakter_Formalny', DO_NOTHING, db_column='bpp_id', null=True)
+    bpp_id = models.ForeignKey(
+        "bpp.Charakter_Formalny", DO_NOTHING, db_column="bpp_id", null=True
+    )
 
     class Meta:
         managed = False
-        verbose_name = 'zaimportowany charakter publikacji'
-        verbose_name_plural = 'zaimportowane charaktery publikacji'
-        db_table = 'import_dbf_pub'
+        verbose_name = "zaimportowany charakter publikacji"
+        verbose_name_plural = "zaimportowane charaktery publikacji"
+        db_table = "import_dbf_pub"
 
 
 class Sci(models.Model):
@@ -443,12 +486,13 @@ class Sci(models.Model):
     ye = models.TextField(blank=True, null=True)
     cont = models.TextField(blank=True, null=True)
     ut = models.TextField(blank=True, null=True)
-    field_ignore_me = models.TextField(db_column='_ignore_me', blank=True,
-                                       null=True)  # Field renamed because it started with '_'.
+    field_ignore_me = models.TextField(
+        db_column="_ignore_me", blank=True, null=True
+    )  # Field renamed because it started with '_'.
 
     class Meta:
         managed = False
-        db_table = 'import_dbf_sci'
+        db_table = "import_dbf_sci"
 
 
 class Sys(models.Model):
@@ -456,9 +500,9 @@ class Sys(models.Model):
 
     class Meta:
         managed = False
-        db_table = 'import_dbf_sys'
-        verbose_name = 'zaimportowana wersja bazy'
-        verbose_name_plural = 'zaimportowane wersje bazy'
+        db_table = "import_dbf_sys"
+        verbose_name = "zaimportowana wersja bazy"
+        verbose_name_plural = "zaimportowane wersje bazy"
 
     def __str__(self):
         return self.ver
@@ -469,12 +513,13 @@ class Wsx(models.Model):
     skrot = models.TextField(blank=True, null=True)
     nazwa = models.TextField(blank=True, null=True)
     wsp = models.TextField(blank=True, null=True)
-    field_ignore_me = models.TextField(db_column='_ignore_me', blank=True,
-                                       null=True)  # Field renamed because it started with '_'.
+    field_ignore_me = models.TextField(
+        db_column="_ignore_me", blank=True, null=True
+    )  # Field renamed because it started with '_'.
 
     class Meta:
         managed = False
-        db_table = 'import_dbf_wsx'
+        db_table = "import_dbf_wsx"
 
 
 class Wyd(models.Model):
@@ -484,9 +529,9 @@ class Wyd(models.Model):
 
     class Meta:
         managed = False
-        db_table = 'import_dbf_wyd'
-        verbose_name = 'zaimportowany wydział'
-        verbose_name_plural = 'zaimportowane wydzialy'
+        db_table = "import_dbf_wyd"
+        verbose_name = "zaimportowany wydział"
+        verbose_name_plural = "zaimportowane wydzialy"
 
     def __str__(self):
         return self.nazwa
@@ -499,9 +544,9 @@ class Ldy(models.Model):
 
     class Meta:
         managed = False
-        db_table = 'import_dbf_ldy'
-        verbose_name = 'zaimportowana dziedzina'
-        verbose_name_plural = 'zaimportowane dziedziny'
+        db_table = "import_dbf_ldy"
+        verbose_name = "zaimportowana dziedzina"
+        verbose_name_plural = "zaimportowane dziedziny"
 
     def __str__(self):
         return f"{self.dziedzina} / {self.dyscyplina}"
@@ -514,17 +559,21 @@ class B_E(models.Model):
 
     class Meta:
         managed = False
-        db_table = 'import_dbf_b_e'
+        db_table = "import_dbf_b_e"
 
 
 class B_P(models.Model):
-    idt = models.IntegerField()  # ForeignKey("import_dbf.Bib", db_column='idt', on_delete=DO_NOTHING)
+    idt = (
+        models.IntegerField()
+    )  # ForeignKey("import_dbf.Bib", db_column='idt', on_delete=DO_NOTHING)
     lp = models.TextField(blank=True, null=True)
-    idt_pol = models.ForeignKey("import_dbf.Ixp", db_column='idt_pol', on_delete=DO_NOTHING)
+    idt_pol = models.ForeignKey(
+        "import_dbf.Ixp", db_column="idt_pol", on_delete=DO_NOTHING
+    )
 
     class Meta:
         managed = False
-        db_table = 'import_dbf_b_p'
+        db_table = "import_dbf_b_p"
 
     def __str__(self):
         return "powiązanie B_P dla %s" % self.idt
@@ -536,7 +585,7 @@ class Ixp(models.Model):
 
     class Meta:
         managed = False
-        db_table = 'import_dbf_ixp'
+        db_table = "import_dbf_ixp"
 
     def __str__(self):
         return self.haslo
@@ -545,13 +594,13 @@ class Ixp(models.Model):
 class Jez(models.Model):
     skrot = models.TextField(primary_key=True)
     nazwa = models.TextField(blank=True, null=True)
-    bpp_id = models.ForeignKey('bpp.Jezyk', DO_NOTHING, db_column='bpp_id', null=True)
+    bpp_id = models.ForeignKey("bpp.Jezyk", DO_NOTHING, db_column="bpp_id", null=True)
 
     class Meta:
         managed = False
-        db_table = 'import_dbf_jez'
-        verbose_name = 'zaimportowany język'
-        verbose_name_plural = 'zaimportowane języki'
+        db_table = "import_dbf_jez"
+        verbose_name = "zaimportowany język"
+        verbose_name_plural = "zaimportowane języki"
 
     def __str__(self):
         return self.nazwa
@@ -567,13 +616,13 @@ class Kbn(models.Model):
     to_print4 = models.TextField(blank=True, null=True)
     to_print5 = models.TextField(blank=True, null=True)
 
-    bpp_id = models.ForeignKey('bpp.Typ_KBN', DO_NOTHING, db_column='bpp_id', null=True)
+    bpp_id = models.ForeignKey("bpp.Typ_KBN", DO_NOTHING, db_column="bpp_id", null=True)
 
     class Meta:
         managed = False
-        db_table = 'import_dbf_kbn'
-        verbose_name = 'zaimportowany typ KBN'
-        verbose_name_plural = 'zaimportowane typy KBN'
+        db_table = "import_dbf_kbn"
+        verbose_name = "zaimportowany typ KBN"
+        verbose_name_plural = "zaimportowane typy KBN"
 
     def __str__(self):
         return self.nazwa
@@ -589,17 +638,18 @@ class Pba(models.Model):
 
     class Meta:
         managed = False
-        db_table = 'import_dbf_pba'
+        db_table = "import_dbf_pba"
 
 
 class Pbd(models.Model):
     rep_f_name = models.TextField(blank=True, null=True)
-    field_ignore_me = models.TextField(db_column='_ignore_me', blank=True,
-                                       null=True)  # Field renamed because it started with '_'.
+    field_ignore_me = models.TextField(
+        db_column="_ignore_me", blank=True, null=True
+    )  # Field renamed because it started with '_'.
 
     class Meta:
         managed = False
-        db_table = 'import_dbf_pbd'
+        db_table = "import_dbf_pbd"
 
 
 class Rtf(models.Model):
@@ -610,7 +660,7 @@ class Rtf(models.Model):
 
     class Meta:
         managed = False
-        db_table = 'import_dbf_rtf'
+        db_table = "import_dbf_rtf"
 
 
 class S_B(models.Model):
@@ -618,20 +668,22 @@ class S_B(models.Model):
     idt = models.ForeignKey("import_dbf.Bib", db_column="idt", on_delete=DO_NOTHING)
     cit = models.TextField(blank=True, null=True)
     doi = models.TextField(blank=True, null=True)
-    del_field = models.TextField(db_column='del', blank=True,
-                                 null=True)  # Field renamed because it was a Python reserved word.
+    del_field = models.TextField(
+        db_column="del", blank=True, null=True
+    )  # Field renamed because it was a Python reserved word.
     redaktor = models.TextField(blank=True, null=True)
     dat_akt = models.TextField(blank=True, null=True)
     autocyt = models.TextField(blank=True, null=True)
     ut = models.TextField(blank=True, null=True)
     ut0 = models.TextField(blank=True, null=True)
     uwagi = models.TextField(blank=True, null=True)
-    field_ignore_me = models.TextField(db_column='_ignore_me', blank=True,
-                                       null=True)  # Field renamed because it started with '_'.
+    field_ignore_me = models.TextField(
+        db_column="_ignore_me", blank=True, null=True
+    )  # Field renamed because it started with '_'.
 
     class Meta:
         managed = False
-        db_table = 'import_dbf_s_b'
+        db_table = "import_dbf_s_b"
 
 
 class Wsy(models.Model):
@@ -639,12 +691,13 @@ class Wsy(models.Model):
     skrot = models.TextField(blank=True, null=True)
     nazwa = models.TextField(blank=True, null=True)
     wsp = models.TextField(blank=True, null=True)
-    field_ignore_me = models.TextField(db_column='_ignore_me', blank=True,
-                                       null=True)  # Field renamed because it started with '_'.
+    field_ignore_me = models.TextField(
+        db_column="_ignore_me", blank=True, null=True
+    )  # Field renamed because it started with '_'.
 
     class Meta:
         managed = False
-        db_table = 'import_dbf_wsy'
+        db_table = "import_dbf_wsy"
 
 
 class Ixb(models.Model):
@@ -653,7 +706,7 @@ class Ixb(models.Model):
 
     class Meta:
         managed = False
-        db_table = 'import_dbf_ixb'
+        db_table = "import_dbf_ixb"
         verbose_name = "zaimportowana baza"
         verbose_name_plural = "zaimportowane bazy"
 
@@ -676,18 +729,20 @@ class Lis(models.Model):
 
     class Meta:
         managed = False
-        db_table = 'import_dbf_lis'
+        db_table = "import_dbf_lis"
         verbose_name = "zaimportowana lista wydawców"
         verbose_name_plural = "zaimportowane listy wydawców"
 
 
 class B_L(models.Model):
-    idt = models.IntegerField()  # ForeignKey("import_dbf.Bib", on_delete=DO_NOTHING, db_column='idt')
+    idt = (
+        models.IntegerField()
+    )  # ForeignKey("import_dbf.Bib", on_delete=DO_NOTHING, db_column='idt')
     idt_l = models.TextField(blank=True, null=True)
 
     class Meta:
         managed = False
-        db_table = 'import_dbf_b_l'
+        db_table = "import_dbf_b_l"
 
 
 class Ext(models.Model):
@@ -695,19 +750,29 @@ class Ext(models.Model):
 
     class Meta:
         managed = False
-        db_table = 'import_dbf_ext'
+        db_table = "import_dbf_ext"
 
 
 class J_H(models.Model):
-    idt_jed_f = models.ForeignKey("import_dbf.Jed", on_delete=DO_NOTHING, db_column="idt_jed_f", related_name="jed_f")
-    idt_jed_t = models.ForeignKey("import_dbf.Jed", on_delete=DO_NOTHING, db_column="idt_jed_t", related_name="jed_t")
+    idt_jed_f = models.ForeignKey(
+        "import_dbf.Jed",
+        on_delete=DO_NOTHING,
+        db_column="idt_jed_f",
+        related_name="jed_f",
+    )
+    idt_jed_t = models.ForeignKey(
+        "import_dbf.Jed",
+        on_delete=DO_NOTHING,
+        db_column="idt_jed_t",
+        related_name="jed_t",
+    )
     rok = models.TextField(blank=True, null=True)
 
     class Meta:
         managed = False
-        db_table = 'import_dbf_j_h'
-        verbose_name = 'zaimportowany rekord historii jednostek'
-        verbose_name_plural = 'zaimportowane rekordy historii jednostek'
+        db_table = "import_dbf_j_h"
+        verbose_name = "zaimportowany rekord historii jednostek"
+        verbose_name_plural = "zaimportowane rekordy historii jednostek"
 
 
 class Kbr(models.Model):
@@ -722,9 +787,9 @@ class Kbr(models.Model):
 
     class Meta:
         managed = False
-        db_table = 'import_dbf_kbr'
-        verbose_name = 'zaimportowany rekord KBR'
-        verbose_name_plural = 'zaimportowane rekordy KBR'
+        db_table = "import_dbf_kbr"
+        verbose_name = "zaimportowany rekord KBR"
+        verbose_name_plural = "zaimportowane rekordy KBR"
 
     def __str__(self):
         return self.nazwa
@@ -735,9 +800,49 @@ class Pbb(models.Model):
 
     class Meta:
         managed = False
-        db_table = 'import_dbf_pbb'
+        db_table = "import_dbf_pbb"
 
 
-__all__ = ['Bib', 'Aut', 'Jed', 'B_A', 'Poz', 'B_U', 'Usi', 'Ses', 'Wx2', 'Ixn', 'B_B', 'B_N', 'Dys', 'Ixe',
-           'Jer', 'Kad', 'Loc', 'Pbc', 'Pub', 'Sci', 'Sys', 'Wsx', 'Wyd', 'Ldy', 'B_E', 'B_P', 'Ixp', 'Jez', 'Kbn',
-           'Pba', 'Pbd', 'Rtf', 'S_B', 'Wsy', 'Ixb', 'Lis', 'B_L', 'Ext', 'J_H', 'Kbr', 'Pbb']
+__all__ = [
+    "Bib",
+    "Aut",
+    "Jed",
+    "B_A",
+    "Poz",
+    "B_U",
+    "Usi",
+    "Ses",
+    "Wx2",
+    "Ixn",
+    "B_B",
+    "B_N",
+    "Dys",
+    "Ixe",
+    "Jer",
+    "Kad",
+    "Loc",
+    "Pbc",
+    "Pub",
+    "Sci",
+    "Sys",
+    "Wsx",
+    "Wyd",
+    "Ldy",
+    "B_E",
+    "B_P",
+    "Ixp",
+    "Jez",
+    "Kbn",
+    "Pba",
+    "Pbd",
+    "Rtf",
+    "S_B",
+    "Wsy",
+    "Ixb",
+    "Lis",
+    "B_L",
+    "Ext",
+    "J_H",
+    "Kbr",
+    "Pbb",
+]
