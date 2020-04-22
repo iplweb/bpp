@@ -56,6 +56,8 @@ class B_AInline(admin.TabularInline):
 
 
 class B_UInline(admin.TabularInline):
+    autocomplete_fields = ["idt_usi"]
+    fields = ["idt_usi", "comm"]
     model = B_U
     extra = 0
 
@@ -66,7 +68,7 @@ class BibAdmin(ImportDbfBaseAdmin):
     search_fields = ["tytul_or", "title", "zrodlo", "szczegoly", "uwagi", "zrodlo_s"]
     list_filter = ["kbr", "lf", "study_gr", "kwartyl"]
     readonly_fields = ["object_id", "content_type"]
-
+    autocomplete_fields = ["idt2"]
     inlines = [B_AInline, PozInline, B_UInline]
 
 

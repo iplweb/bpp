@@ -59,7 +59,7 @@ class Bib(models.Model):
     sort_fixed = models.TextField(blank=True, null=True)
     zaznacz_field = models.TextField(db_column='zaznacz_', blank=True,
                                      null=True)  # Field renamed because it ended with '_'.
-    idt2 = models.TextField(blank=True, null=True)
+    idt2 = models.ForeignKey('self', CASCADE, db_column='idt2', blank=True, null=True)
     pun_max = models.TextField(blank=True, null=True)
     pun_erih = models.TextField(blank=True, null=True)
     kwartyl = models.TextField(blank=True, null=True)
