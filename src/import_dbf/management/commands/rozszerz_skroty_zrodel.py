@@ -25,22 +25,24 @@ class Command(BaseCommand):
         wb = load_workbook(plik)
 
         for sheet in wb.worksheets:
-            for row in list(sheet.rows)[1:]:
+            for row in list(sheet.rows):
                 skrot = row[0].value
                 nazwa = row[1].value
-                poprzednia_nazwa = row[2].value
+                # poprzednia_nazwa = row[2].value
                 try:
-                    issn = row[3].value
+                    issn = row[2].value
                 except IndexError:
                     issn = None
 
                 try:
-                    e_issn = row[4].value
+                    e_issn = row[3].value
                 except IndexError:
                     e_issn = None
 
                 if skrot is None or nazwa is None:
-                    print(f"Niepoprawna linia: {[x.value for x in row]}, skrot lub nazwa sa puste")
+                    print(
+                        f"Niepoprawna linia: {[x.value for x in row]}, skrot lub nazwa sa puste"
+                    )
                     continue
 
                 try:
@@ -62,9 +64,12 @@ class Command(BaseCommand):
                     z.e_issn = e_issn
                     needs_saving.append("e_issn")
 
-                if poprzednia_nazwa is not None and z.poprzednia_nazwa != poprzednia_nazwa:
-                    z.poprzednia_nazwa = poprzednia_nazwa
-                    needs_saving.append("poprzednia")
+                # if (
+                #     poprzednia_nazwa is not None
+                #     and z.poprzednia_nazwa != poprzednia_nazwa
+                # ):
+                #     z.poprzednia_nazwa = poprzednia_nazwa
+                #     needs_saving.append("poprzednia")
 
                 if needs_saving:
                     print(f"zmieniam {z.nazwa, z.pk} bo {needs_saving}")
