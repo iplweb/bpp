@@ -16,9 +16,10 @@ class Wydawnictwo_Zwarte_AutorViewSet(viewsets.ReadOnlyModelViewSet):
 
 class Wydawnictwo_ZwarteFilterSet(django_filters.rest_framework.FilterSet):
     ostatnio_zmieniony = django_filters.DateTimeFromToRangeFilter("ostatnio_zmieniony")
+    rok = django_filters.RangeFilter("rok")
 
     class Meta:
-        fields = ["ostatnio_zmieniony", "charakter_formalny"]
+        fields = ["ostatnio_zmieniony", "charakter_formalny", "rok"]
         model = Wydawnictwo_Zwarte
 
 

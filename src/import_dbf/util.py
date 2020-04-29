@@ -1345,6 +1345,12 @@ def integruj_publikacje(offset=None, limit=None):
             else:
                 raise NotImplementedError(elem, rec, rec.idt)
 
+        if rec.idt2 is not None:
+            if klass == bpp.Wydawnictwo_Zwarte:
+                kw["wydawnictwo_nadrzedne"] = rec.idt2.object
+            else:
+                raise Exception("Mam wydawnictwo nadrzedne dla wydawnictwa ciągłego..?")
+
         try:
             res = klass.objects.create(**kw)
         except Exception as e:

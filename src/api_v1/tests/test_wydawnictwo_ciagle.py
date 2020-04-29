@@ -41,3 +41,11 @@ def test_rest_api_wydawnictwo_ciagle_filtering_2(api_client, wydawnictwo_ciagle)
         reverse("api_v1:wydawnictwo_ciagle-list") + f"?ostatnio_zmieniony_after={czas}"
     )
     assert res.json()["count"] == 0
+
+
+@pytest.mark.django_db
+def test_rest_api_wydawnictwo_ciagle_filtering_rok(api_client, wydawnictwo_ciagle, rok):
+    res = api_client.get(
+        reverse("api_v1:wydawnictwo_ciagle-list") + f"?rok_min={rok+1}"
+    )
+    assert res.json()["count"] == 0

@@ -20,7 +20,7 @@ usun-integracje-autorow:
 	echo "begin; delete from bpp_autor_jednostka; delete from bpp_autor;update import_dbf_aut set bpp_autor_id = NULL where bpp_autor_id IS NOT NULL;commit;" | $(PSQL)
 
 get-assets:
-	if [ -d $(ASSETS_DIR) ]; then cd $(ASSETS_DIR) && git pull; else git clone https://github.com/iplweb/bpp-assets $(ASSETS_DIR); fi
+	if [ -d $(ASSETS_DIR) ]; then (cd $(ASSETS_DIR) && git pull) || (rm -rfv $(ASSETS_DIR) && git clone https://github.com/iplweb/bpp-assets $(ASSSETS_DIR)) ; else git clone https://github.com/iplweb/bpp-assets $(ASSETS_DIR); fi
 
 integruj-dbf-autorzy:
 	$(MANAGE) integruj_dbf --enable-wydzial

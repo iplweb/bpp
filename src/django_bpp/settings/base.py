@@ -244,6 +244,11 @@ COMPRESS_OFFLINE_CONTEXT = [
         "STATIC_URL": STATIC_URL,
         "LANGUAGE_CODE": "pl",
     },
+    {
+        "THEME_NAME": "scss/app-orange.css",
+        "STATIC_URL": STATIC_URL,
+        "LANGUAGE_CODE": "pl",
+    },
 ]
 
 # Domyslnie, redis na Ubuntu pozwala na 16 baz danych

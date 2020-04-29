@@ -2,6 +2,11 @@
 Historia zmian
 ==============
 
+202004.35
+---------
+
+* filtrowanie po roku publikacji w API (#844)
+
 202004.34
 ---------
 

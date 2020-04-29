@@ -6,22 +6,25 @@ module.exports = function (grunt) {
 
         sass: {
             options: {
-		implementation: sass,
+                implementation: sass,
                 includePaths: [
-		    'node_modules/foundation-sites/scss'
-		]
+                    'node_modules/foundation-sites/scss'
+                ]
             },
             dist: {
                 options: {
                     outputStyle: 'compressed',
-		    loadPath: ['node_modules/foundation-sites/scss'],
+                    loadPath: ['node_modules/foundation-sites/scss'],
                 },
                 files: {
                     'src/bpp/static/scss/app-blue.css':
                         'src/bpp/static/scss/app-blue.scss',
 
                     'src/bpp/static/scss/app-green.css':
-                        'src/bpp/static/scss/app-green.scss'
+                        'src/bpp/static/scss/app-green.scss',
+                    'src/bpp/static/scss/app-orange.css':
+                        'src/bpp/static/scss/app-orange.scss'
+
                 }
             }
         },

@@ -101,8 +101,7 @@ import_log_calosc.txt
 *.xz
 log
 .pytest_cache
-/src/bpp/static/scss/app-blue.css
-/src/bpp/static/scss/app-green.css
+/src/bpp/static/scss/app-*.css
 dump-*.dump
 *.pgdump
 
