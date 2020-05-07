@@ -717,24 +717,35 @@ def wez_zakres_stron(szczegoly):
 
 
 parsed_informacje_regex = re.compile(
-    r"(\[online\](\s+|)|)(\s+|)"
-    r"(?P<rok>\d\d+)\s+"
-    r"(((vol|t|r|bd)(\.|) (?P<tom>\d+)|)(\s+|)|)"
-    r"(((((iss|nr|z|h)(\.|))) (?P<numer>((\d+)(\w+|))(\/\d+|)))|)",
+    r"(\[online\])?\s*"
+    r"(?P<rok>\d\d+)"
+    r"(\s*(vol|t|r|bd)\.*\s*(?P<tom>\d+))?"
+    r"(\s*(iss|nr|z|h)\.*\s*(?P<numer>\d+\w*(\/\d*\w*)?))?",
     flags=re.IGNORECASE,
 )
 
 
-def parse_informacje(informacje, key):
+def parse_informacje_as_dict(
+    informacje, parsed_informacje_regex=parsed_informacje_regex
+):
     """Wycina z pola informacje informację o tomie lub numerze lub roku"""
     if not informacje:
-        return
+        return {}
 
-    p = parsed_informacje_regex.match(informacje)
+    # matches = re.search(parsed_informacje_regex, informacje)
+    # if matches:
+    #     return matches.groupdict()
+    # return {}
+
+    p = parsed_informacje_regex.search(informacje)
     if p is not None:
-        d = p.groupdict()
-        if key in d:
-            return d[key]
+        return p.groupdict()
+    return {}
+
+
+def parse_informacje(informacje, key):
+    "Wstecznie kompatybilna wersja funkcji parse_informacje_as_dict"
+    return parse_informacje_as_dict(informacje).get(key)
 
 
 class PBNSerializerHelperMixin:

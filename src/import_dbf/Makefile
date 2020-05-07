@@ -1,4 +1,3 @@
-
 NAZWA_OBCEJ_JEDNOSTKI=obcy
 
 PSQL=psql -q -t --echo-errors bpp | grep -v "INSERT 0 1"
@@ -37,6 +36,7 @@ integruj-dbf-publikacje: get-assets
 	$(MANAGE) integruj_dbf --enable-charakter-kbn-jezyk --charaktery-enrichment-xls $(ASSETS_DIR)/bg-umw/charaktery_formalne.xlsx
 	$(MANAGE) integruj_dbf --enable-zrodlo
 	$(MANAGE) rozszerz_skroty_zrodel $(ASSETS_DIR)/bg-umw/zrodla.xlsx
+	$(PG_DUMP) > pre-integruj-dbf-enable-publikacja.sql
 	$(MANAGE) integruj_dbf --enable-publikacja > integruj-dbf-publikacja-log.txt
 	$(MANAGE) integruj_dbf --enable-zatwierdz-podwojne-przypisania
 	$(MANAGE) integruj_dbf --enable-b-a
@@ -96,6 +96,9 @@ import-dbf: recreate-db import-converted-dbfs alter-schema create-bib-desc
 
 restore-import-dbf-state: dropdb-createdb
 	cat post-import-dbf.sql | $(PSQL)
+
+restore-pre-integruj-publikacje-state: dropdb-createdb
+	cat pre-integruj-dbf-enable-publikacja.sql | $(PSQL)
 
 integruj-liste-wydawcow: get-assets
 	$(MANAGE) import_wydawca_poziom $(ASSETS_DIR)/poziomy-wydawcow-2017-2020.xlsx

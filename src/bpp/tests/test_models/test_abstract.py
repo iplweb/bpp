@@ -1,4 +1,6 @@
 # -*- encoding: utf-8 -*-
+import re
+
 import pytest
 from django.core.exceptions import ValidationError
 from django.views.generic.dates import timezone_today
@@ -8,20 +10,21 @@ from model_mommy import mommy
 from bpp.admin import Wersja_Tekstu_OpenAccessAdmin
 from bpp.models import (
     Autor_Dyscyplina,
-    Wydawnictwo_Ciagle_Autor,
+    Czas_Udostepnienia_OpenAccess,
+    Licencja_OpenAccess,
+    Tryb_OpenAccess_Wydawnictwo_Zwarte,
     Typ_Odpowiedzialnosci,
     Wersja_Tekstu_OpenAccess,
-    Licencja_OpenAccess,
-    Czas_Udostepnienia_OpenAccess,
-    Tryb_OpenAccess_Wydawnictwo_Zwarte,
+    Wydawnictwo_Ciagle_Autor,
+    parse_informacje_as_dict,
 )
 from bpp.models.konferencja import Konferencja
 from bpp.models.nagroda import Nagroda
 from bpp.models.seria_wydawnicza import Seria_Wydawnicza
 from bpp.models.struktura import Jednostka, Wydzial
-from bpp.models.system import Charakter_PBN, Charakter_Formalny, Typ_KBN
+from bpp.models.system import Charakter_Formalny, Charakter_PBN, Typ_KBN
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
-from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte_Autor, Wydawnictwo_Zwarte
+from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor
 
 
 @pytest.mark.django_db
@@ -87,7 +90,6 @@ def test_baza_modelu_odpowiedzialnosci_autorow_dyscyplina_okresl_dyscypline(
     typy_odpowiedzialnosci,
     rok,
 ):
-
     wca = wydawnictwo_ciagle.dodaj_autora(
         autor_jan_kowalski, jednostka, zapisany_jako="Kowalski"
     )
@@ -362,3 +364,24 @@ def test_eksport_pbn_open_access(wydawnictwo_zwarte, openaccess_data):
     toplevel = Element("test")
     wydawnictwo_zwarte.eksport_pbn_open_access(toplevel)
     assert len(toplevel.getchildren()[0].getchildren()) == 6
+
+
+@pytest.mark.parametrize(
+    "input,exp_rok,exp_tom,exp_nr",
+    [
+        ("1960", "1960", None, None),
+        ("1960 t. 8", "1960", "8", None),
+        ("1960 t 8", "1960", "8", None),
+        ("1960 nr 2", "1960", None, "2"),
+        ("1960 nr. 2", "1960", None, "2"),
+        ("1960 t. 8 nr 2", "1960", "8", "2"),
+        ("1960 T. 8 nr 2", "1960", "8", "2"),
+        ("1960 T.8nr2", "1960", "8", "2"),
+        ("1960 T.8 nr 2", "1960", "8", "2"),
+    ],
+)
+def test_parse_informacje(input, exp_rok, exp_tom, exp_nr):
+    res = parse_informacje_as_dict(input)
+    assert res.get("rok") == exp_rok
+    assert res.get("tom") == exp_tom
+    assert res.get("numer") == exp_nr
