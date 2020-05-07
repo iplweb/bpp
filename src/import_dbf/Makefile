@@ -32,15 +32,19 @@ importuj-dyscypliny:
 	$(MANAGE) importuj_dyscypliny -v0 2019 "/Volumes/Dane zaszyfrowane/UMWroclaw/bpp-assets/dyscypliny/2019.xlsx"
 	$(MANAGE) importuj_dyscypliny -v0 2020 "/Volumes/Dane zaszyfrowane/UMWroclaw/bpp-assets/dyscypliny/2020.xlsx"
 
-integruj-dbf-publikacje: get-assets
+integruj-dbf-publikacje-pre:
 	$(MANAGE) integruj_dbf --enable-charakter-kbn-jezyk --charaktery-enrichment-xls $(ASSETS_DIR)/bg-umw/charaktery_formalne.xlsx
 	$(MANAGE) integruj_dbf --enable-zrodlo
 	$(MANAGE) rozszerz_skroty_zrodel $(ASSETS_DIR)/bg-umw/zrodla.xlsx
 	$(PG_DUMP) > pre-integruj-dbf-enable-publikacja.sql
+
+integruj-dbf-publikacje-post:
 	$(MANAGE) integruj_dbf --enable-publikacja > integruj-dbf-publikacja-log.txt
 	$(MANAGE) integruj_dbf --enable-zatwierdz-podwojne-przypisania
 	$(MANAGE) integruj_dbf --enable-b-a
 	$(MANAGE) integruj_dbf --enable-przypisz-jednostki
+
+integruj-dbf-publikacje: get-assets integruj-dbf-publikacje-pre integruj-dbf-publikacje-post
 
 przypisz-dyscypliny:
 	$(MANAGE) przypisz_dyscypliny -v0 2017 --ustawiaj-pierwsza-gdy-dwie --disable-cache
@@ -99,6 +103,8 @@ restore-import-dbf-state: dropdb-createdb
 
 restore-pre-integruj-publikacje-state: dropdb-createdb
 	cat pre-integruj-dbf-enable-publikacja.sql | $(PSQL)
+
+restart-integruj-publikacje: restore-pre-integruj-publikacje-state integruj-dbf-publikacje-post
 
 integruj-liste-wydawcow: get-assets
 	$(MANAGE) import_wydawca_poziom $(ASSETS_DIR)/poziomy-wydawcow-2017-2020.xlsx

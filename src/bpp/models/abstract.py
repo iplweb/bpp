@@ -719,8 +719,8 @@ def wez_zakres_stron(szczegoly):
 parsed_informacje_regex = re.compile(
     r"(\[online\])?\s*"
     r"(?P<rok>\d\d+)"
-    r"(\s*(vol|t|r|bd)\.*\s*(?P<tom>\d+))?"
-    r"(\s*(iss|nr|z|h)\.*\s*(?P<numer>\d+\w*(\/\d*\w*)?))?",
+    r"(\s*(vol|t|r|bd)\.*\s*\[?(?P<tom>\d+)\]?)?"
+    r"(\s*(iss|nr|z|h|suppl|supl)\.*\s*(?P<numer>\d+\w*(\/\d*\w*)?))?",
     flags=re.IGNORECASE,
 )
 
@@ -731,11 +731,6 @@ def parse_informacje_as_dict(
     """Wycina z pola informacje informację o tomie lub numerze lub roku"""
     if not informacje:
         return {}
-
-    # matches = re.search(parsed_informacje_regex, informacje)
-    # if matches:
-    #     return matches.groupdict()
-    # return {}
 
     p = parsed_informacje_regex.search(informacje)
     if p is not None:
