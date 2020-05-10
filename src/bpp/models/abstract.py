@@ -720,7 +720,7 @@ parsed_informacje_regex = re.compile(
     r"(\[online\])?\s*"
     r"(?P<rok>\d\d+)"
     r"(\s*(vol|t|r|bd)\.*\s*\[?(?P<tom>\d+)\]?)?"
-    r"(\s*(iss|nr|z|h|suppl|supl)\.*\s*(?P<numer>\d+\w*(\/\d*\w*)?))?",
+    r"(\s*(iss|nr|z|h|suppl|supl|no)\.*\s*(?P<numer>\d+\w*([\/-]\d*\w*)?))?",
     flags=re.IGNORECASE,
 )
 

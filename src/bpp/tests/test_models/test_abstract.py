@@ -380,6 +380,7 @@ def test_eksport_pbn_open_access(wydawnictwo_zwarte, openaccess_data):
         ("1960 T.8 nr 2", "1960", "8", "2"),
         ("2018 Vol.77 suppl.2", "2018", "77", "2"),
         ("2020 T. [59] supl.", "2020", "59", None),
+        ("2020 Vol.61 no.7-12", "2020", "61", "7-12"),
     ],
 )
 def test_parse_informacje(input, exp_rok, exp_tom, exp_nr):
