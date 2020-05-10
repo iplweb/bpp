@@ -2,6 +2,12 @@
 Historia zmian
 ==============
 
+202005.36
+---------
+
+* poprawki importu rekordów z plików DBF oraz procedur wycinających
+  dane na temat numeru i tomu (#845)
+
 202004.35
 ---------
 

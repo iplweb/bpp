@@ -19,6 +19,7 @@ from bpp.models import (
     const,
     parse_informacje,
     wez_zakres_stron,
+    parse_informacje_as_dict,
 )
 from bpp.system import User
 from bpp.util import pbar
@@ -947,11 +948,25 @@ def integruj_publikacje(offset=None, limit=None):
                 # E: bibliogr. poz
 
                 kw["szczegoly"] = elem.get("a")
+
+                # A: moze byc to 'rok tom' lub 'rok numer' lub 'rok numer tom'
+                pi = parse_informacje_as_dict(elem.get("a"))
+                if pi.get("rok") and (pi.get("numer") or pi.get("tom")):
+                    assert not kw.get("tom")
+                    assert not kw.get("nr_zeszytu")
+
+                    kw["tom"] = pi.get("tom")
+                    kw["nr_zeszytu"] = pi.get("numer")
+
                 kw["informacje"] = exp_combine(kw.get("informacje"), elem.get("b"))
 
                 if elem.get("b"):
-                    assert not kw.get("tom")
-                    kw["tom"] = elem.get("b")
+                    if elem.get("b").startswith("nr "):
+                        assert not kw.get("nr_zeszytu")
+                        kw["nr_zeszytu"] = elem.get("b").replace("nr ", "")
+                    else:
+                        assert not kw.get("tom")
+                        kw["tom"] = elem.get("b")
 
                 kw["szczegoly"] = exp_combine(kw["szczegoly"], elem.get("c"))
 
