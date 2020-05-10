@@ -22,7 +22,7 @@ from bpp.models import (
     parse_informacje_as_dict,
 )
 from bpp.system import User
-from bpp.util import pbar
+from bpp.util import pbar, set_seq
 from import_dbf import models as dbf
 from miniblog.models import Article
 
@@ -1366,6 +1366,9 @@ def integruj_publikacje(offset=None, limit=None):
             else:
                 raise Exception("Mam wydawnictwo nadrzedne dla wydawnictwa ciągłego..?")
 
+        # Zaimportuj z ID takim samym jak po stronie pliku DBF
+        kw["id"] = kw["idt"]
+
         try:
             res = klass.objects.create(**kw)
         except Exception as e:
@@ -1379,6 +1382,17 @@ def integruj_publikacje(offset=None, limit=None):
             klass_ext.objects.create(
                 rekord=res, baza=Zewnetrzna_Baza_Danych.objects.get(skrot="WOS")
             )
+
+
+def set_sequences():
+    for elem in [
+        "bpp_wydawnictwo_ciagle",
+        "bpp_wydawnictwo_zwarte",
+        "bpp_patent",
+        "bpp_praca_doktorska",
+        "bpp_praca_habilitacyjna",
+    ]:
+        set_seq(elem)
 
 
 def wyswietl_prace_bez_dopasowania(logger):

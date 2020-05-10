@@ -31,6 +31,7 @@ from import_dbf.util import (
     wzbogacaj_charaktery,
     zatwierdz_podwojne_przypisania,
     dodaj_aktualnosc,
+    set_sequences,
 )
 
 django.setup()
@@ -162,6 +163,7 @@ class Command(BaseCommand):
             )
 
             pool.apply(wyswietl_prace_bez_dopasowania, (logger,))
+            pool.apply(set_sequences)
 
         if enable_all or options["enable_zatwierdz_podwojne_przypisania"]:
             logger.debug("Zatwierdzanie podwójnych podwojnych przypisan")

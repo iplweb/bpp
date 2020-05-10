@@ -7,6 +7,8 @@ Historia zmian
 
 * poprawki importu rekordów z plików DBF oraz procedur wycinających
   dane na temat numeru i tomu (#845)
+* import z plików DBF zachowuje oryginalne numery ID (b/n),
+
 
 202004.35
 ---------

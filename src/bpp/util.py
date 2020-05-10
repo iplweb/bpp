@@ -346,3 +346,11 @@ def safe_html(html):
         strip=STRIP_TAGS,
     )
     return bleach.linkify(cleaned_html)
+
+
+def set_seq(s):
+    if settings.DATABASES["default"]["ENGINE"].find("postgresql") >= 0:
+        from django.db import connection
+
+        cursor = connection.cursor()
+        cursor.execute("SELECT setval('%s_id_seq', (SELECT MAX(id) FROM %s))" % (s, s))
