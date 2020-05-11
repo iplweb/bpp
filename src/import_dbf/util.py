@@ -1367,7 +1367,7 @@ def integruj_publikacje(offset=None, limit=None):
                 raise Exception("Mam wydawnictwo nadrzedne dla wydawnictwa ciągłego..?")
 
         # Zaimportuj z ID takim samym jak po stronie pliku DBF
-        kw["id"] = kw["idt"]
+        kw["id"] = rec.idt
 
         try:
             res = klass.objects.create(**kw)

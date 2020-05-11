@@ -8,6 +8,7 @@ from api_v1.viewsets.autor import (
     Autor_JednostkaViewSet,
 )
 from api_v1.viewsets.nagroda import NagrodaViewSet
+from api_v1.viewsets.praca_doktorska import Praca_DoktorskaViewSet
 from api_v1.viewsets.struktura import JednostkaViewSet, WydzialViewSet, UczelniaViewSet
 from api_v1.viewsets.system import (
     Charakter_FormalnyViewSet,
@@ -53,6 +54,8 @@ router.register(
     r"wydawnictwo_ciagle_zewnetrzna_baza_danych",
     Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychViewSet,
 )
+
+router.register(r"praca_doktorska", Praca_DoktorskaViewSet)
 
 router.register(r"rodzaj_zrodla", Rodzaj_ZrodlaViewSet)
 router.register(r"zrodlo", ZrodloViewSet)
