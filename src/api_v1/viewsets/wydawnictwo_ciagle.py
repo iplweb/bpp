@@ -29,7 +29,8 @@ class Wydawnictwo_CiagleFilterSet(django_filters.rest_framework.FilterSet):
 
 
 class Wydawnictwo_CiagleViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Wydawnictwo_Ciagle.objects.all()
+    # Lista musi być posortowana po PK aby nie było duplikatów
+    queryset = Wydawnictwo_Ciagle.objects.all().order_by("pk")
     serializer_class = Wydawnictwo_CiagleSerializer
     filterset_class = Wydawnictwo_CiagleFilterSet
 

@@ -407,6 +407,11 @@ def doktorat(jednostka, charaktery_formalne, jezyki, typy_odpowiedzialnosci):
     return _doktorat_maker(tytul_oryginalny=u"Praca doktorska", jednostka=jednostka)
 
 
+@pytest.fixture(scope="function")
+def praca_doktorska(doktorat):
+    return doktorat
+
+
 @pytest.fixture
 def doktorat_maker(db):
     return _doktorat_maker

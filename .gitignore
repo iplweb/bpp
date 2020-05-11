@@ -116,3 +116,4 @@ src/import_dbf/integruj-dbf-publikacja-log.txt
 src/import_dbf/post-import-dbf.sql
 *.gz
 /src/bpp/static/scss/.sass-cache/
+/src/import_dbf/pre-integruj-dbf-enable-publikacja.sql

@@ -31,6 +31,7 @@ from import_dbf.util import (
     wzbogacaj_charaktery,
     zatwierdz_podwojne_przypisania,
     dodaj_aktualnosc,
+    set_sequences,
 )
 
 django.setup()
@@ -42,6 +43,8 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("--uczelnia", type=str, default="Domyślna Uczelnia")
         parser.add_argument("--skrot", type=str, default="DU")
+
+        parser.add_argument("--disable-multithreading", action="store_true")
 
         parser.add_argument("--enable-all", action="store_true")
         parser.add_argument("--disable-transaction", action="store_true")
@@ -68,7 +71,14 @@ class Command(BaseCommand):
         parser.add_argument("--enable-dodaj-aktualnosc", action="store_true")
 
     def handle(
-        self, uczelnia, skrot, enable_all, disable_transaction, *args, **options
+        self,
+        uczelnia,
+        skrot,
+        enable_all,
+        disable_transaction,
+        disable_multithreading,
+        *args,
+        **options
     ):
         verbosity = int(options["verbosity"])
         logger = logging.getLogger("django")
@@ -82,6 +92,19 @@ class Command(BaseCommand):
         cpu_count = multiprocessing.cpu_count()
         num_proc = int(floor(cpu_count * 0.875)) or 1
         pool = multiprocessing.Pool(processes=num_proc)
+
+        if disable_multithreading:
+
+            def apply(fun, args):
+                return fun(*args)
+
+            pool.apply = apply
+
+            def starmap(fun, lst):
+                for elem in lst:
+                    fun(*elem)
+
+            pool.starmap = starmap
 
         pool.apply(integruj_uczelnia, (uczelnia, skrot))
 
@@ -140,6 +163,7 @@ class Command(BaseCommand):
             )
 
             pool.apply(wyswietl_prace_bez_dopasowania, (logger,))
+            pool.apply(set_sequences)
 
         if enable_all or options["enable_zatwierdz_podwojne_przypisania"]:
             logger.debug("Zatwierdzanie podwójnych podwojnych przypisan")

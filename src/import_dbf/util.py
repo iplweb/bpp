@@ -19,9 +19,10 @@ from bpp.models import (
     const,
     parse_informacje,
     wez_zakres_stron,
+    parse_informacje_as_dict,
 )
 from bpp.system import User
-from bpp.util import pbar
+from bpp.util import pbar, set_seq
 from import_dbf import models as dbf
 from miniblog.models import Article
 
@@ -947,11 +948,25 @@ def integruj_publikacje(offset=None, limit=None):
                 # E: bibliogr. poz
 
                 kw["szczegoly"] = elem.get("a")
+
+                # A: moze byc to 'rok tom' lub 'rok numer' lub 'rok numer tom'
+                pi = parse_informacje_as_dict(elem.get("a"))
+                if pi.get("rok") and (pi.get("numer") or pi.get("tom")):
+                    assert not kw.get("tom")
+                    assert not kw.get("nr_zeszytu")
+
+                    kw["tom"] = pi.get("tom")
+                    kw["nr_zeszytu"] = pi.get("numer")
+
                 kw["informacje"] = exp_combine(kw.get("informacje"), elem.get("b"))
 
                 if elem.get("b"):
-                    assert not kw.get("tom")
-                    kw["tom"] = elem.get("b")
+                    if elem.get("b").startswith("nr "):
+                        assert not kw.get("nr_zeszytu")
+                        kw["nr_zeszytu"] = elem.get("b").replace("nr ", "")
+                    else:
+                        assert not kw.get("tom")
+                        kw["tom"] = elem.get("b")
 
                 kw["szczegoly"] = exp_combine(kw["szczegoly"], elem.get("c"))
 
@@ -1351,6 +1366,9 @@ def integruj_publikacje(offset=None, limit=None):
             else:
                 raise Exception("Mam wydawnictwo nadrzedne dla wydawnictwa ciągłego..?")
 
+        # Zaimportuj z ID takim samym jak po stronie pliku DBF
+        kw["id"] = rec.idt
+
         try:
             res = klass.objects.create(**kw)
         except Exception as e:
@@ -1364,6 +1382,17 @@ def integruj_publikacje(offset=None, limit=None):
             klass_ext.objects.create(
                 rekord=res, baza=Zewnetrzna_Baza_Danych.objects.get(skrot="WOS")
             )
+
+
+def set_sequences():
+    for elem in [
+        "bpp_wydawnictwo_ciagle",
+        "bpp_wydawnictwo_zwarte",
+        "bpp_patent",
+        "bpp_praca_doktorska",
+        "bpp_praca_habilitacyjna",
+    ]:
+        set_seq(elem)
 
 
 def wyswietl_prace_bez_dopasowania(logger):
