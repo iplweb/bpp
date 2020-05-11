@@ -56,7 +56,7 @@ class Command(BaseCommand):
             )
 
             for rekord in q:
-                res = parse_informacje_as_dict(rekord.szczegoly)
+                res = parse_informacje_as_dict(rekord.informacje)
 
                 save = False
 
