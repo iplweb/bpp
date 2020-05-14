@@ -6,6 +6,7 @@ Historia zmian
 ---------
 
 * eksport promotora w pracach doktorskich w API (b/n),
+* lepsze przypisywanie grup punktowych w imporcie DBF (b/n),
 
 
 202005.36
