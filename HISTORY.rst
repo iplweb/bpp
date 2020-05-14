@@ -7,6 +7,7 @@ Historia zmian
 
 * eksport promotora w pracach doktorskich w API (b/n),
 * pole "oznaczenie wydania" (#843),
+* poprawnie importuj ilość stron dla monografii dla plików DBF (#847),
 
 202005.36
 ---------

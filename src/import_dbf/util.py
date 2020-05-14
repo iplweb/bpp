@@ -1001,7 +1001,7 @@ def integruj_publikacje(offset=None, limit=None):
                 assert not kw.get("szczegoly")
                 kw["szczegoly"] = elem["a"]
 
-                kw["szczegoly"] = exp_combine(elem.get("b"), elem.get("c"))
+                kw["szczegoly"] += exp_combine(elem.get("b"), elem.get("c"))
 
             elif elem["id"] == 104:
                 # assert not kw.get("uwagi"), (kw["uwagi"], elem, rec, rec.idt)
