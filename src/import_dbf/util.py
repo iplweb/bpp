@@ -1000,7 +1000,6 @@ def integruj_publikacje(offset=None, limit=None):
             elif elem["id"] == 153:
                 assert not kw.get("szczegoly")
                 kw["szczegoly"] = elem["a"]
-
                 kw["szczegoly"] += exp_combine(elem.get("b"), elem.get("c"))
 
             elif elem["id"] == 104:
