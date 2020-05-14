@@ -118,6 +118,8 @@ class Wydawnictwo_Zwarte_Baza(
         "Wydawca - szczegóły", max_length=256, null=True, blank=True
     )
 
+    oznaczenie_wydania = models.CharField(max_length=400, null=True, blank=True)
+
     def get_wydawnictwo(self):
         # Zwróć nazwę wydawcy + pole wydawca_opis lub samo pole wydawca_opis, jeżeli
         # wydawca (indeksowany) nie jest ustalony

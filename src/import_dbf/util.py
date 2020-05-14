@@ -923,7 +923,17 @@ def integruj_publikacje(offset=None, limit=None):
                 for literka in "ef":
                     assert not elem.get(literka), (elem, rec)
 
-            elif elem["id"] in [201, 206]:
+            elif elem["id"] == 201:
+                # odpowiedzialni za wydanie dla rozdziału
+                # 201 'a' informacje o wydaniu, 'b' odpoweidzialni za wydanie
+                assert not kw.get("oznaczenie_wydania")
+                kw["oznaczenie_wydania"] = exp_combine(
+                    elem.get("a"), elem.get("b"), sep=" "
+                )
+                for literka in "cde":
+                    assert not elem.get(literka), (elem, rec, rec.idt)
+
+            elif elem["id"] == 206:
                 # wydanie
                 kw["uwagi"] = exp_combine(
                     kw.get("uwagi", ""), elem.get("a"), sep=" "
@@ -1011,15 +1021,10 @@ def integruj_publikacje(offset=None, limit=None):
                     assert not elem.get(literka), (elem, rec, rec.idt)
 
             elif elem["id"] == 151:
-                # w ksiazkach, wydanie i "pod redakcja'
-                if kw["tytul_oryginalny"].find("=") >= 0 and not elem.get(
-                    "a", ""
-                ).startswith("2nd ed., bilingual"):
-                    raise NotImplementedError
-                kw["tytul_oryginalny"] = (
-                    kw["tytul_oryginalny"] + ". " + elem["a"] + " " + elem["b"]
-                ).strip()
-
+                assert not kw.get("oznaczenie_wydania")
+                kw["oznaczenie_wydania"] = exp_combine(
+                    elem.get("a"), elem.get("b"), sep=" "
+                )
                 for literka in "cde":
                     assert not elem.get(literka), (elem, rec, rec.idt)
 

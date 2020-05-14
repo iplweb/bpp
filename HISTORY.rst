@@ -6,7 +6,7 @@ Historia zmian
 ---------
 
 * eksport promotora w pracach doktorskich w API (b/n),
-
+* pole "oznaczenie wydania" (#843),
 
 202005.36
 ---------
