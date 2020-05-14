@@ -109,6 +109,7 @@ class Wydawnictwo_ZwarteSerializer(
             #
             "liczba_cytowan",
             #
+            "oznaczenie_wydania",
             "miejsce_i_rok",
             "wydawca",
             "wydawca_opis",

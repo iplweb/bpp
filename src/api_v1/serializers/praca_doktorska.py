@@ -76,4 +76,8 @@ class Praca_DoktorskaSerializer(
             "jednostka",
             #
             "promotor",
+            "oznaczenie_wydania",
+            "miejsce_i_rok",
+            "wydawca",
+            "wydawca_opis",
         ]

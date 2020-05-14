@@ -103,6 +103,7 @@ restore-import-dbf-state: dropdb-createdb
 
 restore-pre-integruj-publikacje-state: dropdb-createdb
 	cat pre-integruj-dbf-enable-publikacja.sql | $(PSQL)
+	$(MANAGE) migrate
 
 restart-integruj-publikacje: restore-pre-integruj-publikacje-state integruj-dbf-publikacje-post
 
