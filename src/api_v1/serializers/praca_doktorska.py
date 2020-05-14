@@ -17,6 +17,10 @@ class Praca_DoktorskaSerializer(
         view_name="api_v1:autor-detail", read_only=True
     )
 
+    promotor = serializers.HyperlinkedRelatedField(
+        view_name="api_v1:autor-detail", read_only=True
+    )
+
     jednostka = serializers.HyperlinkedRelatedField(
         view_name="api_v1:jednostka-detail", read_only=True
     )
@@ -70,4 +74,10 @@ class Praca_DoktorskaSerializer(
             #
             "autor",
             "jednostka",
+            #
+            "promotor",
+            "oznaczenie_wydania",
+            "miejsce_i_rok",
+            "wydawca",
+            "wydawca_opis",
         ]

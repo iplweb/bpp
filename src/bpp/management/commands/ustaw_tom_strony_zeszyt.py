@@ -1,6 +1,7 @@
 # -*- encoding: utf-8 -*-
 
 from django.core.management import BaseCommand
+from django.db import transaction
 
 from bpp.models import (
     Praca_Doktorska,
@@ -17,6 +18,9 @@ from django_bpp.sitemaps import Praca_HabilitacyjnaSitemap
 
 class Command(BaseCommand):
     help = "Ustawia parametry strony, tom, nr zeszytu dla prac >= 2010 roku, jeżeli nie ustawione"
+
+    def add_arguments(self, parser):
+        parser.add_argument("--dry-run", action="store_true")
 
     def ustaw_atrybut(self, obiekt, atrybut, wartosc):
         if wartosc is None:
@@ -36,7 +40,8 @@ class Command(BaseCommand):
                     f"ze szczegolow {wartosc}, nie zmieniam"
                 )
 
-    def handle(self, *args, **options):
+    @transaction.atomic
+    def handle(self, dry_run, *args, **options):
         for klass in (
             Wydawnictwo_Ciagle,
             Wydawnictwo_Zwarte,
@@ -51,21 +56,19 @@ class Command(BaseCommand):
             )
 
             for rekord in q:
-                res = parse_informacje_as_dict(rekord.szczegoly)
+                res = parse_informacje_as_dict(rekord.informacje)
 
                 save = False
 
                 if self.ustaw_atrybut(rekord, "tom", res.get("tom")):
                     save = True
 
-                if self.ustaw_atrybut(rekord, "nr_zeszytu", res.get("numer")):
-                    save = True
+                if klass not in [Wydawnictwo_Zwarte]:
+                    if self.ustaw_atrybut(rekord, "nr_zeszytu", res.get("numer")):
+                        save = True
 
-                strony = wez_zakres_stron(rekord.informacje)
-                pole = "informacje"
-                if not strony:
-                    strony = wez_zakres_stron(rekord.szczegoly)
-                    pole = "szczegoly"
+                strony = wez_zakres_stron(rekord.szczegoly)
+                pole = "szczegoly"
 
                 if strony:
                     if rekord.strony is not None and rekord.strony != "":
@@ -83,5 +86,5 @@ class Command(BaseCommand):
                         rekord.strony = strony
                         save = True
 
-                if save:
+                if save and not dry_run:
                     rekord.save()

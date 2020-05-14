@@ -62,6 +62,14 @@ class B_UInline(admin.TabularInline):
     extra = 0
 
 
+class Bib_DescInline(admin.TabularInline):
+    autocomplete_fields = ["idt"]
+    fields = ["elem_id", "value", "source"]
+    model = Bib_Desc
+    ordering = ("elem_id",)
+    extra = 0
+
+
 @admin.register(Bib)
 class BibAdmin(ImportDbfBaseAdmin):
     list_display = ["idt", "tytul_or", "title", "zrodlo", "szczegoly", "uwagi"]
@@ -69,7 +77,7 @@ class BibAdmin(ImportDbfBaseAdmin):
     list_filter = ["kbr", "lf", "study_gr", "kwartyl"]
     readonly_fields = ["object_id", "content_type"]
     autocomplete_fields = ["idt2"]
-    inlines = [B_AInline, PozInline, B_UInline]
+    inlines = [B_AInline, PozInline, B_UInline, Bib_DescInline]
 
 
 @admin.register(Aut)

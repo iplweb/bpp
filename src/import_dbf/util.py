@@ -923,7 +923,24 @@ def integruj_publikacje(offset=None, limit=None):
                 for literka in "ef":
                     assert not elem.get(literka), (elem, rec)
 
-            elif elem["id"] in [201, 206]:
+            elif elem["id"] == 201:
+                # odpowiedzialni za wydanie dla rozdziału
+                # 201 'a' informacje o wydaniu, 'b' odpoweidzialni za wydanie
+                assert not kw.get("oznaczenie_wydania")
+                kw["oznaczenie_wydania"] = elem.get("a")
+
+                # elem.get("b") ignorujemy
+                # https://mantis.iplweb.pl/view.php?id=843
+                # Obecnie testuję wersję 202005.37 w której planuję wprowadzić poprawkę na ten problem; pojawia się
+                # ]problem z podwójnymi autorami jak w załączniku, pozwolę sobie wyrzucić import pola "B" z w/wym elementów
+                # EKG : 150 przypadków.Wyd.3 pol. red. nauk. Jacek Smereka. [AUT.] JOHN HAMPTON, DAVID ADLAM, JOANNA
+                # HAMPTON, [RED.] JACEK SMEREKA. XII, 308 s.ryc, ISBN 978-83-66548-04-6. Wrocław 2020, Edra Urban &
+                # Partner, 978-83-66548-04-6.
+
+                for literka in "cde":
+                    assert not elem.get(literka), (elem, rec, rec.idt)
+
+            elif elem["id"] == 206:
                 # wydanie
                 kw["uwagi"] = exp_combine(
                     kw.get("uwagi", ""), elem.get("a"), sep=" "
@@ -990,8 +1007,9 @@ def integruj_publikacje(offset=None, limit=None):
             elif elem["id"] == 153:
                 assert not kw.get("szczegoly")
                 kw["szczegoly"] = elem["a"]
-
-                kw["szczegoly"] = exp_combine(elem.get("b"), elem.get("c"))
+                assert not kw.get("strony")
+                kw["strony"] = elem["a"]
+                kw["szczegoly"] += exp_combine(elem.get("b"), elem.get("c"))
 
             elif elem["id"] == 104:
                 # assert not kw.get("uwagi"), (kw["uwagi"], elem, rec, rec.idt)
@@ -1011,14 +1029,16 @@ def integruj_publikacje(offset=None, limit=None):
                     assert not elem.get(literka), (elem, rec, rec.idt)
 
             elif elem["id"] == 151:
-                # w ksiazkach, wydanie i "pod redakcja'
-                if kw["tytul_oryginalny"].find("=") >= 0 and not elem.get(
-                    "a", ""
-                ).startswith("2nd ed., bilingual"):
-                    raise NotImplementedError
-                kw["tytul_oryginalny"] = (
-                    kw["tytul_oryginalny"] + ". " + elem["a"] + " " + elem["b"]
-                ).strip()
+                assert not kw.get("oznaczenie_wydania")
+                kw["oznaczenie_wydania"] = elem.get("a")
+
+                # elem.get("b") ignorujemy
+                # https://mantis.iplweb.pl/view.php?id=843
+                # Obecnie testuję wersję 202005.37 w której planuję wprowadzić poprawkę na ten problem; pojawia się
+                # ]problem z podwójnymi autorami jak w załączniku, pozwolę sobie wyrzucić import pola "B" z w/wym elementów
+                # EKG : 150 przypadków.Wyd.3 pol. red. nauk. Jacek Smereka. [AUT.] JOHN HAMPTON, DAVID ADLAM, JOANNA
+                # HAMPTON, [RED.] JACEK SMEREKA. XII, 308 s.ryc, ISBN 978-83-66548-04-6. Wrocław 2020, Edra Urban &
+                # Partner, 978-83-66548-04-6.
 
                 for literka in "cde":
                     assert not elem.get(literka), (elem, rec, rec.idt)
@@ -1360,12 +1380,6 @@ def integruj_publikacje(offset=None, limit=None):
             else:
                 raise NotImplementedError(elem, rec, rec.idt)
 
-        if rec.idt2 is not None:
-            if klass == bpp.Wydawnictwo_Zwarte:
-                kw["wydawnictwo_nadrzedne"] = rec.idt2.object
-            else:
-                raise Exception("Mam wydawnictwo nadrzedne dla wydawnictwa ciągłego..?")
-
         # Zaimportuj z ID takim samym jak po stronie pliku DBF
         kw["id"] = rec.idt
 
@@ -1382,6 +1396,33 @@ def integruj_publikacje(offset=None, limit=None):
             klass_ext.objects.create(
                 rekord=res, baza=Zewnetrzna_Baza_Danych.objects.get(skrot="WOS")
             )
+
+
+@transaction.atomic
+def przypisz_grupy_punktowe():
+    for rec in dbf.Bib.objects.exclude(idt2=None):
+        # print(rec.tytul_or)
+        if rec.idt2.object is None:
+            print(
+                f"GP blad: Praca {rec.idt} ({rec.tytul_or[:50]}) ma IDT2 {rec.idt2.pk} ({rec.idt2.tytul_or[:50]}) jednak obiekt w BPP od IDT2 to NULL!"
+            )
+        else:
+            if rec.idt2.object.__class__ == bpp.Wydawnictwo_Ciagle:
+                print(
+                    f"GP blad: Praca {rec.idt} ({rec.tytul_or[:50]}) ma IDT2 {rec.idt2.pk} ({rec.idt2.object.tytul_oryginalny[:50]}) jednak obiekt w BPP to Wydawnictwo_Ciagle!"
+                )
+            else:
+                o = rec.object
+                if o.__class__ == bpp.Wydawnictwo_Zwarte:
+                    if o.wydawnictwo_nadrzedne == None:
+                        # print("Saved")
+                        o.wydawnictwo_nadrzedne = rec.idt2.object
+                        o.save()
+
+                else:
+                    raise Exception(
+                        "Mam wydawnictwo nadrzedne dla wydawnictwa ciągłego..?"
+                    )
 
 
 def set_sequences():
