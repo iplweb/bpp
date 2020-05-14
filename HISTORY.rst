@@ -2,6 +2,12 @@
 Historia zmian
 ==============
 
+202005.37
+---------
+
+* eksport promotora w pracach doktorskich w API (b/n),
+
+
 202005.36
 ---------
 
