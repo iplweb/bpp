@@ -927,9 +927,16 @@ def integruj_publikacje(offset=None, limit=None):
                 # odpowiedzialni za wydanie dla rozdziału
                 # 201 'a' informacje o wydaniu, 'b' odpoweidzialni za wydanie
                 assert not kw.get("oznaczenie_wydania")
-                kw["oznaczenie_wydania"] = exp_combine(
-                    elem.get("a"), elem.get("b"), sep=" "
-                )
+                kw["oznaczenie_wydania"] = elem.get("a")
+
+                # elem.get("b") ignorujemy
+                # https://mantis.iplweb.pl/view.php?id=843
+                # Obecnie testuję wersję 202005.37 w której planuję wprowadzić poprawkę na ten problem; pojawia się
+                # ]problem z podwójnymi autorami jak w załączniku, pozwolę sobie wyrzucić import pola "B" z w/wym elementów
+                # EKG : 150 przypadków.Wyd.3 pol. red. nauk. Jacek Smereka. [AUT.] JOHN HAMPTON, DAVID ADLAM, JOANNA
+                # HAMPTON, [RED.] JACEK SMEREKA. XII, 308 s.ryc, ISBN 978-83-66548-04-6. Wrocław 2020, Edra Urban &
+                # Partner, 978-83-66548-04-6.
+
                 for literka in "cde":
                     assert not elem.get(literka), (elem, rec, rec.idt)
 
@@ -1023,9 +1030,16 @@ def integruj_publikacje(offset=None, limit=None):
 
             elif elem["id"] == 151:
                 assert not kw.get("oznaczenie_wydania")
-                kw["oznaczenie_wydania"] = exp_combine(
-                    elem.get("a"), elem.get("b"), sep=" "
-                )
+                kw["oznaczenie_wydania"] = elem.get("a")
+
+                # elem.get("b") ignorujemy
+                # https://mantis.iplweb.pl/view.php?id=843
+                # Obecnie testuję wersję 202005.37 w której planuję wprowadzić poprawkę na ten problem; pojawia się
+                # ]problem z podwójnymi autorami jak w załączniku, pozwolę sobie wyrzucić import pola "B" z w/wym elementów
+                # EKG : 150 przypadków.Wyd.3 pol. red. nauk. Jacek Smereka. [AUT.] JOHN HAMPTON, DAVID ADLAM, JOANNA
+                # HAMPTON, [RED.] JACEK SMEREKA. XII, 308 s.ryc, ISBN 978-83-66548-04-6. Wrocław 2020, Edra Urban &
+                # Partner, 978-83-66548-04-6.
+
                 for literka in "cde":
                     assert not elem.get(literka), (elem, rec, rec.idt)
 
