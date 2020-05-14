@@ -354,3 +354,14 @@ def set_seq(s):
 
         cursor = connection.cursor()
         cursor.execute("SELECT setval('%s_id_seq', (SELECT MAX(id) FROM %s))" % (s, s))
+
+
+def usun_nieuzywany_typ_charakter(klass, field, dry_run):
+    from bpp.models import Rekord
+
+    for elem in klass.objects.all():
+        kw = {field: elem}
+        if not Rekord.objects.filter(**kw).exists():
+            print(f"Kasuje {elem}")
+            if not dry_run:
+                elem.delete()
