@@ -1360,25 +1360,6 @@ def integruj_publikacje(offset=None, limit=None):
             else:
                 raise NotImplementedError(elem, rec, rec.idt)
 
-        if rec.idt2 is not None:
-
-            if rec.idt2.object is None:
-                print(
-                    f"GP blad: Praca {rec.idt} ({rec.tytul_or[:50]}) ma IDT2 {rec.idt2.pk} ({rec.idt2.tytul_or[:50]}) jednak obiekt w BPP od IDT2 to NULL!"
-                )
-            else:
-                if rec.idt2.object.__class__ == bpp.Wydawnictwo_Ciagle:
-                    print(
-                        f"GP blad: Praca {rec.idt} ({rec.tytul_or[:50]}) ma IDT2 {rec.idt2.pk} ({rec.idt2.object.tytul_oryginalny[:50]}) jednak obiekt w BPP to Wydawnictwo_Ciagle!"
-                    )
-                else:
-                    if klass == bpp.Wydawnictwo_Zwarte:
-                        kw["wydawnictwo_nadrzedne"] = rec.idt2.object
-                    else:
-                        raise Exception(
-                            "Mam wydawnictwo nadrzedne dla wydawnictwa ciągłego..?"
-                        )
-
         # Zaimportuj z ID takim samym jak po stronie pliku DBF
         kw["id"] = rec.idt
 
@@ -1395,6 +1376,33 @@ def integruj_publikacje(offset=None, limit=None):
             klass_ext.objects.create(
                 rekord=res, baza=Zewnetrzna_Baza_Danych.objects.get(skrot="WOS")
             )
+
+
+@transaction.atomic
+def przypisz_grupy_punktowe():
+    for rec in dbf.Bib.objects.exclude(idt2=None):
+        # print(rec.tytul_or)
+        if rec.idt2.object is None:
+            print(
+                f"GP blad: Praca {rec.idt} ({rec.tytul_or[:50]}) ma IDT2 {rec.idt2.pk} ({rec.idt2.tytul_or[:50]}) jednak obiekt w BPP od IDT2 to NULL!"
+            )
+        else:
+            if rec.idt2.object.__class__ == bpp.Wydawnictwo_Ciagle:
+                print(
+                    f"GP blad: Praca {rec.idt} ({rec.tytul_or[:50]}) ma IDT2 {rec.idt2.pk} ({rec.idt2.object.tytul_oryginalny[:50]}) jednak obiekt w BPP to Wydawnictwo_Ciagle!"
+                )
+            else:
+                o = rec.object
+                if o.__class__ == bpp.Wydawnictwo_Zwarte:
+                    if o.wydawnictwo_nadrzedne == None:
+                        # print("Saved")
+                        o.wydawnictwo_nadrzedne = rec.idt2.object
+                        o.save()
+
+                else:
+                    raise Exception(
+                        "Mam wydawnictwo nadrzedne dla wydawnictwa ciągłego..?"
+                    )
 
 
 def set_sequences():

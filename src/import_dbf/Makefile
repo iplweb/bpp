@@ -104,7 +104,7 @@ restore-import-dbf-state: dropdb-createdb
 restore-pre-integruj-publikacje-state: dropdb-createdb
 	cat pre-integruj-dbf-enable-publikacja.sql | $(PSQL)
 
-restart-integruj-publikacje: restore-pre-integruj-publikacje-state integruj-dbf-publikacje-post
+restart-integruj-publikacje: restore-pre-integruj-publikacje-state integruj-dbf-publikacje-post przypisz-dyscypliny  integruj-liste-wydawcow ustaw-obca-jednostke rebuild-cache ustaw-date-aktualizacji wylacz-alfabetyczne-sortowanie-jednostek przenies-sortowanie-jednostek enable-trigger dodaj-aktualnosc
 
 integruj-liste-wydawcow: get-assets
 	$(MANAGE) import_wydawca_poziom $(ASSETS_DIR)/poziomy-wydawcow-2017-2020.xlsx

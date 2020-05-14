@@ -32,6 +32,7 @@ from import_dbf.util import (
     zatwierdz_podwojne_przypisania,
     dodaj_aktualnosc,
     set_sequences,
+    przypisz_grupy_punktowe,
 )
 
 django.setup()
@@ -163,6 +164,7 @@ class Command(BaseCommand):
             )
 
             pool.apply(wyswietl_prace_bez_dopasowania, (logger,))
+            pool.apply(przypisz_grupy_punktowe)
             pool.apply(set_sequences)
 
         if enable_all or options["enable_zatwierdz_podwojne_przypisania"]:
