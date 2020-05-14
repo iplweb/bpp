@@ -1361,10 +1361,23 @@ def integruj_publikacje(offset=None, limit=None):
                 raise NotImplementedError(elem, rec, rec.idt)
 
         if rec.idt2 is not None:
-            if klass == bpp.Wydawnictwo_Zwarte:
-                kw["wydawnictwo_nadrzedne"] = rec.idt2.object
+
+            if rec.idt2.object is None:
+                print(
+                    f"GP blad: Praca {rec.idt} ({rec.tytul_or[:50]}) ma IDT2 {rec.idt2.pk} ({rec.idt2.tytul_or[:50]}) jednak obiekt w BPP od IDT2 to NULL!"
+                )
             else:
-                raise Exception("Mam wydawnictwo nadrzedne dla wydawnictwa ciągłego..?")
+                if rec.idt2.object.__class__ == bpp.Wydawnictwo_Ciagle:
+                    print(
+                        f"GP blad: Praca {rec.idt} ({rec.tytul_or[:50]}) ma IDT2 {rec.idt2.pk} ({rec.idt2.object.tytul_oryginalny[:50]}) jednak obiekt w BPP to Wydawnictwo_Ciagle!"
+                    )
+                else:
+                    if klass == bpp.Wydawnictwo_Zwarte:
+                        kw["wydawnictwo_nadrzedne"] = rec.idt2.object
+                    else:
+                        raise Exception(
+                            "Mam wydawnictwo nadrzedne dla wydawnictwa ciągłego..?"
+                        )
 
         # Zaimportuj z ID takim samym jak po stronie pliku DBF
         kw["id"] = rec.idt
