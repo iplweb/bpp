@@ -30,7 +30,7 @@ class Command(BaseCommand):
 
             db.connections.close_all()
 
-        pool_size = no_threads(0.5)
+        pool_size = no_threads(0.75)
         pool = multiprocessing.Pool(processes=pool_size, initializer=subprocess_setup)
 
         pc = pool.apply(partition_count, args=(Wydawnictwo_Ciagle.objects, pool_size))

@@ -11,5 +11,6 @@ DROP TRIGGER IF EXISTS bpp_patent_autor_cache_trigger ON bpp_patent_autor;
 
 
 DELETE FROM bpp_rekord_mat;
+DELETE FROM bpp_autorzy_mat;
 
 COMMIT;
