@@ -4,4 +4,4 @@
 ({{ praca.tytul|safe }}).
 {% else %}
 {{ praca.tytul_oryginalny|znak_na_koncu:"."|safe }}
-{% endif %}{{ praca.oznaczenie_wydania|znak_na_koncu:"." }}
+{% endif %}{{ praca.oznaczenie_wydania|default:""|znak_na_koncu:"." }}
