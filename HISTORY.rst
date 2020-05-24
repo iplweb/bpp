@@ -7,6 +7,8 @@ Historia zmian
 
 * procedura serwerowa do wycinania wartości pola ISBN z pola "Uwagi" (#796)
 * poprawione wycinanie numerów i suplementów (#845)
+* lepszy opis dla rekordów z wydawnictwem nadrzędnym - oznaczenie wydania dla rozdziałów (#843)
+* charakter formalny dostaje nowe pole - charakter ogólny (książka/rozdział/artykuł) (wynika z #843)
 
 202005.37
 ---------
