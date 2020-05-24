@@ -128,7 +128,8 @@ przenies-sortowanie-jednostek:
 
 przenies-isbn:
 	$(MANAGE) wytnij_isbn_z_uwag --przenies-do-uwag > isbn-przenies.txt
-	# $(MANAGE) wytnij_isbn_z_uwag --skasuj > isbn-skasuj.txt
+	$(MANAGE) wytnij_isbn_z_uwag --skasuj > isbn-skasuj.txt
+	$(MANAGE) wytnij_isbn_z_uwag --skasuj > isbn-skasuj.txt
 
 usun-nieuzywane-charaktery-kbny:
 	$(MANAGE) usun_nieuzywane_charaktery_kbny
