@@ -2,6 +2,11 @@
 Historia zmian
 ==============
 
+202005.38
+---------
+
+* procedura serwerowa do wycinania wartości pola ISBN z pola "Uwagi" (#796)
+
 202005.37
 ---------
 
