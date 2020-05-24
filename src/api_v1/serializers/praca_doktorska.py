@@ -66,6 +66,7 @@ class Praca_DoktorskaSerializer(
             "openaccess_tryb_dostepu",
             "openaccess_wersja_tekstu",
             "openaccess_licencja",
+            "openaccess_czas_publikacji",
             #
             "utworzono",
             "ostatnio_zmieniony",

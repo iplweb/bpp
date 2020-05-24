@@ -9,6 +9,7 @@ Historia zmian
 * poprawione wycinanie numerów i suplementów (#845)
 * lepszy opis dla rekordów z wydawnictwem nadrzędnym - oznaczenie wydania dla rozdziałów (#843)
 * charakter formalny dostaje nowe pole - charakter ogólny (książka/rozdział/artykuł) (wynika z #843)
+* wyświetlaj informacje o czasie udostępnienia OpenAccess w API (#861)
 
 202005.37
 ---------
