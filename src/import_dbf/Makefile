@@ -134,6 +134,10 @@ przenies-isbn:
 usun-nieuzywane-charaktery-kbny:
 	$(MANAGE) usun_nieuzywane_charaktery_kbny
 
-integrate: disable-trigger integruj-dbf integruj-liste-wydawcow ustaw-obca-jednostke przenies-isbn rebuild-cache ustaw-date-aktualizacji wylacz-alfabetyczne-sortowanie-jednostek przenies-sortowanie-jednostek enable-trigger dodaj-aktualnosc usun-nieuzywane-charaktery-kbny
+utworz-doktoraty:
+	$(MANAGE) zmien_na_doktorat PD > pd.txt
+	$(MANAGE) zmien_na_doktorat ZD > zd.txt
+
+integrate: disable-trigger integruj-dbf integruj-liste-wydawcow ustaw-obca-jednostke przenies-isbn utworz-doktoraty rebuild-cache ustaw-date-aktualizacji wylacz-alfabetyczne-sortowanie-jednostek przenies-sortowanie-jednostek enable-trigger dodaj-aktualnosc usun-nieuzywane-charaktery-kbny
 
 rebuild: convert-dbfs import-dbf integrate
