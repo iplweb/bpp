@@ -378,10 +378,13 @@ def test_eksport_pbn_open_access(wydawnictwo_zwarte, openaccess_data):
         ("1960 T. 8 nr 2", "1960", "8", "2"),
         ("1960 T.8nr2", "1960", "8", "2"),
         ("1960 T.8 nr 2", "1960", "8", "2"),
-        ("2018 Vol.77 suppl.2", "2018", "77", "2"),
+        ("2018 Vol.77 suppl.2", "2018", "77", "suppl.2"),
         ("2020 T. [59] supl.", "2020", "59", None),
-        ("2020 Vol.61 no.7-12", "2020", "61", "7-12"),
-        ("2020 voL 54 SuPPl. 45", "2020", "54", "45"),
+        ("2020 Vol.61 no.7-12 supl.5", "2020", "61", "7-12 supl.5"),
+        ("2020 voL 54 SuPPl. 45", "2020", "54", "SuPPl. 45"),
+        ("2020 Vol.60 supl.3", "2020", "60", "supl.3"),
+        ("2020 Vol.61 no.2 suppl.2", "2020", "61", "2 suppl.2"),
+        ("2020 Vol.15 no.5 suppl.", "2020", "15", "5 suppl."),
     ],
 )
 def test_parse_informacje(input, exp_rok, exp_tom, exp_nr):

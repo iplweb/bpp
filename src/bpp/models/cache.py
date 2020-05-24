@@ -768,6 +768,7 @@ def rebuild_zwarte(offset=None, limit=None):
             "typ_kbn__skrot",
             "charakter_formalny__skrot",
             "charakter_formalny__charakter_sloty",
+            "charakter_formalny__charakter_ogolny",
             "oznaczenie_wydania",
         ],
     )
@@ -788,6 +789,7 @@ def rebuild_ciagle(offset=None, limit=None):
             "typ_kbn__skrot",
             "charakter_formalny__skrot",
             "charakter_formalny__charakter_sloty",
+            "charakter_formalny__charakter_ogolny",
         ],
     )
 

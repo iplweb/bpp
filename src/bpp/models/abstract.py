@@ -720,7 +720,7 @@ parsed_informacje_regex = re.compile(
     r"(\[online\])?\s*"
     r"(?P<rok>\d\d+)"
     r"(\s*(vol|t|r|bd)\.*\s*\[?(?P<tom>\d+)\]?)?"
-    r"(\s*(iss|nr|z|h|suppl|supl|no)\.*\s*(?P<numer>\d+\w*([\/-]\d*\w*)?))?",
+    r"(\s*(iss|nr|z|h|no)?\.*\s*(?P<numer>((\d+\w*([\/-]\d*\w*)?)\s*((suppl|supl)?\.?\s*(\d+)?)|((suppl|supl)?\.?\s*\d+)|(\d+\w*([\/-]\d*\w*)?))))?",
     flags=re.IGNORECASE,
 )
 
@@ -728,7 +728,12 @@ parsed_informacje_regex = re.compile(
 def parse_informacje_as_dict(
     informacje, parsed_informacje_regex=parsed_informacje_regex
 ):
-    """Wycina z pola informacje informację o tomie lub numerze lub roku"""
+    """Wycina z pola informacje informację o tomie lub numerze lub roku.
+
+    Jeśli mamy zapis "Vol.60 supl.3" - to "supl.3";
+    jeśli mamy zapis "Vol.61 no.2 suppl.2" - to optymalnie byłoby, żeby do pola numeru trafiało "2 suppl.2",
+    jeśli zapis jest "Vol.15 no.5 suppl." - "5 suppl."
+    """
     if not informacje:
         return {}
 

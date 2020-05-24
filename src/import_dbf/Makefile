@@ -128,11 +128,23 @@ przenies-sortowanie-jednostek:
 
 przenies-isbn:
 	$(MANAGE) wytnij_isbn_z_uwag --przenies-do-uwag > isbn-przenies.txt
-	# $(MANAGE) wytnij_isbn_z_uwag --skasuj > isbn-skasuj.txt
+	$(MANAGE) wytnij_isbn_z_uwag --skasuj > isbn-skasuj.txt
+	$(MANAGE) wytnij_isbn_z_uwag --skasuj > isbn-skasuj.txt
 
 usun-nieuzywane-charaktery-kbny:
 	$(MANAGE) usun_nieuzywane_charaktery_kbny
 
-integrate: disable-trigger integruj-dbf integruj-liste-wydawcow ustaw-obca-jednostke przenies-isbn rebuild-cache ustaw-date-aktualizacji wylacz-alfabetyczne-sortowanie-jednostek przenies-sortowanie-jednostek enable-trigger dodaj-aktualnosc usun-nieuzywane-charaktery-kbny
+utworz-doktoraty:
+	$(MANAGE) zmien_na_doktorat PD > pd.txt
+	$(MANAGE) zmien_na_doktorat ZD > zd.txt
+
+przemapuj-redaktora-na-autora:
+	$(MANAGE) zmien_typ_autora PAW
+	$(MANAGE) zmien_typ_autora ZAW
+
+integrate: disable-trigger integruj-dbf integruj-liste-wydawcow ustaw-obca-jednostke przenies-isbn utworz-doktoraty \
+	przemapuj-redaktora-na-autora \
+ 	rebuild-cache ustaw-date-aktualizacji wylacz-alfabetyczne-sortowanie-jednostek przenies-sortowanie-jednostek \
+ 	enable-trigger dodaj-aktualnosc usun-nieuzywane-charaktery-kbny
 
 rebuild: convert-dbfs import-dbf integrate

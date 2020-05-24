@@ -126,6 +126,7 @@ class Wydawnictwo_CiagleSerializer(
             "openaccess_tryb_dostepu",
             "openaccess_wersja_tekstu",
             "openaccess_licencja",
+            "openaccess_czas_publikacji",
             "openaccess_ilosc_miesiecy",
             #
             "utworzono",

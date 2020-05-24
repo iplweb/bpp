@@ -73,6 +73,13 @@ RODZAJ_PBN_CHOICES = [
     (const.RODZAJ_PBN_ROZDZIAL, "rozdział"),
 ]
 
+CHARAKTER_OGOLNY_CHOICES = Choices(
+    (const.CHARAKTER_OGOLNY_ARTYKUL, "artykul", "Artykuł"),
+    (const.CHARAKTER_OGOLNY_KSIAZKA, "ksiazka", "Książka"),
+    (const.CHARAKTER_OGOLNY_ROZDZIAL, "rozdzial", "Rozdział"),
+    (const.CHARAKTER_OGOLNY_INNE, "inne", "Inne"),
+)
+
 
 class Charakter_Formalny(NazwaISkrot, MPTTModel):
     parent = TreeForeignKey(
@@ -82,6 +89,14 @@ class Charakter_Formalny(NazwaISkrot, MPTTModel):
         null=True,
         blank=True,
         related_name="children",
+    )
+
+    charakter_ogolny = models.CharField(
+        max_length=3,
+        help_text="""Charakter ogólny uzywany jest m.in. do generowania opisów bibliograficznych. Stanowi on
+        ogólne określenie rekordu, czy jest to książka, rozdział czy coś innego. """,
+        default=const.CHARAKTER_OGOLNY_INNE,
+        choices=CHARAKTER_OGOLNY_CHOICES,
     )
 
     publikacja = models.BooleanField(

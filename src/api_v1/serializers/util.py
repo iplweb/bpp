@@ -57,6 +57,9 @@ class WydawnictwoSerializerMixin(serializers.HyperlinkedModelSerializer):
     openaccess_tryb_dostepu = serializers.StringRelatedField()
     openaccess_wersja_tekstu = serializers.StringRelatedField()
     openaccess_licencja = serializers.StringRelatedField()
+    openaccess_czas_publikacji = serializers.HyperlinkedRelatedField(
+        view_name="api_v1:czas_udostepnienia_openaccess-detail", read_only=True
+    )
 
     nagrody = serializers.HyperlinkedRelatedField(
         many=True, view_name="api_v1:nagroda-detail", read_only=True,
