@@ -6,6 +6,7 @@ Historia zmian
 ---------
 
 * procedura serwerowa do wycinania wartości pola ISBN z pola "Uwagi" (#796)
+* poprawione wycinanie numerów i suplementów (#845)
 
 202005.37
 ---------
