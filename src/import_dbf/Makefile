@@ -126,9 +126,12 @@ wylacz-alfabetyczne-sortowanie-jednostek:
 przenies-sortowanie-jednostek:
 	echo "UPDATE bpp_jednostka SET kolejnosc = import_dbf_jed.sort::integer FROM import_dbf_jed WHERE import_dbf_jed.bpp_jednostka_id = bpp_jednostka.id" | $(PSQL_VERBOSE)
 
+przenies-isbn:
+	$(MANAGE) wytnij_isbn_z_uwag
+
 usun-nieuzywane-charaktery-kbny:
 	$(MANAGE) usun_nieuzywane_charaktery_kbny
 
-integrate: disable-trigger integruj-dbf integruj-liste-wydawcow ustaw-obca-jednostke rebuild-cache ustaw-date-aktualizacji wylacz-alfabetyczne-sortowanie-jednostek przenies-sortowanie-jednostek enable-trigger dodaj-aktualnosc usun-nieuzywane-charaktery-kbny
+integrate: disable-trigger integruj-dbf integruj-liste-wydawcow ustaw-obca-jednostke rebuild-cache ustaw-date-aktualizacji wylacz-alfabetyczne-sortowanie-jednostek przenies-sortowanie-jednostek przenies-isbn enable-trigger dodaj-aktualnosc usun-nieuzywane-charaktery-kbny
 
 rebuild: convert-dbfs import-dbf integrate
