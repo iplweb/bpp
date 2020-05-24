@@ -365,3 +365,24 @@ def usun_nieuzywany_typ_charakter(klass, field, dry_run):
             print(f"Kasuje {elem}")
             if not dry_run:
                 elem.delete()
+
+
+isbn_regex = re.compile(
+    r"^isbn\s*[0-9]*[-| ][0-9]*[-| ][0-9]*[-| ][0-9]*[-| ][0-9]*X?",
+    flags=re.IGNORECASE,
+)
+
+
+def wytnij_isbn_z_uwag(uwagi):
+    res = isbn_regex.search(uwagi)
+    if res:
+        res = res.group()
+        isbn = res.replace("ISBN", "").replace("isbn", "").strip()
+        reszta = uwagi.replace(res, "").strip()
+
+        while (
+            reszta.startswith(".") or reszta.startswith(";") or reszta.startswith(",")
+        ):
+            reszta = reszta[1:].strip()
+
+        return isbn, reszta
