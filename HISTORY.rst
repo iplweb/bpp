@@ -6,6 +6,7 @@ Historia zmian
 ---------
 
 * procedura serwerowa do wycinania wartości pola ISBN z pola "Uwagi" (#796)
+* wyświetlaj informacje o czasie udostępnienia OpenAccess w API (#861)
 
 202005.37
 ---------

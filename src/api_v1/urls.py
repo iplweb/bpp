@@ -8,6 +8,7 @@ from api_v1.viewsets.autor import (
     Autor_JednostkaViewSet,
 )
 from api_v1.viewsets.nagroda import NagrodaViewSet
+from api_v1.viewsets.openaccess import Czas_Udostepnienia_OpenAccess_ViewSet
 from api_v1.viewsets.praca_doktorska import Praca_DoktorskaViewSet
 from api_v1.viewsets.struktura import JednostkaViewSet, WydzialViewSet, UczelniaViewSet
 from api_v1.viewsets.system import (
@@ -35,6 +36,8 @@ router = routers.DefaultRouter()
 
 router.register(r"konferencja", KonferencjaViewSet)
 router.register(r"seria_wydawnicza", Seria_WydawniczaViewSet)
+
+router.register(r"czas_udostepnienia_openaccess", Czas_Udostepnienia_OpenAccess_ViewSet)
 
 router.register(r"nagroda", NagrodaViewSet)
 router.register(r"charakter_formalny", Charakter_FormalnyViewSet)
