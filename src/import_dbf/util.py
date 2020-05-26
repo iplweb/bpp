@@ -124,7 +124,7 @@ def exp_parse_str(input):
             try:
                 nastepna = literki[cnt + 1]
             except IndexError:
-                ret[literka] = s # nie stripuj: .strip()
+                ret[literka] = s.strip()# # nie stripuj: .strip()
                 break
 
             next_pos = s.find(f"#{nastepna}$")
@@ -133,7 +133,7 @@ def exp_parse_str(input):
                 cnt += 1
                 continue
 
-            ret[literka] = s[:next_pos] # nie stripuj: .strip()
+            ret[literka] = s[:next_pos].strip()
             break
 
         s = s[next_pos:]
