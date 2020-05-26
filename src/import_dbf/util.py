@@ -95,7 +95,7 @@ def exp_parse_str(input):
 
     ret["id"] = int(s[1:4])
 
-    s = s[5:].strip()
+    s = s[5:] # Nie stripuj, bo Expertus ma spacje na koncu niekiedy: .strip()
 
     if s[0] != "#":
         raise ValueError(input)
@@ -121,7 +121,7 @@ def exp_parse_str(input):
             try:
                 nastepna = literki[cnt + 1]
             except IndexError:
-                ret[literka] = s.strip()
+                ret[literka] = s # nie stripuj: .strip()
                 break
 
             next_pos = s.find(f"#{nastepna}$")
@@ -130,7 +130,7 @@ def exp_parse_str(input):
                 cnt += 1
                 continue
 
-            ret[literka] = s[:next_pos].strip()
+            ret[literka] = s[:next_pos] # nie stripuj: .strip()
             break
 
         s = s[next_pos:]
@@ -146,7 +146,7 @@ def exp_add_spacing(s):
     s = s.replace(". )", ".)")
     s = s.replace(". -", ".-")
     s = s.replace(". ,", ".,")
-    return s.strip()
+    return s # nie stripuj: .strip()
 
 
 def integruj_uczelnia(nazwa="Domyślna Uczelnia", skrot="DU"):
@@ -558,7 +558,10 @@ def mapuj_elementy_publikacji(offset, limit):
             ("poz_n", dbf.Poz.objects.get_for_model(rec.idt, "N")),
         ]:
             for element in [
-                elem.strip() for elem in data.split("\r\n") if elem.strip()
+                # było:
+                # elem.strip() for elem in data.split("\r\n") if elem.strip()
+                # ale NIE stripuj:
+                elem for elem in data.split("\r\n") if elem
             ]:
                 parsed = exp_parse_str(element)
                 id = parsed["id"]
