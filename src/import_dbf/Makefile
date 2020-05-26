@@ -1,8 +1,14 @@
 NAZWA_OBCEJ_JEDNOSTKI=obcy
 
-PSQL=psql -q -t --echo-errors bpp | grep -v "INSERT 0 1"
-PSQL_VERBOSE=psql -t --echo-errors -a bpp
-PG_DUMP=pg_dump bpp
+ifeq ($(DJANGO_BPP_DB_NAME),)
+DB_NAME=bpp
+else
+DB_NAME=$(DJANGO_BPP_DB_NAME)
+endif
+
+PSQL=psql -q -t --echo-errors $(DB_NAME) | grep -v "INSERT 0 1"
+PSQL_VERBOSE=psql -t --echo-errors -a $(DB_NAME)
+PG_DUMP=pg_dump $(DB_NAME)
 MANAGE=python ../manage.py
 DBF2SQL=python ../../../manage.py dbf2sql
 ASSETS_DIR=/tmp/bpp-assets
@@ -13,7 +19,7 @@ convert-dbfs:
 	cd db/bib/ && $(DBF2SQL) $(TABELE)
 
 import-converted-dbfs:
-	for tabela in $(TABELE); do psql --echo-errors --quiet -t bpp -f db/bib/$$tabela.sql & done && wait
+	for tabela in $(TABELE); do psql --echo-errors --quiet -t $(DB_NAME) -f db/bib/$$tabela.sql & done && wait
 
 usun-integracje-autorow:
 	echo "begin; delete from bpp_autor_jednostka; delete from bpp_autor;update import_dbf_aut set bpp_autor_id = NULL where bpp_autor_id IS NOT NULL;commit;" | $(PSQL)
@@ -56,8 +62,8 @@ integruj-dbf: integruj-dbf-autorzy importuj-dyscypliny integruj-dbf-publikacje p
 
 remove-dbfs:
 	echo "select 'drop table '||tablename||';' from pg_tables where tablename like 'import_dbf_%'" | \
-	psql -U postgres -d bpp -t | \
-	psql -U postgres -d bpp
+	psql -U postgres -d $(DB_NAME) -t | \
+	psql -U postgres -d $(DB_NAME)
 
 alter-schema:
 	cat sql/alter-schema.sql | $(PSQL_VERBOSE)
@@ -82,8 +88,8 @@ create-schema:
 	echo "select tablename from pg_tables where tablename like 'import_dbf_%'" | $(PSQL)  | xargs $(MANAGE) inspectdb
 
 dropdb-createdb:
-	dropdb bpp || true
-	createdb bpp
+	dropdb $(DB_NAME) || true
+	createdb $(DB_NAME)
 
 recreate-db: dropdb-createdb
 	$(MANAGE) migrate
@@ -144,7 +150,10 @@ przemapuj-redaktora-na-autora:
 
 integrate: disable-trigger integruj-dbf integruj-liste-wydawcow ustaw-obca-jednostke przenies-isbn utworz-doktoraty \
 	przemapuj-redaktora-na-autora \
- 	rebuild-cache ustaw-date-aktualizacji wylacz-alfabetyczne-sortowanie-jednostek przenies-sortowanie-jednostek \
- 	enable-trigger dodaj-aktualnosc usun-nieuzywane-charaktery-kbny
+	rebuild-cache ustaw-date-aktualizacji wylacz-alfabetyczne-sortowanie-jednostek przenies-sortowanie-jednostek \
+	enable-trigger dodaj-aktualnosc usun-nieuzywane-charaktery-kbny
 
 rebuild: convert-dbfs import-dbf integrate
+
+db-name:
+	@echo "Te skrypty pracują na bazie danych: $(DB_NAME)"
