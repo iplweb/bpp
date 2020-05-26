@@ -4,7 +4,7 @@ import sys
 from collections import defaultdict
 
 import xlrd
-from dbfread import DBF
+from dbfread import DBF, FieldParser
 from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Q
@@ -54,9 +54,17 @@ def exp_combine(a, b, sep=", "):
     return ret
 
 
+class MyFieldParser(FieldParser):
+    """Nie ucinaj spacji na końcu pól znakowych"""
+
+    def parseC(self, field, data):
+        """Parse char field and return unicode string"""
+        return self.decode_text(data.rstrip(b"\0"))
+
+
 def dbf2sql(filename, appname="import_dbf"):
     tablename = appname + "_" + os.path.basename(filename.split(".")[0]).lower()
-    dbf = DBF(filename, encoding="my_cp1250")
+    dbf = DBF(filename, encoding="my_cp1250", parserclass=MyFieldParser)
 
     output = open(filename + ".sql", "w")
     output.write("BEGIN;\n")
@@ -95,7 +103,7 @@ def exp_parse_str(input):
 
     ret["id"] = int(s[1:4])
 
-    s = s[5:] # Nie stripuj, bo Expertus ma spacje na koncu niekiedy: .strip()
+    s = s[5:]  # Nie stripuj, bo Expertus ma spacje na koncu niekiedy: .strip()
 
     if s[0] == " ":
         s = s[1:]
@@ -124,7 +132,7 @@ def exp_parse_str(input):
             try:
                 nastepna = literki[cnt + 1]
             except IndexError:
-                ret[literka] = s.strip()# # nie stripuj: .strip()
+                ret[literka] = s.strip()
                 break
 
             next_pos = s.find(f"#{nastepna}$")
@@ -149,7 +157,7 @@ def exp_add_spacing(s):
     s = s.replace(". )", ".)")
     s = s.replace(". -", ".-")
     s = s.replace(". ,", ".,")
-    return s # nie stripuj: .strip()
+    return s  # nie stripuj: .strip()
 
 
 def integruj_uczelnia(nazwa="Domyślna Uczelnia", skrot="DU"):
@@ -564,7 +572,9 @@ def mapuj_elementy_publikacji(offset, limit):
                 # było:
                 # elem.strip() for elem in data.split("\r\n") if elem.strip()
                 # ale NIE stripuj:
-                elem for elem in data.split("\r\n") if elem
+                elem
+                for elem in data.split("\r\n")
+                if elem
             ]:
                 parsed = exp_parse_str(element)
                 id = parsed["id"]
