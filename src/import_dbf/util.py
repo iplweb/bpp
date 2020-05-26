@@ -595,8 +595,8 @@ def mapuj_elementy_publikacji(offset, limit):
                     idt=rec, elem_id=id, value=value, source="b_u"
                 )
 
-        if rec.zrodlo:
-            zrodlo = exp_parse_str(rec.zrodlo)
+        if rec.zrodlo.strip():
+            zrodlo = exp_parse_str(rec.zrodlo.strip())
             id = zrodlo["id"]
             del zrodlo["id"]
             dbf.Bib_Desc.objects.create(idt=rec, elem_id=id, value=zrodlo, source="b_u")
