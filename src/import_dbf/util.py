@@ -96,7 +96,7 @@ def exp_parse_str(input):
     s = input
 
     assert len(s) >= 5
-    assert s[0] == "#"
+    assert s[0] == "#", f"[{s}]"
     assert s[4] == "$"
 
     ret = {}
@@ -569,12 +569,7 @@ def mapuj_elementy_publikacji(offset, limit):
             ("poz_n", dbf.Poz.objects.get_for_model(rec.idt, "N")),
         ]:
             for element in [
-                # było:
-                # elem.strip() for elem in data.split("\r\n") if elem.strip()
-                # ale NIE stripuj:
-                elem
-                for elem in data.split("\r\n")
-                if elem
+                elem.strip() for elem in data.split("\r\n") if elem.strip()
             ]:
                 parsed = exp_parse_str(element)
                 id = parsed["id"]
