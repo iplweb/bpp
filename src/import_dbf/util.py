@@ -97,6 +97,9 @@ def exp_parse_str(input):
 
     s = s[5:] # Nie stripuj, bo Expertus ma spacje na koncu niekiedy: .strip()
 
+    if s[0] == " ":
+        s = s[1:]
+
     if s[0] != "#":
         raise ValueError(input)
 
