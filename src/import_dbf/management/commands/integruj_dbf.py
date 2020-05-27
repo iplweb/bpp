@@ -54,6 +54,8 @@ class Command(BaseCommand):
         parser.add_argument("--enable-jednostka", action="store_true")
         parser.add_argument("--enable-autor", action="store_true")
         parser.add_argument("--enable-publikacja", action="store_true")
+        parser.add_argument("--enable-grupy-punktowe", action="store_true")
+
         parser.add_argument("--enable-mapuj-publikacja", action="store_true")
         parser.add_argument("--enable-charakter-kbn-jezyk", action="store_true")
         parser.add_argument(
@@ -164,8 +166,10 @@ class Command(BaseCommand):
             )
 
             pool.apply(wyswietl_prace_bez_dopasowania, (logger,))
-            pool.apply(przypisz_grupy_punktowe)
             pool.apply(set_sequences)
+
+        if enable_all or options["enable_grupy_punktowe"]:
+            pool.apply(przypisz_grupy_punktowe)
 
         if enable_all or options["enable_zatwierdz_podwojne_przypisania"]:
             logger.debug("Zatwierdzanie podwójnych podwojnych przypisan")

@@ -57,9 +57,14 @@ def exp_combine(a, b, sep=", "):
 class MyFieldParser(FieldParser):
     """Nie ucinaj spacji na końcu pól znakowych"""
 
+    dont_strip = ["tresc", "title", "tytul_or"]
+
     def parseC(self, field, data):
         """Parse char field and return unicode string"""
-        return self.decode_text(data.rstrip(b"\0"))
+        if field.name.lower() not in self.dont_strip:
+            data = data.rstrip(b"\0 ")
+
+        return self.decode_text(data)
 
 
 def dbf2sql(filename, appname="import_dbf"):
@@ -96,7 +101,11 @@ def exp_parse_str(input):
     s = input
 
     assert len(s) >= 5
-    assert s[0] == "#", f"[{s}]"
+    if s[0] != "#":
+        if not s.strip():  # To moze byc pusty ciąg znaków
+            raise ValueError
+        raise AssertionError(s)  # Jeżeli jest niepusty i nie zaczyna się od #, błąd
+
     assert s[4] == "$"
 
     ret = {}
@@ -187,6 +196,7 @@ def integruj_wydzialy():
 def integruj_jednostki():
     uczelnia = bpp.Uczelnia.objects.first()
     for jednostka in dbf.Jed.objects.all():
+        # print(f"JEDNOSTKA: [{jednostka.nazwa}] [{jednostka.skrot}]")
         if bpp.Jednostka.objects.filter(
             nazwa=jednostka.nazwa, skrot=jednostka.skrot
         ).exists():
@@ -1431,8 +1441,8 @@ def przypisz_grupy_punktowe():
                         o.save()
 
                 else:
-                    raise Exception(
-                        "Mam wydawnictwo nadrzedne dla wydawnictwa ciągłego..?"
+                    print(
+                        f"*** Mam wydawnictwo nadrzedne dla wydawnictwa ciągłego..? Nie tworze. {rec.idt} {rec.tytul_or[:50]} ma nadrzedne {rec.idt2.pk} {rec.idt2.object.tytul_oryginalny[:50]})"
                     )
 
 
