@@ -150,11 +150,11 @@ def test_eksport_pbn_volume(wydawnictwo_ciagle):
     [
         ("bez sensu", None),
         ("2016 vol. 5 nr 10", "10"),
-        ("2019 Bd 4 nr. 3 test", "3"),
-        ("2019 Bd 4 nr 3 test", "3"),
-        ("2019 Bd 4 z. 3 test", "3"),
-        ("2019 Bd 4 h. 3 test", "3"),
-        ("2019 Bd 4 iss. 311 test", "311"),
+        ("2019 Bd 4 nr. 3 test", "3 test"),
+        ("2019 Bd 4 nr 3 test", "3 test"),
+        ("2019 Bd 4 z. 3 test", "3 test"),
+        ("2019 Bd 4 h. 3 test", "3 test"),
+        ("2019 Bd 4 iss. 311 test", "311 test"),
     ],
 )
 def test_eksport_pbn_get_issue(informacje, expected, wydawnictwo_ciagle):

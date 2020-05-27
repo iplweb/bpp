@@ -390,6 +390,7 @@ def test_eksport_pbn_open_access(wydawnictwo_zwarte, openaccess_data):
         ("2018 Vol.35 e-suppl.56", "2018", "35", "e-suppl.56"),
         ("2020 Vol.61 no.2 suppl.2", "2020", "61", "2 suppl.2"),
         ("2020 Vol.15 no.5 suppl.", "2020", "15", "5 suppl."),
+        ("1998 Vol.4 suppl.2, fig., bibliogr. 11 poz., summ.", "1998", "4", "suppl.2")
     ],
 )
 def test_parse_informacje(input, exp_rok, exp_tom, exp_nr):
