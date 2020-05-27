@@ -4,8 +4,19 @@ from django.core.management import BaseCommand
 from django.db import transaction
 
 from bpp.management.commands.import_bpp import set_seq
-from bpp.models import Autor, Jednostka, Wydzial, Uczelnia, Zrodlo, Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Baza, \
-    Praca_Doktorska, Typ_Odpowiedzialnosci, Wydawnictwo_Ciagle
+from bpp.models import (
+    Autor,
+    Jednostka,
+    Wydzial,
+    Uczelnia,
+    Zrodlo,
+    Wydawnictwo_Zwarte,
+    Wydawnictwo_Zwarte_Baza,
+    Praca_Doktorska,
+    Typ_Odpowiedzialnosci,
+    Wydawnictwo_Ciagle,
+    cache,
+)
 
 
 class Command(BaseCommand):
@@ -16,6 +27,9 @@ class Command(BaseCommand):
 
     @transaction.atomic
     def handle(self, skrot, *args, **options):
+        if cache.enabled():
+            cache.disable()
+
         to_aut = Typ_Odpowiedzialnosci.objects.get(skrot="aut.")
         to_red = Typ_Odpowiedzialnosci.objects.get(skrot="red.")
         for klass in Wydawnictwo_Zwarte, Wydawnictwo_Ciagle:

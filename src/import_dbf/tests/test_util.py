@@ -93,7 +93,7 @@ def test_util_exp_parse_str_raises():
 
 
 def test_util_exp_add_spacing():
-    assert exp_add_spacing(" te  st (fa. ) ") == "te st (fa.)"
+    assert exp_add_spacing(" te  st (fa. ) ") == " te st (fa.) "
 
 
 def test_xls2dict():
