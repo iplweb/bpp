@@ -157,7 +157,6 @@ class Command(BaseCommand):
 
         if enable_all or options["enable_publikacja"]:
             logger.info("Integruje publikacje")
-            # pool.apply(integruj_publikacje)
             pool.starmap(
                 integruj_publikacje,
                 partition_count(

@@ -692,8 +692,7 @@ def integruj_publikacje(offset=None, limit=None):
         kw = {}
 
         tytul = exp_parse_str(rec.tytul_or)
-
-        if rec.title:
+        if rec.title.strip():
             try:
                 title = exp_parse_str(rec.title)
             except ValueError:
@@ -1460,9 +1459,11 @@ def set_sequences():
 def wyswietl_prace_bez_dopasowania(logger):
     bez = dbf.Bib.objects.filter(object_id=None)
     if bez.exists():
-        logger.info("Prace bez dopasowania: %i rekordow. " % bez.count())
+        logger.info("*** Prace bez dopasowania: %i rekordow. " % bez.count())
         for rec in bez[:30]:
             logger.info((rec.idt, rec.rok, rec.tytul_or_s))
+    else:
+        logger.info("+++ Wszystkie prace mają dopasowanie.")
 
 
 @transaction.atomic
