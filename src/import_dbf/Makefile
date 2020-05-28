@@ -33,10 +33,10 @@ integruj-dbf-autorzy:
 	$(MANAGE) integruj_dbf --enable-autor
 
 importuj-dyscypliny:
-	$(MANAGE) importuj_dyscypliny -v0 2017 "/Volumes/Dane zaszyfrowane/UMWroclaw/bpp-assets/dyscypliny/2017.xlsx"
-	$(MANAGE) importuj_dyscypliny -v0 2018 "/Volumes/Dane zaszyfrowane/UMWroclaw/bpp-assets/dyscypliny/2018.xlsx"
-	$(MANAGE) importuj_dyscypliny -v0 2019 "/Volumes/Dane zaszyfrowane/UMWroclaw/bpp-assets/dyscypliny/2019.xlsx"
-	$(MANAGE) importuj_dyscypliny -v0 2020 "/Volumes/Dane zaszyfrowane/UMWroclaw/bpp-assets/dyscypliny/2020.xlsx"
+	$(MANAGE) importuj_dyscypliny -v0 2017 "/Volumes/Dane zaszyfrowane/UMWroclaw/bpp-assets/dyscypliny/2017.xlsx" & \
+		$(MANAGE) importuj_dyscypliny -v0 2018 "/Volumes/Dane zaszyfrowane/UMWroclaw/bpp-assets/dyscypliny/2018.xlsx" & \
+		$(MANAGE) importuj_dyscypliny -v0 2019 "/Volumes/Dane zaszyfrowane/UMWroclaw/bpp-assets/dyscypliny/2019.xlsx" & \
+		$(MANAGE) importuj_dyscypliny -v0 2020 "/Volumes/Dane zaszyfrowane/UMWroclaw/bpp-assets/dyscypliny/2020.xlsx" & wait
 
 integruj-dbf-publikacje-pre:
 	$(MANAGE) integruj_dbf --enable-charakter-kbn-jezyk --charaktery-enrichment-xls $(ASSETS_DIR)/bg-umw/charaktery_formalne.xlsx
@@ -46,6 +46,7 @@ integruj-dbf-publikacje-pre:
 
 integruj-dbf-publikacje-post:
 	$(MANAGE) integruj_dbf --enable-publikacja > integruj-dbf-publikacja-log.txt
+	$(MANAGE) integruj_dbf --enable-grupy-punktowe > integruj-dbf-grupy-punktowe-log.txt
 	$(MANAGE) integruj_dbf --enable-zatwierdz-podwojne-przypisania
 	$(MANAGE) integruj_dbf --enable-b-a
 	$(MANAGE) integruj_dbf --enable-przypisz-jednostki
@@ -53,10 +54,10 @@ integruj-dbf-publikacje-post:
 integruj-dbf-publikacje: get-assets integruj-dbf-publikacje-pre integruj-dbf-publikacje-post
 
 przypisz-dyscypliny:
-	$(MANAGE) przypisz_dyscypliny -v0 2017 --ustawiaj-pierwsza-gdy-dwie --disable-cache
-	$(MANAGE) przypisz_dyscypliny -v0 2018 --ustawiaj-pierwsza-gdy-dwie --disable-cache
-	$(MANAGE) przypisz_dyscypliny -v0 2019 --ustawiaj-pierwsza-gdy-dwie --disable-cache
-	$(MANAGE) przypisz_dyscypliny -v0 2020 --ustawiaj-pierwsza-gdy-dwie --disable-cache
+	$(MANAGE) przypisz_dyscypliny -v0 2017 --ustawiaj-pierwsza-gdy-dwie --disable-cache & \
+		$(MANAGE) przypisz_dyscypliny -v0 2018 --ustawiaj-pierwsza-gdy-dwie --disable-cache & \
+		$(MANAGE) przypisz_dyscypliny -v0 2019 --ustawiaj-pierwsza-gdy-dwie --disable-cache & \
+		$(MANAGE) przypisz_dyscypliny -v0 2020 --ustawiaj-pierwsza-gdy-dwie --disable-cache & wait
 
 integruj-dbf: integruj-dbf-autorzy importuj-dyscypliny integruj-dbf-publikacje przypisz-dyscypliny
 

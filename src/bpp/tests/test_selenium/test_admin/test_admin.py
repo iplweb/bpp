@@ -330,6 +330,7 @@ def test_admin_wydawnictwo_zwarte_uzupelnij_rok(
     )
 
 
+@flaky(max_runs=5)
 def test_admin_wydawnictwo_ciagle_uzupelnij_rok(
     preauth_admin_browser, nginx_live_server
 ):

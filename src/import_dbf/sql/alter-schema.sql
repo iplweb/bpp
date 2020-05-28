@@ -37,7 +37,7 @@ ALTER TABLE import_dbf_b_e ALTER COLUMN idt SET DATA TYPE INT USING idt::integer
 ALTER TABLE import_dbf_b_p ADD COLUMN IF NOT EXISTS id SERIAL;
 ALTER TABLE import_dbf_b_p ALTER COLUMN idt SET DATA TYPE INT USING idt::integer;
 
-
+update import_dbf_bib set idt2 = trim(idt2);
 update import_dbf_bib set idt2 = null where idt2 = '';
 alter table import_dbf_bib alter column idt2 set data type integer using idt2::integer;
 
@@ -47,6 +47,8 @@ UPDATE import_dbf_aut SET idt_jed = NULL where idt_jed = '';
 UPDATE import_dbf_aut SET orcid_id = NULL where orcid_id = '';
 ALTER TABLE import_dbf_aut ALTER COLUMN idt_aut SET DATA TYPE INT USING idt_aut::integer;
 
+update import_dbf_aut SET idt_jed = trim(idt_jed);
+update import_dbf_aut SET idt_jed = null where idt_jed = '';
 ALTER TABLE import_dbf_aut ALTER COLUMN idt_jed SET DATA TYPE INT USING idt_jed::integer;
 CREATE INDEX ON import_dbf_aut(orcid_id);
 CREATE INDEX ON import_dbf_aut(pbn_id);
@@ -55,6 +57,7 @@ CREATE UNIQUE INDEX import_dbf_aut_idt ON import_dbf_aut(idt_aut);
 create index import_dbf_aut_nazwisko on import_dbf_aut(nazwisko);
 
 ALTER TABLE import_dbf_aut ALTER COLUMN exp_id SET DATA TYPE INT USING exp_id::integer;
+update import_dbf_aut set pbn_id = trim(pbn_id);
 update import_dbf_aut set pbn_id = NULL where pbn_id = '';
 -- IN ('', '1981-02-01',  '2004-09-15', '3988552 Za', '3996174 Z',  '3996174 Z');
 ALTER TABLE import_dbf_aut ALTER COLUMN pbn_id SET DATA TYPE INT USING pbn_id::integer;
@@ -75,21 +78,26 @@ CREATE INDEX ON import_dbf_bib(object_id);
 
 ALTER TABLE import_dbf_b_a ADD COLUMN object_id INTEGER;
 ALTER TABLE import_dbf_b_a ADD COLUMN content_type_id INTEGER;
-UPDATE import_dbf_b_a SET idt_jed = NULL where idt_jed = '';
 
 SELECT * FROM import_dbf_b_a WHERE idt_jed LIKE 'X%';
 DELETE FROM import_dbf_b_a WHERE idt_jed LIKE 'X%';
 
+UPDATE import_dbf_b_a SET idt_jed = trim(idt_jed);
+UPDATE import_dbf_b_a SET idt_jed = NULL where idt_jed = '';
+
 ALTER TABLE import_dbf_b_a ALTER COLUMN idt_jed SET DATA TYPE INT USING idt_jed::integer;
 CREATE INDEX ON import_dbf_b_a(object_id);
 
+UPDATE import_dbf_jed SET idt_jed = trim(idt_jed);
 ALTER TABLE import_dbf_jed ALTER COLUMN idt_jed SET DATA TYPE INT USING idt_jed::integer;
 ALTER TABLE import_dbf_jed ADD COLUMN bpp_jednostka_id INTEGER;
 CREATE UNIQUE INDEX import_dbf_jed_idt ON import_dbf_jed(idt_jed);
 
+UPDATE import_dbf_b_a SET idt_aut = trim(idt_aut), idt = trim(idt);
 ALTER TABLE import_dbf_b_a ALTER COLUMN idt_aut SET DATA TYPE INT USING idt_aut::integer;
 ALTER TABLE import_dbf_b_a ALTER COLUMN idt SET DATA TYPE INT USING idt::integer;
 
+UPDATE import_dbf_aut SET ref = trim(ref);
 UPDATE import_dbf_aut SET ref = NULL where ref = '';
 ALTER TABLE import_dbf_aut ALTER COLUMN ref SET DATA TYPE INT USING ref::integer;
 
