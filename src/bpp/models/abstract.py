@@ -3,27 +3,30 @@
 """
 Klasy abstrakcyjne
 """
+import re
 from decimal import Decimal
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.core.validators import URLValidator
+from django.db import models
+from django.db.models import CASCADE, SET_NULL, Q, Sum
+from django.urls.base import reverse
+from lxml.etree import SubElement
+
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields import HStoreField
 from django.contrib.postgres.search import SearchVectorField as VectorField
-from django.core.exceptions import ValidationError
-from django.db import models
-from django.db.models import SET_NULL, CASCADE, Sum, Q
-from django.urls.base import reverse
+
 from django.utils import timezone
 from django.utils.functional import cached_property
 from django.utils.timezone import localtime
-from lxml.etree import SubElement
 
-from bpp.fields import YearField, DOIField
+from bpp.fields import DOIField, YearField
 from bpp.models.const import TO_AUTOR
-from bpp.models.dyscyplina_naukowa import Autor_Dyscyplina
-from bpp.models.dyscyplina_naukowa import Dyscyplina_Naukowa
-from bpp.models.util import ModelZOpisemBibliograficznym
-from bpp.models.util import dodaj_autora
+from bpp.models.dyscyplina_naukowa import Autor_Dyscyplina, Dyscyplina_Naukowa
+
+from bpp.models.util import ModelZOpisemBibliograficznym, dodaj_autora
 from bpp.util import safe_html
 
 ILOSC_ZNAKOW_NA_ARKUSZ = 40000.0
@@ -365,7 +368,6 @@ POLA_PUNKTACJI = [
     if x.name not in ["weryfikacja_punktacji",]
 ]
 
-from bpp.models.system import Charakter_Formalny
 
 
 class ModelTypowany(models.Model):
@@ -610,7 +612,7 @@ class ModelZNumeremZeszytu(models.Model):
 
 class ModelZCharakterem(models.Model):
     charakter_formalny = models.ForeignKey(
-        Charakter_Formalny, CASCADE, verbose_name="Charakter formalny"
+        "bpp.Charakter_Formalny", CASCADE, verbose_name="Charakter formalny"
     )
 
     class Meta:
@@ -671,11 +673,9 @@ class Wydawnictwo_Baza(RekordBPPBaza):
         abstract = True
 
 
-from django.core.validators import URLValidator
 
 url_validator = URLValidator()
 
-import re
 
 strony_regex = re.compile(
     r"(?P<parametr>s{1,2}\.)\s*"
@@ -719,8 +719,8 @@ def wez_zakres_stron(szczegoly):
 parsed_informacje_regex = re.compile(
     r"(\[online\])?\s*"
     r"(?P<rok>\d\d+)"
-    r"(\s*(vol|t|r|bd)\.*\s*\[?(?P<tom>\d+)\]?)?"
-    r"(\s*(iss|nr|z|h|no)?\.*\s*(?P<numer>((\d+\w*([\/-]\d*\w*)?)\s*((suppl|supl)?\.?\s*(\d+)?)|((suppl|supl)?\.?\s*\d+)|(\d+\w*([\/-]\d*\w*)?))))?",
+    r"(\s*(vol|t|r|bd)\.*\s*\[?(?P<tom>[A-Za-z]?\d+)\]?)?"
+    r"(\s*(iss|nr|z|h|no)?\.*\s*(?P<numer>((\d+\w*([\/-]\d*\w*)?)\s*((e-)?(suppl|supl)?\.?(\s*\d+|\w+)?)|((e-)?(suppl|supl)?\.?\s*\d+(\/\d+)?)|(\d+\w*([\/-]\d*\w*)?))|\[?(suppl|supl)\.\]?))?",
     flags=re.IGNORECASE,
 )
 
