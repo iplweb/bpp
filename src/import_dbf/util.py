@@ -216,6 +216,7 @@ def integruj_jednostki():
             jednostka.skrot += "*"
 
         bpp_jednostka, _ign = bpp.Jednostka.objects.get_or_create(
+            pk=jednostka.pk,  # ustaw to samo ID co po stronie DBF
             nazwa=jednostka.nazwa,
             skrot=jednostka.skrot,
             email=jednostka.email,
@@ -226,6 +227,8 @@ def integruj_jednostki():
         )
         jednostka.bpp_jednostka = bpp_jednostka
         jednostka.save()
+
+    set_seq("bpp_jednostka")
 
 
 def data_or_null(s):

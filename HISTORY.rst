@@ -6,6 +6,7 @@ Historia zmian
 ---------
 
 * nie importuj pola źródła 200C w przypadku importu DBF dla prac z redaktorami (#797)
+* przy imporcie z plików DBF ustawiaj to samo ID jednostki co po stronie DBF (
 
 202005.38
 ---------
