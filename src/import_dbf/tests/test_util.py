@@ -8,6 +8,7 @@ from import_dbf.util import (
     exp_add_spacing,
     exp_parse_str,
     xls2dict,
+    exp_split_poz_str,
 )
 
 
@@ -80,6 +81,29 @@ def test_util_import_dbf():
 )
 def test_util_exp_parse_str(input, output):
     assert exp_parse_str(input) == output
+
+
+@pytest.mark.parametrize(
+    "input,output",
+    [
+        (
+            "#153$ #a$ 162 s. #b$ bibliogr. #c$\r\n#154$ #a$|0000004804#b$ #c$\r\n"
+            "nr 154 #d$ #e$\r\n#155$ #a$ ISBN 978-83-66066-86-1#988$ #a$|0000\r\n"
+            "006505#b$|0000006506#991$ #a$ 10.34616/23.19.146\r\n#995$ #a$ http\r\n"
+            "s://www.bibliotekacyfrowa.pl/publication/108240\r\n               ",
+            [
+                "#153$ #a$ 162 s. #b$ bibliogr. #c$",
+                "#154$ #a$|0000004804#b$ #c$nr 154 #d$ #e$",
+                "#155$ #a$ ISBN 978-83-66066-86-1",
+                "#988$ #a$|0000006505#b$|0000006506",
+                "#991$ #a$ 10.34616/23.19.146",
+                "#995$ #a$ https://www.bibliotekacyfrowa.pl/publication/108240               ",
+            ],
+        )
+    ],
+)
+def test_util_exp_split_poz_str(input, output):
+    assert output == list(exp_split_poz_str(input))
 
 
 def test_util_exp_parse_str_raises():
