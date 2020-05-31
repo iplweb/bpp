@@ -1,5 +1,6 @@
 import os
 import pprint
+import re
 import sys
 from collections import defaultdict
 
@@ -37,6 +38,16 @@ def addslashes(v):
     if not hasattr(v, "replace"):
         return v
     return v.replace("'", "''")
+
+
+exp_split_poz_regex = re.compile("(\#\d\d\d\$)")
+
+
+def exp_split_poz_str(s):
+    s = s.replace("\r\n", "").replace("\r", "").replace("\n", "")
+    spl = exp_split_poz_regex.split(s)[1:]
+    for n in range(0, len(spl), 2):
+        yield spl[n] + spl[n + 1]
 
 
 def exp_combine(a, b, sep=", "):
@@ -216,6 +227,7 @@ def integruj_jednostki():
             jednostka.skrot += "*"
 
         bpp_jednostka, _ign = bpp.Jednostka.objects.get_or_create(
+            pk=jednostka.pk,  # ustaw to samo ID co po stronie DBF
             nazwa=jednostka.nazwa,
             skrot=jednostka.skrot,
             email=jednostka.email,
@@ -226,6 +238,8 @@ def integruj_jednostki():
         )
         jednostka.bpp_jednostka = bpp_jednostka
         jednostka.save()
+
+    set_seq("bpp_jednostka")
 
 
 def data_or_null(s):
@@ -578,9 +592,7 @@ def mapuj_elementy_publikacji(offset, limit):
             ("poz_g", dbf.Poz.objects.get_for_model(rec.idt, "G")),
             ("poz_n", dbf.Poz.objects.get_for_model(rec.idt, "N")),
         ]:
-            for element in [
-                elem.strip() for elem in data.split("\r\n") if elem.strip()
-            ]:
+            for element in exp_split_poz_str(data):
                 parsed = exp_parse_str(element)
                 id = parsed["id"]
                 del parsed["id"]
@@ -1291,7 +1303,17 @@ def integruj_publikacje(offset=None, limit=None):
                     kw["informacje"] += ": " + elem.get("b")
 
                 if elem.get("c"):
-                    kw["informacje"] += "; " + elem.get("c")
+                    z200c = elem.get("c")
+
+                    if z200c.strip().startswith("pod red."):
+                        # Redaktorzy zostaną dodani jako Wydawnictwo_..._Autor, typ odpowiedzialnosci
+                        # to będzie redaktor
+                        pass
+                    else:
+                        print(
+                            f"*** Zrodlo pole 200C niepuste i zaczyna sie od: {z200c[:10]}"
+                        )
+                        kw["informacje"] += "; " + z200c
 
                 if elem.get("d"):
                     kw["informacje"] += "; " + elem.get("d")
@@ -1379,17 +1401,6 @@ def integruj_publikacje(offset=None, limit=None):
 
                 assert not kw.get("www"), (elem, rec, kw)
                 kw["www"] = elem["a"]
-                for literka in "bcd":
-                    assert not elem.get(literka), (elem, rec, rec.idt)
-
-            elif elem["id"] == 991:
-                # DOI
-                if kw.get("doi"):
-                    assert not kw.get("adnotacje")
-                    kw["adnotacje"] = "Drugie DOI? " + elem["a"]
-                else:
-                    kw["doi"] = elem["a"]
-
                 for literka in "bcd":
                     assert not elem.get(literka), (elem, rec, rec.idt)
 
