@@ -1291,7 +1291,17 @@ def integruj_publikacje(offset=None, limit=None):
                     kw["informacje"] += ": " + elem.get("b")
 
                 if elem.get("c"):
-                    kw["informacje"] += "; " + elem.get("c")
+                    z200c = elem.get("c")
+
+                    if z200c.strip().startswith("pod red."):
+                        # Redaktorzy zostaną dodani jako Wydawnictwo_..._Autor, typ odpowiedzialnosci
+                        # to będzie redaktor
+                        pass
+                    else:
+                        print(
+                            f"*** Zrodlo pole 200C niepuste i zaczyna sie od: {z200c[:10]}"
+                        )
+                        kw["informacje"] += "; " + z200c
 
                 if elem.get("d"):
                     kw["informacje"] += "; " + elem.get("d")

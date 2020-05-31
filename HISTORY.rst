@@ -2,6 +2,11 @@
 Historia zmian
 ==============
 
+202005.39
+---------
+
+* nie importuj pola źródła 200C w przypadku importu DBF dla prac z redaktorami (#797)
+
 202005.38
 ---------
 
