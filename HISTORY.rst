@@ -2,10 +2,21 @@
 Historia zmian
 ==============
 
+202005.39
+---------
+
+* nie importuj pola źródła 200C w przypadku importu DBF dla prac z redaktorami (#797)
+* przy imporcie z plików DBF ustawiaj to samo ID jednostki co po stronie DBF (n/d)
+* przy imporcie plików DBF poprawnie importuj wartości niepoprawnie zapisane w DBF (#876)
+
 202005.38
 ---------
 
 * procedura serwerowa do wycinania wartości pola ISBN z pola "Uwagi" (#796)
+* poprawione wycinanie numerów i suplementów (#845)
+* lepszy opis dla rekordów z wydawnictwem nadrzędnym - oznaczenie wydania dla rozdziałów (#843)
+* charakter formalny dostaje nowe pole - charakter ogólny (książka/rozdział/artykuł) (wynika z #843)
+* wyświetlaj informacje o czasie udostępnienia OpenAccess w API (#861)
 
 202005.37
 ---------

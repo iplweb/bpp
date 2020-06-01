@@ -9,6 +9,7 @@ from bpp.models import (
     Praca_Doktorska,
     Praca_Habilitacyjna,
     Wydawnictwo_Ciagle,
+    cache,
 )
 import re
 
@@ -27,6 +28,9 @@ class Command(BaseCommand):
 
         if przenies_do_uwag and skasuj:
             raise Exception("albo --skasuj, albo --przenies-do-uwag")
+
+        if cache.enabled():
+            cache.disable()
 
         for klass in Wydawnictwo_Zwarte, Wydawnictwo_Ciagle:
             for rec in klass.objects.filter(uwagi__istartswith="isbn"):

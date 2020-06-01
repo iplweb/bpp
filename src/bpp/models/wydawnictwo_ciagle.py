@@ -145,8 +145,10 @@ class Wydawnictwo_Ciagle(
     def eksport_pbn_get_issue(self):
         if hasattr(self, "nr_zeszytu"):
             if self.nr_zeszytu:
-                return self.nr_zeszytu
-        return self.eksport_pbn__get_informacje_by_key("numer")
+                return self.nr_zeszytu.strip()
+        res = self.eksport_pbn__get_informacje_by_key("numer")
+        if res is not None:
+            return res.strip()
 
     def eksport_pbn_issue(self, toplevel, autorzy_klass=None):
         v = self.eksport_pbn_get_issue()

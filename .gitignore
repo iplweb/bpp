@@ -117,3 +117,8 @@ src/import_dbf/post-import-dbf.sql
 *.gz
 /src/bpp/static/scss/.sass-cache/
 /src/import_dbf/pre-integruj-dbf-enable-publikacja.sql
+/src/import_dbf/integruj-dbf-grupy-punktowe-log.txt
+/src/import_dbf/isbn-przenies.txt
+/src/import_dbf/isbn-skasuj.txt
+/src/import_dbf/pd.txt
+/src/import_dbf/zd.txt

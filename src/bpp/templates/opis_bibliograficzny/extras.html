@@ -1,9 +1,10 @@
 {% load prace %}
-{% if praca.charakter_formalny.skrot == 'ROZ' or praca.charakter_formalny.skrot == 'ROZP' or praca.charakter_formalny.skrot == 'ROZS' or praca.charakter_formalny.skrot == 'KSP' or praca.charakter_formalny.skrot == 'KSZ' or praca.charakter_formalny.skrot == 'KS' %}
+{% if praca.charakter_formalny.charakter_ogolny == 'roz' or praca.charakter_formalny.charakter_ogolny == 'ksi' %}
     {# szczególy i uwagi na końcu #}
     {{ praca.miejsce_i_rok|default:"" }}
     {{ praca.wydawnictwo|default:""|znak_na_poczatku:"," }}
     {{ praca.szczegoly|default:""|znak_na_poczatku:","|safe }}
+    {% if praca.charakter_formalny.charakter_ogolny == 'roz' %}{{ praca.oznaczenie_wydania|default:""|znak_na_koncu:"." }}{% endif %}
     {% if uwagi == 1 %}{{ praca.uwagi|default:""|znak_na_poczatku:","|safe }}{% endif %}
     {{ praca.isbn|default:""|znak_na_poczatku:"," }}
     {{ praca.doi|default:""|znak_na_poczatku:". DOI: "|default:". " }}

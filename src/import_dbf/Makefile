@@ -1,8 +1,14 @@
 NAZWA_OBCEJ_JEDNOSTKI=obcy
 
-PSQL=psql -q -t --echo-errors bpp | grep -v "INSERT 0 1"
-PSQL_VERBOSE=psql -t --echo-errors -a bpp
-PG_DUMP=pg_dump bpp
+ifeq ($(DJANGO_BPP_DB_NAME),)
+DB_NAME=bpp
+else
+DB_NAME=$(DJANGO_BPP_DB_NAME)
+endif
+
+PSQL=psql -q -t --echo-errors $(DB_NAME) | grep -v "INSERT 0 1"
+PSQL_VERBOSE=psql -t --echo-errors -a $(DB_NAME)
+PG_DUMP=pg_dump $(DB_NAME)
 MANAGE=python ../manage.py
 DBF2SQL=python ../../../manage.py dbf2sql
 ASSETS_DIR=/tmp/bpp-assets
@@ -13,7 +19,7 @@ convert-dbfs:
 	cd db/bib/ && $(DBF2SQL) $(TABELE)
 
 import-converted-dbfs:
-	for tabela in $(TABELE); do psql --echo-errors --quiet -t bpp -f db/bib/$$tabela.sql & done && wait
+	for tabela in $(TABELE); do psql --echo-errors --quiet -t $(DB_NAME) -f db/bib/$$tabela.sql & done && wait
 
 usun-integracje-autorow:
 	echo "begin; delete from bpp_autor_jednostka; delete from bpp_autor;update import_dbf_aut set bpp_autor_id = NULL where bpp_autor_id IS NOT NULL;commit;" | $(PSQL)
@@ -27,10 +33,10 @@ integruj-dbf-autorzy:
 	$(MANAGE) integruj_dbf --enable-autor
 
 importuj-dyscypliny:
-	$(MANAGE) importuj_dyscypliny -v0 2017 "/Volumes/Dane zaszyfrowane/UMWroclaw/bpp-assets/dyscypliny/2017.xlsx"
-	$(MANAGE) importuj_dyscypliny -v0 2018 "/Volumes/Dane zaszyfrowane/UMWroclaw/bpp-assets/dyscypliny/2018.xlsx"
-	$(MANAGE) importuj_dyscypliny -v0 2019 "/Volumes/Dane zaszyfrowane/UMWroclaw/bpp-assets/dyscypliny/2019.xlsx"
-	$(MANAGE) importuj_dyscypliny -v0 2020 "/Volumes/Dane zaszyfrowane/UMWroclaw/bpp-assets/dyscypliny/2020.xlsx"
+	$(MANAGE) importuj_dyscypliny -v0 2017 "/Volumes/Dane zaszyfrowane/UMWroclaw/bpp-assets/dyscypliny/2017.xlsx" & \
+		$(MANAGE) importuj_dyscypliny -v0 2018 "/Volumes/Dane zaszyfrowane/UMWroclaw/bpp-assets/dyscypliny/2018.xlsx" & \
+		$(MANAGE) importuj_dyscypliny -v0 2019 "/Volumes/Dane zaszyfrowane/UMWroclaw/bpp-assets/dyscypliny/2019.xlsx" & \
+		$(MANAGE) importuj_dyscypliny -v0 2020 "/Volumes/Dane zaszyfrowane/UMWroclaw/bpp-assets/dyscypliny/2020.xlsx" & wait
 
 integruj-dbf-publikacje-pre:
 	$(MANAGE) integruj_dbf --enable-charakter-kbn-jezyk --charaktery-enrichment-xls $(ASSETS_DIR)/bg-umw/charaktery_formalne.xlsx
@@ -40,6 +46,7 @@ integruj-dbf-publikacje-pre:
 
 integruj-dbf-publikacje-post:
 	$(MANAGE) integruj_dbf --enable-publikacja > integruj-dbf-publikacja-log.txt
+	$(MANAGE) integruj_dbf --enable-grupy-punktowe > integruj-dbf-grupy-punktowe-log.txt
 	$(MANAGE) integruj_dbf --enable-zatwierdz-podwojne-przypisania
 	$(MANAGE) integruj_dbf --enable-b-a
 	$(MANAGE) integruj_dbf --enable-przypisz-jednostki
@@ -47,17 +54,17 @@ integruj-dbf-publikacje-post:
 integruj-dbf-publikacje: get-assets integruj-dbf-publikacje-pre integruj-dbf-publikacje-post
 
 przypisz-dyscypliny:
-	$(MANAGE) przypisz_dyscypliny -v0 2017 --ustawiaj-pierwsza-gdy-dwie --disable-cache
-	$(MANAGE) przypisz_dyscypliny -v0 2018 --ustawiaj-pierwsza-gdy-dwie --disable-cache
-	$(MANAGE) przypisz_dyscypliny -v0 2019 --ustawiaj-pierwsza-gdy-dwie --disable-cache
-	$(MANAGE) przypisz_dyscypliny -v0 2020 --ustawiaj-pierwsza-gdy-dwie --disable-cache
+	$(MANAGE) przypisz_dyscypliny -v0 2017 --ustawiaj-pierwsza-gdy-dwie --disable-cache & \
+		$(MANAGE) przypisz_dyscypliny -v0 2018 --ustawiaj-pierwsza-gdy-dwie --disable-cache & \
+		$(MANAGE) przypisz_dyscypliny -v0 2019 --ustawiaj-pierwsza-gdy-dwie --disable-cache & \
+		$(MANAGE) przypisz_dyscypliny -v0 2020 --ustawiaj-pierwsza-gdy-dwie --disable-cache & wait
 
 integruj-dbf: integruj-dbf-autorzy importuj-dyscypliny integruj-dbf-publikacje przypisz-dyscypliny
 
 remove-dbfs:
 	echo "select 'drop table '||tablename||';' from pg_tables where tablename like 'import_dbf_%'" | \
-	psql -U postgres -d bpp -t | \
-	psql -U postgres -d bpp
+	psql -U postgres -d $(DB_NAME) -t | \
+	psql -U postgres -d $(DB_NAME)
 
 alter-schema:
 	cat sql/alter-schema.sql | $(PSQL_VERBOSE)
@@ -82,8 +89,8 @@ create-schema:
 	echo "select tablename from pg_tables where tablename like 'import_dbf_%'" | $(PSQL)  | xargs $(MANAGE) inspectdb
 
 dropdb-createdb:
-	dropdb bpp || true
-	createdb bpp
+	dropdb $(DB_NAME) || true
+	createdb $(DB_NAME)
 
 recreate-db: dropdb-createdb
 	$(MANAGE) migrate
@@ -128,11 +135,26 @@ przenies-sortowanie-jednostek:
 
 przenies-isbn:
 	$(MANAGE) wytnij_isbn_z_uwag --przenies-do-uwag > isbn-przenies.txt
-	# $(MANAGE) wytnij_isbn_z_uwag --skasuj > isbn-skasuj.txt
+	$(MANAGE) wytnij_isbn_z_uwag --skasuj > isbn-skasuj.txt
+	$(MANAGE) wytnij_isbn_z_uwag --skasuj > isbn-skasuj.txt
 
 usun-nieuzywane-charaktery-kbny:
 	$(MANAGE) usun_nieuzywane_charaktery_kbny
 
-integrate: disable-trigger integruj-dbf integruj-liste-wydawcow ustaw-obca-jednostke przenies-isbn rebuild-cache ustaw-date-aktualizacji wylacz-alfabetyczne-sortowanie-jednostek przenies-sortowanie-jednostek enable-trigger dodaj-aktualnosc usun-nieuzywane-charaktery-kbny
+utworz-doktoraty:
+	$(MANAGE) zmien_na_doktorat PD > pd.txt
+	$(MANAGE) zmien_na_doktorat ZD > zd.txt
+
+przemapuj-redaktora-na-autora:
+	$(MANAGE) zmien_typ_autora PAW
+	$(MANAGE) zmien_typ_autora ZAW
+
+integrate: disable-trigger integruj-dbf integruj-liste-wydawcow ustaw-obca-jednostke przenies-isbn utworz-doktoraty \
+	przemapuj-redaktora-na-autora \
+	rebuild-cache ustaw-date-aktualizacji wylacz-alfabetyczne-sortowanie-jednostek przenies-sortowanie-jednostek \
+	enable-trigger dodaj-aktualnosc usun-nieuzywane-charaktery-kbny
 
 rebuild: convert-dbfs import-dbf integrate
+
+db-name:
+	@echo "Te skrypty pracują na bazie danych: $(DB_NAME)"

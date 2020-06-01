@@ -1,10 +1,11 @@
 import os
 import pprint
+import re
 import sys
 from collections import defaultdict
 
 import xlrd
-from dbfread import DBF
+from dbfread import DBF, FieldParser
 from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Q
@@ -39,6 +40,16 @@ def addslashes(v):
     return v.replace("'", "''")
 
 
+exp_split_poz_regex = re.compile("(\#\d\d\d\$)")
+
+
+def exp_split_poz_str(s):
+    s = s.replace("\r\n", "").replace("\r", "").replace("\n", "")
+    spl = exp_split_poz_regex.split(s)[1:]
+    for n in range(0, len(spl), 2):
+        yield spl[n] + spl[n + 1]
+
+
 def exp_combine(a, b, sep=", "):
     ret = ""
     if a:
@@ -54,9 +65,22 @@ def exp_combine(a, b, sep=", "):
     return ret
 
 
+class MyFieldParser(FieldParser):
+    """Nie ucinaj spacji na końcu pól znakowych"""
+
+    dont_strip = ["tresc", "title", "tytul_or"]
+
+    def parseC(self, field, data):
+        """Parse char field and return unicode string"""
+        if field.name.lower() not in self.dont_strip:
+            data = data.rstrip(b"\0 ")
+
+        return self.decode_text(data)
+
+
 def dbf2sql(filename, appname="import_dbf"):
     tablename = appname + "_" + os.path.basename(filename.split(".")[0]).lower()
-    dbf = DBF(filename, encoding="my_cp1250")
+    dbf = DBF(filename, encoding="my_cp1250", parserclass=MyFieldParser)
 
     output = open(filename + ".sql", "w")
     output.write("BEGIN;\n")
@@ -88,14 +112,21 @@ def exp_parse_str(input):
     s = input
 
     assert len(s) >= 5
-    assert s[0] == "#"
+    if s[0] != "#":
+        if not s.strip():  # To moze byc pusty ciąg znaków
+            raise ValueError
+        raise AssertionError(s)  # Jeżeli jest niepusty i nie zaczyna się od #, błąd
+
     assert s[4] == "$"
 
     ret = {}
 
     ret["id"] = int(s[1:4])
 
-    s = s[5:].strip()
+    s = s[5:]  # Nie stripuj, bo Expertus ma spacje na koncu niekiedy: .strip()
+
+    if s[0] == " ":
+        s = s[1:]
 
     if s[0] != "#":
         raise ValueError(input)
@@ -146,7 +177,7 @@ def exp_add_spacing(s):
     s = s.replace(". )", ".)")
     s = s.replace(". -", ".-")
     s = s.replace(". ,", ".,")
-    return s.strip()
+    return s  # nie stripuj: .strip()
 
 
 def integruj_uczelnia(nazwa="Domyślna Uczelnia", skrot="DU"):
@@ -176,6 +207,7 @@ def integruj_wydzialy():
 def integruj_jednostki():
     uczelnia = bpp.Uczelnia.objects.first()
     for jednostka in dbf.Jed.objects.all():
+        # print(f"JEDNOSTKA: [{jednostka.nazwa}] [{jednostka.skrot}]")
         if bpp.Jednostka.objects.filter(
             nazwa=jednostka.nazwa, skrot=jednostka.skrot
         ).exists():
@@ -195,6 +227,7 @@ def integruj_jednostki():
             jednostka.skrot += "*"
 
         bpp_jednostka, _ign = bpp.Jednostka.objects.get_or_create(
+            pk=jednostka.pk,  # ustaw to samo ID co po stronie DBF
             nazwa=jednostka.nazwa,
             skrot=jednostka.skrot,
             email=jednostka.email,
@@ -205,6 +238,8 @@ def integruj_jednostki():
         )
         jednostka.bpp_jednostka = bpp_jednostka
         jednostka.save()
+
+    set_seq("bpp_jednostka")
 
 
 def data_or_null(s):
@@ -557,9 +592,7 @@ def mapuj_elementy_publikacji(offset, limit):
             ("poz_g", dbf.Poz.objects.get_for_model(rec.idt, "G")),
             ("poz_n", dbf.Poz.objects.get_for_model(rec.idt, "N")),
         ]:
-            for element in [
-                elem.strip() for elem in data.split("\r\n") if elem.strip()
-            ]:
+            for element in exp_split_poz_str(data):
                 parsed = exp_parse_str(element)
                 id = parsed["id"]
                 del parsed["id"]
@@ -584,8 +617,8 @@ def mapuj_elementy_publikacji(offset, limit):
                     idt=rec, elem_id=id, value=value, source="b_u"
                 )
 
-        if rec.zrodlo:
-            zrodlo = exp_parse_str(rec.zrodlo)
+        if rec.zrodlo.strip():
+            zrodlo = exp_parse_str(rec.zrodlo.strip())
             id = zrodlo["id"]
             del zrodlo["id"]
             dbf.Bib_Desc.objects.create(idt=rec, elem_id=id, value=zrodlo, source="b_u")
@@ -671,8 +704,7 @@ def integruj_publikacje(offset=None, limit=None):
         kw = {}
 
         tytul = exp_parse_str(rec.tytul_or)
-
-        if rec.title:
+        if rec.title.strip():
             try:
                 title = exp_parse_str(rec.title)
             except ValueError:
@@ -1271,7 +1303,17 @@ def integruj_publikacje(offset=None, limit=None):
                     kw["informacje"] += ": " + elem.get("b")
 
                 if elem.get("c"):
-                    kw["informacje"] += "; " + elem.get("c")
+                    z200c = elem.get("c")
+
+                    if z200c.strip().startswith("pod red."):
+                        # Redaktorzy zostaną dodani jako Wydawnictwo_..._Autor, typ odpowiedzialnosci
+                        # to będzie redaktor
+                        pass
+                    else:
+                        print(
+                            f"*** Zrodlo pole 200C niepuste i zaczyna sie od: {z200c[:10]}"
+                        )
+                        kw["informacje"] += "; " + z200c
 
                 if elem.get("d"):
                     kw["informacje"] += "; " + elem.get("d")
@@ -1362,17 +1404,6 @@ def integruj_publikacje(offset=None, limit=None):
                 for literka in "bcd":
                     assert not elem.get(literka), (elem, rec, rec.idt)
 
-            elif elem["id"] == 991:
-                # DOI
-                if kw.get("doi"):
-                    assert not kw.get("adnotacje")
-                    kw["adnotacje"] = "Drugie DOI? " + elem["a"]
-                else:
-                    kw["doi"] = elem["a"]
-
-                for literka in "bcd":
-                    assert not elem.get(literka), (elem, rec, rec.idt)
-
             #
             # Koniec Poz_n
             #
@@ -1420,8 +1451,8 @@ def przypisz_grupy_punktowe():
                         o.save()
 
                 else:
-                    raise Exception(
-                        "Mam wydawnictwo nadrzedne dla wydawnictwa ciągłego..?"
+                    print(
+                        f"*** Mam wydawnictwo nadrzedne dla wydawnictwa ciągłego..? Nie tworze. {rec.idt} {rec.tytul_or[:50]} ma nadrzedne {rec.idt2.pk} {rec.idt2.object.tytul_oryginalny[:50]})"
                     )
 
 
@@ -1439,9 +1470,11 @@ def set_sequences():
 def wyswietl_prace_bez_dopasowania(logger):
     bez = dbf.Bib.objects.filter(object_id=None)
     if bez.exists():
-        logger.info("Prace bez dopasowania: %i rekordow. " % bez.count())
+        logger.info("*** Prace bez dopasowania: %i rekordow. " % bez.count())
         for rec in bez[:30]:
             logger.info((rec.idt, rec.rok, rec.tytul_or_s))
+    else:
+        logger.info("+++ Wszystkie prace mają dopasowanie.")
 
 
 @transaction.atomic

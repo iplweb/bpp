@@ -27,6 +27,7 @@ def test_zaktualizuj_cache_zwarte(
         ("ISBN 978-83-7374-091-4, ten tego", "978-83-7374-091-4", "ten tego"),
         ("ISBN 83-200-1817-X", "83-200-1817-X", ""),
         ("tu nie ma ISBNu", None, None),
+        ("ISBN-10 978-83-7374-091-4; ISBN-13 958498498894, ten tego", None, None),
     ],
 )
 def test_wytnij_isbn_z_uwag(input, output, rest):
