@@ -1,4 +1,4 @@
-Django==3.0.4
+Django==3.0.7
 psycopg2==2.8.4
 django-flexible-reports==0.2.9
 django-group-by==0.3.1

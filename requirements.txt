@@ -180,9 +180,9 @@ django-tables2==2.3.1 \
 django-webmaster-verification==0.3.0 \
     --hash=sha256:b1a62d468825710e57f072ed1fa1ae540b3ad95dcc08a8bdfaa37e2d6d529837 \
     # via -r requirements.in
-django==3.0.4 \
-    --hash=sha256:50b781f6cbeb98f673aa76ed8e572a019a45e52bdd4ad09001072dfd91ab07c8 \
-    --hash=sha256:89e451bfbb815280b137e33e454ddd56481fdaa6334054e6e031041ee1eda360 \
+django==3.0.7 \
+    --hash=sha256:5052b34b34b3425233c682e0e11d658fd6efd587d11335a0203d827224ada8f2 \
+    --hash=sha256:e1630333248c9b3d4e38f02093a26f1e07b271ca896d73097457996e0fae12e8 \
     # via -r requirements.in, crispy-forms-foundation, django-admin-sortable2, django-appconf, django-braces, django-classy-tags, django-columns, django-cookie-law, django-dirtyfields, django-dsl, django-favicon-plus, django-filter, django-flexible-reports, django-model-utils, django-mptt, django-multiseek, django-password-policies-iplweb, django-querysetsequence, django-sendfile, django-session-security, django-static-sitemaps, django-tables2, django-webmaster-verification, djangorestframework
 django_compressor==2.4 \
     --hash=sha256:57ac0a696d061e5fc6fbc55381d2050f353b973fb97eee5593f39247bc0f30af \
@@ -206,10 +206,6 @@ idna==2.7 \
     --hash=sha256:156a6814fb5ac1fc6850fb002e0852d56c0c8d2531923a51032d1b70760e186e \
     --hash=sha256:684a38a6f903c1d71d6d5fac066b58d7768af4de2b832e426ec79c30daa94a16 \
     # via requests
-importlib-metadata==1.6.0 \
-    --hash=sha256:2a688cbaa90e0cc587f1df48bdc97a6eadccdcd9c35fb3f976a09e3b5016d90f \
-    --hash=sha256:34513a8a0c4962bc66d35b359558fd8a5e10cd472d37aec5f66858addef32c1e \
-    # via kombu
 jdcal==1.4.1 \
     --hash=sha256:1abf1305fce18b4e8aa248cf8fe0c56ce2032392bc64bbd61b5dff2a19ec8bba \
     --hash=sha256:472872e096eb8df219c23f2689fc336668bdb43d194094b5cc1707e1640acfc8 \
@@ -437,10 +433,6 @@ xlrd==1.1.0 \
     --hash=sha256:83a1d2f1091078fb3f65876753b5302c5cfb6a41de64b9587b74cefa75157148 \
     --hash=sha256:8a21885513e6d915fe33a8ee5fdfa675433b61405ba13e2a69e62ee36828d7e2 \
     # via -r requirements.in
-zipp==3.1.0 \
-    --hash=sha256:aa36550ff0c0b7ef7fa639055d797116ee891440eac1a56f378e2d3179e0320b \
-    --hash=sha256:c599e4d75c98f6798c509911d08a22e6c021d074469042177c8c86fb92eefd96 \
-    # via importlib-metadata
 zope.component==4.5 \
     --hash=sha256:6edfd626c3b593b72895a8cfcf79bff41f4619194ce996a85bce31ac02b94e55 \
     --hash=sha256:984a06ba3def0b02b1117fa4c45b56e772e8c29c0340820fbf367e440a93a3a4 \
