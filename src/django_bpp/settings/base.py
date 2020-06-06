@@ -513,6 +513,8 @@ REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.LimitOffsetPagination",
     "PAGE_SIZE": 10,
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
-    "DEFAULT_THROTTLE_CLASSES": ("rest_framework.throttling.AnonRateThrottle",),
-    "DEFAULT_THROTTLE_RATES": {"anon": "50/second",},
+    # Nie limituj ilości zapytań (mpasternak, 6.06.2020) - jednakże, gdyby
+    # trzeba było, to wystarczy odkomentować poniższe dwie linie:
+    # "DEFAULT_THROTTLE_CLASSES": ("rest_framework.throttling.AnonRateThrottle",),
+    # "DEFAULT_THROTTLE_RATES": {"anon": "50/second",},
 }
