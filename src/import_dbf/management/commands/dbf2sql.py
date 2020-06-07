@@ -8,10 +8,10 @@ from import_dbf.util import dbf2sql
 
 
 class Command(BaseCommand):
-    help = 'Konwertuje plik DBF do zapytań SQLowych PostgreSQL'
+    help = "Konwertuje plik DBF do zapytań SQLowych PostgreSQL"
 
     def add_arguments(self, parser):
-        parser.add_argument("plik", nargs="+", type=argparse.FileType('rb'))
+        parser.add_argument("plik", nargs="+", type=argparse.FileType("rb"))
 
     def handle(self, plik, *args, **options):
         p = multiprocessing.Pool(processes=multiprocessing.cpu_count())
