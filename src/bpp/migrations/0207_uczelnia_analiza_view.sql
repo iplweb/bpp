@@ -31,7 +31,7 @@ FROM bpp_rekord_mat
                                             bpp_autor_dyscyplina.rok = bpp_rekord_mat.rok;
 
 
-CREATE INDEX bpp_cache_punktacja_autora_rekord_autor_idx ON bpp_cache_punktacja_autora (rekord_id, autor_id);
-CREATE INDEX bpp_autor_dyscyplina_autor_rok_idx ON bpp_autor_dyscyplina (autor_id, rok);
+CREATE INDEX IF NOT EXISTS bpp_cache_punktacja_autora_rekord_autor_idx ON bpp_cache_punktacja_autora (rekord_id, autor_id);
+CREATE INDEX IF NOT EXISTS bpp_autor_dyscyplina_autor_rok_idx ON bpp_autor_dyscyplina (autor_id, rok);
 
 COMMIT;

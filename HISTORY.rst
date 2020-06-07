@@ -2,14 +2,15 @@
 Historia zmian
 ==============
 
-202005.39
+202006.39
 ---------
 
 * nie importuj pola źródła 200C w przypadku importu DBF dla prac z redaktorami (#797)
 * przy imporcie z plików DBF ustawiaj to samo ID jednostki co po stronie DBF (n/d)
 * przy imporcie plików DBF poprawnie importuj wartości niepoprawnie zapisane w DBF (#876)
+* upoważnienie PBN - pole (#840)
 
-202005.38
+202006.38
 ---------
 
 * procedura serwerowa do wycinania wartości pola ISBN z pola "Uwagi" (#796)
