@@ -560,7 +560,7 @@ class ModelZeSzczegolami(models.Model):
     informacje = models.TextField("Informacje", null=True, blank=True, db_index=True)
 
     szczegoly = models.CharField(
-        "Szczegóły", max_length=1024, null=True, blank=True, help_text="Np. str. 23-45"
+        "Szczegóły", max_length=512, null=True, blank=True, help_text="Np. str. 23-45"
     )
 
     uwagi = models.TextField(null=True, blank=True, db_index=True)
