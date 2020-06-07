@@ -5,6 +5,7 @@ Historia zmian
 202006.39
 ---------
 
+* prace habilitacyjne i patenty w API (#859)
 * nie importuj pola źródła 200C w przypadku importu DBF dla prac z redaktorami (#797)
 * przy imporcie z plików DBF ustawiaj to samo ID jednostki co po stronie DBF (n/d)
 * przy imporcie plików DBF poprawnie importuj wartości niepoprawnie zapisane w DBF (#876)
