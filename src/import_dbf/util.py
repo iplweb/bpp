@@ -854,7 +854,7 @@ def integruj_publikacje(offset=None, limit=None):
 
             kw["strony"] = exp_add_spacing(tytul["e"])
             if tytul.get("f"):
-                kw["szczegoly"] = exp_combine(kw.get("szczegoly"), tytul["f"])
+                kw["informacje"] = exp_combine(kw.get("informacje"), tytul["f"])
 
             if tytul.get("c"):
                 kw["tytul_oryginalny"] = exp_combine(
@@ -866,8 +866,8 @@ def integruj_publikacje(offset=None, limit=None):
                     kw["tytul_oryginalny"], tytul.get("d")
                 )
 
-            if kw.get("szczegoly") and kw.get("strony") is None:
-                kw["strony"] = wez_zakres_stron(kw["szczegoly"])
+            if kw.get("informacje") and kw.get("strony") is None:
+                kw["strony"] = wez_zakres_stron(kw["informacje"])
 
         elif tytul["id"] == 102:
             klass = bpp.Wydawnictwo_Ciagle
@@ -901,7 +901,7 @@ def integruj_publikacje(offset=None, limit=None):
             kw["tytul_oryginalny"] = exp_combine(
                 tytul["a"], exp_combine(tytul.get("b"), tytul.get("d")), sep=" "
             )
-            kw["informacje"] = tytul.get("c", None)  # "wstep i oprac. Edmund Waszynski"
+            kw["szczegoly"] = tytul.get("c", None)  # "wstep i oprac. Edmund Waszynski"
 
         else:
             raise NotImplementedError(tytul)
@@ -996,7 +996,7 @@ def integruj_publikacje(offset=None, limit=None):
                 # D: strony
                 # E: bibliogr. poz
 
-                kw["szczegoly"] = elem.get("a")
+                kw["informacje"] = elem.get("a")
 
                 # A: moze byc to 'rok tom' lub 'rok numer' lub 'rok numer tom'
                 pi = parse_informacje_as_dict(elem.get("a"))
@@ -1007,7 +1007,7 @@ def integruj_publikacje(offset=None, limit=None):
                     kw["tom"] = pi.get("tom")
                     kw["nr_zeszytu"] = pi.get("numer")
 
-                kw["informacje"] = exp_combine(kw.get("informacje"), elem.get("b"))
+                kw["szczegoly"] = exp_combine(kw.get("szczegoly"), elem.get("b"))
 
                 if elem.get("b"):
                     if elem.get("b").startswith("nr "):
@@ -1017,19 +1017,19 @@ def integruj_publikacje(offset=None, limit=None):
                         assert not kw.get("tom")
                         kw["tom"] = elem.get("b")
 
-                kw["szczegoly"] = exp_combine(kw["szczegoly"], elem.get("c"))
+                kw["informacje"] = exp_combine(kw["informacje"], elem.get("c"))
 
                 if elem.get("d"):
                     kw["strony"] = exp_combine(kw.get("strony"), elem.get("d"))
 
                 if elem.get("e"):
-                    kw["szczegoly"] = exp_combine(kw.get("szczegoly"), elem.get("e"))
+                    kw["informacje"] = exp_combine(kw.get("informacje"), elem.get("e"))
 
             elif elem["id"] == 103:
                 # Uwagi (nie: konferencja)
                 # Zgłoszenie #794 Przy imporcie wszystkie uwagi w opisach artykułów z czasopism
                 # (pole 103) stały informacjami o konferencjach, a spora część dotyczy czegoś
-                # innego. Pole to należy przenieść przy imporcie do pola "Informacje"
+                # innego. Pole to należy przenieść przy imporcie do pola "szczegoly"
                 # (lub innego odpowiadającego uwadze).
                 if kw.get("uwagi") is None:
                     kw["uwagi"] = elem["a"]
@@ -1037,11 +1037,11 @@ def integruj_publikacje(offset=None, limit=None):
                     kw["uwagi"] += elem["a"]
 
             elif elem["id"] == 153:
-                assert not kw.get("szczegoly")
-                kw["szczegoly"] = elem["a"]
+                assert not kw.get("informacje")
+                kw["informacje"] = elem["a"]
                 assert not kw.get("strony")
                 kw["strony"] = elem["a"]
-                kw["szczegoly"] += exp_combine(elem.get("b"), elem.get("c"))
+                kw["informacje"] += exp_combine(elem.get("b"), elem.get("c"))
 
             elif elem["id"] == 104:
                 # assert not kw.get("uwagi"), (kw["uwagi"], elem, rec, rec.idt)
@@ -1297,10 +1297,10 @@ def integruj_publikacje(offset=None, limit=None):
                         literka
                     ), "co mam z tym zrobic literka %s w %r" % (literka, elem)
 
-                assert not kw.get("informacje"), (kw["informacje"], rec, rec.idt)
-                kw["informacje"] = elem["a"]
+                assert not kw.get("szczegoly"), (kw["szczegoly"], rec, rec.idt)
+                kw["szczegoly"] = elem["a"]
                 if elem.get("b"):
-                    kw["informacje"] += ": " + elem.get("b")
+                    kw["szczegoly"] += ": " + elem.get("b")
 
                 if elem.get("c"):
                     z200c = elem.get("c")
@@ -1313,13 +1313,13 @@ def integruj_publikacje(offset=None, limit=None):
                         print(
                             f"*** Zrodlo pole 200C niepuste i zaczyna sie od: {z200c[:10]}"
                         )
-                        kw["informacje"] += "; " + z200c
+                        kw["szczegoly"] += "; " + z200c
 
                 if elem.get("d"):
-                    kw["informacje"] += "; " + elem.get("d")
+                    kw["szczegoly"] += "; " + elem.get("d")
 
-                if kw["informacje"]:
-                    res = parse_informacje(kw["informacje"], "tom")
+                if kw["szczegoly"]:
+                    res = parse_informacje(kw["szczegoly"], "tom")
                     if res:
                         assert not kw.get("tom")
                         kw["tom"] = res
