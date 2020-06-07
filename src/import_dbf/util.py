@@ -937,8 +937,11 @@ def integruj_publikacje(offset=None, limit=None):
                     kw["issn"] = elem["d"].split("ISSN")[1].strip()
                     del elem["d"]
 
-                if elem.get("d") and elem.get("c"):
-                    raise NotImplementedError(elem, rec, rec.idt)
+                if elem.get("c"):
+                    kw["informacje"] = exp_combine(kw.get("informacje"), elem.get("c"))
+
+                if elem.get("d"):
+                    kw["informacje"] = exp_combine(kw.get("informacje"), elem.get("d"))
 
                 kw["numer_w_serii"] = ""
 
@@ -1037,8 +1040,8 @@ def integruj_publikacje(offset=None, limit=None):
                     kw["uwagi"] += elem["a"]
 
             elif elem["id"] == 153:
-                assert not kw.get("informacje")
-                kw["informacje"] = elem["a"]
+                # assert not kw.get("informacje")
+                kw["informacje"] = exp_combine(kw.get("informacje"), elem["a"])
                 assert not kw.get("strony")
                 kw["strony"] = elem["a"]
                 kw["informacje"] += exp_combine(elem.get("b"), elem.get("c"))
@@ -1420,14 +1423,13 @@ def integruj_publikacje(offset=None, limit=None):
                     v is not None
                     and hasattr(v, "__len__")
                     and len(v) >= 512
-                    and i
-                    not in [
-                        "tytul_oryginalny",
-                        "tekst_po_ostatnim_autorze",
-                        "szczegoly",
-                    ]
+                    and i not in ["tytul_oryginalny", "tekst_po_ostatnim_autorze",]
                 ):
-                    raise Exception("Pole ponad 512 znakow: %s %s" % (i, v))
+                    print(
+                        "*** UWAGA: przycinam pole %s do 512 znakow, wczesniej wartosc: %s"
+                        % (i, v)
+                    )
+                    kw[i] = v[:512]
             res = klass.objects.create(**kw)
         except Exception as e:
             pprint.pprint(kw)
