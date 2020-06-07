@@ -239,6 +239,9 @@ CREATE INDEX bpp_autorzy_mat_5
 CREATE INDEX bpp_autorzy_mat_6
   ON bpp_autorzy_mat (dyscyplina_naukowa_id);
 
+CREATE INDEX bpp_autorzy_mat_7
+  ON bpp_autorzy_mat (upowaznienie_pbn);
+
 ALTER TABLE bpp_autorzy_mat
   ADD CONSTRAINT original_id_fk FOREIGN KEY (rekord_id) REFERENCES bpp_rekord_mat (id) ON DELETE CASCADE ON UPDATE CASCADE DEFERRABLE INITIALLY DEFERRED;
 
