@@ -154,7 +154,10 @@ integrate: disable-trigger integruj-dbf integruj-liste-wydawcow ustaw-obca-jedno
 	rebuild-cache ustaw-date-aktualizacji wylacz-alfabetyczne-sortowanie-jednostek przenies-sortowanie-jednostek \
 	enable-trigger dodaj-aktualnosc usun-nieuzywane-charaktery-kbny
 
-rebuild: convert-dbfs import-dbf integrate
+set-site-name:
+	$(MANAGE) set_site_name --name bpp.umed.wroc.pl --domain bpp.umed.wroc.pl
+
+rebuild: convert-dbfs import-dbf integrate set-site-name
 
 db-name:
 	@echo "Te skrypty pracują na bazie danych: $(DB_NAME)"

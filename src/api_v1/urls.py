@@ -9,7 +9,9 @@ from api_v1.viewsets.autor import (
 )
 from api_v1.viewsets.nagroda import NagrodaViewSet
 from api_v1.viewsets.openaccess import Czas_Udostepnienia_OpenAccess_ViewSet
+from api_v1.viewsets.patent import PatentViewSet, Patent_AutorViewSet
 from api_v1.viewsets.praca_doktorska import Praca_DoktorskaViewSet
+from api_v1.viewsets.praca_habilitacyjna import Praca_HabilitacyjnaViewSet
 from api_v1.viewsets.struktura import JednostkaViewSet, WydzialViewSet, UczelniaViewSet
 from api_v1.viewsets.system import (
     Charakter_FormalnyViewSet,
@@ -51,6 +53,9 @@ router.register(r"wydawca", WydawcaViewSet)
 router.register(r"wydawnictwo_zwarte", Wydawnictwo_ZwarteViewSet)
 router.register(r"wydawnictwo_zwarte_autor", Wydawnictwo_Zwarte_AutorViewSet)
 
+router.register(r"patent", PatentViewSet)
+router.register(r"patent_autor", Patent_AutorViewSet)
+
 router.register(r"wydawnictwo_ciagle", Wydawnictwo_CiagleViewSet)
 router.register(r"wydawnictwo_ciagle_autor", Wydawnictwo_Ciagle_AutorViewSet)
 router.register(
@@ -59,6 +64,8 @@ router.register(
 )
 
 router.register(r"praca_doktorska", Praca_DoktorskaViewSet)
+
+router.register(r"praca_habilitacyjna", Praca_HabilitacyjnaViewSet)
 
 router.register(r"rodzaj_zrodla", Rodzaj_ZrodlaViewSet)
 router.register(r"zrodlo", ZrodloViewSet)

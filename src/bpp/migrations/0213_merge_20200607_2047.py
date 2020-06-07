@@ -6,9 +6,8 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('bpp', '0212_upowaznienie_pbn'),
-        ('bpp', '0212_charakter_formalny_charakter_ogolny'),
+        ("bpp", "0212_upowaznienie_pbn"),
+        ("bpp", "0212_charakter_formalny_charakter_ogolny"),
     ]
 
-    operations = [
-    ]
+    operations = []
