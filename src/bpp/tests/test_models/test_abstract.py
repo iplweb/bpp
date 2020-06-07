@@ -29,14 +29,14 @@ from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte, Wydawnictwo_Zwarte
 
 @pytest.mark.django_db
 def test_baza_modelu_odpowiedzialnosci_zapisywanie(
-        wydawnictwo_ciagle,
-        autor_jan_nowak,
-        rok,
-        jednostka,
-        dyscyplina1,
-        dyscyplina2,
-        typy_odpowiedzialnosci,
-        db,
+    wydawnictwo_ciagle,
+    autor_jan_nowak,
+    rok,
+    jednostka,
+    dyscyplina1,
+    dyscyplina2,
+    typy_odpowiedzialnosci,
+    db,
 ):
     wydawnictwo_ciagle.rok = rok
     wydawnictwo_ciagle.save()
@@ -82,13 +82,13 @@ def test_baza_modelu_odpowiedzialnosci_zapisywanie(
 
 @pytest.mark.django_db
 def test_baza_modelu_odpowiedzialnosci_autorow_dyscyplina_okresl_dyscypline(
-        wydawnictwo_ciagle,
-        jednostka,
-        autor_jan_kowalski,
-        dyscyplina1,
-        dyscyplina2,
-        typy_odpowiedzialnosci,
-        rok,
+    wydawnictwo_ciagle,
+    jednostka,
+    autor_jan_kowalski,
+    dyscyplina1,
+    dyscyplina2,
+    typy_odpowiedzialnosci,
+    rok,
 ):
     wca = wydawnictwo_ciagle.dodaj_autora(
         autor_jan_kowalski, jednostka, zapisany_jako="Kowalski"
@@ -236,7 +236,7 @@ def test_eksport_pbn_system_identifier(klass, pbn_id, expected):
 
 @pytest.mark.django_db
 def test_eksport_pbn_editor_afiliacja_w_kontekscie_wydzialu(
-        uczelnia, autor_jan_kowalski, wydawnictwo_zwarte, typy_odpowiedzialnosci
+    uczelnia, autor_jan_kowalski, wydawnictwo_zwarte, typy_odpowiedzialnosci
 ):
     w1 = mommy.make(Wydzial, uczelnia=uczelnia)
     w2 = mommy.make(Wydzial, uczelnia=uczelnia)
@@ -390,7 +390,7 @@ def test_eksport_pbn_open_access(wydawnictwo_zwarte, openaccess_data):
         ("2018 Vol.35 e-suppl.56", "2018", "35", "e-suppl.56"),
         ("2020 Vol.61 no.2 suppl.2", "2020", "61", "2 suppl.2"),
         ("2020 Vol.15 no.5 suppl.", "2020", "15", "5 suppl."),
-        ("1998 Vol.4 suppl.2, fig., bibliogr. 11 poz., summ.", "1998", "4", "suppl.2")
+        ("1998 Vol.4 suppl.2, fig., bibliogr. 11 poz., summ.", "1998", "4", "suppl.2"),
     ],
 )
 def test_parse_informacje(input, exp_rok, exp_tom, exp_nr):

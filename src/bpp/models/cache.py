@@ -246,6 +246,7 @@ class AutorzyBase(models.Model):
 
     afiliuje = models.BooleanField()
     zatrudniony = models.BooleanField()
+    upowaznienie_pbn = models.BooleanField()
 
     objects = AutorzyManager()
 

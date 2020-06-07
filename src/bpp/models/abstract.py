@@ -369,7 +369,6 @@ POLA_PUNKTACJI = [
 ]
 
 
-
 class ModelTypowany(models.Model):
     """Model zawierający typ KBN oraz język."""
 
@@ -422,6 +421,13 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
 
     dyscyplina_naukowa = models.ForeignKey(
         Dyscyplina_Naukowa, on_delete=SET_NULL, null=True, blank=True
+    )
+
+    upowaznienie_pbn = models.BooleanField(
+        "Upoważnienie PBN",
+        default=False,
+        help_text='Tik w polu "upoważnienie PBN" oznacza, że dany autor upoważnił '
+        "Uczelnię do sprawozdania tej publikacji w ocenie parametrycznej Uczelni",
     )
 
     class Meta:
@@ -671,7 +677,6 @@ class Wydawnictwo_Baza(RekordBPPBaza):
 
     class Meta:
         abstract = True
-
 
 
 url_validator = URLValidator()
