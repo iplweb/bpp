@@ -1415,6 +1415,19 @@ def integruj_publikacje(offset=None, limit=None):
         kw["id"] = rec.idt
 
         try:
+            for i, v in kw.items():
+                if (
+                    v is not None
+                    and hasattr(v, "__len__")
+                    and len(v) >= 512
+                    and i
+                    not in [
+                        "tytul_oryginalny",
+                        "tekst_po_ostatnim_autorze",
+                        "szczegoly",
+                    ]
+                ):
+                    raise Exception("Pole ponad 512 znakow: %s %s" % (i, v))
             res = klass.objects.create(**kw)
         except Exception as e:
             pprint.pprint(kw)
