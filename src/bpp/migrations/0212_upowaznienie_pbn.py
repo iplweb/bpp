@@ -42,4 +42,8 @@ class Migration(migrations.Migration):
         migrations.RunPython(
             lambda *args, **kw: load_custom_sql("0212_upowaznienie_pbn")
         ),
+        # To musi być wczytane, bo "DROP CASCADE" i gubi widoki ewaluacyjne
+        migrations.RunPython(
+            lambda *args, **kw: load_custom_sql("0207_uczelnia_analiza_view")
+        ),
     ]
