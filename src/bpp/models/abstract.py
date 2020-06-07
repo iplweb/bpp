@@ -369,7 +369,6 @@ POLA_PUNKTACJI = [
 ]
 
 
-
 class ModelTypowany(models.Model):
     """Model zawierający typ KBN oraz język."""
 
@@ -678,7 +677,6 @@ class Wydawnictwo_Baza(RekordBPPBaza):
 
     class Meta:
         abstract = True
-
 
 
 url_validator = URLValidator()

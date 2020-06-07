@@ -380,7 +380,7 @@ def wytnij_isbn_z_uwag(uwagi):
     if uwagi == "":
         return
 
-    if uwagi.lower().find("isbn-10") >= 0 or uwagi.lower().find("isbn-13")>=0:
+    if uwagi.lower().find("isbn-10") >= 0 or uwagi.lower().find("isbn-13") >= 0:
         return None
 
     res = isbn_regex.search(uwagi)
