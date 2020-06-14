@@ -63,6 +63,9 @@ UPDATE import_dbf_aut SET imiona = REPLACE(imiona, 'i~41', 'ï'), nazwisko = REP
 UPDATE import_dbf_aut SET imiona = REPLACE(imiona, 'o~41', 'ö'), nazwisko = REPLACE(nazwisko, 'o~41', 'ö') WHERE (imiona LIKE '%o~41%' OR nazwisko LIKE '%o~41%');
 UPDATE import_dbf_aut SET imiona = REPLACE(imiona, 'i~61', 'ì'), nazwisko = REPLACE(nazwisko, 'i~61', 'ì') WHERE (imiona LIKE '%i~61%' OR nazwisko LIKE '%i~61%');
 
+UPDATE import_dbf_aut SET imiona = REPLACE(imiona, 'I~60', 'Ì'), nazwisko = REPLACE(nazwisko, 'I~60', 'Ì') WHERE (imiona LIKE '%I~60%' OR nazwisko LIKE '%I~60%');
+
+
 UPDATE import_dbf_aut SET imiona = REPLACE(imiona, 'o~21', 'ö'), nazwisko = REPLACE(nazwisko, 'o~21', 'ö') WHERE (imiona LIKE '%o~21%' OR nazwisko LIKE '%o~21%');
 UPDATE import_dbf_aut SET imiona = REPLACE(imiona, 'a~91', 'ă'), nazwisko = REPLACE(nazwisko, 'a~91', 'ă') WHERE (imiona LIKE '%a~91%' OR nazwisko LIKE '%a~91%');
 
@@ -88,6 +91,9 @@ UPDATE import_dbf_aut SET imiona = REPLACE(imiona, 'u~91', 'ů'), nazwisko = REP
 
 
 UPDATE import_dbf_aut SET imiona = REPLACE(imiona, 's~21', 'ş'), nazwisko = REPLACE(nazwisko, 's~21', 'ş') WHERE (imiona LIKE '%s~21%' OR nazwisko LIKE '%s~21%');
+
+UPDATE import_dbf_aut SET imiona = REPLACE(imiona, 'U~30', 'Û'), nazwisko = REPLACE(nazwisko, 'U~30', 'Û') WHERE (imiona LIKE '%U~30%' OR nazwisko LIKE '%U~30%');
+
 
 --  Bilo~71
 --  B~51hm
