@@ -2,6 +2,11 @@
 Historia zmian
 ==============
 
+202006.40
+---------
+
+* poprawne importowanie niektórych akcentowanych znaków z plików DBF (n/d),
+
 202006.39
 ---------
 
