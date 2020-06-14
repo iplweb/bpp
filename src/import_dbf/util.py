@@ -853,6 +853,9 @@ def integruj_publikacje(offset=None, limit=None):
             kw["tytul_oryginalny"] = exp_combine(tytul["a"], tytul.get("b"), sep=": ")
 
             kw["strony"] = exp_add_spacing(tytul["e"])
+            if tytul.get("e"):
+                kw["szczegoly"] = exp_combine(kw.get("szczegoly"), tytul.get("e"))
+
             if tytul.get("f"):
                 kw["informacje"] = exp_combine(kw.get("informacje"), tytul["f"])
 
@@ -937,11 +940,12 @@ def integruj_publikacje(offset=None, limit=None):
                     kw["issn"] = elem["d"].split("ISSN")[1].strip()
                     del elem["d"]
 
-                if elem.get("c"):
-                    kw["informacje"] = exp_combine(kw.get("informacje"), elem.get("c"))
-
-                if elem.get("d"):
-                    kw["informacje"] = exp_combine(kw.get("informacje"), elem.get("d"))
+                # Pola C lub D idą za chwilę do numeru serii:
+                # if elem.get("c"):
+                #     kw["informacje"] = exp_combine(kw.get("informacje"), elem.get("c"))
+                #
+                # if elem.get("d"):
+                #     kw["informacje"] = exp_combine(kw.get("informacje"), elem.get("d"))
 
                 kw["numer_w_serii"] = ""
 
@@ -993,6 +997,8 @@ def integruj_publikacje(offset=None, limit=None):
                     assert not elem.get(literka)
 
             elif elem["id"] == 101:
+                # 101A to informacje, 101D i 101E to szczegoly
+
                 # A: rok,
                 # B: tom
                 # C: numer
@@ -1020,13 +1026,14 @@ def integruj_publikacje(offset=None, limit=None):
                         assert not kw.get("tom")
                         kw["tom"] = elem.get("b")
 
-                kw["informacje"] = exp_combine(kw["informacje"], elem.get("c"))
+                kw["szczegoly"] = exp_combine(kw["szczegoly"], elem.get("c"))
 
                 if elem.get("d"):
                     kw["strony"] = exp_combine(kw.get("strony"), elem.get("d"))
+                    kw["szczegoly"] = exp_combine(kw["szczegoly"], elem.get("d"))
 
                 if elem.get("e"):
-                    kw["informacje"] = exp_combine(kw.get("informacje"), elem.get("e"))
+                    kw["szczegoly"] = exp_combine(kw.get("szczegoly"), elem.get("e"))
 
             elif elem["id"] == 103:
                 # Uwagi (nie: konferencja)
@@ -1308,15 +1315,15 @@ def integruj_publikacje(offset=None, limit=None):
                 if elem.get("c"):
                     z200c = elem.get("c")
 
-                    if z200c.strip().startswith("pod red."):
+                    if True or z200c.strip().startswith("pod red."):
                         # Redaktorzy zostaną dodani jako Wydawnictwo_..._Autor, typ odpowiedzialnosci
                         # to będzie redaktor
                         pass
-                    else:
-                        print(
-                            f"*** Zrodlo pole 200C niepuste i zaczyna sie od: {z200c[:10]}"
-                        )
-                        kw["szczegoly"] += "; " + z200c
+                    # else:
+                    #     print(
+                    #         f"*** Zrodlo pole 200C niepuste i zaczyna sie od: {z200c[:10]}"
+                    #     )
+                    #     kw["szczegoly"] += "; " + z200c
 
                 if elem.get("d"):
                     kw["szczegoly"] += "; " + elem.get("d")
