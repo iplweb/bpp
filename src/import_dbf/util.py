@@ -904,7 +904,9 @@ def integruj_publikacje(offset=None, limit=None):
             kw["tytul_oryginalny"] = exp_combine(
                 tytul["a"], exp_combine(tytul.get("b"), tytul.get("d")), sep=" "
             )
-            kw["szczegoly"] = tytul.get("c", None)  # "wstep i oprac. Edmund Waszynski"
+            if tytul.get("c"):
+                print("*** Pole 150C do adnotacji: ", tytul.get("c"))
+                kw["adnotacje"] = exp_combine(kw.get("adnotacje"), tytul.get("c"))
 
         else:
             raise NotImplementedError(tytul)
