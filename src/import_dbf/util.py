@@ -857,7 +857,7 @@ def integruj_publikacje(offset=None, limit=None):
                 kw["szczegoly"] = exp_combine(kw.get("szczegoly"), tytul.get("e"))
 
             if tytul.get("f"):
-                kw["informacje"] = exp_combine(kw.get("informacje"), tytul["f"])
+                kw["szczegoly"] = exp_combine(kw.get("szczegoly"), tytul["f"])
 
             if tytul.get("c"):
                 kw["tytul_oryginalny"] = exp_combine(
@@ -1050,10 +1050,11 @@ def integruj_publikacje(offset=None, limit=None):
 
             elif elem["id"] == 153:
                 # assert not kw.get("informacje")
-                kw["informacje"] = exp_combine(kw.get("informacje"), elem["a"])
+                kw["szczegoly"] = exp_combine(kw.get("szczegoly"), elem["a"])
                 assert not kw.get("strony")
                 kw["strony"] = elem["a"]
-                kw["informacje"] += exp_combine(elem.get("b"), elem.get("c"))
+                kw["szczegoly"] = exp_combine(kw.get("szczegoly"), elem.get("b"))
+                kw["szczegoly"] = exp_combine(kw.get("szczegoly"), elem.get("c"))
 
             elif elem["id"] == 104:
                 # assert not kw.get("uwagi"), (kw["uwagi"], elem, rec, rec.idt)
@@ -1309,10 +1310,15 @@ def integruj_publikacje(offset=None, limit=None):
                         literka
                     ), "co mam z tym zrobic literka %s w %r" % (literka, elem)
 
-                assert not kw.get("szczegoly"), (kw["szczegoly"], rec, rec.idt)
-                kw["szczegoly"] = elem["a"]
+                assert not kw.get("informacje"), (
+                    kw["informacje"],
+                    rec,
+                    rec.idt,
+                    rec.__dict__,
+                )
+                kw["informacje"] = elem["a"]
                 if elem.get("b"):
-                    kw["szczegoly"] += ": " + elem.get("b")
+                    kw["informacje"] += ": " + elem.get("b")
 
                 if elem.get("c"):
                     z200c = elem.get("c")
@@ -1328,10 +1334,10 @@ def integruj_publikacje(offset=None, limit=None):
                     #     kw["szczegoly"] += "; " + z200c
 
                 if elem.get("d"):
-                    kw["szczegoly"] += "; " + elem.get("d")
+                    kw["informacje"] += "; " + elem.get("d")
 
-                if kw["szczegoly"]:
-                    res = parse_informacje(kw["szczegoly"], "tom")
+                if kw["informacje"]:
+                    res = parse_informacje(kw["informacje"], "tom")
                     if res:
                         assert not kw.get("tom")
                         kw["tom"] = res
