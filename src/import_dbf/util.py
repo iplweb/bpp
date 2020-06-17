@@ -1819,7 +1819,7 @@ def utworz_szkielety_ksiazek(logger):
 
         tz = fld.get("a")
         try:
-            wn = bpp.Wydawnictwo_Zwarte.objects.get(tytul_oryginalny=tz)
+            wn = bpp.Wydawnictwo_Zwarte.objects.get(tytul_oryginalny=tz, rok=wz.rok)
             logger.info(
                 f"WNWJ Przypisano wydawnictwo nadrzedne\t"
                 f"{wn.tytul_oryginalny} ID={wn.pk}\t"
