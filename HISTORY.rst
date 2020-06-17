@@ -6,6 +6,7 @@ Historia zmian
 ---------
 
 * poprawne importowanie niektórych akcentowanych znaków z plików DBF (n/d),
+* zamień pola "szczegóły" i "informacje" przy imporcie (#857)
 
 202006.39
 ---------
