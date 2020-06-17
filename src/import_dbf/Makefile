@@ -52,6 +52,7 @@ integruj-dbf-publikacje-post:
 	$(MANAGE) integruj_dbf --enable-zatwierdz-podwojne-przypisania
 	$(MANAGE) integruj_dbf --enable-b-a
 	$(MANAGE) integruj_dbf --enable-przypisz-jednostki
+	$(MANAGE) integruj_dbf --enable-szkielety-ksiazek &> integruj-dbf-szkielety.txt
 
 integruj-dbf-publikacje: get-assets integruj-dbf-publikacje-pre integruj-dbf-publikacje-post
 

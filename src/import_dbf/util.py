@@ -1,3 +1,4 @@
+import math
 import os
 import pprint
 import re
@@ -22,6 +23,7 @@ from bpp.models import (
     wez_zakres_stron,
     parse_informacje_as_dict,
 )
+from bpp.models.const import CHARAKTER_OGOLNY_KSIAZKA, RODZAJ_PBN_KSIAZKA
 from bpp.system import User
 from bpp.util import pbar, set_seq
 from import_dbf import models as dbf
@@ -1785,3 +1787,85 @@ def dodaj_aktualnosc():
     )[0]
     a.article_body = "Bazę danych zaimportowano: %s" % timezone.localtime()
     a.save()
+
+
+@transaction.atomic
+def utworz_szkielety_ksiazek(logger):
+    """
+    https://mantis.iplweb.pl/file_download.php?file_id=85&type=bug
+
+    Na podstawie pola 200 A dla rekordów, które nie posiadają wydawnictw nadrzędnych,
+    utwórz "szkielety" książek
+    """
+
+    if cache.enabled():
+        cache.disable()
+
+    cf = None
+
+    for bib in dbf.Bib.objects.filter(zrodlo__icontains="#200$").order_by("pk"):
+        try:
+            wz = bpp.Wydawnictwo_Zwarte.objects.get(
+                pk=bib.object_id, wydawnictwo_nadrzedne=None
+            )
+        except bpp.Wydawnictwo_Zwarte.DoesNotExist:
+            continue
+
+        fld = exp_parse_str(bib.zrodlo)
+
+        tz = fld.get("a")
+        try:
+            wn = bpp.Wydawnictwo_Zwarte.objects.get(tytul_oryginalny=tz)
+            logger.info(
+                f"WNWJ Przypisano wydawnictwo nadrzedne\t"
+                f"{wn.tytul_oryginalny} ID={wn.pk}\t"
+                f"dla rekordu\t"
+                f"{wz.tytul_oryginalny} ID={wz.pk}\t"
+            )
+        except bpp.Wydawnictwo_Zwarte.MultipleObjectsReturned:
+            logger.info(
+                f"WNWX Otrzymano liczne rekordy dla zapytania o tytul\t{tz}\t, nie zmieniam nic"
+            )
+            continue
+        except bpp.Wydawnictwo_Zwarte.DoesNotExist:
+            logger.info(
+                f"WNWN Tworze wydawnictwo zwarte:\t{tz}\trok\t{wz.rok}\tdla rekordu\t{wz.tytul_oryginalny}\tID={wz.pk}"
+            )
+
+            # Spróbuj znaleźć wydanwictwo o POŁOWIE długości tytułu, jeżeli jest to napisz
+            # na ten temat (ale nadal utwórz)
+            try:
+                x = bpp.Wydawnictwo_Zwarte.objects.get(
+                    tytul_oryginalny__istartswith=tz[: int(math.ceil(len(tz) / 2))]
+                )
+                logger.info(
+                    f"WNWN ... jednakże znalazłem prace zaczynającą się podobnie:\t"
+                    f"{x.tytul_oryginalny}\tID={x.pk}\t"
+                    f"ale tworze nowy rekord i tak!"
+                )
+            except bpp.Wydawnictwo_Zwarte.DoesNotExist:
+                pass
+            except bpp.Wydawnictwo_Zwarte.MultipleObjectsReturned:
+                logger.info(
+                    f"WNWN ... znaleziono liczne prace dla połowy tytułu, tworze nową"
+                )
+
+            wn = bpp.Wydawnictwo_Zwarte.objects.create(
+                tytul_oryginalny=tz,
+                rok=wz.rok,
+                charakter_formalny=bpp.Charakter_Formalny.objects.get_or_create(
+                    skrot="SWN",
+                    nazwa="Szkieletowe wydawnictwo nadrzędne",
+                    charakter_ogolny=CHARAKTER_OGOLNY_KSIAZKA,
+                    charakter_pbn=bpp.Charakter_PBN.objects.get(
+                        identyfikator="scholarly-textbook"
+                    ),
+                    rodzaj_pbn=RODZAJ_PBN_KSIAZKA,
+                )[0],
+                typ_kbn=bpp.Typ_KBN.objects.get(skrot="000"),
+                jezyk=bpp.Jezyk.objects.get(skrot="in."),
+                status_korekty=bpp.Status_Korekty.objects.get(nazwa="przed korektą"),
+            )
+
+        wz.wydawnictwo_nadrzedne = wn
+        wz.save()
