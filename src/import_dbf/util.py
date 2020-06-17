@@ -1438,7 +1438,12 @@ def integruj_publikacje(offset=None, limit=None):
                     v is not None
                     and hasattr(v, "__len__")
                     and len(v) >= 512
-                    and i not in ["tytul_oryginalny", "tekst_po_ostatnim_autorze",]
+                    and i
+                    not in [
+                        "tytul_oryginalny",
+                        "tekst_po_ostatnim_autorze",
+                        "informacje",
+                    ]
                 ):
                     print(
                         "*** UWAGA: przycinam pole %s do 512 znakow, wczesniej wartosc: %s"
