@@ -1803,7 +1803,11 @@ def utworz_szkielety_ksiazek(logger):
 
     cf = None
 
-    for bib in dbf.Bib.objects.filter(zrodlo__icontains="#200$").order_by("pk"):
+    for bib in dbf.Bib.objects.filter(
+        Q(zrodlo__icontains="#200$")
+        | Q(zrodlo__icontains="#202$")
+        | Q(zrodlo__icontains="#205$")
+    ).order_by("pk"):
         try:
             wz = bpp.Wydawnictwo_Zwarte.objects.get(
                 pk=bib.object_id, wydawnictwo_nadrzedne=None
@@ -1824,7 +1828,9 @@ def utworz_szkielety_ksiazek(logger):
             )
         except bpp.Wydawnictwo_Zwarte.MultipleObjectsReturned:
             logger.info(
-                f"WNWX Otrzymano liczne rekordy dla zapytania o tytul\t{tz}\t, nie zmieniam nic"
+                f"WNWX Otrzymano liczne rekordy dla zapytania o tytul\t{tz}\t dla rekordu\t"
+                f"{wz.tytul_oryginalny}\tID={wz.pk}\t"
+                f", nie zmieniam nic"
             )
             continue
         except bpp.Wydawnictwo_Zwarte.DoesNotExist:
