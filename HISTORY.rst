@@ -7,6 +7,8 @@ Historia zmian
 
 * poprawne importowanie niektórych akcentowanych znaków z plików DBF (n/d),
 * zamień pola "szczegóły" i "informacje" przy imporcie (#857)
+* opcjonalna walidacja pola "Afiliowana" przy przypisaniu autora do rekordu
+  za pomocą zmiennych środowiskowych (n/d)
 
 202006.39
 ---------
