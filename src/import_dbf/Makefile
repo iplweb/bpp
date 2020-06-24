@@ -6,6 +6,8 @@ else
 DB_NAME=$(DJANGO_BPP_DB_NAME)
 endif
 
+WALIDUJ_AFILIACJE_AUTOROW_NIE=export DJANGO_BPP_WALIDUJ_AFILIACJE_AUTOROW=nie &&
+
 PSQL=psql -q -t --echo-errors $(DB_NAME) | grep -v "INSERT 0 1"
 PSQL_VERBOSE=psql -t --echo-errors -a $(DB_NAME)
 PG_DUMP=pg_dump $(DB_NAME)
@@ -35,10 +37,10 @@ integruj-dbf-autorzy:
 	$(MANAGE) integruj_dbf --enable-autor
 
 importuj-dyscypliny:
-	$(MANAGE) importuj_dyscypliny -v0 2017 "/Volumes/Dane zaszyfrowane/UMWroclaw/bpp-assets/dyscypliny/2017.xlsx" & \
-		$(MANAGE) importuj_dyscypliny -v0 2018 "/Volumes/Dane zaszyfrowane/UMWroclaw/bpp-assets/dyscypliny/2018.xlsx" & \
-		$(MANAGE) importuj_dyscypliny -v0 2019 "/Volumes/Dane zaszyfrowane/UMWroclaw/bpp-assets/dyscypliny/2019.xlsx" & \
-		$(MANAGE) importuj_dyscypliny -v0 2020 "/Volumes/Dane zaszyfrowane/UMWroclaw/bpp-assets/dyscypliny/2020.xlsx" & wait
+	$(MANAGE) importuj_dyscypliny -v0 2017 "/Volumes/Dane zaszyfrowane/UMWroclaw/bpp-assets/dyscypliny/2017.xlsx" 
+	$(MANAGE) importuj_dyscypliny -v0 2018 "/Volumes/Dane zaszyfrowane/UMWroclaw/bpp-assets/dyscypliny/2018.xlsx" 
+	$(MANAGE) importuj_dyscypliny -v0 2019 "/Volumes/Dane zaszyfrowane/UMWroclaw/bpp-assets/dyscypliny/2019.xlsx" 
+	$(MANAGE) importuj_dyscypliny -v0 2020 "/Volumes/Dane zaszyfrowane/UMWroclaw/bpp-assets/dyscypliny/2020.xlsx"
 
 integruj-dbf-publikacje-pre:
 	$(MANAGE) integruj_dbf --enable-charakter-kbn-jezyk --charaktery-enrichment-xls $(ASSETS_DIR)/bg-umw/charaktery_formalne.xlsx
@@ -57,10 +59,10 @@ integruj-dbf-publikacje-post:
 integruj-dbf-publikacje: get-assets integruj-dbf-publikacje-pre integruj-dbf-publikacje-post
 
 przypisz-dyscypliny:
-	$(MANAGE) przypisz_dyscypliny -v0 2017 --ustawiaj-pierwsza-gdy-dwie --disable-cache & \
-		$(MANAGE) przypisz_dyscypliny -v0 2018 --ustawiaj-pierwsza-gdy-dwie --disable-cache & \
-		$(MANAGE) przypisz_dyscypliny -v0 2019 --ustawiaj-pierwsza-gdy-dwie --disable-cache & \
-		$(MANAGE) przypisz_dyscypliny -v0 2020 --ustawiaj-pierwsza-gdy-dwie --disable-cache & wait
+	$(WALIDUJ_AFILIACJE_AUTOROW_NIE) $(MANAGE) przypisz_dyscypliny -v0 2017 --ustawiaj-pierwsza-gdy-dwie --disable-cache
+	$(WALIDUJ_AFILIACJE_AUTOROW_NIE) $(MANAGE) przypisz_dyscypliny -v0 2018 --ustawiaj-pierwsza-gdy-dwie --disable-cache 
+	$(WALIDUJ_AFILIACJE_AUTOROW_NIE) $(MANAGE) przypisz_dyscypliny -v0 2019 --ustawiaj-pierwsza-gdy-dwie --disable-cache 
+	$(WALIDUJ_AFILIACJE_AUTOROW_NIE) $(MANAGE) przypisz_dyscypliny -v0 2020 --ustawiaj-pierwsza-gdy-dwie --disable-cache 
 
 integruj-dbf: integruj-dbf-autorzy importuj-dyscypliny integruj-dbf-publikacje przypisz-dyscypliny
 

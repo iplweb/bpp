@@ -525,6 +525,7 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
             self.afiliuje
             and self.jednostka_id is not None
             and self.jednostka.skupia_pracownikow is False
+            and getattr(settings, "DJANGO_BPP_WALIDUJ_AFILIACJE_AUTOROW", True)
         ):
             raise ValidationError(
                 {
