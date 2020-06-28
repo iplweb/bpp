@@ -397,7 +397,13 @@ def integruj_autorow(silent=False):
         if not autor.idt_jed_id:
             continue
 
-        jednostka = autor.idt_jed
+        try:
+            jednostka = autor.idt_jed
+        except:
+            print(
+                f"XXX autor {autor.pk} ma nieistniejace ID jednostki {autor.idt_jed_id}, NIE TWORZE AUTOR_JEDNOSTKA!"
+            )
+            continue
         try:
             bpp.Autor_Jednostka.objects.get(
                 autor=bpp_autor, jednostka=jednostka.bpp_jednostka
