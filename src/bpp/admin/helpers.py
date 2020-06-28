@@ -176,6 +176,11 @@ MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET = (
     },
 )
 
+MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET = (
+    "Eksport do API",
+    {"classes": ("grp-collapse grp-closed",), "fields": ("nie_eksportuj_przez_api",)},
+)
+
 POZOSTALE_MODELE_FIELDSET = (
     "Pozostałe informacje",
     {

@@ -1182,3 +1182,15 @@ class AktualizujDatePBNNadrzednegoMixin:
             r.ostatnio_zmieniony_dla_pbn = timezone.now()
             r.save(update_fields=["ostatnio_zmieniony_dla_pbn"])
         super(AktualizujDatePBNNadrzednegoMixin, self).save(*args, **kw)
+
+
+class ModelOpcjonalnieNieEksportowanyDoAPI(models.Model):
+    nie_eksportuj_przez_api = models.BooleanField(
+        "Nie eksportuj przez API",
+        default=False,
+        db_index=True,
+        help_text="Jeżeli zaznaczone, to ten rekord nie będzie dostępny przez JSON REST API",
+    )
+
+    class Meta:
+        abstract = True

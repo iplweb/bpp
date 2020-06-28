@@ -103,6 +103,7 @@ class Praca_HabilitacyjnaAdmin(Praca_Doktorska_Habilitacyjna_Admin_Base):
         MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
         POZOSTALE_MODELE_FIELDSET,
         ADNOTACJE_Z_DATAMI_FIELDSET,
+        MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET,
     )
 
 

@@ -1,6 +1,7 @@
 from django import forms
 
 from bpp.models.patent import Patent, Patent_Autor
+from . import MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET
 from .core import generuj_inline_dla_autorow
 from .helpers import (
     ADNOTACJE_Z_DATAMI_FIELDSET,
@@ -72,6 +73,7 @@ class Patent_Admin(AdnotacjeZDatamiMixin, Wydawnictwo_ZwarteAdmin_Baza):
         MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
         POZOSTALE_MODELE_FIELDSET,
         ADNOTACJE_Z_DATAMI_FIELDSET,
+        MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET,
     )
 
 

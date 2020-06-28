@@ -9,6 +9,8 @@ Historia zmian
 * zamień pola "szczegóły" i "informacje" przy imporcie (#857)
 * opcjonalna walidacja pola "Afiliowana" przy przypisaniu autora do rekordu
   za pomocą zmiennych środowiskowych (n/d),
+* dodatkowe pole "nie eksportuj do API" dla rekordów wydawnictw zwartych, ciągłych,
+  patentów, prac doktorskich i habilitacyjnych.
 
 202006.39
 ---------

@@ -16,6 +16,8 @@ class Praca_HabilitacyjnaFilterSet(django_filters.rest_framework.FilterSet):
 
 class Praca_HabilitacyjnaViewSet(viewsets.ReadOnlyModelViewSet):
     # Lista musi być posortowana po PK aby nie było duplikatów
-    queryset = Praca_Habilitacyjna.objects.all().order_by("pk")
+    queryset = Praca_Habilitacyjna.objects.exclude(
+        nie_eksportuj_przez_api=True
+    ).order_by("pk")
     serializer_class = Praca_HabilitacyjnaSerializer
     filterset_class = Praca_HabilitacyjnaFilterSet

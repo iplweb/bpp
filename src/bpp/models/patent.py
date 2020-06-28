@@ -15,6 +15,7 @@ from bpp.models import (
     ModelZInformacjaZ,
     ModelZRokiem,
     ModelZWWW,
+    ModelOpcjonalnieNieEksportowanyDoAPI,
 )
 from bpp.models.abstract import (
     DodajAutoraMixin,
@@ -58,6 +59,7 @@ class Patent(
     MaProcentyMixin,
     DodajAutoraMixin,
     ModelZAbsolutnymUrl,
+    ModelOpcjonalnieNieEksportowanyDoAPI,
 ):
     tytul_oryginalny = models.TextField("Tytuł oryginalny", db_index=True)
 

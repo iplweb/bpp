@@ -8,7 +8,11 @@ from django.dispatch import receiver
 from django.utils import timezone
 from lxml.etree import SubElement, Element
 
-from bpp.models import MaProcentyMixin, AktualizujDatePBNNadrzednegoMixin
+from bpp.models import (
+    MaProcentyMixin,
+    AktualizujDatePBNNadrzednegoMixin,
+    ModelOpcjonalnieNieEksportowanyDoAPI,
+)
 from bpp.models.abstract import (
     BazaModeluOdpowiedzialnosciAutorow,
     DwaTytuly,
@@ -108,6 +112,7 @@ class Wydawnictwo_Ciagle(
     ModelZKonferencja,
     ModelWybitny,
     ModelZLiczbaCytowan,
+    ModelOpcjonalnieNieEksportowanyDoAPI,
     MaProcentyMixin,
     DodajAutoraMixin,
     DirtyFieldsMixin,
