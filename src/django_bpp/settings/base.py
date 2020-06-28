@@ -518,3 +518,8 @@ REST_FRAMEWORK = {
     # "DEFAULT_THROTTLE_CLASSES": ("rest_framework.throttling.AnonRateThrottle",),
     # "DEFAULT_THROTTLE_RATES": {"anon": "50/second",},
 }
+
+
+BPP_WALIDUJ_AFILIACJE_AUTOROW = (
+    os.getenv("DJANGO_BPP_WALIDUJ_AFILIACJE_AUTOROW", "tak") == "tak"
+)

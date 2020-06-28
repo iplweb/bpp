@@ -86,6 +86,9 @@ UPDATE import_dbf_poz SET tresc = REPLACE(tresc, 'U~20', 'Ú'), kod_opisu = REPL
 
 UPDATE import_dbf_poz SET tresc = REPLACE(tresc, 'u~91', 'ů'), kod_opisu = REPLACE(kod_opisu, 'u~91', 'ů') WHERE (tresc LIKE '%u~91%' OR kod_opisu LIKE '%u~91%');
 
+UPDATE import_dbf_poz SET tresc = REPLACE(tresc, 'I~60', 'Ì'), kod_opisu = REPLACE(kod_opisu, 'I~60', 'Ì') WHERE (tresc LIKE '%I~60%' OR kod_opisu LIKE '%I~60%');
+
+UPDATE import_dbf_poz SET tresc = REPLACE(tresc, 'I~60', 'Ì'), kod_opisu = REPLACE(kod_opisu, 'I~60', 'Ì') WHERE (tresc LIKE '%I~60%' OR kod_opisu LIKE '%I~60%');
 
 select tresc from import_dbf_poz where tresc like '%~%';
 

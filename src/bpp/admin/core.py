@@ -163,6 +163,7 @@ def generuj_inline_dla_autorow(baseModel, include_dyscyplina=True):
                 "zapisany_jako",
                 "afiliuje",
                 "zatrudniony",
+                "upowaznienie_pbn",
                 "procent",
                 "kolejnosc",
             ]

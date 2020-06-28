@@ -33,6 +33,7 @@ from import_dbf.util import (
     dodaj_aktualnosc,
     set_sequences,
     przypisz_grupy_punktowe,
+    utworz_szkielety_ksiazek,
 )
 
 django.setup()
@@ -55,6 +56,7 @@ class Command(BaseCommand):
         parser.add_argument("--enable-autor", action="store_true")
         parser.add_argument("--enable-publikacja", action="store_true")
         parser.add_argument("--enable-grupy-punktowe", action="store_true")
+        parser.add_argument("--enable-szkielety-ksiazek", action="store_true")
 
         parser.add_argument("--enable-mapuj-publikacja", action="store_true")
         parser.add_argument("--enable-charakter-kbn-jezyk", action="store_true")
@@ -98,7 +100,7 @@ class Command(BaseCommand):
 
         if disable_multithreading:
 
-            def apply(fun, args):
+            def apply(fun, args=()):
                 return fun(*args)
 
             pool.apply = apply
@@ -169,6 +171,9 @@ class Command(BaseCommand):
 
         if enable_all or options["enable_grupy_punktowe"]:
             pool.apply(przypisz_grupy_punktowe)
+
+        if enable_all or options["enable_szkielety_ksiazek"]:
+            pool.apply(utworz_szkielety_ksiazek, (logger,))
 
         if enable_all or options["enable_zatwierdz_podwojne_przypisania"]:
             logger.debug("Zatwierdzanie podwójnych podwojnych przypisan")

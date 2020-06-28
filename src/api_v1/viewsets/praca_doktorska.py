@@ -16,6 +16,8 @@ class Praca_DoktorskaFilterSet(django_filters.rest_framework.FilterSet):
 
 class Praca_DoktorskaViewSet(viewsets.ReadOnlyModelViewSet):
     # Lista musi być posortowana po PK aby nie było duplikatów
-    queryset = Praca_Doktorska.objects.all().order_by("pk")
+    queryset = Praca_Doktorska.objects.exclude(nie_eksportuj_przez_api=True).order_by(
+        "pk"
+    )
     serializer_class = Praca_DoktorskaSerializer
     filterset_class = Praca_DoktorskaFilterSet

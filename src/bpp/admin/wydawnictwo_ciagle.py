@@ -37,6 +37,7 @@ from bpp.models import (
 # Proste tabele
 from bpp.models.konferencja import Konferencja
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
+from . import MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET
 from .core import CommitedModelAdmin, KolumnyZeSkrotamiMixin, generuj_inline_dla_autorow
 
 
@@ -179,6 +180,7 @@ class Wydawnictwo_CiagleAdmin(
         MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
         POZOSTALE_MODELE_WYDAWNICTWO_CIAGLE_FIELDSET,
         ADNOTACJE_Z_DATAMI_ORAZ_PBN_FIELDSET,
+        MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET,
         OPENACCESS_FIELDSET,
         PRACA_WYBITNA_FIELDSET,
         PRZED_PO_LISCIE_AUTOROW_FIELDSET,

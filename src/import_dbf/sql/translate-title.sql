@@ -86,6 +86,16 @@ UPDATE import_dbf_bib SET tytul_or = REPLACE(tytul_or, 'U~40', 'Ü'), title = RE
 UPDATE import_dbf_bib SET tytul_or = REPLACE(tytul_or, 'u~91', 'ů'), title = REPLACE(title, 'u~91', 'ů') WHERE (tytul_or LIKE '%u~91%' OR title LIKE '%u~91%');
 
 UPDATE import_dbf_bib SET tytul_or = REPLACE(tytul_or, 's~21', 'ş'), title = REPLACE(title, 's~21', 'ş') WHERE (tytul_or LIKE '%s~21%' OR title LIKE '%s~21%');
+UPDATE import_dbf_bib SET tytul_or = REPLACE(tytul_or, 'S~20', 'Ş'), title = REPLACE(title, 'S~20', 'Ş') WHERE (tytul_or LIKE '%S~20%' OR title LIKE '%S~20%');
+
+UPDATE import_dbf_bib SET tytul_or = REPLACE(tytul_or, 'I~60', 'Ì'), title = REPLACE(title, 'I~60', 'Ì') WHERE (tytul_or LIKE '%I~60%' OR title LIKE '%I~60%');
+UPDATE import_dbf_bib SET tytul_or = REPLACE(tytul_or, 't~41', 'ť'), title = REPLACE(title, 't~41', 'ť') WHERE (tytul_or LIKE '%t~41%' OR title LIKE '%t~41%');
+UPDATE import_dbf_bib SET tytul_or = REPLACE(tytul_or, 'U~30', 'Û'), title = REPLACE(title, 'U~30', 'Û') WHERE (tytul_or LIKE '%U~30%' OR title LIKE '%U~30%');
+UPDATE import_dbf_bib SET tytul_or = REPLACE(tytul_or, 'U~20', 'Ú'), title = REPLACE(title, 'U~20', 'Ú') WHERE (tytul_or LIKE '%U~20%' OR title LIKE '%U~20%');
+
+UPDATE import_dbf_bib SET tytul_or = REPLACE(tytul_or, 'l~11', 'ľ'), title = REPLACE(title, 'l~11', 'ľ') WHERE (tytul_or LIKE '%l~11%' OR title LIKE '%l~11%');
+
+
 
 select title from import_dbf_bib where title like '%~%';
 select tytul_or from import_dbf_bib where tytul_or like '%~%';

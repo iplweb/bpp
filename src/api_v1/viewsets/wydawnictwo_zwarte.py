@@ -25,6 +25,8 @@ class Wydawnictwo_ZwarteFilterSet(django_filters.rest_framework.FilterSet):
 
 class Wydawnictwo_ZwarteViewSet(viewsets.ReadOnlyModelViewSet):
     # Lista musi być posortowana po PK aby nie było duplikatów
-    queryset = Wydawnictwo_Zwarte.objects.all().order_by("pk")
+    queryset = Wydawnictwo_Zwarte.objects.exclude(
+        nie_eksportuj_przez_api=True
+    ).order_by("pk")
     serializer_class = Wydawnictwo_ZwarteSerializer
     filterset_class = Wydawnictwo_ZwarteFilterSet

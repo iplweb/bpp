@@ -19,6 +19,7 @@ from bpp.models import (
     const,
     Zewnetrzna_Baza_Danych,
     AktualizujDatePBNNadrzednegoMixin,
+    ModelOpcjonalnieNieEksportowanyDoAPI,
 )
 from bpp.models.abstract import (
     BazaModeluOdpowiedzialnosciAutorow,
@@ -100,6 +101,7 @@ class Wydawnictwo_Zwarte_Baza(
     ModelZAdnotacjami,
     ModelZAbsolutnymUrl,
     ModelZLiczbaCytowan,
+    ModelOpcjonalnieNieEksportowanyDoAPI,
 ):
     """Baza dla klas Wydawnictwo_Zwarte oraz Praca_Doktorska_Lub_Habilitacyjna
     """

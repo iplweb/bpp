@@ -1,3 +1,4 @@
+import math
 import os
 import pprint
 import re
@@ -22,6 +23,7 @@ from bpp.models import (
     wez_zakres_stron,
     parse_informacje_as_dict,
 )
+from bpp.models.const import CHARAKTER_OGOLNY_KSIAZKA, RODZAJ_PBN_KSIAZKA
 from bpp.system import User
 from bpp.util import pbar, set_seq
 from import_dbf import models as dbf
@@ -395,7 +397,13 @@ def integruj_autorow(silent=False):
         if not autor.idt_jed_id:
             continue
 
-        jednostka = autor.idt_jed
+        try:
+            jednostka = autor.idt_jed
+        except:
+            print(
+                f"XXX autor {autor.pk} ma nieistniejace ID jednostki {autor.idt_jed_id}, NIE TWORZE AUTOR_JEDNOSTKA!"
+            )
+            continue
         try:
             bpp.Autor_Jednostka.objects.get(
                 autor=bpp_autor, jednostka=jednostka.bpp_jednostka
@@ -853,6 +861,9 @@ def integruj_publikacje(offset=None, limit=None):
             kw["tytul_oryginalny"] = exp_combine(tytul["a"], tytul.get("b"), sep=": ")
 
             kw["strony"] = exp_add_spacing(tytul["e"])
+            if tytul.get("e"):
+                kw["szczegoly"] = exp_combine(kw.get("szczegoly"), tytul.get("e"))
+
             if tytul.get("f"):
                 kw["szczegoly"] = exp_combine(kw.get("szczegoly"), tytul["f"])
 
@@ -866,8 +877,8 @@ def integruj_publikacje(offset=None, limit=None):
                     kw["tytul_oryginalny"], tytul.get("d")
                 )
 
-            if kw.get("szczegoly") and kw.get("strony") is None:
-                kw["strony"] = wez_zakres_stron(kw["szczegoly"])
+            if kw.get("informacje") and kw.get("strony") is None:
+                kw["strony"] = wez_zakres_stron(kw["informacje"])
 
         elif tytul["id"] == 102:
             klass = bpp.Wydawnictwo_Ciagle
@@ -901,7 +912,9 @@ def integruj_publikacje(offset=None, limit=None):
             kw["tytul_oryginalny"] = exp_combine(
                 tytul["a"], exp_combine(tytul.get("b"), tytul.get("d")), sep=" "
             )
-            kw["informacje"] = tytul.get("c", None)  # "wstep i oprac. Edmund Waszynski"
+            if tytul.get("c"):
+                print("*** Pole 150C do adnotacji: ", tytul.get("c"))
+                kw["adnotacje"] = exp_combine(kw.get("adnotacje"), tytul.get("c"))
 
         else:
             raise NotImplementedError(tytul)
@@ -937,8 +950,12 @@ def integruj_publikacje(offset=None, limit=None):
                     kw["issn"] = elem["d"].split("ISSN")[1].strip()
                     del elem["d"]
 
-                if elem.get("d") and elem.get("c"):
-                    raise NotImplementedError(elem, rec, rec.idt)
+                # Pola C lub D idą za chwilę do numeru serii:
+                # if elem.get("c"):
+                #     kw["informacje"] = exp_combine(kw.get("informacje"), elem.get("c"))
+                #
+                # if elem.get("d"):
+                #     kw["informacje"] = exp_combine(kw.get("informacje"), elem.get("d"))
 
                 kw["numer_w_serii"] = ""
 
@@ -990,13 +1007,15 @@ def integruj_publikacje(offset=None, limit=None):
                     assert not elem.get(literka)
 
             elif elem["id"] == 101:
+                # 101A to informacje, 101D i 101E to szczegoly
+
                 # A: rok,
                 # B: tom
                 # C: numer
                 # D: strony
                 # E: bibliogr. poz
 
-                kw["szczegoly"] = elem.get("a")
+                kw["informacje"] = elem.get("a")
 
                 # A: moze byc to 'rok tom' lub 'rok numer' lub 'rok numer tom'
                 pi = parse_informacje_as_dict(elem.get("a"))
@@ -1007,7 +1026,7 @@ def integruj_publikacje(offset=None, limit=None):
                     kw["tom"] = pi.get("tom")
                     kw["nr_zeszytu"] = pi.get("numer")
 
-                kw["informacje"] = exp_combine(kw.get("informacje"), elem.get("b"))
+                kw["szczegoly"] = exp_combine(kw.get("szczegoly"), elem.get("b"))
 
                 if elem.get("b"):
                     if elem.get("b").startswith("nr "):
@@ -1021,6 +1040,7 @@ def integruj_publikacje(offset=None, limit=None):
 
                 if elem.get("d"):
                     kw["strony"] = exp_combine(kw.get("strony"), elem.get("d"))
+                    kw["szczegoly"] = exp_combine(kw["szczegoly"], elem.get("d"))
 
                 if elem.get("e"):
                     kw["szczegoly"] = exp_combine(kw.get("szczegoly"), elem.get("e"))
@@ -1029,7 +1049,7 @@ def integruj_publikacje(offset=None, limit=None):
                 # Uwagi (nie: konferencja)
                 # Zgłoszenie #794 Przy imporcie wszystkie uwagi w opisach artykułów z czasopism
                 # (pole 103) stały informacjami o konferencjach, a spora część dotyczy czegoś
-                # innego. Pole to należy przenieść przy imporcie do pola "Informacje"
+                # innego. Pole to należy przenieść przy imporcie do pola "szczegoly"
                 # (lub innego odpowiadającego uwadze).
                 if kw.get("uwagi") is None:
                     kw["uwagi"] = elem["a"]
@@ -1037,11 +1057,12 @@ def integruj_publikacje(offset=None, limit=None):
                     kw["uwagi"] += elem["a"]
 
             elif elem["id"] == 153:
-                assert not kw.get("szczegoly")
-                kw["szczegoly"] = elem["a"]
+                # assert not kw.get("informacje")
+                kw["szczegoly"] = exp_combine(kw.get("szczegoly"), elem["a"])
                 assert not kw.get("strony")
                 kw["strony"] = elem["a"]
-                kw["szczegoly"] += exp_combine(elem.get("b"), elem.get("c"))
+                kw["szczegoly"] = exp_combine(kw.get("szczegoly"), elem.get("b"))
+                kw["szczegoly"] = exp_combine(kw.get("szczegoly"), elem.get("c"))
 
             elif elem["id"] == 104:
                 # assert not kw.get("uwagi"), (kw["uwagi"], elem, rec, rec.idt)
@@ -1297,7 +1318,12 @@ def integruj_publikacje(offset=None, limit=None):
                         literka
                     ), "co mam z tym zrobic literka %s w %r" % (literka, elem)
 
-                assert not kw.get("informacje"), (kw["informacje"], rec, rec.idt)
+                assert not kw.get("informacje"), (
+                    kw["informacje"],
+                    rec,
+                    rec.idt,
+                    rec.__dict__,
+                )
                 kw["informacje"] = elem["a"]
                 if elem.get("b"):
                     kw["informacje"] += ": " + elem.get("b")
@@ -1305,15 +1331,15 @@ def integruj_publikacje(offset=None, limit=None):
                 if elem.get("c"):
                     z200c = elem.get("c")
 
-                    if z200c.strip().startswith("pod red."):
+                    if True or z200c.strip().startswith("pod red."):
                         # Redaktorzy zostaną dodani jako Wydawnictwo_..._Autor, typ odpowiedzialnosci
                         # to będzie redaktor
                         pass
-                    else:
-                        print(
-                            f"*** Zrodlo pole 200C niepuste i zaczyna sie od: {z200c[:10]}"
-                        )
-                        kw["informacje"] += "; " + z200c
+                    # else:
+                    #     print(
+                    #         f"*** Zrodlo pole 200C niepuste i zaczyna sie od: {z200c[:10]}"
+                    #     )
+                    #     kw["szczegoly"] += "; " + z200c
 
                 if elem.get("d"):
                     kw["informacje"] += "; " + elem.get("d")
@@ -1415,6 +1441,23 @@ def integruj_publikacje(offset=None, limit=None):
         kw["id"] = rec.idt
 
         try:
+            for i, v in kw.items():
+                if (
+                    v is not None
+                    and hasattr(v, "__len__")
+                    and len(v) >= 512
+                    and i
+                    not in [
+                        "tytul_oryginalny",
+                        "tekst_po_ostatnim_autorze",
+                        "informacje",
+                    ]
+                ):
+                    print(
+                        "*** UWAGA: przycinam pole %s do 512 znakow, wczesniej wartosc: %s"
+                        % (i, v)
+                    )
+                    kw[i] = v[:512]
             res = klass.objects.create(**kw)
         except Exception as e:
             pprint.pprint(kw)
@@ -1750,3 +1793,92 @@ def dodaj_aktualnosc():
     )[0]
     a.article_body = "Bazę danych zaimportowano: %s" % timezone.localtime()
     a.save()
+
+
+@transaction.atomic
+def utworz_szkielety_ksiazek(logger):
+    """
+    https://mantis.iplweb.pl/file_download.php?file_id=85&type=bug
+
+    Na podstawie pola 200 A dla rekordów, które nie posiadają wydawnictw nadrzędnych,
+    utwórz "szkielety" książek
+    """
+
+    if cache.enabled():
+        cache.disable()
+
+    cf = None
+
+    for bib in dbf.Bib.objects.filter(
+        Q(zrodlo__icontains="#200$")
+        | Q(zrodlo__icontains="#202$")
+        | Q(zrodlo__icontains="#205$")
+    ).order_by("pk"):
+        try:
+            wz = bpp.Wydawnictwo_Zwarte.objects.get(
+                pk=bib.object_id, wydawnictwo_nadrzedne=None
+            )
+        except bpp.Wydawnictwo_Zwarte.DoesNotExist:
+            continue
+
+        fld = exp_parse_str(bib.zrodlo)
+
+        tz = fld.get("a")
+        try:
+            wn = bpp.Wydawnictwo_Zwarte.objects.get(tytul_oryginalny=tz, rok=wz.rok)
+            logger.info(
+                f"WNWJ Przypisano wydawnictwo nadrzedne\t"
+                f"{wn.tytul_oryginalny} ID={wn.pk}\t"
+                f"dla rekordu\t"
+                f"{wz.tytul_oryginalny} ID={wz.pk}\t"
+            )
+        except bpp.Wydawnictwo_Zwarte.MultipleObjectsReturned:
+            logger.info(
+                f"WNWX Otrzymano liczne rekordy dla zapytania o tytul\t{tz}\t dla rekordu\t"
+                f"{wz.tytul_oryginalny}\tID={wz.pk}\t"
+                f", nie zmieniam nic"
+            )
+            continue
+        except bpp.Wydawnictwo_Zwarte.DoesNotExist:
+            logger.info(
+                f"WNWN Tworze wydawnictwo zwarte:\t{tz}\trok\t{wz.rok}\tdla rekordu\t{wz.tytul_oryginalny}\tID={wz.pk}"
+            )
+
+            # Spróbuj znaleźć wydanwictwo o POŁOWIE długości tytułu, jeżeli jest to napisz
+            # na ten temat (ale nadal utwórz)
+            try:
+                x = bpp.Wydawnictwo_Zwarte.objects.get(
+                    tytul_oryginalny__istartswith=tz[: int(math.ceil(len(tz) / 2))]
+                )
+                logger.info(
+                    f"WNWN ... jednakże znalazłem prace zaczynającą się podobnie:\t"
+                    f"{x.tytul_oryginalny}\tID={x.pk}\t"
+                    f"ale tworze nowy rekord i tak!"
+                )
+            except bpp.Wydawnictwo_Zwarte.DoesNotExist:
+                pass
+            except bpp.Wydawnictwo_Zwarte.MultipleObjectsReturned:
+                logger.info(
+                    f"WNWN ... znaleziono liczne prace dla połowy tytułu, tworze nową"
+                )
+
+            wn = bpp.Wydawnictwo_Zwarte.objects.create(
+                tytul_oryginalny=tz,
+                rok=wz.rok,
+                charakter_formalny=bpp.Charakter_Formalny.objects.get_or_create(
+                    skrot="SWN",
+                    nazwa="Szkieletowe wydawnictwo nadrzędne",
+                    charakter_ogolny=CHARAKTER_OGOLNY_KSIAZKA,
+                    charakter_pbn=bpp.Charakter_PBN.objects.get(
+                        identyfikator="scholarly-textbook"
+                    ),
+                    rodzaj_pbn=RODZAJ_PBN_KSIAZKA,
+                )[0],
+                typ_kbn=bpp.Typ_KBN.objects.get(skrot="000"),
+                jezyk=bpp.Jezyk.objects.get(skrot="in."),
+                status_korekty=bpp.Status_Korekty.objects.get(nazwa="przed korektą"),
+                adnotacje="Automatycznie utworzone wydawnictwo szkieletowe",
+            )
+
+        wz.wydawnictwo_nadrzedne = wn
+        wz.save()
