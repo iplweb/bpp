@@ -1875,7 +1875,7 @@ def utworz_szkielety_ksiazek(logger):
                     rodzaj_pbn=RODZAJ_PBN_KSIAZKA,
                 )[0],
                 typ_kbn=bpp.Typ_KBN.objects.get(skrot="000"),
-                jezyk=bpp.Jezyk.objects.get(skrot="in."),
+                jezyk=wz.jezyk,
                 status_korekty=bpp.Status_Korekty.objects.get(nazwa="przed korektą"),
                 adnotacje="Automatycznie utworzone wydawnictwo szkieletowe",
             )
