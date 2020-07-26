@@ -3,6 +3,8 @@ import time
 
 from flaky import flaky
 
+from bpp.models.const import CHARAKTER_OGOLNY_KSIAZKA
+
 try:
     from django.core.urlresolvers import reverse
 except ImportError:
@@ -18,6 +20,7 @@ from bpp.models import (
     Jednostka,
     Typ_Odpowiedzialnosci,
     TO_AUTOR,
+    Charakter_Formalny,
 )
 from bpp.models.patent import Patent
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
@@ -310,7 +313,12 @@ def test_admin_wydawnictwo_zwarte_uzupelnij_rok(
         lambda browser: browser.find_by_id("id_rok").value == "2002"
     )
 
+    chf = Charakter_Formalny.objects.create(
+        nazwa="charakter", skrot="ch", charakter_ogolny=CHARAKTER_OGOLNY_KSIAZKA
+    )
+
     wydawnictwo_zwarte.rok = 1997
+    wydawnictwo_zwarte.charakter_formalny = chf
     wydawnictwo_zwarte.save()
 
     select_select2_autocomplete(
