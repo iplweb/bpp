@@ -11,6 +11,10 @@ from bpp.models import (
     rebuild_ciagle,
     rebuild_zwarte,
     rebuild_patent,
+    rebuild_praca_doktorska,
+    rebuild_praca_habilitacyjna,
+    Praca_Habilitacyjna,
+    Praca_Doktorska,
 )
 from bpp.util import no_threads, partition_count
 
@@ -32,6 +36,12 @@ class Command(BaseCommand):
 
         pool_size = no_threads(0.75)
         pool = multiprocessing.Pool(processes=pool_size, initializer=subprocess_setup)
+
+        pc = pool.apply(partition_count, args=(Praca_Habilitacyjna.objects, pool_size))
+        pool.starmap(rebuild_praca_habilitacyjna, pc)
+
+        pc = pool.apply(partition_count, args=(Praca_Doktorska.objects, pool_size))
+        pool.starmap(rebuild_praca_doktorska, pc)
 
         pc = pool.apply(partition_count, args=(Wydawnictwo_Ciagle.objects, pool_size))
         pool.starmap(rebuild_ciagle, pc)

@@ -123,3 +123,4 @@ src/import_dbf/post-import-dbf.sql
 /src/import_dbf/pd.txt
 /src/import_dbf/zd.txt
 src/import_dbf/integruj-dbf-szkielety.txt
+*.psql

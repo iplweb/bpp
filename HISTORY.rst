@@ -5,6 +5,9 @@ Historia zmian
 202007.41
 ---------
 
+* poprawione regenerowanie opisów bibliograficznych (#875)
+* prawidłowe renumerowanie kolejności z poziomu polecenia nawet w sytuacji gdy afiliacja
+  autora przypisana jest niepoprawnie (afiliuj="tak" przy obcej jednostce) (b/d)
 * prawidłowe wyszukiwanie wydawnictw nadrzędnych w module redagowania (#882)
 
 202006.40
