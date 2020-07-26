@@ -1866,8 +1866,62 @@ def utworz_szkielety_ksiazek(logger):
                     f"WNWN ... znaleziono liczne prace dla połowy tytułu, tworze nową"
                 )
 
+            # ISBN to pole 205
+            skelet_isbn = current_isbn_value = None
+            try:
+                current_isbn_value = dbf.Bib_Desc.objects.get(
+                    idt=bib, elem_id=205, source="poz_g"
+                ).value
+            except dbf.Bib_Desc.DoesNotExist:
+                pass
+
+            if current_isbn_value is not None:
+                skelet_isbn = current_isbn_value.get("a").replace("ISBN ", "")
+
+            # Miejsce wydania to pole 202a
+            skelet_place = pole202 = None
+            try:
+                pole202 = dbf.Bib_Desc.objects.get(
+                    idt=bib, elem_id=202, source="poz_g"
+                ).value
+            except dbf.Bib_Desc.DoesNotExist:
+                pass
+
+            if pole202 is not None:
+                skelet_place = pole202.get("a")
+
+                if skelet_place:
+                    skelet_place += " " + str(wz.rok)
+
+            # kopiowanie wydawcy - podpole 202 B
+            skelet_wydawca = None
+            if pole202 is not None and (pole202.get("b") or "").strip():
+                skelet_wydawca = bpp.Wydawca.objects.get_or_create(
+                    nazwa=pole202.get("b").strip()
+                )[0]
+
+            skelet_adnotacje = "Automatycznie utworzone wydawnictwo szkieletowe. " + (
+                fld.get("c") or ""
+            )  # "red. Jan Kowalski"
+
+            if skelet_isbn is not None:
+                if len(skelet_isbn) > 64:
+                    logger.info(f"WNWN ISBN za dlugi {skelet_isbn}, idzie do adnotacji")
+                    skelet_adnotacje += " " + skelet_isbn
+                    skelet_adnotacje = skelet_adnotacje.strip()
+                    skelet_isbn = None
+
             wn = bpp.Wydawnictwo_Zwarte.objects.create(
                 tytul_oryginalny=tz,
+                # kopiowanie informacji z podpola 200 c (redaktorzy) do pola "adnotacje"
+                adnotacje=skelet_adnotacje,
+                # ISBN
+                isbn=skelet_isbn,
+                # miejsce i rok
+                miejsce_i_rok=skelet_place,
+                # wydawca
+                wydawca=skelet_wydawca,
+                # rok
                 rok=wz.rok,
                 charakter_formalny=bpp.Charakter_Formalny.objects.get_or_create(
                     skrot="SWN",
@@ -1879,9 +1933,9 @@ def utworz_szkielety_ksiazek(logger):
                     rodzaj_pbn=RODZAJ_PBN_KSIAZKA,
                 )[0],
                 typ_kbn=bpp.Typ_KBN.objects.get(skrot="000"),
-                jezyk=bpp.Jezyk.objects.get(skrot="in."),
+                # kopiowanie informacji o języku
+                jezyk=wz.jezyk,
                 status_korekty=bpp.Status_Korekty.objects.get(nazwa="przed korektą"),
-                adnotacje="Automatycznie utworzone wydawnictwo szkieletowe",
             )
 
         wz.wydawnictwo_nadrzedne = wn
