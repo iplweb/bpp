@@ -1,4 +1,13 @@
+
+ifndef CUSTOMER
+$(error Ustaw zmienna CUSTOMER)
+endif
+
+ifeq ($(CUSTOMER),CMKP)
+NAZWA_OBCEJ_JEDNOSTKI=*Obcy dla CMKP
+else
 NAZWA_OBCEJ_JEDNOSTKI=obcy
+endif
 
 ifeq ($(DJANGO_BPP_DB_NAME),)
 DB_NAME=bpp
@@ -37,19 +46,27 @@ integruj-dbf-autorzy:
 	$(MANAGE) integruj_dbf --enable-autor
 
 importuj-dyscypliny:
+ifeq ($(CUSTOMER),UMWroclaw)
 	$(MANAGE) importuj_dyscypliny -v0 2017 "/Volumes/Dane zaszyfrowane/UMWroclaw/bpp-assets/dyscypliny/2017.xlsx" 
 	$(MANAGE) importuj_dyscypliny -v0 2018 "/Volumes/Dane zaszyfrowane/UMWroclaw/bpp-assets/dyscypliny/2018.xlsx" 
 	$(MANAGE) importuj_dyscypliny -v0 2019 "/Volumes/Dane zaszyfrowane/UMWroclaw/bpp-assets/dyscypliny/2019.xlsx" 
 	$(MANAGE) importuj_dyscypliny -v0 2020 "/Volumes/Dane zaszyfrowane/UMWroclaw/bpp-assets/dyscypliny/2020.xlsx"
+else
+	echo "*** Brak danych do importu dyscypliny"
+endif
 
 integruj-dbf-publikacje-pre:
+ifeq ($(CUSTOMER),UMWroclaw)
 	$(MANAGE) integruj_dbf --enable-charakter-kbn-jezyk --charaktery-enrichment-xls $(ASSETS_DIR)/bg-umw/charaktery_formalne.xlsx
+else
+	$(MANAGE) integruj_dbf --enable-charakter-kbn-jezyk
+endif
 	$(MANAGE) integruj_dbf --enable-zrodlo
 	$(MANAGE) rozszerz_skroty_zrodel $(ASSETS_DIR)/bg-umw/zrodla.xlsx
 	$(PG_DUMP) > pre-integruj-dbf-enable-publikacja.sql
 
 integruj-dbf-publikacje-post:
-	$(MANAGE) integruj_dbf --enable-publikacja > integruj-dbf-publikacja-log.txt
+	$(MANAGE) integruj_dbf --enable-publikacja &> integruj-dbf-publikacja-log.txt
 	$(MANAGE) integruj_dbf --enable-grupy-punktowe > integruj-dbf-grupy-punktowe-log.txt
 	$(MANAGE) integruj_dbf --enable-zatwierdz-podwojne-przypisania
 	$(MANAGE) integruj_dbf --enable-b-a
@@ -78,7 +95,15 @@ alter-schema:
 	cat sql/translate-poz.sql | $(PSQL)
 	cat sql/translate-usi.sql | $(PSQL)
 	cat sql/translate-zrodlo.sql | $(PSQL)
+
+alter-schema-customer:
+ifeq ($(CUSTOMER),UMWroclaw)
 	cat sql/alter-umw.sql | $(PSQL)
+endif
+ifeq ($(CUSTOMER),CMKP)
+	cat sql/alter-cmkp.sql| $(PSQL_VERBOSE)
+endif
+	echo "alter-schema-customer target"
 
 delete-imported-data:
 	cat sql/remove-imported.sql | $(PSQL)
@@ -107,8 +132,10 @@ create-bib-desc:
 	$(MANAGE) integruj_dbf --enable-mapuj-publikacja
 	cat sql/translate-bib-desc.sql | $(PSQL)
 
-import-dbf: recreate-db import-converted-dbfs alter-schema create-bib-desc
+dump-import-dbf-state:
 	$(PG_DUMP) > post-import-dbf.sql
+
+import-dbf: recreate-db import-converted-dbfs alter-schema alter-schema-customer create-bib-desc dump-import-dbf-state
 
 restore-import-dbf-state: dropdb-createdb
 	cat post-import-dbf.sql | $(PSQL)
@@ -162,7 +189,9 @@ integrate: disable-trigger integruj-dbf integruj-liste-wydawcow ustaw-obca-jedno
 set-site-name:
 	$(MANAGE) set_site_name --name bpp.umed.wroc.pl --domain bpp.umed.wroc.pl
 
-rebuild: convert-dbfs import-dbf integrate set-site-name
+rebuild: import-dbf integrate set-site-name
 
-db-name:
-	@echo "Te skrypty pracują na bazie danych: $(DB_NAME)"
+rebuild-all: convert-dbfs rebuild
+
+check:
+	@echo "Te skrypty pracują na bazie danych: $(DB_NAME) dla klienta $(CUSTOMER)"
