@@ -20,6 +20,8 @@ jobs:
       - image: rabbitmq:latest
 
     steps:
+      - setup_remote_docker
+      
       - checkout
 
 #      - restore_cache:
