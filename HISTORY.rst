@@ -2,6 +2,11 @@
 Historia zmian
 ==============
 
+202007.41
+---------
+
+* prawidłowe wyszukiwanie wydawnictw nadrzędnych w module redagowania (#882)
+
 202006.40
 ---------
 

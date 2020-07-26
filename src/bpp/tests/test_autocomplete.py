@@ -146,6 +146,10 @@ def test_wydawca_autocomplete(admin_client):
     assert res.status_code == 200
 
 
+def test_wydawnictwo_nadrzedne_autocomplete(admin_client):
+    admin_client.get(reverse("bpp:wydawnictwo-nadrzedne-autocomplete"))
+
+
 def test_tsquery_bug1(admin_client):
     # Tak, ktoś kiedyś wkleił taki oto ciąg znaków w wyszukiwanie.
     res = admin_client.get(
