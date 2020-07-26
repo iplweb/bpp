@@ -101,6 +101,9 @@ UPDATE import_dbf_aut SET ref = trim(ref);
 UPDATE import_dbf_aut SET ref = NULL where ref = '';
 ALTER TABLE import_dbf_aut ALTER COLUMN ref SET DATA TYPE INT USING ref::integer;
 
+SELECT * FROM import_dbf_b_u WHERE idt LIKE 'X%';
+DELETE FROM import_dbf_b_u WHERE idt LIKE 'X%';
+
 ALTER TABLE import_dbf_b_u ALTER COLUMN idt SET DATA TYPE INT USING idt::integer;
 ALTER TABLE import_dbf_poz ALTER COLUMN idt SET DATA TYPE INT USING idt::integer;
 

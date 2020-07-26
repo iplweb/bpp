@@ -3,6 +3,7 @@ import os
 import pprint
 import re
 import sys
+import warnings
 from collections import defaultdict
 
 import xlrd
@@ -197,6 +198,7 @@ def integruj_uczelnia(nazwa="Domyślna Uczelnia", skrot="DU"):
     return uczelnia
 
 
+@transaction.atomic
 def integruj_wydzialy():
     """Utwórz wydziały na podstawie importu DBF"""
     uczelnia = bpp.Uczelnia.objects.first()
@@ -206,6 +208,7 @@ def integruj_wydzialy():
         )
 
 
+@transaction.atomic
 def integruj_jednostki():
     uczelnia = bpp.Uczelnia.objects.first()
     for jednostka in dbf.Jed.objects.all():
@@ -256,6 +259,7 @@ def get_dict(model, attname):
     return dict([(getattr(i, attname), i) for i in model.objects.all()])
 
 
+@transaction.atomic
 def integruj_tytuly_autorow():
     for (tytul,) in (
         dbf.Aut.objects.all().order_by().values_list("tytul").distinct("tytul")
@@ -271,6 +275,7 @@ def integruj_tytuly_autorow():
             bpp.Tytul.objects.create(nazwa=tytul, skrot=tytul)
 
 
+@transaction.atomic
 def integruj_funkcje_autorow():
     for (funkcja,) in (
         dbf.Aut.objects.all()
@@ -360,14 +365,11 @@ def integruj_autorow(silent=False):
                     except bpp.Autor.DoesNotExist:
                         pass
 
-                elif autor.orcid_id:
+                if bpp_autor is None and autor.orcid_id:
                     try:
                         bpp_autor = bpp.Autor.objects.get(orcid=autor.orcid_id)
                     except bpp.Autor.DoesNotExist:
                         pass
-
-                else:
-                    raise NotImplementedError
 
             if bpp_autor is None:
                 tytul = None
@@ -698,14 +700,21 @@ def integruj_publikacje(offset=None, limit=None):
     typy_kbn = dict([(x.skrot, x.bpp_id) for x in dbf.Kbn.objects.all()])
     typ_kbn_pusty = bpp.Typ_KBN.objects.get(skrot="000")
 
-    jezyk_pusty = bpp.Jezyk.objects.get(skrot="000")
+    try:
+        jezyk_pusty = bpp.Jezyk.objects.get(skrot="000")
+    except bpp.Jezyk.DoesNotExist:
+        jezyk_pusty = bpp.Jezyk.objects.get(skrot="in.")
     jezyki = dict([(x.skrot, x.bpp_id) for x in dbf.Jez.objects.all()])
 
     charaktery_formalne = dict([(x.skrot, x.bpp_id) for x in dbf.Pub.objects.all()])
 
     iter = base_query
-    if offset == 0 or offset is None:
-        iter = pbar(base_query, base_query.count())
+
+    # pbar wyłączony kompletnie, bo ostrzeżenia na konsoli są w zamian
+    # i ma wszystko pójść do logu
+
+    # if offset == 0 or offset is None:
+    #    iter = pbar(base_query, base_query.count())
 
     for rec in iter:
         wos = False
@@ -880,6 +889,26 @@ def integruj_publikacje(offset=None, limit=None):
             if kw.get("informacje") and kw.get("strony") is None:
                 kw["strony"] = wez_zakres_stron(kw["informacje"])
 
+        elif tytul["id"] == 100:
+            klass = bpp.Wydawnictwo_Ciagle
+            klass_ext = bpp.Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych
+            kw["tytul_oryginalny"] = tytul["a"]
+
+            for literka in "bc":
+                warnings.warn(
+                    f"Niezaimportowane dane: {tytul.get(literka)} tytul {tytul} rekord {rec} o ID {rec.idt}"
+                )
+
+        elif tytul["id"] in [200, 250]:
+            klass = bpp.Wydawnictwo_Zwarte
+            klass_ext = bpp.Wydawnictwo_Zwarte_Zewnetrzna_Baza_Danych
+            kw["tytul_oryginalny"] = tytul["a"]
+
+            for literka in "bc":
+                warnings.warn(
+                    f"Niezaimportowane dane: {tytul.get(literka)} tytul {tytul} rekord {rec} o ID {rec.idt}"
+                )
+
         elif tytul["id"] == 102:
             klass = bpp.Wydawnictwo_Ciagle
             klass_ext = bpp.Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych
@@ -941,7 +970,16 @@ def integruj_publikacje(offset=None, limit=None):
             elif elem["id"] in [203, 154]:
                 # Seria wydawnicza
 
-                seria_wydawnicza_id = int(elem["a"][1:])
+                try:
+                    seria_wydawnicza_id = int(elem["a"][1:])
+                except ValueError:
+                    warnings.warn(
+                        "Nie można skonwertowac numeru serii wydawniczej: %r, dodaje do uwag"
+                        % elem
+                    )
+                    kw["uwagi"] = exp_combine(kw.get("uwagi"), elem.get("a"))
+                    continue
+
                 kw["seria_wydawnicza"] = dbf.Usi.objects.get(
                     idt_usi=seria_wydawnicza_id
                 ).bpp_seria_wydawnicza_id
@@ -990,21 +1028,44 @@ def integruj_publikacje(offset=None, limit=None):
                     assert not elem.get(literka), (elem, rec, rec.idt)
 
             elif elem["id"] == 206:
-                # wydanie
-                kw["uwagi"] = exp_combine(
-                    kw.get("uwagi", ""), elem.get("a"), sep=" "
-                )  # Wyd 1 pol
+
+                if elem.get("a").startswith("|"):
+                    warnings.warn(
+                        f"Nieobslugiwane ID przy polu 206 {elem} rekord {rec} o ID {rec.idt}"
+                    )
+                else:
+                    # wydanie
+                    kw["uwagi"] = exp_combine(
+                        kw.get("uwagi", ""), elem.get("a"), sep=" "
+                    )  # Wyd 1 pol
+
                 kw["uwagi"] = exp_combine(
                     kw.get("uwagi", ""), elem.get("b"), sep=" "
                 )  # pod red A. Kowalski
 
-                for literka in "cde":
-                    assert not elem.get(literka), elem
+                kw["uwagi"] = exp_combine(
+                    kw.get("uwagi", ""), elem.get("c"), sep=" "
+                )  # Tom 20
+
+                for literka in "de":
+                    if elem.get(literka):
+                        warnings.warn(
+                            f"Nieobslugiwane literki przy polu 206 {elem} rekord {rec} o ID {rec.idt}"
+                        )
 
             elif elem["id"] == 205:
-                kw["uwagi"] = exp_combine(kw.get("uwagi"), elem["a"], sep=". ")
-                for literka in "bcde":
-                    assert not elem.get(literka)
+                if elem.get("a"):
+                    kw["uwagi"] = exp_combine(kw.get("uwagi"), elem.get("a"), sep=". ")
+
+                # CMKP TODO: tu sa dwa kody ID w polu a i b, niekiedy w C jest rok co dalej
+
+                if elem.get("b") or elem.get("c"):
+                    warnings.warn(
+                        f"Nie obslugiwane pole: {elem} w kontekście rekordu {rec} o ID {rec.idt}"
+                    )
+
+                for literka in "de":
+                    assert not elem.get(literka), elem
 
             elif elem["id"] == 101:
                 # 101A to informacje, 101D i 101E to szczegoly
@@ -1058,9 +1119,16 @@ def integruj_publikacje(offset=None, limit=None):
 
             elif elem["id"] == 153:
                 # assert not kw.get("informacje")
-                kw["szczegoly"] = exp_combine(kw.get("szczegoly"), elem["a"])
-                assert not kw.get("strony")
-                kw["strony"] = elem["a"]
+                if elem.get("a"):
+                    kw["szczegoly"] = exp_combine(kw.get("szczegoly"), elem["a"])
+                    warnings.warn(
+                        f"Pole strony juz ma wartosc {kw.get('strony')}, nadpisuje! Rekord {rec} o ID {rec.idt}"
+                    )
+                    kw["strony"] = elem["a"]
+                else:
+                    warnings.warn(
+                        f"Pole nie do konca obslugiwane: {elem} rekoer {rec} o id {rec.idt}"
+                    )
                 kw["szczegoly"] = exp_combine(kw.get("szczegoly"), elem.get("b"))
                 kw["szczegoly"] = exp_combine(kw.get("szczegoly"), elem.get("c"))
 
@@ -1100,7 +1168,10 @@ def integruj_publikacje(offset=None, limit=None):
                 # 155 "Komunikat tegoż w ... / 156 "toż w wersji polskiej"
                 kw["uwagi"] = exp_combine(kw.get("uwagi"), elem["a"], sep=". ")
                 for literka in "bcde":
-                    assert not elem.get(literka)
+                    if elem.get(literka):
+                        warnings.warn(
+                            f"Nieobslugiwana literka {literka} dla elementu {elem} rekord {rec} ID {rec.idt}"
+                        )
 
             elif elem["id"] == 995:
                 if kw.get("www"):
@@ -1178,14 +1249,15 @@ def integruj_publikacje(offset=None, limit=None):
                     )
                 else:
 
-                    s = dbf.Usi.objects.get(idt_usi=elem["a"][1:])
-                    try:
-                        o = bpp.Wersja_Tekstu_OpenAccess.objects.get(skrot=s.nazwa)
-                    except bpp.Wersja_Tekstu_OpenAccess.DoesNotExist:
-                        raise ValueError(
-                            f"Nie ma takiej wersji tekstu openaccess: {s.nazwa}, rekord {kw}"
-                        )
-                    kw["openaccess_wersja_tekstu"] = o
+                    if elem.get("a"):
+                        s = dbf.Usi.objects.get(idt_usi=elem["a"][1:])
+                        try:
+                            o = bpp.Wersja_Tekstu_OpenAccess.objects.get(skrot=s.nazwa)
+                        except bpp.Wersja_Tekstu_OpenAccess.DoesNotExist:
+                            raise ValueError(
+                                f"Nie ma takiej wersji tekstu openaccess: {s.nazwa}, rekord {kw}"
+                            )
+                        kw["openaccess_wersja_tekstu"] = o
 
                     if elem.get("b"):
                         s = dbf.Usi.objects.get(idt_usi=elem["b"][1:])
@@ -1209,12 +1281,22 @@ def integruj_publikacje(offset=None, limit=None):
                     if elem.get("d"):
                         # Zazwyczaj prowadzi do pustego wpisu
                         s = dbf.Usi.objects.get(idt_usi=elem["d"][1:])
-                        assert not s.nazwa, (elem, kw, rec)
+                        warnings.warn(
+                            f"Niezaimportowana nazwa: {s.nazwa}, ({elem}, {kw}, {rec})"
+                        )
 
                     if elem.get("e"):
                         s = dbf.Usi.objects.get(idt_usi=elem["e"][1:])
-                        o = oa_klass.objects.get(skrot=s.nazwa)
-                        kw["openaccess_tryb_dostepu"] = o
+                        try:
+                            o = oa_klass.objects.get(skrot=s.nazwa)
+                        except oa_klass.DoesNotExist:
+                            warnings.warn(
+                                f"Nieistniejacy tryb dostepu openaccesS: {s.nazwa} dla {elem} {rec} {rec.idt}"
+                            )
+                            o = None
+
+                        if o is not None:
+                            kw["openaccess_tryb_dostepu"] = o
 
             elif elem["id"] == 107:
                 s = dbf.Usi.objects.get(idt_usi=elem["a"][1:])
@@ -1370,6 +1452,15 @@ def integruj_publikacje(offset=None, limit=None):
                     assert literka not in elem.keys()
 
                 if elem.get("b"):
+                    try:
+                        int(elem["b"][1:])
+                    except ValueError:
+                        warnings.warn(
+                            f"Mial byc wydawca indeksowany, jest jakis tekst {elem} dla rec {rec} o ID {rec.idt}"
+                        )
+                        kw["wydawca_opis"] = elem.get("b")
+                        continue
+
                     wydawca = dbf.Usi.objects.get(idt_usi=elem["b"][1:]).bpp_wydawca_id
                     if kw.get("wydawca") and kw["wydawca"] != wydawca:
                         raise NotImplementedError(
@@ -1433,6 +1524,32 @@ def integruj_publikacje(offset=None, limit=None):
             #
             # Koniec Poz_n
             #
+
+            elif elem["id"] in [
+                102,
+                106,
+                209,
+                250,
+                252,
+                255,
+                260,
+                996,
+                159,
+                889,
+                982,
+                253,
+                254,
+            ]:
+                warnings.warn(
+                    f"Nieobsługiwane ID pola {elem['id']} (wartosci: {elem}) w kontekście rekordu {rec} o ID {rec.idt}"
+                )
+                # CMKP TODO
+
+            elif elem["id"] == 210:
+                assert not kw.get("isbn")
+                kw["isbn"] = elem["a"]
+                for literka in "bcd":
+                    assert not elem.get(literka), (elem, rec, rec.idt)
 
             else:
                 raise NotImplementedError(elem, rec, rec.idt)
@@ -1862,8 +1979,62 @@ def utworz_szkielety_ksiazek(logger):
                     f"WNWN ... znaleziono liczne prace dla połowy tytułu, tworze nową"
                 )
 
+            # ISBN to pole 205
+            skelet_isbn = current_isbn_value = None
+            try:
+                current_isbn_value = dbf.Bib_Desc.objects.get(
+                    idt=bib, elem_id=205, source="poz_g"
+                ).value
+            except dbf.Bib_Desc.DoesNotExist:
+                pass
+
+            if current_isbn_value is not None:
+                skelet_isbn = current_isbn_value.get("a").replace("ISBN ", "")
+
+            # Miejsce wydania to pole 202a
+            skelet_place = pole202 = None
+            try:
+                pole202 = dbf.Bib_Desc.objects.get(
+                    idt=bib, elem_id=202, source="poz_g"
+                ).value
+            except dbf.Bib_Desc.DoesNotExist:
+                pass
+
+            if pole202 is not None:
+                skelet_place = pole202.get("a")
+
+                if skelet_place:
+                    skelet_place += " " + str(wz.rok)
+
+            # kopiowanie wydawcy - podpole 202 B
+            skelet_wydawca = None
+            if pole202 is not None and (pole202.get("b") or "").strip():
+                skelet_wydawca = bpp.Wydawca.objects.get_or_create(
+                    nazwa=pole202.get("b").strip()
+                )[0]
+
+            skelet_adnotacje = "Automatycznie utworzone wydawnictwo szkieletowe. " + (
+                fld.get("c") or ""
+            )  # "red. Jan Kowalski"
+
+            if skelet_isbn is not None:
+                if len(skelet_isbn) > 64:
+                    logger.info(f"WNWN ISBN za dlugi {skelet_isbn}, idzie do adnotacji")
+                    skelet_adnotacje += " " + skelet_isbn
+                    skelet_adnotacje = skelet_adnotacje.strip()
+                    skelet_isbn = None
+
             wn = bpp.Wydawnictwo_Zwarte.objects.create(
                 tytul_oryginalny=tz,
+                # kopiowanie informacji z podpola 200 c (redaktorzy) do pola "adnotacje"
+                adnotacje=skelet_adnotacje,
+                # ISBN
+                isbn=skelet_isbn,
+                # miejsce i rok
+                miejsce_i_rok=skelet_place,
+                # wydawca
+                wydawca=skelet_wydawca,
+                # rok
                 rok=wz.rok,
                 charakter_formalny=bpp.Charakter_Formalny.objects.get_or_create(
                     skrot="SWN",
@@ -1875,9 +2046,9 @@ def utworz_szkielety_ksiazek(logger):
                     rodzaj_pbn=RODZAJ_PBN_KSIAZKA,
                 )[0],
                 typ_kbn=bpp.Typ_KBN.objects.get(skrot="000"),
+                # kopiowanie informacji o języku
                 jezyk=wz.jezyk,
                 status_korekty=bpp.Status_Korekty.objects.get(nazwa="przed korektą"),
-                adnotacje="Automatycznie utworzone wydawnictwo szkieletowe",
             )
 
         wz.wydawnictwo_nadrzedne = wn

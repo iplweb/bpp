@@ -21,7 +21,7 @@ from bpp.models import (
 )
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
-from bpp.models.const import GR_WPROWADZANIE_DANYCH
+from bpp.models.const import GR_WPROWADZANIE_DANYCH, CHARAKTER_OGOLNY_KSIAZKA
 from bpp.models.konferencja import Konferencja
 from bpp.models.nagroda import OrganPrzyznajacyNagrody
 from bpp.models.patent import Patent, Patent_Autor
@@ -41,12 +41,10 @@ from django.contrib.auth.mixins import UserPassesTestMixin
 
 class Wydawnictwo_NadrzedneAutocomplete(autocomplete.Select2QuerySetView):
     def get_queryset(self):
-        roz = Charakter_Formalny.objects.get(skrot="ROZ")
-        rozs = Charakter_Formalny.objects.get(skrot="ROZS")
 
-        qs = Wydawnictwo_Zwarte.objects.all()
-        qs = qs.exclude(charakter_formalny=roz)
-        qs = qs.exclude(charakter_formalny=rozs)
+        qs = Wydawnictwo_Zwarte.objects.filter(
+            charakter_formalny__charakter_ogolny=CHARAKTER_OGOLNY_KSIAZKA
+        )
 
         if self.q:
             qs = qs.filter(tytul_oryginalny__icontains=self.q)

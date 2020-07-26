@@ -6,6 +6,13 @@ from django.db import transaction
 from bpp.models import Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor, Patent_Autor
 from bpp.models.cache import Rekord
 
+from django.conf import settings
+
+# W tym poleceniu chodzi wyłącznie o przypilnowanie prawidłowej kolejności autorów.
+# Wywołanie błedu w sytuacji, gdy autorzy mają zaznaczone afiliacje na obce jednostki
+# nie ma znaczenia, zatem:
+setattr(settings, "BPP_WALIDUJ_AFILIACJE_AUTOROW", False)
+
 
 class Command(BaseCommand):
     """
@@ -14,9 +21,12 @@ class Command(BaseCommand):
     Ustaw kolejność pierwszego autora na „0”, uprządkuj następujące po sobie
     kolejności, upewnij się, że nie ma luk, etc…
     """
-    help = 'Upewnia sie, ze wartosc pola "kolejnosc" dla autorow wydawnictw ciaglych ' \
-           'i zwartych jest poprawna, tzn. zaczyna sie od zera i jest ponumerowana w ' \
-           'sposob ciagly.'
+
+    help = (
+        'Upewnia sie, ze wartosc pola "kolejnosc" dla autorow wydawnictw ciaglych '
+        "i zwartych jest poprawna, tzn. zaczyna sie od zera i jest ponumerowana w "
+        "sposob ciagly."
+    )
 
     # NIE robimy tego w transakcji, aby nie przyblokować bazy danyc na dłuższy czas
     # @transaction.atomic
@@ -25,10 +35,11 @@ class Command(BaseCommand):
         # kolejki RabbitMQ. Realnie renumeracja kolejności nie pociąga za sobą zmiany
         # w opisach bibliograficznych, więc musimy to wyłączyć:
         from bpp.models import cache
+
         cache.disable()
 
         for klass in [Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor, Patent_Autor]:
-            if options['verbosity'] >= 2:
+            if options["verbosity"] >= 2:
                 print(klass)
 
             old_id = None
@@ -44,11 +55,18 @@ class Command(BaseCommand):
                     pre = "---"
 
                 if next_kolejnosc != elem.kolejnosc:
-                    if options['verbosity'] >= 2:
+                    if options["verbosity"] >= 2:
                         if pre is not None:
                             print(pre)
                         pre = None
-                        print(elem.rekord_id, elem.id, "kolejnosc", elem.kolejnosc, ":=", next_kolejnosc)
+                        print(
+                            elem.rekord_id,
+                            elem.id,
+                            "kolejnosc",
+                            elem.kolejnosc,
+                            ":=",
+                            next_kolejnosc,
+                        )
                     elem.kolejnosc = next_kolejnosc
                     elem.save()
 
