@@ -197,6 +197,7 @@ def integruj_uczelnia(nazwa="Domyślna Uczelnia", skrot="DU"):
     return uczelnia
 
 
+@transaction.atomic
 def integruj_wydzialy():
     """Utwórz wydziały na podstawie importu DBF"""
     uczelnia = bpp.Uczelnia.objects.first()
@@ -206,6 +207,7 @@ def integruj_wydzialy():
         )
 
 
+@transaction.atomic
 def integruj_jednostki():
     uczelnia = bpp.Uczelnia.objects.first()
     for jednostka in dbf.Jed.objects.all():
@@ -256,6 +258,7 @@ def get_dict(model, attname):
     return dict([(getattr(i, attname), i) for i in model.objects.all()])
 
 
+@transaction.atomic
 def integruj_tytuly_autorow():
     for (tytul,) in (
         dbf.Aut.objects.all().order_by().values_list("tytul").distinct("tytul")
@@ -271,6 +274,7 @@ def integruj_tytuly_autorow():
             bpp.Tytul.objects.create(nazwa=tytul, skrot=tytul)
 
 
+@transaction.atomic
 def integruj_funkcje_autorow():
     for (funkcja,) in (
         dbf.Aut.objects.all()
