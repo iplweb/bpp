@@ -797,3 +797,11 @@ def rebuild_ciagle(offset=None, limit=None):
 
 def rebuild_patent(offset=None, limit=None):
     return rebuild(Patent, offset=offset, limit=limit,)
+
+
+def rebuild_praca_doktorska(offset=None, limit=None):
+    return rebuild(Praca_Doktorska, offset=offset, limit=limit,)
+
+
+def rebuild_praca_habilitacyjna(offset=None, limit=None):
+    return rebuild(Praca_Habilitacyjna, offset=offset, limit=limit,)

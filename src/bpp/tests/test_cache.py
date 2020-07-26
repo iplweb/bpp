@@ -4,7 +4,7 @@ import pytest
 from django.db import transaction
 from model_mommy import mommy
 
-from bpp.models import rebuild_ciagle, rebuild_zwarte
+from bpp.models import rebuild_ciagle, rebuild_zwarte, Praca_Doktorska
 from bpp.models.autor import Autor
 from bpp.models.cache import Autorzy, Rekord, defer_zaktualizuj_opis, rebuild_patent
 from bpp.models.openaccess import (
@@ -23,8 +23,24 @@ def pierwszy_rekord():
     return Rekord.objects.all()[0].opis_bibliograficzny_cache
 
 
-def test_opis_bibliograficzny(transactional_db, standard_data):
+def test_opis_bibliograficzny_wydawnictwo_ciagle(transactional_db, standard_data):
     wc = mommy.make(Wydawnictwo_Ciagle, szczegoly="Sz", uwagi="U")
+
+    rekord_opis = Rekord.objects.all()[0].opis_bibliograficzny_cache
+    wc_opis = wc.opis_bibliograficzny()
+    assert rekord_opis == wc_opis
+
+
+def test_opis_bibliograficzny_praca_doktorska(
+    transactional_db, standard_data, autor_jan_kowalski, jednostka
+):
+    wc = mommy.make(
+        Praca_Doktorska,
+        szczegoly="Sz",
+        uwagi="U",
+        autor=autor_jan_kowalski,
+        jednostka=jednostka,
+    )
 
     rekord_opis = Rekord.objects.all()[0].opis_bibliograficzny_cache
     wc_opis = wc.opis_bibliograficzny()
