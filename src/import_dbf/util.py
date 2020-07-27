@@ -475,6 +475,7 @@ def wzbogacaj_charaktery(fp):
             ch.save()
 
 
+@transaction.atomic
 def integruj_kbn():
     for rec in dbf.Kbn.objects.all():
         try:
@@ -485,6 +486,7 @@ def integruj_kbn():
         rec.save()
 
 
+@transaction.atomic
 def integruj_jezyki():
     for rec in dbf.Jez.objects.all():
         try:
@@ -495,6 +497,7 @@ def integruj_jezyki():
         rec.save()
 
 
+@transaction.atomic
 def integruj_zrodla():
     # pole usm_f:
     # - 988 -> numer ISBN,
@@ -506,7 +509,7 @@ def integruj_zrodla():
 
     rodzaj = bpp.Rodzaj_Zrodla.objects.get(nazwa="periodyk")
 
-    for rec in dbf.Usi.objects.filter(usm_f="100"):
+    for rec in dbf.Usi.objects.filter(usm_f__in=["100", "102"]):
         rec.nazwa = exp_add_spacing(rec.nazwa)
 
         try:
@@ -1525,8 +1528,16 @@ def integruj_publikacje(offset=None, limit=None):
             # Koniec Poz_n
             #
 
+            elif elem["id"] == 102:
+                zrodlo = dbf.Usi.objects.get(
+                    usm_f="102", idt_usi=int(elem["a"][1:])
+                ).bpp_id
+                if kw.get("zrodlo"):
+                    assert kw["zrodlo"] == zrodlo
+                # assert not kw.get("zrodlo")
+                kw["zrodlo"] = zrodlo
+
             elif elem["id"] in [
-                102,
                 106,
                 209,
                 250,
