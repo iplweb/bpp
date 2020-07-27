@@ -55,17 +55,22 @@ else
 	echo "*** Brak danych do importu dyscypliny"
 endif
 
-integruj-dbf-publikacje-pre:
+integruj-dbf-charakter-kbn-jezyk:
 ifeq ($(CUSTOMER),UMWroclaw)
 	$(MANAGE) integruj_dbf --enable-charakter-kbn-jezyk --charaktery-enrichment-xls $(ASSETS_DIR)/bg-umw/charaktery_formalne.xlsx
 else
 	$(MANAGE) integruj_dbf --enable-charakter-kbn-jezyk
 endif
+
+integruj-dbf-zrodlo:
 	$(MANAGE) integruj_dbf --enable-zrodlo
 	$(MANAGE) rozszerz_skroty_zrodel $(ASSETS_DIR)/bg-umw/zrodla.xlsx
+
+integruj-dbf-publikacje-pre: integruj-dbf-charakter-kbn-jezyk integruj-dbf-zrodlo
 	$(PG_DUMP) > pre-integruj-dbf-enable-publikacja.sql
 
 integruj-dbf-publikacje-post:
+	exit 1
 	$(MANAGE) integruj_dbf --enable-publikacja &> integruj-dbf-publikacja-log.txt
 	$(MANAGE) integruj_dbf --enable-grupy-punktowe > integruj-dbf-grupy-punktowe-log.txt
 	$(MANAGE) integruj_dbf --enable-zatwierdz-podwojne-przypisania
