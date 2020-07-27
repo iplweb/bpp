@@ -1,5 +1,6 @@
-from fabric import task, Connection
 import os
+
+from fabric import Connection, task
 
 
 @task
