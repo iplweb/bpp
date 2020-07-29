@@ -70,9 +70,10 @@ integruj-dbf-publikacje-pre: integruj-dbf-charakter-kbn-jezyk integruj-dbf-zrodl
 	$(PG_DUMP) > pre-integruj-dbf-enable-publikacja.sql
 
 integruj-dbf-publikacje-post:
-	exit 1
 	$(MANAGE) integruj_dbf --enable-publikacja &> integruj-dbf-publikacja-log.txt
+ifneq ($(CUSTOMER),CMKP)
 	$(MANAGE) integruj_dbf --enable-grupy-punktowe > integruj-dbf-grupy-punktowe-log.txt
+endif
 	$(MANAGE) integruj_dbf --enable-zatwierdz-podwojne-przypisania
 	$(MANAGE) integruj_dbf --enable-b-a
 	$(MANAGE) integruj_dbf --enable-przypisz-jednostki
