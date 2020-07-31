@@ -110,6 +110,8 @@ ROOT_URLCONF = "django_bpp.urls"
 WSGI_APPLICATION = "django_bpp.wsgi.application"
 
 INSTALLED_APPS = [
+    "channels",
+    "notifications_asgi",
     "django.contrib.humanize",
     "django.contrib.contenttypes",
     "django.contrib.auth",
@@ -523,3 +525,12 @@ REST_FRAMEWORK = {
 BPP_WALIDUJ_AFILIACJE_AUTOROW = (
     os.getenv("DJANGO_BPP_WALIDUJ_AFILIACJE_AUTOROW", "tak") == "tak"
 )
+
+
+ASGI_APPLICATION = "django_bpp.routing.application"
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {"hosts": [(REDIS_HOST, REDIS_PORT)],},
+    },
+}

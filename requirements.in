@@ -1,4 +1,6 @@
 Django==3.0.7
+channels==2.4.0
+channels_redis==3.0.1
 psycopg2==2.8.4
 django-flexible-reports==0.2.9
 django-group-by==0.3.1
