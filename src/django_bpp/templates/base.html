@@ -49,18 +49,8 @@
         </div>
         {# fix pycharm highlighting #}
         <script type="text/javascript">
-            {% load notifications %}
-            {% uuid notifications_uuid %}
             $(document).ready(function () {
-                // tests_need_this:messageCookieID:{{ notifications_uuid }}:
-                {#bppNotifications.init(#}
-                {#    '{{ NOTIFICATIONS_PUB_PREFIX }}-{{ request.user.username }}',#}
-                {#    window.location.hostname,#}
-                {#    window.location.port,#}
-                {#    null,#}
-                {#    "{{ notifications_uuid }}",#}
-                {#    "{% static "bpp/wav/alert.wav" %}"#}
-                {#);#}
+                bppNotifications.init("{% static "bpp/wav/alert.wav" %}");
 
                 $(document).on('closed.zf', function (event) {
                     if ($(event.target).hasClass("ajax-on-close")) {
@@ -86,30 +76,6 @@
                         });
                     {% endfor %}
                 {% endif %}
-
-                // notifications_asgi
-
-                // const roomName = JSON.parse(document.getElementById('room-name').textContent);
-
-                const chatSocket = new WebSocket(
-                    'ws://'
-                    + window.location.host
-                    + '/asgi/notifications/'
-                );
-
-                chatSocket.onmessage = function (e) {
-                    const data = JSON.parse(e.data);
-                    console.log(data);
-                };
-
-                chatSocket.onclose = function (e) {
-                    console.error('Chat socket closed unexpectedly');
-                };
-
-
-                chatSocket.onerror = function(e) {
-                    console.log('error');
-                };
 
             });
 

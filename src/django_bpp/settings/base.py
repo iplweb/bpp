@@ -79,7 +79,6 @@ TEMPLATES = [
                 "bpp.context_processors.config.enable_new_reports",
                 "bpp.context_processors.global_nav.user",
                 "bpp.context_processors.google_analytics.google_analytics",
-                "notifications.context_processors.notification_settings",
             ],
         },
     },
@@ -111,7 +110,6 @@ WSGI_APPLICATION = "django_bpp.wsgi.application"
 
 INSTALLED_APPS = [
     "channels",
-    "notifications_asgi",
     "django.contrib.humanize",
     "django.contrib.contenttypes",
     "django.contrib.auth",
