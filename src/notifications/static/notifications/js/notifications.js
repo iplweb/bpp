@@ -1,6 +1,7 @@
 var bppNotifications = bppNotifications || {};
 
 bppNotifications.init = function (soundAlertPath) {
+    this.messageCookieId = null;
     this.messageAlertSound = null;
     if (window.Audio && soundAlertPath)
         this.messageAlertSound = new window.Audio(soundAlertPath);
@@ -41,7 +42,9 @@ bppNotifications.addMessage = function (message) {
     //  - hideCloseOption,
     //  - text;
 
-    if (message['text']) {
+    if (message['channel_name']) {
+        this.messageCookieId = message['channel_name'];
+    } else if (message['text']) {
         $("#messagesPlaceholder").append(
             Mustache.render(
                 $("#messageTemplate").html(),

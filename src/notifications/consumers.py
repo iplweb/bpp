@@ -24,9 +24,13 @@ class NotificationsConsumer(WebsocketConsumer):
     def connect(self):
         self.subscribe()
         self.accept()
+        self.send_channel_name()
 
     def disconnect(self, close_code):
         self.unsubscribe()
+
+    def send_channel_name(self):
+        self.send(text_data=json.dumps({"channel_name": self.channel_name}))
 
     def chat_message(self, event):
         # print(f"Chat_message event {event}")
