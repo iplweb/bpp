@@ -2,6 +2,11 @@
 Historia zmian
 ==============
 
+202008.42
+---------
+
+* import danych grantów, nr odbitek i liczne drobne poprawki importu DBF (b/n),
+
 202007.41
 ---------
 

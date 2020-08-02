@@ -5,6 +5,7 @@ endif
 
 ifeq ($(CUSTOMER),CMKP)
 NAZWA_OBCEJ_JEDNOSTKI=*Obcy dla CMKP
+ADRES_SERWERA=bpp.cmkp.edu.pl
 else
 NAZWA_OBCEJ_JEDNOSTKI=obcy
 endif
@@ -193,7 +194,7 @@ integrate: disable-trigger integruj-dbf integruj-liste-wydawcow ustaw-obca-jedno
 	enable-trigger dodaj-aktualnosc usun-nieuzywane-charaktery-kbny
 
 set-site-name:
-	$(MANAGE) set_site_name --name bpp.umed.wroc.pl --domain bpp.umed.wroc.pl
+	$(MANAGE) set_site_name --name $(ADRES_SERWERA) --domain $(ADRES_SERWERA)
 
 rebuild: import-dbf integrate set-site-name
 
