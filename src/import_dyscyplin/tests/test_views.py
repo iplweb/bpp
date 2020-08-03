@@ -4,15 +4,12 @@ from django.urls import reverse
 from import_dyscyplin.models import Import_Dyscyplin, Import_Dyscyplin_Row
 
 
-def extract_messageCookieId(html_source):
-    return html_source.split("tests_need_this:messageCookieID:")[1][:36]
-
-
 def wyslij(wd_app, plik):
     assert Import_Dyscyplin.objects.all().count() == 0
     c = wd_app.get(reverse("import_dyscyplin:create")).maybe_follow()
-    c.forms[0]['plik'].value = [plik, ]
-    c.forms[0]['web_page_uid'] = extract_messageCookieId(c.testbody)
+    c.forms[0]["plik"].value = [
+        plik,
+    ]
     res = c.forms[0].submit().maybe_follow()
     assert Import_Dyscyplin.objects.all().count() == 1
 
@@ -67,8 +64,7 @@ def test_UruchomPrzetwarzanieImport_Dyscyplin(wd_app, test1_xlsx):
 
     i = Import_Dyscyplin.objects.all().first()
     g = wd_app.get(reverse("import_dyscyplin:stworz_kolumny", args=(i.pk,)))
-    assert g.json['status'] == "ok"
-
+    assert g.json["status"] == "ok"
 
     i = Import_Dyscyplin.objects.all().first()
     i.stworz_kolumny()
@@ -76,7 +72,7 @@ def test_UruchomPrzetwarzanieImport_Dyscyplin(wd_app, test1_xlsx):
     i.save()
 
     g = wd_app.get(reverse("import_dyscyplin:przetwarzaj", args=(i.pk,)))
-    assert g.json['status'] == "ok"
+    assert g.json["status"] == "ok"
 
 
 def test_UsunImport_Dyscyplin(wd_app, test1_xlsx, transactional_db):
@@ -98,15 +94,15 @@ def test_API_Do_IntegracjiView(wd_app, test1_xlsx, autor_jan_nowak):
     r.save()
 
     res = wd_app.get(reverse("import_dyscyplin:api_do_integracji", args=(i.pk,)))
-    assert len(res.json['data']) == 1
-    assert res.json['data'][0]['nazwisko'] == "Kowalski"
+    assert len(res.json["data"]) == 1
+    assert res.json["data"][0]["nazwisko"] == "Kowalski"
 
 
 def test_API_Nie_Do_IntegracjiView(wd_app, test1_xlsx):
     i = wyslij_i_przeanalizuj(wd_app, test1_xlsx)
 
     res = wd_app.get(reverse("import_dyscyplin:api_nie_do_integracji", args=(i.pk,)))
-    assert len(res.json['data']) == 6
+    assert len(res.json["data"]) == 6
 
 
 def test_API_Zintegrowane(wd_app, test1_xlsx):
@@ -117,14 +113,16 @@ def test_API_Zintegrowane(wd_app, test1_xlsx):
     r.save()
 
     res = wd_app.get(reverse("import_dyscyplin:api_zintegrowane", args=(i.pk,)))
-    assert len(res.json['data']) == 1
+    assert len(res.json["data"]) == 1
 
 
-def test_UruchomIntegracjeImport_DyscyplinView(wd_app, wprowadzanie_danych_user, test1_xlsx):
+def test_UruchomIntegracjeImport_DyscyplinView(
+    wd_app, wprowadzanie_danych_user, test1_xlsx
+):
     i = wyslij_i_przeanalizuj(wd_app, test1_xlsx)
     i.integruj_dyscypliny()
     i.owner = wprowadzanie_danych_user
     i.save()
 
     res = wd_app.get(reverse("import_dyscyplin:integruj", args=(i.pk,)))
-    assert res.json['status'] == "ok"
+    assert res.json["status"] == "ok"

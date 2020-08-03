@@ -5,7 +5,23 @@ from collections import namedtuple
 
 import requests
 from asgiref.sync import async_to_sync
+from django.contrib.contenttypes.models import ContentType
 from django.contrib.messages import DEFAULT_TAGS
+
+
+def convert_obj_to_channel_name(original):
+    ctype = ContentType.objects.get_for_model(original)
+    pk = original.pk
+    return f"{ctype.app_label}.{ctype.model}-{pk}"
+
+
+def get_obj_from_channel_name(name):
+    app_label_model, pk = name.split("-", 1)
+    app_label, model = app_label_model.split(".", 1)
+    ctype = ContentType.objects.get(app_label=app_label, model=model)
+    obj = ctype.get_object_for_this_type(pk=int(pk))
+    return obj
+
 
 Message = namedtuple(
     "Message", "text cssClass clickURL hideCloseOption closeURL closeText"

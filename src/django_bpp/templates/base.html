@@ -48,9 +48,11 @@
         {% endverbatim messageTemplate %}
         </div>
         {# fix pycharm highlighting #}
+        {{ extraChannels|json_script:"extra-channels" }}
         <script type="text/javascript">
             $(document).ready(function () {
-                bppNotifications.init("{% static "bpp/wav/alert.wav" %}");
+                bppNotifications.init("{% static "bpp/wav/alert.wav" %}",
+                    document.getElementById('extra-channels').textContent);
 
                 $(document).on('closed.zf', function (event) {
                     if ($(event.target).hasClass("ajax-on-close")) {

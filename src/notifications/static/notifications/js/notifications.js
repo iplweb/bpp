@@ -1,16 +1,15 @@
 var bppNotifications = bppNotifications || {};
 
-bppNotifications.init = function (soundAlertPath) {
-    this.messageCookieId = null;
-    this.messageAlertSound = null;
+bppNotifications.init = function (soundAlertPath, extraChannels) {
+   this.messageAlertSound = null;
     if (window.Audio && soundAlertPath)
         this.messageAlertSound = new window.Audio(soundAlertPath);
 
-    this.chatSocket = new WebSocket(
-        'ws://'
-        + window.location.host
-        + '/asgi/notifications/'
-    );
+    var url = 'ws://' + window.location.host  + '/asgi/notifications/';
+    if (extraChannels)
+        url += '?extraChannels=' + encodeURIComponent(extraChannels);
+
+    this.chatSocket = new WebSocket(url);
 
     this.chatSocket.onmessage = this.onmessage;
 
@@ -29,7 +28,19 @@ bppNotifications.goTo = function (url) {
 };
 
 bppNotifications.onmessage = function(event){
+    console.log(event);
     var message =  JSON.parse(event.data);
+
+    if (message['id']) {
+        bppNotifications.chatSocket.send(
+            JSON.stringify({
+                "id": message["id"],
+                "type": "ack_message",
+                "channel_name": event['channel_name']
+            }));
+    };
+
+
     bppNotifications.addMessage(message);
 }
 
@@ -42,9 +53,7 @@ bppNotifications.addMessage = function (message) {
     //  - hideCloseOption,
     //  - text;
 
-    if (message['channel_name']) {
-        this.messageCookieId = message['channel_name'];
-    } else if (message['text']) {
+    if (message['text']) {
         $("#messagesPlaceholder").append(
             Mustache.render(
                 $("#messageTemplate").html(),
