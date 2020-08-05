@@ -5,13 +5,17 @@ bppNotifications.init = function (soundAlertPath, extraChannels) {
     if (window.Audio && soundAlertPath)
         this.messageAlertSound = new window.Audio(soundAlertPath);
 
-    var url = 'ws://' + window.location.host  + '/asgi/notifications/';
+    var url = 'wss://' + window.location.host  + '/asgi/notifications/';
     if (extraChannels)
         url += '?extraChannels=' + encodeURIComponent(extraChannels);
 
     this.chatSocket = new WebSocket(url);
 
     this.chatSocket.onmessage = this.onmessage;
+
+    this.chatSocket.onopen = function(e){
+      console.info('Chat available');
+    };
 
     this.chatSocket.onclose = function (e) {
         console.error('Chat socket closed unexpectedly');
