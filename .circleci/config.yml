@@ -8,7 +8,7 @@ jobs:
     #     - dev
 
     docker:
-      - image: mpasternak79/circleci-python:3.7-node-browsers-nginx-http-push
+      - image: circleci/python:3.7-node-browsers
         environment:
           PGUSER: postgres
           PGHOST: localhost
