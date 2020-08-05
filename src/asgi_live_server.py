@@ -1,17 +1,11 @@
-import threading
-import warnings, os
+import os
+import warnings
 
 import pytest
 from channels.testing import ChannelsLiveServerTestCase
-from daphne.testing import DaphneProcess
-
 from pytest_django.lazy_django import skip_if_no_django
-from pytest_django.plugin import _blocking_manager
 
 from asgi_testing import DaphneThread
-from bpp.models import Rekord
-
-from pytest_django.compat import setup_databases, teardown_databases
 
 
 class PytestChannelsLiveServerTestCase(ChannelsLiveServerTestCase):
@@ -56,30 +50,3 @@ def asgi_live_server(request):
     request.addfinalizer(server._post_teardown)
 
     return server
-
-
-#
-# @pytest.fixture(autouse=True, scope="function")
-# def _asgi_live_server_helper(request):
-#     """Helper to make asgi_live_server work, internal to pytest-django.
-#
-#     This helper will dynamically request the transactional_db fixture
-#     for a test which uses the live_server fixture.  This allows the
-#     server and test to access the database without having to mark
-#     this explicitly which is handy since it is usually required and
-#     matches the Django behaviour.
-#
-#     The separate helper is required since live_server can not request
-#     transactional_db directly since it is session scoped instead of
-#     function-scoped.
-#
-#     It will also override settings only for the duration of the test.
-#     """
-#     if "asgi_live_server" not in request.fixturenames:
-#         return
-#
-#     request.getfixturevalue("transactional_db")
-#
-#     asgi_live_server = request.getfixturevalue("asgi_live_server")
-#     asgi_live_server._asgi_live_server_modified_settings.enable()
-#     request.addfinalizer(asgi_live_server._asgi_live_server_modified_settings.disable)
