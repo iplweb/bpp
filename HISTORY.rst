@@ -2,6 +2,11 @@
 Historia zmian
 ==============
 
+202008.42
+---------
+
+* lepszy silnik notyfikacji dynamicznych (channels+ASGI+uvicorn) (b/n),
+
 202007.41
 ---------
 
