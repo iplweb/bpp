@@ -1,5 +1,6 @@
 Django==3.0.9
 channels==2.4.0
+uvicorn>=0.11.8
 channels_redis==3.0.1
 psycopg2==2.8.4
 django-flexible-reports==0.2.9
