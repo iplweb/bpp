@@ -852,7 +852,7 @@ def nginx_liveserver_proc(
     return nginx_proc_fixture
 
 
-nginx_live_server = nginx_liveserver_proc()
+asgi_live_server = nginx_liveserver_proc()
 
 
 @pytest.fixture

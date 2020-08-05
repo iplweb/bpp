@@ -20,13 +20,11 @@ pytestmark = [pytest.mark.slow, pytest.mark.selenium]
 
 
 @pytest.fixture(scope="function")
-def browser_z_wydawnictwem(
-    preauth_admin_browser, nginx_live_server, wydawnictwo_ciagle
-):
+def browser_z_wydawnictwem(preauth_admin_browser, asgi_live_server, wydawnictwo_ciagle):
     browser = preauth_admin_browser
     with wait_for_page_load(browser):
         browser.visit(
-            nginx_live_server.url
+            asgi_live_server.url
             + reverse(
                 "admin:bpp_wydawnictwo_ciagle_change", args=(wydawnictwo_ciagle.pk,)
             )

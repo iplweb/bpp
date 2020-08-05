@@ -20,12 +20,8 @@ def test_eksport_pbn(
     autor_jan_kowalski,
     rok,
     typy_odpowiedzialnosci,
-    nginx_live_server,
-    settings,
+    asgi_live_server,
 ):
-    settings.NOTIFICATIONS_HOST = nginx_live_server.host
-    settings.NOTIFICATIONS_PORT = nginx_live_server.port
-
     assert PlikEksportuPBN.objects.all().count() == 0
 
     autor_jan_kowalski.dodaj_jednostke(jednostka=jednostka)

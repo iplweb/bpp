@@ -19,12 +19,7 @@ def test_submit_report_form(admin_app, live_server):
     assert res.status_code == 200
 
 
-def test_submit_report_form_validation_data_od_do(
-    admin_app, wydzial, nginx_live_server, settings
-):
-    settings.NOTIFICATIONS_HOST = nginx_live_server.host
-    settings.NOTIFICATIONS_PORT = nginx_live_server.port
-
+def test_submit_report_form_validation_data_od_do(admin_app, wydzial, asgi_live_server):
     page = admin_app.get(reverse("eksport_pbn:zamow"))
     page.form["od_daty"] = "2010-01-01"
     page.form["do_daty"] = "2009-01-01"
@@ -32,12 +27,7 @@ def test_submit_report_form_validation_data_od_do(
     assert "Wartość w polu 'Od daty'" in normalize_quotes(res.content)
 
 
-def test_submit_report_form_validation_rok_od_do(
-    admin_app, wydzial, nginx_live_server, settings
-):
-    settings.NOTIFICATIONS_HOST = nginx_live_server.host
-    settings.NOTIFICATIONS_PORT = nginx_live_server.port
-
+def test_submit_report_form_validation_rok_od_do(admin_app, wydzial, asgi_live_server):
     page = admin_app.get(reverse("eksport_pbn:zamow"))
     page.form["od_roku"] = "2015"
     page.form["do_roku"] = "2014"
@@ -46,11 +36,8 @@ def test_submit_report_form_validation_rok_od_do(
 
 
 def test_submit_report_form_validation_artykuly_ksiazki(
-    admin_app, wydzial, nginx_live_server, settings
+    admin_app, wydzial, asgi_live_server
 ):
-    settings.NOTIFICATIONS_HOST = nginx_live_server.host
-    settings.NOTIFICATIONS_PORT = nginx_live_server.port
-
     page = admin_app.get(reverse("eksport_pbn:zamow"))
     page.form["artykuly"] = False
     page.form["ksiazki"] = False

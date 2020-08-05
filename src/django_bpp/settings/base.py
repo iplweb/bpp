@@ -355,8 +355,6 @@ SESSION_SERIALIZER = "django.contrib.sessions.serializers.PickleSerializer"
 
 MESSAGE_STORAGE = "messages_extends.storages.FallbackStorage"
 
-NOTIFICATIONS_PUB_PREFIX = "django_bpp"
-
 TEST_NON_SERIALIZED_APPS = ["django.contrib.contenttypes", "django.contrib.auth"]
 
 TESTING = (
@@ -402,11 +400,6 @@ def can_login_as(request, target_user):
 CAN_LOGIN_AS = can_login_as
 
 #
-
-# host dla HTMLu oraz linii polecen, reszta dla linii polecen (bo HTML sie autokonfiguruje...)
-NOTIFICATIONS_HOST = django_getenv("DJANGO_BPP_NOTIFICATIONS_HOST", "127.0.0.1")
-NOTIFICATIONS_PORT = django_getenv("DJANGO_BPP_NOTIFICATIONS_PORT", 80)
-NOTIFICATIONS_PROTOCOL = django_getenv("DJANGO_BPP_NOTIFICATIONS_PROTOCOL", "http")
 
 MEDIA_ROOT = django_getenv("DJANGO_BPP_MEDIA_ROOT", os.getenv("HOME", "C:/bpp-media"))
 

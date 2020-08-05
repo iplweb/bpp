@@ -33,11 +33,6 @@ SENDFILE_ROOT = MEDIA_ROOT
 COMPRESS_ENABLED = False  # not DEBUG
 COMPRESS_OFFLINE = False
 
-# host dla HTMLu oraz linii polecen, reszta dla linii polecen (bo HTML sie autokonfiguruje...)
-NOTIFICATIONS_HOST = "127.0.0.1"
-NOTIFICATIONS_PORT = 80
-NOTIFICATIONS_PROTOCOL = "http"
-
 ALLOWED_HOSTS = ["dockerhost", "webserver", "localhost", "127.0.0.1", "mac.iplweb"]
 
 HTML_MINIFY = False
