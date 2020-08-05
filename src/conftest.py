@@ -142,12 +142,14 @@ def preauth_browser(
     yield browser
     browser.quit()
 
+
 @pytest.fixture
 def preauth_asgi_browser(preauth_browser, transactional_db, asgi_live_server):
     with wait_for_page_load(preauth_browser):
         preauth_browser.visit(asgi_live_server.url)
     wait_for_websocket_connection(preauth_browser)
     return preauth_browser
+
 
 @pytest.fixture
 def preauth_admin_browser(
@@ -157,6 +159,7 @@ def preauth_admin_browser(
     asgi_live_server,
     django_user_model,
     django_username_field,
+    transactional_db,
 ):
     browser = _preauth_session_id_helper(
         "admin",

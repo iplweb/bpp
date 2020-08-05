@@ -14,32 +14,17 @@ from bpp.models import Rekord
 from pytest_django.compat import setup_databases, teardown_databases
 
 
-
 class PytestChannelsLiveServerTestCase(ChannelsLiveServerTestCase):
     ProtocolServerProcess = DaphneThread
+
     @property
     def url(self):
         return self.live_server_url
 
+
 @pytest.fixture(scope="session")
 def asgi_live_server(request):
-    """Run a live Django server in the background during tests
-
-    The address the server is started from is taken from the
-    --liveserver command line option or if this is not provided from
-    the DJANGO_LIVE_TEST_SERVER_ADDRESS environment variable.  If
-    neither is provided ``localhost:8081,8100-8200`` is used.  See the
-    Django documentation for its full syntax.
-
-    NOTE: If the live server needs database access to handle a request
-          your test will have to request database access.  Furthermore
-          when the tests want to see data added by the live-server (or
-          the other way around) transactional database access will be
-          needed as data inside a transaction is not shared between
-          the live server and test code.
-
-          Static assets will be automatically served when
-          ``django.contrib.staticfiles`` is available in INSTALLED_APPS.
+    """Run a live Daphne server in the background during tests.
     """
     skip_if_no_django()
 
@@ -71,6 +56,7 @@ def asgi_live_server(request):
     request.addfinalizer(server._post_teardown)
 
     return server
+
 
 #
 # @pytest.fixture(autouse=True, scope="function")

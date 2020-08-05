@@ -101,34 +101,39 @@ def test_asgi_live_server(preauth_asgi_browser):
     )
 
 
-def test_bpp_notifications(preauth_browser):
+def test_bpp_notifications(preauth_asgi_browser):
     """Sprawdz, czy notyfikacje dochodza.
     Wymaga uruchomionego staging-server.
     """
     s = "test notyfikacji 123 456"
-    assert preauth_browser.is_text_not_present(s)
+    assert preauth_asgi_browser.is_text_not_present(s)
     call_command(
-        "send_notification", preauth_browser.authorized_user.username, s, verbosity=0
+        "send_notification",
+        preauth_asgi_browser.authorized_user.username,
+        s,
+        verbosity=0,
     )
-    assert preauth_browser.is_text_present(s)
+    assert preauth_asgi_browser.is_text_present(s)
 
 
-def test_bpp_notifications_and_messages(preauth_browser, nginx_live_server, settings):
-    """Sprawdz, czy notyfikacje dochodza.
-    Wymaga uruchomionego staging-server.
-    """
-    settings.NOTIFICATIONS_HOST = nginx_live_server.host
-    settings.NOTIFICATIONS_PORT = nginx_live_server.port
+def test_bpp_notifications_and_messages(preauth_asgi_browser):
+    """Sprawdz, czy notyfikacje dochodza. """
 
     s = "test notyfikacji 123 456 902309093209092"
-    assert preauth_browser.is_text_not_present(s)
-    call_command("send_message", preauth_browser.authorized_user.username, s)
-    WebDriverWait(preauth_browser, 10).until(lambda browser: browser.is_text_present(s))
+    assert preauth_asgi_browser.is_text_not_present(s)
 
-    with wait_for_page_load(preauth_browser):
-        preauth_browser.reload()
+    call_command("send_message", preauth_asgi_browser.authorized_user.username, s)
 
-    WebDriverWait(preauth_browser, 10).until(lambda browser: browser.is_text_present(s))
+    WebDriverWait(preauth_asgi_browser, 10).until(
+        lambda browser: browser.is_text_present(s)
+    )
+
+    with wait_for_page_load(preauth_asgi_browser):
+        preauth_asgi_browser.reload()
+
+    WebDriverWait(preauth_asgi_browser, 10).until(
+        lambda browser: browser.is_text_present(s)
+    )
 
 
 def test_preauth_browser(preauth_browser, live_server):
@@ -140,9 +145,9 @@ def test_preauth_browser(preauth_browser, live_server):
     )
 
 
-def test_preauth_admin_browser(preauth_admin_browser, nginx_live_server):
+def test_preauth_admin_browser(preauth_admin_browser, asgi_live_server):
     """Sprawdz, czy pre-autoryzowany browser admina funkcjonuje poprawnie"""
-    preauth_admin_browser.visit(nginx_live_server.url + "/admin/")
+    preauth_admin_browser.visit(asgi_live_server.url + "/admin/")
     assert preauth_admin_browser.is_text_present(u"Administracja stron")
 
 

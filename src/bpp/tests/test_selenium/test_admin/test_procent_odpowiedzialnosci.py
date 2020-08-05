@@ -28,7 +28,7 @@ pytestmark = [pytest.mark.slow, pytest.mark.selenium]
     "klass", ["wydawnictwo_ciagle", "wydawnictwo_zwarte", "patent"]
 )
 def test_procent_odpowiedzialnosci_baseModel_AutorFormset_jeden_autor(
-    nginx_live_server,
+    asgi_live_server,
     preauth_admin_browser,
     autor_jan_kowalski,
     autor_jan_nowak,
@@ -41,7 +41,7 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_jeden_autor(
     jezyki,
     klass,
 ):
-    url = nginx_live_server.url + reverse("admin:bpp_%s_add" % klass)
+    url = asgi_live_server.url + reverse("admin:bpp_%s_add" % klass)
 
     with wait_for_page_load(preauth_admin_browser):
         preauth_admin_browser.visit(url)

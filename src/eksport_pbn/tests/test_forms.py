@@ -13,10 +13,7 @@ def normalize_quotes(content):
     return content.decode("utf-8").replace("&#x27;", "'")
 
 
-def test_submit_report_form(admin_app, nginx_live_server, settings):
-    settings.NOTIFICATIONS_HOST = nginx_live_server.host
-    settings.NOTIFICATIONS_PORT = nginx_live_server.port
-
+def test_submit_report_form(admin_app, live_server):
     page = admin_app.get(reverse("eksport_pbn:zamow"))
     res = page.form.submit().maybe_follow()
     assert res.status_code == 200
