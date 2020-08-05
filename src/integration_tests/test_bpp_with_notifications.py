@@ -1,7 +1,9 @@
 # -*- encoding: utf-8 -*-
 
 import time
+from time import time, sleep
 
+from channels.testing import ChannelsLiveServerTestCase
 from django.core.management import call_command
 
 #
@@ -19,6 +21,11 @@ from django.core.management import call_command
 #
 # POTEM AUTORYZACJA JAKAS MOZE na te komunikaty
 # tzn. najbardziej to na WYSYLANIE by sie przydala.
+from splinter import Browser
+
+from bpp.models import Wydawnictwo_Zwarte
+from bpp.util import get_fixture
+
 try:
     from django.core.urlresolvers import reverse
 except ImportError:
@@ -28,7 +35,7 @@ from selenium.webdriver.support.wait import WebDriverWait
 
 from bpp.models.system import Charakter_Formalny, Status_Korekty, Jezyk, Typ_KBN
 from conftest import NORMAL_DJANGO_USER_PASSWORD
-from django_bpp.selenium_util import wait_for_page_load
+from django_bpp.selenium_util import wait_for_page_load, wait_for_websocket_connection
 
 pytestmark = [pytest.mark.slow, pytest.mark.selenium]
 
@@ -71,6 +78,27 @@ def test_caching_enabled(admin_app, zrodlo, standard_data, transactional_db):
             found = True
 
     assert found
+
+
+def test_live_server(live_server, browser):
+    browser.visit(live_server.url)
+    assert "Wystąpił błąd" not in browser.html
+
+
+@pytest.mark.django_db(transaction=True)
+def test_asgi_live_server(preauth_asgi_browser):
+
+    s = "test notyfikacji 123 456"
+    call_command(
+        "send_notification",
+        preauth_asgi_browser.authorized_user.username,
+        s,
+        verbosity=0,
+    )
+
+    WebDriverWait(preauth_asgi_browser, 10).until(
+        lambda browser: browser.is_text_present(s)
+    )
 
 
 def test_bpp_notifications(preauth_browser):
