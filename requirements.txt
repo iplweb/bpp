@@ -267,9 +267,9 @@ django-tables2==2.3.1 \
 django-webmaster-verification==0.3.0 \
     --hash=sha256:b1a62d468825710e57f072ed1fa1ae540b3ad95dcc08a8bdfaa37e2d6d529837 \
     # via -r requirements.in
-django==3.0.7 \
-    --hash=sha256:5052b34b34b3425233c682e0e11d658fd6efd587d11335a0203d827224ada8f2 \
-    --hash=sha256:e1630333248c9b3d4e38f02093a26f1e07b271ca896d73097457996e0fae12e8 \
+django==3.0.9 \
+    --hash=sha256:96fbe04e8ba0df289171e7f6970e0ff8b472bf4f909ed9e0e5beccbac7e1dbbe \
+    --hash=sha256:c22b4cd8e388f8219dc121f091e53a8701f9f5bca9aa132b5254263cab516215 \
     # via -r requirements.in, channels, crispy-forms-foundation, django-admin-sortable2, django-appconf, django-braces, django-classy-tags, django-columns, django-cookie-law, django-dirtyfields, django-dsl, django-favicon-plus, django-filter, django-flexible-reports, django-model-utils, django-mptt, django-multiseek, django-password-policies-iplweb, django-querysetsequence, django-sendfile, django-session-security, django-static-sitemaps, django-tables2, django-webmaster-verification, djangorestframework
 django_compressor==2.4 \
     --hash=sha256:57ac0a696d061e5fc6fbc55381d2050f353b973fb97eee5593f39247bc0f30af \
