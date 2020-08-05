@@ -288,7 +288,7 @@ def test_bug_on_user_add(preauth_admin_browser, asgi_live_server):
 
 @flaky(max_runs=5)
 def test_admin_wydawnictwo_zwarte_uzupelnij_rok(
-    wydawnictwo_zwarte, preauth_admin_browser, asgi_live_server
+    wydawnictwo_zwarte, preauth_admin_browser, asgi_live_server, transactional_db
 ):
     """
     :type preauth_admin_browser: splinter.driver.webdriver.remote.WebDriver

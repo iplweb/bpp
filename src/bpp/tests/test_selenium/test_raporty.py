@@ -65,7 +65,7 @@ def jednostka_raportow(
     return j
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_ranking_autorow(raporty_browser, jednostka_raportow, asgi_live_server):
     raporty_browser.visit(
         asgi_live_server.url + reverse("bpp:ranking_autorow_formularz")
@@ -73,7 +73,7 @@ def test_ranking_autorow(raporty_browser, jednostka_raportow, asgi_live_server):
     assert 'value="%s"' % (CURRENT_YEAR - 1) in raporty_browser.html
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_raport_jednostek(raporty_browser, jednostka_raportow, asgi_live_server):
     raporty_browser.visit(
         asgi_live_server.url + reverse("bpp:raport_jednostek_formularz")
@@ -97,7 +97,7 @@ def test_raport_jednostek(raporty_browser, jednostka_raportow, asgi_live_server)
     )
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_submit_kronika_uczelni(raporty_browser, jednostka_raportow, asgi_live_server):
     c = Report.objects.all().count
     assert c() == 0

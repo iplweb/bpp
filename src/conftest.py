@@ -527,7 +527,7 @@ def tytuly():
 
 
 @pytest.fixture(scope="function")
-def jezyki():
+def jezyki(db):
     pl, created = Jezyk.objects.get_or_create(pk=1, skrot="pol.", nazwa="polski")
     pl.skrot_dla_pbn = "PL"
     pl.save()
