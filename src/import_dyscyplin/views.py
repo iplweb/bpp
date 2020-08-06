@@ -11,8 +11,16 @@ from django.views.generic.detail import BaseDetailView
 from django.views.generic.edit import BaseDeleteView
 
 from bpp.models.const import GR_WPROWADZANIE_DANYCH
-from import_dyscyplin.forms import Import_Dyscyplin_KolumnaForm, KolumnaFormSet, KolumnaFormSetHelper
-from import_dyscyplin.tasks import przeanalizuj_import_dyscyplin, integruj_import_dyscyplin, stworz_kolumny
+from import_dyscyplin.forms import (
+    Import_Dyscyplin_KolumnaForm,
+    KolumnaFormSet,
+    KolumnaFormSetHelper,
+)
+from import_dyscyplin.tasks import (
+    przeanalizuj_import_dyscyplin,
+    integruj_import_dyscyplin,
+    stworz_kolumny,
+)
 from .forms import Import_DyscyplinForm
 from .models import Import_Dyscyplin
 
@@ -55,25 +63,27 @@ class KolumnyImport_Dyscyplin(GroupRequiredMixin, TylkoMojeMixin, UpdateView):
     def get_context_data(self, **kwargs):
         data = super(KolumnyImport_Dyscyplin, self).get_context_data(**kwargs)
         if self.request.POST:
-            data['kolumny'] = KolumnaFormSet(self.request.POST)
+            data["kolumny"] = KolumnaFormSet(self.request.POST)
         else:
-            data['kolumny'] = KolumnaFormSet()
+            data["kolumny"] = KolumnaFormSet()
         return data
 
     def get_context_data(self, **kwargs):
         context = super(KolumnyImport_Dyscyplin, self).get_context_data(**kwargs)
         if self.request.POST:
-            context['kolumny_formset'] = KolumnaFormSet(self.request.POST, instance=self.object)
-            context['kolumny_formset'].full_clean()
+            context["kolumny_formset"] = KolumnaFormSet(
+                self.request.POST, instance=self.object
+            )
+            context["kolumny_formset"].full_clean()
         else:
-            context['kolumny_formset'] = KolumnaFormSet(instance=self.object)
-        context['kolumny_formset_helper'] = KolumnaFormSetHelper()
+            context["kolumny_formset"] = KolumnaFormSet(instance=self.object)
+        context["kolumny_formset_helper"] = KolumnaFormSetHelper()
         return context
 
     @transaction.atomic
     def form_valid(self, form):
         context = self.get_context_data(form=form)
-        formset = context['kolumny_formset']
+        formset = context["kolumny_formset"]
         if formset.is_valid():
             self.object.zatwierdz_kolumny()
 
@@ -95,11 +105,13 @@ class DetailImport_Dyscyplin(GroupRequiredMixin, TylkoMojeMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         return super(DetailImport_Dyscyplin, self).get_context_data(
-            notification=self.request.GET.get("notification", "0"),
-            **kwargs)
+            notification=self.request.GET.get("notification", "0"), **kwargs
+        )
 
 
-class UruchomZadaniePrzetwarzania(GroupRequiredMixin, TylkoMojeMixin, DetailView, JSONResponseMixin):
+class UruchomZadaniePrzetwarzania(
+    GroupRequiredMixin, TylkoMojeMixin, DetailView, JSONResponseMixin
+):
     group_required = GR_WPROWADZANIE_DANYCH
     model = Import_Dyscyplin
     task = None
@@ -113,8 +125,10 @@ class UruchomZadaniePrzetwarzania(GroupRequiredMixin, TylkoMojeMixin, DetailView
         self.object.web_page_uid = self.request.GET.get("web_page_uid", "")
 
         start_task = False
-        if self.object.task_id is None \
-                or AsyncResult(self.object.task_id).status == "PENDING":
+        if (
+            self.object.task_id is None
+            or AsyncResult(self.object.task_id).status == "PENDING"
+        ):
             start_task = True
             self.object.task_id = task_id = uuid()
 
@@ -123,8 +137,7 @@ class UruchomZadaniePrzetwarzania(GroupRequiredMixin, TylkoMojeMixin, DetailView
         if start_task:
             transaction.on_commit(
                 lambda self=self: self.task.apply_async(
-                    args=(self.object.pk,),
-                    task_id=task_id
+                    args=(self.object.pk,), task_id=task_id
                 )
             )
 
@@ -152,7 +165,9 @@ class UruchomIntegracjeImport_DyscyplinView(UruchomZadaniePrzetwarzania):
     stan = Import_Dyscyplin.STAN.PRZEANALIZOWANY
 
 
-class UsunImport_Dyscyplin(WprowadzanieDanychRequiredMixin, TylkoMojeMixin, BaseDeleteView):
+class UsunImport_Dyscyplin(
+    WprowadzanieDanychRequiredMixin, TylkoMojeMixin, BaseDeleteView
+):
     success_url = reverse_lazy("import_dyscyplin:index")
 
     def delete(self, request, *args, **kwargs):
@@ -161,14 +176,17 @@ class UsunImport_Dyscyplin(WprowadzanieDanychRequiredMixin, TylkoMojeMixin, Base
             lambda: messages.add_message(
                 self.request,
                 messages.INFO,
-                'Plik importu dyscyplin "%s" został usunięty.' % self.object.plik.name)
+                'Plik importu dyscyplin "%s" został usunięty.' % self.object.plik.name,
+            )
         )
         return super(UsunImport_Dyscyplin, self).delete(request, *args, **kwargs)
 
     get = delete
 
 
-class API_Do_IntegracjiView(WprowadzanieDanychRequiredMixin, TylkoMojeMixin, JSONResponseMixin, BaseDetailView):
+class API_Do_IntegracjiView(
+    WprowadzanieDanychRequiredMixin, TylkoMojeMixin, JSONResponseMixin, BaseDetailView
+):
     func = "poprawne_wiersze_do_integracji"
 
     def get(self, *args, **kw):
@@ -180,15 +198,15 @@ class API_Do_IntegracjiView(WprowadzanieDanychRequiredMixin, TylkoMojeMixin, JSO
         search = self.request.GET.get("search[value]", "")
         if search:
             fn_filtered = fn_filtered.filter(
-                Q(nazwisko__icontains=search) |
-                Q(imiona__icontains=search) |
-                Q(original__nazwa_jednostki__icontains=search) |
-                Q(original__wydział__icontains=search) |
-                Q(info__icontains=search) |
-                Q(dyscyplina__icontains=search) |
-                Q(subdyscyplina__icontains=search) |
-                Q(kod_dyscypliny__icontains=search) |
-                Q(kod_subdyscypliny__icontains=search)
+                Q(nazwisko__icontains=search)
+                | Q(imiona__icontains=search)
+                | Q(original__nazwa_jednostki__icontains=search)
+                | Q(original__wydział__icontains=search)
+                | Q(info__icontains=search)
+                | Q(dyscyplina__icontains=search)
+                | Q(subdyscyplina__icontains=search)
+                | Q(kod_dyscypliny__icontains=search)
+                | Q(kod_subdyscypliny__icontains=search)
             )
 
         start = int(self.request.GET.get("start", 0))
@@ -206,16 +224,16 @@ class API_Do_IntegracjiView(WprowadzanieDanychRequiredMixin, TylkoMojeMixin, JSO
                 "dyscyplina": "dyscyplina__nazwa",
                 "procent_dyscypliny": "procent_dyscypliny",
                 "subdyscyplina": "subdyscyplina__nazwa",
-                "procent_subdyscypliny": "procent_subdyscypliny"
+                "procent_subdyscypliny": "procent_subdyscypliny",
             }
             fld = ordering_mapping.get(fld, fld)
-        if direction != 'asc':
-            fld = '-' + fld
+        if direction != "asc":
+            fld = "-" + fld
 
         fn_output = fn_filtered
         if fld:
             fn_output = fn_output.order_by(fld)
-        fn_output = fn_output[start:start + length]
+        fn_output = fn_output[start : start + length]
 
         recordsTotal = fn.count()
         recordsFiltered = fn_filtered.count()

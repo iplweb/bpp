@@ -2148,3 +2148,83 @@ def utworz_szkielety_ksiazek(logger):
 
         wz.wydawnictwo_nadrzedne = wn
         wz.save()
+
+
+@transaction.atomic
+def integruj_dyscypliny():
+    for rec in dbf.Dys.objects.all():
+        aut = dbf.Aut.objects.filter(orcid_id=rec.orcid_id).first()
+        if aut is None:
+            warnings.warn(f"ORCID {rec.orcid_id} nie ma przypisanego autora w bazie!")
+            continue
+
+        if aut.bpp_autor_id is None:
+            warnings.warn(
+                f"Autor z expertusowym ORICDem {rec.orcid_id} nie ma autora po stronie BPP"
+            )
+            continue
+
+        aut = bpp.Autor.objects.get(id=aut.bpp_autor_id)
+
+        for literka, rok in [
+            ("a", 2017),
+            ("b", 2018),
+            ("c", 2019),
+            ("d", 2020),
+        ]:
+            try:
+                dys = getattr(rec, f"{literka}_dysc_1")
+            except dbf.Ldy.DoesNotExist:
+                continue
+            pro_dys = getattr(rec, f"{literka}_dysc_1_e")
+
+            try:
+                dys = bpp.Dyscyplina_Naukowa.objects.get(
+                    kod=dys.id.replace("0", "").strip()
+                )
+            except bpp.Dyscyplina_Naukowa.DoesNotExist:
+                warnings.warn(f"Nie mam kodu na dyscypline f{dys}, tworze")
+                dys = bpp.Dyscyplina_Naukowa.objects.create(
+                    kod=dys.id.replace("0", "").strip(),
+                    widoczna=True,
+                    nazwa=dys.dyscyplina,
+                )
+
+            try:
+                subdys = getattr(rec, f"{literka}_dysc_2")
+                pro_subdys = getattr(rec, f"{literka}_dysc_2_e")
+            except dbf.Ldy.DoesNotExist:
+                subdys = None
+                pro_subdys = None
+
+            if subdys is not None:
+                try:
+                    subdys = bpp.Dyscyplina_Naukowa.objects.get(
+                        kod=subdys.id.replace("0", "").strip()
+                    )
+                except bpp.Dyscyplina_Naukowa.DoesNotExist:
+                    warnings.warn(f"Nie mam kodu na dyscypline f{subdys}, tworze")
+                    subdys = bpp.Dyscyplina_Naukowa.objects.create(
+                        kod=subdys.id.replace("0", "").strip(),
+                        widoczna=True,
+                        nazwa=subdys.dyscyplina,
+                    )
+
+            kw = dict(
+                rok=rok,
+                autor=aut,
+                rodzaj_autora=getattr(rec, f"{literka}_n"),
+                dyscyplina_naukowa=dys,
+                procent_dyscypliny=pro_dys,
+                subdyscyplina_naukowa=subdys,
+                procent_subdyscypliny=pro_subdys,
+            )
+            try:
+                warnings.warn(f"Autor {aut} ma powyzej 1 wpisu")
+                juz = bpp.Autor_Dyscyplina.objects.get(rok=rok, autor=aut)
+                for key, value in kw.items():
+                    setattr(juz, key, value)
+                juz.save()
+                continue
+            except bpp.Autor_Dyscyplina.DoesNotExist:
+                bpp.Autor_Dyscyplina.objects.create(**kw)

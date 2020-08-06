@@ -20,6 +20,7 @@ from bpp.models import const
 #  08     | Dziedzina sztuki
 # (8 rows)
 
+
 def mnoznik_dla_monografii(kod_dziedziny, tryb_kalkulacji, punktacja_monografii):
     """
     § 12.
@@ -56,7 +57,9 @@ def mnoznik_dla_monografii(kod_dziedziny, tryb_kalkulacji, punktacja_monografii)
                 return 1.5
 
         else:
-            raise NotImplementedError(f"Nieobsługiwany tryb kalkulacji: {tryb_kalkulacji}")
+            raise NotImplementedError(
+                f"Nieobsługiwany tryb kalkulacji: {tryb_kalkulacji}"
+            )
 
     return 1
 
@@ -85,7 +88,9 @@ class Dyscyplina_Naukowa(models.Model):
             return const.DZIEDZINY.get(const.DZIEDZINA(kod_dziedziny))
 
     def mnoznik_dla_monografi(self, tryb_kalkulacji, punktacja_monografi):
-        return mnoznik_dla_monografii(self.kod_dziedziny(), tryb_kalkulacji, punktacja_monografi)
+        return mnoznik_dla_monografii(
+            self.kod_dziedziny(), tryb_kalkulacji, punktacja_monografi
+        )
 
 
 class Autor_DyscyplinaManager(models.Manager):
@@ -110,19 +115,28 @@ class Autor_Dyscyplina(models.Model):
     rok = PositiveSmallIntegerField()
     autor = models.ForeignKey("bpp.Autor", CASCADE)
 
-    dyscyplina_naukowa = models.ForeignKey("bpp.Dyscyplina_Naukowa", models.PROTECT, related_name="dyscyplina")
-    procent_dyscypliny = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    dyscyplina_naukowa = models.ForeignKey(
+        "bpp.Dyscyplina_Naukowa", models.PROTECT, related_name="dyscyplina"
+    )
+    procent_dyscypliny = models.DecimalField(
+        max_digits=5, decimal_places=2, null=True, blank=True
+    )
 
-    subdyscyplina_naukowa = models.ForeignKey("bpp.Dyscyplina_Naukowa", models.PROTECT, related_name="subdyscyplina",
-                                              blank=True, null=True)
-    procent_subdyscypliny = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    subdyscyplina_naukowa = models.ForeignKey(
+        "bpp.Dyscyplina_Naukowa",
+        models.PROTECT,
+        related_name="subdyscyplina",
+        blank=True,
+        null=True,
+    )
+    procent_subdyscypliny = models.DecimalField(
+        max_digits=5, decimal_places=2, null=True, blank=True
+    )
 
     objects = Autor_DyscyplinaManager()
 
     class Meta:
-        unique_together = [
-            ('rok', 'autor')
-        ]
+        unique_together = [("rok", "autor")]
         verbose_name = "powiązanie autora z dyscypliną naukową"
         verbose_name_plural = "powiązania autorów z dyscyplinami naukowymi"
 
@@ -131,8 +145,14 @@ class Autor_Dyscyplina(models.Model):
         p2 = self.procent_subdyscypliny or Decimal("0.00")
 
         if p1 + p2 > Decimal("100.00"):
-            raise ValidationError({"procent_dyscypliny": "Suma procentów przekracza 100."})
+            raise ValidationError(
+                {"procent_dyscypliny": "Suma procentów przekracza 100."}
+            )
 
-        if hasattr(self, 'dyscyplina_naukowa') and hasattr(self, 'subdyscyplina_naukowa'):
+        if hasattr(self, "dyscyplina_naukowa") and hasattr(
+            self, "subdyscyplina_naukowa"
+        ):
             if self.dyscyplina_naukowa_id == self.subdyscyplina_naukowa_id:
-                raise ValidationError({"subdyscyplina_naukowa": "Wpisano tą samą dyscyplinę dwukrotnie."})
+                raise ValidationError(
+                    {"subdyscyplina_naukowa": "Wpisano tą samą dyscyplinę dwukrotnie."}
+                )

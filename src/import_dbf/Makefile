@@ -72,7 +72,8 @@ integruj-dbf-publikacje-pre: integruj-dbf-charakter-kbn-jezyk integruj-dbf-zrodl
 
 integruj-dbf-publikacje-post:
 	$(MANAGE) integruj_dbf --enable-publikacja &> integruj-dbf-publikacja-log.txt
-ifneq ($(CUSTOMER),CMKP)
+ifeq ($(CUSTOMER),CMKP)
+else
 	$(MANAGE) integruj_dbf --enable-grupy-punktowe > integruj-dbf-grupy-punktowe-log.txt
 endif
 	$(MANAGE) integruj_dbf --enable-zatwierdz-podwojne-przypisania
