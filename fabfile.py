@@ -1,5 +1,7 @@
-from fabric import task, Connection
 import os
+from time import time
+
+from fabric import Connection, task
 
 
 @task
@@ -10,3 +12,16 @@ def getdb(c, db_name="bpp", fn="dump.psql"):
 
     c.local(f"/opt/local/bin/dropdb -U postgres {db_name} || true")
     c.local(f"/opt/local/bin/pg_restore -U postgres -j 6  -C -d template1 {fn}")
+
+
+@task
+def putdb(c, db_name="bpp", fn="dump.psql"):
+    c.local(f"/opt/local/bin/pg_dump -U postgres -Fc {db_name} > /tmp/{fn}")
+    c.put(f"/tmp/{fn}")
+
+    c.sudo(f"supervisorctl stop all")
+    c.sudo(f"pg_dump -Fc {db_name} > backup-{time()}.fabfile.sql", user="postgres")
+    c.sudo(f"dropdb {db_name}", user="postgres")
+    c.sudo(f"pg_restore -j 6 -C -d template1 {fn}", user="postgres")
+    c.sudo(f"supervisorctl start all")
+    c.local(f"rm /tmp/{fn}")

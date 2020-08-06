@@ -5,6 +5,7 @@ endif
 
 ifeq ($(CUSTOMER),CMKP)
 NAZWA_OBCEJ_JEDNOSTKI=*Obcy dla CMKP
+ADRES_SERWERA=bpp.cmkp.edu.pl
 else
 NAZWA_OBCEJ_JEDNOSTKI=obcy
 endif
@@ -56,19 +57,26 @@ else
 	echo "*** Brak danych do importu dyscypliny"
 endif
 
-integruj-dbf-publikacje-pre:
+integruj-dbf-charakter-kbn-jezyk:
 ifeq ($(CUSTOMER),UMWroclaw)
 	$(MANAGE) integruj_dbf --enable-charakter-kbn-jezyk --charaktery-enrichment-xls $(ASSETS_DIR)/bg-umw/charaktery_formalne.xlsx
 else
 	$(MANAGE) integruj_dbf --enable-charakter-kbn-jezyk
 endif
+
+integruj-dbf-zrodlo:
 	$(MANAGE) integruj_dbf --enable-zrodlo
 	$(MANAGE) rozszerz_skroty_zrodel $(ASSETS_DIR)/bg-umw/zrodla.xlsx
+
+integruj-dbf-publikacje-pre: integruj-dbf-charakter-kbn-jezyk integruj-dbf-zrodlo
 	$(PG_DUMP) > pre-integruj-dbf-enable-publikacja.sql
 
 integruj-dbf-publikacje-post:
 	$(MANAGE) integruj_dbf --enable-publikacja &> integruj-dbf-publikacja-log.txt
+ifeq ($(CUSTOMER),CMKP)
+else
 	$(MANAGE) integruj_dbf --enable-grupy-punktowe > integruj-dbf-grupy-punktowe-log.txt
+endif
 	$(MANAGE) integruj_dbf --enable-zatwierdz-podwojne-przypisania
 	$(MANAGE) integruj_dbf --enable-b-a
 	$(MANAGE) integruj_dbf --enable-przypisz-jednostki
@@ -188,7 +196,7 @@ integrate: disable-trigger integruj-dbf integruj-liste-wydawcow ustaw-obca-jedno
 	enable-trigger dodaj-aktualnosc usun-nieuzywane-charaktery-kbny
 
 set-site-name:
-	$(MANAGE) set_site_name --name bpp.umed.wroc.pl --domain bpp.umed.wroc.pl
+	$(MANAGE) set_site_name --name $(ADRES_SERWERA) --domain $(ADRES_SERWERA)
 
 rebuild: import-dbf integrate set-site-name
 

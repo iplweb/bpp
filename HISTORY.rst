@@ -7,6 +7,7 @@ Historia zmian
 
 * import danych o dyscyplinach autorów z plików DBF (b/n),
 * dodatkowe pola "rodzaj autora" oraz "wymiar etatu" (b/n),
+* import danych grantów, nr odbitek i liczne drobne poprawki importu DBF (b/n),
 
 202007.41
 ---------

@@ -7,16 +7,18 @@ from django.template.defaultfilters import stringfilter
 register = template.Library()
 
 
-@register.filter(name='message_level_to_css_class')
+@register.filter(name="message_level_to_css_class")
 @stringfilter
 def message_level_to_css_class(value):
     from django.contrib.messages import constants
 
     return constants.DEFAULT_TAGS.get(int(value))
 
+
 #
 # https://djangosnippets.org/snippets/1356/
 #
+
 
 class UUIDNode(Node):
     """
@@ -28,7 +30,7 @@ class UUIDNode(Node):
 
     def render(self, context):
         context[self.var_name] = str(uuid4())
-        return ''
+        return ""
 
 
 def do_uuid(parser, token):
@@ -43,8 +45,10 @@ def do_uuid(parser, token):
     try:
         tag_name, var_name = token.split_contents()
     except ValueError:
-        raise TemplateSyntaxError("%r tag requires exactly one argument" % token.contents.split()[0])
+        raise TemplateSyntaxError(
+            "%r tag requires exactly one argument" % token.contents.split()[0]
+        )
     return UUIDNode(var_name)
 
 
-do_uuid = register.tag('uuid', do_uuid)
+do_uuid = register.tag("uuid", do_uuid)

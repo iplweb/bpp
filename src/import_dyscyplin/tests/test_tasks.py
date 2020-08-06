@@ -8,15 +8,14 @@ from import_dyscyplin.tasks import przeanalizuj_import_dyscyplin
 
 
 def test_przeanalizuj_import_dyscyplin(
-        test1_xlsx, normal_django_user,
-        mocker, transactional_db):
+    test1_xlsx, normal_django_user, mocker, transactional_db
+):
 
     web_page_uid = "foobar_uid"
 
     with transaction.atomic():
         i = Import_Dyscyplin.objects.create(
-            owner=normal_django_user,
-            web_page_uid=web_page_uid
+            owner=normal_django_user, web_page_uid=web_page_uid
         )
         i.plik.save("test1.xls", ContentFile(open(test1_xlsx, "rb").read()))
         path = i.plik.path
@@ -25,9 +24,8 @@ def test_przeanalizuj_import_dyscyplin(
 
     przeanalizuj_import_dyscyplin.delay(i.pk)
 
-    link = '/import_dyscyplin/detail/%s/?notification=1' % i.pk
+    link = "/import_dyscyplin/detail/%s/?notification=1" % i.pk
 
     notifications.send_redirect.assert_called_once_with(
-        NORMAL_DJANGO_USER_LOGIN,
-        link,
-        web_page_uid)
+        NORMAL_DJANGO_USER_LOGIN, link, web_page_uid
+    )

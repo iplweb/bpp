@@ -12,9 +12,7 @@ def wait_for(condition_function):
             return True
         else:
             time.sleep(0.1)
-    raise TimeoutError(
-        'Timeout waiting for {}'.format(condition_function.__name__)
-    )
+    raise TimeoutError("Timeout waiting for {}".format(condition_function.__name__))
 
 
 class wait_for_page_load(object):
@@ -22,9 +20,7 @@ class wait_for_page_load(object):
         self.browser = browser
 
     def __enter__(self):
-        self.old_page = self.browser.find_by_tag('html')[0]._element
+        self.old_page = self.browser.find_by_tag("html")[0]._element
 
     def __exit__(self, *_):
-        WebDriverWait(self.browser, 10).until(
-            staleness_of(self.old_page)
-        )
+        WebDriverWait(self.browser, 10).until(staleness_of(self.old_page))

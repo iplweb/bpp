@@ -9,17 +9,32 @@ from django.http.response import HttpResponseRedirect
 
 from .conf import defaults
 
+
 def get_pub_path(username):
     from django.conf import settings
+
     path = getattr(settings, "NOTIFICATIONS_PUB_PATH", defaults.NOTIFICATIONS_PUB_PATH)
-    prefix = getattr(settings, "NOTIFICATIONS_PUB_PREFIX", defaults.NOTIFICATIONS_PUB_PREFIX)
+    prefix = getattr(
+        settings, "NOTIFICATIONS_PUB_PREFIX", defaults.NOTIFICATIONS_PUB_PREFIX
+    )
     return path % dict(username=username, prefix=prefix)
 
 
-Message = namedtuple("Message", "text cssClass clickURL hideCloseOption closeURL closeText")
-Message.__new__.__defaults__ = (      'info',  None,    False,          None,    '&times;')
+Message = namedtuple(
+    "Message", "text cssClass clickURL hideCloseOption closeURL closeText"
+)
+Message.__new__.__defaults__ = ("info", None, False, None, "&times;")
 
-def send_notification(request_or_username, level, text, get_pub_path=get_pub_path, verbose=False, closeURL=None, ignore_proxy_settings=False):
+
+def send_notification(
+    request_or_username,
+    level,
+    text,
+    get_pub_path=get_pub_path,
+    verbose=False,
+    closeURL=None,
+    ignore_proxy_settings=False,
+):
     from django.conf import settings
 
     proto = getattr(settings, "NOTIFICATIONS_PROTOCOL", defaults.NOTIFICATIONS_PROTOCOL)
@@ -27,7 +42,7 @@ def send_notification(request_or_username, level, text, get_pub_path=get_pub_pat
     port = getattr(settings, "NOTIFICATIONS_PORT", defaults.NOTIFICATIONS_PORT)
 
     username = request_or_username
-    if hasattr(username, 'user') and hasattr(username.user, 'username'):
+    if hasattr(username, "user") and hasattr(username.user, "username"):
         username = request_or_username.user.username
 
     path = get_pub_path(username)
@@ -38,10 +53,10 @@ def send_notification(request_or_username, level, text, get_pub_path=get_pub_pat
     url = "%s://%s%s%s" % (proto, host, port or "", path)
 
     data = json.dumps(
-        Message(text=text,
-                cssClass=DEFAULT_TAGS.get(level),
-                closeURL=closeURL
-                )._asdict())
+        Message(
+            text=text, cssClass=DEFAULT_TAGS.get(level), closeURL=closeURL
+        )._asdict()
+    )
 
     if verbose:
         print("Posting to %r data %r" % (url, data))
@@ -56,7 +71,7 @@ def send_notification(request_or_username, level, text, get_pub_path=get_pub_pat
         print(res.content)
 
 
-def send_redirect(username, redirect_url,  messageCookieId, ignore_proxy_settings=False):
+def send_redirect(username, redirect_url, messageCookieId, ignore_proxy_settings=False):
     """
 
     :param request_or_username: request lub nazwa użytkownika, który ma zostać poinformowany
@@ -67,6 +82,7 @@ def send_redirect(username, redirect_url,  messageCookieId, ignore_proxy_setting
     """
 
     from django.conf import settings
+
     proto = getattr(settings, "NOTIFICATIONS_PROTOCOL", defaults.NOTIFICATIONS_PROTOCOL)
     host = getattr(settings, "NOTIFICATIONS_HOST", defaults.NOTIFICATIONS_HOST)
     port = getattr(settings, "NOTIFICATIONS_PORT", defaults.NOTIFICATIONS_PORT)
@@ -78,11 +94,10 @@ def send_redirect(username, redirect_url,  messageCookieId, ignore_proxy_setting
 
     url = "%s://%s%s%s" % (proto, host, port or "", path)
 
-    data=json.dumps(dict(url=redirect_url, cookieId=messageCookieId))
+    data = json.dumps(dict(url=redirect_url, cookieId=messageCookieId))
 
     session = requests.Session()
     if ignore_proxy_settings:
         session.trust_env = False
 
     return session.post(url=url, data=data)
-

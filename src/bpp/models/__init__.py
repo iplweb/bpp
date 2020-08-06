@@ -41,6 +41,10 @@ from bpp.models.seria_wydawnicza import *
 
 from bpp.models.konferencja import *
 
+from bpp.models.repozytorium import Element_Repozytorium
+
+from bpp.models.grant import Grant
+
 TABLE_TO_MODEL = {
     "bpp_wydawnictwo_ciagle": Wydawnictwo_Ciagle,
     "bpp_wydawnictwo_zwarte": Wydawnictwo_Zwarte,

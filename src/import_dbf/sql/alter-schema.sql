@@ -141,4 +141,7 @@ UPDATE import_dbf_bib SET title = REPLACE(title, '</DN>', '</sub>') WHERE title 
 
 UPDATE import_dbf_aut SET ref = NULL WHERE ref not in (select idt_aut from import_dbf_aut);
 
+-- Ustawia jednostke 'brak jednostki' tam gdzie jest NULL jako jednostka w tabeli b_a
+UPDATE import_dbf_b_a SET idt_jed = (SELECT idt_jed from import_dbf_jed WHERE UPPER(nazwa) = 'BRAK JEDNOSTKI') WHERE idt_jed IS NULL;
+
 COMMIT;
