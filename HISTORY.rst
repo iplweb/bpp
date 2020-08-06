@@ -2,6 +2,12 @@
 Historia zmian
 ==============
 
+202008.42
+---------
+
+* import danych o dyscyplinach autorów z plików DBF (b/n),
+* dodatkowe pola "rodzaj autora" oraz "wymiar etatu" (b/n),
+
 202007.41
 ---------
 

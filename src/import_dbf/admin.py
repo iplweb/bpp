@@ -24,6 +24,7 @@ from import_dbf.models import (
     Jez,
     Loc,
     Bib_Desc,
+    Dys,
 )
 
 
@@ -214,6 +215,17 @@ class WydAdmin(ImportDbfBaseAdmin):
 @admin.register(Ldy)
 class LdyAdmin(ImportDbfBaseAdmin):
     list_display = ["id", "dziedzina", "dyscyplina"]
+
+
+@admin.register(Dys)
+class DysAdmin(ImportDbfBaseAdmin):
+    list_display = [
+        "orcid_id",
+        "a_dysc_1",
+        "b_dysc_1",
+        "c_dysc_1",
+        "d_dysc_1",
+    ]
 
 
 @admin.register(B_E)

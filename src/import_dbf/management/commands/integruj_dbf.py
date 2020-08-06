@@ -34,6 +34,7 @@ from import_dbf.util import (
     set_sequences,
     przypisz_grupy_punktowe,
     utworz_szkielety_ksiazek,
+    integruj_dyscypliny,
 )
 
 django.setup()
@@ -54,6 +55,7 @@ class Command(BaseCommand):
         parser.add_argument("--enable-wydzial", action="store_true")
         parser.add_argument("--enable-jednostka", action="store_true")
         parser.add_argument("--enable-autor", action="store_true")
+        parser.add_argument("--enable-dyscypliny", action="store_true")
         parser.add_argument("--enable-publikacja", action="store_true")
         parser.add_argument("--enable-grupy-punktowe", action="store_true")
         parser.add_argument("--enable-szkielety-ksiazek", action="store_true")
@@ -134,6 +136,9 @@ class Command(BaseCommand):
             pool.apply(integruj_autorow)
             logger.debug("Sprawdzam czy wszyscy sa przypisani")
             pool.apply(sprawdz_zamapowanie_autorow)
+
+        if enable_all or options["enable_dyscypliny"]:
+            pool.apply(integruj_dyscypliny)
 
         if enable_all or options["enable_charakter_kbn_jezyk"]:
             pool.apply(integruj_charaktery)
