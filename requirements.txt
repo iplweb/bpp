@@ -69,8 +69,9 @@ django-appconf==1.0.3 \
 django-autocomplete-light==3.5.1 \
     --hash=sha256:52e8d468060a5911c44300a374d74058c90e65bfdf87ace151abac67279c4ae5 \
     # via -r requirements.in, django-multiseek
-django-autoslug-iplweb==1.9.5 \
-    --hash=sha256:ddfeebde991bc49588650ccae41f5f940d583d5af08cb14f8968d1fa71d5ae07 \
+django-autoslug==1.9.8 \
+    --hash=sha256:26459eeddec207e307c55777a10fc25d17f4978753695340b16a17ed248a6f70 \
+    --hash=sha256:bae66c27d35615f472865b99c4d107f3b3add3d22ee337e84960fc07694abd45 \
     # via -r requirements.in
 django-braces==1.14.0 \
     --hash=sha256:83705b78948de00804bfacf40c315d001bb39630f35bbdd8588211c2d5b4d43f \
