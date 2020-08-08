@@ -32,7 +32,7 @@ class Command(BaseCommand):
     # @transaction.atomic
     def handle(self, *args, **options):
         # Jeżeli będziemy to robić z włączonym cache, dojdzie do przyblokowania
-        # kolejki RabbitMQ. Realnie renumeracja kolejności nie pociąga za sobą zmiany
+        # kolejki Celery. Realnie renumeracja kolejności nie pociąga za sobą zmiany
         # w opisach bibliograficznych, więc musimy to wyłączyć:
         from bpp.models import cache
 
