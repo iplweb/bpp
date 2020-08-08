@@ -228,8 +228,8 @@ django-loginas==0.3.8 \
     --hash=sha256:0a6f956fdbb2184d8b33e7d71528dea1762f0507c7dcedfc9403996b0541c148 \
     --hash=sha256:5179434a85eb0244f0d0a4a9f7d3e293fa907abc540e1a75f1a4d13c0d26b929 \
     # via -r requirements.in
-https://github.com/AliLozano/django-messages-extends/archive/0.6.1.zip#egg=django-messages-extends==0.6.1 \
-    --hash=sha256:caadd82ad965dfec7468462ba0dce2e59baf33962297835fceeb981f209d017f \
+django-messages-extends==0.6.2 \
+    --hash=sha256:4d334f5bd0f77af9e6bfebc5062a6e8a4433a60821ace6b8bcffc96a06cc7d64 \
     # via -r requirements.in
 django-model-utils==4.0.0 \
     --hash=sha256:9cf882e5b604421b62dbe57ad2b18464dc9c8f963fc3f9831badccae66c1139c \
