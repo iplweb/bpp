@@ -529,26 +529,29 @@ CHANNEL_LAYERS = {
 
 # "Wszytko na stdout" konfiguracja logowania poniżej
 
-import logging.config
+LOG_EVERYTHING = False
 
-LOGGING_CONFIG = None
-logging.config.dictConfig(
-    {
-        "version": 1,
-        "disable_existing_loggers": False,
-        "formatters": {
-            "console": {
-                # exact format is not important, this is the minimum information
-                "format": "%(asctime)s %(name)-12s %(levelname)-8s %(message)s",
+if LOG_EVERYTHING:
+    import logging.config
+
+    LOGGING_CONFIG = None
+    logging.config.dictConfig(
+        {
+            "version": 1,
+            "disable_existing_loggers": False,
+            "formatters": {
+                "console": {
+                    # exact format is not important, this is the minimum information
+                    "format": "%(asctime)s %(name)-12s %(levelname)-8s %(message)s",
+                },
             },
-        },
-        "handlers": {
-            "console": {"class": "logging.StreamHandler", "formatter": "console",},
-            # Add Handler for Sentry for `warning` and above
-        },
-        "loggers": {
-            # root logger
-            "": {"level": "DEBUG", "handlers": ["console",],},
-        },
-    }
-)
+            "handlers": {
+                "console": {"class": "logging.StreamHandler", "formatter": "console",},
+                # Add Handler for Sentry for `warning` and above
+            },
+            "loggers": {
+                # root logger
+                "": {"level": "DEBUG", "handlers": ["console",],},
+            },
+        }
+    )
