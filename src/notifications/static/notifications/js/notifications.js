@@ -5,7 +5,9 @@ bppNotifications.init = function (soundAlertPath, extraChannels) {
     if (window.Audio && soundAlertPath)
         this.messageAlertSound = new window.Audio(soundAlertPath);
 
-    var url = 'wss://' + window.location.host  + '/asgi/notifications/';
+    var url = (window.location.protocol == "https:" ? "wss:" : "ws:");
+
+    url += "//" + window.location.host  + '/asgi/notifications/';
     if (extraChannels)
         url += '?extraChannels=' + encodeURIComponent(extraChannels);
 
