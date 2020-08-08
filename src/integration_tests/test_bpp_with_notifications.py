@@ -1,7 +1,9 @@
 # -*- encoding: utf-8 -*-
 
 import time
+from time import time, sleep
 
+from channels.testing import ChannelsLiveServerTestCase
 from django.core.management import call_command
 
 #
@@ -19,6 +21,11 @@ from django.core.management import call_command
 #
 # POTEM AUTORYZACJA JAKAS MOZE na te komunikaty
 # tzn. najbardziej to na WYSYLANIE by sie przydala.
+from splinter import Browser
+
+from bpp.models import Wydawnictwo_Zwarte
+from bpp.util import get_fixture
+
 try:
     from django.core.urlresolvers import reverse
 except ImportError:
@@ -28,7 +35,7 @@ from selenium.webdriver.support.wait import WebDriverWait
 
 from bpp.models.system import Charakter_Formalny, Status_Korekty, Jezyk, Typ_KBN
 from conftest import NORMAL_DJANGO_USER_PASSWORD
-from django_bpp.selenium_util import wait_for_page_load
+from django_bpp.selenium_util import wait_for_page_load, wait_for_websocket_connection
 
 pytestmark = [pytest.mark.slow, pytest.mark.selenium]
 
@@ -73,34 +80,60 @@ def test_caching_enabled(admin_app, zrodlo, standard_data, transactional_db):
     assert found
 
 
-def test_bpp_notifications(preauth_browser):
+def test_live_server(live_server, browser):
+    browser.visit(live_server.url)
+    assert "Wystąpił błąd" not in browser.html
+
+
+@pytest.mark.django_db(transaction=True)
+def test_asgi_live_server(preauth_asgi_browser):
+
+    s = "test notyfikacji 123 456"
+    call_command(
+        "send_notification",
+        preauth_asgi_browser.authorized_user.username,
+        s,
+        verbosity=0,
+    )
+
+    WebDriverWait(preauth_asgi_browser, 10).until(
+        lambda browser: browser.is_text_present(s)
+    )
+
+
+def test_bpp_notifications(preauth_asgi_browser):
     """Sprawdz, czy notyfikacje dochodza.
     Wymaga uruchomionego staging-server.
     """
     s = "test notyfikacji 123 456"
-    assert preauth_browser.is_text_not_present(s)
+    assert preauth_asgi_browser.is_text_not_present(s)
     call_command(
-        "send_notification", preauth_browser.authorized_user.username, s, verbosity=0
+        "send_notification",
+        preauth_asgi_browser.authorized_user.username,
+        s,
+        verbosity=0,
     )
-    assert preauth_browser.is_text_present(s)
+    assert preauth_asgi_browser.is_text_present(s)
 
 
-def test_bpp_notifications_and_messages(preauth_browser, nginx_live_server, settings):
-    """Sprawdz, czy notyfikacje dochodza.
-    Wymaga uruchomionego staging-server.
-    """
-    settings.NOTIFICATIONS_HOST = nginx_live_server.host
-    settings.NOTIFICATIONS_PORT = nginx_live_server.port
+def test_bpp_notifications_and_messages(preauth_asgi_browser):
+    """Sprawdz, czy notyfikacje dochodza. """
 
     s = "test notyfikacji 123 456 902309093209092"
-    assert preauth_browser.is_text_not_present(s)
-    call_command("send_message", preauth_browser.authorized_user.username, s)
-    WebDriverWait(preauth_browser, 10).until(lambda browser: browser.is_text_present(s))
+    assert preauth_asgi_browser.is_text_not_present(s)
 
-    with wait_for_page_load(preauth_browser):
-        preauth_browser.reload()
+    call_command("send_message", preauth_asgi_browser.authorized_user.username, s)
 
-    WebDriverWait(preauth_browser, 10).until(lambda browser: browser.is_text_present(s))
+    WebDriverWait(preauth_asgi_browser, 10).until(
+        lambda browser: browser.is_text_present(s)
+    )
+
+    with wait_for_page_load(preauth_asgi_browser):
+        preauth_asgi_browser.reload()
+
+    WebDriverWait(preauth_asgi_browser, 10).until(
+        lambda browser: browser.is_text_present(s)
+    )
 
 
 def test_preauth_browser(preauth_browser, live_server):
@@ -112,9 +145,9 @@ def test_preauth_browser(preauth_browser, live_server):
     )
 
 
-def test_preauth_admin_browser(preauth_admin_browser, nginx_live_server):
+def test_preauth_admin_browser(preauth_admin_browser, asgi_live_server):
     """Sprawdz, czy pre-autoryzowany browser admina funkcjonuje poprawnie"""
-    preauth_admin_browser.visit(nginx_live_server.url + "/admin/")
+    preauth_admin_browser.visit(asgi_live_server.url + "/admin/")
     assert preauth_admin_browser.is_text_present(u"Administracja stron")
 
 

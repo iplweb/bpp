@@ -4,17 +4,12 @@ from django.urls import reverse
 from import_dyscyplin.models import Import_Dyscyplin, Import_Dyscyplin_Row
 
 
-def extract_messageCookieId(html_source):
-    return html_source.split("tests_need_this:messageCookieID:")[1][:36]
-
-
 def wyslij(wd_app, plik):
     assert Import_Dyscyplin.objects.all().count() == 0
     c = wd_app.get(reverse("import_dyscyplin:create")).maybe_follow()
     c.forms[0]["plik"].value = [
         plik,
     ]
-    c.forms[0]["web_page_uid"] = extract_messageCookieId(c.testbody)
     res = c.forms[0].submit().maybe_follow()
     assert Import_Dyscyplin.objects.all().count() == 1
 
@@ -66,10 +61,6 @@ def test_ListImport_Dyscyplin(wd_app, test1_xlsx):
 
 def test_UruchomPrzetwarzanieImport_Dyscyplin(wd_app, test1_xlsx):
     wyslij(wd_app, test1_xlsx)
-
-    i = Import_Dyscyplin.objects.all().first()
-    g = wd_app.get(reverse("import_dyscyplin:stworz_kolumny", args=(i.pk,)))
-    assert g.json["status"] == "ok"
 
     i = Import_Dyscyplin.objects.all().first()
     i.stworz_kolumny()

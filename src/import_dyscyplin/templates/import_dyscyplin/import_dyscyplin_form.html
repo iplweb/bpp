@@ -15,9 +15,4 @@
 {% block content %}
     {% load crispy_forms_tags %}
     {% crispy form %}
-    <script>
-    $(document).ready(function(){
-        document.getElementsByName("web_page_uid")[0].value = bppNotifications.messageCookieId;
-    });
-    </script>
 {% endblock %}

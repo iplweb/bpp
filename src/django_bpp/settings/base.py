@@ -79,7 +79,6 @@ TEMPLATES = [
                 "bpp.context_processors.config.enable_new_reports",
                 "bpp.context_processors.global_nav.user",
                 "bpp.context_processors.google_analytics.google_analytics",
-                "notifications.context_processors.notification_settings",
             ],
         },
     },
@@ -110,6 +109,7 @@ ROOT_URLCONF = "django_bpp.urls"
 WSGI_APPLICATION = "django_bpp.wsgi.application"
 
 INSTALLED_APPS = [
+    "channels",
     "django.contrib.humanize",
     "django.contrib.contenttypes",
     "django.contrib.auth",
@@ -355,8 +355,6 @@ SESSION_SERIALIZER = "django.contrib.sessions.serializers.PickleSerializer"
 
 MESSAGE_STORAGE = "messages_extends.storages.FallbackStorage"
 
-NOTIFICATIONS_PUB_PREFIX = "django_bpp"
-
 TEST_NON_SERIALIZED_APPS = ["django.contrib.contenttypes", "django.contrib.auth"]
 
 TESTING = (
@@ -402,11 +400,6 @@ def can_login_as(request, target_user):
 CAN_LOGIN_AS = can_login_as
 
 #
-
-# host dla HTMLu oraz linii polecen, reszta dla linii polecen (bo HTML sie autokonfiguruje...)
-NOTIFICATIONS_HOST = django_getenv("DJANGO_BPP_NOTIFICATIONS_HOST", "127.0.0.1")
-NOTIFICATIONS_PORT = django_getenv("DJANGO_BPP_NOTIFICATIONS_PORT", 80)
-NOTIFICATIONS_PROTOCOL = django_getenv("DJANGO_BPP_NOTIFICATIONS_PROTOCOL", "http")
 
 MEDIA_ROOT = django_getenv("DJANGO_BPP_MEDIA_ROOT", os.getenv("HOME", "C:/bpp-media"))
 
@@ -523,3 +516,39 @@ REST_FRAMEWORK = {
 BPP_WALIDUJ_AFILIACJE_AUTOROW = (
     os.getenv("DJANGO_BPP_WALIDUJ_AFILIACJE_AUTOROW", "tak") == "tak"
 )
+
+
+ASGI_APPLICATION = "django_bpp.routing.application"
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {"hosts": [(REDIS_HOST, REDIS_PORT)],},
+    },
+}
+
+#
+# "Wszytko na stdout" konfiguracja logowania poniżej
+#
+# import logging.config
+#
+# LOGGING_CONFIG = None
+# logging.config.dictConfig(
+#     {
+#         "version": 1,
+#         "disable_existing_loggers": False,
+#         "formatters": {
+#             "console": {
+#                 # exact format is not important, this is the minimum information
+#                 "format": "%(asctime)s %(name)-12s %(levelname)-8s %(message)s",
+#             },
+#         },
+#         "handlers": {
+#             "console": {"class": "logging.StreamHandler", "formatter": "console",},
+#             # Add Handler for Sentry for `warning` and above
+#         },
+#         "loggers": {
+#             # root logger
+#             "": {"level": "DEBUG", "handlers": ["console",],},
+#         },
+#     }
+# )

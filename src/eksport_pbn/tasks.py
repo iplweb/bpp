@@ -62,7 +62,7 @@ def eksport_pbn(pk, max_file_size=1024 * 1024):
     rokstr = obj.get_rok_string()
 
     def informuj(msg, dont_persist=True):
-        call_command("send_message", user, msg, no_persist=dont_persist)
+        call_command("send_message", user, msg, dont_persist=dont_persist)
 
     def gen_ser():
         if artykuly:

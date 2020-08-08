@@ -8,7 +8,7 @@ jobs:
     #     - dev
 
     docker:
-      - image: mpasternak79/circleci-python:3.7-node-browsers-nginx-http-push
+      - image: circleci/python:3.7-node-browsers
         environment:
           PGUSER: postgres
           PGHOST: localhost
@@ -18,6 +18,7 @@ jobs:
           DJANGO_SETTINGS_MODULE: django_bpp.settings.test
       - image: mpasternak79/circleci-postgres:12
       - image: rabbitmq:latest
+      - image: redis:latest
 
     steps:
       - setup_remote_docker

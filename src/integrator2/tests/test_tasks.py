@@ -9,7 +9,7 @@ from integrator2.tasks import remove_old_integrator_files, analyze_file
 from django.utils import timezone
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_analyze_file(lmi):
     res = analyze_file(pk=lmi.pk)
     assert res is None

@@ -1,6 +1,8 @@
 # -*- encoding: utf-8 -*
 from optparse import make_option
 
+from notifications.core import send_notification
+
 try:
     from django.core.urlresolvers import reverse
 except ImportError:
@@ -29,24 +31,15 @@ class Command(BaseCommand):
         parser.add_argument(
             "--dont-persist",
             action="store_true",
-            dest="no_persist",
             default=False,
             help="Don't persist the message",
         )
-        parser.add_argument(
-            "--ignore-proxy",
-            action="store_true",
-            dest="ignore_proxy",
-            default=False,
-            help="Ignore proxy settings when sending notification",
-        )
 
-    def handle(self, *args, **options):
+    def handle(self, username, text, dont_persist, *args, **options):
         request_factory = RequestFactory()
-
         request = request_factory.get("/")
 
-        request.user = get_user_model().objects.get(username=options["username"])
+        request.user = get_user_model().objects.get(username=username)
         setattr(request, "session", "session")
 
         storage = PersistentStorage(request)
@@ -54,17 +47,12 @@ class Command(BaseCommand):
         setattr(request, "_messages", storage)
 
         level = messages.INFO_PERSISTENT
-        text = options["text"]
 
         msg = None
 
-        if options["no_persist"]:
-            notifications.send_notification(
-                request,
-                level,
-                text,
-                verbose=int(options["verbosity"]) > 1,
-                ignore_proxy_settings=options["ignore_proxy"],
+        if dont_persist:
+            send_notification(
+                request, level, text,
             )
             return
 
@@ -77,11 +65,6 @@ class Command(BaseCommand):
         if msg:
             msg = msg[0]
             closeURL = reverse("messages_extends:message_mark_read", args=(msg.pk,))
-            notifications.send_notification(
-                request,
-                level,
-                text,
-                verbose=int(options["verbosity"]) > 1,
-                closeURL=closeURL,
-                ignore_proxy_settings=options["ignore_proxy"],
+            send_notification(
+                request, level, text, closeURL=closeURL,
             )

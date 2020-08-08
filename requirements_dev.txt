@@ -23,7 +23,7 @@ asgiref==3.2.7 \
 attrs==19.3.0 \
     --hash=sha256:08a96c641c3a74e44eb59afb61a24f2cb9f4d7188748e76ba4bb5edfa3cb7d1c \
     --hash=sha256:f7b7ce16570fe9965acd6d30101a28f62fb4a7f9e926b3bbc9b61f8b04247e72 \
-    # via black, pytest
+    # via -c requirements.txt, black, pytest
 autoflake==1.3.1 \
     --hash=sha256:680cb9dade101ed647488238ccb8b8bfb4369b53d58ba2c8cdf7d5d54e01f95b \
     # via -r requirements_dev.in
@@ -96,9 +96,9 @@ django-webtest==1.9.7 \
     --hash=sha256:b9b4b94670c0ce533efc456d02dd55a0d0a7a8f7912eb30728dca2d59d7948b4 \
     --hash=sha256:c5a1e486a3d8d3623aa615b6db2f27de848aa7079303a84721e9a685f839796c \
     # via -r requirements_dev.in
-django==3.0.7 \
-    --hash=sha256:5052b34b34b3425233c682e0e11d658fd6efd587d11335a0203d827224ada8f2 \
-    --hash=sha256:e1630333248c9b3d4e38f02093a26f1e07b271ca896d73097457996e0fae12e8 \
+django==3.0.9 \
+    --hash=sha256:96fbe04e8ba0df289171e7f6970e0ff8b472bf4f909ed9e0e5beccbac7e1dbbe \
+    --hash=sha256:c22b4cd8e388f8219dc121f091e53a8701f9f5bca9aa132b5254263cab516215 \
     # via -c requirements.txt, model-mommy
 docopt==0.6.2 \
     --hash=sha256:49b3a825280bd66b3aa83585ef59c4a8c82f2c8a522dbe754a8bc8d08c85c491 \
@@ -258,9 +258,6 @@ pytest-mock==2.0.0 \
     --hash=sha256:b35eb281e93aafed138db25c8772b95d3756108b601947f89af503f8c629413f \
     --hash=sha256:cb67402d87d5f53c579263d37971a164743dc33c159dfb4fb4a86f37c5552307 \
     # via -r requirements_dev.in
-pytest-nginx-iplweb==1.1.1 \
-    --hash=sha256:4e3c6004d412264464ab1bf1e8b1253d050c93bafd87c2f458cbc56680de143e \
-    # via -r requirements_dev.in
 pytest-pythonpath==0.7.3 \
     --hash=sha256:63fc546ace7d2c845c1ee289e8f7a6362c2b6bae497d10c716e58e253e801d62 \
     # via -r requirements_dev.in
@@ -274,7 +271,7 @@ pytest-xdist==1.31.0 \
 pytest==5.4.1 \
     --hash=sha256:0e5b30f5cb04e887b91b1ee519fa3d89049595f428c1db76e73bd7f17b09b172 \
     --hash=sha256:84dde37075b8805f3d1f392cc47e38a0e59518fb46a431cfdaf7cf1ce805f970 \
-    # via -r requirements_dev.in, pytest-cov, pytest-django, pytest-forked, pytest-lazy-fixture, pytest-mock, pytest-nginx-iplweb, pytest-pythonpath, pytest-splinter, pytest-xdist
+    # via -r requirements_dev.in, pytest-cov, pytest-django, pytest-forked, pytest-lazy-fixture, pytest-mock, pytest-pythonpath, pytest-splinter, pytest-xdist
 pytz==2018.4 \
     --hash=sha256:65ae0c8101309c45772196b21b74c46b2e5d11b6275c45d251b150d5da334555 \
     --hash=sha256:c06425302f2cf668f1bba7a0a03f3c1d34d4ebeef2c72003da308b3947c7f749 \

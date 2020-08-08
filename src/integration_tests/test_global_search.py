@@ -19,12 +19,12 @@ def test_global_search_user(live_server, browser, transactional_db):
 
 
 def test_global_search_logged_in(
-    nginx_live_server, preauth_admin_browser, transactional_db
+    asgi_live_server, preauth_admin_browser, transactional_db
 ):
     browser = preauth_admin_browser
     mommy.make(Wydawnictwo_Ciagle, tytul_oryginalny="Test")
 
-    browser.visit(nginx_live_server.url)
+    browser.visit(asgi_live_server.url)
 
     with wait_for_page_load(browser):
         select_select2_autocomplete(
@@ -35,12 +35,12 @@ def test_global_search_logged_in(
 
 
 def test_global_search_in_admin(
-    nginx_live_server, preauth_admin_browser, transactional_db
+    asgi_live_server, preauth_admin_browser, transactional_db
 ):
     browser = preauth_admin_browser
     mommy.make(Wydawnictwo_Ciagle, tytul_oryginalny="Test")
 
-    browser.visit(nginx_live_server.url + "/admin/")
+    browser.visit(asgi_live_server.url + "/admin/")
 
     with wait_for_page_load(browser):
         select_select2_autocomplete(

@@ -1,43 +1,54 @@
 var bppNotifications = bppNotifications || {};
 
-bppNotifications.init = function(channel, host, port, useSSL, messageCookieId, soundAlertPath){
-    this.messageCookieId = messageCookieId;
-
-    this.messageAlertSound = null;
+bppNotifications.init = function (soundAlertPath, extraChannels) {
+   this.messageAlertSound = null;
     if (window.Audio && soundAlertPath)
         this.messageAlertSound = new window.Audio(soundAlertPath);
 
-    if (host == null)
-        host = window.location.hostname;
+    var url = 'wss://' + window.location.host  + '/asgi/notifications/';
+    if (extraChannels)
+        url += '?extraChannels=' + encodeURIComponent(extraChannels);
 
-    if (port == null || port === '')
-        port = window.location.port;
+    this.chatSocket = new WebSocket(url);
 
-    if (useSSL == null) {
-        useSSL = false;
+    this.chatSocket.onmessage = this.onmessage;
 
-        if (window.location.protocol === 'https:')
-            useSSL = true;
-    }
+    this.chatSocket.onopen = function(e){
+      console.info('Chat available');
+    };
 
-    this.pushstream = new PushStream({
-        host: host,
-        port: port,
-        modes: "websocket",
-        useSSL: useSSL
-    });
+    this.chatSocket.onclose = function (e) {
+        console.error('Chat socket closed unexpectedly');
+    };
 
-    this.pushstream.onmessage = this.addMessage;
-    this.pushstream.addChannel(channel);
-    this.pushstream.connect();
+    this.chatSocket.onerror = function (e) {
+        console.log('error');
+    };
 
 };
 
-bppNotifications.goTo = function(url){
+bppNotifications.goTo = function (url) {
     window.location.href = url;
 };
 
-bppNotifications.addMessage = function(message){
+bppNotifications.onmessage = function(event){
+    console.log(event);
+    var message =  JSON.parse(event.data);
+
+    if (message['id']) {
+        bppNotifications.chatSocket.send(
+            JSON.stringify({
+                "id": message["id"],
+                "type": "ack_message",
+                "channel_name": event['channel_name']
+            }));
+    };
+
+
+    bppNotifications.addMessage(message);
+}
+
+bppNotifications.addMessage = function (message) {
     // Uzywane atrybuty z message:
     //  - cssClass,
     //  - closeURL,
@@ -58,8 +69,7 @@ bppNotifications.addMessage = function(message){
                 bppNotifications.messageAlertSound.play();
 
     } else if (message['url']) {
-        if (message['cookieId'] == bppNotifications.messageCookieId)
-            bppNotifications.goTo(message['url']);
+        bppNotifications.goTo(message['url']);
     }
 
 };

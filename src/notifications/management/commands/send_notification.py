@@ -8,10 +8,11 @@ from django.test import RequestFactory
 from messages_extends.storages import PersistentStorage
 
 import notifications
+from notifications.core import _send, send_notification
 
 
 class Command(BaseCommand):
-    help = "Wysyla notyfikacje realtime via nginx-push-module"
+    help = "Wysyla notyfikacje realtime via django-channels"
     args = "<username> <message>"
 
     def add_arguments(self, parser):
@@ -19,9 +20,6 @@ class Command(BaseCommand):
         parser.add_argument("text")
 
     def handle(self, *args, **options):
-        notifications.send_notification(
-            options["user"],
-            messages.INFO_PERSISTENT,
-            options["text"],
-            verbose=options["verbosity"] > 0,
+        send_notification(
+            options["user"], messages.INFO_PERSISTENT, options["text"],
         )

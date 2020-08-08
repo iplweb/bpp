@@ -24,3 +24,17 @@ class wait_for_page_load(object):
 
     def __exit__(self, *_):
         WebDriverWait(self.browser, 10).until(staleness_of(self.old_page))
+
+        WebDriverWait(self.browser, 10).until(
+            lambda browser: browser.execute_script("return document.readyState")
+            == "complete"
+        )
+
+
+def wait_for_websocket_connection(browser):
+    WebDriverWait(browser, 10).until(
+        lambda browser: browser.execute_script(
+            "return bppNotifications.chatSocket.readyState"
+        )
+        == 1
+    )

@@ -2,6 +2,7 @@ from braces.views import GroupRequiredMixin, JSONResponseMixin
 from celery import uuid
 from celery.result import AsyncResult
 from django.contrib import messages
+from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.db.models import Q
 from django.http import HttpResponseRedirect
@@ -21,6 +22,7 @@ from import_dyscyplin.tasks import (
     integruj_import_dyscyplin,
     stworz_kolumny,
 )
+from notifications.mixins import ChannelSubscriberSingleObjectMixin
 from .forms import Import_DyscyplinForm
 from .models import Import_Dyscyplin
 
@@ -54,19 +56,13 @@ class CreateImport_Dyscyplin(GroupRequiredMixin, CreateView):
         return HttpResponseRedirect(self.get_success_url())
 
 
-class KolumnyImport_Dyscyplin(GroupRequiredMixin, TylkoMojeMixin, UpdateView):
+class KolumnyImport_Dyscyplin(
+    GroupRequiredMixin, TylkoMojeMixin, ChannelSubscriberSingleObjectMixin, UpdateView
+):
     group_required = GR_WPROWADZANIE_DANYCH
     model = Import_Dyscyplin
     template_name = "import_dyscyplin/import_dyscyplin_kolumny.html"
     form_class = Import_Dyscyplin_KolumnaForm
-
-    def get_context_data(self, **kwargs):
-        data = super(KolumnyImport_Dyscyplin, self).get_context_data(**kwargs)
-        if self.request.POST:
-            data["kolumny"] = KolumnaFormSet(self.request.POST)
-        else:
-            data["kolumny"] = KolumnaFormSet()
-        return data
 
     def get_context_data(self, **kwargs):
         context = super(KolumnyImport_Dyscyplin, self).get_context_data(**kwargs)
@@ -99,7 +95,9 @@ class KolumnyImport_Dyscyplin(GroupRequiredMixin, TylkoMojeMixin, UpdateView):
         return reverse("import_dyscyplin:detail", args=(self.object.pk,))
 
 
-class DetailImport_Dyscyplin(GroupRequiredMixin, TylkoMojeMixin, DetailView):
+class DetailImport_Dyscyplin(
+    GroupRequiredMixin, TylkoMojeMixin, ChannelSubscriberSingleObjectMixin, DetailView
+):
     group_required = GR_WPROWADZANIE_DANYCH
     model = Import_Dyscyplin
 
@@ -122,7 +120,6 @@ class UruchomZadaniePrzetwarzania(
 
     def get(self, *args, **kw):
         self.object = self.get_object()
-        self.object.web_page_uid = self.request.GET.get("web_page_uid", "")
 
         start_task = False
         if (

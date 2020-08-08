@@ -19,8 +19,8 @@ def test_xls(name):
 
 
 @pytest.fixture
-def lmi_base(db):
-    lmi = mommy.make(ListaMinisterialnaIntegration)
+def lmi_base(db, admin_user):
+    lmi = mommy.make(ListaMinisterialnaIntegration, owner=admin_user)
     lmi.save()
     return lmi
 

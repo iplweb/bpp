@@ -5,6 +5,7 @@ Historia zmian
 202008.42
 ---------
 
+* lepszy silnik notyfikacji dynamicznych (channels+ASGI+uvicorn) (b/n),
 * import danych o dyscyplinach autorów z plików DBF (b/n),
 * dodatkowe pola "rodzaj autora" oraz "wymiar etatu" (b/n),
 * import danych grantów, nr odbitek i liczne drobne poprawki importu DBF (b/n),
