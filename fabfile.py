@@ -1,7 +1,10 @@
 import os
+from getpass import getpass
 from time import time
 
 from fabric import Connection, task
+from invoke import Responder
+from invoke.util import cd
 
 
 @task
@@ -25,3 +28,20 @@ def putdb(c, db_name="bpp", fn="dump.psql"):
     c.sudo(f"pg_restore -j 6 -C -d template1 {fn}", user="postgres")
     c.sudo(f"supervisorctl start all")
     c.local(f"rm /tmp/{fn}")
+
+
+@task
+def recreate_venv(c, user_name="bpp"):
+    c.sudo(
+        f"cd /home/{user_name} && rm -rf env", user=user_name, pty=True,
+    )
+    c.sudo(
+        f"cd /home/{user_name} && virtualenv env -p/usr/bin/python3",
+        user=user_name,
+        pty=True,
+    )
+    c.sudo(
+        f"cd /home/{user_name} && source env/bin/activate && pip install --upgrade --pre bpp-iplweb",
+        user=user_name,
+        pty=True,
+    )
