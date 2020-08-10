@@ -345,13 +345,15 @@ class Ixn(models.Model):
 
 
 class B_B(models.Model):
-    idt = models.TextField(primary_key=True)
+    id = models.IntegerField(primary_key=True, db_column="pk")
+    idt = models.ForeignKey("import_dbf.Bib", on_delete=DO_NOTHING, db_column="idt")
     lp = models.TextField(blank=True, null=True)
     idt_bazy = models.TextField(blank=True, null=True)
 
     class Meta:
         managed = False
         db_table = "import_dbf_b_b"
+        ordering = ("idt__tytul_or_s", "lp")
 
 
 class B_N(models.Model):
@@ -432,7 +434,8 @@ class Ixe(models.Model):
 
 
 class Jer(models.Model):
-    nr = models.TextField(primary_key=True)
+    id = models.IntegerField(primary_key=True, db_column="pk")
+    nr = models.TextField()
     od_roku = models.TextField(blank=True, null=True)
     skrot = models.TextField(blank=True, null=True)
     nazwa = models.TextField(blank=True, null=True)

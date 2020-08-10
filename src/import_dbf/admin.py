@@ -25,6 +25,8 @@ from import_dbf.models import (
     Loc,
     Bib_Desc,
     Dys,
+    Jer,
+    B_B,
 )
 
 
@@ -270,6 +272,17 @@ class PubAdmin(ImportDbfBaseAdmin):
 @admin.register(Loc)
 class LocAdmin(ImportDbfBaseAdmin):
     list_display = ["ident", "ext"]
+
+
+@admin.register(Jer)
+class JerAdmin(ImportDbfBaseAdmin):
+    list_display = ["nr", "od_roku", "skrot", "nazwa", "wyd_skrot"]
+
+
+@admin.register(B_B)
+class B_BAdmin(ImportDbfBaseAdmin):
+    autocomplete_fields = ["idt"]
+    list_display = ["idt", "lp", "idt_bazy"]
 
 
 for elem in import_dbf_models.__all__:

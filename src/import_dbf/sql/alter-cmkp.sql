@@ -17,5 +17,4 @@ INSERT INTO import_dbf_b_a(idt, lp, idt_aut, idt_jed, afiliacja) VALUES(17980, '
 SELECT 'PRZYPISANIA Z TAKIM SAMYM LP W TABELI B_A';
 select tytul_or from import_dbf_bib where idt  in (select idt from import_dbf_b_a group by idt, lp having count(*) > 1);
 
-
 COMMIT;
