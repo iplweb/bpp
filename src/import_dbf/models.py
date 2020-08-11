@@ -337,6 +337,9 @@ class Ixn(models.Model):
     idt_pbn = models.TextField(blank=True, primary_key=True)
     pbn = models.TextField(blank=True, null=True)
 
+    def __str__(self):
+        return self.pbn
+
     class Meta:
         managed = False
         verbose_name = "zaimportowany identyfikator PBN"
@@ -357,9 +360,12 @@ class B_B(models.Model):
 
 
 class B_N(models.Model):
-    idt = models.TextField(primary_key=True)
+    id = models.IntegerField(primary_key=True, db_column="pk")
+    idt = models.ForeignKey("import_dbf.bib", on_delete=DO_NOTHING, db_column="idt")
     lp = models.TextField(blank=True, null=True)
-    idt_pbn = models.TextField(blank=True, null=True)
+    idt_pbn = models.ForeignKey(
+        "import_dbf.Ixn", db_column="idt_pbn", on_delete=DO_NOTHING
+    )
 
     class Meta:
         managed = False

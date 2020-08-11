@@ -148,4 +148,11 @@ alter table import_Dbf_jer add column pk serial;
 alter table import_Dbf_b_b add column pk serial;
 ALTER TABLE import_dbf_b_b ALTER COLUMN idt SET DATA TYPE INT USING idt::integer;
 
+ALTER TABLE import_dbf_j_h ALTER COLUMN idt_jed_t SET DATA TYPE INT USING idt_jed_t::integer;
+ALTER TABLE import_dbf_j_h ALTER COLUMN idt_jed_f SET DATA TYPE INT USING idt_jed_f::integer;
+
+alter table import_Dbf_b_n add column pk serial;
+ALTER TABLE import_dbf_b_n ALTER COLUMN idt SET DATA TYPE INT USING idt::integer;
+
+
 COMMIT;

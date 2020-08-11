@@ -27,6 +27,7 @@ from import_dbf.models import (
     Dys,
     Jer,
     B_B,
+    B_N,
 )
 
 
@@ -283,6 +284,12 @@ class JerAdmin(ImportDbfBaseAdmin):
 class B_BAdmin(ImportDbfBaseAdmin):
     autocomplete_fields = ["idt"]
     list_display = ["idt", "lp", "idt_bazy"]
+
+
+@admin.register(B_N)
+class B_NAdmin(ImportDbfBaseAdmin):
+    autocomplete_fields = ["idt"]
+    list_display = ["idt", "lp", "idt_pbn"]
 
 
 for elem in import_dbf_models.__all__:
