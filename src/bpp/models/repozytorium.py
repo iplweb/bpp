@@ -21,3 +21,7 @@ class Element_Repozytorium(models.Model):
     rodzaj = models.CharField(max_length=200)
     nazwa_pliku = models.CharField(max_length=200)
     tryb_dostepu = models.PositiveSmallIntegerField(choices=ER_TRYB_DOSTEPU)
+
+    class Meta:
+        verbose_name = "element repozytorium"
+        verbose_name_plural = "elementy repozytorium"

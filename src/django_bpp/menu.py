@@ -68,6 +68,7 @@ SYSTEM_MENU = [
     ("Charakter PBN", "/admin/bpp/charakter_pbn/"),
     ("Dyscypliny naukowe", "/admin/bpp/dyscyplina_naukowa/"),
     ("Funkcje w jednostce", "/admin/bpp/funkcja_autora/"),
+    ("Granty", "/admin/bpp/grant/"),
     ("Języki", "/admin/bpp/jezyk/"),
     ("OpenAccess: wydawnictwa ciągłe", "/admin/bpp/tryb_openaccess_wydawnictwo_ciagle"),
     ("OpenAccess: wydawnictwa zwarte", "/admin/bpp/tryb_openaccess_wydawnictwo_zwarte"),

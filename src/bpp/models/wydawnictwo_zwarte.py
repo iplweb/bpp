@@ -21,7 +21,6 @@ from bpp.models import (
     AktualizujDatePBNNadrzednegoMixin,
     ModelOpcjonalnieNieEksportowanyDoAPI,
     ModelZMiejscemPrzechowywania,
-    ModelZGrantem,
 )
 from bpp.models.abstract import (
     BazaModeluOdpowiedzialnosciAutorow,
@@ -104,7 +103,6 @@ class Wydawnictwo_Zwarte_Baza(
     ModelZAbsolutnymUrl,
     ModelZLiczbaCytowan,
     ModelZMiejscemPrzechowywania,
-    ModelZGrantem,
     ModelOpcjonalnieNieEksportowanyDoAPI,
 ):
     """Baza dla klas Wydawnictwo_Zwarte oraz Praca_Doktorska_Lub_Habilitacyjna

@@ -1621,11 +1621,16 @@ def integruj_publikacje(offset=None, limit=None):
 
             elif elem["id"] == 889:
                 if elem.get("c"):
-                    kw["grant"] = bpp.Grant.objects.get_or_create(
+                    grant = bpp.Grant.objects.get_or_create(
                         numer_projektu=dbf.Usi.objects.get(
                             idt_usi=elem.get("c")[1:]
                         ).nazwa,
                     )[0]
+
+                    delayed_creation.append(
+                        bpp.Grant_Rekordu.objects.create, grant=grant,
+                    )
+
                 else:
                     warnings.warn(
                         f"__ grant bez numeru grantu! Rekord {rec} o ID {rec.idt}, elementy grantu (pole 889): {elem}"

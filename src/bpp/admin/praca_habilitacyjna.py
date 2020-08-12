@@ -19,6 +19,8 @@ from bpp.models import (
     Patent,
 )  # Publikacja_Habilitacyjna
 from bpp.models.praca_habilitacyjna import Publikacja_Habilitacyjna
+from .element_repozytorium import Element_RepozytoriumInline
+from .grant import Grant_RekorduInline
 from .praca_doktorska import Praca_Doktorska_Habilitacyjna_Admin_Base
 
 
@@ -105,6 +107,8 @@ class Praca_HabilitacyjnaAdmin(Praca_Doktorska_Habilitacyjna_Admin_Base):
         ADNOTACJE_Z_DATAMI_FIELDSET,
         MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET,
     )
+
+    inlines = (Grant_RekorduInline, Element_RepozytoriumInline)
 
 
 admin.site.register(Praca_Habilitacyjna, Praca_HabilitacyjnaAdmin)

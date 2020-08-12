@@ -36,6 +36,7 @@ from .filters import (
     PeselMD5ObecnyFilter,
     OrcidObecnyFilter,
 )
+from .grant import GrantAdmin
 from .helpers import *
 from .jednostka import JednostkaAdmin  # NOQA
 from .konferencja import KonferencjaAdmin  # noqa
