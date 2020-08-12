@@ -4,6 +4,8 @@ from dal import autocomplete
 from django.contrib import admin
 
 from .core import CommitedModelAdmin
+from .element_repozytorium import Element_RepozytoriumInline
+from .grant import Grant_RekorduInline
 from .helpers import *
 from ..models import Jednostka, Autor, Praca_Doktorska
 
@@ -106,6 +108,11 @@ class Praca_DoktorskaAdmin(Praca_Doktorska_Habilitacyjna_Admin_Base):
         POZOSTALE_MODELE_FIELDSET,
         ADNOTACJE_Z_DATAMI_FIELDSET,
         MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET,
+    )
+
+    inlines = (
+        Grant_RekorduInline,
+        Element_RepozytoriumInline,
     )
 
 

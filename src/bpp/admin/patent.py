@@ -3,6 +3,8 @@ from django import forms
 from bpp.models.patent import Patent, Patent_Autor
 from . import MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET
 from .core import generuj_inline_dla_autorow
+from .element_repozytorium import Element_RepozytoriumInline
+from .grant import Grant_RekorduInline
 from .helpers import (
     ADNOTACJE_Z_DATAMI_FIELDSET,
     MODEL_PUNKTOWANY_FIELDSET,
@@ -28,7 +30,11 @@ class Patent_Form(Wycinaj_W_z_InformacjiMixin, forms.ModelForm):
 
 
 class Patent_Admin(AdnotacjeZDatamiMixin, Wydawnictwo_ZwarteAdmin_Baza):
-    inlines = (generuj_inline_dla_autorow(Patent_Autor),)
+    inlines = (
+        generuj_inline_dla_autorow(Patent_Autor),
+        Grant_RekorduInline,
+        Element_RepozytoriumInline,
+    )
 
     list_display = ["tytul_oryginalny", "ostatnio_zmieniony"]
 

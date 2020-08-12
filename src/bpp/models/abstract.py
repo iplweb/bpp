@@ -1127,15 +1127,6 @@ class ModelZMiejscemPrzechowywania(models.Model):
         abstract = True
 
 
-class ModelZGrantem(models.Model):
-    grant = models.ForeignKey(
-        "bpp.Grant", null=True, blank=True, on_delete=models.SET_NULL
-    )
-
-    class Meta:
-        abstract = True
-
-
 class MaProcentyMixin:
     def ma_procenty(self):
         for autor in self.autorzy_set.all():

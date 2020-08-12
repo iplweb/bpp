@@ -43,7 +43,7 @@ from bpp.models.konferencja import *
 
 from bpp.models.repozytorium import Element_Repozytorium
 
-from bpp.models.grant import Grant
+from bpp.models.grant import Grant, Grant_Rekordu
 
 TABLE_TO_MODEL = {
     "bpp_wydawnictwo_ciagle": Wydawnictwo_Ciagle,

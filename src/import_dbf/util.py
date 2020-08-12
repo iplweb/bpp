@@ -957,7 +957,9 @@ def integruj_publikacje(offset=None, limit=None):
                 tytul["a"], exp_combine(tytul.get("b"), tytul.get("d")), sep=" "
             )
             if tytul.get("c"):
-                print("*** Pole 150C do adnotacji: ", tytul.get("c"))
+                print(
+                    "*** Pole 150C do adnotacji: ", tytul.get("c"), "dla rekordu", rec
+                )
                 kw["adnotacje"] = exp_combine(kw.get("adnotacje"), tytul.get("c"))
 
         else:
@@ -989,8 +991,8 @@ def integruj_publikacje(offset=None, limit=None):
                     seria_wydawnicza_id = int(elem["a"][1:])
                 except ValueError:
                     warnings.warn(
-                        "Nie można skonwertowac numeru serii wydawniczej: %r, dodaje do uwag"
-                        % elem
+                        f"Nie można skonwertowac numeru serii wydawniczej: {elem} "
+                        f"dla rekordu {rec} dodaje do pola 'uwagi'"
                     )
                     kw["uwagi"] = exp_combine(kw.get("uwagi"), elem.get("a"))
                     continue
@@ -1565,7 +1567,9 @@ def integruj_publikacje(offset=None, limit=None):
                 if kw.get("zrodlo"):
                     if kw["zrodlo"] != zrodlo:
                         warnings.warn(
-                            f"DWA ROZNE ZRODLA? rekord {rec} o ID {rec.idt} ma {kw['zrodlo']} ale mialby miec tez zrodlo?!"
+                            f"DWA ROZNE ZRODLA? rekord {rec} o ID {rec.idt} "
+                            f"ma już ustalone {kw['zrodlo']} ale mialby miec "
+                            f"tez zrodlo: {zrodlo}?!"
                         )
                 else:
                     # assert not kw.get("zrodlo")
@@ -1621,11 +1625,24 @@ def integruj_publikacje(offset=None, limit=None):
 
             elif elem["id"] == 889:
                 if elem.get("c"):
-                    kw["grant"] = bpp.Grant.objects.get_or_create(
+                    grant = bpp.Grant.objects.get_or_create(
                         numer_projektu=dbf.Usi.objects.get(
                             idt_usi=elem.get("c")[1:]
                         ).nazwa,
                     )[0]
+
+                    entry = (bpp.Grant_Rekordu.objects.create, dict(grant_id=grant.pk))
+                    add = True
+                    for elem in delayed_creation:
+                        if elem == entry:
+                            warnings.warn(
+                                f"__ grant podany dwukrotnie! grant {grant} rekord {rec}"
+                            )
+                            add = False
+
+                    if add:
+                        delayed_creation.append(entry)
+
                 else:
                     warnings.warn(
                         f"__ grant bez numeru grantu! Rekord {rec} o ID {rec.idt}, elementy grantu (pole 889): {elem}"

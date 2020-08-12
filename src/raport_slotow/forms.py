@@ -1,5 +1,12 @@
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Layout, Fieldset, Row, Column, ButtonHolder, Submit
+from crispy_forms_foundation.layout import (
+    Layout,
+    Fieldset,
+    Row,
+    Column,
+    ButtonHolder,
+    Submit,
+)
 from dal import autocomplete
 from django import forms
 from django.core.exceptions import ValidationError

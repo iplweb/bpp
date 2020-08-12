@@ -85,10 +85,7 @@ endif
 integruj-dbf-publikacje: get-assets integruj-dbf-publikacje-pre integruj-dbf-publikacje-post
 
 przypisz-dyscypliny:
-	$(WALIDUJ_AFILIACJE_AUTOROW_NIE) $(MANAGE) przypisz_dyscypliny -v0 2017 --ustawiaj-pierwsza-gdy-dwie --disable-cache
-	$(WALIDUJ_AFILIACJE_AUTOROW_NIE) $(MANAGE) przypisz_dyscypliny -v0 2018 --ustawiaj-pierwsza-gdy-dwie --disable-cache 
-	$(WALIDUJ_AFILIACJE_AUTOROW_NIE) $(MANAGE) przypisz_dyscypliny -v0 2019 --ustawiaj-pierwsza-gdy-dwie --disable-cache 
-	$(WALIDUJ_AFILIACJE_AUTOROW_NIE) $(MANAGE) przypisz_dyscypliny -v0 2020 --ustawiaj-pierwsza-gdy-dwie --disable-cache 
+	$(WALIDUJ_AFILIACJE_AUTOROW_NIE) $(MANAGE) przypisz_dyscypliny -v1 --ustawiaj-pierwsza-gdy-dwie --disable-cache &> import-dbf-przypisz-dyscypliny.log.txt
 
 integruj-dbf: integruj-dbf-autorzy importuj-dyscypliny integruj-dbf-publikacje przypisz-dyscypliny
 

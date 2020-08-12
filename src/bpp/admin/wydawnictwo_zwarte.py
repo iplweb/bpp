@@ -17,6 +17,8 @@ from bpp.models import (
 from bpp.models.konferencja import Konferencja
 from bpp.models.seria_wydawnicza import Seria_Wydawnicza
 from .core import CommitedModelAdmin, generuj_inline_dla_autorow, KolumnyZeSkrotamiMixin
+from .element_repozytorium import Element_RepozytoriumInline
+from .grant import Grant_RekorduInline
 from .nagroda import NagrodaInline
 
 
@@ -153,7 +155,12 @@ class Wydawnictwo_ZwarteAdmin(
 ):
     form = Wydawnictwo_ZwarteForm
 
-    inlines = (generuj_inline_dla_autorow(Wydawnictwo_Zwarte_Autor), NagrodaInline)
+    inlines = (
+        generuj_inline_dla_autorow(Wydawnictwo_Zwarte_Autor),
+        NagrodaInline,
+        Grant_RekorduInline,
+        Element_RepozytoriumInline,
+    )
 
     list_filter = Wydawnictwo_ZwarteAdmin_Baza.list_filter + [
         CalkowitaLiczbaAutorowFilter,

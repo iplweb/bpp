@@ -2,6 +2,12 @@
 Historia zmian
 ==============
 
+202008.46
+---------
+
+* możliwość przypisywania grantów rekordom (b/n),
+* możliwość przypisywania elementów repozytoryjnych (plików) rekordom (b/n),
+
 202008.45
 ---------
 
