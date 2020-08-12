@@ -2231,11 +2231,21 @@ def integruj_dyscypliny():
                 procent_subdyscypliny=pro_subdys,
             )
             try:
-                warnings.warn(f"Autor {aut} ma powyzej 1 wpisu")
                 juz = bpp.Autor_Dyscyplina.objects.get(rok=rok, autor=aut)
+
+                save = False
                 for key, value in kw.items():
-                    setattr(juz, key, value)
-                juz.save()
+                    if getattr(juz, key) != value:
+                        warnings.warn(
+                            f"Autor {aut} ma powyzej 1 wpisu w tabeli dyscyplin "
+                            f"i rozni sie on dla klucza {key} wartoscia {value}, "
+                            f"stara wartosc {getattr(juz, key)}"
+                        )
+                        setattr(juz, key, value)
+                        save = True
+
+                if save:
+                    juz.save()
                 continue
             except bpp.Autor_Dyscyplina.DoesNotExist:
                 bpp.Autor_Dyscyplina.objects.create(**kw)

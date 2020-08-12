@@ -45,7 +45,7 @@ integruj-dbf-autorzy:
 	$(MANAGE) integruj_dbf --enable-wydzial
 	$(MANAGE) integruj_dbf --enable-jednostka
 	$(MANAGE) integruj_dbf --enable-autor
-	$(MANAGE) integruj_dbf --enable-dyscypliny
+	$(MANAGE) integruj_dbf --enable-dyscypliny >& import-dbf-dyscypliny.log
 
 importuj-dyscypliny:
 ifeq ($(CUSTOMER),UMWroclaw)
