@@ -957,7 +957,9 @@ def integruj_publikacje(offset=None, limit=None):
                 tytul["a"], exp_combine(tytul.get("b"), tytul.get("d")), sep=" "
             )
             if tytul.get("c"):
-                print("*** Pole 150C do adnotacji: ", tytul.get("c"))
+                print(
+                    "*** Pole 150C do adnotacji: ", tytul.get("c"), "dla rekordu", rec
+                )
                 kw["adnotacje"] = exp_combine(kw.get("adnotacje"), tytul.get("c"))
 
         else:
@@ -989,8 +991,8 @@ def integruj_publikacje(offset=None, limit=None):
                     seria_wydawnicza_id = int(elem["a"][1:])
                 except ValueError:
                     warnings.warn(
-                        "Nie można skonwertowac numeru serii wydawniczej: %r, dodaje do uwag"
-                        % elem
+                        f"Nie można skonwertowac numeru serii wydawniczej: {elem} "
+                        f"dla rekordu {rec} dodaje do pola 'uwagi'"
                     )
                     kw["uwagi"] = exp_combine(kw.get("uwagi"), elem.get("a"))
                     continue
@@ -1565,7 +1567,9 @@ def integruj_publikacje(offset=None, limit=None):
                 if kw.get("zrodlo"):
                     if kw["zrodlo"] != zrodlo:
                         warnings.warn(
-                            f"DWA ROZNE ZRODLA? rekord {rec} o ID {rec.idt} ma {kw['zrodlo']} ale mialby miec tez zrodlo?!"
+                            f"DWA ROZNE ZRODLA? rekord {rec} o ID {rec.idt} "
+                            f"ma już ustalone {kw['zrodlo']} ale mialby miec "
+                            f"tez zrodlo: {zrodlo}?!"
                         )
                 else:
                     # assert not kw.get("zrodlo")
