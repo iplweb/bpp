@@ -22,8 +22,16 @@ SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 
 CACHES = {
     "default": {
-        "BACKEND": "django.core.cache.backends.memcached.PyLibMCCache",
-        "LOCATION": django_getenv("DJANGO_BPP_MEMCACHE_HOST", "127.0.0.1") + ":11211",
+        "BACKEND": "redis_cache.RedisCache",
+        "LOCATION": [f"{REDIS_HOST}:{REDIS_PORT}",],
+        "OPTIONS": {
+            "DB": {REDIS_DB_CACHE},
+            "PARSER_CLASS": "redis.connection.HiredisParser",
+            "CONNECTION_POOL_CLASS": "redis.BlockingConnectionPool",
+            "CONNECTION_POOL_CLASS_KWARGS": {"max_connections": 50, "timeout": 20,},
+            "MAX_CONNECTIONS": 1000,
+            "PICKLE_VERSION": -1,
+        },
     },
 }
 
