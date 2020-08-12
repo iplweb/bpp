@@ -2,6 +2,11 @@
 Historia zmian
 ==============
 
+202008.45
+---------
+
+* backend cache zmieniony na django-redis-cache (wcześniej: pylibmc) (b/n),
+
 202008.43
 ---------
 
