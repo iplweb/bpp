@@ -25,7 +25,7 @@ CACHES = {
         "BACKEND": "redis_cache.RedisCache",
         "LOCATION": [f"{REDIS_HOST}:{REDIS_PORT}",],
         "OPTIONS": {
-            "DB": {REDIS_DB_CACHE},
+            "DB": REDIS_DB_CACHE,
             "PARSER_CLASS": "redis.connection.HiredisParser",
             "CONNECTION_POOL_CLASS": "redis.BlockingConnectionPool",
             "CONNECTION_POOL_CLASS_KWARGS": {"max_connections": 50, "timeout": 20,},
