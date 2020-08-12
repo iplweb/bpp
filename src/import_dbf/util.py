@@ -1627,9 +1627,17 @@ def integruj_publikacje(offset=None, limit=None):
                         ).nazwa,
                     )[0]
 
-                    delayed_creation.append(
-                        bpp.Grant_Rekordu.objects.create, grant=grant,
-                    )
+                    entry = (bpp.Grant_Rekordu.objects.create, dict(grant_id=grant.pk))
+                    add = True
+                    for elem in delayed_creation:
+                        if elem == entry:
+                            warnings.warn(
+                                f"__ grant podany dwukrotnie! grant {grant} rekord {rec}"
+                            )
+                            add = False
+
+                    if add:
+                        delayed_creation.append(entry)
 
                 else:
                     warnings.warn(
