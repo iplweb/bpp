@@ -12,25 +12,28 @@ from bpp.models import (
     Zrodlo,
     Wydawnictwo_Zwarte,
     Wydawnictwo_Zwarte_Baza,
-    Praca_Doktorska,
     cache,
 )
+
+from bpp import models
 
 
 class Command(BaseCommand):
     help = "Zmienia podany charakter wydawnictwa zwartego w doktorat"
 
     def add_arguments(self, parser):
-        parser.add_argument("skrot")
+        parser.add_argument("typ_kbn_nazwa")
+        parser.add_argument("klasa_docelowa")
 
     @transaction.atomic
-    def handle(self, skrot, *args, **options):
+    def handle(self, typ_kbn_nazwa, klasa_docelowa, *args, **options):
         if cache.enabled():
             cache.disable()
 
+        klasa_docelowa = getattr(models, klasa_docelowa)
         flds = Wydawnictwo_Zwarte_Baza._meta.get_fields()
         flds = [fld.name for fld in flds]
-        for elem in Wydawnictwo_Zwarte.objects.filter(charakter_formalny__skrot=skrot):
+        for elem in Wydawnictwo_Zwarte.objects.filter(typ_kbn__nazwa=typ_kbn_nazwa):
 
             target_kw = {}
             for fld in flds:
@@ -41,14 +44,14 @@ class Command(BaseCommand):
             target_kw["autor"] = elem.autorzy_set.first().autor
             target_kw["jednostka"] = elem.autorzy_set.first().jednostka
 
-            if Praca_Doktorska.objects.filter(autor=target_kw["autor"]):
+            if klasa_docelowa.objects.filter(autor=target_kw["autor"]):
                 print(
                     f"*** nie tworze {target_kw['tytul_oryginalny']} bo juz istnieje!'"
                 )
                 continue
 
-            Praca_Doktorska.objects.create(**target_kw)
+            klasa_docelowa.objects.create(**target_kw)
             elem.delete()
             print(target_kw["tytul_oryginalny"])
 
-        set_seq("bpp_praca_doktorska")
+        set_seq(klasa_docelowa._meta.db_table)

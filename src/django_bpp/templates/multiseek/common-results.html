@@ -4,6 +4,19 @@
 {% load compress %}
 {% load prace %}
 
+{% include "multiseek/multiseek-title.html" %}
+
+    {%  if paginator_count >= 10000 %}
+        <div style="padding-left: 4em; padding-right: 4em;">
+        <p>W systemie znajduje się obecnie {{ paginator_count }} rekordów. Jest to dość duża ilość i szczerze mówiąc
+            pobieranie ich wszystkich przez tą stronę WWW będzie dla Ciebie dość karkołomne. Prosimy, postaraj się
+            ograniczyć zapytanie do bazy danych w taki sposób, aby dawało w rezultacie maksymalnie do 20 tysięcy
+            rekordów - wówczas zostaną one wyświetlone w wybranym przez Ciebie formacie w tym miejscu.</p>
+        <p>Jeżeli potrzebujesz pobrać wszystkie rekordy z systemu BPP, skorzystaj z dostępu przez API. Obsługiwane
+            API to <a target="_blank" href="/api/v1/">JSON-REST</a> oraz <a target="_blank" href="/bpp/oai/?verb=ListSets">protokół OAI-PMH</a>.
+        </div>
+    {% else %}
+
 {% if request.user.is_anonymous %}
     {#    anonim #}
     {% if request.GET.all == "1" %}
@@ -94,48 +107,6 @@
             </div>
         {% endif %}
     {% endif %}
-
-    {% if request.session.MULTISEEK_TITLE %}
-        <div class="row">
-            <div class="large-12 columns">
-                <h1 class="editable bpp-multiseek-title"
-                    data-activator="#edit-activator"
-                    style="display: inline;"
-                    data-input-class="short"
-                    data-text-only="false"
-                    data-url="{% url 'bpp:update_multiseek_title' %}">{{ request.session.MULTISEEK_TITLE }}
-                </h1>
-                <button
-                        title="Kliknij, aby zmienić tytuł wyszukiwania"
-                        id="edit-activator"
-                        src= width="24"
-                        class="button tiny hide-for-print">
-                    edycja
-                    </button>
-
-            </div>
-        </div>
-        </div>
-
-        <script type="text/javascript">
-        $(document).ready(function(){
-            $('.editable').jinplace({
-                submitFunction: function(opts, value) {
-                    return $.ajax(opts.url, {
-                        type: "post",
-                        data: {
-                            item: opts.attribute, object: opts.object,
-                            id: opts.elementId, value: value
-                        },
-                        dataType: 'json'
-                    });
-                }
-            });
-
-        });
-        </script>
-    {% endif %}
-
 
     {% if report_type == "list" or report_type == "numer_list" or report_type == None %}
         <ol start="{{ page_obj.start_index }}">
@@ -269,7 +240,6 @@
         </table>
     {% endif %}
 
-
 </div>
 
 {% if live != "1" and paginator.num_pages > 1 %}
@@ -279,6 +249,8 @@
         {% include "multiseek/paginator.html" with max_rows=uczelnia.wyszukiwanie_rekordy_na_strone_zalogowany magellan="no" %}
     {% endif %}
 {% endif %}
+
+    {% endif %}
 
 <script type="text/javascript">
     if (queryDict.print == "1")

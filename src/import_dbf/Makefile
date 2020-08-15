@@ -180,8 +180,8 @@ usun-nieuzywane-charaktery-kbny:
 	$(MANAGE) usun_nieuzywane_charaktery_kbny
 
 utworz-doktoraty:
-	$(MANAGE) zmien_na_doktorat PD > pd.txt
-	$(MANAGE) zmien_na_doktorat ZD > zd.txt
+	$(MANAGE) zmien_na_doktorat "Prace Doktorskie" Praca_Doktorska > import-dbf-utworz-doktoraty.txt
+	$(MANAGE) zmien_na_doktorat "Prace Habilitacyjne" Praca_Habilitacyjna >> import-dbf-utworz-doktoraty.txt
 
 przemapuj-redaktora-na-autora:
 	$(MANAGE) zmien_typ_autora PAW

@@ -2,6 +2,11 @@
 Historia zmian
 ==============
 
+202008.47
+---------
+
+* ograniczaj wyświetlanie do 20 tys rekordów przy braku zapytania w wyszukiwarce (b/n),
+
 202008.46
 ---------
 

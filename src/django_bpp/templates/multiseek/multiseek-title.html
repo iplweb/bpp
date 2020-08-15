@@ -1,0 +1,40 @@
+    {% if request.session.MULTISEEK_TITLE %}
+        <div class="row">
+            <div class="large-12 columns">
+                <h1 class="editable bpp-multiseek-title"
+                    data-activator="#edit-activator"
+                    style="display: inline;"
+                    data-input-class="short"
+                    data-text-only="false"
+                    data-url="{% url 'bpp:update_multiseek_title' %}">{{ request.session.MULTISEEK_TITLE }}
+                </h1>
+                <button
+                        title="Kliknij, aby zmienić tytuł wyszukiwania"
+                        id="edit-activator"
+                        src= width="24"
+                        class="button tiny hide-for-print">
+                    edycja
+                    </button>
+
+            </div>
+        </div>
+        </div>
+
+        <script type="text/javascript">
+        $(document).ready(function(){
+            $('.editable').jinplace({
+                submitFunction: function(opts, value) {
+                    return $.ajax(opts.url, {
+                        type: "post",
+                        data: {
+                            item: opts.attribute, object: opts.object,
+                            id: opts.elementId, value: value
+                        },
+                        dataType: 'json'
+                    });
+                }
+            });
+
+        });
+        </script>
+    {% endif %}
