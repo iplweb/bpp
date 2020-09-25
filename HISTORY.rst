@@ -2,6 +2,11 @@
 Historia zmian
 ==============
 
+202009.48
+---------
+* umożliwiaj konfigurację domyślnych wartości parametrów dla
+  wybranych formularzy (#922)
+
 202008.47
 ---------
 

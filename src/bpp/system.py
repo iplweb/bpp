@@ -67,6 +67,7 @@ from bpp.models.seria_wydawnicza import Seria_Wydawnicza
 from bpp.models.struktura import Jednostka_Wydzial
 from bpp.models.system import Charakter_PBN
 from bpp.models.wydawca import Wydawca, Poziom_Wydawcy
+from formdefaults.models import FormFieldRepresentation, FormRepresentation
 from import_dbf.models import Bib, B_A, Aut, Jed, Poz, B_U, Usi, Ses, Wx2, Ixn
 from miniblog.models import Article
 
@@ -95,6 +96,8 @@ groups = {
         Dyscyplina_Naukowa,
         Zewnetrzna_Baza_Danych,
         Grant,
+        FormFieldRepresentation,
+        FormRepresentation,
     ],
     "struktura": [Uczelnia, Wydzial, Jednostka, Jednostka_Wydzial],
     GR_WPROWADZANIE_DANYCH: [
