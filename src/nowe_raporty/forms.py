@@ -13,6 +13,7 @@ from django.utils import timezone
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
 from bpp.models.struktura import Wydzial, Jednostka
+from bpp.util import formdefaults_html_before, formdefaults_html_after
 
 
 def wez_lata():
@@ -58,18 +59,22 @@ class BaseRaportForm(forms.Form):
                 )
 
     def __init__(self, *args, **kwargs):
+        super(BaseRaportForm, self).__init__(*args, **kwargs)
+
         self.helper = FormHelper()
         self.helper.form_class = "custom"
         self.helper.form_action = "."
         self.helper.layout = Layout(
             Fieldset(
                 "Wybierz parametry",
+                formdefaults_html_before(self),
                 Row(Column("obiekt")),
                 Row(
                     Column("od_roku", css_class="large-6 small-6"),
                     Column("do_roku", css_class="large-6 small-6"),
                 ),
                 Row(Column("_export")),
+                formdefaults_html_after(self),
             ),
             ButtonHolder(
                 Submit(
@@ -80,8 +85,6 @@ class BaseRaportForm(forms.Form):
                 ),
             ),
         )
-
-        super(BaseRaportForm, self).__init__(*args, **kwargs)
 
         lata = Rekord.objects.all().aggregate(Min("rok"), Max("rok"))
         for field in self["od_roku"], self["do_roku"]:
@@ -131,6 +134,7 @@ class AutorRaportForm(BaseRaportForm):
         self.helper.layout = Layout(
             Fieldset(
                 "Wybierz parametry",
+                formdefaults_html_before(self),
                 Row(Column("obiekt")),
                 Row(
                     Column("od_roku", css_class="large-6 medium-6 small-12"),
@@ -138,6 +142,7 @@ class AutorRaportForm(BaseRaportForm):
                 ),
                 Row(Column("_export")),
                 Row(Column("tylko_z_jednostek_uczelni")),
+                formdefaults_html_after(self),
             ),
             ButtonHolder(
                 Submit(

@@ -17,12 +17,12 @@ from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
 from bpp.models.struktura import Wydzial, Jednostka
 from bpp.views.mixins import UczelniaSettingRequiredMixin
-from formdefaults.core import get_form_defaults
+from formdefaults.helpers import FormDefaultsMixin
 from .forms import AutorRaportForm
 from .forms import JednostkaRaportForm, WydzialRaportForm
 
 
-class BaseFormView(FormView):
+class BaseFormView(FormDefaultsMixin, FormView):
     template_name = "nowe_raporty/formularz.html"
     title = "Raporty"
 
@@ -55,9 +55,6 @@ class AutorRaportFormView(AutorRaportAuthMixin, BaseFormView):
     form_class = AutorRaportForm
     title = "Raport autorów"
     report_slug = "raport-autorow"
-
-    def get_initial(self):
-        return get_form_defaults(self.form_class(), self.title, user=self.request.user)
 
     def form_valid(self, form):
         d = form.cleaned_data

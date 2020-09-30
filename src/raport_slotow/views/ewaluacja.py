@@ -10,6 +10,7 @@ from django_tables2 import SingleTableMixin
 
 from bpp.views.mixins import UczelniaSettingRequiredMixin
 from django_bpp.version import VERSION
+from formdefaults.helpers import FormDefaultsMixin
 from raport_slotow.filters import RaportSlotowUczelniaEwaluacjaFilter
 from raport_slotow.forms import ParametryRaportSlotowEwaluacjaForm
 from raport_slotow.models import RaportUczelniaEwaluacjaView
@@ -17,14 +18,17 @@ from raport_slotow.tables import RaportSlotowEwaluacjaTable
 from raport_slotow.util import MyExportMixin
 
 
-class ParametryRaportSlotowEwaluacja(UczelniaSettingRequiredMixin, FormView):
+class ParametryRaportSlotowEwaluacja(
+    UczelniaSettingRequiredMixin, FormDefaultsMixin, FormView,
+):
     template_name = "raport_slotow/index.html"
     form_class = ParametryRaportSlotowEwaluacjaForm
     uczelnia_attr = "pokazuj_raport_slotow_uczelnia"
+    title = "Raport slotów - ewaluacja"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["title"] = "Wybór roku"
+        context["title"] = self.title  # "Wybór roku"
         return context
 
     def form_valid(self, form):

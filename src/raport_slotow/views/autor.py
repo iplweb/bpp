@@ -12,6 +12,7 @@ from bpp.models import (
 )
 from bpp.views.mixins import UczelniaSettingRequiredMixin
 from django_bpp.version import VERSION
+from formdefaults.helpers import FormDefaultsMixin
 from raport_slotow.forms import AutorRaportSlotowForm
 from raport_slotow.tables import RaportSlotowAutorTable
 from raport_slotow.util import (
@@ -20,10 +21,11 @@ from raport_slotow.util import (
 )
 
 
-class WyborOsoby(UczelniaSettingRequiredMixin, FormView):
+class WyborOsoby(UczelniaSettingRequiredMixin, FormDefaultsMixin, FormView):
     template_name = "raport_slotow/index.html"
     form_class = AutorRaportSlotowForm
     uczelnia_attr = "pokazuj_raport_slotow_autor"
+    title = "Raport slotów - autor"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
