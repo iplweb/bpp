@@ -402,7 +402,7 @@ def crispy_form_html(self, key):
     from django.utils.functional import lazy
 
     def _():
-        return self.initial.get(key, "")
+        return self.initial.get(key, None) or ""
 
     return Row(Column(HTML(lazy(_, str)())))
 
