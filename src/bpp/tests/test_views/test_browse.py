@@ -192,7 +192,7 @@ def test_artykul_ze_skrotem(uczelnia, client):
     assert "więcej" in res.rendered_content
 
     res = client.get(reverse("bpp:browse_artykul", args=(uczelnia.slug, a.slug)))
-    assert b"789" in res.content
+    assert b"Tego ma nie byc" in res.content
 
 
 @pytest.mark.django_db
