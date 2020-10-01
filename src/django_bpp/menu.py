@@ -67,6 +67,7 @@ SYSTEM_MENU = [
     ("Charaktery formalne", "/admin/bpp/charakter_formalny/"),
     ("Charakter PBN", "/admin/bpp/charakter_pbn/"),
     ("Dyscypliny naukowe", "/admin/bpp/dyscyplina_naukowa/"),
+    ("Formularze - wartości domyślne", "/admin/formdefaults/formrepresentation/"),
     ("Funkcje w jednostce", "/admin/bpp/funkcja_autora/"),
     ("Granty", "/admin/bpp/grant/"),
     ("Języki", "/admin/bpp/jezyk/"),

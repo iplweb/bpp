@@ -19,6 +19,7 @@ from bpp.models import (
 )
 from bpp.views.mixins import UczelniaSettingRequiredMixin
 from django_bpp.version import VERSION
+from formdefaults.helpers import FormDefaultsMixin
 from raport_slotow.filters import (
     RaportSlotowUczelniaFilter,
     RaportSlotowUczelniaBezJednostekIWydzialowFilter,
@@ -36,14 +37,17 @@ from raport_slotow.util import (
 )
 
 
-class ParametryRaportSlotowUczelnia(UczelniaSettingRequiredMixin, FormView):
+class ParametryRaportSlotowUczelnia(
+    UczelniaSettingRequiredMixin, FormDefaultsMixin, FormView
+):
     template_name = "raport_slotow/index.html"
     form_class = ParametryRaportSlotowUczelniaForm
     uczelnia_attr = "pokazuj_raport_slotow_uczelnia"
+    title = "Raport slotów - uczelnia"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["title"] = "Wybór roku"
+        context["title"] = self.title
         return context
 
     def form_valid(self, form):

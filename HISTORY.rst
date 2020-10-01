@@ -2,6 +2,12 @@
 Historia zmian
 ==============
 
+202009.48
+---------
+* umożliwiaj konfigurację domyślnych wartości parametrów dla
+  wybranych formularzy oraz wyświetlanie dowolnego tekstu HTML przed i
+  po formularzach (#922)
+
 202008.47
 ---------
 

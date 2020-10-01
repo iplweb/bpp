@@ -126,6 +126,7 @@ INSTALLED_APPS = [
     "static_sitemaps",
     "cookielaw",
     "columns",
+    "formdefaults.apps.FormdefaultsConfig",
     # Musi być PRZED django-autocomplete-light do momentu
     # dal 3.3.0-release, musi być naprawiony o ten błąd:
     # https://github.com/yourlabs/django-autocomplete-light/issues/981

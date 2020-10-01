@@ -1,10 +1,13 @@
-import os
-from getpass import getpass
 from time import time
 
-from fabric import Connection, task
-from invoke import Responder
-from invoke.util import cd
+from fabric import task
+
+
+@task
+def installdb(c, db_name="bpp", fn="dump.psql"):
+    c.local(f"/opt/local/bin/dropdb -U postgres {db_name} || true")
+    c.local(f"/opt/local/bin/pg_restore -U postgres -j 6  -C -d template1 {fn}")
+    c.local(f"python src/manage.py migrate")
 
 
 @task
@@ -13,8 +16,7 @@ def getdb(c, db_name="bpp", fn="dump.psql"):
     c.get(f"/tmp/{fn}")
     c.run(f"rm /tmp/{fn}")
 
-    c.local(f"/opt/local/bin/dropdb -U postgres {db_name} || true")
-    c.local(f"/opt/local/bin/pg_restore -U postgres -j 6  -C -d template1 {fn}")
+    installdb(c, db_name, fn)
 
 
 @task
