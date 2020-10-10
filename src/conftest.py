@@ -2,14 +2,10 @@
 import json
 import os
 import time
-import warnings
 from datetime import datetime
 
 import django_webtest
 import pytest
-from channels.testing import ChannelsLiveServerTestCase
-from daphne.testing import DaphneProcess
-from pytest_django.lazy_django import skip_if_no_django
 from rest_framework.test import APIClient
 
 from bpp.tasks import aktualizuj_cache_rekordu
@@ -571,6 +567,7 @@ def typy_kbn():
 def statusy_korekt():
     for elem in fixture("status_korekty.json"):
         Status_Korekty.objects.get_or_create(pk=elem["pk"], **elem["fields"])
+    return {status.nazwa: status for status in Status_Korekty.objects.all()}
 
 
 @pytest.fixture(scope="function")
@@ -663,7 +660,6 @@ def pytest_configure():
 
 collect_ignore = [os.path.join(os.path.dirname(__file__), "media")]
 
-import subprocess
 import os
 import pytest
 
@@ -686,4 +682,20 @@ def api_client(client):
     return APIClient()
 
 
-from asgi_live_server import asgi_live_server
+@pytest.fixture
+def wydawnictwo_zwarte_przed_korekta(statusy_korekt):
+    return mommy.make(
+        Wydawnictwo_Zwarte, status_korekty=statusy_korekt["przed korektą"]
+    )
+
+
+@pytest.fixture
+def wydawnictwo_zwarte_w_trakcie_korekty(statusy_korekt):
+    return mommy.make(
+        Wydawnictwo_Zwarte, status_korekty=statusy_korekt["w trakcie korekty"]
+    )
+
+
+@pytest.fixture
+def wydawnictwo_zwarte_po_korekcie(statusy_korekt):
+    return mommy.make(Wydawnictwo_Zwarte, status_korekty=statusy_korekt["po korekcie"])

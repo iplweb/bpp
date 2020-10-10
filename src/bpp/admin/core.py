@@ -229,3 +229,15 @@ class RestrictDeletionToAdministracjaGroupAdmin(
     RestrictDeletionToAdministracjaGroupMixin, admin.ModelAdmin
 ):
     pass
+
+
+class PreventDeletionMixin:
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def get_action_choices(self, request, default_choices=BLANK_CHOICE_DASH):
+        return []
+
+
+class PreventDeletionAdmin(PreventDeletionMixin, admin.ModelAdmin):
+    pass

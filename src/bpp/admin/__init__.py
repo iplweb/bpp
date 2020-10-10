@@ -22,6 +22,7 @@ from .core import (
     CommitedModelAdmin,
     KolumnyZeSkrotamiMixin,
     generuj_inline_dla_autorow,
+    PreventDeletionAdmin,
 )
 from .core import (
     RestrictDeletionToAdministracjaGroupAdmin,
@@ -74,12 +75,12 @@ class Funkcja_AutoraAdmin(RestrictDeletionToAdministracjaGroupAdmin):
 
 admin.site.register(Jezyk, JezykAdmin)
 admin.site.register(Funkcja_Autora, Funkcja_AutoraAdmin)
-admin.site.register(Rodzaj_Zrodla, RestrictDeletionToAdministracjaGroupAdmin)
-admin.site.register(Status_Korekty, RestrictDeletionToAdministracjaGroupAdmin)
-admin.site.register(Zrodlo_Informacji, RestrictDeletionToAdministracjaGroupAdmin)
-admin.site.register(Rodzaj_Prawa_Patentowego, RestrictDeletionToAdministracjaGroupAdmin)
+admin.site.register(Rodzaj_Zrodla, PreventDeletionAdmin)
+admin.site.register(Status_Korekty, PreventDeletionAdmin)
+admin.site.register(Zrodlo_Informacji, PreventDeletionAdmin)
+admin.site.register(Rodzaj_Prawa_Patentowego, PreventDeletionAdmin)
 
-admin.site.register(OrganPrzyznajacyNagrody, RestrictDeletionToAdministracjaGroupAdmin)
+admin.site.register(OrganPrzyznajacyNagrody, PreventDeletionAdmin)
 
 
 @admin.register(Zewnetrzna_Baza_Danych)
