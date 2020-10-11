@@ -705,9 +705,9 @@ wsgiutils==0.7.2 \
     --hash=sha256:3c06382efe702f9997d725941db928cbc68e3ecbb0093a9633bdba1002687c08 \
     --hash=sha256:3f70738075f36841fc8ac61f4c31434f45a0c676dc64ea73fa2fd6679ec12ada \
     # via moai-iplweb
-xlrd==1.1.0 \
-    --hash=sha256:83a1d2f1091078fb3f65876753b5302c5cfb6a41de64b9587b74cefa75157148 \
-    --hash=sha256:8a21885513e6d915fe33a8ee5fdfa675433b61405ba13e2a69e62ee36828d7e2 \
+xlrd==1.2.0 \
+    --hash=sha256:546eb36cee8db40c3eaa46c351e67ffee6eeb5fa2650b71bc4c758a29a1b29b2 \
+    --hash=sha256:e551fb498759fa3a5384a94ccd4c3c02eb7c00ea424426e212ac0c57be9dfbde \
     # via -r requirements.in
 zipp==3.1.0 \
     --hash=sha256:aa36550ff0c0b7ef7fa639055d797116ee891440eac1a56f378e2d3179e0320b \
