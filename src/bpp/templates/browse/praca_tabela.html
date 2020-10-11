@@ -40,6 +40,10 @@
         </tr>
     {% endif %}
 
+    {% if praca.wydawca or praca.wydawca_opis %}
+        <tr><th>Wydawca:</th><td>{{ praca.wydawca|default:"" }} {{ praca.wydawca_opis|default:"" }}</td></tr>
+    {% endif %}
+
     {% if praca.isbn %}
         <tr><th>ISBN:</th><td>{{praca.isbn}}</td></tr>
     {%endif%}

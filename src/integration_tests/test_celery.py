@@ -7,9 +7,11 @@ import psutil
 import pytest
 
 from bpp.tasks import remove_old_report_files
+import sys
 
 
 @pytest.mark.django_db
+@pytest.mark.skipif(sys.platform == "darwin", reason="Won't work on macOS ATM")
 def test_celery(settings):
     # UWAGA UWAGA UWAGA
     # Po co ten test? Ano po to, żeby sprawdzić, czy workera da się
@@ -20,21 +22,25 @@ def test_celery(settings):
     # tl;dr: ten test sprawdza uruchamianie workera i wywoływanie zadań;
 
     from django.db import connection
-    db_name = connection.settings_dict['NAME']
+
+    db_name = connection.settings_dict["NAME"]
 
     my_env = os.environ.copy()
-    my_env['DJANGO_BPP_DB_NAME'] = db_name
+    my_env["DJANGO_BPP_DB_NAME"] = db_name
 
-    cwd = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), ".."))
+    cwd = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
     # Start worker in background
     proc = subprocess.Popen(
-        shlex.split("celery -A django_bpp.celery_tasks worker  --concurrency=1 -l info"),
+        shlex.split(
+            "celery -A django_bpp.celery_tasks worker  --concurrency=1 -l info"
+        ),
         # Nie może być stdout/stderr, bo nie będzie uruchomiony w tle
         # stdout=subprocess.PIPE,
         # stderr=subprocess.PIPE,
-        cwd=cwd, env=my_env)
+        cwd=cwd,
+        env=my_env,
+    )
 
     time.sleep(3)
 

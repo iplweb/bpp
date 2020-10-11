@@ -47,6 +47,9 @@ from bpp.models import (
     Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych,
     Autor_Dyscyplina,
     Wydawnictwo_Zwarte_Zewnetrzna_Baza_Danych,
+    Grant,
+    Grant_Rekordu,
+    Element_Repozytorium,
 )
 from bpp.models.const import GR_WPROWADZANIE_DANYCH
 from bpp.models.konferencja import Konferencja
@@ -64,6 +67,7 @@ from bpp.models.seria_wydawnicza import Seria_Wydawnicza
 from bpp.models.struktura import Jednostka_Wydzial
 from bpp.models.system import Charakter_PBN
 from bpp.models.wydawca import Wydawca, Poziom_Wydawcy
+from formdefaults.models import FormFieldRepresentation, FormRepresentation
 from import_dbf.models import Bib, B_A, Aut, Jed, Poz, B_U, Usi, Ses, Wx2, Ixn
 from miniblog.models import Article
 
@@ -91,6 +95,9 @@ groups = {
         Rodzaj_Prawa_Patentowego,
         Dyscyplina_Naukowa,
         Zewnetrzna_Baza_Danych,
+        Grant,
+        FormFieldRepresentation,
+        FormRepresentation,
     ],
     "struktura": [Uczelnia, Wydzial, Jednostka, Jednostka_Wydzial],
     GR_WPROWADZANIE_DANYCH: [
@@ -116,6 +123,8 @@ groups = {
         Wydawnictwo_Zwarte_Zewnetrzna_Baza_Danych,
         Wydawca,
         Poziom_Wydawcy,
+        Grant_Rekordu,
+        Element_Repozytorium,
     ],
     "indeks autorów": [Autor, Autor_Jednostka],
     "administracja": [User, Group, SearchForm],

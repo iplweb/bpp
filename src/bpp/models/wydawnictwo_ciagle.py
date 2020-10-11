@@ -12,6 +12,7 @@ from bpp.models import (
     MaProcentyMixin,
     AktualizujDatePBNNadrzednegoMixin,
     ModelOpcjonalnieNieEksportowanyDoAPI,
+    ModelZMiejscemPrzechowywania,
 )
 from bpp.models.abstract import (
     BazaModeluOdpowiedzialnosciAutorow,
@@ -112,6 +113,7 @@ class Wydawnictwo_Ciagle(
     ModelZKonferencja,
     ModelWybitny,
     ModelZLiczbaCytowan,
+    ModelZMiejscemPrzechowywania,
     ModelOpcjonalnieNieEksportowanyDoAPI,
     MaProcentyMixin,
     DodajAutoraMixin,

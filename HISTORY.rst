@@ -2,6 +2,41 @@
 Historia zmian
 ==============
 
+202009.48
+---------
+* umożliwiaj konfigurację domyślnych wartości parametrów dla
+  wybranych formularzy oraz wyświetlanie dowolnego tekstu HTML przed i
+  po formularzach (#922)
+* zamiast zbierać prace na minimalny slot, zbieraj prace do osiągnięcia maksymalnego
+  slotu: usunięta zostaje opcja "minimalny slot" oraz "wyświetlaj prace poniżej minimalnego
+  slotu", dodana zostaje opcja "maksymalny slot" (#917)
+* licz sloty dla roku 2021 jak dla roku 2020 (#925)
+* poprawka błędu edycji wydawców (#925)
+
+202008.47
+---------
+
+* ograniczaj wyświetlanie do 20 tys rekordów przy braku zapytania w wyszukiwarce (b/n),
+
+202008.46
+---------
+
+* możliwość przypisywania grantów rekordom (b/n),
+* możliwość przypisywania elementów repozytoryjnych (plików) rekordom (b/n),
+
+202008.45
+---------
+
+* backend cache zmieniony na django-redis-cache (wcześniej: pylibmc) (b/n),
+
+202008.43
+---------
+
+* lepszy silnik notyfikacji dynamicznych (channels+ASGI+uvicorn) (b/n),
+* import danych o dyscyplinach autorów z plików DBF (b/n),
+* dodatkowe pola "rodzaj autora" oraz "wymiar etatu" (b/n),
+* import danych grantów, nr odbitek i liczne drobne poprawki importu DBF (b/n),
+
 202007.41
 ---------
 

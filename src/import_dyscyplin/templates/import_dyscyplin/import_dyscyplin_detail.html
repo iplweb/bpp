@@ -53,7 +53,6 @@
                 $.ajax({
                     url: "{% url "import_dyscyplin:stworz_kolumny" object.pk %}",
                     method: "GET",
-                    data: {"web_page_uid": bppNotifications.messageCookieId}
                 });
             });
         </script>

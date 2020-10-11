@@ -24,6 +24,10 @@ from import_dbf.models import (
     Jez,
     Loc,
     Bib_Desc,
+    Dys,
+    Jer,
+    B_B,
+    B_N,
 )
 
 
@@ -216,6 +220,17 @@ class LdyAdmin(ImportDbfBaseAdmin):
     list_display = ["id", "dziedzina", "dyscyplina"]
 
 
+@admin.register(Dys)
+class DysAdmin(ImportDbfBaseAdmin):
+    list_display = [
+        "orcid_id",
+        "a_dysc_1",
+        "b_dysc_1",
+        "c_dysc_1",
+        "d_dysc_1",
+    ]
+
+
 @admin.register(B_E)
 class B_EAdmin(ImportDbfBaseAdmin):
     list_display = ["idt", "lp", "idt_eng"]
@@ -258,6 +273,23 @@ class PubAdmin(ImportDbfBaseAdmin):
 @admin.register(Loc)
 class LocAdmin(ImportDbfBaseAdmin):
     list_display = ["ident", "ext"]
+
+
+@admin.register(Jer)
+class JerAdmin(ImportDbfBaseAdmin):
+    list_display = ["nr", "od_roku", "skrot", "nazwa", "wyd_skrot"]
+
+
+@admin.register(B_B)
+class B_BAdmin(ImportDbfBaseAdmin):
+    autocomplete_fields = ["idt"]
+    list_display = ["idt", "lp", "idt_bazy"]
+
+
+@admin.register(B_N)
+class B_NAdmin(ImportDbfBaseAdmin):
+    autocomplete_fields = ["idt"]
+    list_display = ["idt", "lp", "idt_pbn"]
 
 
 for elem in import_dbf_models.__all__:

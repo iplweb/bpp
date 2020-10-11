@@ -1120,6 +1120,13 @@ class ModelZLiczbaCytowan(models.Model):
         abstract = True
 
 
+class ModelZMiejscemPrzechowywania(models.Model):
+    numer_odbitki = models.CharField(max_length=50, null=True, blank=True)
+
+    class Meta:
+        abstract = True
+
+
 class MaProcentyMixin:
     def ma_procenty(self):
         for autor in self.autorzy_set.all():

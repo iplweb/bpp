@@ -18,10 +18,14 @@ from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
 from bpp.models.struktura import Jednostka, Wydzial
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
+from formdefaults.models import FormRepresentation
 from nowe_raporty.views import (
     GenerujRaportDlaAutora,
     GenerujRaportDlaJednostki,
     GenerujRaportDlaWydzialu,
+    AutorRaportFormView,
+    JednostkaRaportFormView,
+    WydzialRaportFormView,
 )
 
 
@@ -408,3 +412,36 @@ def test_generowanie_xls(
     # Sprawdź, czy to XLS
     wb = xlrd.open_workbook(file_contents=res.content)
     assert len(wb.sheets()) == 1
+
+
+@pytest.mark.parametrize(
+    "url,slug,klass",
+    [
+        ("nowe_raporty:autor_form", "raport-autorow", AutorRaportFormView),
+        ("nowe_raporty:jednostka_form", "raport-jednostek", JednostkaRaportFormView),
+        ("nowe_raporty:wydzial_form", "raport-wydzialow", WydzialRaportFormView),
+    ],
+)
+def test_form_defaults_napis_przed_po(uczelnia, admin_client, url, klass, slug):
+    NAPIS_PRZED = b"napis przed"
+    NAPIS_PO = b"napis po"
+
+    mommy.make(Report, slug=slug, title="foobar")
+
+    uczelnia.pokazuj_raport_autorow = OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE
+    uczelnia.pokazuj_raport_wydzialow = OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE
+    uczelnia.pokazuj_raport_jednostek = OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE
+    uczelnia.save()
+
+    res = admin_client.get(reverse(url))
+    for n in NAPIS_PO, NAPIS_PRZED:
+        assert n not in res.content
+
+    res = FormRepresentation.objects.get_or_create_for_instance(klass.form_class())
+    res.html_before = NAPIS_PRZED
+    res.html_after = NAPIS_PO
+    res.save()
+
+    res = admin_client.get(reverse(url))
+    for n in NAPIS_PO, NAPIS_PRZED:
+        assert n in res.content

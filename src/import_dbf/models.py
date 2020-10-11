@@ -337,6 +337,9 @@ class Ixn(models.Model):
     idt_pbn = models.TextField(blank=True, primary_key=True)
     pbn = models.TextField(blank=True, null=True)
 
+    def __str__(self):
+        return self.pbn
+
     class Meta:
         managed = False
         verbose_name = "zaimportowany identyfikator PBN"
@@ -345,19 +348,24 @@ class Ixn(models.Model):
 
 
 class B_B(models.Model):
-    idt = models.TextField(primary_key=True)
+    id = models.IntegerField(primary_key=True, db_column="pk")
+    idt = models.ForeignKey("import_dbf.Bib", on_delete=DO_NOTHING, db_column="idt")
     lp = models.TextField(blank=True, null=True)
     idt_bazy = models.TextField(blank=True, null=True)
 
     class Meta:
         managed = False
         db_table = "import_dbf_b_b"
+        ordering = ("idt__tytul_or_s", "lp")
 
 
 class B_N(models.Model):
-    idt = models.TextField(primary_key=True)
+    id = models.IntegerField(primary_key=True, db_column="pk")
+    idt = models.ForeignKey("import_dbf.bib", on_delete=DO_NOTHING, db_column="idt")
     lp = models.TextField(blank=True, null=True)
-    idt_pbn = models.TextField(blank=True, null=True)
+    idt_pbn = models.ForeignKey(
+        "import_dbf.Ixn", db_column="idt_pbn", on_delete=DO_NOTHING
+    )
 
     class Meta:
         managed = False
@@ -368,26 +376,45 @@ class Dys(models.Model):
     orcid_id = models.TextField(primary_key=True)
     a_n = models.TextField(blank=True, null=True)
     a_w_etatu = models.TextField(blank=True, null=True)
-    a_dysc_1 = models.TextField(blank=True, null=True)
-    a_dysc_2 = models.TextField(blank=True, null=True)
+    a_dysc_1 = models.ForeignKey(
+        "import_dbf.Ldy", on_delete=DO_NOTHING, db_column="a_dysc_1", related_name="+"
+    )
+    a_dysc_2 = models.ForeignKey(
+        "import_dbf.Ldy", on_delete=DO_NOTHING, db_column="a_dysc_2", related_name="+"
+    )
     a_dysc_1_e = models.TextField(blank=True, null=True)
     a_dysc_2_e = models.TextField(blank=True, null=True)
+
     b_n = models.TextField(blank=True, null=True)
     b_w_etatu = models.TextField(blank=True, null=True)
-    b_dysc_1 = models.TextField(blank=True, null=True)
-    b_dysc_2 = models.TextField(blank=True, null=True)
+    b_dysc_1 = models.ForeignKey(
+        "import_dbf.Ldy", on_delete=DO_NOTHING, db_column="b_dysc_1", related_name="+"
+    )
+    b_dysc_2 = models.ForeignKey(
+        "import_dbf.Ldy", on_delete=DO_NOTHING, db_column="b_dysc_2", related_name="+"
+    )
     b_dysc_1_e = models.TextField(blank=True, null=True)
     b_dysc_2_e = models.TextField(blank=True, null=True)
+
     c_n = models.TextField(blank=True, null=True)
     c_w_etatu = models.TextField(blank=True, null=True)
-    c_dysc_1 = models.TextField(blank=True, null=True)
-    c_dysc_2 = models.TextField(blank=True, null=True)
+    c_dysc_1 = models.ForeignKey(
+        "import_dbf.Ldy", on_delete=DO_NOTHING, db_column="c_dysc_1", related_name="+"
+    )
+    c_dysc_2 = models.ForeignKey(
+        "import_dbf.Ldy", on_delete=DO_NOTHING, db_column="c_dysc_2", related_name="+"
+    )
     c_dysc_1_e = models.TextField(blank=True, null=True)
     c_dysc_2_e = models.TextField(blank=True, null=True)
+
     d_n = models.TextField(blank=True, null=True)
     d_w_etatu = models.TextField(blank=True, null=True)
-    d_dysc_1 = models.TextField(blank=True, null=True)
-    d_dysc_2 = models.TextField(blank=True, null=True)
+    d_dysc_1 = models.ForeignKey(
+        "import_dbf.Ldy", on_delete=DO_NOTHING, db_column="d_dysc_1", related_name="+"
+    )
+    d_dysc_2 = models.ForeignKey(
+        "import_dbf.Ldy", on_delete=DO_NOTHING, db_column="d_dysc_2", related_name="+"
+    )
     d_dysc_1_e = models.TextField(blank=True, null=True)
     d_dysc_2_e = models.TextField(blank=True, null=True)
 
@@ -413,7 +440,8 @@ class Ixe(models.Model):
 
 
 class Jer(models.Model):
-    nr = models.TextField(primary_key=True)
+    id = models.IntegerField(primary_key=True, db_column="pk")
+    nr = models.TextField()
     od_roku = models.TextField(blank=True, null=True)
     skrot = models.TextField(blank=True, null=True)
     nazwa = models.TextField(blank=True, null=True)

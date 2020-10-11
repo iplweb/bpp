@@ -395,3 +395,21 @@ def wytnij_isbn_z_uwag(uwagi):
             reszta = reszta[1:].strip()
 
         return isbn, reszta
+
+
+def crispy_form_html(self, key):
+    from crispy_forms_foundation.layout import Row, Column, HTML
+    from django.utils.functional import lazy
+
+    def _():
+        return self.initial.get(key, None) or ""
+
+    return Row(Column(HTML(lazy(_, str)())))
+
+
+def formdefaults_html_before(form):
+    return crispy_form_html(form, "formdefaults_pre_html")
+
+
+def formdefaults_html_after(form):
+    return crispy_form_html(form, "formdefaults_post_html")

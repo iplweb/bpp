@@ -48,19 +48,11 @@
         {% endverbatim messageTemplate %}
         </div>
         {# fix pycharm highlighting #}
+        {{ extraChannels|json_script:"extra-channels" }}
         <script type="text/javascript">
-            {% load notifications %}
-            {% uuid notifications_uuid %}
             $(document).ready(function () {
-                // tests_need_this:messageCookieID:{{ notifications_uuid }}:
-                bppNotifications.init(
-                    '{{ NOTIFICATIONS_PUB_PREFIX }}-{{ request.user.username }}',
-                    window.location.hostname,
-                    window.location.port,
-                    null,
-                    "{{ notifications_uuid }}",
-                    "{% static "bpp/wav/alert.wav" %}"
-                );
+                bppNotifications.init("{% static "bpp/wav/alert.wav" %}",
+                    document.getElementById('extra-channels').textContent);
 
                 $(document).on('closed.zf', function (event) {
                     if ($(event.target).hasClass("ajax-on-close")) {

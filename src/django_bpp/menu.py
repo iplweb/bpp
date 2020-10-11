@@ -38,13 +38,13 @@ IMPORT_DBF_MENU_1 = [
     ("Zaimportowane listy wydawców", "/admin/import_dbf/lis/",),
     ("Zaimportowane historia jednostek", "/admin/import_dbf/j_h/",),
     ("Zaimportowane rekordy KBR", "/admin/import_dbf/kbr/",),
+    ("Zaimportowane Jer", "/admin/import_dbf/jer/",),
+    ("Zaimportowane B_B", "/admin/import_dbf/b_b/",),
+    ("Zaimportowane B_N", "/admin/import_dbf/b_n/",),
 ]
 
 IMPORT_DBF_MENU_2 = [
     ("Zaimportowane Wx2", "/admin/import_dbf/wx2/",),
-    ("Zaimportowane B_B", "/admin/import_dbf/b_b/",),
-    ("Zaimportowane B_N", "/admin/import_dbf/b_n/",),
-    ("Zaimportowane Jer", "/admin/import_dbf/jer/",),
     ("Zaimportowane Kad", "/admin/import_dbf/kad/",),
     ("Zaimportowane Loc", "/admin/import_dbf/loc/",),
     ("Zaimportowane Pbc", "/admin/import_dbf/pbc/",),
@@ -67,7 +67,9 @@ SYSTEM_MENU = [
     ("Charaktery formalne", "/admin/bpp/charakter_formalny/"),
     ("Charakter PBN", "/admin/bpp/charakter_pbn/"),
     ("Dyscypliny naukowe", "/admin/bpp/dyscyplina_naukowa/"),
+    ("Formularze - wartości domyślne", "/admin/formdefaults/formrepresentation/"),
     ("Funkcje w jednostce", "/admin/bpp/funkcja_autora/"),
+    ("Granty", "/admin/bpp/grant/"),
     ("Języki", "/admin/bpp/jezyk/"),
     ("OpenAccess: wydawnictwa ciągłe", "/admin/bpp/tryb_openaccess_wydawnictwo_ciagle"),
     ("OpenAccess: wydawnictwa zwarte", "/admin/bpp/tryb_openaccess_wydawnictwo_zwarte"),

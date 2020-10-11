@@ -116,6 +116,8 @@ MODEL_Z_DOI = ("doi",)
 
 MODEL_Z_LICZBA_CYTOWAN = ("liczba_cytowan",)
 
+MODEL_Z_MIEJSCEM_PRZECHOWYWANIA = ("numer_odbitki",)
+
 MODEL_Z_ROKIEM = ("rok",)
 
 MODEL_TYPOWANY = (
@@ -243,7 +245,8 @@ EKSTRA_INFORMACJE_WYDAWNICTWO_CIAGLE_FIELDSET = (
         + MODEL_Z_WWW
         + MODEL_Z_PUBMEDID
         + MODEL_Z_DOI
-        + MODEL_Z_LICZBA_CYTOWAN,
+        + MODEL_Z_LICZBA_CYTOWAN
+        + MODEL_Z_MIEJSCEM_PRZECHOWYWANIA,
     },
 )
 
@@ -255,7 +258,8 @@ EKSTRA_INFORMACJE_WYDAWNICTWO_ZWARTE_FIELDSET = (
         + MODEL_Z_WWW
         + MODEL_Z_PUBMEDID
         + MODEL_Z_DOI
-        + MODEL_Z_LICZBA_CYTOWAN,
+        + MODEL_Z_LICZBA_CYTOWAN
+        + MODEL_Z_MIEJSCEM_PRZECHOWYWANIA,
     },
 )
 
@@ -263,7 +267,11 @@ EKSTRA_INFORMACJE_DOKTORSKA_HABILITACYJNA_FIELDSET = (
     "Ekstra informacje",
     {
         "classes": ("grp-collapse grp-closed",),
-        "fields": MODEL_Z_WWW + MODEL_Z_PUBMEDID + MODEL_Z_DOI + MODEL_Z_LICZBA_CYTOWAN,
+        "fields": MODEL_Z_WWW
+        + MODEL_Z_PUBMEDID
+        + MODEL_Z_DOI
+        + MODEL_Z_LICZBA_CYTOWAN
+        + MODEL_Z_MIEJSCEM_PRZECHOWYWANIA,
     },
 )
 
@@ -324,7 +332,7 @@ def link_do_obiektu(obj):
 
 
 def sprobuj_policzyc_sloty(request, obj):
-    if obj.rok >= 2017 and obj.rok <= 2020:
+    if obj.rok >= 2017 and obj.rok <= 2021:
         try:
             ISlot(obj)
             messages.success(

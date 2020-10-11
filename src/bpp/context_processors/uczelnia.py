@@ -11,11 +11,18 @@ class NiezdefiniowanaUczelnia:
     pk = None
     nazwa = "[niezdefiniowana uczelnia]"
     nazwa_dopelniacz = "[niezdefiniowanej uczelni]"
-    slug = 'niezdefiniowana-uczelnia'
+    slug = "niezdefiniowana-uczelnia"
     podpowiadaj_dyscypliny = False
+    skrot = "NdU"
+
+    def __getattr__(self, item):
+        if item.startswith("pokazuj_"):
+            return False
+        return super(NiezdefiniowanaUczelnia, self).__getattr__(item)
 
 
-BRAK_UCZELNI = {'uczelnia': NiezdefiniowanaUczelnia}
+BRAK_UCZELNI = {"uczelnia": NiezdefiniowanaUczelnia}
+
 
 def uczelnia(request):
     timeout, value = cache.get(b"bpp_uczelnia", (0, None))
@@ -28,7 +35,7 @@ def uczelnia(request):
     if u is None:
         return BRAK_UCZELNI
 
-    value = {'uczelnia': u}
+    value = {"uczelnia": u}
     cache.set(b"bpp_uczelnia", (time.time() + 3600, value))
     return value
 

@@ -25,12 +25,14 @@ class Command(BaseCommand):
             Jeżeli ta opcja nie zostanie określona, osoby posiadające dwie dysycpliny nie będą
             miały ustawianej dyscypliny w swoich rekordach. """,
         )
-        parser.add_argument("rok", type=int)
         parser.add_argument("--disable-cache", action="store_true")
 
     @transaction.atomic
     def handle(self, verbosity, *args, **options):
         if verbosity > 1:
+            logger.setLevel(logging.INFO)
+
+        if verbosity > 2:
             logger.setLevel(logging.DEBUG)
 
         logger.debug("ID autora\tAutor\tRok\tDyscyplina\tTytul pracy\tID pracy")
@@ -53,4 +55,12 @@ class Command(BaseCommand):
                         f"\t{instance.rekord.pk}"
                     )
                     instance.dyscyplina_naukowa = ad.dyscyplina_naukowa
+
+                    if ad.subdyscyplina_naukowa_id is not None:
+                        logger.info(
+                            f"Autor {ad.autor} ma za rok {ad.rok} dwie dyscypliny, "
+                            f"przypisuję pierwszą do pracy {instance.rekord.tytul_oryginalny} "
+                            f"{instance.rekord.rok}"
+                        )
+
                     instance.save()

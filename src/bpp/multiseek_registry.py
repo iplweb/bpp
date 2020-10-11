@@ -883,6 +883,6 @@ registry = create_registry(
         Ordering("ostatnio_zmieniony", "ostatnio zmieniony"),
         Ordering("ostatnio_zmieniony_dla_pbn", "ostatnio zmieniony (dla PBN)"),
     ],
-    default_ordering=["-rok", "-impact_factor", "-punkty_kbn"],
+    default_ordering=["-rok", "", ""],
     report_types=multiseek_report_types
 )

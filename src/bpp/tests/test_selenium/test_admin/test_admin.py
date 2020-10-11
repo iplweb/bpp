@@ -31,7 +31,6 @@ from bpp.tests import (
     any_jednostka,
     add_extra_autor_inline,
     proper_click_element,
-    scroll_into_view,
     assertPopupContains,
     proper_click_by_id,
 )
@@ -52,10 +51,10 @@ pytestmark = [pytest.mark.slow, pytest.mark.selenium]
 
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.parametrize("url", ["wydawnictwo_ciagle", "wydawnictwo_zwarte"])
-def test_uzupelnij_strona_tom_nr_zeszytu(url, preauth_admin_browser, nginx_live_server):
+def test_uzupelnij_strona_tom_nr_zeszytu(url, preauth_admin_browser, asgi_live_server):
     url = reverse("admin:bpp_%s_add" % url)
     with wait_for_page_load(preauth_admin_browser):
-        preauth_admin_browser.visit(nginx_live_server.url + url)
+        preauth_admin_browser.visit(asgi_live_server.url + url)
 
     preauth_admin_browser.find_by_name("informacje").type("1993 vol. 5 z. 1")
     preauth_admin_browser.find_by_name("szczegoly").type("s. 4-3")
@@ -73,11 +72,11 @@ def test_uzupelnij_strona_tom_nr_zeszytu(url, preauth_admin_browser, nginx_live_
 
 
 def test_liczba_znakow_wydawniczych_liczba_arkuszy_wydawniczych(
-    preauth_admin_browser, nginx_live_server
+    preauth_admin_browser, asgi_live_server
 ):
     url = reverse("admin:bpp_wydawnictwo_zwarte_add")
     with wait_for_page_load(preauth_admin_browser):
-        preauth_admin_browser.visit(nginx_live_server.url + url)
+        preauth_admin_browser.visit(asgi_live_server.url + url)
 
     preauth_admin_browser.execute_script(
         "django.jQuery('#id_liczba_znakow_wydawniczych').val('40000').change()"
@@ -97,11 +96,11 @@ def test_liczba_znakow_wydawniczych_liczba_arkuszy_wydawniczych(
 
 
 @pytest.mark.django_db(transaction=True)
-def test_automatycznie_uzupelnij_punkty(preauth_admin_browser, nginx_live_server):
+def test_automatycznie_uzupelnij_punkty(preauth_admin_browser, asgi_live_server):
     url = reverse("admin:bpp_wydawnictwo_ciagle_add")
 
     with wait_for_page_load(preauth_admin_browser):
-        preauth_admin_browser.visit(nginx_live_server.url + url)
+        preauth_admin_browser.visit(asgi_live_server.url + url)
 
     any_zrodlo(nazwa="FOO BAR")
     proper_click_by_id(preauth_admin_browser, "id_wypelnij_pola_punktacji_button")
@@ -125,7 +124,7 @@ def trigger_event(elem, event):
 
 
 @flaky(max_runs=5)
-def test_admin_uzupelnij_punkty(preauth_admin_browser, nginx_live_server):
+def test_admin_uzupelnij_punkty(preauth_admin_browser, asgi_live_server):
     z = any_zrodlo(nazwa="WTF LOL")
 
     kw = dict(zrodlo=z)
@@ -136,7 +135,7 @@ def test_admin_uzupelnij_punkty(preauth_admin_browser, nginx_live_server):
     c = any_ciagle(zrodlo=z, impact_factor=5, punkty_kbn=5)
 
     url = reverse("admin:bpp_wydawnictwo_ciagle_change", args=(c.pk,))
-    preauth_admin_browser.visit(nginx_live_server.url + url)
+    preauth_admin_browser.visit(asgi_live_server.url + url)
 
     rok = preauth_admin_browser.find_by_id("id_rok")
     punkty_kbn = preauth_admin_browser.find_by_id("id_punkty_kbn")
@@ -171,10 +170,10 @@ def test_admin_uzupelnij_punkty(preauth_admin_browser, nginx_live_server):
     preauth_admin_browser.execute_script("window.onbeforeunload = function(e) {};")
 
 
-def test_upload_punkty(preauth_admin_browser, nginx_live_server):
+def test_upload_punkty(preauth_admin_browser, asgi_live_server):
     z = any_zrodlo(nazwa="WTF LOL")
     url = reverse("admin:bpp_wydawnictwo_ciagle_add")
-    preauth_admin_browser.visit(nginx_live_server.url + url)
+    preauth_admin_browser.visit(asgi_live_server.url + url)
 
     select_select2_autocomplete(preauth_admin_browser, "id_zrodlo", "WTF")
 
@@ -218,16 +217,16 @@ def autorform_jednostka(db):
 
 
 @pytest.fixture
-def autorform_browser(preauth_admin_browser, db, nginx_live_server):
+def autorform_browser(preauth_admin_browser, db, asgi_live_server):
     url = reverse("admin:bpp_wydawnictwo_ciagle_add")
     with wait_for_page_load(preauth_admin_browser):
-        preauth_admin_browser.visit(nginx_live_server.url + url)
+        preauth_admin_browser.visit(asgi_live_server.url + url)
 
     preauth_admin_browser.execute_script("window.onbeforeunload = function(e) {};")
     return preauth_admin_browser
 
 
-@flaky(max_runs=5)
+@flaky(max_runs=10)
 def test_autorform_uzupelnianie_jednostki(autorform_browser, autorform_jednostka):
     add_extra_autor_inline(autorform_browser)
 
@@ -273,10 +272,8 @@ def test_autorform_kasowanie_autora(autorform_browser, autorform_jednostka):
     autorform_browser.execute_script("window.onbeforeunload = function(e) {};")
 
 
-def test_bug_on_user_add(preauth_admin_browser, nginx_live_server):
-    preauth_admin_browser.visit(
-        nginx_live_server.url + reverse("admin:bpp_bppuser_add")
-    )
+def test_bug_on_user_add(preauth_admin_browser, asgi_live_server):
+    preauth_admin_browser.visit(asgi_live_server.url + reverse("admin:bpp_bppuser_add"))
     preauth_admin_browser.fill("username", "as")
     preauth_admin_browser.fill("password1", "as")
     preauth_admin_browser.fill("password2", "as")
@@ -290,7 +287,7 @@ def test_bug_on_user_add(preauth_admin_browser, nginx_live_server):
 
 @flaky(max_runs=5)
 def test_admin_wydawnictwo_zwarte_uzupelnij_rok(
-    wydawnictwo_zwarte, preauth_admin_browser, nginx_live_server
+    wydawnictwo_zwarte, preauth_admin_browser, asgi_live_server, transactional_db
 ):
     """
     :type preauth_admin_browser: splinter.driver.webdriver.remote.WebDriver
@@ -298,7 +295,7 @@ def test_admin_wydawnictwo_zwarte_uzupelnij_rok(
 
     browser = preauth_admin_browser
 
-    browser.visit(nginx_live_server.url + reverse("admin:bpp_wydawnictwo_zwarte_add"))
+    browser.visit(asgi_live_server.url + reverse("admin:bpp_wydawnictwo_zwarte_add"))
 
     rok = browser.find_by_id("id_rok")
     button = browser.find_by_id("id_rok_button")
@@ -340,7 +337,7 @@ def test_admin_wydawnictwo_zwarte_uzupelnij_rok(
 
 @flaky(max_runs=5)
 def test_admin_wydawnictwo_ciagle_uzupelnij_rok(
-    preauth_admin_browser, nginx_live_server
+    preauth_admin_browser, asgi_live_server
 ):
     """
     :type preauth_admin_browser: splinter.driver.webdriver.remote.WebDriver
@@ -350,7 +347,7 @@ def test_admin_wydawnictwo_ciagle_uzupelnij_rok(
 
     with wait_for_page_load(browser):
         browser.visit(
-            nginx_live_server.url + reverse("admin:bpp_wydawnictwo_ciagle_add")
+            asgi_live_server.url + reverse("admin:bpp_wydawnictwo_ciagle_add")
         )
     browser.fill("informacje", "Lublin 2002 test")
     proper_click_by_id(browser, "id_rok_button")
@@ -367,7 +364,7 @@ def test_admin_wydawnictwo_ciagle_uzupelnij_rok(
 
 
 def test_admin_wydawnictwo_ciagle_dowolnie_zapisane_nazwisko(
-    preauth_admin_browser, nginx_live_server, autor_jan_kowalski
+    preauth_admin_browser, asgi_live_server, autor_jan_kowalski
 ):
     """
     :type preauth_admin_browser: splinter.driver.webdriver.remote.WebDriver
@@ -377,7 +374,7 @@ def test_admin_wydawnictwo_ciagle_dowolnie_zapisane_nazwisko(
 
     with wait_for_page_load(browser):
         browser.visit(
-            nginx_live_server.url + reverse("admin:bpp_wydawnictwo_ciagle_add")
+            asgi_live_server.url + reverse("admin:bpp_wydawnictwo_ciagle_add")
         )
 
     xp1 = "/html/body/div[2]/article/div/form/div/div[1]/ul/li/a"
@@ -405,14 +402,14 @@ def test_admin_wydawnictwo_ciagle_dowolnie_zapisane_nazwisko(
     "url", ["wydawnictwo_ciagle", "wydawnictwo_zwarte", "patent"],
 )
 def test_admin_domyslnie_afiliuje_nowy_rekord(
-    preauth_admin_browser, nginx_live_server, url, expected,
+    preauth_admin_browser, asgi_live_server, url, expected,
 ):
     # twórz nowy obiekt, nie używaj z fixtury, bo db i transactional_db
     mommy.make(Uczelnia, domyslnie_afiliuje=expected)
 
     browser = preauth_admin_browser
     with wait_for_page_load(browser):
-        browser.visit(nginx_live_server.url + reverse(f"admin:bpp_{url}_add"))
+        browser.visit(asgi_live_server.url + reverse(f"admin:bpp_{url}_add"))
 
     add_extra_autor_inline(browser)
 
@@ -432,7 +429,7 @@ def test_admin_domyslnie_afiliuje_nowy_rekord(
 )
 @pytest.mark.django_db(transaction=True)
 def test_admin_domyslnie_afiliuje_istniejacy_rekord(
-    preauth_admin_browser, nginx_live_server, url, klasa, expected, afiliowany
+    preauth_admin_browser, asgi_live_server, url, klasa, expected, afiliowany
 ):
     # twórz nowy obiekt, nie używaj z fixtury, bo db i transactional_db
     mommy.make(Uczelnia, domyslnie_afiliuje=expected)
@@ -448,7 +445,7 @@ def test_admin_domyslnie_afiliuje_istniejacy_rekord(
 
     browser = preauth_admin_browser
     browser.visit(
-        nginx_live_server.url
+        asgi_live_server.url
         + reverse(f"admin:bpp_{url}_change", args=(wydawnictwo.pk,))
     )
 

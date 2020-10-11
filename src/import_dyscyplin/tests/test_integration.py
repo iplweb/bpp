@@ -11,10 +11,10 @@ from django_bpp.selenium_util import wait_for_page_load
 
 @flaky(max_runs=5)
 @pytest.mark.django_db(transaction=True)
-def test_integracyjny(preauth_admin_browser, nginx_live_server):
+def test_integracyjny(preauth_admin_browser, asgi_live_server):
     mommy.make(Uczelnia)
     preauth_admin_browser.visit(
-        nginx_live_server.url + reverse("import_dyscyplin:index")
+        asgi_live_server.url + reverse("import_dyscyplin:index")
     )
 
     with wait_for_page_load(preauth_admin_browser):

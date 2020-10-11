@@ -1,11 +1,19 @@
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Layout, Fieldset, Row, Column, ButtonHolder, Submit
+from crispy_forms_foundation.layout import (
+    Layout,
+    Fieldset,
+    Row,
+    Column,
+    ButtonHolder,
+    Submit,
+)
 from dal import autocomplete
 from django import forms
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 
 from bpp.models import Autor
+from bpp.util import formdefaults_html_after, formdefaults_html_before
 
 
 def year_last_month():
@@ -47,18 +55,22 @@ class AutorRaportSlotowForm(forms.Form):
                 )
 
     def __init__(self, *args, **kwargs):
+        super(AutorRaportSlotowForm, self).__init__(*args, **kwargs)
+
         self.helper = FormHelper()
         self.helper.form_class = "custom"
         self.helper.form_action = "."
         self.helper.layout = Layout(
             Fieldset(
                 "Wybierz parametry",
+                formdefaults_html_before(self),
                 Row(Column("obiekt", css_class="large-12 small-12")),
                 Row(
                     Column("od_roku", css_class="large-6 small-6"),
                     Column("do_roku", css_class="large-6 small-6"),
                 ),
                 Row(Column("_export")),
+                formdefaults_html_after(self),
             ),
             ButtonHolder(
                 Submit(
@@ -70,19 +82,13 @@ class AutorRaportSlotowForm(forms.Form):
             ),
         )
 
-        super(AutorRaportSlotowForm, self).__init__(*args, **kwargs)
-
 
 class ParametryRaportSlotowUczelniaForm(forms.Form):
     od_roku = forms.IntegerField(initial=year_last_month)
     do_roku = forms.IntegerField(initial=year_last_month)
 
-    minimalny_slot = forms.IntegerField(label="Minimalny slot", initial=1, min_value=1)
-
-    pokazuj_ponizej = forms.BooleanField(
-        label="Uwzględnij autorów poniżej minimalnego slotu",
-        initial=False,
-        required=False,
+    maksymalny_slot = forms.IntegerField(
+        label="Maksymalny slot", initial=1, min_value=1
     )
 
     dziel_na_jednostki_i_wydzialy = forms.BooleanField(
@@ -111,14 +117,15 @@ class ParametryRaportSlotowUczelniaForm(forms.Form):
         self.helper.layout = Layout(
             Fieldset(
                 "Wybierz parametry",
+                formdefaults_html_before(self),
                 Row(
                     Column("od_roku", css_class="large-6 small-6"),
                     Column("do_roku", css_class="large-6 small-6"),
                 ),
-                Row(Column("minimalny_slot", css_class="large-12 small-12")),
-                Row(Column("pokazuj_ponizej")),
+                Row(Column("maksymalny_slot", css_class="large-12 small-12")),
                 Row(Column("dziel_na_jednostki_i_wydzialy")),
                 Row(Column("_export")),
+                formdefaults_html_after(self),
             ),
             ButtonHolder(
                 Submit(
@@ -147,8 +154,10 @@ class ParametryRaportSlotowEwaluacjaForm(forms.Form):
         self.helper.layout = Layout(
             Fieldset(
                 "Wybierz parametry",
+                formdefaults_html_before(self),
                 Row(Column("rok", css_class="large-6 small-6"),),
                 Row(Column("_export")),
+                formdefaults_html_after(self),
             ),
             ButtonHolder(
                 Submit(

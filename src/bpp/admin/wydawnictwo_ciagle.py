@@ -47,6 +47,8 @@ from .core import CommitedModelAdmin, KolumnyZeSkrotamiMixin, generuj_inline_dla
 
 
 # Widget do automatycznego uzupełniania punktacji wydawnictwa ciągłego
+from .element_repozytorium import Element_RepozytoriumInline
+from .grant import Grant_RekorduInline
 
 
 class Button(forms.Widget):
@@ -190,6 +192,8 @@ class Wydawnictwo_CiagleAdmin(
         generuj_inline_dla_autorow(Wydawnictwo_Ciagle_Autor),
         NagrodaInline,
         Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychInline,
+        Grant_RekorduInline,
+        Element_RepozytoriumInline,
     )
 
     def zrodlo_col(self, obj):

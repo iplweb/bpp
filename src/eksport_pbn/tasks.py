@@ -62,7 +62,7 @@ def eksport_pbn(pk, max_file_size=1024 * 1024):
     rokstr = obj.get_rok_string()
 
     def informuj(msg, dont_persist=True):
-        call_command("send_message", user, msg, no_persist=dont_persist)
+        call_command("send_message", user, msg, dont_persist=dont_persist)
 
     def gen_ser():
         if artykuly:
@@ -106,9 +106,12 @@ def eksport_pbn(pk, max_file_size=1024 * 1024):
         outfile.close()
 
     class FakeUczelnia:
-        pbn_id = 'Ustaw PBN ID dla uczelni w module redagowania'
+        pbn_id = "Ustaw PBN ID dla uczelni w module redagowania"
 
-    hdr = header % (Uczelnia.objects.first() or FakeUczelnia).pbn_id or FakeUczelnia.pbn_id
+    hdr = (
+        header % (Uczelnia.objects.first() or FakeUczelnia).pbn_id
+        or FakeUczelnia.pbn_id
+    )
 
     for element in list(gen_ser()):
 

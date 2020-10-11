@@ -182,17 +182,17 @@ def test_artykuly(uczelnia, client):
 def test_artykul_ze_skrotem(uczelnia, client):
     a = Article.objects.create(
         title="123",
-        article_body="456\n<!-- tutaj -->\n789",
+        article_body="456\n<!-- tutaj -->\nTego ma nie byc",
         status=Article.STATUS.published,
         slug="1",
     )
 
     res = client.get(reverse("bpp:browse_uczelnia", args=(uczelnia.slug,)))
-    assert b"789" not in res.content
+    assert b"Tego ma nie byc" not in res.content
     assert "więcej" in res.rendered_content
 
     res = client.get(reverse("bpp:browse_artykul", args=(uczelnia.slug, a.slug)))
-    assert b"789" in res.content
+    assert b"Tego ma nie byc" in res.content
 
 
 @pytest.mark.django_db
