@@ -2,11 +2,7 @@ import pytest
 from django import forms
 
 from formdefaults import core
-from formdefaults.models import (
-    FormRepresentation,
-    FormFieldRepresentation,
-    FormFieldDefaultValue,
-)
+from formdefaults.models import FormRepresentation
 from formdefaults.util import full_name
 
 
@@ -27,12 +23,12 @@ def test_form_repr(test_form):
 @pytest.mark.django_db
 def test_update_form_db_repr(test_form, test_form_repr, normal_django_user):
     core.update_form_db_repr(test_form, test_form_repr)
-    assert FormFieldRepresentation.objects.count() == 1
-    assert FormFieldDefaultValue.objects.count() == 1
+    assert test_form_repr.fields_set.count() == 1
+    assert test_form_repr.values_set.count() == 1
 
     core.update_form_db_repr(test_form, test_form_repr, user=normal_django_user)
-    assert FormFieldRepresentation.objects.count() == 1
-    assert FormFieldDefaultValue.objects.count() == 2
+    assert test_form_repr.fields_set.count() == 1
+    assert test_form_repr.values_set.count() == 2
 
 
 @pytest.mark.django_db
@@ -52,42 +48,42 @@ def test_get_form_defaults_change_label_form(test_form):
 
 
 @pytest.mark.django_db
-def test_get_form_defaults_change_label_field(test_form):
+def test_get_form_defaults_change_label_field(test_form, test_form_repr):
     core.get_form_defaults(test_form, "123")
     test_form.fields["fld"].label = "456"
 
     core.get_form_defaults(test_form, "123")
 
-    assert FormFieldRepresentation.objects.first().label == "456"
+    assert test_form_repr.fields_set.first().label == "456"
 
 
 @pytest.mark.django_db
-def test_get_form_defaults_undumpable_json(test_form):
+def test_get_form_defaults_undumpable_json(test_form, test_form_repr):
     core.get_form_defaults(test_form, "123")
-    assert FormFieldDefaultValue.objects.count() == 1
-    assert FormFieldDefaultValue.objects.first().value == 123
+    assert test_form_repr.fields_set.count() == 1
+    assert test_form_repr.values_set.first().value == 123
 
     test_form.fields["fld"].initial = test_get_form_defaults_undumpable_json
     core.get_form_defaults(test_form, "123")
-    assert FormFieldDefaultValue.objects.count() == 0
+    assert test_form_repr.values_set.count() == 0
 
 
 @pytest.mark.django_db
-def test_get_form_defaults_with_user(test_form, normal_django_user):
+def test_get_form_defaults_with_user(test_form, test_form_repr, normal_django_user):
 
     res = core.get_form_defaults(test_form, user=normal_django_user)
     assert res["fld"] == 123
 
-    db_field = FormFieldRepresentation.objects.first()
+    db_field = test_form_repr.fields_set.first()
 
-    o = FormFieldDefaultValue.objects.first()
+    o = test_form_repr.values_set.first()
     o.value = 456
     o.save()
 
     res = core.get_form_defaults(test_form, user=normal_django_user)
     assert res["fld"] == 456
 
-    FormFieldDefaultValue.objects.create(
+    test_form_repr.values_set.create(
         parent=o.parent, field=db_field, user=normal_django_user, value=786
     )
 
