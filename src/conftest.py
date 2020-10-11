@@ -41,6 +41,8 @@ NORMAL_DJANGO_USER_PASSWORD = "test_password"
 
 from bpp.tests.util import setup_mommy
 
+from asgi_live_server import asgi_live_server  # noqa
+
 setup_mommy()
 
 
