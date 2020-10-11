@@ -14,5 +14,10 @@ class Migration(migrations.Migration):
     operations = [
         migrations.RunPython(
             lambda *args, **kw: load_custom_sql("0226_rekord_mat_status")
-        )
+        ),
+        # Odbudowanie tabeli rekord_mat spowoduje skasowanie bpp_uczelnia_ewaluacja_view,
+        # stąd potrzeba zaciągnąć ten plik z poprzednich migracji:
+        migrations.RunPython(
+            lambda *args, **kw: load_custom_sql("0207_uczelnia_analiza_view")
+        ),
     ]
