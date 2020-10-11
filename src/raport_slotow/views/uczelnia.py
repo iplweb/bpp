@@ -2,7 +2,7 @@ import urllib
 from datetime import datetime
 from urllib.parse import urlencode
 
-from django.db.models import F, Max, Min, Sum, Window
+from django.db.models import F, Max, Sum, Window
 from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.utils import timezone
@@ -13,9 +13,7 @@ from django_tables2 import RequestConfig, SingleTableMixin
 from bpp.models import (
     Cache_Punktacja_Autora_Query,
     Cache_Punktacja_Autora_Sum,
-    Cache_Punktacja_Autora_Sum_Group_Ponizej,
     Cache_Punktacja_Autora_Sum_Gruop,
-    Cache_Punktacja_Autora_Sum_Ponizej,
 )
 from bpp.views.mixins import UczelniaSettingRequiredMixin
 from django_bpp.version import VERSION
@@ -31,9 +29,7 @@ from raport_slotow.tables import (
 )
 from raport_slotow.util import (
     MyExportMixin,
-    clone_temporary_table,
     create_temporary_table_as,
-    insert_into,
 )
 
 
@@ -94,11 +90,7 @@ class RaportSlotowUczelnia(
             ("Nazwa raportu:", "raport slotów - uczelnia"),
             (f"Od roku:", self.data["od_roku"]),
             (f"Do roku:", self.data["do_roku"]),
-            ("Minimalny slot:", self.data["minimalny_slot"]),
-            (
-                "Uwzględnij autorów poniżej minimalnego slotu:",
-                "tak" if self.data["pokazuj_ponizej"] else "nie",
-            ),
+            ("Maksymalny slot:", self.data["maksymalny_slot"]),
             (
                 "Dziel na jednostki:",
                 "tak" if self.data["dziel_na_jednostki_i_wydzialy"] else "nie",
@@ -136,7 +128,7 @@ class RaportSlotowUczelnia(
         return f"raport_dyscyplin_{self.data['od_roku']}-{self.data['do_roku']}_{stamp}.{export_format}"
 
     def get_queryset(self):
-        self.min_slot = self.data["minimalny_slot"]
+        self.max_slot = self.data["maksymalny_slot"]
 
         if self.data["dziel_na_jednostki_i_wydzialy"]:
             partition_by = [F("autor_id"), F("jednostka_id"), F("dyscyplina_id")]
@@ -191,49 +183,18 @@ class RaportSlotowUczelnia(
 
         create_temporary_table_as("bpp_temporary_cpaq", qset1)
 
-        pokazuj_ponizej = self.data["pokazuj_ponizej"]
-
-        if pokazuj_ponizej:
-            # Stworz klona tabelki wynikowej dla autorów poniżej progu
-            clone_temporary_table("bpp_temporary_cpaq", "bpp_temporary_cpaq_2")
-
-        # Usuń wszystkie wyniki mniejsze od poszukiwanego minimalnego slotu
+        # Usuń wszystkie wyniki większe od poszukiwanego maksymalnego slotu
         Cache_Punktacja_Autora_Sum.objects.filter(
-            pkdautslotsum__lt=self.min_slot
+            pkdautslotsum__gt=self.max_slot
         ).delete()
 
-        # Wrzuć do tabeli 'wyjściowej' najmniejsze wartości z tabeli sumowania
+        # Wrzuć do tabeli 'wyjściowej' największe wartości z tabeli sumowania
         create_temporary_table_as(
             "bpp_temporary_cpasg",
             Cache_Punktacja_Autora_Sum.objects.values(*group_by)
-            .annotate(pkdautslotsum=Min("pkdautslotsum"), pkdautsum=Min("pkdautsum"))
+            .annotate(pkdautslotsum=Max("pkdautslotsum"), pkdautsum=Max("pkdautsum"))
             .order_by(),
         )
-
-        if pokazuj_ponizej:
-            # Usuń wszystkie wyniki powjżej
-            Cache_Punktacja_Autora_Sum_Ponizej.objects.filter(
-                pkdautslotsum__gte=self.min_slot
-            ).delete()
-            # Wrzuć do tabelki grupowania najwyższe wyniki
-            insert_into(
-                "bpp_temporary_cpasg",
-                Cache_Punktacja_Autora_Sum_Ponizej.objects.values(*group_by)
-                .annotate(
-                    pkdautslotsum=Max("pkdautslotsum"), pkdautsum=Max("pkdautsum")
-                )
-                .order_by(),
-            )
-
-            clone_temporary_table("bpp_temporary_cpasg", "bpp_temporary_cpasg_2")
-            create_temporary_table_as(
-                "bpp_temporary_cpasg",
-                Cache_Punktacja_Autora_Sum_Group_Ponizej.objects.values(*group_by)
-                .annotate(
-                    pkdautslotsum=Max("pkdautslotsum"), pkdautsum=Max("pkdautsum")
-                )
-                .order_by(),
-            )
 
         if self.data["dziel_na_jednostki_i_wydzialy"] is False:
             from django.db import connection

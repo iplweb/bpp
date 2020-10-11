@@ -7,6 +7,9 @@ Historia zmian
 * umożliwiaj konfigurację domyślnych wartości parametrów dla
   wybranych formularzy oraz wyświetlanie dowolnego tekstu HTML przed i
   po formularzach (#922)
+* zamiast zbierać prace na minimalny slot, zbieraj prace do osiągnięcia maksymalnego
+  slotu: usunięta zostaje opcja "minimalny slot" oraz "wyświetlaj prace poniżej minimalnego
+  slotu", dodana zostaje opcja "maksymalny slot" (#917)
 
 202008.47
 ---------

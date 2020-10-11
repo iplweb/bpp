@@ -2,15 +2,12 @@
 from urllib.parse import urlencode
 
 import pytest
-from django.urls.base import reverse
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
+from django.urls.base import reverse
 
 from bpp.models.fields import OpcjaWyswietlaniaField
-from bpp.tasks import aktualizuj_cache_rekordu
 from bpp.tests import browse_praca_url
-from bpp.views.autocomplete import Autor_Dyscyplina
-
-from django.contrib.contenttypes.models import ContentType
 
 
 @pytest.mark.parametrize(
@@ -234,7 +231,7 @@ def test_pokazuj_raport_slotow_menu_na_glownej(
             "raport_slotow:raport-uczelnia",
             [],
             "pokazuj_raport_slotow_uczelnia",
-            {"od_roku": 2000, "do_roku": 2000, "minimalny_slot": 1, "_export": "html"},
+            {"od_roku": 2000, "do_roku": 2000, "maksymalny_slot": 1, "_export": "html"},
         ),
     ],
 )
