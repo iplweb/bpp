@@ -1,5 +1,5 @@
-from django.db import models
 from django.core.exceptions import ValidationError
+from django.db import models
 
 from bpp.fields import YearField
 from bpp.models import ModelZNazwa
@@ -20,7 +20,7 @@ class Wydawca(ModelZNazwa):
             if hasattr(self, "alias_dla_id") and self.pk == self.alias_dla_id:
                 raise ValidationError("Rekord nie może być aliasem sam dla siebie")
 
-            if hasattr(self, "alias_dla_id"):
+            if getattr(self, "alias_dla_id") is not None:
                 if self.poziom_wydawcy_set.count():
                     raise ValidationError(
                         "Wydawca ma przypisane poziomy wydawcy, "

@@ -10,6 +10,8 @@ Historia zmian
 * zamiast zbierać prace na minimalny slot, zbieraj prace do osiągnięcia maksymalnego
   slotu: usunięta zostaje opcja "minimalny slot" oraz "wyświetlaj prace poniżej minimalnego
   slotu", dodana zostaje opcja "maksymalny slot" (#917)
+* licz sloty dla roku 2021 jak dla roku 2020 (#925)
+* poprawka błędu edycji wydawców (#925)
 
 202008.47
 ---------

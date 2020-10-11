@@ -332,7 +332,7 @@ def link_do_obiektu(obj):
 
 
 def sprobuj_policzyc_sloty(request, obj):
-    if obj.rok >= 2017 and obj.rok <= 2020:
+    if obj.rok >= 2017 and obj.rok <= 2021:
         try:
             ISlot(obj)
             messages.success(
