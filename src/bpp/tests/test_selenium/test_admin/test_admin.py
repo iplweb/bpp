@@ -31,7 +31,6 @@ from bpp.tests import (
     any_jednostka,
     add_extra_autor_inline,
     proper_click_element,
-    scroll_into_view,
     assertPopupContains,
     proper_click_by_id,
 )
@@ -227,7 +226,7 @@ def autorform_browser(preauth_admin_browser, db, asgi_live_server):
     return preauth_admin_browser
 
 
-@flaky(max_runs=5)
+@flaky(max_runs=10)
 def test_autorform_uzupelnianie_jednostki(autorform_browser, autorform_jednostka):
     add_extra_autor_inline(autorform_browser)
 
