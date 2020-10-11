@@ -7,7 +7,7 @@ Struktura uczelni.
 from autoslug import AutoSlugField
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.db import models
-from django.db.models import SET_NULL, Q
+from django.db.models import SET_NULL, Q, F
 from django.urls.base import reverse
 
 from bpp.models import ModelZAdnotacjami, NazwaISkrot
@@ -229,6 +229,12 @@ class Ukryj_Status_KorektyManager(models.Manager):
         """
         if uczelnia is None:
             uczelnia = Uczelnia.objects.get_default()
+
+            # Jeżeli nie mamy żadnych informacji nt obiektu uczelnia, to nie mamy też
+            # informacji nt wyświetlania lub chowania elementów, zatem zwrócmy obiekt
+            # Q() mający zawsze wartość 'prawda':
+            if uczelnia is None:
+                return Q(pk=F("pk"))
 
         assert ftype in ["multiwyszukiwarka", "raporty", "rankingi", "sloty"]
 
