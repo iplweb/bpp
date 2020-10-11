@@ -68,7 +68,7 @@ jenkins:
 	pip install -r requirements.txt -r requirements_dev.txt --quiet
 	make assets
 
-	pytest --ds=django_bpp.settings.local -n6 --splinter-webdriver=firefox --nginx-host=localhost --liveserver=localhost --create-db --maxfail=20
+	pytest --ds=django_bpp.settings.local -n6 --create-db --maxfail=20
 
 	yarn
 	make js-tests
