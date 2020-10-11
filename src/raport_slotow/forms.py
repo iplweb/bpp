@@ -87,12 +87,8 @@ class ParametryRaportSlotowUczelniaForm(forms.Form):
     od_roku = forms.IntegerField(initial=year_last_month)
     do_roku = forms.IntegerField(initial=year_last_month)
 
-    minimalny_slot = forms.IntegerField(label="Minimalny slot", initial=1, min_value=1)
-
-    pokazuj_ponizej = forms.BooleanField(
-        label="Uwzględnij autorów poniżej minimalnego slotu",
-        initial=False,
-        required=False,
+    maksymalny_slot = forms.IntegerField(
+        label="Maksymalny slot", initial=1, min_value=1
     )
 
     dziel_na_jednostki_i_wydzialy = forms.BooleanField(
@@ -126,8 +122,7 @@ class ParametryRaportSlotowUczelniaForm(forms.Form):
                     Column("od_roku", css_class="large-6 small-6"),
                     Column("do_roku", css_class="large-6 small-6"),
                 ),
-                Row(Column("minimalny_slot", css_class="large-12 small-12")),
-                Row(Column("pokazuj_ponizej")),
+                Row(Column("maksymalny_slot", css_class="large-12 small-12")),
                 Row(Column("dziel_na_jednostki_i_wydzialy")),
                 Row(Column("_export")),
                 formdefaults_html_after(self),
