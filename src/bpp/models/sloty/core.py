@@ -36,7 +36,7 @@ def ISlot(original):
             elif original.punkty_kbn < 20 and original.punkty_kbn > 0:
                 return SlotKalkulator_Wydawnictwo_Ciagle_Prog3(original)
 
-        elif original.rok in [2019, 2020]:
+        elif original.rok in [2019, 2020, 2021]:
             if original.punkty_kbn in [200, 140, 100]:
                 return SlotKalkulator_Wydawnictwo_Ciagle_Prog1(original)
             elif original.punkty_kbn in [70, 40]:
@@ -50,7 +50,7 @@ def ISlot(original):
         )
 
     elif isinstance(original, Wydawnictwo_Zwarte):
-        if original.rok < 2017 or original.rok > 2020:
+        if original.rok < 2017 or original.rok > 2021:
             raise CannotAdapt(
                 "Rok poza zakresem procedur liczacych (%s). " % original.rok
             )
