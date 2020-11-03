@@ -2,6 +2,13 @@
 Historia zmian
 ==============
 
+202011.49
+---------
+
+* podczas obliczania slotów dla liczby autorów z dyscypliny nie uwzględniaj autorów
+  z odznaczonym polem "afiliuje" (#927)
+
+
 202009.48
 ---------
 * umożliwiaj konfigurację domyślnych wartości parametrów dla

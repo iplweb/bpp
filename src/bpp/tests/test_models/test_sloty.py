@@ -203,6 +203,24 @@ def test_autorzy_z_dyscypliny(
     assert len(slot.autorzy_z_dyscypliny(dyscyplina2, TO_REDAKTOR)) == 0
     assert len(slot.autorzy_z_dyscypliny(dyscyplina3, TO_REDAKTOR)) == 0
 
+    # Sprawdź, czy 'autorzy_z_dyscypliny' zwraca tylko afiliowanych (#927)
+    # Pierwszy autor to Jan Nowak z dyscyplina "memetyka stosowana" czyli dyscyplina1
+    # Wcześniej przypisz tego autora do tej dyscypliny na ten rok
+
+    Autor_Dyscyplina.objects.create(
+        autor=autor_jan_nowak, rok=2017, dyscyplina_naukowa=dyscyplina1
+    )
+
+    wca1 = ciagle_z_dyscyplinami.autorzy_set.first()
+
+    wca1.afiliuje = True
+    wca1.save()
+    assert len(slot.autorzy_z_dyscypliny(dyscyplina1)) == 1
+
+    wca1.afiliuje = False
+    wca1.save()
+    assert len(slot.autorzy_z_dyscypliny(dyscyplina1)) == 0
+
 
 @pytest.mark.django_db
 @pytest.mark.parametrize(
