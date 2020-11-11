@@ -67,10 +67,15 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
     imiona = models.CharField(max_length=512, db_index=True)
     nazwisko = models.CharField(max_length=256, db_index=True)
     tytul = models.ForeignKey(Tytul, CASCADE, blank=True, null=True)
-    pseudonim = models.CharField(max_length=300, blank=True, null=True, help_text="""
+    pseudonim = models.CharField(
+        max_length=300,
+        blank=True,
+        null=True,
+        help_text="""
     Jeżeli w bazie danych znajdują się autorzy o zbliżonych imionach, nazwiskach i tytułach naukowych,
     skorzystaj z tego pola aby ułatwić ich rozróżnienie. Pseudonim pokaże się w polach wyszukiwania
-    oraz na podstronie autora, po nazwisku i tytule naukowym.""")
+    oraz na podstronie autora, po nazwisku i tytule naukowym.""",
+    )
 
     aktualny = models.BooleanField(
         "Aktualny?",
