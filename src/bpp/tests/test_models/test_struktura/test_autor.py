@@ -2,7 +2,25 @@
 import pytest
 from model_mommy import mommy
 
-from bpp.models import Autor, Jednostka, Typ_Odpowiedzialnosci, Wydawnictwo_Ciagle
+from bpp.models import (
+    Autor,
+    Jednostka,
+    Typ_Odpowiedzialnosci,
+    Wydawnictwo_Ciagle,
+    Tytul,
+)
+
+
+@pytest.mark.django_db
+def test_Autor_str(tytuly):
+    x = Autor(
+        nazwisko="Kowalski",
+        imiona="Jan",
+        tytul=Tytul.objects.first(),
+        poprzednie_nazwiska="Budnik",
+        pseudonim="Fafa",
+    )
+    assert str(x) == "Kowalski Jan (Budnik), dr (Fafa)"
 
 
 def test_autor_eksport_pbn_serialize_bez_orcid(autor_jan_kowalski):

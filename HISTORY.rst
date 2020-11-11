@@ -7,6 +7,7 @@ Historia zmian
 
 * podczas obliczania slotów dla liczby autorów z dyscypliny nie uwzględniaj autorów
   z odznaczonym polem "afiliuje" (#927)
+* pole "pseudonim" dla autora (#921)
 
 
 202009.48
