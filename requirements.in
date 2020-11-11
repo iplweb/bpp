@@ -1,4 +1,4 @@
-Django==3.0.9
+Django==3.0.11
 channels==2.4.0
 uvicorn>=0.11.8
 channels_redis==3.0.1
@@ -36,7 +36,7 @@ requests==2.20.0
 pytz==2018.4
 django-extensions==2.2.5
 django-htmlmin==0.11.0
-Pillow>=6.2.0
+Pillow==8.0.1
 olefile==0.44
 django-grappelli==2.14.1
 django-multiseek==0.9.41
@@ -62,3 +62,4 @@ markdown==3.2.1
 django-admin-sortable2==0.7.6
 cssmin==0.2.0
 rjsmin==1.1.0
+cryptography>=3.2

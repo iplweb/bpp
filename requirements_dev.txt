@@ -96,9 +96,9 @@ django-webtest==1.9.7 \
     --hash=sha256:b9b4b94670c0ce533efc456d02dd55a0d0a7a8f7912eb30728dca2d59d7948b4 \
     --hash=sha256:c5a1e486a3d8d3623aa615b6db2f27de848aa7079303a84721e9a685f839796c \
     # via -r requirements_dev.in
-django==3.0.9 \
-    --hash=sha256:96fbe04e8ba0df289171e7f6970e0ff8b472bf4f909ed9e0e5beccbac7e1dbbe \
-    --hash=sha256:c22b4cd8e388f8219dc121f091e53a8701f9f5bca9aa132b5254263cab516215 \
+django==3.0.11 \
+    --hash=sha256:8c334df4160f7c89f6a8a359dd4e95c688ec5ac0db5db75fcc6fec8f590dc8cf \
+    --hash=sha256:96436d3d2f744d26e193bfb5a1cff3e01b349f835bb0ea16f71743accf9c6fa9 \
     # via -c requirements.txt, model-mommy
 docopt==0.6.2 \
     --hash=sha256:49b3a825280bd66b3aa83585ef59c4a8c82f2c8a522dbe754a8bc8d08c85c491 \
