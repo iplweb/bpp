@@ -146,6 +146,7 @@ urlpatterns = [
         AutorzyView.as_view(),
         name="browse_autorzy_literka",
     ),
+    url(r"^autor/(?P<pk>\d+)/$", AutorView.as_view(), name="browse_autor"),
     url(r"^autor/(?P<slug>[\w-]+)/$", AutorView.as_view(), name="browse_autor"),
     url(r"^zrodla/$", ZrodlaView.as_view(), name="browse_zrodla"),
     url(

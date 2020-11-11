@@ -6,7 +6,9 @@ Historia zmian
 ---------
 
 * podczas obliczania slotów dla liczby autorów z dyscypliny nie uwzględniaj autorów
-  z odznaczonym polem "afiliuje" (#927)
+  z odznaczonym polem "afiliuje" (#927),
+* wyświetlanie wewnętrznego ID autora na podstronie autora (b/n),
+* możliwość otwarcia strony autora po ID za pomocą linku /bpp/autor/{ID}/ (b/n),
 
 
 202009.48
