@@ -10,6 +10,7 @@ Historia zmian
 * pole "pseudonim" dla autora (#921)
 * wyświetlanie wewnętrznego ID autora na podstronie autora (b/n),
 * możliwość otwarcia strony autora po ID za pomocą linku /bpp/autor/{ID}/ (b/n),
+* możliwość wyszukiwania po charakterze formalnym ogólnym (#933)
 
 202009.48
 ---------

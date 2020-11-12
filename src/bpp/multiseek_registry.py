@@ -62,6 +62,7 @@ from bpp.models import (
     Uczelnia,
     const,
     ZewnetrzneBazyDanychView,
+    CHARAKTER_OGOLNY_CHOICES,
 )
 from bpp.models.cache import Rekord
 
@@ -603,6 +604,36 @@ class CharakterFormalnyQueryObject(TreeNodeChoiceFieldMixin, ValueListQueryObjec
         return ret
 
 
+class CharakterOgolnyQueryObject(ValueListQueryObject):
+    field_name = "charakter_ogolny"
+    label = "Charakter ogólny"
+
+    def _values(self):
+        return [x[1] for x in CHARAKTER_OGOLNY_CHOICES]
+
+    values = property(_values)
+
+    def value_from_web(self, value):
+        for elem in CHARAKTER_OGOLNY_CHOICES:
+            if elem[1] == value:
+                return elem[0]
+
+    def real_query(self, value, operation, validate_operation=True):
+        ret = None
+
+        if operation in [str(x) for x in EQUALITY_OPS_ALL]:
+            ret = Q(charakter_formalny__charakter_ogolny=value)
+
+        else:
+            if validate_operation:
+                raise UnknownOperation(operation)
+
+        if operation in DIFFERENT_ALL:
+            return ~ret
+
+        return ret
+
+
 class OpenaccessWersjaTekstuQueryObject(ValueListQueryObject):
     field_name = "openaccess_wersja_tekstu"
     values = Wersja_Tekstu_OpenAccess.objects.all()
@@ -799,6 +830,7 @@ multiseek_fields = [
     RokQueryObject(),
     TypRekorduObject(),
     CharakterFormalnyQueryObject(),
+    CharakterOgolnyQueryObject(),
     TypKBNQueryObject(),
     ZrodloQueryObject(),
     PierwszeNazwiskoIImie(),

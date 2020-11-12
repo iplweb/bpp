@@ -46,6 +46,7 @@ from bpp.multiseek_registry import (
     TytulPracyQueryObject,
     WydzialQueryObject,
     ZewnetrznaBazaDanychQueryObject,
+    CharakterOgolnyQueryObject,
 )
 
 
@@ -325,3 +326,9 @@ def test_ObcaJednostkaQueryObject(
 
     res = ObcaJednostkaQueryObject().real_query(True, logic.EQUAL)
     assert Rekord.objects.filter(res).count() == 1
+
+
+@pytest.mark.django_db
+def test_CharakterOgolnyQueryObject(wydawnictwo_zwarte):
+    res = CharakterOgolnyQueryObject().real_query("Książka", logic.EQUAL)
+    assert Rekord.objects.filter(res).count() == 0
