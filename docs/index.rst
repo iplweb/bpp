@@ -7,7 +7,6 @@ Contents:
    :maxdepth: 2
 
    readme
-   installation
    usage_editor
    sloty
    usage_admin
