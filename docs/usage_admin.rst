@@ -137,3 +137,49 @@ Zachowanie
 4. **usunięcie przypisania** autora do dyscypliny (rekord ``Autor_Dyscyplina``)  powoduje ustawienie
     wartości pustej (``NULL``) dla danego roku, dla danego autora - we wszystkich rekordach, do
     których przypisany jest dany autor.
+
+
+Pola "... ogólny" ("typ ogólny", "charakter ogólny" itp)
+--------------------------------------------------------
+
+W kilku miejscach systemu możemy natknąć się na pola nazwane w sposób
+"... ogólny", "... dla eksportu", "... dla slotów" itp.
+
+Przykładowo,
+charakter formalny dla rekordów (Redagowanie➡Dane systemowe➡Charaktery formalne)
+ma takie pola w chwili pisania tej dokumentacji:
+
+* charakter PBN
+* charakter dla slotów
+* rodzaj dla PBN
+* nazwa w PRIMO
+
+Podobnie typ odpowiedzialności autora, czyli rekord określający czy osoba
+przypisana do rekordu jest jego autorem czy np. redaktorem bądź tłumaczem
+(Redagowanie➡Dane systemowe➡Typy odpowiedzialności) posiada:
+
+* ogólny typ odpowiedzialności
+
+Tego typu pola wydają się w pewnym sensie dublować informacje zawarte już w innych
+polach rekordu.
+
+Przykładowo typ odpowiedzialności "autor korespondencyjny" może mieć
+pozornie zdublowaną informację "autor" jako typ ogólny. Podobnie, charakter formalny
+"książka w języku polskim" może mieć pozornie zdublowaną informację "charkater dla slotów"
+równe "książka".
+
+Tego typu zapis danych jest jednak jak najbardziej celową i świadomą decyzją ze strony autorów
+oprogramowania BPP.
+
+Dzięki temu możemy sobie pozwolić na dowolnie zapisaną
+nazwę danego charakteru formalnego bądź odpowiedzialności autora. W ten sposób
+nie musimy np zmieniać informacji historycznej w systemie, bądź dokładać sobie
+pracy w razie importu danych z zewnętrznych źródeł. Nazwa charakteru bądź typu odpowiedzialności
+może byc w takim układzie dowolna.
+
+System jednak potrzebuje wiedzieć dokładnie na potrzeby obliczeń, raportów i eksportu
+danych, czy np. tekstowe określenie "autor korespondencyjny" czy "redaktor korespondencyjny wydania polskiego"
+to autor, tłumacz czy redaktor - i właśnie dla takiego celu stworzone zostały pola
+"... ogólne". Pola z charakterem "ogólnym" danego rekordu zawiera kilka rodzajów typów, odgórnie
+zdefiniowanych w kodzie programu, które to potem w tym kodzie są wykorzystywane - na
+potrzeby procedur liczących, raportujących, eksportujących dane itp.

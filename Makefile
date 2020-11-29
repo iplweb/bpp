@@ -59,7 +59,10 @@ js-tests:
 # cel: live-docs
 # Uruchom sphinx-autobuild
 live-docs:
-	sphinx-autobuild -p 8080 -D language=pl docs/ docs/_build
+	# Nie wrzucam instalacji sphinx-autobuild do requirements_dev.in
+	# celowo i z premedytacją:
+	pip install --upgrade sphinx-autobuild
+	sphinx-autobuild --port 8080 -D language=pl docs/ docs/_build
 
 # cel: Jenkins
 # Wywołaj "make jenkins" pod Jenkinsem, cel "Virtualenv Builder"
