@@ -2,6 +2,11 @@
 Historia zmian
 ==============
 
+202011.50
+---------
+
+* prawidłowe obliczanie punktów dla tłumaczeń (#931)
+
 202011.49
 ---------
 

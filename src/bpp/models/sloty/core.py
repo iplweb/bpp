@@ -138,9 +138,9 @@ def ISlot(original):
 
         if poziom_wydawcy == 2:
             if (
-                (ksiazka and autorstwo and original.punkty_kbn == 200)
-                or (ksiazka and redakcja and original.punkty_kbn == 100)
-                or (rozdzial and original.punkty_kbn == 50)
+                (ksiazka and autorstwo and original.punkty_kbn in [200, 100])
+                or (ksiazka and redakcja and original.punkty_kbn in [100, 50])
+                or (rozdzial and original.punkty_kbn in [50, 25])
             ):
                 return SlotKalkulator_Wydawnictwo_Zwarte_Prog1(
                     original, tryb_kalkulacji
@@ -148,9 +148,9 @@ def ISlot(original):
 
         elif poziom_wydawcy == 1:
             if (
-                (ksiazka and autorstwo and original.punkty_kbn in [80, 100])
-                or (ksiazka and redakcja and original.punkty_kbn == 20)
-                or (rozdzial and original.punkty_kbn == 20)
+                (ksiazka and autorstwo and original.punkty_kbn in [80, 40, 100])
+                or (ksiazka and redakcja and original.punkty_kbn in [20, 10])
+                or (rozdzial and original.punkty_kbn in [20, 10])
             ):
                 return SlotKalkulator_Wydawnictwo_Zwarte_Prog2(
                     original, tryb_kalkulacji
@@ -158,9 +158,9 @@ def ISlot(original):
 
         else:
             if (
-                (ksiazka and autorstwo and original.punkty_kbn == 20)
-                or (ksiazka and redakcja and original.punkty_kbn == 5)
-                or (rozdzial and original.punkty_kbn == 5)
+                (ksiazka and autorstwo and original.punkty_kbn in [20, 10])
+                or (ksiazka and redakcja and original.punkty_kbn in [5, 2.5])
+                or (rozdzial and original.punkty_kbn in [5, 2.5])
             ):
                 return SlotKalkulator_Wydawnictwo_Zwarte_Prog3(
                     original, tryb_kalkulacji

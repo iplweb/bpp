@@ -27,24 +27,6 @@ class SlotMixin:
                 ret.append(elem)
         return ret
 
-    def wszyscy_autorzy(self, typ_ogolny=None):
-        # TODO: czy wszyscy, czy wszyscy redaktorzy, czy ... ?
-
-        if hasattr(self.original, 'calkowita_liczba_autorow'):
-            if self.original.calkowita_liczba_autorow is not None and (typ_ogolny is None or typ_ogolny == TO_AUTOR):
-                return self.original.calkowita_liczba_autorow
-
-        if hasattr(self.original, 'calkowita_liczba_redaktorow'):
-            if typ_ogolny is TO_REDAKTOR and self.original.calkowita_liczba_redaktorow is not None:
-                return self.original.calkowita_liczba_redaktorow
-
-        if typ_ogolny is None:
-            return self.wszyscy()
-
-        return self.original.autorzy_set.filter(
-            typ_odpowiedzialnosci__typ_ogolny=typ_ogolny
-        ).count()
-
     @cached_property
     def dyscypliny(self):
         ret = set()
@@ -68,8 +50,7 @@ class SlotMixin:
 
         if isinstance(a, Autor):
             return self.original.autor_rekordu_klass.objects.get(
-                rekord=self.original,
-                autor=a
+                rekord=self.original, autor=a
             )
         return a
 
