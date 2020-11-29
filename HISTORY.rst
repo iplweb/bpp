@@ -11,6 +11,7 @@ Historia zmian
 * wyświetlanie wewnętrznego ID autora na podstronie autora (b/n),
 * możliwość otwarcia strony autora po ID za pomocą linku /bpp/autor/{ID}/ (b/n),
 * prawidłowe obliczanie punktów dla referatów (#930)
+* prawidłowe obliczanie punktów dla tłumaczeń (#931)
 
 202009.48
 ---------
