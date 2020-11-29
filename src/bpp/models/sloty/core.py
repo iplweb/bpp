@@ -55,9 +55,46 @@ def ISlot(original):
                 "Rok poza zakresem procedur liczacych (%s). " % original.rok
             )
 
-        rozdzial = ksiazka = autorstwo = redakcja = False
-
         poziom_wydawcy = -1
+
+        if original.wydawca_id is not None:
+            poziom_wydawcy = original.wydawca.get_tier(original.rok)
+
+        # Referaty zjazdowe
+
+        if original.charakter_formalny.charakter_sloty == const.CHARAKTER_SLOTY_REFERAT:
+
+            if (
+                original.punkty_kbn == 15
+                and original.zewnetrzna_baza_danych.filter(
+                    baza__skrot__iexact="wos"
+                ).exists()
+            ):
+                return SlotKalkulator_Wydawnictwo_Ciagle_Prog3(original)
+
+            if original.punkty_kbn in [200, 140, 100]:
+                return SlotKalkulator_Wydawnictwo_Ciagle_Prog1(original)
+
+            if original.punkty_kbn in [70, 40]:
+                return SlotKalkulator_Wydawnictwo_Ciagle_Prog2(original)
+
+            if original.punkty_kbn == 20:
+                if poziom_wydawcy == 1:
+                    return SlotKalkulator_Wydawnictwo_Ciagle_Prog2(original)
+
+                return SlotKalkulator_Wydawnictwo_Ciagle_Prog3(original)
+
+            if original.punkty_kbn == 50 and poziom_wydawcy == 2:
+                return SlotKalkulator_Wydawnictwo_Ciagle_Prog1(original)
+
+            if original.punkty_kbn == 5:
+                return SlotKalkulator_Wydawnictwo_Ciagle_Prog3(original)
+
+            raise CannotAdapt("Nie dopasowano do żadnego rodzaju referatu.")
+
+        # Koniec referatów zjazdowych
+
+        rozdzial = ksiazka = autorstwo = redakcja = False
 
         if (
             original.charakter_formalny.charakter_sloty
@@ -87,9 +124,6 @@ def ISlot(original):
 
             if not autorstwo and not redakcja:
                 raise CannotAdapt("Rekord nie posiada autorów ani redaktorów.")
-
-        if original.wydawca_id is not None:
-            poziom_wydawcy = original.wydawca.get_tier(original.rok)
 
         tryb_kalkulacji = None
 

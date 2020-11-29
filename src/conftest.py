@@ -2,14 +2,10 @@
 import json
 import os
 import time
-import warnings
 from datetime import datetime
 
 import django_webtest
 import pytest
-from channels.testing import ChannelsLiveServerTestCase
-from daphne.testing import DaphneProcess
-from pytest_django.lazy_django import skip_if_no_django
 from rest_framework.test import APIClient
 
 from bpp.tasks import aktualizuj_cache_rekordu
@@ -21,7 +17,14 @@ except ImportError:
 from model_mommy import mommy
 
 from bpp.fixtures import get_openaccess_data
-from bpp.models import TO_AUTOR, Dyscyplina_Naukowa, Wydawca, const, Autor_Dyscyplina
+from bpp.models import (
+    TO_AUTOR,
+    Dyscyplina_Naukowa,
+    Wydawca,
+    const,
+    Autor_Dyscyplina,
+    Zewnetrzna_Baza_Danych,
+)
 from bpp.models.autor import Autor, Tytul, Funkcja_Autora
 from bpp.models.const import GR_WPROWADZANIE_DANYCH
 from bpp.models.patent import Patent
@@ -663,7 +666,6 @@ def pytest_configure():
 
 collect_ignore = [os.path.join(os.path.dirname(__file__), "media")]
 
-import subprocess
 import os
 import pytest
 
@@ -686,4 +688,8 @@ def api_client(client):
     return APIClient()
 
 
-from asgi_live_server import asgi_live_server
+@pytest.fixture
+def baza_wos():
+    return Zewnetrzna_Baza_Danych.objects.get_or_create(
+        nazwa="Web of Science", skrot="WOS"
+    )[0]
