@@ -28,45 +28,6 @@ from bpp.models.sloty.wydawnictwo_zwarte import (
 from bpp.tasks import aktualizuj_cache_rekordu
 
 
-@pytest.mark.django_db
-@pytest.mark.xfail(reason="po zrobieniu zwartych")
-def test_slot_wszyscy_autorzy(zwarte_z_dyscyplinami):
-    zwarte_z_dyscyplinami.rok = 2017
-    zwarte_z_dyscyplinami.punkty_kbn = 20  # Tier0
-    zwarte_z_dyscyplinami.save()
-
-    slot = ISlot(zwarte_z_dyscyplinami)
-
-    zwarte_z_dyscyplinami.calkowita_liczba_autorow = 10
-    assert slot.wszyscy_autorzy() == 10
-    assert slot.wszyscy_autorzy(typ_ogolny=TO_AUTOR) == 10
-
-    zwarte_z_dyscyplinami.calkowita_liczba_autorow = None
-    assert slot.wszyscy_autorzy() == 2
-    assert slot.wszyscy_autorzy(TO_AUTOR) == 2
-    assert slot.wszyscy_autorzy(TO_REDAKTOR) == 0
-
-    zwarte_z_dyscyplinami.calkowita_liczba_autorow = 10
-    zwarte_z_dyscyplinami.calkowita_liczba_redaktorow = 5
-    assert slot.wszyscy_autorzy() == 10
-    assert slot.wszyscy_autorzy(TO_AUTOR) == 10
-    assert slot.wszyscy_autorzy(TO_REDAKTOR) == 5
-
-    zwarte_z_dyscyplinami.calkowita_liczba_autorow = None
-    zwarte_z_dyscyplinami.calkowita_liczba_redaktorow = None
-    assert slot.wszyscy_autorzy() == 2
-    assert slot.wszyscy_autorzy(TO_AUTOR) == 2
-    assert slot.wszyscy_autorzy(TO_REDAKTOR) == 0
-
-    wza = zwarte_z_dyscyplinami.autorzy_set.first()
-    wza.typ_odpowiedzialnosci = Typ_Odpowiedzialnosci.objects.get(skrot="red.")
-    wza.save()
-
-    assert slot.wszyscy_autorzy() == 2
-    assert slot.wszyscy_autorzy(TO_AUTOR) == 1
-    assert slot.wszyscy_autorzy(TO_REDAKTOR) == 1
-
-
 @pytest.mark.parametrize(
     "rekord,ustaw_rok,punkty_kbn",
     [
