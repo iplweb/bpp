@@ -693,3 +693,6 @@ def baza_wos():
     return Zewnetrzna_Baza_Danych.objects.get_or_create(
         nazwa="Web of Science", skrot="WOS"
     )[0]
+
+
+from asgi_live_server import asgi_live_server  # noqa
