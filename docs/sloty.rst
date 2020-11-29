@@ -172,25 +172,25 @@ Wydawnictwa zwarte
 
    * poziom wydawcy równy 2 oraz:
 
-     - autorstwo + książka + punkty PK = 200, lub
-     - redakcja + książka + punkty PK = 100, lub
-     - rozdział + punkty PK = 50
+     - autorstwo + książka + punkty PK = (200 lub 100), lub
+     - redakcja + książka + punkty PK = (100 lub 50), lub
+     - rozdział + punkty PK = (50 lub 25)
 
      ... da w rezultacie próg 1. algorytmu
 
    * poziom wydawcy równy 1 oraz:
 
-     - autorstwo + książka + punkty PK = 80 lub 100, lub
-     - redakcja + książka + punkty PK = 20, lub
-     - rozdział + punkty PK = 20
+     - autorstwo + książka + punkty PK = (80 lub 40 lub 100), lub
+     - redakcja + książka + punkty PK = (20 lub 10), lub
+     - rozdział + punkty PK = (20 lub 10)
 
      ... da w rezultacie próg 2. algorytmu
 
    * poziom wydawcy inny lub bez określenia wydawcy oraz:
 
-     - książka + autorstwo + punkty PK = 20, lub
-     - książka + redakcja + punkty PK = 5, lub
-     - rozdział + punkty KBN = 5
+     - książka + autorstwo + punkty PK = (20 lub 10), lub
+     - książka + redakcja + punkty PK = (5 lub 2.5), lub
+     - rozdział + punkty KBN = (5 lub 2.5)
 
      ... da w rezultacie próg 3. algorytmu.
 
