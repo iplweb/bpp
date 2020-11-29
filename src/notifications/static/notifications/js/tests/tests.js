@@ -109,15 +109,8 @@ QUnit.test( "addMessage closeURL", function( assert ) {
 });
 
 QUnit.test( "bppNotifications.init", function( assert ) {
-    var pushstream = sinon.stub(window, "PushStream");
-    pushstream.prototype.addChannel = sinon.stub();
-    pushstream.prototype.connect = sinon.stub();
-
-    bppNotifications.init("foo", "bar", "baz", true, "123", null);
-
-    assert.equal(bppNotifications.messageCookieId, "123");
-    pushstream.restore();
-
+    bppNotifications.init("foo", "bar", "baz");
+    assert.ok(bppNotifications.chatSocket);
 });
 
 QUnit.test( "bppNotifications.goTo", function( assert ) {

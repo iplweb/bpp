@@ -2,6 +2,16 @@
 Historia zmian
 ==============
 
+202011.49
+---------
+
+* podczas obliczania slotów dla liczby autorów z dyscypliny nie uwzględniaj autorów
+  z odznaczonym polem "afiliuje" (#927)
+* pole "pseudonim" dla autora (#921)
+* wyświetlanie wewnętrznego ID autora na podstronie autora (b/n),
+* możliwość otwarcia strony autora po ID za pomocą linku /bpp/autor/{ID}/ (b/n),
+* prawidłowe obliczanie punktów dla referatów (#930)
+
 202009.48
 ---------
 * umożliwiaj konfigurację domyślnych wartości parametrów dla

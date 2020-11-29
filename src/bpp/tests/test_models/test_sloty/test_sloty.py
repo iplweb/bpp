@@ -28,75 +28,6 @@ from bpp.models.sloty.wydawnictwo_zwarte import (
 from bpp.tasks import aktualizuj_cache_rekordu
 
 
-@pytest.fixture
-@pytest.mark.django_db
-def zwarte_z_dyscyplinami(
-    wydawnictwo_zwarte,
-    autor_jan_nowak,
-    autor_jan_kowalski,
-    jednostka,
-    dyscyplina1,
-    dyscyplina2,
-    charaktery_formalne,
-    wydawca,
-    typy_odpowiedzialnosci,
-    rok,
-):
-    Autor_Dyscyplina.objects.create(
-        autor=autor_jan_nowak, dyscyplina_naukowa=dyscyplina1, rok=rok
-    )
-    Autor_Dyscyplina.objects.create(
-        autor=autor_jan_kowalski, dyscyplina_naukowa=dyscyplina2, rok=rok
-    )
-    wydawnictwo_zwarte.dodaj_autora(
-        autor_jan_nowak, jednostka, dyscyplina_naukowa=dyscyplina1
-    )
-
-    wydawnictwo_zwarte.dodaj_autora(
-        autor_jan_kowalski, jednostka, dyscyplina_naukowa=dyscyplina2
-    )
-
-    # domyslnie: ksiazka/autorstwo/wydawca spoza wykazu
-    wydawnictwo_zwarte.punkty_kbn = 20
-    wydawnictwo_zwarte.wydawca = wydawca
-    wydawnictwo_zwarte.charakter_formalny = Charakter_Formalny.objects.get(skrot="KSP")
-    wydawnictwo_zwarte.save()
-
-    return wydawnictwo_zwarte
-
-
-@pytest.fixture
-@pytest.mark.django_db
-def ciagle_z_dyscyplinami(
-    wydawnictwo_ciagle,
-    autor_jan_nowak,
-    autor_jan_kowalski,
-    jednostka,
-    dyscyplina1,
-    dyscyplina2,
-    typy_odpowiedzialnosci,
-    rok,
-):
-
-    # Przypisz autorów do dyscyplin na ten rok albo będzie awaria:
-    Autor_Dyscyplina.objects.create(
-        autor=autor_jan_nowak, dyscyplina_naukowa=dyscyplina1, rok=rok
-    )
-    Autor_Dyscyplina.objects.create(
-        autor=autor_jan_kowalski, dyscyplina_naukowa=dyscyplina2, rok=rok
-    )
-
-    wydawnictwo_ciagle.dodaj_autora(
-        autor_jan_nowak, jednostka, dyscyplina_naukowa=dyscyplina1
-    )
-
-    wydawnictwo_ciagle.dodaj_autora(
-        autor_jan_kowalski, jednostka, dyscyplina_naukowa=dyscyplina2
-    )
-
-    return wydawnictwo_ciagle
-
-
 @pytest.mark.django_db
 @pytest.mark.xfail(reason="po zrobieniu zwartych")
 def test_slot_wszyscy_autorzy(zwarte_z_dyscyplinami):
@@ -202,6 +133,24 @@ def test_autorzy_z_dyscypliny(
     assert len(slot.autorzy_z_dyscypliny(dyscyplina1, TO_REDAKTOR)) == 0
     assert len(slot.autorzy_z_dyscypliny(dyscyplina2, TO_REDAKTOR)) == 0
     assert len(slot.autorzy_z_dyscypliny(dyscyplina3, TO_REDAKTOR)) == 0
+
+    # Sprawdź, czy 'autorzy_z_dyscypliny' zwraca tylko afiliowanych (#927)
+    # Pierwszy autor to Jan Nowak z dyscyplina "memetyka stosowana" czyli dyscyplina1
+    # Wcześniej przypisz tego autora do tej dyscypliny na ten rok
+
+    Autor_Dyscyplina.objects.create(
+        autor=autor_jan_nowak, rok=2017, dyscyplina_naukowa=dyscyplina1
+    )
+
+    wca1 = ciagle_z_dyscyplinami.autorzy_set.first()
+
+    wca1.afiliuje = True
+    wca1.save()
+    assert len(slot.autorzy_z_dyscypliny(dyscyplina1)) == 1
+
+    wca1.afiliuje = False
+    wca1.save()
+    assert len(slot.autorzy_z_dyscypliny(dyscyplina1)) == 0
 
 
 @pytest.mark.django_db

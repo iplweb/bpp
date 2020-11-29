@@ -102,6 +102,7 @@ class AutorAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
         "nazwisko",
         "imiona",
         "tytul",
+        "pseudonim",
         "poprzednie_nazwiska",
         "email",
         "pbn_id",
@@ -123,6 +124,7 @@ class AutorAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
     search_fields = [
         "imiona",
         "nazwisko",
+        "pseudonim",
         "poprzednie_nazwiska",
         "email",
         "www",
@@ -139,6 +141,7 @@ class AutorAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
                     "imiona",
                     "nazwisko",
                     "tytul",
+                    "pseudonim",
                     "pokazuj",
                     "email",
                     "www",

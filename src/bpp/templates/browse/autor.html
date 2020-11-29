@@ -39,12 +39,15 @@
         {% endif %}
     {% endif %}
     {% if autor.orcid %}
-            <p><strong>ORCID: </strong><a href="https://orcid.org/{{ autor.orcid }}"
+            <p><strong>ORCID:</strong> <a href="https://orcid.org/{{ autor.orcid }}"
                                           target="_blank">{{ autor.orcid }}</a></p>
     {% endif %}
     {% if autor.pbn_id %}
-            <p><strong>PBN ID: </strong>{{ autor.pbn_id }}</p>
+            <p><strong>PBN ID:</strong> {{ autor.pbn_id }}</p>
     {% endif %}
+    <p><span data-tooltip class="top" data-click-open="false" tabindex="2" title="Unikalny, wewnętrzny identyfikator autora w systemie BPP">
+        BPP
+        ID</span>: {{ autor.pk }}</p>
 
     <form method="post"
           action="{% url "bpp:browse_build_search" %}"
@@ -65,7 +68,7 @@
             <legend>
                 ... opracowane w jednostkach:
             </legend>
-            <div clas="row">
+            <div class="row">
                 {% for jednostka in autor.jednostki.all %}
                     <div class="large-6 small-12">
                         <input type="checkbox"

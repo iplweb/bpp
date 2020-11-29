@@ -19,7 +19,7 @@ class SlotMixin:
     def autorzy_z_dyscypliny(self, dyscyplina_naukowa, typ_ogolny=None):
         ret = []
 
-        for elem in self.original.autorzy_set.all():
+        for elem in self.original.autorzy_set.filter(afiliuje=True):
             if elem.okresl_dyscypline() == dyscyplina_naukowa:
                 if typ_ogolny is not None:
                     if elem.typ_odpowiedzialnosci.typ_ogolny != typ_ogolny:

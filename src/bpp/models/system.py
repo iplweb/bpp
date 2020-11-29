@@ -64,6 +64,7 @@ class Charakter_PBN(models.Model):
 CHARAKTER_SLOTY = Choices(
     (const.CHARAKTER_SLOTY_KSIAZKA, "ksiazka", "Książka"),
     (const.CHARAKTER_SLOTY_ROZDZIAL, "rozdzial", "Rozdział"),
+    (const.CHARAKTER_SLOTY_REFERAT, "referat", "Referat"),
 )
 
 RODZAJ_PBN_CHOICES = [
