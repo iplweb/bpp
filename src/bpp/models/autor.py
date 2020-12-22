@@ -5,19 +5,21 @@ Autorzy
 """
 from datetime import date, timedelta
 from datetime import datetime
+from decimal import Decimal
+from itertools import permutations
 
 from autoslug import AutoSlugField
 from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import models, IntegrityError
-from django.db.models import Sum, CASCADE
+from django.db.models import Sum, CASCADE, F
 from django.urls.base import reverse
 from lxml.etree import Element, SubElement
 
 from bpp.models import ModelZAdnotacjami, NazwaISkrot
 from bpp.models.abstract import ModelZPBN_ID
-from bpp.util import FulltextSearchMixin
+from bpp.util import FulltextSearchMixin, knapSack
 
 
 class Tytul(NazwaISkrot):
@@ -362,6 +364,27 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
             .distinct()
             .aggregate(s=Sum("liczba_cytowan"))["s"]
         )
+
+    def zbieraj_sloty(self, zadany_slot, rok_min, rok_max):
+        from bpp.models.cache import Cache_Punktacja_Autora_Query
+
+        rekordy = Cache_Punktacja_Autora_Query.objects.filter(
+            rekord__rok__gte=rok_min, rekord__rok__lte=rok_max, autor=self
+        )
+
+        res = [
+            (name, int(size), int(value))
+            for name, size, value in rekordy.values_list(
+                "rekord__pk", F("slot") * 10000, F("pkdaut") * 10000
+            )
+        ]  # name, size, value
+
+        sloty = [x[1] for x in res]
+        punkty = [x[2] for x in res]
+        id_prac = [x[0] for x in res]
+
+        maks, lista = knapSack(zadany_slot * 10000, sloty, punkty, id_prac, len(sloty))
+        return maks / 10000, lista
 
 
 class Funkcja_Autora(NazwaISkrot):
