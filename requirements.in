@@ -14,7 +14,6 @@ django-autoslug==1.9.8
 django-autocomplete-light==3.5.1
 django-admin-tools==0.9.0
 xlrd==1.2.0
-celery==4.4.2
 celery[redis]==4.4.2
 django-tables2==2.3.1
 django-sendfile==0.3.11
@@ -62,4 +61,7 @@ markdown==3.2.1
 django-admin-sortable2==0.7.6
 cssmin==0.2.0
 rjsmin==1.1.0
-cryptography>=3.2
+
+# MacBook Pro M1 arm
+cryptography>=3.3.1
+lxml>=4.6.2
