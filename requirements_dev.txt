@@ -257,8 +257,8 @@ pytest-mock==2.0.0 \
 pytest-pythonpath==0.7.3 \
     --hash=sha256:63fc546ace7d2c845c1ee289e8f7a6362c2b6bae497d10c716e58e253e801d62 \
     # via -r requirements_dev.in
-pytest-splinter==2.0.1 \
-    --hash=sha256:8725c2305334aa2eaefcbf158b57abe7d49e7e1f21e45df96900f30c02afd55a \
+pytest-splinter==3.3.0 \
+    --hash=sha256:b7ad35358c49ac02c497cc0a5ebe56ae6ec98c5415275aaf3abb3804e1412c91 \
     # via -r requirements_dev.in
 pytest-xdist==1.31.0 \
     --hash=sha256:0f46020d3d9619e6d17a65b5b989c1ebbb58fc7b1da8fb126d70f4bac4dfeed1 \
