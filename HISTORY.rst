@@ -2,6 +2,11 @@
 Historia zmian
 ==============
 
+202012.51
+---------
+
+* zbieranie slotów dla autora za pomocą algorytmu plecakowego (b/n),
+
 202011.50
 ---------
 

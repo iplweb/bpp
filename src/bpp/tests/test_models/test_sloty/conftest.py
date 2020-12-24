@@ -4,6 +4,7 @@ from bpp.models import (
     Autor_Dyscyplina,
     Charakter_Formalny,
     const,
+    Wydawnictwo_Zwarte,
 )
 
 
@@ -20,7 +21,7 @@ def zwarte_z_dyscyplinami(
     wydawca,
     typy_odpowiedzialnosci,
     rok,
-):
+) -> Wydawnictwo_Zwarte:
     Autor_Dyscyplina.objects.create(
         autor=autor_jan_nowak, dyscyplina_naukowa=dyscyplina1, rok=rok
     )
