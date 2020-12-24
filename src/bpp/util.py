@@ -313,10 +313,19 @@ class safe_html_defaults:
         "a": ["href", "title", "rel"],
         "abbr": ["title"],
         "acronym": ["title"],
-        "font": ["face", "size",],
-        "div": ["style",],
-        "span": ["style",],
-        "ul": ["style",],
+        "font": [
+            "face",
+            "size",
+        ],
+        "div": [
+            "style",
+        ],
+        "span": [
+            "style",
+        ],
+        "ul": [
+            "style",
+        ],
     }
 
     ALLOWED_STYLES = [
@@ -416,7 +425,23 @@ def formdefaults_html_after(form):
     return crispy_form_html(form, "formdefaults_post_html")
 
 
-def knapSack(W, wt, val, ids, n, zwracaj_liste_przedmiotow=True):
+def knapsack(W, wt, val, ids, zwracaj_liste_przedmiotow=True):
+    """
+    :param W: maksymalna masa przedmiotów w plecaku (zbierany slot)
+    :param wt: masy przedmiotów, które można włożyć do plecaka (sloty prac)
+    :param val: ceny przedmiotów, które można włożyc do plecaka (punkty PKdAut prac)
+    :param ids: ID prac, które można włożyć do plecaka (rekord.pk)
+    :param zwracaj_liste_przedmiotow: gdy True (domyślnie) funkcja zwróci listę z identyfikatorami włożonych
+    przedmiotów, gdy False zwrócona lista będzie pusta
+
+    :returns: tuple(mp, lista), gdzie mp to maksymalna możliwa wartość włożonych przedmiotów, a lista to lista
+    lub pusta lista gdy parametr `zwracaj_liste_przemiotów` był pusty
+    """
+
+    assert len(wt) == len(val) == len(ids), "Listy są różnej długości"
+
+    n = len(wt)
+
     K = [[0 for x in range(W + 1)] for x in range(n + 1)]
 
     for i in range(n + 1):

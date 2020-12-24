@@ -19,7 +19,7 @@ from lxml.etree import Element, SubElement
 
 from bpp.models import ModelZAdnotacjami, NazwaISkrot
 from bpp.models.abstract import ModelZPBN_ID
-from bpp.util import FulltextSearchMixin, knapSack
+from bpp.util import FulltextSearchMixin, knapsack
 
 
 class Tytul(NazwaISkrot):
@@ -383,7 +383,7 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
         punkty = [x[2] for x in res]
         id_prac = [x[0] for x in res]
 
-        maks, lista = knapSack(zadany_slot * 10000, sloty, punkty, id_prac, len(sloty))
+        maks, lista = knapsack(zadany_slot * 10000, sloty, punkty, id_prac)
         return maks / 10000, lista
 
 
