@@ -6,6 +6,9 @@ Historia zmian
 ---------
 
 * zbieranie slotów dla autora za pomocą algorytmu plecakowego (b/n),
+* ukrywanie statusów korekt w multiwyszukiwarce (#942),
+* ukrywanie statusów korekt przy obliczaniu slotów -
+  liczenie punktów za sloty w zależności od ustawienia statusu korekty (#945)
 
 202011.50
 ---------

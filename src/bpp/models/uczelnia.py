@@ -3,12 +3,14 @@
 """
 Struktura uczelni.
 """
+from typing import Union
 
 from autoslug import AutoSlugField
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.db import models
 from django.db.models import SET_NULL, Q, F
 from django.urls.base import reverse
+from django.utils.functional import cached_property
 
 from bpp.models import ModelZAdnotacjami, NazwaISkrot
 from bpp.models.abstract import NazwaWDopelniaczu, ModelZPBN_ID
@@ -16,10 +18,14 @@ from .fields import OpcjaWyswietlaniaField
 
 
 class UczelniaManager(models.Manager):
-    def get_default(self):
-        return self.first()
+    def get_default(self) -> Union["Uczelnia", None]:
+        return self.all().only("pk").first()
 
     def get_for_request(self, request):
+        return self.get_default()
+
+    @cached_property
+    def default(self):
         return self.get_default()
 
 
@@ -70,7 +76,9 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         "Pokazuj status korekty na stronie rekordu",
     )
 
-    pokazuj_ranking_autorow = OpcjaWyswietlaniaField("Pokazuj ranking autorów",)
+    pokazuj_ranking_autorow = OpcjaWyswietlaniaField(
+        "Pokazuj ranking autorów",
+    )
 
     pokazuj_raport_autorow = OpcjaWyswietlaniaField("Pokazuj raport autorów")
 
@@ -256,7 +264,13 @@ class Ukryj_Status_Korekty(models.Model):
     )
     raporty = models.BooleanField("Raporty", default=True)
     rankingi = models.BooleanField("Rankingi", default=True)
-    sloty = models.BooleanField("Raporty slotów", default=True)
+    sloty = models.BooleanField(
+        "Raporty slotów",
+        default=True,
+        help_text="Prace o wybranym statusie nie będą miały liczonych punktów i slotów w chwili"
+        "zapisywania rekordu do bazy danych. Jeżeli zmieniasz to ustawienie dla prac które już są w bazie danych "
+        "to ich punktacja zniknie z bazy w dniu następnym (skasowana zostanie podczas nocnego przeindeksowania bazy).",
+    )
     api = models.BooleanField("API", default=True)
 
     objects = Ukryj_Status_KorektyManager()

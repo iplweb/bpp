@@ -17,7 +17,13 @@ try:
 except ImportError:
     from django.urls import reverse
 
-from bpp.models import Uczelnia, Wydawnictwo_Ciagle, Wydawnictwo_Zwarte, Praca_Doktorska, Praca_Habilitacyjna
+from bpp.models import (
+    Uczelnia,
+    Wydawnictwo_Ciagle,
+    Wydawnictwo_Zwarte,
+    Praca_Doktorska,
+    Praca_Habilitacyjna,
+)
 from bpp.models.cache import CacheQueue
 from bpp.util import remove_old_objects
 from celeryui.interfaces import IWebTask
@@ -31,7 +37,7 @@ from django_bpp.celery_tasks import app
 
 @app.task(ignore_result=True)
 def remove_file(path):
-    if path.startswith(os.path.join(settings.MEDIA_ROOT, 'report')):
+    if path.startswith(os.path.join(settings.MEDIA_ROOT, "report")):
         logger.warning("Removing %r" % path)
         os.unlink(path)
 
@@ -50,7 +56,11 @@ def make_report(uid):
         report.execute(raise_exceptions=True)
         msg = 'Ukończono generowanie raportu "%s", <a href="%s">kliknij tutaj, aby otworzyć</a>. '
         url = reverse("bpp:podglad-raportu", args=(report.uid,))
-        call_command('send_message', report.ordered_by.username, msg % (IWebTask(report).title, url))
+        call_command(
+            "send_message",
+            report.ordered_by.username,
+            msg % (IWebTask(report).title, url),
+        )
 
     return execute()
 
@@ -61,13 +71,17 @@ task_limits = {}
 def my_limit(fun):
     res = task_limits.get(fun)
     if not res or (res.successful() or res.failed()):
-        task_limits[fun] = fun.apply_async(countdown=settings.MAT_VIEW_REFRESH_COUNTDOWN)
+        task_limits[fun] = fun.apply_async(
+            countdown=settings.MAT_VIEW_REFRESH_COUNTDOWN
+        )
         return
 
     if res:
         logger.info("Task %r has been revoked." % res.id)
         res.revoke()
-        task_limits[fun] = fun.apply_async(countdown=settings.MAT_VIEW_REFRESH_COUNTDOWN)
+        task_limits[fun] = fun.apply_async(
+            countdown=settings.MAT_VIEW_REFRESH_COUNTDOWN
+        )
 
 
 @app.task(ignore_result=True)
@@ -94,7 +108,12 @@ def remove_old_report_files():
 
 def _zaktualizuj_liczbe_cytowan(klasy=None):
     if klasy is None:
-        klasy = Wydawnictwo_Ciagle, Wydawnictwo_Zwarte, Praca_Doktorska, Praca_Habilitacyjna
+        klasy = (
+            Wydawnictwo_Ciagle,
+            Wydawnictwo_Zwarte,
+            Praca_Doktorska,
+            Praca_Habilitacyjna,
+        )
 
     for uczelnia in Uczelnia.objects.all():
         try:
@@ -106,16 +125,18 @@ def _zaktualizuj_liczbe_cytowan(klasy=None):
         # obiektów nastąpi w sposób wielokrotny...
 
         for klass in klasy:
-            filtered = klass.objects.all() \
-                .exclude(doi=None) \
-                .exclude(pubmed_id=None) \
-                .values('id', 'doi', 'pubmed_id')
+            filtered = (
+                klass.objects.all()
+                .exclude(doi=None)
+                .exclude(pubmed_id=None)
+                .values("id", "doi", "pubmed_id")
+            )
 
             for grp in client.query_multiple(filtered):
                 for k, item in grp.items():
                     changed = False
 
-                    timesCited = item.get('timesCited')
+                    timesCited = item.get("timesCited")
                     doi = item.get("doi")
                     pubmed_id = item.get("pmid")
 
@@ -146,9 +167,9 @@ def zaktualizuj_liczbe_cytowan():
 
 
 @transaction.atomic
-def aktualizuj_cache_rekordu(model):
+def aktualizuj_cache_rekordu(model, uczelnia=None):
     model.zaktualizuj_cache()
-    ipc = IPunktacjaCacher(model)
+    ipc = IPunktacjaCacher(model, uczelnia)
     ipc.removeEntries()
     if ipc.canAdapt():
         ipc.rebuildEntries()
@@ -180,14 +201,14 @@ def aktualizuj_cache():
 
         if not obj.error:
             for elem in CacheQueue.objects.filter(
-                    started_on=None,
-                    object_id=obj.object_id,
-                    content_type_id=obj.content_type_id,
-                    created_on__lt=obj.created_on
+                started_on=None,
+                object_id=obj.object_id,
+                content_type_id=obj.content_type_id,
+                created_on__lt=obj.created_on,
             ):
                 elem.started_on = n
                 elem.completed_on = n
-                elem.info = '%s' % obj.pk
+                elem.info = "%s" % obj.pk
                 elem.save()
 
     CacheQueue.objects.filter(error=False).exclude(completed_on=None).delete()
