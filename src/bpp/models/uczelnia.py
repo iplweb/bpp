@@ -7,12 +7,20 @@ Struktura uczelni.
 from autoslug import AutoSlugField
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.db import models
-from django.db.models import SET_NULL
+from django.db.models import SET_NULL, Q, F
 from django.urls.base import reverse
 
 from bpp.models import ModelZAdnotacjami, NazwaISkrot
 from bpp.models.abstract import NazwaWDopelniaczu, ModelZPBN_ID
 from .fields import OpcjaWyswietlaniaField
+
+
+class UczelniaManager(models.Manager):
+    def get_default(self):
+        return self.first()
+
+    def get_for_request(self, request):
+        return self.get_default()
 
 
 class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
@@ -169,6 +177,8 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         verbose_name="Hasło", null=True, blank=True, max_length=50
     )
 
+    objects = UczelniaManager()
+
     class Meta:
         verbose_name = "uczelnia"
         verbose_name_plural = "uczelnie"
@@ -210,3 +220,61 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         from wosclient.wosclient import WoSClient
 
         return WoSClient(self.clarivate_username, self.clarivate_password)
+
+
+class Ukryj_Status_KorektyManager(models.Manager):
+    def get_query_for_function(self, ftype, uczelnia=None):
+        """
+        Zwraca zapytanie bazodanowe w formie (
+        """
+        if uczelnia is None:
+            uczelnia = Uczelnia.objects.get_default()
+
+            # Jeżeli nie mamy żadnych informacji nt obiektu uczelnia, to nie mamy też
+            # informacji nt wyświetlania lub chowania elementów, zatem zwrócmy obiekt
+            # Q() mający zawsze wartość 'prawda':
+            if uczelnia is None:
+                return Q(pk=F("pk"))
+
+        assert ftype in ["multiwyszukiwarka", "raporty", "rankingi", "sloty"]
+
+        return ~Q(
+            status_korekty__in=uczelnia.ukryj_status_korekty_set.filter(
+                **{ftype: True}
+            ).values_list("status_korekty")
+        )
+
+
+class Ukryj_Status_Korekty(models.Model):
+    uczelnia = models.ForeignKey(Uczelnia, on_delete=models.CASCADE)
+    status_korekty = models.ForeignKey("Status_Korekty", on_delete=models.CASCADE)
+
+    multiwyszukiwarka = models.BooleanField(
+        default=True,
+        help_text="Nie dotyczy użytkownika zalogowanego. Użytkownik zalogowany widzi wszystkie prace "
+        "w wyszukiwaniu. ",
+    )
+    raporty = models.BooleanField("Raporty", default=True)
+    rankingi = models.BooleanField("Rankingi", default=True)
+    sloty = models.BooleanField("Raporty slotów", default=True)
+    api = models.BooleanField("API", default=True)
+
+    objects = Ukryj_Status_KorektyManager()
+
+    def __str__(self):
+        res = (
+            f'ukryj "{self.status_korekty}" dla '
+            f"{'multiwyszukiwarki, ' if self.multiwyszukiwarka else ''}"
+            f"{'raportów, ' if self.raporty else ''}"
+            f"{'rankingów, ' if self.rankingi else ''}"
+            f"{'slotów. ' if self.sloty else ''}"
+        )
+
+        if res.endswith(", "):
+            res = res[:-2] + ". "
+        return res
+
+    class Meta:
+        unique_together = [("uczelnia", "status_korekty")]
+        verbose_name = "ustawienie ukrywania statusu korekty"
+        verbose_name_plural = "ustawienia ukrywania statusów korekt"

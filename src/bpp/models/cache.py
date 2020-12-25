@@ -33,6 +33,7 @@ from bpp.models import (
     Wydawnictwo_Zwarte,
     Wydawnictwo_Zwarte_Autor,
     Zrodlo,
+    ModelZeStatusem,
 )
 from bpp.models.abstract import (
     ModelPunktowanyBaza,
@@ -396,6 +397,7 @@ class RekordBase(
     ModelTypowany,
     ModelZCharakterem,
     ModelZKonferencja,
+    ModelZeStatusem,
     models.Model,
 ):
     id = TupleField(models.IntegerField(), size=2, primary_key=True)

@@ -1,12 +1,12 @@
 from django import forms
+from django.contrib import admin
 from django.core.management import call_command
 from django.db import transaction
 
-from ..models import Uczelnia, Wydzial
 from .core import CommitedModelAdmin, RestrictDeletionToAdministracjaGroupMixin
 from .helpers import ADNOTACJE_FIELDSET, ZapiszZAdnotacjaMixin
+from ..models import Uczelnia, Wydzial, Ukryj_Status_Korekty
 
-from django.contrib import admin
 
 # Uczelnia
 
@@ -23,6 +23,19 @@ class WydzialInline(admin.TabularInline):
     form = WydzialInlineForm
     extra = 0
     sortable_field_name = "kolejnosc"
+
+
+class Ukryj_Status_KorektyInline(admin.StackedInline):
+    model = Ukryj_Status_Korekty
+    fields = [
+        "status_korekty",
+        "multiwyszukiwarka",
+        "raporty",
+        "rankingi",
+        "sloty",
+        "api",
+    ]
+    extra = 0
 
 
 class UczelniaAdmin(
@@ -108,9 +121,7 @@ class UczelniaAdmin(
         ),
     )
 
-    inlines = [
-        WydzialInline,
-    ]
+    inlines = [WydzialInline, Ukryj_Status_KorektyInline]
 
     def save_model(self, request, obj, form, change):
         """Przy zmianie parametru 'sortuj_jednostki_alfabetycznie' wywołaj polecenie

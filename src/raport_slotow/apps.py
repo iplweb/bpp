@@ -18,7 +18,6 @@ def create_entries(sender, **kw):
 
 class RaportSlotowConfig(AppConfig):
     name = "raport_slotow"
-
     def ready(self):
         if getattr(settings, "TESTING"):
             return
