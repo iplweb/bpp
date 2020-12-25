@@ -580,6 +580,16 @@ def statusy_korekt():
 
 
 @pytest.fixture(scope="function")
+def przed_korekta(statusy_korekt):
+    return statusy_korekt["przed korektą"]
+
+
+@pytest.fixture(scope="function")
+def po_korekcie(statusy_korekt):
+    return statusy_korekt["po korekcie"]
+
+
+@pytest.fixture(scope="function")
 def funkcje_autorow():
     for elem in fixture("funkcja_autora.json"):
         Funkcja_Autora.objects.get_or_create(pk=elem["pk"], **elem["fields"])
@@ -699,6 +709,7 @@ def baza_wos():
 
 
 from asgi_live_server import asgi_live_server  # noqa
+
 
 @pytest.fixture
 def wydawnictwo_zwarte_przed_korekta(statusy_korekt):

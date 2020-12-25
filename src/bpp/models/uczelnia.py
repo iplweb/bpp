@@ -16,7 +16,7 @@ from .fields import OpcjaWyswietlaniaField
 
 
 class UczelniaManager(models.Manager):
-    def get_default(self):
+    def get_default(self) -> "Uczelnia":
         return self.first()
 
     def get_for_request(self, request):
@@ -70,7 +70,9 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         "Pokazuj status korekty na stronie rekordu",
     )
 
-    pokazuj_ranking_autorow = OpcjaWyswietlaniaField("Pokazuj ranking autorów",)
+    pokazuj_ranking_autorow = OpcjaWyswietlaniaField(
+        "Pokazuj ranking autorów",
+    )
 
     pokazuj_raport_autorow = OpcjaWyswietlaniaField("Pokazuj raport autorów")
 
@@ -256,7 +258,13 @@ class Ukryj_Status_Korekty(models.Model):
     )
     raporty = models.BooleanField("Raporty", default=True)
     rankingi = models.BooleanField("Rankingi", default=True)
-    sloty = models.BooleanField("Raporty slotów", default=True)
+    sloty = models.BooleanField(
+        "Raporty slotów",
+        default=True,
+        help_text="Prace o wybranym statusie nie będą miały liczonych punktów i slotów w chwili"
+        "zapisywania rekordu do bazy danych. Jeżeli zmieniasz to ustawienie dla prac które już są w bazie danych "
+        "to ich punktacja zniknie z bazy w dniu następnym (skasowana zostanie podczas nocnego przeindeksowania bazy).",
+    )
     api = models.BooleanField("API", default=True)
 
     objects = Ukryj_Status_KorektyManager()
