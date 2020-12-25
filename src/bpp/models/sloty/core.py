@@ -20,18 +20,20 @@ from .wydawnictwo_ciagle import (
 )
 
 
-def ISlot(original):
+def ISlot(original, uczelnia=None):
     if isinstance(original, Patent):
         raise CannotAdapt("Sloty dla patentów nie są liczone")
 
     if hasattr(original, "typ_kbn") and original.typ_kbn.skrot == "PW":
         raise CannotAdapt("Sloty dla prac wieloośrodkowych nie są liczone.")
 
-    uczelnia = Uczelnia.objects.get_default()
+    if uczelnia is None:
+        uczelnia = Uczelnia.objects.get_default()
+
     if (
-        uczelnia
+        uczelnia is not None
         and uczelnia.ukryj_status_korekty_set.filter(
-            status_korekty=original.status_korekty, sloty=True
+            status_korekty_id=original.status_korekty_id, sloty=True
         ).exists()
     ):
         raise CannotAdapt(
@@ -202,13 +204,14 @@ def ISlot(original):
 
 
 class IPunktacjaCacher:
-    def __init__(self, original):
+    def __init__(self, original, uczelnia=None):
         self.original = original
         self.slot = None
+        self.uczelnia = uczelnia
 
     def canAdapt(self):
         try:
-            self.slot = ISlot(self.original)
+            self.slot = ISlot(self.original, uczelnia=self.uczelnia)
             return True
 
         except CannotAdapt:

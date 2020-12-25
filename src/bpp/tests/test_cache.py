@@ -426,31 +426,17 @@ def test_prace_autora_z_afiliowanych_jednostek(typy_odpowiedzialnosci):
 
 @pytest.mark.django_db
 def test_rebuild_ciagle(django_assert_num_queries, wydawnictwo_ciagle_z_dwoma_autorami):
-    #
-    # procedura rebuild_ciagle czy rebuild_zwarte (to aliasy do rebuild) ma prawo miec nastepujace
-    # zapytania:
-    #
-    # - savepoint nr 1 (transakcja rebuild_caigle)
-    # - select na wszystkie rekordy z tabeli + select_related co potrzebne + only
-    # - savepoint nr 2 (transakcja na 1 rekord)
-    # - select z autorzy_Set
-    # - update
-    # - savepoint na punktacje dyscyplin
-    # - 2x delete z tabeli bpp_cache_punktacja_dyscypliny
-    # - 3xrelease savepoint
-    # - ... co w sumie daje: 11 zapytan
-
-    with django_assert_num_queries(9):
+    with django_assert_num_queries(13):
         rebuild_ciagle()
 
 
 @pytest.mark.django_db
 def test_rebuild_zwarte(django_assert_num_queries, wydawnictwo_zwarte_z_autorem):
-    with django_assert_num_queries(9):
+    with django_assert_num_queries(12):
         rebuild_zwarte()
 
 
 @pytest.mark.django_db
 def test_rebuild_patent(django_assert_num_queries, patent):
-    with django_assert_num_queries(11):
+    with django_assert_num_queries(13):
         rebuild_patent()

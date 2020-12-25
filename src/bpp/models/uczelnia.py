@@ -10,6 +10,7 @@ from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.db import models
 from django.db.models import SET_NULL, Q, F
 from django.urls.base import reverse
+from django.utils.functional import cached_property
 
 from bpp.models import ModelZAdnotacjami, NazwaISkrot
 from bpp.models.abstract import NazwaWDopelniaczu, ModelZPBN_ID
@@ -18,9 +19,13 @@ from .fields import OpcjaWyswietlaniaField
 
 class UczelniaManager(models.Manager):
     def get_default(self) -> Union["Uczelnia", None]:
-        return self.first()
+        return self.all().only("pk").first()
 
     def get_for_request(self, request):
+        return self.get_default()
+
+    @cached_property
+    def default(self):
         return self.get_default()
 
 
