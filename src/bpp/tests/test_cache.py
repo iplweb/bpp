@@ -425,18 +425,20 @@ def test_prace_autora_z_afiliowanych_jednostek(typy_odpowiedzialnosci):
 
 
 @pytest.mark.django_db
-def test_rebuild_ciagle(django_assert_num_queries, wydawnictwo_ciagle_z_dwoma_autorami):
-    with django_assert_num_queries(13):
+def test_rebuild_ciagle(
+    django_assert_max_num_queries, wydawnictwo_ciagle_z_dwoma_autorami
+):
+    with django_assert_max_num_queries(13):
         rebuild_ciagle()
 
 
 @pytest.mark.django_db
-def test_rebuild_zwarte(django_assert_num_queries, wydawnictwo_zwarte_z_autorem):
-    with django_assert_num_queries(12):
+def test_rebuild_zwarte(django_assert_max_num_queries, wydawnictwo_zwarte_z_autorem):
+    with django_assert_max_num_queries(13):
         rebuild_zwarte()
 
 
 @pytest.mark.django_db
-def test_rebuild_patent(django_assert_num_queries, patent):
-    with django_assert_num_queries(13):
+def test_rebuild_patent(django_assert_max_num_queries, patent):
+    with django_assert_max_num_queries(13):
         rebuild_patent()
