@@ -27,12 +27,12 @@ def ISlot(original):
     if hasattr(original, "typ_kbn") and original.typ_kbn.skrot == "PW":
         raise CannotAdapt("Sloty dla prac wieloośrodkowych nie są liczone.")
 
+    uczelnia = Uczelnia.objects.get_default()
     if (
-        Uczelnia.objects.get_default()
-        .ukryj_status_korekty_set.filter(
+        uczelnia
+        and uczelnia.ukryj_status_korekty_set.filter(
             status_korekty=original.status_korekty, sloty=True
-        )
-        .exists()
+        ).exists()
     ):
         raise CannotAdapt(
             "Sloty nie będą liczone, zgodnie z ustawieniami obiektu Uczelnia dla ukrywanych "
