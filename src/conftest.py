@@ -574,6 +574,7 @@ def typy_kbn():
 def statusy_korekt():
     for elem in fixture("status_korekty.json"):
         Status_Korekty.objects.get_or_create(pk=elem["pk"], **elem["fields"])
+    return {status.nazwa: status for status in Status_Korekty.objects.all()}
 
 
 @pytest.fixture(scope="function")
@@ -696,3 +697,21 @@ def baza_wos():
 
 
 from asgi_live_server import asgi_live_server  # noqa
+
+@pytest.fixture
+def wydawnictwo_zwarte_przed_korekta(statusy_korekt):
+    return mommy.make(
+        Wydawnictwo_Zwarte, status_korekty=statusy_korekt["przed korektą"]
+    )
+
+
+@pytest.fixture
+def wydawnictwo_zwarte_w_trakcie_korekty(statusy_korekt):
+    return mommy.make(
+        Wydawnictwo_Zwarte, status_korekty=statusy_korekt["w trakcie korekty"]
+    )
+
+
+@pytest.fixture
+def wydawnictwo_zwarte_po_korekcie(statusy_korekt):
+    return mommy.make(Wydawnictwo_Zwarte, status_korekty=statusy_korekt["po korekcie"])
