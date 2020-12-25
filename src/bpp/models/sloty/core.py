@@ -2,7 +2,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.utils.functional import cached_property
 
-from bpp.models import Typ_Odpowiedzialnosci, const
+from bpp.models import Typ_Odpowiedzialnosci, const, Uczelnia
 from bpp.models.cache import Cache_Punktacja_Autora, Cache_Punktacja_Dyscypliny
 from bpp.models.patent import Patent
 from bpp.models.sloty.wydawnictwo_ciagle import SlotKalkulator_Wydawnictwo_Ciagle_Prog3
@@ -26,6 +26,18 @@ def ISlot(original):
 
     if hasattr(original, "typ_kbn") and original.typ_kbn.skrot == "PW":
         raise CannotAdapt("Sloty dla prac wieloośrodkowych nie są liczone.")
+
+    if (
+        Uczelnia.objects.get_default()
+        .ukryj_status_korekty_set.filter(
+            status_korekty=original.status_korekty, sloty=True
+        )
+        .exists()
+    ):
+        raise CannotAdapt(
+            "Sloty nie będą liczone, zgodnie z ustawieniami obiektu Uczelnia dla ukrywanych "
+            "statusów korekt. "
+        )
 
     if isinstance(original, Wydawnictwo_Ciagle):
         if original.rok in [2017, 2018]:
