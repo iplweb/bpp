@@ -3,6 +3,7 @@
 """
 Struktura uczelni.
 """
+from typing import Union
 
 from autoslug import AutoSlugField
 from django.core.exceptions import ImproperlyConfigured, ValidationError
@@ -16,7 +17,7 @@ from .fields import OpcjaWyswietlaniaField
 
 
 class UczelniaManager(models.Manager):
-    def get_default(self) -> "Uczelnia":
+    def get_default(self) -> Union["Uczelnia", None]:
         return self.first()
 
     def get_for_request(self, request):
