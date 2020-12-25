@@ -471,3 +471,16 @@ def knapsack(W, wt, val, ids, zwracaj_liste_przedmiotow=True):
                 w = w - wt[i - 1]
 
     return maks_punkty, lista
+
+
+def disable_multithreading_by_monkeypatching_pool(pool):
+    def apply(fun, args=()):
+        return fun(*args)
+
+    pool.apply = apply
+
+    def starmap(fun, lst):
+        for elem in lst:
+            fun(*elem)
+
+    pool.starmap = starmap
