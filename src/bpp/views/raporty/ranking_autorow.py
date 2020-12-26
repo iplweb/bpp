@@ -21,17 +21,21 @@ class RankingAutorowTable(Table):
     class Meta:
         attrs = {"class": "bpp-table"}
         model = Autor
-        order_by = ('-impact_factor_sum', 'autor__nazwisko')
-        fields = ('lp',
-                  'autor',
-                  'impact_factor_sum',
-                  'liczba_cytowan_sum',
-                  'punkty_kbn_sum')
+        order_by = ("-impact_factor_sum", "autor__nazwisko")
+        fields = (
+            "lp",
+            "autor",
+            "impact_factor_sum",
+            "liczba_cytowan_sum",
+            "punkty_kbn_sum",
+        )
 
-    lp = Column(empty_values=(),
-                orderable=False,
-                attrs={'td': {'class': "bpp-lp-column"}},
-                exclude_from_export=True)
+    lp = Column(
+        empty_values=(),
+        orderable=False,
+        attrs={"td": {"class": "bpp-lp-column"}},
+        exclude_from_export=True,
+    )
 
     autor = Column(order_by=("autor__nazwisko", "autor__imiona"))
     punkty_kbn_sum = Column("Punkty PK", "punkty_kbn_sum")
@@ -39,14 +43,19 @@ class RankingAutorowTable(Table):
     liczba_cytowan_sum = Column("Liczba cytowań", "liczba_cytowan_sum")
 
     def render_lp(self):
-        self.lp_counter = getattr(self, "lp_counter",
-                                  itertools.count(self.page.start_index()))
+        self.lp_counter = getattr(
+            self, "lp_counter", itertools.count(self.page.start_index())
+        )
         return "%i." % next(self.lp_counter)
 
     def render_autor(self, record):
-        return safe('<a href="%s">%s</a>' % (
-            reverse('bpp:browse_autor', args=(record.autor.slug,)),
-            str(record.autor)))
+        return safe(
+            '<a href="%s">%s</a>'
+            % (
+                reverse("bpp:browse_autor", args=(record.autor.slug,)),
+                str(record.autor),
+            )
+        )
 
     def value_autor(self, record):
         return str(record.autor)
@@ -54,14 +63,16 @@ class RankingAutorowTable(Table):
 
 class RankingAutorowJednostkaWydzialTable(RankingAutorowTable):
     class Meta:
-        fields = ('lp',
-                  'autor',
-                  'jednostka',
-                  'wydzial',
-                  'impact_factor_sum',
-                  'liczba_cytowan_sum',
-                  'punkty_kbn_sum')
-        order_by = ('-impact_factor_sum', 'autor__nazwisko')
+        fields = (
+            "lp",
+            "autor",
+            "jednostka",
+            "wydzial",
+            "impact_factor_sum",
+            "liczba_cytowan_sum",
+            "punkty_kbn_sum",
+        )
+        order_by = ("-impact_factor_sum", "autor__nazwisko")
 
     jednostka = Column(accessor="jednostka.nazwa")
     wydzial = Column(accessor="jednostka.wydzial.nazwa")
@@ -77,17 +88,16 @@ class RankingAutorow(ExportMixin, SingleTableView):
 
     @cached_property
     def rozbij_na_wydzialy(self):
-        return self.request.GET.get('rozbij_na_jednostki', "True") == 'True'
+        return self.request.GET.get("rozbij_na_jednostki", "True") == "True"
 
     @cached_property
     def tylko_afiliowane(self):
-        return self.request.GET.get('tylko_afiliowane', "False") == 'True'
+        return self.request.GET.get("tylko_afiliowane", "False") == "True"
 
     def get_queryset(self):
         qset = Sumy.objects.all()
         qset = qset.filter(
-            rok__gte=self.kwargs['od_roku'],
-            rok__lte=self.kwargs['do_roku']
+            rok__gte=self.kwargs["od_roku"], rok__lte=self.kwargs["do_roku"]
         )
         wydzialy = self.get_wydzialy()
         if wydzialy:
@@ -99,25 +109,31 @@ class RankingAutorow(ExportMixin, SingleTableView):
 
         if self.rozbij_na_wydzialy:
             qset = qset.prefetch_related("jednostka__wydzial").select_related(
-                "autor", "jednostka")
+                "autor", "jednostka"
+            )
             qset = qset.group_by("autor", "jednostka")
         else:
             qset = qset.select_related("autor")
             qset = qset.group_by("autor")
 
         qset = qset.annotate(
-            impact_factor_sum=Sum('impact_factor'),
-            liczba_cytowan_sum=Sum('liczba_cytowan'),
-            punkty_kbn_sum=Sum('punkty_kbn'),
+            impact_factor_sum=Sum("impact_factor"),
+            liczba_cytowan_sum=Sum("liczba_cytowan"),
+            punkty_kbn_sum=Sum("punkty_kbn"),
         )
-        qset = qset.exclude(
-            impact_factor_sum=0,
-            liczba_cytowan_sum=0,
-            punkty_kbn_sum=0)
+        qset = qset.exclude(impact_factor_sum=0, liczba_cytowan_sum=0, punkty_kbn_sum=0)
 
-        qset = qset.exclude(
-            autor__pokazuj=False
-        )
+        qset = qset.exclude(autor__pokazuj=False)
+
+        uczelnia = Uczelnia.objects.get_default()
+        if uczelnia is not None:
+            wykluczone_statusy = uczelnia.ukryj_status_korekty_set.filter(rankingi=True)
+            if wykluczone_statusy.exists():
+                qset = qset.exclude(
+                    status_korekty__in=wykluczone_statusy.values_list(
+                        "status_korekty", flat=True
+                    )
+                )
 
         return qset
 
@@ -139,25 +155,26 @@ class RankingAutorow(ExportMixin, SingleTableView):
 
     def get_context_data(self, **kwargs):
         context = super(SingleTableView, self).get_context_data(**kwargs)
-        context['od_roku'] = self.kwargs['od_roku']
-        context['do_roku'] = self.kwargs['do_roku']
+        context["od_roku"] = self.kwargs["od_roku"]
+        context["do_roku"] = self.kwargs["do_roku"]
         jeden_rok = False
-        if self.kwargs['od_roku'] == self.kwargs['do_roku']:
-            context['rok'] = self.kwargs['od_roku']
+        if self.kwargs["od_roku"] == self.kwargs["do_roku"]:
+            context["rok"] = self.kwargs["od_roku"]
             jeden_rok = True
 
         wydzialy = self.get_wydzialy()
-        context['wydzialy'] = wydzialy
+        context["wydzialy"] = wydzialy
 
         if jeden_rok:
-            context['table_title'] = "Ranking autorów za rok %s" % context[
-                'rok']
+            context["table_title"] = "Ranking autorów za rok %s" % context["rok"]
         else:
-            context['table_title'] = "Ranking autorów za lata %s - %s" % (
-            context['od_roku'], context['do_roku'])
-        context['tab_subtitle'] = ''
+            context["table_title"] = "Ranking autorów za lata %s - %s" % (
+                context["od_roku"],
+                context["do_roku"],
+            )
+        context["tab_subtitle"] = ""
         if len(wydzialy) != len(self.get_dostepne_wydzialy()):
-            context['table_subtitle'] = ", ".join([x.nazwa for x in wydzialy])
+            context["table_subtitle"] = ", ".join([x.nazwa for x in wydzialy])
         return context
 
     def get_table_kwargs(self):
@@ -165,10 +182,8 @@ class RankingAutorow(ExportMixin, SingleTableView):
         pokazuj = uczelnia.pokazuj_liczbe_cytowan_w_rankingu
 
         if pokazuj == OpcjaWyswietlaniaField.POKAZUJ_NIGDY or (
-            pokazuj == OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM and
-            self.request.user.is_anonymous
-        ) :
-            return {
-                'exclude': ('liczba_cytowan_sum',)
-            }
+            pokazuj == OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM
+            and self.request.user.is_anonymous
+        ):
+            return {"exclude": ("liczba_cytowan_sum",)}
         return {}
