@@ -45,3 +45,19 @@ def test_rest_api_praca_doktorska_filtering_2(api_client, praca_doktorska):
 def test_rest_api_praca_doktorska_filtering_rok(api_client, praca_doktorska, rok):
     res = api_client.get(reverse("api_v1:praca_doktorska-list") + f"?rok_min={rok+1}")
     assert res.json()["count"] == 0
+
+
+@pytest.mark.django_db
+def test_rest_api_praca_doktorska_ukryj_status(
+    api_client, praca_doktorska, uczelnia, przed_korekta, po_korekcie
+):
+
+    res = api_client.get(reverse("api_v1:praca_doktorska-list"))
+    assert res.json()["count"] == 1
+
+    praca_doktorska.status_korekty = przed_korekta
+    praca_doktorska.save()
+
+    uczelnia.ukryj_status_korekty_set.create(status_korekty=przed_korekta)
+    res = api_client.get(reverse("api_v1:praca_doktorska-list"))
+    assert res.json()["count"] == 0

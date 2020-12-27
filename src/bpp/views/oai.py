@@ -15,7 +15,7 @@ from django.views.generic.base import View
 from moai.oai import OAIServerFactory
 from moai.server import FeedConfig
 
-from bpp.models import Rekord
+from bpp.models import Rekord, Uczelnia
 from django.utils import timezone
 
 
@@ -187,21 +187,31 @@ class BPPOAIDatabase(object):
         if not from_date is None:
             query = query.filter(ostatnio_zmieniony__gte=from_date)
 
-        for row in query.only(
-            "ostatnio_zmieniony",
-            "tytul_oryginalny",
-            "tytul",
-            "jezyk__nazwa",
-            "rok",
-            "wydawnictwo",
-            "slowa_kluczowe",
-            "zrodlo",
-            "informacje",
-            "szczegoly",
-            "opis_bibliograficzny_autorzy_cache",
-            "charakter_formalny__nazwa_w_primo",
-            "www",
-        )[offset : offset + batch_size]:
+        uczelnia = Uczelnia.objects.get_default()
+        if uczelnia:
+            ukryte_statusy = uczelnia.ukryte_statusy("api")
+            if ukryte_statusy:
+                query = query.exclude(status_korekty_id__in=ukryte_statusy)
+
+        for row in (
+            query.only(
+                "ostatnio_zmieniony",
+                "tytul_oryginalny",
+                "tytul",
+                "jezyk__nazwa",
+                "rok",
+                "wydawnictwo",
+                "slowa_kluczowe",
+                "zrodlo",
+                "informacje",
+                "szczegoly",
+                "opis_bibliograficzny_autorzy_cache",
+                "charakter_formalny__nazwa_w_primo",
+                "www",
+            )
+            .select_related("charakter_formalny", "jezyk")
+            .prefetch_related("zrodlo")[offset : offset + batch_size]
+        ):
             yield {
                 "id": get_dc_ident(row.content_type.model, row.object_id),
                 "deleted": False,

@@ -49,3 +49,19 @@ def test_rest_api_wydawnictwo_ciagle_filtering_rok(api_client, wydawnictwo_ciagl
         reverse("api_v1:wydawnictwo_ciagle-list") + f"?rok_min={rok+1}"
     )
     assert res.json()["count"] == 0
+
+
+@pytest.mark.django_db
+def test_rest_api_wydawnictwo_ciagle_ukryj_status(
+    api_client, wydawnictwo_ciagle, uczelnia, przed_korekta, po_korekcie
+):
+
+    res = api_client.get(reverse("api_v1:wydawnictwo_ciagle-list"))
+    assert res.json()["count"] == 1
+
+    wydawnictwo_ciagle.status_korekty = przed_korekta
+    wydawnictwo_ciagle.save()
+
+    uczelnia.ukryj_status_korekty_set.create(status_korekty=przed_korekta)
+    res = api_client.get(reverse("api_v1:wydawnictwo_ciagle-list"))
+    assert res.json()["count"] == 0

@@ -573,6 +573,11 @@ def ksiazka_polska(charaktery_formalne):
 
 
 @pytest.fixture(scope="function")
+def artykul_w_czasopismie(charaktery_formalne):
+    return charaktery_formalne["AC"]
+
+
+@pytest.fixture(scope="function")
 def typy_kbn():
     for elem in fixture("typ_kbn.json"):
         Typ_KBN.objects.get_or_create(pk=elem["pk"], **elem["fields"])

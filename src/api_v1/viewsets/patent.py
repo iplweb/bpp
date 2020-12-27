@@ -5,6 +5,7 @@ from api_v1.serializers.patent import (
     Patent_AutorSerializer,
     PatentSerializer,
 )
+from api_v1.viewsets.common import UkryjStatusyKorektyMixin
 
 from bpp.models import Patent, Patent_Autor
 
@@ -23,7 +24,7 @@ class PatentFilterSet(django_filters.rest_framework.FilterSet):
         model = Patent
 
 
-class PatentViewSet(viewsets.ReadOnlyModelViewSet):
+class PatentViewSet(UkryjStatusyKorektyMixin, viewsets.ReadOnlyModelViewSet):
     # Lista musi być posortowana po PK aby nie było duplikatów
     queryset = Patent.objects.exclude(nie_eksportuj_przez_api=True).order_by("pk")
     serializer_class = PatentSerializer

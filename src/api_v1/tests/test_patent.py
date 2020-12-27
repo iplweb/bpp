@@ -43,3 +43,19 @@ def test_rest_api_patent_filtering_2(api_client, patent):
 def test_rest_api_patent_filtering_rok(api_client, wydawnictwo_ciagle, rok):
     res = api_client.get(reverse("api_v1:patent-list") + f"?rok_min={rok+1}")
     assert res.json()["count"] == 0
+
+
+@pytest.mark.django_db
+def test_rest_api_patent_ukryj_status(
+    api_client, patent, uczelnia, przed_korekta, po_korekcie
+):
+
+    res = api_client.get(reverse("api_v1:patent-list"))
+    assert res.json()["count"] == 1
+
+    patent.status_korekty = przed_korekta
+    patent.save()
+
+    uczelnia.ukryj_status_korekty_set.create(status_korekty=przed_korekta)
+    res = api_client.get(reverse("api_v1:patent-list"))
+    assert res.json()["count"] == 0

@@ -1,3 +1,4 @@
+
 ==============
 Historia zmian
 ==============
@@ -11,6 +12,7 @@ Historia zmian
   liczenie punktów za sloty w zależności od ustawienia statusu korekty (#945)
 * ukrywanie wybranych statusów korekt w rankingach (#946)
 * ukrywanie wybranych statusów korekt w raportach (#943)
+* ukrywanie wybranych statusów korekt w API (#946)
 
 202011.50
 ---------

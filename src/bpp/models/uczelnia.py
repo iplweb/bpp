@@ -248,7 +248,11 @@ class Ukryj_Status_Korekty(models.Model):
         help_text="Nie dotyczy użytkownika zalogowanego. Użytkownik zalogowany widzi wszystkie prace "
         "w wyszukiwaniu. ",
     )
-    raporty = models.BooleanField("Raporty", default=True)
+    raporty = models.BooleanField(
+        "Raporty",
+        default=True,
+        help_text="Ukrywa prace w raporcie autora, " "jednostki, uczelni",
+    )
     rankingi = models.BooleanField("Rankingi", default=True)
     sloty = models.BooleanField(
         "Raporty slotów",
@@ -257,7 +261,11 @@ class Ukryj_Status_Korekty(models.Model):
         "zapisywania rekordu do bazy danych. Jeżeli zmieniasz to ustawienie dla prac które już są w bazie danych "
         "to ich punktacja zniknie z bazy w dniu następnym (skasowana zostanie podczas nocnego przeindeksowania bazy).",
     )
-    api = models.BooleanField("API", default=True)
+    api = models.BooleanField(
+        "API",
+        default=True,
+        help_text="Dotyczy ukrywania prac w API JSON-REST oraz OAI-PMH",
+    )
 
     def __str__(self):
         res = (
