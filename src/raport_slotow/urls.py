@@ -17,7 +17,7 @@ app_name = "raport_slotow"
 urlpatterns = [
     path("raport-slotow-autor/", WyborOsoby.as_view(), name="index"),
     path(
-        r"raport-slotow-autor/<slug:autor>/<int:od_roku>/<int:do_roku>/",
+        r"raport-slotow-autor/generuj/",
         RaportSlotow.as_view(),
         name="raport",
     ),

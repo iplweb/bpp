@@ -29,6 +29,10 @@ OUTPUT_FORMATS = [
 ]
 
 
+DZIALANIE_WSZYSTKO = "wszystko"
+DZIALANIE_SLOT = "slot"
+
+
 class AutorRaportSlotowForm(forms.Form):
     obiekt = forms.ModelChoiceField(
         label="Autor",
@@ -36,8 +40,25 @@ class AutorRaportSlotowForm(forms.Form):
         widget=autocomplete.ModelSelect2(url="bpp:public-autor-autocomplete"),
     )
 
-    od_roku = forms.IntegerField(initial=year_last_month)
+    od_roku = forms.IntegerField(initial=year_last_month, min_value=2016)
     do_roku = forms.IntegerField(initial=year_last_month)
+
+    minimalny_pk = forms.IntegerField(label="Minimalna wartość PK pracy", initial=0)
+
+    dzialanie = forms.ChoiceField(
+        label="Wygeneruj",
+        choices=(
+            (DZIALANIE_WSZYSTKO, "prace autora z punktacją dla dziedzin za dany okres"),
+            (DZIALANIE_SLOT, "zbierz najlepsze prace do zadanej wielkości slotu"),
+        ),
+        initial="wszystko",
+        widget=forms.RadioSelect,
+    )
+
+    slot = forms.IntegerField(
+        label="Zadana wielkość slotu",
+        required=False,
+    )
 
     _export = forms.ChoiceField(
         label="Format wyjściowy", choices=OUTPUT_FORMATS, required=True
@@ -49,10 +70,42 @@ class AutorRaportSlotowForm(forms.Form):
                 raise ValidationError(
                     {
                         "od_roku": ValidationError(
-                            'Pole musi być większe lub równe jak pole "Do roku".'
+                            'Pole musi być większe lub równe jak pole "Do roku".',
+                            code="od_do_zle",
                         )
                     }
                 )
+
+        if (
+            self.cleaned_data["dzialanie"] == DZIALANIE_WSZYSTKO
+            and "slot" in self.cleaned_data
+        ):
+            raise ValidationError(
+                {
+                    "slot": ValidationError(
+                        "Gdy chcesz wygenerować wszystkie prace tego autora, pozostaw pole 'Slot' puste. ",
+                        code="nie_podawaj_gdy_wszystko",
+                    )
+                }
+            )
+
+        if self.cleaned_data["dzialanie"] == DZIALANIE_SLOT and (
+            "slot" not in self.cleaned_data
+            or ("slot" in self.cleaned_data and self.cleaned_data["slot"] is None)
+            or (
+                "slot" in self.cleaned_data
+                and self.cleaned_data["slot"] is not None
+                and self.cleaned_data["slot"] <= 0
+            )
+        ):
+            raise ValidationError(
+                {
+                    "slot": ValidationError(
+                        "Podaj wartość slota do którego chcesz zbierać prace. Wartość musi być większa od zera. ",
+                        code="podawaj_gdy_slot",
+                    )
+                }
+            )
 
     def __init__(self, *args, **kwargs):
         super(AutorRaportSlotowForm, self).__init__(*args, **kwargs)
@@ -65,10 +118,13 @@ class AutorRaportSlotowForm(forms.Form):
                 "Wybierz parametry",
                 formdefaults_html_before(self),
                 Row(Column("obiekt", css_class="large-12 small-12")),
+                Row(Column("dzialanie", css_class="large-12 small-12")),
+                Row(Column("slot", css_class="large-12 small-12")),
                 Row(
                     Column("od_roku", css_class="large-6 small-6"),
                     Column("do_roku", css_class="large-6 small-6"),
                 ),
+                Row(Column("minimalny_pk")),
                 Row(Column("_export")),
                 formdefaults_html_after(self),
             ),
@@ -155,7 +211,9 @@ class ParametryRaportSlotowEwaluacjaForm(forms.Form):
             Fieldset(
                 "Wybierz parametry",
                 formdefaults_html_before(self),
-                Row(Column("rok", css_class="large-6 small-6"),),
+                Row(
+                    Column("rok", css_class="large-6 small-6"),
+                ),
                 Row(Column("_export")),
                 formdefaults_html_after(self),
             ),
