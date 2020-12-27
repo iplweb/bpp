@@ -5,6 +5,7 @@ from api_v1.serializers.wydawnictwo_zwarte import (
     Wydawnictwo_Zwarte_AutorSerializer,
     Wydawnictwo_ZwarteSerializer,
 )
+from api_v1.viewsets.common import UkryjStatusyKorektyMixin
 
 from bpp.models import Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor
 
@@ -23,7 +24,9 @@ class Wydawnictwo_ZwarteFilterSet(django_filters.rest_framework.FilterSet):
         model = Wydawnictwo_Zwarte
 
 
-class Wydawnictwo_ZwarteViewSet(viewsets.ReadOnlyModelViewSet):
+class Wydawnictwo_ZwarteViewSet(
+    UkryjStatusyKorektyMixin, viewsets.ReadOnlyModelViewSet
+):
     # Lista musi być posortowana po PK aby nie było duplikatów
     queryset = Wydawnictwo_Zwarte.objects.exclude(
         nie_eksportuj_przez_api=True
