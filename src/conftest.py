@@ -556,6 +556,7 @@ def charaktery_formalne():
     chf_ksp = Charakter_Formalny.objects.get(skrot="KSP")
     chf_ksp.rodzaj_pbn = const.RODZAJ_PBN_KSIAZKA
     chf_ksp.charakter_sloty = const.CHARAKTER_SLOTY_KSIAZKA
+    chf_ksp.nazwa_w_primo = "Książka"
     chf_ksp.save()
 
     chf_roz = Charakter_Formalny.objects.get(skrot="ROZ")
@@ -564,6 +565,11 @@ def charaktery_formalne():
     chf_roz.save()
 
     return dict([(x.skrot, x) for x in Charakter_Formalny.objects.all()])
+
+
+@pytest.fixture(scope="function")
+def ksiazka_polska(charaktery_formalne):
+    return charaktery_formalne["KSP"]
 
 
 @pytest.fixture(scope="function")
