@@ -30,11 +30,8 @@ def ISlot(original, uczelnia=None):
     if uczelnia is None:
         uczelnia = Uczelnia.objects.get_default()
 
-    if (
-        uczelnia is not None
-        and uczelnia.ukryj_status_korekty_set.filter(
-            status_korekty_id=original.status_korekty_id, sloty=True
-        ).exists()
+    if uczelnia is not None and original.status_korekty_id in uczelnia.ukryte_statusy(
+        "sloty"
     ):
         raise CannotAdapt(
             "Sloty nie będą liczone, zgodnie z ustawieniami obiektu Uczelnia dla ukrywanych "

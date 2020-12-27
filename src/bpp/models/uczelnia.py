@@ -3,7 +3,7 @@
 """
 Struktura uczelni.
 """
-from typing import Union
+from typing import Union, List
 
 from autoslug import AutoSlugField
 from django.core.exceptions import ImproperlyConfigured, ValidationError
@@ -229,27 +229,13 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
 
         return WoSClient(self.clarivate_username, self.clarivate_password)
 
-
-class Ukryj_Status_KorektyManager(models.Manager):
-    def get_query_for_function(self, ftype, uczelnia=None):
+    def ukryte_statusy(self, dla_funkcji: str) -> List[int]:
         """
-        Zwraca zapytanie bazodanowe w formie (
+        :param dla_funkcji: "sloty", "raporty", "multiwyszukiwarka", "rankingi"
+        :return: lista numerów PK obiektów :class:`bpp.models.system.Status_Korekty`
         """
-        if uczelnia is None:
-            uczelnia = Uczelnia.objects.get_default()
-
-            # Jeżeli nie mamy żadnych informacji nt obiektu uczelnia, to nie mamy też
-            # informacji nt wyświetlania lub chowania elementów, zatem zwrócmy obiekt
-            # Q() mający zawsze wartość 'prawda':
-            if uczelnia is None:
-                return Q(pk=F("pk"))
-
-        assert ftype in ["multiwyszukiwarka", "raporty", "rankingi", "sloty"]
-
-        return ~Q(
-            status_korekty__in=uczelnia.ukryj_status_korekty_set.filter(
-                **{ftype: True}
-            ).values_list("status_korekty")
+        return self.ukryj_status_korekty_set.filter(**{dla_funkcji: True}).values_list(
+            "status_korekty", flat=True
         )
 
 
@@ -272,8 +258,6 @@ class Ukryj_Status_Korekty(models.Model):
         "to ich punktacja zniknie z bazy w dniu następnym (skasowana zostanie podczas nocnego przeindeksowania bazy).",
     )
     api = models.BooleanField("API", default=True)
-
-    objects = Ukryj_Status_KorektyManager()
 
     def __str__(self):
         res = (

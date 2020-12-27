@@ -40,11 +40,11 @@ class MyMultiseekResults(MultiseekResults):
             qset = super(MyMultiseekResults, self).get_queryset()
 
         if not self.request.user.is_authenticated:
-            qset = qset.filter(
-                Ukryj_Status_Korekty.objects.get_query_for_function(
-                    "multiwyszukiwarka", Uczelnia.objects.get_for_request(self.request)
-                )
-            )
+            uczelnia = Uczelnia.objects.get_for_request(self.request)
+            if uczelnia is not None:
+                ukryte_statusy = uczelnia.ukryte_statusy("multiwyszukiwarka")
+                if ukryte_statusy:
+                    qset = qset.exclude(status_korekty_id__in=ukryte_statusy)
 
         flds = ("id", "opis_bibliograficzny_cache")
 

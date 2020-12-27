@@ -445,3 +445,18 @@ def test_form_defaults_napis_przed_po(uczelnia, admin_client, url, klass, slug):
     res = admin_client.get(reverse(url))
     for n in NAPIS_PO, NAPIS_PRZED:
         assert n in res.content
+
+
+def test_GenerujRaportDlaAutora_get_context_data_ukryj_statusy(
+    rf, uczelnia, przed_korekta
+):
+    ra = Report.objects.create(slug="raport-autorow", title="XXX")
+
+    uczelnia.ukryj_status_korekty_set.create(status_korekty=przed_korekta)
+
+    x = GenerujRaportDlaAutora(kwargs=dict(od_roku=0, do_roku=3000))
+    x.request = rf.get("/", data={"_tzju": "True"})
+    x.object = None
+    res = x.get_context_data()
+    query = str(res["report"].base_queryset.query)
+    assert """AND NOT ("bpp_rekord_mat"."status_korekty_id" IN """ in query

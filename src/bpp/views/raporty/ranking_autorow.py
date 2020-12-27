@@ -127,13 +127,9 @@ class RankingAutorow(ExportMixin, SingleTableView):
 
         uczelnia = Uczelnia.objects.get_default()
         if uczelnia is not None:
-            wykluczone_statusy = uczelnia.ukryj_status_korekty_set.filter(rankingi=True)
-            if wykluczone_statusy.exists():
-                qset = qset.exclude(
-                    status_korekty__in=wykluczone_statusy.values_list(
-                        "status_korekty", flat=True
-                    )
-                )
+            ukryte_statusy = uczelnia.ukryte_statusy("rankingi")
+            if ukryte_statusy:
+                qset = qset.exclude(status_korekty_id__in=ukryte_statusy)
 
         return qset
 

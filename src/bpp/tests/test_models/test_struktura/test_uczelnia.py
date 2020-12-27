@@ -282,3 +282,11 @@ def test_uczelnia_obca_jednostka(uczelnia, jednostka, obca_jednostka):
     uczelnia.obca_jednostka = jednostka
     with pytest.raises(ValidationError):
         uczelnia.save()
+
+
+def test_uczelnia_ukryte_statusy(uczelnia, przed_korekta, po_korekcie):
+    uczelnia.ukryj_status_korekty_set.create(status_korekty=przed_korekta)
+    uczelnia.ukryj_status_korekty_set.create(status_korekty=po_korekcie)
+
+    assert przed_korekta.pk in uczelnia.ukryte_statusy("sloty")
+    assert po_korekcie.pk in uczelnia.ukryte_statusy("sloty")

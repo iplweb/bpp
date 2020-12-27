@@ -9,7 +9,8 @@ Historia zmian
 * ukrywanie statusów korekt w multiwyszukiwarce (#942),
 * ukrywanie statusów korekt przy obliczaniu slotów -
   liczenie punktów za sloty w zależności od ustawienia statusu korekty (#945)
-* ukrywanie statusów korekt w rankingach (#946)
+* ukrywanie wybranych statusów korekt w rankingach (#946)
+* ukrywanie wybranych statusów korekt w raportach (#943)
 
 202011.50
 ---------
