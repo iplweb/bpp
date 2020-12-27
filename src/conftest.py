@@ -48,6 +48,8 @@ NORMAL_DJANGO_USER_PASSWORD = "test_password"
 
 from bpp.tests.util import setup_mommy
 
+from asgi_live_server import asgi_live_server  # noqa
+
 setup_mommy()
 
 
@@ -554,6 +556,7 @@ def charaktery_formalne():
     chf_ksp = Charakter_Formalny.objects.get(skrot="KSP")
     chf_ksp.rodzaj_pbn = const.RODZAJ_PBN_KSIAZKA
     chf_ksp.charakter_sloty = const.CHARAKTER_SLOTY_KSIAZKA
+    chf_ksp.nazwa_w_primo = "Książka"
     chf_ksp.save()
 
     chf_roz = Charakter_Formalny.objects.get(skrot="ROZ")
@@ -562,6 +565,16 @@ def charaktery_formalne():
     chf_roz.save()
 
     return dict([(x.skrot, x) for x in Charakter_Formalny.objects.all()])
+
+
+@pytest.fixture(scope="function")
+def ksiazka_polska(charaktery_formalne):
+    return charaktery_formalne["KSP"]
+
+
+@pytest.fixture(scope="function")
+def artykul_w_czasopismie(charaktery_formalne):
+    return charaktery_formalne["AC"]
 
 
 @pytest.fixture(scope="function")
@@ -574,6 +587,17 @@ def typy_kbn():
 def statusy_korekt():
     for elem in fixture("status_korekty.json"):
         Status_Korekty.objects.get_or_create(pk=elem["pk"], **elem["fields"])
+    return {status.nazwa: status for status in Status_Korekty.objects.all()}
+
+
+@pytest.fixture(scope="function")
+def przed_korekta(statusy_korekt):
+    return statusy_korekt["przed korektą"]
+
+
+@pytest.fixture(scope="function")
+def po_korekcie(statusy_korekt):
+    return statusy_korekt["po korekcie"]
 
 
 @pytest.fixture(scope="function")
@@ -696,3 +720,22 @@ def baza_wos():
 
 
 from asgi_live_server import asgi_live_server  # noqa
+
+
+@pytest.fixture
+def wydawnictwo_zwarte_przed_korekta(statusy_korekt):
+    return mommy.make(
+        Wydawnictwo_Zwarte, status_korekty=statusy_korekt["przed korektą"]
+    )
+
+
+@pytest.fixture
+def wydawnictwo_zwarte_w_trakcie_korekty(statusy_korekt):
+    return mommy.make(
+        Wydawnictwo_Zwarte, status_korekty=statusy_korekt["w trakcie korekty"]
+    )
+
+
+@pytest.fixture
+def wydawnictwo_zwarte_po_korekcie(statusy_korekt):
+    return mommy.make(Wydawnictwo_Zwarte, status_korekty=statusy_korekt["po korekcie"])

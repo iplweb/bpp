@@ -15,14 +15,13 @@ class TestImportBpp(TestCase):
 
         d1 = dict(recenzowana=True, id=0)
         afiliacja(d1, kw)
-        self.assertEqual(kw['recenzowana'], True)
-
+        self.assertEqual(kw["recenzowana"], True)
 
         d1 = dict(recenzowana=None, id=0)
         afiliacja(d1, kw)
-        self.assertEqual(kw['recenzowana'], False)
+        self.assertEqual(kw["recenzowana"], False)
 
     @pytest.mark.serial
     def test_rebuild_cache(self):
         mommy.make(Wydawnictwo_Ciagle)
-        call_command("rebuild_cache")
+        call_command("rebuild_cache", disable_multithreading=True)

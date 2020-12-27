@@ -13,6 +13,7 @@ from django_tables2.export.export import TableExport
 from flexible_reports.adapters.django_tables2 import as_docx, as_tablib_databook
 from flexible_reports.models.report import Report
 
+from bpp.models import Uczelnia
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
 from bpp.models.struktura import Wydzial, Jednostka
@@ -105,13 +106,25 @@ class GenerujRaportBase(DetailView):
             report = None
 
         if report:
-            report.set_base_queryset(
-                self.get_base_queryset()
-                .filter(
-                    rok__gte=self.kwargs["od_roku"], rok__lte=self.kwargs["do_roku"]
-                )
-                .select_related("typ_kbn", "charakter_formalny")
+            base_queryset = self.get_base_queryset()
+
+            base_queryset = base_queryset.filter(
+                rok__gte=self.kwargs["od_roku"], rok__lte=self.kwargs["do_roku"]
             )
+
+            uczelnia = Uczelnia.objects.get_for_request(self.request)
+            if uczelnia is not None:
+                ukryte_statusy = uczelnia.ukryte_statusy("raporty")
+                if ukryte_statusy:
+                    base_queryset = base_queryset.exclude(
+                        status_korekty_id__in=ukryte_statusy
+                    )
+
+            base_queryset = base_queryset.select_related(
+                "typ_kbn", "charakter_formalny"
+            )
+
+            report.set_base_queryset(base_queryset)
 
             report.set_context(
                 {

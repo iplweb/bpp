@@ -33,6 +33,8 @@ from bpp.models import (
     Wydawnictwo_Zwarte,
     Wydawnictwo_Zwarte_Autor,
     Zrodlo,
+    ModelZeStatusem,
+    Uczelnia,
 )
 from bpp.models.abstract import (
     ModelPunktowanyBaza,
@@ -137,8 +139,7 @@ def zrodlo_pre_save(instance, *args, **kw):
 
 
 def zrodlo_post_save(instance, *args, **kw):
-    """Źródło zostało zapisane (post_save)
-    """
+    """Źródło zostało zapisane (post_save)"""
 
     changed = getattr(instance, "_BPP_CHANGED_FIELDS", [])
     if not changed:
@@ -354,8 +355,7 @@ class RekordManager(FulltextSearchMixin, models.Manager):
 
     @transaction.atomic
     def full_refresh(self):
-        """Procedura odswieza opisy bibliograficzne dla wszystkich rekordów.
-        """
+        """Procedura odswieza opisy bibliograficzne dla wszystkich rekordów."""
 
         global _CACHE_ENABLED
 
@@ -396,6 +396,7 @@ class RekordBase(
     ModelTypowany,
     ModelZCharakterem,
     ModelZKonferencja,
+    ModelZeStatusem,
     models.Model,
 ):
     id = TupleField(models.IntegerField(), size=2, primary_key=True)
@@ -732,24 +733,15 @@ def rebuild(klass, offset=None, limit=None, extra_flds=None, extra_tables=None):
             "opis_bibliograficzny_zapisani_autorzy_cache",
             "rok",
             "punkty_kbn",
+            "status_korekty_id",
             *extra_flds
         )
     )
 
     from bpp.tasks import aktualizuj_cache_rekordu
 
-    max_conn = []
     for r in query:
-        reset_queries()
-        aktualizuj_cache_rekordu(r)
-        if len(connection.queries) > len(max_conn):
-            for elem in connection.queries:
-                max_conn = []
-                max_conn.append(elem)
-
-    if len(max_conn) > 10:
-        for elem in max_conn:
-            print(elem)
+        aktualizuj_cache_rekordu(r, uczelnia=Uczelnia.objects.default)
 
 
 def rebuild_zwarte(offset=None, limit=None):
@@ -757,7 +749,11 @@ def rebuild_zwarte(offset=None, limit=None):
         Wydawnictwo_Zwarte,
         offset=offset,
         limit=limit,
-        extra_tables=["wydawca", "charakter_formalny", "typ_kbn",],
+        extra_tables=[
+            "wydawca",
+            "charakter_formalny",
+            "typ_kbn",
+        ],
         extra_flds=[
             "tytul",
             "doi",
@@ -780,7 +776,11 @@ def rebuild_ciagle(offset=None, limit=None):
         Wydawnictwo_Ciagle,
         offset=offset,
         limit=limit,
-        extra_tables=["zrodlo", "charakter_formalny", "typ_kbn",],
+        extra_tables=[
+            "zrodlo",
+            "charakter_formalny",
+            "typ_kbn",
+        ],
         extra_flds=[
             "tytul",
             "doi",
@@ -796,12 +796,24 @@ def rebuild_ciagle(offset=None, limit=None):
 
 
 def rebuild_patent(offset=None, limit=None):
-    return rebuild(Patent, offset=offset, limit=limit,)
+    return rebuild(
+        Patent,
+        offset=offset,
+        limit=limit,
+    )
 
 
 def rebuild_praca_doktorska(offset=None, limit=None):
-    return rebuild(Praca_Doktorska, offset=offset, limit=limit,)
+    return rebuild(
+        Praca_Doktorska,
+        offset=offset,
+        limit=limit,
+    )
 
 
 def rebuild_praca_habilitacyjna(offset=None, limit=None):
-    return rebuild(Praca_Habilitacyjna, offset=offset, limit=limit,)
+    return rebuild(
+        Praca_Habilitacyjna,
+        offset=offset,
+        limit=limit,
+    )

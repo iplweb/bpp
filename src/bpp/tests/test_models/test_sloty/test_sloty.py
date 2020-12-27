@@ -13,6 +13,8 @@ from bpp.models import (
     Typ_KBN,
     Dyscyplina_Naukowa,
     Autor_Dyscyplina,
+    Rekord,
+    Uczelnia,
 )
 from bpp.models.sloty.core import ISlot, IPunktacjaCacher
 from bpp.models.sloty.exceptions import CannotAdapt
@@ -52,13 +54,17 @@ def test_slot_wszyscy_slot_wszystkie_dyscypliny(
     rekord.save()
 
     Autor_Dyscyplina.objects.create(
-        autor=autor_jan_nowak, dyscyplina_naukowa=dyscyplina1, rok=ustaw_rok,
+        autor=autor_jan_nowak,
+        dyscyplina_naukowa=dyscyplina1,
+        rok=ustaw_rok,
     )
 
     rekord.dodaj_autora(autor_jan_nowak, jednostka, dyscyplina_naukowa=dyscyplina1)
 
     Autor_Dyscyplina.objects.create(
-        autor=autor_jan_kowalski, dyscyplina_naukowa=dyscyplina2, rok=ustaw_rok,
+        autor=autor_jan_kowalski,
+        dyscyplina_naukowa=dyscyplina2,
+        rok=ustaw_rok,
     )
     rekord.dodaj_autora(autor_jan_kowalski, jednostka, dyscyplina_naukowa=dyscyplina2)
 
@@ -445,3 +451,39 @@ def test_ISlot_mnozniki_dla_dyscyplin_z_dziedziony_np_humanistycznych_ciagle(
     aktualizuj_cache_rekordu(wydawnictwo_ciagle)
 
     assert Cache_Punktacja_Autora.objects.first().pkdaut == oczekiwana
+
+
+@pytest.mark.django_db
+def test_autor_Autor_zbieraj_sloty(zwarte_z_dyscyplinami):
+    zwarte_z_dyscyplinami.punkty_kbn = 20
+    zwarte_z_dyscyplinami.rok = 2017
+    zwarte_z_dyscyplinami.save()
+
+    aktualizuj_cache_rekordu(zwarte_z_dyscyplinami)
+
+    a = zwarte_z_dyscyplinami.autorzy_set.first().autor
+    res = a.zbieraj_sloty(1, zwarte_z_dyscyplinami.rok, zwarte_z_dyscyplinami.rok)
+    assert res == (10.0, [Rekord.objects.get_for_model(zwarte_z_dyscyplinami).pk])
+
+
+@pytest.mark.django_db
+def test_ISlot_ukryty_status_nie_licz_punktow(
+    zwarte_z_dyscyplinami, przed_korekta, po_korekcie, uczelnia
+):
+    zwarte_z_dyscyplinami.punkty_kbn = 20
+    zwarte_z_dyscyplinami.rok = 2017
+
+    zwarte_z_dyscyplinami.status_korekty = przed_korekta
+    zwarte_z_dyscyplinami.save()
+
+    Uczelnia.objects.get_default().ukryj_status_korekty_set.create(
+        status_korekty=przed_korekta
+    )
+
+    with pytest.raises(CannotAdapt):
+        ISlot(zwarte_z_dyscyplinami)
+
+    zwarte_z_dyscyplinami.status_korekty = po_korekcie
+    zwarte_z_dyscyplinami.save()
+
+    ISlot(zwarte_z_dyscyplinami)

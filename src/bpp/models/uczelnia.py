@@ -3,16 +3,30 @@
 """
 Struktura uczelni.
 """
+from typing import Union, List
 
 from autoslug import AutoSlugField
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.db import models
-from django.db.models import SET_NULL
+from django.db.models import SET_NULL, Q, F
 from django.urls.base import reverse
+from django.utils.functional import cached_property
 
 from bpp.models import ModelZAdnotacjami, NazwaISkrot
 from bpp.models.abstract import NazwaWDopelniaczu, ModelZPBN_ID
 from .fields import OpcjaWyswietlaniaField
+
+
+class UczelniaManager(models.Manager):
+    def get_default(self) -> Union["Uczelnia", None]:
+        return self.all().only("pk").first()
+
+    def get_for_request(self, request):
+        return self.get_default()
+
+    @cached_property
+    def default(self):
+        return self.get_default()
 
 
 class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
@@ -62,7 +76,9 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         "Pokazuj status korekty na stronie rekordu",
     )
 
-    pokazuj_ranking_autorow = OpcjaWyswietlaniaField("Pokazuj ranking autorów",)
+    pokazuj_ranking_autorow = OpcjaWyswietlaniaField(
+        "Pokazuj ranking autorów",
+    )
 
     pokazuj_raport_autorow = OpcjaWyswietlaniaField("Pokazuj raport autorów")
 
@@ -169,6 +185,8 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         verbose_name="Hasło", null=True, blank=True, max_length=50
     )
 
+    objects = UczelniaManager()
+
     class Meta:
         verbose_name = "uczelnia"
         verbose_name_plural = "uczelnie"
@@ -210,3 +228,59 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         from wosclient.wosclient import WoSClient
 
         return WoSClient(self.clarivate_username, self.clarivate_password)
+
+    def ukryte_statusy(self, dla_funkcji: str) -> List[int]:
+        """
+        :param dla_funkcji: "sloty", "raporty", "multiwyszukiwarka", "rankingi"
+        :return: lista numerów PK obiektów :class:`bpp.models.system.Status_Korekty`
+        """
+        return self.ukryj_status_korekty_set.filter(**{dla_funkcji: True}).values_list(
+            "status_korekty", flat=True
+        )
+
+
+class Ukryj_Status_Korekty(models.Model):
+    uczelnia = models.ForeignKey(Uczelnia, on_delete=models.CASCADE)
+    status_korekty = models.ForeignKey("Status_Korekty", on_delete=models.CASCADE)
+
+    multiwyszukiwarka = models.BooleanField(
+        default=True,
+        help_text="Nie dotyczy użytkownika zalogowanego. Użytkownik zalogowany widzi wszystkie prace "
+        "w wyszukiwaniu. ",
+    )
+    raporty = models.BooleanField(
+        "Raporty",
+        default=True,
+        help_text="Ukrywa prace w raporcie autora, " "jednostki, uczelni",
+    )
+    rankingi = models.BooleanField("Rankingi", default=True)
+    sloty = models.BooleanField(
+        "Raporty slotów",
+        default=True,
+        help_text="Prace o wybranym statusie nie będą miały liczonych punktów i slotów w chwili"
+        "zapisywania rekordu do bazy danych. Jeżeli zmieniasz to ustawienie dla prac które już są w bazie danych "
+        "to ich punktacja zniknie z bazy w dniu następnym (skasowana zostanie podczas nocnego przeindeksowania bazy).",
+    )
+    api = models.BooleanField(
+        "API",
+        default=True,
+        help_text="Dotyczy ukrywania prac w API JSON-REST oraz OAI-PMH",
+    )
+
+    def __str__(self):
+        res = (
+            f'ukryj "{self.status_korekty}" dla '
+            f"{'multiwyszukiwarki, ' if self.multiwyszukiwarka else ''}"
+            f"{'raportów, ' if self.raporty else ''}"
+            f"{'rankingów, ' if self.rankingi else ''}"
+            f"{'slotów. ' if self.sloty else ''}"
+        )
+
+        if res.endswith(", "):
+            res = res[:-2] + ". "
+        return res
+
+    class Meta:
+        unique_together = [("uczelnia", "status_korekty")]
+        verbose_name = "ustawienie ukrywania statusu korekty"
+        verbose_name_plural = "ustawienia ukrywania statusów korekt"

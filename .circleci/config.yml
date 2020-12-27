@@ -37,6 +37,7 @@ jobs:
             mkdir -p ./venv
             virtualenv ./venv
             . venv/bin/activate
+            pip install --upgrade pip
             pip install -q -r requirements.txt -r requirements_dev.txt
 
       - run:

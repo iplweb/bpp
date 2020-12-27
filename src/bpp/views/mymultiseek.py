@@ -4,12 +4,17 @@ from django.db.models import Sum
 from django.views.decorators.cache import never_cache
 
 from multiseek.logic import get_registry
-from multiseek.views import MultiseekResults, MULTISEEK_SESSION_KEY_REMOVED, \
-    manually_add_or_remove
+from multiseek.views import (
+    MultiseekResults,
+    MULTISEEK_SESSION_KEY_REMOVED,
+    manually_add_or_remove,
+)
 
-PKT_WEWN = 'pkt_wewn'
-PKT_WEWN_BEZ = 'pkt_wewn_bez'
-TABLE = 'table'
+from bpp.models import Uczelnia, Ukryj_Status_Korekty
+
+PKT_WEWN = "pkt_wewn"
+PKT_WEWN_BEZ = "pkt_wewn_bez"
+TABLE = "table"
 
 EXTRA_TYPES = [
     PKT_WEWN,
@@ -17,34 +22,39 @@ EXTRA_TYPES = [
     TABLE,
     PKT_WEWN + "_cytowania",
     PKT_WEWN_BEZ + "_cytowania",
-    TABLE + "_cytowania"
-
+    TABLE + "_cytowania",
 ]
 
 
 class MyMultiseekResults(MultiseekResults):
-    registry = 'bpp.multiseek.registry'
+    registry = "bpp.multiseek.registry"
 
     def get_queryset(self, only_those_ids=None):
         if only_those_ids:
-            qset = get_registry(self.registry).get_query_for_model(
-                self.get_multiseek_data()).filter(pk__in=only_those_ids)
+            qset = (
+                get_registry(self.registry)
+                .get_query_for_model(self.get_multiseek_data())
+                .filter(pk__in=only_those_ids)
+            )
         else:
             qset = super(MyMultiseekResults, self).get_queryset()
 
-        flds = ("id",
-                "opis_bibliograficzny_cache"
-                )
+        if not self.request.user.is_authenticated:
+            uczelnia = Uczelnia.objects.get_for_request(self.request)
+            if uczelnia is not None:
+                ukryte_statusy = uczelnia.ukryte_statusy("multiwyszukiwarka")
+                if ukryte_statusy:
+                    qset = qset.exclude(status_korekty_id__in=ukryte_statusy)
+
+        flds = ("id", "opis_bibliograficzny_cache")
 
         # wycięte z multiseek/views.py, get_context_data
         report_type = get_registry(self.registry).get_report_type(
-            self.get_multiseek_data(), request=self.request)
-
+            self.get_multiseek_data(), request=self.request
+        )
 
         if report_type in EXTRA_TYPES:
-            qset = qset.prefetch_related(
-                "charakter_formalny",
-                "typ_kbn")
+            qset = qset.prefetch_related("charakter_formalny", "typ_kbn")
 
             flds = flds + (
                 "charakter_formalny",
@@ -61,7 +71,7 @@ class MyMultiseekResults(MultiseekResults):
         ret = qset.only(*flds)
 
         sql = str(ret.query)
-        if 'bpp_autorzy_mat' in sql or 'bpp_zewnetrzne_bazy_view' in sql:
+        if "bpp_autorzy_mat" in sql or "bpp_zewnetrzne_bazy_view" in sql:
             ret = ret.distinct()
 
         return ret
@@ -76,28 +86,31 @@ class MyMultiseekResults(MultiseekResults):
         else:
             qset = self.get_queryset(
                 only_those_ids=self.request.session.get(
-                    MULTISEEK_SESSION_KEY_REMOVED, []))
-            ctx['object_list'] = qset
-            ctx['print_removed'] = True
+                    MULTISEEK_SESSION_KEY_REMOVED, []
+                )
+            )
+            ctx["object_list"] = qset
+            ctx["print_removed"] = True
 
-        ctx['paginator_count'] = qset.count()
-        object_list = ctx['object_list']
-        object_list.count = lambda *args, **kw: ctx['paginator_count']
+        ctx["paginator_count"] = qset.count()
+        object_list = ctx["object_list"]
+        object_list.count = lambda *args, **kw: ctx["paginator_count"]
 
-        if ctx['report_type'] in EXTRA_TYPES:
-            ctx['sumy'] = qset.aggregate(
-                Sum('impact_factor'),
-                Sum('liczba_cytowan'),
-                Sum('punkty_kbn'),
-                Sum('index_copernicus'),
-                Sum('punktacja_wewnetrzna'))
+        if ctx["report_type"] in EXTRA_TYPES:
+            ctx["sumy"] = qset.aggregate(
+                Sum("impact_factor"),
+                Sum("liczba_cytowan"),
+                Sum("punkty_kbn"),
+                Sum("index_copernicus"),
+                Sum("punktacja_wewnetrzna"),
+            )
 
         keys = list(self.request.session.keys())
-        if 'MULTISEEK_TITLE' not in keys:
-            self.request.session['MULTISEEK_TITLE'] = 'Rezultat wyszukiwania'
+        if "MULTISEEK_TITLE" not in keys:
+            self.request.session["MULTISEEK_TITLE"] = "Rezultat wyszukiwania"
         else:
-            if self.request.session['MULTISEEK_TITLE'] == '':
-                self.request.session['MULTISEEK_TITLE'] = 'Rezultat wyszukiwania'
+            if self.request.session["MULTISEEK_TITLE"] == "":
+                self.request.session["MULTISEEK_TITLE"] = "Rezultat wyszukiwania"
 
         return ctx
 

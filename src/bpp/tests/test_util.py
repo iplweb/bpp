@@ -1,6 +1,6 @@
 import pytest
 
-from bpp.util import wytnij_isbn_z_uwag
+from bpp.util import wytnij_isbn_z_uwag, knapsack
 
 
 @pytest.mark.django_db
@@ -39,3 +39,45 @@ def test_wytnij_isbn_z_uwag(input, output, rest):
     isbn, reszta = res
     assert isbn == output
     assert reszta == rest
+
+
+def test_knapsack_empty():
+    assert knapsack(10, [], [], []) == (0, [])
+
+
+def test_knapsack_zwracaj_liste():
+    assert (
+        knapsack(
+            10,
+            [1, 2, 3, 4, 5],
+            [1, 2, 3, 4, 5],
+            [
+                "a",
+                "b",
+                "c",
+                "d",
+                "e",
+            ],
+            True,
+        )
+        == (10, ["d", "c", "b", "a"])
+    )
+
+
+def test_knapsack_nie_zwracaj_listy():
+    assert (
+        knapsack(
+            10,
+            [1, 2, 3, 4, 5],
+            [1, 2, 3, 4, 5],
+            [
+                "a",
+                "b",
+                "c",
+                "d",
+                "e",
+            ],
+            zwracaj_liste_przedmiotow=False,
+        )
+        == (10, [])
+    )

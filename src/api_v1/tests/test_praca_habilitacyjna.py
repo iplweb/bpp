@@ -51,3 +51,19 @@ def test_rest_api_praca_habilitacyjna_filtering_rok(
         reverse("api_v1:praca_habilitacyjna-list") + f"?rok_min={rok+1}"
     )
     assert res.json()["count"] == 0
+
+
+@pytest.mark.django_db
+def test_rest_api_praca_habilitacyjna_ukryj_status(
+    api_client, praca_habilitacyjna, uczelnia, przed_korekta, po_korekcie
+):
+
+    res = api_client.get(reverse("api_v1:praca_habilitacyjna-list"))
+    assert res.json()["count"] == 1
+
+    praca_habilitacyjna.status_korekty = przed_korekta
+    praca_habilitacyjna.save()
+
+    uczelnia.ukryj_status_korekty_set.create(status_korekty=przed_korekta)
+    res = api_client.get(reverse("api_v1:praca_habilitacyjna-list"))
+    assert res.json()["count"] == 0

@@ -2,7 +2,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.utils.functional import cached_property
 
-from bpp.models import Typ_Odpowiedzialnosci, const
+from bpp.models import Typ_Odpowiedzialnosci, const, Uczelnia
 from bpp.models.cache import Cache_Punktacja_Autora, Cache_Punktacja_Dyscypliny
 from bpp.models.patent import Patent
 from bpp.models.sloty.wydawnictwo_ciagle import SlotKalkulator_Wydawnictwo_Ciagle_Prog3
@@ -20,12 +20,23 @@ from .wydawnictwo_ciagle import (
 )
 
 
-def ISlot(original):
+def ISlot(original, uczelnia=None):
     if isinstance(original, Patent):
         raise CannotAdapt("Sloty dla patentów nie są liczone")
 
     if hasattr(original, "typ_kbn") and original.typ_kbn.skrot == "PW":
         raise CannotAdapt("Sloty dla prac wieloośrodkowych nie są liczone.")
+
+    if uczelnia is None:
+        uczelnia = Uczelnia.objects.get_default()
+
+    if uczelnia is not None and original.status_korekty_id in uczelnia.ukryte_statusy(
+        "sloty"
+    ):
+        raise CannotAdapt(
+            "Sloty nie będą liczone, zgodnie z ustawieniami obiektu Uczelnia dla ukrywanych "
+            "statusów korekt. "
+        )
 
     if isinstance(original, Wydawnictwo_Ciagle):
         if original.rok in [2017, 2018]:
@@ -190,13 +201,14 @@ def ISlot(original):
 
 
 class IPunktacjaCacher:
-    def __init__(self, original):
+    def __init__(self, original, uczelnia=None):
         self.original = original
         self.slot = None
+        self.uczelnia = uczelnia
 
     def canAdapt(self):
         try:
-            self.slot = ISlot(self.original)
+            self.slot = ISlot(self.original, uczelnia=self.uczelnia)
             return True
 
         except CannotAdapt:

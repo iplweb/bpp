@@ -8,7 +8,7 @@ import django
 from django.core.management import BaseCommand
 
 import miniblog
-from bpp.util import partition_count
+from bpp.util import partition_count, disable_multithreading_by_monkeypatching_pool
 from import_dbf.models import B_A, Bib
 from import_dbf.util import (
     integruj_autorow,
@@ -101,17 +101,7 @@ class Command(BaseCommand):
         pool = multiprocessing.Pool(processes=num_proc)
 
         if disable_multithreading:
-
-            def apply(fun, args=()):
-                return fun(*args)
-
-            pool.apply = apply
-
-            def starmap(fun, lst):
-                for elem in lst:
-                    fun(*elem)
-
-            pool.starmap = starmap
+            disable_multithreading_by_monkeypatching_pool(pool)
 
         pool.apply(integruj_uczelnia, (uczelnia, skrot))
 
