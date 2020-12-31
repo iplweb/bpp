@@ -1,9 +1,9 @@
 {
-    "python.pythonPath": "/Users/mpasternak/envs/bpp/bin/python",
+    "python.pythonPath": "/Users/mpasternak/.virtualenvs/bpp/bin/python",
     "python.testing.unittestEnabled": false,
     "python.testing.nosetestsEnabled": false,
     "python.testing.pytestEnabled": true,
-    "python.testing.pytestPath": "/Users/mpasternak/envs/bpp/bin/pytest",
+    "python.testing.pytestPath": "/Users/mpasternak/.virtualenvs/bpp/bin/pytest",
     "python.envFile": "${workspaceFolder}/.env",
     "python.formatting.provider": "black",
     "python.linting.pylintEnabled": false,
@@ -17,4 +17,8 @@
     "djangointellisense.projectRoot": "${workspaceFolder}/src/",
     "djangointellisense.settingsModule": "django_bpp.settings.local",
     "djangointellisense.debugMessages": false,
+    "python.languageServer": "Pylance",
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}/src/"
+    ],
 }

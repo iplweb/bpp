@@ -7,14 +7,21 @@
 {% block breadcrumbs %}
     {{ block.super }}
     <li><a href="{% url "raport_slotow:index" %}">raport slotów</a></li>
-    <li class="current">{{ autor }} za {{ od_roku }} - {{ do_roku }}</li>
+    <li class="current">{{ autor }} za {{ od_roku }}
+        - {{ do_roku }}, {{ opis_dzialania }}</li>
 {% endblock %}
 
 {% block content %}
     <h1>Raport slotów</h1>
-    <h2><i class="fi-results-demographics"></i> <a href="{% url "bpp:browse_autor" autor.slug %}">{{ autor }}</a> za {{ od_roku }} - {{ do_roku }}</h2>
-    <strong>ORCID:</strong> {{ autor.orcid }}<br/>
-    <strong>PBN ID:</strong> {{ autor.pbn_id }}<br/>
+    <h2><i class="fi-results-demographics"></i> <a href="{% url "bpp:browse_autor" autor.slug %}">{{ autor }}</a>
+        za {{ od_roku }} - {{ do_roku }}</h2>
+
+    <strong>ORCID:</strong> {{ autor.orcid }}
+    <span style="padding-left: 3em;"></span>
+    <strong>PBN ID:</strong> {{ autor.pbn_id }}
+    <span style="padding-left: 3em;"></span>
+    <strong>BPP ID:</strong> {{ autor.pk }}
+    <h4>{{ opis_dzialania }}</h4>
 
 
     {% for table in tables %}

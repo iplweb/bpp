@@ -1,12 +1,11 @@
-from django.http import Http404, HttpResponseRedirect
-from django.shortcuts import get_object_or_404
+from django.http import HttpResponseRedirect
+from django.template.defaultfilters import pluralize
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.functional import cached_property
 from django.views.generic import FormView, TemplateView
 from django_tables2 import MultiTableMixin, RequestConfig
-
 from bpp.models import (
-    Autor,
     Cache_Punktacja_Autora_Query_View,
     Dyscyplina_Naukowa,
 )
@@ -19,6 +18,11 @@ from raport_slotow.util import (
     MyExportMixin,
     MyTableExport,
 )
+
+from .. import const
+
+
+SESSION_KEY = "raport_slotow_data"
 
 
 class WyborOsoby(UczelniaSettingRequiredMixin, FormDefaultsMixin, FormView):
@@ -33,19 +37,19 @@ class WyborOsoby(UczelniaSettingRequiredMixin, FormDefaultsMixin, FormView):
         return context
 
     def form_valid(self, form):
-        """If the form is valid, redirect to the supplied URL."""
+        form.cleaned_data["obiekt"] = form.cleaned_data["obiekt"].pk
+        self.request.session[SESSION_KEY] = form.cleaned_data
         return HttpResponseRedirect(
-            reverse(
-                "raport_slotow:raport",
-                kwargs={
-                    "autor": form.cleaned_data["obiekt"].slug,
-                    "od_roku": form.cleaned_data["od_roku"],
-                    "do_roku": form.cleaned_data["do_roku"],
-                },
-            )
-            + "?_export="
-            + form.cleaned_data["_export"]
+            reverse("raport_slotow:raport") + "?_export=" + form.cleaned_data["_export"]
         )
+
+    def get_initial(self):
+        initial = super(WyborOsoby, self).get_initial()
+        for elem in ["od_roku", "do_roku"]:
+            value = self.request.GET.get(elem)
+            if value is not None:
+                initial[elem] = value
+        return initial
 
 
 class RaportSlotow(
@@ -74,33 +78,34 @@ class RaportSlotow(
         dg = ", ".join([f"{rok} - {nazwa} ({procent})" for rok, nazwa, procent in dg])
         dpb = ", ".join([f"{rok} - {nazwa} ({procent})" for rok, nazwa, procent in dpb])
 
+        description = [
+            ("Nazwa raportu:", "raport slotów - autor"),
+            ("Autor:", str(self.autor)),
+            ("ORCID:", str(self.autor.orcid or "brak")),
+            ("PBN ID:", str(self.autor.pbn_id or "brak")),
+            ("Dyscypliny autora:", dg),
+            ("Subdyscypliny autora:", dpb or "żadne"),
+            ("Dyscyplina tabeli:", str(tables[n].dyscyplina_naukowa or "żadna")),
+            ("Opis działania", self.opis_dzialania),
+            ("Od roku:", self.od_roku),
+            ("Do roku:", self.do_roku),
+            ("Wygenerowano:", timezone.now()),
+            ("Wersja oprogramowania BPP", VERSION),
+        ]
+
         exporter = MyTableExport(
             export_format=export_format,
             table=tables[n],
-            export_description=[
-                ("Nazwa raportu:", "raport slotów - autor"),
-                ("Autor:", str(self.autor)),
-                ("ORCID:", str(self.autor.orcid or "brak")),
-                ("PBN ID:", str(self.autor.pbn_id or "brak")),
-                ("Dyscypliny autora:", dg),
-                ("Subdyscypliny autora:", dpb or "żadne"),
-                (f"Dyscyplina tabeli:", str(tables[n].dyscyplina_naukowa or "żadna")),
-                (f"Od roku:", self.od_roku),
-                (f"Do roku:", self.do_roku),
-                ("Wygenerowano:", timezone.now()),
-                ("Wersja oprogramowania BPP", VERSION),
-            ],
+            export_description=description,
         )
         return exporter.response(filename=self.get_export_filename(export_format, n))
 
     def get_tables(self):
-        self.autor = get_object_or_404(Autor, slug=self.kwargs.get("autor"))
-        try:
-            self.od_roku = int(self.kwargs.get("od_roku"))
-            self.do_roku = int(self.kwargs.get("do_roku"))
-        except (TypeError, ValueError):
-            raise Http404
+        self.autor = self.kwargs["obiekt"]
+        self.od_roku = self.kwargs["od_roku"]
+        self.do_roku = self.kwargs["do_roku"]
 
+        ret = []
         cpaq = Cache_Punktacja_Autora_Query_View.objects.filter(
             autor=self.autor,
             rekord__rok__gte=self.od_roku,
@@ -108,13 +113,27 @@ class RaportSlotow(
             pkdaut__gt=0,
         )
 
-        ret = []
         for elem in cpaq.values_list("dyscyplina", flat=True).order_by().distinct():
             table_class = self.table_class
+
+            if self.kwargs["dzialanie"] == const.DZIALANIE_WSZYSTKO:
+                data = cpaq.filter(dyscyplina_id=elem)
+            elif self.kwargs["dzialanie"] == const.DZIALANIE_SLOT:
+                max_pkdaut, ids = self.autor.zbieraj_sloty(
+                    self.kwargs["slot"],
+                    self.kwargs["od_roku"],
+                    self.kwargs["do_roku"],
+                    dyscyplina_id=elem,
+                )
+                data = cpaq.filter(pk__in=ids)
+            else:
+                raise NotImplementedError()
+
             table = table_class(
-                data=cpaq.filter(dyscyplina_id=elem)
-                .select_related("rekord", "dyscyplina",)
-                .prefetch_related("rekord__zrodlo")
+                data.select_related(
+                    "rekord",
+                    "dyscyplina",
+                ).prefetch_related("rekord__zrodlo")
             )
             RequestConfig(
                 self.request, paginate=self.get_table_pagination(table)
@@ -136,12 +155,35 @@ class RaportSlotow(
     def get_queryset(self):
         return None
 
-    def get_context_data(self, *, object_list=None, **kwargs):
+    @cached_property
+    def opis_dzialania(self):
+        if self.kwargs["dzialanie"] == const.DZIALANIE_WSZYSTKO:
+            return "wszystkie rekordy punktacją dla dziedzin za dany okres"
+        elif self.kwargs["dzialanie"] == const.DZIALANIE_SLOT:
+            return f"zbieranie najlepszych prac do {self.kwargs['slot']} slot{pluralize(self.kwargs['slot'], 'u,ów')}"
+        else:
+            raise NotImplementedError
+
+    def get_context_data(self, *, cleaned_data=None, object_list=None, **kwargs):
         context = super(RaportSlotow, self).get_context_data(**kwargs)
         context["autor"] = self.autor
         context["od_roku"] = self.od_roku
         context["do_roku"] = self.do_roku
+        context["slot"] = self.kwargs["slot"]
+        context["dzialanie"] = self.kwargs["dzialanie"]
+        context["opis_dzialania"] = self.opis_dzialania
         return context
 
     def get_export_filename(self, export_format, n):
         return f"raport_slotow_{self.autor.slug}_{self.od_roku}-{self.do_roku}-{n}.{export_format}"
+
+    def get(self, request, *args, **kwargs):
+        # Wczytaj dane z sesji i zwaliduj przez formularz
+        data = request.session.get(SESSION_KEY)
+        form = AutorRaportSlotowForm(data)
+        if form.is_valid():
+            self.kwargs.update(form.cleaned_data)
+            context = self.get_context_data(**kwargs)
+            return self.render_to_response(context)
+        else:
+            return HttpResponseRedirect("..")

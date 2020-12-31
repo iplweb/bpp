@@ -1,7 +1,8 @@
 # -*- encoding: utf-8 -*-
 
-from django.urls import path
+from django.urls import path, register_converter
 
+from raport_slotow.converters import DecimalPathConverter
 from raport_slotow.views import (
     WyborOsoby,
     RaportSlotow,
@@ -12,12 +13,14 @@ from raport_slotow.views import (
     RaportSlotowUczelnia,
 )
 
+register_converter(DecimalPathConverter, "decimal")
+
 app_name = "raport_slotow"
 
 urlpatterns = [
     path("raport-slotow-autor/", WyborOsoby.as_view(), name="index"),
     path(
-        r"raport-slotow-autor/generuj/",
+        r"raport-slotow-autor/wyswietl/",
         RaportSlotow.as_view(),
         name="raport",
     ),

@@ -1,5 +1,5 @@
-from raport_slotow.forms import (
-    AutorRaportSlotowForm,
+from raport_slotow.forms import AutorRaportSlotowForm
+from raport_slotow.const import (
     DZIALANIE_WSZYSTKO,
     DZIALANIE_SLOT,
 )

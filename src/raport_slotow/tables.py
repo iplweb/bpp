@@ -59,17 +59,21 @@ class RaportSlotowAutorTable(RaportCommonMixin, tables.Table):
     )
     rok = Column("Rok", "rekord.rok", orderable=True)
     dyscyplina = Column(orderable=False)
-    punkty_kbn = SummingColumn("Punkty PK", "rekord.punkty_kbn")
+    punkty_kbn = Column("Punkty PK", "rekord.punkty_kbn")
     zrodlo_informacje = Column(
         "Źródło / informacje", "rekord", empty_values=(), orderable=False
     )
     pkdaut = SummingColumn("Punkty dla autora", "pkdaut")
     slot = SummingColumn("Slot")
     autorzy_z_dyscypliny = Column(
-        "Autorzy z dyscypliny", "zapisani_autorzy_z_dyscypliny", orderable=False,
+        "Autorzy z dyscypliny",
+        "zapisani_autorzy_z_dyscypliny",
+        orderable=False,
     )
     liczba_autorow_z_dyscypliny = Column(
-        "Liczba autorów z dyscypliny", "zapisani_autorzy_z_dyscypliny", orderable=False,
+        "Liczba autorów z dyscypliny",
+        "zapisani_autorzy_z_dyscypliny",
+        orderable=False,
     )
     liczba_wszystkich_autorow = Column(
         "Liczba wszystkich autorów",
@@ -187,7 +191,9 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
     )
     rodzaj_publikacji = Column("Rodzaj", "rekord")
     liczba_autorow_z_dyscypliny = Column(
-        "Liczba autorów z dyscypliny", "autorzy_z_dyscypliny", orderable=False,
+        "Liczba autorów z dyscypliny",
+        "autorzy_z_dyscypliny",
+        orderable=False,
     )
     liczba_wszystkich_autorow = Column(
         "Liczba wszystkich autorów",
@@ -208,7 +214,9 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
         "Dyscyplina 2", "autor_dyscyplina.subdyscyplina_naukowa", orderable=False
     )
     procent_subdyscypliny = Column(
-        "% dyscypliny 2", "autor_dyscyplina.procent_subdyscypliny", orderable=False,
+        "% dyscypliny 2",
+        "autor_dyscyplina.procent_subdyscypliny",
+        orderable=False,
     )
     dyscyplina_rekordu = Column("dyscyplina rekordu", "autorzy.dyscyplina_naukowa")
     pkdaut = SummingColumn("Punkty dla autora", "pkdaut")

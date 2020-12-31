@@ -15,6 +15,8 @@ from django.utils import timezone
 from bpp.models import Autor
 from bpp.util import formdefaults_html_after, formdefaults_html_before
 
+from . import const
+
 
 def year_last_month():
     now = timezone.now().date()
@@ -27,10 +29,6 @@ OUTPUT_FORMATS = [
     ("html", "wyświetl w przeglądarce"),
     ("xlsx", "Microsoft Excel (XLSX)"),
 ]
-
-
-DZIALANIE_WSZYSTKO = "wszystko"
-DZIALANIE_SLOT = "slot"
 
 
 class AutorRaportSlotowForm(forms.Form):
@@ -48,8 +46,11 @@ class AutorRaportSlotowForm(forms.Form):
     dzialanie = forms.ChoiceField(
         label="Wygeneruj",
         choices=(
-            (DZIALANIE_WSZYSTKO, "prace autora z punktacją dla dziedzin za dany okres"),
-            (DZIALANIE_SLOT, "zbierz najlepsze prace do zadanej wielkości slotu"),
+            (
+                const.DZIALANIE_WSZYSTKO,
+                "prace autora z punktacją dla dziedzin za dany okres",
+            ),
+            (const.DZIALANIE_SLOT, "zbierz najlepsze prace do zadanej wielkości slotu"),
         ),
         initial="wszystko",
         widget=forms.RadioSelect,
@@ -77,8 +78,9 @@ class AutorRaportSlotowForm(forms.Form):
                 )
 
         if (
-            self.cleaned_data["dzialanie"] == DZIALANIE_WSZYSTKO
+            self.cleaned_data["dzialanie"] == const.DZIALANIE_WSZYSTKO
             and "slot" in self.cleaned_data
+            and self.cleaned_data["slot"] is not None
         ):
             raise ValidationError(
                 {
@@ -89,7 +91,7 @@ class AutorRaportSlotowForm(forms.Form):
                 }
             )
 
-        if self.cleaned_data["dzialanie"] == DZIALANIE_SLOT and (
+        if self.cleaned_data["dzialanie"] == const.DZIALANIE_SLOT and (
             "slot" not in self.cleaned_data
             or ("slot" in self.cleaned_data and self.cleaned_data["slot"] is None)
             or (
