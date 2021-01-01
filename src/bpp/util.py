@@ -41,7 +41,6 @@ def fulltext_tokenize(s):
         .replace("\t", " ")
         .replace("\n", " ")
         .replace("\r", " ")
-        .replace("-", " ")
         .replace("<", " ")
         .replace(">", " ")
     )
