@@ -30,7 +30,7 @@ def test_autorzy_index(autorzy_browser):
     assert "Atest" in autorzy_browser.html
 
 
-def test_autorzy_search_form(autorzy_browser, execution_number):
+def test_autorzy_search_form(autorzy_browser):
     autorzy_browser.fill("search", "Atest")
     autorzy_browser.find_by_name("search").type(Keys.RETURN)
     autorzy_browser.wait_for_condition(lambda browser: "Atest" in browser.html)

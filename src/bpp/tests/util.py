@@ -357,6 +357,11 @@ def randomobj(model):
     return model.objects.order_by("?").first()
 
 
+def quick_find_by_id(browser, id):
+    if f"#{id}" in browser.html:
+        return browser.find_by_id(id, wait_time=0)
+
+
 def fill_admin_form(
     browser,
     zrodlo=None,
@@ -369,19 +374,19 @@ def fill_admin_form(
 ):
     set_element(browser, "id_tytul_oryginalny", tytul_oryginalny)
 
-    if browser.find_by_id("id_zrodlo"):
+    if quick_find_by_id(browser, "id_zrodlo"):
         if zrodlo is None:
             # from bpp.models import Zrodlo
             zrodlo = randomobj(Zrodlo)
         select_select2_autocomplete(browser, "id_zrodlo", zrodlo.nazwa)
 
-    if browser.find_by_id("id_jezyk"):
+    if quick_find_by_id(browser, "id_jezyk"):
         if jezyk is None:
             # from bpp.models import Jezk
             jezyk = randomobj(Jezyk)
         select_element_by_text(browser, "id_jezyk", jezyk.nazwa)
 
-    if browser.find_by_id("id_charakter_formalny"):
+    if quick_find_by_id(browser, "id_charakter_formalny"):
         if charakter_formalny is None:
             # charakter_formalny = randomobj(Charakter_Formalny)
             charakter_formalny = Charakter_Formalny.objects.get(nazwa="Broszura")
@@ -389,7 +394,7 @@ def fill_admin_form(
             browser, "id_charakter_formalny", " " + charakter_formalny.nazwa
         )
 
-    if browser.find_by_id("id_typ_kbn"):
+    if quick_find_by_id(browser, "id_typ_kbn"):
         if typ_kbn is None:
             typ_kbn = randomobj(Typ_KBN)
         select_element_by_text(browser, "id_typ_kbn", typ_kbn.nazwa)

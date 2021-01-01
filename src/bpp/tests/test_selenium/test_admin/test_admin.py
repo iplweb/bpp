@@ -119,7 +119,7 @@ def trigger_event(elem, event):
     )
 
 
-def test_admin_uzupelnij_punkty(admin_browser, asgi_live_server, execution_number):
+def test_admin_uzupelnij_punkty(admin_browser, asgi_live_server):
     z = any_zrodlo(nazwa="WTF LOL")
 
     kw = dict(zrodlo=z)
