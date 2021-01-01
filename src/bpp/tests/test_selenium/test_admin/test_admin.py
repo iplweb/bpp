@@ -119,7 +119,6 @@ def trigger_event(elem, event):
     )
 
 
-@pytest.mark.parametrize("execution_number", range(15))
 def test_admin_uzupelnij_punkty(admin_browser, asgi_live_server, execution_number):
     z = any_zrodlo(nazwa="WTF LOL")
 
