@@ -7,30 +7,32 @@ import time
 import warnings
 from datetime import datetime
 
-from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 from model_mommy import mommy
 from selenium.webdriver.common.keys import Keys
 from splinter.exceptions import ElementDoesNotExist
 
+from django.contrib.contenttypes.models import ContentType
+
 from bpp.models import (
-    Tytul,
     Autor,
+    Charakter_Formalny,
     Jednostka,
+    Jezyk,
+    Patent,
+    Praca_Doktorska,
+    Praca_Habilitacyjna,
+    Typ_KBN,
+    Tytul,
+    Uczelnia,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
-    Zrodlo,
     Wydzial,
-    Uczelnia,
-    Praca_Habilitacyjna,
-    Praca_Doktorska,
-    Typ_KBN,
-    Jezyk,
-    Charakter_Formalny,
-    Patent,
+    Zrodlo,
 )
 from bpp.models.system import Status_Korekty
-from django_bpp.selenium_util import wait_for_page_load, wait_for
+
+from django_bpp.selenium_util import wait_for, wait_for_page_load
 
 
 def setup_mommy():
@@ -228,17 +230,17 @@ def scroll_into_view(browser, arg):
 
 def show_element(browser, element):
     s = """
-        console.log('enter---');
+        // console.log('enter---');
         window.scrollTo(0, 0);
         var viewPortHeight = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
-        console.log(viewPortHeight);
+        // console.log(viewPortHeight);
         var elementTop = arguments[0].getBoundingClientRect().top;
-        console.log(elementTop);
+        // console.log(elementTop);
         if (elementTop < (viewPortHeight/2)*0.5 || elementTop > (viewPortHeight/2)*1.5 ) {
-            console.log("scrolling");
+            // console.log("scrolling");
             window.scrollTo(0, Math.max(0, elementTop-(viewPortHeight/2)));
-            console.log(Math.max(0, elementTop-(viewPortHeight/2)));    
-        }    
+            // console.log(Math.max(0, elementTop-(viewPortHeight/2)));
+        }
         """
     return browser.execute_script(s, element._element)
 
@@ -289,7 +291,7 @@ def select_select2_autocomplete(browser, element_id, value):
 
 
 def select_select2_clear_selection(browser, element_id):
-    element = browser.find_by_id(element_id)[0]
+    browser.find_by_id(element_id)[0]
     browser.execute_script(
         "django.jQuery('#" + element_id + "').val(null).trigger('change')"
     )
@@ -297,14 +299,14 @@ def select_select2_clear_selection(browser, element_id):
 
 
 def select_element_by_text(browser, element_id, text):
-    scroll_into_view(browser, element_id)
     element = browser.find_by_id(element_id)
+    show_element(browser, element)
     element.select_by_text(text)
 
 
 def set_element(browser, element_id, text):
-    scroll_into_view(browser, element_id)
     element = browser.find_by_id(element_id)
+    show_element(browser, element)
     element.type(text)
 
 
