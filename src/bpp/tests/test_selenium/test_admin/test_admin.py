@@ -152,6 +152,7 @@ def test_admin_uzupelnij_punkty(admin_browser, asgi_live_server):
     # Zwiększymy rok o 1 i sprawdzimy, czy zmieni się punktacja
     admin_browser.fill("rok", str(CURRENT_YEAR + 1))
 
+    button = admin_browser.find_by_id("id_wypelnij_pola_punktacji_button")
     proper_click_element(admin_browser, button)
     wait_for(lambda: punkty_kbn.value == "11.20")
 

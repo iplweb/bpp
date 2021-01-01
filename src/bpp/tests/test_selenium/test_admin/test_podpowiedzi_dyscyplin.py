@@ -1,6 +1,6 @@
 import pytest
 from django.urls import reverse
-from selenium.common.exceptions import ElementClickInterceptedException
+from selenium.webdriver.support.wait import WebDriverWait
 
 from bpp.models import Autor_Dyscyplina
 from bpp.tests import select_select2_autocomplete
@@ -12,14 +12,9 @@ def scroll_until_handler_clicked_successfully(browser, handler="grp-add-handler"
     browser.execute_script(
         'document.getElementsByClassName("%s")[0].scrollIntoView();' % handler
     )
-    no_tries = 0
-    while no_tries < 20:
-        try:
-            browser.find_by_css(".grp-add-handler").first.click()
-            break
-        except ElementClickInterceptedException:
-            browser.execute_script("window.scrollBy(0, 25)")
-        no_tries += 1
+    browser.execute_script(
+        'document.getElementsByClassName("%s")[0].click();' % handler
+    )
 
 
 @pytest.mark.parametrize("url", ["wydawnictwo_ciagle", "wydawnictwo_zwarte"])
@@ -76,26 +71,16 @@ def test_podpowiedzi_dyscyplin_autor_ma_jedna_uczelnia_podpowiada(
 
     wait_for(lambda: admin_browser.find_by_id("id_autorzy_set-0-autor"))
 
-    no_tries = 0
+    select_select2_autocomplete(admin_browser, "id_autorzy_set-0-autor", "KOWALSKI")
 
-    while no_tries < 10:
-        select_select2_autocomplete(admin_browser, "id_autorzy_set-0-autor", "KOWALSKI")
+    admin_browser.find_by_id("id_autorzy_set-0-dyscyplina_naukowa")
 
-        sel = admin_browser.find_by_id("id_autorzy_set-0-dyscyplina_naukowa")
-
-        i = None
-        try:
-            i = int(sel.value)
-        except BaseException:
-            pass
-
-        if i == dyscyplina1.pk:
-            break
-
-        no_tries += 1
-
-    if no_tries == 10:
-        assert False
+    WebDriverWait(admin_browser.driver, 10).until(
+        lambda driver: admin_browser.find_by_id(
+            "id_autorzy_set-0-dyscyplina_naukowa"
+        ).value
+        == str(dyscyplina1.pk)
+    )
 
 
 @pytest.mark.parametrize("url", ["wydawnictwo_ciagle", "wydawnictwo_zwarte"])
