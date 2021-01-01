@@ -10,6 +10,7 @@ from datetime import datetime
 from django.urls import reverse
 from model_mommy import mommy
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.wait import WebDriverWait
 from splinter.exceptions import ElementDoesNotExist
 
 from django.contrib.contenttypes.models import ContentType
@@ -324,6 +325,7 @@ def proper_click_element(browser, element):
 
 
 def proper_click_by_id(browser, arg):
+    browser.find_by_id(arg)
     browser.execute_script(
         "document.getElementById(arguments[0]).scrollIntoView();", arg
     )
@@ -444,11 +446,17 @@ def fill_admin_inline(
 
 
 def submitted_form_bad(browser):
-    return wait_for(lambda: "Prosimy poprawić" in browser.html)
+    WebDriverWait(browser.driver, 10).until(
+        lambda driver: "Prosimy poprawić" in driver.page_source
+    )
+    return True
 
 
 def submitted_form_good(browser):
-    return wait_for(lambda: "został dodany pomyślnie" in browser.html)
+    WebDriverWait(browser.driver, 10).until(
+        lambda driver: "został dodany pomyślnie" in driver.page_source
+    )
+    return True
 
 
 def browse_praca_url(model):
