@@ -24,8 +24,8 @@ jobs:
 
       - checkout
 
-#      - restore_cache:
-#          key: cache-8-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}-{{ checksum "yarn.lock" }}
+      - restore_cache:
+          key: cache-9-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}-{{ checksum "yarn.lock" }}
 
       - run: sudo apt --quiet install -y --quiet gettext
       - run: sudo npm install -g grunt-cli
@@ -46,10 +46,10 @@ jobs:
             . venv/bin/activate
             make assets
 
-#      - save_cache: # cache Python dependencies using checksum of Pipfile as the cache-key
-#          key: cache-8-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}-{{ checksum "yarn.lock" }}
-#          paths:
-#            - "/home/circleci/.cache"
+      - save_cache: # cache Python dependencies using checksum of Pipfile as the cache-key
+          key: cache-9-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}-{{ checksum "yarn.lock" }}
+          paths:
+            - "/home/circleci/.cache"
 
       # Uruchamiaj na lokalnym firefoxie używając jednego CPU
       - run:
