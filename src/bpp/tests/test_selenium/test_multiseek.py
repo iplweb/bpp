@@ -1,9 +1,9 @@
 # -*- encoding: utf-8 -*-
 import pytest
 from django.urls.base import reverse
-from flaky import flaky
 
 from bpp.models.cache import Rekord
+
 from django_bpp.selenium_util import wait_for_page_load
 
 
@@ -13,7 +13,6 @@ def multiseek_browser(browser, live_server):
     return browser
 
 
-@flaky(max_runs=5)
 def test_wyrzuc(wydawnictwo_zwarte, multiseek_browser, live_server):
     browser = multiseek_browser
 

@@ -2,7 +2,6 @@ import os
 
 import pytest
 from django.urls import reverse
-from flaky import flaky
 from model_mommy import mommy
 
 from bpp.models import Uczelnia
@@ -10,7 +9,6 @@ from bpp.models import Uczelnia
 from django_bpp.selenium_util import wait_for_page_load
 
 
-@flaky(max_runs=5)
 @pytest.mark.django_db(transaction=True)
 def test_integracyjny(admin_browser, asgi_live_server):
     mommy.make(Uczelnia)

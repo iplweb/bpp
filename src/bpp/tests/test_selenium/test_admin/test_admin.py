@@ -1,6 +1,5 @@
 # -*- encoding: utf-8 -*-
 
-from flaky import flaky
 from selenium.webdriver.support.expected_conditions import alert_is_present
 
 from bpp.models.const import CHARAKTER_OGOLNY_KSIAZKA
@@ -290,7 +289,6 @@ def test_bug_on_user_add(admin_browser, asgi_live_server):
     admin_browser.wait_for_condition(lambda browser: "Zmień użytkownik" in browser.html)
 
 
-@flaky(max_runs=5)
 def test_admin_wydawnictwo_zwarte_uzupelnij_rok(
     wydawnictwo_zwarte, admin_browser, asgi_live_server, transactional_db
 ):
@@ -340,7 +338,6 @@ def test_admin_wydawnictwo_zwarte_uzupelnij_rok(
     )
 
 
-@flaky(max_runs=5)
 def test_admin_wydawnictwo_ciagle_uzupelnij_rok(admin_browser, asgi_live_server):
     """
     :type admin_browser: splinter.driver.webdriver.remote.WebDriver

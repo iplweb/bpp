@@ -24,7 +24,6 @@ black
 autoflake
 autopep8
 flake8
-flaky==3.6.1
 pycalver
 isort
 pre-commit
