@@ -78,6 +78,7 @@ class RaportSlotowUczelnia(
             data=self.get_table_data(),
             od_roku=self.data["od_roku"],
             do_roku=self.data["do_roku"],
+            slot=self.data["maksymalny_slot"],
             **kwargs,
         )
         RequestConfig(
@@ -88,8 +89,8 @@ class RaportSlotowUczelnia(
     def get_export_description(self):
         return [
             ("Nazwa raportu:", "raport slotów - uczelnia"),
-            (f"Od roku:", self.data["od_roku"]),
-            (f"Do roku:", self.data["do_roku"]),
+            ("Od roku:", self.data["od_roku"]),
+            ("Do roku:", self.data["do_roku"]),
             ("Maksymalny slot:", self.data["maksymalny_slot"]),
             (
                 "Dziel na jednostki:",

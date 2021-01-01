@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block extratitle %}
+    {{ title }}
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li class="current">raport slotów</li>
+    <li class="current">{{ title }}</li>
+{% endblock %}
+
+{% block content %}
+    <h2>{{ title }}</h2>
+    <div class="grid-x">
+        <div class="large-8 medium-12 small-12 cell">
+            {% load crispy_forms_tags %}
+            {% crispy form %}
+        </div>
+    </div>
+    <script type="text/javascript">
+        // modyfikacja pola 'slot' ma zaznaczyc 'zbierz prace do wysokosci slotu'
+        $(document).ready(function () {
+            $("#id_slot").change(function (v) {
+                var value = $("#id_slot").val()
+
+                if (value != "" && value != 0 && value != null)
+                    $("input[name=dzialanie][value=slot]").click();
+                else
+                    $("input[name=dzialanie][value=wszystko]").click()
+            });
+        });
+    </script>
+{% endblock %}

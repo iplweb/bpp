@@ -223,7 +223,7 @@ def test_slotkalkulator_wydawnictwo_ciagle_prog2_punkty_pkd(
     assert str(round(slot.slot_dla_autora_z_dyscypliny(dyscyplina1), 4)) == "0.7071"
     assert str(round(slot.slot_dla_dyscypliny(dyscyplina1), 4)) == "0.7071"
 
-    assert type(slot.pierwiastek_k_przez_m(dyscyplina1)) == Decimal
+    assert isinstance(slot.pierwiastek_k_przez_m(dyscyplina1), Decimal)
 
 
 @pytest.mark.django_db
@@ -463,7 +463,8 @@ def test_autor_Autor_zbieraj_sloty(zwarte_z_dyscyplinami):
 
     a = zwarte_z_dyscyplinami.autorzy_set.first().autor
     res = a.zbieraj_sloty(1, zwarte_z_dyscyplinami.rok, zwarte_z_dyscyplinami.rok)
-    assert res == (10.0, [Rekord.objects.get_for_model(zwarte_z_dyscyplinami).pk])
+    assert res == (10.0, [Rekord.objects.get_for_model(
+        zwarte_z_dyscyplinami).cache_punktacja_autora_query_set.first().pk])
 
 
 @pytest.mark.django_db

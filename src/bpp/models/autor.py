@@ -344,8 +344,7 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
         return author
 
     def liczba_cytowan(self):
-        """Zwraca liczbę cytowań prac danego autora
-        """
+        """Zwraca liczbę cytowań prac danego autora"""
         from bpp.models.cache import Rekord
 
         return (
@@ -365,25 +364,27 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
             .aggregate(s=Sum("liczba_cytowan"))["s"]
         )
 
-    def zbieraj_sloty(self, zadany_slot, rok_min, rok_max):
+    def zbieraj_sloty(self, zadany_slot, rok_min, rok_max, dyscyplina_id=None):
         from bpp.models.cache import Cache_Punktacja_Autora_Query
 
         rekordy = Cache_Punktacja_Autora_Query.objects.filter(
             rekord__rok__gte=rok_min, rekord__rok__lte=rok_max, autor=self
         )
+        if dyscyplina_id is not None:
+            rekordy = rekordy.filter(dyscyplina_id=dyscyplina_id)
 
         res = [
             (name, int(size), int(value))
             for name, size, value in rekordy.values_list(
-                "rekord__pk", F("slot") * 10000, F("pkdaut") * 10000
+                "pk", F("slot") * 10000, F("pkdaut") * 10000
             )
         ]  # name, size, value
 
+        id_wpisow_cpaq = [x[0] for x in res]
         sloty = [x[1] for x in res]
         punkty = [x[2] for x in res]
-        id_prac = [x[0] for x in res]
 
-        maks, lista = knapsack(zadany_slot * 10000, sloty, punkty, id_prac)
+        maks, lista = knapsack(zadany_slot * 10000, sloty, punkty, id_wpisow_cpaq)
         return maks / 10000, lista
 
 

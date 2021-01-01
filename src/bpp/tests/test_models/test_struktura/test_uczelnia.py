@@ -8,6 +8,8 @@ from django.urls.base import reverse
 
 from bpp.models.fields import OpcjaWyswietlaniaField
 from bpp.tests import browse_praca_url
+from raport_slotow import const
+from raport_slotow.views import SESSION_KEY
 
 
 @pytest.mark.parametrize(
@@ -216,20 +218,18 @@ def test_pokazuj_raport_slotow_menu_na_glownej(
 
 
 @pytest.mark.parametrize(
-    "nazwa_url,args_url,atrybut_uczelni,params",
+    "nazwa_url,atrybut_uczelni,params",
     [
-        ("raport_slotow:index", [], "pokazuj_raport_slotow_autor", {}),
-        ("raport_slotow:raport-slotow-zerowy", [], "pokazuj_raport_slotow_zerowy", {}),
+        ("raport_slotow:index", "pokazuj_raport_slotow_autor", {}),
+        ("raport_slotow:raport-slotow-zerowy", "pokazuj_raport_slotow_zerowy", {}),
         (
             "raport_slotow:raport",
-            ["autor.slug", 2000, 2010],
             "pokazuj_raport_slotow_autor",
             {},
         ),
-        ("raport_slotow:index-uczelnia", [], "pokazuj_raport_slotow_uczelnia", {}),
+        ("raport_slotow:index-uczelnia", "pokazuj_raport_slotow_uczelnia", {}),
         (
             "raport_slotow:raport-uczelnia",
-            [],
             "pokazuj_raport_slotow_uczelnia",
             {"od_roku": 2000, "do_roku": 2000, "maksymalny_slot": 1, "_export": "html"},
         ),
@@ -237,16 +237,25 @@ def test_pokazuj_raport_slotow_menu_na_glownej(
 )
 @pytest.mark.django_db
 def test_pokazuj_raport_slotow_czy_mozna_kliknac(
-    uczelnia, admin_client, client, autor, nazwa_url, args_url, atrybut_uczelni, params
+    uczelnia, admin_client, client, autor, nazwa_url, atrybut_uczelni, params
 ):
-    new_args_url = []
-    for elem in args_url:
-        if elem == "autor.slug":
-            new_args_url.append(autor.slug)
-            continue
-        new_args_url.append(elem)
+    url = reverse(nazwa_url)
+    if nazwa_url == "raport_slotow:raport":
+        dane_raportu = {
+            "obiekt": autor.pk,
+            "od_roku": 2016,
+            "do_roku": 2017,
+            "dzialanie": const.DZIALANIE_SLOT,
+            "minimalny_pk": 0,
+            "slot": 100,
+            "_export": "html",
+        }
 
-    url = reverse(nazwa_url, args=tuple(new_args_url))
+        for c in admin_client, client:
+            s = c.session
+            s.update({SESSION_KEY: dane_raportu})
+            s.save()
+
     if params:
         url += "?" + urlencode(params)
 

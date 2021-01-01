@@ -1,3 +1,5 @@
+import urllib
+
 import django_tables2 as tables
 from django.template.defaultfilters import safe
 from django.urls import reverse
@@ -8,6 +10,7 @@ from bpp.models.cache import (
     Cache_Punktacja_Autora_Query_View,
     Cache_Punktacja_Autora_Query,
 )
+from raport_slotow import const
 from raport_slotow.columns import DecimalColumn, SummingColumn
 from raport_slotow.models import RaportZerowyEntry, RaportUczelniaEwaluacjaView
 
@@ -59,17 +62,21 @@ class RaportSlotowAutorTable(RaportCommonMixin, tables.Table):
     )
     rok = Column("Rok", "rekord.rok", orderable=True)
     dyscyplina = Column(orderable=False)
-    punkty_kbn = SummingColumn("Punkty PK", "rekord.punkty_kbn")
+    punkty_kbn = Column("Punkty PK", "rekord.punkty_kbn")
     zrodlo_informacje = Column(
         "Źródło / informacje", "rekord", empty_values=(), orderable=False
     )
     pkdaut = SummingColumn("Punkty dla autora", "pkdaut")
     slot = SummingColumn("Slot")
     autorzy_z_dyscypliny = Column(
-        "Autorzy z dyscypliny", "zapisani_autorzy_z_dyscypliny", orderable=False,
+        "Autorzy z dyscypliny",
+        "zapisani_autorzy_z_dyscypliny",
+        orderable=False,
     )
     liczba_autorow_z_dyscypliny = Column(
-        "Liczba autorów z dyscypliny", "zapisani_autorzy_z_dyscypliny", orderable=False,
+        "Liczba autorów z dyscypliny",
+        "zapisani_autorzy_z_dyscypliny",
+        orderable=False,
     )
     liczba_wszystkich_autorow = Column(
         "Liczba wszystkich autorów",
@@ -103,9 +110,10 @@ class RaportSlotowUczelniaBezJednostekIWydzialowTable(tables.Table):
     pbn_id = Column("PBN ID", "autor.pbn_id")
     orcid = Column("ORCID", "autor.orcid")
 
-    def __init__(self, od_roku, do_roku, *args, **kw):
+    def __init__(self, od_roku, do_roku, slot, *args, **kw):
         self.od_roku = od_roku
         self.do_roku = do_roku
+        self.slot = slot
         super(RaportSlotowUczelniaBezJednostekIWydzialowTable, self).__init__(
             *args, **kw
         )
@@ -114,8 +122,18 @@ class RaportSlotowUczelniaBezJednostekIWydzialowTable(tables.Table):
         return round(value, 4)
 
     def render_autor(self, value):
-        url = reverse(
-            "raport_slotow:raport", args=(value.slug, self.od_roku, self.do_roku)
+        url = (
+            reverse("raport_slotow:index")
+            + "?"
+            + urllib.parse.urlencode(
+                {
+                    "obiekt": value.pk,
+                    "od_roku": self.od_roku,
+                    "do_roku": self.do_roku,
+                    "dzialanie": const.DZIALANIE_SLOT,
+                    "slot": self.slot,
+                }
+            )
         )
         return safe("<a href=%s>%s</a>" % (url, value))
 
@@ -187,7 +205,9 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
     )
     rodzaj_publikacji = Column("Rodzaj", "rekord")
     liczba_autorow_z_dyscypliny = Column(
-        "Liczba autorów z dyscypliny", "autorzy_z_dyscypliny", orderable=False,
+        "Liczba autorów z dyscypliny",
+        "autorzy_z_dyscypliny",
+        orderable=False,
     )
     liczba_wszystkich_autorow = Column(
         "Liczba wszystkich autorów",
@@ -208,7 +228,9 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
         "Dyscyplina 2", "autor_dyscyplina.subdyscyplina_naukowa", orderable=False
     )
     procent_subdyscypliny = Column(
-        "% dyscypliny 2", "autor_dyscyplina.procent_subdyscypliny", orderable=False,
+        "% dyscypliny 2",
+        "autor_dyscyplina.procent_subdyscypliny",
+        orderable=False,
     )
     dyscyplina_rekordu = Column("dyscyplina rekordu", "autorzy.dyscyplina_naukowa")
     pkdaut = SummingColumn("Punkty dla autora", "pkdaut")

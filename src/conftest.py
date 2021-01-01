@@ -7,6 +7,7 @@ from datetime import datetime
 import django_webtest
 import pytest
 from rest_framework.test import APIClient
+from selenium.webdriver.remote.webdriver import WebDriver
 
 from bpp.tasks import aktualizuj_cache_rekordu
 
@@ -107,7 +108,7 @@ def _preauth_session_id_helper(
     password,
     client,
     browser,
-    asgi_live_server,
+    asgi_live_server,  # noqa
     django_user_model,
     django_username_field,
 ):
@@ -130,7 +131,7 @@ def preauth_browser(
     normal_django_user,
     client,
     browser,
-    asgi_live_server,
+    asgi_live_server,  # noqa
     django_user_model,
     django_username_field,
 ):
@@ -149,7 +150,7 @@ def preauth_browser(
 
 
 @pytest.fixture
-def preauth_asgi_browser(preauth_browser, transactional_db, asgi_live_server):
+def preauth_asgi_browser(preauth_browser, transactional_db, asgi_live_server):  # noqa
     with wait_for_page_load(preauth_browser):
         preauth_browser.visit(asgi_live_server.url)
     wait_for_websocket_connection(preauth_browser)
@@ -161,11 +162,11 @@ def preauth_admin_browser(
     admin_user,
     client,
     browser,
-    asgi_live_server,
+    asgi_live_server,  # noqa
     django_user_model,
     django_username_field,
     transactional_db,
-):
+) -> WebDriver:
     browser = _preauth_session_id_helper(
         "admin",
         "password",

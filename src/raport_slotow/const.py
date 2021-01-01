@@ -1,0 +1,2 @@
+DZIALANIE_WSZYSTKO = "wszystko"
+DZIALANIE_SLOT = "slot"
