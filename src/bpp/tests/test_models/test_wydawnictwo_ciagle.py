@@ -16,7 +16,6 @@ def test_models_wydawnictwo_ciagle_dirty_fields_ostatnio_zmieniony_dla_pbn(
     autor_jan_nowak,
     jednostka,
     typy_odpowiedzialnosci,
-    cnt,
 ):
     Licencja_OpenAccess.objects.create(nazwa="lic 1 ", skrot="l1")
     Licencja_OpenAccess.objects.create(nazwa="lic 2 ", skrot="l2")
