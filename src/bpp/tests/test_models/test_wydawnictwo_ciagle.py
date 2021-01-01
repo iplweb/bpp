@@ -32,19 +32,13 @@ def test_models_wydawnictwo_ciagle_dirty_fields_ostatnio_zmieniony_dla_pbn(
 
         ost_zm_pbn = wyd.ostatnio_zmieniony_dla_pbn
 
-        # time.sleep(0.5)
-
         wyd.status = Status_Korekty.objects.get(nazwa="w trakcie korekty")
         wyd.save()
         assert ost_zm_pbn == wyd.ostatnio_zmieniony_dla_pbn
 
-        # time.sleep(0.5)
-
         wyd.status = Status_Korekty.objects.get(nazwa="po korekcie")
         wyd.save()
         assert ost_zm_pbn == wyd.ostatnio_zmieniony_dla_pbn
-
-        # time.sleep(0.5)
 
         for fld in (
             MODEL_PUNKTOWANY_KOMISJA_CENTRALNA + MODEL_PUNKTOWANY + ("adnotacje",)
@@ -63,8 +57,6 @@ def test_models_wydawnictwo_ciagle_dirty_fields_ostatnio_zmieniony_dla_pbn(
             assert ost_zm_pbn != wyd.ostatnio_zmieniony_dla_pbn
         except TypeError:
             pass  # TypeError: can't compare offset-naive and offset-aware datetimes
-
-        # time.sleep(0.5)
 
         ost_zm_pbn = wyd.ostatnio_zmieniony_dla_pbn
 

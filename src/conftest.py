@@ -118,7 +118,7 @@ def _preauth_session_id_helper(
     assert res is True
 
     with wait_for_page_load(browser):
-        browser.visit(asgi_live_server.url + "/nex")
+        browser.visit(asgi_live_server.url + "/non-existant-url")
     browser.cookies.add({"sessionid": client.cookies["sessionid"].value})
     browser.authorized_user = django_user_model.objects.get(
         **{django_username_field: username}

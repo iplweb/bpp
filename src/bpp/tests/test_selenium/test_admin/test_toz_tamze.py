@@ -1,5 +1,6 @@
 # -*- encoding: utf-8 -*-
-import time
+
+from selenium.webdriver.support.wait import WebDriverWait
 
 try:
     from django.core.urlresolvers import reverse
@@ -14,7 +15,7 @@ from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 from bpp.tests import any_ciagle
 from bpp.tests.util import any_patent, any_zwarte, assertPopupContains
 
-from django_bpp.selenium_util import wait_for_page_load
+from django_bpp.selenium_util import wait_for, wait_for_page_load
 
 ID = "id_tytul_oryginalny"
 
@@ -34,13 +35,10 @@ def test_admin_wydawnictwo_ciagle_toz(admin_browser, asgi_live_server):
     assert wcc() == 1
 
     toz = admin_browser.find_by_id("toz")
+
     toz.click()
-
     assertPopupContains(admin_browser, "Utworzysz kopię tego rekordu")
-    time.sleep(2)
-    assert admin_browser.is_element_present_by_id("navigation-menu", wait_time=5000)
-
-    assert wcc() == 2
+    wait_for(lambda: wcc() == 2)
 
 
 def test_admin_wydawnictwo_zwarte_toz(admin_browser, asgi_live_server):
@@ -56,11 +54,8 @@ def test_admin_wydawnictwo_zwarte_toz(admin_browser, asgi_live_server):
 
     toz = admin_browser.find_by_id("toz")
     toz.click()
-
     assertPopupContains(admin_browser, "Utworzysz kopię tego rekordu")
-    time.sleep(2)
-    admin_browser.is_element_present_by_id("navigation-menu", 5000)
-    assert wcc() == 2
+    wait_for(lambda: wcc() == 2)
 
 
 def test_admin_wydawnictwo_ciagle_tamze(admin_browser, asgi_live_server):
@@ -101,8 +96,9 @@ def test_admin_wydawnictwo_zwarte_tamze(admin_browser, asgi_live_server, wydawca
     )
     tamze = admin_browser.find_by_id("tamze")
     tamze.click()
-    time.sleep(1)
-    assert "Dodaj wydawnictwo" in admin_browser.html
+    WebDriverWait(admin_browser.driver, 10).until(
+        lambda driver: "Dodaj wydawnictwo" in driver.page_source
+    )
     for elem in [
         "TO INFORMACJE",
         "te uwagi",
@@ -129,10 +125,11 @@ def test_admin_patent_toz(admin_browser, asgi_live_server):
     toz.click()
 
     assertPopupContains(admin_browser, "Utworzysz kopię tego rekordu")
-    time.sleep(2)
+    WebDriverWait(admin_browser, 10).until(
+        lambda driver: admin_browser.is_element_present_by_id("navigation-menu")
+    )
 
-    admin_browser.is_element_present_by_id("navigation-menu", 5000)
-    assert wcc() == 2
+    wait_for(lambda: wcc() == 2)
 
 
 def test_admin_patent_tamze(admin_browser, asgi_live_server):
