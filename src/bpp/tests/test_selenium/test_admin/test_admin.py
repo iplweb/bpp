@@ -142,8 +142,8 @@ def test_admin_uzupelnij_punkty(admin_browser, asgi_live_server):
 
     proper_click_element(admin_browser, button)
 
-    assert punkty_kbn.value == "10.20"
-    assert button.value == "Wypełniona!"
+    wait_for(lambda: button.value == "Wypełniona!")
+    wait_for(lambda: punkty_kbn.value == "10.20")
 
     trigger_event(rok, "change")
     # Po zmianie roku LUB źródła przycisk ma się zmienić

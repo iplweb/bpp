@@ -317,12 +317,17 @@ def submit_admin_form(browser):
 
 
 def proper_click_element(browser, element):
-    show_element(browser, element)
-    return element.click()
+    # show_element(browser, element)
+    # return element.click()
+    browser.execute_script("arguments[0].scrollIntoView();", element._element)
+    browser.execute_script("arguments[0].click();", element._element)
 
 
 def proper_click_by_id(browser, arg):
-    return proper_click_element(browser, browser.find_by_id(arg))
+    browser.execute_script(
+        "document.getElementById(arguments[0]).scrollIntoView();", arg
+    )
+    browser.execute_script("document.getElementById(arguments[0]).click();", arg)
 
 
 def assertPopupContains(browser, text, accept=True):
