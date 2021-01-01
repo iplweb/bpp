@@ -4,7 +4,6 @@ import multiprocessing
 import os
 import re
 from datetime import datetime, timedelta
-from functools import lru_cache
 from math import ceil, floor
 from pathlib import Path
 
@@ -15,6 +14,8 @@ from django.conf import settings
 from django.db.models import Max, Min
 from psycopg2.extensions import QuotedString
 from unidecode import unidecode
+
+from django.utils import timezone
 
 non_url = re.compile(r"[^\w-]+")
 
@@ -66,7 +67,7 @@ class FulltextSearchMixin:
         if qstr is None:
             qstr = ""
 
-        if type(qstr) == bytes:
+        if isinstance(qstr, bytes):
             qstr = qstr.decode("utf-8")
 
         words = fulltext_tokenize(qstr)
@@ -408,7 +409,8 @@ def wytnij_isbn_z_uwag(uwagi):
 
 
 def crispy_form_html(self, key):
-    from crispy_forms_foundation.layout import Row, Column, HTML
+    from crispy_forms_foundation.layout import HTML, Column, Row
+
     from django.utils.functional import lazy
 
     def _():
@@ -484,3 +486,10 @@ def disable_multithreading_by_monkeypatching_pool(pool):
             fun(*elem)
 
     pool.starmap = starmap
+
+
+def year_last_month():
+    now = timezone.now().date()
+    if now.month >= 2:
+        return now.year
+    return now.year - 1

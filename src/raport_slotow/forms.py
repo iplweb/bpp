@@ -1,29 +1,19 @@
 from crispy_forms.helper import FormHelper
 from crispy_forms_foundation.layout import (
-    Layout,
-    Fieldset,
-    Row,
-    Column,
     ButtonHolder,
+    Column,
+    Fieldset,
+    Layout,
+    Row,
     Submit,
 )
 from dal import autocomplete
 from django import forms
 from django.core.exceptions import ValidationError
-from django.utils import timezone
-
-from bpp.models import Autor
-from bpp.util import formdefaults_html_after, formdefaults_html_before
-
 from . import const
 
-
-def year_last_month():
-    now = timezone.now().date()
-    if now.month >= 2:
-        return now.year
-    return now.year - 1
-
+from bpp.models import Autor, Uczelnia
+from bpp.util import formdefaults_html_after, formdefaults_html_before, year_last_month
 
 OUTPUT_FORMATS = [
     ("html", "wyświetl w przeglądarce"),
@@ -39,7 +29,7 @@ class AutorRaportSlotowForm(forms.Form):
     )
 
     od_roku = forms.IntegerField(initial=year_last_month, min_value=2016)
-    do_roku = forms.IntegerField(initial=year_last_month)
+    do_roku = forms.IntegerField(initial=Uczelnia.objects.do_roku_default)
 
     minimalny_pk = forms.IntegerField(label="Minimalna wartość PK pracy", initial=0)
 
@@ -143,7 +133,7 @@ class AutorRaportSlotowForm(forms.Form):
 
 class ParametryRaportSlotowUczelniaForm(forms.Form):
     od_roku = forms.IntegerField(initial=year_last_month)
-    do_roku = forms.IntegerField(initial=year_last_month)
+    do_roku = forms.IntegerField(initial=Uczelnia.objects.do_roku_default)
 
     maksymalny_slot = forms.IntegerField(
         label="Maksymalny slot", initial=1, min_value=1
@@ -199,7 +189,7 @@ class ParametryRaportSlotowUczelniaForm(forms.Form):
 
 
 class ParametryRaportSlotowEwaluacjaForm(forms.Form):
-    rok = forms.IntegerField(initial=year_last_month, min_value=2017)
+    rok = forms.IntegerField(initial=Uczelnia.objects.do_roku_default, min_value=2017)
 
     _export = forms.ChoiceField(
         label="Format wyjściowy", choices=OUTPUT_FORMATS, required=True

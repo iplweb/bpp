@@ -2,14 +2,17 @@
 from urllib.parse import urlencode
 
 import pytest
-from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.urls.base import reverse
-
-from bpp.models.fields import OpcjaWyswietlaniaField
-from bpp.tests import browse_praca_url
 from raport_slotow import const
 from raport_slotow.views import SESSION_KEY
+
+from django.contrib.contenttypes.models import ContentType
+
+from bpp.models import Uczelnia
+from bpp.models.const import DO_STYCZNIA_POPRZEDNI_POTEM_OBECNY, NAJWIEKSZY_REKORD
+from bpp.models.fields import OpcjaWyswietlaniaField
+from bpp.tests import browse_praca_url
 
 
 @pytest.mark.parametrize(
@@ -299,3 +302,18 @@ def test_uczelnia_ukryte_statusy(uczelnia, przed_korekta, po_korekcie):
 
     assert przed_korekta.pk in uczelnia.ukryte_statusy("sloty")
     assert po_korekcie.pk in uczelnia.ukryte_statusy("sloty")
+
+
+def test_uczelnia_do_roku_default(uczelnia, wydawnictwo_zwarte):
+    wydawnictwo_zwarte.rok = 3000
+    wydawnictwo_zwarte.save()
+
+    uczelnia.metoda_do_roku_formularze = DO_STYCZNIA_POPRZEDNI_POTEM_OBECNY
+    uczelnia.save()
+
+    assert Uczelnia.objects.do_roku_default() != 3000
+
+    uczelnia.metoda_do_roku_formularze = NAJWIEKSZY_REKORD
+    uczelnia.save()
+
+    assert Uczelnia.objects.do_roku_default() == 3000

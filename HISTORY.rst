@@ -1,28 +1,31 @@
+]
 
 ==============
 Historia zmian
 ==============
 
+202101.52
+---------
+* raport slotów - autor umożliwia zbieranie "do N slotów" dla autora (b/n),
+* konfigurowane wartości domyślne dla daty w formularzach (#947)
+
+
 202012.51
 ---------
-
 * zbieranie slotów dla autora za pomocą algorytmu plecakowego (b/n),
 * ukrywanie statusów korekt w multiwyszukiwarce (#942),
 * ukrywanie statusów korekt przy obliczaniu slotów -
   liczenie punktów za sloty w zależności od ustawienia statusu korekty (#945),
 * ukrywanie wybranych statusów korekt w rankingach (#946),
-* ukrywanie wybranych statusów korekt w raportach (#943),
+* ukrywanie wybranych statusów korekt w raortach (#943),
 * ukrywanie wybranych statusów korekt w API (#946),
-* raport slotów - autor umożliwia zbieranie "do N slotów" dla autora (b/n),
 
 202011.50
 ---------
-
 * prawidłowe obliczanie punktów dla tłumaczeń (#931)
 
 202011.49
 ---------
-
 * podczas obliczania slotów dla liczby autorów z dyscypliny nie uwzględniaj autorów
   z odznaczonym polem "afiliuje" (#927)
 * pole "pseudonim" dla autora (#921)

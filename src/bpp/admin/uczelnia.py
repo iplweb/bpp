@@ -1,12 +1,11 @@
 from django import forms
-from django.contrib import admin
 from django.core.management import call_command
 from django.db import transaction
-
+from ..models import Uczelnia, Ukryj_Status_Korekty, Wydzial
 from .core import CommitedModelAdmin, RestrictDeletionToAdministracjaGroupMixin
 from .helpers import ADNOTACJE_FIELDSET, ZapiszZAdnotacjaMixin
-from ..models import Uczelnia, Wydzial, Ukryj_Status_Korekty
 
+from django.contrib import admin
 
 # Uczelnia
 
@@ -90,6 +89,7 @@ class UczelniaAdmin(
                     "wyszukiwanie_rekordy_na_strone_anonim",
                     "wyszukiwanie_rekordy_na_strone_zalogowany",
                     "sortuj_jednostki_alfabetycznie",
+                    "metoda_do_roku_formularze",
                 ),
             },
         ),
@@ -125,7 +125,7 @@ class UczelniaAdmin(
 
     def save_model(self, request, obj, form, change):
         """Przy zmianie parametru 'sortuj_jednostki_alfabetycznie' wywołaj polecenie
-        'reorder' dla bpp.Jednostki z django-adminsortable2. """
+        'reorder' dla bpp.Jednostki z django-adminsortable2."""
 
         if "sortuj_jednostki_alfabetycznie" in form.changed_data:
             if form.cleaned_data["sortuj_jednostki_alfabetycznie"] is True:

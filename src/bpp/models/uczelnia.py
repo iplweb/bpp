@@ -3,18 +3,21 @@
 """
 Struktura uczelni.
 """
-from typing import Union, List
+from typing import List, Union
 
 from autoslug import AutoSlugField
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.db import models
-from django.db.models import SET_NULL, Q, F
+from django.db.models import SET_NULL, Max
 from django.urls.base import reverse
+from model_utils import Choices
+from ..util import year_last_month
+from .fields import OpcjaWyswietlaniaField
+
 from django.utils.functional import cached_property
 
-from bpp.models import ModelZAdnotacjami, NazwaISkrot
-from bpp.models.abstract import NazwaWDopelniaczu, ModelZPBN_ID
-from .fields import OpcjaWyswietlaniaField
+from bpp.models import ModelZAdnotacjami, NazwaISkrot, const
+from bpp.models.abstract import ModelZPBN_ID, NazwaWDopelniaczu
 
 
 class UczelniaManager(models.Manager):
@@ -27,6 +30,20 @@ class UczelniaManager(models.Manager):
     @cached_property
     def default(self):
         return self.get_default()
+
+    def do_roku_default(self, request=None):
+        uczelnia = self.get_default()
+        if (
+            uczelnia is None
+            or uczelnia.metoda_do_roku_formularze
+            == const.DO_STYCZNIA_POPRZEDNI_POTEM_OBECNY
+        ):
+            return year_last_month()
+        if uczelnia.metoda_do_roku_formularze == const.NAJWIEKSZY_REKORD:
+            from bpp.models.cache import Rekord
+
+            return Rekord.objects.all().aggregate(Max("rok"))["rok__max"]
+        raise NotImplementedError
 
 
 class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
@@ -173,7 +190,7 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
 
     sortuj_jednostki_alfabetycznie = models.BooleanField(
         default=True,
-        help_text="""Jeżeli ustawione na 'FAŁSZ', sortowanie jednostek będzie odbywało się ręcznie 
+        help_text="""Jeżeli ustawione na 'FAŁSZ', sortowanie jednostek będzie odbywało się ręcznie
         tzn za pomocą ustalonej przez administratora systemu kolejności. """,
     )
 
@@ -183,6 +200,22 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
 
     clarivate_password = models.CharField(
         verbose_name="Hasło", null=True, blank=True, max_length=50
+    )
+
+    DO_ROKU = Choices(
+        (
+            const.DO_STYCZNIA_POPRZEDNI_POTEM_OBECNY,
+            "do stycznia poprzedni, potem obecny",
+        ),
+        (const.NAJWIEKSZY_REKORD, "najwiekszy rok rekordu w bazie"),
+    )
+
+    metoda_do_roku_formularze = models.CharField(
+        "Data w polu 'do roku' w formularzach",
+        choices=DO_ROKU,
+        default=const.DO_STYCZNIA_POPRZEDNI_POTEM_OBECNY,
+        max_length=30,
+        help_text="Decyduje o sposobie wyświetlania maksymalnej daty 'Do roku' w formularzach. ",
     )
 
     objects = UczelniaManager()

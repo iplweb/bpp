@@ -63,3 +63,7 @@ class TRYB_DOSTEPU(Enum):
     NIEJAWNY = 0
     TYLKO_W_SIECI = 1
     JAWNY = 2
+
+
+DO_STYCZNIA_POPRZEDNI_POTEM_OBECNY = "jan_prev_then_current"
+NAJWIEKSZY_REKORD = "max_rec"
