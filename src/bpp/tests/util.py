@@ -358,7 +358,7 @@ def randomobj(model):
 
 
 def quick_find_by_id(browser, id):
-    if f"#{id}" in browser.html:
+    if f'id="{id}"' in browser.html:
         return browser.find_by_id(id, wait_time=0)
 
 
