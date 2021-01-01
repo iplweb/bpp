@@ -1,12 +1,8 @@
 import pytest
 from django.urls import reverse
-from selenium.webdriver.common.keys import Keys
-
+from raport_slotow.const import DZIALANIE_SLOT, DZIALANIE_WSZYSTKO
 from raport_slotow.forms import AutorRaportSlotowForm
-from raport_slotow.const import (
-    DZIALANIE_WSZYSTKO,
-    DZIALANIE_SLOT,
-)
+from selenium.webdriver.common.keys import Keys
 
 
 def test_AutorRaportSlotowForm_clean_lata(autor_jan_kowalski):
@@ -72,17 +68,17 @@ def test_AutorRaportSlotowForm_clean_dzialanie_slot_zero(autor_jan_kowalski):
 
 
 @pytest.mark.selenium
-def test_AutorRaportSlotowForm_javascript(preauth_admin_browser, live_server):
+def test_AutorRaportSlotowForm_javascript(admin_browser, live_server):
     url = live_server.url + reverse("raport_slotow:index")
-    # with wait_for_page_load(preauth_admin_browser):
-    preauth_admin_browser.visit(url)
-    elem = preauth_admin_browser.find_by_id("id_slot")
+    # with wait_for_page_load(admin_browser):
+    admin_browser.visit(url)
+    elem = admin_browser.find_by_id("id_slot")
     for x in elem.type(["1", "2", Keys.TAB], slowly=True):
         pass
-    res = preauth_admin_browser.find_by_id("id_dzialanie_0")
+    res = admin_browser.find_by_id("id_dzialanie_0")
     assert not res.selected
 
     for x in elem.type([Keys.BACKSPACE, Keys.BACKSPACE, Keys.TAB], slowly=True):
         pass
-    res = preauth_admin_browser.find_by_id("id_dzialanie_0")
+    res = admin_browser.find_by_id("id_dzialanie_0")
     assert res.selected

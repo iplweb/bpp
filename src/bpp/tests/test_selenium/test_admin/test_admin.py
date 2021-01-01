@@ -53,67 +53,61 @@ pytestmark = [pytest.mark.slow, pytest.mark.selenium]
 
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.parametrize("url", ["wydawnictwo_ciagle", "wydawnictwo_zwarte"])
-def test_uzupelnij_strona_tom_nr_zeszytu(url, preauth_admin_browser, asgi_live_server):
+def test_uzupelnij_strona_tom_nr_zeszytu(url, admin_browser, asgi_live_server):
     url = reverse("admin:bpp_%s_add" % url)
-    with wait_for_page_load(preauth_admin_browser):
-        preauth_admin_browser.visit(asgi_live_server.url + url)
+    with wait_for_page_load(admin_browser):
+        admin_browser.visit(asgi_live_server.url + url)
 
-    preauth_admin_browser.find_by_name("informacje").type("1993 vol. 5 z. 1")
-    preauth_admin_browser.find_by_name("szczegoly").type("s. 4-3")
+    admin_browser.find_by_name("informacje").type("1993 vol. 5 z. 1")
+    admin_browser.find_by_name("szczegoly").type("s. 4-3")
 
-    preauth_admin_browser.execute_script("django.jQuery('#id_strony_get').click()")
-    WebDriverWait(preauth_admin_browser, 10).until(
+    admin_browser.execute_script("django.jQuery('#id_strony_get').click()")
+    WebDriverWait(admin_browser, 10).until(
         lambda browser: browser.find_by_name("tom").value != ""
     )
 
-    assert preauth_admin_browser.find_by_name("strony").value == "4-3"
-    assert preauth_admin_browser.find_by_name("tom").value == "5"
+    assert admin_browser.find_by_name("strony").value == "4-3"
+    assert admin_browser.find_by_name("tom").value == "5"
 
     if url == "wydawnictwo_ciagle":
-        assert preauth_admin_browser.find_by_name("nr_zeszytu").value == "1"
+        assert admin_browser.find_by_name("nr_zeszytu").value == "1"
 
 
 def test_liczba_znakow_wydawniczych_liczba_arkuszy_wydawniczych(
-    preauth_admin_browser, asgi_live_server
+    admin_browser, asgi_live_server
 ):
     url = reverse("admin:bpp_wydawnictwo_zwarte_add")
-    with wait_for_page_load(preauth_admin_browser):
-        preauth_admin_browser.visit(asgi_live_server.url + url)
+    with wait_for_page_load(admin_browser):
+        admin_browser.visit(asgi_live_server.url + url)
 
-    preauth_admin_browser.execute_script(
+    admin_browser.execute_script(
         "django.jQuery('#id_liczba_znakow_wydawniczych').val('40000').change()"
     )
-    assert (
-        preauth_admin_browser.find_by_id("id_liczba_arkuszy_wydawniczych").value
-        == "1.00"
-    )
+    assert admin_browser.find_by_id("id_liczba_arkuszy_wydawniczych").value == "1.00"
 
-    preauth_admin_browser.execute_script(
+    admin_browser.execute_script(
         "django.jQuery('#id_liczba_arkuszy_wydawniczych').val('0.5').change()"
     )
-    assert (
-        preauth_admin_browser.find_by_id("id_liczba_znakow_wydawniczych").value
-        == "20000"
-    )
+    assert admin_browser.find_by_id("id_liczba_znakow_wydawniczych").value == "20000"
 
 
 @pytest.mark.django_db(transaction=True)
-def test_automatycznie_uzupelnij_punkty(preauth_admin_browser, asgi_live_server):
+def test_automatycznie_uzupelnij_punkty(admin_browser, asgi_live_server):
     url = reverse("admin:bpp_wydawnictwo_ciagle_add")
 
-    with wait_for_page_load(preauth_admin_browser):
-        preauth_admin_browser.visit(asgi_live_server.url + url)
+    with wait_for_page_load(admin_browser):
+        admin_browser.visit(asgi_live_server.url + url)
 
     any_zrodlo(nazwa="FOO BAR")
-    proper_click_by_id(preauth_admin_browser, "id_wypelnij_pola_punktacji_button")
-    assertPopupContains(preauth_admin_browser, "Najpierw wybierz jakie")
+    proper_click_by_id(admin_browser, "id_wypelnij_pola_punktacji_button")
+    assertPopupContains(admin_browser, "Najpierw wybierz jakie")
 
-    select_select2_autocomplete(preauth_admin_browser, "id_zrodlo", "FOO")
+    select_select2_autocomplete(admin_browser, "id_zrodlo", "FOO")
 
-    proper_click_by_id(preauth_admin_browser, "id_wypelnij_pola_punktacji_button")
-    assertPopupContains(preauth_admin_browser, "Uzupełnij pole")
+    proper_click_by_id(admin_browser, "id_wypelnij_pola_punktacji_button")
+    assertPopupContains(admin_browser, "Uzupełnij pole")
 
-    preauth_admin_browser.execute_script("window.onbeforeunload = function(e) {};")
+    admin_browser.execute_script("window.onbeforeunload = function(e) {};")
 
 
 def trigger_event(elem, event):
@@ -125,7 +119,7 @@ def trigger_event(elem, event):
     )
 
 
-def test_admin_uzupelnij_punkty(preauth_admin_browser, asgi_live_server):
+def test_admin_uzupelnij_punkty(admin_browser, asgi_live_server):
     z = any_zrodlo(nazwa="WTF LOL")
 
     kw = dict(zrodlo=z)
@@ -136,17 +130,17 @@ def test_admin_uzupelnij_punkty(preauth_admin_browser, asgi_live_server):
     c = any_ciagle(zrodlo=z, impact_factor=5, punkty_kbn=5)
 
     url = reverse("admin:bpp_wydawnictwo_ciagle_change", args=(c.pk,))
-    preauth_admin_browser.visit(asgi_live_server.url + url)
+    admin_browser.visit(asgi_live_server.url + url)
 
-    rok = preauth_admin_browser.find_by_id("id_rok")
-    punkty_kbn = preauth_admin_browser.find_by_id("id_punkty_kbn")
+    rok = admin_browser.find_by_id("id_rok")
+    punkty_kbn = admin_browser.find_by_id("id_punkty_kbn")
 
     assert rok.value == str(CURRENT_YEAR)
     assert punkty_kbn.value == "5.00"
 
-    button = preauth_admin_browser.find_by_id("id_wypelnij_pola_punktacji_button")
+    button = admin_browser.find_by_id("id_wypelnij_pola_punktacji_button")
 
-    proper_click_element(preauth_admin_browser, button)
+    proper_click_element(admin_browser, button)
 
     assert punkty_kbn.value == "10.20"
     assert button.value == "Wypełniona!"
@@ -156,61 +150,59 @@ def test_admin_uzupelnij_punkty(preauth_admin_browser, asgi_live_server):
     wait_for(lambda: button.value == "Wypełnij pola punktacji")
 
     # Zwiększymy rok o 1 i sprawdzimy, czy zmieni się punktacja
-    preauth_admin_browser.fill("rok", str(CURRENT_YEAR + 1))
+    admin_browser.fill("rok", str(CURRENT_YEAR + 1))
 
-    proper_click_element(preauth_admin_browser, button)
+    proper_click_element(admin_browser, button)
     wait_for(lambda: punkty_kbn.value == "11.20")
 
     # Teraz usuniemy źródło i sprawdzimy, czy przycisk zmieni nazwę
     assert button.value == "Wypełniona!"
 
-    select_select2_clear_selection(preauth_admin_browser, "id_zrodlo")
-    WebDriverWait(preauth_admin_browser.driver, 5).until(
-        lambda browser: preauth_admin_browser.find_by_id(
+    select_select2_clear_selection(admin_browser, "id_zrodlo")
+    WebDriverWait(admin_browser.driver, 5).until(
+        lambda browser: admin_browser.find_by_id(
             "id_wypelnij_pola_punktacji_button"
         ).value
         == "Wypełnij pola punktacji"
     )
 
-    preauth_admin_browser.execute_script("window.onbeforeunload = function(e) {};")
+    admin_browser.execute_script("window.onbeforeunload = function(e) {};")
 
 
-def test_upload_punkty(preauth_admin_browser, asgi_live_server):
+def test_upload_punkty(admin_browser, asgi_live_server):
     any_zrodlo(nazwa="WTF LOL")
 
     url = reverse("admin:bpp_wydawnictwo_ciagle_add")
-    preauth_admin_browser.visit(asgi_live_server.url + url)
+    admin_browser.visit(asgi_live_server.url + url)
 
-    select_select2_autocomplete(preauth_admin_browser, "id_zrodlo", "WTF")
+    select_select2_autocomplete(admin_browser, "id_zrodlo", "WTF")
 
-    rok = preauth_admin_browser.find_by_id("id_rok")
-    show_element(preauth_admin_browser, rok)
-    preauth_admin_browser.fill("rok", str(CURRENT_YEAR))
+    rok = admin_browser.find_by_id("id_rok")
+    show_element(admin_browser, rok)
+    admin_browser.fill("rok", str(CURRENT_YEAR))
 
-    show_element(
-        preauth_admin_browser, preauth_admin_browser.find_by_id("id_impact_factor")
-    )
-    preauth_admin_browser.fill("impact_factor", "1")
+    show_element(admin_browser, admin_browser.find_by_id("id_impact_factor"))
+    admin_browser.fill("impact_factor", "1")
 
-    proper_click_by_id(preauth_admin_browser, "id_dodaj_punktacje_do_zrodla_button")
+    proper_click_by_id(admin_browser, "id_dodaj_punktacje_do_zrodla_button")
 
     time.sleep(2)
 
     assert Punktacja_Zrodla.objects.count() == 1
     assert Punktacja_Zrodla.objects.all()[0].impact_factor == 1
 
-    preauth_admin_browser.fill("impact_factor", "2")
-    proper_click_by_id(preauth_admin_browser, "id_dodaj_punktacje_do_zrodla_button")
-    # preauth_admin_browser.find_by_id("id_dodaj_punktacje_do_zrodla_button").click()
+    admin_browser.fill("impact_factor", "2")
+    proper_click_by_id(admin_browser, "id_dodaj_punktacje_do_zrodla_button")
+    # admin_browser.find_by_id("id_dodaj_punktacje_do_zrodla_button").click()
     time.sleep(2)
 
-    assertPopupContains(preauth_admin_browser, "Punktacja dla tego roku już istnieje")
+    assertPopupContains(admin_browser, "Punktacja dla tego roku już istnieje")
     time.sleep(2)
 
     assert Punktacja_Zrodla.objects.count() == 1
     assert Punktacja_Zrodla.objects.all()[0].impact_factor == 2
 
-    preauth_admin_browser.execute_script("window.onbeforeunload = function(e) {};")
+    admin_browser.execute_script("window.onbeforeunload = function(e) {};")
 
 
 @pytest.fixture
@@ -223,13 +215,13 @@ def autorform_jednostka(db):
 
 
 @pytest.fixture
-def autorform_browser(preauth_admin_browser, db, asgi_live_server):
+def autorform_browser(admin_browser, db, asgi_live_server):
     url = reverse("admin:bpp_wydawnictwo_ciagle_add")
-    with wait_for_page_load(preauth_admin_browser):
-        preauth_admin_browser.visit(asgi_live_server.url + url)
+    with wait_for_page_load(admin_browser):
+        admin_browser.visit(asgi_live_server.url + url)
 
-    preauth_admin_browser.execute_script("window.onbeforeunload = function(e) {};")
-    return preauth_admin_browser
+    admin_browser.execute_script("window.onbeforeunload = function(e) {};")
+    return admin_browser
 
 
 def test_autorform_uzupelnianie_jednostki(autorform_browser, autorform_jednostka):
@@ -284,28 +276,26 @@ def test_autorform_kasowanie_autora(autorform_browser, autorform_jednostka):
     autorform_browser.execute_script("window.onbeforeunload = function(e) {};")
 
 
-def test_bug_on_user_add(preauth_admin_browser, asgi_live_server):
-    preauth_admin_browser.visit(asgi_live_server.url + reverse("admin:bpp_bppuser_add"))
-    preauth_admin_browser.fill("username", "as")
-    preauth_admin_browser.fill("password1", "as")
-    preauth_admin_browser.fill("password2", "as")
-    with wait_for_page_load(preauth_admin_browser):
-        preauth_admin_browser.find_by_name("_continue").click()
+def test_bug_on_user_add(admin_browser, asgi_live_server):
+    admin_browser.visit(asgi_live_server.url + reverse("admin:bpp_bppuser_add"))
+    admin_browser.fill("username", "as")
+    admin_browser.fill("password1", "as")
+    admin_browser.fill("password2", "as")
+    with wait_for_page_load(admin_browser):
+        admin_browser.find_by_name("_continue").click()
 
-    preauth_admin_browser.wait_for_condition(
-        lambda browser: "Zmień użytkownik" in browser.html
-    )
+    admin_browser.wait_for_condition(lambda browser: "Zmień użytkownik" in browser.html)
 
 
 @flaky(max_runs=5)
 def test_admin_wydawnictwo_zwarte_uzupelnij_rok(
-    wydawnictwo_zwarte, preauth_admin_browser, asgi_live_server, transactional_db
+    wydawnictwo_zwarte, admin_browser, asgi_live_server, transactional_db
 ):
     """
-    :type preauth_admin_browser: splinter.driver.webdriver.remote.WebDriver
+    :type admin_browser: splinter.driver.webdriver.remote.WebDriver
     """
 
-    browser = preauth_admin_browser
+    browser = admin_browser
 
     browser.visit(asgi_live_server.url + reverse("admin:bpp_wydawnictwo_zwarte_add"))
 
@@ -348,14 +338,12 @@ def test_admin_wydawnictwo_zwarte_uzupelnij_rok(
 
 
 @flaky(max_runs=5)
-def test_admin_wydawnictwo_ciagle_uzupelnij_rok(
-    preauth_admin_browser, asgi_live_server
-):
+def test_admin_wydawnictwo_ciagle_uzupelnij_rok(admin_browser, asgi_live_server):
     """
-    :type preauth_admin_browser: splinter.driver.webdriver.remote.WebDriver
+    :type admin_browser: splinter.driver.webdriver.remote.WebDriver
     """
 
-    browser = preauth_admin_browser
+    browser = admin_browser
 
     with wait_for_page_load(browser):
         browser.visit(
@@ -376,13 +364,13 @@ def test_admin_wydawnictwo_ciagle_uzupelnij_rok(
 
 
 def test_admin_wydawnictwo_ciagle_dowolnie_zapisane_nazwisko(
-    preauth_admin_browser, asgi_live_server, autor_jan_kowalski
+    admin_browser, asgi_live_server, autor_jan_kowalski
 ):
     """
-    :type preauth_admin_browser: splinter.driver.webdriver.remote.WebDriver
+    :type admin_browser: splinter.driver.webdriver.remote.WebDriver
     """
 
-    browser = preauth_admin_browser
+    browser = admin_browser
 
     with wait_for_page_load(browser):
         browser.visit(
@@ -415,7 +403,7 @@ def test_admin_wydawnictwo_ciagle_dowolnie_zapisane_nazwisko(
     ["wydawnictwo_ciagle", "wydawnictwo_zwarte", "patent"],
 )
 def test_admin_domyslnie_afiliuje_nowy_rekord(
-    preauth_admin_browser,
+    admin_browser,
     asgi_live_server,
     url,
     expected,
@@ -423,7 +411,7 @@ def test_admin_domyslnie_afiliuje_nowy_rekord(
     # twórz nowy obiekt, nie używaj z fixtury, bo db i transactional_db
     mommy.make(Uczelnia, domyslnie_afiliuje=expected)
 
-    browser = preauth_admin_browser
+    browser = admin_browser
     with wait_for_page_load(browser):
         browser.visit(asgi_live_server.url + reverse(f"admin:bpp_{url}_add"))
 
@@ -445,7 +433,7 @@ def test_admin_domyslnie_afiliuje_nowy_rekord(
 )
 @pytest.mark.django_db(transaction=True)
 def test_admin_domyslnie_afiliuje_istniejacy_rekord(
-    preauth_admin_browser, asgi_live_server, url, klasa, expected, afiliowany
+    admin_browser, asgi_live_server, url, klasa, expected, afiliowany
 ):
     # twórz nowy obiekt, nie używaj z fixtury, bo db i transactional_db
     mommy.make(Uczelnia, domyslnie_afiliuje=expected)
@@ -459,7 +447,7 @@ def test_admin_domyslnie_afiliuje_istniejacy_rekord(
     wa.afiliowany = afiliowany
     wa.save()
 
-    browser = preauth_admin_browser
+    browser = admin_browser
     browser.visit(
         asgi_live_server.url
         + reverse(f"admin:bpp_{url}_change", args=(wydawnictwo.pk,))

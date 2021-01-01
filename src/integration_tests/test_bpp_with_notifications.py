@@ -1,9 +1,6 @@
 # -*- encoding: utf-8 -*-
 
-import time
-from time import time, sleep
 
-from channels.testing import ChannelsLiveServerTestCase
 from django.core.management import call_command
 
 #
@@ -21,21 +18,20 @@ from django.core.management import call_command
 #
 # POTEM AUTORYZACJA JAKAS MOZE na te komunikaty
 # tzn. najbardziej to na WYSYLANIE by sie przydala.
-from splinter import Browser
 
-from bpp.models import Wydawnictwo_Zwarte
-from bpp.util import get_fixture
 
 try:
     from django.core.urlresolvers import reverse
 except ImportError:
     from django.urls import reverse
+
 import pytest
+from conftest import NORMAL_DJANGO_USER_PASSWORD
 from selenium.webdriver.support.wait import WebDriverWait
 
-from bpp.models.system import Charakter_Formalny, Status_Korekty, Jezyk, Typ_KBN
-from conftest import NORMAL_DJANGO_USER_PASSWORD
-from django_bpp.selenium_util import wait_for_page_load, wait_for_websocket_connection
+from bpp.models.system import Charakter_Formalny, Jezyk, Status_Korekty, Typ_KBN
+
+from django_bpp.selenium_util import wait_for_page_load
 
 pytestmark = [pytest.mark.slow, pytest.mark.selenium]
 
@@ -52,14 +48,16 @@ def test_caching_enabled(admin_app, zrodlo, standard_data, transactional_db):
     """
     page = admin_app.get(reverse("admin:bpp_wydawnictwo_ciagle_add"))
 
-    char = Charakter_Formalny.objects.get_or_create(nazwa="charakter", skrot="chr")[0]
+    #  char = Charakter_Formalny.objects.get_or_create(nazwa="charakter", skrot="chr")[0]
 
     form = page.forms[1]
     form["tytul_oryginalny"].value = "Takie tam"
     form["rok"].value = "2000"
 
     form["zrodlo"].force_value(
-        [zrodlo.pk,]
+        [
+            zrodlo.pk,
+        ]
     )  # force_value bo to autocomplete
     form["charakter_formalny"].value = Charakter_Formalny.objects.all().first().pk
     form["jezyk"].value = Jezyk.objects.all().first().pk
@@ -145,10 +143,10 @@ def test_preauth_browser(preauth_browser, live_server):
     )
 
 
-def test_preauth_admin_browser(preauth_admin_browser, asgi_live_server):
+def test_admin_browser(admin_browser, asgi_live_server):
     """Sprawdz, czy pre-autoryzowany browser admina funkcjonuje poprawnie"""
-    preauth_admin_browser.visit(asgi_live_server.url + "/admin/")
-    assert preauth_admin_browser.is_text_present(u"Administracja stron")
+    admin_browser.visit(asgi_live_server.url + "/admin/")
+    assert admin_browser.is_text_present(u"Administracja stron")
 
 
 def test_webtest(webtest_app, normal_django_user):

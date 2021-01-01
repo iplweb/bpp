@@ -15,41 +15,43 @@ try:
     from django.core.urlresolvers import reverse
 except ImportError:
     from django.urls import reverse
+
 from model_mommy import mommy
 
 from bpp.fixtures import get_openaccess_data
 from bpp.models import (
     TO_AUTOR,
+    Autor_Dyscyplina,
     Dyscyplina_Naukowa,
     Wydawca,
-    const,
-    Autor_Dyscyplina,
     Zewnetrzna_Baza_Danych,
+    const,
 )
-from bpp.models.autor import Autor, Tytul, Funkcja_Autora
+from bpp.models.autor import Autor, Funkcja_Autora, Tytul
 from bpp.models.const import GR_WPROWADZANIE_DANYCH
 from bpp.models.patent import Patent
 from bpp.models.praca_doktorska import Praca_Doktorska
 from bpp.models.praca_habilitacyjna import Praca_Habilitacyjna
-from bpp.models.struktura import Uczelnia, Wydzial, Jednostka
+from bpp.models.struktura import Jednostka, Uczelnia, Wydzial
 from bpp.models.system import (
-    Jezyk,
     Charakter_Formalny,
-    Typ_KBN,
+    Jezyk,
     Status_Korekty,
+    Typ_KBN,
     Typ_Odpowiedzialnosci,
 )
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 from bpp.models.zrodlo import Zrodlo
+
 from django_bpp.selenium_util import wait_for_page_load, wait_for_websocket_connection
 
 NORMAL_DJANGO_USER_LOGIN = "test_login_bpp"
 NORMAL_DJANGO_USER_PASSWORD = "test_password"
 
-from bpp.tests.util import setup_mommy
-
 from asgi_live_server import asgi_live_server  # noqa
+
+from bpp.tests.util import setup_mommy
 
 setup_mommy()
 
@@ -158,7 +160,7 @@ def preauth_asgi_browser(preauth_browser, transactional_db, asgi_live_server):  
 
 
 @pytest.fixture
-def preauth_admin_browser(
+def admin_browser(
     admin_user,
     client,
     browser,
@@ -662,7 +664,7 @@ def pytest_configure():
     settings.CELERY_ALWAYS_EAGER = True
     settings.CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
 
-    from bpp.models.cache import Rekord, Autorzy
+    from bpp.models.cache import Autorzy, Rekord
 
     Rekord._meta.managed = True
     Autorzy._meta.managed = True
@@ -692,6 +694,7 @@ def pytest_configure():
 collect_ignore = [os.path.join(os.path.dirname(__file__), "media")]
 
 import os
+
 import pytest
 
 

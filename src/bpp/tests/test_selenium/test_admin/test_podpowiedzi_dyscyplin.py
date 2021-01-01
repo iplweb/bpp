@@ -4,6 +4,7 @@ from selenium.common.exceptions import ElementClickInterceptedException
 
 from bpp.models import Autor_Dyscyplina
 from bpp.tests import select_select2_autocomplete
+
 from django_bpp.selenium_util import wait_for
 
 
@@ -25,7 +26,7 @@ def scroll_until_handler_clicked_successfully(browser, handler="grp-add-handler"
 def test_podpowiedzi_dyscyplin_autor_ma_dwie(
     url,
     asgi_live_server,
-    preauth_admin_browser,
+    admin_browser,
     autor_jan_kowalski,
     dyscyplina1,
     dyscyplina2,
@@ -37,18 +38,16 @@ def test_podpowiedzi_dyscyplin_autor_ma_dwie(
         subdyscyplina_naukowa=dyscyplina2,
     )
     url = reverse("admin:bpp_%s_add" % url)
-    preauth_admin_browser.visit(asgi_live_server.url + url)
+    admin_browser.visit(asgi_live_server.url + url)
 
-    preauth_admin_browser.type("rok", "2018")
+    admin_browser.type("rok", "2018")
 
-    scroll_until_handler_clicked_successfully(preauth_admin_browser)
+    scroll_until_handler_clicked_successfully(admin_browser)
 
-    wait_for(lambda: preauth_admin_browser.find_by_id("id_autorzy_set-0-autor"))
-    select_select2_autocomplete(
-        preauth_admin_browser, "id_autorzy_set-0-autor", "KOWALSKI"
-    )
+    wait_for(lambda: admin_browser.find_by_id("id_autorzy_set-0-autor"))
+    select_select2_autocomplete(admin_browser, "id_autorzy_set-0-autor", "KOWALSKI")
 
-    sel = preauth_admin_browser.find_by_id("id_autorzy_set-0-dyscyplina_naukowa")
+    sel = admin_browser.find_by_id("id_autorzy_set-0-dyscyplina_naukowa")
     assert sel.value == "---------"
 
 
@@ -56,7 +55,7 @@ def test_podpowiedzi_dyscyplin_autor_ma_dwie(
 def test_podpowiedzi_dyscyplin_autor_ma_jedna_uczelnia_podpowiada(
     url,
     asgi_live_server,
-    preauth_admin_browser,
+    admin_browser,
     autor_jan_kowalski,
     dyscyplina1,
     dyscyplina2,
@@ -69,27 +68,25 @@ def test_podpowiedzi_dyscyplin_autor_ma_jedna_uczelnia_podpowiada(
         rok=2018, autor=autor_jan_kowalski, dyscyplina_naukowa=dyscyplina1
     )
     url = reverse("admin:bpp_%s_add" % url)
-    preauth_admin_browser.visit(asgi_live_server.url + url)
+    admin_browser.visit(asgi_live_server.url + url)
 
-    preauth_admin_browser.type("rok", "2018")
+    admin_browser.type("rok", "2018")
 
-    scroll_until_handler_clicked_successfully(preauth_admin_browser)
+    scroll_until_handler_clicked_successfully(admin_browser)
 
-    wait_for(lambda: preauth_admin_browser.find_by_id("id_autorzy_set-0-autor"))
+    wait_for(lambda: admin_browser.find_by_id("id_autorzy_set-0-autor"))
 
     no_tries = 0
 
     while no_tries < 10:
-        select_select2_autocomplete(
-            preauth_admin_browser, "id_autorzy_set-0-autor", "KOWALSKI"
-        )
+        select_select2_autocomplete(admin_browser, "id_autorzy_set-0-autor", "KOWALSKI")
 
-        sel = preauth_admin_browser.find_by_id("id_autorzy_set-0-dyscyplina_naukowa")
+        sel = admin_browser.find_by_id("id_autorzy_set-0-dyscyplina_naukowa")
 
         i = None
         try:
             i = int(sel.value)
-        except:
+        except BaseException:
             pass
 
         if i == dyscyplina1.pk:
@@ -105,7 +102,7 @@ def test_podpowiedzi_dyscyplin_autor_ma_jedna_uczelnia_podpowiada(
 def test_podpowiedzi_dyscyplin_autor_ma_jedna_uczelnia_nie_podpowiada(
     url,
     asgi_live_server,
-    preauth_admin_browser,
+    admin_browser,
     autor_jan_kowalski,
     dyscyplina1,
     dyscyplina2,
@@ -118,16 +115,14 @@ def test_podpowiedzi_dyscyplin_autor_ma_jedna_uczelnia_nie_podpowiada(
         rok=2018, autor=autor_jan_kowalski, dyscyplina_naukowa=dyscyplina1
     )
     url = reverse("admin:bpp_%s_add" % url)
-    preauth_admin_browser.visit(asgi_live_server.url + url)
+    admin_browser.visit(asgi_live_server.url + url)
 
-    preauth_admin_browser.type("rok", "2018")
+    admin_browser.type("rok", "2018")
 
-    scroll_until_handler_clicked_successfully(preauth_admin_browser)
+    scroll_until_handler_clicked_successfully(admin_browser)
 
-    wait_for(lambda: preauth_admin_browser.find_by_id("id_autorzy_set-0-autor"))
-    select_select2_autocomplete(
-        preauth_admin_browser, "id_autorzy_set-0-autor", "KOWALSKI"
-    )
+    wait_for(lambda: admin_browser.find_by_id("id_autorzy_set-0-autor"))
+    select_select2_autocomplete(admin_browser, "id_autorzy_set-0-autor", "KOWALSKI")
 
-    sel = preauth_admin_browser.find_by_id("id_autorzy_set-0-dyscyplina_naukowa")
+    sel = admin_browser.find_by_id("id_autorzy_set-0-dyscyplina_naukowa")
     assert sel.value == "---------"

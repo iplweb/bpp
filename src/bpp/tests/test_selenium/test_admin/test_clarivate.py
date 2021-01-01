@@ -1,5 +1,4 @@
 # -*- encoding: utf-8 -*-
-from flaky import flaky
 
 from bpp.tests import show_element
 
@@ -7,12 +6,14 @@ try:
     from django.core.urlresolvers import reverse
 except ImportError:
     from django.urls import reverse
+
+import pytest
 from mock import Mock
 from selenium.webdriver.support.expected_conditions import alert_is_present
 
-from bpp.tests.util import scroll_into_view, assertPopupContains
+from bpp.tests.util import assertPopupContains, scroll_into_view
+
 from django_bpp.selenium_util import wait_for, wait_for_page_load
-import pytest
 
 ID = "id_tytul_oryginalny"
 
@@ -20,8 +21,8 @@ pytestmark = [pytest.mark.slow, pytest.mark.selenium]
 
 
 @pytest.fixture(scope="function")
-def browser_z_wydawnictwem(preauth_admin_browser, asgi_live_server, wydawnictwo_ciagle):
-    browser = preauth_admin_browser
+def browser_z_wydawnictwem(admin_browser, asgi_live_server, wydawnictwo_ciagle):
+    browser = admin_browser
     with wait_for_page_load(browser):
         browser.visit(
             asgi_live_server.url
@@ -55,7 +56,7 @@ def test_admin_get_wos_information_clarivate_pmid(
 
     m = Mock()
     m.query_single = Mock(return_value={"timesCited": "31337"})
-    fn = mocker.patch("bpp.models.struktura.Uczelnia.wosclient", return_value=m)
+    mocker.patch("bpp.models.struktura.Uczelnia.wosclient", return_value=m)
 
     browser = browser_z_wydawnictwem
     browser.find_by_id("id_pubmed_id").type("31337")
