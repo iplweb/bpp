@@ -1,15 +1,17 @@
 # -*- encoding: utf-8 -*-
 from django.conf import settings
-from django.contrib.postgres.search import SearchQuery
-from django.utils.itercompat import is_iterable
 from mptt.forms import TreeNodeChoiceFieldMixin
 from mptt.settings import DEFAULT_LEVEL_INDICATOR
 
+from django.contrib.postgres.search import SearchQuery
+
+from django.utils.itercompat import is_iterable
+
 from bpp.models.konferencja import Konferencja
 from bpp.models.openaccess import (
-    Wersja_Tekstu_OpenAccess,
-    Licencja_OpenAccess,
     Czas_Udostepnienia_OpenAccess,
+    Licencja_OpenAccess,
+    Wersja_Tekstu_OpenAccess,
 )
 from bpp.models.struktura import Wydzial
 
@@ -19,52 +21,49 @@ from django.db.models import Q
 from django.db.models.expressions import F
 from multiseek import logic
 from multiseek.logic import (
-    DecimalQueryObject,
-    BooleanQueryObject,
-    EQUAL_NONE,
-    EQUAL_FEMALE,
-    DIFFERENT_NONE,
-    DIFFERENT_FEMALE,
-)
-from multiseek.logic import (
-    StringQueryObject,
-    QueryObject,
-    EQUALITY_OPS_ALL,
-    UnknownOperation,
-    DIFFERENT_ALL,
     AUTOCOMPLETE,
-    EQUALITY_OPS_NONE,
-    EQUALITY_OPS_FEMALE,
-    VALUE_LIST,
-    EQUALITY_OPS_MALE,
-    create_registry,
-    IntegerQueryObject,
-    ValueListQueryObject,
-    EQUAL,
     DIFFERENT,
+    DIFFERENT_ALL,
+    DIFFERENT_FEMALE,
+    DIFFERENT_NONE,
+    EQUAL,
+    EQUAL_FEMALE,
+    EQUAL_NONE,
+    EQUALITY_OPS_ALL,
+    EQUALITY_OPS_FEMALE,
+    EQUALITY_OPS_MALE,
+    EQUALITY_OPS_NONE,
+    VALUE_LIST,
     AutocompleteQueryObject,
-    Ordering,
-    ReportType,
-    RangeQueryObject,
+    BooleanQueryObject,
     DateQueryObject,
+    DecimalQueryObject,
+    IntegerQueryObject,
+    Ordering,
+    QueryObject,
+    RangeQueryObject,
+    ReportType,
+    StringQueryObject,
+    UnknownOperation,
+    ValueListQueryObject,
+    create_registry,
 )
 
 from bpp.models import (
-    Typ_Odpowiedzialnosci,
-    Jezyk,
     Autor,
-    Jednostka,
-    Charakter_Formalny,
-    Zrodlo,
-    Dyscyplina_Naukowa,
-    Zewnetrzna_Baza_Danych,
     Autorzy,
+    Charakter_Formalny,
+    Dyscyplina_Naukowa,
+    Jednostka,
+    Jezyk,
+    Typ_Odpowiedzialnosci,
     Uczelnia,
-    const,
+    Zewnetrzna_Baza_Danych,
     ZewnetrzneBazyDanychView,
+    Zrodlo,
+    const,
 )
 from bpp.models.cache import Rekord
-
 from bpp.models.system import Typ_KBN
 
 UNION = "równy+wspólny"
@@ -752,16 +751,16 @@ class LicencjaOpenAccessUstawionaQueryObject(BooleanQueryObject):
     def real_query(self, value, operation):
         if operation in EQUALITY_OPS_ALL:
             if value:
-                ret = ~Q(openaccess_licencja=None)
+                ret = Q(openaccess_licencja__isnull=False)
             else:
-                ret = Q(openaccess_licencja=None)
+                ret = Q(openaccess_licencja__isnull=True)
         else:
             raise UnknownOperation(operation)
 
         if operation in DIFFERENT_ALL:
             return ~ret
 
-            return ret
+        return ret
 
 
 class PublicDostepDniaQueryObject(BooleanQueryObject):

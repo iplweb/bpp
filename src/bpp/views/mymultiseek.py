@@ -2,15 +2,14 @@
 # ding: utf-8 -*-
 from django.db.models import Sum
 from django.views.decorators.cache import never_cache
-
 from multiseek.logic import get_registry
 from multiseek.views import (
-    MultiseekResults,
     MULTISEEK_SESSION_KEY_REMOVED,
+    MultiseekResults,
     manually_add_or_remove,
 )
 
-from bpp.models import Uczelnia, Ukryj_Status_Korekty
+from bpp.models import Uczelnia
 
 PKT_WEWN = "pkt_wewn"
 PKT_WEWN_BEZ = "pkt_wewn_bez"
@@ -54,7 +53,7 @@ class MyMultiseekResults(MultiseekResults):
         )
 
         if report_type in EXTRA_TYPES:
-            qset = qset.prefetch_related("charakter_formalny", "typ_kbn")
+            qset = qset.select_related("charakter_formalny", "typ_kbn")
 
             flds = flds + (
                 "charakter_formalny",
@@ -77,7 +76,7 @@ class MyMultiseekResults(MultiseekResults):
         return ret
 
     def get_context_data(self, **kwargs):
-        t = None
+        pass
 
         ctx = super(MyMultiseekResults, self).get_context_data()
 

@@ -4,7 +4,7 @@ from datetime import datetime
 import pytest
 from model_mommy import mommy
 from multiseek import logic
-from multiseek.logic import EQUAL, DIFFERENT, AutocompleteQueryObject
+from multiseek.logic import DIFFERENT, EQUAL, AutocompleteQueryObject
 
 from bpp.models import (
     Autor_Dyscyplina,
@@ -26,6 +26,7 @@ from bpp.multiseek_registry import (
     DyscyplinaQueryObject,
     ForeignKeyDescribeMixin,
     JednostkaQueryObject,
+    LicencjaOpenAccessUstawionaQueryObject,
     LiczbaAutorowQueryObject,
     NazwiskoIImieQueryObject,
     ObcaJednostkaQueryObject,
@@ -66,6 +67,17 @@ def test_TytulPracyQueryObject(value, operation):
         field_name="tytul_oryginalny", label="Tytuł oryginalny", public=True
     ).real_query(value, operation)
     assert Rekord.objects.filter(*(ret,)).count() == 0
+
+
+def test_multiseek_licencja_openaccess_ustawiona(wydawnictwo_zwarte):
+    lqo = LicencjaOpenAccessUstawionaQueryObject(
+        field_name="licencja_openaccess", label="X", public=True
+    )
+    res = lqo.real_query(True, logic.EQUAL)
+    assert Rekord.objects.filter(*(res,)).count() == 0
+
+    res = lqo.real_query(False, logic.EQUAL)
+    assert Rekord.objects.filter(*(res,)).count() == 1
 
 
 def test_DataUtworzeniaQueryObject():
@@ -319,7 +331,9 @@ def test_DostepDniaQueryObject():
 
 @pytest.mark.django_db
 def test_ObcaJednostkaQueryObject(
-    wydawnictwo_zwarte, autor_jan_kowalski, obca_jednostka,
+    wydawnictwo_zwarte,
+    autor_jan_kowalski,
+    obca_jednostka,
 ):
     wydawnictwo_zwarte.dodaj_autora(autor_jan_kowalski, obca_jednostka, afiliuje=False)
 

@@ -9,6 +9,7 @@ Historia zmian
 * raport slotów - autor umożliwia zbieranie "do N slotów" dla autora (b/n),
 * konfigurowane wartości domyślne dla daty w formularzach (#947)
 * wyszukiwanie pełnotekstowe uwzględnia myślniki (#851)
+* poprawne wyszukiwanie po polu "Licencja OpenAccess ustawiona" (#934)
 
 
 202012.51

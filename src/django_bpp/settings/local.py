@@ -13,8 +13,8 @@ def setenv_default(varname, default_value):
 setenv_default("DJANGO_SETTINGS_MODULE", "django_bpp.settings.local")
 setenv_default("DJANGO_BPP_SECRET_KEY", "0xdeadbeef 2")
 
-from .base import INSTALLED_APPS, DATABASES, MIDDLEWARE
 from .base import *  # noqa
+from .base import DATABASES, INSTALLED_APPS, MIDDLEWARE
 
 DEBUG = True
 
@@ -44,7 +44,7 @@ EMAIL_PORT = 2525
 
 PUNKTUJ_MONOGRAFIE = False
 
-DEBUG_TOOLBAR = False
+DEBUG_TOOLBAR = True
 
 if DEBUG_TOOLBAR and DEBUG:
     MIDDLEWARE = [
