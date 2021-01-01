@@ -1,11 +1,10 @@
 # -*- encoding: utf-8 -*-
 
-import time
 
 import pytest
 from lxml import etree
 
-from bpp.admin.helpers import MODEL_PUNKTOWANY_KOMISJA_CENTRALNA, MODEL_PUNKTOWANY
+from bpp.admin.helpers import MODEL_PUNKTOWANY, MODEL_PUNKTOWANY_KOMISJA_CENTRALNA
 from bpp.models.openaccess import Licencja_OpenAccess
 from bpp.models.system import Status_Korekty
 
@@ -17,6 +16,7 @@ def test_models_wydawnictwo_ciagle_dirty_fields_ostatnio_zmieniony_dla_pbn(
     autor_jan_nowak,
     jednostka,
     typy_odpowiedzialnosci,
+    cnt,
 ):
     Licencja_OpenAccess.objects.create(nazwa="lic 1 ", skrot="l1")
     Licencja_OpenAccess.objects.create(nazwa="lic 2 ", skrot="l2")
@@ -33,19 +33,19 @@ def test_models_wydawnictwo_ciagle_dirty_fields_ostatnio_zmieniony_dla_pbn(
 
         ost_zm_pbn = wyd.ostatnio_zmieniony_dla_pbn
 
-        time.sleep(0.5)
+        # time.sleep(0.5)
 
         wyd.status = Status_Korekty.objects.get(nazwa="w trakcie korekty")
         wyd.save()
         assert ost_zm_pbn == wyd.ostatnio_zmieniony_dla_pbn
 
-        time.sleep(0.5)
+        # time.sleep(0.5)
 
         wyd.status = Status_Korekty.objects.get(nazwa="po korekcie")
         wyd.save()
         assert ost_zm_pbn == wyd.ostatnio_zmieniony_dla_pbn
 
-        time.sleep(0.5)
+        # time.sleep(0.5)
 
         for fld in (
             MODEL_PUNKTOWANY_KOMISJA_CENTRALNA + MODEL_PUNKTOWANY + ("adnotacje",)
@@ -55,7 +55,7 @@ def test_models_wydawnictwo_ciagle_dirty_fields_ostatnio_zmieniony_dla_pbn(
             setattr(wyd, fld, 123)
             wyd.save()
             assert ost_zm_pbn == wyd.ostatnio_zmieniony_dla_pbn
-            time.sleep(0.5)
+            # time.sleep(0.5)
 
         wyd.tytul_oryginalny = "1234 test zmian"
         wyd.save()
@@ -65,7 +65,7 @@ def test_models_wydawnictwo_ciagle_dirty_fields_ostatnio_zmieniony_dla_pbn(
         except TypeError:
             pass  # TypeError: can't compare offset-naive and offset-aware datetimes
 
-        time.sleep(0.5)
+        # time.sleep(0.5)
 
         ost_zm_pbn = wyd.ostatnio_zmieniony_dla_pbn
 
