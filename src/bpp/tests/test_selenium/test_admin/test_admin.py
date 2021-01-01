@@ -9,40 +9,42 @@ try:
     from django.core.urlresolvers import reverse
 except ImportError:
     from django.urls import reverse
+
+import pytest
 from django.db import transaction
 from model_mommy import mommy
 from selenium.webdriver.support.wait import WebDriverWait
 
 from bpp.models import (
-    Wydawnictwo_Ciagle,
-    Uczelnia,
+    TO_AUTOR,
     Autor,
+    Charakter_Formalny,
     Jednostka,
     Typ_Odpowiedzialnosci,
-    TO_AUTOR,
-    Charakter_Formalny,
+    Uczelnia,
+    Wydawnictwo_Ciagle,
 )
 from bpp.models.patent import Patent
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 from bpp.models.zrodlo import Punktacja_Zrodla
 from bpp.tests import (
-    any_ciagle,
-    any_autor,
-    any_jednostka,
     add_extra_autor_inline,
-    proper_click_element,
+    any_autor,
+    any_ciagle,
+    any_jednostka,
     assertPopupContains,
     proper_click_by_id,
+    proper_click_element,
 )
 from bpp.tests.util import (
-    any_zrodlo,
     CURRENT_YEAR,
+    any_zrodlo,
     select_select2_autocomplete,
     select_select2_clear_selection,
     show_element,
 )
-from django_bpp.selenium_util import wait_for_page_load, wait_for
-import pytest
+
+from django_bpp.selenium_util import wait_for, wait_for_page_load
 
 ID = "id_tytul_oryginalny"
 
@@ -123,7 +125,6 @@ def trigger_event(elem, event):
     )
 
 
-@flaky(max_runs=5)
 def test_admin_uzupelnij_punkty(preauth_admin_browser, asgi_live_server):
     z = any_zrodlo(nazwa="WTF LOL")
 
@@ -164,14 +165,19 @@ def test_admin_uzupelnij_punkty(preauth_admin_browser, asgi_live_server):
     assert button.value == "Wypełniona!"
 
     select_select2_clear_selection(preauth_admin_browser, "id_zrodlo")
-    button = preauth_admin_browser.find_by_id("id_wypelnij_pola_punktacji_button")
-    assert button.value == "Wypełnij pola punktacji"
+    WebDriverWait(preauth_admin_browser.driver, 5).until(
+        lambda browser: preauth_admin_browser.find_by_id(
+            "id_wypelnij_pola_punktacji_button"
+        ).value
+        == "Wypełnij pola punktacji"
+    )
 
     preauth_admin_browser.execute_script("window.onbeforeunload = function(e) {};")
 
 
 def test_upload_punkty(preauth_admin_browser, asgi_live_server):
-    z = any_zrodlo(nazwa="WTF LOL")
+    any_zrodlo(nazwa="WTF LOL")
+
     url = reverse("admin:bpp_wydawnictwo_ciagle_add")
     preauth_admin_browser.visit(asgi_live_server.url + url)
 
@@ -226,14 +232,16 @@ def autorform_browser(preauth_admin_browser, db, asgi_live_server):
     return preauth_admin_browser
 
 
-@flaky(max_runs=10)
 def test_autorform_uzupelnianie_jednostki(autorform_browser, autorform_jednostka):
     add_extra_autor_inline(autorform_browser)
 
     select_select2_autocomplete(autorform_browser, "id_autorzy_set-0-autor", "KOWALSKI")
 
-    sel = autorform_browser.find_by_id("id_autorzy_set-0-jednostka")
-    assert str(sel.value) == str(autorform_jednostka.pk)
+    autorform_browser.find_by_id("id_autorzy_set-0-jednostka")
+    WebDriverWait(autorform_browser, 5).until(
+        lambda browser: autorform_browser.find_by_id("id_autorzy_set-0-jednostka").value
+        == str(autorform_jednostka.pk)
+    )
 
 
 def find_autocomplete_widget(browser, id):
@@ -247,7 +255,6 @@ def find_autocomplete_widget(browser, id):
             return elem
 
 
-@flaky(max_runs=5)
 def test_autorform_kasowanie_autora(autorform_browser, autorform_jednostka):
     # kliknij "dodaj powiazanie autor-wydawnictwo"
     add_extra_autor_inline(autorform_browser)
@@ -266,8 +273,13 @@ def test_autorform_kasowanie_autora(autorform_browser, autorform_jednostka):
     select_select2_clear_selection(autorform_browser, "id_autorzy_set-0-autor")
 
     # jednostka nie jest wybrana
-    jed = autorform_browser.find_by_id("id_autorzy_set-0-jednostka")
-    assert jed.value.find("\n") != -1
+    WebDriverWait(autorform_browser.driver, 5).until(
+        lambda browser: autorform_browser.find_by_id(
+            "id_autorzy_set-0-jednostka"
+        ).value.find("\n")
+        != -1
+    )
+    #  assert jed.value.find("\n") != -1
 
     autorform_browser.execute_script("window.onbeforeunload = function(e) {};")
 
@@ -399,10 +411,14 @@ def test_admin_wydawnictwo_ciagle_dowolnie_zapisane_nazwisko(
 
 @pytest.mark.parametrize("expected", [True, False])
 @pytest.mark.parametrize(
-    "url", ["wydawnictwo_ciagle", "wydawnictwo_zwarte", "patent"],
+    "url",
+    ["wydawnictwo_ciagle", "wydawnictwo_zwarte", "patent"],
 )
 def test_admin_domyslnie_afiliuje_nowy_rekord(
-    preauth_admin_browser, asgi_live_server, url, expected,
+    preauth_admin_browser,
+    asgi_live_server,
+    url,
+    expected,
 ):
     # twórz nowy obiekt, nie używaj z fixtury, bo db i transactional_db
     mommy.make(Uczelnia, domyslnie_afiliuje=expected)

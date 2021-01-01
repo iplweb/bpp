@@ -295,7 +295,6 @@ def select_select2_clear_selection(browser, element_id):
     browser.execute_script(
         "django.jQuery('#" + element_id + "').val(null).trigger('change')"
     )
-    time.sleep(0.2)
 
 
 def select_element_by_text(browser, element_id, text):
