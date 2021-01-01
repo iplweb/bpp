@@ -17,6 +17,7 @@ from raport_slotow.tables import RaportSlotowAutorTable
 from raport_slotow.util import (
     MyExportMixin,
     MyTableExport,
+    InitialValuesFromGETMixin,
 )
 
 from .. import const
@@ -25,8 +26,10 @@ from .. import const
 SESSION_KEY = "raport_slotow_data"
 
 
-class WyborOsoby(UczelniaSettingRequiredMixin, FormDefaultsMixin, FormView):
-    template_name = "raport_slotow/index.html"
+class WyborOsoby(
+    UczelniaSettingRequiredMixin, InitialValuesFromGETMixin, FormDefaultsMixin, FormView
+):
+    template_name = "raport_slotow/wybor_osoby.html"
     form_class = AutorRaportSlotowForm
     uczelnia_attr = "pokazuj_raport_slotow_autor"
     title = "Raport slotów - autor"
@@ -42,14 +45,6 @@ class WyborOsoby(UczelniaSettingRequiredMixin, FormDefaultsMixin, FormView):
         return HttpResponseRedirect(
             reverse("raport_slotow:raport") + "?_export=" + form.cleaned_data["_export"]
         )
-
-    def get_initial(self):
-        initial = super(WyborOsoby, self).get_initial()
-        for elem in ["od_roku", "do_roku"]:
-            value = self.request.GET.get(elem)
-            if value is not None:
-                initial[elem] = value
-        return initial
 
 
 class RaportSlotow(

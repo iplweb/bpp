@@ -1,3 +1,5 @@
+import urllib
+
 import django_tables2 as tables
 from django.template.defaultfilters import safe
 from django.urls import reverse
@@ -8,6 +10,7 @@ from bpp.models.cache import (
     Cache_Punktacja_Autora_Query_View,
     Cache_Punktacja_Autora_Query,
 )
+from raport_slotow import const
 from raport_slotow.columns import DecimalColumn, SummingColumn
 from raport_slotow.models import RaportZerowyEntry, RaportUczelniaEwaluacjaView
 
@@ -107,9 +110,10 @@ class RaportSlotowUczelniaBezJednostekIWydzialowTable(tables.Table):
     pbn_id = Column("PBN ID", "autor.pbn_id")
     orcid = Column("ORCID", "autor.orcid")
 
-    def __init__(self, od_roku, do_roku, *args, **kw):
+    def __init__(self, od_roku, do_roku, slot, *args, **kw):
         self.od_roku = od_roku
         self.do_roku = do_roku
+        self.slot = slot
         super(RaportSlotowUczelniaBezJednostekIWydzialowTable, self).__init__(
             *args, **kw
         )
@@ -118,8 +122,18 @@ class RaportSlotowUczelniaBezJednostekIWydzialowTable(tables.Table):
         return round(value, 4)
 
     def render_autor(self, value):
-        url = reverse(
-            "raport_slotow:raport", args=(value.slug, self.od_roku, self.do_roku)
+        url = (
+            reverse("raport_slotow:index")
+            + "?"
+            + urllib.parse.urlencode(
+                {
+                    "obiekt": value.pk,
+                    "od_roku": self.od_roku,
+                    "do_roku": self.do_roku,
+                    "dzialanie": const.DZIALANIE_SLOT,
+                    "slot": self.slot,
+                }
+            )
         )
         return safe("<a href=%s>%s</a>" % (url, value))
 

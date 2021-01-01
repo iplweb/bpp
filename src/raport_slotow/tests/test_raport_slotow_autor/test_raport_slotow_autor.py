@@ -99,3 +99,9 @@ def test_raport_slotow_autor_zbieraj_slot(
     assert res.status_code == 200
     wb = load_workbook(BytesIO(res.content))
     assert len(wb.get_sheet_names()) > 0
+
+
+def test_raport_slotow_autor_wartosci_poczatkowe(admin_client):
+    url = reverse("raport_slotow:index")
+    res = admin_client.get(url, dict(od_roku=5000))
+    assert b"5000" in res.content
