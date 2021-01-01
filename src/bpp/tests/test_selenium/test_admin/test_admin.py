@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
-import time
 
 from flaky import flaky
+from selenium.webdriver.support.expected_conditions import alert_is_present
 
 from bpp.models.const import CHARAKTER_OGOLNY_KSIAZKA
 
@@ -119,7 +119,8 @@ def trigger_event(elem, event):
     )
 
 
-def test_admin_uzupelnij_punkty(admin_browser, asgi_live_server):
+@pytest.mark.parametrize("execution_number", range(15))
+def test_admin_uzupelnij_punkty(admin_browser, asgi_live_server, execution_number):
     z = any_zrodlo(nazwa="WTF LOL")
 
     kw = dict(zrodlo=z)
@@ -186,21 +187,23 @@ def test_upload_punkty(admin_browser, asgi_live_server):
 
     proper_click_by_id(admin_browser, "id_dodaj_punktacje_do_zrodla_button")
 
-    time.sleep(2)
-
-    assert Punktacja_Zrodla.objects.count() == 1
+    WebDriverWait(admin_browser.driver, 10).until(
+        lambda browser: Punktacja_Zrodla.objects.count() == 1
+    )
     assert Punktacja_Zrodla.objects.all()[0].impact_factor == 1
 
     admin_browser.fill("impact_factor", "2")
     proper_click_by_id(admin_browser, "id_dodaj_punktacje_do_zrodla_button")
-    # admin_browser.find_by_id("id_dodaj_punktacje_do_zrodla_button").click()
-    time.sleep(2)
 
+    WebDriverWait(admin_browser.driver, 10).until(alert_is_present())
     assertPopupContains(admin_browser, "Punktacja dla tego roku już istnieje")
-    time.sleep(2)
+    WebDriverWait(admin_browser.driver, 10).until(
+        lambda browser: not alert_is_present()(browser)
+    )
 
-    assert Punktacja_Zrodla.objects.count() == 1
-    assert Punktacja_Zrodla.objects.all()[0].impact_factor == 2
+    WebDriverWait(admin_browser.driver, 10).until(
+        lambda browser: Punktacja_Zrodla.objects.all()[0].impact_factor == 2
+    )
 
     admin_browser.execute_script("window.onbeforeunload = function(e) {};")
 
