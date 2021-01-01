@@ -560,12 +560,14 @@ def charaktery_formalne():
 
     chf_ksp = Charakter_Formalny.objects.get(skrot="KSP")
     chf_ksp.rodzaj_pbn = const.RODZAJ_PBN_KSIAZKA
+    chf_ksp.charakter_ogolny = const.CHARAKTER_OGOLNY_KSIAZKA
     chf_ksp.charakter_sloty = const.CHARAKTER_SLOTY_KSIAZKA
     chf_ksp.nazwa_w_primo = "Książka"
     chf_ksp.save()
 
     chf_roz = Charakter_Formalny.objects.get(skrot="ROZ")
     chf_roz.rodzaj_pbn = const.RODZAJ_PBN_ROZDZIAL
+    chf_ksp.charakter_ogolny = const.CHARAKTER_OGOLNY_ROZDZIAL
     chf_roz.charakter_sloty = const.CHARAKTER_SLOTY_ROZDZIAL
     chf_roz.save()
 

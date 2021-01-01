@@ -560,6 +560,42 @@ class TypRekorduObject(ValueListQueryObject):
         return q
 
 
+class CharakterOgolnyQueryObject(ValueListQueryObject):
+    label = "Charakter formalny ogólny"
+    values = ["artykuł", "rozdział", "książka", "inne"]
+    ops = [EQUAL, DIFFERENT]
+
+    def value_from_web(self, value):
+        if value not in self.values:
+            return
+        return value
+
+    def real_query(self, value, operation):
+        if value == "artykuł":
+            charaktery = Charakter_Formalny.objects.filter(
+                charakter_ogolny=const.CHARAKTER_OGOLNY_ARTYKUL
+            )
+        elif value == "rozdział":
+            charaktery = Charakter_Formalny.objects.filter(
+                charakter_ogolny=const.CHARAKTER_OGOLNY_ROZDZIAL
+            )
+        elif value == "książka":
+            charaktery = Charakter_Formalny.objects.filter(
+                charakter_ogolny=const.CHARAKTER_OGOLNY_KSIAZKA
+            )
+        elif value == "inne":
+            charaktery = Charakter_Formalny.objects.filter(
+                charakter_ogolny=const.CHARAKTER_OGOLNY_INNE
+            )
+        else:
+            raise NotImplementedError()
+
+        q = Q(**{"charakter_formalny__in": charaktery})
+        if operation == DIFFERENT:
+            return ~q
+        return q
+
+
 class CharakterFormalnyQueryObject(TreeNodeChoiceFieldMixin, ValueListQueryObject):
     field_name = "charakter_formalny"
     label = "Charakter formalny"
@@ -798,6 +834,7 @@ multiseek_fields = [
     RokQueryObject(),
     TypRekorduObject(),
     CharakterFormalnyQueryObject(),
+    CharakterOgolnyQueryObject(),
     TypKBNQueryObject(),
     ZrodloQueryObject(),
     PierwszeNazwiskoIImie(),

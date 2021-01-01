@@ -22,6 +22,7 @@ from bpp.models.openaccess import (
 )
 from bpp.multiseek_registry import (
     UNION,
+    CharakterOgolnyQueryObject,
     DataUtworzeniaQueryObject,
     DyscyplinaQueryObject,
     ForeignKeyDescribeMixin,
@@ -78,6 +79,18 @@ def test_multiseek_licencja_openaccess_ustawiona(wydawnictwo_zwarte):
 
     res = lqo.real_query(False, logic.EQUAL)
     assert Rekord.objects.filter(*(res,)).count() == 1
+
+
+def test_multiseek_charakter_formalny_ogolny(wydawnictwo_zwarte, ksiazka_polska):
+    wydawnictwo_zwarte.charakter_formalny = ksiazka_polska
+    wydawnictwo_zwarte.save()
+
+    lqo = CharakterOgolnyQueryObject(field_name="charakter", label="X")
+    res = lqo.real_query("książka", logic.EQUAL)
+    assert Rekord.objects.filter(*(res,)).count() == 1
+
+    res = lqo.real_query("książka", logic.DIFFERENT)
+    assert Rekord.objects.filter(*(res,)).count() == 0
 
 
 def test_DataUtworzeniaQueryObject():

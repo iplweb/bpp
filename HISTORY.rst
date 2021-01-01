@@ -10,7 +10,7 @@ Historia zmian
 * konfigurowane wartości domyślne dla daty w formularzach (#947)
 * wyszukiwanie pełnotekstowe uwzględnia myślniki (#851)
 * poprawne wyszukiwanie po polu "Licencja OpenAccess ustawiona" (#934)
-
+* możliwość wyszukiwania po polu "charakter formalny ogólny" (#933)
 
 202012.51
 ---------
