@@ -4,6 +4,10 @@
 Historia zmian
 ==============
 
+202101.53
+---------
+* poprawne opisy powiązań autora z dyscypliną w module redagowania (#686)
+
 202101.52
 ---------
 * raport slotów - autor umożliwia zbieranie "do N slotów" dla autora (b/n),

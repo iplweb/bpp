@@ -2,10 +2,9 @@ from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
-from django.db.models import PositiveSmallIntegerField, CASCADE
+from django.db.models import CASCADE, PositiveSmallIntegerField
 
 from bpp.models import const
-
 
 # bpp=# select distinct substr(id, 1, 2), dziedzina from import_dbf_ldy;
 #  substr |                 dziedzina
@@ -149,6 +148,12 @@ class Autor_Dyscyplina(models.Model):
     )
 
     objects = Autor_DyscyplinaManager()
+
+    def __str__(self):
+        ret = f"przypisanie {self.autor} na rok {self.rok} do dyscypliny {self.dyscyplina_naukowa}"
+        if self.subdyscyplina_naukowa_id is not None:
+            ret += f" oraz {self.subdyscyplina_naukowa}"
+        return ret
 
     class Meta:
         unique_together = [("rok", "autor")]
