@@ -11,6 +11,11 @@ repos:
         - id: autopep8
           args: ['--in-place', '-aaa',]
 
+    - repo: https://github.com/hadialqattan/pycln
+      rev: '0.0.1-beta.1'
+      hooks:
+        - id: pycln
+
     - repo: https://github.com/pre-commit/mirrors-isort
       rev: 'v5.7.0'  # Use the revision sha / tag you want to point at
       hooks:

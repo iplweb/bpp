@@ -31,7 +31,7 @@ dj-pagination==2.4.0      # via -r requirements.in
 django-admin-sortable2==0.7.6  # via -r requirements.in
 django-admin-tools==0.9.0  # via -r requirements.in
 django-appconf==1.0.3     # via django-compressor
-django-autocomplete-light==3.5.1  # via -r requirements.in, django-multiseek
+django-autocomplete-light==3.8.1  # via -r requirements.in, django-multiseek
 django-autoslug==1.9.8    # via -r requirements.in
 django-braces==1.14.0     # via -r requirements.in
 django-classy-tags==1.0.0  # via -r requirements.in, django-cookie-law
@@ -55,7 +55,7 @@ django-loginas==0.3.8     # via -r requirements.in
 django-messages-extends==0.6.2  # via -r requirements.in
 django-model-utils==4.0.0  # via -r requirements.in
 django-mptt==0.11.0       # via -r requirements.in
-django-multiseek==0.9.41  # via -r requirements.in
+django-multiseek==0.9.42  # via -r requirements.in
 django-password-policies-iplweb==0.7.0  # via -r requirements.in
 django-querysetsequence==0.12  # via -r requirements.in
 django-redis-cache==2.1.1  # via -r requirements.in
@@ -100,7 +100,7 @@ pyoai==2.5.0              # via -r requirements.in, moai-iplweb
 pyopenssl==19.1.0         # via twisted
 pypandoc==1.4             # via -r requirements.in, django-flexible-reports
 pytest-runner==5.2        # via django-cookie-law
-python-dateutil==2.6.1    # via django-multiseek
+python-dateutil==2.8.1    # via django-multiseek
 python-utils==2.4.0       # via progressbar2
 pytz==2018.4              # via -r requirements.in, celery, django, django-dirtyfields
 rcssmin==1.0.6            # via django-compressor

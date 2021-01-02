@@ -26,7 +26,7 @@
               href="{% static "foundation-datepicker/foundation/fonts/foundation-icons.css" %}">
         <link rel="stylesheet" type="text/css"
               href="{% static "foundation-datepicker/css/foundation-datepicker.min.css" %}">
-        <link rel="stylesheet" type="text/css" href="{% static "vendor/select2/dist/css/select2.css" %}">
+        <link rel="stylesheet" type="text/css" href="{% static "select2/dist/css/select2.min.css" %}">
         <link rel="stylesheet" type="text/css" href="{% static "autocomplete_light/select2.css" %}">
         <link rel="stylesheet" type="text/css"
               href="{% static "select2-foundation_theme/dist/select2-foundation-theme.css" %}">
@@ -69,33 +69,15 @@
         {% block extrahead_js %}
         {% endblock %}
 
-{#                <script src="{% static "foundation-sites/dist/js/plugins/foundation.core.js" %}"></script>#}
-        {##}
-{#                <script src="{% static "foundation-sites/dist/js/plugins/foundation.util.keyboard.js" %}"></script>#}
-{#                <script src="{% static "foundation-sites/dist/js/plugins/foundation.util.imageLoader.js" %}"></script>#}
-        {#        <script src="{% static "foundation-sites/dist/js/plugins/foundation.util.triggers.js" %}"></script>#}
-        {#        <script src="{% static "foundation-sites/dist/js/plugins/foundation.util.mediaQuery.js" %}"></script>#}
-        {##}
-        {#        <script src="{% static "foundation-sites/dist/js/plugins/foundation.sticky.js" %}"></script>#}
-{#                <script src="{% static "foundation-sites/dist/js/plugins/foundation.tabs.js" %}"></script>#}
-
-        {#        <script src="{% static "foundation-sites/dist/js/plugins/foundation.responsiveMenu.js" %}"></script>#}
-
-        {#        TODO: brak zamiennika alert.js wtf #}
-        {#        <script src="{% static "foundation-sites/dist/js/plugins/foundation.alert.js" %}"></script>#}
-        {#        <script src="{% static "foundation-sites/dist/js/plugins/foundation.magellan.js" %}"></script>#}
-
         <script src="{% static 'jinplace/js/jinplace.js' %}"></script>
 
         <script type="text/javascript" src="{% static 'session_security/script.js' %}"></script>
 
-        <script src="{% static "autocomplete_light/jquery.init.js" %}"></script>
-        <script src="{% static "autocomplete_light/autocomplete.init.js" %}"></script>
-        <script src="{% static "vendor/select2/dist/js/select2.full.js" %}"></script>
-        <script src="{% static "vendor/select2/dist/js/i18n/pl.js" %}"></script>
+        <script src="{% static "select2/dist/js/select2.full.min.js" %}"></script>
+        <script src="{% static "select2/dist/js/i18n/pl.js" %}"></script>
+        <script src="{% static "autocomplete_light/autocomplete_light.js" %}"></script>
+        <script src="{% static "autocomplete_light/i18n/pl.js" %}"></script>
         <script src="{% static "autocomplete_light/select2.js" %}"></script>
-        <script src="{% static "autocomplete_light/forward.js" %}"></script>
-        <script src="{% static "autocomplete_light/jquery.post-setup.js" %}"></script>
 
 
     {% endcompress %}
