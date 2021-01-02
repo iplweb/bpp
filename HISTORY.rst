@@ -12,6 +12,7 @@ Historia zmian
 * poprawne wyszukiwanie po polu "Licencja OpenAccess ustawiona" (#934)
 * możliwość wyszukiwania po polu "charakter formalny ogólny" (#933)
 * poprawne wyszukiwanie w polach numerycznych (#913)
+* możliwość powiązania zewnętrznej bazy danych również dla wydawnictwo zwartych (#935)
 
 202012.51
 ---------
