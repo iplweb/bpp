@@ -7,6 +7,7 @@ from datetime import datetime
 import django_webtest
 import pytest
 from rest_framework.test import APIClient
+from selenium.webdriver.remote.webdriver import WebDriver
 
 from bpp.tasks import aktualizuj_cache_rekordu
 
@@ -14,41 +15,43 @@ try:
     from django.core.urlresolvers import reverse
 except ImportError:
     from django.urls import reverse
+
 from model_mommy import mommy
 
 from bpp.fixtures import get_openaccess_data
 from bpp.models import (
     TO_AUTOR,
+    Autor_Dyscyplina,
     Dyscyplina_Naukowa,
     Wydawca,
-    const,
-    Autor_Dyscyplina,
     Zewnetrzna_Baza_Danych,
+    const,
 )
-from bpp.models.autor import Autor, Tytul, Funkcja_Autora
+from bpp.models.autor import Autor, Funkcja_Autora, Tytul
 from bpp.models.const import GR_WPROWADZANIE_DANYCH
 from bpp.models.patent import Patent
 from bpp.models.praca_doktorska import Praca_Doktorska
 from bpp.models.praca_habilitacyjna import Praca_Habilitacyjna
-from bpp.models.struktura import Uczelnia, Wydzial, Jednostka
+from bpp.models.struktura import Jednostka, Uczelnia, Wydzial
 from bpp.models.system import (
-    Jezyk,
     Charakter_Formalny,
-    Typ_KBN,
+    Jezyk,
     Status_Korekty,
+    Typ_KBN,
     Typ_Odpowiedzialnosci,
 )
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 from bpp.models.zrodlo import Zrodlo
+
 from django_bpp.selenium_util import wait_for_page_load, wait_for_websocket_connection
 
 NORMAL_DJANGO_USER_LOGIN = "test_login_bpp"
 NORMAL_DJANGO_USER_PASSWORD = "test_password"
 
-from bpp.tests.util import setup_mommy
-
 from asgi_live_server import asgi_live_server  # noqa
+
+from bpp.tests.util import setup_mommy
 
 setup_mommy()
 
@@ -107,7 +110,7 @@ def _preauth_session_id_helper(
     password,
     client,
     browser,
-    asgi_live_server,
+    asgi_live_server,  # noqa
     django_user_model,
     django_username_field,
 ):
@@ -115,7 +118,7 @@ def _preauth_session_id_helper(
     assert res is True
 
     with wait_for_page_load(browser):
-        browser.visit(asgi_live_server.url + "/")
+        browser.visit(asgi_live_server.url + "/non-existant-url")
     browser.cookies.add({"sessionid": client.cookies["sessionid"].value})
     browser.authorized_user = django_user_model.objects.get(
         **{django_username_field: username}
@@ -130,7 +133,7 @@ def preauth_browser(
     normal_django_user,
     client,
     browser,
-    asgi_live_server,
+    asgi_live_server,  # noqa
     django_user_model,
     django_username_field,
 ):
@@ -149,7 +152,7 @@ def preauth_browser(
 
 
 @pytest.fixture
-def preauth_asgi_browser(preauth_browser, transactional_db, asgi_live_server):
+def preauth_asgi_browser(preauth_browser, transactional_db, asgi_live_server):  # noqa
     with wait_for_page_load(preauth_browser):
         preauth_browser.visit(asgi_live_server.url)
     wait_for_websocket_connection(preauth_browser)
@@ -157,15 +160,15 @@ def preauth_asgi_browser(preauth_browser, transactional_db, asgi_live_server):
 
 
 @pytest.fixture
-def preauth_admin_browser(
+def admin_browser(
     admin_user,
     client,
     browser,
-    asgi_live_server,
+    asgi_live_server,  # noqa
     django_user_model,
     django_username_field,
     transactional_db,
-):
+) -> WebDriver:
     browser = _preauth_session_id_helper(
         "admin",
         "password",
@@ -175,6 +178,8 @@ def preauth_admin_browser(
         django_user_model,
         django_username_field,
     )
+    browser.driver.set_window_size(1920, 1200)
+
     yield browser
     browser.execute_script("window.onbeforeunload = function(e) {};")
     browser.quit()
@@ -555,12 +560,14 @@ def charaktery_formalne():
 
     chf_ksp = Charakter_Formalny.objects.get(skrot="KSP")
     chf_ksp.rodzaj_pbn = const.RODZAJ_PBN_KSIAZKA
+    chf_ksp.charakter_ogolny = const.CHARAKTER_OGOLNY_KSIAZKA
     chf_ksp.charakter_sloty = const.CHARAKTER_SLOTY_KSIAZKA
     chf_ksp.nazwa_w_primo = "Książka"
     chf_ksp.save()
 
     chf_roz = Charakter_Formalny.objects.get(skrot="ROZ")
     chf_roz.rodzaj_pbn = const.RODZAJ_PBN_ROZDZIAL
+    chf_ksp.charakter_ogolny = const.CHARAKTER_OGOLNY_ROZDZIAL
     chf_roz.charakter_sloty = const.CHARAKTER_SLOTY_ROZDZIAL
     chf_roz.save()
 
@@ -661,7 +668,7 @@ def pytest_configure():
     settings.CELERY_ALWAYS_EAGER = True
     settings.CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
 
-    from bpp.models.cache import Rekord, Autorzy
+    from bpp.models.cache import Autorzy, Rekord
 
     Rekord._meta.managed = True
     Autorzy._meta.managed = True
@@ -691,6 +698,7 @@ def pytest_configure():
 collect_ignore = [os.path.join(os.path.dirname(__file__), "media")]
 
 import os
+
 import pytest
 
 

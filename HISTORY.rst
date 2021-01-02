@@ -1,27 +1,35 @@
+]
 
 ==============
 Historia zmian
 ==============
 
+202101.52
+---------
+* raport slotów - autor umożliwia zbieranie "do N slotów" dla autora (b/n),
+* konfigurowane wartości domyślne dla daty w formularzach (#947)
+* wyszukiwanie pełnotekstowe uwzględnia myślniki (#851)
+* poprawne wyszukiwanie po polu "Licencja OpenAccess ustawiona" (#934)
+* możliwość wyszukiwania po polu "charakter formalny ogólny" (#933)
+* poprawne wyszukiwanie w polach numerycznych (#913)
+* możliwość powiązania zewnętrznej bazy danych również dla wydawnictwo zwartych (#935)
+
 202012.51
 ---------
-
 * zbieranie slotów dla autora za pomocą algorytmu plecakowego (b/n),
 * ukrywanie statusów korekt w multiwyszukiwarce (#942),
 * ukrywanie statusów korekt przy obliczaniu slotów -
-  liczenie punktów za sloty w zależności od ustawienia statusu korekty (#945)
-* ukrywanie wybranych statusów korekt w rankingach (#946)
-* ukrywanie wybranych statusów korekt w raportach (#943)
-* ukrywanie wybranych statusów korekt w API (#946)
+  liczenie punktów za sloty w zależności od ustawienia statusu korekty (#945),
+* ukrywanie wybranych statusów korekt w rankingach (#946),
+* ukrywanie wybranych statusów korekt w raortach (#943),
+* ukrywanie wybranych statusów korekt w API (#946),
 
 202011.50
 ---------
-
 * prawidłowe obliczanie punktów dla tłumaczeń (#931)
 
 202011.49
 ---------
-
 * podczas obliczania slotów dla liczby autorów z dyscypliny nie uwzględniaj autorów
   z odznaczonym polem "afiliuje" (#927)
 * pole "pseudonim" dla autora (#921)

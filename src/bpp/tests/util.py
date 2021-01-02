@@ -7,30 +7,33 @@ import time
 import warnings
 from datetime import datetime
 
-from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 from model_mommy import mommy
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.wait import WebDriverWait
 from splinter.exceptions import ElementDoesNotExist
 
+from django.contrib.contenttypes.models import ContentType
+
 from bpp.models import (
-    Tytul,
     Autor,
+    Charakter_Formalny,
     Jednostka,
+    Jezyk,
+    Patent,
+    Praca_Doktorska,
+    Praca_Habilitacyjna,
+    Typ_KBN,
+    Tytul,
+    Uczelnia,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
-    Zrodlo,
     Wydzial,
-    Uczelnia,
-    Praca_Habilitacyjna,
-    Praca_Doktorska,
-    Typ_KBN,
-    Jezyk,
-    Charakter_Formalny,
-    Patent,
+    Zrodlo,
 )
 from bpp.models.system import Status_Korekty
-from django_bpp.selenium_util import wait_for_page_load, wait_for
+
+from django_bpp.selenium_util import wait_for, wait_for_page_load
 
 
 def setup_mommy():
@@ -228,17 +231,17 @@ def scroll_into_view(browser, arg):
 
 def show_element(browser, element):
     s = """
-        console.log('enter---');
+        // console.log('enter---');
         window.scrollTo(0, 0);
         var viewPortHeight = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
-        console.log(viewPortHeight);
+        // console.log(viewPortHeight);
         var elementTop = arguments[0].getBoundingClientRect().top;
-        console.log(elementTop);
+        // console.log(elementTop);
         if (elementTop < (viewPortHeight/2)*0.5 || elementTop > (viewPortHeight/2)*1.5 ) {
-            console.log("scrolling");
+            // console.log("scrolling");
             window.scrollTo(0, Math.max(0, elementTop-(viewPortHeight/2)));
-            console.log(Math.max(0, elementTop-(viewPortHeight/2)));    
-        }    
+            // console.log(Math.max(0, elementTop-(viewPortHeight/2)));
+        }
         """
     return browser.execute_script(s, element._element)
 
@@ -289,22 +292,21 @@ def select_select2_autocomplete(browser, element_id, value):
 
 
 def select_select2_clear_selection(browser, element_id):
-    element = browser.find_by_id(element_id)[0]
+    browser.find_by_id(element_id)[0]
     browser.execute_script(
         "django.jQuery('#" + element_id + "').val(null).trigger('change')"
     )
-    time.sleep(0.2)
 
 
 def select_element_by_text(browser, element_id, text):
-    scroll_into_view(browser, element_id)
     element = browser.find_by_id(element_id)
+    show_element(browser, element)
     element.select_by_text(text)
 
 
 def set_element(browser, element_id, text):
-    scroll_into_view(browser, element_id)
     element = browser.find_by_id(element_id)
+    show_element(browser, element)
     element.type(text)
 
 
@@ -316,12 +318,18 @@ def submit_admin_form(browser):
 
 
 def proper_click_element(browser, element):
-    show_element(browser, element)
-    return element.click()
+    # show_element(browser, element)
+    # return element.click()
+    browser.execute_script("arguments[0].scrollIntoView();", element._element)
+    browser.execute_script("arguments[0].click();", element._element)
 
 
 def proper_click_by_id(browser, arg):
-    return proper_click_element(browser, browser.find_by_id(arg))
+    browser.find_by_id(arg)
+    browser.execute_script(
+        "document.getElementById(arguments[0]).scrollIntoView();", arg
+    )
+    browser.execute_script("document.getElementById(arguments[0]).click();", arg)
 
 
 def assertPopupContains(browser, text, accept=True):
@@ -356,6 +364,11 @@ def randomobj(model):
     return model.objects.order_by("?").first()
 
 
+def quick_find_by_id(browser, id):
+    if f'id="{id}"' in browser.html:
+        return browser.find_by_id(id, wait_time=0)
+
+
 def fill_admin_form(
     browser,
     zrodlo=None,
@@ -368,19 +381,19 @@ def fill_admin_form(
 ):
     set_element(browser, "id_tytul_oryginalny", tytul_oryginalny)
 
-    if browser.find_by_id("id_zrodlo"):
+    if quick_find_by_id(browser, "id_zrodlo"):
         if zrodlo is None:
             # from bpp.models import Zrodlo
             zrodlo = randomobj(Zrodlo)
         select_select2_autocomplete(browser, "id_zrodlo", zrodlo.nazwa)
 
-    if browser.find_by_id("id_jezyk"):
+    if quick_find_by_id(browser, "id_jezyk"):
         if jezyk is None:
             # from bpp.models import Jezk
             jezyk = randomobj(Jezyk)
         select_element_by_text(browser, "id_jezyk", jezyk.nazwa)
 
-    if browser.find_by_id("id_charakter_formalny"):
+    if quick_find_by_id(browser, "id_charakter_formalny"):
         if charakter_formalny is None:
             # charakter_formalny = randomobj(Charakter_Formalny)
             charakter_formalny = Charakter_Formalny.objects.get(nazwa="Broszura")
@@ -388,7 +401,7 @@ def fill_admin_form(
             browser, "id_charakter_formalny", " " + charakter_formalny.nazwa
         )
 
-    if browser.find_by_id("id_typ_kbn"):
+    if quick_find_by_id(browser, "id_typ_kbn"):
         if typ_kbn is None:
             typ_kbn = randomobj(Typ_KBN)
         select_element_by_text(browser, "id_typ_kbn", typ_kbn.nazwa)
@@ -433,11 +446,17 @@ def fill_admin_inline(
 
 
 def submitted_form_bad(browser):
-    return wait_for(lambda: "Prosimy poprawić" in browser.html)
+    WebDriverWait(browser.driver, 10).until(
+        lambda driver: "Prosimy poprawić" in driver.page_source
+    )
+    return True
 
 
 def submitted_form_good(browser):
-    return wait_for(lambda: "został dodany pomyślnie" in browser.html)
+    WebDriverWait(browser.driver, 10).until(
+        lambda driver: "został dodany pomyślnie" in driver.page_source
+    )
+    return True
 
 
 def browse_praca_url(model):

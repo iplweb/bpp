@@ -2,10 +2,15 @@
 from urllib.parse import urlencode
 
 import pytest
-from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.urls.base import reverse
+from raport_slotow import const
+from raport_slotow.views import SESSION_KEY
 
+from django.contrib.contenttypes.models import ContentType
+
+from bpp.models import Uczelnia
+from bpp.models.const import DO_STYCZNIA_POPRZEDNI_POTEM_OBECNY, NAJWIEKSZY_REKORD
 from bpp.models.fields import OpcjaWyswietlaniaField
 from bpp.tests import browse_praca_url
 
@@ -216,20 +221,18 @@ def test_pokazuj_raport_slotow_menu_na_glownej(
 
 
 @pytest.mark.parametrize(
-    "nazwa_url,args_url,atrybut_uczelni,params",
+    "nazwa_url,atrybut_uczelni,params",
     [
-        ("raport_slotow:index", [], "pokazuj_raport_slotow_autor", {}),
-        ("raport_slotow:raport-slotow-zerowy", [], "pokazuj_raport_slotow_zerowy", {}),
+        ("raport_slotow:index", "pokazuj_raport_slotow_autor", {}),
+        ("raport_slotow:raport-slotow-zerowy", "pokazuj_raport_slotow_zerowy", {}),
         (
             "raport_slotow:raport",
-            ["autor.slug", 2000, 2010],
             "pokazuj_raport_slotow_autor",
             {},
         ),
-        ("raport_slotow:index-uczelnia", [], "pokazuj_raport_slotow_uczelnia", {}),
+        ("raport_slotow:index-uczelnia", "pokazuj_raport_slotow_uczelnia", {}),
         (
             "raport_slotow:raport-uczelnia",
-            [],
             "pokazuj_raport_slotow_uczelnia",
             {"od_roku": 2000, "do_roku": 2000, "maksymalny_slot": 1, "_export": "html"},
         ),
@@ -237,16 +240,25 @@ def test_pokazuj_raport_slotow_menu_na_glownej(
 )
 @pytest.mark.django_db
 def test_pokazuj_raport_slotow_czy_mozna_kliknac(
-    uczelnia, admin_client, client, autor, nazwa_url, args_url, atrybut_uczelni, params
+    uczelnia, admin_client, client, autor, nazwa_url, atrybut_uczelni, params
 ):
-    new_args_url = []
-    for elem in args_url:
-        if elem == "autor.slug":
-            new_args_url.append(autor.slug)
-            continue
-        new_args_url.append(elem)
+    url = reverse(nazwa_url)
+    if nazwa_url == "raport_slotow:raport":
+        dane_raportu = {
+            "obiekt": autor.pk,
+            "od_roku": 2016,
+            "do_roku": 2017,
+            "dzialanie": const.DZIALANIE_SLOT,
+            "minimalny_pk": 0,
+            "slot": 100,
+            "_export": "html",
+        }
 
-    url = reverse(nazwa_url, args=tuple(new_args_url))
+        for c in admin_client, client:
+            s = c.session
+            s.update({SESSION_KEY: dane_raportu})
+            s.save()
+
     if params:
         url += "?" + urlencode(params)
 
@@ -290,3 +302,18 @@ def test_uczelnia_ukryte_statusy(uczelnia, przed_korekta, po_korekcie):
 
     assert przed_korekta.pk in uczelnia.ukryte_statusy("sloty")
     assert po_korekcie.pk in uczelnia.ukryte_statusy("sloty")
+
+
+def test_uczelnia_do_roku_default(uczelnia, wydawnictwo_zwarte):
+    wydawnictwo_zwarte.rok = 3000
+    wydawnictwo_zwarte.save()
+
+    uczelnia.metoda_do_roku_formularze = DO_STYCZNIA_POPRZEDNI_POTEM_OBECNY
+    uczelnia.save()
+
+    assert Uczelnia.objects.do_roku_default() != 3000
+
+    uczelnia.metoda_do_roku_formularze = NAJWIEKSZY_REKORD
+    uczelnia.save()
+
+    assert Uczelnia.objects.do_roku_default() == 3000

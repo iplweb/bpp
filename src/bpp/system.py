@@ -16,6 +16,7 @@ from multiseek.models import SearchForm
 from robots.models import Rule, Url
 
 from bpp.models import (
+    Ukryj_Status_Korekty,
     Funkcja_Autora,
     Zrodlo_Informacji,
     Jezyk,
@@ -99,7 +100,7 @@ groups = {
         FormFieldRepresentation,
         FormRepresentation,
     ],
-    "struktura": [Uczelnia, Wydzial, Jednostka, Jednostka_Wydzial],
+    "struktura": [Uczelnia, Wydzial, Jednostka, Jednostka_Wydzial, Ukryj_Status_Korekty],
     GR_WPROWADZANIE_DANYCH: [
         Zrodlo,
         Autor,

@@ -21,11 +21,11 @@ jobs:
 
     steps:
       - setup_remote_docker
-      
+
       - checkout
 
-#      - restore_cache:
-#          key: cache-8-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}-{{ checksum "yarn.lock" }}
+      - restore_cache:
+          key: cache-9-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}-{{ checksum "yarn.lock" }}
 
       - run: sudo apt --quiet install -y --quiet gettext
       - run: sudo npm install -g grunt-cli
@@ -46,17 +46,17 @@ jobs:
             . venv/bin/activate
             make assets
 
-#      - save_cache: # cache Python dependencies using checksum of Pipfile as the cache-key
-#          key: cache-8-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}-{{ checksum "yarn.lock" }}
-#          paths:
-#            - "/home/circleci/.cache"
+      - save_cache: # cache Python dependencies using checksum of Pipfile as the cache-key
+          key: cache-9-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}-{{ checksum "yarn.lock" }}
+          paths:
+            - "/home/circleci/.cache"
 
       # Uruchamiaj na lokalnym firefoxie używając jednego CPU
       - run:
           name: pytest
           command: |
             . venv/bin/activate
-            pytest -d -n 2 --cov=src --ds=django_bpp.settings.test
+            pytest -d -n 2 --splinter-headless --cov=src --ds=django_bpp.settings.test
 
       # Testy JavaScript
       - run: make js-tests

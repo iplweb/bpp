@@ -11,6 +11,7 @@ from django.core.exceptions import DisallowedHost, ImproperlyConfigured
 from sentry_sdk.integrations.django import DjangoIntegration
 
 from bpp.util import slugify_function
+
 from django_bpp.version import VERSION
 
 
@@ -58,7 +59,9 @@ SECRET_KEY = "=6uqi1)(qnzjo8q@-@m#egd8v#+zac6feh2h-b&amp;=3bczpfqxxd"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [os.path.join(BASE_DIR, "templates"),],
+        "DIRS": [
+            os.path.join(BASE_DIR, "templates"),
+        ],
         "OPTIONS": {
             "loaders": [
                 "admin_tools.template_loaders.Loader",
@@ -478,6 +481,11 @@ YARN_FILE_PATTERNS = {
         "js/dataTables.foundation.js",
         "css/dataTables.foundation.css",
     ],
+    "select2": [
+        "dist/css/select2.min.css",
+        "dist/js/select2.full.min.js",
+        "dist/js/i18n/pl.js",
+    ],
     "jinplace": ["js/jinplace.js"],
     "select2-foundation_theme": ["dist/select2-foundation-theme.css"],
     "kbw-keypad": ["dist/*"],
@@ -512,7 +520,9 @@ ASGI_APPLICATION = "django_bpp.routing.application"
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {"hosts": [(REDIS_HOST, REDIS_PORT)],},
+        "CONFIG": {
+            "hosts": [(REDIS_HOST, REDIS_PORT)],
+        },
     },
 }
 
@@ -536,12 +546,20 @@ if LOG_EVERYTHING:
                 },
             },
             "handlers": {
-                "console": {"class": "logging.StreamHandler", "formatter": "console",},
+                "console": {
+                    "class": "logging.StreamHandler",
+                    "formatter": "console",
+                },
                 # Add Handler for Sentry for `warning` and above
             },
             "loggers": {
                 # root logger
-                "": {"level": "DEBUG", "handlers": ["console",],},
+                "": {
+                    "level": "DEBUG",
+                    "handlers": [
+                        "console",
+                    ],
+                },
             },
         }
     )

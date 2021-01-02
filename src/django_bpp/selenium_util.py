@@ -23,7 +23,7 @@ class wait_for_page_load(object):
         self.old_page = self.browser.find_by_tag("html")[0]._element
 
     def __exit__(self, *_):
-        WebDriverWait(self.browser, 10).until(staleness_of(self.old_page))
+        WebDriverWait(self.browser, 10).until(lambda x: staleness_of(self.old_page))
 
         WebDriverWait(self.browser, 10).until(
             lambda browser: browser.execute_script("return document.readyState")

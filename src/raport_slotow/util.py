@@ -7,7 +7,7 @@ from django.utils.itercompat import is_iterable
 from django_tables2.export import ExportMixin, TableExport
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.filters import AutoFilter
-from openpyxl.worksheet.table import Table, TableStyleInfo, TableColumn, TableFormula
+from openpyxl.worksheet.table import Table, TableColumn, TableStyleInfo
 
 
 def drop_table(table_name, using=DEFAULT_DB_ALIAS):
@@ -197,7 +197,7 @@ class MyExportMixin(ExportMixin):
     def get_export_description(self):
         """Nadpisz tą funkcję, aby wygenerować pola opisowe na potrzeby XLS, np.
         'metkę' z parametrami raportu. Powinna zwrócić listę ciągów znaków, które zostaną
-        wstawione przed tabelę, jeden pod drugim. """
+        wstawione przed tabelę, jeden pod drugim."""
         return
 
     def create_export(self, export_format):
@@ -209,3 +209,14 @@ class MyExportMixin(ExportMixin):
         )
 
         return exporter.response(filename=self.get_export_filename(export_format))
+
+
+class InitialValuesFromGETMixin:
+    def get_initial(self):
+        initial = super(InitialValuesFromGETMixin, self).get_initial()
+        if hasattr(self, "request"):
+            for elem in self.get_form_class().base_fields.keys():
+                value = self.request.GET.get(elem)
+                if value is not None:
+                    initial[elem] = value
+        return initial

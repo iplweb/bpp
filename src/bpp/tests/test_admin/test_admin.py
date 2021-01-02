@@ -1,18 +1,15 @@
 # -*- encoding: utf-8 -*-
 import pytest
-from django.core.exceptions import PermissionDenied
 from django.urls import NoReverseMatch
-
-from bpp.models import Praca_Doktorska, Praca_Habilitacyjna, Zrodlo, Jednostka
-from bpp.models.autor import Autor
-from bpp.models.cache import Rekord, Autorzy
 from django.urls.base import reverse
 from model_mommy import mommy
 
+from bpp.models import Jednostka, Praca_Doktorska, Praca_Habilitacyjna, Zrodlo
+from bpp.models.autor import Autor
+from bpp.models.cache import Autorzy, Rekord
 from bpp.models.patent import Patent, Patent_Autor
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor
-from django_bpp.sitemaps import Praca_HabilitacyjnaSitemap
 
 
 @pytest.mark.parametrize(
@@ -44,7 +41,7 @@ def test_safe_html_dwa_tytuly_DwaTytuly(klass, admin_app):
     page.forms[1]["tytul_oryginalny"].value = "<script>hi</script>"
     if hasattr(i, "tytul"):
         page.forms[1]["tytul"].value = "<script>hi</script>"
-    res = page.forms[1].submit()
+    page.forms[1].submit()
 
     i.refresh_from_db()
 
@@ -163,3 +160,11 @@ def test_admin_jednostka_sortowanie(uczelnia, admin_client):
     uczelnia.save()
 
     assert admin_client.get(url_name).status_code == 200
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("url", ["wydawnictwo_zwarte", "wydawnictwo_ciagle"])
+def test_admin_zewnetrzna_baza_danych(admin_client, url):
+    url_name = reverse(f"admin:bpp_{url}_add")
+    res = admin_client.get(url_name)
+    assert "z zewnętrznymi bazami" in res.content.decode("utf-8")

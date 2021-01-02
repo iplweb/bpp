@@ -1,27 +1,19 @@
 from crispy_forms.helper import FormHelper
 from crispy_forms_foundation.layout import (
-    Layout,
-    Fieldset,
-    Row,
-    Column,
     ButtonHolder,
+    Column,
+    Fieldset,
+    Layout,
+    Row,
     Submit,
 )
 from dal import autocomplete
 from django import forms
 from django.core.exceptions import ValidationError
-from django.utils import timezone
+from . import const
 
-from bpp.models import Autor
-from bpp.util import formdefaults_html_after, formdefaults_html_before
-
-
-def year_last_month():
-    now = timezone.now().date()
-    if now.month >= 2:
-        return now.year
-    return now.year - 1
-
+from bpp.models import Autor, Uczelnia
+from bpp.util import formdefaults_html_after, formdefaults_html_before, year_last_month
 
 OUTPUT_FORMATS = [
     ("html", "wyświetl w przeglądarce"),
@@ -36,8 +28,28 @@ class AutorRaportSlotowForm(forms.Form):
         widget=autocomplete.ModelSelect2(url="bpp:public-autor-autocomplete"),
     )
 
-    od_roku = forms.IntegerField(initial=year_last_month)
-    do_roku = forms.IntegerField(initial=year_last_month)
+    od_roku = forms.IntegerField(initial=year_last_month, min_value=2016)
+    do_roku = forms.IntegerField(initial=Uczelnia.objects.do_roku_default)
+
+    minimalny_pk = forms.IntegerField(label="Minimalna wartość PK pracy", initial=0)
+
+    dzialanie = forms.ChoiceField(
+        label="Wygeneruj",
+        choices=(
+            (
+                const.DZIALANIE_WSZYSTKO,
+                "prace autora z punktacją dla dziedzin za dany okres",
+            ),
+            (const.DZIALANIE_SLOT, "zbierz najlepsze prace do zadanej wielkości slotu"),
+        ),
+        initial="wszystko",
+        widget=forms.RadioSelect,
+    )
+
+    slot = forms.IntegerField(
+        label="Zadana wielkość slotu",
+        required=False,
+    )
 
     _export = forms.ChoiceField(
         label="Format wyjściowy", choices=OUTPUT_FORMATS, required=True
@@ -49,10 +61,43 @@ class AutorRaportSlotowForm(forms.Form):
                 raise ValidationError(
                     {
                         "od_roku": ValidationError(
-                            'Pole musi być większe lub równe jak pole "Do roku".'
+                            'Pole musi być większe lub równe jak pole "Do roku".',
+                            code="od_do_zle",
                         )
                     }
                 )
+
+        if (
+            self.cleaned_data["dzialanie"] == const.DZIALANIE_WSZYSTKO
+            and "slot" in self.cleaned_data
+            and self.cleaned_data["slot"] is not None
+        ):
+            raise ValidationError(
+                {
+                    "slot": ValidationError(
+                        "Gdy chcesz wygenerować wszystkie prace tego autora, pozostaw pole 'Slot' puste. ",
+                        code="nie_podawaj_gdy_wszystko",
+                    )
+                }
+            )
+
+        if self.cleaned_data["dzialanie"] == const.DZIALANIE_SLOT and (
+            "slot" not in self.cleaned_data
+            or ("slot" in self.cleaned_data and self.cleaned_data["slot"] is None)
+            or (
+                "slot" in self.cleaned_data
+                and self.cleaned_data["slot"] is not None
+                and self.cleaned_data["slot"] <= 0
+            )
+        ):
+            raise ValidationError(
+                {
+                    "slot": ValidationError(
+                        "Podaj wartość slota do którego chcesz zbierać prace. Wartość musi być większa od zera. ",
+                        code="podawaj_gdy_slot",
+                    )
+                }
+            )
 
     def __init__(self, *args, **kwargs):
         super(AutorRaportSlotowForm, self).__init__(*args, **kwargs)
@@ -65,10 +110,13 @@ class AutorRaportSlotowForm(forms.Form):
                 "Wybierz parametry",
                 formdefaults_html_before(self),
                 Row(Column("obiekt", css_class="large-12 small-12")),
+                Row(Column("dzialanie", css_class="large-12 small-12")),
+                Row(Column("slot", css_class="large-12 small-12")),
                 Row(
                     Column("od_roku", css_class="large-6 small-6"),
                     Column("do_roku", css_class="large-6 small-6"),
                 ),
+                Row(Column("minimalny_pk")),
                 Row(Column("_export")),
                 formdefaults_html_after(self),
             ),
@@ -85,7 +133,7 @@ class AutorRaportSlotowForm(forms.Form):
 
 class ParametryRaportSlotowUczelniaForm(forms.Form):
     od_roku = forms.IntegerField(initial=year_last_month)
-    do_roku = forms.IntegerField(initial=year_last_month)
+    do_roku = forms.IntegerField(initial=Uczelnia.objects.do_roku_default)
 
     maksymalny_slot = forms.IntegerField(
         label="Maksymalny slot", initial=1, min_value=1
@@ -141,7 +189,7 @@ class ParametryRaportSlotowUczelniaForm(forms.Form):
 
 
 class ParametryRaportSlotowEwaluacjaForm(forms.Form):
-    rok = forms.IntegerField(initial=year_last_month, min_value=2017)
+    rok = forms.IntegerField(initial=Uczelnia.objects.do_roku_default, min_value=2017)
 
     _export = forms.ChoiceField(
         label="Format wyjściowy", choices=OUTPUT_FORMATS, required=True
@@ -155,7 +203,9 @@ class ParametryRaportSlotowEwaluacjaForm(forms.Form):
             Fieldset(
                 "Wybierz parametry",
                 formdefaults_html_before(self),
-                Row(Column("rok", css_class="large-6 small-6"),),
+                Row(
+                    Column("rok", css_class="large-6 small-6"),
+                ),
                 Row(Column("_export")),
                 formdefaults_html_after(self),
             ),

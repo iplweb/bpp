@@ -1,19 +1,25 @@
 # -*- encoding: utf-8 -*-
 
 from crispy_forms.helper import FormHelper
-from crispy_forms_foundation.layout import Layout, Fieldset, ButtonHolder, Submit
-from crispy_forms_foundation.layout import Row, Column
+from crispy_forms_foundation.layout import (
+    ButtonHolder,
+    Column,
+    Fieldset,
+    Layout,
+    Row,
+    Submit,
+)
 from dal import autocomplete
 from django import forms
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
-from django.db.models.aggregates import Min, Max
-from django.utils import timezone
+from django.db.models.aggregates import Max, Min
 
+from bpp.models import Uczelnia
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
-from bpp.models.struktura import Wydzial, Jednostka
-from bpp.util import formdefaults_html_before, formdefaults_html_after
+from bpp.models.struktura import Jednostka, Wydzial
+from bpp.util import formdefaults_html_after, formdefaults_html_before, year_last_month
 
 
 def wez_lata():
@@ -32,16 +38,9 @@ OUTPUT_FORMATS = [
 ]
 
 
-def year_last_month():
-    now = timezone.now().date()
-    if now.month >= 2:
-        return now.year
-    return now.year - 1
-
-
 class BaseRaportForm(forms.Form):
     od_roku = forms.IntegerField(initial=year_last_month)
-    do_roku = forms.IntegerField(initial=year_last_month)
+    do_roku = forms.IntegerField(initial=Uczelnia.objects.do_roku_default)
 
     _export = forms.ChoiceField(
         label="Format wyjściowy", choices=OUTPUT_FORMATS, required=True

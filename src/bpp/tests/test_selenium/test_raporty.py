@@ -1,28 +1,22 @@
 # -*- encoding: utf-8 -*-
-import time
-
-from django.contrib.auth import get_user_model
 
 try:
     from django.core.urlresolvers import reverse
 except ImportError:
     from django.urls import reverse
-from django.test.testcases import LiveServerTestCase
-from selenium.webdriver.common.keys import Keys
-from splinter.browser import Browser
+
+import pytest
 from celeryui.models import Report
-from django.conf import settings
-from bpp.models.system import Jezyk, Status_Korekty
+
 from bpp.tests.util import (
-    any_autor,
     CURRENT_YEAR,
+    any_autor,
     any_ciagle,
     any_jednostka,
     select_select2_autocomplete,
 )
-import pytest
 
-from django_bpp.selenium_util import wait_for_page_load
+from django_bpp.selenium_util import wait_for, wait_for_page_load
 
 
 @pytest.fixture
@@ -87,12 +81,11 @@ def test_raport_jednostek(raporty_browser, jednostka_raportow, asgi_live_server)
     raporty_browser.execute_script(
         '$("input[name=do_roku]:visible").val("' + str(CURRENT_YEAR) + '")'
     )
-    submit_page(raporty_browser)
-    time.sleep(2)
+    with wait_for_page_load(raporty_browser):
+        submit_page(raporty_browser)
 
-    assert (
-        "/bpp/raporty/raport-jednostek-2012/%s/%s/"
-        % (jednostka_raportow.pk, CURRENT_YEAR)
+    wait_for(
+        lambda: f"/bpp/raporty/raport-jednostek-2012/{jednostka_raportow.pk}/{CURRENT_YEAR}/"
         in raporty_browser.url
     )
 
@@ -107,8 +100,7 @@ def test_submit_kronika_uczelni(raporty_browser, jednostka_raportow, asgi_live_s
         '$("input[name=rok]").val("' + str(CURRENT_YEAR) + '")'
     )
     submit_page(raporty_browser)
-    time.sleep(2)
 
-    assert c() == 1
+    wait_for(lambda: c() == 1)
 
     assert Report.objects.all()[0].function == "kronika-uczelni"

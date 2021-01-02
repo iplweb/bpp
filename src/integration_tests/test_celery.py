@@ -1,13 +1,14 @@
 import os
 import shlex
 import subprocess
-import time
+import sys
 
 import psutil
 import pytest
 
 from bpp.tasks import remove_old_report_files
-import sys
+
+from django_bpp.selenium_util import wait_for
 
 
 @pytest.mark.django_db
@@ -42,9 +43,7 @@ def test_celery(settings):
         env=my_env,
     )
 
-    time.sleep(3)
-
-    assert psutil.pid_exists(proc.pid), "worked failed to start"
+    wait_for(lambda: psutil.pid_exists(proc.pid))
 
     try:
         settings.CELERY_ALWAYS_EAGER = False
