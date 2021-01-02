@@ -11,6 +11,7 @@ Historia zmian
 * wyszukiwanie pełnotekstowe uwzględnia myślniki (#851)
 * poprawne wyszukiwanie po polu "Licencja OpenAccess ustawiona" (#934)
 * możliwość wyszukiwania po polu "charakter formalny ogólny" (#933)
+* poprawne wyszukiwanie w polach numerycznych (#913)
 
 202012.51
 ---------
