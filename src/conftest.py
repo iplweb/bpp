@@ -6,6 +6,7 @@ from datetime import datetime
 
 import django_webtest
 import pytest
+import webtest
 from rest_framework.test import APIClient
 from selenium.webdriver.remote.webdriver import WebDriver
 
@@ -490,7 +491,7 @@ def wprowadzanie_danych_user(normal_django_user):
 
 
 @pytest.fixture(scope="function")
-def app(webtest_app, normal_django_user):
+def app(webtest_app, normal_django_user) -> webtest.app.Testapp:
     return _webtest_login(
         webtest_app, NORMAL_DJANGO_USER_LOGIN, NORMAL_DJANGO_USER_PASSWORD
     )
