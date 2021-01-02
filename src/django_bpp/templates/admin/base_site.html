@@ -16,17 +16,17 @@
     {% if user.is_active and user.is_staff %}
         {% if not is_popup %}
             <div style="float: right; ">
-            {% crispy global_nav_form %}
-            <script type="text/javascript">
-                django.jQuery(':input[name$=global_nav_value]').on('change', function () {
-                    location.href = "/global-nav-redir/" + $(this).val() +
-                        "?source=admin";
-                });
-            </script>
+                {% crispy global_nav_form %}
+                <script type="text/javascript">
+                    django.jQuery(':input[name$=global_nav_value]').on('change', function () {
+                        location.href = "/global-nav-redir/" + $(this).val() +
+                            "?source=admin";
+                    });
+                </script>
             </div>
             <div style="display: none;" id="show-after-load">
-            {% if request.user.is_staff %}
-                {% admin_tools_render_menu %}
+                {% if request.user.is_staff %}
+                    {% admin_tools_render_menu %}
                 {% endif %}
             </div>
         {% endif %}
@@ -36,50 +36,53 @@
 {% block footer %}
     {{ block.super }}
     {% compress css %}
-    <link rel="stylesheet" type="text/css" media="screen" href="{{ STATIC_URL }}bpp/css/admin-style.css"/>
-    <link rel="stylesheet" type="text/css" media="screen"  href="{{ STATIC_URL }}bpp/css/admin-menu.css"/>
+        <link rel="stylesheet" type="text/css" media="screen" href="{{ STATIC_URL }}bpp/css/admin-style.css"/>
+        <link rel="stylesheet" type="text/css" media="screen" href="{{ STATIC_URL }}bpp/css/admin-menu.css"/>
 
-    <style type="text/css">
-    .keypad-key {
-        color: black !important;
-    }
-    </style>
+        <style type="text/css">
+            .keypad-key {
+                color: black !important;
+            }
+        </style>
     {% endcompress %}
     <script type="text/javascript">
-        $(document).ready(function () {
+        (function ($) {
 
-            $("#show-after-load").css("display", "block");
-            txt = $("#grp-admin-title").text();
-            $("#grp-admin-title").html(
+            $(document).ready(function () {
+
+                $("#show-after-load").css("display", "block");
+                txt = $("#grp-admin-title").text();
+                $("#grp-admin-title").html(
                     '<a href="/">' + txt + '</a>');
 
-            grp.jQuery('.charmap').keypad({
-                keypadOnly: false,
-                layout: [
-                    'αβγδεζ ©® àáâãäåæçß ъяшертыу',
-                    'ηθικλμ ™℠ èéêëìííî  иопющэас',
-                    'νξοπρσ €£ ïñòóôõöø  дфгчйкль',
-                    'τυφχψω ¥¢ ùúûüýÿðþ  жзхцвбнм',
-                    grp.jQuery.keypad.SHIFT + grp.jQuery.keypad.CLOSE
-                ],
-                showAnim: 'fadeIn',
-                duration: 'fast',
-                showOn: 'button'
-            });
+                grp.jQuery('.charmap').keypad({
+                    keypadOnly: false,
+                    layout: [
+                        'αβγδεζ ©® àáâãäåæçß ъяшертыу',
+                        'ηθικλμ ™℠ èéêëìííî  иопющэас',
+                        'νξοπρσ €£ ïñòóôõöø  дфгчйкль',
+                        'τυφχψω ¥¢ ùúûüýÿðþ  жзхцвбнм',
+                        grp.jQuery.keypad.SHIFT + grp.jQuery.keypad.CLOSE
+                    ],
+                    showAnim: 'fadeIn',
+                    duration: 'fast',
+                    showOn: 'button'
+                });
 
-            // Przyciski jquery.keypad
-            $("button.keypad-trigger").each(
-                    function(no, tag) {
+                // Przyciski jquery.keypad
+                $("button.keypad-trigger").each(
+                    function (no, tag) {
                         var tag = $(tag);
                         var first = tag.siblings().first();
                         if (first.is("textarea"))
                             tag.css("margin-left", "12px")
-                                    .css("margin-top", "15px");
+                                .css("margin-top", "15px");
 
                         tag.css("color", "black")
-                                .attr("tabindex", "-1");
+                            .attr("tabindex", "-1");
                     });
+            });
 
-        });
+        })(grp.jQuery);
     </script>
 {% endblock %}
