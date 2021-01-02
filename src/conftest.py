@@ -491,7 +491,7 @@ def wprowadzanie_danych_user(normal_django_user):
 
 
 @pytest.fixture(scope="function")
-def app(webtest_app, normal_django_user) -> webtest.app.Testapp:
+def app(webtest_app, normal_django_user) -> webtest.app.TestApp:
     return _webtest_login(
         webtest_app, NORMAL_DJANGO_USER_LOGIN, NORMAL_DJANGO_USER_PASSWORD
     )
