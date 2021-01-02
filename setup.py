@@ -38,7 +38,9 @@ class compile_translations(Command):
 
 
 class build(_build):
-    sub_commands = [("compile_translations", None),] + _build.sub_commands
+    sub_commands = [
+        ("compile_translations", None),
+    ] + _build.sub_commands
 
 
 class install_lib(_install_lib):
@@ -49,9 +51,9 @@ class install_lib(_install_lib):
 
 def requirements(fn="requirements.txt"):
     for elem in [
-        l.replace("\\", "").strip()
-        for l in open(fn).read().splitlines()
-        if l and l.find("==") > 0 and not l.strip().startswith("#")
+        line.replace("\\", "").strip()
+        for line in open(fn).read().splitlines()
+        if line and line.find("==") > 0 and not line.strip().startswith("#")
     ]:
         if elem.find("#egg=") >= 0:
             yield elem.split("#egg=")[1]
@@ -61,7 +63,7 @@ def requirements(fn="requirements.txt"):
 
 setup(
     name="bpp-iplweb",
-    version="202012.51",
+    version="202101.52",
     description="System informatyczny do zarządzania bibliografią publikacji pracowników naukowych",
     long_description=readme,
     long_description_content_type="text/x-rst",
