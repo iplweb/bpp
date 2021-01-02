@@ -92,21 +92,21 @@
     {% block extrahead %}{% endblock %}
 
 
-    <script>
-        console.log('GRP ver', grp.jQuery.fn.jquery);
-        console.log('GRP sel', grp.jQuery.fn.select2);
-        console.log('DJG ver', django.jQuery.fn.jquery);
-        console.log('DJG sel', django.jQuery.fn.select2);
-        console.log('  $ fun', window.$);
-        if (window.$) {
-            if (window.$.jQuery)
-                if (window.$.jQuery.fn) {
-                    console.log('  $ ver', $.jQuery.fn.jquery);
-                    console.log('  $ sel', $.jQuery.fn.select2);
-                }
-        }
-        var $ = grp.jQuery;
-    </script>
+{#    <script>#}
+{#        console.log('GRP ver', grp.jQuery.fn.jquery);#}
+{#        console.log('GRP sel', grp.jQuery.fn.select2);#}
+{#        console.log('DJG ver', django.jQuery.fn.jquery);#}
+{#        console.log('DJG sel', django.jQuery.fn.select2);#}
+{#        console.log('  $ fun', window.$);#}
+{#        if (window.$) {#}
+{#            if (window.$.jQuery)#}
+{#                if (window.$.jQuery.fn) {#}
+{#                    console.log('  $ ver', $.jQuery.fn.jquery);#}
+{#                    console.log('  $ sel', $.jQuery.fn.select2);#}
+{#                }#}
+{#        }#}
+{#        var $ = grp.jQuery;#}
+{#    </script>#}
     {% include 'session_security/all.html' %}
 
 </head>
