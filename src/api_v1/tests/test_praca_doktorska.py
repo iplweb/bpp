@@ -2,7 +2,20 @@ from datetime import timedelta
 
 import pytest
 from django.urls import reverse
+
 from django.utils.timezone import localtime
+
+
+@pytest.mark.django_db
+def test_praca_doktorska_charakter_formalny(praca_doktorska, charaktery_formalne):
+    assert praca_doktorska.charakter_formalny == charaktery_formalne["D"]
+
+
+@pytest.mark.django_db
+def test_praca_habilitacyjna_charakter_formalny(
+    praca_habilitacyjna, charaktery_formalne
+):
+    assert praca_habilitacyjna.charakter_formalny == charaktery_formalne["H"]
 
 
 @pytest.mark.django_db

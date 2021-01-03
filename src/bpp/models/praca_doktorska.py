@@ -7,7 +7,9 @@ from .struktura import Jednostka
 from .system import Typ_Odpowiedzialnosci
 from .wydawnictwo_zwarte import Wydawnictwo_Zwarte_Baza
 
-from bpp.models import NieMaProcentowMixin
+from django.utils.functional import cached_property
+
+from bpp.models import Charakter_Formalny, NieMaProcentowMixin
 
 
 class Praca_Doktorska_Baza(NieMaProcentowMixin, Wydawnictwo_Zwarte_Baza):
@@ -42,6 +44,10 @@ class Praca_Doktorska(Praca_Doktorska_Baza):
     promotor = models.ForeignKey(
         Autor, SET_NULL, related_name="promotor_doktoratu", blank=True, null=True
     )
+
+    @cached_property
+    def charakter_formalny(self):
+        return Charakter_Formalny.objects.get(skrot="D")
 
     class Meta:
         verbose_name = "praca doktorska"
