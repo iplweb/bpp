@@ -7,6 +7,7 @@ Historia zmian
 202101.53
 ---------
 * poprawne opisy powiązań autora z dyscypliną w module redagowania (#686)
+* pełne BPP ID na stronie pracy (#951)
 
 202101.52
 ---------

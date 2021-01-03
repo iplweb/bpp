@@ -111,10 +111,10 @@
 
     <tr>
         <th>
-            ID:
+            BPP ID:
         </th>
         <td>
-            {{ praca.pk }}
+            {{ rekord.pk }} <small>czyli {{ rekord.describe_content_type }} o ID = {{ praca.pk }}</small>
         </td>
     </tr>
     {% if praca.pbn_id %}
