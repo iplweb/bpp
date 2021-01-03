@@ -1,19 +1,17 @@
 # -*- encoding: utf-8 -*-
 
 from django.db import models
-from django.db.models import CASCADE, CASCADE, SET_NULL
-from django.utils.functional import cached_property
-
-from bpp.models import NieMaProcentowMixin
+from django.db.models import CASCADE, SET_NULL
 from .autor import Autor
 from .struktura import Jednostka
 from .system import Typ_Odpowiedzialnosci
 from .wydawnictwo_zwarte import Wydawnictwo_Zwarte_Baza
 
+from bpp.models import NieMaProcentowMixin
+
 
 class Praca_Doktorska_Baza(NieMaProcentowMixin, Wydawnictwo_Zwarte_Baza):
 
-    autor = models.OneToOneField(Autor, CASCADE)
     jednostka = models.ForeignKey(Jednostka, CASCADE)
 
     @property
@@ -39,10 +37,13 @@ class Praca_Doktorska_Baza(NieMaProcentowMixin, Wydawnictwo_Zwarte_Baza):
 
 
 class Praca_Doktorska(Praca_Doktorska_Baza):
+    autor = models.ForeignKey(Autor, CASCADE)
 
-    promotor = models.ForeignKey(Autor, SET_NULL, related_name="promotor_doktoratu", blank=True, null=True)
+    promotor = models.ForeignKey(
+        Autor, SET_NULL, related_name="promotor_doktoratu", blank=True, null=True
+    )
 
     class Meta:
-        verbose_name = 'praca doktorska'
-        verbose_name_plural = 'prace doktorskie'
-        app_label = 'bpp'
+        verbose_name = "praca doktorska"
+        verbose_name_plural = "prace doktorskie"
+        app_label = "bpp"
