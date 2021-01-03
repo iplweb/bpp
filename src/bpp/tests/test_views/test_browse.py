@@ -4,35 +4,48 @@ import re
 
 import pytest
 from bs4 import BeautifulSoup
+
 from django.contrib.contenttypes.models import ContentType
 
 try:
     from django.core.urlresolvers import reverse
 except ImportError:
     from django.urls import reverse
+
+from conftest import NORMAL_DJANGO_USER_LOGIN, NORMAL_DJANGO_USER_PASSWORD
+from miniblog.models import Article
 from model_mommy import mommy
-from multiseek.logic import EQUAL_NONE, EQUAL, EQUAL_FEMALE
+from multiseek.logic import EQUAL, EQUAL_FEMALE, EQUAL_NONE
 from multiseek.views import MULTISEEK_SESSION_KEY
 
 from bpp.models import (
     Jednostka,
-    Wydawnictwo_Ciagle,
     OpcjaWyswietlaniaField,
+    Praca_Doktorska,
     Typ_Odpowiedzialnosci,
+    Wydawnictwo_Ciagle,
 )
 from bpp.models.autor import Autor
 from bpp.views.browse import BuildSearch
-from conftest import NORMAL_DJANGO_USER_PASSWORD, NORMAL_DJANGO_USER_LOGIN
-from miniblog.models import Article
 
 
 def test_buildSearch(settings):
     dct = {
-        "zrodlo": [1,],
-        "typ": [1,],
-        "rok": [2013,],
-        "jednostka": [1,],
-        "autor": [1,],
+        "zrodlo": [
+            1,
+        ],
+        "typ": [
+            1,
+        ],
+        "rok": [
+            2013,
+        ],
+        "jednostka": [
+            1,
+        ],
+        "autor": [
+            1,
+        ],
     }
 
     class mydct(dict):
@@ -218,6 +231,24 @@ def test_browse_autor():
     wc2.dodaj_autora(autor, j2, zapisany_jako="Jan K2", afiliuje=False)
 
     return autor
+
+
+def test_browse_autor_dwa_doktoraty(typy_odpowiedzialnosci, autor_jan_kowalski, client):
+    tytuly_prac = ["Praca 1", "Praca 2"]
+    for praca in tytuly_prac:
+        mommy.make(Praca_Doktorska, tytul_oryginalny=praca, autor=autor_jan_kowalski)
+
+    res = client.get(
+        reverse(
+            "bpp:browse_autor",
+            kwargs=dict(
+                slug=autor_jan_kowalski.slug,
+            ),
+        )
+    )
+
+    for praca in tytuly_prac:
+        assert praca in res.content.decode("utf-8")
 
 
 @pytest.mark.django_db
