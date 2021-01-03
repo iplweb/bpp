@@ -4,7 +4,7 @@ import pytest
 from django.db import transaction
 from model_mommy import mommy
 
-from bpp.models import rebuild_ciagle, rebuild_zwarte, Praca_Doktorska
+from bpp.models import Praca_Doktorska, rebuild_ciagle, rebuild_zwarte
 from bpp.models.autor import Autor
 from bpp.models.cache import Autorzy, Rekord, defer_zaktualizuj_opis, rebuild_patent
 from bpp.models.openaccess import (
@@ -376,6 +376,10 @@ def test_defer_zaktualizuj_opis_task(settings):
     w.save()
 
     zaktualizuj_opis("bpp", "wydawnictwo_ciagle", w.pk)
+
+
+def test_rekord_describe_content_type(wydawnictwo_zwarte):
+    assert "wydawnictwo" in Rekord.objects.first().describe_content_type
 
 
 def test_aktualizacja_rekordu_autora(transactional_db, typy_odpowiedzialnosci):

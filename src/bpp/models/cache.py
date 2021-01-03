@@ -7,34 +7,35 @@
 # - Praca_Doktorska
 # - Praca_Habilitacyjna
 
+from django.core.exceptions import ObjectDoesNotExist
+from django.db import models, transaction
+from django.db.models import CASCADE, ForeignKey, Func
+from django.db.models.deletion import DO_NOTHING
+from django.db.models.signals import post_delete, post_save, pre_delete, pre_save
+
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields.array import ArrayField
 from django.contrib.postgres.search import SearchVectorField as VectorField
-from django.core.exceptions import ObjectDoesNotExist
-from django.db import connection, models, reset_queries, transaction
-from django.db.models import CASCADE, ForeignKey, Func
-from django.db.models.deletion import DO_NOTHING
-from django.db.models.lookups import In
-from django.db.models.signals import post_delete, post_save, pre_delete, pre_save
+
 from django.utils.functional import cached_property
 
 from bpp.models import (
     Autor,
     Dyscyplina_Naukowa,
     Jednostka,
+    ModelZeStatusem,
     Patent,
     Patent_Autor,
     Praca_Doktorska,
     Praca_Habilitacyjna,
     Typ_Odpowiedzialnosci,
+    Uczelnia,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Ciagle_Autor,
     Wydawnictwo_Zwarte,
     Wydawnictwo_Zwarte_Autor,
     Zrodlo,
-    ModelZeStatusem,
-    Uczelnia,
 )
 from bpp.models.abstract import (
     ModelPunktowanyBaza,
@@ -450,6 +451,10 @@ class RekordBase(
     @cached_property
     def content_type(self):
         return ContentType.objects.get(pk=self.id[0])
+
+    @cached_property
+    def describe_content_type(self):
+        return ContentType.objects.get(pk=self.id[0]).model_class()._meta.verbose_name
 
     @cached_property
     def object_id(self):
