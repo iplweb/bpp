@@ -56,14 +56,13 @@ def requirements(fn="requirements.txt"):
         if line and line.find("==") > 0 and not line.strip().startswith("#")
     ]:
         if elem.find("#egg=") >= 0:
-            yield elem.split("#egg=")[1]
-            continue
+            raise Exception("To nie zadziala: " + elem)
         yield elem
 
 
 setup(
     name="bpp-iplweb",
-    version="202101.53",
+    version="202101.53.3",
     description="System informatyczny do zarządzania bibliografią publikacji pracowników naukowych",
     long_description=readme,
     long_description_content_type="text/x-rst",
