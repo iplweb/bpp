@@ -124,8 +124,8 @@ def _preauth_session_id_helper(
     browser.authorized_user = django_user_model.objects.get(
         **{django_username_field: username}
     )
-    with wait_for_page_load(browser):
-        browser.reload()
+    # with wait_for_page_load(browser):
+    #    browser.reload()
     return browser
 
 
