@@ -28,7 +28,7 @@ zope.interface==5.1.0
 zope.component==4.6.2
 sentry-sdk==0.14.1
 bleach==3.1.4
-https://github.com/mpasternak/django-session-security/archive/jquery-noconflict.zip#egg=django-session-security==2.6.6+jquery-noconflict
+django-session-security-iplweb==2.6.6
 django-password-policies-iplweb==0.7.0
 dj-pagination==2.4.0
 requests==2.20.0

@@ -64,11 +64,11 @@ django-querysetsequence==0.12  # via -r requirements.in
 django-redis-cache==2.1.1  # via -r requirements.in
 django-robots==4.0        # via -r requirements.in
 django-sendfile==0.3.11   # via -r requirements.in
-https://github.com/mpasternak/django-session-security/archive/jquery-noconflict.zip#egg=django-session-security==2.6.6+jquery-noconflict  # via -r requirements.in
+django-session-security-iplweb==2.6.6  # via -r requirements.in
 django-static-sitemaps==4.6.0  # via -r requirements.in
 django-tables2==2.3.1     # via -r requirements.in, django-flexible-reports
 django-webmaster-verification==0.3.0  # via -r requirements.in
-django==3.0.11            # via -r requirements.in, channels, crispy-forms-foundation, django-admin-sortable2, django-appconf, django-braces, django-classy-tags, django-columns, django-cookie-law, django-dirtyfields, django-dsl, django-favicon-plus, django-filter, django-flexible-reports, django-import-export, django-model-utils, django-mptt, django-multiseek, django-password-policies-iplweb, django-querysetsequence, django-sendfile, django-session-security, django-static-sitemaps, django-tables2, django-webmaster-verification, djangorestframework
+django==3.0.11            # via -r requirements.in, channels, crispy-forms-foundation, django-admin-sortable2, django-appconf, django-braces, django-classy-tags, django-columns, django-cookie-law, django-dirtyfields, django-dsl, django-favicon-plus, django-filter, django-flexible-reports, django-import-export, django-model-utils, django-mptt, django-multiseek, django-password-policies-iplweb, django-querysetsequence, django-sendfile, django-session-security-iplweb, django-static-sitemaps, django-tables2, django-webmaster-verification, djangorestframework
 django_compressor==2.4    # via -r requirements.in
 djangorestframework==3.11.0  # via -r requirements.in
 et-xmlfile==1.0.1         # via openpyxl
