@@ -1,16 +1,15 @@
 # -*- encoding: utf-8 -*-
 
 from django.urls import path, register_converter
-
 from raport_slotow.converters import DecimalPathConverter
 from raport_slotow.views import (
-    WyborOsoby,
-    RaportSlotow,
-    ParametryRaportSlotowUczelnia,
-    RaportSlotowZerowy,
     ParametryRaportSlotowEwaluacja,
+    ParametryRaportSlotowUczelnia,
+    RaportSlotow,
     RaportSlotowEwaluacja,
     RaportSlotowUczelnia,
+    RaportSlotowZerowy,
+    WyborOsoby,
 )
 
 register_converter(DecimalPathConverter, "decimal")
@@ -48,5 +47,10 @@ urlpatterns = [
         "raport-slotow-zerowy/",
         RaportSlotowZerowy.as_view(),
         name="raport-slotow-zerowy",
+    ),
+    path(
+        "raport-slotow-zerowy/5/",
+        RaportSlotowZerowy.as_view(min_pk=5),
+        name="raport-slotow-zerowy-bez-5",
     ),
 ]

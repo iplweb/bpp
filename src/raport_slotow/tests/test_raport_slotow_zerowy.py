@@ -1,13 +1,13 @@
 import django
 import pytest
 from django.urls import reverse
+from raport_slotow.views import RaportSlotowZerowy
 
 from bpp.models.dyscyplina_naukowa import Autor_Dyscyplina
 from bpp.models.sloty.core import IPunktacjaCacher
 from bpp.models.system import Charakter_Formalny
 from bpp.models.wydawca import Wydawca
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
-from raport_slotow.views import RaportSlotowZerowy
 
 
 @pytest.fixture
@@ -49,6 +49,13 @@ def fikstura_raportu_slotow(
     )
 
     return (autor_jan_kowalski, autor_jan_nowak)
+
+
+def test_raport_slotow_zerowy_get_querylist_min_pk(fikstura_raportu_slotow):
+    jk, jn = fikstura_raportu_slotow
+    res = RaportSlotowZerowy(min_pk=200).get_queryset()
+    res = res.values_list("autor_id", flat=True)
+    assert res.count() == 2
 
 
 def test_raport_slotow_zerowy_get_querylist(fikstura_raportu_slotow):

@@ -6,11 +6,15 @@
 
 {% block breadcrumbs %}
     {{ block.super }}
-    <li class="current">raport slotów - zerowy</li>
+    <li class="current">raport slotów - zerowy
+    {% if min_pk %}
+        , minimalne PK = {{ min_pk }}
+    {% endif %}
+    </li>
 {% endblock %}
 
 {% block content %}
-    <h1>Raport slotów - zerowy</h1>
+    <h1>Raport slotów - zerowy {% if min_pk %}, minimalne PK = {{ min_pk }}{% endif %}</h1>
     Raport slotów - zerowy wyświetla autorów, którzy zadeklarowali dyscyplinę naukową i rok, ale nie posiadają
     dla danego roku żadnych prac w tej dyscyplinie.
     <style>
@@ -31,7 +35,7 @@
                 <tr>
                     <td>{{ filter.form.autor__nazwisko }}</td>
                     <td>{{ filter.form.rok__min }}&nbsp;{{ filter.form.rok__max }}</td>
-                    <td>{{  filter.form.dyscyplina_naukowa }}</td>
+                    <td>{{ filter.form.dyscyplina_naukowa }}</td>
 
                     <td><input type="submit" value="Filtruj"/>
 
