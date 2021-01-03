@@ -10,6 +10,7 @@ Historia zmian
 * zezwalaj na więcej, niż jedną pracę doktorską dla autora (#873)
 * pełne BPP ID na stronie pracy (#951)
 * możliwość wyszukania prac z ustawionym DOI (#864)
+* możliwość wyszukania prac z ustawioną strona WWW (#865)
 
 202101.52
 ---------

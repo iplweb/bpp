@@ -779,6 +779,28 @@ class DyscyplinaUstawionaQueryObject(BooleanQueryObject):
         return ret
 
 
+class StronaWWWUstawionaQueryObject(BooleanQueryObject):
+    label = "Strona WWW ustawiona"
+    ops = [
+        EQUAL_FEMALE,
+    ]
+    public = False
+
+    def real_query(self, value, operation):
+        if value:
+            ret = Q(
+                Q(~Q(public_www="") & Q(public_www__isnull=False))
+                | Q(~Q(www="") & Q(www__isnull=False))
+            )
+        else:
+            ret = Q(
+                Q(Q(public_www="") | Q(public_www__isnull=True))
+                & Q(Q(www="") | Q(www__isnull=True))
+            )
+
+        return ret
+
+
 class LicencjaOpenAccessUstawionaQueryObject(BooleanQueryObject):
     label = "Licencja OpenAccess ustawiona"
     ops = EQUALITY_OPS_FEMALE
