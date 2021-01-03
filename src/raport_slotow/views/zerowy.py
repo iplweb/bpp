@@ -1,23 +1,20 @@
 import urllib
-from urllib.parse import urlencode
 
-from django.contrib.postgres.aggregates.general import StringAgg
 from django.db import connection
 from django.db.models.fields import TextField
 from django.db.models.functions import Cast
 from django_filters.views import FilterView
 from django_tables2 import SingleTableMixin
+from raport_slotow.filters import RaportZerowyFilter
+from raport_slotow.models import RaportZerowyEntry
+from raport_slotow.tables import RaportSlotowZerowyTable
+from raport_slotow.util import MyExportMixin, create_temporary_table_as
+
+from django.contrib.postgres.aggregates.general import StringAgg
 
 from bpp.models import Cache_Punktacja_Autora_Query_View
 from bpp.models.dyscyplina_naukowa import Autor_Dyscyplina
 from bpp.views.mixins import UczelniaSettingRequiredMixin
-from raport_slotow.filters import RaportZerowyFilter
-from raport_slotow.models import RaportZerowyEntry
-from raport_slotow.tables import RaportSlotowZerowyTable
-from raport_slotow.util import (
-    MyExportMixin,
-    create_temporary_table_as,
-)
 
 
 class RaportSlotowZerowy(
@@ -32,11 +29,14 @@ class RaportSlotowZerowy(
     filterset_class = RaportZerowyFilter
     table_class = RaportSlotowZerowyTable
 
+    min_pk = None
+
     def get_context_data(self, *args, **kwargs):
         context = super(RaportSlotowZerowy, self).get_context_data(**kwargs)
         context["export_link"] = urllib.parse.urlencode(
             dict(self.request.GET, **{"_export": "xlsx"}), doseq=True
         )
+        context["min_pk"] = self.min_pk
         return context
 
     def get_queryset(self):
@@ -52,9 +52,12 @@ class RaportSlotowZerowy(
         )
 
         # zestawy autor/rok/dyscyplina z całej bazy danych
-        existent = Cache_Punktacja_Autora_Query_View.objects.all().values(
-            "autor_id", "rekord__rok", "dyscyplina_id"
-        )
+        existent = Cache_Punktacja_Autora_Query_View.objects.all()
+
+        if self.min_pk:
+            existent = existent.exclude(rekord__punkty_kbn__lte=self.min_pk)
+
+        existent = existent.values("autor_id", "rekord__rok", "dyscyplina_id")
 
         res = defined.difference(existent)
         create_temporary_table_as("raport_slotow_raportzerowyentry", res)

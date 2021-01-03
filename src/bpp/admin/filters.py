@@ -9,9 +9,9 @@ class SimpleIntegerFilter(SimpleListFilter):
 
     def lookups(self, request, model_admin):
         return [
-            ('brak', 'wartość nie ustalona'),
-            ('zero', 'zero'),
-            ('powyzej', 'więcej, niż zero')
+            ("brak", "wartość nie ustalona"),
+            ("zero", "zero"),
+            ("powyzej", "więcej, niż zero"),
         ]
 
     def queryset(self, request, queryset):
@@ -35,10 +35,7 @@ class SimpleNotNullFilter(SimpleListFilter):
     db_field_name = None
 
     def lookups(self, request, model_admin):
-        return [
-            ('brak', 'wartość nie ustalona'),
-            ('jest', 'wartość ustalona')
-        ]
+        return [("brak", "wartość nie ustalona"), ("jest", "wartość ustalona")]
 
     def queryset(self, request, queryset):
         v = self.value()
@@ -56,25 +53,33 @@ class SimpleNotNullFilter(SimpleListFilter):
 
 
 class LiczbaZnakowFilter(SimpleIntegerFilter):
-    title = 'liczba znaków wydawniczych'
-    parameter_name = 'liczba_znakow_wydawniczych'
+    title = "liczba znaków wydawniczych"
+    parameter_name = "liczba_znakow_wydawniczych"
+
+
+class DOIUstawioneFilter(SimpleNotNullFilter):
+    title = "DOI ustawione"
+    parameter_name = "doi"
 
 
 class PBNIDObecnyFilter(SimpleNotNullFilter):
     title = "PBN ID"
     parameter_name = "pbn_id"
 
+
 class OrcidObecnyFilter(SimpleNotNullFilter):
     title = "ORCID"
     parameter_name = "orcid"
+
 
 class PeselMD5ObecnyFilter(SimpleNotNullFilter):
     title = "PESEL MD5"
     parameter_name = "pesel_md5"
 
+
 class CalkowitaLiczbaAutorowFilter(SimpleIntegerFilter):
-    title = 'całkowita liczba autorów'
-    parameter_name = 'calkowita_liczba_autorow'
+    title = "całkowita liczba autorów"
+    parameter_name = "calkowita_liczba_autorow"
 
 
 class JednostkaFilter(SimpleListFilter):
@@ -88,4 +93,6 @@ class JednostkaFilter(SimpleListFilter):
         return queryset
 
     def lookups(self, request, model_admin):
-        return ((x.pk, str(x)) for x in Jednostka.objects.all().select_related('wydzial'))
+        return (
+            (x.pk, str(x)) for x in Jednostka.objects.all().select_related("wydzial")
+        )

@@ -3,58 +3,60 @@ import re
 import warnings
 
 from dirtyfields.dirtyfields import DirtyFieldsMixin
-from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models
 from django.db.models import CASCADE, PROTECT
-from django.db.models.signals import post_delete, pre_delete
+from django.db.models.expressions import RawSQL
+from django.db.models.signals import post_delete
 from django.dispatch import receiver
+from lxml.etree import Element, SubElement
+
+from django.contrib.contenttypes.fields import GenericRelation
+
 from django.utils import timezone
 from django.utils.functional import cached_property
-from lxml.etree import Element, SubElement
 
 from bpp.models import (
     TO_AUTOR,
-    MaProcentyMixin,
-    DodajAutoraMixin,
-    const,
-    Zewnetrzna_Baza_Danych,
     AktualizujDatePBNNadrzednegoMixin,
+    DodajAutoraMixin,
+    MaProcentyMixin,
     ModelOpcjonalnieNieEksportowanyDoAPI,
     ModelZMiejscemPrzechowywania,
+    Zewnetrzna_Baza_Danych,
+    const,
 )
 from bpp.models.abstract import (
     BazaModeluOdpowiedzialnosciAutorow,
     DwaTytuly,
-    ModelZRokiem,
-    ModelZWWW,
-    ModelRecenzowany,
     ModelPunktowany,
+    ModelRecenzowany,
     ModelTypowany,
-    ModelZeSzczegolami,
-    ModelZInformacjaZ,
-    ModelZeStatusem,
-    ModelZISBN,
-    ModelZAdnotacjami,
-    ModelZCharakterem,
-    Wydawnictwo_Baza,
-    PBNSerializerHelperMixin,
-    ModelZOpenAccess,
-    ModelZPubmedID,
-    ModelZDOI,
-    ModelZeZnakamiWydawniczymi,
-    ModelZAktualizacjaDlaPBN,
-    ModelZKonferencja,
-    ModelZSeria_Wydawnicza,
-    ModelZISSN,
     ModelWybitny,
     ModelZAbsolutnymUrl,
+    ModelZAdnotacjami,
+    ModelZAktualizacjaDlaPBN,
+    ModelZCharakterem,
+    ModelZDOI,
+    ModelZeStatusem,
+    ModelZeSzczegolami,
+    ModelZeZnakamiWydawniczymi,
+    ModelZInformacjaZ,
+    ModelZISBN,
+    ModelZISSN,
+    ModelZKonferencja,
     ModelZLiczbaCytowan,
+    ModelZOpenAccess,
+    ModelZPubmedID,
+    ModelZRokiem,
+    ModelZSeria_Wydawnicza,
+    ModelZWWW,
+    PBNSerializerHelperMixin,
+    Wydawnictwo_Baza,
 )
 from bpp.models.autor import Autor
 from bpp.models.const import TO_REDAKTOR
 from bpp.models.nagroda import Nagroda
 from bpp.models.util import ZapobiegajNiewlasciwymCharakterom
-from bpp.models.util import dodaj_autora
 from bpp.models.wydawca import Wydawca
 
 
@@ -105,8 +107,7 @@ class Wydawnictwo_Zwarte_Baza(
     ModelZMiejscemPrzechowywania,
     ModelOpcjonalnieNieEksportowanyDoAPI,
 ):
-    """Baza dla klas Wydawnictwo_Zwarte oraz Praca_Doktorska_Lub_Habilitacyjna
-    """
+    """Baza dla klas Wydawnictwo_Zwarte oraz Praca_Doktorska_Lub_Habilitacyjna"""
 
     miejsce_i_rok = models.CharField(
         max_length=MIEJSCE_I_ROK_MAX_LENGTH,
@@ -199,10 +200,10 @@ class Wydawnictwo_Zwarte(
     calkowita_liczba_autorow = models.PositiveIntegerField(
         blank=True,
         null=True,
-        help_text="""Jeżeli dodajesz monografię, wpisz 
-        tutaj całkowitą liczbę autorów monografii. Ta informacja zostanie 
-        użyta w eksporcie danych do PBN. Jeżeli informacja ta nie zostanie 
-        uzupełiona, wartość tego pola zostanie obliczona i będzie to ilość 
+        help_text="""Jeżeli dodajesz monografię, wpisz
+        tutaj całkowitą liczbę autorów monografii. Ta informacja zostanie
+        użyta w eksporcie danych do PBN. Jeżeli informacja ta nie zostanie
+        uzupełiona, wartość tego pola zostanie obliczona i będzie to ilość
         wszystkich autorów przypisanych do danej monografii""",
     )
 
@@ -210,9 +211,9 @@ class Wydawnictwo_Zwarte(
         blank=True,
         null=True,
         help_text="""Jeżeli dodajesz monografię, wpisz tutaj całkowitą liczbę
-        redaktorów monografii. Ta informacja zostanie użyta w eksporcie 
+        redaktorów monografii. Ta informacja zostanie użyta w eksporcie
         danych do PBN. Jeżeli pole to nie zostanie uzupełnione, wartość ta
-        zostanie obliczona i będzie to ilość wszystkich redaktorów 
+        zostanie obliczona i będzie to ilość wszystkich redaktorów
         przypisanych do danej monografii""",
     )
 
@@ -224,7 +225,7 @@ class Wydawnictwo_Zwarte(
         app_label = "bpp"
 
     def guess_pbn_type(self):
-        if self.charakter_formalny.charakter_pbn != None:
+        if self.charakter_formalny.charakter_pbn is not None:
             return self.charakter_formalny.charakter_pbn.identyfikator
 
         tks = self.typ_kbn.skrot
@@ -472,6 +473,17 @@ class Wydawnictwo_Zwarte(
             flds, toplevel, Wydawnictwo_Zwarte_Autor
         )
         return toplevel
+
+    def wydawnictwa_powiazane_posortowane(self):
+        """
+        Sortowanie wydawnictw powiązanych wg pierwszej liczby dziesiętnej występującej w polu 'Strony'
+        """
+        return self.wydawnictwa_powiazane_set.order_by(
+            RawSQL(
+                r"CAST((regexp_match(COALESCE(bpp_wydawnictwo_zwarte.strony, '99999999'), '(\d+)'))[1] AS INT)",
+                "",
+            )
+        )
 
 
 @receiver(post_delete, sender=Wydawnictwo_Zwarte_Autor)

@@ -41,7 +41,8 @@ def test_global_search_in_admin(asgi_live_server, admin_browser, transactional_d
     browser = admin_browser
     mommy.make(Wydawnictwo_Ciagle, tytul_oryginalny="Test")
 
-    browser.visit(asgi_live_server.url + "/admin/")
+    with wait_for_page_load(browser):
+        browser.visit(asgi_live_server.url + "/admin/")
 
     with wait_for_page_load(browser):
         select_select2_autocomplete(

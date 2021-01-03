@@ -1,34 +1,36 @@
+from import_dbf import models as import_dbf_models
+from import_dbf.models import (
+    B_A,
+    B_B,
+    B_E,
+    B_L,
+    B_N,
+    B_U,
+    J_H,
+    Aut,
+    Bib,
+    Bib_Desc,
+    Dys,
+    Ixn,
+    Jed,
+    Jer,
+    Jez,
+    Kbn,
+    Ldy,
+    Lis,
+    Loc,
+    Poz,
+    Pub,
+    Ses,
+    Usi,
+    Wx2,
+    Wyd,
+)
+
 from django.contrib import admin
 from django.contrib.admin.sites import AlreadyRegistered
 
-from import_dbf import models as import_dbf_models
-from import_dbf.models import (
-    Bib,
-    Aut,
-    Jed,
-    B_A,
-    B_U,
-    Poz,
-    Usi,
-    Ses,
-    Wx2,
-    Ixn,
-    Wyd,
-    Ldy,
-    B_E,
-    Lis,
-    B_L,
-    J_H,
-    Pub,
-    Kbn,
-    Jez,
-    Loc,
-    Bib_Desc,
-    Dys,
-    Jer,
-    B_B,
-    B_N,
-)
+from bpp.admin.zrodlo import Zrodlo  # noqa
 
 
 class ImportDbfBaseAdmin(admin.ModelAdmin):

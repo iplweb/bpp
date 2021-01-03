@@ -58,6 +58,7 @@ from bpp.models import (
     Jezyk,
     Typ_Odpowiedzialnosci,
     Uczelnia,
+    Wydawnictwo_Zwarte,
     Zewnetrzna_Baza_Danych,
     ZewnetrzneBazyDanychView,
     Zrodlo,
@@ -194,6 +195,34 @@ class NazwiskoIImieQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject)
             q = Autorzy.objects.filter(autor=value).values("rekord_id")
 
             ret = Q(pk__in=q)
+        else:
+            raise UnknownOperation(operation)
+
+        if operation in DIFFERENT_ALL:
+            return ~ret
+
+        return ret
+
+
+class WydawnictwoNadrzedneQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
+    label = "Wydawnictwo nadrzędne"
+    type = AUTOCOMPLETE
+    ops = [
+        EQUAL_NONE,
+        DIFFERENT_NONE,
+    ]
+    model = Wydawnictwo_Zwarte
+    search_fields = [
+        "tytul_oryginalny",
+    ]
+    field_name = "wydawnictwo_nadrzedne"
+    url = "bpp:public-wydawnictwo-nadrzedne-autocomplete"
+
+    def real_query(self, value, operation):
+
+        if operation in EQUALITY_OPS_ALL:
+            ret = Q(wydawnictwo_nadrzedne=value)
+
         else:
             raise UnknownOperation(operation)
 
@@ -779,6 +808,28 @@ class DyscyplinaUstawionaQueryObject(BooleanQueryObject):
         return ret
 
 
+class StronaWWWUstawionaQueryObject(BooleanQueryObject):
+    label = "Strona WWW ustawiona"
+    ops = [
+        EQUAL_FEMALE,
+    ]
+    public = False
+
+    def real_query(self, value, operation):
+        if value:
+            ret = Q(
+                Q(~Q(public_www="") & Q(public_www__isnull=False))
+                | Q(~Q(www="") & Q(www__isnull=False))
+            )
+        else:
+            ret = Q(
+                Q(Q(public_www="") | Q(public_www__isnull=True))
+                & Q(Q(www="") | Q(www__isnull=True))
+            )
+
+        return ret
+
+
 class LicencjaOpenAccessUstawionaQueryObject(BooleanQueryObject):
     label = "Licencja OpenAccess ustawiona"
     ops = EQUALITY_OPS_FEMALE
@@ -837,6 +888,7 @@ multiseek_fields = [
     CharakterOgolnyQueryObject(),
     TypKBNQueryObject(),
     ZrodloQueryObject(),
+    WydawnictwoNadrzedneQueryObject(),
     PierwszeNazwiskoIImie(),
     NazwiskoIImie1do3(),
     NazwiskoIImie1do5(),

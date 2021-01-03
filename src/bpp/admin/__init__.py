@@ -1,68 +1,57 @@
 # -*- encoding: utf-8 -*-
-
-from django.contrib import admin
-from django.contrib.auth.forms import UserCreationForm
+from django import forms
 from multiseek.models import SearchForm
-
-from bpp.models import Rodzaj_Prawa_Patentowego, Zewnetrzna_Baza_Danych
-
-# Proste tabele
-from bpp.models.openaccess import (
-    Tryb_OpenAccess_Wydawnictwo_Ciagle,
-    Tryb_OpenAccess_Wydawnictwo_Zwarte,
-    Czas_Udostepnienia_OpenAccess,
-    Licencja_OpenAccess,
-    Wersja_Tekstu_OpenAccess,
+from ..models import (
+    BppUser,
+    Funkcja_Autora,
+    Jezyk,
+    Rodzaj_Zrodla,
+    Status_Korekty,
+    Typ_KBN,
+    Typ_Odpowiedzialnosci,
+    Tytul,
+    Zrodlo_Informacji,
 )
-from . import zrodlo
+from ..models.nagroda import OrganPrzyznajacyNagrody
+from ..models.system import Charakter_PBN
 from .autor import AutorAdmin  # noqa
+from .autor_dyscyplina import Autor_DyscyplinaAdmin  # noqa
 from .charakter_formalny import Charakter_FormalnyAdmin  # noqa
 from .core import (
-    BaseBppAdmin,
     CommitedModelAdmin,
-    KolumnyZeSkrotamiMixin,
-    generuj_inline_dla_autorow,
     PreventDeletionAdmin,
-)
-from .core import (
     RestrictDeletionToAdministracjaGroupAdmin,
     RestrictDeletionToAdministracjaGroupMixin,
 )
 from .dyscyplina_naukowa import Dyscyplina_NaukowaAdmin  # noqa
-from .filters import (
-    LiczbaZnakowFilter,
-    CalkowitaLiczbaAutorowFilter,
-    JednostkaFilter,
-    PBNIDObecnyFilter,
-    PeselMD5ObecnyFilter,
-    OrcidObecnyFilter,
-)
-from .grant import GrantAdmin
-from .helpers import *
 from .jednostka import JednostkaAdmin  # NOQA
 from .konferencja import KonferencjaAdmin  # noqa
 from .patent import Patent_Admin  # noqa
 from .praca_doktorska import Praca_DoktorskaAdmin  # noqa
 from .praca_habilitacyjna import Praca_HabilitacyjnaAdmin  # noqa
-from .seria_wydawnicza import Seria_WydawniczaAdmin
+from .seria_wydawnicza import Seria_WydawniczaAdmin  # noqa
 from .uczelnia import UczelniaAdmin  # NOQA
 from .wydawca import WydawcaAdmin  # noqa
-from .wydawnictwo_ciagle import Wydawnictwo_CiagleAdmin
-from .wydawnictwo_zwarte import Wydawnictwo_ZwarteAdmin_Baza, Wydawnictwo_ZwarteAdmin
-from .wydzial import WydzialAdmin
-from ..models import (
-    Jezyk,
-    Typ_KBN,
-    Tytul,
-    Funkcja_Autora,
-    Rodzaj_Zrodla,
-    Typ_Odpowiedzialnosci,
-    Status_Korekty,
-    Zrodlo_Informacji,
-    BppUser,
-)  # Publikacja_Habilitacyjna
-from ..models.nagroda import OrganPrzyznajacyNagrody
-from ..models.system import Charakter_PBN
+from .wydawnictwo_ciagle import Wydawnictwo_CiagleAdmin  # noqa
+from .wydawnictwo_zwarte import (  # noqa
+    Wydawnictwo_ZwarteAdmin,
+    Wydawnictwo_ZwarteAdmin_Baza,
+)
+from .wydzial import WydzialAdmin  # noqa
+
+from django.contrib import admin
+from django.contrib.auth.forms import UserCreationForm
+
+from bpp.models import Rodzaj_Prawa_Patentowego, Zewnetrzna_Baza_Danych
+
+# Proste tabele
+from bpp.models.openaccess import (
+    Czas_Udostepnienia_OpenAccess,
+    Licencja_OpenAccess,
+    Tryb_OpenAccess_Wydawnictwo_Ciagle,
+    Tryb_OpenAccess_Wydawnictwo_Zwarte,
+    Wersja_Tekstu_OpenAccess,
+)
 
 
 class JezykAdmin(RestrictDeletionToAdministracjaGroupAdmin):
@@ -205,7 +194,8 @@ class BppUserCreationForm(UserCreationForm):
         except BppUser.DoesNotExist:
             return username
         raise forms.ValidationError(
-            self.error_messages["duplicate_username"], code="duplicate_username",
+            self.error_messages["duplicate_username"],
+            code="duplicate_username",
         )
 
 

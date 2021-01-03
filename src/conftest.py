@@ -6,6 +6,7 @@ from datetime import datetime
 
 import django_webtest
 import pytest
+import webtest
 from rest_framework.test import APIClient
 from selenium.webdriver.remote.webdriver import WebDriver
 
@@ -123,8 +124,8 @@ def _preauth_session_id_helper(
     browser.authorized_user = django_user_model.objects.get(
         **{django_username_field: username}
     )
-    with wait_for_page_load(browser):
-        browser.reload()
+    # with wait_for_page_load(browser):
+    #    browser.reload()
     return browser
 
 
@@ -490,7 +491,7 @@ def wprowadzanie_danych_user(normal_django_user):
 
 
 @pytest.fixture(scope="function")
-def app(webtest_app, normal_django_user):
+def app(webtest_app, normal_django_user) -> webtest.app.TestApp:
     return _webtest_login(
         webtest_app, NORMAL_DJANGO_USER_LOGIN, NORMAL_DJANGO_USER_PASSWORD
     )

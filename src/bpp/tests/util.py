@@ -247,6 +247,13 @@ def show_element(browser, element):
 
 
 def select_select2_autocomplete(browser, element_id, value):
+    """
+    Wypełnia kontrolkę Select2
+
+    :param browser: splinter.Browser
+    :param element_id: ID elementu (tekst)
+    :param value: tekst do wpisania
+    """
     # Znajdź interesujący nas select2-autocomplete
     element = browser.find_by_id(element_id)[0]
     sibling = element.find_by_xpath("following-sibling::span")
@@ -276,6 +283,7 @@ def select_select2_autocomplete(browser, element_id, value):
             lambda: "Trwa wyszukiwanie…"
             not in browser.find_by_id(f"select2-{element_id}-results").value
         )
+
         active.send_keys(Keys.ENTER)
 
         try:

@@ -10,6 +10,8 @@ from django.db.models.aggregates import Count
 from django.db.models.query_utils import Q
 from queryset_sequence import QuerySetSequence
 
+from django.contrib.auth.mixins import UserPassesTestMixin
+
 from bpp.jezyk_polski import warianty_zapisanego_nazwiska
 from bpp.lookups import SearchQueryStartsWith
 from bpp.models import (
@@ -21,7 +23,7 @@ from bpp.models import (
 )
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
-from bpp.models.const import GR_WPROWADZANIE_DANYCH, CHARAKTER_OGOLNY_KSIAZKA
+from bpp.models.const import CHARAKTER_OGOLNY_KSIAZKA, GR_WPROWADZANIE_DANYCH
 from bpp.models.konferencja import Konferencja
 from bpp.models.nagroda import OrganPrzyznajacyNagrody
 from bpp.models.patent import Patent, Patent_Autor
@@ -30,13 +32,10 @@ from bpp.models.praca_habilitacyjna import Praca_Habilitacyjna
 from bpp.models.profile import BppUser
 from bpp.models.seria_wydawnicza import Seria_Wydawnicza
 from bpp.models.struktura import Wydzial
-from bpp.models.system import Charakter_Formalny
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor
-from bpp.models.zrodlo import Zrodlo, Rodzaj_Zrodla
+from bpp.models.zrodlo import Rodzaj_Zrodla, Zrodlo
 from bpp.util import fulltext_tokenize
-
-from django.contrib.auth.mixins import UserPassesTestMixin
 
 
 class Wydawnictwo_NadrzedneAutocomplete(autocomplete.Select2QuerySetView):
@@ -49,6 +48,10 @@ class Wydawnictwo_NadrzedneAutocomplete(autocomplete.Select2QuerySetView):
         if self.q:
             qs = qs.filter(tytul_oryginalny__icontains=self.q)
         return qs
+
+
+class PublicWydawnictwo_NadrzedneAutocomplete(Wydawnictwo_NadrzedneAutocomplete):
+    create_field = None
 
 
 class JednostkaMixin:
@@ -109,12 +112,18 @@ class KonferencjaAutocomplete(
     def get_result_label(self, result):
         return f"{Konferencja.TK_SYMBOLE[result.typ_konferencji]} {str(result)}"
 
+    def create_object(self, text):
+        return self.get_queryset().create(nazwa=text.strip())
+
 
 class WydawcaAutocomplete(
     NazwaMixin, LoginRequiredMixin, autocomplete.Select2QuerySetView
 ):
     create_field = "nazwa"
     qset = Wydawca.objects.all()
+
+    def create_object(self, text):
+        return self.get_queryset().create(nazwa=text.strip())
 
 
 class PublicKonferencjaAutocomplete(NazwaMixin, autocomplete.Select2QuerySetView):
@@ -395,7 +404,12 @@ class ZapisanyJakoAutocomplete(autocomplete.Select2ListView):
         if text is None:
             return http.HttpResponseBadRequest()
 
-        return http.JsonResponse({"id": text, "text": text,})
+        return http.JsonResponse(
+            {
+                "id": text,
+                "text": text,
+            }
+        )
 
     def create(self, text):
         return text

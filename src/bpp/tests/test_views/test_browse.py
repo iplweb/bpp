@@ -4,35 +4,50 @@ import re
 
 import pytest
 from bs4 import BeautifulSoup
+
 from django.contrib.contenttypes.models import ContentType
 
 try:
     from django.core.urlresolvers import reverse
 except ImportError:
     from django.urls import reverse
+
+from conftest import NORMAL_DJANGO_USER_LOGIN, NORMAL_DJANGO_USER_PASSWORD
+from miniblog.models import Article
 from model_mommy import mommy
-from multiseek.logic import EQUAL_NONE, EQUAL, EQUAL_FEMALE
+from multiseek.logic import EQUAL, EQUAL_FEMALE, EQUAL_NONE
 from multiseek.views import MULTISEEK_SESSION_KEY
 
 from bpp.models import (
     Jednostka,
-    Wydawnictwo_Ciagle,
     OpcjaWyswietlaniaField,
+    Praca_Doktorska,
     Typ_Odpowiedzialnosci,
+    Wydawnictwo_Ciagle,
+    Wydawnictwo_Zwarte,
+    rebuild_zwarte,
 )
 from bpp.models.autor import Autor
 from bpp.views.browse import BuildSearch
-from conftest import NORMAL_DJANGO_USER_PASSWORD, NORMAL_DJANGO_USER_LOGIN
-from miniblog.models import Article
 
 
 def test_buildSearch(settings):
     dct = {
-        "zrodlo": [1,],
-        "typ": [1,],
-        "rok": [2013,],
-        "jednostka": [1,],
-        "autor": [1,],
+        "zrodlo": [
+            1,
+        ],
+        "typ": [
+            1,
+        ],
+        "rok": [
+            2013,
+        ],
+        "jednostka": [
+            1,
+        ],
+        "autor": [
+            1,
+        ],
     }
 
     class mydct(dict):
@@ -220,6 +235,24 @@ def test_browse_autor():
     return autor
 
 
+def test_browse_autor_dwa_doktoraty(typy_odpowiedzialnosci, autor_jan_kowalski, client):
+    tytuly_prac = ["Praca 1", "Praca 2"]
+    for praca in tytuly_prac:
+        mommy.make(Praca_Doktorska, tytul_oryginalny=praca, autor=autor_jan_kowalski)
+
+    res = client.get(
+        reverse(
+            "bpp:browse_autor",
+            kwargs=dict(
+                slug=autor_jan_kowalski.slug,
+            ),
+        )
+    )
+
+    for praca in tytuly_prac:
+        assert praca in res.content.decode("utf-8")
+
+
 @pytest.mark.django_db
 def test_browse_autor_podstrona_liczba_cytowan_nigdy(
     client, uczelnia, test_browse_autor
@@ -310,3 +343,38 @@ def test_browse_snip_invisible(client, uczelnia, wydawnictwo_ciagle):
     )
 
     assert b"SNIP" not in res.content
+
+
+@pytest.mark.django_Db
+def test_browse_praca_wydawnictwa_powiazane(wydawnictwo_zwarte, client):
+    # Testuj, czy rozdziały pokazują się w wydawnictwach powiązanych
+    mommy.make(
+        Wydawnictwo_Zwarte,
+        wydawnictwo_nadrzedne=wydawnictwo_zwarte,
+        tytul_oryginalny="Roz 1",
+        strony="asdoifj 55-34 oaijsdfo",
+    )
+    mommy.make(
+        Wydawnictwo_Zwarte,
+        wydawnictwo_nadrzedne=wydawnictwo_zwarte,
+        tytul_oryginalny="Roz 2",
+        strony="IXIXI 22-50",
+    )
+
+    rebuild_zwarte()
+
+    url = reverse(
+        "bpp:browse_praca",
+        args=(
+            ContentType.objects.get_for_model(wydawnictwo_zwarte).pk,
+            wydawnictwo_zwarte.pk,
+        ),
+    )
+    res = client.get(url)
+
+    assert b"Rekordy powi" in res.content
+    x1 = res.content.find(b"Roz 1")
+    x2 = res.content.find(b"Roz 2")
+
+    # Sortujemy po polu "strony", jeden ma byc pozniej, drugi wczesniej:
+    assert x2 < x1

@@ -40,6 +40,7 @@ from bpp.multiseek_registry import (
     PierwszeNazwiskoIImie,
     PublicDostepDniaQueryObject,
     RodzajKonferenckjiQueryObject,
+    StronaWWWUstawionaQueryObject,
     Typ_OdpowiedzialnosciQueryObject,
     TypOgolnyAutorQueryObject,
     TypOgolnyRecenzentQueryObject,
@@ -68,6 +69,43 @@ def test_TytulPracyQueryObject(value, operation):
         field_name="tytul_oryginalny", label="Tytuł oryginalny", public=True
     ).real_query(value, operation)
     assert Rekord.objects.filter(*(ret,)).count() == 0
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("tested_field", ["www", "public_www"])
+def test_StronaWWWUstawionaQueryObject_jedna_z(wydawnictwo_zwarte, tested_field):
+    fields = ["public_www", "www"]
+    for field in fields:
+        setattr(wydawnictwo_zwarte, field, None)
+    wydawnictwo_zwarte.save()
+
+    qry = StronaWWWUstawionaQueryObject("x1x").real_query(True, logic.EQUAL_FEMALE)
+    assert Rekord.objects.filter(*(qry,)).count() == 0
+
+    qry = StronaWWWUstawionaQueryObject("x1x").real_query(False, logic.EQUAL_FEMALE)
+    assert Rekord.objects.filter(*(qry,)).count() == 1
+
+    setattr(wydawnictwo_zwarte, tested_field, "http://onet.pl/")
+    wydawnictwo_zwarte.save()
+
+    qry = StronaWWWUstawionaQueryObject("x1x").real_query(True, logic.EQUAL_FEMALE)
+    assert Rekord.objects.filter(*(qry,)).count() == 1
+
+    qry = StronaWWWUstawionaQueryObject("x1x").real_query(False, logic.EQUAL_FEMALE)
+    assert Rekord.objects.filter(*(qry,)).count() == 0
+
+
+@pytest.mark.django_db
+def test_StronaWWWUstawionaQueryObject_obydwie_strony(
+    wydawnictwo_zwarte,
+):
+    fields = ["public_www", "www"]
+    for field in fields:
+        setattr(wydawnictwo_zwarte, field, "http://onet.pl/")
+    wydawnictwo_zwarte.save()
+
+    qry = StronaWWWUstawionaQueryObject("x1x").real_query(True, logic.EQUAL_FEMALE)
+    assert Rekord.objects.filter(*(qry,)).count() == 1
 
 
 def test_multiseek_licencja_openaccess_ustawiona(wydawnictwo_zwarte):

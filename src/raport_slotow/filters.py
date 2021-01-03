@@ -1,11 +1,7 @@
 import django_filters
-from django.forms import TextInput, NumberInput
+from django.forms import NumberInput, TextInput
 
-from bpp.models import (
-    Cache_Punktacja_Autora_Sum_Gruop,
-    Dyscyplina_Naukowa,
-    Wydzial,
-)
+from bpp.models import Cache_Punktacja_Autora_Sum_Gruop, Dyscyplina_Naukowa, Wydzial
 
 
 class RaportSlotowUczelniaBezJednostekIWydzialowFilter(django_filters.FilterSet):
@@ -64,11 +60,15 @@ class RaportZerowyFilter(django_filters.FilterSet):
         widget=TextInput(attrs={"placeholder": "Podaj nazwisko"}),
     )
     rok__min = django_filters.NumberFilter(
-        "rok", lookup_expr="gte", widget=NumberInput(attrs={"placeholder": "min"}),
+        "rok",
+        lookup_expr="gte",
+        widget=NumberInput(attrs={"placeholder": "min"}),
     )
 
     rok__max = django_filters.NumberFilter(
-        "rok", lookup_expr="lte", widget=NumberInput(attrs={"placeholder": "max"}),
+        "rok",
+        lookup_expr="lte",
+        widget=NumberInput(attrs={"placeholder": "max"}),
     )
     dyscyplina_naukowa = django_filters.ModelChoiceFilter(
         queryset=Dyscyplina_Naukowa.objects.all()

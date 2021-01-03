@@ -4,6 +4,20 @@
 Historia zmian
 ==============
 
+202101.53
+---------
+* poprawne opisy powiązań autora z dyscypliną w module redagowania (#686)
+* zezwalaj na więcej, niż jedną pracę doktorską dla autora (#873)
+* pełne BPP ID na stronie pracy (#951)
+* możliwość wyszukania prac z ustawionym DOI (#864)
+* możliwość wyszukania prac z ustawioną strona WWW (#865)
+* opcjonalnie traktuj jako slot zerowy prace z PK=5 (#877)
+* wygodny podgląd powiązań autora z dyscypliną w module redagowania (b/n)
+* możliwość eksportu danych dyscyplin autorów w formacie XLS (#893)
+* wyświetlanie rekordów powiązanych dla wydawnictw zwartych (#897)
+* wyszukiwanie rekordów powiązanych dla wydawnictw zwartych (#897)
+
+
 202101.52
 ---------
 * raport slotów - autor umożliwia zbieranie "do N slotów" dla autora (b/n),
