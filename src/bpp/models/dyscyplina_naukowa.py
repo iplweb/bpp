@@ -3,6 +3,7 @@ from decimal import Decimal
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.db.models import CASCADE, PositiveSmallIntegerField
+from model_utils import Choices
 
 from bpp.models import const
 
@@ -114,14 +115,16 @@ class Autor_Dyscyplina(models.Model):
     rok = PositiveSmallIntegerField()
     autor = models.ForeignKey("bpp.Autor", CASCADE)
 
+    RODZAJE_AUTORA = Choices(
+        (" ", "brak danych"),
+        ("N", "pracownik zaliczany do liczby N"),
+        ("D", "doktorant"),
+        ("Z", "inny zatrudniony"),
+    )
+
     rodzaj_autora = models.CharField(
         max_length=1,
-        choices=[
-            (" ", "brak danych"),
-            ("N", "pracownik zaliczany do liczby N"),
-            ("D", "doktorant"),
-            ("Z", "inny zatrudniony"),
-        ],
+        choices=RODZAJE_AUTORA,
         default=" ",
     )
 

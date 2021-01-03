@@ -171,6 +171,7 @@ INSTALLED_APPS = [
     "django_filters",
     "api_v1",
     "adminsortable2",
+    "import_export",
 ]
 
 # Profile użytkowników

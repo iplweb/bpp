@@ -13,6 +13,7 @@ Historia zmian
 * możliwość wyszukania prac z ustawioną strona WWW (#865)
 * opcjonalnie traktuj jako slot zerowy prace z PK=5 (#877)
 * wygodny podgląd powiązań autora z dyscypliną w module redagowania (b/n)
+* możliwość eksportu danych dyscyplin autorów w formacie XLS (#893)
 
 202101.52
 ---------

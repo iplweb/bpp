@@ -27,6 +27,8 @@ cryptography==3.3.1       # via -r requirements.in, autobahn, pyopenssl, service
 cssmin==0.2.0             # via -r requirements.in
 daphne==2.5.0             # via channels
 dbfread==2.0.7            # via -r requirements.in
+defusedxml==0.6.0         # via odfpy
+diff-match-patch==20200713  # via django-import-export
 dj-pagination==2.4.0      # via -r requirements.in
 django-admin-sortable2==0.7.6  # via -r requirements.in
 django-admin-tools==0.9.0  # via -r requirements.in
@@ -50,6 +52,7 @@ django-fsm==2.7.0         # via -r requirements.in
 django-grappelli==2.14.1  # via -r requirements.in
 django-group-by==0.3.1    # via -r requirements.in
 django-htmlmin==0.11.0    # via -r requirements.in
+django-import-export==2.5.0  # via -r requirements.in
 django-js-asset==1.2.2    # via django-mptt
 django-loginas==0.3.8     # via -r requirements.in
 django-messages-extends==0.6.2  # via -r requirements.in
@@ -65,7 +68,7 @@ https://github.com/mpasternak/django-session-security/archive/jquery-noconflict.
 django-static-sitemaps==4.6.0  # via -r requirements.in
 django-tables2==2.3.1     # via -r requirements.in, django-flexible-reports
 django-webmaster-verification==0.3.0  # via -r requirements.in
-django==3.0.11            # via -r requirements.in, channels, crispy-forms-foundation, django-admin-sortable2, django-appconf, django-braces, django-classy-tags, django-columns, django-cookie-law, django-dirtyfields, django-dsl, django-favicon-plus, django-filter, django-flexible-reports, django-model-utils, django-mptt, django-multiseek, django-password-policies-iplweb, django-querysetsequence, django-sendfile, django-session-security, django-static-sitemaps, django-tables2, django-webmaster-verification, djangorestframework
+django==3.0.11            # via -r requirements.in, channels, crispy-forms-foundation, django-admin-sortable2, django-appconf, django-braces, django-classy-tags, django-columns, django-cookie-law, django-dirtyfields, django-dsl, django-favicon-plus, django-filter, django-flexible-reports, django-import-export, django-model-utils, django-mptt, django-multiseek, django-password-policies-iplweb, django-querysetsequence, django-sendfile, django-session-security, django-static-sitemaps, django-tables2, django-webmaster-verification, djangorestframework
 django_compressor==2.4    # via -r requirements.in
 djangorestframework==3.11.0  # via -r requirements.in
 et-xmlfile==1.0.1         # via openpyxl
@@ -81,10 +84,12 @@ jdcal==1.4.1              # via openpyxl
 kombu==4.6.8              # via celery
 lxml==4.6.2               # via -r requirements.in, django-flexible-reports, pyoai
 markdown==3.2.1           # via -r requirements.in
+markuppy==1.14            # via tablib
 moai-iplweb==2.0.0        # via -r requirements.in
 msgpack==1.0.0            # via channels-redis
+odfpy==1.4.1              # via tablib
 olefile==0.44             # via -r requirements.in
-openpyxl==3.0.3           # via -r requirements.in
+openpyxl==3.0.3           # via -r requirements.in, tablib
 paste==3.4.0              # via moai-iplweb, pastescript
 pastedeploy==2.1.0        # via moai-iplweb, pastescript
 pastescript==3.2.0        # via moai-iplweb
@@ -103,6 +108,7 @@ pytest-runner==5.2        # via django-cookie-law
 python-dateutil==2.8.1    # via django-multiseek
 python-utils==2.4.0       # via progressbar2
 pytz==2018.4              # via -r requirements.in, celery, django, django-dirtyfields
+pyyaml==5.3.1             # via tablib
 rcssmin==1.0.6            # via django-compressor
 redis==3.5.3              # via celery, django-redis-cache
 requests==2.20.0          # via -r requirements.in, wosclient
@@ -113,7 +119,7 @@ six==1.14.0               # via automat, bleach, cryptography, django-appconf, d
 soupsieve==2.0            # via beautifulsoup4
 sqlalchemy==1.3.15        # via moai-iplweb
 sqlparse==0.3.1           # via django
-tablib==1.1.0             # via -r requirements.in, django-flexible-reports
+tablib[html,ods,xls,xlsx,yaml]==1.1.0  # via -r requirements.in, django-flexible-reports, django-import-export
 twisted[tls]==20.3.0      # via daphne
 txaio==20.4.1             # via autobahn
 unidecode==0.4.20         # via -r requirements.in
@@ -128,7 +134,8 @@ wheel==0.34.2             # via pypandoc
 wosclient==0.1.5          # via -r requirements.in
 wsgi-intercept==1.9.2     # via moai-iplweb
 wsgiutils==0.7.2          # via moai-iplweb
-xlrd==1.2.0               # via -r requirements.in
+xlrd==1.2.0               # via -r requirements.in, tablib
+xlwt==1.3.0               # via tablib
 zope.component==4.6.2     # via -r requirements.in
 zope.deferredimport==4.3.1  # via zope.component
 zope.deprecation==4.4.0   # via zope.component

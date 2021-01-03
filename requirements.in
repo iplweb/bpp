@@ -61,6 +61,7 @@ markdown==3.2.1
 django-admin-sortable2==0.7.6
 cssmin==0.2.0
 rjsmin==1.1.0
+django-import-export==2.5.0
 
 # MacBook Pro M1 arm
 cryptography>=3.3.1
