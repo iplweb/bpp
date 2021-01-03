@@ -5,7 +5,9 @@ from django.db.models import CASCADE
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 
-from bpp.models import Autor
+from django.utils.functional import cached_property
+
+from bpp.models import Autor, Charakter_Formalny
 from bpp.models.praca_doktorska import Praca_Doktorska_Baza
 
 
@@ -34,6 +36,10 @@ class Praca_Habilitacyjna(Praca_Doktorska_Baza):
     autor = models.OneToOneField(Autor, CASCADE)
 
     publikacje_habilitacyjne = GenericRelation(Publikacja_Habilitacyjna)
+
+    @cached_property
+    def charakter_formalny(self):
+        return Charakter_Formalny.objects.get(skrot="H")
 
     class Meta:
         verbose_name = "praca habilitacyjna"

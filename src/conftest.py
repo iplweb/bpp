@@ -411,7 +411,9 @@ def habilitacja(jednostka, db, charaktery_formalne, jezyki, typy_odpowiedzialnos
 
 
 @pytest.fixture
-def praca_habilitacyjna(habilitacja):
+def praca_habilitacyjna(
+    habilitacja,
+) -> Praca_Habilitacyjna:
     return habilitacja
 
 
