@@ -4,6 +4,11 @@
 Historia zmian
 ==============
 
+202101.54
+---------
+* poprawne wyświetlanie charakteru formalnego dla doktoratów i habilitacji
+  w widoku prac (b/n)
+
 202101.53
 ---------
 * poprawne opisy powiązań autora z dyscypliną w module redagowania (#686)
@@ -16,7 +21,6 @@ Historia zmian
 * możliwość eksportu danych dyscyplin autorów w formacie XLS (#893)
 * wyświetlanie rekordów powiązanych dla wydawnictw zwartych (#897)
 * wyszukiwanie rekordów powiązanych dla wydawnictw zwartych (#897)
-
 
 202101.52
 ---------
