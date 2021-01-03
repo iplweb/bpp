@@ -61,7 +61,7 @@ django-querysetsequence==0.12  # via -r requirements.in
 django-redis-cache==2.1.1  # via -r requirements.in
 django-robots==4.0        # via -r requirements.in
 django-sendfile==0.3.11   # via -r requirements.in
-django-session-security==2.6.6  # via -r requirements.in
+https://github.com/mpasternak/django-session-security/archive/jquery-noconflict.zip#egg=django-session-security==2.6.6+jquery-noconflict  # via -r requirements.in
 django-static-sitemaps==4.6.0  # via -r requirements.in
 django-tables2==2.3.1     # via -r requirements.in, django-flexible-reports
 django-webmaster-verification==0.3.0  # via -r requirements.in
