@@ -410,6 +410,7 @@ class RekordBase(
     search_index = VectorField()
 
     zrodlo = models.ForeignKey(Zrodlo, on_delete=DO_NOTHING)
+    wydawnictwo_nadrzedne = models.ForeignKey(Wydawnictwo_Zwarte, on_delete=DO_NOTHING)
 
     wydawnictwo = models.TextField()
 

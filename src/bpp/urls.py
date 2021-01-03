@@ -1,7 +1,8 @@
 # -*- encoding: utf-8 -*-
 from django.conf.urls import url
-from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
+
+from django.contrib.auth.decorators import login_required
 
 import bpp
 from bpp import reports  # noqa
@@ -32,6 +33,7 @@ from bpp.views.autocomplete import (
     PodrzednaPublikacjaHabilitacyjnaAutocomplete,
     PublicAutorAutocomplete,
     PublicKonferencjaAutocomplete,
+    PublicWydawnictwo_NadrzedneAutocomplete,
     PublicWydzialAutocomplete,
     PublicZrodloAutocomplete,
     Seria_WydawniczaAutocomplete,
@@ -319,7 +321,11 @@ urlpatterns = [
         WydawcaAutocomplete.as_view(),
         name="wydawca-autocomplete",
     ),
-    url(r"^lata-autocomplete/$", LataAutocomplete.as_view(), name="lata-autocomplete",),
+    url(
+        r"^lata-autocomplete/$",
+        LataAutocomplete.as_view(),
+        name="lata-autocomplete",
+    ),
     url(
         r"^navigation-autocomplete/$",
         GlobalNavigationAutocomplete.as_view(),
@@ -339,6 +345,11 @@ urlpatterns = [
         r"^wydawnictwo-nadrzedne-autocomplete/$",
         Wydawnictwo_NadrzedneAutocomplete.as_view(),
         name="wydawnictwo-nadrzedne-autocomplete",
+    ),
+    url(
+        r"^wydawnictwo-nadrzedne-autocomplete/$",
+        PublicWydawnictwo_NadrzedneAutocomplete.as_view(),
+        name="public-wydawnictwo-nadrzedne-autocomplete",
     ),
     url(
         r"^podrzedna-publikacja-habilitacyjna-autocomplete/$",

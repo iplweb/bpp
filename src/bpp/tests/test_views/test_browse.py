@@ -24,6 +24,8 @@ from bpp.models import (
     Praca_Doktorska,
     Typ_Odpowiedzialnosci,
     Wydawnictwo_Ciagle,
+    Wydawnictwo_Zwarte,
+    rebuild_zwarte,
 )
 from bpp.models.autor import Autor
 from bpp.views.browse import BuildSearch
@@ -341,3 +343,38 @@ def test_browse_snip_invisible(client, uczelnia, wydawnictwo_ciagle):
     )
 
     assert b"SNIP" not in res.content
+
+
+@pytest.mark.django_Db
+def test_browse_praca_wydawnictwa_powiazane(wydawnictwo_zwarte, client):
+    # Testuj, czy rozdziały pokazują się w wydawnictwach powiązanych
+    mommy.make(
+        Wydawnictwo_Zwarte,
+        wydawnictwo_nadrzedne=wydawnictwo_zwarte,
+        tytul_oryginalny="Roz 1",
+        strony="asdoifj 55-34 oaijsdfo",
+    )
+    mommy.make(
+        Wydawnictwo_Zwarte,
+        wydawnictwo_nadrzedne=wydawnictwo_zwarte,
+        tytul_oryginalny="Roz 2",
+        strony="IXIXI 22-50",
+    )
+
+    rebuild_zwarte()
+
+    url = reverse(
+        "bpp:browse_praca",
+        args=(
+            ContentType.objects.get_for_model(wydawnictwo_zwarte).pk,
+            wydawnictwo_zwarte.pk,
+        ),
+    )
+    res = client.get(url)
+
+    assert b"Rekordy powi" in res.content
+    x1 = res.content.find(b"Roz 1")
+    x2 = res.content.find(b"Roz 2")
+
+    # Sortujemy po polu "strony", jeden ma byc pozniej, drugi wczesniej:
+    assert x2 < x1

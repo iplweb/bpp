@@ -14,6 +14,9 @@ Historia zmian
 * opcjonalnie traktuj jako slot zerowy prace z PK=5 (#877)
 * wygodny podgląd powiązań autora z dyscypliną w module redagowania (b/n)
 * możliwość eksportu danych dyscyplin autorów w formacie XLS (#893)
+* wyświetlanie rekordów powiązanych dla wydawnictw zwartych (#897)
+* wyszukiwanie rekordów powiązanych dla wydawnictw zwartych (#897)
+
 
 202101.52
 ---------
