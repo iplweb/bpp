@@ -131,7 +131,9 @@ def test_dyscyplina_naukowa_przypisanie_autocomplete_brak_drugiej(
 ):
 
     Autor_Dyscyplina.objects.create(
-        autor=autor_jan_kowalski, rok=rok, dyscyplina_naukowa=dyscyplina2,
+        autor=autor_jan_kowalski,
+        rok=rok,
+        dyscyplina_naukowa=dyscyplina2,
     )
 
     f = json.dumps({"autor": autor_jan_kowalski.id, "rok": rok})
@@ -147,7 +149,10 @@ def test_wydawca_autocomplete(admin_client):
 
 
 def test_wydawnictwo_nadrzedne_autocomplete(admin_client):
-    admin_client.get(reverse("bpp:wydawnictwo-nadrzedne-autocomplete"))
+    admin_client.get(reverse("bpp:wydawnictwo-nadrzedne-autocomplete") + "?q=test")
+    admin_client.get(
+        reverse("bpp:public-wydawnictwo-nadrzedne-autocomplete") + "?q=test"
+    )
 
 
 def test_tsquery_bug1(admin_client):

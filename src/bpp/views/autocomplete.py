@@ -50,6 +50,10 @@ class Wydawnictwo_NadrzedneAutocomplete(autocomplete.Select2QuerySetView):
         return qs
 
 
+class PublicWydawnictwo_NadrzedneAutocomplete(Wydawnictwo_NadrzedneAutocomplete):
+    create_field = None
+
+
 class JednostkaMixin:
     def get_result_label(self, result):
         return f"{result.nazwa} ({result.wydzial.skrot})"
