@@ -13,7 +13,11 @@ from .nagroda import NagrodaInline
 from django.contrib import admin, messages
 
 from bpp.admin import helpers
-from bpp.admin.filters import CalkowitaLiczbaAutorowFilter, LiczbaZnakowFilter
+from bpp.admin.filters import (
+    CalkowitaLiczbaAutorowFilter,
+    DOIUstawioneFilter,
+    LiczbaZnakowFilter,
+)
 from bpp.models import (
     Charakter_Formalny,
     Wydawca,
@@ -70,6 +74,7 @@ class Wydawnictwo_ZwarteAdmin_Baza(CommitedModelAdmin):
         "jezyk",
         LiczbaZnakowFilter,
         "rok",
+        DOIUstawioneFilter,
     ]
 
     # Usunąć przed wcomitowaniem
