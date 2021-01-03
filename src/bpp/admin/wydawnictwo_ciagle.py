@@ -4,12 +4,12 @@ from dal import autocomplete
 from django import forms
 from django.forms.utils import flatatt
 from mptt.forms import TreeNodeChoiceField
-from . import MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET
 from .core import CommitedModelAdmin, KolumnyZeSkrotamiMixin, generuj_inline_dla_autorow
 
 # Widget do automatycznego uzupełniania punktacji wydawnictwa ciągłego
 from .element_repozytorium import Element_RepozytoriumInline
 from .grant import Grant_RekorduInline
+from .helpers import MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET
 
 from django.contrib import admin
 

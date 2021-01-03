@@ -12,6 +12,7 @@ Historia zmian
 * możliwość wyszukania prac z ustawionym DOI (#864)
 * możliwość wyszukania prac z ustawioną strona WWW (#865)
 * opcjonalnie traktuj jako slot zerowy prace z PK=5 (#877)
+* wygodny podgląd powiązań autora z dyscypliną w module redagowania (b/n)
 
 202101.52
 ---------

@@ -1,12 +1,10 @@
 from django import forms
-
-from bpp.models.patent import Patent, Patent_Autor
-from . import MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET
 from .core import generuj_inline_dla_autorow
 from .element_repozytorium import Element_RepozytoriumInline
 from .grant import Grant_RekorduInline
 from .helpers import (
     ADNOTACJE_Z_DATAMI_FIELDSET,
+    MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET,
     MODEL_PUNKTOWANY_FIELDSET,
     MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
     MODEL_Z_ROKIEM,
@@ -20,6 +18,8 @@ from .helpers import (
 from .wydawnictwo_zwarte import Wydawnictwo_ZwarteAdmin_Baza
 
 from django.contrib import admin
+
+from bpp.models.patent import Patent, Patent_Autor
 
 
 class Patent_Form(Wycinaj_W_z_InformacjiMixin, forms.ModelForm):
