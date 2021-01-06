@@ -8,6 +8,7 @@ Historia zmian
 ---------
 * poprawne wyświetlanie charakteru formalnego dla doktoratów i habilitacji
   w widoku prac (b/n)
+* możliwość wyszukania prac z ustawioną strona WWW [errata] (#865)
 
 202101.53
 ---------
