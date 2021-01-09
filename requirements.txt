@@ -43,7 +43,6 @@ django-cookie-law==2.0.3  # via -r requirements.in
 django-crispy-forms==1.9.0  # via -r requirements.in, crispy-forms-foundation
 django-dirtyfields==1.3.1  # via -r requirements.in
 django-dsl==0.1.11        # via django-flexible-reports
-django-easysettings==1.1  # via django-password-policies-iplweb
 django-extensions==2.2.5  # via -r requirements.in
 django-favicon-plus==0.0.8  # via -r requirements.in
 django-filter==2.2.0      # via -r requirements.in
@@ -59,7 +58,7 @@ django-messages-extends==0.6.2  # via -r requirements.in
 django-model-utils==4.0.0  # via -r requirements.in
 django-mptt==0.11.0       # via -r requirements.in
 django-multiseek==0.9.42  # via -r requirements.in
-django-password-policies-iplweb==0.7.0  # via -r requirements.in
+django-password-policies-iplweb==0.8.0  # via -r requirements.in
 django-querysetsequence==0.12  # via -r requirements.in
 django-redis-cache==2.1.1  # via -r requirements.in
 django-robots==4.0        # via -r requirements.in
