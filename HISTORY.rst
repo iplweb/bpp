@@ -7,8 +7,9 @@ Historia zmian
 202101.54
 ---------
 * poprawne wyświetlanie charakteru formalnego dla doktoratów i habilitacji
-  w widoku prac (b/n)
-* możliwość wyszukania prac z ustawioną strona WWW [errata] (#865)
+  w widoku prac (b/n),
+* możliwość wyszukania prac z ustawioną strona WWW [errata] (#865),
+* aktualizacja pakietu django-password-policies-iplweb do wersji 0.8.0 (b/n),
 
 202101.53
 ---------
