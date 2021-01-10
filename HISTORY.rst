@@ -12,6 +12,7 @@ Historia zmian
 * aktualizacja pakietu django-password-policies-iplweb do wersji 0.8.0 (b/n),
 * aktualizacja pakietu django-multiseek do wersji 0.9.43 (b/n),
 * lepsze wyszukiwanie wg daty utworzenia rekordu dla zakresu dat (#932)
+* wyświetlaj link do PubMedCentral dla prac z PMC ID (#959)
 
 202101.53
 ---------

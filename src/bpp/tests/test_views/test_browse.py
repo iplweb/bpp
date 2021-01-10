@@ -378,3 +378,39 @@ def test_browse_praca_wydawnictwa_powiazane(wydawnictwo_zwarte, client):
 
     # Sortujemy po polu "strony", jeden ma byc pozniej, drugi wczesniej:
     assert x2 < x1
+
+
+@pytest.mark.django_db
+def test_praca_tabela_no_pmc_id(wydawnictwo_zwarte, client):
+    wydawnictwo_zwarte.pmc_id = None
+    wydawnictwo_zwarte.save()
+
+    res = client.get(
+        reverse(
+            "bpp:browse_praca",
+            args=(
+                ContentType.objects.get_for_model(wydawnictwo_zwarte).pk,
+                wydawnictwo_zwarte.pk,
+            ),
+        )
+    )
+
+    assert b"https://www.ncbi.nlm.nih.gov/pmc/" not in res.content
+
+
+@pytest.mark.django_db
+def test_praca_tabela_pmc_id(wydawnictwo_zwarte, client):
+    wydawnictwo_zwarte.pmc_id = "123"
+    wydawnictwo_zwarte.save()
+
+    res = client.get(
+        reverse(
+            "bpp:browse_praca",
+            args=(
+                ContentType.objects.get_for_model(wydawnictwo_zwarte).pk,
+                wydawnictwo_zwarte.pk,
+            ),
+        )
+    )
+
+    assert b"https://www.ncbi.nlm.nih.gov/pmc/" in res.content
