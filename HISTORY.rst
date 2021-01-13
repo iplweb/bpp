@@ -13,6 +13,7 @@ Historia zmian
 * aktualizacja pakietu django-multiseek do wersji 0.9.43 (b/n),
 * lepsze wyszukiwanie wg daty utworzenia rekordu dla zakresu dat (#932)
 * wyświetlaj link do PubMedCentral dla prac z PMC ID (#959)
+* poprawki pobierania PubMed ID (#958)
 
 202101.53
 ---------

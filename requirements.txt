@@ -100,6 +100,7 @@ pyasn1-modules==0.2.8     # via service-identity
 pyasn1==0.4.8             # via pyasn1-modules, service-identity
 pycparser==2.20           # via cffi
 pyhamcrest==2.0.2         # via twisted
+pymed-iplweb==0.8.10      # via -r requirements.in
 pyoai==2.5.0              # via -r requirements.in, moai-iplweb
 pyopenssl==19.1.0         # via twisted
 pypandoc==1.4             # via -r requirements.in, django-flexible-reports
@@ -110,7 +111,7 @@ pytz==2018.4              # via -r requirements.in, celery, django, django-dirty
 pyyaml==5.3.1             # via tablib
 rcssmin==1.0.6            # via django-compressor
 redis==3.5.3              # via celery, django-redis-cache
-requests==2.20.0          # via -r requirements.in, wosclient
+requests==2.20.0          # via -r requirements.in, pymed-iplweb, wosclient
 rjsmin==1.1.0             # via -r requirements.in, django-compressor
 sentry-sdk==0.14.1        # via -r requirements.in
 service-identity==18.1.0  # via twisted

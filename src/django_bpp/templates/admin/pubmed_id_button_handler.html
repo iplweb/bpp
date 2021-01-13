@@ -34,23 +34,35 @@
                     success: function (data, text) {
                         var found = false;
 
-                        pubmed_button.val("Pobrano!");
                         pubmed_button.attr('disabled', false);
 
-                        if (data.pubmed_id) {
-                            $("#id_pubmed_id").val(data.pubmed_id);
-                            found = true;
+                        if (data.error) {
+                            var zt = "Zmień tytuł i spróbuj jeszcze raz.";
+                            alert(data.error + "Wyszukiwanie odbywa się po wartości z pola 'Tytuł oryginalny'. " + zt);
+                            pubmed_button.val(zt);
+                            return;
                         }
 
-                        if (data.doi) {
-                            $("#id_doi").val(data.doi);
-                            found = true;
-                        }
+                        pubmed_button.val("Pobrano!");
+
+                        ["pubmed_id", "doi", "pmc_id"].forEach(
+                            function (element, index, array) {
+                                if (data[element]) {
+
+                                    $("#id_" + element).val(data[element]);
+                                    found = true;
+                                }
+                            }
+                        );
 
                         if (!found)
                             pubmed_button.val("Brak danych w PubMed!");
-
-                        // data.has_abstract_text
+                        else {
+                            var at = 'Dane wypełnione na podstawie rekordu z PubMed: ' + data['title'];
+                            if (data.doi)
+                                at += "\r\n\r\nhttp://dx.doi.org/" + data['doi'];
+                            alert(at);
+                        }
                     }
                 });
 
