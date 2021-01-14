@@ -1,3 +1,5 @@
+import json
+
 from bpp.views.api import const
 from bpp.views.api.pubmed import GetPubmedIDView, get_data_from_ncbi
 
@@ -14,12 +16,12 @@ def test_GetPubmedIDView_post_nie_ma_tytulu(rf):
     v = GetPubmedIDView()
 
     req = rf.get("/", data={"t": ""})
-    res = v.post(req)
-    assert res.content == b"{}"
+    res = json.loads(v.post(req).content)
+    assert res == dict(error=const.PUBMED_BRAK_PARAMETRU)
 
     req = rf.get("/", data={"t": "    "})
-    v.post(req)
-    assert res.content == b"{}"
+    res = json.loads(v.post(req).content)
+    assert res == dict(error=const.PUBMED_BRAK_PARAMETRU)
 
 
 def test_GetPubmedIDView_post_brak_rezultaut(rf, mocker):
@@ -30,8 +32,8 @@ def test_GetPubmedIDView_post_brak_rezultaut(rf, mocker):
     v = GetPubmedIDView()
 
     req = rf.post("/", data={"t": "razd dwa trzy test"})
-    res = v.post(req)
-    assert res.content == const.PUBMED_PO_TYTULE_BRAK
+    res = json.loads(v.post(req).content)
+    assert res == dict(error=const.PUBMED_PO_TYTULE_BRAK)
 
 
 def test_GetPubmedIDView_post_wiele_rezultatow(rf, mocker):
@@ -42,16 +44,16 @@ def test_GetPubmedIDView_post_wiele_rezultatow(rf, mocker):
     v = GetPubmedIDView()
 
     req = rf.post("/", data={"t": "razd dwa trzy test"})
-    res = v.post(req)
-    assert res.content == const.PUBMED_PO_TYTULE_WIELE
+    res = json.loads(v.post(req).content)
+    assert res == dict(error=const.PUBMED_PO_TYTULE_WIELE)
 
 
 def test_GetPubmedIDView_post_jeden_rezultat(rf, mocker):
-    dct = {"hey": "hey"}
-
     class FakePraca:
-        def toJSON(self):
-            return dct
+        pubmed_id = "lel"
+        doi = "lol"
+        pmc_id = "pmc_id"
+        title = "none"
 
     query = mocker.patch("pymed.PubMed.query")
     query.return_value = [FakePraca()]
@@ -59,5 +61,5 @@ def test_GetPubmedIDView_post_jeden_rezultat(rf, mocker):
     v = GetPubmedIDView()
 
     req = rf.post("/", data={"t": "razd dwa trzy test"})
-    res = v.post(req)
-    assert res.content.decode("ascii") == str(dct).replace("'", '"')
+    res = json.loads(v.post(req).content)
+    assert res["doi"] == "lol"
