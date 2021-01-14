@@ -62,6 +62,7 @@ django-admin-sortable2==0.7.6
 cssmin==0.2.0
 rjsmin==1.1.0
 django-import-export==2.5.0
+pymed-iplweb==0.8.10
 
 # MacBook Pro M1 arm
 cryptography>=3.3.1
