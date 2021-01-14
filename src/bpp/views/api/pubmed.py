@@ -9,6 +9,8 @@ from bpp.views.api.const import (
     PUBMED_BRAK_PARAMETRU,
     PUBMED_PO_TYTULE_BRAK,
     PUBMED_PO_TYTULE_WIELE,
+    PUBMED_TITLE_MULTIPLE,
+    PUBMED_TITLE_NONEXISTENT,
 )
 
 from django_bpp.version import VERSION
@@ -44,15 +46,22 @@ class GetPubmedIDView(View):
     def post(self, request, *args, **kw):
         tytul = request.POST.get("t", "").strip()[:1024]
 
-        if tytul:
+        if not tytul:
+            return JsonResponse({"error": PUBMED_BRAK_PARAMETRU})
+
+        if tytul == PUBMED_TITLE_NONEXISTENT:
+            # ten warunek wykorzystywany jest przez testy integracyjne, nue ruszać go
+            results = []
+        elif tytul == PUBMED_TITLE_MULTIPLE:
+            # ten warunek wykorzystywany jest przez testy integracyjne, nie ruszać go
+            results = [None, None]
+        else:
             results = get_data_from_ncbi(tytul)
 
-            if len(results) == 0:
-                return JsonResponse({"error": PUBMED_PO_TYTULE_BRAK})
+        if len(results) == 0:
+            return JsonResponse({"error": PUBMED_PO_TYTULE_BRAK})
 
-            if len(results) > 1:
-                return JsonResponse({"error": PUBMED_PO_TYTULE_WIELE})
+        if len(results) > 1:
+            return JsonResponse({"error": PUBMED_PO_TYTULE_WIELE})
 
-            return JsonResponse(extract_data(results[0]))
-
-        return JsonResponse({"error": PUBMED_BRAK_PARAMETRU})
+        return JsonResponse(extract_data(results[0]))
