@@ -564,3 +564,8 @@ if LOG_EVERYTHING:
             },
         }
     )
+
+# django-compressor dla każdej wersji będzie miał swoją nazwę katalogu
+# wyjściowego, z tej prostej przyczyny, że nie wszystkie przeglądarki
+# pamiętają, żeby odświeżyć cache:
+COMPRESS_OUTPUT_DIR = f"CACHE-{VERSION}"

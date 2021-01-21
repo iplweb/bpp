@@ -14,7 +14,8 @@ Historia zmian
 * lepsze wyszukiwanie wg daty utworzenia rekordu dla zakresu dat (#932),
 * wyświetlaj link do PubMedCentral dla prac z PMC ID (#959),
 * poprawki pobierania PubMed ID (#958),
-* poprawne zawężanie do zakresu punktów PK (#967).
+* poprawne zawężanie do zakresu punktów PK (#967),
+* katalog cache ma nazwę z numerem wersji (#961).
 
 202101.53
 ---------

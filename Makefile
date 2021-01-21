@@ -40,7 +40,7 @@ yarn:
 
 assets: yarn grunt
 	${PYTHON} src/manage.py collectstatic --noinput -v0 --traceback
-	# ${PYTHON} src/manage.py compress --force  -v0 --traceback
+	${PYTHON} src/manage.py compress --force  -v0 --traceback
 
 clean-node-dir:
 	rm -rf node_modules
@@ -81,6 +81,6 @@ pip-compile:
 	pip-compile --output-file requirements_dev.txt requirements_dev.in
 
 pip-sync:
-	pip-sync requirements.txt requirements_dev.txt  
+	pip-sync requirements.txt requirements_dev.txt
 
 pip: pip-compile pip-sync
