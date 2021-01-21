@@ -56,7 +56,7 @@ class RaportSlotow(
         dg = []
         dpb = []
         for ad in self.autor.autor_dyscyplina_set.filter(
-            rok__range=(self.od_roku, self.do_roku)
+            rok__range=(self.kwargs["od_roku"], self.kwargs["do_roku"])
         ).order_by("rok"):
             dg.append((ad.rok, ad.dyscyplina_naukowa.nazwa, ad.procent_dyscypliny))
             if ad.subdyscyplina_naukowa is not None:
@@ -76,9 +76,9 @@ class RaportSlotow(
             ("Subdyscypliny autora:", dpb or "żadne"),
             ("Dyscyplina tabeli:", str(tables[n].dyscyplina_naukowa or "żadna")),
             ("Opis działania", self.opis_dzialania),
-            ("Minimalny PK", self.minimalny_pk),
-            ("Od roku:", self.od_roku),
-            ("Do roku:", self.do_roku),
+            ("Minimalny PK", self.kwargs["minimalny_pk"]),
+            ("Od roku:", self.kwargs["od_roku"]),
+            ("Do roku:", self.kwargs["do_roku"]),
             ("Wygenerowano:", timezone.now()),
             ("Wersja oprogramowania BPP", VERSION),
         ]
@@ -94,8 +94,8 @@ class RaportSlotow(
         ret = []
         cpaq = Cache_Punktacja_Autora_Query_View.objects.filter(
             autor=self.autor,
-            rekord__rok__gte=self.od_roku,
-            rekord__rok__lte=self.do_roku,
+            rekord__rok__gte=self.kwargs["od_roku"],
+            rekord__rok__lte=self.kwargs["do_roku"],
             pkdaut__gt=0,
         )
 
@@ -158,8 +158,8 @@ class RaportSlotow(
     def get_context_data(self, *, cleaned_data=None, object_list=None, **kwargs):
         context = super(RaportSlotow, self).get_context_data(**kwargs)
         context["autor"] = self.autor
-        context["od_roku"] = self.od_roku
-        context["do_roku"] = self.do_roku
+        context["od_roku"] = self.kwargs["od_roku"]
+        context["do_roku"] = self.kwargs["do_roku"]
         context["minimalny_pk"] = self.kwargs["minimalny_pk"]
         context["slot"] = self.kwargs["slot"]
         context["dzialanie"] = self.kwargs["dzialanie"]
@@ -167,7 +167,7 @@ class RaportSlotow(
         return context
 
     def get_export_filename(self, export_format, n):
-        return f"raport_slotow_{self.autor.slug}_{self.od_roku}-{self.do_roku}-{n}.{export_format}"
+        return f"raport_slotow_{self.autor.slug}_{self.kwargs['od_roku']}-{self.kwargs['do_roku']}-{n}.{export_format}"
 
     def get(self, request, *args, **kwargs):
         # Wczytaj dane z sesji i zwaliduj przez formularz
@@ -175,9 +175,8 @@ class RaportSlotow(
         form = AutorRaportSlotowForm(data)
         if form.is_valid():
             self.kwargs.update(form.cleaned_data)
+
             self.autor = self.kwargs["obiekt"]
-            self.od_roku = self.kwargs["od_roku"]
-            self.do_roku = self.kwargs["do_roku"]
 
             context = self.get_context_data(**kwargs)
             return self.render_to_response(context)
