@@ -3,19 +3,17 @@
 """
 Autorzy
 """
-from datetime import date, timedelta
-from datetime import datetime
-from decimal import Decimal
-from itertools import permutations
+from datetime import date, datetime, timedelta
 
 from autoslug import AutoSlugField
-from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
-from django.db import models, IntegrityError
-from django.db.models import Sum, CASCADE, F
+from django.db import IntegrityError, models
+from django.db.models import CASCADE, F, Sum
 from django.urls.base import reverse
 from lxml.etree import Element, SubElement
+
+from django.contrib.postgres.search import SearchVectorField as VectorField
 
 from bpp.models import ModelZAdnotacjami, NazwaISkrot
 from bpp.models.abstract import ModelZPBN_ID
@@ -364,7 +362,9 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
             .aggregate(s=Sum("liczba_cytowan"))["s"]
         )
 
-    def zbieraj_sloty(self, zadany_slot, rok_min, rok_max, dyscyplina_id=None):
+    def zbieraj_sloty(
+        self, zadany_slot, rok_min, rok_max, minimalny_pk=None, dyscyplina_id=None
+    ):
         from bpp.models.cache import Cache_Punktacja_Autora_Query
 
         rekordy = Cache_Punktacja_Autora_Query.objects.filter(
@@ -372,6 +372,9 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
         )
         if dyscyplina_id is not None:
             rekordy = rekordy.filter(dyscyplina_id=dyscyplina_id)
+
+        if minimalny_pk is not None:
+            rekordy = rekordy.filter(rekord__punkty_kbn__gte=minimalny_pk)
 
         res = [
             (name, int(size), int(value))

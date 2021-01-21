@@ -1,8 +1,8 @@
 from io import BytesIO
 
+import pytest
 from django.urls import reverse
 from openpyxl import load_workbook
-
 from raport_slotow import const
 from raport_slotow.forms import AutorRaportSlotowForm
 from raport_slotow.views import SESSION_KEY
@@ -105,3 +105,50 @@ def test_raport_slotow_autor_wartosci_poczatkowe(admin_client):
     url = reverse("raport_slotow:index")
     res = admin_client.get(url, dict(od_roku=5000))
     assert b"5000" in res.content
+
+
+@pytest.mark.parametrize(
+    "dzialanie,slot", [(const.DZIALANIE_WSZYSTKO, None), (const.DZIALANIE_SLOT, 500)]
+)
+def test_raport_slotow_autor_sa_dane_minimalny_pk(
+    admin_client, autor_jan_kowalski, rekord_slotu, rok, dzialanie, slot
+):
+    w = rekord_slotu.rekord
+    w.punkty_pk = 10
+    w.save()
+
+    url = reverse("raport_slotow:raport")
+
+    dane_raportu = {
+        "obiekt": autor_jan_kowalski.pk,
+        "od_roku": rok,
+        "do_roku": rok,
+        "dzialanie": dzialanie,
+        "minimalny_pk": 0,
+        "slot": slot,
+        "_export": "html",
+    }
+    s = admin_client.session
+    s.update({SESSION_KEY: dane_raportu})
+    s.save()
+
+    res = admin_client.get(url)
+    assert res.status_code == 200
+    assert "Brak danych" not in res.rendered_content
+
+    dane_raportu = {
+        "obiekt": autor_jan_kowalski.pk,
+        "od_roku": rok,
+        "do_roku": rok,
+        "dzialanie": dzialanie,
+        "minimalny_pk": 200,
+        "slot": slot,
+        "_export": "html",
+    }
+    s = admin_client.session
+    s.update({SESSION_KEY: dane_raportu})
+    s.save()
+
+    res = admin_client.get(url)
+    assert res.status_code == 200
+    assert "Brak danych" in res.rendered_content
