@@ -1,27 +1,21 @@
 from django.http import HttpResponseRedirect
 from django.template.defaultfilters import pluralize
 from django.urls import reverse
-from django.utils import timezone
-from django.utils.functional import cached_property
 from django.views.generic import FormView, TemplateView
 from django_tables2 import MultiTableMixin, RequestConfig
-from bpp.models import (
-    Cache_Punktacja_Autora_Query_View,
-    Dyscyplina_Naukowa,
-)
-from bpp.views.mixins import UczelniaSettingRequiredMixin
-from django_bpp.version import VERSION
 from formdefaults.helpers import FormDefaultsMixin
 from raport_slotow.forms import AutorRaportSlotowForm
 from raport_slotow.tables import RaportSlotowAutorTable
-from raport_slotow.util import (
-    MyExportMixin,
-    MyTableExport,
-    InitialValuesFromGETMixin,
-)
-
+from raport_slotow.util import InitialValuesFromGETMixin, MyExportMixin, MyTableExport
 from .. import const
 
+from django.utils import timezone
+from django.utils.functional import cached_property
+
+from bpp.models import Cache_Punktacja_Autora_Query_View, Dyscyplina_Naukowa
+from bpp.views.mixins import UczelniaSettingRequiredMixin
+
+from django_bpp.version import VERSION
 
 SESSION_KEY = "raport_slotow_data"
 
@@ -82,6 +76,7 @@ class RaportSlotow(
             ("Subdyscypliny autora:", dpb or "żadne"),
             ("Dyscyplina tabeli:", str(tables[n].dyscyplina_naukowa or "żadna")),
             ("Opis działania", self.opis_dzialania),
+            ("Minimalny PK", self.minimalny_pk),
             ("Od roku:", self.od_roku),
             ("Do roku:", self.do_roku),
             ("Wygenerowano:", timezone.now()),
@@ -96,10 +91,6 @@ class RaportSlotow(
         return exporter.response(filename=self.get_export_filename(export_format, n))
 
     def get_tables(self):
-        self.autor = self.kwargs["obiekt"]
-        self.od_roku = self.kwargs["od_roku"]
-        self.do_roku = self.kwargs["do_roku"]
-
         ret = []
         cpaq = Cache_Punktacja_Autora_Query_View.objects.filter(
             autor=self.autor,
@@ -108,17 +99,22 @@ class RaportSlotow(
             pkdaut__gt=0,
         )
 
+        minimalny_pk = self.kwargs["minimalny_pk"]
+
         for elem in cpaq.values_list("dyscyplina", flat=True).order_by().distinct():
             table_class = self.table_class
 
             if self.kwargs["dzialanie"] == const.DZIALANIE_WSZYSTKO:
                 data = cpaq.filter(dyscyplina_id=elem)
+                if minimalny_pk is not None:
+                    data = data.filter(rekord__punkty_kbn__gte=minimalny_pk)
             elif self.kwargs["dzialanie"] == const.DZIALANIE_SLOT:
                 max_pkdaut, ids = self.autor.zbieraj_sloty(
                     self.kwargs["slot"],
                     self.kwargs["od_roku"],
                     self.kwargs["do_roku"],
                     dyscyplina_id=elem,
+                    minimalny_pk=minimalny_pk,
                 )
                 data = cpaq.filter(pk__in=ids)
             else:
@@ -164,6 +160,7 @@ class RaportSlotow(
         context["autor"] = self.autor
         context["od_roku"] = self.od_roku
         context["do_roku"] = self.do_roku
+        context["minimalny_pk"] = self.kwargs["minimalny_pk"]
         context["slot"] = self.kwargs["slot"]
         context["dzialanie"] = self.kwargs["dzialanie"]
         context["opis_dzialania"] = self.opis_dzialania
@@ -178,6 +175,10 @@ class RaportSlotow(
         form = AutorRaportSlotowForm(data)
         if form.is_valid():
             self.kwargs.update(form.cleaned_data)
+            self.autor = self.kwargs["obiekt"]
+            self.od_roku = self.kwargs["od_roku"]
+            self.do_roku = self.kwargs["do_roku"]
+
             context = self.get_context_data(**kwargs)
             return self.render_to_response(context)
         else:
