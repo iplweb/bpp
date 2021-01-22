@@ -1,9 +1,8 @@
 # -*- encoding: utf-8 -*-
-import pytest
-from django.urls.base import reverse
 import xml.etree.ElementTree as ET
 
-from bpp.models import Rekord
+import pytest
+from django.urls.base import reverse
 
 
 @pytest.mark.django_db
@@ -20,20 +19,6 @@ def test_identify(wydawnictwo_ciagle, client):
     assert res.status_code == 200
 
 
-@pytest.fixture
-def ksiazka(wydawnictwo_zwarte, ksiazka_polska) -> "Wydawnictwo_Zwarte":
-    wydawnictwo_zwarte.charakter_formalny = ksiazka_polska
-    wydawnictwo_zwarte.save()
-    return wydawnictwo_zwarte
-
-
-@pytest.fixture
-def artykul(wydawnictwo_ciagle, artykul_w_czasopismie):
-    wydawnictwo_ciagle.charakter_formalny = artykul_w_czasopismie
-    wydawnictwo_ciagle.save()
-    return wydawnictwo_ciagle
-
-
 def toXML(response):
     return ET.fromstring(response.content.decode("utf-8"))
 
@@ -42,7 +27,7 @@ def test_listRecords(ksiazka, client):
     listRecords = reverse("bpp:oai") + "?verb=ListRecords&metadataPrefix=oai_dc"
     res = client.get(listRecords)
 
-    responseXml = ET.fromstring(res.content.decode("utf-8"))
+    ET.fromstring(res.content.decode("utf-8"))
     assert "Tytul Wydawnictwo" in toXML(res)[2][0][1][0][1].text
 
 

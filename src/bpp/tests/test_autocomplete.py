@@ -5,7 +5,7 @@ import pytest
 from django.urls import reverse
 from model_mommy import mommy
 
-from bpp.models import Autor_Dyscyplina
+from bpp.models import Autor_Dyscyplina, Wydawnictwo_Zwarte
 from bpp.models.autor import Autor
 from bpp.models.konferencja import Konferencja
 from bpp.views.autocomplete import (
@@ -150,9 +150,22 @@ def test_wydawca_autocomplete(admin_client):
 
 def test_wydawnictwo_nadrzedne_autocomplete(admin_client):
     admin_client.get(reverse("bpp:wydawnictwo-nadrzedne-autocomplete") + "?q=test")
-    admin_client.get(
+
+
+def test_publicwydawnictwo_nadrzedne_autocomplete(admin_client, ksiazka):
+    ksiazka.tytul_oryginalny = "test 123"
+    ksiazka.save()
+
+    res = admin_client.get(
         reverse("bpp:public-wydawnictwo-nadrzedne-autocomplete") + "?q=test"
     )
+    assert not json.loads(res.content)["results"]
+
+    mommy.make(Wydawnictwo_Zwarte, wydawnictwo_nadrzedne=ksiazka)
+    res = admin_client.get(
+        reverse("bpp:public-wydawnictwo-nadrzedne-autocomplete") + "?q=test"
+    )
+    assert len(json.loads(res.content)["results"]) == 1
 
 
 def test_tsquery_bug1(admin_client):

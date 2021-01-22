@@ -53,6 +53,24 @@ class Wydawnictwo_NadrzedneAutocomplete(autocomplete.Select2QuerySetView):
 class PublicWydawnictwo_NadrzedneAutocomplete(Wydawnictwo_NadrzedneAutocomplete):
     create_field = None
 
+    def get_queryset(self):
+        """
+        :test: :py:class:`bpp.tests.test_autocomplete`
+        """
+
+        # Publiczna wyszukiwarka dla wydawnictw nadrzędnych powinna wyszukiwać wyłącznie rekordy,
+        # które są już wydawnictwami nadrzędnymi dla jakichś rekordów:
+
+        qs = Wydawnictwo_Zwarte.objects.filter(
+            pk__in=Wydawnictwo_Zwarte.objects.exclude(wydawnictwo_nadrzedne_id=None)
+            .values_list("wydawnictwo_nadrzedne_id")
+            .distinct()
+        )
+
+        if self.q:
+            qs = qs.filter(tytul_oryginalny__icontains=self.q)
+        return qs
+
 
 class JednostkaMixin:
     def get_result_label(self, result):

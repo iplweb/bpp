@@ -15,7 +15,9 @@ Historia zmian
 * wyświetlaj link do PubMedCentral dla prac z PMC ID (#959),
 * poprawki pobierania PubMed ID (#958),
 * poprawne zawężanie do zakresu punktów PK (#967),
-* katalog cache ma nazwę z numerem wersji (#961).
+* katalog cache ma nazwę z numerem wersji (#961),
+* w multiwyszukiwarce w polu "Wydawnictwo nadrzędne" pokazuj wyłącznie rekordy
+  będące już wydawnictwami nadrzędnymi dla rekordów (#953).
 
 202101.53
 ---------
