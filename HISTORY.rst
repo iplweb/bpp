@@ -16,6 +16,7 @@ Historia zmian
 * poprawki pobierania PubMed ID (#958),
 * poprawne zawężanie do zakresu punktów PK (#967),
 * katalog cache ma nazwę z numerem wersji (#961),
+* ustawienie ukrywania publikacji na podglądzie i w wyszukiwaniu globalnym (#950),
 * w multiwyszukiwarce w polu "Wydawnictwo nadrzędne" pokazuj wyłącznie rekordy
   będące już wydawnictwami nadrzędnymi dla rekordów (#953).
 

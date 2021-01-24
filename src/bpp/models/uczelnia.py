@@ -281,6 +281,11 @@ class Ukryj_Status_Korekty(models.Model):
         help_text="Nie dotyczy użytkownika zalogowanego. Użytkownik zalogowany widzi wszystkie prace "
         "w wyszukiwaniu. ",
     )
+    podglad = models.BooleanField(
+        default=True,
+        help_text="Uniemożliwia podgląd prac na stronie szczegółów rekordu oraz uniemożliwia wyszukanie takich "
+        "prac przez pole globalnego wyszukania.",
+    )
     raporty = models.BooleanField(
         "Raporty",
         default=True,
