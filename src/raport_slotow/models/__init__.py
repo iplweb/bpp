@@ -5,15 +5,7 @@ from django.db.models.query import QuerySet
 from django_group_by import GroupByMixin
 
 from bpp.fields import YearField
-from bpp.models import (
-    Rekord,
-    Zrodlo,
-    Charakter_Formalny,
-    Autor,
-    Dyscyplina_Naukowa,
-    Autorzy,
-    Autor_Dyscyplina,
-)
+from bpp.models import Autor_Dyscyplina, Autorzy, Rekord
 
 
 class RaportZerowyQuerySet(QuerySet, GroupByMixin):

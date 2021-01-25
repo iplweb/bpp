@@ -1,13 +1,13 @@
 import django
 import pytest
 from django.urls import reverse
-from raport_slotow.views import RaportSlotowZerowy
 
 from bpp.models.dyscyplina_naukowa import Autor_Dyscyplina
 from bpp.models.sloty.core import IPunktacjaCacher
 from bpp.models.system import Charakter_Formalny
 from bpp.models.wydawca import Wydawca
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
+from raport_slotow.views import RaportSlotowZerowy
 
 
 @pytest.fixture

@@ -1,0 +1,31 @@
+{% extends "base.html" %}{% load render_table from django_tables2 %}
+
+{% block extratitle %}
+    Raport slotów - uczelnia - lista dla {{ request.user }}
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "raport_slotow:lista-raport-slotow-uczelnia" %}">raport slotów - uczelnia</a></li>
+{% endblock %}
+
+{% block content %}
+    <h1>Ostatnio wygenerowane raporty:</h1>
+    <input class="button" type="button" onclick="location.href='./new';" value="Zamów nowy raport">
+    <ul>
+    {% for object in object_list %}
+    <li>
+        <a href="{% url "raport_slotow:szczegoly-raport-slotow-uczelnia" object.pk %}">
+            od {{ object.od_roku }} do {{ object.do_roku }}, slot = {{ object.slot }}, min pk = {{ object.minimalny_pk }}, zamówiono {{ object.created_on }}, ukończono {{ object.finished_on }}
+        </a>
+    </li>
+    {% endfor %}
+    </ul>
+
+    {% if object_list.count == 0 %}
+        <script>
+            location.href = "./new";
+        </script>
+    {% endif %}
+
+{% endblock %}

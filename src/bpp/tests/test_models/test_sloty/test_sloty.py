@@ -4,28 +4,28 @@ import pytest
 from django.contrib.contenttypes.models import ContentType
 
 from bpp.models import (
-    TO_REDAKTOR,
     TO_AUTOR,
-    Typ_Odpowiedzialnosci,
+    TO_REDAKTOR,
+    Autor_Dyscyplina,
     Cache_Punktacja_Autora,
     Cache_Punktacja_Dyscypliny,
     Charakter_Formalny,
-    Typ_KBN,
     Dyscyplina_Naukowa,
-    Autor_Dyscyplina,
     Rekord,
+    Typ_KBN,
+    Typ_Odpowiedzialnosci,
     Uczelnia,
 )
-from bpp.models.sloty.core import ISlot, IPunktacjaCacher
+from bpp.models.sloty.core import IPunktacjaCacher, ISlot
 from bpp.models.sloty.exceptions import CannotAdapt
 from bpp.models.sloty.wydawnictwo_ciagle import (
-    SlotKalkulator_Wydawnictwo_Ciagle_Prog3,
     SlotKalkulator_Wydawnictwo_Ciagle_Prog2,
+    SlotKalkulator_Wydawnictwo_Ciagle_Prog3,
 )
 from bpp.models.sloty.wydawnictwo_zwarte import (
-    SlotKalkulator_Wydawnictwo_Zwarte_Prog3,
-    SlotKalkulator_Wydawnictwo_Zwarte_Prog2,
     SlotKalkulator_Wydawnictwo_Zwarte_Prog1,
+    SlotKalkulator_Wydawnictwo_Zwarte_Prog2,
+    SlotKalkulator_Wydawnictwo_Zwarte_Prog3,
 )
 from bpp.tasks import aktualizuj_cache_rekordu
 
@@ -463,8 +463,15 @@ def test_autor_Autor_zbieraj_sloty(zwarte_z_dyscyplinami):
 
     a = zwarte_z_dyscyplinami.autorzy_set.first().autor
     res = a.zbieraj_sloty(1, zwarte_z_dyscyplinami.rok, zwarte_z_dyscyplinami.rok)
-    assert res == (10.0, [Rekord.objects.get_for_model(
-        zwarte_z_dyscyplinami).cache_punktacja_autora_query_set.first().pk])
+    assert res == (
+        10.0,
+        [
+            Rekord.objects.get_for_model(zwarte_z_dyscyplinami)
+            .cache_punktacja_autora_query_set.first()
+            .pk
+        ],
+        0.5,
+    )
 
 
 @pytest.mark.django_db

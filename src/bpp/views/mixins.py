@@ -1,23 +1,22 @@
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import AccessMixin
 from django.http import Http404
 
 from bpp.models import OpcjaWyswietlaniaField, Uczelnia
 
 
-class UczelniaSettingRequiredMixin(LoginRequiredMixin):
+class UczelniaSettingRequiredMixin(AccessMixin):
     """Mixin wymagający ustawienia obiektu uczelnia; do ukrywania stron
     w przypadku ustawienia "pokazuj_nigdy", do sprawdzania loginu dla
     "pokazuj_zalogowanym", do przepuszczania zawsze w przypadku "pokazuj_zawsze"
-
     """
+
     uczelnia_attr = None
 
     def dispatch(self, request, *args, **kwargs):
 
         res = OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE
 
-        # TODO: w przypadku wielu uczelni, zmień to
-        uczelnia = Uczelnia.objects.first()
+        uczelnia = Uczelnia.objects.get_for_request(request)
 
         if uczelnia:
             res = getattr(uczelnia, self.uczelnia_attr)
@@ -35,4 +34,4 @@ class UczelniaSettingRequiredMixin(LoginRequiredMixin):
         else:
             raise NotImplementedError
 
-        return super(LoginRequiredMixin, self).dispatch(request, *args, **kwargs)
+        return super().dispatch(request, *args, **kwargs)

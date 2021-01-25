@@ -5,19 +5,20 @@ from django.db.models.signals import post_migrate
 
 def create_entries(sender, **kw):
     from .views.autor import WyborOsoby
-    from .views.uczelnia import ParametryRaportSlotowUczelnia
     from .views.ewaluacja import ParametryRaportSlotowEwaluacja
+    from .views.uczelnia import UtworzRaportSlotowUczelnia
 
     for elem in (
         WyborOsoby,
         ParametryRaportSlotowEwaluacja,
-        ParametryRaportSlotowUczelnia,
+        UtworzRaportSlotowUczelnia,
     ):
         elem().get_initial()
 
 
 class RaportSlotowConfig(AppConfig):
     name = "raport_slotow"
+
     def ready(self):
         if getattr(settings, "TESTING"):
             return

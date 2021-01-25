@@ -4,14 +4,22 @@
     Raport slotów - uczelnia - za {{ od_roku }} do {{ do_roku }}
 {% endblock %}
 
+
 {% block breadcrumbs %}
     {{ block.super }}
-    <li><a href="{% url "raport_slotow:index-uczelnia" %}">raport slotów - uczelnia</a></li>
-    <li class="current">raport slotów za {{ od_roku }} - {{ do_roku }}</li>
+    <li><a href="{% url "raport_slotow:lista-raport-slotow-uczelnia" %}">raport slotów - uczelnia</a></li>
+    <li class="current">raport slotów - uczelnia za {{ object.od_roku }} - {{ object.do_roku }}</li>
 {% endblock %}
 
 {% block content %}
-    <h1>Raport slotów za {{ od_roku }} - {{ do_roku }}</h1>
+    <h1>Raport slotów za {{ object.od_roku }} - {{ object.do_roku }}</h1>
+
+    <div  class="callout small secondary">
+    {% load humanize %}
+    <strong>Przypomnienie:</strong> oglądasz raport wygenerowany na podstawie bazy danych w momencie {{ object.started_on }}, czyli {{ object.started_on|naturaltime }}.
+    <a href="?_export=xlsx">Pobierz w formacie XLSX</a>
+    </div>
+
     <style>
         form.filtry input[type=number] {
             width: 40%;
@@ -23,7 +31,7 @@
             <table>
                 <tr>
                     <td>Filtruj po nazwisku autora:</td>
-                    {% if data.dziel_na_jednostki_i_wydzialy %}
+                    {% if object.dziel_na_jednostki_i_wydzialy %}
                     <td>Filtruj po jednostce:</td>
                     <td>Filtruj po wydziale:</td>
                     {%endif%}
@@ -34,7 +42,7 @@
                 </tr>
                 <tr>
                     <td>{{ filter.form.autor__nazwisko }}</td>
-                    {%if data.dziel_na_jednostki_i_wydzialy%}
+                    {%if object.dziel_na_jednostki_i_wydzialy%}
                     <td>{{ filter.form.jednostka__nazwa }}</td>
                     <td>{{ filter.form.jednostka__wydzial }}</td>
                     {%endif%}
@@ -44,7 +52,7 @@
 
                     <td><input type="submit" value="Filtruj"/>
 
-                        {% for key, value in data.items %}
+                        {% for key, value in object.items %}
                             <input type="hidden" name="{{ key }}" value="{{ value }}"/>
                         {% endfor %}
 
