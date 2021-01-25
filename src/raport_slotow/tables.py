@@ -7,12 +7,13 @@ from django_tables2 import Column
 
 from bpp.models import CHARAKTER_SLOTY
 from bpp.models.cache import (
-    Cache_Punktacja_Autora_Query_View,
     Cache_Punktacja_Autora_Query,
+    Cache_Punktacja_Autora_Query_View,
 )
 from raport_slotow import const
 from raport_slotow.columns import DecimalColumn, SummingColumn
-from raport_slotow.models import RaportZerowyEntry, RaportUczelniaEwaluacjaView
+from raport_slotow.models import RaportUczelniaEwaluacjaView, RaportZerowyEntry
+from raport_slotow.models.uczelnia import RaportSlotowUczelniaWiersz
 
 
 class RaportCommonMixin:
@@ -92,19 +93,19 @@ class RaportSlotowAutorTable(RaportCommonMixin, tables.Table):
 class RaportSlotowUczelniaBezJednostekIWydzialowTable(tables.Table):
     class Meta:
         empty_text = "Brak danych"
-        model = Cache_Punktacja_Autora_Query_View
+        model = RaportSlotowUczelniaWiersz
         fields = (
             "autor",
             "pbn_id",
             "orcid",
             "dyscyplina",
-            "pkdautsum",
-            "pkdautslotsum",
+            "pkd_aut_sum",
+            "slot",
             "avg",
         )
 
-    pkdautsum = DecimalColumn("Suma punktów dla autora")
-    pkdautslotsum = DecimalColumn("Slot")
+    pkd_aut_sum = DecimalColumn("Suma punktów dla autora")
+    slot = DecimalColumn("Slot")
     avg = Column("Średnio punktów dla autora na slot")
     dyscyplina = Column()
     pbn_id = Column("PBN ID", "autor.pbn_id")
@@ -152,8 +153,8 @@ class RaportSlotowUczelniaTable(RaportSlotowUczelniaBezJednostekIWydzialowTable)
             "jednostka",
             "wydzial",
             "dyscyplina",
-            "pkdautsum",
-            "pkdautslotsum",
+            "pkd_aut_sum",
+            "slot",
             "avg",
         )
 

@@ -66,4 +66,5 @@ pymed-iplweb==0.8.10
 
 # MacBook Pro M1 arm
 cryptography>=3.3.1
+cffi>=1.14.1
 lxml>=4.6.2

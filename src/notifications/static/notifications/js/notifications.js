@@ -72,6 +72,8 @@ bppNotifications.addMessage = function (message) {
 
     } else if (message['url']) {
         bppNotifications.goTo(message['url']);
+    } else if (message['progress']) {
+        $("#notifications-progress").css("width", message['percent']);
     }
 
 };

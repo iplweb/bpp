@@ -1,9 +1,7 @@
 # -*- encoding: utf-8 -*-
 
-import json
 from collections import namedtuple
 
-import requests
 from asgiref.sync import async_to_sync
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.messages import DEFAULT_TAGS
@@ -44,7 +42,10 @@ def _send(channel_name, data):
 
 
 def send_notification(
-    request_or_username, level, text, closeURL=None,
+    request_or_username,
+    level,
+    text,
+    closeURL=None,
 ):
     username = request_or_username
     if hasattr(username, "user") and hasattr(username.user, "username"):

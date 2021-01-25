@@ -6,18 +6,18 @@ Autorzy
 from datetime import date, datetime, timedelta
 
 from autoslug import AutoSlugField
+from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import IntegrityError, models
-from django.db.models import CASCADE, F, Sum
+from django.db.models import CASCADE, Sum
 from django.urls.base import reverse
 from lxml.etree import Element, SubElement
 
-from django.contrib.postgres.search import SearchVectorField as VectorField
-
+from bpp.core import zbieraj_sloty
 from bpp.models import ModelZAdnotacjami, NazwaISkrot
 from bpp.models.abstract import ModelZPBN_ID
-from bpp.util import FulltextSearchMixin, knapsack
+from bpp.util import FulltextSearchMixin
 
 
 class Tytul(NazwaISkrot):
@@ -363,32 +363,23 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
         )
 
     def zbieraj_sloty(
-        self, zadany_slot, rok_min, rok_max, minimalny_pk=None, dyscyplina_id=None
+        self,
+        zadany_slot,
+        rok_min,
+        rok_max,
+        minimalny_pk=None,
+        dyscyplina_id=None,
+        jednostka_id=None,
     ):
-        from bpp.models.cache import Cache_Punktacja_Autora_Query
-
-        rekordy = Cache_Punktacja_Autora_Query.objects.filter(
-            rekord__rok__gte=rok_min, rekord__rok__lte=rok_max, autor=self
+        return zbieraj_sloty(
+            self.pk,
+            zadany_slot,
+            rok_min,
+            rok_max,
+            minimalny_pk,
+            dyscyplina_id,
+            jednostka_id,
         )
-        if dyscyplina_id is not None:
-            rekordy = rekordy.filter(dyscyplina_id=dyscyplina_id)
-
-        if minimalny_pk is not None:
-            rekordy = rekordy.filter(rekord__punkty_kbn__gte=minimalny_pk)
-
-        res = [
-            (name, int(size), int(value))
-            for name, size, value in rekordy.values_list(
-                "pk", F("slot") * 10000, F("pkdaut") * 10000
-            )
-        ]  # name, size, value
-
-        id_wpisow_cpaq = [x[0] for x in res]
-        sloty = [x[1] for x in res]
-        punkty = [x[2] for x in res]
-
-        maks, lista = knapsack(zadany_slot * 10000, sloty, punkty, id_wpisow_cpaq)
-        return maks / 10000, lista
 
 
 class Funkcja_Autora(NazwaISkrot):

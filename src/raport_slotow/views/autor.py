@@ -1,21 +1,20 @@
 from django.http import HttpResponseRedirect
 from django.template.defaultfilters import pluralize
 from django.urls import reverse
+from django.utils import timezone
+from django.utils.functional import cached_property
 from django.views.generic import FormView, TemplateView
 from django_tables2 import MultiTableMixin, RequestConfig
+
+from bpp.models import Cache_Punktacja_Autora_Query_View, Dyscyplina_Naukowa
+from bpp.views.mixins import UczelniaSettingRequiredMixin
+from django_bpp.version import VERSION
 from formdefaults.helpers import FormDefaultsMixin
 from raport_slotow.forms import AutorRaportSlotowForm
 from raport_slotow.tables import RaportSlotowAutorTable
 from raport_slotow.util import InitialValuesFromGETMixin, MyExportMixin, MyTableExport
+
 from .. import const
-
-from django.utils import timezone
-from django.utils.functional import cached_property
-
-from bpp.models import Cache_Punktacja_Autora_Query_View, Dyscyplina_Naukowa
-from bpp.views.mixins import UczelniaSettingRequiredMixin
-
-from django_bpp.version import VERSION
 
 SESSION_KEY = "raport_slotow_data"
 
@@ -109,7 +108,7 @@ class RaportSlotow(
                 if minimalny_pk is not None:
                     data = data.filter(rekord__punkty_kbn__gte=minimalny_pk)
             elif self.kwargs["dzialanie"] == const.DZIALANIE_SLOT:
-                max_pkdaut, ids = self.autor.zbieraj_sloty(
+                max_pkdaut, ids, maks_slot = self.autor.zbieraj_sloty(
                     self.kwargs["slot"],
                     self.kwargs["od_roku"],
                     self.kwargs["do_roku"],
