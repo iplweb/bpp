@@ -347,7 +347,7 @@ urlpatterns = [
         name="wydawnictwo-nadrzedne-autocomplete",
     ),
     url(
-        r"^wydawnictwo-nadrzedne-autocomplete/$",
+        r"^public-wydawnictwo-nadrzedne-autocomplete/$",
         PublicWydawnictwo_NadrzedneAutocomplete.as_view(),
         name="public-wydawnictwo-nadrzedne-autocomplete",
     ),

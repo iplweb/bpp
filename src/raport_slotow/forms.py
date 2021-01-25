@@ -10,10 +10,12 @@ from crispy_forms_foundation.layout import (
 from dal import autocomplete
 from django import forms
 from django.core.exceptions import ValidationError
-from . import const
 
 from bpp.models import Autor, Uczelnia
 from bpp.util import formdefaults_html_after, formdefaults_html_before, year_last_month
+
+from . import const
+from .models.uczelnia import RaportSlotowUczelnia
 
 OUTPUT_FORMATS = [
     ("html", "wyświetl w przeglądarce"),
@@ -131,32 +133,16 @@ class AutorRaportSlotowForm(forms.Form):
         )
 
 
-class ParametryRaportSlotowUczelniaForm(forms.Form):
-    od_roku = forms.IntegerField(initial=year_last_month)
-    do_roku = forms.IntegerField(initial=Uczelnia.objects.do_roku_default)
-
-    maksymalny_slot = forms.IntegerField(
-        label="Maksymalny slot", initial=1, min_value=1
-    )
-
-    dziel_na_jednostki_i_wydzialy = forms.BooleanField(
-        label="Dziel na jednostki i wydziały", initial=True, required=False
-    )
-
-    _export = forms.ChoiceField(
-        label="Format wyjściowy", choices=OUTPUT_FORMATS, required=True
-    )
-
-    def clean(self):
-        if "od_roku" in self.cleaned_data and "do_roku" in self.cleaned_data:
-            if self.cleaned_data["od_roku"] > self.cleaned_data["do_roku"]:
-                raise ValidationError(
-                    {
-                        "od_roku": ValidationError(
-                            'Pole musi być większe lub równe jak pole "Do roku".'
-                        )
-                    }
-                )
+class UtworzRaportSlotowUczelniaForm(forms.ModelForm):
+    class Meta:
+        model = RaportSlotowUczelnia
+        fields = [
+            "od_roku",
+            "do_roku",
+            "slot",
+            "minimalny_pk",
+            "dziel_na_jednostki_i_wydzialy",
+        ]
 
     def __init__(self, *args, **kwargs):
         self.helper = FormHelper()
@@ -170,22 +156,22 @@ class ParametryRaportSlotowUczelniaForm(forms.Form):
                     Column("od_roku", css_class="large-6 small-6"),
                     Column("do_roku", css_class="large-6 small-6"),
                 ),
-                Row(Column("maksymalny_slot", css_class="large-12 small-12")),
+                Row(Column("slot", css_class="large-12 small-12")),
+                Row(Column("minimalny_pk", css_class="large-12 small-12")),
                 Row(Column("dziel_na_jednostki_i_wydzialy")),
-                Row(Column("_export")),
                 formdefaults_html_after(self),
             ),
             ButtonHolder(
                 Submit(
                     "submit",
-                    "Pobierz raport",
+                    "Utwórz raport",
                     css_id="id_submit",
                     css_class="submit button",
                 ),
             ),
         )
 
-        super(ParametryRaportSlotowUczelniaForm, self).__init__(*args, **kwargs)
+        super(UtworzRaportSlotowUczelniaForm, self).__init__(*args, **kwargs)
 
 
 class ParametryRaportSlotowEwaluacjaForm(forms.Form):

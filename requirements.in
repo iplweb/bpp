@@ -28,8 +28,8 @@ zope.interface==5.1.0
 zope.component==4.6.2
 sentry-sdk==0.14.1
 bleach==3.1.4
-https://github.com/mpasternak/django-session-security/archive/jquery-noconflict.zip#egg=django-session-security==2.6.6+jquery-noconflict
-django-password-policies-iplweb==0.7.0
+django-session-security-iplweb==2.6.6
+django-password-policies-iplweb==0.8.2
 dj-pagination==2.4.0
 requests==2.20.0
 pytz==2018.4
@@ -38,7 +38,7 @@ django-htmlmin==0.11.0
 Pillow==8.0.1
 olefile==0.44
 django-grappelli==2.14.1
-django-multiseek==0.9.42
+django-multiseek==0.9.43
 django-braces==1.14.0
 django-loginas==0.3.8
 django-robots==4.0
@@ -62,7 +62,9 @@ django-admin-sortable2==0.7.6
 cssmin==0.2.0
 rjsmin==1.1.0
 django-import-export==2.5.0
+pymed-iplweb==0.8.10
 
 # MacBook Pro M1 arm
 cryptography>=3.3.1
+cffi>=1.14.1
 lxml>=4.6.2

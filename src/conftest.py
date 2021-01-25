@@ -411,7 +411,9 @@ def habilitacja(jednostka, db, charaktery_formalne, jezyki, typy_odpowiedzialnos
 
 
 @pytest.fixture
-def praca_habilitacyjna(habilitacja):
+def praca_habilitacyjna(
+    habilitacja,
+) -> Praca_Habilitacyjna:
     return habilitacja
 
 
@@ -748,3 +750,17 @@ def wydawnictwo_zwarte_w_trakcie_korekty(statusy_korekt):
 @pytest.fixture
 def wydawnictwo_zwarte_po_korekcie(statusy_korekt):
     return mommy.make(Wydawnictwo_Zwarte, status_korekty=statusy_korekt["po korekcie"])
+
+
+@pytest.fixture
+def ksiazka(wydawnictwo_zwarte, ksiazka_polska) -> "Wydawnictwo_Zwarte":
+    wydawnictwo_zwarte.charakter_formalny = ksiazka_polska
+    wydawnictwo_zwarte.save()
+    return wydawnictwo_zwarte
+
+
+@pytest.fixture
+def artykul(wydawnictwo_ciagle, artykul_w_czasopismie):
+    wydawnictwo_ciagle.charakter_formalny = artykul_w_czasopismie
+    wydawnictwo_ciagle.save()
+    return wydawnictwo_ciagle

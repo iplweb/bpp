@@ -10,14 +10,14 @@ from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.db import models
 from django.db.models import SET_NULL, Max
 from django.urls.base import reverse
-from model_utils import Choices
-from ..util import year_last_month
-from .fields import OpcjaWyswietlaniaField
-
 from django.utils.functional import cached_property
+from model_utils import Choices
 
 from bpp.models import ModelZAdnotacjami, NazwaISkrot, const
 from bpp.models.abstract import ModelZPBN_ID, NazwaWDopelniaczu
+
+from ..util import year_last_month
+from .fields import OpcjaWyswietlaniaField
 
 
 class UczelniaManager(models.Manager):
@@ -31,7 +31,10 @@ class UczelniaManager(models.Manager):
     def default(self):
         return self.get_default()
 
-    def do_roku_default(self, request=None):
+    def do_roku_default(self=None, request=None):
+        if self is None:
+            # Uruchomione przez migrację
+            return
         uczelnia = self.get_default()
         if (
             uczelnia is None

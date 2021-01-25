@@ -11,7 +11,8 @@ def test_raport_slotow_ewaluacja_parametry_view(admin_client):
 
 def test_raport_slotow_ewaluacja_parametry_view_post(admin_client):
     res = admin_client.post(
-        reverse("raport_slotow:index-ewaluacja"), {"rok": 2020, "_export": "html"},
+        reverse("raport_slotow:index-ewaluacja"),
+        {"rok": 2020, "_export": "html"},
     )
     assert res.status_code == 302
 

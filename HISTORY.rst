@@ -4,6 +4,22 @@
 Historia zmian
 ==============
 
+202101.54
+---------
+* poprawne wyświetlanie charakteru formalnego dla doktoratów i habilitacji
+  w widoku prac (b/n),
+* możliwość wyszukania prac z ustawioną strona WWW [errata] (#865),
+* aktualizacja pakietu django-password-policies-iplweb do wersji 0.8.0 (b/n),
+* aktualizacja pakietu django-multiseek do wersji 0.9.43 (b/n),
+* lepsze wyszukiwanie wg daty utworzenia rekordu dla zakresu dat (#932),
+* wyświetlaj link do PubMedCentral dla prac z PMC ID (#959),
+* poprawki pobierania PubMed ID (#958),
+* poprawne zawężanie do zakresu punktów PK (#967),
+* katalog cache ma nazwę z numerem wersji (#961),
+* raport slotów uczelnia wg algorytmu plecakowego (#923),
+* w multiwyszukiwarce w polu "Wydawnictwo nadrzędne" pokazuj wyłącznie rekordy
+  będące już wydawnictwami nadrzędnymi dla rekordów (#953).
+
 202101.53
 ---------
 * poprawne opisy powiązań autora z dyscypliną w module redagowania (#686)
@@ -16,7 +32,6 @@ Historia zmian
 * możliwość eksportu danych dyscyplin autorów w formacie XLS (#893)
 * wyświetlanie rekordów powiązanych dla wydawnictw zwartych (#897)
 * wyszukiwanie rekordów powiązanych dla wydawnictw zwartych (#897)
-
 
 202101.52
 ---------

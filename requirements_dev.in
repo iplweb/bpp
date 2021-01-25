@@ -25,7 +25,10 @@ autoflake
 autopep8
 flake8
 pycalver
-isort
+# Musi tak byc, inaczej sie wysypuje instalacja cryptography
+# https://stackoverflow.com/questions/55833509/attributeerror-type-object-callable-has-no-attribute-abc-registry
+typing>=3.6,<3.7
+isort>=5.7.0
 pre-commit
 # django-debug-toolbar==2.2
 twine

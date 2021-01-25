@@ -4,7 +4,7 @@ from django.urls.base import reverse
 
 from bpp.models.cache import Rekord
 
-from django_bpp.selenium_util import wait_for_page_load
+from django_bpp.selenium_util import wait_for, wait_for_page_load
 
 
 @pytest.fixture
@@ -23,6 +23,12 @@ def test_wyrzuc(wydawnictwo_zwarte, multiseek_browser, live_server):
         "multiseek.removeFromResults('%s')" % Rekord.objects.all().first().js_safe_pk
     )
 
+    # Poczekaj czy element został skreślony
+    wait_for(
+        lambda: browser.find_by_css(".multiseek-element")["style"].find("line-through")
+        == -1
+    )
+
     with wait_for_page_load(browser):
         browser.visit(live_server + reverse("multiseek:results"))
 
@@ -32,6 +38,12 @@ def test_wyrzuc(wydawnictwo_zwarte, multiseek_browser, live_server):
 
     browser.execute_script(
         "multiseek.removeFromResults('%s')" % Rekord.objects.all().first().js_safe_pk
+    )
+
+    # Poczekaj czy element został od-kreślony
+    wait_for(
+        lambda: browser.find_by_css(".multiseek-element")["style"].find("line-through")
+        == -1
     )
 
     with wait_for_page_load(browser):

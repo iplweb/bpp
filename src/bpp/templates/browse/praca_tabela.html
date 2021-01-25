@@ -121,7 +121,7 @@
     {% if praca.pmc_id %}
         <tr>
             <th>PMC ID:</th>
-            <td>{{ praca.pmc_id }}</td>
+            <td><a href="https://www.ncbi.nlm.nih.gov/pmc/{{ praca.pmc_id }}">{{ praca.pmc_id }}</a></td>
         </tr>
     {% endif %}
 

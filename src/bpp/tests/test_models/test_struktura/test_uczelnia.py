@@ -2,17 +2,16 @@
 from urllib.parse import urlencode
 
 import pytest
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.urls.base import reverse
-from raport_slotow import const
-from raport_slotow.views import SESSION_KEY
-
-from django.contrib.contenttypes.models import ContentType
 
 from bpp.models import Uczelnia
 from bpp.models.const import DO_STYCZNIA_POPRZEDNI_POTEM_OBECNY, NAJWIEKSZY_REKORD
 from bpp.models.fields import OpcjaWyswietlaniaField
 from bpp.tests import browse_praca_url
+from raport_slotow import const
+from raport_slotow.views import SESSION_KEY
 
 
 @pytest.mark.parametrize(
@@ -230,9 +229,13 @@ def test_pokazuj_raport_slotow_menu_na_glownej(
             "pokazuj_raport_slotow_autor",
             {},
         ),
-        ("raport_slotow:index-uczelnia", "pokazuj_raport_slotow_uczelnia", {}),
         (
-            "raport_slotow:raport-uczelnia",
+            "raport_slotow:lista-raport-slotow-uczelnia",
+            "pokazuj_raport_slotow_uczelnia",
+            {},
+        ),
+        (
+            "raport_slotow:lista-raport-slotow-uczelnia",
             "pokazuj_raport_slotow_uczelnia",
             {"od_roku": 2000, "do_roku": 2000, "maksymalny_slot": 1, "_export": "html"},
         ),
@@ -281,10 +284,15 @@ def test_pokazuj_raport_slotow_czy_mozna_kliknac(
     setattr(uczelnia, atrybut_uczelni, OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE)
     uczelnia.save()
 
-    res = client.get(url)
-    assert res.status_code == 200
-    res = admin_client.get(url)
-    assert res.status_code == 200
+    if atrybut_uczelni == "pokazuj_raport_slotow_uczelnia":
+        # dla opcji "pokazuj raport slotów uczelnia" login jest zawsze wymagany
+        pass
+    else:
+
+        res = client.get(url)
+        assert res.status_code == 200
+        res = admin_client.get(url)
+        assert res.status_code == 200
 
 
 def test_uczelnia_obca_jednostka(uczelnia, jednostka, obca_jednostka):

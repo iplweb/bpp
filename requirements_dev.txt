@@ -35,7 +35,7 @@ identify==1.5.11          # via pre-commit
 idna==2.7                 # via -c requirements.txt, requests
 imagesize==1.2.0          # via sphinx
 iniconfig==1.1.1          # via pytest
-isort==4.3.21             # via -r requirements_dev.in
+isort==5.7.0              # via -r requirements_dev.in
 jinja2==2.11.1            # via sphinx
 keyring==21.8.0           # via twine
 markupsafe==1.1.1         # via jinja2
@@ -86,7 +86,7 @@ toml==0.10.0              # via autopep8, black, pre-commit, pycalver, pytest
 tqdm==4.55.1              # via twine
 twine==3.3.0              # via -r requirements_dev.in
 typed-ast==1.4.1          # via black
-typing==3.7.4.1           # via pycalver
+typing==3.6.6             # via -r requirements_dev.in, pycalver
 urllib3==1.24.3           # via -c requirements.txt, pytest-splinter, requests, selenium
 virtualenv==20.2.2        # via pre-commit
 waitress==1.4.3           # via webtest

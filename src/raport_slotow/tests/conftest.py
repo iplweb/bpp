@@ -1,6 +1,8 @@
 import pytest
+from model_mommy import mommy
 
-from bpp.models import Cache_Punktacja_Autora_Query, Rekord, Cache_Punktacja_Dyscypliny
+from bpp.models import Cache_Punktacja_Autora_Query, Cache_Punktacja_Dyscypliny, Rekord
+from raport_slotow.models.uczelnia import RaportSlotowUczelnia
 
 
 @pytest.mark.django_db
@@ -25,3 +27,9 @@ def rekord_slotu(
         slot=20,
         rekord=rekord,
     )
+
+
+@pytest.mark.django_db
+@pytest.fixture
+def raport_slotow_uczelnia(db):
+    return mommy.make(RaportSlotowUczelnia)

@@ -927,6 +927,7 @@ multiseek_fields = [
     DyscyplinaUstawionaQueryObject(),
     LicencjaOpenAccessUstawionaQueryObject(),
     PublicDostepDniaQueryObject(),
+    StronaWWWUstawionaQueryObject(),
 ]
 
 

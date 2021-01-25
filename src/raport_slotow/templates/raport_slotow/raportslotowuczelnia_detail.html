@@ -1,0 +1,44 @@
+{% extends "base.html" %}{% load render_table from django_tables2 %}
+
+{% block extratitle %}
+    Raport slotów - uczelnia - za {{ od_roku }} do {{ do_roku }}
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "raport_slotow:lista-raport-slotow-uczelnia" %}">raport slotów - uczelnia</a></li>
+    <li class="current">raport slotów - uczelnia za {{ object.od_roku }} - {{ object.do_roku }}</li>
+{% endblock %}
+
+{% block content %}
+    <h1>Raport slotów - uczelnia za {{ object.od_roku }} - {{ object.do_roku }}</h1>
+    Identyfikator: {{ object.pk }}<br/>
+    Utworzony przez: {{ object.owner }}<br/>
+    Utworzony: {{ object.created_on }}<br/>
+    <hr/>
+    Ostatnio zaktualizowany: {{ object.last_updated_on }}<br/>
+    Początek przetwarzania: {{ object.started_on }}<br/>
+    Zakończenie przetwarzania: {{ object.finished_on }}<br/>
+    Zakończono sukcesem?: {{ object.finished_successfully }}
+
+
+    <div class="alert progress" >
+      <div class="progress-meter" id="notifications-progress" style="width: 0%"></div>
+    </div>
+
+{#        <pre>#}
+{#        {{ object.traceback }}#}
+{#        </pre>#}
+
+    <hr/>
+    Zbierany slot: {{ object.slot }}<br/>
+    Minimalny PK: {{ object.minimalny_pk }}<br/>
+    Dziel na jednostki i wydziały: {{ object.dziel_na_jednostki_i_wydzialy }}<br/>
+
+    {% if object.finished_successfully %}
+        <script>
+            location.href = "./details";
+        </script>
+    {% endif %}
+
+{% endblock %}

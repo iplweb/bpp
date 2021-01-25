@@ -1,69 +1,67 @@
 # -*- encoding: utf-8 -*-
 
-import requests
+import pymed
+from django.conf import settings
 from django.http import JsonResponse
-from django.http.response import HttpResponseServerError
 from django.views.generic.base import View
 
-from lxml import etree
+from bpp.views.api.const import (
+    PUBMED_BRAK_PARAMETRU,
+    PUBMED_PO_TYTULE_BRAK,
+    PUBMED_PO_TYTULE_WIELE,
+    PUBMED_TITLE_MULTIPLE,
+    PUBMED_TITLE_NONEXISTENT,
+)
 
-# multiple: http://www.ncbi.nlm.nih.gov/pubmed/?term=test+&report=xml&format=text
-# single:   http://www.ncbi.nlm.nih.gov/pubmed/?term=Appliasdofijasodfijaosidjfoasdifjcation+&report=xml&format=text
-# brak:     http://www.ncbi.nlm.nih.gov/pubmed/?term=Appliasdofijasodfijaosidjfoasdifjcation+&report=xml&format=text
-
-
-#@ BLOKUJE
-def get_data_from_ncbi(title, url="http://www.ncbi.nlm.nih.gov/pubmed/"):
-    res = requests.get(url=url, params={
-        'term': title,
-        'report': 'xml',
-        'format': 'xml'
-    })
-
-    if res.status_code == 200:
-        try:
-            text = res.text.split("<pre>", 1)[1].strip()
-        except IndexError:
-            return []
-        text = text.split("</pre>", 1)[0].strip()
-        text = text.replace("&lt;", "<").replace("&gt;", ">")
-        text = "<root>" + text + "</root>"
-        xml = etree.fromstring(text)
-        return xml.getchildren()
+from django_bpp.version import VERSION
 
 
-def parse_data_from_ncbi(elem):
-    ret = {}
+def get_data_from_ncbi(title):
+    pubmed = pymed.PubMed(tool=f"BPP {VERSION}", email=settings.ADMINS[0][0])
+    title = (
+        title.lower()
+        .replace(" and ", " ")
+        .replace(" in ", " ")
+        .replace(" of ", " ")
+        .replace(" the ", " ")
+    )
 
-    pmid = elem.xpath("//PubmedData/ArticleIdList/ArticleId[@IdType='pubmed']/text()")
-    if pmid and len(pmid) == 1:
-        ret['pubmed_id'] = pmid[0]
+    while title.find("  ") != -1:
+        title = title.replace("  ", " ")
 
-    doi = elem.xpath("//PubmedData/ArticleIdList/ArticleId[@IdType='doi']/text()")
-    if doi and len(doi) == 1:
-        ret['doi'] = doi[0]
+    results = list(pubmed.query(title, max_results=2))
+    return results
 
-    ret['has_abstract_text'] = 'false'
-    abstract_text = elem.xpath("//MedlineCitation/Article/Abstract/AbstractText/text()")
-    if abstract_text and len(abstract_text) == 1:
-        ret['has_abstract_text'] = 'true'
 
-    return ret
-
-class PubmedConnectionFailure(HttpResponseServerError):
-    pass
+def extract_data(x: "pymed.api.PubMedArticle"):
+    return {
+        "pubmed_id": x.pubmed_id,
+        "doi": x.doi,
+        "pmc_id": x.pmc_id,
+        "title": x.title,
+    }
 
 
 class GetPubmedIDView(View):
     def post(self, request, *args, **kw):
-        tytul = request.POST.get('t', '').strip()
+        tytul = request.POST.get("t", "").strip()[:1024]
 
-        if tytul:
-            data = get_data_from_ncbi(title=tytul)
-            if data is None:
-                return PubmedConnectionFailure()
+        if not tytul:
+            return JsonResponse({"error": PUBMED_BRAK_PARAMETRU})
 
-            if len(data) == 1:
-                return JsonResponse(parse_data_from_ncbi(data[0]))
+        if tytul == PUBMED_TITLE_NONEXISTENT:
+            # ten warunek wykorzystywany jest przez testy integracyjne, nue ruszać go
+            results = []
+        elif tytul == PUBMED_TITLE_MULTIPLE:
+            # ten warunek wykorzystywany jest przez testy integracyjne, nie ruszać go
+            results = [None, None]
+        else:
+            results = get_data_from_ncbi(tytul)
 
-        return JsonResponse({})
+        if len(results) == 0:
+            return JsonResponse({"error": PUBMED_PO_TYTULE_BRAK})
+
+        if len(results) > 1:
+            return JsonResponse({"error": PUBMED_PO_TYTULE_WIELE})
+
+        return JsonResponse(extract_data(results[0]))
