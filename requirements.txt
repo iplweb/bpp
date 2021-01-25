@@ -16,7 +16,7 @@ billiard==3.6.3.0         # via celery
 bleach==3.1.4             # via -r requirements.in, django-flexible-reports
 celery[redis]==4.4.2      # via -r requirements.in
 certifi==2019.11.28       # via requests, sentry-sdk
-cffi==1.14.1              # via cryptography
+cffi==1.14.1              # via -r requirements.in, cryptography
 channels==2.4.0           # via -r requirements.in, channels-redis
 channels_redis==3.0.1     # via -r requirements.in
 chardet==3.0.4            # via requests
