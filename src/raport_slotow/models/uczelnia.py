@@ -45,8 +45,13 @@ class RaportSlotowUczelnia(ASGINotificationMixin, Report):
         verbose_name="Dołączaj autorów z zerowymi slotami",
         default=False,
         help_text="""Autor z zerowym slotem to autor, który ma na zadany okres czasu zadeklarowane dyscypliny,
-        ale nie posiada żadnych punktowanych prac. """,
+        ale nie posiada żadnych punktowanych prac w tych dyscyplinach. Jeżeli jednoczesnie podasz parametr
+         'minimalny PK' dla tego raportu, to prace z PK poniżej tego progu zostaną potraktowane jako "zerowe"
+         czyli bez punktacji. """,
     )
+
+    def on_reset(self):
+        self.raportslotowuczelniawiersz_set.all().delete()
 
     def get_absolute_url(self):
         return reverse(

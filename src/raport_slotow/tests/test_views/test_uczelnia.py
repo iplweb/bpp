@@ -1,5 +1,6 @@
 import pytest
 from django.urls import reverse
+from django.utils import timezone
 from model_mommy import mommy
 
 from raport_slotow.models.uczelnia import (
@@ -55,3 +56,27 @@ def test_SzczegolyRaportuSlotowUczelniaListaRekordow(
         + "?_export=xlsx"
     )
     assert res["content-type"] == "application/vnd.ms-excel"
+
+
+def test_RegenerujRaportuSlotowUczelnia(
+    admin_client,
+    admin_user,
+):
+    rsu = mommy.make(
+        RaportSlotowUczelnia,
+        owner=admin_user,
+        finished_successfully=True,
+        finished_on=timezone.now(),
+    )
+    first_finished_on = rsu.finished_on
+    mommy.make(RaportSlotowUczelniaWiersz, parent=rsu)
+
+    admin_client.get(
+        reverse(
+            "raport_slotow:regeneruj-raport-slotow-uczelnia",
+            args=(rsu.pk,),
+        )
+    )
+
+    rsu.refresh_from_db()
+    assert rsu.finished_on != first_finished_on

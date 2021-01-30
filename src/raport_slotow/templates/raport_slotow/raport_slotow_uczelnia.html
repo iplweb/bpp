@@ -1,7 +1,7 @@
 {% extends "base.html" %}{% load render_table from django_tables2 %}
 
 {% block extratitle %}
-    Raport slotów - uczelnia - za {{ od_roku }} do {{ do_roku }}
+    Raport slotów - uczelnia - za {{ object.od_roku }} do {{ object.do_roku }}
 {% endblock %}
 
 
@@ -14,10 +14,16 @@
 {% block content %}
     <h1>Raport slotów za {{ object.od_roku }} - {{ object.do_roku }}</h1>
 
-    <div  class="callout small secondary">
-    {% load humanize %}
-    <strong>Przypomnienie:</strong> oglądasz raport wygenerowany na podstawie bazy danych w momencie {{ object.started_on }}, czyli {{ object.started_on|naturaltime }}.
-    <a href="?_export=xlsx">Pobierz w formacie XLSX</a>
+
+    <div class="callout small secondary">
+        {% load humanize %}
+        <strong>Przypomnienie:</strong> oglądasz raport wygenerowany na podstawie bazy danych w
+        momencie {{ object.started_on }}, czyli {{ object.started_on|naturaltime }}.
+        <br/><a href="?_export=xlsx"><i class="fi-page-export"></i> Pobierz w formacie XLSX</a> |
+
+        <a title="Generuje raport od zera na podstawie aktualnych danych" href="./regen">
+            <i class="fi-refresh"></i> Wygeneruj
+            ponownie</a>
     </div>
 
     <style>
@@ -32,9 +38,9 @@
                 <tr>
                     <td>Filtruj po nazwisku autora:</td>
                     {% if object.dziel_na_jednostki_i_wydzialy %}
-                    <td>Filtruj po jednostce:</td>
-                    <td>Filtruj po wydziale:</td>
-                    {%endif%}
+                        <td>Filtruj po jednostce:</td>
+                        <td>Filtruj po wydziale:</td>
+                    {% endif %}
                     <td>Filtruj po dyscyplinie:</td>
                     <td>Filtruj slot:</td>
                     <td>Filtruj średnią:</td>
@@ -42,10 +48,10 @@
                 </tr>
                 <tr>
                     <td>{{ filter.form.autor__nazwisko }}</td>
-                    {%if object.dziel_na_jednostki_i_wydzialy%}
-                    <td>{{ filter.form.jednostka__nazwa }}</td>
-                    <td>{{ filter.form.jednostka__wydzial }}</td>
-                    {%endif%}
+                    {% if object.dziel_na_jednostki_i_wydzialy %}
+                        <td>{{ filter.form.jednostka__nazwa }}</td>
+                        <td>{{ filter.form.jednostka__wydzial }}</td>
+                    {% endif %}
                     <td>{{ filter.form.dyscyplina }}</td>
                     <td width="15%">{{ filter.form.slot__min }}&nbsp;{{ filter.form.slot__max }}</td>
                     <td width="15%">{{ filter.form.avg__min }}&nbsp;{{ filter.form.avg__max }}</td>
