@@ -4,6 +4,11 @@
 Historia zmian
 ==============
 
+202101.55
+---------
+
+* poprawne ukrywanie prac w wyszukiwaniu globalnym oraz po wpisanu URL (#950)
+
 202101.54
 ---------
 * poprawne wyświetlanie charakteru formalnego dla doktoratów i habilitacji
