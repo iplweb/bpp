@@ -12,10 +12,9 @@ import progressbar
 from django.apps import apps
 from django.conf import settings
 from django.db.models import Max, Min
+from django.utils import timezone
 from psycopg2.extensions import QuotedString
 from unidecode import unidecode
-
-from django.utils import timezone
 
 non_url = re.compile(r"[^\w-]+")
 
@@ -409,7 +408,6 @@ def wytnij_isbn_z_uwag(uwagi):
 
 def crispy_form_html(self, key):
     from crispy_forms_foundation.layout import HTML, Column, Row
-
     from django.utils.functional import lazy
 
     def _():
@@ -428,7 +426,7 @@ def formdefaults_html_after(form):
 
 def knapsack(W, wt, val, ids, zwracaj_liste_przedmiotow=True):
     """
-    :param W: maksymalna masa przedmiotów w plecaku (zbierany slot)
+    :param W: wielkosc plecaka -- maksymalna masa przedmiotów w plecaku (zbierany slot)
     :param wt: masy przedmiotów, które można włożyć do plecaka (sloty prac)
     :param val: ceny przedmiotów, które można włożyc do plecaka (punkty PKdAut prac)
     :param ids: ID prac, które można włożyć do plecaka (rekord.pk)
@@ -440,6 +438,13 @@ def knapsack(W, wt, val, ids, zwracaj_liste_przedmiotow=True):
     """
 
     assert len(wt) == len(val) == len(ids), "Listy są różnej długości"
+
+    sum_wt = sum(wt)
+    if sum_wt <= W:
+        # Jeżeli wszystkie przedmioty zmieszczą się w plecaku, to po co liczyć cokolwiek
+        if zwracaj_liste_przedmiotow:
+            return sum(val), ids
+        return sum(val), []
 
     n = len(wt)
 

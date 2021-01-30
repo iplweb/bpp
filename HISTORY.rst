@@ -4,6 +4,12 @@
 Historia zmian
 ==============
 
+202101.55
+---------
+
+* optymalizacja algorytmu liczącego dla zadania dużej ilości slotów w sytuacji,
+  gdy pracownik jej nie osiąga (b/n).
+
 202101.54
 ---------
 * poprawne wyświetlanie charakteru formalnego dla doktoratów i habilitacji

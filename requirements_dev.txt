@@ -65,8 +65,9 @@ pytest-localserver==0.5.0  # via -r requirements_dev.in
 pytest-mock==2.0.0        # via -r requirements_dev.in
 pytest-pythonpath==0.7.3  # via -r requirements_dev.in
 pytest-splinter==3.3.0    # via -r requirements_dev.in
+pytest-timeout==1.4.2     # via -r requirements_dev.in
 pytest-xdist==2.2.0       # via -r requirements_dev.in
-pytest==6.2.1             # via -r requirements_dev.in, pytest-cov, pytest-django, pytest-forked, pytest-lazy-fixture, pytest-mock, pytest-pythonpath, pytest-splinter, pytest-xdist
+pytest==6.2.1             # via -r requirements_dev.in, pytest-cov, pytest-django, pytest-forked, pytest-lazy-fixture, pytest-mock, pytest-pythonpath, pytest-splinter, pytest-timeout, pytest-xdist
 pytz==2018.4              # via -c requirements.txt, babel, django
 pyyaml==5.3.1             # via -c requirements.txt, pre-commit
 readme-renderer==28.0     # via twine
