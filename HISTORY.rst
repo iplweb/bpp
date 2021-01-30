@@ -7,6 +7,7 @@ Historia zmian
 202101.55
 ---------
 
+* opcjonalnie pokazuj autorów zerowych w raporcie slotów-uczelnia (#941),
 * optymalizacja algorytmu liczącego dla zadania dużej ilości slotów w sytuacji,
   gdy pracownik jej nie osiąga (b/n).
 
