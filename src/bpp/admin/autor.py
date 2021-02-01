@@ -1,24 +1,24 @@
 # -*- encoding: utf-8 -*-
 
 from dal import autocomplete
+from django import forms
 from django.contrib import admin
 
+from ..models import (  # Publikacja_Habilitacyjna
+    Autor,
+    Autor_Dyscyplina,
+    Autor_Jednostka,
+    Dyscyplina_Naukowa,
+    Jednostka,
+)
 from .core import CommitedModelAdmin
 from .filters import (
     JednostkaFilter,
+    OrcidObecnyFilter,
     PBNIDObecnyFilter,
     PeselMD5ObecnyFilter,
-    OrcidObecnyFilter,
 )
-from .helpers import *
-from ..models import (
-    Jednostka,
-    Autor,
-    Autor_Jednostka,
-    Autor_Dyscyplina,
-    Dyscyplina_Naukowa,
-)  # Publikacja_Habilitacyjna
-
+from .helpers import ADNOTACJE_FIELDSET, CHARMAP_SINGLE_LINE, ZapiszZAdnotacjaMixin
 
 # Proste tabele
 
