@@ -10,7 +10,8 @@ Historia zmian
 * opcjonalnie pokazuj autorów zerowych w raporcie slotów-uczelnia (#941),
 * pokazuj ORCID w module redagowania przy powiązaniach autor-jednostka (#970),
 * optymalizacja algorytmu liczącego dla zadania dużej ilości slotów w sytuacji,
-  gdy pracownik jej nie osiąga (b/n).
+  gdy pracownik jej nie osiąga (b/n),
+* poprawne ukrywanie prac w wyszukiwaniu globalnym oraz po wpisanu URL (#950).
 
 202101.54
 ---------
@@ -24,7 +25,11 @@ Historia zmian
 * poprawki pobierania PubMed ID (#958),
 * poprawne zawężanie do zakresu punktów PK (#967),
 * katalog cache ma nazwę z numerem wersji (#961),
+<<<<<<< HEAD
 * raport slotów uczelnia wg algorytmu plecakowego (#923),
+=======
+* ustawienie ukrywania publikacji na podglądzie i w wyszukiwaniu globalnym (#950),
+>>>>>>> feature/950-ukryj-prace-po-prostu
 * w multiwyszukiwarce w polu "Wydawnictwo nadrzędne" pokazuj wyłącznie rekordy
   będące już wydawnictwami nadrzędnymi dla rekordów (#953).
 

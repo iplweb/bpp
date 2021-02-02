@@ -7,23 +7,24 @@ try:
     from django.core.urlresolvers import reverse
 except ImportError:
     from django.urls import reverse
+
 from django.db.models.query_utils import Q
-from django.http import Http404
+from django.http import Http404, HttpResponseForbidden
 from django.shortcuts import get_object_or_404
 from django.views.generic import DetailView, ListView, RedirectView
+from miniblog.models import Article
+from multiseek.logic import AND, OR
+from multiseek.util import make_field
+from multiseek.views import MULTISEEK_SESSION_KEY, MULTISEEK_SESSION_KEY_REMOVED
 
-from bpp.models import Uczelnia, Jednostka, Wydzial, Autor, Zrodlo, Rekord
+from bpp.models import Autor, Jednostka, Rekord, Uczelnia, Wydzial, Zrodlo
 from bpp.multiseek_registry import (
     JednostkaQueryObject,
-    RokQueryObject,
     NazwiskoIImieQueryObject,
+    RokQueryObject,
     TypRekorduObject,
     ZrodloQueryObject,
 )
-from miniblog.models import Article
-from multiseek.logic import OR, AND
-from multiseek.util import make_field
-from multiseek.views import MULTISEEK_SESSION_KEY, MULTISEEK_SESSION_KEY_REMOVED
 
 PUBLIKACJE = "publikacje"
 STRESZCZENIA = "streszczenia"
@@ -36,6 +37,7 @@ def conditional(**kwargs):
     works for methods (i.e. class-based views).
     """
     from django.views.decorators.http import condition
+
     from django.utils.decorators import method_decorator
 
     return method_decorator(condition(**kwargs))
@@ -121,8 +123,8 @@ class Browser(ListView):
                 args = PODWOJNE[literka]
 
             qobj = Q(**{self.literka_field + "__istartswith": literka})
-            for l in args[1:]:
-                qobj |= Q(**{self.literka_field + "__istartswith": l})
+            for x in args[1:]:
+                qobj |= Q(**{self.literka_field + "__istartswith": x})
             qry = qry.filter(qobj)  # **{self.param + "__istartswith": literka})
 
         return qry.distinct()
@@ -278,6 +280,22 @@ class PracaView(DetailView):
             raise Http404
 
         return obj
+
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+
+        if request.user.is_anonymous:
+            # Jeżeli użytkownik jest anonimowy, to może obejmować go ukrywanie statusów
+            uczelnia = Uczelnia.objects.get_for_request(request)
+
+            if uczelnia is not None:
+                statusy = uczelnia.ukryte_statusy("podglad")
+
+                if self.object.status_korekty_id in statusy:
+                    return HttpResponseForbidden("Brak uprawnień do rekordu")
+
+        context = self.get_context_data(object=self.object)
+        return self.render_to_response(context)
 
 
 class OldPracaView(RedirectView):

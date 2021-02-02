@@ -18,6 +18,7 @@ from bpp.models import (
     Autor_Dyscyplina,
     Dyscyplina_Naukowa,
     Jednostka,
+    Uczelnia,
     Wydawca,
     Zewnetrzna_Baza_Danych,
 )
@@ -296,9 +297,15 @@ class GlobalNavigationAutocomplete(Select2QuerySetSequenceView):
             )
         )
 
-        querysets.append(
-            Rekord.objects.fulltext_filter(self.q).only("tytul_oryginalny")
-        )
+        rekord_qset = Rekord.objects.fulltext_filter(self.q).only("tytul_oryginalny")
+
+        if hasattr(self, "request") and self.request.user.is_anonymous:
+            uczelnia = Uczelnia.objects.get_for_request(self.request)
+            if uczelnia is not None:
+                rekord_qset = rekord_qset.exclude(
+                    status_korekty_id__in=uczelnia.ukryte_statusy("podglad")
+                )
+        querysets.append(rekord_qset)
 
         this_is_an_id = False
         try:

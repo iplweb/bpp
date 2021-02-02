@@ -29,6 +29,7 @@ class Ukryj_Status_KorektyInline(admin.StackedInline):
     fields = [
         "status_korekty",
         "multiwyszukiwarka",
+        "podglad",
         "raporty",
         "rankingi",
         "sloty",
