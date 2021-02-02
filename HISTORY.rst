@@ -7,6 +7,7 @@ Historia zmian
 202102.55
 ---------
 
+* ORCID i PBN ID w raporcie zerowym (#940),
 * umozliwiaj grupową zmianę statusu korekty w module redagowania (#948),
 * umożliwiaj tworzenie raportu z wymierną liczbą slotów dla autora (#966),
 * opcjonalnie pokazuj autorów zerowych w raporcie slotów-uczelnia (#941),

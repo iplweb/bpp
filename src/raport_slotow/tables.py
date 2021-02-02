@@ -165,7 +165,13 @@ class RaportSlotowZerowyTable(tables.Table):
     class Meta:
         empty_text = "Brak danych"
         model = RaportZerowyEntry
-        fields = ("autor", "lata", "dyscyplina_naukowa")
+        fields = (
+            "autor",
+            "autor__pbn_id",
+            "autor__orcid",
+            "lata",
+            "dyscyplina_naukowa",
+        )
 
 
 class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
