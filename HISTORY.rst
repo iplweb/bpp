@@ -7,6 +7,7 @@ Historia zmian
 202102.55
 ---------
 
+* umozliwiaj grupową zmianę statusu korekty w module redagowania (#948),
 * umożliwiaj tworzenie raportu z wymierną liczbą slotów dla autora (#966),
 * opcjonalnie pokazuj autorów zerowych w raporcie slotów-uczelnia (#941),
 * pokazuj ORCID w module redagowania przy powiązaniach autor-jednostka (#970),

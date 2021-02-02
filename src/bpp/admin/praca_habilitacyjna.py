@@ -9,20 +9,34 @@ from django.contrib import admin
 from django.forms.widgets import HiddenInput
 from queryset_sequence import QuerySetSequence
 
-from bpp.admin.helpers import *
-from bpp.models import (
-    Jednostka,
+from bpp.models import (  # Publikacja_Habilitacyjna
     Autor,
+    Jednostka,
+    Patent,
+    Praca_Habilitacyjna,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
-    Praca_Habilitacyjna,
-    Patent,
-)  # Publikacja_Habilitacyjna
+)
 from bpp.models.praca_habilitacyjna import Publikacja_Habilitacyjna
+
 from .element_repozytorium import Element_RepozytoriumInline
 from .grant import Grant_RekorduInline
+from .helpers import (
+    ADNOTACJE_Z_DATAMI_FIELDSET,
+    DWA_TYTULY,
+    EKSTRA_INFORMACJE_DOKTORSKA_HABILITACYJNA_FIELDSET,
+    MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET,
+    MODEL_PUNKTOWANY_FIELDSET,
+    MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
+    MODEL_TYPOWANY_BEZ_CHARAKTERU_FIELDSET,
+    MODEL_Z_ISBN,
+    MODEL_Z_ROKIEM,
+    MODEL_ZE_SZCZEGOLAMI,
+    POZOSTALE_MODELE_FIELDSET,
+    DomyslnyStatusKorektyMixin,
+    Wycinaj_W_z_InformacjiMixin,
+)
 from .praca_doktorska import Praca_Doktorska_Habilitacyjna_Admin_Base
-
 
 #
 # Praca Habilitacyjna
