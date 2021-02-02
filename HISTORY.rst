@@ -7,6 +7,7 @@ Historia zmian
 202102.55
 ---------
 
+* umożliwiaj tworzenie raportu z wymierną liczbą slotów dla autora (#966),
 * opcjonalnie pokazuj autorów zerowych w raporcie slotów-uczelnia (#941),
 * pokazuj ORCID w module redagowania przy powiązaniach autor-jednostka (#970),
 * optymalizacja algorytmu liczącego dla zadania dużej ilości slotów w sytuacji,

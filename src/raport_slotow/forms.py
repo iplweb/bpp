@@ -48,9 +48,11 @@ class AutorRaportSlotowForm(forms.Form):
         widget=forms.RadioSelect,
     )
 
-    slot = forms.IntegerField(
+    slot = forms.DecimalField(
         label="Zadana wielkość slotu",
         required=False,
+        max_digits=8,
+        decimal_places=4,
     )
 
     _export = forms.ChoiceField(
