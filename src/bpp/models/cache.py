@@ -7,17 +7,15 @@
 # - Praca_Doktorska
 # - Praca_Habilitacyjna
 
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
+from django.contrib.postgres.fields.array import ArrayField
+from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models, transaction
 from django.db.models import CASCADE, ForeignKey, Func
 from django.db.models.deletion import DO_NOTHING
 from django.db.models.signals import post_delete, post_save, pre_delete, pre_save
-
-from django.contrib.contenttypes.fields import GenericForeignKey
-from django.contrib.contenttypes.models import ContentType
-from django.contrib.postgres.fields.array import ArrayField
-from django.contrib.postgres.search import SearchVectorField as VectorField
-
 from django.utils.functional import cached_property
 
 from bpp.models import (
@@ -409,8 +407,10 @@ class RekordBase(
     tytul = models.TextField()
     search_index = VectorField()
 
-    zrodlo = models.ForeignKey(Zrodlo, on_delete=DO_NOTHING)
-    wydawnictwo_nadrzedne = models.ForeignKey(Wydawnictwo_Zwarte, on_delete=DO_NOTHING)
+    zrodlo = models.ForeignKey(Zrodlo, null=True, on_delete=DO_NOTHING)
+    wydawnictwo_nadrzedne = models.ForeignKey(
+        Wydawnictwo_Zwarte, null=True, on_delete=DO_NOTHING
+    )
 
     wydawnictwo = models.TextField()
 

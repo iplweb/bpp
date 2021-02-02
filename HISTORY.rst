@@ -7,6 +7,7 @@ Historia zmian
 202102.55
 ---------
 
+* poprawne sortowanie po źródle/wydawnictwie nadrzędnym (#938)
 * ORCID i PBN ID w raporcie zerowym (#940),
 * umozliwiaj grupową zmianę statusu korekty w module redagowania (#948),
 * umożliwiaj tworzenie raportu z wymierną liczbą slotów dla autora (#966),
@@ -28,11 +29,8 @@ Historia zmian
 * poprawki pobierania PubMed ID (#958),
 * poprawne zawężanie do zakresu punktów PK (#967),
 * katalog cache ma nazwę z numerem wersji (#961),
-<<<<<<< HEAD
 * raport slotów uczelnia wg algorytmu plecakowego (#923),
-=======
 * ustawienie ukrywania publikacji na podglądzie i w wyszukiwaniu globalnym (#950),
->>>>>>> feature/950-ukryj-prace-po-prostu
 * w multiwyszukiwarce w polu "Wydawnictwo nadrzędne" pokazuj wyłącznie rekordy
   będące już wydawnictwami nadrzędnymi dla rekordów (#953).
 
