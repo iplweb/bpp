@@ -5,9 +5,9 @@ from selenium.webdriver.support.expected_conditions import staleness_of
 from selenium.webdriver.support.ui import WebDriverWait
 
 
-def wait_for(condition_function):
+def wait_for(condition_function, max_seconds=10):
     start_time = time.time()
-    while time.time() < start_time + 10:
+    while time.time() < start_time + max_seconds:
         if condition_function():
             return True
         else:
