@@ -2,14 +2,14 @@
 
 from django.db import models
 from django.db.models import CASCADE, SET_NULL
+from django.utils.functional import cached_property
+
+from bpp.models import Charakter_Formalny, NieMaProcentowMixin
+
 from .autor import Autor
 from .struktura import Jednostka
 from .system import Typ_Odpowiedzialnosci
 from .wydawnictwo_zwarte import Wydawnictwo_Zwarte_Baza
-
-from django.utils.functional import cached_property
-
-from bpp.models import Charakter_Formalny, NieMaProcentowMixin
 
 
 class Praca_Doktorska_Baza(NieMaProcentowMixin, Wydawnictwo_Zwarte_Baza):
@@ -38,6 +38,15 @@ class Praca_Doktorska_Baza(NieMaProcentowMixin, Wydawnictwo_Zwarte_Baza):
         abstract = True
 
 
+class _Praca_Doktorska_PropertyCache:
+    @cached_property
+    def charakter_formalny(self):
+        return Charakter_Formalny.objects.get(skrot="D")
+
+
+_Praca_Doktorska_PropertyCache = _Praca_Doktorska_PropertyCache()
+
+
 class Praca_Doktorska(Praca_Doktorska_Baza):
     autor = models.ForeignKey(Autor, CASCADE)
 
@@ -47,7 +56,7 @@ class Praca_Doktorska(Praca_Doktorska_Baza):
 
     @cached_property
     def charakter_formalny(self):
-        return Charakter_Formalny.objects.get(skrot="D")
+        return _Praca_Doktorska_PropertyCache.charakter_formalny
 
     class Meta:
         verbose_name = "praca doktorska"

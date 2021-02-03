@@ -31,5 +31,5 @@ pycalver
 typing>=3.6,<3.7
 isort>=5.7.0
 pre-commit
-# django-debug-toolbar==2.2
+django-debug-toolbar
 twine

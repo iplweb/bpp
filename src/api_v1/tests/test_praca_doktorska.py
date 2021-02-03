@@ -2,8 +2,10 @@ from datetime import timedelta
 
 import pytest
 from django.urls import reverse
-
 from django.utils.timezone import localtime
+from model_mommy import mommy
+
+from bpp.models import Praca_Doktorska
 
 
 @pytest.mark.django_db
@@ -74,3 +76,17 @@ def test_rest_api_praca_doktorska_ukryj_status(
     uczelnia.ukryj_status_korekty_set.create(status_korekty=przed_korekta)
     res = api_client.get(reverse("api_v1:praca_doktorska-list"))
     assert res.json()["count"] == 0
+
+
+@pytest.fixture
+def wiele_prac_doktorskich(db):
+    for a in range(100):
+        mommy.make(Praca_Doktorska)
+
+
+@pytest.mark.django_db
+def test_rest_api_praca_doktorska_no_queries(
+    wiele_prac_doktorskich, django_assert_max_num_queries, api_client
+):
+    with django_assert_max_num_queries(11):
+        api_client.get(reverse("api_v1:praca_doktorska-list"))
