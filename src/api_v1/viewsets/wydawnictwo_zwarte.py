@@ -6,12 +6,11 @@ from api_v1.serializers.wydawnictwo_zwarte import (
     Wydawnictwo_ZwarteSerializer,
 )
 from api_v1.viewsets.common import UkryjStatusyKorektyMixin
-
 from bpp.models import Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor
 
 
 class Wydawnictwo_Zwarte_AutorViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Wydawnictwo_Zwarte_Autor.objects.all()
+    queryset = Wydawnictwo_Zwarte_Autor.objects.all().select_related()
     serializer_class = Wydawnictwo_Zwarte_AutorSerializer
 
 
@@ -28,8 +27,11 @@ class Wydawnictwo_ZwarteViewSet(
     UkryjStatusyKorektyMixin, viewsets.ReadOnlyModelViewSet
 ):
     # Lista musi być posortowana po PK aby nie było duplikatów
-    queryset = Wydawnictwo_Zwarte.objects.exclude(
-        nie_eksportuj_przez_api=True
-    ).order_by("pk")
+    queryset = (
+        Wydawnictwo_Zwarte.objects.exclude(nie_eksportuj_przez_api=True)
+        .order_by("pk")
+        .select_related("status_korekty")
+        .prefetch_related("autorzy_set", "nagrody")
+    )
     serializer_class = Wydawnictwo_ZwarteSerializer
     filterset_class = Wydawnictwo_ZwarteFilterSet

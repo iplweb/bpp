@@ -1,6 +1,6 @@
 import pytest
 
-from bpp.util import wytnij_isbn_z_uwag, knapsack
+from bpp.util import knapsack, wytnij_isbn_z_uwag
 
 
 @pytest.mark.django_db
@@ -43,6 +43,12 @@ def test_wytnij_isbn_z_uwag(input, output, rest):
 
 def test_knapsack_empty():
     assert knapsack(10, [], [], []) == (0, [])
+
+
+@pytest.mark.timeout(3)
+def test_knapsack_very_long():
+    # Test na optymalizacje sytuacji gdy chcemy dostac znacznie wiecej punktow niz wychdozi z danej listy,
+    knapsack(99900, [1] * 99800, [1] * 99800, [1] * 99800)
 
 
 def test_knapsack_zwracaj_liste():

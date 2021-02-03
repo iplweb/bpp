@@ -414,3 +414,43 @@ def test_praca_tabela_pmc_id(wydawnictwo_zwarte, client):
     )
 
     assert b"https://www.ncbi.nlm.nih.gov/pmc/" in res.content
+
+
+def test_PracaView_ukrywanie_statusy_anonim(
+    client, uczelnia, przed_korekta, wydawnictwo_zwarte_przed_korekta
+):
+    url = reverse(
+        "bpp:browse_praca",
+        args=(
+            ContentType.objects.get_for_model(wydawnictwo_zwarte_przed_korekta).pk,
+            wydawnictwo_zwarte_przed_korekta.pk,
+        ),
+    )
+
+    res = client.get(url)
+    assert res.status_code == 200
+
+    uczelnia.ukryj_status_korekty_set.create(status_korekty=przed_korekta)
+
+    res = client.get(url)
+    assert res.status_code == 403
+
+
+def test_PracaView_ukrywanie_statusy_admin(
+    admin_client, uczelnia, przed_korekta, wydawnictwo_zwarte_przed_korekta
+):
+    url = reverse(
+        "bpp:browse_praca",
+        args=(
+            ContentType.objects.get_for_model(wydawnictwo_zwarte_przed_korekta).pk,
+            wydawnictwo_zwarte_przed_korekta.pk,
+        ),
+    )
+
+    res = admin_client.get(url)
+    assert res.status_code == 200
+
+    uczelnia.ukryj_status_korekty_set.create(status_korekty=przed_korekta)
+
+    res = admin_client.get(url)
+    assert res.status_code == 200

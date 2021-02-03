@@ -68,7 +68,20 @@ class Report(NullNotificationMixin, models.Model):
             f"Zakończono z błędem, {self.finished_on}", constants.ERROR
         )
 
+    @transaction.atomic
+    def mark_reset(self):
+        """Prepares the report for re-generation"""
+        self.started_on = None
+        self.finished_on = None
+        self.finished_successfully = False
+        self.traceback = None
+        self.on_reset()
+        self.save()
+
     def on_finished_successfully(self):
+        pass
+
+    def on_reset(self):
         pass
 
     def task_create_report(self, raise_exceptions=True):

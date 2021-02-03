@@ -1,10 +1,8 @@
 # -*- encoding: utf-8 -*-
-from django.db import models
-from django.db.models import CASCADE
-
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
-
+from django.db import models
+from django.db.models import CASCADE
 from django.utils.functional import cached_property
 
 from bpp.models import Autor, Charakter_Formalny
@@ -32,6 +30,15 @@ class Publikacja_Habilitacyjna(models.Model):
         ordering = ("kolejnosc",)
 
 
+class _Praca_Habilitacyjna_PropertyCache:
+    @cached_property
+    def charakter_formalny(self):
+        return Charakter_Formalny.objects.get(skrot="H")
+
+
+_Praca_Habilitacyjna_PropertyCache = _Praca_Habilitacyjna_PropertyCache()
+
+
 class Praca_Habilitacyjna(Praca_Doktorska_Baza):
     autor = models.OneToOneField(Autor, CASCADE)
 
@@ -39,7 +46,7 @@ class Praca_Habilitacyjna(Praca_Doktorska_Baza):
 
     @cached_property
     def charakter_formalny(self):
-        return Charakter_Formalny.objects.get(skrot="H")
+        return _Praca_Habilitacyjna_PropertyCache.charakter_formalny
 
     class Meta:
         verbose_name = "praca habilitacyjna"

@@ -3,6 +3,9 @@ from datetime import timedelta
 import pytest
 from django.urls import reverse
 from django.utils.timezone import localtime
+from model_mommy import mommy
+
+from bpp.models import Wydawnictwo_Ciagle
 
 
 @pytest.mark.django_db
@@ -65,3 +68,17 @@ def test_rest_api_wydawnictwo_ciagle_ukryj_status(
     uczelnia.ukryj_status_korekty_set.create(status_korekty=przed_korekta)
     res = api_client.get(reverse("api_v1:wydawnictwo_ciagle-list"))
     assert res.json()["count"] == 0
+
+
+@pytest.fixture
+def wiele_wydawnictw_ciaglych(db):
+    for a in range(100):
+        mommy.make(Wydawnictwo_Ciagle)
+
+
+@pytest.mark.django_db
+def test_rest_api_wydawnictwo_ciagle_no_queries(
+    wiele_wydawnictw_ciaglych, django_assert_max_num_queries, api_client
+):
+    with django_assert_max_num_queries(11):
+        api_client.get(reverse("api_v1:wydawnictwo_ciagle-list"))

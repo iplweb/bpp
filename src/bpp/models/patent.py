@@ -1,12 +1,14 @@
 # -*- encoding: utf-8 -*-
 from django.db import models
 from django.db.models import CASCADE, SET_NULL
+from django.utils.functional import cached_property
 
 from bpp.models import (
     Autor,
     BazaModeluOdpowiedzialnosciAutorow,
     Charakter_Formalny,
     Jezyk,
+    ModelOpcjonalnieNieEksportowanyDoAPI,
     ModelPunktowany,
     ModelRecenzowany,
     ModelZAdnotacjami,
@@ -15,7 +17,6 @@ from bpp.models import (
     ModelZInformacjaZ,
     ModelZRokiem,
     ModelZWWW,
-    ModelOpcjonalnieNieEksportowanyDoAPI,
 )
 from bpp.models.abstract import (
     DodajAutoraMixin,
@@ -23,9 +24,6 @@ from bpp.models.abstract import (
     ModelZAbsolutnymUrl,
     RekordBPPBaza,
 )
-
-from django.utils.functional import cached_property
-
 from bpp.util import safe_html
 
 
@@ -44,6 +42,19 @@ class Patent_Autor(BazaModeluOdpowiedzialnosciAutorow):
             # Tu musi być autor, inaczej admin nie pozwoli wyedytować
             ("rekord", "autor", "kolejnosc"),
         ]
+
+
+class _Patent_PropertyCache:
+    @cached_property
+    def charakter_formalny(self):
+        return Charakter_Formalny.objects.get(skrot="PAT")
+
+    @cached_property
+    def jezyk(self):
+        return Jezyk.objects.get(skrot_dla_pbn="PL")
+
+
+_Patent_PropertyCache = _Patent_PropertyCache()
 
 
 class Patent(
@@ -79,7 +90,9 @@ class Patent(
         "bpp.Rodzaj_Prawa_Patentowego", CASCADE, null=True, blank=True
     )
 
-    wdrozenie = models.NullBooleanField("Wdrożenie",)
+    wdrozenie = models.NullBooleanField(
+        "Wdrożenie",
+    )
 
     wydzial = models.ForeignKey("bpp.Wydzial", SET_NULL, null=True, blank=True)
 
@@ -96,11 +109,11 @@ class Patent(
 
     @cached_property
     def charakter_formalny(self):
-        return Charakter_Formalny.objects.get(skrot="PAT")
+        return _Patent_PropertyCache.charakter_formalny
 
     @cached_property
     def jezyk(self):
-        return Jezyk.objects.get(skrot_dla_pbn="PL")
+        return _Patent_PropertyCache.jezyk
 
     def clean(self):
         self.tytul_oryginalny = safe_html(self.tytul_oryginalny)

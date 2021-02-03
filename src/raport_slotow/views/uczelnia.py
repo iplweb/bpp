@@ -2,6 +2,7 @@ import urllib
 
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
+from django.http import HttpResponseRedirect
 from django.utils import timezone
 from django.views.generic import CreateView, DetailView, ListView
 from django_tables2 import RequestConfig, SingleTableMixin
@@ -80,6 +81,24 @@ class SzczegolyRaportSlotowUczelnia(
         return super(SzczegolyRaportSlotowUczelnia, self).get_context_data(
             extraChannels=[self.object.pk]
         )
+
+
+class WygenerujPonownieRaportSlotowUczelnia(
+    UczelniaSettingRequiredMixin, LoginRequiredMixin, DetailView
+):
+    uczelnia_attr = "pokazuj_raport_slotow_uczelnia"
+    export_formats = ["html", "xlsx"]
+    model = RaportSlotowUczelnia
+
+    @transaction.atomic
+    def get(self, *args, **kw):
+        self.object = self.get_object()
+        if self.object.finished_successfully:
+            self.object.mark_reset()
+            transaction.on_commit(
+                lambda: wygeneruj_raport_slotow_uczelnia.delay(pk=self.object.pk)
+            )
+        return HttpResponseRedirect(".")
 
 
 class SzczegolyRaportSlotowUczelniaListaRekordow(

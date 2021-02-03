@@ -72,6 +72,11 @@ class OrcidObecnyFilter(SimpleNotNullFilter):
     parameter_name = "orcid"
 
 
+class OrcidAutoraDyscyplinyObecnyFilter(SimpleNotNullFilter):
+    title = "ORCID"
+    parameter_name = "autor__orcid"
+
+
 class PeselMD5ObecnyFilter(SimpleNotNullFilter):
     title = "PESEL MD5"
     parameter_name = "pesel_md5"

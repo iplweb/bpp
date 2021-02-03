@@ -1,11 +1,9 @@
 # -*- encoding: utf-8 -*-
 from django.conf import settings
+from django.contrib.postgres.search import SearchQuery
+from django.utils.itercompat import is_iterable
 from mptt.forms import TreeNodeChoiceFieldMixin
 from mptt.settings import DEFAULT_LEVEL_INDICATOR
-
-from django.contrib.postgres.search import SearchQuery
-
-from django.utils.itercompat import is_iterable
 
 from bpp.models.konferencja import Konferencja
 from bpp.models.openaccess import (
@@ -967,7 +965,7 @@ registry = create_registry(
         Ordering("punkty_kbn", "punkty PK"),
         Ordering("charakter_formalny__nazwa", "charakter formalny"),
         Ordering("typ_kbn__nazwa", "typ KBN"),
-        Ordering("zrodlo__nazwa", "źródło"),
+        Ordering("zrodlo_lub_nadrzedne", "źródło/wyd.nadrz."),
         Ordering("utworzono", "utworzono"),
         Ordering("ostatnio_zmieniony", "ostatnio zmieniony"),
         Ordering("ostatnio_zmieniony_dla_pbn", "ostatnio zmieniony (dla PBN)"),

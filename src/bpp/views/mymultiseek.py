@@ -1,6 +1,5 @@
-# -*- enco
-# ding: utf-8 -*-
-from django.db.models import Sum
+# -*- encoding: utf-8 -*-
+from django.db.models import Case, Q, Sum, TextField, When
 from django.views.decorators.cache import never_cache
 from multiseek.logic import get_registry
 from multiseek.views import (
@@ -67,9 +66,23 @@ class MyMultiseekResults(MultiseekResults):
                 "typ_kbn__nazwa",
             )
 
-        ret = qset.only(*flds)
+        #
+        ret = qset.only(*flds).annotate(
+            zrodlo_lub_nadrzedne=Case(
+                When(
+                    Q(zrodlo_id=None),
+                    then="wydawnictwo_nadrzedne__tytul_oryginalny",
+                ),
+                When(
+                    Q(wydawnictwo_nadrzedne_id=None),
+                    then="zrodlo__nazwa",
+                ),
+                output_field=TextField(),
+            )
+        )
 
         sql = str(ret.query)
+
         if "bpp_autorzy_mat" in sql or "bpp_zewnetrzne_bazy_view" in sql:
             ret = ret.distinct()
 

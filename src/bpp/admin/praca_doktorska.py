@@ -1,13 +1,31 @@
 # -*- encoding: utf-8 -*-
 
 from dal import autocomplete
+from django import forms
 from django.contrib import admin
 
+from ..models import Autor, Jednostka, Praca_Doktorska
+from .actions import ustaw_po_korekcie, ustaw_przed_korekta, ustaw_w_trakcie_korekty
 from .core import CommitedModelAdmin
 from .element_repozytorium import Element_RepozytoriumInline
 from .grant import Grant_RekorduInline
-from .helpers import *
-from ..models import Jednostka, Autor, Praca_Doktorska
+from .helpers import (
+    ADNOTACJE_Z_DATAMI_FIELDSET,
+    DWA_TYTULY,
+    EKSTRA_INFORMACJE_DOKTORSKA_HABILITACYJNA_FIELDSET,
+    MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET,
+    MODEL_PUNKTOWANY_FIELDSET,
+    MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
+    MODEL_TYPOWANY_BEZ_CHARAKTERU_FIELDSET,
+    MODEL_Z_ISBN,
+    MODEL_Z_ROKIEM,
+    MODEL_ZE_SZCZEGOLAMI,
+    NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW,
+    POZOSTALE_MODELE_FIELDSET,
+    AdnotacjeZDatamiMixin,
+    DomyslnyStatusKorektyMixin,
+    Wycinaj_W_z_InformacjiMixin,
+)
 
 # Proste tabele
 
@@ -33,6 +51,7 @@ class Praca_Doktorska_Habilitacyjna_Admin_Base(
     AdnotacjeZDatamiMixin, CommitedModelAdmin
 ):
     formfield_overrides = NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW
+    actions = [ustaw_po_korekcie, ustaw_w_trakcie_korekty, ustaw_przed_korekta]
 
     list_display = [
         "tytul_oryginalny",

@@ -48,9 +48,11 @@ class AutorRaportSlotowForm(forms.Form):
         widget=forms.RadioSelect,
     )
 
-    slot = forms.IntegerField(
+    slot = forms.DecimalField(
         label="Zadana wielkość slotu",
         required=False,
+        max_digits=8,
+        decimal_places=4,
     )
 
     _export = forms.ChoiceField(
@@ -142,6 +144,7 @@ class UtworzRaportSlotowUczelniaForm(forms.ModelForm):
             "slot",
             "minimalny_pk",
             "dziel_na_jednostki_i_wydzialy",
+            "pokazuj_zerowych",
         ]
 
     def __init__(self, *args, **kwargs):
@@ -159,6 +162,7 @@ class UtworzRaportSlotowUczelniaForm(forms.ModelForm):
                 Row(Column("slot", css_class="large-12 small-12")),
                 Row(Column("minimalny_pk", css_class="large-12 small-12")),
                 Row(Column("dziel_na_jednostki_i_wydzialy")),
+                Row(Column("pokazuj_zerowych")),
                 formdefaults_html_after(self),
             ),
             ButtonHolder(

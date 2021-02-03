@@ -13,6 +13,7 @@ from raport_slotow.views import (
     SzczegolyRaportSlotowUczelniaListaRekordow,
     UtworzRaportSlotowUczelnia,
     WyborOsoby,
+    WygenerujPonownieRaportSlotowUczelnia,
 )
 
 register_converter(DecimalPathConverter, "decimal")
@@ -40,6 +41,11 @@ urlpatterns = [
         "raport-slotow-uczelnia/<uuid:pk>/",
         SzczegolyRaportSlotowUczelnia.as_view(),
         name="szczegoly-raport-slotow-uczelnia",
+    ),
+    path(
+        "raport-slotow-uczelnia/<uuid:pk>/regen",
+        WygenerujPonownieRaportSlotowUczelnia.as_view(),
+        name="regeneruj-raport-slotow-uczelnia",
     ),
     path(
         "raport-slotow-uczelnia/<uuid:pk>/details",

@@ -6,7 +6,6 @@ except ImportError:
     from django.urls import reverse
 
 import pytest
-from celeryui.models import Report
 
 from bpp.tests.util import (
     CURRENT_YEAR,
@@ -15,7 +14,7 @@ from bpp.tests.util import (
     any_jednostka,
     select_select2_autocomplete,
 )
-
+from celeryui.models import Report
 from django_bpp.selenium_util import wait_for, wait_for_page_load
 
 
@@ -64,7 +63,16 @@ def test_ranking_autorow(raporty_browser, jednostka_raportow, asgi_live_server):
     raporty_browser.visit(
         asgi_live_server.url + reverse("bpp:ranking_autorow_formularz")
     )
-    assert 'value="%s"' % (CURRENT_YEAR - 1) in raporty_browser.html
+    from django.utils import timezone
+
+    now = timezone.now()
+
+    if now.month < 2:
+        val = CURRENT_YEAR - 1
+    else:
+        val = CURRENT_YEAR
+
+    assert 'value="%s"' % val in raporty_browser.html
 
 
 @pytest.mark.django_db(transaction=True)

@@ -37,7 +37,7 @@
     {% if uczelnia.pokazuj_liczbe_cytowan_na_stronie_autora == "always" or uczelnia.pokazuj_liczbe_cytowan_na_stronie_autora == "logged-in" and request.user.is_anonymous == False %}
         {% if autor.liczba_cytowan %}
             <p><strong>Liczba cytowań: </strong>{{ autor.liczba_cytowan }}</p>
-            <p><strong>Liczba cytowań z jednostek afiliowanych: </strong>{{ autor.liczba_cytowan_afiliowane }}</p>
+            <p><strong>Liczba cytowań z jednostek afiliowanych: </strong>{{ autor.liczba_cytowan_afiliowane|default:"brak" }}</p>
         {% endif %}
     {% endif %}
     <p>

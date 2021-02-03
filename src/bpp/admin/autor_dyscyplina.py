@@ -1,11 +1,12 @@
+from dal import autocomplete
+from django.contrib import admin
 from import_export import resources
 from import_export.admin import ExportMixin
 from import_export.fields import Field
 
-from django.contrib import admin
-
 from bpp.admin.core import BaseBppAdmin
-from bpp.models import Autor_Dyscyplina
+from bpp.admin.filters import OrcidAutoraDyscyplinyObecnyFilter
+from bpp.models import Autor, Autor_Dyscyplina
 
 
 class Autor_DyscyplinaResource(resources.ModelResource):
@@ -42,8 +43,23 @@ class Autor_DyscyplinaResource(resources.ModelResource):
         export_order = fields
 
 
+from django import forms
+
+
+class Autor_DyscyplinaForm(forms.ModelForm):
+    autor = forms.ModelChoiceField(
+        queryset=Autor.objects.all(),
+        widget=autocomplete.ModelSelect2(url="bpp:autor-autocomplete"),
+    )
+
+    class Meta:
+        model = Autor_Dyscyplina
+        fields = "__all__"
+
+
 class Autor_DyscyplinaAdmin(ExportMixin, BaseBppAdmin):
     resource_class = Autor_DyscyplinaResource
+    form = Autor_DyscyplinaForm
 
     list_filter = [
         "rok",
@@ -51,18 +67,25 @@ class Autor_DyscyplinaAdmin(ExportMixin, BaseBppAdmin):
         "subdyscyplina_naukowa",
         "rodzaj_autora",
         "wymiar_etatu",
+        OrcidAutoraDyscyplinyObecnyFilter,
     ]
     list_display = [
         "autor",
         "rok",
         "rodzaj_autora",
         "wymiar_etatu",
+        "orcid",
         "dyscyplina_naukowa",
         "procent_dyscypliny",
         "subdyscyplina_naukowa",
         "procent_subdyscypliny",
     ]
     ordering = ("autor", "rok")
+
+    def orcid(self, obj):
+        return obj.autor.orcid
+
+    orcid.admin_order_field = "autor__orcid"
 
 
 admin.site.register(Autor_Dyscyplina, Autor_DyscyplinaAdmin)

@@ -7,7 +7,6 @@ from api_v1.serializers.wydawnictwo_ciagle import (
     Wydawnictwo_CiagleSerializer,
 )
 from api_v1.viewsets.common import UkryjStatusyKorektyMixin
-
 from bpp.models import (
     Wydawnictwo_Ciagle,
     Wydawnictwo_Ciagle_Autor,
@@ -33,9 +32,13 @@ class Wydawnictwo_CiagleViewSet(
     UkryjStatusyKorektyMixin, viewsets.ReadOnlyModelViewSet
 ):
     # Lista musi być posortowana po PK aby nie było duplikatów
-    queryset = Wydawnictwo_Ciagle.objects.exclude(
-        nie_eksportuj_przez_api=True
-    ).order_by("pk")
+    queryset = (
+        Wydawnictwo_Ciagle.objects.exclude(nie_eksportuj_przez_api=True)
+        .order_by("pk")
+        .select_related("status_korekty")
+        .prefetch_related("autorzy_set", "zewnetrzna_baza_danych")
+    )
+
     serializer_class = Wydawnictwo_CiagleSerializer
     filterset_class = Wydawnictwo_CiagleFilterSet
 

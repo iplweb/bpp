@@ -4,6 +4,20 @@
 Historia zmian
 ==============
 
+202102.55
+---------
+
+* ograniczenie ilości zapytań przy generowaniu rekordów do API (#981),
+* poprawne sortowanie po źródle/wydawnictwie nadrzędnym (#938),
+* ORCID i PBN ID w raporcie zerowym (#940),
+* umozliwiaj grupową zmianę statusu korekty w module redagowania (#948),
+* umożliwiaj tworzenie raportu z wymierną liczbą slotów dla autora (#966),
+* opcjonalnie pokazuj autorów zerowych w raporcie slotów-uczelnia (#941),
+* pokazuj ORCID w module redagowania przy powiązaniach autor-jednostka (#970),
+* optymalizacja algorytmu liczącego dla zadania dużej ilości slotów w sytuacji,
+  gdy pracownik jej nie osiąga (b/n),
+* poprawne ukrywanie prac w wyszukiwaniu globalnym oraz po wpisanu URL (#950).
+
 202101.54
 ---------
 * poprawne wyświetlanie charakteru formalnego dla doktoratów i habilitacji
@@ -17,6 +31,7 @@ Historia zmian
 * poprawne zawężanie do zakresu punktów PK (#967),
 * katalog cache ma nazwę z numerem wersji (#961),
 * raport slotów uczelnia wg algorytmu plecakowego (#923),
+* ustawienie ukrywania publikacji na podglądzie i w wyszukiwaniu globalnym (#950),
 * w multiwyszukiwarce w polu "Wydawnictwo nadrzędne" pokazuj wyłącznie rekordy
   będące już wydawnictwami nadrzędnymi dla rekordów (#953).
 

@@ -44,14 +44,12 @@ from bpp.models.system import (
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 from bpp.models.zrodlo import Zrodlo
-
 from django_bpp.selenium_util import wait_for_page_load, wait_for_websocket_connection
 
 NORMAL_DJANGO_USER_LOGIN = "test_login_bpp"
 NORMAL_DJANGO_USER_PASSWORD = "test_password"
 
 from asgi_live_server import asgi_live_server  # noqa
-
 from bpp.tests.util import setup_mommy
 
 setup_mommy()
@@ -594,7 +592,7 @@ def typy_kbn():
 
 
 @pytest.fixture(scope="function")
-def statusy_korekt():
+def statusy_korekt(db):
     for elem in fixture("status_korekty.json"):
         Status_Korekty.objects.get_or_create(pk=elem["pk"], **elem["fields"])
     return {status.nazwa: status for status in Status_Korekty.objects.all()}
@@ -608,6 +606,11 @@ def przed_korekta(statusy_korekt):
 @pytest.fixture(scope="function")
 def po_korekcie(statusy_korekt):
     return statusy_korekt["po korekcie"]
+
+
+@pytest.fixture(scope="function")
+def w_trakcie_korekty(statusy_korekt):
+    return statusy_korekt["w trakcie korekty"]
 
 
 @pytest.fixture(scope="function")

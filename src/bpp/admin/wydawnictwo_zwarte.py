@@ -4,13 +4,8 @@
 
 from dal import autocomplete
 from django import forms
-from mptt.forms import TreeNodeChoiceField
-from .core import CommitedModelAdmin, KolumnyZeSkrotamiMixin, generuj_inline_dla_autorow
-from .element_repozytorium import Element_RepozytoriumInline
-from .grant import Grant_RekorduInline
-from .nagroda import NagrodaInline
-
 from django.contrib import admin, messages
+from mptt.forms import TreeNodeChoiceField
 
 from bpp.admin import helpers
 from bpp.admin.filters import (
@@ -28,11 +23,19 @@ from bpp.models import (
 from bpp.models.konferencja import Konferencja
 from bpp.models.seria_wydawnicza import Seria_Wydawnicza
 
+from .actions import ustaw_po_korekcie, ustaw_przed_korekta, ustaw_w_trakcie_korekty
+from .core import CommitedModelAdmin, KolumnyZeSkrotamiMixin, generuj_inline_dla_autorow
+from .element_repozytorium import Element_RepozytoriumInline
+from .grant import Grant_RekorduInline
+from .nagroda import NagrodaInline
+
 # Proste tabele
 
 
 class Wydawnictwo_ZwarteAdmin_Baza(CommitedModelAdmin):
     formfield_overrides = helpers.NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW
+
+    actions = [ustaw_po_korekcie, ustaw_w_trakcie_korekty, ustaw_przed_korekta]
 
     list_display = [
         "tytul_oryginalny",
