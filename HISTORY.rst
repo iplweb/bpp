@@ -4,6 +4,11 @@
 Historia zmian
 ==============
 
+202102.56
+---------
+
+* wyeliminowano błędy związane z niepoprawnie sformułowanymi zapytaniami w multiwyszukiwarce (b/n),
+
 202102.55
 ---------
 
