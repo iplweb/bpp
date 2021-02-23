@@ -2,19 +2,19 @@ from datetime import date
 
 from django.contrib.postgres.fields import JSONField
 from django.core.serializers.json import DjangoJSONEncoder
-from django.db import models, transaction, IntegrityError
-from django.db.models import Q, Count, CASCADE
+from django.db import IntegrityError, models, transaction
+from django.db.models import CASCADE, Count, Q
 from django.urls import reverse
-from django_fsm import FSMField, transition, GET_STATE
+from django_fsm import GET_STATE, FSMField, transition
 from model_utils.models import TimeStampedModel
 
 from bpp.fields import YearField
-from bpp.models import Autor, Jednostka, Wydzial, Dyscyplina_Naukowa, Autor_Dyscyplina
+from bpp.models import Autor, Autor_Dyscyplina, Dyscyplina_Naukowa, Jednostka, Wydzial
 from django_bpp.settings.base import AUTH_USER_MODEL
 from import_dyscyplin.exceptions import (
-    ImproperFileException,
     BadNoOfSheetsException,
     HeaderNotFoundException,
+    ImproperFileException,
 )
 
 
@@ -541,8 +541,8 @@ class Import_Dyscyplin_Row(models.Model):
         ret = {
             "nazwisko": self.nazwisko,
             "imiona": self.imiona,
-            "jednostka": self.original["nazwa jednostki"],
-            "wydzial": self.original["wydział"],
+            "jednostka": self.original.get("nazwa jednostki", ""),
+            "wydzial": self.original.get("wydzia", ""),
             "info": self.info,
             "dyscyplina": f"{self.dyscyplina} ({self.kod_dyscypliny})",
             "procent_dyscypliny": self.procent_dyscypliny or "",

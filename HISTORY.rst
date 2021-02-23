@@ -1,5 +1,3 @@
-]
-
 ==============
 Historia zmian
 ==============
@@ -10,6 +8,7 @@ Historia zmian
 * wyeliminowano błędy związane z niepoprawnie sformułowanymi zapytaniami w multiwyszukiwarce (b/n),
 * wyeliminowano błędy związane z przeszukiwaniem po datach w przypadku operatorów mniejszy/większy/
   mniejszy lub równy/wiekszy lub równy (#982),
+* wyeliminowano drobny bład podczas importu dyscyplin (#962),
 
 202102.55
 ---------
