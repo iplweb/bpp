@@ -9,6 +9,7 @@ Historia zmian
 * wyeliminowano błędy związane z przeszukiwaniem po datach w przypadku operatorów mniejszy/większy/
   mniejszy lub równy/wiekszy lub równy (#982),
 * wyeliminowano drobny bład podczas importu dyscyplin (#962),
+* wyeliminowano błąd przebudowy cache poprzez usuniecie 'globalnej' transakcji (#989),
 
 202102.55
 ---------

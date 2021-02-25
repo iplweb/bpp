@@ -713,7 +713,6 @@ class Cache_Punktacja_Autora_Sum_Gruop(models.Model):
 #
 
 
-@transaction.atomic
 def rebuild(klass, offset=None, limit=None, extra_flds=None, extra_tables=None):
     if extra_flds is None:
         extra_flds = ()
