@@ -279,7 +279,7 @@ EKSTRA_INFORMACJE_DOKTORSKA_HABILITACYJNA_FIELDSET = (
 def js_openwin(url, handle, options):
     options = ",".join(["%s=%s" % (a, b) for a, b in list(options.items())])
     d = dict(url=url, handle=handle, options=options)
-    return "window.open('%(url)s','\%(handle)s','%(options)s')" % d
+    return "window.open('%(url)s','\\%(handle)s','%(options)s')" % d
 
 
 NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW = {
@@ -301,11 +301,11 @@ class Wycinaj_W_z_InformacjiMixin:
     def clean_informacje(self):
         i = self.cleaned_data.get("informacje")
         if i:
-            l = i.lower()
+            x = i.lower()
             n = 0
-            if l.startswith("w:"):
+            if x.startswith("w:"):
                 n = 2
-            if l.startswith("w :"):
+            if x.startswith("w :"):
                 n = 3
             if n:
                 return i[n:].strip()

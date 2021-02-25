@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from taggit_serializer.serializers import TagListSerializerField
 
 from api_v1.serializers.util import (
     AbsoluteUrlSerializerMixin,
@@ -37,6 +38,7 @@ class Wydawnictwo_ZwarteSerializer(
     WydawnictwoSerializerMixin,
     serializers.HyperlinkedModelSerializer,
 ):
+    slowa_kluczowe = TagListSerializerField()
 
     wydawca = serializers.HyperlinkedRelatedField(
         view_name="api_v1:wydawca-detail", read_only=True

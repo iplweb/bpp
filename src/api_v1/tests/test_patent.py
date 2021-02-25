@@ -65,7 +65,7 @@ def test_rest_api_patent_ukryj_status(
 
 
 @pytest.fixture
-def wiele_patentow(db):
+def wiele_patentow(db, jezyki, charaktery_formalne):
     for a in range(100):
         mommy.make(Patent)
 

@@ -9,6 +9,8 @@ Historia zmian
 * wyeliminowano błędy związane z przeszukiwaniem po datach w przypadku operatorów mniejszy/większy/
   mniejszy lub równy/wiekszy lub równy (#982),
 * wyeliminowano drobny bład podczas importu dyscyplin (#962),
+* prawdziwe, indeksowane słowa kluczowe dla wszystkich rekordów, z możliwością edycji oraz przeszukiwania (#883),
+* [API] słowa kluczowe eksportowane są teraz jako lista, nie jako ciąg znaków (b/n),
 
 202102.55
 ---------
