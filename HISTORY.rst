@@ -9,6 +9,8 @@ Historia zmian
 * wyeliminowano błędy związane z przeszukiwaniem po datach w przypadku operatorów mniejszy/większy/
   mniejszy lub równy/wiekszy lub równy (#982),
 * wyeliminowano drobny bład podczas importu dyscyplin (#962),
+* raport uczelnia-ewaluacja: jeżeli autor ma punktowane prace w danym roku w danej dyscyplinie, ale w innym
+  roku będącym w zakresie raportu autor jest "zerowy", to nie pokazuj go jako zerowego (#984),
 
 202102.55
 ---------
