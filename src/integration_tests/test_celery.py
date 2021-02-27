@@ -1,18 +1,15 @@
 import os
 import shlex
 import subprocess
-import sys
 
 import psutil
 import pytest
 
 from bpp.tasks import remove_old_report_files
-
 from django_bpp.selenium_util import wait_for
 
 
 @pytest.mark.django_db
-@pytest.mark.skipif(sys.platform == "darwin", reason="Won't work on macOS ATM")
 def test_celery(settings):
     # UWAGA UWAGA UWAGA
     # Po co ten test? Ano po to, żeby sprawdzić, czy workera da się
@@ -47,7 +44,7 @@ def test_celery(settings):
 
     try:
         settings.CELERY_ALWAYS_EAGER = False
-        remove_old_report_files.delay().wait(timeout=5)
+        remove_old_report_files.delay().wait(timeout=15)
 
     finally:
         # Kill the worker and wait for it
