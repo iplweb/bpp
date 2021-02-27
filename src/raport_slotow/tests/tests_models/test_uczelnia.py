@@ -1,7 +1,7 @@
 import pytest
 from django.core.exceptions import ValidationError
 
-from bpp.models import Autor_Dyscyplina
+from bpp.models import Autor_Dyscyplina, Autor_Jednostka
 from raport_slotow.models.uczelnia import (
     RaportSlotowUczelnia,
     RaportSlotowUczelniaWiersz,
@@ -29,7 +29,13 @@ def test_RaportSlotowUczelnia_create_report(rekord_slotu, rok, raport_slotow_ucz
     assert RaportSlotowUczelniaWiersz.objects.count() == 1
 
 
-@pytest.mark.parametrize("pokazuj_zerowych, expected_rows", [(True, 2), (False, 1)])
+@pytest.mark.parametrize(
+    "pokazuj_zerowych, expected_rows",
+    [
+        (False, 1),
+        (True, 2),
+    ],
+)
 def test_RaportSlotowUczelnia_zerowi_autorzy(
     rekord_slotu,
     rok,
@@ -39,6 +45,7 @@ def test_RaportSlotowUczelnia_zerowi_autorzy(
     pokazuj_zerowych,
     dyscyplina1,
     expected_rows,
+    jednostka,
 ):
     raport_slotow_uczelnia.od_roku = rok
     raport_slotow_uczelnia.do_roku = rok
@@ -49,11 +56,13 @@ def test_RaportSlotowUczelnia_zerowi_autorzy(
     Autor_Dyscyplina.objects.create(
         rok=rok, autor=autor_jan_kowalski, dyscyplina_naukowa=dyscyplina1
     )
+    Autor_Jednostka.objects.create(autor=autor_jan_kowalski, jednostka=jednostka)
 
     # Autor "zerowy", przypisanie do dyscypliny
     Autor_Dyscyplina.objects.create(
         rok=rok, autor=autor_jan_nowak, dyscyplina_naukowa=dyscyplina1
     )
+    Autor_Jednostka.objects.create(autor=autor_jan_nowak, jednostka=jednostka)
 
     assert RaportSlotowUczelniaWiersz.objects.count() == 0
     raport_slotow_uczelnia.create_report()
@@ -92,4 +101,33 @@ def test_RaportSlotowUczelnia_autor_niezerowy_jako_zerowy(
     assert RaportSlotowUczelniaWiersz.objects.count() == 0
     raport_slotow_uczelnia.create_report()
 
-    assert RaportSlotowUczelniaWiersz.objects.count() == 3
+    assert RaportSlotowUczelniaWiersz.objects.count() == 2
+
+
+def test_RaportSlotowUczelnia_autor_zerowy_w_jednym_roku_niezerowy_w_innym(
+    rekord_slotu,
+    rok,
+    autor_jan_kowalski,
+    raport_slotow_uczelnia,
+    dyscyplina1,
+):
+    raport_slotow_uczelnia.od_roku = rok
+    raport_slotow_uczelnia.do_roku = rok + 1
+    raport_slotow_uczelnia.pokazuj_zerowych = True
+    raport_slotow_uczelnia.save()
+
+    Autor_Dyscyplina.objects.create(
+        rok=rok,
+        autor=autor_jan_kowalski,
+        dyscyplina_naukowa=dyscyplina1,
+    )
+    Autor_Dyscyplina.objects.create(
+        rok=rok + 1,
+        autor=autor_jan_kowalski,
+        dyscyplina_naukowa=dyscyplina1,
+    )
+
+    assert RaportSlotowUczelniaWiersz.objects.count() == 0
+    raport_slotow_uczelnia.create_report()
+
+    assert RaportSlotowUczelniaWiersz.objects.count() == 1

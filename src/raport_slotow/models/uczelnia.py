@@ -130,9 +130,22 @@ class RaportSlotowUczelnia(ASGINotificationMixin, Report):
             # --- Koniec --- komentarza dot. buga w Django
 
             # Jeżeli w raporcie jest włączony podział na jednostki i wydziały, to dla każdego autora zerowego
-            # dorzuć rekordy jego jednostek; jeżeli nie - to wrzuć po prostu autorów:
+            # dorzuć rekordy jego jednostek; jeżeli nie - to wrzuć po prostu autorów.
+
+            # Kolejny problem: jezeli autor już istnieje w raporcie jako autor który ma prace,
+            # to nie powinien być wyświetlany jako zerowy (w kontekscie dyscypliny, w której
+            # ma prace).
 
             seen = set()
+
+            # Dodaj do listy widzianych autorów, którzy już zostali wyemitowani w raporcie dla danych
+            # dyscyplin.
+
+            seen = set(
+                self.raportslotowuczelniawiersz_set.values_list(
+                    "autor_id", "dyscyplina_id"
+                ).distinct()
+            )
 
             for autor_id, rok, dyscyplina_id in zerowi.values_list():
                 if (autor_id, dyscyplina_id) in seen:
