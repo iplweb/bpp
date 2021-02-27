@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from taggit_serializer.serializers import TagListSerializerField
 
 from api_v1.serializers.util import (
     AbsoluteUrlSerializerMixin,
@@ -6,10 +7,8 @@ from api_v1.serializers.util import (
     WydawnictwoSerializerMixin,
 )
 from bpp.models import (
-    Wydawnictwo_Zwarte,
-    Wydawnictwo_Zwarte_Autor,
-    Wydawnictwo_Ciagle_Autor,
     Wydawnictwo_Ciagle,
+    Wydawnictwo_Ciagle_Autor,
     Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych,
 )
 
@@ -54,6 +53,8 @@ class Wydawnictwo_CiagleSerializer(
     WydawnictwoSerializerMixin,
     serializers.HyperlinkedModelSerializer,
 ):
+
+    slowa_kluczowe = TagListSerializerField()
 
     zrodlo = serializers.HyperlinkedRelatedField(
         view_name="api_v1:zrodlo-detail", read_only=True

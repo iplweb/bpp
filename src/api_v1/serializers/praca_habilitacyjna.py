@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from taggit_serializer.serializers import TagListSerializerField
 
 from api_v1.serializers.util import (
     AbsoluteUrlSerializerMixin,
@@ -12,6 +13,8 @@ class Praca_HabilitacyjnaSerializer(
     WydawnictwoSerializerMixin,
     serializers.HyperlinkedModelSerializer,
 ):
+    slowa_kluczowe = TagListSerializerField()
+
     autor = serializers.HyperlinkedRelatedField(
         view_name="api_v1:autor-detail", read_only=True
     )

@@ -11,7 +11,6 @@ from django.core.exceptions import DisallowedHost, ImproperlyConfigured
 from sentry_sdk.integrations.django import DjangoIntegration
 
 from bpp.util import slugify_function
-
 from django_bpp.version import VERSION
 
 
@@ -128,6 +127,8 @@ INSTALLED_APPS = [
     "flexible_reports",
     "static_sitemaps",
     "cookielaw",
+    "taggit",
+    "taggit_serializer",
     "columns",
     "formdefaults.apps.FormdefaultsConfig",
     # Musi być PRZED django-autocomplete-light do momentu

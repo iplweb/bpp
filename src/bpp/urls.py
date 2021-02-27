@@ -1,8 +1,7 @@
 # -*- encoding: utf-8 -*-
 from django.conf.urls import url
-from django.views.decorators.csrf import csrf_exempt
-
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.csrf import csrf_exempt
 
 import bpp
 from bpp import reports  # noqa
@@ -33,6 +32,7 @@ from bpp.views.autocomplete import (
     PodrzednaPublikacjaHabilitacyjnaAutocomplete,
     PublicAutorAutocomplete,
     PublicKonferencjaAutocomplete,
+    PublicTaggitTagAutocomplete,
     PublicWydawnictwo_NadrzedneAutocomplete,
     PublicWydzialAutocomplete,
     PublicZrodloAutocomplete,
@@ -345,6 +345,11 @@ urlpatterns = [
         r"^wydawnictwo-nadrzedne-autocomplete/$",
         Wydawnictwo_NadrzedneAutocomplete.as_view(),
         name="wydawnictwo-nadrzedne-autocomplete",
+    ),
+    url(
+        r"^taggit-tag-autocomplete/$",
+        PublicTaggitTagAutocomplete.as_view(),
+        name="public-taggit-tag-autocomplete",
     ),
     url(
         r"^public-wydawnictwo-nadrzedne-autocomplete/$",

@@ -12,6 +12,8 @@ Historia zmian
 * raport uczelnia-ewaluacja: jeżeli autor ma punktowane prace w danym roku w danej dyscyplinie, ale w innym
   roku będącym w zakresie raportu autor jest "zerowy", to nie pokazuj go jako zerowego (#984),
 * wyeliminowano błąd przebudowy cache poprzez usuniecie 'globalnej' transakcji (#989),
+* prawdziwe, indeksowane słowa kluczowe dla wszystkich rekordów, z możliwością edycji oraz przeszukiwania (#883),
+* [API] słowa kluczowe eksportowane są teraz jako lista, nie jako ciąg znaków (b/n),
 
 202102.55
 ---------

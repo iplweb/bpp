@@ -2,21 +2,23 @@
 
 # -*- encoding: utf-8 -*-
 import datetime
+
 from django.contrib.contenttypes.models import ContentType
 
 try:
     from django.core.urlresolvers import reverse
 except ImportError:
     from django.urls import reverse
+
 from django.db.models.aggregates import Min
 from django.http.response import HttpResponse, HttpResponseServerError
+from django.utils import timezone
 from django.utils.timezone import make_naive
 from django.views.generic.base import View
 from moai.oai import OAIServerFactory
 from moai.server import FeedConfig
 
 from bpp.models import Rekord, Uczelnia
-from django.utils import timezone
 
 
 class CacheMetadata:
@@ -56,7 +58,8 @@ class CacheMetadata:
             return ifhas("wydawnictwo")
 
         if item == "subject":
-            return ifhas("slowa_kluczowe")
+            if hasattr(item, "slowa_kluczowe"):
+                return u", ".join(o.name for o in item.slowa_kluczowe.all())
 
         if item == "source":
             src = []
@@ -110,24 +113,25 @@ class BPPOAIDatabase(object):
         if row is None:
             return
 
-    def get_setrefs(self, oai_id, include_hidden_sets=False):
-        return [1]
-
-        set_ids = []
-        query = sql.select([self._setrefs.c.set_id])
-        query.append_whereclause(self._setrefs.c.record_id == oai_id)
-        if include_hidden_sets == False:
-            query.append_whereclause(
-                sql.and_(
-                    self._sets.c.set_id == self._setrefs.c.set_id,
-                    self._sets.c.hidden == include_hidden_sets,
-                )
-            )
-
-        for row in query.execute():
-            set_ids.append(row[0])
-        set_ids.sort()
-        return set_ids
+    # mpasternak, 24.02.2021 -- czy ten kod w ogóle był uzywany?
+    # def get_setrefs(self, oai_id, include_hidden_sets=False):
+    #     return [1]
+    #
+    #     set_ids = []
+    #     query = sql.select([self._setrefs.c.set_id])
+    #     query.append_whereclause(self._setrefs.c.record_id == oai_id)
+    #     if not include_hidden_sets:
+    #         query.append_whereclause(
+    #             sql.and_(
+    #                 self._sets.c.set_id == self._setrefs.c.set_id,
+    #                 self._sets.c.hidden == include_hidden_sets,
+    #             )
+    #         )
+    #
+    #     for row in query.execute():
+    #         set_ids.append(row[0])
+    #     set_ids.sort()
+    #     return set_ids
 
     def record_count(self):
         return self.original.count()
@@ -165,7 +169,7 @@ class BPPOAIDatabase(object):
             batch_size = 0
 
         # make sure until date is set, and not in future
-        if until_date == None or until_date > datetime.datetime.utcnow():
+        if until_date is None or until_date > datetime.datetime.utcnow():
             until_date = timezone.now()
 
         query = self.original.order_by("-ostatnio_zmieniony")
@@ -173,7 +177,7 @@ class BPPOAIDatabase(object):
         # filter dates
         query = query.filter(ostatnio_zmieniony__lte=until_date)
 
-        if not identifier is None:
+        if identifier is not None:
             ident = identifier.split(":")
             assert ident[0] == "oai"
             assert ident[1] == "bpp.umlub.pl"
@@ -184,7 +188,7 @@ class BPPOAIDatabase(object):
             content_type_id = ContentType.objects.get(app_label="bpp", model=klass).pk
             query = query.filter(id=[content_type_id, ident[1]])
 
-        if not from_date is None:
+        if from_date is not None:
             query = query.filter(ostatnio_zmieniony__gte=from_date)
 
         uczelnia = Uczelnia.objects.get_default()
@@ -201,7 +205,6 @@ class BPPOAIDatabase(object):
                 "jezyk__nazwa",
                 "rok",
                 "wydawnictwo",
-                "slowa_kluczowe",
                 "zrodlo",
                 "informacje",
                 "szczegoly",
@@ -210,7 +213,7 @@ class BPPOAIDatabase(object):
                 "www",
             )
             .select_related("charakter_formalny", "jezyk")
-            .prefetch_related("zrodlo")[offset : offset + batch_size]
+            .prefetch_related("zrodlo", "slowa_kluczowe")[offset : offset + batch_size]
         ):
             yield {
                 "id": get_dc_ident(row.content_type.model, row.object_id),

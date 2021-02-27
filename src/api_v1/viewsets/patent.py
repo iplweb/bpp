@@ -26,7 +26,7 @@ class PatentViewSet(UkryjStatusyKorektyMixin, viewsets.ReadOnlyModelViewSet):
         Patent.objects.exclude(nie_eksportuj_przez_api=True)
         .order_by("pk")
         .select_related()  # "status_korekty", "jezyk", "charakter_formalny")
-        .prefetch_related("autorzy_set")
+        .prefetch_related("autorzy_set", "slowa_kluczowe")
     )
     serializer_class = PatentSerializer
     filterset_class = PatentFilterSet

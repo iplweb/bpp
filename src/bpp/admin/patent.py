@@ -1,4 +1,9 @@
 from django import forms
+from django.contrib import admin
+from taggit.forms import TextareaTagWidget
+
+from bpp.models.patent import Patent, Patent_Autor
+
 from .core import generuj_inline_dla_autorow
 from .element_repozytorium import Element_RepozytoriumInline
 from .grant import Grant_RekorduInline
@@ -17,16 +22,16 @@ from .helpers import (
 )
 from .wydawnictwo_zwarte import Wydawnictwo_ZwarteAdmin_Baza
 
-from django.contrib import admin
-
-from bpp.models.patent import Patent, Patent_Autor
-
 
 class Patent_Form(Wycinaj_W_z_InformacjiMixin, forms.ModelForm):
     status_korekty = DomyslnyStatusKorektyMixin.status_korekty
 
     class Meta:
         fields = "__all__"
+
+        widgets = {
+            "slowa_kluczowe": TextareaTagWidget(attrs={"rows": 2}),
+        }
 
 
 class Patent_Admin(AdnotacjeZDatamiMixin, Wydawnictwo_ZwarteAdmin_Baza):
@@ -43,7 +48,7 @@ class Patent_Admin(AdnotacjeZDatamiMixin, Wydawnictwo_ZwarteAdmin_Baza):
         "szczegoly",
         "uwagi",
         "informacje",
-        "slowa_kluczowe",
+        "slowa_kluczowe__name",
         "rok",
         "adnotacje",
         "id",
