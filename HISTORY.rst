@@ -11,6 +11,7 @@ Historia zmian
 * wyeliminowano drobny bład podczas importu dyscyplin (#962),
 * raport uczelnia-ewaluacja: jeżeli autor ma punktowane prace w danym roku w danej dyscyplinie, ale w innym
   roku będącym w zakresie raportu autor jest "zerowy", to nie pokazuj go jako zerowego (#984),
+* wyeliminowano błąd przebudowy cache poprzez usuniecie 'globalnej' transakcji (#989),
 
 202102.55
 ---------
