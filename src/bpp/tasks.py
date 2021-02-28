@@ -18,17 +18,17 @@ except ImportError:
     from django.urls import reverse
 
 from bpp.models import (
+    Praca_Doktorska,
+    Praca_Habilitacyjna,
     Uczelnia,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
-    Praca_Doktorska,
-    Praca_Habilitacyjna,
 )
 from bpp.models.cache import CacheQueue
 from bpp.util import remove_old_objects
 from celeryui.interfaces import IWebTask
 from celeryui.models import Report
-from django_bpp.util import wait_for_object
+from long_running.util import wait_for_object
 
 logger = get_task_logger(__name__)
 
@@ -44,8 +44,8 @@ def remove_file(path):
 
 @app.task
 def make_report(uid):
-    from celeryui.models import Report
     from bpp import reports  # for registry
+    from celeryui.models import Report
 
     reports  # pycharm, don't clean this plz
 
@@ -94,7 +94,7 @@ def zaktualizuj_opis(app_label, model_name, pk):
 
 @app.task(ignore_result=True)
 def zaktualizuj_zrodlo(pk):
-    from bpp.models import Zrodlo, Rekord
+    from bpp.models import Rekord, Zrodlo
 
     z = wait_for_object(Zrodlo, pk)
     for rekord in Rekord.objects.filter(zrodlo=z):
@@ -188,7 +188,7 @@ def aktualizuj_cache():
             with transaction.atomic():
                 aktualizuj_cache_rekordu(obj.rekord)
 
-        except Exception as e:
+        except Exception:
             logger.exception("Podczas generowania cache opisu / punktow")
             obj.info = traceback.format_exc()
             obj.error = True

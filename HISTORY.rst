@@ -17,6 +17,8 @@ Historia zmian
 * [API] słowa kluczowe eksportowane są teraz jako lista, nie jako ciąg znaków (b/n),
 * [raporty] poprawka błędu uniemożliwiającego wygenerowanie raportu w formacie XLSX podczas gdy
   jeden z nagłówków elementów raporty zawierał w sobie znak "/" (slash) (b/n),
+* usunięto identyfikator pesel_md5 z systemu,
+* import danych kadrowych z plików XLS (#983),
 
 202102.55
 ---------

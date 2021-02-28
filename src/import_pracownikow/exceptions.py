@@ -1,0 +1,2 @@
+class BłądDanychWejściowych(Exception):
+    pass

@@ -35,6 +35,11 @@ class Operation(NullNotificationMixin, models.Model):
         ordering = ["-last_updated_on"]
         abstract = True
 
+    def readable_exception(self):
+        if self.traceback is None:
+            return
+        return [line for line in self.traceback.split("\n") if line][-1]
+
     def mark_started(self):
         # uruchamiać POZA transakcją
 
@@ -87,12 +92,13 @@ class Operation(NullNotificationMixin, models.Model):
     def perform(self):
         raise NotImplementedError("Override this in a subclass.")
 
-    def task_create_report(self, raise_exceptions=True):
+    def task_perform(self, raise_exceptions=False):
         """Runs a function in context of curret report, which means: it sets
         the variables according to success or failure of a given function.
+
+        This function is meant to be called outside of a transaction,
+        from a celery worker - only.
         """
-        # uruchamiać POZA transakcją
-        # uruchamiać z poziomu zadań celery
         self.mark_started()
         try:
             with transaction.atomic():
