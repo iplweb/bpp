@@ -22,10 +22,10 @@ from bpp.core import zbieraj_sloty
 from bpp.fields import YearField
 from bpp.models import Autor, Cache_Punktacja_Autora_Query, Uczelnia
 from bpp.util import year_last_month
+from long_running.asgi_notification_mixin import ASGINotificationMixin
+from long_running.models import Report
 from notifications.core import send_redirect
 from raport_slotow.core import autorzy_zerowi
-from raport_slotow.models.asgi_notification_mixin import ASGINotificationMixin
-from raport_slotow.models.mixins import Report
 
 
 class RaportSlotowUczelnia(ASGINotificationMixin, Report):
