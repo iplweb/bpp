@@ -1,3 +1,4 @@
+
 ==============
 Historia zmian
 ==============
@@ -14,6 +15,8 @@ Historia zmian
 * wyeliminowano błąd przebudowy cache poprzez usuniecie 'globalnej' transakcji (#989),
 * prawdziwe, indeksowane słowa kluczowe dla wszystkich rekordów, z możliwością edycji oraz przeszukiwania (#883),
 * [API] słowa kluczowe eksportowane są teraz jako lista, nie jako ciąg znaków (b/n),
+* [raporty] poprawka błędu uniemożliwiającego wygenerowanie raportu w formacie XLSX podczas gdy
+  jeden z nagłówków elementów raporty zawierał w sobie znak "/" (slash) (b/n),
 
 202102.55
 ---------
