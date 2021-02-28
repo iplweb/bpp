@@ -152,9 +152,11 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
         help_text="""Identyfikator cyfrowy, używany do matchowania autora z danymi z systemu kadrowego Uczelni""",
         null=True,
         blank=True,
+        db_index=True,
+        unique=True,
     )
 
-    pbn_uuid = models.UUIDField(blank=True, null=True)
+    pbn_uuid = models.UUIDField(blank=True, null=True, db_index=True, unique=True)
 
     search = VectorField()
 

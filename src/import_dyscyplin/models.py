@@ -11,7 +11,7 @@ from model_utils.models import TimeStampedModel
 from bpp.fields import YearField
 from bpp.models import Autor, Autor_Dyscyplina, Dyscyplina_Naukowa, Jednostka, Wydzial
 from django_bpp.settings.base import AUTH_USER_MODEL
-from import_dyscyplin.exceptions import (
+from import_common.exceptions import (
     BadNoOfSheetsException,
     HeaderNotFoundException,
     ImproperFileException,

@@ -44,7 +44,7 @@ def json_view(*args, **kwargs):
     like lists and dicts, and the decorator will serialize the output and set
     the correct Content-type.
 
-    Views may also throw known exceptions, like Http404, PermissionDenied, etc,
+    Views may also throw known exceptions.py, like Http404, PermissionDenied, etc,
     and @json_view will convert the response to a standard JSON error format,
     and set the status code and content type.
 
@@ -81,7 +81,7 @@ def json_view(*args, **kwargs):
                     else:
                         ret, status = ret
 
-                # Some errors are not exceptions. :\
+                # Some errors are not exceptions.py. :\
                 if isinstance(ret, http.HttpResponseNotAllowed):
                     blob = _dump_json(
                         {"error": 405, "message": "HTTP method not allowed."}
@@ -100,23 +100,44 @@ def json_view(*args, **kwargs):
                     response[k] = headers[k]
                 return response
             except http.Http404 as e:
-                blob = _dump_json({"error": 404, "message": str(e),})
+                blob = _dump_json(
+                    {
+                        "error": 404,
+                        "message": str(e),
+                    }
+                )
                 logger.warning(
                     "Not found: %s",
                     request.path,
-                    extra={"status_code": 404, "request": request,},
+                    extra={
+                        "status_code": 404,
+                        "request": request,
+                    },
                 )
                 return http.HttpResponseNotFound(blob, content_type=JSON)
             except PermissionDenied as e:
                 logger.warning(
                     "Forbidden (Permission denied): %s",
                     request.path,
-                    extra={"status_code": 403, "request": request,},
+                    extra={
+                        "status_code": 403,
+                        "request": request,
+                    },
                 )
-                blob = _dump_json({"error": 403, "message": str(e),})
+                blob = _dump_json(
+                    {
+                        "error": 403,
+                        "message": str(e),
+                    }
+                )
                 return http.HttpResponseForbidden(blob, content_type=JSON)
             except BadRequest as e:
-                blob = _dump_json({"error": 400, "message": str(e),})
+                blob = _dump_json(
+                    {
+                        "error": 400,
+                        "message": str(e),
+                    }
+                )
                 return http.HttpResponseBadRequest(blob, content_type=JSON)
             except Exception as e:
                 exc_data = {

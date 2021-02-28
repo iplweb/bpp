@@ -1,169 +1,14 @@
 import xlrd
 from _decimal import Decimal, InvalidOperation
-from django.core.exceptions import MultipleObjectsReturned
-from django.db.models import Q
 from xlrd import XLRDError
 
-from bpp.models import Autor, Autor_Jednostka, Jednostka, Wydzial
-from import_dyscyplin.exceptions import (
+from import_common.core import matchuj_autora, matchuj_jednostke, matchuj_wydzial
+from import_common.exceptions import (
     BadNoOfSheetsException,
     HeaderNotFoundException,
     ImproperFileException,
 )
 from import_dyscyplin.models import Import_Dyscyplin_Row
-
-# naglowek = [
-#     "lp", "tytuł/stopień", "nazwisko", "imię", "pesel",
-#     "nazwa jednostki", "wydział",
-#     "dyscyplina", "kod dyscypliny",
-#     "subdyscyplina", "kod subdyscypliny"
-# ]
-
-
-def matchuj_wydzial(nazwa):
-    try:
-        return Wydzial.objects.get(nazwa__iexact=nazwa.strip())
-    except Wydzial.DoesNotExist:
-        pass
-
-
-def matchuj_jednostke(nazwa):
-    try:
-        return Jednostka.objects.get(
-            Q(nazwa__iexact=nazwa.strip()) | Q(skrot__iexact=nazwa.strip())
-        )
-    except MultipleObjectsReturned:
-        return None
-    except Jednostka.DoesNotExist:
-        pass
-
-
-def matchuj_autora(
-    imiona,
-    nazwisko,
-    jednostka=None,
-    pbn_id=None,
-    orcid=None,
-    tytul_str=None,
-):
-    if pbn_id is not None:
-        if isinstance(pbn_id, str):
-            pbn_id = pbn_id.strip()
-
-        try:
-            pbn_id = int(pbn_id)
-        except (TypeError, ValueError):
-            pbn_id = None
-
-        if pbn_id is not None:
-            try:
-                return (Autor.objects.get(pbn_id=pbn_id), "")
-            except Autor.DoesNotExist:
-                pass
-
-    if orcid:
-        try:
-
-            return (Autor.objects.get(orcid__iexact=orcid.strip()), "")
-        except Autor.DoesNotExist:
-            pass
-
-    queries = [
-        Q(
-            Q(nazwisko__iexact=nazwisko.strip())
-            | Q(poprzednie_nazwiska__icontains=nazwisko.strip()),
-            imiona__iexact=imiona.strip(),
-        )
-    ]
-    if tytul_str:
-        queries.append(queries[0] & Q(tytul__skrot=tytul_str))
-
-    for qry in queries:
-        try:
-            return (Autor.objects.get(qry), "")
-        except (Autor.DoesNotExist, Autor.MultipleObjectsReturned):
-            pass
-
-        # wdrozyc matchowanie po tytule
-        # wdrozyc matchowanie po jednostce
-        # testy mają przejść
-        # commit do głównego brancha
-        # mbockowska odpisać na zgłoszenie w mantis
-
-        try:
-            return (Autor.objects.get(qry & Q(aktualna_jednostka=jednostka)), "")
-        except (Autor.MultipleObjectsReturned, Autor.DoesNotExist):
-            pass
-
-    # Jesteśmy tutaj. Najwyraźniej poszukiwanie po aktualnej jednostce, imieniu, nazwisku,
-    # tytule itp nie bardzo się powiodło. Spróbujmy innej strategii -- jednostka jest
-    # określona, poszukajmy w jej autorach. Wszak nie musi być ta jednostka jednostką
-    # aktualną...
-
-    if jednostka:
-
-        queries = [
-            Q(
-                Q(autor__nazwisko__iexact=nazwisko.strip())
-                | Q(autor__poprzednie_nazwiska__icontains=nazwisko.strip()),
-                autor__imiona__iexact=imiona.strip(),
-            )
-        ]
-        if tytul_str:
-            queries.append(queries[0] & Q(autor__tytul__skrot=tytul_str))
-
-        for qry in queries:
-            try:
-                return (jednostka.autor_jednostka_set.get(qry).autor, "")
-            except (
-                Autor_Jednostka.MultipleObjectsReturned,
-                Autor_Jednostka.DoesNotExist,
-            ):
-                pass
-
-    return (None, "nie udało się dopasować")
-
-
-def znajdz_naglowek(
-    sciezka,
-    try_names=[
-        "imię",
-        "imie",
-        "imiona",
-        "nazwisko",
-        "nazwiska",
-        "orcid",
-        "pesel",
-        "pbn-id",
-        "pbn_id",
-        "pbn id",
-    ],
-    min_points=3,
-):
-    """
-    :return: ([str, str...], no_row)
-    """
-    try:
-        f = xlrd.open_workbook(sciezka)
-    except XLRDError as e:
-        raise ImproperFileException(e)
-
-    # Sprawdź, ile jest skoroszytów
-    if len(f.sheets()) != 1:
-        raise BadNoOfSheetsException()
-
-    s = f.sheet_by_index(0)
-
-    for n in range(s.nrows):
-        r = [str(elem.value).lower() for elem in s.row(n)]
-        points = 0
-        for elem in try_names:
-            if elem in r:
-                points += 1
-        if points >= min_points:
-            return r, n
-
-    raise HeaderNotFoundException()
 
 
 def przeanalizuj_plik_xls(sciezka, parent):
@@ -230,7 +75,7 @@ def przeanalizuj_plik_xls(sciezka, parent):
             except KeyError:
                 jednostka = None
 
-        autor, info = matchuj_autora(
+        autor = matchuj_autora(
             original["imię"],
             original["nazwisko"],
             jednostka=jednostka,
@@ -238,6 +83,9 @@ def przeanalizuj_plik_xls(sciezka, parent):
             pbn_id=original.get("pbn_id", None),
             tytul_str=original["tytuł"],
         )
+
+        if autor is None:
+            pass
 
         bledny = False
 
@@ -272,7 +120,6 @@ def przeanalizuj_plik_xls(sciezka, parent):
             nazwa_wydzialu=original.get("wydział"),
             wydzial=wydzial,
             autor=autor,
-            info=info,
             dyscyplina=original.get("dyscyplina"),
             kod_dyscypliny=original.get("kod dyscypliny"),
             procent_dyscypliny=original.get("procent dyscypliny"),
