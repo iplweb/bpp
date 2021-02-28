@@ -32,7 +32,6 @@ class Kolumna(models.Model):
 
         NAZWISKO = "nazwisko"
         IMIE = "imię"
-        PESEL = "pesel"
         ORCID = "orcid"
         PBN_ID = "pbn_id"
         NAZWA_JEDNOSTKI = "nazwa jednostki"
@@ -50,7 +49,6 @@ class Kolumna(models.Model):
         RODZAJ.TYTUL,
         RODZAJ.NAZWISKO,
         RODZAJ.IMIE,
-        RODZAJ.PESEL,
         RODZAJ.ORCID,
         RODZAJ.PBN_ID,
         RODZAJ.NAZWA_JEDNOSTKI,
@@ -93,8 +91,6 @@ def guess_rodzaj(s):
         return Kolumna.RODZAJ.NAZWISKO
     if s in ["imię", "imie", "imiona"]:
         return Kolumna.RODZAJ.IMIE
-    if s in ["pesel", "nrpesel", "nr.pesel", "identyfikatorpesel"]:
-        return Kolumna.RODZAJ.PESEL
     if s in ["orcid", "identyfikatororcid", "ident.orcid"]:
         return Kolumna.RODZAJ.ORCID
     if s in ["jednostka", "nazwajednostki"]:

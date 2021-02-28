@@ -77,9 +77,9 @@ class OrcidAutoraDyscyplinyObecnyFilter(SimpleNotNullFilter):
     parameter_name = "autor__orcid"
 
 
-class PeselMD5ObecnyFilter(SimpleNotNullFilter):
-    title = "PESEL MD5"
-    parameter_name = "pesel_md5"
+class PBN_UUIDObecnyFilter(SimpleNotNullFilter):
+    title = "PBN UUID"
+    parameter_name = "pbn_uuid"
 
 
 class CalkowitaLiczbaAutorowFilter(SimpleIntegerFilter):

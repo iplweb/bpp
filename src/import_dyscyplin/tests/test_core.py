@@ -1,19 +1,18 @@
 import pytest
 from model_mommy import mommy
 
-from bpp.models import Wydzial, Jednostka, Autor, Tytul
+from bpp.models import Autor, Jednostka, Tytul, Wydzial
 from import_dyscyplin.core import (
-    przeanalizuj_plik_xls,
-    matchuj_wydzial,
-    matchuj_jednostke,
     matchuj_autora,
-    pesel_md5,
+    matchuj_jednostke,
+    matchuj_wydzial,
+    przeanalizuj_plik_xls,
     znajdz_naglowek,
 )
 from import_dyscyplin.exceptions import (
-    ImproperFileException,
-    HeaderNotFoundException,
     BadNoOfSheetsException,
+    HeaderNotFoundException,
+    ImproperFileException,
 )
 from import_dyscyplin.models import Import_Dyscyplin_Row
 
@@ -52,10 +51,15 @@ def test_znajdz_naglowek_default(default_xlsx):
 
 @pytest.mark.parametrize(
     "szukany_string",
-    ["II Lekarski", "II Lekarski ", "ii lekarski", "   ii lekarski  ",],
+    [
+        "II Lekarski",
+        "II Lekarski ",
+        "ii lekarski",
+        "   ii lekarski  ",
+    ],
 )
 def test_matchuj_wydzial(szukany_string, db):
-    w1 = mommy.make(Wydzial, nazwa="I Lekarski")
+    mommy.make(Wydzial, nazwa="I Lekarski")
     w2 = mommy.make(Wydzial, nazwa="II Lekarski")
 
     assert matchuj_wydzial(szukany_string) == w2
@@ -69,7 +73,7 @@ def test_matchuj_jednostke(szukany_string, uczelnia, wydzial, db):
     j1 = mommy.make(
         Jednostka, nazwa="Jednostka Pierwsza", wydzial=wydzial, uczelnia=uczelnia
     )
-    j2 = mommy.make(
+    mommy.make(
         Jednostka,
         nazwa="Jednostka Pierwsza i Jeszcze",
         wydzial=wydzial,
@@ -77,15 +81,6 @@ def test_matchuj_jednostke(szukany_string, uczelnia, wydzial, db):
     )
 
     assert matchuj_jednostke(szukany_string) == j1
-
-
-def test_matchuj_autora_pesel_md5(autor_jan_nowak):
-    autor_jan_nowak.pesel_md5 = "foobar"
-    autor_jan_nowak.save()
-
-    a, info = matchuj_autora(imiona="", nazwisko="", jednostka=None, pesel_md5="foobar")
-
-    assert a == autor_jan_nowak
 
 
 def test_matchuj_autora_imiona_nazwisko(autor_jan_nowak):
@@ -105,7 +100,7 @@ def test_matchuj_autora_po_aktualnej_jednostce():
     a2.dodaj_jednostke(j2)
 
     a, info = matchuj_autora(imiona="Jan", nazwisko="Kowalski", jednostka=None)
-    assert a == None
+    assert a is None
 
     a, info = matchuj_autora(imiona="Jan", nazwisko="Kowalski", jednostka=j1)
     assert a == a1
@@ -140,23 +135,22 @@ def test_matchuj_autora_po_jednostce():
 def test_matchuj_autora_po_tytule():
     t = Tytul.objects.create(nazwa="prof hab", skrot="lol.")
 
-    j1 = mommy.make(Jednostka)
+    mommy.make(Jednostka)
 
     a1 = mommy.make(Autor, imiona="Jan", nazwisko="Kowalski")
     a1.tytul = t
     a1.save()
 
-    a2 = mommy.make(Autor, imiona="Jan", nazwisko="Kowalski")
+    mommy.make(Autor, imiona="Jan", nazwisko="Kowalski")
 
-    a, info = matchuj_autora(imiona="Jan", nazwisko="Kowalski",)
-    assert a == None
+    a, info = matchuj_autora(
+        imiona="Jan",
+        nazwisko="Kowalski",
+    )
+    assert a is None
 
     a, info = matchuj_autora(imiona="Jan", nazwisko="Kowalski", tytul_str="lol.")
     assert a == a1
-
-
-def test_pesel_md5():
-    assert pesel_md5(1.0) == pesel_md5(1) == pesel_md5("1")
 
 
 @pytest.mark.django_db

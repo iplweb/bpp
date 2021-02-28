@@ -120,15 +120,6 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
         db_index=True,
     )
 
-    pesel_md5 = models.CharField(
-        verbose_name="PESEL MD5",
-        max_length=32,
-        db_index=True,
-        blank=True,
-        null=True,
-        help_text="Hash MD5 numeru PESEL",
-    )
-
     orcid = models.CharField(
         "Identyfikator ORCID",
         max_length=19,
@@ -155,6 +146,15 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
         db_index=True,
         unique=True,
     )
+
+    system_kadrowy_id = models.PositiveSmallIntegerField(
+        "Identyfikator w systemie kadrowym",
+        help_text="""Identyfikator cyfrowy, używany do matchowania autora z danymi z systemu kadrowego Uczelni""",
+        null=True,
+        blank=True,
+    )
+
+    pbn_uuid = models.UUIDField(blank=True, null=True)
 
     search = VectorField()
 
@@ -463,6 +463,8 @@ class Autor_Jednostka(models.Model):
         "Zakończył pracę", null=True, blank=True, db_index=True
     )
     funkcja = models.ForeignKey(Funkcja_Autora, CASCADE, null=True, blank=True)
+
+    podstawowe_miejsce_pracy = models.NullBooleanField()
 
     objects = Autor_Jednostka_Manager()
 

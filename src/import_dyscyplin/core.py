@@ -1,7 +1,5 @@
-from _decimal import Decimal, InvalidOperation
-from hashlib import md5
-
 import xlrd
+from _decimal import Decimal, InvalidOperation
 from django.core.exceptions import MultipleObjectsReturned
 from django.db.models import Q
 from xlrd import XLRDError
@@ -13,7 +11,6 @@ from import_dyscyplin.exceptions import (
     ImproperFileException,
 )
 from import_dyscyplin.models import Import_Dyscyplin_Row
-
 
 # naglowek = [
 #     "lp", "tytuł/stopień", "nazwisko", "imię", "pesel",
@@ -45,13 +42,12 @@ def matchuj_autora(
     imiona,
     nazwisko,
     jednostka=None,
-    pesel_md5=None,
     pbn_id=None,
     orcid=None,
     tytul_str=None,
 ):
     if pbn_id is not None:
-        if type(pbn_id) == str:
+        if isinstance(pbn_id, str):
             pbn_id = pbn_id.strip()
 
         try:
@@ -64,12 +60,6 @@ def matchuj_autora(
                 return (Autor.objects.get(pbn_id=pbn_id), "")
             except Autor.DoesNotExist:
                 pass
-
-    if pesel_md5:
-        try:
-            return (Autor.objects.get(pesel_md5__iexact=pesel_md5.strip()), "")
-        except Autor.DoesNotExist:
-            pass
 
     if orcid:
         try:
@@ -132,23 +122,6 @@ def matchuj_autora(
                 pass
 
     return (None, "nie udało się dopasować")
-
-
-def pesel_md5(value_from_xls):
-    """Zakoduj wartość PESEL z XLS, która to może być np liczbą
-    zmiennoprzecinkową do sumy kontrolnej MD5.
-    """
-    original_pesel = value_from_xls
-
-    if type(original_pesel) == int:
-        original_pesel = str(original_pesel)
-    elif type(original_pesel) == float:
-        original_pesel = str(int(original_pesel))
-    else:
-        original_pesel = str(original_pesel)
-    original_pesel = original_pesel.encode("utf-8")
-
-    return md5(original_pesel).hexdigest()
 
 
 def znajdz_naglowek(
@@ -226,12 +199,6 @@ def przeanalizuj_plik_xls(sciezka, parent):
             continue
 
         try:
-            original["pesel_md5"] = pesel_md5(original["pesel"])
-            del original["pesel"]
-        except KeyError:
-            original["pesel_md5"] = None
-
-        try:
             # templatka wymaga
             original["nazwa_jednostki"] = original["nazwa jednostki"]
         except KeyError:
@@ -267,7 +234,6 @@ def przeanalizuj_plik_xls(sciezka, parent):
             original["imię"],
             original["nazwisko"],
             jednostka=jednostka,
-            pesel_md5=original.get("pesel_md5", None),
             orcid=original.get("orcid", None),
             pbn_id=original.get("pbn_id", None),
             tytul_str=original["tytuł"],
