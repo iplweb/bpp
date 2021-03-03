@@ -16,6 +16,7 @@ from import_common.exceptions import (
     HeaderNotFoundException,
     ImproperFileException,
 )
+from import_common.util import znajdz_naglowek
 
 
 def obecny_rok():
@@ -204,7 +205,6 @@ class Import_Dyscyplin(TimeStampedModel):
         on_error=STAN.BLEDNY,
     )
     def stworz_kolumny(self):
-        from .core import znajdz_naglowek
 
         try:
             kolumny, wiersz = znajdz_naglowek(self.plik.path)

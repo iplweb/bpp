@@ -116,5 +116,8 @@ class Report(Operation):
     def perform(self):
         self.create_report()
 
+    def task_create_report(self, raise_exceptions=True):
+        return self.task_perform(raise_exceptions=raise_exceptions)
+
     class Meta:
         abstract = True
