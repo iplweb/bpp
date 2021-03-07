@@ -14,6 +14,9 @@ class NullNotificationMixin:
     def send_notification(self, msg, level=None):
         return
 
+    def send_processing_finished(self):
+        return
+
 
 class Operation(NullNotificationMixin, models.Model):
     """Długo działająca operacja"""
@@ -69,9 +72,6 @@ class Operation(NullNotificationMixin, models.Model):
             )
         )
         self.save()
-        self.send_notification(
-            f"Zakończono z błędem, {self.finished_on}", constants.ERROR
-        )
 
     @transaction.atomic
     def mark_reset(self):
@@ -85,6 +85,14 @@ class Operation(NullNotificationMixin, models.Model):
 
     def on_finished_successfully(self):
         pass
+
+    def on_finished_with_error(self):
+        self.send_notification(
+            f"Zakończono z błędem, {self.finished_on}", constants.ERROR
+        )
+
+    def on_finished(self):
+        self.send_processing_finished()
 
     def on_reset(self):
         pass
@@ -108,8 +116,11 @@ class Operation(NullNotificationMixin, models.Model):
         except Exception:
             exc_type, exc_value, exc_traceback = sys.exc_info()
             self.mark_finished_with_error(exc_type, exc_value, exc_traceback)
+            self.on_finished_with_error()
             if raise_exceptions:
                 raise exc_value.with_traceback(exc_traceback)
+        finally:
+            self.on_finished()
 
 
 class Report(Operation):

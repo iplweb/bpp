@@ -1,5 +1,4 @@
 # Create your models here.
-import random
 from copy import copy
 from datetime import date
 
@@ -28,7 +27,7 @@ from import_common.core import (
     normalize_nullboleanfield,
     normalize_wymiar_etatu,
 )
-from import_common.util import read_xls_data
+from import_common.util import XLSImportFile
 from import_pracownikow.exceptions import (
     BPPDatabaseError,
     BPPDatabaseMismatch,
@@ -78,7 +77,10 @@ class ImportPracownikow(ASGINotificationMixin, Operation):
         self.save()
 
     def perform(self):
-        for no, elem in enumerate(read_xls_data(self.plik_xls.path)):
+        xif = XLSImportFile(self.plik_xls.path)
+        total = xif.count()
+
+        for no, elem in enumerate(xif.data()):
 
             jednostka_form = JednostkaForm(data=elem)
             jednostka_form.full_clean()
@@ -224,7 +226,7 @@ class ImportPracownikow(ASGINotificationMixin, Operation):
             res.save()
 
             if no % 10 == 0:
-                self.send_progress(random.randint(1, 50) / 100.0)
+                self.send_progress(no / total / 2.0)
 
         self.performed = True
         self.save()
@@ -243,6 +245,9 @@ class ImportPracownikow(ASGINotificationMixin, Operation):
             "autor", "jednostka", "jednostka__wydzial", "autor__tytul"
         )
 
+    def on_finished(self):
+        self.send_processing_finished()
+
     def integrate(self):
         total = self.zmiany_potrzebne_set.all().count()
         for no, elem in enumerate(
@@ -251,7 +256,7 @@ class ImportPracownikow(ASGINotificationMixin, Operation):
             )
         ):
             elem.integrate()
-            self.send_progress(0.5 + (0.5 * no / total))
+            self.send_progress(0.5 + (no / total / 2.0))
 
 
 class ImportPracownikowRow(models.Model):
@@ -420,13 +425,18 @@ class ImportPracownikowRow(models.Model):
         self.save()
 
     def sformatowany_log_zmian(self):
-        if not self.log_zmian["autor"]:
-            del self.log_zmian["autor"]
-        if not self.log_zmian["autor_jednostka"]:
-            del self.log_zmian["autor_jednostka"]
+        if self.log_zmian["autor"]:
+            yield "Zmiany obiektu Autor: " + ", ".join(
+                [elem for elem in self.log_zmian["autor"]]
+            )
+
+        if self.log_zmian["autor_jednostka"]:
+            yield "Zmiany obiektu Autor_Jednostka: " + ", ".join(
+                [elem for elem in self.log_zmian["autor_jednostka"]]
+            )
+
         if not self.log_zmian:
             return "bez zmian!"
-        return self.log_zmian
 
     def nr_arkusza(self):
         return self.dane_z_xls.get("__xls_loc_sheet__")

@@ -32,7 +32,10 @@
                     <td>{{ row.nr_wiersza }}</td>
                     <td><a href="{% url "bpp:browse_autor" row.autor.pk %}">{{ row.autor }}</a></td>
                     <td><a href="{% url "bpp:browse_jednostka" row.jednostka.pk %}">{{ row.jednostka }}</a></td>
-                    <td>{{ row.sformatowany_log_zmian }}</td>
+                    <td>{% for elem in row.sformatowany_log_zmian %}
+                        <p>{{ elem }}</p>
+                        {% endfor %}
+                        </td>
                 </tr>
                 {% empty %}
                 <tr>

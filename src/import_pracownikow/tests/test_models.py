@@ -53,9 +53,9 @@ def test_ImportPracownikow_perform(import_pracownikow):
     assert import_pracownikow.importpracownikowrow_set.first().zmiany_potrzebne
     assert Autor_Jednostka.objects.count() == 1
 
-
-def test_ImportPracownikow_integrate(import_pracownikow_performed):
-    import_pracownikow_performed.integrate()
+    import_pracownikow.mark_reset()
+    import_pracownikow.perform()
+    assert not import_pracownikow.importpracownikowrow_set.first().zmiany_potrzebne
 
 
 @pytest.fixture

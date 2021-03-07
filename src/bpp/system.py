@@ -16,50 +16,52 @@ from multiseek.models import SearchForm
 from robots.models import Rule, Url
 
 from bpp.models import (
-    Ukryj_Status_Korekty,
-    Funkcja_Autora,
-    Zrodlo_Informacji,
-    Jezyk,
-    Rodzaj_Zrodla,
-    Status_Korekty,
-    Tytul,
-    Typ_KBN,
-    Uczelnia,
-    Wydzial,
-    Jednostka,
-    Zrodlo,
     Autor,
+    Autor_Dyscyplina,
     Autor_Jednostka,
     Charakter_Formalny,
-    Typ_Odpowiedzialnosci,
-    Wydawnictwo_Ciagle,
-    Wydawnictwo_Zwarte,
-    Punktacja_Zrodla,
-    Wydawnictwo_Ciagle_Autor,
-    Wydawnictwo_Zwarte_Autor,
-    Redakcja_Zrodla,
-    Praca_Doktorska,
-    Praca_Habilitacyjna,
-    Patent,
-    Patent_Autor,
-    Rodzaj_Prawa_Patentowego,
     Dyscyplina_Naukowa,
-    Zewnetrzna_Baza_Danych,
-    Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych,
-    Autor_Dyscyplina,
-    Wydawnictwo_Zwarte_Zewnetrzna_Baza_Danych,
+    Element_Repozytorium,
+    Funkcja_Autora,
     Grant,
     Grant_Rekordu,
-    Element_Repozytorium,
+    Grupa_Pracownicza,
+    Jednostka,
+    Jezyk,
+    Patent,
+    Patent_Autor,
+    Praca_Doktorska,
+    Praca_Habilitacyjna,
+    Punktacja_Zrodla,
+    Redakcja_Zrodla,
+    Rodzaj_Prawa_Patentowego,
+    Rodzaj_Zrodla,
+    Status_Korekty,
+    Typ_KBN,
+    Typ_Odpowiedzialnosci,
+    Tytul,
+    Uczelnia,
+    Ukryj_Status_Korekty,
+    Wydawnictwo_Ciagle,
+    Wydawnictwo_Ciagle_Autor,
+    Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych,
+    Wydawnictwo_Zwarte,
+    Wydawnictwo_Zwarte_Autor,
+    Wydawnictwo_Zwarte_Zewnetrzna_Baza_Danych,
+    Wydzial,
+    Wymiar_Etatu,
+    Zewnetrzna_Baza_Danych,
+    Zrodlo,
+    Zrodlo_Informacji,
 )
 from bpp.models.const import GR_WPROWADZANIE_DANYCH
 from bpp.models.konferencja import Konferencja
-from bpp.models.nagroda import OrganPrzyznajacyNagrody, Nagroda
+from bpp.models.nagroda import Nagroda, OrganPrzyznajacyNagrody
 from bpp.models.openaccess import (
-    Tryb_OpenAccess_Wydawnictwo_Ciagle,
-    Tryb_OpenAccess_Wydawnictwo_Zwarte,
     Czas_Udostepnienia_OpenAccess,
     Licencja_OpenAccess,
+    Tryb_OpenAccess_Wydawnictwo_Ciagle,
+    Tryb_OpenAccess_Wydawnictwo_Zwarte,
     Wersja_Tekstu_OpenAccess,
 )
 from bpp.models.praca_habilitacyjna import Publikacja_Habilitacyjna
@@ -67,9 +69,9 @@ from bpp.models.profile import BppUser
 from bpp.models.seria_wydawnicza import Seria_Wydawnicza
 from bpp.models.struktura import Jednostka_Wydzial
 from bpp.models.system import Charakter_PBN
-from bpp.models.wydawca import Wydawca, Poziom_Wydawcy
+from bpp.models.wydawca import Poziom_Wydawcy, Wydawca
 from formdefaults.models import FormFieldRepresentation, FormRepresentation
-from import_dbf.models import Bib, B_A, Aut, Jed, Poz, B_U, Usi, Ses, Wx2, Ixn
+from import_dbf.models import B_A, B_U, Aut, Bib, Ixn, Jed, Poz, Ses, Usi, Wx2
 from miniblog.models import Article
 
 User = get_user_model()
@@ -99,8 +101,16 @@ groups = {
         Grant,
         FormFieldRepresentation,
         FormRepresentation,
+        Grupa_Pracownicza,
+        Wymiar_Etatu,
     ],
-    "struktura": [Uczelnia, Wydzial, Jednostka, Jednostka_Wydzial, Ukryj_Status_Korekty],
+    "struktura": [
+        Uczelnia,
+        Wydzial,
+        Jednostka,
+        Jednostka_Wydzial,
+        Ukryj_Status_Korekty,
+    ],
     GR_WPROWADZANIE_DANYCH: [
         Zrodlo,
         Autor,

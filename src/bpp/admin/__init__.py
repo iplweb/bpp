@@ -1,15 +1,31 @@
 # -*- encoding: utf-8 -*-
 from django import forms
+from django.contrib import admin
+from django.contrib.auth.forms import UserCreationForm
 from multiseek.models import SearchForm
+
+from bpp.models import Rodzaj_Prawa_Patentowego, Zewnetrzna_Baza_Danych
+
+# Proste tabele
+from bpp.models.openaccess import (
+    Czas_Udostepnienia_OpenAccess,
+    Licencja_OpenAccess,
+    Tryb_OpenAccess_Wydawnictwo_Ciagle,
+    Tryb_OpenAccess_Wydawnictwo_Zwarte,
+    Wersja_Tekstu_OpenAccess,
+)
+
 from ..models import (
     BppUser,
     Funkcja_Autora,
+    Grupa_Pracownicza,
     Jezyk,
     Rodzaj_Zrodla,
     Status_Korekty,
     Typ_KBN,
     Typ_Odpowiedzialnosci,
     Tytul,
+    Wymiar_Etatu,
     Zrodlo_Informacji,
 )
 from ..models.nagroda import OrganPrzyznajacyNagrody
@@ -39,20 +55,6 @@ from .wydawnictwo_zwarte import (  # noqa
 )
 from .wydzial import WydzialAdmin  # noqa
 
-from django.contrib import admin
-from django.contrib.auth.forms import UserCreationForm
-
-from bpp.models import Rodzaj_Prawa_Patentowego, Zewnetrzna_Baza_Danych
-
-# Proste tabele
-from bpp.models.openaccess import (
-    Czas_Udostepnienia_OpenAccess,
-    Licencja_OpenAccess,
-    Tryb_OpenAccess_Wydawnictwo_Ciagle,
-    Tryb_OpenAccess_Wydawnictwo_Zwarte,
-    Wersja_Tekstu_OpenAccess,
-)
-
 
 class JezykAdmin(RestrictDeletionToAdministracjaGroupAdmin):
     list_display = ["nazwa", "skrot", "skrot_dla_pbn"]
@@ -70,6 +72,9 @@ admin.site.register(Zrodlo_Informacji, PreventDeletionAdmin)
 admin.site.register(Rodzaj_Prawa_Patentowego, PreventDeletionAdmin)
 
 admin.site.register(OrganPrzyznajacyNagrody, PreventDeletionAdmin)
+
+admin.site.register(Grupa_Pracownicza, PreventDeletionAdmin)
+admin.site.register(Wymiar_Etatu, PreventDeletionAdmin)
 
 
 @admin.register(Zewnetrzna_Baza_Danych)

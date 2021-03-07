@@ -10,8 +10,8 @@
 {% endblock %}
 
 {% block content %}
-    <h1>Utwórz nowy import:</h1>
-    XXX TODO: przykładowy plik XLS
+    <h1>Utwórz nowy import:</h1>{% load static %}
+    <a href="{% static "import_pracownikow/import_pracownikow_przyklad.xlsx" %}">Kliknij tutaj, aby pobrać przykladowy plik XLS</a>
     {% load crispy_forms_tags %}
     {% crispy form %}
 {% endblock %}

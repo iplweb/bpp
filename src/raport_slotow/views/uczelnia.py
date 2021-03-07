@@ -11,6 +11,7 @@ from formdefaults.helpers import FormDefaultsMixin
 from long_running.tasks import perform_generic_long_running_task
 from long_running.views import (
     CreateLongRunningOperationView,
+    LongRunningDetailsView,
     LongRunningOperationsView,
     RestartLongRunningOperationView,
 )
@@ -59,18 +60,13 @@ class UtworzRaportSlotowUczelnia(
 
 
 class SzczegolyRaportSlotowUczelnia(
-    UczelniaSettingRequiredMixin, LoginRequiredMixin, DetailView
+    UczelniaSettingRequiredMixin, LongRunningDetailsView
 ):
     # template_name = "raport_slotow/raport_slotow_uczelnia_szcz.html"
     uczelnia_attr = "pokazuj_raport_slotow_uczelnia"
     export_formats = ["html", "xlsx"]
     # filterset_class = RaportSlotowUczelniaFilter
     model = RaportSlotowUczelnia
-
-    def get_context_data(self, **kwargs):
-        return super(SzczegolyRaportSlotowUczelnia, self).get_context_data(
-            extraChannels=[self.object.pk]
-        )
 
 
 class WygenerujPonownieRaportSlotowUczelnia(

@@ -32,7 +32,10 @@ class LongRunningOperationsView(RestrictToOwnerMixin, ListView):
 
 
 class LongRunningDetailsView(RestrictToOwnerMixin, DetailView):
-    pass
+    def get_context_data(self, **kwargs):
+        return super(LongRunningDetailsView, self).get_context_data(
+            extraChannels=[self.object.pk], **kwargs
+        )
 
 
 class CreateLongRunningOperationView(
