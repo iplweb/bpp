@@ -17,6 +17,7 @@ Historia zmian
 * [API] słowa kluczowe eksportowane są teraz jako lista, nie jako ciąg znaków (b/n),
 * [raporty] poprawka błędu uniemożliwiającego wygenerowanie raportu w formacie XLSX podczas gdy
   jeden z nagłówków elementów raporty zawierał w sobie znak "/" (slash) (b/n),
+* poprawka błędu związanego z resetowaniem hasła,
 
 202102.55
 ---------
