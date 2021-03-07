@@ -76,6 +76,7 @@ class Kolumna(models.Model):
 def guess_rodzaj(s):
     s = s.lower().replace(" ", "")
     if s in [
+        "tytuł_stopień",
         "tytuł",
         "tytułnaukowy",
         "tytuł/stopień",
@@ -94,7 +95,7 @@ def guess_rodzaj(s):
         return Kolumna.RODZAJ.IMIE
     if s in ["orcid", "identyfikatororcid", "ident.orcid"]:
         return Kolumna.RODZAJ.ORCID
-    if s in ["jednostka", "nazwajednostki"]:
+    if s in ["jednostka", "nazwajednostki", "nazwa_jednostki"]:
         return Kolumna.RODZAJ.NAZWA_JEDNOSTKI
     if s in ["wydzial", "wydz.", "wydział"]:
         return Kolumna.RODZAJ.WYDZIAL
@@ -102,6 +103,7 @@ def guess_rodzaj(s):
     if s in ["dyscyplina", "dyscyplina1", "dyscyplinagłówna", "dyscyplinaglowna"]:
         return Kolumna.RODZAJ.DYSCYPLINA
     if s in [
+        "kod_dyscypliny",
         "koddyscypliny",
         "koddyscyplinyglownej",
         "koddyscyplinygłównej",
@@ -110,6 +112,7 @@ def guess_rodzaj(s):
     ]:
         return Kolumna.RODZAJ.KOD_DYSCYPLINY
     if s in [
+        "procent_dyscypliny",
         "procentdyscypliny",
         "procentdyscypliny1",
         "procentdyscyplinygłównej",
@@ -126,6 +129,7 @@ def guess_rodzaj(s):
     ]:
         return Kolumna.RODZAJ.SUBDYSCYPLINA
     if s in [
+        "kod_subdyscypliny",
         "kodsubdyscypliny",
         "koddyscyplinypoboczej",
         "koddyscyplinydrugiej",
@@ -134,6 +138,7 @@ def guess_rodzaj(s):
     ]:
         return Kolumna.RODZAJ.KOD_SUBDYSCYPLINY
     if s in [
+        "procent_subdyscypliny",
         "procentsubdyscypliny",
         "procentdyscypliny2",
         "procentdyscyplinypobocznej",
@@ -142,6 +147,7 @@ def guess_rodzaj(s):
         return Kolumna.RODZAJ.PROCENT_SUBDYSCYPLINY
 
     if s in [
+        "pbn_id",
         "pbn-id",
         "pbnid",
         "pbn_id",

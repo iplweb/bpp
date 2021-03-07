@@ -9,9 +9,17 @@
     <li><a href="{% url "import_pracownikow:index" %}">import pracowników</a></li>
 {% endblock %}
 
-{% block content %}
-    <h1>Ostatnio importowane dane:</h1>
-    <input class="button" type="button" onclick="location.href='./new';" value="Utwórz nowy import">
+{% block content %}{% load static %}
+    <h1>Ostatnio importowane dane:
+    <a class="button success" id="add-new-file" href="./new">
+            <i class="fi-page-add"></i>
+            utwórz nowy import
+        </a>
+        <a class="button secondary" id="download-example-file" href="{% static "import_pracownikow/import_pracownikow_przyklad.xlsx" %}">
+            <i class="fi-page-edit"></i>
+            pobierz plik wzorcowy
+        </a>
+    </h1>
     <ul>
         {% for object in object_list %}
             <li>

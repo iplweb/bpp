@@ -3,7 +3,7 @@
 Historia zmian
 ==============
 
-202102.56
+202103.56
 ---------
 
 * wyeliminowano błędy związane z niepoprawnie sformułowanymi zapytaniami w multiwyszukiwarce (b/n),
@@ -19,6 +19,7 @@ Historia zmian
   jeden z nagłówków elementów raporty zawierał w sobie znak "/" (slash) (b/n),
 * usunięto identyfikator pesel_md5 z systemu,
 * import danych kadrowych z plików XLS (#983),
+* [ASGI] raporty opracowywane w tle powinny przestać gubić komunikaty powiadomień,
 
 202102.55
 ---------

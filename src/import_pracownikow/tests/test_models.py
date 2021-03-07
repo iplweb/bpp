@@ -5,7 +5,6 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from model_mommy import mommy
 
 from bpp.models import Autor, Autor_Jednostka, Jednostka
-from import_common.exceptions import HeaderNotFoundException
 from import_pracownikow.models import ImportPracownikow
 
 
@@ -64,5 +63,5 @@ def import_pracownikow_brak_naglowka(admin_user, testdata_brak_naglowka_xlsx_pat
 
 
 def test_ImportPracownikow_brak_naglowka(import_pracownikow_brak_naglowka):
-    with pytest.raises(HeaderNotFoundException, match="Brak poprawnego wiersza"):
-        import_pracownikow_brak_naglowka.perform()
+    import_pracownikow_brak_naglowka.perform()
+    assert import_pracownikow_brak_naglowka.importpracownikowrow_set.count() == 0

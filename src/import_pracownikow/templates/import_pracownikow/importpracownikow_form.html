@@ -9,9 +9,15 @@
     <li><a href="{% url "import_pracownikow:index" %}">import pracowników</a></li>
 {% endblock %}
 
-{% block content %}
-    <h1>Utwórz nowy import:</h1>{% load static %}
-    <a href="{% static "import_pracownikow/import_pracownikow_przyklad.xlsx" %}">Kliknij tutaj, aby pobrać przykladowy plik XLS</a>
+{% block content %}{% load static %}
+    <h1>Utwórz nowy import: <a class="button secondary" id="download-example-file"
+                               href="{% static "import_pracownikow/import_pracownikow_przyklad.xlsx" %}">
+        <i class="fi-page-edit"></i>
+        pobierz plik wzorcowy
+    </a>
+    </h1>
+
+
     {% load crispy_forms_tags %}
     {% crispy form %}
 {% endblock %}
