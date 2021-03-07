@@ -11,6 +11,7 @@ from bpp.models.konferencja import Konferencja
 from bpp.views.autocomplete import (
     AdminNavigationAutocomplete,
     AutorAutocomplete,
+    JednostkaMixin,
     PublicAutorAutocomplete,
 )
 
@@ -218,3 +219,8 @@ def test_AutorAutocomplete_create_bug_1():
     assert Autor.objects.count() == 1
     assert Autor.objects.first().nazwisko == "Fubar"
     assert Autor.objects.first().imiona == "Baz Quux"
+
+
+def test_JednostkaMixin_get_result_label(jednostka):
+    jednostka.wydzial = None
+    assert JednostkaMixin().get_result_label(jednostka)
