@@ -1,9 +1,18 @@
+from typing import Union
 from uuid import UUID
 
-from django.core.exceptions import MultipleObjectsReturned
 from django.db.models import Q
 
-from bpp.models import Autor, Autor_Jednostka, Jednostka, Wydzial
+from bpp.models import (
+    Autor,
+    Autor_Jednostka,
+    Funkcja_Autora,
+    Grupa_Pracownicza,
+    Jednostka,
+    Tytul,
+    Wydzial,
+    Wymiar_Etatu,
+)
 
 
 def matchuj_wydzial(nazwa):
@@ -13,27 +22,127 @@ def matchuj_wydzial(nazwa):
         pass
 
 
-def matchuj_jednostke(nazwa):
+def normalize_nullboleanfield(s: Union[str, None, bool]) -> Union[bool, None]:
+    if isinstance(s, bool):
+        return s
+    if s is None:
+        return
+    s = s.strip().lower()
+
+    if s in ["true", "tak", "prawda", "t", "p"]:
+        return True
+    if s in ["false", "nie", "fałsz", "falsz", "f", "n"]:
+        return False
+
+
+def remove_extra_spaces(s: str) -> str:
+    while s.find("  ") >= 0:
+        s = s.replace("  ", " ")
+    s = s.strip()
+    return s
+
+
+def normalize_skrot(s):
+    return remove_extra_spaces(s.lower().replace(" .", ". "))
+
+
+def normalize_tytul(s):
+    return normalize_skrot(s)
+
+
+def matchuj_tytul(tytul: str, create_if_not_exist=False) -> Tytul:
+    """
+    Dostaje tytuł: pełną nazwę albo skrót
+    """
+
     try:
-        return Jednostka.objects.get(
-            Q(nazwa__iexact=nazwa.strip()) | Q(skrot__iexact=nazwa.strip())
-        )
-    except MultipleObjectsReturned:
-        return None
+        return Tytul.objects.get(nazwa__iexact=tytul)
+    except (Tytul.DoesNotExist, Tytul.MultipleObjectsReturned):
+        return Tytul.objects.get(skrot=normalize_tytul(tytul))
+
+
+def normalize_funkcja_autora(s: str) -> str:
+    return normalize_skrot(s).lower()
+
+
+def matchuj_funkcja_autora(funkcja_autora: str) -> Funkcja_Autora:
+    funkcja_autora = normalize_funkcja_autora(funkcja_autora)
+    return Funkcja_Autora.objects.get(
+        Q(nazwa__iexact=funkcja_autora) | Q(skrot__iexact=funkcja_autora)
+    )
+
+
+def normalize_grupa_pracownicza(s: str):
+    return normalize_skrot(s)
+
+
+def matchuj_grupa_pracownicza(grupa_pracownicza: str) -> Grupa_Pracownicza:
+    grupa_pracownicza = normalize_grupa_pracownicza(grupa_pracownicza)
+    return Grupa_Pracownicza.objects.get(nazwa__iexact=grupa_pracownicza)
+
+
+def normalize_wymiar_etatu(s: str):
+    return normalize_skrot(s)
+
+
+def matchuj_wymiar_etatu(wymiar_etatu: str) -> Wymiar_Etatu:
+    wymiar_etatu = normalize_wymiar_etatu(wymiar_etatu)
+    return Wymiar_Etatu.objects.get(nazwa__iexact=wymiar_etatu)
+
+
+def normalize_nazwa_jednostki(s: str) -> str:
+    return remove_extra_spaces(s.strip())
+
+
+def matchuj_jednostke(nazwa, wydzial=None):
+    nazwa = normalize_nazwa_jednostki(nazwa)
+
+    try:
+        return Jednostka.objects.get(Q(nazwa__iexact=nazwa) | Q(skrot__iexact=nazwa))
     except Jednostka.DoesNotExist:
-        pass
+        if nazwa.endswith("."):
+            nazwa = nazwa[:-1].strip()
+
+        try:
+            return Jednostka.objects.get(
+                Q(nazwa__istartswith=nazwa) | Q(skrot__istartswith=nazwa)
+            )
+        except Jednostka.MultipleObjectsReturned as e:
+            if wydzial is None:
+                raise e
+
+        return Jednostka.objects.get(
+            Q(nazwa__istartswith=nazwa) | Q(skrot__istartswith=nazwa),
+            Q(wydzial__nazwa__iexact=wydzial),
+        )
+
+    except Jednostka.MultipleObjectsReturned as e:
+        if wydzial is None:
+            raise e
+
+        return Jednostka.objects.get(
+            Q(nazwa__iexact=nazwa) | Q(skrot__iexact=nazwa),
+            Q(wydzial__nazwa__iexact=wydzial),
+        )
 
 
 def matchuj_autora(
-    imiona,
-    nazwisko,
-    jednostka=None,
-    pbn_uuid=None,
-    system_kadrowy_id=None,
-    pbn_id=None,
-    orcid=None,
-    tytul_str=None,
+    imiona: str,
+    nazwisko: str,
+    jednostka: Union[Jednostka, None] = None,
+    bpp_id: Union[int, None] = None,
+    pbn_uuid: Union[UUID, None] = None,
+    system_kadrowy_id: Union[int, None] = None,
+    pbn_id: Union[int, None] = None,
+    orcid: Union[str, None] = None,
+    tytul_str: Union[Tytul, None] = None,
 ):
+    if bpp_id is not None:
+        try:
+            return Autor.objects.get(pk=bpp_id)
+        except Autor.DoesNotExist:
+            pass
+
     if pbn_uuid is not None:
         try:
             UUID(pbn_uuid)

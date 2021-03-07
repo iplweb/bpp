@@ -8,3 +8,7 @@ class BadNoOfSheetsException(Exception):
 
 class HeaderNotFoundException(Exception):
     pass
+
+
+class InputDataError(Exception):
+    pass

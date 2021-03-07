@@ -2,6 +2,7 @@ import xlrd
 from _decimal import Decimal, InvalidOperation
 from xlrd import XLRDError
 
+from bpp.models import Jednostka
 from import_common.core import matchuj_autora, matchuj_jednostke, matchuj_wydzial
 from import_common.exceptions import (
     BadNoOfSheetsException,
@@ -72,7 +73,11 @@ def przeanalizuj_plik_xls(sciezka, parent):
                 jednostka = jednostka_cache[
                     original["nazwa jednostki"]
                 ] = matchuj_jednostke(original["nazwa jednostki"])
-            except KeyError:
+            except (
+                KeyError,
+                Jednostka.DoesNotExist,
+                Jednostka.MultipleObjectsReturned,
+            ):
                 jednostka = None
 
         autor = matchuj_autora(
