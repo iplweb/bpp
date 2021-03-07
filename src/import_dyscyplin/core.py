@@ -86,7 +86,7 @@ def przeanalizuj_plik_xls(sciezka, parent):
             jednostka=jednostka,
             orcid=original.get("orcid", None),
             pbn_id=original.get("pbn_id", None),
-            tytul_str=original["tytuł"],
+            tytul_str=original.get("tytuł"),
         )
 
         if autor is None:
