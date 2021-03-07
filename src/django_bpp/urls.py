@@ -3,6 +3,9 @@
 from django.conf import settings
 from django.conf.urls import include, url
 from django.conf.urls.static import static
+from django.contrib import admin
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.views import LoginView, LogoutView
 from django.urls import path
 from django.views.decorators.cache import cache_page
 from django.views.decorators.csrf import csrf_exempt
@@ -32,10 +35,6 @@ from bpp.views.mymultiseek import (
 )
 from django_bpp.forms import BppPasswordChangeForm
 
-from django.contrib import admin
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.views import LoginView, LogoutView
-
 admin.autodiscover()
 
 
@@ -63,10 +62,20 @@ urlpatterns = (
             r"^integrator2/",
             include(("integrator2.urls", "integrator2"), namespace="integrator2"),
         ),
-        url(r"^api/v1/", include(("api_v1.urls", "api_v1"), namespace="api_v1"),),
+        url(
+            r"^api/v1/",
+            include(("api_v1.urls", "api_v1"), namespace="api_v1"),
+        ),
         url(
             r"^eksport_pbn/",
             include(("eksport_pbn.urls", "eksport_pbn"), namespace="eksport_pbn"),
+        ),
+        url(
+            r"^import_pracownikow/",
+            include(
+                ("import_pracownikow.urls", "import_pracownikow"),
+                namespace="import_pracownikow",
+            ),
         ),
         url(
             r"^import_dyscyplin/",
@@ -161,7 +170,14 @@ urlpatterns = (
                 namespace="messages_extends",
             ),
         ),
-        url(r"^.*/jsi18n/$", JavaScriptCatalog.as_view(packages=["multiseek",])),
+        url(
+            r"^.*/jsi18n/$",
+            JavaScriptCatalog.as_view(
+                packages=[
+                    "multiseek",
+                ]
+            ),
+        ),
         url(r"session_security/", include("session_security.urls")),
         url(r"^login/user/(?P<user_id>.+)/$", user_login, name="loginas-user-login"),
         url(r"^robots\.txt", include("robots.urls")),

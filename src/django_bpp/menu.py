@@ -8,9 +8,10 @@ To activate your custom menu add the following to your settings.py::
     ADMIN_TOOLS_MENU = 'django_bpp.menu.CustomMenu'
 """
 from admin_tools.menu import Menu, items
+from django.apps import apps
+from django.contrib import admin
 from django.db import connection
 from django.urls import reverse
-
 from django.utils.translation import ugettext_lazy as _
 
 from bpp.models.const import GR_WPROWADZANIE_DANYCH
@@ -194,6 +195,7 @@ SYSTEM_MENU = [
     ("Formularze - wartości domyślne", "/admin/formdefaults/formrepresentation/"),
     ("Funkcje w jednostce", "/admin/bpp/funkcja_autora/"),
     ("Granty", "/admin/bpp/grant/"),
+    ("Grupy pracownicze", "/admin/bpp/grupa_pracownicza/"),
     ("Języki", "/admin/bpp/jezyk/"),
     ("OpenAccess: wydawnictwa ciągłe", "/admin/bpp/tryb_openaccess_wydawnictwo_ciagle"),
     ("OpenAccess: wydawnictwa zwarte", "/admin/bpp/tryb_openaccess_wydawnictwo_zwarte"),
@@ -208,6 +210,7 @@ SYSTEM_MENU = [
     ("Typy odpowiedzialności", "/admin/bpp/typ_odpowiedzialnosci/"),
     ("Tytuły", "/admin/bpp/tytul/"),
     ("Wydawcy", "/admin/bpp/wydawca/"),
+    ("Wymiary etatów", "/admin/bpp/wymiar_etatu/"),
     ("Zewnętrzne bazy danych", "/admin/bpp/zewnetrzna_baza_danych/"),
     ("Źródło informacji", "/admin/bpp/zrodlo_informacji/"),
 ]
@@ -285,11 +288,11 @@ class CustomMenu(Menu):
         if "import_dbf_aut" in connection.introspection.table_names():
             flt("import DBF", "import DBF", IMPORT_DBF_MENU_1)
             # flt("import DBF", "import DBF #2", IMPORT_DBF_MENU_2)
-        # else:
-        #     # De-register all models from other apps
-        #     for model in apps.get_app_config("import_dbf").models.values():
-        #         if admin.site.is_registered(model):
-        #             admin.site.unregister(model)
+        else:
+            # De-register all models from other apps
+            for model in apps.get_app_config("import_dbf").models.values():
+                if admin.site.is_registered(model):
+                    admin.site.unregister(model)
 
         flt("dane systemowe", "Dane systemowe", SYSTEM_MENU)
         flt("struktura", "Struktura", STRUKTURA_MENU)

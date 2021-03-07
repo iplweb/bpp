@@ -15,8 +15,8 @@ from .core import CommitedModelAdmin
 from .filters import (
     JednostkaFilter,
     OrcidObecnyFilter,
+    PBN_UUIDObecnyFilter,
     PBNIDObecnyFilter,
-    PeselMD5ObecnyFilter,
 )
 from .helpers import ADNOTACJE_FIELDSET, CHARMAP_SINGLE_LINE, ZapiszZAdnotacjaMixin
 
@@ -107,6 +107,7 @@ class AutorAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
         "email",
         "pbn_id",
         "orcid",
+        "pbn_uuid",
     ]
     list_select_related = [
         "tytul",
@@ -119,7 +120,7 @@ class AutorAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
         "tytul",
         PBNIDObecnyFilter,
         OrcidObecnyFilter,
-        PeselMD5ObecnyFilter,
+        PBN_UUIDObecnyFilter,
     ]
     search_fields = [
         "imiona",
@@ -131,7 +132,7 @@ class AutorAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
         "id",
         "pbn_id",
     ]
-    readonly_fields = ("pesel_md5", "ostatnio_zmieniony")
+    readonly_fields = ("ostatnio_zmieniony",)
 
     fieldsets = (
         (
@@ -147,7 +148,6 @@ class AutorAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
                     "www",
                     "orcid",
                     "pbn_id",
-                    "pesel_md5",
                 )
             },
         ),

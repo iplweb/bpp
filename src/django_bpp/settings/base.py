@@ -121,6 +121,8 @@ INSTALLED_APPS = [
     "django.contrib.sites",
     "django.contrib.sitemaps",
     "django.contrib.postgres",
+    "long_running",
+    "import_pracownikow",
     "password_policies",
     "create_test_db",
     "celery",

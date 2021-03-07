@@ -12,21 +12,16 @@ try:
     from django.core.urlresolvers import reverse
 except ImportError:
     from django.urls import reverse
+
 from lxml.etree import tostring
 
-from bpp.models.system import Charakter_Formalny
-from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor, Wydawnictwo_Ciagle
-from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte_Autor, Wydawnictwo_Zwarte
+from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
+from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 from bpp.util import remove_old_objects
 from django_bpp.celery_tasks import app
-from django_bpp.util import wait_for_object
-from eksport_pbn.models import (
-    PlikEksportuPBN,
-    DATE_CREATED_ON,
-    DATE_UPDATED_ON,
-    DATE_UPDATED_ON_PBN,
-)
+from eksport_pbn.models import PlikEksportuPBN
 from eksport_pbn.util import id_ciaglych, id_zwartych
+from long_running.util import wait_for_object
 
 
 def zipdir(path, ziph):
@@ -37,9 +32,10 @@ def zipdir(path, ziph):
 
 
 header = """<?xml version="1.0" encoding="UTF-8"?>
-<works pbn-unit-id="%s" 
+<works pbn-unit-id="%s"
     xmlns="http://pbn.nauka.gov.pl/-/ns/bibliography"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://pbn.nauka.gov.pl/-/ns/bibliography PBN-report.xsd ">
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://pbn.nauka.gov.pl/-/ns/bibliography PBN-report.xsd ">
     """
 
 
