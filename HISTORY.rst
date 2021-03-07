@@ -21,6 +21,7 @@ Historia zmian
 * usunięto identyfikator pesel_md5 z systemu,
 * import danych kadrowych z plików XLS (#983),
 * [ASGI] raporty opracowywane w tle powinny przestać gubić komunikaty powiadomień,
+* popraw błędy z wyświetlaniem stron z podwójnym znakiem "-" w polu "slug" (#980)
 
 202102.55
 ---------
