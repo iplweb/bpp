@@ -1,15 +1,20 @@
 import urllib
 
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db import transaction
-from django.http import HttpResponseRedirect
 from django.utils import timezone
-from django.views.generic import CreateView, DetailView, ListView
+from django.views.generic import DetailView
 from django_tables2 import RequestConfig, SingleTableMixin
 
 from bpp.views.mixins import UczelniaSettingRequiredMixin
 from django_bpp.version import VERSION
 from formdefaults.helpers import FormDefaultsMixin
+from long_running.tasks import perform_generic_long_running_task
+from long_running.views import (
+    CreateLongRunningOperationView,
+    LongRunningDetailsView,
+    LongRunningOperationsView,
+    RestartLongRunningOperationView,
+)
 from raport_slotow.filters import (
     RaportSlotowUczelniaBezJednostekIWydzialowFilter,
     RaportSlotowUczelniaFilter,
@@ -20,12 +25,11 @@ from raport_slotow.tables import (
     RaportSlotowUczelniaBezJednostekIWydzialowTable,
     RaportSlotowUczelniaTable,
 )
-from raport_slotow.tasks.uczelnia import wygeneruj_raport_slotow_uczelnia
 from raport_slotow.util import MyExportMixin
 
 
 class ListaRaportSlotowUczelnia(
-    UczelniaSettingRequiredMixin, LoginRequiredMixin, FormDefaultsMixin, ListView
+    UczelniaSettingRequiredMixin, FormDefaultsMixin, LongRunningOperationsView
 ):
     uczelnia_attr = "pokazuj_raport_slotow_uczelnia"
     title = "Raport slotów - uczelnia"
@@ -36,40 +40,27 @@ class ListaRaportSlotowUczelnia(
         context["title"] = self.title
         return context
 
-    def get_queryset(self):
-        with transaction.atomic():
-            for elem in RaportSlotowUczelnia.objects.filter(owner=self.request.user)[
-                10:
-            ]:
-                elem.delete()
-
-        return RaportSlotowUczelnia.objects.filter(owner=self.request.user)
-
 
 class UtworzRaportSlotowUczelnia(
-    UczelniaSettingRequiredMixin, LoginRequiredMixin, FormDefaultsMixin, CreateView
+    UczelniaSettingRequiredMixin,
+    FormDefaultsMixin,
+    CreateLongRunningOperationView,
 ):
     template_name = "raport_slotow/index.html"
     form_class = UtworzRaportSlotowUczelniaForm
     uczelnia_attr = "pokazuj_raport_slotow_uczelnia"
     title = "Raport slotów - uczelnia"
     model = RaportSlotowUczelnia
+    task = perform_generic_long_running_task
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["title"] = self.title
         return context
 
-    def form_valid(self, form):
-        form.instance.owner = self.request.user
-        transaction.on_commit(
-            lambda: wygeneruj_raport_slotow_uczelnia.delay(form.instance.pk)
-        )
-        return super(UtworzRaportSlotowUczelnia, self).form_valid(form)
-
 
 class SzczegolyRaportSlotowUczelnia(
-    UczelniaSettingRequiredMixin, LoginRequiredMixin, DetailView
+    UczelniaSettingRequiredMixin, LongRunningDetailsView
 ):
     # template_name = "raport_slotow/raport_slotow_uczelnia_szcz.html"
     uczelnia_attr = "pokazuj_raport_slotow_uczelnia"
@@ -77,28 +68,12 @@ class SzczegolyRaportSlotowUczelnia(
     # filterset_class = RaportSlotowUczelniaFilter
     model = RaportSlotowUczelnia
 
-    def get_context_data(self, **kwargs):
-        return super(SzczegolyRaportSlotowUczelnia, self).get_context_data(
-            extraChannels=[self.object.pk]
-        )
-
 
 class WygenerujPonownieRaportSlotowUczelnia(
-    UczelniaSettingRequiredMixin, LoginRequiredMixin, DetailView
+    UczelniaSettingRequiredMixin, RestartLongRunningOperationView
 ):
     uczelnia_attr = "pokazuj_raport_slotow_uczelnia"
-    export_formats = ["html", "xlsx"]
     model = RaportSlotowUczelnia
-
-    @transaction.atomic
-    def get(self, *args, **kw):
-        self.object = self.get_object()
-        if self.object.finished_successfully:
-            self.object.mark_reset()
-            transaction.on_commit(
-                lambda: wygeneruj_raport_slotow_uczelnia.delay(pk=self.object.pk)
-            )
-        return HttpResponseRedirect(".")
 
 
 class SzczegolyRaportSlotowUczelniaListaRekordow(

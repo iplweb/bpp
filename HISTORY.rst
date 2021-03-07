@@ -1,8 +1,31 @@
-]
 
 ==============
 Historia zmian
 ==============
+
+202103.56
+---------
+
+* wyeliminowano błędy związane z niepoprawnie sformułowanymi zapytaniami w multiwyszukiwarce (b/n),
+* wyeliminowano błędy związane z przeszukiwaniem po datach w przypadku operatorów mniejszy/większy/
+  mniejszy lub równy/wiekszy lub równy (#982),
+* wyeliminowano drobny bład podczas importu dyscyplin (#962),
+* raport uczelnia-ewaluacja: jeżeli autor ma punktowane prace w danym roku w danej dyscyplinie, ale w innym
+  roku będącym w zakresie raportu autor jest "zerowy", to nie pokazuj go jako zerowego (#984),
+* wyeliminowano błąd przebudowy cache poprzez usuniecie 'globalnej' transakcji (#989),
+* prawdziwe, indeksowane słowa kluczowe dla wszystkich rekordów, z możliwością edycji oraz przeszukiwania (#883),
+* [API] słowa kluczowe eksportowane są teraz jako lista, nie jako ciąg znaków (b/n),
+* [raporty] poprawka błędu uniemożliwiającego wygenerowanie raportu w formacie XLSX podczas gdy
+  jeden z nagłówków elementów raporty zawierał w sobie znak "/" (slash) (b/n),
+* poprawka błędu związanego z resetowaniem hasła,
+* usunięto identyfikator pesel_md5 z systemu,
+* import danych kadrowych z plików XLS (#983),
+* [ASGI] raporty opracowywane w tle powinny przestać gubić komunikaty powiadomień,
+* popraw błędy z wyświetlaniem stron z podwójnym znakiem "-" w polu "slug" (#980),
+* popraw błędy przy imporcie dyscyplin w sytuacji gdy nie określono pola tytuł naukowy (#885),
+* popraw błędy przy wyszukiwaniu jednostek bez wydziału (#964),
+* możliwość indywidualnego określenia wliczania do rankingu dla każdego charakteru formalnego
+  oraz typu KBN (#973)
 
 202102.55
 ---------

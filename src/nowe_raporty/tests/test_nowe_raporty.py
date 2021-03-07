@@ -3,11 +3,11 @@ import xlrd
 from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 from flexible_reports.models import (
-    ReportElement,
     DATA_FROM_DATASOURCE,
-    Datasource,
-    Table,
     Column,
+    Datasource,
+    ReportElement,
+    Table,
 )
 from flexible_reports.models.report import Report
 from mock import patch
@@ -20,10 +20,10 @@ from bpp.models.struktura import Jednostka, Wydzial
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
 from formdefaults.models import FormRepresentation
 from nowe_raporty.views import (
+    AutorRaportFormView,
     GenerujRaportDlaAutora,
     GenerujRaportDlaJednostki,
     GenerujRaportDlaWydzialu,
-    AutorRaportFormView,
     JednostkaRaportFormView,
     WydzialRaportFormView,
 )
@@ -450,7 +450,7 @@ def test_form_defaults_napis_przed_po(uczelnia, admin_client, url, klass, slug):
 def test_GenerujRaportDlaAutora_get_context_data_ukryj_statusy(
     rf, uczelnia, przed_korekta
 ):
-    ra = Report.objects.create(slug="raport-autorow", title="XXX")
+    Report.objects.create(slug="raport-autorow", title="XXX")
 
     uczelnia.ukryj_status_korekty_set.create(status_korekty=przed_korekta)
 
@@ -460,3 +460,13 @@ def test_GenerujRaportDlaAutora_get_context_data_ukryj_statusy(
     res = x.get_context_data()
     query = str(res["report"].base_queryset.query)
     assert """AND NOT ("bpp_rekord_mat"."status_korekty_id" IN """ in query
+
+
+def test_invalid_character_slash_sheet_title(
+    autor_jan_kowalski, rf, admin_client, raport_autorow
+):
+    # Request URL: http://bpp.umlub.pl/nowe_raporty/autor/8553/2020/2020/?_export=xlsx&_tzju=True
+    url = reverse(
+        "nowe_raporty:autor_generuj", args=(autor_jan_kowalski.pk, 2020, 2020)
+    )
+    assert admin_client.get(url, data={"_tzju": "True", "_export": "xlsx"})  # noqa

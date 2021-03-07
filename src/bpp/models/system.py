@@ -151,6 +151,8 @@ class Charakter_Formalny(NazwaISkrot, MPTTModel):
         help_text="""Jak potraktować ten charakter przy kalkulacji slotów dla wydawnictwa zwartego?""",
     )
 
+    wliczaj_do_rankingu = models.BooleanField(default=True)
+
     class Meta:
         ordering = ["nazwa"]
         app_label = "bpp"
@@ -244,7 +246,7 @@ class Typ_Odpowiedzialnosci(NazwaISkrot):
         default=const.TO_AUTOR,
         help_text="""Pole to jest używane celem rozróżniania typu odpowiedzialności
         na cele eksportu do PBN (autor i redaktor) oraz może być też wykorzystywane
-        np. w raportach autorów i jednostek. 
+        np. w raportach autorów i jednostek.
         """,
         db_index=True,
     )
@@ -295,12 +297,14 @@ class Typ_KBN(NazwaISkrot):
         blank=True,
         null=True,
         default=None,
-        help_text="""Wartość wybrana w tym polu zostanie użyta jako 
-        fallback, tzn. jeżeli dla charakteru formalnego danego rekordu nie 
-        określono odpowiedniego charakteru PBN, to zostanie użyta wartość 
+        help_text="""Wartość wybrana w tym polu zostanie użyta jako
+        fallback, tzn. jeżeli dla charakteru formalnego danego rekordu nie
+        określono odpowiedniego charakteru PBN, to zostanie użyta wartość
         tego pola, o ile wybrana. """,
         on_delete=CASCADE,
     )
+
+    wliczaj_do_rankingu = models.BooleanField(default=True)
 
     class Meta:
         verbose_name = "typ KBN"

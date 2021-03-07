@@ -95,6 +95,8 @@ class FulltextSearchMixin:
 
 def slugify_function(s):
     s = unidecode(s).replace(" ", "-")
+    while s.find("--") >= 0:
+        s = s.replace("--", "-")
     return non_url.sub("", s)
 
 

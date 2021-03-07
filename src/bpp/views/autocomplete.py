@@ -5,12 +5,12 @@ from braces.views import GroupRequiredMixin, LoginRequiredMixin
 from dal import autocomplete
 from dal_select2_queryset_sequence.views import Select2QuerySetSequenceView
 from django import http
+from django.contrib.auth.mixins import UserPassesTestMixin
 from django.core.exceptions import ImproperlyConfigured
 from django.db.models.aggregates import Count
 from django.db.models.query_utils import Q
 from queryset_sequence import QuerySetSequence
-
-from django.contrib.auth.mixins import UserPassesTestMixin
+from taggit.models import Tag
 
 from bpp.jezyk_polski import warianty_zapisanego_nazwiska
 from bpp.lookups import SearchQueryStartsWith
@@ -37,6 +37,16 @@ from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, Wydawnictwo_Ciagle
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor
 from bpp.models.zrodlo import Rodzaj_Zrodla, Zrodlo
 from bpp.util import fulltext_tokenize
+
+
+class PublicTaggitTagAutocomplete(autocomplete.Select2QuerySetView):
+    create_field = None
+
+    def get_queryset(self):
+        qs = Tag.objects.all()
+        if self.q:
+            qs = qs.filter(name__icontains=self.q)
+        return qs
 
 
 class Wydawnictwo_NadrzedneAutocomplete(autocomplete.Select2QuerySetView):
@@ -75,7 +85,10 @@ class PublicWydawnictwo_NadrzedneAutocomplete(Wydawnictwo_NadrzedneAutocomplete)
 
 class JednostkaMixin:
     def get_result_label(self, result):
-        return f"{result.nazwa} ({result.wydzial.skrot})"
+        if result is not None:
+            if hasattr(result, "wydzial") and result.wydzial is not None:
+                return f"{result.nazwa} ({result.wydzial.skrot})"
+            return f"{result.nazwa} (bez wydziału)"
 
 
 class JednostkaAutocomplete(JednostkaMixin, autocomplete.Select2QuerySetView):

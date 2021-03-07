@@ -25,8 +25,7 @@ def test_wyrzuc(wydawnictwo_zwarte, multiseek_browser, live_server):
     # Poczekaj czy element został skreślony
     wait_for(
         lambda: browser.find_by_css(".multiseek-element")["style"].find("line-through")
-        == -1,
-        max_seconds=20,
+        != -1,
     )
 
     with wait_for_page_load(browser):

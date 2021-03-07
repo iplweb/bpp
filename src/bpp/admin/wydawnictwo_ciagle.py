@@ -1,11 +1,11 @@
 # -*- encoding: utf-8 -*-
-
 from dal import autocomplete
 from django import forms
 from django.contrib import admin
 from django.forms.utils import flatatt
 from django.utils.safestring import mark_safe
 from mptt.forms import TreeNodeChoiceField
+from taggit.forms import TextareaTagWidget
 
 from bpp.admin.filters import DOIUstawioneFilter, LiczbaZnakowFilter
 from bpp.admin.helpers import (
@@ -108,6 +108,7 @@ class Wydawnictwo_CiagleForm(forms.ModelForm):
             "strony": forms.TextInput(attrs=dict(style="width: 150px")),
             "tom": forms.TextInput(attrs=dict(style="width: 150px")),
             "nr_zeszytu": forms.TextInput(attrs=dict(style="width: 150px")),
+            "slowa_kluczowe": TextareaTagWidget(attrs={"rows": 2}),
         }
 
 
@@ -148,7 +149,7 @@ class Wydawnictwo_CiagleAdmin(
         "szczegoly",
         "uwagi",
         "informacje",
-        "slowa_kluczowe",
+        "slowa_kluczowe__name",
         "rok",
         "id",
         "issn",

@@ -3,8 +3,7 @@
 import os
 
 from django.conf import settings
-from django.http.response import HttpResponse, FileResponse
-from django.http.response import HttpResponseRedirect
+from django.http.response import FileResponse, HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.template.context import RequestContext
 from django.views.generic import FormView, TemplateView
@@ -16,11 +15,11 @@ from flexible_reports.models.report import Report
 from bpp.models import Uczelnia
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
-from bpp.models.struktura import Wydzial, Jednostka
+from bpp.models.struktura import Jednostka, Wydzial
 from bpp.views.mixins import UczelniaSettingRequiredMixin
 from formdefaults.helpers import FormDefaultsMixin
-from .forms import AutorRaportForm
-from .forms import JednostkaRaportForm, WydzialRaportForm
+
+from .forms import AutorRaportForm, JednostkaRaportForm, WydzialRaportForm
 
 
 class BaseFormView(FormDefaultsMixin, FormView):
@@ -165,6 +164,11 @@ class GenerujRaportBase(DetailView):
         response["Content-Disposition"] = 'attachment; filename="{}"'.format(filename)
 
         xlsx = as_tablib_databook(report, parent_context)
+
+        # Patch dla błędu "Invlaid character / found in sheet title"
+        for sheet in xlsx.sheets():
+            sheet.title = sheet.title.replace("/", "-")
+
         data = xlsx.export(TableExport.XLSX)
         response["Content-Length"] = len(data)
         response.write(data)

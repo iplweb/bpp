@@ -1,14 +1,12 @@
 from rest_framework import serializers
+from taggit_serializer.serializers import TagListSerializerField
 
 from api_v1.serializers.util import (
     AbsoluteUrlSerializerMixin,
     Wydawnictwo_AutorSerializerMixin,
     WydawnictwoSerializerMixin,
 )
-from bpp.models import (
-    Patent_Autor,
-    Patent,
-)
+from bpp.models import Patent, Patent_Autor
 
 
 class Patent_AutorSerializer(
@@ -40,6 +38,8 @@ class PatentSerializer(
     WydawnictwoSerializerMixin,
     serializers.HyperlinkedModelSerializer,
 ):
+    slowa_kluczowe = TagListSerializerField()
+
     rodzaj_prawa = serializers.RelatedField(read_only=True)
     # "bpp.Rodzaj_Prawa_Patentowego", CASCADE, null=True, blank=True
     # )

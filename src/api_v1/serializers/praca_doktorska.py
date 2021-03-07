@@ -1,8 +1,8 @@
 from rest_framework import serializers
+from taggit_serializer.serializers import TagListSerializerField
 
 from api_v1.serializers.util import (
     AbsoluteUrlSerializerMixin,
-    Wydawnictwo_AutorSerializerMixin,
     WydawnictwoSerializerMixin,
 )
 from bpp.models import Praca_Doktorska
@@ -24,6 +24,8 @@ class Praca_DoktorskaSerializer(
     jednostka = serializers.HyperlinkedRelatedField(
         view_name="api_v1:jednostka-detail", read_only=True
     )
+
+    slowa_kluczowe = TagListSerializerField()
 
     class Meta:
         model = Praca_Doktorska

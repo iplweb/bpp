@@ -4,6 +4,7 @@ from django.contrib.postgres.search import SearchQuery
 from django.utils.itercompat import is_iterable
 from mptt.forms import TreeNodeChoiceFieldMixin
 from mptt.settings import DEFAULT_LEVEL_INDICATOR
+from taggit.models import Tag
 
 from bpp.models.konferencja import Konferencja
 from bpp.models.openaccess import (
@@ -54,6 +55,7 @@ from bpp.models import (
     Dyscyplina_Naukowa,
     Jednostka,
     Jezyk,
+    SlowaKluczoweView,
     Typ_Odpowiedzialnosci,
     Uczelnia,
     Wydawnictwo_Zwarte,
@@ -136,9 +138,30 @@ class UwagiQueryObject(StringQueryObject):
     field_name = "uwagi"
 
 
-class SlowaKluczoweQueryObject(StringQueryObject):
+class SlowaKluczoweQueryObject(AutocompleteQueryObject):
+    type = AUTOCOMPLETE
+    ops = [EQUAL_NONE, DIFFERENT_NONE]
+    model = Tag
+    search_fields = ["name"]
+    url = "bpp:public-taggit-tag-autocomplete"
     label = "Słowa kluczowe"
     field_name = "slowa_kluczowe"
+
+    def real_query(self, value, operation):
+        if operation in EQUALITY_OPS_ALL:
+            ret = Q(
+                pk__in=SlowaKluczoweView.objects.filter(slowo_kluczowe=value).values(
+                    "rekord_id"
+                )
+            )
+
+        else:
+            raise UnknownOperation(operation)
+
+        if operation in DIFFERENT_ALL:
+            return ~ret
+
+        return ret
 
 
 class DataUtworzeniaQueryObject(DateQueryObject):

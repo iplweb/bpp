@@ -6,17 +6,18 @@
 # - Patent
 # - Praca_Doktorska
 # - Praca_Habilitacyjna
-
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields.array import ArrayField
 from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ObjectDoesNotExist
-from django.db import models, transaction
+from django.db import connections, models, router, transaction
 from django.db.models import CASCADE, ForeignKey, Func
 from django.db.models.deletion import DO_NOTHING
 from django.db.models.signals import post_delete, post_save, pre_delete, pre_save
 from django.utils.functional import cached_property
+from taggit.managers import TaggableManager, _TaggableManager
+from taggit.models import Tag
 
 from bpp.models import (
     Autor,
@@ -284,6 +285,32 @@ class AutorzyView(AutorzyBase):
         db_table = "bpp_autorzy"
 
 
+class SlowaKluczoweView(models.Model):
+    id = ArrayField(base_field=models.IntegerField(), size=3, primary_key=True)
+
+    rekord = models.ForeignKey(
+        "bpp.Rekord", related_name="slowa_kluczowe_set", on_delete=DO_NOTHING
+    )
+    tag = models.ForeignKey(Tag, on_delete=DO_NOTHING)
+
+    @classmethod
+    def tag_relname(cls):
+        field = cls._meta.get_field("tag")
+        return field.remote_field.related_name
+
+    @classmethod
+    def tags_for(cls, model, instance=None, **kwargs):
+        if model != Rekord:
+            raise NotImplementedError
+        if instance is not None:
+            return cls.objects.filter(rekord_id=(instance.pk,))
+        return cls.objects.all()
+
+    class Meta:
+        managed = False
+        db_table = "bpp_slowa_kluczowe_view"
+
+
 class ZewnetrzneBazyDanychView(models.Model):
     rekord = models.ForeignKey(
         "bpp.Rekord", related_name="zewnetrzne_bazy", on_delete=DO_NOTHING
@@ -383,6 +410,51 @@ class RekordManager(FulltextSearchMixin, models.Manager):
     #
 
 
+class _MyTaggableManager(_TaggableManager):
+    def get_prefetch_queryset(self, instances, queryset=None):
+        if queryset is not None:
+            raise ValueError("Custom queryset can't be used for this lookup.")
+
+        instance = instances[0]
+        db = self._db or router.db_for_read(type(instance), instance=instance)
+
+        fieldname = "rekord_id"
+        fk = self.through._meta.get_field(fieldname)
+        query = {
+            "%s__%s__in"
+            % (self.through.tag_relname(), fk.name): {
+                obj._get_pk_val() for obj in instances
+            }
+        }
+        join_table = self.through._meta.db_table
+        source_col = fk.column
+        connection = connections[db]
+        qn = connection.ops.quote_name
+        qs = (
+            self.get_queryset(query)
+            .using(db)
+            .extra(
+                select={
+                    "_prefetch_related_val": "{}.{}".format(
+                        qn(join_table), qn(source_col)
+                    )
+                }
+            )
+        )
+        from operator import attrgetter
+
+        rel_obj_attr = attrgetter("_prefetch_related_val")
+
+        return (
+            qs,
+            rel_obj_attr,
+            lambda obj: obj._get_pk_val(),
+            False,
+            self.prefetch_cache_name,
+            False,
+        )
+
+
 class RekordBase(
     ModelPunktowanyBaza,
     ModelZOpisemBibliograficznym,
@@ -410,6 +482,12 @@ class RekordBase(
     zrodlo = models.ForeignKey(Zrodlo, null=True, on_delete=DO_NOTHING)
     wydawnictwo_nadrzedne = models.ForeignKey(
         Wydawnictwo_Zwarte, null=True, on_delete=DO_NOTHING
+    )
+    slowa_kluczowe = TaggableManager(
+        "Słowa kluczowe",
+        through=SlowaKluczoweView,
+        blank=True,
+        manager=_MyTaggableManager,
     )
 
     wydawnictwo = models.TextField()
@@ -713,7 +791,6 @@ class Cache_Punktacja_Autora_Sum_Gruop(models.Model):
 #
 
 
-@transaction.atomic
 def rebuild(klass, offset=None, limit=None, extra_flds=None, extra_tables=None):
     if extra_flds is None:
         extra_flds = ()

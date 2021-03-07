@@ -36,7 +36,7 @@ class Wydawnictwo_CiagleViewSet(
         Wydawnictwo_Ciagle.objects.exclude(nie_eksportuj_przez_api=True)
         .order_by("pk")
         .select_related("status_korekty")
-        .prefetch_related("autorzy_set", "zewnetrzna_baza_danych")
+        .prefetch_related("autorzy_set", "zewnetrzna_baza_danych", "slowa_kluczowe")
     )
 
     serializer_class = Wydawnictwo_CiagleSerializer

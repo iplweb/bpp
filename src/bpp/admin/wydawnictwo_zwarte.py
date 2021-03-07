@@ -6,6 +6,7 @@ from dal import autocomplete
 from django import forms
 from django.contrib import admin, messages
 from mptt.forms import TreeNodeChoiceField
+from taggit.forms import TextareaTagWidget
 
 from bpp.admin import helpers
 from bpp.admin.filters import (
@@ -54,7 +55,7 @@ class Wydawnictwo_ZwarteAdmin_Baza(CommitedModelAdmin):
         "szczegoly",
         "uwagi",
         "informacje",
-        "slowa_kluczowe",
+        "slowa_kluczowe__name",
         "rok",
         "isbn",
         "id",
@@ -158,6 +159,7 @@ class Wydawnictwo_ZwarteForm(helpers.Wycinaj_W_z_InformacjiMixin, forms.ModelFor
         widgets = {
             "strony": forms.TextInput(attrs=dict(style="width: 150px")),
             "tom": forms.TextInput(attrs=dict(style="width: 150px")),
+            "slowa_kluczowe": TextareaTagWidget(attrs={"rows": 2}),
         }
 
 

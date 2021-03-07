@@ -55,13 +55,13 @@ def test_listRecords_status_korekty(
 
 def test_listRecords_no_queries_zwarte(ksiazka, client, django_assert_max_num_queries):
     listRecords = reverse("bpp:oai") + "?verb=ListRecords&metadataPrefix=oai_dc"
-    with django_assert_max_num_queries(5):
+    with django_assert_max_num_queries(6):
         res = client.get(listRecords)
     assert "Tytul Wydawnictwo" in toXML(res)[2][0][1][0][1].text
 
 
 def test_listRecords_no_queries_ciagle(artykul, client, django_assert_max_num_queries):
     listRecords = reverse("bpp:oai") + "?verb=ListRecords&metadataPrefix=oai_dc"
-    with django_assert_max_num_queries(5):
+    with django_assert_max_num_queries(6):
         res = client.get(listRecords)
     assert "Tytul Wydawnictwo" in toXML(res)[2][0][1][0][1].text

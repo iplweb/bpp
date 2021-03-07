@@ -12,29 +12,17 @@
 
 {% block content %}
     <h1>Raport slotów - uczelnia za {{ object.od_roku }} - {{ object.do_roku }}</h1>
-    Identyfikator: {{ object.pk }}<br/>
-    Utworzony przez: {{ object.owner }}<br/>
-    Utworzony: {{ object.created_on }}<br/>
-    <hr/>
-    Ostatnio zaktualizowany: {{ object.last_updated_on }}<br/>
-    Początek przetwarzania: {{ object.started_on }}<br/>
-    Zakończenie przetwarzania: {{ object.finished_on }}<br/>
-    Zakończono sukcesem?: {{ object.finished_successfully }}
-
-
-    <div class="alert progress" >
-      <div class="progress-meter" id="notifications-progress" style="width: 0%"></div>
-    </div>
-
-{#        <pre>#}
-{#        {{ object.traceback }}#}
-{#        </pre>#}
-
-    <hr/>
-    Zbierany slot: {{ object.slot }}<br/>
-    Minimalny PK: {{ object.minimalny_pk }}<br/>
-    Dziel na jednostki i wydziały: {{ object.dziel_na_jednostki_i_wydzialy }}<br/>
-    Pokazuj autorów "zerowych": {{ object.pokazuj_zerowych }}<br/>
+    {% include "long_running/operation_details.html" %}
+    <dl>
+        <dt>Zbierany slot:</dt>
+        <dd>{{ object.slot }}</dd>
+        <dt>Minimalny PK:</dt>
+        <dd>{{ object.minimalny_pk }}</dd>
+        <dt>Dziel na jednostki i wydziały:</dt>
+        <dd>{{ object.dziel_na_jednostki_i_wydzialy }}</dd>
+        <dt>Pokazuj autorów "zerowych":</dt>
+        <dd> {{ object.pokazuj_zerowych }}</dd>
+    </dl>
     {% if object.finished_successfully %}
         <script>
             location.href = "./details";

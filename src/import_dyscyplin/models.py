@@ -2,20 +2,21 @@ from datetime import date
 
 from django.contrib.postgres.fields import JSONField
 from django.core.serializers.json import DjangoJSONEncoder
-from django.db import models, transaction, IntegrityError
-from django.db.models import Q, Count, CASCADE
+from django.db import IntegrityError, models, transaction
+from django.db.models import CASCADE, Count, Q
 from django.urls import reverse
-from django_fsm import FSMField, transition, GET_STATE
+from django_fsm import GET_STATE, FSMField, transition
 from model_utils.models import TimeStampedModel
 
 from bpp.fields import YearField
-from bpp.models import Autor, Jednostka, Wydzial, Dyscyplina_Naukowa, Autor_Dyscyplina
+from bpp.models import Autor, Autor_Dyscyplina, Dyscyplina_Naukowa, Jednostka, Wydzial
 from django_bpp.settings.base import AUTH_USER_MODEL
-from import_dyscyplin.exceptions import (
-    ImproperFileException,
+from import_common.exceptions import (
     BadNoOfSheetsException,
     HeaderNotFoundException,
+    ImproperFileException,
 )
+from import_common.util import znajdz_naglowek
 
 
 def obecny_rok():
@@ -32,7 +33,6 @@ class Kolumna(models.Model):
 
         NAZWISKO = "nazwisko"
         IMIE = "imię"
-        PESEL = "pesel"
         ORCID = "orcid"
         PBN_ID = "pbn_id"
         NAZWA_JEDNOSTKI = "nazwa jednostki"
@@ -50,7 +50,6 @@ class Kolumna(models.Model):
         RODZAJ.TYTUL,
         RODZAJ.NAZWISKO,
         RODZAJ.IMIE,
-        RODZAJ.PESEL,
         RODZAJ.ORCID,
         RODZAJ.PBN_ID,
         RODZAJ.NAZWA_JEDNOSTKI,
@@ -77,6 +76,7 @@ class Kolumna(models.Model):
 def guess_rodzaj(s):
     s = s.lower().replace(" ", "")
     if s in [
+        "tytuł_stopień",
         "tytuł",
         "tytułnaukowy",
         "tytuł/stopień",
@@ -93,11 +93,9 @@ def guess_rodzaj(s):
         return Kolumna.RODZAJ.NAZWISKO
     if s in ["imię", "imie", "imiona"]:
         return Kolumna.RODZAJ.IMIE
-    if s in ["pesel", "nrpesel", "nr.pesel", "identyfikatorpesel"]:
-        return Kolumna.RODZAJ.PESEL
     if s in ["orcid", "identyfikatororcid", "ident.orcid"]:
         return Kolumna.RODZAJ.ORCID
-    if s in ["jednostka", "nazwajednostki"]:
+    if s in ["jednostka", "nazwajednostki", "nazwa_jednostki"]:
         return Kolumna.RODZAJ.NAZWA_JEDNOSTKI
     if s in ["wydzial", "wydz.", "wydział"]:
         return Kolumna.RODZAJ.WYDZIAL
@@ -105,6 +103,7 @@ def guess_rodzaj(s):
     if s in ["dyscyplina", "dyscyplina1", "dyscyplinagłówna", "dyscyplinaglowna"]:
         return Kolumna.RODZAJ.DYSCYPLINA
     if s in [
+        "kod_dyscypliny",
         "koddyscypliny",
         "koddyscyplinyglownej",
         "koddyscyplinygłównej",
@@ -113,6 +112,7 @@ def guess_rodzaj(s):
     ]:
         return Kolumna.RODZAJ.KOD_DYSCYPLINY
     if s in [
+        "procent_dyscypliny",
         "procentdyscypliny",
         "procentdyscypliny1",
         "procentdyscyplinygłównej",
@@ -129,6 +129,7 @@ def guess_rodzaj(s):
     ]:
         return Kolumna.RODZAJ.SUBDYSCYPLINA
     if s in [
+        "kod_subdyscypliny",
         "kodsubdyscypliny",
         "koddyscyplinypoboczej",
         "koddyscyplinydrugiej",
@@ -137,6 +138,7 @@ def guess_rodzaj(s):
     ]:
         return Kolumna.RODZAJ.KOD_SUBDYSCYPLINY
     if s in [
+        "procent_subdyscypliny",
         "procentsubdyscypliny",
         "procentdyscypliny2",
         "procentdyscyplinypobocznej",
@@ -145,6 +147,7 @@ def guess_rodzaj(s):
         return Kolumna.RODZAJ.PROCENT_SUBDYSCYPLINY
 
     if s in [
+        "pbn_id",
         "pbn-id",
         "pbnid",
         "pbn_id",
@@ -208,7 +211,6 @@ class Import_Dyscyplin(TimeStampedModel):
         on_error=STAN.BLEDNY,
     )
     def stworz_kolumny(self):
-        from .core import znajdz_naglowek
 
         try:
             kolumny, wiersz = znajdz_naglowek(self.plik.path)
@@ -541,8 +543,8 @@ class Import_Dyscyplin_Row(models.Model):
         ret = {
             "nazwisko": self.nazwisko,
             "imiona": self.imiona,
-            "jednostka": self.original["nazwa jednostki"],
-            "wydzial": self.original["wydział"],
+            "jednostka": self.original.get("nazwa jednostki", ""),
+            "wydzial": self.original.get("wydzia", ""),
             "info": self.info,
             "dyscyplina": f"{self.dyscyplina} ({self.kod_dyscypliny})",
             "procent_dyscypliny": self.procent_dyscypliny or "",

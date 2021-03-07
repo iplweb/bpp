@@ -1,5 +1,4 @@
 # -*- encoding: utf-8 -*-
-
 from dal import autocomplete
 from dal.forms import FutureModelForm
 from dal_queryset_sequence.fields import QuerySetSequenceModelField
@@ -8,6 +7,7 @@ from django import forms
 from django.contrib import admin
 from django.forms.widgets import HiddenInput
 from queryset_sequence import QuerySetSequence
+from taggit.forms import TextareaTagWidget
 
 from bpp.models import (  # Publikacja_Habilitacyjna
     Autor,
@@ -102,6 +102,9 @@ class Praca_HabilitacyjnaForm(forms.ModelForm):
 
     class Meta:
         fields = "__all__"
+        widgets = {
+            "slowa_kluczowe": TextareaTagWidget(attrs={"rows": 2}),
+        }
 
 
 class Praca_HabilitacyjnaAdmin(Praca_Doktorska_Habilitacyjna_Admin_Base):

@@ -21,6 +21,7 @@ class Praca_DoktorskaViewSet(UkryjStatusyKorektyMixin, viewsets.ReadOnlyModelVie
         Praca_Doktorska.objects.exclude(nie_eksportuj_przez_api=True)
         .order_by("pk")
         .select_related("status_korekty")
+        .prefetch_related("slowa_kluczowe")
     )
     serializer_class = Praca_DoktorskaSerializer
     filterset_class = Praca_DoktorskaFilterSet

@@ -9,13 +9,13 @@ from autoslug import AutoSlugField
 from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
-from django.db import IntegrityError, models
-from django.db.models import CASCADE, Sum
+from django.db import IntegrityError, models, transaction
+from django.db.models import CASCADE, SET_NULL, Sum
 from django.urls.base import reverse
 from lxml.etree import Element, SubElement
 
 from bpp.core import zbieraj_sloty
-from bpp.models import ModelZAdnotacjami, NazwaISkrot
+from bpp.models import ModelZAdnotacjami, ModelZNazwa, NazwaISkrot
 from bpp.models.abstract import ModelZPBN_ID
 from bpp.util import FulltextSearchMixin
 
@@ -120,15 +120,6 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
         db_index=True,
     )
 
-    pesel_md5 = models.CharField(
-        verbose_name="PESEL MD5",
-        max_length=32,
-        db_index=True,
-        blank=True,
-        null=True,
-        help_text="Hash MD5 numeru PESEL",
-    )
-
     orcid = models.CharField(
         "Identyfikator ORCID",
         max_length=19,
@@ -155,6 +146,17 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
         db_index=True,
         unique=True,
     )
+
+    system_kadrowy_id = models.PositiveIntegerField(
+        "Identyfikator w systemie kadrowym",
+        help_text="""Identyfikator cyfrowy, używany do matchowania autora z danymi z systemu kadrowego Uczelni""",
+        null=True,
+        blank=True,
+        db_index=True,
+        unique=True,
+    )
+
+    pbn_uuid = models.UUIDField(blank=True, null=True, db_index=True, unique=True)
 
     search = VectorField()
 
@@ -392,6 +394,24 @@ class Funkcja_Autora(NazwaISkrot):
         app_label = "bpp"
 
 
+class Grupa_Pracownicza(ModelZNazwa):
+    class Meta:
+        verbose_name = "grupa pracownicza"
+        verbose_name_plural = "grupy pracownicze"
+        ordering = [
+            "nazwa",
+        ]
+        app_label = "bpp"
+
+
+class Wymiar_Etatu(ModelZNazwa):
+    class Meta:
+        verbose_name = "wymiar etatu"
+        verbose_name_plural = "wymiary etatów"
+        ordering = ["nazwa"]
+        app_label = "bpp"
+
+
 class Autor_Jednostka_Manager(models.Manager):
     def defragmentuj(self, autor, jednostka):
         poprzedni_rekord = None
@@ -464,6 +484,13 @@ class Autor_Jednostka(models.Model):
     )
     funkcja = models.ForeignKey(Funkcja_Autora, CASCADE, null=True, blank=True)
 
+    podstawowe_miejsce_pracy = models.NullBooleanField()
+
+    grupa_pracownicza = models.ForeignKey(
+        Grupa_Pracownicza, SET_NULL, null=True, blank=True
+    )
+    wymiar_etatu = models.ForeignKey(Wymiar_Etatu, SET_NULL, null=True, blank=True)
+
     objects = Autor_Jednostka_Manager()
 
     def clean(self, exclude=None):
@@ -485,6 +512,15 @@ class Autor_Jednostka(models.Model):
         if self.funkcja:
             buf = "%s ↔ %s, %s" % (self.autor, self.funkcja.nazwa, self.jednostka.skrot)
         return buf
+
+    @transaction.atomic
+    def ustaw_podstawowe_miejsce_pracy(self):
+        """Ustawia to miejsce pracy jako podstawowe i wszystkie pozostałe jako nie-podstawowe"""
+        Autor_Jednostka.objects.filter(
+            autor=self.autor, podstawowe_miejsce_pracy=True
+        ).exclude(pk=self.pk).update(podstawowe_miejsce_pracy=False)
+        self.podstawowe_miejsce_pracy = True
+        self.save()
 
     class Meta:
         verbose_name = "powiązanie autor-jednostka"

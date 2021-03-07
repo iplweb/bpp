@@ -1,0 +1,47 @@
+{% load humanize %}
+<dl>
+    <dt>Utworzono:</dt>
+    <dd>{{ object.owner }}, dnia {{ object.created_on }}, czyli {{ object.created_on|naturaltime }}<br/>
+    </dd>
+    <dt>
+        Ostatnia aktualizacja:
+    </dt>
+    <dd>{{ object.last_updated_on }}, czyli {{ object.last_updated_on|naturaltime }}</dd>
+    {% if object.started_on %}
+        <dt>Początek przetwarzania:</dt>
+        <dd>{{ object.started_on }}</dd>
+    {% endif %}
+    {% if object.finished_on %}
+        <dt>Zakończenie przetwarzania:</dt>
+        <dd>{{ object.finished_on }}, czyli {{ object.finished_on|naturaltime }}</dd>
+        <dt>Zakończono sukcesem?:</dt>
+        <dd>{{ object.finished_successfully|yesno:"tak,nie" }}
+            {% if object.traceback %}
+                <br/>
+                <div class="callout warning">
+                    Podczas przetwarzania danych wystąpił błąd po stronie serwera. Raport o błędzie
+                    prawdopodobnie został
+                    wysłany do administratora systemu. Celem analizy błędu skontaktuj się z administratorem,
+                    podając identyfikator operacji <small class="code-inline">{{ object.pk }}</small> oraz kod
+                    błędu <small class="code-inline">{{ object.readable_exception }}</small>
+                </div>
+            {% endif %}
+
+        <a title="Uruchamia operację ponownie" href="./regen">
+            <i class="fi-refresh"></i> Uruchom ponownie</a>
+
+        </dd>
+    {% else %}
+        <dt>Pasek postępu:</dt>
+        <dd>
+            <div class="alert progress">
+                <div class="progress-meter" id="notifications-progress" style="width: 0%"></div>
+            </div>
+        </dd>
+    {% endif %}
+    <dt>Identyfikator operacji:</dt>
+    <dd><small class="code-inline">
+        {{ object.pk }}
+    </small></dd>
+</dl>
+<hr/>

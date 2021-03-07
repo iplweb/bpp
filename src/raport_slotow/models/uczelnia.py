@@ -22,10 +22,10 @@ from bpp.core import zbieraj_sloty
 from bpp.fields import YearField
 from bpp.models import Autor, Cache_Punktacja_Autora_Query, Uczelnia
 from bpp.util import year_last_month
-from notifications.core import send_redirect
+from long_running.asgi_notification_mixin import ASGINotificationMixin
+from long_running.models import Report
+from notifications.models import Notification
 from raport_slotow.core import autorzy_zerowi
-from raport_slotow.models.asgi_notification_mixin import ASGINotificationMixin
-from raport_slotow.models.mixins import Report
 
 
 class RaportSlotowUczelnia(ASGINotificationMixin, Report):
@@ -130,9 +130,22 @@ class RaportSlotowUczelnia(ASGINotificationMixin, Report):
             # --- Koniec --- komentarza dot. buga w Django
 
             # Jeżeli w raporcie jest włączony podział na jednostki i wydziały, to dla każdego autora zerowego
-            # dorzuć rekordy jego jednostek; jeżeli nie - to wrzuć po prostu autorów:
+            # dorzuć rekordy jego jednostek; jeżeli nie - to wrzuć po prostu autorów.
+
+            # Kolejny problem: jezeli autor już istnieje w raporcie jako autor który ma prace,
+            # to nie powinien być wyświetlany jako zerowy (w kontekscie dyscypliny, w której
+            # ma prace).
 
             seen = set()
+
+            # Dodaj do listy widzianych autorów, którzy już zostali wyemitowani w raporcie dla danych
+            # dyscyplin.
+
+            seen = set(
+                self.raportslotowuczelniawiersz_set.values_list(
+                    "autor_id", "dyscyplina_id"
+                ).distinct()
+            )
 
             for autor_id, rok, dyscyplina_id in zerowi.values_list():
                 if (autor_id, dyscyplina_id) in seen:
@@ -160,8 +173,14 @@ class RaportSlotowUczelnia(ASGINotificationMixin, Report):
                 else:
                     self.raportslotowuczelniawiersz_set.create(**kw)
 
-    def on_finished_successfully(self):
-        send_redirect(str(self.pk), "./details")
+    def on_finished(self):
+        # Zamiast wysyłać redirect, który może nie zostać odebrany przez klienta
+        # (np. przetwarzanie skończyło się nim strona WWW została wyświetlona)
+        # utwórzmy prawdziwy obiekt notyfikacji, którego odbiór wymaga potwierdzenia
+        Notification.object.create(
+            channel_name=str(self.pk), values=dict(url="./details")
+        ).send()
+        # send_redirect(str(self.pk), "./details")
 
 
 class RaportSlotowUczelniaWiersz(models.Model):

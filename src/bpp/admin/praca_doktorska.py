@@ -3,6 +3,7 @@
 from dal import autocomplete
 from django import forms
 from django.contrib import admin
+from taggit.forms import TextareaTagWidget
 
 from ..models import Autor, Jednostka, Praca_Doktorska
 from .actions import ustaw_po_korekcie, ustaw_przed_korekta, ustaw_w_trakcie_korekty
@@ -77,7 +78,7 @@ class Praca_Doktorska_Habilitacyjna_Admin_Base(
         "szczegoly",
         "uwagi",
         "informacje",
-        "slowa_kluczowe",
+        "slowa_kluczowe__name",
         "rok",
         "www",
         "wydawca_opis",
@@ -113,6 +114,9 @@ class Praca_DoktorskaForm(Wycinaj_W_z_InformacjiMixin, forms.ModelForm):
     class Meta:
         model = Praca_Doktorska
         fields = "__all__"
+        widgets = {
+            "slowa_kluczowe": TextareaTagWidget(attrs={"rows": 2}),
+        }
 
 
 class Praca_DoktorskaAdmin(Praca_Doktorska_Habilitacyjna_Admin_Base):

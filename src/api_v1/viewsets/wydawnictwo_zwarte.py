@@ -31,7 +31,7 @@ class Wydawnictwo_ZwarteViewSet(
         Wydawnictwo_Zwarte.objects.exclude(nie_eksportuj_przez_api=True)
         .order_by("pk")
         .select_related("status_korekty")
-        .prefetch_related("autorzy_set", "nagrody")
+        .prefetch_related("autorzy_set", "nagrody", "slowa_kluczowe")
     )
     serializer_class = Wydawnictwo_ZwarteSerializer
     filterset_class = Wydawnictwo_ZwarteFilterSet

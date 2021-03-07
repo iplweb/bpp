@@ -4,7 +4,7 @@ import pytest
 from django.core.files.base import ContentFile
 from django.db import transaction
 
-from bpp.models import Dyscyplina_Naukowa, Autor_Dyscyplina
+from bpp.models import Autor_Dyscyplina, Dyscyplina_Naukowa
 from import_dyscyplin.models import (
     Import_Dyscyplin,
     Import_Dyscyplin_Row,
@@ -24,7 +24,9 @@ def test_Import_Dyscyplin_post_delete_handler(
 ):
     path = None
     with transaction.atomic():
-        i = Import_Dyscyplin.objects.create(owner=normal_django_user,)
+        i = Import_Dyscyplin.objects.create(
+            owner=normal_django_user,
+        )
 
         i.plik.save("test1.xls", ContentFile(open(test1_xlsx, "rb").read()))
         path = i.plik.path
@@ -72,7 +74,7 @@ def test_Import_Dyscyplin_integruj_dyscypliny_pusta_baza(import_dyscyplin, id_ro
     import_dyscyplin.integruj_dyscypliny()
 
     assert Dyscyplina_Naukowa.objects.all().count() == 2
-    dn = Dyscyplina_Naukowa.objects.get(nazwa="Testowa")
+    Dyscyplina_Naukowa.objects.get(nazwa="Testowa")
 
     for elem in Dyscyplina_Naukowa.objects.all():
         assert elem.widoczna
@@ -123,8 +125,8 @@ def test_Import_Dyscyplin_integruj_dyscypliny_ukryj_nieuzywane_uzywana_nadrzedna
     import_dyscyplin._integruj_wiersze()
 
     assert Autor_Dyscyplina.objects.count() == 1
-    assert Dyscyplina_Naukowa.objects.get(nazwa="Testowa").widoczna == True
-    assert Dyscyplina_Naukowa.objects.get(nazwa="Jakaś").widoczna == False
+    assert Dyscyplina_Naukowa.objects.get(nazwa="Testowa").widoczna
+    assert not Dyscyplina_Naukowa.objects.get(nazwa="Jakaś").widoczna
 
 
 def test_Import_Dyscyplin_integruj_dyscypliny_ukryj_nieuzywane_uzywana_podrzedna(
@@ -136,8 +138,8 @@ def test_Import_Dyscyplin_integruj_dyscypliny_ukryj_nieuzywane_uzywana_podrzedna
     import_dyscyplin._integruj_wiersze()
     assert Autor_Dyscyplina.objects.count() == 1
 
-    assert Dyscyplina_Naukowa.objects.get(nazwa="Testowa").widoczna == True
-    assert Dyscyplina_Naukowa.objects.get(nazwa="Jakaś").widoczna == True
+    assert Dyscyplina_Naukowa.objects.get(nazwa="Testowa").widoczna
+    assert Dyscyplina_Naukowa.objects.get(nazwa="Jakaś").widoczna
 
 
 def test_Import_Dyscyplin_sprawdz_czy_poprawne(
@@ -182,3 +184,8 @@ def test_Import_Dyscyplin_integruj_dyscypliny_zmiana_dyscypliny(
 
     ad.refresh_from_db()
     assert ad.dyscyplina_naukowa.nazwa == "Testowa"
+
+
+def test_Import_Dyscyplin_Row_serialize_dict():
+    x = Import_Dyscyplin_Row(nazwisko="foo", imiona="bar", original={})
+    assert x.serialize_dict()["nazwisko"] == "foo"

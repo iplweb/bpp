@@ -7,25 +7,23 @@ import re
 from decimal import Decimal
 
 from django.conf import settings
+from django.contrib.contenttypes.models import ContentType
+from django.contrib.postgres.fields import HStoreField
+from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ValidationError
 from django.core.validators import URLValidator
 from django.db import models
 from django.db.models import CASCADE, SET_NULL, Q, Sum
 from django.urls.base import reverse
-from lxml.etree import SubElement
-
-from django.contrib.contenttypes.models import ContentType
-from django.contrib.postgres.fields import HStoreField
-from django.contrib.postgres.search import SearchVectorField as VectorField
-
 from django.utils import timezone
 from django.utils.functional import cached_property
 from django.utils.timezone import localtime
+from lxml.etree import SubElement
+from taggit.managers import TaggableManager
 
 from bpp.fields import DOIField, YearField
 from bpp.models.const import TO_AUTOR
 from bpp.models.dyscyplina_naukowa import Autor_Dyscyplina, Dyscyplina_Naukowa
-
 from bpp.models.util import ModelZOpisemBibliograficznym, dodaj_autora
 from bpp.util import safe_html
 
@@ -73,8 +71,7 @@ class ModelZAdnotacjami(models.Model):
 
 
 class ModelZPBN_ID(models.Model):
-    """Zawiera informacje o PBN_ID
-    """
+    """Zawiera informacje o PBN_ID"""
 
     pbn_id = models.IntegerField(
         verbose_name="Identyfikator PBN",
@@ -352,7 +349,7 @@ class ModelPunktowany(ModelPunktowanyBaza):
             if f is None:
                 continue
 
-            if type(f) == Decimal:
+            if isinstance(f, Decimal):
                 if not f.is_zero():
                     return True
             else:
@@ -365,7 +362,10 @@ class ModelPunktowany(ModelPunktowanyBaza):
 POLA_PUNKTACJI = [
     x.name
     for x in ModelPunktowany._meta.fields
-    if x.name not in ["weryfikacja_punktacji",]
+    if x.name
+    not in [
+        "weryfikacja_punktacji",
+    ]
 ]
 
 
@@ -548,7 +548,8 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
             ).exists()
         ):
             Autor_Jednostka.objects.create(
-                autor_id=self.autor_id, jednostka_id=self.jednostka_id,
+                autor_id=self.autor_id,
+                jednostka_id=self.jednostka_id,
             )
             # olewamy refresh_from_db i autor.aktualna_jednostka
 
@@ -566,7 +567,11 @@ class ModelZeSzczegolami(models.Model):
 
     uwagi = models.TextField(null=True, blank=True, db_index=True)
 
-    slowa_kluczowe = models.TextField("Słowa kluczowe", null=True, blank=True)
+    slowa_kluczowe = TaggableManager(
+        "Słowa kluczowe",
+        help_text="Lista słów kluczowych, oddzielonych przecinkiem.",
+        blank=True,
+    )
 
     utworzono = models.DateTimeField(
         "Utworzono", auto_now_add=True, blank=True, null=True
@@ -726,7 +731,9 @@ parsed_informacje_regex = re.compile(
     r"(\[online\])?\s*"
     r"(?P<rok>\d\d+)"
     r"(\s*(vol|t|r|bd)\.*\s*\[?(?P<tom>[A-Za-z]?\d+)\]?)?"
-    r"(\s*(iss|nr|z|h|no)?\.*\s*(?P<numer>((\d+\w*([\/-]\d*\w*)?)\s*((e-)?(suppl|supl)?\.?(\s*\d+|\w+)?)|((e-)?(suppl|supl)?\.?\s*\d+(\/\d+)?)|(\d+\w*([\/-]\d*\w*)?))|\[?(suppl|supl)\.\]?))?",
+    # To poniżej to była kiedyś jedna długa linia
+    r"(\s*(iss|nr|z|h|no)?\.*\s*(?P<numer>((\d+\w*([\/-]\d*\w*)?)\s*((e-)?(suppl|supl)?\.?(\s*\d+|\w+)?)|"
+    r"((e-)?(suppl|supl)?\.?\s*\d+(\/\d+)?)|(\d+\w*([\/-]\d*\w*)?))|\[?(suppl|supl)\.\]?))?",
     flags=re.IGNORECASE,
 )
 
@@ -868,7 +875,7 @@ class PBNSerializerHelperMixin:
         if self.slowa_kluczowe:
             lang = self.jezyk.get_skrot_dla_pbn()
             keywords = SubElement(toplevel, "keywords", lang=lang)
-            for elem in self.slowa_kluczowe.split(","):
+            for elem in self.slowa_kluczowe.all():  # split(","):
                 k = SubElement(keywords, "k")
                 k.text = elem.strip()
 
@@ -1144,7 +1151,7 @@ class DodajAutoraMixin:
     """Funkcja pomocnicza z dodawaniem autora do rekordu, raczej na 99%
     używana tylko i wyłącznie przez testy. Musisz określić self.autor_rekordu_class
     czyli np dla Wydawnictwo_Zwarte ta zmienna powinna przyjąć wartość
-    Wydawnictwo_Zwarte_Autor. """
+    Wydawnictwo_Zwarte_Autor."""
 
     autor_rekordu_klass = None
 
