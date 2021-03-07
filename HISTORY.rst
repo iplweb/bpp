@@ -23,7 +23,9 @@ Historia zmian
 * [ASGI] raporty opracowywane w tle powinny przestać gubić komunikaty powiadomień,
 * popraw błędy z wyświetlaniem stron z podwójnym znakiem "-" w polu "slug" (#980),
 * popraw błędy przy imporcie dyscyplin w sytuacji gdy nie określono pola tytuł naukowy (#885),
-* popraw błędy przy wyszukiwaniu jednostek bez wydziału (#964)
+* popraw błędy przy wyszukiwaniu jednostek bez wydziału (#964),
+* możliwość indywidualnego określenia wliczania do rankingu dla każdego charakteru formalnego
+  oraz typu KBN (#973)
 
 202102.55
 ---------
