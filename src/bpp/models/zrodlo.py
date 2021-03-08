@@ -77,7 +77,7 @@ class Punktacja_Zrodla(ModelPunktowanyBaza, models.Model):
     rok = YearField()
 
     def __str__(self):
-        return f"Punktacja źródła {self.zrodlo} za rok {self.rok}"
+        return f'Punktacja źródła "{self.zrodlo}" za rok {self.rok}'
 
     class Meta:
         verbose_name = "punktacja źródła"

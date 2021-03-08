@@ -1,3 +1,5 @@
+from math import ceil
+
 from django.db import models
 
 from import_common.exceptions import XLSParseError
@@ -29,7 +31,7 @@ class ImportOperation(ASGINotificationMixin, Operation):
         )
 
         total = x.count()
-        five_percent = int(round(total / 50.0))
+        five_percent = int(ceil(total / 50.0))
         form_class = self.get_validation_form_class()
 
         for no, elem in enumerate(x.data()):

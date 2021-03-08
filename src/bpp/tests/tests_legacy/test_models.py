@@ -1,17 +1,34 @@
 # -*- encoding: utf-8 -*-
-from datetime import datetime, date
+from datetime import date, datetime
 
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 from model_mommy import mommy
 
-from bpp.models import NazwaISkrot, Tytul, Autor, Punktacja_Zrodla, Zrodlo, Redakcja_Zrodla, Plec, \
-    Typ_Odpowiedzialnosci, \
-    Wydawnictwo_Ciagle_Autor, Wydawnictwo_Ciagle, Jezyk, Patent
-from bpp.models.autor import Funkcja_Autora, Autor_Jednostka
+from bpp.models import (
+    Autor,
+    Jezyk,
+    NazwaISkrot,
+    Patent,
+    Plec,
+    Punktacja_Zrodla,
+    Redakcja_Zrodla,
+    Typ_Odpowiedzialnosci,
+    Tytul,
+    Wydawnictwo_Ciagle,
+    Wydawnictwo_Ciagle_Autor,
+    Zrodlo,
+)
+from bpp.models.autor import Autor_Jednostka, Funkcja_Autora
 from bpp.models.system import Charakter_Formalny
-from bpp.tests.util import any_jednostka
-from bpp.tests.util import any_uczelnia, any_autor, any_ciagle, any_wydzial, any_zwarte
+from bpp.tests.util import (
+    any_autor,
+    any_ciagle,
+    any_jednostka,
+    any_uczelnia,
+    any_wydzial,
+    any_zwarte,
+)
 
 
 class TestNazwaISkrot(TestCase):
@@ -36,10 +53,10 @@ class TestWydzial(TestCase):
 class TestJednostka(TestCase):
     def setUp(self):
         Typ_Odpowiedzialnosci.objects.get_or_create(nazwa="autor", skrot="aut.")
-        Funkcja_Autora.objects.get_or_create(nazwa='kierownik', skrot="kier.")
+        Funkcja_Autora.objects.get_or_create(nazwa="kierownik", skrot="kier.")
 
     def test_jednostka(self):
-        w = any_wydzial(skrot="BAR")
+        any_wydzial(skrot="BAR")
         j = any_jednostka(nazwa="foo", wydzial_skrot="BAR")
         self.assertEqual(str(j), "foo (BAR)")
 
@@ -65,7 +82,7 @@ class TestJednostka(TestCase):
         self.assertEqual(j1.kierownik(), None)
 
         a1 = mommy.make(Autor)
-        j1.dodaj_autora(a1, funkcja=Funkcja_Autora.objects.get(nazwa='kierownik'))
+        j1.dodaj_autora(a1, funkcja=Funkcja_Autora.objects.get(nazwa="kierownik"))
 
         self.assertEqual(j1.kierownik(), a1)
 
@@ -75,13 +92,19 @@ class TestJednostka(TestCase):
 
         wc = any_ciagle(rok=2012)
         Wydawnictwo_Ciagle_Autor.objects.create(
-            rekord=wc, autor=a1, jednostka=j1,
-            typ_odpowiedzialnosci=mommy.make(Typ_Odpowiedzialnosci))
+            rekord=wc,
+            autor=a1,
+            jednostka=j1,
+            typ_odpowiedzialnosci=mommy.make(Typ_Odpowiedzialnosci),
+        )
 
         wc = any_ciagle(rok=2013)
         Wydawnictwo_Ciagle_Autor.objects.create(
-            rekord=wc, autor=a1, jednostka=j1,
-            typ_odpowiedzialnosci=mommy.make(Typ_Odpowiedzialnosci))
+            rekord=wc,
+            autor=a1,
+            jednostka=j1,
+            typ_odpowiedzialnosci=mommy.make(Typ_Odpowiedzialnosci),
+        )
 
         self.assertEqual(list(j1.prace_w_latach()), [2012, 2013])
 
@@ -91,11 +114,11 @@ class TestAutor(TestCase):
     #             'typ_odpowiedzialnosci.json']
 
     def test_autor(self):
-        j = mommy.make(Autor, imiona='Omg', nazwisko='Lol', tytul=None)
+        j = mommy.make(Autor, imiona="Omg", nazwisko="Lol", tytul=None)
         self.assertEqual(str(j), "Lol Omg")
 
         t = Tytul.objects.create(nazwa="daktur", skrot="dar")
-        j = mommy.make(Autor, imiona='Omg', nazwisko='Lol', tytul=t)
+        j = mommy.make(Autor, imiona="Omg", nazwisko="Lol", tytul=t)
         self.assertEqual(str(j), "Lol Omg, dar")
 
         j.poprzednie_nazwiska = "Kowalski"
@@ -106,12 +129,13 @@ class TestAutor(TestCase):
 
     def test_afiliacja_na_rok(self):
         w = any_wydzial()
-        n = any_wydzial(skrot='w2', nazwa='w2')
+        n = any_wydzial(skrot="w2", nazwa="w2")
         j = any_jednostka(wydzial=w)
         a = mommy.make(Autor)
 
-        aj = Autor_Jednostka.objects.create(autor=a, jednostka=j,
-                                            funkcja=mommy.make(Funkcja_Autora))
+        aj = Autor_Jednostka.objects.create(
+            autor=a, jednostka=j, funkcja=mommy.make(Funkcja_Autora)
+        )
 
         self.assertEqual(a.afiliacja_na_rok(2030, w), None)
         self.assertEqual(a.afiliacja_na_rok(2030, n), None)
@@ -133,9 +157,9 @@ class TestAutor(TestCase):
 
     def test_dodaj_jednostke(self):
         f = mommy.make(Funkcja_Autora)
-        a = mommy.make(Autor, imiona='Foo', nazwisko='Bar', tytul=None)
-        w = any_wydzial(nazwa='WL', skrot='WL')
-        w2 = any_wydzial(nazwa='XX', skrot='YY')
+        a = mommy.make(Autor, imiona="Foo", nazwisko="Bar", tytul=None)
+        w = any_wydzial(nazwa="WL", skrot="WL")
+        w2 = any_wydzial(nazwa="XX", skrot="YY")
         j = any_jednostka(wydzial=w)
         j2 = any_jednostka(wydzial=w2)
 
@@ -163,12 +187,12 @@ class TestAutor(TestCase):
         a.dodaj_jednostke(j, 1960, f)
         ma_byc(3)
 
-        l = Autor_Jednostka.objects.all().order_by('rozpoczal_prace')
-        self.assertEqual(l[0].rozpoczal_prace, date(1912, 1, 1))
-        self.assertEqual(l[1].rozpoczal_prace, date(1920, 1, 1))
+        lx = Autor_Jednostka.objects.all().order_by("rozpoczal_prace")
+        self.assertEqual(lx[0].rozpoczal_prace, date(1912, 1, 1))
+        self.assertEqual(lx[1].rozpoczal_prace, date(1920, 1, 1))
 
-        self.assertEqual(l[0].zakonczyl_prace, date(1914, 12, 31))
-        self.assertEqual(l[1].zakonczyl_prace, date(1921, 12, 31))
+        self.assertEqual(lx[0].zakonczyl_prace, date(1914, 12, 31))
+        self.assertEqual(lx[1].zakonczyl_prace, date(1921, 12, 31))
 
         self.assertEqual(a.afiliacja_na_rok(1912, w), True)
         self.assertEqual(a.afiliacja_na_rok(1913, w), True)
@@ -183,8 +207,9 @@ class TestAutor(TestCase):
 
         # Gdy jest wpisany tylko początek czasu pracy, traktujemy pracę
         # jako NIE zakończoną i każda data w przyszłości ma zwracać to miejsce
-        Autor_Jednostka.objects.create(autor=a, jednostka=j2,
-                                       rozpoczal_prace=date(2100, 1, 1))
+        Autor_Jednostka.objects.create(
+            autor=a, jednostka=j2, rozpoczal_prace=date(2100, 1, 1)
+        )
         self.assertEqual(a.afiliacja_na_rok(2200, w2), True)
 
         Autor_Jednostka.objects.all().delete()
@@ -194,8 +219,8 @@ class TestAutor(TestCase):
         self.assertEqual(a.afiliacja_na_rok(1100, w2), None)
 
     def test_autor_save(self):
-        a = Autor.objects.create(nazwisko='von Foo', imiona='Bar')
-        self.assertEqual(a.sort, 'foobar')
+        a = Autor.objects.create(nazwisko="von Foo", imiona="Bar")
+        self.assertEqual(a.sort, "foobar")
 
     def test_autor_prace_w_latach(self):
         ROK = 2000
@@ -203,11 +228,9 @@ class TestAutor(TestCase):
         a = mommy.make(Autor)
         j = any_jednostka()
         w = mommy.make(Wydawnictwo_Ciagle, rok=ROK)
-        wa = mommy.make(Wydawnictwo_Ciagle_Autor, autor=a, jednostka=j, rekord=w)
+        mommy.make(Wydawnictwo_Ciagle_Autor, autor=a, jednostka=j, rekord=w)
 
-        self.assertEqual(
-            a.prace_w_latach()[0],
-            ROK)
+        self.assertEqual(a.prace_w_latach()[0], ROK)
 
 
 class TestAutor_Jednostka(TestCase):
@@ -217,13 +240,13 @@ class TestAutor_Jednostka(TestCase):
 
     def test_autor_jednostka(self):
         f = Funkcja_Autora.objects.get(skrot="kier.")
-        a = mommy.make(Autor, imiona='Omg', nazwisko='Lol', tytul=None)
-        j = any_jednostka(nazwa='Lol', skrot="L.")
+        a = mommy.make(Autor, imiona="Omg", nazwisko="Lol", tytul=None)
+        j = any_jednostka(nazwa="Lol", skrot="L.")
         aj = Autor_Jednostka.objects.create(autor=a, jednostka=j, funkcja=f)
-        self.assertEqual(str(aj), 'Lol Omg ↔ kierownik, L.')
+        self.assertEqual(str(aj), "Lol Omg ↔ kierownik, L.")
 
         aj = Autor_Jednostka.objects.create(autor=a, jednostka=j, funkcja=None)
-        self.assertEqual(str(aj), 'Lol Omg ↔ L.')
+        self.assertEqual(str(aj), "Lol Omg ↔ L.")
 
         aj.rozpoczal_prace = datetime(2012, 1, 1)
         aj.zakonczyl_prace = datetime(2012, 1, 2)
@@ -238,20 +261,27 @@ class TestAutor_Jednostka(TestCase):
         a = mommy.make(Autor)
 
         j1 = any_jednostka(nazwa="X", wydzial=w)
-        j2 = any_jednostka(nazwa="Y", wydzial=w)
-        j3 = any_jednostka(nazwa="Z", wydzial=w)
+        any_jednostka(nazwa="Y", wydzial=w)
+        any_jednostka(nazwa="Z", wydzial=w)
 
         # Taka sytuacja ma miejsce przy imporcie danych - w "starym" systemie są dane
         # na temat jednostek BEZ czasu pracy, zaś nowy dodaje informacje o czasie pracy
         Autor_Jednostka.objects.create(autor=a, jednostka=j1)
-        Autor_Jednostka.objects.create(autor=a, jednostka=j1,
-                                       rozpoczal_prace=date(2012, 1, 1),
-                                       zakonczyl_prace=date(2012, 12, 31))
-        Autor_Jednostka.objects.create(autor=a, jednostka=j1,
-                                       rozpoczal_prace=date(2013, 1, 1),
-                                       zakonczyl_prace=date(2014, 12, 31))
-        Autor_Jednostka.objects.create(autor=a, jednostka=j1,
-                                       rozpoczal_prace=date(2016, 1, 1))
+        Autor_Jednostka.objects.create(
+            autor=a,
+            jednostka=j1,
+            rozpoczal_prace=date(2012, 1, 1),
+            zakonczyl_prace=date(2012, 12, 31),
+        )
+        Autor_Jednostka.objects.create(
+            autor=a,
+            jednostka=j1,
+            rozpoczal_prace=date(2013, 1, 1),
+            zakonczyl_prace=date(2014, 12, 31),
+        )
+        Autor_Jednostka.objects.create(
+            autor=a, jednostka=j1, rozpoczal_prace=date(2016, 1, 1)
+        )
 
         Autor_Jednostka.objects.defragmentuj(a, j1)
 
@@ -263,12 +293,18 @@ class TestAutor_Jednostka(TestCase):
         # autor ma pole rozpoczal_prace, ale zakoncyzl_prace jest NONE z powodu takiego, ze dalej
         # tam pracuje...
         Autor_Jednostka.objects.create(autor=a, jednostka=j1)
-        Autor_Jednostka.objects.create(autor=a, jednostka=j1,
-                                       rozpoczal_prace=date(2012, 1, 1),
-                                       zakonczyl_prace=None)
-        Autor_Jednostka.objects.create(autor=a, jednostka=j1,
-                                       rozpoczal_prace=date(2014, 1, 1),
-                                       zakonczyl_prace=date(2015, 12, 31))
+        Autor_Jednostka.objects.create(
+            autor=a,
+            jednostka=j1,
+            rozpoczal_prace=date(2012, 1, 1),
+            zakonczyl_prace=None,
+        )
+        Autor_Jednostka.objects.create(
+            autor=a,
+            jednostka=j1,
+            rozpoczal_prace=date(2014, 1, 1),
+            zakonczyl_prace=date(2015, 12, 31),
+        )
 
         Autor_Jednostka.objects.defragmentuj(a, j1)
         aj = Autor_Jednostka.objects.all()[0]
@@ -278,100 +314,93 @@ class TestAutor_Jednostka(TestCase):
 
 class TestPunktacjaZrodla(TestCase):
     def test_punktacja_zrodla(self):
-        j = mommy.make(Punktacja_Zrodla, rok='2012', impact_factor='0.5')
-        self.assertEqual(str(j), 'Punktacja źródła za rok 2012')
+        z = mommy.make(Zrodlo, nazwa="123 test")
+        j = mommy.make(Punktacja_Zrodla, rok="2012", impact_factor="0.5", zrodlo=z)
+        self.assertEqual(str(j), 'Punktacja źródła "123 test" za rok 2012')
 
 
 class TestZrodlo(TestCase):
     def test_zrodlo(self):
         z = mommy.make(Zrodlo, nazwa="foo")
-        self.assertEqual(str(z), 'foo')
+        self.assertEqual(str(z), "foo")
 
         z = mommy.make(Zrodlo, nazwa="foo", nazwa_alternatywna="bar")
-        self.assertEqual(str(z), 'foo')
+        self.assertEqual(str(z), "foo")
 
-        z = mommy.make(Zrodlo, nazwa="foo", poprzednia_nazwa="bar", nazwa_alternatywna="quux")
-        self.assertEqual(str(z), 'foo (d. bar)')
+        z = mommy.make(
+            Zrodlo, nazwa="foo", poprzednia_nazwa="bar", nazwa_alternatywna="quux"
+        )
+        self.assertEqual(str(z), "foo (d. bar)")
 
         z = mommy.make(Zrodlo, nazwa="foo", poprzednia_nazwa="quux")
-        self.assertEqual(str(z), 'foo (d. quux)')
+        self.assertEqual(str(z), "foo (d. quux)")
 
     def test_zrodlo_prace_w_latach(self):
         z = mommy.make(Zrodlo)
-        wc = any_ciagle(rok=2012, zrodlo=z)
+        any_ciagle(rok=2012, zrodlo=z)
 
         self.assertEqual(list(z.prace_w_latach()), [2012])
 
     def test_unicode(self):
         z = Zrodlo(nazwa="foo", poprzednia_nazwa="bar")
-        self.assertEqual(
-            str(z),
-            "foo (d. bar)"
-        )
+        self.assertEqual(str(z), "foo (d. bar)")
 
 
 class TestRedakcjaZrodla(TestCase):
     # fixtures = ['plec.json']
     def setUp(self):
         Typ_Odpowiedzialnosci.objects.get_or_create(nazwa="autor", skrot="aut.")
-        Plec.objects.get_or_create(skrot='M', nazwa="mężczyzna")
-        Plec.objects.get_or_create(skrot='K', nazwa="kobieta")
-        Tytul.objects.get_or_create(skrot='dr')
+        Plec.objects.get_or_create(skrot="M", nazwa="mężczyzna")
+        Plec.objects.get_or_create(skrot="K", nazwa="kobieta")
+        Tytul.objects.get_or_create(skrot="dr")
 
     def test_redakcja_zrodla(self):
         a = mommy.make(
-            Autor, imiona="Jan", nazwisko="Kowalski",
-            tytul=Tytul.objects.get(skrot='dr'),
-            plec=Plec.objects.get(skrot='M'))
-        z = mommy.make(Zrodlo, nazwa='LOL Zine')
+            Autor,
+            imiona="Jan",
+            nazwisko="Kowalski",
+            tytul=Tytul.objects.get(skrot="dr"),
+            plec=Plec.objects.get(skrot="M"),
+        )
+        z = mommy.make(Zrodlo, nazwa="LOL Zine")
         r = Redakcja_Zrodla.objects.create(
-            zrodlo=z, redaktor=a, od_roku=2010, do_roku=None)
+            zrodlo=z, redaktor=a, od_roku=2010, do_roku=None
+        )
 
-        self.assertEqual(
-            str(r),
-            "Redaktorem od 2010 jest Kowalski Jan, dr")
+        self.assertEqual(str(r), "Redaktorem od 2010 jest Kowalski Jan, dr")
 
         r.do_roku = 2012
-        self.assertEqual(
-            str(r),
-            "Redaktorem od 2010 do 2012 był Kowalski Jan, dr")
+        self.assertEqual(str(r), "Redaktorem od 2010 do 2012 był Kowalski Jan, dr")
 
-        a.plec = Plec.objects.get(skrot='K')
-        self.assertEqual(
-            str(r),
-            "Redaktorem od 2010 do 2012 była Kowalski Jan, dr")
+        a.plec = Plec.objects.get(skrot="K")
+        self.assertEqual(str(r), "Redaktorem od 2010 do 2012 była Kowalski Jan, dr")
 
         a.plec = None
-        self.assertEqual(
-            str(r),
-            'Redaktorem od 2010 do 2012 był(a) Kowalski Jan, dr'
-        )
+        self.assertEqual(str(r), "Redaktorem od 2010 do 2012 był(a) Kowalski Jan, dr")
 
 
 class TestAbstract(TestCase):
     def test_abstract(self):
-        a = mommy.make(Autor, imiona='Omg', nazwisko='Lol', tytul=None)
+        a = mommy.make(Autor, imiona="Omg", nazwisko="Lol", tytul=None)
 
         j = any_jednostka(skrot="foo")
-        t = mommy.make(Typ_Odpowiedzialnosci, skrot='X', nazwa='Y')
-        r = mommy.make(Wydawnictwo_Ciagle, tytul_oryginalny='AAA')
+        t = mommy.make(Typ_Odpowiedzialnosci, skrot="X", nazwa="Y")
+        r = mommy.make(Wydawnictwo_Ciagle, tytul_oryginalny="AAA")
         b = Wydawnictwo_Ciagle_Autor.objects.create(
-            autor=a, jednostka=j, typ_odpowiedzialnosci=t,
-            rekord=r)
+            autor=a, jednostka=j, typ_odpowiedzialnosci=t, rekord=r
+        )
         self.assertEqual(str(b), "Lol Omg - foo")
-        self.assertEqual(str(r), 'AAA')
-        self.assertEqual(str(t), 'Y')
+        self.assertEqual(str(r), "AAA")
+        self.assertEqual(str(t), "Y")
 
     def test_ModelZNazwa(self):
-        a = Jezyk.objects.create(nazwa='Foo', skrot='Bar')
-        self.assertEqual(str(a), 'Foo')
+        a = Jezyk.objects.create(nazwa="Foo", skrot="Bar")
+        self.assertEqual(str(a), "Foo")
 
 
 class TestTworzenieModeliAutorJednostka(TestCase):
     def setUp(self):
-        Typ_Odpowiedzialnosci.objects.get_or_create(
-            nazwa="autor", skrot="aut."
-        )
+        Typ_Odpowiedzialnosci.objects.get_or_create(nazwa="autor", skrot="aut.")
 
     def test_tworzenie_modeli_autor_jednostka(self):
         a = any_autor()
@@ -399,17 +428,15 @@ class TestWydawnictwoCiagleTestWydawnictwoZwarte(TestCase):
 
     def test_clean(self):
         for model in [any_ciagle, any_zwarte]:
-            for skrot in ['PAT', 'D', 'H']:
+            for skrot in ["PAT", "D", "H"]:
                 try:
                     instance = model(
-                        charakter_formalny=Charakter_Formalny.objects.get(skrot=skrot))
+                        charakter_formalny=Charakter_Formalny.objects.get(skrot=skrot)
+                    )
                 except Charakter_Formalny.DoesNotExist:
                     continue
 
-                self.assertRaises(
-                    ValidationError,
-                    instance.clean_fields
-                )
+                self.assertRaises(ValidationError, instance.clean_fields)
 
 
 def test_patent_kasowanie(autor_jan_kowalski, jednostka, typy_odpowiedzialnosci):

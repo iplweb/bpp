@@ -209,6 +209,11 @@ class RaportSlotowUczelnia(ASGINotificationMixin, Report):
                 else:
                     self.raportslotowuczelniawiersz_set.create(**kw)
 
+    def get_details_set(self):
+        return self.raportslotowuczelniawiersz_set.all().select_related(
+            "autor", "jednostka", "dyscyplina"
+        )
+
 
 class RaportSlotowUczelniaWiersz(models.Model):
     parent = models.ForeignKey(RaportSlotowUczelnia, on_delete=models.CASCADE)
