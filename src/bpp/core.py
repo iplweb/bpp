@@ -11,6 +11,7 @@ def zbieraj_sloty(
     minimalny_pk=None,
     dyscyplina_id=None,
     jednostka_id=None,
+    akcja=None,
 ):
     from bpp.models.cache import Cache_Punktacja_Autora_Query
 
@@ -36,6 +37,9 @@ def zbieraj_sloty(
     id_wpisow_cpaq = [x[0] for x in res]
     sloty = [x[1] for x in res]
     punkty = [x[2] for x in res]
+
+    if akcja == "wszystko":
+        return sum(punkty) / 10000, id_wpisow_cpaq, sum(sloty) / 10000
 
     maks, lista = knapsack(int(zadany_slot * 10000), sloty, punkty, id_wpisow_cpaq)
 

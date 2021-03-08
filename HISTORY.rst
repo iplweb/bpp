@@ -3,6 +3,11 @@
 Historia zmian
 ==============
 
+202103.57
+---------
+
+* limit slotów w raporcie slotów-uczelnia, możliwość wygenerowania wszystkich prac (#997),
+
 202103.56
 ---------
 

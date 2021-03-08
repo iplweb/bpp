@@ -25,10 +25,13 @@ class LongRunningOperationsView(RestrictToOwnerMixin, ListView):
     max_previous_ops = 10
 
     def get_queryset(self):
-        with transaction.atomic():
-            for elem in self.model.objects.filter(owner=self.request.user)[10:]:
-                elem.delete()
-        return RestrictToOwnerMixin.get_queryset(self)
+        qset = RestrictToOwnerMixin.get_queryset(self).order_by("-last_updated_on")
+
+        # Skasju poprzednie operacje
+        for elem in qset[self.max_previous_ops :]:
+            elem.delete()
+
+        return qset
 
 
 class LongRunningDetailsView(RestrictToOwnerMixin, DetailView):

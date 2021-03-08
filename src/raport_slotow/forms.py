@@ -53,6 +53,7 @@ class AutorRaportSlotowForm(forms.Form):
         required=False,
         max_digits=8,
         decimal_places=4,
+        max_value=20,
     )
 
     _export = forms.ChoiceField(
@@ -141,6 +142,7 @@ class UtworzRaportSlotowUczelniaForm(forms.ModelForm):
         fields = [
             "od_roku",
             "do_roku",
+            "akcja",
             "slot",
             "minimalny_pk",
             "dziel_na_jednostki_i_wydzialy",
@@ -159,6 +161,7 @@ class UtworzRaportSlotowUczelniaForm(forms.ModelForm):
                     Column("od_roku", css_class="large-6 small-6"),
                     Column("do_roku", css_class="large-6 small-6"),
                 ),
+                Row(Column("akcja", css_class="large-12 small-12")),
                 Row(Column("slot", css_class="large-12 small-12")),
                 Row(Column("minimalny_pk", css_class="large-12 small-12")),
                 Row(Column("dziel_na_jednostki_i_wydzialy")),

@@ -3,6 +3,7 @@ from io import BytesIO
 import pytest
 from django.urls import reverse
 from openpyxl import load_workbook
+
 from raport_slotow import const
 from raport_slotow.forms import AutorRaportSlotowForm
 from raport_slotow.views import SESSION_KEY
@@ -84,7 +85,7 @@ def test_raport_slotow_autor_zbieraj_slot(
         "do_roku": rok,
         "dzialanie": const.DZIALANIE_SLOT,
         "minimalny_pk": 0,
-        "slot": 100,
+        "slot": 20,
         "_export": "html",
     }
     s = admin_client.session
@@ -108,7 +109,7 @@ def test_raport_slotow_autor_wartosci_poczatkowe(admin_client):
 
 
 @pytest.mark.parametrize(
-    "dzialanie,slot", [(const.DZIALANIE_WSZYSTKO, None), (const.DZIALANIE_SLOT, 500)]
+    "dzialanie,slot", [(const.DZIALANIE_WSZYSTKO, None), (const.DZIALANIE_SLOT, 20)]
 )
 def test_raport_slotow_autor_sa_dane_minimalny_pk(
     admin_client, autor_jan_kowalski, rekord_slotu, rok, dzialanie, slot

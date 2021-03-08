@@ -453,8 +453,9 @@ def test_ISlot_mnozniki_dla_dyscyplin_z_dziedziony_np_humanistycznych_ciagle(
     assert Cache_Punktacja_Autora.objects.first().pkdaut == oczekiwana
 
 
+@pytest.mark.parametrize("akcja", ["wszystko", None])
 @pytest.mark.django_db
-def test_autor_Autor_zbieraj_sloty(zwarte_z_dyscyplinami):
+def test_autor_Autor_zbieraj_sloty(zwarte_z_dyscyplinami, akcja):
     zwarte_z_dyscyplinami.punkty_kbn = 20
     zwarte_z_dyscyplinami.rok = 2017
     zwarte_z_dyscyplinami.save()
@@ -462,7 +463,9 @@ def test_autor_Autor_zbieraj_sloty(zwarte_z_dyscyplinami):
     aktualizuj_cache_rekordu(zwarte_z_dyscyplinami)
 
     a = zwarte_z_dyscyplinami.autorzy_set.first().autor
-    res = a.zbieraj_sloty(1, zwarte_z_dyscyplinami.rok, zwarte_z_dyscyplinami.rok)
+    res = a.zbieraj_sloty(
+        1, zwarte_z_dyscyplinami.rok, zwarte_z_dyscyplinami.rok, akcja=akcja
+    )
     assert res == (
         10.0,
         [
