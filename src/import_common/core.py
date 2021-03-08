@@ -12,6 +12,16 @@ from bpp.models import (
     Tytul,
     Wydzial,
     Wymiar_Etatu,
+    Zrodlo,
+)
+
+from .normalization import (
+    normalize_funkcja_autora,
+    normalize_grupa_pracownicza,
+    normalize_nazwa_jednostki,
+    normalize_tytul_naukowy,
+    normalize_tytul_zrodla,
+    normalize_wymiar_etatu,
 )
 
 
@@ -22,34 +32,6 @@ def matchuj_wydzial(nazwa):
         pass
 
 
-def normalize_nullboleanfield(s: Union[str, None, bool]) -> Union[bool, None]:
-    if isinstance(s, bool):
-        return s
-    if s is None:
-        return
-    s = s.strip().lower()
-
-    if s in ["true", "tak", "prawda", "t", "p"]:
-        return True
-    if s in ["false", "nie", "fałsz", "falsz", "f", "n"]:
-        return False
-
-
-def remove_extra_spaces(s: str) -> str:
-    while s.find("  ") >= 0:
-        s = s.replace("  ", " ")
-    s = s.strip()
-    return s
-
-
-def normalize_skrot(s):
-    return remove_extra_spaces(s.lower().replace(" .", ". "))
-
-
-def normalize_tytul(s):
-    return normalize_skrot(s)
-
-
 def matchuj_tytul(tytul: str, create_if_not_exist=False) -> Tytul:
     """
     Dostaje tytuł: pełną nazwę albo skrót
@@ -58,11 +40,7 @@ def matchuj_tytul(tytul: str, create_if_not_exist=False) -> Tytul:
     try:
         return Tytul.objects.get(nazwa__iexact=tytul)
     except (Tytul.DoesNotExist, Tytul.MultipleObjectsReturned):
-        return Tytul.objects.get(skrot=normalize_tytul(tytul))
-
-
-def normalize_funkcja_autora(s: str) -> str:
-    return normalize_skrot(s).lower()
+        return Tytul.objects.get(skrot=normalize_tytul_naukowy(tytul))
 
 
 def matchuj_funkcja_autora(funkcja_autora: str) -> Funkcja_Autora:
@@ -72,26 +50,14 @@ def matchuj_funkcja_autora(funkcja_autora: str) -> Funkcja_Autora:
     )
 
 
-def normalize_grupa_pracownicza(s: str):
-    return normalize_skrot(s)
-
-
 def matchuj_grupa_pracownicza(grupa_pracownicza: str) -> Grupa_Pracownicza:
     grupa_pracownicza = normalize_grupa_pracownicza(grupa_pracownicza)
     return Grupa_Pracownicza.objects.get(nazwa__iexact=grupa_pracownicza)
 
 
-def normalize_wymiar_etatu(s: str):
-    return normalize_skrot(s)
-
-
 def matchuj_wymiar_etatu(wymiar_etatu: str) -> Wymiar_Etatu:
     wymiar_etatu = normalize_wymiar_etatu(wymiar_etatu)
     return Wymiar_Etatu.objects.get(nazwa__iexact=wymiar_etatu)
-
-
-def normalize_nazwa_jednostki(s: str) -> str:
-    return remove_extra_spaces(s.strip())
 
 
 def matchuj_jednostke(nazwa, wydzial=None):
@@ -243,3 +209,32 @@ def matchuj_autora(
                 pass
 
     return None
+
+
+def matchuj_zrodlo(
+    s: Union[str, None], issn: Union[str, None] = None
+) -> Union[None, Zrodlo]:
+    if s is None or str(s) == "":
+        return
+
+    if issn is not None:
+        try:
+            return Zrodlo.objects.get(issn=issn)
+        except (Zrodlo.DoesNotExist, Zrodlo.MultipleObjectsReturned):
+            pass
+
+    s = normalize_tytul_zrodla(s)
+    try:
+        return Zrodlo.objects.get(Q(nazwa__iexact=s) | Q(skrot__iexact=s))
+    except Zrodlo.MultipleObjectsReturned:
+        pass
+    except Zrodlo.DoesNotExist:
+        if s.endswith("."):
+            try:
+                return Zrodlo.objects.get(
+                    Q(nazwa__istartswith=s[:-1]) | Q(skrot__istartswith=s[:-1])
+                )
+            except Zrodlo.DoesNotExist:
+                pass
+            except Zrodlo.MultipleObjectsReturned:
+                pass

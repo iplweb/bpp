@@ -113,7 +113,9 @@ class XLSImportFile:
     def sheet_row_cache(self):
         _cache = {}
         for n_sheet, sheet in enumerate(self.xl_workbook.sheets()):
-            res = find_similar_row(sheet, try_names=self.try_names, min_points=None)
+            res = find_similar_row(
+                sheet, try_names=self.try_names, min_points=self.min_points
+            )
             if res is None:
                 continue
             _cache[sheet] = res

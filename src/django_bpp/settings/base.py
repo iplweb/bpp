@@ -123,6 +123,7 @@ INSTALLED_APPS = [
     "django.contrib.postgres",
     "long_running",
     "import_pracownikow",
+    "import_list_if",
     "password_policies",
     "create_test_db",
     "celery",

@@ -1,7 +1,8 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
-from django.http import HttpResponseRedirect
+from django.http import Http404, HttpResponseRedirect
+from django.utils.functional import cached_property
 from django.views.generic import CreateView, DetailView, ListView
 
 from long_running.tasks import perform_generic_long_running_task
@@ -34,10 +35,46 @@ class LongRunningOperationsView(RestrictToOwnerMixin, ListView):
         return qset
 
 
-class LongRunningDetailsView(RestrictToOwnerMixin, DetailView):
+# class DetailListView(ListView):
+#     detail_context_object_name = 'object'
+#
+#     def get(self, request, *args, **kwargs):
+#         self.object = self.get_object()
+#         return super(DetailListView, self).get(request, *args, **kwargs)
+#
+#     def get_queryset_for_object(self):
+#         raise NotImplementedError('You need to provide the queryset for the object')
+#
+#     def get_object(self):
+#         queryset = self.get_queryset_for_object()
+#         DetailView.get_object(self, queryset)
+#         pk = self.kwargs.get('pk')
+#         if pk is None:
+#             raise AttributeError('pk expected in url')
+#         return get_object_or_404(queryset, pk=pk)
+#
+#     def get_context_data(self, **kwargs):
+#         context = super(DetailListView, self).get_context_data(**kwargs)
+#         context[self.detail_context_object_name] = self.object
+#         return context
+
+
+class LongRunningDetailsView(ListView):
+    paginate_by = 25
+
+    @cached_property
+    def parent_object(self):
+        o = self.model.objects.get(pk=self.kwargs["pk"])
+        if o.owner != self.request.user:
+            raise Http404
+        return o
+
+    def get_queryset(self):
+        return self.parent_object.get_details_set()
+
     def get_context_data(self, **kwargs):
         return super(LongRunningDetailsView, self).get_context_data(
-            extraChannels=[self.object.pk], **kwargs
+            extraChannels=[self.parent_object.pk], object=self.parent_object, **kwargs
         )
 
 

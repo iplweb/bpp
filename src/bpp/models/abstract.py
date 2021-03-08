@@ -257,9 +257,15 @@ class ModelRecenzowany(models.Model):
         abstract = True
 
 
+def ImpactFactorField(*args, **kw):
+    return models.DecimalField(
+        max_digits=6, decimal_places=3, default=Decimal("0.000"), *args, **kw
+    )
+
+
 class ModelPunktowanyBaza(models.Model):
-    impact_factor = models.DecimalField(
-        max_digits=6, decimal_places=3, default=Decimal("0.000"), db_index=True
+    impact_factor = ImpactFactorField(
+        db_index=True,
     )
     punkty_kbn = models.DecimalField(
         "Punkty KBN",

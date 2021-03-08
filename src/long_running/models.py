@@ -5,6 +5,7 @@ import uuid
 from django.conf import settings
 from django.contrib.messages import constants
 from django.db import models, transaction
+from django.urls import reverse
 from django.utils import timezone
 
 TRACEBACK_LENGTH_LIMIT = 65535
@@ -100,6 +101,11 @@ class Operation(NullNotificationMixin, models.Model):
     def perform(self):
         raise NotImplementedError("Override this in a subclass.")
 
+    def get_details_set(self):
+        """This function should return a list of processed objects, that took
+        part in this operation. Think about it in terms of showing the results."""
+        raise NotImplementedError("Override this in a subclass.")
+
     def task_perform(self, raise_exceptions=False):
         """Runs a function in context of curret report, which means: it sets
         the variables according to success or failure of a given function.
@@ -121,6 +127,9 @@ class Operation(NullNotificationMixin, models.Model):
                 raise exc_value.with_traceback(exc_traceback)
         finally:
             self.on_finished()
+
+    def get_absolute_url(self):
+        return reverse(self._meta.app_label + ":" + "detale", args=(self.pk,))
 
 
 class Report(Operation):

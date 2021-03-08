@@ -4,24 +4,22 @@
 Źródła.
 """
 from autoslug import AutoSlugField
-
+from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.db import models
-from django.db.models import CASCADE, CASCADE, SET_NULL
+from django.db.models import CASCADE, SET_NULL
 from django.urls.base import reverse
 from lxml.etree import Element, SubElement
-from bpp.models.system import Jezyk
-from bpp.util import FulltextSearchMixin
-from django.contrib.postgres.search import SearchVectorField as VectorField
-from bpp.fields import YearField, DOIField
 
+from bpp.fields import DOIField, YearField
+from bpp.jezyk_polski import czasownik_byc
 from bpp.models.abstract import (
-    ModelZNazwa,
+    ModelPunktowanyBaza,
     ModelZAdnotacjami,
     ModelZISSN,
-    ModelPunktowanyBaza,
+    ModelZNazwa,
 )
-
-from bpp.jezyk_polski import czasownik_byc
+from bpp.models.system import Jezyk
+from bpp.util import FulltextSearchMixin
 
 
 class Rodzaj_Zrodla(ModelZNazwa):
@@ -79,7 +77,7 @@ class Punktacja_Zrodla(ModelPunktowanyBaza, models.Model):
     rok = YearField()
 
     def __str__(self):
-        return "Punktacja źródła za rok %s" % self.rok
+        return f"Punktacja źródła {self.zrodlo} za rok {self.rok}"
 
     class Meta:
         verbose_name = "punktacja źródła"
@@ -177,7 +175,7 @@ class Zrodlo(ModelZAdnotacjami, ModelZISSN):
         journal = Element("journal")
 
         title_kw = {}
-        if self.jezyk != None:
+        if self.jezyk is not None:
             title_kw["lang"] = self.jezyk.get_skrot_dla_pbn()
 
         title = SubElement(journal, "title", **title_kw)
@@ -196,7 +194,7 @@ class Zrodlo(ModelZAdnotacjami, ModelZISSN):
             doi.text = self.doi
 
         if self.www:
-            website = SubElement(journal, "website", href=self.www)
+            SubElement(journal, "website", href=self.www)
 
         system_identifier = SubElement(journal, "system-identifier")
         system_identifier.text = str(self.pk)

@@ -1,0 +1,23 @@
+{% extends "base.html" %}{% load render_table from django_tables2 %}
+
+{% block extratitle %}
+    Import list IF - nowy
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "import_list_if:index" %}">import list IF</a></li>
+{% endblock %}
+
+{% block content %}{% load static %}
+    <h1>Utwórz nowy import: <a class="button secondary" id="download-example-file"
+                               href="{% static "import_list_if/import_list_if_przyklad.xlsx" %}">
+        <i class="fi-page-edit"></i>
+        pobierz plik wzorcowy
+    </a>
+    </h1>
+
+
+    {% load crispy_forms_tags %}
+    {% crispy form %}
+{% endblock %}
