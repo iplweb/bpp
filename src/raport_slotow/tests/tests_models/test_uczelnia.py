@@ -29,6 +29,20 @@ def test_RaportSlotowUczelnia_create_report(rekord_slotu, rok, raport_slotow_ucz
     assert RaportSlotowUczelniaWiersz.objects.count() == 1
 
 
+def test_RaportSlotowUczelnia_create_report_wszystkie(
+    rekord_slotu, rok, raport_slotow_uczelnia
+):
+    raport_slotow_uczelnia.od_roku = rok
+    raport_slotow_uczelnia.do_roku = rok
+    raport_slotow_uczelnia.akcja = RaportSlotowUczelnia.Akcje.WSZYSTKO
+    raport_slotow_uczelnia.save()
+
+    assert RaportSlotowUczelniaWiersz.objects.count() == 0
+    raport_slotow_uczelnia.create_report()
+
+    assert RaportSlotowUczelniaWiersz.objects.count() == 1
+
+
 @pytest.mark.parametrize(
     "pokazuj_zerowych, expected_rows",
     [

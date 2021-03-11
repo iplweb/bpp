@@ -184,7 +184,8 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
             "tytul_oryginalny",
             "autorzy",
             "rok",
-            "zrodlo_informacje",
+            "zrodlo_lub_wydawnictwo_nadrzedne",
+            "informacje",
             "rodzaj_publikacji",
             "liczba_autorow_z_dyscypliny",
             "liczba_wszystkich_autorow",
@@ -207,9 +208,33 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
         "Autorzy", "rekord.opis_bibliograficzny_zapisani_autorzy_cache", orderable=False
     )
     rok = Column("Rok", "rekord.rok", orderable=True)
-    zrodlo_informacje = Column(
-        "Źródło / informacje", "rekord", empty_values=(), orderable=False
+    zrodlo_informacje = None
+    # Column(
+    #    "Źródło / informacje", "rekord", empty_values=(), orderable=False
+    # )
+    zrodlo_lub_wydawnictwo_nadrzedne = Column(
+        "Zródło lub wydawnictwo nadrzędne", "rekord", orderable=False
     )
+    informacje = Column("Informacje", "rekord")
+
+    def render_zrodlo_lub_wydawnictwo_nadrzedne(self, value):
+        if (
+            hasattr(value, "wydawnictwo_nadrzedne_id")
+            and value.wydawnictwo_nadrzedne_id is not None
+        ):
+            return value.wydawnictwo_nadrzedne
+        if hasattr(value, "zrodlo_id") and value.zrodlo_id is not None:
+            return value.zrodlo
+        return "123"
+
+    def render_informacje(self, value):
+        if (
+            hasattr(value, "wydawnictwo_nadrzedne_id")
+            and value.wydawnictwo_nadrzedne_id is not None
+        ):
+            return value.szczegoly
+        return value.informacje
+
     rodzaj_publikacji = Column("Rodzaj", "rekord")
     liczba_autorow_z_dyscypliny = Column(
         "Liczba autorów z dyscypliny",

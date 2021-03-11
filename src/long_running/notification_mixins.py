@@ -5,6 +5,14 @@ from notifications import core as notifications_core
 from notifications.models import Notification
 
 
+class NullNotificationMixin:
+    def send_notification(self, msg, level=None):
+        return
+
+    def send_processing_finished(self):
+        return
+
+
 class ASGINotificationMixin:
     @cached_property
     def asgi_channel_name(self):
@@ -29,7 +37,7 @@ class ASGINotificationMixin:
                 values=dict(progress=True, percent="100%"),
             ),
             Notification.objects.create(
-                channel_name=self.asgi_channel_name, values=dict(url=".")
+                channel_name=self.asgi_channel_name, values=dict(url="..")
             ),
         ]:
             elem.send()

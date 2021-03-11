@@ -15,7 +15,7 @@
     <ul>
     {% for object in object_list %}
     <li>
-        <a href="{% url "raport_slotow:szczegoly-raport-slotow-uczelnia" object.pk %}">
+        <a href="{% url "raport_slotow:raportslotowuczelnia-router" object.pk %}">
             od {{ object.od_roku }} do {{ object.do_roku }}, slot = {{ object.slot }}, min pk = {{ object.minimalny_pk }}, zamówiono {{ object.created_on }}, ukończono {{ object.finished_on }}
         </a>
     </li>

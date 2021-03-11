@@ -189,6 +189,7 @@
                                 {% if request.user|has_group:"wprowadzanie danych" or request.user.is_superuser %}
                                     <li><a href="{% url "integrator2:main" %}">import danych</a></li>
                                     <li><a href="{% url "import_pracownikow:index" %}">import pracowników</a></li>
+                                    <li><a href="{% url "import_list_if:index" %}">import list IF</a></li>
                                     <li><a href="{% url "import_dyscyplin:index" %}">import dyscyplin</a></li>
                                     <li><a href="{% url "rozbieznosci_dyscyplin:main-view" %}">rozbieżności
                                         dyscyplin</a></li>

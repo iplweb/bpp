@@ -2,7 +2,6 @@ import urllib
 
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.utils import timezone
-from django.views.generic import DetailView
 from django_tables2 import RequestConfig, SingleTableMixin
 
 from bpp.views.mixins import UczelniaSettingRequiredMixin
@@ -13,6 +12,8 @@ from long_running.views import (
     CreateLongRunningOperationView,
     LongRunningDetailsView,
     LongRunningOperationsView,
+    LongRunningResultsView,
+    LongRunningRouterView,
     RestartLongRunningOperationView,
 )
 from raport_slotow.filters import (
@@ -59,6 +60,11 @@ class UtworzRaportSlotowUczelnia(
         return context
 
 
+class RouterRaportuSlotowUczelnia(UczelniaSettingRequiredMixin, LongRunningRouterView):
+    uczelnia_attr = "pokazuj_raport_slotow_uczelnia"
+    model = RaportSlotowUczelnia
+
+
 class SzczegolyRaportSlotowUczelnia(
     UczelniaSettingRequiredMixin, LongRunningDetailsView
 ):
@@ -81,7 +87,7 @@ class SzczegolyRaportSlotowUczelniaListaRekordow(
     LoginRequiredMixin,
     MyExportMixin,
     SingleTableMixin,
-    DetailView,
+    LongRunningResultsView,
 ):
     template_name = "raport_slotow/raport_slotow_uczelnia.html"
     uczelnia_attr = "pokazuj_raport_slotow_uczelnia"
@@ -90,12 +96,12 @@ class SzczegolyRaportSlotowUczelniaListaRekordow(
     model = RaportSlotowUczelnia
 
     def get_table_class(self):
-        if self.object.dziel_na_jednostki_i_wydzialy:
+        if self.parent_object.dziel_na_jednostki_i_wydzialy:
             return RaportSlotowUczelniaTable
         return RaportSlotowUczelniaBezJednostekIWydzialowTable
 
     def get_filterset_class(self):
-        if self.object.dziel_na_jednostki_i_wydzialy:
+        if self.parent_object.dziel_na_jednostki_i_wydzialy:
             return RaportSlotowUczelniaFilter
         return RaportSlotowUczelniaBezJednostekIWydzialowFilter
 
@@ -103,9 +109,9 @@ class SzczegolyRaportSlotowUczelniaListaRekordow(
         table_class = self.get_table_class()
         table = table_class(
             data=self.get_table_data(),
-            od_roku=self.object.od_roku,
-            do_roku=self.object.do_roku,
-            slot=self.object.slot,
+            od_roku=self.parent_object.od_roku,
+            do_roku=self.parent_object.do_roku,
+            slot=self.parent_object.slot,
             **kwargs,
         )
         RequestConfig(
@@ -116,14 +122,14 @@ class SzczegolyRaportSlotowUczelniaListaRekordow(
     def get_export_description(self):
         return [
             ("Nazwa raportu:", "raport slotów - uczelnia"),
-            ("Od roku:", self.object.od_roku),
-            ("Do roku:", self.object.do_roku),
-            ("Maksymalny slot:", self.object.slot),
+            ("Od roku:", self.parent_object.od_roku),
+            ("Do roku:", self.parent_object.do_roku),
+            ("Maksymalny slot:", self.parent_object.slot),
             (
                 "Dziel na jednostki:",
-                "tak" if self.object.dziel_na_jednostki_i_wydzialy else "nie",
+                "tak" if self.parent_object.dziel_na_jednostki_i_wydzialy else "nie",
             ),
-            ("Wygenerowano:", self.object.finished_on),
+            ("Wygenerowano:", self.parent_object.finished_on),
             ("Wersja oprogramowania BPP", VERSION),
         ]
 
@@ -131,7 +137,7 @@ class SzczegolyRaportSlotowUczelniaListaRekordow(
         context = super(
             SzczegolyRaportSlotowUczelniaListaRekordow, self
         ).get_context_data(**kwargs)
-        context["object"] = self.object
+        context["object"] = self.parent_object
         context["export_link"] = urllib.parse.urlencode(
             dict(self.request.GET, **{"_export": "xlsx"}), doseq=True
         )
@@ -139,7 +145,4 @@ class SzczegolyRaportSlotowUczelniaListaRekordow(
 
     def get_export_filename(self, export_format):
         stamp = timezone.now().strftime("%Y%m%d-%H%M")
-        return f"raport_dyscyplin_{self.object.od_roku}-{self.object.do_roku}_{stamp}.{export_format}"
-
-    def get_table_data(self):
-        return self.object.raportslotowuczelniawiersz_set.all()
+        return f"raport_dyscyplin_{self.parent_object.od_roku}-{self.parent_object.do_roku}_{stamp}.{export_format}"

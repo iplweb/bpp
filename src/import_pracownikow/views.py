@@ -7,6 +7,8 @@ from long_running.views import (
     CreateLongRunningOperationView,
     LongRunningDetailsView,
     LongRunningOperationsView,
+    LongRunningResultsView,
+    LongRunningRouterView,
     RestartLongRunningOperationView,
 )
 
@@ -24,7 +26,15 @@ class NowyImportView(BaseImportPracownikowMixin, CreateLongRunningOperationView)
     form_class = NowyImportForm
 
 
-class DetaleImportView(BaseImportPracownikowMixin, LongRunningDetailsView):
+class ImportPracownikowRouterView(BaseImportPracownikowMixin, LongRunningRouterView):
+    redirect_prefix = "import_pracownikow:import_pracownikow"
+
+
+class ImportPracownikowDetailsView(BaseImportPracownikowMixin, LongRunningDetailsView):
+    pass
+
+
+class ImportPracownikowResultsView(BaseImportPracownikowMixin, LongRunningResultsView):
     pass
 
 

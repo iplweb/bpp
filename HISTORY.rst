@@ -3,6 +3,15 @@
 Historia zmian
 ==============
 
+202103.57
+---------
+
+* limit slotów w raporcie slotów-uczelnia, możliwość wygenerowania wszystkich prac (#997),
+* import list IF (#868),
+* poprawka importu pól daty z plików XLSX (b/n),
+* licz poprawnie punktację w przypadku k=0 (#986),
+* rozbij źródło/wydawnictwo nadrzędne i szczegóły na dwie kolumny w raporcie slotów - ewaluacja (#939),
+
 202103.56
 ---------
 

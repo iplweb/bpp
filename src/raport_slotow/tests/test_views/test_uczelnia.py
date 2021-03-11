@@ -26,7 +26,7 @@ def test_ListaRaportSlotowUczelnia(admin_client, admin_user):
 def test_SzczegolyRaportuSlotowUczelnia(admin_client, admin_user):
     rsu = mommy.make(RaportSlotowUczelnia, owner=admin_user)
     admin_client.get(
-        reverse("raport_slotow:szczegoly-raport-slotow-uczelnia", args=(rsu.pk,))
+        reverse("raport_slotow:raportslotowuczelnia-details", args=(rsu.pk,))
     )
 
 
@@ -43,14 +43,14 @@ def test_SzczegolyRaportuSlotowUczelniaListaRekordow(
 
     admin_client.get(
         reverse(
-            "raport_slotow:szczegoly-raport-slotow-uczelnia-lista-rekordow",
+            "raport_slotow:raportslotowuczelnia-results",
             args=(rsu.pk,),
         )
     )
 
     res = admin_client.get(
         reverse(
-            "raport_slotow:szczegoly-raport-slotow-uczelnia-lista-rekordow",
+            "raport_slotow:raportslotowuczelnia-results",
             args=(rsu.pk,),
         )
         + "?_export=xlsx"
@@ -73,7 +73,7 @@ def test_RegenerujRaportuSlotowUczelnia(
 
     admin_client.get(
         reverse(
-            "raport_slotow:regeneruj-raport-slotow-uczelnia",
+            "raport_slotow:raportslotowuczelnia-regen",
             args=(rsu.pk,),
         )
     )

@@ -15,16 +15,15 @@
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator
 from django.db import models
-from django.urls import reverse
 
 from bpp.core import zbieraj_sloty
 from bpp.fields import YearField
 from bpp.models import Autor, Cache_Punktacja_Autora_Query, Uczelnia
 from bpp.util import year_last_month
-from long_running.asgi_notification_mixin import ASGINotificationMixin
 from long_running.models import Report
-from notifications.models import Notification
+from long_running.notification_mixins import ASGINotificationMixin
 from raport_slotow.core import autorzy_zerowi
 
 
@@ -32,7 +31,20 @@ class RaportSlotowUczelnia(ASGINotificationMixin, Report):
     od_roku = YearField(default=year_last_month)
     do_roku = YearField(default=Uczelnia.objects.do_roku_default)
 
-    slot = models.DecimalField(default=Decimal("1"), decimal_places=4, max_digits=7)
+    class Akcje(models.TextChoices):
+        SLOTY = "slot", "zbieraj najkorzystniejsze prace do zadanej wielkości slotu"
+        WSZYSTKO = "wszystko", "wyeksportuj wszystkie prace"
+
+    akcja = models.CharField(max_length=10, default=Akcje.SLOTY, choices=Akcje.choices)
+
+    slot = models.DecimalField(
+        default=Decimal("1"),
+        decimal_places=4,
+        max_digits=7,
+        validators=[MaxValueValidator(20)],
+        null=True,
+        blank=True,
+    )
 
     minimalny_pk = models.DecimalField(default=0, decimal_places=2, max_digits=5)
 
@@ -53,11 +65,6 @@ class RaportSlotowUczelnia(ASGINotificationMixin, Report):
     def on_reset(self):
         self.raportslotowuczelniawiersz_set.all().delete()
 
-    def get_absolute_url(self):
-        return reverse(
-            "raport_slotow:szczegoly-raport-slotow-uczelnia", args=(self.pk,)
-        )
-
     def clean(self):
         if self.od_roku > self.do_roku:
             raise ValidationError(
@@ -67,6 +74,28 @@ class RaportSlotowUczelnia(ASGINotificationMixin, Report):
                     )
                 }
             )
+
+        if self.akcja == RaportSlotowUczelnia.Akcje.WSZYSTKO:
+            if self.slot is not None:
+                raise ValidationError(
+                    {
+                        "slot": ValidationError(
+                            "Jeżeli chcesz eksportować wszystkie prace, to wielkość slotu nie "
+                            "ma znaczenia. Pozostaw to pole puste. "
+                        )
+                    }
+                )
+
+        if self.akcja == RaportSlotowUczelnia.Akcje.SLOTY:
+            if self.slot is None:
+                raise ValidationError(
+                    {
+                        "slot": ValidationError(
+                            "Jeżeli chcesz zbierać prace do zadanej wielkości slotu, to musisz "
+                            "podać wielkość slotu, do którego zbierać prace. "
+                        )
+                    }
+                )
 
     def create_report(self):
         # lista wszystkich autorow z punktacja z okresu od-do roku
@@ -99,6 +128,7 @@ class RaportSlotowUczelnia(ASGINotificationMixin, Report):
                 self.minimalny_pk,
                 dyscyplina_id=dyscyplina_id,
                 jednostka_id=jednostka_id,
+                akcja=self.akcja,
             )
 
             avg = None
@@ -173,14 +203,10 @@ class RaportSlotowUczelnia(ASGINotificationMixin, Report):
                 else:
                     self.raportslotowuczelniawiersz_set.create(**kw)
 
-    def on_finished(self):
-        # Zamiast wysyłać redirect, który może nie zostać odebrany przez klienta
-        # (np. przetwarzanie skończyło się nim strona WWW została wyświetlona)
-        # utwórzmy prawdziwy obiekt notyfikacji, którego odbiór wymaga potwierdzenia
-        Notification.object.create(
-            channel_name=str(self.pk), values=dict(url="./details")
-        ).send()
-        # send_redirect(str(self.pk), "./details")
+    def get_details_set(self):
+        return self.raportslotowuczelniawiersz_set.all().select_related(
+            "autor", "autor__tytul", "jednostka", "jednostka__wydzial", "dyscyplina"
+        )
 
 
 class RaportSlotowUczelniaWiersz(models.Model):

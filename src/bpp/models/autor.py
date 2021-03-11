@@ -372,15 +372,17 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
         minimalny_pk=None,
         dyscyplina_id=None,
         jednostka_id=None,
+        akcja=None,
     ):
         return zbieraj_sloty(
-            self.pk,
-            zadany_slot,
-            rok_min,
-            rok_max,
-            minimalny_pk,
-            dyscyplina_id,
-            jednostka_id,
+            autor_id=self.pk,
+            zadany_slot=zadany_slot,
+            rok_min=rok_min,
+            rok_max=rok_max,
+            minimalny_pk=minimalny_pk,
+            dyscyplina_id=dyscyplina_id,
+            jednostka_id=jednostka_id,
+            akcja=akcja,
         )
 
 

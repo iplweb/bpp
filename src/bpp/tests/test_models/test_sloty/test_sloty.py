@@ -208,6 +208,19 @@ def test_slotkalkulator_wydawnictwo_ciagle_prog3_punkty_pkd(
     assert slot.slot_dla_autora_z_dyscypliny(dyscyplina1) == 0.5
     assert slot.slot_dla_dyscypliny(dyscyplina1) == 0.5
 
+    # Zdejmij afiliacje i sprawdz czy k_przez_m wyjdzie zero
+    for aut in ciagle_z_dyscyplinami.autorzy_set.all():
+        aut.afiliuje = False
+        Autor_Dyscyplina.objects.get_or_create(
+            autor=aut.autor,
+            dyscyplina_naukowa=aut.dyscyplina_naukowa,
+            rok=ciagle_z_dyscyplinami.rok,
+        )
+        aut.save()
+
+    slot = SlotKalkulator_Wydawnictwo_Ciagle_Prog2(ciagle_z_dyscyplinami)
+    assert str(round(slot.slot_dla_dyscypliny(dyscyplina1), 4)) == "0.0000"
+
 
 @pytest.mark.django_db
 def test_slotkalkulator_wydawnictwo_ciagle_prog2_punkty_pkd(
@@ -224,6 +237,19 @@ def test_slotkalkulator_wydawnictwo_ciagle_prog2_punkty_pkd(
     assert str(round(slot.slot_dla_dyscypliny(dyscyplina1), 4)) == "0.7071"
 
     assert isinstance(slot.pierwiastek_k_przez_m(dyscyplina1), Decimal)
+
+    # Zdejmij afiliacje i sprawdz czy k_przez_m wyjdzie zero
+    for aut in ciagle_z_dyscyplinami.autorzy_set.all():
+        aut.afiliuje = False
+        Autor_Dyscyplina.objects.get_or_create(
+            autor=aut.autor,
+            dyscyplina_naukowa=aut.dyscyplina_naukowa,
+            rok=ciagle_z_dyscyplinami.rok,
+        )
+        aut.save()
+
+    slot = SlotKalkulator_Wydawnictwo_Ciagle_Prog2(ciagle_z_dyscyplinami)
+    assert str(round(slot.slot_dla_dyscypliny(dyscyplina1), 4)) == "0.0000"
 
 
 @pytest.mark.django_db
@@ -453,8 +479,9 @@ def test_ISlot_mnozniki_dla_dyscyplin_z_dziedziony_np_humanistycznych_ciagle(
     assert Cache_Punktacja_Autora.objects.first().pkdaut == oczekiwana
 
 
+@pytest.mark.parametrize("akcja", ["wszystko", None])
 @pytest.mark.django_db
-def test_autor_Autor_zbieraj_sloty(zwarte_z_dyscyplinami):
+def test_autor_Autor_zbieraj_sloty(zwarte_z_dyscyplinami, akcja):
     zwarte_z_dyscyplinami.punkty_kbn = 20
     zwarte_z_dyscyplinami.rok = 2017
     zwarte_z_dyscyplinami.save()
@@ -462,7 +489,9 @@ def test_autor_Autor_zbieraj_sloty(zwarte_z_dyscyplinami):
     aktualizuj_cache_rekordu(zwarte_z_dyscyplinami)
 
     a = zwarte_z_dyscyplinami.autorzy_set.first().autor
-    res = a.zbieraj_sloty(1, zwarte_z_dyscyplinami.rok, zwarte_z_dyscyplinami.rok)
+    res = a.zbieraj_sloty(
+        1, zwarte_z_dyscyplinami.rok, zwarte_z_dyscyplinami.rok, akcja=akcja
+    )
     assert res == (
         10.0,
         [

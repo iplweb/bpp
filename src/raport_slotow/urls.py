@@ -9,6 +9,7 @@ from raport_slotow.views import (
     RaportSlotow,
     RaportSlotowEwaluacja,
     RaportSlotowZerowy,
+    RouterRaportuSlotowUczelnia,
     SzczegolyRaportSlotowUczelnia,
     SzczegolyRaportSlotowUczelniaListaRekordow,
     UtworzRaportSlotowUczelnia,
@@ -39,18 +40,23 @@ urlpatterns = [
     ),
     path(
         "raport-slotow-uczelnia/<uuid:pk>/",
+        RouterRaportuSlotowUczelnia.as_view(),
+        name="raportslotowuczelnia-router",
+    ),
+    path(
+        "raport-slotow-uczelnia/<uuid:pk>/details/",
         SzczegolyRaportSlotowUczelnia.as_view(),
-        name="szczegoly-raport-slotow-uczelnia",
+        name="raportslotowuczelnia-details",
     ),
     path(
-        "raport-slotow-uczelnia/<uuid:pk>/regen",
+        "raport-slotow-uczelnia/<uuid:pk>/regen/",
         WygenerujPonownieRaportSlotowUczelnia.as_view(),
-        name="regeneruj-raport-slotow-uczelnia",
+        name="raportslotowuczelnia-regen",
     ),
     path(
-        "raport-slotow-uczelnia/<uuid:pk>/details",
+        "raport-slotow-uczelnia/<uuid:pk>/results/",
         SzczegolyRaportSlotowUczelniaListaRekordow.as_view(),
-        name="szczegoly-raport-slotow-uczelnia-lista-rekordow",
+        name="raportslotowuczelnia-results",
     ),
     path(
         "raport-slotow-ewaluacja/",

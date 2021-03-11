@@ -253,7 +253,7 @@ def test_pokazuj_raport_slotow_czy_mozna_kliknac(
             "do_roku": 2017,
             "dzialanie": const.DZIALANIE_SLOT,
             "minimalny_pk": 0,
-            "slot": 100,
+            "slot": 19,
             "_export": "html",
         }
 

@@ -1,0 +1,32 @@
+{% extends "base.html" %}{% load render_table from django_tables2 %}
+
+{% block extratitle %}
+    Raport slotów - uczelnia - za {{ od_roku }} do {{ do_roku }}
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "raport_slotow:lista-raport-slotow-uczelnia" %}">raport slotów - uczelnia</a></li>
+    <li class="current">raport slotów - uczelnia za {{ object.od_roku }} - {{ object.do_roku }}</li>
+{% endblock %}
+
+{% block content %}
+    <h1>Raport slotów - uczelnia za {{ object.od_roku }} - {{ object.do_roku }}</h1>
+    {% include "long_running/operation_details.html" %}
+    <dl>
+        <dt>Zbierany slot:</dt>
+        <dd>{{ object.slot }}</dd>
+        <dt>Minimalny PK:</dt>
+        <dd>{{ object.minimalny_pk }}</dd>
+        <dt>Dziel na jednostki i wydziały:</dt>
+        <dd>{{ object.dziel_na_jednostki_i_wydzialy }}</dd>
+        <dt>Pokazuj autorów "zerowych":</dt>
+        <dd> {{ object.pokazuj_zerowych }}</dd>
+    </dl>
+    {% if object.finished_successfully %}
+        <script>
+            location.href = "./details";
+        </script>
+    {% endif %}
+
+{% endblock %}
