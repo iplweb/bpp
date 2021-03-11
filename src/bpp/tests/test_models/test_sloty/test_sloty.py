@@ -208,6 +208,19 @@ def test_slotkalkulator_wydawnictwo_ciagle_prog3_punkty_pkd(
     assert slot.slot_dla_autora_z_dyscypliny(dyscyplina1) == 0.5
     assert slot.slot_dla_dyscypliny(dyscyplina1) == 0.5
 
+    # Zdejmij afiliacje i sprawdz czy k_przez_m wyjdzie zero
+    for aut in ciagle_z_dyscyplinami.autorzy_set.all():
+        aut.afiliuje = False
+        Autor_Dyscyplina.objects.get_or_create(
+            autor=aut.autor,
+            dyscyplina_naukowa=aut.dyscyplina_naukowa,
+            rok=ciagle_z_dyscyplinami.rok,
+        )
+        aut.save()
+
+    slot = SlotKalkulator_Wydawnictwo_Ciagle_Prog2(ciagle_z_dyscyplinami)
+    assert str(round(slot.slot_dla_dyscypliny(dyscyplina1), 4)) == "0.0000"
+
 
 @pytest.mark.django_db
 def test_slotkalkulator_wydawnictwo_ciagle_prog2_punkty_pkd(
@@ -224,6 +237,19 @@ def test_slotkalkulator_wydawnictwo_ciagle_prog2_punkty_pkd(
     assert str(round(slot.slot_dla_dyscypliny(dyscyplina1), 4)) == "0.7071"
 
     assert isinstance(slot.pierwiastek_k_przez_m(dyscyplina1), Decimal)
+
+    # Zdejmij afiliacje i sprawdz czy k_przez_m wyjdzie zero
+    for aut in ciagle_z_dyscyplinami.autorzy_set.all():
+        aut.afiliuje = False
+        Autor_Dyscyplina.objects.get_or_create(
+            autor=aut.autor,
+            dyscyplina_naukowa=aut.dyscyplina_naukowa,
+            rok=ciagle_z_dyscyplinami.rok,
+        )
+        aut.save()
+
+    slot = SlotKalkulator_Wydawnictwo_Ciagle_Prog2(ciagle_z_dyscyplinami)
+    assert str(round(slot.slot_dla_dyscypliny(dyscyplina1), 4)) == "0.0000"
 
 
 @pytest.mark.django_db

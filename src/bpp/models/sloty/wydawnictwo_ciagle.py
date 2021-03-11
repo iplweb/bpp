@@ -33,7 +33,14 @@ class SlotKalkulator_Wydawnictwo_Ciagle_Prog2(SlotMixin):
 
     def punkty_pkd(self, dyscyplina):
         if self.ma_dyscypline(dyscyplina):
-            return self.original.punkty_kbn * max(self.pierwiastek_k_przez_m(dyscyplina), Decimal("0.1"))
+            pierwiastek = self.pierwiastek_k_przez_m(dyscyplina)
+            if pierwiastek is None:
+                return None
+
+            if self.liczba_k(dyscyplina) == 0:
+                return 0
+
+            return self.original.punkty_kbn * max(pierwiastek, Decimal("0.1"))
 
     def slot_dla_autora_z_dyscypliny(self, dyscyplina):
         if not self.ma_dyscypline(dyscyplina):
@@ -62,6 +69,8 @@ class SlotKalkulator_Wydawnictwo_Ciagle_Prog3(SlotMixin):
             k_przez_m = self.k_przez_m(dyscyplina)
             if k_przez_m is None:
                 return
+            if self.liczba_k(dyscyplina) == 0:
+                return 0
             return self.original.punkty_kbn * max(k_przez_m, Decimal("0.1"))
 
     def slot_dla_autora_z_dyscypliny(self, dyscyplina):

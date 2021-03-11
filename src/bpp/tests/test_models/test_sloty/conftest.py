@@ -3,8 +3,9 @@ import pytest
 from bpp.models import (
     Autor_Dyscyplina,
     Charakter_Formalny,
-    const,
+    Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
+    const,
 )
 
 
@@ -56,7 +57,7 @@ def ciagle_z_dyscyplinami(
     dyscyplina2,
     typy_odpowiedzialnosci,
     rok,
-):
+) -> Wydawnictwo_Ciagle:
     # Przypisz autorów do dyscyplin na ten rok albo będzie awaria:
     Autor_Dyscyplina.objects.create(
         autor=autor_jan_nowak, dyscyplina_naukowa=dyscyplina1, rok=rok

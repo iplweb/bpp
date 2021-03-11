@@ -3,12 +3,12 @@ from decimal import Decimal
 
 from django.utils.functional import cached_property
 
-from bpp.models import TO_AUTOR, TO_REDAKTOR, Autor
+from bpp.models import Autor
 
 
 class SlotMixin:
     """Mixin używany przez Wydawnictwo_Zwarte, Wydawnictwo_Ciagle i Patent
-    do przeprowadzania kalkulacji na slotach. """
+    do przeprowadzania kalkulacji na slotach."""
 
     def __init__(self, original):
         self.original = original
@@ -100,10 +100,23 @@ class SlotMixin:
         dyscyplina = wca.okresl_dyscypline()
         return self.slot_dla_autora_z_dyscypliny(dyscyplina)
 
+    def liczba_k(self, dyscyplina):
+        """Liczba k czyli liczba autorów z dyscypliny (z afiliacją=tak)"""
+        if hasattr(self, "_liczba_k_cache"):
+            v = self._liczba_k_cache.get(dyscyplina)
+            if v is not None:
+                return v
+        else:
+            self._liczba_k_cache = {}
+
+        v = len(self.autorzy_z_dyscypliny(dyscyplina))
+        self._liczba_k_cache[dyscyplina] = v
+        return v
+
     def k_przez_m(self, dyscyplina):
         if self.wszyscy() == 0:
             return
-        return Decimal(len(self.autorzy_z_dyscypliny(dyscyplina)) / self.wszyscy())
+        return Decimal(self.liczba_k(dyscyplina) / self.wszyscy())
 
     def pierwiastek_k_przez_m(self, dyscyplina):
         k_przez_m = self.k_przez_m(dyscyplina)

@@ -9,6 +9,7 @@ Historia zmian
 * limit slotów w raporcie slotów-uczelnia, możliwość wygenerowania wszystkich prac (#997),
 * import list IF (#868),
 * poprawka importu pól daty z plików XLSX (b/n),
+* licz poprawnie punktację w przypadku k=0 (#986),
 
 202103.56
 ---------

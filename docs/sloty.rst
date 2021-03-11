@@ -69,7 +69,8 @@ Punkty PKd dla rekordu, dla danej dyscypliny:
    PK_{d} = PK * \sqrt  { \frac{k}{m} }
 
 Zakładamy, że mnożnik z powyższego przykładu (pierwiastek kwadratowy z k/m) nie będzie mniejszy, jak 0.1. Jeżeli będzie mniejszy,
-to zostanie użyta wartość 0.1.
+to zostanie użyta wartość 0.1, chyba, że wszyscy autorzy z danej dyscypliny nie będą mieli afiliacji, wówczas zostanie użyta
+wartość 0.
 
 Punkty PKdAut dla rekordu, dla autora z danej dyscypliny:
 
@@ -99,7 +100,8 @@ Punkty PKd dla rekordu, dla danej dyscypliny:
    PK_{d} = PK * \frac{k}{m}
 
 Zakładamy, że mnożnik z powyższego przykładu (wynik dzielenia k/m) nie będzie mniejszy, jak 0.1. Jeżeli będzie mniejszy,
-to zostanie użyta wartość 0.1.
+to zostanie użyta wartość 0.1, chyba, że wszyscy autorzy z danej dyscypliny nie będą mieli afiliacji, wówczas zostanie użyta
+wartość 0.
 
 Punkty PKdAut dla rekordu, dla autora z danej dyscypliny:
 
