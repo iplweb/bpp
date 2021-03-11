@@ -5,17 +5,13 @@ import uuid
 from django.conf import settings
 from django.contrib.messages import constants
 from django.db import models, transaction
+from django.urls import reverse
 from django.utils import timezone
 
+from long_running import const
+from long_running.notification_mixins import NullNotificationMixin
+
 TRACEBACK_LENGTH_LIMIT = 65535
-
-
-class NullNotificationMixin:
-    def send_notification(self, msg, level=None):
-        return
-
-    def send_processing_finished(self):
-        return
 
 
 class Operation(NullNotificationMixin, models.Model):
@@ -100,7 +96,7 @@ class Operation(NullNotificationMixin, models.Model):
     def perform(self):
         raise NotImplementedError("Override this in a subclass.")
 
-    def task_perform(self, raise_exceptions=False):
+    def task_perform(self, raise_exceptions=True):
         """Runs a function in context of curret report, which means: it sets
         the variables according to success or failure of a given function.
 
@@ -121,6 +117,47 @@ class Operation(NullNotificationMixin, models.Model):
                 raise exc_value.with_traceback(exc_traceback)
         finally:
             self.on_finished()
+
+    redirect_prefix = None
+
+    def get_redirect_prefix(self):
+        """
+        LongRunningOperationRouterView to widok, który decyduje, co zrobić z daną operacją.
+        W tym celu korzysta z redirect_prefix czyli początku URLa, który domyślnie
+        wygląda jak aplikacja+nazwa obiektu, czyli np:
+
+            import_czegostam:importosob
+
+        Do takiego redirect_prefix dodajemy suffix czyli np. -router, -details, -results
+        i w ten sposob odsyłamy użytkownika na odpowiednią stronę - bądź to z monitorowaniem
+        postępu danej operacji, bądź to z wynikami operacji.
+
+        Domyślnie należy użytkownika odesłać na suffix -router, który to już
+        potem decyduje, gdzie dalej odesłać przeglądarkę.
+        """
+        if self.redirect_prefix:
+            return self.redirect_prefix
+        return f"{self._meta.app_label}:{self._meta.model_name}"
+
+    def get_url(self, suffix):
+        return reverse(f"{self.get_redirect_prefix()}-{suffix}", args=(self.pk,))
+
+    def get_absolute_url(self):
+        return self.get_url("router")
+
+    def get_state(self):
+        if self.started_on is None:
+            return const.PROCESSING_NOT_STARTED
+
+        if self.started_on is not None and self.finished_on is None:
+            return const.PROCESSING_STARTED
+
+        if self.started_on is not None and self.finished_on is not None:
+            if self.finished_successfully:
+                return const.PROCESSING_FINISHED_SUCCESSFULLY
+            return const.PROCESSING_FINISHED_WITH_ERROR
+
+        raise NotImplementedError("This line should never execute")
 
 
 class Report(Operation):

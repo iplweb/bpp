@@ -21,4 +21,4 @@ pg_restore -d template1  -C "$1" || true
 cd "$BASEDIR/.."
 python src/manage.py migrate
 python src/manage.py createsuperuser --noinput --username admin --email michal.dtz@gmail.com || true
-./bin/expect.sh
+./bin/ustaw-domyslne-haslo-admina.sh

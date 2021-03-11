@@ -6,7 +6,6 @@ from django import forms
 from django.contrib.postgres.fields import JSONField
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import DataError, IntegrityError, models, transaction
-from django.urls import reverse
 
 from bpp.models import (
     Autor,
@@ -22,20 +21,24 @@ from import_common.core import (
     matchuj_grupa_pracownicza,
     matchuj_jednostke,
     matchuj_wymiar_etatu,
+)
+from import_common.exceptions import (
+    BPPDatabaseError,
+    BPPDatabaseMismatch,
+    XLSMatchError,
+    XLSParseError,
+)
+from import_common.forms import ExcelDateField
+from import_common.models import ImportRowMixin
+from import_common.normalization import (
     normalize_funkcja_autora,
     normalize_grupa_pracownicza,
     normalize_nullboleanfield,
     normalize_wymiar_etatu,
 )
 from import_common.util import XLSImportFile
-from import_pracownikow.exceptions import (
-    BPPDatabaseError,
-    BPPDatabaseMismatch,
-    XLSMatchError,
-    XLSParseError,
-)
-from long_running.asgi_notification_mixin import ASGINotificationMixin
 from long_running.models import Operation
+from long_running.notification_mixins import ASGINotificationMixin
 
 
 class JednostkaForm(forms.Form):
@@ -55,8 +58,8 @@ class AutorForm(forms.Form):
 
     stanowisko = forms.CharField(max_length=200)
     grupa_pracownicza = forms.CharField(max_length=200)
-    data_zatrudnienia = forms.DateField()
-    data_końca_zatrudnienia = forms.DateField(required=False)
+    data_zatrudnienia = ExcelDateField()
+    data_końca_zatrudnienia = ExcelDateField(required=False)
     podstawowe_miejsce_pracy = forms.BooleanField(required=False)
     wymiar_etatu = forms.CharField(max_length=200)
 
@@ -66,9 +69,6 @@ class ImportPracownikow(ASGINotificationMixin, Operation):
 
     performed = models.BooleanField(default=False)
     integrated = models.BooleanField(default=False)
-
-    def get_absolute_url(self):
-        return reverse("import_pracownikow:detale", args=(self.id,))
 
     @transaction.atomic
     def on_reset(self):
@@ -239,10 +239,15 @@ class ImportPracownikow(ASGINotificationMixin, Operation):
     def zmiany_potrzebne_set(self):
         return self.importpracownikowrow_set.filter(zmiany_potrzebne=True)
 
-    @property
-    def zmiany_potrzebne_set_optimized(self):
-        return self.zmiany_potrzebne_set.select_related(
-            "autor", "jednostka", "jednostka__wydzial", "autor__tytul"
+    def get_details_set(self):
+        return self.importpracownikowrow_set.all().select_related(
+            "autor",
+            "jednostka",
+            "jednostka__wydzial",
+            "autor__tytul",
+            "grupa_pracownicza",
+            "funkcja_autora",
+            "wymiar_etatu",
         )
 
     def on_finished(self):
@@ -259,7 +264,7 @@ class ImportPracownikow(ASGINotificationMixin, Operation):
             self.send_progress(0.5 + (no / total / 2.0))
 
 
-class ImportPracownikowRow(models.Model):
+class ImportPracownikowRow(ImportRowMixin, models.Model):
     parent = models.ForeignKey(
         ImportPracownikow,
         on_delete=models.CASCADE,  # related_name="row_set"
@@ -425,6 +430,9 @@ class ImportPracownikowRow(models.Model):
         self.save()
 
     def sformatowany_log_zmian(self):
+        if self.log_zmian is None:
+            return
+
         if self.log_zmian["autor"]:
             yield "Zmiany obiektu Autor: " + ", ".join(
                 [elem for elem in self.log_zmian["autor"]]
@@ -437,9 +445,3 @@ class ImportPracownikowRow(models.Model):
 
         if not self.log_zmian:
             return "bez zmian!"
-
-    def nr_arkusza(self):
-        return self.dane_z_xls.get("__xls_loc_sheet__")
-
-    def nr_wiersza(self):
-        return self.dane_z_xls.get("__xls_loc_row__")

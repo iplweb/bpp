@@ -38,7 +38,7 @@ bppNotifications.goTo = function (url) {
 };
 
 bppNotifications.onmessage = function (event) {
-    console.log(event);
+    // console.log(event);
     var message = JSON.parse(event.data);
 
     if (message['id']) {

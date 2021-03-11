@@ -7,6 +7,8 @@ Historia zmian
 ---------
 
 * limit slotów w raporcie slotów-uczelnia, możliwość wygenerowania wszystkich prac (#997),
+* import list IF (#868),
+* poprawka importu pól daty z plików XLSX (b/n),
 
 202103.56
 ---------

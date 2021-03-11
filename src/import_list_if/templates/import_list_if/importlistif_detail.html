@@ -1,0 +1,27 @@
+{% extends "base.html" %}{% load render_table from django_tables2 %}
+
+{% block extratitle %}
+    Import list IF - szczegóły {{ object.plik_xls.name }}
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "import_list_if:index" %}">import list IF</a></li>
+    <li class="current">import {{ object.plik_xls.name }}</li>
+{% endblock %}
+
+
+{% block content %}
+    <h1>Import danych {{ object.plik_xls.name }}</h1>
+
+    <ul class="accordion" data-accordion data-allow-all-closed="true">
+        <li class="accordion-item is-active" data-accordion-item>
+            <a href="#" class="accordion-title">Szczegóły operacji</a>
+
+            <div class="accordion-content" data-tab-content>
+                {% include "long_running/operation_details.html" %}
+            </div>
+        </li>
+    </ul>
+
+{% endblock %}

@@ -17,14 +17,13 @@ from decimal import Decimal
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator
 from django.db import models
-from django.urls import reverse
 
 from bpp.core import zbieraj_sloty
 from bpp.fields import YearField
 from bpp.models import Autor, Cache_Punktacja_Autora_Query, Uczelnia
 from bpp.util import year_last_month
-from long_running.asgi_notification_mixin import ASGINotificationMixin
 from long_running.models import Report
+from long_running.notification_mixins import ASGINotificationMixin
 from raport_slotow.core import autorzy_zerowi
 
 
@@ -65,11 +64,6 @@ class RaportSlotowUczelnia(ASGINotificationMixin, Report):
 
     def on_reset(self):
         self.raportslotowuczelniawiersz_set.all().delete()
-
-    def get_absolute_url(self):
-        return reverse(
-            "raport_slotow:szczegoly-raport-slotow-uczelnia", args=(self.pk,)
-        )
 
     def clean(self):
         if self.od_roku > self.do_roku:
@@ -208,6 +202,11 @@ class RaportSlotowUczelnia(ASGINotificationMixin, Report):
                         self.raportslotowuczelniawiersz_set.create(**kw)
                 else:
                     self.raportslotowuczelniawiersz_set.create(**kw)
+
+    def get_details_set(self):
+        return self.raportslotowuczelniawiersz_set.all().select_related(
+            "autor", "autor__tytul", "jednostka", "jednostka__wydzial", "dyscyplina"
+        )
 
 
 class RaportSlotowUczelniaWiersz(models.Model):

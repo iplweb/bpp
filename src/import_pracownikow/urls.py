@@ -1,7 +1,9 @@
 from django.urls import path
 
 from import_pracownikow.views import (
-    DetaleImportView,
+    ImportPracownikowDetailsView,
+    ImportPracownikowResultsView,
+    ImportPracownikowRouterView,
     ListaImportowView,
     NowyImportView,
     RestartImportView,
@@ -14,12 +16,22 @@ urlpatterns = [
     path("new/", NowyImportView.as_view(), name="new"),
     path(
         "<uuid:pk>/",
-        DetaleImportView.as_view(),
-        name="detale",
+        ImportPracownikowRouterView.as_view(),
+        name="importpracownikow-router",
+    ),
+    path(
+        "<uuid:pk>/details/",
+        ImportPracownikowDetailsView.as_view(),
+        name="importpracownikow-details",
+    ),
+    path(
+        "<uuid:pk>/results/",
+        ImportPracownikowResultsView.as_view(),
+        name="importpracownikow-results",
     ),
     path(
         "<uuid:pk>/regen/",
         RestartImportView.as_view(),
-        name="restart",
+        name="importpracownikow-restart",
     ),
 ]

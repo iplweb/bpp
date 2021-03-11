@@ -78,6 +78,13 @@ urlpatterns = (
             ),
         ),
         url(
+            r"^import_list_if/",
+            include(
+                ("import_list_if.urls", "import_list_if"),
+                namespace="import_list_if",
+            ),
+        ),
+        url(
             r"^import_dyscyplin/",
             include(
                 ("import_dyscyplin.urls", "import_dyscyplin"),

@@ -1,28 +1,9 @@
 import sys
 
 import pytest
-from django.db import connection
-from model_mommy import mommy
+from django.utils import timezone
 
-from long_running.models import Report
-
-
-@pytest.fixture
-def report(db):
-    class TestReport(Report):
-        sent_notifications = []
-
-        def send_notification(self, *args, **kw):
-            self.sent_notifications.append((args, kw))
-
-    # Create the schema for our test model
-    with connection.schema_editor() as schema_editor:
-        schema_editor.create_model(TestReport)
-
-    yield mommy.make(TestReport)
-
-    # with connection.schema_editor() as schema_editor:
-    #     schema_editor.delete_model(TestReport)
+from long_running import const
 
 
 def test_Report_various(report):
@@ -53,3 +34,49 @@ def test_Report_task_create_report_bad(report):
     report.refresh_from_db()
     assert not report.finished_successfully
     assert "xxx" in report.traceback
+
+
+def test_Operation_readable_exception(operation):
+    assert operation.readable_exception() is None
+
+    operation.traceback = "1\n2\n3"
+    assert operation.readable_exception() == "3"
+
+
+def test_Operation_mark_reset(operation):
+    operation.mark_reset()
+    assert True
+
+
+def test_Operation_on_finished_with_error(operation):
+    operation.on_finished_with_error()
+    assert True
+
+
+def test_Operation_perform(operation):
+    with pytest.raises(NotImplementedError):
+        operation.perform()
+
+
+def test_Operation_get_redirect_prefix(operation):
+    assert operation.get_redirect_prefix() == "test_bpp:testoperation"
+
+
+def test_Operation_get_url(operation, mocker):
+    rev = mocker.patch("long_running.models.reverse")
+    operation.get_url("foo")
+    rev.assert_called_once()
+
+
+def test_Operation_get_state(operation):
+    assert operation.get_state() == const.PROCESSING_NOT_STARTED
+    operation.started_on = timezone.now()
+    assert operation.get_state() == const.PROCESSING_STARTED
+    operation.finished_on = timezone.now()
+    operation.finished_successfully = False
+    assert operation.get_state() == const.PROCESSING_FINISHED_WITH_ERROR
+    operation.finished_successfully = True
+    assert operation.get_state() == const.PROCESSING_FINISHED_SUCCESSFULLY
+
+    operation.started_on = None
+    assert operation.get_state() == const.PROCESSING_NOT_STARTED
