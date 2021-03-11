@@ -110,6 +110,31 @@ ROOT_URLCONF = "django_bpp.urls"
 # Python dotted path to the WSGI application used by Django's runserver.
 WSGI_APPLICATION = "django_bpp.wsgi.application"
 
+
+def _elem_in_sys_argv(possible):
+    argv = " ".join(sys.argv)
+    for elem in possible:
+        if elem in argv:
+            return True
+
+
+TESTING = _elem_in_sys_argv(
+    [
+        "jenkins",
+        "py.test",
+        "pytest",
+        "helpers/pycharm/_jb_pytest_runner",
+        "manage.py test",
+    ]
+)
+MIGRATING = _elem_in_sys_argv(["makemigrations", "migrate"])
+
+if TESTING:
+    CELERY_ALWAYS_EAGER = True
+    CELERY_TASK_ALWAYS_EAGER = True
+    CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
+
+
 INSTALLED_APPS = [
     "channels",
     "django.contrib.humanize",
@@ -177,6 +202,9 @@ INSTALLED_APPS = [
     "adminsortable2",
     "import_export",
 ]
+
+if TESTING or MIGRATING:
+    INSTALLED_APPS += ("test_bpp",)
 
 # Profile użytkowników
 AUTH_USER_MODEL = "bpp.BppUser"
@@ -354,18 +382,6 @@ SESSION_SERIALIZER = "django.contrib.sessions.serializers.PickleSerializer"
 MESSAGE_STORAGE = "messages_extends.storages.FallbackStorage"
 
 TEST_NON_SERIALIZED_APPS = ["django.contrib.contenttypes", "django.contrib.auth"]
-
-TESTING = (
-    ("test" in sys.argv)
-    or ("jenkins" in sys.argv)
-    or ("py.test" in sys.argv)
-    or ("pytest" in sys.argv)
-)
-
-if TESTING:
-    CELERY_ALWAYS_EAGER = True
-    CELERY_TASK_ALWAYS_EAGER = True
-    CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
 
 CELERYD_HIJACK_ROOT_LOGGER = False
 

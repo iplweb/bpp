@@ -5,6 +5,14 @@ from notifications import core as notifications_core
 from notifications.models import Notification
 
 
+class NullNotificationMixin:
+    def send_notification(self, msg, level=None):
+        return
+
+    def send_processing_finished(self):
+        return
+
+
 class ASGINotificationMixin:
     @cached_property
     def asgi_channel_name(self):

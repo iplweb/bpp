@@ -117,7 +117,7 @@ class CreateLongRunningOperationView(
 class RestartLongRunningOperationView(
     RestrictToOwnerMixin, LongRunningTaskCallerMixin, DetailView
 ):
-    task = perform_generic_long_running_task
+    # task = perform_generic_long_running_task
 
     @transaction.atomic
     def get(self, *args, **kw):

@@ -4,8 +4,8 @@ from django.db import models
 
 from import_common.exceptions import XLSParseError
 from import_common.util import XLSImportFile
-from long_running.asgi_notification_mixin import ASGINotificationMixin
 from long_running.models import Operation
+from long_running.notification_mixins import ASGINotificationMixin
 
 
 class ImportOperation(ASGINotificationMixin, Operation):

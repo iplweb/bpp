@@ -6,8 +6,8 @@ import django.db.models.deletion
 from django.conf import settings
 from django.db import migrations, models
 
-import long_running.asgi_notification_mixin
 import long_running.models
+import long_running.notification_mixins
 
 
 class Migration(migrations.Migration):
@@ -52,7 +52,7 @@ class Migration(migrations.Migration):
                 "abstract": False,
             },
             bases=(
-                long_running.asgi_notification_mixin.ASGINotificationMixin,
+                long_running.notification_mixins.ASGINotificationMixin,
                 long_running.models.NullNotificationMixin,
                 models.Model,
             ),

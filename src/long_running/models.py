@@ -9,16 +9,9 @@ from django.urls import reverse
 from django.utils import timezone
 
 from long_running import const
+from long_running.notification_mixins import NullNotificationMixin
 
 TRACEBACK_LENGTH_LIMIT = 65535
-
-
-class NullNotificationMixin:
-    def send_notification(self, msg, level=None):
-        return
-
-    def send_processing_finished(self):
-        return
 
 
 class Operation(NullNotificationMixin, models.Model):
@@ -103,12 +96,7 @@ class Operation(NullNotificationMixin, models.Model):
     def perform(self):
         raise NotImplementedError("Override this in a subclass.")
 
-    def get_details_set(self):
-        """This function should return a list of processed objects, that took
-        part in this operation. Think about it in terms of showing the results."""
-        raise NotImplementedError("Override this in a subclass.")
-
-    def task_perform(self, raise_exceptions=False):
+    def task_perform(self, raise_exceptions=True):
         """Runs a function in context of curret report, which means: it sets
         the variables according to success or failure of a given function.
 
@@ -133,6 +121,20 @@ class Operation(NullNotificationMixin, models.Model):
     redirect_prefix = None
 
     def get_redirect_prefix(self):
+        """
+        LongRunningOperationRouterView to widok, który decyduje, co zrobić z daną operacją.
+        W tym celu korzysta z redirect_prefix czyli początku URLa, który domyślnie
+        wygląda jak aplikacja+nazwa obiektu, czyli np:
+
+            import_czegostam:importosob
+
+        Do takiego redirect_prefix dodajemy suffix czyli np. -router, -details, -results
+        i w ten sposob odsyłamy użytkownika na odpowiednią stronę - bądź to z monitorowaniem
+        postępu danej operacji, bądź to z wynikami operacji.
+
+        Domyślnie należy użytkownika odesłać na suffix -router, który to już
+        potem decyduje, gdzie dalej odesłać przeglądarkę.
+        """
         if self.redirect_prefix:
             return self.redirect_prefix
         return f"{self._meta.app_label}:{self._meta.model_name}"
