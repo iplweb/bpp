@@ -35,3 +35,13 @@ def test_ImportListIF_perform(import_list_if, rok):
     assert Zrodlo.objects.get(nazwa="Gazeta").punktacja_zrodla_set.get(
         rok=rok
     ).impact_factor == Decimal("70.67")
+
+
+def test_ImportListIF_on_reset(import_list_if, rok):
+    import_list_if.on_reset()
+    assert True
+
+
+def test_ImportListIF_get_details_set(import_list_if, rok):
+    import_list_if.get_details_set()
+    assert True

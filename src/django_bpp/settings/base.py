@@ -123,7 +123,7 @@ TESTING = _elem_in_sys_argv(
         "jenkins",
         "py.test",
         "pytest",
-        "helpers/pycharm/_jb_pytest_runner",
+        "helpers/pycharm/_jb_pytest_runner.py",
         "manage.py test",
     ]
 )
@@ -201,10 +201,9 @@ INSTALLED_APPS = [
     "api_v1",
     "adminsortable2",
     "import_export",
+    # Zostawiamy - bezwarunkowo
+    "test_bpp",
 ]
-
-if TESTING or MIGRATING:
-    INSTALLED_APPS += ("test_bpp",)
 
 # Profile użytkowników
 AUTH_USER_MODEL = "bpp.BppUser"

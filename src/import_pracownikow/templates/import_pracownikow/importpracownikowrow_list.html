@@ -24,14 +24,17 @@
                 <th>Wiersz nr</th>
                 <th>Autor</th>
                 <th>Jednostka</th>
+                <th>Zmiany potrzebne?</th>
                 <th>Zmienione dane</th>
             </tr>
-            {% for row in object.zmiany_potrzebne_set_optimized %}
+        {% include "pagination.html" %}
+            {% for row in object_list %}
                 <tr>
                     <td>{{ row.nr_arkusza }}</td>
                     <td>{{ row.nr_wiersza }}</td>
                     <td><a href="{% url "bpp:browse_autor" row.autor.pk %}">{{ row.autor }}</a></td>
                     <td><a href="{% url "bpp:browse_jednostka" row.jednostka.pk %}">{{ row.jednostka }}</a></td>
+                <td>{{ row.zmiany_potrzebne }}</td>
                     <td>{% for elem in row.sformatowany_log_zmian %}
                         <p>{{ elem }}</p>
                         {% endfor %}

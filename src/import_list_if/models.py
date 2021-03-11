@@ -58,7 +58,7 @@ class ImportListIf(ImportOperation):
         res.save()
 
     def on_reset(self):
-        self.importlistifrow_set.all().delete()
+        self.get_details_set().delete()
 
     def get_details_set(self):
         return self.importlistifrow_set.all().select_related("zrodlo")

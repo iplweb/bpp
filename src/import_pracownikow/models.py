@@ -240,8 +240,14 @@ class ImportPracownikow(ASGINotificationMixin, Operation):
         return self.importpracownikowrow_set.filter(zmiany_potrzebne=True)
 
     def get_details_set(self):
-        return self.zmiany_potrzebne_set.select_related(
-            "autor", "jednostka", "jednostka__wydzial", "autor__tytul"
+        return self.importpracownikowrow_set.all().select_related(
+            "autor",
+            "jednostka",
+            "jednostka__wydzial",
+            "autor__tytul",
+            "grupa_pracownicza",
+            "funkcja_autora",
+            "wymiar_etatu",
         )
 
     def on_finished(self):
@@ -424,6 +430,9 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
         self.save()
 
     def sformatowany_log_zmian(self):
+        if self.log_zmian is None:
+            return
+
         if self.log_zmian["autor"]:
             yield "Zmiany obiektu Autor: " + ", ".join(
                 [elem for elem in self.log_zmian["autor"]]
