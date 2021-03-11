@@ -8,6 +8,8 @@ from django.db import models, transaction
 from django.urls import reverse
 from django.utils import timezone
 
+from long_running import const
+
 TRACEBACK_LENGTH_LIMIT = 65535
 
 
@@ -128,8 +130,32 @@ class Operation(NullNotificationMixin, models.Model):
         finally:
             self.on_finished()
 
+    redirect_prefix = None
+
+    def get_redirect_prefix(self):
+        if self.redirect_prefix:
+            return self.redirect_prefix
+        return f"{self._meta.app_label}:{self._meta.model_name}"
+
+    def get_url(self, suffix):
+        return reverse(f"{self.get_redirect_prefix()}-{suffix}", args=(self.pk,))
+
     def get_absolute_url(self):
-        return reverse(self._meta.app_label + ":" + "detale", args=(self.pk,))
+        return self.get_url("router")
+
+    def get_state(self):
+        if self.started_on is None:
+            return const.PROCESSING_NOT_STARTED
+
+        if self.started_on is not None and self.finished_on is None:
+            return const.PROCESSING_STARTED
+
+        if self.started_on is not None and self.finished_on is not None:
+            if self.finished_successfully:
+                return const.PROCESSING_FINISHED_SUCCESSFULLY
+            return const.PROCESSING_FINISHED_WITH_ERROR
+
+        raise NotImplementedError("This line should never execute")
 
 
 class Report(Operation):

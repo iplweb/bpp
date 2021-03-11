@@ -2,9 +2,11 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.http import Http404, HttpResponseRedirect
+from django.template.response import TemplateResponse
 from django.utils.functional import cached_property
 from django.views.generic import CreateView, DetailView, ListView
 
+from long_running import const
 from long_running.tasks import perform_generic_long_running_task
 
 
@@ -35,31 +37,55 @@ class LongRunningOperationsView(RestrictToOwnerMixin, ListView):
         return qset
 
 
-# class DetailListView(ListView):
-#     detail_context_object_name = 'object'
-#
-#     def get(self, request, *args, **kwargs):
-#         self.object = self.get_object()
-#         return super(DetailListView, self).get(request, *args, **kwargs)
-#
-#     def get_queryset_for_object(self):
-#         raise NotImplementedError('You need to provide the queryset for the object')
-#
-#     def get_object(self):
-#         queryset = self.get_queryset_for_object()
-#         DetailView.get_object(self, queryset)
-#         pk = self.kwargs.get('pk')
-#         if pk is None:
-#             raise AttributeError('pk expected in url')
-#         return get_object_or_404(queryset, pk=pk)
-#
-#     def get_context_data(self, **kwargs):
-#         context = super(DetailListView, self).get_context_data(**kwargs)
-#         context[self.detail_context_object_name] = self.object
-#         return context
+class LongRunningSingleObjectChannelSubscriberMixin:
+    def get_context_data(self, **kwargs):
+        return super(
+            LongRunningSingleObjectChannelSubscriberMixin, self
+        ).get_context_data(extraChannels=[self.object.pk], **kwargs)
 
 
-class LongRunningDetailsView(ListView):
+class LongRunningRouterView(
+    RestrictToOwnerMixin, LongRunningSingleObjectChannelSubscriberMixin, DetailView
+):
+    """You can mount this view somewhere on an url with a pk (an uuid) of
+    an Operation and it will try routing to either a web page with the progress
+    report, or in case operation finishes, to a result page (or an error page...)"""
+
+    redirect_prefix = None
+
+    STATE_TO_SUFFIX_MAP = {
+        const.PROCESSING_STARTED: "details",
+        const.PROCESSING_FINISHED_WITH_ERROR: "details",
+        const.PROCESSING_FINISHED_SUCCESSFULLY: "results",
+    }
+
+    def get(self, *args, **kwargs):
+        self.object = self.get_object()
+        context = self.get_context_data()
+        state = self.object.get_state()
+
+        if state == const.PROCESSING_NOT_STARTED:
+            # If not started, redirect to itself but after a few seconds
+            return TemplateResponse(
+                request=self.request,
+                template="long_running/router_view_wait.html",
+                context=context,
+            )
+
+        suffix = self.STATE_TO_SUFFIX_MAP.get(state)
+
+        url = self.object.get_url(suffix)
+
+        return HttpResponseRedirect(url)
+
+
+class LongRunningDetailsView(
+    RestrictToOwnerMixin, LongRunningSingleObjectChannelSubscriberMixin, DetailView
+):
+    pass
+
+
+class LongRunningResultsView(ListView):
     paginate_by = 25
 
     @cached_property
@@ -73,7 +99,7 @@ class LongRunningDetailsView(ListView):
         return self.parent_object.get_details_set()
 
     def get_context_data(self, **kwargs):
-        return super(LongRunningDetailsView, self).get_context_data(
+        return super(LongRunningResultsView, self).get_context_data(
             extraChannels=[self.parent_object.pk], object=self.parent_object, **kwargs
         )
 

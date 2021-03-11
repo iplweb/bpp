@@ -6,6 +6,8 @@ from long_running.views import (
     CreateLongRunningOperationView,
     LongRunningDetailsView,
     LongRunningOperationsView,
+    LongRunningResultsView,
+    LongRunningRouterView,
     RestartLongRunningOperationView,
 )
 
@@ -23,7 +25,15 @@ class NowyImportView(BaseImportListIfMixin, CreateLongRunningOperationView):
     form_class = NowyImportForm
 
 
-class DetaleImportView(BaseImportListIfMixin, LongRunningDetailsView):
+class ImportListIfRouterView(BaseImportListIfMixin, LongRunningRouterView):
+    redirect_prefix = "import_list_if:import_list_if"
+
+
+class ImportListIfDetailsView(BaseImportListIfMixin, LongRunningDetailsView):
+    pass
+
+
+class ImportListIfResultsView(BaseImportListIfMixin, LongRunningResultsView):
     pass
 
 

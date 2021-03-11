@@ -257,9 +257,17 @@ class ModelRecenzowany(models.Model):
         abstract = True
 
 
+IF_MAX_DIGITS = 6
+IF_DECIMAL_PLACES = 3
+
+
 def ImpactFactorField(*args, **kw):
     return models.DecimalField(
-        max_digits=6, decimal_places=3, default=Decimal("0.000"), *args, **kw
+        max_digits=IF_MAX_DIGITS,
+        decimal_places=IF_DECIMAL_PLACES,
+        default=Decimal("0.000"),
+        *args,
+        **kw
     )
 
 

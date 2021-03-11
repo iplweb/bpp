@@ -23,7 +23,7 @@
     <ul>
         {% for object in object_list %}
             <li>
-                <a href="{% url "import_pracownikow:detale" object.pk %}">plik {{ object.plik_xls.name }}</a>:
+                <a href="{% url "import_pracownikow:importpracownikow-router" object.pk %}">plik {{ object.plik_xls.name }}</a>:
                 import utworzono {{ object.created_on }}{% if object.finished_on %}, ukończono {{ object.finished_on }}
                 {% if object.finished_successfully %}, zakończono pomyślnie{% else %}, zakończono z błędem{% endif %}
             {% endif %}

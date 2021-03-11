@@ -2,14 +2,22 @@ from django import forms
 from django.contrib.postgres.fields import JSONField
 from django.db import models
 
-from bpp.models import ImpactFactorField, Punktacja_Zrodla, Zrodlo
+from bpp.models import (
+    IF_DECIMAL_PLACES,
+    IF_MAX_DIGITS,
+    ImpactFactorField,
+    Punktacja_Zrodla,
+    Zrodlo,
+)
 from import_common.core import matchuj_zrodlo
 from import_common.models import ImportOperation, ImportRowMixin
 
 
 class ImportListRowValidationForm(forms.Form):
     full_journal_title = forms.CharField(max_length=512)
-    journal_impact_factor = forms.FloatField()
+    journal_impact_factor = forms.DecimalField(
+        max_digits=IF_MAX_DIGITS, decimal_places=IF_DECIMAL_PLACES
+    )
 
 
 class ImportListIf(ImportOperation):

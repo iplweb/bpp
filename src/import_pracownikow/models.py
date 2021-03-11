@@ -6,7 +6,6 @@ from django import forms
 from django.contrib.postgres.fields import JSONField
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import DataError, IntegrityError, models, transaction
-from django.urls import reverse
 
 from bpp.models import (
     Autor,
@@ -70,9 +69,6 @@ class ImportPracownikow(ASGINotificationMixin, Operation):
 
     performed = models.BooleanField(default=False)
     integrated = models.BooleanField(default=False)
-
-    def get_absolute_url(self):
-        return reverse("import_pracownikow:detale", args=(self.id,))
 
     @transaction.atomic
     def on_reset(self):

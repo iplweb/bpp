@@ -1,7 +1,9 @@
 from django.urls import path
 
 from import_list_if.views import (
-    DetaleImportView,
+    ImportListIfDetailsView,
+    ImportListIfResultsView,
+    ImportListIfRouterView,
     ListaImportowView,
     NowyImportView,
     RestartImportView,
@@ -14,8 +16,18 @@ urlpatterns = [
     path("new/", NowyImportView.as_view(), name="new"),
     path(
         "<uuid:pk>/",
-        DetaleImportView.as_view(),
-        name="detale",
+        ImportListIfRouterView.as_view(),
+        name="importlistif-router",
+    ),
+    path(
+        "<uuid:pk>/detale/",
+        ImportListIfDetailsView.as_view(),
+        name="importlistif-details",
+    ),
+    path(
+        "<uuid:pk>/rezultaty/",
+        ImportListIfResultsView.as_view(),
+        name="importlistif-results",
     ),
     path(
         "<uuid:pk>/regen/",

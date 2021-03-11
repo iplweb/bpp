@@ -29,7 +29,7 @@ class ASGINotificationMixin:
                 values=dict(progress=True, percent="100%"),
             ),
             Notification.objects.create(
-                channel_name=self.asgi_channel_name, values=dict(url=".")
+                channel_name=self.asgi_channel_name, values=dict(url="..")
             ),
         ]:
             elem.send()
