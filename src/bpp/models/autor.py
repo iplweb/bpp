@@ -389,6 +389,12 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
 class Funkcja_Autora(NazwaISkrot):
     """Funkcja autora w jednostce"""
 
+    pokazuj_za_nazwiskiem = models.BooleanField(
+        default=False,
+        help_text="""Zaznaczenie tego pola sprawi, że ta funkcja
+        będzie wyświetlana na stronie autora, za nazwiskiem.""",
+    )
+
     class Meta:
         verbose_name = "funkcja w jednostce"
         verbose_name_plural = "funkcje w jednostkach"
