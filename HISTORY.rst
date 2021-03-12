@@ -8,7 +8,7 @@ Historia zmian
 
 * poprawny link do przykladowego pliku do importu list IF (#1008),
 * opis tekstowy artykułów na miniblogu w UI redagowania (#706),
-
+* sortowanie powiązań Autor+Jednostka po dacie zatrudnienia, nie po nazwie (#1006),
 
 202103.57
 ---------

@@ -527,6 +527,6 @@ class Autor_Jednostka(models.Model):
     class Meta:
         verbose_name = "powiązanie autor-jednostka"
         verbose_name_plural = "powiązania autor-jednostka"
-        ordering = ["autor__nazwisko", "jednostka__nazwa", "rozpoczal_prace"]
+        ordering = ["autor__nazwisko", "rozpoczal_prace", "jednostka__nazwa"]
         unique_together = [("autor", "jednostka", "rozpoczal_prace")]
         app_label = "bpp"
