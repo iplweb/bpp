@@ -11,7 +11,9 @@
 {% endblock %}
 
 {% block content %}
-    <h1>{{ autor }}</h1>
+    <h1>{{ autor }}{% if autor.aktualna_jednostka %}
+        {% if autor.aktualna_funkcja.pokazuj_za_nazwiskiem %}, {{ autor.aktualna_funkcja }}{% endif %}
+    {% endif %}</h1>
     {% include "browse/go_to_admin_change.html" with url="admin:bpp_autor_change" pk=autor.pk group="wprowadzanie danych" %}
 
     {% if autor.praca_doktorska_set.exists %}
