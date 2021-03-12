@@ -7,6 +7,7 @@ Historia zmian
 ---------
 
 * poprawny link do przykladowego pliku do importu list IF (#1008),
+* opis tekstowy artykułów na miniblogu w UI redagowania (#706),
 
 
 202103.57
