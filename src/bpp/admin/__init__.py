@@ -61,7 +61,7 @@ class JezykAdmin(RestrictDeletionToAdministracjaGroupAdmin):
 
 
 class Funkcja_AutoraAdmin(RestrictDeletionToAdministracjaGroupAdmin):
-    list_display = ["nazwa", "skrot"]
+    list_display = ["nazwa", "skrot", "pokazuj_za_nazwiskiem"]
 
 
 admin.site.register(Jezyk, JezykAdmin)
