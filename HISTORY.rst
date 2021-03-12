@@ -3,6 +3,12 @@
 Historia zmian
 ==============
 
+202103.58
+---------
+
+* poprawny link do przykladowego pliku do importu list IF (#1008),
+
+
 202103.57
 ---------
 
