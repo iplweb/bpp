@@ -490,4 +490,4 @@ def test_AutorView_funkcja_za_nazwiskiem(app):
 
     page = app.get(url)
     res = normalize_html(str(page.content, "utf-8"))
-    assert res.find("<h1>Foo Bar , profesor uczelni </h1>") >= 0
+    assert res.find("<h1>Foo Bar, profesor uczelni </h1>") >= 0
