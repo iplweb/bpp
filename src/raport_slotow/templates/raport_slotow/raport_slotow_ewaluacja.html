@@ -6,12 +6,12 @@
 
 {% block breadcrumbs %}
     {{ block.super }}
-    <li class="current">raport slotów - ewaluacja</li>
+    <li><A href="..">raport slotów - ewaluacja</A></li>
 {% endblock %}
 
 {% block content %}
     <h1>Raport slotów - ewaluacja</h1>
-    <a href="?_export=xlsx&rok={{ rok }}"><i class="fi-page-export-csv"></i> pobierz XLS</a>
+    <a href="?_export=xlsx&od_roku={{ od_roku }}&do_roku={{ do_roku }}&upowaznienie_pbn={{ upowaznienie_pbn }}"><i class="fi-page-export-csv"></i> pobierz XLS</a>
 
     <style>
         form.filtry input[type=number] {
@@ -33,10 +33,12 @@
 
                     <td><input type="submit" value="Filtruj"/>
 
-                        <input type="hidden" name="rok" value="{{ rok }}"/>
+                        <input type="hidden" name="od_roku" value="{{ od_roku }}"/>
+                        <input type="hidden" name="do_roku" value="{{ do_roku }}"/>
+                        <input type="hidden" name="upowaznienie_pbn" value="{{ upowaznienie_pbn }}"/>
                         <input type="hidden" name="_export" value="html"/>
 
-                        <input type="reset" value="Usuń filtry" onclick="location.href='?rok={{ rok }}&_export=html';"/>
+                        <input type="reset" value="Usuń filtry" onclick="location.href='?od_roku={{ od_roku }}&do_roku={{ do_roku }}&upowaznienie_pbn={{ upowaznienie_pbn }}&_export=html';"/>
                         <input type="button" value="Pobierz XLS" onclick="location.href='?{{ export_link }}';"/>
                     </td>
                 </tr>

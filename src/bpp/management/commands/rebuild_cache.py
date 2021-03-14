@@ -5,21 +5,21 @@ from django.conf import settings
 from django.core.management import BaseCommand
 
 from bpp.models import (
+    Patent,
+    Praca_Doktorska,
+    Praca_Habilitacyjna,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
-    Patent,
     rebuild_ciagle,
-    rebuild_zwarte,
     rebuild_patent,
     rebuild_praca_doktorska,
     rebuild_praca_habilitacyjna,
-    Praca_Habilitacyjna,
-    Praca_Doktorska,
+    rebuild_zwarte,
 )
 from bpp.util import (
+    disable_multithreading_by_monkeypatching_pool,
     no_threads,
     partition_count,
-    disable_multithreading_by_monkeypatching_pool,
 )
 
 

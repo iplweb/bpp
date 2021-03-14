@@ -3,17 +3,17 @@
 """Ten moduł zawiera 'normalne', dla ludzi funkcje, które mogą być używane
 do ustawiania testów."""
 import random
+import re
 import time
 import warnings
 from datetime import datetime
 
+from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 from model_mommy import mommy
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.wait import WebDriverWait
 from splinter.exceptions import ElementDoesNotExist
-
-from django.contrib.contenttypes.models import ContentType
 
 from bpp.models import (
     Autor,
@@ -32,7 +32,6 @@ from bpp.models import (
     Zrodlo,
 )
 from bpp.models.system import Status_Korekty
-
 from django_bpp.selenium_util import wait_for, wait_for_page_load
 
 
@@ -471,3 +470,8 @@ def browse_praca_url(model):
     return reverse(
         "bpp:browse_praca", args=(ContentType.objects.get_for_model(model).pk, model.pk)
     )
+
+
+def normalize_html(s):
+    s = s.replace("\r\n", " ").replace("\n", " ")
+    return re.sub(r"\s\s+", " ", s)

@@ -7,6 +7,7 @@ from django.db.models import ProtectedError
 from model_mommy import mommy
 
 from bpp.models import CacheQueue, Wydawca
+from bpp.models.wydawca import Poziom_Wydawcy
 from bpp.tasks import aktualizuj_cache
 
 
@@ -158,3 +159,9 @@ def test_wydawca_alias_sam_do_siebie(wydawca):
     wydawca.alias_dla = wydawca
     with pytest.raises(ValidationError):
         wydawca.save()
+
+
+def test_poziom_wydawcy_str(wydawca):
+    pw = Poziom_Wydawcy.objects.create(wydawca=wydawca, rok=2020, poziom=1)
+
+    assert str(pw) == 'Poziom wydawcy "Wydawca Testowy" za rok 2020'

@@ -19,7 +19,9 @@ from raport_slotow.util import MyExportMixin
 
 
 class ParametryRaportSlotowEwaluacja(
-    UczelniaSettingRequiredMixin, FormDefaultsMixin, FormView,
+    UczelniaSettingRequiredMixin,
+    FormDefaultsMixin,
+    FormView,
 ):
     template_name = "raport_slotow/index.html"
     form_class = ParametryRaportSlotowEwaluacjaForm
@@ -33,7 +35,9 @@ class ParametryRaportSlotowEwaluacja(
 
     def form_valid(self, form):
         return HttpResponseRedirect(
-            reverse("raport_slotow:raport-ewaluacja",)
+            reverse(
+                "raport_slotow:raport-ewaluacja",
+            )
             + "?"
             + urlencode(form.cleaned_data)
         )
@@ -56,6 +60,9 @@ class RaportSlotowEwaluacja(
 
         if form.is_valid():
             self.data = form.cleaned_data
+            if self.data["upowaznienie_pbn"] == "":
+                self.data["upowaznienie_pbn"] = None
+
             return super(RaportSlotowEwaluacja, self).get(self.request, *args, **kw)
         else:
             return self.form_invalid(form)
@@ -66,36 +73,105 @@ class RaportSlotowEwaluacja(
     def get_export_description(self):
         return [
             ("Nazwa raportu:", "raport slotów - ewaluacja"),
-            (f"Rok:", self.data["rok"]),
+            ("Od roku:", self.data["od_roku"]),
+            ("Do roku:", self.data["do_roku"]),
+            ("Upoważnienie PBN:", self.data["upowaznienie_pbn"]),
             ("Wygenerowano:", timezone.now()),
             ("Wersja oprogramowania BPP", VERSION),
         ]
 
     def get_queryset(self):
+        upowaznienie_kw = {}
+        if self.data.get("upowaznienie_pbn") is not None:
+            upowaznienie_kw["autorzy__upowaznienie_pbn"] = self.data["upowaznienie_pbn"]
+
         return (
-            RaportUczelniaEwaluacjaView.objects.filter(rekord__rok=self.data["rok"],)
+            RaportUczelniaEwaluacjaView.objects.filter(
+                rekord__rok__gte=self.data["od_roku"],
+                rekord__rok__lte=self.data["do_roku"],
+                **upowaznienie_kw,
+            )
             .select_related(
                 "rekord",
+                "rekord__zrodlo",
+                "rekord__wydawnictwo_nadrzedne",
+                "autor_dyscyplina",
                 "autorzy",
+                "rekord__charakter_formalny",
+                "autorzy__autor",
+                "autorzy__dyscyplina_naukowa",
+                "autorzy__autor__tytul",
                 "autor_dyscyplina__dyscyplina_naukowa",
                 "autor_dyscyplina__subdyscyplina_naukowa",
+            )
+            .only(
+                "autorzy_z_dyscypliny",
+                "pkdaut",
+                "slot",
+                "rekord__rok",
+                "rekord__szczegoly",
+                "rekord__id",
+                "rekord__tytul_oryginalny",
+                "rekord__opis_bibliograficzny_autorzy_cache",
+                "rekord__punkty_kbn",
+                "rekord__informacje",
+                "rekord__opis_bibliograficzny_zapisani_autorzy_cache",
+                "rekord__wydawnictwo_nadrzedne_id",
+                "rekord__wydawnictwo_nadrzedne__id",
+                "rekord__wydawnictwo_nadrzedne__tytul_oryginalny",
+                "rekord__zrodlo_id",
+                "rekord__zrodlo__id",
+                "rekord__zrodlo__nazwa",
+                "autorzy__autor__nazwisko",
+                "autorzy__autor__pseudonim",
+                "autorzy__autor__poprzednie_nazwiska",
+                "autorzy__autor__id",
+                "autorzy__autor__pbn_id",
+                "autorzy__autor__orcid",
+                "autorzy__autor__imiona",
+                "autorzy__autor__tytul",
+                "autorzy__upowaznienie_pbn",
+                "autor_dyscyplina__dyscyplina_naukowa",
+                "autor_dyscyplina__dyscyplina_naukowa__id",
+                "autor_dyscyplina__dyscyplina_naukowa__nazwa",
+                "autor_dyscyplina__dyscyplina_naukowa__kod",
+                "autor_dyscyplina__dyscyplina_naukowa__widoczna",
+                "autor_dyscyplina__procent_dyscypliny",
+                "autor_dyscyplina__subdyscyplina_naukowa",
+                "autor_dyscyplina__subdyscyplina_naukowa__id",
+                "autor_dyscyplina__subdyscyplina_naukowa__nazwa",
+                "autor_dyscyplina__subdyscyplina_naukowa__kod",
+                "autor_dyscyplina__subdyscyplina_naukowa__widoczna",
+                "autor_dyscyplina__procent_subdyscypliny",
                 "autorzy__dyscyplina_naukowa",
+                "autorzy__dyscyplina_naukowa__id",
+                "autorzy__dyscyplina_naukowa__nazwa",
+                "autorzy__dyscyplina_naukowa__kod",
+                "autorzy__dyscyplina_naukowa__widoczna",
                 "rekord__charakter_formalny",
                 "autorzy__autor",
                 "autorzy__autor__tytul",
             )
-            .prefetch_related("rekord__zrodlo")
         )
 
     def get_context_data(self, *, object_list=None, **kwargs):
         context = super(RaportSlotowEwaluacja, self).get_context_data(**kwargs)
-        context["rok"] = self.data["rok"]
+        context["od_roku"] = self.data["od_roku"]
+        context["do_roku"] = self.data["do_roku"]
         context["export_link"] = urllib.parse.urlencode(
-            dict(self.request.GET, **{"_export": "xlsx", "rok": self.data["rok"]}),
+            dict(
+                self.request.GET,
+                **{
+                    "_export": "xlsx",
+                    "od_roku": self.data["od_roku"],
+                    "do_roku": self.data["do_roku"],
+                    "upowaznienie_pbn": self.data["upowaznienie_pbn"],
+                },
+            ),
             doseq=True,
         )
 
         return context
 
     def get_export_filename(self, export_format):
-        return f"raport_slotow_ewaluacja_{self.data['rok']}.{export_format}"
+        return f"raport_slotow_ewaluacja_{self.data['od_roku']}-{self.data['do_roku']}.{export_format}"

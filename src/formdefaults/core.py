@@ -1,5 +1,6 @@
 import json
 
+from django.db import transaction
 from django.db.models import Q
 
 from formdefaults.util import full_name
@@ -76,7 +77,7 @@ def update_form_db_repr(form_instance, form_repr, user=None):
 
         # Jeżeli jest podany użytkownik to sprawdź, czy dla niego jest wpis w bazie danych;
         # Jeżeli tego wpisu nie ma to utwórz go z wartością domyślną
-        if user != None:
+        if user is not None:
             user_value, created = form_repr.values_set.get_or_create(
                 field=db_field, user=user
             )
@@ -86,6 +87,7 @@ def update_form_db_repr(form_instance, form_repr, user=None):
                 user_value.save()
 
 
+@transaction.atomic
 def get_form_defaults(form_instance, label=None, user=None, update_db_repr=True):
     fn = full_name(form_instance)
 

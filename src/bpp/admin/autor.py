@@ -131,6 +131,9 @@ class AutorAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
         "www",
         "id",
         "pbn_id",
+        "pbn_uuid",
+        "system_kadrowy_id",
+        "orcid",
     ]
     readonly_fields = ("ostatnio_zmieniony",)
 
@@ -148,6 +151,8 @@ class AutorAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
                     "www",
                     "orcid",
                     "pbn_id",
+                    "pbn_uuid",
+                    "system_kadrowy_id",
                 )
             },
         ),

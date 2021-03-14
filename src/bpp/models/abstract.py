@@ -7,7 +7,6 @@ import re
 from decimal import Decimal
 
 from django.conf import settings
-from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields import HStoreField
 from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ValidationError
@@ -185,6 +184,8 @@ class ModelZeStatusem(models.Model):
 
 class ModelZAbsolutnymUrl:
     def get_absolute_url(self):
+        from django.contrib.contenttypes.models import ContentType
+
         return reverse(
             "bpp:browse_praca",
             args=(ContentType.objects.get_for_model(self).pk, self.pk),
@@ -964,6 +965,8 @@ class PBNSerializerHelperMixin:
             outstanding_description.text = self.uzasadnienie_wybitnosci
 
     def eksport_pbn_award(self, toplevel, wydzial=None, autorzy_klass=None):
+        from django.contrib.contenttypes.models import ContentType
+
         from bpp.models.nagroda import Nagroda
 
         for nagroda in Nagroda.objects.filter(

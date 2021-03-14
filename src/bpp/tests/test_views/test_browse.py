@@ -1,24 +1,26 @@
 # -*- encoding: utf-8 -*-
 import json
 import re
+from datetime import date
 
 import pytest
 from bs4 import BeautifulSoup
-
 from django.contrib.contenttypes.models import ContentType
+
+from bpp.tests import normalize_html
 
 try:
     from django.core.urlresolvers import reverse
 except ImportError:
     from django.urls import reverse
 
-from conftest import NORMAL_DJANGO_USER_LOGIN, NORMAL_DJANGO_USER_PASSWORD
-from miniblog.models import Article
 from model_mommy import mommy
 from multiseek.logic import EQUAL, EQUAL_FEMALE, EQUAL_NONE
 from multiseek.views import MULTISEEK_SESSION_KEY
 
 from bpp.models import (
+    Autor_Jednostka,
+    Funkcja_Autora,
     Jednostka,
     OpcjaWyswietlaniaField,
     Praca_Doktorska,
@@ -29,6 +31,8 @@ from bpp.models import (
 )
 from bpp.models.autor import Autor
 from bpp.views.browse import BuildSearch
+from conftest import NORMAL_DJANGO_USER_LOGIN, NORMAL_DJANGO_USER_PASSWORD
+from miniblog.models import Article
 
 
 def test_buildSearch(settings):
@@ -454,3 +458,36 @@ def test_PracaView_ukrywanie_statusy_admin(
 
     res = admin_client.get(url)
     assert res.status_code == 200
+
+
+@pytest.mark.django_db
+def test_AutorView_funkcja_za_nazwiskiem(app):
+    autor = mommy.make(Autor, nazwisko="Foo", imiona="Bar")
+    jednostka = mommy.make(Jednostka, nazwa="Jednostka")
+    funkcja = Funkcja_Autora.objects.create(
+        nazwa="profesor uczelni", skrot="prof. ucz."
+    )
+    aj = Autor_Jednostka.objects.create(
+        autor=autor, jednostka=jednostka, funkcja=funkcja
+    )
+
+    url = reverse("bpp:browse_autor", args=(autor.slug,))
+
+    page = app.get(url)
+    assert page.status_code == 200
+    res = normalize_html(str(page.content, "utf-8"))
+    assert res.find("<h1>Foo Bar </h1>") >= 0
+
+    aj.rozpoczal_prace = date(2020, 1, 1)
+    aj.save()
+
+    page = app.get(url)
+    res = normalize_html(str(page.content, "utf-8"))
+    assert res.find("<h1>Foo Bar </h1>") >= 0
+
+    funkcja.pokazuj_za_nazwiskiem = True
+    funkcja.save()
+
+    page = app.get(url)
+    res = normalize_html(str(page.content, "utf-8"))
+    assert res.find("<h1>Foo Bar, profesor uczelni </h1>") >= 0

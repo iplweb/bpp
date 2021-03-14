@@ -3,6 +3,21 @@
 Historia zmian
 ==============
 
+202103.58
+---------
+
+* poprawny link do przykladowego pliku do importu list IF (#1008),
+* opis tekstowy artykułów na miniblogu w UI redagowania (#706),
+* sortowanie powiązań Autor+Jednostka po dacie zatrudnienia, nie po nazwie (#1006),
+* możliwośc wyświetlania wybranych stanowisk autorów dla aktualnych jednostek za nazwiskiem autora
+  na stronie prezentacji danych autora (#1005),
+* naprawiono błąd związany z przebudowaniem cache po wyłączeniu transakcji (b/n)
+* nie licz punktów dla dyscypliny w sytuacji, gdy nie ma żadnych autorów w tej dyscypline
+  (k=0) nawet dla progu 1 (#1006),
+* prawidłowo formatuj tekstowe opisy obiektu "Poziom wydawcy" w module redagowania (#999),
+* pola "od roku", "do roku" i "upoważnienie PBN" oraz kolumna "upoważnienie PBN" w
+  raport slotów uczelnia - ewaluacja (#995)
+
 202103.57
 ---------
 

@@ -59,6 +59,9 @@ Slot dla dyscypliny:
 
    slot_{d} = 1
 
+Slot dla dyscypliny nie będzie liczony jeżeli nie ma żadnych autorów w danej dyscyplinie, tzn
+gdy żaden z autorów nie jest afiliowany na jednostki uczelni.
+
 Próg nr 2
 ~~~~~~~~~
 

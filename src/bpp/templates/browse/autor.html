@@ -11,7 +11,9 @@
 {% endblock %}
 
 {% block content %}
-    <h1>{{ autor }}</h1>
+    <h1>{{ autor }}{% if autor.aktualna_jednostka %}{% if autor.aktualna_funkcja.pokazuj_za_nazwiskiem %},
+        {{ autor.aktualna_funkcja }}{% endif %}
+    {% endif %}</h1>
     {% include "browse/go_to_admin_change.html" with url="admin:bpp_autor_change" pk=autor.pk group="wprowadzanie danych" %}
 
     {% if autor.praca_doktorska_set.exists %}
@@ -48,11 +50,17 @@
         {% if autor.pbn_id %}
             <strong>PBN ID:</strong> {{ autor.pbn_id }}
         {% endif %}
+        {% if autor.system_kadrowy_id %}
+            <strong>System kadrowy ID:</strong> {{ autor.system_kadrowy_id }}
+        {% endif %}
         <span data-tooltip class="top" data-click-open="false" tabindex="2"
               title="Unikalny, wewnętrzny identyfikator autora w systemie BPP">
-        BPP
-        ID</span>: {{ autor.pk }}</p>
+        BPP ID</span>: {{ autor.pk }}</p>
     </p>
+            {% if autor.pbn_uuid %}
+            <p><strong>PBN UUID:</strong> {{ autor.pbn_uuid }}</p>
+        {% endif %}
+
     <form method="post"
           action="{% url "bpp:browse_build_search" %}"
           class="browserForm">

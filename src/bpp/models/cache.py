@@ -265,6 +265,11 @@ class Autorzy(AutorzyBase):
         on_delete=DO_NOTHING,
     )
 
+    # To poniżej musi być, bo się django-admin.py sqlflush nie uda
+    typ_odpowiedzialnosci = models.ForeignKey("Typ_Odpowiedzialnosci", DO_NOTHING)
+    autor = models.ForeignKey("Autor", DO_NOTHING)
+    dyscyplina_naukowa = models.ForeignKey("Dyscyplina_Naukowa", DO_NOTHING)
+
     class Meta:
         managed = False
         db_table = "bpp_autorzy_mat"
@@ -802,7 +807,6 @@ def rebuild(klass, offset=None, limit=None, extra_flds=None, extra_tables=None):
 
     query = (
         klass.objects.filter(pk__in=ids)
-        .select_for_update(nowait=True, of=("self",))
         .select_related(*extra_tables)
         .only(
             "tytul_oryginalny",
