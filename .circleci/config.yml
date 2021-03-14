@@ -30,7 +30,7 @@ jobs:
       - run: sudo apt --quiet install -y --quiet gettext locales
       - run: sudo sed -i 's/^# *\(pl_PL.UTF-8\)/\1/' /etc/locale.gen
       - run: sudo locale-gen
-      - run: echo LANG=pl_PL.UTF-8 > /etc/default/locale
+      - run: sudo sh -c 'LANG=pl_PL.UTF-8 > /etc/default/locale'
       - run: export LC_ALL=pl_PL.UTF-8
       - run: locale
       - run: sudo npm install -g grunt-cli
