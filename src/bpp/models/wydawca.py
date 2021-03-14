@@ -66,3 +66,6 @@ class Poziom_Wydawcy(models.Model):
     def save(self, *args, **kw):
         self.clean()
         return super().save(*args, **kw)
+
+    def __str__(self):
+        return f'Poziom wydawcy "{self.wydawca.nazwa}" za rok {self.rok}'
