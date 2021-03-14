@@ -11,6 +11,7 @@ from rest_framework.test import APIClient
 from selenium.webdriver.remote.webdriver import WebDriver
 
 from bpp.tasks import aktualizuj_cache_rekordu
+from bpp.util import get_fixture
 
 try:
     from django.core.urlresolvers import reverse
@@ -615,8 +616,8 @@ def w_trakcie_korekty(statusy_korekt):
 
 @pytest.fixture(scope="function")
 def funkcje_autorow():
-    for elem in fixture("funkcja_autora.json"):
-        Funkcja_Autora.objects.get_or_create(pk=elem["pk"], **elem["fields"])
+    for elem in get_fixture("funkcja_autora").values():
+        Funkcja_Autora.objects.get_or_create(**elem)
 
 
 @pytest.fixture(scope="function")

@@ -195,6 +195,29 @@ def test_IPunktacjaCacher(
 
 
 @pytest.mark.django_db
+def test_IPunktacjaCacher_brak_afiliacji(
+    ciagle_z_dyscyplinami,
+    autor_jan_nowak,
+    autor_jan_kowalski,
+    dyscyplina1,
+    dyscyplina2,
+    dyscyplina3,
+):
+    ciagle_z_dyscyplinami.punkty_kbn = 30
+    ciagle_z_dyscyplinami.rok = 2017
+    ciagle_z_dyscyplinami.save()
+
+    ciagle_z_dyscyplinami.autorzy_set.update(afiliuje=False)
+
+    ipc = IPunktacjaCacher(ciagle_z_dyscyplinami)
+    assert ipc.canAdapt()
+    ipc.rebuildEntries()
+
+    assert Cache_Punktacja_Dyscypliny.objects.count() == 0
+    assert Cache_Punktacja_Autora.objects.count() == 0
+
+
+@pytest.mark.django_db
 def test_slotkalkulator_wydawnictwo_ciagle_prog3_punkty_pkd(
     ciagle_z_dyscyplinami, dyscyplina1
 ):
@@ -315,6 +338,20 @@ def test_ISlot_wydawnictwo_zwarte_tier1(zwarte_z_dyscyplinami, wydawca, rok):
     zwarte_z_dyscyplinami.punkty_kbn = 200
     i = ISlot(zwarte_z_dyscyplinami)
     assert isinstance(i, SlotKalkulator_Wydawnictwo_Zwarte_Prog1)
+
+
+@pytest.mark.django_db
+def test_ISlot_wydawnictwo_zwarte_tier1_brak_afiliacji(
+    zwarte_z_dyscyplinami, wydawca, rok, dyscyplina1, dyscyplina2
+):
+    wydawca.poziom_wydawcy_set.create(rok=rok, poziom=2)
+    zwarte_z_dyscyplinami.punkty_kbn = 200
+
+    i = ISlot(zwarte_z_dyscyplinami)
+    assert i.autorzy_z_dyscypliny(dyscyplina1)
+
+    zwarte_z_dyscyplinami.autorzy_set.update(afiliuje=False)
+    assert not i.autorzy_z_dyscypliny(dyscyplina1)
 
 
 @pytest.mark.django_db

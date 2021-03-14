@@ -27,7 +27,12 @@ jobs:
       - restore_cache:
           key: cache-10-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}-{{ checksum "yarn.lock" }}
 
-      - run: sudo apt --quiet install -y --quiet gettext
+      - run: sudo apt --quiet install -y --quiet gettext locales
+      - run: sudo sed -i 's/^# *\(pl_PL.UTF-8\)/\1/' /etc/locale.gen
+      - run: sudo locale-gen
+      - run: sudo sh -c 'LANG=pl_PL.UTF-8 > /etc/default/locale'
+      - run: export LC_ALL=pl_PL.UTF-8
+      - run: locale
       - run: sudo npm install -g grunt-cli
       - run: sudo pip install --upgrade pip
 

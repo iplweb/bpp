@@ -2,7 +2,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.utils.functional import cached_property
 
-from bpp.models import Typ_Odpowiedzialnosci, const, Uczelnia
+from bpp.models import Typ_Odpowiedzialnosci, Uczelnia, const
 from bpp.models.cache import Cache_Punktacja_Autora, Cache_Punktacja_Dyscypliny
 from bpp.models.patent import Patent
 from bpp.models.sloty.wydawnictwo_ciagle import SlotKalkulator_Wydawnictwo_Ciagle_Prog3
@@ -13,6 +13,7 @@ from bpp.models.sloty.wydawnictwo_zwarte import (
 )
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
+
 from .exceptions import CannotAdapt
 from .wydawnictwo_ciagle import (
     SlotKalkulator_Wydawnictwo_Ciagle_Prog1,
@@ -243,6 +244,11 @@ class IPunktacjaCacher:
         for dyscyplina in self.slot.dyscypliny:
             _slot_cache[dyscyplina] = self.slot.slot_dla_dyscypliny(dyscyplina)
             azd = self.slot.autorzy_z_dyscypliny(dyscyplina)
+            if not azd:
+                # Na ten moment nie chcemy wpisów odnosnie dyscyplin i slotów, gdy nie ma
+                # w nich żadnych autorów (zgłoszenie w Mantis #1009)
+                continue
+
             Cache_Punktacja_Dyscypliny.objects.create(
                 rekord_id=[pk[0], pk[1]],
                 dyscyplina=dyscyplina,
