@@ -12,6 +12,8 @@ Historia zmian
 * możliwośc wyświetlania wybranych stanowisk autorów dla aktualnych jednostek za nazwiskiem autora
   na stronie prezentacji danych autora (#1005),
 * naprawiono błąd związany z przebudowaniem cache po wyłączeniu transakcji (b/n)
+* nie licz punktów dla dyscypliny w sytuacji, gdy nie ma żadnych autorów w tej dyscypline
+  (k=0) nawet dla progu 1 (#1006),
 
 202103.57
 ---------
