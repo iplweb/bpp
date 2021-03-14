@@ -1,12 +1,7 @@
 import pytest
 from model_mommy import mommy
 
-from bpp.models import (
-    Autor_Dyscyplina,
-    Cache_Punktacja_Autora_Query,
-    Cache_Punktacja_Dyscypliny,
-    Rekord,
-)
+from bpp.models import Cache_Punktacja_Autora_Query, Cache_Punktacja_Dyscypliny, Rekord
 from raport_slotow.models.uczelnia import RaportSlotowUczelnia
 
 
@@ -15,9 +10,8 @@ from raport_slotow.models.uczelnia import RaportSlotowUczelnia
 def rekord_slotu(
     autor_jan_kowalski, jednostka, dyscyplina1, wydawnictwo_ciagle_z_autorem, rok
 ):
-    Autor_Dyscyplina.objects.create(
-        rok=rok, autor=autor_jan_kowalski, dyscyplina_naukowa=dyscyplina1
-    )
+    wydawnictwo_ciagle_z_autorem.autorzy_set.update(dyscyplina_naukowa=dyscyplina1)
+
     rekord = Rekord.objects.get_for_model(wydawnictwo_ciagle_z_autorem)
     Cache_Punktacja_Dyscypliny.objects.create(
         rekord_id=rekord.pk,

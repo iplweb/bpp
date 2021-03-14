@@ -214,7 +214,7 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
     #    "Źródło / informacje", "rekord", empty_values=(), orderable=False
     # )
     zrodlo_lub_wydawnictwo_nadrzedne = Column(
-        "Zródło lub wydawnictwo nadrzędne", "autorzy", orderable=False
+        "Zródło lub wydawnictwo nadrzędne", "rekord", orderable=False
     )
     informacje = Column("Informacje", "rekord")
 

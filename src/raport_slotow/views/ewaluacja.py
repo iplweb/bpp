@@ -82,7 +82,7 @@ class RaportSlotowEwaluacja(
 
     def get_queryset(self):
         upowaznienie_kw = {}
-        if self.data["upowaznienie_pbn"] is not None:
+        if self.data.get("upowaznienie_pbn") is not None:
             upowaznienie_kw["autorzy__upowaznienie_pbn"] = self.data["upowaznienie_pbn"]
 
         return (
@@ -94,6 +94,7 @@ class RaportSlotowEwaluacja(
             .select_related(
                 "rekord",
                 "rekord__zrodlo",
+                "rekord__wydawnictwo_nadrzedne",
                 "autor_dyscyplina",
                 "autorzy",
                 "rekord__charakter_formalny",

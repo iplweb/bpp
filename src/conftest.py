@@ -646,7 +646,7 @@ def openaccess_data():
 @pytest.fixture(scope="function")
 def wydawnictwo_ciagle_z_autorem(
     wydawnictwo_ciagle, autor_jan_kowalski, jednostka, typy_odpowiedzialnosci
-):
+) -> Wydawnictwo_Ciagle:
     wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
     return wydawnictwo_ciagle
 
