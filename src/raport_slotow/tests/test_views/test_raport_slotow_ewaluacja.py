@@ -18,9 +18,9 @@ def test_raport_slotow_ewaluacja_parametry_view_post(admin_client):
 
 
 def test_raport_slotow_ewaluacja_raport(
-    admin_client, praca_z_dyscyplina, django_assert_num_queries
+    admin_client, praca_z_dyscyplina, django_assert_max_num_queries
 ):
-    with django_assert_num_queries(18):
+    with django_assert_max_num_queries(18):
         res = admin_client.get(
             reverse("raport_slotow:raport-ewaluacja")
             + "?_export=html&od_roku=2020&do_roku=2020"
