@@ -14,8 +14,11 @@ def load_fixtures(apps, schema_editor):
     for elem in get_fixture("charakter_formalny").values():
         Charakter_Formalny.objects.create(**elem)
 
+    Funkcja_Autora = apps.get_model("bpp", "Funkcja_Autora")
+    for elem in get_fixture("funkcja_autora").values():
+        Funkcja_Autora.objects.create(**elem)
+
     for fixture in [
-        "funkcja_autora.json",
         "jezyk.json",
         "plec.json",
         "rodzaj_zrodla.json",
@@ -29,28 +32,22 @@ def load_fixtures(apps, schema_editor):
         # danych czy tworzenia jej od zera. Na produkcyjnej bazie danych nie zostanie uruchomiona już nigdy.
         #
         # "typ_kbn.json",
-
         # "typ_odpowiedzialnosci.json",
         "tytul.json",
         # "um_lublin_uczelnia.json",
         # "um_lublin_wydzial.json",
-        "zrodlo_informacji.json"]:
-        call_command('loaddata', fixture, app='bpp', verbosity=0)
+        "zrodlo_informacji.json",
+    ]:
+        call_command("loaddata", fixture, app="bpp", verbosity=0)
 
 
 def load_typ_odpowiedzialnosci(apps, schema_editor):
-    return load_historic_fixture(
-        apps,
-        "typ_odpowiedzialnosci",
-        "Typ_Odpowiedzialnosci")
+    return load_historic_fixture(apps, "typ_odpowiedzialnosci", "Typ_Odpowiedzialnosci")
 
 
 class Migration(migrations.Migration):
     dependencies = [
-        ('bpp', '0034_auto_20151011_1514'),
+        ("bpp", "0034_auto_20151011_1514"),
     ]
 
-    operations = [
-        RunPython(load_fixtures),
-        RunPython(load_typ_odpowiedzialnosci)
-    ]
+    operations = [RunPython(load_fixtures), RunPython(load_typ_odpowiedzialnosci)]

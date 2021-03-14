@@ -159,6 +159,7 @@ INSTALLED_APPS = [
     "taggit_serializer",
     "columns",
     "formdefaults.apps.FormdefaultsConfig",
+    "raport_slotow",
     # Musi być PRZED django-autocomplete-light do momentu
     # dal 3.3.0-release, musi być naprawiony o ten błąd:
     # https://github.com/yourlabs/django-autocomplete-light/issues/981
@@ -194,7 +195,6 @@ INSTALLED_APPS = [
     "miniblog",
     "import_dyscyplin",
     "mptt",
-    "raport_slotow",
     "import_dbf",
     "rest_framework",
     "django_filters",

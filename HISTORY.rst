@@ -11,6 +11,7 @@ Historia zmian
 * sortowanie powiązań Autor+Jednostka po dacie zatrudnienia, nie po nazwie (#1006),
 * możliwośc wyświetlania wybranych stanowisk autorów dla aktualnych jednostek za nazwiskiem autora
   na stronie prezentacji danych autora (#1005),
+* naprawiono błąd związany z przebudowaniem cache po wyłączeniu transakcji (b/n)
 
 202103.57
 ---------
