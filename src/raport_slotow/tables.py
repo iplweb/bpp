@@ -198,6 +198,7 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
             "subdyscyplina",
             "procent_subdyscypliny",
             "dyscyplina_rekordu",
+            "upowaznienie_pbn",
             "pkdaut",
             "slot",
         )
@@ -213,18 +214,23 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
     #    "Źródło / informacje", "rekord", empty_values=(), orderable=False
     # )
     zrodlo_lub_wydawnictwo_nadrzedne = Column(
-        "Zródło lub wydawnictwo nadrzędne", "rekord", orderable=False
+        "Zródło lub wydawnictwo nadrzędne", "autorzy", orderable=False
     )
     informacje = Column("Informacje", "rekord")
+
+    upowaznienie_pbn = Column("Upoważnienie PBN", "autorzy")
+
+    def render_upowaznienie_pbn(self, value):
+        return value.upowaznienie_pbn
 
     def render_zrodlo_lub_wydawnictwo_nadrzedne(self, value):
         if (
             hasattr(value, "wydawnictwo_nadrzedne_id")
             and value.wydawnictwo_nadrzedne_id is not None
         ):
-            return value.wydawnictwo_nadrzedne
+            return value.wydawnictwo_nadrzedne.tytul_oryginalny
         if hasattr(value, "zrodlo_id") and value.zrodlo_id is not None:
-            return value.zrodlo
+            return value.zrodlo.nazwa
         return "123"
 
     def render_informacje(self, value):

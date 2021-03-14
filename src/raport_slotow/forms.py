@@ -10,6 +10,7 @@ from crispy_forms_foundation.layout import (
 from dal import autocomplete
 from django import forms
 from django.core.exceptions import ValidationError
+from django.forms import RadioSelect
 
 from bpp.models import Autor, Uczelnia
 from bpp.util import formdefaults_html_after, formdefaults_html_before, year_last_month
@@ -182,11 +183,36 @@ class UtworzRaportSlotowUczelniaForm(forms.ModelForm):
 
 
 class ParametryRaportSlotowEwaluacjaForm(forms.Form):
-    rok = forms.IntegerField(initial=Uczelnia.objects.do_roku_default, min_value=2017)
+    od_roku = forms.IntegerField(
+        initial=Uczelnia.objects.do_roku_default, min_value=2017
+    )
+    do_roku = forms.IntegerField(
+        initial=Uczelnia.objects.do_roku_default, min_value=2017, max_value=2021
+    )
 
     _export = forms.ChoiceField(
-        label="Format wyjściowy", choices=OUTPUT_FORMATS, required=True
+        label="Format wyjściowy",
+        choices=OUTPUT_FORMATS,
+        required=True,
+        widget=RadioSelect,
+        initial="html",
     )
+    upowaznienie_pbn = forms.NullBooleanField(
+        required=False,
+        # widget=RadioSelect,
+    )
+
+    def clean(self):
+        if "od_roku" in self.cleaned_data and "do_roku" in self.cleaned_data:
+            if self.cleaned_data["od_roku"] > self.cleaned_data["do_roku"]:
+                raise ValidationError(
+                    {
+                        "od_roku": ValidationError(
+                            'Pole musi być większe lub równe jak pole "Do roku".',
+                            code="od_do_zle",
+                        )
+                    }
+                )
 
     def __init__(self, *args, **kwargs):
         self.helper = FormHelper()
@@ -197,8 +223,10 @@ class ParametryRaportSlotowEwaluacjaForm(forms.Form):
                 "Wybierz parametry",
                 formdefaults_html_before(self),
                 Row(
-                    Column("rok", css_class="large-6 small-6"),
+                    Column("od_roku", css_class="large-6 small-6"),
+                    Column("do_roku", css_class="large-6 small-6"),
                 ),
+                Row(Column("upowaznienie_pbn", css_class="large-12 small-12")),
                 Row(Column("_export")),
                 formdefaults_html_after(self),
             ),
