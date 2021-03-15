@@ -12,7 +12,7 @@
 #
 # 4) zadnego progress baru w javie, chociaz nie wiem w sumie
 #
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator
@@ -135,14 +135,17 @@ class RaportSlotowUczelnia(ASGINotificationMixin, Report):
             if sloty_sum != 0:
                 avg = maks_punkty / sloty_sum
 
-            self.raportslotowuczelniawiersz_set.create(
-                autor_id=autor_id,
-                jednostka_id=jednostka_id,
-                dyscyplina_id=dyscyplina_id,
-                slot=sloty_sum,
-                pkd_aut_sum=maks_punkty,
-                avg=avg,
-            )
+            try:
+                self.raportslotowuczelniawiersz_set.create(
+                    autor_id=autor_id,
+                    jednostka_id=jednostka_id,
+                    dyscyplina_id=dyscyplina_id,
+                    slot=sloty_sum,
+                    pkd_aut_sum=maks_punkty,
+                    avg=avg,
+                )
+            except InvalidOperation:
+                pass
 
             if not n % 10:
                 self.send_progress(n * 100.0 / total)
@@ -217,12 +220,12 @@ class RaportSlotowUczelniaWiersz(models.Model):
     )
     dyscyplina = models.ForeignKey("bpp.Dyscyplina_Naukowa", on_delete=models.CASCADE)
     pkd_aut_sum = models.DecimalField(
-        "Suma punktów dla autora", max_digits=8, decimal_places=4
+        "Suma punktów dla autora", max_digits=16, decimal_places=4
     )
-    slot = models.DecimalField(max_digits=8, decimal_places=4)
+    slot = models.DecimalField(max_digits=16, decimal_places=4)
     avg = models.DecimalField(
         "Średnio punktów dla autora na slot",
-        max_digits=8,
+        max_digits=16,
         decimal_places=4,
         null=True,
         blank=True,

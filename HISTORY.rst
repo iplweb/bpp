@@ -3,6 +3,11 @@
 Historia zmian
 ==============
 
+202103.59
+---------
+
+* poprawnie generuj raporty slotów - uczelnia dla eksportu wszystkich prac (#1010),
+
 202103.58
 ---------
 
