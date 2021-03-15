@@ -12,7 +12,7 @@
 #
 # 4) zadnego progress baru w javie, chociaz nie wiem w sumie
 #
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator
@@ -135,17 +135,14 @@ class RaportSlotowUczelnia(ASGINotificationMixin, Report):
             if sloty_sum != 0:
                 avg = maks_punkty / sloty_sum
 
-            try:
-                self.raportslotowuczelniawiersz_set.create(
-                    autor_id=autor_id,
-                    jednostka_id=jednostka_id,
-                    dyscyplina_id=dyscyplina_id,
-                    slot=sloty_sum,
-                    pkd_aut_sum=maks_punkty,
-                    avg=avg,
-                )
-            except InvalidOperation:
-                pass
+            self.raportslotowuczelniawiersz_set.create(
+                autor_id=autor_id,
+                jednostka_id=jednostka_id,
+                dyscyplina_id=dyscyplina_id,
+                slot=sloty_sum,
+                pkd_aut_sum=maks_punkty,
+                avg=avg,
+            )
 
             if not n % 10:
                 self.send_progress(n * 100.0 / total)
