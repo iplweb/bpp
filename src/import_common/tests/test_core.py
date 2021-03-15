@@ -1,7 +1,8 @@
 import pytest
 from model_mommy import mommy
 
-from bpp.models import Autor, Jednostka, Tytul, Wydzial
+from bpp.models import Autor, Dyscyplina_Naukowa, Jednostka, Tytul, Wydzial
+from import_common.core import matchuj_dyscypline
 from import_dyscyplin.core import matchuj_autora, matchuj_jednostke, matchuj_wydzial
 
 
@@ -113,3 +114,12 @@ def test_matchuj_autora_po_tytule():
 def test_matchuj_autora_tytul_bug(jednostka):
     matchuj_autora("Kowalski", "Jan", jednostka, tytul_str="Doktur")
     assert True
+
+
+@pytest.mark.django_db
+def test_matchuj_dyscypline():
+    d = Dyscyplina_Naukowa.objects.create(nazwa="foo", kod="4.3")
+    assert matchuj_dyscypline("403_0", "aoijsdf") == d
+    assert matchuj_dyscypline("403", "aoijsdf") == d
+    assert matchuj_dyscypline("4.3", "aoijsdf") == d
+    assert matchuj_dyscypline("nieno", "foo") == d

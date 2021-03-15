@@ -6,6 +6,7 @@ from django.db.models import Q
 from bpp.models import (
     Autor,
     Autor_Jednostka,
+    Dyscyplina_Naukowa,
     Funkcja_Autora,
     Grupa_Pracownicza,
     Jednostka,
@@ -18,6 +19,8 @@ from bpp.models import (
 from .normalization import (
     normalize_funkcja_autora,
     normalize_grupa_pracownicza,
+    normalize_kod_dyscypliny,
+    normalize_nazwa_dyscypliny,
     normalize_nazwa_jednostki,
     normalize_tytul_naukowy,
     normalize_tytul_zrodla,
@@ -212,7 +215,10 @@ def matchuj_autora(
 
 
 def matchuj_zrodlo(
-    s: Union[str, None], issn: Union[str, None] = None
+    s: Union[str, None],
+    issn: Union[str, None] = None,
+    e_issn: Union[str, None] = None,
+    alt_nazwa=None,
 ) -> Union[None, Zrodlo]:
     if s is None or str(s) == "":
         return
@@ -223,18 +229,47 @@ def matchuj_zrodlo(
         except (Zrodlo.DoesNotExist, Zrodlo.MultipleObjectsReturned):
             pass
 
-    s = normalize_tytul_zrodla(s)
+    if e_issn is not None:
+        try:
+            return Zrodlo.objects.get(e_issn=e_issn)
+        except (Zrodlo.DoesNotExist, Zrodlo.MultipleObjectsReturned):
+            pass
+
+    for elem in s, alt_nazwa:
+        if elem is None:
+            continue
+
+        elem = normalize_tytul_zrodla(elem)
+        try:
+            return Zrodlo.objects.get(Q(nazwa__iexact=elem) | Q(skrot__iexact=elem))
+        except Zrodlo.MultipleObjectsReturned:
+            pass
+        except Zrodlo.DoesNotExist:
+            if elem.endswith("."):
+                try:
+                    return Zrodlo.objects.get(
+                        Q(nazwa__istartswith=elem[:-1])
+                        | Q(skrot__istartswith=elem[:-1])
+                    )
+                except Zrodlo.DoesNotExist:
+                    pass
+                except Zrodlo.MultipleObjectsReturned:
+                    pass
+
+
+def matchuj_dyscypline(kod, nazwa):
+    nazwa = normalize_nazwa_dyscypliny(nazwa)
     try:
-        return Zrodlo.objects.get(Q(nazwa__iexact=s) | Q(skrot__iexact=s))
-    except Zrodlo.MultipleObjectsReturned:
+        return Dyscyplina_Naukowa.objects.get(nazwa=nazwa)
+    except Dyscyplina_Naukowa.DoesNotExist:
         pass
-    except Zrodlo.DoesNotExist:
-        if s.endswith("."):
-            try:
-                return Zrodlo.objects.get(
-                    Q(nazwa__istartswith=s[:-1]) | Q(skrot__istartswith=s[:-1])
-                )
-            except Zrodlo.DoesNotExist:
-                pass
-            except Zrodlo.MultipleObjectsReturned:
-                pass
+    except Dyscyplina_Naukowa.MultipleObjectsReturned:
+        pass
+
+    kod = normalize_kod_dyscypliny(kod)
+    try:
+        return Dyscyplina_Naukowa.objects.get(kod=kod)
+    except Dyscyplina_Naukowa.DoesNotExist:
+        pass
+    except Dyscyplina_Naukowa.MultipleObjectsReturned:
+        pass

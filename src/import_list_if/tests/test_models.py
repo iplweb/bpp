@@ -16,7 +16,9 @@ def testdata_xlsx_path():
 
 def import_list_if_factory(user, path, rok):
     i = ImportListIf(owner=user, rok=rok)
-    i.plik_xls = SimpleUploadedFile("testdata.xlsx", open(path, "rb").read())
+    i.plik_xls = SimpleUploadedFile(
+        "import_dyscyplin_zrodel_przyklad.xlsx", open(path, "rb").read()
+    )
     i.save()
     return i
 

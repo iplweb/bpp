@@ -22,13 +22,16 @@ class ImportOperation(ASGINotificationMixin, Operation):
     def get_validation_form_class(self):
         return self.validation_form_class
 
-    def perform(self):
-        x = XLSImportFile(
+    def get_xls_import_file(self):
+        return XLSImportFile(
             self.plik_xls.path,
             try_names=self.try_names,
             banned_names=self.banned_names,
             min_points=self.min_points,
         )
+
+    def perform(self):
+        x = self.get_xls_import_file()
 
         total = x.count()
         five_percent = int(ceil(total / 50.0))
