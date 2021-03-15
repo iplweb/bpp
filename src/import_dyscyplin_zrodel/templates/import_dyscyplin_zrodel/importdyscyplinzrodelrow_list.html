@@ -1,0 +1,66 @@
+{% extends "base.html" %}{% load render_table from django_tables2 %}
+
+{% block extratitle %}
+    Import dyscyplin źródeł - szczegóły {{ object.plik_xls.name }}
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "import_dyscyplin_zrodel:index" %}">import dyscyplin źródeł</a></li>
+    <li class="current">import {{ object.plik_xls.name }}</li>
+{% endblock %}
+
+
+{% block content %}
+    <h1>Import danych {{ object.plik_xls.name }}</h1>
+
+    <ul class="accordion" data-accordion data-allow-all-closed="true">
+        <li class="accordion-item is-closed" data-accordion-item>
+            <!-- Accordion tab title -->
+            <a href="#" class="accordion-title">Szczegóły operacji</a>
+
+            <!-- Accordion tab content: it would start in the open state due to using the `is-active` state class. -->
+            <div class="accordion-content" data-tab-content>
+                {% include "long_running/operation_details.html" %}
+            </div>
+        </li>
+    </ul>
+
+    Lista modyfikacji do bazy danych, przeprowadzonych na podstawie pliku XLS, zajduje się poniżej:
+    {% include "pagination.html" %}
+    <table>
+        <tr>
+            <th>Arkusz nr</th>
+            <th>Wiersz nr</th>
+            <th>Zródło w XLS</th>
+            <th>Zródło w BPP</th>
+            <th>Dyscypliny</th>
+        </tr>
+
+        {% for row in object_list %}
+            <tr>
+                <td>{{ row.nr_arkusza }}</td>
+                <td>{{ row.nr_wiersza }}</td>
+
+                <td>{{ row.dane_z_xls.tytuł_1 }} (ISSN: {{ row.dane_z_xls.issn }},
+                    E-ISSN: {{ row.dane_z_xls.e_issn }})
+                </td>
+                <td>{% if row.zrodlo_id %}
+                    <a href="{% url "bpp:browse_zrodlo" row.zrodlo.slug %}">{{ row.zrodlo }}</a>{% else %}
+                    Brak dopasowania!{% endif %}</td>
+            <td>{% for elem in row.importdyscyplinzrodelrowdyscypliny_set.all.select_related %}
+                {{ elem.dyscyplina }}<br/>
+                {% empty %}
+                Żadne
+                {% endfor %}
+                </td>
+
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="text-center">Plik XLS nie zawierał żadnych danych</td>
+            </tr>
+        {% endfor %}
+    </table>
+
+{% endblock %}

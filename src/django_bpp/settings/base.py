@@ -194,6 +194,7 @@ INSTALLED_APPS = [
     "favicon",
     "miniblog",
     "import_dyscyplin",
+    "import_dyscyplin_zrodel",
     "mptt",
     "import_dbf",
     "rest_framework",

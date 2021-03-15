@@ -1,4 +1,5 @@
-from typing import Generator
+from collections import defaultdict
+from typing import Generator, List
 
 import xlrd
 from django.utils.functional import cached_property
@@ -17,9 +18,7 @@ DEFAULT_COL_NAMES = [
     "nazwiska",
     "orcid",
     "pesel",
-    "pbn-id",
     "pbn_id",
-    "pbn id",
     "stanowisko",
     "wydział",
     "jednostka",
@@ -32,15 +31,16 @@ DEFAULT_MIN_POINTS = 3
 def normalize_cell_header(elem: xlrd.sheet.Cell):
     s = str(elem.value).lower().split("\n")[0]
 
+    s = s.replace(".", " ")
     while s.find("  ") >= 0:
         s = s.replace("  ", " ")
     s = s.strip()
 
-    return s.replace(" ", "_").replace("/", "_").replace("\\", "_")
+    return s.replace(" ", "_").replace("/", "_").replace("\\", "_").replace("-", "_")
 
 
 def find_similar_row(
-    sheet: xlrd.sheet.Sheet, try_names=None, min_points=None, max_row_length=32
+    sheet: xlrd.sheet.Sheet, try_names=None, min_points=None, max_row_length=128
 ):
     if try_names is None:
         try_names = DEFAULT_COL_NAMES
@@ -89,7 +89,14 @@ DEFAULT_BANNED_NAMES = ["pesel", "pesel_md5", "peselmd5"]
 
 
 class XLSImportFile:
-    def __init__(self, xls_path, try_names=None, min_points=None, banned_names=None):
+    def __init__(
+        self,
+        xls_path,
+        try_names=None,
+        min_points=None,
+        banned_names=None,
+        only_first_sheet=False,
+    ):
         """
         :param xls_path: ścieżka do pliku
         :param try_names: nazwy które będą poszukiwane jako nagłówek
@@ -105,14 +112,26 @@ class XLSImportFile:
             banned_names = DEFAULT_BANNED_NAMES
         self.banned_names = banned_names
 
+        self.only_first_sheet = only_first_sheet
+
     @cached_property
     def xl_workbook(self):
         return xlrd.open_workbook(self.xls_path)
 
     @cached_property
+    def sheet_limit_range_end(self):
+        limit = None
+        if self.only_first_sheet:
+            limit = 1
+        return limit
+
+    @cached_property
     def sheet_row_cache(self):
         _cache = {}
-        for n_sheet, sheet in enumerate(self.xl_workbook.sheets()):
+
+        for n_sheet, sheet in enumerate(
+            self.xl_workbook.sheets()[: self.sheet_limit_range_end]
+        ):
             res = find_similar_row(
                 sheet, try_names=self.try_names, min_points=self.min_points
             )
@@ -152,6 +171,8 @@ class XLSImportFile:
 
             colnames, no = res
 
+            colnames = rename_duplicate_columns(colnames)
+
             colnames.append("__xls_loc_sheet__")
             colnames.append("__xls_loc_row__")
 
@@ -167,3 +188,16 @@ class XLSImportFile:
                         del yld[banned_name]
 
                 yield yld
+
+
+def rename_duplicate_columns(s: List[str], marker: str = "_") -> List[str]:
+    seen = defaultdict(lambda: 1)
+    ret = []
+    for elem in s:
+        no_seen = seen[elem]
+        if no_seen == 1:
+            ret.append(elem)
+        else:
+            ret.append(f"{elem}{marker}{no_seen}")
+        seen[elem] += 1
+    return ret

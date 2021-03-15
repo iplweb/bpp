@@ -1,0 +1,43 @@
+{% extends "base.html" %}{% load render_table from django_tables2 %}
+
+{% block extratitle %}
+    Import dyscyplin źródeł
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "import_dyscyplin_zrodel:index" %}">import dyscyplin źródeł</a></li>
+{% endblock %}
+
+{% block content %}{% load static %}
+    <h1>Ostatnio importowane dane:
+        <a class="button success" id="add-new-file" href="./new">
+            <i class="fi-page-add"></i>
+            utwórz nowy import
+        </a>
+
+        <a class="button secondary" id="download-example-file"
+           href="{% static "import_dyscyplin_zrodel/import_dyscyplin_zrodel_przyklad.xlsx" %}">
+
+            <i class="fi-page-edit"></i>
+            pobierz plik wzorcowy
+        </a>
+    </h1>
+    <ul>
+        {% for object in object_list %}
+            <li>
+                <a href="{% url "import_dyscyplin_zrodel:ImportDyscyplinZrodel-router" object.pk %}">plik {{ object.plik_xls.name }}</a>:
+                import utworzono {{ object.created_on }}{% if object.finished_on %}, ukończono {{ object.finished_on }}
+                {% if object.finished_successfully %}, zakończono pomyślnie{% else %}, zakończono z błędem{% endif %}
+            {% endif %}
+            </li>
+        {% endfor %}
+    </ul>
+
+    {% if object_list.count == 0 %}
+        <script>
+            location.href = "./new";
+        </script>
+    {% endif %}
+
+{% endblock %}

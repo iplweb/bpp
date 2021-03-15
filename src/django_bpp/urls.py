@@ -85,6 +85,13 @@ urlpatterns = (
             ),
         ),
         url(
+            r"^import_dyscyplin_zrodel/",
+            include(
+                ("import_dyscyplin_zrodel.urls", "import_dyscyplin_zrodel"),
+                namespace="import_dyscyplin_zrodel",
+            ),
+        ),
+        url(
             r"^import_dyscyplin/",
             include(
                 ("import_dyscyplin.urls", "import_dyscyplin"),

@@ -87,6 +87,21 @@ class Punktacja_Zrodla(ModelPunktowanyBaza, models.Model):
         app_label = "bpp"
 
 
+class Dyscyplina_Zrodla(models.Model):
+    zrodlo = models.ForeignKey("Zrodlo", on_delete=CASCADE)
+    dyscyplina = models.ForeignKey("Dyscyplina_Naukowa", on_delete=CASCADE)
+
+    class Meta:
+        verbose_name = "przypisanie dyscypliny do źródła"
+        verbose_name_plural = "przypisanie dyscyplin do źródła"
+        ordering = ["zrodlo__nazwa", "dyscyplina__nazwa"]
+        unique_together = [("zrodlo", "dyscyplina")]
+        app_label = "bpp"
+
+    def __str__(self):
+        return f'Przypisanie dyscypliny "{self.dyscyplina}" do źródła "{self.zrodlo}"'
+
+
 class ZrodloManager(FulltextSearchMixin, models.Manager):
     pass
 
