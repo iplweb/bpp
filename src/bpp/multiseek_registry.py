@@ -794,7 +794,9 @@ class ObcaJednostkaQueryObject(BooleanQueryObject):
 
 class AfiliujeQueryObject(BooleanQueryObject):
     label = "Afiliuje"
-    ops = EQUALITY_OPS_MALE
+    ops = [
+        EQUAL,
+    ]
     public = False
 
     def real_query(self, value, operation):

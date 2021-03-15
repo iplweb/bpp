@@ -3,6 +3,11 @@
 Historia zmian
 ==============
 
+202103.60
+---------
+
+* pole "Afiliuje" w wyszukiwaniu traci operator "różne od" (#988),
+
 202103.59
 ---------
 
