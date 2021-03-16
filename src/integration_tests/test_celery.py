@@ -45,7 +45,7 @@ def test_celery(settings):
 
     try:
         settings.CELERY_ALWAYS_EAGER = False
-        remove_old_report_files.delay().wait(timeout=30)
+        remove_old_report_files.delay().wait(timeout=15)
 
     finally:
         # Kill the worker and wait for it

@@ -369,6 +369,8 @@ def test_browse_praca_wydawnictwa_powiazane(wydawnictwo_zwarte, client):
 
     rebuild_zwarte()
 
+    wydawnictwo_zwarte.refresh_from_db()
+
     url = reverse("bpp:browse_praca_by_slug", args=(wydawnictwo_zwarte.slug,))
     res = client.get(url)
 

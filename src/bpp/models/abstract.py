@@ -1105,6 +1105,7 @@ class ModelZAktualizacjaDlaPBN(models.Model):
                         # podrzędnego
                         # 'ostatnio_zmieniony_dla_pbn',
                         "opis_bibliograficzny_cache",
+                        "slug",
                         "search_index",
                         "tytul_oryginalny_sort",
                     )
