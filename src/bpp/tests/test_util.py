@@ -1,6 +1,6 @@
 import pytest
 
-from bpp.util import knapsack, wytnij_isbn_z_uwag
+from bpp.util import knapsack, strip_html, wytnij_isbn_z_uwag
 
 
 @pytest.mark.django_db
@@ -9,7 +9,7 @@ def test_zaktualizuj_cache_ciagle(
     wydawnictwo_ciagle_z_dwoma_autorami,
     wydawnictwo_zwarte_z_autorem,
 ):
-    with django_assert_num_queries(2):
+    with django_assert_num_queries(6):
         wydawnictwo_ciagle_z_dwoma_autorami.zaktualizuj_cache()
 
 
@@ -17,7 +17,7 @@ def test_zaktualizuj_cache_ciagle(
 def test_zaktualizuj_cache_zwarte(
     django_assert_num_queries, wydawnictwo_zwarte_z_autorem
 ):
-    with django_assert_num_queries(2):
+    with django_assert_num_queries(6):
         wydawnictwo_zwarte_z_autorem.zaktualizuj_cache()
 
 
@@ -87,3 +87,7 @@ def test_knapsack_nie_zwracaj_listy():
         )
         == (10, [])
     )
+
+
+def test_strip_html():
+    assert strip_html("<b>test</b>") == "test"

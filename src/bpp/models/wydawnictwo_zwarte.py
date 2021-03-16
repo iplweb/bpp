@@ -19,6 +19,7 @@ from bpp.models import (
     TO_AUTOR,
     AktualizujDatePBNNadrzednegoMixin,
     DodajAutoraMixin,
+    DwaTytuly,
     MaProcentyMixin,
     ModelOpcjonalnieNieEksportowanyDoAPI,
     ModelZMiejscemPrzechowywania,
@@ -27,7 +28,6 @@ from bpp.models import (
 )
 from bpp.models.abstract import (
     BazaModeluOdpowiedzialnosciAutorow,
-    DwaTytuly,
     ModelPunktowany,
     ModelRecenzowany,
     ModelTypowany,

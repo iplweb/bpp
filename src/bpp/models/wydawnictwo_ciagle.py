@@ -2,53 +2,50 @@
 
 from dirtyfields.dirtyfields import DirtyFieldsMixin
 from django.db import models
-from django.db.models import SET_NULL, CASCADE
-from django.db.models.signals import post_delete, pre_delete, m2m_changed
+from django.db.models import CASCADE, SET_NULL
+from django.db.models.signals import post_delete
 from django.dispatch import receiver
+from lxml.etree import Element, SubElement
+
 from django.utils import timezone
-from lxml.etree import SubElement, Element
 
 from bpp.models import (
-    MaProcentyMixin,
     AktualizujDatePBNNadrzednegoMixin,
+    DwaTytuly,
+    MaProcentyMixin,
     ModelOpcjonalnieNieEksportowanyDoAPI,
     ModelZMiejscemPrzechowywania,
 )
 from bpp.models.abstract import (
     BazaModeluOdpowiedzialnosciAutorow,
-    DwaTytuly,
-    ModelZRokiem,
-    ModelZWWW,
-    ModelRecenzowany,
+    DodajAutoraMixin,
     ModelPunktowany,
+    ModelRecenzowany,
     ModelTypowany,
-    ModelZeSzczegolami,
-    ModelZInformacjaZ,
-    ModelZeStatusem,
-    ModelZISSN,
-    ModelZAdnotacjami,
-    ModelZCharakterem,
-    Wydawnictwo_Baza,
-    PBNSerializerHelperMixin,
-    ModelZOpenAccess,
-    ModelZPubmedID,
-    ModelZDOI,
-    ModelZeZnakamiWydawniczymi,
-    ModelZAktualizacjaDlaPBN,
-    parse_informacje,
-    ModelZNumeremZeszytu,
-    ModelZKonferencja,
     ModelWybitny,
     ModelZAbsolutnymUrl,
+    ModelZAdnotacjami,
+    ModelZAktualizacjaDlaPBN,
+    ModelZCharakterem,
+    ModelZDOI,
+    ModelZeStatusem,
+    ModelZeSzczegolami,
+    ModelZeZnakamiWydawniczymi,
+    ModelZInformacjaZ,
+    ModelZISSN,
+    ModelZKonferencja,
     ModelZLiczbaCytowan,
+    ModelZNumeremZeszytu,
+    ModelZOpenAccess,
+    ModelZPubmedID,
+    ModelZRokiem,
+    ModelZWWW,
+    PBNSerializerHelperMixin,
+    Wydawnictwo_Baza,
+    parse_informacje,
 )
 from bpp.models.system import Zewnetrzna_Baza_Danych
-from bpp.models.abstract import DodajAutoraMixin
-from bpp.models.util import dodaj_autora, ZapobiegajNiewlasciwymCharakterom
-
-from django.conf import settings
-
-from bpp.util import safe_html
+from bpp.models.util import ZapobiegajNiewlasciwymCharakterom
 
 
 class Wydawnictwo_Ciagle_Autor(
@@ -120,7 +117,7 @@ class Wydawnictwo_Ciagle(
     DirtyFieldsMixin,
 ):
     """Wydawnictwo ciągłe, czyli artykuły z czasopism, komentarze, listy
-    do redakcji, publikacje w suplemencie, etc. """
+    do redakcji, publikacje w suplemencie, etc."""
 
     autor_rekordu_klass = Wydawnictwo_Ciagle_Autor
     autorzy = models.ManyToManyField("Autor", through=autor_rekordu_klass)

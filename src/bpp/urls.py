@@ -1,7 +1,9 @@
 # -*- encoding: utf-8 -*-
 from django.conf.urls import url
-from django.contrib.auth.decorators import login_required
+from django.urls import path
 from django.views.decorators.csrf import csrf_exempt
+
+from django.contrib.auth.decorators import login_required
 
 import bpp
 from bpp import reports  # noqa
@@ -52,6 +54,7 @@ from bpp.views.browse import (
     JednostkaView,
     JednostkiView,
     OldPracaView,
+    PracaBySlugView,
     PracaView,
     RekordToPracaView,
     UczelniaView,
@@ -164,6 +167,11 @@ urlpatterns = [
         r"^rekord/(?P<model>[\w_]+),(?P<pk>[\d]+)/$",
         PracaView.as_view(),
         name="browse_praca",
+    ),
+    path(
+        r"rekord/<slug:slug>/",
+        PracaBySlugView.as_view(),
+        name="browse_praca_by_slug",
     ),
     url(
         r"^rekord/(?P<content_type_id>[\d]+),(?P<object_id>[\d]+)/$",

@@ -8,6 +8,7 @@ Historia zmian
 
 * pole "Afiliuje" w wyszukiwaniu traci operator "różne od" (#988),
 * czasopismom (źródłom) można określać listę dyscyplin naukowych (#863),
+* generowanie linków zoptymalizowanych dla przeglądarek (#1001),
 
 202103.59
 ---------

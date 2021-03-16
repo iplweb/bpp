@@ -4,29 +4,23 @@ import multiprocessing
 from django.conf import settings
 from django.core.management import BaseCommand
 
-from bpp.models import (
-    Patent,
-    Praca_Doktorska,
-    Praca_Habilitacyjna,
-    Wydawnictwo_Ciagle,
-    Wydawnictwo_Zwarte,
-    rebuild_ciagle,
-    rebuild_patent,
-    rebuild_praca_doktorska,
-    rebuild_praca_habilitacyjna,
-    rebuild_zwarte,
-)
-from bpp.util import (
-    disable_multithreading_by_monkeypatching_pool,
-    no_threads,
-    partition_count,
-)
-
 
 def subprocess_setup(*args):
+    import django
+
+    django.setup()
     from django.db import connection
 
     connection.connect()
+
+
+class disable_multithreading_pool:
+    def apply(fun, args=()):
+        return fun(*args)
+
+    def starmap(fun, lst):
+        for elem in lst:
+            fun(*elem)
 
 
 class Command(BaseCommand):
@@ -37,15 +31,32 @@ class Command(BaseCommand):
 
     def handle(self, disable_multithreading, *args, **options):
 
+        from bpp.models import (
+            Patent,
+            Praca_Doktorska,
+            Praca_Habilitacyjna,
+            Wydawnictwo_Ciagle,
+            Wydawnictwo_Zwarte,
+            rebuild_ciagle,
+            rebuild_patent,
+            rebuild_praca_doktorska,
+            rebuild_praca_habilitacyjna,
+            rebuild_zwarte,
+        )
+        from bpp.util import no_threads, partition_count
+
         if not settings.TESTING:
             from django import db
 
             db.connections.close_all()
 
         pool_size = no_threads(0.75)
-        pool = multiprocessing.Pool(processes=pool_size, initializer=subprocess_setup)
         if disable_multithreading:
-            disable_multithreading_by_monkeypatching_pool(pool)
+            pool = disable_multithreading_pool
+        else:
+            pool = multiprocessing.Pool(
+                processes=pool_size, initializer=subprocess_setup
+            )
 
         pc = pool.apply(partition_count, args=(Praca_Habilitacyjna.objects, pool_size))
         pool.starmap(rebuild_praca_habilitacyjna, pc)

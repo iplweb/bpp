@@ -259,7 +259,30 @@ class BuildSearch(RedirectView):
         return super(BuildSearch, self).post(*args, **kw)
 
 
-class PracaView(DetailView):
+class PracaViewGetMixin:
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+
+        if request.user.is_anonymous:
+            # Jeżeli użytkownik jest anonimowy, to może obejmować go ukrywanie statusów
+            uczelnia = Uczelnia.objects.get_for_request(request)
+
+            if uczelnia is not None:
+                statusy = uczelnia.ukryte_statusy("podglad")
+
+                if self.object.status_korekty_id in statusy:
+                    return HttpResponseForbidden("Brak uprawnień do rekordu")
+
+        context = self.get_context_data(object=self.object)
+        return self.render_to_response(context)
+
+
+class PracaBySlugView(PracaViewGetMixin, DetailView):
+    template_name = "browse/praca.html"
+    model = Rekord
+
+
+class PracaView(PracaViewGetMixin, DetailView):
     template_name = "browse/praca.html"
     model = Rekord
 
@@ -280,22 +303,6 @@ class PracaView(DetailView):
             raise Http404
 
         return obj
-
-    def get(self, request, *args, **kwargs):
-        self.object = self.get_object()
-
-        if request.user.is_anonymous:
-            # Jeżeli użytkownik jest anonimowy, to może obejmować go ukrywanie statusów
-            uczelnia = Uczelnia.objects.get_for_request(request)
-
-            if uczelnia is not None:
-                statusy = uczelnia.ukryte_statusy("podglad")
-
-                if self.object.status_korekty_id in statusy:
-                    return HttpResponseForbidden("Brak uprawnień do rekordu")
-
-        context = self.get_context_data(object=self.object)
-        return self.render_to_response(context)
 
 
 class OldPracaView(RedirectView):

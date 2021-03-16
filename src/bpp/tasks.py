@@ -4,10 +4,12 @@ import traceback
 
 from celery.utils.log import get_task_logger
 from django.conf import settings
-from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ImproperlyConfigured
 from django.core.management import call_command
 from django.db import transaction
+
+from django.contrib.contenttypes.models import ContentType
+
 from django.utils import timezone
 
 from bpp.models.sloty.core import IPunktacjaCacher
@@ -16,6 +18,10 @@ try:
     from django.core.urlresolvers import reverse
 except ImportError:
     from django.urls import reverse
+
+from celeryui.interfaces import IWebTask
+from celeryui.models import Report
+from long_running.util import wait_for_object
 
 from bpp.models import (
     Praca_Doktorska,
@@ -26,9 +32,6 @@ from bpp.models import (
 )
 from bpp.models.cache import CacheQueue
 from bpp.util import remove_old_objects
-from celeryui.interfaces import IWebTask
-from celeryui.models import Report
-from long_running.util import wait_for_object
 
 logger = get_task_logger(__name__)
 
@@ -44,8 +47,9 @@ def remove_file(path):
 
 @app.task
 def make_report(uid):
-    from bpp import reports  # for registry
     from celeryui.models import Report
+
+    from bpp import reports  # for registry
 
     reports  # pycharm, don't clean this plz
 
@@ -168,6 +172,7 @@ def zaktualizuj_liczbe_cytowan():
 
 @transaction.atomic
 def aktualizuj_cache_rekordu(model, uczelnia=None):
+    model.slug = model._get_slug()
     model.zaktualizuj_cache()
     ipc = IPunktacjaCacher(model, uczelnia)
     ipc.removeEntries()

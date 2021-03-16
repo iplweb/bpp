@@ -438,7 +438,7 @@ def test_rebuild_ciagle(
 
 @pytest.mark.django_db
 def test_rebuild_zwarte(django_assert_max_num_queries, wydawnictwo_zwarte_z_autorem):
-    with django_assert_max_num_queries(13):
+    with django_assert_max_num_queries(14):
         rebuild_zwarte()
 
 

@@ -8,13 +8,15 @@ from math import ceil, floor
 from pathlib import Path
 
 import bleach
+import lxml.html
 import progressbar
 from django.apps import apps
 from django.conf import settings
 from django.db.models import Max, Min
-from django.utils import timezone
 from psycopg2.extensions import QuotedString
 from unidecode import unidecode
+
+from django.utils import timezone
 
 non_url = re.compile(r"[^\w-]+")
 
@@ -93,8 +95,12 @@ class FulltextSearchMixin:
         )
 
 
+def strip_html(s):
+    return lxml.html.fromstring(str(s)).text_content()
+
+
 def slugify_function(s):
-    s = unidecode(s).replace(" ", "-")
+    s = unidecode(strip_html(s)).replace(" ", "-")
     while s.find("--") >= 0:
         s = s.replace("--", "-")
     return non_url.sub("", s)
@@ -410,6 +416,7 @@ def wytnij_isbn_z_uwag(uwagi):
 
 def crispy_form_html(self, key):
     from crispy_forms_foundation.layout import HTML, Column, Row
+
     from django.utils.functional import lazy
 
     def _():

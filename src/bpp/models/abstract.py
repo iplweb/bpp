@@ -7,24 +7,22 @@ import re
 from decimal import Decimal
 
 from django.conf import settings
-from django.contrib.postgres.fields import HStoreField
-from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ValidationError
 from django.core.validators import URLValidator
 from django.db import models
 from django.db.models import CASCADE, SET_NULL, Q, Sum
 from django.urls.base import reverse
+from lxml.etree import SubElement
+from .const import TO_AUTOR
+
+from django.contrib.postgres.fields import HStoreField
+from django.contrib.postgres.search import SearchVectorField as VectorField
+
 from django.utils import timezone
 from django.utils.functional import cached_property
 from django.utils.timezone import localtime
-from lxml.etree import SubElement
-from taggit.managers import TaggableManager
 
 from bpp.fields import DOIField, YearField
-from bpp.models.const import TO_AUTOR
-from bpp.models.dyscyplina_naukowa import Autor_Dyscyplina, Dyscyplina_Naukowa
-from bpp.models.util import ModelZOpisemBibliograficznym, dodaj_autora
-from bpp.util import safe_html
 
 ILOSC_ZNAKOW_NA_ARKUSZ = 40000.0
 
@@ -165,6 +163,8 @@ class DwaTytuly(models.Model):
     tytul = models.TextField("Tytuł", null=True, blank=True, db_index=True)
 
     def clean(self):
+        from bpp.util import safe_html
+
         self.tytul_oryginalny = safe_html(self.tytul_oryginalny)
         self.tytul = safe_html(self.tytul)
 
@@ -184,12 +184,9 @@ class ModelZeStatusem(models.Model):
 
 class ModelZAbsolutnymUrl:
     def get_absolute_url(self):
-        from django.contrib.contenttypes.models import ContentType
+        pass
 
-        return reverse(
-            "bpp:browse_praca",
-            args=(ContentType.objects.get_for_model(self).pk, self.pk),
-        )
+        return reverse("bpp:browse_praca_by_slug", args=(self.slug,))
 
 
 class ModelZRokiem(models.Model):
@@ -268,7 +265,7 @@ def ImpactFactorField(*args, **kw):
         decimal_places=IF_DECIMAL_PLACES,
         default=Decimal("0.000"),
         *args,
-        **kw
+        **kw,
     )
 
 
@@ -435,7 +432,7 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
     )
 
     dyscyplina_naukowa = models.ForeignKey(
-        Dyscyplina_Naukowa, on_delete=SET_NULL, null=True, blank=True
+        "bpp.Dyscyplina_Naukowa", on_delete=SET_NULL, null=True, blank=True
     )
 
     upowaznienie_pbn = models.BooleanField(
@@ -484,6 +481,7 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
         # - rekord nadrzędny musi być określony i mieć jakąś wartość w polu 'Rok'
         # - musi istnieć takie przypisanie autora do dyscypliny dla danego roku
         if self.dyscyplina_naukowa is not None:
+            from bpp.models import Autor_Dyscyplina
 
             if self.rekord is None:
                 raise ValidationError(
@@ -582,6 +580,8 @@ class ModelZeSzczegolami(models.Model):
 
     uwagi = models.TextField(null=True, blank=True, db_index=True)
 
+    from taggit.managers import TaggableManager
+
     slowa_kluczowe = TaggableManager(
         "Słowa kluczowe",
         help_text="Lista słów kluczowych, oddzielonych przecinkiem.",
@@ -667,6 +667,9 @@ class ModelZLegacyData(models.Model):
 
     class Meta:
         abstract = True
+
+
+from bpp.models.util import ModelZOpisemBibliograficznym, dodaj_autora
 
 
 class RekordBPPBaza(

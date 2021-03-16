@@ -6,41 +6,28 @@
 # - Patent
 # - Praca_Doktorska
 # - Praca_Habilitacyjna
-from django.contrib.contenttypes.fields import GenericForeignKey
-from django.contrib.contenttypes.models import ContentType
-from django.contrib.postgres.fields.array import ArrayField
-from django.contrib.postgres.search import SearchVectorField as VectorField
+
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import connections, models, router, transaction
 from django.db.models import CASCADE, ForeignKey, Func
 from django.db.models.deletion import DO_NOTHING
 from django.db.models.signals import post_delete, post_save, pre_delete, pre_save
-from django.utils.functional import cached_property
 from taggit.managers import TaggableManager, _TaggableManager
 from taggit.models import Tag
 
-from bpp.models import (
-    Autor,
-    Dyscyplina_Naukowa,
-    Jednostka,
-    ModelZeStatusem,
-    Patent,
-    Patent_Autor,
-    Praca_Doktorska,
-    Praca_Habilitacyjna,
-    Typ_Odpowiedzialnosci,
-    Uczelnia,
-    Wydawnictwo_Ciagle,
-    Wydawnictwo_Ciagle_Autor,
-    Wydawnictwo_Zwarte,
-    Wydawnictwo_Zwarte_Autor,
-    Zrodlo,
-)
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
+from django.contrib.postgres.fields.array import ArrayField
+from django.contrib.postgres.search import SearchVectorField as VectorField
+
+from django.utils.functional import cached_property
+
 from bpp.models.abstract import (
     ModelPunktowanyBaza,
     ModelRecenzowany,
     ModelTypowany,
     ModelZCharakterem,
+    ModelZeStatusem,
     ModelZeSzczegolami,
     ModelZeZnakamiWydawniczymi,
     ModelZKonferencja,
@@ -48,8 +35,18 @@ from bpp.models.abstract import (
     ModelZRokiem,
     ModelZWWW,
 )
-from bpp.models.system import Charakter_Formalny, Jezyk
+from bpp.models.autor import Autor
+from bpp.models.dyscyplina_naukowa import Dyscyplina_Naukowa
+from bpp.models.jednostka import Jednostka
+from bpp.models.patent import Patent, Patent_Autor
+from bpp.models.praca_doktorska import Praca_Doktorska
+from bpp.models.praca_habilitacyjna import Praca_Habilitacyjna
+from bpp.models.system import Charakter_Formalny, Jezyk, Typ_Odpowiedzialnosci
+from bpp.models.uczelnia import Uczelnia
 from bpp.models.util import ModelZOpisemBibliograficznym
+from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor
+from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor
+from bpp.models.zrodlo import Zrodlo
 from bpp.util import FulltextSearchMixin
 
 # zmiana CACHED_MODELS powoduje zmiane opisu bibliograficznego wszystkich rekordow
@@ -268,6 +265,7 @@ class Autorzy(AutorzyBase):
     # To poniżej musi być, bo się django-admin.py sqlflush nie uda
     typ_odpowiedzialnosci = models.ForeignKey("Typ_Odpowiedzialnosci", DO_NOTHING)
     autor = models.ForeignKey("Autor", DO_NOTHING)
+    jednostka = models.ForeignKey("bpp.Jednostka", DO_NOTHING)
     dyscyplina_naukowa = models.ForeignKey("Dyscyplina_Naukowa", DO_NOTHING)
 
     class Meta:
@@ -481,6 +479,7 @@ class RekordBase(
     tekst_po_ostatnim_autorze = None
 
     tytul_oryginalny = models.TextField()
+    slug = models.TextField()
     tytul = models.TextField()
     search_index = VectorField()
 
@@ -659,7 +658,7 @@ class CacheQueue(models.Model):
 class Cache_Punktacja_Dyscypliny(models.Model):
     rekord_id = TupleField(models.IntegerField(), size=2, db_index=True)
     # rekord = ForeignKey('bpp.Rekord', CASCADE)
-    dyscyplina = ForeignKey(Dyscyplina_Naukowa, CASCADE)
+    dyscyplina = ForeignKey("bpp.Dyscyplina_Naukowa", CASCADE)
     pkd = models.DecimalField(max_digits=20, decimal_places=4)
     slot = models.DecimalField(max_digits=20, decimal_places=4)
 
