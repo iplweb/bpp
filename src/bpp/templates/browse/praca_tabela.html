@@ -379,7 +379,7 @@
                 <th>PkD / PkDAut</th>
                 <th>Slot</th>
             </tr>
-            {% for pd in rekord.punktacja_dyscypliny %}
+            {% for pd in rekord.punktacja_dyscypliny.select_related %}
                 <tr>
                     <td>praca</td>
                     <td>{{ pd.dyscyplina.nazwa }}</td>
@@ -387,7 +387,7 @@
                     <td>{{ pd.slot }}</td>
                 </tr>
             {% endfor %}
-            {% for pa in rekord.punktacja_autora %}
+            {% for pa in rekord.punktacja_autora.select_related %}
                 <tr>
                     <td>{{ pa.autor }}</td>
                     <td>{{ pa.dyscyplina.nazwa }}</td>

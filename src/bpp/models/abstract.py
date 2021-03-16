@@ -7,18 +7,20 @@ import re
 from decimal import Decimal
 
 from django.conf import settings
-from django.contrib.postgres.fields import HStoreField
-from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ValidationError
 from django.core.validators import URLValidator
 from django.db import models
 from django.db.models import CASCADE, SET_NULL, Q, Sum
 from django.urls.base import reverse
+from lxml.etree import SubElement
+from taggit.managers import TaggableManager
+
+from django.contrib.postgres.fields import HStoreField
+from django.contrib.postgres.search import SearchVectorField as VectorField
+
 from django.utils import timezone
 from django.utils.functional import cached_property
 from django.utils.timezone import localtime
-from lxml.etree import SubElement
-from taggit.managers import TaggableManager
 
 from bpp.fields import DOIField, YearField
 from bpp.models.const import TO_AUTOR
@@ -185,6 +187,9 @@ class ModelZeStatusem(models.Model):
 class ModelZAbsolutnymUrl:
     def get_absolute_url(self):
         from django.contrib.contenttypes.models import ContentType
+
+        if hasattr(self, "slug") and self.slug:
+            return reverse("bpp:browse_praca_by_slug", args=(self.slug,))
 
         return reverse(
             "bpp:browse_praca",
