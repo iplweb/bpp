@@ -6,6 +6,7 @@ import psutil
 import pytest
 
 from bpp.tasks import remove_old_report_files
+
 from django_bpp.selenium_util import wait_for
 
 
@@ -44,7 +45,7 @@ def test_celery(settings):
 
     try:
         settings.CELERY_ALWAYS_EAGER = False
-        remove_old_report_files.delay().wait(timeout=15)
+        remove_old_report_files.delay().wait(timeout=30)
 
     finally:
         # Kill the worker and wait for it
