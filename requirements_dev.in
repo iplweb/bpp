@@ -1,4 +1,4 @@
-x-c requirements.txt
+-c requirements.txt
 model_mommy>=1.5.1
 django-dynamic-fixture>=1.8.0
 mock==2.0.0
