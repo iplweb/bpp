@@ -6,18 +6,20 @@
 # - Patent
 # - Praca_Doktorska
 # - Praca_Habilitacyjna
-from django.contrib.contenttypes.fields import GenericForeignKey
-from django.contrib.contenttypes.models import ContentType
-from django.contrib.postgres.fields.array import ArrayField
-from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import connections, models, router, transaction
 from django.db.models import CASCADE, ForeignKey, Func
 from django.db.models.deletion import DO_NOTHING
 from django.db.models.signals import post_delete, post_save, pre_delete, pre_save
-from django.utils.functional import cached_property
 from taggit.managers import TaggableManager, _TaggableManager
 from taggit.models import Tag
+
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
+from django.contrib.postgres.fields.array import ArrayField
+from django.contrib.postgres.search import SearchVectorField as VectorField
+
+from django.utils.functional import cached_property
 
 from bpp.models import (
     Autor,
@@ -818,6 +820,7 @@ def rebuild(klass, offset=None, limit=None, extra_flds=None, extra_tables=None):
             "opis_bibliograficzny_cache",
             "opis_bibliograficzny_autorzy_cache",
             "opis_bibliograficzny_zapisani_autorzy_cache",
+            "slug",
             "rok",
             "punkty_kbn",
             "status_korekty_id",

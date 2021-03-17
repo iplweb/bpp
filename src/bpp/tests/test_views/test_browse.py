@@ -5,6 +5,7 @@ from datetime import date
 
 import pytest
 from bs4 import BeautifulSoup
+
 from django.contrib.contenttypes.models import ContentType
 
 from bpp.tests import normalize_html
@@ -17,6 +18,9 @@ except ImportError:
 from model_mommy import mommy
 from multiseek.logic import EQUAL, EQUAL_FEMALE, EQUAL_NONE
 from multiseek.views import MULTISEEK_SESSION_KEY
+
+from conftest import NORMAL_DJANGO_USER_LOGIN, NORMAL_DJANGO_USER_PASSWORD
+from miniblog.models import Article
 
 from bpp.models import (
     Autor_Jednostka,
@@ -31,8 +35,6 @@ from bpp.models import (
 )
 from bpp.models.autor import Autor
 from bpp.views.browse import BuildSearch
-from conftest import NORMAL_DJANGO_USER_LOGIN, NORMAL_DJANGO_USER_PASSWORD
-from miniblog.models import Article
 
 
 def test_buildSearch(settings):
@@ -367,13 +369,9 @@ def test_browse_praca_wydawnictwa_powiazane(wydawnictwo_zwarte, client):
 
     rebuild_zwarte()
 
-    url = reverse(
-        "bpp:browse_praca",
-        args=(
-            ContentType.objects.get_for_model(wydawnictwo_zwarte).pk,
-            wydawnictwo_zwarte.pk,
-        ),
-    )
+    wydawnictwo_zwarte.refresh_from_db()
+
+    url = reverse("bpp:browse_praca_by_slug", args=(wydawnictwo_zwarte.slug,))
     res = client.get(url)
 
     assert b"Rekordy powi" in res.content

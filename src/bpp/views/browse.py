@@ -9,13 +9,14 @@ except ImportError:
     from django.urls import reverse
 
 from django.db.models.query_utils import Q
-from django.http import Http404, HttpResponseForbidden
+from django.http import Http404, HttpResponseForbidden, HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.views.generic import DetailView, ListView, RedirectView
-from miniblog.models import Article
 from multiseek.logic import AND, OR
 from multiseek.util import make_field
 from multiseek.views import MULTISEEK_SESSION_KEY, MULTISEEK_SESSION_KEY_REMOVED
+
+from miniblog.models import Article
 
 from bpp.models import Autor, Jednostka, Rekord, Uczelnia, Wydzial, Zrodlo
 from bpp.multiseek_registry import (
@@ -259,7 +260,39 @@ class BuildSearch(RedirectView):
         return super(BuildSearch, self).post(*args, **kw)
 
 
-class PracaView(DetailView):
+class PracaViewMixin:
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+
+        if request.user.is_anonymous:
+            # Jeżeli użytkownik jest anonimowy, to może obejmować go ukrywanie statusów
+            uczelnia = Uczelnia.objects.get_for_request(request)
+
+            if uczelnia is not None:
+                statusy = uczelnia.ukryte_statusy("podglad")
+
+                if self.object.status_korekty_id in statusy:
+                    return HttpResponseForbidden("Brak uprawnień do rekordu")
+
+        if (
+            "slug" not in self.kwargs
+            and hasattr(self.object, "slug")
+            and self.object.slug
+        ):
+            return HttpResponseRedirect(
+                reverse("bpp:browse_praca_by_slug", args=(self.object.slug,))
+            )
+
+        context = self.get_context_data(object=self.object)
+        return self.render_to_response(context)
+
+
+class PracaViewBySlug(PracaViewMixin, DetailView):
+    template_name = "browse/praca.html"
+    model = Rekord
+
+
+class PracaView(PracaViewMixin, DetailView):
     template_name = "browse/praca.html"
     model = Rekord
 
@@ -280,22 +313,6 @@ class PracaView(DetailView):
             raise Http404
 
         return obj
-
-    def get(self, request, *args, **kwargs):
-        self.object = self.get_object()
-
-        if request.user.is_anonymous:
-            # Jeżeli użytkownik jest anonimowy, to może obejmować go ukrywanie statusów
-            uczelnia = Uczelnia.objects.get_for_request(request)
-
-            if uczelnia is not None:
-                statusy = uczelnia.ukryte_statusy("podglad")
-
-                if self.object.status_korekty_id in statusy:
-                    return HttpResponseForbidden("Brak uprawnień do rekordu")
-
-        context = self.get_context_data(object=self.object)
-        return self.render_to_response(context)
 
 
 class OldPracaView(RedirectView):

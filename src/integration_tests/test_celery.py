@@ -6,6 +6,7 @@ import psutil
 import pytest
 
 from bpp.tasks import remove_old_report_files
+
 from django_bpp.selenium_util import wait_for
 
 
