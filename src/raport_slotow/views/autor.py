@@ -184,7 +184,7 @@ class RaportSlotow(
             self.autor = self.kwargs["obiekt"]
 
             export_format = self.request.GET.get(self.export_trigger_param, None)
-            if export_format in ["xlsx", "html"]:
+            if export_format in ["xlsx", "html", None]:
                 context = self.get_context_data(**kwargs)
                 return self.render_to_response(context)
             elif export_format == "pdf":
