@@ -5,15 +5,16 @@ from django.template.defaultfilters import safe
 from django.urls import reverse
 from django_tables2 import Column
 
+from raport_slotow import const
+from raport_slotow.columns import DecimalColumn, SummingColumn
+from raport_slotow.models import RaportUczelniaEwaluacjaView, RaportZerowyEntry
+from raport_slotow.models.uczelnia import RaportSlotowUczelniaWiersz
+
 from bpp.models import CHARAKTER_SLOTY
 from bpp.models.cache import (
     Cache_Punktacja_Autora_Query,
     Cache_Punktacja_Autora_Query_View,
 )
-from raport_slotow import const
-from raport_slotow.columns import DecimalColumn, SummingColumn
-from raport_slotow.models import RaportUczelniaEwaluacjaView, RaportZerowyEntry
-from raport_slotow.models.uczelnia import RaportSlotowUczelniaWiersz
 
 
 class RaportCommonMixin:

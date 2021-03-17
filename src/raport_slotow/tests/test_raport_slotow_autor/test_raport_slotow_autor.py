@@ -1,5 +1,6 @@
 from io import BytesIO
 
+import PyPDF2
 import pytest
 from django.urls import reverse
 from openpyxl import load_workbook
@@ -47,7 +48,10 @@ def test_raport_slotow_autor_brak_danych(admin_client, autor_jan_kowalski, rok):
 
 
 def test_raport_slotow_autor_sa_dane_eksport_wszystkiego(
-    admin_client, autor_jan_kowalski, rekord_slotu, rok
+    admin_client,
+    autor_jan_kowalski,
+    rekord_slotu,
+    rok,
 ):
     url = reverse("raport_slotow:raport")
 
@@ -72,6 +76,39 @@ def test_raport_slotow_autor_sa_dane_eksport_wszystkiego(
     assert res.status_code == 200
     wb = load_workbook(BytesIO(res.content))
     assert len(wb.get_sheet_names()) > 0
+
+    res = admin_client.get(url + "?_export=pdf")
+    assert res.status_code == 200
+    pdfReader = PyPDF2.PdfFileReader(res.content)
+    assert pdfReader.numPages == 1
+
+
+def test_raport_slotow_autor_sa_dane_eksport_wszystkiego_do_pdf(
+    admin_client,
+    autor_jan_kowalski,
+    rekord_slotu,
+    rok,
+):
+    url = reverse("raport_slotow:raport")
+
+    dane_raportu = {
+        "obiekt": autor_jan_kowalski.pk,
+        "od_roku": rok,
+        "do_roku": rok,
+        "dzialanie": const.DZIALANIE_WSZYSTKO,
+        "minimalny_pk": 0,
+        "slot": None,
+        "_export": "html",
+    }
+    s = admin_client.session
+    s.update({SESSION_KEY: dane_raportu})
+    s.save()
+
+    res = admin_client.get(url + "?_export=pdf")
+    assert res.status_code == 200
+    pdfReader = PyPDF2.PdfFileReader(BytesIO(res.content))
+    open("/Users/mpasternak/test.pdf", "wb").write(res.content)
+    assert pdfReader.numPages == 2
 
 
 def test_raport_slotow_autor_zbieraj_slot(

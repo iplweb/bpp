@@ -1,5 +1,13 @@
 {% extends "base.html" %}{% load render_table from django_tables2 %}
 
+{% block extrahead %}
+    <style>
+        @page {
+            size: A4 landscape;
+        }
+    </style>
+{% endblock %}
+
 {% block extratitle %}
     Raport slotów - {{ autor }} za {{ od_roku }} - {{ do_roku }}
 {% endblock %}
@@ -16,16 +24,28 @@
     <h2><i class="fi-results-demographics"></i> <a href="{% url "bpp:browse_autor" autor.slug %}">{{ autor }}</a>
         za {{ od_roku }} - {{ do_roku }}</h2>
 
+    {% if autor.orcid %}
     <strong>ORCID:</strong> {{ autor.orcid }}
     <span style="padding-left: 3em;"></span>
+    {% endif %}
+    {% if autor.pbn_id %}
     <strong>PBN ID:</strong> {{ autor.pbn_id }}
     <span style="padding-left: 3em;"></span>
+    {% endif %}
+    {% if autor.pbn_uuid %}
+    <strong>PBN UUID:</strong> {{ autor.pbn_uuid }}
+    <span style="padding-left: 3em;"></span>
+    {% endif %}
     <strong>BPP ID:</strong> {{ autor.pk }}
     <h4>{{ opis_dzialania }}</h4>
 
 
     {% for table in tables %}
+        <div class="hide-for-print">
         <a href="?_export=xlsx&n={{ forloop.counter0 }}"><i class="fi-page-export-csv"></i> pobierz XLS</a>
+        <span style="padding-left: 1em;"></span>
+        <a href="?_export=pdf&n={{ forloop.counter0 }}"><i class="fi-page-export-pdf"></i> pobierz PDF</a>
+        </div>
         {% render_table table %}
     {% endfor %}
 {% endblock %}
