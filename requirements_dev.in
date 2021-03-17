@@ -1,4 +1,4 @@
--c requirements.txt
+x-c requirements.txt
 model_mommy>=1.5.1
 django-dynamic-fixture>=1.8.0
 mock==2.0.0
@@ -33,3 +33,4 @@ isort>=5.7.0
 pre-commit
 django-debug-toolbar
 twine
+pypdf2

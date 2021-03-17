@@ -5,6 +5,7 @@ from django.urls import reverse
 from model_mommy import mommy
 
 from bpp.models import Uczelnia
+from bpp.tests import proper_click_element
 
 from django_bpp.selenium_util import wait_for_page_load
 
@@ -30,6 +31,7 @@ def test_integracyjny(admin_browser, asgi_live_server):
     btn[0]._element.location_once_scrolled_into_view
 
     with wait_for_page_load(admin_browser):
-        btn.click()
+        proper_click_element(admin_browser, btn)
+        # btn.click()
 
     admin_browser.wait_for_condition(lambda browser: "Lubelski" in admin_browser.html)

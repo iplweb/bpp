@@ -2,16 +2,18 @@
 from urllib.parse import urlencode
 
 import pytest
-from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.urls.base import reverse
+
+from raport_slotow import const
+from raport_slotow.views import SESSION_KEY
+
+from django.contrib.contenttypes.models import ContentType
 
 from bpp.models import Uczelnia
 from bpp.models.const import DO_STYCZNIA_POPRZEDNI_POTEM_OBECNY, NAJWIEKSZY_REKORD
 from bpp.models.fields import OpcjaWyswietlaniaField
-from bpp.tests import browse_praca_url
-from raport_slotow import const
-from raport_slotow.views import SESSION_KEY
+from bpp.tests import browse_praca_url, normalize_html
 
 
 @pytest.mark.parametrize(
@@ -198,25 +200,25 @@ def test_pokazuj_raport_slotow_menu_na_glownej(
     uczelnia.save()
 
     res = client.get(url)
-    assert S not in res.rendered_content
+    assert S not in normalize_html(res.rendered_content)
     res = admin_client.get(url)
-    assert S in res.rendered_content
+    assert S in normalize_html(res.rendered_content)
 
     setattr(uczelnia, atrybut_uczelni, OpcjaWyswietlaniaField.POKAZUJ_NIGDY)
     uczelnia.save()
 
     res = client.get(url)
-    assert S not in res.rendered_content
+    assert S not in normalize_html(res.rendered_content)
     res = admin_client.get(url)
-    assert S not in res.rendered_content
+    assert S not in normalize_html(res.rendered_content)
 
     setattr(uczelnia, atrybut_uczelni, OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE)
     uczelnia.save()
 
     res = client.get(url)
-    assert S in res.rendered_content
+    assert S in normalize_html(res.rendered_content)
     res = admin_client.get(url)
-    assert S in res.rendered_content
+    assert S in normalize_html(res.rendered_content)
 
 
 @pytest.mark.parametrize(
