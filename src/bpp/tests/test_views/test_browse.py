@@ -28,13 +28,14 @@ from bpp.models import (
     Jednostka,
     OpcjaWyswietlaniaField,
     Praca_Doktorska,
+    Rekord,
     Typ_Odpowiedzialnosci,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
     rebuild_zwarte,
 )
 from bpp.models.autor import Autor
-from bpp.views.browse import BuildSearch
+from bpp.views.browse import BuildSearch, PracaViewBySlug
 
 
 def test_buildSearch(settings):
@@ -489,3 +490,32 @@ def test_AutorView_funkcja_za_nazwiskiem(app):
     page = app.get(url)
     res = normalize_html(str(page.content, "utf-8"))
     assert res.find("<h1>Foo Bar, profesor uczelni </h1>") >= 0
+
+
+def test_PracaViewBySlug_get_object(wydawnictwo_zwarte):
+    rebuild_zwarte()
+    wydawnictwo_zwarte.refresh_from_db()
+    r = Rekord.objects.get_for_model(wydawnictwo_zwarte)
+    o = PracaViewBySlug(kwargs=dict(slug=wydawnictwo_zwarte.slug)).get_object()
+    assert o == r
+
+    o = PracaViewBySlug(
+        kwargs=dict(
+            slug=f"stary-slug-"
+            f"{ContentType.objects.get_for_model(wydawnictwo_zwarte).pk}-{wydawnictwo_zwarte.pk}"
+        )
+    ).get_object()
+    assert o == r
+
+
+def test_PracaViewMixin_redirect(wydawnictwo_zwarte, rf, admin_user):
+    rebuild_zwarte()
+    req = rf.get("/")
+    req.user = admin_user
+    res = PracaViewBySlug(
+        kwargs=dict(
+            slug=f"zlys-lug-{ContentType.objects.get_for_model(wydawnictwo_zwarte).pk}-{wydawnictwo_zwarte.pk}"
+        )
+    ).get(req)
+    assert res.status_code == 302
+    assert res.url.find("/bpp/rekord/Wydawnictwo-Zwarte") == 0

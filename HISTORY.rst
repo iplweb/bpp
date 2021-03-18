@@ -9,7 +9,11 @@ Historia zmian
 * pole "Afiliuje" w wyszukiwaniu traci operator "różne od" (#988),
 * czasopismom (źródłom) można określać listę dyscyplin naukowych (#863),
 * ulepszone linki tekstowe dla rekordów w bazie danych (#1001),
-* raport slotów - autor może być eksportowany do PDF bezpośrednio z poziomu BPP (b/n),
+* raport slotów - autor może być eksportowany do PDF bezpośrednio z poziomu
+  BPP (b/n),
+* korygowanie "starych" linków tekstowych przy założeniu, że ID pracy na końcu
+  linku nie uległo zmianie (#1015),
+
 
 202103.59
 ---------

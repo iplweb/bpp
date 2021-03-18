@@ -1,5 +1,6 @@
 # -*- encoding: utf-8 -*-
 import json
+import re
 
 from django.contrib.contenttypes.models import ContentType
 
@@ -283,13 +284,52 @@ class PracaViewMixin:
                 reverse("bpp:browse_praca_by_slug", args=(self.object.slug,))
             )
 
+        if (
+            "slug" in self.kwargs
+            and hasattr(self.object, "slug")
+            and self.object.slug != self.kwargs["slug"]
+        ):
+            # Przy przekierowaniu z linku typu 'starytekst_32_4533'
+            # (because cool URIs don't change!)
+            return HttpResponseRedirect(
+                reverse("bpp:browse_praca_by_slug", args=(self.object.slug,))
+            )
+
         context = self.get_context_data(object=self.object)
         return self.render_to_response(context)
+
+
+END_NUMBER_REGEX = re.compile("(?P<content_type_id>\\d+)-(?P<object_id>\\d+)$")
 
 
 class PracaViewBySlug(PracaViewMixin, DetailView):
     template_name = "browse/praca.html"
     model = Rekord
+
+    def get_object(self):
+        try:
+            return Rekord.objects.get(slug=self.kwargs["slug"])
+        except (Rekord.DoesNotExist, Rekord.MultipleObjectsReturned):
+            # Sprawdź cyferki na końcu
+            res = re.search(END_NUMBER_REGEX, self.kwargs["slug"])
+            if res is not None:
+                content_type_id, object_id = None, None
+                try:
+                    content_type_id, object_id = res.groups()
+                except ValueError:
+                    pass
+
+                if content_type_id is not None and object_id is not None:
+                    try:
+                        obj = Rekord.objects.get(pk=[content_type_id, object_id])
+                    except Rekord.DoesNotExist:
+                        raise Http404
+                    except Rekord.MultipleObjectsReturned:
+                        raise NotImplementedError("This should never happen")
+
+                    return obj
+
+        raise Http404
 
 
 class PracaView(PracaViewMixin, DetailView):
