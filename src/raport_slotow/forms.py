@@ -21,6 +21,9 @@ from bpp.util import formdefaults_html_after, formdefaults_html_before, year_las
 OUTPUT_FORMATS = [
     ("html", "wyświetl w przeglądarce"),
     ("xlsx", "Microsoft Excel (XLSX)"),
+]
+
+OUTPUT_FORMATS_WITH_PDF = OUTPUT_FORMATS + [
     ("pdf", "Portable Document Format (PDF)"),
 ]
 
@@ -59,7 +62,7 @@ class AutorRaportSlotowForm(forms.Form):
     )
 
     _export = forms.ChoiceField(
-        label="Format wyjściowy", choices=OUTPUT_FORMATS, required=True
+        label="Format wyjściowy", choices=OUTPUT_FORMATS_WITH_PDF, required=True
     )
 
     def clean(self):
