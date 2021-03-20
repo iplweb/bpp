@@ -13,6 +13,8 @@ Historia zmian
   BPP (b/n),
 * korygowanie "starych" linków tekstowych przy założeniu, że ID pracy na końcu
   linku nie uległo zmianie (#1015),
+* umożliwiaj filtrowanie rekordów w module redagowania po osobie, która ostatnia
+  zmieniała rekord oraz po osobie, która utworzyła rekord (#957),
 
 
 202103.59
