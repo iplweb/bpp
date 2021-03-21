@@ -102,7 +102,7 @@ def test_raport_slotow_autor_sa_dane_eksport_wszystkiego_do_pdf(
     res = admin_client.get(url + "?_export=pdf")
     assert res.status_code == 200
     pdfReader = PyPDF2.PdfFileReader(BytesIO(res.content))
-    assert pdfReader.numPages == 2
+    assert pdfReader.numPages >= 1
 
 
 def test_raport_slotow_autor_zbieraj_slot(
