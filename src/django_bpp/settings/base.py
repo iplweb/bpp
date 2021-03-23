@@ -11,6 +11,7 @@ from django.core.exceptions import DisallowedHost, ImproperlyConfigured
 from sentry_sdk.integrations.django import DjangoIntegration
 
 from bpp.util import slugify_function
+
 from django_bpp.version import VERSION
 
 
@@ -189,6 +190,7 @@ INSTALLED_APPS = [
     "nowe_raporty",
     "rozbieznosci_dyscyplin",
     "loginas",
+    "rozbieznosci_if",
     "robots",
     "webmaster_verification",
     "favicon",

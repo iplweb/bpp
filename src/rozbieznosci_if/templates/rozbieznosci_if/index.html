@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}
+    Rozbieżności IF
+{% endblock %}
+
+{% block content %}
+    <a href="{% url "admin:rozbieznosci_if_ignorujrozbieznoscif_changelist" %}">pokaż ignorowane rekordy</a>
+    {% include "pagination.html" %}
+    <table>
+        <tr>
+            <th>Tytuł</th>
+            <th>Rok</th>
+            <th>źródło</th>
+            <th>IF pracy</th>
+            <th>IF źródła</th>
+            <th>Ost. zmieniony</th>
+            <th>Ignoruj</th>
+            <th>Ustaw wg punktacji źródła</th>
+        </tr>
+        {% for elem in object_list %}
+            <tr>
+                <td><a href="{% url "admin:bpp_wydawnictwo_ciagle_change" elem.pk %}">
+                    {{ elem.opis_bibliograficzny_cache|safe }}
+                </a>
+                </td>
+                <td>{{ elem.rok }}</td>
+                <td>
+                    <a href="{% url "admin:bpp_zrodlo_change" elem.zrodlo.pk %}">
+                        {{ elem.zrodlo.nazwa|safe }}
+                    </a>
+                </td>
+                <td>
+                    {{ elem.impact_factor }}
+                </td>
+                <td>
+                    {{ elem.punktacja_zrodla_impact_factor }}
+                </td>
+                <td>{{ elem.ostatnio_zmieniony }}</td>
+                <td>
+                    <a href="?_ignore={{ elem.pk }}">zignoruj</a>
+                </td>
+                <td>
+                    <a href="?_set={{ elem.pk }}">ustaw wg punktacji źródła</a>
+                </td>
+
+            </tr>
+        {% endfor %}
+    </table>
+
+{% endblock %}

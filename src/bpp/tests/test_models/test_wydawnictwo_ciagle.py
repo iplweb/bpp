@@ -164,3 +164,15 @@ def test_eksport_pbn_issue(wydawnictwo_ciagle):
     wydawnictwo_ciagle.informacje = "2016 vol 4 nr 5B"
     wydawnictwo_ciagle.eksport_pbn_issue(toplevel)
     assert toplevel[0].text == "5B"
+
+
+def test_punktacja_zrodla(wydawnictwo_ciagle):
+    assert wydawnictwo_ciagle.punktacja_zrodla() is None
+
+    z = wydawnictwo_ciagle.zrodlo
+    z.punktacja_zrodla_set.create(rok=1990, impact_factor=100)
+
+    assert wydawnictwo_ciagle.punktacja_zrodla() is None
+
+    z.punktacja_zrodla_set.create(rok=wydawnictwo_ciagle.rok, impact_factor=37)
+    assert wydawnictwo_ciagle.punktacja_zrodla().impact_factor == 37

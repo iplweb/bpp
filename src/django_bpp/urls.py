@@ -3,9 +3,6 @@
 from django.conf import settings
 from django.conf.urls import include, url
 from django.conf.urls.static import static
-from django.contrib import admin
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.views import LoginView, LogoutView
 from django.urls import path
 from django.views.decorators.cache import cache_page
 from django.views.decorators.csrf import csrf_exempt
@@ -20,6 +17,10 @@ from password_policies.views import (
     PasswordResetFormView,
 )
 
+from django.contrib import admin
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.views import LoginView, LogoutView
+
 from bpp.forms import MyAuthenticationForm
 from bpp.views import favicon, root
 from bpp.views.admin import (
@@ -33,6 +34,7 @@ from bpp.views.mymultiseek import (
     bpp_remove_by_hand,
     bpp_remove_from_removed_by_hand,
 )
+
 from django_bpp.forms import BppPasswordChangeForm
 
 admin.autodiscover()
@@ -105,6 +107,7 @@ urlpatterns = (
         path("raport_slotow/", include("raport_slotow.urls")),
         url(r"^bpp/", include(("bpp.urls", "bpp"), namespace="bpp")),
         path("rozbieznosci_dyscyplin/", include("rozbieznosci_dyscyplin.urls")),
+        path("rozbieznosci_if/", include("rozbieznosci_if.urls")),
         url(
             r"^multiseek/results/$",
             csrf_exempt(
