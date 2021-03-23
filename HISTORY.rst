@@ -17,6 +17,7 @@ Historia zmian
   zmieniała rekord oraz po osobie, która utworzyła rekord (#957),
 * raport wyświetlający rozbieżności punktacji IF pomiędzy źródłem a rekordem
   (#1002),
+* poprawne wyszukiwanie po słowach kluczowych (#1021),
 
 
 202103.59

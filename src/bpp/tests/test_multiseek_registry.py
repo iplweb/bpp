@@ -40,6 +40,7 @@ from bpp.multiseek_registry import (
     PierwszeNazwiskoIImie,
     PublicDostepDniaQueryObject,
     RodzajKonferenckjiQueryObject,
+    SlowaKluczoweQueryObject,
     StronaWWWUstawionaQueryObject,
     Typ_OdpowiedzialnosciQueryObject,
     TypOgolnyAutorQueryObject,
@@ -389,4 +390,13 @@ def test_ObcaJednostkaQueryObject(
     wydawnictwo_zwarte.dodaj_autora(autor_jan_kowalski, obca_jednostka, afiliuje=False)
 
     res = ObcaJednostkaQueryObject().real_query(True, logic.EQUAL)
+    assert Rekord.objects.filter(res).count() == 1
+
+
+@pytest.mark.django_db
+def test_SlowaKluczoweQueryObject(wydawnictwo_zwarte):
+    wydawnictwo_zwarte.slowa_kluczowe.add("foo")
+    wydawnictwo_zwarte.save()
+
+    res = SlowaKluczoweQueryObject().real_query("foo", logic.EQUAL)
     assert Rekord.objects.filter(res).count() == 1

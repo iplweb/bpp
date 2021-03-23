@@ -1,10 +1,12 @@
 # -*- encoding: utf-8 -*-
 from django.conf import settings
-from django.contrib.postgres.search import SearchQuery
-from django.utils.itercompat import is_iterable
 from mptt.forms import TreeNodeChoiceFieldMixin
 from mptt.settings import DEFAULT_LEVEL_INDICATOR
 from taggit.models import Tag
+
+from django.contrib.postgres.search import SearchQuery
+
+from django.utils.itercompat import is_iterable
 
 from bpp.models.konferencja import Konferencja
 from bpp.models.openaccess import (
@@ -150,7 +152,7 @@ class SlowaKluczoweQueryObject(AutocompleteQueryObject):
     def real_query(self, value, operation):
         if operation in EQUALITY_OPS_ALL:
             ret = Q(
-                pk__in=SlowaKluczoweView.objects.filter(slowo_kluczowe=value).values(
+                pk__in=SlowaKluczoweView.objects.filter(tag__name=value).values(
                     "rekord_id"
                 )
             )
