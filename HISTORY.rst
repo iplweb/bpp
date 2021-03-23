@@ -15,6 +15,8 @@ Historia zmian
   linku nie uległo zmianie (#1015),
 * umożliwiaj filtrowanie rekordów w module redagowania po osobie, która ostatnia
   zmieniała rekord oraz po osobie, która utworzyła rekord (#957),
+* raport wyświetlający rozbieżności punktacji IF pomiędzy źródłem a rekordem
+  (#1002),
 
 
 202103.59
