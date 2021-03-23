@@ -57,8 +57,8 @@ def test_RozbieznosciView_dodaj_do_ignorowanych(
     req = rf.get("/", data={"_ignore": str(wydawnictwo_z_rozbieznoscia.pk)})
     req.user = admin_user
 
-    rv = RozbieznosciView()
-    rv.request = req
+    rv = RozbieznosciView(kwargs={}, request=req)
+    # rv.request = req
 
     rv.get(req)
     rv.get(req)
@@ -72,8 +72,8 @@ def test_RozbieznosciView_ustaw(wydawnictwo_z_rozbieznoscia, rf, admin_user):
     req = rf.get("/", data={"_set": str(wydawnictwo_z_rozbieznoscia.pk)})
     req.user = admin_user
 
-    rv = RozbieznosciView()
-    rv.request = req
+    rv = RozbieznosciView(kwargs={}, request=req)
+    # rv.request = req
 
     rv.get(req)
 
