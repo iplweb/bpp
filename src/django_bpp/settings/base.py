@@ -15,10 +15,17 @@ from bpp.util import slugify_function
 from django_bpp.version import VERSION
 
 
-def django_getenv(varname, default=None):
+def django_getenv(varname, default=None, type=str):
     value = os.getenv(varname, default)
+
     if value is None:
-        raise ImproperlyConfigured("Please set %r variable" % varname)
+        raise ImproperlyConfigured(f"Please set {varname} variable")
+
+    try:
+        value = type(value)
+    except (ValueError, TypeError):
+        raise ImproperlyConfigured(f"Cannot convert variable {varname} to type {type}")
+
     return value
 
 
@@ -291,11 +298,11 @@ COMPRESS_OFFLINE_CONTEXT = [
 ]
 
 # Domyslnie, redis na Ubuntu pozwala na 16 baz danych
-REDIS_DB_BROKER = 1
-REDIS_DB_CELERY = 2
-REDIS_DB_SESSION = 4
-REDIS_DB_CACHE = 5
-REDIS_DB_LOCKS = 6
+REDIS_DB_BROKER = django_getenv("DJANGO_BPP_REDIS_DB_BROKER", 1, int)
+REDIS_DB_CELERY = django_getenv("DJANGO_BPP_REDIS_DB_CELERY", 2, int)
+REDIS_DB_SESSION = django_getenv("DJANGO_BPP_REDIS_DB_SESSION", 4, int)
+REDIS_DB_CACHE = django_getenv("DJANGO_BPP_REDIS_DB_CACHE", 5, int)
+REDIS_DB_LOCKS = django_getenv("DJANGO_BPP_REDIS_DB_LOCKS", 6, int)
 
 SENTRYSDK_CONFIG_URL = os.getenv("DJANGO_BPP_RAVEN_CONFIG_URL", None) or os.getenv(
     "DJANGO_BPP_SENTRYSDK_CONFIG_URL", None

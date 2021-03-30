@@ -18,6 +18,7 @@ Historia zmian
 * raport wyświetlający rozbieżności punktacji IF pomiędzy źródłem a rekordem
   (#1002),
 * poprawne wyszukiwanie po słowach kluczowych (#1027),
+* konfigurowalne numerki baz danych REDIS (#1026),
 
 
 202103.59
