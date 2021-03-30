@@ -1,0 +1,2 @@
+class PraceSerwisoweException(Exception):
+    pass

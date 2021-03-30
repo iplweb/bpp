@@ -18,6 +18,7 @@ Historia zmian
 * raport wyświetlający rozbieżności punktacji IF pomiędzy źródłem a rekordem
   (#1002),
 * poprawne wyszukiwanie po słowach kluczowych (#1027),
+* wymiana danych z PBN przez API (#949),
 
 
 202103.59
