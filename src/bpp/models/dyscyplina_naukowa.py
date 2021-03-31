@@ -85,19 +85,19 @@ def waliduj_format_kodu_numer(value):
         raise ValidationError(msg)
 
 
-class KodDyscyplinField(models.CharField):
+class KodDyscyplinyField(models.CharField):
     def __init__(self, *args, **kw):
         if "validators" not in kw:
             kw["validators"] = []
         kw["validators"].append(waliduj_format_kodu_numer)
-        super(KodDyscyplinField, self).__init__(*args, **kw)
+        super(KodDyscyplinyField, self).__init__(*args, **kw)
 
     def to_python(self, value):
         return normalize_kod_dyscypliny(value)
 
 
 class Dyscyplina_Naukowa(models.Model):
-    kod = KodDyscyplinField(max_length=20, unique=True)
+    kod = KodDyscyplinyField(max_length=20, unique=True)
     nazwa = models.CharField(max_length=200, unique=True)
     widoczna = models.BooleanField(default=True)
 

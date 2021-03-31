@@ -1,6 +1,7 @@
 # -*- encoding: utf-8 -*-
 import json
 import os
+import random
 import time
 from datetime import datetime
 
@@ -45,12 +46,14 @@ from bpp.models.system import (
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 from bpp.models.zrodlo import Zrodlo
+
 from django_bpp.selenium_util import wait_for_page_load, wait_for_websocket_connection
 
 NORMAL_DJANGO_USER_LOGIN = "test_login_bpp"
 NORMAL_DJANGO_USER_PASSWORD = "test_password"
 
 from asgi_live_server import asgi_live_server  # noqa
+
 from bpp.tests.util import setup_mommy
 
 setup_mommy()
@@ -68,21 +71,21 @@ def rok():
 @pytest.fixture
 def dyscyplina1(db):
     return Dyscyplina_Naukowa.objects.get_or_create(
-        nazwa="memetyka stosowana", kod="MS"
+        nazwa="memetyka stosowana", kod="1.1"
     )[0]
 
 
 @pytest.fixture
 def dyscyplina2(db):
-    return Dyscyplina_Naukowa.objects.get_or_create(nazwa="druga dyscyplina", kod="DD")[
-        0
-    ]
+    return Dyscyplina_Naukowa.objects.get_or_create(
+        nazwa="druga dyscyplina", kod="2.2"
+    )[0]
 
 
 @pytest.fixture
 def dyscyplina3(db):
     return Dyscyplina_Naukowa.objects.get_or_create(
-        nazwa="trzecia dyscyplina", kod="TD"
+        nazwa="trzecia dyscyplina", kod="3.3"
     )[0]
 
 
@@ -206,7 +209,7 @@ def wydzial_maker(db):
 @pytest.mark.django_db
 @pytest.fixture(scope="function")
 def wydzial(uczelnia, db):
-    return _wydzial_maker(uczelnia=uczelnia, skrot="W1", nazwa=u"Wydział Testowy I")
+    return _wydzial_maker(uczelnia=uczelnia, skrot="W1", nazwa="Wydział Testowy I")
 
 
 def _autor_maker(imiona, nazwisko, tytul="dr", **kwargs):
@@ -293,7 +296,7 @@ def zrodlo_maker():
 
 @pytest.fixture(scope="function")
 def zrodlo(db):
-    return _zrodlo_maker(nazwa=u"Testowe Źródło", skrot="Test. Źr.")
+    return _zrodlo_maker(nazwa="Testowe Źródło", skrot="Test. Źr.")
 
 
 def set_default(varname, value, dct):
@@ -329,7 +332,7 @@ def _wydawnictwo_ciagle_maker(**kwargs):
         set_default(
             "zrodlo",
             _zrodlo_maker(
-                nazwa=u"Źrodło Ciągłego Wydawnictwa", skrot=u"Źród. Ciąg. Wyd."
+                nazwa="Źrodło Ciągłego Wydawnictwa", skrot="Źród. Ciąg. Wyd."
             ),
             kwargs,
         )
@@ -379,7 +382,7 @@ def wydawnictwo_zwarte(
     """
     :rtype: bpp.models.Wydawnictwo_Zwarte
     """
-    return _zwarte_maker(tytul_oryginalny=u"Wydawnictwo Zwarte ĄćłłóńŹ")
+    return _zwarte_maker(tytul_oryginalny="Wydawnictwo Zwarte ĄćłłóńŹ")
 
 
 @pytest.fixture
@@ -405,7 +408,7 @@ def _habilitacja_maker(**kwargs):
 @pytest.fixture(scope="function")
 def habilitacja(jednostka, db, charaktery_formalne, jezyki, typy_odpowiedzialnosci):
     return _habilitacja_maker(
-        tytul_oryginalny=u"Praca habilitacyjna", jednostka=jednostka
+        tytul_oryginalny="Praca habilitacyjna", jednostka=jednostka
     )
 
 
@@ -427,7 +430,7 @@ def _doktorat_maker(**kwargs):
 
 @pytest.fixture(scope="function")
 def doktorat(jednostka, charaktery_formalne, jezyki, typy_odpowiedzialnosci):
-    return _doktorat_maker(tytul_oryginalny=u"Praca doktorska", jednostka=jednostka)
+    return _doktorat_maker(tytul_oryginalny="Praca doktorska", jednostka=jednostka)
 
 
 @pytest.fixture(scope="function")
@@ -446,7 +449,7 @@ def _patent_maker(**kwargs):
 
 @pytest.fixture
 def patent(db, typy_odpowiedzialnosci, jezyki, charaktery_formalne, typy_kbn):
-    return _patent_maker(tytul_oryginalny=u"PATENT!")
+    return _patent_maker(tytul_oryginalny="PATENT!")
 
 
 @pytest.fixture
@@ -768,3 +771,14 @@ def artykul(wydawnictwo_ciagle, artykul_w_czasopismie):
     wydawnictwo_ciagle.charakter_formalny = artykul_w_czasopismie
     wydawnictwo_ciagle.save()
     return wydawnictwo_ciagle
+
+
+def gen_kod_dyscypliny_func():
+    top = random.randint(1, 8)
+    bottom = random.randint(1, 500)
+    return f"{top}.{bottom}"
+
+
+mommy.generators.add(
+    "bpp.models.dyscyplina_naukowa.KodDyscyplinyField", gen_kod_dyscypliny_func
+)
