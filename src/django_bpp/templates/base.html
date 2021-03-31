@@ -86,7 +86,7 @@
 
     <div class="title-bar" data-responsive-toggle="example-menu" data-hide-for="medium">
         <button class="menu-icon" type="button" data-toggle="example-menu"></button>
-        <div class="title-bar-title">Menu</div>
+        <div class="title-bar-title hide-for-print">Menu</div>
     </div>
 
     <div class="grid-container-fluid hide-for-print" data-sticky-container>
@@ -173,7 +173,8 @@
                             {% endif %}
 
                             {% if uczelnia.pokazuj_raport_slotow_uczelnia == "always" or uczelnia.pokazuj_raport_slotow_uczelnia == "logged-in" and request.user.is_anonymous == False %}
-                                <li><a href="{% url "raport_slotow:lista-raport-slotow-uczelnia" %}">raport slotów - uczelnia</a></li>
+                                <li><a href="{% url "raport_slotow:lista-raport-slotow-uczelnia" %}">raport slotów -
+                                    uczelnia</a></li>
                                 <li><a href="{% url "raport_slotow:index-ewaluacja" %}">raport slotów - ewaluacja</a>
                                 </li>
                             {% endif %}
@@ -189,10 +190,14 @@
                                 {% if request.user|has_group:"wprowadzanie danych" or request.user.is_superuser %}
                                     <li><a href="{% url "integrator2:main" %}">import danych</a></li>
                                     <li><a href="{% url "import_pracownikow:index" %}">import pracowników</a></li>
+                                    <li><a href="{% url "import_dyscyplin_zrodel:index" %}">import dyscyplin źródeł</a>
+                                    </li>
                                     <li><a href="{% url "import_list_if:index" %}">import list IF</a></li>
                                     <li><a href="{% url "import_dyscyplin:index" %}">import dyscyplin</a></li>
                                     <li><a href="{% url "rozbieznosci_dyscyplin:main-view" %}">rozbieżności
                                         dyscyplin</a></li>
+                                    <li><a href="{% url "rozbieznosci_if:index" %}">rozbieżności
+                                        punktacji IF</a></li>
                                 {% endif %}
 
                                 <li><a id="password-change-link" href="{% url "password_change" %}">zmiana hasła</a>
@@ -286,8 +291,23 @@
                     2004-2021 <a href="http://iplweb.pl">IPLweb</a>; wersja {% bpp_version %}
                 </small>
             </div>
+            <div class="show-for-print">
+                <div class="text-right">
+                    <small>
+                        Dokument wygenerowano przy pomocy systemu Bibliografia Publikacji Pracowników w
+                        wersji <strong>{% bpp_version %}</strong>
+                        dnia <strong>{% now "SHORT_DATE_FORMAT" %} o godzinie {% now "H:i" %}</strong>
+                        {% if not request.user.is_anonymous %}
+                            przez użytkownika <strong>{{ request.user.username }}</strong>
+                        {% endif %}
+                        <br/>
+                        Baza danych &copy; {% now "Y" %} Biblioteka Główna {{ uczelnia.nazwa_dopelniacz_field }}.
+                        Oprogramowanie Bibliografia Publikacji Pracowników &copy; 2004-2021 IPLweb,
+                        https://bpp.iplweb.pl/
+                    </small>
+                </div>
+            </div>
         </div>
-
         {% load cookielaw_tags %}
         {% cookielaw_banner %}
     </div>

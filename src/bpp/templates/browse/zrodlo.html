@@ -14,7 +14,13 @@
     <h1>{{ zrodlo.nazwa }}</h1>
     {% include "browse/go_to_admin_change.html" with url="admin:bpp_zrodlo_change" pk=zrodlo.pk group="wprowadzanie danych" %}
     {% include "browse/go_to_admin_list.html" with url="admin:bpp_zrodlo_add" group="wprowadzanie danych" text="dodaj nowy rekord" %}
-
+    {% if zrodlo.dyscyplina_zrodla_set.all %}
+        Dyscypliny przypisane do źródła:
+        <ul>
+            {% for elem in zrodlo.dyscyplina_zrodla_set.all.select_related %}
+                <li>{{ elem.dyscyplina }}</li>
+            {% endfor %}</ul>
+    {% endif %}
     <form method="post"
           action="{% url "bpp:browse_build_search" %}" class="browserForm">
         {% csrf_token %}

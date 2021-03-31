@@ -1,20 +1,25 @@
-from django.http import HttpResponseRedirect
+from copy import copy
+
+from django.http import HttpResponse, HttpResponseRedirect
 from django.template.defaultfilters import pluralize
 from django.urls import reverse
-from django.utils import timezone
-from django.utils.functional import cached_property
 from django.views.generic import FormView, TemplateView
 from django_tables2 import MultiTableMixin, RequestConfig
+from weasyprint import HTML
 
-from bpp.models import Cache_Punktacja_Autora_Query_View, Dyscyplina_Naukowa
-from bpp.views.mixins import UczelniaSettingRequiredMixin
-from django_bpp.version import VERSION
 from formdefaults.helpers import FormDefaultsMixin
 from raport_slotow.forms import AutorRaportSlotowForm
 from raport_slotow.tables import RaportSlotowAutorTable
 from raport_slotow.util import InitialValuesFromGETMixin, MyExportMixin, MyTableExport
-
 from .. import const
+
+from django.utils import timezone
+from django.utils.functional import cached_property
+
+from bpp.models import Cache_Punktacja_Autora_Query_View, Dyscyplina_Naukowa
+from bpp.views.mixins import UczelniaSettingRequiredMixin
+
+from django_bpp.version import VERSION
 
 SESSION_KEY = "raport_slotow_data"
 
@@ -46,7 +51,8 @@ class RaportSlotow(
     template_name = "raport_slotow/raport_slotow_autor.html"
     table_class = RaportSlotowAutorTable
     uczelnia_attr = "pokazuj_raport_slotow_autor"
-    export_formats = ["html", "xlsx"]
+    export_formats = ["html", "xlsx", "pdf"]
+    export_class = MyTableExport
 
     def create_export(self, export_format):
         tables = self.get_tables()
@@ -148,7 +154,7 @@ class RaportSlotow(
     @cached_property
     def opis_dzialania(self):
         if self.kwargs["dzialanie"] == const.DZIALANIE_WSZYSTKO:
-            return "wszystkie rekordy punktacją dla dziedzin za dany okres"
+            return "wszystkie rekordy z punktacją dla dyscyplin za dany okres"
         elif self.kwargs["dzialanie"] == const.DZIALANIE_SLOT:
             return f"zbieranie najlepszych prac do {self.kwargs['slot']} slot{pluralize(self.kwargs['slot'], 'u,ów')}"
         else:
@@ -177,7 +183,37 @@ class RaportSlotow(
 
             self.autor = self.kwargs["obiekt"]
 
-            context = self.get_context_data(**kwargs)
-            return self.render_to_response(context)
+            export_format = self.request.GET.get(self.export_trigger_param, None)
+            if export_format in ["xlsx", "html", None]:
+                context = self.get_context_data(**kwargs)
+                return self.render_to_response(context)
+            elif export_format == "pdf":
+                new_get = copy(self.request.GET)
+                new_get["_export"] = "html"
+                self.request.GET = new_get
+                context = self.get_context_data(**kwargs)
+                ret = self.render_to_response(context)
+
+                # UWAGA: jeżeli w wygenerowanej stronie WWW cokolwiek będzie dostępne
+                # za hasłem, to może się ona nie wygenerować prawidłowo. Żeby wyrenderować
+                # PDFa, serwer wstecznie odpytuje sam siebie - o CSSy, obrazki, fonty itp.
+                # Jeżeli nagle będziemy mieli jakis zahasłowany statyczny asset, to będzie
+                # trzeba go tutaj udostępnić, żeby WeasyPrint miał ułatwione zadanie.
+                # (mpasternak, 17.03.2021)
+
+                response = HttpResponse(
+                    content=HTML(
+                        string=ret.render().content,
+                        base_url=self.request.build_absolute_uri(),
+                    ).write_pdf(),
+                    content_type="application/pdf",
+                )
+                filename = self.get_export_filename("pdf", 0)
+                response["Content-Disposition"] = f'attachment; filename="{filename}"'
+                return response
+            else:
+                raise NotImplementedError(
+                    f"unknown format {export_format}, also this should never happen"
+                )
         else:
             return HttpResponseRedirect("..")

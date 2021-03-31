@@ -1,6 +1,12 @@
 # -*- encoding: utf-8 -*-
-from django.contrib.admin.filters import SimpleListFilter
+from django.db.models import F, IntegerField, Max
+from django.db.models.functions import Cast
 
+from django.contrib.admin.filters import SimpleListFilter
+from django.contrib.admin.models import ADDITION, CHANGE, LogEntry
+from django.contrib.contenttypes.models import ContentType
+
+from bpp.models import BppUser
 from bpp.models.struktura import Jednostka
 
 
@@ -101,3 +107,69 @@ class JednostkaFilter(SimpleListFilter):
         return (
             (x.pk, str(x)) for x in Jednostka.objects.all().select_related("wydzial")
         )
+
+
+class LogEntryFilterBase(SimpleListFilter):
+    action_flags = [ADDITION, CHANGE]
+
+    def __init__(self, request, params, model, model_admin):
+        self.content_type = ContentType.objects.get_for_model(model)
+        super(LogEntryFilterBase, self).__init__(
+            request=request, params=params, model=model, model_admin=model_admin
+        )
+
+    def logentries(self):
+        return LogEntry.objects.filter(
+            action_flag__in=self.action_flags,
+            content_type_id=self.content_type,
+        )
+
+    def lookups(self, request, model_admin):
+        return (
+            (x.pk, x.username)
+            for x in BppUser.objects.filter(
+                pk__in=self.logentries().values_list("user_id")
+            ).only("pk", "username")
+        )
+
+
+class OstatnioZmienionePrzezFilter(LogEntryFilterBase):
+    title = "Ostatnio zmieniony przez"
+    parameter_name = "ostatnio_zmieniony_przez"
+
+    def queryset(self, request, queryset):
+        v = self.value()
+        if v:
+            res = (
+                self.logentries()
+                .values("object_id", "content_type_id")
+                .annotate(
+                    max_action_time=Max("action_time"),
+                    max_pk=F("object_id"),
+                    max_user=F("user_id"),
+                )
+                .filter(max_user=v)
+                .values_list(Cast("object_id", IntegerField()))
+            )
+
+            return queryset.filter(pk__in=res)
+        return queryset
+
+
+class UtworzonePrzezFilter(LogEntryFilterBase):
+    title = "Utworzone przez"
+    parameter_name = "utworzone_przez"
+
+    action_flags = [ADDITION]
+
+    def queryset(self, request, queryset):
+        v = self.value()
+        if v:
+            res = (
+                self.logentries()
+                .filter(user_id=v)
+                .values_list(Cast("object_id", IntegerField()))
+            )
+
+            return queryset.filter(pk__in=res)
+        return queryset

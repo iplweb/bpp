@@ -33,3 +33,4 @@ isort>=5.7.0
 pre-commit
 django-debug-toolbar
 twine
+pypdf2

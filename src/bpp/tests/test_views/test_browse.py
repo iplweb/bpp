@@ -5,6 +5,7 @@ from datetime import date
 
 import pytest
 from bs4 import BeautifulSoup
+
 from django.contrib.contenttypes.models import ContentType
 
 from bpp.tests import normalize_html
@@ -18,21 +19,23 @@ from model_mommy import mommy
 from multiseek.logic import EQUAL, EQUAL_FEMALE, EQUAL_NONE
 from multiseek.views import MULTISEEK_SESSION_KEY
 
+from conftest import NORMAL_DJANGO_USER_LOGIN, NORMAL_DJANGO_USER_PASSWORD
+from miniblog.models import Article
+
 from bpp.models import (
     Autor_Jednostka,
     Funkcja_Autora,
     Jednostka,
     OpcjaWyswietlaniaField,
     Praca_Doktorska,
+    Rekord,
     Typ_Odpowiedzialnosci,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
     rebuild_zwarte,
 )
 from bpp.models.autor import Autor
-from bpp.views.browse import BuildSearch
-from conftest import NORMAL_DJANGO_USER_LOGIN, NORMAL_DJANGO_USER_PASSWORD
-from miniblog.models import Article
+from bpp.views.browse import BuildSearch, PracaViewBySlug
 
 
 def test_buildSearch(settings):
@@ -367,13 +370,9 @@ def test_browse_praca_wydawnictwa_powiazane(wydawnictwo_zwarte, client):
 
     rebuild_zwarte()
 
-    url = reverse(
-        "bpp:browse_praca",
-        args=(
-            ContentType.objects.get_for_model(wydawnictwo_zwarte).pk,
-            wydawnictwo_zwarte.pk,
-        ),
-    )
+    wydawnictwo_zwarte.refresh_from_db()
+
+    url = reverse("bpp:browse_praca_by_slug", args=(wydawnictwo_zwarte.slug,))
     res = client.get(url)
 
     assert b"Rekordy powi" in res.content
@@ -491,3 +490,32 @@ def test_AutorView_funkcja_za_nazwiskiem(app):
     page = app.get(url)
     res = normalize_html(str(page.content, "utf-8"))
     assert res.find("<h1>Foo Bar, profesor uczelni </h1>") >= 0
+
+
+def test_PracaViewBySlug_get_object(wydawnictwo_zwarte):
+    rebuild_zwarte()
+    wydawnictwo_zwarte.refresh_from_db()
+    r = Rekord.objects.get_for_model(wydawnictwo_zwarte)
+    o = PracaViewBySlug(kwargs=dict(slug=wydawnictwo_zwarte.slug)).get_object()
+    assert o == r
+
+    o = PracaViewBySlug(
+        kwargs=dict(
+            slug=f"stary-slug-"
+            f"{ContentType.objects.get_for_model(wydawnictwo_zwarte).pk}-{wydawnictwo_zwarte.pk}"
+        )
+    ).get_object()
+    assert o == r
+
+
+def test_PracaViewMixin_redirect(wydawnictwo_zwarte, rf, admin_user):
+    rebuild_zwarte()
+    req = rf.get("/")
+    req.user = admin_user
+    res = PracaViewBySlug(
+        kwargs=dict(
+            slug=f"zlys-lug-{ContentType.objects.get_for_model(wydawnictwo_zwarte).pk}-{wydawnictwo_zwarte.pk}"
+        )
+    ).get(req)
+    assert res.status_code == 302
+    assert res.url.find("/bpp/rekord/Wydawnictwo-Zwarte") == 0

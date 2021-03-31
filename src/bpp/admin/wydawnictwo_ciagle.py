@@ -1,13 +1,28 @@
 # -*- encoding: utf-8 -*-
 from dal import autocomplete
 from django import forms
-from django.contrib import admin
 from django.forms.utils import flatatt
-from django.utils.safestring import mark_safe
 from mptt.forms import TreeNodeChoiceField
 from taggit.forms import TextareaTagWidget
 
-from bpp.admin.filters import DOIUstawioneFilter, LiczbaZnakowFilter
+from .actions import ustaw_po_korekcie, ustaw_przed_korekta, ustaw_w_trakcie_korekty
+from .core import CommitedModelAdmin, KolumnyZeSkrotamiMixin, generuj_inline_dla_autorow
+
+# Widget do automatycznego uzupełniania punktacji wydawnictwa ciągłego
+from .element_repozytorium import Element_RepozytoriumInline
+from .grant import Grant_RekorduInline
+from .helpers import MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET
+
+from django.contrib import admin
+
+from django.utils.safestring import mark_safe
+
+from bpp.admin.filters import (
+    DOIUstawioneFilter,
+    LiczbaZnakowFilter,
+    OstatnioZmienionePrzezFilter,
+    UtworzonePrzezFilter,
+)
 from bpp.admin.helpers import (
     ADNOTACJE_Z_DATAMI_ORAZ_PBN_FIELDSET,
     DWA_TYTULY,
@@ -37,14 +52,6 @@ from bpp.models import (  # Publikacja_Habilitacyjna
 # Proste tabele
 from bpp.models.konferencja import Konferencja
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
-
-from .actions import ustaw_po_korekcie, ustaw_przed_korekta, ustaw_w_trakcie_korekty
-from .core import CommitedModelAdmin, KolumnyZeSkrotamiMixin, generuj_inline_dla_autorow
-
-# Widget do automatycznego uzupełniania punktacji wydawnictwa ciągłego
-from .element_repozytorium import Element_RepozytoriumInline
-from .grant import Grant_RekorduInline
-from .helpers import MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET
 
 #
 # Wydaniwcto Ciągłe
@@ -174,6 +181,8 @@ class Wydawnictwo_CiagleAdmin(
         "openaccess_wersja_tekstu",
         "openaccess_licencja",
         "openaccess_czas_publikacji",
+        OstatnioZmienionePrzezFilter,
+        UtworzonePrzezFilter,
     ]
 
     fieldsets = (

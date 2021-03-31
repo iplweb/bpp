@@ -4,15 +4,24 @@
 
 from dal import autocomplete
 from django import forms
-from django.contrib import admin, messages
 from mptt.forms import TreeNodeChoiceField
 from taggit.forms import TextareaTagWidget
+
+from .actions import ustaw_po_korekcie, ustaw_przed_korekta, ustaw_w_trakcie_korekty
+from .core import CommitedModelAdmin, KolumnyZeSkrotamiMixin, generuj_inline_dla_autorow
+from .element_repozytorium import Element_RepozytoriumInline
+from .grant import Grant_RekorduInline
+from .nagroda import NagrodaInline
+
+from django.contrib import admin, messages
 
 from bpp.admin import helpers
 from bpp.admin.filters import (
     CalkowitaLiczbaAutorowFilter,
     DOIUstawioneFilter,
     LiczbaZnakowFilter,
+    OstatnioZmienionePrzezFilter,
+    UtworzonePrzezFilter,
 )
 from bpp.models import (
     Charakter_Formalny,
@@ -23,12 +32,6 @@ from bpp.models import (
 )
 from bpp.models.konferencja import Konferencja
 from bpp.models.seria_wydawnicza import Seria_Wydawnicza
-
-from .actions import ustaw_po_korekcie, ustaw_przed_korekta, ustaw_w_trakcie_korekty
-from .core import CommitedModelAdmin, KolumnyZeSkrotamiMixin, generuj_inline_dla_autorow
-from .element_repozytorium import Element_RepozytoriumInline
-from .grant import Grant_RekorduInline
-from .nagroda import NagrodaInline
 
 # Proste tabele
 
@@ -79,6 +82,8 @@ class Wydawnictwo_ZwarteAdmin_Baza(CommitedModelAdmin):
         LiczbaZnakowFilter,
         "rok",
         DOIUstawioneFilter,
+        OstatnioZmienionePrzezFilter,
+        UtworzonePrzezFilter,
     ]
 
     # Usunąć przed wcomitowaniem

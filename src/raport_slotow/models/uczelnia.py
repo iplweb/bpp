@@ -217,12 +217,12 @@ class RaportSlotowUczelniaWiersz(models.Model):
     )
     dyscyplina = models.ForeignKey("bpp.Dyscyplina_Naukowa", on_delete=models.CASCADE)
     pkd_aut_sum = models.DecimalField(
-        "Suma punktów dla autora", max_digits=8, decimal_places=4
+        "Suma punktów dla autora", max_digits=16, decimal_places=4
     )
-    slot = models.DecimalField(max_digits=8, decimal_places=4)
+    slot = models.DecimalField(max_digits=16, decimal_places=4)
     avg = models.DecimalField(
         "Średnio punktów dla autora na slot",
-        max_digits=8,
+        max_digits=16,
         decimal_places=4,
         null=True,
         blank=True,

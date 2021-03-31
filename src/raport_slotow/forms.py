@@ -12,15 +12,19 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.forms import RadioSelect
 
-from bpp.models import Autor, Uczelnia
-from bpp.util import formdefaults_html_after, formdefaults_html_before, year_last_month
-
 from . import const
 from .models.uczelnia import RaportSlotowUczelnia
+
+from bpp.models import Autor, Uczelnia
+from bpp.util import formdefaults_html_after, formdefaults_html_before, year_last_month
 
 OUTPUT_FORMATS = [
     ("html", "wyświetl w przeglądarce"),
     ("xlsx", "Microsoft Excel (XLSX)"),
+]
+
+OUTPUT_FORMATS_WITH_PDF = OUTPUT_FORMATS + [
+    ("pdf", "Portable Document Format (PDF)"),
 ]
 
 
@@ -41,7 +45,7 @@ class AutorRaportSlotowForm(forms.Form):
         choices=(
             (
                 const.DZIALANIE_WSZYSTKO,
-                "prace autora z punktacją dla dziedzin za dany okres",
+                "prace autora z punktacją dla dyscyplin za dany okres",
             ),
             (const.DZIALANIE_SLOT, "zbierz najlepsze prace do zadanej wielkości slotu"),
         ),
@@ -58,7 +62,7 @@ class AutorRaportSlotowForm(forms.Form):
     )
 
     _export = forms.ChoiceField(
-        label="Format wyjściowy", choices=OUTPUT_FORMATS, required=True
+        label="Format wyjściowy", choices=OUTPUT_FORMATS_WITH_PDF, required=True
     )
 
     def clean(self):

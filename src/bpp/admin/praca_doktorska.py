@@ -2,13 +2,13 @@
 
 from dal import autocomplete
 from django import forms
-from django.contrib import admin
 from taggit.forms import TextareaTagWidget
 
 from ..models import Autor, Jednostka, Praca_Doktorska
 from .actions import ustaw_po_korekcie, ustaw_przed_korekta, ustaw_w_trakcie_korekty
 from .core import CommitedModelAdmin
 from .element_repozytorium import Element_RepozytoriumInline
+from .filters import OstatnioZmienionePrzezFilter, UtworzonePrzezFilter
 from .grant import Grant_RekorduInline
 from .helpers import (
     ADNOTACJE_Z_DATAMI_FIELDSET,
@@ -27,6 +27,8 @@ from .helpers import (
     DomyslnyStatusKorektyMixin,
     Wycinaj_W_z_InformacjiMixin,
 )
+
+from django.contrib import admin
 
 # Proste tabele
 
@@ -90,7 +92,13 @@ class Praca_Doktorska_Habilitacyjna_Admin_Base(
         "id",
     ]
 
-    list_filter = ["status_korekty", "recenzowana", "typ_kbn"]
+    list_filter = [
+        "status_korekty",
+        "recenzowana",
+        "typ_kbn",
+        OstatnioZmienionePrzezFilter,
+        UtworzonePrzezFilter,
+    ]
 
 
 class Praca_DoktorskaForm(Wycinaj_W_z_InformacjiMixin, forms.ModelForm):

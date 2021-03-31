@@ -24,7 +24,9 @@ def testdata_brak_naglowka_xlsx_path():
 
 def import_pracownikow_factory(user, path):
     i = ImportPracownikow(owner=user)
-    i.plik_xls = SimpleUploadedFile("testdata.xlsx", open(path, "rb").read())
+    i.plik_xls = SimpleUploadedFile(
+        "import_dyscyplin_zrodel_przyklad.xlsx", open(path, "rb").read()
+    )
     i.save()
     return i
 

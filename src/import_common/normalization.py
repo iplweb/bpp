@@ -51,3 +51,16 @@ def normalize_exception_reason(s: str) -> str:
 
 def normalize_tytul_zrodla(s):
     return normalize_skrot(s)
+
+
+def normalize_nazwa_dyscypliny(s):
+    return normalize_skrot(s)
+
+
+def normalize_kod_dyscypliny(k):
+    if k.endswith("_0"):
+        k = k[:-2]
+        return f"{k[0]}.{int(k[1:])}"
+    if k.find(".") >= 0:
+        return k
+    return f"{k[0]}.{int(k[1:])}"

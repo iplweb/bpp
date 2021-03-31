@@ -8,7 +8,6 @@ import time
 import warnings
 from datetime import datetime
 
-from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 from model_mommy import mommy
 from selenium.webdriver.common.keys import Keys
@@ -32,6 +31,7 @@ from bpp.models import (
     Zrodlo,
 )
 from bpp.models.system import Status_Korekty
+
 from django_bpp.selenium_util import wait_for, wait_for_page_load
 
 
@@ -468,8 +468,8 @@ def submitted_form_good(browser):
 
 def browse_praca_url(model):
     return reverse(
-        "bpp:browse_praca", args=(ContentType.objects.get_for_model(model).pk, model.pk)
-    )
+        "bpp:browse_praca_by_slug", args=(model.slug,)
+    )  # ContentType.objects.get_for_model(model).pk, model.pk)
 
 
 def normalize_html(s):

@@ -3,11 +3,12 @@ from tempfile import NamedTemporaryFile
 import openpyxl
 import openpyxl.styles
 from django.db import DEFAULT_DB_ALIAS, connections
-from django.utils.itercompat import is_iterable
 from django_tables2.export import ExportMixin, TableExport
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.filters import AutoFilter
 from openpyxl.worksheet.table import Table, TableColumn, TableStyleInfo
+
+from django.utils.itercompat import is_iterable
 
 
 def drop_table(table_name, using=DEFAULT_DB_ALIAS):
@@ -64,8 +65,13 @@ class MyTableExport(TableExport):
     Fix https://github.com/jazzband/tablib/issues/252
     """
 
+    FORMATS = {
+        "xlsx": "application/vnd.ms-excel",
+    }
+
+    @classmethod
     def is_valid_format(self, export_format):
-        if export_format != "xlsx":
+        if export_format not in ["xlsx", "pdf"]:
             return False
         return True
 
@@ -79,6 +85,9 @@ class MyTableExport(TableExport):
         self.export_description = export_description
 
     def export(self):
+        return getattr(self, f"export_{self.format}")()
+
+    def export_xlsx(self):
 
         wb = openpyxl.Workbook()
         ws = wb.active

@@ -432,13 +432,13 @@ def test_prace_autora_z_afiliowanych_jednostek(typy_odpowiedzialnosci):
 def test_rebuild_ciagle(
     django_assert_max_num_queries, wydawnictwo_ciagle_z_dwoma_autorami
 ):
-    with django_assert_max_num_queries(13):
+    with django_assert_max_num_queries(14):
         rebuild_ciagle()
 
 
 @pytest.mark.django_db
 def test_rebuild_zwarte(django_assert_max_num_queries, wydawnictwo_zwarte_z_autorem):
-    with django_assert_max_num_queries(13):
+    with django_assert_max_num_queries(15):
         rebuild_zwarte()
 
 

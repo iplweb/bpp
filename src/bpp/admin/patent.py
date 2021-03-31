@@ -1,11 +1,9 @@
 from django import forms
-from django.contrib import admin
 from taggit.forms import TextareaTagWidget
-
-from bpp.models.patent import Patent, Patent_Autor
 
 from .core import generuj_inline_dla_autorow
 from .element_repozytorium import Element_RepozytoriumInline
+from .filters import OstatnioZmienionePrzezFilter, UtworzonePrzezFilter
 from .grant import Grant_RekorduInline
 from .helpers import (
     ADNOTACJE_Z_DATAMI_FIELDSET,
@@ -21,6 +19,10 @@ from .helpers import (
     Wycinaj_W_z_InformacjiMixin,
 )
 from .wydawnictwo_zwarte import Wydawnictwo_ZwarteAdmin_Baza
+
+from django.contrib import admin
+
+from bpp.models.patent import Patent, Patent_Autor
 
 
 class Patent_Form(Wycinaj_W_z_InformacjiMixin, forms.ModelForm):
@@ -57,6 +59,8 @@ class Patent_Admin(AdnotacjeZDatamiMixin, Wydawnictwo_ZwarteAdmin_Baza):
     list_filter = [
         "status_korekty",
         "recenzowana",
+        OstatnioZmienionePrzezFilter,
+        UtworzonePrzezFilter,
     ]
 
     form = Patent_Form

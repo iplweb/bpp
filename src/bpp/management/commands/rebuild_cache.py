@@ -4,26 +4,12 @@ import multiprocessing
 from django.conf import settings
 from django.core.management import BaseCommand
 
-from bpp.models import (
-    Patent,
-    Praca_Doktorska,
-    Praca_Habilitacyjna,
-    Wydawnictwo_Ciagle,
-    Wydawnictwo_Zwarte,
-    rebuild_ciagle,
-    rebuild_patent,
-    rebuild_praca_doktorska,
-    rebuild_praca_habilitacyjna,
-    rebuild_zwarte,
-)
-from bpp.util import (
-    disable_multithreading_by_monkeypatching_pool,
-    no_threads,
-    partition_count,
-)
-
 
 def subprocess_setup(*args):
+    import django
+
+    django.setup()
+
     from django.db import connection
 
     connection.connect()
@@ -36,6 +22,24 @@ class Command(BaseCommand):
         parser.add_argument("--disable-multithreading", action="store_true")
 
     def handle(self, disable_multithreading, *args, **options):
+
+        from bpp.models import (
+            Patent,
+            Praca_Doktorska,
+            Praca_Habilitacyjna,
+            Wydawnictwo_Ciagle,
+            Wydawnictwo_Zwarte,
+            rebuild_ciagle,
+            rebuild_patent,
+            rebuild_praca_doktorska,
+            rebuild_praca_habilitacyjna,
+            rebuild_zwarte,
+        )
+        from bpp.util import (
+            disable_multithreading_by_monkeypatching_pool,
+            no_threads,
+            partition_count,
+        )
 
         if not settings.TESTING:
             from django import db
