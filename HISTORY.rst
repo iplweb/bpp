@@ -19,6 +19,7 @@ Historia zmian
   (#1002),
 * poprawne wyszukiwanie po słowach kluczowych (#1027),
 * konfigurowalne numerki baz danych REDIS (#1026),
+* walidacja pola 'Kod' przy edycji dyscyplin naukowych w module redagowania (#1030),
 
 
 202103.59

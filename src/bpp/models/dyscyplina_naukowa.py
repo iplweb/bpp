@@ -5,8 +5,6 @@ from django.db import models, transaction
 from django.db.models import CASCADE, PositiveSmallIntegerField
 from model_utils import Choices
 
-from bpp.models import const
-
 # bpp=# select distinct substr(id, 1, 2), dziedzina from import_dbf_ldy;
 #  substr |                 dziedzina
 # --------+--------------------------------------------
@@ -19,6 +17,9 @@ from bpp.models import const
 #  07     | Dziedzina nauk teologicznych
 #  08     | Dziedzina sztuki
 # (8 rows)
+from import_common.normalization import normalize_kod_dyscypliny
+
+from bpp.models import const
 
 
 def mnoznik_dla_monografii(kod_dziedziny, tryb_kalkulacji, punktacja_monografii):
@@ -64,8 +65,39 @@ def mnoznik_dla_monografii(kod_dziedziny, tryb_kalkulacji, punktacja_monografii)
     return 1
 
 
+def waliduj_format_kodu_numer(value):
+    try:
+        val1, val2 = [int(x) for x in value.split(".")]
+    except (TypeError, ValueError):
+        raise ValidationError("Poprawny kod ma format LICZBA[kropka]LICZBA")
+
+    msg = (
+        "Pierwsza cyfra dziedziny nie ma odwzorowania w słowniku dziedzin w systemie BPP. "
+        "Jeżeli jesteś pewny/a że ta wartośc jest poprawna, skontaktuj się z administratorem "
+        "systemu. "
+    )
+    try:
+        dziedzina = const.DZIEDZINA(val1)
+    except ValueError:
+        raise ValidationError(msg)
+
+    if dziedzina not in const.DZIEDZINY:
+        raise ValidationError(msg)
+
+
+class KodDyscyplinField(models.CharField):
+    def __init__(self, *args, **kw):
+        if "validators" not in kw:
+            kw["validators"] = []
+        kw["validators"].append(waliduj_format_kodu_numer)
+        super(KodDyscyplinField, self).__init__(*args, **kw)
+
+    def to_python(self, value):
+        return normalize_kod_dyscypliny(value)
+
+
 class Dyscyplina_Naukowa(models.Model):
-    kod = models.CharField(max_length=20, unique=True)
+    kod = KodDyscyplinField(max_length=20, unique=True)
     nazwa = models.CharField(max_length=200, unique=True)
     widoczna = models.BooleanField(default=True)
 
@@ -85,7 +117,10 @@ class Dyscyplina_Naukowa(models.Model):
     def dziedzina(self):
         kod_dziedziny = self.kod_dziedziny()
         if kod_dziedziny is not None:
-            return const.DZIEDZINY.get(const.DZIEDZINA(kod_dziedziny))
+            try:
+                return const.DZIEDZINY.get(const.DZIEDZINA(kod_dziedziny))
+            except ValueError:
+                return "[niepoprawny kod]"
 
     def mnoznik_dla_monografi(self, tryb_kalkulacji, punktacja_monografi):
         return mnoznik_dla_monografii(
