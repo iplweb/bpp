@@ -105,11 +105,34 @@ class RequestsTransport(PBNClientTransport):
         return PageableResource(self, res, url, headers)
 
 
-class PBNClient:
+class ConferencesMixin:
+    def get_conferences(self):
+        return self.transport.get_pages("/v1/conferences/page")
+
+    def get_conferences_mnisw(self):
+        return self.transport.get_pages("/v1/conferences/mnisw/page")
+
+    def get_conference(self, id):
+        return self.transport.get(f"/v1/conferences/{id}")
+
+    def get_conference_editions(self, id):
+        return self.transport.get(f"/v1/conferences/{id}/editions")
+
+    def get_conference_metadata(self, id):
+        return self.transport.get(f"/v1/conferences/{id}/metadata")
+
+
+class DictionariesMixin:
+    def get_countries(self):
+        return self.transport.get("/v1/dictionary/countries")
+
+    def get_disciplines(self):
+        return self.transport.get("/v1/dictionary/disciplines")
+
+    def get_languages(self):
+        return self.transport.get("/v1/dictionary/languages")
+
+
+class PBNClient(ConferencesMixin, DictionariesMixin):
     def __init__(self, transport):
         self.transport = transport
-
-    def get_conferences(self):
-        res = self.transport.get_pages("/v1/conferences/page")
-        for elem in res:
-            print(elem)

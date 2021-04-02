@@ -6,6 +6,8 @@ from django.core.management import BaseCommand
 
 from pbn_api.core import PBNClient, RequestsTransport
 
+from django.utils.itercompat import is_iterable
+
 
 class Command(BaseCommand):
     help = "Odbudowuje cache"
@@ -19,14 +21,19 @@ class Command(BaseCommand):
                 "PBN_CLIENT_BASE_URL", "https://pbn-micro-alpha.opi.org.pl/api"
             ),
         )
-        parser.add_argument("command", nargs="?")
+        parser.add_argument("command", nargs="+")
 
     def handle(self, app_id, app_token, base_url, command=None, *args, **options):
         transport = RequestsTransport(app_id, app_token, base_url)
         client = PBNClient(transport)
 
         def exec(cmd):
-            pprint(getattr(client, cmd)())
+            res = getattr(client, cmd[0])(*cmd[1:])
+            if type(res) == dict:
+                pprint(res)
+            elif is_iterable(res):
+                for elem in res:
+                    pprint(elem)
 
         if command:
             exec(command)
@@ -35,4 +42,4 @@ class Command(BaseCommand):
                 cmd = input("cmd> ")
                 if cmd == "exit":
                     break
-                exec(cmd)
+                exec(cmd.split(" "))
