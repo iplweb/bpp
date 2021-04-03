@@ -14,7 +14,7 @@ pkill -TERM -f "src/manage.py runserver" || true
 
 sleep 1
 
-dropdb bpp
+dropdb bpp || true
 
 pg_restore -d template1  -C "$1" || true
 
