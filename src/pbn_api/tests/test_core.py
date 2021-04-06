@@ -1,6 +1,6 @@
 import pytest
 
-from pbn_api.core import PBNClient, RequestsTransport
+from pbn_api.client import PBNClient, RequestsTransport
 
 
 class TestTransport(RequestsTransport):

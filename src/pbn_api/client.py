@@ -1,5 +1,6 @@
 import warnings
 from json import JSONDecodeError
+from pprint import pprint
 from urllib.parse import quote
 
 import requests
@@ -9,6 +10,8 @@ from pbn_api.exceptions import (
     HttpException,
     PraceSerwisoweException,
 )
+
+from django.utils.itercompat import is_iterable
 
 DEFAULT_BASE_URL = "https://pbn-micro-alpha.opi.org.pl/api"
 
@@ -30,19 +33,24 @@ class PageableResource:
         self.headers = headers
         self.transport = transport
 
-        self.current_content = res["content"]
+        try:
+            self.current_content = res["content"]
+        except KeyError:
+            self.current_content = []
         self.current_page = res["number"]
         self.total_elements = res["totalElements"]
         self.total_pages = res["totalPages"]
-
         self.done = False
+
+    def count(self):
+        return self.total_elements
 
     def fetch_next_page(self):
         self.current_page += 1
         if self.current_page > self.total_pages:
             return
         res = self.transport.get(
-            self.url + f"?page={self.current_page}", headers=self.headers
+            self.url + f"&page={self.current_page}", headers=self.headers
         )
 
         if res is not None and "content" in res:
@@ -120,7 +128,7 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
                 return self.get(url, headers)
 
         if ret.status_code >= 400:
-            raise HttpException(ret.status_code, ret.content)
+            raise HttpException(ret.status_code, url, ret.content)
 
         try:
             return ret.json()
@@ -130,7 +138,7 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
                 raise PraceSerwisoweException()
             raise e
 
-    def get_pages(self, url, headers=None):
+    def get_pages(self, url, headers=None, page_size=10, *args, **kw):
         # Stronicowanie zwraca rezultaty w taki sposób:
         # {'content': [{'mongoId': '5e709189878c28a04737dc6f',
         #               'status': 'ACTIVE',
@@ -151,6 +159,16 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
         #  'totalElements': 68577,
         #  'totalPages': 6858}
 
+        chr = "?"
+        if url.find("?") >= 0:
+            chr = "&"
+
+        url = url + f"{chr}size={page_size}"
+        chr = "&"
+
+        for elem in kw:
+            url += chr + elem + "=" + quote(kw[elem])
+
         res = self.get(url, headers)
         if "pageable" not in res:
             warnings.warn(
@@ -164,8 +182,8 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
 
 
 class ConferencesMixin:
-    def get_conferences(self):
-        return self.transport.get_pages("/v1/conferences/page")
+    def get_conferences(self, *args, **kw):
+        return self.transport.get_pages("/v1/conferences/page", *args, **kw)
 
     def get_conferences_mnisw(self):
         return self.transport.get_pages("/v1/conferences/mnisw/page")
@@ -183,6 +201,7 @@ class ConferencesMixin:
 class DictionariesMixin:
     def get_countries(self):
         return self.transport.get("/v1/dictionary/countries")
+        return self.transport.get("/v1/dictionary/countries")
 
     def get_disciplines(self):
         return self.transport.get("/v1/dictionary/disciplines")
@@ -192,8 +211,8 @@ class DictionariesMixin:
 
 
 class InstitutionsMixin:
-    def get_institutions(self):
-        return self.transport.get_pages("/v1/institutions/page")
+    def get_institutions(self, *args, **kw):
+        return self.transport.get_pages("/v1/institutions/page", *args, **kw)
 
     def get_institution_by_id(self, id):
         return self.transport.get_pages(f"/v1/institutions/{id}")
@@ -226,11 +245,11 @@ class InstitutionsProfileMixin:
 
 
 class JournalsMixin:
-    def get_journals_mnisw(self):
-        return self.transport.get_pages("/v1/journals/mnisw/page")
+    def get_journals_mnisw(self, *args, **kw):
+        return self.transport.get_pages("/v1/journals/mnisw/page", *args, **kw)
 
-    def get_journals(self):
-        return self.transport.get_pages("/v1/journals/page")
+    def get_journals(self, *args, **kw):
+        return self.transport.get_pages("/v1/journals/page", *args, **kw)
 
     def get_journal_by_version(self, version):
         return self.transport.get(f"/v1/journals/version/{version}")
@@ -252,8 +271,8 @@ class PersonMixin:
     def get_person_by_orcid(self, orcid):
         return self.transport.get(f"/v1/person/orcid/{orcid}")
 
-    def get_people(self):
-        return self.transport.get_pages("/v1/person/page")
+    def get_people(self, *args, **kw):
+        return self.transport.get_pages("/v1/person/page", *args, **kw)
 
     def get_person_by_polon_uid(self, uid):
         return self.transport.get(f"/v1/person/polon/{uid}")
@@ -272,8 +291,8 @@ class PublishersMixin:
     def get_publishers_mnisw_yearlist(self):
         return self.transport.get_pages("/v1/publishers/mnisw/page/yearlist")
 
-    def get_publishers(self):
-        return self.transport.get_pages("/v1/publishers/page")
+    def get_publishers(self, *args, **kw):
+        return self.transport.get_pages("/v1/publishers/page", *args, **kw)
 
     def get_publisher_by_version(self, version):
         return self.transport.get(f"/v1/publishers/version/{version}")
@@ -309,7 +328,13 @@ class PublicationsMixin:
         return self.transport.get(f"/v1/publications/version/{version}")
 
 
+class AuthorMixin:
+    def get_author_by_id(self, id):
+        return self.transport.get(f"/v1/author/{id}")
+
+
 class PBNClient(
+    AuthorMixin,
     ConferencesMixin,
     DictionariesMixin,
     InstitutionsMixin,
@@ -319,5 +344,40 @@ class PBNClient(
     PublicationsMixin,
     PublishersMixin,
 ):
+    _interactive = False
+
     def __init__(self, transport):
         self.transport = transport
+
+    def exec(self, cmd):
+        try:
+            fun = getattr(self, cmd[0])
+        except AttributeError as e:
+            if self._interactive:
+                print("No such command: %s" % cmd)
+                return
+            else:
+                raise e
+
+        res = fun(*cmd[1:])
+        if type(res) == dict:
+            pprint(res)
+        elif is_iterable(res):
+            if self._interactive and hasattr(res, "total_elements"):
+                print(
+                    "Incoming data: no_elements=",
+                    res.total_elements,
+                    "no_pages=",
+                    res.total_pages,
+                )
+                input("Press ENTER to continue> ")
+            for elem in res:
+                pprint(elem)
+
+    def interactive(self):
+        self._interactive = True
+        while True:
+            cmd = input("cmd> ")
+            if cmd == "exit":
+                break
+            self.exec(cmd.split(" "))
