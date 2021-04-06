@@ -185,8 +185,8 @@ class ConferencesMixin:
     def get_conferences(self, *args, **kw):
         return self.transport.get_pages("/v1/conferences/page", *args, **kw)
 
-    def get_conferences_mnisw(self):
-        return self.transport.get_pages("/v1/conferences/mnisw/page")
+    def get_conferences_mnisw(self, *args, **kw):
+        return self.transport.get_pages("/v1/conferences/mnisw/page", *args, **kw)
 
     def get_conference(self, id):
         return self.transport.get(f"/v1/conferences/{id}")
@@ -285,11 +285,13 @@ class PersonMixin:
 
 
 class PublishersMixin:
-    def get_publishers_mnisw(self):
-        return self.transport.get_pages("/v1/publishers/mnisw/page")
+    def get_publishers_mnisw(self, *args, **kw):
+        return self.transport.get_pages("/v1/publishers/mnisw/page", *args, **kw)
 
-    def get_publishers_mnisw_yearlist(self):
-        return self.transport.get_pages("/v1/publishers/mnisw/page/yearlist")
+    def get_publishers_mnisw_yearlist(self, *args, **kw):
+        return self.transport.get_pages(
+            "/v1/publishers/mnisw/page/yearlist", *args, **kw
+        )
 
     def get_publishers(self, *args, **kw):
         return self.transport.get_pages("/v1/publishers/page", *args, **kw)

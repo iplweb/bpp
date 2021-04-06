@@ -8,7 +8,7 @@ from pbn_api.models import (
     Language,
     Publication,
     Publisher,
-    Sciencist,
+    Scientist,
 )
 
 from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
@@ -80,23 +80,27 @@ def pobierz_instytucje(client: PBNClient):
 def pobierz_konferencje(client: PBNClient):
     for status in ["DELETED", "ACTIVE"]:
         pobierz_mongodb(
-            client.get_conferences(status=status, page_size=1000), Conference
+            client.get_conferences_mnisw(status=status, page_size=1000), Conference
         )
 
 
 def pobierz_zrodla(client: PBNClient):
     for status in ["DELETED", "ACTIVE"]:
-        pobierz_mongodb(client.get_journals(status=status, page_size=500), Journal)
+        pobierz_mongodb(
+            client.get_journals_mnisw(status=status, page_size=500), Journal
+        )
 
 
 def pobierz_wydawcow(client: PBNClient):
     for status in ["ACTIVE", "DELETED"]:
-        pobierz_mongodb(client.get_publishers(status=status, page_size=500), Publisher)
+        pobierz_mongodb(
+            client.get_publishers_mnisw(status=status, page_size=500), Publisher
+        )
 
 
 def pobierz_ludzi(client: PBNClient):
     for status in ["ACTIVE", "DELETED"]:
-        pobierz_mongodb(client.get_people(status=status, page_size=20000), Sciencist)
+        pobierz_mongodb(client.get_people(status=status, page_size=20000), Scientist)
 
 
 def normalize_doi(s):

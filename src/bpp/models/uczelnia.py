@@ -10,14 +10,15 @@ from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.db import models
 from django.db.models import SET_NULL, Max
 from django.urls.base import reverse
-from django.utils.functional import cached_property
 from model_utils import Choices
-
-from bpp.models import ModelZAdnotacjami, NazwaISkrot, const
-from bpp.models.abstract import ModelZPBN_ID, NazwaWDopelniaczu
 
 from ..util import year_last_month
 from .fields import OpcjaWyswietlaniaField
+
+from django.utils.functional import cached_property
+
+from bpp.models import ModelZAdnotacjami, NazwaISkrot, const
+from bpp.models.abstract import ModelZPBN_ID, NazwaWDopelniaczu
 
 
 class UczelniaManager(models.Manager):
@@ -64,6 +65,14 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
     )
     favicon_ico = models.FileField(
         "Ikona ulubionych (favicon)", upload_to="favicon", blank=True, null=True
+    )
+
+    pbn_uid = models.ForeignKey(
+        "pbn_api.Institution",
+        verbose_name="Odpowiednik w PBN",
+        on_delete=SET_NULL,
+        null=True,
+        blank=True,
     )
 
     obca_jednostka = models.ForeignKey(

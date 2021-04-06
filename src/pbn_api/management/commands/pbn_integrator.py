@@ -18,9 +18,11 @@ class Command(PBNBaseCommand):
         if False:
             integruj_jezyki(client)
             integruj_kraje(client)
-            pobierz_konferencje(client)
             pobierz_instytucje(client)
-            pobierz_zrodla(client)
-            pobierz_wydawcow(client)
             pobierz_ludzi(client)
-        pobierz_prace_po_doi(client)
+
+            pobierz_prace_po_doi(client)
+
+        pobierz_konferencje(client)
+        pobierz_zrodla(client)
+        pobierz_wydawcow(client)

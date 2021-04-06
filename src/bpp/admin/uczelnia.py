@@ -1,6 +1,7 @@
 from django import forms
 from django.core.management import call_command
 from django.db import transaction
+
 from ..models import Uczelnia, Ukryj_Status_Korekty, Wydzial
 from .core import CommitedModelAdmin, RestrictDeletionToAdministracjaGroupMixin
 from .helpers import ADNOTACJE_FIELDSET, ZapiszZAdnotacjaMixin
@@ -42,6 +43,7 @@ class UczelniaAdmin(
     RestrictDeletionToAdministracjaGroupMixin, ZapiszZAdnotacjaMixin, CommitedModelAdmin
 ):
     list_display = ["nazwa", "nazwa_dopelniacz_field", "skrot", "pbn_id"]
+    autocomplete_fields = ["pbn_uid"]
     fieldsets = (
         (
             None,
@@ -50,6 +52,7 @@ class UczelniaAdmin(
                     "nazwa",
                     "nazwa_dopelniacz_field",
                     "skrot",
+                    "pbn_uid",
                     "pbn_id",
                     "favicon_ico",
                     "obca_jednostka",

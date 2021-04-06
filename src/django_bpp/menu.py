@@ -9,12 +9,23 @@ To activate your custom menu add the following to your settings.py::
 """
 from admin_tools.menu import Menu, items
 from django.apps import apps
-from django.contrib import admin
 from django.db import connection
 from django.urls import reverse
+
+from django.contrib import admin
+
 from django.utils.translation import ugettext_lazy as _
 
 from bpp.models.const import GR_WPROWADZANIE_DANYCH
+
+PBN_MENU = [
+    ("Instytucje", "/admin/pbn_api/institution"),
+    ("Konferencje", "/admin/pbn_api/conference"),
+    ("Zrodla", "/admin/pbn_api/journal"),
+    ("Wydawcy", "/admin/pbn_api/publisher"),
+    ("Naukowcy", "/admin/pbn_api/scientist"),
+    ("Publikacje", "/admin/pbn_api/publication"),
+]
 
 IMPORT_DBF_MENU_1 = [
     (
@@ -284,6 +295,8 @@ class CustomMenu(Menu):
                 ]
 
         flt("web", "WWW", WEB_MENU)
+
+        flt("dane systemowe", "PBN API", PBN_MENU)
 
         if "import_dbf_aut" in connection.introspection.table_names():
             flt("import DBF", "import DBF", IMPORT_DBF_MENU_1)
