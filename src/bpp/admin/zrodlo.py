@@ -3,9 +3,6 @@
 # Proste tabele
 from dal import autocomplete
 from django import forms
-from django.contrib import admin
-
-from bpp.models.zrodlo import Redakcja_Zrodla
 
 from ..models import (  # Publikacja_Habilitacyjna
     Autor,
@@ -14,6 +11,7 @@ from ..models import (  # Publikacja_Habilitacyjna
     Zrodlo,
 )
 from .core import CommitedModelAdmin
+from .filters import PBN_UID_IDObecnyFilter
 from .helpers import (
     ADNOTACJE_FIELDSET,
     CHARMAP_SINGLE_LINE,
@@ -21,6 +19,10 @@ from .helpers import (
     MODEL_PUNKTOWANY_KOMISJA_CENTRALNA,
     ZapiszZAdnotacjaMixin,
 )
+
+from django.contrib import admin
+
+from bpp.models.zrodlo import Redakcja_Zrodla
 
 # Źródła indeksowane
 
@@ -95,9 +97,17 @@ class ZrodloAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
         "www",
         "poprzednia_nazwa",
         "doi",
+        "pbn_uid",
     ]
-    list_display = ["nazwa", "skrot", "rodzaj", "www", "issn", "e_issn"]
-    list_filter = ["rodzaj", "zasieg", "openaccess_tryb_dostepu", "openaccess_licencja"]
+    autocomplete_fields = ["pbn_uid"]
+    list_display = ["nazwa", "skrot", "rodzaj", "www", "issn", "e_issn", "pbn_uid_id"]
+    list_filter = [
+        "rodzaj",
+        "zasieg",
+        "openaccess_tryb_dostepu",
+        "openaccess_licencja",
+        PBN_UID_IDObecnyFilter,
+    ]
     list_select_related = ["openaccess_licencja", "rodzaj"]
     fieldsets = (
         (
@@ -113,6 +123,7 @@ class ZrodloAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
                     "e_issn",
                     "www",
                     "doi",
+                    "pbn_uid",
                     "zasieg",
                     "poprzednia_nazwa",
                     "jezyk",

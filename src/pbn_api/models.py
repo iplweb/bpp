@@ -38,14 +38,19 @@ class BasePBNMongoDBModel(BasePBNModel):
                 if elem["current"]:
                     return elem
 
-    def value(self, *path):
+    def value(self, *path, return_none=False):
         v = self.current_version
         for elem in path:
             if elem in v:
                 v = v[elem]
             else:
+                if return_none:
+                    return None
                 return f"[brak {elem}]"
         return v
+
+    def value_or_none(self, *path):
+        return self.value(*path, return_none=True)
 
     def website(self):
         return self.value("object", "website")
@@ -160,7 +165,7 @@ class Scientist(BasePBNMongoDBModel):
         return self.value("object", "polonUid")
 
     def __str__(self):
-        return f"{self.lastName()} {self.name()}, {self.tytul()}"
+        return f"{self.lastName()} {self.name()}, {self.tytul()} (ID: {self.pk})"
 
 
 class Publication(BasePBNMongoDBModel):

@@ -6,13 +6,14 @@ Autorzy
 from datetime import date, datetime, timedelta
 
 from autoslug import AutoSlugField
-from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import IntegrityError, models, transaction
 from django.db.models import CASCADE, SET_NULL, Sum
 from django.urls.base import reverse
 from lxml.etree import Element, SubElement
+
+from django.contrib.postgres.search import SearchVectorField as VectorField
 
 from bpp.core import zbieraj_sloty
 from bpp.models import ModelZAdnotacjami, ModelZNazwa, NazwaISkrot
@@ -156,7 +157,9 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
         unique=True,
     )
 
-    pbn_uuid = models.UUIDField(blank=True, null=True, db_index=True, unique=True)
+    pbn_uid = models.ForeignKey(
+        "pbn_api.Scientist", null=True, blank=True, on_delete=SET_NULL
+    )
 
     search = VectorField()
 

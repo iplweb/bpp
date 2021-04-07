@@ -3,12 +3,14 @@
 from urllib.parse import quote as urlquote
 
 from django import forms
-from django.contrib import messages
-from django.contrib.admin.utils import quote
 from django.db import models
 from django.forms import BaseInlineFormSet
 from django.forms.widgets import Textarea
 from django.urls import reverse
+
+from django.contrib import messages
+from django.contrib.admin.utils import quote
+
 from django.utils.html import format_html
 
 from bpp.models import Status_Korekty
@@ -97,6 +99,8 @@ MODEL_Z_ISSN = (
     "issn",
     "e_issn",
 )
+
+MODEL_Z_PBN_UID = ("pbn_uid",)
 
 MODEL_Z_ISBN = (
     "isbn",
@@ -241,7 +245,8 @@ EKSTRA_INFORMACJE_WYDAWNICTWO_CIAGLE_FIELDSET = (
     "Ekstra informacje",
     {
         "classes": ("grp-collapse grp-closed",),
-        "fields": MODEL_Z_ISSN
+        "fields": MODEL_Z_PBN_UID
+        + MODEL_Z_ISSN
         + MODEL_Z_WWW
         + MODEL_Z_PUBMEDID
         + MODEL_Z_DOI
@@ -254,7 +259,8 @@ EKSTRA_INFORMACJE_WYDAWNICTWO_ZWARTE_FIELDSET = (
     "Ekstra informacje",
     {
         "classes": ("grp-collapse grp-closed",),
-        "fields": MODEL_Z_ISSN
+        "fields": MODEL_Z_PBN_UID
+        + MODEL_Z_ISSN
         + MODEL_Z_WWW
         + MODEL_Z_PUBMEDID
         + MODEL_Z_DOI

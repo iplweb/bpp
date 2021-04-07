@@ -2,7 +2,6 @@
 
 from dal import autocomplete
 from django import forms
-from django.contrib import admin
 
 from ..models import (  # Publikacja_Habilitacyjna
     Autor,
@@ -15,10 +14,12 @@ from .core import CommitedModelAdmin
 from .filters import (
     JednostkaFilter,
     OrcidObecnyFilter,
-    PBN_UUIDObecnyFilter,
+    PBN_UID_IDObecnyFilter,
     PBNIDObecnyFilter,
 )
 from .helpers import ADNOTACJE_FIELDSET, CHARMAP_SINGLE_LINE, ZapiszZAdnotacjaMixin
+
+from django.contrib import admin
 
 # Proste tabele
 
@@ -97,6 +98,7 @@ class AutorForm(forms.ModelForm):
 
 class AutorAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
     form = AutorForm
+    autocomplete_fields = ["pbn_uid"]
 
     list_display = [
         "nazwisko",
@@ -107,7 +109,7 @@ class AutorAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
         "email",
         "pbn_id",
         "orcid",
-        "pbn_uuid",
+        "pbn_uid_id",
     ]
     list_select_related = [
         "tytul",
@@ -120,7 +122,7 @@ class AutorAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
         "tytul",
         PBNIDObecnyFilter,
         OrcidObecnyFilter,
-        PBN_UUIDObecnyFilter,
+        PBN_UID_IDObecnyFilter,
     ]
     search_fields = [
         "imiona",
@@ -131,7 +133,7 @@ class AutorAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
         "www",
         "id",
         "pbn_id",
-        "pbn_uuid",
+        "pbn_uid_id",
         "system_kadrowy_id",
         "orcid",
     ]
@@ -151,7 +153,7 @@ class AutorAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
                     "www",
                     "orcid",
                     "pbn_id",
-                    "pbn_uuid",
+                    "pbn_uid",
                     "system_kadrowy_id",
                 )
             },

@@ -57,8 +57,8 @@
               title="Unikalny, wewnętrzny identyfikator autora w systemie BPP">
         BPP ID</span>: {{ autor.pk }}</p>
     </p>
-            {% if autor.pbn_uuid %}
-            <p><strong>PBN UUID:</strong> {{ autor.pbn_uuid }}</p>
+            {% if autor.pbn_uid_id %}
+            <p><strong>PBN UID:</strong> {{ autor.pbn_uid_id }}</p>
         {% endif %}
 
     <form method="post"

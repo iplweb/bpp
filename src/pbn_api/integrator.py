@@ -1,5 +1,13 @@
+import warnings
+
+from import_common.core import (
+    matchuj_autora,
+    matchuj_publikacje,
+    matchuj_wydawce,
+    matchuj_zrodlo,
+)
 from pbn_api.client import PBNClient
-from pbn_api.exceptions import HttpException
+from pbn_api.exceptions import HttpException, SciencistDoesNotExist
 from pbn_api.models import (
     Conference,
     Country,
@@ -125,3 +133,70 @@ def pobierz_prace_po_doi(client: PBNClient):
                 raise e
 
             zapisz_mongodb(elem, Publication)
+
+
+def integruj_autorow_z_uczelni(client: PBNClient, instutition_id):
+    """
+    Ta procedure uruchamiamy dopiero po zaciągnięciu bazy osób.
+    """
+    for person in client.get_people_by_institution_id(instutition_id):
+        autor = matchuj_autora(
+            imiona=person.get("firstName"),
+            nazwisko=person.get("lastName"),
+            orcid=person.get("orcid"),
+            pbn_uid_id=person.get("personId"),
+            tytul_str=person.get("title"),
+        )
+        if autor is None:
+            warnings.warn(f"Brak dopasowania w jednostce dla autora {person}")
+            continue
+
+        if autor.pbn_uid_id is None or autor.pbn_uid_id != person.get("personId"):
+            try:
+                autor.pbn_uid = Scientist.objects.get(pk=person["personId"])
+            except Scientist.DoesNotExist:
+                raise SciencistDoesNotExist(
+                    "Brak odwzorowania dla naukowca w tabeli pbn_api_scientist, "
+                    "zaciągnij najpierw listę autorów z PBNu"
+                )
+            autor.save()
+
+
+def integruj_zrodla():
+    for elem in Journal.objects.all():
+        z = matchuj_zrodlo(
+            elem.value("object", "title"),
+            elem.value_or_none("object", "issn"),
+            elem.value_or_none("object", "eissn"),
+        )
+
+        if z is not None:
+            if z.pbn_uid_id is None:
+                z.pbn_uid_id = elem
+                z.save()
+
+
+def integruj_wydawcow():
+    for elem in Publisher.objects.all():
+        w = matchuj_wydawce(elem.value("object", "publisherName"))
+        if w is not None:
+            if w.pbn_uid_id is None and w.pbn_uid_id != elem.pk:
+                w.pbn_uid_id = elem.pk
+                w.save()
+
+
+def integruj_publikacje():
+    for elem in Publication.objects.all():
+        for klass in Wydawnictwo_Ciagle, Wydawnictwo_Zwarte:
+            p = matchuj_publikacje(
+                klass,
+                elem.value("object", "title"),
+                elem.value("object", "year"),
+                elem.value_or_none("object", "doi"),
+                elem.value_or_none("object", "publicUri"),
+            )
+            if p is not None:
+                if p.pbn_uid_id is None or p.pbn_uid_id != elem.pk:
+                    p.pbn_uid_id = elem.pk
+                    p.save()
+                break

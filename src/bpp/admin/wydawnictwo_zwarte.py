@@ -21,6 +21,7 @@ from bpp.admin.filters import (
     DOIUstawioneFilter,
     LiczbaZnakowFilter,
     OstatnioZmienionePrzezFilter,
+    PBN_UID_IDObecnyFilter,
     UtworzonePrzezFilter,
 )
 from bpp.models import (
@@ -84,6 +85,7 @@ class Wydawnictwo_ZwarteAdmin_Baza(CommitedModelAdmin):
         DOIUstawioneFilter,
         OstatnioZmienionePrzezFilter,
         UtworzonePrzezFilter,
+        PBN_UID_IDObecnyFilter,
     ]
 
     # Usunąć przed wcomitowaniem
@@ -207,6 +209,10 @@ class Wydawnictwo_ZwarteAdmin(
         "typ_kbn",
         "wydawnictwo_nadrzedne",
         "wydawca",
+    ]
+
+    autocomplete_fields = [
+        "pbn_uid",
     ]
 
     fieldsets = (

@@ -4,11 +4,12 @@
 Źródła.
 """
 from autoslug import AutoSlugField
-from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.db import models
 from django.db.models import CASCADE, SET_NULL
 from django.urls.base import reverse
 from lxml.etree import Element, SubElement
+
+from django.contrib.postgres.search import SearchVectorField as VectorField
 
 from bpp.fields import DOIField, YearField
 from bpp.jezyk_polski import czasownik_byc
@@ -153,6 +154,14 @@ class Zrodlo(ModelZAdnotacjami, ModelZISSN):
     search = VectorField()
 
     objects = ZrodloManager()
+
+    pbn_uid = models.ForeignKey(
+        "pbn_api.Journal",
+        verbose_name="Odpowiednik w PBN",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+    )
 
     slug = AutoSlugField(populate_from="nazwa", unique=True)
 

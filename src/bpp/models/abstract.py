@@ -694,6 +694,19 @@ class ModelWybitny(models.Model):
         abstract = True
 
 
+class ModelZPBN_UID(models.Model):
+    pbn_uid = models.ForeignKey(
+        "pbn_api.Publication",
+        verbose_name="Odpowiednik w PBN",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+    )
+
+    class Meta:
+        abstract = True
+
+
 class Wydawnictwo_Baza(RekordBPPBaza):
     """Klasa bazowa wydawnictw (prace doktorskie, habilitacyjne, wydawnictwa
     ciągłe, zwarte -- bez patentów)."""

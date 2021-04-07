@@ -14,6 +14,7 @@ from bpp.models import (
     MaProcentyMixin,
     ModelOpcjonalnieNieEksportowanyDoAPI,
     ModelZMiejscemPrzechowywania,
+    ModelZPBN_UID,
 )
 from bpp.models.abstract import (
     BazaModeluOdpowiedzialnosciAutorow,
@@ -109,6 +110,7 @@ class Wydawnictwo_Ciagle(
     ModelZNumeremZeszytu,
     ModelZKonferencja,
     ModelWybitny,
+    ModelZPBN_UID,
     ModelZLiczbaCytowan,
     ModelZMiejscemPrzechowywania,
     ModelOpcjonalnieNieEksportowanyDoAPI,

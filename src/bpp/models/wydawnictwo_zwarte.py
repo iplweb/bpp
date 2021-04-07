@@ -22,6 +22,7 @@ from bpp.models import (
     MaProcentyMixin,
     ModelOpcjonalnieNieEksportowanyDoAPI,
     ModelZMiejscemPrzechowywania,
+    ModelZPBN_UID,
     Zewnetrzna_Baza_Danych,
     const,
 )
@@ -177,6 +178,7 @@ class Wydawnictwo_Zwarte(
     ModelZSeria_Wydawnicza,
     ModelZISSN,
     ModelWybitny,
+    ModelZPBN_UID,
     MaProcentyMixin,
     DodajAutoraMixin,
     DirtyFieldsMixin,

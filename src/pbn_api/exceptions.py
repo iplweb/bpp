@@ -12,3 +12,7 @@ class HttpException(Exception):
 class AccessDeniedException(Exception):
     def __init__(self, url):
         self.url = url
+
+
+class SciencistDoesNotExist(Exception):
+    pass

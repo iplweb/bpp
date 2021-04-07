@@ -21,6 +21,7 @@ from bpp.admin.filters import (
     DOIUstawioneFilter,
     LiczbaZnakowFilter,
     OstatnioZmienionePrzezFilter,
+    PBN_UID_IDObecnyFilter,
     UtworzonePrzezFilter,
 )
 from bpp.admin.helpers import (
@@ -183,6 +184,11 @@ class Wydawnictwo_CiagleAdmin(
         "openaccess_czas_publikacji",
         OstatnioZmienionePrzezFilter,
         UtworzonePrzezFilter,
+        PBN_UID_IDObecnyFilter,
+    ]
+
+    autocomplete_fields = [
+        "pbn_uid",
     ]
 
     fieldsets = (
