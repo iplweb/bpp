@@ -75,8 +75,8 @@ class ModelZPBN_ID(models.Model):
     """Zawiera informacje o PBN_ID"""
 
     pbn_id = models.IntegerField(
-        verbose_name="Identyfikator PBN",
-        help_text="Identyfikator w systemie Polskiej Bibliografii Naukowej (PBN)",
+        verbose_name="[Przestarzałe] Identyfikator PBN",
+        help_text="[Pole o znaczeniu historycznym] Identyfikator w systemie Polskiej Bibliografii Naukowej (PBN)",
         null=True,
         blank=True,
         unique=True,

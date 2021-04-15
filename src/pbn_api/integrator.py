@@ -59,18 +59,19 @@ def zapisz_mongodb(elem, klass):
     try:
         v = klass.objects.get(pk=elem["mongoId"])
     except klass.DoesNotExist:
-        klass.objects.create(
+        return klass.objects.create(
             pk=elem["mongoId"],
             status=elem["status"],
             verificationLevel=elem["verificationLevel"],
             verified=elem["verified"],
             versions=elem["versions"],
         )
-        return
 
     if elem["versions"] != v.versions:
         v.versions = elem["versions"]
         v.save()
+
+    return v
 
 
 def pobierz_mongodb(elems, klass):
@@ -133,6 +134,31 @@ def pobierz_prace_po_doi(client: PBNClient):
                 raise e
 
             zapisz_mongodb(elem, Publication)
+
+
+def pobierz_ludzi_z_uczelni(client: PBNClient, instutition_id):
+    """
+    Ta procedura pobierze dane wszystkich osob z uczelni, mozna uruchamiac
+    zamiast pobierz_ludzi
+    """
+    for person in client.get_people_by_institution_id(instutition_id):
+        autor = matchuj_autora(
+            imiona=person.get("firstName"),
+            nazwisko=person.get("lastName"),
+            orcid=person.get("orcid"),
+            pbn_uid_id=person.get("personId"),
+            tytul_str=person.get("title"),
+        )
+        if autor is None:
+            warnings.warn(f"Brak dopasowania w jednostce dla autora {person}")
+            continue
+
+        scientist = client.get_person_by_id(person["personId"])
+        scientist = zapisz_mongodb(scientist, Scientist)
+
+        if autor.pbn_uid_id is None or autor.pbn_uid_id != scientist.pk:
+            autor.pbn_uid = scientist
+            autor.save()
 
 
 def integruj_autorow_z_uczelni(client: PBNClient, instutition_id):

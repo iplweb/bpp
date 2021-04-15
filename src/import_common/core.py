@@ -309,3 +309,7 @@ def matchuj_publikacje(
             return klass.objects.get(Q(www=public_uri) | Q(public_www=public_uri))
         except klass.DoesNotExist:
             pass
+
+
+def record_to_json(rec):
+    return {"year": rec.rok, "title": rec.tytul_oryginalny}

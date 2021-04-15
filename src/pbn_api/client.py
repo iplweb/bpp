@@ -5,6 +5,7 @@ from urllib.parse import quote
 
 import requests
 
+from import_common.core import record_to_json
 from pbn_api.exceptions import (
     AccessDeniedException,
     HttpException,
@@ -12,6 +13,8 @@ from pbn_api.exceptions import (
 )
 
 from django.utils.itercompat import is_iterable
+
+from bpp.models import Wydawnictwo_Ciagle
 
 DEFAULT_BASE_URL = "https://pbn-micro-alpha.opi.org.pl/api"
 
@@ -126,6 +129,46 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
             if hasattr(self, "authorize"):
                 self.authorize()
                 return self.get(url, headers)
+
+        if ret.status_code >= 400:
+            raise HttpException(ret.status_code, url, ret.content)
+
+        try:
+            return ret.json()
+        except JSONDecodeError as e:
+            if ret.status_code == 200 and b"prace serwisowe" in ret.content:
+                # open("pbn_client_dump.html", "wb").write(ret.content)
+                raise PraceSerwisoweException()
+            raise e
+
+    def post(self, url, headers=None, body=None):
+        while not hasattr(self, "access_token"):
+            self.authorize()
+
+        sent_headers = {
+            "X-App-Id": self.app_id,
+            "X-App-Token": self.app_token,
+            "X-User-Token": self.access_token,
+        }
+
+        if headers is not None:
+            sent_headers.update(headers)
+
+        ret = requests.post(self.base_url + url, headers=sent_headers, json=body)
+        import pdb
+
+        pdb.set_trace()
+        if ret.status_code == 403:
+            # Needs auth
+            if ret.json()["message"] == "Access Denied":
+                # Autoryzacja użytkownika jest poprawna, jednakże nie ma on po stronie PBN
+                # takiego uprawnienia...
+                raise AccessDeniedException(url)
+
+            # elif ret.json['message'] == "Forbidden":  # <== to dostaniemy, gdy token zły lub brak
+
+            if hasattr(self, "authorize"):
+                self.authorize()
 
         if ret.status_code >= 400:
             raise HttpException(ret.status_code, url, ret.content)
@@ -348,8 +391,15 @@ class PBNClient(
 ):
     _interactive = False
 
-    def __init__(self, transport):
+    def __init__(self, transport: RequestsTransport):
         self.transport = transport
+
+    def post_publication(self, json):
+        self.transport.post("/v1/publications", body=json)
+
+    def demo(self):
+        js = record_to_json(Wydawnictwo_Ciagle.objects.first())
+        self.post_publication(js)
 
     def exec(self, cmd):
         try:

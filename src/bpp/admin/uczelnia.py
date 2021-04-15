@@ -43,7 +43,7 @@ class UczelniaAdmin(
     RestrictDeletionToAdministracjaGroupMixin, ZapiszZAdnotacjaMixin, CommitedModelAdmin
 ):
     list_display = ["nazwa", "nazwa_dopelniacz_field", "skrot", "pbn_uid"]
-    autocomplete_fields = ["pbn_uid"]
+    autocomplete_fields = ["pbn_uid", "obca_jednostka"]
     fieldsets = (
         (
             None,
