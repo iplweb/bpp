@@ -1,3 +1,5 @@
+import sys
+
 from django.apps import AppConfig
 from django.db import DatabaseError, ProgrammingError
 
@@ -18,11 +20,16 @@ class RozbieznosciDyscyplinConfig(AppConfig):
             RozbieznosciView,
         )
 
-        for klass in BrakPrzypisaniaView, RozbieznePrzypisaniaView, RozbieznosciView:
-            try:
-                klass.objects.first()
-            except ProgrammingError:
-                raise DatabaseError(
-                    "Jeden lub wszystkie z widoków dla aplikacji rozbieznosc_dyscyplin nie istnieje. "
-                    "Prawdopodobnie moze miec to zwiazek z niedokonczona migracja. Prosze o weryfikacje. "
-                )
+        if ("migrate" not in sys.argv) and ("makemigrations" not in sys.argv):
+            for klass in (
+                BrakPrzypisaniaView,
+                RozbieznePrzypisaniaView,
+                RozbieznosciView,
+            ):
+                try:
+                    klass.objects.first()
+                except ProgrammingError:
+                    raise DatabaseError(
+                        "Jeden lub wszystkie z widoków dla aplikacji rozbieznosc_dyscyplin nie istnieje. "
+                        "Prawdopodobnie moze miec to zwiazek z niedokonczona migracja. Prosze o weryfikacje. "
+                    )
