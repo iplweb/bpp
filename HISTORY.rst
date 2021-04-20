@@ -3,6 +3,11 @@
 Historia zmian
 ==============
 
+202104.61
+---------
+
+* kolejkowany raport uczelnia - ewaluacja (#1012),
+
 202103.60
 ---------
 
