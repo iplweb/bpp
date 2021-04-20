@@ -312,4 +312,10 @@ def matchuj_publikacje(
 
 
 def record_to_json(rec):
-    return {"year": rec.rok, "title": rec.tytul_oryginalny}
+    return {
+        "year": rec.rok,
+        "title": rec.tytul_oryginalny,
+        "authors": [],
+        "type": "ARTICLE",
+        "journal": {"mniswId": 25476},
+    }

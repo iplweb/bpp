@@ -1,13 +1,14 @@
 import warnings
 from json import JSONDecodeError
 from pprint import pprint
-from urllib.parse import quote
+from urllib.parse import parse_qs, quote, urlparse
 
 import requests
 
 from import_common.core import record_to_json
 from pbn_api.exceptions import (
     AccessDeniedException,
+    AuthenticationResponseError,
     HttpException,
     PraceSerwisoweException,
 )
@@ -16,7 +17,7 @@ from django.utils.itercompat import is_iterable
 
 from bpp.models import Wydawnictwo_Ciagle
 
-DEFAULT_BASE_URL = "https://pbn-micro-alpha.opi.org.pl/api"
+DEFAULT_BASE_URL = "https://pbn-micro-alpha.opi.org.pl"
 
 
 class PBNClientTransport:
@@ -76,37 +77,45 @@ class PageableResource:
 
 
 class OAuthMixin:
-    def authorize(self):
-        client_id = "zsun-implicit"
-        redirect_uri = "https://pbn-micro-alpha.opi.org.pl/auth/oauth/redirector"
-        authorization_base_url = (
-            "https://pbn-micro-alpha.opi.org.pl/auth/oauth/authorize"
+    def authorize(self, base_url, app_id, app_token):
+        from pbn_api.conf import settings
+
+        self.access_token = getattr(settings, "PBN_CLIENT_USER_TOKEN")
+        if self.access_token:
+            return
+
+        auth_url = f"{base_url}/auth/pbn/api/registration/user/token/{app_id}"
+        print(
+            f"""I have launched a web browser with {auth_url} ,\nplease log-in,
+             then paste the redirected URL below. \n"""
         )
-
-        # >>> # OAuth endpoints given in the Google API documentation
-        # >>> authorization_base_url = "https://accounts.google.com/o/oauth2/v2/auth"
-        # >>> token_url = "https://www.googleapis.com/oauth2/v4/token"
-
-        from requests_oauthlib import OAuth2Session
-
-        pbn = OAuth2Session(client_id, redirect_uri=redirect_uri)
-
-        # >>> # Redirect user to Google for authorization
-        authorization_url, state = pbn.authorization_url(authorization_base_url)
         import webbrowser
 
-        webbrowser.open(authorization_url)
-
+        webbrowser.open(auth_url)
         redirect_response = input("Paste the full redirect URL here:")
-        access_token = redirect_response.split("#access_token=")[1].split("&")[0]
-        print("ACCESS TOKEN", access_token)
-        self.access_token = access_token
+        one_time_token = parse_qs(urlparse(redirect_response).query).get("ott")[0]
+        print("ONE TIME TOKEN", one_time_token)
 
-        # pbn.fetch_token(token_url,  client_secret=client_secret,
-        #  authorization_response=redirect_response)
+        headers = {
+            "X-App-Id": app_id,
+            "X-App-Token": app_token,
+        }
+        body = {"oneTimeToken": one_time_token}
+        url = f"{base_url}/auth/pbn/api/user/token"
+        response = requests.post(url=url, json=body, headers=headers)
+        try:
+            response.json()
+        except ValueError:
+            raise AuthenticationResponseError(response.content)
+
+        self.access_token = response.json().get("X-User-Token")
+        print("ACCESS TOKEN", self.access_token)
 
 
 class RequestsTransport(OAuthMixin, PBNClientTransport):
+    def get_user_token(self):
+        self.post(self)
+
     def get(self, url, headers=None):
         sent_headers = {"X-App-Id": self.app_id, "X-App-Token": self.app_token}
 
@@ -127,7 +136,7 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
             # elif ret.json['message'] == "Forbidden":  # <== to dostaniemy, gdy token zły lub brak
 
             if hasattr(self, "authorize"):
-                self.authorize()
+                self.authorize(self.base_url, self.app_id, self.app_token)
                 return self.get(url, headers)
 
         if ret.status_code >= 400:
@@ -143,7 +152,7 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
 
     def post(self, url, headers=None, body=None):
         while not hasattr(self, "access_token"):
-            self.authorize()
+            self.authorize(self.base_url, self.app_id, self.app_token)
 
         sent_headers = {
             "X-App-Id": self.app_id,
@@ -155,9 +164,6 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
             sent_headers.update(headers)
 
         ret = requests.post(self.base_url + url, headers=sent_headers, json=body)
-        import pdb
-
-        pdb.set_trace()
         if ret.status_code == 403:
             # Needs auth
             if ret.json()["message"] == "Access Denied":
@@ -226,156 +232,157 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
 
 class ConferencesMixin:
     def get_conferences(self, *args, **kw):
-        return self.transport.get_pages("/v1/conferences/page", *args, **kw)
+        return self.transport.get_pages("/api/v1/conferences/page", *args, **kw)
 
     def get_conferences_mnisw(self, *args, **kw):
-        return self.transport.get_pages("/v1/conferences/mnisw/page", *args, **kw)
+        return self.transport.get_pages("/api/v1/conferences/mnisw/page", *args, **kw)
 
     def get_conference(self, id):
-        return self.transport.get(f"/v1/conferences/{id}")
+        return self.transport.get(f"/api/v1/conferences/{id}")
 
     def get_conference_editions(self, id):
-        return self.transport.get(f"/v1/conferences/{id}/editions")
+        return self.transport.get(f"/api/v1/conferences/{id}/editions")
 
     def get_conference_metadata(self, id):
-        return self.transport.get(f"/v1/conferences/{id}/metadata")
+        return self.transport.get(f"/api/v1/conferences/{id}/metadata")
 
 
 class DictionariesMixin:
     def get_countries(self):
-        return self.transport.get("/v1/dictionary/countries")
-        return self.transport.get("/v1/dictionary/countries")
+        return self.transport.get("/api/v1/dictionary/countries")
+        return self.transport.get("/api/v1/dictionary/countries")
 
     def get_disciplines(self):
-        return self.transport.get("/v1/dictionary/disciplines")
+        return self.transport.get("/api/v1/dictionary/disciplines")
 
     def get_languages(self):
-        return self.transport.get("/v1/dictionary/languages")
+        return self.transport.get("/api/v1/dictionary/languages")
 
 
 class InstitutionsMixin:
     def get_institutions(self, *args, **kw):
-        return self.transport.get_pages("/v1/institutions/page", *args, **kw)
+        return self.transport.get_pages("/api/v1/institutions/page", *args, **kw)
 
     def get_institution_by_id(self, id):
-        return self.transport.get_pages(f"/v1/institutions/{id}")
+        return self.transport.get_pages(f"/api/v1/institutions/{id}")
 
     def get_institution_by_version(self, version):
-        return self.transport.get_pages(f"/v1/institutions/version/{version}")
+        return self.transport.get_pages(f"/api/v1/institutions/version/{version}")
 
     def get_institution_metadata(self, id):
-        return self.transport.get_pages(f"/v1/institutions/{id}/metadata")
+        return self.transport.get_pages(f"/api/v1/institutions/{id}/metadata")
 
     def get_institutions_polon(self):
-        return self.transport.get_pages("/v1/institutions/polon/page")
+        return self.transport.get_pages("/api/v1/institutions/polon/page")
 
     def get_institutions_polon_by_uid(self, uid):
-        return self.transport.get(f"/v1/institutions/polon/uid/{uid}")
+        return self.transport.get(f"/api/v1/institutions/polon/uid/{uid}")
 
     def get_institutions_polon_by_id(self, id):
-        return self.transport.get(f"/v1/institutions/polon/{id}")
+        return self.transport.get(f"/api/v1/institutions/polon/{id}")
 
 
 class InstitutionsProfileMixin:
     # XXX: wymaga autoryzacji
     def get_institution_publications(self):
-        return self.transport.get_pages("/v1/institutionProfile/publications/page")
+        return self.transport.get_pages("/api/v1/institutionProfile/publications/page")
 
     def get_institution_statements(self):
         return self.transport.get_pages(
-            "/v1/institutionProfile/publications/page/statements"
+            "/api/v1/institutionProfile/publications/page/statements"
         )
 
 
 class JournalsMixin:
     def get_journals_mnisw(self, *args, **kw):
-        return self.transport.get_pages("/v1/journals/mnisw/page", *args, **kw)
+        return self.transport.get_pages("/api/v1/journals/mnisw/page", *args, **kw)
 
     def get_journals(self, *args, **kw):
-        return self.transport.get_pages("/v1/journals/page", *args, **kw)
+        return self.transport.get_pages("/api/v1/journals/page", *args, **kw)
 
     def get_journal_by_version(self, version):
-        return self.transport.get(f"/v1/journals/version/{version}")
+        return self.transport.get(f"/api/v1/journals/version/{version}")
 
     def get_journal_by_id(self, id):
-        return self.transport.get(f"/v1/journals/{id}")
+        return self.transport.get(f"/api/v1/journals/{id}")
 
     def get_journal_metadata(self, id):
-        return self.transport.get(f"/v1/journals/{id}/metadata")
+        return self.transport.get(f"/api/v1/journals/{id}/metadata")
 
 
 class PersonMixin:
     def get_people_by_institution_id(self, id):
-        return self.transport.get(f"/v1/person/institution/{id}")
+        return self.transport.get(f"/api/v1/person/institution/{id}")
 
     def get_person_by_natural_id(self, id):
-        return self.transport.get(f"/v1/person/natural/{id}")
+        return self.transport.get(f"/api/v1/person/natural/{id}")
 
     def get_person_by_orcid(self, orcid):
-        return self.transport.get(f"/v1/person/orcid/{orcid}")
+        return self.transport.get(f"/api/v1/person/orcid/{orcid}")
 
     def get_people(self, *args, **kw):
-        return self.transport.get_pages("/v1/person/page", *args, **kw)
+        return self.transport.get_pages("/api/v1/person/page", *args, **kw)
 
     def get_person_by_polon_uid(self, uid):
-        return self.transport.get(f"/v1/person/polon/{uid}")
+        return self.transport.get(f"/api/v1/person/polon/{uid}")
 
     def get_person_by_version(self, version):
-        return self.transport.get(f"/v1/person/version/{version}")
+        return self.transport.get(f"/api/v1/person/version/{version}")
 
     def get_person_by_id(self, id):
-        return self.transport.get(f"/v1/person/{id}")
+        return self.transport.get(f"/api/v1/person/{id}")
 
 
 class PublishersMixin:
     def get_publishers_mnisw(self, *args, **kw):
-        return self.transport.get_pages("/v1/publishers/mnisw/page", *args, **kw)
+        return self.transport.get_pages("/api/v1/publishers/mnisw/page", *args, **kw)
 
     def get_publishers_mnisw_yearlist(self, *args, **kw):
         return self.transport.get_pages(
-            "/v1/publishers/mnisw/page/yearlist", *args, **kw
+            "/api/v1/publishers/mnisw/page/yearlist", *args, **kw
         )
 
     def get_publishers(self, *args, **kw):
-        return self.transport.get_pages("/v1/publishers/page", *args, **kw)
+        return self.transport.get_pages("/api/v1/publishers/page", *args, **kw)
 
     def get_publisher_by_version(self, version):
-        return self.transport.get(f"/v1/publishers/version/{version}")
+        return self.transport.get(f"/api/v1/publishers/version/{version}")
 
     def get_publisher_by_id(self, id):
-        return self.transport.get(f"/v1/publishers/{id}")
+        return self.transport.get(f"/api/v1/publishers/{id}")
 
     def get_publisher_metadata(self, id):
-        return self.transport.get(f"/v1/publishers/{id}/metadata")
+        return self.transport.get(f"/api/v1/publishers/{id}/metadata")
 
 
 class PublicationsMixin:
     def get_publication_by_doi(self, doi):
         return self.transport.get(
-            f"/v1/publications/doi/?doi={quote(doi, safe='')}",
+            f"/api/v1/publications/doi/?doi={quote(doi, safe='')}",
         )
 
     def get_publication_by_doi_page(self, doi):
         return self.transport.get_pages(
-            f"/v1/publications/doi/page?doi={quote(doi, safe='')}", headers={"doi": doi}
+            f"/api/v1/publications/doi/page?doi={quote(doi, safe='')}",
+            headers={"doi": doi},
         )
 
     def get_publication_by_id(self, id):
-        return self.transport.get(f"/v1/publications/id/{id}")
+        return self.transport.get(f"/api/v1/publications/id/{id}")
 
     def get_publication_metadata(self, id):
-        return self.transport.get(f"/v1/publications/id/{id}/metadata")
+        return self.transport.get(f"/api/v1/publications/id/{id}/metadata")
 
     def get_publications(self):
-        return self.transport.get_pages("/v1/publications/page")
+        return self.transport.get_pages("/api/v1/publications/page")
 
     def get_publication_by_version(self, version):
-        return self.transport.get(f"/v1/publications/version/{version}")
+        return self.transport.get(f"/api/v1/publications/version/{version}")
 
 
 class AuthorMixin:
     def get_author_by_id(self, id):
-        return self.transport.get(f"/v1/author/{id}")
+        return self.transport.get(f"/api/v1/author/{id}")
 
 
 class PBNClient(
@@ -395,7 +402,7 @@ class PBNClient(
         self.transport = transport
 
     def post_publication(self, json):
-        self.transport.post("/v1/publications", body=json)
+        self.transport.post("/api/v1/publications", body=json)
 
     def demo(self):
         js = record_to_json(Wydawnictwo_Ciagle.objects.first())

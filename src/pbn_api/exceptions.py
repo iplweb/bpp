@@ -16,3 +16,7 @@ class AccessDeniedException(Exception):
 
 class SciencistDoesNotExist(Exception):
     pass
+
+
+class AuthenticationResponseError(Exception):
+    pass
