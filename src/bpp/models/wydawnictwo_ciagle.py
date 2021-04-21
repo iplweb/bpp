@@ -1,14 +1,15 @@
 # -*- encoding: utf-8 -*-
+from pprint import pprint
 
 from dirtyfields.dirtyfields import DirtyFieldsMixin
 from django.db import models
 from django.db.models import CASCADE, SET_NULL
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
-from lxml.etree import Element, SubElement
 
 from django.utils import timezone
 
+from bpp.exceptions import WillNotExportError
 from bpp.models import (
     AktualizujDatePBNNadrzednegoMixin,
     MaProcentyMixin,
@@ -43,7 +44,12 @@ from bpp.models.abstract import (
     ModelZWWW,
     PBNSerializerHelperMixin,
     Wydawnictwo_Baza,
-    parse_informacje,
+)
+from bpp.models.const import (
+    RODZAJ_PBN_ARTYKUL,
+    RODZAJ_PBN_KSIAZKA,
+    RODZAJ_PBN_ROZDZIAL,
+    TYP_OGOLNY_DO_PBN,
 )
 from bpp.models.system import Zewnetrzna_Baza_Danych
 from bpp.models.util import ZapobiegajNiewlasciwymCharakterom
@@ -70,6 +76,29 @@ class Wydawnictwo_Ciagle_Autor(
             # Tu musi być autor, inaczej admin nie pozwoli wyedytować
             ("rekord", "autor", "kolejnosc"),
         ]
+
+    def pbn_get_json(self):
+        ret = {
+            "orcid": True if self.autor.orcid else False,
+            "type": TYP_OGOLNY_DO_PBN.get(
+                self.typ_odpowiedzialnosci.typ_ogolny, "AUTHOR"
+            ),
+        }
+        if self.dyscyplina_naukowa_id is not None:
+            ret["disciplineId"] = self.dyscyplina_naukowa.kod_dla_pbn()
+
+        # if self.jednostka.pbn_uid_id:
+        #    ret["institutionId"] = self.jednostka.pbn_uid.pk
+
+        if self.autor.pbn_uid_id:
+            ret["personId"] = self.autor.pbn_uid.pk
+
+        if self.autor.orcid:
+            ret["personOrcidId"] = self.autor.orcid
+
+        ret["statementDate"] = str(self.rekord.ostatnio_zmieniony_dla_pbn.date())
+
+        return ret
 
 
 class ModelZOpenAccessWydawnictwoCiagle(ModelZOpenAccess):
@@ -139,55 +168,6 @@ class Wydawnictwo_Ciagle(
         verbose_name_plural = "wydawnictwa ciągłe"
         app_label = "bpp"
 
-    eksport_pbn_FLDS = ["journal", "issue", "volume", "pages", "open-access"]
-
-    def eksport_pbn_journal(self, toplevel, autorzy_klass=None):
-        if self.zrodlo:
-            toplevel.append(self.zrodlo.eksport_pbn_serializuj())
-
-    def eksport_pbn__get_informacje_by_key(self, key):
-        return parse_informacje(self.informacje, key)
-
-    def eksport_pbn_get_issue(self):
-        if hasattr(self, "nr_zeszytu"):
-            if self.nr_zeszytu:
-                return self.nr_zeszytu.strip()
-        res = self.eksport_pbn__get_informacje_by_key("numer")
-        if res is not None:
-            return res.strip()
-
-    def eksport_pbn_issue(self, toplevel, autorzy_klass=None):
-        v = self.eksport_pbn_get_issue()
-        issue = SubElement(toplevel, "issue")
-        if v is not None:
-            issue.text = v
-        else:
-            issue.text = "brak"
-
-    def eksport_pbn_get_volume(self):
-        if hasattr(self, "tom"):
-            if self.tom:
-                return self.tom
-        return self.eksport_pbn__get_informacje_by_key("tom")
-
-    def eksport_pbn_volume(self, toplevel, wydzial=None, autorzy_klass=None):
-        v = self.eksport_pbn_get_volume()
-        volume = SubElement(toplevel, "volume")
-        if v is not None:
-            volume.text = v
-        else:
-            volume.text = "brak"
-
-    def eksport_pbn_serializuj(self):
-        toplevel = Element("article")
-        super(Wydawnictwo_Ciagle, self).eksport_pbn_serializuj(
-            toplevel, Wydawnictwo_Ciagle_Autor
-        )
-        self.eksport_pbn_run_serialization_functions(
-            self.eksport_pbn_FLDS, toplevel, Wydawnictwo_Ciagle_Autor
-        )
-        return toplevel
-
     def punktacja_zrodla(self):
         """Funkcja - skrót do użycia w templatkach, zwraca punktację zrodla
         za rok z tego rekordu (self)"""
@@ -199,6 +179,59 @@ class Wydawnictwo_Ciagle(
                 return self.zrodlo.punktacja_zrodla_set.get(rok=self.rok)
             except Punktacja_Zrodla.DoesNotExist:
                 pass
+
+    def pbn_get_json(self):
+        ret = {
+            "title": self.tytul_oryginalny,
+            "year": self.rok,
+            # "issue" ??
+        }
+
+        if self.tom:
+            ret["volume"] = self.tom
+
+        if self.strony:
+            ret["pagesFromTo"] = self.strony
+
+        if self.doi:
+            ret["doi"] = self.doi
+
+        if self.jezyk.pbn_uid_id is None:
+            raise WillNotExportError(
+                f'Język rekordu "{self.jezyk}" nie ma określonego odpowiednika w PBN'
+            )
+
+        ret["mainLanguage"] = self.jezyk.pbn_uid.code
+
+        if self.charakter_formalny.rodzaj_pbn == RODZAJ_PBN_ARTYKUL:
+            ret["type"] = "ARTICLE"
+        elif self.charakter_formalny.rodzaj_pbn == RODZAJ_PBN_KSIAZKA:
+            ret["type"] = "BOOK"
+        elif self.charakter_formalny.rodzaj_pbn == RODZAJ_PBN_ROZDZIAL:
+            ret["type"] = "CHAPTER"
+        else:
+            raise WillNotExportError(
+                f"Rodzaj dla PBN nie określony dla charakteru formalnego {self.charakter_formalny}"
+            )
+
+        if self.public_www:
+            ret["publicUri"] = self.public_www
+        elif self.www:
+            ret["publicUri"] = self.www
+
+        ret["journal"] = self.zrodlo.pbn_get_json()
+
+        authors = []
+        statements = []
+        for elem in self.autorzy_set.all():
+            authors.append(elem.autor.pbn_get_json())
+            statements.append(elem.pbn_get_json())
+        ret["authors"] = authors
+        ret["statements"] = statements
+
+        pprint(ret)
+
+        return ret
 
 
 class Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych(models.Model):

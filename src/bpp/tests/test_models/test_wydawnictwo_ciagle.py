@@ -176,3 +176,7 @@ def test_punktacja_zrodla(wydawnictwo_ciagle):
 
     z.punktacja_zrodla_set.create(rok=wydawnictwo_ciagle.rok, impact_factor=37)
     assert wydawnictwo_ciagle.punktacja_zrodla().impact_factor == 37
+
+
+def test_Wydawnictwo_Ciagle_pbn_get_json(wydawnictwo_ciagle):
+    assert wydawnictwo_ciagle.pbn_get_json()

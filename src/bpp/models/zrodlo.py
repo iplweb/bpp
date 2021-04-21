@@ -7,10 +7,10 @@ from autoslug import AutoSlugField
 from django.db import models
 from django.db.models import CASCADE, SET_NULL
 from django.urls.base import reverse
-from lxml.etree import Element, SubElement
 
 from django.contrib.postgres.search import SearchVectorField as VectorField
 
+from bpp.exceptions import WillNotExportError
 from bpp.fields import DOIField, YearField
 from bpp.jezyk_polski import czasownik_byc
 from bpp.models.abstract import (
@@ -195,36 +195,11 @@ class Zrodlo(ModelZAdnotacjami, ModelZISSN):
             .order_by("rok")
         )
 
-    def eksport_pbn_serializuj(self):
-        journal = Element("journal")
-
-        title_kw = {}
-        if self.jezyk is not None:
-            title_kw["lang"] = self.jezyk.get_skrot_dla_pbn()
-
-        title = SubElement(journal, "title", **title_kw)
-        title.text = self.nazwa
-
-        if self.issn:
-            issn = SubElement(journal, "issn")
-            issn.text = self.issn
-
-        if self.e_issn:
-            eissn = SubElement(journal, "eissn")
-            eissn.text = self.e_issn
-
-        if self.doi:
-            doi = SubElement(journal, "doi")
-            doi.text = self.doi
-
-        if self.www:
-            SubElement(journal, "website", href=self.www)
-
-        system_identifier = SubElement(journal, "system-identifier")
-        system_identifier.text = str(self.pk)
-
-        if self.wydawca:
-            publisher_name = SubElement(journal, "publisher-name")
-            publisher_name.text = self.wydawca
-
-        return journal
+    def pbn_get_json(self):
+        if self.pbn_uid_id is None:
+            raise WillNotExportError(
+                f'Zrodlo "{self.nazwa}" nie ma określonego odpowiednika w PBN'
+            )
+        return {
+            "objectId": self.pbn_uid.pk
+        }  # "mniswId": self.pbn_uid.value_or_none("mniswId")}

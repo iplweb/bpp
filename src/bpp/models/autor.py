@@ -11,7 +11,6 @@ from django.core.validators import RegexValidator
 from django.db import IntegrityError, models, transaction
 from django.db.models import CASCADE, SET_NULL, Sum
 from django.urls.base import reverse
-from lxml.etree import Element, SubElement
 
 from django.contrib.postgres.search import SearchVectorField as VectorField
 
@@ -302,49 +301,13 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
             .order_by("rok")
         )
 
-    def eksport_pbn_serializuj(self, tagname="author", affiliated=True, employed=True):
-        """
-        @param employed: obecnie nie uzywamy
-        """
-
-        author = Element(tagname)
-
-        imiona = self.imiona.replace(".", " ")
-        if self.pbn_id:
-            imiona = imiona.replace("*", "")
-
-        given_names = SubElement(author, "given-names")
-        given_names.text = imiona
-
-        nazwisko = self.nazwisko
-        if self.pbn_id:
-            nazwisko = nazwisko.replace("*", "")
-
-        family_name = SubElement(author, "family-name")
-        family_name.text = nazwisko
-
-        system_identifier = SubElement(author, "system-identifier", system="BPP-ID")
-        system_identifier.text = str(self.pk)
-
-        if self.pbn_id:
-            pbn_id_system_identifier = SubElement(
-                author, "system-identifier", system="PBN-ID"
-            )
-            pbn_id_system_identifier.text = str(self.pbn_id)
-
-        if self.orcid:
-            orcid_system_identifier = SubElement(
-                author, "system-identifier", system="ORCID"
-            )
-            orcid_system_identifier.text = self.orcid
-
-        affiliated_to_unit = SubElement(author, "affiliated-to-unit")
-        if affiliated:
-            affiliated_to_unit.text = "true"
-        else:
-            affiliated_to_unit.text = "false"
-
-        return author
+    def pbn_get_json(self):
+        ret = {"givenNames": self.imiona, "lastName": self.nazwisko}
+        if self.pbn_uid_id is not None:
+            ret.update({"objectId": self.pbn_uid.pk})
+        if self.orcid is not None:
+            ret.update({"orcid": self.orcid})
+        return ret
 
     def liczba_cytowan(self):
         """Zwraca liczbę cytowań prac danego autora"""

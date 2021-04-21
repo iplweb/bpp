@@ -5,7 +5,6 @@ from urllib.parse import parse_qs, quote, urlparse
 
 import requests
 
-from import_common.core import record_to_json
 from pbn_api.exceptions import (
     AccessDeniedException,
     AuthenticationResponseError,
@@ -177,6 +176,9 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
                 self.authorize()
 
         if ret.status_code >= 400:
+            import pdb
+
+            pdb.set_trace()
             raise HttpException(ret.status_code, url, ret.content)
 
         try:
@@ -405,7 +407,7 @@ class PBNClient(
         self.transport.post("/api/v1/publications", body=json)
 
     def demo(self):
-        js = record_to_json(Wydawnictwo_Ciagle.objects.first())
+        js = Wydawnictwo_Ciagle.objects.filter(rok__gte=2020).first().pbn_get_json()
         self.post_publication(js)
 
     def exec(self, cmd):
