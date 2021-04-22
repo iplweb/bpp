@@ -1,5 +1,7 @@
+import warnings
+
 from django.apps import AppConfig
-from django.db import DatabaseError, ProgrammingError
+from django.db import ProgrammingError
 
 
 class RozbieznosciDyscyplinConfig(AppConfig):
@@ -22,7 +24,7 @@ class RozbieznosciDyscyplinConfig(AppConfig):
             try:
                 klass.objects.first()
             except ProgrammingError:
-                raise DatabaseError(
+                warnings.warn(
                     "Jeden lub wszystkie z widoków dla aplikacji rozbieznosc_dyscyplin nie istnieje. "
                     "Prawdopodobnie moze miec to zwiazek z niedokonczona migracja. Prosze o weryfikacje. "
                 )

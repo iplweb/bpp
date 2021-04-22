@@ -10,13 +10,11 @@
 {% if praca.tom %}
     <meta name="citation_volume" content="{{ praca.tom }}">
 {% endif %}
-
-XXX issue czyli co?
-<meta name="citation_issue" content="20">
-
-
-<meta name="citation_firstpage" content="11761">
-<meta name="citation_lastpage" content="11766">
+{# TODO: <meta name="citation_issue" content="20"> #}
+{% if praca.strony %}
+    <meta name="citation_firstpage" content="{{ praca.pierwsza_strona }}">
+    <meta name="citation_lastpage" content="{{ praca.ostatnia_strona }}">
+{% endif %}
 {% if praca.www %}
     <meta name="citation_pdf_url" content="{{ praca.www }}">
 {% endif %}
