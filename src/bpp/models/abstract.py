@@ -625,6 +625,15 @@ class ModelZeSzczegolami(models.Model):
     class Meta:
         abstract = True
 
+    def pierwsza_strona(self):
+        return self.strony.split("-")[0]
+
+    def ostatnia_strona(self):
+        try:
+            return self.strony.split("-")[1]
+        except IndexError:
+            return self.pierwsza_strona()
+
 
 class ModelZNumeremZeszytu(models.Model):
     nr_zeszytu = models.CharField(
