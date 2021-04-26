@@ -306,7 +306,7 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
         if self.pbn_uid_id is not None:
             ret.update({"objectId": self.pbn_uid.pk})
         if self.orcid is not None:
-            ret.update({"orcid": self.orcid})
+            ret.update({"orcidId": self.orcid})
         return ret
 
     def liczba_cytowan(self):

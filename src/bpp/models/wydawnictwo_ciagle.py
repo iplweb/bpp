@@ -1,5 +1,4 @@
 # -*- encoding: utf-8 -*-
-from pprint import pprint
 
 from dirtyfields.dirtyfields import DirtyFieldsMixin
 from django.db import models
@@ -86,15 +85,20 @@ class Wydawnictwo_Ciagle_Autor(
         }
         if self.dyscyplina_naukowa_id is not None:
             ret["disciplineId"] = self.dyscyplina_naukowa.kod_dla_pbn()
+        else:
+            return
 
         # if self.jednostka.pbn_uid_id:
         #    ret["institutionId"] = self.jednostka.pbn_uid.pk
 
         if self.autor.pbn_uid_id:
-            ret["personId"] = self.autor.pbn_uid.pk
+            ret["personObjectId"] = self.autor.pbn_uid.pk
 
         if self.autor.orcid:
             ret["personOrcidId"] = self.autor.orcid
+
+        if not ret.get("personOrcidId") and not ret.get("personObjectId"):
+            return
 
         ret["statementDate"] = str(self.rekord.ostatnio_zmieniony_dla_pbn.date())
 
@@ -180,6 +184,12 @@ class Wydawnictwo_Ciagle(
             except Punktacja_Zrodla.DoesNotExist:
                 pass
 
+    # def pbn_pull_author_data(self):
+    #     from django.conf import settings
+    #     uczelnia = Uczelnia.objects.get_default()
+    #     client = self.get_client(uczelnia.pbn_app_id, uczelnia.pbn_app_token, base_url)
+    #     client.exec(command)
+
     def pbn_get_json(self):
         ret = {
             "title": self.tytul_oryginalny,
@@ -223,13 +233,37 @@ class Wydawnictwo_Ciagle(
 
         authors = []
         statements = []
+        institutions = []
+        jednostki = set()
         for elem in self.autorzy_set.all():
-            authors.append(elem.autor.pbn_get_json())
-            statements.append(elem.pbn_get_json())
+            author = elem.autor.pbn_get_json()
+
+            jednostka = elem.jednostka
+            if (
+                elem.afiliuje
+                and jednostka.pk != -1
+                and elem.jednostka.skupia_pracownikow
+            ):
+                author["affiliations"] = [jednostka.pbn_uid_id]
+                jednostki.add(elem.jednostka)
+
+            authors.append(author)
+
+            statement = elem.pbn_get_json()
+            if statement:
+                statements.append(statement)
+
         ret["authors"] = authors
         ret["statements"] = statements
 
-        pprint(ret)
+        institutions = {}
+        for jednostka in jednostki:
+            institutions[jednostka.pbn_uid_id] = {
+                "objectId": jednostka.pbn_uid_id,
+                # "polonUuid": jednostka.pbn_uid.value("object", "polonUuid"),
+                # "versionHash": jednostka.pbn_uid.value("object", "versionHash"),
+            }
+        ret["institutions"] = institutions
 
         return ret
 

@@ -133,7 +133,6 @@ class AutorAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
         "www",
         "id",
         "pbn_id",
-        "pbn_uid_id",
         "system_kadrowy_id",
         "orcid",
     ]

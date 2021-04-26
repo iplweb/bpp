@@ -19,7 +19,7 @@ from pbn_api.models import (
     Scientist,
 )
 
-from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
+from bpp.models import Jednostka, Uczelnia, Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
 from bpp.util import pbar
 
 
@@ -86,6 +86,48 @@ def pobierz_instytucje(client: PBNClient):
         )
 
 
+def integruj_uczelnie():
+    uczelnia = Uczelnia.objects.get_default()
+
+    try:
+        u = Institution.objects.get(
+            versions__contains=[{"current": True, "object": {"name": uczelnia.nazwa}}]
+        )
+    except Institution.DoesNotExist:
+        raise Exception(f"Nie umiem dopasowac uczelni po nazwie: {uczelnia.nazwa}")
+
+    if uczelnia.pbn_uid_id != u.mongoId:
+        uczelnia.pbn_uid = u
+        uczelnia.save()
+
+
+def integruj_instytucje():
+    uczelnia = Uczelnia.objects.get_default()
+    assert uczelnia.pbn_uid_id
+
+    for j in Jednostka.objects.filter(skupia_pracownikow=True):
+        try:
+            u = Institution.objects.get(
+                versions__contains=[
+                    {
+                        "current": True,
+                        "object": {"name": j.nazwa, "parentId": uczelnia.pbn_uid_id},
+                    }
+                ]
+            )
+        except Institution.MultipleObjectsReturned:
+            warnings.warn(f"Liczne dopasowania dla jednostki: {j}")
+            continue
+
+        except Institution.DoesNotExist:
+            warnings.warn(f"Brak dopasowania dla jednostki: {j}")
+            continue
+
+        if j.pbn_uid_id != u.mongoId:
+            j.pbn_uid_id = u.mongoId
+            j.save()
+
+
 def pobierz_konferencje(client: PBNClient):
     for status in ["DELETED", "ACTIVE"]:
         pobierz_mongodb(
@@ -116,6 +158,13 @@ def normalize_doi(s):
     return s.strip()
 
 
+def pobierz_prace(client: PBNClient):
+    for status in ["ACTIVE"]:  # "DELETED", "ACTIVE"]:
+        pobierz_mongodb(
+            client.get_publications(status=status, page_size=100), Publication
+        )
+
+
 def pobierz_prace_po_doi(client: PBNClient):
     for klass in Wydawnictwo_Ciagle, Wydawnictwo_Zwarte:
         for doi in pbar(
@@ -141,6 +190,8 @@ def pobierz_ludzi_z_uczelni(client: PBNClient, instutition_id):
     Ta procedura pobierze dane wszystkich osob z uczelni, mozna uruchamiac
     zamiast pobierz_ludzi
     """
+    assert instutition_id is not None
+
     for person in client.get_people_by_institution_id(instutition_id):
         autor = matchuj_autora(
             imiona=person.get("firstName"),

@@ -133,10 +133,16 @@
             {{ rekord.pk }} <small>czyli {{ rekord.describe_content_type }} o ID = {{ praca.pk }}</small>
         </td>
     </tr>
+    {% if praca.pbn_uid_id %}
+        <tr>
+            <th>PBN UID:</th>
+            <td><a target="_blank" href="{{ uczelnia.pbn_api_root }}/core/#/publication/view/{{ praca.pbn_uid_id }}/current">{{ praca.pbn_uid_id }}</a></td>
+        </tr>
+    {% endif %}
     {% if praca.pbn_id %}
         <tr>
             <th>
-                PBN ID:
+                PBN ID (historyczne):
             </th>
             <td>
                 {{ praca.pbn_id }}
@@ -297,12 +303,15 @@
     {% if praca.wydawnictwa_powiazane_set.exists %}
         <tr>
             <th>Rekordy powiązane</th>
-            <td><ol>
-                {% for elem in praca.wydawnictwa_powiazane_posortowane.all %}
-                    <li><a href="{% url "bpp:browse_praca" "wydawnictwo_zwarte" elem.pk %}">{{ elem.opis_bibliograficzny_cache|safe }}</a>
-                    </li>
-                {% endfor %}
-            </ol></td>
+            <td>
+                <ol>
+                    {% for elem in praca.wydawnictwa_powiazane_posortowane.all %}
+                        <li>
+                            <a href="{% url "bpp:browse_praca" "wydawnictwo_zwarte" elem.pk %}">{{ elem.opis_bibliograficzny_cache|safe }}</a>
+                        </li>
+                    {% endfor %}
+                </ol>
+            </td>
         </tr>
     {% endif %}
     {% if uczelnia.pokazuj_praca_recenzowana == "always" or uczelnia.pokazuj_praca_recenzowana == "logged-in" and not request.user.is_anonymous %}

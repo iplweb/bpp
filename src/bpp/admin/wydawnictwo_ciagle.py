@@ -11,7 +11,10 @@ from .core import CommitedModelAdmin, KolumnyZeSkrotamiMixin, generuj_inline_dla
 # Widget do automatycznego uzupełniania punktacji wydawnictwa ciągłego
 from .element_repozytorium import Element_RepozytoriumInline
 from .grant import Grant_RekorduInline
-from .helpers import MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET
+from .helpers import (
+    MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET,
+    sprobuj_wgrac_do_pbn,
+)
 
 from django.contrib import admin
 
@@ -238,6 +241,7 @@ class Wydawnictwo_CiagleAdmin(
     def save_model(self, request, obj, form, change):
         super(Wydawnictwo_CiagleAdmin, self).save_model(request, obj, form, change)
         sprobuj_policzyc_sloty(request, obj)
+        sprobuj_wgrac_do_pbn(request, obj)
 
 
 admin.site.register(Wydawnictwo_Ciagle, Wydawnictwo_CiagleAdmin)

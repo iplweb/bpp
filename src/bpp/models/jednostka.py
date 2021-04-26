@@ -6,22 +6,24 @@ Struktura uczelni.
 from datetime import date, timedelta
 
 from autoslug import AutoSlugField
-from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import CASCADE
 from django.db.models.functions import Coalesce
 from django.db.models.query_utils import Q
 from django.urls.base import reverse
-from django.utils import timezone
-
-from bpp.models import ModelZAdnotacjami
-from bpp.models.abstract import ModelZPBN_ID
-from bpp.models.autor import Autor, Autor_Jednostka
-from bpp.util import FulltextSearchMixin
 
 from .uczelnia import Uczelnia
 from .wydzial import Wydzial
+
+from django.contrib.postgres.search import SearchVectorField as VectorField
+
+from django.utils import timezone
+
+from bpp.models import ModelZAdnotacjami, ModelZPBN_UID
+from bpp.models.abstract import ModelZPBN_ID
+from bpp.models.autor import Autor, Autor_Jednostka
+from bpp.util import FulltextSearchMixin
 
 SORTUJ_RECZNIE = ("kolejnosc", "nazwa")
 SORTUJ_ALFABETYCZNIE = ("nazwa",)
@@ -48,7 +50,7 @@ class JednostkaManager(FulltextSearchMixin, models.Manager):
         return ordering
 
 
-class Jednostka(ModelZAdnotacjami, ModelZPBN_ID):
+class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID):
     uczelnia = models.ForeignKey(
         Uczelnia,
         CASCADE,
@@ -83,6 +85,14 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID):
     )
     email = models.EmailField("E-mail", max_length=128, blank=True, null=True)
     www = models.URLField("WWW", max_length=1024, blank=True, null=True)
+
+    pbn_uid = models.ForeignKey(
+        "pbn_api.Institution",
+        verbose_name="Odpowiednik w PBN",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+    )
 
     skupia_pracownikow = models.BooleanField(
         "Skupia pracowników",

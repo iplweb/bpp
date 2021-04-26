@@ -12,6 +12,7 @@ from django.db.models import SET_NULL, Max
 from django.urls.base import reverse
 from model_utils import Choices
 
+from ..exceptions import WillNotExportError
 from ..util import year_last_month
 from .fields import OpcjaWyswietlaniaField
 
@@ -230,6 +231,16 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         help_text="Decyduje o sposobie wyświetlania maksymalnej daty 'Do roku' w formularzach. ",
     )
 
+    pbn_api_root = models.URLField(
+        "Adres API w PBN", default="https://pbn-micro-alpha.opi.org.pl"
+    )
+    pbn_app_name = models.CharField(
+        "Nazwa aplikacji w PBN", blank=True, null=True, max_length=128
+    )
+    pbn_app_token = models.CharField(
+        "Token aplikacji w PBN", blank=True, null=True, max_length=128
+    )
+
     objects = UczelniaManager()
 
     class Meta:
@@ -273,6 +284,24 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         from wosclient.wosclient import WoSClient
 
         return WoSClient(self.clarivate_username, self.clarivate_password)
+
+    def pbn_client(self, request):
+        """
+        Zwraca klienta PBNu
+        """
+        from pbn_api import client
+
+        class UczelniaTransport(client.RequestsTransport):
+            def authorize(self, base_url, app_id, token):
+                if not request.user.pbn_token:
+                    raise WillNotExportError("Najpierw wykonaj autoryzację w PBN API")
+                self.access_token = request.user.pbn_token
+                return True
+
+        transport = UczelniaTransport(
+            self.pbn_app_name, self.pbn_app_token, self.pbn_api_root
+        )
+        return client.PBNClient(transport)
 
     def ukryte_statusy(self, dla_funkcji: str) -> List[int]:
         """

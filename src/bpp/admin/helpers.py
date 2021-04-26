@@ -358,3 +358,21 @@ def sprobuj_policzyc_sloty(request, obj):
             'Punkty dla dyscyplin dla "%s" nie będą liczone - rok poza zakresem (%i)'
             % (link_do_obiektu(obj), obj.rok),
         )
+
+
+def sprobuj_wgrac_do_pbn(request, obj):
+    from bpp.models.uczelnia import Uczelnia
+
+    client = Uczelnia.objects.get_default().pbn_client(request)
+    try:
+        client.sync_publication(obj)
+    except Exception as e:
+        messages.warning(
+            request,
+            'Nie można zsynchronizować obiektu "%s" z PBN (%s)'
+            % (link_do_obiektu(obj), e),
+        )
+    messages.success(
+        request,
+        "Dane w PBN dla rekordu %s zostały zaktualizowane" % link_do_obiektu(obj),
+    )

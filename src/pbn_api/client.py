@@ -14,7 +14,7 @@ from pbn_api.exceptions import (
 
 from django.utils.itercompat import is_iterable
 
-from bpp.models import Wydawnictwo_Ciagle
+from bpp.exceptions import WillNotExportError
 
 DEFAULT_BASE_URL = "https://pbn-micro-alpha.opi.org.pl"
 
@@ -76,25 +76,12 @@ class PageableResource:
 
 
 class OAuthMixin:
-    def authorize(self, base_url, app_id, app_token):
-        from pbn_api.conf import settings
+    @classmethod
+    def get_auth_url(klass, base_url, app_id):
+        return f"{base_url}/auth/pbn/api/registration/user/token/{app_id}"
 
-        self.access_token = getattr(settings, "PBN_CLIENT_USER_TOKEN")
-        if self.access_token:
-            return
-
-        auth_url = f"{base_url}/auth/pbn/api/registration/user/token/{app_id}"
-        print(
-            f"""I have launched a web browser with {auth_url} ,\nplease log-in,
-             then paste the redirected URL below. \n"""
-        )
-        import webbrowser
-
-        webbrowser.open(auth_url)
-        redirect_response = input("Paste the full redirect URL here:")
-        one_time_token = parse_qs(urlparse(redirect_response).query).get("ott")[0]
-        print("ONE TIME TOKEN", one_time_token)
-
+    @classmethod
+    def get_user_token(klass, base_url, app_id, app_token, one_time_token):
         headers = {
             "X-App-Id": app_id,
             "X-App-Token": app_token,
@@ -107,14 +94,37 @@ class OAuthMixin:
         except ValueError:
             raise AuthenticationResponseError(response.content)
 
-        self.access_token = response.json().get("X-User-Token")
+        return response.json().get("X-User-Token")
+
+    def authorize(self, base_url, app_id, app_token):
+        from pbn_api.conf import settings
+
+        self.access_token = getattr(settings, "PBN_CLIENT_USER_TOKEN")
+        if self.access_token:
+            return
+
+        auth_url = OAuthMixin.get_auth_url(base_url, app_id)
+
+        print(
+            f"""I have launched a web browser with {auth_url} ,\nplease log-in,
+             then paste the redirected URL below. \n"""
+        )
+        import webbrowser
+
+        webbrowser.open(auth_url)
+        redirect_response = input("Paste the full redirect URL here:")
+        one_time_token = parse_qs(urlparse(redirect_response).query).get("ott")[0]
+        print("ONE TIME TOKEN", one_time_token)
+
+        self.access_token = OAuthMixin.get_user_token(
+            base_url, app_id, app_token, one_time_token
+        )
+
         print("ACCESS TOKEN", self.access_token)
+        return True
 
 
 class RequestsTransport(OAuthMixin, PBNClientTransport):
-    def get_user_token(self):
-        self.post(self)
-
     def get(self, url, headers=None):
         sent_headers = {"X-App-Id": self.app_id, "X-App-Token": self.app_token}
 
@@ -135,7 +145,11 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
             # elif ret.json['message'] == "Forbidden":  # <== to dostaniemy, gdy token zły lub brak
 
             if hasattr(self, "authorize"):
-                self.authorize(self.base_url, self.app_id, self.app_token)
+                ret = self.authorize(self.base_url, self.app_id, self.app_token)
+                if not ret:
+                    return
+
+                # Podejmuj ponowną próbę tylko w przypadku udanej autoryzacji
                 return self.get(url, headers)
 
         if ret.status_code >= 400:
@@ -150,8 +164,11 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
             raise e
 
     def post(self, url, headers=None, body=None):
-        while not hasattr(self, "access_token"):
-            self.authorize(self.base_url, self.app_id, self.app_token)
+        if not hasattr(self, "access_token"):
+            ret = self.authorize(self.base_url, self.app_id, self.app_token)
+            if not ret:
+                return
+            return self.post(url, headers=headers, body=body)
 
         sent_headers = {
             "X-App-Id": self.app_id,
@@ -176,9 +193,6 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
                 self.authorize()
 
         if ret.status_code >= 400:
-            import pdb
-
-            pdb.set_trace()
             raise HttpException(ret.status_code, url, ret.content)
 
         try:
@@ -375,8 +389,8 @@ class PublicationsMixin:
     def get_publication_metadata(self, id):
         return self.transport.get(f"/api/v1/publications/id/{id}/metadata")
 
-    def get_publications(self):
-        return self.transport.get_pages("/api/v1/publications/page")
+    def get_publications(self, **kw):
+        return self.transport.get_pages("/api/v1/publications/page", **kw)
 
     def get_publication_by_version(self, version):
         return self.transport.get(f"/api/v1/publications/version/{version}")
@@ -404,11 +418,46 @@ class PBNClient(
         self.transport = transport
 
     def post_publication(self, json):
-        self.transport.post("/api/v1/publications", body=json)
+        return self.transport.post("/api/v1/publications", body=json)
+
+    def upload_publication(self, rec):
+        assert rec.doi
+        js = rec.pbn_get_json()
+        import json
+
+        print(json.dumps(js))
+        pprint(js)
+        return self.post_publication(js)
+
+    def download_publication(self, doi=None, objectId=None):
+        from .integrator import zapisz_mongodb
+        from .models import Publication
+
+        assert doi or objectId
+
+        if doi:
+            data = self.get_publication_by_doi(doi)
+        elif objectId:
+            data = self.get_publication_by_id(objectId)
+
+        return zapisz_mongodb(data, Publication)
+
+    def sync_publication(self, pub):
+        if not pub.doi:
+            raise WillNotExportError("Ustaw DOI dla publikacji")
+
+        ret = self.upload_publication(pub)
+
+        publication = self.download_publication(objectId=ret["objectId"])
+        if pub.pbn_uid_id != ret["objectId"]:
+            pub.pbn_uid = publication
+            pub.save()
 
     def demo(self):
-        js = Wydawnictwo_Ciagle.objects.filter(rok__gte=2020).first().pbn_get_json()
-        self.post_publication(js)
+        from bpp.models import Wydawnictwo_Ciagle
+
+        pub = Wydawnictwo_Ciagle.objects.filter(rok=2020).exclude(doi=None).first()
+        self.sync_publication(pub)
 
     def exec(self, cmd):
         try:

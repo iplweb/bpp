@@ -187,7 +187,6 @@ INSTALLED_APPS = [
     "session_security",
     "notifications",
     "integrator2",
-    "eksport_pbn",
     "nowe_raporty",
     "rozbieznosci_dyscyplin",
     "loginas",
