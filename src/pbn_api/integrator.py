@@ -1,11 +1,8 @@
 import warnings
 
-from import_common.core import (
-    matchuj_autora,
-    matchuj_publikacje,
-    matchuj_wydawce,
-    matchuj_zrodlo,
-)
+from django.db.models import F, Func, Q
+
+from import_common.core import matchuj_autora, matchuj_publikacje, matchuj_wydawce
 from pbn_api.client import PBNClient
 from pbn_api.exceptions import HttpException, SciencistDoesNotExist
 from pbn_api.models import (
@@ -19,7 +16,15 @@ from pbn_api.models import (
     Scientist,
 )
 
-from bpp.models import Jednostka, Uczelnia, Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
+from bpp.exceptions import WillNotExportError
+from bpp.models import (
+    Jednostka,
+    Jezyk,
+    Uczelnia,
+    Wydawnictwo_Ciagle,
+    Wydawnictwo_Zwarte,
+    Zrodlo,
+)
 from bpp.util import pbar
 
 
@@ -32,11 +37,37 @@ def integruj_jezyki(client):
             lang = Language.objects.create(
                 code=remote_lang["code"], language=remote_lang["language"]
             )
-            continue
 
         if remote_lang["language"] != lang.language:
             lang.language = remote_lang["language"]
             lang.save()
+
+    # Ustaw odpowiedniki w PBN dla jęyzków z bazy danych:
+    for elem in Language.objects.all():
+        try:
+            qry = Q(skrot__istartswith=elem.language.get("639-2")) | Q(
+                skrot__istartswith=elem.code
+            )
+            if elem.language.get("639-1"):
+                qry |= Q(skrot__istartswith=elem.language["639-1"])
+
+            jezyk = Jezyk.objects.get(qry)
+        except Jezyk.DoesNotExist:
+            if elem.language.get("pl") is not None:
+                try:
+                    jezyk = Jezyk.objects.get(
+                        nazwa__istartswith=elem.language.get("pl")
+                    )
+                except Jezyk.DoesNotExist:
+                    warnings.warn(f"Brak jezyka po stronie BPP: {elem}")
+                    continue
+            else:
+                warnings.warn(f"Brak jezyka po stronie BPP: {elem}")
+                continue
+
+        if jezyk.pbn_uid_id != elem.pk:
+            jezyk.pbn_uid = elem
+            jezyk.save()
 
 
 def integruj_kraje(client):
@@ -74,8 +105,8 @@ def zapisz_mongodb(elem, klass):
     return v
 
 
-def pobierz_mongodb(elems, klass):
-    for elem in pbar(elems, elems.total_elements):
+def pobierz_mongodb(elems, klass, pbar_label="pobierz_mongodb"):
+    for elem in pbar(elems, elems.total_elements, pbar_label):
         zapisz_mongodb(elem, klass)
 
 
@@ -138,7 +169,9 @@ def pobierz_konferencje(client: PBNClient):
 def pobierz_zrodla(client: PBNClient):
     for status in ["DELETED", "ACTIVE"]:
         pobierz_mongodb(
-            client.get_journals_mnisw(status=status, page_size=500), Journal
+            client.get_journals(status=status, page_size=5000),
+            Journal,
+            pbar_label="pobierz_zrodla",
         )
 
 
@@ -240,17 +273,55 @@ def integruj_autorow_z_uczelni(client: PBNClient, instutition_id):
 
 
 def integruj_zrodla():
-    for elem in Journal.objects.all():
-        z = matchuj_zrodlo(
-            elem.value("object", "title"),
-            elem.value_or_none("object", "issn"),
-            elem.value_or_none("object", "eissn"),
-        )
+    def fun(qry):
+        try:
+            u = Journal.objects.get(qry)
+        except Journal.DoesNotExist:
+            warnings.warn(f"Nie znaleziono dopasowania w PBN dla {zrodlo}")
+            return False
+        except Journal.MultipleObjectsReturned:
+            warnings.warn(
+                f"Znaleziono liczne dopasowania w PBN dla {zrodlo}, wybieram to z najdłuższym opisem"
+            )
+            u = (
+                Journal.objects.filter(qry)
+                .annotate(json_len=Func(F("versions"), function="pg_column_size"))
+                .order_by("-json_len")
+                .first()
+            )
 
-        if z is not None:
-            if z.pbn_uid_id is None:
-                z.pbn_uid_id = elem
-                z.save()
+        zrodlo.pbn_uid = u
+        zrodlo.save()
+        return True
+
+    for zrodlo in pbar(
+        Zrodlo.objects.filter(pbn_uid_id=None), label="Integracja zrodel"
+    ):
+        qry = None
+
+        if zrodlo.issn:
+            qry = Q(
+                versions__contains=[{"current": True, "object": {"issn": zrodlo.issn}}]
+            )
+            if fun(qry):
+                continue
+
+        if zrodlo.e_issn:
+            qry = Q(
+                versions__contains=[
+                    {"current": True, "object": {"eissn": zrodlo.e_issn}}
+                ]
+            )
+            if fun(qry):
+                continue
+
+        if qry is None:
+            qry = Q(
+                versions__contains=[
+                    {"current": True, "object": {"title": zrodlo.nazwa}}
+                ]
+            )
+            fun(qry)
 
 
 def integruj_wydawcow():
@@ -277,3 +348,23 @@ def integruj_publikacje():
                     p.pbn_uid_id = elem.pk
                     p.save()
                 break
+
+
+def synchronizuj_publikacje(client, skip=0):
+    for rec in pbar(
+        Wydawnictwo_Ciagle.objects.filter(rok__gte=2018)
+        .exclude(charakter_formalny__rodzaj_pbn=None)
+        .exclude(Q(doi=None) & (Q(public_www=None) | Q(www=None)))
+    ):
+        try:
+            client.sync_publication(rec)
+        except HttpException as e:
+            if e.status_code == 500:
+                warnings.warn(
+                    f"{rec.pk},{rec.tytul_oryginalny},{rec.rok},PBN Error 500: {e.content}"
+                )
+                continue
+        except WillNotExportError as e:
+            warnings.warn(
+                f"{rec.pk},{rec.tytul_oryginalny},{rec.rok},nie wyeksportuje, bo: {e}"
+            )

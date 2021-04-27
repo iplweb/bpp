@@ -231,6 +231,20 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         help_text="Decyduje o sposobie wyświetlania maksymalnej daty 'Do roku' w formularzach. ",
     )
 
+    pbn_integracja = models.BooleanField(
+        default=False,
+        verbose_name="Czy używać integracji z PBN?",
+        help_text="Wymaga prawidłowo wypełnionych pól 'Adres API w PBN', 'Nazwa aplikacji w PBN', "
+        "'Token aplikacji w PBN' oraz łączności między serwerem BPP a serwerem PBN. ",
+    )
+
+    pbn_aktualizuj_na_biezaco = models.BooleanField(
+        default=False,
+        verbose_name="Aktualizuj PBN na bieżąco",
+        help_text="Aktualizuj rekordy w PBN przy każdym zapisie rekordu. Może spowolnić prace. W przypadku "
+        "braku dostępu do serwerów PBN nie uniemożliwia edycji rekordów. ",
+    )
+
     pbn_api_root = models.URLField(
         "Adres API w PBN", default="https://pbn-micro-alpha.opi.org.pl"
     )
@@ -239,6 +253,18 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
     )
     pbn_app_token = models.CharField(
         "Token aplikacji w PBN", blank=True, null=True, max_length=128
+    )
+
+    pbn_api_user = models.ForeignKey(
+        "bpp.BppUser",
+        on_delete=SET_NULL,
+        verbose_name="Użytkownik BPP dla PBN API",
+        help_text="Użytkownik po stronie BPP który bedzie odpowiedzialny za operacje "
+        "przeprowadzane w tle przez procesy działające na serwerze i pobierające dane z PBN np w nocy. Jeżeli ten "
+        "użytkownik dokona autoryzacji w PBN za pomocą przeglądarki, to możliwe będzie również aktualizowanie "
+        "(wgrywanie) rekordów przez niego na serwer PBN. ",
+        blank=True,
+        null=True,
     )
 
     objects = UczelniaManager()
@@ -262,8 +288,30 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
             if self.obca_jednostka.skupia_pracownikow:
                 raise ValidationError(
                     {
-                        "obca_jednostka": "Obca jednostka musi faktycznei być obca. Wybrana ma ustaloną wartość "
+                        "obca_jednostka": "Obca jednostka musi faktycznie być obca. Wybrana ma ustaloną wartość "
                         "'skupia pracowników' na PRAWDA, czyli nie jest obcą jednostką. "
+                    }
+                )
+
+        if self.pbn_aktualizuj_na_biezaco and not self.pbn_integracja:
+            raise ValidationError(
+                {
+                    "pbn_aktualizuj_na_biezaco": "Jeżeli nie używasz integracji z PBN, odznacz również i to pole. "
+                }
+            )
+
+        if self.pbn_integracja:
+            # Wykonaj próbne pobranie rekordu z PBNu
+            client = self.pbn_client()
+            try:
+                client.get_languages()
+            except Exception as e:
+                raise ValidationError(
+                    {
+                        "pbn_integracja": f"Nie można pobrać przykładowych rekordów przez API celem weryfikacji. "
+                        f"Kod błędu: {e}. "
+                        f"Jeżeli bład nie dotyczy problemów z siecią lub z autoryzacją, skontaktuj się"
+                        f"z administratorem. "
                     }
                 )
 
@@ -285,7 +333,7 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
 
         return WoSClient(self.clarivate_username, self.clarivate_password)
 
-    def pbn_client(self, request):
+    def pbn_client(self, pbn_user_token=None):
         """
         Zwraca klienta PBNu
         """
@@ -293,13 +341,20 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
 
         class UczelniaTransport(client.RequestsTransport):
             def authorize(self, base_url, app_id, token):
-                if not request.user.pbn_token:
-                    raise WillNotExportError("Najpierw wykonaj autoryzację w PBN API")
-                self.access_token = request.user.pbn_token
+                if not pbn_user_token:
+                    raise WillNotExportError(
+                        "Najpierw wykonaj autoryzację w PBN API za pomocą menu dostępnego "
+                        "na głównej stronie (operacje -> autoryzuj w PBN)"
+                    )
+                self.access_token = pbn_user_token
                 return True
 
+        assert self.pbn_app_name, "Brak nazwy aplikacji dla API PBN"
+        assert self.pbn_app_token, "Brak tokena aplikacji dla API PBN"
+        assert self.pbn_api_root, "Brak adresu URL dla API PBN"
+
         transport = UczelniaTransport(
-            self.pbn_app_name, self.pbn_app_token, self.pbn_api_root
+            self.pbn_app_name, self.pbn_app_token, self.pbn_api_root, pbn_user_token
         )
         return client.PBNClient(transport)
 

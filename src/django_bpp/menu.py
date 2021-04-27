@@ -25,6 +25,7 @@ PBN_MENU = [
     ("Wydawcy", "/admin/pbn_api/publisher"),
     ("Naukowcy", "/admin/pbn_api/scientist"),
     ("Publikacje", "/admin/pbn_api/publication"),
+    ("Przesłane dane", "/admin/pbn_api/sentdata"),
 ]
 
 IMPORT_DBF_MENU_1 = [

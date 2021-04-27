@@ -18,8 +18,11 @@ def load_fixtures(apps, schema_editor):
     for elem in get_fixture("funkcja_autora").values():
         Funkcja_Autora.objects.create(**elem)
 
+    Jezyk = apps.get_model("bpp", "Jezyk")
+    for elem in get_fixture("jezyk").values():
+        Jezyk.objects.create(**elem)
+
     for fixture in [
-        "jezyk.json",
         "plec.json",
         "rodzaj_zrodla.json",
         "status_korekty.json",

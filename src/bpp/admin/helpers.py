@@ -8,10 +8,13 @@ from django.forms import BaseInlineFormSet
 from django.forms.widgets import Textarea
 from django.urls import reverse
 
+from pbn_api.exceptions import AccessDeniedException, SameDataUploadedRecently
+
 from django.contrib import messages
 from django.contrib.admin.utils import quote
 
 from django.utils.html import format_html
+from django.utils.safestring import mark_safe
 
 from bpp.models import Status_Korekty
 from bpp.models.sloty.core import ISlot
@@ -334,7 +337,7 @@ def link_do_obiektu(obj):
         # current_app=self.admin_site.name,
     )
     # Add a link to the object's change form if the user can edit the obj.
-    return format_html('<a href="{}">{}</a>', urlquote(obj_url), obj)
+    return format_html('<a href="{}">{}</a>', urlquote(obj_url), mark_safe(obj))
 
 
 def sprobuj_policzyc_sloty(request, obj):
@@ -363,16 +366,58 @@ def sprobuj_policzyc_sloty(request, obj):
 def sprobuj_wgrac_do_pbn(request, obj):
     from bpp.models.uczelnia import Uczelnia
 
-    client = Uczelnia.objects.get_default().pbn_client(request)
+    if obj.charakter_formalny.rodzaj_pbn is None:
+        messages.info(
+            request,
+            'Rekord "%s" nie będzie eksportowany do PBN zgodnie z ustawieniem dla charakteru formalnego.'
+            % link_do_obiektu(obj),
+        )
+
+    uczelnia = Uczelnia.objects.get_default()
+    if uczelnia is None:
+        messages.info(
+            request,
+            'Rekord "%s" nie zostanie wyeksportowany do PBN, ponieważ w systemie brakuje obiektu "Uczelnia", a'
+            " co za tym idzie, jakchkolwiek ustawień" % link_do_obiektu(obj),
+        )
+        return
+
+    if not uczelnia.pbn_integracja or not uczelnia.pbn_aktualizuj_na_biezaco:
+        return
+
+    client = uczelnia.pbn_client(request.user.pbn_token)
     try:
         client.sync_publication(obj)
+
+    except SameDataUploadedRecently as e:
+        messages.info(
+            request,
+            f'Identyczne dane rekordu "{link_do_obiektu(obj)}" zostały wgrane do PBN w dniu {e}. '
+            f"Nie aktualizuję w PBN API. Jeżeli chcesz wysłać ten rekord do PBN, musisz dokonać jakiejś zmiany lub "
+            f"usunąć informacje o wcześniej wysłanych danych do PBN (Redagowanie -> PBN API -> Wysłane informacje). "
+            f'<a target=_blank href="{obj.link_do_pbn()}">Kliknij tutaj, aby otworzyć w PBN</a>. ',
+        )
+        return
+
+    except AccessDeniedException as e:
+        messages.warning(
+            request,
+            f'Nie można zsynchronizować obiektu "{link_do_obiektu(obj)}" z PBN pod adresem '
+            f"API {e}. Brak dostępu -- "
+            f'<a target=_blank href="{reverse("pbn_api:authorize")}">kliknij tutaj, aby autoryzować sesję w PBN</a>.',
+        )
+        return
+
     except Exception as e:
         messages.warning(
             request,
-            'Nie można zsynchronizować obiektu "%s" z PBN (%s)'
+            'Nie można zsynchronizować obiektu "%s" z PBN. Kod błędu: %r.'
             % (link_do_obiektu(obj), e),
         )
+        return
+
     messages.success(
         request,
-        "Dane w PBN dla rekordu %s zostały zaktualizowane" % link_do_obiektu(obj),
+        f"Dane w PBN dla rekordu {link_do_obiektu(obj)} zostały zaktualizowane. "
+        f'<a target=_blank href="{obj.link_do_pbn()}">Kliknij tutaj, aby otworzyć w PBN</a>. ',
     )

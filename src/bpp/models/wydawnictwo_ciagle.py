@@ -15,6 +15,8 @@ from bpp.models import (
     ModelOpcjonalnieNieEksportowanyDoAPI,
     ModelZMiejscemPrzechowywania,
     ModelZPBN_UID,
+    parse_informacje,
+    wez_zakres_stron,
 )
 from bpp.models.abstract import (
     BazaModeluOdpowiedzialnosciAutorow,
@@ -41,7 +43,6 @@ from bpp.models.abstract import (
     ModelZPubmedID,
     ModelZRokiem,
     ModelZWWW,
-    PBNSerializerHelperMixin,
     Wydawnictwo_Baza,
 )
 from bpp.models.const import (
@@ -52,6 +53,7 @@ from bpp.models.const import (
 )
 from bpp.models.system import Zewnetrzna_Baza_Danych
 from bpp.models.util import ZapobiegajNiewlasciwymCharakterom
+from bpp.util import strip_html
 
 
 class Wydawnictwo_Ciagle_Autor(
@@ -136,7 +138,6 @@ class Wydawnictwo_Ciagle(
     ModelZInformacjaZ,
     ModelZAdnotacjami,
     ModelZCharakterem,
-    PBNSerializerHelperMixin,
     ModelZOpenAccessWydawnictwoCiagle,
     ModelZeZnakamiWydawniczymi,
     ModelZAktualizacjaDlaPBN,
@@ -192,7 +193,7 @@ class Wydawnictwo_Ciagle(
 
     def pbn_get_json(self):
         ret = {
-            "title": self.tytul_oryginalny,
+            "title": strip_html(self.tytul_oryginalny),
             "year": self.rok,
             # "issue" ??
         }
@@ -200,8 +201,9 @@ class Wydawnictwo_Ciagle(
         if self.tom:
             ret["volume"] = self.tom
 
-        if self.strony:
-            ret["pagesFromTo"] = self.strony
+        zakres_stron = self.zakres_stron()
+        if zakres_stron:
+            ret["pagesFromTo"] = zakres_stron
 
         if self.doi:
             ret["doi"] = self.doi
@@ -229,6 +231,9 @@ class Wydawnictwo_Ciagle(
         elif self.www:
             ret["publicUri"] = self.www
 
+        if not ret.get("doi") and not ret.get("publicUri"):
+            raise WillNotExportError("Musi być DOI lub adres WWW")
+
         ret["journal"] = self.zrodlo.pbn_get_json()
 
         authors = []
@@ -244,8 +249,14 @@ class Wydawnictwo_Ciagle(
                 and jednostka.pk != -1
                 and elem.jednostka.skupia_pracownikow
             ):
-                author["affiliations"] = [jednostka.pbn_uid_id]
-                jednostki.add(elem.jednostka)
+                if jednostka.pbn_uid_id is None:
+                    # raise WillNotExportError(
+                    #     f"Jednostka {jednostka} nie ma ustawionego odpowiednika w PBN"
+                    # )
+                    pass
+                else:
+                    author["affiliations"] = [jednostka.pbn_uid_id]
+                    jednostki.add(elem.jednostka)
 
             authors.append(author)
 
@@ -266,6 +277,31 @@ class Wydawnictwo_Ciagle(
         ret["institutions"] = institutions
 
         return ret
+
+    def numer_wydania(self):  # issue
+        if hasattr(self, "nr_zeszytu"):
+            if self.nr_zeszytu:
+                return self.nr_zeszytu.strip()
+
+        res = parse_informacje(self.informacje, "numer")
+        if res is not None:
+            return res.strip()
+
+        return
+
+    def numer_tomu(self):
+        if hasattr(self, "tom"):
+            if self.tom:
+                return self.tom
+        return parse_informacje(self.informacje, "tom")
+
+    def zakres_stron(self):
+        if self.strony:
+            return self.strony
+        else:
+            strony = wez_zakres_stron(self.szczegoly)
+            if strony:
+                return strony
 
 
 class Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych(models.Model):

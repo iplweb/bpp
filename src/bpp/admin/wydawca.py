@@ -42,7 +42,10 @@ class MaAliasListFilter(admin.SimpleListFilter):
 
 @admin.register(Wydawca)
 class WydawcaAdmin(admin.ModelAdmin):
-    search_fields = ["nazwa", "alias_dla__nazwa", "pbn_uid_id"]
+    search_fields = [
+        "nazwa",
+        "alias_dla__nazwa",
+    ]
     autocomplete_fields = ["alias_dla", "pbn_uid"]
     list_display = ["nazwa", "alias_dla", "pbn_uid_id"]
     list_filter = [MaAliasListFilter, PBN_UID_IDObecnyFilter]

@@ -142,6 +142,8 @@ class Wydawnictwo_CiagleAdmin(
 
     form = Wydawnictwo_CiagleForm
 
+    ordering = ("-ostatnio_zmieniony",)
+
     list_display = [
         "tytul_oryginalny",
         "zrodlo_col",

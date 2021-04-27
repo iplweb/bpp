@@ -197,6 +197,37 @@ class Zrodlo(ModelZAdnotacjami, ModelZISSN):
 
     def pbn_get_json(self):
         if self.pbn_uid_id is None:
+            ret = {"title": self.nazwa}
+            if self.wydawca:
+                ret["publisher"] = {"name": self.wydawca}
+            if self.issn:
+                ret["issn"] = self.issn
+            if self.www:
+                ret["websiteLink"] = self.www
+            if self.e_issn:
+                ret["eissn"] = self.e_issn
+            return ret
+
+            #     "issue": {
+            #       "doi": "string",
+            #       "number": "string",
+            #       "objectId": "string",
+            #       "publishedYear": 0,
+            #       "versionHash": "string",
+            #       "volume": "string",
+            #       "year": "string"
+            #     },
+            #     "mniswId": 0,
+            #     "objectId": "string",
+            #     "publisher": {
+            #       "mniswId": 0,
+            #       "name": "string",
+            #       "objectId": "string",
+            #       "versionHash": "string"
+            #     },
+            #     "title": "string",
+            #     "versionHash": "string",
+            #     "websiteLink": "string"
             raise WillNotExportError(
                 f'Zrodlo "{self.nazwa}" nie ma określonego odpowiednika w PBN'
             )

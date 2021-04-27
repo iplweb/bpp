@@ -20,3 +20,11 @@ class SciencistDoesNotExist(Exception):
 
 class AuthenticationResponseError(Exception):
     pass
+
+
+class IntegracjaWylaczonaException(Exception):
+    pass
+
+
+class SameDataUploadedRecently(Exception):
+    pass

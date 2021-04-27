@@ -71,9 +71,12 @@ class UczelniaAdmin(
             {
                 "classes": ("grp-collapse grp-open",),
                 "fields": (
+                    "pbn_integracja",
+                    "pbn_aktualizuj_na_biezaco",
                     "pbn_api_root",
                     "pbn_app_name",
                     "pbn_app_token",
+                    "pbn_api_user",
                 ),
             },
         ),

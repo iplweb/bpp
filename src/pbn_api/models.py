@@ -1,6 +1,8 @@
 # Create your models here.
 from django.db import models
 
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields import JSONField
 
 from django.utils.functional import cached_property
@@ -63,6 +65,10 @@ class BasePBNMongoDBModel(BasePBNModel):
 
 
 class Institution(BasePBNMongoDBModel):
+    class Meta:
+        verbose_name = "Instytucja w PBN API"
+        verbose_name_plural = "Instytucje w PBN API"
+
     def name(self):
         return self.value("object", "name")
 
@@ -98,6 +104,10 @@ class Institution(BasePBNMongoDBModel):
 
 
 class Conference(BasePBNMongoDBModel):
+    class Meta:
+        verbose_name = "Konferencja w PBN API"
+        verbose_name_plural = "Konferencje w PBN API"
+
     def fullName(self):
         return self.value("object", "fullName")
 
@@ -118,6 +128,10 @@ class Conference(BasePBNMongoDBModel):
 
 
 class Journal(BasePBNMongoDBModel):
+    class Meta:
+        verbose_name = "Zródło w PBN API"
+        verbose_name_plural = "Zródła w PBN API"
+
     def title(self):
         return self.value("object", "title")
 
@@ -135,6 +149,10 @@ class Journal(BasePBNMongoDBModel):
 
 
 class Publisher(BasePBNMongoDBModel):
+    class Meta:
+        verbose_name = "Wydawca w PBN API"
+        verbose_name_plural = "Wydawcy w PBN API"
+
     def publisherName(self):
         return self.value("object", "publisherName")
 
@@ -146,6 +164,10 @@ class Publisher(BasePBNMongoDBModel):
 
 
 class Scientist(BasePBNMongoDBModel):
+    class Meta:
+        verbose_name = "Osoba w PBN API"
+        verbose_name_plural = "Osoby w PBN API"
+
     def lastName(self):
         return self.value("object", "lastName")
 
@@ -172,6 +194,10 @@ class Scientist(BasePBNMongoDBModel):
 
 
 class Publication(BasePBNMongoDBModel):
+    class Meta:
+        verbose_name = "Publikacja w PBN API"
+        verbose_name_plural = "Publikacje w PBN API"
+
     def title(self):
         return self.value("object", "title")
 
@@ -192,3 +218,48 @@ class Publication(BasePBNMongoDBModel):
 
     def __str__(self):
         return f"{self.title()}, {self.year()}, {self.doi()}"
+
+
+class SentDataManager(models.Manager):
+    def get_for_rec(self, rec):
+        return self.get(
+            object_id=rec.pk, content_type=ContentType.objects.get_for_model(rec)
+        )
+
+    def check_if_needed(self, rec, data: dict):
+        try:
+            sd = self.get_for_rec(rec)
+        except SentData.DoesNotExist:
+            return True
+
+        if sd.data_sent != data:
+            return True
+
+        return False
+
+    def updated(self, rec, data: dict):
+        try:
+            sd = self.get_for_rec(rec)
+        except SentData.DoesNotExist:
+            self.create(object=rec, data_sent=data)
+            return
+        sd.data_sent = data
+        sd.save()
+
+
+class SentData(models.Model):
+    content_type = models.ForeignKey(
+        "contenttypes.ContentType", on_delete=models.CASCADE
+    )
+    object_id = models.PositiveIntegerField(db_index=True)
+
+    object = GenericForeignKey()
+
+    data_sent = JSONField()
+    last_updated_on = models.DateTimeField(auto_now=True)
+
+    objects = SentDataManager()
+
+    class Meta:
+        verbose_name = "Informacja o wysłanych danych"
+        verbose_name_plural = "Informacje o wysłanych danych"

@@ -10,11 +10,11 @@ from pbn_api.exceptions import (
     AuthenticationResponseError,
     HttpException,
     PraceSerwisoweException,
+    SameDataUploadedRecently,
 )
+from pbn_api.models import SentData
 
 from django.utils.itercompat import is_iterable
-
-from bpp.exceptions import WillNotExportError
 
 DEFAULT_BASE_URL = "https://pbn-micro-alpha.opi.org.pl"
 
@@ -23,11 +23,12 @@ class PBNClientTransport:
     def __init__(self, app_id, app_token, base_url, user_token=None):
         self.app_id = app_id
         self.app_token = app_token
-        self.user_token = user_token
 
         self.base_url = base_url
         if self.base_url is None:
             self.base_url = DEFAULT_BASE_URL
+
+        self.access_token = user_token
 
 
 class PageableResource:
@@ -99,9 +100,12 @@ class OAuthMixin:
     def authorize(self, base_url, app_id, app_token):
         from pbn_api.conf import settings
 
+        if self.access_token:
+            return True
+
         self.access_token = getattr(settings, "PBN_CLIENT_USER_TOKEN")
         if self.access_token:
-            return
+            return True
 
         auth_url = OAuthMixin.get_auth_url(base_url, app_id)
 
@@ -128,8 +132,10 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
     def get(self, url, headers=None):
         sent_headers = {"X-App-Id": self.app_id, "X-App-Token": self.app_token}
 
-        if hasattr(self, "access_token"):
-            sent_headers["X-User-Token"] = self.access_token
+        # Jeżeli ustawimy taki nagłówek dla "niewinnych" zapytań GET, to PBN
+        # API odrzuca takie połączenie z kodem 403, stąd nie:
+        # if hasattr(self, "access_token"):
+        #     sent_headers["X-User-Token"] = self.access_token
 
         if headers is not None:
             sent_headers.update(headers)
@@ -421,13 +427,15 @@ class PBNClient(
         return self.transport.post("/api/v1/publications", body=json)
 
     def upload_publication(self, rec):
-        assert rec.doi
         js = rec.pbn_get_json()
-        import json
-
-        print(json.dumps(js))
-        pprint(js)
-        return self.post_publication(js)
+        needed = SentData.objects.check_if_needed(rec, js)
+        if not needed:
+            raise SameDataUploadedRecently(
+                SentData.objects.get_for_rec(rec).last_updated_on
+            )
+        ret = self.post_publication(js)
+        SentData.objects.updated(rec, js)
+        return ret
 
     def download_publication(self, doi=None, objectId=None):
         from .integrator import zapisz_mongodb
@@ -443,8 +451,8 @@ class PBNClient(
         return zapisz_mongodb(data, Publication)
 
     def sync_publication(self, pub):
-        if not pub.doi:
-            raise WillNotExportError("Ustaw DOI dla publikacji")
+        # if not pub.doi:
+        #     raise WillNotExportError("Ustaw DOI dla publikacji")
 
         ret = self.upload_publication(pub)
 

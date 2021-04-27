@@ -11,6 +11,7 @@ from pbn_api.models import (
     Publication,
     Publisher,
     Scientist,
+    SentData,
 )
 
 from django.contrib import admin
@@ -122,3 +123,10 @@ class ScientistAdmin(BaseMongoDBAdmin):
 @admin.register(Publication)
 class PublicationAdmin(BaseMongoDBAdmin):
     list_display = ["title", "type", "volume", "year", "publicUri", "doi"]
+
+
+@admin.register(SentData)
+class SentDataAdmin(admin.ModelAdmin):
+    list_display = ["object", "last_updated_on"]
+    ordering = ("-last_updated_on",)
+    readonly_fields = ["content_type", "object_id", "data_sent"]

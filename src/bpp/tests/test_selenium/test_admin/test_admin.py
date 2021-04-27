@@ -2,7 +2,7 @@
 
 from selenium.webdriver.support.expected_conditions import alert_is_present
 
-from bpp.models.const import CHARAKTER_OGOLNY_KSIAZKA
+from bpp.models.const import CHARAKTER_OGOLNY_KSIAZKA, TO_AUTOR
 
 try:
     from django.core.urlresolvers import reverse
@@ -15,7 +15,6 @@ from model_mommy import mommy
 from selenium.webdriver.support.wait import WebDriverWait
 
 from bpp.models import (
-    TO_AUTOR,
     Autor,
     Charakter_Formalny,
     Jednostka,
@@ -380,8 +379,7 @@ def test_admin_wydawnictwo_ciagle_dowolnie_zapisane_nazwisko(
     xp1 = "/html/body/div[2]/article/div/form/div/div[1]/ul/li/a"
     wait_for(lambda: len(browser.find_by_xpath(xp1)) > 0)
     elem = browser.find_by_xpath(xp1)
-    show_element(browser, elem[0])
-    elem.click()
+    proper_click_element(browser, elem[0])
 
     browser.find_by_xpath(
         "/html/body/div[2]/article/div/form/div/div[1]/div[2]/div/a"
