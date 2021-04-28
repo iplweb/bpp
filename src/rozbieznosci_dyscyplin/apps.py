@@ -21,22 +21,26 @@ class RozbieznosciDyscyplinConfig(AppConfig):
             RozbieznosciView,
         )
 
-        if ("migrate" not in sys.argv) and ("makemigrations" not in sys.argv):
-            for klass in (
-                BrakPrzypisaniaView,
-                RozbieznePrzypisaniaView,
-                RozbieznosciView,
-            ):
-                try:
-                    klass.objects.first()
-                except OperationalError as e:
-                    warnings.warn(
-                        "Nie można zweryfikować poprawności działania aplikacji rozbieznosci_dyscyplin "
-                        "z powodu problemu z bazą danych (%s)" % e
-                    )
-                except ProgrammingError:
-                    warnings.warn(
-                        "Jeden lub wszystkie z widoków dla aplikacji rozbieznosc_dyscyplin nie istnieje. "
-                        "Prawdopodobnie moze miec to zwiazek z niedokonczona migracja. Prosze o weryfikacje. "
-                        "Kod błędu: %s"
-                    )
+        IGNORE_ON = ["migrate", "makemigrations", "compress"]
+        for elem in IGNORE_ON:
+            if elem in sys.argv:
+                return
+
+        for klass in (
+            BrakPrzypisaniaView,
+            RozbieznePrzypisaniaView,
+            RozbieznosciView,
+        ):
+            try:
+                klass.objects.first()
+            except OperationalError as e:
+                warnings.warn(
+                    "Nie można zweryfikować poprawności działania aplikacji rozbieznosci_dyscyplin "
+                    "z powodu problemu z bazą danych (%s)" % e
+                )
+            except ProgrammingError:
+                warnings.warn(
+                    "Jeden lub wszystkie z widoków dla aplikacji rozbieznosc_dyscyplin nie istnieje. "
+                    "Prawdopodobnie moze miec to zwiazek z niedokonczona migracja. Prosze o weryfikacje. "
+                    "Kod błędu: %s"
+                )
