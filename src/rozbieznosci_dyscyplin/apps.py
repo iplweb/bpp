@@ -2,7 +2,7 @@ import sys
 import warnings
 
 from django.apps import AppConfig
-from django.db import ProgrammingError
+from django.db import OperationalError, ProgrammingError
 
 
 class RozbieznosciDyscyplinConfig(AppConfig):
@@ -29,8 +29,14 @@ class RozbieznosciDyscyplinConfig(AppConfig):
             ):
                 try:
                     klass.objects.first()
+                except OperationalError as e:
+                    warnings.warn(
+                        "Nie można zweryfikować poprawności działania aplikacji rozbieznosci_dyscyplin "
+                        "z powodu problemu z bazą danych (%s)" % e
+                    )
                 except ProgrammingError:
                     warnings.warn(
                         "Jeden lub wszystkie z widoków dla aplikacji rozbieznosc_dyscyplin nie istnieje. "
                         "Prawdopodobnie moze miec to zwiazek z niedokonczona migracja. Prosze o weryfikacje. "
+                        "Kod błędu: %s"
                     )
