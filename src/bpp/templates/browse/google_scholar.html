@@ -1,0 +1,23 @@
+<meta name="citation_title"
+      content="{{ praca.tytul_oryginalny }}">
+{% for autor in autorzy %}
+    <meta name="citation_author" content="{{ autor }}">
+{% endfor %}
+<meta name="citation_publication_date" content="{{ praca.rok }}">
+{% if praca.zrodlo_id %}
+    <meta name="citation_journal_title" content="{{ praca.zrodlo }}">
+{% endif %}
+{% if praca.tom %}
+    <meta name="citation_volume" content="{{ praca.tom }}">
+{% endif %}
+{# TODO: <meta name="citation_issue" content="20"> #}
+{% if praca.strony %}
+    <meta name="citation_firstpage" content="{{ praca.pierwsza_strona }}">
+    <meta name="citation_lastpage" content="{{ praca.ostatnia_strona }}">
+{% endif %}
+{% if praca.www %}
+    <meta name="citation_pdf_url" content="{{ praca.www }}">
+{% endif %}
+{% if praca.public_www %}
+    <meta name="citation_pdf_url" content="{{ praca.public_www }}">
+{% endif %}

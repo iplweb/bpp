@@ -21,14 +21,18 @@
                 <li>{{ elem.dyscyplina }}</li>
             {% endfor %}</ul>
     {% endif %}
+    {% if zrodlo.pbn_uid_id %}
+        <p><a title="PBN UID: {{ zrodlo.pbn_uid_id }}" target="_blank" href="{{ uczelnia.pbn_api_root }}/core/#/journal/view/{{ zrodlo.pbn_uid_id }}/current">
+            Kliknij, aby pokazać w PBN
+        </a></p>
+    {% endif %}
     <form method="post"
           action="{% url "bpp:browse_build_search" %}" class="browserForm">
         {% csrf_token %}
         <input type="hidden" name="suggested-title" value="{{ zrodlo }}"/>
         <input type="hidden" name="zrodlo" value="{{ zrodlo.pk }}"/>
-
         <p>
-            Wyszukaj prace w tym źródle:
+            Wyszukaj prace w tym źródle rekordy...
         </p>
         {% include "browse/w_latach.html" with prace_w_latach=zrodlo.prace_w_latach %}
         {% include "browse/tytul_raportu.html" with obj=zrodlo %}

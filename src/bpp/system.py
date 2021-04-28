@@ -5,15 +5,28 @@
 groups - lista grup wraz z uprawnieniami do edycji poszczególnych obiektów.
 """
 
-from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Group, Permission
-from django.contrib.contenttypes.models import ContentType
-from django.contrib.sites.models import Site
 from django.db import transaction
 from favicon.models import Favicon, FaviconImg
 from flexible_reports import models as flexible_models
 from multiseek.models import SearchForm
 from robots.models import Rule, Url
+
+from formdefaults.models import FormFieldRepresentation, FormRepresentation
+from import_dbf.models import B_A, B_U, Aut, Bib, Ixn, Jed, Poz, Ses, Usi, Wx2
+from miniblog.models import Article
+from pbn_api.models import (
+    Conference,
+    Institution,
+    Journal,
+    Publisher,
+    Scientist,
+    SentData,
+)
+
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group, Permission
+from django.contrib.contenttypes.models import ContentType
+from django.contrib.sites.models import Site
 
 from bpp.models import (
     Autor,
@@ -71,9 +84,6 @@ from bpp.models.seria_wydawnicza import Seria_Wydawnicza
 from bpp.models.struktura import Jednostka_Wydzial
 from bpp.models.system import Charakter_PBN
 from bpp.models.wydawca import Poziom_Wydawcy, Wydawca
-from formdefaults.models import FormFieldRepresentation, FormRepresentation
-from import_dbf.models import B_A, B_U, Aut, Bib, Ixn, Jed, Poz, Ses, Usi, Wx2
-from miniblog.models import Article
 
 User = get_user_model()
 
@@ -104,6 +114,12 @@ groups = {
         FormRepresentation,
         Grupa_Pracownicza,
         Wymiar_Etatu,
+        Journal,
+        Institution,
+        Conference,
+        Publisher,
+        Scientist,
+        SentData,
     ],
     "struktura": [
         Uczelnia,

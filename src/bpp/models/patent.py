@@ -1,6 +1,7 @@
 # -*- encoding: utf-8 -*-
 from django.db import models
 from django.db.models import CASCADE, SET_NULL
+
 from django.utils.functional import cached_property
 
 from bpp.models import (
@@ -51,7 +52,7 @@ class _Patent_PropertyCache:
 
     @cached_property
     def jezyk(self):
-        return Jezyk.objects.get(skrot_dla_pbn="PL")
+        return Jezyk.objects.get(nazwa__icontains="polski")
 
 
 _Patent_PropertyCache = _Patent_PropertyCache()

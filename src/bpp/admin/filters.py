@@ -83,9 +83,9 @@ class OrcidAutoraDyscyplinyObecnyFilter(SimpleNotNullFilter):
     parameter_name = "autor__orcid"
 
 
-class PBN_UUIDObecnyFilter(SimpleNotNullFilter):
-    title = "PBN UUID"
-    parameter_name = "pbn_uuid"
+class PBN_UID_IDObecnyFilter(SimpleNotNullFilter):
+    title = "PBN UID"
+    parameter_name = "pbn_uid_id"
 
 
 class CalkowitaLiczbaAutorowFilter(SimpleIntegerFilter):

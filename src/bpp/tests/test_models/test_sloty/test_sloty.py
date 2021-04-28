@@ -1,11 +1,10 @@
 from decimal import Decimal
 
 import pytest
+
 from django.contrib.contenttypes.models import ContentType
 
 from bpp.models import (
-    TO_AUTOR,
-    TO_REDAKTOR,
     Autor_Dyscyplina,
     Cache_Punktacja_Autora,
     Cache_Punktacja_Dyscypliny,
@@ -16,6 +15,7 @@ from bpp.models import (
     Typ_Odpowiedzialnosci,
     Uczelnia,
 )
+from bpp.models.const import TO_AUTOR, TO_REDAKTOR
 from bpp.models.sloty.core import IPunktacjaCacher, ISlot
 from bpp.models.sloty.exceptions import CannotAdapt
 from bpp.models.sloty.wydawnictwo_ciagle import (

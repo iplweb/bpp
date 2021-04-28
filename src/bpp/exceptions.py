@@ -1,0 +1,2 @@
+class WillNotExportError(Exception):
+    pass

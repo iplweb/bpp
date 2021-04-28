@@ -262,12 +262,8 @@ class Typ_Odpowiedzialnosci(NazwaISkrot):
 
 
 class Jezyk(NazwaISkrot):
-    skrot_dla_pbn = models.CharField(
-        max_length=10,
-        verbose_name="Skrót dla PBN",
-        help_text="""
-    Skrót nazwy języka używany w plikach eksportu do PBN.""",
-        blank=True,
+    pbn_uid = models.ForeignKey(
+        "pbn_api.Language", null=True, blank=True, on_delete=models.SET_NULL
     )
 
     class Meta:

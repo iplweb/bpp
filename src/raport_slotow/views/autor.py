@@ -201,6 +201,13 @@ class RaportSlotow(
                 # trzeba go tutaj udostępnić, żeby WeasyPrint miał ułatwione zadanie.
                 # (mpasternak, 17.03.2021)
 
+                # W przypadku niektórych certyfikatów WeasyPrint zawiedzie i nie bedzie mógł pobrać
+                # danych ze strony. Ponieważ pobieramy sami-od-siebie, pozwolimy sobie na coś takiego:
+
+                import ssl
+
+                ssl._create_default_https_context = ssl._create_unverified_context
+
                 response = HttpResponse(
                     content=HTML(
                         string=ret.render().content,

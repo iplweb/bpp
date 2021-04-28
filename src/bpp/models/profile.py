@@ -5,11 +5,11 @@ Profile użytkowników serwisu BPP
 
 from django.db import models
 
-from bpp.models import ModelZAdnotacjami
-
 from django.contrib.auth.models import AbstractUser, UserManager
 
 from django.utils.functional import cached_property
+
+from bpp.models import ModelZAdnotacjami
 
 
 class BppUserManager(UserManager):
@@ -36,6 +36,8 @@ class BppUser(AbstractUser, ModelZAdnotacjami):
         null=True,
         blank=True,
     )
+
+    pbn_token = models.CharField(max_length=128, null=True, blank=True)
 
     class Meta:
         app_label = "bpp"

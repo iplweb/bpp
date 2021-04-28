@@ -29,6 +29,10 @@ def normalize_tytul_naukowy(s):
     return normalize_skrot(s)
 
 
+def normalize_tytul_publikacji(s):
+    return normalize_skrot(s)
+
+
 def normalize_funkcja_autora(s: str) -> str:
     return normalize_skrot(s).lower()
 
@@ -42,6 +46,10 @@ def normalize_wymiar_etatu(s: str):
 
 
 def normalize_nazwa_jednostki(s: str) -> str:
+    return remove_extra_spaces(s.strip())
+
+
+def normalize_nazwa_wydawcy(s: str) -> str:
     return remove_extra_spaces(s.strip())
 
 

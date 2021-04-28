@@ -3,18 +3,9 @@ from copy import copy
 from datetime import date
 
 from django import forms
-from django.contrib.postgres.fields import JSONField
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import DataError, IntegrityError, models, transaction
 
-from bpp.models import (
-    Autor,
-    Autor_Jednostka,
-    Funkcja_Autora,
-    Grupa_Pracownicza,
-    Jednostka,
-    Wymiar_Etatu,
-)
 from import_common.core import (
     matchuj_autora,
     matchuj_funkcja_autora,
@@ -39,6 +30,17 @@ from import_common.normalization import (
 from import_common.util import XLSImportFile
 from long_running.models import Operation
 from long_running.notification_mixins import ASGINotificationMixin
+
+from django.contrib.postgres.fields import JSONField
+
+from bpp.models import (
+    Autor,
+    Autor_Jednostka,
+    Funkcja_Autora,
+    Grupa_Pracownicza,
+    Jednostka,
+    Wymiar_Etatu,
+)
 
 
 class JednostkaForm(forms.Form):
@@ -166,7 +168,7 @@ class ImportPracownikow(ASGINotificationMixin, Operation):
                 nazwisko=data.get("nazwisko"),
                 jednostka=jednostka,
                 bpp_id=data.get("bpp_id"),
-                pbn_uuid=data.get("pbn_uuid"),
+                pbn_uid_id=data.get("pbn_uuid"),
                 system_kadrowy_id=data.get("numer"),
                 pbn_id=data.get("pbn_id"),
                 orcid=data.get("orcid"),
