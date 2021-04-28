@@ -1,19 +1,6 @@
 # -*- encoding: utf-8 -*-
 from django import forms
-from django.contrib import admin
-from django.contrib.auth.forms import UserCreationForm
 from multiseek.models import SearchForm
-
-from bpp.models import Rodzaj_Prawa_Patentowego, Zewnetrzna_Baza_Danych
-
-# Proste tabele
-from bpp.models.openaccess import (
-    Czas_Udostepnienia_OpenAccess,
-    Licencja_OpenAccess,
-    Tryb_OpenAccess_Wydawnictwo_Ciagle,
-    Tryb_OpenAccess_Wydawnictwo_Zwarte,
-    Wersja_Tekstu_OpenAccess,
-)
 
 from ..models import (
     BppUser,
@@ -55,9 +42,23 @@ from .wydawnictwo_zwarte import (  # noqa
 )
 from .wydzial import WydzialAdmin  # noqa
 
+from django.contrib import admin
+from django.contrib.auth.forms import UserCreationForm
+
+from bpp.models import Rodzaj_Prawa_Patentowego, Zewnetrzna_Baza_Danych
+
+# Proste tabele
+from bpp.models.openaccess import (
+    Czas_Udostepnienia_OpenAccess,
+    Licencja_OpenAccess,
+    Tryb_OpenAccess_Wydawnictwo_Ciagle,
+    Tryb_OpenAccess_Wydawnictwo_Zwarte,
+    Wersja_Tekstu_OpenAccess,
+)
+
 
 class JezykAdmin(RestrictDeletionToAdministracjaGroupAdmin):
-    list_display = ["nazwa", "skrot", "skrot_dla_pbn"]
+    list_display = ["nazwa", "skrot", "pbn_uid"]
 
 
 class Funkcja_AutoraAdmin(RestrictDeletionToAdministracjaGroupAdmin):

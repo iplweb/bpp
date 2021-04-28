@@ -282,6 +282,7 @@ def select_select2_autocomplete(browser, element_id, value):
             lambda: "Trwa wyszukiwanie…"
             not in browser.find_by_id(f"select2-{element_id}-results").value
         )
+        time.sleep(0.5)
 
         active.send_keys(Keys.ENTER)
 
@@ -459,8 +460,8 @@ def submitted_form_bad(browser):
     return True
 
 
-def submitted_form_good(browser):
-    WebDriverWait(browser.driver, 10).until(
+def submitted_form_good(browser, wait_time=20):
+    WebDriverWait(browser.driver, wait_time).until(
         lambda driver: "został dodany pomyślnie" in driver.page_source
     )
     return True

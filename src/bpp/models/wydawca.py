@@ -2,12 +2,20 @@ from django.core.exceptions import ValidationError
 from django.db import models
 
 from bpp.fields import YearField
-from bpp.models import ModelZNazwa
+from bpp.models import ModelZNazwa, ModelZPBN_UID
 
 
-class Wydawca(ModelZNazwa):
+class Wydawca(ModelZNazwa, ModelZPBN_UID):
     alias_dla = models.ForeignKey(
         "self", on_delete=models.CASCADE, null=True, blank=True
+    )
+
+    pbn_uid = models.ForeignKey(
+        "pbn_api.Publisher",
+        verbose_name="Odpowiednik w PBN",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
     )
 
     class Meta:

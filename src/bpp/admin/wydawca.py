@@ -1,6 +1,8 @@
 from django import forms
+
 from django.contrib import admin
 
+from bpp.admin.filters import PBN_UID_IDObecnyFilter
 from bpp.models import Wydawca
 from bpp.models.wydawca import Poziom_Wydawcy
 
@@ -40,10 +42,13 @@ class MaAliasListFilter(admin.SimpleListFilter):
 
 @admin.register(Wydawca)
 class WydawcaAdmin(admin.ModelAdmin):
-    search_fields = ["nazwa", "alias_dla__nazwa"]
-    autocomplete_fields = ["alias_dla"]
-    list_display = ["nazwa", "alias_dla"]
-    list_filter = [MaAliasListFilter]
+    search_fields = [
+        "nazwa",
+        "alias_dla__nazwa",
+    ]
+    autocomplete_fields = ["alias_dla", "pbn_uid"]
+    list_display = ["nazwa", "alias_dla", "pbn_uid_id"]
+    list_filter = [MaAliasListFilter, PBN_UID_IDObecnyFilter]
     inlines = [
         Poziom_WydawcyInline,
     ]

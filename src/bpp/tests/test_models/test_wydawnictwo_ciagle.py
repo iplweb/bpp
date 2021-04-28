@@ -2,9 +2,9 @@
 
 
 import pytest
-from lxml import etree
 
 from bpp.admin.helpers import MODEL_PUNKTOWANY, MODEL_PUNKTOWANY_KOMISJA_CENTRALNA
+from bpp.models import RODZAJ_PBN_ARTYKUL
 from bpp.models.openaccess import Licencja_OpenAccess
 from bpp.models.system import Status_Korekty
 
@@ -81,37 +81,6 @@ def test_models_wydawnictwo_ciagle_dirty_fields_ostatnio_zmieniony_dla_pbn(
         assert ost_zm_pbn != wyd.ostatnio_zmieniony_dla_pbn
 
 
-@pytest.mark.parametrize(
-    "wc",
-    [
-        pytest.lazy_fixture("wydawnictwo_ciagle"),
-        pytest.lazy_fixture("wydawnictwo_zwarte"),
-    ],
-)
-@pytest.mark.django_db
-def test_export_pubmed_id(wc):
-
-    wc.pubmed_id = None
-    wc.public_www = "http://www.onet.pl/"
-    wc.www = None
-
-    toplevel = etree.fromstring("<body></body>")
-    wc.eksport_pbn_public_uri(toplevel)
-    assert toplevel[0].attrib["href"] == "http://www.onet.pl/"
-
-    wc.public_www = None
-    wc.www = "http://www.onet.pl/"
-    toplevel = etree.fromstring("<body></body>")
-    wc.eksport_pbn_public_uri(toplevel)
-    assert toplevel[0].attrib["href"] == "http://www.onet.pl/"
-
-    wc.public_www = "http://www.wp.pl/"
-    wc.www = "http://www.onet.pl/"
-    toplevel = etree.fromstring("<body></body>")
-    wc.eksport_pbn_public_uri(toplevel)
-    assert toplevel[0].attrib["href"] == "http://www.wp.pl/"
-
-
 @pytest.mark.django_db
 @pytest.mark.parametrize(
     "informacje,expected",
@@ -119,20 +88,16 @@ def test_export_pubmed_id(wc):
 )
 def test_eksport_pbn_get_volume(informacje, expected, wydawnictwo_ciagle):
     wydawnictwo_ciagle.informacje = informacje
-    assert wydawnictwo_ciagle.eksport_pbn_get_volume() == expected
+    assert wydawnictwo_ciagle.numer_tomu() == expected
 
 
 @pytest.mark.django_db
 def test_eksport_pbn_volume(wydawnictwo_ciagle):
-    toplevel = etree.fromstring("<body></body>")
     wydawnictwo_ciagle.informacje = "bez sensu"
-    wydawnictwo_ciagle.eksport_pbn_volume(toplevel)
-    assert toplevel[0].text == "brak"
+    assert wydawnictwo_ciagle.numer_tomu() is None
 
-    toplevel = etree.fromstring("<body></body>")
     wydawnictwo_ciagle.informacje = "2016 vol 4"
-    wydawnictwo_ciagle.eksport_pbn_volume(toplevel)
-    assert toplevel[0].text == "4"
+    assert wydawnictwo_ciagle.numer_tomu() == "4"
 
 
 @pytest.mark.django_db
@@ -150,20 +115,7 @@ def test_eksport_pbn_volume(wydawnictwo_ciagle):
 )
 def test_eksport_pbn_get_issue(informacje, expected, wydawnictwo_ciagle):
     wydawnictwo_ciagle.informacje = informacje
-    assert wydawnictwo_ciagle.eksport_pbn_get_issue() == expected
-
-
-@pytest.mark.django_db
-def test_eksport_pbn_issue(wydawnictwo_ciagle):
-    toplevel = etree.fromstring("<body></body>")
-    wydawnictwo_ciagle.informacje = "2016 vol 4"
-    wydawnictwo_ciagle.eksport_pbn_issue(toplevel)
-    assert toplevel[0].text == "brak"
-
-    toplevel = etree.fromstring("<body></body>")
-    wydawnictwo_ciagle.informacje = "2016 vol 4 nr 5B"
-    wydawnictwo_ciagle.eksport_pbn_issue(toplevel)
-    assert toplevel[0].text == "5B"
+    assert wydawnictwo_ciagle.numer_wydania() == expected
 
 
 def test_punktacja_zrodla(wydawnictwo_ciagle):
@@ -176,3 +128,12 @@ def test_punktacja_zrodla(wydawnictwo_ciagle):
 
     z.punktacja_zrodla_set.create(rok=wydawnictwo_ciagle.rok, impact_factor=37)
     assert wydawnictwo_ciagle.punktacja_zrodla().impact_factor == 37
+
+
+def test_Wydawnictwo_Ciagle_pbn_get_json(wydawnictwo_ciagle):
+    cf = wydawnictwo_ciagle.charakter_formalny
+    cf.rodzaj_pbn = RODZAJ_PBN_ARTYKUL
+    cf.save()
+
+    wydawnictwo_ciagle.doi = "123;.123/doi"
+    assert wydawnictwo_ciagle.pbn_get_json()

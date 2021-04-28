@@ -172,6 +172,7 @@ INSTALLED_APPS = [
     # dal 3.3.0-release, musi być naprawiony o ten błąd:
     # https://github.com/yourlabs/django-autocomplete-light/issues/981
     "bpp",
+    "pbn_api",
     "dal",
     "dal_select2",
     "grappelli",
@@ -193,7 +194,6 @@ INSTALLED_APPS = [
     "session_security",
     "notifications",
     "integrator2",
-    "eksport_pbn",
     "nowe_raporty",
     "rozbieznosci_dyscyplin",
     "loginas",

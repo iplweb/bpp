@@ -26,7 +26,7 @@ distlib==0.3.1            # via virtualenv
 django-debug-toolbar==3.2  # via -r requirements_dev.in
 django-dynamic-fixture==3.1.0  # via -r requirements_dev.in
 django-webtest==1.9.7     # via -r requirements_dev.in
-django==3.0.11            # via -c requirements.txt, django-debug-toolbar, model-mommy
+django==3.0.14            # via -c requirements.txt, django-debug-toolbar, model-mommy
 docopt==0.6.2             # via coveralls
 docutils==0.16            # via readme-renderer, sphinx
 execnet==1.7.1            # via pytest-xdist

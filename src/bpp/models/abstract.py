@@ -12,18 +12,14 @@ from django.core.validators import URLValidator
 from django.db import models
 from django.db.models import CASCADE, SET_NULL, Q, Sum
 from django.urls.base import reverse
-from lxml.etree import SubElement
 from taggit.managers import TaggableManager
 
 from django.contrib.postgres.fields import HStoreField
 from django.contrib.postgres.search import SearchVectorField as VectorField
 
 from django.utils import timezone
-from django.utils.functional import cached_property
-from django.utils.timezone import localtime
 
 from bpp.fields import DOIField, YearField
-from bpp.models.const import TO_AUTOR
 from bpp.models.dyscyplina_naukowa import Autor_Dyscyplina, Dyscyplina_Naukowa
 from bpp.models.util import ModelZOpisemBibliograficznym, dodaj_autora
 from bpp.util import safe_html
@@ -75,8 +71,8 @@ class ModelZPBN_ID(models.Model):
     """Zawiera informacje o PBN_ID"""
 
     pbn_id = models.IntegerField(
-        verbose_name="Identyfikator PBN",
-        help_text="Identyfikator w systemie Polskiej Bibliografii Naukowej (PBN)",
+        verbose_name="[Przestarzałe] Identyfikator PBN",
+        help_text="[Pole o znaczeniu historycznym] Identyfikator w systemie Polskiej Bibliografii Naukowej (PBN)",
         null=True,
         blank=True,
         unique=True,
@@ -273,7 +269,7 @@ def ImpactFactorField(*args, **kw):
         decimal_places=IF_DECIMAL_PLACES,
         default=Decimal("0.000"),
         *args,
-        **kw
+        **kw,
     )
 
 
@@ -703,6 +699,26 @@ class ModelWybitny(models.Model):
         abstract = True
 
 
+class ModelZPBN_UID(models.Model):
+    pbn_uid = models.ForeignKey(
+        "pbn_api.Publication",
+        verbose_name="Odpowiednik w PBN",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+    )
+
+    class Meta:
+        abstract = True
+
+    def link_do_pbn(self):
+        from bpp.models import Uczelnia
+
+        uczelnia = Uczelnia.objects.get_default()
+        if uczelnia is not None:
+            return f"{ uczelnia.pbn_api_root }/core/#/publication/view/{ self.pbn_uid_id }/current"
+
+
 class Wydawnictwo_Baza(RekordBPPBaza):
     """Klasa bazowa wydawnictw (prace doktorskie, habilitacyjne, wydawnictwa
     ciągłe, zwarte -- bez patentów)."""
@@ -788,241 +804,6 @@ def parse_informacje_as_dict(
 def parse_informacje(informacje, key):
     "Wstecznie kompatybilna wersja funkcji parse_informacje_as_dict"
     return parse_informacje_as_dict(informacje).get(key)
-
-
-class PBNSerializerHelperMixin:
-    def eksport_pbn_zakres_stron(self):
-        if hasattr(self, "strony"):
-            if self.strony:
-                return self.strony
-        return wez_zakres_stron(self.szczegoly)
-
-    def eksport_pbn_pages(self, toplevel, autorzy_klass=None):
-        zakres = self.eksport_pbn_zakres_stron()
-        if zakres:
-            pages = SubElement(toplevel, "pages")
-            pages.text = zakres
-
-    def eksport_pbn_is(self, toplevel, autorzy_klass=None):
-        is_text = None
-
-        if self.charakter_formalny.charakter_pbn is not None:
-            is_text = self.charakter_formalny.charakter_pbn.identyfikator
-        else:
-            if self.typ_kbn.charakter_pbn is not None:
-                is_text = self.typ_kbn.charakter_pbn.identyfikator
-
-        if is_text:
-            _is = SubElement(toplevel, "is")
-            _is.text = is_text
-
-    def eksport_pbn_system_identifier(self, toplevel, autorzy_klass=None):
-        # W zależności od rodzaju klasy 'self', dodaj cyferkę i kilka zer. W ten sposób
-        # symlujemy unikalne ID dla każdej oodzielnej tabeli. Generalnie w systemie bpp
-        # Wydawnictwo_Zwarte oraz Wydawnictwo_Ciagle może mieć ten sam numer ID, ponieważ
-        # są to różne tabele, śledzone oddzielnie. Aby jednakże w PBN te ID były unikalne,
-        # dodajemy przedrostki.
-        #
-        # Maksymalny int 32-bity: 2147483647
-        # sys.maxint na MacOS X:  9223372036854775807
-        #
-        # ... zatem, do Wydawnictwo_Ciagle dopisujemy dwójkę i tyle zer, żeby zmieściś się w 10 znakach
-        # ... tak samo do Wydawnictwo_Zwarte, tylko, ze tam damy czwórkę
-        #
-        # kilka miliardów publikacji w każdej kategorii "should be enough for anyone"
-        #
-
-        # node XML
-
-        system_identifier = SubElement(toplevel, "system-identifier")
-
-        # Jeżeli rekord ma ustalone pole pbn_id, to wyeksportuj to pole
-
-        if self.pbn_id is not None:
-            system_identifier.text = str(self.pbn_id)
-            return
-
-        # teraz omijamy cyrkularny import za pomocą tego hacka:
-        s = str(self.__class__)
-        global_id = 3
-
-        if "Wydawnictwo_Zwarte" in s:
-            global_id = 4
-        elif "Wydawnictwo_Ciagle" in s:
-            global_id = 2
-        else:
-            raise NotImplementedError
-
-        system_identifier.text = "%i%.9i" % (global_id, self.pk)
-
-    def eksport_pbn_title(self, toplevel, autorzy_klass=None):
-        title = SubElement(toplevel, "title")
-        title.text = self.tytul_oryginalny
-
-    def eksport_pbn_get_nasi_autorzy_iter(self, autorzy_klass):
-        # TODO: zrób sprawdzanie jednostki w kontekście ROKU do jakiego wydziału była WÓWCZAS przypisana
-        return [
-            elem
-            for elem in autorzy_klass.objects.filter(
-                rekord=self, typ_odpowiedzialnosci__typ_ogolny=TO_AUTOR
-            ).select_related("jednostka")
-            if elem.jednostka.skupia_pracownikow
-        ]
-
-    def eksport_pbn_get_wszyscy_autorzy_iter(self, autorzy_klass):
-        return [
-            elem
-            for elem in autorzy_klass.objects.filter(
-                rekord=self, typ_odpowiedzialnosci__typ_ogolny=TO_AUTOR
-            )
-        ]
-
-    def eksport_pbn_author(self, toplevel, autorzy_klass):
-        for autor_wyd in self.eksport_pbn_get_wszyscy_autorzy_iter(autorzy_klass):
-            toplevel.append(
-                autor_wyd.autor.eksport_pbn_serializuj(
-                    affiliated=autor_wyd.afiliuje, employed=autor_wyd.zatrudniony
-                )
-            )
-
-    def eksport_pbn_get_nasi_autorzy_count(self, autorzy_klass):
-        return len(list(self.eksport_pbn_get_nasi_autorzy_iter(autorzy_klass)))
-
-    def eksport_pbn_get_wszyscy_autorzy_count(self, autorzy_klass):
-        return len(list(self.eksport_pbn_get_wszyscy_autorzy_iter(autorzy_klass)))
-
-    def eksport_pbn_get_other_contributors_cnt(self, autorzy_klass):
-        wszyscy_autorzy = self.eksport_pbn_get_wszyscy_autorzy_count(autorzy_klass)
-        nasi_autorzy = self.eksport_pbn_get_nasi_autorzy_count(autorzy_klass)
-        return wszyscy_autorzy - nasi_autorzy
-
-    def eksport_pbn_lang(self, toplevel, autorzy_klass=None):
-        lang = SubElement(toplevel, "lang")
-        lang.text = self.jezyk.get_skrot_dla_pbn()
-
-    def eksport_pbn_keywords(self, toplevel, autorzy_klass=None):
-        if self.slowa_kluczowe:
-            lang = self.jezyk.get_skrot_dla_pbn()
-            keywords = SubElement(toplevel, "keywords", lang=lang)
-            for elem in self.slowa_kluczowe.all():  # split(","):
-                k = SubElement(keywords, "k")
-                k.text = elem.strip()
-
-    def eksport_pbn_public_uri(self, toplevel, wydzial=None, autorzy_klass=None):
-        def exp_www(www):
-            try:
-                url_validator(www)
-                SubElement(toplevel, "public-uri", href=www)
-            except (ValueError, ValidationError):
-                pass
-
-        if self.public_www:
-            exp_www(self.public_www)
-
-        elif self.www:
-            exp_www(self.www)
-
-    def eksport_pbn_open_access(self, toplevel, autorzy_klass=None):
-        class NodeMaker:
-            @cached_property
-            def node(self):
-                return SubElement(toplevel, "open-access")
-
-        nm = NodeMaker()
-
-        if self.openaccess_wersja_tekstu is not None:
-            text_version = SubElement(nm.node, "open-access-text-version")
-            text_version.text = self.openaccess_wersja_tekstu.skrot
-
-        if self.openaccess_licencja is not None:
-            license = SubElement(nm.node, "open-access-license")
-            license.text = self.openaccess_licencja.skrot
-
-        if self.openaccess_czas_publikacji is not None:
-            release_time = SubElement(nm.node, "open-access-release-time")
-            release_time.text = self.openaccess_czas_publikacji.skrot
-
-        if self.openaccess_ilosc_miesiecy:
-            months = SubElement(nm.node, "open-access-months")
-            months.text = str(self.openaccess_ilosc_miesiecy)
-
-        if self.openaccess_tryb_dostepu is not None:
-            mode = SubElement(nm.node, "open-access-mode")
-            mode.text = self.openaccess_tryb_dostepu.skrot
-
-        # Dostęp dnia (wolny dostęp) idzie jako creation-date
-        if self.public_dostep_dnia is not None:
-            pdd = SubElement(nm.node, "creation-date")
-            pdd.text = str(self.public_dostep_dnia)
-
-    def eksport_pbn_publication_date(self, toplevel, wydzial=None, autorzy_klass=None):
-        publication_date = SubElement(toplevel, "publication-date")
-        publication_date.text = str(self.rok)
-
-    def eksport_pbn_doi(self, toplevel, autorzy_klass=None):
-        if self.doi:
-            doi = SubElement(toplevel, "doi")
-            doi.text = self.doi
-
-    def eksport_pbn_conference(self, toplevel, autorzy_klass=None):
-        if self.konferencja is not None:
-            tag = self.konferencja.eksport_pbn_serializuj()
-            toplevel.append(tag)
-
-    def eksport_pbn_outstanding(self, toplevel, autorzy_klass=None):
-        if self.praca_wybitna:
-            outstanding = SubElement(toplevel, "outstanding")
-            outstanding.text = "1"
-
-        if self.uzasadnienie_wybitnosci:
-            outstanding_description = SubElement(toplevel, "outstanding-description")
-            outstanding_description.text = self.uzasadnienie_wybitnosci
-
-    def eksport_pbn_award(self, toplevel, wydzial=None, autorzy_klass=None):
-        from django.contrib.contenttypes.models import ContentType
-
-        from bpp.models.nagroda import Nagroda
-
-        for nagroda in Nagroda.objects.filter(
-            content_type=ContentType.objects.get_for_model(self), object_id=self.pk
-        ):
-            tag = nagroda.eksport_pbn_serializuj()
-            toplevel.append(tag)
-
-    def eksport_pbn_modification_date(self, toplevel, autorzy_klass=None):
-        md = SubElement(toplevel, "modification-date")
-        md.text = localtime(self.ostatnio_zmieniony_dla_pbn).strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
-
-    def eksport_pbn_run_serialization_functions(self, names, toplevel, autorzy_klass):
-        for elem in names:
-            func = "eksport_pbn_" + elem.replace("-", "_")
-            f = getattr(self, func, None)
-            if f and hasattr(f, "__call__"):
-                f(toplevel, autorzy_klass)
-
-    def eksport_pbn_serializuj(self, toplevel, autorzy_klass):
-        self.eksport_pbn_run_serialization_functions(
-            [
-                "modification-date",
-                "title",
-                "author",
-                "doi",
-                "lang",
-                "abstract",
-                "keywords",
-                "outstanding",
-                "award",
-                "public-uri",
-                "publication-date",
-                "conference",
-                "is",
-                "system-identifier",
-            ],
-            toplevel,
-            autorzy_klass,
-        )
 
 
 class ModelZSeria_Wydawnicza(models.Model):

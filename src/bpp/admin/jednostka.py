@@ -2,14 +2,15 @@
 
 # -*- encoding: utf-8 -*-
 from adminsortable2.admin import SortableAdminMixin
+from django import forms
+
+from ..models.struktura import Jednostka, Jednostka_Wydzial
+from .core import CommitedModelAdmin, RestrictDeletionToAdministracjaGroupMixin
+from .helpers import ADNOTACJE_FIELDSET, LimitingFormset, ZapiszZAdnotacjaMixin
+
 from django.contrib import admin
 
-from bpp.models import Autor_Jednostka, Uczelnia, SORTUJ_ALFABETYCZNIE
-from miniblog.admin import SmallerTextarea
-from .core import CommitedModelAdmin
-from .core import RestrictDeletionToAdministracjaGroupMixin
-from .helpers import *
-from ..models.struktura import Jednostka, Jednostka_Wydzial
+from bpp.models import SORTUJ_ALFABETYCZNIE, Autor_Jednostka, Uczelnia
 
 
 class Jednostka_WydzialInline(admin.TabularInline):
@@ -67,6 +68,8 @@ class JednostkaAdmin(
         Autor_JednostkaInline,
     )
 
+    autocomplete_fields = ["pbn_uid"]
+
     readonly_fields = ["wydzial", "aktualna", "ostatnio_zmieniony"]
     fieldsets = (
         (
@@ -79,6 +82,7 @@ class JednostkaAdmin(
                     "wydzial",
                     "aktualna",
                     "pbn_id",
+                    "pbn_uid",
                     "opis",
                     "widoczna",
                     "wchodzi_do_raportow",

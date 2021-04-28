@@ -8,8 +8,11 @@ from datetime import datetime
 import django_webtest
 import pytest
 import webtest
+from django.db import IntegrityError
 from rest_framework.test import APIClient
 from selenium.webdriver.remote.webdriver import WebDriver
+
+from pbn_api.models import Language
 
 from bpp.tasks import aktualizuj_cache_rekordu
 from bpp.util import get_fixture
@@ -23,7 +26,6 @@ from model_mommy import mommy
 
 from bpp.fixtures import get_openaccess_data
 from bpp.models import (
-    TO_AUTOR,
     Autor_Dyscyplina,
     Dyscyplina_Naukowa,
     Wydawca,
@@ -31,7 +33,7 @@ from bpp.models import (
     const,
 )
 from bpp.models.autor import Autor, Funkcja_Autora, Tytul
-from bpp.models.const import GR_WPROWADZANIE_DANYCH
+from bpp.models.const import GR_WPROWADZANIE_DANYCH, TO_AUTOR
 from bpp.models.patent import Patent
 from bpp.models.praca_doktorska import Praca_Doktorska
 from bpp.models.praca_habilitacyjna import Praca_Habilitacyjna
@@ -339,6 +341,20 @@ def _wydawnictwo_ciagle_maker(**kwargs):
 
     set_default("informacje", "zrodlo-informacje", kwargs)
     set_default("issn", "123-IS-SN-34", kwargs)
+    if "jezyk" not in kwargs:
+        jezyk = Jezyk.objects.get(nazwa__icontains="polski")
+        jezyk.pbn_uid = Language.objects.get_or_create(
+            pk="pol",
+            language={
+                "de": "Polnisch",
+                "en": "Polish",
+                "pl": "polski",
+                "639-1": "pl",
+                "639-2": "pol",
+                "wikiUrl": "https://en.wikipedia.org/wiki/Polish_language",
+            },
+        )[0]
+        kwargs["jezyk"] = jezyk
 
     return _wydawnictwo_maker(Wydawnictwo_Ciagle, **kwargs)
 
@@ -554,7 +570,12 @@ def jezyki(db):
     assert ang.pk == 2
 
     for elem in fixture("jezyk.json"):
-        Jezyk.objects.get_or_create(pk=elem["pk"], **elem["fields"])
+        try:
+            Jezyk.objects.get_or_create(**elem["fields"])
+        except IntegrityError:
+            import pytest
+
+            pytest.set_trace()
 
 
 @pytest.fixture(scope="function")

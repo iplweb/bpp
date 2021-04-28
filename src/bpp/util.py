@@ -235,11 +235,13 @@ def rebuild_contenttypes():
 #
 
 
-def pbar(query, count=None):
+def pbar(query, count=None, label="Progres..."):
     return progressbar.progressbar(
         query,
         max_value=count or query.count(),
         widgets=[
+            progressbar.FormatLabel(label),
+            " ",
             progressbar.AnimatedMarker(),
             " ",
             progressbar.SimpleProgress(),

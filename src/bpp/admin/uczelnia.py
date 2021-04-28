@@ -1,6 +1,7 @@
 from django import forms
 from django.core.management import call_command
 from django.db import transaction
+
 from ..models import Uczelnia, Ukryj_Status_Korekty, Wydzial
 from .core import CommitedModelAdmin, RestrictDeletionToAdministracjaGroupMixin
 from .helpers import ADNOTACJE_FIELDSET, ZapiszZAdnotacjaMixin
@@ -41,7 +42,8 @@ class Ukryj_Status_KorektyInline(admin.StackedInline):
 class UczelniaAdmin(
     RestrictDeletionToAdministracjaGroupMixin, ZapiszZAdnotacjaMixin, CommitedModelAdmin
 ):
-    list_display = ["nazwa", "nazwa_dopelniacz_field", "skrot", "pbn_id"]
+    list_display = ["nazwa", "nazwa_dopelniacz_field", "skrot", "pbn_uid"]
+    autocomplete_fields = ["pbn_uid", "obca_jednostka"]
     fieldsets = (
         (
             None,
@@ -50,6 +52,7 @@ class UczelniaAdmin(
                     "nazwa",
                     "nazwa_dopelniacz_field",
                     "skrot",
+                    "pbn_uid",
                     "pbn_id",
                     "favicon_ico",
                     "obca_jednostka",
@@ -61,6 +64,20 @@ class UczelniaAdmin(
             {
                 "classes": ("grp-collapse grp-closed",),
                 "fields": ("domyslnie_afiliuje",),
+            },
+        ),
+        (
+            "PBN API",
+            {
+                "classes": ("grp-collapse grp-open",),
+                "fields": (
+                    "pbn_integracja",
+                    "pbn_aktualizuj_na_biezaco",
+                    "pbn_api_root",
+                    "pbn_app_name",
+                    "pbn_app_token",
+                    "pbn_api_user",
+                ),
             },
         ),
         (

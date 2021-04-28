@@ -1,7 +1,20 @@
+import warnings
 from typing import Union
-from uuid import UUID
 
 from django.db.models import Q
+
+from .normalization import (
+    normalize_funkcja_autora,
+    normalize_grupa_pracownicza,
+    normalize_kod_dyscypliny,
+    normalize_nazwa_dyscypliny,
+    normalize_nazwa_jednostki,
+    normalize_nazwa_wydawcy,
+    normalize_tytul_naukowy,
+    normalize_tytul_publikacji,
+    normalize_tytul_zrodla,
+    normalize_wymiar_etatu,
+)
 
 from bpp.models import (
     Autor,
@@ -11,20 +24,12 @@ from bpp.models import (
     Grupa_Pracownicza,
     Jednostka,
     Tytul,
+    Wydawca,
+    Wydawnictwo_Ciagle,
+    Wydawnictwo_Zwarte,
     Wydzial,
     Wymiar_Etatu,
     Zrodlo,
-)
-
-from .normalization import (
-    normalize_funkcja_autora,
-    normalize_grupa_pracownicza,
-    normalize_kod_dyscypliny,
-    normalize_nazwa_dyscypliny,
-    normalize_nazwa_jednostki,
-    normalize_tytul_naukowy,
-    normalize_tytul_zrodla,
-    normalize_wymiar_etatu,
 )
 
 
@@ -100,7 +105,7 @@ def matchuj_autora(
     nazwisko: str,
     jednostka: Union[Jednostka, None] = None,
     bpp_id: Union[int, None] = None,
-    pbn_uuid: Union[UUID, None] = None,
+    pbn_uid_id: Union[str, None] = None,
     system_kadrowy_id: Union[int, None] = None,
     pbn_id: Union[int, None] = None,
     orcid: Union[str, None] = None,
@@ -112,17 +117,11 @@ def matchuj_autora(
         except Autor.DoesNotExist:
             pass
 
-    if pbn_uuid is not None:
+    if pbn_uid_id is not None:
         try:
-            UUID(pbn_uuid)
-        except (TypeError, ValueError):
-            pbn_uuid = None
-
-        if pbn_uuid is not None:
-            try:
-                return Autor.objects.get(pbn_uuid=pbn_uuid)
-            except Autor.DoesNotExist:
-                pass
+            return Autor.objects.get(pbn_uid_id=pbn_uid_id)
+        except Autor.DoesNotExist:
+            pass
 
     if system_kadrowy_id is not None:
         try:
@@ -273,3 +272,40 @@ def matchuj_dyscypline(kod, nazwa):
         pass
     except Dyscyplina_Naukowa.MultipleObjectsReturned:
         pass
+
+
+def matchuj_wydawce(nazwa):
+    nazwa = normalize_nazwa_wydawcy(nazwa)
+    try:
+        return Wydawca.objects.get(nazwa=nazwa, alias_dla_id=None)
+    except Wydawca.DoesNotExist:
+        return
+
+
+def matchuj_publikacje(
+    klass: [Wydawnictwo_Zwarte, Wydawnictwo_Ciagle],
+    title,
+    year,
+    doi=None,
+    public_uri=None,
+):
+    title = normalize_tytul_publikacji(title)
+
+    try:
+        return klass.objects.get(tytul_oryginalny__istartswith=title, rok=year)
+    except klass.DoesNotExist:
+        pass
+    except klass.MultipleObjectsReturned:
+        warnings.warn(f"MultipleObjectsReturned dla title={title} rok={year}")
+
+    if doi is not None:
+        try:
+            return klass.objects.get(doi=doi)
+        except klass.DoesNotExist:
+            pass
+
+    if public_uri is not None:
+        try:
+            return klass.objects.get(Q(www=public_uri) | Q(public_www=public_uri))
+        except klass.DoesNotExist:
+            pass

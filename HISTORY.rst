@@ -7,6 +7,7 @@ Historia zmian
 ---------
 
 * tagi Google Scholar na podstronach publikacji (#993),
+* wymiana danych z PBN przez API (#949),
 
 202103.60
 ---------

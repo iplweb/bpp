@@ -4,12 +4,13 @@
 Źródła.
 """
 from autoslug import AutoSlugField
-from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.db import models
 from django.db.models import CASCADE, SET_NULL
 from django.urls.base import reverse
-from lxml.etree import Element, SubElement
 
+from django.contrib.postgres.search import SearchVectorField as VectorField
+
+from bpp.exceptions import WillNotExportError
 from bpp.fields import DOIField, YearField
 from bpp.jezyk_polski import czasownik_byc
 from bpp.models.abstract import (
@@ -154,6 +155,14 @@ class Zrodlo(ModelZAdnotacjami, ModelZISSN):
 
     objects = ZrodloManager()
 
+    pbn_uid = models.ForeignKey(
+        "pbn_api.Journal",
+        verbose_name="Odpowiednik w PBN",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+    )
+
     slug = AutoSlugField(populate_from="nazwa", unique=True)
 
     def get_absolute_url(self):
@@ -186,36 +195,42 @@ class Zrodlo(ModelZAdnotacjami, ModelZISSN):
             .order_by("rok")
         )
 
-    def eksport_pbn_serializuj(self):
-        journal = Element("journal")
+    def pbn_get_json(self):
+        if self.pbn_uid_id is None:
+            ret = {"title": self.nazwa}
+            if self.wydawca:
+                ret["publisher"] = {"name": self.wydawca}
+            if self.issn:
+                ret["issn"] = self.issn
+            if self.www:
+                ret["websiteLink"] = self.www
+            if self.e_issn:
+                ret["eissn"] = self.e_issn
+            return ret
 
-        title_kw = {}
-        if self.jezyk is not None:
-            title_kw["lang"] = self.jezyk.get_skrot_dla_pbn()
-
-        title = SubElement(journal, "title", **title_kw)
-        title.text = self.nazwa
-
-        if self.issn:
-            issn = SubElement(journal, "issn")
-            issn.text = self.issn
-
-        if self.e_issn:
-            eissn = SubElement(journal, "eissn")
-            eissn.text = self.e_issn
-
-        if self.doi:
-            doi = SubElement(journal, "doi")
-            doi.text = self.doi
-
-        if self.www:
-            SubElement(journal, "website", href=self.www)
-
-        system_identifier = SubElement(journal, "system-identifier")
-        system_identifier.text = str(self.pk)
-
-        if self.wydawca:
-            publisher_name = SubElement(journal, "publisher-name")
-            publisher_name.text = self.wydawca
-
-        return journal
+            #     "issue": {
+            #       "doi": "string",
+            #       "number": "string",
+            #       "objectId": "string",
+            #       "publishedYear": 0,
+            #       "versionHash": "string",
+            #       "volume": "string",
+            #       "year": "string"
+            #     },
+            #     "mniswId": 0,
+            #     "objectId": "string",
+            #     "publisher": {
+            #       "mniswId": 0,
+            #       "name": "string",
+            #       "objectId": "string",
+            #       "versionHash": "string"
+            #     },
+            #     "title": "string",
+            #     "versionHash": "string",
+            #     "websiteLink": "string"
+            raise WillNotExportError(
+                f'Zrodlo "{self.nazwa}" nie ma określonego odpowiednika w PBN'
+            )
+        return {
+            "objectId": self.pbn_uid.pk
+        }  # "mniswId": self.pbn_uid.value_or_none("mniswId")}

@@ -9,6 +9,7 @@ Contents:
    readme
    usage_editor
    sloty
+   pbn
    usage_admin
    contributing
    faq
