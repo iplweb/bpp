@@ -21,7 +21,7 @@ class RozbieznosciDyscyplinConfig(AppConfig):
             RozbieznosciView,
         )
 
-        IGNORE_ON = ["migrate", "makemigrations", "compress"]
+        IGNORE_ON = ["migrate", "makemigrations", "compress", "collectstatic"]
         for elem in IGNORE_ON:
             if elem in sys.argv:
                 return
