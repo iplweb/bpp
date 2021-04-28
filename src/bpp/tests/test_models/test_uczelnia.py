@@ -12,6 +12,7 @@ def test_Uczelnia_clean_pbn_biezaco_tak_integracja_nie(uczelnia):
 
 def test_Uczelnia_clean_integracja(uczelnia):
     uczelnia.pbn_integracja = True
+    uczelnia.pbn_app_token = uczelnia.pbn_app_name = "hej"
 
     with pytest.raises(ValidationError, match="Nie można pobrać"):
         uczelnia.clean()
