@@ -3,6 +3,11 @@
 Historia zmian
 ==============
 
+202104.62
+---------
+
+* nie sprawdzaj obecnosci tabel rozbieżnosci dyscyplin przy starcie serwera (b/n),
+
 202104.61
 ---------
 
