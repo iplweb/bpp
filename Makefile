@@ -51,7 +51,9 @@ bdist_wheel: pre-wheel
 	${PYTHON} setup.py -q bdist_wheel
 
 bdist_wheel_upload: pre-wheel
-	${PYTHON} setup.py -q bdist_wheel upload
+	rm -rf dist
+	${PYTHON} setup.py -q bdist_wheel
+	twine upload dist/*
 
 js-tests:
 	grunt qunit
