@@ -339,7 +339,7 @@ def integruj_publikacje():
             p = matchuj_publikacje(
                 klass,
                 elem.value("object", "title"),
-                elem.value("object", "year"),
+                elem.value_or_none("object", "year"),
                 elem.value_or_none("object", "doi"),
                 elem.value_or_none("object", "publicUri"),
             )
