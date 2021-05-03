@@ -172,6 +172,7 @@ class Wydawnictwo_CiagleAdmin(
         "adnotacje",
         "liczba_znakow_wydawniczych",
         "konferencja__nazwa",
+        "doi",
     ]
 
     list_filter = [
