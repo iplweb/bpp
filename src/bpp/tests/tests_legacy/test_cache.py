@@ -7,26 +7,26 @@ from django.test import TestCase
 from model_mommy import mommy
 
 from bpp.models import (
-    Patent_Autor,
+    Charakter_Formalny,
     Jednostka,
-    Typ_Odpowiedzialnosci,
+    Jezyk,
     Patent,
+    Patent_Autor,
     Praca_Doktorska,
     Praca_Habilitacyjna,
-    Tytul,
-    Zrodlo,
-    Charakter_Formalny,
-    Jezyk,
-    Typ_KBN,
     Status_Korekty,
-    Zrodlo_Informacji,
-    Wydawnictwo_Ciagle_Autor,
+    Typ_KBN,
+    Typ_Odpowiedzialnosci,
+    Tytul,
     Uczelnia,
+    Wydawnictwo_Ciagle_Autor,
     Wydzial,
+    Zrodlo,
+    Zrodlo_Informacji,
 )
-from bpp.models.cache import Rekord, with_cache, Autorzy, AutorzyView
-from bpp.tests.tests_legacy.test_reports.util import ciagle, zwarte, autor
-from bpp.tests.util import any_ciagle, any_autor
+from bpp.models.cache import Autorzy, AutorzyView, Rekord, with_cache
+from bpp.tests.tests_legacy.test_reports.util import autor, ciagle, zwarte
+from bpp.tests.util import any_autor, any_ciagle
 
 CHANGED = "foo-123-changed"
 
@@ -160,7 +160,7 @@ class TestCacheMixin:
 
         # Patent
 
-        chf_pat = Charakter_Formalny.objects.get(skrot="PAT")
+        Charakter_Formalny.objects.get(skrot="PAT")
 
         for elem in ["typ_kbn", "jezyk"]:
             del wspolne_dane[elem]
@@ -190,7 +190,7 @@ class TestCacheRebuildBug(TestCase):
         Rekord.objects.full_refresh()
         self.assertEqual(Rekord.objects.all().count(), 0)
 
-        c = any_ciagle(tytul="foo", liczba_znakow_wydawniczych=31337)
+        any_ciagle(tytul="foo", liczba_znakow_wydawniczych=31337)
         Rekord.objects.full_refresh()
 
         self.assertEqual(Rekord.objects.all().count(), 1)
@@ -273,9 +273,9 @@ class TestCacheZapisani(LoadFixturesMixin, TestCase):
         jed = mommy.make(Jednostka)
         wyd = any_ciagle(tytul_oryginalny="Wydawnictwo ciagle")
 
-        for kolejnosc, autor in enumerate([aut, aut2]):
+        for kolejnosc, autorx in enumerate([aut, aut2]):
             Wydawnictwo_Ciagle_Autor.objects.create(
-                autor=autor,
+                autor=autorx,
                 jednostka=jed,
                 rekord=wyd,
                 typ_odpowiedzialnosci_id=1,
@@ -314,37 +314,43 @@ class TestCacheZapisani(LoadFixturesMixin, TestCase):
         self.assertEqual(c.opis_bibliograficzny_zapisani_autorzy_cache, "Kowalski Jan")
 
 
-class TestMinimalCachingProblem(LoadFixturesMixin, TestCase):
-    fixtures = ["status_korekty.json", "jezyk.json", "typ_odpowiedzialnosci.json"]
-
+def test_MinimalCachingProblem_tworzenie(
+    statusy_korekt, jezyki, typy_odpowiedzialnosci
+):
     @with_cache
-    def test_tworzenie(self):
-        self.j = mommy.make(Jednostka)
-        self.a = any_autor()
+    def foo():
+        j = mommy.make(Jednostka)
+        a = any_autor()
 
-        self.assertEqual(Autorzy.objects.all().count(), 0)
+        assert Autorzy.objects.all().count() == 0
 
         c = any_ciagle(impact_factor=5, punktacja_wewnetrzna=0)
-        self.assertEqual(Rekord.objects.all().count(), 1)
+        assert Rekord.objects.all().count() == 1
 
-        c.dodaj_autora(self.a, self.j)
+        c.dodaj_autora(a, j)
 
-        self.assertEqual(AutorzyView.objects.all().count(), 1)
-        self.assertEqual(Autorzy.objects.all().count(), 1)
+        assert AutorzyView.objects.all().count() == 1
+        assert Autorzy.objects.all().count() == 1
 
+    foo()
+
+
+def test_MinimalCachingProblem_usuwanie(statusy_korekt, jezyki, typy_odpowiedzialnosci):
     @with_cache
-    def test_usuwanie(self):
-        self.j = mommy.make(Jednostka)
-        self.a = any_autor()
+    def foo():
+        j = mommy.make(Jednostka)
+        a = any_autor()
 
-        self.assertEqual(Autorzy.objects.all().count(), 0)
+        assert Autorzy.objects.all().count() == 0
 
         c = any_ciagle(impact_factor=5, punktacja_wewnetrzna=0)
-        self.assertEqual(Rekord.objects.all().count(), 1)
+        assert Rekord.objects.all().count() == 1
 
-        c.dodaj_autora(self.a, self.j)
+        c.dodaj_autora(a, j)
 
         c.delete()
 
-        self.assertEqual(AutorzyView.objects.all().count(), 0)
-        self.assertEqual(Autorzy.objects.all().count(), 0)
+        assert AutorzyView.objects.all().count() == 0
+        assert Autorzy.objects.all().count() == 0
+
+    foo()
