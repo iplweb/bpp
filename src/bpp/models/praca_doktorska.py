@@ -10,10 +10,10 @@ from .wydawnictwo_zwarte import Wydawnictwo_Zwarte_Baza
 
 from django.utils.functional import cached_property
 
-from bpp.models import Charakter_Formalny, NieMaProcentowMixin
+from bpp.models import Charakter_Formalny, ModelZPBN_UID, NieMaProcentowMixin
 
 
-class Praca_Doktorska_Baza(NieMaProcentowMixin, Wydawnictwo_Zwarte_Baza):
+class Praca_Doktorska_Baza(NieMaProcentowMixin, ModelZPBN_UID, Wydawnictwo_Zwarte_Baza):
 
     jednostka = models.ForeignKey(Jednostka, CASCADE)
 

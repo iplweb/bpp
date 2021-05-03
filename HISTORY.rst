@@ -3,6 +3,15 @@
 Historia zmian
 ==============
 
+202104.64
+---------
+
+* wyszukiwanie po DOI w multiwyszukiwarce, module redagowania, globalnym
+  wyszukiwaniu (b/n),
+* ostrzeganie o zdublowanych DOI w module administratora (b/n),
+* możliwość wyszukiwania po PBN UID w globalnym wyszukiwaniu w module redagowania
+  oraz w interfejsie użytkownika (b/n),
+
 202104.62
 ---------
 
