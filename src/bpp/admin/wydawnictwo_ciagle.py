@@ -173,6 +173,7 @@ class Wydawnictwo_CiagleAdmin(
         "liczba_znakow_wydawniczych",
         "konferencja__nazwa",
         "doi",
+        "pbn_uid__pk",
     ]
 
     list_filter = [

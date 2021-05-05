@@ -72,6 +72,7 @@ class Wydawnictwo_ZwarteAdmin_Baza(CommitedModelAdmin):
         "konferencja__nazwa",
         "liczba_znakow_wydawniczych",
         "doi",
+        "pbn_uid__pk",
     ]
 
     list_filter = [

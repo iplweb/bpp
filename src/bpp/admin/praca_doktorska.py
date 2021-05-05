@@ -91,6 +91,7 @@ class Praca_Doktorska_Habilitacyjna_Admin_Base(
         "adnotacje",
         "id",
         "doi",
+        "pbn_uid__pk",
     ]
 
     list_filter = [
