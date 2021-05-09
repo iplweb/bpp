@@ -352,7 +352,7 @@ def integruj_publikacje():
 
 def synchronizuj_publikacje(client, skip=0):
     for rec in pbar(
-        Wydawnictwo_Ciagle.objects.filter(rok__gte=2018)
+        Wydawnictwo_Ciagle.objects.filter(rok__gte=2017)
         .exclude(charakter_formalny__rodzaj_pbn=None)
         .exclude(Q(doi=None) & (Q(public_www=None) | Q(www=None)))
     ):
