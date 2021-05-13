@@ -699,7 +699,22 @@ class ModelWybitny(models.Model):
         abstract = True
 
 
-class ModelZPBN_UID(models.Model):
+class LinkDoPBNMixin:
+    url_do_pbn = None
+
+    def link_do_pbn(self):
+        assert self.url_do_pbn, "Określ parametr self.url_do_pbn"
+
+        from bpp.models import Uczelnia
+
+        uczelnia = Uczelnia.objects.get_default()
+        if uczelnia is not None:
+            return self.url_do_pbn.format(
+                pbn_api_root=uczelnia.pbn_api_root, pbn_uid_id=self.pbn_uid_id
+            )
+
+
+class ModelZPBN_UID(LinkDoPBNMixin, models.Model):
     pbn_uid = models.ForeignKey(
         "pbn_api.Publication",
         verbose_name="Odpowiednik w PBN",
@@ -708,15 +723,10 @@ class ModelZPBN_UID(models.Model):
         on_delete=models.SET_NULL,
     )
 
+    url_do_pbn = "{pbn_api_root}/core/#/publication/view/{pbn_uid_id}/current"
+
     class Meta:
         abstract = True
-
-    def link_do_pbn(self):
-        from bpp.models import Uczelnia
-
-        uczelnia = Uczelnia.objects.get_default()
-        if uczelnia is not None:
-            return f"{ uczelnia.pbn_api_root }/core/#/publication/view/{ self.pbn_uid_id }/current"
 
 
 class Wydawnictwo_Baza(RekordBPPBaza):
