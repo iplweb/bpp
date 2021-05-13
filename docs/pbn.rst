@@ -43,3 +43,11 @@ Integracja z PBN API
    - wydawca musi mieć określony odpowiednik dla PBN,
    - autorzy mogą lecz nie muszą mieć określony odpowiednik dla PBN,
    - autorzy powinni mieć uzupełnione numery ORCID.
+
+Kody błędów
+===========
+
+Podczas synchronizacji z PBN mogą wystąpić m.in. następujące wyjątki:
+
+* PraceSerwisoweException: po stronie PBN trwają prace serwisowe - zamiast odpowiedzi API
+  w formacie JSON, serwer PBN zwraca stronę błędu z pszczółkami,
