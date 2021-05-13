@@ -598,3 +598,6 @@ if LOG_EVERYTHING:
 # wyjściowego, z tej prostej przyczyny, że nie wszystkie przeglądarki
 # pamiętają, żeby odświeżyć cache:
 COMPRESS_OUTPUT_DIR = f"CACHE-{VERSION}"
+
+# Kasowanie SentData z PBN
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 100000
