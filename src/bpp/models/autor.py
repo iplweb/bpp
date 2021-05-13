@@ -426,7 +426,8 @@ class Autor_Jednostka_Manager(models.Manager):
                         usun.append(rec)
                         poprzedni_rekord.rozpoczal_prace = rec.rozpoczal_prace
                         poprzedni_rekord.save()
-                        continue
+
+                    continue
 
                 if rec.rozpoczal_prace >= poprzedni_rekord.rozpoczal_prace:
                     usun.append(rec)
