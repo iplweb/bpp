@@ -4,7 +4,11 @@ from django.db.models import F, Func, Q
 
 from import_common.core import matchuj_autora, matchuj_publikacje, matchuj_wydawce
 from pbn_api.client import PBNClient
-from pbn_api.exceptions import HttpException, SciencistDoesNotExist
+from pbn_api.exceptions import (
+    HttpException,
+    SameDataUploadedRecently,
+    SciencistDoesNotExist,
+)
 from pbn_api.models import (
     Conference,
     Country,
@@ -194,7 +198,7 @@ def normalize_doi(s):
 def pobierz_prace(client: PBNClient):
     for status in ["ACTIVE"]:  # "DELETED", "ACTIVE"]:
         pobierz_mongodb(
-            client.get_publications(status=status, page_size=100), Publication
+            client.get_publications(status=status, page_size=200), Publication
         )
 
 
@@ -358,12 +362,16 @@ def synchronizuj_publikacje(client, skip=0):
     ):
         try:
             client.sync_publication(rec)
+        except SameDataUploadedRecently:
+            pass
         except HttpException as e:
-            if e.status_code == 500:
+            if e.status_code in [400, 500]:
                 warnings.warn(
                     f"{rec.pk},{rec.tytul_oryginalny},{rec.rok},PBN Error 500: {e.content}"
                 )
                 continue
+
+            raise e
         except WillNotExportError as e:
             warnings.warn(
                 f"{rec.pk},{rec.tytul_oryginalny},{rec.rok},nie wyeksportuje, bo: {e}"

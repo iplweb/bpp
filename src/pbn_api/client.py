@@ -434,7 +434,12 @@ class PBNClient(
                 raise SameDataUploadedRecently(
                     SentData.objects.get_for_rec(rec).last_updated_on
                 )
-        ret = self.post_publication(js)
+        try:
+            ret = self.post_publication(js)
+        except Exception as e:
+            SentData.objects.updated(rec, js, uploaded_okay=False, exception=str(e))
+            raise e
+
         SentData.objects.updated(rec, js)
         return ret
 
