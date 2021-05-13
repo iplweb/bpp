@@ -3,6 +3,7 @@ import json
 import multiprocessing
 import os
 import re
+import sys
 from datetime import datetime, timedelta
 from math import ceil, floor
 from pathlib import Path
@@ -236,21 +237,25 @@ def rebuild_contenttypes():
 
 
 def pbar(query, count=None, label="Progres..."):
-    return progressbar.progressbar(
-        query,
-        max_value=count or query.count(),
-        widgets=[
-            progressbar.FormatLabel(label),
-            " ",
-            progressbar.AnimatedMarker(),
-            " ",
-            progressbar.SimpleProgress(),
-            " ",
-            progressbar.Timer(),
-            " ",
-            progressbar.ETA(),
-        ],
-    )
+    if sys.stdout.isatty():
+        return progressbar.progressbar(
+            query,
+            max_value=count or query.count(),
+            widgets=[
+                progressbar.FormatLabel(label),
+                " ",
+                progressbar.AnimatedMarker(),
+                " ",
+                progressbar.SimpleProgress(),
+                " ",
+                progressbar.Timer(),
+                " ",
+                progressbar.ETA(),
+            ],
+        )
+    else:
+        # You're being piped or redirected
+        return query
 
 
 #
