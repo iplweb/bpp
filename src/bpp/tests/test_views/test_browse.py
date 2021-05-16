@@ -284,11 +284,10 @@ def test_browse_autor_podstrona_liczba_cytowan_zawsze(
 
     res = client.get(reverse("bpp:browse_autor", args=(test_browse_autor.slug,)))
 
-    assert "Liczba cytowań" in res.rendered_content
-    assert "Liczba cytowań: </strong>500" in res.rendered_content
-    assert (
-        "Liczba cytowań z jednostek afiliowanych: </strong>200" in res.rendered_content
-    )
+    content = normalize_html(res.rendered_content)
+    assert "Liczba cytowań" in content
+    assert "Liczba cytowań: </strong>500" in content
+    assert "Liczba cytowań z jednostek afiliowanych: </strong>200" in content
 
 
 @pytest.mark.django_db
