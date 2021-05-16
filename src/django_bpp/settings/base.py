@@ -177,6 +177,7 @@ INSTALLED_APPS = [
     "dal_select2",
     "grappelli",
     "django.contrib.admin",
+    "permissions_widget",
     "dj_pagination",
     "admin_tools",
     "admin_tools.theming",
@@ -598,3 +599,67 @@ if LOG_EVERYTHING:
 # wyjściowego, z tej prostej przyczyny, że nie wszystkie przeglądarki
 # pamiętają, żeby odświeżyć cache:
 COMPRESS_OUTPUT_DIR = f"CACHE-{VERSION}"
+
+
+# django-permissions-widget
+PERMISSIONS_WIDGET_PATCH_GROUPADMIN = False
+PERMISSIONS_WIDGET_PATCH_USERADMIN = True
+PERMISSIONS_WIDGET_EXCLUDE_APPS = [
+    "import_dbf",
+    "favicon",
+    "taggit",
+    "test_bpp",
+    "rozbieznosci_if",
+    "rozbieznosci_dyscyplin",
+    "sessions",
+    "sites",
+    "contenttypes",
+    "raport_slotow",
+    "multiseek",
+    "messages_extends",
+    "menu",
+    "sites",
+    "robots",
+    "pbn_api",
+    "admin",
+    "auth",
+    "password_policies",
+    "notifications",
+    "celeryui",
+    "dashboard",
+    "django.contrib.contenttypes",
+    "egeria",
+    "eksport_pbn",
+    "import_dyscyplin",
+    "import_dyscyplin_zrodel",
+    "import_list_if",
+    "import_pracownikow",
+    "integrator2",
+    "admin_tools",
+]
+
+PERMISSIONS_WIDGET_EXCLUDE_MODELS = [
+    "bpp.cache_punktacja_autora",
+    "bpp.cache_punktacja_autora_query",
+    "bpp.cache_punktacja_autora_query_view",
+    "bpp.cache_punktacja_autora_sum",
+    "bpp.cache_punktacja_autora_sum_group_ponizej",
+    "bpp.cache_punktacja_autora_sum_gruop",
+    "bpp.cache_punktacja_autora_sum_ponizej",
+    "bpp.cache_punktacja_dyscypliny",
+    "bpp.sumy_wydawnictwo_zwarte_view",
+    "bpp.opi_2012_afiliacja_do_wydzialu",
+    "bpp.opi_2012_tytul_cache",
+    "bpp.nowe_sumy_view",
+    "bpp.kronika_patent_view",
+    "bpp.kronika_praca_doktorska_view",
+    "bpp.kronika_praca_habilitacyjna_view",
+    "bpp.kronika_view",
+    "bpp.kronika_wydawnictwo_ciagle_view",
+    "bpp.kronika_wydawnictwo_zwarte_view",
+    "bpp.autorzy",
+    "bpp.rekord",
+    "bpp.rekord_view",
+    "bpp.autorzy_view",
+    "bpp.cachequeue",
+]

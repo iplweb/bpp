@@ -3,9 +3,10 @@
 Historia zmian
 ==============
 
-202104.64
+202105.64
 ---------
 
+* lepszy komponent dla określania uprawnień w module administratora (#1048),
 * wyszukiwanie po DOI w multiwyszukiwarce, module redagowania, globalnym
   wyszukiwaniu (b/n),
 * ostrzeganie o zdublowanych DOI w module administratora (b/n),
