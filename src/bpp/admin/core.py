@@ -201,7 +201,7 @@ def generuj_inline_dla_autorow(baseModel, include_dyscyplina=True):
         model = baseModel
         extra = extraRows
         form = generuj_formularz_dla_autorow(
-            baseModel, include_dyscyplina=include_dyscyplina
+            baseModel, include_rekord=False, include_dyscyplina=include_dyscyplina
         )
         formset = baseModel_AutorFormset
         sortable_field_name = "kolejnosc"

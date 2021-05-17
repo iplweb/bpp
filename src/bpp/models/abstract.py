@@ -515,8 +515,15 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
                 )
 
         # Na tym etapie rekord musi być ustalony:
-        if self.rekord_id is None:
-            raise ValidationError("Rekord nadrzędny (pole: rekord) musi być ustalone. ")
+        ValErrRek = ValidationError(
+            "Rekord nadrzędny (pole: rekord) musi być ustalone. "
+        )
+        if hasattr(self, "rekord"):
+            if self.rekord is None:
+                raise ValErrRek
+        else:
+            if self.rekord_id is None:
+                raise ValErrRek
 
         # --- Walidacja procentów ---
         # Znajdź inne obiekty z tego rekordu, które są już w bazie danych, ewentualnie
