@@ -62,6 +62,26 @@ class Wydawnictwo_NadrzedneAutocomplete(autocomplete.Select2QuerySetView):
         return qs
 
 
+class Wydawnictwo_CiagleAdminAutocomplete(
+    LoginRequiredMixin, autocomplete.Select2QuerySetView
+):
+    def get_queryset(self):
+        qs = Wydawnictwo_Ciagle.objects.all()
+        if self.q:
+            qs = qs.filter(tytul_oryginalny__icontains=self.q)
+        return qs
+
+
+class Wydawnictwo_ZwarteAdminAutocomplete(
+    LoginRequiredMixin, autocomplete.Select2QuerySetView
+):
+    def get_queryset(self):
+        qs = Wydawnictwo_Zwarte.objects.all()
+        if self.q:
+            qs = qs.filter(tytul_oryginalny__icontains=self.q)
+        return qs
+
+
 class PublicWydawnictwo_NadrzedneAutocomplete(Wydawnictwo_NadrzedneAutocomplete):
     create_field = None
 

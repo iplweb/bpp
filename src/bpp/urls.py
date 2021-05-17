@@ -41,7 +41,9 @@ from bpp.views.autocomplete import (
     Seria_WydawniczaAutocomplete,
     WidocznaJednostkaAutocomplete,
     WydawcaAutocomplete,
+    Wydawnictwo_CiagleAdminAutocomplete,
     Wydawnictwo_NadrzedneAutocomplete,
+    Wydawnictwo_ZwarteAdminAutocomplete,
     WydzialAutocomplete,
     ZapisanyJakoAutocomplete,
     Zewnetrzna_Baza_DanychAutocomplete,
@@ -263,6 +265,16 @@ urlpatterns = [
         r"^wydzial-autocomplete/$",
         WydzialAutocomplete.as_view(),
         name="wydzial-autocomplete",
+    ),
+    url(
+        r"^wydawnictwo-ciagle-admin-autocomplete/$",
+        Wydawnictwo_CiagleAdminAutocomplete.as_view(),
+        name="wydawnictwo-ciagle-admin-autocomplete",
+    ),
+    url(
+        r"^wydawnictwo-zwarte-admin-autocomplete/$",
+        Wydawnictwo_ZwarteAdminAutocomplete.as_view(),
+        name="wydawnictwo-zwarte-admin-autocomplete",
     ),
     url(
         r"^public-wydzial-autocomplete/$",

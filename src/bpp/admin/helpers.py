@@ -1,5 +1,6 @@
 # -*- encoding: utf-8 -*-
 
+from urllib.parse import parse_qs
 from urllib.parse import quote as urlquote
 
 from django import forms
@@ -421,3 +422,13 @@ def sprobuj_wgrac_do_pbn(request, obj):
         f"Dane w PBN dla rekordu {link_do_obiektu(obj)} zostały zaktualizowane. "
         f'<a target=_blank href="{obj.link_do_pbn()}">Kliknij tutaj, aby otworzyć w PBN</a>. ',
     )
+
+
+def get_rekord_id_from_GET_qs(request):
+    flt = request.GET.get("_changelist_filters", "?")
+    data = parse_qs(flt)  # noqa
+    if "rekord__id__exact" in data:
+        try:
+            return int(data.get("rekord__id__exact")[0])
+        except (ValueError, TypeError):
+            pass
