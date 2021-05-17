@@ -143,7 +143,7 @@ def generuj_formularz_dla_autorow(
             )
 
         class Media:
-            js = ["/js/bpp/js/autorform_dependant.js"]
+            js = ["/static/bpp/js/autorform_dependant.js"]
 
         class Meta:
             fields = [
