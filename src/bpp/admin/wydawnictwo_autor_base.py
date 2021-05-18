@@ -38,7 +38,7 @@ class Wydawnictwo_Autor_Base(SortableAdminMixin, admin.ModelAdmin):
         "afiliuje",
         "zatrudniony",
         "upowaznienie_pbn",
-        "procent",
+        # "procent",
         "kolejnosc",
     ]
     list_filter = [
