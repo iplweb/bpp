@@ -6,6 +6,8 @@ Historia zmian
 202105.64
 ---------
 
+* możliwość ponownej synchronizacji rekordów niepoprawnie wyslanych
+  (#1052),
 * możliwość wysłania wielu rekordów do PBN z poziomu listy rekordów w module
   redagowania (b/n),
 * synchronizacja wysyłania do PBN opcjonalna przy edycji rekordu (#1051),

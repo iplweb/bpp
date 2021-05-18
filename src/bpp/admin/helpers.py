@@ -365,7 +365,7 @@ def sprobuj_policzyc_sloty(request, obj):
         )
 
 
-def sprobuj_wgrac_do_pbn(request, obj):
+def sprobuj_wgrac_do_pbn(request, obj, force_upload=False):
     from bpp.models.uczelnia import Uczelnia
 
     if obj.charakter_formalny.rodzaj_pbn is None:
@@ -389,7 +389,7 @@ def sprobuj_wgrac_do_pbn(request, obj):
 
     client = uczelnia.pbn_client(request.user.pbn_token)
     try:
-        client.sync_publication(obj)
+        client.sync_publication(obj, force_upload=force_upload)
 
     except SameDataUploadedRecently as e:
         link_do_wyslanych = reverse(
