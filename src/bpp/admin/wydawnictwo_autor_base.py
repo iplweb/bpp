@@ -1,6 +1,9 @@
 from adminsortable2.admin import SortableAdminMixin
+from django.http import HttpResponseRedirect
+from django.urls import reverse
 
 from django.contrib import admin
+from django.contrib.admin.templatetags.admin_urls import add_preserved_filters
 
 from django.utils.safestring import mark_safe
 from django.utils.text import Truncator
@@ -113,3 +116,20 @@ class Wydawnictwo_Autor_Base(SortableAdminMixin, admin.ModelAdmin):
         # ret["rekord_pk"] = rekord_id
         ret["rekord"] = rekord_id
         return ret
+
+    def _response_post_save(self, request, obj):
+        opts = self.model._meta
+        if self.has_view_or_change_permission(request):
+            post_url = reverse(
+                "admin:%s_%s_changelist" % (opts.app_label, opts.model_name),
+                current_app=self.admin_site.name,
+            )
+            preserved_filters = self.get_preserved_filters(request)
+            if "rekord__id__exact" not in preserved_filters:
+                preserved_filters += f"rekord__id__exact={obj.rekord.pk}"
+            post_url = add_preserved_filters(
+                {"preserved_filters": preserved_filters, "opts": opts}, post_url
+            )
+        else:
+            post_url = reverse("admin:index", current_app=self.admin_site.name)
+        return HttpResponseRedirect(post_url)
