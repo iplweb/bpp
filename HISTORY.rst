@@ -6,6 +6,9 @@ Historia zmian
 202105.64
 ---------
 
+* możliwość wysłania wielu rekordów do PBN z poziomu listy rekordów w module
+  redagowania (b/n),
+* synchronizacja wysyłania do PBN opcjonalna przy edycji rekordu (#1051),
 * edycja autorów może odbywać się niezależnie od edycji "głównego" rekordu
   (#1049),
 * ograniczenie maksymalnej liczby autorów edytowanej razem z

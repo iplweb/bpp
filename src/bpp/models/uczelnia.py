@@ -240,9 +240,10 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
 
     pbn_aktualizuj_na_biezaco = models.BooleanField(
         default=False,
-        verbose_name="Aktualizuj PBN na bieżąco",
-        help_text="Aktualizuj rekordy w PBN przy każdym zapisie rekordu. Może spowolnić prace. W przypadku "
-        "braku dostępu do serwerów PBN nie uniemożliwia edycji rekordów. ",
+        verbose_name="Włącz opcjonalną aktualizację przy edycji",
+        help_text="""Aktualizuj rekordy w PBN przy zapisie rekordu, gdy redaktor kliknie odpowiedni przycisk.
+        Wybranie tej opcji spowoduje, ze na podstronach modułu redagowania dla wydawnictw pojawią się
+        przyciski 'Zapisz i wyślij do PBN'. """,
     )
 
     pbn_api_root = models.URLField(

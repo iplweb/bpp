@@ -10,6 +10,7 @@ from django.forms.widgets import Textarea
 from django.urls import reverse
 
 from pbn_api.exceptions import AccessDeniedException, SameDataUploadedRecently
+from pbn_api.models import SentData
 
 from django.contrib import messages
 from django.contrib.admin.utils import quote
@@ -391,11 +392,18 @@ def sprobuj_wgrac_do_pbn(request, obj):
         client.sync_publication(obj)
 
     except SameDataUploadedRecently as e:
+        link_do_wyslanych = reverse(
+            "admin:pbn_api_sentdata_change",
+            args=(SentData.objects.get_for_rec(obj).pk,),
+        )
+
         messages.info(
             request,
             f'Identyczne dane rekordu "{link_do_obiektu(obj)}" zostały wgrane do PBN w dniu {e}. '
-            f"Nie aktualizuję w PBN API. Jeżeli chcesz wysłać ten rekord do PBN, musisz dokonać jakiejś zmiany lub "
-            f"usunąć informacje o wcześniej wysłanych danych do PBN (Redagowanie -> PBN API -> Wysłane informacje). "
+            f"Nie aktualizuję w PBN API. Jeżeli chcesz wysłać ten rekord do PBN, musisz dokonać jakiejś zmiany "
+            f"danych rekodu lub "
+            f'usunąć informacje o <a target=_blank href="{link_do_wyslanych}">wcześniej wysłanych danych do PBN</a> '
+            f"(Redagowanie -> PBN API -> Wysłane informacje). "
             f'<a target=_blank href="{obj.link_do_pbn()}">Kliknij tutaj, aby otworzyć w PBN</a>. ',
         )
         return
@@ -432,3 +440,35 @@ def get_rekord_id_from_GET_qs(request):
             return int(data.get("rekord__id__exact")[0])
         except (ValueError, TypeError):
             pass
+
+
+class OptionalPBNSaveMixin:
+    def render_change_form(
+        self, request, context, add=False, change=False, form_url="", obj=None
+    ):
+        from bpp.models import Uczelnia
+
+        uczelnia = Uczelnia.objects.get_default()
+        if uczelnia is not None:
+            if uczelnia.pbn_integracja and uczelnia.pbn_aktualizuj_na_biezaco:
+                context.update({"show_save_and_pbn": True})
+
+        return super(OptionalPBNSaveMixin, self).render_change_form(
+            request, context, add, change, form_url, obj
+        )
+
+    def response_post_save_change(self, request, obj):
+        if "_continue_and_pbn" in request.POST:
+            sprobuj_wgrac_do_pbn(request, obj)
+
+            opts = self.model._meta
+            route = f"admin:{opts.app_label}_{opts.model_name}_change"
+
+            post_url = reverse(route, args=(obj.pk,))
+
+            from django.http import HttpResponseRedirect
+
+            return HttpResponseRedirect(post_url)
+        else:
+            # Otherwise, use default behavior
+            return super().response_post_save_change(request, obj)
