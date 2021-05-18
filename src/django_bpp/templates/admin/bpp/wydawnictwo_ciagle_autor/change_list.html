@@ -6,7 +6,7 @@
                target="_blank">{% trans "View on site" %}</a></li>
         {% if has_add_permission %}
             {% url cl.opts|admin_urlname:'add' as add_url %}
-            <li><a href="{% add_preserved_filters add_url is_popup to_field %}"
+            <li><a href="{% add_preserved_filters add_url is_popup to_field %}" name="_add_wa"
                    class="grp-add-link grp-state-focus">Dodaj powiązanie autora z rekordem</a></li>
         {% endif %}
     {% endif %}
