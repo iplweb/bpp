@@ -16,7 +16,6 @@ from bpp.models import (
     Jednostka,
     Typ_Odpowiedzialnosci,
     Uczelnia,
-    Wydawnictwo_Ciagle,
 )
 
 # Proste tabele
@@ -51,7 +50,7 @@ def generuj_formularz_dla_autorow(
 
         if include_rekord:
             rekord = forms.ModelChoiceField(
-                widget=HiddenInput, queryset=Wydawnictwo_Ciagle.objects.all()
+                widget=HiddenInput, queryset=baseModel.rekord.get_queryset()
             )
 
         autor = forms.ModelChoiceField(
