@@ -362,14 +362,13 @@ def safe_html(html):
         settings, "ALLOWED_STYLES", safe_html_defaults.ALLOWED_STYLES
     )
     STRIP_TAGS = getattr(settings, "STRIP_TAGS", True)
-    cleaned_html = bleach.clean(
+    return bleach.clean(
         html,
         tags=ALLOWED_TAGS,
         attributes=ALLOWED_ATTRIBUTES,
         styles=ALLOWED_STYLES,
         strip=STRIP_TAGS,
     )
-    return bleach.linkify(cleaned_html)
 
 
 def set_seq(s):

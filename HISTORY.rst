@@ -6,6 +6,7 @@ Historia zmian
 202105.64
 ---------
 
+* nie dodawaj automatycznie linków w tytułach prac (#976),
 * możliwość ponownej synchronizacji rekordów niepoprawnie wyslanych
   (#1052),
 * możliwość wysłania wielu rekordów do PBN z poziomu listy rekordów w module

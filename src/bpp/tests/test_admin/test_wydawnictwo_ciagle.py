@@ -4,6 +4,21 @@ from bpp.models import RODZAJ_PBN_ARTYKUL, Uczelnia
 from bpp.tests import normalize_html
 
 
+def test_wydawnictwo_ciagle_admin_zapisz_bez_linkow(
+    admin_app, uczelnia, wydawnictwo_ciagle, charaktery_formalne
+):
+    url = "admin:bpp_wydawnictwo_ciagle_change"
+    page = admin_app.get(reverse(url, args=(wydawnictwo_ciagle.pk,)))
+
+    page.forms["wydawnictwo_ciagle_form"][
+        "tytul_oryginalny"
+    ].value = "Test www.onet.pl formularza"
+    page.forms["wydawnictwo_ciagle_form"].submit().maybe_follow()
+
+    wydawnictwo_ciagle.refresh_from_db()
+    assert "a href" not in wydawnictwo_ciagle.tytul_oryginalny
+
+
 def test_wydawnictwo_ciagle_admin_zapisz_i_wyslij_do_pbn_add_tak(
     admin_app, uczelnia, mocker
 ):
