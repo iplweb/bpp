@@ -54,14 +54,17 @@ class Wydawnictwo_Autor_Base(SortableAdminMixin, admin.ModelAdmin):
         "autor__imiona",
     ]
 
-    form = generuj_formularz_dla_autorow(
-        klasa_autora, include_dyscyplina=True, include_rekord=True
-    )
+    @property
+    def form(self):
+        return generuj_formularz_dla_autorow(
+            self.klasa_autora, include_dyscyplina=True, include_rekord=True
+        )
 
     # @admin.display(description="Rekord", ordering="rekord__tytul_oryginalny")
     def rekord_short(self, obj):
         return mark_safe(Truncator(obj.rekord.tytul_oryginalny).chars(100))
 
+    rekord_short.short_description = "Rekord"
     rekord_short.ordering = "rekord__tytul_oryginalny"
 
     list_per_page = 500
