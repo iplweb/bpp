@@ -4,17 +4,18 @@ from decimal import Decimal
 from dal import autocomplete
 from dal_select2.fields import Select2ListCreateChoiceField
 from django import forms
-from django.contrib import admin
 from django.db.models.fields import BLANK_CHOICE_DASH
 from django.forms.widgets import HiddenInput
 
+from django.contrib import admin
+
 from bpp.jezyk_polski import warianty_zapisanego_nazwiska
 from bpp.models import (
-    Jednostka,
     Autor,
+    Dyscyplina_Naukowa,
+    Jednostka,
     Typ_Odpowiedzialnosci,
     Uczelnia,
-    Dyscyplina_Naukowa,
 )
 
 # Proste tabele
@@ -42,27 +43,15 @@ def get_first_typ_odpowiedzialnosci():
     return Typ_Odpowiedzialnosci.objects.filter(skrot="aut.").first()
 
 
-def generuj_inline_dla_autorow(baseModel, include_dyscyplina=True):
-    class baseModel_AutorFormset(forms.BaseInlineFormSet):
-        def clean(self):
-            # get forms that actually have valid data
-            percent = Decimal("0.00")
-            for form in self.forms:
-                try:
-                    if form.cleaned_data:
-                        percent += form.cleaned_data.get(
-                            "procent", Decimal("0.00")
-                        ) or Decimal("0.00")
-                except AttributeError:
-                    # annoyingly, if a subform is invalid Django explicity raises
-                    # an AttributeError for cleaned_data
-                    pass
-            if percent > Decimal("100.00"):
-                raise forms.ValidationError(
-                    "Liczba podanych procent odpowiedzialności przekracza 100.0"
-                )
-
+def generuj_formularz_dla_autorow(
+    baseModel, include_rekord=False, include_dyscyplina=True
+):
     class baseModel_AutorForm(forms.ModelForm):
+
+        if include_rekord:
+            rekord = forms.ModelChoiceField(
+                widget=HiddenInput, queryset=baseModel.rekord.get_queryset()
+            )
 
         autor = forms.ModelChoiceField(
             queryset=Autor.objects.all(),
@@ -167,8 +156,36 @@ def generuj_inline_dla_autorow(baseModel, include_dyscyplina=True):
                 "procent",
                 "kolejnosc",
             ]
+            if include_rekord:
+                fields = [
+                    "rekord",
+                ] + fields
+
             model = baseModel
-            widgets = {"kolejnosc": HiddenInput}
+            widgets = {"kolejnosc": HiddenInput, "rekord": HiddenInput}
+
+    return baseModel_AutorForm
+
+
+def generuj_inline_dla_autorow(baseModel, include_dyscyplina=True):
+    class baseModel_AutorFormset(forms.BaseInlineFormSet):
+        def clean(self):
+            # get forms that actually have valid data
+            percent = Decimal("0.00")
+            for form in self.forms:
+                try:
+                    if form.cleaned_data:
+                        percent += form.cleaned_data.get(
+                            "procent", Decimal("0.00")
+                        ) or Decimal("0.00")
+                except AttributeError:
+                    # annoyingly, if a subform is invalid Django explicity raises
+                    # an AttributeError for cleaned_data
+                    pass
+            if percent > Decimal("100.00"):
+                raise forms.ValidationError(
+                    "Liczba podanych procent odpowiedzialności przekracza 100.0"
+                )
 
     baseClass = admin.StackedInline
     extraRows = 0
@@ -182,7 +199,9 @@ def generuj_inline_dla_autorow(baseModel, include_dyscyplina=True):
     class baseModel_AutorInline(baseClass):
         model = baseModel
         extra = extraRows
-        form = baseModel_AutorForm
+        form = generuj_formularz_dla_autorow(
+            baseModel, include_rekord=False, include_dyscyplina=include_dyscyplina
+        )
         formset = baseModel_AutorFormset
         sortable_field_name = "kolejnosc"
         sortable_excludes = [
@@ -190,6 +209,10 @@ def generuj_inline_dla_autorow(baseModel, include_dyscyplina=True):
             "zapisany_jako",
             "afiliuje",
         ]
+
+        # Maksymalna ilosć autorów edytowanych w ramach formularza. Pozostałych
+        # autorów nalezy edytować przez opcję "Edycja autorów"
+        max_num = 25
 
     return baseModel_AutorInline
 

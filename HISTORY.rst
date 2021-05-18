@@ -6,6 +6,10 @@ Historia zmian
 202105.64
 ---------
 
+* edycja autorów może odbywać się niezależnie od edycji "głównego" rekordu
+  (#1049),
+* ograniczenie maksymalnej liczby autorów edytowanej razem z
+  formularzem rekordu do 25,
 * lepszy komponent dla określania uprawnień w module administratora (#1048),
 * wyszukiwanie po DOI w multiwyszukiwarce, module redagowania, globalnym
   wyszukiwaniu (b/n),

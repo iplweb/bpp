@@ -1,0 +1,46 @@
+{% extends "adminsortable2/change_list.html" %}{% load i18n admin_urls %}
+{% block object-tools-items %}
+    {% if rekord_id %}
+        <li><a href="/admin/bpp/wydawnictwo_zwarte/{{ rekord_id }}/change/">Edycja rekordu</a></li>
+        <li><a href="{% url "bpp:browse_praca_by_slug" rekord.slug %}" class="grp-state-focus"
+               target="_blank">{% trans "View on site" %}</a></li>
+        {% if has_add_permission %}
+            {% url cl.opts|admin_urlname:'add' as add_url %}
+            <li><a href="{% add_preserved_filters add_url is_popup to_field %}" name="_add_wa"
+                   class="grp-add-link grp-state-focus">Dodaj powiązanie autora z rekordem</a></li>
+        {% endif %}
+    {% endif %}
+
+
+{% endblock %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <script type="text/javascript">
+        django.jQuery(document).ready(function () {
+            django.jQuery(".grp-results").last().remove();
+            django.jQuery(".grp-results")[1].remove();
+
+        });
+    </script>
+{% endblock %}
+
+{% block content_title %}
+    {% if rekord_id %}
+        <h1>Edycja autorów rekordu "{{ rekord.tytul_oryginalny|truncatechars_html:300 }}"</h1>
+    {% else %}
+        <h1>{{ cl.opts.verbose_name_plural|capfirst }}</h1>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+    {% if rekord_id %}
+        {{ block.super }}
+    {% else %}
+        <p>Musisz wejść w edycję rekordu, następnie kliknąć przycisk "Edytuj autorów", aby skorzystać z tej opcji.
+        </p>
+        <p>
+            <a href="/admin/bpp/wydawnictwo_zwarte/">Kliknij tutaj, aby powrócić do listy rekordów.</a>
+        </p>
+    {% endif %}
+{% endblock %}
