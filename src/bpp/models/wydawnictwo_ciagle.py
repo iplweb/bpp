@@ -216,7 +216,7 @@ class Wydawnictwo_Ciagle(
         if self.openaccess_czas_publikacji_id is not None:
             # "releaseDateMode": "BEFORE_PUBLICATION",
             oa["releaseDateMode"] = self.openaccess_czas_publikacji.skrot
-        if oa["releaseDateMode"] == "BEFORE_PUBLICATION":
+        if oa.get("releaseDateMode") == "BEFORE_PUBLICATION":
             if self.openaccess_ilosc_miesiecy is not None:
                 #     "months": 0,
                 oa["months"] = str(self.openaccess_ilosc_miesiecy)
