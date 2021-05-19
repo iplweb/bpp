@@ -198,6 +198,40 @@ class Wydawnictwo_Ciagle(
             # "issue" ??
         }
 
+        # "openAccess": {
+        #     "releaseDate": "2021-05-19T00:56:06.872Z",
+        #     "releaseDateMonth": "JANUARY",
+        #     "releaseDateYear": 0,
+        #   },
+
+        oa = {}
+        if self.openaccess_wersja_tekstu_id is not None:
+            #     "textVersion": "ORIGINAL_AUTHOR"
+            oa["textVersion"] = self.openaccess_wersja_tekstu.skrot
+        if self.openaccess_licencja_id is not None:
+            #     "license": "CC_BY",
+            oa["license"] = self.openaccess_licencja.skrot.replace("-", "_")
+        if self.openaccess_czas_publikacji_id is not None:
+            # "releaseDateMode": "BEFORE_PUBLICATION",
+            oa["releaseDateMode"] = self.openaccess_czas_publikacji.skrot
+        if oa["releaseDateMode"] == "BEFORE_PUBLICATION":
+            if self.openaccess_ilosc_miesiecy is not None:
+                #     "months": 0,
+                oa["months"] = str(self.openaccess_ilosc_miesiecy)
+
+        if self.openaccess_tryb_dostepu_id is not None:
+            # XX: dla zwartego bedzie modeMonograph
+            #     "modeMonograph": "PUBLISHER_WEBSITE",
+            #     "modeArticle": "OPEN_JOURNAL",
+            oa["modeArticle"] = self.openaccess_tryb_dostepu.skrot
+        if self.public_dostep_dnia is not None:
+            oa["releaseDate"] = str(self.public_dostep_dnia)
+        elif self.dostep_dnia is not None:
+            oa["releaseDate"] = str(self.dostep_dnia)
+
+        if oa:
+            ret["openAccess"] = oa
+
         if self.tom:
             ret["volume"] = self.tom
 
