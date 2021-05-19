@@ -69,7 +69,7 @@ def integruj_jezyki(client):
                 warnings.warn(f"Brak jezyka po stronie BPP: {elem}")
                 continue
 
-        if jezyk.pbn_uid_id != elem.pk:
+        if jezyk.pbn_uid_id is None:
             jezyk.pbn_uid = elem
             jezyk.save()
 

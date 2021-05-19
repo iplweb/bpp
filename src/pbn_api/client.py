@@ -196,7 +196,8 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
             # elif ret.json['message'] == "Forbidden":  # <== to dostaniemy, gdy token zły lub brak
 
             if hasattr(self, "authorize"):
-                self.authorize()
+                self.authorize(self.base_url, self.app_id, self.app_token)
+                # self.authorize()
 
         if ret.status_code >= 400:
             raise HttpException(ret.status_code, url, ret.content)
