@@ -121,7 +121,12 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
         wszystkie poprzednie nazwiska, oddzielając je przecinkami.""",
         db_index=True,
     )
-
+    pokazuj_poprzednie_nazwiska = models.BooleanField(
+        default=True,
+        help_text="Jeżeli odznaczone, poprzednie nazwiska nie będą się wyświetlać na podstronie autora "
+        "dla użytkowników niezalogowanych. Użytkownicy zalogowani widzą je zawsze. Wyszukiwanie po poprzednich "
+        "nazwiskach będzie nadal możliwe. ",
+    )
     orcid = models.CharField(
         "Identyfikator ORCID",
         max_length=19,
@@ -184,7 +189,7 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
     def __str__(self):
         buf = "%s %s" % (self.nazwisko, self.imiona)
 
-        if self.poprzednie_nazwiska:
+        if self.poprzednie_nazwiska and self.pokazuj_poprzednie_nazwiska:
             buf += " (%s)" % self.poprzednie_nazwiska
 
         if self.tytul is not None:

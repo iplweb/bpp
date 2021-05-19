@@ -161,7 +161,12 @@ class AutorAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
             "Biografia",
             {
                 "classes": ("grp-collapse grp-closed",),
-                "fields": ("urodzony", "zmarl", "poprzednie_nazwiska"),
+                "fields": (
+                    "urodzony",
+                    "zmarl",
+                    "poprzednie_nazwiska",
+                    "pokazuj_poprzednie_nazwiska",
+                ),
             },
         ),
         ADNOTACJE_FIELDSET,

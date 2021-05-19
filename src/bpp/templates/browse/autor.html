@@ -36,13 +36,20 @@
     </p>
 {% endif %}
 
-{% if uczelnia.pokazuj_liczbe_cytowan_na_stronie_autora == "always" or uczelnia.pokazuj_liczbe_cytowan_na_stronie_autora == "logged-in" and request.user.is_anonymous == False %}
+    {% if request.user.is_authenticated %}
+        {% if not autor.pokazuj_poprzednie_nazwiska %}
+            <small>Poprzednie nazwiska (ukryte): {{ autor.poprzednie_nazwiska }}</small>
+        {% endif %}
+    {% endif %}
+
+{% load czy_pokazywac %}
+{% czy_pokazywac liczbe_cytowan_na_stronie_autora  %}
     {% if autor.liczba_cytowan %}
         <p><strong>Liczba cytowań: </strong>{{ autor.liczba_cytowan }}</p>
         <p><strong>Liczba cytowań z jednostek
             afiliowanych: </strong>{{ autor.liczba_cytowan_afiliowane|default:"brak" }}</p>
     {% endif %}
-{% endif %}
+{% end_czy_pokazywac %}
 <p>
     {% if autor.orcid %}
         <strong>ORCID:</strong> <a href="https://orcid.org/{{ autor.orcid }}"
