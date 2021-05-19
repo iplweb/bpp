@@ -310,10 +310,12 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
 
     def pbn_get_json(self):
         ret = {"givenNames": self.imiona, "lastName": self.nazwisko}
+
         if self.pbn_uid_id is not None:
             ret.update({"objectId": self.pbn_uid.pk})
-        if self.orcid is not None:
-            ret.update({"orcidId": self.orcid})
+        else:
+            if self.orcid is not None:
+                ret.update({"orcidId": self.orcid})
         return ret
 
     def liczba_cytowan(self):

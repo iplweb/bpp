@@ -80,7 +80,9 @@ class Wydawnictwo_Ciagle_Autor(
 
     def pbn_get_json(self):
         ret = {
-            "orcid": True if self.autor.orcid else False,
+            # to NIE jest ta flaga; to jest flaga dot. czy dane są w indeksie ORCID
+            # a nie czy autor ma Orcid ID
+            # "orcid": True if self.autor.orcid else False,
             "type": TYP_OGOLNY_DO_PBN.get(
                 self.typ_odpowiedzialnosci.typ_ogolny, "AUTHOR"
             ),
@@ -95,9 +97,9 @@ class Wydawnictwo_Ciagle_Autor(
 
         if self.autor.pbn_uid_id:
             ret["personObjectId"] = self.autor.pbn_uid.pk
-
-        if self.autor.orcid:
-            ret["personOrcidId"] = self.autor.orcid
+        else:
+            if self.autor.orcid:
+                ret["personOrcidId"] = self.autor.orcid
 
         if not ret.get("personOrcidId") and not ret.get("personObjectId"):
             return
