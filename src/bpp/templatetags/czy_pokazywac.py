@@ -52,9 +52,7 @@ class CzyPokazywacNode(template.Node):
         self.attr = attr
 
     def render(self, context):
-        from bpp.models import Uczelnia
-
-        uczelnia = Uczelnia.objects.default
+        uczelnia = context.get("uczelnia")
         if uczelnia is not None:
             if uczelnia.sprawdz_uprawnienie(self.attr.token, context.request):
                 return self.nodelist.render(context)

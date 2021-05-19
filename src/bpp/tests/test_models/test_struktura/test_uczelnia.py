@@ -220,6 +220,14 @@ def test_pokazuj_raport_slotow_menu_na_glownej(
     res = admin_client.get(url)
     assert S in normalize_html(res.rendered_content)
 
+    setattr(uczelnia, atrybut_uczelni, OpcjaWyswietlaniaField.POKAZUJ_GDY_W_ZESPOLE)
+    uczelnia.save()
+
+    res = client.get(url)
+    assert S not in normalize_html(res.rendered_content)
+    res = admin_client.get(url)
+    assert S in normalize_html(res.rendered_content)
+
 
 @pytest.mark.parametrize(
     "nazwa_url,atrybut_uczelni,params",
@@ -282,6 +290,14 @@ def test_pokazuj_raport_slotow_czy_mozna_kliknac(
     assert res.status_code == 404
     res = admin_client.get(url)
     assert res.status_code == 404
+
+    setattr(uczelnia, atrybut_uczelni, OpcjaWyswietlaniaField.POKAZUJ_GDY_W_ZESPOLE)
+    uczelnia.save()
+
+    res = client.get(url)
+    assert res.status_code == 404
+    res = admin_client.get(url)
+    assert res.status_code == 302
 
     setattr(uczelnia, atrybut_uczelni, OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE)
     uczelnia.save()

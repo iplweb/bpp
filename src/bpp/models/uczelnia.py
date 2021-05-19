@@ -385,6 +385,11 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
                 return False
             return True
 
+        if res == OpcjaWyswietlaniaField.POKAZUJ_NIGDY:
+            return False
+
+        raise NotImplementedError()
+
 
 class Ukryj_Status_Korekty(models.Model):
     uczelnia = models.ForeignKey(Uczelnia, on_delete=models.CASCADE)
