@@ -368,6 +368,23 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
             "status_korekty", flat=True
         )
 
+    def sprawdz_uprawnienie(self, attr, request):
+        res = getattr(self, f"pokazuj_{attr}")
+        if res == OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE:
+            return True
+
+        if res == OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM:
+            if request.user.is_anonymous:
+                return False
+            return True
+
+        if res == OpcjaWyswietlaniaField.POKAZUJ_GDY_W_ZESPOLE:
+            if request.user.is_anonymous:
+                return False
+            if not request.user.is_staff:
+                return False
+            return True
+
 
 class Ukryj_Status_Korekty(models.Model):
     uczelnia = models.ForeignKey(Uczelnia, on_delete=models.CASCADE)

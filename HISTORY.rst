@@ -6,6 +6,7 @@ Historia zmian
 202105.64
 ---------
 
+* możliwosć wyswietlania raportów tylko dla członków zespołu (#1047),
 * nie dodawaj automatycznie linków w tytułach prac (#976),
 * możliwość ponownej synchronizacji rekordów niepoprawnie wyslanych
   (#1052),
