@@ -295,9 +295,9 @@ def test_pokazuj_raport_slotow_czy_mozna_kliknac(
     uczelnia.save()
 
     res = client.get(url)
-    assert res.status_code == 404
-    res = admin_client.get(url)
     assert res.status_code == 302
+    res = admin_client.get(url)
+    assert res.status_code == 200
 
     setattr(uczelnia, atrybut_uczelni, OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE)
     uczelnia.save()

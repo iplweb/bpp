@@ -20,6 +20,9 @@ class NiezdefiniowanaUczelnia:
             return False
         return super(NiezdefiniowanaUczelnia, self).__getattr__(item)
 
+    def sprawdz_uprawnienie(self, *args, **kw):
+        return False
+
 
 BRAK_UCZELNI = {"uczelnia": NiezdefiniowanaUczelnia}
 
