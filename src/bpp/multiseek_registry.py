@@ -125,6 +125,12 @@ class AdnotacjeQueryObject(StringQueryObject):
     public = False
 
 
+class DOIQueryObject(StringQueryObject):
+    label = "DOI"
+    field_name = "doi"
+    public = False
+
+
 class InformacjeQueryObject(StringQueryObject):
     label = "Informacje"
     field_name = "informacje"
@@ -953,6 +959,7 @@ multiseek_fields = [
     LicencjaOpenAccessUstawionaQueryObject(),
     PublicDostepDniaQueryObject(),
     StronaWWWUstawionaQueryObject(),
+    DOIQueryObject(),
 ]
 
 

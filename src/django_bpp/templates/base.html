@@ -113,71 +113,72 @@
                     <li>
                         <a href="#"><i class="fi-graph-trend"></i> raporty</a>
                         <ul class="menu vertical">
-                            {% if uczelnia.pokazuj_raport_dla_komisji_centralnej == "always" or uczelnia.pokazuj_raport_dla_komisji_centralnej == "logged-in" and request.user.is_anonymous == False %}
+                            {% load czy_pokazywac %}
+                            {% czy_pokazywac raport_dla_komisji_centralnej %}
                                 <li>
                                     <a href="{% url "bpp:raport_dla_komisji_centralnej" %}">raport
                                         dla Komisji Centralnej</a></li>
-                            {% endif %}
+                            {% end_czy_pokazywac %}
 
                             {% load user_in_group %}
 
                             {% if ENABLE_NEW_REPORTS %}
-                                {% if uczelnia.pokazuj_raport_wydzialow == "always" or uczelnia.pokazuj_raport_wydzialow == "logged-in" and request.user.is_anonymous == False %}
+                                {% czy_pokazywac raport_wydzialow %}
                                     <li>
                                         <a href="{% url "nowe_raporty:wydzial_form" %}">
                                             raport wydziałów
                                         </a>
                                     </li>
-                                {% endif %}
-                                {% if uczelnia.pokazuj_raport_jednostek == "always" or uczelnia.pokazuj_raport_jednostek == "logged-in" and request.user.is_anonymous == False %}
+                                {% end_czy_pokazywac %}
+                                {% czy_pokazywac raport_jednostek %}
                                     <li>
                                         <a href="{% url "nowe_raporty:jednostka_form" %}">
                                             raport jednostek
                                         </a>
                                     </li>
-                                {% endif %}
-                                {% if uczelnia.pokazuj_raport_autorow == "always" or uczelnia.pokazuj_raport_autorow == "logged-in" and request.user.is_anonymous == False %}
+                                {% end_czy_pokazywac %}
+                                {% czy_pokazywac raport_autorow %}
                                     <li>
                                         <a href="{% url "nowe_raporty:autor_form" %}">
                                             raport autorów
                                         </a>
                                     </li>
-                                {% endif %}
+                                {% end_czy_pokazywac %}
                             {% else %}
-                                {% if uczelnia.pokazuj_raport_jednostek == "always" or uczelnia.pokazuj_raport_jednostek == "logged-in" and request.user.is_anonymous == False %}
+                                {% czy_pokazywac raport_jednostek %}
                                     <li>
                                         <a href="{% url "bpp:raport_jednostek_formularz" %}">raport
                                             jednostek</a></li>
-                                {% endif %}
-                                {% if uczelnia.pokazuj_raport_autorow == "always" or uczelnia.pokazuj_raport_autorow == "logged-in" and request.user.is_anonymous == False %}
+                                {% end_czy_pokazywac %}
+                                {% czy_pokazywac raport_autorow %}
 
                                     <li><a href="{% url "bpp:raport_autorow_formularz" %}">raport
                                         autorów</a></li>
-                                {% endif %}
+                                {% end_czy_pokazywac %}
                             {% endif %}
-                            {% if uczelnia.pokazuj_ranking_autorow == "always" or uczelnia.pokazuj_ranking_autorow == "logged-in" and request.user.is_anonymous == False %}
+                            {% czy_pokazywac ranking_autorow %}
                                 <hr>
                                 <li><a href="{% url "bpp:ranking_autorow_formularz" %}">ranking
                                     autorów</a></li>
                                 <hr>
-                            {% endif %}
+                            {% end_czy_pokazywac %}
 
-                            {% if uczelnia.pokazuj_raport_slotow_autor == "always" or uczelnia.pokazuj_raport_slotow_autor == "logged-in" and request.user.is_anonymous == False %}
+                            {% czy_pokazywac raport_slotow_autor %}
                                 <li><a href="{% url "raport_slotow:index" %}">raport slotów - autor</a></li>
-                            {% endif %}
-                            {% if uczelnia.pokazuj_raport_slotow_zerowy == "always" or uczelnia.pokazuj_raport_slotow_zerowy == "logged-in" and request.user.is_anonymous == False %}
+                            {% end_czy_pokazywac %}
+                            {% czy_pokazywac raport_slotow_zerowy  %}
                                 <li><a href="{% url "raport_slotow:raport-slotow-zerowy" %}">raport slotów - zerowy</a>
                                 </li>
                                 <li><a href="{% url "raport_slotow:raport-slotow-zerowy-bez-5" %}">raport slotów -
                                     zerowy PK>5</a></li>
-                            {% endif %}
+                            {% end_czy_pokazywac %}
 
-                            {% if uczelnia.pokazuj_raport_slotow_uczelnia == "always" or uczelnia.pokazuj_raport_slotow_uczelnia == "logged-in" and request.user.is_anonymous == False %}
+                            {% czy_pokazywac raport_slotow_uczelnia %}
                                 <li><a href="{% url "raport_slotow:lista-raport-slotow-uczelnia" %}">raport slotów -
                                     uczelnia</a></li>
                                 <li><a href="{% url "raport_slotow:index-ewaluacja" %}">raport slotów - ewaluacja</a>
                                 </li>
-                            {% endif %}
+                            {% end_czy_pokazywac %}
 
 
                         </ul>

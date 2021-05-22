@@ -24,6 +24,7 @@ from bpp.multiseek_registry import (
     UNION,
     CharakterOgolnyQueryObject,
     DataUtworzeniaQueryObject,
+    DOIQueryObject,
     DyscyplinaQueryObject,
     ForeignKeyDescribeMixin,
     JednostkaQueryObject,
@@ -372,6 +373,12 @@ def test_LiczbaAutorowQueryObject():
 def test_ZewnetrznaBazaDanychQueryObject():
     zbd = mommy.make(Zewnetrzna_Baza_Danych)
     res = ZewnetrznaBazaDanychQueryObject().real_query(zbd, logic.DIFFERENT)
+    assert Rekord.objects.filter(res).count() == 0
+
+
+@pytest.mark.django_db
+def test_DOIQueryObject():
+    res = DOIQueryObject().real_query("foo", logic.EQUAL)
     assert Rekord.objects.filter(res).count() == 0
 
 

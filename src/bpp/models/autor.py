@@ -15,7 +15,7 @@ from django.urls.base import reverse
 from django.contrib.postgres.search import SearchVectorField as VectorField
 
 from bpp.core import zbieraj_sloty
-from bpp.models import ModelZAdnotacjami, ModelZNazwa, NazwaISkrot
+from bpp.models import LinkDoPBNMixin, ModelZAdnotacjami, ModelZNazwa, NazwaISkrot
 from bpp.models.abstract import ModelZPBN_ID
 from bpp.util import FulltextSearchMixin
 
@@ -63,7 +63,9 @@ class AutorManager(FulltextSearchMixin, models.Manager):
         )
 
 
-class Autor(ModelZAdnotacjami, ModelZPBN_ID):
+class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
+    url_do_pbn = "{pbn_api_root}/core/#/person/view/{pbn_uid_id}/current"
+
     imiona = models.CharField(max_length=512, db_index=True)
     nazwisko = models.CharField(max_length=256, db_index=True)
     tytul = models.ForeignKey(Tytul, CASCADE, blank=True, null=True)
@@ -119,7 +121,12 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
         wszystkie poprzednie nazwiska, oddzielając je przecinkami.""",
         db_index=True,
     )
-
+    pokazuj_poprzednie_nazwiska = models.BooleanField(
+        default=True,
+        help_text="Jeżeli odznaczone, poprzednie nazwiska nie będą się wyświetlać na podstronie autora "
+        "dla użytkowników niezalogowanych. Użytkownicy zalogowani widzą je zawsze. Wyszukiwanie po poprzednich "
+        "nazwiskach będzie nadal możliwe. ",
+    )
     orcid = models.CharField(
         "Identyfikator ORCID",
         max_length=19,
@@ -182,7 +189,7 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
     def __str__(self):
         buf = "%s %s" % (self.nazwisko, self.imiona)
 
-        if self.poprzednie_nazwiska:
+        if self.poprzednie_nazwiska and self.pokazuj_poprzednie_nazwiska:
             buf += " (%s)" % self.poprzednie_nazwiska
 
         if self.tytul is not None:
@@ -303,10 +310,12 @@ class Autor(ModelZAdnotacjami, ModelZPBN_ID):
 
     def pbn_get_json(self):
         ret = {"givenNames": self.imiona, "lastName": self.nazwisko}
+
         if self.pbn_uid_id is not None:
             ret.update({"objectId": self.pbn_uid.pk})
-        if self.orcid is not None:
-            ret.update({"orcidId": self.orcid})
+        else:
+            if self.orcid is not None:
+                ret.update({"orcidId": self.orcid})
         return ret
 
     def liczba_cytowan(self):
@@ -424,7 +433,8 @@ class Autor_Jednostka_Manager(models.Manager):
                         usun.append(rec)
                         poprzedni_rekord.rozpoczal_prace = rec.rozpoczal_prace
                         poprzedni_rekord.save()
-                        continue
+
+                    continue
 
                 if rec.rozpoczal_prace >= poprzedni_rekord.rozpoczal_prace:
                     usun.append(rec)

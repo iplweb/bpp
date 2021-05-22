@@ -3,6 +3,33 @@
 Historia zmian
 ==============
 
+202105.64
+---------
+
+* eksport danych dot. OpenAccess do PBN (#1045),
+* możliwosć wyswietlania raportów tylko dla członków zespołu (#1047),
+* nie dodawaj automatycznie linków w tytułach prac (#976),
+* możliwość ponownej synchronizacji rekordów niepoprawnie wyslanych
+  (#1052),
+* możliwość wysłania wielu rekordów do PBN z poziomu listy rekordów w module
+  redagowania (b/n),
+* synchronizacja wysyłania do PBN opcjonalna przy edycji rekordu (#1051),
+* edycja autorów może odbywać się niezależnie od edycji "głównego" rekordu
+  (#1049),
+* ograniczenie maksymalnej liczby autorów edytowanej razem z
+  formularzem rekordu do 25,
+* lepszy komponent dla określania uprawnień w module administratora (#1048),
+* wyszukiwanie po DOI w multiwyszukiwarce, module redagowania, globalnym
+  wyszukiwaniu (b/n),
+* ostrzeganie o zdublowanych DOI w module administratora (b/n),
+* możliwość wyszukiwania po PBN UID w globalnym wyszukiwaniu w module redagowania
+  oraz w interfejsie użytkownika (b/n),
+
+202104.62
+---------
+
+* nie sprawdzaj obecnosci tabel rozbieżnosci dyscyplin przy starcie serwera (b/n),
+
 202104.61
 ---------
 

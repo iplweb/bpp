@@ -1,11 +1,17 @@
 # -*- encoding: utf-8 -*-
+
 from dal import autocomplete
 from django import forms
 from django.forms.utils import flatatt
 from mptt.forms import TreeNodeChoiceField
 from taggit.forms import TextareaTagWidget
 
-from .actions import ustaw_po_korekcie, ustaw_przed_korekta, ustaw_w_trakcie_korekty
+from .actions import (
+    ustaw_po_korekcie,
+    ustaw_przed_korekta,
+    ustaw_w_trakcie_korekty,
+    wyslij_do_pbn,
+)
 from .core import CommitedModelAdmin, KolumnyZeSkrotamiMixin, generuj_inline_dla_autorow
 
 # Widget do automatycznego uzupełniania punktacji wydawnictwa ciągłego
@@ -13,7 +19,7 @@ from .element_repozytorium import Element_RepozytoriumInline
 from .grant import Grant_RekorduInline
 from .helpers import (
     MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET,
-    sprobuj_wgrac_do_pbn,
+    OptionalPBNSaveMixin,
 )
 
 from django.contrib import admin
@@ -135,10 +141,18 @@ class Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychInline(admin.StackedInline):
 
 
 class Wydawnictwo_CiagleAdmin(
-    KolumnyZeSkrotamiMixin, AdnotacjeZDatamiOrazPBNMixin, CommitedModelAdmin
+    OptionalPBNSaveMixin,
+    KolumnyZeSkrotamiMixin,
+    AdnotacjeZDatamiOrazPBNMixin,
+    CommitedModelAdmin,
 ):
     formfield_overrides = NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW
-    actions = [ustaw_po_korekcie, ustaw_w_trakcie_korekty, ustaw_przed_korekta]
+    actions = [
+        ustaw_po_korekcie,
+        ustaw_w_trakcie_korekty,
+        ustaw_przed_korekta,
+        wyslij_do_pbn,
+    ]
 
     form = Wydawnictwo_CiagleForm
 
@@ -172,6 +186,8 @@ class Wydawnictwo_CiagleAdmin(
         "adnotacje",
         "liczba_znakow_wydawniczych",
         "konferencja__nazwa",
+        "doi",
+        "pbn_uid__pk",
     ]
 
     list_filter = [
@@ -243,7 +259,6 @@ class Wydawnictwo_CiagleAdmin(
     def save_model(self, request, obj, form, change):
         super(Wydawnictwo_CiagleAdmin, self).save_model(request, obj, form, change)
         sprobuj_policzyc_sloty(request, obj)
-        sprobuj_wgrac_do_pbn(request, obj)
 
 
 admin.site.register(Wydawnictwo_Ciagle, Wydawnictwo_CiagleAdmin)

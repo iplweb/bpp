@@ -30,6 +30,11 @@ class PBNBaseCommand(BaseCommand):
         parser.add_argument("--base-url", default=base_url)
         parser.add_argument("--user-token", default=user_token)
 
-    def get_client(self, app_id, app_token, base_url, user_token):
+    def get_client(self, app_id, app_token, base_url, user_token, verbose=False):
         transport = RequestsTransport(app_id, app_token, base_url, user_token)
+        if verbose:
+            print("App ID\t\t", app_id)
+            print("App token\t", app_token)
+            print("Base URL\t", base_url)
+            print("User token\t", user_token)
         return PBNClient(transport)

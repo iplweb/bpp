@@ -424,8 +424,10 @@ def fill_admin_form(
 
 
 def fill_admin_inline(
-    browser, autor, jednostka, zapisany_jako=None, procent=None, no=0
+    browser, autor, jednostka, zapisany_jako=None, procent=None, no=0, prefix=None
 ):
+    "Daj prefix równy 'id_' aby wypełniać pojedyncze formularze (nie inlines)"
+
     # Poza tymi wypełnianymi poniżej sa jeszcze:
     # autorzy_set-0-typ_odpowiedzialnosci
     # autorzy_set-0-afiliuje
@@ -434,23 +436,20 @@ def fill_admin_inline(
     # autorzy_set-0-rekord
     # autorzy_set-0-id
 
+    if prefix is None:
+        prefix = f"id_autorzy_set-{no}-"
+
     select_select2_autocomplete(
-        browser, f"id_autorzy_set-{no}-autor", f"{autor.nazwisko} {autor.imiona}"
+        browser, f"{prefix}autor", f"{autor.nazwisko} {autor.imiona}"
     )
-    select_select2_autocomplete(
-        browser, f"id_autorzy_set-{no}-jednostka", jednostka.nazwa
-    )
+    select_select2_autocomplete(browser, f"{prefix}jednostka", jednostka.nazwa)
     if zapisany_jako is None:
         zapisany_jako = f"{autor.nazwisko} {autor.imiona}"
-    select_select2_autocomplete(
-        browser, f"id_autorzy_set-{no}-zapisany_jako", zapisany_jako
-    )
+    select_select2_autocomplete(browser, f"{prefix}zapisany_jako", zapisany_jako)
     if procent is not None:
-        set_element(browser, f"id_autorzy_set-{no}-procent", procent)
+        set_element(browser, f"{prefix}procent", procent)
     if procent == -1:
-        set_element(
-            browser, f"id_autorzy_set-{no}-procent", str(random.randint(1, 100)) + ".00"
-        )
+        set_element(browser, f"{prefix}procent", str(random.randint(1, 100)) + ".00")
 
 
 def submitted_form_bad(browser):

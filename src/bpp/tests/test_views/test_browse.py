@@ -284,11 +284,10 @@ def test_browse_autor_podstrona_liczba_cytowan_zawsze(
 
     res = client.get(reverse("bpp:browse_autor", args=(test_browse_autor.slug,)))
 
-    assert "Liczba cytowań" in res.rendered_content
-    assert "Liczba cytowań: </strong>500" in res.rendered_content
-    assert (
-        "Liczba cytowań z jednostek afiliowanych: </strong>200" in res.rendered_content
-    )
+    content = normalize_html(res.rendered_content)
+    assert "Liczba cytowań" in content
+    assert "Liczba cytowań: </strong>500" in content
+    assert "Liczba cytowań z jednostek afiliowanych: </strong>200" in content
 
 
 @pytest.mark.django_db
@@ -519,3 +518,21 @@ def test_PracaViewMixin_redirect(wydawnictwo_zwarte, rf, admin_user):
     ).get(req)
     assert res.status_code == 302
     assert res.url.find("/bpp/rekord/Wydawnictwo-Zwarte") == 0
+
+
+def test_autor_ukrywanie_nazwisk(autor_jan_nowak, client, admin_client):
+    autor_jan_nowak.poprzednie_nazwiska = "TEST"
+    assert "TEST" in str(autor_jan_nowak)
+
+    autor_jan_nowak.pokazuj_poprzednie_nazwiska = False
+    autor_jan_nowak.save()
+
+    assert "TEST" not in str(autor_jan_nowak)
+
+    url = reverse("bpp:browse_autor", args=(autor_jan_nowak.slug,))
+
+    page = admin_client.get(url)
+    assert "TEST" in normalize_html(page.rendered_content)
+
+    page = client.get(url)
+    assert "TEST" not in normalize_html(page.rendered_content)

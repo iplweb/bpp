@@ -1,0 +1,9 @@
+{% extends "admin/change_form.html" %}{% load i18n %}
+
+{% block object-tools-items %}
+    {% if original.rekord.pk %}
+        <li><a href="/admin/bpp/wydawnictwo_ciagle/{{ original.rekord.pk }}/change/">Edycja rekordu</a></li>
+        <li><a href="{% url "bpp:browse_praca_by_slug" original.rekord.slug %}" class="grp-state-focus" target="_blank">{% trans "View on site" %}</a></li>
+    {% endif %}
+    {{ block.super }}
+{% endblock %}

@@ -3,6 +3,7 @@ import json
 import multiprocessing
 import os
 import re
+import sys
 from datetime import datetime, timedelta
 from math import ceil, floor
 from pathlib import Path
@@ -236,21 +237,25 @@ def rebuild_contenttypes():
 
 
 def pbar(query, count=None, label="Progres..."):
-    return progressbar.progressbar(
-        query,
-        max_value=count or query.count(),
-        widgets=[
-            progressbar.FormatLabel(label),
-            " ",
-            progressbar.AnimatedMarker(),
-            " ",
-            progressbar.SimpleProgress(),
-            " ",
-            progressbar.Timer(),
-            " ",
-            progressbar.ETA(),
-        ],
-    )
+    if sys.stdout.isatty():
+        return progressbar.progressbar(
+            query,
+            max_value=count or query.count(),
+            widgets=[
+                progressbar.FormatLabel(label),
+                " ",
+                progressbar.AnimatedMarker(),
+                " ",
+                progressbar.SimpleProgress(),
+                " ",
+                progressbar.Timer(),
+                " ",
+                progressbar.ETA(),
+            ],
+        )
+    else:
+        # You're being piped or redirected
+        return query
 
 
 #
@@ -357,14 +362,13 @@ def safe_html(html):
         settings, "ALLOWED_STYLES", safe_html_defaults.ALLOWED_STYLES
     )
     STRIP_TAGS = getattr(settings, "STRIP_TAGS", True)
-    cleaned_html = bleach.clean(
+    return bleach.clean(
         html,
         tags=ALLOWED_TAGS,
         attributes=ALLOWED_ATTRIBUTES,
         styles=ALLOWED_STYLES,
         strip=STRIP_TAGS,
     )
-    return bleach.linkify(cleaned_html)
 
 
 def set_seq(s):

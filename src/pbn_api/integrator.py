@@ -4,7 +4,11 @@ from django.db.models import F, Func, Q
 
 from import_common.core import matchuj_autora, matchuj_publikacje, matchuj_wydawce
 from pbn_api.client import PBNClient
-from pbn_api.exceptions import HttpException, SciencistDoesNotExist
+from pbn_api.exceptions import (
+    HttpException,
+    SameDataUploadedRecently,
+    SciencistDoesNotExist,
+)
 from pbn_api.models import (
     Conference,
     Country,
@@ -65,7 +69,7 @@ def integruj_jezyki(client):
                 warnings.warn(f"Brak jezyka po stronie BPP: {elem}")
                 continue
 
-        if jezyk.pbn_uid_id != elem.pk:
+        if jezyk.pbn_uid_id is None:
             jezyk.pbn_uid = elem
             jezyk.save()
 
@@ -194,7 +198,7 @@ def normalize_doi(s):
 def pobierz_prace(client: PBNClient):
     for status in ["ACTIVE"]:  # "DELETED", "ACTIVE"]:
         pobierz_mongodb(
-            client.get_publications(status=status, page_size=100), Publication
+            client.get_publications(status=status, page_size=200), Publication
         )
 
 
@@ -339,7 +343,7 @@ def integruj_publikacje():
             p = matchuj_publikacje(
                 klass,
                 elem.value("object", "title"),
-                elem.value("object", "year"),
+                elem.value_or_none("object", "year"),
                 elem.value_or_none("object", "doi"),
                 elem.value_or_none("object", "publicUri"),
             )
@@ -352,18 +356,22 @@ def integruj_publikacje():
 
 def synchronizuj_publikacje(client, skip=0):
     for rec in pbar(
-        Wydawnictwo_Ciagle.objects.filter(rok__gte=2018)
+        Wydawnictwo_Ciagle.objects.filter(rok__gte=2017)
         .exclude(charakter_formalny__rodzaj_pbn=None)
         .exclude(Q(doi=None) & (Q(public_www=None) | Q(www=None)))
     ):
         try:
             client.sync_publication(rec)
+        except SameDataUploadedRecently:
+            pass
         except HttpException as e:
-            if e.status_code == 500:
+            if e.status_code in [400, 500]:
                 warnings.warn(
                     f"{rec.pk},{rec.tytul_oryginalny},{rec.rok},PBN Error 500: {e.content}"
                 )
                 continue
+
+            raise e
         except WillNotExportError as e:
             warnings.warn(
                 f"{rec.pk},{rec.tytul_oryginalny},{rec.rok},nie wyeksportuje, bo: {e}"

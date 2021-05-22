@@ -32,7 +32,7 @@
         <input type="hidden" name="suggested-title" value="{{ zrodlo }}"/>
         <input type="hidden" name="zrodlo" value="{{ zrodlo.pk }}"/>
         <p>
-            Wyszukaj prace w tym źródle rekordy...
+            Wyszukaj w tym źródle rekordy...
         </p>
         {% include "browse/w_latach.html" with prace_w_latach=zrodlo.prace_w_latach %}
         {% include "browse/tytul_raportu.html" with obj=zrodlo %}

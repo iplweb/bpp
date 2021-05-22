@@ -299,10 +299,14 @@ def matchuj_publikacje(
         warnings.warn(f"MultipleObjectsReturned dla title={title} rok={year}")
 
     if doi is not None:
-        try:
-            return klass.objects.get(doi=doi)
-        except klass.DoesNotExist:
-            pass
+        doi = doi.strip()
+        if doi:
+            try:
+                return klass.objects.get(doi=doi)
+            except klass.DoesNotExist:
+                pass
+            except klass.MultipleObjectsReturned:
+                warnings.warn(f"DOI nie jest unikalne w bazie: {doi}")
 
     if public_uri is not None:
         try:

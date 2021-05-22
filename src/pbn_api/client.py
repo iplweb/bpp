@@ -196,7 +196,8 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
             # elif ret.json['message'] == "Forbidden":  # <== to dostaniemy, gdy token zły lub brak
 
             if hasattr(self, "authorize"):
-                self.authorize()
+                self.authorize(self.base_url, self.app_id, self.app_token)
+                # self.authorize()
 
         if ret.status_code >= 400:
             raise HttpException(ret.status_code, url, ret.content)
@@ -426,14 +427,20 @@ class PBNClient(
     def post_publication(self, json):
         return self.transport.post("/api/v1/publications", body=json)
 
-    def upload_publication(self, rec):
+    def upload_publication(self, rec, force_upload=False):
         js = rec.pbn_get_json()
-        needed = SentData.objects.check_if_needed(rec, js)
-        if not needed:
-            raise SameDataUploadedRecently(
-                SentData.objects.get_for_rec(rec).last_updated_on
-            )
-        ret = self.post_publication(js)
+        if not force_upload:
+            needed = SentData.objects.check_if_needed(rec, js)
+            if not needed:
+                raise SameDataUploadedRecently(
+                    SentData.objects.get_for_rec(rec).last_updated_on
+                )
+        try:
+            ret = self.post_publication(js)
+        except Exception as e:
+            SentData.objects.updated(rec, js, uploaded_okay=False, exception=str(e))
+            raise e
+
         SentData.objects.updated(rec, js)
         return ret
 
@@ -450,11 +457,11 @@ class PBNClient(
 
         return zapisz_mongodb(data, Publication)
 
-    def sync_publication(self, pub):
+    def sync_publication(self, pub, force_upload=False):
         # if not pub.doi:
         #     raise WillNotExportError("Ustaw DOI dla publikacji")
 
-        ret = self.upload_publication(pub)
+        ret = self.upload_publication(pub, force_upload=force_upload)
 
         publication = self.download_publication(objectId=ret["objectId"])
         if pub.pbn_uid_id != ret["objectId"]:
@@ -465,7 +472,7 @@ class PBNClient(
         from bpp.models import Wydawnictwo_Ciagle
 
         pub = Wydawnictwo_Ciagle.objects.filter(rok=2020).exclude(doi=None).first()
-        self.sync_publication(pub)
+        self.sync_publication(pub, force_upload=True)
 
     def exec(self, cmd):
         try:

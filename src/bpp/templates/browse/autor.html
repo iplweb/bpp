@@ -11,99 +11,107 @@
 {% endblock %}
 
 {% block content %}
-    <h1>{{ autor }}{% if autor.aktualna_jednostka %}{% if autor.aktualna_funkcja.pokazuj_za_nazwiskiem %},
-        {{ autor.aktualna_funkcja }}{% endif %}
-    {% endif %}</h1>
-    {% include "browse/go_to_admin_change.html" with url="admin:bpp_autor_change" pk=autor.pk group="wprowadzanie danych" %}
+<h1>{{ autor }}{% if autor.aktualna_jednostka %}{% if autor.aktualna_funkcja.pokazuj_za_nazwiskiem %},
+    {{ autor.aktualna_funkcja }}{% endif %}
+{% endif %}</h1>
+{% include "browse/go_to_admin_change.html" with url="admin:bpp_autor_change" pk=autor.pk group="wprowadzanie danych" %}
 
-    {% if autor.praca_doktorska_set.exists %}
-        {% for praca_doktorska in autor.praca_doktorska_set.all %}
-            <p>
-                Praca doktorska:
-                <a href="{% url "bpp:browse_praca_old" "praca_doktorska" praca_doktorska.pk %}">
-                    {{ praca_doktorska|safe }}
-                </a>
-            </p>
-        {% endfor %}
-    {% endif %}
-
-    {% if autor.praca_habilitacyjna %}
+{% if autor.praca_doktorska_set.exists %}
+    {% for praca_doktorska in autor.praca_doktorska_set.all %}
         <p>
-            Praca habilitacyjna:
-            <a href="{% url "bpp:browse_praca_old" "praca_habilitacyjna" autor.praca_habilitacyjna.pk %}">
-                {{ autor.praca_habilitacyjna|safe }}
+            Praca doktorska:
+            <a href="{% url "bpp:browse_praca_old" "praca_doktorska" praca_doktorska.pk %}">
+                {{ praca_doktorska|safe }}
             </a>
         </p>
-    {% endif %}
+    {% endfor %}
+{% endif %}
 
-    {% if uczelnia.pokazuj_liczbe_cytowan_na_stronie_autora == "always" or uczelnia.pokazuj_liczbe_cytowan_na_stronie_autora == "logged-in" and request.user.is_anonymous == False %}
-        {% if autor.liczba_cytowan %}
-            <p><strong>Liczba cytowań: </strong>{{ autor.liczba_cytowan }}</p>
-            <p><strong>Liczba cytowań z jednostek afiliowanych: </strong>{{ autor.liczba_cytowan_afiliowane|default:"brak" }}</p>
-        {% endif %}
-    {% endif %}
+{% if autor.praca_habilitacyjna %}
     <p>
-        {% if autor.orcid %}
-            <strong>ORCID:</strong> <a href="https://orcid.org/{{ autor.orcid }}"
-                                       target="_blank">{{ autor.orcid }}</a>
+        Praca habilitacyjna:
+        <a href="{% url "bpp:browse_praca_old" "praca_habilitacyjna" autor.praca_habilitacyjna.pk %}">
+            {{ autor.praca_habilitacyjna|safe }}
+        </a>
+    </p>
+{% endif %}
+
+    {% if request.user.is_authenticated %}
+        {% if not autor.pokazuj_poprzednie_nazwiska %}
+            <small>Poprzednie nazwiska (ukryte): {{ autor.poprzednie_nazwiska }}</small>
         {% endif %}
-        {% if autor.pbn_id %}
-            <strong>PBN ID:</strong> {{ autor.pbn_id }}
-        {% endif %}
-        {% if autor.system_kadrowy_id %}
-            <strong>System kadrowy ID:</strong> {{ autor.system_kadrowy_id }}
-        {% endif %}
-        <span data-tooltip class="top" data-click-open="false" tabindex="2"
-              title="Unikalny, wewnętrzny identyfikator autora w systemie BPP">
+    {% endif %}
+
+{% load czy_pokazywac %}
+{% czy_pokazywac liczbe_cytowan_na_stronie_autora  %}
+    {% if autor.liczba_cytowan %}
+        <p><strong>Liczba cytowań: </strong>{{ autor.liczba_cytowan }}</p>
+        <p><strong>Liczba cytowań z jednostek
+            afiliowanych: </strong>{{ autor.liczba_cytowan_afiliowane|default:"brak" }}</p>
+    {% endif %}
+{% end_czy_pokazywac %}
+<p>
+    {% if autor.orcid %}
+        <strong>ORCID:</strong> <a href="https://orcid.org/{{ autor.orcid }}"
+                                   target="_blank">{{ autor.orcid }}</a>
+    {% endif %}
+    {% if autor.pbn_uid_id %}
+        <strong>PBN UID:</strong>
+        <a href="{{ autor.link_do_pbn }}" target="_blank">{{ autor.pbn_uid_id }}</a>
+    {% endif %}
+
+
+    {% if autor.pbn_id %}
+        <strong>PBN ID:</strong> {{ autor.pbn_id }}
+    {% endif %}
+    {% if autor.system_kadrowy_id %}
+        <strong>System kadrowy ID:</strong> {{ autor.system_kadrowy_id }}
+    {% endif %}
+    <span data-tooltip class="top" data-click-open="false" tabindex="2"
+          title="Unikalny, wewnętrzny identyfikator autora w systemie BPP">
         BPP ID</span>: {{ autor.pk }}
-            {% if autor.pbn_uid_id %}
-            <strong>PBN UID:</strong>
-                <a target="_blank" href="{{ uczelnia.pbn_api_root }}/core/#/person/view/{{ autor.pbn_uid_id }}/current">{{ autor.pbn_uid_id }}
-                </a>
 
-        {% endif %}
+<form method="post"
+      action="{% url "bpp:browse_build_search" %}"
+      class="browserForm">
+    {% csrf_token %}
+    <input type="hidden" name="suggested-title" value="{{ autor }}"/>
+    <input type="hidden" name="autor" value="{{ autor.pk }}"/>
 
-    <form method="post"
-          action="{% url "bpp:browse_build_search" %}"
-          class="browserForm">
-        {% csrf_token %}
-        <input type="hidden" name="suggested-title" value="{{ autor }}"/>
-        <input type="hidden" name="autor" value="{{ autor.pk }}"/>
+    <fieldset>
+        <legend>
+            Wyszukaj dla tego autora:
 
-        <fieldset>
-            <legend>
-                Wyszukaj dla tego autora:
+        </legend>
+        {% include "browse/typy.html" %}
+    </fieldset>
 
-            </legend>
-            {% include "browse/typy.html" %}
-        </fieldset>
+    <fieldset>
+        <legend>
+            ... opracowane w jednostkach:
+        </legend>
+        <div class="row">
+            {% for jednostka in autor.jednostki.all %}
+                <div class="large-6 small-12">
+                    <input type="checkbox"
+                           name="jednostka"
+                           value="{{ jednostka.pk }}"
+                           id="jednostka_{{ jednostka.pk }}"
+                    />
+                    <label for="jednostka_{{ jednostka.pk }}">
+                        {{ jednostka.nazwa }}
+                        <a href="{% url "bpp:browse_jednostka" jednostka.slug %}">►</a>
+                    </label>
+                </div>
+            {% endfor %}
+        </div>
+    </fieldset>
 
-        <fieldset>
-            <legend>
-                ... opracowane w jednostkach:
-            </legend>
-            <div class="row">
-                {% for jednostka in autor.jednostki.all %}
-                    <div class="large-6 small-12">
-                        <input type="checkbox"
-                               name="jednostka"
-                               value="{{ jednostka.pk }}"
-                               id="jednostka_{{ jednostka.pk }}"
-                        />
-                        <label for="jednostka_{{ jednostka.pk }}">
-                            {{ jednostka.nazwa }}
-                            <a href="{% url "bpp:browse_jednostka" jednostka.slug %}">►</a>
-                        </label>
-                    </div>
-                {% endfor %}
-            </div>
-        </fieldset>
-
-        <p>
-            {% include "browse/w_latach.html" with prace_w_latach=autor.prace_w_latach %}
-            {% include "browse/tytul_raportu.html" with obj=autor %}
-            <input class="submit button" type="submit" value="Szukaj"/>
-    </form>
+    <p>
+        {% include "browse/w_latach.html" with prace_w_latach=autor.prace_w_latach %}
+        {% include "browse/tytul_raportu.html" with obj=autor %}
+        <input class="submit button" type="submit" value="Szukaj"/>
+</form>
 
 
 {% endblock %}

@@ -5,12 +5,13 @@ from braces.views import GroupRequiredMixin, LoginRequiredMixin
 from dal import autocomplete
 from dal_select2_queryset_sequence.views import Select2QuerySetSequenceView
 from django import http
-from django.contrib.auth.mixins import UserPassesTestMixin
 from django.core.exceptions import ImproperlyConfigured
 from django.db.models.aggregates import Count
 from django.db.models.query_utils import Q
 from queryset_sequence import QuerySetSequence
 from taggit.models import Tag
+
+from django.contrib.auth.mixins import UserPassesTestMixin
 
 from bpp.jezyk_polski import warianty_zapisanego_nazwiska
 from bpp.lookups import SearchQueryStartsWith
@@ -56,6 +57,26 @@ class Wydawnictwo_NadrzedneAutocomplete(autocomplete.Select2QuerySetView):
             charakter_formalny__charakter_ogolny=CHARAKTER_OGOLNY_KSIAZKA
         )
 
+        if self.q:
+            qs = qs.filter(tytul_oryginalny__icontains=self.q)
+        return qs
+
+
+class Wydawnictwo_CiagleAdminAutocomplete(
+    LoginRequiredMixin, autocomplete.Select2QuerySetView
+):
+    def get_queryset(self):
+        qs = Wydawnictwo_Ciagle.objects.all()
+        if self.q:
+            qs = qs.filter(tytul_oryginalny__icontains=self.q)
+        return qs
+
+
+class Wydawnictwo_ZwarteAdminAutocomplete(
+    LoginRequiredMixin, autocomplete.Select2QuerySetView
+):
+    def get_queryset(self):
+        qs = Wydawnictwo_Zwarte.objects.all()
         if self.q:
             qs = qs.filter(tytul_oryginalny__icontains=self.q)
         return qs
@@ -310,7 +331,15 @@ class GlobalNavigationAutocomplete(Select2QuerySetSequenceView):
             )
         )
 
-        rekord_qset = Rekord.objects.fulltext_filter(self.q).only("tytul_oryginalny")
+        rekord_qset_doi = Rekord.objects.filter(doi__iexact=self.q)
+        rekord_qset_ftx = Rekord.objects.fulltext_filter(self.q)
+        rekord_qset_pbn = Rekord.objects.filter(pbn_uid_id=self.q)
+
+        rekord_qset = Rekord.objects.filter(
+            Q(pk__in=rekord_qset_doi.values_list("pk"))
+            | Q(pk__in=rekord_qset_ftx.values_list("pk"))
+            | Q(pk__in=rekord_qset_pbn.values_list("pk"))
+        ).only("tytul_oryginalny")
 
         if hasattr(self, "request") and self.request.user.is_anonymous:
             uczelnia = Uczelnia.objects.get_for_request(self.request)
@@ -401,6 +430,12 @@ class AdminNavigationAutocomplete(StaffRequired, Select2QuerySetSequenceView):
                 filter |= Q(pk=self.q)
             except (TypeError, ValueError):
                 pass
+
+            if klass != Patent:
+                filter |= Q(doi__iexact=self.q)
+
+            if "pbn_uid" in [fld.name for fld in klass._meta.fields]:
+                filter |= Q(pbn_uid__pk=self.q)
 
             querysets.append(klass.objects.filter(filter).only("tytul_oryginalny"))
 
