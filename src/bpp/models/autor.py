@@ -313,9 +313,19 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
 
         if self.pbn_uid_id is not None:
             ret.update({"objectId": self.pbn_uid.pk})
+
+            s = self.pbn_uid
+
+            # Jeżeli powiązany rekord w tabeli pbn_api.Sciencist ma PESEL to
+            # dodamy go teraz do eksportowanych informacji:
+            pesel = s.value("object", "externalIdentifiers", "PESEL", return_none=True)
+            if pesel:
+                ret.update({"naturalId": pesel})
+
         else:
             if self.orcid is not None:
                 ret.update({"orcidId": self.orcid})
+
         return ret
 
     def liczba_cytowan(self):

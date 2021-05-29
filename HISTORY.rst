@@ -3,6 +3,11 @@
 Historia zmian
 ==============
 
+202105.65
+---------
+
+* eksportuj naturalId w danych z PBN (#1063),
+
 202105.64
 ---------
 
