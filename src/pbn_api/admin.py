@@ -36,7 +36,7 @@ class PrettyJSONWidget(widgets.Textarea):
 
 
 class BaseMongoDBAdmin(admin.ModelAdmin):
-    search_fields = ["versions"]
+    search_fields = ["mongoId", "versions"]
     formfield_overrides = {JSONField: {"widget": PrettyJSONWidget}}
     list_filter = ["status", "verificationLevel"]
     readonly_fields = [
@@ -99,7 +99,8 @@ class ConferenceAdmin(BaseMongoDBAdmin):
 
 @admin.register(Journal)
 class JournalAdmin(BaseMongoDBAdmin):
-    list_display = ["title", "issn", "eissn", "websiteLink", "mongoId"]
+    list_display = ["title", "issn", "eissn", "mniswId", "websiteLink", "mongoId"]
+    search_fields = ["mongoId", "versions"]
 
 
 @admin.register(Publisher)

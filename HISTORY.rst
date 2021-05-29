@@ -7,6 +7,7 @@ Historia zmian
 ---------
 
 * eksportuj naturalId w danych z PBN (#1063),
+* lepsze matchowanie źródeł z PBN (#1064),
 
 202105.64
 ---------

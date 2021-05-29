@@ -276,56 +276,118 @@ def integruj_autorow_z_uczelni(client: PBNClient, instutition_id):
             autor.save()
 
 
-def integruj_zrodla():
+def integruj_zrodla(disable_progress_bar):
     def fun(qry):
+        found = False
         try:
             u = Journal.objects.get(qry)
+            found = True
         except Journal.DoesNotExist:
-            warnings.warn(f"Nie znaleziono dopasowania w PBN dla {zrodlo}")
             return False
         except Journal.MultipleObjectsReturned:
-            warnings.warn(
-                f"Znaleziono liczne dopasowania w PBN dla {zrodlo}, wybieram to z najdłuższym opisem"
-            )
-            u = (
-                Journal.objects.filter(qry)
-                .annotate(json_len=Func(F("versions"), function="pg_column_size"))
-                .order_by("-json_len")
-                .first()
-            )
+            # warnings.warn(
+            #     f"Znaleziono liczne dopasowania w PBN dla {zrodlo}, szukam czy jakies ma mniswId"
+            # )
+            for u in Journal.objects.filter(qry):
+                if u.mniswId() is not None:
+                    found = True
+                    break
+
+            if not found:
+                print(
+                    f"Znaleziono liczne dopasowania w PBN dla {zrodlo}, żadnie nie ma mniswId, wybieram to z "
+                    f"najdłuższym opisem"
+                )
+                u = (
+                    Journal.objects.filter(qry)
+                    .annotate(json_len=Func(F("versions"), function="pg_column_size"))
+                    .order_by("-json_len")
+                    .first()
+                )
 
         zrodlo.pbn_uid = u
         zrodlo.save()
         return True
 
     for zrodlo in pbar(
-        Zrodlo.objects.filter(pbn_uid_id=None), label="Integracja zrodel"
+        Zrodlo.objects.filter(pbn_uid_id=None),
+        label="Integracja zrodel",
+        disable_progress_bar=disable_progress_bar,
     ):
         qry = None
 
         if zrodlo.issn:
-            qry = Q(
-                versions__contains=[{"current": True, "object": {"issn": zrodlo.issn}}]
-            )
-            if fun(qry):
+            found = False
+            for current in True, False:
+                qry = Q(
+                    versions__contains=[
+                        {"current": current, "object": {"issn": zrodlo.issn}}
+                    ]
+                )
+                if fun(qry):
+                    found = True
+                    break
+
+                qry = Q(
+                    versions__contains=[
+                        {"current": current, "object": {"eissn": zrodlo.issn}}
+                    ]
+                )
+                if fun(qry):
+                    found = True
+                    break
+
+            if found:
                 continue
 
         if zrodlo.e_issn:
-            qry = Q(
-                versions__contains=[
-                    {"current": True, "object": {"eissn": zrodlo.e_issn}}
-                ]
-            )
-            if fun(qry):
+            found = False
+            for current in True, False:
+                qry = Q(
+                    versions__contains=[
+                        {"current": current, "object": {"eissn": zrodlo.e_issn}}
+                    ]
+                )
+                if fun(qry):
+                    found = True
+                    break
+
+                qry = Q(
+                    versions__contains=[
+                        {"current": current, "object": {"issn": zrodlo.e_issn}}
+                    ]
+                )
+                if fun(qry):
+                    found = True
+                    break
+
+            if found:
                 continue
 
         if qry is None:
-            qry = Q(
-                versions__contains=[
-                    {"current": True, "object": {"title": zrodlo.nazwa}}
-                ]
-            )
-            fun(qry)
+            for current in True, False:
+                qry = Q(
+                    versions__contains=[
+                        {"current": current, "object": {"title": zrodlo.nazwa}}
+                    ]
+                )
+                if fun(qry):
+                    found = True
+                    break
+
+                qry = Q(
+                    versions__contains=[
+                        {"current": current, "object": {"title": zrodlo.nazwa.upper()}}
+                    ]
+                )
+                if fun(qry):
+                    found = True
+                    break
+
+            if found:
+                continue
+
+            print(f"Nie znaleziono dopasowania w PBN dla {zrodlo}")
 
 
 def integruj_wydawcow():

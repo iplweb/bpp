@@ -29,13 +29,21 @@ class Command(PBNBaseCommand):
         parser.add_argument("--enable-all", action="store_true", default=False)
 
         parser.add_argument("--enable-system-data", action="store_true", default=False)
-        parser.add_argument("--enable-zrodla", action="store_true", default=False)
+        parser.add_argument(
+            "--enable-pobierz-zrodla", action="store_true", default=False
+        )
+        parser.add_argument(
+            "--enable-integruj-zrodla", action="store_true", default=False
+        )
         parser.add_argument("--enable-people", action="store_true", default=False)
         parser.add_argument("--enable-publishers", action="store_true", default=False)
         parser.add_argument("--enable-conferences", action="store_true", default=False)
         parser.add_argument("--enable-institutions", action="store_true", default=False)
         parser.add_argument("--enable-publications", action="store_true", default=False)
         parser.add_argument("--enable-sync", action="store_true", default=False)
+        parser.add_argument(
+            "--disable-progress-bar", action="store_true", default=False
+        )
 
     def handle(
         self,
@@ -45,13 +53,15 @@ class Command(PBNBaseCommand):
         user_token,
         enable_all,
         enable_system_data,
-        enable_zrodla,
+        enable_pobierz_zrodla,
+        enable_integruj_zrodla,
         enable_people,
         enable_publishers,
         enable_conferences,
         enable_institutions,
         enable_publications,
         enable_sync,
+        disable_progress_bar,
         *args,
         **options
     ):
@@ -65,9 +75,11 @@ class Command(PBNBaseCommand):
             integruj_jezyki(client)
             integruj_kraje(client)
 
-        if enable_zrodla or enable_all:
+        if enable_pobierz_zrodla or enable_all:
             pobierz_zrodla(client)
-            integruj_zrodla()
+
+        if enable_integruj_zrodla or enable_all:
+            integruj_zrodla(disable_progress_bar)
 
         if enable_people or enable_all:
             pobierz_ludzi_z_uczelni(client, Uczelnia.objects.default.pbn_uid_id)
