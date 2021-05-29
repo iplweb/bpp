@@ -12,6 +12,7 @@ from django.db.models import CASCADE
 from django.db.models.functions import Coalesce
 from django.db.models.query_utils import Q
 from django.urls.base import reverse
+from treenode.models import TreeNodeModel
 
 from .uczelnia import Uczelnia
 from .wydzial import Wydzial
@@ -50,7 +51,7 @@ class JednostkaManager(FulltextSearchMixin, models.Manager):
         return ordering
 
 
-class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID):
+class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, TreeNodeModel):
     uczelnia = models.ForeignKey(
         Uczelnia,
         CASCADE,
@@ -70,6 +71,8 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID):
     (czyli jej obecność w strukturach wydziału nie została zakończona z określoną datą), to pole to będzie miało
     wartość 'PRAWDA'.""",
     )
+
+    treenode_display_field = "nazwa"
 
     nazwa = models.CharField(max_length=512, unique=True)
     skrot = models.CharField("Skrót", max_length=128, unique=True)

@@ -3,6 +3,7 @@
 # -*- encoding: utf-8 -*-
 from adminsortable2.admin import SortableAdminMixin
 from django import forms
+from treenode.admin import TreeNodeModelAdmin
 
 from ..models.struktura import Jednostka, Jednostka_Wydzial
 from .core import CommitedModelAdmin, RestrictDeletionToAdministracjaGroupMixin
@@ -38,7 +39,10 @@ class JednostkaAdmin(
     RestrictDeletionToAdministracjaGroupMixin,
     ZapiszZAdnotacjaMixin,
     CommitedModelAdmin,
+    TreeNodeModelAdmin,
 ):
+    treenode_display_mode = TreeNodeModelAdmin.TREENODE_DISPLAY_MODE_ACCORDION
+
     list_display = (
         "nazwa",
         "skrot",
