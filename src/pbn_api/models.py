@@ -181,9 +181,9 @@ class Scientist(BasePBNMongoDBModel):
         return self.value("object", "name", return_none=True)
 
     def currentEmploymentsInstitutionDisplayName(self):
-        return self.value(
-            "object", "currentEmployments", "institutionDisplayName", return_none=True
-        )
+        ces = self.value("object", "currentEmployments", return_none=True)
+        if ces is not None:
+            return ces[0].get("institutionDisplayName")
 
     def pbnId(self):
         return self.value("object", "legacyIdentifiers", return_none=True)
