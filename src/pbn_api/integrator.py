@@ -277,10 +277,15 @@ def integruj_autorow_z_uczelni(client: PBNClient, instutition_id):
     Ta procedure uruchamiamy dopiero po zaciągnięciu bazy osób.
     """
     for person in client.get_people_by_institution_id(instutition_id):
+        pbn_id = None
+        if person.get("legacyIdentifiers"):
+            pbn_id = person.get("legacyIdentifiers")[0]
+
         autor = matchuj_autora(
             imiona=person.get("firstName"),
             nazwisko=person.get("lastName"),
             orcid=person.get("orcid"),
+            pbn_id=pbn_id,
             pbn_uid_id=person.get("personId"),
             tytul_str=person.get("title"),
         )
