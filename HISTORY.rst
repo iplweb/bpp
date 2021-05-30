@@ -3,6 +3,12 @@
 Historia zmian
 ==============
 
+202105.66
+---------
+
+* w przypadku synchronizacji prac z PBN i podwójnego DOI, wyswietlaj komunikat,
+* nie załączaj komunikatów Sentry dla procesów interaktywncyh (#1064),
+
 202105.65
 ---------
 
