@@ -82,11 +82,14 @@ class Wydawnictwo_Ciagle_Autor(
         ret = {
             # to NIE jest ta flaga; to jest flaga dot. czy dane są w indeksie ORCID
             # a nie czy autor ma Orcid ID
-            # "orcid": True if self.autor.orcid else False,
             "type": TYP_OGOLNY_DO_PBN.get(
                 self.typ_odpowiedzialnosci.typ_ogolny, "AUTHOR"
             ),
         }
+
+        if self.profil_orcid:
+            ret["orcid"] = True
+
         if self.dyscyplina_naukowa_id is not None:
             ret["disciplineId"] = self.dyscyplina_naukowa.kod_dla_pbn()
         else:

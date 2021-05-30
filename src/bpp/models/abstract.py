@@ -446,6 +446,12 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
         "Uczelnię do sprawozdania tej publikacji w ocenie parametrycznej Uczelni",
     )
 
+    profil_orcid = models.BooleanField(
+        "Praca w profilu ORCID autora",
+        default=False,
+        help_text="Zaznacz, jeżeli praca znajdje się na profilu ORCID autora",
+    )
+
     class Meta:
         abstract = True
         ordering = ("kolejnosc", "typ_odpowiedzialnosci__skrot")

@@ -154,6 +154,7 @@ def generuj_formularz_dla_autorow(
                 "zatrudniony",
                 "upowaznienie_pbn",
                 "procent",
+                "profil_orcid",
                 "kolejnosc",
             ]
             if include_rekord:
