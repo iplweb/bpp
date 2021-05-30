@@ -236,8 +236,8 @@ def rebuild_contenttypes():
 #
 
 
-def pbar(query, count=None, label="Progres..."):
-    if sys.stdout.isatty():
+def pbar(query, count=None, label="Progres...", disable_progress_bar=False):
+    if sys.stdout.isatty() and not disable_progress_bar:
         return progressbar.progressbar(
             query,
             max_value=count or query.count(),

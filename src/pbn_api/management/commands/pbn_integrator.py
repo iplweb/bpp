@@ -16,6 +16,7 @@ from pbn_api.integrator import (
     pobierz_wydawcow,
     pobierz_zrodla,
     synchronizuj_publikacje,
+    weryfikuj_orcidy,
 )
 from pbn_api.management.commands.util import PBNBaseCommand
 
@@ -29,13 +30,29 @@ class Command(PBNBaseCommand):
         parser.add_argument("--enable-all", action="store_true", default=False)
 
         parser.add_argument("--enable-system-data", action="store_true", default=False)
-        parser.add_argument("--enable-zrodla", action="store_true", default=False)
-        parser.add_argument("--enable-people", action="store_true", default=False)
+        parser.add_argument(
+            "--enable-pobierz-zrodla", action="store_true", default=False
+        )
+        parser.add_argument(
+            "--enable-integruj-zrodla", action="store_true", default=False
+        )
+        parser.add_argument(
+            "--enable-download-people", action="store_true", default=False
+        )
+        parser.add_argument(
+            "--enable-integrate-people", action="store_true", default=False
+        )
+        parser.add_argument(
+            "--enable-check-orcid-people", action="store_true", default=False
+        )
         parser.add_argument("--enable-publishers", action="store_true", default=False)
         parser.add_argument("--enable-conferences", action="store_true", default=False)
         parser.add_argument("--enable-institutions", action="store_true", default=False)
         parser.add_argument("--enable-publications", action="store_true", default=False)
         parser.add_argument("--enable-sync", action="store_true", default=False)
+        parser.add_argument(
+            "--disable-progress-bar", action="store_true", default=False
+        )
 
     def handle(
         self,
@@ -45,13 +62,17 @@ class Command(PBNBaseCommand):
         user_token,
         enable_all,
         enable_system_data,
-        enable_zrodla,
-        enable_people,
+        enable_pobierz_zrodla,
+        enable_integruj_zrodla,
+        enable_download_people,
+        enable_integrate_people,
+        enable_check_orcid_people,
         enable_publishers,
         enable_conferences,
         enable_institutions,
         enable_publications,
         enable_sync,
+        disable_progress_bar,
         *args,
         **options
     ):
@@ -65,13 +86,20 @@ class Command(PBNBaseCommand):
             integruj_jezyki(client)
             integruj_kraje(client)
 
-        if enable_zrodla or enable_all:
+        if enable_pobierz_zrodla or enable_all:
             pobierz_zrodla(client)
-            integruj_zrodla()
 
-        if enable_people or enable_all:
+        if enable_integruj_zrodla or enable_all:
+            integruj_zrodla(disable_progress_bar)
+
+        if enable_download_people or enable_all:
             pobierz_ludzi_z_uczelni(client, Uczelnia.objects.default.pbn_uid_id)
+
+        if enable_integrate_people or enable_all:
             integruj_autorow_z_uczelni(client, Uczelnia.objects.default.pbn_uid_id)
+
+        if enable_check_orcid_people or enable_all:
+            weryfikuj_orcidy(client, Uczelnia.objects.default.pbn_uid_id)
 
         if enable_publishers or enable_all:
             pobierz_wydawcow(client)

@@ -22,6 +22,7 @@ from pbn_api.models import (
 
 from bpp.exceptions import WillNotExportError
 from bpp.models import (
+    Autor,
     Jednostka,
     Jezyk,
     Uczelnia,
@@ -63,10 +64,10 @@ def integruj_jezyki(client):
                         nazwa__istartswith=elem.language.get("pl")
                     )
                 except Jezyk.DoesNotExist:
-                    warnings.warn(f"Brak jezyka po stronie BPP: {elem}")
+                    # warnings.warn(f"Brak jezyka po stronie BPP: {elem}")
                     continue
             else:
-                warnings.warn(f"Brak jezyka po stronie BPP: {elem}")
+                # warnings.warn(f"Brak jezyka po stronie BPP: {elem}")
                 continue
 
         if jezyk.pbn_uid_id is None:
@@ -203,23 +204,36 @@ def pobierz_prace(client: PBNClient):
 
 
 def pobierz_prace_po_doi(client: PBNClient):
-    for klass in Wydawnictwo_Ciagle, Wydawnictwo_Zwarte:
-        for doi in pbar(
-            klass.objects.all()
-            .exclude(doi=None)
-            .values_list("doi", flat=True)
-            .distinct()
+    for klass in (Wydawnictwo_Ciagle,):  # , Wydawnictwo_Zwarte:
+        for praca in pbar(
+            klass.objects.all().exclude(doi=None).filter(pbn_uid_id=None)
         ):
             try:
-                elem = client.get_publication_by_doi(normalize_doi(doi))
+                elem = client.get_publication_by_doi(normalize_doi(praca.doi))
             except HttpException as e:
                 if e.status_code == 422:
                     # Publication with DOI 10.1136/annrheumdis-2018-eular.5236 was not exists!
-                    print(f"\r\nBrak pracy z DOI {doi} w PBNie")
+                    print(
+                        f"\r\nBrak pracy z DOI {praca.doi} w PBNie -- w BPP to {praca}"
+                    )
                     continue
+                elif e.status_code == 500:
+                    if (
+                        b"Publication with DOI" in e.content
+                        and b"was not exists" in e.content
+                    ):
+                        print(
+                            f"\r\nBrak pracy z DOI {praca.doi} w PBNie -- w BPP to {praca}"
+                        )
+                        continue
+
                 raise e
 
-            zapisz_mongodb(elem, Publication)
+            publication = zapisz_mongodb(elem, Publication)
+
+            if praca.pbn_uid_id is None:
+                praca.pbn_uid = publication
+                praca.save()
 
 
 def pobierz_ludzi_z_uczelni(client: PBNClient, instutition_id):
@@ -238,7 +252,7 @@ def pobierz_ludzi_z_uczelni(client: PBNClient, instutition_id):
             tytul_str=person.get("title"),
         )
         if autor is None:
-            warnings.warn(f"Brak dopasowania w jednostce dla autora {person}")
+            print(f"Brak dopasowania w jednostce dla autora {person}")
             continue
 
         scientist = client.get_person_by_id(person["personId"])
@@ -249,15 +263,42 @@ def pobierz_ludzi_z_uczelni(client: PBNClient, instutition_id):
             autor.save()
 
 
+def weryfikuj_orcidy(client: PBNClient, instutition_id):
+    # Sprawdź dla każdego autora który ma ORCID ale nie ma PBN UID
+    # czy ten ORCID występuje w bazie PBNu, odpowiednio ustawiając
+    # flagę rekordu Autor:
+
+    qry = Autor.objects.exclude(orcid=None).filter(pbn_uid_id=None)
+
+    for autor in pbar(qry):
+        res = client.get_person_by_orcid(autor.orcid)
+        if not res:
+            autor.orcid_w_pbn = False
+            autor.save()
+            continue
+
+        sciencist = zapisz_mongodb(res[0], Scientist)
+        autor.pbn_uid = sciencist
+        autor.save()
+        print(
+            f"Dla autora {autor} utworzono powiazanie z rekordem PBN {sciencist} po ORCID"
+        )
+
+
 def integruj_autorow_z_uczelni(client: PBNClient, instutition_id):
     """
     Ta procedure uruchamiamy dopiero po zaciągnięciu bazy osób.
     """
     for person in client.get_people_by_institution_id(instutition_id):
+        pbn_id = None
+        if person.get("legacyIdentifiers"):
+            pbn_id = person.get("legacyIdentifiers")[0]
+
         autor = matchuj_autora(
             imiona=person.get("firstName"),
             nazwisko=person.get("lastName"),
             orcid=person.get("orcid"),
+            pbn_id=pbn_id,
             pbn_uid_id=person.get("personId"),
             tytul_str=person.get("title"),
         )
@@ -276,56 +317,118 @@ def integruj_autorow_z_uczelni(client: PBNClient, instutition_id):
             autor.save()
 
 
-def integruj_zrodla():
+def integruj_zrodla(disable_progress_bar):
     def fun(qry):
+        found = False
         try:
             u = Journal.objects.get(qry)
+            found = True
         except Journal.DoesNotExist:
-            warnings.warn(f"Nie znaleziono dopasowania w PBN dla {zrodlo}")
             return False
         except Journal.MultipleObjectsReturned:
-            warnings.warn(
-                f"Znaleziono liczne dopasowania w PBN dla {zrodlo}, wybieram to z najdłuższym opisem"
-            )
-            u = (
-                Journal.objects.filter(qry)
-                .annotate(json_len=Func(F("versions"), function="pg_column_size"))
-                .order_by("-json_len")
-                .first()
-            )
+            # warnings.warn(
+            #     f"Znaleziono liczne dopasowania w PBN dla {zrodlo}, szukam czy jakies ma mniswId"
+            # )
+            for u in Journal.objects.filter(qry):
+                if u.mniswId() is not None:
+                    found = True
+                    break
+
+            if not found:
+                print(
+                    f"Znaleziono liczne dopasowania w PBN dla {zrodlo}, żadnie nie ma mniswId, wybieram to z "
+                    f"najdłuższym opisem"
+                )
+                u = (
+                    Journal.objects.filter(qry)
+                    .annotate(json_len=Func(F("versions"), function="pg_column_size"))
+                    .order_by("-json_len")
+                    .first()
+                )
 
         zrodlo.pbn_uid = u
         zrodlo.save()
         return True
 
     for zrodlo in pbar(
-        Zrodlo.objects.filter(pbn_uid_id=None), label="Integracja zrodel"
+        Zrodlo.objects.filter(pbn_uid_id=None),
+        label="Integracja zrodel",
+        disable_progress_bar=disable_progress_bar,
     ):
         qry = None
 
         if zrodlo.issn:
-            qry = Q(
-                versions__contains=[{"current": True, "object": {"issn": zrodlo.issn}}]
-            )
-            if fun(qry):
+            found = False
+            for current in True, False:
+                qry = Q(
+                    versions__contains=[
+                        {"current": current, "object": {"issn": zrodlo.issn}}
+                    ]
+                )
+                if fun(qry):
+                    found = True
+                    break
+
+                qry = Q(
+                    versions__contains=[
+                        {"current": current, "object": {"eissn": zrodlo.issn}}
+                    ]
+                )
+                if fun(qry):
+                    found = True
+                    break
+
+            if found:
                 continue
 
         if zrodlo.e_issn:
-            qry = Q(
-                versions__contains=[
-                    {"current": True, "object": {"eissn": zrodlo.e_issn}}
-                ]
-            )
-            if fun(qry):
+            found = False
+            for current in True, False:
+                qry = Q(
+                    versions__contains=[
+                        {"current": current, "object": {"eissn": zrodlo.e_issn}}
+                    ]
+                )
+                if fun(qry):
+                    found = True
+                    break
+
+                qry = Q(
+                    versions__contains=[
+                        {"current": current, "object": {"issn": zrodlo.e_issn}}
+                    ]
+                )
+                if fun(qry):
+                    found = True
+                    break
+
+            if found:
                 continue
 
         if qry is None:
-            qry = Q(
-                versions__contains=[
-                    {"current": True, "object": {"title": zrodlo.nazwa}}
-                ]
-            )
-            fun(qry)
+            for current in True, False:
+                qry = Q(
+                    versions__contains=[
+                        {"current": current, "object": {"title": zrodlo.nazwa}}
+                    ]
+                )
+                if fun(qry):
+                    found = True
+                    break
+
+                qry = Q(
+                    versions__contains=[
+                        {"current": current, "object": {"title": zrodlo.nazwa.upper()}}
+                    ]
+                )
+                if fun(qry):
+                    found = True
+                    break
+
+            if found:
+                continue
+
+            print(f"Nie znaleziono dopasowania w PBN dla {zrodlo}")
 
 
 def integruj_wydawcow():

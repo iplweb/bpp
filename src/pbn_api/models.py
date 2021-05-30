@@ -136,16 +136,22 @@ class Journal(BasePBNMongoDBModel):
         return self.value("object", "title")
 
     def websiteLink(self):
-        return self.value("object", "websiteLink")
+        return self.value("object", "websiteLink", return_none=True)
 
     def issn(self):
-        return self.value("object", "issn")
+        return self.value("object", "issn", return_none=True)
 
     def eissn(self):
-        return self.value("object", "eissn")
+        return self.value("object", "eissn", return_none=True)
+
+    def mniswId(self):
+        return self.value("object", "mniswId", return_none=True)
 
     def __str__(self):
-        return f"{self.title()}, ISSN: {self.issn()}, EISSN: {self.eissn()}"
+        return (
+            f"{self.title()}, ISSN: {self.issn() or '-'}, "
+            f"EISSN: {self.eissn() or '-'}, MNISW ID: {self.mniswId() or '-'}"
+        )
 
 
 class Publisher(BasePBNMongoDBModel):
@@ -154,13 +160,13 @@ class Publisher(BasePBNMongoDBModel):
         verbose_name_plural = "Wydawcy w PBN API"
 
     def publisherName(self):
-        return self.value("object", "publisherName")
+        return self.value("object", "publisherName", return_none=True)
 
     def mniswId(self):
-        return self.value("object", "mniswId")
+        return self.value("object", "mniswId", return_none=True)
 
     def __str__(self):
-        return f"{self.publisherName()}"
+        return f"{self.publisherName()}, MNISW ID: {self.mniswId() or '-'}"
 
 
 class Scientist(BasePBNMongoDBModel):
@@ -169,28 +175,30 @@ class Scientist(BasePBNMongoDBModel):
         verbose_name_plural = "Osoby w PBN API"
 
     def lastName(self):
-        return self.value("object", "lastName")
+        return self.value("object", "lastName", return_none=True)
 
     def name(self):
-        return self.value("object", "name")
+        return self.value("object", "name", return_none=True)
 
     def currentEmploymentsInstitutionDisplayName(self):
-        return self.value("object", "currentEmployments", "institutionDisplayName")
+        ces = self.value("object", "currentEmployments", return_none=True)
+        if ces is not None:
+            return ces[0].get("institutionDisplayName")
 
     def pbnId(self):
-        return self.value("object", "legacyIdentifiers")
+        return self.value("object", "legacyIdentifiers", return_none=True)
 
     def tytul(self):
-        return self.value("object", "qualifications")
+        return self.value("object", "qualifications", return_none=True)
 
     def orcid(self):
-        return self.value("object", "orcid")
+        return self.value("object", "orcid", return_none=True)
 
     def polonUid(self):
-        return self.value("object", "polonUid")
+        return self.value("object", "polonUid", return_none=True)
 
     def __str__(self):
-        return f"{self.lastName()} {self.name()}, {self.tytul()} (ID: {self.pk})"
+        return f"{self.lastName()} {self.name()}, {self.tytul() or '-'} (PBN ID: {self.pk})"
 
 
 class Publication(BasePBNMongoDBModel):
@@ -199,22 +207,22 @@ class Publication(BasePBNMongoDBModel):
         verbose_name_plural = "Publikacje w PBN API"
 
     def title(self):
-        return self.value("object", "title")
+        return self.value("object", "title", return_none=True)
 
     def type(self):
-        return self.value("object", "type")
+        return self.value("object", "type", return_none=True)
 
     def volume(self):
-        return self.value("object", "volume")
+        return self.value("object", "volume", return_none=True)
 
     def year(self):
-        return self.value("object", "year")
+        return self.value("object", "year", return_none=True)
 
     def publicUri(self):
-        return self.value("object", "publicUri")
+        return self.value("object", "publicUri", return_none=True)
 
     def doi(self):
-        return self.value("object", "doi")
+        return self.value("object", "doi", return_none=True)
 
     def __str__(self):
         return f"{self.title()}, {self.year()}, {self.doi()}"
