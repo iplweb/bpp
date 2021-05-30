@@ -148,7 +148,10 @@ class Journal(BasePBNMongoDBModel):
         return self.value("object", "mniswId", return_none=True)
 
     def __str__(self):
-        return f"{self.title()}, ISSN: {self.issn()}, EISSN: {self.eissn()}"
+        return (
+            f"{self.title()}, ISSN: {self.issn() or '-'}, "
+            f"EISSN: {self.eissn() or '-'}, MNISW ID: {self.mniswId() or '-'}"
+        )
 
 
 class Publisher(BasePBNMongoDBModel):
@@ -163,7 +166,7 @@ class Publisher(BasePBNMongoDBModel):
         return self.value("object", "mniswId", return_none=True)
 
     def __str__(self):
-        return f"{self.publisherName()}"
+        return f"{self.publisherName()}, MNISW ID: {self.mniswId() or '-'}"
 
 
 class Scientist(BasePBNMongoDBModel):
