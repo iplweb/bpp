@@ -309,7 +309,9 @@ SENTRYSDK_CONFIG_URL = os.getenv("DJANGO_BPP_RAVEN_CONFIG_URL", None) or os.gete
     "DJANGO_BPP_SENTRYSDK_CONFIG_URL", None
 )
 
-if SENTRYSDK_CONFIG_URL:
+PROCESS_INTERACTIVE = sys.stdin.isatty()
+
+if SENTRYSDK_CONFIG_URL and not PROCESS_INTERACTIVE:
     sentry_sdk.init(
         dsn=SENTRYSDK_CONFIG_URL,
         integrations=[DjangoIntegration()],
