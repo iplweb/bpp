@@ -22,6 +22,7 @@ from pbn_api.models import (
 
 from bpp.exceptions import WillNotExportError
 from bpp.models import (
+    Autor,
     Jednostka,
     Jezyk,
     Uczelnia,
@@ -247,6 +248,28 @@ def pobierz_ludzi_z_uczelni(client: PBNClient, instutition_id):
         if autor.pbn_uid_id is None or autor.pbn_uid_id != scientist.pk:
             autor.pbn_uid = scientist
             autor.save()
+
+
+def weryfikuj_orcidy(client: PBNClient, instutition_id):
+    # Sprawdź dla każdego autora który ma ORCID ale nie ma PBN UID
+    # czy ten ORCID występuje w bazie PBNu, odpowiednio ustawiając
+    # flagę rekordu Autor:
+
+    qry = Autor.objects.exclude(orcid=None).filter(pbn_uid_id=None)
+
+    for autor in pbar(qry):
+        res = client.get_person_by_orcid(autor.orcid)
+        if not res:
+            autor.orcid_w_pbn = False
+            autor.save()
+            continue
+
+        sciencist = zapisz_mongodb(res[0], Scientist)
+        autor.pbn_uid = sciencist
+        autor.save()
+        print(
+            f"Dla autora {autor} utworzono powiazanie z rekordem PBN {sciencist} po ORCID"
+        )
 
 
 def integruj_autorow_z_uczelni(client: PBNClient, instutition_id):

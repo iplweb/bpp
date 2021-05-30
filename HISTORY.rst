@@ -8,6 +8,7 @@ Historia zmian
 
 * eksportuj naturalId w danych z PBN (#1063),
 * lepsze matchowanie źródeł z PBN (#1064),
+* weryfikuj obecnośc ORCID w PBN dla niezmatchowanych autorów (#1054),
 
 202105.64
 ---------
