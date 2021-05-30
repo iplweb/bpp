@@ -31,6 +31,7 @@ distclean: clean
 	rm -rf *backup
 	rm -rf node_modules src/node_modules src/django_bpp/staticroot
 	rm -rf .vagrant splintershots src/components/bower_components src/media
+	rm -rf dist
 
 grunt:
 	grunt build
@@ -50,9 +51,7 @@ pre-wheel: distclean assets
 bdist_wheel: pre-wheel
 	${PYTHON} setup.py -q bdist_wheel
 
-bdist_wheel_upload: pre-wheel
-	rm -rf dist
-	${PYTHON} setup.py -q bdist_wheel
+upload:
 	twine upload dist/*
 
 js-tests:

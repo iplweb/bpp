@@ -7,7 +7,8 @@ Historia zmian
 ---------
 
 * w przypadku synchronizacji prac z PBN i podwójnego DOI, wyswietlaj komunikat,
-* nie załączaj komunikatów Sentry dla procesów interaktywncyh (#1064),
+* wyłącz raportowanie Sentry dla procesów interaktywncyh (#1064),
+
 
 202105.65
 ---------
