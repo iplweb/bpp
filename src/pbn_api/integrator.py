@@ -64,10 +64,10 @@ def integruj_jezyki(client):
                         nazwa__istartswith=elem.language.get("pl")
                     )
                 except Jezyk.DoesNotExist:
-                    warnings.warn(f"Brak jezyka po stronie BPP: {elem}")
+                    # warnings.warn(f"Brak jezyka po stronie BPP: {elem}")
                     continue
             else:
-                warnings.warn(f"Brak jezyka po stronie BPP: {elem}")
+                # warnings.warn(f"Brak jezyka po stronie BPP: {elem}")
                 continue
 
         if jezyk.pbn_uid_id is None:
@@ -204,23 +204,36 @@ def pobierz_prace(client: PBNClient):
 
 
 def pobierz_prace_po_doi(client: PBNClient):
-    for klass in Wydawnictwo_Ciagle, Wydawnictwo_Zwarte:
-        for doi in pbar(
-            klass.objects.all()
-            .exclude(doi=None)
-            .values_list("doi", flat=True)
-            .distinct()
+    for klass in (Wydawnictwo_Ciagle,):  # , Wydawnictwo_Zwarte:
+        for praca in pbar(
+            klass.objects.all().exclude(doi=None).filter(pbn_uid_id=None)
         ):
             try:
-                elem = client.get_publication_by_doi(normalize_doi(doi))
+                elem = client.get_publication_by_doi(normalize_doi(praca.doi))
             except HttpException as e:
                 if e.status_code == 422:
                     # Publication with DOI 10.1136/annrheumdis-2018-eular.5236 was not exists!
-                    print(f"\r\nBrak pracy z DOI {doi} w PBNie")
+                    print(
+                        f"\r\nBrak pracy z DOI {praca.doi} w PBNie -- w BPP to {praca}"
+                    )
                     continue
+                elif e.status_code == 500:
+                    if (
+                        b"Publication with DOI" in e.content
+                        and b"was not exists" in e.content
+                    ):
+                        print(
+                            f"\r\nBrak pracy z DOI {praca.doi} w PBNie -- w BPP to {praca}"
+                        )
+                        continue
+
                 raise e
 
-            zapisz_mongodb(elem, Publication)
+            publication = zapisz_mongodb(elem, Publication)
+
+            if praca.pbn_uid_id is None:
+                praca.pbn_uid = publication
+                praca.save()
 
 
 def pobierz_ludzi_z_uczelni(client: PBNClient, instutition_id):
@@ -239,7 +252,7 @@ def pobierz_ludzi_z_uczelni(client: PBNClient, instutition_id):
             tytul_str=person.get("title"),
         )
         if autor is None:
-            warnings.warn(f"Brak dopasowania w jednostce dla autora {person}")
+            print(f"Brak dopasowania w jednostce dla autora {person}")
             continue
 
         scientist = client.get_person_by_id(person["personId"])
