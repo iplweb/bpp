@@ -198,7 +198,7 @@ class Scientist(BasePBNMongoDBModel):
         return self.value("object", "polonUid", return_none=True)
 
     def __str__(self):
-        return f"{self.lastName()} {self.name()}, {self.tytul()} (ID: {self.pk})"
+        return f"{self.lastName()} {self.name()}, {self.tytul()} (PBN ID: {self.pk})"
 
 
 class Publication(BasePBNMongoDBModel):
