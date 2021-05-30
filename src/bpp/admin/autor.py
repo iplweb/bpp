@@ -151,6 +151,7 @@ class AutorAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
                     "email",
                     "www",
                     "orcid",
+                    "orcid_w_pbn",
                     "pbn_id",
                     "pbn_uid",
                     "system_kadrowy_id",

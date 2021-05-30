@@ -22,6 +22,7 @@ from pbn_api.models import (
 
 from bpp.exceptions import WillNotExportError
 from bpp.models import (
+    Autor,
     Jednostka,
     Jezyk,
     Uczelnia,
@@ -63,10 +64,10 @@ def integruj_jezyki(client):
                         nazwa__istartswith=elem.language.get("pl")
                     )
                 except Jezyk.DoesNotExist:
-                    warnings.warn(f"Brak jezyka po stronie BPP: {elem}")
+                    # warnings.warn(f"Brak jezyka po stronie BPP: {elem}")
                     continue
             else:
-                warnings.warn(f"Brak jezyka po stronie BPP: {elem}")
+                # warnings.warn(f"Brak jezyka po stronie BPP: {elem}")
                 continue
 
         if jezyk.pbn_uid_id is None:
@@ -203,23 +204,36 @@ def pobierz_prace(client: PBNClient):
 
 
 def pobierz_prace_po_doi(client: PBNClient):
-    for klass in Wydawnictwo_Ciagle, Wydawnictwo_Zwarte:
-        for doi in pbar(
-            klass.objects.all()
-            .exclude(doi=None)
-            .values_list("doi", flat=True)
-            .distinct()
+    for klass in (Wydawnictwo_Ciagle,):  # , Wydawnictwo_Zwarte:
+        for praca in pbar(
+            klass.objects.all().exclude(doi=None).filter(pbn_uid_id=None)
         ):
             try:
-                elem = client.get_publication_by_doi(normalize_doi(doi))
+                elem = client.get_publication_by_doi(normalize_doi(praca.doi))
             except HttpException as e:
                 if e.status_code == 422:
                     # Publication with DOI 10.1136/annrheumdis-2018-eular.5236 was not exists!
-                    print(f"\r\nBrak pracy z DOI {doi} w PBNie")
+                    print(
+                        f"\r\nBrak pracy z DOI {praca.doi} w PBNie -- w BPP to {praca}"
+                    )
                     continue
+                elif e.status_code == 500:
+                    if (
+                        b"Publication with DOI" in e.content
+                        and b"was not exists" in e.content
+                    ):
+                        print(
+                            f"\r\nBrak pracy z DOI {praca.doi} w PBNie -- w BPP to {praca}"
+                        )
+                        continue
+
                 raise e
 
-            zapisz_mongodb(elem, Publication)
+            publication = zapisz_mongodb(elem, Publication)
+
+            if praca.pbn_uid_id is None:
+                praca.pbn_uid = publication
+                praca.save()
 
 
 def pobierz_ludzi_z_uczelni(client: PBNClient, instutition_id):
@@ -238,7 +252,7 @@ def pobierz_ludzi_z_uczelni(client: PBNClient, instutition_id):
             tytul_str=person.get("title"),
         )
         if autor is None:
-            warnings.warn(f"Brak dopasowania w jednostce dla autora {person}")
+            print(f"Brak dopasowania w jednostce dla autora {person}")
             continue
 
         scientist = client.get_person_by_id(person["personId"])
@@ -249,15 +263,42 @@ def pobierz_ludzi_z_uczelni(client: PBNClient, instutition_id):
             autor.save()
 
 
+def weryfikuj_orcidy(client: PBNClient, instutition_id):
+    # Sprawdź dla każdego autora który ma ORCID ale nie ma PBN UID
+    # czy ten ORCID występuje w bazie PBNu, odpowiednio ustawiając
+    # flagę rekordu Autor:
+
+    qry = Autor.objects.exclude(orcid=None).filter(pbn_uid_id=None)
+
+    for autor in pbar(qry):
+        res = client.get_person_by_orcid(autor.orcid)
+        if not res:
+            autor.orcid_w_pbn = False
+            autor.save()
+            continue
+
+        sciencist = zapisz_mongodb(res[0], Scientist)
+        autor.pbn_uid = sciencist
+        autor.save()
+        print(
+            f"Dla autora {autor} utworzono powiazanie z rekordem PBN {sciencist} po ORCID"
+        )
+
+
 def integruj_autorow_z_uczelni(client: PBNClient, instutition_id):
     """
     Ta procedure uruchamiamy dopiero po zaciągnięciu bazy osób.
     """
     for person in client.get_people_by_institution_id(instutition_id):
+        pbn_id = None
+        if person.get("legacyIdentifiers"):
+            pbn_id = person.get("legacyIdentifiers")[0]
+
         autor = matchuj_autora(
             imiona=person.get("firstName"),
             nazwisko=person.get("lastName"),
             orcid=person.get("orcid"),
+            pbn_id=pbn_id,
             pbn_uid_id=person.get("personId"),
             tytul_str=person.get("title"),
         )

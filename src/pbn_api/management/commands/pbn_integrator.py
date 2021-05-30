@@ -16,6 +16,7 @@ from pbn_api.integrator import (
     pobierz_wydawcow,
     pobierz_zrodla,
     synchronizuj_publikacje,
+    weryfikuj_orcidy,
 )
 from pbn_api.management.commands.util import PBNBaseCommand
 
@@ -35,7 +36,15 @@ class Command(PBNBaseCommand):
         parser.add_argument(
             "--enable-integruj-zrodla", action="store_true", default=False
         )
-        parser.add_argument("--enable-people", action="store_true", default=False)
+        parser.add_argument(
+            "--enable-download-people", action="store_true", default=False
+        )
+        parser.add_argument(
+            "--enable-integrate-people", action="store_true", default=False
+        )
+        parser.add_argument(
+            "--enable-check-orcid-people", action="store_true", default=False
+        )
         parser.add_argument("--enable-publishers", action="store_true", default=False)
         parser.add_argument("--enable-conferences", action="store_true", default=False)
         parser.add_argument("--enable-institutions", action="store_true", default=False)
@@ -55,7 +64,9 @@ class Command(PBNBaseCommand):
         enable_system_data,
         enable_pobierz_zrodla,
         enable_integruj_zrodla,
-        enable_people,
+        enable_download_people,
+        enable_integrate_people,
+        enable_check_orcid_people,
         enable_publishers,
         enable_conferences,
         enable_institutions,
@@ -81,9 +92,14 @@ class Command(PBNBaseCommand):
         if enable_integruj_zrodla or enable_all:
             integruj_zrodla(disable_progress_bar)
 
-        if enable_people or enable_all:
+        if enable_download_people or enable_all:
             pobierz_ludzi_z_uczelni(client, Uczelnia.objects.default.pbn_uid_id)
+
+        if enable_integrate_people or enable_all:
             integruj_autorow_z_uczelni(client, Uczelnia.objects.default.pbn_uid_id)
+
+        if enable_check_orcid_people or enable_all:
+            weryfikuj_orcidy(client, Uczelnia.objects.default.pbn_uid_id)
 
         if enable_publishers or enable_all:
             pobierz_wydawcow(client)

@@ -79,14 +79,24 @@ class Wydawnictwo_Ciagle_Autor(
         ]
 
     def pbn_get_json(self):
+        if (
+            not self.afiliuje
+            or not self.jednostka.skupia_pracownikow
+            or self.jednostka.pk < 0
+        ):
+            return
+
         ret = {
             # to NIE jest ta flaga; to jest flaga dot. czy dane są w indeksie ORCID
             # a nie czy autor ma Orcid ID
-            # "orcid": True if self.autor.orcid else False,
             "type": TYP_OGOLNY_DO_PBN.get(
                 self.typ_odpowiedzialnosci.typ_ogolny, "AUTHOR"
             ),
         }
+
+        if self.profil_orcid:
+            ret["orcid"] = True
+
         if self.dyscyplina_naukowa_id is not None:
             ret["disciplineId"] = self.dyscyplina_naukowa.kod_dla_pbn()
         else:
@@ -96,9 +106,18 @@ class Wydawnictwo_Ciagle_Autor(
         #    ret["institutionId"] = self.jednostka.pbn_uid.pk
 
         if self.autor.pbn_uid_id:
-            ret["personObjectId"] = self.autor.pbn_uid.pk
+            scientist = self.autor.pbn_uid
+
+            pesel = scientist.value(
+                "object", "externalIdentifiers", "PESEL", return_none=True
+            )
+            if pesel:
+                ret["personNaturalId"] = pesel
+
+            ret["personObjectId"] = scientist.pk
+
         else:
-            if self.autor.orcid:
+            if self.autor.orcid and self.autor.orcid_w_pbn:
                 ret["personOrcidId"] = self.autor.orcid
 
         if not ret.get("personOrcidId") and not ret.get("personObjectId"):
@@ -231,7 +250,12 @@ class Wydawnictwo_Ciagle(
         elif self.dostep_dnia is not None:
             oa["releaseDate"] = str(self.dostep_dnia)
 
-        if oa:
+        if (
+            oa.get("license")
+            and oa.get("textVersion")
+            and oa.get("modeArticle")
+            and oa.get("releaseDateMode")
+        ):
             ret["openAccess"] = oa
 
         if self.tom:
@@ -294,11 +318,11 @@ class Wydawnictwo_Ciagle(
                     author["affiliations"] = [jednostka.pbn_uid_id]
                     jednostki.add(elem.jednostka)
 
-            authors.append(author)
+                    statement = elem.pbn_get_json()
+                    if statement:
+                        statements.append(statement)
 
-            statement = elem.pbn_get_json()
-            if statement:
-                statements.append(statement)
+            authors.append(author)
 
         ret["authors"] = authors
         ret["statements"] = statements

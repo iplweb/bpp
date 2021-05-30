@@ -148,7 +148,10 @@ class Journal(BasePBNMongoDBModel):
         return self.value("object", "mniswId", return_none=True)
 
     def __str__(self):
-        return f"{self.title()}, ISSN: {self.issn()}, EISSN: {self.eissn()}"
+        return (
+            f"{self.title()}, ISSN: {self.issn() or '-'}, "
+            f"EISSN: {self.eissn() or '-'}, MNISW ID: {self.mniswId() or '-'}"
+        )
 
 
 class Publisher(BasePBNMongoDBModel):
@@ -163,7 +166,7 @@ class Publisher(BasePBNMongoDBModel):
         return self.value("object", "mniswId", return_none=True)
 
     def __str__(self):
-        return f"{self.publisherName()}"
+        return f"{self.publisherName()}, MNISW ID: {self.mniswId() or '-'}"
 
 
 class Scientist(BasePBNMongoDBModel):
@@ -178,9 +181,9 @@ class Scientist(BasePBNMongoDBModel):
         return self.value("object", "name", return_none=True)
 
     def currentEmploymentsInstitutionDisplayName(self):
-        return self.value(
-            "object", "currentEmployments", "institutionDisplayName", return_none=True
-        )
+        ces = self.value("object", "currentEmployments", return_none=True)
+        if ces is not None:
+            return ces[0].get("institutionDisplayName")
 
     def pbnId(self):
         return self.value("object", "legacyIdentifiers", return_none=True)
@@ -195,7 +198,7 @@ class Scientist(BasePBNMongoDBModel):
         return self.value("object", "polonUid", return_none=True)
 
     def __str__(self):
-        return f"{self.lastName()} {self.name()}, {self.tytul()} (ID: {self.pk})"
+        return f"{self.lastName()} {self.name()}, {self.tytul() or '-'} (PBN ID: {self.pk})"
 
 
 class Publication(BasePBNMongoDBModel):
