@@ -11,7 +11,7 @@ from pbn_api.integrator import (
     integruj_zrodla,
     pobierz_instytucje,
     pobierz_konferencje,
-    pobierz_ludzi,
+    pobierz_ludzi_z_uczelni,
     pobierz_prace_po_doi,
     pobierz_wydawcow,
     pobierz_zrodla,
@@ -93,8 +93,7 @@ class Command(PBNBaseCommand):
             integruj_zrodla(disable_progress_bar)
 
         if enable_download_people or enable_all:
-            pobierz_ludzi(client)
-            # pobierz_ludzi_z_uczelni(client, Uczelnia.objects.default.pbn_uid_id)
+            pobierz_ludzi_z_uczelni(client, Uczelnia.objects.default.pbn_uid_id)
 
         if enable_integrate_people or enable_all:
             integruj_autorow_z_uczelni(client, Uczelnia.objects.default.pbn_uid_id)
