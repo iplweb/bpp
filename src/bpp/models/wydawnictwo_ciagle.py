@@ -231,7 +231,12 @@ class Wydawnictwo_Ciagle(
         elif self.dostep_dnia is not None:
             oa["releaseDate"] = str(self.dostep_dnia)
 
-        if oa:
+        if (
+            oa.get("license")
+            and oa.get("textVersion")
+            and oa.get("modeArticle")
+            and oa.get("releaseDateMode")
+        ):
             ret["openAccess"] = oa
 
         if self.tom:
