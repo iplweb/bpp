@@ -11,6 +11,7 @@ Historia zmian
 * weryfikuj obecnośc ORCID w PBN dla niezmatchowanych autorów (#1054),
 * pobieraj wszystkie osoby z PBNu (b/n),
 * pole dla wpisania wartości, czy praca występuje w profilu ORCID autora (#1054),
+* nie eksportuj oświadczeń dla autorów bez afiliacji (#1055),
 
 202105.64
 ---------
