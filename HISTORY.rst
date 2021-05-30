@@ -3,6 +3,12 @@
 Historia zmian
 ==============
 
+202105.66
+---------
+
+* wyłącz raportowanie Sentry dla procesów interaktywncyh (#1064),
+
+
 202105.65
 ---------
 
