@@ -48,7 +48,12 @@ class Command(PBNBaseCommand):
         parser.add_argument("--enable-publishers", action="store_true", default=False)
         parser.add_argument("--enable-conferences", action="store_true", default=False)
         parser.add_argument("--enable-institutions", action="store_true", default=False)
-        parser.add_argument("--enable-publications", action="store_true", default=False)
+        parser.add_argument(
+            "--enable-pobierz-po-doi", action="store_true", default=False
+        )
+        parser.add_argument(
+            "--enable-integruj-publikacje", action="store_true", default=False
+        )
         parser.add_argument("--enable-sync", action="store_true", default=False)
         parser.add_argument(
             "--disable-progress-bar", action="store_true", default=False
@@ -70,7 +75,8 @@ class Command(PBNBaseCommand):
         enable_publishers,
         enable_conferences,
         enable_institutions,
-        enable_publications,
+        enable_pobierz_po_doi,
+        enable_integruj_publikacje,
         enable_sync,
         disable_progress_bar,
         *args,
@@ -113,8 +119,10 @@ class Command(PBNBaseCommand):
             integruj_uczelnie()
             integruj_instytucje()
 
-        if enable_publications or enable_all:
+        if enable_pobierz_po_doi or enable_all:
             pobierz_prace_po_doi(client)
+
+        if enable_integruj_publikacje or enable_all:
             integruj_publikacje()
 
         if enable_sync or enable_all:

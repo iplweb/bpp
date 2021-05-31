@@ -311,5 +311,7 @@ def matchuj_publikacje(
     if public_uri is not None:
         try:
             return klass.objects.get(Q(www=public_uri) | Q(public_www=public_uri))
+        except klass.MultipleObjectsReturned:
+            warnings.warn(f"www lub public_www nie jest unikalne w bazie: {public_uri}")
         except klass.DoesNotExist:
             pass
