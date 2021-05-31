@@ -1,4 +1,6 @@
 # Create your models here.
+import warnings
+
 from django.db import models
 
 from django.contrib.contenttypes.fields import GenericForeignKey
@@ -45,6 +47,14 @@ class BasePBNMongoDBModel(BasePBNModel):
 
     def value(self, *path, return_none=False):
         v = self.current_version
+        if v is None:
+            warnings.warn(
+                f"Model {self.__class__} with id {self.mongoId} has NO current_version!"
+            )
+            if return_none:
+                return
+            return "[brak current_version]"
+
         for elem in path:
             if elem in v:
                 v = v[elem]
