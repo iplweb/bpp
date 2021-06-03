@@ -10,7 +10,6 @@ from django.urls.base import reverse
 
 from django.contrib.postgres.search import SearchVectorField as VectorField
 
-from bpp.exceptions import WillNotExportError
 from bpp.fields import DOIField, YearField
 from bpp.jezyk_polski import czasownik_byc
 from bpp.models.abstract import (
@@ -219,18 +218,47 @@ class Zrodlo(ModelZAdnotacjami, ModelZISSN):
             #     },
             #     "mniswId": 0,
             #     "objectId": "string",
-            #     "publisher": {
-            #       "mniswId": 0,
-            #       "name": "string",
-            #       "objectId": "string",
-            #       "versionHash": "string"
-            #     },
-            #     "title": "string",
-            #     "versionHash": "string",
-            #     "websiteLink": "string"
-            raise WillNotExportError(
-                f'Zrodlo "{self.nazwa}" nie ma określonego odpowiednika w PBN'
-            )
-        return {
-            "objectId": self.pbn_uid.pk
-        }  # "mniswId": self.pbn_uid.value_or_none("mniswId")}
+
+        #  "journal": {
+        #     "eissn": "string",
+        #     "issn": "string",
+        #     "issue": {
+        #       "doi": "string",
+        #       "number": "string",
+        #       "objectId": "string",
+        #       "publishedYear": 0,
+        #       "versionHash": "string",
+        #       "volume": "string",
+        #       "year": "string"
+        #     },
+        #     "publisher": {
+        #       "mniswId": 0,
+        #       "name": "string",
+        #       "objectId": "string",
+        #       "versionHash": "string"
+        #     },
+        #     "title": "string",
+        #     "versionHash": "string",
+        #     "websiteLink": "string"
+        #   },
+
+        journal = self.pbn_uid
+
+        ret = {
+            "objectId": journal.pk,
+        }
+
+        for attr in [
+            "eissn",
+            "issn",
+            "publisher",
+            "title",
+            "websiteLink",
+            "mniswId",
+            "metadataSource",
+        ]:
+            v = journal.value("object", attr, return_none=True)
+            if v is not None:
+                ret[attr] = v
+
+        return ret
