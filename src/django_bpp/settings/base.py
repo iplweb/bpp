@@ -168,6 +168,7 @@ INSTALLED_APPS = [
     "columns",
     "formdefaults.apps.FormdefaultsConfig",
     "raport_slotow",
+    "treenode",
     # Musi być PRZED django-autocomplete-light do momentu
     # dal 3.3.0-release, musi być naprawiony o ten błąd:
     # https://github.com/yourlabs/django-autocomplete-light/issues/981
