@@ -354,8 +354,6 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
             raise ImproperlyConfigured("Brak nazwy aplikacji dla API PBN")
         if not self.pbn_app_token:
             raise ImproperlyConfigured("Brak tokena aplikacji dla API PBN")
-        if not self.pbn_api_root:
-            raise ImproperlyConfigured("Brak adresu URL dla API PBN")
 
         transport = UczelniaTransport(
             self.pbn_app_name, self.pbn_app_token, self.pbn_api_root, pbn_user_token

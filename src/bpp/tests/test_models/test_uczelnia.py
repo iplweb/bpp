@@ -32,24 +32,21 @@ def test_Uczelnia_pbn_client():
     uczelnia = mommy.make(Uczelnia)
 
     uczelnia.pbn_app_name = None
+    uczelnia.save()
 
     with pytest.raises(ImproperlyConfigured, match="nazwy aplikacji"):
         uczelnia.pbn_client()
 
     uczelnia.pbn_app_name = "foo"
+    uczelnia.save()
 
     uczelnia.pbn_app_token = None
+    uczelnia.save()
 
     with pytest.raises(ImproperlyConfigured, match="tokena aplikacji"):
         uczelnia.pbn_client()
 
     uczelnia.pbn_app_token = "foo"
-
-    uczelnia.pbn_api_root = None
-
-    with pytest.raises(ImproperlyConfigured, match="adresu URL"):
-        uczelnia.pbn_client()
-
-    uczelnia.pbn_api_root = "foo"
+    uczelnia.save()
 
     assert uczelnia.pbn_client()
