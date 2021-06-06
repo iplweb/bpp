@@ -1,7 +1,6 @@
 # -*- encoding: utf-8 -*-
 
 # -*- encoding: utf-8 -*-
-from adminsortable2.admin import SortableAdminMixin
 from django import forms
 from mptt.admin import DraggableMPTTAdmin
 
@@ -11,7 +10,7 @@ from .helpers import ADNOTACJE_FIELDSET, LimitingFormset, ZapiszZAdnotacjaMixin
 
 from django.contrib import admin
 
-from bpp.models import SORTUJ_ALFABETYCZNIE, Autor_Jednostka, Uczelnia
+from bpp.models import Autor_Jednostka, Uczelnia
 
 
 class Jednostka_WydzialInline(admin.TabularInline):
@@ -35,7 +34,6 @@ class Autor_JednostkaInline(admin.TabularInline):
 
 
 class JednostkaAdmin(
-    SortableAdminMixin,
     RestrictDeletionToAdministracjaGroupMixin,
     ZapiszZAdnotacjaMixin,
     CommitedModelAdmin,
@@ -51,7 +49,6 @@ class JednostkaAdmin(
         "nazwa",
         "skrot",
         "wydzial",
-        "kolejnosc",
         "widoczna",
         "wchodzi_do_raportow",
         "skupia_pracownikow",
@@ -104,20 +101,6 @@ class JednostkaAdmin(
         ),
         ADNOTACJE_FIELDSET,
     )
-
-    def get_ordering(self, request):
-        res = super(JednostkaAdmin, self).get_ordering(request)
-        if res:
-            return res
-        return Jednostka.objects.get_default_ordering()
-
-    def get_list_display(self, request):
-        if Jednostka.objects.get_default_ordering() == SORTUJ_ALFABETYCZNIE:
-            ret = self.list_display[:]
-            ret.remove("_reorder")
-            return ret
-
-        return self.list_display
 
     def get_changeform_initial_data(self, request):
         # Zobacz na komentarz do Jednostka.uczelnia.default

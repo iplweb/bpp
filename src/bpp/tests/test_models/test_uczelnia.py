@@ -1,5 +1,8 @@
 import pytest
 from django.core.exceptions import ValidationError
+from model_mommy import mommy
+
+from bpp.models import Uczelnia
 
 
 def test_Uczelnia_clean_pbn_biezaco_tak_integracja_nie(uczelnia):
@@ -10,7 +13,10 @@ def test_Uczelnia_clean_pbn_biezaco_tak_integracja_nie(uczelnia):
         uczelnia.clean()
 
 
-def test_Uczelnia_clean_integracja(uczelnia):
+@pytest.mark.django_db
+def test_Uczelnia_clean_integracja():
+    uczelnia = mommy.make(Uczelnia)
+
     uczelnia.pbn_integracja = True
     uczelnia.pbn_app_token = uczelnia.pbn_app_name = "hej"
 
@@ -18,7 +24,10 @@ def test_Uczelnia_clean_integracja(uczelnia):
         uczelnia.clean()
 
 
-def test_Uczelnia_pbn_client(uczelnia):
+@pytest.mark.django_db
+def test_Uczelnia_pbn_client():
+    uczelnia = mommy.make(Uczelnia)
+
     uczelnia.pbn_app_token = uczelnia.pbn_api_root = uczelnia.pbn_app_name = None
 
     with pytest.raises(AssertionError, match="nazwy aplikacji"):

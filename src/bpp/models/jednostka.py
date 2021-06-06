@@ -140,6 +140,9 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
         ordering = ["kolejnosc", "nazwa"]
         app_label = "bpp"
 
+    class MPTTMeta:
+        order_insertion_by = ["kolejnosc", "nazwa"]
+
     def get_absolute_url(self):
         return reverse("bpp:browse_jednostka", args=(self.slug,))
 
