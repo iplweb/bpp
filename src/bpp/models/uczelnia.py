@@ -350,9 +350,6 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
                 self.access_token = pbn_user_token
                 return True
 
-        if pbn_user_token == 123:
-            raise Exception(f"PBN APP NAME: {self.pbn_app_name}")
-
         if not self.pbn_app_name:
             raise ImproperlyConfigured("Brak nazwy aplikacji dla API PBN")
         if not self.pbn_app_token:

@@ -31,17 +31,21 @@ def test_Uczelnia_clean_integracja(uczelnia, mocker):
 def test_Uczelnia_pbn_client():
     uczelnia = mommy.make(Uczelnia)
 
-    uczelnia.pbn_app_token = uczelnia.pbn_api_root = uczelnia.pbn_app_name = None
+    uczelnia.pbn_app_name = None
 
-    # with pytest.raises(ImproperlyConfigured, match="nazwy aplikacji"):
-    uczelnia.pbn_client(123)
+    with pytest.raises(ImproperlyConfigured, match="nazwy aplikacji"):
+        uczelnia.pbn_client()
 
     uczelnia.pbn_app_name = "foo"
+
+    uczelnia.pbn_app_token = None
 
     with pytest.raises(ImproperlyConfigured, match="tokena aplikacji"):
         uczelnia.pbn_client()
 
     uczelnia.pbn_app_token = "foo"
+
+    uczelnia.pbn_api_root = None
 
     with pytest.raises(ImproperlyConfigured, match="adresu URL"):
         uczelnia.pbn_client()
