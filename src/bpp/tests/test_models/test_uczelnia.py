@@ -1,5 +1,5 @@
 import pytest
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ImproperlyConfigured, ValidationError
 from model_mommy import mommy
 
 from bpp.models import Uczelnia
@@ -33,17 +33,17 @@ def test_Uczelnia_pbn_client():
 
     uczelnia.pbn_app_token = uczelnia.pbn_api_root = uczelnia.pbn_app_name = None
 
-    with pytest.raises(AssertionError, match="nazwy aplikacji"):
+    with pytest.raises(ImproperlyConfigured, match="nazwy aplikacji"):
         uczelnia.pbn_client()
 
     uczelnia.pbn_app_name = "foo"
 
-    with pytest.raises(AssertionError, match="tokena aplikacji"):
+    with pytest.raises(ImproperlyConfigured, match="tokena aplikacji"):
         uczelnia.pbn_client()
 
     uczelnia.pbn_app_token = "foo"
 
-    with pytest.raises(AssertionError, match="adresu URL"):
+    with pytest.raises(ImproperlyConfigured, match="adresu URL"):
         uczelnia.pbn_client()
 
     uczelnia.pbn_api_root = "foo"

@@ -351,11 +351,11 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
                 return True
 
         if not self.pbn_app_name:
-            raise AssertionError("Brak nazwy aplikacji dla API PBN")
+            raise ImproperlyConfigured("Brak nazwy aplikacji dla API PBN")
         if not self.pbn_app_token:
-            raise AssertionError("Brak tokena aplikacji dla API PBN")
+            raise ImproperlyConfigured("Brak tokena aplikacji dla API PBN")
         if not self.pbn_api_root:
-            raise AssertionError("Brak adresu URL dla API PBN")
+            raise ImproperlyConfigured("Brak adresu URL dla API PBN")
 
         transport = UczelniaTransport(
             self.pbn_app_name, self.pbn_app_token, self.pbn_api_root, pbn_user_token
