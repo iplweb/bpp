@@ -1,18 +1,8 @@
-import pytest
-
-from bpp.models import Autor_Dyscyplina
 from raport_slotow.core import (
     autorzy_z_dyscyplinami,
     autorzy_z_punktami,
     autorzy_zerowi,
 )
-
-
-@pytest.fixture
-def autor_z_dyscyplina(autor_jan_nowak, dyscyplina1, rok):
-    return Autor_Dyscyplina.objects.create(
-        autor=autor_jan_nowak, dyscyplina_naukowa=dyscyplina1, rok=rok
-    )
 
 
 def test_autorzy_z_dyscyplinami_parametr(autor_z_dyscyplina, rok):

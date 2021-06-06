@@ -213,7 +213,7 @@ def autocomplete_create_error(msg):
         def __str__(self):
             return msg
 
-    return Error
+    return Error()
 
 
 class PublicZrodloAutocomplete(autocomplete.Select2QuerySetView):

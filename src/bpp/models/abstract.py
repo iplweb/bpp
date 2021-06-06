@@ -492,14 +492,14 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
         # - musi istnieć takie przypisanie autora do dyscypliny dla danego roku
         if self.dyscyplina_naukowa is not None:
 
-            if self.rekord_id is None:
+            if self.rekord_id is None and self.rekord is None:
                 raise ValidationError(
                     {
                         "dyscyplina_naukowa": "Określono dyscyplinę naukową, ale brak publikacji nadrzędnej. "
                     }
                 )
 
-            if self.rekord_id is not None and self.rekord.rok is None:
+            if self.rekord is not None and self.rekord.rok is None:
                 raise ValidationError(
                     {
                         "dyscyplina_naukowa": "Publikacja nadrzędna nie ma określonego roku."
