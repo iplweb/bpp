@@ -179,12 +179,24 @@ class JednostkiView(Browser):
     paginate_by = 150
 
     def get_queryset(self):
+        ordering = None
+
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
+        if uczelnia:
+            if uczelnia.sortuj_jednostki_alfabetycznie:
+                ordering = ("nazwa",)
+
         qry = super(JednostkiView, self).get_queryset()
-        return (
+        ret = (
             qry.filter(widoczna=True)
             .only("nazwa", "slug", "wydzial")
             .select_related("wydzial")
         )
+
+        if ordering:
+            ret = ret.order_by(*ordering)
+
+        return ret
 
 
 class ZrodloView(DetailView):

@@ -12,6 +12,9 @@ from django.db.models import CASCADE
 from django.db.models.functions import Coalesce
 from django.db.models.query_utils import Q
 from django.urls.base import reverse
+from mptt.fields import TreeForeignKey
+from mptt.managers import TreeManager
+from mptt.models import MPTTModel
 
 from .uczelnia import Uczelnia
 from .wydzial import Wydzial
@@ -29,7 +32,7 @@ SORTUJ_RECZNIE = ("kolejnosc", "nazwa")
 SORTUJ_ALFABETYCZNIE = ("nazwa",)
 
 
-class JednostkaManager(FulltextSearchMixin, models.Manager):
+class JednostkaManager(FulltextSearchMixin, TreeManager):
     def create(self, *args, **kw):
         if "wydzial" in kw and not ("uczelnia" in kw or "uczelnia_id" in kw):
             # Kompatybilność wsteczna, z czasów, gdy nie było metryczki historycznej
@@ -49,8 +52,24 @@ class JednostkaManager(FulltextSearchMixin, models.Manager):
 
         return ordering
 
+    def get_queryset(self, *args, **kwargs):
+        return (
+            super(JednostkaManager, self)
+            .get_queryset(*args, **kwargs)
+            .select_related("wydzial")
+        )
 
-class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID):
+
+class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
+    parent = TreeForeignKey(
+        "self",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="children",
+        verbose_name="Jednostka nadrzędna",
+    )
+
     uczelnia = models.ForeignKey(
         Uczelnia,
         CASCADE,

@@ -262,6 +262,14 @@ def jednostka(wydzial, db):
 
 @pytest.mark.django_db
 @pytest.fixture(scope="function")
+def jednostka_podrzedna(jednostka):
+    return _jednostka_maker(
+        "Jednostka P-rzedna", skrot="JP", wydzial=jednostka.wydzial, parent=jednostka
+    )
+
+
+@pytest.mark.django_db
+@pytest.fixture(scope="function")
 def druga_jednostka(wydzial, db):
     return _jednostka_maker(
         "Druga Jednostka Uczelni", skrot="Dr. Jedn. Ucz.", wydzial=wydzial

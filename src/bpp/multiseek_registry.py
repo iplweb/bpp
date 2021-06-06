@@ -423,10 +423,20 @@ class ZewnetrznaBazaDanychQueryObject(ForeignKeyDescribeMixin, AutocompleteQuery
         return ret
 
 
+EQUAL_PLUS_SUB_FEMALE = "równa+podrzędne"
+EQUAL_PLUS_SUB_UNION_FEMALE = "równa+podrzędne+wspólna"
+
+
 class JednostkaQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
     label = "Jednostka"
     type = AUTOCOMPLETE
-    ops = [EQUAL_FEMALE, DIFFERENT_FEMALE, UNION_FEMALE]
+    ops = [
+        EQUAL_FEMALE,
+        DIFFERENT_FEMALE,
+        EQUAL_PLUS_SUB_FEMALE,
+        UNION_FEMALE,
+        EQUAL_PLUS_SUB_UNION_FEMALE,
+    ]
     model = Jednostka
     search_fields = ["nazwa"]
     field_name = "jednostka"
@@ -435,6 +445,15 @@ class JednostkaQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
     def real_query(self, value, operation):
         if operation in EQUALITY_OPS_ALL:
             ret = Q(autorzy__jednostka=value)
+
+        elif operation == EQUAL_PLUS_SUB_FEMALE:
+            ret = Q(autorzy__jednostka__in=value.get_family())
+
+        elif operation in EQUAL_PLUS_SUB_UNION_FEMALE:
+            q = Autorzy.objects.filter(jednostka__in=value.get_family()).values(
+                "rekord_id"
+            )
+            ret = Q(pk__in=q)
 
         elif operation in UNION_OPS_ALL:
             q = Autorzy.objects.filter(jednostka=value).values("rekord_id")

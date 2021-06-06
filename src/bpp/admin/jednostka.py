@@ -3,6 +3,7 @@
 # -*- encoding: utf-8 -*-
 from adminsortable2.admin import SortableAdminMixin
 from django import forms
+from mptt.admin import DraggableMPTTAdmin
 
 from ..models.struktura import Jednostka, Jednostka_Wydzial
 from .core import CommitedModelAdmin, RestrictDeletionToAdministracjaGroupMixin
@@ -38,8 +39,15 @@ class JednostkaAdmin(
     RestrictDeletionToAdministracjaGroupMixin,
     ZapiszZAdnotacjaMixin,
     CommitedModelAdmin,
+    DraggableMPTTAdmin,
 ):
+
+    change_list_template = "admin/grappelli_mptt_change_list.html"
+
+    list_display_links = ["nazwa"]
+
     list_display = (
+        "tree_actions",
         "nazwa",
         "skrot",
         "wydzial",
@@ -80,6 +88,7 @@ class JednostkaAdmin(
                     "skrot",
                     "uczelnia",
                     "wydzial",
+                    "parent",
                     "aktualna",
                     "pbn_id",
                     "pbn_uid",
