@@ -803,3 +803,10 @@ def gen_kod_dyscypliny_func():
 mommy.generators.add(
     "bpp.models.dyscyplina_naukowa.KodDyscyplinyField", gen_kod_dyscypliny_func
 )
+
+
+@pytest.fixture
+def autor_z_dyscyplina(autor_jan_nowak, dyscyplina1, rok):
+    return Autor_Dyscyplina.objects.get_or_create(
+        autor=autor_jan_nowak, dyscyplina_naukowa=dyscyplina1, rok=rok
+    )[0]
