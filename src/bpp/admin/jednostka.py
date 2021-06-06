@@ -3,6 +3,8 @@
 # -*- encoding: utf-8 -*-
 from adminsortable2.admin import SortableAdminMixin
 from django import forms
+from treebeard.admin import TreeAdmin
+from treebeard.forms import movenodeform_factory
 
 from ..models.struktura import Jednostka, Jednostka_Wydzial
 from .core import CommitedModelAdmin, RestrictDeletionToAdministracjaGroupMixin
@@ -38,6 +40,7 @@ class JednostkaAdmin(
     RestrictDeletionToAdministracjaGroupMixin,
     ZapiszZAdnotacjaMixin,
     CommitedModelAdmin,
+    TreeAdmin,
 ):
     list_display = (
         "nazwa",
@@ -109,6 +112,8 @@ class JednostkaAdmin(
             return ret
 
         return self.list_display
+
+    form = movenodeform_factory(Jednostka)
 
     def get_changeform_initial_data(self, request):
         # Zobacz na komentarz do Jednostka.uczelnia.default

@@ -160,6 +160,7 @@ INSTALLED_APPS = [
     "password_policies",
     "create_test_db",
     "celery",
+    "treebeard",
     "flexible_reports",
     "static_sitemaps",
     "cookielaw",

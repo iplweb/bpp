@@ -12,6 +12,7 @@ from django.db.models import CASCADE
 from django.db.models.functions import Coalesce
 from django.db.models.query_utils import Q
 from django.urls.base import reverse
+from treebeard.mp_tree import MP_Node, MP_NodeManager
 
 from .uczelnia import Uczelnia
 from .wydzial import Wydzial
@@ -29,7 +30,7 @@ SORTUJ_RECZNIE = ("kolejnosc", "nazwa")
 SORTUJ_ALFABETYCZNIE = ("nazwa",)
 
 
-class JednostkaManager(FulltextSearchMixin, models.Manager):
+class JednostkaManager(FulltextSearchMixin, MP_NodeManager):
     def create(self, *args, **kw):
         if "wydzial" in kw and not ("uczelnia" in kw or "uczelnia_id" in kw):
             # Kompatybilność wsteczna, z czasów, gdy nie było metryczki historycznej
@@ -50,7 +51,13 @@ class JednostkaManager(FulltextSearchMixin, models.Manager):
         return ordering
 
 
-class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID):
+class TestMaster(MP_Node):
+    nazwa = models.CharField(max_length=3)
+
+
+class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MP_Node):
+    node_order_by = ["kolejnosc", "nazwa"]
+
     uczelnia = models.ForeignKey(
         Uczelnia,
         CASCADE,
@@ -114,6 +121,8 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID):
     kolejnosc = models.PositiveIntegerField(default=0, blank=False, null=False)
 
     objects = JednostkaManager()
+
+    node_order_by = ["kolejnosc", "nazwa"]
 
     class Meta:
         verbose_name = "jednostka"

@@ -72,8 +72,9 @@ django-static-sitemaps==4.6.0  # via -r requirements.in
 django-tables2==2.3.1     # via -r requirements.in, django-flexible-reports
 django-taggit-serializer==0.1.7  # via -r requirements.in
 django-taggit==1.3.0      # via -r requirements.in, django-taggit-serializer
+django-treebeard==4.5.1   # via -r requirements.in
 django-webmaster-verification==0.3.0  # via -r requirements.in
-django==3.0.14            # via -r requirements.in, channels, crispy-forms-foundation, django-admin-sortable2, django-appconf, django-braces, django-classy-tags, django-columns, django-cookie-law, django-dirtyfields, django-dsl, django-favicon-plus, django-filter, django-flexible-reports, django-import-export, django-model-utils, django-mptt, django-multiseek, django-password-policies-iplweb, django-querysetsequence, django-sendfile, django-session-security-iplweb, django-static-sitemaps, django-tables2, django-taggit, django-webmaster-verification, djangorestframework
+django==3.0.14            # via -r requirements.in, channels, crispy-forms-foundation, django-admin-sortable2, django-appconf, django-braces, django-classy-tags, django-columns, django-cookie-law, django-dirtyfields, django-dsl, django-favicon-plus, django-filter, django-flexible-reports, django-import-export, django-model-utils, django-mptt, django-multiseek, django-password-policies-iplweb, django-querysetsequence, django-sendfile, django-session-security-iplweb, django-static-sitemaps, django-tables2, django-taggit, django-treebeard, django-webmaster-verification, djangorestframework
 django_compressor==2.4    # via -r requirements.in
 djangorestframework==3.11.0  # via -r requirements.in
 et-xmlfile==1.0.1         # via openpyxl
