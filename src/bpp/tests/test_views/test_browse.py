@@ -536,3 +536,40 @@ def test_autor_ukrywanie_nazwisk(autor_jan_nowak, client, admin_client):
 
     page = client.get(url)
     assert "TEST" not in normalize_html(page.rendered_content)
+
+
+def test_browse_jednostka_nadrzedna(jednostka, jednostka_podrzedna, client):
+    url = reverse("bpp:browse_jednostka", args=(jednostka.slug,))
+    page = client.get(url)
+    assert "Jest nadrzędną jednostką dla" in normalize_html(page.rendered_content)
+
+    url = reverse("bpp:browse_jednostka", args=(jednostka_podrzedna.slug,))
+    page = client.get(url)
+    assert "Wchodzi w skład" in normalize_html(page.rendered_content)
+
+
+def test_browse_jednostka_sortowanie(jednostka, jednostka_podrzedna, uczelnia, client):
+
+    jednostka.nazwa = "Z jednostka"
+    jednostka.save()
+
+    jednostka_podrzedna.nazwa = "A jednostka"
+    jednostka_podrzedna.save()
+
+    uczelnia.sortuj_jednostki_alfabetycznie = True
+    uczelnia.save()
+
+    url = reverse("bpp:browse_jednostki")
+    page = client.get(url)
+    idx1 = page.rendered_content.find("A jednostka")
+    idx2 = page.rendered_content.find("Z jednostka")
+
+    assert idx1 < idx2
+
+    uczelnia.sortuj_jednostki_alfabetycznie = False
+    uczelnia.save()
+    page = client.get(url)
+
+    idx1 = page.rendered_content.find("A jednostka")
+    idx2 = page.rendered_content.find("Z jednostka")
+    assert idx1 > idx2

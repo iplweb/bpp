@@ -21,6 +21,8 @@ from bpp.models.openaccess import (
     Wersja_Tekstu_OpenAccess,
 )
 from bpp.multiseek_registry import (
+    EQUAL_PLUS_SUB_FEMALE,
+    EQUAL_PLUS_SUB_UNION_FEMALE,
     UNION,
     CharakterOgolnyQueryObject,
     DataUtworzeniaQueryObject,
@@ -225,6 +227,12 @@ def test_JednostkaQueryObject(jednostka):
     assert ret is not None
 
     ret = n.real_query(None, UNION)
+    assert ret is not None
+
+    ret = n.real_query(jednostka, EQUAL_PLUS_SUB_FEMALE)
+    assert ret is not None
+
+    ret = n.real_query(jednostka, EQUAL_PLUS_SUB_UNION_FEMALE)
     assert ret is not None
 
 

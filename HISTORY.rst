@@ -3,10 +3,12 @@
 Historia zmian
 ==============
 
+202105.67
+---------
 
 * usunięcie błędu polegającego na niemożliwości zapisania rekordu gdy w momencie
   tworzenia go dodany był autor z dyscypliną (b/n)
-
+* hierarchia jednostek (#1018),
 
 202105.66
 ---------

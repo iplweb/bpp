@@ -25,6 +25,21 @@
     {% endif %}
     </a>
 
+    {% if jednostka.parent %}
+        Wchodzi w skład:
+        <ul>
+              <li><a href="{% url "bpp:browse_jednostka" jednostka.parent.slug %}">{{ jednostka.parent }}</a></li>
+        </ul>
+    {% endif %}
+
+    {% if jednostka.children %}
+        Jest nadrzędną jednostką dla:<ul>
+        {% for child in jednostka.children.all %}
+            <li><a href="{% url "bpp:browse_jednostka" child.slug %}">{{ child }}</a></li>
+        {% endfor %}
+        </ul>
+    {% endif %}
+
     <form method="post"
           action="{% url "bpp:browse_build_search" %}"
           class="browserForm">
