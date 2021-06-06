@@ -31,6 +31,7 @@ def test_autor_inline_wydawnictwo_dyscyplina(
         select_select2_autocomplete(admin_browser, "id_zrodlo", zrodlo.nazwa)
     admin_browser.type("rok", str(rok))
 
+    show_element(admin_browser, admin_browser.find_by_name("charakter_formalny"))
     admin_browser.select("charakter_formalny", Charakter_Formalny.objects.first().pk)
     admin_browser.select("jezyk", Jezyk.objects.first().pk)
     show_element(admin_browser, admin_browser.find_by_name("typ_kbn"))
