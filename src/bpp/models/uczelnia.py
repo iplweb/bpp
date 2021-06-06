@@ -110,6 +110,10 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         "Pokazuj ranking autorów",
     )
 
+    pokazuj_raport_uczelni = OpcjaWyswietlaniaField(
+        "Pokazuj raport uczelni", default=OpcjaWyswietlaniaField.POKAZUJ_NIGDY
+    )
+
     pokazuj_raport_autorow = OpcjaWyswietlaniaField("Pokazuj raport autorów")
 
     pokazuj_raport_jednostek = OpcjaWyswietlaniaField(
