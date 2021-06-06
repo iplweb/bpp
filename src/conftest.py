@@ -190,7 +190,7 @@ def admin_browser(
     browser.quit()
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def uczelnia(db):
     return Uczelnia.objects.get_or_create(skrot="TE", nazwa="Testowa uczelnia")[0]
 
