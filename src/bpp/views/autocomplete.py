@@ -384,7 +384,9 @@ class AdminNavigationAutocomplete(StaffRequired, Select2QuerySetSequenceView):
             BppUser.objects.filter(username__icontains=self.q).only("pk", "username")
         )
 
-        querysets.append(Jednostka.objects.fulltext_filter(self.q).only("pk", "nazwa"))
+        querysets.append(
+            Jednostka.objects.fulltext_filter(self.q).only("pk", "nazwa", "wydzial")
+        )
 
         querysets.append(
             Konferencja.objects.filter(
