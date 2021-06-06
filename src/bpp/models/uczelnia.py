@@ -350,9 +350,12 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
                 self.access_token = pbn_user_token
                 return True
 
-        assert self.pbn_app_name, "Brak nazwy aplikacji dla API PBN"
-        assert self.pbn_app_token, "Brak tokena aplikacji dla API PBN"
-        assert self.pbn_api_root, "Brak adresu URL dla API PBN"
+        if not self.pbn_app_name:
+            raise AssertionError("Brak nazwy aplikacji dla API PBN")
+        if not self.pbn_app_token:
+            raise AssertionError("Brak tokena aplikacji dla API PBN")
+        if not self.pbn_api_root:
+            raise AssertionError("Brak adresu URL dla API PBN")
 
         transport = UczelniaTransport(
             self.pbn_app_name, self.pbn_app_token, self.pbn_api_root, pbn_user_token

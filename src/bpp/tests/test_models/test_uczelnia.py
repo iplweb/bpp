@@ -33,9 +33,6 @@ def test_Uczelnia_pbn_client():
 
     uczelnia.pbn_app_token = uczelnia.pbn_api_root = uczelnia.pbn_app_name = None
 
-    if uczelnia.pbn_app_name is not None:
-        raise Exception("x")
-
     with pytest.raises(AssertionError, match="nazwy aplikacji"):
         uczelnia.pbn_client()
 
