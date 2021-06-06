@@ -94,6 +94,7 @@ class UczelniaAdmin(
                     "pokazuj_raport_autorow",
                     "pokazuj_raport_jednostek",
                     "pokazuj_raport_wydzialow",
+                    "pokazuj_raport_uczelni",
                     "pokazuj_raport_dla_komisji_centralnej",
                     "pokazuj_praca_recenzowana",
                     "pokazuj_liczbe_cytowan_w_rankingu",

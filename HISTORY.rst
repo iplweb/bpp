@@ -9,6 +9,7 @@ Historia zmian
 * usunięcie błędu polegającego na niemożliwości zapisania rekordu gdy w momencie
   tworzenia go dodany był autor z dyscypliną (b/n)
 * hierarchia jednostek (#1018),
+* raport uczelni (#1028)
 
 202105.66
 ---------

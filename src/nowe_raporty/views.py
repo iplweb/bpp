@@ -12,14 +12,19 @@ from django_tables2.export.export import TableExport
 from flexible_reports.adapters.django_tables2 import as_docx, as_tablib_databook
 from flexible_reports.models.report import Report
 
+from formdefaults.helpers import FormDefaultsMixin
+from .forms import (
+    AutorRaportForm,
+    JednostkaRaportForm,
+    UczelniaRaportForm,
+    WydzialRaportForm,
+)
+
 from bpp.models import Uczelnia
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
 from bpp.models.struktura import Jednostka, Wydzial
 from bpp.views.mixins import UczelniaSettingRequiredMixin
-from formdefaults.helpers import FormDefaultsMixin
-
-from .forms import AutorRaportForm, JednostkaRaportForm, WydzialRaportForm
 
 
 class BaseFormView(FormDefaultsMixin, FormView):
@@ -51,6 +56,10 @@ class WydzialRaportAuthMixin(UczelniaSettingRequiredMixin):
     uczelnia_attr = "pokazuj_raport_wydzialow"
 
 
+class UczelniaRaportAuthMixin(UczelniaSettingRequiredMixin):
+    uczelnia_attr = "pokazuj_raport_uczelni"
+
+
 class AutorRaportFormView(AutorRaportAuthMixin, BaseFormView):
     form_class = AutorRaportForm
     title = "Raport autorów"
@@ -69,6 +78,18 @@ class JednostkaRaportFormView(JednostkaRaportAuthMixin, BaseFormView):
     report_slug = "raport-jednostek"
     form_class = JednostkaRaportForm
     title = "Raport jednostek"
+
+
+class UczelniaRaportFormView(UczelniaRaportAuthMixin, BaseFormView):
+    report_slug = "raport-uczelni"
+    form_class = UczelniaRaportForm
+    title = "Raport uczelni"
+
+    def form_valid(self, form):
+        d = form.cleaned_data
+        return HttpResponseRedirect(
+            f"./{ d['od_roku'] }/{ d['do_roku'] }/?" f"_export={ d['_export'] }"
+        )
 
 
 class WydzialRaportFormView(WydzialRaportAuthMixin, BaseFormView):
@@ -221,3 +242,16 @@ class GenerujRaportDlaWydzialu(WydzialRaportAuthMixin, GenerujRaportBase):
 
     def get_base_queryset(self):
         return Rekord.objects.prace_wydzialu(self.object)
+
+
+class GenerujRaportDlaUczelni(UczelniaRaportAuthMixin, GenerujRaportBase):
+    report_slug = "raport-uczelni"
+    form_link = "nowe_raporty:uczelnia_form"
+    form_title = "Raport uczelni"
+    model = Uczelnia
+
+    def get_object(self, queryset=None):
+        return Uczelnia.objects.get_for_request(self.request)
+
+    def get_base_queryset(self):
+        return Rekord.objects.all()

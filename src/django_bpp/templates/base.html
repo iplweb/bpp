@@ -123,6 +123,13 @@
                             {% load user_in_group %}
 
                             {% if ENABLE_NEW_REPORTS %}
+                                {% czy_pokazywac raport_uczelni %}
+                                    <li>
+                                        <a href="{% url "nowe_raporty:uczelnia_form" %}">
+                                            raport uczelni
+                                        </a>
+                                    </li>
+                                {% end_czy_pokazywac %}
                                 {% czy_pokazywac raport_wydzialow %}
                                     <li>
                                         <a href="{% url "nowe_raporty:wydzial_form" %}">
