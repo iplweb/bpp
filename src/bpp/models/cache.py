@@ -372,7 +372,9 @@ class RekordManager(FulltextSearchMixin, models.Manager):
         )
 
     def prace_jednostki(self, jednostka):
-        return self.filter(autorzy__jednostka=jednostka).distinct()
+        return self.filter(
+            autorzy__jednostka__in=jednostka.get_descendants(include_self=True)
+        ).distinct()
 
     def prace_wydzialu(self, wydzial):
         return self.filter(autorzy__jednostka__wydzial=wydzial).distinct()
