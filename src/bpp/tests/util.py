@@ -106,9 +106,11 @@ def any_jednostka(nazwa=None, skrot=None, wydzial_skrot="WDZ", **kw):
         except Wydzial.DoesNotExist:
             wydzial = mommy.make(Wydzial, uczelnia=uczelnia)
 
-    return mommy.make(
+    ret = mommy.make(
         Jednostka, nazwa=nazwa, skrot=skrot, wydzial=wydzial, uczelnia=uczelnia, **kw
     )
+    ret.refresh_from_db()
+    return ret
 
 
 CURRENT_YEAR = datetime.now().year
