@@ -424,7 +424,14 @@ def fill_admin_form(
 
 
 def fill_admin_inline(
-    browser, autor, jednostka, zapisany_jako=None, procent=None, no=0, prefix=None
+    browser,
+    autor,
+    jednostka,
+    zapisany_jako=None,
+    procent=None,
+    no=0,
+    prefix=None,
+    dyscyplina=None,
 ):
     "Daj prefix równy 'id_' aby wypełniać pojedyncze formularze (nie inlines)"
 
@@ -450,6 +457,12 @@ def fill_admin_inline(
         set_element(browser, f"{prefix}procent", procent)
     if procent == -1:
         set_element(browser, f"{prefix}procent", str(random.randint(1, 100)) + ".00")
+
+    if dyscyplina:
+        # set_element(browser, f"{prefix}dyscyplina_naukowa", dyscyplina)
+        select_select2_autocomplete(
+            browser, f"{prefix}dyscyplina_naukowa", dyscyplina.nazwa
+        )
 
 
 def submitted_form_bad(browser):

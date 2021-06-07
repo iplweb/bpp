@@ -213,7 +213,7 @@ def autocomplete_create_error(msg):
         def __str__(self):
             return msg
 
-    return Error
+    return Error()
 
 
 class PublicZrodloAutocomplete(autocomplete.Select2QuerySetView):
@@ -384,7 +384,9 @@ class AdminNavigationAutocomplete(StaffRequired, Select2QuerySetSequenceView):
             BppUser.objects.filter(username__icontains=self.q).only("pk", "username")
         )
 
-        querysets.append(Jednostka.objects.fulltext_filter(self.q).only("pk", "nazwa"))
+        querysets.append(
+            Jednostka.objects.fulltext_filter(self.q).only("pk", "nazwa", "wydzial")
+        )
 
         querysets.append(
             Konferencja.objects.filter(

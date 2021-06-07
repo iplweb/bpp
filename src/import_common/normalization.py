@@ -66,6 +66,9 @@ def normalize_nazwa_dyscypliny(s):
 
 
 def normalize_kod_dyscypliny(k):
+    if k is None:
+        return None
+
     if k.endswith("_0"):
         k = k[:-2]
         return f"{k[0]}.{int(k[1:])}"

@@ -190,7 +190,7 @@ def admin_browser(
     browser.quit()
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def uczelnia(db):
     return Uczelnia.objects.get_or_create(skrot="TE", nazwa="Testowa uczelnia")[0]
 
@@ -258,6 +258,14 @@ def _jednostka_maker(nazwa, skrot, wydzial, **kwargs):
 @pytest.fixture(scope="function")
 def jednostka(wydzial, db):
     return _jednostka_maker("Jednostka Uczelni", skrot="Jedn. Ucz.", wydzial=wydzial)
+
+
+@pytest.mark.django_db
+@pytest.fixture(scope="function")
+def jednostka_podrzedna(jednostka):
+    return _jednostka_maker(
+        "Jednostka P-rzedna", skrot="JP", wydzial=jednostka.wydzial, parent=jednostka
+    )
 
 
 @pytest.mark.django_db
@@ -803,3 +811,10 @@ def gen_kod_dyscypliny_func():
 mommy.generators.add(
     "bpp.models.dyscyplina_naukowa.KodDyscyplinyField", gen_kod_dyscypliny_func
 )
+
+
+@pytest.fixture
+def autor_z_dyscyplina(autor_jan_nowak, dyscyplina1, rok):
+    return Autor_Dyscyplina.objects.get_or_create(
+        autor=autor_jan_nowak, dyscyplina_naukowa=dyscyplina1, rok=rok
+    )[0]
