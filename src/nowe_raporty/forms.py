@@ -42,6 +42,8 @@ class BaseRaportForm(forms.Form):
     od_roku = forms.IntegerField(initial=year_last_month)
     do_roku = forms.IntegerField(initial=Uczelnia.objects.do_roku_default)
 
+    OBJ_FIELD = Row(Column("obiekt"))
+
     _export = forms.ChoiceField(
         label="Format wyjściowy", choices=OUTPUT_FORMATS, required=True
     )
@@ -64,15 +66,11 @@ class BaseRaportForm(forms.Form):
         self.helper.form_class = "custom"
         self.helper.form_action = "."
 
-        OBJ_FIELD = ""
-        if hasattr(self.__class__, "obiekt"):
-            OBJ_FIELD = Row(Column("obiekt"))
-
         self.helper.layout = Layout(
             Fieldset(
                 "Wybierz parametry",
                 formdefaults_html_before(self),
-                OBJ_FIELD,
+                self.OBJ_FIELD,
                 Row(
                     Column("od_roku", css_class="large-6 small-6"),
                     Column("do_roku", css_class="large-6 small-6"),
@@ -99,7 +97,7 @@ class BaseRaportForm(forms.Form):
 
 
 class UczelniaRaportForm(BaseRaportForm):
-    pass
+    OBJ_FIELD = ""
 
 
 class WydzialRaportForm(BaseRaportForm):
