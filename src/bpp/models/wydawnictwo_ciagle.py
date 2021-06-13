@@ -117,7 +117,7 @@ class Wydawnictwo_Ciagle_Autor(
             ret["personObjectId"] = scientist.pk
 
         else:
-            if self.autor.orcid and self.autor.orcid_w_pbn:
+            if self.autor.orcid:  # and self.autor.orcid_w_pbn:
                 ret["personOrcidId"] = self.autor.orcid
 
         if not ret.get("personOrcidId") and not ret.get("personObjectId"):

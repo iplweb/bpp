@@ -331,7 +331,7 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
                 ret.update({"naturalId": pesel})
 
         else:
-            if self.orcid is not None and self.orcid_w_pbn is True:
+            if self.orcid is not None:  # and self.orcid_w_pbn is True:
                 ret.update({"orcidId": self.orcid})
 
         return ret

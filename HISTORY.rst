@@ -9,14 +9,16 @@ Historia zmian
 * szybsze globalne wyszukiwanie (#1067),
 * wyszukiwanie jednostek po PBN UID w module redagowania (#1071),
 * wyświetlaj płaską listę jednostek przy wyszukiwaniu lub filtrowaniu w module redagowania (#1082),
-* wysyłaj nie-puste oświadczenia, nawet gdy jednostka nie ma ustawionego odpowiednika w PBN (#1070,
+* eksport PBN: wysyłaj nie-puste oświadczenia, nawet gdy jednostka nie ma ustawionego odpowiednika w PBN (#1070,
 * wyświetlaj kolumne "Profil ORCID" dla raportu slotów - ewaluacja (#1075),
 * usuń zbędny tekst "jest nadrzędną jednostką dla" (#1074)
 * powiązania autorów z dyscyplinami z modułu redagowania:
    - wyświetlają PBN UID i umożliwiają filtrowanie po nim (#1072),
    - eksportują poprawnie wartość ORCID i PBN UID do formatu XLS/CSV (#1072),
-* nie wysyłaj pola 'months' w przypadku trybów opublikowania innych, niż 'po publikacji'
+* eksport PBN: nie wysyłaj pola 'months' w przypadku trybów opublikowania innych, niż 'po publikacji'
   (#1081)
+* eksport PBN: próbuj wysyłać wszystkie ORCIDy, niezależnie czy są po stronie PBN czy nie (wyłącz
+  "ciche" wysyłanie autorów z brakującym po stronie PBNu ORCIDem) (#1078),
 
 202105.67
 ---------
