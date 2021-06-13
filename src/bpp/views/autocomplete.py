@@ -312,71 +312,49 @@ def jest_pbn_uid(s):
     return jest_czyms(s, const.PBN_UID_LEN)
 
 
-def globalne_wyszukiwanie_autora(q):
-    autor_pks = Q(pk__in=Autor.objects.fulltext_filter(q).values_list("pk", flat=True))
+def globalne_wyszukiwanie_autora(querysets, q):
+    def _fun(qry):
+        return (
+            qry.annotate(Count("wydawnictwo_ciagle"))
+            .only(
+                "pk",
+                "nazwisko",
+                "imiona",
+                "poprzednie_nazwiska",
+                "tytul__skrot",
+                "pseudonim",
+            )
+            .select_related("tytul")
+            .order_by("-wydawnictwo_ciagle__count")
+        )
 
     if jest_orcid(q):
-        autor_pks |= Q(
-            pk__in=Autor.objects.filter(orcid__icontains=q).values_list("pk", flat=True)
-        )
+        querysets.append(_fun(Autor.objects.filter(orcid__icontains=q)))
 
     if jest_pbn_uid(q):
-        autor_pks |= Q(
-            pk__in=Autor.objects.filter(pbn_uid_id=q).values_list("pk", flat=True)
-        )
+        querysets.append(_fun(Autor.objects.filter(pbn_uid_id=q)))
 
-    return (
-        Autor.objects.filter(autor_pks)
-        .annotate(Count("wydawnictwo_ciagle"))
-        .only(
-            "pk",
-            "nazwisko",
-            "imiona",
-            "poprzednie_nazwiska",
-            "tytul__skrot",
-            "pseudonim",
-        )
-        .select_related("tytul")
-        .order_by("-wydawnictwo_ciagle__count")
-    )
+    querysets.append(_fun(Autor.objects.fulltext_filter(q)))
 
 
-def globalne_wyszkukiwanie_jednostki(s):
-    jednostka_pks = Q(
-        pk__in=Jednostka.objects.fulltext_filter(s).values(
-            "pk",
-        )
-    )
+def globalne_wyszukiwanie_jednostki(querysets, s):
+    def _fun(qry):
+        return qry.only("pk", "nazwa", "wydzial__skrot").select_related("wydzial")
+
+    querysets.append(_fun(Jednostka.objects.fulltext_filter(s)))
 
     if jest_pbn_uid(s):
-        jednostka_pks |= Q(
-            pk__in=Jednostka.objects.filter(pbn_uid_id=s).values(
-                "pk",
-            )
-        )
-
-    return (
-        Jednostka.objects.filter(jednostka_pks)
-        .only("pk", "nazwa", "wydzial__skrot")
-        .select_related("wydzial")
-    )
+        querysets.append(_fun(Jednostka.objects.filter(pbn_uid_id=s)))
 
 
-def globalne_wyszukiwanie_zrodla(s):
-    zrodlo_pks = Q(
-        pk__in=Zrodlo.objects.fulltext_filter(s).values(
-            "pk",
-        )
-    )
+def globalne_wyszukiwanie_zrodla(querysets, s):
+    def _fun(qry):
+        return qry.only("pk", "nazwa", "poprzednia_nazwa")
+
+    querysets.append(_fun(Zrodlo.objects.fulltext_filter(s)))
 
     if jest_pbn_uid(s):
-        zrodlo_pks |= Q(
-            pk__in=Zrodlo.objects.filter(pbn_uid_id=s).values(
-                "pk",
-            )
-        )
-
-    return Zrodlo.objects.filter(zrodlo_pks).only("pk", "nazwa", "poprzednia_nazwa")
+        querysets.append(_fun(Zrodlo.objects.filter(pbn_uid_id=s)))
 
 
 class GlobalNavigationAutocomplete(Select2QuerySetSequenceView):
@@ -390,26 +368,22 @@ class GlobalNavigationAutocomplete(Select2QuerySetSequenceView):
             return []
 
         querysets = []
-        querysets.append(globalne_wyszkukiwanie_jednostki(self.q))
+        globalne_wyszukiwanie_jednostki(querysets, self.q)
 
-        querysets.append(globalne_wyszukiwanie_autora(self.q))
+        globalne_wyszukiwanie_autora(querysets, self.q)
 
-        querysets.append(globalne_wyszukiwanie_zrodla(self.q))
+        globalne_wyszukiwanie_zrodla(querysets, self.q)
 
         # Rekord
 
+        querysets.append(Rekord.objects.fulltext_filter(self.q))
+
         rekord_qset_doi = Rekord.objects.filter(doi__iexact=self.q)
-
-        rekord_qset_ftx = Rekord.objects.fulltext_filter(self.q)
-
         rekord_qset_pbn = None
         if jest_pbn_uid(self.q):
             rekord_qset_pbn = Rekord.objects.filter(pbn_uid_id=self.q)
 
-        qry = Q(pk__in=rekord_qset_doi.values_list("pk")) | Q(
-            pk__in=rekord_qset_ftx.values_list("pk")
-        )
-
+        qry = Q(pk__in=rekord_qset_doi.values_list("pk"))
         if rekord_qset_pbn:
             qry |= Q(pk__in=rekord_qset_pbn.values_list("pk"))
 
@@ -456,7 +430,7 @@ class AdminNavigationAutocomplete(StaffRequired, Select2QuerySetSequenceView):
             BppUser.objects.filter(username__icontains=self.q).only("pk", "username")
         )
 
-        querysets.append(globalne_wyszkukiwanie_jednostki(self.q))
+        globalne_wyszukiwanie_jednostki(querysets, self.q)
 
         querysets.append(
             Konferencja.objects.filter(
@@ -464,9 +438,9 @@ class AdminNavigationAutocomplete(StaffRequired, Select2QuerySetSequenceView):
             ).only("pk", "nazwa", "baza_inna", "baza_wos", "baza_scopus")
         )
 
-        querysets.append(globalne_wyszukiwanie_autora(self.q))
+        globalne_wyszukiwanie_autora(querysets, self.q)
 
-        querysets.append(globalne_wyszukiwanie_zrodla(self.q))
+        globalne_wyszukiwanie_zrodla(querysets, self.q)
 
         for klass in [
             Wydawnictwo_Zwarte,

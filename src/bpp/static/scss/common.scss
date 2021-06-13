@@ -190,6 +190,10 @@ body ol li {
   background-color: $primary-color !important;
 }
 
+.select2-container--foundation .select2-results > .select2-results__options {
+  max-height: 400px !important;
+}
+
 ::-ms-check {
   color: red;
   background: black;

@@ -3,6 +3,11 @@
 Historia zmian
 ==============
 
+202106.70
+---------
+
+* szybsze globalne wyszukiwanie (#1067),
+
 202105.67
 ---------
 

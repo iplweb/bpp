@@ -11,11 +11,19 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.RunSQL(
-            "CREATE INDEX bpp_rekord_mat_pbn_uid_id ON bpp_rekord_mat(pbn_uid_id)",
+            "CREATE INDEX IF NOT EXISTS  bpp_rekord_mat_pbn_uid_id ON bpp_rekord_mat(pbn_uid_id)",
             migrations.RunSQL.noop,
         ),
         migrations.RunSQL(
-            "CREATE INDEX bpp_autor_search_idx ON bpp_autor  USING GIST (search)",
+            "CREATE INDEX IF NOT EXISTS  bpp_autor_search_idx ON bpp_autor  USING GIST (search)",
+            migrations.RunSQL.noop,
+        ),
+        migrations.RunSQL(
+            "CREATE INDEX IF NOT EXISTS bpp_zrodlo_search_idx ON bpp_zrodlo USING GIST (search)",
+            migrations.RunSQL.noop,
+        ),
+        migrations.RunSQL(
+            "CREATE INDEX IF NOT EXISTS  bpp_rekord_mat_doi_iexact ON bpp_rekord_mat(upper(doi));",
             migrations.RunSQL.noop,
         ),
     ]

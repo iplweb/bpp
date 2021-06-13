@@ -539,6 +539,7 @@ CREATE INDEX bpp_rekord_mat_q
 CREATE INDEX bpp_rekord_mat_r
     ON bpp_rekord_mat (status_korekty_id);
 CREATE INDEX bpp_rekord_mat_doi ON bpp_rekord_mat(doi);
+CREATE INDEX bpp_rekord_mat_doi_iexact ON bpp_rekord_mat(upper(doi));
 CREATE INDEX bpp_rekord_mat_pbn_uid_id ON bpp_rekord_mat(pbn_uid_id);
 
 ALTER TABLE bpp_rekord_mat

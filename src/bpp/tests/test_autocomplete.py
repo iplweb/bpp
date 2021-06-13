@@ -227,16 +227,38 @@ def test_JednostkaMixin_get_result_label(jednostka):
     assert JednostkaMixin().get_result_label(jednostka)
 
 
+@pytest.mark.django_db
 @pytest.mark.parametrize(
     "klass", [AdminNavigationAutocomplete, GlobalNavigationAutocomplete]
 )
-def test_NavigationAutocomplete_no_queries(django_assert_max_num_queries, klass):
-    with django_assert_max_num_queries(5):
+def test_NavigationAutocomplete_no_queries(
+    django_assert_max_num_queries,
+    klass,
+    jednostka,
+    zrodlo,
+    wydawnictwo_ciagle,
+    wydawnictwo_zwarte,
+    autor_jan_kowalski,
+    autor_jan_nowak,
+    rf,
+    admin_user,
+):
+    req = rf.get("/", data={"q": "Je"})
+    req.user = admin_user
+    with django_assert_max_num_queries(10):
+        a = klass()
+        a.request = req
+        a.q = "Je"  # literka
+        a.get(req)
+
+    with django_assert_max_num_queries(13):
         a = klass()
         a.q = "T" * 24  # PBN UID
-        a.get_queryset()
+        a.request = req
+        a.get(req)
 
-    with django_assert_max_num_queries(5):
+    with django_assert_max_num_queries(13):
         a = klass()
+        a.request = req
         a.q = "T" * 19  # orcid
-        a.get_queryset()
+        a.get(req)
