@@ -9,7 +9,8 @@ Historia zmian
 * szybsze globalne wyszukiwanie (#1067),
 * wyszukiwanie jednostek po PBN UID w module redagowania (#1071),
 * wyświetlaj płaską listę jednostek przy wyszukiwaniu lub filtrowaniu w module redagowania (#1082),
-* usuń zbędny tekst "jest nadrzędną jednostką dla" (#1074)
+* usuń zbędny tekst "jest nadrzędną jednostką dla" (#1074),
+* wyświetlaj kolumne "Profil ORCID" dla raportu slotów - ewaluacja (#1075),
 
 202105.67
 ---------

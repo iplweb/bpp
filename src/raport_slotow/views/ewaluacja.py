@@ -3,19 +3,22 @@ from urllib.parse import urlencode
 
 from django.http import HttpResponseRedirect
 from django.urls import reverse
-from django.utils import timezone
 from django.views.generic import FormView
 from django_filters.views import FilterView
 from django_tables2 import SingleTableMixin
 
-from bpp.views.mixins import UczelniaSettingRequiredMixin
-from django_bpp.version import VERSION
 from formdefaults.helpers import FormDefaultsMixin
 from raport_slotow.filters import RaportSlotowUczelniaEwaluacjaFilter
 from raport_slotow.forms import ParametryRaportSlotowEwaluacjaForm
 from raport_slotow.models import RaportUczelniaEwaluacjaView
 from raport_slotow.tables import RaportSlotowEwaluacjaTable
 from raport_slotow.util import MyExportMixin
+
+from django.utils import timezone
+
+from bpp.views.mixins import UczelniaSettingRequiredMixin
+
+from django_bpp.version import VERSION
 
 
 class ParametryRaportSlotowEwaluacja(
@@ -131,6 +134,7 @@ class RaportSlotowEwaluacja(
                 "autorzy__autor__imiona",
                 "autorzy__autor__tytul",
                 "autorzy__upowaznienie_pbn",
+                "autorzy__profil_orcid",
                 "autor_dyscyplina__dyscyplina_naukowa",
                 "autor_dyscyplina__dyscyplina_naukowa__id",
                 "autor_dyscyplina__dyscyplina_naukowa__nazwa",
