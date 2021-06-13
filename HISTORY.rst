@@ -7,6 +7,8 @@ Historia zmian
 ---------
 
 * szybsze globalne wyszukiwanie (#1067),
+* wyszukiwanie jednostek po PBN UID w module redagowania (#1071),
+* wyświetlaj płaską listę jednostek przy wyszukiwaniu lub filtrowaniu w module redagowania (#1082),
 
 202105.67
 ---------
