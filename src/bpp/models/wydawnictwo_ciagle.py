@@ -318,9 +318,9 @@ class Wydawnictwo_Ciagle(
                     author["affiliations"] = [jednostka.pbn_uid_id]
                     jednostki.add(elem.jednostka)
 
-                    statement = elem.pbn_get_json()
-                    if statement:
-                        statements.append(statement)
+                statement = elem.pbn_get_json()
+                if statement:
+                    statements.append(statement)
 
             authors.append(author)
 

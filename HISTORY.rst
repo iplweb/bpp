@@ -10,6 +10,7 @@ Historia zmian
 * wyszukiwanie jednostek po PBN UID w module redagowania (#1071),
 * wyświetlaj płaską listę jednostek przy wyszukiwaniu lub filtrowaniu w module redagowania (#1082),
 * usuń zbędny tekst "jest nadrzędną jednostką dla" (#1074)
+* wysyłaj nie-puste oświadczenia, nawet gdy jednostka nie ma ustawionego odpowiednika w PBN (#1070,
 
 202105.67
 ---------
