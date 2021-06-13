@@ -106,8 +106,8 @@ def any_jednostka(nazwa=None, skrot=None, wydzial_skrot="WDZ", **kw):
         except Wydzial.DoesNotExist:
             wydzial = mommy.make(Wydzial, uczelnia=uczelnia)
 
-    ret = mommy.make(
-        Jednostka, nazwa=nazwa, skrot=skrot, wydzial=wydzial, uczelnia=uczelnia, **kw
+    ret = Jednostka.objects.create(
+        nazwa=nazwa, skrot=skrot, wydzial=wydzial, uczelnia=uczelnia, **kw
     )
     ret.refresh_from_db()
     return ret
