@@ -11,6 +11,10 @@ Historia zmian
 * wyświetlaj płaską listę jednostek przy wyszukiwaniu lub filtrowaniu w module redagowania (#1082),
 * wysyłaj nie-puste oświadczenia, nawet gdy jednostka nie ma ustawionego odpowiednika w PBN (#1070,
 * wyświetlaj kolumne "Profil ORCID" dla raportu slotów - ewaluacja (#1075),
+* usuń zbędny tekst "jest nadrzędną jednostką dla" (#1074)
+* powiązania autorów z dyscyplinami z modułu redagowania:
+   - wyświetlają PBN UID i umożliwiają filtrowanie po nim (#1072),
+   - eksportują poprawnie wartość ORCID i PBN UID do formatu XLS/CSV (#1072),
 
 202105.67
 ---------

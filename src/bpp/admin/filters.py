@@ -79,8 +79,13 @@ class OrcidObecnyFilter(SimpleNotNullFilter):
 
 
 class OrcidAutoraDyscyplinyObecnyFilter(SimpleNotNullFilter):
-    title = "ORCID"
+    title = "ORCID autora"
     parameter_name = "autor__orcid"
+
+
+class PBN_UID_IDAutoraObecnyFilter(SimpleNotNullFilter):
+    title = "PBN UID autora"
+    parameter_name = "autor__pbn_uid_id"
 
 
 class PBN_UID_IDObecnyFilter(SimpleNotNullFilter):
