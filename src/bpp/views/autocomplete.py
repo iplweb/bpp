@@ -376,7 +376,7 @@ class GlobalNavigationAutocomplete(Select2QuerySetSequenceView):
 
         # Rekord
 
-        querysets.append(Rekord.objects.fulltext_filter(self.q))
+        rekord_qset_ftx = Rekord.objects.fulltext_filter(self.q)
 
         rekord_qset_doi = Rekord.objects.filter(doi__iexact=self.q)
         rekord_qset_pbn = None
@@ -392,9 +392,14 @@ class GlobalNavigationAutocomplete(Select2QuerySetSequenceView):
         if hasattr(self, "request") and self.request.user.is_anonymous:
             uczelnia = Uczelnia.objects.get_for_request(self.request)
             if uczelnia is not None:
+                rekord_qset_ftx = rekord_qset_ftx.exclude(
+                    status_korekty_id__in=uczelnia.ukryte_statusy("podglad")
+                )
+
                 rekord_qset = rekord_qset.exclude(
                     status_korekty_id__in=uczelnia.ukryte_statusy("podglad")
                 )
+        querysets.append(rekord_qset_ftx)
         querysets.append(rekord_qset)
 
         this_is_an_id = False
