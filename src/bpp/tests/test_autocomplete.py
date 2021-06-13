@@ -11,6 +11,7 @@ from bpp.models.konferencja import Konferencja
 from bpp.views.autocomplete import (
     AdminNavigationAutocomplete,
     AutorAutocomplete,
+    GlobalNavigationAutocomplete,
     JednostkaMixin,
     PublicAutorAutocomplete,
 )
@@ -224,3 +225,18 @@ def test_AutorAutocomplete_create_bug_1():
 def test_JednostkaMixin_get_result_label(jednostka):
     jednostka.wydzial = None
     assert JednostkaMixin().get_result_label(jednostka)
+
+
+@pytest.mark.parametrize(
+    "klass", [AdminNavigationAutocomplete, GlobalNavigationAutocomplete]
+)
+def test_NavigationAutocomplete_no_queries(django_assert_max_num_queries, klass):
+    with django_assert_max_num_queries(5):
+        a = klass()
+        a.q = "T" * 24  # PBN UID
+        a.get_queryset()
+
+    with django_assert_max_num_queries(5):
+        a = klass()
+        a.q = "T" * 19  # orcid
+        a.get_queryset()

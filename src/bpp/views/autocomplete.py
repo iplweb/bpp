@@ -22,6 +22,7 @@ from bpp.models import (
     Uczelnia,
     Wydawca,
     Zewnetrzna_Baza_Danych,
+    const,
 )
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
@@ -291,6 +292,93 @@ class AutorZUczelniAutocopmlete(AutorAutocomplete):
     pass
 
 
+class StaffRequired(UserPassesTestMixin):
+    def test_func(self):
+        return self.request.user.is_staff
+
+
+def jest_czyms(s, dlugosc):
+    if s is not None:
+        if len(s) == dlugosc and s.find(" ") == -1:
+            return True
+    return False
+
+
+def jest_orcid(s):
+    return jest_czyms(s, const.ORCID_LEN)
+
+
+def jest_pbn_uid(s):
+    return jest_czyms(s, const.PBN_UID_LEN)
+
+
+def globalne_wyszukiwanie_autora(q):
+    autor_pks = Q(pk__in=Autor.objects.fulltext_filter(q).values_list("pk", flat=True))
+
+    if jest_orcid(q):
+        autor_pks |= Q(
+            pk__in=Autor.objects.filter(orcid__icontains=q).values_list("pk", flat=True)
+        )
+
+    if jest_pbn_uid(q):
+        autor_pks |= Q(
+            pk__in=Autor.objects.filter(pbn_uid_id=q).values_list("pk", flat=True)
+        )
+
+    return (
+        Autor.objects.filter(autor_pks)
+        .annotate(Count("wydawnictwo_ciagle"))
+        .only(
+            "pk",
+            "nazwisko",
+            "imiona",
+            "poprzednie_nazwiska",
+            "tytul__skrot",
+            "pseudonim",
+        )
+        .select_related("tytul")
+        .order_by("-wydawnictwo_ciagle__count")
+    )
+
+
+def globalne_wyszkukiwanie_jednostki(s):
+    jednostka_pks = Q(
+        pk__in=Jednostka.objects.fulltext_filter(s).values(
+            "pk",
+        )
+    )
+
+    if jest_pbn_uid(s):
+        jednostka_pks |= Q(
+            pk__in=Jednostka.objects.filter(pbn_uid_id=s).values(
+                "pk",
+            )
+        )
+
+    return (
+        Jednostka.objects.filter(jednostka_pks)
+        .only("pk", "nazwa", "wydzial__skrot")
+        .select_related("wydzial")
+    )
+
+
+def globalne_wyszukiwanie_zrodla(s):
+    zrodlo_pks = Q(
+        pk__in=Zrodlo.objects.fulltext_filter(s).values(
+            "pk",
+        )
+    )
+
+    if jest_pbn_uid(s):
+        zrodlo_pks |= Q(
+            pk__in=Zrodlo.objects.filter(pbn_uid_id=s).values(
+                "pk",
+            )
+        )
+
+    return Zrodlo.objects.filter(zrodlo_pks).only("pk", "nazwa", "poprzednia_nazwa")
+
+
 class GlobalNavigationAutocomplete(Select2QuerySetSequenceView):
     paginate_by = 20
 
@@ -302,44 +390,30 @@ class GlobalNavigationAutocomplete(Select2QuerySetSequenceView):
             return []
 
         querysets = []
-        querysets.append(
-            Jednostka.objects.fulltext_filter(self.q)
-            .only("pk", "nazwa", "wydzial__skrot")
-            .select_related("wydzial")
-        )
+        querysets.append(globalne_wyszkukiwanie_jednostki(self.q))
 
-        querysets.append(
-            Autor.objects.fulltext_filter(self.q)
-            .annotate(Count("wydawnictwo_ciagle"))
-            .only("pk", "nazwisko", "imiona", "poprzednie_nazwiska", "tytul__skrot")
-            .select_related("tytul")
-            .order_by("-wydawnictwo_ciagle__count")
-        )
+        querysets.append(globalne_wyszukiwanie_autora(self.q))
 
-        if len(self.q) == len("0000-0003-1240-323X"):
-            querysets.append(
-                Autor.objects.filter(orcid__icontains=self.q)
-                .annotate(Count("wydawnictwo_ciagle"))
-                .only("pk", "nazwisko", "imiona", "poprzednie_nazwiska", "tytul__skrot")
-                .select_related("tytul")
-                .order_by("-wydawnictwo_ciagle__count")
-            )
+        querysets.append(globalne_wyszukiwanie_zrodla(self.q))
 
-        querysets.append(
-            Zrodlo.objects.fulltext_filter(self.q).only(
-                "pk", "nazwa", "poprzednia_nazwa"
-            )
-        )
+        # Rekord
 
         rekord_qset_doi = Rekord.objects.filter(doi__iexact=self.q)
-        rekord_qset_ftx = Rekord.objects.fulltext_filter(self.q)
-        rekord_qset_pbn = Rekord.objects.filter(pbn_uid_id=self.q)
 
-        rekord_qset = Rekord.objects.filter(
-            Q(pk__in=rekord_qset_doi.values_list("pk"))
-            | Q(pk__in=rekord_qset_ftx.values_list("pk"))
-            | Q(pk__in=rekord_qset_pbn.values_list("pk"))
-        ).only("tytul_oryginalny")
+        rekord_qset_ftx = Rekord.objects.fulltext_filter(self.q)
+
+        rekord_qset_pbn = None
+        if jest_pbn_uid(self.q):
+            rekord_qset_pbn = Rekord.objects.filter(pbn_uid_id=self.q)
+
+        qry = Q(pk__in=rekord_qset_doi.values_list("pk")) | Q(
+            pk__in=rekord_qset_ftx.values_list("pk")
+        )
+
+        if rekord_qset_pbn:
+            qry |= Q(pk__in=rekord_qset_pbn.values_list("pk"))
+
+        rekord_qset = Rekord.objects.filter(qry).only("tytul_oryginalny")
 
         if hasattr(self, "request") and self.request.user.is_anonymous:
             uczelnia = Uczelnia.objects.get_for_request(self.request)
@@ -366,16 +440,14 @@ class GlobalNavigationAutocomplete(Select2QuerySetSequenceView):
         return self.mixup_querysets(ret)
 
 
-class StaffRequired(UserPassesTestMixin):
-    def test_func(self):
-        return self.request.user.is_staff
-
-
 class AdminNavigationAutocomplete(StaffRequired, Select2QuerySetSequenceView):
     paginate_by = 30
 
     def get_queryset(self):
         if not self.q:
+            return []
+
+        if len(self.q) < 1:
             return []
 
         querysets = []
@@ -384,38 +456,17 @@ class AdminNavigationAutocomplete(StaffRequired, Select2QuerySetSequenceView):
             BppUser.objects.filter(username__icontains=self.q).only("pk", "username")
         )
 
-        querysets.append(
-            Jednostka.objects.fulltext_filter(self.q).only("pk", "nazwa", "wydzial")
-        )
+        querysets.append(globalne_wyszkukiwanie_jednostki(self.q))
 
         querysets.append(
             Konferencja.objects.filter(
                 Q(nazwa__icontains=self.q) | Q(skrocona_nazwa__icontains=self.q)
-            ).only("pk", "nazwa")
+            ).only("pk", "nazwa", "baza_inna", "baza_wos", "baza_scopus")
         )
 
-        querysets.append(
-            Autor.objects.fulltext_filter(self.q)
-            .annotate(Count("wydawnictwo_ciagle"))
-            .only("pk", "nazwisko", "imiona", "poprzednie_nazwiska", "tytul")
-            .select_related("tytul")
-            .order_by("-wydawnictwo_ciagle__count")
-        )
+        querysets.append(globalne_wyszukiwanie_autora(self.q))
 
-        if len(self.q) == len("0000-0003-1240-323X"):
-            querysets.append(
-                Autor.objects.filter(orcid__icontains=self.q)
-                .annotate(Count("wydawnictwo_ciagle"))
-                .only("pk", "nazwisko", "imiona", "poprzednie_nazwiska", "tytul__skrot")
-                .select_related("tytul")
-                .order_by("-wydawnictwo_ciagle__count")
-            )
-
-        querysets.append(
-            Zrodlo.objects.fulltext_filter(self.q).only(
-                "pk", "nazwa", "poprzednia_nazwa"
-            )
-        )
+        querysets.append(globalne_wyszukiwanie_zrodla(self.q))
 
         for klass in [
             Wydawnictwo_Zwarte,
@@ -436,8 +487,9 @@ class AdminNavigationAutocomplete(StaffRequired, Select2QuerySetSequenceView):
             if klass != Patent:
                 filter |= Q(doi__iexact=self.q)
 
-            if "pbn_uid" in [fld.name for fld in klass._meta.fields]:
-                filter |= Q(pbn_uid__pk=self.q)
+            if len(self.q) == 24 and self.q.find(" ") == -1:
+                if "pbn_uid" in [fld.name for fld in klass._meta.fields]:
+                    filter |= Q(pbn_uid__pk=self.q)
 
             querysets.append(klass.objects.filter(filter).only("tytul_oryginalny"))
 
