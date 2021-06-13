@@ -15,6 +15,8 @@ Historia zmian
 * powiązania autorów z dyscyplinami z modułu redagowania:
    - wyświetlają PBN UID i umożliwiają filtrowanie po nim (#1072),
    - eksportują poprawnie wartość ORCID i PBN UID do formatu XLS/CSV (#1072),
+* nie wysyłaj pola 'months' w przypadku trybów opublikowania innych, niż 'po publikacji'
+  (#1081)
 
 202105.67
 ---------
