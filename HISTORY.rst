@@ -19,6 +19,7 @@ Historia zmian
   (#1081)
 * eksport PBN: próbuj wysyłać wszystkie ORCIDy, niezależnie czy są po stronie PBN czy nie (wyłącz
   "ciche" wysyłanie autorów z brakującym po stronie PBNu ORCIDem) (#1078),
+* eksport PBN: matchuj publikacje również po źródle (#1080),
 
 202105.67
 ---------

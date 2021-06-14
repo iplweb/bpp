@@ -1,4 +1,3 @@
-import warnings
 from typing import Union
 
 from django.db.models import Q
@@ -288,6 +287,7 @@ def matchuj_publikacje(
     year,
     doi=None,
     public_uri=None,
+    zrodlo=None,
 ):
 
     if doi is not None:
@@ -298,20 +298,33 @@ def matchuj_publikacje(
             except klass.DoesNotExist:
                 pass
             except klass.MultipleObjectsReturned:
-                warnings.warn(f"DOI nie jest unikalne w bazie: {doi}")
+                print(f"DOI nie jest unikalne w bazie: {doi}")
 
     if public_uri is not None:
         try:
             return klass.objects.get(Q(www=public_uri) | Q(public_www=public_uri))
         except klass.MultipleObjectsReturned:
-            warnings.warn(f"www lub public_www nie jest unikalne w bazie: {public_uri}")
+            print(f"www lub public_www nie jest unikalne w bazie: {public_uri}")
         except klass.DoesNotExist:
             pass
 
     title = normalize_tytul_publikacji(title)
+
+    if zrodlo is not None:
+        try:
+            return klass.objects.get(
+                tytul_oryginalny__istartswith=title, rok=year, zrodlo=zrodlo
+            )
+        except klass.DoesNotExist:
+            pass
+        except klass.MultipleObjectsReturned:
+            print(
+                f"MultipleObjectsReturned dla title={title} rok={year} zrodlo={zrodlo}"
+            )
+
     try:
         return klass.objects.get(tytul_oryginalny__istartswith=title, rok=year)
     except klass.DoesNotExist:
         pass
     except klass.MultipleObjectsReturned:
-        warnings.warn(f"MultipleObjectsReturned dla title={title} rok={year}")
+        print(f"MultipleObjectsReturned dla title={title} rok={year}")
