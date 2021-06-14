@@ -199,7 +199,7 @@ def normalize_doi(s):
 def pobierz_prace(client: PBNClient):
     for status in ["ACTIVE"]:  # "DELETED", "ACTIVE"]:
         pobierz_mongodb(
-            client.get_publications(status=status, page_size=200), Publication
+            client.get_publications(status=status, page_size=5000), Publication
         )
 
 
@@ -285,6 +285,34 @@ def weryfikuj_orcidy(client: PBNClient, instutition_id):
         )
 
 
+def matchuj_autora_po_stronie_pbn(imiona, nazwisko, orcid):
+    if orcid is not None:
+        qry = Q(versions__contains=[{"current": True, "object": {"orcid": orcid}}])
+        try:
+            res = Scientist.objects.get(qry)
+            return res
+        except Scientist.DoesNotExist:
+            print(f"*** BRAK ORCIDu w PBN, istnieje w BPP: {orcid}")
+        except Scientist.MultipleObjectsReturned:
+            print(f"XXX ORCID istnieje wiele razy w bazie PBN {orcid}")
+
+    qry = Q(
+        versions__contains=[
+            {
+                "current": True,
+                "object": {"lastName": nazwisko.strip(), "firstName": imiona.strip()},
+            }
+        ]
+    )
+    try:
+        res = Scientist.objects.get(qry)
+        return res
+    except Scientist.DoesNotExist:
+        print(f"*** BRAK AUTORA w PBN, istnieje w BPP: {nazwisko} {imiona}")
+    except Scientist.MultipleObjectsReturned:
+        print(f"XXX AUTOR istnieje wiele razy w bazie PBN {nazwisko} {imiona}")
+
+
 def integruj_autorow_z_uczelni(client: PBNClient, instutition_id):
     """
     Ta procedure uruchamiamy dopiero po zaciągnięciu bazy osób.
@@ -314,6 +342,19 @@ def integruj_autorow_z_uczelni(client: PBNClient, instutition_id):
                     "Brak odwzorowania dla naukowca w tabeli pbn_api_scientist, "
                     "zaciągnij najpierw listę autorów z PBNu"
                 )
+            autor.save()
+
+
+def integruj_wszystkich_niezintegrowanych_autorow():
+    for autor in (
+        Uczelnia.objects.get_default().autorzy_z_uczelni().filter(pbn_uid_id=None)
+    ):
+        sciencist = matchuj_autora_po_stronie_pbn(
+            autor.imiona, autor.nazwisko, autor.orcid
+        )
+        if sciencist:
+            print(f"==> integracja wszystkich: ustawiam {autor} na {sciencist.pk}")
+            autor.pbn_uid = sciencist
             autor.save()
 
 
@@ -443,15 +484,35 @@ def integruj_wydawcow():
 def integruj_publikacje():
     for elem in Publication.objects.all():
         for klass in Wydawnictwo_Ciagle, Wydawnictwo_Zwarte:
+            zrodlo = None
+
+            if klass == Wydawnictwo_Ciagle:
+                zrodlo_pbn_uid_id = elem.value_or_none("object", "journal", "id")
+                if zrodlo_pbn_uid_id is not None:
+                    try:
+                        zrodlo = Zrodlo.objects.get(pbn_uid_id=zrodlo_pbn_uid_id)
+                    except Zrodlo.DoesNotExist:
+                        pass
+                    except Zrodlo.MultipleObjectsReturned:
+                        raise NotImplementedError("This shoudl not happen")
+
             p = matchuj_publikacje(
                 klass,
-                elem.value("object", "title"),
-                elem.value_or_none("object", "year"),
-                elem.value_or_none("object", "doi"),
-                elem.value_or_none("object", "publicUri"),
+                title=elem.value("object", "title"),
+                year=elem.value_or_none("object", "year"),
+                doi=elem.value_or_none("object", "doi"),
+                public_uri=elem.value_or_none("object", "publicUri"),
+                zrodlo=zrodlo,
             )
             if p is not None:
-                if p.pbn_uid_id is None or p.pbn_uid_id != elem.pk:
+                if p.pbn_uid_id is not None and p.pbn_uid_id != elem.pk:
+                    print(
+                        f"*** UWAGA Publikacja w BPP {p} ma już PBN UID {p.pbn_uid_id}, a wg procedury matchującej "
+                        f"należałoby go zmienić na {elem.pk} -- rekord {elem}"
+                    )
+                    continue
+
+                if p.pbn_uid_id is None:
                     p.pbn_uid_id = elem.pk
                     p.save()
                 break

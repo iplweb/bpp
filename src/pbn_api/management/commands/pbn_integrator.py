@@ -7,11 +7,14 @@ from pbn_api.integrator import (
     integruj_kraje,
     integruj_publikacje,
     integruj_uczelnie,
+    integruj_wszystkich_niezintegrowanych_autorow,
     integruj_wydawcow,
     integruj_zrodla,
     pobierz_instytucje,
     pobierz_konferencje,
+    pobierz_ludzi,
     pobierz_ludzi_z_uczelni,
+    pobierz_prace,
     pobierz_prace_po_doi,
     pobierz_wydawcow,
     pobierz_zrodla,
@@ -37,10 +40,16 @@ class Command(PBNBaseCommand):
             "--enable-integruj-zrodla", action="store_true", default=False
         )
         parser.add_argument(
-            "--enable-download-people", action="store_true", default=False
+            "--enable-download-people-institution", action="store_true", default=False
         )
         parser.add_argument(
-            "--enable-integrate-people", action="store_true", default=False
+            "--enable-download-people-all", action="store_true", default=False
+        )
+        parser.add_argument(
+            "--enable-integrate-people-institution", action="store_true", default=False
+        )
+        parser.add_argument(
+            "--enable-integrate-people-all", action="store_true", default=False
         )
         parser.add_argument(
             "--enable-check-orcid-people", action="store_true", default=False
@@ -50,6 +59,9 @@ class Command(PBNBaseCommand):
         parser.add_argument("--enable-institutions", action="store_true", default=False)
         parser.add_argument(
             "--enable-pobierz-po-doi", action="store_true", default=False
+        )
+        parser.add_argument(
+            "--enable-pobierz-wszystkie-publikacje", action="store_true", default=False
         )
         parser.add_argument(
             "--enable-integruj-publikacje", action="store_true", default=False
@@ -69,13 +81,16 @@ class Command(PBNBaseCommand):
         enable_system_data,
         enable_pobierz_zrodla,
         enable_integruj_zrodla,
-        enable_download_people,
-        enable_integrate_people,
+        enable_download_people_institution,
+        enable_download_people_all,
+        enable_integrate_people_institution,
+        enable_integrate_people_all,
         enable_check_orcid_people,
         enable_publishers,
         enable_conferences,
         enable_institutions,
         enable_pobierz_po_doi,
+        enable_pobierz_wszystkie_publikacje,
         enable_integruj_publikacje,
         enable_sync,
         disable_progress_bar,
@@ -98,11 +113,17 @@ class Command(PBNBaseCommand):
         if enable_integruj_zrodla or enable_all:
             integruj_zrodla(disable_progress_bar)
 
-        if enable_download_people or enable_all:
+        if enable_download_people_all or enable_all:
+            pobierz_ludzi(client)
+
+        if enable_download_people_institution or enable_all:
             pobierz_ludzi_z_uczelni(client, Uczelnia.objects.default.pbn_uid_id)
 
-        if enable_integrate_people or enable_all:
+        if enable_integrate_people_institution or enable_all:
             integruj_autorow_z_uczelni(client, Uczelnia.objects.default.pbn_uid_id)
+
+        if enable_integrate_people_all or enable_all:
+            integruj_wszystkich_niezintegrowanych_autorow()
 
         if enable_check_orcid_people or enable_all:
             weryfikuj_orcidy(client, Uczelnia.objects.default.pbn_uid_id)
@@ -119,7 +140,10 @@ class Command(PBNBaseCommand):
             integruj_uczelnie()
             integruj_instytucje()
 
-        if enable_pobierz_po_doi or enable_all:
+        if enable_pobierz_wszystkie_publikacje or enable_all:
+            pobierz_prace(client)
+
+        if enable_pobierz_po_doi:  # or enable_all:
             pobierz_prace_po_doi(client)
 
         if enable_integruj_publikacje or enable_all:
