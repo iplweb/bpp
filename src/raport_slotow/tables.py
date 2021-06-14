@@ -200,6 +200,7 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
             "procent_subdyscypliny",
             "dyscyplina_rekordu",
             "upowaznienie_pbn",
+            "profil_orcid",
             "pkdaut",
             "slot",
         )
@@ -221,8 +222,13 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
 
     upowaznienie_pbn = Column("Upoważnienie PBN", "autorzy")
 
+    profil_orcid = Column("Profil ORCID", "autorzy")
+
     def render_upowaznienie_pbn(self, value):
         return value.upowaznienie_pbn
+
+    def render_profil_orcid(self, value):
+        return value.profil_orcid
 
     def render_zrodlo_lub_wydawnictwo_nadrzedne(self, value):
         if (

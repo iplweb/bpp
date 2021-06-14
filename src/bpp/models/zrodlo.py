@@ -255,7 +255,6 @@ class Zrodlo(ModelZAdnotacjami, ModelZISSN):
             "title",
             "websiteLink",
             "mniswId",
-            "metadataSource",
         ]:
             v = journal.value("object", attr, return_none=True)
             if v is not None:

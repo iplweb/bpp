@@ -252,6 +252,7 @@ class AutorzyBase(models.Model):
     afiliuje = models.BooleanField()
     zatrudniony = models.BooleanField()
     upowaznienie_pbn = models.BooleanField()
+    profil_orcid = models.BooleanField()
 
     objects = AutorzyManager()
 
@@ -372,7 +373,13 @@ class RekordManager(FulltextSearchMixin, models.Manager):
         )
 
     def prace_jednostki(self, jednostka):
-        return self.filter(autorzy__jednostka=jednostka).distinct()
+        return self.filter(
+            autorzy__jednostka__pk__in=list(
+                jednostka.get_descendants(include_self=True).values_list(
+                    "pk", flat=True
+                )
+            )
+        ).distinct()
 
     def prace_wydzialu(self, wydzial):
         return self.filter(autorzy__jednostka__wydzial=wydzial).distinct()

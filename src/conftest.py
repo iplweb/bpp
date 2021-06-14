@@ -249,9 +249,11 @@ def autor_jan_kowalski(db, tytuly):
 
 
 def _jednostka_maker(nazwa, skrot, wydzial, **kwargs):
-    return Jednostka.objects.get_or_create(
+    ret = Jednostka.objects.get_or_create(
         nazwa=nazwa, skrot=skrot, wydzial=wydzial, uczelnia=wydzial.uczelnia, **kwargs
     )[0]
+    ret.refresh_from_db()
+    return ret
 
 
 @pytest.mark.django_db

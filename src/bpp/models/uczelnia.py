@@ -395,6 +395,17 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
 
         raise NotImplementedError()
 
+    def autorzy_z_uczelni(self):
+        # Zwróc listę wszystkich autorów, którzy są przypisani do
+        # nie-obcych jednostek
+        from bpp.models.struktura import Autor
+
+        return Autor.objects.filter(
+            autor_jednostka__jednostka__skupia_pracownikow=True,
+            autor_jednostka__jednostka__uczelnia=self,
+            autor_jednostka__jednostka__pk__gte=0,
+        ).distinct()
+
 
 class Ukryj_Status_Korekty(models.Model):
     uczelnia = models.ForeignKey(Uczelnia, on_delete=models.CASCADE)

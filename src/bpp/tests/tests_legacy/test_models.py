@@ -88,6 +88,7 @@ class TestJednostka(TestCase):
 
     def test_prace_w_latach(self):
         j1 = any_jednostka()
+
         a1 = mommy.make(Autor)
 
         wc = any_ciagle(rok=2012)

@@ -117,7 +117,7 @@ class Wydawnictwo_Ciagle_Autor(
             ret["personObjectId"] = scientist.pk
 
         else:
-            if self.autor.orcid and self.autor.orcid_w_pbn:
+            if self.autor.orcid:  # and self.autor.orcid_w_pbn:
                 ret["personOrcidId"] = self.autor.orcid
 
         if not ret.get("personOrcidId") and not ret.get("personObjectId"):
@@ -235,7 +235,11 @@ class Wydawnictwo_Ciagle(
         if self.openaccess_czas_publikacji_id is not None:
             # "releaseDateMode": "BEFORE_PUBLICATION",
             oa["releaseDateMode"] = self.openaccess_czas_publikacji.skrot
-        if oa.get("releaseDateMode") == "BEFORE_PUBLICATION":
+
+        if oa.get("releaseDateMode") == "AFTER_PUBLICATION":
+            # https://pbn.nauka.gov.pl/centrum-pomocy/faq-kategoria/dodawanie-publikacji/
+            # tylko w przypadku udostępnienia po opublikowaniu należy podać liczbę miesięcy
+            # jakie upłynęły od dnia opublikowania do dnia udostępnienia publikacji w sposób otwarty
             if self.openaccess_ilosc_miesiecy is not None:
                 #     "months": 0,
                 oa["months"] = str(self.openaccess_ilosc_miesiecy)
@@ -318,9 +322,9 @@ class Wydawnictwo_Ciagle(
                     author["affiliations"] = [jednostka.pbn_uid_id]
                     jednostki.add(elem.jednostka)
 
-                    statement = elem.pbn_get_json()
-                    if statement:
-                        statements.append(statement)
+                statement = elem.pbn_get_json()
+                if statement:
+                    statements.append(statement)
 
             authors.append(author)
 

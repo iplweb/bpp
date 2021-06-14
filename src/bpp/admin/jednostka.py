@@ -6,9 +6,12 @@ from mptt.admin import DraggableMPTTAdmin
 
 from ..models.struktura import Jednostka, Jednostka_Wydzial
 from .core import CommitedModelAdmin, RestrictDeletionToAdministracjaGroupMixin
+from .filters import PBN_UID_IDObecnyFilter
 from .helpers import ADNOTACJE_FIELDSET, LimitingFormset, ZapiszZAdnotacjaMixin
 
 from django.contrib import admin
+
+from django.utils.html import format_html
 
 from bpp.models import Autor_Jednostka, Uczelnia
 
@@ -39,22 +42,22 @@ class JednostkaAdmin(
     CommitedModelAdmin,
     DraggableMPTTAdmin,
 ):
-
     change_list_template = "admin/grappelli_mptt_change_list.html"
 
-    list_display_links = ["nazwa"]
+    list_display_links = ["indented_title"]
 
-    list_display = (
+    list_display = [
         "tree_actions",
-        "nazwa",
+        "indented_title",
         "skrot",
-        "wydzial",
+        "parent_nazwa",
+        "wydzial_skrot",
         "widoczna",
         "wchodzi_do_raportow",
         "skupia_pracownikow",
-        "zarzadzaj_automatycznie",
-        "pbn_id",
-    )
+        "pbn_uid_id",
+    ]
+
     list_select_related = [
         "wydzial",
     ]
@@ -65,6 +68,7 @@ class JednostkaAdmin(
         "wchodzi_do_raportow",
         "skupia_pracownikow",
         "zarzadzaj_automatycznie",
+        PBN_UID_IDObecnyFilter,
     )
     search_fields = ["nazwa", "skrot", "wydzial__nazwa"]
 
@@ -108,6 +112,44 @@ class JednostkaAdmin(
         if "uczelnia" not in data:
             data["uczelnia"] = Uczelnia.objects.first()
         return data
+
+    def changelist_view(self, request, *args, **kwargs):
+        self.request = request
+        return super(JednostkaAdmin, self).changelist_view(request, *args, **kwargs)
+
+    def indented_title(self, item):
+        """
+        Generate a short title for an object, indent it depending on
+        the object's depth in the hierarchy.
+        """
+
+        # Wysuwaj nazwę jednostki wyłacznie w przypadku, gdy nie filtrujemy listy
+        if not self.request.GET.keys():
+            return super(JednostkaAdmin, self).indented_title(item)
+
+        return format_html(
+            "<div>{}</div>",
+            item,
+        )
+
+    indented_title.short_description = "Nazwa jednostki"
+
+    def wydzial_skrot(self, item):
+        if item.wydzial_id:
+            return item.wydzial.skrot
+
+    wydzial_skrot.short_description = "Wydział"
+
+    def parent_nazwa(self, item):
+        if item.parent_id:
+            return item.parent.nazwa
+
+    parent_nazwa.short_description = "Jednostka nadrzędna"
+
+    def get_list_display(self, request):
+        if request.GET.keys():
+            return self.list_display[1:]
+        return self.list_display
 
 
 admin.site.register(Jednostka, JednostkaAdmin)

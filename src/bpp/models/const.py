@@ -73,3 +73,6 @@ class TRYB_DOSTEPU(Enum):
 
 DO_STYCZNIA_POPRZEDNI_POTEM_OBECNY = "jan_prev_then_current"
 NAJWIEKSZY_REKORD = "max_rec"
+
+PBN_UID_LEN = 24
+ORCID_LEN = 19

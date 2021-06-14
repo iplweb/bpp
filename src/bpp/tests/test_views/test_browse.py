@@ -573,3 +573,13 @@ def test_browse_jednostka_sortowanie(jednostka, jednostka_podrzedna, uczelnia, c
     idx1 = page.rendered_content.find("A jednostka")
     idx2 = page.rendered_content.find("Z jednostka")
     assert idx1 > idx2
+
+
+def test_browse_jednostka_nadrzedna_tekst(jednostka_podrzedna, jednostka, client):
+    url = reverse("bpp:browse_jednostka", args=(jednostka.slug,))
+    res = client.get(url)
+    assert "Jest nadrzędną jednostką dla" in normalize_html(res.rendered_content)
+
+    url = reverse("bpp:browse_jednostka", args=(jednostka_podrzedna.slug,))
+    res = client.get(url)
+    assert "Jest nadrzędną jednostką dla" not in normalize_html(res.rendered_content)

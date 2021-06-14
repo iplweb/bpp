@@ -169,12 +169,12 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
                 raise PraceSerwisoweException()
             raise e
 
-    def post(self, url, headers=None, body=None):
+    def post(self, url, headers=None, body=None, delete=False):
         if not hasattr(self, "access_token"):
             ret = self.authorize(self.base_url, self.app_id, self.app_token)
             if not ret:
                 return
-            return self.post(url, headers=headers, body=body)
+            return self.post(url, headers=headers, body=body, delete=delete)
 
         sent_headers = {
             "X-App-Id": self.app_id,
@@ -185,7 +185,11 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
         if headers is not None:
             sent_headers.update(headers)
 
-        ret = requests.post(self.base_url + url, headers=sent_headers, json=body)
+        method = requests.post
+        if delete:
+            method = requests.delete
+
+        ret = method(self.base_url + url, headers=sent_headers, json=body)
         if ret.status_code == 403:
             # Needs auth
             if ret.json()["message"] == "Access Denied":
@@ -205,10 +209,24 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
         try:
             return ret.json()
         except JSONDecodeError as e:
-            if ret.status_code == 200 and b"prace serwisowe" in ret.content:
-                # open("pbn_client_dump.html", "wb").write(ret.content)
-                raise PraceSerwisoweException()
+
+            if ret.status_code == 200:
+                if ret.content == b"":
+                    return
+
+                if b"prace serwisowe" in ret.content:
+                    # open("pbn_client_dump.html", "wb").write(ret.content)
+                    raise PraceSerwisoweException()
+
             raise e
+
+    def delete(
+        self,
+        url,
+        headers=None,
+        body=None,
+    ):
+        return self.post(url, headers, body, delete=True)
 
     def get_pages(self, url, headers=None, page_size=10, *args, **kw):
         # Stronicowanie zwraca rezultaty w taki sposób:
@@ -313,6 +331,12 @@ class InstitutionsProfileMixin:
     def get_institution_statements(self):
         return self.transport.get_pages(
             "/api/v1/institutionProfile/publications/page/statements"
+        )
+
+    def delete_statements(self, id):
+        return self.transport.delete(
+            f"/api/v1/institutionProfile/publications/{id}",
+            body={"all": True, "statementsOfPersons": []},
         )
 
 

@@ -32,7 +32,7 @@
         </ul>
     {% endif %}
 
-    {% if jednostka.children %}
+    {% if jednostka.children.exists %}
         Jest nadrzędną jednostką dla:<ul>
         {% for child in jednostka.children.all %}
             <li><a href="{% url "bpp:browse_jednostka" child.slug %}">{{ child }}</a></li>
