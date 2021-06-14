@@ -289,14 +289,6 @@ def matchuj_publikacje(
     doi=None,
     public_uri=None,
 ):
-    title = normalize_tytul_publikacji(title)
-
-    try:
-        return klass.objects.get(tytul_oryginalny__istartswith=title, rok=year)
-    except klass.DoesNotExist:
-        pass
-    except klass.MultipleObjectsReturned:
-        warnings.warn(f"MultipleObjectsReturned dla title={title} rok={year}")
 
     if doi is not None:
         doi = doi.strip()
@@ -315,3 +307,11 @@ def matchuj_publikacje(
             warnings.warn(f"www lub public_www nie jest unikalne w bazie: {public_uri}")
         except klass.DoesNotExist:
             pass
+
+    title = normalize_tytul_publikacji(title)
+    try:
+        return klass.objects.get(tytul_oryginalny__istartswith=title, rok=year)
+    except klass.DoesNotExist:
+        pass
+    except klass.MultipleObjectsReturned:
+        warnings.warn(f"MultipleObjectsReturned dla title={title} rok={year}")
