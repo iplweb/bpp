@@ -254,6 +254,10 @@ class Wydawnictwo_Ciagle(
         elif self.dostep_dnia is not None:
             oa["releaseDate"] = str(self.dostep_dnia)
 
+        if oa.get("releaseDate") is None:
+            oa["releaseDateMonth"] = "JANUARY"
+            oa["releaseDateYear"] = str(self.rok)
+
         if (
             oa.get("license")
             and oa.get("textVersion")

@@ -3,6 +3,11 @@
 Historia zmian
 ==============
 
+202106.71
+---------
+
+* w przypadku braku daty udostępnienia OpenAccess, wysyłaj rok + pierwszy miesiąc (b/n),
+
 202106.70
 ---------
 
