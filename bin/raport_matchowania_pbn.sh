@@ -4,6 +4,9 @@ perform() {
     psql --csv bpp -c "$2" | python bin/csv2xlsx.py > $1
 }
 
+# Czasopisma z numerem MNISW ID zaczynającym się od '100'
+perform czasopisma_od_100.xlsx "SELECT * FROM (SELECT \"mongoId\", versions#>'{0}'->'object'->>'title' AS tytul, versions#>'{0}'->'object'->'mniswId' AS mniswId FROM pbn_api_journal WHERE versions @> '[{\"current\": true}]') X WHERE mniswId::text LIKE '100%'"
+
 perform autorzy_z_orcid_nieistniejacym_w_pbn.xlsx "SELECT id, imiona, nazwisko, orcid FROM bpp_autor WHERE pbn_uid_id IS NULL AND orcid_w_pbn IS false AND orcid IS NOT NULL ORDER BY nazwisko, imiona"
 
 perform zrodla_z_issn_lub_eissn_bez_odpowiednika_w_pbn.xlsx "SELECT id, nazwa, issn, e_issn FROM bpp_zrodlo WHERE pbn_uid_id IS NULL AND (issn IS NOT NULL OR e_issn IS NOT NULL)"
