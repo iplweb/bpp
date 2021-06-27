@@ -180,6 +180,8 @@ class Publisher(BasePBNMongoDBModel):
 
 
 class Scientist(BasePBNMongoDBModel):
+    from_institution_api = models.NullBooleanField(db_index=True)
+
     class Meta:
         verbose_name = "Osoba w PBN API"
         verbose_name_plural = "Osoby w PBN API"

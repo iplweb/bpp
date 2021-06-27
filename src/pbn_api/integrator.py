@@ -4,11 +4,7 @@ from django.db.models import F, Func, Q
 
 from import_common.core import matchuj_autora, matchuj_publikacje, matchuj_wydawce
 from pbn_api.client import PBNClient
-from pbn_api.exceptions import (
-    HttpException,
-    SameDataUploadedRecently,
-    SciencistDoesNotExist,
-)
+from pbn_api.exceptions import HttpException, SameDataUploadedRecently
 from pbn_api.models import (
     Conference,
     Country,
@@ -91,7 +87,7 @@ def integruj_kraje(client):
             c.save()
 
 
-def zapisz_mongodb(elem, klass):
+def zapisz_mongodb(elem, klass, **extra):
     try:
         v = klass.objects.get(pk=elem["mongoId"])
     except klass.DoesNotExist:
@@ -101,10 +97,21 @@ def zapisz_mongodb(elem, klass):
             verificationLevel=elem["verificationLevel"],
             verified=elem["verified"],
             versions=elem["versions"],
+            **extra,
         )
+
+    needs_saving = False
+
+    for key in extra:
+        if getattr(v, key) != extra.get(key):
+            setattr(v, key, extra.get(key))
+            needs_saving = True
 
     if elem["versions"] != v.versions:
         v.versions = elem["versions"]
+        needs_saving = True
+
+    if needs_saving:
         v.save()
 
     return v
@@ -243,23 +250,46 @@ def pobierz_ludzi_z_uczelni(client: PBNClient, instutition_id):
     """
     assert instutition_id is not None
 
-    for person in client.get_people_by_institution_id(instutition_id):
+    Scientist.objects.filter(from_institution_api=True).update(
+        from_institution_api=False
+    )
+
+    elementy = client.get_people_by_institution_id(instutition_id)
+    for person in pbar(elementy, count=len(elementy)):
+        scientist = client.get_person_by_id(person["personId"])
+        zapisz_mongodb(scientist, Scientist, from_institution_api=True)
+
+
+def integruj_autorow_z_uczelni(client: PBNClient, instutition_id):
+    """
+    Ta procedure uruchamiamy dopiero po zaciągnięciu bazy osób.
+    """
+    for person in pbar(Scientist.objects.filter(from_institution_api=True)):
+        pbn_id = None
+        if person.value("object", "legacyIdentifiers", return_none=True):
+            pbn_id = person.value("object", "legacyIdentifiers")[0]
+
         autor = matchuj_autora(
-            imiona=person.get("firstName"),
-            nazwisko=person.get("lastName"),
-            orcid=person.get("orcid"),
-            pbn_uid_id=person.get("personId"),
-            tytul_str=person.get("title"),
+            imiona=person.value("object", "name", return_none=True),
+            nazwisko=person.value("object", "lastName", return_none=True),
+            orcid=person.value("object", "orcid", return_none=True),
+            pbn_id=pbn_id,
+            pbn_uid_id=person.pk,
+            tytul_str=person.value("object", "qualifications", return_none=True),
         )
         if autor is None:
-            print(f"Brak dopasowania w jednostce dla autora {person}")
+            warnings.warn(f"Brak dopasowania w jednostce dla autora {person}")
             continue
 
-        scientist = client.get_person_by_id(person["personId"])
-        scientist = zapisz_mongodb(scientist, Scientist)
+        if autor.pbn_uid_id is None:
+            autor.pbn_uid = person.mongoId
+            autor.save()
 
-        if autor.pbn_uid_id is None or autor.pbn_uid_id != scientist.pk:
-            autor.pbn_uid = scientist
+        if autor.pbn_uid_id != person.pk:
+            autor.pbn_uid = person
+            warnings.warn(
+                f"Zmieniam powiązanie PBN UID dla autora {autor} z {autor.pbn_uid_id} na {person.pk}"
+            )
             autor.save()
 
 
@@ -311,38 +341,6 @@ def matchuj_autora_po_stronie_pbn(imiona, nazwisko, orcid):
         print(f"*** BRAK AUTORA w PBN, istnieje w BPP: {nazwisko} {imiona}")
     except Scientist.MultipleObjectsReturned:
         print(f"XXX AUTOR istnieje wiele razy w bazie PBN {nazwisko} {imiona}")
-
-
-def integruj_autorow_z_uczelni(client: PBNClient, instutition_id):
-    """
-    Ta procedure uruchamiamy dopiero po zaciągnięciu bazy osób.
-    """
-    for person in client.get_people_by_institution_id(instutition_id):
-        pbn_id = None
-        if person.get("legacyIdentifiers"):
-            pbn_id = person.get("legacyIdentifiers")[0]
-
-        autor = matchuj_autora(
-            imiona=person.get("firstName"),
-            nazwisko=person.get("lastName"),
-            orcid=person.get("orcid"),
-            pbn_id=pbn_id,
-            pbn_uid_id=person.get("personId"),
-            tytul_str=person.get("title"),
-        )
-        if autor is None:
-            warnings.warn(f"Brak dopasowania w jednostce dla autora {person}")
-            continue
-
-        if autor.pbn_uid_id is None or autor.pbn_uid_id != person.get("personId"):
-            try:
-                autor.pbn_uid = Scientist.objects.get(pk=person["personId"])
-            except Scientist.DoesNotExist:
-                raise SciencistDoesNotExist(
-                    "Brak odwzorowania dla naukowca w tabeli pbn_api_scientist, "
-                    "zaciągnij najpierw listę autorów z PBNu"
-                )
-            autor.save()
 
 
 def integruj_wszystkich_niezintegrowanych_autorow():

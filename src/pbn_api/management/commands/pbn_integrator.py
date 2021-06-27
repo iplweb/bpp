@@ -1,4 +1,6 @@
 # -*- encoding: utf-8 -*-
+from django.db import transaction
+
 from pbn_api.exceptions import IntegracjaWylaczonaException
 from pbn_api.integrator import (
     integruj_autorow_z_uczelni,
@@ -117,7 +119,8 @@ class Command(PBNBaseCommand):
             pobierz_ludzi(client)
 
         if enable_download_people_institution or enable_all:
-            pobierz_ludzi_z_uczelni(client, Uczelnia.objects.default.pbn_uid_id)
+            with transaction.atomic():
+                pobierz_ludzi_z_uczelni(client, Uczelnia.objects.default.pbn_uid_id)
 
         if enable_integrate_people_institution or enable_all:
             integruj_autorow_z_uczelni(client, Uczelnia.objects.default.pbn_uid_id)
