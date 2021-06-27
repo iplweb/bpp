@@ -25,6 +25,7 @@ clean: clean-pycache
 	rm -rf build dist/*django_bpp*whl dist/*bpp_iplweb*whl *.log dist
 	rm -rf src/django_bpp/staticroot/CACHE
 	rm -rf .tox
+	rm *xlsx
 
 distclean: clean
 	rm -rf src/django_bpp/staticroot
