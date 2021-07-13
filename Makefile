@@ -86,3 +86,6 @@ pip-sync:
 	pip-sync requirements.txt requirements_dev.txt
 
 pip: pip-compile pip-sync
+
+tests:
+	pytest -n 4 --splinter-headless
