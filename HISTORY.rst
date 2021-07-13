@@ -3,6 +3,11 @@
 Historia zmian
 ==============
 
+202107.72
+---------
+
+* usunięto pole "data ostatniej aktualizacji dla PBN" (#1061),
+
 202106.71
 ---------
 

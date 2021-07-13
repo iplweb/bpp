@@ -17,8 +17,6 @@ from taggit.managers import TaggableManager
 from django.contrib.postgres.fields import HStoreField
 from django.contrib.postgres.search import SearchVectorField as VectorField
 
-from django.utils import timezone
-
 from bpp.fields import DOIField, YearField
 from bpp.models.dyscyplina_naukowa import Autor_Dyscyplina, Dyscyplina_Naukowa
 from bpp.models.util import ModelZOpisemBibliograficznym, dodaj_autora
@@ -887,72 +885,6 @@ class ModelZOpenAccess(models.Model):
         abstract = True
 
 
-class ModelZAktualizacjaDlaPBN(models.Model):
-    #
-    # Obiekt subklasujący tę klasę musi subklasować również DirtyFieldsMixin
-    #
-
-    ostatnio_zmieniony_dla_pbn = models.DateTimeField(
-        "Ostatnio zmieniony (dla PBN)",
-        auto_now_add=True,
-        help_text="""Moment ostatniej aktualizacji rekordu dla potrzeb PBN. To pole zmieni się automatycznie, gdy
-        nastąpi zmiana dowolnego z pól za wyjątkiem bloków pól: „punktacja”, „punktacja komisji centralnej”,
-        „adnotacje” oraz pole „status korekty”.""",
-    )
-
-    def save(self, *args, **kw):
-        if self.pk is not None:
-            if self.is_dirty(check_relationship=True):
-                flds = self.get_dirty_fields(check_relationship=True)
-                flds_keys = list(flds.keys())
-                from bpp.admin.helpers import (
-                    MODEL_PUNKTOWANY,
-                    MODEL_PUNKTOWANY_KOMISJA_CENTRALNA,
-                )
-
-                for elem in (
-                    MODEL_PUNKTOWANY
-                    + MODEL_PUNKTOWANY_KOMISJA_CENTRALNA
-                    + (
-                        "adnotacje",
-                        "ostatnio_zmieniony",
-                        # Nie wyrzucaj poniższego pola. Jeżeli jest jedynym
-                        # zmienionym polem to zmiana prawdopodobnie idzie z
-                        # powodu dodania lub usunięcia autora rekordu
-                        # podrzędnego
-                        # 'ostatnio_zmieniony_dla_pbn',
-                        "opis_bibliograficzny_cache",
-                        "slug",
-                        "search_index",
-                        "tytul_oryginalny_sort",
-                    )
-                ):
-                    if elem in flds_keys:
-                        flds_keys.remove(elem)
-
-                # Specjalny case: jeżeli jedyne zmienione pole to "informacje"
-                # i z pola "informacje" zostało wycięte "W: " na początku, to
-                # nie aktualizuj pola
-                if (
-                    "informacje" in flds_keys
-                    and self.informacje is not None
-                    and flds["informacje"] is not None
-                ):
-                    if (
-                        "w: " + self.informacje.lower().strip()
-                        == flds["informacje"].lower().strip()
-                    ):
-                        flds_keys.remove("informacje")
-
-                if flds_keys:
-                    self.ostatnio_zmieniony_dla_pbn = timezone.now()
-
-        super(ModelZAktualizacjaDlaPBN, self).save(*args, **kw)
-
-    class Meta:
-        abstract = True
-
-
 class ModelZLiczbaCytowan(models.Model):
     liczba_cytowan = models.PositiveIntegerField(
         verbose_name="Liczba cytowań",
@@ -1019,23 +951,6 @@ class DodajAutoraMixin:
             dyscyplina_naukowa=dyscyplina_naukowa,
             afiliuje=afiliuje,
         )
-
-
-class AktualizujDatePBNNadrzednegoMixin:
-    class Meta:
-        abstract = True
-
-    def save(self, *args, **kw):
-        if getattr(settings, "ENABLE_DATA_AKT_PBN_UPDATE", True) and (
-            self.pk is None or self.is_dirty()
-        ):
-            # W sytuacji gdy dodajemy nowego autora lub zmieniamy jego dane,
-            # rekord "nadrzędny" publikacji powinien mieć zaktualizowany
-            # czas ostatniej aktualizacji na potrzeby PBN:
-            r = self.rekord
-            r.ostatnio_zmieniony_dla_pbn = timezone.now()
-            r.save(update_fields=["ostatnio_zmieniony_dla_pbn"])
-        super(AktualizujDatePBNNadrzednegoMixin, self).save(*args, **kw)
 
 
 class ModelOpcjonalnieNieEksportowanyDoAPI(models.Model):

@@ -192,12 +192,6 @@ class OstatnioZmieniony(DataUtworzeniaQueryObject):
     public = False
 
 
-class OstatnioZmienionyDlaPBN(DataUtworzeniaQueryObject):
-    label = "Ostatnio zmieniony (dla PBN)"
-    field_name = "ostatnio_zmieniony_dla_pbn"
-    public = False
-
-
 class ForeignKeyDescribeMixin:
     def value_for_description(self, value):
         if value is None:
@@ -960,7 +954,6 @@ multiseek_fields = [
     AdnotacjeQueryObject(),
     DataUtworzeniaQueryObject(),
     OstatnioZmieniony(),
-    OstatnioZmienionyDlaPBN(),
     RecenzowanaQueryObject(),
     LiczbaZnakowWydawniczychQueryObject(),
     NazwaKonferencji(),
@@ -1021,7 +1014,6 @@ registry = create_registry(
         Ordering("zrodlo_lub_nadrzedne", "źródło/wyd.nadrz."),
         Ordering("utworzono", "utworzono"),
         Ordering("ostatnio_zmieniony", "ostatnio zmieniony"),
-        Ordering("ostatnio_zmieniony_dla_pbn", "ostatnio zmieniony (dla PBN)"),
     ],
     default_ordering=["-rok", "", ""],
     report_types=multiseek_report_types

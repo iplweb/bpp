@@ -3,14 +3,9 @@
 from dirtyfields.dirtyfields import DirtyFieldsMixin
 from django.db import models
 from django.db.models import CASCADE, SET_NULL
-from django.db.models.signals import post_delete
-from django.dispatch import receiver
-
-from django.utils import timezone
 
 from bpp.exceptions import WillNotExportError
 from bpp.models import (
-    AktualizujDatePBNNadrzednegoMixin,
     MaProcentyMixin,
     ModelOpcjonalnieNieEksportowanyDoAPI,
     ModelZMiejscemPrzechowywania,
@@ -28,7 +23,6 @@ from bpp.models.abstract import (
     ModelWybitny,
     ModelZAbsolutnymUrl,
     ModelZAdnotacjami,
-    ModelZAktualizacjaDlaPBN,
     ModelZCharakterem,
     ModelZDOI,
     ModelZeStatusem,
@@ -57,7 +51,6 @@ from bpp.util import strip_html
 
 
 class Wydawnictwo_Ciagle_Autor(
-    AktualizujDatePBNNadrzednegoMixin,
     DirtyFieldsMixin,
     BazaModeluOdpowiedzialnosciAutorow,
 ):
@@ -123,7 +116,7 @@ class Wydawnictwo_Ciagle_Autor(
         if not ret.get("personOrcidId") and not ret.get("personObjectId"):
             return
 
-        ret["statementDate"] = str(self.rekord.ostatnio_zmieniony_dla_pbn.date())
+        ret["statementDate"] = str(self.rekord.ostatnio_zmieniony.date())
 
         return ret
 
@@ -161,7 +154,6 @@ class Wydawnictwo_Ciagle(
     ModelZCharakterem,
     ModelZOpenAccessWydawnictwoCiagle,
     ModelZeZnakamiWydawniczymi,
-    ModelZAktualizacjaDlaPBN,
     ModelZNumeremZeszytu,
     ModelZKonferencja,
     ModelWybitny,
@@ -386,10 +378,3 @@ class Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych(models.Model):
         verbose_name_plural = (
             "powiązania wydawnictw ciągłych z zewnętrznymi bazami danych"
         )
-
-
-@receiver(post_delete, sender=Wydawnictwo_Ciagle_Autor)
-def wydawnictwo_ciagle_autor_post_delete(sender, instance, **kwargs):
-    rec = instance.rekord
-    rec.ostatnio_zmieniony_dla_pbn = timezone.now()
-    rec.save(update_fields=["ostatnio_zmieniony_dla_pbn"])

@@ -42,7 +42,6 @@ class AdnotacjeZDatamiOrazPBNMixin:
     readonly_fields = (
         "utworzono",
         "ostatnio_zmieniony",
-        "ostatnio_zmieniony_dla_pbn",
         "id",
         "pbn_id",
     )
