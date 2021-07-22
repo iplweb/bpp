@@ -10,8 +10,9 @@ class HttpException(Exception):
 
 
 class AccessDeniedException(Exception):
-    def __init__(self, url):
+    def __init__(self, url, content):
         self.url = url
+        self.content = content
 
 
 class SciencistDoesNotExist(Exception):
