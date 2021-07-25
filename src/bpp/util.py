@@ -238,9 +238,15 @@ def rebuild_contenttypes():
 
 def pbar(query, count=None, label="Progres...", disable_progress_bar=False):
     if sys.stdout.isatty() and not disable_progress_bar:
+        if count is None:
+            if hasattr(query, "count"):
+                count = query.count()
+            elif hasattr(query, "__len__"):
+                count = len(query)
+
         return progressbar.progressbar(
             query,
-            max_value=count or query.count(),
+            max_value=count,
             widgets=[
                 progressbar.FormatLabel(label),
                 " ",

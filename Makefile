@@ -25,6 +25,7 @@ clean: clean-pycache
 	rm -rf build dist/*django_bpp*whl dist/*bpp_iplweb*whl *.log dist
 	rm -rf src/django_bpp/staticroot/CACHE
 	rm -rf .tox
+	rm -rf *xlsx pbn_json_data/
 
 distclean: clean
 	rm -rf src/django_bpp/staticroot
@@ -85,3 +86,12 @@ pip-sync:
 	pip-sync requirements.txt requirements_dev.txt
 
 pip: pip-compile pip-sync
+
+tests:
+	pytest -n 4 --splinter-headless
+
+remove-pbn-data:
+	cd src/import_dbf && export CUSTOMER=foo && make disable-trigger
+	python src/manage.py pbn_integrator --clear-all
+	rm -rf pbn_json_data
+	cd src/import_dbf && export CUSTOMER=foo && make enable-trigger

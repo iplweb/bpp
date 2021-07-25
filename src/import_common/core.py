@@ -163,6 +163,7 @@ def matchuj_autora(
             imiona__iexact=imiona.strip(),
         )
     ]
+
     if tytul_str:
         queries.append(queries[0] & Q(tytul__skrot=tytul_str))
 
@@ -281,12 +282,17 @@ def matchuj_wydawce(nazwa):
         return
 
 
+TITLE_LIMIT_SINGLE_WORD = 15
+TITLE_LIMIT_MANY_WORDS = 30
+
+
 def matchuj_publikacje(
     klass: [Wydawnictwo_Zwarte, Wydawnictwo_Ciagle],
     title,
     year,
     doi=None,
     public_uri=None,
+    isbn=None,
     zrodlo=None,
 ):
 
@@ -308,6 +314,14 @@ def matchuj_publikacje(
         except klass.DoesNotExist:
             pass
 
+    if isbn is not None:
+        try:
+            return klass.objects.get(Q(isbn=isbn) | Q(e_isbn=isbn))
+        except klass.MultipleObjectsReturned:
+            print(f"ISBN {isbn} nie jest unikalny w bazie danych!")
+        except klass.DoesNotExist:
+            pass
+
     title = normalize_tytul_publikacji(title)
 
     if zrodlo is not None:
@@ -321,6 +335,14 @@ def matchuj_publikacje(
             print(
                 f"MultipleObjectsReturned dla title={title} rok={year} zrodlo={zrodlo}"
             )
+
+    if (len(title) < TITLE_LIMIT_SINGLE_WORD and title.strip().find(" ") == -1) or (
+        len(title) < TITLE_LIMIT_MANY_WORDS and title.strip().find(" ") > 0
+    ):
+        # print(
+        #     f"Tytuł pracy z PBN {title} ponizej {TITLE_LIMIT} znakow i jedno słowo, nie matchuje po tytule"
+        # )
+        return
 
     try:
         return klass.objects.get(tytul_oryginalny__istartswith=title, rok=year)

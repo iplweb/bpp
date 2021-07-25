@@ -1,6 +1,6 @@
 from django.urls import reverse
 
-from bpp.models import RODZAJ_PBN_ARTYKUL, Uczelnia
+from bpp.models import Uczelnia, const
 from bpp.tests import normalize_html
 
 
@@ -58,7 +58,7 @@ def test_wydawnictwo_ciagle_admin_zapisz_i_wyslij_do_pbn_change_tak(
     uczelnia.save()
 
     cf = wydawnictwo_ciagle.charakter_formalny
-    cf.rodzaj_pbn = RODZAJ_PBN_ARTYKUL
+    cf.rodzaj_pbn = const.RODZAJ_PBN_ARTYKUL
     cf.save()
 
     url = "admin:bpp_wydawnictwo_ciagle_change"

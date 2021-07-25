@@ -72,6 +72,7 @@ RODZAJ_PBN_CHOICES = [
     (const.RODZAJ_PBN_ARTYKUL, "artykuł"),
     (const.RODZAJ_PBN_KSIAZKA, "książka"),
     (const.RODZAJ_PBN_ROZDZIAL, "rozdział"),
+    (const.RODZAJ_PBN_POSTEPOWANIE, "postępowanie"),
 ]
 
 CHARAKTER_OGOLNY_CHOICES = Choices(
@@ -242,6 +243,7 @@ class Typ_Odpowiedzialnosci(NazwaISkrot):
             (const.TO_KOMENTATOR, "komentator"),
             (const.TO_RECENZENT, "recenzent"),
             (const.TO_OPRACOWAL, "opracował"),
+            (const.TO_REDAKTOR_TLUMACZENIA, "redaktor tłumaczenia"),
         ],
         default=const.TO_AUTOR,
         help_text="""Pole to jest używane celem rozróżniania typu odpowiedzialności

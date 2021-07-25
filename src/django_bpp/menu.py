@@ -25,6 +25,8 @@ PBN_MENU = [
     ("Wydawcy", "/admin/pbn_api/publisher"),
     ("Naukowcy", "/admin/pbn_api/scientist"),
     ("Publikacje", "/admin/pbn_api/publication"),
+    ("Publikacje instytucji", "/admin/pbn_api/publikacjainstytucji"),
+    ("Oświadczenia", "/admin/pbn_api/oswiadczenieinstytucji"),
     ("Przesłane dane", "/admin/pbn_api/sentdata"),
 ]
 

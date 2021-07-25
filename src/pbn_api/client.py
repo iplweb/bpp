@@ -5,6 +5,7 @@ from urllib.parse import parse_qs, quote, urlparse
 
 import requests
 
+from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
 from pbn_api.exceptions import (
     AccessDeniedException,
     AuthenticationResponseError,
@@ -17,6 +18,13 @@ from pbn_api.models import SentData
 from django.utils.itercompat import is_iterable
 
 DEFAULT_BASE_URL = "https://pbn-micro-alpha.opi.org.pl"
+
+
+def smart_content(content):
+    try:
+        return content.decode("utf-8")
+    except UnicodeDecodeError:
+        return content
 
 
 class PBNClientTransport:
@@ -38,9 +46,10 @@ class PageableResource:
         self.transport = transport
 
         try:
-            self.current_content = res["content"]
+            self.page_0 = res["content"]
         except KeyError:
-            self.current_content = []
+            self.page_0 = []
+
         self.current_page = res["number"]
         self.total_elements = res["totalElements"]
         self.total_pages = res["totalPages"]
@@ -49,31 +58,25 @@ class PageableResource:
     def count(self):
         return self.total_elements
 
-    def fetch_next_page(self):
-        self.current_page += 1
-        if self.current_page > self.total_pages:
-            return
-        res = self.transport.get(
-            self.url + f"&page={self.current_page}", headers=self.headers
+    def fetch_page(self, current_page):
+        if current_page == 0:
+            return self.page_0
+        # print(f"FETCH {current_page}")
+        ret = self.transport.get(
+            self.url + f"&page={current_page}",
+            headers=self.headers,
         )
+        # print(f"FETCH DONE {current_page}")
 
-        if res is not None and "content" in res:
-            self.current_content = res["content"]
-            return True
-        else:
-            self.current_content = []
+        try:
+            return ret["content"]
+        except KeyError:
+            return
 
     def __iter__(self):
-        if self.done:
-            return
-
-        while True:
-            try:
-                yield self.current_content.pop(0)
-            except IndexError:
-                if not self.fetch_next_page():
-                    self.done = True
-                    return
+        for n in range(0, self.total_pages):
+            for elem in self.fetch_page(n):
+                yield elem
 
 
 class OAuthMixin:
@@ -129,8 +132,10 @@ class OAuthMixin:
 
 
 class RequestsTransport(OAuthMixin, PBNClientTransport):
-    def get(self, url, headers=None):
+    def get(self, url, headers=None, fail_on_auth_missing=False):
         sent_headers = {"X-App-Id": self.app_id, "X-App-Token": self.app_token}
+        if self.access_token:
+            sent_headers["X-User-Token"] = self.access_token
 
         # Jeżeli ustawimy taki nagłówek dla "niewinnych" zapytań GET, to PBN
         # API odrzuca takie połączenie z kodem 403, stąd nie:
@@ -142,11 +147,14 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
         ret = requests.get(self.base_url + url, headers=sent_headers)
 
         if ret.status_code == 403:
+
+            if fail_on_auth_missing:
+                raise AccessDeniedException(url, smart_content(ret.content))
             # Needs auth
             if ret.json()["message"] == "Access Denied":
                 # Autoryzacja użytkownika jest poprawna, jednakże nie ma on po stronie PBN
                 # takiego uprawnienia...
-                raise AccessDeniedException(url)
+                raise AccessDeniedException(url, smart_content(ret.content))
 
             # elif ret.json['message'] == "Forbidden":  # <== to dostaniemy, gdy token zły lub brak
 
@@ -156,10 +164,10 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
                     return
 
                 # Podejmuj ponowną próbę tylko w przypadku udanej autoryzacji
-                return self.get(url, headers)
+                return self.get(url, headers, fail_on_auth_missing=True)
 
         if ret.status_code >= 400:
-            raise HttpException(ret.status_code, url, ret.content)
+            raise HttpException(ret.status_code, url, smart_content(ret.content))
 
         try:
             return ret.json()
@@ -195,7 +203,7 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
             if ret.json()["message"] == "Access Denied":
                 # Autoryzacja użytkownika jest poprawna, jednakże nie ma on po stronie PBN
                 # takiego uprawnienia...
-                raise AccessDeniedException(url)
+                raise AccessDeniedException(url, smart_content(ret.content))
 
             # elif ret.json['message'] == "Forbidden":  # <== to dostaniemy, gdy token zły lub brak
 
@@ -204,7 +212,7 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
                 # self.authorize()
 
         if ret.status_code >= 400:
-            raise HttpException(ret.status_code, url, ret.content)
+            raise HttpException(ret.status_code, url, smart_content(ret.content))
 
         try:
             return ret.json()
@@ -267,7 +275,6 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
                 RuntimeWarning,
             )
             return res
-
         return PageableResource(self, res, url, headers)
 
 
@@ -325,12 +332,15 @@ class InstitutionsMixin:
 
 class InstitutionsProfileMixin:
     # XXX: wymaga autoryzacji
-    def get_institution_publications(self):
-        return self.transport.get_pages("/api/v1/institutionProfile/publications/page")
-
-    def get_institution_statements(self):
+    def get_institution_publications(self, page_size=10):
         return self.transport.get_pages(
-            "/api/v1/institutionProfile/publications/page/statements"
+            "/api/v1/institutionProfile/publications/page", page_size=page_size
+        )
+
+    def get_institution_statements(self, page_size=10):
+        return self.transport.get_pages(
+            "/api/v1/institutionProfile/publications/page/statements",
+            page_size=page_size,
         )
 
     def delete_statements(self, id):
@@ -452,7 +462,7 @@ class PBNClient(
         return self.transport.post("/api/v1/publications", body=json)
 
     def upload_publication(self, rec, force_upload=False):
-        js = rec.pbn_get_json()
+        js = WydawnictwoPBNAdapter(rec).pbn_get_json()
         if not force_upload:
             needed = SentData.objects.check_if_needed(rec, js)
             if not needed:

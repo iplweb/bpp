@@ -8,7 +8,9 @@ from pbn_api.models import (
     Conference,
     Institution,
     Journal,
+    OswiadczenieInstytucji,
     Publication,
+    PublikacjaInstytucji,
     Publisher,
     Scientist,
     SentData,
@@ -118,7 +120,16 @@ class ScientistAdmin(BaseMongoDBAdmin):
         "orcid",
         "currentEmploymentsInstitutionDisplayName",
         "mongoId",
+        "from_institution_api",
     ]
+    list_filter = [
+        "from_institution_api",
+    ]
+
+    fields = BaseMongoDBAdmin.fields + [
+        "from_institution_api",
+    ]
+    readonly_fields = BaseMongoDBAdmin.readonly_fields + ["from_institution_api"]
 
 
 @admin.register(Publication)
@@ -130,6 +141,9 @@ class PublicationAdmin(BaseMongoDBAdmin):
 class SentDataAdmin(admin.ModelAdmin):
     list_display = ["object", "last_updated_on", "uploaded_okay"]
     ordering = ("-last_updated_on",)
+    search_fields = [
+        "data_sent",
+    ]
     readonly_fields = [
         "content_type",
         "object_id",
@@ -163,3 +177,38 @@ class SentDataAdmin(admin.ModelAdmin):
     )
 
     actions = [wyslij_ponownie, wyslij_ponownie_force]
+
+
+@admin.register(OswiadczenieInstytucji)
+class OswiadczeniaInstytucjiAdmin(admin.ModelAdmin):
+    autocomplete_fields = ["institutionId", "personId", "publicationId"]
+
+    list_select_related = ["publicationId", "personId", "institutionId"]
+
+    list_display = [
+        "publicationId",
+        "institutionId",
+        "personId",
+        "area",
+        "inOrcid",
+        "type",
+    ]
+
+
+@admin.register(PublikacjaInstytucji)
+class PublikacjaInstytucjiAdmin(admin.ModelAdmin):
+    autocomplete_fields = [
+        "insPersonId",
+        "institutionId",
+        "publicationId",
+    ]
+    list_select_related = ["insPersonId", "institutionId", "publicationId"]
+    list_display = [
+        "publicationId",
+        "publicationType",
+        "insPersonId",
+        "institutionId",
+        "userType",
+        "publicationVersion",
+        "publicationYear",
+    ]

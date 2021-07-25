@@ -39,7 +39,6 @@ from bpp.multiseek_registry import (
     OpenaccessWersjaTekstuQueryObject,
     OstatnieNazwiskoIImie,
     OstatnioZmieniony,
-    OstatnioZmienionyDlaPBN,
     PierwszeNazwiskoIImie,
     PublicDostepDniaQueryObject,
     RodzajKonferenckjiQueryObject,
@@ -356,12 +355,6 @@ def test_OstatnieNazwiskoIImie(autor_jan_nowak):
 @pytest.mark.django_db
 def test_OstatnioZmieniony():
     res = OstatnioZmieniony().real_query(datetime.now(), logic.EQUAL)
-    assert Rekord.objects.filter(res).count() == 0
-
-
-@pytest.mark.django_db
-def test_OstatnioZmienionyDlaPBN():
-    res = OstatnioZmienionyDlaPBN().real_query(datetime.now(), logic.EQUAL)
     assert Rekord.objects.filter(res).count() == 0
 
 

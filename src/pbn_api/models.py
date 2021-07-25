@@ -180,6 +180,8 @@ class Publisher(BasePBNMongoDBModel):
 
 
 class Scientist(BasePBNMongoDBModel):
+    from_institution_api = models.NullBooleanField(db_index=True)
+
     class Meta:
         verbose_name = "Osoba w PBN API"
         verbose_name_plural = "Osoby w PBN API"
@@ -235,7 +237,12 @@ class Publication(BasePBNMongoDBModel):
         return self.value("object", "doi", return_none=True)
 
     def __str__(self):
-        return f"{self.title()}, {self.year()}, {self.doi()}"
+        ret = f"{self.title()}"
+        if self.year():
+            ret += f", {self.year()}"
+        if self.doi():
+            ret += f", {self.doi()}"
+        return ret
 
 
 class SentDataManager(models.Manager):
@@ -305,3 +312,34 @@ class SentData(models.Model):
             f"Informacja o wysłanych do PBN danych dla rekordu ({self.content_type_id},{self.object_id}) "
             f"z dnia {self.last_updated_on} (status: {'OK' if self.uploaded_okay else 'ERR'})"
         )
+
+
+class PublikacjaInstytucji(models.Model):
+    insPersonId = models.ForeignKey(Scientist, on_delete=models.CASCADE)
+    institutionId = models.ForeignKey(Institution, on_delete=models.CASCADE)
+    publicationId = models.ForeignKey(Publication, on_delete=models.CASCADE)
+    publicationType = models.CharField(max_length=50, null=True, blank=True)
+    userType = models.CharField(max_length=50, null=True, blank=True)
+    publicationVersion = models.UUIDField(null=True, blank=True)
+    publicationYear = models.PositiveSmallIntegerField(null=True, blank=True)
+    snapshot = JSONField(null=True, blank=True)
+
+    class Meta:
+        unique_together = [("insPersonId", "institutionId", "publicationId")]
+        verbose_name = "Publikacja instytucji"
+        verbose_name_plural = "Publikacje instytucji"
+
+
+class OswiadczenieInstytucji(models.Model):
+    addedTimestamp = models.DateField()
+    area = models.PositiveSmallIntegerField()
+    inOrcid = models.BooleanField()
+    institutionId = models.ForeignKey(Institution, on_delete=models.CASCADE)
+    personId = models.ForeignKey(Scientist, on_delete=models.CASCADE)
+    publicationId = models.ForeignKey(Publication, on_delete=models.CASCADE)
+    type = models.CharField(max_length=50)
+
+    class Meta:
+        verbose_name = "Oświadczenie instytucji"
+        verbose_name_plural = "Oświadczenia instytucji"
+        unique_together = [("publicationId", "institutionId", "personId")]

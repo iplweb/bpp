@@ -512,7 +512,6 @@ class RekordBase(
 
     adnotacje = models.TextField()
     ostatnio_zmieniony = models.DateTimeField()
-    ostatnio_zmieniony_dla_pbn = models.DateTimeField()
 
     tytul_oryginalny_sort = models.TextField()
 

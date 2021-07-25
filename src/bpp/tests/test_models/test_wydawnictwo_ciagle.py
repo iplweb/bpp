@@ -3,83 +3,6 @@
 
 import pytest
 
-from bpp.admin.helpers import MODEL_PUNKTOWANY, MODEL_PUNKTOWANY_KOMISJA_CENTRALNA
-from bpp.models import RODZAJ_PBN_ARTYKUL
-from bpp.models.openaccess import Licencja_OpenAccess
-from bpp.models.system import Status_Korekty
-
-
-@pytest.mark.django_db
-def test_models_wydawnictwo_ciagle_dirty_fields_ostatnio_zmieniony_dla_pbn(
-    wydawnictwo_ciagle,
-    wydawnictwo_zwarte,
-    autor_jan_nowak,
-    jednostka,
-    typy_odpowiedzialnosci,
-):
-    Licencja_OpenAccess.objects.create(nazwa="lic 1 ", skrot="l1")
-    Licencja_OpenAccess.objects.create(nazwa="lic 2 ", skrot="l2")
-
-    # Licencje muszą być w bazie, jakiekolwiek
-    assert (
-        Licencja_OpenAccess.objects.all().first()
-        != Licencja_OpenAccess.objects.all().last()
-    )
-
-    for wyd in wydawnictwo_ciagle, wydawnictwo_zwarte:
-        wyd.openaccess_licencja = Licencja_OpenAccess.objects.all().first()
-        wyd.save()
-
-        ost_zm_pbn = wyd.ostatnio_zmieniony_dla_pbn
-
-        wyd.status = Status_Korekty.objects.get(nazwa="w trakcie korekty")
-        wyd.save()
-        assert ost_zm_pbn == wyd.ostatnio_zmieniony_dla_pbn
-
-        wyd.status = Status_Korekty.objects.get(nazwa="po korekcie")
-        wyd.save()
-        assert ost_zm_pbn == wyd.ostatnio_zmieniony_dla_pbn
-
-        for fld in (
-            MODEL_PUNKTOWANY_KOMISJA_CENTRALNA + MODEL_PUNKTOWANY + ("adnotacje",)
-        ):
-            if fld == "weryfikacja_punktacji":
-                continue
-            setattr(wyd, fld, 123)
-            wyd.save()
-            assert ost_zm_pbn == wyd.ostatnio_zmieniony_dla_pbn
-            # time.sleep(0.5)
-
-        wyd.tytul_oryginalny = "1234 test zmian"
-        wyd.save()
-
-        try:
-            assert ost_zm_pbn != wyd.ostatnio_zmieniony_dla_pbn
-        except TypeError:
-            pass  # TypeError: can't compare offset-naive and offset-aware datetimes
-
-        ost_zm_pbn = wyd.ostatnio_zmieniony_dla_pbn
-
-        aj = wyd.dodaj_autora(autor_jan_nowak, jednostka)
-        wyd.refresh_from_db()
-        assert ost_zm_pbn != wyd.ostatnio_zmieniony_dla_pbn
-
-        ost_zm_pbn = wyd.ostatnio_zmieniony_dla_pbn
-
-        aj.delete()
-        wyd.refresh_from_db()
-        assert ost_zm_pbn != wyd.ostatnio_zmieniony_dla_pbn
-
-        # Test na foreign keys
-        ost_zm_pbn = wyd.ostatnio_zmieniony_dla_pbn
-
-        assert wyd.openaccess_licencja.pk != Licencja_OpenAccess.objects.all().last().pk
-        wyd.openaccess_licencja = Licencja_OpenAccess.objects.all().last()
-        wyd.save()
-
-        wyd.refresh_from_db()
-        assert ost_zm_pbn != wyd.ostatnio_zmieniony_dla_pbn
-
 
 @pytest.mark.django_db
 @pytest.mark.parametrize(
@@ -128,12 +51,3 @@ def test_punktacja_zrodla(wydawnictwo_ciagle):
 
     z.punktacja_zrodla_set.create(rok=wydawnictwo_ciagle.rok, impact_factor=37)
     assert wydawnictwo_ciagle.punktacja_zrodla().impact_factor == 37
-
-
-def test_Wydawnictwo_Ciagle_pbn_get_json(wydawnictwo_ciagle):
-    cf = wydawnictwo_ciagle.charakter_formalny
-    cf.rodzaj_pbn = RODZAJ_PBN_ARTYKUL
-    cf.save()
-
-    wydawnictwo_ciagle.doi = "123;.123/doi"
-    assert wydawnictwo_ciagle.pbn_get_json()
