@@ -9,6 +9,7 @@ Historia zmian
 * usunięto pole "data ostatniej aktualizacji dla PBN" (#1061),
 * szybsze pobieranie publikacji z profilu instytycji PBN, dokładniejsze matchowanie, pobieranie
   oświadczeń z profilu instytucji PBN, wydajniejsze importowanie do bazy danych danych z PBN (#1088),
+* szukaj po tytule w danych wysłanych do PBN (#1086),
 
 202106.71
 ---------

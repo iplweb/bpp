@@ -141,6 +141,9 @@ class PublicationAdmin(BaseMongoDBAdmin):
 class SentDataAdmin(admin.ModelAdmin):
     list_display = ["object", "last_updated_on", "uploaded_okay"]
     ordering = ("-last_updated_on",)
+    search_fields = [
+        "data_sent",
+    ]
     readonly_fields = [
         "content_type",
         "object_id",
