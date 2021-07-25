@@ -1,4 +1,6 @@
 from ..exceptions import WillNotExportError
+from .autor import AutorSimplePBNAdapter, AutorZDyscyplinaPBNAdapter
+from .wydawnictwo_autor import WydawnictwoAutorToStatementPBNAdapter
 from .zrodlo import ZrodloPBNAdapter
 
 from bpp.models import const
@@ -108,7 +110,19 @@ class WydawnictwoPBNAdapter:
         institutions = []
         jednostki = set()
         for elem in self.original.autorzy_set.all():
-            author = elem.autor.pbn_get_json()
+            #
+            # Jeżeli dany rekord Wydawnictwo_..._Autor ma dyscyplinę, to takiego autora
+            # eksportujemy 'w pełni' tzn ze wszystkimi posiadanymi przez niego identyfikatorami
+            # typu PBN UID czy ORCID:
+            #
+
+            if elem.dyscyplina_naukowa_id is None:
+                #
+                # Autor nie ma dyscypliny -- prosty eksport imie + nazwisko
+                #
+                author = AutorSimplePBNAdapter(elem.autor).pbn_get_json()
+            else:
+                author = AutorZDyscyplinaPBNAdapter(elem.autor).pbn_get_json()
 
             jednostka = elem.jednostka
             if (
@@ -125,7 +139,7 @@ class WydawnictwoPBNAdapter:
                     author["affiliations"] = [jednostka.pbn_uid_id]
                     jednostki.add(elem.jednostka)
 
-                statement = elem.pbn_get_json()
+                statement = WydawnictwoAutorToStatementPBNAdapter(elem).pbn_get_json()
                 if statement:
                     statements.append(statement)
 

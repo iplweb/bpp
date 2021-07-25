@@ -2,7 +2,7 @@ import pytest
 
 from pbn_api.models import Language
 
-from bpp.models import Jezyk, const
+from bpp.models import Jezyk, Wydawnictwo_Ciagle, const
 
 
 @pytest.fixture
@@ -18,18 +18,20 @@ def pbn_jezyk(jezyki, pbn_language):
     return polski
 
 
-@pytest.fixture
-def pbn_wydawnictwo_ciagle(wydawnictwo_ciagle, pbn_jezyk):
-
+def _zrob_wydawnictwo_pbn(wydawnictwo_ciagle, jezyk):
     cf = wydawnictwo_ciagle.charakter_formalny
     cf.rodzaj_pbn = const.RODZAJ_PBN_ARTYKUL
     cf.save()
 
-    wydawnictwo_ciagle.jezyk = pbn_jezyk
+    wydawnictwo_ciagle.jezyk = jezyk
 
     wydawnictwo_ciagle.doi = "123;.123/doi"
     wydawnictwo_ciagle.save()
 
+
+@pytest.fixture
+def pbn_wydawnictwo_ciagle(wydawnictwo_ciagle, pbn_jezyk) -> Wydawnictwo_Ciagle:
+    _zrob_wydawnictwo_pbn(wydawnictwo_ciagle, pbn_jezyk)
     return wydawnictwo_ciagle
 
 

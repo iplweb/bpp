@@ -1,30 +1,29 @@
-raise NotImplementedError(
-    """
+class AutorSimplePBNAdapter:
+    def __init__(self, original):
+        self.original = original
 
-1) wywalic ta procedure
+    def pbn_get_json(self):
+        ret = {"givenNames": self.original.imiona, "lastName": self.original.nazwisko}
 
-2) eksport autora z ORCIDem lub innym identyfikatorem JEDYNIE gdy posiada on dyscypline
+        if self.original.pbn_uid_id is not None:
+            ret.update({"objectId": self.original.pbn_uid_id})
 
-3) jezeli nie posiada dyscypliny to imie/nazwisko i styka. """
-)
+            s = self.original.pbn_uid
+            # Jeżeli powiązany rekord w tabeli pbn_api.Sciencist ma PESEL to
+            # dodamy go teraz do eksportowanych informacji:
+            pesel = s.value("object", "externalIdentifiers", "PESEL", return_none=True)
+            if pesel:
+                ret.update({"naturalId": pesel})
+        return ret
 
 
-def pbn_get_json(self):
-    ret = {"givenNames": self.imiona, "lastName": self.nazwisko}
+class AutorZDyscyplinaPBNAdapter(AutorSimplePBNAdapter):
+    # To samo, co AutorSimplePBNAdapter, ale eksportuje ORCID
 
-    if self.pbn_uid_id is not None:
-        ret.update({"objectId": self.pbn_uid.pk})
+    def pbn_get_json(self):
+        ret = super(AutorZDyscyplinaPBNAdapter, self).pbn_get_json()
 
-        s = self.pbn_uid
+        if self.original.orcid is not None:  # and self.orcid_w_pbn is True:
+            ret.update({"orcidId": self.original.orcid})
 
-        # Jeżeli powiązany rekord w tabeli pbn_api.Sciencist ma PESEL to
-        # dodamy go teraz do eksportowanych informacji:
-        pesel = s.value("object", "externalIdentifiers", "PESEL", return_none=True)
-        if pesel:
-            ret.update({"naturalId": pesel})
-
-    else:
-        if self.orcid is not None:  # and self.orcid_w_pbn is True:
-            ret.update({"orcidId": self.orcid})
-
-    return ret
+        return ret
