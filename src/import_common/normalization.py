@@ -65,6 +65,16 @@ def normalize_nazwa_dyscypliny(s):
     return normalize_skrot(s)
 
 
+def normalize_isbn(isbn):
+    if isbn is None:
+        return
+
+    return isbn.replace(".", "").strip()
+
+
+normalize_issn = normalize_isbn
+
+
 def normalize_kod_dyscypliny(k):
     if k is None:
         return None

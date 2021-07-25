@@ -292,6 +292,7 @@ def matchuj_publikacje(
     year,
     doi=None,
     public_uri=None,
+    isbn=None,
     zrodlo=None,
 ):
 
@@ -310,6 +311,14 @@ def matchuj_publikacje(
             return klass.objects.get(Q(www=public_uri) | Q(public_www=public_uri))
         except klass.MultipleObjectsReturned:
             print(f"www lub public_www nie jest unikalne w bazie: {public_uri}")
+        except klass.DoesNotExist:
+            pass
+
+    if isbn is not None:
+        try:
+            return klass.objects.get(Q(isbn=isbn) | Q(e_isbn=isbn))
+        except klass.MultipleObjectsReturned:
+            print(f"ISBN {isbn} nie jest unikalny w bazie danych!")
         except klass.DoesNotExist:
             pass
 

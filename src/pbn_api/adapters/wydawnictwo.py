@@ -1,3 +1,4 @@
+from import_common.normalization import normalize_isbn, normalize_issn
 from ..exceptions import WillNotExportError
 from .autor import AutorSimplePBNAdapter, AutorZDyscyplinaPBNAdapter
 from .wydawca import WydawcaPBNAdapter
@@ -221,11 +222,11 @@ class WydawnictwoPBNAdapter:
 
         if hasattr(self.original, "isbn"):
             if self.original.isbn:
-                ret["isbn"] = self.original.isbn
+                ret["isbn"] = normalize_isbn(self.original.isbn)
 
         if hasattr(self.original, "issn"):
             if self.original.issn:
-                ret["issn"] = self.original.issn
+                ret["issn"] = normalize_issn(self.original.issn)
 
         if hasattr(self.original, "numer_wydania"):
             nr_wydania = self.original.numer_wydania()
@@ -246,7 +247,7 @@ class WydawnictwoPBNAdapter:
 
         if hasattr(self.original, "miejsce_i_rok"):
             if self.original.miejsce_i_rok:
-                miejsce = self.original.miejsce_i_rok.split(" ", 2)[0].strip()
+                miejsce = " ".join(self.original.miejsce_i_rok.split(" ")[:-1]).strip()
                 if miejsce:
                     ret["publicationPlace"] = miejsce
 
