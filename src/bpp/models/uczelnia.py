@@ -12,7 +12,7 @@ from django.db.models import SET_NULL, Max
 from django.urls.base import reverse
 from model_utils import Choices
 
-from ..exceptions import WillNotExportError
+from pbn_api.exceptions import WillNotExportError
 from ..util import year_last_month
 from .fields import OpcjaWyswietlaniaField
 

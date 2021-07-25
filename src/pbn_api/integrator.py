@@ -22,8 +22,8 @@ from pbn_api.models import (
     Scientist,
     SentData,
 )
+from .exceptions import WillNotExportError
 
-from bpp.exceptions import WillNotExportError
 from bpp.models import (
     Autor,
     Autor_Dyscyplina,

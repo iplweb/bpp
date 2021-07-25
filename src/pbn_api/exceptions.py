@@ -29,3 +29,7 @@ class IntegracjaWylaczonaException(Exception):
 
 class SameDataUploadedRecently(Exception):
     pass
+
+
+class WillNotExportError(Exception):
+    pass
