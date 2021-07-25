@@ -10,6 +10,7 @@ Historia zmian
 * szybsze pobieranie publikacji z profilu instytycji PBN, dokładniejsze matchowanie, pobieranie
   oświadczeń z profilu instytucji PBN, wydajniejsze importowanie do bazy danych danych z PBN (#1088),
 * szukaj po tytule w danych wysłanych do PBN (#1086),
+* nie wysyłaj ORCID gdy autor nie posiada dyscypliny (#1085),
 
 202106.71
 ---------

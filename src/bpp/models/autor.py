@@ -316,26 +316,6 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
             .order_by("rok")
         )
 
-    def pbn_get_json(self):
-        ret = {"givenNames": self.imiona, "lastName": self.nazwisko}
-
-        if self.pbn_uid_id is not None:
-            ret.update({"objectId": self.pbn_uid.pk})
-
-            s = self.pbn_uid
-
-            # Jeżeli powiązany rekord w tabeli pbn_api.Sciencist ma PESEL to
-            # dodamy go teraz do eksportowanych informacji:
-            pesel = s.value("object", "externalIdentifiers", "PESEL", return_none=True)
-            if pesel:
-                ret.update({"naturalId": pesel})
-
-        else:
-            if self.orcid is not None:  # and self.orcid_w_pbn is True:
-                ret.update({"orcidId": self.orcid})
-
-        return ret
-
     def liczba_cytowan(self):
         """Zwraca liczbę cytowań prac danego autora"""
         from bpp.models.cache import Rekord

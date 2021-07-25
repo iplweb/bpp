@@ -3,8 +3,6 @@
 
 import pytest
 
-from bpp.models import RODZAJ_PBN_ARTYKUL
-
 
 @pytest.mark.django_db
 @pytest.mark.parametrize(
@@ -53,12 +51,3 @@ def test_punktacja_zrodla(wydawnictwo_ciagle):
 
     z.punktacja_zrodla_set.create(rok=wydawnictwo_ciagle.rok, impact_factor=37)
     assert wydawnictwo_ciagle.punktacja_zrodla().impact_factor == 37
-
-
-def test_Wydawnictwo_Ciagle_pbn_get_json(wydawnictwo_ciagle):
-    cf = wydawnictwo_ciagle.charakter_formalny
-    cf.rodzaj_pbn = RODZAJ_PBN_ARTYKUL
-    cf.save()
-
-    wydawnictwo_ciagle.doi = "123;.123/doi"
-    assert wydawnictwo_ciagle.pbn_get_json()

@@ -5,6 +5,7 @@ from urllib.parse import parse_qs, quote, urlparse
 
 import requests
 
+from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
 from pbn_api.exceptions import (
     AccessDeniedException,
     AuthenticationResponseError,
@@ -454,7 +455,7 @@ class PBNClient(
         return self.transport.post("/api/v1/publications", body=json)
 
     def upload_publication(self, rec, force_upload=False):
-        js = rec.pbn_get_json()
+        js = WydawnictwoPBNAdapter(rec).pbn_get_json()
         if not force_upload:
             needed = SentData.objects.check_if_needed(rec, js)
             if not needed:
