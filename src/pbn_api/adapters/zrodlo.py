@@ -1,6 +1,6 @@
 class ZrodloPBNAdapter:
     def __init__(self, original):
-        self.original.original = original
+        self.original = original
 
     def pbn_get_json(self):
         if self.original.pbn_uid_id is None:

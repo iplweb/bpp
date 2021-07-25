@@ -1,4 +1,5 @@
 from ..exceptions import WillNotExportError
+from .zrodlo import ZrodloPBNAdapter
 
 from bpp.models import const
 from bpp.util import strip_html
@@ -6,7 +7,7 @@ from bpp.util import strip_html
 
 class WydawnictwoPBNAdapter:
     def __init__(self, original):
-        self.original.original = original
+        self.original = original
 
     def pbn_get_json(self):
         ret = {
@@ -65,9 +66,10 @@ class WydawnictwoPBNAdapter:
         if self.original.tom:
             ret["volume"] = self.original.tom
 
-        zakres_stron = self.original.zakres_stron()
-        if zakres_stron:
-            ret["pagesFromTo"] = zakres_stron
+        if hasattr(self.original, "zakres_stron"):
+            zakres_stron = self.original.zakres_stron()
+            if zakres_stron:
+                ret["pagesFromTo"] = zakres_stron
 
         if self.original.doi:
             ret["doi"] = self.original.doi
@@ -99,7 +101,7 @@ class WydawnictwoPBNAdapter:
             raise WillNotExportError("Musi być DOI lub adres WWW")
 
         if hasattr(self.original, "zrodlo"):
-            ret["journal"] = self.original.zrodlo.pbn_get_json()
+            ret["journal"] = ZrodloPBNAdapter(self.original.zrodlo).pbn_get_json()
 
         authors = []
         statements = []
