@@ -1,9 +1,14 @@
 from ..exceptions import WillNotExportError
 from .autor import AutorSimplePBNAdapter, AutorZDyscyplinaPBNAdapter
+from .wydawca import WydawcaPBNAdapter
 from .wydawnictwo_autor import WydawnictwoAutorToStatementPBNAdapter
+from .wydawnictwo_nadrzedne import WydawnictwoNadrzednePBNAdapter
 from .zrodlo import ZrodloPBNAdapter
 
+from django.utils.functional import cached_property
+
 from bpp.models import const
+from bpp.models.const import TO_REDAKTOR, TO_REDAKTOR_TLUMACZENIA, TO_TLUMACZ
 from bpp.util import strip_html
 
 
@@ -11,11 +16,69 @@ class WydawnictwoPBNAdapter:
     def __init__(self, original):
         self.original = original
 
+    @cached_property
+    def typy_ogolne_autorow(self):
+        return set(
+            self.original.autorzy_set.order_by()
+            .values_list("typ_odpowiedzialnosci__typ_ogolny", flat=True)
+            .distinct()
+        )
+
+    def pod_redakcja(self):
+        # zwraca True jezeli self.original to praca 'pod redakcja' czyli ze ma tylko
+        # redaktorow
+
+        if (
+            len(self.typy_ogolne_autorow) == 1
+            and TO_REDAKTOR in self.typy_ogolne_autorow
+        ):
+            return True
+        return False
+
+    def get_translation(self):
+        # Jeżeli praca ma wyłącznie tłumaczy lub redaktorów tłumaczy to jest tłumaczeniem
+
+        lst = list(self.typy_ogolne_autorow)
+        if TO_REDAKTOR_TLUMACZENIA in lst:
+            lst.remove(TO_REDAKTOR_TLUMACZENIA)
+        if TO_TLUMACZ in lst:
+            lst.remove(TO_TLUMACZ)
+        if not lst:
+            return True
+
+        # Praca ma jeszcze jakieś typu autorów więc potencjalnie może nie być tlumaczeniem
+        return False
+
+    def nr_tomu(self):
+        if hasattr(self.original, "numer_tomu"):
+            ntomu = self.original.numer_tomu()
+            if ntomu is not None:
+                return ntomu
+
+        if hasattr(self.original, "tom"):
+            if self.original.tom:
+                return self.original.tom
+
+    def get_type(self):
+
+        if self.original.charakter_formalny.rodzaj_pbn == const.RODZAJ_PBN_ARTYKUL:
+            return "ARTICLE"
+        elif self.original.charakter_formalny.rodzaj_pbn == const.RODZAJ_PBN_KSIAZKA:
+            if self.pod_redakcja():
+                return "EDITED_BOOK"
+            return "BOOK"
+        elif self.original.charakter_formalny.rodzaj_pbn == const.RODZAJ_PBN_ROZDZIAL:
+            return "CHAPTER"
+        else:
+            raise WillNotExportError(
+                f"Rodzaj dla PBN nie określony dla charakteru formalnego {self.original.charakter_formalny}"
+            )
+
     def pbn_get_json(self):
         ret = {
             "title": strip_html(self.original.tytul_oryginalny),
             "year": self.original.rok,
-            # "issue" ??
+            "type": self.get_type(),
         }
 
         # "openAccess": {
@@ -44,10 +107,10 @@ class WydawnictwoPBNAdapter:
                 oa["months"] = str(self.original.openaccess_ilosc_miesiecy)
 
         if self.original.openaccess_tryb_dostepu_id is not None:
-            # XX: dla zwartego bedzie modeMonograph
-            #     "modeMonograph": "PUBLISHER_WEBSITE",
-            #     "modeArticle": "OPEN_JOURNAL",
-            oa["modeArticle"] = self.original.openaccess_tryb_dostepu.skrot
+            if ret["type"] == "ARTICLE":
+                oa["modeArticle"] = self.original.openaccess_tryb_dostepu.skrot
+            else:
+                oa["modeMonograph"] = self.original.openaccess_tryb_dostepu.skrot
         if self.original.public_dostep_dnia is not None:
             oa["releaseDate"] = str(self.original.public_dostep_dnia)
         elif self.original.dostep_dnia is not None:
@@ -65,8 +128,9 @@ class WydawnictwoPBNAdapter:
         ):
             ret["openAccess"] = oa
 
-        if self.original.tom:
-            ret["volume"] = self.original.tom
+        volume = self.nr_tomu()
+        if volume:
+            ret["volume"] = volume
 
         if hasattr(self.original, "zakres_stron"):
             zakres_stron = self.original.zakres_stron()
@@ -83,17 +147,6 @@ class WydawnictwoPBNAdapter:
 
         ret["mainLanguage"] = self.original.jezyk.pbn_uid.code
 
-        if self.original.charakter_formalny.rodzaj_pbn == const.RODZAJ_PBN_ARTYKUL:
-            ret["type"] = "ARTICLE"
-        elif self.original.charakter_formalny.rodzaj_pbn == const.RODZAJ_PBN_KSIAZKA:
-            ret["type"] = "BOOK"
-        elif self.original.charakter_formalny.rodzaj_pbn == const.RODZAJ_PBN_ROZDZIAL:
-            ret["type"] = "CHAPTER"
-        else:
-            raise WillNotExportError(
-                f"Rodzaj dla PBN nie określony dla charakteru formalnego {self.original.charakter_formalny}"
-            )
-
         if self.original.public_www:
             ret["publicUri"] = self.original.public_www
         elif self.original.www:
@@ -106,10 +159,13 @@ class WydawnictwoPBNAdapter:
             ret["journal"] = ZrodloPBNAdapter(self.original.zrodlo).pbn_get_json()
 
         authors = []
+        editors = []
+        translators = []
+        translationEditors = []
         statements = []
         institutions = []
         jednostki = set()
-        for elem in self.original.autorzy_set.all():
+        for elem in self.original.autorzy_set.all().select_related():
             #
             # Jeżeli dany rekord Wydawnictwo_..._Autor ma dyscyplinę, to takiego autora
             # eksportujemy 'w pełni' tzn ze wszystkimi posiadanymi przez niego identyfikatorami
@@ -143,10 +199,73 @@ class WydawnictwoPBNAdapter:
                 if statement:
                     statements.append(statement)
 
-            authors.append(author)
+            if elem.typ_odpowiedzialnosci.typ_ogolny == const.TO_REDAKTOR:
+                editors.append(author)
+            elif elem.typ_odpowiedzialnosci.typ_ogolny == const.TO_TLUMACZ:
+                translators.append(author)
+            elif elem.typ_odpowiedzialnosci.typ_ogolny == const.TO_REDAKTOR_TLUMACZENIA:
+                translationEditors.append(author)
+            else:
+                authors.append(author)
 
-        ret["authors"] = authors
+        if authors:
+            ret["authors"] = authors
+        if translators:
+            ret["translators"] = translators
+        if editors:
+            ret["editors"] = editors
+        if translationEditors:
+            ret["translationEditors"] = translationEditors
+
         ret["statements"] = statements
+
+        if hasattr(self.original, "isbn"):
+            if self.original.isbn:
+                ret["isbn"] = self.original.isbn
+
+        if hasattr(self.original, "issn"):
+            if self.original.issn:
+                ret["issn"] = self.original.issn
+
+        if hasattr(self.original, "numer_wydania"):
+            nr_wydania = self.original.numer_wydania()
+            if nr_wydania:
+                ret["issue"] = nr_wydania
+
+        if hasattr(self.original, "seria_wydawnicza_id"):
+            seria = self.original.seria_wydawnicza_id
+            if seria is not None:
+                ret["series"] = self.original.seria_wydawnicza.nazwa
+
+        if hasattr(self.original, "numer_w_serii"):
+            if self.original.numer_w_serii:
+                ret["numberInSeries"] = self.original.numer_w_serii
+
+        if self.original.pbn_uid_id is not None:
+            ret["objectId"] = self.original.pbn_uid_id
+
+        if hasattr(self.original, "miejsce_i_rok"):
+            if self.original.miejsce_i_rok:
+                miejsce = self.original.miejsce_i_rok.split(" ", 2)[0].strip()
+                if miejsce:
+                    ret["publicationPlace"] = miejsce
+
+        if hasattr(self.original, "wydawca"):
+            if self.original.wydawca_id:
+                ret["publisher"] = WydawcaPBNAdapter(
+                    self.original.wydawca
+                ).pbn_get_json()
+            else:
+                if self.original.wydawca_opis:
+                    ret["publisher"] = {"name": self.original.wydawca_opis}
+
+        ret["translation"] = self.get_translation()
+
+        if hasattr(self.original, "wydawnictwo_nadrzedne_id"):
+            if self.original.wydawnictwo_nadrzedne_id is not None:
+                ret["book"] = WydawnictwoNadrzednePBNAdapter(
+                    self.original.wydawnictwo_nadrzedne
+                ).pbn_get_json()
 
         institutions = {}
         for jednostka in jednostki:

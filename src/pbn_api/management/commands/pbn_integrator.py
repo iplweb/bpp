@@ -30,7 +30,8 @@ from pbn_api.integrator import (
     pobierz_prace_offline,
     pobierz_prace_po_doi,
     pobierz_publikacje_z_instytucji,
-    pobierz_wydawcow,
+    pobierz_wydawcow_mnisw,
+    pobierz_wydawcow_wszystkich,
     pobierz_zrodla,
     synchronizuj_publikacje,
     weryfikuj_orcidy,
@@ -202,11 +203,14 @@ class Command(PBNBaseCommand):
         if (enable_check_orcid_people or enable_all) and start_from_stage <= stage:
             weryfikuj_orcidy(client, Uczelnia.objects.default.pbn_uid_id)
         stage = 10
+        check_end_before(stage, end_before_stage)
 
         if (enable_publishers or enable_all) and start_from_stage <= stage:
-            pobierz_wydawcow(client)
+            pobierz_wydawcow_wszystkich(client)
+            pobierz_wydawcow_mnisw(client)
             integruj_wydawcow()
         stage = 11
+        check_end_before(stage, end_before_stage)
 
         if (enable_conferences or enable_all) and start_from_stage <= stage:
             pobierz_konferencje(client)

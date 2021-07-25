@@ -264,11 +264,19 @@ def pobierz_zrodla(client: PBNClient):
         )
 
 
-def pobierz_wydawcow(client: PBNClient):
+def pobierz_wydawcow_mnisw(client: PBNClient):
     pobierz_mongodb(
         client.get_publishers_mnisw(page_size=1000),
         Publisher,
-        pbar_label="pobierz_wydawcow",
+        pbar_label="pobierz_wydawcow_mnisw",
+    )
+
+
+def pobierz_wydawcow_wszystkich(client: PBNClient):
+    pobierz_mongodb(
+        client.get_publishers(page_size=1000),
+        Publisher,
+        pbar_label="pobierz_wydawcow_wszystkich",
     )
 
 
@@ -757,7 +765,24 @@ def integruj_zrodla(disable_progress_bar):
 
 
 def integruj_wydawcow():
-    for elem in Publisher.objects.all():
+    # Najpierw dopasuj wydawcow z MNISWId
+    for elem in pbar(
+        Publisher.objects.filter(versions__contains=[{"current": True}]).filter(
+            versions__0__object__has_key="mniswId"
+        ),
+        label="match wyd mnisw",
+    ):
+        w = matchuj_wydawce(elem.value("object", "publisherName"))
+        if w is not None:
+            if w.pbn_uid_id is None and w.pbn_uid_id != elem.pk:
+                w.pbn_uid_id = elem.pk
+                w.save()
+
+    # Dopasuj wszystkich
+    for elem in pbar(
+        Publisher.objects.filter(versions__contains=[{"current": True}]),
+        label="match wyd wszyscy",
+    ):
         w = matchuj_wydawce(elem.value("object", "publisherName"))
         if w is not None:
             if w.pbn_uid_id is None and w.pbn_uid_id != elem.pk:

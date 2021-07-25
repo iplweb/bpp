@@ -11,6 +11,7 @@ from .actions import ustaw_po_korekcie, ustaw_przed_korekta, ustaw_w_trakcie_kor
 from .core import CommitedModelAdmin, KolumnyZeSkrotamiMixin, generuj_inline_dla_autorow
 from .element_repozytorium import Element_RepozytoriumInline
 from .grant import Grant_RekorduInline
+from .helpers import OptionalPBNSaveMixin
 from .nagroda import NagrodaInline
 
 from django.contrib import admin, messages
@@ -45,11 +46,11 @@ class Wydawnictwo_ZwarteAdmin_Baza(CommitedModelAdmin):
     list_display = [
         "tytul_oryginalny",
         "wydawnictwo",
+        "doi",
         "wydawnictwo_nadrzedne_col",
         "rok",
         "typ_kbn__skrot",
         "charakter_formalny__skrot",
-        "liczba_znakow_wydawniczych",
         "ostatnio_zmieniony",
     ]
 
@@ -186,6 +187,7 @@ class Wydawnictwo_Zwarte_Zewnetrzna_Baza_DanychInline(admin.StackedInline):
 class Wydawnictwo_ZwarteAdmin(
     KolumnyZeSkrotamiMixin,
     helpers.AdnotacjeZDatamiOrazPBNMixin,
+    OptionalPBNSaveMixin,
     Wydawnictwo_ZwarteAdmin_Baza,
 ):
     form = Wydawnictwo_ZwarteForm
