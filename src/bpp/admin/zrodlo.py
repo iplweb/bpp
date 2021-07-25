@@ -97,6 +97,7 @@ class ZrodloAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
         "www",
         "poprzednia_nazwa",
         "doi",
+        "pbn_uid__pk",
     ]
     autocomplete_fields = ["pbn_uid"]
     list_display = ["nazwa", "skrot", "rodzaj", "www", "issn", "e_issn", "pbn_uid_id"]

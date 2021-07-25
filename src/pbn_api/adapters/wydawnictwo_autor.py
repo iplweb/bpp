@@ -14,14 +14,13 @@ class WydawnictwoAutorToStatementPBNAdapter:
             return
 
         ret = {
-            # to NIE jest ta flaga; to jest flaga dot. czy dane są w indeksie ORCID
-            # a nie czy autor ma Orcid ID
             "type": const.TYP_OGOLNY_DO_PBN.get(
                 self.original.typ_odpowiedzialnosci.typ_ogolny, "AUTHOR"
             ),
         }
 
         if self.original.profil_orcid:
+            # To jest flaga dot. czy dane są w indeksie ORCID
             ret["orcid"] = True
 
         if self.original.dyscyplina_naukowa_id is not None:

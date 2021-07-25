@@ -20,6 +20,13 @@ from django.utils.itercompat import is_iterable
 DEFAULT_BASE_URL = "https://pbn-micro-alpha.opi.org.pl"
 
 
+def smart_content(content):
+    try:
+        return content.decode("utf-8")
+    except UnicodeDecodeError:
+        return content
+
+
 class PBNClientTransport:
     def __init__(self, app_id, app_token, base_url, user_token=None):
         self.app_id = app_id
@@ -142,12 +149,12 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
         if ret.status_code == 403:
 
             if fail_on_auth_missing:
-                raise AccessDeniedException(url, ret.content)
+                raise AccessDeniedException(url, smart_content(ret.content))
             # Needs auth
             if ret.json()["message"] == "Access Denied":
                 # Autoryzacja użytkownika jest poprawna, jednakże nie ma on po stronie PBN
                 # takiego uprawnienia...
-                raise AccessDeniedException(url, ret.content)
+                raise AccessDeniedException(url, smart_content(ret.content))
 
             # elif ret.json['message'] == "Forbidden":  # <== to dostaniemy, gdy token zły lub brak
 
@@ -160,7 +167,7 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
                 return self.get(url, headers, fail_on_auth_missing=True)
 
         if ret.status_code >= 400:
-            raise HttpException(ret.status_code, url, ret.content)
+            raise HttpException(ret.status_code, url, smart_content(ret.content))
 
         try:
             return ret.json()
@@ -196,7 +203,7 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
             if ret.json()["message"] == "Access Denied":
                 # Autoryzacja użytkownika jest poprawna, jednakże nie ma on po stronie PBN
                 # takiego uprawnienia...
-                raise AccessDeniedException(url, ret.content)
+                raise AccessDeniedException(url, smart_content(ret.content))
 
             # elif ret.json['message'] == "Forbidden":  # <== to dostaniemy, gdy token zły lub brak
 
@@ -205,7 +212,7 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
                 # self.authorize()
 
         if ret.status_code >= 400:
-            raise HttpException(ret.status_code, url, ret.content)
+            raise HttpException(ret.status_code, url, smart_content(ret.content))
 
         try:
             return ret.json()

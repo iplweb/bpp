@@ -22,6 +22,7 @@ from pbn_api.models import (
     Scientist,
     SentData,
 )
+from .adapters.wydawnictwo import normalize_isbn
 from .exceptions import WillNotExportError
 
 from bpp.models import (
@@ -264,11 +265,19 @@ def pobierz_zrodla(client: PBNClient):
         )
 
 
-def pobierz_wydawcow(client: PBNClient):
+def pobierz_wydawcow_mnisw(client: PBNClient):
     pobierz_mongodb(
         client.get_publishers_mnisw(page_size=1000),
         Publisher,
-        pbar_label="pobierz_wydawcow",
+        pbar_label="pobierz_wydawcow_mnisw",
+    )
+
+
+def pobierz_wydawcow_wszystkich(client: PBNClient):
+    pobierz_mongodb(
+        client.get_publishers(page_size=1000),
+        Publisher,
+        pbar_label="pobierz_wydawcow_wszystkich",
     )
 
 
@@ -757,7 +766,24 @@ def integruj_zrodla(disable_progress_bar):
 
 
 def integruj_wydawcow():
-    for elem in Publisher.objects.all():
+    # Najpierw dopasuj wydawcow z MNISWId
+    for elem in pbar(
+        Publisher.objects.filter(versions__contains=[{"current": True}]).filter(
+            versions__0__object__has_key="mniswId"
+        ),
+        label="match wyd mnisw",
+    ):
+        w = matchuj_wydawce(elem.value("object", "publisherName"))
+        if w is not None:
+            if w.pbn_uid_id is None and w.pbn_uid_id != elem.pk:
+                w.pbn_uid_id = elem.pk
+                w.save()
+
+    # Dopasuj wszystkich
+    for elem in pbar(
+        Publisher.objects.filter(versions__contains=[{"current": True}]),
+        label="match wyd wszyscy",
+    ):
         w = matchuj_wydawce(elem.value("object", "publisherName"))
         if w is not None:
             if w.pbn_uid_id is None and w.pbn_uid_id != elem.pk:
@@ -789,6 +815,7 @@ def _integruj_single_part(ids):
             year=elem.value_or_none("object", "year"),
             doi=elem.value_or_none("object", "doi"),
             public_uri=elem.value_or_none("object", "publicUri"),
+            isbn=normalize_isbn(elem.value_or_none("object", "isbn")),
             zrodlo=zrodlo,
         )
 
@@ -827,28 +854,55 @@ def integruj_publikacje():
     wait_for_results(pool, results)
 
 
+def _synchronizuj_pojedyncza_publikacje(client, rec):
+    try:
+        client.sync_publication(rec)
+    except SameDataUploadedRecently:
+        pass
+    except HttpException as e:
+        if e.status_code in [400, 500]:
+            warnings.warn(
+                f"{rec.pk},{rec.tytul_oryginalny},{rec.rok},PBN Error 500: {e.content}"
+            )
+    except WillNotExportError as e:
+        warnings.warn(
+            f"{rec.pk},{rec.tytul_oryginalny},{rec.rok},nie wyeksportuje, bo: {e}"
+        )
+
+
 def synchronizuj_publikacje(client, skip=0):
+    #
+    # Wydawnictwa zwarte
+    #
+    zwarte_baza = (
+        Wydawnictwo_Zwarte.objects.filter(rok__gte=2017)
+        .exclude(charakter_formalny__rodzaj_pbn=None)
+        .exclude(isbn=None)
+        .exclude(Q(doi=None) & (Q(public_www=None) | Q(www=None)))
+    )
+
+    for rec in pbar(
+        zwarte_baza.filter(wydawnictwo_nadrzedne_id=None),
+        label="sync_zwarte_ksiazki",
+    ):
+        _synchronizuj_pojedyncza_publikacje(client, rec)
+
+    for rec in pbar(
+        zwarte_baza.exclude(wydawnictwo_nadrzedne_id=None),
+        label="sync_zwarte_rozdzialy",
+    ):
+        _synchronizuj_pojedyncza_publikacje(client, rec)
+
+    #
+    # Wydawnicwa ciagle
+    #
     for rec in pbar(
         Wydawnictwo_Ciagle.objects.filter(rok__gte=2017)
         .exclude(charakter_formalny__rodzaj_pbn=None)
-        .exclude(Q(doi=None) & (Q(public_www=None) | Q(www=None)))
+        .exclude(Q(doi=None) & (Q(public_www=None) | Q(www=None))),
+        label="sync_ciagle",
     ):
-        try:
-            client.sync_publication(rec)
-        except SameDataUploadedRecently:
-            pass
-        except HttpException as e:
-            if e.status_code in [400, 500]:
-                warnings.warn(
-                    f"{rec.pk},{rec.tytul_oryginalny},{rec.rok},PBN Error 500: {e.content}"
-                )
-                continue
-
-            raise e
-        except WillNotExportError as e:
-            warnings.warn(
-                f"{rec.pk},{rec.tytul_oryginalny},{rec.rok},nie wyeksportuje, bo: {e}"
-            )
+        _synchronizuj_pojedyncza_publikacje(client, rec)
 
 
 @transaction.atomic

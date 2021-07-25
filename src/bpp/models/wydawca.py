@@ -39,11 +39,15 @@ class Wydawca(ModelZNazwa, ModelZPBN_UID):
         self.clean()
         return super().save(*args, **kw)
 
-    def get_tier(self, rok):
-        if self.alias_dla is not None:
-            return self.alias_dla.get_tier(rok)
+    def get_toplevel(self):
+        if self.alias_dla_id is not None:
+            return self.alias_dla.get_toplevel()
+        return self
 
-        ret = self.poziom_wydawcy_set.filter(rok=rok).first()
+    def get_tier(self, rok):
+        toplevel = self.get_toplevel()
+
+        ret = toplevel.poziom_wydawcy_set.filter(rok=rok).first()
         if ret is None:
             return -1
         return ret.poziom
