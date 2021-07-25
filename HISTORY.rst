@@ -11,6 +11,7 @@ Historia zmian
   oświadczeń z profilu instytucji PBN, wydajniejsze importowanie do bazy danych danych z PBN (#1088),
 * szukaj po tytule w danych wysłanych do PBN (#1086),
 * nie wysyłaj ORCID gdy autor nie posiada dyscypliny (#1085),
+* wysyłanie wydawnictwo zwartych do PBN (#1044),
 
 202106.71
 ---------
