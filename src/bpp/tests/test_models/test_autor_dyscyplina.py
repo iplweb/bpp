@@ -350,11 +350,12 @@ def test_autor_dyscyplina_zmiana_z_none_na_cos(
 def test_autor_dyscyplina_cacher_zmiana(
     autor_jan_kowalski, jednostka, wydawnictwo_ciagle, rok, dyscyplina1, dyscyplina2
 ):
+    assert CacheQueue.objects.count() == 0
 
     ad = Autor_Dyscyplina.objects.create(
         rok=rok, autor=autor_jan_kowalski, dyscyplina_naukowa=dyscyplina1
     )
-    assert CacheQueue.objects.count() == 1
+    assert CacheQueue.objects.count() == 0
 
     wca = wydawnictwo_ciagle.dodaj_autora(
         autor_jan_kowalski, jednostka, dyscyplina_naukowa=dyscyplina1
@@ -365,7 +366,7 @@ def test_autor_dyscyplina_cacher_zmiana(
 
     wca.refresh_from_db()
     assert wca.dyscyplina_naukowa == dyscyplina2
-    assert CacheQueue.objects.count() == 2
+    assert CacheQueue.objects.count() == 1
 
 
 def test_autor_dyscyplina_cacher_skasowanie(
@@ -374,7 +375,7 @@ def test_autor_dyscyplina_cacher_skasowanie(
     ad = Autor_Dyscyplina.objects.create(
         rok=rok, autor=autor_jan_kowalski, dyscyplina_naukowa=dyscyplina1
     )
-    assert CacheQueue.objects.count() == 1
+    assert CacheQueue.objects.count() == 0
 
     wca = wydawnictwo_ciagle.dodaj_autora(
         autor_jan_kowalski, jednostka, dyscyplina_naukowa=dyscyplina1
@@ -384,4 +385,4 @@ def test_autor_dyscyplina_cacher_skasowanie(
 
     wca.refresh_from_db()
     assert wca.dyscyplina_naukowa is None
-    assert CacheQueue.objects.count() == 2
+    assert CacheQueue.objects.count() == 1
