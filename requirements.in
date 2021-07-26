@@ -1,4 +1,4 @@
-Django==3.0.14
+Django==3.2.5
 django-permissions-widget==1.5.2
 channels==2.4.0
 uvicorn>=0.11.8
@@ -54,7 +54,7 @@ django-mptt==0.12.0
 wosclient==0.1.5
 MOAI-iplweb==2.0.0
 django-redis-cache==2.1.1
-django-filter
+django-filter==2.4.0
 progressbar2
 dbfread
 djangorestframework==3.11.0
