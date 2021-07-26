@@ -31,9 +31,7 @@ class compile_translations(Command):
     def run(self):
         curdir = os.getcwd()
         os.chdir(os.path.realpath("src"))
-        from django.core.management import call_command
-
-        call_command("compilemessages")
+        # call_command("compilemessages")
         os.chdir(curdir)
 
 
