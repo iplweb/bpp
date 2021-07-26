@@ -33,7 +33,13 @@ def test_Uczelnia_clean_integracja(uczelnia, mocker):
 
 @pytest.mark.django_db
 def test_Uczelnia_pbn_client():
-    uczelnia = mommy.make(Uczelnia)
+    uczelnia = mommy.make(
+        Uczelnia,
+        nazwa="Testowa uczelnia",
+        skrot="TU",
+        pbn_app_name=None,
+        pbn_app_token=None,
+    )
 
     uczelnia.pbn_app_name = None
     uczelnia.save()

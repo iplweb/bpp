@@ -356,6 +356,7 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
 
         if not self.pbn_app_name:
             raise ImproperlyConfigured("Brak nazwy aplikacji dla API PBN")
+
         if not self.pbn_app_token:
             raise ImproperlyConfigured("Brak tokena aplikacji dla API PBN")
 
