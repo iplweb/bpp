@@ -26,8 +26,9 @@ except ImportError:
     from django.urls import reverse
 
 import pytest
-from conftest import NORMAL_DJANGO_USER_PASSWORD
 from selenium.webdriver.support.wait import WebDriverWait
+
+from conftest import NORMAL_DJANGO_USER_PASSWORD
 
 from bpp.models.system import Charakter_Formalny, Jezyk, Status_Korekty, Typ_KBN
 
@@ -36,7 +37,9 @@ from django_bpp.selenium_util import wait_for_page_load
 pytestmark = [pytest.mark.slow, pytest.mark.selenium]
 
 
-def test_caching_enabled(admin_app, zrodlo, standard_data, transactional_db):
+def test_caching_enabled(
+    admin_app, zrodlo, standard_data, transactional_db, with_cache
+):
     """
     1) wejdź do redagowania
     2) dopisz publikację, zapisz
