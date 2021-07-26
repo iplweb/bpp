@@ -350,6 +350,7 @@ def test_autor_dyscyplina_zmiana_z_none_na_cos(
 def test_autor_dyscyplina_cacher_zmiana(
     autor_jan_kowalski, jednostka, wydawnictwo_ciagle, rok, dyscyplina1, dyscyplina2
 ):
+
     ad = Autor_Dyscyplina.objects.create(
         rok=rok, autor=autor_jan_kowalski, dyscyplina_naukowa=dyscyplina1
     )

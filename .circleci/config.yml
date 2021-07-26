@@ -61,7 +61,7 @@ jobs:
           name: pytest
           command: |
             . venv/bin/activate
-            pytest --maxfail=5 --splinter-headless --cov=src --ds=django_bpp.settings.test
+            pytest --maxfail=10 --splinter-headless --cov=src --ds=django_bpp.settings.test
 
       # Testy JavaScript
       - run: make js-tests
