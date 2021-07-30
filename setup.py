@@ -6,6 +6,7 @@ import sys
 from distutils.cmd import Command
 from distutils.command.build import build as _build
 
+from django.core.management import call_command
 from setuptools import find_packages, setup
 from setuptools.command.install_lib import install_lib as _install_lib
 
@@ -31,7 +32,7 @@ class compile_translations(Command):
     def run(self):
         curdir = os.getcwd()
         os.chdir(os.path.realpath("src"))
-        # call_command("compilemessages")
+        call_command("compilemessages")
         os.chdir(curdir)
 
 
