@@ -1,5 +1,6 @@
 import pytest
 from django.urls import reverse
+
 from rozbieznosci_dyscyplin.models import RozbieznosciView
 
 from django.contrib.contenttypes.models import ContentType
@@ -171,4 +172,4 @@ def test_main_view_admin(zle_przypisana_praca, admin_browser, asgi_live_server):
     admin_browser.visit(
         asgi_live_server.url + reverse("rozbieznosci_dyscyplin:main-view")
     )
-    wait_for(lambda: "Kowalski" in admin_browser.html)
+    wait_for(lambda: "Kowalski" in admin_browser.html, max_seconds=30)

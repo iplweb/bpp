@@ -16,16 +16,19 @@ def wait_for(condition_function, max_seconds=10):
 
 
 class wait_for_page_load(object):
-    def __init__(self, browser):
+    def __init__(self, browser, max_seconds=30):
         self.browser = browser
+        self.max_seconds = max_seconds
 
     def __enter__(self):
         self.old_page = self.browser.find_by_tag("html")[0]._element
 
     def __exit__(self, *_):
-        WebDriverWait(self.browser, 10).until(lambda x: staleness_of(self.old_page))
+        WebDriverWait(self.browser, self.max_seconds).until(
+            lambda x: staleness_of(self.old_page)
+        )
 
-        WebDriverWait(self.browser, 10).until(
+        WebDriverWait(self.browser, self.max_seconds).until(
             lambda browser: browser.execute_script("return document.readyState")
             == "complete"
         )

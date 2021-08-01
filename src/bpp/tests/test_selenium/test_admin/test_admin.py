@@ -381,9 +381,11 @@ def test_admin_wydawnictwo_ciagle_dowolnie_zapisane_nazwisko(
     elem = browser.find_by_xpath(xp1)
     proper_click_element(browser, elem[0])
 
-    browser.find_by_xpath(
+    element = browser.find_by_xpath(
         "/html/body/div[2]/article/div/form/div/div[1]/div[2]/div/a"
-    ).click()
+    )
+    proper_click_element(browser, element)
+    # scroll_into_view()
     wait_for(lambda: browser.find_by_id("id_autorzy_set-0-autor"))
 
     select_select2_autocomplete(browser, "id_autorzy_set-0-autor", "Kowalski Jan")

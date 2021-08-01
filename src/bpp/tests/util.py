@@ -367,7 +367,10 @@ def add_extra_autor_inline(browser, no_current_inlines=0):
         raise ElementDoesNotExist("element .grp-add-handler nie istnieje")
 
     proper_click_element(browser, elem)
-    wait_for(lambda: browser.find_by_id(f"id_autorzy_set-{no_current_inlines}-autor"))
+    wait_for(
+        lambda: browser.find_by_id(f"id_autorzy_set-{no_current_inlines}-autor"),
+        max_seconds=30,
+    )
 
 
 def randomobj(model):
