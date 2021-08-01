@@ -216,6 +216,7 @@ rfc3986==1.5.0
     # via twine
 selenium==3.141.0
     # via
+    #   -r requirements_dev.in
     #   pytest-splinter
     #   splinter
 six==1.16.0

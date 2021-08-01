@@ -184,7 +184,7 @@ def admin_browser(
         django_user_model,
         django_username_field,
     )
-    browser.driver.set_window_size(1920, 1200)
+    browser.driver.set_window_size(1920, 1600)
 
     yield browser
     browser.execute_script("window.onbeforeunload = function(e) {};")
