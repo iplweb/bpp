@@ -357,12 +357,12 @@ def test_autor_dyscyplina_cacher_zmiana(
     with_cache,
 ):
 
-    assert CacheQueue.objects.count() == 1
+    assert CacheQueue.objects.count() == 0
 
     ad = Autor_Dyscyplina.objects.create(
         rok=rok, autor=autor_jan_kowalski, dyscyplina_naukowa=dyscyplina1
     )
-    assert CacheQueue.objects.count() == 1
+    assert CacheQueue.objects.count() == 0
 
     wca = wydawnictwo_ciagle.dodaj_autora(
         autor_jan_kowalski, jednostka, dyscyplina_naukowa=dyscyplina1
