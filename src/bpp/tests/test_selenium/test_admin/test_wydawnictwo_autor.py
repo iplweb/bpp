@@ -23,7 +23,8 @@ def test_changelist_no_argument(klass, live_server, admin_browser: WebDriver):
 def test_edit_btn_invisible(klass, live_server, admin_browser: WebDriver):
     # Przy dodawaniu publikacji -- brak przycisku "edytuj autorów"
     url = f"admin:bpp_{klass}_add"
-    admin_browser.visit(live_server + reverse(url))
+    with wait_for_page_load(admin_browser):
+        admin_browser.visit(live_server + reverse(url))
     assert "Edytuj autorów" not in normalize_html(admin_browser.html)
 
 
@@ -39,7 +40,8 @@ def test_edit_btn_appears(klass, model, live_server, admin_browser: WebDriver):
     res = mommy.make(model)
 
     url = f"admin:bpp_{klass}_change"
-    admin_browser.visit(live_server + reverse(url, args=(res.pk,)))
+    with wait_for_page_load(admin_browser):
+        admin_browser.visit(live_server + reverse(url, args=(res.pk,)))
 
     mommy.make(model)
 
@@ -56,7 +58,8 @@ def test_edit_btn_appears(klass, model, live_server, admin_browser: WebDriver):
 def test_changelist_with_argument(klass, model, admin_browser, live_server):
     rec = mommy.make(model)
     url = f"admin:bpp_{klass}_autor_changelist"
-    admin_browser.visit(live_server + reverse(url) + f"?rekord__id__exact={rec.pk}")
+    with wait_for_page_load(admin_browser):
+        admin_browser.visit(live_server + reverse(url) + f"?rekord__id__exact={rec.pk}")
 
     assert "Dodaj powiązanie" in normalize_html(admin_browser.html)
 
@@ -80,7 +83,8 @@ def test_changeform_save(klass, model, admin_browser, live_server):
 
     url = f"admin:bpp_{klass}_autor_change"
 
-    admin_browser.visit(live_server + reverse(url, args=(wa.pk,)))
+    with wait_for_page_load(admin_browser):
+        admin_browser.visit(live_server + reverse(url, args=(wa.pk,)))
 
     WebDriverWait(admin_browser.driver, 10).until(
         expected_conditions.presence_of_element_located((By.NAME, "_save"))

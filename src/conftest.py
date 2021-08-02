@@ -10,7 +10,7 @@ import pytest
 import webtest
 from django.db import IntegrityError
 from rest_framework.test import APIClient
-from selenium.webdriver.remote.webdriver import WebDriver
+from splinter.driver import DriverAPI
 
 from pbn_api.models import Language
 
@@ -174,7 +174,7 @@ def admin_browser(
     django_user_model,
     django_username_field,
     transactional_db,
-) -> WebDriver:
+) -> DriverAPI:
     browser = _preauth_session_id_helper(
         "admin",
         "password",
