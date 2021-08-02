@@ -335,11 +335,8 @@ def proper_click_element(browser, element):
 
 
 def proper_click_by_id(browser, arg):
-    browser.find_by_id(arg)
-    browser.execute_script(
-        "document.getElementById(arguments[0]).scrollIntoView();", arg
-    )
-    browser.execute_script("document.getElementById(arguments[0]).click();", arg)
+    elem = browser.find_by_id(arg)
+    proper_click_element(browser, elem)
 
 
 def assertPopupContains(browser, text, accept=True):

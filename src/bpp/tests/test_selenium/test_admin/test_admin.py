@@ -358,7 +358,8 @@ def test_admin_wydawnictwo_ciagle_uzupelnij_rok(admin_browser, asgi_live_server)
             asgi_live_server.url + reverse("admin:bpp_wydawnictwo_ciagle_add")
         )
     browser.fill("informacje", "Lublin 2002 test")
-    proper_click_by_id(browser, "id_rok_button")
+    elem = browser.find_by_id("id_rok_button")
+    proper_click_element(browser, elem)
 
     browser.wait_for_condition(
         lambda browser: browser.find_by_id("id_rok").value == "2002"

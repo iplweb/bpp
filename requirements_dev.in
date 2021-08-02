@@ -35,3 +35,4 @@ pre-commit
 django-debug-toolbar
 twine
 pypdf2
+pytest-rerunfailures
