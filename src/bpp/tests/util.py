@@ -370,7 +370,7 @@ def add_extra_autor_inline(browser, no_current_inlines=0):
 
     wait_for(
         lambda: browser.find_by_id(f"id_autorzy_set-{no_current_inlines}-autor"),
-        max_seconds=30,
+        max_seconds=5,
     )
 
 
@@ -478,7 +478,7 @@ def submitted_form_bad(browser):
     return True
 
 
-def submitted_form_good(browser, wait_time=20):
+def submitted_form_good(browser, wait_time=10):
     WebDriverWait(browser.driver, wait_time).until(
         lambda driver: "został dodany pomyślnie" in driver.page_source
     )

@@ -52,5 +52,5 @@ def test_global_search_in_admin(asgi_live_server, admin_browser, transactional_d
         )
 
     browser.wait_for_condition(
-        lambda browser: "Zmień wydawnictwo ciągłe" in browser.html, timeout=30
+        lambda browser: "Zmień wydawnictwo ciągłe" in browser.html, timeout=3
     )
