@@ -25,15 +25,15 @@ def test_global_search_logged_in(asgi_live_server, admin_browser, transactional_
     browser = admin_browser
     mommy.make(Wydawnictwo_Ciagle, tytul_oryginalny="Test")
 
-    with wait_for_page_load(browser):
-        browser.visit(asgi_live_server.url)
+    # with wait_for_page_load(browser):
+    browser.visit(asgi_live_server.url)
 
-    with wait_for_page_load(browser):
-        select_select2_autocomplete(
-            browser,
-            "id_global_nav_value",
-            "Test",
-        )
+    # with wait_for_page_load(browser):
+    select_select2_autocomplete(
+        browser,
+        "id_global_nav_value",
+        "Test",
+    )
 
     browser.wait_for_condition(lambda browser: "Strona WWW" in browser.html)
 
