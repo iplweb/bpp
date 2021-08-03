@@ -264,6 +264,9 @@ def select_select2_autocomplete(browser, element_id, value):
     element = browser.find_by_id(element_id)[0]
     sibling = element.find_by_xpath("following-sibling::span")
 
+    if len(sibling) == 0:
+        raise ElementDoesNotExist("sibling not found")
+
     # Umieść go na widoku
     show_element(browser, element)
 
@@ -275,13 +278,33 @@ def select_select2_autocomplete(browser, element_id, value):
     no_tries = 0
     while no_tries < 3:
         # Kliknij w select2 tak, aby pojawiło się okienko do wpisywania tekstu
-        active = element.parent.switch_to.active_element
-        sibling.click()
-        # ... czekaj na pojawienie się okienka
-        wait_for(
-            lambda: element.parent.switch_to.active_element != active,
-            max_seconds=LONG_WAIT_TIME,
-        )
+        active = None
+
+        _c = 0
+
+        while active is None:
+            time.sleep(0.5)
+            active = element.parent.switch_to.active_element
+            _c += 1
+
+            if _c >= 3:
+                raise ElementDoesNotExist("no active element")
+
+        _c = 0
+        while True:
+            sibling.click()
+            # ... czekaj na pojawienie się okienka
+
+            try:
+                wait_for(
+                    lambda: element.parent.switch_to.active_element != active,
+                    max_seconds=LONG_WAIT_TIME,
+                )
+                break
+            except TimeoutError as e:
+                _c += 1
+                if _c >= 3:
+                    raise e
 
         old_value = browser.find_by_id(f"select2-{element_id}-container").text
 
