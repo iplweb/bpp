@@ -20,7 +20,7 @@ pytest-mock
 pytest-xdist>=2.3.0
 pytest-lazy-fixture
 pytest-timeout
-pyparsing==2.4.1.1
+pyparsing>=2.4.1.1
 coverage
 black
 autoflake

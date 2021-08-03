@@ -31,7 +31,7 @@ beautifulsoup4==4.9.3
     # via django-htmlmin
 billiard==3.6.4.0
     # via celery
-bleach==3.1.4
+bleach==3.3.1
     # via
     #   -r requirements.in
     #   django-flexible-reports
@@ -265,6 +265,8 @@ openpyxl==3.0.3
     # via
     #   -r requirements.in
     #   tablib
+packaging==21.0
+    # via bleach
 paste==3.5.0
     # via
     #   moai-iplweb
@@ -307,6 +309,8 @@ pypandoc==1.5
     # via
     #   -r requirements.in
     #   django-flexible-reports
+pyparsing==2.4.7
+    # via packaging
 pyphen==0.11.0
     # via weasyprint
 pytest-runner==5.3.1
