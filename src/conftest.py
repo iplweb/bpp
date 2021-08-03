@@ -882,3 +882,14 @@ def with_cache():
     with cache_enabled():
         [x.zaktualizuj_cache() for x in Rekord.objects.all()]
         yield
+
+
+def pytest_collection_modifyitems(items):
+    # Dodaj marker "selenium" dla wszystkich testów uzywających fikstur 'browser'
+    # lub 'admin_browser', aby można było szybko uruchamiać wyłacznie te testy
+    # lub nie uruchamiać ich:
+
+    for item in items:
+        fixtures = getattr(item, "fixturenames", ())
+        if "browser" in fixtures or "admin_browser" in fixtures:
+            item.add_marker("selenium")

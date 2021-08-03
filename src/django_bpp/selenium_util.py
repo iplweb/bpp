@@ -4,8 +4,8 @@ import time
 from selenium.webdriver.support.expected_conditions import staleness_of
 from selenium.webdriver.support.ui import WebDriverWait
 
-SHORT_WAIT_TIME = 1
-LONG_WAIT_TIME = 3
+SHORT_WAIT_TIME = 5
+LONG_WAIT_TIME = 10
 DEFAULT_WAIT_TIME = SHORT_WAIT_TIME
 PAGE_LOAD_WAIT_TIME = DEFAULT_WAIT_TIME
 
