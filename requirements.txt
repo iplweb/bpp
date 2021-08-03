@@ -274,7 +274,7 @@ pastedeploy==2.1.1
     #   pastescript
 pastescript==3.2.1
     # via moai-iplweb
-pillow==8.0.1
+pillow==8.2.0
     # via
     #   -r requirements.in
     #   cairosvg
