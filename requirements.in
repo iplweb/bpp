@@ -57,7 +57,7 @@ django-redis-cache==2.1.1
 django-filter
 progressbar2
 dbfread
-djangorestframework==3.11.0
+djangorestframework==3.11.2
 markdown==3.2.1
 django-admin-sortable2==1.0
 cssmin==0.2.0
