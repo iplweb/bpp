@@ -32,12 +32,7 @@ from bpp.models import (
 )
 from bpp.models.system import Status_Korekty
 
-from django_bpp.selenium_util import (
-    LONG_WAIT_TIME,
-    SHORT_WAIT_TIME,
-    wait_for,
-    wait_for_page_load,
-)
+from django_bpp.selenium_util import SHORT_WAIT_TIME, wait_for, wait_for_page_load
 
 
 def setup_mommy():
@@ -275,41 +270,29 @@ def select_select2_autocomplete(browser, element_id, value):
     # następnie wyślij ENTER, następnie sprawdź, czy ustawiona została
     # nowa wartość. Jeżeli nie, to powtórz, maksimum 3 razy:
 
-    no_tries = 0
-    while no_tries < 3:
+    sibling.click()
 
-        sibling.click()
+    # ... czekaj na pojawienie się okienka
+    wait_for(
+        lambda: element.parent.switch_to.active_element.tag_name == "input",
+        max_seconds=SHORT_WAIT_TIME,
+    )
 
-        # ... czekaj na pojawienie się okienka
-        wait_for(
-            lambda: element.parent.switch_to.active_element.tag_name == "input",
-            max_seconds=LONG_WAIT_TIME,
-        )
+    old_value = browser.find_by_id(f"select2-{element_id}-container").text
 
-        old_value = browser.find_by_id(f"select2-{element_id}-container").text
+    active = element.parent.switch_to.active_element
+    active.send_keys(value)
 
-        active = element.parent.switch_to.active_element
-        active.send_keys(value)
+    wait_for(
+        lambda: "Trwa wyszukiwanie…"
+        not in browser.find_by_id(f"select2-{element_id}-results").value
+    )
 
-        wait_for(
-            lambda: "Trwa wyszukiwanie…"
-            not in browser.find_by_id(f"select2-{element_id}-results").value
-        )
-        time.sleep(0.5)
+    active.send_keys(Keys.ENTER)
 
-        active.send_keys(Keys.ENTER)
-
-        try:
-            wait_for(
-                lambda: browser.find_by_id(f"select2-{element_id}-container").text
-                != old_value
-            )
-            break
-        except TimeoutError as e:
-            if no_tries >= 3:
-                raise e
-
-        no_tries += 1
+    wait_for(
+        lambda: browser.find_by_id(f"select2-{element_id}-container").text != old_value
+    )
 
 
 def select_select2_clear_selection(browser, element_id):
