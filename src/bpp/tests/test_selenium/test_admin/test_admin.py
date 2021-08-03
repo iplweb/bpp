@@ -42,7 +42,7 @@ from bpp.tests.util import (
     show_element,
 )
 
-from django_bpp.selenium_util import wait_for, wait_for_page_load
+from django_bpp.selenium_util import SHORT_WAIT_TIME, wait_for, wait_for_page_load
 
 ID = "id_tytul_oryginalny"
 
@@ -63,7 +63,7 @@ def test_uzupelnij_strona_tom_nr_zeszytu(url, admin_browser, asgi_live_server):
     show_element(admin_browser, elem)
     elem.click()
 
-    WebDriverWait(admin_browser, 30).until(
+    WebDriverWait(admin_browser, SHORT_WAIT_TIME).until(
         lambda browser: browser.find_by_name("tom").value != ""
     )
 
@@ -165,7 +165,7 @@ def test_admin_uzupelnij_punkty(admin_browser, asgi_live_server):
     assert button.value == "Wypełniona!"
 
     select_select2_clear_selection(admin_browser, "id_zrodlo")
-    WebDriverWait(admin_browser.driver, 5).until(
+    WebDriverWait(admin_browser.driver, SHORT_WAIT_TIME).until(
         lambda browser: admin_browser.find_by_id(
             "id_wypelnij_pola_punktacji_button"
         ).value
@@ -194,7 +194,7 @@ def test_upload_punkty(admin_browser, asgi_live_server):
     show_element(admin_browser, elem)
     elem.click()
 
-    WebDriverWait(admin_browser.driver, 10).until(
+    WebDriverWait(admin_browser.driver, SHORT_WAIT_TIME).until(
         lambda browser: Punktacja_Zrodla.objects.count() == 1
     )
     assert Punktacja_Zrodla.objects.all()[0].impact_factor == 1
@@ -202,13 +202,13 @@ def test_upload_punkty(admin_browser, asgi_live_server):
     admin_browser.fill("impact_factor", "2")
     proper_click_by_id(admin_browser, "id_dodaj_punktacje_do_zrodla_button")
 
-    WebDriverWait(admin_browser.driver, 10).until(alert_is_present())
+    WebDriverWait(admin_browser.driver, SHORT_WAIT_TIME).until(alert_is_present())
     assertPopupContains(admin_browser, "Punktacja dla tego roku już istnieje")
-    WebDriverWait(admin_browser.driver, 10).until(
+    WebDriverWait(admin_browser.driver, SHORT_WAIT_TIME).until(
         lambda browser: not alert_is_present()(browser)
     )
 
-    WebDriverWait(admin_browser.driver, 10).until(
+    WebDriverWait(admin_browser.driver, SHORT_WAIT_TIME).until(
         lambda browser: Punktacja_Zrodla.objects.all()[0].impact_factor == 2
     )
 
@@ -240,7 +240,7 @@ def test_autorform_uzupelnianie_jednostki(autorform_browser, autorform_jednostka
     select_select2_autocomplete(autorform_browser, "id_autorzy_set-0-autor", "KOWALSKI")
 
     autorform_browser.find_by_id("id_autorzy_set-0-jednostka")
-    WebDriverWait(autorform_browser, 5).until(
+    WebDriverWait(autorform_browser, SHORT_WAIT_TIME).until(
         lambda browser: autorform_browser.find_by_id("id_autorzy_set-0-jednostka").value
         == str(autorform_jednostka.pk)
     )
@@ -275,7 +275,7 @@ def test_autorform_kasowanie_autora(autorform_browser, autorform_jednostka):
     select_select2_clear_selection(autorform_browser, "id_autorzy_set-0-autor")
 
     # jednostka nie jest wybrana
-    WebDriverWait(autorform_browser.driver, 45).until(
+    WebDriverWait(autorform_browser.driver, SHORT_WAIT_TIME).until(
         lambda browser: autorform_browser.find_by_id(
             "id_autorzy_set-0-jednostka"
         ).value.find("\n")

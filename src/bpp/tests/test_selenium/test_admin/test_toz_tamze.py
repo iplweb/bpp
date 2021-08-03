@@ -15,7 +15,7 @@ from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 from bpp.tests import any_ciagle
 from bpp.tests.util import any_patent, any_zwarte, assertPopupContains
 
-from django_bpp.selenium_util import wait_for, wait_for_page_load
+from django_bpp.selenium_util import SHORT_WAIT_TIME, wait_for, wait_for_page_load
 
 ID = "id_tytul_oryginalny"
 
@@ -96,7 +96,7 @@ def test_admin_wydawnictwo_zwarte_tamze(admin_browser, asgi_live_server, wydawca
     )
     tamze = admin_browser.find_by_id("tamze")
     tamze.click()
-    WebDriverWait(admin_browser.driver, 10).until(
+    WebDriverWait(admin_browser.driver, SHORT_WAIT_TIME).until(
         lambda driver: "Dodaj wydawnictwo" in driver.page_source
     )
     for elem in [
@@ -125,7 +125,7 @@ def test_admin_patent_toz(admin_browser, asgi_live_server):
     toz.click()
 
     assertPopupContains(admin_browser, "Utworzysz kopię tego rekordu")
-    WebDriverWait(admin_browser, 10).until(
+    WebDriverWait(admin_browser, SHORT_WAIT_TIME).until(
         lambda driver: admin_browser.is_element_present_by_id("navigation-menu")
     )
 

@@ -5,7 +5,7 @@ from selenium.webdriver.support.wait import WebDriverWait
 from bpp.models import Autor_Dyscyplina
 from bpp.tests import select_select2_autocomplete
 
-from django_bpp.selenium_util import wait_for, wait_for_page_load
+from django_bpp.selenium_util import SHORT_WAIT_TIME, wait_for, wait_for_page_load
 
 
 def scroll_until_handler_clicked_successfully(browser, handler="grp-add-handler"):
@@ -77,7 +77,7 @@ def test_podpowiedzi_dyscyplin_autor_ma_jedna_uczelnia_podpowiada(
 
     admin_browser.find_by_id("id_autorzy_set-0-dyscyplina_naukowa")
 
-    WebDriverWait(admin_browser.driver, 10).until(
+    WebDriverWait(admin_browser.driver, SHORT_WAIT_TIME).until(
         lambda driver: admin_browser.find_by_id(
             "id_autorzy_set-0-dyscyplina_naukowa"
         ).value

@@ -4,8 +4,13 @@ import time
 from selenium.webdriver.support.expected_conditions import staleness_of
 from selenium.webdriver.support.ui import WebDriverWait
 
+SHORT_WAIT_TIME = 1
+LONG_WAIT_TIME = 3
+DEFAULT_WAIT_TIME = SHORT_WAIT_TIME
+PAGE_LOAD_WAIT_TIME = DEFAULT_WAIT_TIME
 
-def wait_for(condition_function, max_seconds=5):
+
+def wait_for(condition_function, max_seconds=DEFAULT_WAIT_TIME):
     start_time = time.time()
     while time.time() < start_time + max_seconds:
         if condition_function():
@@ -16,7 +21,7 @@ def wait_for(condition_function, max_seconds=5):
 
 
 class wait_for_page_load(object):
-    def __init__(self, browser, max_seconds=5):
+    def __init__(self, browser, max_seconds=PAGE_LOAD_WAIT_TIME):
         self.browser = browser
         self.max_seconds = max_seconds
 
@@ -35,7 +40,7 @@ class wait_for_page_load(object):
 
 
 def wait_for_websocket_connection(browser):
-    WebDriverWait(browser, 10).until(
+    WebDriverWait(browser, DEFAULT_WAIT_TIME).until(
         lambda browser: browser.execute_script(
             "return bppNotifications.chatSocket.readyState"
         )

@@ -32,7 +32,7 @@ from bpp.models import (
 )
 from bpp.models.system import Status_Korekty
 
-from django_bpp.selenium_util import wait_for, wait_for_page_load
+from django_bpp.selenium_util import SHORT_WAIT_TIME, wait_for, wait_for_page_load
 
 
 def setup_mommy():
@@ -380,7 +380,7 @@ def randomobj(model):
 
 def quick_find_by_id(browser, id):
     if f'id="{id}"' in browser.html:
-        return browser.find_by_id(id, wait_time=0)
+        return browser.find_by_id(id, wait_time=0.01)
 
 
 def fill_admin_form(
@@ -471,14 +471,14 @@ def fill_admin_inline(
         )
 
 
-def submitted_form_bad(browser):
-    WebDriverWait(browser.driver, 10).until(
+def submitted_form_bad(browser, wait_time=SHORT_WAIT_TIME):
+    WebDriverWait(browser.driver, wait_time).until(
         lambda driver: "Prosimy poprawić" in driver.page_source
     )
     return True
 
 
-def submitted_form_good(browser, wait_time=10):
+def submitted_form_good(browser, wait_time=SHORT_WAIT_TIME):
     WebDriverWait(browser.driver, wait_time).until(
         lambda driver: "został dodany pomyślnie" in driver.page_source
     )

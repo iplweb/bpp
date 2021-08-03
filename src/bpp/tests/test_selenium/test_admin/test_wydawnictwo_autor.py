@@ -9,7 +9,7 @@ from splinter.driver.webdriver.firefox import WebDriver
 from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
 from bpp.tests import fill_admin_inline, normalize_html
 
-from django_bpp.selenium_util import wait_for_page_load
+from django_bpp.selenium_util import SHORT_WAIT_TIME, wait_for_page_load
 
 
 @pytest.mark.parametrize("klass", ["wydawnictwo_ciagle", "wydawnictwo_zwarte"])
@@ -86,7 +86,7 @@ def test_changeform_save(klass, model, admin_browser, live_server):
     with wait_for_page_load(admin_browser):
         admin_browser.visit(live_server + reverse(url, args=(wa.pk,)))
 
-    WebDriverWait(admin_browser.driver, 10).until(
+    WebDriverWait(admin_browser.driver, SHORT_WAIT_TIME).until(
         expected_conditions.presence_of_element_located((By.NAME, "_save"))
     )
 
