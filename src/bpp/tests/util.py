@@ -32,7 +32,12 @@ from bpp.models import (
 )
 from bpp.models.system import Status_Korekty
 
-from django_bpp.selenium_util import SHORT_WAIT_TIME, wait_for, wait_for_page_load
+from django_bpp.selenium_util import (
+    LONG_WAIT_TIME,
+    SHORT_WAIT_TIME,
+    wait_for,
+    wait_for_page_load,
+)
 
 
 def setup_mommy():
@@ -273,7 +278,10 @@ def select_select2_autocomplete(browser, element_id, value):
         active = element.parent.switch_to.active_element
         sibling.click()
         # ... czekaj na pojawienie się okienka
-        wait_for(lambda: element.parent.switch_to.active_element != active)
+        wait_for(
+            lambda: element.parent.switch_to.active_element != active,
+            max_seconds=LONG_WAIT_TIME,
+        )
 
         old_value = browser.find_by_id(f"select2-{element_id}-container").text
 
