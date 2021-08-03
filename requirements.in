@@ -41,7 +41,7 @@ requests==2.26.0
 pytz==2018.4
 django-extensions==2.2.5
 django-htmlmin==0.11.0
-Pillow==8.0.1
+Pillow==8.2.0
 olefile==0.44
 django-grappelli==2.14.1
 django-multiseek==0.9.46
@@ -62,7 +62,7 @@ django-redis-cache==2.1.1
 django-filter
 progressbar2
 dbfread
-djangorestframework==3.11.0
+djangorestframework==3.11.2
 markdown==3.2.1
 django-admin-sortable2==1.0
 cssmin==0.2.0
@@ -73,8 +73,3 @@ django-taggit==1.3.0
 django-taggit-serializer==0.1.7
 WeasyPrint==52.4
 requests-oauthlib==1.3.0
-
-# MacBook Pro M1 arm
-# cryptography>=3.3.1
-# cffi>=1.14.1
-# lxml>=4.6.2
