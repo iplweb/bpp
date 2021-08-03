@@ -3,7 +3,7 @@ from model_mommy import mommy
 from bpp.models import Wydawnictwo_Ciagle
 from bpp.tests import select_select2_autocomplete
 
-from django_bpp.selenium_util import wait_for_page_load
+from django_bpp.selenium_util import DEFAULT_WAIT_TIME, wait_for_page_load
 
 
 def test_global_search_user(live_server, browser, transactional_db):
@@ -25,7 +25,8 @@ def test_global_search_logged_in(asgi_live_server, admin_browser, transactional_
     browser = admin_browser
     mommy.make(Wydawnictwo_Ciagle, tytul_oryginalny="Test")
 
-    browser.visit(asgi_live_server.url)
+    with wait_for_page_load(browser):
+        browser.visit(asgi_live_server.url)
 
     with wait_for_page_load(browser):
         select_select2_autocomplete(
@@ -52,5 +53,6 @@ def test_global_search_in_admin(asgi_live_server, admin_browser, transactional_d
         )
 
     browser.wait_for_condition(
-        lambda browser: "Zmień wydawnictwo ciągłe" in browser.html, timeout=3
+        lambda browser: "Zmień wydawnictwo ciągłe" in browser.html,
+        timeout=DEFAULT_WAIT_TIME,
     )
