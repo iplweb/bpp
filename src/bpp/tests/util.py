@@ -306,6 +306,7 @@ def select_select2_autocomplete(browser, element_id, value, wait_for_new_value=T
     )
 
     new_active.send_keys(Keys.ENTER)
+    time.sleep(0.5)
 
     if wait_for_new_value:
         try:

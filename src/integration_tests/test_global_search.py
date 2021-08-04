@@ -1,9 +1,10 @@
 from model_mommy import mommy
+from selenium.webdriver.support.wait import WebDriverWait
 
 from bpp.models import Wydawnictwo_Ciagle
 from bpp.tests import select_select2_autocomplete
 
-from django_bpp.selenium_util import DEFAULT_WAIT_TIME, wait_for_page_load
+from django_bpp.selenium_util import LONG_WAIT_TIME, wait_for_page_load
 
 
 def test_global_search_user(live_server, browser, transactional_db):
@@ -20,7 +21,9 @@ def test_global_search_user(live_server, browser, transactional_db):
             wait_for_new_value=False,  # False, bo zmiana wartosci powoduje wczytanie strony
         )
 
-    browser.wait_for_condition(lambda browser: "Strona WWW" in browser.html)
+    WebDriverWait(browser, LONG_WAIT_TIME).until(
+        lambda browser: "Strona WWW" in browser.html
+    )
 
 
 def test_global_search_logged_in(asgi_live_server, admin_browser, transactional_db):
@@ -38,7 +41,9 @@ def test_global_search_logged_in(asgi_live_server, admin_browser, transactional_
             wait_for_new_value=False,  # False, bo zmiana wartosci powoduje wczytanie strony
         )
 
-    browser.wait_for_condition(lambda browser: "Strona WWW" in browser.html)
+    WebDriverWait(browser, LONG_WAIT_TIME).until(
+        lambda browser: "Strona WWW" in browser.html
+    )
 
 
 def test_global_search_in_admin(asgi_live_server, admin_browser, transactional_db):
@@ -58,5 +63,5 @@ def test_global_search_in_admin(asgi_live_server, admin_browser, transactional_d
 
     browser.wait_for_condition(
         lambda browser: "Zmień wydawnictwo ciągłe" in browser.html,
-        timeout=DEFAULT_WAIT_TIME,
+        timeout=LONG_WAIT_TIME,
     )
