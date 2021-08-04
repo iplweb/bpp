@@ -10,7 +10,11 @@ def make_nav_form(url):
             label="",
             widget=ListSelect2(
                 url=url,
-                attrs={"data-html": True, "data-placeholder": "Wpisz, aby wyszukać..."},
+                attrs={
+                    "data-html": True,
+                    "data-placeholder": "Wpisz, aby wyszukać...",
+                    "data-minimum-input-length": 3,
+                },
             ),
         )
 
