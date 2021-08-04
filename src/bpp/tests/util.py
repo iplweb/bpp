@@ -253,7 +253,7 @@ def show_element(browser, element):
     return browser.execute_script(s, element._element)
 
 
-def select_select2_autocomplete(browser, element_id, value):
+def select_select2_autocomplete(browser, element_id, value, wait_for_new_value=True):
     """
     Wypełnia kontrolkę Select2
 
@@ -307,14 +307,14 @@ def select_select2_autocomplete(browser, element_id, value):
 
     new_active.send_keys(Keys.ENTER)
 
-    try:
-
-        wait_for(
-            lambda: browser.find_by_id(f"select2-{element_id}-container").text
-            != old_value
-        )
-    except TimeoutError as e:
-        raise e
+    if wait_for_new_value:
+        try:
+            wait_for(
+                lambda: browser.find_by_id(f"select2-{element_id}-container").text
+                != old_value
+            )
+        except TimeoutError as e:
+            raise e
 
 
 def select_select2_clear_selection(browser, element_id):
