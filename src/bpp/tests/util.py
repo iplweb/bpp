@@ -308,11 +308,14 @@ def select_select2_autocomplete(
     )
 
     if value_before_enter:
-        wait_for(
-            lambda: value_before_enter
-            in browser.find_by_id(f"select2-{element_id}-results").value,
-            max_seconds=LONG_WAIT_TIME,
-        )
+        try:
+            wait_for(
+                lambda: value_before_enter
+                in browser.find_by_id(f"select2-{element_id}-results").value,
+                max_seconds=LONG_WAIT_TIME,
+            )
+        except TimeoutError as e:
+            raise e
     new_active.send_keys(Keys.ENTER)
     time.sleep(0.5)
 

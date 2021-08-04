@@ -2,14 +2,15 @@ from model_mommy import mommy
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support.wait import WebDriverWait
 
-from bpp.models import Wydawnictwo_Ciagle
+from bpp.models import Rekord, Wydawnictwo_Ciagle
 from bpp.tests import select_select2_autocomplete
 
 from django_bpp.selenium_util import LONG_WAIT_TIME, wait_for_page_load
 
 
-def test_global_search_user(asgi_live_server, browser, transactional_db):
+def test_global_search_user(asgi_live_server, browser, transactional_db, with_cache):
     mommy.make(Wydawnictwo_Ciagle, tytul_oryginalny="Test")
+    [x.zaktualizuj_cache() for x in Rekord.objects.all()]
 
     with wait_for_page_load(browser):
         browser.visit(asgi_live_server.url)
@@ -31,9 +32,12 @@ def test_global_search_user(asgi_live_server, browser, transactional_db):
         raise TimeoutException(f"Browser.html dump: {browser.html}")
 
 
-def test_global_search_logged_in(asgi_live_server, admin_browser, transactional_db):
+def test_global_search_logged_in(
+    asgi_live_server, admin_browser, transactional_db, with_cache
+):
     browser = admin_browser
     mommy.make(Wydawnictwo_Ciagle, tytul_oryginalny="Test")
+    [x.zaktualizuj_cache() for x in Rekord.objects.all()]
 
     with wait_for_page_load(browser):
         browser.visit(asgi_live_server.url)
