@@ -424,7 +424,8 @@ def test_admin_wydawnictwo_ciagle_dowolnie_zapisane_nazwisko(
     proper_click_element(browser, element)
     # scroll_into_view()
     wait_for(
-        lambda: browser.find_by_id("id_autorzy_set-0-autor"), max_seconds=LONG_WAIT_TIME
+        lambda: browser.find_by_id("id_autorzy_set-0-autor"),
+        max_seconds=SHORT_WAIT_TIME,
     )
 
     select_select2_autocomplete(browser, "id_autorzy_set-0-autor", "Kowalski Jan")
