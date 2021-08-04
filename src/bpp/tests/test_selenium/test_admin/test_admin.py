@@ -1,5 +1,5 @@
 # -*- encoding: utf-8 -*-
-
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support.expected_conditions import alert_is_present
 
 from bpp.models.const import CHARAKTER_OGOLNY_KSIAZKA, TO_AUTOR
@@ -68,7 +68,7 @@ def test_uzupelnij_strona_tom_nr_zeszytu(url, admin_browser, asgi_live_server):
         WebDriverWait(admin_browser, LONG_WAIT_TIME).until(
             lambda browser: not admin_browser.find_by_id("id_strony_get").is_empty()
         )
-    except TimeoutError as e:
+    except TimeoutException as e:
         raise e
 
     admin_browser.find_by_name("informacje").type("1993 vol. 5 z. 1")
@@ -96,11 +96,14 @@ def test_liczba_znakow_wydawniczych_liczba_arkuszy_wydawniczych(
     with wait_for_page_load(admin_browser):
         admin_browser.visit(asgi_live_server.url + url)
 
-    WebDriverWait(admin_browser, SHORT_WAIT_TIME).until(
-        lambda browser: not admin_browser.find_by_id(
-            "id_liczba_arkuszy_wydawniczych"
-        ).is_empty()
-    )
+    try:
+        WebDriverWait(admin_browser, SHORT_WAIT_TIME).until(
+            lambda browser: not admin_browser.find_by_id(
+                "id_liczba_arkuszy_wydawniczych"
+            ).is_empty()
+        )
+    except TimeoutException as e:
+        raise e
 
     admin_browser.execute_script(
         "django.jQuery('#id_liczba_znakow_wydawniczych').val('40000').change()"
@@ -296,12 +299,15 @@ def test_autorform_kasowanie_autora(autorform_browser, autorform_jednostka):
     select_select2_clear_selection(autorform_browser, "id_autorzy_set-0-autor")
 
     # jednostka nie jest wybrana
-    WebDriverWait(autorform_browser.driver, SHORT_WAIT_TIME).until(
-        lambda browser: autorform_browser.find_by_id(
-            "id_autorzy_set-0-jednostka"
-        ).value.find("\n")
-        != -1
-    )
+    try:
+        WebDriverWait(autorform_browser.driver, SHORT_WAIT_TIME).until(
+            lambda browser: autorform_browser.find_by_id(
+                "id_autorzy_set-0-jednostka"
+            ).value.find("\n")
+            != -1
+        )
+    except TimeoutException as e:
+        raise e
     #  assert jed.value.find("\n") != -1
 
     autorform_browser.execute_script("window.onbeforeunload = function(e) {};")
@@ -417,13 +423,18 @@ def test_admin_wydawnictwo_ciagle_dowolnie_zapisane_nazwisko(
     )
     proper_click_element(browser, element)
     # scroll_into_view()
-    wait_for(lambda: browser.find_by_id("id_autorzy_set-0-autor"))
+    wait_for(
+        lambda: browser.find_by_id("id_autorzy_set-0-autor"), max_seconds=LONG_WAIT_TIME
+    )
 
     select_select2_autocomplete(browser, "id_autorzy_set-0-autor", "Kowalski Jan")
 
     select_select2_autocomplete(
         browser, "id_autorzy_set-0-zapisany_jako", "Dowolny tekst"
     )
+
+    if browser.find_by_id("id_autorzy_set-0-zapisany_jako").value != "Dowolny tekst":
+        print("1")  # for debugging
 
     assert browser.find_by_id("id_autorzy_set-0-zapisany_jako").value == "Dowolny tekst"
 

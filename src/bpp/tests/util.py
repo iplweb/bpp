@@ -292,7 +292,9 @@ def select_select2_autocomplete(browser, element_id, value):
 
     old_value = browser.find_by_id(f"select2-{element_id}-container").text
 
-    new_active.send_keys(value)
+    for letter in value:
+        new_active.send_keys(letter)
+        time.sleep(0.01)
 
     wait_for(
         lambda: "Trwa wyszukiwanie…"
@@ -376,12 +378,15 @@ def add_extra_autor_inline(browser, no_current_inlines=0):
 
     proper_click_element(browser, elem)
 
-    wait_for(
-        lambda: not browser.find_by_id(
-            f"id_autorzy_set-{no_current_inlines}-autor"
-        ).is_empty,
-        max_seconds=LONG_WAIT_TIME,
-    )
+    try:
+        wait_for(
+            lambda: not browser.find_by_id(
+                f"id_autorzy_set-{no_current_inlines}-autor"
+            ).is_empty(),
+            max_seconds=LONG_WAIT_TIME,
+        )
+    except TimeoutError as e:
+        raise e
 
 
 def randomobj(model):
