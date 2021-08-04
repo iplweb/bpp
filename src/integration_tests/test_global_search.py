@@ -19,6 +19,7 @@ def test_global_search_user(asgi_live_server, browser, transactional_db):
             browser,
             "id_global_nav_value",
             "Test",
+            value_before_enter="Rekord",
             wait_for_new_value=False,  # False, bo zmiana wartosci powoduje wczytanie strony
         )
 
@@ -42,6 +43,7 @@ def test_global_search_logged_in(asgi_live_server, admin_browser, transactional_
             browser,
             "id_global_nav_value",
             "Test",
+            value_before_enter="Rekord",
             wait_for_new_value=False,  # False, bo zmiana wartosci powoduje wczytanie strony
         )
 
@@ -65,6 +67,7 @@ def test_global_search_in_admin(asgi_live_server, admin_browser, transactional_d
             browser,
             "id_global_nav_value",
             "Test",
+            value_before_enter="ydawnictwo",
             wait_for_new_value=False,  # False, bo zmiana wartosci powoduje wczytanie strony
         )
 
