@@ -290,11 +290,15 @@ def select_select2_autocomplete(browser, element_id, value):
         if new_active != old_active:
             break
 
-    old_value = browser.find_by_id(f"select2-{element_id}-container").text
+    old_value = None
 
-    for letter in value:
-        new_active.send_keys(letter)
-        time.sleep(0.01)
+    while old_value is None:
+        old_value = browser.find_by_id(f"select2-{element_id}-container").text
+        time.sleep(0.3)
+
+    # for letter in value:
+    new_active.send_keys(value)
+    time.sleep(1)
 
     wait_for(
         lambda: "Trwa wyszukiwanie…"
@@ -303,9 +307,14 @@ def select_select2_autocomplete(browser, element_id, value):
 
     new_active.send_keys(Keys.ENTER)
 
-    wait_for(
-        lambda: browser.find_by_id(f"select2-{element_id}-container").text != old_value
-    )
+    try:
+
+        wait_for(
+            lambda: browser.find_by_id(f"select2-{element_id}-container").text
+            != old_value
+        )
+    except TimeoutError as e:
+        raise e
 
 
 def select_select2_clear_selection(browser, element_id):
