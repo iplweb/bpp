@@ -7,7 +7,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 SHORT_WAIT_TIME = 5
 LONG_WAIT_TIME = 10
 DEFAULT_WAIT_TIME = SHORT_WAIT_TIME
-PAGE_LOAD_WAIT_TIME = DEFAULT_WAIT_TIME
+PAGE_LOAD_WAIT_TIME = LONG_WAIT_TIME
 
 
 def wait_for(condition_function, max_seconds=DEFAULT_WAIT_TIME):
@@ -26,7 +26,7 @@ class wait_for_page_load(object):
         self.max_seconds = max_seconds
 
     def __enter__(self):
-        self.old_page = self.browser.find_by_tag("html")[0]._element
+        self.old_page = self.browser.find_by_tag("html").first._element
 
     def __exit__(self, *_):
         WebDriverWait(self.browser, self.max_seconds).until(
@@ -36,6 +36,10 @@ class wait_for_page_load(object):
         WebDriverWait(self.browser, self.max_seconds).until(
             lambda browser: browser.execute_script("return document.readyState")
             == "complete"
+        )
+
+        WebDriverWait(self.browser, self.max_seconds).until(
+            lambda browser: not browser.find_by_tag("body").is_empty()
         )
 
 

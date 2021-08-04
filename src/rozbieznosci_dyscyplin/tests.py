@@ -7,7 +7,7 @@ from django.contrib.contenttypes.models import ContentType
 
 from bpp.models import Autor_Dyscyplina
 
-from django_bpp.selenium_util import wait_for, wait_for_page_load
+from django_bpp.selenium_util import SHORT_WAIT_TIME, wait_for, wait_for_page_load
 
 
 @pytest.fixture
@@ -173,4 +173,4 @@ def test_main_view_admin(zle_przypisana_praca, admin_browser, asgi_live_server):
         admin_browser.visit(
             asgi_live_server.url + reverse("rozbieznosci_dyscyplin:main-view")
         )
-    wait_for(lambda: "Kowalski" in admin_browser.html, max_seconds=5)
+    wait_for(lambda: "Kowalski" in admin_browser.html, max_seconds=SHORT_WAIT_TIME)

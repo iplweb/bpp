@@ -11,6 +11,7 @@ from datetime import datetime
 from django.urls import reverse
 from model_mommy import mommy
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.expected_conditions import visibility_of
 from selenium.webdriver.support.wait import WebDriverWait
 from splinter.exceptions import ElementDoesNotExist
 
@@ -32,7 +33,12 @@ from bpp.models import (
 )
 from bpp.models.system import Status_Korekty
 
-from django_bpp.selenium_util import SHORT_WAIT_TIME, wait_for, wait_for_page_load
+from django_bpp.selenium_util import (
+    LONG_WAIT_TIME,
+    SHORT_WAIT_TIME,
+    wait_for,
+    wait_for_page_load,
+)
 
 
 def setup_mommy():
@@ -262,33 +268,38 @@ def select_select2_autocomplete(browser, element_id, value):
     if len(sibling) == 0:
         raise ElementDoesNotExist("sibling not found")
 
+    sibling = sibling.first
+
     # Umieść go na widoku
-    show_element(browser, element)
+    show_element(browser, sibling)
 
     # Kliknij w aktywny element, następnie wyślij klawisze do aktywnego
     # elementu, który się pojawił (wyskakujący pop-up select2)
     # następnie wyślij ENTER, następnie sprawdź, czy ustawiona została
     # nowa wartość. Jeżeli nie, to powtórz, maksimum 3 razy:
 
-    sibling.click()
+    # tries = 0
+    # while True:
 
-    # ... czekaj na pojawienie się okienka
-    wait_for(
-        lambda: element.parent.switch_to.active_element.tag_name == "input",
-        max_seconds=SHORT_WAIT_TIME,
-    )
+    old_active = element.parent.switch_to.active_element
+    while True:
+        sibling.click()
+        time.sleep(random.randint(100, 1000) / 1000)
+        new_active = element.parent.switch_to.active_element
+
+        if new_active != old_active:
+            break
 
     old_value = browser.find_by_id(f"select2-{element_id}-container").text
 
-    active = element.parent.switch_to.active_element
-    active.send_keys(value)
+    new_active.send_keys(value)
 
     wait_for(
         lambda: "Trwa wyszukiwanie…"
         not in browser.find_by_id(f"select2-{element_id}-results").value
     )
 
-    active.send_keys(Keys.ENTER)
+    new_active.send_keys(Keys.ENTER)
 
     wait_for(
         lambda: browser.find_by_id(f"select2-{element_id}-container").text != old_value
@@ -325,6 +336,7 @@ def proper_click_element(browser, element):
     # show_element(browser, element)
     # return element.click()
     browser.execute_script("arguments[0].scrollIntoView();", element._element)
+    WebDriverWait(browser, SHORT_WAIT_TIME).until(visibility_of(element._element))
     browser.execute_script("arguments[0].click();", element._element)
 
 
@@ -346,6 +358,11 @@ def assertPopupContains(browser, text, accept=True):
 
 def add_extra_autor_inline(browser, no_current_inlines=0):
     elem = None
+
+    WebDriverWait(browser, SHORT_WAIT_TIME).until(
+        lambda browser: not browser.find_by_css(".grp-add-handler").is_empty()
+    )
+
     elems = browser.find_by_css(".grp-add-handler")
 
     for e in elems:
@@ -357,14 +374,13 @@ def add_extra_autor_inline(browser, no_current_inlines=0):
             elem = e
             break
 
-    if elem is None:
-        raise ElementDoesNotExist("element .grp-add-handler nie istnieje")
-
     proper_click_element(browser, elem)
 
     wait_for(
-        lambda: browser.find_by_id(f"id_autorzy_set-{no_current_inlines}-autor"),
-        max_seconds=5,
+        lambda: not browser.find_by_id(
+            f"id_autorzy_set-{no_current_inlines}-autor"
+        ).is_empty,
+        max_seconds=LONG_WAIT_TIME,
     )
 
 

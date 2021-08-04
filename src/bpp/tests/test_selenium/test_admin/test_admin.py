@@ -42,7 +42,12 @@ from bpp.tests.util import (
     show_element,
 )
 
-from django_bpp.selenium_util import SHORT_WAIT_TIME, wait_for, wait_for_page_load
+from django_bpp.selenium_util import (
+    LONG_WAIT_TIME,
+    SHORT_WAIT_TIME,
+    wait_for,
+    wait_for_page_load,
+)
 
 ID = "id_tytul_oryginalny"
 
@@ -55,6 +60,16 @@ def test_uzupelnij_strona_tom_nr_zeszytu(url, admin_browser, asgi_live_server):
     url = reverse("admin:bpp_%s_add" % url)
     with wait_for_page_load(admin_browser):
         admin_browser.visit(asgi_live_server.url + url)
+
+    WebDriverWait(admin_browser, SHORT_WAIT_TIME).until(
+        lambda browser: not admin_browser.find_by_name("informacje").is_empty()
+    )
+    try:
+        WebDriverWait(admin_browser, LONG_WAIT_TIME).until(
+            lambda browser: not admin_browser.find_by_id("id_strony_get").is_empty()
+        )
+    except TimeoutError as e:
+        raise e
 
     admin_browser.find_by_name("informacje").type("1993 vol. 5 z. 1")
     admin_browser.find_by_name("szczegoly").type("s. 4-3")
@@ -80,6 +95,12 @@ def test_liczba_znakow_wydawniczych_liczba_arkuszy_wydawniczych(
     url = reverse("admin:bpp_wydawnictwo_zwarte_add")
     with wait_for_page_load(admin_browser):
         admin_browser.visit(asgi_live_server.url + url)
+
+    WebDriverWait(admin_browser, SHORT_WAIT_TIME).until(
+        lambda browser: not admin_browser.find_by_id(
+            "id_liczba_arkuszy_wydawniczych"
+        ).is_empty()
+    )
 
     admin_browser.execute_script(
         "django.jQuery('#id_liczba_znakow_wydawniczych').val('40000').change()"
