@@ -10,7 +10,6 @@ amqp==2.6.1
     # via kombu
 asgiref==3.3.4
     # via
-    #   -r requirements.in
     #   channels
     #   channels-redis
     #   daphne
@@ -126,7 +125,7 @@ django-admin-tools==0.9.0
     # via -r requirements.in
 django-appconf==1.0.4
     # via django-compressor
-django-autocomplete-light==3.8.1
+django-autocomplete-light==3.8.2
     # via
     #   -r requirements.in
     #   django-multiseek
