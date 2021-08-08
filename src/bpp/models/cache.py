@@ -538,6 +538,7 @@ class RekordBase(
     tom = None
 
     jezyk_alt = None
+    jezyk_orig = None
 
     # Skróty dla django-dsl
 
