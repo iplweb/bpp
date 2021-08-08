@@ -397,6 +397,16 @@ class ModelTypowany(models.Model):
         related_name="+",
     )
 
+    jezyk_orig = models.ForeignKey(
+        "Jezyk",
+        SET_NULL,
+        verbose_name="Język oryginalny",
+        help_text="Dla tłumaczeń. Wartość eksportowana do PBN. ",
+        related_name="+",
+        null=True,
+        blank=True,
+    )
+
     class Meta:
         abstract = True
 

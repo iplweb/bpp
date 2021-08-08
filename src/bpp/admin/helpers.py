@@ -131,6 +131,7 @@ MODEL_Z_ROKIEM = ("rok",)
 MODEL_TYPOWANY = (
     "jezyk",
     "jezyk_alt",
+    "jezyk_orig",
     "typ_kbn",
 )
 

@@ -64,11 +64,11 @@ class BaseMongoDBAdmin(admin.ModelAdmin):
     def has_add_permission(self, request):
         return False
 
-    def get_search_results(self, request, queryset, search_term):
-        queryset, use_distinct = super().get_search_results(
-            request, queryset.filter(status="ACTIVE"), search_term
-        )
-        return queryset, use_distinct
+    # def get_search_results(self, request, queryset, search_term):
+    #     queryset, use_distinct = super().get_search_results(
+    #         request, queryset.exclude(status="DELETED"), search_term
+    #     )
+    #     return queryset, use_distinct
 
 
 @admin.register(Institution)
@@ -83,6 +83,15 @@ class InstitutionAdmin(BaseMongoDBAdmin):
         "polonUid",
         "website",
         "mongoId",
+    ]
+
+    search_fields = [
+        "mongoId",
+        "name",
+        "addressCity",
+        "addressStreet",
+        "addressPostalCode",
+        "polonUid",
     ]
 
 
@@ -102,12 +111,13 @@ class ConferenceAdmin(BaseMongoDBAdmin):
 @admin.register(Journal)
 class JournalAdmin(BaseMongoDBAdmin):
     list_display = ["title", "issn", "eissn", "mniswId", "websiteLink", "mongoId"]
-    search_fields = ["mongoId", "versions"]
+    search_fields = ["mongoId", "title", "websiteLink", "issn", "eissn", "mniswId"]
 
 
 @admin.register(Publisher)
 class PublisherAdmin(BaseMongoDBAdmin):
     list_display = ["publisherName", "mniswId", "mongoId"]
+    search_fields = ["mongoId", "publisherName", "mniswId"]
 
 
 @admin.register(Scientist)
@@ -115,7 +125,7 @@ class ScientistAdmin(BaseMongoDBAdmin):
     list_display = [
         "lastName",
         "name",
-        "tytul",
+        "qualifications",
         "polonUid",
         "orcid",
         "currentEmploymentsInstitutionDisplayName",
@@ -124,6 +134,13 @@ class ScientistAdmin(BaseMongoDBAdmin):
     ]
     list_filter = [
         "from_institution_api",
+    ]
+
+    search_fields = [
+        "mongoId",
+        "lastName",
+        "name",
+        "orcid",
     ]
 
     fields = BaseMongoDBAdmin.fields + [
@@ -135,15 +152,20 @@ class ScientistAdmin(BaseMongoDBAdmin):
 @admin.register(Publication)
 class PublicationAdmin(BaseMongoDBAdmin):
     list_display = ["title", "type", "volume", "year", "publicUri", "doi"]
+    search_fields = [
+        "mongoId",
+        "title",
+        "isbn",
+        "doi",
+        "publicUri",
+    ]
 
 
 @admin.register(SentData)
 class SentDataAdmin(admin.ModelAdmin):
     list_display = ["object", "last_updated_on", "uploaded_okay"]
     ordering = ("-last_updated_on",)
-    search_fields = [
-        "data_sent",
-    ]
+    search_fields = ["data_sent", "exception"]
     readonly_fields = [
         "content_type",
         "object_id",

@@ -1,6 +1,7 @@
 # -*- encoding: utf-8 -*-
 
 from django import forms
+
 from miniblog.admin import SmallerTextarea
 from ..models.konferencja import Konferencja
 from .core import CommitedModelAdmin
@@ -66,6 +67,7 @@ class KonferencjaAdmin(CommitedModelAdmin):
         "panstwo",
         "baza_scopus",
         "baza_wos",
+        "pbn_uid",
     ]
     list_filter = [
         "miasto",
@@ -77,7 +79,14 @@ class KonferencjaAdmin(CommitedModelAdmin):
         "baza_inna",
         "typ_konferencji",
     ]
-    search_fields = ["nazwa", "rozpoczecie", "zakonczenie", "miasto", "panstwo"]
+    search_fields = [
+        "nazwa",
+        "rozpoczecie",
+        "zakonczenie",
+        "miasto",
+        "panstwo",
+        "pbn_uid__pk",
+    ]
     fieldsets = (
         (
             None,
@@ -93,6 +102,7 @@ class KonferencjaAdmin(CommitedModelAdmin):
                     "baza_scopus",
                     "baza_wos",
                     "baza_inna",
+                    "pbn_uid",
                 )
             },
         ),
@@ -104,6 +114,10 @@ class KonferencjaAdmin(CommitedModelAdmin):
     ]
 
     readonly_fields = ["ostatnio_zmieniony"]
+
+    autocomplete_fields = [
+        "pbn_uid",
+    ]
 
 
 admin.site.register(Konferencja, KonferencjaAdmin)

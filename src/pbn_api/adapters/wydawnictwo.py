@@ -147,6 +147,14 @@ class WydawnictwoPBNAdapter:
             )
 
         ret["mainLanguage"] = self.original.jezyk.pbn_uid.code
+        if self.original.jezyk_orig:
+
+            if self.original.jezyk_orig.pbn_uid_id is None:
+                raise WillNotExportError(
+                    f'Język *oryginalny* rekordu "{self.original.jezyk}" nie ma określonego odpowiednika w PBN'
+                )
+
+            ret["originalLanguage"] = self.original.jezyk_orig.pbn_uid.code
 
         if self.original.public_www:
             ret["publicUri"] = self.original.public_www
