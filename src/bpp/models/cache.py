@@ -6,6 +6,8 @@
 # - Patent
 # - Praca_Doktorska
 # - Praca_Habilitacyjna
+from contextlib import contextmanager
+
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import connections, models, router, transaction
 from django.db.models import CASCADE, ForeignKey, Func
@@ -227,6 +229,16 @@ def disable():
         post_save.disconnect(defer_zaktualizuj_opis, sender=model)
 
     _CACHE_ENABLED = False
+
+
+@contextmanager
+def cache_enabled():
+    if not enabled():
+        enable()
+    try:
+        yield
+    finally:
+        disable()
 
 
 class TupleField(ArrayField):
@@ -526,6 +538,7 @@ class RekordBase(
     tom = None
 
     jezyk_alt = None
+    jezyk_orig = None
 
     # Skróty dla django-dsl
 
@@ -591,6 +604,10 @@ class Rekord(RekordBase):
         managed = False
         ordering = ["tytul_oryginalny_sort"]
         db_table = "bpp_rekord_mat"
+
+    @cached_property
+    def autorzy_set(self):
+        return self.autorzy
 
 
 class RekordView(RekordBase):

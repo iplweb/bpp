@@ -7,6 +7,8 @@ except ImportError:
 
 import pytest
 
+from celeryui.models import Report
+
 from bpp.tests.util import (
     CURRENT_YEAR,
     any_autor,
@@ -14,15 +16,14 @@ from bpp.tests.util import (
     any_jednostka,
     select_select2_autocomplete,
 )
-from celeryui.models import Report
+
 from django_bpp.selenium_util import wait_for, wait_for_page_load
 
-
-@pytest.fixture
-def raporty_browser(preauth_browser, asgi_live_server):
-    with wait_for_page_load(preauth_browser):
-        preauth_browser.visit(asgi_live_server.url + reverse("bpp:raporty"))
-    return preauth_browser
+# @pytest.fixture
+# def preauth_browser(preauth_browser, asgi_live_server):
+#     with wait_for_page_load(preauth_browser):
+#         preauth_browser.visit(asgi_live_server.url + reverse("bpp:raporty"))
+#     return preauth_browser
 
 
 def wybrany(browser):
@@ -59,8 +60,8 @@ def jednostka_raportow(
 
 
 @pytest.mark.django_db(transaction=True)
-def test_ranking_autorow(raporty_browser, jednostka_raportow, asgi_live_server):
-    raporty_browser.visit(
+def test_ranking_autorow(preauth_browser, jednostka_raportow, asgi_live_server):
+    preauth_browser.visit(
         asgi_live_server.url + reverse("bpp:ranking_autorow_formularz")
     )
     from django.utils import timezone
@@ -72,42 +73,44 @@ def test_ranking_autorow(raporty_browser, jednostka_raportow, asgi_live_server):
     else:
         val = CURRENT_YEAR
 
-    assert 'value="%s"' % val in raporty_browser.html
+    assert 'value="%s"' % val in preauth_browser.html
 
 
 @pytest.mark.django_db(transaction=True)
-def test_raport_jednostek(raporty_browser, jednostka_raportow, asgi_live_server):
-    raporty_browser.visit(
-        asgi_live_server.url + reverse("bpp:raport_jednostek_formularz")
-    )
+def test_raport_jednostek(preauth_browser, jednostka_raportow, asgi_live_server):
 
-    select_select2_autocomplete(raporty_browser, "id_jednostka", "Jedn")
+    with wait_for_page_load(preauth_browser):
+        preauth_browser.visit(
+            asgi_live_server.url + reverse("bpp:raport_jednostek_formularz")
+        )
 
-    raporty_browser.execute_script(
+    select_select2_autocomplete(preauth_browser, "id_jednostka", "Jedn")
+
+    preauth_browser.execute_script(
         '$("input[name=od_roku]:visible").val("' + str(CURRENT_YEAR) + '")'
     )
-    raporty_browser.execute_script(
+    preauth_browser.execute_script(
         '$("input[name=do_roku]:visible").val("' + str(CURRENT_YEAR) + '")'
     )
-    with wait_for_page_load(raporty_browser):
-        submit_page(raporty_browser)
+    with wait_for_page_load(preauth_browser):
+        submit_page(preauth_browser)
 
     wait_for(
         lambda: f"/bpp/raporty/raport-jednostek-2012/{jednostka_raportow.pk}/{CURRENT_YEAR}/"
-        in raporty_browser.url
+        in preauth_browser.url
     )
 
 
 @pytest.mark.django_db(transaction=True)
-def test_submit_kronika_uczelni(raporty_browser, jednostka_raportow, asgi_live_server):
+def test_submit_kronika_uczelni(preauth_browser, jednostka_raportow, asgi_live_server):
     c = Report.objects.all().count
     assert c() == 0
 
-    raporty_browser.visit(asgi_live_server.url + reverse("bpp:raport_kronika_uczelni"))
-    raporty_browser.execute_script(
+    preauth_browser.visit(asgi_live_server.url + reverse("bpp:raport_kronika_uczelni"))
+    preauth_browser.execute_script(
         '$("input[name=rok]").val("' + str(CURRENT_YEAR) + '")'
     )
-    submit_page(raporty_browser)
+    submit_page(preauth_browser)
 
     wait_for(lambda: c() == 1)
 

@@ -10,7 +10,7 @@ import pytest
 import webtest
 from django.db import IntegrityError
 from rest_framework.test import APIClient
-from selenium.webdriver.remote.webdriver import WebDriver
+from splinter.driver import DriverAPI
 
 from pbn_api.models import Language
 
@@ -28,6 +28,7 @@ from bpp.fixtures import get_openaccess_data
 from bpp.models import (
     Autor_Dyscyplina,
     Dyscyplina_Naukowa,
+    Rekord,
     Wydawca,
     Zewnetrzna_Baza_Danych,
     const,
@@ -173,7 +174,7 @@ def admin_browser(
     django_user_model,
     django_username_field,
     transactional_db,
-) -> WebDriver:
+) -> DriverAPI:
     browser = _preauth_session_id_helper(
         "admin",
         "password",
@@ -183,7 +184,7 @@ def admin_browser(
         django_user_model,
         django_username_field,
     )
-    browser.driver.set_window_size(1920, 1200)
+    browser.driver.set_window_size(1920, 1600)
 
     yield browser
     browser.execute_script("window.onbeforeunload = function(e) {};")
@@ -664,7 +665,21 @@ def standard_data(
     statusy_korekt,
     funkcje_autorow,
 ):
-    pass
+    class StandardData:
+        @classmethod
+        def clean(self):
+            for model in (
+                Typ_Odpowiedzialnosci,
+                Tytul,
+                Jezyk,
+                Charakter_Formalny,
+                Typ_KBN,
+                Status_Korekty,
+                Funkcja_Autora,
+            ):
+                model.objects.all().delete()
+
+    return StandardData
 
 
 @pytest.mark.django_db
@@ -820,3 +835,64 @@ def autor_z_dyscyplina(autor_jan_nowak, dyscyplina1, rok):
     return Autor_Dyscyplina.objects.get_or_create(
         autor=autor_jan_nowak, dyscyplina_naukowa=dyscyplina1, rok=rok
     )[0]
+
+
+#
+# Monkeypatch fixture-teardown to allow TRUNCATE
+#
+
+
+from django.core.management import call_command
+from django.db import connections
+from django.test import TransactionTestCase
+
+
+def _fixture_teardown(self):
+    # Allow TRUNCATE ... CASCADE and don't emit the post_migrate signal
+    # when flushing only a subset of the apps
+    for db_name in self._databases_names(include_mirrors=False):
+        # Flush the database
+        inhibit_post_migrate = (
+            self.available_apps is not None
+            or (  # Inhibit the post_migrate signal when using serialized
+                # rollback to avoid trying to recreate the serialized data.
+                self.serialized_rollback
+                and hasattr(connections[db_name], "_test_serialized_contents")
+            )
+        )
+        call_command(
+            "flush",
+            verbosity=0,
+            interactive=False,
+            database=db_name,
+            reset_sequences=False,
+            # In the real TransactionTestCase this is conditionally set to False.
+            allow_cascade=True,
+            inhibit_post_migrate=inhibit_post_migrate,
+        )
+
+
+TransactionTestCase._fixture_teardown = _fixture_teardown
+
+
+@pytest.fixture
+def with_cache():
+    from bpp.models.cache import cache_enabled
+
+    with cache_enabled():
+        [x.zaktualizuj_cache() for x in Rekord.objects.all()]
+        yield
+
+
+def pytest_collection_modifyitems(items):
+    # Dodaj marker "selenium" dla wszystkich testów uzywających fikstur 'browser'
+    # lub 'admin_browser', aby można było szybko uruchamiać wyłacznie te testy
+    # lub nie uruchamiać ich:
+
+    flaky_test = pytest.mark.flaky(reruns=5)
+
+    for item in items:
+        fixtures = getattr(item, "fixturenames", ())
+        if "browser" in fixtures or "admin_browser" in fixtures:
+            item.add_marker("selenium")
+            item.add_marker(flaky_test)

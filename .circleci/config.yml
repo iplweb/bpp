@@ -56,12 +56,12 @@ jobs:
           paths:
             - "/home/circleci/.cache"
 
-      # Uruchamiaj na lokalnym firefoxie używając jednego CPU
+      # Uruchamiaj na lokalnym firefoxie używając dwóch CPU
       - run:
           name: pytest
           command: |
             . venv/bin/activate
-            pytest -d -n 2 --maxfail=5 --splinter-headless --cov=src --ds=django_bpp.settings.test
+            pytest -d -n 2 --splinter-headless --cov=src --ds=django_bpp.settings.test # src/integration_tests/test_global_search.py
 
       # Testy JavaScript
       - run: make js-tests

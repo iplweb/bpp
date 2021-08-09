@@ -43,7 +43,8 @@ def test_autor_inline_wydawnictwo_dyscyplina(
         autor_z_dyscyplina.autor,
         jednostka,
         "123 foo",
-        dyscyplina=autor_z_dyscyplina.dyscyplina_naukowa,
+        # Nie trzeba tego podawac bo dyscyplina sama 'wskoczy'
+        #     dyscyplina=autor_z_dyscyplina.dyscyplina_naukowa,
     )
 
     with wait_for_page_load(admin_browser):

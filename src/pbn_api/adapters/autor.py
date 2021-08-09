@@ -23,7 +23,10 @@ class AutorZDyscyplinaPBNAdapter(AutorSimplePBNAdapter):
     def pbn_get_json(self):
         ret = super(AutorZDyscyplinaPBNAdapter, self).pbn_get_json()
 
-        if self.original.orcid is not None:  # and self.orcid_w_pbn is True:
+        # Eksportuj ORCID wyłacznie, gdy nie został wyeksportowany identyfikator PBN
+        if (
+            self.original.orcid is not None and "objectId" not in ret
+        ):  # and self.orcid_w_pbn is True:
             ret.update({"orcidId": self.original.orcid})
 
         return ret

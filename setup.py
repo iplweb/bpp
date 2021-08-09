@@ -6,6 +6,7 @@ import sys
 from distutils.cmd import Command
 from distutils.command.build import build as _build
 
+from django.core.management import call_command
 from setuptools import find_packages, setup
 from setuptools.command.install_lib import install_lib as _install_lib
 
@@ -31,8 +32,6 @@ class compile_translations(Command):
     def run(self):
         curdir = os.getcwd()
         os.chdir(os.path.realpath("src"))
-        from django.core.management import call_command
-
         call_command("compilemessages")
         os.chdir(curdir)
 
@@ -62,7 +61,7 @@ def requirements(fn="requirements.txt"):
 
 setup(
     name="bpp-iplweb",
-    version="202107.71",
+    version="202108.72",
     description="System informatyczny do zarządzania bibliografią publikacji pracowników naukowych",
     long_description=readme,
     long_description_content_type="text/x-rst",

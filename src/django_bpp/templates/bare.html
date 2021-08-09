@@ -98,6 +98,13 @@
     $.fn.select2.defaults.set('language', 'pl');
     $.fn.select2.defaults.set('theme', 'foundation');
 
+    $(document).on('select2:open', () => {
+        function _(){
+            document.querySelector('.select2-search__field').focus()
+        }
+
+        setTimeout(_, 10);
+    });
 
     $.extend(true, $.fn.dataTable.defaults, {
         // Przetłumacz wszystkie tabelki DataTables
@@ -106,6 +113,7 @@
         },
         "lengthMenu": [ [10, 25, 50, 100, -1], [10, 25, 50, 100, "wszystkie"] ]
     });
+
 
 </script>
 </body>

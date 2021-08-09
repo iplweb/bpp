@@ -4,7 +4,7 @@ import pytest
 from django.db import transaction
 from model_mommy import mommy
 
-from bpp.models import Praca_Doktorska, rebuild_ciagle, rebuild_zwarte
+from bpp.models import Praca_Doktorska, cache_enabled, rebuild_ciagle, rebuild_zwarte
 from bpp.models.autor import Autor
 from bpp.models.cache import Autorzy, Rekord, defer_zaktualizuj_opis, rebuild_patent
 from bpp.models.openaccess import (
@@ -24,27 +24,31 @@ def pierwszy_rekord():
 
 
 def test_opis_bibliograficzny_wydawnictwo_ciagle(transactional_db, standard_data):
-    wc = mommy.make(Wydawnictwo_Ciagle, szczegoly="Sz", uwagi="U")
+    with cache_enabled():
+        wc = mommy.make(Wydawnictwo_Ciagle, szczegoly="Sz", uwagi="U")
+        # transaction.commit()
 
-    rekord_opis = Rekord.objects.all()[0].opis_bibliograficzny_cache
-    wc_opis = wc.opis_bibliograficzny()
-    assert rekord_opis == wc_opis
+        rekord_opis = Rekord.objects.all()[0].opis_bibliograficzny_cache
+
+        wc_opis = wc.opis_bibliograficzny()
+        assert rekord_opis == wc_opis
 
 
 def test_opis_bibliograficzny_praca_doktorska(
     transactional_db, standard_data, autor_jan_kowalski, jednostka
 ):
-    wc = mommy.make(
-        Praca_Doktorska,
-        szczegoly="Sz",
-        uwagi="U",
-        autor=autor_jan_kowalski,
-        jednostka=jednostka,
-    )
+    with cache_enabled():
+        wc = mommy.make(
+            Praca_Doktorska,
+            szczegoly="Sz",
+            uwagi="U",
+            autor=autor_jan_kowalski,
+            jednostka=jednostka,
+        )
 
-    rekord_opis = Rekord.objects.all()[0].opis_bibliograficzny_cache
-    wc_opis = wc.opis_bibliograficzny()
-    assert rekord_opis == wc_opis
+        rekord_opis = Rekord.objects.all()[0].opis_bibliograficzny_cache
+        wc_opis = wc.opis_bibliograficzny()
+        assert rekord_opis == wc_opis
 
 
 def test_kasowanie(db, standard_data):
@@ -57,7 +61,7 @@ def test_kasowanie(db, standard_data):
     assert Rekord.objects.count() == 0
 
 
-def test_opis_bibliograficzny_dependent(transactional_db, standard_data):
+def test_opis_bibliograficzny_dependent(transactional_db, standard_data, with_cache):
     """Stwórz i skasuj Wydawnictwo_Ciagle_Autor i sprawdź, jak to
     wpłynie na opis."""
 
@@ -78,7 +82,7 @@ def test_opis_bibliograficzny_dependent(transactional_db, standard_data):
     assert "KOWALSKI" not in pierwszy_rekord()
 
 
-def test_opis_bibliograficzny_zrodlo(transactional_db, standard_data):
+def test_opis_bibliograficzny_zrodlo(transactional_db, standard_data, with_cache):
     """Zmień nazwę źródła i sprawdź, jak to wpłynie na opis."""
     from bpp.models import cache
 
@@ -135,7 +139,9 @@ def test_deletion_cache(doktorat):
     assert Rekord.objects.all().count() == 0
 
 
-def test_wca_delete_cache(transactional_db, wydawnictwo_ciagle_z_dwoma_autorami):
+def test_wca_delete_cache(
+    transactional_db, wydawnictwo_ciagle_z_dwoma_autorami, with_cache
+):
     """Czy skasowanie obiektu Wydawnictwo_Ciagle_Autor zmieni opis
     wydawnictwa ciągłego w Rekordy materialized view?"""
 
@@ -152,6 +158,7 @@ def test_wca_delete_cache(transactional_db, wydawnictwo_ciagle_z_dwoma_autorami)
 
     assert Autorzy.objects.filter_rekord(aca).count() == 0
     assert Rekord.objects.all().count() == 1
+    transaction.commit()
 
     r = Rekord.objects.all()[0]
     assert "NOWAK" not in r.opis_bibliograficzny_cache
@@ -193,7 +200,7 @@ def test_caching_kasowanie_typu_odpowiedzialnosci_autorow(
 
 
 def test_caching_kasowanie_zrodla(
-    transactional_db, wydawnictwo_ciagle_z_dwoma_autorami
+    transactional_db, wydawnictwo_ciagle_z_dwoma_autorami, with_cache
 ):
     assert Zrodlo.objects.all().count() == 1
 
@@ -341,7 +348,10 @@ def test_caching_full_refresh(wydawnictwo_ciagle_z_dwoma_autorami):
     assert Rekord.objects.all().count() == 1
 
 
-def test_caching_kolejnosc(transactional_db, wydawnictwo_ciagle_z_dwoma_autorami):
+def test_caching_kolejnosc(
+    transactional_db, wydawnictwo_ciagle_z_dwoma_autorami, with_cache
+):
+    transaction.commit()
 
     a = list(Wydawnictwo_Ciagle_Autor.objects.all().order_by("kolejnosc"))
     assert len(a) == 2
@@ -382,7 +392,9 @@ def test_rekord_describe_content_type(wydawnictwo_zwarte):
     assert "wydawnictwo" in Rekord.objects.first().describe_content_type
 
 
-def test_aktualizacja_rekordu_autora(transactional_db, typy_odpowiedzialnosci):
+def test_aktualizacja_rekordu_autora(
+    transactional_db, typy_odpowiedzialnosci, with_cache
+):
     w = mommy.make(Wydawnictwo_Ciagle)
 
     a = mommy.make(Autor)

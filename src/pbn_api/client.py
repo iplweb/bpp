@@ -15,6 +15,8 @@ from pbn_api.exceptions import (
 )
 from pbn_api.models import SentData
 
+from django.contrib.contenttypes.models import ContentType
+
 from django.utils.itercompat import is_iterable
 
 DEFAULT_BASE_URL = "https://pbn-micro-alpha.opi.org.pl"
@@ -494,6 +496,13 @@ class PBNClient(
     def sync_publication(self, pub, force_upload=False):
         # if not pub.doi:
         #     raise WillNotExportError("Ustaw DOI dla publikacji")
+
+        if type(pub) == str:
+            # Ciag znaków w postaci wydawnictwo_zwarte:123 pozwoli na podawanie tego
+            # parametru do wywołań z linii poleceń
+            model, pk = pub.split(":")
+            ctype = ContentType.objects.get(app_label="bpp", model=model)
+            pub = ctype.model_class().objects.get(pk=pk)
 
         ret = self.upload_publication(pub, force_upload=force_upload)
 

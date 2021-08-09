@@ -13,7 +13,7 @@ from selenium.webdriver.common.keys import Keys
 
 from bpp.models import Autor, Zrodlo
 
-from django_bpp.selenium_util import wait_for_page_load
+from django_bpp.selenium_util import SHORT_WAIT_TIME, wait_for_page_load
 
 pytestmark = [pytest.mark.slow, pytest.mark.selenium]
 
@@ -83,7 +83,7 @@ def test_zrodla_search_form(zrodla_browser):
     input = zrodla_browser.find_by_name("search")
     input.type("Atest")
     input.type(Keys.RETURN)
-    WebDriverWait(zrodla_browser.driver, 10).until(
+    WebDriverWait(zrodla_browser.driver, SHORT_WAIT_TIME).until(
         lambda x: "Atest" in zrodla_browser.html
     )
 
@@ -92,6 +92,6 @@ def test_zrodla_search_form(zrodla_browser):
     input.fill("Btest")
     input.type(Keys.RETURN)
 
-    WebDriverWait(zrodla_browser.driver, 10).until(
+    WebDriverWait(zrodla_browser.driver, SHORT_WAIT_TIME).until(
         lambda x: "Atest" not in zrodla_browser.html
     )

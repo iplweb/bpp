@@ -3,6 +3,15 @@
 Historia zmian
 ==============
 
+202108.72
+---------
+
+* poprawki matchowania rekordów przy wpisywaniu odpowiedników PBN w module redagowania: szybsze wyszukiwanie
+  autorów, instytycji i publikacji, czytelniejsze rekordy instytucji i autorów, możliwość wyszukiwania publikacji
+  po PBN ID, DOI, źródeł po PBN ID, ISSN, E-ISSN, książek po ISBN i inne
+* pole "język oryginalny" dla tłumaczeń + eksport do PBN,
+* jeżeli autor ma identyfikator PBN to nie wysyłaj ORCIDu (błąd o braku po stronie PBN),
+
 202107.71
 ---------
 

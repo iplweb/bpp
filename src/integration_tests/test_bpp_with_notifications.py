@@ -26,17 +26,20 @@ except ImportError:
     from django.urls import reverse
 
 import pytest
-from conftest import NORMAL_DJANGO_USER_PASSWORD
 from selenium.webdriver.support.wait import WebDriverWait
+
+from conftest import NORMAL_DJANGO_USER_PASSWORD
 
 from bpp.models.system import Charakter_Formalny, Jezyk, Status_Korekty, Typ_KBN
 
-from django_bpp.selenium_util import wait_for_page_load
+from django_bpp.selenium_util import SHORT_WAIT_TIME, wait_for_page_load
 
 pytestmark = [pytest.mark.slow, pytest.mark.selenium]
 
 
-def test_caching_enabled(admin_app, zrodlo, standard_data, transactional_db):
+def test_caching_enabled(
+    admin_app, zrodlo, standard_data, transactional_db, with_cache
+):
     """
     1) wejdź do redagowania
     2) dopisz publikację, zapisz
@@ -94,7 +97,7 @@ def test_asgi_live_server(preauth_asgi_browser):
         verbosity=0,
     )
 
-    WebDriverWait(preauth_asgi_browser, 10).until(
+    WebDriverWait(preauth_asgi_browser, SHORT_WAIT_TIME).until(
         lambda browser: browser.is_text_present(s)
     )
 
@@ -122,14 +125,14 @@ def test_bpp_notifications_and_messages(preauth_asgi_browser):
 
     call_command("send_message", preauth_asgi_browser.authorized_user.username, s)
 
-    WebDriverWait(preauth_asgi_browser, 10).until(
+    WebDriverWait(preauth_asgi_browser, SHORT_WAIT_TIME).until(
         lambda browser: browser.is_text_present(s)
     )
 
     with wait_for_page_load(preauth_asgi_browser):
         preauth_asgi_browser.reload()
 
-    WebDriverWait(preauth_asgi_browser, 10).until(
+    WebDriverWait(preauth_asgi_browser, SHORT_WAIT_TIME).until(
         lambda browser: browser.is_text_present(s)
     )
 

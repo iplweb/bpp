@@ -862,8 +862,18 @@ def _synchronizuj_pojedyncza_publikacje(client, rec):
     except HttpException as e:
         if e.status_code in [400, 500]:
             warnings.warn(
-                f"{rec.pk},{rec.tytul_oryginalny},{rec.rok},PBN Error 500: {e.content}"
+                f"{rec.pk},{rec.tytul_oryginalny},{rec.rok},PBN Server Error: {e.content}"
             )
+        if e.status_code == 403:
+            # Jezeli przytrafi się wyjątek taki, jak poniżej:
+            #
+            # pbn_api.exceptions.HttpException: (403, '/api/v1/publications', '{"code":403,"message":"Forbidden",
+            # "description":"W celu poprawnej autentykacji należy podać poprawny token użytkownika aplikacji.
+            # Podany token użytkownika X w ramach aplikacji Y nie istnieje lub został unieważniony!"}')
+            #
+            # to go podnieś. Jeżeli autoryzacja nie została przeprowadzona poprawnie, to nie chcemy kontynuować
+            # dalszego procesu synchronizacji prac.
+            raise e
     except WillNotExportError as e:
         warnings.warn(
             f"{rec.pk},{rec.tytul_oryginalny},{rec.rok},nie wyeksportuje, bo: {e}"

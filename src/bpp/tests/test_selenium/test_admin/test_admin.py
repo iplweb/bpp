@@ -1,5 +1,5 @@
 # -*- encoding: utf-8 -*-
-
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support.expected_conditions import alert_is_present
 
 from bpp.models.const import CHARAKTER_OGOLNY_KSIAZKA, TO_AUTOR
@@ -42,7 +42,12 @@ from bpp.tests.util import (
     show_element,
 )
 
-from django_bpp.selenium_util import wait_for, wait_for_page_load
+from django_bpp.selenium_util import (
+    LONG_WAIT_TIME,
+    SHORT_WAIT_TIME,
+    wait_for,
+    wait_for_page_load,
+)
 
 ID = "id_tytul_oryginalny"
 
@@ -56,11 +61,24 @@ def test_uzupelnij_strona_tom_nr_zeszytu(url, admin_browser, asgi_live_server):
     with wait_for_page_load(admin_browser):
         admin_browser.visit(asgi_live_server.url + url)
 
+    WebDriverWait(admin_browser, SHORT_WAIT_TIME).until(
+        lambda browser: not admin_browser.find_by_name("informacje").is_empty()
+    )
+    try:
+        WebDriverWait(admin_browser, LONG_WAIT_TIME).until(
+            lambda browser: not admin_browser.find_by_id("id_strony_get").is_empty()
+        )
+    except TimeoutException as e:
+        raise e
+
     admin_browser.find_by_name("informacje").type("1993 vol. 5 z. 1")
     admin_browser.find_by_name("szczegoly").type("s. 4-3")
 
-    admin_browser.execute_script("django.jQuery('#id_strony_get').click()")
-    WebDriverWait(admin_browser, 10).until(
+    elem = admin_browser.find_by_id("id_strony_get")
+    show_element(admin_browser, elem)
+    elem.click()
+
+    WebDriverWait(admin_browser, SHORT_WAIT_TIME).until(
         lambda browser: browser.find_by_name("tom").value != ""
     )
 
@@ -77,6 +95,15 @@ def test_liczba_znakow_wydawniczych_liczba_arkuszy_wydawniczych(
     url = reverse("admin:bpp_wydawnictwo_zwarte_add")
     with wait_for_page_load(admin_browser):
         admin_browser.visit(asgi_live_server.url + url)
+
+    try:
+        WebDriverWait(admin_browser, SHORT_WAIT_TIME).until(
+            lambda browser: not admin_browser.find_by_id(
+                "id_liczba_arkuszy_wydawniczych"
+            ).is_empty()
+        )
+    except TimeoutException as e:
+        raise e
 
     admin_browser.execute_script(
         "django.jQuery('#id_liczba_znakow_wydawniczych').val('40000').change()"
@@ -97,7 +124,10 @@ def test_automatycznie_uzupelnij_punkty(admin_browser, asgi_live_server):
         admin_browser.visit(asgi_live_server.url + url)
 
     any_zrodlo(nazwa="FOO BAR")
-    proper_click_by_id(admin_browser, "id_wypelnij_pola_punktacji_button")
+
+    elem = admin_browser.find_by_id("id_wypelnij_pola_punktacji_button")
+    show_element(admin_browser, elem)
+    elem.click()
     assertPopupContains(admin_browser, "Najpierw wybierz jakie")
 
     select_select2_autocomplete(admin_browser, "id_zrodlo", "FOO")
@@ -128,7 +158,8 @@ def test_admin_uzupelnij_punkty(admin_browser, asgi_live_server):
     c = any_ciagle(zrodlo=z, impact_factor=5, punkty_kbn=5)
 
     url = reverse("admin:bpp_wydawnictwo_ciagle_change", args=(c.pk,))
-    admin_browser.visit(asgi_live_server.url + url)
+    with wait_for_page_load(admin_browser):
+        admin_browser.visit(asgi_live_server.url + url)
 
     rok = admin_browser.find_by_id("id_rok")
     punkty_kbn = admin_browser.find_by_id("id_punkty_kbn")
@@ -158,7 +189,7 @@ def test_admin_uzupelnij_punkty(admin_browser, asgi_live_server):
     assert button.value == "Wypełniona!"
 
     select_select2_clear_selection(admin_browser, "id_zrodlo")
-    WebDriverWait(admin_browser.driver, 5).until(
+    WebDriverWait(admin_browser.driver, SHORT_WAIT_TIME).until(
         lambda browser: admin_browser.find_by_id(
             "id_wypelnij_pola_punktacji_button"
         ).value
@@ -183,9 +214,11 @@ def test_upload_punkty(admin_browser, asgi_live_server):
     show_element(admin_browser, admin_browser.find_by_id("id_impact_factor"))
     admin_browser.fill("impact_factor", "1")
 
-    proper_click_by_id(admin_browser, "id_dodaj_punktacje_do_zrodla_button")
+    elem = admin_browser.find_by_id("id_dodaj_punktacje_do_zrodla_button")
+    show_element(admin_browser, elem)
+    elem.click()
 
-    WebDriverWait(admin_browser.driver, 10).until(
+    WebDriverWait(admin_browser.driver, SHORT_WAIT_TIME).until(
         lambda browser: Punktacja_Zrodla.objects.count() == 1
     )
     assert Punktacja_Zrodla.objects.all()[0].impact_factor == 1
@@ -193,13 +226,13 @@ def test_upload_punkty(admin_browser, asgi_live_server):
     admin_browser.fill("impact_factor", "2")
     proper_click_by_id(admin_browser, "id_dodaj_punktacje_do_zrodla_button")
 
-    WebDriverWait(admin_browser.driver, 10).until(alert_is_present())
+    WebDriverWait(admin_browser.driver, SHORT_WAIT_TIME).until(alert_is_present())
     assertPopupContains(admin_browser, "Punktacja dla tego roku już istnieje")
-    WebDriverWait(admin_browser.driver, 10).until(
+    WebDriverWait(admin_browser.driver, SHORT_WAIT_TIME).until(
         lambda browser: not alert_is_present()(browser)
     )
 
-    WebDriverWait(admin_browser.driver, 10).until(
+    WebDriverWait(admin_browser.driver, SHORT_WAIT_TIME).until(
         lambda browser: Punktacja_Zrodla.objects.all()[0].impact_factor == 2
     )
 
@@ -231,7 +264,7 @@ def test_autorform_uzupelnianie_jednostki(autorform_browser, autorform_jednostka
     select_select2_autocomplete(autorform_browser, "id_autorzy_set-0-autor", "KOWALSKI")
 
     autorform_browser.find_by_id("id_autorzy_set-0-jednostka")
-    WebDriverWait(autorform_browser, 5).until(
+    WebDriverWait(autorform_browser, SHORT_WAIT_TIME).until(
         lambda browser: autorform_browser.find_by_id("id_autorzy_set-0-jednostka").value
         == str(autorform_jednostka.pk)
     )
@@ -266,12 +299,15 @@ def test_autorform_kasowanie_autora(autorform_browser, autorform_jednostka):
     select_select2_clear_selection(autorform_browser, "id_autorzy_set-0-autor")
 
     # jednostka nie jest wybrana
-    WebDriverWait(autorform_browser.driver, 5).until(
-        lambda browser: autorform_browser.find_by_id(
-            "id_autorzy_set-0-jednostka"
-        ).value.find("\n")
-        != -1
-    )
+    try:
+        WebDriverWait(autorform_browser.driver, SHORT_WAIT_TIME).until(
+            lambda browser: autorform_browser.find_by_id(
+                "id_autorzy_set-0-jednostka"
+            ).value.find("\n")
+            != -1
+        )
+    except TimeoutException as e:
+        raise e
     #  assert jed.value.find("\n") != -1
 
     autorform_browser.execute_script("window.onbeforeunload = function(e) {};")
@@ -349,7 +385,8 @@ def test_admin_wydawnictwo_ciagle_uzupelnij_rok(admin_browser, asgi_live_server)
             asgi_live_server.url + reverse("admin:bpp_wydawnictwo_ciagle_add")
         )
     browser.fill("informacje", "Lublin 2002 test")
-    proper_click_by_id(browser, "id_rok_button")
+    elem = browser.find_by_id("id_rok_button")
+    proper_click_element(browser, elem)
 
     browser.wait_for_condition(
         lambda browser: browser.find_by_id("id_rok").value == "2002"
@@ -381,16 +418,24 @@ def test_admin_wydawnictwo_ciagle_dowolnie_zapisane_nazwisko(
     elem = browser.find_by_xpath(xp1)
     proper_click_element(browser, elem[0])
 
-    browser.find_by_xpath(
+    element = browser.find_by_xpath(
         "/html/body/div[2]/article/div/form/div/div[1]/div[2]/div/a"
-    ).click()
-    wait_for(lambda: browser.find_by_id("id_autorzy_set-0-autor"))
+    )
+    proper_click_element(browser, element)
+    # scroll_into_view()
+    wait_for(
+        lambda: browser.find_by_id("id_autorzy_set-0-autor"),
+        max_seconds=SHORT_WAIT_TIME,
+    )
 
     select_select2_autocomplete(browser, "id_autorzy_set-0-autor", "Kowalski Jan")
 
     select_select2_autocomplete(
         browser, "id_autorzy_set-0-zapisany_jako", "Dowolny tekst"
     )
+
+    if browser.find_by_id("id_autorzy_set-0-zapisany_jako").value != "Dowolny tekst":
+        print("1")  # for debugging
 
     assert browser.find_by_id("id_autorzy_set-0-zapisany_jako").value == "Dowolny tekst"
 
@@ -446,10 +491,11 @@ def test_admin_domyslnie_afiliuje_istniejacy_rekord(
     wa.save()
 
     browser = admin_browser
-    browser.visit(
-        asgi_live_server.url
-        + reverse(f"admin:bpp_{url}_change", args=(wydawnictwo.pk,))
-    )
+    with wait_for_page_load(browser):
+        browser.visit(
+            asgi_live_server.url
+            + reverse(f"admin:bpp_{url}_change", args=(wydawnictwo.pk,))
+        )
 
     add_extra_autor_inline(browser)
 

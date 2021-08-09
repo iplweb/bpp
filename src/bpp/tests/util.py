@@ -11,6 +11,7 @@ from datetime import datetime
 from django.urls import reverse
 from model_mommy import mommy
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.expected_conditions import visibility_of
 from selenium.webdriver.support.wait import WebDriverWait
 from splinter.exceptions import ElementDoesNotExist
 
@@ -32,7 +33,12 @@ from bpp.models import (
 )
 from bpp.models.system import Status_Korekty
 
-from django_bpp.selenium_util import wait_for, wait_for_page_load
+from django_bpp.selenium_util import (
+    LONG_WAIT_TIME,
+    SHORT_WAIT_TIME,
+    wait_for,
+    wait_for_page_load,
+)
 
 
 def setup_mommy():
@@ -247,7 +253,9 @@ def show_element(browser, element):
     return browser.execute_script(s, element._element)
 
 
-def select_select2_autocomplete(browser, element_id, value):
+def select_select2_autocomplete(
+    browser, element_id, value, wait_for_new_value=True, value_before_enter=None
+):
     """
     Wypełnia kontrolkę Select2
 
@@ -259,46 +267,66 @@ def select_select2_autocomplete(browser, element_id, value):
     element = browser.find_by_id(element_id)[0]
     sibling = element.find_by_xpath("following-sibling::span")
 
+    if len(sibling) == 0:
+        raise ElementDoesNotExist("sibling not found")
+
+    sibling = sibling.first
+
     # Umieść go na widoku
-    show_element(browser, element)
+    show_element(browser, sibling)
 
     # Kliknij w aktywny element, następnie wyślij klawisze do aktywnego
     # elementu, który się pojawił (wyskakujący pop-up select2)
     # następnie wyślij ENTER, następnie sprawdź, czy ustawiona została
     # nowa wartość. Jeżeli nie, to powtórz, maksimum 3 razy:
 
-    no_tries = 0
-    while no_tries < 3:
-        # Kliknij w select2 tak, aby pojawiło się okienko do wpisywania tekstu
-        active = element.parent.switch_to.active_element
+    # tries = 0
+    # while True:
+
+    old_active = element.parent.switch_to.active_element
+    while True:
         sibling.click()
-        # ... czekaj na pojawienie się okienka
-        wait_for(lambda: element.parent.switch_to.active_element != active)
+        time.sleep(random.randint(100, 1000) / 1000)
+        new_active = element.parent.switch_to.active_element
 
+        if new_active != old_active:
+            break
+
+    old_value = None
+
+    while old_value is None:
         old_value = browser.find_by_id(f"select2-{element_id}-container").text
+        time.sleep(0.3)
 
-        active = element.parent.switch_to.active_element
-        active.send_keys(value)
+    # for letter in value:
+    new_active.send_keys(value)
+    time.sleep(1)
 
-        wait_for(
-            lambda: "Trwa wyszukiwanie…"
-            not in browser.find_by_id(f"select2-{element_id}-results").value
-        )
-        time.sleep(0.5)
+    wait_for(
+        lambda: "Trwa wyszukiwanie…"
+        not in browser.find_by_id(f"select2-{element_id}-results").value
+    )
 
-        active.send_keys(Keys.ENTER)
+    if value_before_enter:
+        try:
+            wait_for(
+                lambda: value_before_enter
+                in browser.find_by_id(f"select2-{element_id}-results").value,
+                max_seconds=LONG_WAIT_TIME,
+            )
+        except TimeoutError as e:
+            raise e
+    new_active.send_keys(Keys.ENTER)
+    time.sleep(0.5)
 
+    if wait_for_new_value:
         try:
             wait_for(
                 lambda: browser.find_by_id(f"select2-{element_id}-container").text
                 != old_value
             )
-            break
         except TimeoutError as e:
-            if no_tries >= 3:
-                raise e
-
-        no_tries += 1
+            raise e
 
 
 def select_select2_clear_selection(browser, element_id):
@@ -331,15 +359,13 @@ def proper_click_element(browser, element):
     # show_element(browser, element)
     # return element.click()
     browser.execute_script("arguments[0].scrollIntoView();", element._element)
+    WebDriverWait(browser, SHORT_WAIT_TIME).until(visibility_of(element._element))
     browser.execute_script("arguments[0].click();", element._element)
 
 
 def proper_click_by_id(browser, arg):
-    browser.find_by_id(arg)
-    browser.execute_script(
-        "document.getElementById(arguments[0]).scrollIntoView();", arg
-    )
-    browser.execute_script("document.getElementById(arguments[0]).click();", arg)
+    elem = browser.find_by_id(arg)
+    proper_click_element(browser, elem)
 
 
 def assertPopupContains(browser, text, accept=True):
@@ -354,8 +380,14 @@ def assertPopupContains(browser, text, accept=True):
 
 
 def add_extra_autor_inline(browser, no_current_inlines=0):
+    elem = None
+
+    WebDriverWait(browser, SHORT_WAIT_TIME).until(
+        lambda browser: not browser.find_by_css(".grp-add-handler").is_empty()
+    )
+
     elems = browser.find_by_css(".grp-add-handler")
-    e = None
+
     for e in elems:
         if (
             e.visible
@@ -363,11 +395,19 @@ def add_extra_autor_inline(browser, no_current_inlines=0):
             and e.text.find("powiązanie autora") >= 0
         ):
             elem = e
-    if e is None:
-        raise ElementDoesNotExist("element .grp-add-handler nie istnieje")
+            break
 
     proper_click_element(browser, elem)
-    wait_for(lambda: browser.find_by_id(f"id_autorzy_set-{no_current_inlines}-autor"))
+
+    try:
+        wait_for(
+            lambda: not browser.find_by_id(
+                f"id_autorzy_set-{no_current_inlines}-autor"
+            ).is_empty(),
+            max_seconds=LONG_WAIT_TIME,
+        )
+    except TimeoutError as e:
+        raise e
 
 
 def randomobj(model):
@@ -376,7 +416,7 @@ def randomobj(model):
 
 def quick_find_by_id(browser, id):
     if f'id="{id}"' in browser.html:
-        return browser.find_by_id(id, wait_time=0)
+        return browser.find_by_id(id, wait_time=0.01)
 
 
 def fill_admin_form(
@@ -467,14 +507,14 @@ def fill_admin_inline(
         )
 
 
-def submitted_form_bad(browser):
-    WebDriverWait(browser.driver, 10).until(
+def submitted_form_bad(browser, wait_time=SHORT_WAIT_TIME):
+    WebDriverWait(browser.driver, wait_time).until(
         lambda driver: "Prosimy poprawić" in driver.page_source
     )
     return True
 
 
-def submitted_form_good(browser, wait_time=20):
+def submitted_form_good(browser, wait_time=SHORT_WAIT_TIME):
     WebDriverWait(browser.driver, wait_time).until(
         lambda driver: "został dodany pomyślnie" in driver.page_source
     )

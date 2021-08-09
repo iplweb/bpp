@@ -34,6 +34,14 @@ class Konferencja(ModelZNazwa, ModelZAdnotacjami):
         null=True,
     )
 
+    pbn_uid = models.ForeignKey(
+        "pbn_api.Conference",
+        verbose_name="Odpowiednik w PBN",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+    )
+
     TK_KRAJOWA = 1
     TK_MIEDZYNARODOWA = 2
     TK_LOKALNA = 3

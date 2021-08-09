@@ -50,40 +50,54 @@ def test_wydawnictwo_ciagle_admin_zapisz_i_wyslij_do_pbn_add_nie(
 def test_wydawnictwo_ciagle_admin_zapisz_i_wyslij_do_pbn_change_tak(
     admin_app, uczelnia, mocker, wydawnictwo_ciagle, charaktery_formalne
 ):
-    pbn_client = mocker.Mock()
-    Uczelnia.pbn_client = pbn_client
+    orig_pbn_client = Uczelnia.pbn_client
 
-    uczelnia.pbn_aktualizuj_na_biezaco = True
-    uczelnia.pbn_integracja = True
-    uczelnia.save()
+    try:
+        pbn_client = mocker.Mock()
+        Uczelnia.pbn_client = pbn_client
 
-    cf = wydawnictwo_ciagle.charakter_formalny
-    cf.rodzaj_pbn = const.RODZAJ_PBN_ARTYKUL
-    cf.save()
+        uczelnia.pbn_aktualizuj_na_biezaco = True
+        uczelnia.pbn_integracja = True
+        uczelnia.save()
 
-    url = "admin:bpp_wydawnictwo_ciagle_change"
-    page = admin_app.get(reverse(url, args=(wydawnictwo_ciagle.pk,)))
-    assert "Zapisz i wyślij do PBN" in normalize_html(page.content.decode("utf-8"))
+        cf = wydawnictwo_ciagle.charakter_formalny
+        cf.rodzaj_pbn = const.RODZAJ_PBN_ARTYKUL
+        cf.save()
 
-    page = (
-        page.forms["wydawnictwo_ciagle_form"].submit("_continue_and_pbn").maybe_follow()
-    )
-    content = normalize_html(page.content.decode("utf-8"))
-    assert "pomyślnie zmieniony" in content
-    assert len(pbn_client.mock_calls) == 4
+        url = "admin:bpp_wydawnictwo_ciagle_change"
+        page = admin_app.get(reverse(url, args=(wydawnictwo_ciagle.pk,)))
+        assert "Zapisz i wyślij do PBN" in normalize_html(page.content.decode("utf-8"))
+
+        page = (
+            page.forms["wydawnictwo_ciagle_form"]
+            .submit("_continue_and_pbn")
+            .maybe_follow()
+        )
+        content = normalize_html(page.content.decode("utf-8"))
+        assert "pomyślnie zmieniony" in content
+        assert len(pbn_client.mock_calls) == 4
+    finally:
+        Uczelnia.pbn_client = orig_pbn_client
 
 
 def test_wydawnictwo_ciagle_admin_zapisz_i_wyslij_do_pbn_change_nie(
     admin_app, uczelnia, mocker, wydawnictwo_ciagle
 ):
-    pbn_client = mocker.Mock()
+    orig_pbn_client = Uczelnia.pbn_client
 
-    Uczelnia.pbn_client = pbn_client
+    try:
+        pbn_client = mocker.Mock()
 
-    uczelnia.pbn_aktualizuj_na_biezaco = False
-    uczelnia.pbn_integracja = True
-    uczelnia.save()
+        Uczelnia.pbn_client = pbn_client
 
-    url = "admin:bpp_wydawnictwo_ciagle_change"
-    page = admin_app.get(reverse(url, args=(wydawnictwo_ciagle.pk,)))
-    assert "Zapisz i wyślij do PBN" not in normalize_html(page.content.decode("utf-8"))
+        uczelnia.pbn_aktualizuj_na_biezaco = False
+        uczelnia.pbn_integracja = True
+        uczelnia.save()
+
+        url = "admin:bpp_wydawnictwo_ciagle_change"
+        page = admin_app.get(reverse(url, args=(wydawnictwo_ciagle.pk,)))
+        assert "Zapisz i wyślij do PBN" not in normalize_html(
+            page.content.decode("utf-8")
+        )
+    finally:
+        Uczelnia.pbn_client = orig_pbn_client

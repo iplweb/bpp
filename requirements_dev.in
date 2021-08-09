@@ -12,15 +12,16 @@ pytest>=6.2.4
 pytest-django>=4.4.0
 pytest-cov>=2.10.1
 pytest-localserver
-splinter>=0.14.0
+splinter>=0.15.0
 pytest-splinter>=3.3.1
+selenium>=3.141.0
 pytest-pythonpath
 pytest-mock
-pytest-xdist>=2.2.1
+pytest-xdist>=2.3.0
 pytest-lazy-fixture
 pytest-timeout
-pyparsing==2.4.1.1
-coverage==5.0.2
+pyparsing>=2.4.1.1
+coverage
 black
 autoflake
 autopep8
@@ -34,3 +35,4 @@ pre-commit
 django-debug-toolbar
 twine
 pypdf2
+pytest-rerunfailures
