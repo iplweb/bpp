@@ -545,8 +545,8 @@ def matchuj_autora_po_stronie_pbn(imiona, nazwisko, orcid):
                 print(
                     "\t * ",
                     elem.pk,
-                    elem.name(),
-                    elem.lastName(),
+                    elem.name,
+                    elem.lastName,
                 )
 
         # Szukamy w rekordach wszystkich przez API instytucji
@@ -567,8 +567,8 @@ def matchuj_autora_po_stronie_pbn(imiona, nazwisko, orcid):
                 print(
                     "\t * ",
                     elem.pk,
-                    elem.name(),
-                    elem.lastName(),
+                    elem.name,
+                    elem.lastName,
                 )
 
     qry = Q(
@@ -664,7 +664,7 @@ def integruj_zrodla(disable_progress_bar):
             #     f"Znaleziono liczne dopasowania w PBN dla {zrodlo}, szukam czy jakies ma mniswId"
             # )
             for u in Journal.objects.filter(qry):
-                if u.mniswId() is not None:
+                if u.mniswId is not None:
                     found = True
                     break
 
