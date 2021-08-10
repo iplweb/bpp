@@ -37,8 +37,9 @@ class BasePBNMongoDBModel(BasePBNModel):
                 # zawieraja bardzo dlugie wpisy. Np jeden rekord w polu 'nazwisko' ma 10 kb nazwisk,
                 # po przecinku. Oczywiscie, ze sa bledne. PostgreSQL jednakze ma limit na wielkosc
                 # wiersza indeksu. I tego limitu bedziemy teraz przestrzegali:
-                if len(v) >= MAX_TEXT_FIELD_LENGTH:
-                    v = v[:MAX_TEXT_FIELD_LENGTH]
+                if isinstance(v, str):
+                    if len(v) >= MAX_TEXT_FIELD_LENGTH:
+                        v = v[:MAX_TEXT_FIELD_LENGTH]
             setattr(self, attr, v)
 
     def save(
