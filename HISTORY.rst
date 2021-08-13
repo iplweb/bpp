@@ -3,6 +3,11 @@
 Historia zmian
 ==============
 
+202108.73
+---------
+
+* poprawki importu i synchronizacji danych z PBN
+
 202108.72
 ---------
 
