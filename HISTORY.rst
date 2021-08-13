@@ -3,6 +3,11 @@
 Historia zmian
 ==============
 
+202108.73
+---------
+
+* możliwość konfiguracji wyświetlanych opcji w multiwyszukiwarce (#896),
+
 202108.72
 ---------
 

@@ -7,31 +7,40 @@ class BppMultiseekVisibilityMixin:
     """Klasa zapewniająca funkcję .enable, która to z kolei odpytuje bazę danych
     o dostępność lub niedostępność danego obiektu dla danego użytkownika."""
 
-    def enabled(self, request=None):
+    def _get_or_create(self):
         try:
-            vis = BppMultiseekVisibility.objects.get(name=self.name)
-        except BppMultiseekVisibilityMixin.DoesNotExist:
-            max_sort_order = BppMultiseekVisibilityMixin.objects.aggregate(
-                Max("sort_order")
-            )
+            vis = BppMultiseekVisibility.objects.get(field_name=self.field_name)
+        except BppMultiseekVisibility.DoesNotExist:
+            max_sort_order = BppMultiseekVisibility.objects.aggregate(Max("sort_order"))
             vis = BppMultiseekVisibility.objects.create(
                 label=self.label,
-                name=self.name,
+                field_name=self.field_name,
                 public=self.public,
-                authorized=True,
+                authenticated=True,
                 staff=True,
                 sort_order=(max_sort_order["sort_order__max"] or 0) + 1,
             )
+
+        return vis
+
+    def option_enabled(self):
+        return True
+
+    def enabled(self, request=None):
+        if not self.option_enabled():
+            return False
+
+        vis = self._get_or_create()
 
         if request is None or not request.user.is_authenticated:
             # Jeżeli nie został podany parametr 'request' lub użytkownik jest anonimowy
             # to zwróc wartość parametru 'widoczny dla wszystkich'
             return vis.public
 
-        if request.user.is_staff and vis.staff:
-            return True
+        if request.user.is_staff:
+            return vis.staff
 
-        if request.user.is_authenticated and vis.authenticated:
-            return True
+        if request.user.is_authenticated:
+            return vis.authenticated
 
-        return False
+        raise NotImplementedError("This should not happen")

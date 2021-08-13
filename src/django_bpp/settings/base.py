@@ -144,6 +144,7 @@ if TESTING:
 
 
 INSTALLED_APPS = [
+    "cacheops",
     "channels",
     "django.contrib.humanize",
     "django.contrib.contenttypes",
@@ -665,3 +666,12 @@ PERMISSIONS_WIDGET_EXCLUDE_MODELS = [
     "bpp.autorzy_view",
     "bpp.cachequeue",
 ]
+
+
+CACHEOPS = {
+    "bpp.bppmultiseekvisibility": {"ops": ("get",)},
+    "miniblog.article": {"ops": ("get", "fetch")},
+}
+CACHEOPS_REDIS = BROKER_URL
+
+CACHEOPS_DEFAULTS = {"timeout": 60 * 60}

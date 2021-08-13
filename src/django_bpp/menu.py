@@ -225,6 +225,7 @@ SYSTEM_MENU = [
     ("Tytuły", "/admin/bpp/tytul/"),
     ("Wydawcy", "/admin/bpp/wydawca/"),
     ("Wymiary etatów", "/admin/bpp/wymiar_etatu/"),
+    ("Widoczność opcji wyszukiwarki", "/admin/bpp/bppmultiseekvisibility/"),
     ("Zewnętrzne bazy danych", "/admin/bpp/zewnetrzna_baza_danych/"),
     ("Źródło informacji", "/admin/bpp/zrodlo_informacji/"),
 ]
