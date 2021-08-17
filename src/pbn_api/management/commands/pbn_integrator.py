@@ -52,6 +52,10 @@ class Command(PBNBaseCommand):
     def add_arguments(self, parser):
         super(Command, self).add_arguments(parser)
 
+        parser.add_argument(
+            "--disable-multithreading", action="store_true", default=False
+        ),
+
         parser.add_argument("--start-from-stage", type=int, default=0)
         parser.add_argument("--end-before-stage", type=int, default=None)
 
@@ -113,6 +117,7 @@ class Command(PBNBaseCommand):
         user_token,
         start_from_stage,
         end_before_stage,
+        disable_multithreading,
         clear_all,
         enable_all,
         enable_system_data,
@@ -136,6 +141,9 @@ class Command(PBNBaseCommand):
         *args,
         **options
     ):
+        if disable_multithreading:
+            integrator.CPU_COUNT = "single"
+
         uczelnia = Uczelnia.objects.get_default()
         if uczelnia is not None:
             if not uczelnia.pbn_integracja:
@@ -223,24 +231,28 @@ class Command(PBNBaseCommand):
             os.makedirs("pbn_json_data", exist_ok=True)
             pobierz_prace_offline(client)
         stage = 13
+        check_end_before(stage, end_before_stage)
 
         if (
             enable_pobierz_wszystkie_publikacje or enable_all
         ) and start_from_stage <= stage:
             wgraj_prace_z_offline_do_bazy()
         stage = 14
+        check_end_before(stage, end_before_stage)
 
         if (
             enable_pobierz_publikacje_instytucji or enable_all
         ) and start_from_stage <= stage:
             pobierz_publikacje_z_instytucji(client)
         stage = 15
+        check_end_before(stage, end_before_stage)
 
         if (
             enable_pobierz_oswiadczenia_instytucji or enable_all
         ) and start_from_stage <= stage:
             pobierz_oswiadczenia_z_instytucji(client)
         stage = 16
+        check_end_before(stage, end_before_stage)
 
         if (enable_integruj_publikacje or enable_all) and start_from_stage <= stage:
             integruj_publikacje()
