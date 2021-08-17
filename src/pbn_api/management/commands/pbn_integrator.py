@@ -17,6 +17,7 @@ from pbn_api.integrator import (
     integruj_instytucje,
     integruj_jezyki,
     integruj_kraje,
+    integruj_oswiadczenia_z_instytucji,
     integruj_publikacje,
     integruj_uczelnie,
     integruj_wszystkich_niezintegrowanych_autorow,
@@ -60,6 +61,7 @@ class Command(PBNBaseCommand):
         parser.add_argument("--end-before-stage", type=int, default=None)
 
         parser.add_argument("--clear-all", action="store_true", default=False)
+        parser.add_argument("--clear-publications", action="store_true", default=False)
         parser.add_argument("--enable-all", action="store_true", default=False)
 
         parser.add_argument("--enable-system-data", action="store_true", default=False)
@@ -119,6 +121,7 @@ class Command(PBNBaseCommand):
         end_before_stage,
         disable_multiprocessing,
         clear_all,
+        clear_publications,
         enable_all,
         enable_system_data,
         enable_pobierz_zrodla,
@@ -152,6 +155,10 @@ class Command(PBNBaseCommand):
 
         if clear_all:
             integrator.clear_all()
+            sys.exit(0)
+
+        if clear_publications:
+            integrator.clear_publications()
             sys.exit(0)
 
         stage = 0
@@ -254,9 +261,19 @@ class Command(PBNBaseCommand):
         stage = 16
         check_end_before(stage, end_before_stage)
 
-        if (enable_integruj_publikacje or enable_all) and start_from_stage <= stage:
-            integruj_publikacje()
+        if (
+            enable_pobierz_oswiadczenia_instytucji or enable_all
+        ) and start_from_stage <= stage:
+            integruj_oswiadczenia_z_instytucji()
+
         stage = 17
+        check_end_before(stage, end_before_stage)
+
+        if (enable_integruj_publikacje or enable_all) and start_from_stage <= stage:
+            integruj_publikacje(disable_multiprocessing)
+
+        stage = 18
+        check_end_before(stage, end_before_stage)
 
         if (enable_pobierz_po_doi or enable_all) and start_from_stage <= stage:
             pobierz_prace_po_doi(client)
