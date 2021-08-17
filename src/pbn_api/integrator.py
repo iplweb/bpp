@@ -413,23 +413,23 @@ def pobierz_prace_po_doi(client: PBNClient):
             klass.objects.all().exclude(doi=None).filter(pbn_uid_id=None),
             label="pobierz_prace_po_doi",
         ):
+            nd = normalize_doi(praca.doi)
             try:
-                elem = client.get_publication_by_doi(normalize_doi(praca.doi))
+                elem = client.get_publication_by_doi(nd)
             except HttpException as e:
                 if e.status_code == 422:
                     # Publication with DOI 10.1136/annrheumdis-2018-eular.5236 was not exists!
-                    print(
-                        f"\r\nBrak pracy z DOI {praca.doi} w PBNie -- w BPP to {praca}"
-                    )
+                    print(f"\r\nBrak pracy z DOI {nd} w PBNie -- w BPP to {praca}")
                     continue
                 elif e.status_code == 500:
                     if (
-                        b"Publication with DOI" in e.content
-                        and b"was not exists" in e.content
+                        "Publication with DOI" in e.content
+                        and "was not exists" in e.content
                     ):
-                        print(
-                            f"\r\nBrak pracy z DOI {praca.doi} w PBNie -- w BPP to {praca}"
-                        )
+                        print(f"\r\nBrak pracy z DOI {nd} w PBNie -- w BPP to {praca}")
+                        continue
+                    elif "Internal server error" in e.content:
+                        print(f"\r\nSerwer PBN zwrocil blad 500 dla DOI {nd}")
                         continue
 
                 raise e
