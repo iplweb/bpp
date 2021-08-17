@@ -53,7 +53,7 @@ class Command(PBNBaseCommand):
         super(Command, self).add_arguments(parser)
 
         parser.add_argument(
-            "--disable-multithreading", action="store_true", default=False
+            "--disable-multiprocessing", action="store_true", default=False
         ),
 
         parser.add_argument("--start-from-stage", type=int, default=0)
@@ -117,7 +117,7 @@ class Command(PBNBaseCommand):
         user_token,
         start_from_stage,
         end_before_stage,
-        disable_multithreading,
+        disable_multiprocessing,
         clear_all,
         enable_all,
         enable_system_data,
@@ -141,7 +141,7 @@ class Command(PBNBaseCommand):
         *args,
         **options
     ):
-        if disable_multithreading:
+        if disable_multiprocessing:
             integrator.CPU_COUNT = "single"
 
         uczelnia = Uczelnia.objects.get_default()
