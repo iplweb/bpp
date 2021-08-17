@@ -17,6 +17,8 @@ perform jednostki_bez_odpowiednika_w_pbn.xlsx "SELECT id, nazwa FROM bpp_jednost
 
 perform wydawcy_bez_odpowiednika_w_pbn.xlsx "SELECT id, nazwa FROM bpp_wydawca  WHERE pbn_uid_id IS NULL"
 
+perform zdublowane_zrodla_po_stronie_bpp.xlsx "select pbn_uid_id, array_agg(id) as numery_id, array_agg(nazwa) as nazwy from bpp_zrodlo  where pbn_uid_id is not null group by pbn_uid_id having count(pbn_uid_id) > 1;"
+
 # "nasi" autorzy -- to sa ludzie z dyscypliną
 # SELECT DISTINCT autor_id FROM bpp_autor_dyscyaplina
 
