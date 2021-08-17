@@ -19,6 +19,14 @@ perform wydawcy_bez_odpowiednika_w_pbn.xlsx "SELECT id, nazwa FROM bpp_wydawca  
 
 perform zdublowane_zrodla_po_stronie_bpp.xlsx "select pbn_uid_id, array_agg(id) as numery_id, array_agg(nazwa) as nazwy from bpp_zrodlo  where pbn_uid_id is not null group by pbn_uid_id having count(pbn_uid_id) > 1;"
 
+perform zdublowane_public_www_po_stronie_bpp.xlsx "select public_www, array_agg(id[2]) as numery_id  from bpp_rekord  where public_www is not null and public_www != '' group by public_www having count(public_www) > 1 ;"
+
+perform zdublowane_www_po_stronie_bpp.xlsx "select www, array_agg(id[2]) as numery_id  from bpp_rekord  where www is not null and www != '' group by www having count(www) > 1 ;"
+
+perform zdublowane_pbn_uid_id_publikacji.xlsx "select pbn_uid_id, array_agg(id[2]) as numery_id  from bpp_rekord  where pbn_uid_id is not null group by pbn_uid_id having count(pbn_uid_id) > 1;"
+
+perform zdublowani_pbn_uid_id_autorzy.xlsx "select pbn_uid_id, array_agg(nazwisko || ' ' || imiona) as nazwiska, array_agg(id) as id  from bpp_autor  where pbn_uid_id is not null group by pbn_uid_id having count(pbn_uid_id) > 1 ;"
+
 # "nasi" autorzy -- to sa ludzie z dyscypliną
 # SELECT DISTINCT autor_id FROM bpp_autor_dyscyaplina
 
