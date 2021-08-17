@@ -9,6 +9,7 @@ from .normalization import (
     normalize_nazwa_dyscypliny,
     normalize_nazwa_jednostki,
     normalize_nazwa_wydawcy,
+    normalize_public_uri,
     normalize_tytul_naukowy,
     normalize_tytul_publikacji,
     normalize_tytul_zrodla,
@@ -306,7 +307,8 @@ def matchuj_publikacje(
             except klass.MultipleObjectsReturned:
                 print(f"DOI nie jest unikalne w bazie: {doi}")
 
-    if public_uri is not None:
+    public_uri = normalize_public_uri(public_uri)
+    if public_uri:
         try:
             return klass.objects.get(Q(www=public_uri) | Q(public_www=public_uri))
         except klass.MultipleObjectsReturned:

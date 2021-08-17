@@ -85,3 +85,7 @@ def normalize_kod_dyscypliny(k):
     if k.find(".") >= 0:
         return k
     return f"{k[0]}.{int(k[1:])}"
+
+
+def normalize_public_uri(public_uri):
+    return public_uri.strip()
