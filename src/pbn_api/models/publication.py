@@ -17,7 +17,7 @@ class Publication(BasePBNMongoDBModel):
 
     # Nazwy pól wyciaganych "na wierzch" do pól obiektu
     # ze słownika JSONa (pole 'values')
-    pull_up_on_save = ["title", "doi", "publicUri", "isbn"]
+    pull_up_on_save = ["title", "doi", "publicUri", "isbn", "year"]
 
     def type(self):
         return self.value("object", "type", return_none=True)
