@@ -8,10 +8,16 @@ from collections import defaultdict
 
 import xlrd
 from dbfread import DBF, FieldParser
-from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Q
 from django.forms.models import model_to_dict
+
+from import_dbf import models as dbf
+from miniblog.models import Article
+from .codecs import custom_search_function  # noqa
+
+from django.contrib.contenttypes.models import ContentType
+
 from django.utils import timezone
 
 from bpp import models as bpp
@@ -19,16 +25,12 @@ from bpp.models import (
     cache,
     const,
     parse_informacje,
-    wez_zakres_stron,
     parse_informacje_as_dict,
+    wez_zakres_stron,
 )
 from bpp.models.const import CHARAKTER_OGOLNY_KSIAZKA, RODZAJ_PBN_KSIAZKA
 from bpp.system import User
 from bpp.util import pbar, set_seq
-from import_dbf import models as dbf
-from miniblog.models import Article
-
-from .codecs import custom_search_function  # noqa
 
 custom_search_function  # noqa
 
@@ -41,7 +43,7 @@ def addslashes(v):
     return v.replace("'", "''")
 
 
-exp_split_poz_regex = re.compile("(\#\d\d\d\$)")
+exp_split_poz_regex = re.compile("(\\#\\d\\d\\d\\$)")
 
 
 def exp_split_poz_str(s):
@@ -185,7 +187,7 @@ def integruj_uczelnia(nazwa="Domyślna Uczelnia", skrot="DU"):
     """Jeżeli istnieje jakikolwiek obiekt uczelnia w systemie, zwróć go.
 
     Jeżeli nie ma żadnych obiektw Uczelnia w systemie, utwórz obiekt z
-    ustawieniami domyślnymi i zwróć go. """
+    ustawieniami domyślnymi i zwróć go."""
 
     if bpp.Uczelnia.objects.exists():
         return bpp.Uczelnia.objects.first()
@@ -399,7 +401,7 @@ def integruj_autorow(silent=False):
 
         try:
             jednostka = autor.idt_jed
-        except:
+        except BaseException:
             print(
                 f"XXX autor {autor.pk} ma nieistniejace ID jednostki {autor.idt_jed_id}, NIE TWORZE AUTOR_JEDNOSTKA!"
             )
@@ -432,7 +434,8 @@ def integruj_charaktery():
             charakter = bpp.Charakter_Formalny.objects.get(skrot=rec.skrot)
         except bpp.Charakter_Formalny.DoesNotExist:
             charakter = bpp.Charakter_Formalny.objects.create(
-                nazwa=rec.nazwa, skrot=rec.skrot,
+                nazwa=rec.nazwa,
+                skrot=rec.skrot,
             )
         rec.bpp_id = charakter
         rec.save()
@@ -524,7 +527,9 @@ def integruj_zrodla():
         try:
             wydawca = bpp.Wydawca.objects.get(nazwa=rec.nazwa)
         except bpp.Wydawca.DoesNotExist:
-            wydawca = bpp.Wydawca.objects.create(nazwa=rec.nazwa,)
+            wydawca = bpp.Wydawca.objects.create(
+                nazwa=rec.nazwa,
+            )
         rec.bpp_wydawca_id = wydawca
         rec.save()
 
@@ -533,7 +538,9 @@ def integruj_zrodla():
         try:
             seria = bpp.Seria_Wydawnicza.objects.get(nazwa=rec.nazwa)
         except bpp.Seria_Wydawnicza.DoesNotExist:
-            seria = bpp.Seria_Wydawnicza.objects.create(nazwa=rec.nazwa,)
+            seria = bpp.Seria_Wydawnicza.objects.create(
+                nazwa=rec.nazwa,
+            )
         rec.bpp_seria_wydawnicza_id = seria
         rec.save()
 
@@ -1036,7 +1043,8 @@ def integruj_publikacje(offset=None, limit=None):
                 # elem.get("b") ignorujemy
                 # https://mantis.iplweb.pl/view.php?id=843
                 # Obecnie testuję wersję 202005.37 w której planuję wprowadzić poprawkę na ten problem; pojawia się
-                # ]problem z podwójnymi autorami jak w załączniku, pozwolę sobie wyrzucić import pola "B" z w/wym elementów
+                # ]problem z podwójnymi autorami jak w załączniku, pozwolę sobie wyrzucić import pola "B" z w/wym
+                # elementów
                 # EKG : 150 przypadków.Wyd.3 pol. red. nauk. Jacek Smereka. [AUT.] JOHN HAMPTON, DAVID ADLAM, JOANNA
                 # HAMPTON, [RED.] JACEK SMEREKA. XII, 308 s.ryc, ISBN 978-83-66548-04-6. Wrocław 2020, Edra Urban &
                 # Partner, 978-83-66548-04-6.
@@ -1155,7 +1163,8 @@ def integruj_publikacje(offset=None, limit=None):
             #         kw["szczegoly"] = exp_combine(kw.get("szczegoly"), elem["a"])
             #         if kw.get("strony"):
             #             warnings.warn(
-            #                 f"Pole strony juz ma wartosc {kw.get('strony')}, nadpisuje! Rekord {rec} o ID {rec.idt}; element {elem}"
+            #                 f"Pole strony juz ma wartosc {kw.get('strony')}, nadpisuje! Rekord {rec} o
+            #                 ID {rec.idt}; element {elem}"
             #             )
             #         kw["strony"] = elem["a"]
             #     else:
@@ -1189,7 +1198,8 @@ def integruj_publikacje(offset=None, limit=None):
                 # elem.get("b") ignorujemy
                 # https://mantis.iplweb.pl/view.php?id=843
                 # Obecnie testuję wersję 202005.37 w której planuję wprowadzić poprawkę na ten problem; pojawia się
-                # ]problem z podwójnymi autorami jak w załączniku, pozwolę sobie wyrzucić import pola "B" z w/wym elementów
+                # ]problem z podwójnymi autorami jak w załączniku, pozwolę sobie wyrzucić import pola "B" z w/wym
+                # elementów
                 # EKG : 150 przypadków.Wyd.3 pol. red. nauk. Jacek Smereka. [AUT.] JOHN HAMPTON, DAVID ADLAM, JOANNA
                 # HAMPTON, [RED.] JACEK SMEREKA. XII, 308 s.ryc, ISBN 978-83-66548-04-6. Wrocław 2020, Edra Urban &
                 # Partner, 978-83-66548-04-6.
@@ -1355,7 +1365,6 @@ def integruj_publikacje(offset=None, limit=None):
                     wos = True
                 elif elem["a"] == "Publikacja w wydawnictwie spoza listy MNiSW":
                     kw["uwagi"] = exp_combine(kw.get("uwagi", ""), elem.get("a"))
-                    pass
                 elif elem["a"].startswith("http"):
                     if kw.get("www"):
                         assert not kw.get("public_www"), (elem, kw, rec)
@@ -1581,9 +1590,7 @@ def integruj_publikacje(offset=None, limit=None):
             elif elem["id"] == 253:
                 # jeżeil w 'a' jest tekst, to konferencja
                 if elem["a"].startswith("|"):
-                    import pdb
-
-                    pdb.set_trace()
+                    raise NotImplementedError("Tu bylo wywolanie pdb")
                 else:
                     nazwa = elem["a"]
                     if elem.get("b"):
@@ -1712,24 +1719,28 @@ def przypisz_grupy_punktowe():
         # print(rec.tytul_or)
         if rec.idt2.object is None:
             print(
-                f"GP blad: Praca {rec.idt} ({rec.tytul_or[:50]}) ma IDT2 {rec.idt2.pk} ({rec.idt2.tytul_or[:50]}) jednak obiekt w BPP od IDT2 to NULL!"
+                f"GP blad: Praca {rec.idt} ({rec.tytul_or[:50]}) ma IDT2 {rec.idt2.pk} ({rec.idt2.tytul_or[:50]}) "
+                f"jednak obiekt w BPP od IDT2 to NULL!"
             )
         else:
             if rec.idt2.object.__class__ == bpp.Wydawnictwo_Ciagle:
                 print(
-                    f"GP blad: Praca {rec.idt} ({rec.tytul_or[:50]}) ma IDT2 {rec.idt2.pk} ({rec.idt2.object.tytul_oryginalny[:50]}) jednak obiekt w BPP to Wydawnictwo_Ciagle!"
+                    f"GP blad: Praca {rec.idt} ({rec.tytul_or[:50]}) ma IDT2 {rec.idt2.pk} "
+                    f"({rec.idt2.object.tytul_oryginalny[:50]}) jednak obiekt w BPP to Wydawnictwo_Ciagle!"
                 )
             else:
                 o = rec.object
                 if o.__class__ == bpp.Wydawnictwo_Zwarte:
-                    if o.wydawnictwo_nadrzedne == None:
+                    if o.wydawnictwo_nadrzedne is None:
                         # print("Saved")
                         o.wydawnictwo_nadrzedne = rec.idt2.object
                         o.save()
 
                 else:
                     print(
-                        f"*** Mam wydawnictwo nadrzedne dla wydawnictwa ciągłego..? Nie tworze. {rec.idt} {rec.tytul_or[:50]} ma nadrzedne {rec.idt2.pk} {rec.idt2.object.tytul_oryginalny[:50]})"
+                        f"*** Mam wydawnictwo nadrzedne dla wydawnictwa ciągłego..? Nie tworze. "
+                        f"{rec.idt} {rec.tytul_or[:50]} ma nadrzedne {rec.idt2.pk} "
+                        f"{rec.idt2.object.tytul_oryginalny[:50]})"
                     )
 
 
@@ -1770,7 +1781,10 @@ def zatwierdz_podwojne_przypisania(logger):
 
     for elem in (
         dbf.B_A.objects.order_by()
-        .values("idt_id", "idt_aut_id",)
+        .values(
+            "idt_id",
+            "idt_aut_id",
+        )
         .annotate(cnt=Count("*"))
         .filter(cnt__gt=1)
     ):
@@ -1824,7 +1838,10 @@ def usun_podwojne_przypisania_b_a(logger):
 
     for elem in (
         dbf.B_A.objects.order_by()
-        .values("idt_id", "idt_aut_id",)
+        .values(
+            "idt_id",
+            "idt_aut_id",
+        )
         .annotate(cnt=Count("*"))
         .filter(cnt__gt=1)
     ):
@@ -1907,7 +1924,7 @@ def integruj_b_a(offset=None, limit=None):
     ta_id = bpp.Typ_Odpowiedzialnosci.objects.get(skrot="aut.").pk
     tr_id = bpp.Typ_Odpowiedzialnosci.objects.get(skrot="red.").pk
 
-    from django.db import reset_queries, connection
+    from django.db import connection, reset_queries
 
     base_query = dbf.B_A.objects.filter(object_id=None).exclude(idt__object_id=None)
 
@@ -2029,7 +2046,8 @@ def xls2dict(fp):
 def dodaj_aktualnosc():
     """Dodaje do 'Aktualności' wpis z datą i czasem importu. """
     a = Article.objects.get_or_create(
-        status=Article.STATUS.published, title="Informacja o imporcie bazy danych",
+        status=Article.STATUS.published,
+        title="Informacja o imporcie bazy danych",
     )[0]
     a.article_body = "Bazę danych zaimportowano: %s" % timezone.localtime()
     a.save()
@@ -2046,8 +2064,6 @@ def utworz_szkielety_ksiazek(logger):
 
     if cache.enabled():
         cache.disable()
-
-    cf = None
 
     for bib in dbf.Bib.objects.filter(
         Q(zrodlo__icontains="#200$")
@@ -2099,7 +2115,7 @@ def utworz_szkielety_ksiazek(logger):
                 pass
             except bpp.Wydawnictwo_Zwarte.MultipleObjectsReturned:
                 logger.info(
-                    f"WNWN ... znaleziono liczne prace dla połowy tytułu, tworze nową"
+                    "WNWN ... znaleziono liczne prace dla połowy tytułu, tworze nową"
                 )
 
             # ISBN to pole 205
