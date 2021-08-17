@@ -59,6 +59,7 @@ class Command(PBNBaseCommand):
 
         parser.add_argument("--start-from-stage", type=int, default=0)
         parser.add_argument("--end-before-stage", type=int, default=None)
+        parser.add_argument("--just-one-stage", action="store_true"),
 
         parser.add_argument("--clear-all", action="store_true", default=False)
         parser.add_argument("--clear-publications", action="store_true", default=False)
@@ -119,6 +120,7 @@ class Command(PBNBaseCommand):
         user_token,
         start_from_stage,
         end_before_stage,
+        just_one_stage,
         disable_multiprocessing,
         clear_all,
         clear_publications,
@@ -160,6 +162,9 @@ class Command(PBNBaseCommand):
         if clear_publications:
             integrator.clear_publications()
             sys.exit(0)
+
+        if just_one_stage:
+            end_before_stage = start_from_stage + 1
 
         stage = 0
         if (enable_system_data or enable_all) and start_from_stage <= stage:
