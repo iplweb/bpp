@@ -1,6 +1,7 @@
 import json
 import multiprocessing
 import os
+import sys
 import warnings
 
 from django.db import transaction
@@ -842,11 +843,13 @@ def _integruj_single_part(ids):
                         f"\r\n*** UWAGA Publikacja w BPP {p} ma już PBN UID {p.pbn_uid_id}, a wg procedury matchującej "
                         f"należałoby go zmienić na {elem.pk} -- rekord {elem}"
                     )
-                    continue
+                    break
 
                 if p.pbn_uid_id is None:
                     p.pbn_uid_id = elem.pk
                     p.save(update_fields=["pbn_uid_id"])
+
+                break
 
 
 def split_list(lst, n):
@@ -872,15 +875,40 @@ def initialize_pool():
     return multiprocessing.Pool(cpu_count)
 
 
-def integruj_publikacje(disable_multiprocessing=False):
-    ids = list(Publication.objects.all().values_list("pk", flat=True))
+def integruj_publikacje(
+    disable_multiprocessing=False, ignore_already_matched=False, skip_pages=0
+):
+    """
+    :param ignore_already_matched: jeżeli True, to publikacje, które już mają swój match
+    po stronie BPP nie będa analizowane.
+
+    """
+    pubs = Publication.objects.all()
+
+    if ignore_already_matched:
+        from bpp.models.cache import Rekord
+
+        pubs = pubs.exclude(
+            pk__in=Rekord.objects.exclude(pbn_uid_id=None)
+            .values_list("pbn_uid_id", flat=True)
+            .distinct()
+        )
+
+    pubs = pubs.order_by("pk")
+
+    ids = list(pubs.values_list("pk", flat=True).distinct())
     _bede_uzywal_bazy_danych_z_multiprocessing_z_django()
     pool = initialize_pool()
 
     results = []
-    for elem in split_list(ids, 512):
+    for no, elem in enumerate(split_list(ids, 256)):
+        if no < skip_pages:
+            continue
+
         if disable_multiprocessing:
             _integruj_single_part(elem)
+            print(f"{no} of {len(ids)//256}...", end="\r")
+            sys.stdout.flush()
         else:
             result = pool.apply_async(_integruj_single_part, args=(elem,))
             results.append(result)
