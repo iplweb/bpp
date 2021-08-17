@@ -297,6 +297,15 @@ def matchuj_publikacje(
     isbn=None,
     zrodlo=None,
 ):
+    """
+    Kolejnosc matchowania:
+    1) szukaj po DOI
+    2) przy zalożeniu że tytuł ma 1 słowo i minimum 15 znakow lub 2 lub wiecej słowa i minimum 3 znakow najpierw
+    szukaj po tytule
+    3) potem spróbuj po ISBN
+    4) potem po WWW (uwaga: WWW nie jest unikalne w bazie)
+
+    """
     if doi is not None:
         doi = normalize_doi(doi)
         if doi:
@@ -307,14 +316,29 @@ def matchuj_publikacje(
             except klass.MultipleObjectsReturned:
                 print(f"DOI nie jest unikalne w bazie: {doi}")
 
-    public_uri = normalize_public_uri(public_uri)
-    if public_uri:
+    title = normalize_tytul_publikacji(title)
+
+    if (len(title) >= TITLE_LIMIT_SINGLE_WORD and title.strip().find(" ") == -1) or (
+        len(title) >= TITLE_LIMIT_MANY_WORDS and title.strip().find(" ") > 0
+    ):
+        if zrodlo is not None and hasattr(klass, "zrodlo"):
+            try:
+                return klass.objects.get(
+                    tytul_oryginalny__istartswith=title, rok=year, zrodlo=zrodlo
+                )
+            except klass.DoesNotExist:
+                pass
+            except klass.MultipleObjectsReturned:
+                print(
+                    f"MultipleObjectsReturned dla title={title} rok={year} zrodlo={zrodlo}"
+                )
+
         try:
-            return klass.objects.get(Q(www=public_uri) | Q(public_www=public_uri))
-        except klass.MultipleObjectsReturned:
-            print(f"www lub public_www nie jest unikalne w bazie: {public_uri}")
+            return klass.objects.get(tytul_oryginalny__istartswith=title, rok=year)
         except klass.DoesNotExist:
             pass
+        except klass.MultipleObjectsReturned:
+            print(f"MultipleObjectsReturned dla title={title} rok={year}")
 
     if isbn is not None and hasattr(klass, "isbn") and hasattr(klass, "e_isbn"):
         try:
@@ -324,31 +348,11 @@ def matchuj_publikacje(
         except klass.DoesNotExist:
             pass
 
-    title = normalize_tytul_publikacji(title)
-
-    if zrodlo is not None and hasattr(klass, "zrodlo"):
+    public_uri = normalize_public_uri(public_uri)
+    if public_uri:
         try:
-            return klass.objects.get(
-                tytul_oryginalny__istartswith=title, rok=year, zrodlo=zrodlo
-            )
+            return klass.objects.get(Q(www=public_uri) | Q(public_www=public_uri))
+        except klass.MultipleObjectsReturned:
+            print(f"www lub public_www nie jest unikalne w bazie: {public_uri}")
         except klass.DoesNotExist:
             pass
-        except klass.MultipleObjectsReturned:
-            print(
-                f"MultipleObjectsReturned dla title={title} rok={year} zrodlo={zrodlo}"
-            )
-
-    if (len(title) < TITLE_LIMIT_SINGLE_WORD and title.strip().find(" ") == -1) or (
-        len(title) < TITLE_LIMIT_MANY_WORDS and title.strip().find(" ") > 0
-    ):
-        # print(
-        #     f"Tytuł pracy z PBN {title} ponizej {TITLE_LIMIT} znakow i jedno słowo, nie matchuje po tytule"
-        # )
-        return
-
-    try:
-        return klass.objects.get(tytul_oryginalny__istartswith=title, rok=year)
-    except klass.DoesNotExist:
-        pass
-    except klass.MultipleObjectsReturned:
-        print(f"MultipleObjectsReturned dla title={title} rok={year}")
