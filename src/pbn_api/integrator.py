@@ -823,11 +823,11 @@ def _integruj_single_part(ids):
             except Zrodlo.DoesNotExist:
                 pass
             except Zrodlo.MultipleObjectsReturned:
+                zrodlo = Zrodlo.objects.filter(pbn_uid_id=zrodlo_pbn_uid_id).first()
                 print(
                     f"XXX wiele zrodel po stronie BPP ma odpowiednik w PBN UID "
-                    f"{zrodlo_pbn_uid_id}, wybieram pierwsze"
+                    f"{zrodlo_pbn_uid_id}, wybieram pierwsze czyli {zrodlo.naza}"
                 )
-                zrodlo = Zrodlo.objects.filter(pbn_uid_id=zrodlo_pbn_uid_id).first()
 
         p = matchuj_publikacje(
             Rekord,
