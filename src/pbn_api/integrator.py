@@ -373,7 +373,9 @@ def wgraj_prace_z_offline_do_bazy():
 
 
 def normalize_doi(s):
-    return s.strip()
+    return (
+        s.strip().replace("http://", "").replace("https://", "").replace("doi.org/", "")
+    )
 
 
 def pobierz_prace(client: PBNClient):
