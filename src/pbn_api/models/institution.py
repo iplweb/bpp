@@ -68,7 +68,6 @@ class PublikacjaInstytucji(models.Model):
     snapshot = JSONField(null=True, blank=True)
 
     class Meta:
-        unique_together = [("insPersonId", "institutionId", "publicationId")]
         verbose_name = "Publikacja instytucji"
         verbose_name_plural = "Publikacje instytucji"
 
@@ -85,4 +84,3 @@ class OswiadczenieInstytucji(models.Model):
     class Meta:
         verbose_name = "Oświadczenie instytucji"
         verbose_name_plural = "Oświadczenia instytucji"
-        unique_together = [("publicationId", "institutionId", "personId")]
