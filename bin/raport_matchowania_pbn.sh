@@ -13,6 +13,8 @@ perform zrodla_z_issn_lub_eissn_bez_odpowiednika_w_pbn.xlsx "SELECT id, nazwa, i
 
 perform zrodla_zmatchowane_ale_bez_mnisw_id.xlsx "select id, nazwa from bpp_zrodlo, pbn_api_journal where pbn_api_journal.\"mniswId\" is NULL and bpp_zrodlo.pbn_uid_id = pbn_api_journal.\"mongoId\" order by nazwa;"
 
+perform zrodla_zmatchowane_z_mnisw_id.xlsx "select id, nazwa, pbn_uid_id, pbn_api_journal.\"mniswId\" from bpp_zrodlo, pbn_api_journal where pbn_api_journal.\"mniswId\" IS NOT NULL and bpp_zrodlo.pbn_uid_id = pbn_api_journal.\"mongoId\" order by nazwa;"
+
 perform jednostki_bez_odpowiednika_w_pbn.xlsx "SELECT id, nazwa FROM bpp_jednostka WHERE pbn_uid_id IS NULL"
 
 perform wydawcy_bez_odpowiednika_w_pbn.xlsx "SELECT id, nazwa FROM bpp_wydawca  WHERE pbn_uid_id IS NULL"
