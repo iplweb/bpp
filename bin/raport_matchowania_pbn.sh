@@ -11,6 +11,8 @@ perform autorzy_z_orcid_nieistniejacym_w_pbn.xlsx "SELECT id, imiona, nazwisko, 
 
 perform zrodla_z_issn_lub_eissn_bez_odpowiednika_w_pbn.xlsx "SELECT id, nazwa, issn, e_issn FROM bpp_zrodlo WHERE pbn_uid_id IS NULL AND (issn IS NOT NULL OR e_issn IS NOT NULL)"
 
+perform zrodla_zmatchowane_ale_bez_mnisw_id.xlsx "select id, nazwa from bpp_zrodlo, pbn_api_journal where pbn_api_journal.\"mniswId\" is NULL and bpp_zrodlo.pbn_uid_id = pbn_api_journal.\"mongoId\" order by nazwa;"
+
 perform jednostki_bez_odpowiednika_w_pbn.xlsx "SELECT id, nazwa FROM bpp_jednostka WHERE pbn_uid_id IS NULL"
 
 perform wydawcy_bez_odpowiednika_w_pbn.xlsx "SELECT id, nazwa FROM bpp_wydawca  WHERE pbn_uid_id IS NULL"
