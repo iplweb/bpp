@@ -7,6 +7,7 @@ from django.db import transaction
 from django.db.models import F, Func, Q
 
 from import_common.core import matchuj_autora, matchuj_publikacje, matchuj_wydawce
+from import_common.normalization import normalize_doi
 from pbn_api.client import PBNClient
 from pbn_api.exceptions import HttpException, SameDataUploadedRecently
 from pbn_api.models import (
@@ -32,7 +33,6 @@ from bpp.models import (
     Jezyk,
     Praca_Doktorska,
     Praca_Habilitacyjna,
-    Rekord,
     Uczelnia,
     Wydawca,
     Wydawnictwo_Ciagle,
@@ -305,7 +305,7 @@ def pbn_file_path(db, current_page, status):
 
 def wait_for_results(pool, results, label="Progress..."):
     for elem in pbar(results, count=len(results), label=label):
-        elem.wait()
+        elem.get()
     pool.close()
     pool.join()
 
@@ -388,12 +388,6 @@ def wgraj_ludzi_z_offline_do_bazy():
 
 def wgraj_prace_z_offline_do_bazy():
     return _wgraj_z_offline_do_bazy("publications", Publication)
-
-
-def normalize_doi(s):
-    return (
-        s.strip().replace("http://", "").replace("https://", "").replace("doi.org/", "")
-    )
 
 
 def pobierz_prace(client: PBNClient):
@@ -824,35 +818,35 @@ def _integruj_single_part(ids):
                 pass
             except Zrodlo.MultipleObjectsReturned:
                 zrodlo = Zrodlo.objects.filter(pbn_uid_id=zrodlo_pbn_uid_id).first()
-                print(
-                    f"XXX wiele zrodel po stronie BPP ma odpowiednik w PBN UID "
-                    f"{zrodlo_pbn_uid_id}, wybieram pierwsze czyli {zrodlo.naza}"
-                )
 
-        p = matchuj_publikacje(
-            Rekord,
-            title=elem.value("object", "title"),
-            year=elem.value_or_none("object", "year"),
-            doi=elem.value_or_none("object", "doi"),
-            public_uri=elem.value_or_none("object", "publicUri"),
-            isbn=normalize_isbn(elem.value_or_none("object", "isbn")),
-            zrodlo=zrodlo,
-        )
+        for klass in [
+            Wydawnictwo_Ciagle,
+            Wydawnictwo_Zwarte,
+            Praca_Doktorska,
+            Praca_Habilitacyjna,
+        ]:
+            p = matchuj_publikacje(
+                klass,
+                title=elem.value("object", "title"),
+                year=elem.value_or_none("object", "year"),
+                doi=elem.value_or_none("object", "doi"),
+                public_uri=elem.value_or_none("object", "publicUri"),
+                isbn=normalize_isbn(elem.value_or_none("object", "isbn")),
+                zrodlo=zrodlo,
+            )
 
-        if p is not None:
-            p = p.original
+            if p is not None:
 
-            if p.pbn_uid_id is not None and p.pbn_uid_id != elem.pk:
-                print(
-                    f"*** UWAGA Publikacja w BPP {p} ma już PBN UID {p.pbn_uid_id}, a wg procedury matchującej "
-                    f"należałoby go zmienić na {elem.pk} -- rekord {elem}"
-                )
-                continue
+                if p.pbn_uid_id is not None and p.pbn_uid_id != elem.pk:
+                    print(
+                        f"\r\n*** UWAGA Publikacja w BPP {p} ma już PBN UID {p.pbn_uid_id}, a wg procedury matchującej "
+                        f"należałoby go zmienić na {elem.pk} -- rekord {elem}"
+                    )
+                    continue
 
-            if p.pbn_uid_id is None:
-                p.pbn_uid_id = elem.pk
-                p.save()
-            break
+                if p.pbn_uid_id is None:
+                    p.pbn_uid_id = elem.pk
+                    p.save(update_fields=["pbn_uid_id"])
 
 
 def split_list(lst, n):
@@ -867,7 +861,9 @@ def initialize_pool():
     global CPU_COUNT
 
     if CPU_COUNT == "auto":
-        cpu_count = os.cpu_count()
+        cpu_count = os.cpu_count() * 3 // 4
+        if cpu_count < 1:
+            cpu_count = 1
     elif CPU_COUNT == "single":
         cpu_count = 1
     else:
@@ -876,18 +872,20 @@ def initialize_pool():
     return multiprocessing.Pool(cpu_count)
 
 
-def integruj_publikacje():
+def integruj_publikacje(disable_multiprocessing=False):
     ids = list(Publication.objects.all().values_list("pk", flat=True))
     _bede_uzywal_bazy_danych_z_multiprocessing_z_django()
     pool = initialize_pool()
 
     results = []
     for elem in split_list(ids, 512):
-        result = pool.apply_async(_integruj_single_part, args=(elem,))
-        # _integruj_single_part(elem)
-        results.append(result)
+        if disable_multiprocessing:
+            _integruj_single_part(elem)
+        else:
+            result = pool.apply_async(_integruj_single_part, args=(elem,))
+            results.append(result)
 
-    wait_for_results(pool, results)
+    wait_for_results(pool, results, label="integruj_publikacje")
 
 
 def _synchronizuj_pojedyncza_publikacje(client, rec):
@@ -952,13 +950,21 @@ def synchronizuj_publikacje(client, skip=0):
 
 
 @transaction.atomic
-def clear_all():
+def clear_publications():
     for model in (
-        Autor,
         Wydawnictwo_Zwarte,
         Wydawnictwo_Ciagle,
         Praca_Doktorska,
         Praca_Habilitacyjna,
+    ):
+        print(f"Setting pbn_uid_ids of {model} to null...")
+        model.objects.exclude(pbn_uid_id=None).update(pbn_uid_id=None)
+
+
+@transaction.atomic
+def clear_all():
+    for model in (
+        Autor,
         Jednostka,
         Wydawca,
         Jezyk,
@@ -967,6 +973,8 @@ def clear_all():
     ):
         print(f"Setting pbn_uid_ids of {model} to null...")
         model.objects.exclude(pbn_uid_id=None).update(pbn_uid_id=None)
+
+    clear_publications()
 
     for model in (
         Language,
@@ -983,3 +991,36 @@ def clear_all():
     ):
         print(f"Deleting all {model}")
         model.objects.all()._raw_delete(model.objects.db)
+
+
+def integruj_oswiadczenia_z_instytucji():
+    noted_pub = set()
+    noted_aut = set()
+    for elem in pbar(
+        OswiadczenieInstytucji.objects.filter(inOrcid=True),
+        label="integruj_oswiadczenia_z_instytucji",
+    ):
+        pub = elem.get_bpp_publication()
+        if pub is None:
+            if elem.publicationId_id not in noted_pub:
+                print(
+                    f"\r\nBrak odpowiednika publikacji w BPP dla pracy {elem.publicationId}, "
+                    f"parametr inOrcid dla tej pracy nie zostanie zaimportowany!"
+                )
+                noted_pub.add(elem.publicationId_id)
+            continue
+
+        aut = elem.get_bpp_autor()
+        if aut is None:
+            if elem.personId_id not in noted_aut:
+                print(
+                    f"\r\nBrak odpowiednika autora w BPP dla autora {elem.autorId}, parametr inOrcid dla tego autora"
+                    f"nie zostanie zaimportowany!"
+                )
+                noted_aut.add(elem.publicationId_id)
+            continue
+
+        rec = pub.autorzy_set.get(autor=aut)
+        if not rec.profil_orcid:
+            rec.profil_orcid = True
+            rec.save()

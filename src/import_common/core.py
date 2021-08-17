@@ -3,6 +3,7 @@ from typing import Union
 from django.db.models import Q
 
 from .normalization import (
+    normalize_doi,
     normalize_funkcja_autora,
     normalize_grupa_pracownicza,
     normalize_kod_dyscypliny,
@@ -296,9 +297,8 @@ def matchuj_publikacje(
     isbn=None,
     zrodlo=None,
 ):
-
     if doi is not None:
-        doi = doi.strip()
+        doi = normalize_doi(doi)
         if doi:
             try:
                 return klass.objects.get(doi=doi)
@@ -316,7 +316,7 @@ def matchuj_publikacje(
         except klass.DoesNotExist:
             pass
 
-    if isbn is not None:
+    if isbn is not None and hasattr(klass, "isbn") and hasattr(klass, "e_isbn"):
         try:
             return klass.objects.get(Q(isbn=isbn) | Q(e_isbn=isbn))
         except klass.MultipleObjectsReturned:
@@ -326,7 +326,7 @@ def matchuj_publikacje(
 
     title = normalize_tytul_publikacji(title)
 
-    if zrodlo is not None:
+    if zrodlo is not None and hasattr(klass, "zrodlo"):
         try:
             return klass.objects.get(
                 tytul_oryginalny__istartswith=title, rok=year, zrodlo=zrodlo
