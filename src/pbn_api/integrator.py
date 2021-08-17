@@ -1087,6 +1087,7 @@ def wyswietl_niezmatchowane_ze_zblizonymi_tytulami():
                 Publication.objects.annotate(
                     similarity=TrigramSimilarity("title", rekord.tytul_oryginalny),
                 )
+                .filter(year=rekord.rok)
                 .filter(similarity__gt=0.5)
                 .order_by("-similarity")
             )

@@ -38,6 +38,7 @@ from pbn_api.integrator import (
     weryfikuj_orcidy,
     wgraj_ludzi_z_offline_do_bazy,
     wgraj_prace_z_offline_do_bazy,
+    wyswietl_niezmatchowane_ze_zblizonymi_tytulami,
 )
 from pbn_api.management.commands.util import PBNBaseCommand
 
@@ -256,6 +257,7 @@ class Command(PBNBaseCommand):
             enable_pobierz_publikacje_instytucji or enable_all
         ) and start_from_stage <= stage:
             pobierz_publikacje_z_instytucji(client)
+
         stage = 15
         check_end_before(stage, end_before_stage)
 
@@ -263,7 +265,14 @@ class Command(PBNBaseCommand):
             enable_pobierz_oswiadczenia_instytucji or enable_all
         ) and start_from_stage <= stage:
             pobierz_oswiadczenia_z_instytucji(client)
+
         stage = 16
+        check_end_before(stage, end_before_stage)
+
+        if (enable_integruj_publikacje or enable_all) and start_from_stage <= stage:
+            integruj_publikacje(disable_multiprocessing)
+
+        stage = 17
         check_end_before(stage, end_before_stage)
 
         if (
@@ -271,17 +280,20 @@ class Command(PBNBaseCommand):
         ) and start_from_stage <= stage:
             integruj_oswiadczenia_z_instytucji()
 
-        stage = 17
-        check_end_before(stage, end_before_stage)
-
-        if (enable_integruj_publikacje or enable_all) and start_from_stage <= stage:
-            integruj_publikacje(disable_multiprocessing)
-
         stage = 18
         check_end_before(stage, end_before_stage)
 
         if (enable_pobierz_po_doi or enable_all) and start_from_stage <= stage:
             pobierz_prace_po_doi(client)
+
+        stage = 19
+        check_end_before(stage, end_before_stage)
+
+        if (enable_integruj_publikacje or enable_all) and start_from_stage <= stage:
+            wyswietl_niezmatchowane_ze_zblizonymi_tytulami()
+
+        stage = 20
+        check_end_before(stage, end_before_stage)
 
         if enable_sync:  # or enable_all:
             synchronizuj_publikacje(client)
