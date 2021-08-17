@@ -6,6 +6,7 @@ import warnings
 
 from django.db import transaction
 from django.db.models import F, Func, Q
+from django.db.models.functions import Length
 
 from import_common.core import matchuj_autora, matchuj_publikacje, matchuj_wydawce
 from import_common.normalization import normalize_doi
@@ -27,6 +28,8 @@ from pbn_api.models import (
 from .adapters.wydawnictwo import normalize_isbn
 from .exceptions import WillNotExportError
 
+from django.contrib.postgres.search import TrigramSimilarity
+
 from bpp.models import (
     Autor,
     Autor_Dyscyplina,
@@ -37,7 +40,9 @@ from bpp.models import (
     Uczelnia,
     Wydawca,
     Wydawnictwo_Ciagle,
+    Wydawnictwo_Ciagle_Autor,
     Wydawnictwo_Zwarte,
+    Wydawnictwo_Zwarte_Autor,
     Zrodlo,
 )
 from bpp.util import pbar
@@ -977,14 +982,17 @@ def synchronizuj_publikacje(client, skip=0):
         _synchronizuj_pojedyncza_publikacje(client, rec)
 
 
+MODELE_Z_PBN_UID = (
+    Wydawnictwo_Zwarte,
+    Wydawnictwo_Ciagle,
+    Praca_Doktorska,
+    Praca_Habilitacyjna,
+)
+
+
 @transaction.atomic
 def clear_publications():
-    for model in (
-        Wydawnictwo_Zwarte,
-        Wydawnictwo_Ciagle,
-        Praca_Doktorska,
-        Praca_Habilitacyjna,
-    ):
+    for model in MODELE_Z_PBN_UID:
         print(f"Setting pbn_uid_ids of {model} to null...")
         model.objects.exclude(pbn_uid_id=None).update(pbn_uid_id=None)
 
@@ -1050,5 +1058,38 @@ def integruj_oswiadczenia_z_instytucji():
 
         rec = pub.autorzy_set.get(autor=aut)
         if not rec.profil_orcid:
+            import pdb
+
+            pdb.set_trace()
             rec.profil_orcid = True
-            rec.save()
+            rec.save(update_fields=["profil_orcid"])
+
+
+def wyswietl_niezmatchowane_ze_zblizonymi_tytulami():
+    for model, klass in [
+        (Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor),
+        (Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor),
+    ]:
+        for rekord in pbar(
+            model.objects.filter(
+                pk__in=klass.objects.exclude(dyscyplina_naukowa=None)
+                .filter(rekord__pbn_uid_id=None)
+                .values("rekord")
+                .distinct()
+            )
+            .annotate(tytul_oryginalny_length=Length("tytul_oryginalny"))
+            .filter(tytul_oryginalny_length__gte=10)
+        ):
+            print(
+                f"\r\nRekord z dyscyplinami, bez dopasowania w PBN: {rekord.rok} {rekord}"
+            )
+            res = (
+                Publication.objects.annotate(
+                    similarity=TrigramSimilarity("title", rekord.tytul_oryginalny),
+                )
+                .filter(similarity__gt=0.5)
+                .order_by("-similarity")
+            )
+
+            for elem in res[:3]:
+                print("-", elem.mongoId, elem.year, elem.title, elem.similarity)
