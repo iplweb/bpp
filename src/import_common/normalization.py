@@ -88,4 +88,11 @@ def normalize_kod_dyscypliny(k):
 
 
 def normalize_public_uri(public_uri):
-    return public_uri.strip()
+    if public_uri is not None:
+        return public_uri.strip()
+
+
+def normalize_doi(s):
+    return (
+        s.strip().replace("http://", "").replace("https://", "").replace("doi.org/", "")
+    )
