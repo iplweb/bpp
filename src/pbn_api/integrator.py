@@ -138,7 +138,16 @@ def ensure_publication_exists(client, publicationId):
 
 
 def zapisz_publikacje_instytucji(elem, klass, client=None, **extra):
-    ensure_publication_exists(client, elem["publicationId"])
+    try:
+        ensure_publication_exists(client, elem["publicationId"])
+    except HttpException as e:
+        if e.status_code == 500:
+            print(
+                f"Podczas zapisywania publikacji instytucji, dla {elem['publicationId']} serwer "
+                f"PBN zwrócił bład 500. Publikacja instytucji może zostac nie zapisana poprawnie. Dump danych "
+                f"publikacji: {elem}"
+            )
+            return
 
     rec, _ign = PublikacjaInstytucji.objects.get_or_create(
         institutionId_id=elem["institutionId"],
@@ -170,7 +179,16 @@ def zapisz_oswiadczenie_instytucji(elem, klass, client=None, **extra):
     if elem["addedTimestamp"]:
         elem["addedTimestamp"] = elem["addedTimestamp"].replace(".", "-")
 
-    ensure_publication_exists(client, elem["publicationId"])
+    try:
+        ensure_publication_exists(client, elem["publicationId"])
+    except HttpException as e:
+        if e.status_code == 500:
+            print(
+                f"Podczas próby pobrania danych o nie-istniejącej obecnie po naszej stronie publikacji o id"
+                f" {elem['publicationId']} z PBNu, wystąpił błąd wewnętrzny serwera po ich stronie. Dane "
+                f"dotyczące oświadczeń z tej publikacji nie zostały zapisane. "
+            )
+            return
 
     for key in "institution", "person", "publication":
         elem[f"{key}Id_id"] = elem[f"{key}Id"]
@@ -302,7 +320,7 @@ def _pobierz_offline(fun, db):
     _bede_uzywal_bazy_danych_z_multiprocessing_z_django()
 
     results = []
-    p = multiprocessing.Pool()
+    p = initialize_pool()
 
     for status in ["ACTIVE", "DELETED"]:
         res = fun(status=status, page_size=5000)
@@ -344,7 +362,7 @@ def _bede_uzywal_bazy_danych_z_multiprocessing_z_django():
 def _wgraj_z_offline_do_bazy(db, model):
     _bede_uzywal_bazy_danych_z_multiprocessing_z_django()
 
-    p = multiprocessing.Pool()
+    p = initialize_pool()
 
     def _(exc):
         print("XXX", exc)
@@ -457,7 +475,7 @@ def pobierz_ludzi_z_uczelni(client: PBNClient, instutition_id):
         from_institution_api=False
     )
 
-    pool = multiprocessing.Pool(os.cpu_count() * 3)
+    pool = initialize_pool()
     results = []
     elementy = client.get_people_by_institution_id(instutition_id)
 
@@ -842,10 +860,26 @@ def split_list(lst, n):
         yield lst[i : i + n]
 
 
+CPU_COUNT = "auto"
+
+
+def initialize_pool():
+    global CPU_COUNT
+
+    if CPU_COUNT == "auto":
+        cpu_count = os.cpu_count()
+    elif CPU_COUNT == "single":
+        cpu_count = 1
+    else:
+        raise NotImplementedError(f"CPU_COUNT = {CPU_COUNT}")
+
+    return multiprocessing.Pool(cpu_count)
+
+
 def integruj_publikacje():
     ids = list(Publication.objects.all().values_list("pk", flat=True))
     _bede_uzywal_bazy_danych_z_multiprocessing_z_django()
-    pool = multiprocessing.Pool(os.cpu_count())
+    pool = initialize_pool()
 
     results = []
     for elem in split_list(ids, 512):
