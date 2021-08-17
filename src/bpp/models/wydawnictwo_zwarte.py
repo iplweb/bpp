@@ -15,7 +15,6 @@ from bpp.models import (
     ModelOpcjonalnieNieEksportowanyDoAPI,
     ModelZMiejscemPrzechowywania,
     ModelZPBN_UID,
-    Zewnetrzna_Baza_Danych,
 )
 from bpp.models.abstract import (
     BazaModeluOdpowiedzialnosciAutorow,
@@ -45,6 +44,7 @@ from bpp.models.abstract import (
 )
 from bpp.models.autor import Autor
 from bpp.models.nagroda import Nagroda
+from bpp.models.system import Zewnetrzna_Baza_Danych
 from bpp.models.util import ZapobiegajNiewlasciwymCharakterom
 from bpp.models.wydawca import Wydawca
 

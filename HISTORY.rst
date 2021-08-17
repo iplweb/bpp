@@ -7,6 +7,7 @@ Historia zmian
 ---------
 
 * poprawki importu i synchronizacji danych z PBN
+* możliwość konfiguracji wyświetlanych opcji w multiwyszukiwarce (#896),
 
 202108.72
 ---------

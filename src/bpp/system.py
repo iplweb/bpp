@@ -32,6 +32,7 @@ from bpp.models import (
     Autor,
     Autor_Dyscyplina,
     Autor_Jednostka,
+    BppMultiseekVisibility,
     Charakter_Formalny,
     Dyscyplina_Naukowa,
     Dyscyplina_Zrodla,
@@ -120,6 +121,7 @@ groups = {
         Publisher,
         Scientist,
         SentData,
+        BppMultiseekVisibility,
     ],
     "struktura": [
         Uczelnia,

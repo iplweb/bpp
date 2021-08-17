@@ -5,10 +5,7 @@ from django.db.models import CASCADE, SET_NULL
 from django.utils.functional import cached_property
 
 from bpp.models import (
-    Autor,
     BazaModeluOdpowiedzialnosciAutorow,
-    Charakter_Formalny,
-    Jezyk,
     ModelOpcjonalnieNieEksportowanyDoAPI,
     ModelPunktowany,
     ModelRecenzowany,
@@ -25,6 +22,8 @@ from bpp.models.abstract import (
     ModelZAbsolutnymUrl,
     RekordBPPBaza,
 )
+from bpp.models.autor import Autor
+from bpp.models.system import Charakter_Formalny, Jezyk
 from bpp.util import safe_html
 
 
