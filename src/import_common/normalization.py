@@ -69,7 +69,7 @@ def normalize_isbn(isbn):
     if isbn is None:
         return
 
-    return isbn.replace(".", "").strip()
+    return isbn.replace(".", "").replace("-", "").replace(" ", "").strip()
 
 
 normalize_issn = normalize_isbn
