@@ -100,5 +100,9 @@ def normalize_doi(s):
     if s is None:
         return s
     return (
-        s.strip().replace("http://", "").replace("https://", "").replace("doi.org/", "")
+        s.strip()
+        .replace("http://", "")
+        .replace("https://", "")
+        .replace("doi.org/", "")
+        .lower()
     )

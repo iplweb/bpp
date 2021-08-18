@@ -1,7 +1,6 @@
 from typing import Union
 
-from django.db.models import Q, Value
-from django.db.models.functions import Replace
+from django.db.models import Q
 
 from .normalization import (
     normalize_doi,
@@ -313,7 +312,7 @@ def matchuj_publikacje(
         doi = normalize_doi(doi)
         if doi:
             try:
-                return klass.objects.get(doi=doi)
+                return klass.objects.get(doi__istartswith=doi)
             except klass.DoesNotExist:
                 pass
             except klass.MultipleObjectsReturned:
@@ -346,7 +345,10 @@ def matchuj_publikacje(
         except klass.DoesNotExist:
             pass
         except klass.MultipleObjectsReturned:
-            print(f"PPP WWW MultipleObjectsReturned dla title={title} rok={year}")
+            print(
+                f"PPP WWW MultipleObjectsReturned dla title={title} rok={year} -- zdublowana praca po stronie BPP? "
+                f"sprawdz matchowanie z PBN"
+            )
 
     if (
         isbn is not None
@@ -356,18 +358,12 @@ def matchuj_publikacje(
     ):
         ni = normalize_isbn(isbn)
 
-        zapytanie = klass.objects.exclude(isbn=None, e_isbn=None).annotate(
-            normalize_isbn=Replace("isbn", Value("-"), Value("")),
-            normalize_e_isbn=Replace("e_isbn", Value("-"), Value("")),
+        zapytanie = klass.objects.exclude(isbn=None, e_isbn=None).exclude(
+            isbn="", e_isbn=""
         )
 
         try:
-            return zapytanie.get(
-                Q(normalize_isbn=ni)
-                | Q(normalize_e_isbn=ni)
-                | Q(isbn=isbn)
-                | Q(e_isbn=isbn)
-            )
+            return zapytanie.get(Q(isbn=ni) | Q(e_isbn=ni))
         except klass.MultipleObjectsReturned:
             print(f"PPP ISBN {isbn} nie jest unikalny w bazie danych!")
         except klass.DoesNotExist:
