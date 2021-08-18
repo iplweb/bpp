@@ -1,3 +1,4 @@
+import csv
 import json
 import multiprocessing
 import os
@@ -5,11 +6,15 @@ import sys
 import warnings
 
 from django.db import transaction
-from django.db.models import F, Func, Q
+from django.db.models import Count, F, Func, Q
 from django.db.models.functions import Length
 
 from import_common.core import matchuj_autora, matchuj_publikacje, matchuj_wydawce
-from import_common.normalization import normalize_doi
+from import_common.normalization import (
+    normalize_doi,
+    normalize_isbn,
+    normalize_public_uri,
+)
 from pbn_api.client import PBNClient
 from pbn_api.exceptions import HttpException, SameDataUploadedRecently
 from pbn_api.models import (
@@ -447,7 +452,9 @@ def pobierz_prace_po_doi(client: PBNClient):
                         print(f"\r\nBrak pracy z DOI {nd} w PBNie -- w BPP to {praca}")
                         continue
                     elif "Internal server error" in e.content:
-                        print(f"\r\nSerwer PBN zwrocil blad 500 dla DOI {nd}")
+                        print(
+                            f"\r\nSerwer PBN zwrocil blad 500 dla DOI {nd} --> {e.content}"
+                        )
                         continue
 
                 raise e
@@ -811,7 +818,8 @@ def integruj_wydawcow():
                 w.save()
 
 
-def _integruj_single_part(ids):
+def _integruj_single_part(ids, zdublowane_isbny, zdublowane_www):
+
     for _id in ids:
         elem = Publication.objects.get(pk=_id)
 
@@ -825,30 +833,36 @@ def _integruj_single_part(ids):
             except Zrodlo.MultipleObjectsReturned:
                 zrodlo = Zrodlo.objects.filter(pbn_uid_id=zrodlo_pbn_uid_id).first()
 
+        isbn = normalize_isbn(elem.isbn)
+        if isbn:
+            if isbn in zdublowane_isbny:
+                isbn = None
+
+        www = normalize_public_uri(elem.publicUri)
+        if www:
+            if www in zdublowane_www:
+                www = None
         p = matchuj_publikacje(
             Rekord,
             title=elem.title,
             year=elem.year,
             doi=elem.doi,
-            public_uri=elem.publicUri,
-            isbn=elem.isbn,
+            public_uri=www,
+            isbn=isbn,
             zrodlo=zrodlo,
         )
         if p is not None:
-
             if p.pbn_uid_id is not None and p.pbn_uid_id != elem.pk:
                 print(
                     f"\r\n*** UWAGA Publikacja w BPP {p} ma już PBN UID {p.pbn_uid_id}, a wg procedury matchującej "
                     f"należałoby go zmienić na {elem.pk} -- rekord {elem}"
                 )
-                break
+                continue
 
             if p.pbn_uid_id is None:
                 p = p.original
                 p.pbn_uid_id = elem.pk
                 p.save(update_fields=["pbn_uid_id"])
-
-            break
 
 
 def split_list(lst, n):
@@ -882,10 +896,47 @@ def integruj_publikacje(
     po stronie BPP nie będa analizowane.
 
     """
+
+    zdublowane_isbny = set(
+        Rekord.objects.exclude(isbn=None)
+        .exclude(isbn="")
+        .values("isbn")
+        .order_by("isbn")
+        .annotate(f=Count("isbn"))
+        .filter(f__gte=2)
+        .values_list("isbn", flat=True)
+    )
+    zdublowane_isbny.update(
+        Rekord.objects.exclude(e_isbn=None)
+        .exclude(e_isbn="")
+        .values("e_isbn")
+        .order_by("e_isbn")
+        .annotate(Count("e_isbn"))
+        .filter(e_isbn__count__gte=2)
+        .values_list("e_isbn", flat=True)
+    )
+    zdublowane_www = set(
+        Rekord.objects.exclude(www=None)
+        .exclude(www="")
+        .values("www")
+        .order_by("www")
+        .annotate(Count("www"))
+        .filter(www__count__gte=2)
+        .values_list("www", flat=True)
+    )
+    zdublowane_www.update(
+        Rekord.objects.exclude(public_www=None)
+        .exclude(public_www="")
+        .values("public_www")
+        .order_by("public_www")
+        .annotate(Count("public_www"))
+        .filter(public_www__count__gte=2)
+        .values_list("public_www", flat=True)
+    )
+
     pubs = Publication.objects.all()
 
     if ignore_already_matched:
-        from bpp.models.cache import Rekord
 
         pubs = pubs.exclude(
             pk__in=Rekord.objects.exclude(pbn_uid_id=None)
@@ -899,17 +950,31 @@ def integruj_publikacje(
     _bede_uzywal_bazy_danych_z_multiprocessing_z_django()
     pool = initialize_pool()
 
+    # if disable_multiprocessing:
+    #     zmatchowane = (
+    #         Rekord.objects.all().values_list("pbn_uid_id").exclude(pbn_uid_id=None)
+    #     )
+    #
+    #     ids = (
+    #         OswiadczenieInstytucji.objects.all()
+    #         .values_list("publicationId_id", flat=True)
+    #         .distinct()
+    #         .exclude(publicationId_id__in=zmatchowane)
+    #     )
+
     results = []
     for no, elem in enumerate(split_list(ids, 256)):
         if no < skip_pages:
             continue
 
         if disable_multiprocessing:
-            _integruj_single_part(elem)
+            _integruj_single_part(elem, zdublowane_isbny, zdublowane_www)
             print(f"{no} of {len(ids)//256}...", end="\r")
             sys.stdout.flush()
         else:
-            result = pool.apply_async(_integruj_single_part, args=(elem,))
+            result = pool.apply_async(
+                _integruj_single_part, args=(elem, zdublowane_isbny, zdublowane_www)
+            )
             results.append(result)
 
     wait_for_results(pool, results, label="integruj_publikacje")
@@ -1032,12 +1097,16 @@ def synchronizuj_publikacje(client, skip=0):
 
 
 @transaction.atomic
-def clear_publications():
+def clear_match_publications():
     for model in MODELE_Z_PBN_UID:
         print(f"Setting pbn_uid_ids of {model} to null...")
         model.objects.exclude(pbn_uid_id=None).update(pbn_uid_id=None)
 
-    Publication.objects.all()._raw_delete(model.objects.db)
+
+@transaction.atomic
+def clear_publications():
+    clear_match_publications()
+    Publication.objects.all()._raw_delete(MODELE_Z_PBN_UID[0].objects.db)
 
 
 @transaction.atomic
@@ -1140,3 +1209,37 @@ def wyswietl_niezmatchowane_ze_zblizonymi_tytulami():
 
             for elem in res[:3]:
                 print("-", elem.mongoId, elem.year, elem.title, elem.similarity)
+
+
+def sprawdz_ilosc_autorow_przy_zmatchowaniu():
+    res = csv.writer(sys.stdout)
+    res.writerow(
+        [
+            "Komunikat",
+            "Praca w BPP",
+            "Praca w PBN",
+            "Rok",
+            "Autorzy w BPP",
+            "Autorzy w PBN",
+            "Nazwiska w BPP",
+            "Nazwiska w PBN",
+        ]
+    )
+    for praca in Rekord.objects.exclude(pbn_uid_id=None).order_by(
+        "rok", "tytul_oryginalny"
+    ):
+        ca = praca.autorzy_set.all().count()
+        pa = praca.pbn_uid.policz_autorow()
+        if ca != pa:
+            res.writerow(
+                [
+                    "Rozna ilosc autorow",
+                    str(praca),
+                    str(praca.pbn_uid),
+                    str(praca.rok),
+                    str(ca),
+                    str(pa),
+                    str(praca.opis_bibliograficzny_zapisani_autorzy_cache),
+                    str(praca.pbn_uid.autorzy),
+                ]
+            )
