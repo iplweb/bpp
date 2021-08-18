@@ -108,6 +108,7 @@ class Command(PBNBaseCommand):
         parser.add_argument(
             "--enable-integruj-publikacje", action="store_true", default=False
         )
+        parser.add_argument("--skip-pages", type=int, default=0)
         parser.add_argument("--enable-sync", action="store_true", default=False)
         parser.add_argument(
             "--disable-progress-bar", action="store_true", default=False
@@ -142,6 +143,7 @@ class Command(PBNBaseCommand):
         enable_pobierz_publikacje_instytucji,
         enable_pobierz_oswiadczenia_instytucji,
         enable_integruj_publikacje,
+        skip_pages,
         enable_sync,
         disable_progress_bar,
         *args,
@@ -272,7 +274,7 @@ class Command(PBNBaseCommand):
         check_end_before(stage, end_before_stage)
 
         if (enable_integruj_publikacje or enable_all) and start_from_stage <= stage:
-            integruj_publikacje(disable_multiprocessing)
+            integruj_publikacje(disable_multiprocessing, skip_pages=skip_pages)
 
         stage = 17
         check_end_before(stage, end_before_stage)
