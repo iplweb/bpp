@@ -2,6 +2,8 @@ from django.db import models
 
 from .base import BasePBNMongoDBModel
 
+from django.utils.functional import cached_property
+
 
 class Publication(BasePBNMongoDBModel):
     class Meta:
@@ -24,6 +26,10 @@ class Publication(BasePBNMongoDBModel):
 
     def volume(self):
         return self.value("object", "volume", return_none=True)
+
+    @cached_property
+    def journal(self):
+        return self.value_or_none("object", "journal")
 
     def pull_up_year(self):
         year = self.value_or_none("object", "year")
