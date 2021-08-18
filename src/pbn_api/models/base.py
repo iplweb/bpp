@@ -15,7 +15,7 @@ class BasePBNModel(models.Model):
         abstract = True
 
 
-MAX_TEXT_FIELD_LENGTH = 512
+MAX_TEXT_FIELD_LENGTH = 350
 
 
 class BasePBNMongoDBModel(BasePBNModel):
@@ -31,7 +31,12 @@ class BasePBNMongoDBModel(BasePBNModel):
 
     def _pull_up_on_save(self):
         for attr in self.pull_up_on_save:
-            v = self.value_or_none("object", attr)
+            if hasattr(self, f"pull_up_{attr}"):
+                fn = getattr(self, f"pull_up_{attr}")
+                v = fn()
+            else:
+                v = self.value_or_none("object", attr)
+
             if v is not None:
                 # Tylko błędne rekordy (takie, które zawieraja pola dlugosci kilkudziesieciu kilobajtow)
                 # zawieraja bardzo dlugie wpisy. Np jeden rekord w polu 'nazwisko' ma 10 kb nazwisk,

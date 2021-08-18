@@ -25,6 +25,24 @@ class Publication(BasePBNMongoDBModel):
     def volume(self):
         return self.value("object", "volume", return_none=True)
 
+    def pull_up_year(self):
+        year = self.value_or_none("object", "year")
+        if year is None:
+            year = self.value_or_none("object", "book", "year")
+        return year
+
+    def pull_up_isbn(self):
+        isbn = self.value_or_none("object", "isbn")
+        if isbn is None:
+            isbn = self.value_or_none("object", "book", "isbn")
+        return isbn
+
+    def pull_up_publicUri(self):
+        publicUri = self.value_or_none("object", "publicUri")
+        if publicUri is None:
+            publicUri = self.value_or_none("object", "book", "publicUri")
+        return publicUri
+
     def __str__(self):
         ret = f"{self.title}"
         if self.year:
