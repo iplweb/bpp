@@ -124,6 +124,7 @@ class PublisherAdmin(BaseMongoDBAdmin):
 
 @admin.register(Scientist)
 class ScientistAdmin(BaseMongoDBAdmin):
+    show_full_result_count = False
     list_display = [
         "lastName",
         "name",
@@ -153,6 +154,8 @@ class ScientistAdmin(BaseMongoDBAdmin):
 
 @admin.register(Publication)
 class PublicationAdmin(BaseMongoDBAdmin):
+    show_full_result_count = False
+
     list_display = ["title", "type", "volume", "year", "publicUri", "doi"]
     search_fields = [
         "mongoId",

@@ -21,8 +21,8 @@ MAX_TEXT_FIELD_LENGTH = 350
 class BasePBNMongoDBModel(BasePBNModel):
     mongoId = models.CharField(max_length=32, primary_key=True)
     status = models.CharField(max_length=32, db_index=True)
-    verificationLevel = models.CharField(max_length=32)
-    verified = models.BooleanField(default=False)
+    verificationLevel = models.CharField(max_length=32, db_index=True)
+    verified = models.BooleanField(default=False, db_index=True)
     versions = JSONField()
 
     # Nazwy pól wyciaganych "na wierzch" do pól obiektu
