@@ -25,7 +25,6 @@ from pbn_api.models import (
     Scientist,
     SentData,
 )
-from .adapters.wydawnictwo import normalize_isbn
 from .exceptions import WillNotExportError
 
 from django.contrib.postgres.search import TrigramSimilarity
@@ -831,16 +830,16 @@ def _integruj_single_part(ids):
             Praca_Doktorska,
             Praca_Habilitacyjna,
         ]:
+
             p = matchuj_publikacje(
                 klass,
-                title=elem.value("object", "title"),
-                year=elem.value_or_none("object", "year"),
-                doi=elem.value_or_none("object", "doi"),
-                public_uri=elem.value_or_none("object", "publicUri"),
-                isbn=normalize_isbn(elem.value_or_none("object", "isbn")),
+                title=elem.title,
+                year=elem.year,
+                doi=elem.doi,
+                public_uri=elem.publicUri,
+                isbn=elem.isbn,
                 zrodlo=zrodlo,
             )
-
             if p is not None:
 
                 if p.pbn_uid_id is not None and p.pbn_uid_id != elem.pk:
