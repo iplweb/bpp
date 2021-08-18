@@ -90,6 +90,11 @@ pip: pip-compile pip-sync
 tests:
 	pytest -n 4 --splinter-headless
 
+remove-match-publikacji-dane:
+	cd src/import_dbf && export CUSTOMER=foo && make disable-trigger
+	python src/manage.py pbn_integrator --clear-match-publications
+	cd src/import_dbf && export CUSTOMER=foo && make enable-trigger
+
 remove-pbn-integracja-publikacji-dane:
 	cd src/import_dbf && export CUSTOMER=foo && make disable-trigger
 	python src/manage.py pbn_integrator --clear-publications
@@ -100,3 +105,6 @@ remove-pbn-data:
 	python src/manage.py pbn_integrator --clear-all
 	rm -rf pbn_json_data
 	cd src/import_dbf && export CUSTOMER=foo && make enable-trigger
+
+integration-start-from-match:
+	python src/manage.py pbn_integrator --enable-all --start-from-stage=16

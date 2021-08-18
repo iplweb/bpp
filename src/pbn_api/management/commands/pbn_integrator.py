@@ -34,6 +34,7 @@ from pbn_api.integrator import (
     pobierz_wydawcow_mnisw,
     pobierz_wydawcow_wszystkich,
     pobierz_zrodla,
+    sprawdz_ilosc_autorow_przy_zmatchowaniu,
     synchronizuj_publikacje,
     weryfikuj_orcidy,
     wgraj_ludzi_z_offline_do_bazy,
@@ -64,6 +65,9 @@ class Command(PBNBaseCommand):
 
         parser.add_argument("--clear-all", action="store_true", default=False)
         parser.add_argument("--clear-publications", action="store_true", default=False)
+        parser.add_argument(
+            "--clear-match-publications", action="store_true", default=False
+        )
         parser.add_argument("--enable-all", action="store_true", default=False)
 
         parser.add_argument("--enable-system-data", action="store_true", default=False)
@@ -126,6 +130,7 @@ class Command(PBNBaseCommand):
         disable_multiprocessing,
         clear_all,
         clear_publications,
+        clear_match_publications,
         enable_all,
         enable_system_data,
         enable_pobierz_zrodla,
@@ -160,6 +165,10 @@ class Command(PBNBaseCommand):
 
         if clear_all:
             integrator.clear_all()
+            sys.exit(0)
+
+        if clear_match_publications:
+            integrator.clear_match_publications()
             sys.exit(0)
 
         if clear_publications:
@@ -294,6 +303,7 @@ class Command(PBNBaseCommand):
         check_end_before(stage, end_before_stage)
 
         if (enable_integruj_publikacje or enable_all) and start_from_stage <= stage:
+            sprawdz_ilosc_autorow_przy_zmatchowaniu()
             wyswietl_niezmatchowane_ze_zblizonymi_tytulami()
 
         stage = 20
