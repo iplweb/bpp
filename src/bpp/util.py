@@ -521,3 +521,24 @@ def year_last_month():
     if now.month >= 2:
         return now.year
     return now.year - 1
+
+
+#
+# Seq Scan check
+#
+
+
+class PerformanceFailure(Exception):
+    pass
+
+
+def fail_if_seq_scan(qset, DEBUG):
+    """
+    Funkcja weryfikujaca, czy w wyjasnieniu zapytania (EXPLAIN) nie wystapi ciag znakow 'Seq Scan',
+    jezeli tak to wyjatek PerformanceFailure z zapytaniem + wyjasnieniem
+    """
+    if DEBUG:
+        explain = qset.explain()
+        if explain.find("Seq Scan") >= 0:
+            print("\r\n", explain)
+            raise PerformanceFailure(str(qset.query), explain)

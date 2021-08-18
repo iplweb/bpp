@@ -9,8 +9,8 @@ from django.db import transaction
 from django.db.models import F, Func, Q
 from django.db.models.functions import Length
 
-from import_common.core import matchuj_autora, matchuj_publikacje, matchuj_wydawce
-from import_common.normalization import normalize_doi
+from import_common.core import matchuj_autora, matchuj_wydawce
+from import_common.normalization import normalize_doi, normalize_tytul_publikacji
 from pbn_api.client import PBNClient
 from pbn_api.exceptions import HttpException, SameDataUploadedRecently
 from pbn_api.models import (
@@ -46,7 +46,7 @@ from bpp.models import (
     Wydawnictwo_Zwarte_Autor,
     Zrodlo,
 )
-from bpp.util import pbar
+from bpp.util import fail_if_seq_scan, pbar
 
 
 def integruj_jezyki(client):
@@ -427,9 +427,12 @@ def pobierz_oswiadczenia_z_instytucji(client: PBNClient):
 
 
 def pobierz_prace_po_doi(client: PBNClient):
-    for klass in (Wydawnictwo_Ciagle,):  # , Wydawnictwo_Zwarte:
+    for klass in (Wydawnictwo_Ciagle, Wydawnictwo_Zwarte):
         for praca in pbar(
-            klass.objects.all().exclude(doi=None).filter(pbn_uid_id=None),
+            klass.objects.all()
+            .exclude(doi=None)
+            .exclude(doi="")
+            .filter(pbn_uid_id=None),
             label="pobierz_prace_po_doi",
         ):
             nd = normalize_doi(praca.doi)
@@ -814,43 +817,27 @@ def integruj_wydawcow():
                 w.save()
 
 
+def zweryfikuj_lub_stworz_match(elem, bpp_rekord):
+    if bpp_rekord is not None:
+        if bpp_rekord.pbn_uid_id is not None and bpp_rekord.pbn_uid_id != elem.pk:
+            print(
+                f"\r\n*** Rekord BPP {bpp_rekord} ma już PBN UID {bpp_rekord.pbn_uid_id}, "
+                f"pasuje też do {elem} PBN UID {elem.pk}"
+            )
+            return
+
+        if bpp_rekord.pbn_uid_id is None:
+            p = bpp_rekord.original
+            p.pbn_uid_id = elem.pk
+            p.save(update_fields=["pbn_uid_id"])
+
+
 def _integruj_single_part(ids):
 
     for _id in ids:
-
         elem = Publication.objects.get(pk=_id)
-
-        zrodlo = None
-        zrodlo_pbn_uid_id = elem.value_or_none("object", "journal", "id")
-        if zrodlo_pbn_uid_id is not None:
-            try:
-                zrodlo = Zrodlo.objects.get(pbn_uid_id=zrodlo_pbn_uid_id)
-            except Zrodlo.DoesNotExist:
-                pass
-            except Zrodlo.MultipleObjectsReturned:
-                zrodlo = Zrodlo.objects.filter(pbn_uid_id=zrodlo_pbn_uid_id).first()
-
-        p = matchuj_publikacje(
-            Rekord,
-            title=elem.title,
-            year=elem.year,
-            doi=elem.doi,
-            public_uri=elem.publicUri,
-            isbn=elem.isbn,
-            zrodlo=zrodlo,
-        )
-        if p is not None:
-            if p.pbn_uid_id is not None and p.pbn_uid_id != elem.pk:
-                print(
-                    f"\r\n*** UWAGA Publikacja w BPP {p} ma już PBN UID {p.pbn_uid_id}, a wg procedury matchującej "
-                    f"należałoby go zmienić na {elem.pk} -- rekord {elem}"
-                )
-                continue
-
-            if p.pbn_uid_id is None:
-                p = p.original
-                p.pbn_uid_id = elem.pk
-                p.save(update_fields=["pbn_uid_id"])
+        p = elem.matchuj_do_rekordu_bpp()
+        zweryfikuj_lub_stworz_match(elem, p)
 
 
 def split_list(lst, n):
@@ -1098,13 +1085,18 @@ def integruj_oswiadczenia_z_instytucji():
     ):
         pub = elem.get_bpp_publication()
         if pub is None:
-            if elem.publicationId_id not in noted_pub:
-                print(
-                    f"\r\nPPP Brak odpowiednika publikacji w BPP dla pracy {elem.publicationId}, "
-                    f"parametr inOrcid dla tej pracy nie zostanie zaimportowany!"
-                )
-                noted_pub.add(elem.publicationId_id)
-            continue
+            pub = elem.publicationId.matchuj_do_rekordu_bpp()
+
+            if pub is None:
+                if elem.publicationId_id not in noted_pub:
+                    print(
+                        f"\r\nPPP Brak odpowiednika publikacji w BPP dla pracy {elem.publicationId}, "
+                        f"parametr inOrcid dla tej pracy nie zostanie zaimportowany!"
+                    )
+                    noted_pub.add(elem.publicationId_id)
+                continue
+            else:
+                zweryfikuj_lub_stworz_match(elem.publicationId, pub)
 
         aut = elem.get_bpp_autor()
         if aut is None:
@@ -1134,7 +1126,7 @@ def wyswietl_niezmatchowane_ze_zblizonymi_tytulami():
         (Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor),
         (Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor),
     ]:
-        for rekord in pbar(
+        for rekord in (
             model.objects.filter(
                 pk__in=klass.objects.exclude(dyscyplina_naukowa=None)
                 .filter(rekord__pbn_uid_id=None)
@@ -1147,21 +1139,26 @@ def wyswietl_niezmatchowane_ze_zblizonymi_tytulami():
             print(
                 f"\r\nRekord z dyscyplinami, bez dopasowania w PBN: {rekord.rok} {rekord}"
             )
+
+            nt = normalize_tytul_publikacji(rekord.tytul_oryginalny)
+
             res = (
                 Publication.objects.annotate(
-                    similarity=TrigramSimilarity("title", rekord.tytul_oryginalny),
+                    similarity=TrigramSimilarity("title", nt),
                 )
                 .filter(year=rekord.rok)
                 .filter(similarity__gt=0.5)
                 .order_by("-similarity")
             )
 
-            for elem in res[:3]:
-                print("-", elem.mongoId, elem.year, elem.title, elem.similarity)
+            fail_if_seq_scan(res, True)
+
+            for elem in res[:5]:
+                print("- MOZE: ", elem.mongoId, elem.title, elem.similarity)
 
 
 def sprawdz_ilosc_autorow_przy_zmatchowaniu():
-    res = csv.writer(sys.stdout)
+    res = csv.writer(open("rozne-ilosci-autorow.csv", "w"))
     res.writerow(
         [
             "Komunikat",

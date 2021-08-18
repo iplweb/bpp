@@ -36,6 +36,7 @@ from bpp.models import (
     Wymiar_Etatu,
     Zrodlo,
 )
+from bpp.util import fail_if_seq_scan
 
 
 def matchuj_wydzial(nazwa):
@@ -292,22 +293,7 @@ TITLE_LIMIT_SINGLE_WORD = 15
 TITLE_LIMIT_MANY_WORDS = 25
 
 MATCH_SIMILARITY_THRESHOLD = 0.95
-
-
-class PerformanceFailure(Exception):
-    pass
-
-
-def fail_if_seq_scan(qset, DEBUG):
-    """
-    Funkcja weryfikujaca, czy w wyjasnieniu zapytania (EXPLAIN) nie wystapi ciag znakow 'Seq Scan',
-    jezeli tak to wyjatek PerformanceFailure z zapytaniem + wyjasnieniem
-    """
-    if DEBUG:
-        explain = qset.explain()
-        if explain.find("Seq Scan") >= 0:
-            print("\r\n", explain)
-            raise PerformanceFailure(str(qset.query), explain)
+MATCH_SIMILARITY_THRESHOLD_LOW = 0.90
 
 
 def matchuj_publikacje(
@@ -327,7 +313,7 @@ def matchuj_publikacje(
             res = (
                 klass.objects.filter(doi__startswith=doi, rok=year)
                 .annotate(podobienstwo=TrigramSimilarity("tytul_oryginalny", title))
-                .order_by("-podobienstwo")
+                .order_by("-podobienstwo")[:2]
             )
 
             fail_if_seq_scan(res, DEBUG_MATCHOWANIE)
@@ -342,9 +328,14 @@ def matchuj_publikacje(
 
     title = normalize_tytul_publikacji(title)
 
+    title_has_spaces = False
+
+    if title is not None:
+        title_has_spaces = title.find(" ") > 0
+
     if title is not None and (
-        (len(title) >= TITLE_LIMIT_SINGLE_WORD and title.strip().find(" ") == -1)
-        or (len(title) >= TITLE_LIMIT_MANY_WORDS and title.strip().find(" ") > 0)
+        (not title_has_spaces and len(title) >= TITLE_LIMIT_SINGLE_WORD)
+        or (title_has_spaces and len(title) >= TITLE_LIMIT_MANY_WORDS)
     ):
         if zrodlo is not None and hasattr(klass, "zrodlo"):
             try:
@@ -373,7 +364,7 @@ def matchuj_publikacje(
         res = (
             zapytanie.filter(Q(isbn=ni) | Q(e_isbn=ni))
             .annotate(podobienstwo=TrigramSimilarity("tytul_oryginalny", title))
-            .order_by("-podobienstwo")
+            .order_by("-podobienstwo")[:2]
         )
         fail_if_seq_scan(res, DEBUG_MATCHOWANIE)
         if res.exists():
@@ -390,7 +381,7 @@ def matchuj_publikacje(
         res = (
             klass.objects.filter(Q(www=public_uri) | Q(public_www=public_uri))
             .annotate(podobienstwo=TrigramSimilarity("tytul_oryginalny", title))
-            .order_by("-podobienstwo")
+            .order_by("-podobienstwo")[:2]
         )
         fail_if_seq_scan(res, DEBUG_MATCHOWANIE)
         if res.exists():
@@ -404,18 +395,36 @@ def matchuj_publikacje(
                     pdb.set_trace()
 
     if title is not None and (
-        (len(title) >= TITLE_LIMIT_SINGLE_WORD and title.strip().find(" ") == -1)
-        or (len(title) >= TITLE_LIMIT_MANY_WORDS and title.strip().find(" ") > 0)
+        (not title_has_spaces and len(title) >= TITLE_LIMIT_SINGLE_WORD)
+        or (title_has_spaces and len(title) >= TITLE_LIMIT_MANY_WORDS)
     ):
         res = (
             klass.objects.filter(tytul_oryginalny__istartswith=title, rok=year)
             .annotate(podobienstwo=TrigramSimilarity("tytul_oryginalny", title))
-            .order_by("-podobienstwo")
+            .order_by("-podobienstwo")[:2]
         )
 
         fail_if_seq_scan(res, DEBUG_MATCHOWANIE)
         if res.exists():
             if res.first().podobienstwo >= MATCH_SIMILARITY_THRESHOLD:
+                return res.first()
+            else:
+                if DEBUG_MATCHOWANIE:
+                    import pdb
+
+                    pdb.set_trace()
+
+        # Ostatnia szansa, po podobieństwie, niski próg
+
+        res = (
+            klass.objects.filter(rok=year)
+            .annotate(podobienstwo=TrigramSimilarity("tytul_oryginalny", title))
+            .order_by("-podobienstwo")[:2]
+        )
+
+        fail_if_seq_scan(res, DEBUG_MATCHOWANIE)
+        if res.exists():
+            if res.first().podobienstwo >= MATCH_SIMILARITY_THRESHOLD_LOW:
                 return res.first()
             else:
                 if DEBUG_MATCHOWANIE:

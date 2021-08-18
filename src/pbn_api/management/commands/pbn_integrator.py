@@ -303,8 +303,8 @@ class Command(PBNBaseCommand):
         check_end_before(stage, end_before_stage)
 
         if (enable_integruj_publikacje or enable_all) and start_from_stage <= stage:
-            sprawdz_ilosc_autorow_przy_zmatchowaniu()
             wyswietl_niezmatchowane_ze_zblizonymi_tytulami()
+            sprawdz_ilosc_autorow_przy_zmatchowaniu()
 
         stage = 20
         check_end_before(stage, end_before_stage)

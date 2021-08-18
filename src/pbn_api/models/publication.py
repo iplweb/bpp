@@ -1,5 +1,6 @@
 from django.db import models
 
+from import_common.core import matchuj_publikacje
 from .base import BasePBNMongoDBModel
 
 from django.utils.functional import cached_property
@@ -64,6 +65,29 @@ class Publication(BasePBNMongoDBModel):
             if elem_dct:
                 ret[elem] = elem_dct
         return ret
+
+    @cached_property
+    def journal_id(self):
+        return self.value_or_none("object", "journal", "id")
+
+    def matchuj_zrodlo_do_rekordu_bpp(self):
+        if self.journal_id is not None:
+            from bpp.models.zrodlo import Zrodlo
+
+            return Zrodlo.objects.filter(pbn_uid_id=self.journal_id).first()
+
+    def matchuj_do_rekordu_bpp(self):
+        from bpp.models.cache import Rekord
+
+        return matchuj_publikacje(
+            Rekord,
+            title=self.title,
+            year=self.year,
+            doi=self.doi,
+            public_uri=self.publicUri,
+            isbn=self.isbn,
+            zrodlo=self.matchuj_zrodlo_do_rekordu_bpp(),
+        )
 
     def __str__(self):
         ret = f"{self.title}"
