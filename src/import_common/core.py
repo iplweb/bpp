@@ -285,7 +285,7 @@ def matchuj_wydawce(nazwa):
 
 
 TITLE_LIMIT_SINGLE_WORD = 15
-TITLE_LIMIT_MANY_WORDS = 30
+TITLE_LIMIT_MANY_WORDS = 25
 
 
 def matchuj_publikacje(
@@ -314,7 +314,7 @@ def matchuj_publikacje(
             except klass.DoesNotExist:
                 pass
             except klass.MultipleObjectsReturned:
-                print(f"DOI nie jest unikalne w bazie: {doi}")
+                print(f"PPP DOI nie jest unikalne w bazie: {doi}")
 
     title = normalize_tytul_publikacji(title)
 
@@ -330,7 +330,7 @@ def matchuj_publikacje(
                 pass
             except klass.MultipleObjectsReturned:
                 print(
-                    f"MultipleObjectsReturned dla title={title} rok={year} zrodlo={zrodlo}"
+                    f"PPP ZZZ MultipleObjectsReturned dla title={title} rok={year} zrodlo={zrodlo}"
                 )
 
         try:
@@ -338,13 +338,13 @@ def matchuj_publikacje(
         except klass.DoesNotExist:
             pass
         except klass.MultipleObjectsReturned:
-            print(f"MultipleObjectsReturned dla title={title} rok={year}")
+            print(f"PPP WWW MultipleObjectsReturned dla title={title} rok={year}")
 
     if isbn is not None and hasattr(klass, "isbn") and hasattr(klass, "e_isbn"):
         try:
             return klass.objects.get(Q(isbn=isbn) | Q(e_isbn=isbn))
         except klass.MultipleObjectsReturned:
-            print(f"ISBN {isbn} nie jest unikalny w bazie danych!")
+            print(f"PPP ISBN {isbn} nie jest unikalny w bazie danych!")
         except klass.DoesNotExist:
             pass
 
@@ -353,6 +353,6 @@ def matchuj_publikacje(
         try:
             return klass.objects.get(Q(www=public_uri) | Q(public_www=public_uri))
         except klass.MultipleObjectsReturned:
-            print(f"www lub public_www nie jest unikalne w bazie: {public_uri}")
+            print(f"PPP WWW lub public_www nie jest unikalne w bazie: {public_uri}")
         except klass.DoesNotExist:
             pass
