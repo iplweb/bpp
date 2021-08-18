@@ -68,7 +68,6 @@ class PublikacjaInstytucji(models.Model):
     snapshot = JSONField(null=True, blank=True)
 
     class Meta:
-        unique_together = [("insPersonId", "institutionId", "publicationId")]
         verbose_name = "Publikacja instytucji"
         verbose_name_plural = "Publikacje instytucji"
 
@@ -82,7 +81,33 @@ class OswiadczenieInstytucji(models.Model):
     publicationId = models.ForeignKey("pbn_api.Publication", on_delete=models.CASCADE)
     type = models.CharField(max_length=50)
 
+    def get_bpp_publication(self):
+        from bpp.models import (
+            Praca_Doktorska,
+            Praca_Habilitacyjna,
+            Wydawnictwo_Ciagle,
+            Wydawnictwo_Zwarte,
+        )
+
+        for klass in (
+            Wydawnictwo_Ciagle,
+            Wydawnictwo_Zwarte,
+            Praca_Doktorska,
+            Praca_Habilitacyjna,
+        ):
+            try:
+                return klass.objects.get(pbn_uid_id=self.publicationId_id)
+            except klass.DoesNotExist:
+                pass
+
+    def get_bpp_autor(self):
+        from bpp.models import Autor
+
+        try:
+            return Autor.objects.get(pbn_uid_id=self.personId_id)
+        except Autor.DoesNotExist:
+            return
+
     class Meta:
         verbose_name = "Oświadczenie instytucji"
         verbose_name_plural = "Oświadczenia instytucji"
-        unique_together = [("publicationId", "institutionId", "personId")]

@@ -144,6 +144,7 @@ if TESTING:
 
 
 INSTALLED_APPS = [
+    "cacheops",
     "channels",
     "django.contrib.humanize",
     "django.contrib.contenttypes",
@@ -363,15 +364,12 @@ DATABASES = {
         "HOST": django_getenv("DJANGO_BPP_DB_HOST", "localhost"),
         "PORT": int_or_None(django_getenv("DJANGO_BPP_DB_PORT", "5432")),
     },
-    # 'test': {
-    #     'ENGINE': django_getenv("DJANGO_BPP_DB_ENGINE", 'django.db.backends.postgresql_psycopg2'),
-    #     'NAME': django_getenv("DJANGO_BPP_DB_NAME", "test_django-bpp"),
-    #     'USER': django_getenv("DJANGO_BPP_DB_USER", "postgres"),
-    #     'PASSWORD': django_getenv("DJANGO_BPP_DB_PASSWORD", "password"),
-    #     'HOST': django_getenv("DJANGO_BPP_DB_HOST", "localhost"),
-    #     'PORT': int_or_None(django_getenv("DJANGO_BPP_DB_PORT", "5432")),
-    # },
 }
+
+if DATABASES["default"]["HOST"] in ["localhost", "127.0.0.1"]:
+    options = DATABASES["default"].get("OPTIONS", {})
+    options["sslmode"] = "disable"
+    DATABASES["default"]["OPTIONS"] = options
 
 SECRET_KEY = django_getenv("DJANGO_BPP_SECRET_KEY")
 
@@ -665,3 +663,12 @@ PERMISSIONS_WIDGET_EXCLUDE_MODELS = [
     "bpp.autorzy_view",
     "bpp.cachequeue",
 ]
+
+
+CACHEOPS = {
+    "bpp.bppmultiseekvisibility": {"ops": ("get",)},
+    "miniblog.article": {"ops": ("get", "fetch")},
+}
+CACHEOPS_REDIS = BROKER_URL
+
+CACHEOPS_DEFAULTS = {"timeout": 60 * 60}

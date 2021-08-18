@@ -98,6 +98,7 @@ django==3.0.14
     #   django-admin-sortable2
     #   django-appconf
     #   django-braces
+    #   django-cacheops
     #   django-classy-tags
     #   django-columns
     #   django-cookie-law
@@ -125,13 +126,15 @@ django-admin-tools==0.9.0
     # via -r requirements.in
 django-appconf==1.0.4
     # via django-compressor
-django-autocomplete-light==3.8.2
+django-autocomplete-light==3.9.0rc1
     # via
     #   -r requirements.in
     #   django-multiseek
 django-autoslug==1.9.8
     # via -r requirements.in
 django-braces==1.14.0
+    # via -r requirements.in
+django-cacheops==6.0
     # via -r requirements.in
 django-classy-tags==1.0.0
     # via
@@ -215,6 +218,8 @@ djangorestframework==3.11.2
     # via -r requirements.in
 et-xmlfile==1.1.0
     # via openpyxl
+funcy==1.16
+    # via django-cacheops
 future==0.18.2
     # via moai-iplweb
 greenlet==1.1.0
@@ -331,6 +336,7 @@ rcssmin==1.0.6
 redis==3.5.3
     # via
     #   celery
+    #   django-cacheops
     #   django-redis-cache
 requests==2.26.0
     # via
@@ -354,6 +360,7 @@ six==1.16.0
     #   bleach
     #   django-autocomplete-light
     #   django-braces
+    #   django-cacheops
     #   django-classy-tags
     #   django-compat
     #   django-compressor

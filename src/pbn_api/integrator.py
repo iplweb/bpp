@@ -1,12 +1,16 @@
+import csv
 import json
 import multiprocessing
 import os
+import sys
 import warnings
 
 from django.db import transaction
 from django.db.models import F, Func, Q
+from django.db.models.functions import Length
 
-from import_common.core import matchuj_autora, matchuj_publikacje, matchuj_wydawce
+from import_common.core import matchuj_autora, matchuj_wydawce
+from import_common.normalization import normalize_doi, normalize_tytul_publikacji
 from pbn_api.client import PBNClient
 from pbn_api.exceptions import HttpException, SameDataUploadedRecently
 from pbn_api.models import (
@@ -22,8 +26,9 @@ from pbn_api.models import (
     Scientist,
     SentData,
 )
-from .adapters.wydawnictwo import normalize_isbn
 from .exceptions import WillNotExportError
+
+from django.contrib.postgres.search import TrigramSimilarity
 
 from bpp.models import (
     Autor,
@@ -36,10 +41,12 @@ from bpp.models import (
     Uczelnia,
     Wydawca,
     Wydawnictwo_Ciagle,
+    Wydawnictwo_Ciagle_Autor,
     Wydawnictwo_Zwarte,
+    Wydawnictwo_Zwarte_Autor,
     Zrodlo,
 )
-from bpp.util import pbar
+from bpp.util import fail_if_seq_scan, pbar
 
 
 def integruj_jezyki(client):
@@ -138,7 +145,16 @@ def ensure_publication_exists(client, publicationId):
 
 
 def zapisz_publikacje_instytucji(elem, klass, client=None, **extra):
-    ensure_publication_exists(client, elem["publicationId"])
+    try:
+        ensure_publication_exists(client, elem["publicationId"])
+    except HttpException as e:
+        if e.status_code == 500:
+            print(
+                f"Podczas zapisywania publikacji instytucji, dla {elem['publicationId']} serwer "
+                f"PBN zwrócił bład 500. Publikacja instytucji może zostac nie zapisana poprawnie. Dump danych "
+                f"publikacji: {elem}"
+            )
+            return
 
     rec, _ign = PublikacjaInstytucji.objects.get_or_create(
         institutionId_id=elem["institutionId"],
@@ -170,7 +186,16 @@ def zapisz_oswiadczenie_instytucji(elem, klass, client=None, **extra):
     if elem["addedTimestamp"]:
         elem["addedTimestamp"] = elem["addedTimestamp"].replace(".", "-")
 
-    ensure_publication_exists(client, elem["publicationId"])
+    try:
+        ensure_publication_exists(client, elem["publicationId"])
+    except HttpException as e:
+        if e.status_code == 500:
+            print(
+                f"Podczas próby pobrania danych o nie-istniejącej obecnie po naszej stronie publikacji o id"
+                f" {elem['publicationId']} z PBNu, wystąpił błąd wewnętrzny serwera po ich stronie. Dane "
+                f"dotyczące oświadczeń z tej publikacji nie zostały zapisane. "
+            )
+            return
 
     for key in "institution", "person", "publication":
         elem[f"{key}Id_id"] = elem[f"{key}Id"]
@@ -287,7 +312,7 @@ def pbn_file_path(db, current_page, status):
 
 def wait_for_results(pool, results, label="Progress..."):
     for elem in pbar(results, count=len(results), label=label):
-        elem.wait()
+        elem.get()
     pool.close()
     pool.join()
 
@@ -302,7 +327,7 @@ def _pobierz_offline(fun, db):
     _bede_uzywal_bazy_danych_z_multiprocessing_z_django()
 
     results = []
-    p = multiprocessing.Pool()
+    p = initialize_pool()
 
     for status in ["ACTIVE", "DELETED"]:
         res = fun(status=status, page_size=5000)
@@ -344,7 +369,7 @@ def _bede_uzywal_bazy_danych_z_multiprocessing_z_django():
 def _wgraj_z_offline_do_bazy(db, model):
     _bede_uzywal_bazy_danych_z_multiprocessing_z_django()
 
-    p = multiprocessing.Pool()
+    p = initialize_pool()
 
     def _(exc):
         print("XXX", exc)
@@ -370,10 +395,6 @@ def wgraj_ludzi_z_offline_do_bazy():
 
 def wgraj_prace_z_offline_do_bazy():
     return _wgraj_z_offline_do_bazy("publications", Publication)
-
-
-def normalize_doi(s):
-    return s.strip()
 
 
 def pobierz_prace(client: PBNClient):
@@ -406,27 +427,32 @@ def pobierz_oswiadczenia_z_instytucji(client: PBNClient):
 
 
 def pobierz_prace_po_doi(client: PBNClient):
-    for klass in (Wydawnictwo_Ciagle,):  # , Wydawnictwo_Zwarte:
+    for klass in (Wydawnictwo_Ciagle, Wydawnictwo_Zwarte):
         for praca in pbar(
-            klass.objects.all().exclude(doi=None).filter(pbn_uid_id=None),
+            klass.objects.all()
+            .exclude(doi=None)
+            .exclude(doi="")
+            .filter(pbn_uid_id=None),
             label="pobierz_prace_po_doi",
         ):
+            nd = normalize_doi(praca.doi)
             try:
-                elem = client.get_publication_by_doi(normalize_doi(praca.doi))
+                elem = client.get_publication_by_doi(nd)
             except HttpException as e:
                 if e.status_code == 422:
                     # Publication with DOI 10.1136/annrheumdis-2018-eular.5236 was not exists!
-                    print(
-                        f"\r\nBrak pracy z DOI {praca.doi} w PBNie -- w BPP to {praca}"
-                    )
+                    print(f"\r\nBrak pracy z DOI {nd} w PBNie -- w BPP to {praca}")
                     continue
                 elif e.status_code == 500:
                     if (
-                        b"Publication with DOI" in e.content
-                        and b"was not exists" in e.content
+                        "Publication with DOI" in e.content
+                        and "was not exists" in e.content
                     ):
+                        print(f"\r\nBrak pracy z DOI {nd} w PBNie -- w BPP to {praca}")
+                        continue
+                    elif "Internal server error" in e.content:
                         print(
-                            f"\r\nBrak pracy z DOI {praca.doi} w PBNie -- w BPP to {praca}"
+                            f"\r\nSerwer PBN zwrocil blad 500 dla DOI {nd} --> {e.content}"
                         )
                         continue
 
@@ -455,7 +481,7 @@ def pobierz_ludzi_z_uczelni(client: PBNClient, instutition_id):
         from_institution_api=False
     )
 
-    pool = multiprocessing.Pool(os.cpu_count() * 3)
+    pool = initialize_pool()
     results = []
     elementy = client.get_people_by_institution_id(instutition_id)
 
@@ -545,8 +571,8 @@ def matchuj_autora_po_stronie_pbn(imiona, nazwisko, orcid):
                 print(
                     "\t * ",
                     elem.pk,
-                    elem.name(),
-                    elem.lastName(),
+                    elem.name,
+                    elem.lastName,
                 )
 
         # Szukamy w rekordach wszystkich przez API instytucji
@@ -567,8 +593,8 @@ def matchuj_autora_po_stronie_pbn(imiona, nazwisko, orcid):
                 print(
                     "\t * ",
                     elem.pk,
-                    elem.name(),
-                    elem.lastName(),
+                    elem.name,
+                    elem.lastName,
                 )
 
     qry = Q(
@@ -664,7 +690,7 @@ def integruj_zrodla(disable_progress_bar):
             #     f"Znaleziono liczne dopasowania w PBN dla {zrodlo}, szukam czy jakies ma mniswId"
             # )
             for u in Journal.objects.filter(qry):
-                if u.mniswId() is not None:
+                if u.mniswId is not None:
                     found = True
                     break
 
@@ -791,48 +817,27 @@ def integruj_wydawcow():
                 w.save()
 
 
+def zweryfikuj_lub_stworz_match(elem, bpp_rekord):
+    if bpp_rekord is not None:
+        if bpp_rekord.pbn_uid_id is not None and bpp_rekord.pbn_uid_id != elem.pk:
+            print(
+                f"\r\n*** Rekord BPP {bpp_rekord} ma już PBN UID {bpp_rekord.pbn_uid_id}, "
+                f"pasuje też do {elem} PBN UID {elem.pk}"
+            )
+            return
+
+        if bpp_rekord.pbn_uid_id is None:
+            p = bpp_rekord.original
+            p.pbn_uid_id = elem.pk
+            p.save(update_fields=["pbn_uid_id"])
+
+
 def _integruj_single_part(ids):
+
     for _id in ids:
         elem = Publication.objects.get(pk=_id)
-
-        zrodlo = None
-        zrodlo_pbn_uid_id = elem.value_or_none("object", "journal", "id")
-        if zrodlo_pbn_uid_id is not None:
-            try:
-                zrodlo = Zrodlo.objects.get(pbn_uid_id=zrodlo_pbn_uid_id)
-            except Zrodlo.DoesNotExist:
-                pass
-            except Zrodlo.MultipleObjectsReturned:
-                print(
-                    f"XXX wiele zrodel po stronie BPP ma odpowiednik w PBN UID "
-                    f"{zrodlo_pbn_uid_id}, wybieram pierwsze"
-                )
-                zrodlo = Zrodlo.objects.filter(pbn_uid_id=zrodlo_pbn_uid_id).first()
-
-        p = matchuj_publikacje(
-            Rekord,
-            title=elem.value("object", "title"),
-            year=elem.value_or_none("object", "year"),
-            doi=elem.value_or_none("object", "doi"),
-            public_uri=elem.value_or_none("object", "publicUri"),
-            isbn=normalize_isbn(elem.value_or_none("object", "isbn")),
-            zrodlo=zrodlo,
-        )
-
-        if p is not None:
-            p = p.original
-
-            if p.pbn_uid_id is not None and p.pbn_uid_id != elem.pk:
-                print(
-                    f"*** UWAGA Publikacja w BPP {p} ma już PBN UID {p.pbn_uid_id}, a wg procedury matchującej "
-                    f"należałoby go zmienić na {elem.pk} -- rekord {elem}"
-                )
-                continue
-
-            if p.pbn_uid_id is None:
-                p.pbn_uid_id = elem.pk
-                p.save()
-            break
+        p = elem.matchuj_do_rekordu_bpp()
+        zweryfikuj_lub_stworz_match(elem, p)
 
 
 def split_list(lst, n):
@@ -840,18 +845,130 @@ def split_list(lst, n):
         yield lst[i : i + n]
 
 
-def integruj_publikacje():
-    ids = list(Publication.objects.all().values_list("pk", flat=True))
+CPU_COUNT = "auto"
+
+
+def initialize_pool():
+    global CPU_COUNT
+
+    if CPU_COUNT == "auto":
+        cpu_count = os.cpu_count() * 3 // 4
+        if cpu_count < 1:
+            cpu_count = 1
+    elif CPU_COUNT == "single":
+        cpu_count = 1
+    else:
+        raise NotImplementedError(f"CPU_COUNT = {CPU_COUNT}")
+
+    return multiprocessing.Pool(cpu_count)
+
+
+def integruj_publikacje(
+    disable_multiprocessing=False, ignore_already_matched=False, skip_pages=0
+):
+    """
+    :param ignore_already_matched: jeżeli True, to publikacje, które już mają swój match
+    po stronie BPP nie będa analizowane.
+
+    """
+
+    pubs = Publication.objects.all()
+
+    if ignore_already_matched:
+        pubs = pubs.exclude(
+            pk__in=Rekord.objects.exclude(pbn_uid_id=None)
+            .values_list("pbn_uid_id", flat=True)
+            .distinct()
+        )
+
+    pubs = pubs.order_by("-pk")
+
+    ids = list(pubs.values_list("pk", flat=True).distinct())
     _bede_uzywal_bazy_danych_z_multiprocessing_z_django()
-    pool = multiprocessing.Pool(os.cpu_count())
+    pool = initialize_pool()
 
+    # if disable_multiprocessing:
+    #     zmatchowane = (
+    #         Rekord.objects.all().values_list("pbn_uid_id").exclude(pbn_uid_id=None)
+    #     )
+    #
+    #     ids = (
+    #         OswiadczenieInstytucji.objects.all()
+    #         .values_list("publicationId_id", flat=True)
+    #         .distinct()
+    #         .exclude(publicationId_id__in=zmatchowane)
+    #     )
+
+    BATCH_SIZE = 256
     results = []
-    for elem in split_list(ids, 512):
-        result = pool.apply_async(_integruj_single_part, args=(elem,))
-        # _integruj_single_part(elem)
-        results.append(result)
+    for no, elem in enumerate(split_list(ids, BATCH_SIZE)):
+        if no < skip_pages:
+            continue
 
-    wait_for_results(pool, results)
+        if disable_multiprocessing:
+            _integruj_single_part(elem)
+            print(f"{no} of {len(ids)//BATCH_SIZE}...", end="\r")
+            sys.stdout.flush()
+        else:
+            result = pool.apply_async(_integruj_single_part, args=(elem,))
+            results.append(result)
+
+    wait_for_results(pool, results, label="integruj_publikacje")
+
+
+MODELE_Z_PBN_UID = (
+    Wydawnictwo_Zwarte,
+    Wydawnictwo_Ciagle,
+    Praca_Doktorska,
+    Praca_Habilitacyjna,
+)
+
+
+#
+# Poniżej wersja iterująca po rekordach w BPP, szukająca matchy w pbn_api.Publication
+#
+# def integruj_publikacje(
+#     disable_multiprocessing=False, ignore_already_matched=False, skip_pages=0
+# ):
+#     """
+#     :param ignore_already_matched: jeżeli True, to publikacje, które już mają swój match
+#     po stronie BPP nie będa analizowane.
+#
+#     """
+#     for klass in MODELE_Z_PBN_UID:
+#         for elem in pbar(klass.objects.all()):
+#             zrodlo = None
+#             if hasattr(elem, "zrodlo"):
+#                 zrodlo = elem.zrodlo
+#
+#             isbn = None
+#             if hasattr(elem, "isbn"):
+#                 isbn = elem.isbn
+#
+#             res = matchuj_pbn_api_publication(
+#                 elem.tytul_oryginalny,
+#                 elem.rok,
+#                 elem.doi,
+#                 elem.public_www or elem.www,
+#                 isbn,
+#                 zrodlo,
+#             )
+#
+#             if res is not None:
+#                 if elem.pbn_uid_id is not None:
+#                     if elem.pbn_uid_id != res.pk:
+#                         print(
+#                             f"XXX Publikacja {elem} ma juz PBN UID {elem.pbn_uid_id} {elem.pbn_uid} ale "
+#                             f"matchowanie chce ją przypisać do {res.pk} {res}"
+#                         )
+#                 else:
+#                     # elem.pbn_uid_id is None
+#                     elem.pbn_uid_id = res.pk
+#                     elem.save(update_fields=["pbn_uid_id"])
+#             else:
+#                 # print(f"XXX Brak matchu w PBN: {elem}")
+#                 pass
+#
 
 
 def _synchronizuj_pojedyncza_publikacje(client, rec):
@@ -916,13 +1033,22 @@ def synchronizuj_publikacje(client, skip=0):
 
 
 @transaction.atomic
+def clear_match_publications():
+    for model in MODELE_Z_PBN_UID:
+        print(f"Setting pbn_uid_ids of {model} to null...")
+        model.objects.exclude(pbn_uid_id=None).update(pbn_uid_id=None)
+
+
+@transaction.atomic
+def clear_publications():
+    clear_match_publications()
+    Publication.objects.all()._raw_delete(MODELE_Z_PBN_UID[0].objects.db)
+
+
+@transaction.atomic
 def clear_all():
     for model in (
         Autor,
-        Wydawnictwo_Zwarte,
-        Wydawnictwo_Ciagle,
-        Praca_Doktorska,
-        Praca_Habilitacyjna,
         Jednostka,
         Wydawca,
         Jezyk,
@@ -932,6 +1058,8 @@ def clear_all():
         print(f"Setting pbn_uid_ids of {model} to null...")
         model.objects.exclude(pbn_uid_id=None).update(pbn_uid_id=None)
 
+    clear_publications()
+
     for model in (
         Language,
         Country,
@@ -940,10 +1068,124 @@ def clear_all():
         Journal,
         Publisher,
         Scientist,
-        Publication,
         SentData,
         PublikacjaInstytucji,
         OswiadczenieInstytucji,
     ):
         print(f"Deleting all {model}")
         model.objects.all()._raw_delete(model.objects.db)
+
+
+def integruj_oswiadczenia_z_instytucji():
+    noted_pub = set()
+    noted_aut = set()
+    for elem in pbar(
+        OswiadczenieInstytucji.objects.filter(inOrcid=True),
+        label="integruj_oswiadczenia_z_instytucji",
+    ):
+        pub = elem.get_bpp_publication()
+        if pub is None:
+            pub = elem.publicationId.matchuj_do_rekordu_bpp()
+
+            if pub is None:
+                if elem.publicationId_id not in noted_pub:
+                    print(
+                        f"\r\nPPP Brak odpowiednika publikacji w BPP dla pracy {elem.publicationId}, "
+                        f"parametr inOrcid dla tej pracy nie zostanie zaimportowany!"
+                    )
+                    noted_pub.add(elem.publicationId_id)
+                continue
+            else:
+                zweryfikuj_lub_stworz_match(elem.publicationId, pub)
+
+        aut = elem.get_bpp_autor()
+        if aut is None:
+            if elem.personId_id not in noted_aut:
+                print(
+                    f"\r\nAAA Brak odpowiednika autora w BPP dla autora {elem.personId}, "
+                    f"parametr inOrcid dla tego autora nie zostanie zaimportowany!"
+                )
+                noted_aut.add(elem.publicationId_id)
+            continue
+
+        try:
+            rec = pub.autorzy_set.get(autor=aut)
+        except pub.autorzy_set.model.DoesNotExist:
+            print(
+                f"XXX Po stronie PBN: {elem.publicationId}, \n"
+                f"XXX po stronie BPP: {pub}, {aut} -- nie ma ta praca takiego autora!"
+            )
+
+        if not rec.profil_orcid:
+            rec.profil_orcid = True
+            rec.save(update_fields=["profil_orcid"])
+
+
+def wyswietl_niezmatchowane_ze_zblizonymi_tytulami():
+    for model, klass in [
+        (Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor),
+        (Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor),
+    ]:
+        for rekord in (
+            model.objects.filter(
+                pk__in=klass.objects.exclude(dyscyplina_naukowa=None)
+                .filter(rekord__pbn_uid_id=None)
+                .values("rekord")
+                .distinct()
+            )
+            .annotate(tytul_oryginalny_length=Length("tytul_oryginalny"))
+            .filter(tytul_oryginalny_length__gte=10)
+        ):
+            print(
+                f"\r\nRekord z dyscyplinami, bez dopasowania w PBN: {rekord.rok} {rekord}"
+            )
+
+            nt = normalize_tytul_publikacji(rekord.tytul_oryginalny)
+
+            res = (
+                Publication.objects.annotate(
+                    similarity=TrigramSimilarity("title", nt),
+                )
+                .filter(year=rekord.rok)
+                .filter(similarity__gt=0.5)
+                .order_by("-similarity")
+            )
+
+            fail_if_seq_scan(res, True)
+
+            for elem in res[:5]:
+                print("- MOZE: ", elem.mongoId, elem.title, elem.similarity)
+
+
+def sprawdz_ilosc_autorow_przy_zmatchowaniu():
+    res = csv.writer(open("rozne-ilosci-autorow.csv", "w"))
+    res.writerow(
+        [
+            "Komunikat",
+            "Praca w BPP",
+            "Praca w PBN",
+            "Rok",
+            "Autorzy w BPP",
+            "Autorzy w PBN",
+            "Nazwiska w BPP",
+            "Nazwiska w PBN",
+        ]
+    )
+    for praca in Rekord.objects.exclude(pbn_uid_id=None).order_by(
+        "rok", "tytul_oryginalny"
+    ):
+        ca = praca.autorzy_set.all().count()
+        pa = praca.pbn_uid.policz_autorow()
+        if ca != pa:
+            res.writerow(
+                [
+                    "Rozna ilosc autorow",
+                    str(praca),
+                    str(praca.pbn_uid),
+                    str(praca.rok),
+                    str(ca),
+                    str(pa),
+                    str(praca.opis_bibliograficzny_zapisani_autorzy_cache),
+                    str(praca.pbn_uid.autorzy),
+                ]
+            )

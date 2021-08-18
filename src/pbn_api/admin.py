@@ -38,6 +38,8 @@ class PrettyJSONWidget(widgets.Textarea):
 
 
 class BaseMongoDBAdmin(admin.ModelAdmin):
+    list_per_page = 25
+
     search_fields = ["mongoId", "versions"]
     formfield_overrides = {JSONField: {"widget": PrettyJSONWidget}}
     list_filter = ["status", "verificationLevel"]
@@ -122,6 +124,7 @@ class PublisherAdmin(BaseMongoDBAdmin):
 
 @admin.register(Scientist)
 class ScientistAdmin(BaseMongoDBAdmin):
+    show_full_result_count = False
     list_display = [
         "lastName",
         "name",
@@ -151,6 +154,8 @@ class ScientistAdmin(BaseMongoDBAdmin):
 
 @admin.register(Publication)
 class PublicationAdmin(BaseMongoDBAdmin):
+    show_full_result_count = False
+
     list_display = ["title", "type", "volume", "year", "publicUri", "doi"]
     search_fields = [
         "mongoId",
@@ -206,6 +211,13 @@ class OswiadczeniaInstytucjiAdmin(admin.ModelAdmin):
     autocomplete_fields = ["institutionId", "personId", "publicationId"]
 
     list_select_related = ["publicationId", "personId", "institutionId"]
+
+    search_fields = [
+        "publicationId__title",
+        "publicationId__year",
+        "personId__lastName",
+        "personId__name",
+    ]
 
     list_display = [
         "publicationId",

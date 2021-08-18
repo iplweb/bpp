@@ -4,6 +4,8 @@ from mptt.forms import TreeNodeChoiceFieldMixin
 from mptt.settings import DEFAULT_LEVEL_INDICATOR
 from taggit.models import Tag
 
+from .mixins import BppMultiseekVisibilityMixin
+
 from django.contrib.postgres.search import SearchQuery
 
 from django.utils.itercompat import is_iterable
@@ -40,14 +42,12 @@ from multiseek.logic import (
     DateQueryObject,
     DecimalQueryObject,
     IntegerQueryObject,
-    Ordering,
     QueryObject,
     RangeQueryObject,
     ReportType,
     StringQueryObject,
     UnknownOperation,
     ValueListQueryObject,
-    create_registry,
 )
 
 from bpp.models import (
@@ -66,7 +66,6 @@ from bpp.models import (
     Zrodlo,
     const,
 )
-from bpp.models.cache import Rekord
 from bpp.models.system import Typ_KBN
 
 UNION = "równy+wspólny"
@@ -75,7 +74,7 @@ UNION_NONE = "równe+wspólne"
 UNION_OPS_ALL = [UNION, UNION_FEMALE, UNION_NONE]
 
 
-class TytulPracyQueryObject(StringQueryObject):
+class TytulPracyQueryObject(BppMultiseekVisibilityMixin, StringQueryObject):
     label = "Tytuł pracy"
     field_name = "tytul_oryginalny"
 
@@ -119,34 +118,34 @@ class TytulPracyQueryObject(StringQueryObject):
         return ret
 
 
-class AdnotacjeQueryObject(StringQueryObject):
+class AdnotacjeQueryObject(BppMultiseekVisibilityMixin, StringQueryObject):
     label = "Adnotacje"
     field_name = "adnotacje"
     public = False
 
 
-class DOIQueryObject(StringQueryObject):
+class DOIQueryObject(BppMultiseekVisibilityMixin, StringQueryObject):
     label = "DOI"
     field_name = "doi"
     public = False
 
 
-class InformacjeQueryObject(StringQueryObject):
+class InformacjeQueryObject(BppMultiseekVisibilityMixin, StringQueryObject):
     label = "Informacje"
     field_name = "informacje"
 
 
-class SzczegolyQueryObject(StringQueryObject):
+class SzczegolyQueryObject(BppMultiseekVisibilityMixin, StringQueryObject):
     label = "Szczegóły"
     field_name = "szczegoly"
 
 
-class UwagiQueryObject(StringQueryObject):
+class UwagiQueryObject(BppMultiseekVisibilityMixin, StringQueryObject):
     label = "Uwagi"
     field_name = "uwagi"
 
 
-class SlowaKluczoweQueryObject(AutocompleteQueryObject):
+class SlowaKluczoweQueryObject(BppMultiseekVisibilityMixin, AutocompleteQueryObject):
     type = AUTOCOMPLETE
     ops = [EQUAL_NONE, DIFFERENT_NONE]
     model = Tag
@@ -172,7 +171,7 @@ class SlowaKluczoweQueryObject(AutocompleteQueryObject):
         return ret
 
 
-class DataUtworzeniaQueryObject(DateQueryObject):
+class DataUtworzeniaQueryObject(BppMultiseekVisibilityMixin, DateQueryObject):
     label = "Data utworzenia"
     field_name = "utworzono"
     public = False
@@ -200,7 +199,9 @@ class ForeignKeyDescribeMixin:
         return self.value_from_web(value) or "[powiązany obiekt został usunięty]"
 
 
-class NazwiskoIImieQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
+class NazwiskoIImieQueryObject(
+    BppMultiseekVisibilityMixin, ForeignKeyDescribeMixin, AutocompleteQueryObject
+):
     label = "Nazwisko i imię"
     type = AUTOCOMPLETE
     ops = [EQUAL_NONE, DIFFERENT_NONE, UNION_NONE]
@@ -227,7 +228,9 @@ class NazwiskoIImieQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject)
         return ret
 
 
-class WydawnictwoNadrzedneQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
+class WydawnictwoNadrzedneQueryObject(
+    BppMultiseekVisibilityMixin, ForeignKeyDescribeMixin, AutocompleteQueryObject
+):
     label = "Wydawnictwo nadrzędne"
     type = AUTOCOMPLETE
     ops = [
@@ -255,7 +258,7 @@ class WydawnictwoNadrzedneQueryObject(ForeignKeyDescribeMixin, AutocompleteQuery
         return ret
 
 
-class ORCIDQueryObject(StringQueryObject):
+class ORCIDQueryObject(BppMultiseekVisibilityMixin, StringQueryObject):
     label = "ORCID"
     ops = [EQUAL_NONE, DIFFERENT_NONE]
     field_name = "autorzy__autor__orcid"
@@ -367,7 +370,9 @@ class TypOgolnyRecenzentQueryObject(TypOgolnyAutorQueryObject):
     label = "Recenzent"
 
 
-class DyscyplinaQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
+class DyscyplinaQueryObject(
+    BppMultiseekVisibilityMixin, ForeignKeyDescribeMixin, AutocompleteQueryObject
+):
     label = "Dyscyplina naukowa autora"
     type = AUTOCOMPLETE
     ops = [
@@ -388,7 +393,9 @@ class DyscyplinaQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
         return ret
 
 
-class NazwaKonferencji(ForeignKeyDescribeMixin, AutocompleteQueryObject):
+class NazwaKonferencji(
+    BppMultiseekVisibilityMixin, ForeignKeyDescribeMixin, AutocompleteQueryObject
+):
     label = "Konferencja"
     type = AUTOCOMPLETE
     ops = EQUALITY_OPS_FEMALE
@@ -398,8 +405,11 @@ class NazwaKonferencji(ForeignKeyDescribeMixin, AutocompleteQueryObject):
     url = "bpp:public-konferencja-autocomplete"
 
 
-class ZewnetrznaBazaDanychQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
+class ZewnetrznaBazaDanychQueryObject(
+    BppMultiseekVisibilityMixin, ForeignKeyDescribeMixin, AutocompleteQueryObject
+):
     label = "Zewnętrzna baza danych"
+    field_name = "zewn_baza_danych"
     type = AUTOCOMPLETE
     ops = [
         EQUAL_FEMALE,
@@ -421,7 +431,9 @@ EQUAL_PLUS_SUB_FEMALE = "równa+podrzędne"
 EQUAL_PLUS_SUB_UNION_FEMALE = "równa+podrzędne+wspólna"
 
 
-class JednostkaQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
+class JednostkaQueryObject(
+    BppMultiseekVisibilityMixin, ForeignKeyDescribeMixin, AutocompleteQueryObject
+):
     label = "Jednostka"
     type = AUTOCOMPLETE
     ops = [
@@ -461,7 +473,9 @@ class JednostkaQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
         return ret
 
 
-class WydzialQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
+class WydzialQueryObject(
+    BppMultiseekVisibilityMixin, ForeignKeyDescribeMixin, AutocompleteQueryObject
+):
     label = "Wydział"
     type = AUTOCOMPLETE
     ops = [EQUAL, DIFFERENT, UNION]
@@ -487,7 +501,7 @@ class WydzialQueryObject(ForeignKeyDescribeMixin, AutocompleteQueryObject):
         return ret
 
 
-class Typ_OdpowiedzialnosciQueryObject(QueryObject):
+class Typ_OdpowiedzialnosciQueryObject(BppMultiseekVisibilityMixin, QueryObject):
     label = "Typ odpowiedzialności"
     type = VALUE_LIST
     values = Typ_Odpowiedzialnosci.objects.all()
@@ -515,12 +529,12 @@ class Typ_OdpowiedzialnosciQueryObject(QueryObject):
         return ret
 
 
-class ZakresLatQueryObject(RangeQueryObject):
+class ZakresLatQueryObject(BppMultiseekVisibilityMixin, RangeQueryObject):
     label = "Zakres lat"
     field_name = "rok"
 
 
-class JezykQueryObject(QueryObject):
+class JezykQueryObject(BppMultiseekVisibilityMixin, QueryObject):
     label = "Język"
     type = VALUE_LIST
     ops = EQUALITY_OPS_MALE
@@ -531,22 +545,22 @@ class JezykQueryObject(QueryObject):
         return Jezyk.objects.get(nazwa=value)
 
 
-class RokQueryObject(IntegerQueryObject):
+class RokQueryObject(BppMultiseekVisibilityMixin, IntegerQueryObject):
     label = "Rok"
     field_name = "rok"
 
 
-class ImpactQueryObject(DecimalQueryObject):
+class ImpactQueryObject(BppMultiseekVisibilityMixin, DecimalQueryObject):
     label = "Impact factor"
     field_name = "impact_factor"
 
 
-class LiczbaCytowanQueryObject(IntegerQueryObject):
+class LiczbaCytowanQueryObject(BppMultiseekVisibilityMixin, IntegerQueryObject):
     label = "Liczba cytowań"
     field_name = "liczba_cytowan"
 
 
-class LiczbaAutorowQueryObject(IntegerQueryObject):
+class LiczbaAutorowQueryObject(BppMultiseekVisibilityMixin, IntegerQueryObject):
     label = "Liczba autorów"
     field_name = "liczba_autorow"
 
@@ -558,25 +572,23 @@ class KCImpactQueryObject(ImpactQueryObject):
 
 
 class PunktacjaWewnetrznaEnabledMixin:
-    def enabled(self, request):
-        if self.public:
-            return settings.UZYWAJ_PUNKTACJI_WEWNETRZNEJ
-        return ReportType.enabled(self, request)
+    def option_enabled(self, request):
+        return settings.UZYWAJ_PUNKTACJI_WEWNETRZNEJ
 
 
 class PunktacjaWewnetrznaQueryObject(
-    PunktacjaWewnetrznaEnabledMixin, DecimalQueryObject
+    BppMultiseekVisibilityMixin, PunktacjaWewnetrznaEnabledMixin, DecimalQueryObject
 ):
     label = "Punktacja wewnętrzna"
     field_name = "punktacja_wewnetrzna"
 
 
-class PunktacjaSNIP(DecimalQueryObject):
+class PunktacjaSNIP(BppMultiseekVisibilityMixin, DecimalQueryObject):
     label = "Punktacja SNIP"
     field_name = "punktacja_snip"
 
 
-class PunktyKBNQueryObject(DecimalQueryObject):
+class PunktyKBNQueryObject(BppMultiseekVisibilityMixin, DecimalQueryObject):
     label = "Punkty PK"
     field_name = "punkty_kbn"
 
@@ -587,24 +599,27 @@ class KCPunktyKBNQueryObject(PunktyKBNQueryObject):
     public = False
 
 
-class IndexCopernicusQueryObject(DecimalQueryObject):
+class IndexCopernicusQueryObject(BppMultiseekVisibilityMixin, DecimalQueryObject):
     label = "Index Copernicus"
     field_name = "index_copernicus"
 
-    def enabled(self, request):
-        u = Uczelnia.objects.first()
+    def option_enabled(self):
+        u = Uczelnia.objects.get_default()
         if u is not None:
             return u.pokazuj_index_copernicus
         return True
 
 
-class LiczbaZnakowWydawniczychQueryObject(IntegerQueryObject):
+class LiczbaZnakowWydawniczychQueryObject(
+    BppMultiseekVisibilityMixin, IntegerQueryObject
+):
     label = "Liczba znaków wydawniczych"
     field_name = "liczba_znakow_wydawniczych"
 
 
-class TypRekorduObject(ValueListQueryObject):
+class TypRekorduObject(BppMultiseekVisibilityMixin, ValueListQueryObject):
     label = "Typ rekordu"
+    field_name = "typ_rekordu"
     values = ["publikacje", "streszczenia", "inne"]
     ops = [EQUAL, DIFFERENT]
 
@@ -631,8 +646,9 @@ class TypRekorduObject(ValueListQueryObject):
         return q
 
 
-class CharakterOgolnyQueryObject(ValueListQueryObject):
+class CharakterOgolnyQueryObject(BppMultiseekVisibilityMixin, ValueListQueryObject):
     label = "Charakter formalny ogólny"
+    field_name = "charakter_formalny_ogolny"
     values = ["artykuł", "rozdział", "książka", "inne"]
     ops = [EQUAL, DIFFERENT]
 
@@ -667,7 +683,9 @@ class CharakterOgolnyQueryObject(ValueListQueryObject):
         return q
 
 
-class CharakterFormalnyQueryObject(TreeNodeChoiceFieldMixin, ValueListQueryObject):
+class CharakterFormalnyQueryObject(
+    BppMultiseekVisibilityMixin, TreeNodeChoiceFieldMixin, ValueListQueryObject
+):
     field_name = "charakter_formalny"
     label = "Charakter formalny"
 
@@ -709,7 +727,9 @@ class CharakterFormalnyQueryObject(TreeNodeChoiceFieldMixin, ValueListQueryObjec
         return ret
 
 
-class OpenaccessWersjaTekstuQueryObject(ValueListQueryObject):
+class OpenaccessWersjaTekstuQueryObject(
+    BppMultiseekVisibilityMixin, ValueListQueryObject
+):
     field_name = "openaccess_wersja_tekstu"
     values = Wersja_Tekstu_OpenAccess.objects.all()
     label = "OpenAccess: wersja tekstu"
@@ -718,7 +738,7 @@ class OpenaccessWersjaTekstuQueryObject(ValueListQueryObject):
         return Wersja_Tekstu_OpenAccess.objects.get(nazwa=value)
 
 
-class OpenaccessLicencjaQueryObject(ValueListQueryObject):
+class OpenaccessLicencjaQueryObject(BppMultiseekVisibilityMixin, ValueListQueryObject):
     field_name = "openaccess_licencja"
     values = Licencja_OpenAccess.objects.all()
     label = "OpenAccess: licencja"
@@ -727,7 +747,9 @@ class OpenaccessLicencjaQueryObject(ValueListQueryObject):
         return Licencja_OpenAccess.objects.get(nazwa=value)
 
 
-class OpenaccessCzasPublikacjiQueryObject(ValueListQueryObject):
+class OpenaccessCzasPublikacjiQueryObject(
+    BppMultiseekVisibilityMixin, ValueListQueryObject
+):
     field_name = "openaccess_czas_publikacji"
     values = Czas_Udostepnienia_OpenAccess.objects.all()
     label = "OpenAccess: czas udostępnienia"
@@ -736,7 +758,7 @@ class OpenaccessCzasPublikacjiQueryObject(ValueListQueryObject):
         return Czas_Udostepnienia_OpenAccess.objects.get(nazwa=value)
 
 
-class TypKBNQueryObject(ValueListQueryObject):
+class TypKBNQueryObject(BppMultiseekVisibilityMixin, ValueListQueryObject):
     field_name = "typ_kbn"
     values = Typ_KBN.objects.all()
     label = "Typ KBN"
@@ -745,7 +767,7 @@ class TypKBNQueryObject(ValueListQueryObject):
         return Typ_KBN.objects.get(nazwa=value)
 
 
-class ZrodloQueryObject(AutocompleteQueryObject):
+class ZrodloQueryObject(BppMultiseekVisibilityMixin, AutocompleteQueryObject):
     label = "Źródło"
     ops = EQUALITY_OPS_NONE
     model = Zrodlo
@@ -753,26 +775,27 @@ class ZrodloQueryObject(AutocompleteQueryObject):
     url = "bpp:zrodlo-autocomplete"
 
 
-class RecenzowanaQueryObject(BooleanQueryObject):
+class RecenzowanaQueryObject(BppMultiseekVisibilityMixin, BooleanQueryObject):
     ops = EQUALITY_OPS_NONE
     field_name = "recenzowana"
     label = "Praca recenzowana"
 
 
-class BazaWOS(BooleanQueryObject):
+class BazaWOS(BppMultiseekVisibilityMixin, BooleanQueryObject):
     ops = EQUALITY_OPS_NONE
     field_name = "konferencja__baza_wos"
     label = "Konferencja w bazie Web of Science"
 
 
-class BazaSCOPUS(BooleanQueryObject):
+class BazaSCOPUS(BppMultiseekVisibilityMixin, BooleanQueryObject):
     ops = EQUALITY_OPS_NONE
     field_name = "konferencja__baza_scopus"
     label = "Konferencja w bazie Scopus"
 
 
-class RodzajKonferenckjiQueryObject(ValueListQueryObject):
+class RodzajKonferenckjiQueryObject(BppMultiseekVisibilityMixin, ValueListQueryObject):
     label = "Rodzaj konferencji"
+    field_name = "rodzaj_konferencji"
     values = ["krajowa", "międzynarodowa", "lokalna"]
 
     def value_from_web(self, value):
@@ -794,8 +817,9 @@ class RodzajKonferenckjiQueryObject(ValueListQueryObject):
         return q
 
 
-class ObcaJednostkaQueryObject(BooleanQueryObject):
+class ObcaJednostkaQueryObject(BppMultiseekVisibilityMixin, BooleanQueryObject):
     label = "Obca jednostka"
+    field_name = "obca_jednostka"
     ops = EQUALITY_OPS_FEMALE
     public = False
 
@@ -813,8 +837,9 @@ class ObcaJednostkaQueryObject(BooleanQueryObject):
         return ret
 
 
-class AfiliujeQueryObject(BooleanQueryObject):
+class AfiliujeQueryObject(BppMultiseekVisibilityMixin, BooleanQueryObject):
     label = "Afiliuje"
+    field_name = "afiliuje"
     ops = [
         EQUAL,
     ]
@@ -832,8 +857,9 @@ class AfiliujeQueryObject(BooleanQueryObject):
         return ret
 
 
-class DyscyplinaUstawionaQueryObject(BooleanQueryObject):
+class DyscyplinaUstawionaQueryObject(BppMultiseekVisibilityMixin, BooleanQueryObject):
     label = "Dyscyplina ustawiona"
+    field_name = "dyscyplina_ustawiona"
     ops = EQUALITY_OPS_FEMALE
     public = False
 
@@ -852,8 +878,9 @@ class DyscyplinaUstawionaQueryObject(BooleanQueryObject):
         return ret
 
 
-class StronaWWWUstawionaQueryObject(BooleanQueryObject):
+class StronaWWWUstawionaQueryObject(BppMultiseekVisibilityMixin, BooleanQueryObject):
     label = "Strona WWW ustawiona"
+    field_name = "www_ustawiona"
     ops = [
         EQUAL_FEMALE,
     ]
@@ -874,8 +901,11 @@ class StronaWWWUstawionaQueryObject(BooleanQueryObject):
         return ret
 
 
-class LicencjaOpenAccessUstawionaQueryObject(BooleanQueryObject):
+class LicencjaOpenAccessUstawionaQueryObject(
+    BppMultiseekVisibilityMixin, BooleanQueryObject
+):
     label = "Licencja OpenAccess ustawiona"
+    field_name = "lo_ustawiona"
     ops = EQUALITY_OPS_FEMALE
     public = False
 
@@ -894,7 +924,7 @@ class LicencjaOpenAccessUstawionaQueryObject(BooleanQueryObject):
         return ret
 
 
-class PublicDostepDniaQueryObject(BooleanQueryObject):
+class PublicDostepDniaQueryObject(BppMultiseekVisibilityMixin, BooleanQueryObject):
     label = "Dostęp dnia ustawiony"
     field_name = "public_dostep_dnia"
     public = False
@@ -977,44 +1007,3 @@ multiseek_fields = [
 
 class PunktacjaWewnetrznaReportType(PunktacjaWewnetrznaEnabledMixin, ReportType):
     pass
-
-
-multiseek_report_types = [
-    ReportType("list", "lista"),
-    ReportType("table", "tabela"),
-    PunktacjaWewnetrznaReportType(
-        "pkt_wewn", "punktacja sumaryczna z punktacją wewnętrzna"
-    ),
-    ReportType("pkt_wewn_bez", "punktacja sumaryczna"),
-    ReportType("numer_list", "numerowana lista z uwagami", public=False),
-    ReportType("table_cytowania", "tabela z liczbą cytowań", public=False),
-    PunktacjaWewnetrznaReportType(
-        "pkt_wewn_cytowania",
-        "punktacja sumaryczna z punktacją wewnętrzna z liczbą cytowań",
-        public=False,
-    ),
-    ReportType(
-        "pkt_wewn_bez_cytowania", "punktacja sumaryczna z liczbą cytowań", public=False
-    ),
-]
-
-registry = create_registry(
-    Rekord,
-    *multiseek_fields,
-    ordering=[
-        Ordering("", "(nieistotne)"),
-        Ordering("tytul_oryginalny", "tytuł oryginalny"),
-        Ordering("rok", "rok"),
-        Ordering("impact_factor", "impact factor"),
-        Ordering("liczba_cytowan", "liczba cytowań"),
-        Ordering("liczba_autorow", "liczba autorów"),
-        Ordering("punkty_kbn", "punkty PK"),
-        Ordering("charakter_formalny__nazwa", "charakter formalny"),
-        Ordering("typ_kbn__nazwa", "typ KBN"),
-        Ordering("zrodlo_lub_nadrzedne", "źródło/wyd.nadrz."),
-        Ordering("utworzono", "utworzono"),
-        Ordering("ostatnio_zmieniony", "ostatnio zmieniony"),
-    ],
-    default_ordering=["-rok", "", ""],
-    report_types=multiseek_report_types
-)

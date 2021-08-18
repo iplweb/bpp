@@ -3,6 +3,17 @@
 Historia zmian
 ==============
 
+202108.1075
+-----------
+
+* szybsze przeglądanie zawartości bazy w opcji PBN API w module redagowania (b/n),
+
+202108.73
+---------
+
+* poprawki importu i synchronizacji danych z PBN (b/n),
+* możliwość konfiguracji wyświetlanych opcji w multiwyszukiwarce (#896),
+
 202108.72
 ---------
 

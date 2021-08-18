@@ -3,17 +3,22 @@ from typing import Union
 from django.db.models import Q
 
 from .normalization import (
+    normalize_doi,
     normalize_funkcja_autora,
     normalize_grupa_pracownicza,
+    normalize_isbn,
     normalize_kod_dyscypliny,
     normalize_nazwa_dyscypliny,
     normalize_nazwa_jednostki,
     normalize_nazwa_wydawcy,
+    normalize_public_uri,
     normalize_tytul_naukowy,
     normalize_tytul_publikacji,
     normalize_tytul_zrodla,
     normalize_wymiar_etatu,
 )
+
+from django.contrib.postgres.search import TrigramSimilarity
 
 from bpp.models import (
     Autor,
@@ -22,6 +27,7 @@ from bpp.models import (
     Funkcja_Autora,
     Grupa_Pracownicza,
     Jednostka,
+    Rekord,
     Tytul,
     Wydawca,
     Wydawnictwo_Ciagle,
@@ -30,6 +36,7 @@ from bpp.models import (
     Wymiar_Etatu,
     Zrodlo,
 )
+from bpp.util import fail_if_seq_scan
 
 
 def matchuj_wydzial(nazwa):
@@ -283,70 +290,144 @@ def matchuj_wydawce(nazwa):
 
 
 TITLE_LIMIT_SINGLE_WORD = 15
-TITLE_LIMIT_MANY_WORDS = 30
+TITLE_LIMIT_MANY_WORDS = 25
+
+MATCH_SIMILARITY_THRESHOLD = 0.95
+MATCH_SIMILARITY_THRESHOLD_LOW = 0.90
 
 
 def matchuj_publikacje(
-    klass: [Wydawnictwo_Zwarte, Wydawnictwo_Ciagle],
+    klass: [Wydawnictwo_Zwarte, Wydawnictwo_Ciagle, Rekord],
     title,
     year,
     doi=None,
     public_uri=None,
     isbn=None,
     zrodlo=None,
+    DEBUG_MATCHOWANIE=False,
 ):
 
     if doi is not None:
-        doi = doi.strip()
+        doi = normalize_doi(doi)
         if doi:
-            try:
-                return klass.objects.get(doi=doi)
-            except klass.DoesNotExist:
-                pass
-            except klass.MultipleObjectsReturned:
-                print(f"DOI nie jest unikalne w bazie: {doi}")
+            res = (
+                klass.objects.filter(doi__startswith=doi, rok=year)
+                .annotate(podobienstwo=TrigramSimilarity("tytul_oryginalny", title))
+                .order_by("-podobienstwo")[:2]
+            )
 
-    if public_uri is not None:
-        try:
-            return klass.objects.get(Q(www=public_uri) | Q(public_www=public_uri))
-        except klass.MultipleObjectsReturned:
-            print(f"www lub public_www nie jest unikalne w bazie: {public_uri}")
-        except klass.DoesNotExist:
-            pass
+            fail_if_seq_scan(res, DEBUG_MATCHOWANIE)
+            if res.exists():
+                if res.first().podobienstwo >= MATCH_SIMILARITY_THRESHOLD:
+                    return res.first()
+                else:
+                    if DEBUG_MATCHOWANIE:
+                        import pdb
 
-    if isbn is not None:
-        try:
-            return klass.objects.get(Q(isbn=isbn) | Q(e_isbn=isbn))
-        except klass.MultipleObjectsReturned:
-            print(f"ISBN {isbn} nie jest unikalny w bazie danych!")
-        except klass.DoesNotExist:
-            pass
+                        pdb.set_trace()
 
     title = normalize_tytul_publikacji(title)
 
-    if zrodlo is not None:
-        try:
-            return klass.objects.get(
-                tytul_oryginalny__istartswith=title, rok=year, zrodlo=zrodlo
-            )
-        except klass.DoesNotExist:
-            pass
-        except klass.MultipleObjectsReturned:
-            print(
-                f"MultipleObjectsReturned dla title={title} rok={year} zrodlo={zrodlo}"
-            )
+    title_has_spaces = False
 
-    if (len(title) < TITLE_LIMIT_SINGLE_WORD and title.strip().find(" ") == -1) or (
-        len(title) < TITLE_LIMIT_MANY_WORDS and title.strip().find(" ") > 0
+    if title is not None:
+        title_has_spaces = title.find(" ") > 0
+
+    if title is not None and (
+        (not title_has_spaces and len(title) >= TITLE_LIMIT_SINGLE_WORD)
+        or (title_has_spaces and len(title) >= TITLE_LIMIT_MANY_WORDS)
     ):
-        # print(
-        #     f"Tytuł pracy z PBN {title} ponizej {TITLE_LIMIT} znakow i jedno słowo, nie matchuje po tytule"
-        # )
-        return
+        if zrodlo is not None and hasattr(klass, "zrodlo"):
+            try:
+                return klass.objects.get(
+                    tytul_oryginalny__istartswith=title, rok=year, zrodlo=zrodlo
+                )
+            except klass.DoesNotExist:
+                pass
+            except klass.MultipleObjectsReturned:
+                print(
+                    f"PPP ZZZ MultipleObjectsReturned dla title={title} rok={year} zrodlo={zrodlo}"
+                )
 
-    try:
-        return klass.objects.get(tytul_oryginalny__istartswith=title, rok=year)
-    except klass.DoesNotExist:
-        pass
-    except klass.MultipleObjectsReturned:
-        print(f"MultipleObjectsReturned dla title={title} rok={year}")
+    if (
+        isbn is not None
+        and isbn != ""
+        and hasattr(klass, "isbn")
+        and hasattr(klass, "e_isbn")
+    ):
+        ni = normalize_isbn(isbn)
+
+        zapytanie = klass.objects.exclude(isbn=None, e_isbn=None).exclude(
+            isbn="", e_isbn=""
+        )
+
+        res = (
+            zapytanie.filter(Q(isbn=ni) | Q(e_isbn=ni))
+            .annotate(podobienstwo=TrigramSimilarity("tytul_oryginalny", title))
+            .order_by("-podobienstwo")[:2]
+        )
+        fail_if_seq_scan(res, DEBUG_MATCHOWANIE)
+        if res.exists():
+            if res.first().podobienstwo >= MATCH_SIMILARITY_THRESHOLD:
+                return res.first()
+            else:
+                if DEBUG_MATCHOWANIE:
+                    import pdb
+
+                    pdb.set_trace()
+
+    public_uri = normalize_public_uri(public_uri)
+    if public_uri:
+        res = (
+            klass.objects.filter(Q(www=public_uri) | Q(public_www=public_uri))
+            .annotate(podobienstwo=TrigramSimilarity("tytul_oryginalny", title))
+            .order_by("-podobienstwo")[:2]
+        )
+        fail_if_seq_scan(res, DEBUG_MATCHOWANIE)
+        if res.exists():
+
+            if res.first().podobienstwo >= MATCH_SIMILARITY_THRESHOLD:
+                return res.first()
+            else:
+                if DEBUG_MATCHOWANIE:
+                    import pdb
+
+                    pdb.set_trace()
+
+    if title is not None and (
+        (not title_has_spaces and len(title) >= TITLE_LIMIT_SINGLE_WORD)
+        or (title_has_spaces and len(title) >= TITLE_LIMIT_MANY_WORDS)
+    ):
+        res = (
+            klass.objects.filter(tytul_oryginalny__istartswith=title, rok=year)
+            .annotate(podobienstwo=TrigramSimilarity("tytul_oryginalny", title))
+            .order_by("-podobienstwo")[:2]
+        )
+
+        fail_if_seq_scan(res, DEBUG_MATCHOWANIE)
+        if res.exists():
+            if res.first().podobienstwo >= MATCH_SIMILARITY_THRESHOLD:
+                return res.first()
+            else:
+                if DEBUG_MATCHOWANIE:
+                    import pdb
+
+                    pdb.set_trace()
+
+        # Ostatnia szansa, po podobieństwie, niski próg
+
+        res = (
+            klass.objects.filter(rok=year)
+            .annotate(podobienstwo=TrigramSimilarity("tytul_oryginalny", title))
+            .order_by("-podobienstwo")[:2]
+        )
+
+        fail_if_seq_scan(res, DEBUG_MATCHOWANIE)
+        if res.exists():
+            if res.first().podobienstwo >= MATCH_SIMILARITY_THRESHOLD_LOW:
+                return res.first()
+            else:
+                if DEBUG_MATCHOWANIE:
+                    import pdb
+
+                    pdb.set_trace()

@@ -126,3 +126,7 @@ src/import_dbf/integruj-dbf-szkielety.txt
 *.psql
 src/import_dbf/import-dbf-przypisz-dyscypliny.log.txt
 src/import_dbf/import-dbf-utworz-doktoraty.txt
+*.xlsx
+pbn_json_data
+integracja-publikacji-bg-up.txt
+*.csv

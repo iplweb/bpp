@@ -47,6 +47,7 @@ from .wydzial import WydzialAdmin  # noqa
 from django.contrib import admin
 from django.contrib.auth.forms import UserCreationForm
 
+from .bppmultiseekvisibility import BppMulitiseekVisibilityAdmin  # noqa
 from bpp.models import Rodzaj_Prawa_Patentowego, Zewnetrzna_Baza_Danych
 
 # Proste tabele

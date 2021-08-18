@@ -17,6 +17,7 @@ from pbn_api.integrator import (
     integruj_instytucje,
     integruj_jezyki,
     integruj_kraje,
+    integruj_oswiadczenia_z_instytucji,
     integruj_publikacje,
     integruj_uczelnie,
     integruj_wszystkich_niezintegrowanych_autorow,
@@ -33,10 +34,12 @@ from pbn_api.integrator import (
     pobierz_wydawcow_mnisw,
     pobierz_wydawcow_wszystkich,
     pobierz_zrodla,
+    sprawdz_ilosc_autorow_przy_zmatchowaniu,
     synchronizuj_publikacje,
     weryfikuj_orcidy,
     wgraj_ludzi_z_offline_do_bazy,
     wgraj_prace_z_offline_do_bazy,
+    wyswietl_niezmatchowane_ze_zblizonymi_tytulami,
 )
 from pbn_api.management.commands.util import PBNBaseCommand
 
@@ -52,10 +55,19 @@ class Command(PBNBaseCommand):
     def add_arguments(self, parser):
         super(Command, self).add_arguments(parser)
 
+        parser.add_argument(
+            "--disable-multiprocessing", action="store_true", default=False
+        ),
+
         parser.add_argument("--start-from-stage", type=int, default=0)
         parser.add_argument("--end-before-stage", type=int, default=None)
+        parser.add_argument("--just-one-stage", action="store_true"),
 
         parser.add_argument("--clear-all", action="store_true", default=False)
+        parser.add_argument("--clear-publications", action="store_true", default=False)
+        parser.add_argument(
+            "--clear-match-publications", action="store_true", default=False
+        )
         parser.add_argument("--enable-all", action="store_true", default=False)
 
         parser.add_argument("--enable-system-data", action="store_true", default=False)
@@ -100,6 +112,7 @@ class Command(PBNBaseCommand):
         parser.add_argument(
             "--enable-integruj-publikacje", action="store_true", default=False
         )
+        parser.add_argument("--skip-pages", type=int, default=0)
         parser.add_argument("--enable-sync", action="store_true", default=False)
         parser.add_argument(
             "--disable-progress-bar", action="store_true", default=False
@@ -113,7 +126,11 @@ class Command(PBNBaseCommand):
         user_token,
         start_from_stage,
         end_before_stage,
+        just_one_stage,
+        disable_multiprocessing,
         clear_all,
+        clear_publications,
+        clear_match_publications,
         enable_all,
         enable_system_data,
         enable_pobierz_zrodla,
@@ -131,11 +148,15 @@ class Command(PBNBaseCommand):
         enable_pobierz_publikacje_instytucji,
         enable_pobierz_oswiadczenia_instytucji,
         enable_integruj_publikacje,
+        skip_pages,
         enable_sync,
         disable_progress_bar,
         *args,
         **options
     ):
+        if disable_multiprocessing:
+            integrator.CPU_COUNT = "single"
+
         uczelnia = Uczelnia.objects.get_default()
         if uczelnia is not None:
             if not uczelnia.pbn_integracja:
@@ -145,6 +166,17 @@ class Command(PBNBaseCommand):
         if clear_all:
             integrator.clear_all()
             sys.exit(0)
+
+        if clear_match_publications:
+            integrator.clear_match_publications()
+            sys.exit(0)
+
+        if clear_publications:
+            integrator.clear_publications()
+            sys.exit(0)
+
+        if just_one_stage:
+            end_before_stage = start_from_stage + 1
 
         stage = 0
         if (enable_system_data or enable_all) and start_from_stage <= stage:
@@ -222,32 +254,60 @@ class Command(PBNBaseCommand):
         ) and start_from_stage <= stage:
             os.makedirs("pbn_json_data", exist_ok=True)
             pobierz_prace_offline(client)
+
         stage = 13
+        check_end_before(stage, end_before_stage)
 
         if (
             enable_pobierz_wszystkie_publikacje or enable_all
         ) and start_from_stage <= stage:
             wgraj_prace_z_offline_do_bazy()
+
         stage = 14
+        check_end_before(stage, end_before_stage)
 
         if (
             enable_pobierz_publikacje_instytucji or enable_all
         ) and start_from_stage <= stage:
             pobierz_publikacje_z_instytucji(client)
+
         stage = 15
+        check_end_before(stage, end_before_stage)
 
         if (
             enable_pobierz_oswiadczenia_instytucji or enable_all
         ) and start_from_stage <= stage:
             pobierz_oswiadczenia_z_instytucji(client)
+
         stage = 16
+        check_end_before(stage, end_before_stage)
 
         if (enable_integruj_publikacje or enable_all) and start_from_stage <= stage:
-            integruj_publikacje()
+            integruj_publikacje(disable_multiprocessing, skip_pages=skip_pages)
+
         stage = 17
+        check_end_before(stage, end_before_stage)
+
+        if (
+            enable_pobierz_oswiadczenia_instytucji or enable_all
+        ) and start_from_stage <= stage:
+            integruj_oswiadczenia_z_instytucji()
+
+        stage = 18
+        check_end_before(stage, end_before_stage)
 
         if (enable_pobierz_po_doi or enable_all) and start_from_stage <= stage:
             pobierz_prace_po_doi(client)
+
+        stage = 19
+        check_end_before(stage, end_before_stage)
+
+        if (enable_integruj_publikacje or enable_all) and start_from_stage <= stage:
+            wyswietl_niezmatchowane_ze_zblizonymi_tytulami()
+            sprawdz_ilosc_autorow_przy_zmatchowaniu()
+
+        stage = 20
+        check_end_before(stage, end_before_stage)
 
         if enable_sync:  # or enable_all:
             synchronizuj_publikacje(client)

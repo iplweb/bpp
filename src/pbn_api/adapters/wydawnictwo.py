@@ -225,8 +225,8 @@ class WydawnictwoPBNAdapter:
             ret["editors"] = editors
         if translationEditors:
             ret["translationEditors"] = translationEditors
-
-        ret["statements"] = statements
+        if statements:
+            ret["statements"] = statements
 
         if hasattr(self.original, "isbn"):
             if self.original.isbn:

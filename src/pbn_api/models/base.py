@@ -15,14 +15,14 @@ class BasePBNModel(models.Model):
         abstract = True
 
 
-MAX_TEXT_FIELD_LENGTH = 512
+MAX_TEXT_FIELD_LENGTH = 350
 
 
 class BasePBNMongoDBModel(BasePBNModel):
     mongoId = models.CharField(max_length=32, primary_key=True)
     status = models.CharField(max_length=32, db_index=True)
-    verificationLevel = models.CharField(max_length=32)
-    verified = models.BooleanField(default=False)
+    verificationLevel = models.CharField(max_length=32, db_index=True)
+    verified = models.BooleanField(default=False, db_index=True)
     versions = JSONField()
 
     # Nazwy pól wyciaganych "na wierzch" do pól obiektu
@@ -31,14 +31,20 @@ class BasePBNMongoDBModel(BasePBNModel):
 
     def _pull_up_on_save(self):
         for attr in self.pull_up_on_save:
-            v = self.value_or_none("object", attr)
+            if hasattr(self, f"pull_up_{attr}"):
+                fn = getattr(self, f"pull_up_{attr}")
+                v = fn()
+            else:
+                v = self.value_or_none("object", attr)
+
             if v is not None:
                 # Tylko błędne rekordy (takie, które zawieraja pola dlugosci kilkudziesieciu kilobajtow)
                 # zawieraja bardzo dlugie wpisy. Np jeden rekord w polu 'nazwisko' ma 10 kb nazwisk,
                 # po przecinku. Oczywiscie, ze sa bledne. PostgreSQL jednakze ma limit na wielkosc
                 # wiersza indeksu. I tego limitu bedziemy teraz przestrzegali:
-                if len(v) >= MAX_TEXT_FIELD_LENGTH:
-                    v = v[:MAX_TEXT_FIELD_LENGTH]
+                if isinstance(v, str):
+                    if len(v) >= MAX_TEXT_FIELD_LENGTH:
+                        v = v[:MAX_TEXT_FIELD_LENGTH]
             setattr(self, attr, v)
 
     def save(

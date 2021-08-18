@@ -29,6 +29,7 @@ from bpp.models import (
     Jednostka,
     ModelZDOI,
     ModelZeStatusem,
+    ModelZISBN,
     ModelZPBN_UID,
     Patent,
     Patent_Autor,
@@ -497,6 +498,7 @@ class RekordBase(
     ModelTypowany,
     ModelZCharakterem,
     ModelZKonferencja,
+    ModelZISBN,
     ModelZeStatusem,
     models.Model,
 ):
