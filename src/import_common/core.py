@@ -1,11 +1,13 @@
 from typing import Union
 
-from django.db.models import Q
+from django.db.models import Q, Value
+from django.db.models.functions import Replace
 
 from .normalization import (
     normalize_doi,
     normalize_funkcja_autora,
     normalize_grupa_pracownicza,
+    normalize_isbn,
     normalize_kod_dyscypliny,
     normalize_nazwa_dyscypliny,
     normalize_nazwa_jednostki,
@@ -316,6 +318,31 @@ def matchuj_publikacje(
             except klass.MultipleObjectsReturned:
                 print(f"PPP DOI nie jest unikalne w bazie: {doi}")
 
+    if (
+        isbn is not None
+        and isbn != ""
+        and hasattr(klass, "isbn")
+        and hasattr(klass, "e_isbn")
+    ):
+        ni = normalize_isbn(isbn)
+
+        zapytanie = klass.objects.exclude(isbn=None, e_isbn=None).annotate(
+            normalize_isbn=Replace("isbn", Value("-"), Value("")),
+            normalize_e_isbn=Replace("e_isbn", Value("-"), Value("")),
+        )
+
+        try:
+            return zapytanie.get(
+                Q(normalize_isbn=ni)
+                | Q(normalize_e_isbn=ni)
+                | Q(isbn=isbn)
+                | Q(e_isbn=isbn)
+            )
+        except klass.MultipleObjectsReturned:
+            print(f"PPP ISBN {isbn} nie jest unikalny w bazie danych!")
+        except klass.DoesNotExist:
+            pass
+
     title = normalize_tytul_publikacji(title)
 
     if (len(title) >= TITLE_LIMIT_SINGLE_WORD and title.strip().find(" ") == -1) or (
@@ -333,20 +360,15 @@ def matchuj_publikacje(
                     f"PPP ZZZ MultipleObjectsReturned dla title={title} rok={year} zrodlo={zrodlo}"
                 )
 
+    if (len(title) >= TITLE_LIMIT_SINGLE_WORD and title.strip().find(" ") == -1) or (
+        len(title) >= TITLE_LIMIT_MANY_WORDS and title.strip().find(" ") > 0
+    ):
         try:
             return klass.objects.get(tytul_oryginalny__istartswith=title, rok=year)
         except klass.DoesNotExist:
             pass
         except klass.MultipleObjectsReturned:
             print(f"PPP WWW MultipleObjectsReturned dla title={title} rok={year}")
-
-    if isbn is not None and hasattr(klass, "isbn") and hasattr(klass, "e_isbn"):
-        try:
-            return klass.objects.get(Q(isbn=isbn) | Q(e_isbn=isbn))
-        except klass.MultipleObjectsReturned:
-            print(f"PPP ISBN {isbn} nie jest unikalny w bazie danych!")
-        except klass.DoesNotExist:
-            pass
 
     public_uri = normalize_public_uri(public_uri)
     if public_uri:
