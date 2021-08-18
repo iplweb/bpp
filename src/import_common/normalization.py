@@ -1,6 +1,16 @@
 from typing import Union
 
 
+def remove_trailing_interpunction(s: str) -> str:
+    try:
+        while s[-1] in ".,-":
+            s = s[:-1]
+    except IndexError:
+        return ""
+
+    return s
+
+
 def remove_extra_spaces(s: str) -> str:
     while s.find("  ") >= 0:
         s = s.replace("  ", " ")
@@ -34,7 +44,7 @@ def normalize_tytul_naukowy(s):
 def normalize_tytul_publikacji(s):
     if s is None:
         return
-    return normalize_skrot(s)
+    return remove_trailing_interpunction(normalize_skrot(s))
 
 
 def normalize_funkcja_autora(s: str) -> str:
