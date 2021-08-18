@@ -18,6 +18,8 @@ from .normalization import (
     normalize_wymiar_etatu,
 )
 
+from django.contrib.postgres.search import TrigramSimilarity
+
 from bpp.models import (
     Autor,
     Autor_Jednostka,
@@ -289,6 +291,24 @@ def matchuj_wydawce(nazwa):
 TITLE_LIMIT_SINGLE_WORD = 15
 TITLE_LIMIT_MANY_WORDS = 25
 
+MATCH_SIMILARITY_THRESHOLD = 0.95
+
+
+class PerformanceFailure(Exception):
+    pass
+
+
+def fail_if_seq_scan(qset, DEBUG):
+    """
+    Funkcja weryfikujaca, czy w wyjasnieniu zapytania (EXPLAIN) nie wystapi ciag znakow 'Seq Scan',
+    jezeli tak to wyjatek PerformanceFailure z zapytaniem + wyjasnieniem
+    """
+    if DEBUG:
+        explain = qset.explain()
+        if explain.find("Seq Scan") >= 0:
+            print("\r\n", explain)
+            raise PerformanceFailure(str(qset.query), explain)
+
 
 def matchuj_publikacje(
     klass: [Wydawnictwo_Zwarte, Wydawnictwo_Ciagle, Rekord],
@@ -298,25 +318,27 @@ def matchuj_publikacje(
     public_uri=None,
     isbn=None,
     zrodlo=None,
+    DEBUG_MATCHOWANIE=False,
 ):
-    """
-    Kolejnosc matchowania:
-    1) szukaj po DOI
-    2) przy zalożeniu że tytuł ma 1 słowo i minimum 15 znakow lub 2 lub wiecej słowa i minimum 3 znakow najpierw
-    szukaj po tytule
-    3) potem spróbuj po ISBN
-    4) potem po WWW (uwaga: WWW nie jest unikalne w bazie)
 
-    """
     if doi is not None:
         doi = normalize_doi(doi)
         if doi:
-            try:
-                return klass.objects.get(doi__istartswith=doi)
-            except klass.DoesNotExist:
-                pass
-            except klass.MultipleObjectsReturned:
-                print(f"PPP DOI nie jest unikalne w bazie: {doi}")
+            res = (
+                klass.objects.filter(doi__startswith=doi, rok=year)
+                .annotate(podobienstwo=TrigramSimilarity("tytul_oryginalny", title))
+                .order_by("-podobienstwo")
+            )
+
+            fail_if_seq_scan(res, DEBUG_MATCHOWANIE)
+            if res.exists():
+                if res.first().podobienstwo >= MATCH_SIMILARITY_THRESHOLD:
+                    return res.first()
+                else:
+                    if DEBUG_MATCHOWANIE:
+                        import pdb
+
+                        pdb.set_trace()
 
     title = normalize_tytul_publikacji(title)
 
@@ -336,20 +358,6 @@ def matchuj_publikacje(
                     f"PPP ZZZ MultipleObjectsReturned dla title={title} rok={year} zrodlo={zrodlo}"
                 )
 
-    if title is not None and (
-        (len(title) >= TITLE_LIMIT_SINGLE_WORD and title.strip().find(" ") == -1)
-        or (len(title) >= TITLE_LIMIT_MANY_WORDS and title.strip().find(" ") > 0)
-    ):
-        try:
-            return klass.objects.get(tytul_oryginalny__istartswith=title, rok=year)
-        except klass.DoesNotExist:
-            pass
-        except klass.MultipleObjectsReturned:
-            print(
-                f"PPP WWW MultipleObjectsReturned dla title={title} rok={year} -- zdublowana praca po stronie BPP? "
-                f"sprawdz matchowanie z PBN"
-            )
-
     if (
         isbn is not None
         and isbn != ""
@@ -362,18 +370,55 @@ def matchuj_publikacje(
             isbn="", e_isbn=""
         )
 
-        try:
-            return zapytanie.get(Q(isbn=ni) | Q(e_isbn=ni))
-        except klass.MultipleObjectsReturned:
-            print(f"PPP ISBN {isbn} nie jest unikalny w bazie danych!")
-        except klass.DoesNotExist:
-            pass
+        res = (
+            zapytanie.filter(Q(isbn=ni) | Q(e_isbn=ni))
+            .annotate(podobienstwo=TrigramSimilarity("tytul_oryginalny", title))
+            .order_by("-podobienstwo")
+        )
+        fail_if_seq_scan(res, DEBUG_MATCHOWANIE)
+        if res.exists():
+            if res.first().podobienstwo >= MATCH_SIMILARITY_THRESHOLD:
+                return res.first()
+            else:
+                if DEBUG_MATCHOWANIE:
+                    import pdb
+
+                    pdb.set_trace()
 
     public_uri = normalize_public_uri(public_uri)
     if public_uri:
-        try:
-            return klass.objects.get(Q(www=public_uri) | Q(public_www=public_uri))
-        except klass.MultipleObjectsReturned:
-            print(f"PPP WWW lub public_www nie jest unikalne w bazie: {public_uri}")
-        except klass.DoesNotExist:
-            pass
+        res = (
+            klass.objects.filter(Q(www=public_uri) | Q(public_www=public_uri))
+            .annotate(podobienstwo=TrigramSimilarity("tytul_oryginalny", title))
+            .order_by("-podobienstwo")
+        )
+        fail_if_seq_scan(res, DEBUG_MATCHOWANIE)
+        if res.exists():
+
+            if res.first().podobienstwo >= MATCH_SIMILARITY_THRESHOLD:
+                return res.first()
+            else:
+                if DEBUG_MATCHOWANIE:
+                    import pdb
+
+                    pdb.set_trace()
+
+    if title is not None and (
+        (len(title) >= TITLE_LIMIT_SINGLE_WORD and title.strip().find(" ") == -1)
+        or (len(title) >= TITLE_LIMIT_MANY_WORDS and title.strip().find(" ") > 0)
+    ):
+        res = (
+            klass.objects.filter(tytul_oryginalny__istartswith=title, rok=year)
+            .annotate(podobienstwo=TrigramSimilarity("tytul_oryginalny", title))
+            .order_by("-podobienstwo")
+        )
+
+        fail_if_seq_scan(res, DEBUG_MATCHOWANIE)
+        if res.exists():
+            if res.first().podobienstwo >= MATCH_SIMILARITY_THRESHOLD:
+                return res.first()
+            else:
+                if DEBUG_MATCHOWANIE:
+                    import pdb
+
+                    pdb.set_trace()

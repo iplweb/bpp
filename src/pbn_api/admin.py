@@ -38,6 +38,8 @@ class PrettyJSONWidget(widgets.Textarea):
 
 
 class BaseMongoDBAdmin(admin.ModelAdmin):
+    list_per_page = 25
+
     search_fields = ["mongoId", "versions"]
     formfield_overrides = {JSONField: {"widget": PrettyJSONWidget}}
     list_filter = ["status", "verificationLevel"]

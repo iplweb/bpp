@@ -6,15 +6,11 @@ import sys
 import warnings
 
 from django.db import transaction
-from django.db.models import Count, F, Func, Q
+from django.db.models import F, Func, Q
 from django.db.models.functions import Length
 
 from import_common.core import matchuj_autora, matchuj_publikacje, matchuj_wydawce
-from import_common.normalization import (
-    normalize_doi,
-    normalize_isbn,
-    normalize_public_uri,
-)
+from import_common.normalization import normalize_doi
 from pbn_api.client import PBNClient
 from pbn_api.exceptions import HttpException, SameDataUploadedRecently
 from pbn_api.models import (
@@ -818,9 +814,10 @@ def integruj_wydawcow():
                 w.save()
 
 
-def _integruj_single_part(ids, zdublowane_isbny, zdublowane_www):
+def _integruj_single_part(ids):
 
     for _id in ids:
+
         elem = Publication.objects.get(pk=_id)
 
         zrodlo = None
@@ -833,22 +830,13 @@ def _integruj_single_part(ids, zdublowane_isbny, zdublowane_www):
             except Zrodlo.MultipleObjectsReturned:
                 zrodlo = Zrodlo.objects.filter(pbn_uid_id=zrodlo_pbn_uid_id).first()
 
-        isbn = normalize_isbn(elem.isbn)
-        if isbn:
-            if isbn in zdublowane_isbny:
-                isbn = None
-
-        www = normalize_public_uri(elem.publicUri)
-        if www:
-            if www in zdublowane_www:
-                www = None
         p = matchuj_publikacje(
             Rekord,
             title=elem.title,
             year=elem.year,
             doi=elem.doi,
-            public_uri=www,
-            isbn=isbn,
+            public_uri=elem.publicUri,
+            isbn=elem.isbn,
             zrodlo=zrodlo,
         )
         if p is not None:
@@ -897,54 +885,16 @@ def integruj_publikacje(
 
     """
 
-    zdublowane_isbny = set(
-        Rekord.objects.exclude(isbn=None)
-        .exclude(isbn="")
-        .values("isbn")
-        .order_by("isbn")
-        .annotate(f=Count("isbn"))
-        .filter(f__gte=2)
-        .values_list("isbn", flat=True)
-    )
-    zdublowane_isbny.update(
-        Rekord.objects.exclude(e_isbn=None)
-        .exclude(e_isbn="")
-        .values("e_isbn")
-        .order_by("e_isbn")
-        .annotate(Count("e_isbn"))
-        .filter(e_isbn__count__gte=2)
-        .values_list("e_isbn", flat=True)
-    )
-    zdublowane_www = set(
-        Rekord.objects.exclude(www=None)
-        .exclude(www="")
-        .values("www")
-        .order_by("www")
-        .annotate(Count("www"))
-        .filter(www__count__gte=2)
-        .values_list("www", flat=True)
-    )
-    zdublowane_www.update(
-        Rekord.objects.exclude(public_www=None)
-        .exclude(public_www="")
-        .values("public_www")
-        .order_by("public_www")
-        .annotate(Count("public_www"))
-        .filter(public_www__count__gte=2)
-        .values_list("public_www", flat=True)
-    )
-
     pubs = Publication.objects.all()
 
     if ignore_already_matched:
-
         pubs = pubs.exclude(
             pk__in=Rekord.objects.exclude(pbn_uid_id=None)
             .values_list("pbn_uid_id", flat=True)
             .distinct()
         )
 
-    pubs = pubs.order_by("pk")
+    pubs = pubs.order_by("-pk")
 
     ids = list(pubs.values_list("pk", flat=True).distinct())
     _bede_uzywal_bazy_danych_z_multiprocessing_z_django()
@@ -962,19 +912,18 @@ def integruj_publikacje(
     #         .exclude(publicationId_id__in=zmatchowane)
     #     )
 
+    BATCH_SIZE = 256
     results = []
-    for no, elem in enumerate(split_list(ids, 256)):
+    for no, elem in enumerate(split_list(ids, BATCH_SIZE)):
         if no < skip_pages:
             continue
 
         if disable_multiprocessing:
-            _integruj_single_part(elem, zdublowane_isbny, zdublowane_www)
-            print(f"{no} of {len(ids)//256}...", end="\r")
+            _integruj_single_part(elem)
+            print(f"{no} of {len(ids)//BATCH_SIZE}...", end="\r")
             sys.stdout.flush()
         else:
-            result = pool.apply_async(
-                _integruj_single_part, args=(elem, zdublowane_isbny, zdublowane_www)
-            )
+            result = pool.apply_async(_integruj_single_part, args=(elem,))
             results.append(result)
 
     wait_for_results(pool, results, label="integruj_publikacje")
