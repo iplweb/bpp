@@ -22,6 +22,8 @@ def normalize_nullboleanfield(s: Union[str, None, bool]) -> Union[bool, None]:
 
 
 def normalize_skrot(s):
+    if s is None:
+        return
     return remove_extra_spaces(s.lower().replace(" .", ". "))
 
 
@@ -30,6 +32,8 @@ def normalize_tytul_naukowy(s):
 
 
 def normalize_tytul_publikacji(s):
+    if s is None:
+        return
     return normalize_skrot(s)
 
 
@@ -93,6 +97,8 @@ def normalize_public_uri(public_uri):
 
 
 def normalize_doi(s):
+    if s is None:
+        return s
     return (
         s.strip().replace("http://", "").replace("https://", "").replace("doi.org/", "")
     )
