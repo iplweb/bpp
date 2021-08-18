@@ -77,7 +77,7 @@ SELECT ARRAY [
 
        status_korekty_id,
 
-       doi,
+       LOWER(doi)          as doi,
 
        pbn_uid_id,
 
@@ -103,7 +103,7 @@ SELECT ARRAY [
             WHERE django_content_type.app_label = 'bpp'
               AND django_content_type.model = 'wydawnictwo_zwarte'),
            bpp_wydawnictwo_zwarte.id
-           ] :: INTEGER[2]                                                       AS id,
+           ] :: INTEGER[2]                                                      AS id,
 
 
        tytul_oryginalny,
@@ -117,11 +117,11 @@ SELECT ARRAY [
 
        charakter_formalny_id,
 
-       NULL :: INTEGER                                                           AS zrodlo_id,
+       NULL :: INTEGER                                                          AS zrodlo_id,
 
-       wydawnictwo_nadrzedne_id                                                     wydawnictwo_nadrzedne_id,
+       wydawnictwo_nadrzedne_id                                                    wydawnictwo_nadrzedne_id,
 
-       wydawca_opis                                                              AS wydawnictwo,
+       wydawca_opis                                                             AS wydawnictwo,
 
        informacje,
        szczegoly,
@@ -165,13 +165,13 @@ SELECT ARRAY [
 
        konferencja_id,
 
-       COUNT(autor_id)                                                           AS liczba_autorow,
+       COUNT(autor_id)                                                          AS liczba_autorow,
 
        liczba_cytowan,
 
        status_korekty_id,
 
-       doi,
+       LOWER(doi)                                                               as doi,
 
        pbn_uid_id,
 
@@ -365,7 +365,7 @@ SELECT ARRAY [
 
        status_korekty_id,
 
-       doi,
+       LOWER(doi)                                                         as doi,
 
        pbn_uid_id,
 
@@ -453,7 +453,7 @@ SELECT ARRAY [
 
        status_korekty_id,
 
-       doi,
+       LOWER(doi)                                                         as doi,
 
        pbn_uid_id,
 
@@ -549,12 +549,29 @@ CREATE INDEX bpp_rekord_mat_q
     ON bpp_rekord_mat (dostep_dnia);
 CREATE INDEX bpp_rekord_mat_r
     ON bpp_rekord_mat (status_korekty_id);
-CREATE INDEX bpp_rekord_mat_doi ON bpp_rekord_mat (doi);
-CREATE INDEX bpp_rekord_mat_doi_iexact ON bpp_rekord_mat (upper(doi));
+
+CREATE INDEX bpp_rekord_mat_doi ON bpp_rekord_mat USING GIN (doi gin_trgm_ops);
+
+CREATE INDEX bpp_rekord_mat_doi ON bpp_rekord_mat USING GIN (UPPER(doi) gin_trgm_ops);
+CREATE INDEX bpp_rekord_mat_public_www_gin ON bpp_rekord_mat USING GIN (UPPER(public_www) gin_trgm_ops);
+CREATE INDEX bpp_rekord_mat_public_www ON bpp_rekord_mat USING GIN (public_www gin_trgm_ops);
+CREATE INDEX bpp_rekord_mat_public_www_idx ON bpp_rekord_mat (public_www);
+CREATE INDEX bpp_rekord_mat_www_gin ON bpp_rekord_mat USING GIN (UPPER(www) gin_trgm_ops);
+CREATE INDEX bpp_rekord_mat_www ON bpp_rekord_mat USING GIN (www gin_trgm_ops);
+CREATE INDEX bpp_rekord_mat_www_idx ON bpp_rekord_mat (www);
+CREATE INDEX bpp_rekord_mat_isbn_gin ON bpp_rekord_mat USING GIN (UPPER(isbn) gin_trgm_ops);
+
+CREATE INDEX bpp_rekord_mat_isbn_idx ON bpp_rekord_mat (isbn);
+CREATE INDEX bpp_rekord_mat_e_isbn_idx ON bpp_rekord_mat (e_isbn);
+
+
+CREATE INDEX bpp_rekord_mat_e_isbn_gin ON bpp_rekord_mat USING GIN (UPPER(e_isbn) gin_trgm_ops);
+
+
 CREATE INDEX bpp_rekord_mat_pbn_uid_id ON bpp_rekord_mat (pbn_uid_id);
 
-CREATE INDEX bpp_rekord_mat_isbn ON bpp_rekord_mat (isbn);
-CREATE INDEX bpp_rekord_mat_e_isbn ON bpp_rekord_mat (e_isbn);
+CREATE INDEX bpp_rekord_mat_isbn ON bpp_rekord_mat USING GIN (isbn gin_trgm_ops);
+CREATE INDEX bpp_rekord_mat_e_isbn ON bpp_rekord_mat USING GIN (e_isbn gin_trgm_ops);
 
 ALTER TABLE bpp_rekord_mat
     ADD CONSTRAINT zrodlo_id_fk FOREIGN KEY (zrodlo_id) REFERENCES bpp_zrodlo (id) ON DELETE CASCADE ON UPDATE CASCADE DEFERRABLE INITIALLY DEFERRED;
@@ -601,7 +618,7 @@ ALTER TABLE bpp_rekord_mat
 ALTER TABLE bpp_rekord_mat
     ADD CONSTRAINT pbn_api_publication_mongoId_fk
         FOREIGN KEY (pbn_uid_id)
-            REFERENCES pbn_api_publication("mongoId")
+            REFERENCES pbn_api_publication ("mongoId")
             ON DELETE CASCADE
             ON UPDATE CASCADE
             DEFERRABLE INITIALLY DEFERRED;
