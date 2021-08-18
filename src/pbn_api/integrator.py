@@ -996,6 +996,8 @@ def clear_publications():
         print(f"Setting pbn_uid_ids of {model} to null...")
         model.objects.exclude(pbn_uid_id=None).update(pbn_uid_id=None)
 
+    Publication.objects.all()._raw_delete(model.objects.db)
+
 
 @transaction.atomic
 def clear_all():
@@ -1020,7 +1022,6 @@ def clear_all():
         Journal,
         Publisher,
         Scientist,
-        Publication,
         SentData,
         PublikacjaInstytucji,
         OswiadczenieInstytucji,
