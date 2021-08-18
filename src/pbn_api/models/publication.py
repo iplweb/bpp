@@ -49,6 +49,22 @@ class Publication(BasePBNMongoDBModel):
             publicUri = self.value_or_none("object", "book", "publicUri")
         return publicUri
 
+    def policz_autorow(self):
+        ret = 0
+
+        for elem in self.autorzy:
+            ret += len(self.autorzy[elem])
+        return ret
+
+    @cached_property
+    def autorzy(self):
+        ret = {}
+        for elem in ["authors", "editors", "translators", "translationEditors"]:
+            elem_dct = self.value_or_none("object", elem)
+            if elem_dct:
+                ret[elem] = elem_dct
+        return ret
+
     def __str__(self):
         ret = f"{self.title}"
         if self.year:
