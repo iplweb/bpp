@@ -243,6 +243,7 @@ class Command(PBNBaseCommand):
         ) and start_from_stage <= stage:
             os.makedirs("pbn_json_data", exist_ok=True)
             pobierz_prace_offline(client)
+
         stage = 13
         check_end_before(stage, end_before_stage)
 
@@ -250,6 +251,7 @@ class Command(PBNBaseCommand):
             enable_pobierz_wszystkie_publikacje or enable_all
         ) and start_from_stage <= stage:
             wgraj_prace_z_offline_do_bazy()
+
         stage = 14
         check_end_before(stage, end_before_stage)
 
