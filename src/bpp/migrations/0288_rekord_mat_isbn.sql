@@ -550,7 +550,7 @@ CREATE INDEX bpp_rekord_mat_q
 CREATE INDEX bpp_rekord_mat_r
     ON bpp_rekord_mat (status_korekty_id);
 
-CREATE INDEX bpp_rekord_mat_doi ON bpp_rekord_mat USING GIN (doi gin_trgm_ops);
+CREATE INDEX bpp_rekord_mat_doi_gin ON bpp_rekord_mat USING GIN (doi gin_trgm_ops);
 
 CREATE INDEX bpp_rekord_mat_doi ON bpp_rekord_mat USING GIN (UPPER(doi) gin_trgm_ops);
 CREATE INDEX bpp_rekord_mat_public_www_gin ON bpp_rekord_mat USING GIN (UPPER(public_www) gin_trgm_ops);
