@@ -1040,7 +1040,7 @@ def integruj_oswiadczenia_z_instytucji():
         if pub is None:
             if elem.publicationId_id not in noted_pub:
                 print(
-                    f"\r\nBrak odpowiednika publikacji w BPP dla pracy {elem.publicationId}, "
+                    f"\r\nPPP Brak odpowiednika publikacji w BPP dla pracy {elem.publicationId}, "
                     f"parametr inOrcid dla tej pracy nie zostanie zaimportowany!"
                 )
                 noted_pub.add(elem.publicationId_id)
@@ -1050,17 +1050,21 @@ def integruj_oswiadczenia_z_instytucji():
         if aut is None:
             if elem.personId_id not in noted_aut:
                 print(
-                    f"\r\nBrak odpowiednika autora w BPP dla autora {elem.autorId}, parametr inOrcid dla tego autora"
-                    f"nie zostanie zaimportowany!"
+                    f"\r\nAAA Brak odpowiednika autora w BPP dla autora {elem.personId}, "
+                    f"parametr inOrcid dla tego autora nie zostanie zaimportowany!"
                 )
                 noted_aut.add(elem.publicationId_id)
             continue
 
-        rec = pub.autorzy_set.get(autor=aut)
-        if not rec.profil_orcid:
-            import pdb
+        try:
+            rec = pub.autorzy_set.get(autor=aut)
+        except pub.autorzy_set.model.DoesNotExist:
+            print(
+                f"XXX Po stronie PBN: {elem.publicationId}, \n"
+                f"XXX po stronie BPP: {pub}, {aut} -- nie ma ta praca takiego autora!"
+            )
 
-            pdb.set_trace()
+        if not rec.profil_orcid:
             rec.profil_orcid = True
             rec.save(update_fields=["profil_orcid"])
 
