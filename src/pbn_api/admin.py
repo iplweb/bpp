@@ -207,6 +207,13 @@ class OswiadczeniaInstytucjiAdmin(admin.ModelAdmin):
 
     list_select_related = ["publicationId", "personId", "institutionId"]
 
+    search_fields = [
+        "publicationId__title",
+        "publicationId__year",
+        "personId__lastName",
+        "personId__name",
+    ]
+
     list_display = [
         "publicationId",
         "institutionId",
