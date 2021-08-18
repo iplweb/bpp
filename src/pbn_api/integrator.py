@@ -36,6 +36,7 @@ from bpp.models import (
     Jezyk,
     Praca_Doktorska,
     Praca_Habilitacyjna,
+    Rekord,
     Uczelnia,
     Wydawca,
     Wydawnictwo_Ciagle,
@@ -824,36 +825,30 @@ def _integruj_single_part(ids):
             except Zrodlo.MultipleObjectsReturned:
                 zrodlo = Zrodlo.objects.filter(pbn_uid_id=zrodlo_pbn_uid_id).first()
 
-        for klass in [
-            Wydawnictwo_Ciagle,
-            Wydawnictwo_Zwarte,
-            Praca_Doktorska,
-            Praca_Habilitacyjna,
-        ]:
+        p = matchuj_publikacje(
+            Rekord,
+            title=elem.title,
+            year=elem.year,
+            doi=elem.doi,
+            public_uri=elem.publicUri,
+            isbn=elem.isbn,
+            zrodlo=zrodlo,
+        )
+        if p is not None:
 
-            p = matchuj_publikacje(
-                klass,
-                title=elem.title,
-                year=elem.year,
-                doi=elem.doi,
-                public_uri=elem.publicUri,
-                isbn=elem.isbn,
-                zrodlo=zrodlo,
-            )
-            if p is not None:
-
-                if p.pbn_uid_id is not None and p.pbn_uid_id != elem.pk:
-                    print(
-                        f"\r\n*** UWAGA Publikacja w BPP {p} ma już PBN UID {p.pbn_uid_id}, a wg procedury matchującej "
-                        f"należałoby go zmienić na {elem.pk} -- rekord {elem}"
-                    )
-                    break
-
-                if p.pbn_uid_id is None:
-                    p.pbn_uid_id = elem.pk
-                    p.save(update_fields=["pbn_uid_id"])
-
+            if p.pbn_uid_id is not None and p.pbn_uid_id != elem.pk:
+                print(
+                    f"\r\n*** UWAGA Publikacja w BPP {p} ma już PBN UID {p.pbn_uid_id}, a wg procedury matchującej "
+                    f"należałoby go zmienić na {elem.pk} -- rekord {elem}"
+                )
                 break
+
+            if p.pbn_uid_id is None:
+                p = p.original
+                p.pbn_uid_id = elem.pk
+                p.save(update_fields=["pbn_uid_id"])
+
+            break
 
 
 def split_list(lst, n):
@@ -920,6 +915,61 @@ def integruj_publikacje(
     wait_for_results(pool, results, label="integruj_publikacje")
 
 
+MODELE_Z_PBN_UID = (
+    Wydawnictwo_Zwarte,
+    Wydawnictwo_Ciagle,
+    Praca_Doktorska,
+    Praca_Habilitacyjna,
+)
+
+
+#
+# Poniżej wersja iterująca po rekordach w BPP, szukająca matchy w pbn_api.Publication
+#
+# def integruj_publikacje(
+#     disable_multiprocessing=False, ignore_already_matched=False, skip_pages=0
+# ):
+#     """
+#     :param ignore_already_matched: jeżeli True, to publikacje, które już mają swój match
+#     po stronie BPP nie będa analizowane.
+#
+#     """
+#     for klass in MODELE_Z_PBN_UID:
+#         for elem in pbar(klass.objects.all()):
+#             zrodlo = None
+#             if hasattr(elem, "zrodlo"):
+#                 zrodlo = elem.zrodlo
+#
+#             isbn = None
+#             if hasattr(elem, "isbn"):
+#                 isbn = elem.isbn
+#
+#             res = matchuj_pbn_api_publication(
+#                 elem.tytul_oryginalny,
+#                 elem.rok,
+#                 elem.doi,
+#                 elem.public_www or elem.www,
+#                 isbn,
+#                 zrodlo,
+#             )
+#
+#             if res is not None:
+#                 if elem.pbn_uid_id is not None:
+#                     if elem.pbn_uid_id != res.pk:
+#                         print(
+#                             f"XXX Publikacja {elem} ma juz PBN UID {elem.pbn_uid_id} {elem.pbn_uid} ale "
+#                             f"matchowanie chce ją przypisać do {res.pk} {res}"
+#                         )
+#                 else:
+#                     # elem.pbn_uid_id is None
+#                     elem.pbn_uid_id = res.pk
+#                     elem.save(update_fields=["pbn_uid_id"])
+#             else:
+#                 # print(f"XXX Brak matchu w PBN: {elem}")
+#                 pass
+#
+
+
 def _synchronizuj_pojedyncza_publikacje(client, rec):
     try:
         client.sync_publication(rec)
@@ -979,14 +1029,6 @@ def synchronizuj_publikacje(client, skip=0):
         label="sync_ciagle",
     ):
         _synchronizuj_pojedyncza_publikacje(client, rec)
-
-
-MODELE_Z_PBN_UID = (
-    Wydawnictwo_Zwarte,
-    Wydawnictwo_Ciagle,
-    Praca_Doktorska,
-    Praca_Habilitacyjna,
-)
 
 
 @transaction.atomic

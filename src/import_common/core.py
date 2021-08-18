@@ -26,6 +26,7 @@ from bpp.models import (
     Funkcja_Autora,
     Grupa_Pracownicza,
     Jednostka,
+    Rekord,
     Tytul,
     Wydawca,
     Wydawnictwo_Ciagle,
@@ -291,7 +292,7 @@ TITLE_LIMIT_MANY_WORDS = 25
 
 
 def matchuj_publikacje(
-    klass: [Wydawnictwo_Zwarte, Wydawnictwo_Ciagle],
+    klass: [Wydawnictwo_Zwarte, Wydawnictwo_Ciagle, Rekord],
     title,
     year,
     doi=None,
@@ -318,6 +319,35 @@ def matchuj_publikacje(
             except klass.MultipleObjectsReturned:
                 print(f"PPP DOI nie jest unikalne w bazie: {doi}")
 
+    title = normalize_tytul_publikacji(title)
+
+    if title is not None and (
+        (len(title) >= TITLE_LIMIT_SINGLE_WORD and title.strip().find(" ") == -1)
+        or (len(title) >= TITLE_LIMIT_MANY_WORDS and title.strip().find(" ") > 0)
+    ):
+        if zrodlo is not None and hasattr(klass, "zrodlo"):
+            try:
+                return klass.objects.get(
+                    tytul_oryginalny__istartswith=title, rok=year, zrodlo=zrodlo
+                )
+            except klass.DoesNotExist:
+                pass
+            except klass.MultipleObjectsReturned:
+                print(
+                    f"PPP ZZZ MultipleObjectsReturned dla title={title} rok={year} zrodlo={zrodlo}"
+                )
+
+    if title is not None and (
+        (len(title) >= TITLE_LIMIT_SINGLE_WORD and title.strip().find(" ") == -1)
+        or (len(title) >= TITLE_LIMIT_MANY_WORDS and title.strip().find(" ") > 0)
+    ):
+        try:
+            return klass.objects.get(tytul_oryginalny__istartswith=title, rok=year)
+        except klass.DoesNotExist:
+            pass
+        except klass.MultipleObjectsReturned:
+            print(f"PPP WWW MultipleObjectsReturned dla title={title} rok={year}")
+
     if (
         isbn is not None
         and isbn != ""
@@ -342,33 +372,6 @@ def matchuj_publikacje(
             print(f"PPP ISBN {isbn} nie jest unikalny w bazie danych!")
         except klass.DoesNotExist:
             pass
-
-    title = normalize_tytul_publikacji(title)
-
-    if (len(title) >= TITLE_LIMIT_SINGLE_WORD and title.strip().find(" ") == -1) or (
-        len(title) >= TITLE_LIMIT_MANY_WORDS and title.strip().find(" ") > 0
-    ):
-        if zrodlo is not None and hasattr(klass, "zrodlo"):
-            try:
-                return klass.objects.get(
-                    tytul_oryginalny__istartswith=title, rok=year, zrodlo=zrodlo
-                )
-            except klass.DoesNotExist:
-                pass
-            except klass.MultipleObjectsReturned:
-                print(
-                    f"PPP ZZZ MultipleObjectsReturned dla title={title} rok={year} zrodlo={zrodlo}"
-                )
-
-    if (len(title) >= TITLE_LIMIT_SINGLE_WORD and title.strip().find(" ") == -1) or (
-        len(title) >= TITLE_LIMIT_MANY_WORDS and title.strip().find(" ") > 0
-    ):
-        try:
-            return klass.objects.get(tytul_oryginalny__istartswith=title, rok=year)
-        except klass.DoesNotExist:
-            pass
-        except klass.MultipleObjectsReturned:
-            print(f"PPP WWW MultipleObjectsReturned dla title={title} rok={year}")
 
     public_uri = normalize_public_uri(public_uri)
     if public_uri:
