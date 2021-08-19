@@ -97,4 +97,4 @@ jobs:
           command: |
             . venv/bin/activate
             cat ~/.pypirc | grep -v password
-            if [ $CIRCLE_BRANCH = 'master' ]; then make bdist_wheel_upload; fi
+            if [ $CIRCLE_BRANCH = 'master' ]; then make bdist_wheel upload; fi
