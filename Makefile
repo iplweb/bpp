@@ -109,5 +109,8 @@ remove-pbn-data:
 integration-start-from-match:
 	python src/manage.py pbn_integrator --enable-all --start-from-stage=16
 
+integration-start-from-download:
+	python src/manage.py pbn_integrator --enable-all --start-from-stage=12
+
 integration-start-from-match-single-thread:
 	python src/manage.py pbn_integrator --enable-all --start-from-stage=16 --disable-multiprocessing
