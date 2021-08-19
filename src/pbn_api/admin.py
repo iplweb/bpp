@@ -228,6 +228,16 @@ class OswiadczeniaInstytucjiAdmin(admin.ModelAdmin):
         "type",
     ]
 
+    readonly_fields = [
+        "addedTimestamp",
+        "area",
+        "inOrcid",
+        "institutionId",
+        "personId",
+        "publicationId",
+        "type",
+    ]
+
 
 @admin.register(PublikacjaInstytucji)
 class PublikacjaInstytucjiAdmin(admin.ModelAdmin):
@@ -245,4 +255,14 @@ class PublikacjaInstytucjiAdmin(admin.ModelAdmin):
         "userType",
         "publicationVersion",
         "publicationYear",
+    ]
+    readonly_fields = [
+        "insPersonId",
+        "institutionId",
+        "publicationId",
+        "publicationType",
+        "userType",
+        "publicationVersion",
+        "publicationYear",
+        "snapshot",
     ]
