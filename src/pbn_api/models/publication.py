@@ -5,8 +5,13 @@ from .base import BasePBNMongoDBModel
 
 from django.utils.functional import cached_property
 
+from bpp.models.abstract import LinkDoPBNMixin
 
-class Publication(BasePBNMongoDBModel):
+
+class Publication(LinkDoPBNMixin, BasePBNMongoDBModel):
+    url_do_pbn = "{pbn_api_root}/core/#/publication/view/{pbn_uid_id}/current"
+    atrybut_dla_url_do_pbn = "pk"
+
     class Meta:
         verbose_name = "Publikacja w PBN API"
         verbose_name_plural = "Publikacje w PBN API"
@@ -88,6 +93,10 @@ class Publication(BasePBNMongoDBModel):
             isbn=self.isbn,
             zrodlo=self.matchuj_zrodlo_do_rekordu_bpp(),
         )
+
+    @cached_property
+    def rekord_w_bpp(self):
+        return self.matchuj_do_rekordu_bpp()
 
     def __str__(self):
         ret = f"{self.title}"

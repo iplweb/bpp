@@ -726,6 +726,7 @@ class ModelWybitny(models.Model):
 
 class LinkDoPBNMixin:
     url_do_pbn = None
+    atrybut_dla_url_do_pbn = "pbn_uid_id"
 
     def link_do_pbn(self):
         assert self.url_do_pbn, "Określ parametr self.url_do_pbn"
@@ -735,7 +736,8 @@ class LinkDoPBNMixin:
         uczelnia = Uczelnia.objects.get_default()
         if uczelnia is not None:
             return self.url_do_pbn.format(
-                pbn_api_root=uczelnia.pbn_api_root, pbn_uid_id=self.pbn_uid_id
+                pbn_api_root=uczelnia.pbn_api_root,
+                pbn_uid_id=getattr(self, self.atrybut_dla_url_do_pbn),
             )
 
 
