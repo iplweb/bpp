@@ -847,9 +847,7 @@ def split_list(lst, n):
 
 CPU_COUNT = "auto"
 
-DEFAULT_CONTEXT = "spawn"
-if sys.platform == "darwin":
-    DEFAULT_CONTEXT = "fork"
+DEFAULT_CONTEXT = "fork"
 
 
 def initialize_pool():
