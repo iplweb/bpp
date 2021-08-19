@@ -1,9 +1,6 @@
 # -*- encoding: utf-8 -*-
-import multiprocessing
 import os
 import sys
-
-multiprocessing.set_start_method("fork")
 
 import django
 
@@ -18,9 +15,10 @@ from pbn_api.integrator import (
     integruj_jezyki,
     integruj_kraje,
     integruj_oswiadczenia_z_instytucji,
-    integruj_publikacje,
+    integruj_publikacje_instytucji,
     integruj_uczelnie,
     integruj_wszystkich_niezintegrowanych_autorow,
+    integruj_wszystkie_publikacje,
     integruj_wydawcow,
     integruj_zrodla,
     pobierz_instytucje,
@@ -110,7 +108,12 @@ class Command(PBNBaseCommand):
             default=False,
         )
         parser.add_argument(
-            "--enable-integruj-publikacje", action="store_true", default=False
+            "--enable-integruj-wszystkie-publikacje", action="store_true", default=False
+        )
+        parser.add_argument(
+            "--enable-integruj-publikacje-instytucji",
+            action="store_true",
+            default=False,
         )
         parser.add_argument("--skip-pages", type=int, default=0)
         parser.add_argument("--enable-sync", action="store_true", default=False)
@@ -147,7 +150,8 @@ class Command(PBNBaseCommand):
         enable_pobierz_wszystkie_publikacje,
         enable_pobierz_publikacje_instytucji,
         enable_pobierz_oswiadczenia_instytucji,
-        enable_integruj_publikacje,
+        enable_integruj_wszystkie_publikacje,
+        enable_integruj_publikacje_instytucji,
         skip_pages,
         enable_sync,
         disable_progress_bar,
@@ -282,8 +286,17 @@ class Command(PBNBaseCommand):
         stage = 16
         check_end_before(stage, end_before_stage)
 
-        if (enable_integruj_publikacje or enable_all) and start_from_stage <= stage:
-            integruj_publikacje(disable_multiprocessing, skip_pages=skip_pages)
+        if (enable_integruj_wszystkie_publikacje) and start_from_stage <= stage:
+            integruj_wszystkie_publikacje(
+                disable_multiprocessing, skip_pages=skip_pages
+            )
+
+        if (
+            enable_integruj_publikacje_instytucji or enable_all
+        ) and start_from_stage <= stage:
+            integruj_publikacje_instytucji(
+                disable_multiprocessing, skip_pages=skip_pages
+            )
 
         stage = 17
         check_end_before(stage, end_before_stage)
@@ -302,7 +315,9 @@ class Command(PBNBaseCommand):
         stage = 19
         check_end_before(stage, end_before_stage)
 
-        if (enable_integruj_publikacje or enable_all) and start_from_stage <= stage:
+        if (
+            enable_integruj_wszystkie_publikacje or enable_all
+        ) and start_from_stage <= stage:
             wyswietl_niezmatchowane_ze_zblizonymi_tytulami()
             sprawdz_ilosc_autorow_przy_zmatchowaniu()
 

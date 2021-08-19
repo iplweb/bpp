@@ -847,6 +847,10 @@ def split_list(lst, n):
 
 CPU_COUNT = "auto"
 
+DEFAULT_CONTEXT = "spawn"
+if sys.platform == "darwin":
+    DEFAULT_CONTEXT = "fork"
+
 
 def initialize_pool():
     global CPU_COUNT
@@ -860,18 +864,38 @@ def initialize_pool():
     else:
         raise NotImplementedError(f"CPU_COUNT = {CPU_COUNT}")
 
-    return multiprocessing.Pool(cpu_count)
+    return multiprocessing.get_context(DEFAULT_CONTEXT).Pool(cpu_count)
 
 
-def integruj_publikacje(
+def _integruj_publikacje(
+    pubs, disable_multiprocessing=False, skip_pages=0, label="_integruj_publikacje"
+):
+
+    ids = list(pubs.values_list("pk", flat=True).distinct())
+
+    _bede_uzywal_bazy_danych_z_multiprocessing_z_django()
+    pool = initialize_pool()
+
+    BATCH_SIZE = 512
+    results = []
+    for no, elem in enumerate(split_list(ids, BATCH_SIZE)):
+        if no < skip_pages:
+            continue
+
+        if disable_multiprocessing:
+            _integruj_single_part(elem)
+            print(f"{label} {no} of {len(ids)//BATCH_SIZE}...", end="\r")
+            sys.stdout.flush()
+        else:
+            result = pool.apply_async(_integruj_single_part, args=(elem,))
+            results.append(result)
+
+    wait_for_results(pool, results, label=label)
+
+
+def integruj_wszystkie_publikacje(
     disable_multiprocessing=False, ignore_already_matched=False, skip_pages=0
 ):
-    """
-    :param ignore_already_matched: jeżeli True, to publikacje, które już mają swój match
-    po stronie BPP nie będa analizowane.
-
-    """
-
     pubs = Publication.objects.all()
 
     if ignore_already_matched:
@@ -883,37 +907,30 @@ def integruj_publikacje(
 
     pubs = pubs.order_by("-pk")
 
-    ids = list(pubs.values_list("pk", flat=True).distinct())
-    _bede_uzywal_bazy_danych_z_multiprocessing_z_django()
-    pool = initialize_pool()
+    return _integruj_publikacje(
+        pubs, disable_multiprocessing=disable_multiprocessing, skip_pages=skip_pages
+    )
 
-    # if disable_multiprocessing:
-    #     zmatchowane = (
-    #         Rekord.objects.all().values_list("pbn_uid_id").exclude(pbn_uid_id=None)
-    #     )
-    #
-    #     ids = (
-    #         OswiadczenieInstytucji.objects.all()
-    #         .values_list("publicationId_id", flat=True)
-    #         .distinct()
-    #         .exclude(publicationId_id__in=zmatchowane)
-    #     )
 
-    BATCH_SIZE = 256
-    results = []
-    for no, elem in enumerate(split_list(ids, BATCH_SIZE)):
-        if no < skip_pages:
-            continue
+def integruj_publikacje_instytucji(
+    disable_multiprocessing=False, ignore_already_matched=False, skip_pages=0
+):
+    """
+    :param ignore_already_matched: jeżeli True, to publikacje, które już mają swój match
+    po stronie BPP nie będa analizowane.
 
-        if disable_multiprocessing:
-            _integruj_single_part(elem)
-            print(f"{no} of {len(ids)//BATCH_SIZE}...", end="\r")
-            sys.stdout.flush()
-        else:
-            result = pool.apply_async(_integruj_single_part, args=(elem,))
-            results.append(result)
+    """
 
-    wait_for_results(pool, results, label="integruj_publikacje")
+    pubs = (
+        OswiadczenieInstytucji.objects.all()
+        .values_list("publicationId_id", flat=True)
+        .order_by("-pk")
+        .distinct()
+    )
+
+    return _integruj_publikacje(
+        pubs, disable_multiprocessing=disable_multiprocessing, skip_pages=skip_pages
+    )
 
 
 MODELE_Z_PBN_UID = (
@@ -1032,20 +1049,18 @@ def synchronizuj_publikacje(client, skip=0):
         _synchronizuj_pojedyncza_publikacje(client, rec)
 
 
-@transaction.atomic
 def clear_match_publications():
     for model in MODELE_Z_PBN_UID:
         print(f"Setting pbn_uid_ids of {model} to null...")
         model.objects.exclude(pbn_uid_id=None).update(pbn_uid_id=None)
 
 
-@transaction.atomic
 def clear_publications():
     clear_match_publications()
-    Publication.objects.all()._raw_delete(MODELE_Z_PBN_UID[0].objects.db)
+    for model in [OswiadczenieInstytucji, PublikacjaInstytucji, Publication, SentData]:
+        model.objects.all()._raw_delete(MODELE_Z_PBN_UID[0].objects.db)
 
 
-@transaction.atomic
 def clear_all():
     for model in (
         Autor,
@@ -1068,9 +1083,6 @@ def clear_all():
         Journal,
         Publisher,
         Scientist,
-        SentData,
-        PublikacjaInstytucji,
-        OswiadczenieInstytucji,
     ):
         print(f"Deleting all {model}")
         model.objects.all()._raw_delete(model.objects.db)
