@@ -427,43 +427,74 @@ def pobierz_oswiadczenia_z_instytucji(client: PBNClient):
     )
 
 
+def _pobierz_prace_po_doi(client, nd):
+    try:
+        elem = client.get_publication_by_doi(nd)
+    except HttpException as e:
+        if e.status_code == 422:
+            # Publication with DOI 10.1136/annrheumdis-2018-eular.5236 was not exists!
+            print(f"\r\nBrak pracy z DOI {nd} w PBNie")
+            return
+
+        elif e.status_code == 500:
+            if "Publication with DOI" in e.content and "was not exists" in e.content:
+                print(f"\r\nBrak pracy z DOI {nd} w PBNie")
+                return
+
+            elif "Internal server error" in e.content:
+                # print(f"\r\nSerwer PBN zwrocil blad 500 dla DOI {nd} --> {e.content}")
+                return
+
+        raise e
+
+    publication = zapisz_mongodb(elem, Publication)
+    p = publication.matchuj_do_rekordu_bpp()
+    if p is None:
+        print(
+            f"XXX mimo pobrania pracy po DOI {nd}, zwrotnie NIE pasuje ona do pracy w BPP -- rok {publication.year} "
+            f"lub tytul {publication.title} nie daja sie dopasowac. Blad w zapisie DOI? Niepoprawne DOI?"
+        )
+        return
+
+    if p.pbn_uid_id is not None:
+        print(
+            f"XXX DOI {nd} jest potencjalnie zdublowany w bazie BPP. "
+            f"Po stronie PBN ma go {publication.title}, po stronie BPP ma go {p.tytul_oryginalny}"
+        )
+        return
+
+    p = p.original
+    p.pbn_uid_id = publication.mongoId
+    p.save(update_fields=["pbn_uid_id"])
+
+
 def pobierz_prace_po_doi(client: PBNClient):
-    for klass in (Wydawnictwo_Ciagle, Wydawnictwo_Zwarte):
-        for praca in pbar(
-            klass.objects.all()
-            .exclude(doi=None)
-            .exclude(doi="")
-            .filter(pbn_uid_id=None),
-            label="pobierz_prace_po_doi",
-        ):
-            nd = normalize_doi(praca.doi)
-            try:
-                elem = client.get_publication_by_doi(nd)
-            except HttpException as e:
-                if e.status_code == 422:
-                    # Publication with DOI 10.1136/annrheumdis-2018-eular.5236 was not exists!
-                    print(f"\r\nBrak pracy z DOI {nd} w PBNie -- w BPP to {praca}")
-                    continue
-                elif e.status_code == 500:
-                    if (
-                        "Publication with DOI" in e.content
-                        and "was not exists" in e.content
-                    ):
-                        print(f"\r\nBrak pracy z DOI {nd} w PBNie -- w BPP to {praca}")
-                        continue
-                    elif "Internal server error" in e.content:
-                        print(
-                            f"\r\nSerwer PBN zwrocil blad 500 dla DOI {nd} --> {e.content}"
-                        )
-                        continue
+    dois = set()
+    for praca in pbar(
+        Rekord.objects.all().exclude(doi=None).exclude(doi="").filter(pbn_uid_id=None),
+        label="pobierz_prace_po_doi",
+    ):
+        nd = normalize_doi(praca.doi)
+        dois.add(nd)
 
-                raise e
+    _bede_uzywal_bazy_danych_z_multiprocessing_z_django()
 
-            publication = zapisz_mongodb(elem, Publication)
+    p = initialize_pool()
 
-            if praca.pbn_uid_id is None:
-                praca.pbn_uid = publication
-                praca.save()
+    results = []
+
+    for doi in dois:
+        results.append(
+            p.apply_async(
+                _pobierz_prace_po_doi,
+                args=(
+                    client,
+                    doi,
+                ),
+            )
+        )
+
+    wait_for_results(p, results)
 
 
 def _single_unit_ludzie_z_uczelni(client, personId):
@@ -836,7 +867,11 @@ def zweryfikuj_lub_stworz_match(elem, bpp_rekord):
 def _integruj_single_part(ids):
 
     for _id in ids:
-        elem = Publication.objects.get(pk=_id)
+        try:
+            elem = Publication.objects.get(pk=_id)
+        except Publication.DoesNotExist as e:
+            print(f"Brak publikacji o ID {_id}")
+            raise e
         p = elem.matchuj_do_rekordu_bpp()
         zweryfikuj_lub_stworz_match(elem, p)
 
@@ -873,20 +908,18 @@ def _integruj_publikacje(
     pubs, disable_multiprocessing=False, skip_pages=0, label="_integruj_publikacje"
 ):
 
-    ids = list(pubs.values_list("pk", flat=True).distinct())
-
     _bede_uzywal_bazy_danych_z_multiprocessing_z_django()
     pool = initialize_pool()
 
     BATCH_SIZE = 512
     results = []
-    for no, elem in enumerate(split_list(ids, BATCH_SIZE)):
+    for no, elem in enumerate(split_list(pubs, BATCH_SIZE)):
         if no < skip_pages:
             continue
 
         if disable_multiprocessing:
             _integruj_single_part(elem)
-            print(f"{label} {no} of {len(ids)//BATCH_SIZE}...", end="\r")
+            print(f"{label} {no} of {len(pubs)//BATCH_SIZE}...", end="\r")
             sys.stdout.flush()
         else:
             result = pool.apply_async(_integruj_single_part, args=(elem,))
@@ -908,6 +941,7 @@ def integruj_wszystkie_publikacje(
         )
 
     pubs = pubs.order_by("-pk")
+    pubs = list(pubs.values_list("pk", flat=True).distinct())
 
     return _integruj_publikacje(
         pubs, disable_multiprocessing=disable_multiprocessing, skip_pages=skip_pages
@@ -929,7 +963,6 @@ def integruj_publikacje_instytucji(
         .order_by("-pk")
         .distinct()
     )
-
     return _integruj_publikacje(
         pubs, disable_multiprocessing=disable_multiprocessing, skip_pages=skip_pages
     )
@@ -1222,7 +1255,7 @@ def _pobierz_pojedyncza_prace(client, publicationId):
 def pobierz_rekordy_publikacji_instytucji(client: PBNClient):
     seen = set()
     for elem in pbar(
-        client.get_institution_publications(page_size=5000),
+        client.get_institution_publications(page_size=1000),
         label="scan pobierz_rekordy_publikacji_instytucji",
     ):
         publicationId = elem["publicationId"]

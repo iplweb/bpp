@@ -97,6 +97,12 @@ class OswiadczenieInstytucji(models.Model):
         ):
             try:
                 return klass.objects.get(pbn_uid_id=self.publicationId_id)
+            except klass.MultipleObjectsReturned:
+                ret = klass.objects.filter(pbn_uid_id=self.publicationId_id).first()
+                print(
+                    f"XXX DUPLIKAT! Dwie prace mają PBN UID {self.publicationId_id}, "
+                    f"zwracam pierwszą {ret.tytul_oryginalny}!"
+                )
             except klass.DoesNotExist:
                 pass
 

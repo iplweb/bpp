@@ -114,3 +114,5 @@ integration-start-from-download:
 
 integration-start-from-match-single-thread:
 	python src/manage.py pbn_integrator --enable-all --start-from-stage=15 --disable-multiprocessing
+
+restart-pbn-from-download: remove-pbn-integracja-publikacji-dane integration-start-from-download
