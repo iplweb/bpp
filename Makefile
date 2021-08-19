@@ -107,7 +107,12 @@ remove-pbn-data:
 	cd src/import_dbf && export CUSTOMER=foo && make enable-trigger
 
 integration-start-from-match:
-	python src/manage.py pbn_integrator --enable-all --start-from-stage=16
+	python src/manage.py pbn_integrator --enable-all --start-from-stage=15
+
+integration-start-from-download:
+	python src/manage.py pbn_integrator --enable-all --start-from-stage=12
 
 integration-start-from-match-single-thread:
-	python src/manage.py pbn_integrator --enable-all --start-from-stage=16 --disable-multiprocessing
+	python src/manage.py pbn_integrator --enable-all --start-from-stage=15 --disable-multiprocessing
+
+restart-pbn-from-download: remove-pbn-integracja-publikacji-dane integration-start-from-download

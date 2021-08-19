@@ -6,6 +6,7 @@ from pprint import pprint
 from urllib.parse import parse_qs, quote, urlparse
 
 import requests
+from requests import ConnectionError
 from requests.exceptions import SSLError
 
 from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
@@ -157,7 +158,7 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
             try:
                 ret = requests.get(self.base_url + url, headers=sent_headers)
                 break
-            except SSLError as e:
+            except (SSLError, ConnectionError) as e:
                 retries += 1
                 time.sleep(random.randint(1, 5))
                 if retries >= MAX_RETRIES:

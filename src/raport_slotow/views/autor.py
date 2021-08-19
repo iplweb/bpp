@@ -5,7 +5,6 @@ from django.template.defaultfilters import pluralize
 from django.urls import reverse
 from django.views.generic import FormView, TemplateView
 from django_tables2 import MultiTableMixin, RequestConfig
-from weasyprint import HTML
 
 from formdefaults.helpers import FormDefaultsMixin
 from raport_slotow.forms import AutorRaportSlotowForm
@@ -207,6 +206,8 @@ class RaportSlotow(
                 import ssl
 
                 ssl._create_default_https_context = ssl._create_unverified_context
+
+                from weasyprint import HTML
 
                 response = HttpResponse(
                     content=HTML(

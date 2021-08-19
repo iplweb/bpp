@@ -1,6 +1,7 @@
 from typing import Union
 
 from django.db.models import Q
+from django.db.models.functions import Lower
 
 from .normalization import (
     normalize_doi,
@@ -311,14 +312,26 @@ def matchuj_publikacje(
         doi = normalize_doi(doi)
         if doi:
             res = (
-                klass.objects.filter(doi__startswith=doi, rok=year)
-                .annotate(podobienstwo=TrigramSimilarity("tytul_oryginalny", title))
+                klass.objects.filter(doi__istartswith=doi, rok=year)
+                .annotate(
+                    podobienstwo=TrigramSimilarity(
+                        Lower("tytul_oryginalny"), title.lower()
+                    )
+                )
                 .order_by("-podobienstwo")[:2]
             )
-
             fail_if_seq_scan(res, DEBUG_MATCHOWANIE)
             if res.exists():
-                if res.first().podobienstwo >= MATCH_SIMILARITY_THRESHOLD:
+
+                # if not res.first().podobienstwo >= MATCH_SIMILARITY_THRESHOLD_LOW:
+                #     print(
+                #         "\r\nKOPERA",
+                #         res.first().podobienstwo,
+                #         title,
+                #         res.first().tytul_oryginalny,
+                #     )
+                #
+                if res.first().podobienstwo >= MATCH_SIMILARITY_THRESHOLD_LOW:
                     return res.first()
                 else:
                     if DEBUG_MATCHOWANIE:
@@ -363,7 +376,9 @@ def matchuj_publikacje(
 
         res = (
             zapytanie.filter(Q(isbn=ni) | Q(e_isbn=ni))
-            .annotate(podobienstwo=TrigramSimilarity("tytul_oryginalny", title))
+            .annotate(
+                podobienstwo=TrigramSimilarity(Lower("tytul_oryginalny"), title.lower())
+            )
             .order_by("-podobienstwo")[:2]
         )
         fail_if_seq_scan(res, DEBUG_MATCHOWANIE)
@@ -380,7 +395,9 @@ def matchuj_publikacje(
     if public_uri:
         res = (
             klass.objects.filter(Q(www=public_uri) | Q(public_www=public_uri))
-            .annotate(podobienstwo=TrigramSimilarity("tytul_oryginalny", title))
+            .annotate(
+                podobienstwo=TrigramSimilarity(Lower("tytul_oryginalny"), title.lower())
+            )
             .order_by("-podobienstwo")[:2]
         )
         fail_if_seq_scan(res, DEBUG_MATCHOWANIE)
@@ -400,7 +417,9 @@ def matchuj_publikacje(
     ):
         res = (
             klass.objects.filter(tytul_oryginalny__istartswith=title, rok=year)
-            .annotate(podobienstwo=TrigramSimilarity("tytul_oryginalny", title))
+            .annotate(
+                podobienstwo=TrigramSimilarity(Lower("tytul_oryginalny"), title.lower())
+            )
             .order_by("-podobienstwo")[:2]
         )
 
@@ -418,7 +437,9 @@ def matchuj_publikacje(
 
         res = (
             klass.objects.filter(rok=year)
-            .annotate(podobienstwo=TrigramSimilarity("tytul_oryginalny", title))
+            .annotate(
+                podobienstwo=TrigramSimilarity(Lower("tytul_oryginalny"), title.lower())
+            )
             .order_by("-podobienstwo")[:2]
         )
 
