@@ -56,4 +56,4 @@ perform prace_z_dyscyplina_bez_matchu_w_pbn_zwarte.xlsx "SELECT DISTINCT tytul_o
 perform prace_z_dyscyplina_bez_matchu_w_pbn_ciagle.xlsx "SELECT DISTINCT tytul_oryginalny, rok FROM bpp_wydawnictwo_ciagle WHERE id IN (SELECT DISTINCT rekord_id FROM bpp_wydawnictwo_ciagle_autor WHERE dyscyplina_naukowa_id IS NOT NULL) AND pbn_uid_id IS NULL"
 
 # Prace z oswiadczeniami w PBN bez matchu po stronie BPP
-perform prace_z_oswiadczeniami_w_pbnie_bez_matchu_w_bpp.xlsx "SELECT distinct \"publicationId_id\" FROM pbn_api_oswiadczenieinstytucji WHERE \"publicationId_id\" NOT IN (SELECT DISTINCT pbn_uid_id FROM bpp_rekord WHERE pbn_uid_id is not null);"
+perform prace_z_oswiadczeniami_w_pbnie_bez_matchu_w_bpp.xlsx "SELECT distinct \"publicationId_id\", pbn_api_publication.title FROM pbn_api_oswiadczenieinstytucji, pbn_api_publication WHERE pbn_api_publication.\"mongoId\" = pbn_api_oswiadczenieinstytucji.\"publicationId_id\" and \"publicationId_id\" NOT IN (SELECT DISTINCT pbn_uid_id FROM bpp_rekord WHERE pbn_uid_id is not null);"
