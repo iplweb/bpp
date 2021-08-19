@@ -911,7 +911,7 @@ def _integruj_publikacje(
     _bede_uzywal_bazy_danych_z_multiprocessing_z_django()
     pool = initialize_pool()
 
-    BATCH_SIZE = 512
+    BATCH_SIZE = 128
     results = []
     for no, elem in enumerate(split_list(pubs, BATCH_SIZE)):
         if no < skip_pages:
