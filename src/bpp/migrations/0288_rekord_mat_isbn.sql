@@ -611,7 +611,7 @@ ALTER TABLE bpp_rekord_mat
     ADD CONSTRAINT konferencja_id_fk
         FOREIGN KEY (konferencja_id)
             REFERENCES bpp_konferencja (id)
-            ON DELETE CASCADE
+            ON DELETE SET NULL
             ON UPDATE CASCADE
             DEFERRABLE INITIALLY DEFERRED;
 
@@ -619,7 +619,7 @@ ALTER TABLE bpp_rekord_mat
     ADD CONSTRAINT pbn_api_publication_mongoId_fk
         FOREIGN KEY (pbn_uid_id)
             REFERENCES pbn_api_publication ("mongoId")
-            ON DELETE CASCADE
+            ON DELETE SET NULL
             ON UPDATE CASCADE
             DEFERRABLE INITIALLY DEFERRED;
 
