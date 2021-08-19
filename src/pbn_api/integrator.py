@@ -46,7 +46,7 @@ from bpp.models import (
     Wydawnictwo_Zwarte_Autor,
     Zrodlo,
 )
-from bpp.util import fail_if_seq_scan, pbar
+from bpp.util import pbar
 
 
 def integruj_jezyki(client):
@@ -1197,8 +1197,6 @@ def wyswietl_niezmatchowane_ze_zblizonymi_tytulami():
                 .filter(similarity__gt=0.5)
                 .order_by("-similarity")
             )
-
-            fail_if_seq_scan(res, True)
 
             for elem in res[:5]:
                 print("- MOZE: ", elem.mongoId, elem.title, elem.similarity)
