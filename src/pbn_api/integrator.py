@@ -361,9 +361,10 @@ def _single_unit_wgraj(current_page, status, db, model):
 
 
 def _bede_uzywal_bazy_danych_z_multiprocessing_z_django():
-    from django.db import close_old_connections
+    from django.db import close_old_connections, connections
 
     close_old_connections()
+    connections.close_all()
 
 
 def _wgraj_z_offline_do_bazy(db, model):
@@ -371,8 +372,8 @@ def _wgraj_z_offline_do_bazy(db, model):
 
     p = initialize_pool()
 
-    def _(exc):
-        print("XXX", exc)
+    # def _(exc):
+    #     print("XXX", exc)
 
     results = []
     for status in ["ACTIVE", "DELETED"]:
@@ -382,7 +383,7 @@ def _wgraj_z_offline_do_bazy(db, model):
                 result = p.apply_async(
                     _single_unit_wgraj,
                     (current_page, status, db, model),
-                    error_callback=_,
+                    # error_callback=_,
                 )
                 results.append(result)
 
@@ -850,13 +851,16 @@ CPU_COUNT = "auto"
 DEFAULT_CONTEXT = "fork"
 
 
-def initialize_pool():
+def initialize_pool(multipler=1):
     global CPU_COUNT
 
     if CPU_COUNT == "auto":
         cpu_count = os.cpu_count() * 3 // 4
         if cpu_count < 1:
             cpu_count = 1
+
+        cpu_count = cpu_count * multipler
+
     elif CPU_COUNT == "single":
         cpu_count = 1
     else:
@@ -1199,3 +1203,43 @@ def sprawdz_ilosc_autorow_przy_zmatchowaniu():
                     str(praca.pbn_uid.autorzy),
                 ]
             )
+
+
+def _pobierz_pojedyncza_prace(client, publicationId):
+    try:
+        data = client.get_publication_by_id(publicationId)
+    except HttpException as e:
+        if e.status_code == 500 and "Internal server error" in e.content:
+            print(
+                f"\r\nSerwer PBN zwrocil blad 500 dla PBN UID {publicationId} --> {e.content}"
+            )
+            return
+        raise e
+
+    zapisz_mongodb(data, Publication, client)
+
+
+def pobierz_rekordy_publikacji_instytucji(client: PBNClient):
+    seen = set()
+    for elem in pbar(
+        client.get_institution_publications(page_size=5000),
+        label="scan pobierz_rekordy_publikacji_instytucji",
+    ):
+        publicationId = elem["publicationId"]
+        seen.add(publicationId)
+
+    _bede_uzywal_bazy_danych_z_multiprocessing_z_django()
+    pool = initialize_pool(multipler=2)
+    results = []
+
+    for _id in seen:
+        res = pool.apply_async(
+            _pobierz_pojedyncza_prace,
+            args=(
+                client,
+                _id,
+            ),
+        )
+        results.append(res)
+
+    wait_for_results(pool, results, "pobieranie publikacji")

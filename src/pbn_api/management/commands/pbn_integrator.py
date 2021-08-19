@@ -18,7 +18,6 @@ from pbn_api.integrator import (
     integruj_publikacje_instytucji,
     integruj_uczelnie,
     integruj_wszystkich_niezintegrowanych_autorow,
-    integruj_wszystkie_publikacje,
     integruj_wydawcow,
     integruj_zrodla,
     pobierz_instytucje,
@@ -26,9 +25,9 @@ from pbn_api.integrator import (
     pobierz_ludzi_offline,
     pobierz_ludzi_z_uczelni,
     pobierz_oswiadczenia_z_instytucji,
-    pobierz_prace_offline,
     pobierz_prace_po_doi,
     pobierz_publikacje_z_instytucji,
+    pobierz_rekordy_publikacji_instytucji,
     pobierz_wydawcow_mnisw,
     pobierz_wydawcow_wszystkich,
     pobierz_zrodla,
@@ -36,7 +35,6 @@ from pbn_api.integrator import (
     synchronizuj_publikacje,
     weryfikuj_orcidy,
     wgraj_ludzi_z_offline_do_bazy,
-    wgraj_prace_z_offline_do_bazy,
     wyswietl_niezmatchowane_ze_zblizonymi_tytulami,
 )
 from pbn_api.management.commands.util import PBNBaseCommand
@@ -103,6 +101,11 @@ class Command(PBNBaseCommand):
             "--enable-pobierz-publikacje-instytucji", action="store_true", default=False
         )
         parser.add_argument(
+            "--enable-pobierz-rekordy-publikacji-instytucji",
+            action="store_true",
+            default=False,
+        )
+        parser.add_argument(
             "--enable-pobierz-oswiadczenia-instytucji",
             action="store_true",
             default=False,
@@ -150,6 +153,7 @@ class Command(PBNBaseCommand):
         enable_pobierz_wszystkie_publikacje,
         enable_pobierz_publikacje_instytucji,
         enable_pobierz_oswiadczenia_instytucji,
+        enable_pobierz_rekordy_publikacji_instytucji,
         enable_integruj_wszystkie_publikacje,
         enable_integruj_publikacje_instytucji,
         skip_pages,
@@ -245,37 +249,54 @@ class Command(PBNBaseCommand):
             pobierz_wydawcow_wszystkich(client)
             pobierz_wydawcow_mnisw(client)
             integruj_wydawcow()
+
         stage = 11
         check_end_before(stage, end_before_stage)
 
         if (enable_conferences or enable_all) and start_from_stage <= stage:
             pobierz_konferencje(client)
-        stage = 12
 
-        # Pobieranie publikacji
+        stage = 12
+        check_end_before(stage, end_before_stage)
+
+        #
+        # Pobieranie wszystkich publikacji z całego PBNu - bez wiekszego sensu
+        # do obecnych zastosowań
+        #
+        # if (
+        #     enable_pobierz_wszystkie_publikacje
+        # ) and start_from_stage <= stage:
+        #     os.makedirs("pbn_json_data", exist_ok=True)
+        #     pobierz_prace_offline(client)
+        #
+        # stage = 13
+        # check_end_before(stage, end_before_stage)
+        #
+        # Wgrywanie wszystkich prac z offline do bazy
+        #
+        # if (
+        #     enable_pobierz_wszystkie_publikacje
+        # ) and start_from_stage <= stage:
+        #     wgraj_prace_z_offline_do_bazy()
+        #
+
+        #
+        # Pobieranie oswiadczen i publikacji z insytucji
+        #
+
         if (
-            enable_pobierz_wszystkie_publikacje or enable_all
+            enable_pobierz_rekordy_publikacji_instytucji or enable_all
         ) and start_from_stage <= stage:
-            os.makedirs("pbn_json_data", exist_ok=True)
-            pobierz_prace_offline(client)
+            pobierz_rekordy_publikacji_instytucji(client)
 
         stage = 13
         check_end_before(stage, end_before_stage)
-
-        if (
-            enable_pobierz_wszystkie_publikacje or enable_all
-        ) and start_from_stage <= stage:
-            wgraj_prace_z_offline_do_bazy()
-
-        stage = 14
-        check_end_before(stage, end_before_stage)
-
         if (
             enable_pobierz_publikacje_instytucji or enable_all
         ) and start_from_stage <= stage:
             pobierz_publikacje_z_instytucji(client)
 
-        stage = 15
+        stage = 14
         check_end_before(stage, end_before_stage)
 
         if (
@@ -283,13 +304,13 @@ class Command(PBNBaseCommand):
         ) and start_from_stage <= stage:
             pobierz_oswiadczenia_z_instytucji(client)
 
-        stage = 16
+        stage = 15
         check_end_before(stage, end_before_stage)
 
-        if (enable_integruj_wszystkie_publikacje) and start_from_stage <= stage:
-            integruj_wszystkie_publikacje(
-                disable_multiprocessing, skip_pages=skip_pages
-            )
+        # if (enable_integruj_wszystkie_publikacje) and start_from_stage <= stage:
+        #     integruj_wszystkie_publikacje(
+        #         disable_multiprocessing, skip_pages=skip_pages
+        #     )
 
         if (
             enable_integruj_publikacje_instytucji or enable_all
@@ -298,7 +319,7 @@ class Command(PBNBaseCommand):
                 disable_multiprocessing, skip_pages=skip_pages
             )
 
-        stage = 17
+        stage = 16
         check_end_before(stage, end_before_stage)
 
         if (
@@ -306,13 +327,13 @@ class Command(PBNBaseCommand):
         ) and start_from_stage <= stage:
             integruj_oswiadczenia_z_instytucji()
 
-        stage = 18
+        stage = 17
         check_end_before(stage, end_before_stage)
 
         if (enable_pobierz_po_doi or enable_all) and start_from_stage <= stage:
             pobierz_prace_po_doi(client)
 
-        stage = 19
+        stage = 18
         check_end_before(stage, end_before_stage)
 
         if (
@@ -321,7 +342,7 @@ class Command(PBNBaseCommand):
             wyswietl_niezmatchowane_ze_zblizonymi_tytulami()
             sprawdz_ilosc_autorow_przy_zmatchowaniu()
 
-        stage = 20
+        stage = 19
         check_end_before(stage, end_before_stage)
 
         if enable_sync:  # or enable_all:
