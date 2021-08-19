@@ -7,7 +7,7 @@
     {% if original.publicationId.rekord_w_bpp %}
         <li><a href="{{ original.publicationId.rekord_w_bpp.original.get_absolute_url }}">Zobacz w BPP</a></li>
     {% else %}
-        <li><a href="#" class="disabled">brak dopasowania w BPP</a></li>
+        <li><a href="#" class="disabled">Brak dopasowania w BPP</a></li>
     {% endif %}
     {{ block.super }}
 {% endblock %}
