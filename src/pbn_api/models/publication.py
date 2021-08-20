@@ -96,6 +96,13 @@ class Publication(LinkDoPBNMixin, BasePBNMongoDBModel):
 
     @cached_property
     def rekord_w_bpp(self):
+        from bpp.models.cache import Rekord
+
+        try:
+            return Rekord.objects.get(pbn_uid_id=self.pk)
+        except Rekord.DoesNotExist:
+            pass
+
         return self.matchuj_do_rekordu_bpp()
 
     def __str__(self):

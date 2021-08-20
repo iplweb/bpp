@@ -3,6 +3,11 @@
 Historia zmian
 ==============
 
+202108.1077
+-----------
+
+* widoki PBN API umożliwiają łatwiejsze odnajdywanie rekordów na stronie PBN oraz w serwisie BPP (b/n),
+
 202108.1075
 -----------
 

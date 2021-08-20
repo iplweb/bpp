@@ -79,3 +79,7 @@ NAJWIEKSZY_REKORD = "max_rec"
 
 PBN_UID_LEN = 24
 ORCID_LEN = 19
+
+LINK_PBN_DO_AUTORA = "{pbn_api_root}/core/#/person/view/{pbn_uid_id}/current"
+LINK_PBN_DO_WYDAWCY = "{pbn_api_root}/core/#/publisher/view/{pbn_uid_id}/current"
+LINK_PBN_DO_ZRODLA = "{pbn_api_root}/core/#/journal/view/{pbn_uid_id}/current"

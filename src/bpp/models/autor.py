@@ -15,7 +15,13 @@ from django.urls.base import reverse
 from django.contrib.postgres.search import SearchVectorField as VectorField
 
 from bpp.core import zbieraj_sloty
-from bpp.models import LinkDoPBNMixin, ModelZAdnotacjami, ModelZNazwa, NazwaISkrot
+from bpp.models import (
+    LinkDoPBNMixin,
+    ModelZAdnotacjami,
+    ModelZNazwa,
+    NazwaISkrot,
+    const,
+)
 from bpp.models.abstract import ModelZPBN_ID
 from bpp.util import FulltextSearchMixin
 
@@ -64,7 +70,7 @@ class AutorManager(FulltextSearchMixin, models.Manager):
 
 
 class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
-    url_do_pbn = "{pbn_api_root}/core/#/person/view/{pbn_uid_id}/current"
+    url_do_pbn = const.LINK_PBN_DO_AUTORA
 
     imiona = models.CharField(max_length=512, db_index=True)
     nazwisko = models.CharField(max_length=256, db_index=True)

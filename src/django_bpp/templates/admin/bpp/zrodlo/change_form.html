@@ -1,0 +1,8 @@
+ {% extends "admin/change_form.html" %}
+
+{% block object-tools-items %}
+    {% if original.link_do_pbn %}
+        <li><a target="_blank" href="{{ original.link_do_pbn }}">Zobacz w PBN</a></li>
+    {% endif %}
+    {{ block.super }}
+{% endblock %}

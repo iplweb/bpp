@@ -12,6 +12,7 @@ from django.contrib.postgres.search import SearchVectorField as VectorField
 
 from bpp.fields import DOIField, YearField
 from bpp.jezyk_polski import czasownik_byc
+from bpp.models import LinkDoPBNMixin, const
 from bpp.models.abstract import (
     ModelPunktowanyBaza,
     ModelZAdnotacjami,
@@ -106,7 +107,9 @@ class ZrodloManager(FulltextSearchMixin, models.Manager):
     pass
 
 
-class Zrodlo(ModelZAdnotacjami, ModelZISSN):
+class Zrodlo(LinkDoPBNMixin, ModelZAdnotacjami, ModelZISSN):
+    url_do_pbn = const.LINK_PBN_DO_ZRODLA
+
     nazwa = models.CharField(max_length=1024, db_index=True)
     skrot = models.CharField("Skrót", max_length=512, db_index=True)
 

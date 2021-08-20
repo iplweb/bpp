@@ -4,6 +4,10 @@ from .base import BasePBNMongoDBModel
 
 from django.contrib.postgres.fields import JSONField
 
+from django.utils.functional import cached_property
+
+from bpp.models import Uczelnia
+
 
 class Institution(BasePBNMongoDBModel):
     class Meta:
@@ -55,6 +59,18 @@ class Institution(BasePBNMongoDBModel):
             ret = ret.replace(",,", ",")
         ret = ret.replace(", (", " (")
         return ret
+
+    @cached_property
+    def rekord_w_bpp(self):
+        from bpp.models import Jednostka
+
+        try:
+            return Jednostka.objects.get(pbn_uid_id=self.pk)
+        except Jednostka.DoesNotExist:
+            try:
+                return Uczelnia.objects.get(pbn_uid_id=self.pk)
+            except Uczelnia.DoesNotExist:
+                pass
 
 
 class PublikacjaInstytucji(models.Model):
