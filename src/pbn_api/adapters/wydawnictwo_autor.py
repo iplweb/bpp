@@ -1,8 +1,9 @@
 from bpp.models import const
+from bpp.models.abstract import BazaModeluOdpowiedzialnosciAutorow
 
 
 class WydawnictwoAutorToStatementPBNAdapter:
-    def __init__(self, original):
+    def __init__(self, original: BazaModeluOdpowiedzialnosciAutorow):
         self.original = original
 
     def pbn_get_json(self):
@@ -49,6 +50,7 @@ class WydawnictwoAutorToStatementPBNAdapter:
         if not ret.get("personOrcidId") and not ret.get("personObjectId"):
             return
 
-        ret["statementDate"] = str(self.original.rekord.ostatnio_zmieniony.date())
+        if self.original.data_oswiadczenia is not None:
+            ret["statementDate"] = str(self.original.data_oswiadczenia)
 
         return ret

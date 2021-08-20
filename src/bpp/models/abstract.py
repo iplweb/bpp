@@ -460,6 +460,13 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
         help_text="Zaznacz, jeżeli praca znajdje się na profilu ORCID autora",
     )
 
+    data_oswiadczenia = models.DateField(
+        "Data oświadczenia",
+        null=True,
+        blank=True,
+        help_text="Informacja eksportowana do PBN, gdy uzupełniono",
+    )
+
     class Meta:
         abstract = True
         ordering = ("kolejnosc", "typ_odpowiedzialnosci__skrot")
