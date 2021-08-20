@@ -14,9 +14,7 @@ class InstitutionAdmin(BaseMongoDBAdmin):
         "addressStreet",
         "addressStreetNumber",
         "addressPostalCode",
-        "polonUid",
         "website",
-        "mongoId",
         "rekord_w_bpp",
     ]
 

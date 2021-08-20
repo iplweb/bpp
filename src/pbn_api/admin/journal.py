@@ -17,7 +17,6 @@ class JournalAdmin(BaseMongoDBAdmin):
         "eissn",
         "mniswId",
         "websiteLink",
-        "mongoId",
         "rekord_w_bpp",
     ]
     search_fields = ["mongoId", "title", "websiteLink", "issn", "eissn", "mniswId"]
