@@ -7,6 +7,7 @@ Historia zmian
 -----------
 
 * widoki PBN API umożliwiają łatwiejsze odnajdywanie rekordów na stronie PBN oraz w serwisie BPP (b/n),
+* zwiększ ilosć widocznych prac w multiwyszukiwarce do 25000,
 
 202108.1075
 -----------
