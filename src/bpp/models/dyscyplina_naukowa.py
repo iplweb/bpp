@@ -87,10 +87,8 @@ def waliduj_format_kodu_numer(value):
 
 class KodDyscyplinyField(models.CharField):
     def __init__(self, *args, **kw):
-        if "validators" not in kw:
-            kw["validators"] = []
-        kw["validators"].append(waliduj_format_kodu_numer)
         super(KodDyscyplinyField, self).__init__(*args, **kw)
+        self.validators.append(waliduj_format_kodu_numer)
 
     def to_python(self, value):
         return normalize_kod_dyscypliny(value)
