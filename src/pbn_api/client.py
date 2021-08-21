@@ -6,6 +6,7 @@ from pprint import pprint
 from urllib.parse import parse_qs, quote, urlparse
 
 import requests
+from django.db import transaction
 from requests import ConnectionError
 from requests.exceptions import SSLError
 
@@ -357,7 +358,15 @@ class InstitutionsProfileMixin:
 
     def get_institution_statements(self, page_size=10):
         return self.transport.get_pages(
-            "/api/v1/institutionProfile/publications/page/statements",
+            PBN_GET_INSTITUTION_STATEMENTS,
+            page_size=page_size,
+        )
+
+    def get_institution_statements_of_single_publication(
+        self, pbn_uid_id, page_size=50
+    ):
+        return self.transport.get_pages(
+            PBN_GET_INSTITUTION_STATEMENTS + "?publicationId=" + pbn_uid_id,
             page_size=page_size,
         )
 
@@ -431,6 +440,9 @@ class PublishersMixin:
 
 
 PBN_GET_PUBLICATION_BY_ID_URL = "/api/v1/publications/id/{id}"
+PBN_GET_INSTITUTION_STATEMENTS = (
+    "/api/v1/institutionProfile/publications/page/statements"
+)
 
 
 class PublicationsMixin:
@@ -516,6 +528,21 @@ class PBNClient(
 
         return zapisz_mongodb(data, Publication)
 
+    @transaction.atomic
+    def download_statements_of_publication(self, pub):
+        from pbn_api.models import OswiadczenieInstytucji
+        from .integrator import pobierz_mongodb, zapisz_oswiadczenie_instytucji
+
+        OswiadczenieInstytucji.objects.filter(publicationId_id=pub.pk).delete()
+
+        pobierz_mongodb(
+            self.get_institution_statements_of_single_publication(pub.pk, 5120),
+            None,
+            fun=zapisz_oswiadczenie_instytucji,
+            client=self,
+            disable_progress_bar=True,
+        )
+
     def sync_publication(self, pub, force_upload=False):
         # if not pub.doi:
         #     raise WillNotExportError("Ustaw DOI dla publikacji")
@@ -527,9 +554,13 @@ class PBNClient(
             ctype = ContentType.objects.get(app_label="bpp", model=model)
             pub = ctype.model_class().objects.get(pk=pk)
 
+        # Wgraj dane do PBN
         ret = self.upload_publication(pub, force_upload=force_upload)
 
+        # Pobierz zwrotnie dane z PBN
         publication = self.download_publication(objectId=ret["objectId"])
+        self.download_statements_of_publication(publication)
+
         if pub.pbn_uid_id != ret["objectId"]:
             pub.pbn_uid = publication
             pub.save()

@@ -1,0 +1,46 @@
+{% extends "admin/change_form.html" %}
+
+{% block object-tools-items %}
+    {% if original.pbn_uid_id %}
+        <li><a target="_blank" href="/admin/pbn_api/oswiadczenieinstytucji/?q={{ original.pbn_uid_id }}">Oświadczenia</a>
+        <li><a target="_blank" href="{{ original.link_do_pbn }}">Zobacz w PBN</a></li>
+    {% endif %}
+    <li><a target="_blank" href="{{ original.rekord_w_bpp.get_absolute_url }}">Zobacz w BPP</a></li>
+    {{ block.super }}
+{% endblock %}
+
+{% block submit_buttons_bottom %}
+    {{ block.super }}
+
+    </form>
+
+    <form action="../.." method="post" id="wyslij_ponownie">
+    {% csrf_token %}
+    <input type="hidden" id="_selected_action" name="_selected_action">
+    <input type="hidden" name="action" value="wyslij_ponownie_force">
+    </form>
+
+
+
+    </form>
+    <script type="text/javascript">
+        (function($) {
+
+            btn = $("a.grp-delete-link");
+            wyslij_ponownie = $("<input/>")
+                .attr("id", "wyslij-ponownie")
+                .attr("class", "grp-button")
+                .attr("type", "button")
+                .attr("value", "Wyślij ponownie")
+            .click(function(){
+                pub_id = location.href.split("/")[6];
+                $("#_selected_action").val(pub_id)
+                $("#wyslij_ponownie").submit()
+            });
+
+            btn.parent().parent().append($("<li/>").append(wyslij_ponownie));
+
+        })(django.jQuery);
+    </script>
+
+{% endblock %}

@@ -14,6 +14,7 @@ from pbn_api.models import SentData
 
 from django.contrib import messages
 from django.contrib.admin.utils import quote
+from django.contrib.contenttypes.models import ContentType
 
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
@@ -331,7 +332,7 @@ class LimitingFormset(BaseInlineFormSet):
         return self._queryset_limited
 
 
-def link_do_obiektu(obj):
+def link_do_obiektu(obj, friendly_name=None):
     opts = obj._meta
     obj_url = reverse(
         "admin:%s_%s_change" % (opts.app_label, opts.model_name),
@@ -339,7 +340,9 @@ def link_do_obiektu(obj):
         # current_app=self.admin_site.name,
     )
     # Add a link to the object's change form if the user can edit the obj.
-    return format_html('<a href="{}">{}</a>', urlquote(obj_url), mark_safe(obj))
+    if friendly_name is None:
+        friendly_name = mark_safe(obj)
+    return format_html('<a href="{}">{}</a>', urlquote(obj_url), friendly_name)
 
 
 def sprobuj_policzyc_sloty(request, obj):
@@ -428,10 +431,22 @@ def sprobuj_wgrac_do_pbn(request, obj, force_upload=False, pbn_client=None):
         )
         return
 
+    sent_data = SentData.objects.get(
+        content_type=ContentType.objects.get_for_model(obj), object_id=obj.pk
+    )
+
+    sent_data_link = link_do_obiektu(
+        sent_data, "Kliknij tutaj, aby otworzyć widok wysłanych danych. "
+    )
+    publication_link = link_do_obiektu(
+        sent_data.pbn_uid,
+        "Kliknij tutaj, aby otworzyć zwrotnie otrzymane z PBN dane o rekordzie. ",
+    )
     messages.success(
         request,
         f"Dane w PBN dla rekordu {link_do_obiektu(obj)} zostały zaktualizowane. "
-        f'<a target=_blank href="{obj.link_do_pbn()}">Kliknij tutaj, aby otworzyć w PBN</a>. ',
+        f'<a target=_blank href="{obj.link_do_pbn()}">Kliknij tutaj, aby otworzyć w PBN</a>. '
+        f"{sent_data_link}{publication_link}",
     )
 
 

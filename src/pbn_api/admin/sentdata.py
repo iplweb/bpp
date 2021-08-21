@@ -1,22 +1,30 @@
-from pbn_api.admin.base import BasePBNAPIAdmin
+from pbn_api.admin.base import BasePBNAPIAdminNoReadonly
+from pbn_api.admin.helpers import format_json
 from pbn_api.models import SentData
 
 from django.contrib import admin
 
 
 @admin.register(SentData)
-class SentDataAdmin(BasePBNAPIAdmin):
-    list_display = ["object", "last_updated_on", "uploaded_okay"]
+class SentDataAdmin(BasePBNAPIAdminNoReadonly):
+
+    list_display = [
+        "object",
+        "last_updated_on",
+        "pbn_uid_id",
+        "uploaded_okay",
+    ]
     ordering = ("-last_updated_on",)
     search_fields = ["data_sent", "exception"]
     readonly_fields = [
         "content_type",
         "object_id",
-        "data_sent",
         "last_updated_on",
         "uploaded_okay",
         "exception",
+        "pbn_uid_id",
     ]
+    fields = readonly_fields + ["pretty_json"]
     list_filter = ["uploaded_okay"]
 
     list_per_page = 25
@@ -45,3 +53,14 @@ class SentDataAdmin(BasePBNAPIAdmin):
 
     def has_delete_permission(self, request, *args, **kw):
         return True
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def pretty_json(self, obj=None):
+        return format_json(obj, "data_sent")
+
+    pretty_json.short_description = "Wysłane dane"

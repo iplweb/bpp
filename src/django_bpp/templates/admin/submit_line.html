@@ -2,6 +2,7 @@
 <footer class="grp-module grp-submit-row grp-fixed-footer">
     <header style="display:none"><h1>Submit Options</h1></header>
     <ul>
+    {% block submit-row %}
         {% if show_delete_link %}
             {% url opts|admin_urlname:'delete' original.pk|admin_urlquote as delete_url %}
             <li class="grp-float-left"><a href="{% add_preserved_filters delete_url %}" class="grp-button grp-delete-link">{% trans "Delete" %}</a></li>
@@ -21,5 +22,6 @@
         {% if show_save_and_pbn %}
         	<li><input type="submit" value="Zapisz i wyślij do PBN" class="grp-button" name="_continue_and_pbn" /></li>
         {% endif %}
+    {% endblock %}
     </ul>
 </footer>

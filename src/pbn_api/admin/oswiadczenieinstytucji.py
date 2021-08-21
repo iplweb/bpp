@@ -19,6 +19,7 @@ class OswiadczeniaInstytucjiAdmin(BasePBNAPIAdmin):
     search_fields = [
         "publicationId__title",
         "publicationId__year",
+        "publicationId__pk",
         "personId__lastName",
         "personId__name",
     ]

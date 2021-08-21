@@ -9,10 +9,13 @@ from django.contrib import admin
 from django.contrib.postgres.fields import JSONField
 
 
-class BasePBNAPIAdmin(ReadOnlyListChangeFormAdminMixin, admin.ModelAdmin):
+class BasePBNAPIAdminNoReadonly(admin.ModelAdmin):
     list_per_page = 25
-
     formfield_overrides = {JSONField: {"widget": PrettyJSONWidget}}
+
+
+class BasePBNAPIAdmin(ReadOnlyListChangeFormAdminMixin, BasePBNAPIAdminNoReadonly):
+    pass
 
 
 class BaseMongoDBAdmin(BasePBNAPIAdmin):

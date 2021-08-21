@@ -1,8 +1,11 @@
+from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields import JSONField
+
+from bpp.models import LinkDoPBNMixin, const
 
 
 class SentDataManager(models.Manager):
@@ -25,7 +28,9 @@ class SentDataManager(models.Manager):
 
         return False
 
-    def updated(self, rec, data: dict, uploaded_okay=True, exception=None):
+    def updated(
+        self, rec, data: dict, pbn_uid_id=None, uploaded_okay=True, exception=None
+    ):
         try:
             sd = self.get_for_rec(rec)
         except SentData.DoesNotExist:
@@ -33,6 +38,7 @@ class SentDataManager(models.Manager):
                 object=rec,
                 data_sent=data,
                 uploaded_okay=uploaded_okay,
+                pbn_uid_id=pbn_uid_id,
                 exception=exception,
             )
             return
@@ -40,10 +46,12 @@ class SentDataManager(models.Manager):
         sd.data_sent = data
         sd.uploaded_okay = uploaded_okay
         sd.exception = exception
+        sd.pbn_uid_id = pbn_uid_id
         sd.save()
 
 
-class SentData(models.Model):
+class SentData(LinkDoPBNMixin, models.Model):
+    url_do_pbn = const.LINK_PBN_DO_PUBLIKACJI
     content_type = models.ForeignKey(
         "contenttypes.ContentType", on_delete=models.CASCADE
     )
@@ -59,6 +67,14 @@ class SentData(models.Model):
     )
     exception = models.TextField("Kod błędu", max_length=65535, blank=True, null=True)
 
+    pbn_uid = models.ForeignKey(
+        "pbn_api.Publication",
+        verbose_name="Publikacja w PBN",
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL,
+    )
+
     objects = SentDataManager()
 
     class Meta:
@@ -72,3 +88,12 @@ class SentData(models.Model):
             f"Informacja o wysłanych do PBN danych dla rekordu ({self.content_type_id},{self.object_id}) "
             f"z dnia {self.last_updated_on} (status: {'OK' if self.uploaded_okay else 'ERR'})"
         )
+
+    def link_do_pbn_wartosc_id(self):
+        return self.pbn_uid_id
+
+    def rekord_w_bpp(self):
+        try:
+            return self.object
+        except ObjectDoesNotExist:
+            pass
