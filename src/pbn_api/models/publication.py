@@ -5,11 +5,12 @@ from .base import BasePBNMongoDBModel
 
 from django.utils.functional import cached_property
 
+from bpp.models import const
 from bpp.models.abstract import LinkDoPBNMixin
 
 
 class Publication(LinkDoPBNMixin, BasePBNMongoDBModel):
-    url_do_pbn = "{pbn_api_root}/core/#/publication/view/{pbn_uid_id}/current"
+    url_do_pbn = const.LINK_PBN_DO_PUBLIKACJI
     atrybut_dla_url_do_pbn = "pk"
 
     class Meta:

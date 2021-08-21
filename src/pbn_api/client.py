@@ -322,7 +322,7 @@ class DictionariesMixin:
         return self.transport.get("/api/v1/dictionary/disciplines")
 
     def get_languages(self):
-        return self.transport.get("/api/v1/dictionary/languages")
+        return self.transport.get(PBN_GET_LANGUAGES_URL)
 
 
 class InstitutionsMixin:
@@ -430,6 +430,9 @@ class PublishersMixin:
         return self.transport.get(f"/api/v1/publishers/{id}/metadata")
 
 
+PBN_GET_PUBLICATION_BY_ID_URL = "/api/v1/publications/id/{id}"
+
+
 class PublicationsMixin:
     def get_publication_by_doi(self, doi):
         return self.transport.get(
@@ -443,7 +446,7 @@ class PublicationsMixin:
         )
 
     def get_publication_by_id(self, id):
-        return self.transport.get(f"/api/v1/publications/id/{id}")
+        return self.transport.get(PBN_GET_PUBLICATION_BY_ID_URL.format(id=id))
 
     def get_publication_metadata(self, id):
         return self.transport.get(f"/api/v1/publications/id/{id}/metadata")
@@ -458,6 +461,10 @@ class PublicationsMixin:
 class AuthorMixin:
     def get_author_by_id(self, id):
         return self.transport.get(f"/api/v1/author/{id}")
+
+
+PBN_POST_PUBLICATIONS_URL = "/api/v1/publications"
+PBN_GET_LANGUAGES_URL = "/api/v1/dictionary/languages"
 
 
 class PBNClient(
@@ -477,7 +484,7 @@ class PBNClient(
         self.transport = transport
 
     def post_publication(self, json):
-        return self.transport.post("/api/v1/publications", body=json)
+        return self.transport.post(PBN_POST_PUBLICATIONS_URL, body=json)
 
     def upload_publication(self, rec, force_upload=False):
         js = WydawnictwoPBNAdapter(rec).pbn_get_json()
@@ -493,7 +500,7 @@ class PBNClient(
             SentData.objects.updated(rec, js, uploaded_okay=False, exception=str(e))
             raise e
 
-        SentData.objects.updated(rec, js)
+        SentData.objects.updated(rec, js, pbn_uid_id=ret.get("objectId"))
         return ret
 
     def download_publication(self, doi=None, objectId=None):

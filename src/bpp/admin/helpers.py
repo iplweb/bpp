@@ -365,7 +365,7 @@ def sprobuj_policzyc_sloty(request, obj):
         )
 
 
-def sprobuj_wgrac_do_pbn(request, obj, force_upload=False):
+def sprobuj_wgrac_do_pbn(request, obj, force_upload=False, pbn_client=None):
     from bpp.models.uczelnia import Uczelnia
 
     if obj.charakter_formalny.rodzaj_pbn is None:
@@ -374,6 +374,7 @@ def sprobuj_wgrac_do_pbn(request, obj, force_upload=False):
             'Rekord "%s" nie będzie eksportowany do PBN zgodnie z ustawieniem dla charakteru formalnego.'
             % link_do_obiektu(obj),
         )
+        return
 
     uczelnia = Uczelnia.objects.get_default()
     if uczelnia is None:
@@ -387,9 +388,11 @@ def sprobuj_wgrac_do_pbn(request, obj, force_upload=False):
     if not uczelnia.pbn_integracja or not uczelnia.pbn_aktualizuj_na_biezaco:
         return
 
-    client = uczelnia.pbn_client(request.user.pbn_token)
+    if pbn_client is None:
+        pbn_client = uczelnia.pbn_client(request.user.pbn_token)
+
     try:
-        client.sync_publication(obj, force_upload=force_upload)
+        pbn_client.sync_publication(obj, force_upload=force_upload)
 
     except SameDataUploadedRecently as e:
         link_do_wyslanych = reverse(

@@ -1,8 +1,26 @@
 import pytest
+from model_mommy import mommy
 
-from pbn_api.models import Language
+from pbn_api.client import PBN_GET_LANGUAGES_URL, PBNClient
+from pbn_api.models import Language, Publication
+from pbn_api.tests.utils import MockTransport
 
-from bpp.models import Jezyk, Wydawnictwo_Ciagle, const
+from bpp.models import Charakter_Formalny, Jezyk, Uczelnia, Wydawnictwo_Ciagle, const
+from bpp.models.const import RODZAJ_PBN_KSIAZKA
+
+MOCK_RETURNED_MONGODB_DATA = dict(
+    status="foo",
+    verificationLevel="bar",
+    verified=True,
+    versions=[{"current": True, "baz": "quux"}],
+    mongoId="123",
+)
+
+
+@pytest.fixture
+def pbnclient():
+    transport = MockTransport()
+    return PBNClient(transport=transport)
 
 
 @pytest.fixture
@@ -36,6 +54,11 @@ def pbn_wydawnictwo_ciagle(wydawnictwo_ciagle, pbn_jezyk) -> Wydawnictwo_Ciagle:
 
 
 @pytest.fixture
+def pbn_charakter_formalny() -> Charakter_Formalny:
+    return mommy.make(Charakter_Formalny, rodzaj_pbn=RODZAJ_PBN_KSIAZKA)
+
+
+@pytest.fixture
 def pbn_wydawnictwo_zwarte(wydawnictwo_zwarte, pbn_jezyk):
     cf = wydawnictwo_zwarte.charakter_formalny
     cf.rodzaj_pbn = const.RODZAJ_PBN_ARTYKUL
@@ -65,3 +88,36 @@ def pbn_wydawnictwo_zwarte_rozdzial(pbn_wydawnictwo_zwarte):
     cf.save()
 
     return pbn_wydawnictwo_zwarte
+
+
+@pytest.fixture
+def pbn_publication(db):
+    return Publication.objects.create(mongoId=123, versions={})
+
+
+@pytest.fixture
+def pbn_wydawnictwo_zwarte_z_charakterem(
+    pbn_wydawnictwo_zwarte, pbn_charakter_formalny
+):
+    pbn_wydawnictwo_zwarte.charakter_formalny = pbn_charakter_formalny
+    pbn_wydawnictwo_zwarte.save()
+    return pbn_wydawnictwo_zwarte
+
+
+@pytest.fixture
+def pbn_uczelnia(pbnclient):
+    uczelnia = mommy.make(
+        Uczelnia,
+    )
+
+    uczelnia.pbn_client = lambda *args, **kw: pbnclient
+    pbnclient.transport.return_values[PBN_GET_LANGUAGES_URL] = {"1": "23"}
+
+    uczelnia.pbn_integracja = True
+    uczelnia.pbn_aktualizuj_na_biezaco = True
+    uczelnia.pbn_app_name = "FOO"
+    uczelnia.pbn_app_token = "BAR"
+    uczelnia.pbn_api_root = "https://localhost/pbn/mockapi/v1/"
+    uczelnia.save()
+
+    return uczelnia
