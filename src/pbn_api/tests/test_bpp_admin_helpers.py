@@ -1,7 +1,11 @@
 from model_mommy import mommy
 
 from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
-from pbn_api.client import PBN_GET_PUBLICATION_BY_ID_URL, PBN_POST_PUBLICATIONS_URL
+from pbn_api.client import (
+    PBN_GET_INSTITUTION_STATEMENTS,
+    PBN_GET_PUBLICATION_BY_ID_URL,
+    PBN_POST_PUBLICATIONS_URL,
+)
 from pbn_api.exceptions import AccessDeniedException
 from pbn_api.models import SentData
 from pbn_api.tests.conftest import MOCK_RETURNED_MONGODB_DATA
@@ -122,6 +126,9 @@ def test_sprobuj_wgrac_do_pbn_sukces(
     pbnclient.transport.return_values[
         PBN_GET_PUBLICATION_BY_ID_URL.format(id="123")
     ] = MOCK_RETURNED_MONGODB_DATA
+    pbnclient.transport.return_values[
+        PBN_GET_INSTITUTION_STATEMENTS + "?publicationId=123&size=5120"
+    ] = []
 
     with middleware(req):
         sprobuj_wgrac_do_pbn(

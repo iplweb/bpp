@@ -2,7 +2,7 @@ import pytest
 from model_mommy import mommy
 
 from pbn_api.client import PBN_GET_LANGUAGES_URL, PBNClient
-from pbn_api.models import Language, Publication
+from pbn_api.models import Institution, Language, Publication, Scientist
 from pbn_api.tests.utils import MockTransport
 
 from bpp.models import Charakter_Formalny, Jezyk, Uczelnia, Wydawnictwo_Ciagle, const
@@ -26,6 +26,18 @@ def pbnclient():
 @pytest.fixture
 def pbn_language():
     return Language.objects.create(code="pl", language={"lol": "XD"})
+
+
+@pytest.fixture
+def pbn_autor(autor_jan_nowak):
+    autor_jan_nowak.pbn_uid = mommy.make(Scientist)
+    return autor_jan_nowak
+
+
+@pytest.fixture
+def pbn_jednostka(jednostka):
+    jednostka.pbn_uid = mommy.make(Institution)
+    return jednostka
 
 
 @pytest.fixture
