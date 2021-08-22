@@ -5,9 +5,9 @@ from pbn_api.admin.filters import (
 )
 from pbn_api.models import OswiadczenieInstytucji
 
-from django.contrib import admin
+from django.contrib import admin, messages
 
-from bpp.models import Rekord
+from bpp.models import Rekord, Uczelnia
 
 
 @admin.register(OswiadczenieInstytucji)
@@ -56,3 +56,29 @@ class OswiadczeniaInstytucjiAdmin(BasePBNAPIAdmin):
 
     def odpowiednik_osoby_w_bpp(self, obj: OswiadczenieInstytucji):
         return obj.personId.rekord_w_bpp
+
+    def has_delete_permission(self, request, *args, **kw):
+        return True
+
+    def delete_model(self, request, obj: OswiadczenieInstytucji, pbn_client=None):
+        uczelnia = Uczelnia.objects.default
+        if uczelnia is None:
+            return
+
+        if pbn_client is None:
+            pbn_client = uczelnia.pbn_client(request.user.pbn_token)
+
+        try:
+            pbn_client.delete_publication_statement(
+                obj.publicationId_id, obj.personId_id, obj.type
+            )
+        except Exception as e:
+            messages.error(
+                request,
+                f"Skasowanie niemożliwe, PBN API zwróciło błąd {e}. Proszę zignorować komunikat "
+                f"o pomyślnym usunięciu rekordu, wcisnąc 2x przycisk wstecz w przeglądarce i "
+                f"spróbować jeszcze raz. ",
+            )
+            return
+
+        super(OswiadczeniaInstytucjiAdmin, self).delete_model(request, obj)

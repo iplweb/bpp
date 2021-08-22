@@ -2,6 +2,7 @@
 
 {% block object-tools-items %}
     <li><a target="_blank" href="{{ original.link_do_pbn }}">Zobacz w PBN</a></li>
+    <li><a target="_blank" href="/admin/pbn_api/oswiadczenieinstytucji/?q={{ original.mongoId }}">Zobacz lokalną kopię oświadczeń</a></li>
     {% if original.rekord_w_bpp %}
         <li><a target="_blank" href="{{ original.rekord_w_bpp.original.get_absolute_url }}">Zobacz w BPP</a></li>
     {% else %}

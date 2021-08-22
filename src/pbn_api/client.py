@@ -370,10 +370,16 @@ class InstitutionsProfileMixin:
             page_size=page_size,
         )
 
-    def delete_statements(self, id):
+    def delete_all_publication_statements(self, publicationId):
         return self.transport.delete(
-            f"/api/v1/institutionProfile/publications/{id}",
+            f"/api/v1/institutionProfile/publications/{publicationId}",
             body={"all": True, "statementsOfPersons": []},
+        )
+
+    def delete_publication_statement(self, publicationId, personId, role):
+        return self.transport.delete(
+            PBN_DELETE_PUBLICATION_STATEMENT.format(publicationId=publicationId),
+            body={"statementsOfPersons": [{"personId": personId, "role": role}]},
         )
 
 
@@ -439,6 +445,9 @@ class PublishersMixin:
         return self.transport.get(f"/api/v1/publishers/{id}/metadata")
 
 
+PBN_DELETE_PUBLICATION_STATEMENT = (
+    "/api/v1/institutionProfile/publications/{publicationId}"
+)
 PBN_GET_PUBLICATION_BY_ID_URL = "/api/v1/publications/id/{id}"
 PBN_GET_INSTITUTION_STATEMENTS = (
     "/api/v1/institutionProfile/publications/page/statements"

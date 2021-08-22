@@ -345,5 +345,5 @@ class Command(PBNBaseCommand):
         stage = 19
         check_end_before(stage, end_before_stage)
 
-        if enable_sync:  # or enable_all:
+        if enable_sync:
             synchronizuj_publikacje(client)

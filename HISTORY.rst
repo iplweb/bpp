@@ -8,7 +8,9 @@ Historia zmian
 
 * widoki PBN API umożliwiają łatwiejsze odnajdywanie rekordów na stronie PBN oraz w serwisie BPP (b/n),
 * zwiększ ilosć widocznych prac w multiwyszukiwarce do 25000,
-* aktualizuj lokalną kopię oświadczeń przy wysyłce rekordu (b/n)
+* aktualizuj lokalną kopię oświadczeń przy wysyłce rekordu (b/n),
+* wycofywanie oświadczeń instytucji z poziomu modułu "Redagowanie" (b/n),
+* przyciski umożliwiające szybkie przechodzenie między modułami PBN API a edycją prac w module "Redagowanie" (b/n)
 
 202108.1075
 -----------
