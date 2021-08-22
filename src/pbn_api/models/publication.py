@@ -101,6 +101,10 @@ class Publication(LinkDoPBNMixin, BasePBNMongoDBModel):
 
         try:
             return Rekord.objects.get(pbn_uid_id=self.pk)
+        except Rekord.MultipleObjectsReturned:
+            return ";; ".join(
+                [x.tytul_oryginalny for x in Rekord.objects.filter(pbn_uid_id=self.pk)]
+            )
         except Rekord.DoesNotExist:
             pass
 
