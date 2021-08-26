@@ -11,6 +11,8 @@ Historia zmian
 * aktualizuj lokalną kopię oświadczeń przy wysyłce rekordu (b/n),
 * wycofywanie oświadczeń instytucji z poziomu modułu "Redagowanie" (b/n),
 * przyciski umożliwiające szybkie przechodzenie między modułami PBN API a edycją prac w module "Redagowanie" (b/n)
+* możliwość filtrowania rekordów wydanwnictwa zwartego wg posiadania lub nie wydawnicwa nadrzędnego oraz
+  wg kryterium bycia lub nie wydawnictwem nadrzędnym dla innego rekordu (b/n),
 
 202108.1075
 -----------

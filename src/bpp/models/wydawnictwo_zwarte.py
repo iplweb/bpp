@@ -153,6 +153,15 @@ class ModelZOpenAccessWydawnictwoZwarte(ModelZOpenAccess):
 rok_regex = re.compile(r"\s[12]\d\d\d")
 
 
+class Wydawnictwo_Zwarte_Manager(models.Manager):
+    def wydawnictwa_nadrzedne_dla_innych(self):
+        return (
+            self.exclude(wydawnictwo_nadrzedne_id=None)
+            .values_list("wydawnictwo_nadrzedne_id", flat=True)
+            .distinct()
+        )
+
+
 class Wydawnictwo_Zwarte(
     ZapobiegajNiewlasciwymCharakterom,
     Wydawnictwo_Zwarte_Baza,
@@ -170,6 +179,8 @@ class Wydawnictwo_Zwarte(
 ):
     """Wydawnictwo zwarte, czyli: książki, broszury, skrypty, fragmenty,
     doniesienia zjazdowe."""
+
+    objects = Wydawnictwo_Zwarte_Manager()
 
     autor_rekordu_klass = Wydawnictwo_Zwarte_Autor
     autorzy = models.ManyToManyField(Autor, through=autor_rekordu_klass)
