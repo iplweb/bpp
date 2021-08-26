@@ -34,6 +34,9 @@ class CommitedModelAdmin(BaseBppAdmin):
     # Mój dynks do grappelli
     auto_open_collapsibles = True
 
+    # ograniczenie wielkosci listy
+    list_per_page = 50
+
     def save_formset(self, *args, **kw):
         super(CommitedModelAdmin, self).save_formset(*args, **kw)
         # transaction.commit()
