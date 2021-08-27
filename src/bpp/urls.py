@@ -14,6 +14,7 @@ from bpp.views.api import (
     UploadPunktacjaZrodlaView,
 )
 from bpp.views.api.clarivate import GetWoSAMRInformation
+from bpp.views.api.pbn_get_by_isbn import GetPBNPublicationsByISBN
 from bpp.views.api.pubmed import GetPubmedIDView
 from bpp.views.api.strona_tom_nr_zeszytu import StronaTomNrZeszytuView
 from bpp.views.api.uzupelnij_rok import (
@@ -105,6 +106,11 @@ urlpatterns = [
         r"^api/pubmed-id/$",
         csrf_exempt(GetPubmedIDView.as_view()),
         name="api_pubmed_id",
+    ),
+    url(
+        r"^api/get-pbn-publications-by-isbn/$",
+        csrf_exempt(GetPBNPublicationsByISBN.as_view()),
+        name="api_get_pbn_by_isbn",
     ),
     url(
         r"^api/(?P<slug>[\w-]+)/wos-amr/$",

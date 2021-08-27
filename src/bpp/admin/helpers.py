@@ -9,7 +9,9 @@ from django.forms import BaseInlineFormSet
 from django.forms.widgets import Textarea
 from django.urls import reverse
 
+from import_common.normalization import normalize_isbn
 from pbn_api.exceptions import AccessDeniedException, SameDataUploadedRecently
+from pbn_api.integrator import _pobierz_prace_po_elemencie
 from pbn_api.models import SentData
 
 from django.contrib import messages
@@ -394,6 +396,51 @@ def sprobuj_wgrac_do_pbn(request, obj, force_upload=False, pbn_client=None):
     if pbn_client is None:
         pbn_client = uczelnia.pbn_client(request.user.pbn_token)
 
+    # Sprawdź, czy wydawnictwo nadrzędne ma odpowoednik PBN:
+    if (
+        hasattr(obj, "wydawnictwo_nadrzedne_id")
+        and obj.wydawnictwo_nadrzedne_id is not None
+    ):
+        wn = obj.wydawnictwo_nadrzedne
+        if wn.pbn_uid_id is None:
+            messages.info(
+                request,
+                "Wygląda na to, że wydawnictwo nadrzędne tego rekordu nie posiada odpowiednika "
+                "w PBN, spróbuję go pobrać.",
+            )
+            udalo = False
+            if wn.isbn:
+                ni = normalize_isbn(wn.isbn)
+                if ni:
+                    res = _pobierz_prace_po_elemencie(pbn_client, "isbn", ni)
+                    if res:
+                        messages.info(
+                            request,
+                            f"Udało się dopasować PBN UID wydawnictwa nadrzędnego po ISBN "
+                            f"({', '.join([x.tytul_oryginalny for x in res])}). ",
+                        )
+                        udalo = True
+
+            elif wn.doi:
+                nd = normalize_isbn(wn.doi)
+                if nd:
+                    res = _pobierz_prace_po_elemencie(pbn_client, "doi", nd)
+                    if res:
+                        messages.info(
+                            request,
+                            f"Udało się dopasować PBN UID wydawnictwa nadrzędnego po DOI. "
+                            f"({', '.join([x.tytul_oryginalny for x in res])}). ",
+                        )
+                        udalo = True
+
+            if not udalo:
+                messages.warning(
+                    request,
+                    "Wygląda na to, że nie udało się dopasować rekordu nadrzędnego po ISBN/DOI do rekordu "
+                    "po stronie PBN. Jednakże rekordy z PBN zostały pobrane i możesz ustawić odpowiednik "
+                    "PBN dla wydawnictwa nadrzędnego ręcznie. ",
+                )
+
     try:
         pbn_client.sync_publication(obj, force_upload=force_upload)
 
@@ -426,7 +473,7 @@ def sprobuj_wgrac_do_pbn(request, obj, force_upload=False, pbn_client=None):
     except Exception as e:
         messages.warning(
             request,
-            'Nie można zsynchronizować obiektu "%s" z PBN. Kod błędu: %r.'
+            'Nie można zsynchronizować obiektu "%s" z PBN. Kod błędu: %r. '
             % (link_do_obiektu(obj), e),
         )
         return
@@ -434,10 +481,10 @@ def sprobuj_wgrac_do_pbn(request, obj, force_upload=False, pbn_client=None):
     sent_data = SentData.objects.get(
         content_type=ContentType.objects.get_for_model(obj), object_id=obj.pk
     )
-
     sent_data_link = link_do_obiektu(
         sent_data, "Kliknij tutaj, aby otworzyć widok wysłanych danych. "
     )
+
     publication_link = link_do_obiektu(
         sent_data.pbn_uid,
         "Kliknij tutaj, aby otworzyć zwrotnie otrzymane z PBN dane o rekordzie. ",

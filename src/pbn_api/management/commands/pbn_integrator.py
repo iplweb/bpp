@@ -26,6 +26,7 @@ from pbn_api.integrator import (
     pobierz_ludzi_z_uczelni,
     pobierz_oswiadczenia_z_instytucji,
     pobierz_prace_po_doi,
+    pobierz_prace_po_isbn,
     pobierz_publikacje_z_instytucji,
     pobierz_rekordy_publikacji_instytucji,
     pobierz_wydawcow_mnisw,
@@ -95,6 +96,9 @@ class Command(PBNBaseCommand):
             "--enable-pobierz-po-doi", action="store_true", default=False
         )
         parser.add_argument(
+            "--enable-pobierz-po-isbn", action="store_true", default=False
+        )
+        parser.add_argument(
             "--enable-pobierz-wszystkie-publikacje", action="store_true", default=False
         )
         parser.add_argument(
@@ -150,6 +154,7 @@ class Command(PBNBaseCommand):
         enable_conferences,
         enable_institutions,
         enable_pobierz_po_doi,
+        enable_pobierz_po_isbn,
         enable_pobierz_wszystkie_publikacje,
         enable_pobierz_publikacje_instytucji,
         enable_pobierz_oswiadczenia_instytucji,
@@ -336,13 +341,19 @@ class Command(PBNBaseCommand):
         stage = 18
         check_end_before(stage, end_before_stage)
 
+        if (enable_pobierz_po_isbn or enable_all) and start_from_stage <= stage:
+            pobierz_prace_po_isbn(client)
+
+        stage = 19
+        check_end_before(stage, end_before_stage)
+
         if (
             enable_integruj_wszystkie_publikacje or enable_all
         ) and start_from_stage <= stage:
             wyswietl_niezmatchowane_ze_zblizonymi_tytulami()
             sprawdz_ilosc_autorow_przy_zmatchowaniu()
 
-        stage = 19
+        stage = 20
         check_end_before(stage, end_before_stage)
 
         if enable_sync:

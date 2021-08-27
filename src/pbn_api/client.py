@@ -1,6 +1,7 @@
 import random
 import time
 import warnings
+from builtins import NotImplementedError
 from json import JSONDecodeError
 from pprint import pprint
 from urllib.parse import parse_qs, quote, urlparse
@@ -47,10 +48,12 @@ class PBNClientTransport:
 
 
 class PageableResource:
-    def __init__(self, transport, res, url, headers):
+    def __init__(self, transport, res, url, headers, body=None, method="get"):
         self.url = url
         self.headers = headers
         self.transport = transport
+        self.body = body
+        self.method = getattr(transport, method)
 
         try:
             self.page_0 = res["content"]
@@ -69,10 +72,12 @@ class PageableResource:
         if current_page == 0:
             return self.page_0
         # print(f"FETCH {current_page}")
-        ret = self.transport.get(
-            self.url + f"&page={current_page}",
-            headers=self.headers,
-        )
+
+        kw = {"headers": self.headers}
+        if self.body:
+            kw["body"] = self.body
+
+        ret = self.method(self.url + f"&page={current_page}", **kw)
         # print(f"FETCH DONE {current_page}")
 
         try:
@@ -255,7 +260,7 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
     ):
         return self.post(url, headers, body, delete=True)
 
-    def get_pages(self, url, headers=None, page_size=10, *args, **kw):
+    def _pages(self, method, url, headers=None, body=None, page_size=10, *args, **kw):
         # Stronicowanie zwraca rezultaty w taki sposób:
         # {'content': [{'mongoId': '5e709189878c28a04737dc6f',
         #               'status': 'ACTIVE',
@@ -286,15 +291,45 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
         for elem in kw:
             url += chr + elem + "=" + quote(kw[elem])
 
-        res = self.get(url, headers)
+        method_function = getattr(self, method)
+
+        if method == "get":
+            res = method_function(url, headers)
+        elif method == "post":
+            res = method_function(url, headers, body=body)
+        else:
+            raise NotImplementedError
+
         if "pageable" not in res:
             warnings.warn(
-                f"PBNClient.get_page request for {url} with headers {headers} did not return a paged resource, "
-                f"maybe use PBNClient.get instead",
+                f"PBNClient.{method}_page request for {url} with headers {headers} did not return a paged resource, "
+                f"maybe use PBNClient.{method} (without 'page') instead",
                 RuntimeWarning,
             )
             return res
-        return PageableResource(self, res, url, headers)
+        return PageableResource(
+            self, res, url=url, headers=headers, body=body, method=method
+        )
+
+    def get_pages(self, url, headers=None, page_size=10, *args, **kw):
+        return self._pages(
+            "get", url=url, headers=headers, page_size=page_size, *args, **kw
+        )
+
+    def post_pages(self, url, headers=None, body=None, page_size=10, *args, **kw):
+        # Jak get_pages, ale methoda to post
+        if body is None:
+            body = kw
+
+        return self._pages(
+            "post",
+            url=url,
+            headers=headers,
+            body=body,
+            page_size=page_size,
+            *args,
+            **kw,
+        )
 
 
 class ConferencesMixin:
@@ -484,6 +519,11 @@ class AuthorMixin:
         return self.transport.get(f"/api/v1/author/{id}")
 
 
+class SearchMixin:
+    def search_publications(self, *args, **kw):
+        return self.transport.post_pages("/api/v1/search/publications", body=kw)
+
+
 PBN_POST_PUBLICATIONS_URL = "/api/v1/publications"
 PBN_GET_LANGUAGES_URL = "/api/v1/dictionary/languages"
 
@@ -498,6 +538,7 @@ class PBNClient(
     PersonMixin,
     PublicationsMixin,
     PublishersMixin,
+    SearchMixin,
 ):
     _interactive = False
 
@@ -590,7 +631,20 @@ class PBNClient(
             else:
                 raise e
 
-        res = fun(*cmd[1:])
+        def extract_arguments(lst):
+            args = ()
+            kw = {}
+            for elem in lst:
+                if elem.find(":") >= 1:
+                    k, n = elem.split(":", 1)
+                    kw[k] = n
+                else:
+                    args += (elem,)
+
+            return args, kw
+
+        args, kw = extract_arguments(cmd[1:])
+        res = fun(*args, **kw)
         if type(res) == dict:
             pprint(res)
         elif is_iterable(res):

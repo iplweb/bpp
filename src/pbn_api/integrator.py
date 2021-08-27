@@ -10,7 +10,11 @@ from django.db.models import F, Func, Q
 from django.db.models.functions import Length
 
 from import_common.core import matchuj_autora, matchuj_wydawce
-from import_common.normalization import normalize_doi, normalize_tytul_publikacji
+from import_common.normalization import (
+    normalize_doi,
+    normalize_isbn,
+    normalize_tytul_publikacji,
+)
 from pbn_api.client import PBNClient
 from pbn_api.exceptions import HttpException, SameDataUploadedRecently
 from pbn_api.models import (
@@ -427,51 +431,59 @@ def pobierz_oswiadczenia_z_instytucji(client: PBNClient):
     )
 
 
-def _pobierz_prace_po_doi(client, nd):
-    try:
-        elem = client.get_publication_by_doi(nd)
-    except HttpException as e:
-        if e.status_code == 422:
-            # Publication with DOI 10.1136/annrheumdis-2018-eular.5236 was not exists!
-            print(f"\r\nBrak pracy z DOI {nd} w PBNie")
-            return
+def _pobierz_prace_po_elemencie(client: PBNClient, element, nd, matchuj=True, **kw):
+    ret = []
+    base_kw = {element: nd}
+    base_kw.update(kw)
 
-        elif e.status_code == 500:
-            if "Publication with DOI" in e.content and "was not exists" in e.content:
-                print(f"\r\nBrak pracy z DOI {nd} w PBNie")
-                return
-
-            elif "Internal server error" in e.content:
-                # print(f"\r\nSerwer PBN zwrocil blad 500 dla DOI {nd} --> {e.content}")
-                return
-
-        raise e
-
-    publication = zapisz_mongodb(elem, Publication)
-    p = publication.matchuj_do_rekordu_bpp()
-    if p is None:
-        print(
-            f"XXX mimo pobrania pracy po DOI {nd}, zwrotnie NIE pasuje ona do pracy w BPP -- rok {publication.year} "
-            f"lub tytul {publication.title} nie daja sie dopasowac. Blad w zapisie DOI? Niepoprawne DOI?"
+    for elem in client.search_publications(**base_kw):
+        publication = zapisz_mongodb(
+            client.get_publication_by_id(elem["mongoId"]), Publication
         )
-        return
 
-    if p.pbn_uid_id is not None:
-        print(
-            f"XXX DOI {nd} jest potencjalnie zdublowany w bazie BPP. "
-            f"Po stronie PBN ma go {publication.title}, po stronie BPP ma go {p.tytul_oryginalny}"
-        )
-        return
+        p = publication.matchuj_do_rekordu_bpp()
+        if p is None:
+            print(
+                f"XXX mimo pobrania pracy po {element.upper()} {nd}, zwrotnie NIE pasuje ona do pracy w BPP "
+                f"-- rok {publication.year} lub tytul {publication.title} nie daja sie dopasowac. Blad w "
+                f"zapisie {element.upper()}? Niepoprawne {element.upper()}?"
+            )
+            continue
 
-    p = p.original
-    p.pbn_uid_id = publication.mongoId
-    p.save(update_fields=["pbn_uid_id"])
+        # To ponizej wyrzucamy.
+        #
+        # Funkcja dostaje listę parametrów ISBN, DOI itp. W BPP niestety ale rozdziały dostają często
+        # ISBN lub DOI wydawnictw nadrzędnych. Stąd też, zapytanie o konkretny ISBN zwróci wydawnictwo
+        # nadrzędne, co potem spowoduje ustawienie takiego ISBN, a za chwilę będzie niepoprawny
+        # komunikat; tzn poprawny ale nie do końca.
+        #
+        # if p.pbn_uid_id is not None:
+        #     print(
+        #         f"XXX {element.upper()} {nd} jest potencjalnie zdublowany w bazie BPP. "
+        #         f"Po stronie PBN ma go {publication.title} {publication.mongoId} {publication.isbn}, "
+        #         f"po stronie BPP ma go {p.tytul_oryginalny} {p.pk} {p.isbn}"
+        #     )
+        #     continue
+
+        p = p.original
+        p.pbn_uid_id = publication.mongoId
+        p.save(update_fields=["pbn_uid_id"])
+        ret.append(p)
+
+    return ret
+
+
+MIN_ROK_PBN = 2017
 
 
 def pobierz_prace_po_doi(client: PBNClient):
     dois = set()
     for praca in pbar(
-        Rekord.objects.all().exclude(doi=None).exclude(doi="").filter(pbn_uid_id=None),
+        Rekord.objects.all()
+        .exclude(doi=None)
+        .exclude(doi="")
+        .filter(pbn_uid_id=None)
+        .filter(rok__gte=MIN_ROK_PBN),
         label="pobierz_prace_po_doi",
     ):
         nd = normalize_doi(praca.doi)
@@ -486,10 +498,46 @@ def pobierz_prace_po_doi(client: PBNClient):
     for doi in dois:
         results.append(
             p.apply_async(
-                _pobierz_prace_po_doi,
+                _pobierz_prace_po_elemencie,
                 args=(
                     client,
+                    "doi",
                     doi,
+                ),
+            )
+        )
+
+    wait_for_results(p, results)
+
+
+def pobierz_prace_po_isbn(client: PBNClient):
+    isbns = set()
+    for praca in pbar(
+        Rekord.objects.all()
+        .exclude(isbn=None)
+        .exclude(isbn="")
+        .filter(pbn_uid_id=None)
+        .filter(rok__gte=MIN_ROK_PBN)
+        .filter(wydawnictwo_nadrzedne_id=None),
+        label="pobierz_prace_po_isbn",
+    ):
+        nd = normalize_isbn(praca.isbn)
+        isbns.add(nd)
+
+    _bede_uzywal_bazy_danych_z_multiprocessing_z_django()
+
+    p = initialize_pool()
+
+    results = []
+
+    for isbn in isbns:
+        results.append(
+            p.apply_async(
+                _pobierz_prace_po_elemencie,
+                args=(
+                    client,
+                    "isbn",
+                    isbn,
                 ),
             )
         )

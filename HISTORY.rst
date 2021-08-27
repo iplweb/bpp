@@ -13,6 +13,9 @@ Historia zmian
 * przyciski umożliwiające szybkie przechodzenie między modułami PBN API a edycją prac w module "Redagowanie" (b/n)
 * możliwość filtrowania rekordów wydanwnictwa zwartego wg posiadania lub nie wydawnicwa nadrzędnego oraz
   wg kryterium bycia lub nie wydawnictwem nadrzędnym dla innego rekordu (b/n),
+* przycisk "Pobierz wg ISBN" w module redagowania, do pobierania odpowiedników z PBN po ISBN - interaktywnie
+  (b/n),
+* matchuj prace po ISBN - wyłącznie rekordy nadrzędne (b/n)
 
 202108.1075
 -----------

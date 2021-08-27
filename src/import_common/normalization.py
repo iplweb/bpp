@@ -41,10 +41,16 @@ def normalize_tytul_naukowy(s):
     return normalize_skrot(s)
 
 
+ONLINE_STR = "[online]"
+
+
 def normalize_tytul_publikacji(s):
     if s is None:
         return
-    return remove_trailing_interpunction(normalize_skrot(s))
+    ret = remove_trailing_interpunction(normalize_skrot(s))
+    if ret.endswith(ONLINE_STR):
+        ret = ret[: -len(ONLINE_STR)].strip()
+    return ret
 
 
 def normalize_funkcja_autora(s: str) -> str:

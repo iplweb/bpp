@@ -1,7 +1,7 @@
 from typing import Union
 
-from django.db.models import Q
-from django.db.models.functions import Lower
+from django.db.models import Q, Value
+from django.db.models.functions import Lower, Replace, Trim
 
 from .normalization import (
     normalize_doi,
@@ -19,6 +19,7 @@ from .normalization import (
     normalize_wymiar_etatu,
 )
 
+from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.search import TrigramSimilarity
 
 from bpp.models import (
@@ -295,6 +296,13 @@ TITLE_LIMIT_MANY_WORDS = 25
 
 MATCH_SIMILARITY_THRESHOLD = 0.95
 MATCH_SIMILARITY_THRESHOLD_LOW = 0.90
+MATCH_SIMILARITY_THRESHOLD_VERY_LOW = 0.80
+
+normalized_db_title = Trim(
+    Replace(Lower("tytul_oryginalny"), Value(" [online]"), Value(""))
+)
+
+normalized_db_isbn = Trim(Replace(Lower("isbn"), Value("-"), Value("")))
 
 
 def matchuj_publikacje(
@@ -306,20 +314,22 @@ def matchuj_publikacje(
     isbn=None,
     zrodlo=None,
     DEBUG_MATCHOWANIE=False,
+    isbn_matchuj_tylko_nadrzedne=True,
+    doi_matchuj_tylko_nadrzedne=True,
 ):
 
     if doi is not None:
         doi = normalize_doi(doi)
         if doi:
-            res = (
-                klass.objects.filter(doi__istartswith=doi, rok=year)
-                .annotate(
-                    podobienstwo=TrigramSimilarity(
-                        Lower("tytul_oryginalny"), title.lower()
-                    )
-                )
-                .order_by("-podobienstwo")[:2]
-            )
+            zapytanie = klass.objects.filter(doi__istartswith=doi, rok=year)
+
+            if doi_matchuj_tylko_nadrzedne:
+                if hasattr(klass, "wydawnictwo_nadrzedne_id"):
+                    zapytanie = zapytanie.filter(wydawnictwo_nadrzedne_id=None)
+
+            res = zapytanie.annotate(
+                podobienstwo=TrigramSimilarity(normalized_db_title, title.lower())
+            ).order_by("-podobienstwo")[:2]
             fail_if_seq_scan(res, DEBUG_MATCHOWANIE)
             if res.exists():
 
@@ -331,7 +341,7 @@ def matchuj_publikacje(
                 #         res.first().tytul_oryginalny,
                 #     )
                 #
-                if res.first().podobienstwo >= MATCH_SIMILARITY_THRESHOLD_LOW:
+                if res.first().podobienstwo >= MATCH_SIMILARITY_THRESHOLD_VERY_LOW:
                     return res.first()
                 else:
                     if DEBUG_MATCHOWANIE:
@@ -374,16 +384,49 @@ def matchuj_publikacje(
             isbn="", e_isbn=""
         )
 
+        if isbn_matchuj_tylko_nadrzedne:
+            zapytanie = zapytanie.filter(wydawnictwo_nadrzedne_id=None)
+
+            if klass == Rekord:
+                zapytanie = zapytanie.filter(
+                    pk__in=[
+                        (ContentType.objects.get_for_model(Wydawnictwo_Zwarte).pk, x)
+                        for x in Wydawnictwo_Zwarte.objects.wydawnictwa_nadrzedne_dla_innych()
+                    ]
+                )
+            elif klass == Wydawnictwo_Zwarte:
+                zapytanie = zapytanie.filter(
+                    pk__in=Wydawnictwo_Zwarte.objects.wydawnictwa_nadrzedne_dla_innych()
+                )
+            else:
+                raise NotImplementedError(
+                    "Matchowanie po ISBN dla czegoś innego niż wydawnictwo zwarte nie opracowane"
+                )
+
+        #
+        # Uwaga uwaga uwaga.
+        #
+        # Gdy matchujemy ISBN, to w BPP dochodzi do takiej nieciekawej sytuacji: wpisywany jest
+        # ISBN zarówno dla rozdziałów jak i dla wydawnictw nadrzędnych.
+        #
+        # Zatem, na ten moment, aby usprawnić matchowanie ISBN, jeżeli ustawiona jest flaga
+        # isbn_matchuj_tylko_nadrzedne, to system bedzie szukał tylko i wyłącznie wśród
+        # rekordów będących wydawnictwami nadrzędnymi (czyli nie mającymi rekordów podrzędnych)
+        #
+
         res = (
             zapytanie.filter(Q(isbn=ni) | Q(e_isbn=ni))
             .annotate(
-                podobienstwo=TrigramSimilarity(Lower("tytul_oryginalny"), title.lower())
+                podobienstwo=TrigramSimilarity(
+                    normalized_db_title,
+                    title.lower(),
+                )
             )
             .order_by("-podobienstwo")[:2]
         )
         fail_if_seq_scan(res, DEBUG_MATCHOWANIE)
         if res.exists():
-            if res.first().podobienstwo >= MATCH_SIMILARITY_THRESHOLD:
+            if res.first().podobienstwo >= MATCH_SIMILARITY_THRESHOLD_VERY_LOW:
                 return res.first()
             else:
                 if DEBUG_MATCHOWANIE:
@@ -396,7 +439,7 @@ def matchuj_publikacje(
         res = (
             klass.objects.filter(Q(www=public_uri) | Q(public_www=public_uri))
             .annotate(
-                podobienstwo=TrigramSimilarity(Lower("tytul_oryginalny"), title.lower())
+                podobienstwo=TrigramSimilarity(normalized_db_title, title.lower())
             )
             .order_by("-podobienstwo")[:2]
         )
@@ -418,7 +461,7 @@ def matchuj_publikacje(
         res = (
             klass.objects.filter(tytul_oryginalny__istartswith=title, rok=year)
             .annotate(
-                podobienstwo=TrigramSimilarity(Lower("tytul_oryginalny"), title.lower())
+                podobienstwo=TrigramSimilarity(normalized_db_title, title.lower())
             )
             .order_by("-podobienstwo")[:2]
         )
@@ -438,7 +481,7 @@ def matchuj_publikacje(
         res = (
             klass.objects.filter(rok=year)
             .annotate(
-                podobienstwo=TrigramSimilarity(Lower("tytul_oryginalny"), title.lower())
+                podobienstwo=TrigramSimilarity(normalized_db_title, title.lower())
             )
             .order_by("-podobienstwo")[:2]
         )
