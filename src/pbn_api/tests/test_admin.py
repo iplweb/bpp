@@ -29,4 +29,5 @@ def test_OswiadczenieInstytucji_delete_model(pbn_uczelnia, pbnclient, rf):
         )
 
     with pytest.raises(OswiadczenieInstytucji.DoesNotExist):
-        oi.refresh_from_db()
+        OswiadczenieInstytucji.objects.get(pk=oi.pk)
+        # oi.refresh_from_db()
