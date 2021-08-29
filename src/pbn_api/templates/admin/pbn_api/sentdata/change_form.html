@@ -31,14 +31,15 @@
                 .attr("id", "wyslij-ponownie")
                 .attr("class", "grp-button")
                 .attr("type", "button")
-                .attr("value", "Wyślij ponownie")
-            .click(function(){
+                .attr("value", "Wyślij ponownie");
+
+            btn.parent().parent().append($("<li/>").append(wyslij_ponownie));
+
+            $("#wyslij-ponownie").click(function(){
                 pub_id = location.href.split("/")[6];
                 $("#_selected_action").val(pub_id)
                 $("#wyslij_ponownie").submit()
             });
-
-            btn.parent().parent().append($("<li/>").append(wyslij_ponownie));
 
         })(django.jQuery);
     </script>
