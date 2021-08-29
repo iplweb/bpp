@@ -17,6 +17,7 @@ Historia zmian
   (b/n),
 * matchuj prace po ISBN - wyłącznie rekordy nadrzędne (b/n),
 * użyj bardziej efektywnej metody pobierania danych do generowania PDF do raportu autorów (b/n),
+* bardziej wydajne pobieranie PBN UID po ISBN (b/n),
 
 202108.1075
 -----------

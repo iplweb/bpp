@@ -5,6 +5,7 @@ from django.views.generic.base import View
 
 from import_common.normalization import normalize_isbn
 from pbn_api.integrator import _pobierz_prace_po_elemencie
+from pbn_api.models import Publication
 
 from bpp.models import Uczelnia
 from bpp.views.api.const import PUBMED_BRAK_PARAMETRU
@@ -29,16 +30,19 @@ class GetPBNPublicationsByISBN(View):
         if not uczelnia:
             return JsonResponse({"error": "W systemie brak obiektu Uczelnia"})
 
-        client = uczelnia.pbn_client(request.user.pbn_token)
+        try:
+            return JsonResponse({"id": Publication.objects.get(isbn=ni, year=rok).pk})
+        except Publication.DoesNotExist:
+            client = uczelnia.pbn_client(request.user.pbn_token)
 
-        ret = _pobierz_prace_po_elemencie(
-            client,
-            "isbn",
-            ni,
-            # title=tytul[: len(tytul) // 3 * 4],
-            year=rok,
-            matchuj=True,
-        )
+            ret = _pobierz_prace_po_elemencie(
+                client,
+                "isbn",
+                ni,
+                # title=tytul[: len(tytul) // 3 * 4],
+                year=rok,
+                matchuj=True,
+            )
 
         if ret:
             return JsonResponse({"id": ret[0].pbn_uid.pk})

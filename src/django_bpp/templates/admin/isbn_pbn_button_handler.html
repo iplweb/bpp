@@ -40,7 +40,10 @@
 
                         if (data.error) {
                             var zt = "Zmień ISBN i spróbuj jeszcze raz.";
-                            alert(data.error + "Wyszukiwanie odbywa się po wartości z pola 'ISBN' oraz 'Rok'. " + zt);
+                            alert("Błąd z serwera: " + data.error + "\r\n\r\nWyszukiwanie odbywa się " +
+                                "po wartości z pola 'Tytuł oryginalny'. " + zt);
+
+                            pubmed_button.val(zt);
                             isbn_button.val(zt);
                             return;
                         }

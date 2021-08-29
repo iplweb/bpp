@@ -38,7 +38,8 @@
 
                         if (data.error) {
                             var zt = "Zmień tytuł i spróbuj jeszcze raz.";
-                            alert(data.error + "Wyszukiwanie odbywa się po wartości z pola 'Tytuł oryginalny'. " + zt);
+                            alert("Błąd z serwera: " + data.error + "\r\n\r\nWyszukiwanie odbywa się " +
+                                "po wartości z pola 'Tytuł oryginalny'. " + zt);
                             pubmed_button.val(zt);
                             return;
                         }
