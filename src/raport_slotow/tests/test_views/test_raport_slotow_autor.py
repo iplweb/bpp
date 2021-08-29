@@ -1,13 +1,6 @@
-import sys
-
-import pytest
 from django.urls import reverse
 
 
-@pytest.mark.skipif(
-    sys.platform == "darwin",
-    reason="WeasyPrint+cffi https://github.com/Kozea/WeasyPrint/issues/1432",
-)
 def test_RaportSlotow_get_pdf(admin_app, autor_jan_kowalski):
     url = reverse("raport_slotow:index")
 
