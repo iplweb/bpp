@@ -26,7 +26,7 @@ class GetPBNPublicationsByISBN(View):
         if not ni:
             return JsonResponse({"error": PUBMED_BRAK_PARAMETRU})
 
-        uczelnia = Uczelnia.objects.default
+        uczelnia = Uczelnia.objects.get_default()
         if not uczelnia:
             return JsonResponse({"error": "W systemie brak obiektu Uczelnia"})
 

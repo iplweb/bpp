@@ -12,11 +12,10 @@ from bpp.tests import proper_click_element, show_element
 from django_bpp.selenium_util import wait_for_page_load
 
 
-def test_change_form_pbn_isbn(admin_browser, asgi_live_server, uczelnia):
+def test_change_form_pbn_isbn(admin_browser, asgi_live_server, transactional_db):
+    u = mommy.make(Uczelnia)
 
     try:
-        u = mommy.make(Uczelnia)
-
         url = reverse("admin:bpp_wydawnictwo_zwarte_add")
         with wait_for_page_load(admin_browser):
             admin_browser.visit(asgi_live_server.url + url)
