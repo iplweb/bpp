@@ -5,12 +5,16 @@ from django.template.defaultfilters import pluralize
 from django.urls import reverse
 from django.views.generic import FormView, TemplateView
 from django_tables2 import MultiTableMixin, RequestConfig
-from django_weasyprint.utils import django_url_fetcher
 
 from formdefaults.helpers import FormDefaultsMixin
 from raport_slotow.forms import AutorRaportSlotowForm
 from raport_slotow.tables import RaportSlotowAutorTable
-from raport_slotow.util import InitialValuesFromGETMixin, MyExportMixin, MyTableExport
+from raport_slotow.util import (
+    InitialValuesFromGETMixin,
+    MyExportMixin,
+    MyTableExport,
+    django_url_fetcher,
+)
 from .. import const
 
 from django.utils import timezone
