@@ -1,52 +1,60 @@
 import time
 
 from django.urls import reverse
+from model_mommy import mommy
 from selenium.webdriver.common.keys import Keys
 
 from pbn_api.models import Publication
 
+from bpp.models import Uczelnia
 from bpp.tests import proper_click_element, show_element
 
 from django_bpp.selenium_util import wait_for_page_load
 
 
 def test_change_form_pbn_isbn(admin_browser, asgi_live_server, uczelnia):
-    url = reverse("admin:bpp_wydawnictwo_zwarte_add")
-    with wait_for_page_load(admin_browser):
-        admin_browser.visit(asgi_live_server.url + url)
 
-    ROK = "2222"
-    ISBN = "123"
-    UID_REKORDU = "aosidjfoasidjf"
+    try:
+        u = mommy.make(Uczelnia)
 
-    Publication.objects.create(
-        mongoId=UID_REKORDU,
-        verificationLevel="moze",
-        verified=True,
-        versions=[
-            {
-                "current": True,
-                "object": {"year": ROK, "isbn": ISBN, "title": "Ten tego"},
-            }
-        ],
-    )
+        url = reverse("admin:bpp_wydawnictwo_zwarte_add")
+        with wait_for_page_load(admin_browser):
+            admin_browser.visit(asgi_live_server.url + url)
 
-    admin_browser.find_by_id("id_tytul_oryginalny").fill("nie istotny")
-    admin_browser.find_by_id("id_rok").fill(ROK)
-    admin_browser.find_by_id("id_isbn").fill(ISBN)
+        ROK = "2222"
+        ISBN = "123"
+        UID_REKORDU = "aosidjfoasidjf"
 
-    for elem in admin_browser.find_by_tag("h2")[:3]:
-        show_element(admin_browser, elem)  # ._element)
-        elem.click()
+        Publication.objects.create(
+            mongoId=UID_REKORDU,
+            verificationLevel="moze",
+            verified=True,
+            versions=[
+                {
+                    "current": True,
+                    "object": {"year": ROK, "isbn": ISBN, "title": "Ten tego"},
+                }
+            ],
+        )
 
-    if not admin_browser.find_by_id("id_isbn_pbn_get"):
-        raise Exception("Nie mozna znalexc elementu")
+        admin_browser.find_by_id("id_tytul_oryginalny").fill("nie istotny")
+        admin_browser.find_by_id("id_rok").fill(ROK)
+        admin_browser.find_by_id("id_isbn").fill(ISBN)
 
-    btn = admin_browser.find_by_id("id_isbn_pbn_get")
-    proper_click_element(admin_browser, btn)
+        for elem in admin_browser.find_by_tag("h2")[:3]:
+            show_element(admin_browser, elem)  # ._element)
+            elem.click()
 
-    time.sleep(0.5)
+        if not admin_browser.find_by_id("id_isbn_pbn_get"):
+            raise Exception("Nie mozna znalexc elementu")
 
-    admin_browser.switch_to.active_element.send_keys(Keys.ENTER)
+        btn = admin_browser.find_by_id("id_isbn_pbn_get")
+        proper_click_element(admin_browser, btn)
 
-    assert admin_browser.find_by_id("id_pbn_uid").value == UID_REKORDU
+        time.sleep(0.5)
+
+        admin_browser.switch_to.active_element.send_keys(Keys.ENTER)
+
+        assert admin_browser.find_by_id("id_pbn_uid").value == UID_REKORDU
+    finally:
+        u.delete()

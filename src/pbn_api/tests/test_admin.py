@@ -7,6 +7,8 @@ from pbn_api.client import PBN_DELETE_PUBLICATION_STATEMENT
 from pbn_api.models import OswiadczenieInstytucji
 from pbn_api.tests.utils import middleware
 
+from django.contrib.messages import get_messages
+
 
 def test_SentDataAdmin_list_filter_works(admin_client):
     url = reverse("admin:pbn_api_sentdata_changelist")
@@ -28,6 +30,11 @@ def test_OswiadczenieInstytucji_delete_model(pbn_uczelnia, pbnclient, rf):
             req, oi, pbn_client=pbnclient
         )
 
-    with pytest.raises(OswiadczenieInstytucji.DoesNotExist):
+    try:
         OswiadczenieInstytucji.objects.get(pk=oi.pk)
-        # oi.refresh_from_db()
+        msg = list(get_messages(req))
+        if msg:
+            raise Exception(str(msg))
+        raise Exception("Nie został skasowany")
+    except OswiadczenieInstytucji.DoesNotExist:
+        assert True  # good

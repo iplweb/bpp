@@ -61,9 +61,9 @@ class OswiadczeniaInstytucjiAdmin(BasePBNAPIAdmin):
         return True
 
     def delete_model(self, request, obj: OswiadczenieInstytucji, pbn_client=None):
-        uczelnia = Uczelnia.objects.default
+        uczelnia = Uczelnia.objects.get_default()
         if uczelnia is None:
-            return
+            raise Uczelnia.DoesNotExist
 
         if pbn_client is None:
             pbn_client = uczelnia.pbn_client(request.user.pbn_token)
