@@ -67,6 +67,7 @@ pymed-iplweb==0.8.10
 django-taggit==1.3.0
 django-taggit-serializer==0.1.7
 WeasyPrint==52.4
+django-weasyprint>=1.1.0
 requests-oauthlib==1.3.0
 django-cacheops==6.0
 # https://stackoverflow.com/questions/68208931/django-runtimeerror-at-admin-users-user-1-change-single-thread-executor-alrea

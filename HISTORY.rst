@@ -15,7 +15,8 @@ Historia zmian
   wg kryterium bycia lub nie wydawnictwem nadrzędnym dla innego rekordu (b/n),
 * przycisk "Pobierz wg ISBN" w module redagowania, do pobierania odpowiedników z PBN po ISBN - interaktywnie
   (b/n),
-* matchuj prace po ISBN - wyłącznie rekordy nadrzędne (b/n)
+* matchuj prace po ISBN - wyłącznie rekordy nadrzędne (b/n),
+* użyj bardziej efektywnej metody pobierania danych do generowania PDF do raportu autorów (b/n),
 
 202108.1075
 -----------
