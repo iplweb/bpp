@@ -435,7 +435,9 @@ def pobierz_oswiadczenia_z_instytucji(client: PBNClient):
     )
 
 
-def _pobierz_prace_po_elemencie(client: PBNClient, element, nd, matchuj=True, **kw):
+def _pobierz_prace_po_elemencie(
+    client: PBNClient, element, nd, matchuj=True, value_from_rec=None, **kw
+):
     ret = []
     base_kw = {element: nd}
     base_kw.update(kw)
@@ -450,7 +452,7 @@ def _pobierz_prace_po_elemencie(client: PBNClient, element, nd, matchuj=True, **
             print(
                 f"XXX mimo pobrania pracy po {element.upper()} {nd}, zwrotnie NIE pasuje ona do pracy w BPP "
                 f"-- rok {publication.year} lub tytul {publication.title} nie daja sie dopasowac. Blad w "
-                f"zapisie {element.upper()}? Niepoprawne {element.upper()}?"
+                f"zapisie {element.upper()}? Niepoprawne {element.upper()}? Oryginalny obiekt: {value_from_rec}"
             )
             continue
 
@@ -470,6 +472,10 @@ def _pobierz_prace_po_elemencie(client: PBNClient, element, nd, matchuj=True, **
         #     continue
 
         p = p.original
+
+        if p in ret:
+            continue
+
         p.pbn_uid_id = publication.mongoId
         p.save(update_fields=["pbn_uid_id"])
         ret.append(p)
@@ -1081,10 +1087,32 @@ def _synchronizuj_pojedyncza_publikacje(client, rec):
     except SameDataUploadedRecently:
         pass
     except HttpException as e:
+        if (
+            e.status_code == 400
+            and "Publikacja o identycznym ISBN lub ISMN już istnieje" in e.content
+        ):
+            if rec.pbn_uid_id is not None:
+                warnings.warn(
+                    f"UWAGA: rekord z BPP {rec} mimo posiadania PBN UID {rec.pbn_uid_id} dostał"
+                    f"przy synchronizacji komunkat: {e.content} !! Sprawa DO SPRAWDZENIA RECZNIE"
+                )
+                return
+
+            if hasattr(rec, "isbn"):
+                ret = _pobierz_prace_po_elemencie(
+                    client, "isbn", normalize_isbn(rec.isbn), value_from_rec=rec
+                )
+                if rec not in ret:
+                    return
+                rec.refresh_from_db()
+                assert rec.pbn_uid_id is not None
+                return _synchronizuj_pojedyncza_publikacje(client, rec)
+
         if e.status_code in [400, 500]:
             warnings.warn(
                 f"{rec.pk},{rec.tytul_oryginalny},{rec.rok},PBN Server Error: {e.content}"
             )
+
         if e.status_code == 403:
             # Jezeli przytrafi się wyjątek taki, jak poniżej:
             #
@@ -1095,6 +1123,7 @@ def _synchronizuj_pojedyncza_publikacje(client, rec):
             # to go podnieś. Jeżeli autoryzacja nie została przeprowadzona poprawnie, to nie chcemy kontynuować
             # dalszego procesu synchronizacji prac.
             raise e
+
     except WillNotExportError as e:
         warnings.warn(
             f"{rec.pk},{rec.tytul_oryginalny},{rec.rok},nie wyeksportuje, bo: {e}"

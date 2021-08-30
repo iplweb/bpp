@@ -562,8 +562,7 @@ class PBNClient(
             SentData.objects.updated(rec, js, uploaded_okay=False, exception=str(e))
             raise e
 
-        SentData.objects.updated(rec, js, pbn_uid_id=ret.get("objectId"))
-        return ret
+        return ret, js
 
     def download_publication(self, doi=None, objectId=None):
         from .integrator import zapisz_mongodb
@@ -605,11 +604,16 @@ class PBNClient(
             pub = ctype.model_class().objects.get(pk=pk)
 
         # Wgraj dane do PBN
-        ret = self.upload_publication(pub, force_upload=force_upload)
+        ret, js = self.upload_publication(pub, force_upload=force_upload)
 
         # Pobierz zwrotnie dane z PBN
         publication = self.download_publication(objectId=ret["objectId"])
         self.download_statements_of_publication(publication)
+
+        # Utwórz obiekt zapisanych danych. Dopiero w tym miejscu, bo jeżeli zostanie
+        # utworzony nowy rekord po stronie PBN, to pbn_uid_id musi wskazywać na
+        # bazę w tabeli Publication, która została chwile temu pobrana...
+        SentData.objects.updated(pub, js, pbn_uid_id=ret["objectId"])
 
         if pub.pbn_uid_id != ret["objectId"]:
             pub.pbn_uid = publication
