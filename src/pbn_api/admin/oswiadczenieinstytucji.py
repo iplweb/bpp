@@ -3,11 +3,12 @@ from pbn_api.admin.filters import (
     OdpowiednikOswiadczeniaInstytucjiAutorWBPPFilter,
     OdpowiednikOswiadczeniaInstytucjiPublikacjaWBPPFilter,
 )
+from pbn_api.exceptions import StatementDeletionError
 from pbn_api.models import OswiadczenieInstytucji
 
-from django.contrib import admin, messages
+from django.contrib import admin
 
-from bpp.models import Rekord, Uczelnia
+from bpp.models import Rekord
 
 
 @admin.register(OswiadczenieInstytucji)
@@ -61,24 +62,16 @@ class OswiadczeniaInstytucjiAdmin(BasePBNAPIAdmin):
         return True
 
     def delete_model(self, request, obj: OswiadczenieInstytucji, pbn_client=None):
-        uczelnia = Uczelnia.objects.get_default()
-        if uczelnia is None:
-            raise Uczelnia.DoesNotExist
-
-        if pbn_client is None:
-            pbn_client = uczelnia.pbn_client(request.user.pbn_token)
-
         try:
-            pbn_client.delete_publication_statement(
-                obj.publicationId_id, obj.personId_id, obj.type
-            )
-        except Exception as e:
+            obj.sprobuj_skasowac_z_pbn(request, pbn_client)
+        except StatementDeletionError as e:
+            from django.contrib import messages
+
             messages.error(
                 request,
                 f"Skasowanie niemożliwe, PBN API zwróciło błąd {e}. Proszę zignorować komunikat "
-                f"o pomyślnym usunięciu rekordu, wcisnąc 2x przycisk wstecz w przeglądarce i "
-                f"spróbować jeszcze raz. ",
+                f"o pomyślnym usunięciu rekordu, wcisnąc 2x przycisk 'Wstecz' w przeglądarce i "
+                f"spróbować jeszcze raz. Oświadczenie nie zostało usunięte ani z PBN, ani z lokalnej bazy.",
             )
             return
-
         super(OswiadczeniaInstytucjiAdmin, self).delete_model(request, obj)

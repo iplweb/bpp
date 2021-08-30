@@ -34,6 +34,7 @@ from pbn_api.integrator import (
     pobierz_zrodla,
     sprawdz_ilosc_autorow_przy_zmatchowaniu,
     synchronizuj_publikacje,
+    usun_wszystkie_oswiadczenia,
     weryfikuj_orcidy,
     wgraj_ludzi_z_offline_do_bazy,
     wyswietl_niezmatchowane_ze_zblizonymi_tytulami,
@@ -66,6 +67,7 @@ class Command(PBNBaseCommand):
             "--clear-match-publications", action="store_true", default=False
         )
         parser.add_argument("--enable-all", action="store_true", default=False)
+        parser.add_argument("--enable-delete-all", action="store_true", default=False)
 
         parser.add_argument("--enable-system-data", action="store_true", default=False)
         parser.add_argument(
@@ -142,6 +144,7 @@ class Command(PBNBaseCommand):
         clear_publications,
         clear_match_publications,
         enable_all,
+        enable_delete_all,
         enable_system_data,
         enable_pobierz_zrodla,
         enable_integruj_zrodla,
@@ -355,6 +358,9 @@ class Command(PBNBaseCommand):
 
         stage = 20
         check_end_before(stage, end_before_stage)
+
+        if enable_delete_all:
+            usun_wszystkie_oswiadczenia(client)
 
         if enable_sync:
             synchronizuj_publikacje(client)

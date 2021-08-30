@@ -1,5 +1,6 @@
 from django.db import models
 
+from ..exceptions import HttpException, StatementDeletionError
 from .base import BasePBNMongoDBModel
 
 from django.contrib.postgres.fields import JSONField
@@ -133,3 +134,18 @@ class OswiadczenieInstytucji(models.Model):
     class Meta:
         verbose_name = "Oświadczenie instytucji"
         verbose_name_plural = "Oświadczenia instytucji"
+
+    def sprobuj_skasowac_z_pbn(self, request=None, pbn_client=None):
+        if pbn_client is None:
+            uczelnia = Uczelnia.objects.get_for_request(request)
+            if uczelnia is None:
+                raise Uczelnia.DoesNotExist
+
+            pbn_client = uczelnia.pbn_client(request.user.pbn_token)
+
+        try:
+            pbn_client.delete_publication_statement(
+                self.publicationId_id, self.personId_id, self.type
+            )
+        except HttpException as e:
+            raise StatementDeletionError(e.status_code, e.url, e.content)

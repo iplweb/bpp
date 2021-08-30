@@ -16,7 +16,11 @@ from import_common.normalization import (
     normalize_tytul_publikacji,
 )
 from pbn_api.client import PBNClient
-from pbn_api.exceptions import HttpException, SameDataUploadedRecently
+from pbn_api.exceptions import (
+    HttpException,
+    SameDataUploadedRecently,
+    StatementDeletionError,
+)
 from pbn_api.models import (
     Conference,
     Country,
@@ -473,7 +477,7 @@ def _pobierz_prace_po_elemencie(client: PBNClient, element, nd, matchuj=True, **
     return ret
 
 
-MIN_ROK_PBN = 2017
+PBN_MIN_ROK = 2017
 
 
 def pobierz_prace_po_doi(client: PBNClient):
@@ -483,7 +487,7 @@ def pobierz_prace_po_doi(client: PBNClient):
         .exclude(doi=None)
         .exclude(doi="")
         .filter(pbn_uid_id=None)
-        .filter(rok__gte=MIN_ROK_PBN),
+        .filter(rok__gte=PBN_MIN_ROK),
         label="pobierz_prace_po_doi",
     ):
         nd = normalize_doi(praca.doi)
@@ -517,7 +521,7 @@ def pobierz_prace_po_isbn(client: PBNClient):
         .exclude(isbn=None)
         .exclude(isbn="")
         .filter(pbn_uid_id=None)
-        .filter(rok__gte=MIN_ROK_PBN)
+        .filter(rok__gte=PBN_MIN_ROK)
         .filter(wydawnictwo_nadrzedne_id=None),
         label="pobierz_prace_po_isbn",
     ):
@@ -1102,7 +1106,7 @@ def synchronizuj_publikacje(client, skip=0):
     # Wydawnictwa zwarte
     #
     zwarte_baza = (
-        Wydawnictwo_Zwarte.objects.filter(rok__gte=2017)
+        Wydawnictwo_Zwarte.objects.filter(rok__gte=PBN_MIN_ROK)
         .exclude(charakter_formalny__rodzaj_pbn=None)
         .exclude(isbn=None)
         .exclude(Q(doi=None) & (Q(public_www=None) | Q(www=None)))
@@ -1124,7 +1128,7 @@ def synchronizuj_publikacje(client, skip=0):
     # Wydawnicwa ciagle
     #
     for rec in pbar(
-        Wydawnictwo_Ciagle.objects.filter(rok__gte=2017)
+        Wydawnictwo_Ciagle.objects.filter(rok__gte=PBN_MIN_ROK)
         .exclude(charakter_formalny__rodzaj_pbn=None)
         .exclude(Q(doi=None) & (Q(public_www=None) | Q(www=None))),
         label="sync_ciagle",
@@ -1322,3 +1326,18 @@ def pobierz_rekordy_publikacji_instytucji(client: PBNClient):
         results.append(res)
 
     wait_for_results(pool, results, "pobieranie publikacji")
+
+
+def usun_wszystkie_oswiadczenia(client):
+    for elem in pbar(OswiadczenieInstytucji.objects.all()):
+        try:
+            elem.sprobuj_skasowac_z_pbn(pbn_client=client)
+        except StatementDeletionError as e:
+            if e.status_code == 400 and (
+                "Nie istnieją oświadczenia" in e.content
+                or "Nie istnieje oświadczenie" in e.content
+            ):
+                pass
+            else:
+                raise e
+        elem.delete()
