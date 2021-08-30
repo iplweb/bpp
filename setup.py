@@ -32,6 +32,7 @@ class compile_translations(Command):
     def run(self):
         curdir = os.getcwd()
         os.chdir(os.path.realpath("src"))
+        sys.path.append(".")
         call_command("compilemessages")
         os.chdir(curdir)
 
