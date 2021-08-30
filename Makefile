@@ -50,6 +50,7 @@ clean-node-dir:
 pre-wheel: distclean assets
 
 bdist_wheel: pre-wheel
+	cd src && django-admin.py compilemessages
 	${PYTHON} setup.py -q bdist_wheel
 
 upload:

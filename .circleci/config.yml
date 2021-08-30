@@ -50,28 +50,28 @@ jobs:
           command: |
             . venv/bin/activate
             make assets
-
-      - save_cache: # cache Python dependencies using checksum of Pipfile as the cache-key
-          key: cache-10-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}-{{ checksum "yarn.lock" }}
-          paths:
-            - "/home/circleci/.cache"
-
-      # Uruchamiaj na lokalnym firefoxie używając dwóch CPU
-      - run:
-          name: pytest
-          command: |
-            . venv/bin/activate
-            pytest -d -n 2 --splinter-headless --cov=src --ds=django_bpp.settings.test # src/integration_tests/test_global_search.py
-
-      # Testy JavaScript
-      - run: make js-tests
-
-      # Wyślij statystyki pokrycia kodu testami do coveralls.io
-      - run:
-          name: Submit coverage to coveralls.io
-          command: |
-            . venv/bin/activate
-            coveralls
+#
+#      - save_cache: # cache Python dependencies using checksum of Pipfile as the cache-key
+#          key: cache-10-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}-{{ checksum "yarn.lock" }}
+#          paths:
+#            - "/home/circleci/.cache"
+#
+#      # Uruchamiaj na lokalnym firefoxie używając dwóch CPU
+#      - run:
+#          name: pytest
+#          command: |
+#            . venv/bin/activate
+#            pytest -d -n 2 --splinter-headless --cov=src --ds=django_bpp.settings.test # src/integration_tests/test_global_search.py
+#
+#      # Testy JavaScript
+#      - run: make js-tests
+#
+#      # Wyślij statystyki pokrycia kodu testami do coveralls.io
+#      - run:
+#          name: Submit coverage to coveralls.io
+#          command: |
+#            . venv/bin/activate
+#            coveralls
 
       # Zbuduj pakiet WHL -- bez wrzucania go na serwer (próbnie)
       - run:
