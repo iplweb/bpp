@@ -90,9 +90,9 @@ setup(
     ],
     scripts=["src/bin/bpp-manage.py"],
     python_requires=">=3.6,<4",
-    # cmdclass={
-    #     "build": build,
-    #     "install_lib": install_lib,
-    #     "compile_translations": compile_translations,
-    # },
+    cmdclass={
+        "build": build,
+        "install_lib": install_lib,
+        "compile_translations": compile_translations,
+    },
 )

@@ -50,8 +50,8 @@ clean-node-dir:
 pre-wheel: distclean assets
 
 bdist_wheel: pre-wheel
-	export PYTHONPATH=. && cd src && django-admin.py compilemessages
-	${PYTHON} setup.py -q bdist_wheel
+	# cd src && django-admin.py compilemessages
+	export PYTHONPATH=. && ${PYTHON} setup.py -q bdist_wheel
 
 upload:
 	twine upload dist/*
