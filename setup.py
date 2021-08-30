@@ -32,7 +32,6 @@ class compile_translations(Command):
     def run(self):
         curdir = os.getcwd()
         os.chdir(os.path.realpath("src"))
-        sys.path.append(".")
         call_command("compilemessages")
         os.chdir(curdir)
 
@@ -91,9 +90,9 @@ setup(
     ],
     scripts=["src/bin/bpp-manage.py"],
     python_requires=">=3.6,<4",
-    cmdclass={
-        "build": build,
-        "install_lib": install_lib,
-        "compile_translations": compile_translations,
-    },
+    # cmdclass={
+    #     "build": build,
+    #     "install_lib": install_lib,
+    #     "compile_translations": compile_translations,
+    # },
 )
