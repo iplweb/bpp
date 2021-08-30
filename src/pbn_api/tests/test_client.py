@@ -46,10 +46,8 @@ def test_PBNClient_test_upload_publication_wszystko_ok(
         "objectId": pbn_publication.pk
     }
 
-    assert (
-        pbnclient.upload_publication(pbn_wydawnictwo_zwarte)["objectId"]
-        == pbn_publication.pk
-    )
+    ret, js = pbnclient.upload_publication(pbn_wydawnictwo_zwarte)
+    assert ret["objectId"] == pbn_publication.pk
 
 
 def test_sync_publication_to_samo_id(
