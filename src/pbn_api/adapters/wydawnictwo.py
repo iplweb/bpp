@@ -14,6 +14,11 @@ from bpp.util import strip_html
 
 
 class WydawnictwoPBNAdapter:
+    CHAPTER = "CHAPTER"
+    BOOK = "BOOK"
+    ARTICLE = "ARTICLE"
+    EDITED_BOOK = "EDITED_BOOK"
+
     def __init__(self, original):
         self.original = original
 
@@ -61,15 +66,14 @@ class WydawnictwoPBNAdapter:
                 return self.original.tom
 
     def get_type(self):
-
         if self.original.charakter_formalny.rodzaj_pbn == const.RODZAJ_PBN_ARTYKUL:
-            return "ARTICLE"
+            return WydawnictwoPBNAdapter.ARTICLE
         elif self.original.charakter_formalny.rodzaj_pbn == const.RODZAJ_PBN_KSIAZKA:
             if self.pod_redakcja():
-                return "EDITED_BOOK"
-            return "BOOK"
+                return WydawnictwoPBNAdapter.EDITED_BOOK
+            return WydawnictwoPBNAdapter.BOOK
         elif self.original.charakter_formalny.rodzaj_pbn == const.RODZAJ_PBN_ROZDZIAL:
-            return "CHAPTER"
+            return WydawnictwoPBNAdapter.CHAPTER
         else:
             raise WillNotExportError(
                 f"Rodzaj dla PBN nie określony dla charakteru formalnego {self.original.charakter_formalny}"
@@ -162,6 +166,21 @@ class WydawnictwoPBNAdapter:
             ret["publicUri"] = self.original.public_www
         elif self.original.www:
             ret["publicUri"] = self.original.www
+        elif (
+            ret["type"] == WydawnictwoPBNAdapter.CHAPTER
+            and hasattr(self.original, "wydawnictwo_nadrzedne_id")
+            and self.original.wydawnictwo_nadrzedne_id is not None
+            and (
+                self.original.wydawnictwo_nadrzedne.public_www
+                or self.original.wydawnictwo_nadrzedne.www
+            )
+        ):
+            # W sytuacji, gdy eksportujemy rozdział, jako adres WWW można spróbować użyć
+            # adres WWW wydawnictwa nadrzędnego:
+            ret["publicUri"] = (
+                self.original.wydawnictwo_nadrzedne.public_www
+                or self.original.wydawnictwo_nadrzedne.www
+            )
 
         if not ret.get("doi") and not ret.get("publicUri"):
             raise WillNotExportError("Musi być DOI lub adres WWW")

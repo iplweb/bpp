@@ -1,8 +1,8 @@
 import pytest
 from model_mommy import mommy
 
+from fixtures.pbn_api import _zrob_wydawnictwo_pbn
 from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
-from pbn_api.tests.conftest import _zrob_wydawnictwo_pbn
 
 from bpp.models import (
     Autor,
@@ -11,6 +11,7 @@ from bpp.models import (
     Tryb_OpenAccess_Wydawnictwo_Ciagle,
     Wersja_Tekstu_OpenAccess,
     Wydawnictwo_Zwarte,
+    const,
 )
 
 
@@ -42,6 +43,33 @@ def test_WydawnictwoPBNAdapter_autor_eksport(praca_z_dyscyplina_pbn, jednostka):
 
     res = WydawnictwoPBNAdapter(praca_z_dyscyplina_pbn).pbn_get_json()
     assert res["journal"]
+
+
+def test_WydawnictwoPBNAdapter_www_eksport(
+    wydawnictwo_zwarte, wydawnictwo_nadrzedne, pbn_jezyk
+):
+    assert wydawnictwo_zwarte.wydawnictwo_nadrzedne_id == wydawnictwo_nadrzedne.pk
+
+    _zrob_wydawnictwo_pbn(
+        wydawnictwo_zwarte, pbn_jezyk, rodzaj_pbn=const.RODZAJ_PBN_ROZDZIAL
+    )
+
+    wydawnictwo_nadrzedne.public_www = "123"
+    wydawnictwo_nadrzedne.save()
+
+    wydawnictwo_zwarte.www = wydawnictwo_zwarte.public_www = None
+    wydawnictwo_zwarte.save()
+
+    res = WydawnictwoPBNAdapter(wydawnictwo_zwarte).pbn_get_json()
+    assert res["publicUri"] == "123"
+
+    wydawnictwo_zwarte.www = "456"
+    wydawnictwo_zwarte.save()
+
+    assert wydawnictwo_zwarte.wydawnictwo_nadrzedne == wydawnictwo_nadrzedne
+
+    res = WydawnictwoPBNAdapter(wydawnictwo_zwarte).pbn_get_json()
+    assert res["publicUri"] == "456"
 
 
 def test_WydawnictwoPBNAdapter_openaccess_zero_miesiecy_gdy_licencja(

@@ -50,9 +50,11 @@ def pbn_jezyk(jezyki, pbn_language):
     return polski
 
 
-def _zrob_wydawnictwo_pbn(wydawnictwo_ciagle, jezyk):
+def _zrob_wydawnictwo_pbn(
+    wydawnictwo_ciagle, jezyk, rodzaj_pbn=const.RODZAJ_PBN_ARTYKUL
+):
     cf = wydawnictwo_ciagle.charakter_formalny
-    cf.rodzaj_pbn = const.RODZAJ_PBN_ARTYKUL
+    cf.rodzaj_pbn = rodzaj_pbn
     cf.save()
 
     wydawnictwo_ciagle.jezyk = jezyk

@@ -13,6 +13,8 @@ Historia zmian
   wstawiaj tam cyfrę zero (b/n),
 * przy wysyłaniu do PBN "z automatu", w przypadku gdyby po stronie PBN istniał już rekord o takim DOI lub
   ISBN, spróbuj automatycznie pobrać ten rekord i dopasować do wysyłanego (b/n),
+* przy eksporcie do PBN, użyj strony WWW wydawnictwa nadrzędnego dla rozdziałów, w sytuacji, gdyby nie miały
+  określonej strony WWW (b/n),
 
 
 202108.1077
