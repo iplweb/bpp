@@ -1387,14 +1387,20 @@ def pobierz_rekordy_publikacji_instytucji(client: PBNClient):
 
 def usun_wszystkie_oswiadczenia(client):
     for elem in pbar(OswiadczenieInstytucji.objects.all()):
-        try:
-            elem.sprobuj_skasowac_z_pbn(pbn_client=client)
-        except StatementDeletionError as e:
-            if e.status_code == 400 and (
-                "Nie istnieją oświadczenia" in e.content
-                or "Nie istnieje oświadczenie" in e.content
-            ):
-                pass
-            else:
-                raise e
-        elem.delete()
+        with transaction.atomic():
+            try:
+                elem.sprobuj_skasowac_z_pbn(pbn_client=client)
+            except StatementDeletionError as e:
+                if e.status_code == 400 and (
+                    "Nie istnieją oświadczenia" in e.content
+                    or "Nie istnieje oświadczenie" in e.content
+                ):
+                    pass
+                else:
+                    raise e
+            elem.delete()
+
+            # Jeżeli usunięte zostało jakiekolwiek oświadczenie to automatycznie dane SentData przestają
+            # być aktualne, a system się na nich opiera. Zatem w tej sytuacji, kasujemy również
+            # wysłane dane:
+            SentData.objects.filter(pbn_uid_id=elem.publicationId_id).delete()

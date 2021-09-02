@@ -17,6 +17,7 @@ Historia zmian
   określonej strony WWW (b/n),
 * nie pokazuj "publikacje instytucji" w module redagowania w menu (b/n),
 * nie wysyłaj artykułów bez zadeklarowanych oświadczeń do PBN (b/n),
+* kasowanie oswiadczen kasuje rowniez historie wysłanych danych (b/n),
 
 
 202108.1077
