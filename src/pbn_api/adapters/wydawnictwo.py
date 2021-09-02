@@ -319,7 +319,7 @@ class WydawnictwoPBNAdapter:
             and not ret.get("statements")
         ):
             raise WillNotExportError(
-                "Nie wyślę rekordu artykułu bez zadeklarowanych oświadczeń autorów (dyscyplin). "
+                "Nie wyślę rekordu artykułu lub rozdziału bez zadeklarowanych oświadczeń autorów (dyscyplin). "
             )
 
         return ret
