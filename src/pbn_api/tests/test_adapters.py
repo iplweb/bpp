@@ -3,6 +3,7 @@ from model_mommy import mommy
 
 from fixtures.pbn_api import _zrob_wydawnictwo_pbn
 from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
+from pbn_api.exceptions import WillNotExportError
 
 from bpp.models import (
     Autor,
@@ -43,6 +44,13 @@ def test_WydawnictwoPBNAdapter_autor_eksport(praca_z_dyscyplina_pbn, jednostka):
 
     res = WydawnictwoPBNAdapter(praca_z_dyscyplina_pbn).pbn_get_json()
     assert res["journal"]
+
+
+def test_WydawnictwoPBNAdapter_eksport_artykulu_bez_oswiadczen_zwraca_blad(
+    praca_z_dyscyplina_pbn,
+):
+    with pytest.raises(WillNotExportError, match="bez zadeklarowanych"):
+        WydawnictwoPBNAdapter(praca_z_dyscyplina_pbn).pbn_get_json()
 
 
 def test_WydawnictwoPBNAdapter_www_eksport(

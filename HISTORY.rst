@@ -16,6 +16,7 @@ Historia zmian
 * przy eksporcie do PBN, użyj strony WWW wydawnictwa nadrzędnego dla rozdziałów, w sytuacji, gdyby nie miały
   określonej strony WWW (b/n),
 * nie pokazuj "publikacje instytucji" w module redagowania w menu (b/n),
+* nie wysyłaj artykułów bez zadeklarowanych oświadczeń do PBN (b/n),
 
 
 202108.1077

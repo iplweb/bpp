@@ -193,7 +193,6 @@ class WydawnictwoPBNAdapter:
         translators = []
         translationEditors = []
         statements = []
-        institutions = []
         jednostki = set()
         for elem in self.original.autorzy_set.all().select_related():
             #
@@ -308,6 +307,12 @@ class WydawnictwoPBNAdapter:
                 # "polonUuid": jednostka.pbn_uid.value("object", "polonUuid"),
                 # "versionHash": jednostka.pbn_uid.value("object", "versionHash"),
             }
-        ret["institutions"] = institutions
+        if institutions:
+            ret["institutions"] = institutions
+
+        if ret["type"] == WydawnictwoPBNAdapter.ARTICLE and not ret.get("statements"):
+            raise WillNotExportError(
+                "Nie wyślę rekordu artykułu bez zadeklarowanych oświadczeń autorów (dyscyplin). "
+            )
 
         return ret
