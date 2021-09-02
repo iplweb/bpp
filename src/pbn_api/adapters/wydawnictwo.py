@@ -310,7 +310,14 @@ class WydawnictwoPBNAdapter:
         if institutions:
             ret["institutions"] = institutions
 
-        if ret["type"] == WydawnictwoPBNAdapter.ARTICLE and not ret.get("statements"):
+        if (
+            ret["type"]
+            in [
+                WydawnictwoPBNAdapter.ARTICLE,
+                WydawnictwoPBNAdapter.CHAPTER,
+            ]
+            and not ret.get("statements")
+        ):
             raise WillNotExportError(
                 "Nie wyślę rekordu artykułu bez zadeklarowanych oświadczeń autorów (dyscyplin). "
             )

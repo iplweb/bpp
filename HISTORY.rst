@@ -24,6 +24,7 @@ Historia zmian
 * poprawka błędu przy wysyaniu rekordów przy odpowiedzi serwera PBN 400 i istniejącym DOI/ISBN (b/n),
 * opcja dla narzędzia command-line umożliwiająca wysyłąnie do PBN wyłącznie nowych rekordów (bez
   informacji w tabeli SentData) (b/n),
+* nie wysyłaj do PBN, jeżeli rozdział nie ma oświadczeń (b/n),
 
 
 202108.1077

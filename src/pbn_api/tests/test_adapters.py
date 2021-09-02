@@ -39,6 +39,15 @@ def praca_z_dyscyplina_pbn(praca_z_dyscyplina, pbn_jezyk):
     return praca_z_dyscyplina
 
 
+@pytest.fixture
+def rozdzial_z_dyscyplina_pbn(praca_z_dyscyplina_pbn):
+    cf = praca_z_dyscyplina_pbn.charakter_formalny
+    cf.rodzaj_pbn = const.RODZAJ_PBN_ROZDZIAL
+    cf.save()
+
+    return praca_z_dyscyplina_pbn
+
+
 def test_WydawnictwoPBNAdapter_autor_eksport(
     pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina, jednostka
 ):
@@ -59,6 +68,13 @@ def test_WydawnictwoPBNAdapter_eksport_artykulu_bez_oswiadczen_zwraca_blad(
 ):
     with pytest.raises(WillNotExportError, match="bez zadeklarowanych"):
         WydawnictwoPBNAdapter(praca_z_dyscyplina_pbn).pbn_get_json()
+
+
+def test_WydawnictwoPBNAdapter_eksport_rozdzialu_bez_oswiadczen_zwraca_blad(
+    rozdzial_z_dyscyplina_pbn,
+):
+    with pytest.raises(WillNotExportError, match="bez zadeklarowanych"):
+        WydawnictwoPBNAdapter(rozdzial_z_dyscyplina_pbn).pbn_get_json()
 
 
 def test_WydawnictwoPBNAdapter_www_eksport(
