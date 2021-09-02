@@ -1080,6 +1080,9 @@ MODELE_Z_PBN_UID = (
 #                 pass
 #
 
+PBN_KOMUNIKAT_ISBN_ISTNIEJE = "Publikacja o identycznym ISBN lub ISMN już istnieje"
+PBN_KOMUNIKAT_DOI_ISTNIEJE = "Publikacja o identycznym DOI i typie już istnieje"
+
 
 def _synchronizuj_pojedyncza_publikacje(client, rec):
     try:
@@ -1087,26 +1090,57 @@ def _synchronizuj_pojedyncza_publikacje(client, rec):
     except SameDataUploadedRecently:
         pass
     except HttpException as e:
-        if (
-            e.status_code == 400
-            and "Publikacja o identycznym ISBN lub ISMN już istnieje" in e.content
-        ):
-            if rec.pbn_uid_id is not None:
+        if e.status_code == 400:
+            if rec.pbn_uid_id is not None and (
+                PBN_KOMUNIKAT_ISBN_ISTNIEJE in e.content
+                or PBN_KOMUNIKAT_DOI_ISTNIEJE in e.content
+            ):
+
                 warnings.warn(
                     f"UWAGA: rekord z BPP {rec} mimo posiadania PBN UID {rec.pbn_uid_id} dostał"
                     f"przy synchronizacji komunkat: {e.content} !! Sprawa DO SPRAWDZENIA RECZNIE"
                 )
                 return
 
-            if hasattr(rec, "isbn"):
-                ret = _pobierz_prace_po_elemencie(
-                    client, "isbn", normalize_isbn(rec.isbn), value_from_rec=rec
-                )
-                if rec not in ret:
-                    return
-                rec.refresh_from_db()
-                assert rec.pbn_uid_id is not None
-                return _synchronizuj_pojedyncza_publikacje(client, rec)
+            ret = None
+
+            if PBN_KOMUNIKAT_ISBN_ISTNIEJE in e.content:
+                if (
+                    hasattr(rec, "isbn")
+                    and hasattr(rec, "e_isbn")
+                    and (rec.isbn is not None or rec.e_isbn is not None)
+                    and (normalize_isbn(rec.isbn) or normalize_isbn(rec.e_isbn))
+                ):
+                    isbn_value = normalize_isbn(rec.isbn or rec.e_isbn)
+                    ret = _pobierz_prace_po_elemencie(
+                        client, "isbn", isbn_value, value_from_rec=rec
+                    )
+
+            elif PBN_KOMUNIKAT_DOI_ISTNIEJE in e.content:
+                if (
+                    hasattr(rec, "doi")
+                    and rec.doi is not None
+                    and normalize_doi(rec.doi)
+                ):
+                    doi_value = normalize_doi(rec.doi)
+                    ret = _pobierz_prace_po_elemencie(
+                        client, "doi", doi_value, value_from_rec=rec
+                    )
+
+            else:
+                raise NotImplementedError("Should never happen")
+
+            if ret is None or rec not in ret:
+                # Jeżeli rekordu synchronizowanego nie ma wśród rekordów pobranych - zmatchowanych
+                # przez funkcję _pobierz_prace_po_elemencie, to wyjdź teraz:
+                return
+
+            # Rekord znalazł się na liście zmatchowanych przez funkcję _pobierz_po_elemencie,
+            # nadano mu pbn_uid_id. Odśwież to ID z bazy, uruchom jeszcze raz synchronizację
+            # rekordu:
+            rec.refresh_from_db()
+            assert rec.pbn_uid_id is not None
+            return _synchronizuj_pojedyncza_publikacje(client, rec)
 
         if e.status_code in [400, 500]:
             warnings.warn(
