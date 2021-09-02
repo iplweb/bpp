@@ -49,10 +49,13 @@ class SentDataManager(models.Manager):
         sd.pbn_uid_id = pbn_uid_id
         sd.save()
 
+    def ids_for_model(self, model):
+        return self.filter(content_type=ContentType.objects.get_for_model(model))
+
     def bad_uploads(self, model):
         return (
-            self.filter(uploaded_okay=False)
-            .filter(content_type=ContentType.objects.get_for_model(model))
+            self.ids_for_model(model)
+            .filter(uploaded_okay=False)
             .values_list("object_id", flat=True)
             .distinct()
         )

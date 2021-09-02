@@ -3,8 +3,8 @@
 Historia zmian
 ==============
 
-202108.1078-alpha
------------------
+202108.1078-beta
+----------------
 
 * pobieranie pracy z PBNu za pomocą ISBN uwzględnia E-ISBN w sytuacji, gdy ISBN nie jest wypełniony (b/n),
 * w przypadku wielu prac z tym samym ISBN, wcisnienie przycisku "pobierz po ISBN" wyświetla je wszystkie (b/n),
@@ -21,6 +21,9 @@ Historia zmian
 * narzedzie command-line do PBN: możliwość wysłania wyłącznie błędnych rekordów ponownie, możliwość wymuszonego
   wysłania wszystkich rekordów (b/n),
 * kasowanie obiektów SentData przy usuwaniu oświadczeń (b/n),
+* poprawka błędu przy wysyaniu rekordów przy odpowiedzi serwera PBN 400 i istniejącym DOI/ISBN (b/n),
+* opcja dla narzędzia command-line umożliwiająca wysyłąnie do PBN wyłącznie nowych rekordów (bez
+  informacji w tabeli SentData) (b/n),
 
 
 202108.1077

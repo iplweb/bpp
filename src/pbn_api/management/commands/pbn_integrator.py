@@ -128,6 +128,7 @@ class Command(PBNBaseCommand):
         parser.add_argument("--enable-sync", action="store_true", default=False)
         parser.add_argument("--force-upload", action="store_true", default=False)
         parser.add_argument("--only-bad", action="store_true", default=False)
+        parser.add_argument("--only-new", action="store_true", default=False)
         parser.add_argument(
             "--disable-progress-bar", action="store_true", default=False
         )
@@ -170,6 +171,7 @@ class Command(PBNBaseCommand):
         enable_sync,
         force_upload,
         only_bad,
+        only_new,
         disable_progress_bar,
         *args,
         **options
@@ -367,4 +369,9 @@ class Command(PBNBaseCommand):
             usun_wszystkie_oswiadczenia(client)
 
         if enable_sync:
-            synchronizuj_publikacje(client, force_upload, only_bad)
+            synchronizuj_publikacje(
+                client=client,
+                force_upload=force_upload,
+                only_bad=only_bad,
+                only_new=only_new,
+            )
