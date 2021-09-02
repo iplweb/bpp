@@ -126,6 +126,8 @@ class Command(PBNBaseCommand):
         )
         parser.add_argument("--skip-pages", type=int, default=0)
         parser.add_argument("--enable-sync", action="store_true", default=False)
+        parser.add_argument("--force-upload", action="store_true", default=False)
+        parser.add_argument("--only-bad", action="store_true", default=False)
         parser.add_argument(
             "--disable-progress-bar", action="store_true", default=False
         )
@@ -166,6 +168,8 @@ class Command(PBNBaseCommand):
         enable_integruj_publikacje_instytucji,
         skip_pages,
         enable_sync,
+        force_upload,
+        only_bad,
         disable_progress_bar,
         *args,
         **options
@@ -363,4 +367,4 @@ class Command(PBNBaseCommand):
             usun_wszystkie_oswiadczenia(client)
 
         if enable_sync:
-            synchronizuj_publikacje(client)
+            synchronizuj_publikacje(client, force_upload, only_bad)

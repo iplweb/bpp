@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import models, transaction
 
 from ..exceptions import HttpException, StatementDeletionError
 from .base import BasePBNMongoDBModel
@@ -149,3 +149,13 @@ class OswiadczenieInstytucji(models.Model):
             )
         except HttpException as e:
             raise StatementDeletionError(e.status_code, e.url, e.content)
+
+    @transaction.atomic
+    def delete(self, *args, **kw):
+        # Jeżeli usunięte zostało jakiekolwiek oświadczenie to automatycznie dane SentData przestają
+        # być aktualne, a system się na nich opiera. Zatem w tej sytuacji, kasujemy również
+        # wysłane dane:
+        from pbn_api.models import SentData
+
+        SentData.objects.filter(pbn_uid_id=self.publicationId_id).delete(*args, **kw)
+        return super(OswiadczenieInstytucji, self).delete(*args, **kw)

@@ -1078,9 +1078,9 @@ PBN_KOMUNIKAT_ISBN_ISTNIEJE = "Publikacja o identycznym ISBN lub ISMN już istni
 PBN_KOMUNIKAT_DOI_ISTNIEJE = "Publikacja o identycznym DOI i typie już istnieje"
 
 
-def _synchronizuj_pojedyncza_publikacje(client, rec):
+def _synchronizuj_pojedyncza_publikacje(client, rec, force_upload=False):
     try:
-        client.sync_publication(rec)
+        client.sync_publication(rec, force_upload=force_upload)
     except SameDataUploadedRecently:
         pass
     except HttpException as e:
@@ -1158,7 +1158,13 @@ def _synchronizuj_pojedyncza_publikacje(client, rec):
         )
 
 
-def synchronizuj_publikacje(client, skip=0):
+def synchronizuj_publikacje(client, force_upload=False, only_bad=False, skip=0):
+    """
+    :param only_bad: eksportuj jedynie rekordy, które mają wpis w tabeli SentData, ze ich eksport
+    nie powiódł się wcześniej.
+
+    :param force_upload: wymuszaj ponowne wysłanie, niezależnie od sytuacji w tabeli SentData
+    """
     #
     # Wydawnictwa zwarte
     #
@@ -1169,28 +1175,42 @@ def synchronizuj_publikacje(client, skip=0):
         .exclude(Q(doi=None) & (Q(public_www=None) | Q(www=None)))
     )
 
+    if only_bad:
+        zwarte_baza = zwarte_baza.filter(
+            pk__in=SentData.objects.bad_uploads(Wydawnictwo_Zwarte)
+        )
+
     for rec in pbar(
         zwarte_baza.filter(wydawnictwo_nadrzedne_id=None),
         label="sync_zwarte_ksiazki",
     ):
-        _synchronizuj_pojedyncza_publikacje(client, rec)
+        _synchronizuj_pojedyncza_publikacje(client, rec, force_upload=force_upload)
 
     for rec in pbar(
         zwarte_baza.exclude(wydawnictwo_nadrzedne_id=None),
         label="sync_zwarte_rozdzialy",
     ):
-        _synchronizuj_pojedyncza_publikacje(client, rec)
+        _synchronizuj_pojedyncza_publikacje(client, rec, force_upload=force_upload)
 
     #
     # Wydawnicwa ciagle
     #
-    for rec in pbar(
+    ciagle_baza = (
         Wydawnictwo_Ciagle.objects.filter(rok__gte=PBN_MIN_ROK)
         .exclude(charakter_formalny__rodzaj_pbn=None)
-        .exclude(Q(doi=None) & (Q(public_www=None) | Q(www=None))),
+        .exclude(Q(doi=None) & (Q(public_www=None) | Q(www=None)))
+    )
+
+    if only_bad:
+        ciagle_baza = ciagle_baza.filter(
+            pk__in=SentData.objects.bad_uploads(Wydawnictwo_Ciagle)
+        )
+
+    for rec in pbar(
+        ciagle_baza,
         label="sync_ciagle",
     ):
-        _synchronizuj_pojedyncza_publikacje(client, rec)
+        _synchronizuj_pojedyncza_publikacje(client, rec, force_upload=force_upload)
 
 
 def clear_match_publications():
@@ -1398,9 +1418,5 @@ def usun_wszystkie_oswiadczenia(client):
                     pass
                 else:
                     raise e
-            elem.delete()
 
-            # Jeżeli usunięte zostało jakiekolwiek oświadczenie to automatycznie dane SentData przestają
-            # być aktualne, a system się na nich opiera. Zatem w tej sytuacji, kasujemy również
-            # wysłane dane:
-            SentData.objects.filter(pbn_uid_id=elem.publicationId_id).delete()
+            elem.delete()

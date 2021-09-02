@@ -18,6 +18,9 @@ Historia zmian
 * nie pokazuj "publikacje instytucji" w module redagowania w menu (b/n),
 * nie wysyłaj artykułów bez zadeklarowanych oświadczeń do PBN (b/n),
 * kasowanie oswiadczen kasuje rowniez historie wysłanych danych (b/n),
+* narzedzie command-line do PBN: możliwość wysłania wyłącznie błędnych rekordów ponownie, możliwość wymuszonego
+  wysłania wszystkich rekordów (b/n),
+* kasowanie obiektów SentData przy usuwaniu oświadczeń (b/n),
 
 
 202108.1077

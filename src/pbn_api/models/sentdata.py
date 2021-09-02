@@ -49,6 +49,14 @@ class SentDataManager(models.Manager):
         sd.pbn_uid_id = pbn_uid_id
         sd.save()
 
+    def bad_uploads(self, model):
+        return (
+            self.filter(uploaded_okay=False)
+            .filter(content_type=ContentType.objects.get_for_model(model))
+            .values_list("object_id", flat=True)
+            .distinct()
+        )
+
 
 class SentData(LinkDoPBNMixin, models.Model):
     url_do_pbn = const.LINK_PBN_DO_PUBLIKACJI
