@@ -28,8 +28,8 @@ def test_WydawnictwoPBNAdapter_zwarte_ksiazka(pbn_wydawnictwo_zwarte_ksiazka):
     assert not res.get("journal")
 
 
-def test_WydawnictwoPBNAdapter_zwarte_rozdzial(pbn_wydawnictwo_zwarte_rozdzial):
-    res = WydawnictwoPBNAdapter(pbn_wydawnictwo_zwarte_rozdzial).pbn_get_json()
+def test_WydawnictwoPBNAdapter_zwarte_rozdzial(pbn_rozdzial_z_autorem_z_dyscyplina):
+    res = WydawnictwoPBNAdapter(pbn_rozdzial_z_autorem_z_dyscyplina).pbn_get_json()
     assert not res.get("journal")
 
 
@@ -78,8 +78,10 @@ def test_WydawnictwoPBNAdapter_eksport_rozdzialu_bez_oswiadczen_zwraca_blad(
 
 
 def test_WydawnictwoPBNAdapter_www_eksport(
-    wydawnictwo_zwarte, wydawnictwo_nadrzedne, pbn_jezyk
+    pbn_rozdzial_z_autorem_z_dyscyplina, wydawnictwo_nadrzedne, pbn_jezyk
 ):
+    wydawnictwo_zwarte = pbn_rozdzial_z_autorem_z_dyscyplina
+
     assert wydawnictwo_zwarte.wydawnictwo_nadrzedne_id == wydawnictwo_nadrzedne.pk
 
     _zrob_wydawnictwo_pbn(

@@ -102,6 +102,22 @@ def pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina(
 
 
 @pytest.fixture
+def pbn_rozdzial_z_autorem_z_dyscyplina(
+    pbn_wydawnictwo_zwarte, autor_z_dyscyplina, pbn_jednostka
+) -> Wydawnictwo_Ciagle:
+    _zrob_autora_pbn(autor_z_dyscyplina.autor)
+    pbn_wydawnictwo_zwarte.dodaj_autora(
+        autor_z_dyscyplina.autor,
+        pbn_jednostka,
+        dyscyplina_naukowa=autor_z_dyscyplina.dyscyplina_naukowa,
+    )
+    cf = pbn_wydawnictwo_zwarte.charakter_formalny
+    cf.rodzaj_pbn = const.RODZAJ_PBN_ROZDZIAL
+    cf.save()
+    return pbn_wydawnictwo_zwarte
+
+
+@pytest.fixture
 def pbn_charakter_formalny() -> Charakter_Formalny:
     return mommy.make(Charakter_Formalny, rodzaj_pbn=RODZAJ_PBN_KSIAZKA)
 
