@@ -16,8 +16,10 @@ from bpp.models import (
 )
 
 
-def test_WydawnictwoPBNAdapter_ciagle(pbn_wydawnictwo_ciagle):
-    res = WydawnictwoPBNAdapter(pbn_wydawnictwo_ciagle).pbn_get_json()
+def test_WydawnictwoPBNAdapter_ciagle(pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina):
+    res = WydawnictwoPBNAdapter(
+        pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina
+    ).pbn_get_json()
     assert res["journal"]
 
 
@@ -37,12 +39,18 @@ def praca_z_dyscyplina_pbn(praca_z_dyscyplina, pbn_jezyk):
     return praca_z_dyscyplina
 
 
-def test_WydawnictwoPBNAdapter_autor_eksport(praca_z_dyscyplina_pbn, jednostka):
+def test_WydawnictwoPBNAdapter_autor_eksport(
+    pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina, jednostka
+):
 
     autor_bez_dyscypliny = mommy.make(Autor)
-    praca_z_dyscyplina_pbn.dodaj_autora(autor_bez_dyscypliny, jednostka, "Jan Budnik")
+    pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina.dodaj_autora(
+        autor_bez_dyscypliny, jednostka, "Jan Budnik"
+    )
 
-    res = WydawnictwoPBNAdapter(praca_z_dyscyplina_pbn).pbn_get_json()
+    res = WydawnictwoPBNAdapter(
+        pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina
+    ).pbn_get_json()
     assert res["journal"]
 
 
@@ -81,8 +89,10 @@ def test_WydawnictwoPBNAdapter_www_eksport(
 
 
 def test_WydawnictwoPBNAdapter_openaccess_zero_miesiecy_gdy_licencja(
-    praca_z_dyscyplina_pbn: Wydawnictwo_Zwarte, openaccess_data
+    pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina: Wydawnictwo_Zwarte, openaccess_data
 ):
+
+    praca_z_dyscyplina_pbn = pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina
 
     praca_z_dyscyplina_pbn.openaccess_licencja = Licencja_OpenAccess.objects.first()
     praca_z_dyscyplina_pbn.openaccess_tryb_dostepu = (
@@ -107,7 +117,11 @@ def test_WydawnictwoPBNAdapter_openaccess_zero_miesiecy_gdy_licencja(
     assert res["openAccess"]["months"] == "0"
 
 
-def test_WydawnictwoPBNAdapter_autor_isbn_eisbn(praca_z_dyscyplina_pbn):
+def test_WydawnictwoPBNAdapter_autor_isbn_eisbn(
+    pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina,
+):
+    praca_z_dyscyplina_pbn = pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina
+
     praca_z_dyscyplina_pbn.isbn = None
     praca_z_dyscyplina_pbn.e_isbn = "123"
 

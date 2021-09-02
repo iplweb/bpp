@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 from model_mommy import mommy
 
-from fixtures import (
+from fixtures.conftest import (
     NORMAL_DJANGO_USER_LOGIN,
     NORMAL_DJANGO_USER_PASSWORD,
     _webtest_login,

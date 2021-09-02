@@ -30,15 +30,21 @@ def pbn_language():
     return Language.objects.create(code="pl", language={"lol": "XD"})
 
 
+def _zrob_autora_pbn(autor):
+    autor.pbn_uid = mommy.make(Scientist)
+    autor.save()
+    return autor
+
+
 @pytest.fixture
 def pbn_autor(autor_jan_nowak):
-    autor_jan_nowak.pbn_uid = mommy.make(Scientist)
-    return autor_jan_nowak
+    return _zrob_autora_pbn(autor_jan_nowak)
 
 
 @pytest.fixture
 def pbn_jednostka(jednostka):
     jednostka.pbn_uid = mommy.make(Institution)
+    jednostka.save()
     return jednostka
 
 
@@ -67,6 +73,32 @@ def _zrob_wydawnictwo_pbn(
 def pbn_wydawnictwo_ciagle(wydawnictwo_ciagle, pbn_jezyk) -> Wydawnictwo_Ciagle:
     _zrob_wydawnictwo_pbn(wydawnictwo_ciagle, pbn_jezyk)
     return wydawnictwo_ciagle
+
+
+@pytest.fixture
+def pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina(
+    pbn_wydawnictwo_ciagle, autor_z_dyscyplina, pbn_jednostka
+) -> Wydawnictwo_Ciagle:
+    _zrob_autora_pbn(autor_z_dyscyplina.autor)
+    pbn_wydawnictwo_ciagle.dodaj_autora(
+        autor_z_dyscyplina.autor,
+        pbn_jednostka,
+        dyscyplina_naukowa=autor_z_dyscyplina.dyscyplina_naukowa,
+    )
+    return pbn_wydawnictwo_ciagle
+
+
+@pytest.fixture
+def pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina(
+    pbn_wydawnictwo_zwarte, autor_z_dyscyplina, pbn_jednostka
+) -> Wydawnictwo_Ciagle:
+    _zrob_autora_pbn(autor_z_dyscyplina.autor)
+    pbn_wydawnictwo_zwarte.dodaj_autora(
+        autor_z_dyscyplina.autor,
+        pbn_jednostka,
+        dyscyplina_naukowa=autor_z_dyscyplina.dyscyplina_naukowa,
+    )
+    return pbn_wydawnictwo_zwarte
 
 
 @pytest.fixture

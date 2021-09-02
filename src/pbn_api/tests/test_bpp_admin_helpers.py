@@ -1,5 +1,6 @@
 from model_mommy import mommy
 
+from fixtures.pbn_api import MOCK_RETURNED_MONGODB_DATA
 from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
 from pbn_api.client import (
     PBN_GET_INSTITUTION_STATEMENTS,
@@ -8,7 +9,6 @@ from pbn_api.client import (
 )
 from pbn_api.exceptions import AccessDeniedException
 from pbn_api.models import SentData
-from pbn_api.tests.conftest import MOCK_RETURNED_MONGODB_DATA
 from pbn_api.tests.utils import middleware
 
 from django.contrib.messages import get_messages

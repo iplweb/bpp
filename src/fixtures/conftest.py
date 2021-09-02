@@ -831,7 +831,7 @@ mommy.generators.add(
 
 
 @pytest.fixture
-def autor_z_dyscyplina(autor_jan_nowak, dyscyplina1, rok):
+def autor_z_dyscyplina(autor_jan_nowak, dyscyplina1, rok) -> Autor_Dyscyplina:
     return Autor_Dyscyplina.objects.get_or_create(
         autor=autor_jan_nowak, dyscyplina_naukowa=dyscyplina1, rok=rok
     )[0]
