@@ -6,6 +6,7 @@ Historia zmian
 202108.1078-alpha
 -----------------
 
+* w przypadku wielu prac z tym samym ISBN, wcisnienie przycisku "pobierz po ISBN" wyświetla je wszystkie (b/n),
 * przy wysyłaniu do PBN, w przypadku braku wartości w polu ISBN, weź wartość z pola E-ISBN, jezeli istnieje (b/n),
 * przy wysyłaniu do PBN, w przypadku trybu udostępnienia "po publikacji", gdy ilośc miesięcy jest pusta,
   wstawiaj tam cyfrę zero (b/n),

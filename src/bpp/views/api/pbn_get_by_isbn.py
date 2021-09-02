@@ -43,6 +43,10 @@ class GetPBNPublicationsByISBN(View):
                 year=rok,
                 matchuj=True,
             )
+        except Publication.MultipleObjectsReturned:
+            # Wiele rekordów, zwróc ISBN. Po stronie klienta spowoduje to wpisanie numeru ISBN
+            # do pola wyszukujacego
+            return JsonResponse({"id": ni})
 
         if ret:
             return JsonResponse({"id": ret[0].pbn_uid.pk})
