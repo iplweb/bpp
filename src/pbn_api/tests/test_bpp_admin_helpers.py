@@ -65,7 +65,7 @@ def test_sprobuj_wgrac_do_pbn_uczelnia_integracja_wylaczona(
 
 
 def test_sprobuj_wgrac_do_pbn_dane_juz_wyslane(
-    pbn_wydawnictwo_zwarte_z_charakterem, pbn_uczelnia, pbnclient, rf
+    pbn_wydawnictwo_zwarte_z_charakterem, pbn_uczelnia, pbn_client, rf
 ):
     SentData.objects.updated(
         pbn_wydawnictwo_zwarte_z_charakterem,
@@ -76,7 +76,7 @@ def test_sprobuj_wgrac_do_pbn_dane_juz_wyslane(
 
     with middleware(req):
         sprobuj_wgrac_do_pbn(
-            req, pbn_wydawnictwo_zwarte_z_charakterem, pbn_client=pbnclient
+            req, pbn_wydawnictwo_zwarte_z_charakterem, pbn_client=pbn_client
         )
 
     msg = get_messages(req)
@@ -84,17 +84,17 @@ def test_sprobuj_wgrac_do_pbn_dane_juz_wyslane(
 
 
 def test_sprobuj_wgrac_do_pbn_access_denied(
-    pbn_wydawnictwo_zwarte_z_charakterem, pbnclient, rf, pbn_uczelnia
+    pbn_wydawnictwo_zwarte_z_charakterem, pbn_client, rf, pbn_uczelnia
 ):
     req = rf.get("/")
 
-    pbnclient.transport.return_values[
+    pbn_client.transport.return_values[
         PBN_POST_PUBLICATIONS_URL
     ] = AccessDeniedException(url="foo", content="testujemy")
 
     with middleware(req):
         sprobuj_wgrac_do_pbn(
-            req, pbn_wydawnictwo_zwarte_z_charakterem, pbn_client=pbnclient
+            req, pbn_wydawnictwo_zwarte_z_charakterem, pbn_client=pbn_client
         )
 
     msg = get_messages(req)
@@ -102,15 +102,15 @@ def test_sprobuj_wgrac_do_pbn_access_denied(
 
 
 def test_sprobuj_wgrac_do_pbn_inny_blad(
-    pbn_wydawnictwo_zwarte_z_charakterem, pbnclient, rf, pbn_uczelnia
+    pbn_wydawnictwo_zwarte_z_charakterem, pbn_client, rf, pbn_uczelnia
 ):
     req = rf.get("/")
 
-    pbnclient.transport.return_values[PBN_POST_PUBLICATIONS_URL] = Exception("test")
+    pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = Exception("test")
 
     with middleware(req):
         sprobuj_wgrac_do_pbn(
-            req, pbn_wydawnictwo_zwarte_z_charakterem, pbn_client=pbnclient
+            req, pbn_wydawnictwo_zwarte_z_charakterem, pbn_client=pbn_client
         )
 
     msg = get_messages(req)
@@ -118,21 +118,21 @@ def test_sprobuj_wgrac_do_pbn_inny_blad(
 
 
 def test_sprobuj_wgrac_do_pbn_sukces(
-    pbn_wydawnictwo_zwarte_z_charakterem, pbnclient, rf, pbn_uczelnia
+    pbn_wydawnictwo_zwarte_z_charakterem, pbn_client, rf, pbn_uczelnia
 ):
     req = rf.get("/")
 
-    pbnclient.transport.return_values[PBN_POST_PUBLICATIONS_URL] = {"objectId": "123"}
-    pbnclient.transport.return_values[
+    pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = {"objectId": "123"}
+    pbn_client.transport.return_values[
         PBN_GET_PUBLICATION_BY_ID_URL.format(id="123")
     ] = MOCK_RETURNED_MONGODB_DATA
-    pbnclient.transport.return_values[
+    pbn_client.transport.return_values[
         PBN_GET_INSTITUTION_STATEMENTS + "?publicationId=123&size=5120"
     ] = []
 
     with middleware(req):
         sprobuj_wgrac_do_pbn(
-            req, pbn_wydawnictwo_zwarte_z_charakterem, pbn_client=pbnclient
+            req, pbn_wydawnictwo_zwarte_z_charakterem, pbn_client=pbn_client
         )
 
     msg = get_messages(req)

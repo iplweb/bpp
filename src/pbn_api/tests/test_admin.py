@@ -21,17 +21,17 @@ def test_SentDataAdmin_list_filter_works(admin_client):
 
 
 @pytest.mark.django_db
-def test_OswiadczenieInstytucji_delete_model(pbn_uczelnia, pbnclient, rf):
+def test_OswiadczenieInstytucji_delete_model(pbn_uczelnia, pbn_client, rf):
     oi = mommy.make(OswiadczenieInstytucji)
     req = rf.get("/")
 
-    pbnclient.transport.return_values[
+    pbn_client.transport.return_values[
         PBN_DELETE_PUBLICATION_STATEMENT.format(publicationId=oi.publicationId_id)
     ] = {"1": "2"}
 
     with middleware(req):
         OswiadczeniaInstytucjiAdmin(OswiadczenieInstytucji, None).delete_model(
-            req, oi, pbn_client=pbnclient
+            req, oi, pbn_client=pbn_client
         )
 
     try:

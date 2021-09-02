@@ -12,9 +12,9 @@ from pbn_api.tests.conftest import MOCK_RETURNED_MONGODB_DATA
 
 
 def test_PBNClient_test_upload_publication_nie_trzeba(
-    pbnclient, pbn_wydawnictwo_zwarte
+    pbn_client, pbn_wydawnictwo_zwarte
 ):
-    pbnclient.transport.return_values[PBN_POST_PUBLICATIONS_URL] = {"objectId": None}
+    pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = {"objectId": None}
 
     SentData.objects.updated(
         pbn_wydawnictwo_zwarte,
@@ -22,49 +22,51 @@ def test_PBNClient_test_upload_publication_nie_trzeba(
     )
 
     with pytest.raises(SameDataUploadedRecently):
-        pbnclient.upload_publication(pbn_wydawnictwo_zwarte)
+        pbn_client.upload_publication(pbn_wydawnictwo_zwarte)
 
 
 class PBNTestClientException(Exception):
     pass
 
 
-def test_PBNClient_test_upload_publication_exception(pbnclient, pbn_wydawnictwo_zwarte):
-    pbnclient.transport.return_values[
+def test_PBNClient_test_upload_publication_exception(
+    pbn_client, pbn_wydawnictwo_zwarte
+):
+    pbn_client.transport.return_values[
         PBN_POST_PUBLICATIONS_URL
     ] = PBNTestClientException("nei")
 
     with pytest.raises(PBNTestClientException):
-        pbnclient.upload_publication(pbn_wydawnictwo_zwarte)
+        pbn_client.upload_publication(pbn_wydawnictwo_zwarte)
 
 
 def test_PBNClient_test_upload_publication_wszystko_ok(
-    pbnclient, pbn_wydawnictwo_zwarte, pbn_publication
+    pbn_client, pbn_wydawnictwo_zwarte, pbn_publication
 ):
 
-    pbnclient.transport.return_values[PBN_POST_PUBLICATIONS_URL] = {
+    pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = {
         "objectId": pbn_publication.pk
     }
 
-    ret, js = pbnclient.upload_publication(pbn_wydawnictwo_zwarte)
+    ret, js = pbn_client.upload_publication(pbn_wydawnictwo_zwarte)
     assert ret["objectId"] == pbn_publication.pk
 
 
 def test_sync_publication_to_samo_id(
-    pbnclient, pbn_wydawnictwo_zwarte, pbn_publication, pbn_autor, pbn_jednostka
+    pbn_client, pbn_wydawnictwo_zwarte, pbn_publication, pbn_autor, pbn_jednostka
 ):
     pbn_wydawnictwo_zwarte.pbn_uid = pbn_publication
     pbn_wydawnictwo_zwarte.save()
 
     stare_id = pbn_wydawnictwo_zwarte.pbn_uid_id
 
-    pbnclient.transport.return_values[PBN_POST_PUBLICATIONS_URL] = {
+    pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = {
         "objectId": pbn_publication.pk
     }
-    pbnclient.transport.return_values[
+    pbn_client.transport.return_values[
         PBN_GET_PUBLICATION_BY_ID_URL.format(id=pbn_publication.pk)
     ] = MOCK_RETURNED_MONGODB_DATA
-    pbnclient.transport.return_values[
+    pbn_client.transport.return_values[
         PBN_GET_INSTITUTION_STATEMENTS + "?publicationId=123&size=5120"
     ] = [
         {
@@ -79,7 +81,7 @@ def test_sync_publication_to_samo_id(
         }
     ]
 
-    pbnclient.sync_publication(pbn_wydawnictwo_zwarte)
+    pbn_client.sync_publication(pbn_wydawnictwo_zwarte)
 
     pbn_publication.refresh_from_db()
     assert pbn_publication.versions[0]["baz"] == "quux"
@@ -87,41 +89,41 @@ def test_sync_publication_to_samo_id(
 
 
 def test_sync_publication_tekstowo_podane_id(
-    pbnclient, pbn_wydawnictwo_zwarte, pbn_publication
+    pbn_client, pbn_wydawnictwo_zwarte, pbn_publication
 ):
 
-    pbnclient.transport.return_values[PBN_POST_PUBLICATIONS_URL] = {
+    pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = {
         "objectId": pbn_publication.pk
     }
-    pbnclient.transport.return_values[
+    pbn_client.transport.return_values[
         PBN_GET_PUBLICATION_BY_ID_URL.format(id=pbn_publication.pk)
     ] = MOCK_RETURNED_MONGODB_DATA
-    pbnclient.transport.return_values[
+    pbn_client.transport.return_values[
         PBN_GET_INSTITUTION_STATEMENTS + "?publicationId=123&size=5120"
     ] = []
 
-    pbnclient.sync_publication(f"wydawnictwo_zwarte:{pbn_wydawnictwo_zwarte.pk}")
+    pbn_client.sync_publication(f"wydawnictwo_zwarte:{pbn_wydawnictwo_zwarte.pk}")
 
     pbn_publication.refresh_from_db()
     assert pbn_publication.versions[0]["baz"] == "quux"
 
 
-def test_sync_publication_nowe_id(pbnclient, pbn_wydawnictwo_zwarte, pbn_publication):
+def test_sync_publication_nowe_id(pbn_client, pbn_wydawnictwo_zwarte, pbn_publication):
     assert pbn_wydawnictwo_zwarte.pbn_uid_id is None
 
     stare_id = pbn_wydawnictwo_zwarte.pbn_uid_id
 
-    pbnclient.transport.return_values[PBN_POST_PUBLICATIONS_URL] = {
+    pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = {
         "objectId": pbn_publication.pk
     }
-    pbnclient.transport.return_values[
+    pbn_client.transport.return_values[
         PBN_GET_PUBLICATION_BY_ID_URL.format(id=pbn_publication.pk)
     ] = MOCK_RETURNED_MONGODB_DATA
-    pbnclient.transport.return_values[
+    pbn_client.transport.return_values[
         PBN_GET_INSTITUTION_STATEMENTS + "?publicationId=123&size=5120"
     ] = []
 
-    pbnclient.sync_publication(pbn_wydawnictwo_zwarte)
+    pbn_client.sync_publication(pbn_wydawnictwo_zwarte)
 
     pbn_publication.refresh_from_db()
     assert pbn_publication.versions[0]["baz"] == "quux"
