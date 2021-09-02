@@ -25,7 +25,9 @@ PBN_MENU = [
     ("Wydawcy", "/admin/pbn_api/publisher"),
     ("Naukowcy", "/admin/pbn_api/scientist"),
     ("Publikacje", "/admin/pbn_api/publication"),
-    ("Publikacje instytucji", "/admin/pbn_api/publikacjainstytucji"),
+    # Chowamy publikacjie instytucji z menu - niech sobie zostaną dostępne z innego
+    # miejsca, ale nie są one generalnie potrzebne (mpasternak, 1.09.2021)
+    # ("Publikacje instytucji", "/admin/pbn_api/publikacjainstytucji"),
     ("Oświadczenia instytucji", "/admin/pbn_api/oswiadczenieinstytucji"),
     ("Przesłane dane", "/admin/pbn_api/sentdata"),
 ]
