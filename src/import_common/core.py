@@ -332,15 +332,6 @@ def matchuj_publikacje(
             ).order_by("-podobienstwo")[:2]
             fail_if_seq_scan(res, DEBUG_MATCHOWANIE)
             if res.exists():
-
-                # if not res.first().podobienstwo >= MATCH_SIMILARITY_THRESHOLD_LOW:
-                #     print(
-                #         "\r\nKOPERA",
-                #         res.first().podobienstwo,
-                #         title,
-                #         res.first().tytul_oryginalny,
-                #     )
-                #
                 if res.first().podobienstwo >= MATCH_SIMILARITY_THRESHOLD_VERY_LOW:
                     return res.first()
                 else:
