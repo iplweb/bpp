@@ -14,6 +14,11 @@ from bpp.util import strip_html
 
 
 class WydawnictwoPBNAdapter:
+    CHAPTER = "CHAPTER"
+    BOOK = "BOOK"
+    ARTICLE = "ARTICLE"
+    EDITED_BOOK = "EDITED_BOOK"
+
     def __init__(self, original):
         self.original = original
 
@@ -61,15 +66,14 @@ class WydawnictwoPBNAdapter:
                 return self.original.tom
 
     def get_type(self):
-
         if self.original.charakter_formalny.rodzaj_pbn == const.RODZAJ_PBN_ARTYKUL:
-            return "ARTICLE"
+            return WydawnictwoPBNAdapter.ARTICLE
         elif self.original.charakter_formalny.rodzaj_pbn == const.RODZAJ_PBN_KSIAZKA:
             if self.pod_redakcja():
-                return "EDITED_BOOK"
-            return "BOOK"
+                return WydawnictwoPBNAdapter.EDITED_BOOK
+            return WydawnictwoPBNAdapter.BOOK
         elif self.original.charakter_formalny.rodzaj_pbn == const.RODZAJ_PBN_ROZDZIAL:
-            return "CHAPTER"
+            return WydawnictwoPBNAdapter.CHAPTER
         else:
             raise WillNotExportError(
                 f"Rodzaj dla PBN nie określony dla charakteru formalnego {self.original.charakter_formalny}"
@@ -106,6 +110,8 @@ class WydawnictwoPBNAdapter:
             if self.original.openaccess_ilosc_miesiecy is not None:
                 #     "months": 0,
                 oa["months"] = str(self.original.openaccess_ilosc_miesiecy)
+            else:
+                oa["months"] = "0"
 
         if self.original.openaccess_tryb_dostepu_id is not None:
             if ret["type"] == "ARTICLE":
@@ -160,6 +166,21 @@ class WydawnictwoPBNAdapter:
             ret["publicUri"] = self.original.public_www
         elif self.original.www:
             ret["publicUri"] = self.original.www
+        elif (
+            ret["type"] == WydawnictwoPBNAdapter.CHAPTER
+            and hasattr(self.original, "wydawnictwo_nadrzedne_id")
+            and self.original.wydawnictwo_nadrzedne_id is not None
+            and (
+                self.original.wydawnictwo_nadrzedne.public_www
+                or self.original.wydawnictwo_nadrzedne.www
+            )
+        ):
+            # W sytuacji, gdy eksportujemy rozdział, jako adres WWW można spróbować użyć
+            # adres WWW wydawnictwa nadrzędnego:
+            ret["publicUri"] = (
+                self.original.wydawnictwo_nadrzedne.public_www
+                or self.original.wydawnictwo_nadrzedne.www
+            )
 
         if not ret.get("doi") and not ret.get("publicUri"):
             raise WillNotExportError("Musi być DOI lub adres WWW")
@@ -172,7 +193,6 @@ class WydawnictwoPBNAdapter:
         translators = []
         translationEditors = []
         statements = []
-        institutions = []
         jednostki = set()
         for elem in self.original.autorzy_set.all().select_related():
             #
@@ -231,6 +251,10 @@ class WydawnictwoPBNAdapter:
         if hasattr(self.original, "isbn"):
             if self.original.isbn:
                 ret["isbn"] = normalize_isbn(self.original.isbn)
+            elif hasattr(self.original, "e_isbn"):
+                # Jeżeli nie ma ISBN a jest wartość w polu E-ISBN, to użyj jej:
+                if self.original.e_isbn:
+                    ret["isbn"] = normalize_isbn(self.original.e_isbn)
 
         if hasattr(self.original, "issn"):
             if self.original.issn:
@@ -283,6 +307,12 @@ class WydawnictwoPBNAdapter:
                 # "polonUuid": jednostka.pbn_uid.value("object", "polonUuid"),
                 # "versionHash": jednostka.pbn_uid.value("object", "versionHash"),
             }
-        ret["institutions"] = institutions
+        if institutions:
+            ret["institutions"] = institutions
+
+        if ret["type"] == WydawnictwoPBNAdapter.ARTICLE and not ret.get("statements"):
+            raise WillNotExportError(
+                "Nie wyślę rekordu artykułu bez zadeklarowanych oświadczeń autorów (dyscyplin). "
+            )
 
         return ret

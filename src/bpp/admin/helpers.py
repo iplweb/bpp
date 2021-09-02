@@ -9,11 +9,14 @@ from django.forms import BaseInlineFormSet
 from django.forms.widgets import Textarea
 from django.urls import reverse
 
+from import_common.normalization import normalize_isbn
 from pbn_api.exceptions import AccessDeniedException, SameDataUploadedRecently
+from pbn_api.integrator import _pobierz_prace_po_elemencie
 from pbn_api.models import SentData
 
 from django.contrib import messages
 from django.contrib.admin.utils import quote
+from django.contrib.contenttypes.models import ContentType
 
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
@@ -331,7 +334,7 @@ class LimitingFormset(BaseInlineFormSet):
         return self._queryset_limited
 
 
-def link_do_obiektu(obj):
+def link_do_obiektu(obj, friendly_name=None):
     opts = obj._meta
     obj_url = reverse(
         "admin:%s_%s_change" % (opts.app_label, opts.model_name),
@@ -339,7 +342,9 @@ def link_do_obiektu(obj):
         # current_app=self.admin_site.name,
     )
     # Add a link to the object's change form if the user can edit the obj.
-    return format_html('<a href="{}">{}</a>', urlquote(obj_url), mark_safe(obj))
+    if friendly_name is None:
+        friendly_name = mark_safe(obj)
+    return format_html('<a href="{}">{}</a>', urlquote(obj_url), friendly_name)
 
 
 def sprobuj_policzyc_sloty(request, obj):
@@ -365,7 +370,7 @@ def sprobuj_policzyc_sloty(request, obj):
         )
 
 
-def sprobuj_wgrac_do_pbn(request, obj, force_upload=False):
+def sprobuj_wgrac_do_pbn(request, obj, force_upload=False, pbn_client=None):
     from bpp.models.uczelnia import Uczelnia
 
     if obj.charakter_formalny.rodzaj_pbn is None:
@@ -374,6 +379,7 @@ def sprobuj_wgrac_do_pbn(request, obj, force_upload=False):
             'Rekord "%s" nie będzie eksportowany do PBN zgodnie z ustawieniem dla charakteru formalnego.'
             % link_do_obiektu(obj),
         )
+        return
 
     uczelnia = Uczelnia.objects.get_default()
     if uczelnia is None:
@@ -387,9 +393,56 @@ def sprobuj_wgrac_do_pbn(request, obj, force_upload=False):
     if not uczelnia.pbn_integracja or not uczelnia.pbn_aktualizuj_na_biezaco:
         return
 
-    client = uczelnia.pbn_client(request.user.pbn_token)
+    if pbn_client is None:
+        pbn_client = uczelnia.pbn_client(request.user.pbn_token)
+
+    # Sprawdź, czy wydawnictwo nadrzędne ma odpowoednik PBN:
+    if (
+        hasattr(obj, "wydawnictwo_nadrzedne_id")
+        and obj.wydawnictwo_nadrzedne_id is not None
+    ):
+        wn = obj.wydawnictwo_nadrzedne
+        if wn.pbn_uid_id is None:
+            messages.info(
+                request,
+                "Wygląda na to, że wydawnictwo nadrzędne tego rekordu nie posiada odpowiednika "
+                "w PBN, spróbuję go pobrać.",
+            )
+            udalo = False
+            if wn.isbn:
+                ni = normalize_isbn(wn.isbn)
+                if ni:
+                    res = _pobierz_prace_po_elemencie(pbn_client, "isbn", ni)
+                    if res:
+                        messages.info(
+                            request,
+                            f"Udało się dopasować PBN UID wydawnictwa nadrzędnego po ISBN "
+                            f"({', '.join([x.tytul_oryginalny for x in res])}). ",
+                        )
+                        udalo = True
+
+            elif wn.doi:
+                nd = normalize_isbn(wn.doi)
+                if nd:
+                    res = _pobierz_prace_po_elemencie(pbn_client, "doi", nd)
+                    if res:
+                        messages.info(
+                            request,
+                            f"Udało się dopasować PBN UID wydawnictwa nadrzędnego po DOI. "
+                            f"({', '.join([x.tytul_oryginalny for x in res])}). ",
+                        )
+                        udalo = True
+
+            if not udalo:
+                messages.warning(
+                    request,
+                    "Wygląda na to, że nie udało się dopasować rekordu nadrzędnego po ISBN/DOI do rekordu "
+                    "po stronie PBN. Jednakże rekordy z PBN zostały pobrane i możesz ustawić odpowiednik "
+                    "PBN dla wydawnictwa nadrzędnego ręcznie. ",
+                )
+
     try:
-        client.sync_publication(obj, force_upload=force_upload)
+        pbn_client.sync_publication(obj, force_upload=force_upload)
 
     except SameDataUploadedRecently as e:
         link_do_wyslanych = reverse(
@@ -420,15 +473,27 @@ def sprobuj_wgrac_do_pbn(request, obj, force_upload=False):
     except Exception as e:
         messages.warning(
             request,
-            'Nie można zsynchronizować obiektu "%s" z PBN. Kod błędu: %r.'
+            'Nie można zsynchronizować obiektu "%s" z PBN. Kod błędu: %r. '
             % (link_do_obiektu(obj), e),
         )
         return
 
+    sent_data = SentData.objects.get(
+        content_type=ContentType.objects.get_for_model(obj), object_id=obj.pk
+    )
+    sent_data_link = link_do_obiektu(
+        sent_data, "Kliknij tutaj, aby otworzyć widok wysłanych danych. "
+    )
+
+    publication_link = link_do_obiektu(
+        sent_data.pbn_uid,
+        "Kliknij tutaj, aby otworzyć zwrotnie otrzymane z PBN dane o rekordzie. ",
+    )
     messages.success(
         request,
         f"Dane w PBN dla rekordu {link_do_obiektu(obj)} zostały zaktualizowane. "
-        f'<a target=_blank href="{obj.link_do_pbn()}">Kliknij tutaj, aby otworzyć w PBN</a>. ',
+        f'<a target=_blank href="{obj.link_do_pbn()}">Kliknij tutaj, aby otworzyć w PBN</a>. '
+        f"{sent_data_link}{publication_link}",
     )
 
 

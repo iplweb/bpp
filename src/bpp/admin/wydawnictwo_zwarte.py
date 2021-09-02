@@ -20,7 +20,9 @@ from bpp.admin import helpers
 from bpp.admin.filters import (
     CalkowitaLiczbaAutorowFilter,
     DOIUstawioneFilter,
+    JestWydawnictwemNadrzednymDlaFilter,
     LiczbaZnakowFilter,
+    MaWydawnictwoNadrzedneFilter,
     OstatnioZmienionePrzezFilter,
     PBN_UID_IDObecnyFilter,
     UtworzonePrzezFilter,
@@ -85,6 +87,8 @@ class Wydawnictwo_ZwarteAdmin_Baza(CommitedModelAdmin):
         "jezyk",
         LiczbaZnakowFilter,
         "rok",
+        JestWydawnictwemNadrzednymDlaFilter,
+        MaWydawnictwoNadrzedneFilter,
         DOIUstawioneFilter,
         OstatnioZmienionePrzezFilter,
         UtworzonePrzezFilter,

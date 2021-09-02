@@ -3,6 +3,43 @@
 Historia zmian
 ==============
 
+202108.1078-alpha
+-----------------
+
+* pobieranie pracy z PBNu za pomocą ISBN uwzględnia E-ISBN w sytuacji, gdy ISBN nie jest wypełniony (b/n),
+* w przypadku wielu prac z tym samym ISBN, wcisnienie przycisku "pobierz po ISBN" wyświetla je wszystkie (b/n),
+* przy wysyłaniu do PBN, w przypadku braku wartości w polu ISBN, weź wartość z pola E-ISBN, jezeli istnieje (b/n),
+* przy wysyłaniu do PBN, w przypadku trybu udostępnienia "po publikacji", gdy ilośc miesięcy jest pusta,
+  wstawiaj tam cyfrę zero (b/n),
+* przy wysyłaniu do PBN "z automatu", w przypadku gdyby po stronie PBN istniał już rekord o takim DOI lub
+  ISBN, spróbuj automatycznie pobrać ten rekord i dopasować do wysyłanego (b/n),
+* przy eksporcie do PBN, użyj strony WWW wydawnictwa nadrzędnego dla rozdziałów, w sytuacji, gdyby nie miały
+  określonej strony WWW (b/n),
+* nie pokazuj "publikacje instytucji" w module redagowania w menu (b/n),
+* nie wysyłaj artykułów bez zadeklarowanych oświadczeń do PBN (b/n),
+* kasowanie oswiadczen kasuje rowniez historie wysłanych danych (b/n),
+* narzedzie command-line do PBN: możliwość wysłania wyłącznie błędnych rekordów ponownie, możliwość wymuszonego
+  wysłania wszystkich rekordów (b/n),
+* kasowanie obiektów SentData przy usuwaniu oświadczeń (b/n),
+
+
+202108.1077
+-----------
+
+* widoki PBN API umożliwiają łatwiejsze odnajdywanie rekordów na stronie PBN oraz w serwisie BPP (b/n),
+* zwiększ ilosć widocznych prac w multiwyszukiwarce do 25000,
+* aktualizuj lokalną kopię oświadczeń przy wysyłce rekordu (b/n),
+* wycofywanie oświadczeń instytucji z poziomu modułu "Redagowanie" (b/n),
+* przyciski umożliwiające szybkie przechodzenie między modułami PBN API a edycją prac w module "Redagowanie" (b/n)
+* możliwość filtrowania rekordów wydanwnictwa zwartego wg posiadania lub nie wydawnicwa nadrzędnego oraz
+  wg kryterium bycia lub nie wydawnictwem nadrzędnym dla innego rekordu (b/n),
+* przycisk "Pobierz wg ISBN" w module redagowania, do pobierania odpowiedników z PBN po ISBN - interaktywnie
+  (b/n),
+* matchuj prace po ISBN - wyłącznie rekordy nadrzędne (b/n),
+* użyj bardziej efektywnej metody pobierania danych do generowania PDF do raportu autorów (b/n),
+* bardziej wydajne pobieranie PBN UID po ISBN (b/n),
+* usuwanie wszystkich oświadczeń instytucji z linii poleceń (b/n),
+
 202108.1075
 -----------
 

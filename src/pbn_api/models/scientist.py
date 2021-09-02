@@ -2,9 +2,18 @@ from django.db import models
 
 from .base import BasePBNMongoDBModel
 
+from django.utils.functional import cached_property
 
-class Scientist(BasePBNMongoDBModel):
-    from_institution_api = models.NullBooleanField(db_index=True)
+from bpp.models import LinkDoPBNMixin, const
+
+
+class Scientist(LinkDoPBNMixin, BasePBNMongoDBModel):
+    url_do_pbn = const.LINK_PBN_DO_AUTORA
+    atrybut_dla_url_do_pbn = "pk"
+
+    from_institution_api = models.NullBooleanField(
+        "Rekord z API instytucji", db_index=True
+    )
 
     lastName = models.TextField(db_index=True, null=True, blank=True)
     name = models.TextField(db_index=True, null=True, blank=True)
@@ -40,3 +49,12 @@ class Scientist(BasePBNMongoDBModel):
         ret = ret.replace("-, ", "")
         ret = ret.replace(", (", " (")
         return ret
+
+    @cached_property
+    def rekord_w_bpp(self):
+        from bpp.models.autor import Autor
+
+        try:
+            return Autor.objects.filter(pbn_uid_id=self.pk).first()
+        except Autor.DoesNotExist:
+            pass

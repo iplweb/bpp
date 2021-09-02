@@ -26,6 +26,7 @@ from pbn_api.integrator import (
     pobierz_ludzi_z_uczelni,
     pobierz_oswiadczenia_z_instytucji,
     pobierz_prace_po_doi,
+    pobierz_prace_po_isbn,
     pobierz_publikacje_z_instytucji,
     pobierz_rekordy_publikacji_instytucji,
     pobierz_wydawcow_mnisw,
@@ -33,6 +34,7 @@ from pbn_api.integrator import (
     pobierz_zrodla,
     sprawdz_ilosc_autorow_przy_zmatchowaniu,
     synchronizuj_publikacje,
+    usun_wszystkie_oswiadczenia,
     weryfikuj_orcidy,
     wgraj_ludzi_z_offline_do_bazy,
     wyswietl_niezmatchowane_ze_zblizonymi_tytulami,
@@ -65,6 +67,7 @@ class Command(PBNBaseCommand):
             "--clear-match-publications", action="store_true", default=False
         )
         parser.add_argument("--enable-all", action="store_true", default=False)
+        parser.add_argument("--enable-delete-all", action="store_true", default=False)
 
         parser.add_argument("--enable-system-data", action="store_true", default=False)
         parser.add_argument(
@@ -95,6 +98,9 @@ class Command(PBNBaseCommand):
             "--enable-pobierz-po-doi", action="store_true", default=False
         )
         parser.add_argument(
+            "--enable-pobierz-po-isbn", action="store_true", default=False
+        )
+        parser.add_argument(
             "--enable-pobierz-wszystkie-publikacje", action="store_true", default=False
         )
         parser.add_argument(
@@ -120,6 +126,8 @@ class Command(PBNBaseCommand):
         )
         parser.add_argument("--skip-pages", type=int, default=0)
         parser.add_argument("--enable-sync", action="store_true", default=False)
+        parser.add_argument("--force-upload", action="store_true", default=False)
+        parser.add_argument("--only-bad", action="store_true", default=False)
         parser.add_argument(
             "--disable-progress-bar", action="store_true", default=False
         )
@@ -138,6 +146,7 @@ class Command(PBNBaseCommand):
         clear_publications,
         clear_match_publications,
         enable_all,
+        enable_delete_all,
         enable_system_data,
         enable_pobierz_zrodla,
         enable_integruj_zrodla,
@@ -150,6 +159,7 @@ class Command(PBNBaseCommand):
         enable_conferences,
         enable_institutions,
         enable_pobierz_po_doi,
+        enable_pobierz_po_isbn,
         enable_pobierz_wszystkie_publikacje,
         enable_pobierz_publikacje_instytucji,
         enable_pobierz_oswiadczenia_instytucji,
@@ -158,6 +168,8 @@ class Command(PBNBaseCommand):
         enable_integruj_publikacje_instytucji,
         skip_pages,
         enable_sync,
+        force_upload,
+        only_bad,
         disable_progress_bar,
         *args,
         **options
@@ -336,14 +348,23 @@ class Command(PBNBaseCommand):
         stage = 18
         check_end_before(stage, end_before_stage)
 
+        if (enable_pobierz_po_isbn or enable_all) and start_from_stage <= stage:
+            pobierz_prace_po_isbn(client)
+
+        stage = 19
+        check_end_before(stage, end_before_stage)
+
         if (
             enable_integruj_wszystkie_publikacje or enable_all
         ) and start_from_stage <= stage:
             wyswietl_niezmatchowane_ze_zblizonymi_tytulami()
             sprawdz_ilosc_autorow_przy_zmatchowaniu()
 
-        stage = 19
+        stage = 20
         check_end_before(stage, end_before_stage)
 
-        if enable_sync:  # or enable_all:
-            synchronizuj_publikacje(client)
+        if enable_delete_all:
+            usun_wszystkie_oswiadczenia(client)
+
+        if enable_sync:
+            synchronizuj_publikacje(client, force_upload, only_bad)

@@ -1,11 +1,13 @@
 import random
 import time
 import warnings
+from builtins import NotImplementedError
 from json import JSONDecodeError
 from pprint import pprint
 from urllib.parse import parse_qs, quote, urlparse
 
 import requests
+from django.db import transaction
 from requests import ConnectionError
 from requests.exceptions import SSLError
 
@@ -46,10 +48,12 @@ class PBNClientTransport:
 
 
 class PageableResource:
-    def __init__(self, transport, res, url, headers):
+    def __init__(self, transport, res, url, headers, body=None, method="get"):
         self.url = url
         self.headers = headers
         self.transport = transport
+        self.body = body
+        self.method = getattr(transport, method)
 
         try:
             self.page_0 = res["content"]
@@ -68,10 +72,12 @@ class PageableResource:
         if current_page == 0:
             return self.page_0
         # print(f"FETCH {current_page}")
-        ret = self.transport.get(
-            self.url + f"&page={current_page}",
-            headers=self.headers,
-        )
+
+        kw = {"headers": self.headers}
+        if self.body:
+            kw["body"] = self.body
+
+        ret = self.method(self.url + f"&page={current_page}", **kw)
         # print(f"FETCH DONE {current_page}")
 
         try:
@@ -254,7 +260,7 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
     ):
         return self.post(url, headers, body, delete=True)
 
-    def get_pages(self, url, headers=None, page_size=10, *args, **kw):
+    def _pages(self, method, url, headers=None, body=None, page_size=10, *args, **kw):
         # Stronicowanie zwraca rezultaty w taki sposób:
         # {'content': [{'mongoId': '5e709189878c28a04737dc6f',
         #               'status': 'ACTIVE',
@@ -285,15 +291,45 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
         for elem in kw:
             url += chr + elem + "=" + quote(kw[elem])
 
-        res = self.get(url, headers)
+        method_function = getattr(self, method)
+
+        if method == "get":
+            res = method_function(url, headers)
+        elif method == "post":
+            res = method_function(url, headers, body=body)
+        else:
+            raise NotImplementedError
+
         if "pageable" not in res:
             warnings.warn(
-                f"PBNClient.get_page request for {url} with headers {headers} did not return a paged resource, "
-                f"maybe use PBNClient.get instead",
+                f"PBNClient.{method}_page request for {url} with headers {headers} did not return a paged resource, "
+                f"maybe use PBNClient.{method} (without 'page') instead",
                 RuntimeWarning,
             )
             return res
-        return PageableResource(self, res, url, headers)
+        return PageableResource(
+            self, res, url=url, headers=headers, body=body, method=method
+        )
+
+    def get_pages(self, url, headers=None, page_size=10, *args, **kw):
+        return self._pages(
+            "get", url=url, headers=headers, page_size=page_size, *args, **kw
+        )
+
+    def post_pages(self, url, headers=None, body=None, page_size=10, *args, **kw):
+        # Jak get_pages, ale methoda to post
+        if body is None:
+            body = kw
+
+        return self._pages(
+            "post",
+            url=url,
+            headers=headers,
+            body=body,
+            page_size=page_size,
+            *args,
+            **kw,
+        )
 
 
 class ConferencesMixin:
@@ -322,7 +358,7 @@ class DictionariesMixin:
         return self.transport.get("/api/v1/dictionary/disciplines")
 
     def get_languages(self):
-        return self.transport.get("/api/v1/dictionary/languages")
+        return self.transport.get(PBN_GET_LANGUAGES_URL)
 
 
 class InstitutionsMixin:
@@ -357,14 +393,28 @@ class InstitutionsProfileMixin:
 
     def get_institution_statements(self, page_size=10):
         return self.transport.get_pages(
-            "/api/v1/institutionProfile/publications/page/statements",
+            PBN_GET_INSTITUTION_STATEMENTS,
             page_size=page_size,
         )
 
-    def delete_statements(self, id):
+    def get_institution_statements_of_single_publication(
+        self, pbn_uid_id, page_size=50
+    ):
+        return self.transport.get_pages(
+            PBN_GET_INSTITUTION_STATEMENTS + "?publicationId=" + pbn_uid_id,
+            page_size=page_size,
+        )
+
+    def delete_all_publication_statements(self, publicationId):
         return self.transport.delete(
-            f"/api/v1/institutionProfile/publications/{id}",
+            f"/api/v1/institutionProfile/publications/{publicationId}",
             body={"all": True, "statementsOfPersons": []},
+        )
+
+    def delete_publication_statement(self, publicationId, personId, role):
+        return self.transport.delete(
+            PBN_DELETE_PUBLICATION_STATEMENT.format(publicationId=publicationId),
+            body={"statementsOfPersons": [{"personId": personId, "role": role}]},
         )
 
 
@@ -430,6 +480,15 @@ class PublishersMixin:
         return self.transport.get(f"/api/v1/publishers/{id}/metadata")
 
 
+PBN_DELETE_PUBLICATION_STATEMENT = (
+    "/api/v1/institutionProfile/publications/{publicationId}"
+)
+PBN_GET_PUBLICATION_BY_ID_URL = "/api/v1/publications/id/{id}"
+PBN_GET_INSTITUTION_STATEMENTS = (
+    "/api/v1/institutionProfile/publications/page/statements"
+)
+
+
 class PublicationsMixin:
     def get_publication_by_doi(self, doi):
         return self.transport.get(
@@ -443,7 +502,7 @@ class PublicationsMixin:
         )
 
     def get_publication_by_id(self, id):
-        return self.transport.get(f"/api/v1/publications/id/{id}")
+        return self.transport.get(PBN_GET_PUBLICATION_BY_ID_URL.format(id=id))
 
     def get_publication_metadata(self, id):
         return self.transport.get(f"/api/v1/publications/id/{id}/metadata")
@@ -460,6 +519,15 @@ class AuthorMixin:
         return self.transport.get(f"/api/v1/author/{id}")
 
 
+class SearchMixin:
+    def search_publications(self, *args, **kw):
+        return self.transport.post_pages("/api/v1/search/publications", body=kw)
+
+
+PBN_POST_PUBLICATIONS_URL = "/api/v1/publications"
+PBN_GET_LANGUAGES_URL = "/api/v1/dictionary/languages"
+
+
 class PBNClient(
     AuthorMixin,
     ConferencesMixin,
@@ -470,6 +538,7 @@ class PBNClient(
     PersonMixin,
     PublicationsMixin,
     PublishersMixin,
+    SearchMixin,
 ):
     _interactive = False
 
@@ -477,7 +546,7 @@ class PBNClient(
         self.transport = transport
 
     def post_publication(self, json):
-        return self.transport.post("/api/v1/publications", body=json)
+        return self.transport.post(PBN_POST_PUBLICATIONS_URL, body=json)
 
     def upload_publication(self, rec, force_upload=False):
         js = WydawnictwoPBNAdapter(rec).pbn_get_json()
@@ -493,8 +562,7 @@ class PBNClient(
             SentData.objects.updated(rec, js, uploaded_okay=False, exception=str(e))
             raise e
 
-        SentData.objects.updated(rec, js)
-        return ret
+        return ret, js
 
     def download_publication(self, doi=None, objectId=None):
         from .integrator import zapisz_mongodb
@@ -509,6 +577,21 @@ class PBNClient(
 
         return zapisz_mongodb(data, Publication)
 
+    @transaction.atomic
+    def download_statements_of_publication(self, pub):
+        from pbn_api.models import OswiadczenieInstytucji
+        from .integrator import pobierz_mongodb, zapisz_oswiadczenie_instytucji
+
+        OswiadczenieInstytucji.objects.filter(publicationId_id=pub.pk).delete()
+
+        pobierz_mongodb(
+            self.get_institution_statements_of_single_publication(pub.pk, 5120),
+            None,
+            fun=zapisz_oswiadczenie_instytucji,
+            client=self,
+            disable_progress_bar=True,
+        )
+
     def sync_publication(self, pub, force_upload=False):
         # if not pub.doi:
         #     raise WillNotExportError("Ustaw DOI dla publikacji")
@@ -520,9 +603,18 @@ class PBNClient(
             ctype = ContentType.objects.get(app_label="bpp", model=model)
             pub = ctype.model_class().objects.get(pk=pk)
 
-        ret = self.upload_publication(pub, force_upload=force_upload)
+        # Wgraj dane do PBN
+        ret, js = self.upload_publication(pub, force_upload=force_upload)
 
+        # Pobierz zwrotnie dane z PBN
         publication = self.download_publication(objectId=ret["objectId"])
+        self.download_statements_of_publication(publication)
+
+        # Utwórz obiekt zapisanych danych. Dopiero w tym miejscu, bo jeżeli zostanie
+        # utworzony nowy rekord po stronie PBN, to pbn_uid_id musi wskazywać na
+        # bazę w tabeli Publication, która została chwile temu pobrana...
+        SentData.objects.updated(pub, js, pbn_uid_id=ret["objectId"])
+
         if pub.pbn_uid_id != ret["objectId"]:
             pub.pbn_uid = publication
             pub.save()
@@ -543,7 +635,20 @@ class PBNClient(
             else:
                 raise e
 
-        res = fun(*cmd[1:])
+        def extract_arguments(lst):
+            args = ()
+            kw = {}
+            for elem in lst:
+                if elem.find(":") >= 1:
+                    k, n = elem.split(":", 1)
+                    kw[k] = n
+                else:
+                    args += (elem,)
+
+            return args, kw
+
+        args, kw = extract_arguments(cmd[1:])
+        res = fun(*args, **kw)
         if type(res) == dict:
             pprint(res)
         elif is_iterable(res):

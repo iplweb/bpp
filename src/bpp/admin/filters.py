@@ -6,7 +6,7 @@ from django.contrib.admin.filters import SimpleListFilter
 from django.contrib.admin.models import ADDITION, CHANGE, LogEntry
 from django.contrib.contenttypes.models import ContentType
 
-from bpp.models import BppUser
+from bpp.models import BppUser, Wydawnictwo_Zwarte
 from bpp.models.struktura import Jednostka
 
 
@@ -54,6 +54,54 @@ class SimpleNotNullFilter(SimpleListFilter):
             return queryset.filter(**{field: None})
         elif v == "jest":
             return queryset.exclude(**{field: None})
+
+        return queryset
+
+
+class JestWydawnictwemNadrzednymDlaFilter(SimpleNotNullFilter):
+    title = "jest wydawnictwem nadrzędnym dla innego"
+    parameter_name = "wyd_nad"
+
+    def lookups(self, request, model_admin):
+        return [("brak", "nie jest"), ("jest", "jest")]
+
+    def queryset(self, request, queryset):
+        v = self.value()
+        field = self.db_field_name
+        if field is None:
+            field = self.parameter_name
+
+        if v == "brak":
+            return queryset.exclude(
+                pk__in=Wydawnictwo_Zwarte.objects.wydawnictwa_nadrzedne_dla_innych()
+            )
+        elif v == "jest":
+            return queryset.filter(
+                pk__in=Wydawnictwo_Zwarte.objects.wydawnictwa_nadrzedne_dla_innych()
+            )
+
+        return queryset
+
+
+class MaWydawnictwoNadrzedneFilter(SimpleNotNullFilter):
+    title = "ma wydawnictwo nadrzędne"
+    parameter_name = "ma_wyd_nad"
+
+    def lookups(self, request, model_admin):
+        return [("brak", "ma"), ("jest", "nie ma")]
+
+    def queryset(self, request, queryset):
+        v = self.value()
+        field = self.db_field_name
+        if field is None:
+            field = self.parameter_name
+
+        if v == "brak":
+            # ma nadrzedne
+            return queryset.exclude(wydawnictwo_nadrzedne_id=None)
+        elif v == "jest":
+            # nie ma nadrzednego
+            return queryset.filter(wydawnictwo_nadrzedne_id=None)
 
         return queryset
 

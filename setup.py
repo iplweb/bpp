@@ -61,7 +61,7 @@ def requirements(fn="requirements.txt"):
 
 setup(
     name="bpp-iplweb",
-    version="202108.1076",
+    version="202108.1078a0",
     description="System informatyczny do zarządzania bibliografią publikacji pracowników naukowych",
     long_description=readme,
     long_description_content_type="text/x-rst",
@@ -90,9 +90,9 @@ setup(
     ],
     scripts=["src/bin/bpp-manage.py"],
     python_requires=">=3.6,<4",
-    cmdclass={
-        "build": build,
-        "install_lib": install_lib,
-        "compile_translations": compile_translations,
-    },
+    # cmdclass={
+    #     "build": build,
+    #     "install_lib": install_lib,
+    #     "compile_translations": compile_translations,
+    # },
 )

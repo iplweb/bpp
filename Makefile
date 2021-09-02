@@ -50,6 +50,11 @@ clean-node-dir:
 pre-wheel: distclean assets
 
 bdist_wheel: pre-wheel
+    # compilemessages najpierw, bo wywoływane z setup.py powoduje
+    # problemy na CirlceCI
+	export PYTHONPATH=. && cd src && django-admin.py compilemessages
+
+	# Po zbudowaniu tłumaczeń zbuduj plik WHL
 	${PYTHON} setup.py -q bdist_wheel
 
 upload:

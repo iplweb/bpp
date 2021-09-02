@@ -7,7 +7,7 @@ from django.core.management import call_command
 # # SPRAWDZE czy
 # # - HTML wysyłany przechodzi
 # # - odwiedzenie URLa powoduje zamykanie komunkatu
-# celery always eager dla testów pytest w conftest
+# celery always eager dla testów pytest w fixtures
 # - czy to ruszy sprawdze
 # # - klikniecie "generuj raport" powoduje wygenerowanie komunikatu
 #
@@ -28,7 +28,7 @@ except ImportError:
 import pytest
 from selenium.webdriver.support.wait import WebDriverWait
 
-from conftest import NORMAL_DJANGO_USER_PASSWORD
+from fixtures import NORMAL_DJANGO_USER_PASSWORD
 
 from bpp.models.system import Charakter_Formalny, Jezyk, Status_Korekty, Typ_KBN
 
@@ -118,7 +118,7 @@ def test_bpp_notifications(preauth_asgi_browser):
 
 
 def test_bpp_notifications_and_messages(preauth_asgi_browser):
-    """Sprawdz, czy notyfikacje dochodza. """
+    """Sprawdz, czy notyfikacje dochodza."""
 
     s = "test notyfikacji 123 456 902309093209092"
     assert preauth_asgi_browser.is_text_not_present(s)

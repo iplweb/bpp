@@ -1,4 +1,7 @@
 from django.urls import reverse
+from model_mommy import mommy
+
+from pbn_api.models import Publication, SentData
 
 from bpp.models import Uczelnia, const
 from bpp.tests import normalize_html
@@ -63,6 +66,9 @@ def test_wydawnictwo_ciagle_admin_zapisz_i_wyslij_do_pbn_change_tak(
         cf = wydawnictwo_ciagle.charakter_formalny
         cf.rodzaj_pbn = const.RODZAJ_PBN_ARTYKUL
         cf.save()
+
+        pub = mommy.make(Publication)
+        SentData.objects.create(object=wydawnictwo_ciagle, data_sent={}, pbn_uid=pub)
 
         url = "admin:bpp_wydawnictwo_ciagle_change"
         page = admin_app.get(reverse(url, args=(wydawnictwo_ciagle.pk,)))

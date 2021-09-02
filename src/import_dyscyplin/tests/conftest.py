@@ -1,16 +1,18 @@
 from pathlib import Path
 
 import pytest
-from django.contrib.auth.models import Group
 from model_mommy import mommy
 
-from bpp.models.const import GR_WPROWADZANIE_DANYCH
-from conftest import (
-    _webtest_login,
+from fixtures.conftest import (
     NORMAL_DJANGO_USER_LOGIN,
     NORMAL_DJANGO_USER_PASSWORD,
+    _webtest_login,
 )
 from import_dyscyplin.models import Import_Dyscyplin
+
+from django.contrib.auth.models import Group
+
+from bpp.models.const import GR_WPROWADZANIE_DANYCH
 
 
 @pytest.fixture

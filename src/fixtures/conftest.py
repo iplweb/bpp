@@ -548,7 +548,7 @@ def fixture(name):
     return json.load(
         open(
             os.path.abspath(
-                os.path.join(os.path.dirname(__file__), "bpp", "fixtures", name)
+                os.path.join(os.path.dirname(__file__), "../bpp", "fixtures", name)
             ),
             "rb",
         )
@@ -831,7 +831,7 @@ mommy.generators.add(
 
 
 @pytest.fixture
-def autor_z_dyscyplina(autor_jan_nowak, dyscyplina1, rok):
+def autor_z_dyscyplina(autor_jan_nowak, dyscyplina1, rok) -> Autor_Dyscyplina:
     return Autor_Dyscyplina.objects.get_or_create(
         autor=autor_jan_nowak, dyscyplina_naukowa=dyscyplina1, rok=rok
     )[0]

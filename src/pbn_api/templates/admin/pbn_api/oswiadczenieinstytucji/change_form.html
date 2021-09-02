@@ -1,0 +1,24 @@
+{% extends "admin/change_form.html" %}
+
+{% block object-tools-items %}
+    {% if original.publicationId_id %}
+        <li><a target="_blank" href="{{ original.publicationId.link_do_pbn }}">Zobacz publikację w PBN</a></li>
+    {% endif %}
+    {% if original.personId_id %}
+        <li><a target="_blank" href="{{ original.personId.link_do_pbn }}">Zobacz osobę w PBN</a></li>
+        {% if original.personId.rekord_w_bpp %}
+            <li><a target="_blank" href="{{ original.personId.rekord_w_bpp.get_absolute_url }}">Zobacz osobę w BPP</a>
+            </li>
+        {% else %}
+            <li><a href="#" class="disabled">Brak dopasowania osoby w BPP</a></li>
+
+        {% endif %}
+    {% endif %}
+    {% if original.publicationId.rekord_w_bpp %}
+        <li><a target="_blank" href="{{ original.publicationId.rekord_w_bpp.original.get_absolute_url }}">Zobacz rekord
+            w BPP</a></li>
+    {% else %}
+        <li><a href="#" class="disabled">Brak dopasowania rekordu w BPP</a></li>
+    {% endif %}
+    {{ block.super }}
+{% endblock %}

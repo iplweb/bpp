@@ -18,6 +18,7 @@ from django.contrib.postgres.fields import HStoreField
 from django.contrib.postgres.search import SearchVectorField as VectorField
 
 from bpp.fields import DOIField, YearField
+from bpp.models import const
 from bpp.models.dyscyplina_naukowa import Autor_Dyscyplina, Dyscyplina_Naukowa
 from bpp.models.util import ModelZOpisemBibliograficznym, dodaj_autora
 from bpp.util import safe_html
@@ -460,6 +461,13 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
         help_text="Zaznacz, jeżeli praca znajdje się na profilu ORCID autora",
     )
 
+    data_oswiadczenia = models.DateField(
+        "Data oświadczenia",
+        null=True,
+        blank=True,
+        help_text="Informacja eksportowana do PBN, gdy uzupełniono",
+    )
+
     class Meta:
         abstract = True
         ordering = ("kolejnosc", "typ_odpowiedzialnosci__skrot")
@@ -726,6 +734,10 @@ class ModelWybitny(models.Model):
 
 class LinkDoPBNMixin:
     url_do_pbn = None
+    atrybut_dla_url_do_pbn = "pbn_uid_id"
+
+    def link_do_pbn_wartosc_id(self):
+        return getattr(self, self.atrybut_dla_url_do_pbn)
 
     def link_do_pbn(self):
         assert self.url_do_pbn, "Określ parametr self.url_do_pbn"
@@ -735,7 +747,8 @@ class LinkDoPBNMixin:
         uczelnia = Uczelnia.objects.get_default()
         if uczelnia is not None:
             return self.url_do_pbn.format(
-                pbn_api_root=uczelnia.pbn_api_root, pbn_uid_id=self.pbn_uid_id
+                pbn_api_root=uczelnia.pbn_api_root,
+                pbn_uid_id=self.link_do_pbn_wartosc_id(),
             )
 
 
@@ -748,7 +761,7 @@ class ModelZPBN_UID(LinkDoPBNMixin, models.Model):
         on_delete=models.SET_NULL,
     )
 
-    url_do_pbn = "{pbn_api_root}/core/#/publication/view/{pbn_uid_id}/current"
+    url_do_pbn = const.LINK_PBN_DO_PUBLIKACJI
 
     class Meta:
         abstract = True

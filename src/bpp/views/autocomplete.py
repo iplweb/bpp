@@ -11,6 +11,9 @@ from django.db.models.query_utils import Q
 from queryset_sequence import QuerySetSequence
 from taggit.models import Tag
 
+from import_common.core import normalized_db_isbn
+from import_common.normalization import normalize_isbn
+
 from django.contrib.auth.mixins import UserPassesTestMixin
 
 from bpp.jezyk_polski import warianty_zapisanego_nazwiska
@@ -379,11 +382,13 @@ class GlobalNavigationAutocomplete(Select2QuerySetSequenceView):
         rekord_qset_ftx = Rekord.objects.fulltext_filter(self.q)
 
         rekord_qset_doi = Rekord.objects.filter(doi__iexact=self.q)
+        rekord_qset_isbn = Rekord.objects.filter(isbn__iexact=self.q)
         rekord_qset_pbn = None
         if jest_pbn_uid(self.q):
             rekord_qset_pbn = Rekord.objects.filter(pbn_uid_id=self.q)
 
         qry = Q(pk__in=rekord_qset_doi.values_list("pk"))
+        qry |= Q(pk__in=rekord_qset_isbn)
         if rekord_qset_pbn:
             qry |= Q(pk__in=rekord_qset_pbn.values_list("pk"))
 
@@ -470,7 +475,21 @@ class AdminNavigationAutocomplete(StaffRequired, Select2QuerySetSequenceView):
                 if "pbn_uid" in [fld.name for fld in klass._meta.fields]:
                     filter |= Q(pbn_uid__pk=self.q)
 
-            querysets.append(klass.objects.filter(filter).only("tytul_oryginalny"))
+            annotate_isbn = False
+            if hasattr(klass, "isbn"):
+                ni = normalize_isbn(self.q)
+                if len(ni) < 20:
+                    filter |= Q(normalized_isbn=ni)
+                    annotate_isbn = True
+
+            if annotate_isbn:
+                qset = klass.objects.annotate(
+                    normalized_isbn=normalized_db_isbn
+                ).filter(filter)
+            else:
+                qset = klass.objects.filter(filter)
+
+            querysets.append(qset.only("tytul_oryginalny"))
 
         ret = QuerySetSequence(*querysets)
         return self.mixup_querysets(ret)

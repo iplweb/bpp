@@ -7,7 +7,7 @@
 {% include "multiseek/print-logo.html" %}
 {% include "multiseek/title.html" %}
 
-    {%  if paginator_count > 10000 %}
+    {%  if paginator_count > 25000 %}
         <div style="padding-left: 4em; padding-right: 4em;">
         <p>Wynik obecnego zapytania do bazy dałby w rezultacie {{ paginator_count }} rekordów. Jest to dość duża ilość
             i szczerze mówiąc pobieranie ich wszystkich przez tą stronę WWW będzie dla Ciebie dość karkołomne. Stąd też
@@ -15,7 +15,7 @@
             </p>
             <p>
             Prosimy, postaraj się ograniczyć zapytanie do bazy danych w taki sposób, aby dawało w rezultacie maksymalnie
-                do 10 tysięcy rekordów - wówczas zostaną one wyświetlone w wybranym przez Ciebie formacie w tym miejscu.</p>
+                do 25 tysięcy rekordów - wówczas zostaną one wyświetlone w wybranym przez Ciebie formacie w tym miejscu.</p>
         <p>Jeżeli potrzebujesz pobrać wszystkie rekordy z systemu BPP, skorzystaj z dostępu przez API. Obsługiwane
             API to <a target="_blank" href="/api/v1/">JSON-REST</a> oraz <a target="_blank" href="/bpp/oai/?verb=ListSets">protokół OAI-PMH</a>.
         </div>

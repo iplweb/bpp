@@ -1,8 +1,13 @@
-from django.db import models
+from django.db import models, transaction
 
+from ..exceptions import HttpException, StatementDeletionError
 from .base import BasePBNMongoDBModel
 
 from django.contrib.postgres.fields import JSONField
+
+from django.utils.functional import cached_property
+
+from bpp.models import Uczelnia
 
 
 class Institution(BasePBNMongoDBModel):
@@ -55,6 +60,18 @@ class Institution(BasePBNMongoDBModel):
             ret = ret.replace(",,", ",")
         ret = ret.replace(", (", " (")
         return ret
+
+    @cached_property
+    def rekord_w_bpp(self):
+        from bpp.models import Jednostka
+
+        try:
+            return Jednostka.objects.get(pbn_uid_id=self.pk)
+        except Jednostka.DoesNotExist:
+            try:
+                return Uczelnia.objects.get(pbn_uid_id=self.pk)
+            except Uczelnia.DoesNotExist:
+                pass
 
 
 class PublikacjaInstytucji(models.Model):
@@ -117,3 +134,28 @@ class OswiadczenieInstytucji(models.Model):
     class Meta:
         verbose_name = "Oświadczenie instytucji"
         verbose_name_plural = "Oświadczenia instytucji"
+
+    def sprobuj_skasowac_z_pbn(self, request=None, pbn_client=None):
+        if pbn_client is None:
+            uczelnia = Uczelnia.objects.get_for_request(request)
+            if uczelnia is None:
+                raise Uczelnia.DoesNotExist
+
+            pbn_client = uczelnia.pbn_client(request.user.pbn_token)
+
+        try:
+            pbn_client.delete_publication_statement(
+                self.publicationId_id, self.personId_id, self.type
+            )
+        except HttpException as e:
+            raise StatementDeletionError(e.status_code, e.url, e.content)
+
+    @transaction.atomic
+    def delete(self, *args, **kw):
+        # Jeżeli usunięte zostało jakiekolwiek oświadczenie to automatycznie dane SentData przestają
+        # być aktualne, a system się na nich opiera. Zatem w tej sytuacji, kasujemy również
+        # wysłane dane:
+        from pbn_api.models import SentData
+
+        SentData.objects.filter(pbn_uid_id=self.publicationId_id).delete(*args, **kw)
+        return super(OswiadczenieInstytucji, self).delete(*args, **kw)

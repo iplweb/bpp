@@ -10,9 +10,17 @@ from django.db.models import F, Func, Q
 from django.db.models.functions import Length
 
 from import_common.core import matchuj_autora, matchuj_wydawce
-from import_common.normalization import normalize_doi, normalize_tytul_publikacji
+from import_common.normalization import (
+    normalize_doi,
+    normalize_isbn,
+    normalize_tytul_publikacji,
+)
 from pbn_api.client import PBNClient
-from pbn_api.exceptions import HttpException, SameDataUploadedRecently
+from pbn_api.exceptions import (
+    HttpException,
+    SameDataUploadedRecently,
+    StatementDeletionError,
+)
 from pbn_api.models import (
     Conference,
     Country,
@@ -46,7 +54,7 @@ from bpp.models import (
     Wydawnictwo_Zwarte_Autor,
     Zrodlo,
 )
-from bpp.util import fail_if_seq_scan, pbar
+from bpp.util import pbar
 
 
 def integruj_jezyki(client):
@@ -427,51 +435,59 @@ def pobierz_oswiadczenia_z_instytucji(client: PBNClient):
     )
 
 
-def _pobierz_prace_po_doi(client, nd):
-    try:
-        elem = client.get_publication_by_doi(nd)
-    except HttpException as e:
-        if e.status_code == 422:
-            # Publication with DOI 10.1136/annrheumdis-2018-eular.5236 was not exists!
-            print(f"\r\nBrak pracy z DOI {nd} w PBNie")
-            return
+def _pobierz_prace_po_elemencie(
+    client: PBNClient, element, nd, matchuj=True, value_from_rec=None, **kw
+):
+    ret = []
+    base_kw = {element: nd}
+    base_kw.update(kw)
 
-        elif e.status_code == 500:
-            if "Publication with DOI" in e.content and "was not exists" in e.content:
-                print(f"\r\nBrak pracy z DOI {nd} w PBNie")
-                return
-
-            elif "Internal server error" in e.content:
-                # print(f"\r\nSerwer PBN zwrocil blad 500 dla DOI {nd} --> {e.content}")
-                return
-
-        raise e
-
-    publication = zapisz_mongodb(elem, Publication)
-    p = publication.matchuj_do_rekordu_bpp()
-    if p is None:
-        print(
-            f"XXX mimo pobrania pracy po DOI {nd}, zwrotnie NIE pasuje ona do pracy w BPP -- rok {publication.year} "
-            f"lub tytul {publication.title} nie daja sie dopasowac. Blad w zapisie DOI? Niepoprawne DOI?"
+    for elem in client.search_publications(**base_kw):
+        publication = zapisz_mongodb(
+            client.get_publication_by_id(elem["mongoId"]), Publication
         )
-        return
 
-    if p.pbn_uid_id is not None:
-        print(
-            f"XXX DOI {nd} jest potencjalnie zdublowany w bazie BPP. "
-            f"Po stronie PBN ma go {publication.title}, po stronie BPP ma go {p.tytul_oryginalny}"
-        )
-        return
+        p = publication.matchuj_do_rekordu_bpp()
+        if p is None:
+            print(
+                f"XXX mimo pobrania pracy po {element.upper()} {nd}, zwrotnie NIE pasuje ona do pracy w BPP "
+                f"-- rok {publication.year} lub tytul {publication.title} nie daja sie dopasowac. Blad w "
+                f"zapisie {element.upper()}? Niepoprawne {element.upper()}? Oryginalny obiekt: {value_from_rec}"
+            )
+            continue
 
-    p = p.original
-    p.pbn_uid_id = publication.mongoId
-    p.save(update_fields=["pbn_uid_id"])
+        p = p.original
+
+        if p in ret:
+            continue
+
+        if p.pbn_uid_id == publication.mongoId:
+            # Juz zmatchowany
+            continue
+
+        # Co w sytuacji p.pbn_uid_id != publication.mongoId? Rekord zmatchowany z innym, teraz pasuje do innego?
+        # Nic. Na ten moment nadpisujemy to po cichu (2.09.2021), jest to moja swiadoma decyzja (mpasternak)
+        # poniewaz z tysiaca komunikatow o tej sytuacji nic nie wynikalo a zazwyczaj wychodzilo na to, ze rekordy
+        # byly niepoprawnie zmatchowane.
+
+        p.pbn_uid_id = publication.mongoId
+        p.save(update_fields=["pbn_uid_id"])
+        ret.append(p)
+
+    return ret
+
+
+PBN_MIN_ROK = 2017
 
 
 def pobierz_prace_po_doi(client: PBNClient):
     dois = set()
     for praca in pbar(
-        Rekord.objects.all().exclude(doi=None).exclude(doi="").filter(pbn_uid_id=None),
+        Rekord.objects.all()
+        .exclude(doi=None)
+        .exclude(doi="")
+        .filter(pbn_uid_id=None)
+        .filter(rok__gte=PBN_MIN_ROK),
         label="pobierz_prace_po_doi",
     ):
         nd = normalize_doi(praca.doi)
@@ -486,10 +502,46 @@ def pobierz_prace_po_doi(client: PBNClient):
     for doi in dois:
         results.append(
             p.apply_async(
-                _pobierz_prace_po_doi,
+                _pobierz_prace_po_elemencie,
                 args=(
                     client,
+                    "doi",
                     doi,
+                ),
+            )
+        )
+
+    wait_for_results(p, results)
+
+
+def pobierz_prace_po_isbn(client: PBNClient):
+    isbns = set()
+    for praca in pbar(
+        Rekord.objects.all()
+        .exclude(isbn=None)
+        .exclude(isbn="")
+        .filter(pbn_uid_id=None)
+        .filter(rok__gte=PBN_MIN_ROK)
+        .filter(wydawnictwo_nadrzedne_id=None),
+        label="pobierz_prace_po_isbn",
+    ):
+        nd = normalize_isbn(praca.isbn)
+        isbns.add(nd)
+
+    _bede_uzywal_bazy_danych_z_multiprocessing_z_django()
+
+    p = initialize_pool()
+
+    results = []
+
+    for isbn in isbns:
+        results.append(
+            p.apply_async(
+                _pobierz_prace_po_elemencie,
+                args=(
+                    client,
+                    "isbn",
+                    isbn,
                 ),
             )
         )
@@ -1022,17 +1074,73 @@ MODELE_Z_PBN_UID = (
 #                 pass
 #
 
+PBN_KOMUNIKAT_ISBN_ISTNIEJE = "Publikacja o identycznym ISBN lub ISMN już istnieje"
+PBN_KOMUNIKAT_DOI_ISTNIEJE = "Publikacja o identycznym DOI i typie już istnieje"
 
-def _synchronizuj_pojedyncza_publikacje(client, rec):
+
+def _synchronizuj_pojedyncza_publikacje(client, rec, force_upload=False):
     try:
-        client.sync_publication(rec)
+        client.sync_publication(rec, force_upload=force_upload)
     except SameDataUploadedRecently:
         pass
     except HttpException as e:
+        if e.status_code == 400:
+            if rec.pbn_uid_id is not None and (
+                PBN_KOMUNIKAT_ISBN_ISTNIEJE in e.content
+                or PBN_KOMUNIKAT_DOI_ISTNIEJE in e.content
+            ):
+
+                warnings.warn(
+                    f"UWAGA: rekord z BPP {rec} mimo posiadania PBN UID {rec.pbn_uid_id} dostał"
+                    f"przy synchronizacji komunkat: {e.content} !! Sprawa DO SPRAWDZENIA RECZNIE"
+                )
+                return
+
+            ret = None
+
+            if PBN_KOMUNIKAT_ISBN_ISTNIEJE in e.content:
+                if (
+                    hasattr(rec, "isbn")
+                    and hasattr(rec, "e_isbn")
+                    and (rec.isbn is not None or rec.e_isbn is not None)
+                    and (normalize_isbn(rec.isbn) or normalize_isbn(rec.e_isbn))
+                ):
+                    isbn_value = normalize_isbn(rec.isbn or rec.e_isbn)
+                    ret = _pobierz_prace_po_elemencie(
+                        client, "isbn", isbn_value, value_from_rec=rec
+                    )
+
+            elif PBN_KOMUNIKAT_DOI_ISTNIEJE in e.content:
+                if (
+                    hasattr(rec, "doi")
+                    and rec.doi is not None
+                    and normalize_doi(rec.doi)
+                ):
+                    doi_value = normalize_doi(rec.doi)
+                    ret = _pobierz_prace_po_elemencie(
+                        client, "doi", doi_value, value_from_rec=rec
+                    )
+
+            else:
+                raise NotImplementedError("Should never happen")
+
+            if ret is None or rec not in ret:
+                # Jeżeli rekordu synchronizowanego nie ma wśród rekordów pobranych - zmatchowanych
+                # przez funkcję _pobierz_prace_po_elemencie, to wyjdź teraz:
+                return
+
+            # Rekord znalazł się na liście zmatchowanych przez funkcję _pobierz_po_elemencie,
+            # nadano mu pbn_uid_id. Odśwież to ID z bazy, uruchom jeszcze raz synchronizację
+            # rekordu:
+            rec.refresh_from_db()
+            assert rec.pbn_uid_id is not None
+            return _synchronizuj_pojedyncza_publikacje(client, rec)
+
         if e.status_code in [400, 500]:
             warnings.warn(
                 f"{rec.pk},{rec.tytul_oryginalny},{rec.rok},PBN Server Error: {e.content}"
             )
+
         if e.status_code == 403:
             # Jezeli przytrafi się wyjątek taki, jak poniżej:
             #
@@ -1043,45 +1151,66 @@ def _synchronizuj_pojedyncza_publikacje(client, rec):
             # to go podnieś. Jeżeli autoryzacja nie została przeprowadzona poprawnie, to nie chcemy kontynuować
             # dalszego procesu synchronizacji prac.
             raise e
+
     except WillNotExportError as e:
         warnings.warn(
             f"{rec.pk},{rec.tytul_oryginalny},{rec.rok},nie wyeksportuje, bo: {e}"
         )
 
 
-def synchronizuj_publikacje(client, skip=0):
+def synchronizuj_publikacje(client, force_upload=False, only_bad=False, skip=0):
+    """
+    :param only_bad: eksportuj jedynie rekordy, które mają wpis w tabeli SentData, ze ich eksport
+    nie powiódł się wcześniej.
+
+    :param force_upload: wymuszaj ponowne wysłanie, niezależnie od sytuacji w tabeli SentData
+    """
     #
     # Wydawnictwa zwarte
     #
     zwarte_baza = (
-        Wydawnictwo_Zwarte.objects.filter(rok__gte=2017)
+        Wydawnictwo_Zwarte.objects.filter(rok__gte=PBN_MIN_ROK)
         .exclude(charakter_formalny__rodzaj_pbn=None)
         .exclude(isbn=None)
         .exclude(Q(doi=None) & (Q(public_www=None) | Q(www=None)))
     )
 
+    if only_bad:
+        zwarte_baza = zwarte_baza.filter(
+            pk__in=SentData.objects.bad_uploads(Wydawnictwo_Zwarte)
+        )
+
     for rec in pbar(
         zwarte_baza.filter(wydawnictwo_nadrzedne_id=None),
         label="sync_zwarte_ksiazki",
     ):
-        _synchronizuj_pojedyncza_publikacje(client, rec)
+        _synchronizuj_pojedyncza_publikacje(client, rec, force_upload=force_upload)
 
     for rec in pbar(
         zwarte_baza.exclude(wydawnictwo_nadrzedne_id=None),
         label="sync_zwarte_rozdzialy",
     ):
-        _synchronizuj_pojedyncza_publikacje(client, rec)
+        _synchronizuj_pojedyncza_publikacje(client, rec, force_upload=force_upload)
 
     #
     # Wydawnicwa ciagle
     #
-    for rec in pbar(
-        Wydawnictwo_Ciagle.objects.filter(rok__gte=2017)
+    ciagle_baza = (
+        Wydawnictwo_Ciagle.objects.filter(rok__gte=PBN_MIN_ROK)
         .exclude(charakter_formalny__rodzaj_pbn=None)
-        .exclude(Q(doi=None) & (Q(public_www=None) | Q(www=None))),
+        .exclude(Q(doi=None) & (Q(public_www=None) | Q(www=None)))
+    )
+
+    if only_bad:
+        ciagle_baza = ciagle_baza.filter(
+            pk__in=SentData.objects.bad_uploads(Wydawnictwo_Ciagle)
+        )
+
+    for rec in pbar(
+        ciagle_baza,
         label="sync_ciagle",
     ):
-        _synchronizuj_pojedyncza_publikacje(client, rec)
+        _synchronizuj_pojedyncza_publikacje(client, rec, force_upload=force_upload)
 
 
 def clear_match_publications():
@@ -1198,8 +1327,6 @@ def wyswietl_niezmatchowane_ze_zblizonymi_tytulami():
                 .order_by("-similarity")
             )
 
-            fail_if_seq_scan(res, True)
-
             for elem in res[:5]:
                 print("- MOZE: ", elem.mongoId, elem.title, elem.similarity)
 
@@ -1276,3 +1403,20 @@ def pobierz_rekordy_publikacji_instytucji(client: PBNClient):
         results.append(res)
 
     wait_for_results(pool, results, "pobieranie publikacji")
+
+
+def usun_wszystkie_oswiadczenia(client):
+    for elem in pbar(OswiadczenieInstytucji.objects.all()):
+        with transaction.atomic():
+            try:
+                elem.sprobuj_skasowac_z_pbn(pbn_client=client)
+            except StatementDeletionError as e:
+                if e.status_code == 400 and (
+                    "Nie istnieją oświadczenia" in e.content
+                    or "Nie istnieje oświadczenie" in e.content
+                ):
+                    pass
+                else:
+                    raise e
+
+            elem.delete()

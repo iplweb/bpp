@@ -1,0 +1,11 @@
+{% extends "admin/change_form.html" %}
+
+{% block object-tools-items %}
+    <li><a target="_blank" href="{{ original.link_do_pbn }}">Zobacz w PBN</a></li>
+    {% if original.rekord_w_bpp %}
+        <li><a target="_blank" href="{{ original.rekord_w_bpp.get_absolute_url }}">Zobacz w BPP</a></li>
+    {% else %}
+        <li><a href="#" class="disabled">Brak dopasowania w BPP</a></li>
+    {% endif %}
+    {{ block.super }}
+{% endblock %}

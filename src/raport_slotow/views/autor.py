@@ -9,7 +9,12 @@ from django_tables2 import MultiTableMixin, RequestConfig
 from formdefaults.helpers import FormDefaultsMixin
 from raport_slotow.forms import AutorRaportSlotowForm
 from raport_slotow.tables import RaportSlotowAutorTable
-from raport_slotow.util import InitialValuesFromGETMixin, MyExportMixin, MyTableExport
+from raport_slotow.util import (
+    InitialValuesFromGETMixin,
+    MyExportMixin,
+    MyTableExport,
+    django_url_fetcher,
+)
 from .. import const
 
 from django.utils import timezone
@@ -199,20 +204,13 @@ class RaportSlotow(
                 # Jeżeli nagle będziemy mieli jakis zahasłowany statyczny asset, to będzie
                 # trzeba go tutaj udostępnić, żeby WeasyPrint miał ułatwione zadanie.
                 # (mpasternak, 17.03.2021)
-
-                # W przypadku niektórych certyfikatów WeasyPrint zawiedzie i nie bedzie mógł pobrać
-                # danych ze strony. Ponieważ pobieramy sami-od-siebie, pozwolimy sobie na coś takiego:
-
-                import ssl
-
-                ssl._create_default_https_context = ssl._create_unverified_context
-
                 from weasyprint import HTML
 
                 response = HttpResponse(
                     content=HTML(
                         string=ret.render().content,
                         base_url=self.request.build_absolute_uri(),
+                        url_fetcher=django_url_fetcher,
                     ).write_pdf(),
                     content_type="application/pdf",
                 )
