@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 import pytest
 from model_mommy import mommy
 
@@ -18,7 +20,7 @@ MOCK_RETURNED_MONGODB_DATA = dict(
 
 
 @pytest.fixture
-def pbnclient():
+def pbn_client():
     transport = MockTransport()
     return PBNClient(transport=transport)
 
@@ -117,13 +119,13 @@ def pbn_wydawnictwo_zwarte_z_charakterem(
 
 
 @pytest.fixture
-def pbn_uczelnia(pbnclient):
+def pbn_uczelnia(pbn_client):
     uczelnia = mommy.make(
         Uczelnia,
     )
 
-    uczelnia.pbn_client = lambda *args, **kw: pbnclient
-    pbnclient.transport.return_values[PBN_GET_LANGUAGES_URL] = {"1": "23"}
+    uczelnia.pbn_client = lambda *args, **kw: pbn_client
+    pbn_client.transport.return_values[PBN_GET_LANGUAGES_URL] = {"1": "23"}
 
     uczelnia.pbn_integracja = True
     uczelnia.pbn_aktualizuj_na_biezaco = True
@@ -133,3 +135,15 @@ def pbn_uczelnia(pbnclient):
     uczelnia.save()
 
     return uczelnia
+
+
+def pbn_Publication_json_z_serwera(
+    year, title="tytul pracy", mongoId=None, isbn=None, status="ACTIVE", verified=True
+):
+    return {
+        "mongoId": mongoId or str(uuid4()),
+        "status": status,
+        "verificationLevel": "MODERATOR",
+        "verified": verified,
+        "versions": [{"current": True, "title": title, "year": year, "isbn": isbn}],
+    }

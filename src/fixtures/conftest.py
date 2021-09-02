@@ -548,7 +548,7 @@ def fixture(name):
     return json.load(
         open(
             os.path.abspath(
-                os.path.join(os.path.dirname(__file__), "bpp", "fixtures", name)
+                os.path.join(os.path.dirname(__file__), "../bpp", "fixtures", name)
             ),
             "rb",
         )
