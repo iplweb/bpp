@@ -3,6 +3,13 @@
 Historia zmian
 ==============
 
+202108.1078-alpha
+-----------------
+
+* przy wysyłaniu do PBN, w przypadku braku wartości w polu ISBN, weź wartość z pola E-ISBN, jezeli istnieje (b/n),
+* przy wysyłaniu do PBN, w przypadku trybu udostępnienia "po publikacji", gdy ilośc miesięcy jest pusta,
+  wstawiaj tam cyfrę zero (b/n),
+
 202108.1077
 -----------
 

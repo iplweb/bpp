@@ -4,7 +4,14 @@ from model_mommy import mommy
 from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
 from pbn_api.tests.conftest import _zrob_wydawnictwo_pbn
 
-from bpp.models import Autor
+from bpp.models import (
+    Autor,
+    Czas_Udostepnienia_OpenAccess,
+    Licencja_OpenAccess,
+    Tryb_OpenAccess_Wydawnictwo_Ciagle,
+    Wersja_Tekstu_OpenAccess,
+    Wydawnictwo_Zwarte,
+)
 
 
 def test_WydawnictwoPBNAdapter_ciagle(pbn_wydawnictwo_ciagle):
@@ -35,6 +42,53 @@ def test_WydawnictwoPBNAdapter_autor_eksport(praca_z_dyscyplina_pbn, jednostka):
 
     res = WydawnictwoPBNAdapter(praca_z_dyscyplina_pbn).pbn_get_json()
     assert res["journal"]
+
+
+def test_WydawnictwoPBNAdapter_openaccess_zero_miesiecy_gdy_licencja(
+    praca_z_dyscyplina_pbn: Wydawnictwo_Zwarte, openaccess_data
+):
+
+    praca_z_dyscyplina_pbn.openaccess_licencja = Licencja_OpenAccess.objects.first()
+    praca_z_dyscyplina_pbn.openaccess_tryb_dostepu = (
+        Tryb_OpenAccess_Wydawnictwo_Ciagle.objects.first()
+    )
+    praca_z_dyscyplina_pbn.openaccess_wersja_tekstu = (
+        Wersja_Tekstu_OpenAccess.objects.first()
+    )
+    praca_z_dyscyplina_pbn.openaccess_czas_publikacji = (
+        Czas_Udostepnienia_OpenAccess.objects.get(nazwa="po opublikowaniu")
+    )
+    praca_z_dyscyplina_pbn.openaccess_ilosc_miesiecy = 12
+    praca_z_dyscyplina_pbn.save()
+
+    res = WydawnictwoPBNAdapter(praca_z_dyscyplina_pbn).pbn_get_json()
+    assert res["openAccess"]["months"] == "12"
+
+    praca_z_dyscyplina_pbn.openaccess_ilosc_miesiecy = None
+    praca_z_dyscyplina_pbn.save()
+
+    res = WydawnictwoPBNAdapter(praca_z_dyscyplina_pbn).pbn_get_json()
+    assert res["openAccess"]["months"] == "0"
+
+
+def test_WydawnictwoPBNAdapter_autor_isbn_eisbn(praca_z_dyscyplina_pbn):
+    praca_z_dyscyplina_pbn.isbn = None
+    praca_z_dyscyplina_pbn.e_isbn = "123"
+
+    res = WydawnictwoPBNAdapter(praca_z_dyscyplina_pbn).pbn_get_json()
+    assert res["isbn"] == "123"
+
+    praca_z_dyscyplina_pbn.isbn = "456"
+    praca_z_dyscyplina_pbn.e_isbn = None
+
+    res = WydawnictwoPBNAdapter(praca_z_dyscyplina_pbn).pbn_get_json()
+    assert res["isbn"] == "456"
+
+    praca_z_dyscyplina_pbn.isbn = "789"
+    praca_z_dyscyplina_pbn.e_isbn = "123"
+
+    res = WydawnictwoPBNAdapter(praca_z_dyscyplina_pbn).pbn_get_json()
+    assert res["isbn"] == "789"
 
 
 def test_WydawnictwoPBNAdapter_autor_z_orcid_bez_dyscypliny_idzie_bez_id(

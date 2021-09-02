@@ -106,6 +106,8 @@ class WydawnictwoPBNAdapter:
             if self.original.openaccess_ilosc_miesiecy is not None:
                 #     "months": 0,
                 oa["months"] = str(self.original.openaccess_ilosc_miesiecy)
+            else:
+                oa["months"] = "0"
 
         if self.original.openaccess_tryb_dostepu_id is not None:
             if ret["type"] == "ARTICLE":
@@ -231,6 +233,10 @@ class WydawnictwoPBNAdapter:
         if hasattr(self.original, "isbn"):
             if self.original.isbn:
                 ret["isbn"] = normalize_isbn(self.original.isbn)
+            elif hasattr(self.original, "e_isbn"):
+                # Jeżeli nie ma ISBN a jest wartość w polu E-ISBN, to użyj jej:
+                if self.original.e_isbn:
+                    ret["isbn"] = normalize_isbn(self.original.e_isbn)
 
         if hasattr(self.original, "issn"):
             if self.original.issn:
