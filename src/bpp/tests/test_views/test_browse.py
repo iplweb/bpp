@@ -19,7 +19,7 @@ from model_mommy import mommy
 from multiseek.logic import EQUAL, EQUAL_FEMALE, EQUAL_NONE
 from multiseek.views import MULTISEEK_SESSION_KEY
 
-from conftest import NORMAL_DJANGO_USER_LOGIN, NORMAL_DJANGO_USER_PASSWORD
+from fixtures import NORMAL_DJANGO_USER_LOGIN, NORMAL_DJANGO_USER_PASSWORD
 from miniblog.models import Article
 
 from bpp.models import (

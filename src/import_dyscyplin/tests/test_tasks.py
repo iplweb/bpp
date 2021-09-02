@@ -3,7 +3,6 @@ from django.db import transaction
 from django.db.models import Max
 
 import notifications.core as notifications_core
-from conftest import NORMAL_DJANGO_USER_LOGIN
 from import_dyscyplin.models import Import_Dyscyplin
 from import_dyscyplin.tasks import przeanalizuj_import_dyscyplin
 from notifications.models import Notification
@@ -20,7 +19,7 @@ def test_przeanalizuj_import_dyscyplin(
             owner=normal_django_user, web_page_uid=web_page_uid
         )
         i.plik.save("test1.xls", ContentFile(open(test1_xlsx, "rb").read()))
-        path = i.plik.path
+        i.plik.path
 
     mocker.patch("notifications.core._send")
 

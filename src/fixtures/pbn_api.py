@@ -145,5 +145,7 @@ def pbn_Publication_json_z_serwera(
         "status": status,
         "verificationLevel": "MODERATOR",
         "verified": verified,
-        "versions": [{"current": True, "title": title, "year": year, "isbn": isbn}],
+        "versions": [
+            {"current": True, "object": {"title": title, "year": year, "isbn": isbn}}
+        ],
     }

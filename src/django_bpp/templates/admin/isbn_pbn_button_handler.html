@@ -10,10 +10,13 @@
 
             isbn_button.click(function () {
                 var t = $("#id_isbn").val();
+                if (!t)
+                    t = $("#id_e_isbn").val();
+
                 var rok = $("#id_rok").val();
 
                 if (!t || !rok) {
-                    alert("Aby wykonać zapytanie, potrzebna jest wartość w polu 'ISBN' oraz 'Rok'.");
+                    alert("Aby wykonać zapytanie, potrzebna jest wartość w polu 'ISBN' lub 'E-ISBN' oraz 'Rok'.");
                     return;
                 }
 

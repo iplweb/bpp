@@ -456,25 +456,19 @@ def _pobierz_prace_po_elemencie(
             )
             continue
 
-        # To ponizej wyrzucamy.
-        #
-        # Funkcja dostaje listę parametrów ISBN, DOI itp. W BPP niestety ale rozdziały dostają często
-        # ISBN lub DOI wydawnictw nadrzędnych. Stąd też, zapytanie o konkretny ISBN zwróci wydawnictwo
-        # nadrzędne, co potem spowoduje ustawienie takiego ISBN, a za chwilę będzie niepoprawny
-        # komunikat; tzn poprawny ale nie do końca.
-        #
-        # if p.pbn_uid_id is not None:
-        #     print(
-        #         f"XXX {element.upper()} {nd} jest potencjalnie zdublowany w bazie BPP. "
-        #         f"Po stronie PBN ma go {publication.title} {publication.mongoId} {publication.isbn}, "
-        #         f"po stronie BPP ma go {p.tytul_oryginalny} {p.pk} {p.isbn}"
-        #     )
-        #     continue
-
         p = p.original
 
         if p in ret:
             continue
+
+        if p.pbn_uid_id == publication.mongoId:
+            # Juz zmatchowany
+            continue
+
+        # Co w sytuacji p.pbn_uid_id != publication.mongoId? Rekord zmatchowany z innym, teraz pasuje do innego?
+        # Nic. Na ten moment nadpisujemy to po cichu (2.09.2021), jest to moja swiadoma decyzja (mpasternak)
+        # poniewaz z tysiaca komunikatow o tej sytuacji nic nie wynikalo a zazwyczaj wychodzilo na to, ze rekordy
+        # byly niepoprawnie zmatchowane.
 
         p.pbn_uid_id = publication.mongoId
         p.save(update_fields=["pbn_uid_id"])

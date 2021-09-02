@@ -1,5 +1,6 @@
 import time
 
+import pytest
 from django.urls import reverse
 from model_mommy import mommy
 from selenium.webdriver.common.keys import Keys
@@ -12,7 +13,10 @@ from bpp.tests import proper_click_element, show_element
 from django_bpp.selenium_util import wait_for_page_load
 
 
-def test_change_form_pbn_isbn(admin_browser, asgi_live_server, transactional_db):
+@pytest.mark.parametrize("field_name", ["isbn", "e_isbn"])
+def test_change_form_pbn_isbn(
+    admin_browser, asgi_live_server, transactional_db, field_name
+):
     u = mommy.make(Uczelnia)
 
     try:
@@ -38,7 +42,7 @@ def test_change_form_pbn_isbn(admin_browser, asgi_live_server, transactional_db)
 
         admin_browser.find_by_id("id_tytul_oryginalny").fill("nie istotny")
         admin_browser.find_by_id("id_rok").fill(ROK)
-        admin_browser.find_by_id("id_isbn").fill(ISBN)
+        admin_browser.find_by_id(f"id_{field_name}").fill(ISBN)
 
         for elem in admin_browser.find_by_tag("h2")[:3]:
             show_element(admin_browser, elem)  # ._element)
