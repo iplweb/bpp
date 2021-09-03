@@ -3,8 +3,8 @@
 Historia zmian
 ==============
 
-202108.1078-beta
-----------------
+202108.1078-rc
+--------------
 
 * pobieranie pracy z PBNu za pomocą ISBN uwzględnia E-ISBN w sytuacji, gdy ISBN nie jest wypełniony (b/n),
 * w przypadku wielu prac z tym samym ISBN, wcisnienie przycisku "pobierz po ISBN" wyświetla je wszystkie (b/n),
@@ -25,7 +25,7 @@ Historia zmian
 * opcja dla narzędzia command-line umożliwiająca wysyłąnie do PBN wyłącznie nowych rekordów (bez
   informacji w tabeli SentData) (b/n),
 * nie wysyłaj do PBN, jeżeli rozdział nie ma oświadczeń (b/n),
-
+* rozszerzono zakres wysyłanych prac do PBN przez automatyczne narzędzie zgodnie z w/wym poprawkami (b/n)
 
 202108.1077
 -----------

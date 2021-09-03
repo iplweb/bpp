@@ -1161,6 +1161,32 @@ def _synchronizuj_pojedyncza_publikacje(client, rec, force_upload=False):
         )
 
 
+def wydawnictwa_zwarte_do_synchronizacji():
+    return (
+        Wydawnictwo_Zwarte.objects.filter(rok__gte=PBN_MIN_ROK)
+        .exclude(charakter_formalny__rodzaj_pbn=None)
+        .exclude(isbn=None, e_isbn=None)
+        .exclude(jezyk__pbn_uid_id=None)
+        .exclude(
+            doi=None,
+            public_www=None,
+            www=None,
+            wydawnictwo_nadrzedne__www=None,
+            wydawnictwo_nadrzedne__public_www=None,
+        )
+        # rekordy bez WWW wysylamy gdy jest okreslone nadrzedne + nadrzende ma WWW
+    )
+
+
+def wydawnictwa_ciagle_do_synchronizacji():
+    return (
+        Wydawnictwo_Ciagle.objects.filter(rok__gte=PBN_MIN_ROK)
+        .exclude(jezyk__pbn_uid_id=None)
+        .exclude(charakter_formalny__rodzaj_pbn=None)
+        .exclude(doi=None, public_www=None, www=None)
+    )
+
+
 def synchronizuj_publikacje(
     client, force_upload=False, only_bad=False, only_new=False, skip=0
 ):
@@ -1168,7 +1194,7 @@ def synchronizuj_publikacje(
     :param only_bad: eksportuj jedynie rekordy, które mają wpis w tabeli SentData, ze ich eksport
     nie powiódł się wcześniej.
 
-    :param only_new: eksportuj jedynie rekordy, które nie mają wpisu w tableli SentData,
+    :param only_new: eksportuj jedynie rekordy, które nie mają wpisu w tabeli SentData,
 
     :param force_upload: wymuszaj ponowne wysłanie, niezależnie od sytuacji w tabeli SentData
     """
@@ -1177,12 +1203,7 @@ def synchronizuj_publikacje(
     #
     # Wydawnictwa zwarte
     #
-    zwarte_baza = (
-        Wydawnictwo_Zwarte.objects.filter(rok__gte=PBN_MIN_ROK)
-        .exclude(charakter_formalny__rodzaj_pbn=None)
-        .exclude(isbn=None)
-        .exclude(Q(doi=None) & (Q(public_www=None) | Q(www=None)))
-    )
+    zwarte_baza = wydawnictwa_zwarte_do_synchronizacji()
 
     if only_bad:
         zwarte_baza = zwarte_baza.filter(
@@ -1212,11 +1233,7 @@ def synchronizuj_publikacje(
     #
     # Wydawnicwa ciagle
     #
-    ciagle_baza = (
-        Wydawnictwo_Ciagle.objects.filter(rok__gte=PBN_MIN_ROK)
-        .exclude(charakter_formalny__rodzaj_pbn=None)
-        .exclude(Q(doi=None) & (Q(public_www=None) | Q(www=None)))
-    )
+    ciagle_baza = wydawnictwa_ciagle_do_synchronizacji()
 
     if only_bad:
         ciagle_baza = ciagle_baza.filter(
