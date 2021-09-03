@@ -64,3 +64,13 @@ class SentDataAdmin(BasePBNAPIAdminNoReadonly):
         return format_json(obj, "data_sent")
 
     pretty_json.short_description = "Wysłane dane"
+
+    def exception_details(self, obj):
+        if obj.exception:
+            try:
+                return obj.exception.split('"details":')[1][:-3]
+            except BaseException:
+                return obj.exception
+
+    exception_details.short_description = "Opis problemu"
+    exception_details.admin_order_field = "exception"
