@@ -7,6 +7,8 @@ Historia zmian
 -----------------
 
 * akcja grupowego wysyłania do PBN w module Redagowania dostepna dla wydawnictwo zwartych (b/n),
+* usunięto regresję związaną z polami WWW/DOI/publiczny WWW, polegającą na nie pojawianiu się ich
+  wartości w formularzu w module redagowania i nie zapisywaniu się ich (b/n),
 
 202108.1078
 -----------

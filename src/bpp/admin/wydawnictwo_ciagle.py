@@ -89,13 +89,19 @@ class Button(forms.Widget):
 
 class CleanDOIWWWPublicWWWMixin:
     def clean_www(self):
-        nie_zawiera_adresu_doi_org(self.cleaned_data.get("www"))
+        v = self.cleaned_data.get("www")
+        nie_zawiera_adresu_doi_org(v)
+        return v
 
     def clean_public_www(self):
-        nie_zawiera_adresu_doi_org(self.cleaned_data.get("public_www"))
+        v = self.cleaned_data.get("public_www")
+        nie_zawiera_adresu_doi_org(v)
+        return v
 
     def clean_doi(self):
-        nie_zawiera_http_https(self.cleaned_data.get("doi"))
+        v = self.cleaned_data.get("doi")
+        nie_zawiera_http_https(v)
+        return v
 
 
 class Wydawnictwo_CiagleForm(CleanDOIWWWPublicWWWMixin, forms.ModelForm):
