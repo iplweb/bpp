@@ -16,6 +16,7 @@ from pbn_api.exceptions import (
     AccessDeniedException,
     AuthenticationResponseError,
     HttpException,
+    NeedsPBNAuthorisationException,
     PraceSerwisoweException,
     SameDataUploadedRecently,
 )
@@ -33,6 +34,11 @@ def smart_content(content):
         return content.decode("utf-8")
     except UnicodeDecodeError:
         return content
+
+
+NEEDS_PBN_AUTH_MSG = (
+    "W celu poprawnej autentykacji należy podać poprawny token użytkownika aplikacji."
+)
 
 
 class PBNClientTransport:
@@ -223,14 +229,39 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
 
         ret = method(self.base_url + url, headers=sent_headers, json=body)
         if ret.status_code == 403:
+
+            try:
+                ret_json = ret.json()
+            except BaseException:
+                raise HttpException(
+                    ret.status_code,
+                    url,
+                    "Blad podczas odkodowywania JSON podczas odpowiedzi 403: "
+                    + smart_content(ret.content),
+                )
+
             # Needs auth
-            if ret.json()["message"] == "Access Denied":
+            if ret_json.get("message") == "Access Denied":
                 # Autoryzacja użytkownika jest poprawna, jednakże nie ma on po stronie PBN
                 # takiego uprawnienia...
                 raise AccessDeniedException(url, smart_content(ret.content))
 
-            # elif ret.json['message'] == "Forbidden":  # <== to dostaniemy, gdy token zły lub brak
+            if ret_json.get("message") == "Forbidden" and ret_json.get(
+                "description"
+            ).startswith(NEEDS_PBN_AUTH_MSG):
+                # (403, '/api/v1/search/publications?size=10', '{"code":403,"message":"Forbidden",
+                # "description":"W celu poprawnej autentykacji należy podać poprawny token użytkownika aplikacji. Podany
+                # token użytkownika ... w ramach aplikacji ... nie istnieje lub został
+                # unieważniony!"}')
+                raise NeedsPBNAuthorisationException(
+                    ret.status_code, url, smart_content(ret.content)
+                )
 
+            # mpasternak, 5.09.2021: nie do końca jestem pewny, czy kod wywołujący self.authorize (nast. 2 linijki)
+            # zostawić w tej sytuacji. Tak było 'historycznie', ale widzę też, że po wywołaniu self.authorize
+            # ta funkcja zawsze wykonywała "if ret.status_code >= 403" i zwracała Exception. Teoretycznie
+            # to chyba zostało tutaj z powodu klienta command-line, który to na ten moment priorytetem
+            # przecież nie jest.
             if hasattr(self, "authorize"):
                 self.authorize(self.base_url, self.app_id, self.app_token)
                 # self.authorize()

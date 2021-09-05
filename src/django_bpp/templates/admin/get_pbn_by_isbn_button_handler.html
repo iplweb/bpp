@@ -1,0 +1,65 @@
+<script type="text/javascript">
+    (function ($) {
+        $(document).ready(function () {
+            var i = $("#id_pbn_uid");
+
+            $("<span style=padding-left:5px;></span><input id='id_isbn_pbn_get' type='button' value='Pobierz po ISBN'/>").insertAfter(i);
+
+            var isbn_button = $("#id_isbn_pbn_get");
+            var orig = isbn_button.val();
+
+            isbn_button.click(function () {
+                var t = $("#id_isbn").val();
+                if (!t)
+                    t = $("#id_e_isbn").val();
+
+                var rok = $("#id_rok").val();
+
+                if (!t || !rok) {
+                    alert("Aby wykonać zapytanie, potrzebna jest wartość w polu 'ISBN' lub 'E-ISBN' oraz 'Rok'.");
+                    return;
+                }
+
+                isbn_button.val("Czekaj...");
+                isbn_button.attr('disabled', true);
+
+                $.ajax({
+                    type: "POST",
+                    url: "{% url "bpp:api_get_pbn_by_isbn" %}",
+                    data: {t: t, rok: rok, tytul: $("#id_tytul_oryginalny").val()},
+                    error: function (request, status, error) {
+                        alert('Wystąpił błąd (' + status + ', ' + error + '). Najpewniej może być on związany z ' +
+                            'problemem połączenia z bazą PBN. Spróbuj za chwilę jeszcze raz.');
+
+                        isbn_button.val("Spróbuj jeszcze raz!");
+                        isbn_button.attr('disabled', false);
+
+                        return;
+                    },
+                    success: function (data, text) {
+                        var found = false;
+
+                        isbn_button.attr('disabled', false);
+
+                        if (data.error) {
+                            alert("Błąd z serwera: " + data.error + "\r\n\r\nWyszukiwanie odbywa się " +
+                                "po wartości z pola 'ISBN' lub 'E-ISBN'. ");
+
+                            isbn_button.val("Pobierz po ISBN");
+                            return;
+                        }
+
+                        isbn_button.val("Pobrano!");
+
+                        $("#id_pbn_uid").select2("open");
+                        $("input.select2-search__field").val(data.id).trigger("input");
+
+                    }
+                });
+
+            });
+
+
+        });
+    }(django.jQuery));
+</script>

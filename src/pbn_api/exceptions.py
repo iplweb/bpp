@@ -40,3 +40,7 @@ class StatementDeletionError(Exception):
         self.status_code = status_code
         self.url = url
         self.content = content
+
+
+class NeedsPBNAuthorisationException(HttpException):
+    pass

@@ -27,6 +27,9 @@ Historia zmian
 * nie wysyłaj do PBN, jeżeli rozdział nie ma oświadczeń (b/n),
 * rozszerzono zakres wysyłanych prac do PBN przez automatyczne narzędzie zgodnie z w/wym poprawkami (b/n)
 * umożliwiaj "odpinanie" dyscyplin (b/n),
+* przycisk "pobierz po DOI" pobierający prace z PBNu po adresie DOI,
+* lepsze komunikaty błędów w przypadku braku autoryzacji w PBN i kliknięciu przycisku "pobierz po DOI"
+  lub "pobierz po ISBN" (b/n),
 
 202108.1077
 -----------

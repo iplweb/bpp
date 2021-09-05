@@ -6,7 +6,7 @@ from fixtures.pbn_api import pbn_Publication_json_z_serwera
 
 from bpp.models import Uczelnia
 from bpp.views.api import const
-from bpp.views.api.pbn_get_by_isbn import GetPBNPublicationsByISBN
+from bpp.views.api.pbn_get_by_parameter import GetPBNPublicationsByISBN
 from bpp.views.api.pubmed import GetPubmedIDView, get_data_from_ncbi
 
 
