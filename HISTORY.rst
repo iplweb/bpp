@@ -3,6 +3,11 @@
 Historia zmian
 ==============
 
+202109.1079-alpha
+-----------------
+
+* akcja grupowego wysyłania do PBN w module Redagowania dostepna dla wydawnictwo zwartych (b/n),
+
 202108.1078
 -----------
 
