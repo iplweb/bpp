@@ -3,8 +3,8 @@
 Historia zmian
 ==============
 
-202108.1078-rc
---------------
+202108.1078
+-----------
 
 * pobieranie pracy z PBNu za pomocą ISBN uwzględnia E-ISBN w sytuacji, gdy ISBN nie jest wypełniony (b/n),
 * w przypadku wielu prac z tym samym ISBN, wcisnienie przycisku "pobierz po ISBN" wyświetla je wszystkie (b/n),
