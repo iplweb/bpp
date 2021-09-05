@@ -10,7 +10,11 @@ from django.forms.widgets import Textarea
 from django.urls import reverse
 
 from import_common.normalization import normalize_isbn
-from pbn_api.exceptions import AccessDeniedException, SameDataUploadedRecently
+from pbn_api.exceptions import (
+    AccessDeniedException,
+    NeedsPBNAuthorisationException,
+    SameDataUploadedRecently,
+)
 from pbn_api.integrator import _pobierz_prace_po_elemencie
 from pbn_api.models import SentData
 
@@ -465,8 +469,17 @@ def sprobuj_wgrac_do_pbn(request, obj, force_upload=False, pbn_client=None):
         messages.warning(
             request,
             f'Nie można zsynchronizować obiektu "{link_do_obiektu(obj)}" z PBN pod adresem '
-            f"API {e}. Brak dostępu -- "
-            f'<a target=_blank href="{reverse("pbn_api:authorize")}">kliknij tutaj, aby autoryzować sesję w PBN</a>.',
+            f"API {e.url}. Brak dostępu -- najprawdopodobniej użytkownik nie posiada odpowiednich uprawnień "
+            f"po stronie PBN/POLON. ",
+        )
+        return
+
+    except NeedsPBNAuthorisationException as e:
+        messages.warning(
+            request,
+            f'Nie można zsynchronizować obiektu "{link_do_obiektu(obj)}" z PBN pod adresem '
+            f"API {e.url}. Brak dostępu z powodu nieprawidłowego tokena -- wymagana autoryzacja w PBN. "
+            f'<a target=_blank href="{reverse("pbn_api:authorize")}">Kliknij tutaj, aby autoryzować sesję</a>.',
         )
         return
 
