@@ -13,6 +13,7 @@ class SentDataAdmin(BasePBNAPIAdminNoReadonly):
         "last_updated_on",
         "pbn_uid_id",
         "uploaded_okay",
+        "exception_details",
     ]
     ordering = ("-last_updated_on",)
     search_fields = ["data_sent", "exception"]
