@@ -12,6 +12,7 @@ from bpp.models import (
     Tryb_OpenAccess_Wydawnictwo_Ciagle,
     Wersja_Tekstu_OpenAccess,
     Wydawnictwo_Zwarte,
+    Wydawnictwo_Zwarte_Autor,
     const,
 )
 
@@ -61,6 +62,29 @@ def test_WydawnictwoPBNAdapter_autor_eksport(
         pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina
     ).pbn_get_json()
     assert res["journal"]
+
+
+def test_WydawnictwoPBNAdapter_przypinanie_dyscyplin(
+    pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina, jednostka
+):
+    wydawnictwo_autor: Wydawnictwo_Zwarte_Autor = (
+        pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina.autorzy_set.first()
+    )
+    wydawnictwo_autor.przypieta = False
+    wydawnictwo_autor.save()
+
+    with pytest.raises(WillNotExportError, match="bez zadeklarowanych"):
+        WydawnictwoPBNAdapter(
+            pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina
+        ).pbn_get_json()
+
+    wydawnictwo_autor.przypieta = True
+    wydawnictwo_autor.save()
+
+    res = WydawnictwoPBNAdapter(
+        pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina
+    ).pbn_get_json()
+    assert res["statements"]
 
 
 def test_WydawnictwoPBNAdapter_eksport_artykulu_bez_oswiadczen_zwraca_blad(

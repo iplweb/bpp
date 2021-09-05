@@ -448,6 +448,13 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
         Dyscyplina_Naukowa, on_delete=SET_NULL, null=True, blank=True
     )
 
+    przypieta = models.BooleanField(
+        default=True,
+        db_index=True,
+        help_text="""Możesz odznaczyć, żeby "odpiąć" dyscyplinę od tego autora. Dyscyplina "odpięta" nie będzie
+        wykazywana do PBN, ale będzie pojawiała się np. w raportach i innych zestawieniach. """,
+    )
+
     upowaznienie_pbn = models.BooleanField(
         "Upoważnienie PBN",
         default=False,

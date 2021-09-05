@@ -148,6 +148,8 @@ def generuj_formularz_dla_autorow(
             js = ["/static/bpp/js/autorform_dependant.js"]
 
         class Meta:
+            DATA_OSWIADCZENIA = "data_oswiadczenia"
+
             fields = [
                 "autor",
                 "jednostka",
@@ -158,9 +160,21 @@ def generuj_formularz_dla_autorow(
                 "upowaznienie_pbn",
                 "procent",
                 "profil_orcid",
-                "data_oswiadczenia",
+                DATA_OSWIADCZENIA,
                 "kolejnosc",
             ]
+
+            if include_dyscyplina:
+                data_oswiadczenia_idx = fields.index(DATA_OSWIADCZENIA)
+                fields = (
+                    fields[:data_oswiadczenia_idx]
+                    + [
+                        "dyscyplina_naukowa",
+                        "przypieta",
+                    ]
+                    + fields[data_oswiadczenia_idx:]
+                )
+
             if include_rekord:
                 fields = [
                     "rekord",
