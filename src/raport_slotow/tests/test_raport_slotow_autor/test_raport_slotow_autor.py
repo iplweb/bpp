@@ -1,4 +1,3 @@
-import sys
 from io import BytesIO
 
 import PyPDF2
@@ -79,7 +78,6 @@ def test_raport_slotow_autor_sa_dane_eksport_wszystkiego(
     assert len(wb.get_sheet_names()) > 0
 
 
-@pytest.mark.skipif(sys.platform == "darwin", reason="libpango macports 1.42?")
 def test_raport_slotow_autor_sa_dane_eksport_wszystkiego_do_pdf(
     admin_client,
     autor_jan_kowalski,
