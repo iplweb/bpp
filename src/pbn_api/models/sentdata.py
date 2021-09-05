@@ -86,6 +86,8 @@ class SentData(LinkDoPBNMixin, models.Model):
         on_delete=models.SET_NULL,
     )
 
+    typ_rekordu = models.CharField(max_length=50, blank=True, null=True)
+
     objects = SentDataManager()
 
     class Meta:
@@ -108,3 +110,19 @@ class SentData(LinkDoPBNMixin, models.Model):
             return self.object
         except ObjectDoesNotExist:
             pass
+
+    def save(
+        self, force_insert=False, force_update=False, using=None, update_fields=None
+    ):
+
+        if update_fields and "data_sent" in update_fields:
+            if self.typ_rekordu != self.data_sent.get("type"):
+                update_fields.append("typ_rekordu")
+
+        self.typ_rekordu = self.data_sent.get("type")
+        return super(SentData, self).save(
+            force_insert=force_insert,
+            force_update=force_update,
+            using=using,
+            update_fields=update_fields,
+        )

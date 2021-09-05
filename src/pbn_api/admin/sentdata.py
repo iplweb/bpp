@@ -11,6 +11,7 @@ class SentDataAdmin(BasePBNAPIAdminNoReadonly):
     list_display = [
         "object",
         "last_updated_on",
+        "typ_rekordu",
         "pbn_uid_id",
         "uploaded_okay",
         "exception_details",
@@ -24,9 +25,10 @@ class SentDataAdmin(BasePBNAPIAdminNoReadonly):
         "uploaded_okay",
         "exception",
         "pbn_uid_id",
+        "typ_rekordu",
     ]
     fields = readonly_fields + ["pretty_json"]
-    list_filter = ["uploaded_okay"]
+    list_filter = ["uploaded_okay", "typ_rekordu"]
 
     list_per_page = 25
 

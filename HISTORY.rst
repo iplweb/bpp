@@ -33,7 +33,7 @@ Historia zmian
 * nie pozwalaj na wpisanie adresu WWW w pole DOI (b/n),
 * nie pozwalaj na wpisanie odnośnika do doi.org w pole WWW (b/n),
 * lepsze komunikaty błędu w przypadku braku tokena autoryzacyjnego przy eksporcie do PBN (b/n),
-
+* PBN wysłane dane otrzymują typ rekordu i możliwosć filtrowania/sortowania po nim (b/n),
 
 202108.1077
 -----------
