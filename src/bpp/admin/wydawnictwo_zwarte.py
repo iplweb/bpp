@@ -14,6 +14,9 @@ from .grant import Grant_RekorduInline
 from .helpers import OptionalPBNSaveMixin
 from .nagroda import NagrodaInline
 
+# Proste tabele
+from .wydawnictwo_ciagle import CleanDOIWWWPublicWWWMixin
+
 from django.contrib import admin, messages
 
 from bpp.admin import helpers
@@ -36,8 +39,6 @@ from bpp.models import (
 )
 from bpp.models.konferencja import Konferencja
 from bpp.models.seria_wydawnicza import Seria_Wydawnicza
-
-# Proste tabele
 
 
 class Wydawnictwo_ZwarteAdmin_Baza(CommitedModelAdmin):
@@ -127,7 +128,9 @@ class Wydawnictwo_ZwarteAdmin_Baza(CommitedModelAdmin):
     )
 
 
-class Wydawnictwo_ZwarteForm(helpers.Wycinaj_W_z_InformacjiMixin, forms.ModelForm):
+class Wydawnictwo_ZwarteForm(
+    helpers.Wycinaj_W_z_InformacjiMixin, CleanDOIWWWPublicWWWMixin, forms.ModelForm
+):
     wydawnictwo_nadrzedne = forms.ModelChoiceField(
         required=False,
         queryset=Wydawnictwo_Zwarte.objects.all(),

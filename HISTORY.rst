@@ -30,6 +30,8 @@ Historia zmian
 * przycisk "pobierz po DOI" pobierający prace z PBNu po adresie DOI,
 * lepsze komunikaty błędów w przypadku braku autoryzacji w PBN i kliknięciu przycisku "pobierz po DOI"
   lub "pobierz po ISBN" (b/n),
+* nie pozwalaj na wpisanie adresu WWW w pole DOI (b/n),
+* nie pozwalaj na wpisanie odnośnika do doi.org w pole WWW (b/n),
 
 202108.1077
 -----------

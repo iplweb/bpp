@@ -57,6 +57,8 @@ from bpp.models import (  # Publikacja_Habilitacyjna
     Wydawnictwo_Ciagle,
     Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych,
     Zrodlo,
+    nie_zawiera_adresu_doi_org,
+    nie_zawiera_http_https,
 )
 
 # Proste tabele
@@ -85,7 +87,18 @@ class Button(forms.Widget):
         )
 
 
-class Wydawnictwo_CiagleForm(forms.ModelForm):
+class CleanDOIWWWPublicWWWMixin:
+    def clean_www(self):
+        nie_zawiera_adresu_doi_org(self.cleaned_data.get("www"))
+
+    def clean_public_www(self):
+        nie_zawiera_adresu_doi_org(self.cleaned_data.get("public_www"))
+
+    def clean_doi(self):
+        nie_zawiera_http_https(self.cleaned_data.get("doi"))
+
+
+class Wydawnictwo_CiagleForm(CleanDOIWWWPublicWWWMixin, forms.ModelForm):
     zrodlo = forms.ModelChoiceField(
         queryset=Zrodlo.objects.all(),
         widget=autocomplete.ModelSelect2(url="bpp:admin-zrodlo-autocomplete"),
