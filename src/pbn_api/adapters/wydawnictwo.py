@@ -8,7 +8,7 @@ from .zrodlo import ZrodloPBNAdapter
 
 from django.utils.functional import cached_property
 
-from bpp.models import const
+from bpp.models import BazaModeluOdpowiedzialnosciAutorow, const
 from bpp.models.const import TO_REDAKTOR, TO_REDAKTOR_TLUMACZENIA, TO_TLUMACZ
 from bpp.util import strip_html
 
@@ -195,15 +195,16 @@ class WydawnictwoPBNAdapter:
         statements = []
         jednostki = set()
         for elem in self.original.autorzy_set.all().select_related():
+            elem: BazaModeluOdpowiedzialnosciAutorow
             #
             # Jeżeli dany rekord Wydawnictwo_..._Autor ma dyscyplinę, to takiego autora
             # eksportujemy 'w pełni' tzn ze wszystkimi posiadanymi przez niego identyfikatorami
             # typu PBN UID czy ORCID:
             #
 
-            if elem.dyscyplina_naukowa_id is None:
+            if elem.dyscyplina_naukowa_id is None or elem.przypieta is False:
                 #
-                # Autor nie ma dyscypliny -- prosty eksport imie + nazwisko
+                # Autor nie ma dyscypliny lub ma odpiętą dyscyplinę -- prosty eksport w formacie imię + nazwisko
                 #
                 author = AutorSimplePBNAdapter(elem.autor).pbn_get_json()
             else:

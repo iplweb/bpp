@@ -24,7 +24,7 @@ class WydawnictwoAutorToStatementPBNAdapter:
             # To jest flaga dot. czy dane są w indeksie ORCID
             ret["orcid"] = True
 
-        if self.original.dyscyplina_naukowa_id is not None:
+        if self.original.dyscyplina_naukowa_id is not None and self.original.przypieta:
             ret["disciplineId"] = self.original.dyscyplina_naukowa.kod_dla_pbn()
         else:
             return

@@ -41,6 +41,8 @@ class Wydawnictwo_Autor_Base(SortableAdminMixin, admin.ModelAdmin):
         "afiliuje",
         "zatrudniony",
         "upowaznienie_pbn",
+        "dyscyplina_naukowa",
+        "przypieta",
         # "procent",
         "kolejnosc",
     ]
@@ -48,6 +50,8 @@ class Wydawnictwo_Autor_Base(SortableAdminMixin, admin.ModelAdmin):
         "zatrudniony",
         "afiliuje",
         "upowaznienie_pbn",
+        "dyscyplina_naukowa",
+        "przypieta",
     ]
     search_fields = [
         "rekord__tytul_oryginalny",
