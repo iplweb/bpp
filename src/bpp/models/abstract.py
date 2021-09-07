@@ -274,9 +274,7 @@ def nie_zawiera_http_https(v):
 
 
 class ModelZDOI(models.Model):
-    doi = DOIField(
-        "DOI", null=True, blank=True, db_index=True, validators=[nie_zawiera_http_https]
-    )
+    doi = DOIField("DOI", null=True, blank=True, db_index=True)
 
     class Meta:
         abstract = True
