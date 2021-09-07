@@ -13,6 +13,7 @@ Historia zmian
   tak zwanym międzyczasie w stosunku do lokalnego cache) (b/n),
 * normalizuj ISBN zapisywany dla lokalnego cache publikacji PBNu (b/n),
 * eksperymentalne wyszukiwanie za pomocą DjangoQL dla wydawnictw zwartych (b/n),
+* usunięto błąd który pojawiał się gdy tworzono wydawcę będącym aliasem z przypisaniem poziomów (b/n),
 
 202108.1078
 -----------
