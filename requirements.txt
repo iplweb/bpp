@@ -81,7 +81,7 @@ diff-match-patch==20200713
     # via django-import-export
 dj-pagination==2.4.0
     # via -r requirements.in
-django==3.0.14
+django==3.1.12
     # via
     #   -r requirements.in
     #   channels
