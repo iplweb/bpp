@@ -266,6 +266,26 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
                 self.authorize(self.base_url, self.app_id, self.app_token)
                 # self.authorize()
 
+        #
+        # mpasternak 7.09.2021, poniżej "przymiarki" do analizowania zwróconych błędów z PBN
+        #
+        # if ret.status_code == 400:
+        #     try:
+        #         ret_json = ret.json()
+        #     except BaseException:
+        #         raise HttpException(
+        #             ret.status_code,
+        #             url,
+        #             "Blad podczas odkodowywania JSON podczas odpowiedzi 400: "
+        #             + smart_content(ret.content),
+        #         )
+        #     if ret_json.get("message") == "Bad Request" and ret_json.get("description") == "Validation failed."
+        #     and ret_json.get("details")
+        #
+        #     HttpException(400, '/api/v1/publications',
+        #                   '{"code":400,"message":"Bad Request","description":"Validation failed.",
+        #                   "details":{"doi":"DOI jest błędny lub nie udało się pobrać informacji z serwisu DOI!"}}')
+
         if ret.status_code >= 400:
             raise HttpException(ret.status_code, url, smart_content(ret.content))
 
