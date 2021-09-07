@@ -4,6 +4,7 @@
 
 from dal import autocomplete
 from django import forms
+from djangoql.admin import DjangoQLSearchMixin
 from mptt.forms import TreeNodeChoiceField
 from taggit.forms import TextareaTagWidget
 
@@ -202,12 +203,16 @@ class Wydawnictwo_Zwarte_Zewnetrzna_Baza_DanychInline(admin.StackedInline):
 
 
 class Wydawnictwo_ZwarteAdmin(
+    DjangoQLSearchMixin,
     KolumnyZeSkrotamiMixin,
     helpers.AdnotacjeZDatamiOrazPBNMixin,
     OptionalPBNSaveMixin,
     Wydawnictwo_ZwarteAdmin_Baza,
 ):
     form = Wydawnictwo_ZwarteForm
+    djangoql_completion_enabled_by_default = False
+    djangoql_completion = True
+    search_fields = Wydawnictwo_ZwarteAdmin_Baza.search_fields
 
     inlines = (
         generuj_inline_dla_autorow(Wydawnictwo_Zwarte_Autor),

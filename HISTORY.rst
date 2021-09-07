@@ -12,6 +12,7 @@ Historia zmian
 * pobieranie po DOI/ISBN zawsze pobiera rekordy z bazy danych PBNu (które to mogły się zmienić w
   tak zwanym międzyczasie w stosunku do lokalnego cache) (b/n),
 * normalizuj ISBN zapisywany dla lokalnego cache publikacji PBNu (b/n),
+* eksperymentalne wyszukiwanie za pomocą DjangoQL dla wydawnictw zwartych (b/n),
 
 202108.1078
 -----------

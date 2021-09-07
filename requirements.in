@@ -72,3 +72,4 @@ django-cacheops==6.0
 # https://stackoverflow.com/questions/68208931/django-runtimeerror-at-admin-users-user-1-change-single-thread-executor-alrea
 # daphne Single thread executor already being used, would deadlock
 # asgiref==3.3.4
+djangoql==0.15.3

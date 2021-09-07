@@ -144,6 +144,7 @@ if TESTING:
 
 
 INSTALLED_APPS = [
+    "djangoql",
     "cacheops",
     "channels",
     "django.contrib.humanize",
