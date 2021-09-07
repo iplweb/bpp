@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from fixtures.pbn_api import pbn_Publication_json_z_serwera
+from fixtures import pbn_publication_json
 
 from bpp.models import Uczelnia
 from bpp.views.api import const
@@ -81,7 +81,7 @@ def test_GetPBNPublicationsByISBN_jedna_praca(
 
     orig = Uczelnia.objects.get_default
 
-    pub1 = pbn_Publication_json_z_serwera(
+    pub1 = pbn_publication_json(
         mongoId=UID_REKORDU, year=ROK, isbn=ISBN, title=TYTUL_REKORDU
     )
 
@@ -115,10 +115,10 @@ def test_GetPBNPublicationsByISBN_wiele_isbn(
 
     orig = Uczelnia.objects.get_default
 
-    pub1 = pbn_Publication_json_z_serwera(
+    pub1 = pbn_publication_json(
         mongoId=UID_REKORDU, year=ROK, isbn=ISBN, title=TYTUL_REKORDU
     )
-    pub2 = pbn_Publication_json_z_serwera(
+    pub2 = pbn_publication_json(
         mongoId=UID_REKORDU + "2", year=ROK, isbn=ISBN, title=TYTUL_REKORDU
     )
 
