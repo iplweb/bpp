@@ -3,12 +3,14 @@
 Historia zmian
 ==============
 
-202109.1079-alpha
+202109.1079-beta
 -----------------
 
 * akcja grupowego wysyłania do PBN w module Redagowania dostepna dla wydawnictwo zwartych (b/n),
 * usunięto regresję związaną z polami WWW/DOI/publiczny WWW, polegającą na nie pojawianiu się ich
   wartości w formularzu w module redagowania i nie zapisywaniu się ich (b/n),
+* pobieranie po DOI/ISBN zawsze pobiera rekordy z bazy danych PBNu (które to mogły się zmienić w
+  tak zwanym międzyczasie w stosunku do lokalnego cache) (b/n),
 
 202108.1078
 -----------

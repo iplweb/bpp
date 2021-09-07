@@ -552,11 +552,12 @@ class AuthorMixin:
 
 class SearchMixin:
     def search_publications(self, *args, **kw):
-        return self.transport.post_pages("/api/v1/search/publications", body=kw)
+        return self.transport.post_pages(PBN_SEARCH_PUBLICATIONS_URL, body=kw)
 
 
 PBN_POST_PUBLICATIONS_URL = "/api/v1/publications"
 PBN_GET_LANGUAGES_URL = "/api/v1/dictionary/languages"
+PBN_SEARCH_PUBLICATIONS_URL = "/api/v1/search/publications"
 
 
 class PBNClient(

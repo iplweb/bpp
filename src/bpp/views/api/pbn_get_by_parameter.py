@@ -45,16 +45,7 @@ class GetPBNPublicationsByBase(View):
         if not uczelnia:
             return JsonResponse({"error": "W systemie brak obiektu Uczelnia"})
 
-        try:
-            return JsonResponse({"id": self.get_publication(ni, rok)})
-        except Publication.DoesNotExist:
-            pass  # Ciąg dalszy poniżej tego bloku try/except
-        except Publication.MultipleObjectsReturned:
-            # Wiele rekordów, zwróc ISBN. Po stronie klienta spowoduje to wpisanie numeru ISBN
-            # do pola wyszukujacego
-            return JsonResponse({"id": ni})
-
-        # Publikacja nie istnieje. Zapytaj PBN o nią:
+        # Zawsze pobierz świeże dane z serwera -- w pierwszej kolejności:
 
         client = uczelnia.pbn_client(request.user.pbn_token)
 
@@ -86,7 +77,22 @@ class GetPBNPublicationsByBase(View):
         if ret:
             return JsonResponse({"id": ret[0].pbn_uid.pk})
 
-        return JsonResponse({"id": ni})
+        # Jeżeli serwer nie zwrócil nic rozsądnego, zwróc dane z lokalnego cache
+        try:
+            return JsonResponse({"id": self.get_publication(ni, rok)})
+        except Publication.DoesNotExist:
+            return JsonResponse(
+                {
+                    "error": "Taka publikacja nie istnieje ani w bazie PBN, ani w lokalnym "
+                    "cache rekordów PBNu. "
+                }
+            )
+        except Publication.MultipleObjectsReturned:
+            # Wiele rekordów, zwróc ISBN. Po stronie klienta spowoduje to wpisanie numeru ISBN
+            # do pola wyszukujacego
+            return JsonResponse({"id": ni})
+
+        raise NotImplementedError("Should never happen")
 
 
 class GetPBNPublicationsByISBN(GetPBNPublicationsByBase):
