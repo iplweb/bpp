@@ -14,7 +14,9 @@ Historia zmian
 * normalizuj ISBN zapisywany dla lokalnego cache publikacji PBNu (b/n),
 * eksperymentalne wyszukiwanie za pomocą DjangoQL dla wydawnictw zwartych (b/n),
 * wyświetlanie linku do wysłanych danych przy komunikacie błędu (b/n),
+* łatwe przechodzenie z aliasu do wydawcy nadrzędnego (b/n),
 * usunięto błąd który pojawiał się gdy tworzono wydawcę będącym aliasem z przypisaniem poziomów (b/n),
+* możliwość wyszukania po konkretnym wydawcy indeksowanym z poziomu rekordu wydawcy w module Redagowania (b/n)
 
 202108.1078
 -----------
