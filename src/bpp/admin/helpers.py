@@ -484,10 +484,24 @@ def sprobuj_wgrac_do_pbn(request, obj, force_upload=False, pbn_client=None):
         return
 
     except Exception as e:
+        try:
+            link_do_wyslanych = reverse(
+                "admin:pbn_api_sentdata_change",
+                args=(SentData.objects.get_for_rec(obj).pk,),
+            )
+        except SentData.DoesNotExist:
+            link_do_wyslanych = None
+
+        if link_do_wyslanych:
+            extra = (
+                '<a target=_blank href="%s">Kliknij, aby otworzyć widok wysłanych danych</a>.'
+                % link_do_wyslanych
+            )
+
         messages.warning(
             request,
-            'Nie można zsynchronizować obiektu "%s" z PBN. Kod błędu: %r. '
-            % (link_do_obiektu(obj), e),
+            'Nie można zsynchronizować obiektu "%s" z PBN. Kod błędu: %r. %s'
+            % (link_do_obiektu(obj), e, extra),
         )
         return
 
