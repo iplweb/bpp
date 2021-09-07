@@ -35,6 +35,22 @@ class WillNotExportError(Exception):
     pass
 
 
+class DOIorWWWMissing(WillNotExportError):
+    pass
+
+
+class LanguageMissingPBNUID(WillNotExportError):
+    pass
+
+
+class StatementsMissing(WillNotExportError):
+    pass
+
+
+class CharakterFormalnyMissingPBNUID(WillNotExportError):
+    pass
+
+
 class StatementDeletionError(Exception):
     def __init__(self, status_code, url, content):
         self.status_code = status_code

@@ -1,5 +1,10 @@
 from import_common.normalization import normalize_isbn, normalize_issn
-from ..exceptions import WillNotExportError
+from ..exceptions import (
+    CharakterFormalnyMissingPBNUID,
+    DOIorWWWMissing,
+    LanguageMissingPBNUID,
+    StatementsMissing,
+)
 from .autor import AutorSimplePBNAdapter, AutorZDyscyplinaPBNAdapter
 from .wydawca import WydawcaPBNAdapter
 from .wydawnictwo_autor import WydawnictwoAutorToStatementPBNAdapter
@@ -75,7 +80,7 @@ class WydawnictwoPBNAdapter:
         elif self.original.charakter_formalny.rodzaj_pbn == const.RODZAJ_PBN_ROZDZIAL:
             return WydawnictwoPBNAdapter.CHAPTER
         else:
-            raise WillNotExportError(
+            raise CharakterFormalnyMissingPBNUID(
                 f"Rodzaj dla PBN nie określony dla charakteru formalnego {self.original.charakter_formalny}"
             )
 
@@ -148,7 +153,7 @@ class WydawnictwoPBNAdapter:
             ret["doi"] = self.original.doi
 
         if self.original.jezyk.pbn_uid_id is None:
-            raise WillNotExportError(
+            raise LanguageMissingPBNUID(
                 f'Język rekordu "{self.original.jezyk}" nie ma określonego odpowiednika w PBN'
             )
 
@@ -156,7 +161,7 @@ class WydawnictwoPBNAdapter:
         if self.original.jezyk_orig:
 
             if self.original.jezyk_orig.pbn_uid_id is None:
-                raise WillNotExportError(
+                raise LanguageMissingPBNUID(
                     f'Język *oryginalny* rekordu "{self.original.jezyk}" nie ma określonego odpowiednika w PBN'
                 )
 
@@ -183,7 +188,7 @@ class WydawnictwoPBNAdapter:
             )
 
         if not ret.get("doi") and not ret.get("publicUri"):
-            raise WillNotExportError("Musi być DOI lub adres WWW")
+            raise DOIorWWWMissing("Musi być DOI lub adres WWW")
 
         if hasattr(self.original, "zrodlo"):
             ret["journal"] = ZrodloPBNAdapter(self.original.zrodlo).pbn_get_json()
@@ -319,7 +324,7 @@ class WydawnictwoPBNAdapter:
             ]
             and not ret.get("statements")
         ):
-            raise WillNotExportError(
+            raise StatementsMissing(
                 "Nie wyślę rekordu artykułu lub rozdziału bez zadeklarowanych oświadczeń autorów (dyscyplin). "
             )
 
