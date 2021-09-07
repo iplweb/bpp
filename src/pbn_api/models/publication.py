@@ -1,6 +1,7 @@
 from django.db import models
 
 from import_common.core import matchuj_publikacje
+from import_common.normalization import normalize_isbn
 from .base import BasePBNMongoDBModel
 
 from django.utils.functional import cached_property
@@ -48,7 +49,7 @@ class Publication(LinkDoPBNMixin, BasePBNMongoDBModel):
         isbn = self.value_or_none("object", "isbn")
         if isbn is None:
             isbn = self.value_or_none("object", "book", "isbn")
-        return isbn
+        return normalize_isbn(isbn)
 
     def pull_up_publicUri(self):
         publicUri = self.value_or_none("object", "publicUri")
