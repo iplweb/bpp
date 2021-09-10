@@ -382,7 +382,7 @@ soupsieve==2.2.1
     # via beautifulsoup4
 sqlalchemy==1.4.22
     # via moai-iplweb
-sqlparse==0.4.1
+sqlparse==0.4.2
     # via django
 tablib[html,ods,xls,xlsx,yaml]==1.1.0
     # via
