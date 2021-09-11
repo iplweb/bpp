@@ -176,8 +176,7 @@
             {% if has_add_permission %}
                 {% url cl.opts|admin_urlname:'add' as add_url %}
                 <li><a href="{% add_preserved_filters add_url is_popup to_field %}"
-                       class="grp-add-link grp-state-focus">{% blocktrans with cl.opts.verbose_name as name %}Add
-                    {{ name }}{% endblocktrans %}</a></li>
+                       class="grp-add-link grp-state-focus">{% blocktrans with cl.opts.verbose_name as name %}Add {{ name }}{% endblocktrans %}</a></li>
             {% endif %}
         {% endblock %}
     </ul>
@@ -210,7 +209,7 @@
                                             <div class="grp-filter">
                                                 <div class="grp-pulldown-container">
                                                     <a href="javascript://"
-                                                       class="grp-button grp-pulldown-handler">{% trans 'Filter' %}</a>
+                                                       class="grp-button grp-pulldown-handler">{% trans "Filter" %}</a>
                                                     <div class="grp-pulldown-content" style="display: none;">
                                                         {% for spec in cl.filter_specs %}
                                                             {% admin_list_filter cl spec %}{% endfor %}

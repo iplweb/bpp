@@ -3,8 +3,8 @@
 Historia zmian
 ==============
 
-202109.1079-beta
------------------
+202109.1079-rc
+--------------
 
 * akcja grupowego wysyłania do PBN w module Redagowania dostepna dla wydawnictwo zwartych (b/n),
 * usunięto regresję związaną z polami WWW/DOI/publiczny WWW, polegającą na nie pojawianiu się ich
@@ -16,7 +16,8 @@ Historia zmian
 * wyświetlanie linku do wysłanych danych przy komunikacie błędu (b/n),
 * łatwe przechodzenie z aliasu do wydawcy nadrzędnego (b/n),
 * usunięto błąd który pojawiał się gdy tworzono wydawcę będącym aliasem z przypisaniem poziomów (b/n),
-* możliwość wyszukania po konkretnym wydawcy indeksowanym z poziomu rekordu wydawcy w module Redagowania (b/n)
+* możliwość wyszukania po konkretnym wydawcy indeksowanym z poziomu rekordu wydawcy w module Redagowania (b/n),
+* poprawione tłumaczenie drobnych elementów w panelu Redagowania ("Add" -> "Dodaj", "Filter" -> "Filtruj)
 
 202108.1078
 -----------

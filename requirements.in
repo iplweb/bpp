@@ -54,7 +54,10 @@ django-mptt==0.12.0
 wosclient==0.1.5
 MOAI-iplweb==2.0.0
 django-redis-cache==2.1.1
-django-filter
+# django-filter==2.4.0
+# django-filter==2.4.0 psuje tłumaczenia Django, zainstaluj dowolny release po 2.4.0 -- jak będzie;
+# na ten moment instalujemy konkretny commit a konkretnie:
+git+git://github.com/carltongibson/django-filter.git@512310fe880af675f33be964d85907db838f62ea
 progressbar2
 dbfread
 djangorestframework==3.11.2

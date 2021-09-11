@@ -152,7 +152,7 @@ django-extensions==3.1.3
     # via -r requirements.in
 django-favicon-plus==0.0.8
     # via -r requirements.in
-django-filter==2.4.0
+git+git://github.com/carltongibson/django-filter.git@512310fe880af675f33be964d85907db838f62ea
     # via -r requirements.in
 django-flexible-reports==0.2.9
     # via -r requirements.in
