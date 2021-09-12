@@ -492,6 +492,7 @@ def sprobuj_wgrac_do_pbn(request, obj, force_upload=False, pbn_client=None):
         except SentData.DoesNotExist:
             link_do_wyslanych = None
 
+        extra = ""
         if link_do_wyslanych:
             extra = (
                 '<a target=_blank href="%s">Kliknij, aby otworzyć widok wysłanych danych</a>.'

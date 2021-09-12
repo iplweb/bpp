@@ -20,7 +20,8 @@ Historia zmian
 * poprawione tłumaczenie drobnych elementów w panelu Redagowania ("Add" -> "Dodaj", "Filter" -> "Filtruj) (b/n),
 * poszerzone pole wyszukiwania tekstowego/języka DjangoQL w module redagowania (b/n),
 * włącz DjangoQL dla wydawnictw ciągłych (b/n),
-
+* usunięto błąd pojawiający sie w module Redagowania przy wysyłaniu do PBN, gdy wystąpił inny błąd,
+  niż autoryzacji lub związany z wysłanymi już danymi (b/n),
 
 202108.1078
 -----------
