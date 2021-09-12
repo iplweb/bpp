@@ -17,7 +17,8 @@ Historia zmian
 * łatwe przechodzenie z aliasu do wydawcy nadrzędnego (b/n),
 * usunięto błąd który pojawiał się gdy tworzono wydawcę będącym aliasem z przypisaniem poziomów (b/n),
 * możliwość wyszukania po konkretnym wydawcy indeksowanym z poziomu rekordu wydawcy w module Redagowania (b/n),
-* poprawione tłumaczenie drobnych elementów w panelu Redagowania ("Add" -> "Dodaj", "Filter" -> "Filtruj)
+* poprawione tłumaczenie drobnych elementów w panelu Redagowania ("Add" -> "Dodaj", "Filter" -> "Filtruj) (b/n),
+* poszerzone pole wyszukiwania tekstowego/języka DjangoQL w module redagowania (b/n),
 
 202108.1078
 -----------
