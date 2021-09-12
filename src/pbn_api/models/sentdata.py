@@ -80,7 +80,7 @@ class SentData(LinkDoPBNMixin, models.Model):
 
     pbn_uid = models.ForeignKey(
         "pbn_api.Publication",
-        verbose_name="Publikacja w PBN",
+        verbose_name="Publikacja z PBN",
         blank=True,
         null=True,
         on_delete=models.SET_NULL,

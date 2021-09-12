@@ -35,6 +35,18 @@ class GetPBNPublicationsByBase(View):
         # tytul = request.POST.get("tytul")
         return self.get_value(request), self.get_rok(request)
 
+    def get_publication_by_element_name(
+        self, client, elementName, normalizedInput, year
+    ):
+        return _pobierz_prace_po_elemencie(
+            client,
+            elementName,
+            normalizedInput,
+            # title=tytul[: len(tytul) // 3 * 4],
+            year=year,
+            matchuj=True,
+        )
+
     def post(self, request, *args, **kw):
         ni, rok = self.get_normalized_values(request)
 
@@ -50,13 +62,11 @@ class GetPBNPublicationsByBase(View):
         client = uczelnia.pbn_client(request.user.pbn_token)
 
         try:
-            ret = _pobierz_prace_po_elemencie(
-                client,
-                self.publication_element_name,
-                ni,
-                # title=tytul[: len(tytul) // 3 * 4],
+            ret = self.get_publication_by_element_name(
+                client=client,
+                elementName=self.publication_element_name,
+                normalizedInput=ni,
                 year=rok,
-                matchuj=True,
             )
         except NeedsPBNAuthorisationException:
             return JsonResponse(

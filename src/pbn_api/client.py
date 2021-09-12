@@ -20,7 +20,7 @@ from pbn_api.exceptions import (
     PraceSerwisoweException,
     SameDataUploadedRecently,
 )
-from pbn_api.models import SentData
+from pbn_api.models.sentdata import SentData
 
 from django.contrib.contenttypes.models import ContentType
 

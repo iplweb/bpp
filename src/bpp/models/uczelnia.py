@@ -3,7 +3,7 @@
 """
 Struktura uczelni.
 """
-from typing import List, Union
+from typing import TYPE_CHECKING, List, Union
 
 from autoslug import AutoSlugField
 from django.core.exceptions import ImproperlyConfigured, ValidationError
@@ -20,6 +20,9 @@ from django.utils.functional import cached_property
 
 from bpp.models import ModelZAdnotacjami, NazwaISkrot, const
 from bpp.models.abstract import ModelZPBN_ID, NazwaWDopelniaczu
+
+if TYPE_CHECKING:
+    from pbn_api import client  # noqa
 
 
 class UczelniaManager(models.Manager):
@@ -338,7 +341,7 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
 
         return WoSClient(self.clarivate_username, self.clarivate_password)
 
-    def pbn_client(self, pbn_user_token=None):
+    def pbn_client(self, pbn_user_token=None) -> "client.PBNClient":
         """
         Zwraca klienta PBNu
         """

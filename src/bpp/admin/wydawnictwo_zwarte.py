@@ -8,6 +8,7 @@ from djangoql.admin import DjangoQLSearchMixin
 from mptt.forms import TreeNodeChoiceField
 from taggit.forms import TextareaTagWidget
 
+from pbn_api.models import Publication
 from .actions import (
     ustaw_po_korekcie,
     ustaw_przed_korekta,
@@ -164,6 +165,15 @@ class Wydawnictwo_ZwarteForm(
         queryset=Konferencja.objects.all(),
         widget=autocomplete.ModelSelect2(
             url="bpp:konferencja-autocomplete", attrs=dict(style="width: 746px;")
+        ),
+    )
+
+    pbn_uid = forms.ModelChoiceField(
+        label="Odpowiednik w PBN",
+        required=False,
+        queryset=Publication.objects.all(),
+        widget=autocomplete.ModelSelect2(
+            url="bpp:publication-autocomplete", attrs=dict(style="width: 746px;")
         ),
     )
 

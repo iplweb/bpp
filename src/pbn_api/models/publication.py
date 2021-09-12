@@ -15,8 +15,8 @@ class Publication(LinkDoPBNMixin, BasePBNMongoDBModel):
     atrybut_dla_url_do_pbn = "pk"
 
     class Meta:
-        verbose_name = "Publikacja w PBN API"
-        verbose_name_plural = "Publikacje w PBN API"
+        verbose_name = "Publikacja z PBN API"
+        verbose_name_plural = "Publikacje z PBN API"
         unique_together = ["mongoId", "title", "isbn", "doi", "publicUri"]
 
     title = models.TextField(db_index=True, null=True, blank=True)
@@ -112,7 +112,7 @@ class Publication(LinkDoPBNMixin, BasePBNMongoDBModel):
         return self.matchuj_do_rekordu_bpp()
 
     def __str__(self):
-        ret = f"{self.title}"
+        ret = f"{self.title or self.value_or_none('object', 'title')}"
         if self.year:
             ret += f", {self.year}"
         if self.doi:

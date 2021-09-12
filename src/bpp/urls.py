@@ -36,6 +36,7 @@ from bpp.views.autocomplete import (
     LataAutocomplete,
     OrganPrzyznajacyNagrodyAutocomplete,
     PodrzednaPublikacjaHabilitacyjnaAutocomplete,
+    PublicationAutocomplete,
     PublicAutorAutocomplete,
     PublicKonferencjaAutocomplete,
     PublicTaggitTagAutocomplete,
@@ -269,6 +270,11 @@ urlpatterns = [
         r"^konferencja-autocomplete/$",
         KonferencjaAutocomplete.as_view(),
         name="konferencja-autocomplete",
+    ),
+    url(
+        r"^publication-autocomplete/$",
+        PublicationAutocomplete.as_view(),
+        name="publication-autocomplete",
     ),
     url(
         r"^public-konferencja-autocomplete/$",

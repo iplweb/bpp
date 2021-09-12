@@ -9,10 +9,13 @@ from django.core.exceptions import ImproperlyConfigured
 from django.db.models.aggregates import Count
 from django.db.models.query_utils import Q
 from queryset_sequence import QuerySetSequence
+from sentry_sdk import capture_exception
 from taggit.models import Tag
 
 from import_common.core import normalized_db_isbn
 from import_common.normalization import normalize_isbn
+from pbn_api.integrator import zapisz_mongodb
+from pbn_api.models import Publication
 
 from django.contrib.auth.mixins import UserPassesTestMixin
 
@@ -64,6 +67,51 @@ class Wydawnictwo_NadrzedneAutocomplete(autocomplete.Select2QuerySetView):
         if self.q:
             qs = qs.filter(tytul_oryginalny__icontains=self.q)
         return qs
+
+
+class PublicationAutocomplete(autocomplete.Select2QuerySetView):
+    create_field = "mongoId"
+
+    def get_queryset(self):
+        qs = Publication.objects.filter(status="ACTIVE")
+        if self.q:
+            words = [word.strip() for word in self.q.strip().split(" ") if word.strip()]
+            for word in words:
+                qs = qs.filter(
+                    Q(title__istartswith=self.q.strip())
+                    | Q(title__icontains=word)
+                    | Q(isbn__exact=word)
+                    | Q(doi__icontains=word)
+                )
+        return qs.order_by("title", "-year")
+
+    def create_object(self, text):
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
+        client = uczelnia.pbn_client(self.request.user.pbn_token)
+        return zapisz_mongodb(client.get_publication_by_id(text), Publication)
+
+    def post(self, request, *args, **kwargs):
+        """Create an object given a text after checking permissions."""
+        if not self.has_add_permission(request):
+            return http.HttpResponseForbidden()
+
+        text = request.POST.get("text", None)
+
+        if text is None:
+            return http.HttpResponseBadRequest()
+
+        try:
+            result = self.create_object(text)
+        except Exception as e:
+            capture_exception(e)
+            return http.HttpResponseBadRequest()
+
+        return http.JsonResponse(
+            {
+                "id": result.pk,
+                "text": self.get_selected_result_label(result),
+            }
+        )
 
 
 class Wydawnictwo_CiagleAdminAutocomplete(

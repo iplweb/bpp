@@ -22,6 +22,10 @@ Historia zmian
 * włącz DjangoQL dla wydawnictw ciągłych (b/n),
 * usunięto błąd pojawiający sie w module Redagowania przy wysyłaniu do PBN, gdy wystąpił inny błąd,
   niż autoryzacji lub związany z wysłanymi już danymi (b/n),
+* zmiana nomenklatury: publikacja w PBN API -> publikacja z PBN API (b/n),
+* możliwość pobierania prac z PBN API po identyfikatorze PBN UID z Redagowanie -> PBN API -> Publikacje -> Dodaj (b/n),
+* możliwość pobierania prac z PBN API po numerze MongoID z pola "Odpowiednik w PBN" (b/n),
+
 
 202108.1078
 -----------
