@@ -3,6 +3,7 @@
 from dal import autocomplete
 from django import forms
 from django.forms.utils import flatatt
+from djangoql.admin import DjangoQLSearchMixin
 from mptt.forms import TreeNodeChoiceField
 from taggit.forms import TextareaTagWidget
 
@@ -160,11 +161,15 @@ class Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychInline(admin.StackedInline):
 
 
 class Wydawnictwo_CiagleAdmin(
+    DjangoQLSearchMixin,
     OptionalPBNSaveMixin,
     KolumnyZeSkrotamiMixin,
     AdnotacjeZDatamiOrazPBNMixin,
     CommitedModelAdmin,
 ):
+    djangoql_completion_enabled_by_default = False
+    djangoql_completion = True
+
     formfield_overrides = NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW
     actions = [
         ustaw_po_korekcie,

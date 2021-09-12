@@ -19,6 +19,8 @@ Historia zmian
 * możliwość wyszukania po konkretnym wydawcy indeksowanym z poziomu rekordu wydawcy w module Redagowania (b/n),
 * poprawione tłumaczenie drobnych elementów w panelu Redagowania ("Add" -> "Dodaj", "Filter" -> "Filtruj) (b/n),
 * poszerzone pole wyszukiwania tekstowego/języka DjangoQL w module redagowania (b/n),
+* włącz DjangoQL dla wydawnictw ciągłych (b/n),
+
 
 202108.1078
 -----------
