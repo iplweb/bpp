@@ -200,7 +200,10 @@ def test_change_form_get_pbn_by_doi_via_api_nie_ma_w_api_jest_w_bazie(
         with pytest.raises(NoAlertPresentException):
             admin_browser.driver.switch_to.alert
 
+        time.sleep(0.5)
+
         admin_browser.switch_to.active_element.send_keys(Keys.ENTER)
+        time.sleep(0.5)
 
         assert admin_browser.find_by_id("id_pbn_uid").value == UID_REKORDU
     finally:
