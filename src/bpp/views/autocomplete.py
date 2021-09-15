@@ -74,15 +74,22 @@ class PublicationAutocomplete(autocomplete.Select2QuerySetView):
 
     def get_queryset(self):
         qs = Publication.objects.filter(status="ACTIVE")
+        self.q = self.q.strip()
+
         if self.q:
-            words = [word.strip() for word in self.q.strip().split(" ") if word.strip()]
-            for word in words:
-                qs = qs.filter(
-                    Q(title__istartswith=self.q.strip())
-                    | Q(title__icontains=word)
-                    | Q(isbn__exact=word)
-                    | Q(doi__icontains=word)
-                )
+            if len(self.q) == 24 and self.q.find(" ") == -1:
+                qs = qs.filter(pk=self.q)
+            else:
+                words = [
+                    word.strip() for word in self.q.strip().split(" ") if word.strip()
+                ]
+                for word in words:
+                    qs = qs.filter(
+                        Q(title__istartswith=self.q.strip())
+                        | Q(title__icontains=word)
+                        | Q(isbn__exact=word)
+                        | Q(doi__icontains=word)
+                    )
         return qs.order_by("title", "-year")
 
     def create_object(self, text):

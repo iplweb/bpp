@@ -9,6 +9,8 @@ from django.utils.functional import cached_property
 from bpp.models import const
 from bpp.models.abstract import LinkDoPBNMixin
 
+STATUS_ACTIVE = "ACTIVE"
+
 
 class Publication(LinkDoPBNMixin, BasePBNMongoDBModel):
     url_do_pbn = const.LINK_PBN_DO_PUBLIKACJI
