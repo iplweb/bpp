@@ -19,6 +19,8 @@ from pbn_api.models import Publication
 
 from django.contrib.auth.mixins import UserPassesTestMixin
 
+from django.utils.translation import ugettext_lazy as _
+
 from bpp.jezyk_polski import warianty_zapisanego_nazwiska
 from bpp.lookups import SearchQueryStartsWith
 from bpp.models import (
@@ -71,6 +73,36 @@ class Wydawnictwo_NadrzedneAutocomplete(autocomplete.Select2QuerySetView):
 
 class PublicationAutocomplete(autocomplete.Select2QuerySetView):
     create_field = "mongoId"
+
+    def get_create_option(self, context, q):
+        """Form the correct create_option to append to results."""
+        create_option = []
+        display_create_option = False
+        if self.create_field and q:
+            page_obj = context.get("page_obj", None)
+            if page_obj is None or page_obj.number == 1:
+                display_create_option = True
+
+            # Don't offer to create a new option if a
+            # case-insensitive) identical one already exists
+            existing_options = (
+                self.get_result_label(result).lower()
+                for result in context["object_list"]
+            )
+            if q.lower() in existing_options:
+                display_create_option = False
+            if Publication.objects.filter(pk=q.lower()).exists():
+                display_create_option = False
+
+        if display_create_option and self.has_add_permission(self.request):
+            create_option = [
+                {
+                    "id": q,
+                    "text": _('Create "%(new_value)s"') % {"new_value": q},
+                    "create_id": True,
+                }
+            ]
+        return create_option
 
     def get_queryset(self):
         qs = Publication.objects.filter(status="ACTIVE")
