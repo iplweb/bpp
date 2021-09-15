@@ -1,5 +1,13 @@
-from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
+
+from .exceptions import CannotAdapt
+from .wydawnictwo_ciagle import (
+    SlotKalkulator_Wydawnictwo_Ciagle_Prog1,
+    SlotKalkulator_Wydawnictwo_Ciagle_Prog2,
+)
+
+from django.contrib.contenttypes.models import ContentType
+
 from django.utils.functional import cached_property
 
 from bpp.models import Typ_Odpowiedzialnosci, Uczelnia, const
@@ -13,12 +21,6 @@ from bpp.models.sloty.wydawnictwo_zwarte import (
 )
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
-
-from .exceptions import CannotAdapt
-from .wydawnictwo_ciagle import (
-    SlotKalkulator_Wydawnictwo_Ciagle_Prog1,
-    SlotKalkulator_Wydawnictwo_Ciagle_Prog2,
-)
 
 
 def ISlot(original, uczelnia=None):
@@ -48,7 +50,7 @@ def ISlot(original, uczelnia=None):
             elif original.punkty_kbn < 20 and original.punkty_kbn > 0:
                 return SlotKalkulator_Wydawnictwo_Ciagle_Prog3(original)
 
-        elif original.rok in [2019, 2020, 2021]:
+        elif original.rok in [2019, 2020, 2021, 2022]:
             if original.punkty_kbn in [200, 140, 100]:
                 return SlotKalkulator_Wydawnictwo_Ciagle_Prog1(original)
             elif original.punkty_kbn in [70, 40]:

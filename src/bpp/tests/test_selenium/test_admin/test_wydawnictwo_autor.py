@@ -45,7 +45,7 @@ def test_edit_btn_appears(klass, model, live_server, admin_browser: WebDriver):
 
     mommy.make(model)
 
-    assert "Edycja autorów" in normalize_html(admin_browser.html)
+    assert "Autorzy" in normalize_html(admin_browser.html)
 
 
 @pytest.mark.parametrize(
@@ -67,7 +67,7 @@ def test_changelist_with_argument(klass, model, admin_browser, live_server):
     with wait_for_page_load(admin_browser):
         admin_browser.find_by_text("Edycja rekordu").click()
 
-    assert "Edycja autorów" in normalize_html(admin_browser.html)
+    assert "Autorzy" in normalize_html(admin_browser.html)
 
 
 @pytest.mark.parametrize(

@@ -4,15 +4,25 @@
 
 from dal import autocomplete
 from django import forms
+from djangoql.admin import DjangoQLSearchMixin
 from mptt.forms import TreeNodeChoiceField
 from taggit.forms import TextareaTagWidget
 
-from .actions import ustaw_po_korekcie, ustaw_przed_korekta, ustaw_w_trakcie_korekty
+from pbn_api.models import Publication
+from .actions import (
+    ustaw_po_korekcie,
+    ustaw_przed_korekta,
+    ustaw_w_trakcie_korekty,
+    wyslij_do_pbn,
+)
 from .core import CommitedModelAdmin, KolumnyZeSkrotamiMixin, generuj_inline_dla_autorow
 from .element_repozytorium import Element_RepozytoriumInline
 from .grant import Grant_RekorduInline
 from .helpers import OptionalPBNSaveMixin
 from .nagroda import NagrodaInline
+
+# Proste tabele
+from .wydawnictwo_ciagle import CleanDOIWWWPublicWWWMixin
 
 from django.contrib import admin, messages
 
@@ -37,13 +47,16 @@ from bpp.models import (
 from bpp.models.konferencja import Konferencja
 from bpp.models.seria_wydawnicza import Seria_Wydawnicza
 
-# Proste tabele
-
 
 class Wydawnictwo_ZwarteAdmin_Baza(CommitedModelAdmin):
     formfield_overrides = helpers.NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW
 
-    actions = [ustaw_po_korekcie, ustaw_w_trakcie_korekty, ustaw_przed_korekta]
+    actions = [
+        ustaw_po_korekcie,
+        ustaw_w_trakcie_korekty,
+        ustaw_przed_korekta,
+        wyslij_do_pbn,
+    ]
 
     list_display = [
         "tytul_oryginalny",
@@ -127,7 +140,9 @@ class Wydawnictwo_ZwarteAdmin_Baza(CommitedModelAdmin):
     )
 
 
-class Wydawnictwo_ZwarteForm(helpers.Wycinaj_W_z_InformacjiMixin, forms.ModelForm):
+class Wydawnictwo_ZwarteForm(
+    helpers.Wycinaj_W_z_InformacjiMixin, CleanDOIWWWPublicWWWMixin, forms.ModelForm
+):
     wydawnictwo_nadrzedne = forms.ModelChoiceField(
         required=False,
         queryset=Wydawnictwo_Zwarte.objects.all(),
@@ -150,6 +165,15 @@ class Wydawnictwo_ZwarteForm(helpers.Wycinaj_W_z_InformacjiMixin, forms.ModelFor
         queryset=Konferencja.objects.all(),
         widget=autocomplete.ModelSelect2(
             url="bpp:konferencja-autocomplete", attrs=dict(style="width: 746px;")
+        ),
+    )
+
+    pbn_uid = forms.ModelChoiceField(
+        label="Odpowiednik w PBN",
+        required=False,
+        queryset=Publication.objects.all(),
+        widget=autocomplete.ModelSelect2(
+            url="bpp:publication-autocomplete", attrs=dict(style="width: 746px;")
         ),
     )
 
@@ -189,12 +213,16 @@ class Wydawnictwo_Zwarte_Zewnetrzna_Baza_DanychInline(admin.StackedInline):
 
 
 class Wydawnictwo_ZwarteAdmin(
+    DjangoQLSearchMixin,
     KolumnyZeSkrotamiMixin,
     helpers.AdnotacjeZDatamiOrazPBNMixin,
     OptionalPBNSaveMixin,
     Wydawnictwo_ZwarteAdmin_Baza,
 ):
     form = Wydawnictwo_ZwarteForm
+    djangoql_completion_enabled_by_default = False
+    djangoql_completion = True
+    search_fields = Wydawnictwo_ZwarteAdmin_Baza.search_fields
 
     inlines = (
         generuj_inline_dla_autorow(Wydawnictwo_Zwarte_Autor),

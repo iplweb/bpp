@@ -1,4 +1,5 @@
 from django import forms
+from django.core.exceptions import ValidationError
 
 from django.contrib import admin
 
@@ -15,6 +16,14 @@ class Poziom_WydawcyInlineForm(forms.ModelForm):
         super(Poziom_WydawcyInlineForm, self).__init__(*args, **kw)
         if kw.get("instance"):
             self.fields["rok"].disabled = True
+
+    def clean(self):
+        if (
+            "wydawca" in self.cleaned_data
+            and self.cleaned_data["wydawca"].alias_dla_id is not None
+        ):
+            raise ValidationError("Nie można przypisywac poziomu wydawcy dla aliasów")
+        return self.cleaned_data
 
 
 class Poziom_WydawcyInline(admin.TabularInline):

@@ -50,6 +50,9 @@ perform autorzy_z_dyscyplina_bez_odpowiednika_pbn.xlsx "SELECT id, nazwisko, imi
 # Wszyscy "instytucjonalni" autorzy bez matchu
 perform autorzy_z_pbn_bez_odpowiednika_w_bpp.xlsx "SELECT \"mongoId\", versions#>'{0}'->'object'->>'name',versions#>'{0}'->'object'->>'lastName', versions#>'{0}'->'object'->>'qualifications' FROM pbn_api_scientist WHERE versions @> '[{\"current\": true}]' AND from_institution_api IS TRUE AND \"mongoId\" NOT IN (SELECT DISTINCT \"pbn_uid_id\" FROM bpp_autor WHERE pbn_uid_id IS NOT NULL)"
 
+# Prace z dyscyplina, bez matchu w PBN, bedace wydawnictwami nadrzednymi
+perform prace_z_dyscyplina_bez_matchu_w_pbn_zwarte_nadrzedne.xlsx "SELECT DISTINCT tytul_oryginalny, rok FROM bpp_wydawnictwo_zwarte WHERE id IN (SELECT DISTINCT rekord_id FROM bpp_wydawnictwo_zwarte_autor WHERE dyscyplina_naukowa_id IS NOT NULL) AND pbn_uid_id IS NULL AND id IN (SELECT DISTINCT wydawnictwo_nadrzedne_id FROM bpp_wydawnictwo_zwarte) AND rok >= 2017"
+
 # Prace z dyscyplina, bez matchu w PBN
 perform prace_z_dyscyplina_bez_matchu_w_pbn_zwarte.xlsx "SELECT DISTINCT tytul_oryginalny, rok FROM bpp_wydawnictwo_zwarte WHERE id IN (SELECT DISTINCT rekord_id FROM bpp_wydawnictwo_zwarte_autor WHERE dyscyplina_naukowa_id IS NOT NULL) AND pbn_uid_id IS NULL"
 

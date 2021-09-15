@@ -101,6 +101,22 @@ def test_sprobuj_wgrac_do_pbn_access_denied(
     assert "Brak dostępu --" in list(msg)[0].message
 
 
+def test_sprobuj_wgrac_do_pbn_inny_exception(
+    pbn_wydawnictwo_zwarte_z_charakterem, pbn_client, rf, pbn_uczelnia
+):
+    req = rf.get("/")
+
+    pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = ZeroDivisionError
+
+    with middleware(req):
+        sprobuj_wgrac_do_pbn(
+            req, pbn_wydawnictwo_zwarte_z_charakterem, pbn_client=pbn_client
+        )
+
+    msg = get_messages(req)
+    assert "Nie można zsynchronizować" in list(msg)[0].message
+
+
 def test_sprobuj_wgrac_do_pbn_inny_blad(
     pbn_wydawnictwo_zwarte_z_charakterem, pbn_client, rf, pbn_uczelnia
 ):

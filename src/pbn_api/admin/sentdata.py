@@ -11,8 +11,10 @@ class SentDataAdmin(BasePBNAPIAdminNoReadonly):
     list_display = [
         "object",
         "last_updated_on",
+        "typ_rekordu",
         "pbn_uid_id",
         "uploaded_okay",
+        "exception_details",
     ]
     ordering = ("-last_updated_on",)
     search_fields = ["data_sent", "exception"]
@@ -23,9 +25,10 @@ class SentDataAdmin(BasePBNAPIAdminNoReadonly):
         "uploaded_okay",
         "exception",
         "pbn_uid_id",
+        "typ_rekordu",
     ]
     fields = readonly_fields + ["pretty_json"]
-    list_filter = ["uploaded_okay"]
+    list_filter = ["uploaded_okay", "typ_rekordu"]
 
     list_per_page = 25
 
@@ -64,3 +67,13 @@ class SentDataAdmin(BasePBNAPIAdminNoReadonly):
         return format_json(obj, "data_sent")
 
     pretty_json.short_description = "Wysłane dane"
+
+    def exception_details(self, obj):
+        if obj.exception:
+            try:
+                return obj.exception.split('"details":')[1][:-3]
+            except BaseException:
+                return obj.exception
+
+    exception_details.short_description = "Opis problemu"
+    exception_details.admin_order_field = "exception"

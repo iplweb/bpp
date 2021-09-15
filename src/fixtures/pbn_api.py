@@ -1,3 +1,4 @@
+from http.server import HTTPServer
 from uuid import uuid4
 
 import pytest
@@ -102,6 +103,22 @@ def pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina(
 
 
 @pytest.fixture
+def pbn_rozdzial_z_autorem_z_dyscyplina(
+    pbn_wydawnictwo_zwarte, autor_z_dyscyplina, pbn_jednostka
+) -> Wydawnictwo_Ciagle:
+    _zrob_autora_pbn(autor_z_dyscyplina.autor)
+    pbn_wydawnictwo_zwarte.dodaj_autora(
+        autor_z_dyscyplina.autor,
+        pbn_jednostka,
+        dyscyplina_naukowa=autor_z_dyscyplina.dyscyplina_naukowa,
+    )
+    cf = pbn_wydawnictwo_zwarte.charakter_formalny
+    cf.rodzaj_pbn = const.RODZAJ_PBN_ROZDZIAL
+    cf.save()
+    return pbn_wydawnictwo_zwarte
+
+
+@pytest.fixture
 def pbn_charakter_formalny() -> Charakter_Formalny:
     return mommy.make(Charakter_Formalny, rodzaj_pbn=RODZAJ_PBN_KSIAZKA)
 
@@ -153,7 +170,7 @@ def pbn_wydawnictwo_zwarte_z_charakterem(
 
 
 @pytest.fixture
-def pbn_uczelnia(pbn_client):
+def pbn_uczelnia(pbn_client) -> Uczelnia:
     uczelnia = mommy.make(
         Uczelnia,
     )
@@ -171,15 +188,54 @@ def pbn_uczelnia(pbn_client):
     return uczelnia
 
 
-def pbn_Publication_json_z_serwera(
-    year, title="tytul pracy", mongoId=None, isbn=None, status="ACTIVE", verified=True
+@pytest.fixture
+def pbn_serwer(pbn_uczelnia, httpserver: HTTPServer):
+    pbn_uczelnia.pbn_api_root = httpserver.url_for("/")
+    pbn_uczelnia.save()
+    return httpserver
+
+
+def pbn_publication_json(
+    year,
+    title="tytul pracy",
+    mongoId=None,
+    isbn=None,
+    status="ACTIVE",
+    verified=True,
+    doi=None,
 ):
+    obj = {"title": title, "year": year}
+    if isbn:
+        obj.update({"isbn": isbn})
+    if doi:
+        obj.update({"doi": doi})
+
     return {
         "mongoId": mongoId or str(uuid4()),
         "status": status,
         "verificationLevel": "MODERATOR",
         "verified": verified,
-        "versions": [
-            {"current": True, "object": {"title": title, "year": year, "isbn": isbn}}
-        ],
+        "versions": [{"current": True, "object": obj}],
+    }
+
+
+def pbn_pageable_json(content):
+    return {
+        "content": content,
+        "first": True,
+        "last": True,
+        "number": 0,
+        "numberofElements": len(content),
+        "pageable": {
+            "offset": 0,
+            "pageNumber": 0,
+            "pageSize": len(content),
+            "paged": True,
+            "sort": {"sorted": False, "unsorted": True},
+            "unpaged": False,
+        },
+        "size": len(content),
+        "sort": {"sorted": False, "unsorted": True},
+        "totalElements": len(content),
+        "totalPages": 1,
     }

@@ -3,8 +3,36 @@
 Historia zmian
 ==============
 
-202108.1078-alpha
------------------
+202109.1079-rc
+--------------
+
+* akcja grupowego wysyłania do PBN w module Redagowania dostepna dla wydawnictwo zwartych (b/n),
+* usunięto regresję związaną z polami WWW/DOI/publiczny WWW, polegającą na nie pojawianiu się ich
+  wartości w formularzu w module redagowania i nie zapisywaniu się ich (b/n),
+* pobieranie po DOI/ISBN zawsze pobiera rekordy z bazy danych PBNu (które to mogły się zmienić w
+  tak zwanym międzyczasie w stosunku do lokalnego cache) (b/n),
+* normalizuj ISBN zapisywany dla lokalnego cache publikacji PBNu (b/n),
+* eksperymentalne wyszukiwanie za pomocą DjangoQL dla wydawnictw zwartych (b/n),
+* wyświetlanie linku do wysłanych danych przy komunikacie błędu (b/n),
+* łatwe przechodzenie z aliasu do wydawcy nadrzędnego (b/n),
+* usunięto błąd który pojawiał się gdy tworzono wydawcę będącym aliasem z przypisaniem poziomów (b/n),
+* możliwość wyszukania po konkretnym wydawcy indeksowanym z poziomu rekordu wydawcy w module Redagowania (b/n),
+* poprawione tłumaczenie drobnych elementów w panelu Redagowania ("Add" -> "Dodaj", "Filter" -> "Filtruj) (b/n),
+* poszerzone pole wyszukiwania tekstowego/języka DjangoQL w module redagowania (b/n),
+* włącz DjangoQL dla wydawnictw ciągłych (b/n),
+* usunięto błąd pojawiający sie w module Redagowania przy wysyłaniu do PBN, gdy wystąpił inny błąd,
+  niż autoryzacji lub związany z wysłanymi już danymi (b/n),
+* zmiana nomenklatury: publikacja w PBN API -> publikacja z PBN API (b/n),
+* możliwość pobierania prac z PBN API po identyfikatorze PBN UID z Redagowanie -> PBN API -> Publikacje -> Dodaj (b/n),
+* możliwość pobierania prac z PBN API po numerze MongoID z pola "Odpowiednik w PBN" (b/n),
+* konfigurowalne w obiekcie uczelnia: kasowanie oświadczeń rekordu przed wysłaniem danych do PBN (b/n),
+  konfigurowalne nie wysyłanie z automatu prac z PK=0 (b/n),
+* liczenie slotów dla roku 2022 (wg algorytmu 2021) (b/n),
+* wyłaczono opcje "Dodaj" dla widoczności pól w wyszukiwarce (b/n),
+* polecenie 'pbn_importuj_wydawcow', pozwalające pobrać nowe dane z PBN do lokalnego indeksu wydawców (b/n),
+
+202108.1078
+-----------
 
 * pobieranie pracy z PBNu za pomocą ISBN uwzględnia E-ISBN w sytuacji, gdy ISBN nie jest wypełniony (b/n),
 * w przypadku wielu prac z tym samym ISBN, wcisnienie przycisku "pobierz po ISBN" wyświetla je wszystkie (b/n),
@@ -21,7 +49,20 @@ Historia zmian
 * narzedzie command-line do PBN: możliwość wysłania wyłącznie błędnych rekordów ponownie, możliwość wymuszonego
   wysłania wszystkich rekordów (b/n),
 * kasowanie obiektów SentData przy usuwaniu oświadczeń (b/n),
-
+* poprawka błędu przy wysyaniu rekordów przy odpowiedzi serwera PBN 400 i istniejącym DOI/ISBN (b/n),
+* opcja dla narzędzia command-line umożliwiająca wysyłąnie do PBN wyłącznie nowych rekordów (bez
+  informacji w tabeli SentData) (b/n),
+* nie wysyłaj do PBN, jeżeli rozdział nie ma oświadczeń (b/n),
+* rozszerzono zakres wysyłanych prac do PBN przez automatyczne narzędzie zgodnie z w/wym poprawkami (b/n)
+* umożliwiaj "odpinanie" dyscyplin (b/n),
+* przycisk "pobierz po DOI" pobierający prace z PBNu po adresie DOI,
+* lepsze komunikaty błędów w przypadku braku autoryzacji w PBN i kliknięciu przycisku "pobierz po DOI"
+  lub "pobierz po ISBN" (b/n),
+* nie pozwalaj na wpisanie adresu WWW w pole DOI (b/n),
+* nie pozwalaj na wpisanie odnośnika do doi.org w pole WWW (b/n),
+* lepsze komunikaty błędu w przypadku braku tokena autoryzacyjnego przy eksporcie do PBN (b/n),
+* PBN wysłane dane otrzymują typ rekordu i możliwosć filtrowania/sortowania po nim (b/n),
+* poprawki kodu przycisku "Wyślij ponownie" z wyslanych danych PBN (b/n)
 
 202108.1077
 -----------

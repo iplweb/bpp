@@ -1,11 +1,19 @@
 from django.db import models
 
+from import_common.core import matchuj_wydawce
 from .base import BasePBNMongoDBModel
 
 from bpp.models import LinkDoPBNMixin, const
 
 
+class PublisherManager(models.Manager):
+    def official(self):
+        return self.exclude(mniswId=None)
+
+
 class Publisher(LinkDoPBNMixin, BasePBNMongoDBModel):
+    objects = PublisherManager()
+
     url_do_pbn = const.LINK_PBN_DO_WYDAWCY
     atrybut_dla_url_do_pbn = "pk"
 
@@ -21,6 +29,10 @@ class Publisher(LinkDoPBNMixin, BasePBNMongoDBModel):
     def __str__(self):
         return f"{self.publisherName}, MNISW ID: {self.mniswId or '-'}"
 
+    @property
+    def points(self):
+        return self.current_version["object"]["points"]
+
     def rekord_w_bpp(self):
         from bpp.models import Wydawca
 
@@ -28,3 +40,6 @@ class Publisher(LinkDoPBNMixin, BasePBNMongoDBModel):
             return Wydawca.objects.get(pbn_uid_id=self.pk)
         except Wydawca.DoesNotExist:
             pass
+
+    def matchuj_wydawce(self):
+        return matchuj_wydawce(self.publisherName)

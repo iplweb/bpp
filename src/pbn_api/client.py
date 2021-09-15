@@ -16,10 +16,11 @@ from pbn_api.exceptions import (
     AccessDeniedException,
     AuthenticationResponseError,
     HttpException,
+    NeedsPBNAuthorisationException,
     PraceSerwisoweException,
     SameDataUploadedRecently,
 )
-from pbn_api.models import SentData
+from pbn_api.models.sentdata import SentData
 
 from django.contrib.contenttypes.models import ContentType
 
@@ -33,6 +34,11 @@ def smart_content(content):
         return content.decode("utf-8")
     except UnicodeDecodeError:
         return content
+
+
+NEEDS_PBN_AUTH_MSG = (
+    "W celu poprawnej autentykacji należy podać poprawny token użytkownika aplikacji."
+)
 
 
 class PBNClientTransport:
@@ -223,17 +229,62 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
 
         ret = method(self.base_url + url, headers=sent_headers, json=body)
         if ret.status_code == 403:
+
+            try:
+                ret_json = ret.json()
+            except BaseException:
+                raise HttpException(
+                    ret.status_code,
+                    url,
+                    "Blad podczas odkodowywania JSON podczas odpowiedzi 403: "
+                    + smart_content(ret.content),
+                )
+
             # Needs auth
-            if ret.json()["message"] == "Access Denied":
+            if ret_json.get("message") == "Access Denied":
                 # Autoryzacja użytkownika jest poprawna, jednakże nie ma on po stronie PBN
                 # takiego uprawnienia...
                 raise AccessDeniedException(url, smart_content(ret.content))
 
-            # elif ret.json['message'] == "Forbidden":  # <== to dostaniemy, gdy token zły lub brak
+            if ret_json.get("message") == "Forbidden" and ret_json.get(
+                "description"
+            ).startswith(NEEDS_PBN_AUTH_MSG):
+                # (403, '/api/v1/search/publications?size=10', '{"code":403,"message":"Forbidden",
+                # "description":"W celu poprawnej autentykacji należy podać poprawny token użytkownika aplikacji. Podany
+                # token użytkownika ... w ramach aplikacji ... nie istnieje lub został
+                # unieważniony!"}')
+                raise NeedsPBNAuthorisationException(
+                    ret.status_code, url, smart_content(ret.content)
+                )
 
+            # mpasternak, 5.09.2021: nie do końca jestem pewny, czy kod wywołujący self.authorize (nast. 2 linijki)
+            # zostawić w tej sytuacji. Tak było 'historycznie', ale widzę też, że po wywołaniu self.authorize
+            # ta funkcja zawsze wykonywała "if ret.status_code >= 403" i zwracała Exception. Teoretycznie
+            # to chyba zostało tutaj z powodu klienta command-line, który to na ten moment priorytetem
+            # przecież nie jest.
             if hasattr(self, "authorize"):
                 self.authorize(self.base_url, self.app_id, self.app_token)
                 # self.authorize()
+
+        #
+        # mpasternak 7.09.2021, poniżej "przymiarki" do analizowania zwróconych błędów z PBN
+        #
+        # if ret.status_code == 400:
+        #     try:
+        #         ret_json = ret.json()
+        #     except BaseException:
+        #         raise HttpException(
+        #             ret.status_code,
+        #             url,
+        #             "Blad podczas odkodowywania JSON podczas odpowiedzi 400: "
+        #             + smart_content(ret.content),
+        #         )
+        #     if ret_json.get("message") == "Bad Request" and ret_json.get("description") == "Validation failed."
+        #     and ret_json.get("details")
+        #
+        #     HttpException(400, '/api/v1/publications',
+        #                   '{"code":400,"message":"Bad Request","description":"Validation failed.",
+        #                   "details":{"doi":"DOI jest błędny lub nie udało się pobrać informacji z serwisu DOI!"}}')
 
         if ret.status_code >= 400:
             raise HttpException(ret.status_code, url, smart_content(ret.content))
@@ -521,11 +572,12 @@ class AuthorMixin:
 
 class SearchMixin:
     def search_publications(self, *args, **kw):
-        return self.transport.post_pages("/api/v1/search/publications", body=kw)
+        return self.transport.post_pages(PBN_SEARCH_PUBLICATIONS_URL, body=kw)
 
 
 PBN_POST_PUBLICATIONS_URL = "/api/v1/publications"
 PBN_GET_LANGUAGES_URL = "/api/v1/dictionary/languages"
+PBN_SEARCH_PUBLICATIONS_URL = "/api/v1/search/publications"
 
 
 class PBNClient(
@@ -592,7 +644,14 @@ class PBNClient(
             disable_progress_bar=True,
         )
 
-    def sync_publication(self, pub, force_upload=False):
+    def sync_publication(
+        self, pub, force_upload=False, delete_statements_before_upload=False
+    ):
+        """
+        @param delete_statements_before_upload: gdy True, kasuj oświadczenia publikacji przed wysłaniem (jeżeli posiada
+        PBN UID)
+        """
+
         # if not pub.doi:
         #     raise WillNotExportError("Ustaw DOI dla publikacji")
 
@@ -602,6 +661,14 @@ class PBNClient(
             model, pk = pub.split(":")
             ctype = ContentType.objects.get(app_label="bpp", model=model)
             pub = ctype.model_class().objects.get(pk=pk)
+
+        #
+        if (
+            delete_statements_before_upload
+            and hasattr(pub, "pbn_uid_id")
+            and pub.pbn_uid_id is not None
+        ):
+            self.delete_all_publication_statements(pub.pbn_uid_id)
 
         # Wgraj dane do PBN
         ret, js = self.upload_publication(pub, force_upload=force_upload)

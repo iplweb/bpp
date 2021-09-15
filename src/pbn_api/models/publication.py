@@ -1,6 +1,7 @@
 from django.db import models
 
 from import_common.core import matchuj_publikacje
+from import_common.normalization import normalize_isbn
 from .base import BasePBNMongoDBModel
 
 from django.utils.functional import cached_property
@@ -8,14 +9,16 @@ from django.utils.functional import cached_property
 from bpp.models import const
 from bpp.models.abstract import LinkDoPBNMixin
 
+STATUS_ACTIVE = "ACTIVE"
+
 
 class Publication(LinkDoPBNMixin, BasePBNMongoDBModel):
     url_do_pbn = const.LINK_PBN_DO_PUBLIKACJI
     atrybut_dla_url_do_pbn = "pk"
 
     class Meta:
-        verbose_name = "Publikacja w PBN API"
-        verbose_name_plural = "Publikacje w PBN API"
+        verbose_name = "Publikacja z PBN API"
+        verbose_name_plural = "Publikacje z PBN API"
         unique_together = ["mongoId", "title", "isbn", "doi", "publicUri"]
 
     title = models.TextField(db_index=True, null=True, blank=True)
@@ -48,7 +51,7 @@ class Publication(LinkDoPBNMixin, BasePBNMongoDBModel):
         isbn = self.value_or_none("object", "isbn")
         if isbn is None:
             isbn = self.value_or_none("object", "book", "isbn")
-        return isbn
+        return normalize_isbn(isbn)
 
     def pull_up_publicUri(self):
         publicUri = self.value_or_none("object", "publicUri")
@@ -111,7 +114,7 @@ class Publication(LinkDoPBNMixin, BasePBNMongoDBModel):
         return self.matchuj_do_rekordu_bpp()
 
     def __str__(self):
-        ret = f"{self.title}"
+        ret = f"{self.title or self.value_or_none('object', 'title')}"
         if self.year:
             ret += f", {self.year}"
         if self.doi:

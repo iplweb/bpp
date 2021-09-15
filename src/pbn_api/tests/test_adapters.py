@@ -3,7 +3,7 @@ from model_mommy import mommy
 
 from fixtures.pbn_api import _zrob_wydawnictwo_pbn
 from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
-from pbn_api.exceptions import WillNotExportError
+from pbn_api.exceptions import PKZeroExportDisabled, WillNotExportError
 
 from bpp.models import (
     Autor,
@@ -12,6 +12,7 @@ from bpp.models import (
     Tryb_OpenAccess_Wydawnictwo_Ciagle,
     Wersja_Tekstu_OpenAccess,
     Wydawnictwo_Zwarte,
+    Wydawnictwo_Zwarte_Autor,
     const,
 )
 
@@ -28,8 +29,8 @@ def test_WydawnictwoPBNAdapter_zwarte_ksiazka(pbn_wydawnictwo_zwarte_ksiazka):
     assert not res.get("journal")
 
 
-def test_WydawnictwoPBNAdapter_zwarte_rozdzial(pbn_wydawnictwo_zwarte_rozdzial):
-    res = WydawnictwoPBNAdapter(pbn_wydawnictwo_zwarte_rozdzial).pbn_get_json()
+def test_WydawnictwoPBNAdapter_zwarte_rozdzial(pbn_rozdzial_z_autorem_z_dyscyplina):
+    res = WydawnictwoPBNAdapter(pbn_rozdzial_z_autorem_z_dyscyplina).pbn_get_json()
     assert not res.get("journal")
 
 
@@ -37,6 +38,15 @@ def test_WydawnictwoPBNAdapter_zwarte_rozdzial(pbn_wydawnictwo_zwarte_rozdzial):
 def praca_z_dyscyplina_pbn(praca_z_dyscyplina, pbn_jezyk):
     _zrob_wydawnictwo_pbn(praca_z_dyscyplina, pbn_jezyk)
     return praca_z_dyscyplina
+
+
+@pytest.fixture
+def rozdzial_z_dyscyplina_pbn(praca_z_dyscyplina_pbn):
+    cf = praca_z_dyscyplina_pbn.charakter_formalny
+    cf.rodzaj_pbn = const.RODZAJ_PBN_ROZDZIAL
+    cf.save()
+
+    return praca_z_dyscyplina_pbn
 
 
 def test_WydawnictwoPBNAdapter_autor_eksport(
@@ -54,6 +64,48 @@ def test_WydawnictwoPBNAdapter_autor_eksport(
     assert res["journal"]
 
 
+@pytest.mark.django_db
+def test_WydawnictwoPBNAdapter_pk_rowne_zero_eksport_wylaczony(
+    pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina, jednostka, rf, pbn_uczelnia
+):
+
+    autor_bez_dyscypliny = mommy.make(Autor)
+    pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina.dodaj_autora(
+        autor_bez_dyscypliny, jednostka, "Jan Budnik"
+    )
+
+    pbn_uczelnia.pbn_api_nie_wysylaj_prac_bez_pk = True
+    pbn_uczelnia.save()
+
+    with pytest.raises(PKZeroExportDisabled):
+        WydawnictwoPBNAdapter(
+            pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina, uczelnia=pbn_uczelnia
+        ).pbn_get_json()
+
+
+def test_WydawnictwoPBNAdapter_przypinanie_dyscyplin(
+    pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina, jednostka
+):
+    wydawnictwo_autor: Wydawnictwo_Zwarte_Autor = (
+        pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina.autorzy_set.first()
+    )
+    wydawnictwo_autor.przypieta = False
+    wydawnictwo_autor.save()
+
+    with pytest.raises(WillNotExportError, match="bez zadeklarowanych"):
+        WydawnictwoPBNAdapter(
+            pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina
+        ).pbn_get_json()
+
+    wydawnictwo_autor.przypieta = True
+    wydawnictwo_autor.save()
+
+    res = WydawnictwoPBNAdapter(
+        pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina
+    ).pbn_get_json()
+    assert res["statements"]
+
+
 def test_WydawnictwoPBNAdapter_eksport_artykulu_bez_oswiadczen_zwraca_blad(
     praca_z_dyscyplina_pbn,
 ):
@@ -61,9 +113,18 @@ def test_WydawnictwoPBNAdapter_eksport_artykulu_bez_oswiadczen_zwraca_blad(
         WydawnictwoPBNAdapter(praca_z_dyscyplina_pbn).pbn_get_json()
 
 
-def test_WydawnictwoPBNAdapter_www_eksport(
-    wydawnictwo_zwarte, wydawnictwo_nadrzedne, pbn_jezyk
+def test_WydawnictwoPBNAdapter_eksport_rozdzialu_bez_oswiadczen_zwraca_blad(
+    rozdzial_z_dyscyplina_pbn,
 ):
+    with pytest.raises(WillNotExportError, match="bez zadeklarowanych"):
+        WydawnictwoPBNAdapter(rozdzial_z_dyscyplina_pbn).pbn_get_json()
+
+
+def test_WydawnictwoPBNAdapter_www_eksport(
+    pbn_rozdzial_z_autorem_z_dyscyplina, wydawnictwo_nadrzedne, pbn_jezyk
+):
+    wydawnictwo_zwarte = pbn_rozdzial_z_autorem_z_dyscyplina
+
     assert wydawnictwo_zwarte.wydawnictwo_nadrzedne_id == wydawnictwo_nadrzedne.pk
 
     _zrob_wydawnictwo_pbn(

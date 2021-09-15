@@ -10,7 +10,11 @@ from django.forms.widgets import Textarea
 from django.urls import reverse
 
 from import_common.normalization import normalize_isbn
-from pbn_api.exceptions import AccessDeniedException, SameDataUploadedRecently
+from pbn_api.exceptions import (
+    AccessDeniedException,
+    NeedsPBNAuthorisationException,
+    SameDataUploadedRecently,
+)
 from pbn_api.integrator import _pobierz_prace_po_elemencie
 from pbn_api.models import SentData
 
@@ -442,7 +446,11 @@ def sprobuj_wgrac_do_pbn(request, obj, force_upload=False, pbn_client=None):
                 )
 
     try:
-        pbn_client.sync_publication(obj, force_upload=force_upload)
+        pbn_client.sync_publication(
+            obj,
+            force_upload=force_upload,
+            delete_statements_before_upload=uczelnia.pbn_api_kasuj_przed_wysylka,
+        )
 
     except SameDataUploadedRecently as e:
         link_do_wyslanych = reverse(
@@ -465,16 +473,40 @@ def sprobuj_wgrac_do_pbn(request, obj, force_upload=False, pbn_client=None):
         messages.warning(
             request,
             f'Nie można zsynchronizować obiektu "{link_do_obiektu(obj)}" z PBN pod adresem '
-            f"API {e}. Brak dostępu -- "
-            f'<a target=_blank href="{reverse("pbn_api:authorize")}">kliknij tutaj, aby autoryzować sesję w PBN</a>.',
+            f"API {e.url}. Brak dostępu -- najprawdopodobniej użytkownik nie posiada odpowiednich uprawnień "
+            f"po stronie PBN/POLON. ",
+        )
+        return
+
+    except NeedsPBNAuthorisationException as e:
+        messages.warning(
+            request,
+            f'Nie można zsynchronizować obiektu "{link_do_obiektu(obj)}" z PBN pod adresem '
+            f"API {e.url}. Brak dostępu z powodu nieprawidłowego tokena -- wymagana autoryzacja w PBN. "
+            f'<a target=_blank href="{reverse("pbn_api:authorize")}">Kliknij tutaj, aby autoryzować sesję</a>.',
         )
         return
 
     except Exception as e:
+        try:
+            link_do_wyslanych = reverse(
+                "admin:pbn_api_sentdata_change",
+                args=(SentData.objects.get_for_rec(obj).pk,),
+            )
+        except SentData.DoesNotExist:
+            link_do_wyslanych = None
+
+        extra = ""
+        if link_do_wyslanych:
+            extra = (
+                '<a target=_blank href="%s">Kliknij, aby otworzyć widok wysłanych danych</a>.'
+                % link_do_wyslanych
+            )
+
         messages.warning(
             request,
-            'Nie można zsynchronizować obiektu "%s" z PBN. Kod błędu: %r. '
-            % (link_do_obiektu(obj), e),
+            'Nie można zsynchronizować obiektu "%s" z PBN. Kod błędu: %r. %s'
+            % (link_do_obiektu(obj), e, extra),
         )
         return
 

@@ -9,12 +9,17 @@ from django.core.exceptions import ImproperlyConfigured
 from django.db.models.aggregates import Count
 from django.db.models.query_utils import Q
 from queryset_sequence import QuerySetSequence
+from sentry_sdk import capture_exception
 from taggit.models import Tag
 
 from import_common.core import normalized_db_isbn
 from import_common.normalization import normalize_isbn
+from pbn_api.integrator import zapisz_mongodb
+from pbn_api.models import Publication
 
 from django.contrib.auth.mixins import UserPassesTestMixin
+
+from django.utils.translation import ugettext_lazy as _
 
 from bpp.jezyk_polski import warianty_zapisanego_nazwiska
 from bpp.lookups import SearchQueryStartsWith
@@ -64,6 +69,89 @@ class Wydawnictwo_NadrzedneAutocomplete(autocomplete.Select2QuerySetView):
         if self.q:
             qs = qs.filter(tytul_oryginalny__icontains=self.q)
         return qs
+
+
+class PublicationAutocomplete(autocomplete.Select2QuerySetView):
+    create_field = "mongoId"
+
+    def get_create_option(self, context, q):
+        """Form the correct create_option to append to results."""
+        create_option = []
+        display_create_option = False
+        if self.create_field and q:
+            page_obj = context.get("page_obj", None)
+            if page_obj is None or page_obj.number == 1:
+                display_create_option = True
+
+            # Don't offer to create a new option if a
+            # case-insensitive) identical one already exists
+            existing_options = (
+                self.get_result_label(result).lower()
+                for result in context["object_list"]
+            )
+            if q.lower() in existing_options:
+                display_create_option = False
+            if Publication.objects.filter(pk=q.lower()).exists():
+                display_create_option = False
+
+        if display_create_option and self.has_add_permission(self.request):
+            create_option = [
+                {
+                    "id": q,
+                    "text": _('Pobierz rekord o UID "%(new_value)s" z bazy PBNu')
+                    % {"new_value": q},
+                    "create_id": True,
+                }
+            ]
+        return create_option
+
+    def get_queryset(self):
+        qs = Publication.objects.filter(status="ACTIVE")
+        self.q = self.q.strip()
+
+        if self.q:
+            if len(self.q) == const.PBN_UID_LEN and self.q.find(" ") == -1:
+                qs = qs.filter(pk=self.q)
+            else:
+                words = [
+                    word.strip() for word in self.q.strip().split(" ") if word.strip()
+                ]
+                for word in words:
+                    qs = qs.filter(
+                        Q(title__istartswith=self.q.strip())
+                        | Q(title__icontains=word)
+                        | Q(isbn__exact=word)
+                        | Q(doi__icontains=word)
+                    )
+        return qs.order_by("title", "-year")
+
+    def create_object(self, text):
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
+        client = uczelnia.pbn_client(self.request.user.pbn_token)
+        return zapisz_mongodb(client.get_publication_by_id(text), Publication)
+
+    def post(self, request, *args, **kwargs):
+        """Create an object given a text after checking permissions."""
+        if not self.has_add_permission(request):
+            return http.HttpResponseForbidden()
+
+        text = request.POST.get("text", None)
+
+        if text is None:
+            return http.HttpResponseBadRequest()
+
+        try:
+            result = self.create_object(text)
+        except Exception as e:
+            capture_exception(e)
+            return http.HttpResponseBadRequest()
+
+        return http.JsonResponse(
+            {
+                "id": result.pk,
+                "text": self.get_selected_result_label(result),
+            }
+        )
 
 
 class Wydawnictwo_CiagleAdminAutocomplete(

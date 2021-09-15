@@ -530,3 +530,9 @@ def browse_praca_url(model):
 def normalize_html(s):
     s = s.replace("\r\n", " ").replace("\n", " ")
     return re.sub(r"\s\s+", " ", s)
+
+
+def rozwin_ekstra_informacje_na_stronie_edycji_wydawnictwa(admin_browser):
+    for elem in admin_browser.find_by_tag("h2")[:3]:
+        show_element(admin_browser, elem)  # ._element)
+        elem.click()

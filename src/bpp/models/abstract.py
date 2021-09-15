@@ -205,11 +205,26 @@ class ModelZRokiem(models.Model):
         abstract = True
 
 
+def nie_zawiera_adresu_doi_org(v):
+    if v is None:
+        return
+    v = v.lower().strip()
+    if v.find("doi.org") >= 0:
+        raise ValidationError(
+            "Pole nie powinno zawierać odnośnika do serwisu doi.org. Identyfikator DOI wpisz "
+            "do innego pola. Odnosniki do serwisu DOI, zawierające w swojej tresci numer DOI "
+            "są już tworzone przez system. "
+        )
+
+
 class ModelZWWW(models.Model):
     """Model zawierający adres strony WWW"""
 
     www = models.URLField(
-        "Adres WWW (płatny dostęp)", max_length=1024, blank=True, null=True
+        "Adres WWW (płatny dostęp)",
+        max_length=1024,
+        blank=True,
+        null=True,
     )
     dostep_dnia = models.DateField(
         "Dostęp dnia (płatny dostęp)",
@@ -219,7 +234,10 @@ class ModelZWWW(models.Model):
     )
 
     public_www = models.URLField(
-        "Adres WWW (wolny dostęp)", max_length=2048, blank=True, null=True
+        "Adres WWW (wolny dostęp)",
+        max_length=2048,
+        blank=True,
+        null=True,
     )
     public_dostep_dnia = models.DateField(
         "Dostęp dnia (wolny dostęp)",
@@ -240,6 +258,19 @@ class ModelZPubmedID(models.Model):
 
     class Meta:
         abstract = True
+
+
+def nie_zawiera_http_https(v):
+    if v is None:
+        return
+    v = v.lower().strip()
+    if v.startswith("http") or v.startswith("https") or v.find("doi.org") >= 0:
+        raise ValidationError(
+            "Pole nie powinno zawierać adresu URL (adresu strony WWW) - wpisz tu wyłącznie "
+            "identyfikator DOI; lokalizacją położenia rekordu czyli translacją adresu DOI "
+            "na adres URL zajmuje się usługa serwisu doi.org i nie ma potrzeby, aby go "
+            "tu wpisywać. "
+        )
 
 
 class ModelZDOI(models.Model):
@@ -446,6 +477,13 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
 
     dyscyplina_naukowa = models.ForeignKey(
         Dyscyplina_Naukowa, on_delete=SET_NULL, null=True, blank=True
+    )
+
+    przypieta = models.BooleanField(
+        default=True,
+        db_index=True,
+        help_text="""Możesz odznaczyć, żeby "odpiąć" dyscyplinę od tego autora. Dyscyplina "odpięta" nie będzie
+        wykazywana do PBN, ale będzie pojawiała się np. w raportach i innych zestawieniach. """,
     )
 
     upowaznienie_pbn = models.BooleanField(

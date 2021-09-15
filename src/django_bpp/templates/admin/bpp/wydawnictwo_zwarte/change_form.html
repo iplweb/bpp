@@ -1,12 +1,18 @@
- {% extends "admin/change_form.html" %}
+{% extends "admin/change_form.html" %}
 
 {% block object-tools-items %}
     {% if original.pbn_uid_id %}
         <li><a target="_blank" href="{{ original.pbn_uid.link_do_pbn }}">Zobacz w PBN</a></li>
-        <li><a target="_blank" href="/admin/pbn_api/publication/{{ original.pbn_uid_id }}/change">Zobacz lokalna kopię PBN</a></li>
+        <li><a target="_blank" href="/admin/pbn_api/publication/{{ original.pbn_uid_id }}/change">Lokalny PBN</a></li>
+    {% endif %}
+    {% if original.wydawnictwo_nadrzedne_id %}
+        <li><a target="_blank" href="{% url "admin:bpp_wydawnictwo_zwarte_change" original.wydawnictwo_nadrzedne_id %}">Nadrzędne</a></li>
+    {% endif %}
+    {% if original.wydawnictwa_powiazane_set.exists %}
+        <li><a target="_blank" href="../../?q-l=on&q=wydawnictwo_nadrzedne.id%3D+{{ original.pk }}">Powiązane</a></li>
     {% endif %}
     {% if original.pk %}
-        <li><a href="/admin/bpp/wydawnictwo_zwarte_autor/?rekord__id__exact={{ original.pk }}">Edycja autorów</a></li>
+        <li><a href="/admin/bpp/wydawnictwo_zwarte_autor/?rekord__id__exact={{ original.pk }}">Autorzy</a></li>
     {% endif %}
     {{ block.super }}
 {% endblock %}
@@ -14,15 +20,16 @@
 {% block submit_buttons_bottom %}
     {{ block.super }}
 
-    {%  include "admin/pubmed_id_button_handler.html" %}
-    {%  include "admin/isbn_pbn_button_handler.html" %}
-    {%  include "admin/liczba_cytowan_button_handler.html" %}
-    {%  include "admin/strona_tom_nr_zeszytu_button_handler.html" %}
-    {%  include "admin/liczba_arkuszy_wydawniczych.html" %}
-    {%  include "admin/uzupelnij_rok_wydawnictwo_zwarte_button_handler.html" %}
+    {% include "admin/pubmed_id_button_handler.html" %}
+    {% include "admin/get_pbn_by_isbn_button_handler.html" %}
+    {% include "admin/get_pbn_by_doi_button_handler.html" %}
+    {% include "admin/liczba_cytowan_button_handler.html" %}
+    {% include "admin/strona_tom_nr_zeszytu_button_handler.html" %}
+    {% include "admin/liczba_arkuszy_wydawniczych.html" %}
+    {% include "admin/uzupelnij_rok_wydawnictwo_zwarte_button_handler.html" %}
 
     <script type="text/javascript">
-        (function($) {
+        (function ($) {
             // Gramatyka
             $('a').each(function () {
                 var html = $(this).html();

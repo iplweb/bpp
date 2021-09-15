@@ -3,9 +3,11 @@
 from dal import autocomplete
 from django import forms
 from django.forms.utils import flatatt
+from djangoql.admin import DjangoQLSearchMixin
 from mptt.forms import TreeNodeChoiceField
 from taggit.forms import TextareaTagWidget
 
+from pbn_api.models import Publication
 from .actions import (
     ustaw_po_korekcie,
     ustaw_przed_korekta,
@@ -57,6 +59,8 @@ from bpp.models import (  # Publikacja_Habilitacyjna
     Wydawnictwo_Ciagle,
     Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych,
     Zrodlo,
+    nie_zawiera_adresu_doi_org,
+    nie_zawiera_http_https,
 )
 
 # Proste tabele
@@ -85,7 +89,24 @@ class Button(forms.Widget):
         )
 
 
-class Wydawnictwo_CiagleForm(forms.ModelForm):
+class CleanDOIWWWPublicWWWMixin:
+    def clean_www(self):
+        v = self.cleaned_data.get("www")
+        nie_zawiera_adresu_doi_org(v)
+        return v
+
+    def clean_public_www(self):
+        v = self.cleaned_data.get("public_www")
+        nie_zawiera_adresu_doi_org(v)
+        return v
+
+    def clean_doi(self):
+        v = self.cleaned_data.get("doi")
+        nie_zawiera_http_https(v)
+        return v
+
+
+class Wydawnictwo_CiagleForm(CleanDOIWWWPublicWWWMixin, forms.ModelForm):
     zrodlo = forms.ModelChoiceField(
         queryset=Zrodlo.objects.all(),
         widget=autocomplete.ModelSelect2(url="bpp:admin-zrodlo-autocomplete"),
@@ -109,6 +130,15 @@ class Wydawnictwo_CiagleForm(forms.ModelForm):
         queryset=Konferencja.objects.all(),
         widget=autocomplete.ModelSelect2(
             url="bpp:konferencja-autocomplete", attrs=dict(style="width: 746px;")
+        ),
+    )
+
+    pbn_uid = forms.ModelChoiceField(
+        label="Odpowiednik w PBN",
+        required=False,
+        queryset=Publication.objects.all(),
+        widget=autocomplete.ModelSelect2(
+            url="bpp:publication-autocomplete", attrs=dict(style="width: 746px;")
         ),
     )
 
@@ -141,11 +171,15 @@ class Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychInline(admin.StackedInline):
 
 
 class Wydawnictwo_CiagleAdmin(
+    DjangoQLSearchMixin,
     OptionalPBNSaveMixin,
     KolumnyZeSkrotamiMixin,
     AdnotacjeZDatamiOrazPBNMixin,
     CommitedModelAdmin,
 ):
+    djangoql_completion_enabled_by_default = False
+    djangoql_completion = True
+
     formfield_overrides = NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW
     actions = [
         ustaw_po_korekcie,

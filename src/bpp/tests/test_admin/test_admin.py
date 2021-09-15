@@ -137,6 +137,10 @@ def test_widok_admina(admin_client, model):
     res = admin_client.get(url + "?q=fafa")
     assert res.status_code == 200, "changelist query failed for %r" % model
 
+    MODELS_WITHOUT_ADD = [("bpp", "bppmultiseekvisibility")]
+    if (app_label, model_name) in MODELS_WITHOUT_ADD:
+        return
+
     url_name = "admin:%s_%s_add" % (app_label, model_name)
     url = reverse(url_name)
     res = admin_client.get(url)

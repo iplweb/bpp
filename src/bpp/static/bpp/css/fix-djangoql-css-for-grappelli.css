@@ -1,0 +1,22 @@
+
+form#grp-changelist-search-form {
+    margin: 0;
+    border: none;
+}
+
+.l-2cr-fluid.l-d-12 .c-1 textarea {
+    padding-bottom: 20px;
+    padding-left: 25px;
+}
+
+.djangoql-toggle {
+    position: absolute !important;
+}
+
+.djangoql-completion {
+    z-index: 10000;
+}
+
+button.grp-search-button {
+    position: absolute;
+}

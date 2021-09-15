@@ -14,7 +14,10 @@ from bpp.views.api import (
     UploadPunktacjaZrodlaView,
 )
 from bpp.views.api.clarivate import GetWoSAMRInformation
-from bpp.views.api.pbn_get_by_isbn import GetPBNPublicationsByISBN
+from bpp.views.api.pbn_get_by_parameter import (
+    GetPBNPublicationsByDOI,
+    GetPBNPublicationsByISBN,
+)
 from bpp.views.api.pubmed import GetPubmedIDView
 from bpp.views.api.strona_tom_nr_zeszytu import StronaTomNrZeszytuView
 from bpp.views.api.uzupelnij_rok import (
@@ -33,6 +36,7 @@ from bpp.views.autocomplete import (
     LataAutocomplete,
     OrganPrzyznajacyNagrodyAutocomplete,
     PodrzednaPublikacjaHabilitacyjnaAutocomplete,
+    PublicationAutocomplete,
     PublicAutorAutocomplete,
     PublicKonferencjaAutocomplete,
     PublicTaggitTagAutocomplete,
@@ -111,6 +115,11 @@ urlpatterns = [
         r"^api/get-pbn-publications-by-isbn/$",
         csrf_exempt(GetPBNPublicationsByISBN.as_view()),
         name="api_get_pbn_by_isbn",
+    ),
+    url(
+        r"^api/get-pbn-publications-by-doi/$",
+        csrf_exempt(GetPBNPublicationsByDOI.as_view()),
+        name="api_get_pbn_by_doi",
     ),
     url(
         r"^api/(?P<slug>[\w-]+)/wos-amr/$",
@@ -261,6 +270,11 @@ urlpatterns = [
         r"^konferencja-autocomplete/$",
         KonferencjaAutocomplete.as_view(),
         name="konferencja-autocomplete",
+    ),
+    url(
+        r"^publication-autocomplete/$",
+        PublicationAutocomplete.as_view(),
+        name="publication-autocomplete",
     ),
     url(
         r"^public-konferencja-autocomplete/$",

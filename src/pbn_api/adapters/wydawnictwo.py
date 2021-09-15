@@ -1,5 +1,11 @@
 from import_common.normalization import normalize_isbn, normalize_issn
-from ..exceptions import WillNotExportError
+from ..exceptions import (
+    CharakterFormalnyMissingPBNUID,
+    DOIorWWWMissing,
+    LanguageMissingPBNUID,
+    PKZeroExportDisabled,
+    StatementsMissing,
+)
 from .autor import AutorSimplePBNAdapter, AutorZDyscyplinaPBNAdapter
 from .wydawca import WydawcaPBNAdapter
 from .wydawnictwo_autor import WydawnictwoAutorToStatementPBNAdapter
@@ -8,7 +14,7 @@ from .zrodlo import ZrodloPBNAdapter
 
 from django.utils.functional import cached_property
 
-from bpp.models import const
+from bpp.models import BazaModeluOdpowiedzialnosciAutorow, Uczelnia, const
 from bpp.models.const import TO_REDAKTOR, TO_REDAKTOR_TLUMACZENIA, TO_TLUMACZ
 from bpp.util import strip_html
 
@@ -19,8 +25,17 @@ class WydawnictwoPBNAdapter:
     ARTICLE = "ARTICLE"
     EDITED_BOOK = "EDITED_BOOK"
 
-    def __init__(self, original):
+    export_pk_zero = True
+
+    def __init__(self, original, request=None, uczelnia=None):
         self.original = original
+
+        if request is not None and uczelnia is None:
+            uczelnia = Uczelnia.objects.get_for_request(request)
+
+        if uczelnia is not None:
+            if uczelnia.pbn_api_nie_wysylaj_prac_bez_pk:
+                self.export_pk_zero = False
 
     @cached_property
     def typy_ogolne_autorow(self):
@@ -75,7 +90,7 @@ class WydawnictwoPBNAdapter:
         elif self.original.charakter_formalny.rodzaj_pbn == const.RODZAJ_PBN_ROZDZIAL:
             return WydawnictwoPBNAdapter.CHAPTER
         else:
-            raise WillNotExportError(
+            raise CharakterFormalnyMissingPBNUID(
                 f"Rodzaj dla PBN nie określony dla charakteru formalnego {self.original.charakter_formalny}"
             )
 
@@ -148,7 +163,7 @@ class WydawnictwoPBNAdapter:
             ret["doi"] = self.original.doi
 
         if self.original.jezyk.pbn_uid_id is None:
-            raise WillNotExportError(
+            raise LanguageMissingPBNUID(
                 f'Język rekordu "{self.original.jezyk}" nie ma określonego odpowiednika w PBN'
             )
 
@@ -156,7 +171,7 @@ class WydawnictwoPBNAdapter:
         if self.original.jezyk_orig:
 
             if self.original.jezyk_orig.pbn_uid_id is None:
-                raise WillNotExportError(
+                raise LanguageMissingPBNUID(
                     f'Język *oryginalny* rekordu "{self.original.jezyk}" nie ma określonego odpowiednika w PBN'
                 )
 
@@ -183,7 +198,7 @@ class WydawnictwoPBNAdapter:
             )
 
         if not ret.get("doi") and not ret.get("publicUri"):
-            raise WillNotExportError("Musi być DOI lub adres WWW")
+            raise DOIorWWWMissing("Musi być DOI lub adres WWW")
 
         if hasattr(self.original, "zrodlo"):
             ret["journal"] = ZrodloPBNAdapter(self.original.zrodlo).pbn_get_json()
@@ -195,15 +210,16 @@ class WydawnictwoPBNAdapter:
         statements = []
         jednostki = set()
         for elem in self.original.autorzy_set.all().select_related():
+            elem: BazaModeluOdpowiedzialnosciAutorow
             #
             # Jeżeli dany rekord Wydawnictwo_..._Autor ma dyscyplinę, to takiego autora
             # eksportujemy 'w pełni' tzn ze wszystkimi posiadanymi przez niego identyfikatorami
             # typu PBN UID czy ORCID:
             #
 
-            if elem.dyscyplina_naukowa_id is None:
+            if elem.dyscyplina_naukowa_id is None or elem.przypieta is False:
                 #
-                # Autor nie ma dyscypliny -- prosty eksport imie + nazwisko
+                # Autor nie ma dyscypliny lub ma odpiętą dyscyplinę -- prosty eksport w formacie imię + nazwisko
                 #
                 author = AutorSimplePBNAdapter(elem.autor).pbn_get_json()
             else:
@@ -310,9 +326,22 @@ class WydawnictwoPBNAdapter:
         if institutions:
             ret["institutions"] = institutions
 
-        if ret["type"] == WydawnictwoPBNAdapter.ARTICLE and not ret.get("statements"):
-            raise WillNotExportError(
-                "Nie wyślę rekordu artykułu bez zadeklarowanych oświadczeń autorów (dyscyplin). "
-            )
+        if ret["type"] in [
+            WydawnictwoPBNAdapter.ARTICLE,
+            WydawnictwoPBNAdapter.CHAPTER,
+        ]:
+
+            if self.export_pk_zero is False:
+                if hasattr(self.original, "punkty_kbn"):
+                    if self.original.punkty_kbn == 0:
+                        raise PKZeroExportDisabled(
+                            "Eksport prac typu artykuł i typu rozdział z PK równym zero jest wyłączony w konfiguracji "
+                            "systemu (obiekt Uczelnia). "
+                        )
+
+            if not ret.get("statements"):
+                raise StatementsMissing(
+                    "Nie wyślę rekordu artykułu lub rozdziału bez zadeklarowanych oświadczeń autorów (dyscyplin). "
+                )
 
         return ret

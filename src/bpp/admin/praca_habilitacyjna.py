@@ -4,20 +4,9 @@ from dal.forms import FutureModelForm
 from dal_queryset_sequence.fields import QuerySetSequenceModelField
 from dal_select2_queryset_sequence.widgets import QuerySetSequenceSelect2
 from django import forms
-from django.contrib import admin
 from django.forms.widgets import HiddenInput
 from queryset_sequence import QuerySetSequence
 from taggit.forms import TextareaTagWidget
-
-from bpp.models import (  # Publikacja_Habilitacyjna
-    Autor,
-    Jednostka,
-    Patent,
-    Praca_Habilitacyjna,
-    Wydawnictwo_Ciagle,
-    Wydawnictwo_Zwarte,
-)
-from bpp.models.praca_habilitacyjna import Publikacja_Habilitacyjna
 
 from .element_repozytorium import Element_RepozytoriumInline
 from .grant import Grant_RekorduInline
@@ -42,6 +31,19 @@ from .praca_doktorska import Praca_Doktorska_Habilitacyjna_Admin_Base
 # Praca Habilitacyjna
 #
 #
+from .wydawnictwo_ciagle import CleanDOIWWWPublicWWWMixin
+
+from django.contrib import admin
+
+from bpp.models import (  # Publikacja_Habilitacyjna
+    Autor,
+    Jednostka,
+    Patent,
+    Praca_Habilitacyjna,
+    Wydawnictwo_Ciagle,
+    Wydawnictwo_Zwarte,
+)
+from bpp.models.praca_habilitacyjna import Publikacja_Habilitacyjna
 
 HABILITACYJNA_FIELDS = (
     DWA_TYTULY
@@ -59,7 +61,9 @@ HABILITACYJNA_FIELDS = (
 )
 
 
-class Publikacja_HabilitacyjnaForm(Wycinaj_W_z_InformacjiMixin, FutureModelForm):
+class Publikacja_HabilitacyjnaForm(
+    Wycinaj_W_z_InformacjiMixin, CleanDOIWWWPublicWWWMixin, FutureModelForm
+):
     publikacja = QuerySetSequenceModelField(
         queryset=QuerySetSequence(
             Wydawnictwo_Zwarte.objects.all(),

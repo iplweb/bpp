@@ -27,6 +27,7 @@ from .helpers import (
     DomyslnyStatusKorektyMixin,
     Wycinaj_W_z_InformacjiMixin,
 )
+from .wydawnictwo_ciagle import CleanDOIWWWPublicWWWMixin
 
 from django.contrib import admin
 
@@ -103,7 +104,9 @@ class Praca_Doktorska_Habilitacyjna_Admin_Base(
     ]
 
 
-class Praca_DoktorskaForm(Wycinaj_W_z_InformacjiMixin, forms.ModelForm):
+class Praca_DoktorskaForm(
+    Wycinaj_W_z_InformacjiMixin, CleanDOIWWWPublicWWWMixin, forms.ModelForm
+):
     autor = forms.ModelChoiceField(
         queryset=Autor.objects.all(),
         widget=autocomplete.ModelSelect2(url="bpp:autor-z-uczelni-autocomplete"),

@@ -75,6 +75,8 @@ class UczelniaAdmin(
                     "pbn_app_name",
                     "pbn_app_token",
                     "pbn_api_user",
+                    "pbn_api_kasuj_przed_wysylka",
+                    "pbn_api_nie_wysylaj_prac_bez_pk",
                 ),
             },
         ),

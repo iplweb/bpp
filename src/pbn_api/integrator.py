@@ -1122,7 +1122,10 @@ def _synchronizuj_pojedyncza_publikacje(client, rec, force_upload=False):
                     )
 
             else:
-                raise NotImplementedError("Should never happen")
+                warnings.warn(
+                    f"{rec.pk},{rec.tytul_oryginalny},{rec.rok},PBN Server Error: {e.content}"
+                )
+                return
 
             if ret is None or rec not in ret:
                 # Jeżeli rekordu synchronizowanego nie ma wśród rekordów pobranych - zmatchowanych
@@ -1136,7 +1139,7 @@ def _synchronizuj_pojedyncza_publikacje(client, rec, force_upload=False):
             assert rec.pbn_uid_id is not None
             return _synchronizuj_pojedyncza_publikacje(client, rec)
 
-        if e.status_code in [400, 500]:
+        if e.status_code == 500:
             warnings.warn(
                 f"{rec.pk},{rec.tytul_oryginalny},{rec.rok},PBN Server Error: {e.content}"
             )
@@ -1158,26 +1161,61 @@ def _synchronizuj_pojedyncza_publikacje(client, rec, force_upload=False):
         )
 
 
-def synchronizuj_publikacje(client, force_upload=False, only_bad=False, skip=0):
+def wydawnictwa_zwarte_do_synchronizacji():
+    return (
+        Wydawnictwo_Zwarte.objects.filter(rok__gte=PBN_MIN_ROK)
+        .exclude(charakter_formalny__rodzaj_pbn=None)
+        .exclude(isbn=None, e_isbn=None)
+        .exclude(jezyk__pbn_uid_id=None)
+        .exclude(
+            doi=None,
+            public_www=None,
+            www=None,
+            wydawnictwo_nadrzedne__www=None,
+            wydawnictwo_nadrzedne__public_www=None,
+        )
+        # rekordy bez WWW wysylamy gdy jest okreslone nadrzedne + nadrzende ma WWW
+    )
+
+
+def wydawnictwa_ciagle_do_synchronizacji():
+    return (
+        Wydawnictwo_Ciagle.objects.filter(rok__gte=PBN_MIN_ROK)
+        .exclude(jezyk__pbn_uid_id=None)
+        .exclude(charakter_formalny__rodzaj_pbn=None)
+        .exclude(doi=None, public_www=None, www=None)
+    )
+
+
+def synchronizuj_publikacje(
+    client, force_upload=False, only_bad=False, only_new=False, skip=0
+):
     """
     :param only_bad: eksportuj jedynie rekordy, które mają wpis w tabeli SentData, ze ich eksport
     nie powiódł się wcześniej.
 
+    :param only_new: eksportuj jedynie rekordy, które nie mają wpisu w tabeli SentData,
+
     :param force_upload: wymuszaj ponowne wysłanie, niezależnie od sytuacji w tabeli SentData
     """
+
+    assert not (only_bad and only_new), "Te parametry wykluczają się wzajemnie"
     #
     # Wydawnictwa zwarte
     #
-    zwarte_baza = (
-        Wydawnictwo_Zwarte.objects.filter(rok__gte=PBN_MIN_ROK)
-        .exclude(charakter_formalny__rodzaj_pbn=None)
-        .exclude(isbn=None)
-        .exclude(Q(doi=None) & (Q(public_www=None) | Q(www=None)))
-    )
+    zwarte_baza = wydawnictwa_zwarte_do_synchronizacji()
 
     if only_bad:
         zwarte_baza = zwarte_baza.filter(
             pk__in=SentData.objects.bad_uploads(Wydawnictwo_Zwarte)
+        )
+
+    if only_new:
+        # Nie synchronizuj prac ktore juz sa w SentData
+        zwarte_baza = zwarte_baza.exclude(
+            pk__in=SentData.objects.ids_for_model(Wydawnictwo_Zwarte)
+            .values_list("pk", flat=True)
+            .distinct()
         )
 
     for rec in pbar(
@@ -1195,15 +1233,19 @@ def synchronizuj_publikacje(client, force_upload=False, only_bad=False, skip=0):
     #
     # Wydawnicwa ciagle
     #
-    ciagle_baza = (
-        Wydawnictwo_Ciagle.objects.filter(rok__gte=PBN_MIN_ROK)
-        .exclude(charakter_formalny__rodzaj_pbn=None)
-        .exclude(Q(doi=None) & (Q(public_www=None) | Q(www=None)))
-    )
+    ciagle_baza = wydawnictwa_ciagle_do_synchronizacji()
 
     if only_bad:
         ciagle_baza = ciagle_baza.filter(
             pk__in=SentData.objects.bad_uploads(Wydawnictwo_Ciagle)
+        )
+
+    if only_new:
+        # Nie synchronizuj prac ktore juz sa w SentData
+        ciagle_baza = ciagle_baza.exclude(
+            pk__in=SentData.objects.ids_for_model(Wydawnictwo_Ciagle)
+            .values_list("pk", flat=True)
+            .distinct()
         )
 
     for rec in pbar(
