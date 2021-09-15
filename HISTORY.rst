@@ -29,6 +29,7 @@ Historia zmian
   konfigurowalne nie wysyłanie z automatu prac z PK=0 (b/n),
 * liczenie slotów dla roku 2022 (wg algorytmu 2021) (b/n),
 
+* wyłaczono opcje "Dodaj" dla widoczności pól w wyszukiwarce (b/n),
 
 202108.1078
 -----------

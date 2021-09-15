@@ -10,3 +10,6 @@ class BppMulitiseekVisibilityAdmin(admin.ModelAdmin):
     readonly_fields = ["label", "field_name", "sort_order"]
     fields = ["label", "field_name", "public", "authenticated", "staff"]
     search_fields = ["label", "field_name"]
+
+    def has_add_permission(self, request):
+        return False
