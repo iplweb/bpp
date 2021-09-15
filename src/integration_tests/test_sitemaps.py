@@ -14,7 +14,7 @@ from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 
 
 @pytest.mark.django_db
-def test_sitemaps(webtest_app):
+def test_sitemaps(webtest_app, settings):
     mommy.make(Wydzial)
     mommy.make(Autor, nazwisko="Alan")
     mommy.make(Wydawnictwo_Ciagle, tytul_oryginalny="A case of")
@@ -23,14 +23,24 @@ def test_sitemaps(webtest_app):
     mommy.make(Praca_Habilitacyjna, tytul_oryginalny="A case of")
     mommy.make(Patent, tytul_oryginalny="A case of")
 
+    settings.STATICSITEMAPS_PING_GOOGLE = False
     call_command("refresh_sitemap")
 
     res = webtest_app.get("/sitemap.xml")
     assert res.status_code == 200
-    assert b'example.com' in res.content
+    assert b"example.com" in res.content
 
-    for page in ['-jednostka', '-autor-a', '-uczelnia', '-wydawnictwo-ciagle-a', '-wydawnictwo-zwarte-a',
-                 '-praca-doktorska-a', '-praca-habilitacyjna-a', '-patent-a', '-wydzial']:
+    for page in [
+        "-jednostka",
+        "-autor-a",
+        "-uczelnia",
+        "-wydawnictwo-ciagle-a",
+        "-wydawnictwo-zwarte-a",
+        "-praca-doktorska-a",
+        "-praca-habilitacyjna-a",
+        "-patent-a",
+        "-wydzial",
+    ]:
         res = webtest_app.get("/static/sitemap%s-1.xml" % page)
         assert res.status_code == 200
-        assert b'example.com' in res.content
+        assert b"example.com" in res.content
