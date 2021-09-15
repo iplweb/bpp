@@ -56,6 +56,7 @@ def test_change_form_get_pbn_by_isbn_or_eisbn_via_api_pub_jest_w_api(
     time.sleep(0.5)
 
     admin_browser.switch_to.active_element.send_keys(Keys.ENTER)
+    time.sleep(0.5)
 
     assert admin_browser.find_by_id("id_pbn_uid").value == UID_REKORDU
 
