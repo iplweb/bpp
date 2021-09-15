@@ -84,3 +84,5 @@ LINK_PBN_DO_AUTORA = "{pbn_api_root}/core/#/person/view/{pbn_uid_id}/current"
 LINK_PBN_DO_WYDAWCY = "{pbn_api_root}/core/#/publisher/view/{pbn_uid_id}/current"
 LINK_PBN_DO_ZRODLA = "{pbn_api_root}/core/#/journal/view/{pbn_uid_id}/current"
 LINK_PBN_DO_PUBLIKACJI = "{pbn_api_root}/core/#/publication/view/{pbn_uid_id}/current"
+
+PBN_LATA = [2017, 2018, 2019, 2020, 2021, 2022]
