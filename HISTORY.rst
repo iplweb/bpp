@@ -25,6 +25,8 @@ Historia zmian
 * zmiana nomenklatury: publikacja w PBN API -> publikacja z PBN API (b/n),
 * możliwość pobierania prac z PBN API po identyfikatorze PBN UID z Redagowanie -> PBN API -> Publikacje -> Dodaj (b/n),
 * możliwość pobierania prac z PBN API po numerze MongoID z pola "Odpowiednik w PBN" (b/n),
+* konfigurowalne w obiekcie uczelnia: kasowanie oświadczeń rekordu przed wysłaniem danych do PBN (b/n),
+  konfigurowalne nie wysyłanie z automatu prac z PK=0 (b/n),
 * liczenie slotów dla roku 2022 (wg algorytmu 2021) (b/n),
 
 

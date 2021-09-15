@@ -446,7 +446,11 @@ def sprobuj_wgrac_do_pbn(request, obj, force_upload=False, pbn_client=None):
                 )
 
     try:
-        pbn_client.sync_publication(obj, force_upload=force_upload)
+        pbn_client.sync_publication(
+            obj,
+            force_upload=force_upload,
+            delete_statements_before_upload=uczelnia.pbn_api_kasuj_przed_wysylka,
+        )
 
     except SameDataUploadedRecently as e:
         link_do_wyslanych = reverse(

@@ -3,7 +3,7 @@ from model_mommy import mommy
 
 from fixtures.pbn_api import _zrob_wydawnictwo_pbn
 from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
-from pbn_api.exceptions import WillNotExportError
+from pbn_api.exceptions import PKZeroExportDisabled, WillNotExportError
 
 from bpp.models import (
     Autor,
@@ -62,6 +62,25 @@ def test_WydawnictwoPBNAdapter_autor_eksport(
         pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina
     ).pbn_get_json()
     assert res["journal"]
+
+
+@pytest.mark.django_db
+def test_WydawnictwoPBNAdapter_pk_rowne_zero_eksport_wylaczony(
+    pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina, jednostka, rf, pbn_uczelnia
+):
+
+    autor_bez_dyscypliny = mommy.make(Autor)
+    pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina.dodaj_autora(
+        autor_bez_dyscypliny, jednostka, "Jan Budnik"
+    )
+
+    pbn_uczelnia.pbn_api_nie_wysylaj_prac_bez_pk = True
+    pbn_uczelnia.save()
+
+    with pytest.raises(PKZeroExportDisabled):
+        WydawnictwoPBNAdapter(
+            pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina, uczelnia=pbn_uczelnia
+        ).pbn_get_json()
 
 
 def test_WydawnictwoPBNAdapter_przypinanie_dyscyplin(

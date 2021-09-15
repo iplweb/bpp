@@ -644,7 +644,14 @@ class PBNClient(
             disable_progress_bar=True,
         )
 
-    def sync_publication(self, pub, force_upload=False):
+    def sync_publication(
+        self, pub, force_upload=False, delete_statements_before_upload=False
+    ):
+        """
+        @param delete_statements_before_upload: gdy True, kasuj oświadczenia publikacji przed wysłaniem (jeżeli posiada
+        PBN UID)
+        """
+
         # if not pub.doi:
         #     raise WillNotExportError("Ustaw DOI dla publikacji")
 
@@ -654,6 +661,14 @@ class PBNClient(
             model, pk = pub.split(":")
             ctype = ContentType.objects.get(app_label="bpp", model=model)
             pub = ctype.model_class().objects.get(pk=pk)
+
+        #
+        if (
+            delete_statements_before_upload
+            and hasattr(pub, "pbn_uid_id")
+            and pub.pbn_uid_id is not None
+        ):
+            self.delete_all_publication_statements(pub.pbn_uid_id)
 
         # Wgraj dane do PBN
         ret, js = self.upload_publication(pub, force_upload=force_upload)

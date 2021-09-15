@@ -47,6 +47,10 @@ class StatementsMissing(WillNotExportError):
     pass
 
 
+class PKZeroExportDisabled(WillNotExportError):
+    pass
+
+
 class CharakterFormalnyMissingPBNUID(WillNotExportError):
     pass
 

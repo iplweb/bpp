@@ -170,7 +170,7 @@ def pbn_wydawnictwo_zwarte_z_charakterem(
 
 
 @pytest.fixture
-def pbn_uczelnia(pbn_client):
+def pbn_uczelnia(pbn_client) -> Uczelnia:
     uczelnia = mommy.make(
         Uczelnia,
     )

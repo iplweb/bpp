@@ -262,6 +262,12 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
     pbn_app_token = models.CharField(
         "Token aplikacji w PBN", blank=True, null=True, max_length=128
     )
+    pbn_api_kasuj_przed_wysylka = models.BooleanField(
+        "Kasuj oświadczenia rekordu przed wysłaniem do PBN", default=False
+    )
+    pbn_api_nie_wysylaj_prac_bez_pk = models.BooleanField(
+        "Nie wysyłaj do PBN prac z PK=0", default=False
+    )
 
     pbn_api_user = models.ForeignKey(
         "bpp.BppUser",

@@ -3,6 +3,7 @@ from ..exceptions import (
     CharakterFormalnyMissingPBNUID,
     DOIorWWWMissing,
     LanguageMissingPBNUID,
+    PKZeroExportDisabled,
     StatementsMissing,
 )
 from .autor import AutorSimplePBNAdapter, AutorZDyscyplinaPBNAdapter
@@ -13,7 +14,7 @@ from .zrodlo import ZrodloPBNAdapter
 
 from django.utils.functional import cached_property
 
-from bpp.models import BazaModeluOdpowiedzialnosciAutorow, const
+from bpp.models import BazaModeluOdpowiedzialnosciAutorow, Uczelnia, const
 from bpp.models.const import TO_REDAKTOR, TO_REDAKTOR_TLUMACZENIA, TO_TLUMACZ
 from bpp.util import strip_html
 
@@ -24,8 +25,17 @@ class WydawnictwoPBNAdapter:
     ARTICLE = "ARTICLE"
     EDITED_BOOK = "EDITED_BOOK"
 
-    def __init__(self, original):
+    export_pk_zero = True
+
+    def __init__(self, original, request=None, uczelnia=None):
         self.original = original
+
+        if request is not None and uczelnia is None:
+            uczelnia = Uczelnia.objects.get_for_request(request)
+
+        if uczelnia is not None:
+            if uczelnia.pbn_api_nie_wysylaj_prac_bez_pk:
+                self.export_pk_zero = False
 
     @cached_property
     def typy_ogolne_autorow(self):
@@ -316,16 +326,22 @@ class WydawnictwoPBNAdapter:
         if institutions:
             ret["institutions"] = institutions
 
-        if (
-            ret["type"]
-            in [
-                WydawnictwoPBNAdapter.ARTICLE,
-                WydawnictwoPBNAdapter.CHAPTER,
-            ]
-            and not ret.get("statements")
-        ):
-            raise StatementsMissing(
-                "Nie wyślę rekordu artykułu lub rozdziału bez zadeklarowanych oświadczeń autorów (dyscyplin). "
-            )
+        if ret["type"] in [
+            WydawnictwoPBNAdapter.ARTICLE,
+            WydawnictwoPBNAdapter.CHAPTER,
+        ]:
+
+            if self.export_pk_zero is False:
+                if hasattr(self.original, "punkty_kbn"):
+                    if self.original.punkty_kbn == 0:
+                        raise PKZeroExportDisabled(
+                            "Eksport prac typu artykuł i typu rozdział z PK równym zero jest wyłączony w konfiguracji "
+                            "systemu (obiekt Uczelnia). "
+                        )
+
+            if not ret.get("statements"):
+                raise StatementsMissing(
+                    "Nie wyślę rekordu artykułu lub rozdziału bez zadeklarowanych oświadczeń autorów (dyscyplin). "
+                )
 
         return ret
