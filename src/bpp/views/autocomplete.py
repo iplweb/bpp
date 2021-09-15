@@ -98,7 +98,8 @@ class PublicationAutocomplete(autocomplete.Select2QuerySetView):
             create_option = [
                 {
                     "id": q,
-                    "text": _('Create "%(new_value)s"') % {"new_value": q},
+                    "text": _('Pobierz rekord o UID "%(new_value)s" z bazy PBNu')
+                    % {"new_value": q},
                     "create_id": True,
                 }
             ]
@@ -109,7 +110,7 @@ class PublicationAutocomplete(autocomplete.Select2QuerySetView):
         self.q = self.q.strip()
 
         if self.q:
-            if len(self.q) == 24 and self.q.find(" ") == -1:
+            if len(self.q) == const.PBN_UID_LEN and self.q.find(" ") == -1:
                 qs = qs.filter(pk=self.q)
             else:
                 words = [

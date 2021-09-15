@@ -5,14 +5,20 @@ import pytest
 from django.urls import reverse
 from model_mommy import mommy
 
+from fixtures import pbn_pageable_json, pbn_publication_json
+from pbn_api.client import PBN_GET_PUBLICATION_BY_ID_URL, PBN_SEARCH_PUBLICATIONS_URL
+from pbn_api.models import Publication
+
 from bpp.models import Autor_Dyscyplina, Wydawnictwo_Zwarte
 from bpp.models.autor import Autor
+from bpp.models.const import PBN_UID_LEN
 from bpp.models.konferencja import Konferencja
 from bpp.views.autocomplete import (
     AdminNavigationAutocomplete,
     AutorAutocomplete,
     GlobalNavigationAutocomplete,
     JednostkaMixin,
+    PublicationAutocomplete,
     PublicAutorAutocomplete,
 )
 
@@ -262,3 +268,75 @@ def test_NavigationAutocomplete_no_queries(
         a.request = req
         a.q = "T" * 19  # orcid
         a.get(req)
+
+
+@pytest.mark.django_db
+def test_PublicationAutocomplete_get_create_option(rf, admin_user):
+    ac = PublicationAutocomplete()
+    ac.request = rf.get("/")
+    ac.request.user = admin_user
+    ac.q = "1" * PBN_UID_LEN
+    res = ac.get_create_option({"object_list": []}, "1" * PBN_UID_LEN)
+    assert str(res[0]["text"]).find("Pobierz rekord o UID") >= 0
+
+
+@pytest.mark.django_db
+def test_PublicationAutocomplete_get_queryset():
+    ac = PublicationAutocomplete()
+
+    mommy.make(
+        Publication,
+        pk="1" * PBN_UID_LEN,
+        **pbn_publication_json(2020, title="Takie tam"),
+    )
+
+    ac.q = "1" * PBN_UID_LEN
+    assert ac.get_queryset().exists()
+    ac.q = "Takie tam"
+    assert ac.get_queryset().exists()
+
+
+@pytest.mark.django_db
+def test_PublicationAutocomplete_create_object(
+    pbn_uczelnia, pbn_client, rf, admin_user, pbn_serwer
+):
+    ac = PublicationAutocomplete()
+    ac.request = rf.get("/")
+    ac.request.user = admin_user
+
+    ROK = 2020
+    UID_REKORDU = "1" * PBN_UID_LEN
+    ISBN = "123-123-123-123"
+
+    pub1 = pbn_publication_json(ROK, mongoId=UID_REKORDU, isbn=ISBN)
+    pbn_serwer.expect_request(PBN_SEARCH_PUBLICATIONS_URL).respond_with_json(
+        pbn_pageable_json([pub1])
+    )
+    pbn_serwer.expect_request(
+        PBN_GET_PUBLICATION_BY_ID_URL.format(id=UID_REKORDU)
+    ).respond_with_json(pub1)
+
+    assert ac.create_object(UID_REKORDU)
+
+
+@pytest.mark.django_db
+def test_PublicationAutocomplete_post(
+    pbn_uczelnia, pbn_client, rf, admin_user, pbn_serwer
+):
+    ac = PublicationAutocomplete()
+
+    ROK = 2020
+    UID_REKORDU = "1" * PBN_UID_LEN
+    ISBN = "123-123-123-123"
+
+    pub1 = pbn_publication_json(ROK, mongoId=UID_REKORDU, isbn=ISBN)
+    pbn_serwer.expect_request(PBN_SEARCH_PUBLICATIONS_URL).respond_with_json(
+        pbn_pageable_json([pub1])
+    )
+    pbn_serwer.expect_request(
+        PBN_GET_PUBLICATION_BY_ID_URL.format(id=UID_REKORDU)
+    ).respond_with_json(pub1)
+
+    ac.request = rf.post("/", data={"text": UID_REKORDU})
+    ac.request.user = admin_user
+    assert ac.create_object(UID_REKORDU)
