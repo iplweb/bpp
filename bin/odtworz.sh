@@ -16,7 +16,7 @@ sleep 1
 
 dropdb --if-exists bpp
 
-pg_restore -j 4 -d template1  -C "$1" || true
+pg_restore -j 6 -d template1  -C "$1" || true
 
 cd "$BASEDIR/.."
 python src/manage.py migrate
