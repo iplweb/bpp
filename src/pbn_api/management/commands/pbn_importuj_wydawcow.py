@@ -63,6 +63,9 @@ class Command(PBNBaseCommand):
                 # Jest już taki wydawca i ma ustawiony match z PBN. Sprawdzimy mu jego poziomy:
                 for wydawca in publisher.wydawca_set.all():
 
+                    # Nie pracujemy na aliasach
+                    wydawca = wydawca.get_toplevel()
+
                     for rok in PBN_LATA:
                         pbn_side = publisher.points.get(str(rok))
 
