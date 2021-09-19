@@ -4,7 +4,6 @@ from django.core.exceptions import ValidationError
 from pbn_api.admin.base import BaseMongoDBAdmin
 from pbn_api.admin.filters import OdpowiednikWBPPFilter
 from pbn_api.admin.helpers import format_json
-from pbn_api.integrator import zapisz_mongodb
 from pbn_api.models import Publication
 
 from django.contrib import admin
@@ -101,5 +100,7 @@ class PublicationAdmin(BaseMongoDBAdmin):
         """
         Given a model instance save it to the database.
         """
+        from pbn_api.integrator import zapisz_mongodb
+
         zapisz_mongodb(form.cleaned_data["json"], Publication)
         obj.refresh_from_db()

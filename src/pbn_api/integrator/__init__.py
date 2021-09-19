@@ -5,9 +5,17 @@ import os
 import sys
 import warnings
 
+import django
 from django.db import transaction
 from django.db.models import F, Func, Q
 from django.db.models.functions import Length
+
+from pbn_api.integrator import istarmap  # noqa
+
+try:
+    django.setup()
+except RuntimeError:
+    pass
 
 from import_common.core import matchuj_autora, matchuj_wydawce
 from import_common.normalization import (
@@ -20,6 +28,11 @@ from pbn_api.exceptions import (
     HttpException,
     SameDataUploadedRecently,
     StatementDeletionError,
+    WillNotExportError,
+)
+from pbn_api.integrator.threaded_page_getter import (
+    ThreadedMongoDBSaver,
+    threaded_page_getter,
 )
 from pbn_api.models import (
     Conference,
@@ -34,7 +47,6 @@ from pbn_api.models import (
     Scientist,
     SentData,
 )
-from .exceptions import WillNotExportError
 
 from django.contrib.postgres.search import TrigramSimilarity
 
@@ -55,6 +67,9 @@ from bpp.models import (
     Zrodlo,
 )
 from bpp.util import pbar
+
+DELETED = "DELETED"
+ACTIVE = "ACTIVE"
 
 
 def integruj_jezyki(client):
@@ -115,6 +130,7 @@ def integruj_kraje(client):
             c.save()
 
 
+@transaction.atomic
 def zapisz_mongodb(elem, klass, client=None, **extra):
     defaults = dict(
         status=elem["status"],
@@ -124,21 +140,29 @@ def zapisz_mongodb(elem, klass, client=None, **extra):
         **extra,
     )
 
-    v, _ign = klass.objects.update_or_create(pk=elem["mongoId"], defaults=defaults)
+    existing = klass.objects.select_for_update().filter(pk=elem["mongoId"])
 
-    needs_saving = False
+    created = False
+    try:
+        v = existing.get()
+    except klass.DoesNotExist:
+        v = klass.objects.create(pk=elem["mongoId"], **defaults)
+        created = True
 
-    for key in extra:
-        if getattr(v, key) != extra.get(key):
-            setattr(v, key, extra.get(key))
+    if not created:
+        needs_saving = False
+
+        for key in extra:
+            if getattr(v, key) != extra.get(key):
+                setattr(v, key, extra.get(key))
+                needs_saving = True
+
+        if elem["versions"] != v.versions:
+            v.versions = elem["versions"]
             needs_saving = True
 
-    if elem["versions"] != v.versions:
-        v.versions = elem["versions"]
-        needs_saving = True
-
-    if needs_saving:
-        v.save()
+        if needs_saving:
+            v.save()
 
     return v
 
@@ -233,7 +257,7 @@ def pobierz_mongodb(
 
 
 def pobierz_instytucje(client: PBNClient):
-    for status in ["ACTIVE", "DELETED"]:
+    for status in [ACTIVE, DELETED]:
         pobierz_mongodb(
             client.get_institutions(status=status, page_size=1000), Institution
         )
@@ -289,29 +313,40 @@ def pobierz_konferencje(client: PBNClient):
     )
 
 
+class ZrodlaGetter(ThreadedMongoDBSaver):
+    pbn_api_klass = Journal
+
+
 def pobierz_zrodla(client: PBNClient):
-    for status in ["DELETED", "ACTIVE"]:
-        pobierz_mongodb(
-            client.get_journals(status=status, page_size=10000),
-            Journal,
-            pbar_label=f"pobierz_zrodla_{status}",
+    for status in [DELETED, ACTIVE]:
+        data = client.get_journals(status=status, page_size=500)
+        threaded_page_getter(
+            client, data, klass=ZrodlaGetter, label=f"poboerz_zrodla_{status}"
         )
 
 
+class PublisherGetter(ThreadedMongoDBSaver):
+    pbn_api_klass = Publisher
+
+
 def pobierz_wydawcow_mnisw(client: PBNClient):
-    pobierz_mongodb(
-        client.get_publishers_mnisw(page_size=1000),
-        Publisher,
-        pbar_label="pobierz_wydawcow_mnisw",
+    data = client.get_publishers_mnisw(page_size=1000)
+    threaded_page_getter(
+        client, data, klass=PublisherGetter, label="poboerz_wydawcow_mnisw"
     )
 
 
 def pobierz_wydawcow_wszystkich(client: PBNClient):
-    pobierz_mongodb(
-        client.get_publishers(page_size=1000),
-        Publisher,
-        pbar_label="pobierz_wydawcow_wszystkich",
+    data = client.get_publishers(page_size=1000)
+    threaded_page_getter(
+        client, data, klass=PublisherGetter, label="poboerz_wydawcow_wszystkich"
     )
+
+    # pobierz_mongodb(
+    #     client.get_publishers(page_size=1000),
+    #     Publisher,
+    #     pbar_label="pobierz_wydawcow_wszystkich",
+    # )
 
 
 def pbn_file_path(db, current_page, status):
@@ -325,7 +360,7 @@ def wait_for_results(pool, results, label="Progress..."):
     pool.join()
 
 
-def _single_unit_offline(db, data, current_page, status):
+def _single_unit_offline(data, db, current_page, status):
     f = open(pbn_file_path(db, current_page, status), "w")
     f.write(json.dumps(data.fetch_page(current_page)))
     f.close()
@@ -334,19 +369,27 @@ def _single_unit_offline(db, data, current_page, status):
 def _pobierz_offline(fun, db):
     _bede_uzywal_bazy_danych_z_multiprocessing_z_django()
 
-    results = []
     p = initialize_pool()
 
-    for status in ["ACTIVE", "DELETED"]:
-        res = fun(status=status, page_size=5000)
+    for status in [ACTIVE, DELETED]:
 
-        for current_page in range(res.total_pages):
-            result = p.apply_async(
-                _single_unit_offline, (db, res, current_page, status)
-            )
-            results.append(result)
+        data = fun(status=status, page_size=10000)
 
-    wait_for_results(p, results, label=f"pobierz_offline {db}")
+        params = [
+            (data, db, current_page, status)
+            for current_page in range(0, data.total_pages)
+        ]
+
+        for _ in pbar(
+            p.istarmap(_single_unit_offline, params),
+            label=f"pobierz_offline_{db}_{status}",
+            count=len(params),
+        ):
+            pass
+
+    # wait_for_results(p, results, label=f"pobierz_offline {db}")
+    p.close()
+    p.join()
 
 
 def pobierz_ludzi_offline(client: PBNClient):
@@ -380,22 +423,18 @@ def _wgraj_z_offline_do_bazy(db, model):
 
     p = initialize_pool()
 
-    # def _(exc):
-    #     print("XXX", exc)
+    for status in [ACTIVE, DELETED]:
+        params = [(current_page, status, db, model) for current_page in range(1500)]
 
-    results = []
-    for status in ["ACTIVE", "DELETED"]:
-        for current_page in range(1500):
-            fn = pbn_file_path(db, current_page, status)
-            if os.path.exists(fn):
-                result = p.apply_async(
-                    _single_unit_wgraj,
-                    (current_page, status, db, model),
-                    # error_callback=_,
-                )
-                results.append(result)
+        for _ in pbar(
+            p.istarmap(_single_unit_wgraj, params),
+            label=f"wgraj_offline_{db}_{status}",
+            count=len(params),
+        ):
+            pass
 
-    wait_for_results(p, results, label=f"wgraj_z_offline_do_bazy {db}")
+    p.close()
+    p.join()
 
 
 def wgraj_ludzi_z_offline_do_bazy():
@@ -407,12 +446,11 @@ def wgraj_prace_z_offline_do_bazy():
 
 
 def pobierz_prace(client: PBNClient):
-    for status in ["ACTIVE"]:  # "DELETED", "ACTIVE"]:
-        pobierz_mongodb(
-            client.get_publications(status=status, page_size=5000),
-            Publication,
-            pbar_label="pobierz_prace",
-        )
+    pobierz_mongodb(
+        client.get_publications(status=ACTIVE, page_size=5000),
+        Publication,
+        pbar_label="pobierz_aktywne_prace",
+    )
 
 
 def pobierz_publikacje_z_instytucji(client: PBNClient):
@@ -477,6 +515,7 @@ def _pobierz_prace_po_elemencie(
     return ret
 
 
+#: Minimalny rok od którego zaczynamy liczyć punkty dla prac PBN i w ogóle minimalny rok integracji.
 PBN_MIN_ROK = 2017
 
 
@@ -935,7 +974,13 @@ def split_list(lst, n):
 
 CPU_COUNT = "auto"
 
-DEFAULT_CONTEXT = "fork"
+DEFAULT_CONTEXT = "spawn"
+
+
+def _init():
+    import django
+
+    django.setup()
 
 
 def initialize_pool(multipler=1):
@@ -947,13 +992,17 @@ def initialize_pool(multipler=1):
             cpu_count = 1
 
         cpu_count = cpu_count * multipler
+        if cpu_count < 1:
+            cpu_count = 1
 
     elif CPU_COUNT == "single":
         cpu_count = 1
     else:
         raise NotImplementedError(f"CPU_COUNT = {CPU_COUNT}")
 
-    return multiprocessing.get_context(DEFAULT_CONTEXT).Pool(cpu_count)
+    return multiprocessing.get_context(DEFAULT_CONTEXT).Pool(
+        cpu_count, initializer=_init
+    )
 
 
 def _integruj_publikacje(
@@ -1417,7 +1466,6 @@ def _pobierz_pojedyncza_prace(client, publicationId):
             )
             return
         raise e
-
     zapisz_mongodb(data, Publication, client)
 
 
@@ -1432,19 +1480,17 @@ def pobierz_rekordy_publikacji_instytucji(client: PBNClient):
 
     _bede_uzywal_bazy_danych_z_multiprocessing_z_django()
     pool = initialize_pool(multipler=2)
-    results = []
 
-    for _id in seen:
-        res = pool.apply_async(
-            _pobierz_pojedyncza_prace,
-            args=(
-                client,
-                _id,
-            ),
-        )
-        results.append(res)
+    args = [(client, _id) for _id in seen]
+    for _ in pbar(
+        pool.istarmap(_pobierz_pojedyncza_prace, args),
+        label="pobierz_rekordy_publikacj_instytucji",
+        count=len(args),
+    ):
+        pass
 
-    wait_for_results(pool, results, "pobieranie publikacji")
+    pool.join()
+    pool.close()
 
 
 def usun_wszystkie_oswiadczenia(client):
