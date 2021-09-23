@@ -3,6 +3,10 @@ import os
 import sys
 
 import django
+from django.core.management import call_command
+
+from pbn_api.integrator.odswiez_tabele_publikacji import odswiez_tabele_publikacji
+from pbn_api.integrator.pobierz_skasowane_prace import pobierz_skasowane_prace
 
 django.setup()
 
@@ -117,6 +121,11 @@ class Command(PBNBaseCommand):
             default=False,
         )
         parser.add_argument(
+            "--enable-odswiez-tabele-publikacji",
+            action="store_true",
+            default=False,
+        )
+        parser.add_argument(
             "--enable-integruj-wszystkie-publikacje", action="store_true", default=False
         )
         parser.add_argument(
@@ -164,6 +173,7 @@ class Command(PBNBaseCommand):
         enable_pobierz_wszystkie_publikacje,
         enable_pobierz_publikacje_instytucji,
         enable_pobierz_oswiadczenia_instytucji,
+        enable_odswiez_tabele_publikacji,
         enable_pobierz_rekordy_publikacji_instytucji,
         enable_integruj_wszystkie_publikacje,
         enable_integruj_publikacje_instytucji,
@@ -263,6 +273,9 @@ class Command(PBNBaseCommand):
             pobierz_wydawcow_wszystkich(client)
             pobierz_wydawcow_mnisw(client)
             integruj_wydawcow()
+            call_command("pbn_importuj_wydawcow")
+            # zamapuj_wydawcow nie trzeba, bo zostanie wywołany przez pbn_importuj_wydawców gdyby coś
+            # call_command("zamapuj_wydawcow")
 
         stage = 11
         check_end_before(stage, end_before_stage)
@@ -319,6 +332,21 @@ class Command(PBNBaseCommand):
             pobierz_oswiadczenia_z_instytucji(client)
 
         stage = 15
+
+        if (
+            enable_odswiez_tabele_publikacji or enable_all
+        ) and start_from_stage <= stage:
+            pobierz_skasowane_prace(client)
+
+        stage = 16
+        check_end_before(stage, end_before_stage)
+
+        if (
+            enable_odswiez_tabele_publikacji or enable_all
+        ) and start_from_stage <= stage:
+            odswiez_tabele_publikacji(client)
+
+        stage = 17
         check_end_before(stage, end_before_stage)
 
         # if (enable_integruj_wszystkie_publikacje) and start_from_stage <= stage:
@@ -333,7 +361,7 @@ class Command(PBNBaseCommand):
                 disable_multiprocessing, skip_pages=skip_pages
             )
 
-        stage = 16
+        stage = 18
         check_end_before(stage, end_before_stage)
 
         if (
@@ -341,19 +369,19 @@ class Command(PBNBaseCommand):
         ) and start_from_stage <= stage:
             integruj_oswiadczenia_z_instytucji()
 
-        stage = 17
+        stage = 19
         check_end_before(stage, end_before_stage)
 
         if (enable_pobierz_po_doi or enable_all) and start_from_stage <= stage:
             pobierz_prace_po_doi(client)
 
-        stage = 18
+        stage = 20
         check_end_before(stage, end_before_stage)
 
         if (enable_pobierz_po_isbn or enable_all) and start_from_stage <= stage:
             pobierz_prace_po_isbn(client)
 
-        stage = 19
+        stage = 21
         check_end_before(stage, end_before_stage)
 
         if (
@@ -362,7 +390,7 @@ class Command(PBNBaseCommand):
             wyswietl_niezmatchowane_ze_zblizonymi_tytulami()
             sprawdz_ilosc_autorow_przy_zmatchowaniu()
 
-        stage = 20
+        stage = 22
         check_end_before(stage, end_before_stage)
 
         if enable_delete_all:

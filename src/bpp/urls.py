@@ -36,7 +36,6 @@ from bpp.views.autocomplete import (
     LataAutocomplete,
     OrganPrzyznajacyNagrodyAutocomplete,
     PodrzednaPublikacjaHabilitacyjnaAutocomplete,
-    PublicationAutocomplete,
     PublicAutorAutocomplete,
     PublicKonferencjaAutocomplete,
     PublicTaggitTagAutocomplete,
@@ -54,6 +53,7 @@ from bpp.views.autocomplete import (
     Zewnetrzna_Baza_DanychAutocomplete,
     ZrodloAutocomplete,
 )
+from bpp.views.autocomplete.pbn_api import JournalAutocomplete, PublicationAutocomplete
 from bpp.views.browse import (
     AutorView,
     AutorzyView,
@@ -275,6 +275,11 @@ urlpatterns = [
         r"^publication-autocomplete/$",
         PublicationAutocomplete.as_view(),
         name="publication-autocomplete",
+    ),
+    url(
+        r"^journal-autocomplete/$",
+        JournalAutocomplete.as_view(),
+        name="journal-autocomplete",
     ),
     url(
         r"^public-konferencja-autocomplete/$",

@@ -15,7 +15,6 @@ from pbn_api.exceptions import (
     NeedsPBNAuthorisationException,
     SameDataUploadedRecently,
 )
-from pbn_api.integrator import _pobierz_prace_po_elemencie
 from pbn_api.models import SentData
 
 from django.contrib import messages
@@ -416,6 +415,8 @@ def sprobuj_wgrac_do_pbn(request, obj, force_upload=False, pbn_client=None):
             if wn.isbn:
                 ni = normalize_isbn(wn.isbn)
                 if ni:
+                    from pbn_api.integrator import _pobierz_prace_po_elemencie
+
                     res = _pobierz_prace_po_elemencie(pbn_client, "isbn", ni)
                     if res:
                         messages.info(
@@ -428,6 +429,8 @@ def sprobuj_wgrac_do_pbn(request, obj, force_upload=False, pbn_client=None):
             elif wn.doi:
                 nd = normalize_isbn(wn.doi)
                 if nd:
+                    from pbn_api.integrator import _pobierz_prace_po_elemencie
+
                     res = _pobierz_prace_po_elemencie(pbn_client, "doi", nd)
                     if res:
                         messages.info(
@@ -450,6 +453,9 @@ def sprobuj_wgrac_do_pbn(request, obj, force_upload=False, pbn_client=None):
             obj,
             force_upload=force_upload,
             delete_statements_before_upload=uczelnia.pbn_api_kasuj_przed_wysylka,
+            export_pk_zero=not Uczelnia.objects.get_for_request(
+                request
+            ).pbn_api_nie_wysylaj_prac_bez_pk,
         )
 
     except SameDataUploadedRecently as e:

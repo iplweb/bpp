@@ -12,6 +12,17 @@ from requests import ConnectionError
 from requests.exceptions import SSLError
 
 from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
+from pbn_api.const import (
+    DEFAULT_BASE_URL,
+    NEEDS_PBN_AUTH_MSG,
+    PBN_DELETE_PUBLICATION_STATEMENT,
+    PBN_GET_INSTITUTION_STATEMENTS,
+    PBN_GET_JOURNAL_BY_ID,
+    PBN_GET_LANGUAGES_URL,
+    PBN_GET_PUBLICATION_BY_ID_URL,
+    PBN_POST_PUBLICATIONS_URL,
+    PBN_SEARCH_PUBLICATIONS_URL,
+)
 from pbn_api.exceptions import (
     AccessDeniedException,
     AuthenticationResponseError,
@@ -26,19 +37,12 @@ from django.contrib.contenttypes.models import ContentType
 
 from django.utils.itercompat import is_iterable
 
-DEFAULT_BASE_URL = "https://pbn-micro-alpha.opi.org.pl"
-
 
 def smart_content(content):
     try:
         return content.decode("utf-8")
     except UnicodeDecodeError:
         return content
-
-
-NEEDS_PBN_AUTH_MSG = (
-    "W celu poprawnej autentykacji należy podać poprawny token użytkownika aplikacji."
-)
 
 
 class PBNClientTransport:
@@ -480,7 +484,7 @@ class JournalsMixin:
         return self.transport.get(f"/api/v1/journals/version/{version}")
 
     def get_journal_by_id(self, id):
-        return self.transport.get(f"/api/v1/journals/{id}")
+        return self.transport.get(PBN_GET_JOURNAL_BY_ID.format(id=id))
 
     def get_journal_metadata(self, id):
         return self.transport.get(f"/api/v1/journals/{id}/metadata")
@@ -531,15 +535,6 @@ class PublishersMixin:
         return self.transport.get(f"/api/v1/publishers/{id}/metadata")
 
 
-PBN_DELETE_PUBLICATION_STATEMENT = (
-    "/api/v1/institutionProfile/publications/{publicationId}"
-)
-PBN_GET_PUBLICATION_BY_ID_URL = "/api/v1/publications/id/{id}"
-PBN_GET_INSTITUTION_STATEMENTS = (
-    "/api/v1/institutionProfile/publications/page/statements"
-)
-
-
 class PublicationsMixin:
     def get_publication_by_doi(self, doi):
         return self.transport.get(
@@ -575,11 +570,6 @@ class SearchMixin:
         return self.transport.post_pages(PBN_SEARCH_PUBLICATIONS_URL, body=kw)
 
 
-PBN_POST_PUBLICATIONS_URL = "/api/v1/publications"
-PBN_GET_LANGUAGES_URL = "/api/v1/dictionary/languages"
-PBN_SEARCH_PUBLICATIONS_URL = "/api/v1/search/publications"
-
-
 class PBNClient(
     AuthorMixin,
     ConferencesMixin,
@@ -600,8 +590,8 @@ class PBNClient(
     def post_publication(self, json):
         return self.transport.post(PBN_POST_PUBLICATIONS_URL, body=json)
 
-    def upload_publication(self, rec, force_upload=False):
-        js = WydawnictwoPBNAdapter(rec).pbn_get_json()
+    def upload_publication(self, rec, force_upload=False, export_pk_zero=None):
+        js = WydawnictwoPBNAdapter(rec, export_pk_zero=export_pk_zero).pbn_get_json()
         if not force_upload:
             needed = SentData.objects.check_if_needed(rec, js)
             if not needed:
@@ -645,7 +635,11 @@ class PBNClient(
         )
 
     def sync_publication(
-        self, pub, force_upload=False, delete_statements_before_upload=False
+        self,
+        pub,
+        force_upload=False,
+        delete_statements_before_upload=False,
+        export_pk_zero=None,
     ):
         """
         @param delete_statements_before_upload: gdy True, kasuj oświadczenia publikacji przed wysłaniem (jeżeli posiada
@@ -671,7 +665,9 @@ class PBNClient(
             self.delete_all_publication_statements(pub.pbn_uid_id)
 
         # Wgraj dane do PBN
-        ret, js = self.upload_publication(pub, force_upload=force_upload)
+        ret, js = self.upload_publication(
+            pub, force_upload=force_upload, export_pk_zero=export_pk_zero
+        )
 
         # Pobierz zwrotnie dane z PBN
         publication = self.download_publication(objectId=ret["objectId"])

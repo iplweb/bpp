@@ -5,9 +5,10 @@ import pytest
 from django.urls import reverse
 from model_mommy import mommy
 
-from fixtures import pbn_pageable_json, pbn_publication_json
+from fixtures import pbn_journal_json, pbn_pageable_json, pbn_publication_json
 from pbn_api.client import PBN_GET_PUBLICATION_BY_ID_URL, PBN_SEARCH_PUBLICATIONS_URL
-from pbn_api.models import Publication
+from pbn_api.const import PBN_GET_JOURNAL_BY_ID
+from pbn_api.models import Journal, Publication
 
 from bpp.models import Autor_Dyscyplina, Wydawnictwo_Zwarte
 from bpp.models.autor import Autor
@@ -18,9 +19,9 @@ from bpp.views.autocomplete import (
     AutorAutocomplete,
     GlobalNavigationAutocomplete,
     JednostkaMixin,
-    PublicationAutocomplete,
     PublicAutorAutocomplete,
 )
+from bpp.views.autocomplete.pbn_api import JournalAutocomplete, PublicationAutocomplete
 
 VALUES = [
     "Zi%C4%99ba+%5C",
@@ -297,6 +298,22 @@ def test_PublicationAutocomplete_get_queryset():
 
 
 @pytest.mark.django_db
+def test_JournalAutocomplete_get_queryset():
+    ac = JournalAutocomplete()
+
+    mommy.make(
+        Journal,
+        pk="1" * PBN_UID_LEN,
+        **pbn_journal_json(title="Test"),
+    )
+
+    ac.q = "1" * PBN_UID_LEN
+    assert ac.get_queryset().exists()
+    ac.q = "Test"
+    assert ac.get_queryset().exists()
+
+
+@pytest.mark.django_db
 def test_PublicationAutocomplete_create_object(
     pbn_uczelnia, pbn_client, rf, admin_user, pbn_serwer
 ):
@@ -335,6 +352,26 @@ def test_PublicationAutocomplete_post(
     )
     pbn_serwer.expect_request(
         PBN_GET_PUBLICATION_BY_ID_URL.format(id=UID_REKORDU)
+    ).respond_with_json(pub1)
+
+    ac.request = rf.post("/", data={"text": UID_REKORDU})
+    ac.request.user = admin_user
+    assert ac.create_object(UID_REKORDU)
+
+
+@pytest.mark.django_db
+def test_JournalAutocomplete_post(pbn_uczelnia, pbn_client, rf, admin_user, pbn_serwer):
+    ac = JournalAutocomplete()
+
+    UID_REKORDU = "1" * PBN_UID_LEN
+    ISSN = "4567-4567"
+
+    pub1 = pbn_journal_json(mongoId=UID_REKORDU, issn=ISSN)
+    # pbn_serwer.expect_request(PBN_SEARCH_PUBLICATIONS_URL).respond_with_json(
+    #     pbn_pageable_json([pub1])
+    # )
+    pbn_serwer.expect_request(
+        PBN_GET_JOURNAL_BY_ID.format(id=UID_REKORDU)
     ).respond_with_json(pub1)
 
     ac.request = rf.post("/", data={"text": UID_REKORDU})

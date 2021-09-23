@@ -27,15 +27,18 @@ class WydawnictwoPBNAdapter:
 
     export_pk_zero = True
 
-    def __init__(self, original, request=None, uczelnia=None):
+    def __init__(self, original, request=None, uczelnia=None, export_pk_zero=None):
         self.original = original
 
-        if request is not None and uczelnia is None:
-            uczelnia = Uczelnia.objects.get_for_request(request)
+        if export_pk_zero is not None:
+            self.export_pk_zero = export_pk_zero
+        else:
+            if request is not None and uczelnia is None:
+                uczelnia = Uczelnia.objects.get_for_request(request)
 
-        if uczelnia is not None:
-            if uczelnia.pbn_api_nie_wysylaj_prac_bez_pk:
-                self.export_pk_zero = False
+            if uczelnia is not None:
+                if uczelnia.pbn_api_nie_wysylaj_prac_bez_pk:
+                    self.export_pk_zero = False
 
     @cached_property
     def typy_ogolne_autorow(self):

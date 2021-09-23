@@ -3,8 +3,8 @@
 Historia zmian
 ==============
 
-202109.1079-rc
---------------
+202109.1079
+-----------
 
 * akcja grupowego wysyłania do PBN w module Redagowania dostepna dla wydawnictwo zwartych (b/n),
 * usunięto regresję związaną z polami WWW/DOI/publiczny WWW, polegającą na nie pojawianiu się ich
@@ -30,6 +30,7 @@ Historia zmian
 * liczenie slotów dla roku 2022 (wg algorytmu 2021) (b/n),
 * wyłaczono opcje "Dodaj" dla widoczności pól w wyszukiwarce (b/n),
 * polecenie 'pbn_importuj_wydawcow', pozwalające pobrać nowe dane z PBN do lokalnego indeksu wydawców (b/n),
+* możliwość pobrania źródła przez PBN UID (b/n),
 
 202108.1078
 -----------
