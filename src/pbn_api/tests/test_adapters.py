@@ -24,6 +24,21 @@ def test_WydawnictwoPBNAdapter_ciagle(pbn_wydawnictwo_ciagle_z_autorem_z_dyscypl
     assert res["journal"]
 
 
+def test_WydawnictwoPBNAdapter_nie_wysylaj_prac_bez_pk(
+    pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina, pbn_uczelnia
+):
+    pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina.punkty_kbn = 0
+    pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina.save()
+
+    pbn_uczelnia.pbn_api_nie_wysylaj_prac_bez_pk = True
+    pbn_uczelnia.save()
+
+    with pytest.raises(PKZeroExportDisabled):
+        WydawnictwoPBNAdapter(
+            pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina, None, pbn_uczelnia
+        ).pbn_get_json()
+
+
 def test_WydawnictwoPBNAdapter_zwarte_ksiazka(pbn_wydawnictwo_zwarte_ksiazka):
     res = WydawnictwoPBNAdapter(pbn_wydawnictwo_zwarte_ksiazka).pbn_get_json()
     assert not res.get("journal")

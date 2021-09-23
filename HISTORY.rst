@@ -30,6 +30,7 @@ Historia zmian
 * liczenie slotów dla roku 2022 (wg algorytmu 2021) (b/n),
 * wyłaczono opcje "Dodaj" dla widoczności pól w wyszukiwarce (b/n),
 * polecenie 'pbn_importuj_wydawcow', pozwalające pobrać nowe dane z PBN do lokalnego indeksu wydawców (b/n),
+* możliwość pobrania źródła przez PBN UID (b/n),
 
 202108.1078
 -----------

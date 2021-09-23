@@ -195,14 +195,47 @@ def pbn_serwer(pbn_uczelnia, httpserver: HTTPServer):
     return httpserver
 
 
+def pbn_general_json(
+    object_,
+    mongoId=None,
+    status="ACTIVE",
+    verified=True,
+):
+    return {
+        "mongoId": mongoId or str(uuid4()),
+        "status": status,
+        "verificationLevel": "MODERATOR",
+        "verified": verified,
+        "versions": [{"current": True, "object": object_}],
+    }
+
+
+def pbn_journal_json(
+    title="tytul journalu",
+    websiteLink="http://onet.pl",
+    issn="1234-1234",
+    eissn="4567-4567",
+    mongoId=None,
+    status="ACTIVE",
+    verified=True,
+):
+    obj = {"title": title, "websiteLink": websiteLink}
+    if issn:
+        obj.update({"issn": issn})
+    if eissn:
+        obj.update({"eissn": eissn})
+
+    return pbn_general_json(obj, mongoId=mongoId, status=status, verified=verified)
+
+
 def pbn_publication_json(
     year,
     title="tytul pracy",
-    mongoId=None,
     isbn=None,
+    doi=None,
+    mongoId=None,
     status="ACTIVE",
     verified=True,
-    doi=None,
 ):
     obj = {"title": title, "year": year}
     if isbn:
@@ -210,13 +243,7 @@ def pbn_publication_json(
     if doi:
         obj.update({"doi": doi})
 
-    return {
-        "mongoId": mongoId or str(uuid4()),
-        "status": status,
-        "verificationLevel": "MODERATOR",
-        "verified": verified,
-        "versions": [{"current": True, "object": obj}],
-    }
+    return pbn_general_json(obj, mongoId=mongoId, status=status, verified=verified)
 
 
 def pbn_pageable_json(content):

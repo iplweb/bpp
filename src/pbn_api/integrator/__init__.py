@@ -24,6 +24,7 @@ from import_common.normalization import (
     normalize_tytul_publikacji,
 )
 from pbn_api.client import PBNClient
+from pbn_api.const import ACTIVE, DELETED
 from pbn_api.exceptions import (
     HttpException,
     SameDataUploadedRecently,
@@ -67,9 +68,6 @@ from bpp.models import (
     Zrodlo,
 )
 from bpp.util import pbar
-
-DELETED = "DELETED"
-ACTIVE = "ACTIVE"
 
 
 def integruj_jezyki(client):
@@ -1127,9 +1125,13 @@ PBN_KOMUNIKAT_ISBN_ISTNIEJE = "Publikacja o identycznym ISBN lub ISMN już istni
 PBN_KOMUNIKAT_DOI_ISTNIEJE = "Publikacja o identycznym DOI i typie już istnieje"
 
 
-def _synchronizuj_pojedyncza_publikacje(client, rec, force_upload=False):
+def _synchronizuj_pojedyncza_publikacje(
+    client, rec, force_upload=False, export_pk_zero=None
+):
     try:
-        client.sync_publication(rec, force_upload=force_upload)
+        client.sync_publication(
+            rec, force_upload=force_upload, export_pk_zero=export_pk_zero
+        )
     except SameDataUploadedRecently:
         pass
     except HttpException as e:
@@ -1237,7 +1239,12 @@ def wydawnictwa_ciagle_do_synchronizacji():
 
 
 def synchronizuj_publikacje(
-    client, force_upload=False, only_bad=False, only_new=False, skip=0
+    client,
+    force_upload=False,
+    only_bad=False,
+    only_new=False,
+    skip=0,
+    export_pk_zero=None,
 ):
     """
     :param only_bad: eksportuj jedynie rekordy, które mają wpis w tabeli SentData, ze ich eksport
@@ -1494,7 +1501,9 @@ def pobierz_rekordy_publikacji_instytucji(client: PBNClient):
 
 
 def usun_wszystkie_oswiadczenia(client):
-    for elem in pbar(OswiadczenieInstytucji.objects.all()):
+    for elem in pbar(
+        OswiadczenieInstytucji.objects.all(), label="usun_wszystkie_oswiadczenia"
+    ):
         with transaction.atomic():
             try:
                 elem.sprobuj_skasowac_z_pbn(pbn_client=client)

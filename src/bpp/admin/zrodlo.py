@@ -4,6 +4,8 @@
 from dal import autocomplete
 from django import forms
 
+from pbn_api.const import ACTIVE
+from pbn_api.models import Journal
 from ..models import (  # Publikacja_Habilitacyjna
     Autor,
     Dyscyplina_Zrodla,
@@ -70,6 +72,16 @@ class Dyscyplina_ZrodlaInline(admin.TabularInline):
 
 
 class ZrodloForm(forms.ModelForm):
+
+    pbn_uid = forms.ModelChoiceField(
+        label="Odpowiednik w PBN",
+        required=False,
+        queryset=Journal.objects.filter(status=ACTIVE),
+        widget=autocomplete.ModelSelect2(
+            url="bpp:journal-autocomplete", attrs=dict(style="width: 746px;")
+        ),
+    )
+
     class Meta:
         model = Zrodlo
         widgets = {
