@@ -264,6 +264,10 @@ REDAKTOR_MENU = [
     ("Prace habilitacyjne", "/admin/bpp/praca_habilitacyjna/"),
     ("Patenty", "/admin/bpp/patent/"),
     ("Powiązania autorów z dyscyplinami", "/admin/bpp/autor_dyscyplina/"),
+    (
+        "Rozbieżności dyscyplin",
+        "/admin/rozbieznosci_dyscyplin/rozbieznosciview/",
+    ),
 ]
 
 ADMIN_MENU = [

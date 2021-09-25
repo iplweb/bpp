@@ -1,13 +1,42 @@
+import contextlib
+
 import pytest
+from celery.result import AsyncResult
 from django.urls import reverse
 
+from rozbieznosci_dyscyplin.admin import (
+    DYSCYPLINA_AUTORA,
+    OFFLOAD_TASKS_WITH_THIS_ELEMENTS_OR_MORE,
+    SUBDYSCYPLINA_AUTORA,
+    RozbieznosciViewAdmin,
+    parse_object_id,
+    ustaw_druga_dyscypline,
+    ustaw_dyscypline_task_or_instant,
+    ustaw_pierwsza_dyscypline,
+)
 from rozbieznosci_dyscyplin.models import RozbieznosciView
 
+from django.contrib.admin import AdminSite
 from django.contrib.contenttypes.models import ContentType
+from django.contrib.messages import get_messages
+from django.contrib.messages.middleware import MessageMiddleware
+from django.contrib.sessions.middleware import SessionMiddleware
 
 from bpp.models import Autor_Dyscyplina
 
-from django_bpp.selenium_util import SHORT_WAIT_TIME, wait_for, wait_for_page_load
+
+@contextlib.contextmanager
+def middleware(request):
+    """Annotate a request object with a session"""
+    middleware = SessionMiddleware()
+    middleware.process_request(request)
+    request.session.save()
+
+    """Annotate a request object with a messages"""
+    middleware = MessageMiddleware()
+    middleware.process_request(request)
+    request.session.save()
+    yield request
 
 
 @pytest.fixture
@@ -116,26 +145,6 @@ def test_znajdz_rozbieznosci_bez_przypisania_autor_dyscyplina(
 
 
 @pytest.mark.django_db
-def test_api_rozbieznoscidyscyplin_view_niezalogowany(client, zle_przypisana_praca):
-    res = client.get(reverse("rozbieznosci_dyscyplin:api-rozbieznosci-dyscyplin"))
-    assert res.status_code == 302
-
-
-@pytest.mark.django_db
-def test_api_rozbieznoscidyscyplin_view(client, admin_user, zle_przypisana_praca):
-    client.login(username=admin_user, password="password")
-    res = client.get(reverse("rozbieznosci_dyscyplin:api-rozbieznosci-dyscyplin"))
-    assert res.status_code == 200
-    assert res.json()["data"][0]["tytul_oryginalny"].find("target") > 0
-
-    res = client.get(
-        reverse("rozbieznosci_dyscyplin:api-rozbieznosci-dyscyplin"),
-        {"search[value]": "foo"},
-    )
-    assert res.status_code == 200
-
-
-@pytest.mark.django_db
 def test_redirect_to_admin_view(wydawnictwo_ciagle, client, admin_user):
     res = client.get(
         reverse(
@@ -157,20 +166,144 @@ def test_redirect_to_admin_view(wydawnictwo_ciagle, client, admin_user):
 
 
 @pytest.mark.django_db
-def test_main_view(zle_przypisana_praca, client, admin_user):
-    res = client.get(reverse("rozbieznosci_dyscyplin:main-view"))
-    assert res.status_code == 302
+def test_admin_usun_rozbieznosci_ustaw_pierwsza(zle_przypisana_praca, rf):
+    assert RozbieznosciView.objects.count() == 1
+    pk = str(RozbieznosciView.objects.first().pk)
+    req = rf.post("/", data={"_selected_action": [pk]})
 
-    client.login(username=admin_user, password="password")
+    with middleware(req):
+        ustaw_pierwsza_dyscypline(None, req, None)
+        msg = get_messages(req)
 
-    res = client.get(reverse("rozbieznosci_dyscyplin:main-view"))
-    assert res.status_code == 200
+    assert RozbieznosciView.objects.count() == 0
+    assert "ustawiono dyscyplinę" in list(msg)[0].message
 
 
 @pytest.mark.django_db
-def test_main_view_admin(zle_przypisana_praca, admin_browser, asgi_live_server):
-    with wait_for_page_load(admin_browser):
-        admin_browser.visit(
-            asgi_live_server.url + reverse("rozbieznosci_dyscyplin:main-view")
-        )
-    wait_for(lambda: "Kowalski" in admin_browser.html, max_seconds=SHORT_WAIT_TIME)
+def test_admin_usun_rozbieznosci_ustaw_druga(zle_przypisana_praca, rf):
+    assert RozbieznosciView.objects.count() == 1
+    pk = str(RozbieznosciView.objects.first().pk)
+    req = rf.post("/", data={"_selected_action": [pk]})
+
+    with middleware(req):
+        ustaw_druga_dyscypline(None, req, None)
+        assert RozbieznosciView.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_admin_usun_rozbieznosci_ustaw_pusta_druga(zle_przypisana_praca, rf):
+    assert RozbieznosciView.objects.count() == 1
+
+    ad = Autor_Dyscyplina.objects.get(
+        autor=zle_przypisana_praca.autorzy.first(), rok=zle_przypisana_praca.rok
+    )
+    ad.subdyscyplina_naukowa = None
+    ad.save()
+
+    assert RozbieznosciView.objects.count() == 1
+    pk = str(RozbieznosciView.objects.first().pk)
+    req = rf.post("/", data={"_selected_action": [pk]})
+
+    with middleware(req):
+        ustaw_druga_dyscypline(None, req, None)
+        msg = get_messages(req)
+
+    assert "jest żadna" in list(msg)[0].message
+    assert RozbieznosciView.objects.count() == 1
+
+
+def test_RozbieznosciDyscyplinAdmin_przypisz_pierwsza_wszystkim(
+    zle_przypisana_praca, rf, dyscyplina1
+):
+    ra = RozbieznosciViewAdmin(RozbieznosciView, AdminSite())
+    req = rf.get("/")
+    with middleware(req):
+        ra.przypisz_wszystkim(req)
+    assert RozbieznosciView.objects.count() == 0
+    zle_przypisana_praca.refresh_from_db()
+    assert zle_przypisana_praca.autorzy_set.first().dyscyplina_naukowa == dyscyplina1
+
+
+def test_RozbieznosciDyscyplinAdmin_przypisz_druga_wszystkim(
+    zle_przypisana_praca, rf, dyscyplina2
+):
+    ra = RozbieznosciViewAdmin(RozbieznosciView, AdminSite())
+    req = rf.get("/")
+    with middleware(req):
+        ra.przypisz_druga_wszystkim(req)
+    assert RozbieznosciView.objects.count() == 0
+    zle_przypisana_praca.refresh_from_db()
+    assert zle_przypisana_praca.autorzy_set.first().dyscyplina_naukowa == dyscyplina2
+
+
+def test_RozbieznosciDyscyplinAdmin_test_task_offloading_offloads_dyscyplina(
+    rf, zle_przypisana_praca, dyscyplina1
+):
+    req = rf.get("/")
+    lst = [
+        RozbieznosciView.objects.first().pk
+    ] * OFFLOAD_TASKS_WITH_THIS_ELEMENTS_OR_MORE
+    with middleware(req):
+        ret = ustaw_dyscypline_task_or_instant(DYSCYPLINA_AUTORA, req, lst)
+    assert isinstance(ret, AsyncResult)
+    zle_przypisana_praca.refresh_from_db()
+    assert zle_przypisana_praca.autorzy_set.first().dyscyplina_naukowa == dyscyplina1
+
+
+def test_RozbieznosciDyscyplinAdmin_test_task_offloading_offloads_subdyscyplina(
+    rf, zle_przypisana_praca, dyscyplina2
+):
+    req = rf.get("/")
+    lst = [
+        RozbieznosciView.objects.first().pk
+    ] * OFFLOAD_TASKS_WITH_THIS_ELEMENTS_OR_MORE
+    with middleware(req):
+        ret = ustaw_dyscypline_task_or_instant(SUBDYSCYPLINA_AUTORA, req, lst)
+    assert isinstance(ret, AsyncResult)
+    zle_przypisana_praca.refresh_from_db()
+    assert zle_przypisana_praca.autorzy_set.first().dyscyplina_naukowa == dyscyplina2
+
+
+def test_RozbieznosciDyscyplinAdmin_test_task_offloading_instant_dyscyplina(
+    rf, zle_przypisana_praca, dyscyplina1
+):
+    req = rf.get("/")
+    lst = [RozbieznosciView.objects.first().pk] * (
+        OFFLOAD_TASKS_WITH_THIS_ELEMENTS_OR_MORE - 1
+    )
+    with middleware(req):
+        ret = ustaw_dyscypline_task_or_instant(DYSCYPLINA_AUTORA, req, lst)
+    assert ret is None
+
+    zle_przypisana_praca.refresh_from_db()
+    assert zle_przypisana_praca.autorzy_set.first().dyscyplina_naukowa == dyscyplina1
+
+
+def test_RozbieznosciDyscyplinAdmin_test_task_offloading_instant_subdyscyplina(
+    rf, zle_przypisana_praca, dyscyplina2
+):
+    req = rf.get("/")
+    lst = [RozbieznosciView.objects.first().pk] * (
+        OFFLOAD_TASKS_WITH_THIS_ELEMENTS_OR_MORE - 1
+    )
+    with middleware(req):
+        ret = ustaw_dyscypline_task_or_instant(SUBDYSCYPLINA_AUTORA, req, lst)
+    assert ret is None
+
+    zle_przypisana_praca.refresh_from_db()
+    assert zle_przypisana_praca.autorzy_set.first().dyscyplina_naukowa == dyscyplina2
+
+
+@pytest.mark.parametrize(
+    "i,o",
+    [
+        ("(1,1,1)", [1, 1, 1]),
+        ("asdf", None),
+        ("(389489,34893489,4893398489)", [389489, 34893489, 4893398489]),
+        ("(1,2,3,4)", None),
+        ("[1,2,3]", [1, 2, 3]),
+        ("{1:1,2:2,3:3}", None),
+    ],
+)
+def test_parse_object_id(i, o):
+    assert parse_object_id(i) == o
