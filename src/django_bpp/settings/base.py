@@ -669,7 +669,7 @@ PERMISSIONS_WIDGET_EXCLUDE_MODELS = [
 
 
 CACHEOPS = {
-    "bpp.bppmultiseekvisibility": {"ops": ("get",)},
+    "bpp.bppmultiseekvisibility": {"ops": ("get", "fetch")},
     "miniblog.article": {"ops": ("get", "fetch")},
 }
 CACHEOPS_REDIS = BROKER_URL

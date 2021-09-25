@@ -7,6 +7,8 @@ Historia zmian
 -----------------
 
 * przypisywanie dyscyplin za pomocą opcji "rozbieżności dyscyplin" (#909),
+* sortowanie opcji multiwyszukiwarki (opcja "Szukaj") (#895),
+* polecenie ``reset_multiseek_ordering`` do resetowania kolejności sortowania do domyślnej (#895),
 
 202109.1079
 -----------

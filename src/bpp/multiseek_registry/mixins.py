@@ -8,13 +8,25 @@ class BppMultiseekVisibilityMixin:
     o dostępność lub niedostępność danego obiektu dla danego użytkownika."""
 
     def _get_or_create(self):
+        field_name = self.field_name
+        if (
+            hasattr(self, "bpp_multiseek_visibility_field_name")
+            and self.bpp_multiseek_visibility_field_name
+        ):
+            field_name = self.bpp_multiseek_visibility_field_name
+
         try:
-            vis = BppMultiseekVisibility.objects.get(field_name=self.field_name)
+            vis = BppMultiseekVisibility.objects.get(field_name=field_name)
+
+            if vis.label != self.label:
+                vis.label = self.label
+                vis.save()
+
         except BppMultiseekVisibility.DoesNotExist:
             max_sort_order = BppMultiseekVisibility.objects.aggregate(Max("sort_order"))
             vis = BppMultiseekVisibility.objects.create(
+                field_name=field_name,
                 label=self.label,
-                field_name=self.field_name,
                 public=self.public,
                 authenticated=True,
                 staff=True,
@@ -23,14 +35,22 @@ class BppMultiseekVisibilityMixin:
 
         return vis
 
+    @property
+    def visibility_options(self):
+        return self._get_or_create()
+
     def option_enabled(self):
         return True
+
+    @property
+    def ui_order(self):
+        return self.visibility_options.sort_order
 
     def enabled(self, request=None):
         if not self.option_enabled():
             return False
 
-        vis = self._get_or_create()
+        vis = self.visibility_options
 
         if request is None or not request.user.is_authenticated:
             # Jeżeli nie został podany parametr 'request' lub użytkownik jest anonimowy
