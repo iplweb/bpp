@@ -1,5 +1,5 @@
 from crispy_forms.helper import FormHelper
-from crispy_forms_foundation.layout import Layout, Fieldset, Submit, Hidden
+from crispy_forms_foundation.layout import Fieldset, Hidden, Layout, Submit
 from django.forms import ModelForm, inlineformset_factory
 
 from import_dyscyplin.models import Import_Dyscyplin, Kolumna
@@ -16,7 +16,9 @@ class Import_Dyscyplin_KolumnaForm(ModelForm):
         super(Import_Dyscyplin_KolumnaForm, self).__init__(*args, **kw)
         helper = FormHelper(self)
         helper.form_class = "custom"
-        helper.layout = Layout(Hidden("web_page_uid", ""),)
+        helper.layout = Layout(
+            Hidden("web_page_uid", ""),
+        )
         self.helper = helper
 
 

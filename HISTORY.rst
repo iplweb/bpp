@@ -3,6 +3,13 @@
 Historia zmian
 ==============
 
+202109.1080-beta
+----------------
+
+* możliwość nadpisywania dyscyplin podczas importu -- wystarczy podać imie i nazwisko istniejacego
+  w systemie autora w pliku XLS (#884)
+
+
 202109.1080-alpha
 -----------------
 

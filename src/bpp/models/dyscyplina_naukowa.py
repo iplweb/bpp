@@ -197,8 +197,8 @@ class Autor_Dyscyplina(models.Model):
 
     class Meta:
         unique_together = [("rok", "autor")]
-        verbose_name = "powiązanie autora z dyscypliną naukową"
-        verbose_name_plural = "powiązania autorów z dyscyplinami naukowymi"
+        verbose_name = "powiązanie autor-dyscyplina"
+        verbose_name_plural = "powiązania autor-dyscyplina"
 
     def clean(self):
         p1 = self.procent_dyscypliny or Decimal("0.00")

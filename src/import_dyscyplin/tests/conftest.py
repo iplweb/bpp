@@ -57,6 +57,16 @@ def test3_multiple_sheets_xlsx(parent_path):
 
 
 @pytest.fixture
+def test4_kasowanie_xlsx(parent_path):
+    return str(parent_path / "test4_kasowanie.xlsx")
+
+
+@pytest.fixture
+def test5_kasowanie_subdyscypliny(parent_path):
+    return str(parent_path / "test5_kasowanie_subdyscypliny.xlsx")
+
+
+@pytest.fixture
 def conftest_py(parent_path):
     return str(parent_path / "conftest.py")
 
