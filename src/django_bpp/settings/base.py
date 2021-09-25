@@ -71,6 +71,7 @@ TEMPLATES = [
         ],
         "OPTIONS": {
             "loaders": [
+                "dbtemplates.loader.Loader",
                 "admin_tools.template_loaders.Loader",
                 "django.template.loaders.filesystem.Loader",
                 "django.template.loaders.app_directories.Loader",
@@ -144,6 +145,7 @@ if TESTING:
 
 
 INSTALLED_APPS = [
+    "reversion",
     "djangoql",
     "cacheops",
     "channels",
@@ -217,6 +219,8 @@ INSTALLED_APPS = [
     "import_export",
     # Zostawiamy - bezwarunkowo
     "test_bpp",
+    #
+    "dbtemplates",
 ]
 
 # Profile użytkowników
@@ -670,8 +674,12 @@ PERMISSIONS_WIDGET_EXCLUDE_MODELS = [
 
 CACHEOPS = {
     "bpp.bppmultiseekvisibility": {"ops": ("get", "fetch")},
+    "dbtemplates.template": {"ops": ("fetch", "get")},
+    "bpp.szablondlaopisubibliograficznego": {"ops": ("fetch", "get")},
     "miniblog.article": {"ops": ("get", "fetch")},
 }
 CACHEOPS_REDIS = BROKER_URL
 
 CACHEOPS_DEFAULTS = {"timeout": 60 * 60}
+
+DBTEMPLATES_USE_REVERSION = True

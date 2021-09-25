@@ -244,6 +244,8 @@ WEB_MENU = [
     ("Serwisy", "/admin/sites/site/"),
     ("Miniblog", "/admin/miniblog/article/"),
     ("Favicon", "/admin/favicon/"),
+    ("Szablony", "/admin/dbtemplates/template/"),
+    ("Powiązania szablonów dla opisu", "/admin/bpp/szablondlaopisubibliograficznego/"),
 ]
 
 STRUKTURA_MENU = [

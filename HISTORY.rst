@@ -8,7 +8,8 @@ Historia zmian
 
 * możliwość nadpisywania dyscyplin podczas importu -- wystarczy podać imie i nazwisko istniejacego
   w systemie autora w pliku XLS (#884)
-
+* możliwość zmiany opisu bibliograficznego przez użytkownika (#898),
+* możliwośc zmiany tabelki z widokiem publikacji przez użytkownika (b/n),
 
 202109.1080-alpha
 -----------------

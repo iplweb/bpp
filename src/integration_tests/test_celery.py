@@ -19,6 +19,9 @@ def test_celery(settings):
     # kombu>=4.0;<5; był bug w kombu).
     #
     # tl;dr: ten test sprawdza uruchamianie workera i wywoływanie zadań;
+    #
+    # NIE uruchamiać na serwerze produkcyjnym, bo ten test korzysta z PRAWDZIWEJ
+    # bazy danych (zwanej "bpp", nie "test_bpp"!)
 
     from django.db import connection
 
@@ -31,9 +34,7 @@ def test_celery(settings):
 
     # Start worker in background
     proc = subprocess.Popen(
-        shlex.split(
-            "celery -A django_bpp.celery_tasks worker  --concurrency=1 -l info"
-        ),
+        shlex.split("celery -A django_bpp.celery_tasks worker --concurrency=1 -l info"),
         # Nie może być stdout/stderr, bo nie będzie uruchomiony w tle
         # stdout=subprocess.PIPE,
         # stderr=subprocess.PIPE,

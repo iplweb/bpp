@@ -9,7 +9,8 @@ def test_zaktualizuj_cache_ciagle(
     wydawnictwo_ciagle_z_dwoma_autorami,
     wydawnictwo_zwarte_z_autorem,
 ):
-    with django_assert_max_num_queries(4):
+    wydawnictwo_ciagle_z_dwoma_autorami.zaktualizuj_cache()  # wypełnij cache
+    with django_assert_max_num_queries(5):
         wydawnictwo_ciagle_z_dwoma_autorami.zaktualizuj_cache()
 
 
@@ -17,7 +18,8 @@ def test_zaktualizuj_cache_ciagle(
 def test_zaktualizuj_cache_zwarte(
     django_assert_max_num_queries, wydawnictwo_zwarte_z_autorem
 ):
-    with django_assert_max_num_queries(4):
+    wydawnictwo_zwarte_z_autorem.zaktualizuj_cache()  # wypełnij cache
+    with django_assert_max_num_queries(5):
         wydawnictwo_zwarte_z_autorem.zaktualizuj_cache()
 
 
