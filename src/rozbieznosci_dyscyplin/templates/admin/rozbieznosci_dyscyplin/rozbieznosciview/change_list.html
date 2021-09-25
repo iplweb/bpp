@@ -1,0 +1,18 @@
+{% extends 'admin/change_list.html' %}
+
+{% block object-tools-items %}
+    <li>
+        <form action="przypisz-wszystkim-pierwsza/" method="POST" id="przypisz-wszystkim-form">
+            {% csrf_token %}
+            <a href="#" onclick="document.getElementById('przypisz-wszystkim-form').submit();">Przypisz pierwszą
+                dyscyplinę wszystkim rekordom bez dyscypliny</a>
+        </form>
+    </li>
+    <li>
+        <form action="przypisz-wszystkim-druga/" method="POST" id="przypisz-wszystkim-form">
+            {% csrf_token %}
+            <a href="#" onclick="document.getElementById('przypisz-wszystkim-form').submit();">Przypisz drugą
+                dyscyplinę wszystkim rekordom bez dyscypliny</a>
+        </form>
+    </li>
+{% endblock %}

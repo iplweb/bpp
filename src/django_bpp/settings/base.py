@@ -162,6 +162,7 @@ INSTALLED_APPS = [
     "password_policies",
     "create_test_db",
     "celery",
+    "django_celery_results",
     "flexible_reports",
     "static_sitemaps",
     "cookielaw",
@@ -331,7 +332,8 @@ REDIS_HOST = django_getenv("DJANGO_BPP_REDIS_HOST", "localhost")
 REDIS_PORT = int(django_getenv("DJANGO_BPP_REDIS_PORT", "6379"))
 
 BROKER_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB_BROKER}"
-CELERY_RESULT_BACKEND = BROKER_URL
+# CELERY_RESULT_BACKEND = BROKER_URL
+CELERY_RESULT_BACKEND = "django-db"
 
 #
 SESSION_REDIS_HOST = REDIS_HOST

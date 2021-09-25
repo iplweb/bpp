@@ -1,0 +1,18 @@
+{% extends "admin/change_form.html" %}{% load i18n %}
+
+{% block object-tools-items %}
+    {% if original.rekord.pk %}
+        <li><a target="_blank"
+               href="{% url "rozbieznosci_dyscyplin:redirect-to-admin" original.rekord.pk.0 original.rekord.pk.1 %}">
+            Rekord
+        </a>
+        </li>
+    {% endif %}
+    {% if original.autor.pk %}
+        <li><a target="_blank"
+               href="{% url "admin:bpp_autor_change" original.autor.pk %}">
+            Autor
+        </a>
+        </li>
+    {% endif %}
+{% endblock %}

@@ -36,8 +36,10 @@ bleach==3.3.1
     #   django-flexible-reports
 brotli==1.0.9
     # via fonttools
-celery[redis]==4.4.2
-    # via -r requirements.in
+celery[redis]==4.4.7
+    # via
+    #   -r requirements.in
+    #   django-celery-results
 certifi==2021.5.30
     # via
     #   requests
@@ -54,7 +56,7 @@ channels_redis==3.0.1
     # via -r requirements.in
 charset-normalizer==2.0.3
     # via requests
-click==8.0.1
+click==7.1.2
     # via
     #   uvicorn
     #   wosclient
@@ -127,6 +129,8 @@ django-autoslug==1.9.8
 django-braces==1.14.0
     # via -r requirements.in
 django-cacheops==6.0
+    # via -r requirements.in
+django-celery-results==2.0.1
     # via -r requirements.in
 django-classy-tags==1.0.0
     # via

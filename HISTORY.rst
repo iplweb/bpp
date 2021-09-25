@@ -3,6 +3,11 @@
 Historia zmian
 ==============
 
+202109.1080-alpha
+-----------------
+
+* przypisywanie dyscyplin za pomocą opcji "rozbieżności dyscyplin" (#909),
+
 202109.1079
 -----------
 
