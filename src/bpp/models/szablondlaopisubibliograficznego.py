@@ -8,11 +8,11 @@ class SzablonDlaOpisuBibliograficznegoManager(models.Manager):
     def get_for_model(self, model):
         model = ContentType.objects.get_for_model(model)
         try:
-            return self.get(model=model).content
-        except self.DoesNotExist:
+            return self.get(model=model).template.name
+        except SzablonDlaOpisuBibliograficznego.DoesNotExist:
             try:
-                return self.get(model=None).template.content
-            except self.DoesNotExist:
+                return self.get(model=None).template.name
+            except SzablonDlaOpisuBibliograficznego.DoesNotExist:
                 return
 
 
@@ -56,6 +56,7 @@ class SzablonDlaOpisuBibliograficznego(models.Model):
             )
             .replace("\r\n", "")
             .replace("\n", "")
+            .replace(".</b>[", ".</b> [")
             .replace("  ", " ")
             .replace("  ", " ")
             .replace("  ", " ")
@@ -67,5 +68,4 @@ class SzablonDlaOpisuBibliograficznego(models.Model):
             .replace(". , ", ". ")
             .replace("., ", ". ")
             .replace(" .", ".")
-            .replace(".</b>[", ".</b> [")
         )

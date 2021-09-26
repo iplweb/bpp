@@ -21,16 +21,15 @@ def create_template(Template, name):
 def instaluj_szablony(apps, schema_editor):
     Template = apps.get_model("dbtemplates", "Template")
 
-    for elem in "autorzy", "extras", "main", "tytul", "zrodlo":
-        create_template(Template, f"opis_bibliograficzny/{elem}.html")
-
+    create_template(Template, "opis_bibliograficzny.html")
     create_template(Template, "browse/praca_tabela.html")
 
     SzablonDlaOpisuBibliograficznego = apps.get_model(
         "bpp", "SzablonDlaOpisuBibliograficznego"
     )
     SzablonDlaOpisuBibliograficznego.objects.create(
-        model=None, template=Template.objects.get(name="opis_bibliograficzny/main.html")
+        model=None,
+        template=Template.objects.get(name="opis_bibliograficzny.html"),
     )
 
 

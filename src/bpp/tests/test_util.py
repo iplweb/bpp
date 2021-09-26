@@ -89,3 +89,8 @@ def test_knapsack_nie_zwracaj_listy():
         )
         == (10, [])
     )
+
+
+@pytest.mark.django_db
+def test_ModelZOpisemBibliograficznym(wydawnictwo_ciagle):
+    assert wydawnictwo_ciagle.opis_bibliograficzny() != ""

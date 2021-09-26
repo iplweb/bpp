@@ -5,6 +5,8 @@ from django.core.exceptions import ObjectDoesNotExist, ValidationError
 
 from django.contrib.postgres.fields import ArrayField
 
+from bpp.models.szablondlaopisubibliograficznego import SzablonDlaOpisuBibliograficznego
+
 try:
     from django.core.urlresolvers import reverse
 except ImportError:
@@ -12,7 +14,6 @@ except ImportError:
 
 from django.db import models
 from django.db.models import Max, TextField
-from django.template import Context
 from django.template.loader import get_template
 
 from django.utils import safestring
@@ -75,73 +76,42 @@ def dodaj_autora(
     )
 
 
-opis_bibliograficzny_template = None
 opis_bibliograficzny_komisja_centralna_template = None
 opis_bibliograficzny_autorzy_template = None
-
-
-def renderuj_opis_bibliograficzny(praca, autorzy):
-    """Renderuje opis bibliograficzny dla danej klasy, używając template."""
-    global opis_bibliograficzny_template
-
-    if opis_bibliograficzny_template is None:
-        opis_bibliograficzny_template = get_template("opis_bibliograficzny/main.html")
-
-    return (
-        opis_bibliograficzny_template.render(dict(praca=praca, autorzy=autorzy))
-        .replace("\r\n", "")
-        .replace("\n", "")
-        .replace("  ", " ")
-        .replace("  ", " ")
-        .replace("  ", " ")
-        .replace("  ", " ")
-        .replace("  ", " ")
-        .replace(" , ", ", ")
-        .replace(" . ", ". ")
-        .replace(". . ", ". ")
-        .replace(". , ", ". ")
-        .replace("., ", ". ")
-        .replace(" .", ".")
-        .replace(".</b>[", ".</b> [")
-    )
-
-
-def renderuj_opis_bibliograficzny_komisja_centralna(praca):
-    global opis_bibliograficzny_komisja_centralna_template
-
-    if opis_bibliograficzny_komisja_centralna_template is None:
-        opis_bibliograficzny_komisja_centralna_template = get_template(
-            "opis_bibliograficzny/main-komisja-centralna.html"
-        )
-
-    return opis_bibliograficzny_komisja_centralna_template.render(
-        Context(dict(praca=praca))
-    )
-
-
-def renderuj_opis_autorow(praca):
-    global opis_bibliograficzny_autorzy_template
-    if opis_bibliograficzny_autorzy_template is None:
-        opis_bibliograficzny_autorzy_template = get_template(
-            "opis_bibliograficzny/autorzy.html"
-        )
-    return opis_bibliograficzny_autorzy_template.render(Context(dict(praca=praca)))
 
 
 class ModelZOpisemBibliograficznym(models.Model):
     """Mixin, umożliwiający renderowanie opisu bibliograficznego dla danego
     obiektu przy pomocy template."""
 
-    def opis_bibliograficzny(self, autorzy=None):
-        if autorzy is None:
-            autorzy = self.autorzy_dla_opisu()
-        return renderuj_opis_bibliograficzny(self, autorzy)
+    def opis_bibliograficzny(self):
+        """Renderuje opis bibliograficzny dla danej klasy, używając:
+        * w pierwszej kolejności zadeklarowanej Template dla danego typu rekordu (lub ogólnego Template),
+        * w trzeciej kolejności templatki z dysku "opis_bibliograficzny/opis_bibliograficzny.html"
+        """
 
-    def opis_bibliograficzny_komisja_centralna(self):
-        return renderuj_opis_bibliograficzny_komisja_centralna(self)
+        template_name = SzablonDlaOpisuBibliograficznego.objects.get_for_model(self)
+        if template_name is None:
+            template_name = "opis_bibliograficzny.html"
 
-    def opis_bibliograficzny_autorzy(self):
-        return renderuj_opis_autorow(self)
+        template = get_template(template_name)
+
+        ret = (
+            template.render(dict(praca=self))
+            .replace("\r\n", "")
+            .replace("\n", "")
+            .replace(" , ", ", ")
+            .replace(" . ", ". ")
+            .replace(". . ", ". ")
+            .replace(". , ", ". ")
+            .replace("., ", ". ")
+            .replace(" .", ".")
+            .replace(".</b>[", ".</b> [")
+        )
+        while ret.find("  ") != -1:
+            ret = ret.replace("  ", " ")
+
+        return ret
 
     tekst_przed_pierwszym_autorem = models.TextField(blank=True, null=True)
     tekst_po_ostatnim_autorze = models.TextField(blank=True, null=True)
@@ -226,7 +196,7 @@ class ModelZOpisemBibliograficznym(models.Model):
         flds = []
 
         autorzy = self.autorzy_dla_opisu()
-        opis = self.opis_bibliograficzny(autorzy)
+        opis = self.opis_bibliograficzny()
         slug = self._get_slug()
 
         if self.opis_bibliograficzny_cache != opis:

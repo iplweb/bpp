@@ -1,7 +1,0 @@
-{% load prace %}
-{% if praca.tytul %}
-{{ praca.tytul_oryginalny|safe }}
-({{ praca.tytul|safe }}).
-{% else %}
-{{ praca.tytul_oryginalny|znak_na_koncu:"."|safe }}
-{% endif %}{% if praca.charakter_formalny.charakter_ogolny != 'roz' %}{{ praca.oznaczenie_wydania|default:""|znak_na_koncu:"." }}{% endif %}
