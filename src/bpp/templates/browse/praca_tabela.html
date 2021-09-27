@@ -19,31 +19,8 @@
             Autorzy:
         </th>
         <td>
-            {% spaceless %}
-                {{ praca.tekst_przed_pierwszym_autorem|default:"" }}
-                {% for autor in praca.autorzy_dla_opisu %}
-                    {% ifchanged autor.typ_odpowiedzialnosci %}[{{ autor.typ_odpowiedzialnosci.skrot|upper }}]
-                    {% endifchanged %}
-                    {% if links == "admin" %}
-                        <a href="{% url "admin:bpp_autor_change" autor.autor.pk %}">
-                    {% else %}
-                        {% if links == "normal" %}
-                            <a href="{% url "bpp:browse_autor" autor.autor.slug %}">
-                        {% else %}
-                        {% endif %}
-                    {% endif %}
-                {% if links %}
-                    {{ autor.zapisany_jako }}
-                {% else %}
-                    {{ autor.zapisany_jako|upper }}
-                {% endif %}
-                {% if links == "admin" or links == "normal" %}
-                    </a>
-                {% endif %}
-                    {% if not forloop.last %}, {% else %}{{ praca.tekst_po_ostatnim_autorze|default:"" }}. {% endif %}
-                {% endfor %}
-            {% endspaceless %}
-
+            {{ praca.tekst_przed_pierwszym_autorem|default:"" }}
+            {% for autor in praca.autorzy_dla_opisu %}{% ifchanged autor.typ_odpowiedzialnosci %}[{{ autor.typ_odpowiedzialnosci.skrot|upper }}] {% endifchanged %}{% if links == "admin" %}<a href="{% url "admin:bpp_autor_change" autor.autor.pk %}">{% else %}{% if links == "normal" %}<a href="{% url "bpp:browse_autor" autor.autor.slug %}">{% else %}{% endif %}{% endif %}{% if links %}{{ autor.zapisany_jako }}{% else %}{{ autor.zapisany_jako|upper }}{% endif %}{% if links == "admin" or links == "normal" %}</a>{% endif %}{% if not forloop.last %}, {% else %}{{ praca.tekst_po_ostatnim_autorze|default:"" }}. {% endif %}{% endfor %}
         </td>
     </tr>
     {% if praca.zrodlo or praca.wydawnictwo_nadrzedne or praca.informacje or praca.szczegoly %}

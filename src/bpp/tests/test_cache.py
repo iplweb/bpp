@@ -445,19 +445,19 @@ def test_rebuild_ciagle(
     django_assert_max_num_queries, wydawnictwo_ciagle_z_dwoma_autorami
 ):
     rebuild_ciagle()  # wypełnij cache
-    with django_assert_max_num_queries(10):
+    with django_assert_max_num_queries(14):
         rebuild_ciagle()
 
 
 @pytest.mark.django_db
 def test_rebuild_zwarte(django_assert_max_num_queries, wydawnictwo_zwarte_z_autorem):
     rebuild_zwarte()  # wypełnij cache
-    with django_assert_max_num_queries(11):
+    with django_assert_max_num_queries(15):
         rebuild_zwarte()
 
 
 @pytest.mark.django_db
 def test_rebuild_patent(django_assert_max_num_queries, patent):
     rebuild_patent()  # wypełnij cache
-    with django_assert_max_num_queries(9):
+    with django_assert_max_num_queries(13):
         rebuild_patent()

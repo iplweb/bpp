@@ -84,10 +84,13 @@ class ModelZOpisemBibliograficznym(models.Model):
     """Mixin, umożliwiający renderowanie opisu bibliograficznego dla danego
     obiektu przy pomocy template."""
 
-    def opis_bibliograficzny(self):
+    def opis_bibliograficzny(self, links=None):
         """Renderuje opis bibliograficzny dla danej klasy, używając:
         * w pierwszej kolejności zadeklarowanej Template dla danego typu rekordu (lub ogólnego Template),
         * w trzeciej kolejności templatki z dysku "opis_bibliograficzny/opis_bibliograficzny.html"
+
+        :param links: "normal" lub "admin" jeżeli chcemy, aby autorzy prowadzili gdzieś (do stron browse/
+        lub do admina).
         """
 
         template_name = SzablonDlaOpisuBibliograficznego.objects.get_for_model(self)
@@ -97,10 +100,15 @@ class ModelZOpisemBibliograficznym(models.Model):
         template = get_template(template_name)
 
         ret = (
-            template.render(dict(praca=self))
+            template.render(dict(praca=self, links=links))
             .replace("\r\n", "")
             .replace("\n", "")
-            .replace(" , ", ", ")
+        )
+        while ret.find("  ") != -1:
+            ret = ret.replace("  ", " ")
+
+        return (
+            ret.replace(" , ", ", ")
             .replace(" . ", ". ")
             .replace(". . ", ". ")
             .replace(". , ", ". ")
@@ -108,10 +116,6 @@ class ModelZOpisemBibliograficznym(models.Model):
             .replace(" .", ".")
             .replace(".</b>[", ".</b> [")
         )
-        while ret.find("  ") != -1:
-            ret = ret.replace("  ", " ")
-
-        return ret
 
     tekst_przed_pierwszym_autorem = models.TextField(blank=True, null=True)
     tekst_po_ostatnim_autorze = models.TextField(blank=True, null=True)
