@@ -46,6 +46,12 @@ jobs:
             pip install -q -r requirements.txt -r requirements_dev.txt
 
       - run:
+          name: create database
+          command: |
+            . venv/bin/activate
+            python src/manage.py migrate
+
+      - run:
           name: make assets
           command: |
             . venv/bin/activate
