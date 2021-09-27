@@ -25,7 +25,7 @@ jobs:
       - run:
           name: install postgresql-client
           command: |
-            apt install postgresql-client
+            sudo apt install -y postgresql-client
 
       - run:
           name: create database
