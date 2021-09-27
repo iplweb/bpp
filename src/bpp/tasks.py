@@ -105,7 +105,7 @@ def zaktualizuj_zrodlo(pk):
         rekord.original.zaktualizuj_cache(tylko_opis=True)
 
 
-@app.task
+@app.task(ignore_result=True, store_errors_even_if_ignored=True)
 def remove_old_report_files():
     return remove_old_objects(Report, field_name="started_on")
 

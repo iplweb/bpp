@@ -22,6 +22,16 @@ jobs:
     steps:
       - setup_remote_docker
 
+      - run:
+          name: install postgresql-client
+          command: |
+            sudo apt install -y postgresql-client
+
+      - run:
+          name: create database
+          command: |
+            createdb bpp
+
       - checkout
 
       - restore_cache:
@@ -44,6 +54,12 @@ jobs:
             . venv/bin/activate
             pip install --upgrade pip
             pip install -q -r requirements.txt -r requirements_dev.txt
+
+      - run:
+          name: migrate database
+          command: |
+            . venv/bin/activate
+            python src/manage.py migrate
 
       - run:
           name: make assets

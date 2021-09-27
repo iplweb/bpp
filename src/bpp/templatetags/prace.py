@@ -1,6 +1,7 @@
 # -*- encoding: utf-8 -*-
 import lxml.html
 from django.template import Library
+
 from django.utils.safestring import mark_safe
 
 register = Library()
@@ -14,7 +15,6 @@ def strip_at_end(ciag, znaki=",."):
             continue
         break
     return ciag
-
 
 
 def strip_at_beginning(ciag, znaki=",."):
@@ -53,7 +53,7 @@ def znak_na_poczatku(ciag, znak):
     Tag używany do uzyskiwania opisu bibliograficznego.
     """
     if ciag is None:
-        return ''
+        return ""
 
     ciag = strip_at_beginning(strip_at_end(ciag))
     if ciag:
@@ -72,8 +72,7 @@ def ladne_numery_prac(arr):
     """
 
     # To może być set(), a set() jest nieposortowany
-    nu = list(arr)
-    nu.sort()
+    nu = sorted(arr)
 
     if not nu:
         return ""
@@ -104,25 +103,29 @@ def ladne_numery_prac(arr):
 
 register.filter(ladne_numery_prac)
 
+
 @register.simple_tag
 def opis_bibliograficzny_cache(pk):
     from bpp.models.cache import Rekord
+
     try:
-        return mark_safe(
-            Rekord.objects.get(pk=pk).opis_bibliograficzny_cache
-        )
+        return mark_safe(Rekord.objects.get(pk=pk).opis_bibliograficzny_cache)
     except Rekord.DoesNotExist:
         pass
 
     return "(brak danych)"
 
-@register.filter(name='close_tags')
+
+CLOSE_TAGS_OPENING = "<html><body><foo>"
+CLOSE_TAGS_CLOSING = "</foo></body></html>"
+
+
+@register.filter(name="close_tags")
 def close_tags(s):
     if s is None or not s:
         return s
-    s = "<foo>%s</foo>" % s
+    s = f"{CLOSE_TAGS_OPENING}{s}{CLOSE_TAGS_CLOSING}"
     s = lxml.html.fromstring(s)
     s = lxml.etree.tostring(s, encoding="unicode")
-    s = s[5:-6]
+    s = s[len(CLOSE_TAGS_OPENING) : -len(CLOSE_TAGS_CLOSING)]
     return s
-

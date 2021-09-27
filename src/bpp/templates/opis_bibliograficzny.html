@@ -1,0 +1,63 @@
+{% load prace %}
+
+{# *********** #}
+{# TYTUŁ PRACY #}
+{# *********** #}
+
+{% if praca.tytul %}
+    <b>{{ praca.tytul_oryginalny|safe }} ({{ praca.tytul|safe }}).</b>
+{% else %}
+    <b>{{ praca.tytul_oryginalny|znak_na_koncu:"."|safe }}</b>
+{% endif %}
+{% if praca.charakter_formalny.charakter_ogolny != 'roz' %}
+    {{ praca.oznaczenie_wydania|default:""|znak_na_koncu:"." }}
+{% endif %}
+
+{# ******* #}
+{# AUTORZY #}
+{# ******* #}
+
+    {{ praca.tekst_przed_pierwszym_autorem|default:"" }}
+    {% for autor in praca.autorzy_dla_opisu %}{% ifchanged autor.typ_odpowiedzialnosci %}[{{ autor.typ_odpowiedzialnosci.skrot|upper }}] {% endifchanged %}{% if links == "admin" %}<a href="{% url "admin:bpp_autor_change" autor.autor.pk %}">{% else %}{% if links == "normal" %}<a href="{% url "bpp:browse_autor" autor.autor.slug %}">{% else %}{% endif %}{% endif %}{% if links %}{{ autor.zapisany_jako }}{% else %}{{ autor.zapisany_jako|upper }}{% endif %}{% if links == "admin" or links == "normal" %}</a>{% endif %}{% if not forloop.last %}, {% else %}{{ praca.tekst_po_ostatnim_autorze|default:"" }}. {% endif %}{% endfor %}
+
+{# ****** #}
+{# ZRÓDŁO #}
+{# ****** #}
+
+{% if praca.zrodlo %}
+    <i>{{ praca.zrodlo.skrot }}</i> {{ praca.informacje|default:""|safe }}
+{% else %}
+    {% if praca.informacje %}
+        {{ praca.informacje|default:""|znak_na_poczatku:" W: "|safe }}
+    {% else %}
+        {% if praca.wydawnictwo_nadrzedne.tytul_oryginalny %}
+            W: {{ praca.wydawnictwo_nadrzedne.tytul_oryginalny }}.
+        {% endif %}
+    {% endif %}
+{% endif %}
+
+{# ***************** #}
+{# EKSTRA INFORMACJE #}
+{# ***************** #}
+
+{% if praca.charakter_formalny.charakter_ogolny == 'roz' or praca.charakter_formalny.charakter_ogolny == 'ksi' %}
+    {# rozdział lub książka #}
+    {# szczególy i uwagi na końcu #}
+    {{ praca.miejsce_i_rok|default:"" }}
+    {{ praca.wydawnictwo|default:""|znak_na_poczatku:"," }}
+    {{ praca.szczegoly|default:""|znak_na_poczatku:","|safe }}
+    {% if praca.charakter_formalny.charakter_ogolny == 'roz' %}{{ praca.oznaczenie_wydania|default:""|znak_na_koncu:"." }}{% endif %}
+    {% if uwagi == 1 %}{{ praca.uwagi|default:""|znak_na_poczatku:","|safe }}{% endif %}
+    {{ praca.isbn|default:""|znak_na_poczatku:"," }}
+    {{ praca.doi|default:""|znak_na_poczatku:". DOI: "|default:". " }}
+{% else %}
+    {# szczegóły i uwagi na poczatku #}
+    {{ praca.szczegoly|default:""|znak_na_poczatku:" "|safe }}
+    {% if uwagi == 1 %}{{ praca.uwagi|default:""|znak_na_poczatku:","|safe }}{% endif %}
+    {{ praca.miejsce_i_rok|default:""|znak_na_poczatku:"." }}
+    {{ praca.wydawnictwo|default:""|znak_na_poczatku:"," }}
+    {{ praca.isbn|default:""|znak_na_poczatku:"," }}
+    {{ praca.doi|default:""|znak_na_poczatku:". DOI: "|default:". " }}
+{% endif %}
+
+{# XXX: DO ZROBIENIA: seria wydawnicza -- czy jest w ogóle wyświetlana? #}

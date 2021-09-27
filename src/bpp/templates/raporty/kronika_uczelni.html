@@ -30,7 +30,6 @@
             <td valign="top">
                 {% if rekord.kolejnosc == 1 %}
                     {{ rekord.opis_bibliograficzny  }}
-{#                    {% include "opis_bibliograficzny/main.html" with praca=rekord.get_original_object %}#}
                 {% else %}
                     <i>{{ rekord.get_original_object.tytul_oryginalny|safe }}</i>,
                     zob. poz. {{ rekord.numerek }}

@@ -107,7 +107,6 @@
                     <span class="multiseek-element">
                         <a href="{% url "bpp:browse_praca" element.id.0 element.id.1 %}"
                            target="_top">
-                            {#                        {% include "opis_bibliograficzny/main.html" with praca=element.get_original_object %}#}
                             {{ element.opis_bibliograficzny_cache|safe }}
 
                         </a>
@@ -164,7 +163,6 @@
                     <span class="multiseek-element">
                     <a href="{% url "bpp:browse_praca" element.id.0 element.id.1 %}"
                        target="_top">
-                        {#                            {% include "opis_bibliograficzny/main.html" with praca=element.get_original_object %}#}
                         {{ element.opis_bibliograficzny_cache|safe }}
 
                     </a>
