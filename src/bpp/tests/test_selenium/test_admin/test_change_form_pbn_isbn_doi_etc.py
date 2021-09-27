@@ -15,7 +15,7 @@ from bpp.tests import (
     rozwin_ekstra_informacje_na_stronie_edycji_wydawnictwa,
 )
 
-from django_bpp.selenium_util import wait_for_page_load
+from django_bpp.selenium_util import VERY_SHORT_WAIT_TIME, wait_for_page_load
 
 
 @pytest.mark.parametrize("field_name", ["isbn", "e_isbn"])
@@ -53,10 +53,10 @@ def test_change_form_get_pbn_by_isbn_or_eisbn_via_api_pub_jest_w_api(
     btn = admin_browser.find_by_id("id_isbn_pbn_get")
     proper_click_element(admin_browser, btn)
 
-    time.sleep(0.5)
+    time.sleep(VERY_SHORT_WAIT_TIME)
 
     admin_browser.switch_to.active_element.send_keys(Keys.ENTER)
-    time.sleep(0.5)
+    time.sleep(VERY_SHORT_WAIT_TIME)
 
     assert admin_browser.find_by_id("id_pbn_uid").value == UID_REKORDU
 
@@ -103,7 +103,7 @@ def test_change_form_get_pbn_by_isbn_or_eisbn_via_api_pub_jest_w_lokalnej_bazie(
         btn = admin_browser.find_by_id("id_isbn_pbn_get")
         proper_click_element(admin_browser, btn)
 
-        time.sleep(0.5)
+        time.sleep(VERY_SHORT_WAIT_TIME)
 
         admin_browser.switch_to.active_element.send_keys(Keys.ENTER)
 
@@ -144,7 +144,7 @@ def test_change_form_get_pbn_by_doi_via_api_jest_w_api(
     btn = admin_browser.find_by_id("id_doi_pbn_get")
     proper_click_element(admin_browser, btn)
 
-    time.sleep(0.5)
+    time.sleep(VERY_SHORT_WAIT_TIME)
 
     with pytest.raises(NoAlertPresentException):
         admin_browser.driver.switch_to.alert
@@ -195,15 +195,15 @@ def test_change_form_get_pbn_by_doi_via_api_nie_ma_w_api_jest_w_bazie(
         btn = admin_browser.find_by_id("id_doi_pbn_get")
         proper_click_element(admin_browser, btn)
 
-        time.sleep(0.5)
+        time.sleep(VERY_SHORT_WAIT_TIME)
 
         with pytest.raises(NoAlertPresentException):
             admin_browser.driver.switch_to.alert
 
-        time.sleep(0.5)
+        time.sleep(VERY_SHORT_WAIT_TIME)
 
         admin_browser.switch_to.active_element.send_keys(Keys.ENTER)
-        time.sleep(0.5)
+        time.sleep(VERY_SHORT_WAIT_TIME)
 
         assert admin_browser.find_by_id("id_pbn_uid").value == UID_REKORDU
     finally:
