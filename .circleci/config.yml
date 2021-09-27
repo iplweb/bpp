@@ -48,6 +48,11 @@ jobs:
       - run:
           name: create database
           command: |
+            createdb bpp
+
+      - run:
+          name: migrate database
+          command: |
             . venv/bin/activate
             python src/manage.py migrate
 
