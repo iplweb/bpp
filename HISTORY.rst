@@ -3,8 +3,14 @@
 Historia zmian
 ==============
 
-202109.1080-beta
-----------------
+202109.1080-beta1
+-----------------
+
+* kasowanie oświadczen dla rekordów z PK=0 z linii poleceń (#1121),
+
+
+202109.1080-beta0
+------------------
 
 * możliwość nadpisywania dyscyplin podczas importu -- wystarczy podać imie i nazwisko istniejacego
   w systemie autora w pliku XLS (#884)

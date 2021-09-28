@@ -1517,3 +1517,29 @@ def usun_wszystkie_oswiadczenia(client):
                     raise e
 
             elem.delete()
+
+
+def usun_zerowe_oswiadczenia(client):
+
+    for klass in Wydawnictwo_Ciagle, Wydawnictwo_Zwarte:
+        zerowe = klass.objects.exclude(pbn_uid=None).filter(punkty_kbn=0)
+
+        for elem in pbar(
+            OswiadczenieInstytucji.objects.filter(
+                publicationId_id__in=zerowe.values_list("pbn_uid_id", flat=True)
+            ),
+            label=f"usun_zerowe dla {klass}",
+        ):
+            with transaction.atomic():
+                try:
+                    elem.sprobuj_skasowac_z_pbn(pbn_client=client)
+                except StatementDeletionError as e:
+                    if e.status_code == 400 and (
+                        "Nie istnieją oświadczenia" in e.content
+                        or "Nie istnieje oświadczenie" in e.content
+                    ):
+                        pass
+                    else:
+                        raise e
+
+                elem.delete()
