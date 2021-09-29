@@ -7,7 +7,8 @@ Historia zmian
 -----------------
 
 * kasowanie oświadczen dla rekordów z PK=0 z linii poleceń (#1121),
-
+* błąd przy zapytaniu kasowania wszystkich dyscyplin przed wysłaniem do PBN nie zaburza
+  dalszej wysyłki rekordu (#1130)
 
 202109.1080-beta0
 ------------------

@@ -662,7 +662,28 @@ class PBNClient(
             and hasattr(pub, "pbn_uid_id")
             and pub.pbn_uid_id is not None
         ):
-            self.delete_all_publication_statements(pub.pbn_uid_id)
+            try:
+                self.delete_all_publication_statements(pub.pbn_uid_id)
+            except HttpException as e:
+
+                NIE_ISTNIEJA = "Nie istnieją oświadczenia dla publikacji"
+
+                ignored_exception = False
+
+                if e.status_code == 400:
+                    if e.json:
+                        try:
+                            msg = e.json["details"]["publicationId"]
+                            if NIE_ISTNIEJA in msg:
+                                ignored_exception = True
+                        except (TypeError, KeyError):
+                            pass
+                    else:
+                        if NIE_ISTNIEJA in e.content:
+                            ignored_exception = True
+
+                if not ignored_exception:
+                    raise e
 
         # Wgraj dane do PBN
         ret, js = self.upload_publication(
