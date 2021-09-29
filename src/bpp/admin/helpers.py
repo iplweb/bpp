@@ -13,6 +13,7 @@ from import_common.normalization import normalize_isbn
 from pbn_api.exceptions import (
     AccessDeniedException,
     NeedsPBNAuthorisationException,
+    PKZeroExportDisabled,
     SameDataUploadedRecently,
 )
 from pbn_api.models import SentData
@@ -384,7 +385,7 @@ def sprobuj_wgrac_do_pbn(request, obj, force_upload=False, pbn_client=None):
         )
         return
 
-    uczelnia = Uczelnia.objects.get_default()
+    uczelnia = Uczelnia.objects.get_for_request(request)
     if uczelnia is None:
         messages.info(
             request,
@@ -481,6 +482,14 @@ def sprobuj_wgrac_do_pbn(request, obj, force_upload=False, pbn_client=None):
             f'Nie można zsynchronizować obiektu "{link_do_obiektu(obj)}" z PBN pod adresem '
             f"API {e.url}. Brak dostępu -- najprawdopodobniej użytkownik nie posiada odpowiednich uprawnień "
             f"po stronie PBN/POLON. ",
+        )
+        return
+
+    except PKZeroExportDisabled:
+        messages.warning(
+            request,
+            f"Eksport prac z PK=0 jest wyłączony w konfiguracji. Próba wysyłki do PBN rekordu "
+            f'"{link_do_obiektu(obj)}" nie została podjęta z uwagi na konfigurację systemu. ',
         )
         return
 

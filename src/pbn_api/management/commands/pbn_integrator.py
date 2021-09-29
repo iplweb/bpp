@@ -141,6 +141,14 @@ class Command(PBNBaseCommand):
         parser.add_argument("--only-bad", action="store_true", default=False)
         parser.add_argument("--only-new", action="store_true", default=False)
         parser.add_argument(
+            "--delete-statements-before-upload", action="store_true", default=None
+        )
+        parser.add_argument(
+            "--export-pk-zero",
+            action="store_true",
+            default=None,
+        )
+        parser.add_argument(
             "--disable-progress-bar", action="store_true", default=False
         )
 
@@ -186,6 +194,8 @@ class Command(PBNBaseCommand):
         only_bad,
         only_new,
         disable_progress_bar,
+        delete_statements_before_upload,
+        export_pk_zero,
         *args,
         **options
     ):
@@ -403,9 +413,20 @@ class Command(PBNBaseCommand):
             usun_zerowe_oswiadczenia(client)
 
         if enable_sync:
+
+            uczelnia = Uczelnia.objects.get_default()
+
+            if export_pk_zero is None:
+                export_pk_zero = not uczelnia.pbn_api_nie_wysylaj_prac_bez_pk
+
+            if delete_statements_before_upload is None:
+                delete_statements_before_upload = uczelnia.pbn_api_kasuj_przed_wysylka
+
             synchronizuj_publikacje(
                 client=client,
                 force_upload=force_upload,
                 only_bad=only_bad,
                 only_new=only_new,
+                delete_statements_before_upload=delete_statements_before_upload,
+                export_pk_zero=export_pk_zero,
             )

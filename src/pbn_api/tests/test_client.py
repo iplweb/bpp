@@ -8,9 +8,17 @@ from pbn_api.client import (
     PBN_GET_PUBLICATION_BY_ID_URL,
     PBN_POST_PUBLICATIONS_URL,
 )
-from pbn_api.exceptions import HttpException, SameDataUploadedRecently
+from pbn_api.exceptions import (
+    HttpException,
+    PKZeroExportDisabled,
+    SameDataUploadedRecently,
+)
 from pbn_api.models import SentData
+from pbn_api.tests.utils import middleware
 
+from django.contrib.messages import get_messages
+
+from bpp.admin.helpers import sprobuj_wgrac_do_pbn
 from bpp.decorators import json
 
 
@@ -143,6 +151,63 @@ def test_sync_publication_nowe_id(
     pbn_publication.refresh_from_db()
     assert pbn_publication.versions[0]["baz"] == "quux"
     assert stare_id != pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.pbn_uid_id
+
+
+def test_sync_publication_wysylka_z_zerowym_pk(
+    pbn_client,
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina,
+    pbn_publication,
+    pbn_uczelnia,
+):
+    pbn_uczelnia.pbn_api_nie_wysylaj_prac_bez_pk = True
+    pbn_uczelnia.save()
+
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.punkty_kbn = 0
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.save()
+
+    pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = {
+        "objectId": pbn_publication.pk
+    }
+    pbn_client.transport.return_values[
+        PBN_GET_PUBLICATION_BY_ID_URL.format(id=pbn_publication.pk)
+    ] = MOCK_RETURNED_MONGODB_DATA
+    pbn_client.transport.return_values[
+        PBN_GET_INSTITUTION_STATEMENTS + "?publicationId=123&size=5120"
+    ] = []
+
+    # To pójdzie
+    pbn_client.sync_publication(
+        pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina, export_pk_zero=True
+    )
+
+    # To nie pójdzie
+    with pytest.raises(PKZeroExportDisabled):
+        pbn_client.sync_publication(
+            pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina, export_pk_zero=False
+        )
+
+
+def test_helpers_wysylka_z_zerowym_pk(
+    rf, pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina, pbn_uczelnia, admin_user
+):
+    pbn_uczelnia.pbn_integracja = (
+        pbn_uczelnia.pbn_aktualizuj_na_biezaco
+    ) = pbn_uczelnia.pbn_api_nie_wysylaj_prac_bez_pk = True
+    pbn_uczelnia.save()
+
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.punkty_kbn = 0
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.save()
+
+    req = rf.get("/")
+    req._uczelnia = pbn_uczelnia
+    req.user = admin_user
+
+    # I jeszcze test z poziomu admina czy parametr z pbn_uczelnia jest przekazywany
+    with middleware(req):
+        sprobuj_wgrac_do_pbn(req, pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina)
+        msg = list(get_messages(req))
+
+    assert "wyłączony w konfiguracji" in msg[0].message
 
 
 def test_sync_publication_kasuj_oswiadczenia_przed_wszystko_dobrze(

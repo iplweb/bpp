@@ -30,6 +30,9 @@ class UczelniaManager(models.Manager):
         return self.all().only("pk").first()
 
     def get_for_request(self, request):
+        if hasattr(request, "_uczelnia"):
+            return request._uczelnia
+
         return self.get_default()
 
     @cached_property
