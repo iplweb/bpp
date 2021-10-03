@@ -49,3 +49,13 @@ DATABASES["default"]["CONN_MAX_AGE"] = None  # noqa
 
 DATA_UPLOAD_MAX_MEMORY_SIZE = 2621440 * 3  # 7.5 MB
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 50000
+
+CACHEOPS = {
+    "bpp.bppmultiseekvisibility": {"ops": ("get", "fetch")},
+    "dbtemplates.template": {"ops": ("fetch", "get")},
+    "bpp.szablondlaopisubibliograficznego": {"ops": ("fetch", "get")},
+    "miniblog.article": {"ops": ("get", "fetch")},
+    "contenttypes.contenttype": {"ops": ("get", "fetch")},
+}
+CACHEOPS_REDIS = BROKER_URL  # noqa
+CACHEOPS_DEFAULTS = {"timeout": 60 * 60}

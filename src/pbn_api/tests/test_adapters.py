@@ -223,7 +223,7 @@ def test_WydawnictwoPBNAdapter_autor_isbn_eisbn(
 
 
 def test_WydawnictwoPBNAdapter_autor_z_orcid_bez_dyscypliny_idzie_bez_id(
-    praca_z_dyscyplina_pbn, jednostka
+    praca_z_dyscyplina_pbn, jednostka, denorms
 ):
     pierwszy_autor = praca_z_dyscyplina_pbn.autorzy_set.first().autor
     pierwszy_autor.orcid = "123456"
@@ -239,11 +239,15 @@ def test_WydawnictwoPBNAdapter_autor_z_orcid_bez_dyscypliny_idzie_bez_id(
     assert not res["authors"][1].get("orcidId")
 
 
-def test_WydawnictwoPBNAdapter_pod_redakcja_falsz(ksiazka, autor_jan_nowak, jednostka):
+def test_WydawnictwoPBNAdapter_pod_redakcja_falsz(
+    ksiazka, autor_jan_nowak, jednostka, denorms
+):
     ksiazka.dodaj_autora(autor_jan_nowak, jednostka)
     assert WydawnictwoPBNAdapter(ksiazka).pod_redakcja() is False
 
 
-def test_WydawnictwoPBNAdapter_pod_redakcja_prawda(ksiazka, autor_jan_nowak, jednostka):
+def test_WydawnictwoPBNAdapter_pod_redakcja_prawda(
+    ksiazka, autor_jan_nowak, jednostka, denorms
+):
     ksiazka.dodaj_autora(autor_jan_nowak, jednostka, typ_odpowiedzialnosci_skrot="red.")
     assert WydawnictwoPBNAdapter(ksiazka).pod_redakcja() is True

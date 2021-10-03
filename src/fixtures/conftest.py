@@ -762,9 +762,7 @@ import pytest
 def denorms():
     from denorm import denorms
 
-    denorms.install_triggers()
     yield denorms
-    denorms.drop_triggers()
 
 
 @pytest.fixture
@@ -928,3 +926,30 @@ def szablony():
 
     instaluj_szablony()
     return Template.objects
+
+
+import pytest
+
+
+@pytest.fixture(scope="session")
+def django_db_setup(django_db_setup, django_db_blocker):
+    from denorm import denorms
+
+    with django_db_blocker.unblock():
+        denorms.install_triggers()
+
+
+@pytest.fixture(scope="function")
+def django_db_setup(django_db_setup, django_db_blocker):  # noqa
+    from denorm import denorms
+
+    with django_db_blocker.unblock():
+        denorms.install_triggers()
+
+
+@pytest.fixture(scope="class")
+def django_db_setup(django_db_setup, django_db_blocker):  # noqa
+    from denorm import denorms
+
+    with django_db_blocker.unblock():
+        denorms.install_triggers()

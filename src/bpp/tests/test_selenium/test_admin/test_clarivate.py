@@ -33,7 +33,9 @@ def browser_z_wydawnictwem(admin_browser, asgi_live_server, wydawnictwo_ciagle):
     return browser
 
 
-def test_admin_get_wos_information_clarivate_brak_danych(browser_z_wydawnictwem):
+def test_admin_get_wos_information_clarivate_brak_danych(
+    browser_z_wydawnictwem, denorms
+):
     browser = browser_z_wydawnictwem
     elem = browser.find_by_id("id_liczba_cytowan_get")
     show_element(browser, elem)
