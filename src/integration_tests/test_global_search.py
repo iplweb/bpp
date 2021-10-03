@@ -8,11 +8,15 @@ from bpp.tests import select_select2_autocomplete
 from django_bpp.selenium_util import LONG_WAIT_TIME, wait_for_page_load
 
 
-def test_global_search_user(asgi_live_server, browser, transactional_db, with_cache):
+def test_global_search_user(
+    asgi_live_server,
+    browser,
+    transactional_db,
+):
     rec = None
     try:
         rec = mommy.make(Wydawnictwo_Ciagle, tytul_oryginalny="Test")
-        [x.zaktualizuj_cache() for x in Rekord.objects.all()]
+        Rekord.objects.full_refresh()
 
         assert Rekord.objects.count() >= 1
         assert Rekord.objects.filter(tytul_oryginalny__icontains="Test").exists()
@@ -41,13 +45,15 @@ def test_global_search_user(asgi_live_server, browser, transactional_db, with_ca
 
 
 def test_global_search_logged_in(
-    asgi_live_server, admin_browser, transactional_db, with_cache
+    asgi_live_server,
+    admin_browser,
+    transactional_db,
 ):
     rec = None
     try:
         browser = admin_browser
         mommy.make(Wydawnictwo_Ciagle, tytul_oryginalny="Test")
-        [x.zaktualizuj_cache() for x in Rekord.objects.all()]
+        Rekord.objects.full_refresh()
 
         with wait_for_page_load(browser):
             browser.visit(asgi_live_server.url)
