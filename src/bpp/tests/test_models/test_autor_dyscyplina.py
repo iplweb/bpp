@@ -1,8 +1,9 @@
 import pytest
+from denorm.models import DirtyInstance
 from django.core.exceptions import ValidationError
 from django.db import InternalError
 
-from bpp.models import Autor_Dyscyplina, CacheQueue
+from bpp.models import Autor_Dyscyplina
 
 
 def test_autor_dyscyplina_save_ta_sama_clean(
@@ -354,7 +355,7 @@ def test_autor_dyscyplina_cacher_zmiana(
     rok,
     dyscyplina1,
     dyscyplina2,
-    with_cache,
+    denorms,
 ):
 
     ad = Autor_Dyscyplina.objects.create(
@@ -366,11 +367,12 @@ def test_autor_dyscyplina_cacher_zmiana(
     )
 
     ad.dyscyplina_naukowa = dyscyplina2
+    denorms.flush()
     ad.save()
 
     wca.refresh_from_db()
     assert wca.dyscyplina_naukowa == dyscyplina2
-    assert CacheQueue.objects.count() == 2
+    assert DirtyInstance.objects.count() == 3
 
 
 def test_autor_dyscyplina_cacher_skasowanie(
@@ -380,7 +382,7 @@ def test_autor_dyscyplina_cacher_skasowanie(
     rok,
     dyscyplina1,
     dyscyplina2,
-    with_cache,
+    denorms,
 ):
     ad = Autor_Dyscyplina.objects.create(
         rok=rok, autor=autor_jan_kowalski, dyscyplina_naukowa=dyscyplina1
@@ -390,8 +392,9 @@ def test_autor_dyscyplina_cacher_skasowanie(
         autor_jan_kowalski, jednostka, dyscyplina_naukowa=dyscyplina1
     )
 
+    denorms.flush()
     ad.delete()
 
     wca.refresh_from_db()
     assert wca.dyscyplina_naukowa is None
-    assert CacheQueue.objects.count() == 2
+    assert DirtyInstance.objects.count() == 3

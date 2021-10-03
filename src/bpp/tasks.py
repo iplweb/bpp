@@ -1,18 +1,10 @@
 # -*- encoding: utf-8 -*-
 import os
-import traceback
 
 from celery.utils.log import get_task_logger
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.core.management import call_command
-from django.db import transaction
-
-from django.contrib.contenttypes.models import ContentType
-
-from django.utils import timezone
-
-from bpp.models.sloty.core import IPunktacjaCacher
 
 try:
     from django.core.urlresolvers import reverse
@@ -21,7 +13,6 @@ except ImportError:
 
 from celeryui.interfaces import IWebTask
 from celeryui.models import Report
-from long_running.util import wait_for_object
 
 from bpp.models import (
     Praca_Doktorska,
@@ -30,7 +21,6 @@ from bpp.models import (
     Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
 )
-from bpp.models.cache import CacheQueue
 from bpp.util import remove_old_objects
 
 logger = get_task_logger(__name__)
@@ -86,23 +76,6 @@ def my_limit(fun):
         task_limits[fun] = fun.apply_async(
             countdown=settings.MAT_VIEW_REFRESH_COUNTDOWN
         )
-
-
-@app.task(ignore_result=True)
-def zaktualizuj_opis(app_label, model_name, pk):
-    ctype = ContentType.objects.get_by_natural_key(app_label, model_name)
-    klass = ctype.model_class()
-    obj = wait_for_object(klass, pk)
-    obj.zaktualizuj_cache(tylko_opis=True)
-
-
-@app.task(ignore_result=True)
-def zaktualizuj_zrodlo(pk):
-    from bpp.models import Rekord, Zrodlo
-
-    z = wait_for_object(Zrodlo, pk)
-    for rekord in Rekord.objects.filter(zrodlo=z):
-        rekord.original.zaktualizuj_cache(tylko_opis=True)
 
 
 @app.task(ignore_result=True, store_errors_even_if_ignored=True)
@@ -168,51 +141,3 @@ def _zaktualizuj_liczbe_cytowan(klasy=None):
 @app.task
 def zaktualizuj_liczbe_cytowan():
     _zaktualizuj_liczbe_cytowan()
-
-
-@transaction.atomic
-def aktualizuj_cache_rekordu(model, uczelnia=None):
-    model.zaktualizuj_cache()
-    ipc = IPunktacjaCacher(model, uczelnia)
-    ipc.removeEntries()
-    if ipc.canAdapt():
-        ipc.rebuildEntries()
-
-
-@app.task(ignore_result=True, store_errors_even_if_ignored=True)
-def aktualizuj_cache():
-    while True:
-        obj = CacheQueue.objects.ready().first()
-        if obj is None:
-            break
-        try:
-            obj.started_on = timezone.now()
-            obj.save()
-
-            with transaction.atomic():
-                aktualizuj_cache_rekordu(obj.rekord)
-
-        except Exception:
-            logger.exception("Podczas generowania cache opisu / punktow")
-            obj.info = traceback.format_exc()
-            obj.error = True
-
-        finally:
-            n = timezone.now()
-            obj.completed_on = n
-
-        obj.save()
-
-        if not obj.error:
-            for elem in CacheQueue.objects.filter(
-                started_on=None,
-                object_id=obj.object_id,
-                content_type_id=obj.content_type_id,
-                created_on__lt=obj.created_on,
-            ):
-                elem.started_on = n
-                elem.completed_on = n
-                elem.info = "%s" % obj.pk
-                elem.save()
-
-    CacheQueue.objects.filter(error=False).exclude(completed_on=None).delete()

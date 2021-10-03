@@ -145,6 +145,7 @@ if TESTING:
 
 
 INSTALLED_APPS = [
+    "denorm.apps.DenormAppConfig",
     "reversion",
     "djangoql",
     "cacheops",
@@ -677,6 +678,7 @@ CACHEOPS = {
     "dbtemplates.template": {"ops": ("fetch", "get")},
     "bpp.szablondlaopisubibliograficznego": {"ops": ("fetch", "get")},
     "miniblog.article": {"ops": ("get", "fetch")},
+    "contenttypes.contenttype": {"ops": ("get", "fetch")},
 }
 CACHEOPS_REDIS = BROKER_URL
 

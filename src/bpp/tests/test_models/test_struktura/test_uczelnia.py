@@ -144,8 +144,12 @@ def test_uczelnia_pokazuj_menu_nigdy(uczelnia, attr, s, client, admin_client):
 
 @pytest.mark.django_db
 def test_pokazuj_tabele_slotow_na_stronie_rekordu(
-    uczelnia, admin_client, client, praca_z_dyscyplina
+    uczelnia,
+    admin_client,
+    client,
+    praca_z_dyscyplina,
 ):
+
     url = browse_praca_url(praca_z_dyscyplina)
 
     S = "Punktacja dyscyplin i sloty"

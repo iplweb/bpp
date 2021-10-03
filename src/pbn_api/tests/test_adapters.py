@@ -135,8 +135,9 @@ def test_WydawnictwoPBNAdapter_eksport_rozdzialu_bez_oswiadczen_zwraca_blad(
         WydawnictwoPBNAdapter(rozdzial_z_dyscyplina_pbn).pbn_get_json()
 
 
+@pytest.mark.django_db
 def test_WydawnictwoPBNAdapter_www_eksport(
-    pbn_rozdzial_z_autorem_z_dyscyplina, wydawnictwo_nadrzedne, pbn_jezyk
+    pbn_rozdzial_z_autorem_z_dyscyplina, wydawnictwo_nadrzedne, pbn_jezyk, denorms
 ):
     wydawnictwo_zwarte = pbn_rozdzial_z_autorem_z_dyscyplina
 
@@ -146,22 +147,26 @@ def test_WydawnictwoPBNAdapter_www_eksport(
         wydawnictwo_zwarte, pbn_jezyk, rodzaj_pbn=const.RODZAJ_PBN_ROZDZIAL
     )
 
-    wydawnictwo_nadrzedne.public_www = "123"
+    WWW = "https://www.example.com/"
+    WWW2 = "https://www.example2.com/"
+
+    wydawnictwo_nadrzedne.public_www = WWW
     wydawnictwo_nadrzedne.save()
 
     wydawnictwo_zwarte.www = wydawnictwo_zwarte.public_www = None
+    wydawnictwo_zwarte.wydawnictwo_nadrzedne = wydawnictwo_nadrzedne
     wydawnictwo_zwarte.save()
 
     res = WydawnictwoPBNAdapter(wydawnictwo_zwarte).pbn_get_json()
-    assert res["publicUri"] == "123"
+    assert res["publicUri"] == WWW
 
-    wydawnictwo_zwarte.www = "456"
+    wydawnictwo_zwarte.www = WWW2
     wydawnictwo_zwarte.save()
 
     assert wydawnictwo_zwarte.wydawnictwo_nadrzedne == wydawnictwo_nadrzedne
 
     res = WydawnictwoPBNAdapter(wydawnictwo_zwarte).pbn_get_json()
-    assert res["publicUri"] == "456"
+    assert res["publicUri"] == WWW2
 
 
 def test_WydawnictwoPBNAdapter_openaccess_zero_miesiecy_gdy_licencja(

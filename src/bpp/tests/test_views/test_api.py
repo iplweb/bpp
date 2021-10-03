@@ -75,7 +75,8 @@ def test_GetPubmedIDView_post_jeden_rezultat(rf, mocker):
 def test_GetPBNPublicationsByISBN_jedna_praca(
     rf, pbn_uczelnia, pbn_client, admin_user, wydawnictwo_nadrzedne
 ):
-    ROK = ISBN = "123"
+    ROK = 123
+    ISBN = "123"
     UID_REKORDU = "foobar"
     TYTUL_REKORDU = "Jakis tytul"
 
@@ -109,7 +110,8 @@ def test_GetPBNPublicationsByISBN_jedna_praca(
 def test_GetPBNPublicationsByISBN_wiele_isbn(
     rf, pbn_uczelnia, pbn_client, admin_user, wydawnictwo_nadrzedne
 ):
-    ROK = ISBN = "123"
+    ROK = 123
+    ISBN = "123"
     UID_REKORDU = "foobar"
     TYTUL_REKORDU = "Jakis tytul"
 

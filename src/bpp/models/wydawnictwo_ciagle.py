@@ -1,21 +1,17 @@
 # -*- encoding: utf-8 -*-
-
+from denorm import denormalized, depend_on_related
 from dirtyfields.dirtyfields import DirtyFieldsMixin
 from django.db import models
 from django.db.models import CASCADE, SET_NULL
 
-from bpp.models import (
-    MaProcentyMixin,
-    ModelOpcjonalnieNieEksportowanyDoAPI,
-    ModelZMiejscemPrzechowywania,
-    ModelZPBN_UID,
-    parse_informacje,
-    wez_zakres_stron,
-)
+from django.contrib.postgres.fields import ArrayField, JSONField
+
+from bpp.models import MaProcentyMixin, parse_informacje, wez_zakres_stron
 from bpp.models.abstract import (
     BazaModeluOdpowiedzialnosciAutorow,
     DodajAutoraMixin,
     DwaTytuly,
+    ModelOpcjonalnieNieEksportowanyDoAPI,
     ModelPunktowany,
     ModelRecenzowany,
     ModelTypowany,
@@ -31,8 +27,11 @@ from bpp.models.abstract import (
     ModelZISSN,
     ModelZKonferencja,
     ModelZLiczbaCytowan,
+    ModelZMiejscemPrzechowywania,
     ModelZNumeremZeszytu,
     ModelZOpenAccess,
+    ModelZPBN_UID,
+    ModelZPrzeliczaniemDyscyplin,
     ModelZPubmedID,
     ModelZRokiem,
     ModelZWWW,
@@ -107,6 +106,7 @@ class Wydawnictwo_Ciagle(
     MaProcentyMixin,
     DodajAutoraMixin,
     DirtyFieldsMixin,
+    ModelZPrzeliczaniemDyscyplin,
 ):
     """Wydawnictwo ciągłe, czyli artykuły z czasopism, komentarze, listy
     do redakcji, publikacje w suplemencie, etc."""
@@ -165,6 +165,84 @@ class Wydawnictwo_Ciagle(
             strony = wez_zakres_stron(self.szczegoly)
             if strony:
                 return strony
+
+    #
+    # Cache framework by django-denorm-iplweb
+    #
+
+    denorm_always_skip = ("ostatnio_zmieniony",)
+
+    @denormalized(JSONField, blank=True, null=True)
+    @depend_on_related(
+        "bpp.Wydawnictwo_Ciagle_Autor",
+        only=(
+            "typ_odpowiedzialnosci_id",
+            "afiliuje",
+            "dyscyplina_naukowa_id",
+            "upowaznienie_pbn",
+            "przypieta",
+        ),
+    )
+    def cached_punkty_dyscyplin(self):
+        # TODO: idealnie byłoby uzależnić zmiane od pola 'rok' które by było identyczne
+        # dla bpp.Poziom_Wydawcy, rok i id z nadrzędnego. Składnia SQLowa ewentualnie
+        # jakis zapis django-podobny mile widziany.
+        return self.przelicz_punkty_dyscyplin()
+
+    @denormalized(models.TextField, default="")
+    @depend_on_related(
+        "bpp.Wydawnictwo_Ciagle_Autor",
+        only=("zapisany_jako", "typ_odpowiedzialnosci_id", "kolejnosc"),
+    )
+    @depend_on_related("bpp.Zrodlo", only=("nazwa", "skrot"))
+    @depend_on_related("bpp.Charakter_Formalny")
+    @depend_on_related("bpp.Typ_KBN")
+    @depend_on_related("bpp.Status_Korekty")
+    def opis_bibliograficzny_cache(self):
+        return self.opis_bibliograficzny()
+
+    @denormalized(ArrayField, base_field=models.TextField(), blank=True, null=True)
+    @depend_on_related(
+        "bpp.Autor",
+        only=(
+            "nazwisko",
+            "imiona",
+        ),
+    )
+    @depend_on_related("bpp.Wydawnictwo_Ciagle_Autor", only=("kolejnosc",))
+    def opis_bibliograficzny_autorzy_cache(self):
+        return [
+            "%s %s" % (x.autor.nazwisko, x.autor.imiona)
+            for x in self.autorzy_dla_opisu()
+        ]
+
+    @denormalized(models.TextField, blank=True, null=True)
+    @depend_on_related(
+        "bpp.Wydawnictwo_Ciagle_Autor",
+        only=("zapisany_jako", "kolejnosc"),
+    )
+    def opis_bibliograficzny_zapisani_autorzy_cache(self):
+        return ", ".join([x.zapisany_jako for x in self.autorzy_dla_opisu()])
+
+    @denormalized(
+        models.SlugField,
+        max_length=400,
+        unique=True,
+        db_index=True,
+        null=True,
+        blank=True,
+    )
+    @depend_on_related(
+        "bpp.Wydawnictwo_Ciagle_Autor",
+        only=("zapisany_jako", "kolejnosc"),
+    )
+    @depend_on_related(
+        "bpp.Autor",
+        only=("nazwisko", "imiona"),
+    )
+    @depend_on_related("bpp.Zrodlo", only=("nazwa", "skrot"))
+    def slug(self):
+        return self.get_slug()
 
 
 class Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych(models.Model):

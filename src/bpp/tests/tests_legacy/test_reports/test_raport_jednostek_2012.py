@@ -3,7 +3,6 @@
 from django.test import TestCase
 
 from bpp.models.abstract import ILOSC_ZNAKOW_NA_ARKUSZ
-from bpp.models.cache import with_cache
 from bpp.models.system import Charakter_Formalny, Jezyk, Typ_KBN
 from bpp.tests.tests_legacy.test_reports.util import stworz_obiekty_dla_raportow
 from bpp.tests.util import (
@@ -67,7 +66,6 @@ class TestRaportJednostek2012(TestCase):
             for elem in not_found:
                 self.assertNotIn(elem, q)
 
-    @with_cache
     def test_1_1(self):
         c = any_ciagle(
             impact_factor=5,
@@ -86,7 +84,6 @@ class TestRaportJednostek2012(TestCase):
 
         self.sprawdz("1_1", c, not_found=[tego_ma_nie_byc])
 
-    @with_cache
     def test_1_1_zakres_lat(self):
         kwargs = dict(
             impact_factor=5,
@@ -105,7 +102,6 @@ class TestRaportJednostek2012(TestCase):
         self.assertEqual(q.count(), 2)
         self.assertEqual([x.original for x in list(q)], [c, d])
 
-    @with_cache
     def test_1_2(self):
         # Ta praca ma WEJŚC
         common = dict(
@@ -126,7 +122,6 @@ class TestRaportJednostek2012(TestCase):
 
         self.sprawdz("1_2", c)
 
-    @with_cache
     def test_1_3(self):
         c = any_ciagle(adnotacje="erih", punkty_kbn=1)
         c.dodaj_autora(self.a, self.j)
@@ -136,7 +131,6 @@ class TestRaportJednostek2012(TestCase):
 
         self.sprawdz("1_3", c)
 
-    @with_cache
     def test_1_4(self):
         c = any_ciagle(
             charakter_formalny=Charakter_Formalny.objects.get(skrot="AC"),
@@ -148,14 +142,12 @@ class TestRaportJednostek2012(TestCase):
         c.dodaj_autora(self.a, self.j)
         self.sprawdz("1_4", c)
 
-    @with_cache
     def test_1_5(self):
         c = any_ciagle(adnotacje="WOS", punkty_kbn=1)
         c.dodaj_autora(self.a, self.j)
 
         self.sprawdz("1_5", c)
 
-    @with_cache
     def test_2_1(self):
         c = any_ciagle(
             charakter_formalny=charakter("KSZ"), jezyk=jezyk("ang."), punkty_kbn=5
@@ -170,13 +162,11 @@ class TestRaportJednostek2012(TestCase):
 
         self.sprawdz("2_1", c)
 
-    @with_cache
     def test_2_2(self):
         c = any_zwarte(charakter_formalny=charakter("ROZ"), punkty_kbn=20)
         c.dodaj_autora(self.a, self.j)
         self.sprawdz("2_2", c)
 
-    @with_cache
     def test_2_3(self):
         d = any_zwarte(
             charakter_formalny=charakter("KSZ"), jezyk=jezyk("ang."), punkty_kbn=50

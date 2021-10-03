@@ -1,107 +1,92 @@
 # -*- encoding: utf-8 -*-
 
 import pytest
+from denorm.models import DirtyInstance
 from django.core.exceptions import ValidationError
 from django.db import InternalError
 from django.db.models import ProtectedError
 from model_mommy import mommy
 
-from bpp.models import CacheQueue, Wydawca
+from bpp.models import Wydawca
 from bpp.models.wydawca import Poziom_Wydawcy
-from bpp.tasks import aktualizuj_cache
 
 
 @pytest.mark.django_db
-def test_wydawnictwo_zwarte_wydawca_delete(wydawnictwo_zwarte, wydawca):
+def test_wydawnictwo_zwarte_wydawca_delete(wydawnictwo_zwarte, wydawca, denorms):
     wydawnictwo_zwarte.wydawca = wydawca
     wydawnictwo_zwarte.save()
 
-    aktualizuj_cache.delay()
-    assert CacheQueue.objects.all().count() == 0
+    denorms.flush()
+    assert DirtyInstance.objects.count() == 0
 
     with pytest.raises(ProtectedError):
         wydawca.delete()
 
-    from django.db import connection
+    wydawnictwo_zwarte.wydawca = None
+    wydawnictwo_zwarte.save()
 
-    cursor = connection.cursor()
-    cursor.execute("DELETE FROM bpp_wydawca WHERE id = %i" % wydawca.id)
-    assert CacheQueue.objects.all().count() == 1
+    wydawca.delete()
 
-    # Utworz ponownie, bo błąd przy wyjściu z testu
-    wydawca.save()
+    assert DirtyInstance.objects.count() == 1
+    denorms.flush()
 
 
 @pytest.mark.django_db
-def test_wydawnictwo_zwarte_wydawca_change_nazwa(wydawnictwo_zwarte, wydawca):
+def test_wydawnictwo_zwarte_wydawca_change_nazwa(wydawnictwo_zwarte, wydawca, denorms):
     wydawnictwo_zwarte.wydawca = wydawca
     wydawnictwo_zwarte.save()
 
-    aktualizuj_cache.delay()
-    assert CacheQueue.objects.all().count() == 0
+    denorms.flush()
+    assert DirtyInstance.objects.all().count() == 0
 
     wydawca.nazwa = wydawca.nazwa + "X"
     wydawca.save()
 
-    assert CacheQueue.objects.all().count() == 1
+    assert DirtyInstance.objects.all().count() == 2
 
 
 @pytest.mark.django_db
-def test_wydawnictwo_zwarte_wydawca_change_alias_dla(wydawnictwo_zwarte, wydawca):
+def test_wydawnictwo_zwarte_wydawca_change_alias_dla(
+    wydawnictwo_zwarte, wydawca, denorms
+):
     wydawnictwo_zwarte.wydawca = wydawca
     wydawnictwo_zwarte.save()
 
-    aktualizuj_cache.delay()
-    assert CacheQueue.objects.all().count() == 0
+    denorms.flush()
+    assert DirtyInstance.objects.all().count() == 0
 
     wydawca2 = mommy.make(Wydawca)
 
     wydawca.alias_dla = wydawca2
     wydawca.save()
 
-    assert CacheQueue.objects.all().count() == 1
+    assert DirtyInstance.objects.all().count() == 5
 
 
 @pytest.mark.django_db
 def test_wydawnictwo_zwarte_wydawca_change_poziom_ten_sam_rok(
-    wydawnictwo_zwarte, wydawca, rok
+    wydawnictwo_zwarte, wydawca, rok, denorms
 ):
     wydawnictwo_zwarte.wydawca = wydawca
     wydawnictwo_zwarte.rok = rok
     wydawnictwo_zwarte.save()
 
-    aktualizuj_cache.delay()
-    assert CacheQueue.objects.all().count() == 0
+    denorms.flush()
+    assert DirtyInstance.objects.all().count() == 0
 
     pw = wydawca.poziom_wydawcy_set.create(rok=rok, poziom=1)
 
-    assert CacheQueue.objects.all().count() == 1
-
+    assert DirtyInstance.objects.all().count() == 1
+    denorms.flush()
     pw.poziom = 2
     pw.save()
 
-    assert CacheQueue.objects.all().count() == 2
+    # Tu przebuduje wydawce + liste poziomow na wydawcy
+    denorms.flush(run_once=True)
 
-
-@pytest.mark.django_db
-def test_wydawnictwo_zwarte_wydawca_change_poziom_rozny_rok(
-    wydawnictwo_zwarte, wydawca, rok
-):
-    wydawnictwo_zwarte.wydawca = wydawca
-    wydawnictwo_zwarte.rok = rok
-    wydawnictwo_zwarte.save()
-
-    aktualizuj_cache.delay()
-    assert CacheQueue.objects.all().count() == 0
-
-    pw = wydawca.poziom_wydawcy_set.create(rok=rok + 1, poziom=1)
-
-    assert CacheQueue.objects.all().count() == 0
-
-    pw.poziom = 2
-    pw.save()
-
-    assert CacheQueue.objects.all().count() == 0
+    # ... a teraz bedzie przebudowywał wyd. zwrate
+    assert DirtyInstance.objects.all().count() == 1
+    assert DirtyInstance.objects.first().object_id == wydawnictwo_zwarte.pk
 
 
 @pytest.mark.django_db
@@ -165,3 +150,28 @@ def test_poziom_wydawcy_str(wydawca):
     pw = Poziom_Wydawcy.objects.create(wydawca=wydawca, rok=2020, poziom=1)
 
     assert str(pw) == 'Poziom wydawcy "Wydawca Testowy" za rok 2020'
+
+
+@pytest.mark.django_db
+def test_denorm_wydawca_ilosc_aliasow(denorms):
+    w1 = Wydawca.objects.create(nazwa="123")
+    assert w1.ile_aliasow == 0
+
+    Wydawca.objects.create(nazwa="456", alias_dla=w1)
+
+    denorms.flush()
+    w1.refresh_from_db()
+    assert w1.ile_aliasow == 1
+
+
+@pytest.mark.django_db
+def test_denorm_wydawca_poziomy_wydawcy(denorms):
+    w1 = Wydawca.objects.create(nazwa="123")
+    assert w1.lista_poziomow == []
+
+    Poziom_Wydawcy.objects.create(wydawca=w1, poziom=2, rok=3333)
+
+    denorms.flush()
+
+    w1.refresh_from_db()
+    assert w1.lista_poziomow[0] == [3333, 2]
