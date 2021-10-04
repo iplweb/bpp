@@ -18,8 +18,8 @@ jobs:
           DJANGO_SETTINGS_MODULE: django_bpp.settings.test
       - image: mpasternak79/circleci-postgres:12
         environment:
-          POSTGRESS_PASSWORD=password
-          POSTGRES_HOST_AUTH_METHOD=trust
+          POSTGRESS_PASSWORD: password
+          POSTGRES_HOST_AUTH_METHOD: trust
       - image: redis:latest
 
     steps:
