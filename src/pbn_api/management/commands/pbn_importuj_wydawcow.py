@@ -5,9 +5,8 @@ from django.db import transaction
 from pbn_api.management.commands.util import PBNBaseCommand
 from pbn_api.models import Publisher
 
-from bpp.models import Praca_Doktorska, Praca_Habilitacyjna, Wydawca, Wydawnictwo_Zwarte
+from bpp.models import Wydawca
 from bpp.models.const import PBN_LATA
-from bpp.tasks import aktualizuj_cache_rekordu
 
 poziom_to_points_map = {2: 200, 1: 80}
 points_to_poziom_map = {200: 2, 80: 1}
@@ -119,21 +118,6 @@ class Command(PBNBaseCommand):
                                 )
 
                             # wydawca_side is None, są równe zatem, nic nie robimy
-
-            for wydawca, rok in needs_recalc:
-                # To powinno być obsługiwane w CacheQueue, ale w chwili pisania tego kodu (19.09.2021) nie jest
-                # To - czyli trigger wywołujący zmianę w sytuacji dopisania poziomu wydawcy.
-                if verbosity > 2:
-                    print(f"3 Szukam prac dla {wydawca}, {rok}")
-                for klass in (
-                    Wydawnictwo_Zwarte,
-                    Praca_Doktorska,
-                    Praca_Habilitacyjna,
-                ):
-                    for _instance in klass.objects.filter(wydawca=wydawca, rok=rok):
-                        if verbosity > 1:
-                            print("4 Przeliczam ponownie punkty dla", _instance)
-                        aktualizuj_cache_rekordu(_instance)
 
         # To uruchamiamy poza transakcją - jeżeli były zmiany
         if needs_mapping:
