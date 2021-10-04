@@ -89,6 +89,12 @@ jobs:
             . venv/bin/activate
             pytest -d -n 2 --splinter-headless --cov=src --ds=django_bpp.settings.test # src/integration_tests/test_global_search.py
 
+      # debug
+      - run:
+          name: show db names
+          command: |
+            echo "\l" | psql bpp
+
       # Testy JavaScript
       - run: make js-tests
 
