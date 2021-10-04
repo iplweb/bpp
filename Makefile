@@ -20,6 +20,7 @@ clean: clean-pycache
 	find . -type d -name \*egg-info -print0 | xargs -0 rm -rf
 	find . -name \*~ -print0 | xargs -0 rm -f
 	find . -name \*.prof -print0 | xargs -0 rm -f
+	rm -rf prof/
 	find . -name \*\\.log -print0 | xargs -0 rm -f
 	find . -name \*\\.log -print0 | xargs -0 rm -f
 	find . -name \#\* -print0 | xargs -0 rm -f
