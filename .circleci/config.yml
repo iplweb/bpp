@@ -75,6 +75,13 @@ jobs:
           paths:
             - "/home/circleci/.cache"
 
+      # Sklonuj bazy danych, zeby było kapke szybciej
+      - run:
+          name: clone bpp to testing databases gw0, gw1
+          command: |
+            createdb test_bpp_gw0 -T bpp
+            createdb test_bpp_gw1 -T bpp
+
       # Uruchamiaj na lokalnym firefoxie używając dwóch CPU
       - run:
           name: pytest
