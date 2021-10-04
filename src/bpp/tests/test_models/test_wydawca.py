@@ -3,7 +3,6 @@
 import pytest
 from denorm.models import DirtyInstance
 from django.core.exceptions import ValidationError
-from django.db import InternalError
 from django.db.models import ProtectedError
 from model_mommy import mommy
 
@@ -87,23 +86,6 @@ def test_wydawnictwo_zwarte_wydawca_change_poziom_ten_sam_rok(
     # ... a teraz bedzie przebudowywał wyd. zwrate
     assert DirtyInstance.objects.all().count() == 1
     assert DirtyInstance.objects.first().object_id == wydawnictwo_zwarte.pk
-
-
-@pytest.mark.django_db
-def test_poziom_wydawcy_zmiana_roku(wydawca, rok):
-    pw = wydawca.poziom_wydawcy_set.create(rok=rok, poziom=2)
-    pw.rok = rok + 1
-    with pytest.raises(InternalError):
-        pw.save()
-
-
-@pytest.mark.django_db
-def test_poziom_wydawcy_zmiana_id_wydawcy(wydawca, rok):
-    pw = wydawca.poziom_wydawcy_set.create(rok=rok, poziom=2)
-    w2 = Wydawca.objects.create(nazwa="fubar")
-    pw.wydawca = w2
-    with pytest.raises(InternalError):
-        pw.save()
 
 
 @pytest.mark.django_db
