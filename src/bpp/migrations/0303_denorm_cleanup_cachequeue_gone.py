@@ -13,7 +13,11 @@ class Migration(migrations.Migration):
         migrations.DeleteModel(
             name="CacheQueue",
         ),
-        migrations.RunSQL("DROP FUNCTION bpp_wydawca_change CASCADE"),
-        migrations.RunSQL("DROP FUNCTION bpp_alias_wydawcy_change_trigger CASCADE"),
-        migrations.RunSQL("DROP FUNCTION bpp_poziom_wydawcy_change_trigger CASCADE"),
+        migrations.RunSQL("DROP FUNCTION IF EXISTS bpp_wydawca_change CASCADE"),
+        migrations.RunSQL(
+            "DROP FUNCTION IF EXISTS bpp_alias_wydawcy_change_trigger CASCADE"
+        ),
+        migrations.RunSQL(
+            "DROP FUNCTION IF EXISTS bpp_poziom_wydawcy_change_trigger CASCADE"
+        ),
     ]
