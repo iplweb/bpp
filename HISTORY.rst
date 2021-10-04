@@ -3,6 +3,11 @@
 Historia zmian
 ==============
 
+202110.1081-alpha
+-----------------
+
+* pełnotekstowe wyszukiwanie dla indeksu wydawców, wydawców PBN, wydawnictw zwartych (#1102)
+
 202109.1080-beta1
 -----------------
 
