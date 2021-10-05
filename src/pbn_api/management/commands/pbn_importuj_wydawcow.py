@@ -21,10 +21,14 @@ class Command(PBNBaseCommand):
             for publisher in Publisher.objects.official():
 
                 if not publisher.wydawca_set.exists():
-                    # Nie ma takiego wydawcy w bazie, spróbuj go zmatchować:
+                    # Nie ma takiego wydawcy w bazie BPP, spróbuj go zmatchować:
 
                     nw = publisher.matchuj_wydawce()
                     if nw is not None:
+                        if publisher.publisherName != nw.nazwa:
+                            print(
+                                f"0 ZWERYFIKUJ FONETYCZNE DOPASOWANIE: {publisher.publisherName} do {nw.nazwa}"
+                            )
                         nw.pbn_uid = publisher
                         nw.save()
 
