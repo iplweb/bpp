@@ -22,8 +22,6 @@ def sumuj_chunk(listy_prac):
 
 
 class Command(BaseCommand):
-    help = "Odbudowuje pola slug"
-
     @transaction.atomic
     def handle(self, dyscyplina="nauki medyczne", liczba_n=None, *args, **options):
 
@@ -33,14 +31,58 @@ class Command(BaseCommand):
         )
         algorytm.powitanie()
 
-        maks_suma_pkd = None
+        maks_lista_prac = baza = maks_suma_pkd = None
 
-        for a in range(500):
-            algorytm.sumuj()
+        nr_cyklu = 0
+        while True:
+            count = algorytm.randomizer.count()
+            for a in range(count):  # , label=f"Nr cyklu: {nr_cyklu}"):
+                algorytm.sumuj()
 
-            if maks_suma_pkd is None or algorytm.suma_pkd > maks_suma_pkd:
-                # maks_output = algorytm.id_rekordow
-                maks_suma_pkd = algorytm.suma_pkd
-                # maks_sumy_slotow = algorytm.sumy_slotow
+                if maks_suma_pkd is None or algorytm.suma_pkd > maks_suma_pkd:
 
-                algorytm.pozegnanie()
+                    # maks_output = algorytm.id_rekordow
+                    maks_suma_pkd = algorytm.suma_pkd
+                    maks_lista_prac = algorytm.aktualna_lista_prac
+                    if baza is None:
+                        baza = maks_suma_pkd
+                    # maks_sumy_slotow = algorytm.sumy_slotow
+
+                    print(maks_suma_pkd - baza, algorytm.randomizer.serialize())
+
+                    # algorytm.pozegnanie()
+
+                    # algorytm.promuj_obecna_liste()
+                    baza = maks_suma_pkd
+
+                    print("Ustawiam jako bazowa liste z %i pkd" % maks_suma_pkd)
+                    algorytm.ustaw_liste(maks_lista_prac)
+                    algorytm.zrzuc_dane("randomizer")
+                    maks_lista_prac = None
+
+            algorytm.randomizer.reset()
+
+            nr_cyklu += 1
+            # algorytm.randomizer.reset()
+            #
+            # if nr_cyklu < 10:
+            #
+            # else:
+            #     while True:
+            #         try:
+            #             maxlen = len(algorytm.lista_prac)
+            #
+            #             list_len = 3000
+            #
+            #             algorytm.randomizer.reset(
+            #                 start_elem=0,
+            #                 end_elem=maxlen - list_len,
+            #                 list_size_min=1000,
+            #                 list_size_max=list_len,
+            #                 list_step=50,
+            #             )
+            #             break
+            #         except ValueError:
+            #             pass
+            #
+            # continue
