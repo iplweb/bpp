@@ -81,6 +81,13 @@ class UczelniaAdmin(
             },
         ),
         (
+            "Ewaluacja 2021",
+            {
+                "classes": ("grp-collapse grp-open",),
+                "fields": ("ewaluacja2021_liczba_n",),
+            },
+        ),
+        (
             "Strona wizualna",
             {
                 "classes": ("grp-collapse grp-closed",),

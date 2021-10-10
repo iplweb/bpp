@@ -225,6 +225,15 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         verbose_name="Hasło", null=True, blank=True, max_length=50
     )
 
+    ewaluacja2021_liczba_n = models.DecimalField(
+        "Liczba N",
+        max_digits=9,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        help_text="Ewaluacja 2021",
+    )
+
     DO_ROKU = Choices(
         (
             const.DO_STYCZNIA_POPRZEDNI_POTEM_OBECNY,
