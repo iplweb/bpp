@@ -10,6 +10,8 @@ Historia zmian
 * caching-framework przy użyciu django-denorm-iplweb_ (#1099)
 * raport optymalizujący 3N (#1131),
 * liczba N dla uczelni dla każdej z dyscyplin (#1131),
+* oznaczaj alias wydawcy w nazwie (#1097),
+* pozwalaj odszukać aliasy wydawcy w adminie (#1097),
 
 .. _django-denorm-iplweb: https://github.com/mpasternak/django-denorm-iplweb/
 

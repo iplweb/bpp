@@ -55,6 +55,12 @@ class Wydawca(ModelZNazwa, ModelZPBN_UID):
             return -1
         return ret.poziom
 
+    def __str__(self):
+        ret = self.nazwa
+        if self.alias_dla_id is not None:
+            ret += f" (alias dla {self.alias_dla.nazwa})"
+        return ret
+
     # Poniższe zdenormalizowane pole zawiera wszystkie poziomy wydawcy, czyli będzie
     # aktualizowane w sytuacjach, gdy poziom wydawcy zostanie dodany lub usunięty:
 

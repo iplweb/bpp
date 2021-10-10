@@ -157,3 +157,11 @@ def test_denorm_wydawca_poziomy_wydawcy(denorms):
 
     w1.refresh_from_db()
     assert w1.lista_poziomow[0] == [3333, 2]
+
+
+@pytest.mark.django_db
+def test_wydawca_str():
+    w1 = mommy.make(Wydawca, nazwa="Foo")
+    w2 = mommy.make(Wydawca, nazwa="Bar", alias_dla=w1)
+
+    assert str(w2) == "Bar (alias dla Foo)"

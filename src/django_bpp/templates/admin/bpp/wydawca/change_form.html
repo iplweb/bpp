@@ -4,6 +4,9 @@
     {% if original.alias_dla %}
         <li><a target="_blank" href="{% url "admin:bpp_wydawca_change" original.alias_dla.pk %}">Zobacz rekord docelowy</a></li>
     {% endif %}
+    {% if original.wydawca_set.exists %}
+        <li><a target="_blank" href="../../../wydawca/?q-l=on&q=alias_dla.id%3D+{{ original.pk }}">Aliasy</a></li>
+    {% endif %}
     {% if original.wydawnictwo_zwarte_set.exists %}
         <li><a target="_blank" href="../../../wydawnictwo_zwarte/?q-l=on&q=wydawca.id%3D+{{ original.pk }}">Powiązane</a></li>
     {% endif %}
