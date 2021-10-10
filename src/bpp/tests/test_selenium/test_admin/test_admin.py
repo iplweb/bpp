@@ -147,7 +147,7 @@ def trigger_event(elem, event):
     )
 
 
-def test_admin_uzupelnij_punkty(admin_browser, asgi_live_server):
+def test_admin_uzupelnij_punkty(admin_browser, asgi_live_server, denorms):
     z = any_zrodlo(nazwa="WTF LOL")
 
     kw = dict(zrodlo=z)
@@ -474,9 +474,9 @@ def test_admin_domyslnie_afiliuje_nowy_rekord(
         ("patent", Patent),
     ],
 )
-@pytest.mark.django_db(transaction=True)
+# @pytest.mark.django_db(transaction=True)
 def test_admin_domyslnie_afiliuje_istniejacy_rekord(
-    admin_browser, asgi_live_server, url, klasa, expected, afiliowany
+    admin_browser, asgi_live_server, url, klasa, expected, afiliowany, denorms
 ):
     # twórz nowy obiekt, nie używaj z fixtury, bo db i transactional_db
     mommy.make(Uczelnia, domyslnie_afiliuje=expected)

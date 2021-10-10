@@ -2,8 +2,9 @@ from datetime import timedelta
 
 import pytest
 from django.urls import reverse
-from django.utils.timezone import localtime
 from model_mommy import mommy
+
+from django.utils.timezone import localtime
 
 from bpp.models import Praca_Doktorska
 
@@ -79,7 +80,7 @@ def test_rest_api_praca_doktorska_ukryj_status(
 
 
 @pytest.fixture
-def wiele_prac_doktorskich(db):
+def wiele_prac_doktorskich(db, typy_odpowiedzialnosci):
     for a in range(100):
         mommy.make(Praca_Doktorska)
 

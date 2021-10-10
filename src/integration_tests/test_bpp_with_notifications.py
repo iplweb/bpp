@@ -1,5 +1,5 @@
 # -*- encoding: utf-8 -*-
-
+import time
 
 from django.core.management import call_command
 
@@ -38,7 +38,11 @@ pytestmark = [pytest.mark.slow, pytest.mark.selenium]
 
 
 def test_caching_enabled(
-    admin_app, zrodlo, standard_data, transactional_db, with_cache
+    admin_app,
+    zrodlo,
+    standard_data,
+    transactional_db,
+    denorms,
 ):
     """
     1) wejdź do redagowania
@@ -67,6 +71,10 @@ def test_caching_enabled(
     form["typ_kbn"].value = Typ_KBN.objects.all().first().pk
     form["status_korekty"].value = Status_Korekty.objects.all().first().pk
     form.submit()
+
+    time.sleep(1)
+
+    denorms.flush()
 
     # Teraz wchodzimy do multiseek i sprawdzamy jak to wyglada
 

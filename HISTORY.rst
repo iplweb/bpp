@@ -3,6 +3,13 @@
 Historia zmian
 ==============
 
+202110.108X-alpha
+-----------------
+
+* caching-framework przy użyciu django-denorm-iplweb_ (#1099)
+
+.. _django-denorm-iplweb: https://github.com/mpasternak/django-denorm-iplweb/
+
 202109.1080-beta1
 -----------------
 

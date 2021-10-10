@@ -37,7 +37,7 @@ def test_rozne_opisy_rozne_klasy(wydawnictwo_ciagle, wydawnictwo_zwarte):
         sz.template = test_template
         sz.save()
     except SzablonDlaOpisuBibliograficznego.DoesNotExist:
-        SzablonDlaOpisuBibliograficznego(template=test_template)
+        SzablonDlaOpisuBibliograficznego.objects.create(template=test_template)
 
     assert wydawnictwo_ciagle.opis_bibliograficzny() == test_template.content
     assert wydawnictwo_zwarte.opis_bibliograficzny() == test_template.content

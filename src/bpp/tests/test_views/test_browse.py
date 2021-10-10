@@ -32,7 +32,6 @@ from bpp.models import (
     Typ_Odpowiedzialnosci,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
-    rebuild_zwarte,
 )
 from bpp.models.autor import Autor
 from bpp.views.browse import BuildSearch, PracaViewBySlug
@@ -117,10 +116,11 @@ def nastepna_komorka_po_strona_www(dokument):
 
 
 @pytest.mark.django_db
-def test_darmowy_platny_dostep_www_wyswietlanie(client, wydawnictwo_ciagle):
+def test_darmowy_platny_dostep_www_wyswietlanie(client, wydawnictwo_ciagle, denorms):
     wydawnictwo_ciagle.www = ""
     wydawnictwo_ciagle.public_www = ""
     wydawnictwo_ciagle.save()
+
     res = client.get(
         reverse(
             "bpp:browse_praca",
@@ -128,7 +128,8 @@ def test_darmowy_platny_dostep_www_wyswietlanie(client, wydawnictwo_ciagle):
                 ContentType.objects.get(app_label="bpp", model="wydawnictwo_ciagle").pk,
                 wydawnictwo_ciagle.pk,
             ),
-        )
+        ),
+        follow=True,
     )
     val = nastepna_komorka_po_strona_www(res.content)
     assert val == "Brak danych"
@@ -136,6 +137,7 @@ def test_darmowy_platny_dostep_www_wyswietlanie(client, wydawnictwo_ciagle):
     wydawnictwo_ciagle.www = "platny"
     wydawnictwo_ciagle.public_www = ""
     wydawnictwo_ciagle.save()
+
     res = client.get(
         reverse(
             "bpp:browse_praca",
@@ -143,7 +145,8 @@ def test_darmowy_platny_dostep_www_wyswietlanie(client, wydawnictwo_ciagle):
                 ContentType.objects.get(app_label="bpp", model="wydawnictwo_ciagle").pk,
                 wydawnictwo_ciagle.pk,
             ),
-        )
+        ),
+        follow=True,
     )
     val = nastepna_komorka_po_strona_www(res.content)
     assert val == "platny"
@@ -158,7 +161,8 @@ def test_darmowy_platny_dostep_www_wyswietlanie(client, wydawnictwo_ciagle):
                 ContentType.objects.get(app_label="bpp", model="wydawnictwo_ciagle").pk,
                 wydawnictwo_ciagle.pk,
             ),
-        )
+        ),
+        follow=True,
     )
     val = nastepna_komorka_po_strona_www(res.content)
     assert val == "darmowy"
@@ -173,7 +177,8 @@ def test_darmowy_platny_dostep_www_wyswietlanie(client, wydawnictwo_ciagle):
                 ContentType.objects.get(app_label="bpp", model="wydawnictwo_ciagle").pk,
                 wydawnictwo_ciagle.pk,
             ),
-        )
+        ),
+        follow=True,
     )
     val = nastepna_komorka_po_strona_www(res.content)
     assert val == "darmowy"
@@ -324,7 +329,8 @@ def test_browse_snip_visible(client, uczelnia, wydawnictwo_ciagle):
                 ContentType.objects.get(app_label="bpp", model="wydawnictwo_ciagle").pk,
                 wydawnictwo_ciagle.pk,
             ),
-        )
+        ),
+        follow=True,
     )
 
     assert b"SNIP" in res.content
@@ -345,14 +351,15 @@ def test_browse_snip_invisible(client, uczelnia, wydawnictwo_ciagle):
                 ContentType.objects.get(app_label="bpp", model="wydawnictwo_ciagle").pk,
                 wydawnictwo_ciagle.pk,
             ),
-        )
+        ),
+        follow=True,
     )
 
     assert b"SNIP" not in res.content
 
 
 @pytest.mark.django_Db
-def test_browse_praca_wydawnictwa_powiazane(wydawnictwo_zwarte, client):
+def test_browse_praca_wydawnictwa_powiazane(wydawnictwo_zwarte, client, denorms):
     # Testuj, czy rozdziały pokazują się w wydawnictwach powiązanych
     mommy.make(
         Wydawnictwo_Zwarte,
@@ -367,7 +374,7 @@ def test_browse_praca_wydawnictwa_powiazane(wydawnictwo_zwarte, client):
         strony="IXIXI 22-50",
     )
 
-    rebuild_zwarte()
+    denorms.flush()
 
     wydawnictwo_zwarte.refresh_from_db()
 
@@ -412,7 +419,8 @@ def test_praca_tabela_pmc_id(wydawnictwo_zwarte, client):
                 ContentType.objects.get_for_model(wydawnictwo_zwarte).pk,
                 wydawnictwo_zwarte.pk,
             ),
-        )
+        ),
+        follow=True,
     )
 
     assert b"https://www.ncbi.nlm.nih.gov/pmc/" in res.content
@@ -429,12 +437,12 @@ def test_PracaView_ukrywanie_statusy_anonim(
         ),
     )
 
-    res = client.get(url)
+    res = client.get(url, follow=True)
     assert res.status_code == 200
 
     uczelnia.ukryj_status_korekty_set.create(status_korekty=przed_korekta)
 
-    res = client.get(url)
+    res = client.get(url, follow=True)
     assert res.status_code == 403
 
 
@@ -449,12 +457,12 @@ def test_PracaView_ukrywanie_statusy_admin(
         ),
     )
 
-    res = admin_client.get(url)
+    res = admin_client.get(url, follow=True)
     assert res.status_code == 200
 
     uczelnia.ukryj_status_korekty_set.create(status_korekty=przed_korekta)
 
-    res = admin_client.get(url)
+    res = admin_client.get(url, follow=True)
     assert res.status_code == 200
 
 
@@ -491,8 +499,8 @@ def test_AutorView_funkcja_za_nazwiskiem(app):
     assert res.find("<h1>Foo Bar, profesor uczelni </h1>") >= 0
 
 
-def test_PracaViewBySlug_get_object(wydawnictwo_zwarte):
-    rebuild_zwarte()
+def test_PracaViewBySlug_get_object(wydawnictwo_zwarte, denorms):
+    denorms.rebuildall("Wydawnictwo_Zwarte")
     wydawnictwo_zwarte.refresh_from_db()
     r = Rekord.objects.get_for_model(wydawnictwo_zwarte)
     o = PracaViewBySlug(kwargs=dict(slug=wydawnictwo_zwarte.slug)).get_object()
@@ -507,8 +515,8 @@ def test_PracaViewBySlug_get_object(wydawnictwo_zwarte):
     assert o == r
 
 
-def test_PracaViewMixin_redirect(wydawnictwo_zwarte, rf, admin_user):
-    rebuild_zwarte()
+def test_PracaViewMixin_redirect(wydawnictwo_zwarte, rf, admin_user, denorms):
+    denorms.rebuildall("Wydawnictwo_Zwarte")
     req = rf.get("/")
     req.user = admin_user
     res = PracaViewBySlug(

@@ -24,7 +24,7 @@ from bpp.models import (
     Zrodlo,
     Zrodlo_Informacji,
 )
-from bpp.models.cache import Autorzy, AutorzyView, Rekord, with_cache
+from bpp.models.cache import Autorzy, AutorzyView, Rekord
 from bpp.tests.tests_legacy.test_reports.util import autor, ciagle, zwarte
 from bpp.tests.util import any_autor, any_ciagle
 
@@ -82,7 +82,7 @@ class TestCacheMixin:
             adnotacje="adnotacje",
             informacja_z=Zrodlo_Informacji.objects.all()[0],
             status_korekty=Status_Korekty.objects.all()[0],
-            rok="2000",
+            rok=2000,
             www="http://127.0.0.1/",
             recenzowana=True,
             impact_factor=5,
@@ -185,7 +185,6 @@ class TestCacheMixin:
 
 
 class TestCacheRebuildBug(TestCase):
-    @with_cache
     def test_liczba_znakow_bug(self):
         Rekord.objects.full_refresh()
         self.assertEqual(Rekord.objects.all().count(), 0)
@@ -209,14 +208,12 @@ class TestCacheSimple(TestCacheMixin, TestCase):
 
         super(TestCacheSimple, self).setUp()
 
-    @with_cache
     def test_get_original_object(self):
         Rekord.objects.full_refresh()
         for model in self.wszystkie_modele:
             c = Rekord.objects.get_original(model)
             self.assertEqual(c.original, model)
 
-    @with_cache
     def test_cache_triggers(self):
         T1 = "OMG ROXX"
         T2 = "LOL"
@@ -239,7 +236,6 @@ class TestCacheSimple(TestCacheMixin, TestCase):
                 msg="key=%s, %s!=%s" % (key, value, instance_value),
             )
 
-    @with_cache
     def test_tytul_sorted_version(self):
         for elem in [self.d, self.h, self.c, self.z]:  # self.p]:
             elem.tytul_oryginalny = "The 'APPROACH'"
@@ -317,7 +313,6 @@ class TestCacheZapisani(LoadFixturesMixin, TestCase):
 def test_MinimalCachingProblem_tworzenie(
     statusy_korekt, jezyki, typy_odpowiedzialnosci
 ):
-    @with_cache
     def foo():
         j = mommy.make(Jednostka)
         a = any_autor()
@@ -336,7 +331,6 @@ def test_MinimalCachingProblem_tworzenie(
 
 
 def test_MinimalCachingProblem_usuwanie(statusy_korekt, jezyki, typy_odpowiedzialnosci):
-    @with_cache
     def foo():
         j = mommy.make(Jednostka)
         a = any_autor()

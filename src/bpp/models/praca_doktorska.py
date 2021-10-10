@@ -1,5 +1,5 @@
 # -*- encoding: utf-8 -*-
-
+from denorm import denormalized, depend_on_related
 from django.db import models
 from django.db.models import CASCADE, SET_NULL
 
@@ -7,6 +7,8 @@ from .autor import Autor
 from .struktura import Jednostka
 from .system import Typ_Odpowiedzialnosci
 from .wydawnictwo_zwarte import Wydawnictwo_Zwarte_Baza
+
+from django.contrib.postgres.fields import ArrayField
 
 from django.utils.functional import cached_property
 
@@ -40,6 +42,63 @@ class Praca_Doktorska_Baza(NieMaProcentowMixin, ModelZPBN_UID, Wydawnictwo_Zwart
 
     class Meta:
         abstract = True
+
+    #
+    # Cache framework by django-denorm-iplweb
+    #
+
+    denorm_always_skip = ("ostatnio_zmieniony",)
+
+    @denormalized(models.TextField, default="")
+    @depend_on_related(
+        "bpp.Autor",
+        foreign_key="autor",
+        only=("nazwisko", "imiona", "tytul_id"),
+    )
+    @depend_on_related("bpp.Jednostka", only=("nazwa", "skrot", "wydzial_id"))
+    @depend_on_related("bpp.Status_Korekty")
+    def opis_bibliograficzny_cache(self):
+        return self.opis_bibliograficzny()
+
+    @denormalized(ArrayField, base_field=models.TextField(), blank=True, null=True)
+    @depend_on_related(
+        "bpp.Autor",
+        foreign_key="autor",
+        only=(
+            "nazwisko",
+            "imiona",
+        ),
+    )
+    def opis_bibliograficzny_autorzy_cache(self):
+        return [f"{self.autor.nazwisko} {self.autor.imiona}"]
+
+    @denormalized(models.TextField, blank=True, null=True)
+    @depend_on_related(
+        "bpp.Autor",
+        foreign_key="autor",
+        only=(
+            "nazwisko",
+            "imiona",
+        ),
+    )
+    def opis_bibliograficzny_zapisani_autorzy_cache(self):
+        return f"{self.autor.nazwisko} {self.autor.imiona}"
+
+    @denormalized(
+        models.SlugField,
+        max_length=400,
+        unique=True,
+        db_index=True,
+        null=True,
+        blank=True,
+    )
+    @depend_on_related(
+        "bpp.Autor",
+        foreign_key="autor",
+        only=("nazwisko", "imiona"),
+    )
+    def slug(self):
+        return self.get_slug()
 
 
 class _Praca_Doktorska_PropertyCache:

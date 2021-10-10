@@ -1024,3 +1024,18 @@ class ModelOpcjonalnieNieEksportowanyDoAPI(models.Model):
 
     class Meta:
         abstract = True
+
+
+class ModelZPrzeliczaniemDyscyplin(models.Model):
+    def przelicz_punkty_dyscyplin(self):
+        from bpp.models.sloty.core import IPunktacjaCacher
+        from bpp.models.uczelnia import Uczelnia
+
+        ipc = IPunktacjaCacher(self, Uczelnia.objects.get_default())
+        ipc.removeEntries()
+        if ipc.canAdapt():
+            ipc.rebuildEntries()
+        return ipc.serialize()
+
+    class Meta:
+        abstract = True

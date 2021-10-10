@@ -17,6 +17,9 @@ jobs:
           DJANGO_BPP_SECRET_KEY: foobar
           DJANGO_SETTINGS_MODULE: django_bpp.settings.test
       - image: mpasternak79/circleci-postgres:12
+        environment:
+          POSTGRESS_PASSWORD: password
+          POSTGRES_HOST_AUTH_METHOD: trust
       - image: redis:latest
 
     steps:
@@ -72,12 +75,25 @@ jobs:
           paths:
             - "/home/circleci/.cache"
 
+      # Sklonuj bazy danych, zeby było kapke szybciej
+      - run:
+          name: clone bpp to testing databases gw0, gw1
+          command: |
+            createdb test_bpp_gw0 -T bpp
+            createdb test_bpp_gw1 -T bpp
+
       # Uruchamiaj na lokalnym firefoxie używając dwóch CPU
       - run:
           name: pytest
           command: |
             . venv/bin/activate
             pytest -d -n 2 --splinter-headless --cov=src --ds=django_bpp.settings.test # src/integration_tests/test_global_search.py
+
+      # debug
+      - run:
+          name: show db names
+          command: |
+            echo "\l" | psql bpp
 
       # Testy JavaScript
       - run: make js-tests

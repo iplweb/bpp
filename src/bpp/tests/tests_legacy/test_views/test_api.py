@@ -4,7 +4,7 @@ from collections import namedtuple
 
 from django.test import TestCase
 
-from bpp.models import Autor_Dyscyplina, Dyscyplina_Naukowa
+from bpp.models import Autor_Dyscyplina, Dyscyplina_Naukowa, Typ_Odpowiedzialnosci
 from bpp.models.zrodlo import Punktacja_Zrodla
 from bpp.tests.util import (
     CURRENT_YEAR,
@@ -27,6 +27,8 @@ class TestRokHabilitacjiView(TestCase):
     # fixtures = ['charakter_formalny.json', 'typ_odpowiedzialnosci.json']
 
     def test_rokhabilitacjiview(self):
+        Typ_Odpowiedzialnosci.objects.get_or_create(skrot="aut.", nazwa="autor")
+
         a = any_autor()
         h = any_habilitacja(tytul_oryginalny="Testowa habilitacja", rok=CURRENT_YEAR)
         h.autor = a

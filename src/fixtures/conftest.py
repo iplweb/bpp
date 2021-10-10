@@ -8,13 +8,14 @@ from datetime import datetime
 import django_webtest
 import pytest
 import webtest
+from dbtemplates.models import Template
 from django.db import IntegrityError
 from rest_framework.test import APIClient
 from splinter.driver import DriverAPI
 
 from pbn_api.models import Language
 
-from bpp.tasks import aktualizuj_cache_rekordu
+from bpp.models.szablondlaopisubibliograficznego import SzablonDlaOpisuBibliograficznego
 from bpp.util import get_fixture
 
 try:
@@ -28,7 +29,6 @@ from bpp.fixtures import get_openaccess_data
 from bpp.models import (
     Autor_Dyscyplina,
     Dyscyplina_Naukowa,
-    Rekord,
     Wydawca,
     Zewnetrzna_Baza_Danych,
     const,
@@ -759,15 +759,27 @@ import pytest
 
 
 @pytest.fixture
-def praca_z_dyscyplina(wydawnictwo_ciagle_z_autorem, dyscyplina1, rok, db):
+def denorms():
+    from denorm import denorms
+
+    yield denorms
+
+
+@pytest.fixture
+def praca_z_dyscyplina(wydawnictwo_ciagle_z_autorem, dyscyplina1, rok, db, denorms):
+
     wydawnictwo_ciagle_z_autorem.punkty_kbn = 5
+    wydawnictwo_ciagle_z_autorem.save()
+
     wca = wydawnictwo_ciagle_z_autorem.autorzy_set.first()
     Autor_Dyscyplina.objects.create(
         autor=wca.autor, rok=wca.rekord.rok, dyscyplina_naukowa=dyscyplina1
     )
     wca.dyscyplina_naukowa = dyscyplina1
     wca.save()
-    aktualizuj_cache_rekordu(wydawnictwo_ciagle_z_autorem)
+
+    denorms.flush()
+
     return wydawnictwo_ciagle_z_autorem
 
 
@@ -875,15 +887,6 @@ def _fixture_teardown(self):
 TransactionTestCase._fixture_teardown = _fixture_teardown
 
 
-@pytest.fixture
-def with_cache():
-    from bpp.models.cache import cache_enabled
-
-    with cache_enabled():
-        [x.zaktualizuj_cache() for x in Rekord.objects.all()]
-        yield
-
-
 def pytest_collection_modifyitems(items):
     # Dodaj marker "selenium" dla wszystkich testów uzywających fikstur 'browser'
     # lub 'admin_browser', aby można było szybko uruchamiać wyłacznie te testy
@@ -896,3 +899,57 @@ def pytest_collection_modifyitems(items):
         if "browser" in fixtures or "admin_browser" in fixtures:
             item.add_marker("selenium")
             item.add_marker(flaky_test)
+
+
+@pytest.fixture
+def szablony():
+    dirname = os.path.dirname(__file__)
+
+    def template_n(elem):
+        return f"{dirname}/../bpp/templates/{elem}"
+
+    def create_template(Template, name):
+        Template.objects.create(
+            name=name,
+            content=open(template_n(name), "r").read(),
+        )
+
+    def instaluj_szablony():
+
+        create_template(Template, "opis_bibliograficzny.html")
+        create_template(Template, "browse/praca_tabela.html")
+
+        SzablonDlaOpisuBibliograficznego.objects.create(
+            model=None,
+            template=Template.objects.get(name="opis_bibliograficzny.html"),
+        )
+
+    instaluj_szablony()
+    return Template.objects
+
+
+import pytest
+
+
+@pytest.fixture(scope="session")
+def django_db_setup(django_db_setup, django_db_blocker):
+    from denorm import denorms
+
+    with django_db_blocker.unblock():
+        denorms.install_triggers()
+
+
+@pytest.fixture(scope="function")
+def django_db_setup(django_db_setup, django_db_blocker):  # noqa
+    from denorm import denorms
+
+    with django_db_blocker.unblock():
+        denorms.install_triggers()
+
+
+@pytest.fixture(scope="class")
+def django_db_setup(django_db_setup, django_db_blocker):  # noqa
+    from denorm import denorms
+
+    with django_db_blocker.unblock():
+        denorms.install_triggers()

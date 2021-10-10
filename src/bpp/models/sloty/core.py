@@ -10,7 +10,7 @@ from django.contrib.contenttypes.models import ContentType
 
 from django.utils.functional import cached_property
 
-from bpp.models import Typ_Odpowiedzialnosci, Uczelnia, const
+from bpp.models import Typ_Odpowiedzialnosci, Uczelnia, Wydawca, const
 from bpp.models.cache import Cache_Punktacja_Autora, Cache_Punktacja_Dyscypliny
 from bpp.models.patent import Patent
 from bpp.models.sloty.wydawnictwo_ciagle import SlotKalkulator_Wydawnictwo_Ciagle_Prog3
@@ -72,7 +72,11 @@ def ISlot(original, uczelnia=None):
         poziom_wydawcy = -1
 
         if original.wydawca_id is not None:
-            poziom_wydawcy = original.wydawca.get_tier(original.rok)
+            try:
+                wydawca = original.wydawca
+                poziom_wydawcy = wydawca.get_tier(original.rok)
+            except Wydawca.DoesNotExist:
+                pass
 
         # Referaty zjazdowe
 
@@ -221,14 +225,36 @@ class IPunktacjaCacher:
     def ctype(self):
         return ContentType.objects.get_for_model(self.original).pk
 
+    @property
+    def cache_punktacja_autora(self):
+        return Cache_Punktacja_Autora.objects.filter(
+            rekord_id=[self.ctype, self.original.pk]
+        )
+
+    @property
+    def cache_punktacja_dyscypliny(self):
+        return Cache_Punktacja_Dyscypliny.objects.filter(
+            rekord_id=[self.ctype, self.original.pk]
+        )
+
     @transaction.atomic
     def removeEntries(self):
-        Cache_Punktacja_Dyscypliny.objects.filter(
-            rekord_id=[self.ctype, self.original.pk]
-        ).delete()
-        Cache_Punktacja_Autora.objects.filter(
-            rekord_id=[self.ctype, self.original.pk]
-        ).delete()
+        self.cache_punktacja_dyscypliny.delete()
+        self.cache_punktacja_autora.delete()
+
+    def serialize(self):
+        """
+        Zwraca słownik JSON z zawartością danych rekordu
+        """
+        ret1 = []
+        for elem in self.cache_punktacja_autora:
+            ret1.append(elem.serialize())
+
+        ret2 = []
+        for elem in self.cache_punktacja_dyscypliny:
+            ret2.append(elem.serialize())
+
+        return ret1, ret2
 
     @transaction.atomic
     def rebuildEntries(self):

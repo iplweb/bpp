@@ -3,26 +3,6 @@ import pytest
 from bpp.util import knapsack, wytnij_isbn_z_uwag
 
 
-@pytest.mark.django_db
-def test_zaktualizuj_cache_ciagle(
-    django_assert_max_num_queries,
-    wydawnictwo_ciagle_z_dwoma_autorami,
-    wydawnictwo_zwarte_z_autorem,
-):
-    wydawnictwo_ciagle_z_dwoma_autorami.zaktualizuj_cache()  # wypełnij cache
-    with django_assert_max_num_queries(6):
-        wydawnictwo_ciagle_z_dwoma_autorami.zaktualizuj_cache()
-
-
-@pytest.mark.django_db
-def test_zaktualizuj_cache_zwarte(
-    django_assert_max_num_queries, wydawnictwo_zwarte_z_autorem
-):
-    wydawnictwo_zwarte_z_autorem.zaktualizuj_cache()  # wypełnij cache
-    with django_assert_max_num_queries(6):
-        wydawnictwo_zwarte_z_autorem.zaktualizuj_cache()
-
-
 @pytest.mark.parametrize(
     "input,output,rest",
     [
