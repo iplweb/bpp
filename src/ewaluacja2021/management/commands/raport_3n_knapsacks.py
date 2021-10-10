@@ -15,4 +15,5 @@ class Command(BaseCommand):
         algorytm = Plecakowy(nazwa_dyscypliny=dyscyplina, liczba_n=liczba_n)
         algorytm.powitanie()
         algorytm.sumuj()
+        algorytm.zrzuc_dane("knapsacks")
         algorytm.pozegnanie()
