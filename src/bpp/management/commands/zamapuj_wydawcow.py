@@ -1,12 +1,12 @@
 # -*- encoding: utf-8 -*-
 
+from denorm import denorms
 from django.core.management import BaseCommand
 from django.db import transaction
 
 from pbn_api.integrator import PBN_MIN_ROK
 
 from bpp.models import Praca_Doktorska, Praca_Habilitacyjna, Wydawca, Wydawnictwo_Zwarte
-from bpp.tasks import aktualizuj_cache
 
 
 class Command(BaseCommand):
@@ -45,5 +45,4 @@ class Command(BaseCommand):
                             )
                         model.save()
 
-        # Wyczyść kolejke CacheQueue, przeliczającą punkty rekordów:
-        aktualizuj_cache()
+        denorms.flush()

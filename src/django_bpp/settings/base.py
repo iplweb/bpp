@@ -669,7 +669,6 @@ PERMISSIONS_WIDGET_EXCLUDE_MODELS = [
     "bpp.rekord",
     "bpp.rekord_view",
     "bpp.autorzy_view",
-    "bpp.cachequeue",
 ]
 
 
