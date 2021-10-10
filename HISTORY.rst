@@ -8,6 +8,8 @@ Historia zmian
 
 * pełnotekstowe wyszukiwanie dla indeksu wydawców, wydawców PBN, wydawnictw zwartych (#1102)
 * caching-framework przy użyciu django-denorm-iplweb_ (#1099)
+* raport optymalizujący 3N (#1131),
+* liczba N dla uczelni dla każdej z dyscyplin (#1131),
 
 .. _django-denorm-iplweb: https://github.com/mpasternak/django-denorm-iplweb/
 
