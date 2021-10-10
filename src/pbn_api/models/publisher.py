@@ -42,4 +42,4 @@ class Publisher(LinkDoPBNMixin, BasePBNMongoDBModel):
             pass
 
     def matchuj_wydawce(self):
-        return matchuj_wydawce(self.publisherName)
+        return matchuj_wydawce(self.publisherName, self.pk)

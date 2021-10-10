@@ -283,12 +283,28 @@ def matchuj_dyscypline(kod, nazwa):
         pass
 
 
-def matchuj_wydawce(nazwa):
+def matchuj_wydawce(nazwa, pbn_uid_id=None):
     nazwa = normalize_nazwa_wydawcy(nazwa)
     try:
         return Wydawca.objects.get(nazwa=nazwa, alias_dla_id=None)
     except Wydawca.DoesNotExist:
-        return
+        pass
+
+    if pbn_uid_id is not None:
+
+        try:
+            Wydawca.objects.get(pbn_uid_id=pbn_uid_id)
+        except Wydawca.DoesNotExist:
+            pass
+
+    loose = (
+        Wydawca.objects.annotate(similarity=TrigramSimilarity("nazwa", nazwa))
+        .filter(similarity__gte=0.9)
+        .order_by("-similarity")[:5]
+    )
+    if loose.count() > 0 and loose.count() < 2:
+        print(loose, nazwa)
+        breakpoint()
 
 
 TITLE_LIMIT_SINGLE_WORD = 15

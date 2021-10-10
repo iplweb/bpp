@@ -15,6 +15,7 @@ from import_common.core import normalized_db_isbn
 from import_common.normalization import normalize_isbn
 
 from django.contrib.auth.mixins import UserPassesTestMixin
+from django.contrib.postgres.search import TrigramSimilarity
 
 from bpp.jezyk_polski import warianty_zapisanego_nazwiska
 from bpp.lookups import SearchQueryStartsWith
@@ -148,7 +149,24 @@ class NazwaMixin:
     def get_queryset(self):
         qs = self.qset
         if self.q:
+            self.q = self.q.strip()
             qs = qs.filter(nazwa__icontains=self.q)
+        return qs
+
+
+class NazwaTrigramMixin:
+    MIN_TRIGRAM_MATCH = 0.05
+
+    def get_queryset(self):
+        qs = self.qset
+        if self.q:
+
+            self.q = self.q.strip()
+            qs = (
+                qs.annotate(similarity=TrigramSimilarity("nazwa", self.q))
+                .filter(similarity__gte=self.MIN_TRIGRAM_MATCH)
+                .order_by("-similarity")[:10]
+            )
         return qs
 
 
@@ -174,7 +192,7 @@ class KonferencjaAutocomplete(
 
 
 class WydawcaAutocomplete(
-    NazwaMixin, LoginRequiredMixin, autocomplete.Select2QuerySetView
+    NazwaTrigramMixin, LoginRequiredMixin, autocomplete.Select2QuerySetView
 ):
     create_field = "nazwa"
     qset = Wydawca.objects.all()

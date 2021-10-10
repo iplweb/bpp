@@ -3,9 +3,10 @@
 Historia zmian
 ==============
 
-202110.108X-alpha
+202110.1081-alpha
 -----------------
 
+* pełnotekstowe wyszukiwanie dla indeksu wydawców, wydawców PBN, wydawnictw zwartych (#1102)
 * caching-framework przy użyciu django-denorm-iplweb_ (#1099)
 
 .. _django-denorm-iplweb: https://github.com/mpasternak/django-denorm-iplweb/

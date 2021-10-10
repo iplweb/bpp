@@ -2,9 +2,11 @@ from django import forms
 from django.core.exceptions import ValidationError
 
 from django.contrib import admin
+from django.contrib.postgres.search import TrigramSimilarity
 
 from bpp.admin.filters import PBN_UID_IDObecnyFilter
 from bpp.models import Wydawca
+from bpp.models.const import PBN_UID_LEN
 from bpp.models.wydawca import Poziom_Wydawcy
 
 
@@ -51,13 +53,23 @@ class MaAliasListFilter(admin.SimpleListFilter):
 
 @admin.register(Wydawca)
 class WydawcaAdmin(admin.ModelAdmin):
-    search_fields = [
-        "nazwa",
-        "alias_dla__nazwa",
-    ]
+    search_fields = ["nazwa", "alias_dla__nazwa", "pbn_uid_id", "alias_dla__pbn_uid_id"]
     autocomplete_fields = ["alias_dla", "pbn_uid"]
     list_display = ["nazwa", "alias_dla", "pbn_uid_id"]
     list_filter = [MaAliasListFilter, PBN_UID_IDObecnyFilter]
     inlines = [
         Poziom_WydawcyInline,
     ]
+
+    MIN_TRIGRAM_MATCH = 0.05
+
+    def get_search_results(self, request, queryset, search_term):
+        if not search_term or len(search_term) == PBN_UID_LEN:
+            return super().get_search_results(request, queryset, search_term)
+
+        queryset = (
+            queryset.annotate(similarity=TrigramSimilarity("nazwa", search_term))
+            .filter(similarity__gte=self.MIN_TRIGRAM_MATCH)
+            .order_by("-similarity")
+        )
+        return queryset, False

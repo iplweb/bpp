@@ -28,6 +28,8 @@ def test_nulltest_idx():
 
 
 def test_rozne_opisy_rozne_klasy(wydawnictwo_ciagle, wydawnictwo_zwarte):
+    SzablonDlaOpisuBibliograficznego.objects.all().delete()
+
     test_template = Template.objects.create(name="test", content="test")
     second_template = Template.objects.create(name="2nd", content="2nd")
 
