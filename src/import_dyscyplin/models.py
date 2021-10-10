@@ -1,6 +1,5 @@
 from datetime import date
 
-from django.contrib.postgres.fields import JSONField
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import IntegrityError, models, transaction
 from django.db.models import CASCADE, Count, Q
@@ -8,15 +7,19 @@ from django.urls import reverse
 from django_fsm import GET_STATE, FSMField, transition
 from model_utils.models import TimeStampedModel
 
-from bpp.fields import YearField
-from bpp.models import Autor, Autor_Dyscyplina, Dyscyplina_Naukowa, Jednostka, Wydzial
-from django_bpp.settings.base import AUTH_USER_MODEL
 from import_common.exceptions import (
     BadNoOfSheetsException,
     HeaderNotFoundException,
     ImproperFileException,
 )
 from import_common.util import znajdz_naglowek
+
+from django.contrib.postgres.fields import JSONField
+
+from bpp.fields import YearField
+from bpp.models import Autor, Autor_Dyscyplina, Dyscyplina_Naukowa, Jednostka, Wydzial
+
+from django_bpp.settings.base import AUTH_USER_MODEL
 
 
 def obecny_rok():
@@ -267,16 +270,13 @@ class Import_Dyscyplin(TimeStampedModel):
         return (
             self.wiersze()
             .exclude(autor_id=None)
-            .exclude(dyscyplina_naukowa=None, subdyscyplina_naukowa=None)
             .exclude(stan=Import_Dyscyplin_Row.STAN.BLEDNY)
             .exclude(stan=Import_Dyscyplin_Row.STAN.ZINTEGROWANY)
         )
 
     def niepoprawne_wiersze(self):
         return self.wiersze().filter(
-            Q(autor_id=None)
-            | Q(stan=Import_Dyscyplin_Row.STAN.BLEDNY)
-            | Q(dyscyplina_naukowa=None, subdyscyplina_naukowa=None)
+            Q(autor_id=None) | Q(stan=Import_Dyscyplin_Row.STAN.BLEDNY)
         )
 
     def distinct_info_dla_qs(self, qs):
@@ -379,10 +379,25 @@ class Import_Dyscyplin(TimeStampedModel):
                     procent_subdyscypliny=elem.procent_subdyscypliny,
                 )
                 elem.stan = Import_Dyscyplin_Row.STAN.BLEDNY
-                elem.info = "Już istnieje takie przypisanie"
+                elem.info = "Istnieje identyczne przypisanie"
                 elem.save()
+                continue
             except Autor_Dyscyplina.DoesNotExist:
-                pass
+
+                try:
+                    Autor_Dyscyplina.objects.get(autor=elem.autor, rok=self.rok)
+                except Autor_Dyscyplina.DoesNotExist:
+                    if (
+                        elem.dyscyplina_naukowa is None
+                        and elem.subdyscyplina_naukowa is None
+                    ):
+                        elem.stan = Import_Dyscyplin_Row.STAN.BLEDNY
+                        elem.info = "To przypisanie zostało już usunięte"
+                        elem.save()
+
+            if elem.dyscyplina_naukowa is not None:
+                elem.info = "Skasuję przypisanie na ten rok"
+                elem.save()
 
     def id_zdublowanych_autorow(self):
         return (
@@ -416,6 +431,15 @@ class Import_Dyscyplin(TimeStampedModel):
 
     def _integruj_wiersze(self):
         for elem in self.poprawne_wiersze_do_integracji().select_related():
+
+            if elem.dyscyplina_naukowa is None:
+                # Kasowanie
+                # elem["subdyscyplina_naukowa"] został już wcześniej sprawdzony.
+                Autor_Dyscyplina.objects.get(autor=elem.autor, rok=self.rok).delete()
+                elem.info = f"Usunięto przypisanie do dyscyplin za rok {self.rok}"
+                elem.stan = Import_Dyscyplin_Row.STAN.ZINTEGROWANY
+                elem.save()
+                continue
 
             try:
                 ad = Autor_Dyscyplina.objects.get(autor=elem.autor, rok=self.rok)

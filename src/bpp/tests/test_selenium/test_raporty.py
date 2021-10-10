@@ -77,7 +77,9 @@ def test_ranking_autorow(preauth_browser, jednostka_raportow, asgi_live_server):
 
 
 @pytest.mark.django_db(transaction=True)
-def test_raport_jednostek(preauth_browser, jednostka_raportow, asgi_live_server):
+def test_raport_jednostek(
+    preauth_browser, jednostka_raportow, asgi_live_server, denorms
+):
 
     with wait_for_page_load(preauth_browser):
         preauth_browser.visit(
@@ -102,7 +104,9 @@ def test_raport_jednostek(preauth_browser, jednostka_raportow, asgi_live_server)
 
 
 @pytest.mark.django_db(transaction=True)
-def test_submit_kronika_uczelni(preauth_browser, jednostka_raportow, asgi_live_server):
+def test_submit_kronika_uczelni(
+    preauth_browser, jednostka_raportow, asgi_live_server, denorms
+):
     c = Report.objects.all().count
     assert c() == 0
 

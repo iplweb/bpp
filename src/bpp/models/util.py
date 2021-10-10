@@ -3,7 +3,7 @@
 """Funkcje pomocnicze dla klas w bpp.models"""
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 
-from django.contrib.postgres.fields import ArrayField
+from bpp.models.szablondlaopisubibliograficznego import SzablonDlaOpisuBibliograficznego
 
 try:
     from django.core.urlresolvers import reverse
@@ -11,8 +11,7 @@ except ImportError:
     from django.urls import reverse
 
 from django.db import models
-from django.db.models import Max, TextField
-from django.template import Context
+from django.db.models import Max
 from django.template.loader import get_template
 
 from django.utils import safestring
@@ -75,94 +74,58 @@ def dodaj_autora(
     )
 
 
-opis_bibliograficzny_template = None
-opis_bibliograficzny_komisja_centralna_template = None
-opis_bibliograficzny_autorzy_template = None
-
-
-def renderuj_opis_bibliograficzny(praca, autorzy):
-    """Renderuje opis bibliograficzny dla danej klasy, używając template."""
-    global opis_bibliograficzny_template
-
-    if opis_bibliograficzny_template is None:
-        opis_bibliograficzny_template = get_template("opis_bibliograficzny/main.html")
-
-    return (
-        opis_bibliograficzny_template.render(dict(praca=praca, autorzy=autorzy))
-        .replace("\r\n", "")
-        .replace("\n", "")
-        .replace("  ", " ")
-        .replace("  ", " ")
-        .replace("  ", " ")
-        .replace("  ", " ")
-        .replace("  ", " ")
-        .replace(" , ", ", ")
-        .replace(" . ", ". ")
-        .replace(". . ", ". ")
-        .replace(". , ", ". ")
-        .replace("., ", ". ")
-        .replace(" .", ".")
-        .replace(".</b>[", ".</b> [")
-    )
-
-
-def renderuj_opis_bibliograficzny_komisja_centralna(praca):
-    global opis_bibliograficzny_komisja_centralna_template
-
-    if opis_bibliograficzny_komisja_centralna_template is None:
-        opis_bibliograficzny_komisja_centralna_template = get_template(
-            "opis_bibliograficzny/main-komisja-centralna.html"
-        )
-
-    return opis_bibliograficzny_komisja_centralna_template.render(
-        Context(dict(praca=praca))
-    )
-
-
-def renderuj_opis_autorow(praca):
-    global opis_bibliograficzny_autorzy_template
-    if opis_bibliograficzny_autorzy_template is None:
-        opis_bibliograficzny_autorzy_template = get_template(
-            "opis_bibliograficzny/autorzy.html"
-        )
-    return opis_bibliograficzny_autorzy_template.render(Context(dict(praca=praca)))
-
-
 class ModelZOpisemBibliograficznym(models.Model):
     """Mixin, umożliwiający renderowanie opisu bibliograficznego dla danego
     obiektu przy pomocy template."""
 
-    def opis_bibliograficzny(self, autorzy=None):
-        if autorzy is None:
-            autorzy = self.autorzy_dla_opisu()
-        return renderuj_opis_bibliograficzny(self, autorzy)
-
-    def opis_bibliograficzny_komisja_centralna(self):
-        return renderuj_opis_bibliograficzny_komisja_centralna(self)
-
-    def opis_bibliograficzny_autorzy(self):
-        return renderuj_opis_autorow(self)
-
     tekst_przed_pierwszym_autorem = models.TextField(blank=True, null=True)
     tekst_po_ostatnim_autorze = models.TextField(blank=True, null=True)
 
-    opis_bibliograficzny_cache = models.TextField(default="")
+    def opis_bibliograficzny(self, links=None):
+        """Renderuje opis bibliograficzny dla danej klasy, używając:
+        * w pierwszej kolejności zadeklarowanej Template dla danego typu rekordu (lub ogólnego Template),
+        * w trzeciej kolejności templatki z dysku "opis_bibliograficzny/opis_bibliograficzny.html"
 
-    # To pole używane jest na ten moment jedynie przez moduł OAI, do szybkiego
-    # produkowania pola "Creator" dla formatu Dublin Core, vide moduł bpp.oai .
-    # To pole zawiera listę autorów, w kolejności, nazwisko i imię, bez
-    # tytułu
-    opis_bibliograficzny_autorzy_cache = ArrayField(TextField(), blank=True, null=True)
+        :param links: "normal" lub "admin" jeżeli chcemy, aby autorzy prowadzili gdzieś (do stron browse/
+        lub do admina).
+        """
 
-    # To pole używane jest przez Raport autorów oraz Raport jednostek do wypluwania
-    # listy zapisanych nazwisk
-    opis_bibliograficzny_zapisani_autorzy_cache = models.TextField(default="")
+        template_name = SzablonDlaOpisuBibliograficznego.objects.get_for_model(self)
+        if template_name is None:
+            template_name = "opis_bibliograficzny.html"
 
-    slug = models.SlugField(
-        max_length=400, unique=True, db_index=True, null=True, blank=True
-    )
+        template = get_template(template_name)
 
-    def _get_slug(self):
+        ret = (
+            template.render(dict(praca=self, links=links))
+            .replace("\r\n", "")
+            .replace("\n", "")
+        )
+        while ret.find("  ") != -1:
+            ret = ret.replace("  ", " ")
+
+        return (
+            ret.replace(" , ", ", ")
+            .replace(" . ", ". ")
+            .replace(". . ", ". ")
+            .replace(". , ", ". ")
+            .replace("., ", ". ")
+            .replace(" .", ".")
+            .replace(".</b>[", ".</b> [")
+        )
+
+    def autorzy_dla_opisu(self):
+        # Takie 'autorzy_set.all()' ale na potrzeby opisu bibliograficznego -- zaciąga
+        # rekordy zależne za pomocą .select_related:
+
+        return self.autorzy_set.select_related(
+            "autor", "typ_odpowiedzialnosci"
+        ).order_by("kolejnosc")
+
+    def get_slug(self):
+        if self.pk is None:
+            return
+
         from bpp.util import slugify_function
 
         slug_tytul_oryginalny = slugify_function(self.tytul_oryginalny)
@@ -215,50 +178,40 @@ class ModelZOpisemBibliograficznym(models.Model):
 
         return slugify_function(ret)
 
-    def autorzy_dla_opisu(self):
-        # takie 'autorzy_set.all()' tylko na potrzeby opisu bibliograficznego
-        return self.autorzy_set.select_related(
-            "autor", "typ_odpowiedzialnosci"
-        ).order_by("kolejnosc")
-
-    def zaktualizuj_cache(self, tylko_opis=False):
-
-        flds = []
-
-        autorzy = self.autorzy_dla_opisu()
-        opis = self.opis_bibliograficzny(autorzy)
-        slug = self._get_slug()
-
-        if self.opis_bibliograficzny_cache != opis:
-            self.opis_bibliograficzny_cache = opis
-            flds.append("opis_bibliograficzny_cache")
-
-        if self.slug != slug:
-            self.slug = slug
-            flds.append("slug")
-
-        if not tylko_opis:
-
-            if hasattr(self, "autor"):
-                zapisani = [
-                    "%s %s" % (autorzy[0].autor.nazwisko, autorzy[0].autor.imiona)
-                ]
-            else:
-                zapisani = [x.zapisany_jako for x in autorzy]
-
-            oac = ["%s %s" % (x.autor.nazwisko, x.autor.imiona) for x in autorzy]
-            if self.opis_bibliograficzny_autorzy_cache != oac:
-                self.opis_bibliograficzny_autorzy_cache = oac
-                flds.append("opis_bibliograficzny_autorzy_cache")
-
-            ozac = ", ".join(zapisani)
-            if self.opis_bibliograficzny_zapisani_autorzy_cache != ozac:
-                self.opis_bibliograficzny_zapisani_autorzy_cache = ozac
-                flds.append("opis_bibliograficzny_zapisani_autorzy_cache")
-
-        # Podaj parametr flds aby uniknąć pętli wywoływania sygnału post_save
-        if flds:
-            self.save(update_fields=flds)
+    # Ten obiekt stanowi bazę do późniejszego zapełniania pól w podklasach. Pola,
+    # które powinna podklasa definiować to:
+    #
+    # opis_bibliograficzny_cache = models.TextField(default="")
+    # - generowane przez self.opis_bibliograficzny()
+    #
+    # opis_bibliograficzny_autorzy_cache = ArrayField(TextField(), blank=True, null=True)
+    # -  To pole używane jest na ten moment jedynie przez moduł OAI, do szybkiego
+    #    produkowania pola "Creator" dla formatu Dublin Core, vide moduł bpp.oai .
+    #    To pole zawiera listę autorów, w kolejności, nazwisko i imię, bez
+    #    tytułu
+    #
+    # slug = models.SlugField(max_length=400, unique=True, db_index=True, null=True, blank=True)
+    # - skrót dla rekordu, dla SEO, zależy od m.in. tytułu, autorów, wydawnictwa nadrzędnego, źródła
+    #
+    # opis_bibliograficzny_zapisani_autorzy_cache = models.TextField(default="")
+    # - zależy od klas autorów; to pole używane jest przez Raport autorów oraz Raport
+    #   jednostek do szybkiego wypluwania listy zapisanych nazwisk
+    #
+    # def zaktualizuj_opis_bibliograficzny_cache(self, tylko_opis=False):
+    #     autorzy = self.autorzy_dla_opisu()
+    #     self.opis_bibliograficzny_cache = self.opis_bibliograficzny()
+    #     self.slug = self._get_slug()
+    #
+    #     if hasattr(self, "autor"):
+    #         zapisani = ["%s %s" % (autorzy[0].autor.nazwisko, autorzy[0].autor.imiona)]
+    #     else:
+    #         zapisani = [x.zapisany_jako for x in autorzy]
+    #
+    #     oac = ["%s %s" % (x.autor.nazwisko, x.autor.imiona) for x in autorzy]
+    #     self.opis_bibliograficzny_autorzy_cache = oac
+    #
+    #     ozac = ", ".join(zapisani)
+    #     self.opis_bibliograficzny_zapisani_autorzy_cache = ozac
 
     class Meta:
         abstract = True

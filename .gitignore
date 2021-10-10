@@ -131,3 +131,5 @@ pbn_json_data
 integracja-publikacji-bg-up.txt
 *.csv
 import-wydawcow-log.txt
+randomizer_*json
+knapsack_*json

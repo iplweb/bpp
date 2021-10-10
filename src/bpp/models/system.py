@@ -84,6 +84,13 @@ CHARAKTER_OGOLNY_CHOICES = Choices(
 
 
 class Charakter_Formalny(NazwaISkrot, MPTTModel):
+
+    denorm_always_skip = (
+        "tree_id",
+        "lft",
+        "rght",
+        "level",
+    )
     parent = TreeForeignKey(
         "self",
         verbose_name="Charakter nadrzędny",

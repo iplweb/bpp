@@ -41,7 +41,7 @@ class JednostkaManager(FulltextSearchMixin, TreeManager):
         return super(JednostkaManager, self).create(*args, **kw)
 
     def get_default_ordering(self):
-        uczelnia = Uczelnia.objects.first()
+        uczelnia = Uczelnia.objects.get_default()
 
         ordering = SORTUJ_RECZNIE
         if uczelnia is None:

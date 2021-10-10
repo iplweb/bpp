@@ -22,7 +22,7 @@ from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte, Wydawnictwo_Zwarte
         Praca_Habilitacyjna,
     ],
 )
-def test_safe_html_dwa_tytuly_DwaTytuly(klass, admin_app):
+def test_safe_html_dwa_tytuly_DwaTytuly(klass, admin_app, typy_odpowiedzialnosci):
     """Upewnij sie, ze bleach jest uruchamiany dla tych dwóch pól z DwaTytuly"""
     i = mommy.make(klass)
     if hasattr(i, "zrodlo"):

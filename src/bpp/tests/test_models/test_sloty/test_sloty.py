@@ -27,7 +27,6 @@ from bpp.models.sloty.wydawnictwo_zwarte import (
     SlotKalkulator_Wydawnictwo_Zwarte_Prog2,
     SlotKalkulator_Wydawnictwo_Zwarte_Prog3,
 )
-from bpp.tasks import aktualizuj_cache_rekordu
 
 
 @pytest.mark.parametrize(
@@ -175,6 +174,7 @@ def test_slot_artykuly(
 @pytest.mark.django_db
 def test_IPunktacjaCacher(
     ciagle_z_dyscyplinami,
+    denorms,
     autor_jan_nowak,
     autor_jan_kowalski,
     dyscyplina1,
@@ -184,10 +184,12 @@ def test_IPunktacjaCacher(
     ciagle_z_dyscyplinami.punkty_kbn = 30
     ciagle_z_dyscyplinami.rok = 2017
     ciagle_z_dyscyplinami.save()
+    denorms.flush()
 
     ipc = IPunktacjaCacher(ciagle_z_dyscyplinami)
     assert ipc.canAdapt()
 
+    ipc.removeEntries()
     ipc.rebuildEntries()
 
     assert Cache_Punktacja_Dyscypliny.objects.count() == 2
@@ -211,6 +213,7 @@ def test_IPunktacjaCacher_brak_afiliacji(
 
     ipc = IPunktacjaCacher(ciagle_z_dyscyplinami)
     assert ipc.canAdapt()
+    ipc.removeEntries()
     ipc.rebuildEntries()
 
     assert Cache_Punktacja_Dyscypliny.objects.count() == 0
@@ -363,14 +366,16 @@ def test_ISlot_wydawnictwo_ciagle_bez_punktow_kbn(ciagle_z_dyscyplinami):
 
 
 @pytest.mark.django_db
-def test_cache_slotow_kasowanie_wpisow_przy_zmianie_pk_ciagle(ciagle_z_dyscyplinami):
+def test_cache_slotow_kasowanie_wpisow_przy_zmianie_pk_ciagle(
+    ciagle_z_dyscyplinami, denorms
+):
     ciagle_z_dyscyplinami.punkty_kbn = 30
     ciagle_z_dyscyplinami.rok = 2017
     ciagle_z_dyscyplinami.save()
 
     assert ISlot(ciagle_z_dyscyplinami) is not None
 
-    aktualizuj_cache_rekordu(ciagle_z_dyscyplinami)
+    denorms.flush()
 
     ctype = ContentType.objects.get_for_model(ciagle_z_dyscyplinami).pk
     assert (
@@ -383,7 +388,7 @@ def test_cache_slotow_kasowanie_wpisow_przy_zmianie_pk_ciagle(ciagle_z_dyscyplin
     ciagle_z_dyscyplinami.punkty_kbn = 0
     ciagle_z_dyscyplinami.save()
 
-    aktualizuj_cache_rekordu(ciagle_z_dyscyplinami)
+    denorms.flush()
     assert (
         Cache_Punktacja_Autora.objects.filter(
             rekord_id=[ctype, ciagle_z_dyscyplinami.pk]
@@ -393,14 +398,16 @@ def test_cache_slotow_kasowanie_wpisow_przy_zmianie_pk_ciagle(ciagle_z_dyscyplin
 
 
 @pytest.mark.django_db
-def test_cache_slotow_kasowanie_wpisow_przy_zmianie_pk_zwarte(zwarte_z_dyscyplinami):
+def test_cache_slotow_kasowanie_wpisow_przy_zmianie_pk_zwarte(
+    zwarte_z_dyscyplinami, denorms
+):
     zwarte_z_dyscyplinami.punkty_kbn = 20
     zwarte_z_dyscyplinami.rok = 2017
     zwarte_z_dyscyplinami.save()
 
     assert ISlot(zwarte_z_dyscyplinami) is not None
 
-    aktualizuj_cache_rekordu(zwarte_z_dyscyplinami)
+    denorms.flush()
 
     ctype = ContentType.objects.get_for_model(zwarte_z_dyscyplinami).pk
     assert (
@@ -413,7 +420,7 @@ def test_cache_slotow_kasowanie_wpisow_przy_zmianie_pk_zwarte(zwarte_z_dyscyplin
     zwarte_z_dyscyplinami.punkty_kbn = 0
     zwarte_z_dyscyplinami.save()
 
-    aktualizuj_cache_rekordu(zwarte_z_dyscyplinami)
+    denorms.flush()
 
     assert (
         Cache_Punktacja_Autora.objects.filter(
@@ -446,6 +453,7 @@ def test_ISlot_mnozniki_dla_dyscyplin_z_dziedziony_np_humanistycznych_zwarte(
     typy_kbn,
     charaktery_formalne,
     wydawca,
+    denorms,
 ):
     d_teologia = Dyscyplina_Naukowa.objects.create(
         kod="07.001", nazwa="Teologia stosowana"
@@ -470,7 +478,7 @@ def test_ISlot_mnozniki_dla_dyscyplin_z_dziedziony_np_humanistycznych_zwarte(
     )
 
     ISlot(wydawnictwo_zwarte)
-    aktualizuj_cache_rekordu(wydawnictwo_zwarte)
+    denorms.flush()
 
     assert Cache_Punktacja_Autora.objects.first().pkdaut == 300
 
@@ -486,6 +494,7 @@ def test_ISlot_mnozniki_dla_dyscyplin_z_dziedziony_np_humanistycznych_ciagle(
     wydawca,
     punktacja,
     oczekiwana,
+    denorms,
 ):
     d_teologia = Dyscyplina_Naukowa.objects.create(
         kod="07.001", nazwa="Teologia stosowana"
@@ -511,19 +520,19 @@ def test_ISlot_mnozniki_dla_dyscyplin_z_dziedziony_np_humanistycznych_ciagle(
     wydawnictwo_ciagle.refresh_from_db()
 
     ISlot(wydawnictwo_ciagle)
-    aktualizuj_cache_rekordu(wydawnictwo_ciagle)
+    denorms.flush()
 
     assert Cache_Punktacja_Autora.objects.first().pkdaut == oczekiwana
 
 
 @pytest.mark.parametrize("akcja", ["wszystko", None])
 @pytest.mark.django_db
-def test_autor_Autor_zbieraj_sloty(zwarte_z_dyscyplinami, akcja):
+def test_autor_Autor_zbieraj_sloty(zwarte_z_dyscyplinami, akcja, denorms):
     zwarte_z_dyscyplinami.punkty_kbn = 20
     zwarte_z_dyscyplinami.rok = 2017
     zwarte_z_dyscyplinami.save()
 
-    aktualizuj_cache_rekordu(zwarte_z_dyscyplinami)
+    denorms.flush()
 
     a = zwarte_z_dyscyplinami.autorzy_set.first().autor
     res = a.zbieraj_sloty(

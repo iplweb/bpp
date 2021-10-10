@@ -8,8 +8,18 @@ from pbn_api.client import (
     PBN_GET_PUBLICATION_BY_ID_URL,
     PBN_POST_PUBLICATIONS_URL,
 )
-from pbn_api.exceptions import SameDataUploadedRecently
+from pbn_api.exceptions import (
+    HttpException,
+    PKZeroExportDisabled,
+    SameDataUploadedRecently,
+)
 from pbn_api.models import SentData
+from pbn_api.tests.utils import middleware
+
+from django.contrib.messages import get_messages
+
+from bpp.admin.helpers import sprobuj_wgrac_do_pbn
+from bpp.decorators import json
 
 
 def test_PBNClient_test_upload_publication_nie_trzeba(
@@ -143,7 +153,64 @@ def test_sync_publication_nowe_id(
     assert stare_id != pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.pbn_uid_id
 
 
-def test_sync_publication_kasuj_oswiadczenia_przed(
+def test_sync_publication_wysylka_z_zerowym_pk(
+    pbn_client,
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina,
+    pbn_publication,
+    pbn_uczelnia,
+):
+    pbn_uczelnia.pbn_api_nie_wysylaj_prac_bez_pk = True
+    pbn_uczelnia.save()
+
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.punkty_kbn = 0
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.save()
+
+    pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = {
+        "objectId": pbn_publication.pk
+    }
+    pbn_client.transport.return_values[
+        PBN_GET_PUBLICATION_BY_ID_URL.format(id=pbn_publication.pk)
+    ] = MOCK_RETURNED_MONGODB_DATA
+    pbn_client.transport.return_values[
+        PBN_GET_INSTITUTION_STATEMENTS + "?publicationId=123&size=5120"
+    ] = []
+
+    # To pójdzie
+    pbn_client.sync_publication(
+        pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina, export_pk_zero=True
+    )
+
+    # To nie pójdzie
+    with pytest.raises(PKZeroExportDisabled):
+        pbn_client.sync_publication(
+            pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina, export_pk_zero=False
+        )
+
+
+def test_helpers_wysylka_z_zerowym_pk(
+    rf, pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina, pbn_uczelnia, admin_user
+):
+    pbn_uczelnia.pbn_integracja = (
+        pbn_uczelnia.pbn_aktualizuj_na_biezaco
+    ) = pbn_uczelnia.pbn_api_nie_wysylaj_prac_bez_pk = True
+    pbn_uczelnia.save()
+
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.punkty_kbn = 0
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.save()
+
+    req = rf.get("/")
+    req._uczelnia = pbn_uczelnia
+    req.user = admin_user
+
+    # I jeszcze test z poziomu admina czy parametr z pbn_uczelnia jest przekazywany
+    with middleware(req):
+        sprobuj_wgrac_do_pbn(req, pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina)
+        msg = list(get_messages(req))
+
+    assert "wyłączony w konfiguracji" in msg[0].message
+
+
+def test_sync_publication_kasuj_oswiadczenia_przed_wszystko_dobrze(
     pbn_client,
     pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina,
     pbn_publication,
@@ -164,6 +231,65 @@ def test_sync_publication_kasuj_oswiadczenia_przed(
     pbn_client.transport.return_values[
         PBN_DELETE_PUBLICATION_STATEMENT.format(publicationId=pbn_publication.pk)
     ] = []
+    pbn_client.transport.return_values[
+        PBN_GET_INSTITUTION_STATEMENTS + "?publicationId=123&size=5120"
+    ] = [
+        {
+            "id": "100",
+            "addedTimestamp": "2020.05.06",
+            "institutionId": pbn_jednostka.pbn_uid_id,
+            "personId": pbn_autor.pbn_uid_id,
+            "publicationId": pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.pbn_uid_id,
+            "area": "200",
+            "inOrcid": True,
+            "type": "FOOBAR",
+        }
+    ]
+
+    pbn_client.sync_publication(
+        pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina,
+        delete_statements_before_upload=True,
+    )
+
+    pbn_publication.refresh_from_db()
+    assert pbn_publication.versions[0]["baz"] == "quux"
+    assert stare_id == pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.pbn_uid_id
+
+
+def test_sync_publication_kasuj_oswiadczenia_przed_blad_400_nie_zaburzy(
+    pbn_client,
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina,
+    pbn_publication,
+    pbn_autor,
+    pbn_jednostka,
+):
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.pbn_uid = pbn_publication
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.save()
+
+    stare_id = pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.pbn_uid_id
+
+    pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = {
+        "objectId": pbn_publication.pk
+    }
+    pbn_client.transport.return_values[
+        PBN_GET_PUBLICATION_BY_ID_URL.format(id=pbn_publication.pk)
+    ] = MOCK_RETURNED_MONGODB_DATA
+
+    url = PBN_DELETE_PUBLICATION_STATEMENT.format(publicationId=pbn_publication.pk)
+    err_json = {
+        "code": 400,
+        "message": "Bad Request",
+        "description": "Validation failed.",
+        "details": {
+            "publicationId": "Nie można usunąć oświadczeń. Nie istnieją oświadczenia dla publikacji "
+            "(id = {pbn_publication.pk}) i instytucji (id = XXX)."
+        },
+    }
+
+    pbn_client.transport.return_values[url] = HttpException(
+        400, url, json.dumps(err_json)
+    )
+
     pbn_client.transport.return_values[
         PBN_GET_INSTITUTION_STATEMENTS + "?publicationId=123&size=5120"
     ] = [

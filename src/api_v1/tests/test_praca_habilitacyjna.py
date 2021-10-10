@@ -2,8 +2,9 @@ from datetime import timedelta
 
 import pytest
 from django.urls import reverse
-from django.utils.timezone import localtime
 from model_mommy import mommy
+
+from django.utils.timezone import localtime
 
 from bpp.models import Praca_Habilitacyjna
 
@@ -73,14 +74,16 @@ def test_rest_api_praca_habilitacyjna_ukryj_status(
 
 
 @pytest.fixture
-def wiele_prac_habilitacyjnych(db):
+def wiele_prac_habilitacyjnych(db, typy_odpowiedzialnosci):
     for a in range(100):
         mommy.make(Praca_Habilitacyjna)
 
 
 @pytest.mark.django_db
 def test_rest_api_praca_habilitacyjna_no_queries(
-    wiele_prac_habilitacyjnych, django_assert_max_num_queries, api_client
+    wiele_prac_habilitacyjnych,
+    django_assert_max_num_queries,
+    api_client,
 ):
     with django_assert_max_num_queries(11):
         api_client.get(reverse("api_v1:praca_habilitacyjna-list"))

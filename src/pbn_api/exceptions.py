@@ -1,3 +1,6 @@
+import json
+
+
 class PraceSerwisoweException(Exception):
     pass
 
@@ -7,6 +10,10 @@ class HttpException(Exception):
         self.status_code = status_code
         self.url = url
         self.content = content
+        try:
+            self.json = json.loads(content[:4096])
+        except (json.JSONDecodeError, ValueError, TypeError):
+            self.json = None
 
 
 class AccessDeniedException(Exception):

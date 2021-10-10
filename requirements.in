@@ -1,5 +1,11 @@
 Django==3.0.14
+django-denorm-iplweb==0.5.0
 django-permissions-widget==1.5.2
+simplejson==3.17.5
+#dbtemplates nie działa z django 3.0
+#django-dbtemplates>3.0
+git+git://github.com/jazzband/django-dbtemplates.git@ac86ca5ec97c47016146b4c3d7b3f0c77ce4f614
+django-reversion==4.0.0
 channels==2.4.0
 uvicorn==0.14.0
 channels_redis==3.0.1
@@ -15,7 +21,8 @@ django-autoslug==1.9.8
 django-autocomplete-light==3.9.0rc1
 django-admin-tools==0.9.0
 xlrd==1.2.0
-celery[redis]==4.4.2
+celery[redis]==4.4.7
+django-celery-results==2.0.1
 django-tables2==2.3.1
 django-sendfile==0.3.11
 Unidecode==0.4.20

@@ -48,7 +48,7 @@ def test_global_nav_redir_err():
     ],
 )
 @pytest.mark.django_db
-def test_global_nav_redir(model, source):
+def test_global_nav_redir(model, source, typy_odpowiedzialnosci):
     class FakeRequest:
         method = "GET"
         GET = {"source": source}

@@ -2,7 +2,6 @@ import xlrd
 from _decimal import Decimal, InvalidOperation
 from xlrd import XLRDError
 
-from bpp.models import Jednostka
 from import_common.core import matchuj_autora, matchuj_jednostke, matchuj_wydzial
 from import_common.exceptions import (
     BadNoOfSheetsException,
@@ -10,6 +9,8 @@ from import_common.exceptions import (
     ImproperFileException,
 )
 from import_dyscyplin.models import Import_Dyscyplin_Row
+
+from bpp.models import Jednostka
 
 
 def przeanalizuj_plik_xls(sciezka, parent):
@@ -110,11 +111,13 @@ def przeanalizuj_plik_xls(sciezka, parent):
                 original[elem] = None
                 bledny = True
 
-        if original.get("dyscyplina").strip() == "":
-            bledny = True
+        # Akceptujemy pliki bez pierwszej dyscypliny -- taki zapis w pliku oznacza,
+        # że autorowi dyscyplina jest kasowana. Zatem, poniższy kod zostaje usunięty:
+        # if original.get("dyscyplina").strip() == "":
+        #     bledny = True
 
         # import pdb; pdb.set_trace()
-        i = Import_Dyscyplin_Row.objects.create(
+        i = Import_Dyscyplin_Row(
             row_no=n,
             parent=parent,
             original=original,
@@ -133,9 +136,26 @@ def przeanalizuj_plik_xls(sciezka, parent):
             procent_subdyscypliny=original.get("procent subdyscypliny"),
         )
 
-        if bledny:
+        if i.dyscyplina_naukowa is None:
+            i.procent_dyscypliny = None
+
+        if i.subdyscyplina_naukowa is None:
+            i.procent_subdyscypliny = None
+
+        if autor is None:
             i.stan = Import_Dyscyplin_Row.STAN.BLEDNY
-            i.info = "niepoprawna wartość w polu procent dyscypliny lub subdyscyliny"
-            i.save()
+            i.info = "Nie można dopasować autora"
+        else:
+            if i.dyscyplina_naukowa is None and i.subdyscyplina_naukowa is not None:
+                i.stan = Import_Dyscyplin_Row.STAN.BLEDNY
+                i.info = "Dyscyplina pusta, subdyscyplina ustawiona."
+
+            elif bledny:
+                i.stan = Import_Dyscyplin_Row.STAN.BLEDNY
+                i.info = (
+                    "niepoprawna wartość w polu procent dyscypliny lub subdyscypliny"
+                )
+
+        i.save()
 
     return (True, "przeanalizowano %i rekordow" % (n - parent.wiersz_naglowka))

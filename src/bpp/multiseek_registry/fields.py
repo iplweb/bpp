@@ -298,6 +298,7 @@ class PierwszeNazwiskoIImie(NazwiskoIImieWZakresieKolejnosci):
     kolejnosc_gte = 0
     kolejnosc_lt = 1
     label = "Pierwsze nazwisko i imię"
+    field_name = "naz_im_pierwsz"
 
 
 class OstatnieNazwiskoIImie(NazwiskoIImieWZakresieKolejnosci):
@@ -310,6 +311,7 @@ class OstatnieNazwiskoIImie(NazwiskoIImieWZakresieKolejnosci):
     kolejnosc_lt = F("liczba_autorow")
     label = "Ostatnie nazwisko i imię"
     public = False
+    field_name = "naz_im_ost"
 
 
 class NazwiskoIImie1do3(NazwiskoIImieWZakresieKolejnosci):
@@ -317,6 +319,7 @@ class NazwiskoIImie1do3(NazwiskoIImieWZakresieKolejnosci):
     kolejnosc_lt = 3
     label = "Nazwisko i imię (od 1 do 3)"
     public = False
+    field_name = "naz_im_1_3"
 
 
 class NazwiskoIImie1do5(NazwiskoIImieWZakresieKolejnosci):
@@ -324,6 +327,7 @@ class NazwiskoIImie1do5(NazwiskoIImieWZakresieKolejnosci):
     kolejnosc_lt = 5
     label = "Nazwisko i imię (od 1 do 5)"
     public = False
+    field_name = "naz_im_1_5"
 
 
 class TypOgolnyAutorQueryObject(NazwiskoIImieQueryObject):
@@ -331,6 +335,7 @@ class TypOgolnyAutorQueryObject(NazwiskoIImieQueryObject):
 
     label = "Autor"
     typ_ogolny = const.TO_AUTOR
+    field_name = "typ_og_autor"
 
     def real_query(self, value, operation):
 
@@ -358,16 +363,19 @@ class TypOgolnyAutorQueryObject(NazwiskoIImieQueryObject):
 class TypOgolnyRedaktorQueryObject(TypOgolnyAutorQueryObject):
     typ_ogolny = const.TO_REDAKTOR
     label = "Redaktor"
+    field_name = "typ_og_redaktor"
 
 
 class TypOgolnyTlumaczQueryObject(TypOgolnyAutorQueryObject):
     typ_ogolny = const.TO_TLUMACZ
     label = "Tłumacz"
+    field_name = "typ_og_tlumacz"
 
 
 class TypOgolnyRecenzentQueryObject(TypOgolnyAutorQueryObject):
     typ_ogolny = const.TO_RECENZENT
     label = "Recenzent"
+    field_name = "typ_og_recenzent"
 
 
 class DyscyplinaQueryObject(
@@ -532,6 +540,7 @@ class Typ_OdpowiedzialnosciQueryObject(BppMultiseekVisibilityMixin, QueryObject)
 class ZakresLatQueryObject(BppMultiseekVisibilityMixin, RangeQueryObject):
     label = "Zakres lat"
     field_name = "rok"
+    bpp_multiseek_visibility_field_name = "zakres_lat"
 
 
 class JezykQueryObject(BppMultiseekVisibilityMixin, QueryObject):
@@ -904,7 +913,7 @@ class StronaWWWUstawionaQueryObject(BppMultiseekVisibilityMixin, BooleanQueryObj
 class LicencjaOpenAccessUstawionaQueryObject(
     BppMultiseekVisibilityMixin, BooleanQueryObject
 ):
-    label = "Licencja OpenAccess ustawiona"
+    label = "OpenAccess: licencja ustawiona"
     field_name = "lo_ustawiona"
     ops = EQUALITY_OPS_FEMALE
     public = False

@@ -6,17 +6,13 @@
 # - Patent
 # - Praca_Doktorska
 # - Praca_Habilitacyjna
-from contextlib import contextmanager
-
-from django.core.exceptions import ObjectDoesNotExist
-from django.db import connections, models, router, transaction
-from django.db.models import CASCADE, ForeignKey, Func
+import denorm
+from django.db import connections, models, router
+from django.db.models import CASCADE, ForeignKey
 from django.db.models.deletion import DO_NOTHING
-from django.db.models.signals import post_delete, post_save, pre_delete, pre_save
 from taggit.managers import TaggableManager, _TaggableManager
 from taggit.models import Tag
 
-from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields.array import ArrayField
 from django.contrib.postgres.search import SearchVectorField as VectorField
@@ -31,16 +27,8 @@ from bpp.models import (
     ModelZeStatusem,
     ModelZISBN,
     ModelZPBN_UID,
-    Patent,
-    Patent_Autor,
-    Praca_Doktorska,
-    Praca_Habilitacyjna,
     Typ_Odpowiedzialnosci,
-    Uczelnia,
-    Wydawnictwo_Ciagle,
-    Wydawnictwo_Ciagle_Autor,
     Wydawnictwo_Zwarte,
-    Wydawnictwo_Zwarte_Autor,
     Zrodlo,
 )
 from bpp.models.abstract import (
@@ -55,191 +43,8 @@ from bpp.models.abstract import (
     ModelZRokiem,
     ModelZWWW,
 )
-from bpp.models.system import Charakter_Formalny, Jezyk
 from bpp.models.util import ModelZOpisemBibliograficznym
 from bpp.util import FulltextSearchMixin
-
-# zmiana CACHED_MODELS powoduje zmiane opisu bibliograficznego wszystkich rekordow
-CACHED_MODELS = [
-    Wydawnictwo_Ciagle,
-    Wydawnictwo_Zwarte,
-    Praca_Doktorska,
-    Praca_Habilitacyjna,
-    Patent,
-]
-
-# zmiana DEPENDEND_REKORD_MODELS powoduje zmiane opisu bibliograficznego rekordu z pola z ich .rekord
-DEPENDENT_REKORD_MODELS = [
-    Wydawnictwo_Ciagle_Autor,
-    Wydawnictwo_Zwarte_Autor,
-    Patent_Autor,
-]
-
-# Other dependent -- czyli skasowanie tych obiektów pociąga za sobą odbudowanie tabeli cache
-OTHER_DEPENDENT_MODELS = [Typ_Odpowiedzialnosci, Jezyk, Charakter_Formalny, Zrodlo]
-
-
-def defer_zaktualizuj_opis(instance, *args, **kw):
-    """Obiekt typu Wydawnictwo_..., Patent, Praca_... został zapisany.
-    Zaktualizuj jego opis bibliograficzny."""
-    flds = kw.get("update_fields", [])
-
-    if flds:
-        flds = list(flds)
-        for elem in [
-            "opis_bibliograficzny_cache",
-            "opis_bibliograficzny_autorzy_cache",
-            "opis_bibliograficzny_zapisani_autorzy_cache",
-        ]:
-            try:
-                flds.remove(elem)
-            except ValueError:
-                pass
-
-        if not flds:
-            # uniknij loopa w przypadku zapisywania obiektu z metody
-            # models.util.ModelZOpisemBibliograficznym.zaktualizuj_opis
-            return
-
-    # transaction.on_commit(
-    #     lambda: zaktualizuj_opis.delay(
-    #         app_label=instance._meta.app_label,
-    #         model_name=instance._meta.model_name,
-    #         pk=instance.pk))
-
-    CacheQueue.objects.add(instance)
-    # transaction.on_commit(
-    #    lambda instance=instance:
-    #
-
-
-def defer_zaktualizuj_opis_rekordu(instance, *args, **kw):
-    """Obiekt typy Wydawnictwo..._Autor został zapisany (post_save) LUB
-    został skasowany (post_delete). Zaktualizuj rekordy."""
-
-    try:
-        rekord = instance.rekord
-    except ObjectDoesNotExist:
-        # W sytuacji, gdyby rekord nadrzędny również został skasowany...
-        return
-    return defer_zaktualizuj_opis(rekord)
-
-
-def zrodlo_pre_save(instance, *args, **kw):
-    if instance.pk is None:
-        return
-
-    changed = kw.get("update_fields", [])
-    if changed:
-        instance._BPP_CHANGED_FIELDS = changed
-        return
-
-    try:
-        old = Zrodlo.objects.get(pk=instance.pk)
-    except Zrodlo.DoesNotExist:
-        return
-
-    if old.skrot != instance.skrot:  # sprawdz skrot, bo on idzie do opisu
-        instance._BPP_CHANGED_FIELDS = [
-            "skrot",
-        ]
-
-
-def zrodlo_post_save(instance, *args, **kw):
-    """Źródło zostało zapisane (post_save)"""
-
-    changed = getattr(instance, "_BPP_CHANGED_FIELDS", [])
-    if not changed:
-        changed = kw.get("update_fields") or []
-
-    if "skrot" in changed:
-        from bpp.tasks import zaktualizuj_zrodlo
-
-        zaktualizuj_zrodlo.delay(instance.pk)
-
-
-def zrodlo_pre_delete(instance, *args, **kw):
-    # TODO: moze byc memory-consuming, lepiej byloby to wrzucic do bazy danych - moze?
-    instance._PRACE = list(
-        Rekord.objects.filter(zrodlo__id=instance.pk).values_list("id", flat=True)
-    )
-
-
-def zrodlo_post_delete(instance, *args, **kw):
-    for pk in instance._PRACE:
-        try:
-            rekord = Rekord.objects.get(pk=pk)
-        except Rekord.DoesNotExist:
-            continue
-        defer_zaktualizuj_opis(rekord.original)
-
-
-_CACHE_ENABLED = False
-
-
-class AlreadyEnabledException(Exception):
-    pass
-
-
-class AlreadyDisabledException(Exception):
-    pass
-
-
-def enable():
-    global _CACHE_ENABLED
-
-    if _CACHE_ENABLED:
-        raise AlreadyEnabledException()
-
-    pre_save.connect(zrodlo_pre_save, sender=Zrodlo)
-    post_save.connect(zrodlo_post_save, sender=Zrodlo)
-    pre_delete.connect(zrodlo_pre_delete, sender=Zrodlo)
-    post_delete.connect(zrodlo_post_delete, sender=Zrodlo)
-
-    for model in DEPENDENT_REKORD_MODELS:
-        post_save.connect(defer_zaktualizuj_opis_rekordu, sender=model)
-        post_delete.connect(defer_zaktualizuj_opis_rekordu, sender=model)
-
-    for model in CACHED_MODELS:
-        post_save.connect(defer_zaktualizuj_opis, sender=model)
-
-    _CACHE_ENABLED = True
-
-
-def enabled():
-    global _CACHE_ENABLED
-    return _CACHE_ENABLED
-
-
-def disable():
-    global _CACHE_ENABLED
-
-    if not _CACHE_ENABLED:
-        raise AlreadyDisabledException
-
-    pre_save.disconnect(zrodlo_pre_save, sender=Zrodlo)
-    post_save.disconnect(zrodlo_post_save, sender=Zrodlo)
-    pre_delete.disconnect(zrodlo_pre_delete, sender=Zrodlo)
-    post_delete.disconnect(zrodlo_post_delete, sender=Zrodlo)
-
-    for model in DEPENDENT_REKORD_MODELS:
-        post_save.disconnect(defer_zaktualizuj_opis_rekordu, sender=model)
-        post_delete.disconnect(defer_zaktualizuj_opis_rekordu, sender=model)
-
-    for model in CACHED_MODELS:
-        post_save.disconnect(defer_zaktualizuj_opis, sender=model)
-
-    _CACHE_ENABLED = False
-
-
-@contextmanager
-def cache_enabled():
-    if not enabled():
-        enable()
-    try:
-        yield
-    finally:
-        disable()
 
 
 class TupleField(ArrayField):
@@ -408,35 +213,13 @@ class RekordManager(FulltextSearchMixin, models.Manager):
     def get_original(self, model):
         return self.get(pk=[ContentType.objects.get_for_model(model).pk, model.pk])
 
-    @transaction.atomic
     def full_refresh(self):
         """Procedura odswieza opisy bibliograficzne dla wszystkich rekordów."""
-
-        global _CACHE_ENABLED
-
-        was_enabled = False
-
-        try:
-            if _CACHE_ENABLED:
-                was_enabled = True
-                disable()
-
-            for elem in self.all():
-                elem.original.zaktualizuj_cache()
-
-        finally:
-            if was_enabled:
-                enable()
-
-    #
-    # def get_queryset(self):
-    #     """
-    #     Returns a new QuerySet object.  Subclasses can override this method to
-    #     easily customize the behavior of the Manager.
-    #     """
-    #     return QuerySet(model=self.model, query=RekordCountQuery(self.model),
-    #                     using=self._db, hints=self._hints)
-    #
+        denorm.rebuildall("bpp.Wydawnictwo_Zwarte")
+        denorm.rebuildall("bpp.Wydawnictwo_Ciagle")
+        denorm.rebuildall("bpp.Patent")
+        denorm.rebuildall("bpp.Praca_Doktorska")
+        denorm.rebuildall("bpp.Praca_Habilitacyjna")
 
 
 class _MyTaggableManager(_TaggableManager):
@@ -535,6 +318,11 @@ class RekordBase(
 
     objects = RekordManager()
 
+    opis_bibliograficzny_cache = models.TextField()
+    opis_bibliograficzny_autorzy_cache = ArrayField(models.TextField())
+    opis_bibliograficzny_zapisani_autorzy_cache = models.TextField()
+    slug = models.TextField()
+
     strony = None
     nr_zeszytu = None
     tom = None
@@ -618,75 +406,6 @@ class RekordView(RekordBase):
         db_table = "bpp_rekord"
 
 
-def with_cache(fun):
-    """Użyj jako dekorator do funkcji testujących"""
-
-    def _wrapped(*args, **kw):
-        enable_failure = None
-
-        # Cache było włączone, uruchom owiniętą funkcję
-        if enabled():
-            return fun(*args, **kw)
-
-        # Cache było wyłączone, włącz, uruchom owiniętą funkcję,
-        # wyłącz cache.
-        try:
-            enable_failure = True
-            enable()
-            enable_failure = False
-            return fun(*args, **kw)
-        finally:
-            if not enable_failure:
-                disable()
-            else:
-                raise Exception(
-                    "Enable failure, trace enable function, there was a bug there..."
-                )
-
-    return _wrapped
-
-
-class CacheManager(models.Manager):
-    def add(self, obj):
-        from bpp.tasks import aktualizuj_cache
-
-        obj, created = self.get_or_create(
-            created_on=Func(function="NOW"),
-            object_id=obj.pk,
-            content_type=ContentType.objects.get_for_model(obj._meta.model),
-        )
-        if created:
-            transaction.on_commit(lambda: aktualizuj_cache.delay())
-
-        return obj
-
-    def ready(self):
-        return self.filter(started_on=None)
-
-
-class CacheQueue(models.Model):
-    # Pole created_on dostanie po stronie SQL defaultową wartość "NOW()";
-    # niestety na ten moment zrobienie tego w Django nie jest trywialne, więc
-    # temat zostaje załatwiony po stronie migracji przez RunSQL
-    created_on = models.DateTimeField(blank=True)
-    last_updated_on = models.DateTimeField(auto_now=True)
-
-    completed_on = models.DateTimeField(null=True, blank=True)
-    started_on = models.DateTimeField(null=True, blank=True)
-
-    error = models.BooleanField(default=False)
-    info = models.TextField(blank=True, null=True)
-
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    object_id = models.PositiveIntegerField()
-    rekord = GenericForeignKey("content_type", "object_id")
-
-    objects = CacheManager()
-
-    class Meta:
-        ordering = ("-created_on",)
-
-
 class Cache_Punktacja_Dyscypliny(models.Model):
     rekord_id = TupleField(models.IntegerField(), size=2, db_index=True)
     # rekord = ForeignKey('bpp.Rekord', CASCADE)
@@ -703,6 +422,9 @@ class Cache_Punktacja_Dyscypliny(models.Model):
 
     class Meta:
         ordering = ("dyscyplina__nazwa",)
+
+    def serialize(self):
+        return [self.rekord_id, self.dyscyplina_id, str(self.pkd), str(self.slot)]
 
 
 class Cache_Punktacja_Autora_Base(models.Model):
@@ -722,6 +444,16 @@ class Cache_Punktacja_Autora(Cache_Punktacja_Autora_Base):
 
     class Meta:
         ordering = ("autor__nazwisko", "dyscyplina__nazwa")
+
+    def serialize(self):
+        return [
+            self.rekord_id,
+            self.autor_id,
+            self.jednostka_id,
+            self.dyscyplina_id,
+            str(self.pkdaut),
+            str(self.slot),
+        ]
 
 
 class Cache_Punktacja_Autora_Query(Cache_Punktacja_Autora_Base):
@@ -820,119 +552,3 @@ class Cache_Punktacja_Autora_Sum_Gruop(models.Model):
             "autor",
             "dyscyplina",
         )
-
-
-#
-# Rebuilder
-#
-
-
-def rebuild(klass, offset=None, limit=None, extra_flds=None, extra_tables=None):
-    if extra_flds is None:
-        extra_flds = ()
-
-    if extra_tables is None:
-        extra_tables = ()
-
-    ids = klass.objects.all().values_list("pk").order_by("pk")[offset:limit]
-
-    query = (
-        klass.objects.filter(pk__in=ids)
-        .select_related(*extra_tables)
-        .only(
-            "tytul_oryginalny",
-            "informacje",
-            "szczegoly",
-            "uwagi",
-            "tekst_przed_pierwszym_autorem",
-            "tekst_po_ostatnim_autorze",
-            "opis_bibliograficzny_cache",
-            "opis_bibliograficzny_autorzy_cache",
-            "opis_bibliograficzny_zapisani_autorzy_cache",
-            "slug",
-            "rok",
-            "punkty_kbn",
-            "status_korekty_id",
-            *extra_flds
-        )
-    )
-
-    from bpp.tasks import aktualizuj_cache_rekordu
-
-    for r in query:
-        aktualizuj_cache_rekordu(r, uczelnia=Uczelnia.objects.default)
-
-
-def rebuild_zwarte(offset=None, limit=None):
-    return rebuild(
-        Wydawnictwo_Zwarte,
-        offset=offset,
-        limit=limit,
-        extra_tables=[
-            "wydawca",
-            "charakter_formalny",
-            "typ_kbn",
-        ],
-        extra_flds=[
-            "tytul",
-            "doi",
-            "miejsce_i_rok",
-            "wydawca__nazwa",
-            "wydawca_opis",
-            "isbn",
-            "typ_kbn__nazwa",
-            "typ_kbn__skrot",
-            "charakter_formalny__skrot",
-            "charakter_formalny__charakter_sloty",
-            "charakter_formalny__charakter_ogolny",
-            "oznaczenie_wydania",
-        ],
-    )
-
-
-def rebuild_ciagle(offset=None, limit=None):
-    return rebuild(
-        Wydawnictwo_Ciagle,
-        offset=offset,
-        limit=limit,
-        extra_tables=[
-            "zrodlo",
-            "charakter_formalny",
-            "typ_kbn",
-        ],
-        extra_flds=[
-            "tytul",
-            "doi",
-            "zrodlo__nazwa",
-            "zrodlo__skrot",
-            "typ_kbn__nazwa",
-            "typ_kbn__skrot",
-            "charakter_formalny__skrot",
-            "charakter_formalny__charakter_sloty",
-            "charakter_formalny__charakter_ogolny",
-        ],
-    )
-
-
-def rebuild_patent(offset=None, limit=None):
-    return rebuild(
-        Patent,
-        offset=offset,
-        limit=limit,
-    )
-
-
-def rebuild_praca_doktorska(offset=None, limit=None):
-    return rebuild(
-        Praca_Doktorska,
-        offset=offset,
-        limit=limit,
-    )
-
-
-def rebuild_praca_habilitacyjna(offset=None, limit=None):
-    return rebuild(
-        Praca_Habilitacyjna,
-        offset=offset,
-        limit=limit,
-    )

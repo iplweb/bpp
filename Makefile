@@ -19,6 +19,8 @@ clean-pycache:
 clean: clean-pycache
 	find . -type d -name \*egg-info -print0 | xargs -0 rm -rf
 	find . -name \*~ -print0 | xargs -0 rm -f
+	find . -name \*.prof -print0 | xargs -0 rm -f
+	rm -rf prof/
 	find . -name \*\\.log -print0 | xargs -0 rm -f
 	find . -name \*\\.log -print0 | xargs -0 rm -f
 	find . -name \#\* -print0 | xargs -0 rm -f
@@ -29,7 +31,7 @@ clean: clean-pycache
 
 distclean: clean
 	rm -rf src/django_bpp/staticroot
-	rm -rf *backup
+	rm -rf *backup .pytest-cache
 	rm -rf node_modules src/node_modules src/django_bpp/staticroot
 	rm -rf .vagrant splintershots src/components/bower_components src/media
 	rm -rf dist

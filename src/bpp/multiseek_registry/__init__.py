@@ -25,3 +25,15 @@ registry = create_registry(
     default_ordering=["-rok", "", ""],
     report_types=multiseek_report_types
 )
+
+
+def _get_fields(self, request):
+    """Ta funkcja sortuje pola zgodnie z ustawieniem pola ui_order (czyli bazodanowy
+    sort_order obiektu BppMultiseekVisibility) i zwraca je w kolejności.
+    """
+    return sorted(
+        [x for x in self.fields if x.enabled(request)], key=lambda x: x.ui_order
+    )
+
+
+registry.get_fields = lambda request, registry=registry: _get_fields(registry, request)

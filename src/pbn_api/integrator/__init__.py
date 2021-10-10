@@ -1126,11 +1126,18 @@ PBN_KOMUNIKAT_DOI_ISTNIEJE = "Publikacja o identycznym DOI i typie już istnieje
 
 
 def _synchronizuj_pojedyncza_publikacje(
-    client, rec, force_upload=False, export_pk_zero=None
+    client,
+    rec,
+    force_upload=False,
+    export_pk_zero=None,
+    delete_statements_before_upload=False,
 ):
     try:
         client.sync_publication(
-            rec, force_upload=force_upload, export_pk_zero=export_pk_zero
+            rec,
+            force_upload=force_upload,
+            export_pk_zero=export_pk_zero,
+            delete_statements_before_upload=delete_statements_before_upload,
         )
     except SameDataUploadedRecently:
         pass
@@ -1245,8 +1252,13 @@ def synchronizuj_publikacje(
     only_new=False,
     skip=0,
     export_pk_zero=None,
+    delete_statements_before_upload=False,
 ):
     """
+    Komenda eksportująca wszystkie publikacje w systmeie, zaczynając od książek,
+    przez rozdziały, po wydawnictwa ciągłe.
+
+
     :param only_bad: eksportuj jedynie rekordy, które mają wpis w tabeli SentData, ze ich eksport
     nie powiódł się wcześniej.
 
@@ -1278,13 +1290,25 @@ def synchronizuj_publikacje(
         zwarte_baza.filter(wydawnictwo_nadrzedne_id=None),
         label="sync_zwarte_ksiazki",
     ):
-        _synchronizuj_pojedyncza_publikacje(client, rec, force_upload=force_upload)
+        _synchronizuj_pojedyncza_publikacje(
+            client,
+            rec,
+            force_upload=force_upload,
+            delete_statements_before_upload=delete_statements_before_upload,
+            export_pk_zero=export_pk_zero,
+        )
 
     for rec in pbar(
         zwarte_baza.exclude(wydawnictwo_nadrzedne_id=None),
         label="sync_zwarte_rozdzialy",
     ):
-        _synchronizuj_pojedyncza_publikacje(client, rec, force_upload=force_upload)
+        _synchronizuj_pojedyncza_publikacje(
+            client,
+            rec,
+            force_upload=force_upload,
+            delete_statements_before_upload=delete_statements_before_upload,
+            export_pk_zero=export_pk_zero,
+        )
 
     #
     # Wydawnicwa ciagle
@@ -1308,7 +1332,13 @@ def synchronizuj_publikacje(
         ciagle_baza,
         label="sync_ciagle",
     ):
-        _synchronizuj_pojedyncza_publikacje(client, rec, force_upload=force_upload)
+        _synchronizuj_pojedyncza_publikacje(
+            client,
+            rec,
+            force_upload=force_upload,
+            delete_statements_before_upload=delete_statements_before_upload,
+            export_pk_zero=export_pk_zero,
+        )
 
 
 def clear_match_publications():
@@ -1517,3 +1547,29 @@ def usun_wszystkie_oswiadczenia(client):
                     raise e
 
             elem.delete()
+
+
+def usun_zerowe_oswiadczenia(client):
+
+    for klass in Wydawnictwo_Ciagle, Wydawnictwo_Zwarte:
+        zerowe = klass.objects.exclude(pbn_uid=None).filter(punkty_kbn=0)
+
+        for elem in pbar(
+            OswiadczenieInstytucji.objects.filter(
+                publicationId_id__in=zerowe.values_list("pbn_uid_id", flat=True)
+            ),
+            label=f"usun_zerowe dla {klass}",
+        ):
+            with transaction.atomic():
+                try:
+                    elem.sprobuj_skasowac_z_pbn(pbn_client=client)
+                except StatementDeletionError as e:
+                    if e.status_code == 400 and (
+                        "Nie istnieją oświadczenia" in e.content
+                        or "Nie istnieje oświadczenie" in e.content
+                    ):
+                        pass
+                    else:
+                        raise e
+
+                elem.delete()

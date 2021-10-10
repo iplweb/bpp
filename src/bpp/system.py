@@ -4,7 +4,7 @@
 
 groups - lista grup wraz z uprawnieniami do edycji poszczególnych obiektów.
 """
-
+from dbtemplates.models import Template
 from django.db import transaction
 from favicon.models import Favicon, FaviconImg
 from flexible_reports import models as flexible_models
@@ -159,7 +159,7 @@ groups = {
     ],
     "indeks autorów": [Autor, Autor_Jednostka],
     "administracja": [User, Group, SearchForm],
-    "web": [Url, Rule, Site, Favicon, FaviconImg, Article],
+    "web": [Url, Rule, Site, Favicon, FaviconImg, Article, Template],
     "raporty": [
         flexible_models.Report,
         flexible_models.ReportElement,

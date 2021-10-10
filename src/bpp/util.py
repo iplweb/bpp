@@ -503,6 +503,19 @@ def knapsack(W, wt, val, ids, zwracaj_liste_przedmiotow=True):
     return maks_punkty, lista
 
 
+DEC2INT = 10000
+
+
+def intsack(W, wt, val, ids):
+    pkt, ids = knapsack(
+        int(W * DEC2INT),
+        [int(x * DEC2INT) for x in wt],
+        [int(x * DEC2INT) for x in val],
+        ids,
+    )
+    return pkt / DEC2INT, ids
+
+
 def disable_multithreading_by_monkeypatching_pool(pool):
     def apply(fun, args=()):
         return fun(*args)

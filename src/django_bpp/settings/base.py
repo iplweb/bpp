@@ -72,6 +72,7 @@ TEMPLATES = [
         "OPTIONS": {
             "loaders": [
                 "admin_tools.template_loaders.Loader",
+                "dbtemplates.loader.Loader",
                 "django.template.loaders.filesystem.Loader",
                 "django.template.loaders.app_directories.Loader",
             ],
@@ -144,6 +145,8 @@ if TESTING:
 
 
 INSTALLED_APPS = [
+    "denorm.apps.DenormAppConfig",
+    "reversion",
     "djangoql",
     "cacheops",
     "channels",
@@ -162,6 +165,7 @@ INSTALLED_APPS = [
     "password_policies",
     "create_test_db",
     "celery",
+    "django_celery_results",
     "flexible_reports",
     "static_sitemaps",
     "cookielaw",
@@ -214,8 +218,11 @@ INSTALLED_APPS = [
     "api_v1",
     "adminsortable2",
     "import_export",
+    "ewaluacja2021",
     # Zostawiamy - bezwarunkowo
     "test_bpp",
+    #
+    "dbtemplates",
 ]
 
 # Profile użytkowników
@@ -331,7 +338,8 @@ REDIS_HOST = django_getenv("DJANGO_BPP_REDIS_HOST", "localhost")
 REDIS_PORT = int(django_getenv("DJANGO_BPP_REDIS_PORT", "6379"))
 
 BROKER_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB_BROKER}"
-CELERY_RESULT_BACKEND = BROKER_URL
+# CELERY_RESULT_BACKEND = BROKER_URL
+CELERY_RESULT_BACKEND = "django-db"
 
 #
 SESSION_REDIS_HOST = REDIS_HOST
@@ -662,14 +670,7 @@ PERMISSIONS_WIDGET_EXCLUDE_MODELS = [
     "bpp.rekord",
     "bpp.rekord_view",
     "bpp.autorzy_view",
-    "bpp.cachequeue",
 ]
 
 
-CACHEOPS = {
-    "bpp.bppmultiseekvisibility": {"ops": ("get",)},
-    "miniblog.article": {"ops": ("get", "fetch")},
-}
-CACHEOPS_REDIS = BROKER_URL
-
-CACHEOPS_DEFAULTS = {"timeout": 60 * 60}
+DBTEMPLATES_USE_REVERSION = True

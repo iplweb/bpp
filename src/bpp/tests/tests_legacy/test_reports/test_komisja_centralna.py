@@ -7,37 +7,38 @@ from zipfile import ZipFile
 from django.test import TestCase
 from model_mommy import mommy
 
+from celeryui.models import Report
+
 from bpp.models import (
-    Typ_KBN,
     Charakter_Formalny,
+    Redakcja_Zrodla,
+    Rekord,
+    Typ_KBN,
+    Tytul,
     Zasieg_Zrodla,
     Zrodlo,
-    Redakcja_Zrodla,
-    Tytul,
-    Rekord,
 )
 from bpp.models.autor import Autor
 from bpp.models.praca_habilitacyjna import Publikacja_Habilitacyjna
 from bpp.models.system import Jezyk
 from bpp.reports.komisja_centralna import (
-    RaportKomisjiCentralnej,
-    get_queries,
-    RokHabilitacjiNiePodany,
-    make_report_zipfile,
     Raport_Dla_Komisji_Centralnej,
+    RaportKomisjiCentralnej,
+    RokHabilitacjiNiePodany,
+    get_queries,
+    make_report_zipfile,
 )
 from bpp.tests.tests_legacy.test_reports.util import stworz_obiekty_dla_raportow
 from bpp.tests.util import (
-    any_jednostka,
-    any_autor,
     CURRENT_YEAR,
+    any_autor,
     any_ciagle,
+    any_habilitacja,
+    any_jednostka,
     any_patent,
     any_zwarte,
-    any_habilitacja,
 )
 from bpp.util import Getter
-from celeryui.models import Report
 
 
 class TestRKCMixin:
@@ -59,7 +60,7 @@ class TestRaportKomisjiCentralnej(TestRKCMixin, TestCase):
         typ_kbn = Getter(Typ_KBN)
         charakter = Getter(Charakter_Formalny)
         zasieg = Getter(Zasieg_Zrodla, "nazwa")
-        tytul = Getter(Tytul)
+        tytul = Getter(Tytul)  # noqa
         jezyk = Getter(Jezyk)
 
         self.jednostka = any_jednostka()
@@ -238,10 +239,6 @@ class TestRaportKomisjiCentralnej(TestRKCMixin, TestCase):
 
         self.prace["IIIpat"] = any_patent(tytul_oryginalny="Praca-16")
 
-        # Przebuduj opisy bibliograficzne
-        for c in Rekord.objects.all():
-            c.original.zaktualizuj_cache(tylko_opis=True)
-
         for praca in list(self.prace.values()):
             praca.dodaj_autora(self.autor, self.jednostka)
 
@@ -259,14 +256,23 @@ class TestRaportKomisjiCentralnej(TestRKCMixin, TestCase):
         # self.odpal_browser(s)
         self.assertIn(self.prace[key].tytul_oryginalny, self.s)
 
-    test_1a = lambda self: self._test_tabelka("1a")
-    test_1b = lambda self: self._test_tabelka("1b")
+    def test_1a(self):
+        return self._test_tabelka("1a")
 
-    test_2a = lambda self: self._test_tabelka("2a")
-    test_2b = lambda self: self._test_tabelka("2b")
+    def test_1b(self):
+        return self._test_tabelka("1b")
 
-    test_3a = lambda self: self._test_tabelka("3a")
-    test_3b = lambda self: self._test_tabelka("3b")
+    def test_2a(self):
+        return self._test_tabelka("2a")
+
+    def test_2b(self):
+        return self._test_tabelka("2b")
+
+    def test_3a(self):
+        return self._test_tabelka("3a")
+
+    def test_3b(self):
+        return self._test_tabelka("3b")
 
     def test_4c(self):
         haystack = self._zrob().replace("\r\n", "").replace("\t", "")
@@ -305,7 +311,7 @@ class TestRaportKomisjiCentralnej(TestRKCMixin, TestCase):
         self.assertIn("B. ze zjazd\xf3w krajowych</td><td>liczba: 2", s)
 
     def test_9(self):
-        for a in ["111", "222", "333", "444", "555", "888"]:  #  <-- to są sumy
+        for a in ["111", "222", "333", "444", "555", "888"]:  # <-- to są sumy
             self.assertIn(a, self._zrob())
 
     def test_10a(self):
@@ -318,8 +324,11 @@ class TestRaportKomisjiCentralnej(TestRKCMixin, TestCase):
         s = self._zrob()
         self.assertIn("X. Liczba listów do redakcji czasopism: 4", s)
 
-    test_11a = lambda self: self._test_tabelka("11a")
-    test_11b = lambda self: self._test_tabelka("11b")
+    def test_11a(self):
+        return self._test_tabelka("11a")
+
+    def test_11b(self):
+        return self._test_tabelka("11b")
 
     def test_11_suma(self):
         s = self._zrob()
@@ -358,9 +367,9 @@ class TestRaportKomisjiCentralnejPrzedPoHabilitacji(TestRKCMixin, TestCase):
 
         typ_kbn = Getter(Typ_KBN)
         charakter = Getter(Charakter_Formalny)
-        zasieg = Getter(Zasieg_Zrodla, "nazwa")
-        tytul = Getter(Tytul)
-        jezyk = Getter(Jezyk)
+        zasieg = Getter(Zasieg_Zrodla, "nazwa")  # noqa
+        tytul = Getter(Tytul)  # noqa
+        jezyk = Getter(Jezyk)  # noqa
 
         self.jednostka = any_jednostka()
         self.habilitowany = any_autor()
@@ -426,9 +435,9 @@ class TestRaportKomisjiCentralnejZipfile(TestRKCMixin, TestCase):
 
         typ_kbn = Getter(Typ_KBN)
         charakter = Getter(Charakter_Formalny)
-        zasieg = Getter(Zasieg_Zrodla, "nazwa")
+        zasieg = Getter(Zasieg_Zrodla, "nazwa")  # noqa
         tytul = Getter(Tytul)
-        jezyk = Getter(Jezyk)
+        jezyk = Getter(Jezyk)  # noqa
 
         self.jednostka = any_jednostka()
         # Takie nazwisko, bo używamy potem autor.slug do wygnerowania nazwy pliku
@@ -473,5 +482,5 @@ class TestRaportKomisjiCentralnejZipfile(TestRKCMixin, TestCase):
         x = Raport_Dla_Komisji_Centralnej(r)
         x.perform()
 
-        y = r.file.open()
+        r.file.open()
         self.assert_(True)

@@ -244,6 +244,8 @@ WEB_MENU = [
     ("Serwisy", "/admin/sites/site/"),
     ("Miniblog", "/admin/miniblog/article/"),
     ("Favicon", "/admin/favicon/"),
+    ("Szablony", "/admin/dbtemplates/template/"),
+    ("Powiązania szablonów dla opisu", "/admin/bpp/szablondlaopisubibliograficznego/"),
 ]
 
 STRUKTURA_MENU = [
@@ -264,6 +266,10 @@ REDAKTOR_MENU = [
     ("Prace habilitacyjne", "/admin/bpp/praca_habilitacyjna/"),
     ("Patenty", "/admin/bpp/patent/"),
     ("Powiązania autorów z dyscyplinami", "/admin/bpp/autor_dyscyplina/"),
+    (
+        "Rozbieżności dyscyplin",
+        "/admin/rozbieznosci_dyscyplin/rozbieznosciview/",
+    ),
 ]
 
 ADMIN_MENU = [

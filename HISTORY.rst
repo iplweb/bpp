@@ -3,6 +3,44 @@
 Historia zmian
 ==============
 
+202110.1081-alpha
+-----------------
+
+* pełnotekstowe wyszukiwanie dla indeksu wydawców, wydawców PBN, wydawnictw zwartych (#1102)
+* caching-framework przy użyciu django-denorm-iplweb_ (#1099)
+* raport optymalizujący 3N (#1131),
+* liczba N dla uczelni dla każdej z dyscyplin (#1131),
+* oznaczaj alias wydawcy w nazwie (#1097),
+* pozwalaj odszukać aliasy wydawcy w adminie (#1097),
+
+.. _django-denorm-iplweb: https://github.com/mpasternak/django-denorm-iplweb/
+
+202109.1080-beta1
+-----------------
+
+* kasowanie oświadczen dla rekordów z PK=0 z linii poleceń (#1121),
+* błąd przy zapytaniu kasowania wszystkich dyscyplin przed wysłaniem do PBN nie zaburza
+  dalszej wysyłki rekordu (#1130),
+* poprawna obsługa parametru "nie wysyłaj prac z PK=0" dla integratora uruchamianego
+  z linii poleceń (#1108),
+* poprawne wyświetlanie komunikatu w przypadku próby eksportu pracy z PK=0 (#1108),
+
+
+202109.1080-beta0
+------------------
+
+* możliwość nadpisywania dyscyplin podczas importu -- wystarczy podać imie i nazwisko istniejacego
+  w systemie autora w pliku XLS (#884)
+* możliwość zmiany opisu bibliograficznego przez użytkownika (#898),
+* możliwośc zmiany tabelki z widokiem publikacji przez użytkownika (b/n),
+
+202109.1080-alpha
+-----------------
+
+* przypisywanie dyscyplin za pomocą opcji "rozbieżności dyscyplin" (#909),
+* sortowanie opcji multiwyszukiwarki (opcja "Szukaj") (#895),
+* polecenie ``reset_multiseek_ordering`` do resetowania kolejności sortowania do domyślnej (#895),
+
 202109.1079
 -----------
 
