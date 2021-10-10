@@ -4,8 +4,7 @@ from datetime import date
 import pytest
 from model_mommy import mommy
 
-from bpp.models import Uczelnia
-from bpp.models.struktura import Jednostka, Wydzial, Jednostka_Wydzial
+from bpp.models.struktura import Jednostka, Jednostka_Wydzial, Wydzial
 
 
 @pytest.mark.django_db
@@ -29,11 +28,11 @@ def test_jednostka_test_wydzial_dnia():
         jednostka=j, wydzial=w, od=date(2015, 1, 1), do=date(2015, 2, 1)
     )
 
-    assert j.wydzial_dnia(date(1, 1, 1)) == None
+    assert j.wydzial_dnia(date(1, 1, 1)) is None
     assert j.wydzial_dnia(date(2015, 1, 1)) == w
     assert j.wydzial_dnia(date(2015, 1, 2)) == w
     assert j.wydzial_dnia(date(2015, 2, 1)) == w
-    assert j.wydzial_dnia(date(2015, 2, 2)) == None
+    assert j.wydzial_dnia(date(2015, 2, 2)) is None
 
 
 @pytest.mark.django_db
@@ -58,14 +57,19 @@ def test_jednostka_test_przypisania_dla_czasokresu():
 
 
 @pytest.mark.django_db
-def test_jednostka_get_default_ordering():
+def test_jednostka_get_default_ordering(uczelnia):
+
     assert Jednostka.objects.get_default_ordering() == ("nazwa",)
 
-    uczelnia = mommy.make(Uczelnia, sortuj_jednostki_alfabetycznie=True)
+    uczelnia.sortuj_jednostki_alfabetycznie = True
+    uczelnia.save()
 
     assert Jednostka.objects.get_default_ordering() == ("nazwa",)
 
     uczelnia.sortuj_jednostki_alfabetycznie = False
     uczelnia.save()
 
-    assert Jednostka.objects.get_default_ordering() == ("kolejnosc", "nazwa",)
+    assert Jednostka.objects.get_default_ordering() == (
+        "kolejnosc",
+        "nazwa",
+    )
