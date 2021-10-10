@@ -7,7 +7,7 @@ Historia zmian
 ----------------
 
 * raport optymalizujący 3N (#1131),
-* liczba N dla uczelni (#1131),
+* liczba N dla uczelni dla każdej z dyscyplin (#1131),
 
 202109.1080-beta1
 -----------------

@@ -1,12 +1,13 @@
 from django import forms
 
 from ..models import Uczelnia, Ukryj_Status_Korekty, Wydzial
+
+# Uczelnia
+from ..models.ewaluacja2021 import Ewaluacja2021LiczbaNDlaUczelni
 from .core import CommitedModelAdmin, RestrictDeletionToAdministracjaGroupMixin
 from .helpers import ADNOTACJE_FIELDSET, ZapiszZAdnotacjaMixin
 
 from django.contrib import admin
-
-# Uczelnia
 
 
 class WydzialInlineForm(forms.ModelForm):
@@ -14,6 +15,14 @@ class WydzialInlineForm(forms.ModelForm):
         fields = ["nazwa", "skrot", "widoczny", "kolejnosc"]
         model = Wydzial
         widgets = {"kolejnosc": forms.HiddenInput}
+
+
+class Ewaluacja2021LiczbaNDlaUczelniInline(admin.TabularInline):
+    model = Ewaluacja2021LiczbaNDlaUczelni
+    extra = 1
+
+    class Meta:
+        fields = ["dyscyplina_naukowa", "liczba_n"]
 
 
 class WydzialInline(admin.TabularInline):
@@ -81,13 +90,6 @@ class UczelniaAdmin(
             },
         ),
         (
-            "Ewaluacja 2021",
-            {
-                "classes": ("grp-collapse grp-open",),
-                "fields": ("ewaluacja2021_liczba_n",),
-            },
-        ),
-        (
             "Strona wizualna",
             {
                 "classes": ("grp-collapse grp-closed",),
@@ -147,7 +149,11 @@ class UczelniaAdmin(
         ),
     )
 
-    inlines = [WydzialInline, Ukryj_Status_KorektyInline]
+    inlines = [
+        WydzialInline,
+        Ukryj_Status_KorektyInline,
+        Ewaluacja2021LiczbaNDlaUczelniInline,
+    ]
 
 
 admin.site.register(Uczelnia, UczelniaAdmin)
