@@ -3,6 +3,12 @@
 Historia zmian
 ==============
 
+202110.1081-beta
+-----------------
+
+* zmiana określenia z formularza raportu "tylko prace z jednostek uczelni" -> "tylko prace z afiliacją uczelni"
+  (#1094),
+
 202110.1081-alpha
 -----------------
 

@@ -127,7 +127,7 @@ class AutorRaportForm(BaseRaportForm):
 
     tylko_z_jednostek_uczelni = forms.BooleanField(
         initial=True,
-        label="Tylko prace z jednostek uczelni",
+        label="Tylko prace z afiliacją uczelni",
         help_text="Odznaczenie tego pola uwzględnia w raporcie rekordy "
         "w których autor przypisany jest do jednostek "
         "pozauczelnianych (obcych).",
