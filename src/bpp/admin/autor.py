@@ -2,7 +2,9 @@
 
 from dal import autocomplete
 from django import forms
+from django.db.models import Q
 
+from ewaluacja2021.models import LiczbaNDlaAutora
 from ..models import (  # Publikacja_Habilitacyjna
     Autor,
     Autor_Dyscyplina,
@@ -24,6 +26,35 @@ from django.contrib import admin
 # Proste tabele
 
 # Autor_Dyscyplina
+
+
+class LiczbaNDlaAutoraInline(admin.TabularInline):
+    model = LiczbaNDlaAutora
+    extra = 1
+    fields = ["dyscyplina_naukowa", "liczba_n"]
+
+    def get_formset(self, request, obj=None, **kwargs):
+        formset = super(LiczbaNDlaAutoraInline, self).get_formset(
+            request, obj, **kwargs
+        )
+
+        dyscypliny_autora = Autor_Dyscyplina.objects.filter(autor=obj).values(
+            "dyscyplina_naukowa_id",
+        )
+        subdyscypliny_autora = (
+            Autor_Dyscyplina.objects.filter(autor=obj)
+            .exclude(subdyscyplina_naukowa=None)
+            .values(
+                "subdyscyplina_naukowa_id",
+            )
+        )
+        formset.form.base_fields[
+            "dyscyplina_naukowa"
+        ].queryset = Dyscyplina_Naukowa.objects.filter(
+            Q(pk__in=dyscypliny_autora) | Q(pk__in=subdyscypliny_autora)
+        )
+
+        return formset
 
 
 class Autor_DyscyplinaInlineForm(forms.ModelForm):
@@ -115,7 +146,7 @@ class AutorAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
         "tytul",
     ]
     fields = None
-    inlines = [Autor_JednostkaInline, Autor_DyscyplinaInline]
+    inlines = [Autor_JednostkaInline, Autor_DyscyplinaInline, LiczbaNDlaAutoraInline]
     list_filter = [
         JednostkaFilter,
         "aktualna_jednostka__wydzial",
