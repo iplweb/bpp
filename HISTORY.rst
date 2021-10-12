@@ -9,7 +9,7 @@ Historia zmian
 * zmiana określenia z formularza raportu "tylko prace z jednostek uczelni" -> "tylko prace z afiliacją uczelni"
   (#1094),
 * okreslanie liczby N dla autora dla każdej z dyscyplin (#1143),
-* poprawne przebudowywanie rekordów przy zmianie szablonu przy pomocy django-denorm-iplweb_ (#1107),
+* poprawne przebudowywanie rekordów przy zmianie szablonu przy pomocy django-denorm-iplweb_ (#1107, #1135),
 
 202110.1081-alpha
 -----------------
