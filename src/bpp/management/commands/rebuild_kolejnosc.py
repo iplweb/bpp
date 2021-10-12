@@ -1,12 +1,9 @@
 # -*- encoding: utf-8 -*-
 
-from django.core.management import BaseCommand
-from django.db import transaction
-
-from bpp.models import Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor, Patent_Autor
-from bpp.models.cache import Rekord
-
 from django.conf import settings
+from django.core.management import BaseCommand
+
+from bpp.models import Patent_Autor, Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor
 
 # W tym poleceniu chodzi wyłącznie o przypilnowanie prawidłowej kolejności autorów.
 # Wywołanie błedu w sytuacji, gdy autorzy mają zaznaczone afiliacje na obce jednostki
@@ -34,9 +31,7 @@ class Command(BaseCommand):
         # Jeżeli będziemy to robić z włączonym cache, dojdzie do przyblokowania
         # kolejki Celery. Realnie renumeracja kolejności nie pociąga za sobą zmiany
         # w opisach bibliograficznych, więc musimy to wyłączyć:
-        from bpp.models import cache
-
-        cache.disable()
+        pass
 
         for klass in [Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor, Patent_Autor]:
             if options["verbosity"] >= 2:
