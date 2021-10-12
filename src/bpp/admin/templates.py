@@ -75,7 +75,7 @@ class BppTemplateAdmin(TemplateAdmin):
 
         messages.info(
             request,
-            "Włączono przebudowę modeli - w sumie dla {len(modele)} rodzajów. Przebudowa obejmie rekordy "
+            f"Włączono przebudowę modeli - w sumie dla {len(modele)} rodzajów. Przebudowa obejmie rekordy "
             f"ostatnio zmodyfikowane w ciągu ostatnich {ILE_DNI} dni. Zmiany powinny być zauważalne "
             "po dłuższej chwili. Pozostałe rekordy zostaną przebudowane w godzinach nocnych. ",
         )
