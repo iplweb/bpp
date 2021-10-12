@@ -55,3 +55,11 @@ if DEBUG_TOOLBAR and DEBUG:
     INSTALLED_APPS.append("debug_toolbar")
 
 DATABASES["default"]["CONN_MAX_AGE"] = 0
+
+
+# Vide komentarz w TEMPLATES[0]["OPTIONS"]["loaders"]
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.dummy.DummyCache",
+    }
+}

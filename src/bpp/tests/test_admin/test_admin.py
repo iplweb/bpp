@@ -173,3 +173,23 @@ def test_admin_zewnetrzna_baza_danych(admin_client, url):
     url_name = reverse(f"admin:bpp_{url}_add")
     res = admin_client.get(url_name)
     assert "z zewnętrznymi bazami" in res.content.decode("utf-8")
+
+
+@pytest.mark.django_db
+def test_BppTemplateAdmin_zapis_dobrej_templatki(admin_app):
+    url = reverse("admin:dbtemplates_template_add")
+    res = admin_app.get(url)
+    res.forms["template_form"]["content"] = "dobry content"
+    res.forms["template_form"]["name"] = "nazwa.html"
+    res = res.forms["template_form"].submit().maybe_follow()
+    res.mustcontain("został dodany pomyślnie")
+
+
+@pytest.mark.django_db
+def test_BppTemplateAdmin_zapis_zlej_templatki(admin_app):
+    url = reverse("admin:dbtemplates_template_add")
+    res = admin_app.get(url)
+    res.forms["template_form"]["content"] = "dobry content{%if koparka %}"
+    res.forms["template_form"]["name"] = "nazwa.html"
+    res = res.forms["template_form"].submit().maybe_follow()
+    res.mustcontain("Błąd przy próbie analizy")

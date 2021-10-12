@@ -555,3 +555,12 @@ def fail_if_seq_scan(qset, DEBUG):
         if explain.find("Seq Scan") >= 0:
             print("\r\n", explain)
             raise PerformanceFailure(str(qset.query), explain)
+
+
+def rebuild_instances_of_models(modele, *args, **kw):
+    from denorm import denorms
+    from django.db import transaction
+
+    with transaction.atomic():
+        for model in modele:
+            denorms.rebuild_instances_of(model, *args, **kw)
