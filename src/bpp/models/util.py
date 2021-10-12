@@ -62,7 +62,7 @@ def dodaj_autora(
         else:
             kolejnosc += 1
 
-    return klass.objects.create(
+    inst = klass(
         rekord=rekord,
         autor=autor,
         jednostka=jednostka,
@@ -72,6 +72,9 @@ def dodaj_autora(
         dyscyplina_naukowa=dyscyplina_naukowa,
         afiliuje=afiliuje,
     )
+    inst.full_clean()
+    inst.save()
+    return inst
 
 
 class ModelZOpisemBibliograficznym(models.Model):

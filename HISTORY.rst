@@ -10,6 +10,7 @@ Historia zmian
   (#1094),
 * okreslanie liczby N dla autora dla każdej z dyscyplin (#1143),
 * poprawne przebudowywanie rekordów przy zmianie szablonu przy pomocy django-denorm-iplweb_ (#1107, #1135),
+* opcja "tylko prace afiliowane" dla raportów: uczelni, wydziału, jednostki i autora (#1092).
 
 202110.1081-alpha
 -----------------
