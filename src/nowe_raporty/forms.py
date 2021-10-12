@@ -72,10 +72,11 @@ class BaseRaportForm(forms.Form):
                 formdefaults_html_before(self),
                 self.OBJ_FIELD,
                 Row(
-                    Column("od_roku", css_class="large-6 small-6"),
-                    Column("do_roku", css_class="large-6 small-6"),
+                    Column("od_roku", css_class="large-6 medium-6 small-12"),
+                    Column("do_roku", css_class="large-6 medium-6 small-12"),
                 ),
                 Row(Column("_export")),
+                Row(Column("tylko_z_jednostek_uczelni")),
                 formdefaults_html_after(self),
             ),
             ButtonHolder(
@@ -99,6 +100,14 @@ class BaseRaportForm(forms.Form):
 class UczelniaRaportForm(BaseRaportForm):
     OBJ_FIELD = ""
 
+    tylko_z_jednostek_uczelni = forms.BooleanField(
+        initial=True,
+        label="Tylko prace afiliowane",
+        help_text="Odznaczenie tego pola uwzględnia w raporcie rekordy "
+        "w których autor przypisany jest do jednostki uczelni, ale nie afiliuje na nią",
+        required=False,
+    )
+
 
 class WydzialRaportForm(BaseRaportForm):
     obiekt = forms.ModelChoiceField(
@@ -109,12 +118,28 @@ class WydzialRaportForm(BaseRaportForm):
         ),
     )
 
+    tylko_z_jednostek_uczelni = forms.BooleanField(
+        initial=True,
+        label="Tylko prace afiliowane",
+        help_text="Odznaczenie tego pola uwzględnia w raporcie rekordy "
+        "w których autor przypisany jest do jednostki z wybranego wydziału, ale nie afiliuje na nią",
+        required=False,
+    )
+
 
 class JednostkaRaportForm(BaseRaportForm):
     obiekt = forms.ModelChoiceField(
         label="Jednostka",
         queryset=Jednostka.objects.all(),
         widget=autocomplete.ModelSelect2(url="bpp:jednostka-autocomplete"),
+    )
+
+    tylko_z_jednostek_uczelni = forms.BooleanField(
+        initial=True,
+        label="Tylko prace afiliowane",
+        help_text="Odznaczenie tego pola uwzględnia w raporcie rekordy "
+        "w których autor przypisany jest do wybranej jednostki, ale nie afiliuje na nią",
+        required=False,
     )
 
 
@@ -133,29 +158,3 @@ class AutorRaportForm(BaseRaportForm):
         "pozauczelnianych (obcych).",
         required=False,
     )
-
-    def __init__(self, *args, **kwargs):
-        super(AutorRaportForm, self).__init__(*args, **kwargs)
-
-        self.helper.layout = Layout(
-            Fieldset(
-                "Wybierz parametry",
-                formdefaults_html_before(self),
-                Row(Column("obiekt")),
-                Row(
-                    Column("od_roku", css_class="large-6 medium-6 small-12"),
-                    Column("do_roku", css_class="large-6 medium-6 small-12"),
-                ),
-                Row(Column("_export")),
-                Row(Column("tylko_z_jednostek_uczelni")),
-                formdefaults_html_after(self),
-            ),
-            ButtonHolder(
-                Submit(
-                    "submit",
-                    "Pobierz raport",
-                    css_id="id_submit",
-                    css_class="submit button",
-                ),
-            ),
-        )
