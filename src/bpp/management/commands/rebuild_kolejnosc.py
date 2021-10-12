@@ -5,11 +5,6 @@ from django.core.management import BaseCommand
 
 from bpp.models import Patent_Autor, Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor
 
-# W tym poleceniu chodzi wyłącznie o przypilnowanie prawidłowej kolejności autorów.
-# Wywołanie błedu w sytuacji, gdy autorzy mają zaznaczone afiliacje na obce jednostki
-# nie ma znaczenia, zatem:
-setattr(settings, "BPP_WALIDUJ_AFILIACJE_AUTOROW", False)
-
 
 class Command(BaseCommand):
     """
@@ -33,36 +28,50 @@ class Command(BaseCommand):
         # w opisach bibliograficznych, więc musimy to wyłączyć:
         pass
 
-        for klass in [Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor, Patent_Autor]:
-            if options["verbosity"] >= 2:
-                print(klass)
+        # W tym poleceniu chodzi wyłącznie o przypilnowanie prawidłowej kolejności autorów.
+        # Wywołanie błedu w sytuacji, gdy autorzy mają zaznaczone afiliacje na obce jednostki
+        # nie ma znaczenia, zatem:
+        _orig_value = getattr(settings, "BPP_WALIDUJ_AFILIACJE_AUTOROW", True)
 
-            old_id = None
-            # Taki porządek sortowania, bo jeżeli się trafią dwa rekordy z tą
-            # samą kolejnością, to ten o mniejszym ID ma pierwszeństwo
-            q = klass.objects.all().order_by("rekord_id", "kolejnosc", "id")
+        try:
+            setattr(settings, "BPP_WALIDUJ_AFILIACJE_AUTOROW", False)
 
-            for elem in q:
+            for klass in [
+                Wydawnictwo_Ciagle_Autor,
+                Wydawnictwo_Zwarte_Autor,
+                Patent_Autor,
+            ]:
+                if options["verbosity"] >= 2:
+                    print(klass)
 
-                if old_id != elem.rekord_id:
-                    old_id = elem.rekord_id
-                    next_kolejnosc = 0
-                    pre = "---"
+                old_id = None
+                # Taki porządek sortowania, bo jeżeli się trafią dwa rekordy z tą
+                # samą kolejnością, to ten o mniejszym ID ma pierwszeństwo
+                q = klass.objects.all().order_by("rekord_id", "kolejnosc", "id")
 
-                if next_kolejnosc != elem.kolejnosc:
-                    if options["verbosity"] >= 2:
-                        if pre is not None:
-                            print(pre)
-                        pre = None
-                        print(
-                            elem.rekord_id,
-                            elem.id,
-                            "kolejnosc",
-                            elem.kolejnosc,
-                            ":=",
-                            next_kolejnosc,
-                        )
-                    elem.kolejnosc = next_kolejnosc
-                    elem.save()
+                for elem in q:
 
-                next_kolejnosc += 1
+                    if old_id != elem.rekord_id:
+                        old_id = elem.rekord_id
+                        next_kolejnosc = 0
+                        pre = "---"
+
+                    if next_kolejnosc != elem.kolejnosc:
+                        if options["verbosity"] >= 2:
+                            if pre is not None:
+                                print(pre)
+                            pre = None
+                            print(
+                                elem.rekord_id,
+                                elem.id,
+                                "kolejnosc",
+                                elem.kolejnosc,
+                                ":=",
+                                next_kolejnosc,
+                            )
+                        elem.kolejnosc = next_kolejnosc
+                        elem.save()
+
+                    next_kolejnosc += 1
+        finally:
+            setattr(settings, "BPP_WALIDUJ_AFILIACJE_AUTOROW", _orig_value)
