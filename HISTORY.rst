@@ -3,6 +3,13 @@
 Historia zmian
 ==============
 
+202110.1081-rc
+--------------
+
+* poprawiono błąd występujący przy wysyłaniu publikacji do PBN przez panel redagowania, w sytuacji, gdy
+  wydawnictwo nadrzędne nie miało odpowiednika PBN UID, a użytkownik nie był autoryzowany (b/n),
+
+
 202110.1081-beta
 -----------------
 

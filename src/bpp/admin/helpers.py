@@ -418,7 +418,16 @@ def sprobuj_wgrac_do_pbn(request, obj, force_upload=False, pbn_client=None):
                 if ni:
                     from pbn_api.integrator import _pobierz_prace_po_elemencie
 
-                    res = _pobierz_prace_po_elemencie(pbn_client, "isbn", ni)
+                    res = None
+                    try:
+                        res = _pobierz_prace_po_elemencie(pbn_client, "isbn", ni)
+                    except NeedsPBNAuthorisationException:
+                        messages.warning(
+                            request,
+                            "Wyszukanie PBN UID wydawnictwa nadrzędnego po ISBN nieudane - "
+                            "autoryzuj się najpierw w PBN. ",
+                        )
+
                     if res:
                         messages.info(
                             request,
@@ -432,7 +441,16 @@ def sprobuj_wgrac_do_pbn(request, obj, force_upload=False, pbn_client=None):
                 if nd:
                     from pbn_api.integrator import _pobierz_prace_po_elemencie
 
-                    res = _pobierz_prace_po_elemencie(pbn_client, "doi", nd)
+                    res = None
+                    try:
+                        res = _pobierz_prace_po_elemencie(pbn_client, "doi", nd)
+                    except NeedsPBNAuthorisationException:
+                        messages.warning(
+                            request,
+                            "Wyszukanie PBN UID wydawnictwa nadrzędnego po DOI nieudane - "
+                            "autoryzuj się najpierw w PBN. ",
+                        )
+
                     if res:
                         messages.info(
                             request,
@@ -445,7 +463,8 @@ def sprobuj_wgrac_do_pbn(request, obj, force_upload=False, pbn_client=None):
                 messages.warning(
                     request,
                     "Wygląda na to, że nie udało się dopasować rekordu nadrzędnego po ISBN/DOI do rekordu "
-                    "po stronie PBN. Jednakże rekordy z PBN zostały pobrane i możesz ustawić odpowiednik "
+                    "po stronie PBN. Jeżeli jednak dokonano autoryzacji w PBN, to pewne rekordy z PBN "
+                    "zostały teraz pobrane i możesz spróbować ustawić odpowiednik "
                     "PBN dla wydawnictwa nadrzędnego ręcznie. ",
                 )
 
