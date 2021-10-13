@@ -112,7 +112,6 @@ class ModelZOpisemBibliograficznym(models.Model):
             .replace(" . ", ". ")
             .replace(". . ", ". ")
             .replace(". , ", ". ")
-            .replace("., ", ". ")
             .replace(" .", ".")
             .replace(".</b>[", ".</b> [")
         )

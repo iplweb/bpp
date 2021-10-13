@@ -3,15 +3,17 @@
 Historia zmian
 ==============
 
-202110.1081-rc
+202110.1081-beta1
 --------------
 
 * poprawiono błąd występujący przy wysyłaniu publikacji do PBN przez panel redagowania, w sytuacji, gdy
   wydawnictwo nadrzędne nie miało odpowiednika PBN UID, a użytkownik nie był autoryzowany (b/n),
+* poprawiono bład występujący przy wysyłaniu publikacji do PBN i włączonym kasowaniu oświadczeń,
+  w sytuacji, gdy serwer PBN odpowiada statusem 200 ale dokument nie zawiera tresci (b/n),
+* usunięto kod odpowiadający za eliminowanie ciągu znaków [kropka][przecinek] z opisów bibliograficznych (b/n),
 
-
-202110.1081-beta
------------------
+202110.1081-beta0
+------------------
 
 * zmiana określenia z formularza raportu "tylko prace z jednostek uczelni" -> "tylko prace z afiliacją uczelni"
   (#1094),

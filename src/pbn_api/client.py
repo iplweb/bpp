@@ -2,7 +2,6 @@ import random
 import time
 import warnings
 from builtins import NotImplementedError
-from json import JSONDecodeError
 from pprint import pprint
 from urllib.parse import parse_qs, quote, urlparse
 
@@ -10,6 +9,7 @@ import requests
 from django.db import transaction
 from requests import ConnectionError
 from requests.exceptions import SSLError
+from simplejson.errors import JSONDecodeError
 
 from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
 from pbn_api.const import (
