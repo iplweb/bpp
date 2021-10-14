@@ -1,16 +1,17 @@
 
 ==============
 Historia zmian
-==============
+==============r
 
-202110.1081-rc0
----------------
+202110.1081-beta2
+-----------------
 
 * drobna korekta opisu bibliograficznego - wraca pole "uwagi" (b/n),
 * drobna korekta funkcji ``strip_html`` - w przypadku pustego ciągu znaków, nie podnoś wyjątku (b/n)
+* aktualizajca django-denorm-iplweb_ do wersji 0.5.3 -- korekta błędu z deadlockami (b/n),
 
 202110.1081-beta1
---------------
+-----------------
 
 * poprawiono błąd występujący przy wysyłaniu publikacji do PBN przez panel redagowania, w sytuacji, gdy
   wydawnictwo nadrzędne nie miało odpowiednika PBN UID, a użytkownik nie był autoryzowany (b/n),

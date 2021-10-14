@@ -1,5 +1,5 @@
 Django==3.0.14
-django-denorm-iplweb==0.5.2
+django-denorm-iplweb==0.5.3
 django-permissions-widget==1.5.2
 simplejson==3.17.5
 #dbtemplates nie działa z django 3.0
