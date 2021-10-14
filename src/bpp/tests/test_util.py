@@ -1,6 +1,6 @@
 import pytest
 
-from bpp.util import knapsack, wytnij_isbn_z_uwag
+from bpp.util import knapsack, strip_html, wytnij_isbn_z_uwag
 
 
 @pytest.mark.parametrize(
@@ -74,3 +74,10 @@ def test_knapsack_nie_zwracaj_listy():
 @pytest.mark.django_db
 def test_ModelZOpisemBibliograficznym(wydawnictwo_ciagle):
     assert wydawnictwo_ciagle.opis_bibliograficzny() != ""
+
+
+@pytest.mark.parametrize(
+    "i,o", [("<b>test", "test"), ("<b>test</b>", "test"), ("", ""), (None, None)]
+)
+def test_strip_html(i, o):
+    assert strip_html(i) == o

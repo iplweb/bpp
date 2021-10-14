@@ -97,6 +97,9 @@ class FulltextSearchMixin:
 
 
 def strip_html(s):
+    if not s:
+        return s
+
     return lxml.html.fromstring(str(s)).text_content()
 
 

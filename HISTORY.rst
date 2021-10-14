@@ -7,6 +7,8 @@ Historia zmian
 ---------------
 
 * drobna korekta opisu bibliograficznego - wraca pole "uwagi" (b/n),
+* drobna korekta funkcji ``strip_html`` - w przypadku pustego ciągu znaków, nie podnoś wyjątku (b/n)
+
 202110.1081-beta1
 --------------
 
