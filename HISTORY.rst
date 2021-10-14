@@ -3,6 +3,10 @@
 Historia zmian
 ==============
 
+202110.1081-rc0
+---------------
+
+* drobna korekta opisu bibliograficznego - wraca pole "uwagi" (b/n),
 202110.1081-beta1
 --------------
 
