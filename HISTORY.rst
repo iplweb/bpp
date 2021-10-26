@@ -3,6 +3,11 @@
 Historia zmian
 ==============r
 
+202110.1081-rc0
+---------------
+
+* liczba N dla autora staje się ilością udziałów oraz ilością udziałów monografii (#1153),
+
 202110.1081-beta2
 -----------------
 

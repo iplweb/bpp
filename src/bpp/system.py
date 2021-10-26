@@ -11,7 +11,7 @@ from flexible_reports import models as flexible_models
 from multiseek.models import SearchForm
 from robots.models import Rule, Url
 
-from ewaluacja2021.models import LiczbaNDlaAutora, LiczbaNDlaUczelni
+from ewaluacja2021.models import IloscUdzialowDlaAutora, LiczbaNDlaUczelni
 from formdefaults.models import FormFieldRepresentation, FormRepresentation
 from import_dbf.models import B_A, B_U, Aut, Bib, Ixn, Jed, Poz, Ses, Usi, Wx2
 from miniblog.models import Article
@@ -126,6 +126,7 @@ groups = {
     ],
     "struktura": [
         Uczelnia,
+        LiczbaNDlaUczelni,
         Wydzial,
         Jednostka,
         Jednostka_Wydzial,
@@ -157,8 +158,7 @@ groups = {
         Poziom_Wydawcy,
         Grant_Rekordu,
         Element_Repozytorium,
-        LiczbaNDlaUczelni,
-        LiczbaNDlaAutora,
+        IloscUdzialowDlaAutora,
     ],
     "indeks autorów": [Autor, Autor_Jednostka],
     "administracja": [User, Group, SearchForm],

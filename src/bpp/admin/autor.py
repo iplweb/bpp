@@ -4,7 +4,7 @@ from dal import autocomplete
 from django import forms
 from django.db.models import Q
 
-from ewaluacja2021.models import LiczbaNDlaAutora
+from ewaluacja2021.models import IloscUdzialowDlaAutora
 from ..models import (  # Publikacja_Habilitacyjna
     Autor,
     Autor_Dyscyplina,
@@ -28,13 +28,13 @@ from django.contrib import admin
 # Autor_Dyscyplina
 
 
-class LiczbaNDlaAutoraInline(admin.TabularInline):
-    model = LiczbaNDlaAutora
+class IloscUdzialowDlaAutoraInline(admin.TabularInline):
+    model = IloscUdzialowDlaAutora
     extra = 1
-    fields = ["dyscyplina_naukowa", "liczba_n"]
+    fields = ["dyscyplina_naukowa", "ilosc_udzialow", "ilosc_udzialow_monografie"]
 
     def get_formset(self, request, obj=None, **kwargs):
-        formset = super(LiczbaNDlaAutoraInline, self).get_formset(
+        formset = super(IloscUdzialowDlaAutoraInline, self).get_formset(
             request, obj, **kwargs
         )
 
@@ -146,7 +146,11 @@ class AutorAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
         "tytul",
     ]
     fields = None
-    inlines = [Autor_JednostkaInline, Autor_DyscyplinaInline, LiczbaNDlaAutoraInline]
+    inlines = [
+        Autor_JednostkaInline,
+        Autor_DyscyplinaInline,
+        IloscUdzialowDlaAutoraInline,
+    ]
     list_filter = [
         JednostkaFilter,
         "aktualna_jednostka__wydzial",

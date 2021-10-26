@@ -1,4 +1,6 @@
 # Create your models here.
+from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator
 from django.db import models
 
 from .fields import LiczbaNField
@@ -21,17 +23,28 @@ class LiczbaNDlaUczelni(models.Model):
         ]
 
 
-class LiczbaNDlaAutora(models.Model):
+class IloscUdzialowDlaAutora(models.Model):
     autor = models.ForeignKey(Autor, on_delete=models.CASCADE)
     dyscyplina_naukowa = models.ForeignKey(Dyscyplina_Naukowa, on_delete=models.CASCADE)
-    liczba_n = LiczbaNField()
+    ilosc_udzialow = LiczbaNField(validators=[MaxValueValidator(4)])
+    ilosc_udzialow_monografie = LiczbaNField()
 
     class Meta:
-        verbose_name = "liczba N dla autora"
-        verbose_name_plural = "liczby N dla autora"
+        verbose_name = "ilość udziałów dla autora"
+        verbose_name_plural = "ilości udziałów dla autorów"
         unique_together = [
             (
                 "autor",
                 "dyscyplina_naukowa",
             )
         ]
+
+    def clean(self):
+        if (
+            self.ilosc_udzialow is not None
+            and self.ilosc_udzialow_monografie is not None
+            and self.ilosc_udzialow_monografie > self.ilosc_udzialow
+        ):
+            raise ValidationError(
+                "Ilość udziałów za monografie nie może przekraczać ilości udziałów"
+            )
