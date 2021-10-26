@@ -25,6 +25,8 @@ perform zdublowane_public_www_po_stronie_bpp.xlsx "select public_www, array_agg(
 
 perform zdublowane_www_po_stronie_bpp.xlsx "select www, array_agg(id[2]) as numery_id  from bpp_rekord  where www is not null and www != '' group by www having count(www) > 1 ;"
 
+perform zdublowane_doi_po_stronie_bpp.xlsx "select doi, array_agg(id[2]) as numery_id  from bpp_rekord  where doi is not null and doi != '' group by doi having count(doi) > 1 ;"
+
 perform zdublowane_pbn_uid_id_publikacji.xlsx "select pbn_uid_id, array_agg(id[2]) as numery_id  from bpp_rekord  where pbn_uid_id is not null group by pbn_uid_id having count(pbn_uid_id) > 1;"
 
 perform zdublowani_pbn_uid_id_autorzy.xlsx "select pbn_uid_id, array_agg(nazwisko || ' ' || imiona) as nazwiska, array_agg(id) as id  from bpp_autor  where pbn_uid_id is not null group by pbn_uid_id having count(pbn_uid_id) > 1 ;"
