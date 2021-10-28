@@ -13,6 +13,8 @@ Historia zmian
 * możliwość eksportu streszczeń do PBN (#1155),
 * możliwość eksportu słów kluczowych do PBN (#1155),
 * możliwość pobierania danych autora po PBN UID z modułu redagowania (#1154),
+* usuń błąd polegający na nie wysyłaniu rekordu do PBN w sytuacji istniejących już identycznych danych
+  w tabeli "Przesłane dane" po wycofaniu jego oświadczeń (#1149),
 
 202110.1081-beta2
 -----------------

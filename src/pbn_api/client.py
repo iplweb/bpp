@@ -664,6 +664,10 @@ class PBNClient(
         ):
             try:
                 self.delete_all_publication_statements(pub.pbn_uid_id)
+
+                # Jeżeli zostały skasowane dane, to wymuś wysłanie rekordu, niezależnie
+                # od stanu tabeli SentData
+                force_upload = True
             except HttpException as e:
 
                 NIE_ISTNIEJA = "Nie istnieją oświadczenia dla publikacji"
