@@ -2,11 +2,13 @@ import logging
 import random
 from collections import defaultdict, namedtuple
 from datetime import datetime
+from decimal import Decimal
 from operator import attrgetter
 
 import simplejson
 from django.db.models import F, Sum, Transform
 
+from ewaluacja2021.models import IloscUdzialowDlaAutora, LiczbaNDlaUczelni
 from ewaluacja2021.util import shuffle_array
 from pbn_api.integrator import PBN_MIN_ROK
 
@@ -36,7 +38,7 @@ Praca = namedtuple(
 LATA_2019_2021 = 0
 LATA_2017_2018 = 1
 
-LICZBA_N = 554.84  # nauki medyczne
+# LICZBA_N = 554.84  # nauki medyczne
 
 DEC2INT = 10000
 
@@ -123,6 +125,24 @@ def encode_datetime(obj):
     )
 
 
+def maks_pkt_aut_calosc_get_from_db(nazwa_dyscypliny):
+    return {
+        x["autor_id"]: x["ilosc_udzialow"]
+        for x in IloscUdzialowDlaAutora.objects.filter(
+            dyscyplina_naukowa__nazwa=nazwa_dyscypliny
+        ).values("autor_id", "ilosc_udzialow")
+    }
+
+
+def maks_pkt_aut_monografie_get_from_db(nazwa_dyscypliny):
+    return {
+        x["autor_id"]: x["ilosc_udzialow_monografie"]
+        for x in IloscUdzialowDlaAutora.objects.filter(
+            dyscyplina_naukowa__nazwa=nazwa_dyscypliny
+        ).values("autor_id", "ilosc_udzialow_monografie")
+    }
+
+
 class Ewaluacja3NMixin:
     def __init__(
         self,
@@ -144,18 +164,24 @@ class Ewaluacja3NMixin:
         self.liczba_n = liczba_n
         self.maks_pkt_aut_calosc = maks_pkt_aut_calosc
         if self.maks_pkt_aut_calosc is None:
-            self.maks_pkt_aut_calosc = {}
+            self.maks_pkt_aut_calosc = maks_pkt_aut_calosc_get_from_db(
+                self.nazwa_dyscypliny
+            )
 
         self.maks_pkt_aut_monografie = maks_pkt_aut_monografie
         if self.maks_pkt_aut_monografie is None:
-            self.maks_pkt_aut_monografie = {}
+            self.maks_pkt_aut_monografie = maks_pkt_aut_monografie_get_from_db(
+                self.nazwa_dyscypliny
+            )
 
         if self.liczba_n is None:
-            self.liczba_n = LICZBA_N
-        self.liczba_2_2_n = 2.2 * self.liczba_n
+            self.liczba_n = LiczbaNDlaUczelni.objects.get(
+                dyscyplina_naukowa__nazwa=self.nazwa_dyscypliny
+            ).liczba_n
+        self.liczba_2_2_n = Decimal("2.2") * self.liczba_n
         self.liczba_2_2_n_minus_2 = self.liczba_2_2_n - 2
 
-        self.liczba_0_8_n = 0.8 * self.liczba_n
+        self.liczba_0_8_n = Decimal("0.8") * self.liczba_n
         self.liczba_0_8_n_minus_2 = self.liczba_0_8_n - 2
 
     def zeruj(self):
@@ -205,7 +231,7 @@ class Ewaluacja3NMixin:
         # Czy autor nie ma dość takich publikacji?
         if self.suma_prac_autorow_wszystko[
             praca.autor_id
-        ] + praca.slot >= self.maks_pkt_aut_calosc.get(
+        ] + praca.slot > self.maks_pkt_aut_calosc.get(
             praca.autor_id, DEFAULT_MAX_SLOT_AUT * DEC2INT
         ):
             return False
@@ -214,7 +240,7 @@ class Ewaluacja3NMixin:
         if praca.monografia:
             if self.suma_prac_autorow_monografie[
                 praca.autor_id
-            ] + praca.slot >= self.maks_pkt_aut_monografie.get(
+            ] + praca.slot > self.maks_pkt_aut_monografie.get(
                 praca.autor_id, DEFAULT_MAX_SLOT_MONO * DEC2INT
             ):
                 return False
@@ -244,8 +270,8 @@ class Ewaluacja3NMixin:
 
     def powitanie(self):
         print(
-            f"Szukam dla: {self.nazwa_dyscypliny}, liczba N: {self.liczba_n}, 2.2*N: {self.liczba_n*2.2}, "
-            f"0.8*N: {self.liczba_n*0.8}"
+            f"Szukam dla: {self.nazwa_dyscypliny}, liczba N: {self.liczba_n}, 2.2*N: {self.liczba_2_2_n}, "
+            f"0.8*N: {self.liczba_0_8_n}"
         )
 
     def pozegnanie(self):
