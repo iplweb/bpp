@@ -329,12 +329,15 @@ class WydawnictwoPBNAdapter:
         if institutions:
             ret["institutions"] = institutions
 
-        if hasattr(self.original, "slowa_kluczowe"):
+        if (
+            hasattr(self.original, "slowa_kluczowe")
+            and self.original.slowa_kluczowe.exists()
+        ):
             if "languageData" not in ret:
                 ret["languageData"] = {}
 
-            slowa_kluczowe = self.original.slowa_kluczowe.all().values_list(
-                "name", flat=True
+            slowa_kluczowe = list(
+                self.original.slowa_kluczowe.all().values_list("name", flat=True)
             )
             # Zakładamy, że wszystkie słowa kluczowe są w języku rekordu nadrzędnego
             ret["languageData"]["keywords"] = [

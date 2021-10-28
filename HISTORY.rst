@@ -15,6 +15,8 @@ Historia zmian
 * możliwość pobierania danych autora po PBN UID z modułu redagowania (#1154),
 * usuń błąd polegający na nie wysyłaniu rekordu do PBN w sytuacji istniejących już identycznych danych
   w tabeli "Przesłane dane" po wycofaniu jego oświadczeń (#1149),
+* usuń błąd polegający na nieprawidłowym importowaniu oświadczeń z PBN po eksporcie rekordu zawierającego
+  oświadczenia z datą (pole statedTimestamp) (#1147),
 
 202110.1081-beta2
 -----------------
