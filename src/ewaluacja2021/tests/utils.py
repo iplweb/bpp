@@ -1,5 +1,5 @@
 import os
 
 
-def curdir(fn):
-    return os.path.join(os.path.dirname(__name__), fn)
+def curdir(fn, name):
+    return os.path.join(os.path.dirname(name), fn)

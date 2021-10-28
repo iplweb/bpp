@@ -48,18 +48,18 @@ def test_normalize_xlsx_header_column_name(i, o):
 
 
 def test_InputXLSX_rows_as_list():
-    fn = curdir("default.xlsx")
+    fn = curdir("test_file.xlsx", __file__)
     i = InputXLSX(fn, const.IMPORT_MAKSYMALNYCH_SLOTOW_COLUMNS)
     ret = list(i.rows_as_list())
     assert "Kowalski" in ret[0]
 
 
 def test_InputXLSX_rows_as_dict():
-    fn = curdir("default.xlsx")
+    fn = curdir("test_file.xlsx", __file__)
     i = InputXLSX(fn, const.IMPORT_MAKSYMALNYCH_SLOTOW_COLUMNS)
     ret = list(i.rows_as_dict())
     assert ret[0]["nazwisko"] == "Kowalski"
-    assert ret[0]["__nrow__"] == 0
+    assert ret[0]["__nrow__"] == 2
 
 
 @pytest.mark.parametrize(

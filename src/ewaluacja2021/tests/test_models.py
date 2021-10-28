@@ -13,7 +13,7 @@ def test_ImportMaksymalnychSlotow_analizuj(autor_jan_kowalski):
     mommy.make(Dyscyplina_Naukowa, nazwa="nauki farmaceutyczne")
 
     ims = ImportMaksymalnychSlotow.objects.create()
-    ims.plik.save("test.xlsx", File(open(curdir("default.xlsx"), "rb")))
+    ims.plik.save("test.xlsx", File(open(curdir("test_file.xlsx", __file__), "rb")))
     ims.analizuj()
 
     assert ims.przeanalizowany

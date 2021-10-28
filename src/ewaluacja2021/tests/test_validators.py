@@ -20,30 +20,22 @@ def test_validate_xlsx_bad():
 
 
 def test_validate_xlsx_good():
-    class FakeFile:
-        name = curdir("default.xlsx")
 
-    validate_xlsx(FakeFile)
+    validate_xlsx(curdir("test_file.xlsx", __file__))
 
 
 def test_xlsx_header_validator_bad():
-    class FakeFile:
-        name = curdir("test_file_header_bad.xlsx")
 
     validator = xlsx_header_validator(const.IMPORT_MAKSYMALNYCH_SLOTOW_COLUMNS)
 
     with pytest.raises(ValidationError):
-        validator(FakeFile)
-
-    FakeFile.name = "unexistent"
+        validator(curdir("test_file_header_bad.xlsx", __file__))
 
     with pytest.raises(ValidationError):
-        validator(FakeFile)
+        validator("unexsitent")
 
 
 def test_xlsx_header_validator_good():
-    class FakeFile:
-        name = curdir("default.xlsx")
 
     validator = xlsx_header_validator(const.IMPORT_MAKSYMALNYCH_SLOTOW_COLUMNS)
-    validator(FakeFile)
+    validator(curdir("test_file.xlsx", __file__))
