@@ -12,6 +12,7 @@ Historia zmian
 * możliwość dodawania streszczeń do rekordów (#1155),
 * możliwość eksportu streszczeń do PBN (#1155),
 * możliwość eksportu słów kluczowych do PBN (#1155),
+* możliwość pobierania danych autora po PBN UID z modułu redagowania (#1154),
 
 202110.1081-beta2
 -----------------

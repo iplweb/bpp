@@ -5,6 +5,7 @@ from django import forms
 from django.db.models import Q
 
 from ewaluacja2021.models import IloscUdzialowDlaAutora
+from pbn_api.models import Scientist
 from ..models import (  # Publikacja_Habilitacyjna
     Autor,
     Autor_Dyscyplina,
@@ -121,6 +122,15 @@ class Autor_JednostkaInline(admin.TabularInline):
 
 
 class AutorForm(forms.ModelForm):
+    pbn_uid = forms.ModelChoiceField(
+        label="Odpowiednik w PBN",
+        required=False,
+        queryset=Scientist.objects.all(),
+        widget=autocomplete.ModelSelect2(
+            url="bpp:scientist-autocomplete", attrs=dict(style="width: 746px;")
+        ),
+    )
+
     class Meta:
         fields = "__all__"
         model = Autor
