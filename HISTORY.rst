@@ -8,6 +8,7 @@ Historia zmian
 
 * liczba N dla autora staje się ilością udziałów oraz ilością udziałów monografii (#1153),
 * możliwość importu udziałów dla autorów z plików XLSX (#1144),
+* raport 3N pobiera dane z bazy danych (#1157),
 
 202110.1081-beta2
 -----------------
