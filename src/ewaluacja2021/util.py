@@ -1,11 +1,16 @@
 import itertools
+from collections import OrderedDict
+from decimal import Decimal
 from enum import Enum
-from typing import Any, List
+from typing import Any, List, Union
 
 import openpyxl.worksheet.worksheet
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.filters import AutoFilter
 from openpyxl.worksheet.table import Table, TableColumn, TableStyleInfo
+from unidecode import unidecode
+
+from django.utils.functional import cached_property
 
 
 def chunker(n, iterable):
@@ -155,3 +160,90 @@ def autor2fn(autor):
         .replace("*", "x")
         .replace("-", "_")
     )
+
+
+def normalize_xlsx_header_column_name(s):
+    if s is None:
+        return
+    s = str(s).replace(".", " ").replace("-", " ").replace("/", " ").strip()
+    if not s:
+        return
+
+    while s.find("  ") >= 0:
+        s = s.replace("  ", " ")
+
+    return unidecode(s.strip()).replace(" ", "_").lower()
+
+
+def find_header_row(
+    worksheet: openpyxl.worksheet.worksheet.Worksheet,
+    header_row: List[str],
+    max_header_row=100,
+) -> Union[None, int]:
+    """
+    Poszukuje wierwsza nagłówka w skoroszycie ``worksheet``.
+
+    :param max_header_row: maksymalny wiersz, w którym poszukujemy nagłówka
+    :return: wiersza nagłówkowego - jeżeli znaleziony
+    """
+
+    normalized_header_row = [normalize_xlsx_header_column_name(v) for v in header_row]
+    max_header_row = min(worksheet.max_row, max_header_row)
+
+    for nrow, row in enumerate(worksheet[1:max_header_row], start=1):
+        normalized_cell_values = [
+            normalize_xlsx_header_column_name(cell.value)
+            for cell in row[: len(header_row)]
+        ]
+        if normalized_cell_values == normalized_header_row:
+            return nrow
+
+
+class InputXLSX:
+    def __init__(self, fn, header_cols):
+        self.fn = fn
+        self.header_cols = header_cols
+
+    @cached_property
+    def workbook(self):
+        return openpyxl.load_workbook(self.fn)
+
+    @cached_property
+    def worksheet(self):
+        return self.workbook.worksheets[0]
+
+    @cached_property
+    def header_normalized(self):
+        return [normalize_xlsx_header_column_name(col) for col in self.header_cols]
+
+    @cached_property
+    def header_row(self):
+        return find_header_row(self.worksheet, self.header_cols)
+
+    def rows_as_list(self):
+        if self.header_row is None:
+            raise ValueError("Brak wiersza nagłówka w pliku XLS.")
+
+        min_row = self.header_row + 1
+        max_row = self.worksheet.max_row
+        for row in self.worksheet[min_row:max_row]:
+            yield [cell.value for cell in row]
+
+    def rows_as_dict(self):
+        keys = self.header_normalized[:]
+        keys.append("__nrow__")
+
+        for nrow, row in enumerate(self.rows_as_list(), start=self.header_row + 1):
+            row = OrderedDict(zip(keys, row))
+            row["__nrow__"] = nrow
+            yield row
+
+
+def float_or_string_or_int_or_none_to_decimal(i, decimal_places=4):
+    if i is None:
+        return i
+    if type(i) in [int, Decimal, str]:
+        return Decimal(i)
+    if isinstance(i, float):
+        return Decimal(f"%.{decimal_places}f" % round(i, decimal_places))
+    raise NotImplementedError(f"Type {type(i)} not supported.")

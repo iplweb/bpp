@@ -63,3 +63,11 @@ CACHES = {
         "BACKEND": "django.core.cache.backends.dummy.DummyCache",
     }
 }
+
+
+TEMPLATES[0]["OPTIONS"]["loaders"] = [  # noqa[
+    "admin_tools.template_loaders.Loader",
+    "dbtemplates.loader.Loader",
+    "django.template.loaders.filesystem.Loader",
+    "django.template.loaders.app_directories.Loader",
+]
