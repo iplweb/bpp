@@ -293,7 +293,7 @@ def matchuj_wydawce(nazwa, pbn_uid_id=None):
     if pbn_uid_id is not None:
 
         try:
-            Wydawca.objects.get(pbn_uid_id=pbn_uid_id)
+            return Wydawca.objects.get(pbn_uid_id=pbn_uid_id)
         except Wydawca.DoesNotExist:
             pass
 
@@ -303,8 +303,8 @@ def matchuj_wydawce(nazwa, pbn_uid_id=None):
         .order_by("-similarity")[:5]
     )
     if loose.count() > 0 and loose.count() < 2:
-        print(loose, nazwa)
-        breakpoint()
+        print("XXX DOPASOWANIE WYDAWCY LUZNE UWAGA", loose, nazwa)
+        return loose.first()
 
 
 TITLE_LIMIT_SINGLE_WORD = 15
