@@ -64,6 +64,12 @@ urlpatterns = (
             r"^integrator2/",
             include(("integrator2.urls", "integrator2"), namespace="integrator2"),
         ),
+        path(
+            "ewaluacja2021/",
+            include(
+                "ewaluacja2021.urls",
+            ),
+        ),
         url(
             r"^api/v1/",
             include(("api_v1.urls", "api_v1"), namespace="api_v1"),

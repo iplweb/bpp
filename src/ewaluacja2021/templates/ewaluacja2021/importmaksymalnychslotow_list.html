@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% load humanize static %}
+
+{% block extratitle %}
+    Import udziałów dla autorów
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li class="current">import udziałów dla autorów</li>
+{% endblock %}
+
+{% block content %}
+    <h2>Import udziałów dla autorów
+        <a class="button success" id="add-new-file" href="new/">
+            <i class="fi-page-add"></i>
+            nowy import
+        </a>
+        <a class="button secondary" id="download-example-file" href="{% static "ewaluacja2021/xlsx/default.xlsx" %}">
+            <i class="fi-page-edit"></i>
+            plik wzorcowy
+        </a>
+    </h2>
+    {% if object_list.exists %}
+        <p>
+            Poniżej znajduje się lista plików zaimportowanych przez Ciebie do systemu wraz z
+            ich obecnym stanem oraz datą ostatnich zmian.
+        </p>
+        <ul>
+            {% for object in object_list %}
+                <li>
+                    <a href="{% url "ewaluacja2021:szczegoly-importu" object.pk %}">
+                        plik <strong>{{ object.plik.name }}</strong>
+                        {% if object.plik.exists %}
+                        {{ object.plik.size|filesizeformat }}
+                        {% endif %}
+                        zmodyfikowany {{ object.ostatnia_zmiana }}
+                    </a> - przeanalizowany?:
+                    <strong>{{ object.przeanalizowany }}</strong>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        Brak informacji o importowanych plikach z udziałami autorów w systemie.
+    {% endif %}
+
+{% endblock %}

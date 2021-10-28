@@ -7,6 +7,7 @@ Historia zmian
 ---------------
 
 * liczba N dla autora staje się ilością udziałów oraz ilością udziałów monografii (#1153),
+* możliwość importu udziałów dla autorów z plików XLSX (#1144),
 
 202110.1081-beta2
 -----------------
