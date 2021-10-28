@@ -329,6 +329,42 @@ class WydawnictwoPBNAdapter:
         if institutions:
             ret["institutions"] = institutions
 
+        if hasattr(self.original, "slowa_kluczowe"):
+            if "languageData" not in ret:
+                ret["languageData"] = {}
+
+            slowa_kluczowe = self.original.slowa_kluczowe.all().values_list(
+                "name", flat=True
+            )
+            # Zakładamy, że wszystkie słowa kluczowe są w języku rekordu nadrzędnego
+            ret["languageData"]["keywords"] = [
+                {"keywords": slowa_kluczowe, "lang": ret["mainLanguage"]}
+            ]
+
+        if hasattr(self.original, "streszczenia"):
+            if "languageData" not in ret:
+                ret["languageData"] = {}
+
+            if self.original.streszczenia.exists():
+                ret["languageData"]["abstracts"] = []
+
+                for streszczenie in self.original.streszczenia.all():
+                    if streszczenie.jezyk_streszczenia_id is None:
+                        streszczenie.jezyk_streszczenia = self.original.jezyk
+
+                    if (
+                        streszczenie.streszczenie is None
+                        or not streszczenie.streszczenie.strip()
+                    ):
+                        continue
+
+                    ret["languageData"]["abstracts"].append(
+                        {
+                            "lang": streszczenie.jezyk_streszczenia.pbn_uid.code,
+                            "text": streszczenie.streszczenie,
+                        }
+                    )
+
         if ret["type"] in [
             WydawnictwoPBNAdapter.ARTICLE,
             WydawnictwoPBNAdapter.CHAPTER,

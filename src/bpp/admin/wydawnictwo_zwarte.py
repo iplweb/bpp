@@ -42,10 +42,17 @@ from bpp.models import (
     Wydawca,
     Wydawnictwo_Zwarte,
     Wydawnictwo_Zwarte_Autor,
+    Wydawnictwo_Zwarte_Streszczenie,
     Wydawnictwo_Zwarte_Zewnetrzna_Baza_Danych,
 )
 from bpp.models.konferencja import Konferencja
 from bpp.models.seria_wydawnicza import Seria_Wydawnicza
+
+
+class Wydawnictwo_Zwarte_StreszczenieInline(admin.StackedInline):
+    model = Wydawnictwo_Zwarte_Streszczenie
+    extra = 0
+    fields = ["jezyk_streszczenia", "streszczenie"]
 
 
 class Wydawnictwo_ZwarteAdmin_Baza(CommitedModelAdmin):
@@ -230,6 +237,7 @@ class Wydawnictwo_ZwarteAdmin(
         Wydawnictwo_Zwarte_Zewnetrzna_Baza_DanychInline,
         Grant_RekorduInline,
         Element_RepozytoriumInline,
+        Wydawnictwo_Zwarte_StreszczenieInline,
     )
 
     list_filter = Wydawnictwo_ZwarteAdmin_Baza.list_filter + [

@@ -251,3 +251,19 @@ def test_WydawnictwoPBNAdapter_pod_redakcja_prawda(
 ):
     ksiazka.dodaj_autora(autor_jan_nowak, jednostka, typ_odpowiedzialnosci_skrot="red.")
     assert WydawnictwoPBNAdapter(ksiazka).pod_redakcja() is True
+
+
+def test_WydawnictwoPBNAdapter_slowa_kluczowe(pbn_wydawnictwo_zwarte_ksiazka):
+    pbn_wydawnictwo_zwarte_ksiazka.slowa_kluczowe.add("test")
+    pbn_wydawnictwo_zwarte_ksiazka.slowa_kluczowe.add("best")
+
+    ret = WydawnictwoPBNAdapter(pbn_wydawnictwo_zwarte_ksiazka).pbn_get_json()
+    assert "best" in ret["languageData"]["keywords"][0]["keywords"]
+
+
+def test_WydawnictwoPBNAdapter_streszczenia(pbn_wydawnictwo_zwarte_ksiazka):
+    pbn_wydawnictwo_zwarte_ksiazka.streszczenia.create(
+        jezyk_streszczenia=None, streszczenie="123 test streszczenia"
+    )
+    ret = WydawnictwoPBNAdapter(pbn_wydawnictwo_zwarte_ksiazka).pbn_get_json()
+    assert "test" in ret["languageData"]["abstracts"][0]["text"]

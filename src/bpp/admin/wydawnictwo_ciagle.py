@@ -57,6 +57,7 @@ from bpp.admin.nagroda import NagrodaInline
 from bpp.models import (  # Publikacja_Habilitacyjna
     Charakter_Formalny,
     Wydawnictwo_Ciagle,
+    Wydawnictwo_Ciagle_Streszczenie,
     Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych,
     Zrodlo,
     nie_zawiera_adresu_doi_org,
@@ -162,6 +163,12 @@ class Wydawnictwo_CiagleForm(CleanDOIWWWPublicWWWMixin, forms.ModelForm):
 class Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychForm(forms.ModelForm):
     class Meta:
         fields = ["baza", "info"]
+
+
+class Wydawnictwo_Ciagle_StreszczenieInline(admin.StackedInline):
+    model = Wydawnictwo_Ciagle_Streszczenie
+    extra = 0
+    fields = ["jezyk_streszczenia", "streszczenie"]
 
 
 class Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychInline(admin.StackedInline):
@@ -278,6 +285,7 @@ class Wydawnictwo_CiagleAdmin(
         Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychInline,
         Grant_RekorduInline,
         Element_RepozytoriumInline,
+        Wydawnictwo_Ciagle_StreszczenieInline,
     )
 
     def zrodlo_col(self, obj):

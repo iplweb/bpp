@@ -6,7 +6,12 @@ from django.db.models import CASCADE, SET_NULL
 
 from django.contrib.postgres.fields import ArrayField, JSONField
 
-from bpp.models import MaProcentyMixin, parse_informacje, wez_zakres_stron
+from bpp.models import (
+    BazaModeluStreszczen,
+    MaProcentyMixin,
+    parse_informacje,
+    wez_zakres_stron,
+)
 from bpp.models.abstract import (
     BazaModeluOdpowiedzialnosciAutorow,
     DodajAutoraMixin,
@@ -259,3 +264,18 @@ class Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych(models.Model):
         verbose_name_plural = (
             "powiązania wydawnictw ciągłych z zewnętrznymi bazami danych"
         )
+
+
+class Wydawnictwo_Ciagle_Streszczenie(BazaModeluStreszczen):
+    rekord = models.ForeignKey(Wydawnictwo_Ciagle, CASCADE, related_name="streszczenia")
+
+    class Meta:
+        verbose_name = "streszczenie wydawnictwa ciągłego"
+        verbose_name_plural = "streszczenia wydawnictw ciągłych"
+
+    def __str__(self):
+        if self.jezyk_streszczenia_id is not None:
+            return (
+                f"Streszczenie rekordu {self.rekord} w języku {self.jezyk_streszczenia}"
+            )
+        return f"Streszczenie rekordu {self.rekord}"

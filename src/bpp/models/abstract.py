@@ -1039,3 +1039,13 @@ class ModelZPrzeliczaniemDyscyplin(models.Model):
 
     class Meta:
         abstract = True
+
+
+class BazaModeluStreszczen(models.Model):
+    jezyk_streszczenia = models.ForeignKey(
+        "bpp.Jezyk", null=True, blank=True, on_delete=models.SET_NULL
+    )
+    streszczenie = models.TextField(blank=True, null=True)
+
+    class Meta:
+        abstract = True

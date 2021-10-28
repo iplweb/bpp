@@ -12,6 +12,7 @@ from django.contrib.contenttypes.fields import GenericRelation
 from django.contrib.postgres.fields import ArrayField, JSONField
 
 from bpp.models import (
+    BazaModeluStreszczen,
     DodajAutoraMixin,
     MaProcentyMixin,
     ModelOpcjonalnieNieEksportowanyDoAPI,
@@ -332,3 +333,18 @@ class Wydawnictwo_Zwarte_Zewnetrzna_Baza_Danych(models.Model):
         verbose_name_plural = (
             "powiązania wydawnictw zwartych z zewnętrznymi bazami danych"
         )
+
+
+class Wydawnictwo_Zwarte_Streszczenie(BazaModeluStreszczen):
+    rekord = models.ForeignKey(Wydawnictwo_Zwarte, CASCADE, related_name="streszczenia")
+
+    class Meta:
+        verbose_name = "streszczenie wydawnictwa zwartego"
+        verbose_name_plural = "streszczenia wydawnictw zwatrtych"
+
+    def __str__(self):
+        if self.jezyk_streszczenia_id is not None:
+            return (
+                f"Streszczenie rekordu {self.rekord} w języku {self.jezyk_streszczenia}"
+            )
+        return f"Streszczenie rekordu {self.rekord}"
