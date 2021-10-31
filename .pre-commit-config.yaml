@@ -1,4 +1,13 @@
 repos:
+    - repo: local
+      hooks:
+        - id: no_debug
+          name: No debug on prod
+          types: [python]
+          args: [--multiline]
+          entry: 'breakpoint\(\)|set_trace'
+          language: pygrep
+
     - repo: https://github.com/myint/autoflake
       rev: 'v1.4'
       hooks:
@@ -38,3 +47,9 @@ repos:
       rev: '3.8.4'
       hooks:
         -   id: flake8
+
+    - repo: https://github.com/asottile/pyupgrade
+      rev: v2.29.0
+      hooks:
+        - id: pyupgrade
+          args: ["--py37-plus"]
