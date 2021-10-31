@@ -1,7 +1,12 @@
 
 ==============
 Historia zmian
-==============r
+==============
+
+202110.1081-rc1
+---------------
+
+* poprawka błędu związanego z importem maksymalnych slotów autora (b/n),
 
 202110.1081-rc0
 ---------------

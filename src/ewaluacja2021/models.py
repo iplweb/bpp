@@ -197,9 +197,6 @@ class WierszImportuMaksymalnychSlotow(models.Model):
     def check_if_integration_needed(self):
         istniejace_dane = self.istniejace_dane().first()
 
-        if self.matched_autor.nazwisko == "Berger":
-            breakpoint()
-
         if istniejace_dane is not None:
             if (
                 istniejace_dane.ilosc_udzialow == self.ilosc_udzialow
