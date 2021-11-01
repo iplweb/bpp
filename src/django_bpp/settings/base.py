@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 import os
 import random
 import string
@@ -160,6 +158,7 @@ if TESTING:
 
 
 INSTALLED_APPS = [
+    "tee",
     "denorm.apps.DenormAppConfig",
     "reversion",
     "djangoql",
