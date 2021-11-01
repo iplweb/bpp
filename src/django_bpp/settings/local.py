@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 # Lokalny development (na moim Maku)
 
 import os
@@ -65,7 +63,7 @@ CACHES = {
 }
 
 
-TEMPLATES[0]["OPTIONS"]["loaders"] = [  # noqa[
+TEMPLATES[0]["OPTIONS"]["loaders"] = [  # noqa
     "admin_tools.template_loaders.Loader",
     "dbtemplates.loader.Loader",
     "django.template.loaders.filesystem.Loader",
