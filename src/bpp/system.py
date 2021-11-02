@@ -21,8 +21,7 @@ from pbn_api.models import (
     Scientist,
     SentData,
 )
-from rozbieznosci_dyscyplin.models import RozbieznosciZrodelView
-from rozbieznosci_if.views import RozbieznosciView
+from rozbieznosci_dyscyplin.models import RozbieznosciView, RozbieznosciZrodelView
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
