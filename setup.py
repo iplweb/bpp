@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 import os
 import sys
@@ -61,7 +60,7 @@ def requirements(fn="requirements.txt"):
 
 setup(
     name="bpp-iplweb",
-    version="202110.1081rc0",
+    version="202111.1081rc1",
     description="System informatyczny do zarządzania bibliografią publikacji pracowników naukowych",
     long_description=readme,
     long_description_content_type="text/x-rst",
