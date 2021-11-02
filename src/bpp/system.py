@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 """Ustawienia systemowe
 
 groups - lista grup wraz z uprawnieniami do edycji poszczególnych obiektów.
@@ -23,6 +21,8 @@ from pbn_api.models import (
     Scientist,
     SentData,
 )
+from rozbieznosci_dyscyplin.models import RozbieznosciZrodelView
+from rozbieznosci_if.views import RozbieznosciView
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
@@ -163,6 +163,8 @@ groups = {
         Grant_Rekordu,
         Element_Repozytorium,
         IloscUdzialowDlaAutora,
+        RozbieznosciView,
+        RozbieznosciZrodelView,
     ],
     "indeks autorów": [Autor, Autor_Jednostka],
     "administracja": [User, Group, SearchForm],
