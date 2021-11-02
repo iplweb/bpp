@@ -14,6 +14,7 @@ Historia zmian
 * raport rozbieżności autor-źródło (#1023),
 * z kodu usunięto funkcjonalność importu dyscyplin źródeł (#1122),
 * możliwość importu streszczeń z rekordów PBN (#1146),
+* dołączaj liczbę PK dla raportów wyjściowych 3N (#1159),
 
 202110.1081-rc0
 ---------------

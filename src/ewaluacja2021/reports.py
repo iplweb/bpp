@@ -21,6 +21,7 @@ def get_data_for_report(qset):
             elem.do_ewaluacji,
             elem.pkdaut,
             elem.slot,
+            elem.rekord.punkty_kbn,
         ]
         for elem in qset
     )
@@ -42,6 +43,7 @@ def write_data_to_report(ws: openpyxl.worksheet.worksheet.Worksheet, data):
             "Do ewaluacji",
             "PKDAut",
             "Slot",
+            "PK",
         ],
         data,
         totals=["PKDAut", "Slot"],
