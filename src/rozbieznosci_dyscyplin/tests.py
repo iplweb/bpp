@@ -307,3 +307,10 @@ def test_RozbieznosciDyscyplinAdmin_test_task_offloading_instant_subdyscyplina(
 )
 def test_parse_object_id(i, o):
     assert parse_object_id(i) == o
+
+
+def test_RozbieznosciAutorZrodloAdmin(admin_app):
+    res = admin_app.get(
+        reverse("admin:rozbieznosci_dyscyplin_rozbieznoscizrodelview_changelist")
+    )
+    assert res.status_code == 200

@@ -1,0 +1,19 @@
+{% extends "admin/change_form.html" %}{% load i18n %}
+
+{% block object-tools-items %}
+    <li><a target="_blank"
+           href="{% url "admin:bpp_wydawnictwo_ciagle_change" original.wydawnictwo_ciagle.pk %}">
+        Rekord
+    </a>
+    </li>
+    <li><a target="_blank"
+           href="{% url "admin:bpp_autor_change" original.autor.pk %}">
+        Autor
+    </a>
+    </li>
+    <li><a target="_blank"
+           href="{% url "admin:bpp_zrodlo_change" original.zrodlo.pk %}">
+        Źródło
+    </a>
+    </li>
+{% endblock %}

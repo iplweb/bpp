@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 """
 This file was generated with the custommenu management command, it contains
 the classes for the admin menu, you can customize this class as you want.
@@ -274,6 +272,10 @@ REDAKTOR_MENU = [
         "Rozbieżności dyscyplin",
         "/admin/rozbieznosci_dyscyplin/rozbieznosciview/",
     ),
+    (
+        "Rozbieżności dyscyplin źródeł",
+        "/admin/rozbieznosci_dyscyplin/rozbieznoscizrodelview/",
+    ),
 ]
 
 ADMIN_MENU = [
@@ -329,4 +331,4 @@ class CustomMenu(Menu):
         flt("raporty", "Raporty", RAPORTY_MENU)
         flt("administracja", "Administracja", ADMIN_MENU)
 
-        return super(CustomMenu, self).init_with_context(context)
+        return super().init_with_context(context)
