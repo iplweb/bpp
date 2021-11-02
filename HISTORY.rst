@@ -8,6 +8,7 @@ Historia zmian
 
 * poprawka błędu związanego z importem maksymalnych slotów autora (b/n),
 * możliwość złapania logów z poleceń uruchamianych w nocy do bazy danych (#1136),
+* raport ewaluacja - upoważnienia (#1083),
 
 202110.1081-rc0
 ---------------

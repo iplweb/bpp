@@ -7,7 +7,11 @@ from django_tables2 import Column
 
 from raport_slotow import const
 from raport_slotow.columns import DecimalColumn, SummingColumn
-from raport_slotow.models import RaportUczelniaEwaluacjaView, RaportZerowyEntry
+from raport_slotow.models import (
+    RaportEwaluacjaUpowaznieniaView,
+    RaportUczelniaEwaluacjaView,
+    RaportZerowyEntry,
+)
 from raport_slotow.models.uczelnia import RaportSlotowUczelniaWiersz
 
 from bpp.models import CHARAKTER_SLOTY
@@ -20,7 +24,7 @@ from bpp.models.cache import (
 class RaportCommonMixin:
     def render_tytul_oryginalny(self, value):
         url = reverse("bpp:browse_rekord", args=(value.pk[0], value.pk[1]))
-        return safe("<a href=%s>%s</a>" % (url, value))
+        return safe(f"<a href={url}>{value}</a>")
 
     def value_tytul_oryginalny(self, value):
         return value.tytul_oryginalny
@@ -116,9 +120,7 @@ class RaportSlotowUczelniaBezJednostekIWydzialowTable(tables.Table):
         self.od_roku = od_roku
         self.do_roku = do_roku
         self.slot = slot
-        super(RaportSlotowUczelniaBezJednostekIWydzialowTable, self).__init__(
-            *args, **kw
-        )
+        super().__init__(*args, **kw)
 
     def render_avg(self, value):
         return round(value, 4)
@@ -137,7 +139,7 @@ class RaportSlotowUczelniaBezJednostekIWydzialowTable(tables.Table):
                 }
             )
         )
-        return safe("<a href=%s>%s</a>" % (url, value))
+        return safe(f"<a href={url}>{value}</a>")
 
     def value_autor(self, value):
         return value
@@ -299,3 +301,39 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
 
     def value_autorzy(self, value):
         return value
+
+
+class RaportEwaluacjaUpowaznieniaTable(RaportSlotowEwaluacjaTable):
+    class Meta:
+        attrs = {"class": "very-small-table"}
+        model = RaportEwaluacjaUpowaznieniaView
+        empty_text = "Brak danych"
+        fields = (
+            "id",
+            "tytul_oryginalny",
+            "autorzy",
+            "rok",
+            "zrodlo_lub_wydawnictwo_nadrzedne",
+            "informacje",
+            "rodzaj_publikacji",
+            "liczba_wszystkich_autorow",
+            "punkty_pk",
+            "autor",
+            "pbn_id",
+            "orcid",
+            "aktualna_jednostka",
+            "dyscyplina",
+            "procent_dyscypliny",
+            "subdyscyplina",
+            "procent_subdyscypliny",
+            "dyscyplina_rekordu",
+            "upowaznienie_pbn",
+            "profil_orcid",
+        )
+
+    pkdaut = None
+    slot = None
+
+    aktualna_jednostka = Column(
+        "Aktualna jednostka", "autorzy.autor.aktualna_jednostka"
+    )
