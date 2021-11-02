@@ -12,6 +12,7 @@ Historia zmian
 * sprawdzanie i ostrzeganie użytkownika przy zapisie rekordów w sytuacji, gdy dane DOI lub WWW
   już istnieją w bazie danych (#1059),
 * raport rozbieżności autor-źródło (#1023),
+* z kodu usunięto funkcjonalność importu dyscyplin źródeł (#1122),
 
 202110.1081-rc0
 ---------------

@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 from django.conf import settings
 from django.conf.urls import include, url
 from django.conf.urls.static import static
@@ -90,13 +88,6 @@ urlpatterns = (
             include(
                 ("import_list_if.urls", "import_list_if"),
                 namespace="import_list_if",
-            ),
-        ),
-        url(
-            r"^import_dyscyplin_zrodel/",
-            include(
-                ("import_dyscyplin_zrodel.urls", "import_dyscyplin_zrodel"),
-                namespace="import_dyscyplin_zrodel",
             ),
         ),
         url(
