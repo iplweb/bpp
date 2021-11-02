@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 from django.core.management import BaseCommand
 from django.db import transaction
 
@@ -51,7 +49,6 @@ class Command(BaseCommand):
                     print(maks_suma_pkd - baza, algorytm.randomizer.serialize())
 
                     # algorytm.pozegnanie()
-
                     # algorytm.promuj_obecna_liste()
                     baza = maks_suma_pkd
 
@@ -61,28 +58,4 @@ class Command(BaseCommand):
                     maks_lista_prac = None
 
             algorytm.randomizer.reset()
-
             nr_cyklu += 1
-            # algorytm.randomizer.reset()
-            #
-            # if nr_cyklu < 10:
-            #
-            # else:
-            #     while True:
-            #         try:
-            #             maxlen = len(algorytm.lista_prac)
-            #
-            #             list_len = 3000
-            #
-            #             algorytm.randomizer.reset(
-            #                 start_elem=0,
-            #                 end_elem=maxlen - list_len,
-            #                 list_size_min=1000,
-            #                 list_size_max=list_len,
-            #                 list_step=50,
-            #             )
-            #             break
-            #         except ValueError:
-            #             pass
-            #
-            # continue
