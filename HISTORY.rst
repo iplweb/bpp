@@ -13,6 +13,7 @@ Historia zmian
   już istnieją w bazie danych (#1059),
 * raport rozbieżności autor-źródło (#1023),
 * z kodu usunięto funkcjonalność importu dyscyplin źródeł (#1122),
+* możliwość importu streszczeń z rekordów PBN (#1146),
 
 202110.1081-rc0
 ---------------
