@@ -15,6 +15,7 @@ Historia zmian
 * z kodu usunięto funkcjonalność importu dyscyplin źródeł (#1122),
 * możliwość importu streszczeń z rekordów PBN (#1146),
 * dołączaj liczbę PK dla raportów wyjściowych 3N (#1159),
+* nie bierz pod uwagę autorów bez okreslonych maksymalnych udziałów jednostkowych do raportów 3N (#1158),
 
 202110.1081-rc0
 ---------------

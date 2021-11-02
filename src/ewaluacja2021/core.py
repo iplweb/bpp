@@ -51,11 +51,20 @@ class NieArtykul(Transform):
 
 
 def get_lista_prac(nazwa_dyscypliny):
+    dozwoleni_autorzy = IloscUdzialowDlaAutora.objects.filter(
+        dyscyplina_naukowa__nazwa=nazwa_dyscypliny
+    ).values_list("autor_id")
+
+    if not dozwoleni_autorzy.exists():
+        raise ValueError(
+            f"Nie mam żadnych autorów z wgranymi udziałami dla dyscypliny {nazwa_dyscypliny}"
+        )
 
     return (
         Cache_Punktacja_Autora_Query.objects.filter(
             rekord__rok__gte=PBN_MIN_ROK,
             dyscyplina__nazwa=nazwa_dyscypliny,
+            autor__in=dozwoleni_autorzy,
         )
         .exclude(rekord__charakter_formalny__charakter_ogolny=None)
         .annotate(
@@ -70,33 +79,29 @@ def get_lista_prac(nazwa_dyscypliny):
 
 
 def get_lista_autorow_na_rekord(nazwa_dyscypliny):
-    return dict(
-        [
-            (x["rekord_id"], tuple(x["autorzy"]))
-            for x in get_lista_prac(nazwa_dyscypliny)
-            .values("rekord_id")
-            .annotate(autorzy=ArrayAgg("autor_id"))
-            .order_by()
-        ]
-    )
+    return {
+        x["rekord_id"]: tuple(x["autorzy"])
+        for x in get_lista_prac(nazwa_dyscypliny)
+        .values("rekord_id")
+        .annotate(autorzy=ArrayAgg("autor_id"))
+        .order_by()
+    }
 
 
 def lista_prac_na_tuples(lista_prac, lista_autorow):
     return tuple(
-        [
-            Praca(
-                id=elem.id,
-                rekord_id=elem.rekord_id,
-                slot=elem.slot,
-                autor_id=elem.autor_id,
-                rok=elem.rekord.rok,
-                pkdaut=elem.pkdaut,
-                monografia=elem.monografia,
-                autorzy=lista_autorow.get(elem.rekord_id),
-                ostatnio_zmieniony=elem.rekord.ostatnio_zmieniony,
-            )
-            for elem in lista_prac
-        ]
+        Praca(
+            id=elem.id,
+            rekord_id=elem.rekord_id,
+            slot=elem.slot,
+            autor_id=elem.autor_id,
+            rok=elem.rekord.rok,
+            pkdaut=elem.pkdaut,
+            monografia=elem.monografia,
+            autorzy=lista_autorow.get(elem.rekord_id),
+            ostatnio_zmieniony=elem.rekord.ostatnio_zmieniony,
+        )
+        for elem in lista_prac
     )
 
 
@@ -200,7 +205,6 @@ class Ewaluacja3NMixin:
         self.id_wszystkich_autorow = set()
         for elem in self.autorzy_na_rekord.values():
             for x in elem:
-
                 self.id_wszystkich_autorow.add(x)
 
         self.lista_prac_db = get_lista_prac(self.nazwa_dyscypliny)
@@ -363,11 +367,9 @@ class Plecakowy(Ewaluacja3NMixin):
         for autor_id in pbar(self.get_lista_autorow_w_kolejnosci()):
 
             wszystkie = list(
-                [
-                    praca
-                    for praca in self.lista_prac_db.filter(autor_id=autor_id)
-                    if self.czy_moze_przejsc_warunek_uczelnia(praca)
-                ]
+                praca
+                for praca in self.lista_prac_db.filter(autor_id=autor_id)
+                if self.czy_moze_przejsc_warunek_uczelnia(praca)
             )
 
             monografie = [x for x in wszystkie if x.monografia]
@@ -549,7 +551,7 @@ class Randomizer:
 
 class ZmieniajacyKolejnosc(Prosty):
     def __init__(self, *args, **kw):
-        super(ZmieniajacyKolejnosc, self).__init__(*args, **kw)
+        super().__init__(*args, **kw)
 
         self.first_run = True
 
