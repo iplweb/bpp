@@ -9,6 +9,8 @@ Historia zmian
 * poprawka błędu związanego z importem maksymalnych slotów autora (b/n),
 * możliwość złapania logów z poleceń uruchamianych w nocy do bazy danych (#1136),
 * raport ewaluacja - upoważnienia (#1083),
+* sprawdzanie i ostrzeganie użytkownika przy zapisie rekordów w sytuacji, gdy dane DOI lub WWW
+  już istnieją w bazie danych (#1059),
 
 202110.1081-rc0
 ---------------

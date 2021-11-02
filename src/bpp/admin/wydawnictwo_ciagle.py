@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 from dal import autocomplete
 from django import forms
 from django.forms.utils import flatatt
@@ -22,6 +20,7 @@ from .grant import Grant_RekorduInline
 from .helpers import (
     MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET,
     OptionalPBNSaveMixin,
+    sprawdz_duplikaty_www_doi,
 )
 
 from django.contrib import admin
@@ -299,8 +298,9 @@ class Wydawnictwo_CiagleAdmin(
     zrodlo_col.short_description = "Źródło"
 
     def save_model(self, request, obj, form, change):
-        super(Wydawnictwo_CiagleAdmin, self).save_model(request, obj, form, change)
+        super().save_model(request, obj, form, change)
         sprobuj_policzyc_sloty(request, obj)
+        sprawdz_duplikaty_www_doi(request, obj)
 
 
 admin.site.register(Wydawnictwo_Ciagle, Wydawnictwo_CiagleAdmin)

@@ -1,7 +1,3 @@
-# -*- encoding: utf-8 -*-
-
-# -*- encoding: utf-8 -*-
-
 from dal import autocomplete
 from django import forms
 from djangoql.admin import DjangoQLSearchMixin
@@ -18,7 +14,7 @@ from .actions import (
 from .core import CommitedModelAdmin, KolumnyZeSkrotamiMixin, generuj_inline_dla_autorow
 from .element_repozytorium import Element_RepozytoriumInline
 from .grant import Grant_RekorduInline
-from .helpers import OptionalPBNSaveMixin
+from .helpers import OptionalPBNSaveMixin, sprawdz_duplikaty_www_doi
 from .nagroda import NagrodaInline
 
 # Proste tabele
@@ -293,7 +289,7 @@ class Wydawnictwo_ZwarteAdmin(
     )
 
     def save_model(self, request, obj, form, change):
-        super(Wydawnictwo_ZwarteAdmin, self).save_model(request, obj, form, change)
+        super().save_model(request, obj, form, change)
         if (
             obj.rok >= 2017
             and obj.rok <= 2020
@@ -306,6 +302,8 @@ class Wydawnictwo_ZwarteAdmin(
             )
         else:
             helpers.sprobuj_policzyc_sloty(request, obj)
+
+        sprawdz_duplikaty_www_doi(request, obj)
 
 
 admin.site.register(Wydawnictwo_Zwarte, Wydawnictwo_ZwarteAdmin)

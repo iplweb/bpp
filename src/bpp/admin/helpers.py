@@ -1,10 +1,9 @@
-# -*- encoding: utf-8 -*-
-
 from urllib.parse import parse_qs
 from urllib.parse import quote as urlquote
 
 from django import forms
 from django.db import models
+from django.db.models import Q
 from django.forms import BaseInlineFormSet
 from django.forms.widgets import Textarea
 from django.urls import reverse
@@ -295,7 +294,7 @@ EKSTRA_INFORMACJE_DOKTORSKA_HABILITACYJNA_FIELDSET = (
 
 
 def js_openwin(url, handle, options):
-    options = ",".join(["%s=%s" % (a, b) for a, b in list(options.items())])
+    options = ",".join([f"{a}={b}" for a, b in list(options.items())])
     d = dict(url=url, handle=handle, options=options)
     return "window.open('%(url)s','\\%(handle)s','%(options)s')" % d
 
@@ -333,7 +332,7 @@ class Wycinaj_W_z_InformacjiMixin:
 class LimitingFormset(BaseInlineFormSet):
     def get_queryset(self):
         if not hasattr(self, "_queryset_limited"):
-            qs = super(LimitingFormset, self).get_queryset()
+            qs = super().get_queryset()
             self._queryset_limited = qs[:100]
         return self._queryset_limited
 
@@ -341,7 +340,7 @@ class LimitingFormset(BaseInlineFormSet):
 def link_do_obiektu(obj, friendly_name=None):
     opts = obj._meta
     obj_url = reverse(
-        "admin:%s_%s_change" % (opts.app_label, opts.model_name),
+        f"admin:{opts.app_label}_{opts.model_name}_change",
         args=(quote(obj.pk),),
         # current_app=self.admin_site.name,
     )
@@ -584,9 +583,7 @@ class OptionalPBNSaveMixin:
             if uczelnia.pbn_integracja and uczelnia.pbn_aktualizuj_na_biezaco:
                 context.update({"show_save_and_pbn": True})
 
-        return super(OptionalPBNSaveMixin, self).render_change_form(
-            request, context, add, change, form_url, obj
-        )
+        return super().render_change_form(request, context, add, change, form_url, obj)
 
     def response_post_save_change(self, request, obj):
         if "_continue_and_pbn" in request.POST:
@@ -603,3 +600,27 @@ class OptionalPBNSaveMixin:
         else:
             # Otherwise, use default behavior
             return super().response_post_save_change(request, obj)
+
+
+def sprawdz_duplikaty_www_doi(request, obj):
+    from bpp.models.cache import Rekord
+
+    for field in ["www", "public_www", "doi"]:
+        if not hasattr(obj, field):
+            continue
+
+        v = getattr(obj, field)
+        if v in [None, ""]:
+            continue
+
+        rekord_pk = (ContentType.objects.get_for_model(obj).pk, obj.pk)
+
+        query = Q(**{field + "__iexact": v})
+
+        if field == "www":
+            query |= Q(public_www__iexact=v)
+        elif field == "public_www":
+            query |= Q(www__iexact=v)
+
+        if Rekord.objects.filter(query).exclude(pk=rekord_pk).exists():
+            messages.warning(request, f'Istnieją rekordy z identycznym polem "{field}"')
