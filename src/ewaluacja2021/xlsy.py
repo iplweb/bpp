@@ -3,12 +3,7 @@ import os
 import openpyxl
 from django.db.models import Sum, Value
 
-from ewaluacja2021.core import (
-    DEFAULT_MAX_SLOT_AUT,
-    DEFAULT_MAX_SLOT_MONO,
-    LATA_2017_2018,
-    LATA_2019_2021,
-)
+from ewaluacja2021.const import LATA_2017_2018, LATA_2019_2021
 from ewaluacja2021.reports import get_data_for_report, write_data_to_report
 from ewaluacja2021.util import autor2fn
 
@@ -79,7 +74,7 @@ class CalosciowyXLSX(WyjsciowyXLSX):
 
 class AutorskiXLSX(WyjsciowyXLSX):
     def __init__(self, autor, title, rekordy, dane, katalog_wyjsciowy):
-        super(AutorskiXLSX, self).__init__(
+        super().__init__(
             title=title, rekordy=rekordy, dane=dane, katalog_wyjsciowy=katalog_wyjsciowy
         )
         self.autor = autor
@@ -96,9 +91,7 @@ class AutorskiXLSX(WyjsciowyXLSX):
         self.ws.append(
             [
                 "Maks. suma slotów za wszytkie prace",
-                self.dane["maks_pkt_aut_calosc"].get(
-                    self.autor.pk, DEFAULT_MAX_SLOT_AUT
-                ),
+                self.dane["maks_pkt_aut_calosc"].get(str(self.autor.pk)),
             ]
         )
 
@@ -111,9 +104,7 @@ class AutorskiXLSX(WyjsciowyXLSX):
         self.ws.append(
             [
                 "Maks. suma slotów za monografie",
-                self.dane["maks_pkt_aut_monografie"].get(
-                    self.autor.pk, DEFAULT_MAX_SLOT_MONO
-                ),
+                self.dane["maks_pkt_aut_monografie"].get(str(self.autor.pk)),
             ]
         )
 
