@@ -11,8 +11,8 @@ class Command(BaseCommand):
     @transaction.atomic
     def handle(self, dyscyplina, liczba_n=None, *args, **options):
 
-        algorytm = Plecakowy(nazwa_dyscypliny=dyscyplina, liczba_n=liczba_n)
+        algorytm = Plecakowy(nazwa_dyscypliny=dyscyplina)
         algorytm.powitanie()
         algorytm.sumuj()
-        algorytm.zrzuc_dane("knapsacks")
+        algorytm.zrzuc_dane("plecakowy")
         algorytm.pozegnanie()

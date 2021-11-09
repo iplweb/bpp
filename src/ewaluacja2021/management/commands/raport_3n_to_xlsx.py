@@ -1,4 +1,3 @@
-# -*- encoding: utf-8 -*-
 import os
 from argparse import FileType
 
@@ -6,7 +5,7 @@ from django.core.management import BaseCommand
 
 from ewaluacja2021.reports import load_data, rekordy
 from ewaluacja2021.util import autor2fn
-from ewaluacja2021.xlsy import AutorskiXLSX, CalosciowyXLSX
+from ewaluacja2021.xlsy import AutorskiXLSX, CalosciowyXLSX, WypelnienieXLSX
 
 from bpp.models import Autor
 from bpp.util import pbar
@@ -28,6 +27,14 @@ class Command(BaseCommand):
             os.mkdir(katalog_wyjsciowy)
 
         rekordy_danych = rekordy(dane)
+
+        WypelnienieXLSX(
+            "AAA_wypelnienie_slotow",
+            rekordy=rekordy_danych,
+            dane=dane,
+            katalog_wyjsciowy=katalog_wyjsciowy,
+        ).zrob()
+
         CalosciowyXLSX(
             "AAA_rekordy",
             rekordy=rekordy_danych,

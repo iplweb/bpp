@@ -10,7 +10,7 @@ from bpp.models import Cache_Punktacja_Autora_Query
 def get_data_for_report(qset):
     return (
         [
-            elem.id,
+            # elem.id,
             str(elem.rekord_id),
             elem.autor_id,
             elem.rekord.tytul_oryginalny,
@@ -32,7 +32,7 @@ def write_data_to_report(ws: openpyxl.worksheet.worksheet.Worksheet, data):
         ws,
         "Przeszly",
         [
-            "ID elementu",
+            # "ID elementu",
             "ID rekordu",
             "ID autora",
             "Tytuł",
@@ -47,6 +47,11 @@ def write_data_to_report(ws: openpyxl.worksheet.worksheet.Worksheet, data):
         ],
         data,
         totals=["PKDAut", "Slot"],
+        column_widths={
+            "A": 10,
+            "B": 14,
+            "E": 14,
+        },
     )
 
 
@@ -72,4 +77,4 @@ def rekordy(dane):
 def load_data(fobj):
     import simplejson
 
-    return simplejson.load(fobj)
+    return simplejson.load(fobj, use_decimal=True)

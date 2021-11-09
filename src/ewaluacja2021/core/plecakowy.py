@@ -11,26 +11,16 @@ class Plecakowy(Ewaluacja3NMixin):
     def __init__(
         self,
         nazwa_dyscypliny="nauki medyczne",
-        liczba_n=None,
-        maks_pkt_aut_calosc=None,
-        maks_pkt_aut_monografia=None,
     ):
         Ewaluacja3NMixin.__init__(
             self=self,
             nazwa_dyscypliny=nazwa_dyscypliny,
-            liczba_n=liczba_n,
-            maks_pkt_aut_calosc=maks_pkt_aut_calosc,
-            maks_pkt_aut_monografie=maks_pkt_aut_monografia,
         )
 
         self.get_data()
 
     @property
     def lista_prac(self):
-        return self.lista_prac_tuples
-
-    @property
-    def aktualna_lista_prac(self):
         return self.lista_prac_tuples
 
     def get_lista_autorow_w_kolejnosci(self):

@@ -19,70 +19,18 @@ from .util import (
 logger = logging.getLogger(__name__)
 
 
-class Ewaluacja3NMixin:
+class SumatorMixin:
     def __init__(
-        self,
-        nazwa_dyscypliny="nauki medyczne",
-        liczba_n=None,
-        maks_pkt_aut_calosc=None,
-        maks_pkt_aut_monografie=None,
+        self, liczba_2_2_n, liczba_0_8_n, maks_pkt_aut_calosc, maks_pkt_aut_monografie
     ):
-        """
-        maks_pkt_aut_calosc
-            maksymalna ilość punktów dla poszczególnych autorów, słownik autor->maks pkt
-
-        maks_pkt_aut_monografie
-            maksymalna ilość punktów dla autorów za monografie, słownik autor->maks pkt
-
-        """
-
-        self.nazwa_dyscypliny = nazwa_dyscypliny
-        self.liczba_n = liczba_n
+        self.liczba_2_2_n = liczba_2_2_n
+        self.liczba_0_8_n = liczba_0_8_n
         self.maks_pkt_aut_calosc = maks_pkt_aut_calosc
-        if self.maks_pkt_aut_calosc is None:
-            self.maks_pkt_aut_calosc = maks_pkt_aut_calosc_get_from_db(
-                self.nazwa_dyscypliny
-            )
-
         self.maks_pkt_aut_monografie = maks_pkt_aut_monografie
-        if self.maks_pkt_aut_monografie is None:
-            self.maks_pkt_aut_monografie = maks_pkt_aut_monografie_get_from_db(
-                self.nazwa_dyscypliny
-            )
-
-        if self.liczba_n is None:
-            self.liczba_n = LiczbaNDlaUczelni.objects.get(
-                dyscyplina_naukowa__nazwa=self.nazwa_dyscypliny
-            ).liczba_n
-        self.liczba_2_2_n = Decimal("2.2") * self.liczba_n
         self.liczba_2_2_n_minus_2 = self.liczba_2_2_n - 2
-
-        self.liczba_0_8_n = Decimal("0.8") * self.liczba_n
         self.liczba_0_8_n_minus_2 = self.liczba_0_8_n - 2
 
-    def zeruj(self):
-        self.suma_pkd = 0
-        self.sumy_slotow = [0, 0]
-
-        self.suma_prac_autorow_wszystko = defaultdict(int)
-        self.suma_prac_autorow_monografie = defaultdict(int)
-
-        self.id_rekordow = set()
-
-    def get_data(self):
-        logger.info("get_data start")
-        self.autorzy_na_rekord = get_lista_autorow_na_rekord(self.nazwa_dyscypliny)
-
-        self.id_wszystkich_autorow = set()
-        for elem in self.autorzy_na_rekord.values():
-            for x in elem:
-                self.id_wszystkich_autorow.add(x)
-
-        self.lista_prac_db = get_lista_prac(self.nazwa_dyscypliny)
-        self.lista_prac_tuples = lista_prac_na_tuples(
-            self.lista_prac_db, self.autorzy_na_rekord
-        )
-        logger.info("get_data finished")
+        self.zeruj()
 
     def czy_moze_przejsc_warunek_uczelnia(self, praca):
         if (
@@ -119,9 +67,11 @@ class Ewaluacja3NMixin:
         return True
 
     def czy_moze_przejsc(self, praca):
-        if self.czy_moze_przejsc_warunek_uczelnia(
-            praca
-        ) and self.czy_moze_przejsc_warunek_autor(praca):
+        if (
+            self.czy_moze_przejsc_warunek_uczelnia(praca)
+            and self.czy_moze_przejsc_warunek_autor(praca)
+            and praca.id not in self.id_rekordow
+        ):
             return True
 
     def zsumuj_pojedyncza_prace(self, praca):
@@ -138,6 +88,67 @@ class Ewaluacja3NMixin:
         self.suma_prac_autorow_wszystko[praca.autor_id] += praca.slot
         if praca.monografia:
             self.suma_prac_autorow_monografie[praca.autor_id] += praca.slot
+
+    def zeruj(self):
+        self.suma_pkd = 0
+        self.sumy_slotow = [0, 0]
+
+        self.suma_prac_autorow_wszystko = defaultdict(int)
+        self.suma_prac_autorow_monografie = defaultdict(int)
+
+        self.id_rekordow = set()
+
+
+class Ewaluacja3NMixin(SumatorMixin):
+    def __init__(
+        self,
+        nazwa_dyscypliny="nauki medyczne",
+    ):
+        """
+        maks_pkt_aut_calosc
+            maksymalna ilość punktów dla poszczególnych autorów, słownik autor->maks pkt
+
+        maks_pkt_aut_monografie
+            maksymalna ilość punktów dla autorów za monografie, słownik autor->maks pkt
+
+        """
+
+        self.nazwa_dyscypliny = nazwa_dyscypliny
+
+        maks_pkt_aut_calosc = maks_pkt_aut_calosc_get_from_db(self.nazwa_dyscypliny)
+
+        maks_pkt_aut_monografie = maks_pkt_aut_monografie_get_from_db(
+            self.nazwa_dyscypliny
+        )
+
+        self.liczba_n = LiczbaNDlaUczelni.objects.get(
+            dyscyplina_naukowa__nazwa=self.nazwa_dyscypliny
+        ).liczba_n
+
+        SumatorMixin.__init__(
+            self=self,
+            liczba_2_2_n=Decimal("2.2") * self.liczba_n,
+            liczba_0_8_n=Decimal("0.8") * self.liczba_n,
+            maks_pkt_aut_calosc=maks_pkt_aut_calosc,
+            maks_pkt_aut_monografie=maks_pkt_aut_monografie,
+        )
+
+        self.zeruj()
+
+    def get_data(self):
+        logger.info("get_data start")
+        self.autorzy_na_rekord = get_lista_autorow_na_rekord(self.nazwa_dyscypliny)
+
+        self.id_wszystkich_autorow = set()
+        for elem in self.autorzy_na_rekord.values():
+            for x in elem:
+                self.id_wszystkich_autorow.add(x)
+
+        self.lista_prac_db = get_lista_prac(self.nazwa_dyscypliny)
+        self.lista_prac_tuples = lista_prac_na_tuples(
+            self.lista_prac_db, self.autorzy_na_rekord
+        )
+        logger.info("get_data finished")
 
     def powitanie(self):
         print(
@@ -165,7 +176,6 @@ class Ewaluacja3NMixin:
             "maks_pkt_aut_calosc": self.maks_pkt_aut_calosc,
             "maks_pkt_aut_monografie": self.maks_pkt_aut_monografie,
             "wejscie": [x for x in self.lista_prac],
-            "wyjscie": [x for x in self.aktualna_lista_prac],
             "optimum": [x for x in self.id_rekordow],
         }
 

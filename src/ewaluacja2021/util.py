@@ -2,13 +2,15 @@ import itertools
 from collections import OrderedDict
 from decimal import Decimal
 from enum import Enum
-from typing import Any, List, Union
+from typing import Any, Dict, List, Optional, Union
 
 import openpyxl.worksheet.worksheet
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.filters import AutoFilter
 from openpyxl.worksheet.table import Table, TableColumn, TableStyleInfo
 from unidecode import unidecode
+
+from django.contrib.sites.models import Site
 
 from django.utils.functional import cached_property
 
@@ -63,6 +65,11 @@ def output_table_to_xlsx(
     headers: List[str],
     dataset: List[List[Any]],
     totals: List[str] = None,
+    first_column_url: str = "https://{site_name}/bpp/rekord/",
+    autor_column_url: Optional[int] = 4,
+    autor_column_link: Optional[int] = 1,
+    autosize_columns: List[str] = None,
+    column_widths: Dict[int, int] = None,
 ):
     ws.append(headers)
 
@@ -70,8 +77,8 @@ def output_table_to_xlsx(
         TableColumn(id=h, name=header) for h, header in enumerate(headers, start=1)
     )
 
+    footer_row = []
     if totals:
-        footer_row = []
         for no, elem in enumerate(table_columns):
             if no == 0:
                 footer_row.append("Suma")
@@ -92,10 +99,38 @@ def output_table_to_xlsx(
 
     first_table_row = ws.max_row
 
+    site_name = Site.objects.first().domain
+    url = first_column_url.format(site_name=site_name)
+    autor_url = f"https://{site_name}/bpp/autor/"
     for row in dataset:
         ws.append(row)
 
-    ws.append(footer_row)
+        # URL dla pierwszej kolumny -- odnośnik do BPP
+        id_for_url = row[0].replace(" ", "")
+        if id_for_url.startswith("("):
+            id_for_url = id_for_url[1:-1]
+        ws.cell(row=ws.max_row, column=1).value = '=HYPERLINK("{}", "{}")'.format(
+            url + id_for_url + "/", row[0]
+        )
+
+        if autor_column_link is not None:
+            # Druga kolumna z ID autora -> bpp
+            ws.cell(
+                row=ws.max_row, column=autor_column_link + 1
+            ).value = '=HYPERLINK("{}", "{}")'.format(
+                autor_url + str(row[autor_column_link]), row[autor_column_link]
+            )
+
+        if autor_column_url is not None:
+            # URL dla czwartej kolumny -- odnośnik do pliku autora
+            ws.cell(
+                row=ws.max_row, column=autor_column_url + 1
+            ).value = '=HYPERLINK("{}", "{}")'.format(
+                string2fn(row[autor_column_url]) + ".xlsx", row[autor_column_url]
+            )
+
+    if footer_row:
+        ws.append(footer_row)
 
     if dataset:
         max_column = ws.max_column
@@ -123,6 +158,8 @@ def output_table_to_xlsx(
 
         ws.add_table(tab)
 
+    if totals is None:
+        totals = []
     for elem in totals:
         letter = get_column_letter(headers.index(elem) + 1)
         for row in range(2, ws.max_row):
@@ -132,6 +169,10 @@ def output_table_to_xlsx(
         ws.column_dimensions[letter].bestFit = True
 
     max_width = 55
+
+    if column_widths is None:
+        column_widths = {}
+
     for ncol, col in enumerate(ws.columns):
         max_length = 0
         column = col[0].column_letter  # Get the column name
@@ -140,26 +181,28 @@ def output_table_to_xlsx(
         if headers[ncol] in totals:
             continue
 
-        for cell in col:
-            try:  # Necessary to avoid error on empty cells
-                if len(str(cell.value)) > max_length:
-                    max_length = len(cell.value)
-            except (ValueError, TypeError):
-                pass
-        adjusted_width = (max_length + 2) * 1.1
-        if adjusted_width > max_width:
-            adjusted_width = max_width
+        if column in column_widths:
+            adjusted_width = column_widths[column]
+        else:
+            for cell in col:
+                try:  # Necessary to avoid error on empty cells
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(cell.value)
+                except (ValueError, TypeError):
+                    pass
+            adjusted_width = (max_length + 2) * 1.1
+            if adjusted_width > max_width:
+                adjusted_width = max_width
+
         ws.column_dimensions[column].width = adjusted_width
 
 
+def string2fn(s):
+    return s.strip().replace(" ", "_").replace("*", "x").replace("-", "_")
+
+
 def autor2fn(autor):
-    return (
-        f"{autor.nazwisko}_{autor.imiona}".lower()
-        .strip()
-        .replace(" ", "_")
-        .replace("*", "x")
-        .replace("-", "_")
-    )
+    return string2fn(f"{autor.nazwisko}_{autor.imiona}".lower())
 
 
 def normalize_xlsx_header_column_name(s):
