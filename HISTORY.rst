@@ -3,7 +3,7 @@
 Historia zmian
 ==============
 
-202110.1081-rc2
+202110.1081-rc6
 ---------------
 
 * raporty 3N plecakowy i genetyczny (#965),
