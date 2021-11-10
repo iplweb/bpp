@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load humanize static %}
+
+{% block extratitle %}
+    Zamówienie na raport 3N
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li class="current">Zamówienie na raport 3N</li>
+{% endblock %}
+
+{% block content %}
+    <h2>Zamówienie na raport 3N
+        <a class="button success" id="add-new-file" href="new/">
+            <i class="fi-page-add"></i>
+            nowy raport
+        </a>
+    </h2>
+    {% if object_list.exists %}
+        <p>
+            Poniżej znajduje się lista raportów zamówionych w systemie.
+        </p>
+        <ul>{% load humanize %}
+            {% for object in object_list %}
+                <li>
+                    <a href="{% url "ewaluacja2021:szczegoly-raportu3n" object.pk %}">
+                        raport <strong>{{ object.rodzaj }}</strong>
+                        ostatnio zmodyfikowany {{ object.ostatnio_zmodyfikowany|naturaltime }}
+                        {% if object.plik_wyjsciowy.exists %}
+                            - ukończono
+
+                        {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        Brak zamówionych raportów 3N.
+    {% endif %}
+
+{% endblock %}

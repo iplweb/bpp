@@ -11,10 +11,10 @@ class Plecakowy(Ewaluacja3NMixin):
     def __init__(
         self,
         nazwa_dyscypliny="nauki medyczne",
+        output_path=None,
     ):
         Ewaluacja3NMixin.__init__(
-            self=self,
-            nazwa_dyscypliny=nazwa_dyscypliny,
+            self=self, nazwa_dyscypliny=nazwa_dyscypliny, output_path=output_path
         )
 
         self.get_data()

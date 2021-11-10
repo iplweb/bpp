@@ -1,7 +1,9 @@
+import os
 import random
 import time
 from operator import attrgetter
 
+import matplotlib
 import pygad
 
 from ..util import SHUFFLE_TYPE, shuffle_array
@@ -22,10 +24,10 @@ class GAD(Ewaluacja3NMixin):
         enable_bubbles=True,
         enable_swapper=False,
         enable_mutation=False,
+        output_path=None,
     ):
         Ewaluacja3NMixin.__init__(
-            self=self,
-            nazwa_dyscypliny=nazwa_dyscypliny,
+            self=self, nazwa_dyscypliny=nazwa_dyscypliny, output_path=output_path
         )
 
         self.get_data()
@@ -71,6 +73,50 @@ class GAD(Ewaluacja3NMixin):
             "\r",
             end="",
         )
+
+    def plot_fitness(
+        self,
+        title="PyGAD - Generation vs. Fitness",
+        xlabel="Generation",
+        ylabel="Fitness",
+        linewidth=3,
+        font_size=14,
+        plot_type="plot",
+        color="#3870FF",
+        save_dir=None,
+    ):
+
+        self = self.ga_instance
+
+        fig = matplotlib.pyplot.figure()
+        if plot_type == "plot":
+            matplotlib.pyplot.plot(
+                self.best_solutions_fitness, linewidth=linewidth, color=color
+            )
+        elif plot_type == "scatter":
+            matplotlib.pyplot.scatter(
+                range(self.generations_completed + 1),
+                self.best_solutions_fitness,
+                linewidth=linewidth,
+                color=color,
+            )
+        elif plot_type == "bar":
+            matplotlib.pyplot.bar(
+                range(self.generations_completed + 1),
+                self.best_solutions_fitness,
+                linewidth=linewidth,
+                color=color,
+            )
+        matplotlib.pyplot.title(title, fontsize=font_size)
+        matplotlib.pyplot.xlabel(xlabel, fontsize=font_size)
+        matplotlib.pyplot.ylabel(ylabel, fontsize=font_size)
+
+        if save_dir is not None:
+            matplotlib.pyplot.savefig(
+                fname=os.path.join(save_dir, "fitness.png"), bbox_inches="tight"
+            )
+
+        return fig
 
     def pracuj(self):
 
@@ -136,9 +182,13 @@ class GAD(Ewaluacja3NMixin):
 
         print(f"\n\nNajlepsze rozwiązanie z algorytmu genetycznego: {fitness}")
         print("Sprawdz wykres wydajnosci.")
-        # self.ga_instance.plot_fitness(
-        #     title=self.nazwa_dyscypliny, xlabel="generacja", ylabel="suma PKDaut"
-        # )
+
+        self.plot_fitness(
+            title=self.nazwa_dyscypliny,
+            xlabel="generacja",
+            ylabel="suma PKDaut",
+            save_dir=self.output_path,
+        )
 
         solution = solution.tolist()
 
@@ -240,7 +290,6 @@ class GAD(Ewaluacja3NMixin):
                     )
 
         self.lista_prac = self.lista_prac_tuples
-        self.zrzuc_dane("genetyczny")
 
     def pozegnanie(self):
         print(

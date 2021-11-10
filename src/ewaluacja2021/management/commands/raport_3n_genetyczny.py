@@ -11,6 +11,7 @@ class Command(BaseCommand):
         parser.add_argument("--ile_najlepszych", default=40, type=int)
         parser.add_argument("--ile-losowych", default=50, type=int)
         parser.add_argument("--ile-zupelnie-losowych", default=30, type=int)
+        parser.add_argument("--output-path", default=None, type=str)
 
     @transaction.atomic
     def handle(
@@ -20,6 +21,7 @@ class Command(BaseCommand):
         ile_najlepszych,
         ile_losowych,
         ile_zupelnie_losowych,
+        output_path,
         liczba_n=None,
         *args,
         **options
@@ -31,7 +33,9 @@ class Command(BaseCommand):
             ile_najlepszych=ile_najlepszych,
             ile_losowych=ile_losowych,
             ile_zupelnie_losowych=ile_zupelnie_losowych,
+            output_path=output_path,
         )
         algorytm.powitanie()
         algorytm.pracuj()
+        algorytm.zrzuc_dane("genetyczny")
         algorytm.pozegnanie()

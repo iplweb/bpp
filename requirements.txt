@@ -75,6 +75,8 @@ cssmin==0.2.0
     # via -r requirements.in
 cssselect2==0.4.1
     # via weasyprint
+cycler==0.11.0
+    # via matplotlib
 daphne==2.5.0
     # via channels
 dbfread==2.0.7
@@ -256,6 +258,8 @@ incremental==21.3.0
     # via twisted
 jdcal==1.4.1
     # via openpyxl
+kiwisolver==1.3.2
+    # via matplotlib
 kombu==4.6.11
     # via celery
 lxml==4.6.3
@@ -266,10 +270,16 @@ markdown==3.2.1
     # via -r requirements.in
 markuppy==1.14
     # via tablib
+matplotlib==3.4.3
+    # via pygad
 moai-iplweb==2.0.0
     # via -r requirements.in
 msgpack==1.0.2
     # via channels-redis
+numpy==1.21.4
+    # via
+    #   matplotlib
+    #   pygad
 oauthlib==3.1.1
     # via requests-oauthlib
 odfpy==1.4.1
@@ -296,6 +306,7 @@ pillow==8.2.0
     # via
     #   -r requirements.in
     #   django-favicon-plus
+    #   matplotlib
     #   weasyprint
 ply==3.11
     # via
@@ -315,6 +326,8 @@ pycparser==2.20
     # via cffi
 pydyf==0.1.1
     # via weasyprint
+pygad==2.16.1
+    # via -r requirements.in
 pymed-iplweb==0.8.10
     # via -r requirements.in
 pyoai==2.5.0
@@ -328,7 +341,9 @@ pypandoc==1.5
     #   -r requirements.in
     #   django-flexible-reports
 pyparsing==2.4.7
-    # via packaging
+    # via
+    #   matplotlib
+    #   packaging
 pyphen==0.11.0
     # via weasyprint
 pytest-runner==5.3.1
@@ -337,6 +352,7 @@ python-dateutil==2.8.2
     # via
     #   arrow
     #   django-multiseek
+    #   matplotlib
 python-utils==2.5.6
     # via progressbar2
 pytz==2018.4

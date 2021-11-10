@@ -1,4 +1,5 @@
 import logging
+import os
 from collections import defaultdict
 from decimal import Decimal
 from operator import attrgetter
@@ -100,10 +101,7 @@ class SumatorMixin:
 
 
 class Ewaluacja3NMixin(SumatorMixin):
-    def __init__(
-        self,
-        nazwa_dyscypliny="nauki medyczne",
-    ):
+    def __init__(self, nazwa_dyscypliny="nauki medyczne", output_path=None):
         """
         maks_pkt_aut_calosc
             maksymalna ilość punktów dla poszczególnych autorów, słownik autor->maks pkt
@@ -114,6 +112,7 @@ class Ewaluacja3NMixin(SumatorMixin):
         """
 
         self.nazwa_dyscypliny = nazwa_dyscypliny
+        self.output_path = output_path
 
         maks_pkt_aut_calosc = maks_pkt_aut_calosc_get_from_db(self.nazwa_dyscypliny)
 
@@ -180,6 +179,10 @@ class Ewaluacja3NMixin(SumatorMixin):
         }
 
         nazwa = nazwa + "_" + self.nazwa_dyscypliny.replace(" ", "_") + ".json"
+
+        if self.output_path is not None:
+            nazwa = os.path.abspath(os.path.join(self.output_path, nazwa))
+
         with open(nazwa, "w") as f:
             simplejson.dump(
                 output,

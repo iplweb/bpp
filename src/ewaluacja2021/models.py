@@ -13,9 +13,42 @@ from .validators import xlsx_header_validator
 
 from django.contrib.postgres.fields import JSONField
 
+from bpp.models import Cache_Punktacja_Autora_Query
 from bpp.models.autor import Autor
 from bpp.models.dyscyplina_naukowa import Dyscyplina_Naukowa
 from bpp.models.uczelnia import Uczelnia
+
+
+def dyscypliny_naukowe_w_bazie():
+    return {
+        "pk__in": Cache_Punktacja_Autora_Query.objects.values_list(
+            "dyscyplina"
+        ).distinct()
+    }
+
+
+class ZamowienieNaRaport(models.Model):
+    rodzaj = models.CharField(
+        verbose_name="Rodzaj algorytmu",
+        max_length=20,
+        choices=[("plecakowy", "plecakowy"), ("genetyczny", "genetyczny")],
+    )
+    dyscyplina_naukowa = models.ForeignKey(
+        Dyscyplina_Naukowa,
+        on_delete=models.CASCADE,
+        limit_choices_to=dyscypliny_naukowe_w_bazie,
+    )
+    uid_zadania = models.TextField(blank=True, null=True)
+    plik_wyjsciowy = models.FileField()
+    wykres_wyjsciowy = models.ImageField()
+
+    ostatnio_zmodyfikowany = models.DateTimeField(auto_now=True)
+
+    def get_absolute_url(self):
+        return reverse("ewaluacja2021:szczegoly-raportu3n", args=(self.pk,))
+
+    class Meta:
+        ordering = ("-ostatnio_zmodyfikowany",)
 
 
 class LiczbaNDlaUczelni(models.Model):
