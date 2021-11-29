@@ -1,4 +1,3 @@
-# -*- encoding: utf-8 -*-
 from denorm import denormalized, depend_on_related
 from django.db import models
 from django.db.models import CASCADE, SET_NULL
@@ -32,6 +31,9 @@ class Praca_Doktorska_Baza(NieMaProcentowMixin, ModelZPBN_UID, Wydawnictwo_Zwart
 
             def select_related(self, *args, **kw):
                 return self
+
+            def odpiete_dyscypliny(self, *args, **kw):
+                return FakeSet([])
 
         ret = FakeAutorDoktoratuHabilitacji()
         ret.typ_odpowiedzialnosci = Typ_Odpowiedzialnosci.objects.get(skrot="aut.")

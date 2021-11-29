@@ -6,7 +6,7 @@ Historia zmian
 202110.1081-rc6
 ---------------
 
-* raporty 3N plecakowy i genetyczny (#965),
+* raporty 3N plecakowy i genetyczny z automatycznym odpinaniem publikacji (#965),
 
 202110.1081-rc1
 ---------------

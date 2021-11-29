@@ -1,4 +1,3 @@
-# -*- encoding: utf-8 -*-
 from denorm import denormalized, depend_on_related
 from dirtyfields.dirtyfields import DirtyFieldsMixin
 from django.db import models
@@ -181,6 +180,8 @@ class Wydawnictwo_Ciagle(
     @depend_on_related(
         "bpp.Wydawnictwo_Ciagle_Autor",
         only=(
+            "autor_id",
+            "jednostka_id",
             "typ_odpowiedzialnosci_id",
             "afiliuje",
             "dyscyplina_naukowa_id",
@@ -217,8 +218,7 @@ class Wydawnictwo_Ciagle(
     @depend_on_related("bpp.Wydawnictwo_Ciagle_Autor", only=("kolejnosc",))
     def opis_bibliograficzny_autorzy_cache(self):
         return [
-            "%s %s" % (x.autor.nazwisko, x.autor.imiona)
-            for x in self.autorzy_dla_opisu()
+            f"{x.autor.nazwisko} {x.autor.imiona}" for x in self.autorzy_dla_opisu()
         ]
 
     @denormalized(models.TextField, blank=True, null=True)

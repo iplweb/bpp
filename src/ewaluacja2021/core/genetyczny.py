@@ -17,7 +17,7 @@ class GAD(Ewaluacja3NMixin):
         self,
         nazwa_dyscypliny="nauki medyczne",
         max_gen=1000,
-        saturate=120,
+        saturate=300,
         ile_najlepszych=40,
         ile_losowych=50,
         ile_zupelnie_losowych=30,

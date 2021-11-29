@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 # Cache'ujemy:
 # - Wydawnictwo_Zwarte
 # - Wydawnictwo_Ciagle
@@ -391,6 +389,14 @@ class RekordBase(
             or Cache_Punktacja_Dyscypliny.objects.filter(
                 rekord_id=[self.id[0], self.id[1]]
             ).exists()
+        )
+
+    @cached_property
+    def ma_odpiete_dyscypliny(self):
+        return (
+            self.original.autorzy_set.exclude(dyscyplina_naukowa=None)
+            .exclude(przypieta=True)
+            .exists()
         )
 
     @cached_property

@@ -13,16 +13,20 @@
 
 {% block content %}
     <h2>Szczegóły raportu</h2>
-    Plik: {{ object.plik_wyjsciowy.name }}<br/>
-    Ostatnia aktualizacja: {{ object.ostatnio_zmodyfikowany }}<br/>
-
+    Raport: <Strong>{{ object.rodzaj }}</Strong><br/>
+    Stan: <strong>{{ object.status|lower }}</strong><br/>
+    Dyscyplina naukowa: <strong>{{ object.dyscyplina_naukowa.nazwa }}</strong><br/>
+    Plik:
     {% if not object.plik_wyjsciowy %}
-        <strong>Trwa tworzenie pliku. Odśwież stronę za kilkanaście minut celem pobrania rezultatów.</strong>
+        <strong>w trakcie opracowywania</strong>
     {% else %}
-        <a href="{% url "ewaluacja2021:szczegoly-raportu-3n-plik" object.pk %}">Kliknij, aby pobrać plik</a>
-        <p/>
-        {% if object.wykres_wyjsciowy %}
-            <img src="{% url "ewaluacja2021:szczegoly-raportu-3n-wykres" object.pk %}"/>
-        {% endif %}
+        <a href="{% url "ewaluacja2021:szczegoly-raportu-3n-plik" object.pk %}">{{ object.plik_wyjsciowy.name }}</a>
     {% endif %}
+    <br/>
+    Ostatnia aktualizacja: <strong>{{ object.ostatnio_zmodyfikowany }}</strong><br/>
+
+    {% if object.wykres_wyjsciowy %}
+        <img src="{% url "ewaluacja2021:szczegoly-raportu-3n-wykres" object.pk %}"/>
+    {% endif %}
+
 {% endblock %}

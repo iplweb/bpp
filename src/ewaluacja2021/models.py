@@ -20,18 +20,31 @@ from bpp.models.uczelnia import Uczelnia
 
 
 def dyscypliny_naukowe_w_bazie():
+    dyscypliny_z_liczba_n = LiczbaNDlaUczelni.objects.values_list(
+        "dyscyplina_naukowa", flat=True
+    )
+
     return {
-        "pk__in": Cache_Punktacja_Autora_Query.objects.values_list(
-            "dyscyplina"
-        ).distinct()
+        "pk__in": [
+            dyscyplina
+            for dyscyplina in Cache_Punktacja_Autora_Query.objects.values_list(
+                "dyscyplina", flat=True
+            ).distinct()
+            if dyscyplina in dyscypliny_z_liczba_n
+        ]
     }
 
 
 class ZamowienieNaRaport(models.Model):
     rodzaj = models.CharField(
         verbose_name="Rodzaj algorytmu",
-        max_length=20,
-        choices=[("plecakowy", "plecakowy"), ("genetyczny", "genetyczny")],
+        max_length=25,
+        choices=[
+            ("plecakowy", "plecakowy"),
+            ("plecakowy_bez_limitu", "plecakowy bez limitu na uczelnię"),
+            ("genetyczny", "genetyczny"),
+            ("genetyczny_z_odpinaniem", "genetyczny z odpinaniem"),
+        ],
     )
     dyscyplina_naukowa = models.ForeignKey(
         Dyscyplina_Naukowa,
@@ -43,6 +56,7 @@ class ZamowienieNaRaport(models.Model):
     wykres_wyjsciowy = models.ImageField()
 
     ostatnio_zmodyfikowany = models.DateTimeField(auto_now=True)
+    status = models.CharField(max_length=255, default="", blank=True, null=True)
 
     def get_absolute_url(self):
         return reverse("ewaluacja2021:szczegoly-raportu3n", args=(self.pk,))
