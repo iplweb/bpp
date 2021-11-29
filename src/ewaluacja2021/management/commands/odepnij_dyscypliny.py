@@ -23,8 +23,13 @@ class Command(BaseCommand):
         with transaction.atomic():
             for rekord in rekordy_danych.exclude(do_ewaluacji=True).exclude(slot=1):
                 original = rekord.rekord.original
-                # Odpinaj tylko w pracach, gdzie jest więcej jak jeden autor:
-                if original.autorzy_set.count() > 1:
+                # Odpinaj tylko w pracach, gdzie jest więcej jak jeden autor, ktoremu mozna odpiac:
+                if (
+                    original.autorzy_set.exclude(dyscyplina_naukowa_id=None)
+                    .filter(przypieta=True)
+                    .count()
+                    > 1
+                ):
                     original.autorzy_set.filter(
                         autor=rekord.autor, dyscyplina_naukowa=rekord.dyscyplina
                     ).update(przypieta=False)

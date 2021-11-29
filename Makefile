@@ -40,7 +40,8 @@ grunt:
 	grunt build
 
 yarn:
-	yarn install --no-progress --emoji false -s
+	yarn -v
+	yarn --verbose install
 
 assets: yarn grunt
 	${PYTHON} src/manage.py collectstatic --noinput -v0 --traceback
