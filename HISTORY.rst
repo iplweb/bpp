@@ -3,6 +3,11 @@
 Historia zmian
 ==============
 
+202111.1081-rc7
+---------------
+
+* automatycznie odpinanie publikacji dla raportu genetycznego 3N (#965),
+
 202110.1081-rc6
 ---------------
 

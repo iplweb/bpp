@@ -35,7 +35,7 @@ ALLOWED_HOSTS = ["dockerhost", "webserver", "localhost", "127.0.0.1", "mac.iplwe
 
 HTML_MINIFY = False
 
-CELERY_ALWAYS_EAGER = True  # True  # False
+CELERY_ALWAYS_EAGER = False  # True  # False
 CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
 
 EMAIL_PORT = 25

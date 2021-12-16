@@ -1,4 +1,4 @@
-VERSION = "202111.1081rc6"
+VERSION = "202111.1081rc7"
 
 if __name__ == "__main__":
     import sys

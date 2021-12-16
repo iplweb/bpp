@@ -20,7 +20,14 @@
         </th>
         <td>
             {{ praca.tekst_przed_pierwszym_autorem|default:"" }}
-            {% for autor in praca.autorzy_dla_opisu %}{% ifchanged autor.typ_odpowiedzialnosci %}[{{ autor.typ_odpowiedzialnosci.skrot|upper }}] {% endifchanged %}{% if links == "admin" %}<a href="{% url "admin:bpp_autor_change" autor.autor.pk %}">{% else %}{% if links == "normal" %}<a href="{% url "bpp:browse_autor" autor.autor.slug %}">{% else %}{% endif %}{% endif %}{% if links %}{{ autor.zapisany_jako }}{% else %}{{ autor.zapisany_jako|upper }}{% endif %}{% if links == "admin" or links == "normal" %}</a>{% endif %}{% if not forloop.last %}, {% else %}{{ praca.tekst_po_ostatnim_autorze|default:"" }}. {% endif %}{% endfor %}
+            {% for autor in praca.autorzy_dla_opisu %}{% ifchanged autor.typ_odpowiedzialnosci %}[
+                {{ autor.typ_odpowiedzialnosci.skrot|upper }}] {% endifchanged %}{% if links == "admin" %}
+                <a href="{% url "admin:bpp_autor_change" autor.autor.pk %}">
+                {% else %}{% if links == "normal" %}<a href="{% url "bpp:browse_autor" autor.autor.slug %}">{% else %}
+                {% endif %}{% endif %}{% if links %}{{ autor.zapisany_jako }}{% else %}
+                {{ autor.zapisany_jako|upper }}{% endif %}{% if links == "admin" or links == "normal" %}</a>{% endif %}
+            {% if not forloop.last %}, {% else %}{{ praca.tekst_po_ostatnim_autorze|default:"" }}.
+            {% endif %}{% endfor %}
         </td>
     </tr>
     {% if praca.zrodlo or praca.wydawnictwo_nadrzedne or praca.informacje or praca.szczegoly %}
@@ -52,6 +59,17 @@
         <tr>
             <th>Wydawca:</th>
             <td>{{ praca.wydawca|default:"" }} {{ praca.wydawca_opis|default:"" }}</td>
+        </tr>
+    {% endif %}
+
+    {% if praca.streszczenia.exists %}
+        <tr>
+            <th>Streszczenie:</th>
+            <td>{% for streszczenie in praca.streszczenia.all %}
+                <!-- <strong>{{streszczenie.jezyk_streszczenia.nazwa}}</strong> -->
+                <p>{{ streszczenie.streszczenie|safe }}</p>
+            {% endfor %}
+            </td>
         </tr>
     {% endif %}
 
@@ -400,6 +418,24 @@
                     <td>{{ pa.dyscyplina.nazwa }}</td>
                     <td>{{ pa.pkdaut }}</td>
                     <td>{{ pa.slot }}</td>
+                </tr>
+            {% endfor %}
+        </table>
+    {% endif %}
+{% endif %}
+
+{% if rekord.ma_odpiete_dyscypliny %}
+    {% if uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "always" or uczelnia.pokazuj_tabele_slotow_na_stronie_rekordu == "logged-in" and not request.user.is_anonymous %}
+        <h4>"Odpięte" dyscypliny:</h4>
+        <table>
+            <tr>
+                <th>Autor</th>
+                <th>Dyscyplina</th>
+            </tr>
+            {% for pa in praca.odpiete_dyscypliny.select_related %}
+                <tr>
+                <td>{{ pa.autor }}</td>
+                <td>{{ pa.dyscyplina_naukowa.nazwa }}</td>
                 </tr>
             {% endfor %}
         </table>

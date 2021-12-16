@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 """
 Klasy abstrakcyjne
 """
@@ -483,7 +481,7 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
         default=True,
         db_index=True,
         help_text="""Możesz odznaczyć, żeby "odpiąć" dyscyplinę od tego autora. Dyscyplina "odpięta" nie będzie
-        wykazywana do PBN, ale będzie pojawiała się np. w raportach i innych zestawieniach. """,
+        wykazywana do PBN oraz nie będzie używana do liczenia punktów dla danej pracy.""",
     )
 
     upowaznienie_pbn = models.BooleanField(
@@ -640,7 +638,7 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
             )
             # olewamy refresh_from_db i autor.aktualna_jednostka
 
-        return super(BazaModeluOdpowiedzialnosciAutorow, self).save(*args, **kw)
+        return super().save(*args, **kw)
 
 
 class ModelZeSzczegolami(models.Model):
@@ -845,7 +843,7 @@ def wez_zakres_stron(szczegoly):
     def ret(res):
         d = res.groupdict()
         if "poczatek" in d and "koniec" in d and d["koniec"] is not None:
-            return "%s-%s" % (d["poczatek"], d["koniec"])
+            return "{}-{}".format(d["poczatek"], d["koniec"])
 
         return "%s" % d["poczatek"]
 
@@ -1036,6 +1034,9 @@ class ModelZPrzeliczaniemDyscyplin(models.Model):
         if ipc.canAdapt():
             ipc.rebuildEntries()
         return ipc.serialize()
+
+    def odpiete_dyscypliny(self):
+        return self.autorzy_set.exclude(dyscyplina_naukowa=None).exclude(przypieta=True)
 
     class Meta:
         abstract = True

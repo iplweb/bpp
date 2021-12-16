@@ -11,12 +11,13 @@ class Plecakowy(Ewaluacja3NMixin):
     def __init__(
         self,
         nazwa_dyscypliny="nauki medyczne",
+        bez_limitu_uczelni=False,
         output_path=None,
     ):
         Ewaluacja3NMixin.__init__(
             self=self, nazwa_dyscypliny=nazwa_dyscypliny, output_path=output_path
         )
-
+        self.bez_limitu_uczelni = bez_limitu_uczelni
         self.get_data()
 
     @property
@@ -46,11 +47,16 @@ class Plecakowy(Ewaluacja3NMixin):
 
         for autor_id in pbar(self.get_lista_autorow_w_kolejnosci()):
 
-            wszystkie = list(
-                praca
-                for praca in self.lista_prac_db.filter(autor_id=autor_id)
-                if self.czy_moze_przejsc_warunek_uczelnia(praca)
-            )
+            if self.bez_limitu_uczelni:
+                wszystkie = list(
+                    praca for praca in self.lista_prac_db.filter(autor_id=autor_id)
+                )
+            else:
+                wszystkie = list(
+                    praca
+                    for praca in self.lista_prac_db.filter(autor_id=autor_id)
+                    if self.czy_moze_przejsc_warunek_uczelnia(praca)
+                )
 
             monografie = [x for x in wszystkie if x.monografia]
             nie_monografie = [x for x in wszystkie if not x.monografia]
