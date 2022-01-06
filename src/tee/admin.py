@@ -23,7 +23,6 @@ class LogAdmin(admin.ModelAdmin):
         "exit_value",
         "command_name",
         "args",
-        "kwargs",
         "stdout",
         "stderr",
     ]

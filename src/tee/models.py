@@ -1,7 +1,5 @@
 from django.db import models
 
-from tee import const
-
 from django.contrib.postgres.fields import JSONField
 
 
@@ -26,7 +24,6 @@ class Log(models.Model):
 
     command_name = models.TextField()
     args = JSONField(blank=True, null=True)
-    kwargs = JSONField(blank=True, null=True)
 
     stdout = models.TextField(blank=True, null=True)
     stderr = models.TextField(blank=True, null=True)
@@ -35,10 +32,6 @@ class Log(models.Model):
     def save(
         self, force_insert=False, force_update=False, using=None, update_fields=None
     ):
-        if self.kwargs:
-            for key in const.IGNORED_KWARGS:
-                if key in self.kwargs:
-                    del self.kwargs[key]
         return super().save(
             force_insert=force_insert,
             force_update=force_update,

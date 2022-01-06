@@ -3,7 +3,7 @@ import traceback
 from contextlib import redirect_stderr, redirect_stdout
 
 import simplejson
-from django.core.management import call_command as django_call_command
+from django.core.management import ManagementUtility
 
 from tee.models import Log
 from tee.utils import TeeIO
@@ -11,7 +11,7 @@ from tee.utils import TeeIO
 from django.utils import timezone
 
 
-def call_command(command_name, *args, **kwargs):
+def execute(argv, **kwargs):
     """This function calls django command specified as ``command_name``,
     saving it's stdout and stderr to an object ``tee.models.Log``, also
     outputting it on stdout/stderr.
@@ -21,15 +21,14 @@ def call_command(command_name, *args, **kwargs):
     stdout = TeeIO(kwargs.get("stdout") if "stdout" in kwargs else sys.stdout)
     stderr = TeeIO(kwargs.get("stderr") if "stderr" in kwargs else sys.stdout)
 
-    log = Log.objects.create(command_name=command_name, args=args, kwargs=kwargs)
+    log = Log.objects.create(command_name=argv[1], args=argv[2:])
     res = 127
     try:
         with redirect_stderr(stderr):
             with redirect_stdout(stdout):
                 try:
-                    res = django_call_command(
-                        command_name, stdout=stdout, stderr=stderr, *args, **kwargs
-                    )
+                    utility = ManagementUtility(argv)
+                    utility.execute()
                 except Exception:
                     res = 1
                     log.traceback = traceback.format_exc(limit=65535)
