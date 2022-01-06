@@ -59,6 +59,8 @@ def test_referat_20_pkt_bez_wydawcy(referat_z_dyscyplinami):
 
 @pytest.mark.django_db
 def test_referat_5_pkt_bez_wydawcy(referat_z_dyscyplinami):
+    rok = 2021
     referat_z_dyscyplinami.punkty_kbn = 5
+    referat_z_dyscyplinami.rok = rok
     res = ISlot(referat_z_dyscyplinami)
     assert res.__class__ == SlotKalkulator_Wydawnictwo_Ciagle_Prog3
