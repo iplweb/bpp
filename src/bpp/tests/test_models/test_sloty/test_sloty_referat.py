@@ -18,6 +18,7 @@ def test_referat_zle_punkty(referat_z_dyscyplinami):
 @pytest.mark.django_db
 def test_referat_15_pkt_wos(referat_z_dyscyplinami, baza_wos):
     referat_z_dyscyplinami.punkty_kbn = 15
+    referat_z_dyscyplinami.rok = 2021
     referat_z_dyscyplinami.zewnetrzna_baza_danych.create(baza=baza_wos)
     ISlot(referat_z_dyscyplinami)
 
@@ -25,12 +26,14 @@ def test_referat_15_pkt_wos(referat_z_dyscyplinami, baza_wos):
 @pytest.mark.django_db
 def test_referat_200_pkt(referat_z_dyscyplinami, baza_wos):
     referat_z_dyscyplinami.punkty_kbn = 200
+    referat_z_dyscyplinami.rok = 2021
     ISlot(referat_z_dyscyplinami)
 
 
 @pytest.mark.django_db
 def test_referat_70_pkt(referat_z_dyscyplinami, baza_wos):
     referat_z_dyscyplinami.punkty_kbn = 70
+    referat_z_dyscyplinami.rok = 2021
     ISlot(referat_z_dyscyplinami)
 
 
