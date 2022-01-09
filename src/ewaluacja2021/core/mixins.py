@@ -41,7 +41,7 @@ class SumatorMixin:
             return True
 
         # Czy uczelnia nie ma już dość takich publikacji?
-        if praca.rok >= 2019:
+        if praca.rok >= 2019 or praca.monografia:
             if self.sumy_slotow[LATA_2019_2021] + praca.slot > self.liczba_2_2_n:
                 return False
         else:
@@ -69,19 +69,21 @@ class SumatorMixin:
 
     def czy_moze_przejsc(self, praca):
         if (
-            self.czy_moze_przejsc_warunek_uczelnia(praca)
+            praca.id not in self.id_rekordow
+            and self.czy_moze_przejsc_warunek_uczelnia(praca)
             and self.czy_moze_przejsc_warunek_autor(praca)
-            and praca.id not in self.id_rekordow
         ):
             return True
 
-    def zsumuj_pojedyncza_prace(self, praca):
+    def zsumuj_pojedyncza_prace(self, praca, indeks_solucji=None):
         self.suma_pkd += praca.pkdaut
 
         # Tu dodajemy Cache_Punktacja_Autora.id, nie zaś rekord_id
         self.id_rekordow.add(praca.id)
+        if indeks_solucji is not None:
+            self.indeksy_solucji.add(indeks_solucji)
 
-        if praca.rok >= 2019:
+        if praca.rok >= 2019 or praca.monografia:
             self.sumy_slotow[LATA_2019_2021] += praca.slot
         else:
             self.sumy_slotow[LATA_2017_2018] += praca.slot
@@ -93,6 +95,7 @@ class SumatorMixin:
     def zeruj(self):
         self.suma_pkd = 0
         self.sumy_slotow = [0, 0]
+        self.indeksy_solucji = set()
 
         self.suma_prac_autorow_wszystko = defaultdict(int)
         self.suma_prac_autorow_monografie = defaultdict(int)
