@@ -7,7 +7,7 @@ from ewaluacja2021.core.genetyczny import GAD
 class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("--dyscyplina", default="nauki medyczne")
-        parser.add_argument("--generations", default=1000, type=int)
+        parser.add_argument("--generations", default=500, type=int)
         parser.add_argument("--ile_najlepszych", default=40, type=int)
         parser.add_argument("--ile-losowych", default=50, type=int)
         parser.add_argument("--ile-zupelnie-losowych", default=30, type=int)
