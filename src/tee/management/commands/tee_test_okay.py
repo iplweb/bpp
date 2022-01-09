@@ -1,7 +1,11 @@
 from django.core.management import BaseCommand
 
+from tee import const
+
 
 class Command(BaseCommand):
+    help = const.DONT_CALL
+
     def handle(self, *args, **options):
 
         self.stderr.write("wrote to stderr")

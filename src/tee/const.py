@@ -1,11 +1,1 @@
-IGNORED_KWARGS = [
-    "no_color",
-    "settings",
-    "traceback",
-    "verbosity",
-    "pythonpath",
-    "force_color",
-    "skip_checks",
-    "stdout",
-    "stderr",
-]
+DONT_CALL = "Used by django_tee tests. Don't call, does nothing. "

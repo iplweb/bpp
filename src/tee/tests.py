@@ -17,20 +17,18 @@ def stderr():
 
 
 @pytest.mark.django_db
-def test_tee_okay(stdout: StringIO, stderr: StringIO):
-    call_command("tee", "tee_test_okay", stdout=stdout, stderr=stderr)
-    assert Log.objects.first().exit_code == 0
+def test_tee_okay(stdout: StringIO, stderr: StringIO, mocker):
+    with mocker.patch("django.db.connections.close_all"):
+        # patch wymagany, bo BaseCommand wywołuje close_all
+        call_command("tee", "tee_test_okay", stdout=stdout, stderr=stderr)
+    assert Log.objects.first().finished_successfully
     assert "Used print()" in stdout.getvalue()
     assert "Used print()" in stderr.getvalue()
 
 
 @pytest.mark.django_db
-def test_tee_exception(stdout, stderr):
-    call_command("tee", "tee_test_exception", stdout=stdout, stderr=stderr)
+def test_tee_exception(stdout, stderr, mocker):
+    with mocker.patch("django.db.connections.close_all"):
+        # patch wymagany, bo BaseCommand wywołuje close_all
+        call_command("tee", "tee_test_exception", stdout=stdout, stderr=stderr)
     assert Log.objects.first().traceback
-
-
-@pytest.mark.django_db
-def test_tee_result(stdout, stderr):
-    call_command("tee", "tee_test_result", stdout=stdout, stderr=stderr)
-    assert "Unable to encode" in Log.objects.first().exit_value
