@@ -2,7 +2,6 @@ import sys
 import traceback
 from contextlib import redirect_stderr, redirect_stdout
 
-import simplejson
 from django.core.management import ManagementUtility
 
 from tee.models import Log
@@ -21,37 +20,21 @@ def execute(argv, **kwargs):
     stdout = TeeIO(kwargs.get("stdout") if "stdout" in kwargs else sys.stdout)
     stderr = TeeIO(kwargs.get("stderr") if "stderr" in kwargs else sys.stdout)
 
-    log = Log.objects.create(command_name=argv[1], args=argv[2:])
-    res = 127
+    log = Log.objects.create(command_name=argv[0], args=argv[1:])
+
     try:
         with redirect_stderr(stderr):
             with redirect_stdout(stdout):
                 try:
                     utility = ManagementUtility(argv)
                     utility.execute()
+                    log.finished_successfully = True
                 except Exception:
-                    res = 1
+                    log.finished_successfully = False
                     log.traceback = traceback.format_exc(limit=65535)
 
     finally:
         log.stdout = stdout.getvalue()
         log.stderr = stderr.getvalue()
         log.finished_on = timezone.now()
-
-        if res is None:
-            log.exit_code = 0
-        elif isinstance(res, int):
-            log.exit_code = res
-        else:
-            log.exit_code = -1
-
-            # if the return value is json-encodeable, save it to db:
-            try:
-                simplejson.dumps(res)
-                log.exit_value = res
-            except TypeError:
-                log.exit_value = (
-                    "Unable to encode results as JSON, thus unable to store it "
-                    "in the database. Repr: %r" % res
-                )
         log.save()

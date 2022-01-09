@@ -11,5 +11,12 @@ class Command(BaseCommand):
         parser.add_argument("otherthings", nargs="*")  # parser.add
 
     def handle(self, command_name, otherthings, *args, **options):
-        new_argv = [sys.argv[0]] + sys.argv[2:]
-        core.execute(new_argv)
+        new_argv = [sys.argv[0], command_name] + otherthings
+
+        kwargs = {}
+
+        for elem in ["stdout", "stderr"]:
+            if options.get(elem):
+                kwargs[elem] = options.get(elem)
+
+        core.execute(new_argv, **kwargs)

@@ -19,8 +19,7 @@ class LogAdmin(admin.ModelAdmin):
     readonly_fields = [
         "started_on",
         "finished_on",
-        "exit_code",
-        "exit_value",
+        "finished_successfully",
         "command_name",
         "args",
         "stdout",
