@@ -118,6 +118,10 @@ def maks_pkt_aut_monografie_get_from_db(nazwa_dyscypliny):
     }
 
 
+def splitEveryN(n, it):
+    return [it[i : i + n] for i in range(0, len(it), n)]
+
+
 Praca = namedtuple(
     "Praca",
     [
