@@ -6,6 +6,8 @@ Historia zmian
 202201.1082
 -----------
 * poprawka błędu związanego z uruchamianiem procedur na serwerze przez django_tee (#1171)
+* potencjalna poprawka błędu związanego z jednoczesnym działaniem wielu wątków generujących raporty,
+  przebudowujących dane itp. a powstawaniem deadlocks przy przebudowie bazy (#1185),
 
 202111.1081-rc7
 ---------------
