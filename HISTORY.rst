@@ -3,7 +3,7 @@
 Historia zmian
 ==============
 
-202201.1082
+202201.1081
 -----------
 * poprawka błędu związanego z uruchamianiem procedur na serwerze przez django_tee (#1171)
 * potencjalna poprawka błędu związanego z jednoczesnym działaniem wielu wątków generujących raporty,
