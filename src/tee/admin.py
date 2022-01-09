@@ -9,12 +9,14 @@ from django.utils.safestring import mark_safe
 @admin.register(Log)
 class LogAdmin(admin.ModelAdmin):
     list_display = [
-        "command_name",
+        "cmd_name",
         "started_on",
         "finished_on",
         "finished_successfully",
         "last_5_lines",
     ]
+
+    list_per_page = 10
 
     readonly_fields = [
         "started_on",
@@ -24,7 +26,20 @@ class LogAdmin(admin.ModelAdmin):
         "args",
         "stdout",
         "stderr",
+        "traceback",
     ]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def cmd_name(self, obj):
+        args = ""
+        if obj.args:
+            args = " {' '.join(obj.args)}"
+        return f"{obj.command_name}" + args
 
     def finished_successfully(self, obj: Log):
         if obj.exit_code == 0:
@@ -36,12 +51,9 @@ class LogAdmin(admin.ModelAdmin):
 
         if obj.traceback:
             s = obj.traceback
-        else:
-            if obj.exit_code == 0:
-                s = obj.stdout
 
         if not s:
-            s = obj.exit_value
+            s = obj.stdout
 
         r = last_n_lines(s, nlines=5)
         if r is None:

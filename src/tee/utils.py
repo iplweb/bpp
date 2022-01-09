@@ -24,4 +24,8 @@ class TeeIO(StringIO):
 def last_n_lines(s, nlines):
     if s is None:
         return
-    return "\n".join(s.split("\n")[neg(nlines) :])
+    lines = s.split("\n")
+    prefix = ""
+    if len(lines) > nlines:
+        prefix = "[...]\n"
+    return prefix + "\n".join(lines[neg(nlines) :])

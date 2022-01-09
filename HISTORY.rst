@@ -11,6 +11,7 @@ Historia zmian
 * wliczaj monografie do limitu 2.2N dla uczelni dla algorytmów liczących 3N (#1198),
 * do algorytmu genetycznego wprowadzone zostały epoki - kolejne pokolenia osobników, korzystające z populacji
   rozwiązań obliczonych przez algorytm z poprzednimi ustawieniami (b/n),
+* napraw stronę administracyjną django_tee (b/n).
 
 202111.1081-rc7
 ---------------
