@@ -1,8 +1,9 @@
-from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.db.models.deletion import DO_NOTHING
 from django.db.models.query import QuerySet
 from django_group_by import GroupByMixin
+
+from django.contrib.postgres.fields import ArrayField
 
 from bpp.fields import YearField
 from bpp.models import Autor_Dyscyplina, Autorzy, Rekord
@@ -40,3 +41,15 @@ class RaportUczelniaEwaluacjaView(models.Model):
         managed = False
         ordering = ("rekord__tytul_oryginalny", "autorzy__kolejnosc")
         db_table = "bpp_uczelnia_ewaluacja_view"
+
+
+class RaportEwaluacjaUpowaznieniaView(models.Model):
+    id = ArrayField(models.PositiveIntegerField(), 4, primary_key=True)
+
+    rekord = models.ForeignKey(Rekord, DO_NOTHING, related_name="+")
+    autorzy = models.ForeignKey(Autorzy, DO_NOTHING, related_name="+")
+    autor_dyscyplina = models.ForeignKey(Autor_Dyscyplina, DO_NOTHING, related_name="+")
+
+    class Meta:
+        managed = False
+        db_table = "bpp_ewaluacja_upowaznienia_view"

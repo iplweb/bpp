@@ -2,7 +2,9 @@
 
 # Konfiguracja hosta 'master'
 
-from .base import *
+import os
+
+from .base import *  # NOQA
 
 DEBUG = True
 
@@ -27,4 +29,11 @@ COMPRESS_OFFLINE = False
 
 HTML_MINIFY = False
 
-DATABASES["default"]["CONN_MAX_AGE"] = 0
+DATABASES["default"]["CONN_MAX_AGE"] = 0  # noqa
+
+# Vide komentarz w TEMPLATES[0]["OPTIONS"]["loaders"]
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.dummy.DummyCache",
+    }
+}

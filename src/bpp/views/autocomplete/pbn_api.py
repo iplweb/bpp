@@ -8,7 +8,7 @@ from sentry_sdk import capture_exception
 from pbn_api.client import PBNClient
 from pbn_api.exceptions import AccessDeniedException
 from pbn_api.integrator import ACTIVE, zapisz_mongodb
-from pbn_api.models import Journal, Publication
+from pbn_api.models import Journal, Publication, Scientist
 
 from django.contrib.auth.mixins import LoginRequiredMixin
 
@@ -148,6 +148,23 @@ class PublicationAutocomplete(BasePBNAutocomplete):
             | Q(title__icontains=word)
             | Q(isbn__exact=word)
             | Q(doi__icontains=word)
+        )
+
+
+class ScientistAutocomplete(BasePBNAutocomplete):
+
+    pbn_api_model = Scientist
+    sort_order = ("from_institution_api", "lastName", "name")
+
+    def fetch_pbn_data(self, client, query):
+        return client.get_person_by_id(query)
+
+    def filter_queryset(self, qs, word):
+        return qs.filter(
+            Q(lastName__istartswith=self.q.strip())
+            | Q(name__icontains=word)
+            | Q(pbnId__exact=word)
+            | Q(orcid__icontains=word)
         )
 
 

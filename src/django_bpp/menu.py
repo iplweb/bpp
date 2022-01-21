@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 """
 This file was generated with the custommenu management command, it contains
 the classes for the admin menu, you can customize this class as you want.
@@ -256,6 +254,10 @@ STRUKTURA_MENU = [
 
 REDAKTOR_MENU = [
     ("Autorzy", "/admin/bpp/autor/"),
+    (
+        "Autorzy - udziały (Ewaluacja 2021)",
+        "/admin/ewaluacja2021/iloscudzialowdlaautora/",
+    ),
     ("Źródła", "/admin/bpp/zrodlo/"),
     ("Serie wydawnicze", "/admin/bpp/seria_wydawnicza/"),
     ("Konferencje", "/admin/bpp/konferencja/"),
@@ -269,6 +271,10 @@ REDAKTOR_MENU = [
     (
         "Rozbieżności dyscyplin",
         "/admin/rozbieznosci_dyscyplin/rozbieznosciview/",
+    ),
+    (
+        "Rozbieżności dyscyplin źródeł",
+        "/admin/rozbieznosci_dyscyplin/rozbieznoscizrodelview/",
     ),
 ]
 
@@ -325,4 +331,4 @@ class CustomMenu(Menu):
         flt("raporty", "Raporty", RAPORTY_MENU)
         flt("administracja", "Administracja", ADMIN_MENU)
 
-        return super(CustomMenu, self).init_with_context(context)
+        return super().init_with_context(context)

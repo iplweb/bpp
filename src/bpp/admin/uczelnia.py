@@ -1,9 +1,9 @@
 from django import forms
 
+from ewaluacja2021.models import LiczbaNDlaUczelni
 from ..models import Uczelnia, Ukryj_Status_Korekty, Wydzial
 
 # Uczelnia
-from ..models.ewaluacja2021 import Ewaluacja2021LiczbaNDlaUczelni
 from .core import CommitedModelAdmin, RestrictDeletionToAdministracjaGroupMixin
 from .helpers import ADNOTACJE_FIELDSET, ZapiszZAdnotacjaMixin
 
@@ -17,8 +17,8 @@ class WydzialInlineForm(forms.ModelForm):
         widgets = {"kolejnosc": forms.HiddenInput}
 
 
-class Ewaluacja2021LiczbaNDlaUczelniInline(admin.TabularInline):
-    model = Ewaluacja2021LiczbaNDlaUczelni
+class LiczbaNDlaUczelniInline(admin.TabularInline):
+    model = LiczbaNDlaUczelni
     extra = 1
 
     class Meta:
@@ -152,7 +152,7 @@ class UczelniaAdmin(
     inlines = [
         WydzialInline,
         Ukryj_Status_KorektyInline,
-        Ewaluacja2021LiczbaNDlaUczelniInline,
+        LiczbaNDlaUczelniInline,
     ]
 
 

@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 import os
 import random
 import string
@@ -73,8 +71,23 @@ TEMPLATES = [
             "loaders": [
                 "admin_tools.template_loaders.Loader",
                 "dbtemplates.loader.Loader",
-                "django.template.loaders.filesystem.Loader",
-                "django.template.loaders.app_directories.Loader",
+                # Taka kolejnosc "laoders", i nie cache'ujemy tych dwóch powyżej, bo:
+                # - dbtemplates ma swoje cacheowanie i uzywa wbudowanego backendu
+                # - wbudowany backend domyslnie to 'locmem'
+                # - jezeli uruchomie denorm_queue i serwer, to nie ma wymiany danych miedzy
+                #   nimi obydwoma.
+                # - pliki moga sie cache'owac, zarowno na testach jak i na produkcji,
+                # - ... gdyz na testach jest DummyCacheBackend, a produkcja uzywa redis.
+                # - rozchodzi sie o to, ze denorm_queue i reszta procesow musi miec podobna
+                #   zawartosc cache-backendu,
+                # - ... ktorej nie zapewni LocMem, bo on jest tylko na jeden proces.
+                (
+                    "django.template.loaders.cached.Loader",
+                    [
+                        "django.template.loaders.filesystem.Loader",
+                        "django.template.loaders.app_directories.Loader",
+                    ],
+                ),
             ],
             "context_processors": [
                 "django.contrib.auth.context_processors.auth",
@@ -145,6 +158,7 @@ if TESTING:
 
 
 INSTALLED_APPS = [
+    "tee",
     "denorm.apps.DenormAppConfig",
     "reversion",
     "djangoql",
@@ -210,7 +224,6 @@ INSTALLED_APPS = [
     "favicon",
     "miniblog",
     "import_dyscyplin",
-    "import_dyscyplin_zrodel",
     "mptt",
     "import_dbf",
     "rest_framework",
@@ -640,7 +653,6 @@ PERMISSIONS_WIDGET_EXCLUDE_APPS = [
     "egeria",
     "eksport_pbn",
     "import_dyscyplin",
-    "import_dyscyplin_zrodel",
     "import_list_if",
     "import_pracownikow",
     "integrator2",
@@ -674,3 +686,8 @@ PERMISSIONS_WIDGET_EXCLUDE_MODELS = [
 
 
 DBTEMPLATES_USE_REVERSION = True
+
+DENORM_DISABLE_AUTOTIME_DURING_FLUSH = True
+DENORM_AUTOTIME_FIELD_NAMES = [
+    "ostatnio_zmieniony",
+]

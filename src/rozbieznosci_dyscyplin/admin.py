@@ -5,7 +5,7 @@ from json import JSONDecodeError
 from django.http import HttpResponseRedirect
 from django.urls import path
 
-from rozbieznosci_dyscyplin.models import RozbieznosciView
+from rozbieznosci_dyscyplin.models import RozbieznosciView, RozbieznosciZrodelView
 
 from django.contrib import admin, messages
 
@@ -14,7 +14,7 @@ from django.utils.itercompat import is_iterable
 from bpp.admin.helpers import link_do_obiektu
 
 
-def parse_object_id(object_id):
+def parse_object_id(object_id, max_len=3):
     # object_id '(29, 93812, 40627)'
     try:
         ret = json.loads(
@@ -28,7 +28,7 @@ def parse_object_id(object_id):
     if not is_iterable(ret):
         return
 
-    if not len(ret) == 3:
+    if not len(ret) == max_len:
         return
 
     for elem in ret:
@@ -144,8 +144,19 @@ def ustaw_druga_dyscypline(*args, **kw):
     return HttpResponseRedirect(".")
 
 
+class ReadonlyAdminMixin:
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
 @admin.register(RozbieznosciView)
-class RozbieznosciViewAdmin(admin.ModelAdmin):
+class RozbieznosciViewAdmin(ReadonlyAdminMixin, admin.ModelAdmin):
     list_display = [
         "rekord",
         "rok",
@@ -172,17 +183,7 @@ class RozbieznosciViewAdmin(admin.ModelAdmin):
     list_per_page = 25
     search_fields = ["rekord__tytul_oryginalny", "autor__nazwisko", "autor__imiona"]
 
-    def has_delete_permission(self, request, obj=None):
-        return False
-
-    def has_add_permission(self, request):
-        return False
-
-    def has_change_permission(self, request, obj=None):
-        return False
-
     def get_object(self, request, object_id, from_field=None):
-
         parse_incoming_id = parse_object_id(object_id)
         return RozbieznosciView.objects.get(pk=tuple(parse_incoming_id))
 
@@ -226,3 +227,46 @@ class RozbieznosciViewAdmin(admin.ModelAdmin):
             path("przypisz-wszystkim-druga/", self.przypisz_druga_wszystkim),
         ]
         return my_urls + urls
+
+
+@admin.register(RozbieznosciZrodelView)
+class RozbieznosciZrodelViewAdmin(ReadonlyAdminMixin, admin.ModelAdmin):
+    list_display = [
+        "wydawnictwo_ciagle",
+        "zrodlo",
+        "autor",
+        "dyscyplina_naukowa",
+    ]
+    list_select_related = [
+        "wydawnictwo_ciagle",
+        "zrodlo",
+        "autor",
+        "dyscyplina_naukowa",
+    ]
+
+    list_filter = [
+        "dyscyplina_naukowa",
+    ]
+
+    list_per_page = 25
+    search_fields = [
+        "wydawnictwo_ciagle__tytul_oryginalny",
+        "wydawnictwo_ciagle__rok",
+        "zrodlo__nazwa",
+        "autor__nazwisko",
+        "autor__imiona",
+        "dyscyplina_naukowa__nazwa",
+        "dyscyplina_naukowa__kod",
+    ]
+
+    readonly_fields = [
+        "wydawnictwo_ciagle",
+        "dyscyplina_naukowa",
+        "autor",
+        "zrodlo",
+        "id",
+    ]
+
+    def get_object(self, request, object_id, from_field=None):
+        parse_incoming_id = parse_object_id(object_id, max_len=4)
+        return RozbieznosciZrodelView.objects.get(pk=tuple(parse_incoming_id))

@@ -422,7 +422,7 @@ def test_prace_autora_z_afiliowanych_jednostek(typy_odpowiedzialnosci):
 def test_rebuild_ciagle(
     django_assert_max_num_queries, wydawnictwo_ciagle_z_dwoma_autorami, denorms
 ):
-    with django_assert_max_num_queries(36):
+    with django_assert_max_num_queries(40):
         denorms.rebuildall("Wydawnictwo_Ciagle")
 
 
@@ -430,11 +430,11 @@ def test_rebuild_ciagle(
 def test_rebuild_zwarte(
     django_assert_max_num_queries, wydawnictwo_zwarte_z_autorem, denorms
 ):
-    with django_assert_max_num_queries(35):
+    with django_assert_max_num_queries(40):
         denorms.rebuildall("Wydawnictwo_Zwarte")
 
 
 @pytest.mark.django_db
 def test_rebuild_patent(django_assert_max_num_queries, patent, denorms):
-    with django_assert_max_num_queries(32):
+    with django_assert_max_num_queries(40):
         denorms.rebuildall("Patent")

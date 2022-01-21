@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% load humanize static %}
+
+{% block extratitle %}
+    Raport 3N - szczegóły
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="..">lista raportów 3N</a></li>
+    <li class="current">szczegóły raportu</li>
+{% endblock %}
+
+{% block content %}
+    <h2>Szczegóły raportu</h2>
+    Raport: <Strong>{{ object.rodzaj }}</Strong><br/>
+    Stan: <strong>{{ object.status|lower }}</strong><br/>
+    Dyscyplina naukowa: <strong>{{ object.dyscyplina_naukowa.nazwa }}</strong><br/>
+    Plik:
+    {% if not object.plik_wyjsciowy %}
+        <strong>w trakcie opracowywania</strong>
+    {% else %}
+        <a href="{% url "ewaluacja2021:szczegoly-raportu-3n-plik" object.pk %}">{{ object.plik_wyjsciowy.name }}</a>
+    {% endif %}
+    <br/>
+    Ostatnia aktualizacja: <strong>{{ object.ostatnio_zmodyfikowany }}</strong><br/>
+
+    {% if object.wykres_wyjsciowy %}
+        <img src="{% url "ewaluacja2021:szczegoly-raportu-3n-wykres" object.pk %}"/>
+    {% endif %}
+
+{% endblock %}

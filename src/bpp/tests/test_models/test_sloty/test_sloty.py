@@ -302,6 +302,9 @@ def test_ISlot_wydawnictwo_zwarte_redakcja_i_autorstwo(zwarte_z_dyscyplinami):
     a1.typ_odpowiedzialnosci = Typ_Odpowiedzialnosci.objects.get(skrot="red.")
     a1.save()
 
+    zwarte_z_dyscyplinami.rok = 2021
+    zwarte_z_dyscyplinami.save()
+
     with pytest.raises(CannotAdapt, match="ma jednocześnie"):
         ISlot(zwarte_z_dyscyplinami)
 
@@ -309,6 +312,8 @@ def test_ISlot_wydawnictwo_zwarte_redakcja_i_autorstwo(zwarte_z_dyscyplinami):
 @pytest.mark.django_db
 def test_ISlot_wydawnictwo_zwarte_bez_red_bez_aut(zwarte_z_dyscyplinami):
     zwarte_z_dyscyplinami.autorzy_set.all().delete()
+    zwarte_z_dyscyplinami.rok = 2021
+    zwarte_z_dyscyplinami.save()
 
     with pytest.raises(CannotAdapt, match="nie posiada"):
         ISlot(zwarte_z_dyscyplinami)
@@ -317,28 +322,34 @@ def test_ISlot_wydawnictwo_zwarte_bez_red_bez_aut(zwarte_z_dyscyplinami):
 @pytest.mark.django_db
 def test_ISlot_wydawnictwo_Zwarte_nie_te_punkty(zwarte_z_dyscyplinami):
     zwarte_z_dyscyplinami.punkty_kbn = 12345
+    zwarte_z_dyscyplinami.rok = 2021
     with pytest.raises(CannotAdapt, match="nie można dopasować do żadnej z grup"):
         ISlot(zwarte_z_dyscyplinami)
 
 
 @pytest.mark.django_db
 def test_ISlot_wydawnictwo_zwarte_tier3(zwarte_z_dyscyplinami):
+    zwarte_z_dyscyplinami.rok = 2021
     i = ISlot(zwarte_z_dyscyplinami)
     assert isinstance(i, SlotKalkulator_Wydawnictwo_Zwarte_Prog3)
 
 
 @pytest.mark.django_db
-def test_ISlot_wydawnictwo_zwarte_tier2(zwarte_z_dyscyplinami, wydawca, rok):
+def test_ISlot_wydawnictwo_zwarte_tier2(zwarte_z_dyscyplinami, wydawca):
+    rok = 2021
     wydawca.poziom_wydawcy_set.create(rok=rok, poziom=1)
     zwarte_z_dyscyplinami.punkty_kbn = 80
+    zwarte_z_dyscyplinami.rok = rok
     i = ISlot(zwarte_z_dyscyplinami)
     assert isinstance(i, SlotKalkulator_Wydawnictwo_Zwarte_Prog2)
 
 
 @pytest.mark.django_db
-def test_ISlot_wydawnictwo_zwarte_tier1(zwarte_z_dyscyplinami, wydawca, rok):
+def test_ISlot_wydawnictwo_zwarte_tier1(zwarte_z_dyscyplinami, wydawca):
+    rok = 2021
     wydawca.poziom_wydawcy_set.create(rok=rok, poziom=2)
     zwarte_z_dyscyplinami.punkty_kbn = 200
+    zwarte_z_dyscyplinami.rok = rok
     i = ISlot(zwarte_z_dyscyplinami)
     assert isinstance(i, SlotKalkulator_Wydawnictwo_Zwarte_Prog1)
 
@@ -347,8 +358,10 @@ def test_ISlot_wydawnictwo_zwarte_tier1(zwarte_z_dyscyplinami, wydawca, rok):
 def test_ISlot_wydawnictwo_zwarte_tier1_brak_afiliacji(
     zwarte_z_dyscyplinami, wydawca, rok, dyscyplina1, dyscyplina2
 ):
+    rok = 2021
     wydawca.poziom_wydawcy_set.create(rok=rok, poziom=2)
     zwarte_z_dyscyplinami.punkty_kbn = 200
+    zwarte_z_dyscyplinami.rok = rok
 
     i = ISlot(zwarte_z_dyscyplinami)
     assert i.autorzy_z_dyscypliny(dyscyplina1)

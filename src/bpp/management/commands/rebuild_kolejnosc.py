@@ -1,17 +1,9 @@
 # -*- encoding: utf-8 -*-
 
-from django.core.management import BaseCommand
-from django.db import transaction
-
-from bpp.models import Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor, Patent_Autor
-from bpp.models.cache import Rekord
-
 from django.conf import settings
+from django.core.management import BaseCommand
 
-# W tym poleceniu chodzi wyłącznie o przypilnowanie prawidłowej kolejności autorów.
-# Wywołanie błedu w sytuacji, gdy autorzy mają zaznaczone afiliacje na obce jednostki
-# nie ma znaczenia, zatem:
-setattr(settings, "BPP_WALIDUJ_AFILIACJE_AUTOROW", False)
+from bpp.models import Patent_Autor, Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor
 
 
 class Command(BaseCommand):
@@ -34,40 +26,52 @@ class Command(BaseCommand):
         # Jeżeli będziemy to robić z włączonym cache, dojdzie do przyblokowania
         # kolejki Celery. Realnie renumeracja kolejności nie pociąga za sobą zmiany
         # w opisach bibliograficznych, więc musimy to wyłączyć:
-        from bpp.models import cache
+        pass
 
-        cache.disable()
+        # W tym poleceniu chodzi wyłącznie o przypilnowanie prawidłowej kolejności autorów.
+        # Wywołanie błedu w sytuacji, gdy autorzy mają zaznaczone afiliacje na obce jednostki
+        # nie ma znaczenia, zatem:
+        _orig_value = getattr(settings, "BPP_WALIDUJ_AFILIACJE_AUTOROW", True)
 
-        for klass in [Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor, Patent_Autor]:
-            if options["verbosity"] >= 2:
-                print(klass)
+        try:
+            setattr(settings, "BPP_WALIDUJ_AFILIACJE_AUTOROW", False)
 
-            old_id = None
-            # Taki porządek sortowania, bo jeżeli się trafią dwa rekordy z tą
-            # samą kolejnością, to ten o mniejszym ID ma pierwszeństwo
-            q = klass.objects.all().order_by("rekord_id", "kolejnosc", "id")
+            for klass in [
+                Wydawnictwo_Ciagle_Autor,
+                Wydawnictwo_Zwarte_Autor,
+                Patent_Autor,
+            ]:
+                if options["verbosity"] >= 2:
+                    print(klass)
 
-            for elem in q:
+                old_id = None
+                # Taki porządek sortowania, bo jeżeli się trafią dwa rekordy z tą
+                # samą kolejnością, to ten o mniejszym ID ma pierwszeństwo
+                q = klass.objects.all().order_by("rekord_id", "kolejnosc", "id")
 
-                if old_id != elem.rekord_id:
-                    old_id = elem.rekord_id
-                    next_kolejnosc = 0
-                    pre = "---"
+                for elem in q:
 
-                if next_kolejnosc != elem.kolejnosc:
-                    if options["verbosity"] >= 2:
-                        if pre is not None:
-                            print(pre)
-                        pre = None
-                        print(
-                            elem.rekord_id,
-                            elem.id,
-                            "kolejnosc",
-                            elem.kolejnosc,
-                            ":=",
-                            next_kolejnosc,
-                        )
-                    elem.kolejnosc = next_kolejnosc
-                    elem.save()
+                    if old_id != elem.rekord_id:
+                        old_id = elem.rekord_id
+                        next_kolejnosc = 0
+                        pre = "---"
 
-                next_kolejnosc += 1
+                    if next_kolejnosc != elem.kolejnosc:
+                        if options["verbosity"] >= 2:
+                            if pre is not None:
+                                print(pre)
+                            pre = None
+                            print(
+                                elem.rekord_id,
+                                elem.id,
+                                "kolejnosc",
+                                elem.kolejnosc,
+                                ":=",
+                                next_kolejnosc,
+                            )
+                        elem.kolejnosc = next_kolejnosc
+                        elem.save()
+
+                    next_kolejnosc += 1
+        finally:
+            setattr(settings, "BPP_WALIDUJ_AFILIACJE_AUTOROW", _orig_value)

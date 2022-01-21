@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 # Cache'ujemy:
 # - Wydawnictwo_Zwarte
 # - Wydawnictwo_Ciagle
@@ -190,17 +188,32 @@ class RekordManager(FulltextSearchMixin, models.Manager):
             .distinct()
         )
 
-    def prace_jednostki(self, jednostka):
+    def prace_jednostki(self, jednostka, afiliowane=None):
+        if afiliowane is None:
+            return self.filter(
+                autorzy__jednostka__pk__in=list(
+                    jednostka.get_descendants(include_self=True).values_list(
+                        "pk", flat=True
+                    )
+                )
+            ).distinct()
+
         return self.filter(
             autorzy__jednostka__pk__in=list(
                 jednostka.get_descendants(include_self=True).values_list(
                     "pk", flat=True
                 )
-            )
+            ),
+            autorzy__afiliuje=afiliowane,
         ).distinct()
 
-    def prace_wydzialu(self, wydzial):
-        return self.filter(autorzy__jednostka__wydzial=wydzial).distinct()
+    def prace_wydzialu(self, wydzial, afiliowane=None):
+        if afiliowane is None:
+            return self.filter(autorzy__jednostka__wydzial=wydzial).distinct()
+
+        return self.filter(
+            autorzy__jednostka__wydzial=wydzial, autorzy__afiliuje=afiliowane
+        ).distinct()
 
     def redaktorzy_z_jednostki(self, jednostka):
         return self.filter(
@@ -376,6 +389,14 @@ class RekordBase(
             or Cache_Punktacja_Dyscypliny.objects.filter(
                 rekord_id=[self.id[0], self.id[1]]
             ).exists()
+        )
+
+    @cached_property
+    def ma_odpiete_dyscypliny(self):
+        return (
+            self.original.autorzy_set.exclude(dyscyplina_naukowa=None)
+            .exclude(przypieta=True)
+            .exists()
         )
 
     @cached_property

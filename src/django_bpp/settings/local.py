@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 # Lokalny development (na moim Maku)
 
 import os
@@ -37,7 +35,7 @@ ALLOWED_HOSTS = ["dockerhost", "webserver", "localhost", "127.0.0.1", "mac.iplwe
 
 HTML_MINIFY = False
 
-CELERY_ALWAYS_EAGER = True  # True  # False
+CELERY_ALWAYS_EAGER = False  # True  # False
 CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
 
 EMAIL_PORT = 25
@@ -55,3 +53,19 @@ if DEBUG_TOOLBAR and DEBUG:
     INSTALLED_APPS.append("debug_toolbar")
 
 DATABASES["default"]["CONN_MAX_AGE"] = 0
+
+
+# Vide komentarz w TEMPLATES[0]["OPTIONS"]["loaders"]
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.dummy.DummyCache",
+    }
+}
+
+
+TEMPLATES[0]["OPTIONS"]["loaders"] = [  # noqa
+    "admin_tools.template_loaders.Loader",
+    "dbtemplates.loader.Loader",
+    "django.template.loaders.filesystem.Loader",
+    "django.template.loaders.app_directories.Loader",
+]

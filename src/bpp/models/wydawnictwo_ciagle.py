@@ -1,4 +1,3 @@
-# -*- encoding: utf-8 -*-
 from denorm import denormalized, depend_on_related
 from dirtyfields.dirtyfields import DirtyFieldsMixin
 from django.db import models
@@ -6,7 +5,12 @@ from django.db.models import CASCADE, SET_NULL
 
 from django.contrib.postgres.fields import ArrayField, JSONField
 
-from bpp.models import MaProcentyMixin, parse_informacje, wez_zakres_stron
+from bpp.models import (
+    BazaModeluStreszczen,
+    MaProcentyMixin,
+    parse_informacje,
+    wez_zakres_stron,
+)
 from bpp.models.abstract import (
     BazaModeluOdpowiedzialnosciAutorow,
     DodajAutoraMixin,
@@ -176,6 +180,8 @@ class Wydawnictwo_Ciagle(
     @depend_on_related(
         "bpp.Wydawnictwo_Ciagle_Autor",
         only=(
+            "autor_id",
+            "jednostka_id",
             "typ_odpowiedzialnosci_id",
             "afiliuje",
             "dyscyplina_naukowa_id",
@@ -212,8 +218,7 @@ class Wydawnictwo_Ciagle(
     @depend_on_related("bpp.Wydawnictwo_Ciagle_Autor", only=("kolejnosc",))
     def opis_bibliograficzny_autorzy_cache(self):
         return [
-            "%s %s" % (x.autor.nazwisko, x.autor.imiona)
-            for x in self.autorzy_dla_opisu()
+            f"{x.autor.nazwisko} {x.autor.imiona}" for x in self.autorzy_dla_opisu()
         ]
 
     @denormalized(models.TextField, blank=True, null=True)
@@ -259,3 +264,18 @@ class Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych(models.Model):
         verbose_name_plural = (
             "powiązania wydawnictw ciągłych z zewnętrznymi bazami danych"
         )
+
+
+class Wydawnictwo_Ciagle_Streszczenie(BazaModeluStreszczen):
+    rekord = models.ForeignKey(Wydawnictwo_Ciagle, CASCADE, related_name="streszczenia")
+
+    class Meta:
+        verbose_name = "streszczenie wydawnictwa ciągłego"
+        verbose_name_plural = "streszczenia wydawnictw ciągłych"
+
+    def __str__(self):
+        if self.jezyk_streszczenia_id is not None:
+            return (
+                f"Streszczenie rekordu {self.rekord} w języku {self.jezyk_streszczenia}"
+            )
+        return f"Streszczenie rekordu {self.rekord}"

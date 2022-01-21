@@ -3,6 +3,80 @@
 Historia zmian
 ==============
 
+202201.1081
+-----------
+* poprawka błędu związanego z uruchamianiem procedur na serwerze przez django_tee (#1171)
+* potencjalna poprawka błędu związanego z jednoczesnym działaniem wielu wątków generujących raporty,
+  przebudowujących dane itp. a powstawaniem deadlocks przy przebudowie bazy (#1185),
+* wliczaj monografie do limitu 2.2N dla uczelni dla algorytmów liczących 3N (#1198),
+* do algorytmu genetycznego wprowadzone zostały epoki - kolejne pokolenia osobników, korzystające z populacji
+  rozwiązań obliczonych przez algorytm z poprzednimi ustawieniami (b/n),
+* napraw stronę administracyjną django_tee (b/n).
+
+202111.1081-rc7
+---------------
+
+* automatycznie odpinanie publikacji dla raportu genetycznego 3N (#965),
+
+202110.1081-rc6
+---------------
+
+* raporty 3N plecakowy i genetyczny (#965),
+
+202110.1081-rc1
+---------------
+
+* poprawka błędu związanego z importem maksymalnych slotów autora (b/n),
+* możliwość złapania logów z poleceń uruchamianych w nocy do bazy danych (#1136),
+* raport ewaluacja - upoważnienia (#1083),
+* sprawdzanie i ostrzeganie użytkownika przy zapisie rekordów w sytuacji, gdy dane DOI lub WWW
+  już istnieją w bazie danych (#1059),
+* raport rozbieżności autor-źródło (#1023),
+* z kodu usunięto funkcjonalność importu dyscyplin źródeł (#1122),
+* możliwość importu streszczeń z rekordów PBN (#1146),
+* dołączaj liczbę PK dla raportów wyjściowych 3N (#1159),
+* nie bierz pod uwagę autorów bez okreslonych maksymalnych udziałów jednostkowych do raportów 3N (#1158),
+
+202110.1081-rc0
+---------------
+
+* liczba N dla autora staje się ilością udziałów oraz ilością udziałów monografii (#1153),
+* możliwość importu udziałów dla autorów z plików XLSX (#1144),
+* raport 3N pobiera dane z bazy danych (#1157),
+* możliwość dodawania streszczeń do rekordów (#1155),
+* możliwość eksportu streszczeń do PBN (#1155),
+* możliwość eksportu słów kluczowych do PBN (#1155),
+* możliwość pobierania danych autora po PBN UID z modułu redagowania (#1154),
+* usuń błąd polegający na nie wysyłaniu rekordu do PBN w sytuacji istniejących już identycznych danych
+  w tabeli "Przesłane dane" po wycofaniu jego oświadczeń (#1149),
+* usuń błąd polegający na nieprawidłowym importowaniu oświadczeń z PBN po eksporcie rekordu zawierającego
+  oświadczenia z datą (pole statedTimestamp) (#1147),
+
+202110.1081-beta2
+-----------------
+
+* drobna korekta opisu bibliograficznego - wraca pole "uwagi" (b/n),
+* drobna korekta funkcji ``strip_html`` - w przypadku pustego ciągu znaków, nie podnoś wyjątku (b/n)
+* aktualizajca django-denorm-iplweb_ do wersji 0.5.3 -- korekta błędu z deadlockami (b/n),
+
+202110.1081-beta1
+-----------------
+
+* poprawiono błąd występujący przy wysyłaniu publikacji do PBN przez panel redagowania, w sytuacji, gdy
+  wydawnictwo nadrzędne nie miało odpowiednika PBN UID, a użytkownik nie był autoryzowany (b/n),
+* poprawiono bład występujący przy wysyłaniu publikacji do PBN i włączonym kasowaniu oświadczeń,
+  w sytuacji, gdy serwer PBN odpowiada statusem 200 ale dokument nie zawiera tresci (b/n),
+* usunięto kod odpowiadający za eliminowanie ciągu znaków [kropka][przecinek] z opisów bibliograficznych (b/n),
+
+202110.1081-beta0
+------------------
+
+* zmiana określenia z formularza raportu "tylko prace z jednostek uczelni" -> "tylko prace z afiliacją uczelni"
+  (#1094),
+* okreslanie liczby N dla autora dla każdej z dyscyplin (#1143),
+* poprawne przebudowywanie rekordów przy zmianie szablonu przy pomocy django-denorm-iplweb_ (#1107, #1135),
+* opcja "tylko prace afiliowane" dla raportów: uczelni, wydziału, jednostki i autora (#1092).
+
 202110.1081-alpha
 -----------------
 

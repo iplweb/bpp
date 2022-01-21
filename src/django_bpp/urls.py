@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 from django.conf import settings
 from django.conf.urls import include, url
 from django.conf.urls.static import static
@@ -64,6 +62,12 @@ urlpatterns = (
             r"^integrator2/",
             include(("integrator2.urls", "integrator2"), namespace="integrator2"),
         ),
+        path(
+            "ewaluacja2021/",
+            include(
+                "ewaluacja2021.urls",
+            ),
+        ),
         url(
             r"^api/v1/",
             include(("api_v1.urls", "api_v1"), namespace="api_v1"),
@@ -84,13 +88,6 @@ urlpatterns = (
             include(
                 ("import_list_if.urls", "import_list_if"),
                 namespace="import_list_if",
-            ),
-        ),
-        url(
-            r"^import_dyscyplin_zrodel/",
-            include(
-                ("import_dyscyplin_zrodel.urls", "import_dyscyplin_zrodel"),
-                namespace="import_dyscyplin_zrodel",
             ),
         ),
         url(

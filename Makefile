@@ -40,6 +40,7 @@ grunt:
 	grunt build
 
 yarn:
+	yarn -v
 	yarn install --no-progress --emoji false -s
 
 assets: yarn grunt

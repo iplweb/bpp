@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 """Ustawienia systemowe
 
 groups - lista grup wraz z uprawnieniami do edycji poszczególnych obiektów.
@@ -11,6 +9,7 @@ from flexible_reports import models as flexible_models
 from multiseek.models import SearchForm
 from robots.models import Rule, Url
 
+from ewaluacja2021.models import IloscUdzialowDlaAutora, LiczbaNDlaUczelni
 from formdefaults.models import FormFieldRepresentation, FormRepresentation
 from import_dbf.models import B_A, B_U, Aut, Bib, Ixn, Jed, Poz, Ses, Usi, Wx2
 from miniblog.models import Article
@@ -22,6 +21,7 @@ from pbn_api.models import (
     Scientist,
     SentData,
 )
+from rozbieznosci_dyscyplin.models import RozbieznosciView, RozbieznosciZrodelView
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
@@ -59,9 +59,11 @@ from bpp.models import (
     Ukryj_Status_Korekty,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Ciagle_Autor,
+    Wydawnictwo_Ciagle_Streszczenie,
     Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych,
     Wydawnictwo_Zwarte,
     Wydawnictwo_Zwarte_Autor,
+    Wydawnictwo_Zwarte_Streszczenie,
     Wydawnictwo_Zwarte_Zewnetrzna_Baza_Danych,
     Wydzial,
     Wymiar_Etatu,
@@ -125,6 +127,7 @@ groups = {
     ],
     "struktura": [
         Uczelnia,
+        LiczbaNDlaUczelni,
         Wydzial,
         Jednostka,
         Jednostka_Wydzial,
@@ -151,11 +154,16 @@ groups = {
         Seria_Wydawnicza,
         Nagroda,
         Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych,
+        Wydawnictwo_Ciagle_Streszczenie,
         Wydawnictwo_Zwarte_Zewnetrzna_Baza_Danych,
+        Wydawnictwo_Zwarte_Streszczenie,
         Wydawca,
         Poziom_Wydawcy,
         Grant_Rekordu,
         Element_Repozytorium,
+        IloscUdzialowDlaAutora,
+        RozbieznosciView,
+        RozbieznosciZrodelView,
     ],
     "indeks autorów": [Autor, Autor_Jednostka],
     "administracja": [User, Group, SearchForm],

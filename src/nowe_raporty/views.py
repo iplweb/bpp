@@ -35,7 +35,8 @@ class BaseFormView(FormDefaultsMixin, FormView):
         d = form.cleaned_data
         return HttpResponseRedirect(
             f"./{ d['obiekt'].pk }/{ d['od_roku'] }/{ d['do_roku'] }/?"
-            f"_export={ d['_export'] }"
+            f"_export={ d['_export'] }&"
+            f"_tzju={d['tylko_z_jednostek_uczelni']}"
         )
 
     def get_context_data(self, **kwargs):
@@ -88,7 +89,9 @@ class UczelniaRaportFormView(UczelniaRaportAuthMixin, BaseFormView):
     def form_valid(self, form):
         d = form.cleaned_data
         return HttpResponseRedirect(
-            f"./{ d['od_roku'] }/{ d['do_roku'] }/?" f"_export={ d['_export'] }"
+            f"./{ d['od_roku'] }/{ d['do_roku'] }/?"
+            f"_export={ d['_export'] }&"
+            f"_tzju={d['tylko_z_jednostek_uczelni']}"
         )
 
 
@@ -231,6 +234,8 @@ class GenerujRaportDlaJednostki(JednostkaRaportAuthMixin, GenerujRaportBase):
     model = Jednostka
 
     def get_base_queryset(self):
+        if self.request.GET.get("_tzju", "True") == "True":
+            return Rekord.objects.prace_jednostki(self.object, afiliowane=True)
         return Rekord.objects.prace_jednostki(self.object)
 
 
@@ -241,6 +246,8 @@ class GenerujRaportDlaWydzialu(WydzialRaportAuthMixin, GenerujRaportBase):
     model = Wydzial
 
     def get_base_queryset(self):
+        if self.request.GET.get("_tzju", "True") == "True":
+            return Rekord.objects.prace_wydzialu(self.object, afiliowane=True)
         return Rekord.objects.prace_wydzialu(self.object)
 
 
@@ -254,4 +261,6 @@ class GenerujRaportDlaUczelni(UczelniaRaportAuthMixin, GenerujRaportBase):
         return Uczelnia.objects.get_for_request(self.request)
 
     def get_base_queryset(self):
+        if self.request.GET.get("_tzju", "True") == "True":
+            return Rekord.objects.filter(autorzy__afiliuje=True)
         return Rekord.objects.all()

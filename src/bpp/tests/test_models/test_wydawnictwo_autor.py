@@ -3,12 +3,12 @@ from django.core.exceptions import ValidationError
 from model_mommy import mommy
 
 from bpp.models import (
-    Wydawnictwo_Zwarte_Autor,
-    Patent_Autor,
-    Wydawnictwo_Ciagle_Autor,
     Patent,
+    Patent_Autor,
     Wydawnictwo_Ciagle,
+    Wydawnictwo_Ciagle_Autor,
     Wydawnictwo_Zwarte,
+    Wydawnictwo_Zwarte_Autor,
 )
 
 
@@ -22,6 +22,10 @@ from bpp.models import (
     ],
 )
 def test_autor_jednostka_afiliuje_na_obca(autor_jan_kowalski, obca_jednostka, w):
+    from django.conf import settings
+
+    assert getattr(settings, "BPP_WALIDUJ_AFILIACJE_AUTOROW", True)
+
     with pytest.raises(ValidationError):
         w.dodaj_autora(autor_jan_kowalski, obca_jednostka, afiliuje=True)
 

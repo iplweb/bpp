@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% load humanize static %}
+
+{% block extratitle %}
+    Import udziałów dla autorów
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="..">import udziałów dla autorów</a></li>
+    <li class="current">szczegóły importu</li>
+{% endblock %}
+
+{% block content %}
+    <h2>Szczegóły importu</h2>
+    Plik: {{ object.plik.name }}<br/>
+    Ostatnia aktualizacja: {{ object.ostatnia_zmiana }}<br/>
+    Przeanalizowany?: {{ object.przeanalizowany }}<br/>
+
+    {% if not object.przeanalizowany %}
+        <strong>Trwa analiza pliku. Odśwież stronę za kilkanaście sekund celem obejrzenia rezultatów.</strong>
+    {% endif %}
+
+    {% if object.przeanalizowany %}
+        <a href="#zintegrowane-wiersze">wiersze zintegrowane ({{ object.wiersze_zintegrowane.count }})</a> |
+        <a href="#bledne-wiersze">błędne wiersze ({{ object.bledne_wiersze.count }})</a> |
+        <a href="#wiersze-nie-wymagajace-integracji">nie wymagające integracji ({{ object.wiersze_nie_zintegrowane.count }})</a>
+
+        <a id="zintegrowane-wiersze"></a>
+        <h3>Zintegrowane wiersze ({{ object.wiersze_zintegrowane.count }})</h3>
+        <table>
+            <tr>
+                <th>Autor po stronie BPP</th>
+                <th>Dyscyplina po stronie BPP</th>
+                <th>Przypisana ilość udziałów</th>
+                <th>Przypisana ilość udziałów - monografie</th>
+            </tr>
+            {% for elem in object.wiersze_zintegrowane %}
+                <tr>
+                    <td>{{ elem.matched_autor }}</td>
+                    <td>{{ elem.matched_dyscyplina }}</td>
+                    <td>{{ elem.ilosc_udzialow }}</td>
+                    <td>{{ elem.ilosc_udzialow_monografie }}</td>
+                </tr>
+            {% endfor %}
+        </table>
+
+        <h3 id="bledne-wiersze">Błędne wiersze ({{ object.bledne_wiersze.count }})</h3>
+        <table>
+            <tr>
+                {#                <th>Nr wiersza XLSX</th>#}
+                <th>Zawartość wiersza XLSX</th>
+                <th>Autor po stronie BPP</th>
+                <th>Dyscyplina po stronie BPP</th>
+                <th>Ilość udziałów</th>
+                <th>Ilość udziałów - monografie</th>
+            </tr>
+            {% for elem in object.bledne_wiersze %}
+                <tr>
+                    {#                    <td>{{  elem.__row__ }}</td>#}
+                    <td>{{ elem.orig_data }}</td>
+                    <td>{{ elem.matched_autor }}</td>
+                    <td>{{ elem.matched_dyscyplina }}</td>
+                    <td>{{ elem.ilosc_udzialow }}</td>
+                    <td>{{ elem.ilosc_udzialow_monografie }}</td>
+
+                </tr>
+            {% endfor %}
+        </table>
+
+
+
+        <a id="wiersze-nie-wymagajace-integracji"></a>
+        <h3>Wiersze nie wymagające integracji ({{ object.wiersze_nie_zintegrowane.count }})</h3>
+        <table>
+            <tr>
+                <th>Autor po stronie BPP</th>
+                <th>Dyscyplina po stronie BPP</th>
+                <th>Ilość udziałów</th>
+                <th>Ilość udziałów - monografie</th>
+            </tr>
+            {% for elem in object.wiersze_nie_zintegrowane %}
+                <tr>
+                    <td>{{ elem.matched_autor }}</td>
+                    <td>{{ elem.matched_dyscyplina }}</td>
+                    <td>{{ elem.ilosc_udzialow }}</td>
+                    <td>{{ elem.ilosc_udzialow_monografie }}</td>
+                </tr>
+            {% endfor %}
+        </table>
+
+    {% endif %}
+{% endblock %}

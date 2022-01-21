@@ -1,12 +1,12 @@
 {
     "name": "bpp-iplweb",
-    "version": "v202110.1081-alpha",
+    "version": "v202201.1081",
     "devDependencies": {
         "grunt": "^1.0.2",
         "grunt-contrib-qunit": "^2.0.0",
-        "grunt-contrib-watch": "^1.0.0",
+        "grunt-contrib-watch": "^1.1.0",
         "grunt-sass": "^3.1.0",
-        "node-sass": "^4.13.0",
+	"sass":"^1.43.5",
         "qunit": "2.9.2",
         "sinon": "7.5.0"
     },

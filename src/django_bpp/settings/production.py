@@ -12,13 +12,6 @@ CSRF_COOKIE_SECURE = False
 COMPRESS_ENABLED = not DEBUG
 COMPRESS_OFFLINE = False
 
-TEMPLATES[0]["OPTIONS"]["loaders"] = [  # noqa
-    (
-        "django.template.loaders.cached.Loader",
-        TEMPLATES[0]["OPTIONS"]["loaders"],  # noqa
-    )
-]
-
 HTML_MINIFY = True
 
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"

@@ -48,3 +48,20 @@ class RozbieznosciView(RozbieznosciViewBase):
         # oraz autora) to ten model i funkcja get_wydawnictwo_autor_obj zawiedzie (zwraca wyłacznie pierwszy
         # rekord z powiazaniem autora + rekordu)
         return self.rekord.original.autorzy_set.filter(autor=self.autor).first()
+
+
+class RozbieznosciZrodelView(models.Model):
+    class Meta:
+        managed = False
+        verbose_name = "rozbieżność dyscyplin źródeł"
+        verbose_name_plural = "rozbieżności dyscyplin źródeł"
+
+    id = TupleField(models.IntegerField(), size=4, primary_key=True)
+    zrodlo = models.ForeignKey("bpp.Zrodlo", on_delete=DO_NOTHING, related_name="+")
+    wydawnictwo_ciagle = models.ForeignKey(
+        "bpp.Wydawnictwo_Ciagle", on_delete=DO_NOTHING, related_name="+"
+    )
+    autor = models.ForeignKey("bpp.Autor", on_delete=DO_NOTHING, related_name="+")
+    dyscyplina_naukowa = models.ForeignKey(
+        "bpp.Dyscyplina_Naukowa", on_delete=DO_NOTHING, related_name="+"
+    )

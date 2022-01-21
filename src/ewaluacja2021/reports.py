@@ -1,7 +1,7 @@
 import openpyxl.worksheet.worksheet
 from django.db.models import BooleanField, Case, F, Value, When
 
-from ewaluacja2021.core import NieArtykul
+from ewaluacja2021.core.util import NieArtykul
 from ewaluacja2021.util import output_table_to_xlsx
 
 from bpp.models import Cache_Punktacja_Autora_Query
@@ -10,7 +10,7 @@ from bpp.models import Cache_Punktacja_Autora_Query
 def get_data_for_report(qset):
     return (
         [
-            elem.id,
+            # elem.id,
             str(elem.rekord_id),
             elem.autor_id,
             elem.rekord.tytul_oryginalny,
@@ -21,6 +21,7 @@ def get_data_for_report(qset):
             elem.do_ewaluacji,
             elem.pkdaut,
             elem.slot,
+            elem.rekord.punkty_kbn,
         ]
         for elem in qset
     )
@@ -31,7 +32,7 @@ def write_data_to_report(ws: openpyxl.worksheet.worksheet.Worksheet, data):
         ws,
         "Przeszly",
         [
-            "ID elementu",
+            # "ID elementu",
             "ID rekordu",
             "ID autora",
             "Tytuł",
@@ -42,9 +43,15 @@ def write_data_to_report(ws: openpyxl.worksheet.worksheet.Worksheet, data):
             "Do ewaluacji",
             "PKDAut",
             "Slot",
+            "PK",
         ],
         data,
         totals=["PKDAut", "Slot"],
+        column_widths={
+            "A": 10,
+            "B": 14,
+            "E": 14,
+        },
     )
 
 
@@ -70,4 +77,4 @@ def rekordy(dane):
 def load_data(fobj):
     import simplejson
 
-    return simplejson.load(fobj)
+    return simplejson.load(fobj, use_decimal=True)

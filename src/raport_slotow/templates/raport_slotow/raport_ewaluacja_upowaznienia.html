@@ -1,0 +1,49 @@
+{% extends "base.html" %}{% load render_table from django_tables2 %}
+
+{% block extratitle %}
+    Raport slotów - ewaluacja
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><A href="..">raport ewaluacja - upoważnienia</A></li>
+{% endblock %}
+
+{% block content %}
+    <h1>Raport ewaluacja - upoważnienia</h1>
+    <a href="?_export=xlsx&od_roku={{ od_roku }}&do_roku={{ do_roku }}&upowaznienie_pbn={{ upowaznienie_pbn }}"><i class="fi-page-export-csv"></i> pobierz XLS</a>
+
+    <style>
+        form.filtry input[type=number] {
+            width: 40%;
+            display: inline;
+        }
+    </style>
+    {% if filter %}
+        <form action="" method="get" class="filtry">
+            <table>
+                <tr>
+                    <td>Filtruj po nazwisku autora:</td>
+                    <td>Filtruj po dyscyplinie rekordu:</td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td>{{ filter.form.autorzy__autor__nazwisko }}</td>
+                    <td>{{ filter.form.autorzy__dyscyplina_naukowa }}</td>
+
+                    <td><input type="submit" value="Filtruj"/>
+
+                        <input type="hidden" name="od_roku" value="{{ od_roku }}"/>
+                        <input type="hidden" name="do_roku" value="{{ do_roku }}"/>
+                        <input type="hidden" name="upowaznienie_pbn" value="{{ upowaznienie_pbn }}"/>
+                        <input type="hidden" name="_export" value="html"/>
+
+                        <input type="reset" value="Usuń filtry" onclick="location.href='?od_roku={{ od_roku }}&do_roku={{ do_roku }}&upowaznienie_pbn={{ upowaznienie_pbn }}&_export=html';"/>
+                        <input type="button" value="Pobierz XLS" onclick="location.href='?{{ export_link }}';"/>
+                    </td>
+                </tr>
+            </table>
+        </form>
+    {% endif %}
+    {% render_table table %}
+{% endblock %}

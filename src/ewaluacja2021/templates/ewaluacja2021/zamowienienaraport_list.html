@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% load humanize static %}
+
+{% block extratitle %}
+    Zamówienie na raport 3N
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li class="current">Zamówienie na raport 3N</li>
+{% endblock %}
+
+{% block content %}
+    <h2>Zamówienie na raport 3N
+        <a class="button success" id="add-new-file" href="new/">
+            <i class="fi-page-add"></i>
+            nowy raport
+        </a>
+    </h2>
+    {% if object_list.exists %}
+        <p>
+            Obecnie ilość odpiętych dyscyplin w bazie wynosi: {{ ilosc_odpietych_dyscyplin }}
+            {% if ilosc_odpietych_dyscyplin > 0 and request.user.is_staff %}
+                {% if ilosc_elementow_w_kolejce %}
+                    Przycisk resetu dyscyplin dostępny będzie po przeliczeniu punktacji. Odśwież stronę za chwilę.
+                {% else %}
+                    <a class="button warning" id="resetuj-przypiecia" href="?resetuj=1"
+                       onclick="return confirm('Czy na pewno?')">
+                        <i class="fi-refresh"></i>
+                        resetuj przypięcia
+                    </a>
+                {% endif %}
+            {% endif %}
+        </p>
+        <p>
+            Poniżej znajduje się lista raportów zamówionych w systemie w ciągu ostatnich 7 dni.
+        </p>
+        <p>
+            {% if ilosc_elementow_w_kolejce %}
+                <div style="border: 3px solid red; padding: 5px;">
+                    Trwa przeliczanie punktacji. Ilość elementów do przeliczenia: {{ ilosc_elementow_w_kolejce }}.
+                    {% if ilosc_elementow_w_kolejce > 100 %}
+                        <strong><br/>Uruchamianie raportu nie zalecane do momentu ukończenia przeliczania. </strong>
+                        <br/>Odśwież stronę za jakiś czas i uruchom raport dopiero, gdy elementy zostaną przeliczone.
+                    {% endif %}
+                </div>
+            {% endif %}
+
+        </p>
+        <ul>{% load humanize %}
+            {% for object in object_list %}
+                <li>
+                    <a href="{% url "ewaluacja2021:szczegoly-raportu3n" object.pk %}">
+                        raport <strong>{{ object.rodzaj }}</strong> dla
+                        <strong>{{ object.dyscyplina_naukowa.nazwa }}</strong>
+
+                        ostatnio zmodyfikowany {{ object.ostatnio_zmodyfikowany|naturaltime }},
+                        stan: {{ object.status }}
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        Brak zamówionych raportów 3N.
+    {% endif %}
+
+{% endblock %}

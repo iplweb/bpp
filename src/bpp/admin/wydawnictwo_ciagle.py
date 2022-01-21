@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 from dal import autocomplete
 from django import forms
 from django.forms.utils import flatatt
@@ -22,6 +20,7 @@ from .grant import Grant_RekorduInline
 from .helpers import (
     MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET,
     OptionalPBNSaveMixin,
+    sprawdz_duplikaty_www_doi,
 )
 
 from django.contrib import admin
@@ -57,6 +56,7 @@ from bpp.admin.nagroda import NagrodaInline
 from bpp.models import (  # Publikacja_Habilitacyjna
     Charakter_Formalny,
     Wydawnictwo_Ciagle,
+    Wydawnictwo_Ciagle_Streszczenie,
     Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych,
     Zrodlo,
     nie_zawiera_adresu_doi_org,
@@ -162,6 +162,12 @@ class Wydawnictwo_CiagleForm(CleanDOIWWWPublicWWWMixin, forms.ModelForm):
 class Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychForm(forms.ModelForm):
     class Meta:
         fields = ["baza", "info"]
+
+
+class Wydawnictwo_Ciagle_StreszczenieInline(admin.StackedInline):
+    model = Wydawnictwo_Ciagle_Streszczenie
+    extra = 0
+    fields = ["jezyk_streszczenia", "streszczenie"]
 
 
 class Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychInline(admin.StackedInline):
@@ -278,6 +284,7 @@ class Wydawnictwo_CiagleAdmin(
         Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychInline,
         Grant_RekorduInline,
         Element_RepozytoriumInline,
+        Wydawnictwo_Ciagle_StreszczenieInline,
     )
 
     def zrodlo_col(self, obj):
@@ -291,8 +298,9 @@ class Wydawnictwo_CiagleAdmin(
     zrodlo_col.short_description = "Źródło"
 
     def save_model(self, request, obj, form, change):
-        super(Wydawnictwo_CiagleAdmin, self).save_model(request, obj, form, change)
+        super().save_model(request, obj, form, change)
         sprobuj_policzyc_sloty(request, obj)
+        sprawdz_duplikaty_www_doi(request, obj)
 
 
 admin.site.register(Wydawnictwo_Ciagle, Wydawnictwo_CiagleAdmin)

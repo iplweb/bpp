@@ -91,6 +91,7 @@ class PublikacjaInstytucji(models.Model):
 
 class OswiadczenieInstytucji(models.Model):
     addedTimestamp = models.DateField()
+    statedTimestamp = models.DateField(null=True, blank=True)
     area = models.PositiveSmallIntegerField()
     inOrcid = models.BooleanField()
     institutionId = models.ForeignKey(Institution, on_delete=models.CASCADE)

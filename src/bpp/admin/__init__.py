@@ -255,3 +255,5 @@ SearchForm._meta.verbose_name = "formularz wyszukiwania"
 SearchForm._meta.verbose_name_plural = "formularze wyszukiwania"
 
 admin.site.register(SearchForm, SearchFormAdmin)
+
+from .templates import TemplateAdmin  # noqa

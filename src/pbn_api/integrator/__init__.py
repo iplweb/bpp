@@ -213,8 +213,9 @@ def zapisz_oswiadczenie_instytucji(elem, klass, client=None, **extra):
     # {'id': '121339', 'institutionId': '5e70918b878c28a04737de51',
     # 'personId': '5e709330878c28a0473a4a0e', 'publicationId': '5ebff589ad49b31ccec25471',
     # 'addedTimestamp': '2020.05.16', 'area': '304', 'inOrcid': False, 'type': 'AUTHOR'}
-    if elem["addedTimestamp"]:
-        elem["addedTimestamp"] = elem["addedTimestamp"].replace(".", "-")
+    for var in "addedTimestamp", "statedTimestamp":
+        if elem.get(var):
+            elem[var] = elem[var].replace(".", "-")
 
     try:
         ensure_publication_exists(client, elem["publicationId"])

@@ -2,7 +2,6 @@ import random
 import time
 import warnings
 from builtins import NotImplementedError
-from json import JSONDecodeError
 from pprint import pprint
 from urllib.parse import parse_qs, quote, urlparse
 
@@ -10,6 +9,7 @@ import requests
 from django.db import transaction
 from requests import ConnectionError
 from requests.exceptions import SSLError
+from simplejson.errors import JSONDecodeError
 
 from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
 from pbn_api.const import (
@@ -664,6 +664,10 @@ class PBNClient(
         ):
             try:
                 self.delete_all_publication_statements(pub.pbn_uid_id)
+
+                # Jeżeli zostały skasowane dane, to wymuś wysłanie rekordu, niezależnie
+                # od stanu tabeli SentData
+                force_upload = True
             except HttpException as e:
 
                 NIE_ISTNIEJA = "Nie istnieją oświadczenia dla publikacji"
