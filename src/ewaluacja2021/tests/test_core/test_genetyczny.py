@@ -11,7 +11,14 @@ from bpp.models import Autor_Dyscyplina, Wydawnictwo_Ciagle
 
 
 @pytest.fixture
-def genetyczny_3n(uczelnia, autor_jan_nowak, dyscyplina1, jednostka, denorms):
+def genetyczny_3n(
+    uczelnia,
+    autor_jan_nowak,
+    dyscyplina1,
+    jednostka,
+    denorms,
+    typ_odpowiedzialnosci_autor,
+):
     """
     Duży test integracyjny, sprawdza generowanie raportu genetycznego
     3N na bazie jednej pracy.
