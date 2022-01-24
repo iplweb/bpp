@@ -350,11 +350,6 @@ def matchuj_publikacje(
             if res.exists():
                 if res.first().podobienstwo >= MATCH_SIMILARITY_THRESHOLD_VERY_LOW:
                     return res.first()
-                else:
-                    if DEBUG_MATCHOWANIE:
-                        import pdb
-
-                        pdb.set_trace()
 
     title = normalize_tytul_publikacji(title)
 
@@ -435,11 +430,6 @@ def matchuj_publikacje(
         if res.exists():
             if res.first().podobienstwo >= MATCH_SIMILARITY_THRESHOLD_VERY_LOW:
                 return res.first()
-            else:
-                if DEBUG_MATCHOWANIE:
-                    import pdb
-
-                    pdb.set_trace()
 
     public_uri = normalize_public_uri(public_uri)
     if public_uri:
@@ -455,11 +445,6 @@ def matchuj_publikacje(
 
             if res.first().podobienstwo >= MATCH_SIMILARITY_THRESHOLD:
                 return res.first()
-            else:
-                if DEBUG_MATCHOWANIE:
-                    import pdb
-
-                    pdb.set_trace()
 
     if title is not None and (
         (not title_has_spaces and len(title) >= TITLE_LIMIT_SINGLE_WORD)
@@ -477,11 +462,6 @@ def matchuj_publikacje(
         if res.exists():
             if res.first().podobienstwo >= MATCH_SIMILARITY_THRESHOLD:
                 return res.first()
-            else:
-                if DEBUG_MATCHOWANIE:
-                    import pdb
-
-                    pdb.set_trace()
 
         # Ostatnia szansa, po podobieństwie, niski próg
 
@@ -497,8 +477,3 @@ def matchuj_publikacje(
         if res.exists():
             if res.first().podobienstwo >= MATCH_SIMILARITY_THRESHOLD_LOW:
                 return res.first()
-            else:
-                if DEBUG_MATCHOWANIE:
-                    import pdb
-
-                    pdb.set_trace()

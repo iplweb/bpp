@@ -1,4 +1,3 @@
-# -*- encoding: utf-8 -*-
 import json
 import os
 import random
@@ -9,7 +8,6 @@ import django_webtest
 import pytest
 import webtest
 from dbtemplates.models import Template
-from django.db import IntegrityError
 from rest_framework.test import APIClient
 from splinter.driver import DriverAPI
 
@@ -193,7 +191,10 @@ def admin_browser(
 
 @pytest.fixture(scope="function")
 def uczelnia(db):
-    return Uczelnia.objects.get_or_create(skrot="TE", nazwa="Testowa uczelnia")[0]
+    return Uczelnia.objects.get_or_create(
+        skrot="TE",
+        nazwa="Testowa uczelnia",
+    )[0]
 
 
 @pytest.mark.django_db
@@ -325,10 +326,10 @@ def _wydawnictwo_maker(klass, **kwargs):
     kl = str(klass).split(".")[-1].replace("'>", "")
 
     kw_wyd = dict(
-        tytul="Tytul %s %s" % (kl, c),
-        tytul_oryginalny="Tytul oryginalny %s %s" % (kl, c),
-        uwagi="Uwagi %s %s" % (kl, c),
-        szczegoly="Szczegóły %s %s" % (kl, c),
+        tytul=f"Tytul {kl} {c}",
+        tytul_oryginalny=f"Tytul oryginalny {kl} {c}",
+        uwagi=f"Uwagi {kl} {c}",
+        szczegoly=f"Szczegóły {kl} {c}",
     )
 
     if klass == Patent:
@@ -559,7 +560,7 @@ def fixture(name):
 def typy_odpowiedzialnosci(db):
     for elem in fixture("typ_odpowiedzialnosci_v2.json"):
         Typ_Odpowiedzialnosci.objects.get_or_create(pk=elem["pk"], **elem["fields"])
-    return dict([(x.skrot, x) for x in Typ_Odpowiedzialnosci.objects.all()])
+    return {x.skrot: x for x in Typ_Odpowiedzialnosci.objects.all()}
 
 
 @pytest.fixture(scope="function")
@@ -581,12 +582,7 @@ def jezyki(db):
     assert ang.pk == 2
 
     for elem in fixture("jezyk.json"):
-        try:
-            Jezyk.objects.get_or_create(**elem["fields"])
-        except IntegrityError:
-            import pytest
-
-            pytest.set_trace()
+        Jezyk.objects.get_or_create(**elem["fields"])
 
 
 @pytest.fixture(scope="function")
@@ -608,7 +604,7 @@ def charaktery_formalne():
     chf_roz.charakter_sloty = const.CHARAKTER_SLOTY_ROZDZIAL
     chf_roz.save()
 
-    return dict([(x.skrot, x) for x in Charakter_Formalny.objects.all()])
+    return {x.skrot: x for x in Charakter_Formalny.objects.all()}
 
 
 @pytest.fixture(scope="function")
@@ -911,7 +907,7 @@ def szablony():
     def create_template(Template, name):
         Template.objects.create(
             name=name,
-            content=open(template_n(name), "r").read(),
+            content=open(template_n(name)).read(),
         )
 
     def instaluj_szablony():
