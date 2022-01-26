@@ -182,7 +182,9 @@ class GAD(Ewaluacja3NMixin):
             # na od 4 do 50 czesci i te czesci ma potem łączone w losowy sposób
             for a in range(self.ile_losowych // 2):
                 num_parts = random.randint(2, 50)
-                parts = splitEveryN(dlugosc // num_parts, najlepszy_osobnik)
+                parts = splitEveryN(
+                    max(dlugosc // num_parts, dlugosc), najlepszy_osobnik
+                )
                 random.shuffle(parts)
                 osobnik = list(itertools.chain(*parts))
                 osbn_czesciowo_losowe.append(osobnik)

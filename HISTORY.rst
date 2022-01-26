@@ -3,6 +3,12 @@
 Historia zmian
 ==============
 
+202201.1082
+-----------
+
+* nie używaj tagów HTML w generowanych raportach 3N (b/n),
+* zawężaj raporty 3N do zakresu lat 2017-2021 (b/n),
+
 202201.1081
 -----------
 * poprawka błędu związanego z uruchamianiem procedur na serwerze przez django_tee (#1171)

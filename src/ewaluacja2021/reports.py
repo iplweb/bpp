@@ -5,6 +5,7 @@ from ewaluacja2021.core.util import NieArtykul
 from ewaluacja2021.util import output_table_to_xlsx
 
 from bpp.models import Cache_Punktacja_Autora_Query
+from bpp.util import strip_html
 
 
 def get_data_for_report(qset):
@@ -13,7 +14,7 @@ def get_data_for_report(qset):
             # elem.id,
             str(elem.rekord_id),
             elem.autor_id,
-            elem.rekord.tytul_oryginalny,
+            strip_html(elem.rekord.tytul_oryginalny),
             elem.rok,
             f"{elem.autor.nazwisko} {elem.autor.imiona}",
             elem.dyscyplina.nazwa,

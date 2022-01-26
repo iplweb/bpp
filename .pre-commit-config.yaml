@@ -15,41 +15,41 @@ repos:
           args: ['--in-place', '--remove-all-unused-imports',]
 
     - repo: https://github.com/pre-commit/mirrors-autopep8
-      rev: 'v1.5.4'
+      rev: 'v1.6.0'
       hooks:
         - id: autopep8
           args: ['--in-place', '-aaa',]
 
     - repo: https://github.com/hadialqattan/pycln
-      rev: 'v1.0.3'
+      rev: 'v1.1.0'
       hooks:
         - id: pycln
 
     - repo: https://github.com/pre-commit/mirrors-isort
-      rev: 'v5.7.0'  # Use the revision sha / tag you want to point at
+      rev: 'v5.10.1'  # Use the revision sha / tag you want to point at
       hooks:
         - id: isort
           args: ["--profile", "black"]
 
     - repo: https://github.com/psf/black
-      rev: '21.7b0'
+      rev: '21.12b0'
       hooks:
         -   id: black
 
     - repo: https://github.com/pre-commit/pre-commit-hooks
-      rev: 'v3.4.0'
+      rev: 'v4.1.0'
       hooks:
         -   id: check-yaml
         -   id: end-of-file-fixer
         -   id: trailing-whitespace
 
     - repo: https://gitlab.com/pycqa/flake8
-      rev: '3.8.4'
+      rev: '3.9.2'
       hooks:
         -   id: flake8
 
     - repo: https://github.com/asottile/pyupgrade
-      rev: v2.29.0
+      rev: v2.31.0
       hooks:
         - id: pyupgrade
           args: ["--py37-plus"]
