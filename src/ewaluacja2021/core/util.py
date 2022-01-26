@@ -3,8 +3,8 @@ from datetime import datetime
 
 from django.db.models import F, Transform
 
+from ewaluacja2021 import const
 from ewaluacja2021.models import IloscUdzialowDlaAutora
-from pbn_api.integrator import PBN_MIN_ROK
 
 from django.contrib.postgres.aggregates import ArrayAgg
 
@@ -19,7 +19,7 @@ class NieArtykul(Transform):
 
 def get_lista_prac(nazwa_dyscypliny):
     """Zwraca liste prac - potencjalnych kandydatow do ewaluacji, ale wyłcznie dla dozwolonych
-    autorow, tzn posiadajacych udzialy jednostkowe w danej dyscyplinie.
+    autorow, tzn posiadajacych udzialy jednostkowe w danej dyscyplinie oraz dla lat 2018-2021
     """
     dozwoleni_autorzy = IloscUdzialowDlaAutora.objects.filter(
         dyscyplina_naukowa__nazwa=nazwa_dyscypliny
@@ -32,7 +32,8 @@ def get_lista_prac(nazwa_dyscypliny):
 
     return (
         Cache_Punktacja_Autora_Query.objects.filter(
-            rekord__rok__gte=PBN_MIN_ROK,
+            rekord__rok__gte=const.ROK_MIN,
+            rekord__rok__lte=const.ROK_MAX,
             dyscyplina__nazwa=nazwa_dyscypliny,
             autor__in=dozwoleni_autorzy,
         )
