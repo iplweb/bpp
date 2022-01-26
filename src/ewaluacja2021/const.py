@@ -3,6 +3,11 @@ LATA_2017_2018 = 1
 
 DEC2INT = 10000
 
+# Zakres lat dla wyszukiwania prac do raportów "ewaluacja 2021"
+ROK_MIN = 2017
+ROK_MAX = 2021
+
+
 IMPORT_MAKSYMALNYCH_SLOTOW_COLUMNS = [
     "Stopień / Tytuł",
     "Nazwisko",
