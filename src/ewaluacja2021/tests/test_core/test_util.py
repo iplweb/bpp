@@ -7,7 +7,7 @@ from bpp.models import Autor_Dyscyplina, Wydawnictwo_Ciagle
 
 
 def test_get_lista_prac_zakres_lat(
-    autor_jan_nowak, dyscyplina1, jednostka, uczelnia, denorms
+    autor_jan_nowak, dyscyplina1, jednostka, uczelnia, denorms, typy_odpowiedzialnosci
 ):
     """Sprawdza, czy lista prac odrzuca prace spoza zakresu 2017-2021"""
 
