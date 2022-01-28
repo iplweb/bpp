@@ -64,7 +64,7 @@ def ISlot(original, uczelnia=None):
         )
 
     elif isinstance(original, Wydawnictwo_Zwarte):
-        if original.rok < 2017 or original.rok > 2021:
+        if original.rok < 2017 or original.rok > 2022:
             raise CannotAdapt(
                 "Rok poza zakresem procedur liczacych (%s). " % original.rok
             )

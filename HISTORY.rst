@@ -3,6 +3,12 @@
 Historia zmian
 ==============
 
+202201.1083
+-----------
+
+* licz punktacje dla rozdziałów i monografii z roku 2022 wg reguł dla roku
+  2021 (#1200),
+
 202201.1082
 -----------
 

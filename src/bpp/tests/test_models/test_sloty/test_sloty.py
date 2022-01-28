@@ -335,6 +335,13 @@ def test_ISlot_wydawnictwo_zwarte_tier3(zwarte_z_dyscyplinami):
 
 
 @pytest.mark.django_db
+def test_ISlot_wydawnictwo_zwarte_tier3_rok_2022(zwarte_z_dyscyplinami):
+    zwarte_z_dyscyplinami.rok = 2022
+    i = ISlot(zwarte_z_dyscyplinami)
+    assert isinstance(i, SlotKalkulator_Wydawnictwo_Zwarte_Prog3)
+
+
+@pytest.mark.django_db
 def test_ISlot_wydawnictwo_zwarte_tier2(zwarte_z_dyscyplinami, wydawca):
     rok = 2021
     wydawca.poziom_wydawcy_set.create(rok=rok, poziom=1)
