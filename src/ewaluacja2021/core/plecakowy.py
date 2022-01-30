@@ -1,20 +1,20 @@
 from django.db.models import Sum
 
-from .mixins import Ewaluacja3NMixin
+from .ewaluacja3n_base import Ewaluacja3NBase
 from .util import policz_knapsack
 
 from bpp.models import Cache_Punktacja_Autora_Query
 from bpp.util import pbar
 
 
-class Plecakowy(Ewaluacja3NMixin):
+class Plecakowy(Ewaluacja3NBase):
     def __init__(
         self,
         nazwa_dyscypliny="nauki medyczne",
         bez_limitu_uczelni=False,
         output_path=None,
     ):
-        Ewaluacja3NMixin.__init__(
+        Ewaluacja3NBase.__init__(
             self=self, nazwa_dyscypliny=nazwa_dyscypliny, output_path=output_path
         )
         self.bez_limitu_uczelni = bez_limitu_uczelni
@@ -42,8 +42,6 @@ class Plecakowy(Ewaluacja3NMixin):
         return id_autorow
 
     def sumuj(self):
-
-        self.zeruj()
 
         for autor_id in pbar(self.get_lista_autorow_w_kolejnosci()):
 

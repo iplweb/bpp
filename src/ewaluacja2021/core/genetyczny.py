@@ -1,4 +1,5 @@
 import itertools
+import multiprocessing
 import os
 import random
 import time
@@ -8,13 +9,17 @@ import matplotlib
 import pygad
 
 from ..util import SHUFFLE_TYPE, shuffle_array
-from .mixins import Ewaluacja3NMixin
+from .ewaluacja3n_base import Ewaluacja3NBase
+from .genetyczny_multiprocessing import (
+    MultiprocessingGAD,
+    multiprocessing_gad_pool_initializer,
+)
 from .util import splitEveryN
 
 from bpp.util import pbar
 
 
-class GAD(Ewaluacja3NMixin):
+class GAD(Ewaluacja3NBase):
     def __init__(
         self,
         nazwa_dyscypliny="nauki medyczne",
@@ -23,13 +28,13 @@ class GAD(Ewaluacja3NMixin):
         ile_najlepszych=40,
         ile_losowych=50,
         ile_zupelnie_losowych=30,
-        ile_epok=10,
+        ile_epok=20,
         enable_bubbles=True,
         enable_swapper=False,
         enable_mutation=False,
         output_path=None,
     ):
-        Ewaluacja3NMixin.__init__(
+        Ewaluacja3NBase.__init__(
             self=self, nazwa_dyscypliny=nazwa_dyscypliny, output_path=output_path
         )
 
@@ -53,34 +58,10 @@ class GAD(Ewaluacja3NMixin):
         self.ile_losowych = ile_losowych
         self.ile_zupelnie_losowych = ile_zupelnie_losowych
 
-    def fitness_func(
-        self, lista_prac, solution_idx, silent=False, swap_idx_a=None, swap_idx_b=None
-    ):
-        self.zeruj()
-
-        for praca_idx in lista_prac:
-
-            # Jezeli praca_idx jest rowna swap_idx_a, to zamiast pracy praca_idx
-            # weź pracę swap_idx_b i na odwrót:
-            if praca_idx == swap_idx_a:
-                praca_idx = swap_idx_b
-            elif praca_idx == swap_idx_b:
-                praca_idx = swap_idx_a
-
-            praca_tuple = self.lista_prac_by_index.get(praca_idx, None)
-            if praca_tuple is None:
-                print(f"BRAK PRACY O INDEKSIE {praca_idx}")
-                continue
-
-            if self.czy_moze_przejsc(praca_tuple):
-                self.zsumuj_pojedyncza_prace(praca_tuple, praca_idx)
-
-        return self.suma_pkd
-
     def on_generation(self, ga_instance: pygad.GA):
         no_generations = ga_instance.generations_completed or 1
         best_solution = ga_instance.best_solution()
-
+        self.mutation_counter_offspring = 0
         print(
             f"Generacja: {no_generations}\t"
             f"Procent: {no_generations * 100 // self.max_gen} \t"
@@ -180,38 +161,63 @@ class GAD(Ewaluacja3NMixin):
             # Generuje druga połowe losowych
             # Tutaj osobnik losowy ma zamieniane segmenty genów losowo, tzn jest dzielony
             # na od 4 do 50 czesci i te czesci ma potem łączone w losowy sposób
-            for a in range(self.ile_losowych // 2):
+            for a in range(self.ile_losowych):
                 num_parts = random.randint(2, 50)
-                parts = splitEveryN(
-                    max(dlugosc // num_parts, dlugosc), najlepszy_osobnik
-                )
+                parts = splitEveryN(dlugosc // num_parts, najlepszy_osobnik)
                 random.shuffle(parts)
                 osobnik = list(itertools.chain(*parts))
                 osbn_czesciowo_losowe.append(osobnik)
 
-            osbn_losowe = [
+            osbn_losowe = [  # noqa
                 random.sample(baza_dla_randomizera, len(baza_dla_randomizera))
                 for n in range(self.ile_zupelnie_losowych)
             ]
 
             initial_population = (
-                [najlepszy_osobnik] * self.ile_najlepszych
-                + osbn_losowe
-                + osbn_czesciowo_losowe
+                [najlepszy_osobnik]
+                * len(najlepszy_osobnik)  # * self.ile_najlepszych
+                # osbn_losowe
+                # + osbn_czesciowo_losowe
             )
 
             sum_all = sum(praca.pkdaut for praca in self.lista_prac_tuples)
 
-            self.ga_instance = pygad.GA(
-                num_generations=self.max_gen,
+            pool = multiprocessing.Pool(
+                initializer=multiprocessing_gad_pool_initializer,
+                initargs=(
+                    self.lista_prac_by_index,
+                    self.liczba_2_2_n,
+                    self.liczba_0_8_n,
+                    self.maks_pkt_aut_calosc,
+                    self.maks_pkt_aut_monografie,
+                ),
+            )
+
+            self.mutation_counter_offspring = 0
+
+            def bubbly_func(offspring, ga_instance):
+                idx_2 = ga_instance.generations_completed
+
+                for idx_1 in range(idx_2, len(offspring)):
+                    if idx_1 == idx_2:
+                        continue
+
+                    tmp = offspring[idx_1][idx_2]
+                    offspring[idx_1][idx_2] = offspring[idx_1][idx_1]
+                    offspring[idx_1][idx_1] = tmp
+                    # print(f"Dla elementu {idx_1} zamienilem indeksy {idx_2} na {idx_1}")
+                return offspring
+
+            self.ga_instance = MultiprocessingGAD(
+                pool=pool,
+                num_generations=len(initial_population),  # self.max_gen,
                 num_parents_mating=2,
                 initial_population=initial_population,
                 gene_type=int,
                 gene_space=baza_dla_randomizera,
                 crossover_type="single_point",
-                mutation_type="swap",
+                mutation_type=bubbly_func,
                 on_generation=lambda s: self.on_generation(s),
-                fitness_func=lambda a, b: self.fitness_func(a, b),
                 stop_criteria=[f"reach_{sum_all}", f"saturate_{self.saturate}"],
             )
 
@@ -335,11 +341,11 @@ class GAD(Ewaluacja3NMixin):
 
             return solution
 
-        solution = self.najlepszy_osobnik
-        poprzedni_wynik = 0
-        self.fitness_func(solution, None)
-
+        poprzedni_wynik = -1
+        self.suma_pkd = 0
         ile_epok = 0
+
+        solution = self.najlepszy_osobnik
 
         while ile_epok < self.maks_epok and poprzedni_wynik < self.suma_pkd:
             ile_epok += 1
