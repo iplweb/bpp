@@ -14,8 +14,8 @@ from long_running.tasks import perform_generic_long_running_task
 
 from django.utils import timezone
 
+from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.models import Patent_Autor, Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor
-from bpp.models.const import GR_WPROWADZANIE_DANYCH
 
 
 class NowyImport(GroupRequiredMixin, generic.CreateView):

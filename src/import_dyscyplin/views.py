@@ -1,8 +1,6 @@
 from braces.views import GroupRequiredMixin, JSONResponseMixin
 from celery import uuid
 from celery.result import AsyncResult
-from django.contrib import messages
-from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.db.models import Q
 from django.http import HttpResponseRedirect
@@ -11,20 +9,23 @@ from django.views.generic import CreateView, DetailView, ListView, UpdateView
 from django.views.generic.detail import BaseDetailView
 from django.views.generic.edit import BaseDeleteView
 
-from bpp.models.const import GR_WPROWADZANIE_DANYCH
 from import_dyscyplin.forms import (
     Import_Dyscyplin_KolumnaForm,
     KolumnaFormSet,
     KolumnaFormSetHelper,
 )
 from import_dyscyplin.tasks import (
-    przeanalizuj_import_dyscyplin,
     integruj_import_dyscyplin,
+    przeanalizuj_import_dyscyplin,
     stworz_kolumny,
 )
 from notifications.mixins import ChannelSubscriberSingleObjectMixin
 from .forms import Import_DyscyplinForm
 from .models import Import_Dyscyplin
+
+from django.contrib import messages
+
+from bpp.const import GR_WPROWADZANIE_DANYCH
 
 
 class WprowadzanieDanychRequiredMixin(GroupRequiredMixin):
@@ -65,7 +66,7 @@ class KolumnyImport_Dyscyplin(
     form_class = Import_Dyscyplin_KolumnaForm
 
     def get_context_data(self, **kwargs):
-        context = super(KolumnyImport_Dyscyplin, self).get_context_data(**kwargs)
+        context = super().get_context_data(**kwargs)
         if self.request.POST:
             context["kolumny_formset"] = KolumnaFormSet(
                 self.request.POST, instance=self.object
@@ -102,7 +103,7 @@ class DetailImport_Dyscyplin(
     model = Import_Dyscyplin
 
     def get_context_data(self, **kwargs):
-        return super(DetailImport_Dyscyplin, self).get_context_data(
+        return super().get_context_data(
             notification=self.request.GET.get("notification", "0"), **kwargs
         )
 
@@ -176,7 +177,7 @@ class UsunImport_Dyscyplin(
                 'Plik importu dyscyplin "%s" został usunięty.' % self.object.plik.name,
             )
         )
-        return super(UsunImport_Dyscyplin, self).delete(request, *args, **kwargs)
+        return super().delete(request, *args, **kwargs)
 
     get = delete
 

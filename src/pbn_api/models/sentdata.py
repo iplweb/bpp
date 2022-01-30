@@ -5,7 +5,8 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields import JSONField
 
-from bpp.models import LinkDoPBNMixin, const
+from bpp import const
+from bpp.models import LinkDoPBNMixin
 
 
 class SentDataManager(models.Manager):
@@ -120,7 +121,7 @@ class SentData(LinkDoPBNMixin, models.Model):
                 update_fields.append("typ_rekordu")
 
         self.typ_rekordu = self.data_sent.get("type")
-        return super(SentData, self).save(
+        return super().save(
             force_insert=force_insert,
             force_update=force_update,
             using=using,

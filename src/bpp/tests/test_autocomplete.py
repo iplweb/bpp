@@ -1,4 +1,3 @@
-# -*- encoding: utf-8 -*-
 import json
 
 import pytest
@@ -10,9 +9,9 @@ from pbn_api.client import PBN_GET_PUBLICATION_BY_ID_URL, PBN_SEARCH_PUBLICATION
 from pbn_api.const import PBN_GET_JOURNAL_BY_ID
 from pbn_api.models import Journal, Publication
 
+from bpp.const import PBN_UID_LEN
 from bpp.models import Autor_Dyscyplina, Wydawnictwo_Zwarte
 from bpp.models.autor import Autor
-from bpp.models.const import PBN_UID_LEN
 from bpp.models.konferencja import Konferencja
 from bpp.views.autocomplete import (
     AdminNavigationAutocomplete,

@@ -1,4 +1,3 @@
-# -*- encoding: utf-8 -*-
 import json
 
 from braces.views import GroupRequiredMixin, LoginRequiredMixin
@@ -17,6 +16,8 @@ from import_common.normalization import normalize_isbn
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.contrib.postgres.search import TrigramSimilarity
 
+from bpp import const
+from bpp.const import CHARAKTER_OGOLNY_KSIAZKA, GR_WPROWADZANIE_DANYCH
 from bpp.jezyk_polski import warianty_zapisanego_nazwiska
 from bpp.lookups import SearchQueryStartsWith
 from bpp.models import (
@@ -26,11 +27,9 @@ from bpp.models import (
     Uczelnia,
     Wydawca,
     Zewnetrzna_Baza_Danych,
-    const,
 )
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
-from bpp.models.const import CHARAKTER_OGOLNY_KSIAZKA, GR_WPROWADZANIE_DANYCH
 from bpp.models.konferencja import Konferencja
 from bpp.models.nagroda import OrganPrzyznajacyNagrody
 from bpp.models.patent import Patent, Patent_Autor

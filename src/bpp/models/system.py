@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 """
 Małe klasy pomocnicze dla całego systemu
 """
@@ -13,7 +11,7 @@ from model_utils import Choices
 from mptt.fields import TreeForeignKey
 from mptt.models import MPTTModel
 
-from bpp.models import const
+from bpp import const
 from bpp.models.abstract import ModelZNazwa, NazwaISkrot
 
 NAZWY_PRIMO = [

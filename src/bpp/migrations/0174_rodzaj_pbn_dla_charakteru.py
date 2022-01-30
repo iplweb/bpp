@@ -2,7 +2,7 @@
 
 from django.db import migrations, models
 
-from bpp.models import const
+from bpp import const
 
 
 def wypelnij_rodzaj_pbn(apps, schema_editor):
@@ -24,29 +24,38 @@ def wypelnij_rodzaj_pbn(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ('bpp', '0173_auto_20190812_1412'),
+        ("bpp", "0173_auto_20190812_1412"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='charakter_formalny',
-            name='rodzaj_pbn',
-            field=models.PositiveSmallIntegerField(blank=True, choices=[(None, 'nie eksportuj do PBN'), (1, 'artykuł'),
-                                                                        (3, 'książka'), (2, 'rozdział')], default=None,
-                                                   help_text='Pole określające, czy wydawnictwa posiadające dany charakter formalny zostaną włączone\n        do eksportu PBN jako artykuły, rozdziały czy książki. ',
-                                                   null=True, verbose_name='Rodzaj dla PBN'),
+            model_name="charakter_formalny",
+            name="rodzaj_pbn",
+            field=models.PositiveSmallIntegerField(
+                blank=True,
+                choices=[
+                    (None, "nie eksportuj do PBN"),
+                    (1, "artykuł"),
+                    (3, "książka"),
+                    (2, "rozdział"),
+                ],
+                default=None,
+                help_text="Pole określające, czy wydawnictwa posiadające dany charakter formalny zostaną włączone\n        do eksportu PBN jako artykuły, rozdziały czy książki. ",
+                null=True,
+                verbose_name="Rodzaj dla PBN",
+            ),
         ),
         migrations.RunPython(wypelnij_rodzaj_pbn),
         migrations.RemoveField(
-            model_name='charakter_formalny',
-            name='artykul_pbn',
+            model_name="charakter_formalny",
+            name="artykul_pbn",
         ),
         migrations.RemoveField(
-            model_name='charakter_formalny',
-            name='ksiazka_pbn',
+            model_name="charakter_formalny",
+            name="ksiazka_pbn",
         ),
         migrations.RemoveField(
-            model_name='charakter_formalny',
-            name='rozdzial_pbn',
+            model_name="charakter_formalny",
+            name="rozdzial_pbn",
         ),
     ]

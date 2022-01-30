@@ -1,4 +1,3 @@
-# -*- encoding: utf-8 -*-
 from django.conf import settings
 from mptt.forms import TreeNodeChoiceFieldMixin
 from mptt.settings import DEFAULT_LEVEL_INDICATOR
@@ -50,6 +49,8 @@ from multiseek.logic import (
     ValueListQueryObject,
 )
 
+from .. import const
+
 from bpp.models import (
     Autor,
     Autorzy,
@@ -64,7 +65,6 @@ from bpp.models import (
     Zewnetrzna_Baza_Danych,
     ZewnetrzneBazyDanychView,
     Zrodlo,
-    const,
 )
 from bpp.models.system import Typ_KBN
 
@@ -181,7 +181,7 @@ class DataUtworzeniaQueryObject(BppMultiseekVisibilityMixin, DateQueryObject):
         if value is None:
             return NULL_VALUE
         if is_iterable(value):
-            return "od %s do %s" % (value[0], value[1])
+            return f"od {value[0]} do {value[1]}"
         return str(value)
 
 

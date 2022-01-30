@@ -15,8 +15,8 @@ from taggit.managers import TaggableManager
 from django.contrib.postgres.fields import HStoreField
 from django.contrib.postgres.search import SearchVectorField as VectorField
 
+from bpp import const
 from bpp.fields import DOIField, YearField
-from bpp.models import const
 from bpp.models.dyscyplina_naukowa import Autor_Dyscyplina, Dyscyplina_Naukowa
 from bpp.models.util import ModelZOpisemBibliograficznym, dodaj_autora
 from bpp.util import safe_html

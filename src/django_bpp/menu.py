@@ -14,7 +14,7 @@ from django.contrib import admin
 
 from django.utils.translation import ugettext_lazy as _
 
-from bpp.models.const import GR_WPROWADZANIE_DANYCH
+from bpp.const import GR_WPROWADZANIE_DANYCH
 
 PBN_MENU = [
     ("Instytucje", "/admin/pbn_api/institution"),

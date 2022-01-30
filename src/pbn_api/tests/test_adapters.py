@@ -5,6 +5,7 @@ from fixtures.pbn_api import _zrob_wydawnictwo_pbn
 from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
 from pbn_api.exceptions import PKZeroExportDisabled, WillNotExportError
 
+from bpp import const
 from bpp.models import (
     Autor,
     Czas_Udostepnienia_OpenAccess,
@@ -13,7 +14,6 @@ from bpp.models import (
     Wersja_Tekstu_OpenAccess,
     Wydawnictwo_Zwarte,
     Wydawnictwo_Zwarte_Autor,
-    const,
 )
 
 

@@ -6,7 +6,7 @@ from pbn_api.models import Publisher
 from django.contrib import admin
 from django.contrib.postgres.search import TrigramSimilarity
 
-from bpp.models.const import PBN_UID_LEN
+from bpp.const import PBN_UID_LEN
 
 
 @admin.register(Publisher)
