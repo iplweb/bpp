@@ -1,17 +1,18 @@
 import itertools
+import math
 import multiprocessing
 import os
 import random
 import time
 from operator import attrgetter
 
-import matplotlib
 import pygad
 
-from ..util import SHUFFLE_TYPE, shuffle_array
 from .ewaluacja3n_base import Ewaluacja3NBase
 from .genetyczny_multiprocessing import (
+    FitnessFuncMixin,
     MultiprocessingGAD,
+    fitness_wrapper,
     multiprocessing_gad_pool_initializer,
 )
 from .util import splitEveryN
@@ -19,19 +20,16 @@ from .util import splitEveryN
 from bpp.util import pbar
 
 
-class GAD(Ewaluacja3NBase):
+class GAD(FitnessFuncMixin, Ewaluacja3NBase):
     def __init__(
         self,
         nazwa_dyscypliny="nauki medyczne",
         max_gen=1000,
-        saturate=300,
-        ile_najlepszych=40,
-        ile_losowych=50,
-        ile_zupelnie_losowych=30,
-        ile_epok=20,
-        enable_bubbles=True,
-        enable_swapper=False,
-        enable_mutation=False,
+        saturate=500,
+        ile_najlepszych=50,
+        ile_losowych=100,
+        ile_zupelnie_losowych=50,
+        ile_epok=5,
         output_path=None,
     ):
         Ewaluacja3NBase.__init__(
@@ -48,10 +46,6 @@ class GAD(Ewaluacja3NBase):
 
         self.maks_epok = ile_epok
 
-        self.enable_bubbles = enable_bubbles
-        self.enable_swapper = enable_swapper
-        self.enable_mutation = enable_mutation
-
         self.lista_prac_dict = {x.id: x for x in self.lista_prac_tuples}
 
         self.ile_najlepszych = ile_najlepszych
@@ -61,7 +55,7 @@ class GAD(Ewaluacja3NBase):
     def on_generation(self, ga_instance: pygad.GA):
         no_generations = ga_instance.generations_completed or 1
         best_solution = ga_instance.best_solution()
-        self.mutation_counter_offspring = 0
+
         print(
             f"Generacja: {no_generations}\t"
             f"Procent: {no_generations * 100 // self.max_gen} \t"
@@ -69,55 +63,6 @@ class GAD(Ewaluacja3NBase):
             "\r",
             end="",
         )
-
-    def plot_fitness(
-        self,
-        title="PyGAD - Generation vs. Fitness",
-        xlabel="Generation",
-        ylabel="Fitness",
-        linewidth=3,
-        font_size=14,
-        plot_type="plot",
-        color="#3870FF",
-        save_dir=None,
-        filename_prefix="",
-        filename_suffix="",
-    ):
-
-        self = self.ga_instance
-
-        fig = matplotlib.pyplot.figure()
-        if plot_type == "plot":
-            matplotlib.pyplot.plot(
-                self.best_solutions_fitness, linewidth=linewidth, color=color
-            )
-        elif plot_type == "scatter":
-            matplotlib.pyplot.scatter(
-                range(self.generations_completed + 1),
-                self.best_solutions_fitness,
-                linewidth=linewidth,
-                color=color,
-            )
-        elif plot_type == "bar":
-            matplotlib.pyplot.bar(
-                range(self.generations_completed + 1),
-                self.best_solutions_fitness,
-                linewidth=linewidth,
-                color=color,
-            )
-        matplotlib.pyplot.title(title, fontsize=font_size)
-        matplotlib.pyplot.xlabel(xlabel, fontsize=font_size)
-        matplotlib.pyplot.ylabel(ylabel, fontsize=font_size)
-
-        if save_dir is not None:
-            matplotlib.pyplot.savefig(
-                fname=os.path.join(
-                    save_dir, f"{filename_prefix}fitness{filename_suffix}.png"
-                ),
-                bbox_inches="tight",
-            )
-
-        return fig
 
     def pracuj(self):
 
@@ -136,6 +81,20 @@ class GAD(Ewaluacja3NBase):
                 reverse=True,
             )
         ]
+
+        no_workers = int(math.ceil(os.cpu_count() * 0.75))
+
+        self.pool = multiprocessing.Pool(
+            processes=no_workers,
+            initializer=multiprocessing_gad_pool_initializer,
+            initargs=(
+                self.lista_prac_by_index,
+                self.liczba_2_2_n,
+                self.liczba_0_8_n,
+                self.maks_pkt_aut_calosc,
+                self.maks_pkt_aut_monografie,
+            ),
+        )
 
         def cykl_genetyczny(najlepszy_osobnik, nr_cyklu):
 
@@ -161,7 +120,7 @@ class GAD(Ewaluacja3NBase):
             # Generuje druga połowe losowych
             # Tutaj osobnik losowy ma zamieniane segmenty genów losowo, tzn jest dzielony
             # na od 4 do 50 czesci i te czesci ma potem łączone w losowy sposób
-            for a in range(self.ile_losowych):
+            for a in range(self.ile_losowych // 2):
                 num_parts = random.randint(2, 50)
                 parts = splitEveryN(dlugosc // num_parts, najlepszy_osobnik)
                 random.shuffle(parts)
@@ -174,49 +133,25 @@ class GAD(Ewaluacja3NBase):
             ]
 
             initial_population = (
-                [najlepszy_osobnik]
-                * len(najlepszy_osobnik)  # * self.ile_najlepszych
-                # osbn_losowe
-                # + osbn_czesciowo_losowe
+                [najlepszy_osobnik] * self.ile_najlepszych
+                + osbn_losowe
+                + osbn_czesciowo_losowe
             )
 
             sum_all = sum(praca.pkdaut for praca in self.lista_prac_tuples)
 
-            pool = multiprocessing.Pool(
-                initializer=multiprocessing_gad_pool_initializer,
-                initargs=(
-                    self.lista_prac_by_index,
-                    self.liczba_2_2_n,
-                    self.liczba_0_8_n,
-                    self.maks_pkt_aut_calosc,
-                    self.maks_pkt_aut_monografie,
-                ),
-            )
-
-            self.mutation_counter_offspring = 0
-
-            def bubbly_func(offspring, ga_instance):
-                idx_2 = ga_instance.generations_completed
-
-                for idx_1 in range(idx_2, len(offspring)):
-                    if idx_1 == idx_2:
-                        continue
-
-                    tmp = offspring[idx_1][idx_2]
-                    offspring[idx_1][idx_2] = offspring[idx_1][idx_1]
-                    offspring[idx_1][idx_1] = tmp
-                    # print(f"Dla elementu {idx_1} zamienilem indeksy {idx_2} na {idx_1}")
-                return offspring
+            # mutation
 
             self.ga_instance = MultiprocessingGAD(
-                pool=pool,
-                num_generations=len(initial_population),  # self.max_gen,
+                pool=self.pool,
+                num_generations=self.max_gen,
                 num_parents_mating=2,
                 initial_population=initial_population,
                 gene_type=int,
                 gene_space=baza_dla_randomizera,
                 crossover_type="single_point",
-                mutation_type=bubbly_func,
+                mutation_type="swap",
+                # mutation_num_genes=int(math.ceil(len(najlepszy_osobnik) * 0.5)),
                 on_generation=lambda s: self.on_generation(s),
                 stop_criteria=[f"reach_{sum_all}", f"saturate_{self.saturate}"],
             )
@@ -226,132 +161,103 @@ class GAD(Ewaluacja3NBase):
             solution, fitness, idx = self.ga_instance.best_solution()
 
             print(f"\n\nNajlepsze rozwiązanie z algorytmu genetycznego: {fitness}")
-            print("Sprawdz wykres wydajnosci.")
-
-            self.plot_fitness(
-                title=f"{self.nazwa_dyscypliny} - cykl {nr_cyklu}",
-                xlabel="generacja",
-                ylabel="suma PKDaut",
-                save_dir=self.output_path,
-                filename_suffix=f"_{nr_cyklu}",
-            )
 
             solution = solution.tolist()
+            print("Przeprowadzam przesuwanie bąbelkowe...")
+            direction = 1
+            ile_razy_nie_znaleziono_lepszych = 0
+            while True:
 
-            if self.enable_bubbles:
-                # bubble
-                print("Przeprowadzam przesuwanie bąbelkowe...")
-                direction = 1
-                ile_razy_nie_znaleziono_lepszych = 0
-                while True:
+                znaleziono_lepsze = False
 
-                    znaleziono_lepsze = False
+                for a in range(0, len(solution)):
+                    if a == 0 and direction == 1:
+                        continue
 
-                    for a in range(0, len(solution)):
-                        if a == 0 and direction == 1:
-                            continue
+                    if a == len(solution) - 1 and direction == -1:
+                        continue
 
-                        if a == len(solution) - 1 and direction == -1:
-                            continue
+                    new_solution = solution[:]
+                    if direction == 1:
+                        new_solution.insert(0, new_solution.pop(a))
+                    else:
+                        new_solution.append(new_solution.pop(a))
 
-                        new_solution = solution[:]
-                        if direction == 1:
-                            new_solution.insert(0, new_solution.pop(a))
-                        else:
-                            new_solution.append(new_solution.pop(a))
+                    self.fitness_func(new_solution)
 
-                        self.fitness_func(new_solution, None)
-
-                        if self.suma_pkd > fitness:
-                            fitness = self.suma_pkd
-                            print(
-                                f"Nowe rozwiązanie z przesuwania bąbelkowego: {fitness}\r",
-                                end="",
-                            )
-                            solution = new_solution
-                            ile_razy_nie_znaleziono_lepszych = 0
-                            znaleziono_lepsze = True
-
-                    if not znaleziono_lepsze:
-                        direction = -direction
-                        ile_razy_nie_znaleziono_lepszych += 1
-
-                        if ile_razy_nie_znaleziono_lepszych == 2:
-                            # Nie znaleziono lepszych zestawów w obydwu kierunkach
-                            break
-
-            if self.enable_swapper:
-                # swapper
-                print("Przeprowadzam swapping")
-
-                seen_pairs = set()
-
-                for a in pbar(range(len(solution)), count=len(solution)):
-                    for b in range(len(solution)):
-                        if a == b:
-                            continue
-
-                        if (a, b) in seen_pairs:
-                            continue
-
-                        self.fitness_func(
-                            new_solution, None, swap_idx_a=a, swap_idx_b=b
-                        )
-
-                        seen_pairs.add((a, b))
-                        seen_pairs.add((b, a))
-
-                        if self.suma_pkd > fitness:
-                            fitness = self.suma_pkd
-                            print(f"\nswap lepsze rozwiazanie: {fitness} {b} {a}\n")
-
-                            tmp = solution[a]
-                            solution[a] = solution[b]
-                            solution[b] = tmp
-                            seen_pairs = set()
-
-            if self.enable_mutation:
-                # mutator
-                print("Mutuje losowo przez nastepne 5 minut...")
-                a = 0
-                czas_start = time.monotonic()
-                while (time.monotonic() - czas_start) < 5 * 60:
-                    start = random.randint(0, len(solution))
-                    end = random.randint(start, len(solution))
-                    new_solution = shuffle_array(
-                        solution,
-                        start,
-                        end,
-                        no_shuffles=random.randint(1, 3),
-                        shuffle_type=random.choice(
-                            [SHUFFLE_TYPE.BEGIN, SHUFFLE_TYPE.MIDDLE, SHUFFLE_TYPE.END]
-                        ),
-                    )
-                    self.fitness_func(new_solution, a)
-                    if a % 10:
-                        print("A: %i %.2f\r" % (a, a * 100 / len(solution)), end="")
                     if self.suma_pkd > fitness:
                         fitness = self.suma_pkd
-                        solution = new_solution
                         print(
-                            "\nNEW best solution",
-                            self.suma_pkd,
-                            f"mutacja na {start} {end}",
+                            f"Nowe rozwiązanie z przesuwania bąbelkowego: {fitness}\r",
+                            end="",
                         )
+                        solution = new_solution
+                        ile_razy_nie_znaleziono_lepszych = 0
+                        znaleziono_lepsze = True
+
+                if not znaleziono_lepsze:
+                    direction = -direction
+                    ile_razy_nie_znaleziono_lepszych += 1
+
+                    if ile_razy_nie_znaleziono_lepszych == 2:
+                        # Nie znaleziono lepszych zestawów w obydwu kierunkach
+                        break
+
+            self.fitness_func(solution)
+            print(f"Po przesuwaniu bąbelkowym: {self.suma_pkd}")
+
+            if nr_cyklu > 3:
+                print("Przeprowadzam kombinowanie celowane")
+                new_solution = list(self.indeksy_solucji)
+                new_solution_len = len(new_solution)
+                for elem in solution:
+                    if elem not in new_solution:
+                        new_solution.append(elem)
+
+                base_new_solution = new_solution[:]
+
+                fitness = self.suma_pkd
+
+                has_new_solution = True
+
+                t_start = time.monotonic()
+                while has_new_solution is True:
+                    has_new_solution = False
+                    for a in pbar(range(1, new_solution_len + 1)):
+                        population = []
+                        for b in range(new_solution_len + 1, len(new_solution)):
+                            new_solution = base_new_solution[:]
+                            tmp = new_solution[a]
+                            new_solution[a] = new_solution[b]
+                            new_solution[b] = tmp
+                            population.append(new_solution)
+
+                        res = self.pool.map(fitness_wrapper, population)
+                        for no, elem in enumerate(res):
+                            if elem > fitness:
+                                fitness = elem
+                                base_new_solution = population[no]
+                                print(f"\nNEW SOLUTION: {fitness}")
+                                has_new_solution = True
+
+                    if time.monotonic() - t_start > 3600:
+                        # Jeżeli proces przesuwania potrwa ponad godzinę, to przerwij
+                        break
+
+                solution = base_new_solution
 
             return solution
 
-        poprzedni_wynik = -1
         self.suma_pkd = 0
         ile_epok = 0
 
         solution = self.najlepszy_osobnik
 
-        while ile_epok < self.maks_epok and poprzedni_wynik < self.suma_pkd:
+        while ile_epok < self.maks_epok:  # and poprzedni_wynik < self.suma_pkd:
             ile_epok += 1
-            poprzedni_wynik = self.suma_pkd
             print(f"Obliczam epoke nr {ile_epok}")
             solution = cykl_genetyczny(solution, nr_cyklu=ile_epok)
+            self.fitness_func(solution)
 
         # self.fitness_func(solution)
         self.lista_prac = self.lista_prac_tuples

@@ -8,21 +8,17 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("--dyscyplina", default="nauki medyczne")
         parser.add_argument("--generations", default=1000, type=int)
-        parser.add_argument("--ile_epok", default=50, type=int)
         parser.add_argument("--saturate", default=300, type=int)
         parser.add_argument("--output-path", default=None, type=str)
 
     @transaction.atomic
-    def handle(
-        self, dyscyplina, generations, output_path, ile_epok, saturate, *args, **options
-    ):
+    def handle(self, dyscyplina, generations, output_path, saturate, *args, **options):
 
         algorytm = GAD(
             nazwa_dyscypliny=dyscyplina,
             max_gen=generations,
             output_path=output_path,
             saturate=saturate,
-            ile_epok=ile_epok,
         )
         algorytm.powitanie()
         algorytm.pracuj()

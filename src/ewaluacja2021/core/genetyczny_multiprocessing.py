@@ -4,18 +4,21 @@ import pygad
 from .sumator_base import SumatorBase
 
 
-class GenetycznySumator(SumatorBase):
-    def __init__(self, lista_prac_by_index, *args, **kw):
-        super().__init__(*args, **kw)
-        self.lista_prac_by_index = lista_prac_by_index
-
+class FitnessFuncMixin:
     def fitness_func(self, lista_prac):
+        self.zeruj()
         for praca_idx in lista_prac:
             praca_tuple = self.lista_prac_by_index.get(praca_idx, None)
             assert praca_tuple is not None, "Brak pracy o indeksie"
             if self.czy_moze_przejsc(praca_tuple):
                 self.zsumuj_pojedyncza_prace(praca_tuple, praca_idx)
         return self.suma_pkd
+
+
+class GenetycznySumator(FitnessFuncMixin, SumatorBase):
+    def __init__(self, lista_prac_by_index, *args, **kw):
+        super().__init__(*args, **kw)
+        self.lista_prac_by_index = lista_prac_by_index
 
 
 def fitness_wrapper(lista_prac):

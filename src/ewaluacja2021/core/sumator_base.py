@@ -17,14 +17,7 @@ class SumatorBase:
         self.liczba_2_2_n_minus_2 = self.liczba_2_2_n - 2
         self.liczba_0_8_n_minus_2 = self.liczba_0_8_n - 2
 
-        self.suma_pkd = 0
-        self.sumy_slotow = [0, 0]
-        self.indeksy_solucji = set()
-
-        self.suma_prac_autorow_wszystko = defaultdict(int)
-        self.suma_prac_autorow_monografie = defaultdict(int)
-
-        self.id_rekordow = set()
+        self.zeruj()
 
     def czy_moze_przejsc_warunek_uczelnia(self, praca):
         if (
@@ -84,3 +77,13 @@ class SumatorBase:
         self.suma_prac_autorow_wszystko[praca.autor_id] += praca.slot
         if praca.monografia:
             self.suma_prac_autorow_monografie[praca.autor_id] += praca.slot
+
+    def zeruj(self):
+        self.id_rekordow = set()
+
+        self.suma_pkd = 0
+        self.sumy_slotow = [0, 0]
+        self.indeksy_solucji = set()
+
+        self.suma_prac_autorow_wszystko = defaultdict(int)
+        self.suma_prac_autorow_monografie = defaultdict(int)
