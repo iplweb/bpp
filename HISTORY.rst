@@ -10,6 +10,7 @@ Historia zmian
   2021 (#1200),
 * w przypadku uruchomienia na serwerze z nazwą "test" w domenie, ustaw tło na
   zawierające napis "serwer testowy" (#1191),
+* wielowątkowy raport genetyczny (#1202),
 
 202201.1082
 -----------

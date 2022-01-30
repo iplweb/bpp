@@ -1,4 +1,3 @@
-# -*- encoding: utf-8 -*-
 from urllib.parse import urlencode
 
 import pytest
@@ -10,8 +9,8 @@ from raport_slotow.views import SESSION_KEY
 
 from django.contrib.contenttypes.models import ContentType
 
+from bpp.const import DO_STYCZNIA_POPRZEDNI_POTEM_OBECNY, NAJWIEKSZY_REKORD
 from bpp.models import Uczelnia
-from bpp.models.const import DO_STYCZNIA_POPRZEDNI_POTEM_OBECNY, NAJWIEKSZY_REKORD
 from bpp.models.fields import OpcjaWyswietlaniaField
 from bpp.tests import browse_praca_url, normalize_html
 

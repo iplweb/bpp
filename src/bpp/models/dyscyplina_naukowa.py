@@ -19,7 +19,7 @@ from model_utils import Choices
 # (8 rows)
 from import_common.normalization import normalize_kod_dyscypliny
 
-from bpp.models import const
+from bpp import const
 
 
 def mnoznik_dla_monografii(kod_dziedziny, tryb_kalkulacji, punktacja_monografii):
@@ -67,7 +67,7 @@ def mnoznik_dla_monografii(kod_dziedziny, tryb_kalkulacji, punktacja_monografii)
 
 def waliduj_format_kodu_numer(value):
     try:
-        val1, val2 = [int(x) for x in value.split(".")]
+        val1, val2 = (int(x) for x in value.split("."))
     except (TypeError, ValueError):
         raise ValidationError("Poprawny kod ma format LICZBA[kropka]LICZBA")
 
@@ -87,7 +87,7 @@ def waliduj_format_kodu_numer(value):
 
 class KodDyscyplinyField(models.CharField):
     def __init__(self, *args, **kw):
-        super(KodDyscyplinyField, self).__init__(*args, **kw)
+        super().__init__(*args, **kw)
         self.validators.append(waliduj_format_kodu_numer)
 
     def to_python(self, value):
@@ -100,7 +100,7 @@ class Dyscyplina_Naukowa(models.Model):
     widoczna = models.BooleanField(default=True)
 
     def kod_dla_pbn(self):
-        a, b = [int(x) for x in self.kod.split(".", 1)]
+        a, b = (int(x) for x in self.kod.split(".", 1))
         return int("%i%.2i" % (a, b))
 
     def __str__(self):

@@ -8,8 +8,9 @@ from pbn_api.client import PBN_GET_LANGUAGES_URL, PBNClient
 from pbn_api.models import Institution, Language, Publication, Scientist
 from pbn_api.tests.utils import MockTransport
 
-from bpp.models import Charakter_Formalny, Jezyk, Uczelnia, Wydawnictwo_Ciagle, const
-from bpp.models.const import RODZAJ_PBN_KSIAZKA
+from bpp import const
+from bpp.const import RODZAJ_PBN_KSIAZKA
+from bpp.models import Charakter_Formalny, Jezyk, Uczelnia, Wydawnictwo_Ciagle
 
 MOCK_RETURNED_MONGODB_DATA = dict(
     status="foo",

@@ -6,7 +6,7 @@ from .base import BasePBNMongoDBModel
 
 from django.utils.functional import cached_property
 
-from bpp.models import const
+from bpp import const
 from bpp.models.abstract import LinkDoPBNMixin
 
 STATUS_ACTIVE = "ACTIVE"

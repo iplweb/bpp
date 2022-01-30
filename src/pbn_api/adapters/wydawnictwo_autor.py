@@ -1,4 +1,4 @@
-from bpp.models import const
+from bpp import const
 from bpp.models.abstract import BazaModeluOdpowiedzialnosciAutorow
 
 

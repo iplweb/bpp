@@ -1,11 +1,11 @@
 import pytest
 
+from bpp import const
 from bpp.models import (
     Autor_Dyscyplina,
     Charakter_Formalny,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
-    const,
 )
 
 

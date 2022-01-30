@@ -6,8 +6,8 @@ from django.contrib import admin
 from django.contrib.postgres.search import TrigramSimilarity
 
 from bpp.admin.filters import PBN_UID_IDObecnyFilter
+from bpp.const import PBN_UID_LEN
 from bpp.models import Wydawca
-from bpp.models.const import PBN_UID_LEN
 from bpp.models.wydawca import Poziom_Wydawcy
 
 
@@ -16,7 +16,7 @@ class Poziom_WydawcyInlineForm(forms.ModelForm):
         fields = "__all__"
 
     def __init__(self, *args, **kw):
-        super(Poziom_WydawcyInlineForm, self).__init__(*args, **kw)
+        super().__init__(*args, **kw)
         if kw.get("instance"):
             self.fields["rok"].disabled = True
 

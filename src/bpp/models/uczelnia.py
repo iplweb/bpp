@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 """
 Struktura uczelni.
 """
@@ -13,12 +11,13 @@ from django.urls.base import reverse
 from model_utils import Choices
 
 from pbn_api.exceptions import WillNotExportError
+from .. import const
 from ..util import year_last_month
 from .fields import OpcjaWyswietlaniaField
 
 from django.utils.functional import cached_property
 
-from bpp.models import ModelZAdnotacjami, NazwaISkrot, const
+from bpp.models import ModelZAdnotacjami, NazwaISkrot
 from bpp.models.abstract import ModelZPBN_ID, NazwaWDopelniaczu
 
 if TYPE_CHECKING:

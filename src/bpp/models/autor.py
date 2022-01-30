@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 """
 Autorzy
 """
@@ -14,14 +12,9 @@ from django.urls.base import reverse
 
 from django.contrib.postgres.search import SearchVectorField as VectorField
 
+from bpp import const
 from bpp.core import zbieraj_sloty
-from bpp.models import (
-    LinkDoPBNMixin,
-    ModelZAdnotacjami,
-    ModelZNazwa,
-    NazwaISkrot,
-    const,
-)
+from bpp.models import LinkDoPBNMixin, ModelZAdnotacjami, ModelZNazwa, NazwaISkrot
 from bpp.models.abstract import ModelZPBN_ID
 from bpp.util import FulltextSearchMixin
 
@@ -201,7 +194,7 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
         app_label = "bpp"
 
     def __str__(self):
-        buf = "%s %s" % (self.nazwisko, self.imiona)
+        buf = f"{self.nazwisko} {self.imiona}"
 
         if self.poprzednie_nazwiska and self.pokazuj_poprzednie_nazwiska:
             buf += " (%s)" % self.poprzednie_nazwiska
@@ -247,7 +240,7 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
 
     def save(self, *args, **kw):
         self.sort = (self.nazwisko.lower().replace("von ", "") + self.imiona).lower()
-        ret = super(Autor, self).save(*args, **kw)
+        ret = super().save(*args, **kw)
 
         for jednostka in self.jednostki.all():
             self.defragmentuj_jednostke(jednostka)
@@ -299,7 +292,7 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
             return True
 
     def get_full_name(self):
-        buf = "%s %s" % (self.imiona, self.nazwisko)
+        buf = f"{self.imiona} {self.nazwisko}"
         if self.poprzednie_nazwiska:
             buf += " (%s)" % self.poprzednie_nazwiska
         return buf
@@ -496,9 +489,9 @@ class Autor_Jednostka(models.Model):
                 )
 
     def __str__(self):
-        buf = "%s ↔ %s" % (self.autor, self.jednostka.skrot)
+        buf = f"{self.autor} ↔ {self.jednostka.skrot}"
         if self.funkcja:
-            buf = "%s ↔ %s, %s" % (self.autor, self.funkcja.nazwa, self.jednostka.skrot)
+            buf = f"{self.autor} ↔ {self.funkcja.nazwa}, {self.jednostka.skrot}"
         return buf
 
     @transaction.atomic

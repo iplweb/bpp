@@ -1,9 +1,9 @@
 import pytest
 from django.core.exceptions import ValidationError
 
+from bpp import const
 from bpp.models import (
     Dyscyplina_Naukowa,
-    const,
     mnoznik_dla_monografii,
     waliduj_format_kodu_numer,
 )

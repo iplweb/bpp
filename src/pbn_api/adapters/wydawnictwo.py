@@ -14,8 +14,9 @@ from .zrodlo import ZrodloPBNAdapter
 
 from django.utils.functional import cached_property
 
-from bpp.models import BazaModeluOdpowiedzialnosciAutorow, Uczelnia, const
-from bpp.models.const import TO_REDAKTOR, TO_REDAKTOR_TLUMACZENIA, TO_TLUMACZ
+from bpp import const
+from bpp.const import TO_REDAKTOR, TO_REDAKTOR_TLUMACZENIA, TO_TLUMACZ
+from bpp.models import BazaModeluOdpowiedzialnosciAutorow, Uczelnia
 from bpp.util import strip_html
 
 

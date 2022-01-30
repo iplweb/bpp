@@ -1,9 +1,10 @@
-from django.contrib.contenttypes.fields import GenericForeignKey
-from django.contrib.contenttypes.models import ContentType
+from django.db import models
 from model_utils import Choices
 
-from bpp.models.const import TRYB_DOSTEPU
-from django.db import models
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
+
+from bpp.const import TRYB_DOSTEPU
 
 
 class Element_Repozytorium(models.Model):

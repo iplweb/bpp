@@ -12,7 +12,7 @@ from import_dyscyplin.models import Import_Dyscyplin
 
 from django.contrib.auth.models import Group
 
-from bpp.models.const import GR_WPROWADZANIE_DANYCH
+from bpp.const import GR_WPROWADZANIE_DANYCH
 
 
 @pytest.fixture

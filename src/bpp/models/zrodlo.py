@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 """
 Źródła.
 """
@@ -10,9 +8,10 @@ from django.urls.base import reverse
 
 from django.contrib.postgres.search import SearchVectorField as VectorField
 
+from bpp import const
 from bpp.fields import DOIField, YearField
 from bpp.jezyk_polski import czasownik_byc
-from bpp.models import LinkDoPBNMixin, const
+from bpp.models import LinkDoPBNMixin
 from bpp.models.abstract import (
     ModelPunktowanyBaza,
     ModelZAdnotacjami,
