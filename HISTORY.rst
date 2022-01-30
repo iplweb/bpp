@@ -8,6 +8,8 @@ Historia zmian
 
 * licz punktacje dla rozdziałów i monografii z roku 2022 wg reguł dla roku
   2021 (#1200),
+* w przypadku uruchomienia na serwerze z nazwą "test" w domenie, ustaw tło na
+  zawierające napis "serwer testowy" (#1191),
 
 202201.1082
 -----------

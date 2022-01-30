@@ -344,6 +344,7 @@ if SENTRYSDK_CONFIG_URL and not PROCESS_INTERACTIVE:
 
 ALLOWED_HOSTS = [
     "127.0.0.1",
+    "test.unexistenttld",
     django_getenv("DJANGO_BPP_HOSTNAME", "localhost"),
 ]
 

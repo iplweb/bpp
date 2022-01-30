@@ -31,7 +31,14 @@ SENDFILE_ROOT = MEDIA_ROOT
 COMPRESS_ENABLED = False  # not DEBUG
 COMPRESS_OFFLINE = False
 
-ALLOWED_HOSTS = ["dockerhost", "webserver", "localhost", "127.0.0.1", "mac.iplweb"]
+ALLOWED_HOSTS = [
+    "dockerhost",
+    "webserver",
+    "localhost",
+    "127.0.0.1",
+    "mac.iplweb",
+    "test.unexistenttld",
+]
 
 HTML_MINIFY = False
 

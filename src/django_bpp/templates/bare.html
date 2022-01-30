@@ -6,7 +6,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=10">
     {% load static %}
     {% load compress %}
-    <title>{% block title %}{% block extratitle %}{% endblock %}
+    <title>{% if "test" in request.build_absolute_uri %}** SERWER TESTOWY ** {% endif %}{% block title %}{% block extratitle %}{% endblock %}
         - Bibliografia Publikacji {{ uczelnia.skrot }}
     {% endblock %}</title>
     <meta charset="utf-8"/>
