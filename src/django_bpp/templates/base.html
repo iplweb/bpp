@@ -271,6 +271,27 @@
                 <div id="messagesPlaceholder"></div>
 
                 <div id="content">
+                    {% if "test" in request.build_absolute_uri %}
+
+                        {# Najprostsza, naiwna identyfikacja serwera testowego - słowo 'test' w nazwie domeny. #}
+
+                        <div class="hide-on-print callout alert" data-sticky data-margin-top="4">
+                            <b>Serwer testowy</b>. Zmiany mogą zostać nadpisane zgodnie z ustawieniami aktualizacji.
+                        </div>
+
+                        <style>
+                            body {
+                                background-image: url("{% static "bpp/images/test_server_background.jpg" %}") !important;
+                                background-size: 100%;
+                                background-repeat: repeat-y;
+                            }
+
+                            #test-image-copyright {
+                                display: block !important;
+                            }
+                        </style>
+                    {% endif %}
+
                     {% if password_change_required %}
                         <div class="grid-x align-center">
                             <div class="large-6 medium-8 small-12 cell">
@@ -299,6 +320,10 @@
                     {% endif %}
                     Oprogramowanie <a href="http://bpp.iplweb.pl/">Bibliografia Publikacji Pracowników</a> &copy;
                     2004-2021 <a href="http://iplweb.pl">IPLweb</a>; wersja {% bpp_version %}
+                    <div id="test-image-copyright" style="display: none;">
+                        Obrazek tła dla serwera testowego: <a href=http://www.freepik.com>Designed by pch.vector /
+                        Freepik</a>.
+                    </div>
                 </small>
             </div>
             <div class="show-for-print">
