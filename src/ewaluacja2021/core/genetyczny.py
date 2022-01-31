@@ -206,7 +206,7 @@ class GAD(FitnessFuncMixin, Ewaluacja3NBase):
             self.fitness_func(solution)
             print(f"Po przesuwaniu bąbelkowym: {self.suma_pkd}")
 
-            if nr_cyklu > 3:
+            if nr_cyklu > 3 and len(self.lista_prac_tuples) < 6000:
                 print("Przeprowadzam kombinowanie celowane")
                 new_solution = list(self.indeksy_solucji)
                 new_solution_len = len(new_solution)
