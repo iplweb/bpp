@@ -1,11 +1,12 @@
 import itertools
 import math
-import multiprocessing
 import os
 import random
 import time
 from operator import attrgetter
 
+# import multiprocessing
+import billiard as multiprocessing
 import pygad
 
 from .ewaluacja3n_base import Ewaluacja3NBase
