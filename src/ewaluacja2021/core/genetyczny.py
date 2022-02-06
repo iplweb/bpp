@@ -2,7 +2,6 @@ import itertools
 import math
 import os
 import random
-import time
 from operator import attrgetter
 
 # import multiprocessing
@@ -13,12 +12,9 @@ from .ewaluacja3n_base import Ewaluacja3NBase
 from .genetyczny_multiprocessing import (
     FitnessFuncMixin,
     MultiprocessingGAD,
-    fitness_wrapper,
     multiprocessing_gad_pool_initializer,
 )
 from .util import splitEveryN
-
-from bpp.util import pbar
 
 
 class GAD(FitnessFuncMixin, Ewaluacja3NBase):
@@ -123,7 +119,11 @@ class GAD(FitnessFuncMixin, Ewaluacja3NBase):
             # na od 4 do 50 czesci i te czesci ma potem łączone w losowy sposób
             for a in range(self.ile_losowych // 2):
                 num_parts = random.randint(2, 50)
-                parts = splitEveryN(dlugosc // num_parts, najlepszy_osobnik)
+                split_size = dlugosc // num_parts
+                if split_size == 0:
+                    split_size = 1
+
+                parts = splitEveryN(split_size, najlepszy_osobnik)
                 random.shuffle(parts)
                 osobnik = list(itertools.chain(*parts))
                 osbn_czesciowo_losowe.append(osobnik)
@@ -206,46 +206,6 @@ class GAD(FitnessFuncMixin, Ewaluacja3NBase):
 
             self.fitness_func(solution)
             print(f"Po przesuwaniu bąbelkowym: {self.suma_pkd}")
-
-            if nr_cyklu > 3 and len(self.lista_prac_tuples) < 6000:
-                print("Przeprowadzam kombinowanie celowane")
-                new_solution = list(self.indeksy_solucji)
-                new_solution_len = len(new_solution)
-                for elem in solution:
-                    if elem not in new_solution:
-                        new_solution.append(elem)
-
-                base_new_solution = new_solution[:]
-
-                fitness = self.suma_pkd
-
-                has_new_solution = True
-
-                t_start = time.monotonic()
-                while has_new_solution is True:
-                    has_new_solution = False
-                    for a in pbar(range(1, new_solution_len + 1)):
-                        population = []
-                        for b in range(new_solution_len + 1, len(new_solution)):
-                            new_solution = base_new_solution[:]
-                            tmp = new_solution[a]
-                            new_solution[a] = new_solution[b]
-                            new_solution[b] = tmp
-                            population.append(new_solution)
-
-                        res = self.pool.map(fitness_wrapper, population)
-                        for no, elem in enumerate(res):
-                            if elem > fitness:
-                                fitness = elem
-                                base_new_solution = population[no]
-                                print(f"\nNEW SOLUTION: {fitness}")
-                                has_new_solution = True
-
-                    if time.monotonic() - t_start > 3600:
-                        # Jeżeli proces przesuwania potrwa ponad godzinę, to przerwij
-                        break
-
-                solution = base_new_solution
 
             return solution
 
