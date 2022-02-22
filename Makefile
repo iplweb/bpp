@@ -124,3 +124,10 @@ integration-start-from-match-single-thread:
 	python src/manage.py pbn_integrator --enable-all --start-from-stage=15 --disable-multiprocessing
 
 restart-pbn-from-download: remove-pbn-integracja-publikacji-dane integration-start-from-download
+
+release:
+	$(eval CUR_VERSION=v$(shell ./bin/bpp-version.py))
+	$(eval NEW_VERSION=$(shell bumpver test $(CUR_VERSION) 'vYYYY0M.BUILD[-TAGNUM]' |head -1|cut -d: -f2))
+	git flow release start $(NEW_VERSION)
+	bumpver update
+	git flow release finish -m "Nowa wersja: $(NEW_VERSION)" -p --pushproduction --pushdevelop --pushtag
