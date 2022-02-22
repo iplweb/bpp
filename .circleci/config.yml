@@ -112,21 +112,21 @@ jobs:
             . venv/bin/activate
             if [ $CIRCLE_BRANCH = 'dev' ]; then make bdist_wheel; fi
 
-      # Skonfiguruj PyPI
-      - run:
-          name: init .pypirc
-          command: |
-            echo -e "[distutils]" > ~/.pypirc
-            echo -e "index-servers = pypi" >> ~/.pypirc
-            echo -e "[pypi]" >> ~/.pypirc
-            echo -e "repository = https://upload.pypi.org/legacy/" >> ~/.pypirc
-            echo -e "username = dotz" >> ~/.pypirc
-            echo -e "password = $PYPI_PASSWORD" >> ~/.pypirc
+      # # Skonfiguruj PyPI
+      # - run:
+      #     name: init .pypirc
+      #     command: |
+      #       echo -e "[distutils]" > ~/.pypirc
+      #       echo -e "index-servers = pypi" >> ~/.pypirc
+      #       echo -e "[pypi]" >> ~/.pypirc
+      #       echo -e "repository = https://upload.pypi.org/legacy/" >> ~/.pypirc
+      #       echo -e "username = dotz" >> ~/.pypirc
+      #       echo -e "password = $PYPI_PASSWORD" >> ~/.pypirc
 
-      # Zbuduj pakiet
-      - run:
-          name: create and upload packages -- only on MASTER
-          command: |
-            . venv/bin/activate
-            cat ~/.pypirc | grep -v password
-            if [ $CIRCLE_BRANCH = 'master' ]; then make bdist_wheel upload; fi
+      # # Zbuduj pakiet
+      # - run:
+      #     name: create and upload packages -- only on MASTER
+      #     command: |
+      #       . venv/bin/activate
+      #       cat ~/.pypirc | grep -v password
+      #       if [ $CIRCLE_BRANCH = 'master' ]; then make bdist_wheel upload; fi
