@@ -6,7 +6,8 @@
                     style="display: inline;"
                     data-input-class="short"
                     data-text-only="false"
-                    data-url="{% url 'bpp:update_multiseek_title' %}">{{ request.session.MULTISEEK_TITLE }}
+                    data-type="textarea"
+                    data-url="{% url 'bpp:update_multiseek_title' %}">{{ request.session.MULTISEEK_TITLE|safe }}
                 </h1>
                 <button
                         title="Kliknij, aby zmienić tytuł wyszukiwania"

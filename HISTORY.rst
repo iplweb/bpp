@@ -11,6 +11,7 @@ Historia zmian
 * w przypadku uruchomienia na serwerze z nazwą "test" w domenie, ustaw tło na
   zawierające napis "serwer testowy" (#1191),
 * wielowątkowy raport genetyczny (#1202),
+* edycja tytułu raportu multiwyszukiwarki - teraz może zawierać on dodatkowe linie (#1201).
 
 202201.1082
 -----------
