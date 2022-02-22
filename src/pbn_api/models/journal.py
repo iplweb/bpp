@@ -2,7 +2,8 @@ from django.db import models
 
 from .base import BasePBNMongoDBModel
 
-from bpp.models import LinkDoPBNMixin, const
+from bpp import const
+from bpp.models import LinkDoPBNMixin
 
 
 class Journal(LinkDoPBNMixin, BasePBNMongoDBModel):

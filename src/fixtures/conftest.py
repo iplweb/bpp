@@ -23,16 +23,16 @@ except ImportError:
 
 from model_mommy import mommy
 
+from bpp import const
+from bpp.const import GR_WPROWADZANIE_DANYCH, TO_AUTOR
 from bpp.fixtures import get_openaccess_data
 from bpp.models import (
     Autor_Dyscyplina,
     Dyscyplina_Naukowa,
     Wydawca,
     Zewnetrzna_Baza_Danych,
-    const,
 )
 from bpp.models.autor import Autor, Funkcja_Autora, Tytul
-from bpp.models.const import GR_WPROWADZANIE_DANYCH, TO_AUTOR
 from bpp.models.patent import Patent
 from bpp.models.praca_doktorska import Praca_Doktorska
 from bpp.models.praca_habilitacyjna import Praca_Habilitacyjna

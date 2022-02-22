@@ -20,15 +20,15 @@ from django.contrib.contenttypes.models import ContentType
 
 from django.utils import timezone
 
+from bpp import const
 from bpp import models as bpp
+from bpp.const import CHARAKTER_OGOLNY_KSIAZKA, RODZAJ_PBN_KSIAZKA
 from bpp.models import (
     cache,
-    const,
     parse_informacje,
     parse_informacje_as_dict,
     wez_zakres_stron,
 )
-from bpp.models.const import CHARAKTER_OGOLNY_KSIAZKA, RODZAJ_PBN_KSIAZKA
 from bpp.system import User
 from bpp.util import pbar, set_seq
 
@@ -256,7 +256,7 @@ def data_or_null(s):
 
 
 def get_dict(model, attname):
-    return dict([(getattr(i, attname), i) for i in model.objects.all()])
+    return {getattr(i, attname): i for i in model.objects.all()}
 
 
 @transaction.atomic
@@ -375,7 +375,6 @@ def integruj_autorow(silent=False):
                 tytul = None
                 if autor.tytul:
                     tytul = tytuly.get(autor.tytul)
-                # import pdb; pdb.set_trace()
                 bpp_autor = bpp.Autor.objects.create(
                     nazwisko=autor.nazwisk_bz,
                     imiona=autor.imiona_bz,
@@ -686,7 +685,7 @@ def integruj_publikacje(offset=None, limit=None):
     #  #100$ -> (a: numer id -> idt_usi -> Usi, B_U)
     #  #200$ -> (a: tytuł, b: podtytuł, c: pod red)
 
-    statusy_korekt = dict([(a.nazwa, a) for a in bpp.Status_Korekty.objects.all()])
+    statusy_korekt = {a.nazwa: a for a in bpp.Status_Korekty.objects.all()}
     mapping_korekt = {
         "!": "przed korektą",
         "*": "w trakcie korekty",
@@ -705,16 +704,16 @@ def integruj_publikacje(offset=None, limit=None):
 
     base_query = base_query.select_related()
 
-    typy_kbn = dict([(x.skrot, x.bpp_id) for x in dbf.Kbn.objects.all()])
+    typy_kbn = {x.skrot: x.bpp_id for x in dbf.Kbn.objects.all()}
     typ_kbn_pusty = bpp.Typ_KBN.objects.get(skrot="000")
 
     try:
         jezyk_pusty = bpp.Jezyk.objects.get(skrot="000")
     except bpp.Jezyk.DoesNotExist:
         jezyk_pusty = bpp.Jezyk.objects.get(skrot="in.")
-    jezyki = dict([(x.skrot, x.bpp_id) for x in dbf.Jez.objects.all()])
+    jezyki = {x.skrot: x.bpp_id for x in dbf.Jez.objects.all()}
 
-    charaktery_formalne = dict([(x.skrot, x.bpp_id) for x in dbf.Pub.objects.all()])
+    charaktery_formalne = {x.skrot: x.bpp_id for x in dbf.Pub.objects.all()}
 
     iter = base_query
 
@@ -1442,7 +1441,7 @@ def integruj_publikacje(offset=None, limit=None):
                 for literka in "efg":
                     assert not elem.get(
                         literka
-                    ), "co mam z tym zrobic literka %s w %r" % (literka, elem)
+                    ), f"co mam z tym zrobic literka {literka} w {elem!r}"
 
                 assert not kw.get("informacje"), (
                     kw["informacje"],
@@ -2044,7 +2043,7 @@ def xls2dict(fp):
 
 
 def dodaj_aktualnosc():
-    """Dodaje do 'Aktualności' wpis z datą i czasem importu. """
+    """Dodaje do 'Aktualności' wpis z datą i czasem importu."""
     a = Article.objects.get_or_create(
         status=Article.STATUS.published,
         title="Informacja o imporcie bazy danych",

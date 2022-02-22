@@ -3,7 +3,8 @@ from django.db import models
 from import_common.core import matchuj_wydawce
 from .base import BasePBNMongoDBModel
 
-from bpp.models import LinkDoPBNMixin, const
+from bpp import const
+from bpp.models import LinkDoPBNMixin
 
 
 class PublisherManager(models.Manager):

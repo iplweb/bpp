@@ -1,8 +1,7 @@
-# -*- encoding: utf-8 -*-
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support.expected_conditions import alert_is_present
 
-from bpp.models.const import CHARAKTER_OGOLNY_KSIAZKA, TO_AUTOR
+from bpp.const import CHARAKTER_OGOLNY_KSIAZKA, TO_AUTOR
 
 try:
     from django.core.urlresolvers import reverse
@@ -139,7 +138,6 @@ def test_automatycznie_uzupelnij_punkty(admin_browser, asgi_live_server):
 
 
 def trigger_event(elem, event):
-    # import pytest; pytest.set_trace()e
     elem.parent.driver.execute_script(
         "return django.jQuery(arguments[0]).trigger(arguments[1]).get();",
         "#" + elem["id"],

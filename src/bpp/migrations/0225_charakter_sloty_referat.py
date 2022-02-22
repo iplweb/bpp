@@ -2,7 +2,7 @@
 
 from django.db import migrations, models
 
-from bpp.models.const import CHARAKTER_SLOTY_REFERAT
+from bpp.const import CHARAKTER_SLOTY_REFERAT
 
 
 def zaznacz_referaty(apps, schema_editor):

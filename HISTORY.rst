@@ -3,6 +3,16 @@
 Historia zmian
 ==============
 
+202201.1083
+-----------
+
+* licz punktacje dla rozdziałów i monografii z roku 2022 wg reguł dla roku
+  2021 (#1200),
+* w przypadku uruchomienia na serwerze z nazwą "test" w domenie, ustaw tło na
+  zawierające napis "serwer testowy" (#1191),
+* wielowątkowy raport genetyczny (#1202),
+* edycja tytułu raportu multiwyszukiwarki - teraz może zawierać on dodatkowe linie (#1201).
+
 202201.1082
 -----------
 

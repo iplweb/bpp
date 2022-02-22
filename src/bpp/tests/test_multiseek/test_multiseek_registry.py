@@ -1,4 +1,3 @@
-# -*- encoding: utf-8 -*-
 from datetime import datetime
 
 import pytest
@@ -6,12 +5,12 @@ from model_mommy import mommy
 from multiseek import logic
 from multiseek.logic import DIFFERENT, EQUAL, AutocompleteQueryObject
 
+from bpp import const
 from bpp.models import (
     Autor_Dyscyplina,
     Dyscyplina_Naukowa,
     Typ_Odpowiedzialnosci,
     Zewnetrzna_Baza_Danych,
-    const,
 )
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord

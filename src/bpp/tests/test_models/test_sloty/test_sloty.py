@@ -4,6 +4,7 @@ import pytest
 
 from django.contrib.contenttypes.models import ContentType
 
+from bpp.const import TO_AUTOR, TO_REDAKTOR
 from bpp.models import (
     Autor_Dyscyplina,
     Cache_Punktacja_Autora,
@@ -15,7 +16,6 @@ from bpp.models import (
     Typ_Odpowiedzialnosci,
     Uczelnia,
 )
-from bpp.models.const import TO_AUTOR, TO_REDAKTOR
 from bpp.models.sloty.core import IPunktacjaCacher, ISlot
 from bpp.models.sloty.exceptions import CannotAdapt
 from bpp.models.sloty.wydawnictwo_ciagle import (
@@ -291,7 +291,7 @@ def test_ISlot_wydawnictwo_zwarte_zakres_lat_nie_ten(zwarte_z_dyscyplinami):
     zwarte_z_dyscyplinami.rok = 2020
     ISlot(zwarte_z_dyscyplinami)
 
-    zwarte_z_dyscyplinami.rok = 2022
+    zwarte_z_dyscyplinami.rok = 2023
     with pytest.raises(CannotAdapt):
         ISlot(zwarte_z_dyscyplinami)
 
@@ -330,6 +330,13 @@ def test_ISlot_wydawnictwo_Zwarte_nie_te_punkty(zwarte_z_dyscyplinami):
 @pytest.mark.django_db
 def test_ISlot_wydawnictwo_zwarte_tier3(zwarte_z_dyscyplinami):
     zwarte_z_dyscyplinami.rok = 2021
+    i = ISlot(zwarte_z_dyscyplinami)
+    assert isinstance(i, SlotKalkulator_Wydawnictwo_Zwarte_Prog3)
+
+
+@pytest.mark.django_db
+def test_ISlot_wydawnictwo_zwarte_tier3_rok_2022(zwarte_z_dyscyplinami):
+    zwarte_z_dyscyplinami.rok = 2022
     i = ISlot(zwarte_z_dyscyplinami)
     assert isinstance(i, SlotKalkulator_Wydawnictwo_Zwarte_Prog3)
 

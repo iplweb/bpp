@@ -1,7 +1,7 @@
 {% load static %}{% load i18n grp_tags %}{% load compress %}<!DOCTYPE html>
 <html lang="{{ LANGUAGE_CODE|default:"en-us" }}" {% if LANGUAGE_BIDI %}dir="rtl"{% endif %}>
 <head>
-    <title>{% block title %}{% endblock %}</title>
+    <title>{% if "test" in request.build_absolute_uri %}** SERWER TESTOWY ** {% endif %}{% block title %}{% endblock %}</title>
     <meta charset="utf-8"/>
     {% block blockbots %}
         <meta name="robots" content="NONE,NOARCHIVE"/>{% endblock %}
@@ -209,7 +209,9 @@
         <!-- CONTENT TITLE -->
         <header id="grp-content-title">
             {% block pretitle %}{% endblock %}
-            {% block content_title %}{% if title %}<h1>{{ title }}</h1>{% endif %}{% endblock %}
+            {% block content_title %}{% if title %}<h1>
+                {% if "test" in request.build_absolute_uri %}Serwer testowy - {% endif %}
+                {{ title }}</h1>{% endif %}{% endblock %}
             {% block object-tools %}{% endblock %}
         </header>
 
@@ -225,6 +227,17 @@
 
     <!-- FOOTER -->
     {% block footer %}{% endblock %}
+
+    {% if "test" in request.build_absolute_uri %}
+        {# Najprostsza, naiwna identyfikacja serwera testowego - słowo 'test' w nazwie domeny. #}
+        <style>
+            body {
+                background-image: url("{% static "bpp/images/test_server_background.jpg" %}") !important;
+                background-size: 100%;
+                background-repeat: repeat-y;
+            }
+        </style>
+    {% endif %}
 
 </div>
 

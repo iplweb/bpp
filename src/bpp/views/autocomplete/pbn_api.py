@@ -14,8 +14,9 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 
 from django.utils.translation import ugettext_lazy as _
 
-from bpp.models import Uczelnia, const
-from bpp.models.const import PBN_UID_LEN
+from bpp import const
+from bpp.const import PBN_UID_LEN
+from bpp.models import Uczelnia
 
 
 class BasePBNAutocomplete(LoginRequiredMixin, autocomplete.Select2QuerySetView):

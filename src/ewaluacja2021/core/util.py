@@ -4,16 +4,15 @@ from datetime import datetime
 from django.db.models import F, Transform
 
 from ewaluacja2021 import const
-from ewaluacja2021.models import IloscUdzialowDlaAutora
 
 from django.contrib.postgres.aggregates import ArrayAgg
 
-from bpp.models import Cache_Punktacja_Autora_Query
-from bpp.models.const import RODZAJ_PBN_ARTYKUL
+from bpp.const import RODZAJ_PBN_ARTYKUL
 from bpp.util import intsack
 
 
 class NieArtykul(Transform):
+
     template = f"(%(expressions)s != {RODZAJ_PBN_ARTYKUL})"
 
 
@@ -21,6 +20,8 @@ def get_lista_prac(nazwa_dyscypliny):
     """Zwraca liste prac - potencjalnych kandydatow do ewaluacji, ale wyłcznie dla dozwolonych
     autorow, tzn posiadajacych udzialy jednostkowe w danej dyscyplinie oraz dla lat 2018-2021
     """
+    from ewaluacja2021.models import IloscUdzialowDlaAutora
+
     dozwoleni_autorzy = IloscUdzialowDlaAutora.objects.filter(
         dyscyplina_naukowa__nazwa=nazwa_dyscypliny
     ).values_list("autor_id")
@@ -29,6 +30,8 @@ def get_lista_prac(nazwa_dyscypliny):
         raise ValueError(
             f"Nie mam żadnych autorów z wgranymi udziałami dla dyscypliny {nazwa_dyscypliny}"
         )
+
+    from bpp.models import Cache_Punktacja_Autora_Query
 
     return (
         Cache_Punktacja_Autora_Query.objects.filter(
@@ -102,6 +105,8 @@ def encode_datetime(obj):
 
 
 def maks_pkt_aut_calosc_get_from_db(nazwa_dyscypliny):
+    from ewaluacja2021.models import IloscUdzialowDlaAutora
+
     return {
         int(x["autor_id"]): x["ilosc_udzialow"]
         for x in IloscUdzialowDlaAutora.objects.filter(
@@ -111,6 +116,8 @@ def maks_pkt_aut_calosc_get_from_db(nazwa_dyscypliny):
 
 
 def maks_pkt_aut_monografie_get_from_db(nazwa_dyscypliny):
+    from ewaluacja2021.models import IloscUdzialowDlaAutora
+
     return {
         int(x["autor_id"]): x["ilosc_udzialow_monografie"]
         for x in IloscUdzialowDlaAutora.objects.filter(

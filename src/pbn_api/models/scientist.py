@@ -4,7 +4,8 @@ from .base import BasePBNMongoDBModel
 
 from django.utils.functional import cached_property
 
-from bpp.models import LinkDoPBNMixin, const
+from bpp import const
+from bpp.models import LinkDoPBNMixin
 
 
 class Scientist(LinkDoPBNMixin, BasePBNMongoDBModel):

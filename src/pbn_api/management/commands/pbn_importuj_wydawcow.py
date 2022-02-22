@@ -1,12 +1,11 @@
-# -*- encoding: utf-8 -*-
 from django.core.management import call_command
 from django.db import transaction
 
 from pbn_api.management.commands.util import PBNBaseCommand
 from pbn_api.models import Publisher
 
+from bpp.const import PBN_LATA
 from bpp.models import Wydawca
-from bpp.models.const import PBN_LATA
 
 poziom_to_points_map = {2: 200, 1: 80}
 points_to_poziom_map = {200: 2, 80: 1}

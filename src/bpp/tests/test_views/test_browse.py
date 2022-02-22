@@ -1,4 +1,3 @@
-# -*- encoding: utf-8 -*-
 import json
 import re
 from datetime import date
@@ -529,21 +528,22 @@ def test_PracaViewMixin_redirect(wydawnictwo_zwarte, rf, admin_user, denorms):
 
 
 def test_autor_ukrywanie_nazwisk(autor_jan_nowak, client, admin_client):
-    autor_jan_nowak.poprzednie_nazwiska = "TEST"
-    assert "TEST" in str(autor_jan_nowak)
+    NAZWISKO = "NazwiskoAutora"
+    autor_jan_nowak.poprzednie_nazwiska = NAZWISKO
+    assert NAZWISKO in str(autor_jan_nowak)
 
     autor_jan_nowak.pokazuj_poprzednie_nazwiska = False
     autor_jan_nowak.save()
 
-    assert "TEST" not in str(autor_jan_nowak)
+    assert NAZWISKO not in str(autor_jan_nowak)
 
     url = reverse("bpp:browse_autor", args=(autor_jan_nowak.slug,))
 
     page = admin_client.get(url)
-    assert "TEST" in normalize_html(page.rendered_content)
+    assert NAZWISKO in normalize_html(page.rendered_content)
 
     page = client.get(url)
-    assert "TEST" not in normalize_html(page.rendered_content)
+    assert NAZWISKO not in normalize_html(page.rendered_content)
 
 
 def test_browse_jednostka_nadrzedna(jednostka, jednostka_podrzedna, client):

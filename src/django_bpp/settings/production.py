@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 from .base import *  # noqa
 
 DEBUG = False
@@ -52,3 +50,8 @@ CACHEOPS = {
 }
 CACHEOPS_REDIS = BROKER_URL  # noqa
 CACHEOPS_DEFAULTS = {"timeout": 60 * 60}
+
+ALLOWED_HOSTS = [
+    "127.0.0.1",
+    django_getenv("DJANGO_BPP_HOSTNAME", "localhost"),  # noqa
+]

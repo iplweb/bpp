@@ -28,6 +28,7 @@ from django.contrib.auth.models import Group, Permission
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
 
+from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.models import (
     Autor,
     Autor_Dyscyplina,
@@ -71,7 +72,6 @@ from bpp.models import (
     Zrodlo,
     Zrodlo_Informacji,
 )
-from bpp.models.const import GR_WPROWADZANIE_DANYCH
 from bpp.models.konferencja import Konferencja
 from bpp.models.nagroda import Nagroda, OrganPrzyznajacyNagrody
 from bpp.models.openaccess import (

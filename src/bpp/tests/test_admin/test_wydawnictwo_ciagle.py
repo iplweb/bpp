@@ -4,7 +4,8 @@ from model_mommy import mommy
 
 from pbn_api.models import Publication, SentData
 
-from bpp.models import Uczelnia, Wydawnictwo_Ciagle, const
+from bpp import const
+from bpp.models import Uczelnia, Wydawnictwo_Ciagle
 from bpp.tests import normalize_html
 
 

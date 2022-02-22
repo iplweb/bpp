@@ -1,5 +1,6 @@
 from django.db import transaction
 
+from ... import const
 from .exceptions import CannotAdapt
 from .wydawnictwo_ciagle import (
     SlotKalkulator_Wydawnictwo_Ciagle_Prog1,
@@ -10,7 +11,7 @@ from django.contrib.contenttypes.models import ContentType
 
 from django.utils.functional import cached_property
 
-from bpp.models import Typ_Odpowiedzialnosci, Uczelnia, Wydawca, const
+from bpp.models import Typ_Odpowiedzialnosci, Uczelnia, Wydawca
 from bpp.models.cache import Cache_Punktacja_Autora, Cache_Punktacja_Dyscypliny
 from bpp.models.patent import Patent
 from bpp.models.sloty.wydawnictwo_ciagle import SlotKalkulator_Wydawnictwo_Ciagle_Prog3
@@ -64,7 +65,7 @@ def ISlot(original, uczelnia=None):
         )
 
     elif isinstance(original, Wydawnictwo_Zwarte):
-        if original.rok < 2017 or original.rok > 2021:
+        if original.rok < 2017 or original.rok > 2022:
             raise CannotAdapt(
                 "Rok poza zakresem procedur liczacych (%s). " % original.rok
             )
