@@ -130,4 +130,4 @@ release:
 	$(eval NEW_VERSION=$(shell bumpver test $(CUR_VERSION) 'vYYYY0M.BUILD[-TAGNUM]' |head -1|cut -d: -f2))
 	git flow release start $(NEW_VERSION)
 	bumpver update
-	git flow release finish -m "Nowa wersja: $(NEW_VERSION)" -p --pushproduction --pushdevelop --pushtag
+	git flow release finish $(NEW_VERSION) -m "Nowa wersja: $(NEW_VERSION)" -p --pushproduction --pushdevelop --pushtag
