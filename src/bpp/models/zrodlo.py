@@ -11,7 +11,7 @@ from django.contrib.postgres.search import SearchVectorField as VectorField
 from bpp import const
 from bpp.fields import DOIField, YearField
 from bpp.jezyk_polski import czasownik_byc
-from bpp.models import LinkDoPBNMixin
+from bpp.models import LinkDoPBNMixin, ModelZKwartylami
 from bpp.models.abstract import (
     ModelPunktowanyBaza,
     ModelZAdnotacjami,
@@ -70,7 +70,7 @@ class Redakcja_Zrodla(models.Model):
 
 
 # TODO: sprawdzanie dla redakcja_zrodla, czy rok od jest > niz rok do <
-class Punktacja_Zrodla(ModelPunktowanyBaza, models.Model):
+class Punktacja_Zrodla(ModelPunktowanyBaza, ModelZKwartylami, models.Model):
     """Informacja o punktacji danego źródła w danym roku"""
 
     zrodlo = models.ForeignKey("Zrodlo", CASCADE)

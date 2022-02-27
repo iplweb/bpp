@@ -8,6 +8,8 @@ Historia zmian
 
 * pola "kwartyl w SCOPUS" oraz "kwartyl w WoS" dla wydawnictwa ciągłego (częściowa
   implementacja #1204),
+* pola "kwartyl w SCOPUS" oraz "kwartyl w WoS" dla punktacji źródła na dany rok
+  (częściowa implementacja #1203),
 
 202201.1083
 -----------

@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 # Proste tabele
 from dal import autocomplete
 from django import forms
@@ -17,8 +15,8 @@ from .filters import PBN_UID_IDObecnyFilter
 from .helpers import (
     ADNOTACJE_FIELDSET,
     CHARMAP_SINGLE_LINE,
-    MODEL_PUNKTOWANY_BAZA,
     MODEL_PUNKTOWANY_KOMISJA_CENTRALNA,
+    MODEL_PUNKTOWANY_Z_KWARTYLAMI_BAZA,
     ZapiszZAdnotacjaMixin,
 )
 
@@ -31,7 +29,7 @@ from bpp.models.zrodlo import Redakcja_Zrodla
 
 class Punktacja_ZrodlaForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
-        super(Punktacja_ZrodlaForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         for field in self.fields:
             self.fields[field].help_text = ""
 
@@ -39,7 +37,11 @@ class Punktacja_ZrodlaForm(forms.ModelForm):
 class Punktacja_ZrodlaInline(admin.TabularInline):
     model = Punktacja_Zrodla
     form = Punktacja_ZrodlaForm
-    fields = ("rok",) + MODEL_PUNKTOWANY_BAZA + MODEL_PUNKTOWANY_KOMISJA_CENTRALNA
+    fields = (
+        ("rok",)
+        + MODEL_PUNKTOWANY_Z_KWARTYLAMI_BAZA
+        + MODEL_PUNKTOWANY_KOMISJA_CENTRALNA
+    )
     extra = 1
 
 

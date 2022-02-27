@@ -277,6 +277,26 @@
             {{ praca.impact_factor }}
         </td>
     </tr>
+    {% if praca.kwartyl_w_scopus %}
+    <tr>
+        <th>
+            Kwartyl w SCOPUS:
+        </th>
+        <td>
+            Q{{ praca.kwartyl_w_scopus }}
+        </td>
+    </tr>
+    {% endif %}
+    {% if praca.kwartyl_w_scopus %}
+    <tr>
+        <th>
+            Kwartyl w WoS:
+        </th>
+        <td>
+            Q{{ praca.kwartyl_w_wos }}
+        </td>
+    </tr>
+    {% endif %}
     {% if praca.liczba_cytowan %}
         <tr>
             <th>Liczba cytowań:</th>
