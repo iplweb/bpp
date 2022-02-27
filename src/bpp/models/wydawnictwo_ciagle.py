@@ -261,11 +261,12 @@ class Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych(models.Model):
         verbose_name="Informacje dodatkowe", max_length=512, blank=True, null=True
     )
 
+    def __str__(self):
+        return f"{self.baza}"
+
     class Meta:
-        verbose_name = "powiązanie wydawnictwa ciągłego z zewnętrznymi bazami danych"
-        verbose_name_plural = (
-            "powiązania wydawnictw ciągłych z zewnętrznymi bazami danych"
-        )
+        verbose_name = "powiązanie wyd. ciągłego z zewn. bazą danych"
+        verbose_name_plural = "powiązania wyd. ciągłych z zewn. bazami danych"
 
 
 class Wydawnictwo_Ciagle_Streszczenie(BazaModeluStreszczen):
