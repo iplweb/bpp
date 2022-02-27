@@ -8,6 +8,7 @@ from django.contrib.postgres.fields import ArrayField, JSONField
 from bpp.models import (
     BazaModeluStreszczen,
     MaProcentyMixin,
+    ModelZKwartylami,
     parse_informacje,
     wez_zakres_stron,
 )
@@ -111,6 +112,7 @@ class Wydawnictwo_Ciagle(
     DodajAutoraMixin,
     DirtyFieldsMixin,
     ModelZPrzeliczaniemDyscyplin,
+    ModelZKwartylami,
 ):
     """Wydawnictwo ciągłe, czyli artykuły z czasopism, komentarze, listy
     do redakcji, publikacje w suplemencie, etc."""
