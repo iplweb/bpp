@@ -10,6 +10,7 @@ Historia zmian
   implementacja #1204),
 * pola "kwartyl w SCOPUS" oraz "kwartyl w WoS" dla punktacji źródła na dany rok
   (częściowa implementacja #1203),
+* poprawne wykrywanie serwera testowego (#1191),
 
 202201.1083
 -----------
