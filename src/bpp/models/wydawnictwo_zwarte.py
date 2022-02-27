@@ -329,10 +329,8 @@ class Wydawnictwo_Zwarte_Zewnetrzna_Baza_Danych(models.Model):
     )
 
     class Meta:
-        verbose_name = "powiązanie wydawnictwa zwartego z zewnętrznymi bazami danych"
-        verbose_name_plural = (
-            "powiązania wydawnictw zwartych z zewnętrznymi bazami danych"
-        )
+        verbose_name = "powiązanie wyd. zwartego z zewn. bazami danych"
+        verbose_name_plural = "powiązania wyd. zwartych z zewn. bazami danych"
 
 
 class Wydawnictwo_Zwarte_Streszczenie(BazaModeluStreszczen):

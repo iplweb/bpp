@@ -3,6 +3,12 @@
 Historia zmian
 ==============
 
+202202.1085
+-----------
+
+* pola "kwartyl w SCOPUS" oraz "kwartyl w WoS" dla wydawnictwa ciągłego (częściowa
+  implementacja #1204),
+
 202201.1083
 -----------
 

@@ -151,6 +151,12 @@ MODEL_PUNKTOWANY_BAZA = (
 
 MODEL_PUNKTOWANY = MODEL_PUNKTOWANY_BAZA + ("weryfikacja_punktacji",)
 
+MODEL_PUNKTOWANY_Z_KWARTYLAMI = MODEL_PUNKTOWANY_BAZA + (
+    "kwartyl_w_scopus",
+    "kwartyl_w_wos",
+    "weryfikacja_punktacji",
+)
+
 MODEL_PUNKTOWANY_KOMISJA_CENTRALNA = (
     "kc_impact_factor",
     "kc_punkty_kbn",
@@ -182,7 +188,10 @@ MODEL_PUNKTOWANY_FIELDSET = (
 
 MODEL_PUNKTOWANY_WYDAWNICTWO_CIAGLE_FIELDSET = (
     "Punktacja",
-    {"classes": ("",), "fields": MODEL_PUNKTOWANY + ("uzupelnij_punktacje",)},
+    {
+        "classes": ("",),
+        "fields": MODEL_PUNKTOWANY_Z_KWARTYLAMI + ("uzupelnij_punktacje",),
+    },
 )
 
 MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET = (
