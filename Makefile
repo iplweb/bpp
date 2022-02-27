@@ -96,7 +96,7 @@ pip-sync:
 pip: pip-compile pip-sync
 
 tests:
-	pytest -n 4 --splinter-headless
+	pytest -n 5 --splinter-headless --maxfail 1
 
 remove-match-publikacji-dane:
 	cd src/import_dbf && export CUSTOMER=foo && make disable-trigger
