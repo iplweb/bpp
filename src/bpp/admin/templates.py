@@ -66,7 +66,8 @@ class BppTemplateAdmin(TemplateAdmin):
         if not modele:
             messages.info(
                 request,
-                "Żaden z modeli nie korzysta z tego szablonu, więc żaden nie będzie przebudowany",
+                "Żaden z modeli rekordów publikacji nie korzysta z tego szablonu, "
+                "więc żaden nie będzie przebudowany",
             )
             return
 

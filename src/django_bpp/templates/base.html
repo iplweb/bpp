@@ -271,7 +271,7 @@
                 <div id="messagesPlaceholder"></div>
 
                 <div id="content">
-                    {% if "test" in request.build_absolute_uri %}
+                    {% if "test" in request.get_host %}
 
                         {# Najprostsza, naiwna identyfikacja serwera testowego - słowo 'test' w nazwie domeny. #}
 

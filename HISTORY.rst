@@ -3,6 +3,17 @@
 Historia zmian
 ==============
 
+202202.1085
+-----------
+
+* pola "kwartyl w SCOPUS" oraz "kwartyl w WoS" dla wydawnictwa ciągłego (częściowa
+  implementacja #1204),
+* pola "kwartyl w SCOPUS" oraz "kwartyl w WoS" dla punktacji źródła na dany rok
+  (częściowa implementacja #1203),
+* poprawne wykrywanie serwera testowego (#1191),
+* ustawiaj nagłówek X-Forwarded-Proto i korzystaj z jego zawartości - celem poprawnego
+  generowania linków m.in. w REST API (https zamiast http) (#1180),
+
 202201.1083
 -----------
 

@@ -1,4 +1,3 @@
-# -*- encoding: utf-8 -*-
 import pytest
 from django.urls import NoReverseMatch
 from django.urls.base import reverse
@@ -125,7 +124,7 @@ def test_widok_admina(admin_client, model):
     if app_label != "bpp":
         return
 
-    url_name = "admin:%s_%s_changelist" % (app_label, model_name)
+    url_name = f"admin:{app_label}_{model_name}_changelist"
     try:
         url = reverse(url_name)
     except NoReverseMatch:
@@ -141,7 +140,7 @@ def test_widok_admina(admin_client, model):
     if (app_label, model_name) in MODELS_WITHOUT_ADD:
         return
 
-    url_name = "admin:%s_%s_add" % (app_label, model_name)
+    url_name = f"admin:{app_label}_{model_name}_add"
     url = reverse(url_name)
     res = admin_client.get(url)
 
@@ -172,7 +171,7 @@ def test_admin_jednostka_sortowanie(uczelnia, admin_client):
 def test_admin_zewnetrzna_baza_danych(admin_client, url):
     url_name = reverse(f"admin:bpp_{url}_add")
     res = admin_client.get(url_name)
-    assert "z zewnętrznymi bazami" in res.content.decode("utf-8")
+    assert "z zewn. bazami" in res.content.decode("utf-8")
 
 
 @pytest.mark.django_db

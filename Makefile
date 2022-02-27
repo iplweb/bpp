@@ -96,7 +96,7 @@ pip-sync:
 pip: pip-compile pip-sync
 
 tests:
-	pytest -n 4 --splinter-headless
+	pytest -n 5 --splinter-headless --maxfail 1
 
 remove-match-publikacji-dane:
 	cd src/import_dbf && export CUSTOMER=foo && make disable-trigger
@@ -125,9 +125,11 @@ integration-start-from-match-single-thread:
 
 restart-pbn-from-download: remove-pbn-integracja-publikacji-dane integration-start-from-download
 
-release:
+new-release:
 	$(eval CUR_VERSION=v$(shell ./bin/bpp-version.py))
 	$(eval NEW_VERSION=$(shell bumpver test $(CUR_VERSION) 'vYYYY0M.BUILD[-TAGNUM]' |head -1|cut -d: -f2))
 	git flow release start $(NEW_VERSION)
 	bumpver update
-	git flow release finish -p
+	git flow release finish -p -m "Nowa wersja: $(NEW_VERSION)"
+
+release: tests js-tests new-release bdist_wheel upload

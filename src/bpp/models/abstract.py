@@ -441,6 +441,23 @@ class ModelTypowany(models.Model):
         abstract = True
 
 
+class ModelZKwartylami(models.Model):
+    kwartyl_w_scopus = models.IntegerField(
+        "Kwartyl w SCOPUS",
+        choices=const.KWARTYLE,
+        default=None,
+        blank=True,
+        null=True,
+    )
+
+    kwartyl_w_wos = models.IntegerField(
+        "Kwartyl w WoS", choices=const.KWARTYLE, default=None, blank=True, null=True
+    )
+
+    class Meta:
+        abstract = True
+
+
 class BazaModeluOdpowiedzialnosciAutorow(models.Model):
     """Bazowa klasa dla odpowiedzialności autorów (czyli dla przypisania
     autora do czegokolwiek innego). Zawiera wszystkie informacje dla autora,
