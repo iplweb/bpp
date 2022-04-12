@@ -63,7 +63,9 @@ def test_ImportPracownikow_perform(import_pracownikow):
     assert not import_pracownikow.importpracownikowrow_set.first().zmiany_potrzebne
 
 
-def test_ImportPracownikow_perform_aktualizacja_tytulu_nastapila(import_pracownikow):
+def test_ImportPracownikow_perform_aktualizacja_tytulu_nastapila(
+    import_pracownikow, tytuly
+):
     import_pracownikow.perform()
     assert Autor.objects.get(pk=50).tytul.skrot == "lek. med."
 
