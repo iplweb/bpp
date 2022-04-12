@@ -4,8 +4,9 @@ import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from model_mommy import mommy
 
-from bpp.models import Autor, Autor_Jednostka, Jednostka
 from import_pracownikow.models import ImportPracownikow
+
+from bpp.models import Autor, Autor_Jednostka, Jednostka
 
 
 def testdata_xls_path_factory(suffix=""):
@@ -32,13 +33,16 @@ def import_pracownikow_factory(user, path):
 
 
 @pytest.fixture
-def import_pracownikow(admin_user, testdata_xlsx_path):
+def baza_importu_pracownikow():
     mommy.make(
         Jednostka,
         nazwa="Katedra i Klinika Dermatologii, Wenerologii i Dermatologii Dziecięcej",
     )
     mommy.make(Autor, nazwisko="Kowalski", imiona="Jan", pk=50)
 
+
+@pytest.fixture
+def import_pracownikow(admin_user, baza_importu_pracownikow, testdata_xlsx_path):
     return import_pracownikow_factory(admin_user, testdata_xlsx_path)
 
 
@@ -57,6 +61,25 @@ def test_ImportPracownikow_perform(import_pracownikow):
     import_pracownikow.mark_reset()
     import_pracownikow.perform()
     assert not import_pracownikow.importpracownikowrow_set.first().zmiany_potrzebne
+
+
+def test_ImportPracownikow_perform_aktualizacja_tytulu_nastapila(
+    import_pracownikow, tytuly
+):
+    import_pracownikow.perform()
+    assert Autor.objects.get(pk=50).tytul.skrot == "lek. med."
+
+
+@pytest.mark.django_db
+def test_ImportPracownikow_perform_aktualizacja_tytulu_brakujacy_tytul(
+    baza_importu_pracownikow, admin_user
+):
+    ip = import_pracownikow_factory(
+        admin_user, testdata_xls_path_factory("_nieistn_tytul")
+    )
+
+    ip.perform()
+    assert Autor.objects.get(pk=50).tytul is None
 
 
 @pytest.fixture
