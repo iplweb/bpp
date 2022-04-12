@@ -3,6 +3,15 @@
 Historia zmian
 ==============
 
+202204.1086
+-----------
+
+* import pracowników: autorzy będą mieli aktualizowane tytuły naukowe przy imporcie,
+  pod warunkiem, że tytuł o takiej samej nazwie lub skrócie jak w pliku XLS istnieje również
+  po stronie BPP; w sytuacji, gdyby w pliku aktualizacji był
+  podany pusty tytuł lub tytuł nie istniejący w systemie BPP, zmiana
+  tytułu naukowego autora nie zostanie przeprowadzona (#1033)
+
 202202.1085
 -----------
 
