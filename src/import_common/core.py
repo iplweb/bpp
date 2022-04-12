@@ -182,12 +182,6 @@ def matchuj_autora(
         except (Autor.DoesNotExist, Autor.MultipleObjectsReturned):
             pass
 
-        # wdrozyc matchowanie po tytule
-        # wdrozyc matchowanie po jednostce
-        # testy mają przejść
-        # commit do głównego brancha
-        # mbockowska odpisać na zgłoszenie w mantis
-
         try:
             return Autor.objects.get(qry & Q(aktualna_jednostka=jednostka))
         except (Autor.MultipleObjectsReturned, Autor.DoesNotExist):
