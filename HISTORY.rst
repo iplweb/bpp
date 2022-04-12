@@ -11,6 +11,13 @@ Historia zmian
   po stronie BPP; w sytuacji, gdyby w pliku aktualizacji był
   podany pusty tytuł lub tytuł nie istniejący w systemie BPP, zmiana
   tytułu naukowego autora nie zostanie przeprowadzona (#1033)
+* aktualna jednostka: w sytuacji, gdyby autor miał dwa lub więcej przypisań do jednostek
+  w tym samym okresie czasu lub w sytuacji gdy daty rozpoczęcia lub zakończenia
+  pracy są puste, system w pierwszej kolejności jako aktualną jednostkę
+  ustali tą, gdzie autor rozpoczął pracę najwcześniej, zakończył najpóźniej,
+  zaś w sytuacji braku jednej lub obydwu tych dat -- ustali jednostkę
+  aktualną na tą, która została najpóźniej przypisana, wg numeru ID
+  przypisania, zwiększającego się z każdym kolejnym przypisaniem (#1177),
 
 202202.1085
 -----------
