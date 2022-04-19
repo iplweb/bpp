@@ -142,5 +142,5 @@ set-version-from-vcs:
 check-git-clean:
 	git diff --quiet
 
-make-test-package-from-vcs: check-git-clean set-version-from-vcs bdist_wheel
+test-package-from-vcs: check-git-clean set-version-from-vcs bdist_wheel
 	git reset --hard
