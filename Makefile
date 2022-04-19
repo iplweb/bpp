@@ -133,3 +133,8 @@ new-release:
 	git flow release finish "$(NEW_VERSION)" -p -m "Nowa wersja: $(NEW_VERSION)"
 
 release: tests js-tests new-release bdist_wheel upload
+
+set-version-from-vcs:
+	$(eval CUR_VERSION_VCS=$(shell git describe | sed s/\-/\./ | sed s/\-/\+/))
+	bumpver update --no-commit --no-tag --set-version=$(CUR_VERSION_VCS)
+	echo "Proba ustawienia wersji: " $(CUV_VERSION_VCS)
