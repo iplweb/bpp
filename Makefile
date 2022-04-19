@@ -142,5 +142,6 @@ set-version-from-vcs:
 check-git-clean:
 	git diff --quiet
 
-test-package-from-vcs: check-git-clean set-version-from-vcs bdist_wheel
+test-package-from-vcs: check-git-clean pip-compile pip-sync set-version-from-vcs bdist_wheel
+	ls -lash dist
 	git reset --hard
