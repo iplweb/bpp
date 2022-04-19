@@ -27,7 +27,7 @@ black
 autoflake
 autopep8
 flake8
-bumpver
+https://github.com/mpasternak/bumpver/archive/refs/tags/v202219.04-alpha.tar.gz#egg=bumpver-202219.04-alpha
 # Musi tak byc, inaczej sie wysypuje instalacja cryptography
 # https://stackoverflow.com/questions/55833509/attributeerror-type-object-callable-has-no-attribute-abc-registry
 typing>=3.6,<3.7
