@@ -54,7 +54,7 @@ channels==2.4.0
     # via
     #   -r requirements.in
     #   channels-redis
-channels_redis==3.0.1
+channels-redis==3.0.1
     # via -r requirements.in
 charset-normalizer==2.0.3
     # via requests
@@ -147,7 +147,7 @@ django-columns==0.1.0
     # via -r requirements.in
 django-compat==1.0.15
     # via django-favicon-plus
-django_compressor==2.4
+django-compressor==2.4
     # via -r requirements.in
 django-cookie-law==2.0.3
     # via -r requirements.in
@@ -155,7 +155,7 @@ django-crispy-forms==1.9.0
     # via
     #   -r requirements.in
     #   crispy-forms-foundation
-django-dbtemplates @ git+git://github.com/jazzband/django-dbtemplates.git@ac86ca5ec97c47016146b4c3d7b3f0c77ce4f614
+django-dbtemplates @ git+https://github.com/jazzband/django-dbtemplates.git@ac86ca5ec97c47016146b4c3d7b3f0c77ce4f614
     # via -r requirements.in
 django-denorm-iplweb==0.5.4
     # via -r requirements.in
@@ -167,7 +167,7 @@ django-extensions==3.1.3
     # via -r requirements.in
 django-favicon-plus==0.0.8
     # via -r requirements.in
-django-filter @ git+git://github.com/carltongibson/django-filter.git@512310fe880af675f33be964d85907db838f62ea
+django-filter @ git+https://github.com/carltongibson/django-filter.git@512310fe880af675f33be964d85907db838f62ea
     # via -r requirements.in
 django-flexible-reports==0.2.9
     # via -r requirements.in
@@ -470,24 +470,24 @@ xlrd==1.2.0
     #   tablib
 xlwt==1.3.0
     # via tablib
-zope.component==4.6.2
+zope-component==4.6.2
     # via -r requirements.in
-zope.deferredimport==4.3.1
-    # via zope.component
-zope.deprecation==4.4.0
-    # via zope.component
-zope.event==4.5.0
-    # via zope.component
-zope.hookable==5.1.0
-    # via zope.component
-zope.interface==5.1.0
+zope-deferredimport==4.3.1
+    # via zope-component
+zope-deprecation==4.4.0
+    # via zope-component
+zope-event==4.5.0
+    # via zope-component
+zope-hookable==5.1.0
+    # via zope-component
+zope-interface==5.1.0
     # via
     #   -r requirements.in
     #   twisted
-    #   zope.component
-    #   zope.proxy
-zope.proxy==4.4.0
-    # via zope.deferredimport
+    #   zope-component
+    #   zope-proxy
+zope-proxy==4.4.0
+    # via zope-deferredimport
 zopfli==0.1.8
     # via fonttools
 
