@@ -71,7 +71,7 @@ jobs:
           command: |
             poetry run make assets
 
-     - save_cache: # cache Python dependencies using checksum of lockfiles as the cache-key
+      - save_cache:
           key: cache-11-{{ checksum "poetry.lock" }}-{{ checksum "yarn.lock" }}
           paths:
             - "/home/circleci/.cache"
