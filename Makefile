@@ -36,14 +36,10 @@ distclean: clean
 	rm -rf .vagrant splintershots src/components/bower_components src/media
 	rm -rf dist
 
-grunt:
+
+assets:
 	grunt build
-
-yarn:
-	yarn -v
 	yarn install --no-progress --emoji false -s
-
-assets: yarn
 	poetry run src/manage.py collectstatic --noinput -v0 --traceback
 	poetry run src/manage.py compress --force  -v0 --traceback
 
@@ -79,18 +75,6 @@ live-docs:
 	# celowo i z premedytacją:
 	pip install --upgrade sphinx-autobuild
 	sphinx-autobuild --port 8080 -D language=pl docs/ docs/_build
-
-# cel: Jenkins
-# Wywołaj "make jenkins" pod Jenkinsem, cel "Virtualenv Builder"
-jenkins:
-	pip install --upgrade pip --quiet
-	pip install -r requirements.txt -r requirements_dev.txt --quiet
-	make assets
-
-	pytest --ds=django_bpp.settings.local -n6 --create-db --maxfail=20
-
-	yarn
-	make js-tests
 
 tests:
 	pytest -n 5 --splinter-headless --maxfail 1
