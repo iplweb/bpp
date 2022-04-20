@@ -18,7 +18,7 @@ jobs:
       - image: redis:latest
 
     steps:
-      - setup_remote_docker
+      # - setup_remote_docker
 
       - run:
           name: install postgresql-client
@@ -105,7 +105,7 @@ jobs:
 
     paralell: 4
     steps:
-      - setup_remote_docker
+#      - setup_remote_docker
 
       - attach_workspace:
           at: .
@@ -170,7 +170,7 @@ jobs:
           DJANGO_SETTINGS_MODULE: django_bpp.settings.test
 
     steps:
-      - setup_remote_docker
+#      - setup_remote_docker
 
       - run: sudo apt --quiet install -y --quiet gettext locales
       - run: sudo sed -i 's/^# *\(pl_PL.UTF-8\)/\1/' /etc/locale.gen
