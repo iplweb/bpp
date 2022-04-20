@@ -55,7 +55,7 @@ jobs:
       - run:
           name: Install project
           command: |
-            poetry install --no-root --quiet
+            poetry --quiet install --no-root
 
       - run:
           name: migrate database
