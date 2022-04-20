@@ -80,6 +80,10 @@ jobs:
           paths:
             - .
 
+      - run:
+          name: Sleep for 15 seconds.
+          command: sleep 15
+
   test:
 
     docker:
@@ -167,6 +171,12 @@ jobs:
       - run: export LC_ALL=pl_PL.UTF-8
       - run: locale
       - run: sudo npm install -g grunt-cli
+
+      - run:
+          # Bo potem sie PhatntomJS wywali przez brak openssl
+          name: install postgresql-client
+          command: |
+            sudo apt install -y postgresql-client
 
       # Testy JavaScript
       - run:
