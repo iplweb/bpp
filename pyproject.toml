@@ -30,19 +30,23 @@ packages = [
 	 { include="tee", from="src"},
 	 { include="test_bpp", from="src"},
 ]
+exclude = [
+	"src/django_bpp/staticroot/sinon",
+	"src/django_bpp/staticroot/qunitjs",
+	"src/django_bpp/staticroot/sitemap-*",
+	"src/django_bpp/staticroot/grappelli/tinymce/",
+]
 include = ["AUTHORS.rst", "CONTRIBUTING.rst", "HISTORY.rst", "LICENSE",
 	"README.rst", "src/import_dbf/Makefile", "src/import_dbf/sql",
-	"src/*/static", "src/django_bpp/staticroot", "src/*/locale/*.mo",
-	"src/*/locale/*.po", "src/templates/*.html", "src/templates/*.css",
+	"src/*/static",
+	"src/django_bpp/staticroot/**/*",
+	"src/*/locale/*/*.mo",
+	"src/*/locale/*/*.po", "src/templates/*.html", "src/templates/*.css",
 	"src/templates/password*.txt", "src/*/migrations/*.sql",
 	"src/*/migrations/*.txt", "src/*/fixtures/", "src/*/fixtures/*.json",
 	"src/maint-site",
 	"docs/*.rst", "docs/conf.py", "docs/Makefile", "docs/make.bat",
 	"docs/*.jpg", "docs/*.png", "docs/*.gif"]
-exclude = ["src/django_bpp/staticroot/sinon", "src/django_bpp/staticroot/qunitjs",
-	"src/django_bpp/staticroot/sitemap-*",
-	"src/django_bpp/staticroot/grappelli/tinymce/",
-]
 
 [tool.poetry.scripts]
 "bpp-manage.py" = "django_bpp.manage_command:entry_point"
@@ -65,7 +69,7 @@ push = false
 
 
 [tool.poetry.dependencies]
-python = ">=3.8"
+python = "^3.8"
 Django = "3.0.14"
 arrow = "1.2.1"
 pygad = "2.16.1"
@@ -78,7 +82,7 @@ channels = "2.4.0"
 uvicorn = "0.14.0"
 channels-redis = "3.0.1"
 django-flexible-reports = "0.2.9"
-psycopg2 = "^2.9.3"
+psycopg2 = "2.8.6"
 django-group-by = "0.3.1"
 django-columns = "0.1.0"
 tablib = "1.1.0"
