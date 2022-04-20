@@ -80,10 +80,6 @@ jobs:
           paths:
             - .
 
-      - run:
-          name: Sleep for 15 seconds.
-          command: sleep 15
-
   test:
 
     docker:
@@ -103,6 +99,10 @@ jobs:
 
     parallelism: 4
     steps:
+
+      - run:
+          name: Sleep for 30 seconds.
+          command: sleep 30
 
       - attach_workspace:
           at: .
@@ -158,11 +158,12 @@ jobs:
           DJANGO_SETTINGS_MODULE: django_bpp.settings.test
 
     steps:
+      - run:
+          name: Sleep for 30 seconds.
+          command: sleep 30
+
       - attach_workspace:
           at: .
-
-      - restore_cache:
-          key: cache-11-{{ checksum "poetry.lock" }}-{{ checksum "yarn.lock" }}
 
       - run: sudo apt --quiet install -y --quiet gettext locales
       - run: sudo sed -i 's/^# *\(pl_PL.UTF-8\)/\1/' /etc/locale.gen
