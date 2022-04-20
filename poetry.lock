@@ -2337,17 +2337,6 @@ python-versions = "*"
 pytest = ">=3.2.5"
 
 [[package]]
-name = "pytest-localserver"
-version = "0.5.1.post0"
-description = "py.test plugin to test server connections locally."
-category = "dev"
-optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*"
-
-[package.dependencies]
-werkzeug = ">=0.10"
-
-[[package]]
 name = "pytest-mock"
 version = "3.7.0"
 description = "Thin-wrapper around the mock package for easier use with pytest"
@@ -3401,7 +3390,7 @@ test = ["pytest"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8,<3.9"
-content-hash = "90a254549a2373ddbc4220d014f692d91ce0360e782961a129dc0fac55db6de2"
+content-hash = "9b68f82973090f3960a732328533fbfe58e674d60342380fbaf97cf9e220670a"
 
 [metadata.files]
 aioredis = [
@@ -4788,10 +4777,6 @@ pytest-httpserver = [
 pytest-lazy-fixture = [
     {file = "pytest-lazy-fixture-0.6.3.tar.gz", hash = "sha256:0e7d0c7f74ba33e6e80905e9bfd81f9d15ef9a790de97993e34213deb5ad10ac"},
     {file = "pytest_lazy_fixture-0.6.3-py3-none-any.whl", hash = "sha256:e0b379f38299ff27a653f03eaa69b08a6fd4484e46fd1c9907d984b9f9daeda6"},
-]
-pytest-localserver = [
-    {file = "pytest-localserver-0.5.1.post0.tar.gz", hash = "sha256:5ec7f8e6534cf03887af2cb59e577f169ac0e8b2fd2c3e3409280035f386d407"},
-    {file = "pytest_localserver-0.5.1.post0-py3-none-any.whl", hash = "sha256:b3ff1b8bade571d54701bad3efd68ca1bb463ad88daa75da15cc8842809659ea"},
 ]
 pytest-mock = [
     {file = "pytest-mock-3.7.0.tar.gz", hash = "sha256:5112bd92cc9f186ee96e1a92efc84969ea494939c3aead39c50f421c4cc69534"},
