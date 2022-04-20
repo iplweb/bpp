@@ -22,7 +22,7 @@ jobs:
           POSTGRES_HOST_AUTH_METHOD: trust
       - image: redis:latest
 
-    parallelism: 4
+    parallelism: 2
     steps:
       - setup_remote_docker
 
