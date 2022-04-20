@@ -87,11 +87,9 @@ jobs:
       - run:
           name: pytest
           command: |
-            set -e TEST_FILES=$(circleci tests glob "src/**/test_*.py" | circleci tests split)
             #  --split-by=timings)
-            echo $TEST_FILES
             mkdir -p test-results
-            poetry run pytest --splinter-headless --cov=src --ds=django_bpp.settings.test --verbose --junitxml=test-results/junit.xml $TEST_FILES
+            poetry run pytest --splinter-headless --cov=src --ds=django_bpp.settings.test --verbose --junitxml=test-results/junit.xml `circleci tests glob "src/**/test_*.py" | circleci tests split`
 
       - store_test_results:
           path: test-results
