@@ -22,6 +22,7 @@ jobs:
           POSTGRES_HOST_AUTH_METHOD: trust
       - image: redis:latest
 
+    parallelism: 4
     steps:
       - setup_remote_docker
 
@@ -86,7 +87,10 @@ jobs:
       - run:
           name: pytest
           command: |
-            poetry run pytest -d -n 2 --splinter-headless --cov=src --ds=django_bpp.settings.test
+            set -e TEST_FILES=$(circleci tests glob "src/**/test_*.py" | circleci tests split --split-by=timings)
+            mkdir -p test-results
+            poetry run pytest -d -n 0 --splinter-headless --cov=src --ds=django_bpp.settings.test --verbose --junitxml=test-results/junit.xml $TEST_FILES
+            # poetry run pytest -d -n 0 --splinter-headless --cov=src --ds=django_bpp.settings.test
 
       # Testy JavaScript
       - run: make js-tests
