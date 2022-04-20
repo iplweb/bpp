@@ -102,11 +102,4 @@ jobs:
       - run:
           name: Submit coverage to coveralls.io
           command: |
-            . venv/bin/activate
-            coveralls
-
-      # Zbuduj pakiet WHL -- bez wrzucania go na serwer (próbnie)
-      - run:
-          name: Build packages
-          command: |
-            make bdist_wheel
+            poetry run coveralls
