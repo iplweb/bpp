@@ -43,12 +43,6 @@ jobs:
       - run: locale
       - run: sudo npm install -g grunt-cli
       - run: sudo pip install --upgrade pip
-      - run: sudo pip install pipx
-
-      - run:
-          name: Install Poetry
-          command: |
-            pipx install poetry
 
       - run:
           name: Install project
@@ -131,7 +125,6 @@ jobs:
       - run: locale
       - run: sudo npm install -g grunt-cli
       - run: sudo pip install --upgrade pip
-      - run: sudo pip install pipx
 
       # Uruchamiaj na lokalnym firefoxie używając dwóch CPU
       - run:
