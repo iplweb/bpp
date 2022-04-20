@@ -37,9 +37,6 @@ jobs:
 
       - checkout
 
-      - restore_cache:
-          key: cache-10-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}-{{ checksum "yarn.lock" }}
-
       - run: sudo apt --quiet install -y --quiet gettext locales
       - run: sudo sed -i 's/^# *\(pl_PL.UTF-8\)/\1/' /etc/locale.gen
       - run: sudo locale-gen
