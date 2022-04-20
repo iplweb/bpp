@@ -89,8 +89,7 @@ jobs:
           command: |
             set -e TEST_FILES=$(circleci tests glob "src/**/test_*.py" | circleci tests split --split-by=timings)
             mkdir -p test-results
-            poetry run pytest -d -n 0 --splinter-headless --cov=src --ds=django_bpp.settings.test --verbose --junitxml=test-results/junit.xml $TEST_FILES
-            # poetry run pytest -d -n 0 --splinter-headless --cov=src --ds=django_bpp.settings.test
+            poetry run pytest --splinter-headless --cov=src --ds=django_bpp.settings.test --verbose --junitxml=test-results/junit.xml $TEST_FILES
 
       # Testy JavaScript
       - run: make js-tests
