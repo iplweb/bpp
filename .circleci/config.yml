@@ -48,32 +48,27 @@ jobs:
       - run: locale
       - run: sudo npm install -g grunt-cli
       - run: sudo pip install --upgrade pip
+      - run: sudo pip install pipx
 
       - run:
-          name: venv
+          name: Install Poetry
           command: |
-            mkdir -p ./venv
-            virtualenv ./venv
-            . venv/bin/activate
-            pip install --upgrade pip
-            pip install -q -r requirements.txt -r requirements_dev.txt
+            pipx install poetry
+
+      - run:
+          name: Install project
+          command: |
+            poetry install
 
       - run:
           name: migrate database
           command: |
-            . venv/bin/activate
-            python src/manage.py migrate
+            poetry run src/manage.py migrate
 
       - run:
           name: make assets
           command: |
-            . venv/bin/activate
-            make assets
-
-      - save_cache: # cache Python dependencies using checksum of Pipfile as the cache-key
-          key: cache-10-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}-{{ checksum "yarn.lock" }}
-          paths:
-            - "/home/circleci/.cache"
+            poetry run make assets
 
       # Sklonuj bazy danych, zeby było kapke szybciej
       - run:
@@ -86,14 +81,7 @@ jobs:
       - run:
           name: pytest
           command: |
-            . venv/bin/activate
-            pytest -d -n 2 --splinter-headless --cov=src --ds=django_bpp.settings.test # src/integration_tests/test_global_search.py
-
-      # debug
-      - run:
-          name: show db names
-          command: |
-            echo "\l" | psql bpp
+            poetry run pytest -d -n 2 --splinter-headless --cov=src --ds=django_bpp.settings.test
 
       # Testy JavaScript
       - run: make js-tests
@@ -107,26 +95,6 @@ jobs:
 
       # Zbuduj pakiet WHL -- bez wrzucania go na serwer (próbnie)
       - run:
-          name: create ONLY whl package -- only on DEV
+          name: Build packages
           command: |
-            . venv/bin/activate
-            if [ $CIRCLE_BRANCH = 'dev' ]; then make bdist_wheel; fi
-
-      # # Skonfiguruj PyPI
-      # - run:
-      #     name: init .pypirc
-      #     command: |
-      #       echo -e "[distutils]" > ~/.pypirc
-      #       echo -e "index-servers = pypi" >> ~/.pypirc
-      #       echo -e "[pypi]" >> ~/.pypirc
-      #       echo -e "repository = https://upload.pypi.org/legacy/" >> ~/.pypirc
-      #       echo -e "username = dotz" >> ~/.pypirc
-      #       echo -e "password = $PYPI_PASSWORD" >> ~/.pypirc
-
-      # # Zbuduj pakiet
-      # - run:
-      #     name: create and upload packages -- only on MASTER
-      #     command: |
-      #       . venv/bin/activate
-      #       cat ~/.pypirc | grep -v password
-      #       if [ $CIRCLE_BRANCH = 'master' ]; then make bdist_wheel upload; fi
+            make bdist_wheel

@@ -43,9 +43,9 @@ yarn:
 	yarn -v
 	yarn install --no-progress --emoji false -s
 
-assets: yarn grunt
-	${PYTHON} src/manage.py collectstatic --noinput -v0 --traceback
-	${PYTHON} src/manage.py compress --force  -v0 --traceback
+assets: yarn
+	poetry run src/manage.py collectstatic --noinput -v0 --traceback
+	poetry run src/manage.py compress --force  -v0 --traceback
 
 production-assets: distclean assets
 # usuń ze staticroot niepotrzebne pakiety (Poetry pyproject.toml exclude
