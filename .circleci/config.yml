@@ -37,6 +37,9 @@ jobs:
 
       - checkout
 
+      - restore_cache:
+          key: cache-11-{{ checksum "poetry.lock" }}-{{ checksum "yarn.lock" }}
+
       - run: sudo apt --quiet install -y --quiet gettext locales
       - run: sudo sed -i 's/^# *\(pl_PL.UTF-8\)/\1/' /etc/locale.gen
       - run: sudo locale-gen
@@ -66,6 +69,11 @@ jobs:
           name: make assets
           command: |
             poetry run make assets
+
+     - save_cache: # cache Python dependencies using checksum of lockfiles as the cache-key
+          key: cache-11-{{ checksum "poetry.lock" }}-{{ checksum "yarn.lock" }}
+          paths:
+            - "/home/circleci/.cache"
 
       # Sklonuj bazy danych, zeby było kapke szybciej
       - run:
