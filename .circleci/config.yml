@@ -2,6 +2,8 @@ version: 2
 jobs:
   build:
 
+    working_directory: ~/app
+
     docker:
       - image: circleci/python:3.8-node-browsers
         environment:
@@ -76,11 +78,12 @@ jobs:
             pg_dump bpp > pg_dump.sql
 
       - persist_to_workspace:
-          root: .
+          root: ~/app
           paths:
-            - .
+            - ./*
 
   test:
+    working_directory: ~/app
 
     docker:
       - image: circleci/python:3.8-node-browsers
@@ -100,12 +103,8 @@ jobs:
     parallelism: 4
     steps:
 
-      - run:
-          name: Sleep for 30 seconds.
-          command: sleep 30
-
       - attach_workspace:
-          at: .
+          at: ~/app
 
       - run:
           name: install postgresql-client
@@ -146,6 +145,7 @@ jobs:
 
 
   js-tests:
+    working_directory: ~/app
 
     docker:
       - image: circleci/python:3.8-node-browsers
@@ -163,7 +163,7 @@ jobs:
           command: sleep 30
 
       - attach_workspace:
-          at: .
+          at: ~/app
 
       - run: sudo apt --quiet install -y --quiet gettext locales
       - run: sudo sed -i 's/^# *\(pl_PL.UTF-8\)/\1/' /etc/locale.gen
