@@ -139,15 +139,6 @@ jobs:
       - store_artifacts:
           path: test-results
 
-      # Testy JavaScript
-      - run: make js-tests
-
-      # Wyślij statystyki pokrycia kodu testami do coveralls.io
-      - run:
-          name: Submit coverage to coveralls.io
-          command: |
-            poetry run coveralls
-
 
   js-tests:
 
@@ -220,6 +211,5 @@ workflows:
             - build
       - coverage:
           requires:
-            - build
             - test
             - js-tests
