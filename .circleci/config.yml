@@ -112,6 +112,7 @@ jobs:
           name: restore database from dump
           command: |
             createdb bpp
+            find .
             cat pg_dump.sql | psql bpp
 
       - restore_cache:
@@ -168,7 +169,11 @@ jobs:
       - run: sudo npm install -g grunt-cli
 
       # Testy JavaScript
-      - run: make js-tests
+      - run:
+          name: JS Tests
+          command: |
+            make yarn
+            make js-tests
 
   coverage:
     docker:
