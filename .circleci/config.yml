@@ -86,9 +86,8 @@ jobs:
       - run:
           name: pytest
           command: |
-            #  --split-by=timings)
             mkdir -p test-results
-            poetry run pytest --splinter-headless --cov=src --ds=django_bpp.settings.test --verbose --junitxml=test-results/junit.xml `circleci tests glob "src/**/test_*.py" | circleci tests split`
+            poetry run pytest --splinter-headless --cov=src --ds=django_bpp.settings.test --verbose --junitxml=test-results/junit.xml `circleci tests glob "src/**/test_*.py" | circleci tests split --split-by=timings`
 
       - store_test_results:
           path: test-results
