@@ -2,11 +2,6 @@ version: 2
 jobs:
   build:
 
-    # branches:
-    #   only:
-    #     - master
-    #     - dev
-
     docker:
       - image: circleci/python:3.8-node-browsers
         environment:
@@ -22,7 +17,6 @@ jobs:
           POSTGRES_HOST_AUTH_METHOD: trust
       - image: redis:latest
 
-    parallelism: 2
     steps:
       - setup_remote_docker
 
@@ -81,11 +75,64 @@ jobs:
           paths:
             - "/home/circleci/.cache"
 
-      # Sklonuj bazy danych, zeby było kapke szybciej
+      # Stworz dump bazy danych na potrzeby kolejnych kroków
       - run:
-          name: clone bpp to testing database
+          name: dump database
           command: |
-            createdb test_bpp -T bpp
+            pg_dump bpp > pg_dump.sql
+
+      - persist_to_workspace:
+          root: .
+          paths:
+            - .
+
+  test:
+
+    docker:
+      - image: circleci/python:3.8-node-browsers
+        environment:
+          PGUSER: postgres
+          PGHOST: localhost
+          PGPORT: 5432
+          PGDATABASE: bpp
+          DJANGO_BPP_SECRET_KEY: foobar
+          DJANGO_SETTINGS_MODULE: django_bpp.settings.test
+      - image: mpasternak79/circleci-postgres:12
+        environment:
+          POSTGRESS_PASSWORD: password
+          POSTGRES_HOST_AUTH_METHOD: trust
+      - image: redis:latest
+
+    paralell: 4
+    steps:
+      - setup_remote_docker
+
+      - attach_workspace:
+          at: .
+
+      - run:
+          name: install postgresql-client
+          command: |
+            sudo apt install -y postgresql-client
+
+      - run:
+          name: restore database from dump
+          command: |
+            createdb bpp
+            cat pg_dump.sql | psql bpp
+
+      - restore_cache:
+          key: cache-11-{{ checksum "poetry.lock" }}-{{ checksum "yarn.lock" }}
+
+      - run: sudo apt --quiet install -y --quiet gettext locales
+      - run: sudo sed -i 's/^# *\(pl_PL.UTF-8\)/\1/' /etc/locale.gen
+      - run: sudo locale-gen
+      - run: sudo sh -c 'LANG=pl_PL.UTF-8 > /etc/default/locale'
+      - run: export LC_ALL=pl_PL.UTF-8
+      - run: locale
+      - run: sudo npm install -g grunt-cli
+      - run: sudo pip install --upgrade pip
+      - run: sudo pip install pipx
 
       # Uruchamiaj na lokalnym firefoxie używając dwóch CPU
       - run:
@@ -108,3 +155,75 @@ jobs:
           name: Submit coverage to coveralls.io
           command: |
             poetry run coveralls
+
+
+  js-tests:
+
+    docker:
+      - image: circleci/python:3.8-node-browsers
+        environment:
+          PGUSER: postgres
+          PGHOST: localhost
+          PGPORT: 5432
+          PGDATABASE: bpp
+          DJANGO_BPP_SECRET_KEY: foobar
+          DJANGO_SETTINGS_MODULE: django_bpp.settings.test
+
+    steps:
+      - setup_remote_docker
+
+      - run: sudo apt --quiet install -y --quiet gettext locales
+      - run: sudo sed -i 's/^# *\(pl_PL.UTF-8\)/\1/' /etc/locale.gen
+      - run: sudo locale-gen
+      - run: sudo sh -c 'LANG=pl_PL.UTF-8 > /etc/default/locale'
+      - run: export LC_ALL=pl_PL.UTF-8
+      - run: locale
+      - run: sudo npm install -g grunt-cli
+
+      # Testy JavaScript
+      - run: make js-tests
+
+  coverage:
+    docker:
+      - image: circleci/python:3.8-node-browsers
+        environment:
+          PGUSER: postgres
+          PGHOST: localhost
+          PGPORT: 5432
+          PGDATABASE: bpp
+          DJANGO_BPP_SECRET_KEY: foobar
+          DJANGO_SETTINGS_MODULE: django_bpp.settings.test
+      - image: mpasternak79/circleci-postgres:12
+        environment:
+          POSTGRESS_PASSWORD: password
+          POSTGRES_HOST_AUTH_METHOD: trust
+      - image: redis:latest
+
+    steps:
+      - attach_workspace:
+          at: .
+
+       # Wyślij statystyki pokrycia kodu testami do coveralls.io
+      - run:
+           name: Submit coverage to coveralls.io
+           command: |
+             poetry run coveralls
+
+
+
+workflows:
+  version: 2
+  build_and_test:
+    jobs:
+      - build
+      - test:
+          requires:
+            - build
+      - js-tests:
+          requires:
+            - build
+      - coverage:
+          requires:
+            - build
+            - test
+            - js-tests
