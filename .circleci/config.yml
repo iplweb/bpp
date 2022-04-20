@@ -103,9 +103,8 @@ jobs:
           POSTGRES_HOST_AUTH_METHOD: trust
       - image: redis:latest
 
-    paralell: 4
+    parallelism: 4
     steps:
-#      - setup_remote_docker
 
       - attach_workspace:
           at: .
@@ -170,7 +169,11 @@ jobs:
           DJANGO_SETTINGS_MODULE: django_bpp.settings.test
 
     steps:
-#      - setup_remote_docker
+      - attach_workspace:
+          at: .
+
+      - restore_cache:
+          key: cache-11-{{ checksum "poetry.lock" }}-{{ checksum "yarn.lock" }}
 
       - run: sudo apt --quiet install -y --quiet gettext locales
       - run: sudo sed -i 's/^# *\(pl_PL.UTF-8\)/\1/' /etc/locale.gen
