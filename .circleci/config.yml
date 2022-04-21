@@ -47,7 +47,7 @@ jobs:
       - checkout
 
       - restore_cache:
-          key: cache-11-{{ checksum "poetry.lock" }}-{{ checksum "yarn.lock" }}
+          key: cache-12-{{ checksum "poetry.lock" }}-{{ checksum "yarn.lock" }}
 
       - run: sudo apt -q -q -q update
       - run: sudo apt --quiet install -y --quiet gettext locales
@@ -61,7 +61,7 @@ jobs:
       - run:
           name: Install project
           command: |
-            poetry install --no-root --quiet --no-ansi
+            poetry install --no-root --no-ansi
 
       - run:
           name: Show installed packages
@@ -78,10 +78,18 @@ jobs:
           command: |
             poetry run make assets
 
+      - run:
+          name: debug -- show cache content
+          command: |
+            ls -las /home/circleci/.cache
+            ls -las /home/circleci/.cache/*poetry*/
+
       - save_cache:
-          key: cache-11-{{ checksum "poetry.lock" }}-{{ checksum "yarn.lock" }}
+          key: cache-12-{{ checksum "poetry.lock" }}-{{ checksum "yarn.lock" }}
           paths:
-            - "/home/circleci/.cache"
+            - "/home/circleci/.cache/yarn"
+            - "/home/circleci/.cache/pypoetry/cache"
+            - "/home/circleci/.cache/pypoetry/artifacts"
 
       # Stworz dump bazy danych na potrzeby kolejnych kroków
       - run:
@@ -139,14 +147,24 @@ jobs:
           name: Wait for db
           command: dockerize -wait tcp://$PGHOST:$PGPORT -timeout 1m
 
+      - restore_cache:
+          key: cache-12-{{ checksum "poetry.lock" }}-{{ checksum "yarn.lock" }}
+
       - run:
           name: restore database from dump
           command: |
             createdb bpp
             cat pg_dump.sql | psql bpp
 
-      - restore_cache:
-          key: cache-11-{{ checksum "poetry.lock" }}-{{ checksum "yarn.lock" }}
+      - run:
+          name: Install project
+          command: |
+            poetry install --no-root --no-ansi
+
+      - run:
+          name: Show installed packages
+          command: |
+            poetry run pip list
 
       # Uruchamiaj na lokalnym firefoxie używając dwóch CPU
       - run:
