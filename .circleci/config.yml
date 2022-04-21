@@ -11,7 +11,7 @@ jobs:
           PGDATABASE: bpp
           DJANGO_BPP_SECRET_KEY: foobar
           DJANGO_SETTINGS_MODULE: django_bpp.settings.test
-      - image: cimg/postgres:12.10
+      - image: mpasternak79/cimg-postgres:12
         environment:
           POSTGRESS_PASSWORD: password
           POSTGRES_HOST_AUTH_METHOD: trust
@@ -100,7 +100,7 @@ jobs:
           PGDATABASE: bpp
           DJANGO_BPP_SECRET_KEY: foobar
           DJANGO_SETTINGS_MODULE: django_bpp.settings.test
-      - image: mpasternak79/circleci-postgres:12
+      - image: mpasternak79/cimg-postgres:12
         environment:
           POSTGRESS_PASSWORD: password
           POSTGRES_HOST_AUTH_METHOD: trust
@@ -116,6 +116,17 @@ jobs:
           name: install postgresql-client
           command: |
             sudo apt install -y postgresql-client
+
+
+      - run:
+          name: install dockerize
+          command: wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz && sudo tar -C /usr/local/bin -xzvf dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz && rm dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
+          environment:
+            DOCKERIZE_VERSION: v0.6.1
+
+      - run:
+          name: Wait for db
+          command: dockerize -wait tcp://$PGHOST:$PGPORT -timeout 1m
 
       - run:
           name: restore database from dump
@@ -144,35 +155,13 @@ jobs:
   js-tests:
     docker:
       - image: cimg/python:3.8.13-node
-        environment:
-          PGUSER: postgres
-          PGHOST: localhost
-          PGPORT: 5432
-          PGDATABASE: bpp
-          DJANGO_BPP_SECRET_KEY: foobar
-          DJANGO_SETTINGS_MODULE: django_bpp.settings.test
 
     steps:
-      - run:
-          name: Sleep for 30 seconds.
-          command: sleep 30
 
       - attach_workspace:
           at: .
 
-      - run: sudo apt --quiet install -y --quiet gettext locales
-      - run: sudo sed -i 's/^# *\(pl_PL.UTF-8\)/\1/' /etc/locale.gen
-      - run: sudo locale-gen
-      - run: sudo sh -c 'LANG=pl_PL.UTF-8 > /etc/default/locale'
-      - run: export LC_ALL=pl_PL.UTF-8
-      - run: locale
       - run: sudo npm install -g grunt-cli
-
-      - run:
-          # Bo potem sie PhatntomJS wywali przez brak openssl
-          name: install postgresql-client
-          command: |
-            sudo apt install -y postgresql-client
 
       # Testy JavaScript
       - run:
