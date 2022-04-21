@@ -45,6 +45,7 @@ jobs:
       - restore_cache:
           key: cache-11-{{ checksum "poetry.lock" }}-{{ checksum "yarn.lock" }}
 
+      - run: sudo apt -q -q -q update
       - run: sudo apt --quiet install -y --quiet gettext locales
       - run: sudo sed -i 's/^# *\(pl_PL.UTF-8\)/\1/' /etc/locale.gen
       - run: sudo locale-gen
