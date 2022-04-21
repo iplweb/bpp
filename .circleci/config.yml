@@ -177,7 +177,6 @@ jobs:
       - run:
           name: JS Tests
           command: |
-            ls -las
             make yarn
             make js-tests
 
