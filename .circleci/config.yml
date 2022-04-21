@@ -3,7 +3,7 @@ jobs:
   build:
 
     docker:
-      - image: circleci/python:3.8-node-browsers
+      - image: cimg/python:3.8.13-node
         environment:
           PGUSER: postgres
           PGHOST: localhost
@@ -82,7 +82,7 @@ jobs:
 
   test:
     docker:
-      - image: circleci/python:3.8-node-browsers
+      - image:  cimg/python:3.8.13-node-browsers
         environment:
           PGUSER: postgres
           PGHOST: localhost
@@ -142,7 +142,7 @@ jobs:
 
   js-tests:
     docker:
-      - image: circleci/python:3.8-node-browsers
+      - image: cimg/python:3.8.13-node
         environment:
           PGUSER: postgres
           PGHOST: localhost
@@ -177,6 +177,8 @@ jobs:
       - run:
           name: JS Tests
           command: |
+            ls -las
+            find .
             make yarn
             make js-tests
 
