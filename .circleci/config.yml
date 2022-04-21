@@ -2,8 +2,6 @@ version: 2
 jobs:
   build:
 
-    working_directory: ~/app
-
     docker:
       - image: circleci/python:3.8-node-browsers
         environment:
@@ -78,13 +76,11 @@ jobs:
             pg_dump bpp > pg_dump.sql
 
       - persist_to_workspace:
-          root: ~/app
+          root: .
           paths:
-            - ./*
+            - .
 
   test:
-    working_directory: ~/app
-
     docker:
       - image: circleci/python:3.8-node-browsers
         environment:
@@ -100,11 +96,11 @@ jobs:
           POSTGRES_HOST_AUTH_METHOD: trust
       - image: redis:latest
 
-    parallelism: 4
+    parallelism: 2
     steps:
 
       - attach_workspace:
-          at: ~/app
+          at: .
 
       - run:
           name: install postgresql-client
@@ -145,8 +141,6 @@ jobs:
 
 
   js-tests:
-    working_directory: ~/app
-
     docker:
       - image: circleci/python:3.8-node-browsers
         environment:
@@ -163,7 +157,7 @@ jobs:
           command: sleep 30
 
       - attach_workspace:
-          at: ~/app
+          at: .
 
       - run: sudo apt --quiet install -y --quiet gettext locales
       - run: sudo sed -i 's/^# *\(pl_PL.UTF-8\)/\1/' /etc/locale.gen
