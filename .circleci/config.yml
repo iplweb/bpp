@@ -1,4 +1,8 @@
-version: 2
+version: 2.1
+
+orbs:
+  browser-tools: circleci/browser-tools@1.2.5
+
 jobs:
   build:
 
@@ -92,7 +96,7 @@ jobs:
 
   test:
     docker:
-      - image:  cimg/python:3.8.13-node-browsers
+      - image: cimg/python:3.8.13-browsers
         environment:
           PGUSER: postgres
           PGHOST: localhost
@@ -108,6 +112,13 @@ jobs:
 
     parallelism: 2
     steps:
+
+      - browser-tools/install-browser-tools
+
+      - run:
+          command: |
+            firefox --version
+            geckodriver --version
 
       - attach_workspace:
           at: .
@@ -132,7 +143,6 @@ jobs:
           name: restore database from dump
           command: |
             createdb bpp
-            find .
             cat pg_dump.sql | psql bpp
 
       - restore_cache:
@@ -168,7 +178,6 @@ jobs:
           name: JS Tests
           command: |
             ls -las
-            find .
             make yarn
             make js-tests
 
