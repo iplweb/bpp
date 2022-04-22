@@ -47,7 +47,7 @@ jobs:
       - checkout
 
       - restore_cache:
-          key: cache-13-{{ checksum "poetry.lock" }}-{{ checksum "yarn.lock" }}
+          key: cache-14-{{ checksum "poetry.lock" }}-{{ checksum "yarn.lock" }}
 
       - run: sudo apt -q -q -q update
       - run: sudo apt --quiet install -y --quiet gettext locales
@@ -61,7 +61,7 @@ jobs:
       - run:
           name: Install project
           command: |
-            poetry install --no-root --no-ansi
+            poetry install --no-root --no-ansi --verbose
 
       - run:
           name: Show installed packages
@@ -85,12 +85,12 @@ jobs:
             ls -las /home/circleci/.cache/*poetry*/
 
       - save_cache:
-          key: cache-13-{{ checksum "poetry.lock" }}-{{ checksum "yarn.lock" }}
+          key: cache-14-{{ checksum "poetry.lock" }}-{{ checksum "yarn.lock" }}
           paths:
-            - "/home/circleci/.cache/yarn"
-            - "/home/circleci/.cache/pip"
-            - "/home/circleci/.cache/pypoetry/cache"
-            - "/home/circleci/.cache/pypoetry/artifacts"
+            - "/home/circleci/.cache" # /yarn"
+            #- "/home/circleci/.cache/pip"
+            #- "/home/circleci/.cache/pypoetry/cache"
+            #- "/home/circleci/.cache/pypoetry/artifacts"
 
       # Stworz dump bazy danych na potrzeby kolejnych kroków
       - run:
@@ -149,7 +149,7 @@ jobs:
           command: dockerize -wait tcp://$PGHOST:$PGPORT -timeout 1m
 
       - restore_cache:
-          key: cache-13-{{ checksum "poetry.lock" }}-{{ checksum "yarn.lock" }}
+          key: cache-14-{{ checksum "poetry.lock" }}-{{ checksum "yarn.lock" }}
 
       - run:
           name: restore database from dump
@@ -160,7 +160,7 @@ jobs:
       - run:
           name: Install project
           command: |
-            poetry install --no-root --no-ansi
+            poetry install --no-root --no-ansi --verbose
 
       - run:
           name: Show installed packages
