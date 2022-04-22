@@ -87,10 +87,7 @@ jobs:
       - save_cache:
           key: cache-14-{{ checksum "poetry.lock" }}-{{ checksum "yarn.lock" }}
           paths:
-            - "/home/circleci/.cache" # /yarn"
-            #- "/home/circleci/.cache/pip"
-            #- "/home/circleci/.cache/pypoetry/cache"
-            #- "/home/circleci/.cache/pypoetry/artifacts"
+            - "/home/circleci/.cache"
 
       # Stworz dump bazy danych na potrzeby kolejnych kroków
       - run:
@@ -119,7 +116,7 @@ jobs:
           POSTGRES_HOST_AUTH_METHOD: trust
       - image: redis:latest
 
-    parallelism: 2
+    parallelism: 6
     steps:
 
       - browser-tools/install-browser-tools
@@ -167,7 +164,6 @@ jobs:
           command: |
             poetry run pip list
 
-      # Uruchamiaj na lokalnym firefoxie używając dwóch CPU
       - run:
           name: pytest
           command: |
@@ -179,6 +175,11 @@ jobs:
 
       - store_artifacts:
           path: test-results
+
+      - run:
+           name: Submit coverage to coveralls.io
+           command: |
+             poetry run coveralls
 
 
   js-tests:
@@ -199,33 +200,6 @@ jobs:
             make yarn
             make js-tests
 
-  coverage:
-    docker:
-      - image: circleci/python:3.8-node-browsers
-        environment:
-          PGUSER: postgres
-          PGHOST: localhost
-          PGPORT: 5432
-          PGDATABASE: bpp
-          DJANGO_BPP_SECRET_KEY: foobar
-          DJANGO_SETTINGS_MODULE: django_bpp.settings.test
-      - image: mpasternak79/circleci-postgres:12
-        environment:
-          POSTGRESS_PASSWORD: password
-          POSTGRES_HOST_AUTH_METHOD: trust
-      - image: redis:latest
-
-    steps:
-      - attach_workspace:
-          at: .
-
-       # Wyślij statystyki pokrycia kodu testami do coveralls.io
-      - run:
-           name: Submit coverage to coveralls.io
-           command: |
-             poetry run coveralls
-
-
 
 workflows:
   version: 2
@@ -238,7 +212,3 @@ workflows:
       - js-tests:
           requires:
             - build
-      - coverage:
-          requires:
-            - test
-            - js-tests
