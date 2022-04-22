@@ -154,8 +154,8 @@ jobs:
       - run:
           name: restore database from dump
           command: |
-            createdb bpp
-            cat pg_dump.sql | psql bpp
+            createdb test_bpp
+            cat pg_dump.sql | psql test_bpp
 
       - run:
           name: Install project
