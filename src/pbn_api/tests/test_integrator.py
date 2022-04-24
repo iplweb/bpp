@@ -2,11 +2,11 @@ import pytest
 from model_mommy import mommy
 
 from pbn_api.integrator import (
-    PBN_MIN_ROK,
     wydawnictwa_ciagle_do_synchronizacji,
     wydawnictwa_zwarte_do_synchronizacji,
 )
 
+from bpp.const import PBN_MIN_ROK
 from bpp.models import (
     Charakter_Formalny,
     Jezyk,

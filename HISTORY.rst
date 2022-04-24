@@ -20,6 +20,8 @@ Historia zmian
   przypisania, zwiększającego się z każdym kolejnym przypisaniem (#1177),
 * w REST-API przy eksporcie danych pojawiają się streszczenia z bazy danych,
   wraz z polem języka (#1208),
+* poprawiono błąd związany z niepoprawnym wyliczaniem punktów dla prac
+  w roku 2022 (#1209),
 
 202202.1085
 -----------

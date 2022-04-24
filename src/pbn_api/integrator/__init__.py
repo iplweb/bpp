@@ -12,6 +12,8 @@ from django.db.models.functions import Length
 
 from pbn_api.integrator import istarmap  # noqa
 
+from bpp.const import PBN_MIN_ROK
+
 try:
     django.setup()
 except RuntimeError:
@@ -402,7 +404,7 @@ def pobierz_prace_offline(client: PBNClient):
 def _single_unit_wgraj(current_page, status, db, model):
     fn = pbn_file_path(db, current_page, status)
     if os.path.exists(fn):
-        data = open(fn, "r").read()
+        data = open(fn).read()
         if data:
             dane = json.loads(data)
             if dane:
@@ -512,10 +514,6 @@ def _pobierz_prace_po_elemencie(
         ret.append(p)
 
     return ret
-
-
-#: Minimalny rok od którego zaczynamy liczyć punkty dla prac PBN i w ogóle minimalny rok integracji.
-PBN_MIN_ROK = 2017
 
 
 def pobierz_prace_po_doi(client: PBNClient):

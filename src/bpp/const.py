@@ -87,4 +87,11 @@ LINK_PBN_DO_PUBLIKACJI = "{pbn_api_root}/core/#/publication/view/{pbn_uid_id}/cu
 
 PBN_LATA = [2017, 2018, 2019, 2020, 2021, 2022]
 
+# Minimalny rok od którego zaczynamy liczyć punkty dla prac PBN i w ogóle minimalny rok integracji.
+PBN_MIN_ROK = PBN_LATA[0]
+
+# Maksymalny rok dla procedur eksportujących do PBN, liczącyc punkty/sloty oraz testów
+PBN_MAX_ROK = PBN_LATA[-1]
+
+
 KWARTYLE = [(None, "brak"), (1, "Q1"), (2, "Q2"), (3, "Q3"), (4, "Q4")]

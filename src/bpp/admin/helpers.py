@@ -24,6 +24,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
+from bpp.const import PBN_MAX_ROK, PBN_MIN_ROK
 from bpp.models import Status_Korekty
 from bpp.models.sloty.core import ISlot
 from bpp.models.sloty.exceptions import CannotAdapt
@@ -363,7 +364,7 @@ def link_do_obiektu(obj, friendly_name=None):
 
 
 def sprobuj_policzyc_sloty(request, obj):
-    if obj.rok >= 2017 and obj.rok <= 2021:
+    if obj.rok >= PBN_MIN_ROK and obj.rok <= PBN_MAX_ROK:
         try:
             ISlot(obj)
             messages.success(
