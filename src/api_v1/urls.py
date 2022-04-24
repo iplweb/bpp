@@ -1,38 +1,39 @@
-from django.conf.urls import url, include
+from django.conf.urls import include, url
 from rest_framework import routers
 
 from api_v1.viewsets.autor import (
+    Autor_JednostkaViewSet,
     AutorViewSet,
     Funkcja_AutoraViewSet,
     TytulViewSet,
-    Autor_JednostkaViewSet,
 )
 from api_v1.viewsets.nagroda import NagrodaViewSet
 from api_v1.viewsets.openaccess import Czas_Udostepnienia_OpenAccess_ViewSet
-from api_v1.viewsets.patent import PatentViewSet, Patent_AutorViewSet
+from api_v1.viewsets.patent import Patent_AutorViewSet, PatentViewSet
 from api_v1.viewsets.praca_doktorska import Praca_DoktorskaViewSet
 from api_v1.viewsets.praca_habilitacyjna import Praca_HabilitacyjnaViewSet
-from api_v1.viewsets.struktura import JednostkaViewSet, WydzialViewSet, UczelniaViewSet
+from api_v1.viewsets.struktura import JednostkaViewSet, UczelniaViewSet, WydzialViewSet
 from api_v1.viewsets.system import (
     Charakter_FormalnyViewSet,
-    Typ_KBNViewSet,
-    JezykViewSet,
     Dyscyplina_NaukowaViewSet,
+    JezykViewSet,
     KonferencjaViewSet,
     Seria_WydawniczaViewSet,
+    Typ_KBNViewSet,
 )
 from api_v1.viewsets.wydawca import Poziom_WydawcyViewSet, WydawcaViewSet
 from api_v1.viewsets.wydawnictwo_ciagle import (
-    Wydawnictwo_CiagleViewSet,
     Wydawnictwo_Ciagle_AutorViewSet,
+    Wydawnictwo_Ciagle_StreszczenieViewSet,
     Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychViewSet,
+    Wydawnictwo_CiagleViewSet,
 )
 from api_v1.viewsets.wydawnictwo_zwarte import (
-    Wydawnictwo_ZwarteViewSet,
     Wydawnictwo_Zwarte_AutorViewSet,
+    Wydawnictwo_Zwarte_StreszczenieViewSet,
+    Wydawnictwo_ZwarteViewSet,
 )
 from api_v1.viewsets.zrodlo import Rodzaj_ZrodlaViewSet, ZrodloViewSet
-from bpp.models import Wydawnictwo_Zwarte
 
 router = routers.DefaultRouter()
 
@@ -52,6 +53,10 @@ router.register(r"wydawca", WydawcaViewSet)
 
 router.register(r"wydawnictwo_zwarte", Wydawnictwo_ZwarteViewSet)
 router.register(r"wydawnictwo_zwarte_autor", Wydawnictwo_Zwarte_AutorViewSet)
+router.register(
+    r"wydawnictwo_zwarte_streszczenie",
+    Wydawnictwo_Zwarte_StreszczenieViewSet,
+)
 
 router.register(r"patent", PatentViewSet)
 router.register(r"patent_autor", Patent_AutorViewSet)
@@ -61,6 +66,10 @@ router.register(r"wydawnictwo_ciagle_autor", Wydawnictwo_Ciagle_AutorViewSet)
 router.register(
     r"wydawnictwo_ciagle_zewnetrzna_baza_danych",
     Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychViewSet,
+)
+router.register(
+    r"wydawnictwo_ciagle_streszczenie",
+    Wydawnictwo_Ciagle_StreszczenieViewSet,
 )
 
 router.register(r"praca_doktorska", Praca_DoktorskaViewSet)

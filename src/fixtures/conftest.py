@@ -584,6 +584,8 @@ def jezyki(db):
     for elem in fixture("jezyk.json"):
         Jezyk.objects.get_or_create(**elem["fields"])
 
+    return {jezyk.skrot: jezyk for jezyk in Jezyk.objects.all()}
+
 
 @pytest.fixture(scope="function")
 def charaktery_formalne():

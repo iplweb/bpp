@@ -3,10 +3,16 @@ from rest_framework import viewsets
 
 from api_v1.serializers.wydawnictwo_zwarte import (
     Wydawnictwo_Zwarte_AutorSerializer,
+    Wydawnictwo_Zwarte_StreszczenieSerializer,
     Wydawnictwo_ZwarteSerializer,
 )
-from api_v1.viewsets.common import UkryjStatusyKorektyMixin
-from bpp.models import Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor
+from api_v1.viewsets.common import StreszczeniaPagination, UkryjStatusyKorektyMixin
+
+from bpp.models import (
+    Wydawnictwo_Zwarte,
+    Wydawnictwo_Zwarte_Autor,
+    Wydawnictwo_Zwarte_Streszczenie,
+)
 
 
 class Wydawnictwo_Zwarte_AutorViewSet(viewsets.ReadOnlyModelViewSet):
@@ -31,7 +37,13 @@ class Wydawnictwo_ZwarteViewSet(
         Wydawnictwo_Zwarte.objects.exclude(nie_eksportuj_przez_api=True)
         .order_by("pk")
         .select_related("status_korekty")
-        .prefetch_related("autorzy_set", "nagrody", "slowa_kluczowe")
+        .prefetch_related("autorzy_set", "nagrody", "slowa_kluczowe", "streszczenia")
     )
     serializer_class = Wydawnictwo_ZwarteSerializer
     filterset_class = Wydawnictwo_ZwarteFilterSet
+
+
+class Wydawnictwo_Zwarte_StreszczenieViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Wydawnictwo_Zwarte_Streszczenie.objects.all()
+    serializer_class = Wydawnictwo_Zwarte_StreszczenieSerializer
+    pagination_class = StreszczeniaPagination

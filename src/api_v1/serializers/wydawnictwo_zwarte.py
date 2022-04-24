@@ -6,7 +6,12 @@ from api_v1.serializers.util import (
     Wydawnictwo_AutorSerializerMixin,
     WydawnictwoSerializerMixin,
 )
-from bpp.models import Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor
+
+from bpp.models import (
+    Wydawnictwo_Zwarte,
+    Wydawnictwo_Zwarte_Autor,
+    Wydawnictwo_Zwarte_Streszczenie,
+)
 
 
 class Wydawnictwo_Zwarte_AutorSerializer(
@@ -31,6 +36,16 @@ class Wydawnictwo_Zwarte_AutorSerializer(
             "procent",
             "dyscyplina_naukowa",
         ]
+
+
+class Wydawnictwo_Zwarte_StreszczenieSerializer(serializers.ModelSerializer):
+    rekord = serializers.HyperlinkedRelatedField(
+        view_name="api_v1:wydawnictwo_zwarte-detail", read_only=True
+    )
+
+    class Meta:
+        model = Wydawnictwo_Zwarte_Streszczenie
+        fields = ["rekord", "jezyk_streszczenia", "streszczenie"]
 
 
 class Wydawnictwo_ZwarteSerializer(
@@ -58,6 +73,12 @@ class Wydawnictwo_ZwarteSerializer(
 
     wydawnictwo_nadrzedne = serializers.HyperlinkedRelatedField(
         view_name="api_v1:wydawnictwo_zwarte-detail", read_only=True
+    )
+
+    streszczenia = serializers.HyperlinkedRelatedField(
+        many=True,
+        view_name="api_v1:wydawnictwo_zwarte_streszczenie-detail",
+        read_only=True,
     )
 
     class Meta:
@@ -133,4 +154,5 @@ class Wydawnictwo_ZwarteSerializer(
             "tekst_po_ostatnim_autorze",
             #
             "nagrody",
+            "streszczenia",
         ]

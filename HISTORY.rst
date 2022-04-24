@@ -18,6 +18,8 @@ Historia zmian
   zaś w sytuacji braku jednej lub obydwu tych dat -- ustali jednostkę
   aktualną na tą, która została najpóźniej przypisana, wg numeru ID
   przypisania, zwiększającego się z każdym kolejnym przypisaniem (#1177),
+* w REST-API przy eksporcie danych pojawiają się streszczenia z bazy danych,
+  wraz z polem języka (#1208),
 
 202202.1085
 -----------
