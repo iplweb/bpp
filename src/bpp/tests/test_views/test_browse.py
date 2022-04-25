@@ -1,4 +1,5 @@
 import json
+import random
 import re
 from datetime import date
 
@@ -7,6 +8,7 @@ from bs4 import BeautifulSoup
 
 from django.contrib.contenttypes.models import ContentType
 
+from bpp.exceptions import UczelniaNotDefined
 from bpp.tests import normalize_html
 
 try:
@@ -29,11 +31,12 @@ from bpp.models import (
     Praca_Doktorska,
     Rekord,
     Typ_Odpowiedzialnosci,
+    Uczelnia,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
 )
 from bpp.models.autor import Autor
-from bpp.views.browse import BuildSearch, PracaViewBySlug
+from bpp.views.browse import BuildSearch, JednostkiView, PracaViewBySlug
 
 
 def test_buildSearch(settings):
@@ -554,6 +557,24 @@ def test_browse_jednostka_nadrzedna(jednostka, jednostka_podrzedna, client):
     url = reverse("bpp:browse_jednostka", args=(jednostka_podrzedna.slug,))
     page = client.get(url)
     assert "Wchodzi w skład" in normalize_html(page.rendered_content)
+
+
+@pytest.mark.django_db
+def test_browse_jednostka_paginate_by_nonexist_uczelnia():
+    j = JednostkiView()
+    with pytest.raises(UczelniaNotDefined):
+        j.get_paginate_by(None)
+
+
+@pytest.mark.django_db
+def test_browse_jednostka_paginate_by(uczelnia: Uczelnia):
+    j = JednostkiView()
+    assert j.get_paginate_by(None) == uczelnia.ilosc_jednostek_na_strone
+
+    ile = random.randint(10, 10000)
+    uczelnia.ilosc_jednostek_na_strone = ile
+    uczelnia.save()
+    assert j.get_paginate_by(None) == ile
 
 
 def test_browse_jednostka_sortowanie(jednostka, jednostka_podrzedna, uczelnia, client):

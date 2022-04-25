@@ -22,6 +22,7 @@ Historia zmian
   wraz z polem języka (#1208),
 * poprawiono błąd związany z niepoprawnym wyliczaniem punktów dla prac
   w roku 2022 (#1209),
+* definiowalna ilość wyświetlanych jednostek na stronę (#1211),
 
 202202.1085
 -----------

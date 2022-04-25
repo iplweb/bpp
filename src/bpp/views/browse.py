@@ -1,8 +1,9 @@
-# -*- encoding: utf-8 -*-
 import json
 import re
 
 from django.contrib.contenttypes.models import ContentType
+
+from bpp.exceptions import UczelniaNotDefined
 
 try:
     from django.core.urlresolvers import reverse
@@ -61,7 +62,7 @@ class UczelniaView(DetailView):
             )[:5]
 
         context.update(kwargs)
-        return super(UczelniaView, self).get_context_data(**context)
+        return super().get_context_data(**context)
 
 
 class WydzialView(DetailView):
@@ -74,7 +75,7 @@ class JednostkaView(DetailView):
     model = Jednostka
 
     def get_context_data(self, **kwargs):
-        return super(JednostkaView, self).get_context_data(typy=TYPY, **kwargs)
+        return super().get_context_data(typy=TYPY, **kwargs)
 
 
 class AutorView(DetailView):
@@ -82,7 +83,7 @@ class AutorView(DetailView):
     model = Autor
 
     def get_context_data(self, **kwargs):
-        return super(AutorView, self).get_context_data(typy=TYPY, **kwargs)
+        return super().get_context_data(typy=TYPY, **kwargs)
 
 
 LITERKI = "ABCDEFGHIJKLMNOPQRSTUVWYXZ"
@@ -132,7 +133,7 @@ class Browser(ListView):
         return qry.distinct()
 
     def get_context_data(self, *args, **kw):
-        return super(Browser, self).get_context_data(
+        return super().get_context_data(
             flt=self.request.GET.get(self.param),
             literki=LITERKI,
             wybrana=self.kwargs.pop("literka", None),
@@ -150,7 +151,7 @@ class AutorzyView(Browser):
 
     def get_queryset(self):
         return (
-            super(AutorzyView, self)
+            super()
             .get_queryset()
             .only("nazwisko", "imiona", "slug", "poprzednie_nazwiska")
         )
@@ -164,11 +165,7 @@ class ZrodlaView(Browser):
     paginate_by = 70
 
     def get_queryset(self):
-        return (
-            super(ZrodlaView, self)
-            .get_queryset()
-            .only("nazwa", "poprzednia_nazwa", "slug")
-        )
+        return super().get_queryset().only("nazwa", "poprzednia_nazwa", "slug")
 
 
 class JednostkiView(Browser):
@@ -178,6 +175,22 @@ class JednostkiView(Browser):
     literka_field = "nazwa"
     paginate_by = 150
 
+    def get_paginate_by(self, queryset):
+        uczelnia = None
+
+        if hasattr(self, "request") and self.request is not None:
+            uczelnia = Uczelnia.objects.get_for_request(self.request)
+
+        if uczelnia is None:
+            uczelnia = Uczelnia.objects.get_default()
+
+        if uczelnia is None:
+            raise UczelniaNotDefined(
+                "W systemie brak zdefiniowanego obiektu 'Uczelnia'."
+            )
+
+        return uczelnia.ilosc_jednostek_na_strone
+
     def get_queryset(self):
         ordering = None
 
@@ -186,7 +199,7 @@ class JednostkiView(Browser):
             if uczelnia.sortuj_jednostki_alfabetycznie:
                 ordering = ("nazwa",)
 
-        qry = super(JednostkiView, self).get_queryset()
+        qry = super().get_queryset()
         ret = (
             qry.filter(widoczna=True)
             .only("nazwa", "slug", "wydzial")
@@ -270,7 +283,7 @@ class BuildSearch(RedirectView):
         # wyszukiwanie (#325)
         self.request.session.pop(MULTISEEK_SESSION_KEY_REMOVED, None)
 
-        return super(BuildSearch, self).post(*args, **kw)
+        return super().post(*args, **kw)
 
 
 class PracaViewMixin:
