@@ -1,9 +1,9 @@
-from pbn_api.integrator import PBN_MAX_ROK, PBN_MIN_ROK
 from pbn_api.tests.utils import middleware
 
 from django.contrib.messages import get_messages
 
 from bpp.admin.helpers import sprobuj_policzyc_sloty
+from bpp.const import PBN_MAX_ROK, PBN_MIN_ROK
 
 
 def test_sprobuj_policzyc_sloty(rf, zwarte_z_dyscyplinami):
