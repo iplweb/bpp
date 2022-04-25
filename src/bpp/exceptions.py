@@ -1,0 +1,2 @@
+class UczelniaNotDefined(Exception):
+    pass

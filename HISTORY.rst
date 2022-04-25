@@ -24,6 +24,7 @@ Historia zmian
   w roku 2022 (#1209),
 * raport slotów - ewaluacja pozwala na tworzenie raportów później niż dla
   2021 roku (#1210),
+* definiowalna ilość wyświetlanych jednostek na stronę (#1211),
 
 202202.1085
 -----------
