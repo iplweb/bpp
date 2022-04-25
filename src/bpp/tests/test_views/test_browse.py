@@ -8,7 +8,6 @@ from bs4 import BeautifulSoup
 
 from django.contrib.contenttypes.models import ContentType
 
-from bpp.exceptions import UczelniaNotDefined
 from bpp.tests import normalize_html
 
 try:
@@ -20,7 +19,12 @@ from model_mommy import mommy
 from multiseek.logic import EQUAL, EQUAL_FEMALE, EQUAL_NONE
 from multiseek.views import MULTISEEK_SESSION_KEY
 
-from fixtures import NORMAL_DJANGO_USER_LOGIN, NORMAL_DJANGO_USER_PASSWORD
+from fixtures import (
+    JEDNOSTKA_PODRZEDNA,
+    JEDNOSTKA_UCZELNI,
+    NORMAL_DJANGO_USER_LOGIN,
+    NORMAL_DJANGO_USER_PASSWORD,
+)
 from miniblog.models import Article
 
 from bpp.models import (
@@ -560,13 +564,6 @@ def test_browse_jednostka_nadrzedna(jednostka, jednostka_podrzedna, client):
 
 
 @pytest.mark.django_db
-def test_browse_jednostka_paginate_by_nonexist_uczelnia():
-    j = JednostkiView()
-    with pytest.raises(UczelniaNotDefined):
-        j.get_paginate_by(None)
-
-
-@pytest.mark.django_db
 def test_browse_jednostka_paginate_by(uczelnia: Uczelnia):
     j = JednostkiView()
     assert j.get_paginate_by(None) == uczelnia.ilosc_jednostek_na_strone
@@ -612,3 +609,24 @@ def test_browse_jednostka_nadrzedna_tekst(jednostka_podrzedna, jednostka, client
     url = reverse("bpp:browse_jednostka", args=(jednostka_podrzedna.slug,))
     res = client.get(url)
     assert "Jest nadrzędną jednostką dla" not in normalize_html(res.rendered_content)
+
+
+def test_browse_pokazuj_tylko_jednostki_nadrzedne_nie(
+    jednostka_podrzedna, jednostka, client, uczelnia
+):
+    url = reverse("bpp:browse_jednostki")
+    res = client.get(url)
+    assert JEDNOSTKA_UCZELNI in normalize_html(res.rendered_content)
+    assert JEDNOSTKA_PODRZEDNA in normalize_html(res.rendered_content)
+
+
+def test_browse_pokazuj_tylko_jednostki_nadrzedne_tak(
+    jednostka_podrzedna, jednostka, client, uczelnia
+):
+    uczelnia.pokazuj_tylko_jednostki_nadrzedne = True
+    uczelnia.save()
+
+    url = reverse("bpp:browse_jednostki")
+    res = client.get(url)
+    assert JEDNOSTKA_UCZELNI in normalize_html(res.rendered_content)
+    assert JEDNOSTKA_PODRZEDNA not in normalize_html(res.rendered_content)

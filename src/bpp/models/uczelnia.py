@@ -101,6 +101,12 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         danych dla użytkownika końcowego (strona główna -> przeglądaj -> jednostki)""",
     )
 
+    pokazuj_tylko_jednostki_nadrzedne = models.BooleanField(
+        default=False,
+        help_text="""Pokazuj tylko jednostki nadrzędne na stronie prezentacji
+        danych dla użytkownika końcowego""",
+    )
+
     ranking_autorow_rozbij_domyslnie = models.BooleanField(
         'Zaznacz domyślnie "Rozbij punktację na jednostki i wydziały" dla rankingu autorów',
         default=False,

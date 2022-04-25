@@ -3,8 +3,6 @@ import re
 
 from django.contrib.contenttypes.models import ContentType
 
-from bpp.exceptions import UczelniaNotDefined
-
 try:
     from django.core.urlresolvers import reverse
 except ImportError:
@@ -185,26 +183,24 @@ class JednostkiView(Browser):
             uczelnia = Uczelnia.objects.get_default()
 
         if uczelnia is None:
-            raise UczelniaNotDefined(
-                "W systemie brak zdefiniowanego obiektu 'Uczelnia'."
-            )
+            return self.paginate_by
 
         return uczelnia.ilosc_jednostek_na_strone
 
     def get_queryset(self):
         ordering = None
 
+        qry = super().get_queryset().filter(widoczna=True)
+
         uczelnia = Uczelnia.objects.get_for_request(self.request)
         if uczelnia:
             if uczelnia.sortuj_jednostki_alfabetycznie:
                 ordering = ("nazwa",)
 
-        qry = super().get_queryset()
-        ret = (
-            qry.filter(widoczna=True)
-            .only("nazwa", "slug", "wydzial")
-            .select_related("wydzial")
-        )
+            if uczelnia.pokazuj_tylko_jednostki_nadrzedne:
+                qry = qry.filter(parent=None)
+
+        ret = qry.only("nazwa", "slug", "wydzial").select_related("wydzial")
 
         if ordering:
             ret = ret.order_by(*ordering)

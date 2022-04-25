@@ -97,6 +97,7 @@ class UczelniaAdmin(
                     "logo_www",
                     "logo_svg",
                     "ilosc_jednostek_na_strone",
+                    "pokazuj_tylko_jednostki_nadrzedne",
                     "ranking_autorow_rozbij_domyslnie",
                     "pokazuj_punktacje_wewnetrzna",
                     "pokazuj_index_copernicus",

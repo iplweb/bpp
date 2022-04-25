@@ -258,17 +258,25 @@ def _jednostka_maker(nazwa, skrot, wydzial, **kwargs):
     return ret
 
 
+JEDNOSTKA_UCZELNI = "Jednostka Uczelni"
+
+
 @pytest.mark.django_db
 @pytest.fixture(scope="function")
 def jednostka(wydzial, db):
-    return _jednostka_maker("Jednostka Uczelni", skrot="Jedn. Ucz.", wydzial=wydzial)
+
+    return _jednostka_maker(JEDNOSTKA_UCZELNI, skrot="Jedn. Ucz.", wydzial=wydzial)
+
+
+JEDNOSTKA_PODRZEDNA = "Jednostka P-rzedna"
 
 
 @pytest.mark.django_db
 @pytest.fixture(scope="function")
 def jednostka_podrzedna(jednostka):
+
     return _jednostka_maker(
-        "Jednostka P-rzedna", skrot="JP", wydzial=jednostka.wydzial, parent=jednostka
+        JEDNOSTKA_PODRZEDNA, skrot="JP", wydzial=jednostka.wydzial, parent=jednostka
     )
 
 
