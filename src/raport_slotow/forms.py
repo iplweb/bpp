@@ -15,6 +15,7 @@ from django.forms import RadioSelect
 from . import const
 from .models.uczelnia import RaportSlotowUczelnia
 
+from bpp.const import PBN_MAX_ROK, PBN_MIN_ROK
 from bpp.models import Autor, Uczelnia
 from bpp.util import formdefaults_html_after, formdefaults_html_before, year_last_month
 
@@ -110,7 +111,7 @@ class AutorRaportSlotowForm(forms.Form):
             )
 
     def __init__(self, *args, **kwargs):
-        super(AutorRaportSlotowForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self.helper = FormHelper()
         self.helper.form_class = "custom"
@@ -183,15 +184,17 @@ class UtworzRaportSlotowUczelniaForm(forms.ModelForm):
             ),
         )
 
-        super(UtworzRaportSlotowUczelniaForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
 
 class ParametryRaportSlotowEwaluacjaForm(forms.Form):
     od_roku = forms.IntegerField(
-        initial=Uczelnia.objects.do_roku_default, min_value=2017
+        initial=Uczelnia.objects.do_roku_default, min_value=PBN_MIN_ROK
     )
     do_roku = forms.IntegerField(
-        initial=Uczelnia.objects.do_roku_default, min_value=2017, max_value=2021
+        initial=Uczelnia.objects.do_roku_default,
+        min_value=PBN_MIN_ROK,
+        max_value=PBN_MAX_ROK,
     )
 
     _export = forms.ChoiceField(
@@ -244,4 +247,4 @@ class ParametryRaportSlotowEwaluacjaForm(forms.Form):
             ),
         )
 
-        super(ParametryRaportSlotowEwaluacjaForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)

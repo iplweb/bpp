@@ -22,6 +22,8 @@ Historia zmian
   wraz z polem języka (#1208),
 * poprawiono błąd związany z niepoprawnym wyliczaniem punktów dla prac
   w roku 2022 (#1209),
+* raport slotów - ewaluacja pozwala na tworzenie raportów później niż dla
+  2021 roku (#1210),
 
 202202.1085
 -----------
