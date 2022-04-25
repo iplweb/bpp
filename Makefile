@@ -125,6 +125,9 @@ set-version-from-vcs:
 check-git-clean:
 	git diff --quiet
 
-test-package-from-vcs: check-git-clean pip-compile pip-sync set-version-from-vcs bdist_wheel
+poetry-sync:
+	poetry install --no-root --remove-untracked
+
+test-package-from-vcs: check-git-clean poetry-sync set-version-from-vcs bdist_wheel
 	ls -lash dist
 	git reset --hard
