@@ -1,11 +1,8 @@
-# -*- encoding: utf-8 -*-
-
 from denorm import denorms
 from django.core.management import BaseCommand
 from django.db import transaction
 
-from pbn_api.integrator import PBN_MIN_ROK
-
+from bpp.const import PBN_MIN_ROK
 from bpp.models import Praca_Doktorska, Praca_Habilitacyjna, Wydawca, Wydawnictwo_Zwarte
 
 

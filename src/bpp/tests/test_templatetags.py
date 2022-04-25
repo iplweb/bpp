@@ -6,7 +6,7 @@ from bpp.templatetags.prace import close_tags
 @pytest.mark.parametrize(
     "i,o",
     [
-        ("test<", "test&lt;"),
+        ("test<", "test"),
         ("test<x", "test<x/>"),
         ("test<test", "test<test/>"),
         ("test<strong>", "test<strong/>"),
