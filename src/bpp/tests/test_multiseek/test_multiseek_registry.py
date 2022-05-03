@@ -38,7 +38,9 @@ from bpp.multiseek_registry import (
     OpenaccessWersjaTekstuQueryObject,
     OstatnieNazwiskoIImie,
     OstatnioZmieniony,
+    PierwszaJednostkaQueryObject,
     PierwszeNazwiskoIImie,
+    PierwszyWydzialQueryObject,
     PublicDostepDniaQueryObject,
     RodzajKonferenckjiQueryObject,
     SlowaKluczoweQueryObject,
@@ -238,22 +240,44 @@ def test_WydzialQueryObject(wydzial):
     n = WydzialQueryObject()
 
     ret = n.real_query(wydzial, logic.EQUAL)
-    assert ret is not None
+    Rekord.objects.filter(ret)
 
     ret = n.real_query(wydzial, logic.DIFFERENT)
-    assert ret is not None
+    Rekord.objects.filter(ret)
 
     ret = n.real_query(wydzial, UNION)
-    assert ret is not None
+    Rekord.objects.filter(ret)
 
     ret = n.real_query(None, logic.EQUAL)
-    assert ret is not None
+    Rekord.objects.filter(ret)
 
     ret = n.real_query(None, logic.DIFFERENT)
-    assert ret is not None
+    Rekord.objects.filter(ret)
 
     ret = n.real_query(None, UNION)
-    assert ret is not None
+    Rekord.objects.filter(ret)
+
+
+def test_PierwszyWydzialQueryObject(wydzial):
+    n = PierwszyWydzialQueryObject()
+
+    ret = n.real_query(wydzial, logic.EQUAL)
+    Rekord.objects.filter(ret)
+
+    ret = n.real_query(wydzial, logic.DIFFERENT)
+    Rekord.objects.filter(ret)
+
+    ret = n.real_query(wydzial, UNION)
+    Rekord.objects.filter(ret)
+
+    ret = n.real_query(None, logic.EQUAL)
+    Rekord.objects.filter(ret)
+
+    ret = n.real_query(None, logic.DIFFERENT)
+    Rekord.objects.filter(ret)
+
+    ret = n.real_query(None, UNION)
+    Rekord.objects.filter(ret)
 
 
 @pytest.mark.django_db
@@ -265,6 +289,23 @@ def test_PierwszeNazwiskoIImie_real_query(
 
     r = Rekord.objects.filter(
         PierwszeNazwiskoIImie().real_query(autor_jan_kowalski, logic_arg)
+    )
+
+    assert len(r) == 1
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "logic_arg",
+    [logic.EQUAL, UNION, EQUAL_PLUS_SUB_FEMALE, EQUAL_PLUS_SUB_UNION_FEMALE],
+)
+def test_PierwszaJednostka_realQuery(
+    wydawnictwo_zwarte, autor_jan_kowalski, jednostka, logic_arg
+):
+    wydawnictwo_zwarte.dodaj_autora(autor_jan_kowalski, jednostka)
+
+    r = Rekord.objects.filter(
+        PierwszaJednostkaQueryObject().real_query(jednostka, logic_arg)
     )
 
     assert len(r) == 1

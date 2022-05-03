@@ -26,6 +26,8 @@ Historia zmian
   2021 roku (#1210),
 * definiowalna ilość wyświetlanych jednostek na stronę (#1211),
 * możliwość ukrycia jednostek podrzędnych na stronie prezentacji danych (#1212),
+* możliwość wyszukiwania w multiwyszukiwarce po pierwszej jednostce i po pierwszym
+  wydziale (b/n),
 
 202202.1085
 -----------

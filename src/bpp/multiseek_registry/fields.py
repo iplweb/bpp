@@ -481,6 +481,42 @@ class JednostkaQueryObject(
         return ret
 
 
+class PierwszaJednostkaQueryObject(JednostkaQueryObject):
+    ops = [
+        EQUAL_FEMALE,
+        DIFFERENT_FEMALE,
+        EQUAL_PLUS_SUB_FEMALE,
+        UNION_FEMALE,
+        EQUAL_PLUS_SUB_UNION_FEMALE,
+    ]
+    label = "Pierwsza jednostka"
+    field_name = "pierwsza_jednostka"
+
+    def real_query(self, value, operation):
+        if operation in EQUALITY_OPS_ALL:
+            ret = Q(autorzy__jednostka=value, autorzy__kolejnosc=0)
+
+        elif operation == EQUAL_PLUS_SUB_FEMALE:
+            ret = Q(autorzy__jednostka__in=value.get_family(), autorzy__kolejnosc=0)
+
+        elif operation in EQUAL_PLUS_SUB_UNION_FEMALE:
+            q = Autorzy.objects.filter(
+                jednostka__in=value.get_family(), kolejnosc=0
+            ).values("rekord_id")
+            ret = Q(pk__in=q)
+
+        elif operation in UNION_OPS_ALL:
+            q = Autorzy.objects.filter(jednostka=value, kolejnosc=0).values("rekord_id")
+            ret = Q(pk__in=q)
+
+        else:
+            raise UnknownOperation(operation)
+
+        if operation in DIFFERENT_ALL:
+            return ~ret
+        return ret
+
+
 class WydzialQueryObject(
     BppMultiseekVisibilityMixin, ForeignKeyDescribeMixin, AutocompleteQueryObject
 ):
@@ -498,6 +534,29 @@ class WydzialQueryObject(
 
         elif operation in UNION_OPS_ALL:
             q = Autorzy.objects.filter(jednostka__wydzial=value).values("rekord_id")
+            ret = Q(pk__in=q)
+
+        else:
+            raise UnknownOperation(operation)
+
+        if operation in DIFFERENT_ALL:
+            return ~ret
+
+        return ret
+
+
+class PierwszyWydzialQueryObject(WydzialQueryObject):
+    label = "Pierwszy wydział"
+    field_name = "pierwszy_wydzial"
+
+    def real_query(self, value, operation):
+        if operation in EQUALITY_OPS_ALL:
+            ret = Q(autorzy__jednostka__wydzial=value, autorzy__kolejnosc=0)
+
+        elif operation in UNION_OPS_ALL:
+            q = Autorzy.objects.filter(jednostka__wydzial=value, kolejnosc=0).values(
+                "rekord_id"
+            )
             ret = Q(pk__in=q)
 
         else:
@@ -973,6 +1032,8 @@ multiseek_fields = [
     ZrodloQueryObject(),
     WydawnictwoNadrzedneQueryObject(),
     PierwszeNazwiskoIImie(),
+    PierwszaJednostkaQueryObject(),
+    PierwszyWydzialQueryObject(),
     NazwiskoIImie1do3(),
     NazwiskoIImie1do5(),
     OstatnieNazwiskoIImie(),
