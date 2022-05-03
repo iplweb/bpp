@@ -27,18 +27,18 @@
                 <th>Zmiany potrzebne?</th>
                 <th>Zmienione dane</th>
             </tr>
-        {% include "pagination.html" %}
+            {% include "pagination.html" %}
             {% for row in object_list %}
                 <tr>
                     <td>{{ row.nr_arkusza }}</td>
                     <td>{{ row.nr_wiersza }}</td>
                     <td><a href="{% url "bpp:browse_autor" row.autor.pk %}">{{ row.autor }}</a></td>
                     <td><a href="{% url "bpp:browse_jednostka" row.jednostka.pk %}">{{ row.jednostka }}</a></td>
-                <td>{{ row.zmiany_potrzebne }}</td>
+                    <td>{{ row.zmiany_potrzebne }}</td>
                     <td>{% for elem in row.sformatowany_log_zmian %}
                         <p>{{ elem }}</p>
-                        {% endfor %}
-                        </td>
+                    {% endfor %}
+                    </td>
                 </tr>
                 {% empty %}
                 <tr>
@@ -49,6 +49,28 @@
                 </tr>
             {% endfor %}
         </table>
+    {% endif %}
+
+
+    {% if autorzy_spoza_pliku.exists %}
+        <h4>Na podstawie tego pliku importu, podstawowe miejsce pracy można ustawić na "NIE" dla
+            {{ autorzy_spoza_pliku.count }} rekordów, oto one ponizej</h4>
+        <a href="../resetuj-podstawowe-miejsce-pracy/">Kliknij tutaj, żeby zresetować. Uwaga, to zmieni bazę dancyh. </a>
+        <table>
+            <tr>
+                <th>Autor</th>
+                <th>Jednostka</th>
+            </tr>
+            {% for elem in autorzy_spoza_pliku %}
+                <tr>
+                    <td>{{ elem.autor }}</td>
+                    <td>{{ elem.jednostka }}</td>
+                </tr>
+            {% endfor %}
+        </table>
+    {% else %}
+        <h4>Zawartość tego pliku nie powoduje konieczności "likwidowania" podstawowych miejsc
+            pracy dla autorów w bazie. </h4>
     {% endif %}
 
 {% endblock %}

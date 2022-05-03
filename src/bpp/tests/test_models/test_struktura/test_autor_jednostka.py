@@ -84,3 +84,22 @@ def test_autor_jednostka_trigger_ustaw_aktualna_jednostke_3(
     autor_jan_kowalski.refresh_from_db()
 
     assert autor_jan_kowalski.aktualna_jednostka == jednostka
+
+
+@pytest.mark.django_db
+def test_autor_jednostka_trigger_ustaw_aktualna_jednostke_podstawowe_miejsce_pracy(
+    autor_jan_kowalski, jednostka, druga_jednostka
+):
+    mommy.make(
+        Autor_Jednostka,
+        autor=autor_jan_kowalski,
+        jednostka=druga_jednostka,
+        podstawowe_miejsce_pracy=True,
+    )
+    mommy.make(Autor_Jednostka, autor=autor_jan_kowalski, jednostka=jednostka)
+
+    # aktualne ma byc to miejsce, ktore ma 'podstawowe miejsce pracy' True
+
+    autor_jan_kowalski.refresh_from_db()
+
+    assert autor_jan_kowalski.aktualna_jednostka == druga_jednostka
