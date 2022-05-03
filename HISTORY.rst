@@ -30,6 +30,9 @@ Historia zmian
   wydziale (b/n),
 * tylko jedno "podstawowe miejsce pracy" dla połączenia autor+jednostka (b/n),
 * poprawna obsługa pola importowanego z Excela "podstawowe miejsce pracy" (#1213),
+* pokazuj rekordy, którym należy skorygować pole "podstawowe miejsce pracy" oraz
+  umożliwiaj jego wyłączenie (b/n),
+* ustawiaj 'Aktualne miejsce pracy' autora na podstawie pola 'Podstawowe miejsce pracy' (b/n),
 
 202202.1085
 -----------

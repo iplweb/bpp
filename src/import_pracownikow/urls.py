@@ -2,6 +2,7 @@ from django.urls import path
 
 from import_pracownikow.views import (
     ImportPracownikowDetailsView,
+    ImportPracownikowResetujPodstawoweMiejscePracyView,
     ImportPracownikowResultsView,
     ImportPracownikowRouterView,
     ListaImportowView,
@@ -28,6 +29,11 @@ urlpatterns = [
         "<uuid:pk>/results/",
         ImportPracownikowResultsView.as_view(),
         name="importpracownikow-results",
+    ),
+    path(
+        "<uuid:pk>/resetuj-podstawowe-miejsce-pracy/",
+        ImportPracownikowResetujPodstawoweMiejscePracyView.as_view(),
+        name="importpracownikow-resetuj-podstawowe-miejsce-pracy",
     ),
     path(
         "<uuid:pk>/regen/",
