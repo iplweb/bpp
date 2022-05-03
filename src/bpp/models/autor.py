@@ -7,7 +7,7 @@ from autoslug import AutoSlugField
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import IntegrityError, models, transaction
-from django.db.models import CASCADE, SET_NULL, Sum
+from django.db.models import CASCADE, SET_NULL, Q, Sum, UniqueConstraint
 from django.urls.base import reverse
 
 from django.contrib.postgres.search import SearchVectorField as VectorField
@@ -488,6 +488,21 @@ class Autor_Jednostka(models.Model):
                     " lub większy, jak obecna data"
                 )
 
+        if self.podstawowe_miejsce_pracy:
+            czy_istnieje = Autor_Jednostka.objects.filter(
+                autor_id=self.autor_id, podstawowe_miejsce_pracy=True
+            )
+            if self.pk:
+                czy_istnieje = czy_istnieje.exclude(pk=self.pk)
+
+            if czy_istnieje.exists():
+                raise ValidationError(
+                    "Ten autor ma już określone podstawowe miejsce pracy. Najpierw usuń podstawowe "
+                    f"miejsce pracy (ustaw wartość na 'Nie' dla jednostki '{czy_istnieje.first().jednostka.nazwa}'), "
+                    f"następnie zapisz rekord autora, następnie ustaw ponownie właściwe podstawowe miejsce pracy "
+                    f"(ustaw wartość na 'Tak') i zapisz po raz kolejny. "
+                )
+
     def __str__(self):
         buf = f"{self.autor} ↔ {self.jednostka.skrot}"
         if self.funkcja:
@@ -509,3 +524,10 @@ class Autor_Jednostka(models.Model):
         ordering = ["autor__nazwisko", "rozpoczal_prace", "jednostka__nazwa"]
         unique_together = [("autor", "jednostka", "rozpoczal_prace")]
         app_label = "bpp"
+        constraints = [
+            UniqueConstraint(
+                fields=["autor_id"],
+                condition=Q(podstawowe_miejsce_pracy=True),
+                name="jedno_podstawowe_miejsce_pracy_na_autora",
+            )
+        ]

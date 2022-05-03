@@ -28,6 +28,7 @@ Historia zmian
 * możliwość ukrycia jednostek podrzędnych na stronie prezentacji danych (#1212),
 * możliwość wyszukiwania w multiwyszukiwarce po pierwszej jednostce i po pierwszym
   wydziale (b/n),
+* tylko jedno "podstawowe miejsce pracy" dla połączenia autor+jednostka (b/n),
 
 202202.1085
 -----------
