@@ -233,7 +233,7 @@ class ImportPracownikow(ASGINotificationMixin, Operation):
                 grupa_pracownicza=grupa_pracownicza,
                 wymiar_etatu=wymiar_etatu,
                 podstawowe_miejsce_pracy=normalize_nullboleanfield(
-                    data.get("podstawowe_miejsce_pracy")
+                    elem.get("podstawowe_miejsce_pracy")
                 ),
             )
             res.zmiany_potrzebne = res.check_if_integration_needed()
@@ -441,8 +441,17 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
             )
 
         if self.podstawowe_miejsce_pracy != aj.podstawowe_miejsce_pracy:
-            aj.ustaw_podstawowe_miejsce_pracy()
-            self.log_zmian["autor_jednostka"].append("podstawowe_miejsce_pracy")
+
+            if not self.podstawowe_miejsce_pracy:
+                aj.podstawowe_miejsce_pracy = False
+                self.log_zmian["autor_jednostka"].append(
+                    "podstawowe_miejsce_pracy -> nie"
+                )
+            else:
+                aj.ustaw_podstawowe_miejsce_pracy()
+                self.log_zmian["autor_jednostka"].append(
+                    "podstawowe_miejsce_pracy -> tak"
+                )
 
         aj.save()
 

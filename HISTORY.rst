@@ -29,6 +29,7 @@ Historia zmian
 * możliwość wyszukiwania w multiwyszukiwarce po pierwszej jednostce i po pierwszym
   wydziale (b/n),
 * tylko jedno "podstawowe miejsce pracy" dla połączenia autor+jednostka (b/n),
+* poprawna obsługa pola importowanego z Excela "podstawowe miejsce pracy" (#1213),
 
 202202.1085
 -----------
