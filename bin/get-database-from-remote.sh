@@ -6,7 +6,7 @@
 OUTDIR=~/Programowanie/bazy
 DBNAME="${2:-bpp}"
 
-TIMESTAMP=`date +%s`
+TIMESTAMP=`date +%Y-%m-%d_%H:%M`
 FILENAME=dump-$TIMESTAMP.pgdump
 FN=/tmp/$FILENAME
 SAVE_AS="$OUTDIR/$1_$FILENAME"
