@@ -73,7 +73,7 @@ python = ">=3.8,<3.9"
 Django = "3.0.14"
 arrow = "1.2.1"
 pygad = "2.16.1"
-django-denorm-iplweb = "0.5.4"
+django-denorm-iplweb = "0.5.5"
 django-permissions-widget = "1.5.2"
 simplejson = "3.17.5"
 django-dbtemplates = {git = "https://github.com/jazzband/django-dbtemplates.git", rev = "ac86ca5ec97c47016146b4c3d7b3f0c77ce4f614"}
