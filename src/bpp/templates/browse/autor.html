@@ -35,6 +35,11 @@
         </a>
     </p>
 {% endif %}
+    {% if autor.aktualna_jednostka %}
+        <p>Aktualna jednostka:
+            <a href="{% url "bpp:browse_jednostka" autor.aktualna_jednostka.slug %}">{{ autor.aktualna_jednostka.nazwa }}</a>
+        </p>
+    {% endif %}
 
     {% if request.user.is_authenticated %}
         {% if not autor.pokazuj_poprzednie_nazwiska %}
