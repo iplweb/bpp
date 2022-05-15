@@ -34,6 +34,7 @@ Historia zmian
   umożliwiaj jego wyłączenie (b/n),
 * ustawiaj 'Aktualne miejsce pracy' autora na podstawie pola 'Podstawowe miejsce pracy' (b/n),
 * szybsze i skuteczniejsze dopasowania źródeł przy integracji danych z PBN (b/n),
+* polecenie ``check_email`` znika, korzystamy ze standardowego ``sendtestemail`` (b/n),
 
 202202.1085
 -----------
