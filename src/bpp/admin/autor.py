@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 from dal import autocomplete
 from django import forms
 from django.db.models import Q
@@ -35,9 +33,7 @@ class IloscUdzialowDlaAutoraInline(admin.TabularInline):
     fields = ["dyscyplina_naukowa", "ilosc_udzialow", "ilosc_udzialow_monografie"]
 
     def get_formset(self, request, obj=None, **kwargs):
-        formset = super(IloscUdzialowDlaAutoraInline, self).get_formset(
-            request, obj, **kwargs
-        )
+        formset = super().get_formset(request, obj, **kwargs)
 
         dyscypliny_autora = Autor_Dyscyplina.objects.filter(autor=obj).values(
             "dyscyplina_naukowa_id",
@@ -74,7 +70,7 @@ class Autor_DyscyplinaInlineForm(forms.ModelForm):
         fields = "__all__"
 
     def __init__(self, *args, **kw):
-        super(Autor_DyscyplinaInlineForm, self).__init__(*args, **kw)
+        super().__init__(*args, **kw)
         if kw.get("instance"):
             self.fields["rok"].disabled = True
 
@@ -180,8 +176,9 @@ class AutorAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
         "pbn_id",
         "system_kadrowy_id",
         "orcid",
+        "aktualna_jednostka__nazwa",
     ]
-    readonly_fields = ("ostatnio_zmieniony",)
+    readonly_fields = ["ostatnio_zmieniony", "aktualna_jednostka"]
 
     fieldsets = (
         (
@@ -200,6 +197,7 @@ class AutorAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
                     "pbn_id",
                     "pbn_uid",
                     "system_kadrowy_id",
+                    "aktualna_jednostka",
                 )
             },
         ),

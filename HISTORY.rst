@@ -35,6 +35,8 @@ Historia zmian
 * ustawiaj 'Aktualne miejsce pracy' autora na podstawie pola 'Podstawowe miejsce pracy' (b/n),
 * szybsze i skuteczniejsze dopasowania źródeł przy integracji danych z PBN (b/n),
 * polecenie ``check_email`` znika, korzystamy ze standardowego ``sendtestemail`` (b/n),
+* pokazuj 'Aktualne miejsce pracy' na podstronie przeglądania autora oraz
+  w module redagowania (b/n),
 
 202202.1085
 -----------
