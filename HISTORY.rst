@@ -33,6 +33,7 @@ Historia zmian
 * pokazuj rekordy, którym należy skorygować pole "podstawowe miejsce pracy" oraz
   umożliwiaj jego wyłączenie (b/n),
 * ustawiaj 'Aktualne miejsce pracy' autora na podstawie pola 'Podstawowe miejsce pracy' (b/n),
+* szybsze i skuteczniejsze dopasowania źródeł przy integracji danych z PBN (b/n),
 
 202202.1085
 -----------

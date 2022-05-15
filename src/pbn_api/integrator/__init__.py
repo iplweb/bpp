@@ -1,9 +1,11 @@
 import csv
 import json
 import multiprocessing
+import operator
 import os
 import sys
 import warnings
+from functools import reduce
 
 import django
 from django.db import transaction
@@ -835,80 +837,21 @@ def integruj_zrodla(disable_progress_bar):
         label="Integracja zrodel",
         disable_progress_bar=disable_progress_bar,
     ):
-        qry = None
+        queries = []
 
         if zrodlo.issn:
-            found = False
-            for current in True, False:
-                qry = Q(
-                    versions__contains=[
-                        {"current": current, "object": {"issn": zrodlo.issn}}
-                    ]
-                )
-                if fun(qry):
-                    found = True
-                    break
-
-                qry = Q(
-                    versions__contains=[
-                        {"current": current, "object": {"eissn": zrodlo.issn}}
-                    ]
-                )
-                if fun(qry):
-                    found = True
-                    break
-
-            if found:
-                continue
+            queries.append(Q(issn=zrodlo.issn) | Q(eissn=zrodlo.issn))
 
         if zrodlo.e_issn:
-            found = False
-            for current in True, False:
-                qry = Q(
-                    versions__contains=[
-                        {"current": current, "object": {"eissn": zrodlo.e_issn}}
-                    ]
-                )
-                if fun(qry):
-                    found = True
-                    break
+            queries.append(Q(eissn=zrodlo.e_issn) | Q(issn=zrodlo.e_issn))
 
-                qry = Q(
-                    versions__contains=[
-                        {"current": current, "object": {"issn": zrodlo.e_issn}}
-                    ]
-                )
-                if fun(qry):
-                    found = True
-                    break
+        queries.append(Q(title__iexact=zrodlo.nazwa))
 
-            if found:
-                continue
+        if fun(reduce(operator.or_, queries)):
+            print(f"\nZNALEZIONO dopasowania w PBN dla {zrodlo} -> {zrodlo.pbn_uid}")
+            continue
 
-        if qry is None:
-            for current in True, False:
-                qry = Q(
-                    versions__contains=[
-                        {"current": current, "object": {"title": zrodlo.nazwa}}
-                    ]
-                )
-                if fun(qry):
-                    found = True
-                    break
-
-                qry = Q(
-                    versions__contains=[
-                        {"current": current, "object": {"title": zrodlo.nazwa.upper()}}
-                    ]
-                )
-                if fun(qry):
-                    found = True
-                    break
-
-            if found:
-                continue
-
-            print(f"Nie znaleziono dopasowania w PBN dla {zrodlo}")
+        print(f"\nNie znaleziono dopasowania w PBN dla {zrodlo}")
 
 
 def integruj_wydawcow():
