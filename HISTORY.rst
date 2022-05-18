@@ -37,6 +37,9 @@ Historia zmian
 * polecenie ``check_email`` znika, korzystamy ze standardowego ``sendtestemail`` (b/n),
 * pokazuj 'Aktualne miejsce pracy' na podstronie przeglądania autora oraz
   w module redagowania (b/n),
+* nie pokazuj 'Aktualnego miejsca pracy' na podstronie autora jezeli jest to obca jednostka (b/n),
+* import pracowników: umożliwiaj automatyczne przypisywanie obcej jednostki osobom,
+  których nie ma w wykazie pracowników (b/n),
 * przeglądanie/autor: umożliwiaj wyszukiwanie wyłącznie w jednostkach, w których
   autor ma publikacje (b/n),
 

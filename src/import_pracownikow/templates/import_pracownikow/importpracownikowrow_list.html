@@ -53,9 +53,9 @@
 
 
     {% if autorzy_spoza_pliku.exists %}
-        <h4>Na podstawie tego pliku importu, podstawowe miejsce pracy można ustawić na "NIE" dla
-            {{ autorzy_spoza_pliku.count }} rekordów, oto one ponizej</h4>
-        <a href="../resetuj-podstawowe-miejsce-pracy/">Kliknij tutaj, żeby zresetować. Uwaga, to zmieni bazę dancyh. </a>
+        <h4>Na podstawie tego pliku importu, do obcej jednostki należałoby przypisać
+            {{ autorzy_spoza_pliku.count }} rekordów, oto one ponizej: </h4>
+        <a onclick="return confirm('Czy na pewno?');" href="../resetuj-podstawowe-miejsce-pracy/">Kliknij tutaj, żeby przypisać. Uwaga, to zmieni bazę dancyh. </a>
         <table>
             <tr>
                 <th>Autor</th>
