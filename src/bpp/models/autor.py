@@ -336,6 +336,15 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
             .aggregate(s=Sum("liczba_cytowan"))["s"]
         )
 
+    def jednostki_gdzie_ma_publikacje(self):
+        from bpp.models import Autorzy, Jednostka
+
+        return Jednostka.objects.filter(
+            pk__in=Autorzy.objects.filter(autor_id=self.pk)
+            .values("jednostka_id")
+            .distinct()
+        )
+
     def zbieraj_sloty(
         self,
         zadany_slot,

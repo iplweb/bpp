@@ -37,6 +37,8 @@ Historia zmian
 * polecenie ``check_email`` znika, korzystamy ze standardowego ``sendtestemail`` (b/n),
 * pokazuj 'Aktualne miejsce pracy' na podstronie przeglądania autora oraz
   w module redagowania (b/n),
+* przeglądanie/autor: umożliwiaj wyszukiwanie wyłącznie w jednostkach, w których
+  autor ma publikacje (b/n),
 
 202202.1085
 -----------
