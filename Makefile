@@ -79,7 +79,7 @@ live-docs:
 	sphinx-autobuild --port 8080 -D language=pl docs/ docs/_build
 
 tests:
-	pytest -n 5 --splinter-headless --maxfail 1
+	pytest -n 5 --splinter-headless --maxfail 50
 
 remove-match-publikacji-dane:
 	cd src/import_dbf && export CUSTOMER=foo && make disable-trigger
