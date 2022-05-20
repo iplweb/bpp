@@ -3,6 +3,8 @@
 Historia zmian
 ==============
 
+* wyświetlaj aktualną jednostkę w raporcie slotów - ewaluacja (#1036)
+
 202205.1086
 -----------
 
