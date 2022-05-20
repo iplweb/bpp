@@ -3,7 +3,7 @@
 Historia zmian
 ==============
 
-202204.1086
+202205.1086
 -----------
 
 * import pracowników: autorzy będą mieli aktualizowane tytuły naukowe przy imporcie,
