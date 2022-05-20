@@ -31,6 +31,7 @@ jobs:
       - run:
           name: Install Pango for WeasyPrint
           command: |
+            sudo apt update
             sudo apt install pango1.0-tests
 
       - run:
