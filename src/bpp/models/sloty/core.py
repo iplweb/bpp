@@ -1,6 +1,7 @@
 from django.db import transaction
 
 from ... import const
+from ...const import PBN_MAX_ROK, PBN_MIN_ROK
 from .exceptions import CannotAdapt
 from .wydawnictwo_ciagle import (
     SlotKalkulator_Wydawnictwo_Ciagle_Prog1,
@@ -51,7 +52,7 @@ def ISlot(original, uczelnia=None):
             elif original.punkty_kbn < 20 and original.punkty_kbn > 0:
                 return SlotKalkulator_Wydawnictwo_Ciagle_Prog3(original)
 
-        elif original.rok in [2019, 2020, 2021, 2022]:
+        elif original.rok > 2018 and original.rok <= PBN_MAX_ROK:
             if original.punkty_kbn in [200, 140, 100]:
                 return SlotKalkulator_Wydawnictwo_Ciagle_Prog1(original)
             elif original.punkty_kbn in [70, 40]:
@@ -65,7 +66,7 @@ def ISlot(original, uczelnia=None):
         )
 
     elif isinstance(original, Wydawnictwo_Zwarte):
-        if original.rok < 2017 or original.rok > 2022:
+        if original.rok < PBN_MIN_ROK or original.rok > PBN_MAX_ROK:
             raise CannotAdapt(
                 "Rok poza zakresem procedur liczacych (%s). " % original.rok
             )

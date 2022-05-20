@@ -2,8 +2,9 @@ from datetime import timedelta
 
 import pytest
 from django.urls import reverse
-from django.utils.timezone import localtime
 from model_mommy import mommy
+
+from django.utils.timezone import localtime
 
 from bpp.models import Wydawnictwo_Ciagle
 
@@ -82,3 +83,36 @@ def test_rest_api_wydawnictwo_ciagle_no_queries(
 ):
     with django_assert_max_num_queries(11):
         api_client.get(reverse("api_v1:wydawnictwo_ciagle-list"))
+
+
+TEKST_STRESZCZENIA = b"Tekst streszczenia"
+TEXT_OF_SUMMARY = b"Text of summary"
+
+
+@pytest.fixture
+def wydawnictwo_ciagle_ze_streszczeniami(wydawnictwo_ciagle, jezyki):
+    wydawnictwo_ciagle.streszczenia.create(
+        jezyk_streszczenia=jezyki["pol."], streszczenie=TEKST_STRESZCZENIA
+    )
+
+    wydawnictwo_ciagle.streszczenia.create(
+        jezyk_streszczenia=jezyki["ang."], streszczenie=TEXT_OF_SUMMARY
+    )
+
+    return wydawnictwo_ciagle
+
+
+@pytest.mark.django_db
+def test_rest_api_wydawnictwo_ciagle_streszczenia_eksport(
+    wydawnictwo_ciagle_ze_streszczeniami, client
+):
+    res = client.get(
+        reverse(
+            "api_v1:wydawnictwo_ciagle-detail",
+            args=(wydawnictwo_ciagle_ze_streszczeniami.pk,),
+        )
+    )
+
+    for elem in res.json()["streszczenia"]:
+        ts = client.get(elem)
+        assert (TEXT_OF_SUMMARY in ts.content) or (TEKST_STRESZCZENIA in ts.content)

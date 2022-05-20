@@ -36,29 +36,33 @@ distclean: clean
 	rm -rf .vagrant splintershots src/components/bower_components src/media
 	rm -rf dist
 
-grunt:
-	grunt build
 
 yarn:
-	yarn -v
 	yarn install --no-progress --emoji false -s
 
-assets: yarn grunt
-	${PYTHON} src/manage.py collectstatic --noinput -v0 --traceback
-	${PYTHON} src/manage.py compress --force  -v0 --traceback
+assets: yarn
+	grunt build
+	poetry run src/manage.py collectstatic --noinput -v0 --traceback
+	poetry run src/manage.py compress --force  -v0 --traceback
 
-clean-node-dir:
-	rm -rf node_modules
+production-assets: distclean assets
+# usuń ze staticroot niepotrzebne pakiety (Poetry pyproject.toml exclude
+# nie do końca to załatwia...)
+	rm -rf src/django_bpp/staticroot/{qunit,sinon}
+	rm -rf src/django_bpp/staticroot/sitemap-*
+	rm -rf src/django_bpp/staticroot/grappelli/tinymce/
+	rm -rf src/django_bpp/staticroot/autocomplete_light/vendor/select2/tests/
+	rm -rf src/django_bpp/staticroot/vendor/select2/tests/
+	rm -rf src/django_bpp/staticroot/rest_framework/docs
+	rm -rf src/django_bpp/staticroot/vendor/select2/docs
+	rm -rf src/django_bpp/staticroot/scss/*.scss
 
-pre-wheel: distclean assets
-
-bdist_wheel: pre-wheel
-    # compilemessages najpierw, bo wywoływane z setup.py powoduje
-    # problemy na CirlceCI
+# compilemessages
 	export PYTHONPATH=. && cd src && django-admin.py compilemessages
 
-	# Po zbudowaniu tłumaczeń zbuduj plik WHL
-	${PYTHON} setup.py -q bdist_wheel
+bdist_wheel: distclean production-assets
+	poetry build
+	ls -lash dist
 
 upload:
 	twine upload dist/*
@@ -74,29 +78,8 @@ live-docs:
 	pip install --upgrade sphinx-autobuild
 	sphinx-autobuild --port 8080 -D language=pl docs/ docs/_build
 
-# cel: Jenkins
-# Wywołaj "make jenkins" pod Jenkinsem, cel "Virtualenv Builder"
-jenkins:
-	pip install --upgrade pip --quiet
-	pip install -r requirements.txt -r requirements_dev.txt --quiet
-	make assets
-
-	pytest --ds=django_bpp.settings.local -n6 --create-db --maxfail=20
-
-	yarn
-	make js-tests
-
-pip-compile:
-	pip-compile --output-file requirements.txt requirements.in
-	pip-compile --output-file requirements_dev.txt requirements_dev.in
-
-pip-sync:
-	pip-sync requirements.txt requirements_dev.txt
-
-pip: pip-compile pip-sync
-
 tests:
-	pytest -n 5 --splinter-headless --maxfail 1
+	pytest -n 5 --splinter-headless --maxfail 50
 
 remove-match-publikacji-dane:
 	cd src/import_dbf && export CUSTOMER=foo && make disable-trigger
@@ -130,6 +113,21 @@ new-release:
 	$(eval NEW_VERSION=$(shell bumpver test $(CUR_VERSION) 'vYYYY0M.BUILD[-TAGNUM]' |head -1|cut -d: -f2))
 	git flow release start $(NEW_VERSION)
 	bumpver update
-	git flow release finish -p -m "Nowa wersja: $(NEW_VERSION)"
+	git flow release finish "$(NEW_VERSION)" -p -m "Nowa wersja: $(NEW_VERSION)"
 
 release: tests js-tests new-release bdist_wheel upload
+
+set-version-from-vcs:
+	$(eval CUR_VERSION_VCS=$(shell git describe | sed s/\-/\./ | sed s/\-/\+/))
+	bumpver update --no-commit --set-version=$(CUR_VERSION_VCS)
+
+.PHONY: check-git-clean
+check-git-clean:
+	git diff --quiet
+
+poetry-sync:
+	poetry install --no-root --remove-untracked
+
+test-package-from-vcs: check-git-clean poetry-sync set-version-from-vcs bdist_wheel
+	ls -lash dist
+	git reset --hard

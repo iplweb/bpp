@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, List, Union
 
 from autoslug import AutoSlugField
 from django.core.exceptions import ImproperlyConfigured, ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import SET_NULL, Max
 from django.urls.base import reverse
@@ -91,6 +92,19 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
     dane z zewnętrznych systemów informatycznych będą przypisywać do tej jednostki osoby, które zakończyły
     pracę na uczelni. """,
         related_name="obca_jednostka",
+    )
+
+    ilosc_jednostek_na_strone = models.PositiveIntegerField(
+        default=150,
+        validators=[MinValueValidator(1), MaxValueValidator(10000)],
+        help_text="""Ilość jednostek wyświetlanych na podstronie prezentacji
+        danych dla użytkownika końcowego (strona główna -> przeglądaj -> jednostki)""",
+    )
+
+    pokazuj_tylko_jednostki_nadrzedne = models.BooleanField(
+        default=False,
+        help_text="""Pokazuj tylko jednostki nadrzędne na stronie prezentacji
+        danych dla użytkownika końcowego""",
     )
 
     ranking_autorow_rozbij_domyslnie = models.BooleanField(

@@ -1,4 +1,5 @@
 import json
+import random
 import re
 from datetime import date
 
@@ -18,7 +19,12 @@ from model_mommy import mommy
 from multiseek.logic import EQUAL, EQUAL_FEMALE, EQUAL_NONE
 from multiseek.views import MULTISEEK_SESSION_KEY
 
-from fixtures import NORMAL_DJANGO_USER_LOGIN, NORMAL_DJANGO_USER_PASSWORD
+from fixtures import (
+    JEDNOSTKA_PODRZEDNA,
+    JEDNOSTKA_UCZELNI,
+    NORMAL_DJANGO_USER_LOGIN,
+    NORMAL_DJANGO_USER_PASSWORD,
+)
 from miniblog.models import Article
 
 from bpp.models import (
@@ -29,11 +35,12 @@ from bpp.models import (
     Praca_Doktorska,
     Rekord,
     Typ_Odpowiedzialnosci,
+    Uczelnia,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
 )
 from bpp.models.autor import Autor
-from bpp.views.browse import BuildSearch, PracaViewBySlug
+from bpp.views.browse import BuildSearch, JednostkiView, PracaViewBySlug
 
 
 def test_buildSearch(settings):
@@ -556,6 +563,17 @@ def test_browse_jednostka_nadrzedna(jednostka, jednostka_podrzedna, client):
     assert "Wchodzi w skład" in normalize_html(page.rendered_content)
 
 
+@pytest.mark.django_db
+def test_browse_jednostka_paginate_by(uczelnia: Uczelnia):
+    j = JednostkiView()
+    assert j.get_paginate_by(None) == uczelnia.ilosc_jednostek_na_strone
+
+    ile = random.randint(10, 10000)
+    uczelnia.ilosc_jednostek_na_strone = ile
+    uczelnia.save()
+    assert j.get_paginate_by(None) == ile
+
+
 def test_browse_jednostka_sortowanie(jednostka, jednostka_podrzedna, uczelnia, client):
 
     jednostka.nazwa = "Z jednostka"
@@ -591,3 +609,24 @@ def test_browse_jednostka_nadrzedna_tekst(jednostka_podrzedna, jednostka, client
     url = reverse("bpp:browse_jednostka", args=(jednostka_podrzedna.slug,))
     res = client.get(url)
     assert "Jest nadrzędną jednostką dla" not in normalize_html(res.rendered_content)
+
+
+def test_browse_pokazuj_tylko_jednostki_nadrzedne_nie(
+    jednostka_podrzedna, jednostka, client, uczelnia
+):
+    url = reverse("bpp:browse_jednostki")
+    res = client.get(url)
+    assert JEDNOSTKA_UCZELNI in normalize_html(res.rendered_content)
+    assert JEDNOSTKA_PODRZEDNA in normalize_html(res.rendered_content)
+
+
+def test_browse_pokazuj_tylko_jednostki_nadrzedne_tak(
+    jednostka_podrzedna, jednostka, client, uczelnia
+):
+    uczelnia.pokazuj_tylko_jednostki_nadrzedne = True
+    uczelnia.save()
+
+    url = reverse("bpp:browse_jednostki")
+    res = client.get(url)
+    assert JEDNOSTKA_UCZELNI in normalize_html(res.rendered_content)
+    assert JEDNOSTKA_PODRZEDNA not in normalize_html(res.rendered_content)

@@ -1,7 +1,42 @@
-FROM circleci/postgres:12
+FROM cimg/postgres:12.10
 RUN localedef -i pl_PL -c -f UTF-8 -A /usr/share/locale/locale.alias pl_PL.UTF-8
 ENV LANG pl_PL.utf8
-RUN apt-mark hold postgresql-12 postgresql-client-12 postgresql-common postgresql-client-common
-RUN apt-get update -qq && apt-get install postgresql-plpython3-12 -qq -y
+#RUN apt-mark hold postgresql-12 postgresql-client-12 postgresql-common postgresql-client-common
+#RUN apt-get update -qq && apt-get install postgresql-plpython3-12 -qq -y
+
+
+RUN curl -sSL "https://ftp.postgresql.org/pub/source/v${PG_VER}/postgresql-${PG_VER}.tar.gz" | tar -xz && \
+	cd postgresql-${PG_VER} && \
+	./configure \
+		--prefix=/usr/lib/postgresql/$PG_MAJOR \
+		--enable-integer-datetimes \
+		--enable-thread-safety \
+		--enable-tap-tests \
+		--with-uuid=e2fs \
+		--with-gnu-ld \
+		--with-pgport=5432 \
+		--with-system-tzdata=/usr/share/zoneinfo \
+		--with-includes=/usr/local/include \
+		--with-libraries=/usr/local/lib \
+		--with-krb5 \
+		--with-gssapi \
+		--with-ldap \
+		--with-pam \
+		--with-tcl \
+		--with-perl \
+		--with-python \
+		--with-openssl \
+		--with-libxml \
+		--with-libxslt \
+		--with-icu \
+		--with-llvm \
+		--with-lz4 \
+		--with-python \
+	&& \
+	# we can change from world to world-bin in newer releases
+	make world && \
+	make install-world
+
+
 COPY postgresql.conf      /tmp/postgresql.conf
 COPY updateConfig.sh      /docker-entrypoint-initdb.d/_updateConfig.sh

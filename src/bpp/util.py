@@ -1,4 +1,3 @@
-# -*- encoding: utf-8 -*-
 import json
 import multiprocessing
 import os
@@ -26,7 +25,7 @@ def get_fixture(name):
     p = Path(__file__).parent / "fixtures" / ("%s.json" % name)
     ret = json.load(open(p, "rb"))
     ret = [x["fields"] for x in ret if x["model"] == ("bpp.%s" % name)]
-    return dict([(x["skrot"].lower().strip(), x) for x in ret])
+    return {x["skrot"].lower().strip(): x for x in ret}
 
 
 def fulltext_tokenize(s):
@@ -354,14 +353,6 @@ class safe_html_defaults:
         ],
     }
 
-    ALLOWED_STYLES = [
-        "font-size",
-        "color",
-        "text-align",
-        "text-decoration",
-        "font-weight",
-    ]
-
 
 def safe_html(html):
     html = html or ""
@@ -370,15 +361,11 @@ def safe_html(html):
     ALLOWED_ATTRIBUTES = getattr(
         settings, "ALLOWED_ATTRIBUTES", safe_html_defaults.ALLOWED_ATTRIBUTES
     )
-    ALLOWED_STYLES = getattr(
-        settings, "ALLOWED_STYLES", safe_html_defaults.ALLOWED_STYLES
-    )
     STRIP_TAGS = getattr(settings, "STRIP_TAGS", True)
     return bleach.clean(
         html,
         tags=ALLOWED_TAGS,
         attributes=ALLOWED_ATTRIBUTES,
-        styles=ALLOWED_STYLES,
         strip=STRIP_TAGS,
     )
 
@@ -388,7 +375,7 @@ def set_seq(s):
         from django.db import connection
 
         cursor = connection.cursor()
-        cursor.execute("SELECT setval('%s_id_seq', (SELECT MAX(id) FROM %s))" % (s, s))
+        cursor.execute(f"SELECT setval('{s}_id_seq', (SELECT MAX(id) FROM {s}))")
 
 
 def usun_nieuzywany_typ_charakter(klass, field, dry_run):

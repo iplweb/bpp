@@ -3,6 +3,46 @@
 Historia zmian
 ==============
 
+202205.1086
+-----------
+
+* import pracowników: autorzy będą mieli aktualizowane tytuły naukowe przy imporcie,
+  pod warunkiem, że tytuł o takiej samej nazwie lub skrócie jak w pliku XLS istnieje również
+  po stronie BPP; w sytuacji, gdyby w pliku aktualizacji był
+  podany pusty tytuł lub tytuł nie istniejący w systemie BPP, zmiana
+  tytułu naukowego autora nie zostanie przeprowadzona (#1033)
+* aktualna jednostka: w sytuacji, gdyby autor miał dwa lub więcej przypisań do jednostek
+  w tym samym okresie czasu lub w sytuacji gdy daty rozpoczęcia lub zakończenia
+  pracy są puste, system w pierwszej kolejności jako aktualną jednostkę
+  ustali tą, gdzie autor rozpoczął pracę najwcześniej, zakończył najpóźniej,
+  zaś w sytuacji braku jednej lub obydwu tych dat -- ustali jednostkę
+  aktualną na tą, która została najpóźniej przypisana, wg numeru ID
+  przypisania, zwiększającego się z każdym kolejnym przypisaniem (#1177),
+* w REST-API przy eksporcie danych pojawiają się streszczenia z bazy danych,
+  wraz z polem języka (#1208),
+* poprawiono błąd związany z niepoprawnym wyliczaniem punktów dla prac
+  w roku 2022 (#1209),
+* raport slotów - ewaluacja pozwala na tworzenie raportów później niż dla
+  2021 roku (#1210),
+* definiowalna ilość wyświetlanych jednostek na stronę (#1211),
+* możliwość ukrycia jednostek podrzędnych na stronie prezentacji danych (#1212),
+* możliwość wyszukiwania w multiwyszukiwarce po pierwszej jednostce i po pierwszym
+  wydziale (b/n),
+* tylko jedno "podstawowe miejsce pracy" dla połączenia autor+jednostka (b/n),
+* poprawna obsługa pola importowanego z Excela "podstawowe miejsce pracy" (#1213),
+* pokazuj rekordy, którym należy skorygować pole "podstawowe miejsce pracy" oraz
+  umożliwiaj jego wyłączenie (b/n),
+* ustawiaj 'Aktualne miejsce pracy' autora na podstawie pola 'Podstawowe miejsce pracy' (b/n),
+* szybsze i skuteczniejsze dopasowania źródeł przy integracji danych z PBN (b/n),
+* polecenie ``check_email`` znika, korzystamy ze standardowego ``sendtestemail`` (b/n),
+* pokazuj 'Aktualne miejsce pracy' na podstronie przeglądania autora oraz
+  w module redagowania (b/n),
+* nie pokazuj 'Aktualnego miejsca pracy' na podstronie autora jezeli jest to obca jednostka (b/n),
+* import pracowników: umożliwiaj automatyczne przypisywanie obcej jednostki osobom,
+  których nie ma w wykazie pracowników (b/n),
+* przeglądanie/autor: umożliwiaj wyszukiwanie wyłącznie w jednostkach, w których
+  autor ma publikacje (b/n),
+
 202202.1085
 -----------
 

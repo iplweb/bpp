@@ -3,13 +3,16 @@ from rest_framework import viewsets
 
 from api_v1.serializers.wydawnictwo_ciagle import (
     Wydawnictwo_Ciagle_AutorSerializer,
+    Wydawnictwo_Ciagle_StreszczenieSerializer,
     Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychSerializer,
     Wydawnictwo_CiagleSerializer,
 )
-from api_v1.viewsets.common import UkryjStatusyKorektyMixin
+from api_v1.viewsets.common import StreszczeniaPagination, UkryjStatusyKorektyMixin
+
 from bpp.models import (
     Wydawnictwo_Ciagle,
     Wydawnictwo_Ciagle_Autor,
+    Wydawnictwo_Ciagle_Streszczenie,
     Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych,
 )
 
@@ -36,7 +39,12 @@ class Wydawnictwo_CiagleViewSet(
         Wydawnictwo_Ciagle.objects.exclude(nie_eksportuj_przez_api=True)
         .order_by("pk")
         .select_related("status_korekty")
-        .prefetch_related("autorzy_set", "zewnetrzna_baza_danych", "slowa_kluczowe")
+        .prefetch_related(
+            "autorzy_set",
+            "zewnetrzna_baza_danych",
+            "slowa_kluczowe",
+            "streszczenia",
+        )
     )
 
     serializer_class = Wydawnictwo_CiagleSerializer
@@ -46,3 +54,9 @@ class Wydawnictwo_CiagleViewSet(
 class Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych.objects.all()
     serializer_class = Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychSerializer
+
+
+class Wydawnictwo_Ciagle_StreszczenieViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Wydawnictwo_Ciagle_Streszczenie.objects.all()
+    serializer_class = Wydawnictwo_Ciagle_StreszczenieSerializer
+    pagination_class = StreszczeniaPagination

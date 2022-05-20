@@ -1,14 +1,13 @@
-version: 2
+version: 2.1
+
+orbs:
+  browser-tools: circleci/browser-tools@1.2.5
+
 jobs:
   build:
 
-    # branches:
-    #   only:
-    #     - master
-    #     - dev
-
     docker:
-      - image: circleci/python:3.8-node-browsers
+      - image: cimg/python:3.8.13-node
         environment:
           PGUSER: postgres
           PGHOST: localhost
@@ -16,14 +15,13 @@ jobs:
           PGDATABASE: bpp
           DJANGO_BPP_SECRET_KEY: foobar
           DJANGO_SETTINGS_MODULE: django_bpp.settings.test
-      - image: mpasternak79/circleci-postgres:12
+      - image: mpasternak79/cimg-postgres:12
         environment:
           POSTGRESS_PASSWORD: password
           POSTGRES_HOST_AUTH_METHOD: trust
-      - image: redis:latest
+      - image: cimg/redis:6.0
 
     steps:
-      - setup_remote_docker
 
       - run:
           name: install postgresql-client
@@ -31,15 +29,27 @@ jobs:
             sudo apt install -y postgresql-client
 
       - run:
+          name: install dockerize
+          command: wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz && sudo tar -C /usr/local/bin -xzvf dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz && rm dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
+          environment:
+            DOCKERIZE_VERSION: v0.6.1
+
+      - run:
+          name: Wait for db
+          command: dockerize -wait tcp://$PGHOST:$PGPORT -timeout 1m
+
+      - run:
           name: create database
           command: |
+            set | grep PG
             createdb bpp
 
       - checkout
 
       - restore_cache:
-          key: cache-10-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}-{{ checksum "yarn.lock" }}
+          key: cache-14-{{ checksum "poetry.lock" }}-{{ checksum "yarn.lock" }}
 
+      - run: sudo apt -q -q -q update
       - run: sudo apt --quiet install -y --quiet gettext locales
       - run: sudo sed -i 's/^# *\(pl_PL.UTF-8\)/\1/' /etc/locale.gen
       - run: sudo locale-gen
@@ -47,86 +57,158 @@ jobs:
       - run: export LC_ALL=pl_PL.UTF-8
       - run: locale
       - run: sudo npm install -g grunt-cli
-      - run: sudo pip install --upgrade pip
 
       - run:
-          name: venv
+          name: Install project
           command: |
-            mkdir -p ./venv
-            virtualenv ./venv
-            . venv/bin/activate
-            pip install --upgrade pip
-            pip install -q -r requirements.txt -r requirements_dev.txt
+            poetry install --no-root --no-ansi --verbose
+
+      - run:
+          name: Show installed packages
+          command: |
+            poetry run pip list
 
       - run:
           name: migrate database
           command: |
-            . venv/bin/activate
-            python src/manage.py migrate
+            poetry run src/manage.py migrate
 
       - run:
           name: make assets
           command: |
-            . venv/bin/activate
-            make assets
+            poetry run make assets
 
-      - save_cache: # cache Python dependencies using checksum of Pipfile as the cache-key
-          key: cache-10-{{ checksum "requirements.txt" }}-{{ checksum "requirements_dev.txt" }}-{{ checksum "yarn.lock" }}
+      - run:
+          name: debug -- show cache content
+          command: |
+            ls -las /home/circleci/.cache
+            ls -las /home/circleci/.cache/*poetry*/
+
+      - save_cache:
+          key: cache-14-{{ checksum "poetry.lock" }}-{{ checksum "yarn.lock" }}
           paths:
             - "/home/circleci/.cache"
 
-      # Sklonuj bazy danych, zeby było kapke szybciej
+      # Stworz dump bazy danych na potrzeby kolejnych kroków
       - run:
-          name: clone bpp to testing databases gw0, gw1
+          name: dump database
           command: |
-            createdb test_bpp_gw0 -T bpp
-            createdb test_bpp_gw1 -T bpp
+            pg_dump bpp > pg_dump.sql
 
-      # Uruchamiaj na lokalnym firefoxie używając dwóch CPU
+      - persist_to_workspace:
+          root: .
+          paths:
+            - .
+
+  test:
+    docker:
+      - image: cimg/python:3.8.13-browsers
+        environment:
+          PGUSER: postgres
+          PGHOST: localhost
+          PGPORT: 5432
+          PGDATABASE: bpp
+          DJANGO_BPP_SECRET_KEY: foobar
+          DJANGO_SETTINGS_MODULE: django_bpp.settings.test
+      - image: mpasternak79/cimg-postgres:12
+        environment:
+          POSTGRESS_PASSWORD: password
+          POSTGRES_HOST_AUTH_METHOD: trust
+      - image: redis:latest
+
+    parallelism: 8
+    steps:
+
+      - browser-tools/install-browser-tools
+
+      - run:
+          command: |
+            firefox --version
+            geckodriver --version
+
+      - attach_workspace:
+          at: .
+
+      - run:
+          name: install postgresql-client
+          command: |
+            sudo apt install -y postgresql-client
+
+
+      - run:
+          name: install dockerize
+          command: wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz && sudo tar -C /usr/local/bin -xzvf dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz && rm dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
+          environment:
+            DOCKERIZE_VERSION: v0.6.1
+
+      - run:
+          name: Wait for db
+          command: dockerize -wait tcp://$PGHOST:$PGPORT -timeout 1m
+
+      - restore_cache:
+          key: cache-14-{{ checksum "poetry.lock" }}-{{ checksum "yarn.lock" }}
+
+      - run:
+          name: restore database from dump
+          command: |
+            createdb test_bpp
+            cat pg_dump.sql | psql test_bpp
+
+      - run:
+          name: Install project
+          command: |
+            poetry install --no-root --no-ansi --verbose
+
+      - run:
+          name: Show installed packages
+          command: |
+            poetry run pip list
+
       - run:
           name: pytest
           command: |
-            . venv/bin/activate
-            pytest -d -n 2 --splinter-headless --cov=src --ds=django_bpp.settings.test # src/integration_tests/test_global_search.py
+            mkdir -p test-results
+            poetry run pytest --splinter-headless --cov=src --ds=django_bpp.settings.test --verbose --junitxml=test-results/junit.xml `circleci tests glob "src/**/test_*.py" | circleci tests split --split-by=timings`
 
-      # debug
+      - store_test_results:
+          path: test-results
+
+      - store_artifacts:
+          path: test-results
+
       - run:
-          name: show db names
-          command: |
-            echo "\l" | psql bpp
+           name: Submit coverage to coveralls.io
+           command: |
+             poetry run coveralls
+
+
+  js-tests:
+    docker:
+      - image: cimg/python:3.8.13-node
+
+    steps:
+
+      - attach_workspace:
+          at: .
+
+      - run: sudo npm install -g grunt-cli
 
       # Testy JavaScript
-      - run: make js-tests
-
-      # Wyślij statystyki pokrycia kodu testami do coveralls.io
       - run:
-          name: Submit coverage to coveralls.io
+          name: JS Tests
           command: |
-            . venv/bin/activate
-            coveralls
+            make yarn
+            make js-tests
 
-      # Zbuduj pakiet WHL -- bez wrzucania go na serwer (próbnie)
-      - run:
-          name: create ONLY whl package -- only on DEV
-          command: |
-            . venv/bin/activate
-            if [ $CIRCLE_BRANCH = 'dev' ]; then make bdist_wheel; fi
 
-      # # Skonfiguruj PyPI
-      # - run:
-      #     name: init .pypirc
-      #     command: |
-      #       echo -e "[distutils]" > ~/.pypirc
-      #       echo -e "index-servers = pypi" >> ~/.pypirc
-      #       echo -e "[pypi]" >> ~/.pypirc
-      #       echo -e "repository = https://upload.pypi.org/legacy/" >> ~/.pypirc
-      #       echo -e "username = dotz" >> ~/.pypirc
-      #       echo -e "password = $PYPI_PASSWORD" >> ~/.pypirc
-
-      # # Zbuduj pakiet
-      # - run:
-      #     name: create and upload packages -- only on MASTER
-      #     command: |
-      #       . venv/bin/activate
-      #       cat ~/.pypirc | grep -v password
-      #       if [ $CIRCLE_BRANCH = 'master' ]; then make bdist_wheel upload; fi
+workflows:
+  version: 2
+  build_and_test:
+    jobs:
+      - build
+      - test:
+          requires:
+            - build
+      - js-tests:
+          requires:
+            - build

@@ -6,9 +6,11 @@ from api_v1.serializers.util import (
     Wydawnictwo_AutorSerializerMixin,
     WydawnictwoSerializerMixin,
 )
+
 from bpp.models import (
     Wydawnictwo_Ciagle,
     Wydawnictwo_Ciagle_Autor,
+    Wydawnictwo_Ciagle_Streszczenie,
     Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych,
 )
 
@@ -22,6 +24,16 @@ class Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychSerializer(serializers.ModelSeria
     class Meta:
         model = Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych
         fields = ["rekord", "baza", "info"]
+
+
+class Wydawnictwo_Ciagle_StreszczenieSerializer(serializers.ModelSerializer):
+    rekord = serializers.HyperlinkedRelatedField(
+        view_name="api_v1:wydawnictwo_ciagle-detail", read_only=True
+    )
+
+    class Meta:
+        model = Wydawnictwo_Ciagle_Streszczenie
+        fields = ["rekord", "jezyk_streszczenia", "streszczenie"]
 
 
 class Wydawnictwo_Ciagle_AutorSerializer(
@@ -71,6 +83,12 @@ class Wydawnictwo_CiagleSerializer(
     zewnetrzna_baza_danych = serializers.HyperlinkedRelatedField(
         many=True,
         view_name="api_v1:wydawnictwo_ciagle_zewnetrzna_baza_danych-detail",
+        read_only=True,
+    )
+
+    streszczenia = serializers.HyperlinkedRelatedField(
+        many=True,
+        view_name="api_v1:wydawnictwo_ciagle_streszczenie-detail",
         read_only=True,
     )
 
@@ -140,4 +158,5 @@ class Wydawnictwo_CiagleSerializer(
             "tekst_po_ostatnim_autorze",
             #
             "zewnetrzna_baza_danych",
+            "streszczenia",
         ]

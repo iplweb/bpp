@@ -5,6 +5,7 @@ from datetime import date
 from django import forms
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import DataError, IntegrityError, models, transaction
+from django.db.models import Q
 
 from import_common.core import (
     matchuj_autora,
@@ -39,6 +40,7 @@ from bpp.models import (
     Funkcja_Autora,
     Grupa_Pracownicza,
     Jednostka,
+    Tytul,
     Wymiar_Etatu,
 )
 
@@ -163,6 +165,8 @@ class ImportPracownikow(ASGINotificationMixin, Operation):
                     nazwa=normalize_wymiar_etatu(data.get("wymiar_etatu"))
                 )
 
+            tytul_str = data.get("tytuł_stopień")
+
             autor = matchuj_autora(  # noqa
                 imiona=data.get("imię"),
                 nazwisko=data.get("nazwisko"),
@@ -172,7 +176,7 @@ class ImportPracownikow(ASGINotificationMixin, Operation):
                 system_kadrowy_id=data.get("numer"),
                 pbn_id=data.get("pbn_id"),
                 orcid=data.get("orcid"),
-                tytul_str=data.get("tytuł_stopień"),
+                tytul_str=tytul_str,
             )
             if autor is None:
                 raise XLSMatchError(
@@ -210,6 +214,13 @@ class ImportPracownikow(ASGINotificationMixin, Operation):
                     autor=autor, jednostka=jednostka, funkcja=funkcja_autora
                 )
 
+            tytul = None
+            try:
+                if tytul_str:
+                    tytul = Tytul.objects.get(Q(nazwa=tytul_str) | Q(skrot=tytul_str))
+            except Tytul.DoesNotExist:
+                pass
+
             res = ImportPracownikowRow(
                 parent=self,
                 dane_z_xls=elem,
@@ -217,11 +228,12 @@ class ImportPracownikow(ASGINotificationMixin, Operation):
                 autor=autor,
                 jednostka=jednostka,
                 autor_jednostka=aj,
+                tytul=tytul,
                 funkcja_autora=funkcja_autora,
                 grupa_pracownicza=grupa_pracownicza,
                 wymiar_etatu=wymiar_etatu,
                 podstawowe_miejsce_pracy=normalize_nullboleanfield(
-                    data.get("podstawowe_miejsce_pracy")
+                    elem.get("podstawowe_miejsce_pracy")
                 ),
             )
             res.zmiany_potrzebne = res.check_if_integration_needed()
@@ -282,6 +294,7 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
     funkcja_autora = models.ForeignKey(Funkcja_Autora, on_delete=models.CASCADE)
     grupa_pracownicza = models.ForeignKey(Grupa_Pracownicza, on_delete=models.CASCADE)
     wymiar_etatu = models.ForeignKey(Wymiar_Etatu, on_delete=models.CASCADE)
+    tytul = models.ForeignKey(Tytul, on_delete=models.SET_NULL, null=True)
 
     zmiany_potrzebne = models.BooleanField()
 
@@ -351,6 +364,9 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
         if self.podstawowe_miejsce_pracy != aj.podstawowe_miejsce_pracy:
             return True
 
+        if self.tytul_id != a.tytul_id:
+            return True
+
         return False
 
     def _integrate_autor(self):
@@ -371,6 +387,13 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
                     f"{atrybut_autora} -> {dane.get(klucz_danych)}"
                 )
                 setattr(a, atrybut_autora, dane.get(klucz_danych))
+
+        if self.tytul_id is not None:
+            if a.tytul_id != self.tytul_id:
+                a.tytul_id = self.tytul_id
+                self.log_zmian["autor"].append(
+                    f"tytuł naukowy -> {self.tytul.skrot if self.tytul_id else 'brak'}"
+                )
 
         try:
             a.save()
@@ -418,8 +441,17 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
             )
 
         if self.podstawowe_miejsce_pracy != aj.podstawowe_miejsce_pracy:
-            aj.ustaw_podstawowe_miejsce_pracy()
-            self.log_zmian["autor_jednostka"].append("podstawowe_miejsce_pracy")
+
+            if not self.podstawowe_miejsce_pracy:
+                aj.podstawowe_miejsce_pracy = False
+                self.log_zmian["autor_jednostka"].append(
+                    "podstawowe_miejsce_pracy -> nie"
+                )
+            else:
+                aj.ustaw_podstawowe_miejsce_pracy()
+                self.log_zmian["autor_jednostka"].append(
+                    "podstawowe_miejsce_pracy -> tak"
+                )
 
         aj.save()
 

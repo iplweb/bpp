@@ -425,10 +425,6 @@ CELERYBEAT_SCHEDULE = {
         "task": "integrator2.tasks.remove_old_integrator_files",
         "schedule": timedelta(days=1),
     },
-    "cleanup-eksport_pbn-files": {
-        "task": "eksport_pbn.tasks.remove_old_eksport_pbn_files",
-        "schedule": timedelta(days=1),
-    },
     "cleanup-report-files": {
         "task": "bpp.tasks.remove_old_report_files",
         "schedule": timedelta(days=1),
