@@ -29,6 +29,12 @@ jobs:
             sudo apt install -y postgresql-client
 
       - run:
+          name: Install Pango for WeasyPrint
+          command: |
+            sudo apt update
+            sudo apt install pango1.0-tests
+
+      - run:
           name: install dockerize
           command: wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz && sudo tar -C /usr/local/bin -xzvf dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz && rm dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
           environment:

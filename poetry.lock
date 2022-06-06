@@ -360,11 +360,11 @@ zstd = ["zstandard"]
 
 [[package]]
 name = "certifi"
-version = "2022.5.18"
+version = "2022.5.18.1"
 description = "Python package for providing Mozilla's CA Bundle."
 category = "main"
 optional = false
-python-versions = ">=3.5"
+python-versions = ">=3.6"
 
 [[package]]
 name = "cffi"
@@ -1193,6 +1193,18 @@ django-taggit = "*"
 six = "*"
 
 [[package]]
+name = "django-weasyprint"
+version = "2.1.0"
+description = "Django WeasyPrint CBV"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+Django = ">=2.2"
+WeasyPrint = ">=53"
+
+[[package]]
 name = "django-webmaster-verification"
 version = "0.3.0"
 description = "Webmaster tools verification for Django"
@@ -1416,7 +1428,7 @@ idna = ">=2.5"
 
 [[package]]
 name = "identify"
-version = "2.5.0"
+version = "2.5.1"
 description = "File identification library for Python"
 category = "dev"
 optional = false
@@ -2480,7 +2492,7 @@ cli = ["click (>=5.0)"]
 
 [[package]]
 name = "python-utils"
-version = "3.2.2"
+version = "3.2.3"
 description = "Python Utils is a module with some convenient utilities not included with the standard Python install"
 category = "main"
 optional = false
@@ -3202,17 +3214,17 @@ python-versions = "*"
 
 [[package]]
 name = "weasyprint"
-version = "53.2"
+version = "55.0"
 description = "The Awesome Document Factory"
 category = "main"
 optional = false
-python-versions = ">=3.6"
+python-versions = ">=3.7"
 
 [package.dependencies]
 cffi = ">=0.6"
 cssselect2 = ">=0.1"
 fonttools = {version = ">=4.0.0", extras = ["woff"]}
-html5lib = ">=1.0.1"
+html5lib = ">=1.1"
 Pillow = ">=4.0.0"
 pydyf = ">=0.0.3"
 Pyphen = ">=0.9.1"
@@ -3470,7 +3482,7 @@ test = ["pytest"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8,<3.9"
-content-hash = "508a3fe8f3ffc3fffa21785a1856b9b7013cf8599a841049b3d9d5efb8203a35"
+content-hash = "5b57d36fbc565a60b1f6d2535c7846576a5894f265c2b165069bf693497f378b"
 
 [metadata.files]
 aioredis = [
@@ -3682,8 +3694,8 @@ celery = [
     {file = "celery-4.4.7.tar.gz", hash = "sha256:d220b13a8ed57c78149acf82c006785356071844afe0b27012a4991d44026f9f"},
 ]
 certifi = [
-    {file = "certifi-2022.5.18-py3-none-any.whl", hash = "sha256:8d15a5a7fde18536a249c49e07e8e462b8fc13de21b3c80e8a68315dfa227c99"},
-    {file = "certifi-2022.5.18.tar.gz", hash = "sha256:6ae10321df3e464305a46e997da41ea56c1d311fb9ff1dd4e04d6f14653ec63a"},
+    {file = "certifi-2022.5.18.1-py3-none-any.whl", hash = "sha256:f1d53542ee8cbedbe2118b5686372fb33c297fcd6379b050cca0ef13a597382a"},
+    {file = "certifi-2022.5.18.1.tar.gz", hash = "sha256:9c5705e395cd70084351dd8ad5c41e65655e08ce46f2ec9cf6c2c08390f71eb7"},
 ]
 cffi = [
     {file = "cffi-1.15.0-cp27-cp27m-macosx_10_9_x86_64.whl", hash = "sha256:c2502a1a03b6312837279c8c1bd3ebedf6c12c4228ddbad40912d671ccc8a962"},
@@ -4062,6 +4074,10 @@ django-taggit = [
 django-taggit-serializer = [
     {file = "django-taggit-serializer-0.1.7.tar.gz", hash = "sha256:f712eb2482079be452bcd1e82b18a820e26427c3ee1cef2b4fcd4d6b8b9f14d0"},
 ]
+django-weasyprint = [
+    {file = "django-weasyprint-2.1.0.tar.gz", hash = "sha256:619efa6e7bc8da18eb44131bec3ebd60af8ba07b5610a29034fb79da6cc37a02"},
+    {file = "django_weasyprint-2.1.0-py3-none-any.whl", hash = "sha256:ba3822b93849b3ea9d70b618e1ebfee8dd7bd5f0fa170f5b71dc6ccceb48d772"},
+]
 django-webmaster-verification = [
     {file = "django-webmaster-verification-0.3.0.tar.gz", hash = "sha256:b1a62d468825710e57f072ed1fa1ae540b3ad95dcc08a8bdfaa37e2d6d529837"},
 ]
@@ -4245,8 +4261,8 @@ hyperlink = [
     {file = "hyperlink-21.0.0.tar.gz", hash = "sha256:427af957daa58bc909471c6c40f74c5450fa123dd093fc53efd2e91d2705a56b"},
 ]
 identify = [
-    {file = "identify-2.5.0-py2.py3-none-any.whl", hash = "sha256:3acfe15a96e4272b4ec5662ee3e231ceba976ef63fd9980ed2ce9cc415df393f"},
-    {file = "identify-2.5.0.tar.gz", hash = "sha256:c83af514ea50bf2be2c4a3f2fb349442b59dc87284558ae9ff54191bff3541d2"},
+    {file = "identify-2.5.1-py2.py3-none-any.whl", hash = "sha256:0dca2ea3e4381c435ef9c33ba100a78a9b40c0bab11189c7cf121f75815efeaa"},
+    {file = "identify-2.5.1.tar.gz", hash = "sha256:3d11b16f3fe19f52039fb7e39c9c884b21cb1b586988114fbe42671f03de3e82"},
 ]
 idna = [
     {file = "idna-3.3-py3-none-any.whl", hash = "sha256:84d9dd047ffa80596e0f246e2eab0b391788b0503584e8945f2368256d2735ff"},
@@ -4917,8 +4933,8 @@ python-dotenv = [
     {file = "python_dotenv-0.20.0-py3-none-any.whl", hash = "sha256:d92a187be61fe482e4fd675b6d52200e7be63a12b724abbf931a40ce4fa92938"},
 ]
 python-utils = [
-    {file = "python-utils-3.2.2.tar.gz", hash = "sha256:63a2ad8d36c6432978833a77cfa7d310af9bbfa9e837dcf828aac584d71f9ded"},
-    {file = "python_utils-3.2.2-py2.py3-none-any.whl", hash = "sha256:a2df9430f3dcafac18dab883592c83b2816d955df3bf70fb34b5de5b189395ad"},
+    {file = "python-utils-3.2.3.tar.gz", hash = "sha256:45c6065746b500cf2ea3d6fb474a3c6298fb2ceca9ca25e5d6dea7fefd0cfa96"},
+    {file = "python_utils-3.2.3-py2.py3-none-any.whl", hash = "sha256:dbe50d4c9a7715bcb426f1fb8ddcc9602fa4698d0e7667360dc56b2248ee6d8d"},
 ]
 pytz = [
     {file = "pytz-2018.4-py2.py3-none-any.whl", hash = "sha256:65ae0c8101309c45772196b21b74c46b2e5d11b6275c45d251b150d5da334555"},
@@ -5273,8 +5289,8 @@ wcwidth = [
     {file = "wcwidth-0.2.5.tar.gz", hash = "sha256:c4d647b99872929fdb7bdcaa4fbe7f01413ed3d98077df798530e5b04f116c83"},
 ]
 weasyprint = [
-    {file = "weasyprint-53.2-py3-none-any.whl", hash = "sha256:6470c7eb66d4f0f7256c90d186dfe870c0f67d320fe0f1608175dde7ef69433b"},
-    {file = "weasyprint-53.2.tar.gz", hash = "sha256:e470e16be4babee5ff294a710c6753d6f90ddfdcfc2f91f3fdb001ce3e31722a"},
+    {file = "weasyprint-55.0-py3-none-any.whl", hash = "sha256:6a5008b3e1152498f206b2d0791b3e161f507607e31ca42b307cb31b49795462"},
+    {file = "weasyprint-55.0.tar.gz", hash = "sha256:ea5d5f2f159262e38b6e85939d8510e9735a47751a9647c9eaa93c22ced86230"},
 ]
 webencodings = [
     {file = "webencodings-0.5.1-py2.py3-none-any.whl", hash = "sha256:a0af1213f3c2226497a97e2b3aa01a7e4bee4f403f95be16fc9acd2947514a78"},

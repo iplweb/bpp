@@ -1,20 +1,12 @@
-import mimetypes
-from pathlib import Path
 from tempfile import NamedTemporaryFile
-from urllib.parse import urlparse
 
 import openpyxl
 import openpyxl.styles
-from django.conf import settings
-from django.core.files.storage import default_storage
 from django.db import DEFAULT_DB_ALIAS, connections
-from django.urls import get_script_prefix
 from django_tables2.export import ExportMixin, TableExport
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.filters import AutoFilter
 from openpyxl.worksheet.table import Table, TableColumn, TableStyleInfo
-
-from django.contrib.staticfiles.finders import find
 
 from django.utils.itercompat import is_iterable
 
@@ -86,7 +78,7 @@ class MyTableExport(TableExport):
     def __init__(
         self, export_format, table, exclude_columns=None, export_description=None
     ):
-        super(MyTableExport, self).__init__(
+        super().__init__(
             export_format=export_format, table=table, exclude_columns=exclude_columns
         )
         self.table = table
@@ -230,43 +222,10 @@ class MyExportMixin(ExportMixin):
 
 class InitialValuesFromGETMixin:
     def get_initial(self):
-        initial = super(InitialValuesFromGETMixin, self).get_initial()
+        initial = super().get_initial()
         if hasattr(self, "request"):
             for elem in self.get_form_class().base_fields.keys():
                 value = self.request.GET.get(elem)
                 if value is not None:
                     initial[elem] = value
         return initial
-
-
-def django_url_fetcher(url, *args, **kwargs):
-    # For WeasyPrint, taken from django-weasyprint pacakge
-
-    # load file:// paths directly from disk
-    if url.startswith("file:"):
-        mime_type, encoding = mimetypes.guess_type(url)
-        url_path = urlparse(url).path
-        data = {
-            "mime_type": mime_type,
-            "encoding": encoding,
-            "filename": Path(url_path).name,
-        }
-
-        default_media_url = settings.MEDIA_URL in ("", get_script_prefix())
-        if not default_media_url and url_path.startswith(settings.MEDIA_URL):
-            media_root = settings.MEDIA_ROOT
-            if isinstance(settings.MEDIA_ROOT, Path):
-                media_root = f"{settings.MEDIA_ROOT}/"
-            path = url_path.replace(settings.MEDIA_URL, media_root, 1)
-            data["file_obj"] = default_storage.open(path)
-            return data
-
-        elif settings.STATIC_URL and url_path.startswith(settings.STATIC_URL):
-            path = url_path.replace(settings.STATIC_URL, "", 1)
-            data["file_obj"] = open(find(path), "rb")
-            return data
-
-    # fall back to weasyprint default fetcher
-    import weasyprint
-
-    return weasyprint.default_url_fetcher(url, *args, **kwargs)
