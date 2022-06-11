@@ -1,7 +1,7 @@
 import django_filters
 from django.forms import NumberInput, TextInput
 
-from bpp.models import Cache_Punktacja_Autora_Sum_Gruop, Dyscyplina_Naukowa, Wydzial
+from bpp.models import Autorzy, Cache_Punktacja_Autora_Sum_Gruop, Dyscyplina_Naukowa
 
 
 class RaportSlotowUczelniaBezJednostekIWydzialowFilter(django_filters.FilterSet):
@@ -11,17 +11,19 @@ class RaportSlotowUczelniaBezJednostekIWydzialowFilter(django_filters.FilterSet)
     )
 
     dyscyplina = django_filters.ModelChoiceFilter(
-        queryset=Dyscyplina_Naukowa.objects.all()
+        queryset=Dyscyplina_Naukowa.objects.filter(
+            pk__in=Autorzy.objects.values("dyscyplina_naukowa_id").distinct()
+        )
     )
 
     slot__min = django_filters.NumberFilter(
-        "pkdautslotsum",
+        "slot",
         lookup_expr="gte",
         widget=NumberInput(attrs={"placeholder": "min"}),
     )
 
     slot__max = django_filters.NumberFilter(
-        "pkdautslotsum",
+        "slot",
         lookup_expr="lte",
         widget=NumberInput(attrs={"placeholder": "max"}),
     )
@@ -40,18 +42,21 @@ class RaportSlotowUczelniaBezJednostekIWydzialowFilter(django_filters.FilterSet)
 
 
 class RaportSlotowUczelniaFilter(RaportSlotowUczelniaBezJednostekIWydzialowFilter):
-    jednostka__nazwa = django_filters.CharFilter(
-        lookup_expr="icontains",
-        widget=TextInput(attrs={"placeholder": "Podaj jednostkę"}),
+    suma__min = django_filters.NumberFilter(
+        "pkd_aut_sum",
+        lookup_expr="gte",
+        widget=NumberInput(attrs={"placeholder": "min"}),
     )
 
-    jednostka__wydzial = django_filters.ModelChoiceFilter(
-        queryset=Wydzial.objects.all()
+    suma__max = django_filters.NumberFilter(
+        "pkd_aut_sum",
+        lookup_expr="lte",
+        widget=NumberInput(attrs={"placeholder": "max"}),
     )
 
     class Meta:
         model = Cache_Punktacja_Autora_Sum_Gruop
-        fields = ["autor__nazwisko", "jednostka", "dyscyplina__nazwa"]
+        fields = ["autor__nazwisko", "suma__min", "suma__max"]
 
 
 class RaportZerowyFilter(django_filters.FilterSet):
