@@ -151,12 +151,17 @@ class JednostkaAdmin(
         return self.list_display
 
     def get_list_per_page(self):
-        req = None
-        if hasattr(self, "request"):
-            req = self.request
-        uczelnia = Uczelnia.objects.get_for_request(req)
-        if not uczelnia.sortuj_jednostki_alfabetycznie:
-            return sys.maxsize
+        from django.db import connection
+
+        if "bpp_uczelnia" in connection.introspection.table_names():
+            req = None
+            if hasattr(self, "request"):
+                req = self.request
+
+            uczelnia = Uczelnia.objects.get_for_request(req)
+            if not uczelnia.sortuj_jednostki_alfabetycznie:
+                return sys.maxsize
+
         return CommitedModelAdmin.list_per_page
 
     list_per_page = property(get_list_per_page)
