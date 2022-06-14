@@ -15,6 +15,7 @@ dev
 * możliwość edycji stopki z poziou bazy danych (b/n),
 * w sytuacji, gdy kolejność jednostek ustalana jest ręcznie, nie dziel strony
   Struktura -> Jednostki w module redagowania na podstrony (#1211)
+* podgląd edycji schematu opisu bibliograficznego (#898),
 
 202205.1086
 -----------
