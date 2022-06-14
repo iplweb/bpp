@@ -13,6 +13,8 @@ dev
 * możliwość edycji nagłówka strony dla wyświetlania i wydruków po stronie
   użytkownika (#1226)
 * możliwość edycji stopki z poziou bazy danych (b/n),
+* w sytuacji, gdy kolejność jednostek ustalana jest ręcznie, nie dziel strony
+  Struktura -> Jednostki w module redagowania na podstrony (#1211)
 
 202205.1086
 -----------
