@@ -251,7 +251,7 @@ def test_NavigationAutocomplete_no_queries(
 ):
     req = rf.get("/", data={"q": "Je"})
     req.user = admin_user
-    with django_assert_max_num_queries(10):
+    with django_assert_max_num_queries(11):
         a = klass()
         a.request = req
         a.q = "Je"  # literka
