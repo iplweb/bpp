@@ -18,6 +18,7 @@ dev
 * umożliwiaj wygenerowanie kodu JSON wysyłanego do PBN API z linii
   poleceń -- polecenie ``pbn_show_json`` (b/n),
 * poprawnie wysyłaj strony do PBN API (#1176),
+* podgląd edycji schematu opisu bibliograficznego (#898),
 
 202205.1086
 -----------

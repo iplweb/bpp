@@ -1,0 +1,10 @@
+{% extends "admin/change_form.html" %}
+
+{% block object-tools-items %}
+    {% if original.name == "opis_bibliograficzny.html" %}
+        <li>
+            <a onclick="window.open('../../preview/?template='+encodeURIComponent(django.jQuery('#id_content').val()), 'preview', 'width=600,height=400'); return false;"
+            >Szybki podgląd</a></li>
+    {% endif %}
+    {{ block.super }}
+{% endblock %}
