@@ -76,7 +76,9 @@ class RaportZerowyFilter(django_filters.FilterSet):
         widget=NumberInput(attrs={"placeholder": "max"}),
     )
     dyscyplina_naukowa = django_filters.ModelChoiceFilter(
-        queryset=Dyscyplina_Naukowa.objects.all()
+        queryset=Dyscyplina_Naukowa.objects.filter(
+            pk__in=Autorzy.objects.values("dyscyplina_naukowa_id").distinct()
+        )
     )
 
 
