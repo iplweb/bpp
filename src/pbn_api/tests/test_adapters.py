@@ -267,3 +267,32 @@ def test_WydawnictwoPBNAdapter_streszczenia(pbn_wydawnictwo_zwarte_ksiazka):
     )
     ret = WydawnictwoPBNAdapter(pbn_wydawnictwo_zwarte_ksiazka).pbn_get_json()
     assert "test" in ret["languageData"]["abstracts"][0]["text"]
+
+
+def test_WydawnictwoPBNAdapter_wydawnictwo_zwarte_strony(
+    pbn_wydawnictwo_zwarte_ksiazka,
+):
+    pbn_wydawnictwo_zwarte_ksiazka.strony = "pincset"
+
+    ret = WydawnictwoPBNAdapter(pbn_wydawnictwo_zwarte_ksiazka).pbn_get_json()
+    assert "pagesFromTo" in ret
+
+
+def test_WydawnictwoPBNAdapter_wydawnictwo_ciagle_strony(
+    pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina,
+):
+    pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina.strony = "pincset"
+    ret = WydawnictwoPBNAdapter(
+        pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina
+    ).pbn_get_json()
+    assert "pagesFromTo" in ret
+
+
+def test_WydawnictwoPBNAdapter_wydawnictwo_ciagle_zakres_stron(
+    pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina,
+):
+    pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina.szczegoly = "s. 20-30"
+    ret = WydawnictwoPBNAdapter(
+        pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina
+    ).pbn_get_json()
+    assert "pagesFromTo" in ret

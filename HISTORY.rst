@@ -15,6 +15,9 @@ dev
 * możliwość edycji stopki z poziou bazy danych (b/n),
 * w sytuacji, gdy kolejność jednostek ustalana jest ręcznie, nie dziel strony
   Struktura -> Jednostki w module redagowania na podstrony (#1211)
+* umożliwiaj wygenerowanie kodu JSON wysyłanego do PBN API z linii
+  poleceń -- polecenie ``pbn_show_json`` (b/n),
+* poprawnie wysyłaj strony do PBN API (#1176),
 
 202205.1086
 -----------

@@ -158,7 +158,15 @@ class WydawnictwoPBNAdapter:
         if volume:
             ret["volume"] = volume
 
-        if hasattr(self.original, "zakres_stron"):
+        # Jeżeli pole "Strony" istnieje i ma jakąś wartość, to weź jego wartość
+        if hasattr(self.original, "strony"):
+            strony = self.original.strony
+            if strony:
+                ret["pagesFromTo"] = strony
+
+        # Jeżeli pole "Strony" było puste a mamy funkcję "zakres_stron" i ono coś zwróci,
+        # to weź tą wartość:
+        if hasattr(self.original, "zakres_stron") and not ret.get("pagesFromTo"):
             zakres_stron = self.original.zakres_stron()
             if zakres_stron:
                 ret["pagesFromTo"] = zakres_stron
