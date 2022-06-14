@@ -19,6 +19,7 @@ dev
   poleceń -- polecenie ``pbn_show_json`` (b/n),
 * poprawnie wysyłaj strony do PBN API (#1176),
 * podgląd edycji schematu opisu bibliograficznego (#898),
+* informacja o aktualnej jednostce w raportach "zerowych" (#1224)
 
 202205.1086
 -----------
