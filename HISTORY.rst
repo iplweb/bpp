@@ -10,6 +10,8 @@ dev
   "uodpornienie" systemu drukującego na przestarzałe certyfikaty SSL na serwerze bpp (#1223),
 * wyświetlaj aktualną jednostkę w raporcie slotów - ewaluacja (#1036)
 * filtry wracają do raportu slotów - uczelnia (#985)
+* w sytuacji, gdy kolejność jednostek ustalana jest ręcznie, nie dziel strony
+  Struktura -> Jednostki w module redagowania na podstrony (#1211)
 
 202205.1086
 -----------
