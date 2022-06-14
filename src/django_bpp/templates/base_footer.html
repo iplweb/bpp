@@ -1,0 +1,30 @@
+<div class="hide-for-print cell">
+    <hr size="1"/>
+    <small style="float: right;">
+        {% if not request.user.is_anonymous %}
+            zalogowany/a jako {{ request.user.username }} -
+        {% endif %}
+        Oprogramowanie <a href="http://bpp.iplweb.pl/">Bibliografia Publikacji Pracowników</a> &copy;
+        2004-2021 <a href="http://iplweb.pl">IPLweb</a>; wersja {% load bpp_version %}{% bpp_version %}
+        <div id="test-image-copyright" style="display: none;">
+            Obrazek tła dla serwera testowego: <a href=http://www.freepik.com>Designed by pch.vector /
+            Freepik</a>.
+        </div>
+    </small>
+</div>
+<div class="show-for-print">
+    <div class="text-right">
+        <small>
+            Dokument wygenerowano przy pomocy systemu Bibliografia Publikacji Pracowników w
+            wersji <strong>{% bpp_version %}</strong>
+            dnia <strong>{% now "SHORT_DATE_FORMAT" %} o godzinie {% now "H:i" %}</strong>
+            {% if not request.user.is_anonymous %}
+                przez użytkownika <strong>{{ request.user.username }}</strong>
+            {% endif %}
+            <br/>
+            Baza danych &copy; {% now "Y" %} Biblioteka Główna {{ uczelnia.nazwa_dopelniacz_field }}.
+            Oprogramowanie Bibliografia Publikacji Pracowników &copy; 2004-2021 IPLweb,
+            https://bpp.iplweb.pl/
+        </small>
+    </div>
+</div>

@@ -8,8 +8,10 @@ dev
 
 * aktualizacja biblioteki do generowania PDF z systemu do wersji WeasyPrint 55.0, dodatkowe
   "uodpornienie" systemu drukującego na przestarzałe certyfikaty SSL na serwerze bpp (#1223),
-
 * wyświetlaj aktualną jednostkę w raporcie slotów - ewaluacja (#1036)
+* możliwość edycji nagłówka strony dla wyświetlania i wydruków po stronie
+  użytkownika (#1226)
+* możliwość edycji stopki z poziou bazy danych (b/n),
 
 202205.1086
 -----------
