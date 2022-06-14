@@ -170,6 +170,7 @@ class RaportSlotowZerowyTable(tables.Table):
         model = RaportZerowyEntry
         fields = (
             "autor",
+            "autor__aktualna_jednostka",
             "autor__pbn_id",
             "autor__orcid",
             "lata",
