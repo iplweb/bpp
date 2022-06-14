@@ -10,6 +10,9 @@ dev
   "uodpornienie" systemu drukującego na przestarzałe certyfikaty SSL na serwerze bpp (#1223),
 * wyświetlaj aktualną jednostkę w raporcie slotów - ewaluacja (#1036)
 * filtry wracają do raportu slotów - uczelnia (#985)
+* możliwość edycji nagłówka strony dla wyświetlania i wydruków po stronie
+  użytkownika (#1226)
+* możliwość edycji stopki z poziou bazy danych (b/n),
 
 202205.1086
 -----------
