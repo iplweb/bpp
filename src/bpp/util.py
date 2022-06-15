@@ -17,6 +17,7 @@ from psycopg2.extensions import QuotedString
 from unidecode import unidecode
 
 from django.utils import timezone
+from django.utils.html import strip_tags
 
 non_url = re.compile(r"[^\w-]+")
 
@@ -30,15 +31,17 @@ def get_fixture(name):
 
 def fulltext_tokenize(s):
     s = (
-        s.replace(":", "")
-        .replace("*", "")
-        .replace('"', "")
+        s.replace(":", " ")
+        .replace("*", " ")
+        .replace('"', " ")
         .replace("|", " ")
-        .replace("'", "")
-        .replace("&", "")
-        .replace("\\", "")
-        .replace("(", "")
-        .replace(")", "")
+        .replace("'", " ")
+        .replace("&", " ")
+        .replace("\\", " ")
+        .replace("(", " ")
+        .replace(")", " ")
+        .replace("[", " ")
+        .replace("]", " ")
         .replace("\t", " ")
         .replace("\n", " ")
         .replace("\r", " ")
@@ -70,7 +73,8 @@ class FulltextSearchMixin:
         if isinstance(qstr, bytes):
             qstr = qstr.decode("utf-8")
 
-        words = fulltext_tokenize(qstr)
+        clean_qstr = strip_tags(qstr)
+        words = fulltext_tokenize(clean_qstr)
         qstr = " & ".join(startswith(words))
         params = ("bpp_nazwy_wlasne", qstr)
 
