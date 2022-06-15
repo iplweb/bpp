@@ -901,21 +901,14 @@ pillow = "*"
 
 [[package]]
 name = "django-filter"
-version = "2.4.0"
-description = ""
+version = "21.1"
+description = "Django-filter is a reusable Django application for allowing users to filter querysets dynamically."
 category = "main"
 optional = false
 python-versions = ">=3.6"
-develop = false
 
 [package.dependencies]
 Django = ">=2.2"
-
-[package.source]
-type = "git"
-url = "https://github.com/carltongibson/django-filter.git"
-reference = "512310fe880af675f33be964d85907db838f62ea"
-resolved_reference = "512310fe880af675f33be964d85907db838f62ea"
 
 [[package]]
 name = "django-flexible-reports"
@@ -3474,7 +3467,7 @@ test = ["pytest"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8,<3.9"
-content-hash = "bc29672eef7bfabd66ae48dfb454b607d2c3416cd1c5a9de75a90a5c1ba492c2"
+content-hash = "69b5d012075a9b8e73c2371c41439ba5a62ccb4fbc22d8e8d12d658e5d7cad1d"
 
 [metadata.files]
 aioredis = [
@@ -3982,7 +3975,10 @@ django-extensions = [
 django-favicon-plus = [
     {file = "django-favicon-plus-0.0.8.tar.gz", hash = "sha256:3394a951d8dc611eb1ea027ad1181d7f650ca234506585b27e93d7ed06b981bf"},
 ]
-django-filter = []
+django-filter = [
+    {file = "django-filter-21.1.tar.gz", hash = "sha256:632a251fa8f1aadb4b8cceff932bb52fe2f826dd7dfe7f3eac40e5c463d6836e"},
+    {file = "django_filter-21.1-py3-none-any.whl", hash = "sha256:f4a6737a30104c98d2e2a5fb93043f36dd7978e0c7ddc92f5998e85433ea5063"},
+]
 django-flexible-reports = [
     {file = "django_flexible_reports-0.2.9-py2.py3-none-any.whl", hash = "sha256:baee8e53b1ac184798ec15c4ad6c1cbf150964fe50e845cc1cea8b36dc71c0c8"},
 ]
