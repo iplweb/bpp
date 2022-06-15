@@ -21,6 +21,8 @@ dev
 * podgląd edycji schematu opisu bibliograficznego (#898),
 * informacja o aktualnej jednostce w raportach "zerowych" (#1224),
 * możliwość pobierania/uruchamiania systemu BPP za pomoca polecenia pipx (#1231),
+* pokazuj w pierwszej kolejności odpowiedniki PBN dla wydawców, które posiadają
+  ID ministerialne w module redagowania (#1174)
 
 202205.1086
 -----------
