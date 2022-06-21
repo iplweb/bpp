@@ -1,7 +1,8 @@
 from rest_framework import serializers
 
 from api_v1.serializers.util import AbsoluteUrlSerializerMixin
-from bpp.models import Autor, Tytul, Funkcja_Autora, Autor_Jednostka
+
+from bpp.models import Autor, Autor_Jednostka, Funkcja_Autora, Tytul
 
 
 class TytulSerializer(serializers.ModelSerializer):
@@ -67,7 +68,6 @@ class AutorSerializer(
             "imiona",
             "nazwisko",
             "tytul",
-            "aktualny",
             "aktualna_jednostka",
             "aktualna_funkcja",
             "pokazuj",

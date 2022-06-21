@@ -10,7 +10,7 @@ from bpp.models import Autor, Autor_Jednostka, Jednostka
 
 
 def testdata_xls_path_factory(suffix=""):
-    return os.path.join(os.path.dirname(__file__), f"testdata{suffix}.xlsx")
+    return os.path.join(os.path.dirname(__file__), "..", f"testdata{suffix}.xlsx")
 
 
 @pytest.fixture

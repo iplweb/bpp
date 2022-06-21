@@ -24,6 +24,9 @@ dev
 * przed wyszukiwaniem pełnotekstowym usuń tagi HTML z zapytania (#1222),
 * pokazuj w pierwszej kolejności odpowiedniki PBN dla wydawców, które posiadają
   ID ministerialne w module redagowania (#1174)
+* pole bazodanowe "aktualny" znika z modelu Autor (b/n),
+* pola "aktualna jednostka" oraz "aktualna funkcja" dla modelu Autor mogą mieć
+  wartość pustą (null) (b/n),
 
 202205.1086
 -----------
