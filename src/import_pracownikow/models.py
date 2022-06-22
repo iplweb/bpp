@@ -266,13 +266,16 @@ class ImportPracownikow(ASGINotificationMixin, Operation):
             "wymiar_etatu",
         )
 
-    def autorzy_spoza_pliku_set(self, uczelnia=None):
+    def autorzy_spoza_pliku_set(self, uczelnia=None, today=None):
         """
         Zwraca wszystkie połączenia Autor + Jednostka, gdzie:
         1) połączenie autor + jednostka nie występuje w imporcie danych (self)
         2) jednostka nie jest obca,
         3) jednostka ma pole "zarzadzaj_automatycznie" zaznaczone jako True
         """
+
+        if today is None:
+            today = timezone.now().date()
 
         autorzy_jednostki_z_pliku = self.importpracownikowrow_set.values_list(
             "autor_jednostka"
@@ -282,6 +285,7 @@ class ImportPracownikow(ASGINotificationMixin, Operation):
             Autor_Jednostka.objects.exclude(pk__in=autorzy_jednostki_z_pliku)
             .exclude(autor__aktualna_jednostka=None)
             .exclude(jednostka__zarzadzaj_automatycznie=False)
+            .exclude(zakonczyl_prace__lte=today)
         )
 
         if uczelnia is not None and uczelnia.obca_jednostka_id is not None:
@@ -297,7 +301,7 @@ class ImportPracownikow(ASGINotificationMixin, Operation):
         if yesterday is None:
             yesterday = today - timedelta(days=1)
 
-        for elem in self.autorzy_spoza_pliku_set(uczelnia=uczelnia):
+        for elem in self.autorzy_spoza_pliku_set(uczelnia=uczelnia, today=today):
             elem.zakonczyl_prace = yesterday
             elem.podstawowe_miejsce_pracy = False
             elem.save()
