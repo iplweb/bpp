@@ -1,13 +1,15 @@
-# -*- encoding: utf-8 -*-
-
 """Ten moduł zawiera 'normalne', dla ludzi funkcje, które mogą być używane
 do ustawiania testów."""
+from __future__ import annotations
+
+import cgi
 import random
 import re
 import time
 import warnings
 from datetime import datetime
 
+from django.http import HttpResponse
 from django.urls import reverse
 from model_mommy import mommy
 from selenium.webdriver.common.keys import Keys
@@ -130,10 +132,10 @@ def any_wydawnictwo(klass, rok=None, **kw):
     kl = str(klass).split(".")[-1].replace("'>", "")
 
     kw_wyd = dict(
-        tytul="Tytul %s %s" % (kl, c),
-        tytul_oryginalny="Tytul oryginalny %s %s" % (kl, c),
-        uwagi="Uwagi %s %s" % (kl, c),
-        szczegoly="Szczegóły %s %s" % (kl, c),
+        tytul=f"Tytul {kl} {c}",
+        tytul_oryginalny=f"Tytul oryginalny {kl} {c}",
+        uwagi=f"Uwagi {kl} {c}",
+        szczegoly=f"Szczegóły {kl} {c}",
     )
 
     if klass == Patent:
@@ -374,7 +376,7 @@ def assertPopupContains(browser, text, accept=True):
     """
     alert = browser.driver.switch_to.alert
     if text not in alert.text:
-        raise AssertionError("%r not found in %r" % (text, alert.text))
+        raise AssertionError(f"{text!r} not found in {alert.text!r}")
     if accept:
         alert.accept()
 
@@ -527,9 +529,17 @@ def browse_praca_url(model):
     )  # ContentType.objects.get_for_model(model).pk, model.pk)
 
 
-def normalize_html(s):
+def normalize_html(s: bytes | str, default_encoding="utf-8"):
+    if isinstance(s, bytes):
+        s = s.decode(default_encoding)
     s = s.replace("\r\n", " ").replace("\n", " ")
     return re.sub(r"\s\s+", " ", s)
+
+
+def normalize_response_content(res: HttpResponse):
+    return normalize_html(
+        res.content, cgi.parse_header(res["content-type"])[1]["charset"]
+    )
 
 
 def rozwin_ekstra_informacje_na_stronie_edycji_wydawnictwa(admin_browser):

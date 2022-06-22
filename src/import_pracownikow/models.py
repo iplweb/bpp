@@ -1,6 +1,6 @@
 # Create your models here.
 from copy import copy
-from datetime import date
+from datetime import date, timedelta
 
 from django import forms
 from django.core.serializers.json import DjangoJSONEncoder
@@ -33,6 +33,8 @@ from long_running.models import Operation
 from long_running.notification_mixins import ASGINotificationMixin
 
 from django.contrib.postgres.fields import JSONField
+
+from django.utils import timezone
 
 from bpp.models import (
     Autor,
@@ -263,6 +265,44 @@ class ImportPracownikow(ASGINotificationMixin, Operation):
             "funkcja_autora",
             "wymiar_etatu",
         )
+
+    def autorzy_spoza_pliku_set(self, uczelnia=None):
+        """
+        Zwraca wszystkie połączenia Autor + Jednostka, gdzie:
+        1) połączenie autor + jednostka nie występuje w imporcie danych (self)
+        2) jednostka nie jest obca,
+        3) jednostka ma pole "zarzadzaj_automatycznie" zaznaczone jako True
+        """
+
+        autorzy_jednostki_z_pliku = self.importpracownikowrow_set.values_list(
+            "autor_jednostka"
+        ).distinct()
+
+        qry = (
+            Autor_Jednostka.objects.exclude(pk__in=autorzy_jednostki_z_pliku)
+            .exclude(autor__aktualna_jednostka=None)
+            .exclude(jednostka__zarzadzaj_automatycznie=False)
+        )
+
+        if uczelnia is not None and uczelnia.obca_jednostka_id is not None:
+            qry = qry.exclude(autor__aktualna_jednostka_id=uczelnia.obca_jednostka_id)
+
+        return qry
+
+    @transaction.atomic
+    def odepnij_autorow_spoza_pliku(self, uczelnia=None, today=None, yesterday=None):
+        if today is None:
+            today = timezone.now().date()
+
+        if yesterday is None:
+            yesterday = today - timedelta(days=1)
+
+        for elem in self.autorzy_spoza_pliku_set(uczelnia=uczelnia):
+            elem.zakonczyl_prace = yesterday
+            elem.podstawowe_miejsce_pracy = False
+            elem.save()
+
+            elem.refresh_from_db()
 
     def on_finished(self):
         self.send_processing_finished()
