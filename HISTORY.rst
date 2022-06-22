@@ -27,6 +27,8 @@ dev
 * pole bazodanowe "aktualny" znika z modelu Autor (b/n),
 * pola "aktualna jednostka" oraz "aktualna funkcja" dla modelu Autor mogą mieć
   wartość pustą (null) (b/n),
+* poprawiony skrypt odpinający miejsca pracy podczas importu danych
+  kadrowych (#1229)
 
 202205.1086
 -----------

@@ -1,6 +1,8 @@
 """
 Autorzy
 """
+from __future__ import annotations
+
 from datetime import date, datetime, timedelta
 
 from autoslug import AutoSlugField
@@ -197,33 +199,41 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
 
         return buf
 
-    def dodaj_jednostke(self, jednostka, rok=None, funkcja=None):
-        if rok is None:
-            rok = datetime.now().date().year - 1
+    def dodaj_jednostke(
+        self, jednostka, rok=None, funkcja=None
+    ) -> Autor_Jednostka | None:
 
-        start_pracy = date(rok, 1, 1)
-        koniec_pracy = date(rok, 12, 31)
+        start_pracy = None
+        koniec_pracy = None
 
-        if Autor_Jednostka.objects.filter(
+        if rok is not None:
+            start_pracy = date(rok, 1, 1)
+            koniec_pracy = date(rok, 12, 31)
+
+        czy_juz_istnieje = Autor_Jednostka.objects.filter(
             autor=self,
             jednostka=jednostka,
-            rozpoczal_prace__lte=start_pracy,
-            zakonczyl_prace__gte=koniec_pracy,
-        ):
+            rozpoczal_prace__lte=start_pracy or date(1, 1, 1),
+            zakonczyl_prace__gte=koniec_pracy or date(999, 12, 31),
+        )
+
+        if czy_juz_istnieje.exists():
             # Ten czas jest już pokryty
-            return
+            return czy_juz_istnieje.first()
 
         try:
-            Autor_Jednostka.objects.create(
+            ret = Autor_Jednostka.objects.create(
                 autor=self,
-                rozpoczal_prace=start_pracy,
                 jednostka=jednostka,
                 funkcja=funkcja,
+                rozpoczal_prace=start_pracy,
                 zakonczyl_prace=koniec_pracy,
             )
         except IntegrityError:
             return
         self.defragmentuj_jednostke(jednostka)
+
+        return ret
 
     def defragmentuj_jednostke(self, jednostka):
         Autor_Jednostka.objects.defragmentuj(autor=self, jednostka=jednostka)

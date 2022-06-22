@@ -197,6 +197,13 @@ def uczelnia(db):
     )[0]
 
 
+@pytest.fixture
+def uczelnia_z_obca_jednostka(uczelnia, obca_jednostka):
+    uczelnia.obca_jednostka = obca_jednostka
+    uczelnia.save()
+    return uczelnia
+
+
 @pytest.mark.django_db
 def _wydzial_maker(nazwa, skrot, uczelnia, **kwargs):
     return Wydzial.objects.get_or_create(
