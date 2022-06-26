@@ -45,7 +45,7 @@ Integracja z PBN API
    - autorzy powinni mieć uzupełnione numery ORCID.
 
 Kody błędów
-===========
+-----------
 
 Podczas synchronizacji z PBN mogą wystąpić m.in. następujące wyjątki:
 

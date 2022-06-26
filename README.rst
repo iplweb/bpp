@@ -41,11 +41,10 @@ Obsługa komercyjna
 ------------------
 
 Jeżeli jesteś bibliotekarzem i szukasz sposobu na szybkie wdrożenie systemu BPP
-w swojej instytucji, zapraszam na stronę firmy IPLWeb_ . Znajdziesz tam m.in. k
-ontener maszyny wirtualnej zawierającej pre-instalowany system BPP, gotowy do
+w swojej instytucji, zapraszam na stronę firmy IPLWeb_ . Znajdziesz tam m.in.
+kontener maszyny wirtualnej zawierającej pre-instalowany system BPP, gotowy do
 pracy, jak równiez bogatą ofertę wsparcia komercyjnego. Szczegóły na stronie
 projektu http://bpp.iplweb.pl/
 
 .. _IPLWeb: http://bpp.iplweb.pl/
 .. _licencja MIT: https://pl.wikipedia.org/wiki/Licencja_MIT
-
