@@ -286,6 +286,7 @@ class Wydawnictwo_ZwarteAdmin(
         helpers.OPENACCESS_FIELDSET,
         helpers.PRACA_WYBITNA_FIELDSET,
         helpers.PRZED_PO_LISCIE_AUTOROW_FIELDSET,
+        helpers.MODEL_Z_OPLATA_ZA_PUBLIKACJE_FIELDSET,
     )
 
     def save_model(self, request, obj, form, change):

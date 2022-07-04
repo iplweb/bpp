@@ -11,10 +11,20 @@ from django.contrib.postgres.fields import ArrayField
 
 from django.utils.functional import cached_property
 
-from bpp.models import Charakter_Formalny, ModelZPBN_UID, NieMaProcentowMixin
+from bpp.models import (
+    Charakter_Formalny,
+    ModelZOplataZaPublikacje,
+    ModelZPBN_UID,
+    NieMaProcentowMixin,
+)
 
 
-class Praca_Doktorska_Baza(NieMaProcentowMixin, ModelZPBN_UID, Wydawnictwo_Zwarte_Baza):
+class Praca_Doktorska_Baza(
+    NieMaProcentowMixin,
+    ModelZPBN_UID,
+    ModelZOplataZaPublikacje,
+    Wydawnictwo_Zwarte_Baza,
+):
 
     jednostka = models.ForeignKey(Jednostka, CASCADE)
 

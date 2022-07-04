@@ -128,7 +128,8 @@
                     });
 
                     $(this).find("select").each(function () {
-                        if ($(this).val())
+                        v = $(this).val();
+                        if (v!="" && v!="unknown")
                             has_value = true;
                     });
 
