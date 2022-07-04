@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 import pytest
 from model_mommy import mommy
 
@@ -296,3 +298,28 @@ def test_WydawnictwoPBNAdapter_wydawnictwo_ciagle_zakres_stron(
         pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina
     ).pbn_get_json()
     assert "pagesFromTo" in ret
+
+
+def test_WydawnictwoPBNAdapter_oplata_za_publikacje_platna(
+    pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina,
+):
+    pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina.opl_pub_amount = 50.40
+    pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina.opl_pub_research_potential = True
+
+    ret = WydawnictwoPBNAdapter(
+        pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina
+    ).pbn_get_json()
+    assert ret["fee"]["amount"] == 50.4
+    assert ret["fee"]["researchPotentialFinancialResources"]
+
+
+def test_WydawnictwoPBNAdapter_oplata_za_publikacje_darmowa(
+    pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina,
+):
+    pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina.opl_pub_cost_free = True
+
+    ret = WydawnictwoPBNAdapter(
+        pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina
+    ).pbn_get_json()
+    assert ret["fee"]["amount"] == Decimal("0")
+    assert ret["fee"]["costFreePublication"]
