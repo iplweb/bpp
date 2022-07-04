@@ -481,6 +481,46 @@ class JednostkaQueryObject(
         return ret
 
 
+class AktualnaJednostkaAutoraQueryObject(JednostkaQueryObject):
+    label = "Aktualna jednostka dowolnego autora"
+    type = AUTOCOMPLETE
+    ops = [
+        EQUAL_FEMALE,
+        DIFFERENT_FEMALE,
+        EQUAL_PLUS_SUB_FEMALE,
+    ]
+    model = Jednostka
+    search_fields = ["nazwa"]
+    field_name = "aktualna_jednostka"
+    url = "bpp:jednostka-widoczna-autocomplete"
+
+    def real_query(self, value, operation):
+        if operation in EQUALITY_OPS_ALL:
+            ret = Q(autorzy__autor__aktualna_jednostka=value)
+
+        elif operation == EQUAL_PLUS_SUB_FEMALE:
+            ret = Q(autorzy__autor__aktualna_jednostka__in=value.get_family())
+
+        elif operation in EQUAL_PLUS_SUB_UNION_FEMALE:
+            q = Autorzy.objects.filter(
+                autor__aktualna_jednostka__in=value.get_family()
+            ).values("rekord_id")
+            ret = Q(pk__in=q)
+
+        elif operation in UNION_OPS_ALL:
+            q = Autorzy.objects.filter(autor__aktualna_jednostka=value).values(
+                "rekord_id"
+            )
+            ret = Q(pk__in=q)
+
+        else:
+            raise UnknownOperation(operation)
+
+        if operation in DIFFERENT_ALL:
+            return ~ret
+        return ret
+
+
 class PierwszaJednostkaQueryObject(JednostkaQueryObject):
     ops = [
         EQUAL_FEMALE,
@@ -1072,6 +1112,7 @@ multiseek_fields = [
     PublicDostepDniaQueryObject(),
     StronaWWWUstawionaQueryObject(),
     DOIQueryObject(),
+    AktualnaJednostkaAutoraQueryObject(),
 ]
 
 
