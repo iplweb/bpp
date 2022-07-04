@@ -11,10 +11,21 @@ from django.contrib.postgres.fields import ArrayField
 
 from django.utils.functional import cached_property
 
-from bpp.models import Charakter_Formalny, ModelZPBN_UID, NieMaProcentowMixin
+from bpp.models import (
+    Charakter_Formalny,
+    ModelZOplataZaPublikacje,
+    ModelZPBN_UID,
+    NieMaProcentowMixin,
+)
+from bpp.models.abstract import DwaTytuly
 
 
-class Praca_Doktorska_Baza(NieMaProcentowMixin, ModelZPBN_UID, Wydawnictwo_Zwarte_Baza):
+class Praca_Doktorska_Baza(
+    NieMaProcentowMixin,
+    ModelZPBN_UID,
+    ModelZOplataZaPublikacje,
+    Wydawnictwo_Zwarte_Baza,
+):
 
     jednostka = models.ForeignKey(Jednostka, CASCADE)
 
@@ -101,6 +112,10 @@ class Praca_Doktorska_Baza(NieMaProcentowMixin, ModelZPBN_UID, Wydawnictwo_Zwart
     )
     def slug(self):
         return self.get_slug()
+
+    def clean(self):
+        DwaTytuly.clean(self)
+        ModelZOplataZaPublikacje.clean(self)
 
 
 class _Praca_Doktorska_PropertyCache:

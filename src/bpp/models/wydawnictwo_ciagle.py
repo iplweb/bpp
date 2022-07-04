@@ -9,6 +9,7 @@ from bpp.models import (
     BazaModeluStreszczen,
     MaProcentyMixin,
     ModelZKwartylami,
+    ModelZOplataZaPublikacje,
     parse_informacje,
     wez_zakres_stron,
 )
@@ -105,6 +106,7 @@ class Wydawnictwo_Ciagle(
     ModelZKonferencja,
     ModelWybitny,
     ModelZPBN_UID,
+    ModelZOplataZaPublikacje,
     ModelZLiczbaCytowan,
     ModelZMiejscemPrzechowywania,
     ModelOpcjonalnieNieEksportowanyDoAPI,
@@ -250,6 +252,10 @@ class Wydawnictwo_Ciagle(
     @depend_on_related("bpp.Zrodlo", only=("nazwa", "skrot"))
     def slug(self):
         return self.get_slug()
+
+    def clean(self):
+        DwaTytuly.clean(self)
+        ModelZOplataZaPublikacje.clean(self)
 
 
 class Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych(models.Model):

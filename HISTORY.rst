@@ -30,6 +30,7 @@ dev
 * poprawiony skrypt odpinający miejsca pracy podczas importu danych
   kadrowych (#1229),
 * polecenie przebudowania pola 'aktualna jednostka' dla powiązań autor+jednostka (b/n),
+* możliwość wpisywania i eksportowania do PBN danych o kosztach publikacji (#1235)
 
 202205.1086
 -----------

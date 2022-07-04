@@ -113,6 +113,20 @@ MODEL_Z_ISSN = (
 
 MODEL_Z_PBN_UID = ("pbn_uid",)
 
+MODEL_Z_OPLATA_ZA_PUBLIKACJE = (
+    "opl_pub_cost_free",
+    "opl_pub_research_potential",
+    "opl_pub_research_or_development_projects",
+    "opl_pub_other",
+    "opl_pub_amount",
+)
+
+MODEL_Z_OPLATA_ZA_PUBLIKACJE_FIELDSET = (
+    "Opłata za publikację",
+    {"classes": ("grp-collapse grp-closed",), "fields": MODEL_Z_OPLATA_ZA_PUBLIKACJE},
+)
+
+
 MODEL_Z_ISBN = (
     "isbn",
     "e_isbn",

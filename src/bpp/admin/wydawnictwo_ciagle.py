@@ -19,6 +19,7 @@ from .element_repozytorium import Element_RepozytoriumInline
 from .grant import Grant_RekorduInline
 from .helpers import (
     MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET,
+    MODEL_Z_OPLATA_ZA_PUBLIKACJE_FIELDSET,
     OptionalPBNSaveMixin,
     sprawdz_duplikaty_www_doi,
 )
@@ -276,6 +277,7 @@ class Wydawnictwo_CiagleAdmin(
         OPENACCESS_FIELDSET,
         PRACA_WYBITNA_FIELDSET,
         PRZED_PO_LISCIE_AUTOROW_FIELDSET,
+        MODEL_Z_OPLATA_ZA_PUBLIKACJE_FIELDSET,
     )
 
     inlines = (

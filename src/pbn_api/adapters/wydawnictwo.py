@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from import_common.normalization import normalize_isbn, normalize_issn
 from ..exceptions import (
     CharakterFormalnyMissingPBNUID,
@@ -17,6 +19,8 @@ from django.utils.functional import cached_property
 from bpp import const
 from bpp.const import TO_REDAKTOR, TO_REDAKTOR_TLUMACZENIA, TO_TLUMACZ
 from bpp.models import BazaModeluOdpowiedzialnosciAutorow, Uczelnia
+from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
+from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 from bpp.util import strip_html
 
 
@@ -28,7 +32,13 @@ class WydawnictwoPBNAdapter:
 
     export_pk_zero = True
 
-    def __init__(self, original, request=None, uczelnia=None, export_pk_zero=None):
+    def __init__(
+        self,
+        original: Wydawnictwo_Ciagle | Wydawnictwo_Zwarte,
+        request=None,
+        uczelnia=None,
+        export_pk_zero=None,
+    ):
         self.original = original
 
         if export_pk_zero is not None:
@@ -376,6 +386,36 @@ class WydawnictwoPBNAdapter:
                             "text": streszczenie.streszczenie,
                         }
                     )
+
+        if hasattr(self.original, "opl_pub_amount") and hasattr(
+            self.original, "opl_pub_cost_free"
+        ):
+            # ModelZOplataZaPublikacje
+            fee = {}
+
+            if self.original.opl_pub_cost_free is True:
+                fee["amount"] = 0
+                fee["costFreePublication"] = True
+                fee["other"] = False
+                fee["researchOrDevelopmentProjectsFinancialResources"] = False
+                fee["researchPotentialFinancialResources"] = False
+
+            if (
+                self.original.opl_pub_amount is not None
+                and self.original.opl_pub_amount > 0
+            ):
+                fee["amount"] = self.original.opl_pub_amount
+                fee["costFreePublication"] = False
+                fee["other"] = self.original.opl_pub_other or False
+                fee["researchOrDevelopmentProjectsFinancialResources"] = (
+                    self.original.opl_pub_research_or_development_projects or False
+                )
+                fee["researchPotentialFinancialResources"] = (
+                    self.original.opl_pub_research_potential or False
+                )
+
+            if fee:
+                ret["fee"] = fee
 
         if ret["type"] in [
             WydawnictwoPBNAdapter.ARTICLE,
