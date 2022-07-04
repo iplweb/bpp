@@ -120,6 +120,7 @@ class Patent(
         return _Patent_PropertyCache.jezyk
 
     def clean(self):
+        # DwaTytuly.clean() w wydaniu jedno-tytułowym...
         self.tytul_oryginalny = safe_html(self.tytul_oryginalny)
 
     #

@@ -17,6 +17,7 @@ from bpp.models import (
     ModelZPBN_UID,
     NieMaProcentowMixin,
 )
+from bpp.models.abstract import DwaTytuly
 
 
 class Praca_Doktorska_Baza(
@@ -111,6 +112,10 @@ class Praca_Doktorska_Baza(
     )
     def slug(self):
         return self.get_slug()
+
+    def clean(self):
+        DwaTytuly.clean(self)
+        ModelZOplataZaPublikacje.clean(self)
 
 
 class _Praca_Doktorska_PropertyCache:

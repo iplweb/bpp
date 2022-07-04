@@ -254,6 +254,7 @@ class Wydawnictwo_Ciagle(
         return self.get_slug()
 
     def clean(self):
+        DwaTytuly.clean(self)
         ModelZOplataZaPublikacje.clean(self)
 
 

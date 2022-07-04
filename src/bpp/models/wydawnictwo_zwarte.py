@@ -321,6 +321,7 @@ class Wydawnictwo_Zwarte(
         return self.get_slug()
 
     def clean(self):
+        DwaTytuly.clean(self)
         ModelZOplataZaPublikacje.clean(self)
 
 
