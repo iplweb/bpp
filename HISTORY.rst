@@ -31,7 +31,8 @@ dev
   kadrowych (#1229),
 * polecenie przebudowania pola 'aktualna jednostka' dla powiązań autor+jednostka (b/n),
 * możliwość wpisywania i eksportowania do PBN danych o kosztach publikacji (#1235),
-* możliwość wyszukiwania publikacji w multiwyszukiwarce po aktualnej jednostce autora (#1236)
+* możliwość wyszukiwania publikacji w multiwyszukiwarce po aktualnej jednostce autora (#1236),
+* ostrzegaj przed zdublowanym PBN UID przy zapisie prac w module redagowania (#1152),
 
 202205.1086
 -----------

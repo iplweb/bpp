@@ -219,7 +219,7 @@ class ModelZWWW(models.Model):
     """Model zawierający adres strony WWW"""
 
     www = models.URLField(
-        "Adres WWW (płatny dostęp)",
+        const.WWW_FIELD_LABEL,
         max_length=1024,
         blank=True,
         null=True,
@@ -232,7 +232,7 @@ class ModelZWWW(models.Model):
     )
 
     public_www = models.URLField(
-        "Adres WWW (wolny dostęp)",
+        const.PUBLIC_WWW_FIELD_LABEL,
         max_length=2048,
         blank=True,
         null=True,
@@ -272,7 +272,7 @@ def nie_zawiera_http_https(v):
 
 
 class ModelZDOI(models.Model):
-    doi = DOIField("DOI", null=True, blank=True, db_index=True)
+    doi = DOIField(const.DOI_FIELD_LABEL, null=True, blank=True, db_index=True)
 
     class Meta:
         abstract = True
@@ -808,7 +808,7 @@ class LinkDoPBNMixin:
 class ModelZPBN_UID(LinkDoPBNMixin, models.Model):
     pbn_uid = models.ForeignKey(
         "pbn_api.Publication",
-        verbose_name="Odpowiednik w PBN",
+        verbose_name=const.PBN_UID_FIELD_LABEL,
         null=True,
         blank=True,
         on_delete=models.SET_NULL,

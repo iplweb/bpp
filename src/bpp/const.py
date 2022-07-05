@@ -95,3 +95,14 @@ PBN_MAX_ROK = PBN_LATA[-1]
 
 
 KWARTYLE = [(None, "brak"), (1, "Q1"), (2, "Q2"), (3, "Q3"), (4, "Q4")]
+
+WWW_FIELD_LABEL = "Adres WWW (płatny dostęp)"
+PUBLIC_WWW_FIELD_LABEL = "Adres WWW (wolny dostęp)"
+DOI_FIELD_LABEL = "DOI"
+PBN_UID_FIELD_LABEL = "Odpowiednik w PBN"
+
+ZDUBLOWANE_POLE_KOMUNIKAT = (
+    'Uwaga, uwaga. W bazie danych istnieją inne rekordy z identycznym polem "{label}". '
+    "Technicznie nie jest to błąd, ale mogą pojawić się problemy przy synchronizacji danych "
+    "z systemami zewnętrznymi, np z bazą danych PBN."
+)
