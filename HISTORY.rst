@@ -34,6 +34,8 @@ dev
 * możliwość wyszukiwania publikacji w multiwyszukiwarce po aktualnej jednostce autora (#1236),
 * ostrzegaj przed zdublowanym PBN UID przy zapisie prac w module redagowania (#1152),
 * wyświetlaj opis jednostki na podstronie jednostki (#1217),
+* lepsza prezentacja autorów na stronie jednostki przy wykorzystaniu pola "podstawowe miejsce pracy"
+  oraz importu danych kadrowych (#1215)
 
 202205.1086
 -----------

@@ -13,7 +13,7 @@ from model_mommy import mommy
 
 from fixtures import JEDNOSTKA_PODRZEDNA, JEDNOSTKA_UCZELNI
 
-from bpp.models import Uczelnia
+from bpp.models import Autor_Jednostka, Uczelnia
 from bpp.models.autor import Autor
 from bpp.views.browse import JednostkiView
 
@@ -117,3 +117,22 @@ def test_jednostka_pokazuj_opis(jednostka, client, arg_res):
     res = client.get(url)
     result = TESTSTR in normalize_html(res.rendered_content)
     assert result is arg_res
+
+
+def test_jednostka_aktualni_pracownicy(
+    jednostka, autor_jan_nowak, autor_jan_kowalski, wydawnictwo_ciagle, client
+):
+    # Kowalski to obecny pracownik
+    Autor_Jednostka.objects.create(
+        autor=autor_jan_kowalski, jednostka=jednostka, podstawowe_miejsce_pracy=True
+    )
+
+    # Nowak to osoba ktora wczesniej miala publikacje
+    wydawnictwo_ciagle.dodaj_autora(autor=autor_jan_nowak, jednostka=jednostka)
+
+    url = reverse("bpp:browse_jednostka", args=(jednostka.slug,))
+    res = client.get(url)
+    html = normalize_html(res.rendered_content)
+    assert "napisane przez obecnych pracowników" in html
+    assert "osoby wcześniej związane" in html
+    assert "napisane przez:" not in html
