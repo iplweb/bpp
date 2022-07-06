@@ -55,7 +55,7 @@
             {% include "browse/typy.html" %}
         </fieldset>
 
-    {% if jednostka.pracownicy.exists %}
+    {% if jednostka.pracownicy.exists and jednostka.pracownicy.count < 200 %}
             <fieldset>
                 <legend>... napisane przez obecnych pracowników:</legend>
 
