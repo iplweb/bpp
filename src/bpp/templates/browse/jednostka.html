@@ -51,11 +51,66 @@
         <input type="hidden" name="jednostka" value="{{ jednostka.pk }}"/>
         <input type="hidden" name="suggested-title" value="{{ jednostka }}"/>
         <fieldset>
-            <legend>Wyszukaj dla tej jednostki</legend>
+            <legend>Wyszukaj dla tej jednostki:</legend>
             {% include "browse/typy.html" %}
         </fieldset>
 
-        {% if jednostka.autorzy_na_strone_jednostki.count < 100 %}
+    {% if jednostka.pracownicy.exists %}
+            <fieldset>
+                <legend>... napisane przez obecnych pracowników:</legend>
+
+            <div class="row">
+                {% for col in jednostka.pracownicy|columns:2 %}
+                    <div class="large-6 medium-12 small-12 columns"  style="white-spacE:nowrap;">
+                        {% for autor in col %}
+                            <input type="checkbox" name="autor"
+                                       value="{{ autor.pk }}"
+                                       id="autor_{{ autor.pk }}"
+                                       />
+                            <label for="autor_{{ autor.pk }}">
+                                    <span class="custom checkbox"></span>
+                                    {{ autor }}
+                                    <a href="{% url "bpp:browse_autor" autor.slug %}">►</a>
+                            </label><br/>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+            </div>
+
+            </fieldset>
+
+        {% if jednostka.wspolpracowali.exists and jednostka.wspolpracowali.count < 200 %}
+<ul class="accordion" data-accordion data-allow-all-closed="true">
+    <li class="accordion-item " data-accordion-item>
+        <a href="#" class="accordion-title">... oraz osoby wcześniej związane z jednostką (kliknij aby rozwinąć listę)</a>
+        <div class="accordion-content" data-tab-content>
+            <fieldset>
+                <div class="row">
+                    {% for col in jednostka.wspolpracowali|columns:2 %}
+                        <div class="large-6 medium-12 small-12 columns" style="white-spacE:nowrap;">
+                            {% for autor in col %}
+                                <input type="checkbox" name="autor"
+                                       value="{{ autor.pk }}"
+                                       id="autor_{{ autor.pk }}"
+                                />
+                                <label for="autor_{{ autor.pk }}">
+                                    <span class="custom checkbox"></span>
+                                    {{ autor }}
+                                    <a href="{% url "bpp:browse_autor" autor.slug %}">►</a>
+                                </label><br/>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+                </div>
+
+            </fieldset>
+        </div>
+    </li>
+</ul>
+        {% endif %}
+    {% else %}
+
+        {% if jednostka.autorzy_na_strone_jednostki.exists and jednostka.autorzy_na_strone_jednostki.count < 200 %}
 
             <fieldset>
                 <legend>... napisane przez:</legend>
@@ -80,6 +135,8 @@
 
             </fieldset>
         {% endif %}
+
+    {% endif %}
 
         {% include "browse/w_latach.html" with prace_w_latach=jednostka.prace_w_latach %}
         {% include "browse/tytul_raportu.html" with obj=jednostka %}

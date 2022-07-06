@@ -174,6 +174,10 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
 
     zatrudnij = dodaj_autora
 
+    #
+    # "Stare (przed-2022)" procedury wyświetlające autorów obecnie przypisanych do tej jednostki
+    #
+
     def obecni_autorzy(self):
         dzis = timezone.now().date()
 
@@ -185,10 +189,40 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
             autor_jednostka__jednostka=self,
         ).distinct()
 
-    pracownicy = obecni_autorzy
-
     def autorzy_na_strone_jednostki(self):
+        """ "Stara" funkcja, wyswietlajaca autorow przypisanych do tej jednostki,
+        w przypadku, gdy nikt nie ma 'Podstawowe miejsce pracy' ustawione na TRUE"""
         return self.obecni_autorzy().filter(pokazuj=True)
+
+    #
+    # "Nowe (2022)" procedury wyświetlające aktualnych autorów (ta jednostka ma przypisanie
+    # gdzie podstawowe_miejsce_pracy=True) oraz poprzednich współpracowników
+    #
+
+    def aktualni_autorzy(self):
+        return (
+            Autor_Jednostka.objects.filter(
+                podstawowe_miejsce_pracy=True, jednostka=self
+            )
+            .values_list("autor")
+            .distinct()
+        )
+
+    def pracownicy(self):
+        """Autorzy, którzy tą jednostkę mają wpisani jako AKTUALNA -- czyli
+        aktualni pracownicy, obecni pracownicy"""
+        return Autor.objects.filter(pk__in=self.aktualni_autorzy(), pokazuj=True)
+
+    def wspolpracowali(self):
+        """Autorzy, którzy popełnili jakiekolwiek prace z afiliacją na tę jednostkę,
+        nie będący autorami z  funkcji 'pracownicy'"""
+        from bpp.models.cache import Autorzy
+
+        return Autor.objects.filter(
+            pk__in=Autorzy.objects.filter(jednostka=self)
+            .exclude(autor_id__in=self.aktualni_autorzy())
+            .values_list("autor")
+        )
 
     def kierownik(self):
         try:
