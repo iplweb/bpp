@@ -1,3 +1,4 @@
+import json
 from decimal import Decimal
 
 import pytest
@@ -300,16 +301,22 @@ def test_WydawnictwoPBNAdapter_wydawnictwo_ciagle_zakres_stron(
     assert "pagesFromTo" in ret
 
 
+def encode_then_decode_json(in_json):
+    return json.loads(json.dumps(in_json))
+
+
 def test_WydawnictwoPBNAdapter_oplata_za_publikacje_platna(
     pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina,
 ):
-    pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina.opl_pub_amount = 50.40
+    pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina.opl_pub_amount = Decimal("50.4")
     pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina.opl_pub_research_potential = True
 
-    ret = WydawnictwoPBNAdapter(
-        pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina
-    ).pbn_get_json()
-    assert ret["fee"]["amount"] == 50.4
+    ret = encode_then_decode_json(
+        WydawnictwoPBNAdapter(
+            pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina
+        ).pbn_get_json()
+    )
+    assert ret["fee"]["amount"] == "50.4"
     assert ret["fee"]["researchPotentialFinancialResources"]
 
 
@@ -318,8 +325,10 @@ def test_WydawnictwoPBNAdapter_oplata_za_publikacje_darmowa(
 ):
     pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina.opl_pub_cost_free = True
 
-    ret = WydawnictwoPBNAdapter(
-        pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina
-    ).pbn_get_json()
+    ret = encode_then_decode_json(
+        WydawnictwoPBNAdapter(
+            pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina
+        ).pbn_get_json()
+    )
     assert ret["fee"]["amount"] == Decimal("0")
     assert ret["fee"]["costFreePublication"]

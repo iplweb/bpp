@@ -404,7 +404,7 @@ class WydawnictwoPBNAdapter:
                 self.original.opl_pub_amount is not None
                 and self.original.opl_pub_amount > 0
             ):
-                fee["amount"] = self.original.opl_pub_amount
+                fee["amount"] = str(self.original.opl_pub_amount)
                 fee["costFreePublication"] = False
                 fee["other"] = self.original.opl_pub_other or False
                 fee["researchOrDevelopmentProjectsFinancialResources"] = (
