@@ -33,6 +33,7 @@ dev
 * możliwość wpisywania i eksportowania do PBN danych o kosztach publikacji (#1235),
 * możliwość wyszukiwania publikacji w multiwyszukiwarce po aktualnej jednostce autora (#1236),
 * ostrzegaj przed zdublowanym PBN UID przy zapisie prac w module redagowania (#1152),
+* wyświetlaj opis jednostki na podstronie jednostki (#1217),
 
 202205.1086
 -----------

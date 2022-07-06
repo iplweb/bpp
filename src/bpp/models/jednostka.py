@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 """
 Struktura uczelni.
 """
@@ -26,7 +24,7 @@ from django.utils import timezone
 from bpp.models import ModelZAdnotacjami, ModelZPBN_UID
 from bpp.models.abstract import ModelZPBN_ID
 from bpp.models.autor import Autor, Autor_Jednostka
-from bpp.util import FulltextSearchMixin
+from bpp.util import FulltextSearchMixin, safe_html
 
 SORTUJ_RECZNIE = ("kolejnosc", "nazwa")
 SORTUJ_ALFABETYCZNIE = ("nazwa",)
@@ -38,7 +36,7 @@ class JednostkaManager(FulltextSearchMixin, TreeManager):
             # Kompatybilność wsteczna, z czasów, gdy nie było metryczki historycznej
             # dla obecności jednostki w wydziałach
             kw["uczelnia"] = kw["wydzial"].uczelnia
-        return super(JednostkaManager, self).create(*args, **kw)
+        return super().create(*args, **kw)
 
     def get_default_ordering(self):
         uczelnia = Uczelnia.objects.get_default()
@@ -53,11 +51,7 @@ class JednostkaManager(FulltextSearchMixin, TreeManager):
         return ordering
 
     def get_queryset(self, *args, **kwargs):
-        return (
-            super(JednostkaManager, self)
-            .get_queryset(*args, **kwargs)
-            .select_related("wydzial")
-        )
+        return super().get_queryset(*args, **kwargs).select_related("wydzial")
 
 
 class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
@@ -93,6 +87,10 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
     nazwa = models.CharField(max_length=512, unique=True)
     skrot = models.CharField("Skrót", max_length=128, unique=True)
     opis = models.TextField(blank=True, null=True)
+    pokazuj_opis = models.BooleanField(
+        default=True,
+        help_text="Gdy to pole jest zaznaczone, system wyświetli pole 'Opis' na podstronie jednostki.",
+    )
     slug = AutoSlugField(populate_from="nazwa", unique=True)
 
     widoczna = models.BooleanField(default=True, db_index=True)
@@ -227,6 +225,10 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
         except AttributeError:
             return
 
+    def clean(self):
+        if self.opis:
+            self.opis = safe_html(self.opis)
+
 
 class Jednostka_Wydzial_Manager(models.Manager):
     def od_do_not_null(self):
@@ -343,7 +345,7 @@ class Jednostka_Wydzial(models.Model):
         ordering = ("-od",)
 
     def __str__(self):
-        return "%s - %s (%s, %s)" % (self.jednostka, self.wydzial, self.od, self.do)
+        return f"{self.jednostka} - {self.wydzial} ({self.od}, {self.do})"
 
     def clean(self):
         try:

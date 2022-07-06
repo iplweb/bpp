@@ -40,6 +40,10 @@
         </ul>
     {% endif %}
 
+    {% if jednostka.pokazuj_opis %}
+        {{ jednostka.opis|safe }}
+    {% endif %}
+
     <form method="post"
           action="{% url "bpp:browse_build_search" %}"
           class="browserForm">
