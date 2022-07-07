@@ -3,6 +3,40 @@
 Historia zmian
 ==============
 
+202207.87
+---------
+
+* aktualizacja biblioteki do generowania PDF z systemu do wersji WeasyPrint 55.0, dodatkowe
+  "uodpornienie" systemu drukującego na przestarzałe certyfikaty SSL na serwerze bpp (#1223),
+* wyświetlaj aktualną jednostkę w raporcie slotów - ewaluacja (#1036)
+* filtry wracają do raportu slotów - uczelnia (#985)
+* możliwość edycji nagłówka strony dla wyświetlania i wydruków po stronie
+  użytkownika (#1226)
+* możliwość edycji stopki z poziou bazy danych (b/n),
+* w sytuacji, gdy kolejność jednostek ustalana jest ręcznie, nie dziel strony
+  Struktura -> Jednostki w module redagowania na podstrony (#1211)
+* umożliwiaj wygenerowanie kodu JSON wysyłanego do PBN API z linii
+  poleceń -- polecenie ``pbn_show_json`` (b/n),
+* poprawnie wysyłaj strony do PBN API (#1176),
+* podgląd edycji schematu opisu bibliograficznego (#898),
+* informacja o aktualnej jednostce w raportach "zerowych" (#1224),
+* możliwość pobierania/uruchamiania systemu BPP za pomoca polecenia pipx (#1231),
+* przed wyszukiwaniem pełnotekstowym usuń tagi HTML z zapytania (#1222),
+* pokazuj w pierwszej kolejności odpowiedniki PBN dla wydawców, które posiadają
+  ID ministerialne w module redagowania (#1174)
+* pole bazodanowe "aktualny" znika z modelu Autor (b/n),
+* pola "aktualna jednostka" oraz "aktualna funkcja" dla modelu Autor mogą mieć
+  wartość pustą (null) (b/n),
+* poprawiony skrypt odpinający miejsca pracy podczas importu danych
+  kadrowych (#1229),
+* polecenie przebudowania pola 'aktualna jednostka' dla powiązań autor+jednostka (b/n),
+* możliwość wpisywania i eksportowania do PBN danych o kosztach publikacji (#1235),
+* możliwość wyszukiwania publikacji w multiwyszukiwarce po aktualnej jednostce autora (#1236),
+* ostrzegaj przed zdublowanym PBN UID przy zapisie prac w module redagowania (#1152),
+* wyświetlaj opis jednostki na podstronie jednostki (#1217),
+* lepsza prezentacja autorów na stronie jednostki przy wykorzystaniu pola "podstawowe miejsce pracy"
+  oraz importu danych kadrowych (#1215)
+
 202205.1086
 -----------
 

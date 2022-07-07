@@ -219,7 +219,7 @@ class ModelZWWW(models.Model):
     """Model zawierający adres strony WWW"""
 
     www = models.URLField(
-        "Adres WWW (płatny dostęp)",
+        const.WWW_FIELD_LABEL,
         max_length=1024,
         blank=True,
         null=True,
@@ -232,7 +232,7 @@ class ModelZWWW(models.Model):
     )
 
     public_www = models.URLField(
-        "Adres WWW (wolny dostęp)",
+        const.PUBLIC_WWW_FIELD_LABEL,
         max_length=2048,
         blank=True,
         null=True,
@@ -272,7 +272,7 @@ def nie_zawiera_http_https(v):
 
 
 class ModelZDOI(models.Model):
-    doi = DOIField("DOI", null=True, blank=True, db_index=True)
+    doi = DOIField(const.DOI_FIELD_LABEL, null=True, blank=True, db_index=True)
 
     class Meta:
         abstract = True
@@ -808,7 +808,7 @@ class LinkDoPBNMixin:
 class ModelZPBN_UID(LinkDoPBNMixin, models.Model):
     pbn_uid = models.ForeignKey(
         "pbn_api.Publication",
-        verbose_name="Odpowiednik w PBN",
+        verbose_name=const.PBN_UID_FIELD_LABEL,
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
@@ -818,6 +818,128 @@ class ModelZPBN_UID(LinkDoPBNMixin, models.Model):
 
     class Meta:
         abstract = True
+
+
+class ModelZOplataZaPublikacje(models.Model):
+    opl_pub_cost_free = models.BooleanField(
+        verbose_name="Publikacja bezkosztowa", null=True
+    )
+    opl_pub_research_potential = models.BooleanField(
+        verbose_name="Środki finansowe art. 365 pkt 2 ustawy",
+        null=True,
+        help_text="Środki finansowe, o których mowa w art. 365 pkt 2 ustawy",
+    )
+    opl_pub_research_or_development_projects = models.BooleanField(
+        verbose_name="Środki finansowe na realizację projektu",
+        null=True,
+        help_text="Środki finansowe przyznane na realizację projektu "
+        "w zakresie badań naukowych lub prac rozwojowych",
+    )
+
+    opl_pub_other = models.BooleanField(verbose_name="Inne środki finansowe", null=True)
+
+    opl_pub_amount = models.DecimalField(
+        max_digits=20,
+        decimal_places=2,
+        verbose_name="Kwota (zł)",
+        null=True,
+        blank=True,
+    )
+
+    class Meta:
+        abstract = True
+
+    def clean(self):
+        if self.opl_pub_cost_free:
+            # Publikacja bezkosztowa...
+
+            if self.opl_pub_amount is not None and self.opl_pub_amount > 0:
+                # ... musi mieć kwotę za publikację równą zero
+                raise ValidationError(
+                    {
+                        "opl_pub_amount": "Publikacja bezkosztowa, ale kwota opłaty za publikację większa od zera."
+                        "Proszę o skorygowanie"
+                    }
+                )
+
+            if (
+                self.opl_pub_research_potential
+                or self.opl_pub_research_or_development_projects
+                or self.opl_pub_other
+            ):
+                # ... oraz odznaczone pozostałe pola
+
+                errmsg = """Jeżeli zaznaczono publikację jako bezkosztową, to pozostałe pola dotyczące
+                środków finansowych nie mogą być zaznaczone na 'TAK', a koszt powinien być równy 0.00 zł. Przejrzyj
+                te pola i odznacz je. """
+
+                errmsg2 = """Pole nie może być zaznaczone na 'TAK' dla publikacji bezkosztowej. """
+
+                errdct = {
+                    "opl_pub_cost_free": errmsg,
+                }
+
+                if self.opl_pub_research_potential:
+                    errdct["opl_pub_research_potential"] = errmsg2
+
+                if self.opl_pub_research_or_development_projects:
+                    errdct["opl_pub_research_or_development_projects"] = errmsg2
+
+                if self.opl_pub_other:
+                    errdct["opl_pub_other"] = errmsg2
+
+                raise ValidationError(errdct)
+        else:
+            # Publikacja kosztowa z kolei (self.opl_pub_cost_free jest None albo False) ...
+            if self.opl_pub_amount is not None and self.opl_pub_amount > 0:
+                # ...jeżeli ma wpisany koszt, musi miec zaznaczony któreś z pól:
+                if (
+                    not self.opl_pub_research_or_development_projects
+                    and not self.opl_pub_research_potential
+                    and not self.opl_pub_other
+                ):
+
+                    errmsg = (
+                        "Jeżeli wpisano opłatę za publikację, należy dodatkowo zaznaczyć, z jakich środków"
+                        " została ta opłata zrealizowana. Przejrzyj pola dotyczące środków finansowych "
+                        "i ustaw wartość na 'TAK' przynajmniej w jednym z nich - np w tym ... "
+                    )
+
+                    errmsg2 = "... lub w tym ..."
+                    errmsg3 = "... lub tutaj. "
+
+                    raise ValidationError(
+                        {
+                            "opl_pub_research_potential": errmsg,
+                            "opl_pub_research_or_development_projects": errmsg2,
+                            "opl_pub_other": errmsg3,
+                        }
+                    )
+
+            else:
+                # ... jeżeli nie ma wpisanego kosztu a ma zaznaczone któreś z pól to też źle
+                if (
+                    self.opl_pub_research_or_development_projects
+                    or self.opl_pub_research_potential
+                    or self.opl_pub_other
+                ):
+                    errdct = {"opl_pub_amount": "Tu należy uzupełnić kwotę. "}
+
+                    errmsg = (
+                        "Jeżeli wybrano pola dotyczące opłaty za publikację, należy dodatkowo wpisać kwotę... "
+                        "lub od-znaczyć te pola. "
+                    )
+
+                    if self.opl_pub_research_potential:
+                        errdct["opl_pub_research_potential"] = errmsg
+
+                    if self.opl_pub_research_or_development_projects:
+                        errdct["opl_pub_research_or_development_projects"] = errmsg
+
+                    if self.opl_pub_other:
+                        errdct["opl_pub_other"] = errmsg
+
+                    raise ValidationError(errdct)
 
 
 class Wydawnictwo_Baza(RekordBPPBaza):

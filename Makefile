@@ -113,13 +113,14 @@ new-release:
 	$(eval NEW_VERSION=$(shell bumpver test $(CUR_VERSION) 'vYYYY0M.BUILD[-TAGNUM]' |head -1|cut -d: -f2))
 	git flow release start $(NEW_VERSION)
 	bumpver update
+	emacs HISTORY.rst
 	git flow release finish "$(NEW_VERSION)" -p -m "Nowa wersja: $(NEW_VERSION)"
 
 release: tests js-tests new-release bdist_wheel upload
 
 set-version-from-vcs:
 	$(eval CUR_VERSION_VCS=$(shell git describe | sed s/\-/\./ | sed s/\-/\+/))
-	bumpver update --no-commit --set-version=$(CUR_VERSION_VCS)
+	bumpver update --no-commit --set-version=v$(CUR_VERSION_VCS)
 
 .PHONY: check-git-clean
 check-git-clean:

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "bpp_iplweb"
-version = "202205.1086"
+version = "202207.1087"
 description = ""
 authors = ["Michał Pasternak <michal.dtz@gmail.com>"]
 license = "MIT"
@@ -52,7 +52,7 @@ include = ["AUTHORS.rst", "CONTRIBUTING.rst", "HISTORY.rst", "LICENSE",
 "bpp-manage.py" = "django_bpp.manage_command:entry_point"
 
 [tool.bumpver]
-current_version = "v202205.1086"
+current_version = "v202207.1087"
 version_pattern = "vYYYY0M.BUILD[-TAGNUM][GITHASH]"
 commit_message = "bump version {old_version} -> {new_version}"
 commit = true
@@ -76,7 +76,7 @@ pygad = "2.16.1"
 django-denorm-iplweb = "0.5.5"
 django-permissions-widget = "1.5.2"
 simplejson = "3.17.5"
-django-dbtemplates = {git = "https://github.com/jazzband/django-dbtemplates.git", rev = "ac86ca5ec97c47016146b4c3d7b3f0c77ce4f614"}
+django-dbtemplates-iplweb = "4.1.0"
 django-reversion = "4.0.0"
 channels = "2.4.0"
 asgiref = "3.3.4"
@@ -134,7 +134,7 @@ django-mptt = "0.12.0"
 wosclient = "0.1.5"
 MOAI-iplweb = "2.0.0"
 django-redis-cache = "2.1.1"
-django-filter = {git = "https://github.com/carltongibson/django-filter.git", rev = "512310fe880af675f33be964d85907db838f62ea"}
+django-filter = "21.1"
 progressbar2 = "^4.0.0"
 dbfread = "^2.0.7"
 djangorestframework = "3.11.2"
@@ -146,10 +146,11 @@ django-import-export = "2.5.0"
 pymed-iplweb = "0.8.10"
 django-taggit = "1.3.0"
 django-taggit-serializer = "0.1.7"
-weasyprint = "53.2"
+weasyprint = "55.0"
 requests-oauthlib = "1.3.0"
 django-cacheops = "6.0"
 djangoql = "0.15.3"
+django-weasyprint = "^2.1.0"
 
 [tool.poetry.dev-dependencies]
 model-mommy = ">=1.5.1"
@@ -158,7 +159,7 @@ mock = "2.0.0"
 django-webtest = "1.9.7"
 beautifulsoup4 = ">=4.6.0"
 WebTest = "2.0.34"
-Sphinx = "1.6.3"
+Sphinx = "5.0.2"
 coveralls = "1.10.0"
 psutil = ">=5.6.6"
 pytest = ">=6.2.4"
@@ -178,7 +179,8 @@ black = "^22.3.0"
 autoflake = "^1.4"
 autopep8 = "^1.6.0"
 flake8 = "^4.0.1"
-bumpver = {url = "https://github.com/mpasternak/bumpver/archive/refs/tags/v202219.04-alpha.tar.gz#egg=bumpver-202219.04-alpha"}
+bumpver = {url = "https://github.com/mbarkhau/bumpver/archive/refs/tags/2022.1117.tar.gz#egg=bumpver-202211.17"}
+# Poprzedni bumpver: https://github.com/mpasternak/bumpver/archive/refs/tags/v202219.04-alpha.tar.gz#egg=bumpver-202219.04-alpha"
 typing = ">=3.6,<3.7"
 isort = ">=5.7.0"
 pre-commit = "^2.18.1"

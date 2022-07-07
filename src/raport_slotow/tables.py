@@ -170,6 +170,7 @@ class RaportSlotowZerowyTable(tables.Table):
         model = RaportZerowyEntry
         fields = (
             "autor",
+            "autor__aktualna_jednostka",
             "autor__pbn_id",
             "autor__orcid",
             "lata",
@@ -194,6 +195,7 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
             "liczba_wszystkich_autorow",
             "punkty_pk",
             "autor",
+            "aktualna_jednostka",
             "pbn_id",
             "orcid",
             "dyscyplina",
@@ -211,6 +213,9 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
     tytul_oryginalny = Column("Tytuł oryginalny", "rekord")
     autorzy = Column(
         "Autorzy", "rekord.opis_bibliograficzny_zapisani_autorzy_cache", orderable=False
+    )
+    aktualna_jednostka = Column(
+        "Aktualna jednostka", "autorzy.autor.aktualna_jednostka.nazwa"
     )
     rok = Column("Rok", "rekord.rok", orderable=True)
     zrodlo_informacje = None

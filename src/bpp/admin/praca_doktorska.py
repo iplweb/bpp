@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 from dal import autocomplete
 from django import forms
 from taggit.forms import TextareaTagWidget
@@ -19,6 +17,7 @@ from .helpers import (
     MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
     MODEL_TYPOWANY_BEZ_CHARAKTERU_FIELDSET,
     MODEL_Z_ISBN,
+    MODEL_Z_OPLATA_ZA_PUBLIKACJE_FIELDSET,
     MODEL_Z_ROKIEM,
     MODEL_ZE_SZCZEGOLAMI,
     NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW,
@@ -144,6 +143,7 @@ class Praca_DoktorskaAdmin(Praca_Doktorska_Habilitacyjna_Admin_Base):
         POZOSTALE_MODELE_FIELDSET,
         ADNOTACJE_Z_DATAMI_FIELDSET,
         MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET,
+        MODEL_Z_OPLATA_ZA_PUBLIKACJE_FIELDSET,
     )
 
     inlines = (

@@ -111,26 +111,39 @@ def test_wydawnictwo_ciagle_admin_zapisz_i_wyslij_do_pbn_change_nie(
         Uczelnia.pbn_client = orig_pbn_client
 
 
+TEST_PBN_ID = 50000
+
+
 @pytest.mark.parametrize(
     "fld,value",
     [
+        ("pbn_uid", TEST_PBN_ID),
         ("doi", "10.10/123123"),
         ("www", "https://foobar.pl"),
         ("public_www", "https://foobar.pl"),
     ],
 )
-def test_Wydawnictwo_Ciagle_Admin_sprawdz_duplikaty_www_doi(
+def test_Wydawnictwo_Ciagle_Admin_sprawdz_duplikaty_www_doi_pbn(
     admin_app, zrodlo, fld, value
 ):
+    if fld == "pbn_uid":
+        value = mommy.make(Publication, pk=TEST_PBN_ID)
+
     mommy.make(Wydawnictwo_Ciagle, **{fld: value})
     w2 = mommy.make(Wydawnictwo_Ciagle, zrodlo=zrodlo)
+
+    if fld == "pbn_uid":
+        value = TEST_PBN_ID  # mommy.make(Publication, pk=TEST_PBN_ID)
 
     url = "admin:bpp_wydawnictwo_ciagle_change"
     page = admin_app.get(reverse(url, args=(w2.pk,)))
 
-    page.forms["wydawnictwo_ciagle_form"][fld].value = value
+    if fld == "pbn_uid":
+        page.forms["wydawnictwo_ciagle_form"][fld].force_value(value)
+    else:
+        page.forms["wydawnictwo_ciagle_form"][fld].value = value
     res = page.forms["wydawnictwo_ciagle_form"].submit().maybe_follow()
 
-    assert "Istnieją rekordy z identycznym polem" in normalize_html(
+    assert "inne rekordy z identycznym polem" in normalize_html(
         res.content.decode("utf-8")
     )

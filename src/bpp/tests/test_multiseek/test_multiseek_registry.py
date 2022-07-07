@@ -23,6 +23,7 @@ from bpp.multiseek_registry import (
     EQUAL_PLUS_SUB_FEMALE,
     EQUAL_PLUS_SUB_UNION_FEMALE,
     UNION,
+    AktualnaJednostkaAutoraQueryObject,
     CharakterOgolnyQueryObject,
     DataUtworzeniaQueryObject,
     DOIQueryObject,
@@ -448,3 +449,17 @@ def test_SlowaKluczoweQueryObject(wydawnictwo_zwarte):
 
     res = SlowaKluczoweQueryObject().real_query("foo", logic.EQUAL)
     assert Rekord.objects.filter(res).count() == 1
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "param",
+    [
+        logic.EQUAL,
+        logic.DIFFERENT,
+        EQUAL_PLUS_SUB_FEMALE,
+    ],
+)
+def test_AktualnaJednostkaAutoraQueryObject(jednostka, param):
+    res = AktualnaJednostkaAutoraQueryObject().real_query(jednostka, param)
+    assert res is not None

@@ -197,6 +197,13 @@ def uczelnia(db):
     )[0]
 
 
+@pytest.fixture
+def uczelnia_z_obca_jednostka(uczelnia, obca_jednostka):
+    uczelnia.obca_jednostka = obca_jednostka
+    uczelnia.save()
+    return uczelnia
+
+
 @pytest.mark.django_db
 def _wydzial_maker(nazwa, skrot, uczelnia, **kwargs):
     return Wydzial.objects.get_or_create(
@@ -959,3 +966,15 @@ def django_db_setup(django_db_setup, django_db_blocker):  # noqa
 
     with django_db_blocker.unblock():
         denorms.install_triggers()
+
+
+# https://github.com/pytest-dev/pytest-splinter/issues/158
+#  AttributeError: module 'splinter.driver.webdriver.firefox' has no attribute 'WebDriverElement'
+
+
+from pytest_splinter.webdriver_patches import patch_webdriver
+
+
+@pytest.fixture(scope="session")
+def browser_patches():
+    patch_webdriver()

@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 #
 #
 # This file is execfile()d with the current directory set to its
@@ -38,7 +37,12 @@ from django_bpp.version import VERSION
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ["sphinx.ext.autodoc", "sphinx.ext.viewcode", "sphinx.ext.imgmath"]
+extensions = [
+    "sphinx.ext.autodoc",
+    "sphinx.ext.viewcode",
+    "sphinx.ext.imgmath",
+    "sphinx.ext.autosectionlabel",
+]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -53,8 +57,8 @@ source_suffix = ".rst"
 master_doc = "index"
 
 # General information about the project.
-project = u"Bibliografia Publikacji Pracowników"
-copyright = u"2017-2020, iplweb.pl Michał Pasternak"
+project = "Bibliografia Publikacji Pracowników"
+copyright = "2017-2022, iplweb.pl Michał Pasternak"
 
 # The version info for the project you're documenting, acts as replacement
 # for |version| and |release|, also used in various other places throughout
@@ -193,11 +197,11 @@ htmlhelp_basename = "django_bppdoc"
 
 latex_elements = {
     # The paper size ('letterpaper' or 'a4paper').
-    #'papersize': 'letterpaper',
+    # 'papersize': 'letterpaper',
     # The font size ('10pt', '11pt' or '12pt').
-    #'pointsize': '10pt',
+    # 'pointsize': '10pt',
     # Additional stuff for the LaTeX preamble.
-    #'preamble': '',
+    # 'preamble': '',
 }
 
 # Grouping the document tree into LaTeX files. List of tuples
@@ -207,8 +211,8 @@ latex_documents = [
     (
         "index",
         "django-bpp.tex",
-        u"Bibliografia Publikacji Pracowników",
-        u"Michał Pasternak",
+        "Bibliografia Publikacji Pracowników",
+        "Michał Pasternak",
         "manual",
     ),
 ]
@@ -242,8 +246,8 @@ man_pages = [
     (
         "index",
         "django-bpp",
-        u"Bibliografia Publikacji Pracowników",
-        [u"Michał Pasternak"],
+        "Bibliografia Publikacji Pracowników",
+        ["Michał Pasternak"],
         1,
     )
 ]
@@ -261,8 +265,8 @@ texinfo_documents = [
     (
         "index",
         "amms_planop2xls",
-        u"Bibliografia Publikacji Pracowników",
-        u"Michał Pasternak",
+        "Bibliografia Publikacji Pracowników",
+        "Michał Pasternak",
         "django_bpp",
         "One line description of project.",
         "Miscellaneous",

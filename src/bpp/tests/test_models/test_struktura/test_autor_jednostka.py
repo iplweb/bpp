@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 import pytest
 from django.db.utils import IntegrityError, InternalError
@@ -33,18 +33,15 @@ def test_autor_jednostka_trigger_ustaw_aktualna_jednostke_1(
 ):
     aj = mommy.make(Autor_Jednostka, autor=autor_jan_kowalski, jednostka=jednostka)
     autor_jan_kowalski.refresh_from_db()
-    assert autor_jan_kowalski.aktualny
     assert autor_jan_kowalski.aktualna_jednostka == jednostka
 
     aj.zakonczyl_prace = date.today() - timedelta(days=5)
     aj.save()
     autor_jan_kowalski.refresh_from_db()
-    assert not autor_jan_kowalski.aktualny
-    assert autor_jan_kowalski.aktualna_jednostka == jednostka
+    assert autor_jan_kowalski.aktualna_jednostka is None
 
     aj.delete()
     autor_jan_kowalski.refresh_from_db()
-    assert not autor_jan_kowalski.aktualny
     assert autor_jan_kowalski.aktualna_jednostka is None
 
 
@@ -68,7 +65,7 @@ def test_autor_jednostka_trigger_ustaw_aktualna_jednostke_2(
     )
     autor_jan_kowalski.refresh_from_db()
 
-    assert autor_jan_kowalski.aktualna_jednostka == druga_jednostka
+    assert autor_jan_kowalski.aktualna_jednostka is None
 
 
 @pytest.mark.django_db
@@ -103,3 +100,21 @@ def test_autor_jednostka_trigger_ustaw_aktualna_jednostke_podstawowe_miejsce_pra
     autor_jan_kowalski.refresh_from_db()
 
     assert autor_jan_kowalski.aktualna_jednostka == druga_jednostka
+
+
+@pytest.mark.django_db
+def test_autor_jednostka_trigger_odepnij_wszystkie_jednostki(
+    autor_jan_kowalski, jednostka
+):
+    mommy.make(
+        Autor_Jednostka,
+        autor=autor_jan_kowalski,
+        jednostka=jednostka,
+        podstawowe_miejsce_pracy=True,
+        zakonczyl_prace=datetime.now().date() - timedelta(days=1),
+    )
+
+    autor_jan_kowalski.refresh_from_db()
+
+    # Po odpięciu wszystkiego jednostka ma być None
+    assert autor_jan_kowalski.aktualna_jednostka is None

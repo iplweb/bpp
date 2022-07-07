@@ -16,6 +16,7 @@ from bpp.models import (
     MaProcentyMixin,
     ModelOpcjonalnieNieEksportowanyDoAPI,
     ModelZMiejscemPrzechowywania,
+    ModelZOplataZaPublikacje,
     ModelZPBN_UID,
 )
 from bpp.models.abstract import (
@@ -176,6 +177,7 @@ class Wydawnictwo_Zwarte(
     ModelZISSN,
     ModelWybitny,
     ModelZPBN_UID,
+    ModelZOplataZaPublikacje,
     MaProcentyMixin,
     DodajAutoraMixin,
     DirtyFieldsMixin,
@@ -317,6 +319,10 @@ class Wydawnictwo_Zwarte(
     @depend_on_related("self", "wydawnictwo_nadrzedne")
     def slug(self):
         return self.get_slug()
+
+    def clean(self):
+        DwaTytuly.clean(self)
+        ModelZOplataZaPublikacje.clean(self)
 
 
 class Wydawnictwo_Zwarte_Zewnetrzna_Baza_Danych(models.Model):

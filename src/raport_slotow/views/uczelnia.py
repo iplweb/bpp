@@ -1,11 +1,8 @@
 import urllib
 
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.utils import timezone
+from django_filters.views import FilterMixin
 from django_tables2 import RequestConfig, SingleTableMixin
 
-from bpp.views.mixins import UczelniaSettingRequiredMixin
-from django_bpp.version import VERSION
 from formdefaults.helpers import FormDefaultsMixin
 from long_running.tasks import perform_generic_long_running_task
 from long_running.views import (
@@ -27,6 +24,14 @@ from raport_slotow.tables import (
     RaportSlotowUczelniaTable,
 )
 from raport_slotow.util import MyExportMixin
+
+from django.contrib.auth.mixins import LoginRequiredMixin
+
+from django.utils import timezone
+
+from bpp.views.mixins import UczelniaSettingRequiredMixin
+
+from django_bpp.version import VERSION
 
 
 class ListaRaportSlotowUczelnia(
@@ -88,6 +93,7 @@ class SzczegolyRaportSlotowUczelniaListaRekordow(
     MyExportMixin,
     SingleTableMixin,
     LongRunningResultsView,
+    FilterMixin,
 ):
     template_name = "raport_slotow/raport_slotow_uczelnia.html"
     uczelnia_attr = "pokazuj_raport_slotow_uczelnia"
@@ -134,15 +140,31 @@ class SzczegolyRaportSlotowUczelniaListaRekordow(
         ]
 
     def get_context_data(self, *args, **kwargs):
-        context = super(
-            SzczegolyRaportSlotowUczelniaListaRekordow, self
-        ).get_context_data(**kwargs)
+        context = super().get_context_data(**kwargs)
         context["object"] = self.parent_object
         context["export_link"] = urllib.parse.urlencode(
             dict(self.request.GET, **{"_export": "xlsx"}), doseq=True
         )
+        context["filter"] = self.get_filterset(self.get_filterset_class())
         return context
 
     def get_export_filename(self, export_format):
         stamp = timezone.now().strftime("%Y%m%d-%H%M")
         return f"raport_dyscyplin_{self.parent_object.od_roku}-{self.parent_object.do_roku}_{stamp}.{export_format}"
+
+    def get(self, *args, **kw):
+        filterset_class = self.get_filterset_class()
+        self.filterset = self.get_filterset(filterset_class)
+
+        if (
+            not self.filterset.is_bound
+            or self.filterset.is_valid()
+            or not self.get_strict()
+        ):
+            self.object_list = self.filterset.qs
+        else:
+            self.object_list = self.filterset.queryset.none()
+
+        self.table_data = self.object_list
+
+        return super().get(*args, **kw)

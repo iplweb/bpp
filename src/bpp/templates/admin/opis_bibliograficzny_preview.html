@@ -1,0 +1,40 @@
+{% extends "bare.html" %}
+
+{% block extratitle %}
+    Szybki podgląd
+{% endblock %}
+
+{% block body %}
+    <p></p>
+    <div class="grid-container">
+        <div class="grid-x">
+            <div class="large-12 cell">
+
+                <div style="float: right">
+                    <input type="button" onclick="window.close();" value="Zamknij"/>
+                </div>
+
+                {% if template_okay %}
+                    <p>Szablon przeanalizowany poprawnie. Poniżej znajdziesz listę {{ ile_ostatnich_prac }} ostatnio zmienionych rekordów
+                        w  BPP z opisem bibliograficznym wyrenderowanym za pomocą nowego szablonu. Po zweryfikowaniu,
+                        czy wszystko działa zgodnie z zamierzeniami możesz zamknąć to okno i zapisać szablon --
+                        wówczas nastąpi stopniowe przebudowanie wszystkich opisów bibliograficznych.
+                    </p>
+                    <ol>
+                        {% for elem in lista_prac %}
+                            <li>{{ elem }}</li>
+                        {% endfor %}
+                    </ol>
+                {% else %}
+                    <p>
+                        Wystąpił błąd podczas analizy szablonu.
+                    </p><p>
+                    Przyczyna: <strong>{{ exception }}</strong>
+                    </p><p>
+                        Popraw szablon i spróbuj ponownie.
+                    </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+{% endblock %}

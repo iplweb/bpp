@@ -24,6 +24,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
+from bpp import const
 from bpp.const import PBN_MAX_ROK, PBN_MIN_ROK
 from bpp.models import Status_Korekty
 from bpp.models.sloty.core import ISlot
@@ -112,6 +113,20 @@ MODEL_Z_ISSN = (
 )
 
 MODEL_Z_PBN_UID = ("pbn_uid",)
+
+MODEL_Z_OPLATA_ZA_PUBLIKACJE = (
+    "opl_pub_cost_free",
+    "opl_pub_research_potential",
+    "opl_pub_research_or_development_projects",
+    "opl_pub_other",
+    "opl_pub_amount",
+)
+
+MODEL_Z_OPLATA_ZA_PUBLIKACJE_FIELDSET = (
+    "Opłata za publikację",
+    {"classes": ("grp-collapse grp-closed",), "fields": MODEL_Z_OPLATA_ZA_PUBLIKACJE},
+)
+
 
 MODEL_Z_ISBN = (
     "isbn",
@@ -618,7 +633,13 @@ class OptionalPBNSaveMixin:
 def sprawdz_duplikaty_www_doi(request, obj):
     from bpp.models.cache import Rekord
 
-    for field in ["www", "public_www", "doi"]:
+    IEXACT = "__iexact"
+    for field, operator, label in [
+        ("www", IEXACT, const.WWW_FIELD_LABEL),
+        ("public_www", IEXACT, const.PUBLIC_WWW_FIELD_LABEL),
+        ("doi", IEXACT, const.DOI_FIELD_LABEL),
+        ("pbn_uid_id", "", const.PBN_UID_FIELD_LABEL),
+    ]:
         if not hasattr(obj, field):
             continue
 
@@ -628,7 +649,7 @@ def sprawdz_duplikaty_www_doi(request, obj):
 
         rekord_pk = (ContentType.objects.get_for_model(obj).pk, obj.pk)
 
-        query = Q(**{field + "__iexact": v})
+        query = Q(**{field + operator: v})
 
         if field == "www":
             query |= Q(public_www__iexact=v)
@@ -636,4 +657,6 @@ def sprawdz_duplikaty_www_doi(request, obj):
             query |= Q(www__iexact=v)
 
         if Rekord.objects.filter(query).exclude(pk=rekord_pk).exists():
-            messages.warning(request, f'Istnieją rekordy z identycznym polem "{field}"')
+            messages.warning(
+                request, const.ZDUBLOWANE_POLE_KOMUNIKAT.format(label=label)
+            )

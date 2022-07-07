@@ -1,19 +1,21 @@
 {% extends "base.html" %}{% load render_table from django_tables2 %}
 
 {% block extratitle %}
-    Raport slotów - uczelnia - za {{ object.od_roku }} do {{ object.do_roku }}
+    Raport slotów - uczelnia - za {{ object.od_roku }}
+    {% if object.do_roku != object.od_roku %} do {{ object.do_roku }}{% endif %}
 {% endblock %}
 
 
 {% block breadcrumbs %}
     {{ block.super }}
     <li><a href="{% url "raport_slotow:lista-raport-slotow-uczelnia" %}">raport slotów - uczelnia</a></li>
-    <li class="current">raport slotów - uczelnia za {{ object.od_roku }} - {{ object.do_roku }}</li>
+    <li class="current">raport slotów - uczelnia za {{ object.od_roku }}
+        {% if object.do_roku != object.od_roku %} - {{ object.do_roku }}{% endif %}</li>
 {% endblock %}
 
 {% block content %}
-    <h1>Raport slotów za {{ object.od_roku }} - {{ object.do_roku }}</h1>
-
+    <h1>Raport slotów za {{ object.od_roku }}
+        {% if object.do_roku != object.od_roku %} - {{ object.do_roku }}{% endif %}</h1>
 
     <div class="callout small secondary">
         {% load humanize %}
@@ -37,24 +39,18 @@
             <table>
                 <tr>
                     <td>Filtruj po nazwisku autora:</td>
-                    {% if object.dziel_na_jednostki_i_wydzialy %}
-                        <td>Filtruj po jednostce:</td>
-                        <td>Filtruj po wydziale:</td>
-                    {% endif %}
                     <td>Filtruj po dyscyplinie:</td>
+                    <td>Filtruj sumę:</td>
                     <td>Filtruj slot:</td>
                     <td>Filtruj średnią:</td>
                     <td></td>
                 </tr>
                 <tr>
-                    <td>{{ filter.form.autor__nazwisko }}</td>
-                    {% if object.dziel_na_jednostki_i_wydzialy %}
-                        <td>{{ filter.form.jednostka__nazwa }}</td>
-                        <td>{{ filter.form.jednostka__wydzial }}</td>
-                    {% endif %}
+                    <td style="width: 25%;">{{ filter.form.autor__nazwisko }}</td>
                     <td>{{ filter.form.dyscyplina }}</td>
-                    <td width="15%">{{ filter.form.slot__min }}&nbsp;{{ filter.form.slot__max }}</td>
-                    <td width="15%">{{ filter.form.avg__min }}&nbsp;{{ filter.form.avg__max }}</td>
+                    <td style="width: 15%;">{{ filter.form.suma__min }}&nbsp;{{ filter.form.suma__max }}</td>
+                    <td style="width: 15%;">{{ filter.form.slot__min }}&nbsp;{{ filter.form.slot__max }}</td>
+                    <td style="width: 15%;">{{ filter.form.avg__min }}&nbsp;{{ filter.form.avg__max }}</td>
 
                     <td><input type="submit" value="Filtruj"/>
 

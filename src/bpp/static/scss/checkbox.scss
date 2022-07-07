@@ -14,11 +14,11 @@ user-select: none;
 
 input[type=checkbox] {
 	position: absolute;
-    overflow: hidden; 
-    clip: rect(0 0 0 0); 
-    height:1px; 
-    width:1px; 
-    margin:-1px; 
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    height:1px;
+    width:1px;
+    margin:-1px;
     padding:0;
     border:0;
 }
@@ -27,10 +27,9 @@ input[type=checkbox] + label {
 	padding-left:20px;
 	display:inline-block;
 	background-repeat:no-repeat;
-	background-position: 0 0;
-	font-size:15px;
+	background-position: 0 3px;
+	//font-size:15px;
 	vertical-align:middle;
 	cursor:pointer;
 	background-image: url(/static/bpp/images/no-check.png);
 }
-

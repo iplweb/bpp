@@ -1,3 +1,5 @@
+import functools
+import ssl
 from copy import copy
 
 from django.http import HttpResponse, HttpResponseRedirect
@@ -5,16 +7,12 @@ from django.template.defaultfilters import pluralize
 from django.urls import reverse
 from django.views.generic import FormView, TemplateView
 from django_tables2 import MultiTableMixin, RequestConfig
+from django_weasyprint.utils import django_url_fetcher
 
 from formdefaults.helpers import FormDefaultsMixin
 from raport_slotow.forms import AutorRaportSlotowForm
 from raport_slotow.tables import RaportSlotowAutorTable
-from raport_slotow.util import (
-    InitialValuesFromGETMixin,
-    MyExportMixin,
-    MyTableExport,
-    django_url_fetcher,
-)
+from raport_slotow.util import InitialValuesFromGETMixin, MyExportMixin, MyTableExport
 from .. import const
 
 from django.utils import timezone
@@ -165,7 +163,7 @@ class RaportSlotow(
             raise NotImplementedError
 
     def get_context_data(self, *, cleaned_data=None, object_list=None, **kwargs):
-        context = super(RaportSlotow, self).get_context_data(**kwargs)
+        context = super().get_context_data(**kwargs)
         context["autor"] = self.autor
         context["od_roku"] = self.kwargs["od_roku"]
         context["do_roku"] = self.kwargs["do_roku"]
@@ -206,11 +204,17 @@ class RaportSlotow(
                 # (mpasternak, 17.03.2021)
                 from weasyprint import HTML
 
+                # disable host and certificate check
+                context = ssl.create_default_context()
+                context.check_hostname = False
+                context.verify_mode = ssl.CERT_NONE
+                url_fetcher = functools.partial(django_url_fetcher, ssl_context=context)
+
                 response = HttpResponse(
                     content=HTML(
                         string=ret.render().content,
                         base_url=self.request.build_absolute_uri(),
-                        url_fetcher=django_url_fetcher,
+                        url_fetcher=url_fetcher,
                     ).write_pdf(),
                     content_type="application/pdf",
                 )

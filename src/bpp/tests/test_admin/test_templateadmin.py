@@ -85,3 +85,37 @@ def test_BppTemplateAdmin_zmiana_szablonu_zmienia_rekordy(
 
     wydawnictwo_ciagle.refresh_from_db()
     assert wydawnictwo_ciagle.opis_bibliograficzny_cache == WERSJA_2
+
+
+@pytest.fixture
+def typowy_szablon_opisu():
+    t, _ign = Template.objects.update_or_create(
+        name="opis_bibliograficzny.html",
+        defaults={"content": "123"},
+    )
+    SzablonDlaOpisuBibliograficznego.objects.update_or_create(
+        model=None,
+        template=t,
+    )
+    return t
+
+
+@pytest.mark.django_db
+def test_dbtemplates_TemplateAdmin_preview_good(
+    typowy_szablon_opisu, admin_client, wydawnictwo_ciagle
+):
+
+    TEST_STR = b"456"
+    res = admin_client.get(
+        "/admin/dbtemplates/template/preview/", {"template": TEST_STR}, follow=True
+    )
+    assert TEST_STR in res.content
+
+
+@pytest.mark.django_db
+def test_dbtemplates_TemplateAdmin_preview_bad(typowy_szablon_opisu, admin_client):
+
+    res = admin_client.get(
+        "/admin/dbtemplates/template/preview/", {"template": "{% if foobar %}"}
+    )
+    assert "Wystąpił błąd" in res.rendered_content

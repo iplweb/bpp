@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 """
 Struktura uczelni.
 """
@@ -26,7 +24,7 @@ from django.utils import timezone
 from bpp.models import ModelZAdnotacjami, ModelZPBN_UID
 from bpp.models.abstract import ModelZPBN_ID
 from bpp.models.autor import Autor, Autor_Jednostka
-from bpp.util import FulltextSearchMixin
+from bpp.util import FulltextSearchMixin, safe_html
 
 SORTUJ_RECZNIE = ("kolejnosc", "nazwa")
 SORTUJ_ALFABETYCZNIE = ("nazwa",)
@@ -38,7 +36,7 @@ class JednostkaManager(FulltextSearchMixin, TreeManager):
             # Kompatybilność wsteczna, z czasów, gdy nie było metryczki historycznej
             # dla obecności jednostki w wydziałach
             kw["uczelnia"] = kw["wydzial"].uczelnia
-        return super(JednostkaManager, self).create(*args, **kw)
+        return super().create(*args, **kw)
 
     def get_default_ordering(self):
         uczelnia = Uczelnia.objects.get_default()
@@ -53,11 +51,7 @@ class JednostkaManager(FulltextSearchMixin, TreeManager):
         return ordering
 
     def get_queryset(self, *args, **kwargs):
-        return (
-            super(JednostkaManager, self)
-            .get_queryset(*args, **kwargs)
-            .select_related("wydzial")
-        )
+        return super().get_queryset(*args, **kwargs).select_related("wydzial")
 
 
 class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
@@ -93,6 +87,10 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
     nazwa = models.CharField(max_length=512, unique=True)
     skrot = models.CharField("Skrót", max_length=128, unique=True)
     opis = models.TextField(blank=True, null=True)
+    pokazuj_opis = models.BooleanField(
+        default=True,
+        help_text="Gdy to pole jest zaznaczone, system wyświetli pole 'Opis' na podstronie jednostki.",
+    )
     slug = AutoSlugField(populate_from="nazwa", unique=True)
 
     widoczna = models.BooleanField(default=True, db_index=True)
@@ -176,6 +174,10 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
 
     zatrudnij = dodaj_autora
 
+    #
+    # "Stare (przed-2022)" procedury wyświetlające autorów obecnie przypisanych do tej jednostki
+    #
+
     def obecni_autorzy(self):
         dzis = timezone.now().date()
 
@@ -187,10 +189,40 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
             autor_jednostka__jednostka=self,
         ).distinct()
 
-    pracownicy = obecni_autorzy
-
     def autorzy_na_strone_jednostki(self):
+        """ "Stara" funkcja, wyswietlajaca autorow przypisanych do tej jednostki,
+        w przypadku, gdy nikt nie ma 'Podstawowe miejsce pracy' ustawione na TRUE"""
         return self.obecni_autorzy().filter(pokazuj=True)
+
+    #
+    # "Nowe (2022)" procedury wyświetlające aktualnych autorów (ta jednostka ma przypisanie
+    # gdzie podstawowe_miejsce_pracy=True) oraz poprzednich współpracowników
+    #
+
+    def aktualni_autorzy(self):
+        return (
+            Autor_Jednostka.objects.filter(
+                podstawowe_miejsce_pracy=True, jednostka=self
+            )
+            .values_list("autor")
+            .distinct()
+        )
+
+    def pracownicy(self):
+        """Autorzy, którzy tą jednostkę mają wpisani jako AKTUALNA -- czyli
+        aktualni pracownicy, obecni pracownicy"""
+        return Autor.objects.filter(pk__in=self.aktualni_autorzy(), pokazuj=True)
+
+    def wspolpracowali(self):
+        """Autorzy, którzy popełnili jakiekolwiek prace z afiliacją na tę jednostkę,
+        nie będący autorami z  funkcji 'pracownicy'"""
+        from bpp.models.cache import Autorzy
+
+        return Autor.objects.filter(
+            pk__in=Autorzy.objects.filter(jednostka=self)
+            .exclude(autor_id__in=self.aktualni_autorzy())
+            .values_list("autor")
+        )
 
     def kierownik(self):
         try:
@@ -226,6 +258,10 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
             return self.przypisanie_dla_dnia(data).wydzial
         except AttributeError:
             return
+
+    def clean(self):
+        if self.opis:
+            self.opis = safe_html(self.opis)
 
 
 class Jednostka_Wydzial_Manager(models.Manager):
@@ -343,7 +379,7 @@ class Jednostka_Wydzial(models.Model):
         ordering = ("-od",)
 
     def __str__(self):
-        return "%s - %s (%s, %s)" % (self.jednostka, self.wydzial, self.od, self.do)
+        return f"{self.jednostka} - {self.wydzial} ({self.od}, {self.do})"
 
     def clean(self):
         try:

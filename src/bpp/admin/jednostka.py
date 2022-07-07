@@ -1,6 +1,5 @@
-# -*- encoding: utf-8 -*-
+import sys
 
-# -*- encoding: utf-8 -*-
 from django import forms
 from mptt.admin import DraggableMPTTAdmin
 
@@ -108,14 +107,14 @@ class JednostkaAdmin(
 
     def get_changeform_initial_data(self, request):
         # Zobacz na komentarz do Jednostka.uczelnia.default
-        data = super(JednostkaAdmin, self).get_changeform_initial_data(request)
+        data = super().get_changeform_initial_data(request)
         if "uczelnia" not in data:
             data["uczelnia"] = Uczelnia.objects.first()
         return data
 
     def changelist_view(self, request, *args, **kwargs):
         self.request = request
-        return super(JednostkaAdmin, self).changelist_view(request, *args, **kwargs)
+        return super().changelist_view(request, *args, **kwargs)
 
     def indented_title(self, item):
         """
@@ -125,7 +124,7 @@ class JednostkaAdmin(
 
         # Wysuwaj nazwę jednostki wyłacznie w przypadku, gdy nie filtrujemy listy
         if not self.request.GET.keys():
-            return super(JednostkaAdmin, self).indented_title(item)
+            return super().indented_title(item)
 
         return format_html(
             "<div>{}</div>",
@@ -150,6 +149,28 @@ class JednostkaAdmin(
         if request.GET.keys():
             return self.list_display[1:]
         return self.list_display
+
+    def get_list_per_page(self):
+        from django.db import connection
+
+        if "bpp_uczelnia" not in connection.introspection.table_names():
+            return CommitedModelAdmin.list_per_page
+
+        req = None
+        if hasattr(self, "request"):
+            req = self.request
+
+        uczelnia = Uczelnia.objects.get_for_request(req)
+
+        if uczelnia is None:
+            return CommitedModelAdmin.list_per_page
+
+        if uczelnia.sortuj_jednostki_alfabetycznie:
+            return CommitedModelAdmin.list_per_page
+
+        return sys.maxsize
+
+    list_per_page = property(get_list_per_page)
 
 
 admin.site.register(Jednostka, JednostkaAdmin)

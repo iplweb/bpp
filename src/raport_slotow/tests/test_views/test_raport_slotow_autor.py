@@ -12,3 +12,4 @@ def test_RaportSlotow_get_pdf(admin_app, autor_jan_kowalski):
     pdf_page = raport_page.click("pobierz PDF")
 
     assert pdf_page.status_code == 200
+    assert pdf_page.content[:8] == b"%PDF-1.7"

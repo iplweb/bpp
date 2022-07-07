@@ -1,18 +1,25 @@
+import sys
+import traceback
 from datetime import datetime, timedelta
 
 from dbtemplates.admin import TemplateAdmin, TemplateAdminForm
 from dbtemplates.models import Template
 from dbtemplates.utils.cache import remove_cached_template
 from dbtemplates.utils.template import check_template_syntax
+from django.conf.urls import url
 from django.core.exceptions import ValidationError
+from django.template import Context, TemplateSyntaxError
 from django.template.engine import Engine
 from django.template.loaders.cached import Loader as CachedLoader
+from django.template.response import TemplateResponse
 
 from django.contrib import admin, messages
 
 from bpp.util import rebuild_instances_of_models
 
 admin.site.unregister(Template)
+
+ILE_OSTATNICH_PRAC = 25
 
 
 class BppTemplateAdminForm(TemplateAdminForm):
@@ -95,3 +102,62 @@ class BppTemplateAdmin(TemplateAdmin):
         super(TemplateAdmin, self).delete_model(request, obj)
         self.invalidate_cache(request, Template.objects.filter(pk=obj.pk))
         self.template_updated(request, obj)
+
+    def get_urls(self):
+        urls = super().get_urls()
+
+        preview_urls = [
+            url(
+                r"^preview/$",
+                self.admin_site.admin_view(self.opis_bibliograficzny_preview),
+            )
+            # Add here more urls if you want following same logic
+        ]
+
+        return preview_urls + urls
+
+    # Your view definition fn
+    def opis_bibliograficzny_preview(self, request):
+        template = request.GET.get("template")
+
+        from django.template import Template as DjangoTemplate
+
+        template_okay = True
+        exception = None
+        lista_prac = []
+        tb = None
+
+        try:
+            django_template = DjangoTemplate(template)
+        except TemplateSyntaxError as e:
+            template_okay = False
+            exception = e
+            type, value, tb = sys.exc_info()
+
+        if template_okay:
+            from bpp.models.cache import Rekord
+
+            ostatnie_prace = Rekord.objects.all().order_by("-ostatnio_zmieniony")[
+                :ILE_OSTATNICH_PRAC
+            ]
+
+            for elem in ostatnie_prace:
+                context = Context({"praca": elem.original})
+                lista_prac.append(django_template.render(context))
+
+            #
+        context = dict(
+            self.admin_site.each_context(request),
+            template=template,
+            lista_prac=lista_prac,
+            template_okay=template_okay,
+            exception=exception,
+            ile_ostatnich_prac=ILE_OSTATNICH_PRAC,
+            is_popup=True,
+            traceback="\n".join(traceback.format_tb(tb)),
+            tytul="Szybki podgląd szablonu",
+        )
+
+        return TemplateResponse(
+            request, "admin/opis_bibliograficzny_preview.html", context
+        )

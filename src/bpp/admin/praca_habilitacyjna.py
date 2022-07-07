@@ -1,4 +1,3 @@
-# -*- encoding: utf-8 -*-
 from dal import autocomplete
 from dal.forms import FutureModelForm
 from dal_queryset_sequence.fields import QuerySetSequenceModelField
@@ -19,6 +18,7 @@ from .helpers import (
     MODEL_PUNKTOWANY_KOMISJA_CENTRALNA_FIELDSET,
     MODEL_TYPOWANY_BEZ_CHARAKTERU_FIELDSET,
     MODEL_Z_ISBN,
+    MODEL_Z_OPLATA_ZA_PUBLIKACJE_FIELDSET,
     MODEL_Z_ROKIEM,
     MODEL_ZE_SZCZEGOLAMI,
     POZOSTALE_MODELE_FIELDSET,
@@ -127,6 +127,7 @@ class Praca_HabilitacyjnaAdmin(Praca_Doktorska_Habilitacyjna_Admin_Base):
         POZOSTALE_MODELE_FIELDSET,
         ADNOTACJE_Z_DATAMI_FIELDSET,
         MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET,
+        MODEL_Z_OPLATA_ZA_PUBLIKACJE_FIELDSET,
     )
 
     inlines = (Grant_RekorduInline, Element_RepozytoriumInline)
