@@ -82,7 +82,7 @@ channels = "2.4.0"
 asgiref = "3.3.4"
 uvicorn = {version = "0.14.0", extras = ["standard"]}
 channels-redis = "3.0.1"
-django-flexible-reports = "0.2.9"
+django-flexible-reports = ">0.2.9"
 psycopg2 = "2.8.6"
 django-group-by = "0.3.1"
 django-columns = "0.1.0"
