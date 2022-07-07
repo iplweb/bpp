@@ -10,6 +10,19 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.RunSQL("DROP VIEW IF EXISTS bpp_kronika_patent_view CASCADE"),
+        migrations.RunSQL(
+            "DROP VIEW IF EXISTS bpp_kronika_wydawnictwo_ciagle_view CASCADE"
+        ),
+        migrations.RunSQL(
+            "DROP VIEW IF EXISTS bpp_kronka_wydawnictwo_zwarte_view CASCADE"
+        ),
+        migrations.RunSQL(
+            "DROP VIEW IF EXISTS bpp_kronika_praca_doktorska_view CASCADE"
+        ),
+        migrations.RunSQL(
+            "DROP VIEW IF EXISTS bpp_kronika_praca_habilitacyjna_view CASCADE"
+        ),
         migrations.AlterField(
             model_name="autor",
             name="id",

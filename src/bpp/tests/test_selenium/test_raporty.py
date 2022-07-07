@@ -1,13 +1,9 @@
-# -*- encoding: utf-8 -*-
-
 try:
     from django.core.urlresolvers import reverse
 except ImportError:
     from django.urls import reverse
 
 import pytest
-
-from celeryui.models import Report
 
 from bpp.tests.util import (
     CURRENT_YEAR,
@@ -101,21 +97,3 @@ def test_raport_jednostek(
         lambda: f"/bpp/raporty/raport-jednostek-2012/{jednostka_raportow.pk}/{CURRENT_YEAR}/"
         in preauth_browser.url
     )
-
-
-@pytest.mark.django_db(transaction=True)
-def test_submit_kronika_uczelni(
-    preauth_browser, jednostka_raportow, asgi_live_server, denorms
-):
-    c = Report.objects.all().count
-    assert c() == 0
-
-    preauth_browser.visit(asgi_live_server.url + reverse("bpp:raport_kronika_uczelni"))
-    preauth_browser.execute_script(
-        '$("input[name=rok]").val("' + str(CURRENT_YEAR) + '")'
-    )
-    submit_page(preauth_browser)
-
-    wait_for(lambda: c() == 1)
-
-    assert Report.objects.all()[0].function == "kronika-uczelni"
