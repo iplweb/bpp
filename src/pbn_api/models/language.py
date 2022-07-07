@@ -1,8 +1,7 @@
 from django.db import models
+from django.db.models import JSONField
 
 from .base import BasePBNModel
-
-from django.contrib.postgres.fields import JSONField
 
 
 class Language(BasePBNModel):

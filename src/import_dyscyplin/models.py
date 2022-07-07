@@ -2,7 +2,7 @@ from datetime import date
 
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import IntegrityError, models, transaction
-from django.db.models import CASCADE, Count, Q
+from django.db.models import CASCADE, Count, JSONField, Q
 from django.urls import reverse
 from django_fsm import GET_STATE, FSMField, transition
 from model_utils.models import TimeStampedModel
@@ -13,8 +13,6 @@ from import_common.exceptions import (
     ImproperFileException,
 )
 from import_common.util import znajdz_naglowek
-
-from django.contrib.postgres.fields import JSONField
 
 from bpp.fields import YearField
 from bpp.models import Autor, Autor_Dyscyplina, Dyscyplina_Naukowa, Jednostka, Wydzial
@@ -498,7 +496,7 @@ class Import_Dyscyplin(TimeStampedModel):
 
     def delete(self, *args, **kw):
         transaction.on_commit(lambda instance=self: instance.plik.delete(False))
-        return super(Import_Dyscyplin, self).delete(*args, **kw)
+        return super().delete(*args, **kw)
 
     class Meta:
         ordering = ("-modified",)
@@ -583,7 +581,7 @@ class Import_Dyscyplin_Row(models.Model):
 
         if self.autor is not None:
             ret["autor_slug"] = self.autor.slug
-            ret["dopasowanie_autora"] = "<a target=_blank href='%s'>%s %s</a>" % (
+            ret["dopasowanie_autora"] = "<a target=_blank href='{}'>{} {}</a>".format(
                 reverse("bpp:browse_autor", args=(self.autor.slug,)),
                 self.autor.nazwisko,
                 self.autor.imiona,

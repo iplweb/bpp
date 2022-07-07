@@ -1,9 +1,8 @@
 from django.db import models, transaction
+from django.db.models import JSONField
 
 from ..exceptions import HttpException, StatementDeletionError
 from .base import BasePBNMongoDBModel
-
-from django.contrib.postgres.fields import JSONField
 
 from django.utils.functional import cached_property
 
@@ -159,4 +158,4 @@ class OswiadczenieInstytucji(models.Model):
         from pbn_api.models import SentData
 
         SentData.objects.filter(pbn_uid_id=self.publicationId_id).delete(*args, **kw)
-        return super(OswiadczenieInstytucji, self).delete(*args, **kw)
+        return super().delete(*args, **kw)

@@ -1,14 +1,14 @@
 from django import forms
-from django.contrib import admin
-from django.contrib.auth import get_user_model
-from django.contrib.postgres.fields import JSONField
-from django.db.models import TextField
+from django.db.models import JSONField, TextField
 
 from formdefaults.models import (
-    FormRepresentation,
-    FormFieldRepresentation,
     FormFieldDefaultValue,
+    FormFieldRepresentation,
+    FormRepresentation,
 )
+
+from django.contrib import admin
+from django.contrib.auth import get_user_model
 
 # Register your models here.
 

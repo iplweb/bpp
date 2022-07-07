@@ -4,11 +4,11 @@ import warnings
 from denorm import denormalized, depend_on_related
 from dirtyfields.dirtyfields import DirtyFieldsMixin
 from django.db import models
-from django.db.models import CASCADE, PROTECT
+from django.db.models import CASCADE, PROTECT, JSONField
 from django.db.models.expressions import RawSQL
 
 from django.contrib.contenttypes.fields import GenericRelation
-from django.contrib.postgres.fields import ArrayField, JSONField
+from django.contrib.postgres.fields import ArrayField
 
 from bpp.models import (
     BazaModeluStreszczen,

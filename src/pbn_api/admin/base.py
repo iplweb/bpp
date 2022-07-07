@@ -1,12 +1,13 @@
 # Register your models here.
 
 
+from django.db.models import JSONField
+
 # class JsonAdmin(admin.ModelAdmin):
 from .mixins import ReadOnlyListChangeFormAdminMixin
 from .widgets import PrettyJSONWidget
 
 from django.contrib import admin
-from django.contrib.postgres.fields import JSONField
 
 
 class BasePBNAPIAdminNoReadonly(admin.ModelAdmin):

@@ -1,8 +1,7 @@
 from denorm import CountField, denormalized, depend_on_related
 from django.core.exceptions import ValidationError
 from django.db import models
-
-from django.contrib.postgres.fields import JSONField
+from django.db.models import JSONField
 
 from bpp.fields import YearField
 from bpp.models import ModelZNazwa, ModelZPBN_UID

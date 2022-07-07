@@ -5,7 +5,7 @@ from datetime import date, timedelta
 from django import forms
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import DataError, IntegrityError, models, transaction
-from django.db.models import Q
+from django.db.models import JSONField, Q
 
 from import_common.core import (
     matchuj_autora,
@@ -31,8 +31,6 @@ from import_common.normalization import (
 from import_common.util import XLSImportFile
 from long_running.models import Operation
 from long_running.notification_mixins import ASGINotificationMixin
-
-from django.contrib.postgres.fields import JSONField
 
 from django.utils import timezone
 

@@ -3,6 +3,7 @@
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator
 from django.db import models
+from django.db.models import JSONField
 from django.urls import reverse
 
 from import_common.core import matchuj_autora, matchuj_dyscypline
@@ -10,8 +11,6 @@ from . import const
 from .fields import LiczbaNField
 from .util import InputXLSX, float_or_string_or_int_or_none_to_decimal
 from .validators import xlsx_header_validator
-
-from django.contrib.postgres.fields import JSONField
 
 from bpp.models import Cache_Punktacja_Autora_Query
 from bpp.models.autor import Autor
