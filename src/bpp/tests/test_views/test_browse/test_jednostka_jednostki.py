@@ -9,6 +9,7 @@ try:
 except ImportError:
     from django.urls import reverse
 
+from django.conf import settings
 from model_mommy import mommy
 
 from fixtures import JEDNOSTKA_PODRZEDNA, JEDNOSTKA_UCZELNI
@@ -20,7 +21,7 @@ from bpp.views.browse import JednostkiView
 
 @pytest.mark.django_db
 def test_jednostka_nie_wyswietlaj_autorow_gdy_wielu(client, jednostka):
-    for n in range(102):
+    for n in range(settings.MAX_NO_AUTHORS_ON_BROWSE_JEDNOSTKA_PAGE + 1):
         jednostka.dodaj_autora(mommy.make(Autor))
 
     res = client.get(reverse("bpp:browse_jednostka", args=(jednostka.slug,)))

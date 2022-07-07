@@ -101,6 +101,7 @@ TEMPLATES = [
                 "bpp.context_processors.uczelnia.uczelnia",
                 "bpp.context_processors.config.theme_name",
                 "bpp.context_processors.config.enable_new_reports",
+                "bpp.context_processors.config.max_no_authors_on_browse_jednostka_page",
                 "bpp.context_processors.global_nav.user",
                 "bpp.context_processors.google_analytics.google_analytics",
             ],
@@ -688,3 +689,10 @@ DENORM_DISABLE_AUTOTIME_DURING_FLUSH = True
 DENORM_AUTOTIME_FIELD_NAMES = [
     "ostatnio_zmieniony",
 ]
+
+MAX_NO_AUTHORS_ON_BROWSE_JEDNOSTKA_PAGE = 200
+"""
+Maksymalna ilość autorów wyświetlanych w danej grupie na podstronie przeglądania danych jednostki. W przypadku
+przekroczenia tej liczby, dana podgrupa autorów ("aktualni pracownicy","współpracowali kiedyś" itp) nie zostanie
+wyświetlona.
+"""

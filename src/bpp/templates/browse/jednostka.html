@@ -55,7 +55,7 @@
             {% include "browse/typy.html" %}
         </fieldset>
 
-    {% if jednostka.pracownicy.exists and jednostka.pracownicy.count < 200 %}
+    {% if jednostka.pracownicy.exists and jednostka.pracownicy.count < MAX_NO_AUTHORS_ON_BROWSE_JEDNOSTKA_PAGE %}
             <fieldset>
                 <legend>... napisane przez obecnych pracowników:</legend>
 
@@ -79,7 +79,7 @@
 
             </fieldset>
 
-        {% if jednostka.wspolpracowali.exists and jednostka.wspolpracowali.count < 200 %}
+        {% if jednostka.wspolpracowali.exists and jednostka.wspolpracowali.count < MAX_NO_AUTHORS_ON_BROWSE_JEDNOSTKA_PAGE %}
 <ul class="accordion" data-accordion data-allow-all-closed="true">
     <li class="accordion-item " data-accordion-item>
         <a href="#" class="accordion-title">... oraz osoby wcześniej związane z jednostką (kliknij aby rozwinąć listę)</a>
@@ -110,7 +110,7 @@
         {% endif %}
     {% else %}
 
-        {% if jednostka.autorzy_na_strone_jednostki.exists and jednostka.autorzy_na_strone_jednostki.count < 200 %}
+        {% if jednostka.autorzy_na_strone_jednostki.exists and jednostka.autorzy_na_strone_jednostki.count < MAX_NO_AUTHORS_ON_BROWSE_JEDNOSTKA_PAGE %}
 
             <fieldset>
                 <legend>... napisane przez:</legend>
