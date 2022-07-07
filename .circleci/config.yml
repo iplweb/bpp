@@ -7,7 +7,7 @@ jobs:
   build:
 
     docker:
-      - image: cimg/python:3.8.13-node
+      - image: cimg/python:3.10.5-node
         environment:
           PGUSER: postgres
           PGHOST: localhost
