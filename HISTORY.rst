@@ -3,8 +3,8 @@
 Historia zmian
 ==============
 
-dev
----
+202207.87
+---------
 
 * aktualizacja biblioteki do generowania PDF z systemu do wersji WeasyPrint 55.0, dodatkowe
   "uodpornienie" systemu drukującego na przestarzałe certyfikaty SSL na serwerze bpp (#1223),
