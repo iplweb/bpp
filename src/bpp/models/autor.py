@@ -135,13 +135,14 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
         ],
         db_index=True,
     )
-    orcid_w_pbn = models.NullBooleanField(
+    orcid_w_pbn = models.BooleanField(
         "ORCID jest w bazie PBN?",
         help_text="""Jeżeli ORCID jest w bazie PBN, to pole powinno być zaznaczone. Zaznaczenie następuje
         automatycznie, przez procedury integrujące bazę danych z PBNem w nocy. Można też zaznaczyć ręcznie.
         Pole wykorzystywane jest gdy autor nie ma odpowiednika w PBN (pole 'PBN UID' rekordu autora jest puste,
         zaś eksport danych powoduje komunikat zwrotny z PBN o nieistniejącym w ich bazie ORCID). W takich sytuacjach
         należy w polu wybrać "Nie". """,
+        null=True,
     )
 
     expertus_id = models.CharField(
@@ -474,7 +475,7 @@ class Autor_Jednostka(models.Model):
     )
     funkcja = models.ForeignKey(Funkcja_Autora, CASCADE, null=True, blank=True)
 
-    podstawowe_miejsce_pracy = models.NullBooleanField()
+    podstawowe_miejsce_pracy = models.BooleanField(null=True)
 
     grupa_pracownicza = models.ForeignKey(
         Grupa_Pracownicza, SET_NULL, null=True, blank=True

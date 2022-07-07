@@ -696,3 +696,6 @@ Maksymalna ilość autorów wyświetlanych w danej grupie na podstronie przeglą
 przekroczenia tej liczby, dana podgrupa autorów ("aktualni pracownicy","współpracowali kiedyś" itp) nie zostanie
 wyświetlona.
 """
+
+
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

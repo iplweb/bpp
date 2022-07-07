@@ -6,7 +6,7 @@ from django.contrib.postgres.fields import JSONField
 class Log(models.Model):
     started_on = models.DateTimeField(auto_now_add=True)
     finished_on = models.DateTimeField(blank=True, null=True)
-    finished_successfully = models.NullBooleanField()
+    finished_successfully = models.BooleanField(null=True)
 
     command_name = models.TextField()
     args = JSONField(blank=True, null=True)

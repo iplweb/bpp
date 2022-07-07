@@ -206,8 +206,8 @@ class WierszImportuMaksymalnychSlotow(models.Model):
         blank=True,
     )
 
-    poprawny = models.NullBooleanField(default=None)
-    wymagana_integracja = models.NullBooleanField(default=None)
+    poprawny = models.BooleanField(null=True, default=None)
+    wymagana_integracja = models.BooleanField(null=True, default=None)
     zintegrowany = models.BooleanField(default=False)
 
     @property

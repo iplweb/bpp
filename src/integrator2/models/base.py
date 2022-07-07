@@ -1,8 +1,5 @@
-# -*- encoding: utf-8 -*-
-
 import os
 
-from django.conf import settings
 from django.db import models
 from django.db.models import CASCADE
 
@@ -12,7 +9,7 @@ STATUSY = [
     (0, "dodany"),
     (1, "w trakcie analizy"),
     (2, "przetworzony"),
-    (3, "przetworzony z błędami")
+    (3, "przetworzony z błędami"),
 ]
 
 
@@ -53,7 +50,7 @@ class BaseIntegration(models.Model):
 
     class Meta:
         verbose_name = "Plik integracji danych"
-        ordering = ['-last_updated_on']
+        ordering = ["-last_updated_on"]
         abstract = True
 
     def model_name(self):
@@ -69,18 +66,18 @@ class BaseIntegration(models.Model):
         return os.path.basename(self.file.name)
 
     def records(self):
-        "Zwraca rekordy podrzędne dla tej integracji. Zaimplementuj w klasach dziedziczących. "
+        "Zwraca rekordy podrzędne dla tej integracji. Zaimplementuj w klasach dziedziczących."
         return self.klass.objects.filter(parent=self)
 
     def integrated(self):
         return self.records().filter(zintegrowano=True)
 
     def not_integrated(self):
-        return self.records().exclude(zintegrowano=True).order_by('extra_info')
+        return self.records().exclude(zintegrowano=True).order_by("extra_info")
 
     def input_file_to_dict_stream(self):
         """Otwiera plik wejściowy, wyszukuje nagłówek, a następnie zaczyna
-        zwracać kolejne rekordy w formie słowników. """
+        zwracać kolejne rekordy w formie słowników."""
         raise NotImplementedError
 
     def dict_stream_to_db(self, dict_stream):
@@ -89,7 +86,8 @@ class BaseIntegration(models.Model):
         raise NotImplementedError
 
     def match_single_record(self, elem):
-        """Matchuj jeden rekord. Zobacz komentarz do :function:`integrator2.models.base.BaseIntegration.match_records`."""
+        """Matchuj jeden rekord. Zobacz komentarz do
+        :function:`integrator2.models.base.BaseIntegration.match_records`."""
         raise NotImplementedError
 
     def match_records(self):
@@ -104,9 +102,10 @@ class BaseIntegration(models.Model):
     def integrate(self):
         """Integruje wszystkie dane."""
         for elem in self.records().filter(
-                zanalizowano=True,
-                moze_byc_zintegrowany_automatycznie=True,
-                zintegrowano=False):
+            zanalizowano=True,
+            moze_byc_zintegrowany_automatycznie=True,
+            zintegrowano=False,
+        ):
             self.integrate_single_record(elem)
             elem.zintegrowano = True
             elem.save()
@@ -126,7 +125,7 @@ class BaseIntegrationElement(models.Model):
     """
 
     zanalizowano = models.BooleanField(default=False)
-    moze_byc_zintegrowany_automatycznie = models.NullBooleanField(default=None)
+    moze_byc_zintegrowany_automatycznie = models.BooleanField(default=None, null=True)
     extra_info = models.TextField()
 
     zintegrowano = models.BooleanField(default=False)
@@ -135,6 +134,7 @@ class BaseIntegrationElement(models.Model):
 
     class Meta:
         abstract = True
+
 
 # INTEGRATOR_DOI = 0
 # INTEGRATOR_ATOZ = 1
