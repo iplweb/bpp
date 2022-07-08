@@ -1,14 +1,17 @@
 from collections import defaultdict
 from typing import Generator, List
 
-import xlrd
-from django.utils.functional import cached_property
+import openpyxl
+from openpyxl.utils.exceptions import InvalidFileException
+from openpyxl.worksheet.worksheet import Worksheet
 
 from .exceptions import (
     BadNoOfSheetsException,
     HeaderNotFoundException,
     ImproperFileException,
 )
+
+from django.utils.functional import cached_property
 
 DEFAULT_COL_NAMES = [
     "imię",
@@ -28,7 +31,7 @@ DEFAULT_COL_NAMES = [
 DEFAULT_MIN_POINTS = 3
 
 
-def normalize_cell_header(elem: xlrd.sheet.Cell):
+def normalize_cell_header(elem: openpyxl.cell.cell.Cell):
     s = str(elem.value).lower().split("\n")[0]
 
     s = s.replace(".", " ")
@@ -40,7 +43,7 @@ def normalize_cell_header(elem: xlrd.sheet.Cell):
 
 
 def find_similar_row(
-    sheet: xlrd.sheet.Sheet, try_names=None, min_points=None, max_row_length=128
+    sheet: Worksheet, try_names=None, min_points=None, max_row_length=128
 ):
     if try_names is None:
         try_names = DEFAULT_COL_NAMES
@@ -48,8 +51,8 @@ def find_similar_row(
     if min_points is None:
         min_points = DEFAULT_MIN_POINTS
 
-    for n in range(sheet.nrows):
-        r = [normalize_cell_header(elem) for elem in sheet.row(n)[:max_row_length]]
+    for n, row in enumerate(sheet.rows):
+        r = [normalize_cell_header(elem) for elem in row[:max_row_length]]
         points = 0
         for elem in try_names:
             if elem in r:
@@ -67,15 +70,15 @@ def znajdz_naglowek(
     :return: ([str, str...], no_row)
     """
     try:
-        f = xlrd.open_workbook(sciezka)
-    except xlrd.XLRDError as e:
+        f: openpyxl.workbook.workbook.Workbook = openpyxl.load_workbook(sciezka)
+    except InvalidFileException as e:
         raise ImproperFileException(e)
 
     # Sprawdź, ile jest skoroszytów
-    if len(f.sheets()) != 1:
+    if len(f.worksheets) != 1:
         raise BadNoOfSheetsException()
 
-    s = f.sheet_by_index(0)
+    s = f.worksheets[0]
 
     res = find_similar_row(s, try_names, min_points)
 
@@ -115,8 +118,8 @@ class XLSImportFile:
         self.only_first_sheet = only_first_sheet
 
     @cached_property
-    def xl_workbook(self):
-        return xlrd.open_workbook(self.xls_path)
+    def xl_workbook(self) -> openpyxl.workbook.workbook.Workbook:
+        return openpyxl.load_workbook(self.xls_path)
 
     @cached_property
     def sheet_limit_range_end(self):
@@ -130,7 +133,7 @@ class XLSImportFile:
         _cache = {}
 
         for n_sheet, sheet in enumerate(
-            self.xl_workbook.sheets()[: self.sheet_limit_range_end]
+            self.xl_workbook.worksheets[: self.sheet_limit_range_end]
         ):
             res = find_similar_row(
                 sheet, try_names=self.try_names, min_points=self.min_points
@@ -145,12 +148,12 @@ class XLSImportFile:
         Zwraca całkowitą liczbę wierszy do analizy
         """
         total = 0
-        for n_sheet, sheet in enumerate(self.xl_workbook.sheets()):
+        for n_sheet, sheet in enumerate(self.xl_workbook.worksheets):
             res = self.sheet_row_cache.get(sheet)
             if res is None:
                 continue
             labels, no = res
-            total += sheet.nrows - no
+            total += sheet.max_row - no
 
         return total
 
@@ -163,7 +166,7 @@ class XLSImportFile:
         4) zwraca słowniki.
         """
 
-        for n_sheet, sheet in enumerate(self.xl_workbook.sheets()):
+        for n_sheet, sheet in enumerate(self.xl_workbook.worksheets):
 
             res = self.sheet_row_cache.get(sheet)
             if res is None:
@@ -176,8 +179,10 @@ class XLSImportFile:
             colnames.append("__xls_loc_sheet__")
             colnames.append("__xls_loc_row__")
 
-            for n_row in range(no + 1, sheet.nrows):
-                data = sheet.row_values(n_row)[: len(colnames) - 2]
+            for n_row, row in enumerate(sheet.rows):
+                if n_row <= res[1]:
+                    continue
+                data = [x.value for x in row[: len(colnames) - 2]]
                 data.append(n_sheet)
                 data.append(n_row)
 
