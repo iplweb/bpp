@@ -11,7 +11,7 @@ from datetime import datetime
 
 from django.http import HttpResponse
 from django.urls import reverse
-from model_mommy import mommy
+from model_bakery import baker
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.expected_conditions import visibility_of
 from selenium.webdriver.support.wait import WebDriverWait
@@ -43,12 +43,12 @@ from django_bpp.selenium_util import (
 )
 
 
-def setup_mommy():
-    mommy.generators.add(
+def setup_model_bakery():
+    baker.generators.add(
         "django.contrib.postgres.fields.array.ArrayField", lambda x: []
     )
 
-    mommy.generators.add(
+    baker.generators.add(
         "django.contrib.postgres.search.SearchVectorField", lambda x=None: None
     )
 
@@ -104,7 +104,7 @@ def any_jednostka(nazwa=None, skrot=None, wydzial_skrot="WDZ", **kw):
     except KeyError:
         uczelnia = Uczelnia.objects.all().first()
         if uczelnia is None:
-            uczelnia = mommy.make(Uczelnia)
+            uczelnia = baker.make(Uczelnia)
 
     try:
         wydzial = kw.pop("wydzial")
@@ -112,7 +112,7 @@ def any_jednostka(nazwa=None, skrot=None, wydzial_skrot="WDZ", **kw):
         try:
             wydzial = Wydzial.objects.get(skrot=wydzial_skrot)
         except Wydzial.DoesNotExist:
-            wydzial = mommy.make(Wydzial, uczelnia=uczelnia)
+            wydzial = baker.make(Wydzial, uczelnia=uczelnia)
 
     ret = Jednostka.objects.create(
         nazwa=nazwa, skrot=skrot, wydzial=wydzial, uczelnia=uczelnia, **kw
@@ -146,7 +146,7 @@ def any_wydawnictwo(klass, rok=None, **kw):
 
     Status_Korekty.objects.get_or_create(pk=1, nazwa="przed korektą")
 
-    return mommy.make(klass, rok=rok, **kw)
+    return baker.make(klass, rok=rok, **kw)
 
 
 def any_ciagle(**kw):
@@ -217,7 +217,7 @@ def any_zrodlo(**kw):
     if "skrot" not in kw:
         kw["skrot"] = "Zrod. %s" % time.time()
 
-    return mommy.make(Zrodlo, **kw)
+    return baker.make(Zrodlo, **kw)
 
 
 def _lookup_fun(klass):

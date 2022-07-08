@@ -1,4 +1,4 @@
-from model_mommy import mommy
+from model_bakery import baker
 
 from ewaluacja2021.core.util import get_lista_prac
 from ewaluacja2021.models import IloscUdzialowDlaAutora, LiczbaNDlaUczelni
@@ -28,7 +28,7 @@ def test_get_lista_prac_zakres_lat(
             autor=autor_jan_nowak, rok=ROK, dyscyplina_naukowa=dyscyplina1
         )
 
-        wc: Wydawnictwo_Ciagle = mommy.make(
+        wc: Wydawnictwo_Ciagle = baker.make(
             Wydawnictwo_Ciagle,
             rok=ROK,
             punkty_kbn=5,

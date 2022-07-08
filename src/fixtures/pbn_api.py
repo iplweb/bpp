@@ -2,7 +2,7 @@ from http.server import HTTPServer
 from uuid import uuid4
 
 import pytest
-from model_mommy import mommy
+from model_bakery import baker
 
 from pbn_api.client import PBN_GET_LANGUAGES_URL, PBNClient
 from pbn_api.models import Institution, Language, Publication, Scientist
@@ -33,7 +33,7 @@ def pbn_language():
 
 
 def _zrob_autora_pbn(autor):
-    autor.pbn_uid = mommy.make(Scientist)
+    autor.pbn_uid = baker.make(Scientist)
     autor.save()
     return autor
 
@@ -45,7 +45,7 @@ def pbn_autor(autor_jan_nowak):
 
 @pytest.fixture
 def pbn_jednostka(jednostka):
-    jednostka.pbn_uid = mommy.make(Institution)
+    jednostka.pbn_uid = baker.make(Institution)
     jednostka.save()
     return jednostka
 
@@ -121,7 +121,7 @@ def pbn_rozdzial_z_autorem_z_dyscyplina(
 
 @pytest.fixture
 def pbn_charakter_formalny() -> Charakter_Formalny:
-    return mommy.make(Charakter_Formalny, rodzaj_pbn=RODZAJ_PBN_KSIAZKA)
+    return baker.make(Charakter_Formalny, rodzaj_pbn=RODZAJ_PBN_KSIAZKA)
 
 
 @pytest.fixture
@@ -172,7 +172,7 @@ def pbn_wydawnictwo_zwarte_z_charakterem(
 
 @pytest.fixture
 def pbn_uczelnia(pbn_client) -> Uczelnia:
-    uczelnia = mommy.make(
+    uczelnia = baker.make(
         Uczelnia,
     )
 

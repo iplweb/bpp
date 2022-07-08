@@ -1,7 +1,6 @@
-# -*- encoding: utf-8 -*-
 from django.template import Context, Template
 from django.test import TestCase
-from model_mommy import mommy
+from model_bakery import baker
 
 from bpp.models import Autor, Typ_Odpowiedzialnosci, Wydawnictwo_Ciagle
 from bpp.models.system import Jezyk
@@ -18,16 +17,16 @@ class TestTemplateTags(TestCase):
     def setUp(self):
         j = any_jednostka()
 
-        a1 = mommy.make(Autor, nazwisko="Kowalski", imiona="Jan", tytul=None, slug="A")
-        a2 = mommy.make(Autor, nazwisko="Nowak", imiona="Jan", tytul=None, slug="B")
-        a3 = mommy.make(Autor, nazwisko="Nowak", imiona="Jan", tytul=None, slug="C")
+        a1 = baker.make(Autor, nazwisko="Kowalski", imiona="Jan", tytul=None, slug="A")
+        a2 = baker.make(Autor, nazwisko="Nowak", imiona="Jan", tytul=None, slug="B")
+        a3 = baker.make(Autor, nazwisko="Nowak", imiona="Jan", tytul=None, slug="C")
 
         self.a1 = a1
         self.a2 = a2
         self.a3 = a3
 
-        jezyk = mommy.make(Jezyk)
-        c = mommy.make(
+        jezyk = baker.make(Jezyk)
+        c = baker.make(
             Wydawnictwo_Ciagle,
             tytul="foo",
             tytul_oryginalny="bar",
@@ -151,11 +150,11 @@ class TestTemplateTags(TestCase):
 
         t = Template(template)
         c = Context(
-            {"arr": set([1, 2, 3, 4, 5, 10, 11, 12, 15, 16, 20, 25, 30, 31, 32, 33])}
+            {"arr": {1, 2, 3, 4, 5, 10, 11, 12, 15, 16, 20, 25, 30, 31, 32, 33}}
         )
         ret = t.render(c).strip()
         self.assertEqual(ret, "1-5, 10-12, 15-16, 20, 25, 30-33")
 
-        c = Context({"arr": set([1, 3, 4, 5])})
+        c = Context({"arr": {1, 3, 4, 5}})
         ret = t.render(c).strip()
         self.assertEqual(ret, "1, 3-5")

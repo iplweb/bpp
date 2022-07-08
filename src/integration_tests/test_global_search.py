@@ -1,4 +1,4 @@
-from model_mommy import mommy
+from model_bakery import baker
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support.wait import WebDriverWait
 
@@ -15,7 +15,7 @@ def test_global_search_user(
 ):
     rec = None
     try:
-        rec = mommy.make(Wydawnictwo_Ciagle, tytul_oryginalny="Test")
+        rec = baker.make(Wydawnictwo_Ciagle, tytul_oryginalny="Test")
         Rekord.objects.full_refresh()
 
         assert Rekord.objects.count() >= 1
@@ -52,7 +52,7 @@ def test_global_search_logged_in(
     rec = None
     try:
         browser = admin_browser
-        mommy.make(Wydawnictwo_Ciagle, tytul_oryginalny="Test")
+        baker.make(Wydawnictwo_Ciagle, tytul_oryginalny="Test")
         Rekord.objects.full_refresh()
 
         with wait_for_page_load(browser):
@@ -80,7 +80,7 @@ def test_global_search_logged_in(
 
 def test_global_search_in_admin(asgi_live_server, admin_browser, transactional_db):
     browser = admin_browser
-    mommy.make(Wydawnictwo_Ciagle, tytul_oryginalny="Test")
+    baker.make(Wydawnictwo_Ciagle, tytul_oryginalny="Test")
 
     with wait_for_page_load(browser):
         browser.visit(asgi_live_server.url + "/admin/")

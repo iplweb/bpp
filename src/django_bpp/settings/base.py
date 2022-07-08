@@ -275,7 +275,7 @@ TEST_RUNNER = "django.test.runner.DiscoverRunner"
 PROJECT_APPS = ("bpp",)
 
 
-# Ustawienia ModelMommy
+# Ustawienia ModelBakery
 
 
 def autoslug_gen():
@@ -284,7 +284,7 @@ def autoslug_gen():
     )
 
 
-MOMMY_CUSTOM_FIELDS_GEN = {"autoslug.fields.AutoSlugField": autoslug_gen}
+BAKERY_CUSTOM_FIELDS_GEN = {"autoslug.fields.AutoSlugField": autoslug_gen}
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTOCOL", "https")
 

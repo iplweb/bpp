@@ -2,7 +2,7 @@ from datetime import date, datetime, timedelta
 
 import pytest
 from django.db.utils import IntegrityError, InternalError
-from model_mommy import mommy
+from model_bakery import baker
 
 from bpp.models.autor import Autor_Jednostka
 
@@ -11,7 +11,7 @@ from bpp.models.autor import Autor_Jednostka
 def test_autor_jednostka_trigger_nie_mozna_zmienic_id_autora(
     autor_jan_kowalski, autor_jan_nowak, jednostka
 ):
-    aj = mommy.make(Autor_Jednostka, autor=autor_jan_kowalski, jednostka=jednostka)
+    aj = baker.make(Autor_Jednostka, autor=autor_jan_kowalski, jednostka=jednostka)
     aj.autor = autor_jan_nowak
     with pytest.raises(InternalError):
         aj.save()
@@ -21,7 +21,7 @@ def test_autor_jednostka_trigger_nie_mozna_zmienic_id_autora(
 def test_autor_jednostka_trigger_nie_mozna_daty_w_przyszlosci(
     autor_jan_kowalski, jednostka
 ):
-    aj = mommy.make(Autor_Jednostka, autor=autor_jan_kowalski, jednostka=jednostka)
+    aj = baker.make(Autor_Jednostka, autor=autor_jan_kowalski, jednostka=jednostka)
     aj.zakonczyl_prace = date.today()
     with pytest.raises(IntegrityError):
         aj.save()
@@ -31,7 +31,7 @@ def test_autor_jednostka_trigger_nie_mozna_daty_w_przyszlosci(
 def test_autor_jednostka_trigger_ustaw_aktualna_jednostke_1(
     autor_jan_kowalski, jednostka
 ):
-    aj = mommy.make(Autor_Jednostka, autor=autor_jan_kowalski, jednostka=jednostka)
+    aj = baker.make(Autor_Jednostka, autor=autor_jan_kowalski, jednostka=jednostka)
     autor_jan_kowalski.refresh_from_db()
     assert autor_jan_kowalski.aktualna_jednostka == jednostka
 
@@ -49,14 +49,14 @@ def test_autor_jednostka_trigger_ustaw_aktualna_jednostke_1(
 def test_autor_jednostka_trigger_ustaw_aktualna_jednostke_2(
     autor_jan_kowalski, jednostka, druga_jednostka
 ):
-    mommy.make(
+    baker.make(
         Autor_Jednostka,
         autor=autor_jan_kowalski,
         jednostka=jednostka,
         rozpoczal_prace=date(2012, 1, 1),
         zakonczyl_prace=date(2012, 2, 1),
     )
-    mommy.make(
+    baker.make(
         Autor_Jednostka,
         autor=autor_jan_kowalski,
         jednostka=druga_jednostka,
@@ -72,8 +72,8 @@ def test_autor_jednostka_trigger_ustaw_aktualna_jednostke_2(
 def test_autor_jednostka_trigger_ustaw_aktualna_jednostke_3(
     autor_jan_kowalski, jednostka, druga_jednostka
 ):
-    mommy.make(Autor_Jednostka, autor=autor_jan_kowalski, jednostka=druga_jednostka)
-    mommy.make(Autor_Jednostka, autor=autor_jan_kowalski, jednostka=jednostka)
+    baker.make(Autor_Jednostka, autor=autor_jan_kowalski, jednostka=druga_jednostka)
+    baker.make(Autor_Jednostka, autor=autor_jan_kowalski, jednostka=jednostka)
 
     # przy dwóch przypisaniach aktualne ma byc to drugie (późniejsze) przypisane
     # sprawdzane jest to po ID w bazie
@@ -87,13 +87,13 @@ def test_autor_jednostka_trigger_ustaw_aktualna_jednostke_3(
 def test_autor_jednostka_trigger_ustaw_aktualna_jednostke_podstawowe_miejsce_pracy(
     autor_jan_kowalski, jednostka, druga_jednostka
 ):
-    mommy.make(
+    baker.make(
         Autor_Jednostka,
         autor=autor_jan_kowalski,
         jednostka=druga_jednostka,
         podstawowe_miejsce_pracy=True,
     )
-    mommy.make(Autor_Jednostka, autor=autor_jan_kowalski, jednostka=jednostka)
+    baker.make(Autor_Jednostka, autor=autor_jan_kowalski, jednostka=jednostka)
 
     # aktualne ma byc to miejsce, ktore ma 'podstawowe miejsce pracy' True
 
@@ -106,7 +106,7 @@ def test_autor_jednostka_trigger_ustaw_aktualna_jednostke_podstawowe_miejsce_pra
 def test_autor_jednostka_trigger_odepnij_wszystkie_jednostki(
     autor_jan_kowalski, jednostka
 ):
-    mommy.make(
+    baker.make(
         Autor_Jednostka,
         autor=autor_jan_kowalski,
         jednostka=jednostka,

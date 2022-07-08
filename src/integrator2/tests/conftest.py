@@ -3,7 +3,7 @@ import os
 import pytest
 from django.core.files.base import File
 from django.core.files.storage import default_storage
-from model_mommy import mommy
+from model_bakery import baker
 
 from integrator2.models import ListaMinisterialnaIntegration
 
@@ -20,7 +20,7 @@ def test_xls(name):
 
 @pytest.fixture
 def lmi_base(db, admin_user):
-    lmi = mommy.make(ListaMinisterialnaIntegration, owner=admin_user)
+    lmi = baker.make(ListaMinisterialnaIntegration, owner=admin_user)
     lmi.save()
     return lmi
 

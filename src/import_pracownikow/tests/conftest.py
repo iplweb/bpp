@@ -2,7 +2,7 @@ import os
 
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
-from model_mommy import mommy
+from model_bakery import baker
 
 from import_pracownikow.models import ImportPracownikow
 
@@ -34,12 +34,12 @@ def testdata_brak_naglowka_xlsx_path():
 
 @pytest.fixture
 def autor_z_pliku():
-    return mommy.make(Autor, nazwisko="Kowalski", imiona="Jan", pk=50)
+    return baker.make(Autor, nazwisko="Kowalski", imiona="Jan", pk=50)
 
 
 @pytest.fixture
 def jednostka_z_pliku():
-    return mommy.make(
+    return baker.make(
         Jednostka,
         nazwa="Katedra i Klinika Dermatologii, Wenerologii i Dermatologii Dziecięcej",
         skrot="Kat. i Klin. Derm., Wen. i Derm. Dz.",
@@ -53,12 +53,12 @@ def baza_importu_pracownikow(autor_z_pliku, jednostka_z_pliku):
 
 @pytest.fixture
 def autor_spoza_pliku():
-    return mommy.make(Autor, nazwisko="Nowak", imiona="Marian", pk=100)
+    return baker.make(Autor, nazwisko="Nowak", imiona="Marian", pk=100)
 
 
 @pytest.fixture
 def jednostka_spoza_pliku() -> Jednostka:
-    return mommy.make(
+    return baker.make(
         Jednostka,
         nazwa="Jednostka Spozaplikowa",
         skrot="Jedn. Spoz.",

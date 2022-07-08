@@ -1,9 +1,8 @@
-# -*- encoding: utf-8 -*-
 from datetime import date, datetime
 
 from django.core.exceptions import ValidationError
 from django.test import TestCase
-from model_mommy import mommy
+from model_bakery import baker
 
 from bpp.models import (
     Autor,
@@ -39,7 +38,7 @@ class TestNazwaISkrot(TestCase):
 
 class TestTytul(TestCase):
     def test_tytul(self):
-        t = mommy.make(Tytul)
+        t = baker.make(Tytul)
         str(t)
 
 
@@ -63,9 +62,9 @@ class TestJednostka(TestCase):
     def test_obecni_autorzy(self):
         j1 = any_jednostka()
 
-        a1 = mommy.make(Autor)
-        a2 = mommy.make(Autor)
-        a3 = mommy.make(Autor)
+        a1 = baker.make(Autor)
+        a2 = baker.make(Autor)
+        a3 = baker.make(Autor)
 
         j1.dodaj_autora(a1, rozpoczal_prace=date(2012, 1, 1))
         j1.dodaj_autora(a2, zakonczyl_prace=date(2012, 12, 31))
@@ -81,7 +80,7 @@ class TestJednostka(TestCase):
         j1 = any_jednostka()
         self.assertEqual(j1.kierownik(), None)
 
-        a1 = mommy.make(Autor)
+        a1 = baker.make(Autor)
         j1.dodaj_autora(a1, funkcja=Funkcja_Autora.objects.get(nazwa="kierownik"))
 
         self.assertEqual(j1.kierownik(), a1)
@@ -89,14 +88,14 @@ class TestJednostka(TestCase):
     def test_prace_w_latach(self):
         j1 = any_jednostka()
 
-        a1 = mommy.make(Autor)
+        a1 = baker.make(Autor)
 
         wc = any_ciagle(rok=2012)
         Wydawnictwo_Ciagle_Autor.objects.create(
             rekord=wc,
             autor=a1,
             jednostka=j1,
-            typ_odpowiedzialnosci=mommy.make(Typ_Odpowiedzialnosci),
+            typ_odpowiedzialnosci=baker.make(Typ_Odpowiedzialnosci),
         )
 
         wc = any_ciagle(rok=2013)
@@ -104,7 +103,7 @@ class TestJednostka(TestCase):
             rekord=wc,
             autor=a1,
             jednostka=j1,
-            typ_odpowiedzialnosci=mommy.make(Typ_Odpowiedzialnosci),
+            typ_odpowiedzialnosci=baker.make(Typ_Odpowiedzialnosci),
         )
 
         self.assertEqual(list(j1.prace_w_latach()), [2012, 2013])
@@ -115,11 +114,11 @@ class TestAutor(TestCase):
     #             'typ_odpowiedzialnosci.json']
 
     def test_autor(self):
-        j = mommy.make(Autor, imiona="Omg", nazwisko="Lol", tytul=None)
+        j = baker.make(Autor, imiona="Omg", nazwisko="Lol", tytul=None)
         self.assertEqual(str(j), "Lol Omg")
 
         t = Tytul.objects.create(nazwa="daktur", skrot="dar")
-        j = mommy.make(Autor, imiona="Omg", nazwisko="Lol", tytul=t)
+        j = baker.make(Autor, imiona="Omg", nazwisko="Lol", tytul=t)
         self.assertEqual(str(j), "Lol Omg, dar")
 
         j.poprzednie_nazwiska = "Kowalski"
@@ -132,10 +131,10 @@ class TestAutor(TestCase):
         w = any_wydzial()
         n = any_wydzial(skrot="w2", nazwa="w2")
         j = any_jednostka(wydzial=w)
-        a = mommy.make(Autor)
+        a = baker.make(Autor)
 
         aj = Autor_Jednostka.objects.create(
-            autor=a, jednostka=j, funkcja=mommy.make(Funkcja_Autora)
+            autor=a, jednostka=j, funkcja=baker.make(Funkcja_Autora)
         )
 
         self.assertEqual(a.afiliacja_na_rok(2030, w), None)
@@ -157,8 +156,8 @@ class TestAutor(TestCase):
         self.assertEqual(a.afiliacja_na_rok(2030, n), None)
 
     def test_dodaj_jednostke(self):
-        f = mommy.make(Funkcja_Autora)
-        a = mommy.make(Autor, imiona="Foo", nazwisko="Bar", tytul=None)
+        f = baker.make(Funkcja_Autora)
+        a = baker.make(Autor, imiona="Foo", nazwisko="Bar", tytul=None)
         w = any_wydzial(nazwa="WL", skrot="WL")
         w2 = any_wydzial(nazwa="XX", skrot="YY")
         j = any_jednostka(wydzial=w)
@@ -226,10 +225,10 @@ class TestAutor(TestCase):
     def test_autor_prace_w_latach(self):
         ROK = 2000
 
-        a = mommy.make(Autor)
+        a = baker.make(Autor)
         j = any_jednostka()
-        w = mommy.make(Wydawnictwo_Ciagle, rok=ROK)
-        mommy.make(Wydawnictwo_Ciagle_Autor, autor=a, jednostka=j, rekord=w)
+        w = baker.make(Wydawnictwo_Ciagle, rok=ROK)
+        baker.make(Wydawnictwo_Ciagle_Autor, autor=a, jednostka=j, rekord=w)
 
         self.assertEqual(a.prace_w_latach()[0], ROK)
 
@@ -241,7 +240,7 @@ class TestAutor_Jednostka(TestCase):
 
     def test_autor_jednostka(self):
         f = Funkcja_Autora.objects.get(skrot="kier.")
-        a = mommy.make(Autor, imiona="Omg", nazwisko="Lol", tytul=None)
+        a = baker.make(Autor, imiona="Omg", nazwisko="Lol", tytul=None)
         j = any_jednostka(nazwa="Lol", skrot="L.")
         aj = Autor_Jednostka.objects.create(autor=a, jednostka=j, funkcja=f)
         self.assertEqual(str(aj), "Lol Omg ↔ kierownik, L.")
@@ -259,7 +258,7 @@ class TestAutor_Jednostka(TestCase):
 
     def test_defragmentuj(self):
         w = any_wydzial()
-        a = mommy.make(Autor)
+        a = baker.make(Autor)
 
         j1 = any_jednostka(nazwa="X", wydzial=w)
         any_jednostka(nazwa="Y", wydzial=w)
@@ -315,29 +314,29 @@ class TestAutor_Jednostka(TestCase):
 
 class TestPunktacjaZrodla(TestCase):
     def test_punktacja_zrodla(self):
-        z = mommy.make(Zrodlo, nazwa="123 test")
-        j = mommy.make(Punktacja_Zrodla, rok="2012", impact_factor="0.5", zrodlo=z)
+        z = baker.make(Zrodlo, nazwa="123 test")
+        j = baker.make(Punktacja_Zrodla, rok="2012", impact_factor="0.5", zrodlo=z)
         self.assertEqual(str(j), 'Punktacja źródła "123 test" za rok 2012')
 
 
 class TestZrodlo(TestCase):
     def test_zrodlo(self):
-        z = mommy.make(Zrodlo, nazwa="foo")
+        z = baker.make(Zrodlo, nazwa="foo")
         self.assertEqual(str(z), "foo")
 
-        z = mommy.make(Zrodlo, nazwa="foo", nazwa_alternatywna="bar")
+        z = baker.make(Zrodlo, nazwa="foo", nazwa_alternatywna="bar")
         self.assertEqual(str(z), "foo")
 
-        z = mommy.make(
+        z = baker.make(
             Zrodlo, nazwa="foo", poprzednia_nazwa="bar", nazwa_alternatywna="quux"
         )
         self.assertEqual(str(z), "foo (d. bar)")
 
-        z = mommy.make(Zrodlo, nazwa="foo", poprzednia_nazwa="quux")
+        z = baker.make(Zrodlo, nazwa="foo", poprzednia_nazwa="quux")
         self.assertEqual(str(z), "foo (d. quux)")
 
     def test_zrodlo_prace_w_latach(self):
-        z = mommy.make(Zrodlo)
+        z = baker.make(Zrodlo)
         any_ciagle(rok=2012, zrodlo=z)
 
         self.assertEqual(list(z.prace_w_latach()), [2012])
@@ -356,14 +355,14 @@ class TestRedakcjaZrodla(TestCase):
         Tytul.objects.get_or_create(skrot="dr")
 
     def test_redakcja_zrodla(self):
-        a = mommy.make(
+        a = baker.make(
             Autor,
             imiona="Jan",
             nazwisko="Kowalski",
             tytul=Tytul.objects.get(skrot="dr"),
             plec=Plec.objects.get(skrot="M"),
         )
-        z = mommy.make(Zrodlo, nazwa="LOL Zine")
+        z = baker.make(Zrodlo, nazwa="LOL Zine")
         r = Redakcja_Zrodla.objects.create(
             zrodlo=z, redaktor=a, od_roku=2010, do_roku=None
         )
@@ -382,11 +381,11 @@ class TestRedakcjaZrodla(TestCase):
 
 class TestAbstract(TestCase):
     def test_abstract(self):
-        a = mommy.make(Autor, imiona="Omg", nazwisko="Lol", tytul=None)
+        a = baker.make(Autor, imiona="Omg", nazwisko="Lol", tytul=None)
 
         j = any_jednostka(skrot="foo")
-        t = mommy.make(Typ_Odpowiedzialnosci, skrot="X", nazwa="Y")
-        r = mommy.make(Wydawnictwo_Ciagle, tytul_oryginalny="AAA")
+        t = baker.make(Typ_Odpowiedzialnosci, skrot="X", nazwa="Y")
+        r = baker.make(Wydawnictwo_Ciagle, tytul_oryginalny="AAA")
         b = Wydawnictwo_Ciagle_Autor.objects.create(
             autor=a, jednostka=j, typ_odpowiedzialnosci=t, rekord=r
         )
@@ -441,6 +440,6 @@ class TestWydawnictwoCiagleTestWydawnictwoZwarte(TestCase):
 
 
 def test_patent_kasowanie(autor_jan_kowalski, jednostka, typy_odpowiedzialnosci):
-    p = mommy.make(Patent)
+    p = baker.make(Patent)
     p.dodaj_autora(autor_jan_kowalski, jednostka)
     p.delete()

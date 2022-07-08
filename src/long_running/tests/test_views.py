@@ -1,6 +1,5 @@
-from model_mommy import mommy
+from model_bakery import baker
 
-from bpp.system import User
 from long_running import const
 from long_running.views import (
     CreateLongRunningOperationView,
@@ -13,6 +12,8 @@ from long_running.views import (
     RestrictToOwnerMixin,
 )
 from test_bpp.models import TestOperation
+
+from bpp.system import User
 
 
 def test_LongRunningTaskCallerMixin_task_on_commit(
@@ -46,7 +47,7 @@ def test_LongRunningOperationsView_get_queryset(rf, admin_user):
 
     v = TestLongRunningOperationsView()
 
-    mommy.make(TestOperation, owner=admin_user)
+    baker.make(TestOperation, owner=admin_user)
     rf.user = admin_user
     qset = v.get_queryset()
     assert qset.count() == 1

@@ -1,6 +1,7 @@
+from unittest.mock import patch
+
 import pytest
 import xlrd
-from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 from flexible_reports.models import (
     DATA_FROM_DATASOURCE,
@@ -10,14 +11,8 @@ from flexible_reports.models import (
     Table,
 )
 from flexible_reports.models.report import Report
-from mock import patch
-from model_mommy import mommy
+from model_bakery import baker
 
-from bpp.models import OpcjaWyswietlaniaField
-from bpp.models.autor import Autor
-from bpp.models.cache import Rekord
-from bpp.models.struktura import Jednostka, Wydzial
-from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
 from formdefaults.models import FormRepresentation
 from nowe_raporty.views import (
     AutorRaportFormView,
@@ -27,6 +22,14 @@ from nowe_raporty.views import (
     JednostkaRaportFormView,
     WydzialRaportFormView,
 )
+
+from django.contrib.contenttypes.models import ContentType
+
+from bpp.models import OpcjaWyswietlaniaField
+from bpp.models.autor import Autor
+from bpp.models.cache import Rekord
+from bpp.models.struktura import Jednostka, Wydzial
+from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
 
 
 @pytest.mark.django_db
@@ -39,7 +42,7 @@ from nowe_raporty.views import (
     ],
 )
 def test_view_raport_nie_zdefiniowany(app, view, klass):
-    obj = mommy.make(klass)
+    obj = baker.make(klass)
     v = reverse("nowe_raporty:" + view, args=(obj.pk, 2017, 2017))
     res = app.get(v)
 
@@ -56,10 +59,10 @@ def test_view_raport_nie_zdefiniowany(app, view, klass):
     ],
 )
 def test_view_raport_zdefiniowany(view, klass, report_slug, rf):
-    obj = mommy.make(klass)
+    obj = baker.make(klass)
     v = view(kwargs=dict(od_roku=2017, do_roku=2017))
     v.object = obj
-    mommy.make(Report, slug=report_slug)
+    baker.make(Report, slug=report_slug)
 
     v.request = rf.get("/")
     ret = v.get_context_data()
@@ -71,13 +74,13 @@ def test_view_raport_zdefiniowany(view, klass, report_slug, rf):
 
 @pytest.fixture
 def autor(typy_odpowiedzialnosci):
-    swoja_jednostka = mommy.make(Jednostka, skupia_pracownikow=True)
-    obca_jednostka = mommy.make(Jednostka, skupia_pracownikow=False)
+    swoja_jednostka = baker.make(Jednostka, skupia_pracownikow=True)
+    obca_jednostka = baker.make(Jednostka, skupia_pracownikow=False)
 
-    autor = mommy.make(Autor)
+    autor = baker.make(Autor)
 
-    wc1 = mommy.make(Wydawnictwo_Ciagle)
-    wc2 = mommy.make(Wydawnictwo_Ciagle)
+    wc1 = baker.make(Wydawnictwo_Ciagle)
+    wc2 = baker.make(Wydawnictwo_Ciagle)
 
     wc1.dodaj_autora(autor, swoja_jednostka, zapisany_jako="lel")
     wc2.dodaj_autora(autor, obca_jednostka, zapisany_jako="lol", afiliuje=False)
@@ -123,7 +126,7 @@ def test_GenerujRaportDlaAutora_get_base_queryset(rf):
 
 @pytest.mark.django_db
 def test_czy_jednostka_form_niewidoczny_dla_anonimow(webtest_app, uczelnia):
-    mommy.make(Report, slug="raport-jednostek")
+    baker.make(Report, slug="raport-jednostek")
     res = webtest_app.get(reverse("nowe_raporty:jednostka_form"))
     assert res.status_code == 302
     assert "login" in res.location
@@ -131,14 +134,14 @@ def test_czy_jednostka_form_niewidoczny_dla_anonimow(webtest_app, uczelnia):
 
 @pytest.mark.django_db
 def test_czy_jednostka_form_widoczny_dla_zalogowanych(app):
-    mommy.make(Report, slug="raport-jednostek")
+    baker.make(Report, slug="raport-jednostek")
     res = app.get(reverse("nowe_raporty:jednostka_form"))
     assert res.status_code == 200
 
 
 @pytest.mark.django_db
 def test_czy_generuj_jednostka_niewidoczny_dla_anonimow(webtest_app, jednostka):
-    mommy.make(Report, slug="raport-jednostek")
+    baker.make(Report, slug="raport-jednostek")
     res = webtest_app.get(
         reverse("nowe_raporty:jednostka_generuj", args=(jednostka.pk, 2018, 2020))
     )
@@ -148,7 +151,7 @@ def test_czy_generuj_jednostka_niewidoczny_dla_anonimow(webtest_app, jednostka):
 
 @pytest.mark.django_db
 def test_czy_generuj_jednostka_widoczny_dla_zalogowanych(app, jednostka):
-    mommy.make(Report, slug="raport-jednostek")
+    baker.make(Report, slug="raport-jednostek")
     res = app.get(
         reverse("nowe_raporty:jednostka_generuj", args=(jednostka.pk, 2018, 2020))
     )
@@ -157,7 +160,7 @@ def test_czy_generuj_jednostka_widoczny_dla_zalogowanych(app, jednostka):
 
 @pytest.mark.django_db
 def test_czy_wydzial_form_niewidoczny_dla_anonimow(webtest_app, uczelnia):
-    mommy.make(Report, slug="raport-wydzialow")
+    baker.make(Report, slug="raport-wydzialow")
     res = webtest_app.get(reverse("nowe_raporty:wydzial_form"))
     assert res.status_code == 302
     assert "login" in res.location
@@ -165,14 +168,14 @@ def test_czy_wydzial_form_niewidoczny_dla_anonimow(webtest_app, uczelnia):
 
 @pytest.mark.django_db
 def test_czy_wydzial_form_widoczny_dla_zalogowanych(app):
-    mommy.make(Report, slug="raport-wydzialow")
+    baker.make(Report, slug="raport-wydzialow")
     res = app.get(reverse("nowe_raporty:wydzial_form"))
     assert res.status_code == 200
 
 
 @pytest.mark.django_db
 def test_czy_generuj_wydzial_niewidoczny_dla_anonimow(webtest_app, wydzial):
-    mommy.make(Report, slug="raport-wydzialow")
+    baker.make(Report, slug="raport-wydzialow")
     res = webtest_app.get(
         reverse("nowe_raporty:wydzial_generuj", args=(wydzial.pk, 2018, 2020))
     )
@@ -182,7 +185,7 @@ def test_czy_generuj_wydzial_niewidoczny_dla_anonimow(webtest_app, wydzial):
 
 @pytest.mark.django_db
 def test_czy_generuj_wydzial_widoczny_dla_zalogowanych(app, wydzial):
-    mommy.make(Report, slug="raport-wydzialow")
+    baker.make(Report, slug="raport-wydzialow")
     res = app.get(
         reverse("nowe_raporty:wydzial_generuj", args=(wydzial.pk, 2018, 2020))
     )
@@ -193,7 +196,7 @@ def test_czy_generuj_wydzial_widoczny_dla_zalogowanych(app, wydzial):
 def test_czy_raport_autorow_generuj_i_form_przestrzegaja_ustawien_anonim(
     webtest_app, uczelnia, autor_jan_kowalski
 ):
-    mommy.make(Report, slug="raport-autorow")
+    baker.make(Report, slug="raport-autorow")
 
     urls = [
         reverse("nowe_raporty:autor_generuj", args=(autor_jan_kowalski.pk, 2018, 2020)),
@@ -224,7 +227,7 @@ def test_czy_raport_autorow_generuj_i_form_przestrzegaja_ustawien_anonim(
 def test_czy_raport_jednostek_generuj_i_form_przestrzegaja_ustawien_anonim(
     webtest_app, uczelnia, jednostka
 ):
-    mommy.make(Report, slug="raport-jednostek")
+    baker.make(Report, slug="raport-jednostek")
 
     urls = [
         reverse("nowe_raporty:jednostka_generuj", args=(jednostka.pk, 2018, 2020)),
@@ -255,7 +258,7 @@ def test_czy_raport_jednostek_generuj_i_form_przestrzegaja_ustawien_anonim(
 def test_czy_raport_wydzialow_generuj_i_form_przestrzegaja_ustawien_anonim(
     webtest_app, uczelnia, wydzial
 ):
-    mommy.make(Report, slug="raport-wydzialow")
+    baker.make(Report, slug="raport-wydzialow")
 
     urls = [
         reverse("nowe_raporty:wydzial_generuj", args=(wydzial.pk, 2018, 2020)),
@@ -286,7 +289,7 @@ def test_czy_raport_wydzialow_generuj_i_form_przestrzegaja_ustawien_anonim(
 def test_czy_raport_autorow_generuj_i_form_przestrzegaja_ustawien_zalogowany(
     app, uczelnia, autor_jan_kowalski
 ):
-    mommy.make(Report, slug="raport-autorow")
+    baker.make(Report, slug="raport-autorow")
 
     urls = [
         reverse("nowe_raporty:autor_generuj", args=(autor_jan_kowalski.pk, 2018, 2020)),
@@ -316,7 +319,7 @@ def test_czy_raport_autorow_generuj_i_form_przestrzegaja_ustawien_zalogowany(
 def test_czy_raport_jednostek_generuj_i_form_przestrzegaja_ustawien_zalogowany(
     app, uczelnia, jednostka
 ):
-    mommy.make(Report, slug="raport-jednostek")
+    baker.make(Report, slug="raport-jednostek")
 
     urls = [
         reverse("nowe_raporty:jednostka_generuj", args=(jednostka.pk, 2018, 2020)),
@@ -346,7 +349,7 @@ def test_czy_raport_jednostek_generuj_i_form_przestrzegaja_ustawien_zalogowany(
 def test_czy_raport_wydzialow_generuj_i_form_przestrzegaja_ustawien_zalogowany(
     app, uczelnia, wydzial
 ):
-    mommy.make(Report, slug="raport-wydzialow")
+    baker.make(Report, slug="raport-wydzialow")
 
     urls = [
         reverse("nowe_raporty:wydzial_generuj", args=(wydzial.pk, 2018, 2020)),
@@ -386,15 +389,15 @@ def test_generowanie_xls(
     wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
     wydawnictwo_zwarte.dodaj_autora(autor_jan_kowalski, jednostka)
 
-    r = mommy.make(Report, slug="raport-autorow")
-    ds = mommy.make(Datasource, dsl_query='tytul_oryginalny = "fa"', distinct=True)
+    r = baker.make(Report, slug="raport-autorow")
+    ds = baker.make(Datasource, dsl_query='tytul_oryginalny = "fa"', distinct=True)
 
     base_model = ContentType.objects.get_for_model(Rekord)
 
-    t = mommy.make(Table, base_model=base_model)
-    mommy.make(Column, parent=t, attr_name="tytul_oryginalny")
+    t = baker.make(Table, base_model=base_model)
+    baker.make(Column, parent=t, attr_name="tytul_oryginalny")
 
-    mommy.make(
+    baker.make(
         ReportElement,
         parent=r,
         data_from=DATA_FROM_DATASOURCE,
@@ -426,7 +429,7 @@ def test_form_defaults_napis_przed_po(uczelnia, admin_client, url, klass, slug):
     NAPIS_PRZED = b"napis przed"
     NAPIS_PO = b"napis po"
 
-    mommy.make(Report, slug=slug, title="foobar")
+    baker.make(Report, slug=slug, title="foobar")
 
     uczelnia.pokazuj_raport_autorow = OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE
     uczelnia.pokazuj_raport_wydzialow = OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE

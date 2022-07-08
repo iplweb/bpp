@@ -1759,15 +1759,15 @@ docs = ["sphinx", "Pygments (<2)", "jinja2 (<2.7)", "sphinx (<1.3)"]
 test = ["unittest2 (>=1.1.0)"]
 
 [[package]]
-name = "model-mommy"
-version = "2.0.0"
+name = "model-bakery"
+version = "1.6.0"
 description = "Smart object creation facility for Django."
 category = "dev"
 optional = false
 python-versions = "*"
 
 [package.dependencies]
-django = ">=1.11.0"
+django = ">=3.2"
 
 [[package]]
 name = "msgpack"
@@ -3519,7 +3519,7 @@ test = ["pytest"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.10,<3.11"
-content-hash = "6fef44babb50cc1ccaa253397f077aefed54deaa865140c2d8a58dee92e7ea11"
+content-hash = "7f53117ed1ccf1872b309d4d7fe98d498535f8a28d3e02b085b0ce552b0f1b92"
 
 [metadata.files]
 aioredis = [
@@ -4383,9 +4383,9 @@ moai-iplweb = [
     {file = "MOAI_iplweb-2.0.0-py3-none-any.whl", hash = "sha256:f4eb653b19b9e14e4bed281b4dad59a2cadf5bee57f6ae9033fbe3b54d7bccd2"},
 ]
 mock = []
-model-mommy = [
-    {file = "model_mommy-2.0.0-py2.py3-none-any.whl", hash = "sha256:40d6e740aad7509e696a324b94cf2b0a104da93c3d4a7924cea1be3d0eb95b4f"},
-    {file = "model_mommy-2.0.0.tar.gz", hash = "sha256:3d332afce941c57f1990f45b083ba13252ba74fcd1ae43fd047e5af7a70fb312"},
+model-bakery = [
+    {file = "model_bakery-1.6.0-py2.py3-none-any.whl", hash = "sha256:51f95fff4ca4b28d74db28e84509a061ab51161cb66c8895ce80e4b064f58029"},
+    {file = "model_bakery-1.6.0.tar.gz", hash = "sha256:efded7c4d8f72f9b751eebe3be555196dcac7e1d5da9e7f990cec60833c6bf98"},
 ]
 msgpack = [
     {file = "msgpack-1.0.4-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:4ab251d229d10498e9a2f3b1e68ef64cb393394ec477e3370c457f9430ce9250"},

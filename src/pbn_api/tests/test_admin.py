@@ -1,6 +1,6 @@
 import pytest
 from django.urls import reverse
-from model_mommy import mommy
+from model_bakery import baker
 from selenium.webdriver.support.wait import WebDriverWait
 
 from pbn_api.admin import OswiadczeniaInstytucjiAdmin
@@ -22,7 +22,7 @@ def test_SentDataAdmin_list_filter_works(admin_client):
 
 @pytest.mark.django_db
 def test_OswiadczenieInstytucji_delete_model(pbn_uczelnia, pbn_client, rf):
-    oi = mommy.make(OswiadczenieInstytucji)
+    oi = baker.make(OswiadczenieInstytucji)
     req = rf.get("/")
 
     pbn_client.transport.return_values[

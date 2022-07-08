@@ -13,7 +13,7 @@ except ImportError:
 
 from django.http import Http404
 from django.test.utils import override_settings
-from model_mommy import mommy
+from model_bakery import baker
 
 from celeryui.models import Report
 
@@ -34,7 +34,7 @@ class TestRaportSelector(UserTestCase):
 
     def test_raportselector_with_reports(self):
         for x, kiedy_ukonczono in enumerate([timezone.now(), None]):
-            mommy.make(Report, arguments={}, file=None, finished_on=kiedy_ukonczono)
+            baker.make(Report, arguments={}, file=None, finished_on=kiedy_ukonczono)
 
         self.client.get(reverse("bpp:raporty"))
 
@@ -54,7 +54,7 @@ class TestRaportSelector(UserTestCase):
 
 class RaportMixin:
     def zrob_raport(self):
-        r = mommy.make(
+        r = baker.make(
             Report, file=None, function="kronika-uczelni", arguments='{"rok":"2013"}'
         )
         return r

@@ -1,10 +1,9 @@
-# -*- encoding: utf-8 -*-
 try:
     from django.core.urlresolvers import reverse
 except ImportError:
     from django.urls import reverse
 
-from model_mommy import mommy
+from model_bakery import baker
 
 from django.contrib.auth.models import Group
 
@@ -65,7 +64,7 @@ class FakeUnauthenticatedUser:
 
 class TestBrowseAutorzy(UserTestCase):
     def setUp(self):
-        super(TestBrowseAutorzy, self).setUp()
+        super().setUp()
 
         Group.objects.get_or_create(name="wprowadzanie danych")
 
@@ -78,7 +77,7 @@ class TestBrowseAutorzy(UserTestCase):
                 self.user = FakeUnauthenticatedUser()
 
         self.view.request = FakeRequest()
-        self.autor = mommy.make(Autor, nazwisko="Autor", imiona="Foo")
+        self.autor = baker.make(Autor, nazwisko="Autor", imiona="Foo")
         self.view.kwargs = dict(literka="A")
 
     def test_get_queryset(self):
@@ -103,12 +102,12 @@ class TestBrowseAutor(UserTestCase):
 
     def test_get_context_data(self):
         av = AutorView()
-        av.object = mommy.make(Autor)
+        av.object = baker.make(Autor)
         d = av.get_context_data()
         self.assertTrue("publikacje" in d["typy"])
 
     def test_habilitacyjna_doktorska(self):
-        a = mommy.make(Autor)
+        a = baker.make(Autor)
         kw = dict(autor=a, tytul_oryginalny="X", tytul="Y", uwagi="Z")
         any_doktorat(**kw)
         any_habilitacja(**kw)
@@ -117,25 +116,25 @@ class TestBrowseAutor(UserTestCase):
         self.assertContains(res, "Praca habilitacyjna")
 
     def test_autor(self):
-        a = mommy.make(Autor)
+        a = baker.make(Autor)
         res = self.client.get(reverse("bpp:browse_autor", args=(a.slug,)))
         self.assertNotContains(res, "otwórz do edycji")
 
 
 class TestBrowseAutorStaff(SuperuserTestCase):
     def setUp(self):
-        super(TestBrowseAutorStaff, self).setUp()
+        super().setUp()
         Group.objects.get_or_create(name="wprowadzanie danych")
 
     def test_autor(self):
-        a = mommy.make(Autor)
+        a = baker.make(Autor)
         res = self.client.get(reverse("bpp:browse_autor", args=(a.slug,)))
         self.assertContains(res, "otwórz do edycji")
 
 
 class TestOAI(UserTestCase):
     def setUp(self):
-        super(TestOAI, self).setUp()
+        super().setUp()
 
         rebuild_contenttypes()
 

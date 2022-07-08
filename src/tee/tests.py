@@ -3,7 +3,7 @@ from io import StringIO
 import pytest
 from django.core.management import call_command
 from django.urls import reverse
-from model_mommy import mommy
+from model_bakery import baker
 
 from tee.models import Log
 
@@ -42,7 +42,7 @@ def test_admin_view(admin_client):
 
     model = Log
 
-    mommy.make(Log)
+    baker.make(Log)
 
     app_label = "tee"
     model_name = "log"

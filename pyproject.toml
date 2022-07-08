@@ -153,7 +153,7 @@ djangoql = "0.15.3"
 django-weasyprint = "^2.1.0"
 
 [tool.poetry.dev-dependencies]
-model-mommy = ">=1.5.1"
+model-bakery = ">=1.5.1"
 django-dynamic-fixture = ">=1.8.0"
 mock = "2.0.0"
 django-webtest = "1.9.7"

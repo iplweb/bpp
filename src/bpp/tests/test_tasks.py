@@ -1,21 +1,21 @@
-# -*- encoding: utf-8 -*-
+from datetime import timedelta
+from unittest.mock import Mock
 
-from datetime import datetime, timedelta
+import pytest
+from model_bakery import baker
 
-from mock import Mock
-from model_mommy import mommy
+from celeryui.models import Report
+
+from django.utils import timezone
 
 from bpp.models import Wydawnictwo_Ciagle
-from celeryui.models import Report
-import pytest
+from bpp.tasks import _zaktualizuj_liczbe_cytowan, remove_old_report_files
 
-from bpp.tasks import remove_old_report_files, _zaktualizuj_liczbe_cytowan
-from django.utils import timezone
 
 @pytest.mark.django_db
 def test_remove_old_report_files():
-    mommy.make(Report)
-    r = mommy.make(Report)
+    baker.make(Report)
+    r = baker.make(Report)
     r.started_on = timezone.now() - timedelta(days=20)
     r.save()
 
@@ -30,10 +30,17 @@ def test_remove_old_report_files():
 def test_zaktualizuj_liczbe_cytowan(uczelnia, wydawnictwo_ciagle, mocker):
 
     m = Mock()
-    m.query_multiple= Mock(return_value=[{wydawnictwo_ciagle.pk: {'timesCited': '31337'}}])
-    fn = mocker.patch("bpp.models.struktura.Uczelnia.wosclient", return_value=m)
+    m.query_multiple = Mock(
+        return_value=[{wydawnictwo_ciagle.pk: {"timesCited": "31337"}}]
+    )
 
-    _zaktualizuj_liczbe_cytowan([Wydawnictwo_Ciagle,])
+    mocker.patch("bpp.models.struktura.Uczelnia.wosclient", return_value=m)
+
+    _zaktualizuj_liczbe_cytowan(
+        [
+            Wydawnictwo_Ciagle,
+        ]
+    )
 
     wydawnictwo_ciagle.refresh_from_db()
     assert wydawnictwo_ciagle.liczba_cytowan == 31337

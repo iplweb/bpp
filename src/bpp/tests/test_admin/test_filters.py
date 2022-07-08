@@ -1,4 +1,4 @@
-from model_mommy import mommy
+from model_bakery import baker
 
 from django.contrib.admin.models import ADDITION, CHANGE, LogEntry
 from django.contrib.contenttypes.models import ContentType
@@ -26,7 +26,7 @@ def test_OstatnioZmienionePrzezFilter(wydawnictwo_zwarte, admin_user):
 
 
 def test_UtworzonePrzeZFilter(wydawnictwo_zwarte, admin_user, normal_django_user):
-    drugie_wydawnictwo_zwarte = mommy.make(Wydawnictwo_Zwarte)
+    drugie_wydawnictwo_zwarte = baker.make(Wydawnictwo_Zwarte)
     content_type_id = ContentType.objects.get_for_model(wydawnictwo_zwarte).pk
 
     LogEntry.objects.create(

@@ -1,111 +1,134 @@
-# -*- encoding: utf-8 -*-
 from datetime import date
-from model_mommy import mommy
-from django.test import TestCase
 
-from bpp.imports.egeria_2012 import mangle_labels, znajdz_lub_zrob_stanowisko, dopasuj_jednostke, dopasuj_autora, \
-    importuj_wiersz, importuj_sheet_roczny, importuj_sheet_osoby_nie_ujete, importuj_imiona_sheet
+from django.test import TestCase
+from model_bakery import baker
+
+from bpp.imports.egeria_2012 import (
+    dopasuj_autora,
+    dopasuj_jednostke,
+    importuj_wiersz,
+    mangle_labels,
+    znajdz_lub_zrob_stanowisko,
+)
 from bpp.imports.uml import UML_Egeria_2012_Mangle
-from bpp.models import Jednostka, Autor_Jednostka, Autor, Funkcja_Autora, Wydzial, Opi_2012_Afiliacja_Do_Wydzialu
-from bpp.tests.util import any_autor, any_wydzial, any_jednostka
+from bpp.models import Autor, Autor_Jednostka, Funkcja_Autora
+from bpp.tests.util import any_jednostka
 
 
 class _x:
     def __init__(self, value):
         self.value = value
 
+
 class TestImports(TestCase):
     def test_mangle_labels(self):
-        a = ['foo', 'bar', 'baz', 'quux',
-             'Stanowisko',
-             'foo', 'bar', 'quux',
-             'Stanowisko', 'Wydzial ', 'Stanowisko', 'Wydzial ', 'Stanowisko', 'Wydzial']
+        a = [
+            "foo",
+            "bar",
+            "baz",
+            "quux",
+            "Stanowisko",
+            "foo",
+            "bar",
+            "quux",
+            "Stanowisko",
+            "Wydzial ",
+            "Stanowisko",
+            "Wydzial ",
+            "Stanowisko",
+            "Wydzial",
+        ]
 
-        b = ['foo', 'bar', 'baz', 'quux',
-             'Stanowisko',
-             'foo', 'bar', 'quux',
-             'Stanowisko_2009', 'Wydzial_2009', 'Stanowisko_2010', 'Wydzial_2010', 'Stanowisko_2011', 'Wydzial_2011']
+        b = [
+            "foo",
+            "bar",
+            "baz",
+            "quux",
+            "Stanowisko",
+            "foo",
+            "bar",
+            "quux",
+            "Stanowisko_2009",
+            "Wydzial_2009",
+            "Stanowisko_2010",
+            "Wydzial_2010",
+            "Stanowisko_2011",
+            "Wydzial_2011",
+        ]
 
         self.assertEqual(mangle_labels(a), b)
 
     def test_znajdz_lub_zrob_stanowisko(self):
-        f = znajdz_lub_zrob_stanowisko('Kucharz')
-        self.assertEqual(f.nazwa, 'Kucharz')
-        f1 = znajdz_lub_zrob_stanowisko('Kucharz')
+        f = znajdz_lub_zrob_stanowisko("Kucharz")
+        self.assertEqual(f.nazwa, "Kucharz")
+        f1 = znajdz_lub_zrob_stanowisko("Kucharz")
         self.assertEqual(f1, f)
 
     def test_dopasuj_jednostke(self):
         mangle = UML_Egeria_2012_Mangle
-        j1 = any_jednostka(nazwa='Foo')
-        j2 = any_jednostka(nazwa='Sam. Pracownia Propedeutyki Radiologii Stom. i Szczęk-Twarz')
-        j3 = any_jednostka(nazwa='Katedra i Klinika Ginekologii i Endokrynologii Ginekologicznej')
-        j4 = any_jednostka(nazwa='I Katedra i Klinika Ginekologii')
-        j5 = any_jednostka(nazwa='II Katedra i Klinika Ginekologii')
+        j1 = any_jednostka(nazwa="Foo")
+        j2 = any_jednostka(  # noqa
+            nazwa="Sam. Pracownia Propedeutyki Radiologii Stom. i Szczęk-Twarz"
+        )
+        j3 = any_jednostka(
+            nazwa="Katedra i Klinika Ginekologii i Endokrynologii Ginekologicznej"
+        )
+        j4 = any_jednostka(nazwa="I Katedra i Klinika Ginekologii")
+        j5 = any_jednostka(nazwa="II Katedra i Klinika Ginekologii")  # noqa
 
         self.assertEqual(
-            dopasuj_jednostke('Katedra i Klinika Ginekologii i Endokrynologii Ginekolog.', mangle),
-            j3
+            dopasuj_jednostke(
+                "Katedra i Klinika Ginekologii i Endokrynologii Ginekolog.", mangle
+            ),
+            j3,
+        )
+
+        self.assertEqual(dopasuj_jednostke("Foo", mangle), j1)
+
+        self.assertEqual(
+            dopasuj_jednostke(
+                "Sam. Pracownia Propedeutyki Radiologii Stom. i Szczęk-Twarz", mangle
+            ),
+            None,
         )
 
         self.assertEqual(
-            dopasuj_jednostke('Foo', mangle),
-            j1
-        )
-
-        self.assertEqual(
-            dopasuj_jednostke('Sam. Pracownia Propedeutyki Radiologii Stom. i Szczęk-Twarz', mangle),
-            None
-        )
-
-        self.assertEqual(
-            dopasuj_jednostke('I Katedra i Klinika Ginekologii', mangle),
-            j4
+            dopasuj_jednostke("I Katedra i Klinika Ginekologii", mangle), j4
         )
 
     def test_dopasuj_autora(self):
-        a1 = mommy.make(Autor, imiona='Jan', nazwisko='Kowalski')
-        a2 = mommy.make(Autor, imiona='Jan', nazwisko='Kowalski')
-        a3 = mommy.make(Autor, imiona='Jan', nazwisko='Unikalny')
+        a1 = baker.make(Autor, imiona="Jan", nazwisko="Kowalski")
+        a2 = baker.make(Autor, imiona="Jan", nazwisko="Kowalski")
+        a3 = baker.make(Autor, imiona="Jan", nazwisko="Unikalny")
 
         j1 = any_jednostka()
         j2 = any_jednostka()
-        f1 = mommy.make(Funkcja_Autora, nazwa='Kucharz')
+        f1 = baker.make(Funkcja_Autora, nazwa="Kucharz")
 
-        Autor_Jednostka.objects.create(
-            autor=a1, jednostka=j1, funkcja=f1
-        )
+        Autor_Jednostka.objects.create(autor=a1, jednostka=j1, funkcja=f1)
 
-        Autor_Jednostka.objects.create(
-            autor=a2, jednostka=j2, funkcja=f1
-        )
+        Autor_Jednostka.objects.create(autor=a2, jednostka=j2, funkcja=f1)
 
-        self.assertEqual(
-            dopasuj_autora('Jan', 'Unikalny', None, None),
-            a3
-        )
+        self.assertEqual(dopasuj_autora("Jan", "Unikalny", None, None), a3)
 
-        self.assertEqual(
-            dopasuj_autora('Jan', 'Kowalski', j1.nazwa, f1),
-            a1
-        )
+        self.assertEqual(dopasuj_autora("Jan", "Kowalski", j1.nazwa, f1), a1)
 
-        self.assertEqual(
-            dopasuj_autora('Jan', 'Kowalski', j2.nazwa, f1),
-            a2
-        )
+        self.assertEqual(dopasuj_autora("Jan", "Kowalski", j2.nazwa, f1), a2)
 
     def test_importuj_wiersz(self):
-        a1 = mommy.make(Autor, imiona='Jan', nazwisko='Kowalski')
-        j1 = any_jednostka(nazwa='Foo')
+        a1 = baker.make(Autor, imiona="Jan", nazwisko="Kowalski")
+        j1 = any_jednostka(nazwa="Foo")
 
-        importuj_wiersz('Jan', 'Kowalski', 'Foo', 'Kucharz', 2012, UML_Egeria_2012_Mangle)
+        importuj_wiersz(
+            "Jan", "Kowalski", "Foo", "Kucharz", 2012, UML_Egeria_2012_Mangle
+        )
         self.assertEqual(
             Autor_Jednostka.objects.get(autor=a1, jednostka=j1).zakonczyl_prace,
-            date(2012, 12, 31)
+            date(2012, 12, 31),
         )
 
     # def test_importuj_sheet_roczny(self):
-    #     a1 = mommy.make(Autor, imiona='Jan', nazwisko='Kowalski')
+    #     a1 = baker.make(Autor, imiona='Jan', nazwisko='Kowalski')
     #     j1 = any_jednostka(nazwa='Foo')
     #
     #     with Mock() as sheet:
@@ -144,6 +167,8 @@ class TestImports(TestCase):
     #     self.assertEquals(l[0].wydzial, w1)
     #     self.assertEquals(l[0].rok, 2011)
     #
+
+
 #
 # class TestImportujImiona(TestCase):
 #
@@ -162,19 +187,19 @@ class TestImports(TestCase):
 #         jednostka = any_jednostka(wydzial=wydzial)
 #         jednostka2 = any_jednostka(wydzial=wydzial2)
 #
-#         autor = mommy.make(Autor, nazwisko='Kowalski', imiona='Jan')
+#         autor = baker.make(Autor, nazwisko='Kowalski', imiona='Jan')
 #         Autor_Jednostka.objects.create(jednostka=jednostka, autor=autor)
 #
-#         autor2 = mommy.make(Autor, nazwisko='Nowak', imiona='Jan')
+#         autor2 = baker.make(Autor, nazwisko='Nowak', imiona='Jan')
 #         Autor_Jednostka.objects.create(jednostka=jednostka, autor=autor2)
 #
-#         autor3 = mommy.make(Autor, nazwisko='Nowak', imiona='Jan')
+#         autor3 = baker.make(Autor, nazwisko='Nowak', imiona='Jan')
 #         Autor_Jednostka.objects.create(jednostka=jednostka, autor=autor3)
 #
-#         autor4 = mommy.make(Autor, nazwisko='Strzelec', imiona='Jan')
+#         autor4 = baker.make(Autor, nazwisko='Strzelec', imiona='Jan')
 #         Autor_Jednostka.objects.create(jednostka=jednostka, autor=autor4)
 #
-#         autor5 = mommy.make(Autor, nazwisko='Strzelec', imiona='Jan')
+#         autor5 = baker.make(Autor, nazwisko='Strzelec', imiona='Jan')
 #         Autor_Jednostka.objects.create(jednostka=jednostka2, autor=autor5)
 #
 #         importuj_imiona_sheet(sheet, wydzial)

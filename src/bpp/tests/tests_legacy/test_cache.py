@@ -1,10 +1,9 @@
-# -*- encoding: utf-8 -*-
 import datetime
 
 from django.conf import settings
 from django.core.management import call_command
 from django.test import TestCase
-from model_mommy import mommy
+from model_bakery import baker
 
 from bpp.models import (
     Charakter_Formalny,
@@ -50,7 +49,7 @@ class LoadFixturesMixin:
                 call_command(
                     "loaddata",
                     *self.fixtures,
-                    **{"verbosity": 0, "database": db_name, "skip_validation": True}
+                    **{"verbosity": 0, "database": db_name, "skip_validation": True},
                 )
 
 
@@ -66,9 +65,9 @@ class TestCacheMixin:
         aut = Typ_Odpowiedzialnosci.objects.get(skrot="aut.")
         self.typ_odpowiedzialnosci = aut
 
-        self.uczelnia = mommy.make(Uczelnia)
-        self.wydzial = mommy.make(Wydzial, uczelnia=self.uczelnia)
-        self.j = mommy.make(
+        self.uczelnia = baker.make(Uczelnia)
+        self.wydzial = baker.make(Wydzial, uczelnia=self.uczelnia)
+        self.j = baker.make(
             Jednostka, nazwa="Foo Bar", uczelnia=self.uczelnia, wydzial=self.wydzial
         )
 
@@ -114,10 +113,10 @@ class TestCacheMixin:
             tytul_oryginalny="zwarte",
             liczba_znakow_wydawniczych=40000,
             charakter_formalny=Charakter_Formalny.objects.all()[0],
-            **dict(list(zwarte_dane.items()) + list(wspolne_dane.items()))
+            **dict(list(zwarte_dane.items()) + list(wspolne_dane.items())),
         )
 
-        self.zr = mommy.make(Zrodlo, nazwa="Zrodlo")
+        self.zr = baker.make(Zrodlo, nazwa="Zrodlo")
 
         self.c = ciagle(
             self.a,
@@ -128,7 +127,7 @@ class TestCacheMixin:
             issn="issn",
             e_issn="e_issn",
             charakter_formalny=Charakter_Formalny.objects.all()[0],
-            **wspolne_dane
+            **wspolne_dane,
         )
         self.assertEqual(Wydawnictwo_Ciagle_Autor.objects.all().count(), 1)
 
@@ -142,20 +141,20 @@ class TestCacheMixin:
 
         doktorat_kw = dict(list(zwarte_dane.items()) + list(wspolne_dane.items()))
 
-        self.d = mommy.make(
+        self.d = baker.make(
             Praca_Doktorska,
             tytul_oryginalny="doktorat",
             autor=self.a,
             jednostka=self.j,
-            **doktorat_kw
+            **doktorat_kw,
         )
 
-        self.h = mommy.make(
+        self.h = baker.make(
             Praca_Habilitacyjna,
             tytul_oryginalny="habilitacja",
             autor=self.a,
             jednostka=self.j,
-            **doktorat_kw
+            **doktorat_kw,
         )
 
         # Patent
@@ -165,12 +164,12 @@ class TestCacheMixin:
         for elem in ["typ_kbn", "jezyk"]:
             del wspolne_dane[elem]
 
-        self.p = mommy.make(
+        self.p = baker.make(
             Patent,
             tytul_oryginalny="patent",
             numer_zgloszenia="100",
             data_decyzji=datetime.date(2012, 1, 1),
-            **wspolne_dane
+            **wspolne_dane,
         )
 
         Patent_Autor.objects.create(
@@ -204,9 +203,9 @@ class TestCacheSimple(TestCacheMixin, TestCase):
         for skrot, nazwa in [("ang.", "angielski"), ("fr.", "francuski")]:
             Jezyk.objects.get_or_create(skrot=skrot, nazwa=nazwa)
         for klass in [Typ_KBN, Zrodlo_Informacji, Status_Korekty]:
-            mommy.make(klass)
+            baker.make(klass)
 
-        super(TestCacheSimple, self).setUp()
+        super().setUp()
 
     def test_get_original_object(self):
         Rekord.objects.full_refresh()
@@ -233,7 +232,7 @@ class TestCacheSimple(TestCacheMixin, TestCase):
             self.assertEqual(
                 instance_value,
                 value,
-                msg="key=%s, %s!=%s" % (key, value, instance_value),
+                msg=f"key={key}, {value}!={instance_value}",
             )
 
     def test_tytul_sorted_version(self):
@@ -265,8 +264,8 @@ class TestCacheZapisani(LoadFixturesMixin, TestCase):
         aut = any_autor("Kowalski", "Jan")
         aut2 = any_autor("Nowak", "Jan")
 
-        mommy.make(Uczelnia)
-        jed = mommy.make(Jednostka)
+        baker.make(Uczelnia)
+        jed = baker.make(Jednostka)
         wyd = any_ciagle(tytul_oryginalny="Wydawnictwo ciagle")
 
         for kolejnosc, autorx in enumerate([aut, aut2]):
@@ -297,8 +296,8 @@ class TestCacheZapisani(LoadFixturesMixin, TestCase):
 
     def test_zapisani_jeden(self):
         aut = any_autor("Kowalski", "Jan")
-        mommy.make(Uczelnia)
-        dok = mommy.make(Praca_Doktorska, tytul_oryginalny="Doktorat", autor=aut)
+        baker.make(Uczelnia)
+        dok = baker.make(Praca_Doktorska, tytul_oryginalny="Doktorat", autor=aut)
 
         Rekord.objects.full_refresh()
         c = Rekord.objects.get_original(dok)
@@ -314,7 +313,7 @@ def test_MinimalCachingProblem_tworzenie(
     statusy_korekt, jezyki, typy_odpowiedzialnosci
 ):
     def foo():
-        j = mommy.make(Jednostka)
+        j = baker.make(Jednostka)
         a = any_autor()
 
         assert Autorzy.objects.all().count() == 0
@@ -332,7 +331,7 @@ def test_MinimalCachingProblem_tworzenie(
 
 def test_MinimalCachingProblem_usuwanie(statusy_korekt, jezyki, typy_odpowiedzialnosci):
     def foo():
-        j = mommy.make(Jednostka)
+        j = baker.make(Jednostka)
         a = any_autor()
 
         assert Autorzy.objects.all().count() == 0
