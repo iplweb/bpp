@@ -284,7 +284,7 @@ def autoslug_gen():
     )
 
 
-BAKERY_CUSTOM_FIELDS_GEN = {"autoslug.fields.AutoSlugField": autoslug_gen}
+BAKER_CUSTOM_FIELDS_GEN = {"autoslug.fields.AutoSlugField": autoslug_gen}
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTOCOL", "https")
 
