@@ -83,7 +83,7 @@ class TestPobranieRaportu(RaportMixin, UserTestCase):
             url = reverse("bpp:pobranie-raportu", kwargs=dict(uid=self.r.uid))
             resp = self.client.get(url)
             self.assertEqual(resp.status_code, 200)
-            self.assertIn("x-accel-redirect", resp._headers)
+            self.assertIn("x-accel-redirect", resp.headers)
 
 
 class TestPodgladRaportu(RaportMixin, UserTestCase):

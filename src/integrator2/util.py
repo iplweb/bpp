@@ -1,5 +1,4 @@
-# -*- encoding: utf-8 -*-
-import xlrd
+import openpyxl
 
 
 def find_header_row(sheet, first_column_value, max_row_range=10, max_col_range=10):
@@ -13,11 +12,14 @@ def find_header_row(sheet, first_column_value, max_row_range=10, max_col_range=1
     :param max_col_range: maksymalny zakres "w prawo" gdzie szukamy.
     :return: zwraca numer wiersza, w którym znajduje się nagłówek.
     """
-    for a in range(min(max_row_range, sheet.nrows)):
-        for b in range(min(max_col_range, sheet.ncols)):
-            f = sheet.row(a)[b].value
-            if hasattr(f, 'upper') and f.upper() == first_column_value.upper():
-                return a
+    for n, row in enumerate(
+        sheet.iter_rows(1, max_row=min(max_row_range, sheet.max_row)), start=1
+    ):
+        for b in range(min(max_col_range, sheet.max_column)):
+            f = row[b].value
+            if hasattr(f, "upper") and f.upper() == first_column_value.upper():
+                return n
+
 
 def build_mapping(xls_columns, wanted_columns):
     """
@@ -36,7 +38,9 @@ def build_mapping(xls_columns, wanted_columns):
     :rtype: list
     """
     ret = []
-    upper_wanted_columns = dict([(x.upper().strip(), wanted_columns[x]) for x in list(wanted_columns.keys())])
+    upper_wanted_columns = {
+        x.upper().strip(): wanted_columns[x] for x in list(wanted_columns.keys())
+    }
     for elem in xls_columns:
         val = elem.value.upper().strip()
         if val in upper_wanted_columns:
@@ -51,7 +55,15 @@ class ReadDataException(Exception):
     pass
 
 
-def read_xls_data(filename, column_mapping, header_row_name, ignored_sheet_names=None, limit=None, limit_sheets=None, transformations=None):
+def read_xls_data(
+    filename,
+    column_mapping,
+    header_row_name,
+    ignored_sheet_names=None,
+    limit=None,
+    limit_sheets=None,
+    transformations=None,
+):
     """
     Importuje dane z pliku XLS - ze wszystkich kolejnych zeszytów.
 
@@ -62,8 +74,8 @@ def read_xls_data(filename, column_mapping, header_row_name, ignored_sheet_names
     :param transformations: słownik funkcji, transformujących wartość z arkusza przed zwróceniem jej
     :return:
     """
-    book = xlrd.open_workbook(filename=filename)
-    sheets = book.sheets()
+    book = openpyxl.load_workbook(filename=filename)
+    sheets = book.worksheets
     if limit_sheets:
         sheets = sheets[:limit_sheets]
     for sheet in sheets:
@@ -72,18 +84,22 @@ def read_xls_data(filename, column_mapping, header_row_name, ignored_sheet_names
                 continue
         header_row_no = find_header_row(sheet, header_row_name)
         if header_row_no is None:
-            raise ReadDataException("Brak wiersza nagłówka, poszukiwano %r" % header_row_name)
-        header_row_values = sheet.row(header_row_no)
-        read_data_mapping = list(enumerate(build_mapping(header_row_values, column_mapping)))
+            raise ReadDataException(
+                "Brak wiersza nagłówka, poszukiwano %r" % header_row_name
+            )
+        header_row_values = list(sheet.iter_rows(header_row_no, header_row_no + 1))[0]
+        read_data_mapping = list(
+            enumerate(build_mapping(header_row_values, column_mapping))
+        )
 
-        max_row = sheet.nrows
+        max_row = sheet.max_row
         if limit is not None:
             max_row = min(header_row_no + 2 + limit, max_row)
 
-        for row in range(header_row_no + 1, max_row):
-            dct = {"__sheet__": sheet.name}
+        for row in sheet.iter_rows(header_row_no + 1, max_row):
+            dct = {"__sheet__": sheet.title}
             for no, elem in read_data_mapping:
-                value = sheet.row(row)[no].value
+                value = row[no].value
 
                 if transformations is not None:
                     if elem in transformations:

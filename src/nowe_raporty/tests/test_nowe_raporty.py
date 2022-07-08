@@ -1,7 +1,7 @@
 from unittest.mock import patch
 
+import openpyxl
 import pytest
-import xlrd
 from django.urls import reverse
 from flexible_reports.models import (
     DATA_FROM_DATASOURCE,
@@ -413,8 +413,8 @@ def test_generowanie_xls(
     res = client.get(url)
 
     # Sprawdź, czy to XLS
-    wb = xlrd.open_workbook(file_contents=res.content)
-    assert len(wb.sheets()) == 1
+    wb = openpyxl.load_workbook(file_contents=res.content)
+    assert len(wb.worksheets) == 1
 
 
 @pytest.mark.parametrize(

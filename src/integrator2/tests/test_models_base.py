@@ -1,16 +1,17 @@
-# -*- encoding: utf-8 -*-
-import pytest
-from mock import Mock, MagicMock
+from unittest.mock import MagicMock, Mock
 
-from integrator2.models.base import BaseIntegration
+import pytest
+
+from integrator2.models import ListaMinisterialnaIntegration
+
 
 @pytest.mark.django_db
 def test_models_base(normal_django_user):
 
-    bi = BaseIntegration()
+    bi = ListaMinisterialnaIntegration()  # BaseIntegration()
 
-    bi.file.name = 'foo'
-    assert bi.filename() == 'foo'
+    bi.file.name = "foo"
+    assert bi.filename() == "foo"
 
     filter = Mock()
     bi.klass = Mock(objects=Mock(filter=filter))
@@ -25,17 +26,17 @@ def test_models_base(normal_django_user):
     elem = Mock()
     bi.records = Mock(return_value=[elem])
     bi.match_records()
-    assert elem.zanalizowano == True
+    assert elem.zanalizowano
     assert elem.save.call_count == 1
-    assert bi.match_single_record.called == True
+    assert bi.match_single_record.called
 
     elem = Mock()
     bi.records = MagicMock()
     bi.records().filter.return_value = [elem]
-    res = [x for x in bi.records().filter()]
+    [x for x in bi.records().filter()]
 
     bi.integrate_single_record = Mock()
     bi.integrate()
     assert bi.integrate_single_record.call_count == 1
-    assert elem.zintegrowano == True
-    assert elem.save.called == True
+    assert elem.zintegrowano
+    assert elem.save.called
