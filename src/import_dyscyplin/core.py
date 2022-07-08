@@ -1,4 +1,4 @@
-import xlrd
+import openpyxl
 from _decimal import Decimal, InvalidOperation
 from xlrd import XLRDError
 
@@ -21,15 +21,15 @@ def przeanalizuj_plik_xls(sciezka, parent):
 
     # Otwórz plik i sprawdź, czy w ogóle działa...
     try:
-        f = xlrd.open_workbook(sciezka)
+        f = openpyxl.load_workbook(sciezka)
     except XLRDError as e:
         raise ImproperFileException(e)
 
     # Sprawdź, ile jest skoroszytów
-    if len(f.sheets()) != 1:
+    if len(f.worksheets) != 1:
         raise BadNoOfSheetsException()
 
-    s = f.sheet_by_index(0)
+    s = f.worksheets[0]
 
     if parent.kolumna_set.all().count() == 0:
         raise HeaderNotFoundException()
@@ -39,10 +39,13 @@ def przeanalizuj_plik_xls(sciezka, parent):
     wydzial_cache = {}
     jednostka_cache = {}
 
-    for n in range(parent.wiersz_naglowka + 1, s.nrows):
-        original = dict(zip(naglowek, [elem.value for elem in s.row(n)]))
+    for n, row in enumerate(
+        s.iter_rows(min_row=parent.wiersz_naglowka + 1, max_row=s.max_row),
+        parent.wiersz_naglowka + 1,
+    ):
+        original = dict(zip(naglowek, [elem.value for elem in row]))
 
-        if not original["nazwisko"].strip():
+        if original["nazwisko"] is None or (not original["nazwisko"].strip()):
             continue
 
         try:
@@ -116,7 +119,6 @@ def przeanalizuj_plik_xls(sciezka, parent):
         # if original.get("dyscyplina").strip() == "":
         #     bledny = True
 
-        # import pdb; pdb.set_trace()
         i = Import_Dyscyplin_Row(
             row_no=n,
             parent=parent,

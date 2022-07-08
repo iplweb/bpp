@@ -295,7 +295,7 @@ SCRIPT_PATH = os.path.abspath(os.path.dirname(__file__))
 
 SITE_ROOT = os.path.abspath(os.path.join(SCRIPT_PATH, "..", ".."))
 
-STATIC_ROOT = os.path.join(SCRIPT_PATH, "..", "staticroot")
+STATIC_ROOT = os.path.abspath(os.path.join(SCRIPT_PATH, "..", "staticroot"))
 
 COMPRESS_CSS_FILTERS = [
     "compressor.filters.css_default.CssAbsoluteFilter",
