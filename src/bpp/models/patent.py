@@ -94,7 +94,7 @@ class Patent(
         "bpp.Rodzaj_Prawa_Patentowego", CASCADE, null=True, blank=True
     )
 
-    wdrozenie = models.BooleanField("Wdrożenie", null=True)
+    wdrozenie = models.BooleanField("Wdrożenie", null=True, blank=True, default=None)
 
     wydzial = models.ForeignKey("bpp.Wydzial", SET_NULL, null=True, blank=True)
 

@@ -125,7 +125,9 @@ class BaseIntegrationElement(models.Model):
     """
 
     zanalizowano = models.BooleanField(default=False)
-    moze_byc_zintegrowany_automatycznie = models.BooleanField(default=None, null=True)
+    moze_byc_zintegrowany_automatycznie = models.BooleanField(
+        default=None, null=True, blank=True
+    )
     extra_info = models.TextField()
 
     zintegrowano = models.BooleanField(default=False)

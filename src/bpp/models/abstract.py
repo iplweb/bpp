@@ -836,7 +836,9 @@ class ModelZOplataZaPublikacje(models.Model):
         "w zakresie badań naukowych lub prac rozwojowych",
     )
 
-    opl_pub_other = models.BooleanField(verbose_name="Inne środki finansowe", null=True)
+    opl_pub_other = models.BooleanField(
+        verbose_name="Inne środki finansowe", null=True, blank=True, default=None
+    )
 
     opl_pub_amount = models.DecimalField(
         max_digits=20,

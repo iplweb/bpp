@@ -475,7 +475,7 @@ class Autor_Jednostka(models.Model):
     )
     funkcja = models.ForeignKey(Funkcja_Autora, CASCADE, null=True, blank=True)
 
-    podstawowe_miejsce_pracy = models.BooleanField(null=True)
+    podstawowe_miejsce_pracy = models.BooleanField(null=True, blank=True, default=None)
 
     grupa_pracownicza = models.ForeignKey(
         Grupa_Pracownicza, SET_NULL, null=True, blank=True

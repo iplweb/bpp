@@ -332,7 +332,7 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
     jednostka = models.ForeignKey(Jednostka, on_delete=models.CASCADE)
     autor_jednostka = models.ForeignKey(Autor_Jednostka, on_delete=models.CASCADE)
 
-    podstawowe_miejsce_pracy = models.BooleanField(null=True)
+    podstawowe_miejsce_pracy = models.BooleanField(null=True, blank=True, default=None)
     funkcja_autora = models.ForeignKey(Funkcja_Autora, on_delete=models.CASCADE)
     grupa_pracownicza = models.ForeignKey(Grupa_Pracownicza, on_delete=models.CASCADE)
     wymiar_etatu = models.ForeignKey(Wymiar_Etatu, on_delete=models.CASCADE)

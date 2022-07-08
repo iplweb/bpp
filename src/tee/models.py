@@ -5,7 +5,7 @@ from django.db.models import JSONField
 class Log(models.Model):
     started_on = models.DateTimeField(auto_now_add=True)
     finished_on = models.DateTimeField(blank=True, null=True)
-    finished_successfully = models.BooleanField(null=True)
+    finished_successfully = models.BooleanField(null=True, blank=True, default=None)
 
     command_name = models.TextField()
     args = JSONField(blank=True, null=True)
