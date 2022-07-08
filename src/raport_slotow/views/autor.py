@@ -86,7 +86,7 @@ class RaportSlotow(
             ("Minimalny PK", self.kwargs["minimalny_pk"]),
             ("Od roku:", self.kwargs["od_roku"]),
             ("Do roku:", self.kwargs["do_roku"]),
-            ("Wygenerowano:", timezone.now()),
+            ("Wygenerowano:", str(timezone.now())),
             ("Wersja oprogramowania BPP", VERSION),
         ]
 

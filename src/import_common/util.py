@@ -51,7 +51,7 @@ def find_similar_row(
     if min_points is None:
         min_points = DEFAULT_MIN_POINTS
 
-    for n, row in enumerate(sheet.rows):
+    for n, row in enumerate(sheet.rows, start=1):
         r = [normalize_cell_header(elem) for elem in row[:max_row_length]]
         points = 0
         for elem in try_names:
@@ -180,7 +180,7 @@ class XLSImportFile:
             colnames.append("__xls_loc_row__")
 
             for n_row, row in enumerate(sheet.rows):
-                if n_row <= res[1]:
+                if n_row < res[1]:
                     continue
                 data = [x.value for x in row[: len(colnames) - 2]]
                 data.append(n_sheet)

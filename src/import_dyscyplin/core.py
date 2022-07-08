@@ -1,6 +1,6 @@
 import openpyxl
 from _decimal import Decimal, InvalidOperation
-from xlrd import XLRDError
+from openpyxl.utils.exceptions import InvalidFileException
 
 from import_common.core import matchuj_autora, matchuj_jednostke, matchuj_wydzial
 from import_common.exceptions import (
@@ -22,7 +22,7 @@ def przeanalizuj_plik_xls(sciezka, parent):
     # Otwórz plik i sprawdź, czy w ogóle działa...
     try:
         f = openpyxl.load_workbook(sciezka)
-    except XLRDError as e:
+    except InvalidFileException as e:
         raise ImproperFileException(e)
 
     # Sprawdź, ile jest skoroszytów
