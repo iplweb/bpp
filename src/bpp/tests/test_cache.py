@@ -429,7 +429,7 @@ def test_rebuild_ciagle(
 def test_rebuild_zwarte(
     django_assert_max_num_queries, wydawnictwo_zwarte_z_autorem, denorms
 ):
-    with django_assert_max_num_queries(40):
+    with django_assert_max_num_queries(45):
         denorms.rebuildall("Wydawnictwo_Zwarte")
 
 

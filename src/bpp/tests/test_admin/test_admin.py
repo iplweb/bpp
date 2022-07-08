@@ -3,8 +3,7 @@ from django.urls import NoReverseMatch
 from django.urls.base import reverse
 from model_bakery import baker
 
-from bpp.models import Jednostka, Praca_Doktorska, Praca_Habilitacyjna, Zrodlo
-from bpp.models.autor import Autor
+from bpp.models import Autor, Jednostka, Praca_Doktorska, Praca_Habilitacyjna, Zrodlo
 from bpp.models.cache import Autorzy, Rekord
 from bpp.models.patent import Patent, Patent_Autor
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor
@@ -21,8 +20,13 @@ from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte, Wydawnictwo_Zwarte
         Praca_Habilitacyjna,
     ],
 )
-def test_safe_html_dwa_tytuly_DwaTytuly(klass, admin_app, typy_odpowiedzialnosci):
+def test_safe_html_dwa_tytuly_DwaTytuly(
+    klass,
+    admin_app,
+    typy_odpowiedzialnosci,
+):
     """Upewnij sie, ze bleach jest uruchamiany dla tych dwóch pól z DwaTytuly"""
+
     i = baker.make(klass)
     if hasattr(i, "zrodlo"):
         z = baker.make(Zrodlo)
@@ -35,6 +39,7 @@ def test_safe_html_dwa_tytuly_DwaTytuly(klass, admin_app, typy_odpowiedzialnosci
         i.save()
 
     url = reverse(f"admin:bpp_{klass._meta.model_name}_change", args=(i.pk,))
+
     page = admin_app.get(url)
 
     page.forms[1]["tytul_oryginalny"].value = "<script>hi</script>"

@@ -1201,8 +1201,8 @@ Django = ">=1.8"
 
 [[package]]
 name = "django-webtest"
-version = "1.9.7"
-description = "Instant integration of Ian Bicking's WebTest (http://docs.pylonsproject.org/projects/webtest/) with django's testing framework."
+version = "1.9.10"
+description = "Instant integration of Ian Bicking's WebTest (http://docs.pylonsproject.org/projects/webtest/) with Django's testing framework."
 category = "dev"
 optional = false
 python-versions = "*"
@@ -3292,21 +3292,20 @@ python-versions = ">=3.7"
 
 [[package]]
 name = "webtest"
-version = "2.0.34"
+version = "3.0.0"
 description = "Helper to test WSGI applications"
 category = "dev"
 optional = false
-python-versions = "*"
+python-versions = ">=3.6, <4"
 
 [package.dependencies]
 beautifulsoup4 = "*"
-six = "*"
 waitress = ">=0.8.5"
 WebOb = ">=1.2"
 
 [package.extras]
-docs = ["Sphinx (>=1.8.1)", "docutils", "pylons-sphinx-themes (>=1.0.8)"]
-tests = ["nose (<1.3.0)", "coverage", "mock", "pastedeploy", "wsgiproxy2", "pyquery"]
+docs = ["docutils", "pylons-sphinx-themes (>=1.0.8)", "Sphinx (>=1.8.1)"]
+tests = ["coverage", "pastedeploy", "pyquery", "pytest", "pytest-cov", "wsgiproxy2"]
 
 [[package]]
 name = "werkzeug"
@@ -3515,7 +3514,7 @@ test = ["pytest"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.10,<3.11"
-content-hash = "6a714e709bfbfa5c99a4ab341241a3eb31ab0e71135e2256a094c84d68a617c4"
+content-hash = "f00b9f2cacf1d3c4526a4836554b41fe8235ef5a9324680bd1e7cb32f0431548"
 
 [metadata.files]
 aioredis = [
@@ -4019,7 +4018,10 @@ django-weasyprint = [
     {file = "django_weasyprint-2.1.0-py3-none-any.whl", hash = "sha256:ba3822b93849b3ea9d70b618e1ebfee8dd7bd5f0fa170f5b71dc6ccceb48d772"},
 ]
 django-webmaster-verification = []
-django-webtest = []
+django-webtest = [
+    {file = "django-webtest-1.9.10.tar.gz", hash = "sha256:c8c32041791cdae468e443097c432c67cf17cad339e1ab88b01a6c4841ee4c74"},
+    {file = "django_webtest-1.9.10-py3-none-any.whl", hash = "sha256:ef075e98b38fe3836dc533c2924d3e37c6bb3483008c40567115518a0303b1af"},
+]
 djangoql = [
     {file = "djangoql-0.15.3-py2.py3-none-any.whl", hash = "sha256:a791d2cf944d6c07edd4e86e1899fed608e3951a3503c47dc25655157332e329"},
     {file = "djangoql-0.15.3.tar.gz", hash = "sha256:e1a2f32573396335a8935dfc2afb29e34eff34babec1150927ff74fcd4bbdb9d"},
@@ -5121,7 +5123,10 @@ websockets = [
     {file = "websockets-10.3-pp37-pypy37_pp73-win_amd64.whl", hash = "sha256:3eda1cb7e9da1b22588cefff09f0951771d6ee9fa8dbe66f5ae04cc5f26b2b55"},
     {file = "websockets-10.3.tar.gz", hash = "sha256:fc06cc8073c8e87072138ba1e431300e2d408f054b27047d047b549455066ff4"},
 ]
-webtest = []
+webtest = [
+    {file = "WebTest-3.0.0-py3-none-any.whl", hash = "sha256:2a001a9efa40d2a7e5d9cd8d1527c75f41814eb6afce2c3d207402547b1e5ead"},
+    {file = "WebTest-3.0.0.tar.gz", hash = "sha256:54bd969725838d9861a9fa27f8d971f79d275d94ae255f5c501f53bb6d9929eb"},
+]
 werkzeug = [
     {file = "Werkzeug-2.1.2-py3-none-any.whl", hash = "sha256:72a4b735692dd3135217911cbeaa1be5fa3f62bffb8745c5215420a03dc55255"},
     {file = "Werkzeug-2.1.2.tar.gz", hash = "sha256:1ce08e8093ed67d638d63879fd1ba3735817f7a80de3674d293f5984f25fb6e6"},
