@@ -2,7 +2,7 @@ from model_bakery import baker
 
 from bpp.models import Autor, Charakter_Formalny, Jednostka, Zrodlo
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
-from bpp.tests.tests_legacy.testutil import WebTestCase
+from bpp.tests.tests_legacy.testutil import UserRequestFactory, WebTestCase
 from bpp.views import autocomplete
 
 
@@ -54,10 +54,19 @@ class TestAutocomplete(WebTestCase):
         assert y.imiona == "Ilona Joanna"
         assert y.nazwisko == "Kotulowska-Papis"
 
-    def test_GlobalNavigationAutocomplete(self):
+    def test_GlobalNavigationAutocomplete(
+        self,
+    ):
         x = autocomplete.GlobalNavigationAutocomplete()
+
+        class MockUser:
+            is_anonymous = False
+
+        x.request = UserRequestFactory(MockUser()).get("/")
         x.q = None
-        x.get_result_label("foo", "bar")
+        x.get_result_label(
+            "foo"
+        )  # XXX uwaga, tu byly 2 parametry, ale test sie wykrzaczał. mpasternak 10.07.2022
         x.get(None)
         x.q = "foobar"
         self.assertTrue(len(x.get_queryset()) is not None)

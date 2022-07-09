@@ -1,18 +1,20 @@
 import urllib
 
-from django.contrib.postgres.aggregates.general import StringAgg
 from django.db import connection
-from django.db.models.fields import TextField
+from django.db.models import CharField
 from django.db.models.functions import Cast
 from django_filters.views import FilterView
 from django_tables2 import SingleTableMixin
 
-from bpp.views.mixins import UczelniaSettingRequiredMixin
 from raport_slotow.core import autorzy_zerowi
 from raport_slotow.filters import RaportZerowyFilter
 from raport_slotow.models import RaportZerowyEntry
 from raport_slotow.tables import RaportSlotowZerowyTable
 from raport_slotow.util import MyExportMixin, create_temporary_table_as
+
+from django.contrib.postgres.aggregates.general import StringAgg
+
+from bpp.views.mixins import UczelniaSettingRequiredMixin
 
 
 class RaportSlotowZerowy(
@@ -30,7 +32,7 @@ class RaportSlotowZerowy(
     min_pk = None
 
     def get_context_data(self, *args, **kwargs):
-        context = super(RaportSlotowZerowy, self).get_context_data(**kwargs)
+        context = super().get_context_data(**kwargs)
         context["export_link"] = urllib.parse.urlencode(
             dict(self.request.GET, **{"_export": "xlsx"}), doseq=True
         )
@@ -48,6 +50,6 @@ class RaportSlotowZerowy(
 
         qset = RaportZerowyEntry.objects.group_by(
             "autor", "dyscyplina_naukowa"
-        ).annotate(lata=StringAgg(Cast("rok", TextField()), ", ", ordering=("rok")))
+        ).annotate(lata=StringAgg(Cast("rok", CharField()), ", ", ordering=("rok")))
 
         return qset

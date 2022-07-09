@@ -111,7 +111,7 @@ def test_autor_jednostka_trigger_odepnij_wszystkie_jednostki(
         autor=autor_jan_kowalski,
         jednostka=jednostka,
         podstawowe_miejsce_pracy=True,
-        zakonczyl_prace=datetime.now().date() - timedelta(days=1),
+        zakonczyl_prace=datetime.now().date() - timedelta(days=3),
     )
 
     autor_jan_kowalski.refresh_from_db()

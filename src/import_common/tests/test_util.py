@@ -6,7 +6,7 @@ from import_common.util import rename_duplicate_columns, znajdz_naglowek
 
 def test_znajdz_naglowek_dobry(test1_xlsx):
     row, no = znajdz_naglowek(test1_xlsx)
-    assert no == 0
+    assert no == 1
 
 
 def test_znajdz_naglowek_zly(test2_bad_header_xlsx):

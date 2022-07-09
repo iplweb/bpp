@@ -30,7 +30,7 @@ def test_kasowanie_calosci(
         i = Import_Dyscyplin.objects.create(
             owner=normal_django_user, web_page_uid=web_page_uid, rok=rok
         )
-        i.plik.save("test1.xls", ContentFile(open(test4_kasowanie_xlsx, "rb").read()))
+        i.plik.save("test1.xlsx", ContentFile(open(test4_kasowanie_xlsx, "rb").read()))
         i.plik.path
 
     mocker.patch("notifications.core._send")
@@ -71,7 +71,7 @@ def test_kasowanie_subdyscypliny(
             owner=normal_django_user, web_page_uid=web_page_uid, rok=rok
         )
         i.plik.save(
-            "test1.xls", ContentFile(open(test5_kasowanie_subdyscypliny, "rb").read())
+            "test1.xlsx", ContentFile(open(test5_kasowanie_subdyscypliny, "rb").read())
         )
         i.plik.path
 

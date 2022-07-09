@@ -7,7 +7,6 @@ from model_bakery import baker
 from bpp.models import (
     Autor,
     Jezyk,
-    NazwaISkrot,
     Patent,
     Plec,
     Punktacja_Zrodla,
@@ -32,7 +31,7 @@ from bpp.tests.util import (
 
 class TestNazwaISkrot(TestCase):
     def test_skrot(self):
-        a = NazwaISkrot(nazwa="foo", skrot="bar")
+        a = Charakter_Formalny(nazwa="foo", skrot="bar")
         self.assertEqual("foo", str(a))
 
 

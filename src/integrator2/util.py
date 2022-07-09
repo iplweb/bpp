@@ -42,10 +42,11 @@ def build_mapping(xls_columns, wanted_columns):
         x.upper().strip(): wanted_columns[x] for x in list(wanted_columns.keys())
     }
     for elem in xls_columns:
-        val = elem.value.upper().strip()
-        if val in upper_wanted_columns:
-            ret.append(upper_wanted_columns[val])
-            continue
+        if elem.value:
+            val = elem.value.upper().strip()
+            if val in upper_wanted_columns:
+                ret.append(upper_wanted_columns[val])
+                continue
         ret.append(None)
 
     return ret
@@ -94,7 +95,7 @@ def read_xls_data(
 
         max_row = sheet.max_row
         if limit is not None:
-            max_row = min(header_row_no + 2 + limit, max_row)
+            max_row = min(header_row_no + 1 + limit, max_row)
 
         for row in sheet.iter_rows(header_row_no + 1, max_row):
             dct = {"__sheet__": sheet.title}

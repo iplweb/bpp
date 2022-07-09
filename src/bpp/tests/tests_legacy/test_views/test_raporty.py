@@ -101,11 +101,6 @@ class TestPodgladRaportu(RaportMixin, UserTestCase):
         p.kwargs["uid"] = str(uuid.uuid4())
         self.assertRaises(Http404, p.get_object)
 
-    def test_podgladraportu_client(self):
-        url = reverse("bpp:podglad-raportu", kwargs=dict(uid=self.r.uid))
-        resp = self.client.get(url)
-        self.assertContains(resp, "Kronika Uczelni", status_code=200)
-
 
 class KasowanieRaportuMixin:
     def setUp(self):

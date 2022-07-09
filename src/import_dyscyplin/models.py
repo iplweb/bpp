@@ -531,8 +531,10 @@ class Import_Dyscyplin_Row(models.Model):
     nazwa_wydzialu = models.CharField(max_length=512, blank=True, null=True)
     wydzial = models.ForeignKey(Wydzial, null=True, on_delete=models.SET_NULL)
 
-    dyscyplina = models.CharField(max_length=200, db_index=True)
-    kod_dyscypliny = models.CharField(max_length=20, db_index=True)
+    dyscyplina = models.CharField(max_length=200, db_index=True, blank=True, null=True)
+    kod_dyscypliny = models.CharField(
+        max_length=20, db_index=True, blank=True, null=True
+    )
     procent_dyscypliny = models.DecimalField(
         max_digits=5, decimal_places=2, null=True, blank=True
     )

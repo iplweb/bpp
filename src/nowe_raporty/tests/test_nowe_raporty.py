@@ -12,6 +12,7 @@ from flexible_reports.models import (
 )
 from flexible_reports.models.report import Report
 from model_bakery import baker
+from six import BytesIO
 
 from formdefaults.models import FormRepresentation
 from nowe_raporty.views import (
@@ -413,7 +414,7 @@ def test_generowanie_xls(
     res = client.get(url)
 
     # Sprawdź, czy to XLS
-    wb = openpyxl.load_workbook(file_contents=res.content)
+    wb = openpyxl.load_workbook(BytesIO(res.content))
     assert len(wb.worksheets) == 1
 
 

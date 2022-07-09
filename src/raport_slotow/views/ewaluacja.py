@@ -66,7 +66,7 @@ class RaportSlotowEwaluacja(
             if self.data["upowaznienie_pbn"] == "":
                 self.data["upowaznienie_pbn"] = None
 
-            return super(RaportSlotowEwaluacja, self).get(self.request, *args, **kw)
+            return super().get(self.request, *args, **kw)
         else:
             return self.form_invalid(form)
 
@@ -79,7 +79,7 @@ class RaportSlotowEwaluacja(
             ("Od roku:", self.data["od_roku"]),
             ("Do roku:", self.data["do_roku"]),
             ("Upoważnienie PBN:", self.data["upowaznienie_pbn"]),
-            ("Wygenerowano:", timezone.now()),
+            ("Wygenerowano:", str(timezone.now())),
             ("Wersja oprogramowania BPP", VERSION),
         ]
 
@@ -159,7 +159,7 @@ class RaportSlotowEwaluacja(
         )
 
     def get_context_data(self, *, object_list=None, **kwargs):
-        context = super(RaportSlotowEwaluacja, self).get_context_data(**kwargs)
+        context = super().get_context_data(**kwargs)
         context["od_roku"] = self.data["od_roku"]
         context["do_roku"] = self.data["do_roku"]
         context["export_link"] = urllib.parse.urlencode(

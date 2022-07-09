@@ -40,10 +40,12 @@ def przeanalizuj_plik_xls(sciezka, parent):
     jednostka_cache = {}
 
     for n, row in enumerate(
-        s.iter_rows(min_row=parent.wiersz_naglowka + 1, max_row=s.max_row),
+        s.iter_rows(
+            min_row=parent.wiersz_naglowka + 1, max_row=s.max_row, values_only=True
+        ),
         parent.wiersz_naglowka + 1,
     ):
-        original = dict(zip(naglowek, [elem.value for elem in row]))
+        original = dict(zip(naglowek, [elem for elem in row]))
 
         if original["nazwisko"] is None or (not original["nazwisko"].strip()):
             continue
