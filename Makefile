@@ -120,7 +120,7 @@ release: tests js-tests new-release bdist_wheel upload
 
 set-version-from-vcs:
 	$(eval CUR_VERSION_VCS=$(shell git describe | sed s/\-/\./ | sed s/\-/\+/))
-	bumpver update --no-commit --set-version=v$(CUR_VERSION_VCS)
+	bumpver update --no-commit --set-version=$(CUR_VERSION_VCS)
 
 .PHONY: check-git-clean
 check-git-clean:
