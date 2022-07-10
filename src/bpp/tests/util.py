@@ -265,6 +265,9 @@ def select_select2_autocomplete(
     :param element_id: ID elementu (tekst)
     :param value: tekst do wpisania
     """
+
+    old_value = browser.find_by_id(f"select2-{element_id}-container").text
+
     # Znajdź interesujący nas select2-autocomplete
     element = browser.find_by_id(element_id)[0]
     sibling = element.find_by_xpath("following-sibling::span")
@@ -285,40 +288,24 @@ def select_select2_autocomplete(
     # tries = 0
     # while True:
 
-    old_active = element.parent.switch_to.active_element
-    while True:
-        sibling.click()
-        time.sleep(random.randint(100, 1000) / 1000)
-        new_active = element.parent.switch_to.active_element
+    sibling.click()
 
-        if new_active != old_active:
-            break
+    # W tym momencie pojawi sie popup. Input type z klasą .select2-search__field
+    # będzie jedyny na stronie:
+    WebDriverWait(browser, SHORT_WAIT_TIME).until(
+        lambda driver: driver.find_by_css(".select2-search__field")
+    )
 
-    old_value = None
+    input_box = element.parent.find_by_css(".select2-search__field")[0]
 
-    while old_value is None:
-        old_value = browser.find_by_id(f"select2-{element_id}-container").text
-        time.sleep(0.3)
-
-    # for letter in value:
-    new_active.send_keys(value)
-    time.sleep(1)
+    list(input_box.type(value, slowly=True))
 
     wait_for(
         lambda: "Trwa wyszukiwanie…"
         not in browser.find_by_id(f"select2-{element_id}-results").value
     )
 
-    if value_before_enter:
-        try:
-            wait_for(
-                lambda: value_before_enter
-                in browser.find_by_id(f"select2-{element_id}-results").value,
-                max_seconds=LONG_WAIT_TIME,
-            )
-        except TimeoutError as e:
-            raise e
-    new_active.send_keys(Keys.ENTER)
+    input_box.type(Keys.ENTER)
     time.sleep(0.5)
 
     if wait_for_new_value:
