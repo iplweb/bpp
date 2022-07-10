@@ -38,19 +38,6 @@ class TestRaportSelector(UserTestCase):
 
         self.client.get(reverse("bpp:raporty"))
 
-    def test_tytuly_raportow_raport_dla_komisji_centralnej(self):
-        a = any_autor("Kowalski", "Jan")
-        Report.objects.create(
-            ordered_by=self.user,
-            function="raport-dla-komisji-centralnej",
-            arguments={"autor": a.pk},
-        )
-
-        res = self.client.get(reverse("bpp:raporty"))
-        self.assertContains(
-            res, "Raport dla Komisji Centralnej - %s" % str(a), status_code=200
-        )
-
 
 class RaportMixin:
     def zrob_raport(self):
