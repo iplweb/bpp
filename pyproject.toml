@@ -19,6 +19,7 @@ packages = [
 	 { include="import_list_if", from="src"},
 	 { include="import_pracownikow", from="src"},
 	 { include="integrator2", from="src"},
+	 { include="zglos_publikacje", from="src"},
 	 { include="long_running", from="src"},
 	 { include="miniblog", from="src"},
 	 { include="notifications", from="src"},
