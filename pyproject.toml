@@ -153,6 +153,7 @@ requests-oauthlib = "1.3.0"
 django-cacheops = "6.1"
 djangoql = "0.15.3"
 django-weasyprint = "^2.1.0"
+django-templated-email = "^3.0.0"
 
 [tool.poetry.dev-dependencies]
 model-bakery = ">=1.5.1"

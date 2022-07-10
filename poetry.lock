@@ -307,6 +307,7 @@ toml = "*"
 [package.source]
 type = "url"
 url = "https://github.com/mbarkhau/bumpver/archive/refs/tags/2022.1117.tar.gz#egg=bumpver-202211.17"
+
 [[package]]
 name = "celery"
 version = "4.4.7"
@@ -1086,6 +1087,20 @@ redis = "<4.0"
 six = "*"
 
 [[package]]
+name = "django-render-block"
+version = "0.9.1"
+description = "Render a particular block from a template to a string."
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+django = ">=2.2"
+
+[package.extras]
+dev = ["Jinja2 (>=2.8)"]
+
+[[package]]
 name = "django-reversion"
 version = "4.0.0"
 description = "An extension to the Django web framework that provides version control for model instances."
@@ -1174,6 +1189,17 @@ python-versions = "*"
 [package.dependencies]
 django-taggit = "*"
 six = "*"
+
+[[package]]
+name = "django-templated-email"
+version = "3.0.0"
+description = "A Django oriented templated / transaction email abstraction"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+django-render-block = ">=0.5"
 
 [[package]]
 name = "django-weasyprint"
@@ -3513,7 +3539,7 @@ test = ["pytest"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.10,<3.11"
-content-hash = "1b87ad511d6e7734d193a58755e83dec17b6c878f0e8cfe4b614078463506795"
+content-hash = "6c019a733c2cc268a2508aa905fa555896f6bd1a933ce914a8fdab1b85d65ffb"
 
 [metadata.files]
 aioredis = [
@@ -3960,6 +3986,7 @@ django-redis-cache = [
     {file = "django-redis-cache-2.1.1.tar.gz", hash = "sha256:06d4e48545243883f88dc9263dda6c8a0012cb7d0cee2d8758d8917eca92cece"},
     {file = "django_redis_cache-2.1.1-py3-none-any.whl", hash = "sha256:b19ee6654cc2f2c89078c99255e07e19dc2dba8792351d76ba7ea899d465fbb0"},
 ]
+django-render-block = []
 django-reversion = [
     {file = "django-reversion-4.0.0.tar.gz", hash = "sha256:ad6d714b4b9b824e22b88d47201cc0f74b5c4294c8d4e1f8d7ac7c3631ef3188"},
     {file = "django_reversion-4.0.0-py3-none-any.whl", hash = "sha256:f059c654e38c0dd8dccd7f0990aa2f6d9ad22dab55c5e095f9596aeda8079dcd"},
@@ -3981,6 +4008,7 @@ django-taggit = []
 django-taggit-serializer = [
     {file = "django-taggit-serializer-0.1.7.tar.gz", hash = "sha256:f712eb2482079be452bcd1e82b18a820e26427c3ee1cef2b4fcd4d6b8b9f14d0"},
 ]
+django-templated-email = []
 django-weasyprint = [
     {file = "django-weasyprint-2.1.0.tar.gz", hash = "sha256:619efa6e7bc8da18eb44131bec3ebd60af8ba07b5610a29034fb79da6cc37a02"},
     {file = "django_weasyprint-2.1.0-py3-none-any.whl", hash = "sha256:ba3822b93849b3ea9d70b618e1ebfee8dd7bd5f0fa170f5b71dc6ccceb48d772"},

@@ -276,6 +276,7 @@ REDAKTOR_MENU = [
         "Rozbieżności dyscyplin źródeł",
         "/admin/rozbieznosci_dyscyplin/rozbieznoscizrodelview/",
     ),
+    ("Zgłoszenia publikacji", "/admin/zglos_publikacje/zgloszenie_publikacji/"),
 ]
 
 ADMIN_MENU = [

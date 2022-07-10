@@ -464,11 +464,11 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
     czyli: powiązanie ForeignKey, jednostkę, rodzaj zapisu nazwiska, ale
     nie zawiera podstawowej informacji, czyli powiązania"""
 
-    autor = models.ForeignKey("Autor", CASCADE)
-    jednostka = models.ForeignKey("Jednostka", CASCADE)
+    autor = models.ForeignKey("bpp.Autor", CASCADE)
+    jednostka = models.ForeignKey("bpp.Jednostka", CASCADE)
     kolejnosc = models.IntegerField("Kolejność", default=0)
     typ_odpowiedzialnosci = models.ForeignKey(
-        "Typ_Odpowiedzialnosci", CASCADE, verbose_name="Typ odpowiedzialności"
+        "bpp.Typ_Odpowiedzialnosci", CASCADE, verbose_name="Typ odpowiedzialności"
     )
     zapisany_jako = models.CharField(max_length=512)
     afiliuje = models.BooleanField(
@@ -940,6 +940,18 @@ class ModelZOplataZaPublikacje(models.Model):
 
                     if self.opl_pub_other:
                         errdct["opl_pub_other"] = errmsg
+
+                    raise ValidationError(errdct)
+
+                else:
+                    # jeżeli nie ma wpisanego kosztu i nie ma zaznaczonego zadnego z pól to tym bardziej źle
+                    errdct = {"opl_pub_amount": "Tu należy uzupełnić kwotę. "}
+
+                    errmsg = "Jeżeli publikacja nie była bezkosztowa, należy zaznaczyć przynajmniej jedno z tych pól"
+
+                    errdct["opl_pub_research_potential"] = errmsg
+                    errdct["opl_pub_research_or_development_projects"] = errmsg
+                    errdct["opl_pub_other"] = errmsg
 
                     raise ValidationError(errdct)
 

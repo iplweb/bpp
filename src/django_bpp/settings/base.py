@@ -187,6 +187,7 @@ INSTALLED_APPS = [
     "taggit",
     "taggit_serializer",
     "columns",
+    "zglos_publikacje.apps.ZglosPublikacjeConfig",
     "formdefaults.apps.FormdefaultsConfig",
     "raport_slotow",
     # Musi być PRZED django-autocomplete-light do momentu
