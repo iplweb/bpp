@@ -55,7 +55,10 @@ jobs:
       - restore_cache:
           key: cache-14-{{ checksum "poetry.lock" }}-{{ checksum "yarn.lock" }}
 
+      - run: sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+      - run: wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
       - run: sudo apt -q -q -q update
+      - run: sudo apt-get --quiet install -y --quiet postgresql-client-14
       - run: sudo apt --quiet install -y --quiet gettext locales
       - run: sudo sed -i 's/^# *\(pl_PL.UTF-8\)/\1/' /etc/locale.gen
       - run: sudo locale-gen
