@@ -905,7 +905,7 @@ def pytest_collection_modifyitems(items):
     # lub 'admin_browser', aby można było szybko uruchamiać wyłacznie te testy
     # lub nie uruchamiać ich:
 
-    flaky_test = pytest.mark.flaky(reruns=5)
+    flaky_test = pytest.mark.flaky(reruns=10)
 
     for item in items:
         fixtures = getattr(item, "fixturenames", ())
