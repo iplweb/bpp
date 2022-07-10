@@ -1,4 +1,4 @@
-from model_mommy import mommy
+from model_bakery import baker
 
 from fixtures.pbn_api import MOCK_RETURNED_MONGODB_DATA
 from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
@@ -23,7 +23,7 @@ def test_sprobuj_wgrac_do_pbn_charakter_zly(
 ):
     req = rf.get("/")
 
-    pbn_wydawnictwo_zwarte.charakter_formalny = mommy.make(
+    pbn_wydawnictwo_zwarte.charakter_formalny = baker.make(
         Charakter_Formalny, rodzaj_pbn=None
     )
 

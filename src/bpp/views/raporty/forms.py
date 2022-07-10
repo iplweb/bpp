@@ -1,6 +1,3 @@
-# -*- encoding: utf-8 -*-
-# -*- encoding: utf-8 -*-
-
 """W tym pakiecie znajdują się procedury generujące raporty, które są dostępne
 "od ręki" -- generowane za pomocą WWW"""
 from crispy_forms.helper import FormHelper
@@ -36,20 +33,6 @@ def ustaw_rok(rok, lata):
         rok.field.validators.append(validators.MinValueValidator(rok.field.min_value))
 
 
-class KronikaUczelniForm(forms.Form):
-    rok = forms.IntegerField()
-
-    def __init__(self, lata, *args, **kwargs):
-        self.helper = FormHelper()
-        self.helper.form_method = "post"
-        self.helper.layout = Layout(
-            Fieldset("Kronika Uczelni", "rok", Hidden("report", "kronika-uczelni")),
-            ButtonHolder(Submit("submit", "Zamów", css_class="button white")),
-        )
-        super(KronikaUczelniForm, self).__init__(*args, **kwargs)
-        ustaw_rok(self["rok"], lata)
-
-
 class RaportJednostekForm(forms.Form):
     jednostka = forms.ModelChoiceField(
         queryset=Jednostka.objects.filter(widoczna=True),
@@ -83,7 +66,7 @@ class RaportJednostekForm(forms.Form):
             ),
         )
 
-        super(RaportJednostekForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         ustaw_rok(self["od_roku"], lata)
         ustaw_rok(self["do_roku"], lata)
 
@@ -119,7 +102,7 @@ class RaportAutorowForm(forms.Form):
             ButtonHolder(Submit("submit", "Szukaj", css_class="button white")),
         )
 
-        super(RaportAutorowForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         ustaw_rok(self["od_roku"], lata)
         ustaw_rok(self["do_roku"], lata)
 
@@ -147,7 +130,7 @@ class RaportDlaKomisjiCentralnejForm(forms.Form):
             ButtonHolder(Submit("submit", "Zamów", css_class="button white")),
         )
 
-        super(RaportDlaKomisjiCentralnejForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         ustaw_rok(self["rok_habilitacji"], lata)
 
 
@@ -223,6 +206,6 @@ class RankingAutorowForm(forms.Form):
             ButtonHolder(Submit("submit", "Otwórz", css_class="button white")),
         )
 
-        super(RankingAutorowForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         # ustaw_rok(self['od_roku'], lata)
         # ustaw_rok(self['do_roku'], lata)

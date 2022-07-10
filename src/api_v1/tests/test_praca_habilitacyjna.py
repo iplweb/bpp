@@ -2,7 +2,7 @@ from datetime import timedelta
 
 import pytest
 from django.urls import reverse
-from model_mommy import mommy
+from model_bakery import baker
 
 from django.utils.timezone import localtime
 
@@ -76,7 +76,7 @@ def test_rest_api_praca_habilitacyjna_ukryj_status(
 @pytest.fixture
 def wiele_prac_habilitacyjnych(db, typy_odpowiedzialnosci):
     for a in range(100):
-        mommy.make(Praca_Habilitacyjna)
+        baker.make(Praca_Habilitacyjna)
 
 
 @pytest.mark.django_db

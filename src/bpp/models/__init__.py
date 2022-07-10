@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 # Zaimportujmy wszystko
 from bpp.models.abstract import *  # noqa
 from bpp.models.autor import *  # noqa
@@ -37,7 +35,6 @@ from .multiseek import BppMultiseekVisibility  # noqa
 from bpp.models.cache import *  # noqa
 from bpp.models.dyscyplina_naukowa import *  # noqa
 from bpp.models.konferencja import *  # noqa
-from bpp.models.kronika_view import *  # noqa
 from bpp.models.openaccess import *  # noqa
 from bpp.models.opi_2012 import *  # noqa
 from bpp.models.seria_wydawnicza import *  # noqa

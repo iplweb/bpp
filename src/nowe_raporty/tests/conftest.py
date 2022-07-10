@@ -1,16 +1,17 @@
 import pytest
-from django.contrib.contenttypes.models import ContentType
 from flexible_reports.models import Column, Datasource, Report, ReportElement, Table
-from model_mommy import mommy
+from model_bakery import baker
+
+from django.contrib.contenttypes.models import ContentType
 
 from bpp.models import Wydawnictwo_Zwarte
 
 
 @pytest.fixture
 def raport_autorow(db):
-    table = mommy.make(Table)
+    table = baker.make(Table)
 
-    mommy.make(Column, parent=table)
+    baker.make(Column, parent=table)
 
     ds = Datasource.objects.create(
         base_model=ContentType.objects.get_for_model(Wydawnictwo_Zwarte),

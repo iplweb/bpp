@@ -2,7 +2,7 @@ import json
 
 import pytest
 from django.urls import reverse
-from model_mommy import mommy
+from model_bakery import baker
 
 from fixtures import pbn_journal_json, pbn_pageable_json, pbn_publication_json
 from pbn_api.client import PBN_GET_PUBLICATION_BY_ID_URL, PBN_SEARCH_PUBLICATIONS_URL
@@ -67,7 +67,7 @@ def test_autocomplete_bug_1(autocomplete_name, qstr, client):
 @pytest.mark.django_db
 def test_admin_konferencje():
     "Upewnij się, że konferencje wyskakują w AdminAutoComplete"
-    k = mommy.make(Konferencja, nazwa="test 54")
+    k = baker.make(Konferencja, nazwa="test 54")
     a = AdminNavigationAutocomplete()
     a.q = "test 54"
     assert k in a.get_queryset()
@@ -169,7 +169,7 @@ def test_publicwydawnictwo_nadrzedne_autocomplete(admin_client, ksiazka):
     )
     assert not json.loads(res.content)["results"]
 
-    mommy.make(Wydawnictwo_Zwarte, wydawnictwo_nadrzedne=ksiazka)
+    baker.make(Wydawnictwo_Zwarte, wydawnictwo_nadrzedne=ksiazka)
     res = admin_client.get(
         reverse("bpp:public-wydawnictwo-nadrzedne-autocomplete") + "?q=test"
     )
@@ -284,7 +284,7 @@ def test_PublicationAutocomplete_get_create_option(rf, admin_user):
 def test_PublicationAutocomplete_get_queryset():
     ac = PublicationAutocomplete()
 
-    mommy.make(
+    baker.make(
         Publication,
         pk="1" * PBN_UID_LEN,
         **pbn_publication_json(2020, title="Takie tam"),
@@ -300,7 +300,7 @@ def test_PublicationAutocomplete_get_queryset():
 def test_JournalAutocomplete_get_queryset():
     ac = JournalAutocomplete()
 
-    mommy.make(
+    baker.make(
         Journal,
         pk="1" * PBN_UID_LEN,
         **pbn_journal_json(title="Test"),

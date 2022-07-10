@@ -6,7 +6,7 @@ import sys
 import warnings
 from collections import defaultdict
 
-import xlrd
+import openpyxl
 from dbfread import DBF, FieldParser
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Q
@@ -2031,15 +2031,15 @@ def xls2dict(fp):
     Pierwszy wiersz w pliku XLS to nazwy kolumn, które będą użyte
     w zwracanych słownikach."""
 
-    book = xlrd.open_workbook(fp)
-    first_sheet = book.sheet_by_index(0)
-    headers = [x.lower().replace(" ", "_") for x in first_sheet.row_values(0)]
+    book = openpyxl.load_workbook(fp)
+    first_sheet = book.worksheets[0]
+    headers = [
+        x.lower().replace(" ", "_")
+        for x in list(first_sheet.iter_rows(1, 1, values_only=True))[0]
+    ]
 
-    for row_idx in range(1, first_sheet.nrows):
-        ret = {}
-        for col_idx, header in zip(range(0, first_sheet.ncols), headers):
-            ret[header] = first_sheet.cell(row_idx, col_idx).value
-        yield ret
+    for row in first_sheet.iter_rows(2, first_sheet.max_row, values_only=True):
+        yield dict(zip(headers, row))
 
 
 def dodaj_aktualnosc():

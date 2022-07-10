@@ -2,8 +2,9 @@ from datetime import timedelta
 
 import pytest
 from django.urls import reverse
+from model_bakery import baker
+
 from django.utils.timezone import localtime
-from model_mommy import mommy
 
 from bpp.models import Patent
 
@@ -67,7 +68,7 @@ def test_rest_api_patent_ukryj_status(
 @pytest.fixture
 def wiele_patentow(db, jezyki, charaktery_formalne):
     for a in range(100):
-        mommy.make(Patent)
+        baker.make(Patent)
 
 
 @pytest.mark.django_db

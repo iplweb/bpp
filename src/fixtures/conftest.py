@@ -21,7 +21,7 @@ try:
 except ImportError:
     from django.urls import reverse
 
-from model_mommy import mommy
+from model_bakery import baker
 
 from bpp import const
 from bpp.const import GR_WPROWADZANIE_DANYCH, TO_AUTOR
@@ -55,9 +55,9 @@ NORMAL_DJANGO_USER_PASSWORD = "test_password"
 
 from asgi_live_server import asgi_live_server  # noqa
 
-from bpp.tests.util import setup_mommy
+from bpp.tests.util import setup_model_bakery
 
-setup_mommy()
+setup_model_bakery()
 
 
 def current_rok():
@@ -242,7 +242,7 @@ def autor_jan_nowak(db, tytuly):
 
 @pytest.fixture(scope="function")
 def autor(db, tytuly):
-    return mommy.make(Autor)
+    return baker.make(Autor)
 
 
 @pytest.fixture(scope="function")
@@ -315,7 +315,7 @@ def jednostka_maker():
 
 
 def _zrodlo_maker(nazwa, skrot, **kwargs):
-    return mommy.make(Zrodlo, nazwa=nazwa, skrot=skrot, **kwargs)
+    return baker.make(Zrodlo, nazwa=nazwa, skrot=skrot, **kwargs)
 
 
 @pytest.fixture
@@ -353,7 +353,7 @@ def _wydawnictwo_maker(klass, **kwargs):
     for key, value in kw_wyd.items():
         set_default(key, value, kwargs)
 
-    return mommy.make(klass, **kwargs)
+    return baker.make(klass, **kwargs)
 
 
 def _wydawnictwo_ciagle_maker(**kwargs):
@@ -813,21 +813,21 @@ from asgi_live_server import asgi_live_server  # noqa
 
 @pytest.fixture
 def wydawnictwo_zwarte_przed_korekta(statusy_korekt):
-    return mommy.make(
+    return baker.make(
         Wydawnictwo_Zwarte, status_korekty=statusy_korekt["przed korektą"]
     )
 
 
 @pytest.fixture
 def wydawnictwo_zwarte_w_trakcie_korekty(statusy_korekt):
-    return mommy.make(
+    return baker.make(
         Wydawnictwo_Zwarte, status_korekty=statusy_korekt["w trakcie korekty"]
     )
 
 
 @pytest.fixture
 def wydawnictwo_zwarte_po_korekcie(statusy_korekt):
-    return mommy.make(Wydawnictwo_Zwarte, status_korekty=statusy_korekt["po korekcie"])
+    return baker.make(Wydawnictwo_Zwarte, status_korekty=statusy_korekt["po korekcie"])
 
 
 @pytest.fixture
@@ -850,7 +850,7 @@ def gen_kod_dyscypliny_func():
     return f"{top}.{bottom}"
 
 
-mommy.generators.add(
+baker.generators.add(
     "bpp.models.dyscyplina_naukowa.KodDyscyplinyField", gen_kod_dyscypliny_func
 )
 
@@ -905,7 +905,7 @@ def pytest_collection_modifyitems(items):
     # lub 'admin_browser', aby można było szybko uruchamiać wyłacznie te testy
     # lub nie uruchamiać ich:
 
-    flaky_test = pytest.mark.flaky(reruns=5)
+    flaky_test = pytest.mark.flaky(reruns=10)
 
     for item in items:
         fixtures = getattr(item, "fixturenames", ())

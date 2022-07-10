@@ -1,5 +1,5 @@
 import pytest
-from model_mommy import mommy
+from model_bakery import baker
 
 from rozbieznosci_if.models import IgnorujRozbieznoscIf
 from rozbieznosci_if.views import RozbieznosciView
@@ -9,10 +9,10 @@ from bpp.models import Wydawnictwo_Ciagle, Zrodlo
 
 @pytest.fixture
 def wydawnictwo_z_rozbieznoscia(rok):
-    zrodlo = mommy.make(Zrodlo)
+    zrodlo = baker.make(Zrodlo)
     zrodlo.punktacja_zrodla_set.create(rok=rok, impact_factor=50)
 
-    wydawnictwo_ciagle = mommy.make(
+    wydawnictwo_ciagle = baker.make(
         Wydawnictwo_Ciagle, impact_factor=10, rok=rok, zrodlo=zrodlo
     )
 
@@ -21,10 +21,10 @@ def wydawnictwo_z_rozbieznoscia(rok):
 
 @pytest.fixture
 def wydawnictwo_bez_rozbieznosci(rok):
-    zrodlo = mommy.make(Zrodlo)
+    zrodlo = baker.make(Zrodlo)
     zrodlo.punktacja_zrodla_set.create(rok=rok, impact_factor=50)
 
-    wydawnictwo_ciagle = mommy.make(
+    wydawnictwo_ciagle = baker.make(
         Wydawnictwo_Ciagle, rok=rok, impact_factor=50, zrodlo=zrodlo
     )
 

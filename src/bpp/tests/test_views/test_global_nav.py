@@ -1,10 +1,9 @@
-# -*- encoding: utf-8 -*-
 import json
 
 import pytest
 from django.http.response import HttpResponseNotAllowed, HttpResponseRedirect
 from django.urls import reverse
-from model_mommy import mommy
+from model_bakery import baker
 
 from django.contrib.contenttypes.models import ContentType
 
@@ -54,13 +53,13 @@ def test_global_nav_redir(model, source, typy_odpowiedzialnosci):
         GET = {"source": source}
 
     if model == Rekord:
-        mommy.make(Wydawnictwo_Ciagle)
+        baker.make(Wydawnictwo_Ciagle)
         a = Rekord.objects.first()
     else:
-        a = mommy.make(model)
+        a = baker.make(model)
 
     res = global_nav_redir(
-        FakeRequest(), "%s-%s" % (ContentType.objects.get_for_model(a).pk, a.pk)
+        FakeRequest(), f"{ContentType.objects.get_for_model(a).pk}-{a.pk}"
     )
 
     assert isinstance(res, HttpResponseRedirect)

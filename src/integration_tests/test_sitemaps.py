@@ -1,8 +1,6 @@
-# -*- encoding: utf-8 -*-
-
 import pytest
 from django.core.management import call_command
-from model_mommy import mommy
+from model_bakery import baker
 
 from bpp.models.autor import Autor
 from bpp.models.patent import Patent
@@ -15,13 +13,13 @@ from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 
 @pytest.mark.django_db
 def test_sitemaps(webtest_app, settings):
-    mommy.make(Wydzial)
-    mommy.make(Autor, nazwisko="Alan")
-    mommy.make(Wydawnictwo_Ciagle, tytul_oryginalny="A case of")
-    mommy.make(Wydawnictwo_Zwarte, tytul_oryginalny="A case of")
-    mommy.make(Praca_Doktorska, tytul_oryginalny="A case of")
-    mommy.make(Praca_Habilitacyjna, tytul_oryginalny="A case of")
-    mommy.make(Patent, tytul_oryginalny="A case of")
+    baker.make(Wydzial)
+    baker.make(Autor, nazwisko="Alan")
+    baker.make(Wydawnictwo_Ciagle, tytul_oryginalny="A case of")
+    baker.make(Wydawnictwo_Zwarte, tytul_oryginalny="A case of")
+    baker.make(Praca_Doktorska, tytul_oryginalny="A case of")
+    baker.make(Praca_Habilitacyjna, tytul_oryginalny="A case of")
+    baker.make(Patent, tytul_oryginalny="A case of")
 
     settings.STATICSITEMAPS_PING_GOOGLE = False
     call_command("refresh_sitemap")

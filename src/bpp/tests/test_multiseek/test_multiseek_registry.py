@@ -1,7 +1,7 @@
 from datetime import datetime
 
 import pytest
-from model_mommy import mommy
+from model_bakery import baker
 from multiseek import logic
 from multiseek.logic import DIFFERENT, EQUAL, AutocompleteQueryObject
 
@@ -147,7 +147,7 @@ def test_DataUtworzeniaQueryObject():
 
 @pytest.mark.django_db
 def test_DyscyplinaQueryObject(autor_jan_kowalski, wydawnictwo_zwarte, rok, jednostka):
-    dn = mommy.make(Dyscyplina_Naukowa)
+    dn = baker.make(Dyscyplina_Naukowa)
     Autor_Dyscyplina.objects.create(
         autor=autor_jan_kowalski, dyscyplina_naukowa=dn, rok=rok
     )
@@ -322,7 +322,7 @@ def test_PierwszeNazwiskoIImie_real_query_2(logic_arg):
 
 @pytest.mark.django_db
 def test_Typ_OdpowiedzialnosciQueryObject():
-    t = mommy.make(Typ_Odpowiedzialnosci, typ_ogolny=const.TO_AUTOR)
+    t = baker.make(Typ_Odpowiedzialnosci, typ_ogolny=const.TO_AUTOR)
 
     res = Typ_OdpowiedzialnosciQueryObject().real_query(t, logic.DIFFERENT)
     assert Rekord.objects.filter(res).count() == 0
@@ -339,7 +339,7 @@ def test_Typ_OdpowiedzialnosciQueryObject():
 
 @pytest.mark.django_db
 def test_TypOgolnyAutorQueryObject(autor_jan_nowak):
-    mommy.make(Typ_Odpowiedzialnosci, typ_ogolny=const.TO_AUTOR)
+    baker.make(Typ_Odpowiedzialnosci, typ_ogolny=const.TO_AUTOR)
 
     res = TypOgolnyAutorQueryObject().real_query(autor_jan_nowak, logic.DIFFERENT)
     assert Rekord.objects.filter(res).count() == 0
@@ -356,7 +356,7 @@ def test_TypOgolnyAutorQueryObject(autor_jan_nowak):
 
 @pytest.mark.django_db
 def test_TypOgolnyRedaktorQueryObject(autor_jan_nowak):
-    mommy.make(Typ_Odpowiedzialnosci, typ_ogolny=const.TO_REDAKTOR)
+    baker.make(Typ_Odpowiedzialnosci, typ_ogolny=const.TO_REDAKTOR)
 
     res = TypOgolnyRedaktorQueryObject().real_query(autor_jan_nowak, logic.DIFFERENT)
     assert Rekord.objects.filter(res).count() == 0
@@ -367,7 +367,7 @@ def test_TypOgolnyRedaktorQueryObject(autor_jan_nowak):
 
 @pytest.mark.django_db
 def test_TypOgolnyTlumaczQueryObject(autor_jan_nowak):
-    mommy.make(Typ_Odpowiedzialnosci, typ_ogolny=const.TO_TLUMACZ)
+    baker.make(Typ_Odpowiedzialnosci, typ_ogolny=const.TO_TLUMACZ)
 
     res = TypOgolnyTlumaczQueryObject().real_query(autor_jan_nowak, logic.DIFFERENT)
     assert Rekord.objects.filter(res).count() == 0
@@ -378,7 +378,7 @@ def test_TypOgolnyTlumaczQueryObject(autor_jan_nowak):
 
 @pytest.mark.django_db
 def test_TypOgolnyRecenzentQueryObject(autor_jan_nowak):
-    mommy.make(Typ_Odpowiedzialnosci, typ_ogolny=const.TO_RECENZENT)
+    baker.make(Typ_Odpowiedzialnosci, typ_ogolny=const.TO_RECENZENT)
 
     res = TypOgolnyRecenzentQueryObject().real_query(autor_jan_nowak, logic.DIFFERENT)
     assert Rekord.objects.filter(res).count() == 0
@@ -413,7 +413,7 @@ def test_LiczbaAutorowQueryObject():
 
 @pytest.mark.django_db
 def test_ZewnetrznaBazaDanychQueryObject():
-    zbd = mommy.make(Zewnetrzna_Baza_Danych)
+    zbd = baker.make(Zewnetrzna_Baza_Danych)
     res = ZewnetrznaBazaDanychQueryObject().real_query(zbd, logic.DIFFERENT)
     assert Rekord.objects.filter(res).count() == 0
 

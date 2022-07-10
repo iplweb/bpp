@@ -1,10 +1,9 @@
 import pytest
 from django.urls import NoReverseMatch
 from django.urls.base import reverse
-from model_mommy import mommy
+from model_bakery import baker
 
-from bpp.models import Jednostka, Praca_Doktorska, Praca_Habilitacyjna, Zrodlo
-from bpp.models.autor import Autor
+from bpp.models import Autor, Jednostka, Praca_Doktorska, Praca_Habilitacyjna, Zrodlo
 from bpp.models.cache import Autorzy, Rekord
 from bpp.models.patent import Patent, Patent_Autor
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor
@@ -21,20 +20,26 @@ from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte, Wydawnictwo_Zwarte
         Praca_Habilitacyjna,
     ],
 )
-def test_safe_html_dwa_tytuly_DwaTytuly(klass, admin_app, typy_odpowiedzialnosci):
+def test_safe_html_dwa_tytuly_DwaTytuly(
+    klass,
+    admin_app,
+    typy_odpowiedzialnosci,
+):
     """Upewnij sie, ze bleach jest uruchamiany dla tych dwóch pól z DwaTytuly"""
-    i = mommy.make(klass)
+
+    i = baker.make(klass)
     if hasattr(i, "zrodlo"):
-        z = mommy.make(Zrodlo)
+        z = baker.make(Zrodlo)
         i.zrodlo = z
         i.save()
 
     if hasattr(i, "promotor"):
-        p = mommy.make(Autor)
+        p = baker.make(Autor)
         i.promotor = p
         i.save()
 
     url = reverse(f"admin:bpp_{klass._meta.model_name}_change", args=(i.pk,))
+
     page = admin_app.get(url)
 
     page.forms[1]["tytul_oryginalny"].value = "<script>hi</script>"
@@ -70,11 +75,11 @@ def test_safe_html_dwa_tytuly_DwaTytuly(klass, admin_app, typy_odpowiedzialnosci
 def test_zapisz_wydawnictwo_w_adminie(klass, autor_klass, name, url, admin_app):
 
     if klass == Wydawnictwo_Ciagle:
-        wc = mommy.make(klass, zrodlo__nazwa="Kopara")
+        wc = baker.make(klass, zrodlo__nazwa="Kopara")
     else:
-        wc = mommy.make(klass)
+        wc = baker.make(klass)
 
-    wca = mommy.make(
+    wca = baker.make(
         autor_klass,
         autor__imiona="Jan",
         autor__nazwisko="Kowalski",
@@ -151,9 +156,9 @@ def test_widok_admina(admin_client, model):
 def test_admin_jednostka_sortowanie(uczelnia, admin_client):
     url_name = reverse("admin:bpp_jednostka_changelist")
 
-    mommy.make(Jednostka)
-    mommy.make(Jednostka)
-    mommy.make(Jednostka)
+    baker.make(Jednostka)
+    baker.make(Jednostka)
+    baker.make(Jednostka)
 
     uczelnia.sortuj_jednostki_alfabetycznie = True
     uczelnia.save()

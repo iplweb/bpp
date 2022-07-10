@@ -1,11 +1,10 @@
-# -*- encoding: utf-8 -*-
 import os
 import sys
 import tempfile
 from zipfile import ZipFile
 
 from django.test import TestCase
-from model_mommy import mommy
+from model_bakery import baker
 
 from celeryui.models import Report
 
@@ -69,12 +68,12 @@ class TestRaportKomisjiCentralnej(TestRKCMixin, TestCase):
 
         self.prace = {}
 
-        self.krajowe_zrodlo = mommy.make(Zrodlo, zasieg=zasieg.krajowy)
+        self.krajowe_zrodlo = baker.make(Zrodlo, zasieg=zasieg.krajowy)
         Redakcja_Zrodla.objects.create(
             zrodlo=self.krajowe_zrodlo, redaktor=self.autor, od_roku=CURRENT_YEAR
         )
 
-        self.miedzynarodowe_zrodlo = mommy.make(Zrodlo, zasieg=zasieg["międzynarodowy"])
+        self.miedzynarodowe_zrodlo = baker.make(Zrodlo, zasieg=zasieg["międzynarodowy"])
         Redakcja_Zrodla.objects.create(
             zrodlo=self.miedzynarodowe_zrodlo, redaktor=self.autor, od_roku=CURRENT_YEAR
         )
@@ -477,10 +476,10 @@ class TestRaportKomisjiCentralnejZipfile(TestRKCMixin, TestCase):
             self.assertEqual(len(zip.infolist()), 3)
 
     def test_raport_dla_komisji_centralnej(self):
-        autor = mommy.make(Autor)
-        r = mommy.make(Report, arguments={"rok_habilitacji": "2017", "autor": autor.pk})
+        autor = baker.make(Autor)
+        r = baker.make(Report, arguments={"rok_habilitacji": "2017", "autor": autor.pk})
         x = Raport_Dla_Komisji_Centralnej(r)
         x.perform()
 
         r.file.open()
-        self.assert_(True)
+        self.assertTrue(True)

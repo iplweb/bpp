@@ -11,7 +11,7 @@ try:
 except ImportError:
     from django.urls import reverse
 
-from model_mommy import mommy
+from model_bakery import baker
 from multiseek.logic import EQUAL, EQUAL_FEMALE, EQUAL_NONE
 from multiseek.views import MULTISEEK_SESSION_KEY
 
@@ -253,13 +253,13 @@ def test_browse_snip_invisible(client, uczelnia, wydawnictwo_ciagle):
 @pytest.mark.django_Db
 def test_browse_praca_wydawnictwa_powiazane(wydawnictwo_zwarte, client, denorms):
     # Testuj, czy rozdziały pokazują się w wydawnictwach powiązanych
-    mommy.make(
+    baker.make(
         Wydawnictwo_Zwarte,
         wydawnictwo_nadrzedne=wydawnictwo_zwarte,
         tytul_oryginalny="Roz 1",
         strony="asdoifj 55-34 oaijsdfo",
     )
-    mommy.make(
+    baker.make(
         Wydawnictwo_Zwarte,
         wydawnictwo_nadrzedne=wydawnictwo_zwarte,
         tytul_oryginalny="Roz 2",

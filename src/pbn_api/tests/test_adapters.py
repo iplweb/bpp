@@ -2,7 +2,7 @@ import json
 from decimal import Decimal
 
 import pytest
-from model_mommy import mommy
+from model_bakery import baker
 
 from fixtures.pbn_api import _zrob_wydawnictwo_pbn
 from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
@@ -71,7 +71,7 @@ def test_WydawnictwoPBNAdapter_autor_eksport(
     pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina, jednostka
 ):
 
-    autor_bez_dyscypliny = mommy.make(Autor)
+    autor_bez_dyscypliny = baker.make(Autor)
     pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina.dodaj_autora(
         autor_bez_dyscypliny, jednostka, "Jan Budnik"
     )
@@ -87,7 +87,7 @@ def test_WydawnictwoPBNAdapter_pk_rowne_zero_eksport_wylaczony(
     pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina, jednostka, rf, pbn_uczelnia
 ):
 
-    autor_bez_dyscypliny = mommy.make(Autor)
+    autor_bez_dyscypliny = baker.make(Autor)
     pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina.dodaj_autora(
         autor_bez_dyscypliny, jednostka, "Jan Budnik"
     )
@@ -232,7 +232,7 @@ def test_WydawnictwoPBNAdapter_autor_z_orcid_bez_dyscypliny_idzie_bez_id(
     pierwszy_autor.orcid = "123456"
     pierwszy_autor.save()
 
-    autor_bez_dyscypliny = mommy.make(
+    autor_bez_dyscypliny = baker.make(
         Autor, imiona="Jan", nazwisko="Budnik", orcid="43567"
     )
     praca_z_dyscyplina_pbn.dodaj_autora(autor_bez_dyscypliny, jednostka, "Jan Budnik")

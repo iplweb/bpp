@@ -1,7 +1,7 @@
 from pathlib import Path
 
 import pytest
-from model_mommy import mommy
+from model_bakery import baker
 
 from fixtures.conftest import (
     NORMAL_DJANGO_USER_LOGIN,
@@ -73,4 +73,4 @@ def conftest_py(parent_path):
 
 @pytest.fixture
 def import_dyscyplin(db, rok):
-    return mommy.make(Import_Dyscyplin, rok=rok)
+    return baker.make(Import_Dyscyplin, rok=rok)

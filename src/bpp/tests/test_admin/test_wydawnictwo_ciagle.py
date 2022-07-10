@@ -1,6 +1,6 @@
 import pytest
 from django.urls import reverse
-from model_mommy import mommy
+from model_bakery import baker
 
 from pbn_api.models import Publication, SentData
 
@@ -69,7 +69,7 @@ def test_wydawnictwo_ciagle_admin_zapisz_i_wyslij_do_pbn_change_tak(
         cf.rodzaj_pbn = const.RODZAJ_PBN_ARTYKUL
         cf.save()
 
-        pub = mommy.make(Publication)
+        pub = baker.make(Publication)
         SentData.objects.create(object=wydawnictwo_ciagle, data_sent={}, pbn_uid=pub)
 
         url = "admin:bpp_wydawnictwo_ciagle_change"
@@ -127,13 +127,13 @@ def test_Wydawnictwo_Ciagle_Admin_sprawdz_duplikaty_www_doi_pbn(
     admin_app, zrodlo, fld, value
 ):
     if fld == "pbn_uid":
-        value = mommy.make(Publication, pk=TEST_PBN_ID)
+        value = baker.make(Publication, pk=TEST_PBN_ID)
 
-    mommy.make(Wydawnictwo_Ciagle, **{fld: value})
-    w2 = mommy.make(Wydawnictwo_Ciagle, zrodlo=zrodlo)
+    baker.make(Wydawnictwo_Ciagle, **{fld: value})
+    w2 = baker.make(Wydawnictwo_Ciagle, zrodlo=zrodlo)
 
     if fld == "pbn_uid":
-        value = TEST_PBN_ID  # mommy.make(Publication, pk=TEST_PBN_ID)
+        value = TEST_PBN_ID  # baker.make(Publication, pk=TEST_PBN_ID)
 
     url = "admin:bpp_wydawnictwo_ciagle_change"
     page = admin_app.get(reverse(url, args=(w2.pk,)))

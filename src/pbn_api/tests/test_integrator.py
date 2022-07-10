@@ -1,5 +1,5 @@
 import pytest
-from model_mommy import mommy
+from model_bakery import baker
 
 from pbn_api.integrator import (
     wydawnictwa_ciagle_do_synchronizacji,
@@ -23,8 +23,8 @@ def test_wydawnictwa_zwarte_do_synchronizacji(pbn_charakter_formalny, pbn_jezyk)
     nie_wejda = []
 
     required = {
-        "status_korekty": mommy.make(Status_Korekty),
-        "typ_kbn": mommy.make(Typ_KBN),
+        "status_korekty": baker.make(Status_Korekty),
+        "typ_kbn": baker.make(Typ_KBN),
     }
 
     wejda.append(
@@ -97,7 +97,7 @@ def test_wydawnictwa_zwarte_do_synchronizacji(pbn_charakter_formalny, pbn_jezyk)
             doi="jest",
             isbn="jest",
             rok=PBN_MIN_ROK,
-            charakter_formalny=mommy.make(Charakter_Formalny, rodzaj_pbn=None),
+            charakter_formalny=baker.make(Charakter_Formalny, rodzaj_pbn=None),
             jezyk=pbn_jezyk,
             **required
         )
@@ -134,7 +134,7 @@ def test_wydawnictwa_zwarte_do_synchronizacji(pbn_charakter_formalny, pbn_jezyk)
             rok=PBN_MIN_ROK,
             charakter_formalny=pbn_charakter_formalny,
             isbn="jest",
-            jezyk=mommy.make(Jezyk, pbn_uid=None),
+            jezyk=baker.make(Jezyk, pbn_uid=None),
             **required
         )
     )
@@ -165,8 +165,8 @@ def test_wydawnictwa_ciagle_do_synchronizacji(pbn_charakter_formalny, pbn_jezyk)
     nie_wejda = []
 
     required = {
-        "status_korekty": mommy.make(Status_Korekty),
-        "typ_kbn": mommy.make(Typ_KBN),
+        "status_korekty": baker.make(Status_Korekty),
+        "typ_kbn": baker.make(Typ_KBN),
     }
 
     wejda.append(
@@ -207,7 +207,7 @@ def test_wydawnictwa_ciagle_do_synchronizacji(pbn_charakter_formalny, pbn_jezyk)
             tytul_oryginalny="F",
             doi="jest",
             rok=PBN_MIN_ROK,
-            charakter_formalny=mommy.make(Charakter_Formalny, rodzaj_pbn=None),
+            charakter_formalny=baker.make(Charakter_Formalny, rodzaj_pbn=None),
             jezyk=pbn_jezyk,
             **required
         )
@@ -231,7 +231,7 @@ def test_wydawnictwa_ciagle_do_synchronizacji(pbn_charakter_formalny, pbn_jezyk)
             rok=PBN_MIN_ROK,
             charakter_formalny=pbn_charakter_formalny,
             doi="jest",
-            jezyk=mommy.make(Jezyk, pbn_uid=None),
+            jezyk=baker.make(Jezyk, pbn_uid=None),
             **required
         )
     )

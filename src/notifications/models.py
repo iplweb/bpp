@@ -1,5 +1,5 @@
-from django.contrib.postgres.fields import JSONField
 from django.db import models
+from django.db.models import JSONField
 
 from notifications import core
 from notifications.core import convert_obj_to_channel_name

@@ -5,7 +5,7 @@ from datetime import date, timedelta
 from django import forms
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import DataError, IntegrityError, models, transaction
-from django.db.models import Q
+from django.db.models import JSONField, Q
 
 from import_common.core import (
     matchuj_autora,
@@ -31,8 +31,6 @@ from import_common.normalization import (
 from import_common.util import XLSImportFile
 from long_running.models import Operation
 from long_running.notification_mixins import ASGINotificationMixin
-
-from django.contrib.postgres.fields import JSONField
 
 from django.utils import timezone
 
@@ -334,7 +332,7 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
     jednostka = models.ForeignKey(Jednostka, on_delete=models.CASCADE)
     autor_jednostka = models.ForeignKey(Autor_Jednostka, on_delete=models.CASCADE)
 
-    podstawowe_miejsce_pracy = models.NullBooleanField()
+    podstawowe_miejsce_pracy = models.BooleanField(null=True, blank=True, default=None)
     funkcja_autora = models.ForeignKey(Funkcja_Autora, on_delete=models.CASCADE)
     grupa_pracownicza = models.ForeignKey(Grupa_Pracownicza, on_delete=models.CASCADE)
     wymiar_etatu = models.ForeignKey(Wymiar_Etatu, on_delete=models.CASCADE)

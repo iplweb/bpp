@@ -1,4 +1,3 @@
-# -*- encoding: utf-8 -*-
 from django.conf.urls import url
 from django.urls import path
 from django.views.decorators.csrf import csrf_exempt
@@ -84,7 +83,6 @@ from bpp.views.raporty import (
     RaportDlaKomisjiCentralnejFormularz,
     RaportJednostek,
     RaportJednostek2012,
-    RaportKronikaUczelni,
     RaportSelector,
 )
 from bpp.views.raporty.raport_autorow_2012 import RaportAutorow2012
@@ -201,11 +199,6 @@ urlpatterns = [
     ),
     url(r"^build_search/$", BuildSearch.as_view(), name="browse_build_search"),
     url(r"^raporty/$", login_required(RaportSelector.as_view()), name="raporty"),
-    url(
-        r"^raporty/kronika_uczelni/$",
-        login_required(RaportKronikaUczelni.as_view()),
-        name="raport_kronika_uczelni",
-    ),
     url(
         r"^raporty/jednostek/$",
         RaportJednostek.as_view(),

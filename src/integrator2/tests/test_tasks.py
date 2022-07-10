@@ -1,11 +1,11 @@
-# -*- encoding: utf-8 -*-
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
-from model_mommy import mommy
+from model_bakery import baker
 
 from integrator2.models import ListaMinisterialnaIntegration
-from integrator2.tasks import remove_old_integrator_files, analyze_file
+from integrator2.tasks import analyze_file, remove_old_integrator_files
+
 from django.utils import timezone
 
 
@@ -17,8 +17,8 @@ def test_analyze_file(lmi):
 
 @pytest.mark.django_db
 def test_remove_old_integrator_files():
-    mommy.make(ListaMinisterialnaIntegration)
-    f = mommy.make(ListaMinisterialnaIntegration)
+    baker.make(ListaMinisterialnaIntegration)
+    f = baker.make(ListaMinisterialnaIntegration)
     f.uploaded_on = timezone.now() - timedelta(days=20)
     f.save()
 

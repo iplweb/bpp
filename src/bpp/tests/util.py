@@ -11,7 +11,7 @@ from datetime import datetime
 
 from django.http import HttpResponse
 from django.urls import reverse
-from model_mommy import mommy
+from model_bakery import baker
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.expected_conditions import visibility_of
 from selenium.webdriver.support.wait import WebDriverWait
@@ -43,12 +43,12 @@ from django_bpp.selenium_util import (
 )
 
 
-def setup_mommy():
-    mommy.generators.add(
+def setup_model_bakery():
+    baker.generators.add(
         "django.contrib.postgres.fields.array.ArrayField", lambda x: []
     )
 
-    mommy.generators.add(
+    baker.generators.add(
         "django.contrib.postgres.search.SearchVectorField", lambda x=None: None
     )
 
@@ -104,7 +104,7 @@ def any_jednostka(nazwa=None, skrot=None, wydzial_skrot="WDZ", **kw):
     except KeyError:
         uczelnia = Uczelnia.objects.all().first()
         if uczelnia is None:
-            uczelnia = mommy.make(Uczelnia)
+            uczelnia = baker.make(Uczelnia)
 
     try:
         wydzial = kw.pop("wydzial")
@@ -112,7 +112,7 @@ def any_jednostka(nazwa=None, skrot=None, wydzial_skrot="WDZ", **kw):
         try:
             wydzial = Wydzial.objects.get(skrot=wydzial_skrot)
         except Wydzial.DoesNotExist:
-            wydzial = mommy.make(Wydzial, uczelnia=uczelnia)
+            wydzial = baker.make(Wydzial, uczelnia=uczelnia)
 
     ret = Jednostka.objects.create(
         nazwa=nazwa, skrot=skrot, wydzial=wydzial, uczelnia=uczelnia, **kw
@@ -146,7 +146,7 @@ def any_wydawnictwo(klass, rok=None, **kw):
 
     Status_Korekty.objects.get_or_create(pk=1, nazwa="przed korektą")
 
-    return mommy.make(klass, rok=rok, **kw)
+    return baker.make(klass, rok=rok, **kw)
 
 
 def any_ciagle(**kw):
@@ -217,7 +217,7 @@ def any_zrodlo(**kw):
     if "skrot" not in kw:
         kw["skrot"] = "Zrod. %s" % time.time()
 
-    return mommy.make(Zrodlo, **kw)
+    return baker.make(Zrodlo, **kw)
 
 
 def _lookup_fun(klass):
@@ -265,6 +265,9 @@ def select_select2_autocomplete(
     :param element_id: ID elementu (tekst)
     :param value: tekst do wpisania
     """
+
+    old_value = browser.find_by_id(f"select2-{element_id}-container").text
+
     # Znajdź interesujący nas select2-autocomplete
     element = browser.find_by_id(element_id)[0]
     sibling = element.find_by_xpath("following-sibling::span")
@@ -285,40 +288,24 @@ def select_select2_autocomplete(
     # tries = 0
     # while True:
 
-    old_active = element.parent.switch_to.active_element
-    while True:
-        sibling.click()
-        time.sleep(random.randint(100, 1000) / 1000)
-        new_active = element.parent.switch_to.active_element
+    sibling.click()
 
-        if new_active != old_active:
-            break
+    # W tym momencie pojawi sie popup. Input type z klasą .select2-search__field
+    # będzie jedyny na stronie:
+    WebDriverWait(browser, SHORT_WAIT_TIME).until(
+        lambda driver: driver.find_by_css(".select2-search__field")
+    )
 
-    old_value = None
+    input_box = element.parent.find_by_css(".select2-search__field")[0]
 
-    while old_value is None:
-        old_value = browser.find_by_id(f"select2-{element_id}-container").text
-        time.sleep(0.3)
-
-    # for letter in value:
-    new_active.send_keys(value)
-    time.sleep(1)
+    list(input_box.type(value, slowly=True))
 
     wait_for(
         lambda: "Trwa wyszukiwanie…"
         not in browser.find_by_id(f"select2-{element_id}-results").value
     )
 
-    if value_before_enter:
-        try:
-            wait_for(
-                lambda: value_before_enter
-                in browser.find_by_id(f"select2-{element_id}-results").value,
-                max_seconds=LONG_WAIT_TIME,
-            )
-        except TimeoutError as e:
-            raise e
-    new_active.send_keys(Keys.ENTER)
+    input_box.type(Keys.ENTER)
     time.sleep(0.5)
 
     if wait_for_new_value:

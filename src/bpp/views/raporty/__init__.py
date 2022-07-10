@@ -1,23 +1,27 @@
-# -*- encoding: utf-8 -*-
-
 """W tym pakiecie znajdują się procedury generujące raporty, które są dostępne
 "od ręki" -- generowane za pomocą WWW"""
-from django.contrib import messages
 from django.http import Http404
 from django.http.response import HttpResponseRedirect
-from django.views.generic import View
+from django.urls import reverse
+from django.views.generic import DetailView, View
 from django.views.generic.base import TemplateView
 from django.views.generic.edit import BaseDeleteView, FormView
 from sendfile import sendfile
 
-from bpp.models import Rekord
-from bpp.views.raporty.forms import KronikaUczelniForm, \
-    RaportJednostekForm, RaportDlaKomisjiCentralnejForm, RankingAutorowForm, \
-    RaportAutorowForm
 from celeryui.interfaces import IWebTask
 from celeryui.models import Report
-from .ranking_autorow import *
-from .raport_jednostek_2012 import *
+from .ranking_autorow import *  # noqa
+from .raport_jednostek_2012 import *  # noqa
+
+from django.contrib import messages
+
+from bpp.models import Rekord
+from bpp.views.raporty.forms import (
+    RankingAutorowForm,
+    RaportAutorowForm,
+    RaportDlaKomisjiCentralnejForm,
+    RaportJednostekForm,
+)
 
 
 class PobranieRaportu(View):
@@ -26,8 +30,7 @@ class PobranieRaportu(View):
 
     def get(self, request, uid, *args, **kwargs):
         try:
-            raport = Report.objects.filter(
-                uid=uid).exclude(finished_on=None)[0]
+            raport = Report.objects.filter(uid=uid).exclude(finished_on=None)[0]
         except IndexError:
             raise Http404
 
@@ -42,7 +45,7 @@ class PodgladRaportu(DetailView):
 
     def get_object(self, queryset=None):
         try:
-            raport = Report.objects.get(uid=self.kwargs['uid'])
+            raport = Report.objects.get(uid=self.kwargs["uid"])
         except Report.DoesNotExist:
             raise Http404
 
@@ -51,26 +54,26 @@ class PodgladRaportu(DetailView):
 
 class KasowanieRaportu(BaseDeleteView):
     slug_field = "uid"
-    success_url = '../../..'
+    success_url = "../../.."
 
     def get_object(self):
         try:
             return Report.objects.get(
-                uid=self.kwargs['uid'],
-                ordered_by=self.request.user)
+                uid=self.kwargs["uid"], ordered_by=self.request.user
+            )
         except Report.DoesNotExist:
             raise Http404
 
     def delete(self, request, *args, **kwargs):
         obj = self.get_object()
-        path = None
+
         try:
-            path = obj.file.path
+            obj.file.path
         except ValueError:
             pass
 
         response = BaseDeleteView.delete(self, request, *args, **kwargs)
-        messages.add_message(request, messages.INFO, 'Raport został usunięty.')
+        messages.add_message(request, messages.INFO, "Raport został usunięty.")
         return response
 
     def render_to_response(self, *args, **kwargs):
@@ -85,26 +88,30 @@ class RaportyMixin:
         return raporty
 
     def get_lata(self):
-        return Rekord.objects.all().values_list(
-            'rok', flat=True).order_by('rok').distinct()
+        return (
+            Rekord.objects.all()
+            .values_list("rok", flat=True)
+            .order_by("rok")
+            .distinct()
+        )
 
 
 class RaportyFormMixin(RaportyMixin):
-    template_name = 'raporty/strona_raportow/podstrona.html'
+    template_name = "raporty/strona_raportow/podstrona.html"
     success_url = "."
     nazwa_raportu = "skonfiguruj-mnie"
 
     def get_context_data(self, **kwargs):
         data = FormView.get_context_data(self, **kwargs)
-        data['raporty'] = []
+        data["raporty"] = []
         if not self.request.user.is_anonymous:
-            data['raporty'] = self.get_raporty()
-        data['nazwa_raportu'] = self.nazwa_raportu
+            data["raporty"] = self.get_raporty()
+        data["nazwa_raportu"] = self.nazwa_raportu
         return data
 
     def get_form_kwargs(self, **kw):
         data = FormView.get_form_kwargs(self, **kw)
-        data['lata'] = self.get_lata()
+        data["lata"] = self.get_lata()
         return data
 
     def get_raport_arguments(self, form):
@@ -113,37 +120,39 @@ class RaportyFormMixin(RaportyMixin):
     def form_valid(self, form):
         r = Report.objects.create(
             ordered_by=self.request.user,
-            function=self.request.POST['report'],
-            arguments=self.get_raport_arguments(form))
+            function=self.request.POST["report"],
+            arguments=self.get_raport_arguments(form),
+        )
 
-        if self.request.POST.get('do_not_call_celery') != '1':
+        if self.request.POST.get("do_not_call_celery") != "1":
             from bpp.tasks import make_report
+
             make_report.delay(r.uid)
 
         messages.add_message(
-            self.request, messages.INFO,
+            self.request,
+            messages.INFO,
             "Zamówienie raportu zostało złożone. Zostaniesz poinformowany/a "
-            "na bieżąco o zakończeniu jego generowania.")
+            "na bieżąco o zakończeniu jego generowania.",
+        )
 
         return FormView.form_valid(self, form)
 
 
-class RaportKronikaUczelni(RaportyFormMixin, FormView):
-    form_class = KronikaUczelniForm
-    nazwa_raportu = "Kronika Uczelni"
-
-
 class RaportCommonView(RaportyFormMixin, FormView):
     def form_valid(self, form):
-        rok_min = form.cleaned_data['od_roku']
-        rok_max = form.cleaned_data['do_roku']
+        rok_min = form.cleaned_data["od_roku"]
+        rok_max = form.cleaned_data["do_roku"]
         object = form.cleaned_data[self.object_key].pk
         output = "html"
-        if form.cleaned_data['output']:
+        if form.cleaned_data["output"]:
             output = "msw"
 
         if rok_min != rok_max:
-            url = reverse(self.url_min_max, args=(object, rok_min, rok_max)) + "?output=%s" % output
+            url = (
+                reverse(self.url_min_max, args=(object, rok_min, rok_max))
+                + "?output=%s" % output
+            )
             return HttpResponseRedirect(url)
 
         url = reverse(self.url_single, args=(object, rok_min)) + "?output=%s" % output
@@ -153,7 +162,7 @@ class RaportCommonView(RaportyFormMixin, FormView):
 class RaportJednostek(RaportCommonView):
     form_class = RaportJednostekForm
     nazwa_raportu = "Raport jednostek"
-    object_key = 'jednostka'
+    object_key = "jednostka"
     url_min_max = "bpp:raport-jednostek-rok-min-max"
     url_single = "bpp:raport-jednostek"
 
@@ -185,16 +194,20 @@ class RankingAutorowFormularz(RaportyFormMixin, FormView):
     nazwa_raportu = "Ranking autorow"
 
     def form_valid(self, form):
-        url = reverse("bpp:ranking-autorow", args=(form.cleaned_data['od_roku'],
-                                                   form.cleaned_data['do_roku'],
-                                                   ))
+        url = reverse(
+            "bpp:ranking-autorow",
+            args=(
+                form.cleaned_data["od_roku"],
+                form.cleaned_data["do_roku"],
+            ),
+        )
 
-        w = form.cleaned_data['wydzialy']
+        w = form.cleaned_data["wydzialy"]
         if w:
             url += "?"
             url += "&".join(["wydzialy[]=%s" % x.pk for x in w])
 
-        e = form.cleaned_data['_export']
+        e = form.cleaned_data["_export"]
         if e:
             if url.find("?") < 0:
                 url += "?"
@@ -202,14 +215,14 @@ class RankingAutorowFormularz(RaportyFormMixin, FormView):
                 url += "&"
             url += f"_export={ e }"
 
-        r = form.cleaned_data['rozbij_na_jednostki']
+        r = form.cleaned_data["rozbij_na_jednostki"]
         if url.find("?") < 0:
             url += "?"
         else:
             url += "&"
         url += f"rozbij_na_jednostki={ r }"
 
-        ta = form.cleaned_data['tylko_afiliowane']
+        ta = form.cleaned_data["tylko_afiliowane"]
         if url.find("?") < 0:
             url += "?"
         else:
@@ -224,7 +237,7 @@ class RaportDlaKomisjiCentralnejFormularz(RaportyFormMixin, FormView):
     nazwa_raportu = "Raport dla Komisji Centralnej"
 
     def get_raport_arguments(self, form):
-        form.cleaned_data['autor'] = form.cleaned_data['autor'].pk
+        form.cleaned_data["autor"] = form.cleaned_data["autor"].pk
         return form.cleaned_data
 
 
@@ -232,5 +245,4 @@ class RaportSelector(RaportyMixin, TemplateView):
     template_name = "raporty/strona_raportow/index.html"
 
     def get_context_data(self, **kwargs):
-        return super(RaportSelector, self).get_context_data(
-            raporty=self.get_raporty(), **kwargs)
+        return super().get_context_data(raporty=self.get_raporty(), **kwargs)

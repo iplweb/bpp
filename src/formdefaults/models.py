@@ -1,7 +1,7 @@
 from django.conf import settings
-from django.contrib.postgres.fields import JSONField
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models import JSONField
 
 from formdefaults.core import get_form_defaults
 from formdefaults.util import full_name, get_python_class_by_name
@@ -46,7 +46,7 @@ class FormRepresentation(models.Model):
 
 
 class FormFieldRepresentation(models.Model):
-    """Default value in a form. """
+    """Default value in a form."""
 
     parent = models.ForeignKey(
         FormRepresentation,
@@ -125,7 +125,7 @@ class FormFieldDefaultValue(models.Model):
 
         try:
             klass = self.parent.get_form_class()
-        except Exception as e:
+        except Exception:
             raise ValidationError(
                 f"Nie udało się odnaleźć klasy formularza w kodzie dla '{self.parent.full_name}'. "
                 f"Weryfikacja wartości domyślnych formularza nie jest możliwa, a co za tym idzie, "

@@ -1,5 +1,5 @@
 import pytest
-from model_mommy import mommy
+from model_bakery import baker
 
 from ewaluacja2021.models import IloscUdzialowDlaAutora, LiczbaNDlaUczelni
 
@@ -38,7 +38,7 @@ def genetyczny_3n(
 
     for a in range(20):
 
-        wc: Wydawnictwo_Ciagle = mommy.make(
+        wc: Wydawnictwo_Ciagle = baker.make(
             Wydawnictwo_Ciagle,
             rok=ROK,
             punkty_kbn=5,

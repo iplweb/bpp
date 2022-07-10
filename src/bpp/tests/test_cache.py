@@ -1,7 +1,6 @@
-# -*- encoding: utf-8 -*-
 # TODO: przenies do bpp/tests/test_cache.py
 import pytest
-from model_mommy import mommy
+from model_bakery import baker
 
 from bpp.models import Praca_Doktorska
 from bpp.models.autor import Autor
@@ -20,7 +19,7 @@ from bpp.models.zrodlo import Zrodlo
 def test_opis_bibliograficzny_wydawnictwo_ciagle(
     transactional_db, standard_data, denorms, autor_jan_kowalski, jednostka
 ):
-    wc = mommy.make(Wydawnictwo_Ciagle, szczegoly="Sz", uwagi="U")
+    wc = baker.make(Wydawnictwo_Ciagle, szczegoly="Sz", uwagi="U")
 
     rekord = Rekord.objects.all()[0]
 
@@ -36,7 +35,7 @@ def test_opis_bibliograficzny_wydawnictwo_ciagle(
 def test_opis_bibliograficzny_praca_doktorska(
     standard_data, autor_jan_kowalski, jednostka, denorms
 ):
-    wc = mommy.make(
+    wc = baker.make(
         Praca_Doktorska,
         szczegoly="Sz",
         uwagi="U",
@@ -52,7 +51,7 @@ def test_opis_bibliograficzny_praca_doktorska(
 def test_kasowanie(db, standard_data):
     assert Rekord.objects.count() == 0
 
-    wc = mommy.make(Wydawnictwo_Ciagle)
+    wc = baker.make(Wydawnictwo_Ciagle)
     assert Rekord.objects.count() == 1
 
     wc.delete()
@@ -63,14 +62,14 @@ def test_opis_bibliograficzny_dependent(standard_data, denorms):
     """Stwórz i skasuj Wydawnictwo_Ciagle_Autor i sprawdź, jak to
     wpłynie na opis."""
 
-    c = mommy.make(
+    c = baker.make(
         Wydawnictwo_Ciagle, tytul_oryginalny="Test", szczegoly="sz", uwagi="u"
     )
     assert "KOWALSKI" not in c.opis_bibliograficzny()
     assert "KOWALSKI" not in Rekord.objects.first().opis_bibliograficzny_cache
 
-    a = mommy.make(Autor, imiona="Jan", nazwisko="Kowalski")
-    j = mommy.make(Jednostka)
+    a = baker.make(Autor, imiona="Jan", nazwisko="Kowalski")
+    j = baker.make(Jednostka)
     wca = c.dodaj_autora(a, j)
 
     denorms.flush()
@@ -89,8 +88,8 @@ def test_opis_bibliograficzny_dependent(standard_data, denorms):
 def test_opis_bibliograficzny_zrodlo(standard_data, denorms):
     """Zmień nazwę źródła i sprawdź, jak to wpłynie na opis."""
 
-    z = mommy.make(Zrodlo, nazwa="OMG", skrot="wutlolski")
-    c = mommy.make(Wydawnictwo_Ciagle, szczegoly="SZ", uwagi="U", zrodlo=z)
+    z = baker.make(Zrodlo, nazwa="OMG", skrot="wutlolski")
+    c = baker.make(Wydawnictwo_Ciagle, szczegoly="SZ", uwagi="U", zrodlo=z)
 
     assert "wutlolski" in c.opis_bibliograficzny()
     assert "wutlolski" in Rekord.objects.first().opis_bibliograficzny_cache
@@ -371,12 +370,12 @@ def test_rekord_describe_content_type(wydawnictwo_zwarte):
 
 
 def test_aktualizacja_rekordu_autora(typy_odpowiedzialnosci, denorms):
-    w = mommy.make(Wydawnictwo_Ciagle)
+    w = baker.make(Wydawnictwo_Ciagle)
 
-    a = mommy.make(Autor)
-    b = mommy.make(Autor)
+    a = baker.make(Autor)
+    b = baker.make(Autor)
 
-    j = mommy.make(Jednostka)
+    j = baker.make(Jednostka)
     r = w.dodaj_autora(a, j, zapisany_jako="Test")
 
     assert b.pk not in Rekord.objects.all().first().autorzy.all().values_list(
@@ -396,14 +395,14 @@ def test_aktualizacja_rekordu_autora(typy_odpowiedzialnosci, denorms):
 
 @pytest.mark.django_db
 def test_prace_autora_z_afiliowanych_jednostek(typy_odpowiedzialnosci):
-    a1 = mommy.make(Autor, nazwisko="X", imiona="X")
-    a2 = mommy.make(Autor, nazwisko="Y", imiona="Y")
+    a1 = baker.make(Autor, nazwisko="X", imiona="X")
+    a2 = baker.make(Autor, nazwisko="Y", imiona="Y")
 
-    nasza = mommy.make(Jednostka, skupia_pracownikow=True)
-    obca = mommy.make(Jednostka, skupia_pracownikow=False)
+    nasza = baker.make(Jednostka, skupia_pracownikow=True)
+    obca = baker.make(Jednostka, skupia_pracownikow=False)
 
-    wc1 = mommy.make(Wydawnictwo_Ciagle, impact_factor=10, rok=2017)
-    wc2 = mommy.make(Wydawnictwo_Ciagle, impact_factor=10, rok=2017)
+    wc1 = baker.make(Wydawnictwo_Ciagle, impact_factor=10, rok=2017)
+    wc2 = baker.make(Wydawnictwo_Ciagle, impact_factor=10, rok=2017)
 
     wc1.dodaj_autora(a1, nasza)
     wc1.dodaj_autora(a2, nasza)
@@ -430,7 +429,7 @@ def test_rebuild_ciagle(
 def test_rebuild_zwarte(
     django_assert_max_num_queries, wydawnictwo_zwarte_z_autorem, denorms
 ):
-    with django_assert_max_num_queries(40):
+    with django_assert_max_num_queries(45):
         denorms.rebuildall("Wydawnictwo_Zwarte")
 
 

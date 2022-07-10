@@ -1,9 +1,10 @@
 import pytest
-from model_mommy import mommy
+from model_bakery import baker
 
-from bpp.models import Autor, Dyscyplina_Naukowa, Jednostka, Tytul, Wydzial
 from import_common.core import matchuj_dyscypline
 from import_dyscyplin.core import matchuj_autora, matchuj_jednostke, matchuj_wydzial
+
+from bpp.models import Autor, Dyscyplina_Naukowa, Jednostka, Tytul, Wydzial
 
 
 @pytest.mark.parametrize(
@@ -16,8 +17,8 @@ from import_dyscyplin.core import matchuj_autora, matchuj_jednostke, matchuj_wyd
     ],
 )
 def test_matchuj_wydzial(szukany_string, db):
-    mommy.make(Wydzial, nazwa="I Lekarski")
-    w2 = mommy.make(Wydzial, nazwa="II Lekarski")
+    baker.make(Wydzial, nazwa="I Lekarski")
+    w2 = baker.make(Wydzial, nazwa="II Lekarski")
 
     assert matchuj_wydzial(szukany_string) == w2
 
@@ -27,10 +28,10 @@ def test_matchuj_wydzial(szukany_string, db):
     ["Jednostka Pierwsza", "  Jednostka Pierwsza  \t", "jednostka pierwsza"],
 )
 def test_matchuj_jednostke(szukany_string, uczelnia, wydzial, db):
-    j1 = mommy.make(
+    j1 = baker.make(
         Jednostka, nazwa="Jednostka Pierwsza", wydzial=wydzial, uczelnia=uczelnia
     )
-    mommy.make(
+    baker.make(
         Jednostka,
         nazwa="Jednostka Pierwsza i Jeszcze",
         wydzial=wydzial,
@@ -47,13 +48,13 @@ def test_matchuj_autora_imiona_nazwisko(autor_jan_nowak):
 
 @pytest.mark.django_db
 def test_matchuj_autora_po_aktualnej_jednostce():
-    j1 = mommy.make(Jednostka)
-    j2 = mommy.make(Jednostka)
+    j1 = baker.make(Jednostka)
+    j2 = baker.make(Jednostka)
 
-    a1 = mommy.make(Autor, imiona="Jan", nazwisko="Kowalski")
+    a1 = baker.make(Autor, imiona="Jan", nazwisko="Kowalski")
     a1.dodaj_jednostke(j1)
 
-    a2 = mommy.make(Autor, imiona="Jan", nazwisko="Kowalski")
+    a2 = baker.make(Autor, imiona="Jan", nazwisko="Kowalski")
     a2.dodaj_jednostke(j2)
 
     a = matchuj_autora(imiona="Jan", nazwisko="Kowalski", jednostka=None)
@@ -68,15 +69,15 @@ def test_matchuj_autora_po_aktualnej_jednostce():
 
 @pytest.mark.django_db
 def test_matchuj_autora_po_jednostce():
-    j1 = mommy.make(Jednostka)
-    j2 = mommy.make(Jednostka)
+    j1 = baker.make(Jednostka)
+    j2 = baker.make(Jednostka)
 
-    a1 = mommy.make(Autor, imiona="Jan", nazwisko="Kowalski")
+    a1 = baker.make(Autor, imiona="Jan", nazwisko="Kowalski")
     a1.dodaj_jednostke(j1)
     a1.aktualna_jednostka = None
     a1.save()
 
-    a2 = mommy.make(Autor, imiona="Jan", nazwisko="Kowalski")
+    a2 = baker.make(Autor, imiona="Jan", nazwisko="Kowalski")
     a2.dodaj_jednostke(j2)
     a2.aktualna_jednostka = None
     a2.save()
@@ -92,13 +93,13 @@ def test_matchuj_autora_po_jednostce():
 def test_matchuj_autora_po_tytule():
     t = Tytul.objects.create(nazwa="prof hab", skrot="lol.")
 
-    mommy.make(Jednostka)
+    baker.make(Jednostka)
 
-    a1 = mommy.make(Autor, imiona="Jan", nazwisko="Kowalski")
+    a1 = baker.make(Autor, imiona="Jan", nazwisko="Kowalski")
     a1.tytul = t
     a1.save()
 
-    mommy.make(Autor, imiona="Jan", nazwisko="Kowalski")
+    baker.make(Autor, imiona="Jan", nazwisko="Kowalski")
 
     a = matchuj_autora(
         imiona="Jan",

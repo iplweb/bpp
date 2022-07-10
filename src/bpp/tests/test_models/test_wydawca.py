@@ -1,10 +1,8 @@
-# -*- encoding: utf-8 -*-
-
 import pytest
 from denorm.models import DirtyInstance
 from django.core.exceptions import ValidationError
 from django.db.models import ProtectedError
-from model_mommy import mommy
+from model_bakery import baker
 
 from bpp.models import Wydawca
 from bpp.models.wydawca import Poziom_Wydawcy
@@ -54,7 +52,7 @@ def test_wydawnictwo_zwarte_wydawca_change_alias_dla(
     denorms.flush()
     assert DirtyInstance.objects.all().count() == 0
 
-    wydawca2 = mommy.make(Wydawca)
+    wydawca2 = baker.make(Wydawca)
 
     wydawca.alias_dla = wydawca2
     wydawca.save()
@@ -116,7 +114,7 @@ def test_wydawca_alias_nie_pozwol_stworzyc_poziomu_dla_aliasu(alias_wydawcy):
 
 def test_wydawca_alias_nie_pozwol_zrobic_aliasu_dla_posiadajacego_poziomy(wydawca):
     wydawca.poziom_wydawcy_set.create(rok=2020, poziom=2)
-    w2 = mommy.make(Wydawca)
+    w2 = baker.make(Wydawca)
     wydawca.alias_dla = w2
     with pytest.raises(ValidationError):
         wydawca.save()
@@ -161,7 +159,7 @@ def test_denorm_wydawca_poziomy_wydawcy(denorms):
 
 @pytest.mark.django_db
 def test_wydawca_str():
-    w1 = mommy.make(Wydawca, nazwa="Foo")
-    w2 = mommy.make(Wydawca, nazwa="Bar", alias_dla=w1)
+    w1 = baker.make(Wydawca, nazwa="Foo")
+    w2 = baker.make(Wydawca, nazwa="Bar", alias_dla=w1)
 
     assert str(w2) == "Bar (alias dla Foo)"

@@ -1,6 +1,6 @@
 import pytest
 from django.urls import reverse
-from model_mommy import mommy
+from model_bakery import baker
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.wait import WebDriverWait
@@ -37,13 +37,13 @@ def test_edit_btn_invisible(klass, live_server, admin_browser: WebDriver):
 )
 def test_edit_btn_appears(klass, model, live_server, admin_browser: WebDriver):
     # Przy edytowaniu publikacji -- przycisk "edytuj autorów" jest
-    res = mommy.make(model)
+    res = baker.make(model)
 
     url = f"admin:bpp_{klass}_change"
     with wait_for_page_load(admin_browser):
         admin_browser.visit(live_server + reverse(url, args=(res.pk,)))
 
-    mommy.make(model)
+    baker.make(model)
 
     assert "Autorzy" in normalize_html(admin_browser.html)
 
@@ -56,7 +56,7 @@ def test_edit_btn_appears(klass, model, live_server, admin_browser: WebDriver):
     ],
 )
 def test_changelist_with_argument(klass, model, admin_browser, live_server):
-    rec = mommy.make(model)
+    rec = baker.make(model)
     url = f"admin:bpp_{klass}_autor_changelist"
     with wait_for_page_load(admin_browser):
         admin_browser.visit(live_server + reverse(url) + f"?rekord__id__exact={rec.pk}")
@@ -78,8 +78,8 @@ def test_changelist_with_argument(klass, model, admin_browser, live_server):
     ],
 )
 def test_changeform_save(klass, model, admin_browser, live_server):
-    rec = mommy.make(model)
-    wa = mommy.make(model.autorzy.through, rekord=rec)
+    rec = baker.make(model)
+    wa = baker.make(model.autorzy.through, rekord=rec)
 
     url = f"admin:bpp_{klass}_autor_change"
 
@@ -115,7 +115,7 @@ def test_changeform_add(
 ):
     assert model.autorzy.through.objects.count() == 0
 
-    rec = mommy.make(model)
+    rec = baker.make(model)
     url = f"admin:bpp_{klass}_autor_changelist"
     admin_browser.visit(live_server + reverse(url) + f"?rekord__id__exact={rec.pk}")
 

@@ -1,6 +1,6 @@
 import pytest
 from django.db import connection
-from model_mommy import mommy
+from model_bakery import baker
 
 from long_running.models import Report
 from test_bpp.models import TestOperation
@@ -23,7 +23,7 @@ def report(db):
     with connection.schema_editor() as schema_editor:
         schema_editor.create_model(TestReport)
 
-    yield mommy.make(TestReport)
+    yield baker.make(TestReport)
 
     # with connection.schema_editor() as schema_editor:
     #     schema_editor.delete_model(TestReport)

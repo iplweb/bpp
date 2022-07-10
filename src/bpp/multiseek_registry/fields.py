@@ -797,6 +797,8 @@ class CharakterFormalnyQueryObject(
     field_name = "charakter_formalny"
     label = "Charakter formalny"
 
+    start_level = 0
+
     def _values(self):
         for elem in self.queryset:
             yield self.label_from_instance(elem)
