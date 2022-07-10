@@ -55,7 +55,7 @@ def test_change_form_get_pbn_by_isbn_or_eisbn_via_api_pub_jest_w_api(
 
     time.sleep(VERY_SHORT_WAIT_TIME)
 
-    admin_browser.switch_to.active_element.send_keys(Keys.ENTER)
+    admin_browser.find_by_css("input.select2-search__field").type(Keys.ENTER)
     time.sleep(VERY_SHORT_WAIT_TIME)
 
     assert admin_browser.find_by_id("id_pbn_uid").value == UID_REKORDU
@@ -105,7 +105,7 @@ def test_change_form_get_pbn_by_isbn_or_eisbn_via_api_pub_jest_w_lokalnej_bazie(
 
         time.sleep(VERY_SHORT_WAIT_TIME)
 
-        admin_browser.switch_to.active_element.send_keys(Keys.ENTER)
+        admin_browser.find_by_css("input.select2-search__field").type(Keys.ENTER)
 
         assert admin_browser.find_by_id("id_pbn_uid").value == UID_REKORDU
     finally:
@@ -149,7 +149,7 @@ def test_change_form_get_pbn_by_doi_via_api_jest_w_api(
     with pytest.raises(NoAlertPresentException):
         admin_browser.driver.switch_to.alert
 
-    admin_browser.switch_to.active_element.send_keys(Keys.ENTER)
+    admin_browser.find_by_css("input.select2-search__field").type(Keys.ENTER)
 
     assert admin_browser.find_by_id("id_pbn_uid").value == UID_REKORDU
 
@@ -202,7 +202,7 @@ def test_change_form_get_pbn_by_doi_via_api_nie_ma_w_api_jest_w_bazie(
 
         time.sleep(VERY_SHORT_WAIT_TIME)
 
-        admin_browser.switch_to.active_element.send_keys(Keys.ENTER)
+        admin_browser.find_by_css("input.select2-search__field").type(Keys.ENTER)
         time.sleep(VERY_SHORT_WAIT_TIME)
 
         assert admin_browser.find_by_id("id_pbn_uid").value == UID_REKORDU
