@@ -942,18 +942,21 @@ class ModelZOplataZaPublikacje(models.Model):
                         errdct["opl_pub_other"] = errmsg
 
                     raise ValidationError(errdct)
-
                 else:
-                    # jeżeli nie ma wpisanego kosztu i nie ma zaznaczonego zadnego z pól to tym bardziej źle
-                    errdct = {"opl_pub_amount": "Tu należy uzupełnić kwotę. "}
+                    if self.opl_pub_cost_free is not None:
+                        # jeżeli nie ma wpisanego kosztu i nie ma zaznaczonego zadnego z pól to tym bardziej źle
+                        errdct = {"opl_pub_amount": "Tu należy uzupełnić kwotę. "}
 
-                    errmsg = "Jeżeli publikacja nie była bezkosztowa, należy zaznaczyć przynajmniej jedno z tych pól"
+                        errmsg = (
+                            "Jeżeli publikacja nie była bezkosztowa, należy zaznaczyć "
+                            "przynajmniej jedno z tych pól"
+                        )
 
-                    errdct["opl_pub_research_potential"] = errmsg
-                    errdct["opl_pub_research_or_development_projects"] = errmsg
-                    errdct["opl_pub_other"] = errmsg
+                        errdct["opl_pub_research_potential"] = errmsg
+                        errdct["opl_pub_research_or_development_projects"] = errmsg
+                        errdct["opl_pub_other"] = errmsg
 
-                    raise ValidationError(errdct)
+                        raise ValidationError(errdct)
 
 
 class Wydawnictwo_Baza(RekordBPPBaza):
