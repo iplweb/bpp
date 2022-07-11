@@ -812,12 +812,16 @@ class CharakterFormalnyQueryObject(
         ValueListQueryObject.__init__(self, *args, **kwargs)
 
         self.level_indicator = kwargs.pop("level_indicator", DEFAULT_LEVEL_INDICATOR)
+
+    @property
+    def queryset(self):
         queryset = Charakter_Formalny.objects.all()
         # if a queryset is supplied, enforce ordering
         if hasattr(queryset, "model"):
             mptt_opts = queryset.model._mptt_meta
             queryset = queryset.order_by(mptt_opts.tree_id_attr, mptt_opts.left_attr)
-        self.queryset = queryset
+        return queryset
+        # self.queryset = queryset
 
     def real_query(self, value, operation, validate_operation=True):
         ret = None
