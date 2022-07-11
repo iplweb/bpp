@@ -10,6 +10,7 @@ dev
 * obsługa Python 3.10, Django 3.2 (#1115),
 * użycie model_bakery zamiast model_mommy (b/n),
 * aktualizuj listę charakterów w multiwyszukiwarce na bieżąco (#647),
+* obsługa PostgreSQL 14 (#1243),
 
 202207.1087
 -----------
