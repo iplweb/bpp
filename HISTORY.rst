@@ -9,6 +9,7 @@ dev
 * usunięto moduł generowania drukowanej "Kroniki Uczelni" (b/n),
 * obsługa Python 3.10, Django 3.2 (#1115),
 * użycie model_bakery zamiast model_mommy (b/n),
+* obsługa PostgreSQL 14 (#1243),
 
 202207.1087
 -----------
