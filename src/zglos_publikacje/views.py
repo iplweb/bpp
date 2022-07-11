@@ -1,23 +1,37 @@
 # Create your views here.
 from django.db import transaction
-from django.views.generic import CreateView, TemplateView
+from django.shortcuts import render
+from django.views.generic import TemplateView
+from formtools.wizard.views import SessionWizardView
 from templated_email import send_templated_mail
 
-from zglos_publikacje.forms import Zgloszenie_PublikacjiForm
 from zglos_publikacje.models import Zgloszenie_Publikacji
 
 from bpp.core import editors_emails
 
 
-class DodajZgloszenie_Publikacji(CreateView):
-    model = Zgloszenie_Publikacji
-    form_class = Zgloszenie_PublikacjiForm
+class Sukces(TemplateView):
+    template_name = "zglos_publikacje/sukces.html"
 
-    def get_success_url(self):
-        return "../sukces"
 
-    def form_valid(self, form):
-        ret = super().form_valid(form)
+from zglos_publikacje.forms import (
+    Zgloszenie_Publikacji_DaneOgolneForm,
+    Zgloszenie_Publikacji_KosztPublikacjiForm,
+)
+
+
+class Zgloszenie_PublikacjiWizard(SessionWizardView):
+    template_name = "zglos_publikacje/zgloszenie_publikacji_form.html"
+    form_list = [
+        Zgloszenie_Publikacji_DaneOgolneForm,
+        Zgloszenie_Publikacji_KosztPublikacjiForm,
+    ]
+
+    @transaction.atomic
+    def done(self, form_list, **kwargs):
+        self.object = Zgloszenie_Publikacji.objects.create(
+            **(form_list[0].cleaned_data | form_list[1].cleaned_data)
+        )
 
         def _():
             send_templated_mail(
@@ -28,8 +42,12 @@ class DodajZgloszenie_Publikacji(CreateView):
             )
 
         transaction.on_commit(_)
-        return ret
 
-
-class Sukces(TemplateView):
-    template_name = "zglos_publikacje/sukces.html"
+        return render(
+            self.request,
+            "zglos_publikacje/sukces.html",
+            {
+                "form_data": [form.cleaned_data for form in form_list],
+                "object": self.object,
+            },
+        )

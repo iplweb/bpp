@@ -160,6 +160,7 @@ if TESTING:
 
 INSTALLED_APPS = [
     "tee",
+    "formtools",
     "denorm.apps.DenormAppConfig",
     "reversion",
     "djangoql",

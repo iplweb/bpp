@@ -532,8 +532,13 @@ def _webtest_login(webtest_app, username, password, login_form="login_form"):
 def wprowadzanie_danych_user(normal_django_user):
     from django.contrib.auth.models import Group
 
+    # zeby bpp.core.editor_emails zwracało
+    normal_django_user.email = "foo@bar.pl"
+
     grp = Group.objects.get_or_create(name=GR_WPROWADZANIE_DANYCH)[0]
     normal_django_user.groups.add(grp)
+
+    normal_django_user.save()
     return normal_django_user
 
 

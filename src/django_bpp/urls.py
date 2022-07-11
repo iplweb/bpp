@@ -72,7 +72,12 @@ urlpatterns = (
             r"^api/v1/",
             include(("api_v1.urls", "api_v1"), namespace="api_v1"),
         ),
-        path("zglos_publikacje/", include("zglos_publikacje.urls")),
+        path(
+            "zglos_publikacje/",
+            include(
+                ("zglos_publikacje.urls", "zglos_publikacje"),
+            ),
+        ),
         path(
             "pbn_api/",
             include("pbn_api.urls"),

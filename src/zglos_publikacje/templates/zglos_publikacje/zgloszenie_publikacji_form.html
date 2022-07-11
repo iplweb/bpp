@@ -1,11 +1,32 @@
 {% extends "base.html" %}
 
 {% block extratitle %}
-Zgłoś publikację
+    Zgłoś publikację
+{% endblock %}
+
+{% block extrahead %}
+    {{ wizard.form.media }}
 {% endblock %}
 {% block content %}
 
     {% load crispy_forms_tags %}
-    {% crispy form %}
-
+    <p>Formularz {{ wizard.steps.step1 }} z {{ wizard.steps.count }}</p>
+    <form action="" method="post">{% csrf_token %}
+        <table>
+            {{ wizard.management_form  }}
+            {% if wizard.form.forms %}
+                {{ wizard.form.management_form }}
+                {% for form in wizard.form.forms %}
+                    {% crispy form %}
+                {% endfor %}
+            {% else %}
+                {% crispy wizard.form %}
+            {% endif %}
+        </table>
+        {% if wizard.steps.prev %}
+            <button name="wizard_goto_step" type="submit" class="button success"
+                    value="{{ wizard.steps.prev }}">Poprzedni formularz</button>
+        {% endif %}
+        <button type="submit" class="button submit" id="id-wizard-submit">Zatwierdź formularz</button>
+    </form>
 {% endblock %}

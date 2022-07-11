@@ -307,6 +307,7 @@ toml = "*"
 [package.source]
 type = "url"
 url = "https://github.com/mbarkhau/bumpver/archive/refs/tags/2022.1117.tar.gz#egg=bumpver-202211.17"
+
 [[package]]
 name = "celery"
 version = "4.4.7"
@@ -925,6 +926,17 @@ django-tables2 = ">=1.16.0"
 lxml = ">=3.8.0"
 pypandoc = ">=1.4"
 tablib = ">=0.11.5"
+
+[[package]]
+name = "django-formtools"
+version = "2.3"
+description = "A set of high-level abstractions for Django forms"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+Django = ">=2.2"
 
 [[package]]
 name = "django-fsm"
@@ -3542,7 +3554,7 @@ test = ["pytest"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.10,<3.11"
-content-hash = "6044dae85486364604cb495c4603f392670143442246b439b5c25bca579aba5e"
+content-hash = "d89509e532ab8c9ec9fb683a5c9eff72a42fdaeb7076d77fb46ee2cda8b7f1c7"
 
 [metadata.files]
 aioredis = [
@@ -3950,6 +3962,7 @@ django-filter = [
     {file = "django_filter-21.1-py3-none-any.whl", hash = "sha256:f4a6737a30104c98d2e2a5fb93043f36dd7978e0c7ddc92f5998e85433ea5063"},
 ]
 django-flexible-reports = []
+django-formtools = []
 django-fsm = []
 django-grappelli = []
 django-group-by = []
