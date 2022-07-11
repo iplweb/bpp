@@ -3,7 +3,6 @@ import shutil
 from os.path import basename
 from tempfile import mkdtemp
 
-import celery
 import denorm
 from django.core.files import File
 from django.core.management import call_command
@@ -14,6 +13,8 @@ from ewaluacja2021.reports import load_data, rekordy
 from ewaluacja2021.util import string2fn
 
 from bpp.models import Patent_Autor, Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor
+
+from django_bpp import celery_tasks
 
 
 def suma_odpietych_dyscyplin():
@@ -58,7 +59,7 @@ def przywroc_przypiecia(odpiete_przed, odpiete_po):
         klass.objects.filter(pk__in=po.difference(przed)).update(przypieta=True)
 
 
-@celery.task
+@celery_tasks.app.task
 def generuj_algorytm(pk, *args, **kw):
     zamowienie = ZamowienieNaRaport.objects.get(pk=pk)
     zamowienie.uid_zadania = generuj_algorytm.request.id
