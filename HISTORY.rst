@@ -12,6 +12,7 @@ dev
 * aktualizuj listę charakterów w multiwyszukiwarce na bieżąco (#647),
 * obsługa PostgreSQL 14 (#1243),
 * aktualizacja biblioteki Celery do 5.2.2 (b/n),
+* podgląd edycji schematu opisu bibliograficznego (#898),
 
 202207.1087
 -----------
@@ -28,7 +29,6 @@ dev
 * umożliwiaj wygenerowanie kodu JSON wysyłanego do PBN API z linii
   poleceń -- polecenie ``pbn_show_json`` (b/n),
 * poprawnie wysyłaj strony do PBN API (#1176),
-* podgląd edycji schematu opisu bibliograficznego (#898),
 * informacja o aktualnej jednostce w raportach "zerowych" (#1224),
 * możliwość pobierania/uruchamiania systemu BPP za pomoca polecenia pipx (#1231),
 * przed wyszukiwaniem pełnotekstowym usuń tagi HTML z zapytania (#1222),
