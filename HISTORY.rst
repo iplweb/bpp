@@ -11,6 +11,7 @@ dev
 * użycie model_bakery zamiast model_mommy (b/n),
 * aktualizuj listę charakterów w multiwyszukiwarce na bieżąco (#647),
 * obsługa PostgreSQL 14 (#1243),
+* aktualizacja biblioteki Celery do 5.2.2 (b/n),
 
 202207.1087
 -----------
