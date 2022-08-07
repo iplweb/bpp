@@ -7,8 +7,8 @@ from bpp.models.struktura import Jednostka, Jednostka_Wydzial, Wydzial
 
 
 @pytest.mark.django_db
-def test_jednostka_publiczna(wydzial):
-    j = baker.make(Jednostka, widoczna=True, aktualna=True)
+def test_jednostka_publiczna(wydzial, uczelnia):
+    j = baker.make(Jednostka, widoczna=True, uczelnia=uczelnia, aktualna=True)
     Jednostka_Wydzial.objects.create(jednostka=j, wydzial=wydzial)
     assert Jednostka.objects.publiczne().count() == 1
 
@@ -16,11 +16,11 @@ def test_jednostka_publiczna(wydzial):
 @pytest.mark.django_db
 def test_jednostka_widoczne():
     j = baker.make(Jednostka, widoczna=True, aktualna=True)
-    assert Jednostka.objects.publiczne().count() == 1
+    assert Jednostka.objects.widoczne().count() == 1
 
     j.widoczna = False
     j.save()
-    assert Jednostka.objects.widoczne().count() == 1
+    assert Jednostka.objects.widoczne().count() == 0
 
 
 @pytest.mark.django_db
