@@ -1,6 +1,7 @@
 import sys
 
 from django import forms
+from djangoql.admin import DjangoQLSearchMixin
 from mptt.admin import DraggableMPTTAdmin
 
 from ..models.struktura import Jednostka, Jednostka_Wydzial
@@ -36,11 +37,15 @@ class Autor_JednostkaInline(admin.TabularInline):
 
 
 class JednostkaAdmin(
+    DjangoQLSearchMixin,
     RestrictDeletionToAdministracjaGroupMixin,
     ZapiszZAdnotacjaMixin,
     CommitedModelAdmin,
     DraggableMPTTAdmin,
 ):
+    djangoql_completion_enabled_by_default = False
+    djangoql_completion = True
+
     change_list_template = "admin/grappelli_mptt_change_list.html"
 
     list_display_links = ["indented_title"]

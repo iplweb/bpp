@@ -15,6 +15,8 @@ dev
 * podgląd edycji schematu opisu bibliograficznego (#898),
 * możliwość dopisywania własnych publikacji do bazy danych przez pracowników uczelni (#1237),
 * wyświetlaj "flash messages" dla użytkownika niezalogowanego (b/n),
+* włącz język zapytań dla modułu redagowania: autorzy, źródła, jednostki, itp.
+  (b/n),
 
 202207.1087
 -----------
