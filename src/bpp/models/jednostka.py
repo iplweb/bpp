@@ -53,6 +53,14 @@ class JednostkaManager(FulltextSearchMixin, TreeManager):
     def get_queryset(self, *args, **kwargs):
         return super().get_queryset(*args, **kwargs).select_related("wydzial")
 
+    def widoczne(self):
+        "Jednostki widoczne (nie-ukryte)"
+        return self.filter(widoczna=True)
+
+    def publiczne(self):
+        """Jednostki widoczne publicznie"""
+        return self.widoczne().filter(aktualna=True)
+
 
 class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
     parent = TreeForeignKey(

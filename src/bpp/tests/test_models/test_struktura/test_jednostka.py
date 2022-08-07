@@ -7,6 +7,23 @@ from bpp.models.struktura import Jednostka, Jednostka_Wydzial, Wydzial
 
 
 @pytest.mark.django_db
+def test_jednostka_publiczna(wydzial):
+    j = baker.make(Jednostka, widoczna=True, aktualna=True)
+    Jednostka_Wydzial.objects.create(jednostka=j, wydzial=wydzial)
+    assert Jednostka.objects.publiczne().count() == 1
+
+
+@pytest.mark.django_db
+def test_jednostka_widoczne():
+    j = baker.make(Jednostka, widoczna=True, aktualna=True)
+    assert Jednostka.objects.publiczne().count() == 1
+
+    j.widoczna = False
+    j.save()
+    assert Jednostka.objects.widoczne().count() == 1
+
+
+@pytest.mark.django_db
 def test_jednostka_test_wydzial_dnia_pusty():
     j = baker.make(Jednostka, nazwa="Jednostka")
     w = baker.make(Wydzial, nazwa="Wydzial", uczelnia=j.uczelnia)
