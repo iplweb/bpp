@@ -1,11 +1,12 @@
-# -*- encoding: utf-8 -*-
-from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
-from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.db.models import CASCADE
+
+from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
+from django.contrib.contenttypes.models import ContentType
+
 from django.utils.functional import cached_property
 
-from bpp.models import Autor, Charakter_Formalny
+from bpp.models import Autor, Charakter_Formalny, DwaTytuly, ModelZOplataZaPublikacje
 from bpp.models.praca_doktorska import Praca_Doktorska_Baza
 
 
@@ -52,3 +53,7 @@ class Praca_Habilitacyjna(Praca_Doktorska_Baza):
         verbose_name = "praca habilitacyjna"
         verbose_name_plural = "prace habilitacyjne"
         app_label = "bpp"
+
+    def clean(self):
+        DwaTytuly.clean(self)
+        ModelZOplataZaPublikacje.clean(self)

@@ -309,21 +309,21 @@ type = "url"
 url = "https://github.com/mbarkhau/bumpver/archive/refs/tags/2022.1117.tar.gz#egg=bumpver-202211.17"
 [[package]]
 name = "celery"
-version = "5.2.2"
+version = "5.2.7"
 description = "Distributed Task Queue."
 category = "main"
 optional = false
-python-versions = ">=3.7,"
+python-versions = ">=3.7"
 
 [package.dependencies]
 billiard = ">=3.6.4.0,<4.0"
-click = ">=8.0,<9.0"
+click = ">=8.0.3,<9.0"
 click-didyoumean = ">=0.0.3"
 click-plugins = ">=1.1.1"
 click-repl = ">=0.2.0"
-kombu = ">=5.2.2,<6.0"
-pytz = ">0.dev.0"
-redis = {version = ">=3.4.1,<4.0.0", optional = true, markers = "extra == \"redis\""}
+kombu = ">=5.2.3,<6.0"
+pytz = ">=2021.3"
+redis = {version = ">=3.4.1,<4.0.0 || >4.0.0,<4.0.1 || >4.0.1", optional = true, markers = "extra == \"redis\""}
 vine = ">=5.0.0,<6.0"
 
 [package.extras]
@@ -343,12 +343,12 @@ eventlet = ["eventlet (>=0.32.0)"]
 gevent = ["gevent (>=1.5.0)"]
 librabbitmq = ["librabbitmq (>=1.5.0)"]
 memcache = ["pylibmc"]
-mongodb = ["pymongo[srv] (>=3.3.0,<3.12.1)"]
+mongodb = ["pymongo[srv] (>=3.11.1)"]
 msgpack = ["msgpack"]
 pymemcache = ["python-memcached"]
 pyro = ["pyro4"]
 pytest = ["pytest-celery"]
-redis = ["redis (>=3.4.1,<4.0.0)"]
+redis = ["redis (>=3.4.1,!=4.0.0,!=4.0.1)"]
 s3 = ["boto3 (>=1.9.125)"]
 slmq = ["softlayer-messaging (>=1.0.3)"]
 solar = ["ephem"]
@@ -771,14 +771,14 @@ six = ">=1.4.0"
 
 [[package]]
 name = "django-celery-results"
-version = "2.0.1"
+version = "2.4.0"
 description = "Celery result backends for Django."
 category = "main"
 optional = false
 python-versions = "*"
 
 [package.dependencies]
-celery = ">=4.4,<6.0"
+celery = ">=5.2.3,<6.0"
 
 [[package]]
 name = "django-classy-tags"
@@ -2560,7 +2560,7 @@ tests = ["flake8", "pytest", "pytest-cov", "pytest-mypy", "pytest-asyncio", "sph
 
 [[package]]
 name = "pytz"
-version = "2018.4"
+version = "2022.1"
 description = "World timezone definitions, modern and historical"
 category = "main"
 optional = false
@@ -3602,7 +3602,7 @@ test = ["pytest"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.10,<3.11"
-content-hash = "63f668c7fd3792739f821ed981543b3e2d403f17f51e1da05c01e1c324a34ef2"
+content-hash = "cd9f896d7d31a73128fe0a8475f6f292a175f73d38643b0cc2540133cc1fd8ce"
 
 [metadata.files]
 aioredis = [
@@ -3957,10 +3957,7 @@ django-braces = [
     {file = "django_braces-1.14.0-py2.py3-none-any.whl", hash = "sha256:a6d9b34cf3e4949635e54884097c30410d7964fc7bec7231445ea7079b8c5722"},
 ]
 django-cacheops = []
-django-celery-results = [
-    {file = "django_celery_results-2.0.1-py2.py3-none-any.whl", hash = "sha256:a2f7d172f7f57dd972538acc6e80a5bf50c673fb4d82fe027189c8659c60dfce"},
-    {file = "django_celery_results-2.0.1.tar.gz", hash = "sha256:d625e324138e5b2ef46ffa9e89fa353c16d619420066ac8b240ef9247b293a84"},
-]
+django-celery-results = []
 django-classy-tags = [
     {file = "django-classy-tags-1.0.0.tar.gz", hash = "sha256:ad6a25fc2b58a098f00d86bd5e5dad47922f5ca4e744bc3cccb7b4be5bc35eb1"},
 ]
@@ -4683,10 +4680,7 @@ python-utils = [
     {file = "python-utils-3.3.3.tar.gz", hash = "sha256:3b1c8b706e40e91280eec5fa72ea730880a166cee99afa5555b863d55664478d"},
     {file = "python_utils-3.3.3-py2.py3-none-any.whl", hash = "sha256:5cb9cf295018202fb4d6abdd694a33a7f08bc0ce1bf1eab8cce80ab2cde35c07"},
 ]
-pytz = [
-    {file = "pytz-2018.4-py2.py3-none-any.whl", hash = "sha256:65ae0c8101309c45772196b21b74c46b2e5d11b6275c45d251b150d5da334555"},
-    {file = "pytz-2018.4.tar.gz", hash = "sha256:c06425302f2cf668f1bba7a0a03f3c1d34d4ebeef2c72003da308b3947c7f749"},
-]
+pytz = []
 pywin32-ctypes = [
     {file = "pywin32-ctypes-0.2.0.tar.gz", hash = "sha256:24ffc3b341d457d48e8922352130cf2644024a4ff09762a2261fd34c36ee5942"},
     {file = "pywin32_ctypes-0.2.0-py2.py3-none-any.whl", hash = "sha256:9dc2d991b3479cc2df15930958b674a48a227d5361d413827a4cfd0b5876fc98"},
