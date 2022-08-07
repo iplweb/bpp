@@ -10,6 +10,7 @@ from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, Wydawnictwo_Ciagle
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor
 
 
+@pytest.mark.flaky(reruns=10)
 @pytest.mark.parametrize(
     "klass",
     [
