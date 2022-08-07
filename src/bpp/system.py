@@ -9,6 +9,8 @@ from flexible_reports import models as flexible_models
 from multiseek.models import SearchForm
 from robots.models import Rule, Url
 
+import zglos_publikacje
+import zglos_publikacje.models
 from ewaluacja2021.models import IloscUdzialowDlaAutora, LiczbaNDlaUczelni
 from formdefaults.models import FormFieldRepresentation, FormRepresentation
 from import_dbf.models import B_A, B_U, Aut, Bib, Ixn, Jed, Poz, Ses, Usi, Wx2
@@ -164,6 +166,7 @@ groups = {
         IloscUdzialowDlaAutora,
         RozbieznosciView,
         RozbieznosciZrodelView,
+        zglos_publikacje.models.Zgloszenie_Publikacji,
     ],
     "indeks autorów": [Autor, Autor_Jednostka],
     "administracja": [User, Group, SearchForm],

@@ -13,6 +13,8 @@ dev
 * obsługa PostgreSQL 14 (#1243),
 * aktualizacja biblioteki Celery do 5.2.2 (b/n),
 * podgląd edycji schematu opisu bibliograficznego (#898),
+* możliwość dopisywania własnych publikacji do bazy danych przez pracowników uczelni (#1237),
+* wyświetlaj "flash messages" dla użytkownika niezalogowanego (b/n),
 
 202207.1087
 -----------

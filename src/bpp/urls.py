@@ -36,6 +36,7 @@ from bpp.views.autocomplete import (
     OrganPrzyznajacyNagrodyAutocomplete,
     PodrzednaPublikacjaHabilitacyjnaAutocomplete,
     PublicAutorAutocomplete,
+    PublicJednostkaAutocomplete,
     PublicKonferencjaAutocomplete,
     PublicTaggitTagAutocomplete,
     PublicWydawnictwo_NadrzedneAutocomplete,
@@ -327,6 +328,11 @@ urlpatterns = [
         r"^jednostka-autocomplete/$",
         JednostkaAutocomplete.as_view(),
         name="jednostka-autocomplete",
+    ),
+    url(
+        r"^public-jednostka-autocomplete/$",
+        PublicJednostkaAutocomplete.as_view(),
+        name="public-jednostka-autocomplete",
     ),
     url(
         r"^zewnetrzna-baza-danych-autocomplete/$",

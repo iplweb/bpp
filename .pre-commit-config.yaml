@@ -43,12 +43,26 @@ repos:
         -   id: check-toml
         -   id: end-of-file-fixer
         -   id: trailing-whitespace
+        -   id: mixed-line-ending
 
     - repo: https://gitlab.com/pycqa/flake8
       rev: '3.9.2'
       hooks:
         -   id: flake8
-
+#
+#    - repo: local
+#      hooks:
+#        - id: pylint
+#          name: pylint
+#          entry: pylint
+#          language: system
+#          types: [python]
+#          args:
+#            [
+#              "-rn", # Only display messages
+#              "-sn", # Don't display the score
+#            ]
+#
     - repo: https://github.com/asottile/pyupgrade
       rev: v2.31.0
       hooks:

@@ -109,7 +109,7 @@ integration-start-from-match-single-thread:
 restart-pbn-from-download: remove-pbn-integracja-publikacji-dane integration-start-from-download
 
 new-release:
-	$(eval CUR_VERSION=v$(shell ./bin/bpp-version.py))
+	$(eval CUR_VERSION=$(shell ./bin/bpp-version.py))
 	$(eval NEW_VERSION=$(shell bumpver test $(CUR_VERSION) 'vYYYY0M.BUILD[-TAGNUM]' |head -1|cut -d: -f2))
 	git flow release start $(NEW_VERSION)
 	bumpver update
@@ -120,7 +120,7 @@ release: tests js-tests new-release bdist_wheel upload
 
 set-version-from-vcs:
 	$(eval CUR_VERSION_VCS=$(shell git describe | sed s/\-/\./ | sed s/\-/\+/))
-	bumpver update --no-commit --set-version=v$(CUR_VERSION_VCS)
+	bumpver update --no-commit --set-version=$(CUR_VERSION_VCS)
 
 .PHONY: check-git-clean
 check-git-clean:

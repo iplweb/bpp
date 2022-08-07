@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block extratitle %}
+    Zgłoś publikację
+{% endblock %}
+
+{% block extrahead %}
+    {{ wizard.form.media }}
+{% endblock %}
+{% block content %}
+
+    {% load crispy_forms_tags %}
+
+    <form action="" method="post" id="form-container" enctype="multipart/form-data">{% csrf_token %}
+        <fieldset class="fieldset">
+            <legend>Formularz {{ wizard.steps.step1 }} z {{ wizard.steps.count }}</legend>
+            {{ wizard.management_form }}
+            {% if wizard.form.forms %}
+                {{ wizard.form.management_form }}
+                <div class="form-template" style="display:none;">
+                    {{ wizard.form.empty_form|crispy }}
+{#                    {{ wizard.form.empty_form.DELETE }}#}
+{#                    <label for="id_1-__prefix__-DELETE">Zaznacz aby usunąć - w przypadku pomyłki</label>#}
+                    <input type="hidden" name="1-__prefix__-rok" value="{{ rok }}"/>
+                </div>
+                {% for form in wizard.form.forms %}
+                    {{ form|crispy }}
+{#                    {% if wizard.steps.step1 == 2 %}#}
+{#                        {% if not forloop.first %}#}
+{#                            {{ form.DELETE }}#}
+{#                            <label for="id_{{ form.prefix }}-DELETE">Zaznacz aby usunąć - w przypadku pomyłki</label>#}
+{#                        {% endif %}#}
+{#                    {% endif %}#}
+                {% endfor %}
+
+                <input type="hidden" name="rok" id="id_rok" value="{{ rok }}"/>
+
+                {% if wizard.steps.step1 == 2 %}
+                    {#                    Dopisywanie kolejnych rekordów -- wyłącznie dla kroku nr 2 (autorzy) #}
+                    <button id="add-form" type="button" class="button">
+                        <span class="font: fi-plus"></span>
+                        Dopisz kolejnego autora
+                    </button>
+
+                    <script type="text/javascript">
+                        (function ($) {
+                            $('#add-form').click(function () {
+                                var index = $('#id_1-TOTAL_FORMS').val()
+                                var newTable = $('div.form-template').clone()
+
+                                newTable.find(':input').each(function () {
+                                    for (attr of ['name', 'id',]) {
+                                        if ($(this).attr(attr) === undefined)
+                                            continue;
+
+                                        $(this).attr(
+                                            attr,
+                                            $(this).attr(attr).replace('__prefix__', index)
+                                        );
+                                    }
+                                });
+
+                                newTable.find('label').each(function () {
+                                        $(this).attr(
+                                            "for",
+                                            $(this).attr("for").replace('__prefix__', index)
+                                        );
+                                    }
+                                );
+
+                                newTable.attr("class", "") // remove "form-template"
+                                newTable.insertBefore($(this))
+                                $('#id_1-TOTAL_FORMS').val(
+                                    parseInt($('#id_1-TOTAL_FORMS').val()) + 1
+                                )
+                                newTable.slideDown()
+                            })
+                        })($)
+                    </script>
+                {% endif %}
+            {% else %}
+                {{ wizard.form|crispy }}
+            {% endif %}
+        </fieldset>
+        {% if wizard.steps.prev %}
+            <button name="wizard_goto_step" type="submit" class="button success"
+                    value="{{ wizard.steps.prev }}">
+                Poprzedni formularz
+            </button>
+        {% endif %}
+        <button type="submit" class="button submit" id="id-wizard-submit">Zatwierdź formularz</button>
+    </form>
+{% endblock %}

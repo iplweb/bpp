@@ -49,3 +49,15 @@ def zbieraj_sloty(
         sloty_ret += sloty[index]
 
     return maks / 10000, lista, sloty_ret / 10000
+
+
+def editors_emails():
+    from bpp.const import GR_WPROWADZANIE_DANYCH
+    from bpp.models.profile import BppUser
+
+    return (
+        BppUser.objects.filter(groups__name=GR_WPROWADZANIE_DANYCH)
+        .exclude(email="")
+        .exclude(email=None)
+        .values_list("email", flat=True)
+    )
