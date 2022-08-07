@@ -10,6 +10,7 @@ dev
 * obsługa Python 3.10, Django 3.2 (#1115),
 * użycie model_bakery zamiast model_mommy (b/n),
 * możliwość dopisywania własnych publikacji do bazy danych przez pracowników uczelni (#1237),
+* wyświetlaj "flash messages" dla użytkownika niezalogowanego (b/n),
 
 202207.1087
 -----------
