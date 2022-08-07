@@ -6,7 +6,7 @@ from decimal import Decimal
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.core.validators import URLValidator
+from django.core.validators import MinValueValidator, URLValidator
 from django.db import models
 from django.db.models import CASCADE, SET_NULL, Q, Sum
 from django.urls.base import reverse
@@ -197,6 +197,7 @@ class ModelZRokiem(models.Model):
         help_text="""Rok uwzględniany przy wyszukiwaniu i raportach
         KBN/MNiSW)""",
         db_index=True,
+        validators=[MinValueValidator(0)],
     )
 
     class Meta:
