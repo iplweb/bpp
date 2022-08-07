@@ -563,11 +563,14 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
         if self.dyscyplina_naukowa is not None:
 
             if self.rekord_id is None:
-                raise ValidationError(
-                    {
-                        "dyscyplina_naukowa": "Określono dyscyplinę naukową, ale brak publikacji nadrzędnej. "
-                    }
-                )
+                # Może nie ustalono rekordu nadrzędnego... a moze dodajemy nowy rekord do bazy?
+
+                if self.rekord is None:
+                    raise ValidationError(
+                        {
+                            "dyscyplina_naukowa": "Określono dyscyplinę naukową, ale brak publikacji nadrzędnej. "
+                        }
+                    )
 
             if self.rekord is not None and self.rekord.rok is None:
                 raise ValidationError(
