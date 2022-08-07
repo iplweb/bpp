@@ -11,8 +11,8 @@ from bpp.core import editors_emails
 def test_pierwsza_strona(webtest_app):
     url = reverse("zglos_publikacje:nowe_zgloszenie")
     page = webtest_app.get(url)
-    page.forms[1]["0-tytul_oryginalny"] = "123"
-    page.forms[1]["0-email"] = "123@123.pl"
+    page.forms[0]["0-tytul_oryginalny"] = "123"
+    page.forms[0]["0-email"] = "123@123.pl"
 
     page2 = page.forms[0].submit()
     assert page2.status_code == 200
