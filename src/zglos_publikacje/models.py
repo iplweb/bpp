@@ -1,14 +1,17 @@
+from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models import Q
 
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 
-# Create your models here.
+from bpp.models import Autor_Dyscyplina
 from bpp.models.abstract import (
     BazaModeluOdpowiedzialnosciAutorow,
     DwaTytuly,
     ModelZDOI,
     ModelZOplataZaPublikacje,
+    ModelZRokiem,
     ModelZWWW,
     nie_zawiera_adresu_doi_org,
     nie_zawiera_http_https,
@@ -17,6 +20,7 @@ from bpp.models.abstract import (
 
 class Zgloszenie_Publikacji(
     ModelZWWW,
+    ModelZRokiem,
     DwaTytuly,
     ModelZDOI,
     ModelZOplataZaPublikacje,
@@ -64,3 +68,43 @@ class Zgloszenie_Publikacji(
 
 class Zgloszenie_Publikacji_Autor(BazaModeluOdpowiedzialnosciAutorow):
     rekord = models.ForeignKey(Zgloszenie_Publikacji, on_delete=models.CASCADE)
+
+    rok = models.PositiveSmallIntegerField()
+
+    class Meta:
+        verbose_name = "autor w zgłoszeniu publikacji"
+        verbose_name_plural = "autorzy w zgłoszeniu publikacji"
+
+    def __str__(self):
+        return f"autor {self.autor} dla zgłoszenia publikacji {self.rekord.tytul_oryginalny}"
+
+    def clean(self):
+        if self.dyscyplina_naukowa is not None:
+            try:
+                Autor_Dyscyplina.objects.get(
+                    Q(dyscyplina_naukowa=self.dyscyplina_naukowa)
+                    | Q(subdyscyplina_naukowa=self.dyscyplina_naukowa),
+                    autor=self.autor,
+                    rok=self.rok,
+                )
+            except Autor_Dyscyplina.DoesNotExist:
+                raise ValidationError(
+                    {
+                        "dyscyplina_naukowa": f"Autor nie ma przypisania na rok {self.rok} do takiej dyscypliny."
+                    }
+                )
+
+
+class Zgloszenie_Publikacji_Plik(models.Model):
+    rekord = models.ForeignKey(Zgloszenie_Publikacji, on_delete=models.CASCADE)
+
+    plik = models.FileField("Plik załącznika")
+
+    class Meta:
+        verbose_name = "plik zgłoszenia publikacji"
+        verbose_name_plural = "pliki zgłoszeń publikacji"
+
+    def __str__(self):
+        return (
+            f"plik {self.plik} dla zgłoszenia publikacji {self.rekord.tytul_oryginalny}"
+        )
