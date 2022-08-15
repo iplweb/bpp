@@ -6,13 +6,18 @@ import sys
 from datetime import datetime, timedelta
 from math import ceil, floor
 from pathlib import Path
+from typing import Dict, List
 
 import bleach
 import lxml.html
+import openpyxl.worksheet.worksheet
 import progressbar
 from django.apps import apps
 from django.conf import settings
 from django.db.models import Max, Min
+from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.filters import AutoFilter
+from openpyxl.worksheet.table import Table, TableColumn, TableStyleInfo
 from psycopg2.extensions import QuotedString
 from unidecode import unidecode
 
@@ -558,3 +563,91 @@ def rebuild_instances_of_models(modele, *args, **kw):
     with transaction.atomic():
         for model in modele:
             denorms.rebuild_instances_of(model, *args, **kw)
+
+
+def worksheet_columns_autosize(
+    ws: openpyxl.worksheet.worksheet.Worksheet,
+    max_width: int = 55,
+    column_widths: Dict[str, int] | None = None,
+    dont_resize_those_columns: List[int] | None = None,
+    right_margin=2,
+    multiplier=1.1,
+):
+
+    if column_widths is None:
+        column_widths = {}
+
+    if dont_resize_those_columns is None:
+        dont_resize_those_columns = []
+
+    for ncol, col in enumerate(ws.columns):
+        max_length = 0
+        column = col[0].column_letter  # Get the column name
+
+        # Nie ustawiaj szerokosci tym kolumnom, one będą jako auto-size
+        if ncol in dont_resize_those_columns:
+            continue
+
+        if column in column_widths:
+            adjusted_width = column_widths[column]
+        else:
+            for cell in col:
+                if cell.value is None or not str(cell.value):
+                    continue
+
+                max_line_len = max(len(line) for line in str(cell.value).split("\n"))
+                max_length = max(max_length, max_line_len)
+
+            adjusted_width = (max_length + right_margin) * multiplier
+            if adjusted_width > max_width:
+                adjusted_width = max_width
+
+        ws.column_dimensions[column].width = adjusted_width
+
+
+def worksheet_create_table(
+    ws: openpyxl.worksheet.worksheet.Worksheet,
+    title="Tabela",
+    first_table_row=1,
+    totals=False,
+    table_columns=None,
+):
+    """
+    Formatuje skoroszyt jako tabelę.
+
+    :param first_table_row: pierwszy wiersz tabeli (licząc od nagłówka)
+
+    :param table_columns: określa rodzaj kolumn w tabeli, jeżeli None to tytuły nagłówków zostaną pobrane
+    z pierwszego wiersza w arkuszu.
+    """
+    max_column = ws.max_column
+    max_column_letter = get_column_letter(max_column)
+    max_row = ws.max_row
+
+    style = TableStyleInfo(
+        name="TableStyleMedium9",
+        showFirstColumn=False,
+        showLastColumn=False,
+        showRowStripes=True,
+        showColumnStripes=True,
+    )
+
+    if table_columns is None:
+        table_columns = tuple(
+            TableColumn(id=h, name=header.value)
+            for h, header in enumerate(next(iter(ws.rows), None), start=1)
+        )
+
+    tab = Table(
+        displayName=title,
+        ref=f"A{first_table_row}:{max_column_letter}{max_row}",
+        autoFilter=AutoFilter(
+            ref=f"A{first_table_row}:{max_column_letter}{max_row - 1}"
+        ),
+        totalsRowShown=True if totals else False,
+        totalsRowCount=1 if totals else False,
+        tableStyleInfo=style,
+        tableColumns=table_columns,
+    )
+
+    ws.add_table(tab)
