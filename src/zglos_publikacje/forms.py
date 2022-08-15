@@ -1,23 +1,31 @@
 from crispy_forms.helper import FormHelper
-from crispy_forms_foundation.layout import Column, Fieldset, Layout, Row
+from crispy_forms_foundation.layout import Fieldset, Layout
 from dal import autocomplete
 from django import forms
 from django.forms import inlineformset_factory
 from django.forms.widgets import HiddenInput
 
-from zglos_publikacje.models import (
-    Zgloszenie_Publikacji,
-    Zgloszenie_Publikacji_Autor,
-    Zgloszenie_Publikacji_Plik,
-)
+from zglos_publikacje.models import Zgloszenie_Publikacji, Zgloszenie_Publikacji_Autor
+from zglos_publikacje.validators import validate_file_extension_pdf
 
 from bpp.models import Autor, Dyscyplina_Naukowa, Jednostka
 
 
 class Zgloszenie_Publikacji_DaneOgolneForm(forms.ModelForm):
+    rok = forms.IntegerField(
+        help_text="Rok publikacji zgłaszanej pracy. Rok na późniejszych etapach używany jest "
+        "do ustalenia i zweryfikowania dyscyplin naukowych zgłoszonych przez autorów. "
+    )
 
     tytul_oryginalny = forms.CharField(
-        widget=forms.Textarea(attrs={"rows": 2, "cols": 80})
+        widget=forms.Textarea(attrs={"rows": 2, "cols": 80}),
+        help_text="Tytuł pracy. Prosimy o wpisanie samego tytułu. Proszę nie wpisywać źródła, miejsca publikacji, "
+        "autorów itp. -- wyłacznie tytuł pracy. ",
+    )
+
+    email = forms.EmailField(
+        help_text="Prosimy o podanie poprawnego adresu e-mail. W razie problemów ze zgłoszeniem na ten adres"
+        "zostanie skierowana dalsza korespondencja."
     )
 
     class Meta:
@@ -25,11 +33,7 @@ class Zgloszenie_Publikacji_DaneOgolneForm(forms.ModelForm):
         fields = [
             "tytul_oryginalny",
             "rok",
-            "doi",
-            "public_www",
-            "public_dostep_dnia",
-            "www",
-            "dostep_dnia",
+            "strona_www",
             "email",
         ]
 
@@ -43,16 +47,37 @@ class Zgloszenie_Publikacji_DaneOgolneForm(forms.ModelForm):
                 "Informacje o publikacji",
                 "tytul_oryginalny",
                 "rok",
-                "doi",
-                Row(
-                    Column("www", css_class="large-8 small-12"),
-                    Column("dostep_dnia", css_class="large-4 small-12"),
-                ),
-                Row(
-                    Column("public_www", css_class="large-8 small-12"),
-                    Column("public_dostep_dnia", css_class="large-4 small-12"),
-                ),
+                "strona_www",
                 "email",
+            ),
+        )
+        super().__init__(*args, **kw)
+
+
+class Zgloszenie_Publikacji_Plik(forms.ModelForm):
+    plik = forms.FileField(
+        required=True,
+        help_text="""Ponieważ w poprzednim formularzu nie podano adresu WWW
+    ani adresu DOI publikacji, prosimy o załączenie pełnego tekstu pracy w formacie PDF.
+    Dodawany plik wyłącznie na potrzeby zarejestrowania rekordu w bazie publikacji -
+    do wglądu Biblioteki; nie będzie dalej udostępniany.
+""",
+        validators=[validate_file_extension_pdf],
+    )
+
+    class Meta:
+        model = Zgloszenie_Publikacji
+        fields = ["plik"]
+
+    def __init__(self, *args, **kw):
+        self.helper = FormHelper()
+        self.helper.form_tag = False
+        self.helper.form_class = "custom"
+        self.helper.form_action = "."
+        self.helper.layout = Layout(
+            Fieldset(
+                "Plik załącznika",
+                "plik",
             ),
         )
         super().__init__(*args, **kw)
@@ -79,16 +104,13 @@ class Zgloszenie_Publikacji_AutorForm(forms.ModelForm):
     dyscyplina_naukowa = forms.ModelChoiceField(
         queryset=Dyscyplina_Naukowa.objects.all(),
         widget=autocomplete.ModelSelect2(
-            url="bpp:dyscyplina-autocomplete",
+            url="bpp:dyscyplina-naukowa-przypisanie-autocomplete",
             forward=["autor", "rok"],
         ),
+        required=False,
     )
 
     rok = forms.IntegerField(widget=HiddenInput)
-
-    # delete = forms.BooleanField(
-    #     label="Kliknij i zapisz, aby usunąć", widget=forms.CheckboxInput, required=False
-    # )
 
     def __init__(self, *args, **kw):
         self.helper = FormHelper()
@@ -112,18 +134,8 @@ Zgloszenie_Publikacji_AutorFormSet = inlineformset_factory(
     Zgloszenie_Publikacji_Autor,
     form=Zgloszenie_Publikacji_AutorForm,
     extra=1,
-)
-
-Zgloszenie_Publikacji_PlikFormSet = inlineformset_factory(
-    Zgloszenie_Publikacji,
-    Zgloszenie_Publikacji_Plik,
-    fields=[
-        "plik",
-    ],
-    # widgets={"plik": FileInput()},
-    extra=3,
-    can_delete=False,
-    # can_delete_extra=False,
+    # min_num=1,
+    validate_min=True,
 )
 
 

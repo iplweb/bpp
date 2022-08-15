@@ -18,66 +18,59 @@
             {% if wizard.form.forms %}
                 {{ wizard.form.management_form }}
                 <div class="form-template" style="display:none;">
+                    <fieldset class="fieldset">
                     {{ wizard.form.empty_form|crispy }}
-{#                    {{ wizard.form.empty_form.DELETE }}#}
-{#                    <label for="id_1-__prefix__-DELETE">Zaznacz aby usunąć - w przypadku pomyłki</label>#}
-                    <input type="hidden" name="1-__prefix__-rok" value="{{ rok }}"/>
+                    <input type="hidden" name="{{ wizard.steps.step0 }}-__prefix__-rok" value="{{ rok }}"/>
+                    </fieldset>
                 </div>
                 {% for form in wizard.form.forms %}
+                    <fieldset class="fieldset">
                     {{ form|crispy }}
-{#                    {% if wizard.steps.step1 == 2 %}#}
-{#                        {% if not forloop.first %}#}
-{#                            {{ form.DELETE }}#}
-{#                            <label for="id_{{ form.prefix }}-DELETE">Zaznacz aby usunąć - w przypadku pomyłki</label>#}
-{#                        {% endif %}#}
-{#                    {% endif %}#}
+                    </fieldset>
                 {% endfor %}
 
                 <input type="hidden" name="rok" id="id_rok" value="{{ rok }}"/>
 
-                {% if wizard.steps.step1 == 2 %}
-                    {#                    Dopisywanie kolejnych rekordów -- wyłącznie dla kroku nr 2 (autorzy) #}
-                    <button id="add-form" type="button" class="button">
-                        <span class="font: fi-plus"></span>
-                        Dopisz kolejnego autora
-                    </button>
+                <button id="add-form" type="button" class="button">
+                    <span class="font: fi-plus"></span>
+                    Dodaj kolejnego autora
+                </button>
 
-                    <script type="text/javascript">
-                        (function ($) {
-                            $('#add-form').click(function () {
-                                var index = $('#id_1-TOTAL_FORMS').val()
-                                var newTable = $('div.form-template').clone()
+                <script type="text/javascript">
+                    (function ($) {
+                        $('#add-form').click(function () {
+                            var index = $('#id_{{ wizard.steps.step0 }}-TOTAL_FORMS').val()
+                            var newTable = $('div.form-template').clone()
 
-                                newTable.find(':input').each(function () {
-                                    for (attr of ['name', 'id',]) {
-                                        if ($(this).attr(attr) === undefined)
-                                            continue;
+                            newTable.find(':input').each(function () {
+                                for (attr of ['name', 'id',]) {
+                                    if ($(this).attr(attr) === undefined)
+                                        continue;
 
-                                        $(this).attr(
-                                            attr,
-                                            $(this).attr(attr).replace('__prefix__', index)
-                                        );
-                                    }
-                                });
+                                    $(this).attr(
+                                        attr,
+                                        $(this).attr(attr).replace('__prefix__', index)
+                                    );
+                                }
+                            });
 
-                                newTable.find('label').each(function () {
-                                        $(this).attr(
-                                            "for",
-                                            $(this).attr("for").replace('__prefix__', index)
-                                        );
-                                    }
-                                );
+                            newTable.find('label').each(function () {
+                                    $(this).attr(
+                                        "for",
+                                        $(this).attr("for").replace('__prefix__', index)
+                                    );
+                                }
+                            );
 
-                                newTable.attr("class", "") // remove "form-template"
-                                newTable.insertBefore($(this))
-                                $('#id_1-TOTAL_FORMS').val(
-                                    parseInt($('#id_1-TOTAL_FORMS').val()) + 1
-                                )
-                                newTable.slideDown()
-                            })
-                        })($)
-                    </script>
-                {% endif %}
+                            newTable.attr("class", "") // remove "form-template"
+                            newTable.insertBefore($(this))
+                            $('#id_{{ wizard.steps.step0 }}-TOTAL_FORMS').val(
+                                parseInt($('#id_{{ wizard.steps.step0 }}-TOTAL_FORMS').val()) + 1
+                            )
+                            newTable.slideDown()
+                        })
+                    })($)
+                </script>
             {% else %}
                 {{ wizard.form|crispy }}
             {% endif %}
