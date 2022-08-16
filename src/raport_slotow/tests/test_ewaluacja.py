@@ -1,5 +1,4 @@
 from django.urls import reverse
-from pytest_django.fixtures import django_assert_max_num_queries
 
 from raport_slotow.views import ewaluacja
 
@@ -8,7 +7,7 @@ from bpp.models import Autor_Dyscyplina
 
 def test_raport_ewaluacja_no_queries(
     rekord_slotu,
-    django_assert_num_queries,
+    django_assert_max_num_queries,
     admin_client,
     rok,
     autor_jan_kowalski,

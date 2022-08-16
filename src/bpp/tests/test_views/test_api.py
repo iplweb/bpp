@@ -222,4 +222,6 @@ def test_ostatnia_jednostka_errors_autor_bez_dysc(rf, ojv, autor):
     res = ojv.post(fr)
 
     res = json.loads(res.content)
-    assert res == {}
+    assert res["jednostka_id"] is None
+    assert res["dyscyplina_id"] is None
+    assert res["status"] == "ok"
