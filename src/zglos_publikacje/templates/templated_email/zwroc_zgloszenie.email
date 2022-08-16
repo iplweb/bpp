@@ -1,0 +1,15 @@
+{% block subject %}Prośba o korektę zgłoszenia publikacji z dnia {{ object.utworzono }} - {{ object.tytul_oryginalny }}{% endblock %}
+{% block plain %}
+  Dzień dobry,
+
+  po przeanalizowaniu zgłoszenia publikacji "{{object.tytul_oryginalny}}" prosimy o wprowadzenie
+  następujących poprawek:
+
+  {{ object.przyczyna_zwrotu }}
+
+  Prosimy poprawić zgłoszenie pod następującym adresem:
+
+    https://{{ site_url }}{% url "zglos_publikacje:edycja_zgloszenia" object.kod_do_edycji %}
+
+  Dziękujemy!
+{% endblock %}

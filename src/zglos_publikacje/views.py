@@ -5,6 +5,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.files.storage import FileSystemStorage
 from django.db import transaction
+from django.http import Http404
 from django.shortcuts import render
 from django.views.generic import TemplateView
 from formtools.wizard.views import SessionWizardView
@@ -50,6 +51,25 @@ class Zgloszenie_PublikacjiWizard(SessionWizardView):
     ]
     condition_dict = {"1": pokazuj_formularz_pliku}
 
+    object = None
+
+    def get_form_instance(self, step):
+        kod_do_edycji = self.kwargs.get("kod_do_edycji")
+        if kod_do_edycji:
+            try:
+                self.object = Zgloszenie_Publikacji.objects.get(
+                    kod_do_edycji=kod_do_edycji
+                )
+            except Zgloszenie_Publikacji.DoesNotExist:
+                raise Http404
+
+            return {
+                "0": self.object,
+                "1": self.object,
+                "2": self.object,
+                "3": self.object,
+            }[step]
+
     def process_step(self, form):
         if self.steps.current == "0":
             # Dla pierwszego formularza zapisz wartość roku w sesji:
@@ -75,14 +95,33 @@ class Zgloszenie_PublikacjiWizard(SessionWizardView):
             autorset_form_list = 1
             rest_of_data = form_list[2].cleaned_data
         else:
+            # Dodający podał stronę WWW --  wiec nie było pytania o plik -- wiec formularz [1] to
+            # autorzy, a następny formularz [2] to lista autorów...
             autorset_form_list = 2
             rest_of_data = form_list[1].cleaned_data | form_list[3].cleaned_data
 
-            # jest strona, wiec nie było podanego pliku, wiec nastepny formularz to
-            # autorzy a jeszcze nastepmny to
-        self.object = Zgloszenie_Publikacji.objects.create(
-            **(dane_rekordu | rest_of_data)
-        )
+        kwargs = dane_rekordu | rest_of_data
+
+        if self.object is None:
+            self.object = Zgloszenie_Publikacji(
+                status=Zgloszenie_Publikacji.Statusy.NOWY
+            )
+        else:
+            # Jezeli obiekt już istniał w bazie, to oznacza, że jest edytowany przez zgłaszającego
+            # czyli należy dać mu status PO_ZMIANACH:
+            self.object.status = Zgloszenie_Publikacji.Statusy.PO_ZMIANACH
+
+            # Ustaw kod_do_edycji na pusty; jeżeli obiekt jest edytowany, to wyczyszczenie tego pola uniemożliwi
+            # ponowne wejście w edycję.
+            self.object.kod_do_edycji = None
+
+            # Zresetuj przyczynę zwrotu -- rekord został zmodyfikowany
+            self.object.przyczyna_zwrotu = None
+
+        for attr_name, value in kwargs.items():
+            setattr(self.object, attr_name, value)
+
+        self.object.save()
 
         typ_odpowiedzialnosci = Typ_Odpowiedzialnosci.objects.filter(
             typ_ogolny=TO_AUTOR
@@ -100,6 +139,8 @@ class Zgloszenie_PublikacjiWizard(SessionWizardView):
             for no, form in enumerate(autorzy_formset):
                 if form.is_valid():
                     if form.cleaned_data.get("DELETE"):
+                        if form.instance.pk:
+                            form.instance.delete()
                         continue
                     else:
                         if not form.cleaned_data:

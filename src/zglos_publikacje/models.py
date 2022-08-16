@@ -1,3 +1,5 @@
+import uuid
+
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
@@ -27,21 +29,29 @@ class Zgloszenie_Publikacji(
         "Utworzono", auto_now_add=True, blank=True, null=True
     )
 
+    ostatnio_zmieniony = models.DateTimeField(auto_now=True, null=True, db_index=True)
+
     object_id = models.BigIntegerField(null=True, blank=True)
     content_type = models.ForeignKey(
         ContentType, on_delete=models.SET_NULL, null=True, blank=True
     )
     odpowiednik_w_bpp = GenericForeignKey()
 
+    kod_do_edycji = models.UUIDField(
+        default=uuid.uuid4, editable=False, unique=True, null=True, blank=True
+    )
+    przyczyna_zwrotu = models.TextField(blank=True, null=True)
+
+    class Statusy(models.IntegerChoices):
+        NOWY = 0, "nowe zgłoszenie"
+        ZAAKCEPTOWANY = 1, "zaakceptowany - dodany do bazy BPP"
+        WYMAGA_ZMIAN = 2, "wymaga zmian - odesłano do zgłaszającego"
+        PO_ZMIANACH = 3, "zmiany naniesione przez zgłaszającego"
+        ODRZUCONO = 4, "odrzucono w całości"
+        SPAM = 5, "spam"
+
     status = models.PositiveSmallIntegerField(
-        default=0,
-        choices=[
-            (0, "nowe zgłoszenie"),
-            (1, "zaakceptowane - dodane do bazy BPP"),
-            (2, "wymaga zmian - odesłano do zgłaszającego"),
-            (3, "odrzucono w całości"),
-            (4, "spam"),
-        ],
+        default=Statusy.NOWY, choices=Statusy.choices
     )
 
     strona_www = models.URLField(
@@ -71,7 +81,13 @@ class Zgloszenie_Publikacji(
     class Meta:
         verbose_name = "zgłoszenie publikacji"
         verbose_name_plural = "zgłoszenia publikacji"
-        ordering = ("-utworzono", "tytul_oryginalny")
+        ordering = ("-ostatnio_zmieniony", "tytul_oryginalny")
+
+    def moze_zostac_zwrocony(self):
+        return self.status in [
+            Zgloszenie_Publikacji.Statusy.NOWY,
+            Zgloszenie_Publikacji.Statusy.PO_ZMIANACH,
+        ]
 
 
 class Zgloszenie_Publikacji_Autor(BazaModeluOdpowiedzialnosciAutorow):
