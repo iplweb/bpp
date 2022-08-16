@@ -18,13 +18,15 @@ class NiezdefiniowanaUczelnia:
     def __getattr__(self, item):
         if item.startswith("pokazuj_"):
             return False
-        return super(NiezdefiniowanaUczelnia, self).__getattr__(item)
+        return super().__getattr__(item)
 
     def sprawdz_uprawnienie(self, *args, **kw):
         return False
 
 
-BRAK_UCZELNI = {"uczelnia": NiezdefiniowanaUczelnia}
+BRAK_UCZELNI = {
+    "uczelnia": NiezdefiniowanaUczelnia,
+}
 
 
 def uczelnia(request):
@@ -34,7 +36,7 @@ def uczelnia(request):
         if time.time() < timeout:
             return value
 
-    u = Uczelnia.objects.first()
+    u = Uczelnia.objects.get_for_request(request)
     if u is None:
         return BRAK_UCZELNI
 

@@ -88,8 +88,7 @@
 
         <script type="text/javascript">
             $(document).ready(function () {
-                bppNotifications.init("{% static "bpp/wav/alert.wav" %}",
-                    document.getElementById('extra-channels').textContent);
+                bppNotifications.init("{% static "bpp/wav/alert.wav" %}");
 
                 {% if messages %}
                     {% for message in messages %}

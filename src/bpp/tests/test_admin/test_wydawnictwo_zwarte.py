@@ -23,8 +23,8 @@ def test_Wydawnictwo_Zwarte_Admin_sprawdz_duplikaty_www_doi(admin_app, fld, valu
     if fld == "pbn_uid":
         value = baker.make(Publication, pk=TEST_PBN_ID)
 
-    baker.make(Wydawnictwo_Zwarte, **{fld: value})
-    w2 = baker.make(Wydawnictwo_Zwarte)
+    baker.make(Wydawnictwo_Zwarte, rok=2020, **{fld: value})
+    w2 = baker.make(Wydawnictwo_Zwarte, rok=2020)
     if fld == "pbn_uid":
         value = TEST_PBN_ID  # baker.make(Publication, pk=TEST_PBN_ID)
 

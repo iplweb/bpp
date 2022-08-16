@@ -563,7 +563,8 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
         if self.dyscyplina_naukowa is not None:
 
             if self.rekord_id is None:
-                # Może nie ustalono rekordu nadrzędnego... a moze dodajemy nowy rekord do bazy?
+                # Może nie ustalono rekordu nadrzędnego... a moze dodajemy nowy
+                # rekord do bazy?
 
                 if self.rekord is None:
                     raise ValidationError(
@@ -606,7 +607,8 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
 
         # --- Walidacja procentów ---
         # Znajdź inne obiekty z tego rekordu, które są już w bazie danych, ewentualnie
-        # utrudniając ich zapisanie w sytuacji, gdyby ilość procent przekroczyła 100:
+        # utrudniając ich zapisanie w sytuacji, gdyby ilość procent
+        # przekroczyła 100:
         inne = self.__class__.objects.filter(rekord=self.rekord)
         if self.pk:
             inne = inne.exclude(pk=self.pk)
@@ -847,7 +849,7 @@ class ModelZOplataZaPublikacje(models.Model):
     opl_pub_amount = models.DecimalField(
         max_digits=20,
         decimal_places=2,
-        verbose_name="Kwota (zł)",
+        verbose_name="Kwota brutto (zł)",
         null=True,
         blank=True,
     )
@@ -896,7 +898,8 @@ class ModelZOplataZaPublikacje(models.Model):
 
                 raise ValidationError(errdct)
         else:
-            # Publikacja kosztowa z kolei (self.opl_pub_cost_free jest None albo False) ...
+            # Publikacja kosztowa z kolei (self.opl_pub_cost_free jest None
+            # albo False) ...
             if self.opl_pub_amount is not None and self.opl_pub_amount > 0:
                 # ...jeżeli ma wpisany koszt, musi miec zaznaczony któreś z pól:
                 if (
@@ -948,7 +951,8 @@ class ModelZOplataZaPublikacje(models.Model):
                     raise ValidationError(errdct)
                 else:
                     if self.opl_pub_cost_free is not None:
-                        # jeżeli nie ma wpisanego kosztu i nie ma zaznaczonego zadnego z pól to tym bardziej źle
+                        # jeżeli nie ma wpisanego kosztu i nie ma zaznaczonego
+                        # zadnego z pól to tym bardziej źle
                         errdct = {"opl_pub_amount": "Tu należy uzupełnić kwotę. "}
 
                         errmsg = (

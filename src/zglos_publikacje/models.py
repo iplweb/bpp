@@ -1,3 +1,5 @@
+import uuid
+
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
@@ -12,14 +14,10 @@ from bpp.models.abstract import (
     ModelZDOI,
     ModelZOplataZaPublikacje,
     ModelZRokiem,
-    ModelZWWW,
-    nie_zawiera_adresu_doi_org,
-    nie_zawiera_http_https,
 )
 
 
 class Zgloszenie_Publikacji(
-    ModelZWWW,
     ModelZRokiem,
     DwaTytuly,
     ModelZDOI,
@@ -31,31 +29,51 @@ class Zgloszenie_Publikacji(
         "Utworzono", auto_now_add=True, blank=True, null=True
     )
 
+    ostatnio_zmieniony = models.DateTimeField(auto_now=True, null=True, db_index=True)
+
     object_id = models.BigIntegerField(null=True, blank=True)
     content_type = models.ForeignKey(
         ContentType, on_delete=models.SET_NULL, null=True, blank=True
     )
     odpowiednik_w_bpp = GenericForeignKey()
 
+    kod_do_edycji = models.UUIDField(
+        default=uuid.uuid4, editable=False, unique=True, null=True, blank=True
+    )
+    przyczyna_zwrotu = models.TextField(blank=True, null=True)
+
+    class Statusy(models.IntegerChoices):
+        NOWY = 0, "nowe zgłoszenie"
+        ZAAKCEPTOWANY = 1, "zaakceptowany - dodany do bazy BPP"
+        WYMAGA_ZMIAN = 2, "wymaga zmian - odesłano do zgłaszającego"
+        PO_ZMIANACH = 3, "zmiany naniesione przez zgłaszającego"
+        ODRZUCONO = 4, "odrzucono w całości"
+        SPAM = 5, "spam"
+
     status = models.PositiveSmallIntegerField(
-        default=0,
-        choices=[
-            (0, "nowe zgłoszenie"),
-            (1, "dodane do bazy"),
-            (2, "wymaga uzupełnienia"),
-            (3, "odrzucono"),
-            (4, "spam"),
-        ],
+        default=Statusy.NOWY, choices=Statusy.choices
+    )
+
+    strona_www = models.URLField(
+        "Dostępna w sieci pod adresem",
+        help_text="Pole opcjonalne. Adres URL lokalizacji pełnego tekstu pracy (dostęp otwarty lub nie). "
+        "Jeżeli praca posiada numer DOI, wpisz go w postaci adresu URL czyli https://dx.doi.org/[NUMER_DOI]. "
+        "Jeżeli praca nie posiada numeru DOI bądź nie jest dostępna w sieci, pozostaw to pole puste. ",
+        max_length=1024,
+        blank=True,
+        null=True,
+    )
+
+    plik = models.FileField(
+        "Plik załącznika",
+        help_text="""Jeżeli zgłaszana publikacja nie jest dostępna nigdzie w sieci internet,
+        prosimy o dodanie załącznika""",
+        blank=True,
+        null=True,
     )
 
     def clean(self):
         ModelZOplataZaPublikacje.clean(self)
-        if self.doi:
-            nie_zawiera_http_https(self.doi)
-        if self.www:
-            nie_zawiera_adresu_doi_org(self.www)
-        if self.public_www:
-            nie_zawiera_adresu_doi_org(self.public_www)
 
     def __str__(self):
         return f"Zgłoszenie od {self.email} utworzone {self.utworzono} dla pracy {self.tytul_oryginalny}"
@@ -63,7 +81,13 @@ class Zgloszenie_Publikacji(
     class Meta:
         verbose_name = "zgłoszenie publikacji"
         verbose_name_plural = "zgłoszenia publikacji"
-        ordering = ("-utworzono", "tytul_oryginalny")
+        ordering = ("-ostatnio_zmieniony", "tytul_oryginalny")
+
+    def moze_zostac_zwrocony(self):
+        return self.status in [
+            Zgloszenie_Publikacji.Statusy.NOWY,
+            Zgloszenie_Publikacji.Statusy.PO_ZMIANACH,
+        ]
 
 
 class Zgloszenie_Publikacji_Autor(BazaModeluOdpowiedzialnosciAutorow):
@@ -74,11 +98,29 @@ class Zgloszenie_Publikacji_Autor(BazaModeluOdpowiedzialnosciAutorow):
     class Meta:
         verbose_name = "autor w zgłoszeniu publikacji"
         verbose_name_plural = "autorzy w zgłoszeniu publikacji"
+        ordering = ("kolejnosc",)
 
     def __str__(self):
         return f"autor {self.autor} dla zgłoszenia publikacji {self.rekord.tytul_oryginalny}"
 
     def clean(self):
+
+        if self.autor_id is None:
+            raise ValidationError({"autor": "Wybierz jakiegoś autora"})
+
+        przypisanie_na_rok_istnieje = Autor_Dyscyplina.objects.filter(
+            autor=self.autor,
+            rok=self.rok,
+        ).exists()
+
+        if przypisanie_na_rok_istnieje and self.dyscyplina_naukowa_id is None:
+            raise ValidationError(
+                {
+                    "dyscyplina_naukowa": f"Autor {self.autor} ma przypisaną przynajmniej jedną dyscyplinę na rok "
+                    f"{self.rok} i z tego powodu to pole nie może być puste. "
+                }
+            )
+
         if self.dyscyplina_naukowa is not None:
             try:
                 Autor_Dyscyplina.objects.get(
@@ -90,21 +132,7 @@ class Zgloszenie_Publikacji_Autor(BazaModeluOdpowiedzialnosciAutorow):
             except Autor_Dyscyplina.DoesNotExist:
                 raise ValidationError(
                     {
-                        "dyscyplina_naukowa": f"Autor nie ma przypisania na rok {self.rok} do takiej dyscypliny."
+                        "dyscyplina_naukowa": f"Autor {self.autor} nie ma przypisania na "
+                        f"rok {self.rok} do dyscypliny {self.dyscyplina_naukowa}."
                     }
                 )
-
-
-class Zgloszenie_Publikacji_Plik(models.Model):
-    rekord = models.ForeignKey(Zgloszenie_Publikacji, on_delete=models.CASCADE)
-
-    plik = models.FileField("Plik załącznika")
-
-    class Meta:
-        verbose_name = "plik zgłoszenia publikacji"
-        verbose_name_plural = "pliki zgłoszeń publikacji"
-
-    def __str__(self):
-        return (
-            f"plik {self.plik} dla zgłoszenia publikacji {self.rekord.tytul_oryginalny}"
-        )

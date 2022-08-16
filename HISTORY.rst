@@ -14,6 +14,7 @@ dev
 * aktualizacja biblioteki Celery do 5.2.2 (b/n),
 * podgląd edycji schematu opisu bibliograficznego (#898),
 * możliwość dopisywania własnych publikacji do bazy danych przez pracowników uczelni (#1237),
+* możliwość edycji zgłoszeń publikacji + powiadomienia przez e-mail (#1255),
 * wyświetlaj "flash messages" dla użytkownika niezalogowanego (b/n),
 * włącz język zapytań dla modułu redagowania: autorzy, źródła, jednostki, itp.
   (b/n),
