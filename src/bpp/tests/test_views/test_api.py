@@ -223,5 +223,5 @@ def test_ostatnia_jednostka_errors_autor_bez_dysc(rf, ojv, autor):
 
     res = json.loads(res.content)
     assert res["jednostka_id"] is None
-    assert res["dyscyplina_id"] is None
+    assert res["nazwa"] is None
     assert res["status"] == "ok"
