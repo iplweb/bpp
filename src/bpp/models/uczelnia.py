@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 
 class UczelniaManager(models.Manager):
     def get_default(self) -> Union["Uczelnia", None]:
-        return self.all().only("pk").first()
+        return self.all().first()
 
     def get_for_request(self, request):
         if hasattr(request, "_uczelnia"):

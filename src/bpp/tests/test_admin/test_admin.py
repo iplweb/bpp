@@ -10,7 +10,6 @@ from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, Wydawnictwo_Ciagle
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor
 
 
-@pytest.mark.flaky(reruns=10)
 @pytest.mark.parametrize(
     "klass",
     [
@@ -28,7 +27,7 @@ def test_safe_html_dwa_tytuly_DwaTytuly(
 ):
     """Upewnij sie, ze bleach jest uruchamiany dla tych dwóch pól z DwaTytuly"""
 
-    i = baker.make(klass)
+    i = baker.make(klass, rok=2020)
     if hasattr(i, "zrodlo"):
         z = baker.make(Zrodlo)
         i.zrodlo = z
@@ -46,6 +45,7 @@ def test_safe_html_dwa_tytuly_DwaTytuly(
     page.forms[1]["tytul_oryginalny"].value = "<script>hi</script>"
     if hasattr(i, "tytul"):
         page.forms[1]["tytul"].value = "<script>hi</script>"
+
     page.forms[1].submit()
 
     i.refresh_from_db()
@@ -76,9 +76,9 @@ def test_safe_html_dwa_tytuly_DwaTytuly(
 def test_zapisz_wydawnictwo_w_adminie(klass, autor_klass, name, url, admin_app):
 
     if klass == Wydawnictwo_Ciagle:
-        wc = baker.make(klass, zrodlo__nazwa="Kopara")
+        wc = baker.make(klass, zrodlo__nazwa="Kopara", rok=2020)
     else:
-        wc = baker.make(klass)
+        wc = baker.make(klass, rok=2020)
 
     wca = baker.make(
         autor_klass,
