@@ -1,20 +1,12 @@
-# -*- encoding: utf-8 -*-
 import json
 from collections import namedtuple
 
 from django.test import TestCase
 
-from bpp.models import Autor_Dyscyplina, Dyscyplina_Naukowa, Typ_Odpowiedzialnosci
+from bpp.models import Typ_Odpowiedzialnosci
 from bpp.models.zrodlo import Punktacja_Zrodla
-from bpp.tests.util import (
-    CURRENT_YEAR,
-    any_autor,
-    any_habilitacja,
-    any_jednostka,
-    any_zrodlo,
-)
+from bpp.tests.util import CURRENT_YEAR, any_autor, any_habilitacja, any_zrodlo
 from bpp.views.api import (
-    OstatniaJednostkaIDyscyplinaView,
     PunktacjaZrodlaView,
     RokHabilitacjiView,
     UploadPunktacjaZrodlaView,
@@ -91,39 +83,3 @@ class TestUploadPunktacjaZrodlaView(TestCase):
         UploadPunktacjaZrodlaView().post(fr, z.pk, CURRENT_YEAR)
         self.assertEqual(Punktacja_Zrodla.objects.count(), 1)
         self.assertEqual(Punktacja_Zrodla.objects.all()[0].impact_factor, 60)
-
-
-class TestOstatniaJednostkaIDyscyplinaView(TestCase):
-    def test_ostatnia_jednostka_view(self):
-        ojv = OstatniaJednostkaIDyscyplinaView()
-        a = any_autor()
-        j = any_jednostka()
-        j.dodaj_autora(a)
-
-        d = Dyscyplina_Naukowa.objects.create(nazwa="x", kod="5.5")
-
-        Autor_Dyscyplina.objects.create(rok=2000, autor=a, dyscyplina_naukowa=d)
-
-        fr = FakeRequest(dict(autor_id=a.pk, rok=2000))
-        res = ojv.post(fr)
-        self.assertContains(res, "jednostka_id", status_code=200)
-        self.assertContains(res, "dyscyplina_id", status_code=200)
-
-    def test_ostatnia_jednostka_errors(self):
-        ojv = OstatniaJednostkaIDyscyplinaView()
-        fr = FakeRequest(dict(autor_id=None))
-
-        res = ojv.post(fr)
-        assert json.loads(res.content)["status"] == "error"
-
-        fr = FakeRequest(dict(autor_id=10))
-        res = ojv.post(fr)
-        assert json.loads(res.content)["status"] == "error"
-
-        a = any_autor()
-        fr = FakeRequest(dict(autor_id=a.pk))
-        res = ojv.post(fr)
-
-        res = json.loads(res.content)
-        assert res["status"] == "ok"
-        assert res["jednostka_id"] is None

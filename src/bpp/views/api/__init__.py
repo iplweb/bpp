@@ -80,43 +80,44 @@ class OstatniaJednostkaIDyscyplinaView(View):
 
     def post(self, request, *args, **kw):
         try:
-            a = Autor.objects.get(pk=request.POST.get("autor_id", None))
-        except Autor.DoesNotExist:
+            a = Autor.objects.get(pk=int(request.POST.get("autor_id", None)))
+        except (Autor.DoesNotExist, TypeError, ValueError):
             return JsonResponse({"status": "error", "reason": "autor nie istnieje"})
 
         uczelnia = Uczelnia.objects.get_for_request(request)
+
+        ret = {}
 
         jed = a.aktualna_jednostka
         if jed is None:
             # Brak aktualnej jednostki, spróbuj podpowiedzieć obcą jednostkę:
             if uczelnia is None:
-                ret = dict(jednostka_id=None, nazwa=None, status="ok")
+                ret.update(dict(jednostka_id=None, nazwa=None, status="ok"))
             else:
                 # uczelnia is not None
                 if uczelnia.obca_jednostka_id is not None:
-                    ret = dict(
-                        jednostka_id=uczelnia.obca_jednostka_id,
-                        nazwa=uczelnia.obca_jednostka.nzawa,
-                        status="ok",
+                    ret.update(
+                        dict(
+                            jednostka_id=uczelnia.obca_jednostka_id,
+                            nazwa=uczelnia.obca_jednostka.nzawa,
+                            status="ok",
+                        )
                     )
         else:
-            ret = dict(jednostka_id=jed.pk, nazwa=jed.nazwa, status="ok")
+            ret.update(dict(jednostka_id=jed.pk, nazwa=jed.nazwa, status="ok"))
 
-        if uczelnia is not None and uczelnia.podpowiadaj_dyscypliny:
-            try:
-                rok = int(request.POST.get("rok"))
-            except (TypeError, ValueError):
-                rok = None
-                ad = None
+        try:
+            rok = int(request.POST.get("rok"))
+        except (TypeError, ValueError):
+            rok = None
 
-            if rok:
-                try:
-                    ad = Autor_Dyscyplina.objects.get(autor=a, rok=rok)
-                except Autor_Dyscyplina.DoesNotExist:
-                    ad = None
+        if uczelnia is not None and uczelnia.podpowiadaj_dyscypliny and rok:
+            ad = Autor_Dyscyplina.objects.filter(autor=a, rok=rok)
 
-            if ad is not None:
+            if ad.exists():
                 # Jest wpis Autor_Dyscyplina dla tego autora i roku.
+
+                ad = ad.first()
 
                 if not (
                     ad.dyscyplina_naukowa_id is not None
@@ -127,5 +128,6 @@ class OstatniaJednostkaIDyscyplinaView(View):
                     d = ad.dyscyplina_naukowa or ad.subdyscyplina_naukowa
                     ret["dyscyplina_nazwa"] = d.nazwa
                     ret["dyscyplina_id"] = d.pk
+                    ret["status"] = "ok"
 
         return JsonResponse(ret)

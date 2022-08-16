@@ -4,8 +4,8 @@ import pytest
 
 from fixtures import pbn_publication_json
 
-from bpp.models import Uczelnia
-from bpp.views.api import const
+from bpp.models import Autor_Dyscyplina, Uczelnia
+from bpp.views.api import OstatniaJednostkaIDyscyplinaView, const
 from bpp.views.api.pbn_get_by_parameter import GetPBNPublicationsByISBN
 from bpp.views.api.pubmed import GetPubmedIDView, get_data_from_ncbi
 
@@ -147,3 +147,79 @@ def test_GetPBNPublicationsByISBN_wiele_isbn(
         Uczelnia.objects.get_default = orig
 
     assert json.loads(res.content)["id"] == UID_REKORDU
+
+
+@pytest.fixture
+def ojv():
+    return OstatniaJednostkaIDyscyplinaView()
+
+
+def test_ostatnia_jednostka_view(autor, jednostka, rf, ojv, dyscyplina1):
+    jednostka.dodaj_autora(autor)
+
+    Autor_Dyscyplina.objects.create(
+        rok=2000, autor=autor, dyscyplina_naukowa=dyscyplina1
+    )
+
+    fr = rf.post("/", data=dict(autor_id=autor.pk, rok=2000))
+    res = ojv.post(fr)
+    res = json.loads(res.content)
+    assert "jednostka_id" in res
+    assert "dyscyplina_id" in res
+
+
+def test_ostatnia_jednostka_view_dwie_dysc(
+    autor, jednostka, rf, ojv, dyscyplina1, dyscyplina2
+):
+    jednostka.dodaj_autora(autor)
+
+    Autor_Dyscyplina.objects.create(
+        rok=2000,
+        autor=autor,
+        dyscyplina_naukowa=dyscyplina1,
+        subdyscyplina_naukowa=dyscyplina2,
+    )
+
+    fr = rf.post("/", data=dict(autor_id=autor.pk, rok=2000))
+    res = ojv.post(fr)
+    res = json.loads(res.content)
+    assert "jednostka_id" in res
+    assert "dyscyplina_id" not in res
+
+
+def test_ostatnia_jednostka_view_rok_empty(autor, jednostka, rf, ojv):
+    jednostka.dodaj_autora(autor)
+
+    fr = rf.post("/", data=dict(autor_id=autor.pk, rok=""))
+    res = ojv.post(fr)
+    res = json.loads(res.content)
+    assert "jednostka_id" in res
+    assert "dyscyplina_id" not in res
+
+
+def test_ostatnia_jednostka_errors_autor_null(rf, ojv):
+    fr = rf.post("/", data=dict(autor_id=""))
+    res = ojv.post(fr)
+    assert json.loads(res.content)["status"] == "error"
+
+
+@pytest.mark.django_db
+def test_ostatnia_jednostka_errors_autor_404(rf, ojv):
+    fr = rf.post("/", data=dict(autor_id=10))
+    res = ojv.post(fr)
+    assert json.loads(res.content)["status"] == "error"
+
+
+@pytest.mark.django_db
+def test_ostatnia_jednostka_errors_autor_404_2(rf, ojv):
+    fr = rf.post("/", data=dict(autor_id="heyyy"))
+    res = ojv.post(fr)
+    assert json.loads(res.content)["status"] == "error"
+
+
+def test_ostatnia_jednostka_errors_autor_bez_dysc(rf, ojv, autor):
+    fr = rf.post("/", data=dict(autor_id=autor.pk))
+    res = ojv.post(fr)
+
+    res = json.loads(res.content)
+    assert res == {}
