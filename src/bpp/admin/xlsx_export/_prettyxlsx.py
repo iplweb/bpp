@@ -30,7 +30,7 @@ class PrettyXLSXFormat(XLSXFormat):
 
         if freeze_panes:
             # Zablokuj pierwsze 2 kolumny (ID, tytuł) oraz wiersz nagłowka
-            ws.freeze_panes = ws["C2"]
+            ws.freeze_panes = ws["F2"]
 
         stream = BytesIO()
         wb.save(stream)

@@ -25,6 +25,9 @@ WYDAWNICTWO_TYPOWE_EXCLUDES = [
 WYDAWNICTWO_TYPOWY_EXPORT_ORDER = [
     "id",
     "tytul_oryginalny",
+    "pbn_url",
+    "bpp_strona_url",
+    "bpp_admin_url",
     "tytul",
     "rok",
     "ostatnio_zmieniony",
@@ -41,7 +44,7 @@ class Wydawnictwo_ResourceBase(resources.ModelResource):
     openaccess_wersja_tekstu = Field(attribute="openaccess_wersja_tekstu__nazwa")
     openaccess_licencja = Field(attribute="openaccess_licencja__nazwa")
     openaccess_czas_publikacji = Field(attribute="openaccess_czas_publikacji__nazwa")
-    openaccess_tryb_dostepu = Field(attribute="oopenaccess_tryb_dostepu__nazwa")
+    openaccess_tryb_dostepu = Field(attribute="openaccess_tryb_dostepu__nazwa")
     informacja_z = Field(attribute="informacja_z__nazwa")
 
     pbn_url = Field(attribute="pbn_uid")
