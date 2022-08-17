@@ -4,7 +4,7 @@ from taggit.forms import TextareaTagWidget
 
 from ..models import Autor, Jednostka, Praca_Doktorska
 from .actions import ustaw_po_korekcie, ustaw_przed_korekta, ustaw_w_trakcie_korekty
-from .core import CommitedModelAdmin
+from .core import BaseBppAdminMixin
 from .element_repozytorium import Element_RepozytoriumInline
 from .filters import OstatnioZmienionePrzezFilter, UtworzonePrzezFilter
 from .grant import Grant_RekorduInline
@@ -51,7 +51,7 @@ DOKTORSKA_FIELDS = (
 
 
 class Praca_Doktorska_Habilitacyjna_Admin_Base(
-    AdnotacjeZDatamiMixin, CommitedModelAdmin
+    AdnotacjeZDatamiMixin, BaseBppAdminMixin, admin.ModelAdmin
 ):
     formfield_overrides = NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW
     actions = [ustaw_po_korekcie, ustaw_w_trakcie_korekty, ustaw_przed_korekta]

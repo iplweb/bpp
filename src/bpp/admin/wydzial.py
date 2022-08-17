@@ -1,20 +1,18 @@
-# -*- encoding: utf-8 -*-
-
-# -*- encoding: utf-8 -*-
 from adminsortable2.admin import SortableAdminMixin
-from django.contrib import admin
 
-from .core import CommitedModelAdmin
-from .core import RestrictDeletionToAdministracjaGroupMixin
-from .helpers import *
 from ..models import Wydzial  # Publikacja_Habilitacyjna
+from .core import BaseBppAdminMixin, RestrictDeletionToAdministracjaGroupMixin
+from .helpers import ADNOTACJE_FIELDSET, ZapiszZAdnotacjaMixin
+
+from django.contrib import admin
 
 
 class WydzialAdmin(
     RestrictDeletionToAdministracjaGroupMixin,
     SortableAdminMixin,
     ZapiszZAdnotacjaMixin,
-    CommitedModelAdmin,
+    BaseBppAdminMixin,
+    admin.ModelAdmin,
 ):
     list_display = [
         "nazwa",

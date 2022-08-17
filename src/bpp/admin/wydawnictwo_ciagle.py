@@ -6,13 +6,14 @@ from mptt.forms import TreeNodeChoiceField
 from taggit.forms import TextareaTagWidget
 
 from pbn_api.models import Publication
+from . import BaseBppAdminMixin
 from .actions import (
     ustaw_po_korekcie,
     ustaw_przed_korekta,
     ustaw_w_trakcie_korekty,
     wyslij_do_pbn,
 )
-from .core import CommitedModelAdmin, KolumnyZeSkrotamiMixin, generuj_inline_dla_autorow
+from .core import KolumnyZeSkrotamiMixin, generuj_inline_dla_autorow
 
 # Widget do automatycznego uzupełniania punktacji wydawnictwa ciągłego
 from .element_repozytorium import Element_RepozytoriumInline
@@ -23,6 +24,8 @@ from .helpers import (
     OptionalPBNSaveMixin,
     sprawdz_duplikaty_www_doi,
 )
+from .xlsx_export import resources
+from .xlsx_export.mixins import EksportDanychMixin
 
 from django.contrib import admin
 
@@ -182,8 +185,12 @@ class Wydawnictwo_CiagleAdmin(
     OptionalPBNSaveMixin,
     KolumnyZeSkrotamiMixin,
     AdnotacjeZDatamiOrazPBNMixin,
-    CommitedModelAdmin,
+    BaseBppAdminMixin,
+    EksportDanychMixin,
+    admin.ModelAdmin,
 ):
+    resource_class = resources.Wydawnictwo_CiagleResource
+
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True
 

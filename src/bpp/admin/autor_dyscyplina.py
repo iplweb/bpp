@@ -6,7 +6,6 @@ from import_export.fields import Field
 
 from django.contrib import admin
 
-from bpp.admin.core import BaseBppAdmin
 from bpp.admin.filters import (
     OrcidAutoraDyscyplinyObecnyFilter,
     PBN_UID_IDAutoraObecnyFilter,
@@ -70,7 +69,7 @@ class Autor_DyscyplinaForm(forms.ModelForm):
         fields = "__all__"
 
 
-class Autor_DyscyplinaAdmin(DjangoQLSearchMixin, ExportMixin, BaseBppAdmin):
+class Autor_DyscyplinaAdmin(DjangoQLSearchMixin, ExportMixin, admin.ModelAdmin):
     djangoql_completion_enabled_by_default = True
     djangoql_completion = True
 

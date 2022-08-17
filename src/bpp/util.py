@@ -595,7 +595,17 @@ def worksheet_columns_autosize(
                 if cell.value is None or not str(cell.value):
                     continue
 
-                max_line_len = max(len(line) for line in str(cell.value).split("\n"))
+                text = str(cell.value)
+
+                if text.startswith("=HYPERLINK"):
+                    try:
+                        # Wyciągnij z hiperlinku jego faktyczny opis tekstowy na cele
+                        # liczenia szerokości kolumny
+                        text = text.split('"')[3]
+                    except IndexError:
+                        pass
+
+                max_line_len = max(len(line) for line in text.split("\n"))
                 max_length = max(max_length, max_line_len)
 
             adjusted_width = (max_length + right_margin) * multiplier
@@ -651,3 +661,19 @@ def worksheet_create_table(
     )
 
     ws.add_table(tab)
+
+
+def worksheet_create_urls(
+    ws: openpyxl.worksheet.worksheet.Worksheet, default_link_name: str = "[link]"
+):
+    """Tworzy adresy URL w postaci klikalnego linku z domyslnym tekstem."""
+
+    for column_cell in ws.iter_cols(1, ws.max_column):  # iterate column cell
+        if hasattr(column_cell[0].value, "endswith") and column_cell[0].value.endswith(
+            "_url"
+        ):
+            for data in column_cell[1:]:
+                if data.value:
+                    data.value = '=HYPERLINK("{}", "{}")'.format(
+                        data.value, default_link_name
+                    )
