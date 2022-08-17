@@ -4,15 +4,18 @@ from django.urls import reverse
 
 from zglos_publikacje.models import Zgloszenie_Publikacji
 
-from bpp.core import editors_emails
+from bpp.core import zgloszenia_publikacji_emails
 
 
 @pytest.mark.django_db
-def test_pierwsza_strona_wymagaj_pliku(webtest_app):
+def test_pierwsza_strona_wymagaj_pliku(webtest_app, uczelnia):
     url = reverse("zglos_publikacje:nowe_zgloszenie")
     page = webtest_app.get(url)
     page.forms[0]["0-tytul_oryginalny"] = "123"
     page.forms[0]["0-rok"] = "2020"
+    page.forms[0][
+        "0-rodzaj_zglaszanej_publikacji"
+    ] = Zgloszenie_Publikacji.Rodzaje.ARTYKUL_LUB_MONOGRAFIA
     page.forms[0]["0-email"] = "123@123.pl"
 
     page2 = page.forms[0].submit()
@@ -21,7 +24,7 @@ def test_pierwsza_strona_wymagaj_pliku(webtest_app):
 
 
 @pytest.mark.django_db
-def test_pierwsza_strona_nie_wymagaj_pliku(webtest_app):
+def test_pierwsza_strona_nie_wymagaj_pliku(webtest_app, uczelnia):
     url = reverse("zglos_publikacje:nowe_zgloszenie")
     page = webtest_app.get(url)
     page.forms[0]["0-tytul_oryginalny"] = "123"
@@ -35,14 +38,21 @@ def test_pierwsza_strona_nie_wymagaj_pliku(webtest_app):
 
 
 def test_druga_strona(
-    webtest_app, wprowadzanie_danych_user, transactional_db, typy_odpowiedzialnosci
+    webtest_app,
+    wprowadzanie_danych_user,
+    transactional_db,
+    typy_odpowiedzialnosci,
+    uczelnia,
 ):
-    assert editors_emails()
+    assert zgloszenia_publikacji_emails()
     try:
         url = reverse("zglos_publikacje:nowe_zgloszenie")
         page = webtest_app.get(url)
         page.forms[0]["0-tytul_oryginalny"] = "123"
         page.forms[0]["0-rok"] = "2020"
+        page.forms[0][
+            "0-rodzaj_zglaszanej_publikacji"
+        ] = Zgloszenie_Publikacji.Rodzaje.ARTYKUL_LUB_MONOGRAFIA
         page.forms[0]["0-strona_www"] = "https://onet.pl/"
         page.forms[0]["0-email"] = "123@123.pl"
 
@@ -61,3 +71,55 @@ def test_druga_strona(
         assert len(mail.outbox) == 1
     finally:
         Zgloszenie_Publikacji.objects.all().delete()
+
+
+@pytest.mark.django_db
+def test_zglos_publikacje_bez_pliku_artykul(
+    webtest_app, uczelnia, typy_odpowiedzialnosci
+):
+    url = reverse("zglos_publikacje:nowe_zgloszenie")
+    page = webtest_app.get(url)
+    page.forms[0]["0-tytul_oryginalny"] = "123"
+    page.forms[0][
+        "0-rodzaj_zglaszanej_publikacji"
+    ] = Zgloszenie_Publikacji.Rodzaje.ARTYKUL_LUB_MONOGRAFIA
+
+    page.forms[0]["0-strona_www"] = "https://onet.pl"
+    page.forms[0]["0-rok"] = "2020"
+    page.forms[0]["0-email"] = "123@123.pl"
+
+    # Lista autorow
+    page2 = page.forms[0].submit()
+
+    # Dane o platnosciach
+    page3 = page2.forms[0].submit()
+    page3.forms[0]["3-opl_pub_cost_free"] = "true"
+
+    # Sukces!
+    page4 = page3.forms[0].submit().maybe_follow()
+
+    assert b"zostanie zaakceptowane" in page4.content
+
+
+@pytest.mark.django_db
+def test_zglos_publikacje_bez_pliku_nie_artykul(
+    webtest_app, uczelnia, typy_odpowiedzialnosci
+):
+    url = reverse("zglos_publikacje:nowe_zgloszenie")
+    page = webtest_app.get(url)
+    page.forms[0]["0-tytul_oryginalny"] = "123"
+    page.forms[0][
+        "0-rodzaj_zglaszanej_publikacji"
+    ] = Zgloszenie_Publikacji.Rodzaje.POZOSTALE
+
+    page.forms[0]["0-strona_www"] = "https://onet.pl"
+    page.forms[0]["0-rok"] = "2020"
+    page.forms[0]["0-email"] = "123@123.pl"
+
+    # Lista autorow
+    page2 = page.forms[0].submit()
+
+    # Sukces!
+    page3 = page2.forms[0].submit().maybe_follow()
+
+    assert b"zostanie zaakceptowane" in page3.content

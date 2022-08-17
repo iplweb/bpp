@@ -144,6 +144,13 @@ class UczelniaAdmin(
                 "fields": ("podpowiadaj_dyscypliny",),
             },
         ),
+        (
+            "Zgłaszanie publikacji",
+            {
+                "classes": ("grp-collapse grp-opened",),
+                "fields": ("wymagaj_informacji_o_oplatach",),
+            },
+        ),
         ADNOTACJE_FIELDSET,
         (
             "Clarivate Analytics API",
