@@ -155,6 +155,7 @@ djangoql = "0.15.3"
 django-weasyprint = "^2.1.0"
 django-templated-email = "^3.0.0"
 django-formtools = "^2.3"
+pathspec = "^0.9.0"
 
 [tool.poetry.dev-dependencies]
 model-bakery = ">=1.5.1"
