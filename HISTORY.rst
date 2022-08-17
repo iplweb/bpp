@@ -18,6 +18,7 @@ dev
 * wyświetlaj "flash messages" dla użytkownika niezalogowanego (b/n),
 * włącz język zapytań dla modułu redagowania: autorzy, źródła, jednostki, itp.
   (b/n),
+* możliwość eksportu danych wydawnictw ciągłych i zwartych do formatu XLSX (b/n),
 
 202207.1087
 -----------

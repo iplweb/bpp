@@ -2,11 +2,15 @@ from urllib.parse import parse_qs
 from urllib.parse import quote as urlquote
 
 from django import forms
+from django.core.exceptions import PermissionDenied
 from django.db import models
 from django.db.models import Q
 from django.forms import BaseInlineFormSet
 from django.forms.widgets import Textarea
+from django.http import HttpResponse
 from django.urls import reverse
+from import_export.admin import ExportMixin
+from import_export.signals import post_export
 
 from import_common.normalization import normalize_isbn
 from pbn_api.exceptions import (
@@ -18,6 +22,7 @@ from pbn_api.exceptions import (
 from pbn_api.models import SentData
 
 from django.contrib import messages
+from django.contrib.admin.options import IncorrectLookupParameters
 from django.contrib.admin.utils import quote
 from django.contrib.contenttypes.models import ContentType
 
@@ -25,6 +30,7 @@ from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
 from bpp import const
+from bpp.admin.formats import PrettyXLSX
 from bpp.const import PBN_MAX_ROK, PBN_MIN_ROK
 from bpp.models import Status_Korekty
 from bpp.models.sloty.core import ISlot
@@ -660,3 +666,43 @@ def sprawdz_duplikaty_www_doi(request, obj):
             messages.warning(
                 request, const.ZDUBLOWANE_POLE_KOMUNIKAT.format(label=label)
             )
+
+
+class EksportDanychMixin(ExportMixin):
+    """Klasa do eksportu danych, bazująca na django-import-export,
+
+    włącza pozwolenie na eksport, gdy na liście admina changelist jest wyświetlane
+     poniżej max_allowed_items. Gdy elementów jest więcej, eksport jest niedozwolony,
+
+    eksportuje wyłącznie do XLSX w wersji upiększonej -- automatyczne szerokości wierszy,
+    format tableki itp"""
+
+    max_allowed_export_items = 5000
+
+    def has_export_permission(self, request):
+        try:
+            cl = self.get_changelist_instance(request)
+        except IncorrectLookupParameters:
+            return
+
+        if cl.result_count < self.max_allowed_export_items:
+            return True
+
+    def export_action(self, request, *args, **kwargs):
+        """Eksportuj zawsze do XLSX z upiększaniem -- autorozmiar wierszy + format jako tabela."""
+        if not self.has_export_permission(request):
+            raise PermissionDenied
+
+        file_format = PrettyXLSX()
+
+        queryset = self.get_export_queryset(request)
+        export_data = self.get_export_data(file_format, queryset, request=request)
+        content_type = file_format.get_content_type()
+
+        response = HttpResponse(export_data, content_type=content_type)
+        response["Content-Disposition"] = 'attachment; filename="{}"'.format(
+            self.get_export_filename(request, queryset, file_format),
+        )
+
+        post_export.send(sender=None, model=self.model)
+        return response

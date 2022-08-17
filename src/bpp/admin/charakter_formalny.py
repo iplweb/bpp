@@ -1,14 +1,14 @@
 from mptt.admin import DraggableMPTTAdmin
 
 from ..models import Charakter_Formalny  # Publikacja_Habilitacyjna
-from .core import CommitedModelAdmin, RestrictDeletionToAdministracjaGroupMixin
+from .core import BaseBppAdminMixin, RestrictDeletionToAdministracjaGroupMixin
 
 from django.contrib import admin
 
 
 # Proste tabele
 class Charakter_FormalnyAdmin(
-    RestrictDeletionToAdministracjaGroupMixin, CommitedModelAdmin, DraggableMPTTAdmin
+    RestrictDeletionToAdministracjaGroupMixin, BaseBppAdminMixin, DraggableMPTTAdmin
 ):
     list_display_links = ["nazwa"]
     list_display = [

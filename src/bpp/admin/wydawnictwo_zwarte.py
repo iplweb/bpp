@@ -1,6 +1,7 @@
 from dal import autocomplete
 from django import forms
 from djangoql.admin import DjangoQLSearchMixin
+from import_export import resources
 from mptt.forms import TreeNodeChoiceField
 from taggit.forms import TextareaTagWidget
 
@@ -11,10 +12,10 @@ from .actions import (
     ustaw_w_trakcie_korekty,
     wyslij_do_pbn,
 )
-from .core import CommitedModelAdmin, KolumnyZeSkrotamiMixin, generuj_inline_dla_autorow
+from .core import BaseBppAdminMixin, KolumnyZeSkrotamiMixin, generuj_inline_dla_autorow
 from .element_repozytorium import Element_RepozytoriumInline
 from .grant import Grant_RekorduInline
-from .helpers import OptionalPBNSaveMixin, sprawdz_duplikaty_www_doi
+from .helpers import EksportDanychMixin, OptionalPBNSaveMixin, sprawdz_duplikaty_www_doi
 from .nagroda import NagrodaInline
 
 # Proste tabele
@@ -51,7 +52,7 @@ class Wydawnictwo_Zwarte_StreszczenieInline(admin.StackedInline):
     fields = ["jezyk_streszczenia", "streszczenie"]
 
 
-class Wydawnictwo_ZwarteAdmin_Baza(CommitedModelAdmin):
+class Wydawnictwo_ZwarteAdmin_Baza(BaseBppAdminMixin, admin.ModelAdmin):
     formfield_overrides = helpers.NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW
 
     actions = [
@@ -215,17 +216,43 @@ class Wydawnictwo_Zwarte_Zewnetrzna_Baza_DanychInline(admin.StackedInline):
     form = Wydawnictwo_Zwarte_Zewnetrzna_Baza_DanychForm
 
 
+class Wydawnictwo_ZwarteResource(resources.ModelResource):
+    class Meta:
+        model = Wydawnictwo_Zwarte
+        exclude = [
+            "tekst_przed_pierwszym_autorem",
+            "tekst_po_ostatnim_autorze",
+            "search_index",
+            "tytul_oryginalny_sort",
+            "legacy_data",
+            "cached_punkty_dyscyplin",
+            "opis_bibliograficzny_cache",
+            "opis_bibliograficzny_autorzy_cache",
+            "opis_bibliograficzny_zapisani_autorzy_cache",
+            "slug",
+        ]
+        export_order = [
+            "id",
+            "tytul_oryginalny",
+            "tytul",
+            "rok",
+            "ostatnio_zmieniony",
+        ]
+
+
 class Wydawnictwo_ZwarteAdmin(
     DjangoQLSearchMixin,
     KolumnyZeSkrotamiMixin,
     helpers.AdnotacjeZDatamiOrazPBNMixin,
     OptionalPBNSaveMixin,
+    EksportDanychMixin,
     Wydawnictwo_ZwarteAdmin_Baza,
 ):
     form = Wydawnictwo_ZwarteForm
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True
     search_fields = Wydawnictwo_ZwarteAdmin_Baza.search_fields
+    resource_class = Wydawnictwo_ZwarteResource
 
     inlines = (
         generuj_inline_dla_autorow(Wydawnictwo_Zwarte_Autor),

@@ -696,3 +696,6 @@ wyświetlona.
 
 
 DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
+
+# django-import-export, używaj transakcji:
+IMPORT_EXPORT_USE_TRANSACTIONS = True
