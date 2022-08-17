@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, List, Union
 from autoslug import AutoSlugField
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
-from django.db import models
+from django.db import ProgrammingError, models
 from django.db.models import SET_NULL, Max
 from django.urls.base import reverse
 from model_utils import Choices
@@ -27,7 +27,13 @@ if TYPE_CHECKING:
 
 class UczelniaManager(models.Manager):
     def get_default(self) -> Union["Uczelnia", None]:
-        return self.all().first()
+        try:
+            return self.all().first()
+        except ProgrammingError:
+            # Błąd może wystapić w sytuacji, gdy do obiektu Uczelnia po stronie kodu zostały
+            # dodane jakieś kolumny, ale nie zostały jeszcze dodane do bazy danych. Próba "grzebnięcia"
+            # po bazie spowoduje błąd. Spróbujemy wobec tego pobrać wyłacznie PK rekordu:
+            return self.all().only("pk").first()
 
     def get_for_request(self, request):
         if hasattr(request, "_uczelnia"):
@@ -185,6 +191,15 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
     pokazuj_raport_slotow_uczelnia = OpcjaWyswietlaniaField(
         "Pokazuj raport slotów - uczelnia",
         default=OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM,
+    )
+
+    wymagaj_informacji_o_oplatach = models.BooleanField(
+        "Wymagaj inforamcji o opłatach",
+        default=True,
+        help_text="Gdy zaznaczone, moduł 'Zgłaszanie publikacji' będzie wyświetlać użytkownikowi formularz "
+        "informacji o opłatach za publikację w przypadku zgłaszania artykułu lub monografii. "
+        "Gdy odznaczone, taki formularz nie bedzie wyświetlany, niezależnie od rodzaju "
+        "zgłaszanej publikacji. ",
     )
 
     wydruk_logo = models.BooleanField("Pokazuj logo na wydrukach", default=False)

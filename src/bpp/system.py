@@ -9,8 +9,6 @@ from flexible_reports import models as flexible_models
 from multiseek.models import SearchForm
 from robots.models import Rule, Url
 
-import zglos_publikacje
-import zglos_publikacje.models
 from ewaluacja2021.models import IloscUdzialowDlaAutora, LiczbaNDlaUczelni
 from formdefaults.models import FormFieldRepresentation, FormRepresentation
 from import_dbf.models import B_A, B_U, Aut, Bib, Ixn, Jed, Poz, Ses, Usi, Wx2
@@ -24,13 +22,14 @@ from pbn_api.models import (
     SentData,
 )
 from rozbieznosci_dyscyplin.models import RozbieznosciView, RozbieznosciZrodelView
+from zglos_publikacje.models import Zgloszenie_Publikacji, Zgloszenie_Publikacji_Autor
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
 
-from bpp.const import GR_WPROWADZANIE_DANYCH
+from bpp.const import GR_WPROWADZANIE_DANYCH, GR_ZGLOSZENIA_PUBLIKACJI
 from bpp.models import (
     Autor,
     Autor_Dyscyplina,
@@ -166,7 +165,6 @@ groups = {
         IloscUdzialowDlaAutora,
         RozbieznosciView,
         RozbieznosciZrodelView,
-        zglos_publikacje.models.Zgloszenie_Publikacji,
     ],
     "indeks autorów": [Autor, Autor_Jednostka],
     "administracja": [User, Group, SearchForm],
@@ -179,6 +177,7 @@ groups = {
         flexible_models.Datasource,
         flexible_models.ColumnOrder,
     ],
+    GR_ZGLOSZENIA_PUBLIKACJI: [Zgloszenie_Publikacji, Zgloszenie_Publikacji_Autor],
 }
 
 # Po migracji, upewnij się że robots.txt są generowane poprawnie

@@ -24,7 +24,7 @@ class Zgloszenie_Publikacji_DaneOgolneForm(forms.ModelForm):
     )
 
     email = forms.EmailField(
-        help_text="Prosimy o podanie poprawnego adresu e-mail. W razie problemów ze zgłoszeniem na ten adres"
+        help_text="Prosimy o podanie poprawnego adresu e-mail. W razie problemów ze zgłoszeniem na ten adres "
         "zostanie skierowana dalsza korespondencja."
     )
 
@@ -32,6 +32,7 @@ class Zgloszenie_Publikacji_DaneOgolneForm(forms.ModelForm):
         model = Zgloszenie_Publikacji
         fields = [
             "tytul_oryginalny",
+            "rodzaj_zglaszanej_publikacji",
             "rok",
             "strona_www",
             "email",

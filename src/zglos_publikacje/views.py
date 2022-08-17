@@ -1,5 +1,7 @@
 # Create your views here.
+import operator
 import os
+from functools import reduce
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -23,8 +25,8 @@ from zglos_publikacje.forms import (
 from zglos_publikacje.models import Zgloszenie_Publikacji
 
 from bpp.const import TO_AUTOR
-from bpp.core import editors_emails
-from bpp.models import Typ_Odpowiedzialnosci
+from bpp.core import zgloszenia_publikacji_emails
+from bpp.models import Typ_Odpowiedzialnosci, Uczelnia
 
 
 class Sukces(TemplateView):
@@ -38,6 +40,26 @@ def pokazuj_formularz_pliku(wizard):
     return not cleaned_data.get("strona_www", None)
 
 
+def pokazuj_formularz_platnosci(wizard):
+    # Jeżeli dla uczelni wyłączono potrzebę wpisywania informacji o płatnościach to nie pokazuj
+    # tego formularza:
+
+    uczelnia = Uczelnia.objects.get_for_request(wizard.request)
+    if uczelnia is not None:
+        if uczelnia.wymagaj_informacji_o_oplatach is not True:
+            return False
+
+    # OK, nie wyłączono globalnie podawania informacji o opłaach
+
+    # Jeżeli w pierwszym kroku podano rodzaj publikacji jako artykuł naukowy lub monografia
+    # to zapytaj o koszta. Jeżeli rodzaj jest inny -- to nie pytaj
+    cleaned_data = wizard.get_cleaned_data_for_step("0") or {}
+    return (
+        cleaned_data.get("rodzaj_zglaszanej_publikacji", None)
+        == Zgloszenie_Publikacji.Rodzaje.ARTYKUL_LUB_MONOGRAFIA
+    )
+
+
 class Zgloszenie_PublikacjiWizard(SessionWizardView):
     template_name = "zglos_publikacje/zgloszenie_publikacji_form.html"
     file_storage = FileSystemStorage(
@@ -49,7 +71,7 @@ class Zgloszenie_PublikacjiWizard(SessionWizardView):
         Zgloszenie_Publikacji_AutorFormSet,
         Zgloszenie_Publikacji_KosztPublikacjiForm,
     ]
-    condition_dict = {"1": pokazuj_formularz_pliku}
+    condition_dict = {"1": pokazuj_formularz_pliku, "3": pokazuj_formularz_platnosci}
 
     object = None
 
@@ -91,14 +113,29 @@ class Zgloszenie_PublikacjiWizard(SessionWizardView):
     @transaction.atomic
     def done(self, form_list, **kwargs):
         dane_rekordu = form_list[0].cleaned_data
+
+        rest_of_data = {}
+
         if dane_rekordu.get("strona_www"):
-            autorset_form_list = 1
-            rest_of_data = form_list[2].cleaned_data
-        else:
             # Dodający podał stronę WWW --  wiec nie było pytania o plik -- wiec formularz [1] to
-            # autorzy, a następny formularz [2] to lista autorów...
+            # lista autorów, a pozostałe formularze zaczną się od [2]
+            autorset_form_list = 1
+
+            pozostale_formularze = [form.cleaned_data for form in form_list[2:]]
+            if pozostale_formularze:
+                rest_of_data = reduce(operator.or_, pozostale_formularze)
+        else:
+            # Dodający NIE podał strony WWW, czyli formularz [1] zawiera dane o pliku,
+            # [2] to lista autorów a formularz [3] i kolejne...
             autorset_form_list = 2
-            rest_of_data = form_list[1].cleaned_data | form_list[3].cleaned_data
+
+            rest_of_data = reduce(
+                operator.or_,
+                [
+                    form_list[1].cleaned_data,
+                ]
+                + [form.cleaned_data for form in form_list[3:]],
+            )
 
         kwargs = dane_rekordu | rest_of_data
 
@@ -158,7 +195,7 @@ class Zgloszenie_PublikacjiWizard(SessionWizardView):
                 send_templated_mail(
                     template_name="nowe_zgloszenie",
                     from_email=self.object.email,
-                    recipient_list=editors_emails(),
+                    recipient_list=zgloszenia_publikacji_emails(),
                     context={
                         "object": self.object,
                         "site_url": self.request.get_host(),

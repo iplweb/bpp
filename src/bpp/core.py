@@ -51,13 +51,34 @@ def zbieraj_sloty(
     return maks / 10000, lista, sloty_ret / 10000
 
 
-def editors_emails():
-    from bpp.const import GR_WPROWADZANIE_DANYCH
+def group_emails(group_name):
+    "Zwraca maile osób z danej grupy"
     from bpp.models.profile import BppUser
 
     return (
-        BppUser.objects.filter(groups__name=GR_WPROWADZANIE_DANYCH)
+        BppUser.objects.filter(groups__name=group_name)
         .exclude(email="")
         .exclude(email=None)
+        .exclude(email="brak@email.pl")
         .values_list("email", flat=True)
+        .distinct()
     )
+
+
+def editors_emails():
+    # E-maile redaktorów -- osób, które mają grupę "wprowadzanie danych"
+    from bpp.const import GR_WPROWADZANIE_DANYCH
+
+    return group_emails(GR_WPROWADZANIE_DANYCH)
+
+
+def zgloszenia_publikacji_emails():
+    from bpp.const import GR_ZGLOSZENIA_PUBLIKACJI
+
+    ret = group_emails(GR_ZGLOSZENIA_PUBLIKACJI)
+    if ret:
+        return ret
+
+    # W sytuacji gdy grupa "zgłoszenia publikacji" nie ma żadnych użytkowników
+    # e-mail zostaje wysłany do redaktorów
+    return editors_emails()

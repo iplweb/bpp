@@ -32,15 +32,23 @@ class Zgloszenie_PublikacjiAdmin(admin.ModelAdmin):
         "tytul_oryginalny",
         "utworzono",
         "ostatnio_zmieniony",
+        "wydzial_pierwszego_autora",
         "email",
         "status",
     ]
-    list_filter = ["status", "email", WydzialJednostkiPierwszegoAutora]
+    list_filter = [
+        "status",
+        "email",
+        WydzialJednostkiPierwszegoAutora,
+        "rodzaj_zglaszanej_publikacji",
+        "rok",
+    ]
 
     fields = (
         (
             "tytul_oryginalny",
             "rok",
+            "rodzaj_zglaszanej_publikacji",
         )
         + MODEL_Z_OPLATA_ZA_PUBLIKACJE
         + (
@@ -106,6 +114,7 @@ class Zgloszenie_PublikacjiAdmin(admin.ModelAdmin):
                 self.log_change(request, new_object, change_message)
 
                 def _():
+                    sent_okay = None
                     try:
                         send_templated_mail(
                             template_name="zwroc_zgloszenie",
@@ -116,6 +125,7 @@ class Zgloszenie_PublikacjiAdmin(admin.ModelAdmin):
                                 "site_url": request.get_host(),
                             },
                         )
+                        sent_okay = True
                     except Exception as e:
                         capture_exception(e)
 
@@ -123,7 +133,14 @@ class Zgloszenie_PublikacjiAdmin(admin.ModelAdmin):
                             request,
                             messages.WARNING,
                             f"Z uwagi na błąd wysyłania komunikatu z powiadomieniem, użytkownik {obj.email} "
-                            "został powiadomiony o dodaniu zgłoszenia. Prosimy wysłać e-mail ręcznie. ",
+                            "nie został powiadomiony o dodaniu zgłoszenia. Prosimy wysłać e-mail ręcznie. ",
+                        )
+
+                    if sent_okay:
+                        messages.add_message(
+                            request,
+                            messages.INFO,
+                            f"Użytkownik {obj.email} został powiadomiony o zwróceniu zgłoszenia przez e-mail.",
                         )
 
                 transaction.on_commit(_)
@@ -161,3 +178,9 @@ class Zgloszenie_PublikacjiAdmin(admin.ModelAdmin):
         context.update(extra_context or {})
 
         return render(request, self.zwroc_view_template, context)
+
+    def wydzial_pierwszego_autora(self, obj):
+        try:
+            return obj.zgloszenie_publikacji_autor_set.first().jednostka.wydzial.nazwa
+        except BaseException:
+            pass

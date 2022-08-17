@@ -1,5 +1,3 @@
-import uuid
-
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
@@ -7,7 +5,7 @@ from django.db.models import Q
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 
-from bpp.models import Autor_Dyscyplina
+from bpp.models import Autor_Dyscyplina, Uczelnia
 from bpp.models.abstract import (
     BazaModeluOdpowiedzialnosciAutorow,
     DwaTytuly,
@@ -37,9 +35,7 @@ class Zgloszenie_Publikacji(
     )
     odpowiednik_w_bpp = GenericForeignKey()
 
-    kod_do_edycji = models.UUIDField(
-        default=uuid.uuid4, editable=False, unique=True, null=True, blank=True
-    )
+    kod_do_edycji = models.UUIDField(editable=False, unique=True, null=True, blank=True)
     przyczyna_zwrotu = models.TextField(blank=True, null=True)
 
     class Statusy(models.IntegerChoices):
@@ -54,11 +50,24 @@ class Zgloszenie_Publikacji(
         default=Statusy.NOWY, choices=Statusy.choices
     )
 
+    class Rodzaje(models.IntegerChoices):
+        ARTYKUL_LUB_MONOGRAFIA = 1, "artykuł naukowy lub monografia"
+        POZOSTALE = 2, "pozostałe rodzaje"
+
+    rodzaj_zglaszanej_publikacji = models.PositiveSmallIntegerField(
+        "Rodzaj zgłaszanej publikacji",
+        choices=Rodzaje.choices,
+        help_text="Dla artykułów naukowych i monografii konieczne będzie wprowadzenie informacji o kosztach"
+        " w ostatnim etapie wypełniania formularza. ",
+    )
+
     strona_www = models.URLField(
         "Dostępna w sieci pod adresem",
         help_text="Pole opcjonalne. Adres URL lokalizacji pełnego tekstu pracy (dostęp otwarty lub nie). "
         "Jeżeli praca posiada numer DOI, wpisz go w postaci adresu URL czyli https://dx.doi.org/[NUMER_DOI]. "
-        "Jeżeli praca nie posiada numeru DOI bądź nie jest dostępna w sieci, pozostaw to pole puste. ",
+        "Jeżeli praca nie posiada numeru DOI bądź nie jest dostępna w sieci, pozostaw to pole puste. Adres "
+        "URL musi być pełny, to znaczy musi zaczynać się od oznaczenia protokołu czyli od ciągu "
+        "znaków http:// lub https:// ",
         max_length=1024,
         blank=True,
         null=True,
@@ -73,7 +82,34 @@ class Zgloszenie_Publikacji(
     )
 
     def clean(self):
-        ModelZOplataZaPublikacje.clean(self)
+        wpisano_informacje_o_oplatach = (
+            self.opl_pub_cost_free is not None
+            or self.opl_pub_research_potential is not None
+            or self.opl_pub_research_or_development_projects is not None
+            or self.opl_pub_other is not None
+            or (self.opl_pub_amount is not None and self.opl_pub_amount != 0)
+        )
+
+        # Informacja o opłatach może być opcjonalna, w zależności od ustawień obiektu Uczelnia.
+        # Informacja o opłatach może być opcjonalna jeżeli rodzaj zgłaszanej publikacji to "pozostałe"
+
+        # W obydwu przypadkach nie walidujemy (nie uruchamiamy ModelZOplataZaPublikacje.clean)... ale pod jednym
+        # warunkiem: pod takim warunkiem, ze NIC nie zostało wpisane jeżeli chodzi o informację o opłatach
+        # -- czyli, że zmienna zupelny_brak_informacji_o_oplatach jest False.
+
+        uczelnia = Uczelnia.objects.get_default()
+
+        if (
+            uczelnia.wymagaj_informacji_o_oplatach is True
+            or wpisano_informacje_o_oplatach
+        ):
+            # Administrator systemu wymaga informacji o opłatach dla artykułów i monografii
+            if (
+                self.rodzaj_zglaszanej_publikacji
+                == Zgloszenie_Publikacji.Rodzaje.ARTYKUL_LUB_MONOGRAFIA
+            ) or wpisano_informacje_o_oplatach:
+                # Użytkownik zgłasza arytkuł lub monografię, uruchamiamy weryfikację
+                ModelZOplataZaPublikacje.clean(self)
 
     def __str__(self):
         return f"Zgłoszenie od {self.email} utworzone {self.utworzono} dla pracy {self.tytul_oryginalny}"
