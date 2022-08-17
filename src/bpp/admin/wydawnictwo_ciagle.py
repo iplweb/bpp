@@ -2,7 +2,6 @@ from dal import autocomplete
 from django import forms
 from django.forms.utils import flatatt
 from djangoql.admin import DjangoQLSearchMixin
-from import_export import resources
 from mptt.forms import TreeNodeChoiceField
 from taggit.forms import TextareaTagWidget
 
@@ -22,10 +21,11 @@ from .grant import Grant_RekorduInline
 from .helpers import (
     MODEL_OPCJONALNIE_NIE_EKSPORTOWANY_DO_API_FIELDSET,
     MODEL_Z_OPLATA_ZA_PUBLIKACJE_FIELDSET,
-    EksportDanychMixin,
     OptionalPBNSaveMixin,
     sprawdz_duplikaty_www_doi,
 )
+from .xlsx_export import resources
+from .xlsx_export.mixins import EksportDanychMixin
 
 from django.contrib import admin
 
@@ -180,30 +180,6 @@ class Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychInline(admin.StackedInline):
     form = Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychForm
 
 
-class Wydawnictwo_CiagleResource(resources.ModelResource):
-    class Meta:
-        model = Wydawnictwo_Ciagle
-        exclude = [
-            "tekst_przed_pierwszym_autorem",
-            "tekst_po_ostatnim_autorze",
-            "search_index",
-            "tytul_oryginalny_sort",
-            "legacy_data",
-            "cached_punkty_dyscyplin",
-            "opis_bibliograficzny_cache",
-            "opis_bibliograficzny_autorzy_cache",
-            "opis_bibliograficzny_zapisani_autorzy_cache",
-            "slug",
-        ]
-        export_order = [
-            "id",
-            "tytul_oryginalny",
-            "tytul",
-            "rok",
-            "ostatnio_zmieniony",
-        ]
-
-
 class Wydawnictwo_CiagleAdmin(
     DjangoQLSearchMixin,
     OptionalPBNSaveMixin,
@@ -213,7 +189,7 @@ class Wydawnictwo_CiagleAdmin(
     EksportDanychMixin,
     admin.ModelAdmin,
 ):
-    resource_class = Wydawnictwo_CiagleResource
+    resource_class = resources.Wydawnictwo_CiagleResource
 
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True

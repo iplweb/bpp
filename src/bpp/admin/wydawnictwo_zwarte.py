@@ -1,7 +1,6 @@
 from dal import autocomplete
 from django import forms
 from djangoql.admin import DjangoQLSearchMixin
-from import_export import resources
 from mptt.forms import TreeNodeChoiceField
 from taggit.forms import TextareaTagWidget
 
@@ -15,11 +14,13 @@ from .actions import (
 from .core import BaseBppAdminMixin, KolumnyZeSkrotamiMixin, generuj_inline_dla_autorow
 from .element_repozytorium import Element_RepozytoriumInline
 from .grant import Grant_RekorduInline
-from .helpers import EksportDanychMixin, OptionalPBNSaveMixin, sprawdz_duplikaty_www_doi
+from .helpers import OptionalPBNSaveMixin, sprawdz_duplikaty_www_doi
 from .nagroda import NagrodaInline
 
 # Proste tabele
 from .wydawnictwo_ciagle import CleanDOIWWWPublicWWWMixin
+from .xlsx_export import resources
+from .xlsx_export.mixins import EksportDanychMixin
 
 from django.contrib import admin, messages
 
@@ -216,30 +217,6 @@ class Wydawnictwo_Zwarte_Zewnetrzna_Baza_DanychInline(admin.StackedInline):
     form = Wydawnictwo_Zwarte_Zewnetrzna_Baza_DanychForm
 
 
-class Wydawnictwo_ZwarteResource(resources.ModelResource):
-    class Meta:
-        model = Wydawnictwo_Zwarte
-        exclude = [
-            "tekst_przed_pierwszym_autorem",
-            "tekst_po_ostatnim_autorze",
-            "search_index",
-            "tytul_oryginalny_sort",
-            "legacy_data",
-            "cached_punkty_dyscyplin",
-            "opis_bibliograficzny_cache",
-            "opis_bibliograficzny_autorzy_cache",
-            "opis_bibliograficzny_zapisani_autorzy_cache",
-            "slug",
-        ]
-        export_order = [
-            "id",
-            "tytul_oryginalny",
-            "tytul",
-            "rok",
-            "ostatnio_zmieniony",
-        ]
-
-
 class Wydawnictwo_ZwarteAdmin(
     DjangoQLSearchMixin,
     KolumnyZeSkrotamiMixin,
@@ -252,7 +229,7 @@ class Wydawnictwo_ZwarteAdmin(
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True
     search_fields = Wydawnictwo_ZwarteAdmin_Baza.search_fields
-    resource_class = Wydawnictwo_ZwarteResource
+    resource_class = resources.Wydawnictwo_ZwarteResource
 
     inlines = (
         generuj_inline_dla_autorow(Wydawnictwo_Zwarte_Autor),

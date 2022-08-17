@@ -9,4 +9,4 @@ class PrettyXLSX(XLSX):
         return "prettyxlsx"
 
 
-registry.register("prettyxlsx", "bpp.admin._prettyxlsx.PrettyXLSXFormat")
+registry.register("prettyxlsx", "bpp.admin.xlsx_export._prettyxlsx.PrettyXLSXFormat")

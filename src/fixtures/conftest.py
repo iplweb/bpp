@@ -8,6 +8,7 @@ import django_webtest
 import pytest
 import webtest
 from dbtemplates.models import Template
+from django_webtest import DjangoTestApp
 from rest_framework.test import APIClient
 from splinter.driver import DriverAPI
 
@@ -557,7 +558,7 @@ def wd_app(webtest_app, wprowadzanie_danych_user):
 
 
 @pytest.fixture(scope="function")
-def admin_app(webtest_app, admin_user):
+def admin_app(webtest_app, admin_user) -> DjangoTestApp:
     """
     :rtype: django_webtest.DjangoTestApp
     """
