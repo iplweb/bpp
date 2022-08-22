@@ -57,8 +57,8 @@ class Zgloszenie_Publikacji(
     rodzaj_zglaszanej_publikacji = models.PositiveSmallIntegerField(
         "Rodzaj zgłaszanej publikacji",
         choices=Rodzaje.choices,
-        help_text="Dla artykułów naukowych i monografii konieczne będzie wprowadzenie informacji o kosztach"
-        " w ostatnim etapie wypełniania formularza. ",
+        help_text="Dla artykułów naukowych i monografii może być wymagane wprowadzenie informacji o opłatach"
+        " za publikację w ostatnim etapie wypełniania formularza. ",
     )
 
     strona_www = models.URLField(
