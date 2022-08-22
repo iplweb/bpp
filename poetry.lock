@@ -1195,7 +1195,7 @@ django = "*"
 
 [[package]]
 name = "django-static-sitemaps"
-version = "4.6.0"
+version = "4.7.0"
 description = "Tool for generating sitemaps as static files"
 category = "main"
 optional = false
@@ -3603,7 +3603,7 @@ test = ["pytest"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.10,<3.11"
-content-hash = "31b41de8afaea5352d7f0316ef0bfd783e7e0bcf0ea108d36cfdca903e3f106c"
+content-hash = "5bf4a3c8b06e7e1139148f6721c5064b4325b2513205e44971313ca1bdaea0b0"
 
 [metadata.files]
 aioredis = [
@@ -4048,9 +4048,7 @@ django-robots = [
 ]
 django-sendfile = []
 django-session-security-iplweb = []
-django-static-sitemaps = [
-    {file = "django-static-sitemaps-4.6.0.tar.gz", hash = "sha256:5f017df9f5fd6fb2f66bb4e20196e1cafb2a7ebeee29d96af16158df66312de5"},
-]
+django-static-sitemaps = []
 django-tables2 = [
     {file = "django-tables2-2.3.1.tar.gz", hash = "sha256:28da782f81f046c7d921246f43e7ba2df430cafe5a0e00a0f9dadef25a0e487d"},
     {file = "django_tables2-2.3.1-py2.py3-none-any.whl", hash = "sha256:7e425ad51e22caf5470351981f0fcd4fd35d4cf2d4c3b76fa1b7bf56251778d1"},
