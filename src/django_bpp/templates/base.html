@@ -219,7 +219,7 @@
                     </li>
                     {% if not request.user.is_anonymous  %}
 
-                        {% if not request.user|has_group:"ldap" %}
+                        {% if request.user.is_superuser or not request.user|has_group:"ldap" %}
                             <li>
                                 <a href="#">operacje</a>
                                 <ul class="menu vertical">
