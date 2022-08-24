@@ -4,6 +4,7 @@ import string
 import sys
 from datetime import timedelta
 
+import environ
 import sentry_sdk
 from django.core.exceptions import DisallowedHost, ImproperlyConfigured
 from sentry_sdk.integrations.django import DjangoIntegration
@@ -702,3 +703,81 @@ IMPORT_EXPORT_USE_TRANSACTIONS = True
 
 # Maksymalna
 BPP_MAX_ALLOWED_EXPORT_ITEMS = 1500
+
+# Ponieważ konieczna jest konfiguracja django-ldap-auth i potrzebne będą kolejne zmienne
+# środowiskowe, ponieważ z Pipenv przeszedłem na poetry, ponieważ tych konfiguracji i
+# serwerów (testowych, produkcyjnych) robi się coraz więcej -- z tych okazji zaczynam
+# migrację konfiguracji na django-environ. Na ten moment przez django-environ pobiorę
+# konfigurację LDAPa, docelowo przez django-environ powinna iść cała konfiguracja
+# serwisu + docelowo będzie pewnie można zrezygnować z wielu plików konfiguracyjnych
+# (local, test, production).
+
+env = environ.Env(
+    # casting, default value
+    AUTH_LDAP_SERVER_URI=(str, None),
+    AUTH_LDAP_BIND_DN=(str, None),
+    AUTH_LDAP_BIND_PASSWORD=(str, None),
+    AUTH_LDAP_USER_SEARCH=(str, None),
+    AUTH_LDAP_GROUP_SEARCH=(str, "ou=django,ou=groups,dc=auth,dc=local"),
+    AUTH_LDAP_USER_SEARCH_QUERY=(str, None),
+)
+
+ENVFILE_PATH = os.path.join(os.path.expanduser("~"), ".env")
+
+if os.path.exists(ENVFILE_PATH) and os.path.isfile(ENVFILE_PATH):
+    environ.Env.read_env(ENVFILE_PATH)
+
+AUTH_LDAP_SERVER_URI = env("AUTH_LDAP_SERVER_URI")
+
+if AUTH_LDAP_SERVER_URI:
+    AUTH_LDAP_BIND_DN = env("AUTH_LDAP_BIND_DN")
+    AUTH_LDAP_BIND_PASSWORD = env("AUTH_LDAP_BIND_PASSWORD")
+
+    import ldap
+    from django_auth_ldap.config import GroupOfNamesType, LDAPSearch
+
+    AUTH_LDAP_USER_SEARCH = LDAPSearch(
+        env("AUTH_LDAP_USER_SEARCH"),
+        ldap.SCOPE_SUBTREE,
+        env("AUTH_LDAP_USER_SEARCH_QUERY"),
+    )
+
+    # Set up the basic group parameters.
+    AUTH_LDAP_GROUP_SEARCH = LDAPSearch(
+        env("AUTH_LDAP_GROUP_SEARCH"),
+        ldap.SCOPE_SUBTREE,
+        "(objectClass=groupOfNames)",
+    )
+    AUTH_LDAP_GROUP_TYPE = GroupOfNamesType(name_attr="cn")
+
+    # Populate the Django user from the LDAP directory.
+    AUTH_LDAP_USER_ATTR_MAP = {
+        "first_name": "givenName",
+        "last_name": "sn",
+        "email": "mail",
+    }
+
+    AUTH_LDAP_USER_FLAGS_BY_GROUP = {
+        "is_active": "cn=active,ou=django,ou=groups,dc=example,dc=com",
+        "is_staff": "cn=staff,ou=django,ou=groups,dc=example,dc=com",
+        "is_superuser": "cn=superuser,ou=django,ou=groups,dc=example,dc=com",
+    }
+
+    AUTH_LDAP_GROUP_TYPE = GroupOfNamesType(name_attr="cn")
+
+    # This is the default, but I like to be explicit.
+    AUTH_LDAP_ALWAYS_UPDATE_USER = True
+
+    # Use LDAP group membership to calculate group permissions.
+    AUTH_LDAP_FIND_GROUP_PERMS = True
+
+    # Cache distinguished names and group memberships for an hour to minimize
+    # LDAP traffic.
+    AUTH_LDAP_CACHE_TIMEOUT = 3600
+
+    # Keep ModelBackend around for per-user permissions and maybe a local
+    # superuser.
+    AUTHENTICATION_BACKENDS = (
+        "django_auth_ldap.backend.LDAPBackend",
+        "django.contrib.auth.backends.ModelBackend",
+    )
