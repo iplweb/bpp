@@ -758,15 +758,14 @@ translitcodec = ["translitcodec (>=0.3)"]
 
 [[package]]
 name = "django-braces"
-version = "1.14.0"
+version = "1.15.0"
 description = "Reusable, generic mixins for Django"
 category = "main"
 optional = false
 python-versions = "*"
 
 [package.dependencies]
-Django = ">=1.11.0"
-six = "*"
+Django = ">=2.2"
 
 [[package]]
 name = "django-cacheops"
@@ -3640,7 +3639,7 @@ test = ["pytest"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.10,<3.11"
-content-hash = "33ca401d8099b3438629959e68a4f25fa999b6f8f6ec0e1a3f512ac37603f31b"
+content-hash = "f5a2e6f619009389616bbc0cbf1ccfb284154d6a4c25900a00d3d77f20787b4e"
 
 [metadata.files]
 aioredis = [
@@ -3991,10 +3990,7 @@ django-autoslug = [
     {file = "django-autoslug-1.9.8.tar.gz", hash = "sha256:bae66c27d35615f472865b99c4d107f3b3add3d22ee337e84960fc07694abd45"},
     {file = "django_autoslug-1.9.8-py2.py3-none-any.whl", hash = "sha256:26459eeddec207e307c55777a10fc25d17f4978753695340b16a17ed248a6f70"},
 ]
-django-braces = [
-    {file = "django-braces-1.14.0.tar.gz", hash = "sha256:83705b78948de00804bfacf40c315d001bb39630f35bbdd8588211c2d5b4d43f"},
-    {file = "django_braces-1.14.0-py2.py3-none-any.whl", hash = "sha256:a6d9b34cf3e4949635e54884097c30410d7964fc7bec7231445ea7079b8c5722"},
-]
+django-braces = []
 django-cacheops = []
 django-celery-results = []
 django-classy-tags = [
