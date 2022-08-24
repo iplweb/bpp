@@ -719,7 +719,7 @@ env = environ.Env(
     AUTH_LDAP_BIND_PASSWORD=(str, None),
     AUTH_LDAP_USER_SEARCH=(str, None),
     AUTH_LDAP_GROUP_SEARCH=(str, "ou=django,ou=groups,dc=auth,dc=local"),
-    AUTH_LDAP_USER_SEARCH_QUERY=(str, None),
+    AUTH_LDAP_USER_SEARCH_QUERY=(str, "userPrincipalName=%(user)s@auth.local"),
 )
 
 ENVFILE_PATH = os.path.join(os.path.expanduser("~"), ".env")
@@ -749,19 +749,6 @@ if AUTH_LDAP_SERVER_URI:
         "(objectClass=groupOfNames)",
     )
     AUTH_LDAP_GROUP_TYPE = GroupOfNamesType(name_attr="cn")
-
-    # Populate the Django user from the LDAP directory.
-    AUTH_LDAP_USER_ATTR_MAP = {
-        "first_name": "givenName",
-        "last_name": "sn",
-        "email": "mail",
-    }
-
-    AUTH_LDAP_USER_FLAGS_BY_GROUP = {
-        "is_active": "cn=active,ou=django,ou=groups,dc=example,dc=com",
-        "is_staff": "cn=staff,ou=django,ou=groups,dc=example,dc=com",
-        "is_superuser": "cn=superuser,ou=django,ou=groups,dc=example,dc=com",
-    }
 
     AUTH_LDAP_GROUP_TYPE = GroupOfNamesType(name_attr="cn")
 
