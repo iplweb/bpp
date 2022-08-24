@@ -1,6 +1,5 @@
+from braces.views._access import AccessMixin
 from django.http import Http404
-
-from django.contrib.auth.mixins import AccessMixin
 
 from bpp.models import OpcjaWyswietlaniaField, Uczelnia
 
@@ -30,11 +29,11 @@ class UczelniaSettingRequiredMixin(AccessMixin):
 
         elif res == OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM:
             if not request.user.is_authenticated:
-                return self.handle_no_permission()
+                return self.handle_no_permission(request)
 
         elif res == OpcjaWyswietlaniaField.POKAZUJ_GDY_W_ZESPOLE:
             if not request.user.is_staff:
-                return self.handle_no_permission()
+                return self.handle_no_permission(request)
 
         else:
             raise NotImplementedError
