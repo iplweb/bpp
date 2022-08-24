@@ -10,6 +10,7 @@ from django_tables2 import MultiTableMixin, RequestConfig
 from django_weasyprint.utils import django_url_fetcher
 
 from formdefaults.helpers import FormDefaultsMixin
+from nowe_raporty.views import BaseRaportAuthMixin
 from raport_slotow.forms import AutorRaportSlotowForm
 from raport_slotow.tables import RaportSlotowAutorTable
 from raport_slotow.util import InitialValuesFromGETMixin, MyExportMixin, MyTableExport
@@ -19,7 +20,6 @@ from django.utils import timezone
 from django.utils.functional import cached_property
 
 from bpp.models import Cache_Punktacja_Autora_Query_View, Dyscyplina_Naukowa
-from bpp.views.mixins import UczelniaSettingRequiredMixin
 
 from django_bpp.version import VERSION
 
@@ -27,7 +27,7 @@ SESSION_KEY = "raport_slotow_data"
 
 
 class WyborOsoby(
-    UczelniaSettingRequiredMixin, InitialValuesFromGETMixin, FormDefaultsMixin, FormView
+    BaseRaportAuthMixin, InitialValuesFromGETMixin, FormDefaultsMixin, FormView
 ):
     template_name = "raport_slotow/wybor_osoby.html"
     form_class = AutorRaportSlotowForm
@@ -47,9 +47,7 @@ class WyborOsoby(
         )
 
 
-class RaportSlotow(
-    UczelniaSettingRequiredMixin, MyExportMixin, MultiTableMixin, TemplateView
-):
+class RaportSlotow(BaseRaportAuthMixin, MyExportMixin, MultiTableMixin, TemplateView):
     template_name = "raport_slotow/raport_slotow_autor.html"
     table_class = RaportSlotowAutorTable
     uczelnia_attr = "pokazuj_raport_slotow_autor"

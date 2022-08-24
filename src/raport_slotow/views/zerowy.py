@@ -6,6 +6,7 @@ from django.db.models.functions import Cast
 from django_filters.views import FilterView
 from django_tables2 import SingleTableMixin
 
+from nowe_raporty.views import BaseRaportAuthMixin
 from raport_slotow.core import autorzy_zerowi
 from raport_slotow.filters import RaportZerowyFilter
 from raport_slotow.models import RaportZerowyEntry
@@ -14,11 +15,9 @@ from raport_slotow.util import MyExportMixin, create_temporary_table_as
 
 from django.contrib.postgres.aggregates.general import StringAgg
 
-from bpp.views.mixins import UczelniaSettingRequiredMixin
-
 
 class RaportSlotowZerowy(
-    UczelniaSettingRequiredMixin, MyExportMixin, SingleTableMixin, FilterView
+    BaseRaportAuthMixin, MyExportMixin, SingleTableMixin, FilterView
 ):
     """Pokazuje listę wszystkich autorów, którzy mają zadeklarowane dziedziny naukowe
     ale nie posiadają slotów za konkretny rok.

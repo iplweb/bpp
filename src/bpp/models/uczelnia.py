@@ -13,6 +13,7 @@ from model_utils import Choices
 
 from pbn_api.exceptions import WillNotExportError
 from .. import const
+from ..const import GR_RAPORTY_WYSWIETLANIE
 from ..util import year_last_month
 from .fields import OpcjaWyswietlaniaField
 
@@ -422,7 +423,15 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         if res == OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM:
             if request.user.is_anonymous:
                 return False
-            return True
+
+            if request.user.is_superuser:
+                return True
+
+            if request.user.groups.filter(name=GR_RAPORTY_WYSWIETLANIE).exists():
+                # Pokazuj zalogowanym ale wyłącznie gdy są w grupei GR_RAPORTY_WYSWIETLANIE
+                return True
+
+            return False
 
         if res == OpcjaWyswietlaniaField.POKAZUJ_GDY_W_ZESPOLE:
             if request.user.is_anonymous:
