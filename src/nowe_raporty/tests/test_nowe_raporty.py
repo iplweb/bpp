@@ -151,8 +151,16 @@ def test_czy_generuj_jednostka_niewidoczny_dla_anonimow(webtest_app, jednostka):
 
 
 @pytest.mark.django_db
-def test_czy_generuj_jednostka_widoczny_dla_zalogowanych(app, jednostka):
+def test_czy_generuj_jednostka_widoczny_dla_zalogowanych(
+    app, jednostka, normal_django_user, grupa_raporty_wyswietlanie
+):
     baker.make(Report, slug="raport-jednostek")
+    res = app.get(
+        reverse("nowe_raporty:jednostka_generuj", args=(jednostka.pk, 2018, 2020))
+    )
+    assert res.status_code == 302
+
+    normal_django_user.groups.add(grupa_raporty_wyswietlanie)
     res = app.get(
         reverse("nowe_raporty:jednostka_generuj", args=(jednostka.pk, 2018, 2020))
     )
@@ -185,7 +193,7 @@ def test_czy_generuj_wydzial_niewidoczny_dla_anonimow(webtest_app, wydzial):
 
 
 @pytest.mark.django_db
-def test_czy_generuj_wydzial_widoczny_dla_zalogowanych(app, wydzial):
+def test_czy_generuj_wydzial_widoczny_dla_niezalogowanych(app, wydzial):
     baker.make(Report, slug="raport-wydzialow")
     res = app.get(
         reverse("nowe_raporty:wydzial_generuj", args=(wydzial.pk, 2018, 2020))

@@ -25,7 +25,7 @@ except ImportError:
 from model_bakery import baker
 
 from bpp import const
-from bpp.const import GR_WPROWADZANIE_DANYCH, TO_AUTOR
+from bpp.const import GR_RAPORTY_WYSWIETLANIE, GR_WPROWADZANIE_DANYCH, TO_AUTOR
 from bpp.fixtures import get_openaccess_data
 from bpp.models import (
     Autor_Dyscyplina,
@@ -89,6 +89,13 @@ def dyscyplina3(db):
     return Dyscyplina_Naukowa.objects.get_or_create(
         nazwa="trzecia dyscyplina", kod="3.3"
     )[0]
+
+
+@pytest.fixture
+def grupa_raporty_wyswietlanie():
+    from django.contrib.auth.models import Group
+
+    return Group.objects.get_or_create(name=GR_RAPORTY_WYSWIETLANIE)[0]
 
 
 @pytest.fixture

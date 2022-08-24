@@ -415,7 +415,7 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
             "status_korekty", flat=True
         )
 
-    def sprawdz_uprawnienie(self, attr, request):
+    def sprawdz_uprawnienie(self, attr, request, ignoruj_grupe=None):
         res = getattr(self, f"pokazuj_{attr}")
         if res == OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE:
             return True
@@ -427,11 +427,15 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
             if request.user.is_superuser:
                 return True
 
-            if request.user.groups.filter(name=GR_RAPORTY_WYSWIETLANIE).exists():
-                # Pokazuj zalogowanym ale wyłącznie gdy są w grupei GR_RAPORTY_WYSWIETLANIE
-                return True
+            if str(ignoruj_grupe) != "ignoruj_grupe":
+                if request.user.groups.filter(name=GR_RAPORTY_WYSWIETLANIE).exists():
+                    # Pokazuj zalogowanym ale wyłącznie gdy są w grupei GR_RAPORTY_WYSWIETLANIE
+                    # chyba, ze jest podany parametr ignoruj_grupe
+                    return True
+                else:
+                    return False
 
-            return False
+            return True
 
         if res == OpcjaWyswietlaniaField.POKAZUJ_GDY_W_ZESPOLE:
             if request.user.is_anonymous:
