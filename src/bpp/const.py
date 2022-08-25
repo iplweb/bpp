@@ -19,7 +19,6 @@ TYP_OGOLNY_DO_PBN = {
 
 GR_WPROWADZANIE_DANYCH = "wprowadzanie danych"
 GR_ZGLOSZENIA_PUBLIKACJI = "zgłoszenia publikacji"
-GR_LDAP = "utworzony przez LDAP"
 GR_RAPORTY_WYSWIETLANIE = "generowanie raportów"
 CHARAKTER_SLOTY_KSIAZKA = 1
 CHARAKTER_SLOTY_ROZDZIAL = 2

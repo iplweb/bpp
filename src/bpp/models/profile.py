@@ -11,7 +11,7 @@ from django.contrib.auth.models import AbstractUser, UserManager
 from django.utils.functional import cached_property
 from django.utils.itercompat import is_iterable
 
-from bpp.const import GR_LDAP, PUSTY_ADRES_EMAIL
+from bpp.const import PUSTY_ADRES_EMAIL
 from bpp.models import ModelZAdnotacjami
 
 
@@ -75,10 +75,5 @@ def populate_bppuser(user, ldap_user, **kwargs):
         if is_iterable(ldap_value):
             ldap_value = " ".join([str(x) for x in ldap_value])
         setattr(user, attr, ldap_value)
-
-    # Dodaj grupę "utworzony przez LDAP"
-    from django.contrib.auth.models import Group
-
-    user.groups.add(Group.objects.get_or_create(name=GR_LDAP)[0])
 
     user.is_active = True

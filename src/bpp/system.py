@@ -30,7 +30,6 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
 
 from bpp.const import (
-    GR_LDAP,
     GR_RAPORTY_WYSWIETLANIE,
     GR_WPROWADZANIE_DANYCH,
     GR_ZGLOSZENIA_PUBLIKACJI,
@@ -183,7 +182,6 @@ groups = {
         flexible_models.ColumnOrder,
     ],
     GR_ZGLOSZENIA_PUBLIKACJI: [Zgloszenie_Publikacji, Zgloszenie_Publikacji_Autor],
-    GR_LDAP: [],
     GR_RAPORTY_WYSWIETLANIE: [],
 }
 
