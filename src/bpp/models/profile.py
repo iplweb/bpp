@@ -77,3 +77,8 @@ def populate_bppuser(user, ldap_user, **kwargs):
         setattr(user, attr, ldap_value)
 
     user.is_active = True
+
+    # Zresetuj uprawnienia superużytkownika i 'w zespole' dla użytkowników
+    # autoryzujących się po LDAP:
+    user.is_superuser = False
+    user.is_staff = False
