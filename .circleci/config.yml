@@ -29,6 +29,11 @@ jobs:
             sudo apt install -y postgresql-client
 
       - run:
+          name: install stuff required to build python-ldap
+          command: |
+            sudo apt install -y libsasl2-dev python3-dev libldap2-dev libssl-dev
+
+      - run:
           name: Install Pango for WeasyPrint
           command: |
             sudo apt update
