@@ -24,6 +24,11 @@ jobs:
     steps:
 
       - run:
+          name: Update apt
+          command: |
+            sudo apt update
+
+      - run:
           name: install postgresql-client
           command: |
             sudo apt install -y postgresql-client
@@ -36,7 +41,6 @@ jobs:
       - run:
           name: Install Pango for WeasyPrint
           command: |
-            sudo apt update
             sudo apt install pango1.0-tests
 
       - run:
