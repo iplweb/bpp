@@ -27,6 +27,7 @@ from zglos_publikacje.models import Zgloszenie_Publikacji
 from bpp.const import PUSTY_ADRES_EMAIL, TO_AUTOR
 from bpp.core import zgloszenia_publikacji_emails
 from bpp.models import Typ_Odpowiedzialnosci, Uczelnia
+from bpp.views.mixins import UczelniaSettingRequiredMixin
 
 
 class Sukces(TemplateView):
@@ -60,7 +61,9 @@ def pokazuj_formularz_platnosci(wizard):
     )
 
 
-class Zgloszenie_PublikacjiWizard(SessionWizardView):
+class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardView):
+    uczelnia_attr = "pokazuj_formularz_zglaszania_publikacji"
+
     template_name = "zglos_publikacje/zgloszenie_publikacji_form.html"
     file_storage = FileSystemStorage(
         location=os.path.join(settings.MEDIA_ROOT, "zglos_publikacje")

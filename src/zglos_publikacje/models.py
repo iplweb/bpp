@@ -99,7 +99,7 @@ class Zgloszenie_Publikacji(
 
         uczelnia = Uczelnia.objects.get_default()
 
-        if (
+        if uczelnia is not None and (
             uczelnia.wymagaj_informacji_o_oplatach is True
             or wpisano_informacje_o_oplatach
         ):

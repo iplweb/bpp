@@ -158,6 +158,11 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         'Pokazuj opcję "Praca recenzowana"'
     )
 
+    pokazuj_formularz_zglaszania_publikacji = OpcjaWyswietlaniaField(
+        "Pokazuj opcję 'Zgłoś nową publikację'",
+        help_text="Czy pokazywać formularz zgłaszania publikacji?",
+    )
+
     domyslnie_afiliuje = models.BooleanField(
         "Domyślnie zaznaczaj, że autor afiliuje",
         help_text="""Przy powiązaniach autor + wydawnictwo, zaznaczaj domyślnie,
