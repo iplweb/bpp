@@ -42,10 +42,10 @@ from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
         ("wydzial_generuj", Wydzial),
     ],
 )
-def test_view_raport_nie_zdefiniowany(app, view, klass):
+def test_view_raport_nie_zdefiniowany(generuj_raporty_app, view, klass):
     obj = baker.make(klass)
     v = reverse("nowe_raporty:" + view, args=(obj.pk, 2017, 2017))
-    res = app.get(v)
+    res = generuj_raporty_app.get(v)
 
     assert "Nie znaleziono definicji" in res.text
 
@@ -134,9 +134,9 @@ def test_czy_jednostka_form_niewidoczny_dla_anonimow(webtest_app, uczelnia):
 
 
 @pytest.mark.django_db
-def test_czy_jednostka_form_widoczny_dla_zalogowanych(app):
+def test_czy_jednostka_form_widoczny_dla_zalogowanych(generuj_raporty_app):
     baker.make(Report, slug="raport-jednostek")
-    res = app.get(reverse("nowe_raporty:jednostka_form"))
+    res = generuj_raporty_app.get(reverse("nowe_raporty:jednostka_form"))
     assert res.status_code == 200
 
 
@@ -152,16 +152,10 @@ def test_czy_generuj_jednostka_niewidoczny_dla_anonimow(webtest_app, jednostka):
 
 @pytest.mark.django_db
 def test_czy_generuj_jednostka_widoczny_dla_zalogowanych(
-    app, jednostka, normal_django_user, grupa_raporty_wyswietlanie
+    generuj_raporty_app, jednostka, normal_django_user, grupa_raporty_wyswietlanie
 ):
     baker.make(Report, slug="raport-jednostek")
-    res = app.get(
-        reverse("nowe_raporty:jednostka_generuj", args=(jednostka.pk, 2018, 2020))
-    )
-    assert res.status_code == 302
-
-    normal_django_user.groups.add(grupa_raporty_wyswietlanie)
-    res = app.get(
+    res = generuj_raporty_app.get(
         reverse("nowe_raporty:jednostka_generuj", args=(jednostka.pk, 2018, 2020))
     )
     assert res.status_code == 200
@@ -176,9 +170,9 @@ def test_czy_wydzial_form_niewidoczny_dla_anonimow(webtest_app, uczelnia):
 
 
 @pytest.mark.django_db
-def test_czy_wydzial_form_widoczny_dla_zalogowanych(app):
+def test_czy_wydzial_form_widoczny_dla_zalogowanych(generuj_raporty_app):
     baker.make(Report, slug="raport-wydzialow")
-    res = app.get(reverse("nowe_raporty:wydzial_form"))
+    res = generuj_raporty_app.get(reverse("nowe_raporty:wydzial_form"))
     assert res.status_code == 200
 
 
@@ -193,9 +187,9 @@ def test_czy_generuj_wydzial_niewidoczny_dla_anonimow(webtest_app, wydzial):
 
 
 @pytest.mark.django_db
-def test_czy_generuj_wydzial_widoczny_dla_niezalogowanych(app, wydzial):
+def test_czy_generuj_wydzial_widoczny_dla_niezalogowanych(generuj_raporty_app, wydzial):
     baker.make(Report, slug="raport-wydzialow")
-    res = app.get(
+    res = generuj_raporty_app.get(
         reverse("nowe_raporty:wydzial_generuj", args=(wydzial.pk, 2018, 2020))
     )
     assert res.status_code == 200
@@ -296,7 +290,7 @@ def test_czy_raport_wydzialow_generuj_i_form_przestrzegaja_ustawien_anonim(
 
 @pytest.mark.django_db
 def test_czy_raport_autorow_generuj_i_form_przestrzegaja_ustawien_zalogowany(
-    app, uczelnia, autor_jan_kowalski
+    generuj_raporty_app, uczelnia, autor_jan_kowalski
 ):
     baker.make(Report, slug="raport-autorow")
 
@@ -309,24 +303,24 @@ def test_czy_raport_autorow_generuj_i_form_przestrzegaja_ustawien_zalogowany(
         uczelnia.pokazuj_raport_autorow = OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM
         uczelnia.save()
 
-        res = app.get(url)
+        res = generuj_raporty_app.get(url)
         assert res.status_code == 200
 
         uczelnia.pokazuj_raport_autorow = OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE
         uczelnia.save()
 
-        res = app.get(url)
+        res = generuj_raporty_app.get(url)
         assert res.status_code == 200
 
         uczelnia.pokazuj_raport_autorow = OpcjaWyswietlaniaField.POKAZUJ_NIGDY
         uczelnia.save()
 
-        app.get(url, status=404)
+        generuj_raporty_app.get(url, status=404)
 
 
 @pytest.mark.django_db
 def test_czy_raport_jednostek_generuj_i_form_przestrzegaja_ustawien_zalogowany(
-    app, uczelnia, jednostka
+    generuj_raporty_app, uczelnia, jednostka
 ):
     baker.make(Report, slug="raport-jednostek")
 
@@ -339,24 +333,24 @@ def test_czy_raport_jednostek_generuj_i_form_przestrzegaja_ustawien_zalogowany(
         uczelnia.pokazuj_raport_jednostek = OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM
         uczelnia.save()
 
-        res = app.get(url)
+        res = generuj_raporty_app.get(url)
         assert res.status_code == 200
 
         uczelnia.pokazuj_raport_jednostek = OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE
         uczelnia.save()
 
-        res = app.get(url)
+        res = generuj_raporty_app.get(url)
         assert res.status_code == 200
 
         uczelnia.pokazuj_raport_jednostek = OpcjaWyswietlaniaField.POKAZUJ_NIGDY
         uczelnia.save()
 
-        app.get(url, status=404)
+        generuj_raporty_app.get(url, status=404)
 
 
 @pytest.mark.django_db
 def test_czy_raport_wydzialow_generuj_i_form_przestrzegaja_ustawien_zalogowany(
-    app, uczelnia, wydzial
+    generuj_raporty_app, uczelnia, wydzial
 ):
     baker.make(Report, slug="raport-wydzialow")
 
@@ -369,19 +363,19 @@ def test_czy_raport_wydzialow_generuj_i_form_przestrzegaja_ustawien_zalogowany(
         uczelnia.pokazuj_raport_wydzialow = OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM
         uczelnia.save()
 
-        res = app.get(url)
+        res = generuj_raporty_app.get(url)
         assert res.status_code == 200
 
         uczelnia.pokazuj_raport_wydzialow = OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE
         uczelnia.save()
 
-        res = app.get(url)
+        res = generuj_raporty_app.get(url)
         assert res.status_code == 200
 
         uczelnia.pokazuj_raport_wydzialow = OpcjaWyswietlaniaField.POKAZUJ_NIGDY
         uczelnia.save()
 
-        app.get(url, status=404)
+        generuj_raporty_app.get(url, status=404)
 
 
 @pytest.mark.django_db

@@ -2,9 +2,21 @@ import pytest
 from flexible_reports.models import Column, Datasource, Report, ReportElement, Table
 from model_bakery import baker
 
+from django.contrib.auth.models import Group
 from django.contrib.contenttypes.models import ContentType
 
+from bpp.const import GR_RAPORTY_WYSWIETLANIE
 from bpp.models import Wydawnictwo_Zwarte
+
+
+@pytest.fixture
+def generuj_raporty_app(app, normal_django_user):
+    # To samo co ``app`` czyli aplikacja WebTest z zalogowanym ``normal_django_user``
+    # ale użytkownik ma grupę "generuj raporty":
+    normal_django_user.groups.add(
+        Group.objects.get_or_create(name=GR_RAPORTY_WYSWIETLANIE)[0]
+    )
+    return app
 
 
 @pytest.fixture
