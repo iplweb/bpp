@@ -24,9 +24,10 @@ from zglos_publikacje.forms import (
 )
 from zglos_publikacje.models import Zgloszenie_Publikacji
 
-from bpp.const import TO_AUTOR
+from bpp.const import PUSTY_ADRES_EMAIL, TO_AUTOR
 from bpp.core import zgloszenia_publikacji_emails
 from bpp.models import Typ_Odpowiedzialnosci, Uczelnia
+from bpp.views.mixins import UczelniaSettingRequiredMixin
 
 
 class Sukces(TemplateView):
@@ -60,7 +61,9 @@ def pokazuj_formularz_platnosci(wizard):
     )
 
 
-class Zgloszenie_PublikacjiWizard(SessionWizardView):
+class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardView):
+    uczelnia_attr = "pokazuj_formularz_zglaszania_publikacji"
+
     template_name = "zglos_publikacje/zgloszenie_publikacji_form.html"
     file_storage = FileSystemStorage(
         location=os.path.join(settings.MEDIA_ROOT, "zglos_publikacje")
@@ -105,6 +108,12 @@ class Zgloszenie_PublikacjiWizard(SessionWizardView):
         return super().get_context_data(form, **kwargs)
 
     def get_form_initial(self, step):
+        # Dla kroku "0" jeżeli użytkownik ma poprawny e-mail, to go użyj:
+        if step == "0":
+            if self.request.user.is_authenticated:
+                if self.request.user.email != PUSTY_ADRES_EMAIL:
+                    return {"email": self.request.user.email}
+
         # Dla kroku "2" (autorzy, dyscypliny) wstaw parametr rok:
         if step == "2":
             return [{"rok": self.request.session.get(const.SESSION_KEY)}]

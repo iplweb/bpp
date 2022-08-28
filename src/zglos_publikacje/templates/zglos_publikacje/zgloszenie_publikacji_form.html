@@ -39,7 +39,7 @@
                 <script type="text/javascript">
                     (function ($) {
                         $('#add-form').click(function () {
-                            var index = $('#id_{{ wizard.steps.step0 }}-TOTAL_FORMS').val()
+                            var index = $('#id_{{ wizard.steps.step1 }}-TOTAL_FORMS').val()
                             var newTable = $('div.form-template').clone()
 
                             newTable.find(':input').each(function () {
@@ -54,6 +54,13 @@
                                 }
                             });
 
+                            newTable.find('div').each(function () {
+                                    $(this).attr(
+                                        "id",
+                                        $(this).attr("id").replace('__prefix__', index)
+                                    );
+                                }
+                            );
                             newTable.find('label').each(function () {
                                     $(this).attr(
                                         "for",

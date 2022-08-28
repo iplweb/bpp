@@ -13,6 +13,7 @@ from model_utils import Choices
 
 from pbn_api.exceptions import WillNotExportError
 from .. import const
+from ..const import GR_RAPORTY_WYSWIETLANIE
 from ..util import year_last_month
 from .fields import OpcjaWyswietlaniaField
 
@@ -155,6 +156,11 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
 
     pokazuj_praca_recenzowana = OpcjaWyswietlaniaField(
         'Pokazuj opcję "Praca recenzowana"'
+    )
+
+    pokazuj_formularz_zglaszania_publikacji = OpcjaWyswietlaniaField(
+        "Pokazuj opcję 'Zgłoś nową publikację'",
+        help_text="Czy pokazywać formularz zgłaszania publikacji?",
     )
 
     domyslnie_afiliuje = models.BooleanField(
@@ -414,7 +420,7 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
             "status_korekty", flat=True
         )
 
-    def sprawdz_uprawnienie(self, attr, request):
+    def sprawdz_uprawnienie(self, attr, request, ignoruj_grupe=None):
         res = getattr(self, f"pokazuj_{attr}")
         if res == OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE:
             return True
@@ -422,6 +428,18 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         if res == OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM:
             if request.user.is_anonymous:
                 return False
+
+            if request.user.is_superuser:
+                return True
+
+            if str(ignoruj_grupe) != "ignoruj_grupe":
+                if request.user.groups.filter(name=GR_RAPORTY_WYSWIETLANIE).exists():
+                    # Pokazuj zalogowanym ale wyłącznie gdy są w grupei GR_RAPORTY_WYSWIETLANIE
+                    # chyba, ze jest podany parametr ignoruj_grupe
+                    return True
+                else:
+                    return False
+
             return True
 
         if res == OpcjaWyswietlaniaField.POKAZUJ_GDY_W_ZESPOLE:

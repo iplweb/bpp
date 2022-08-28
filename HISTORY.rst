@@ -24,6 +24,11 @@ dev
 * włącz język zapytań dla modułu redagowania: autorzy, źródła, jednostki, itp.
   (b/n),
 * możliwość eksportu danych wydawnictw ciągłych i zwartych do formatu XLSX (b/n),
+* możliwość autoryzacji użytkowników za pomocą protokołu LDAP / ActiveDirectory (b/n),
+* wstępna konfiguracja za pomocą django-environ (b/n),
+* wszyscy zalogowani użytkownicy którzy chcą uzyskać dostęp do raportów muszą być dodani
+  do grupy "generowanie raportów" (b/n),
+* formularz zgłaszania publikacji opcjonalnie wymaga zalogowania (b/n),
 
 202207.1087
 -----------

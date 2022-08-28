@@ -8,6 +8,7 @@ from django_filters.views import FilterView
 from django_tables2 import SingleTableMixin
 
 from formdefaults.helpers import FormDefaultsMixin
+from nowe_raporty.views import BaseRaportAuthMixin
 from raport_slotow.filters import RaportSlotowUczelniaEwaluacjaFilter
 from raport_slotow.forms import ParametryRaportSlotowEwaluacjaForm
 from raport_slotow.models import RaportUczelniaEwaluacjaView
@@ -16,13 +17,11 @@ from raport_slotow.util import MyExportMixin
 
 from django.utils import timezone
 
-from bpp.views.mixins import UczelniaSettingRequiredMixin
-
 from django_bpp.version import VERSION
 
 
 class ParametryRaportSlotowEwaluacja(
-    UczelniaSettingRequiredMixin,
+    BaseRaportAuthMixin,
     FormDefaultsMixin,
     FormView,
 ):
@@ -47,7 +46,7 @@ class ParametryRaportSlotowEwaluacja(
 
 
 class RaportSlotowEwaluacja(
-    UczelniaSettingRequiredMixin, MyExportMixin, SingleTableMixin, FilterView
+    BaseRaportAuthMixin, MyExportMixin, SingleTableMixin, FilterView
 ):
     template_name = "raport_slotow/raport_slotow_ewaluacja.html"
     table_class = RaportSlotowEwaluacjaTable

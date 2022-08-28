@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 import os
 
 from django.conf import settings
@@ -20,6 +18,7 @@ from .forms import (
     WydzialRaportForm,
 )
 
+from bpp.const import GR_RAPORTY_WYSWIETLANIE
 from bpp.models import Uczelnia
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
@@ -42,22 +41,33 @@ class BaseFormView(FormDefaultsMixin, FormView):
     def get_context_data(self, **kwargs):
         kwargs["title"] = self.title
         kwargs["report"] = get_object_or_404(Report, slug=self.report_slug)
-        return super(BaseFormView, self).get_context_data(**kwargs)
+        return super().get_context_data(**kwargs)
 
 
-class AutorRaportAuthMixin(UczelniaSettingRequiredMixin):
+class BaseRaportAuthMixin(UczelniaSettingRequiredMixin):
+    """Wspólny mixin - bazowa klasa autoryzująca dostęp do raportów.
+
+    Wymaga ustawienia obiektu uczelnia ``pokazuj_raport_x`` oraz wymaga
+    odpowiedniej grupy czyli ``generowanie_raportow``.
+
+    """
+
+    group_required = GR_RAPORTY_WYSWIETLANIE
+
+
+class AutorRaportAuthMixin(BaseRaportAuthMixin):
     uczelnia_attr = "pokazuj_raport_autorow"
 
 
-class JednostkaRaportAuthMixin(UczelniaSettingRequiredMixin):
+class JednostkaRaportAuthMixin(BaseRaportAuthMixin):
     uczelnia_attr = "pokazuj_raport_jednostek"
 
 
-class WydzialRaportAuthMixin(UczelniaSettingRequiredMixin):
+class WydzialRaportAuthMixin(BaseRaportAuthMixin):
     uczelnia_attr = "pokazuj_raport_wydzialow"
 
 
-class UczelniaRaportAuthMixin(UczelniaSettingRequiredMixin):
+class UczelniaRaportAuthMixin(BaseRaportAuthMixin):
     uczelnia_attr = "pokazuj_raport_uczelni"
 
 
@@ -114,7 +124,7 @@ class GenerujRaportBase(DetailView):
         if self.kwargs["od_roku"] == self.kwargs["do_roku"]:
             return self.kwargs["od_roku"]
         else:
-            return "%s-%s" % (self.kwargs["od_roku"], self.kwargs["do_roku"])
+            return "{}-{}".format(self.kwargs["od_roku"], self.kwargs["do_roku"])
 
     @property
     def title(self):
@@ -162,7 +172,7 @@ class GenerujRaportBase(DetailView):
         kwargs["title"] = self.title
         kwargs["form_link"] = self.form_link
         kwargs["form_title"] = self.form_title
-        return super(GenerujRaportBase, self).get_context_data(**kwargs)
+        return super().get_context_data(**kwargs)
 
     def as_docx_response(self, report, parent_context, filename=None):
         data = as_docx(report, parent_context)
@@ -175,7 +185,7 @@ class GenerujRaportBase(DetailView):
         if filename is None:
             filename = report.title + ".docx"
 
-        response["Content-Disposition"] = 'attachment; filename="{}"'.format(filename)
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
 
         response["Content-Length"] = os.stat(data.name).st_size
         return response
@@ -185,7 +195,7 @@ class GenerujRaportBase(DetailView):
         if filename is None:
             filename = report.title + ".xlsx"
 
-        response["Content-Disposition"] = 'attachment; filename="{}"'.format(filename)
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
 
         xlsx = as_tablib_databook(report, parent_context)
 
@@ -209,9 +219,7 @@ class GenerujRaportBase(DetailView):
                 context["report"], parent_context, filename=self.title + "." + _export
             )
 
-        return super(GenerujRaportBase, self).render_to_response(
-            context, **response_kwargs
-        )
+        return super().render_to_response(context, **response_kwargs)
 
 
 class GenerujRaportDlaAutora(AutorRaportAuthMixin, GenerujRaportBase):

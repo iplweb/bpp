@@ -19,6 +19,7 @@ TYP_OGOLNY_DO_PBN = {
 
 GR_WPROWADZANIE_DANYCH = "wprowadzanie danych"
 GR_ZGLOSZENIA_PUBLIKACJI = "zgłoszenia publikacji"
+GR_RAPORTY_WYSWIETLANIE = "generowanie raportów"
 CHARAKTER_SLOTY_KSIAZKA = 1
 CHARAKTER_SLOTY_ROZDZIAL = 2
 CHARAKTER_SLOTY_REFERAT = 3
@@ -106,3 +107,5 @@ ZDUBLOWANE_POLE_KOMUNIKAT = (
     "Technicznie nie jest to błąd, ale mogą pojawić się problemy przy synchronizacji danych "
     "z systemami zewnętrznymi, np z bazą danych PBN."
 )
+
+PUSTY_ADRES_EMAIL = "brak@email.pl"
