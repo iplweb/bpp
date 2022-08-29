@@ -14,13 +14,15 @@
     <form action="" method="post" id="form-container" enctype="multipart/form-data">{% csrf_token %}
         <fieldset class="fieldset">
             <legend>Formularz {{ wizard.steps.step1 }} z {{ wizard.steps.count }}</legend>
+            <!-- wizard.management_form -->
             {{ wizard.management_form }}
             {% if wizard.form.forms %}
+                <!-- wizard.form.management form -->
                 {{ wizard.form.management_form }}
                 <div class="form-template" style="display:none;">
                     <fieldset class="fieldset">
                     {{ wizard.form.empty_form|crispy }}
-                    <input type="hidden" name="{{ wizard.steps.step0 }}-__prefix__-rok" value="{{ rok }}"/>
+                    <input type="hidden" id="id_2-__prefix__-rok" name="2-__prefix__-rok" value="{{ rok }}"/>
                     </fieldset>
                 </div>
                 {% for form in wizard.form.forms %}
@@ -39,7 +41,7 @@
                 <script type="text/javascript">
                     (function ($) {
                         $('#add-form').click(function () {
-                            var index = $('#id_{{ wizard.steps.step1 }}-TOTAL_FORMS').val()
+                            var index = $('#id_2-TOTAL_FORMS').val()
                             var newTable = $('div.form-template').clone()
 
                             newTable.find(':input').each(function () {
@@ -71,9 +73,7 @@
 
                             newTable.attr("class", "") // remove "form-template"
                             newTable.insertBefore($(this))
-                            $('#id_{{ wizard.steps.step0 }}-TOTAL_FORMS').val(
-                                parseInt($('#id_{{ wizard.steps.step0 }}-TOTAL_FORMS').val()) + 1
-                            )
+                            $('#id_2-TOTAL_FORMS').val(parseInt($('#id_2-TOTAL_FORMS').val()) + 1)
                             newTable.slideDown()
                         })
                     })($)

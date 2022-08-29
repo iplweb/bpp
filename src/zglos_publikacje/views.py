@@ -116,7 +116,7 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
 
         # Dla kroku "2" (autorzy, dyscypliny) wstaw parametr rok:
         if step == "2":
-            return [{"rok": self.request.session.get(const.SESSION_KEY)}]
+            return [{"rok": self.request.session.get(const.SESSION_KEY)}] * 512
         return super().get_form_initial(step)
 
     @transaction.atomic
