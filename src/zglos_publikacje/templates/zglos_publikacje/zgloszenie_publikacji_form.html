@@ -22,7 +22,6 @@
                 <div class="form-template" style="display:none;">
                     <fieldset class="fieldset">
                     {{ wizard.form.empty_form|crispy }}
-                    <input type="hidden" id="id_2-__prefix__-rok" name="2-__prefix__-rok" value="{{ rok }}"/>
                     </fieldset>
                 </div>
                 {% for form in wizard.form.forms %}
@@ -40,6 +39,7 @@
 
                 <script type="text/javascript">
                     (function ($) {
+
                         $('#add-form').click(function () {
                             var index = $('#id_2-TOTAL_FORMS').val()
                             var newTable = $('div.form-template').clone()
@@ -72,6 +72,9 @@
                             );
 
                             newTable.attr("class", "") // remove "form-template"
+
+                            newTable.find("#id_2-" + index + "-rok").val("{{ rok }}")
+
                             newTable.insertBefore($(this))
                             $('#id_2-TOTAL_FORMS').val(parseInt($('#id_2-TOTAL_FORMS').val()) + 1)
                             newTable.slideDown()
