@@ -714,18 +714,29 @@ BPP_MAX_ALLOWED_EXPORT_ITEMS = 1500
 
 env = environ.Env(
     # casting, default value
+    #
+    # LDAP
+    #
     AUTH_LDAP_SERVER_URI=(str, None),
-    AUTH_LDAP_BIND_DN=(str, None),
-    AUTH_LDAP_BIND_PASSWORD=(str, None),
-    AUTH_LDAP_USER_SEARCH=(str, None),
+    # AUTH_LDAP_BIND_DN=(str, None),
+    # AUTH_LDAP_BIND_PASSWORD=(str, None),
+    # AUTH_LDAP_USER_SEARCH=(str, None),
     AUTH_LDAP_GROUP_SEARCH=(str, "ou=django,ou=groups,dc=auth,dc=local"),
     AUTH_LDAP_USER_SEARCH_QUERY=(str, "userPrincipalName=%(user)s@auth.local"),
+    #
+    # Email
+    #
+    EMAIL_URL=(str, "smtp://127.0.0.1:25"),
 )
 
 ENVFILE_PATH = os.path.join(os.path.expanduser("~"), ".env")
 
 if os.path.exists(ENVFILE_PATH) and os.path.isfile(ENVFILE_PATH):
     environ.Env.read_env(ENVFILE_PATH)
+
+#
+# Konfiguracja LDAP
+#
 
 AUTH_LDAP_SERVER_URI = env("AUTH_LDAP_SERVER_URI")
 
@@ -768,3 +779,14 @@ if AUTH_LDAP_SERVER_URI:
         "django_auth_ldap.backend.LDAPBackend",
         "django.contrib.auth.backends.ModelBackend",
     )
+
+#
+# Koniec konfiguracji LDAP
+#
+
+
+#
+# Konfiguracja serwera pocztowego
+#
+EMAIL_CONFIG = env.email("EMAIL_URL")
+vars().update(EMAIL_CONFIG)

@@ -29,6 +29,7 @@ dev
 * wszyscy zalogowani użytkownicy którzy chcą uzyskać dostęp do raportów muszą być dodani
   do grupy "generowanie raportów" (b/n),
 * formularz zgłaszania publikacji opcjonalnie wymaga zalogowania (b/n),
+* możliwość konfiguracji e-mail za pomoca pliku .env (b/n)
 
 202207.1087
 -----------
