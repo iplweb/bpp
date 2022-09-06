@@ -30,6 +30,7 @@ dev
   do grupy "generowanie raportów" (b/n),
 * formularz zgłaszania publikacji opcjonalnie wymaga zalogowania (b/n),
 * możliwość konfiguracji e-mail za pomoca pliku .env (b/n)
+* możliwość konfiguracji kont administratora za pomocą pliku .env (b/n),
 
 202207.1087
 -----------

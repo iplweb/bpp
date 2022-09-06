@@ -370,9 +370,6 @@ ALLOWED_TAGS = ("b", "em", "i", "strong", "strike", "u", "sup", "font", "sub")
 
 SESSION_SECURITY_PASSIVE_URLS = ["/messages/"]
 
-ADMINS = (("Michal Pasternak", "michal.dtz@gmail.com"),)
-MANAGERS = ADMINS
-
 
 def int_or_None(value):
     try:
@@ -727,6 +724,12 @@ env = environ.Env(
     # Email
     #
     EMAIL_URL=(str, "smtp://127.0.0.1:25"),
+    DEFAULT_FROM_EMAIL=(str, "webmaster@localhost"),
+    SERVER_EMAIL=(str, "root@localhost"),
+    #
+    # Administratorzy
+    #
+    ADMINS=(str, "Michał Pasternak <michal.dtz@gmail.com>"),
 )
 
 ENVFILE_PATH = os.path.join(os.path.expanduser("~"), ".env")
@@ -790,3 +793,22 @@ if AUTH_LDAP_SERVER_URI:
 #
 EMAIL_CONFIG = env.email("EMAIL_URL")
 vars().update(EMAIL_CONFIG)
+SERVER_EMAIL = env("SERVER_EMAIL")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL")
+
+#
+# Koniec konfiguracji serwera pocztowego
+#
+
+#
+# Konta administratorów i managerów
+#
+
+from email.utils import getaddresses
+
+ADMINS = getaddresses([env("ADMINS")])
+MANAGERS = ADMINS
+
+#
+# Koniec konfiguracji kont administratora i managera
+#
