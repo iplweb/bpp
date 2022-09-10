@@ -125,7 +125,6 @@ MIDDLEWARE = [
     "dj_pagination.middleware.PaginationMiddleware",
     "session_security.middleware.SessionSecurityMiddleware",
     "notifications.middleware.NotificationsMiddleware",
-    "easyaudit.middleware.easyaudit.EasyAuditMiddleware",
 ]
 
 INTERNAL_IPS = ("127.0.0.1",)
@@ -161,7 +160,6 @@ if TESTING:
 
 
 INSTALLED_APPS = [
-    "easyaudit",
     "tee",
     "formtools",
     "denorm.apps.DenormAppConfig",

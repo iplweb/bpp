@@ -60,4 +60,12 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 EMAIL_BACKEND = "djcelery_email.backends.CeleryEmailBackend"
 
+# django-easy-audit
+
+INSTALLED_APPS.append("easyaudit")  # noqa
+MIDDLEWARE.append(  # noqa
+    "easyaudit.middleware.easyaudit.EasyAuditMiddleware",
+)
+
+# djcelery_email
 INSTALLED_APPS.append("djcelery_email")  # noqa
