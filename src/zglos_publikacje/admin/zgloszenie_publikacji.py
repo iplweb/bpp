@@ -1,6 +1,7 @@
 import uuid
 from functools import update_wrapper
 
+from django.conf import settings
 from django.db import transaction
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
@@ -118,7 +119,10 @@ class Zgloszenie_PublikacjiAdmin(admin.ModelAdmin):
                     try:
                         send_templated_mail(
                             template_name="zwroc_zgloszenie",
-                            from_email=request.user.email,
+                            from_email=getattr(
+                                settings, "DEFAULT_FROM_EMAIL", "webmaster@localhost"
+                            ),
+                            headers={"reply-to": request.user.email},
                             recipient_list=[obj.email],
                             context={
                                 "object": obj,
@@ -184,3 +188,5 @@ class Zgloszenie_PublikacjiAdmin(admin.ModelAdmin):
             return obj.zgloszenie_publikacji_autor_set.first().jednostka.wydzial.nazwa
         except BaseException:
             pass
+
+    wydzial_pierwszego_autora.short_description = "Wydział pierwszego autora"

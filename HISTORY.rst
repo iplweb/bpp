@@ -33,6 +33,12 @@ dev
 * możliwość konfiguracji kont administratora za pomocą pliku .env (b/n),
 * usunięty błąd wyszukiwania wydawców w module redagowania po PBN ID (b/n),
 * możliwość obliczania slotów za 2023 (b/n),
+* zgłaszanie publikacji: mozna dopisywac redaktorow do grupy "zgłoszenia publikacji" aby
+  tylko do nich docierały zgłoszenia publikacji, można też dodać ich jako osoby obsługujące
+  zgłoszenia dla wydziału (Redagowanie -> Administracja) aby dostawały e-maile wg wydziału
+  pierwszej jednostki autora ze zgłoszenia publikacji (b/n),
+* użycie backendu django-celery-email dla wysyłania e-maili out-of-band (b/n),
+* logowanie dostępu do serwisu BPP za pomocą django-easy-audit (b/n),
 
 202207.1087
 -----------

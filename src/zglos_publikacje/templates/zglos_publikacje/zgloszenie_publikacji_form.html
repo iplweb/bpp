@@ -21,12 +21,12 @@
                 {{ wizard.form.management_form }}
                 <div class="form-template" style="display:none;">
                     <fieldset class="fieldset">
-                    {{ wizard.form.empty_form|crispy }}
+                        {{ wizard.form.empty_form|crispy }}
                     </fieldset>
                 </div>
                 {% for form in wizard.form.forms %}
                     <fieldset class="fieldset">
-                    {{ form|crispy }}
+                        {{ form|crispy }}
                     </fieldset>
                 {% endfor %}
 
@@ -88,9 +88,17 @@
         {% if wizard.steps.prev %}
             <button name="wizard_goto_step" type="submit" class="button success"
                     value="{{ wizard.steps.prev }}">
-                Poprzedni formularz
+                <span class="font: fi-arrow-left"></span> poprzedni krok
             </button>
         {% endif %}
-        <button type="submit" class="button submit" id="id-wizard-submit">Zatwierdź formularz</button>
+        {% if wizard.steps.next %}
+            <button type="submit" class="button submit" id="id-wizard-submit">
+                następny krok <span class="fi-arrow-right"/>
+            </button>
+        {% else %}
+            <button type="submit" class="button submit" id="id-wizard-submit">
+                <span class="fi-check"/> zakończ i wyślij do akceptacji
+            </button>
+        {% endif %}
     </form>
 {% endblock %}

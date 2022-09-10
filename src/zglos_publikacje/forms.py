@@ -2,6 +2,7 @@ from crispy_forms.helper import FormHelper
 from crispy_forms_foundation.layout import Fieldset, Layout
 from dal import autocomplete
 from django import forms
+from django.core.exceptions import ValidationError
 from django.forms import inlineformset_factory
 from django.forms.widgets import HiddenInput
 
@@ -57,7 +58,7 @@ class Zgloszenie_Publikacji_DaneOgolneForm(forms.ModelForm):
 
 class Zgloszenie_Publikacji_Plik(forms.ModelForm):
     plik = forms.FileField(
-        required=True,
+        required=False,
         help_text="""Ponieważ w poprzednim formularzu nie podano adresu WWW
     ani adresu DOI publikacji, prosimy o załączenie pełnego tekstu pracy w formacie PDF.
     Dodawany plik wyłącznie na potrzeby zarejestrowania rekordu w bazie publikacji -
@@ -82,6 +83,13 @@ class Zgloszenie_Publikacji_Plik(forms.ModelForm):
             ),
         )
         super().__init__(*args, **kw)
+
+    def clean_plik(self):
+        if self.cleaned_data["plik"] is None:
+            raise ValidationError(
+                "Kliknij przycisk 'Przeglądaj' aby uzupełnić plik PDF z pełnym tekstem "
+                "zgłaszanej publikacji. "
+            )
 
 
 class Zgloszenie_Publikacji_AutorForm(forms.ModelForm):

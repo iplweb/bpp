@@ -4,6 +4,8 @@
 
   do systemu BPP zostało dodane nowe zgłoszenie publikacji.
 
+  {{ object.tytul_oryginalny }}
+
   Obejrzyj je po zalogowaniu się pod adresem:
 
     https://{{ site_url }}{% url "admin:zglos_publikacje_zgloszenie_publikacji_change" object.id %}

@@ -283,6 +283,10 @@ ADMIN_MENU = [
     ("Grupy", "/admin/auth/group/"),
     ("Użytkownicy", "/admin/bpp/bppuser/"),
     ("Formularze wyszukiwania", "/admin/multiseek/searchform/"),
+    (
+        "Obsługa zgłoszeń prac - wydziały",
+        "/admin/zglos_publikacje/obslugujacy_zgloszenia_wydzialow/",
+    ),
 ]
 
 
