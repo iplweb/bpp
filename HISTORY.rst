@@ -3,8 +3,8 @@
 Historia zmian
 ==============
 
-dev
----
+202209.1088
+-----------
 
 * usunięto moduł generowania drukowanej "Kroniki Uczelni" (b/n),
 * obsługa Python 3.10, Django 3.2 (#1115),
