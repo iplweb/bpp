@@ -31,6 +31,7 @@ dev
 * formularz zgłaszania publikacji opcjonalnie wymaga zalogowania (b/n),
 * możliwość konfiguracji e-mail za pomoca pliku .env (b/n)
 * możliwość konfiguracji kont administratora za pomocą pliku .env (b/n),
+* możliwość obliczania slotów za 2023 (b/n),
 
 202207.1087
 -----------

@@ -86,7 +86,15 @@ LINK_PBN_DO_WYDAWCY = "{pbn_api_root}/core/#/publisher/view/{pbn_uid_id}/current
 LINK_PBN_DO_ZRODLA = "{pbn_api_root}/core/#/journal/view/{pbn_uid_id}/current"
 LINK_PBN_DO_PUBLIKACJI = "{pbn_api_root}/core/#/publication/view/{pbn_uid_id}/current"
 
-PBN_LATA = [2017, 2018, 2019, 2020, 2021, 2022]
+PBN_LATA = [
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023,
+]
 
 # Minimalny rok od którego zaczynamy liczyć punkty dla prac PBN i w ogóle minimalny rok integracji.
 PBN_MIN_ROK = PBN_LATA[0]
