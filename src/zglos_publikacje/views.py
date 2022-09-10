@@ -22,7 +22,10 @@ from zglos_publikacje.forms import (
     Zgloszenie_Publikacji_KosztPublikacjiForm,
     Zgloszenie_Publikacji_Plik,
 )
-from zglos_publikacje.models import Zgloszenie_Publikacji
+from zglos_publikacje.models import (
+    Obslugujacy_Zgloszenia_Wydzialow,
+    Zgloszenie_Publikacji,
+)
 
 from bpp.const import PUSTY_ADRES_EMAIL, TO_AUTOR
 from bpp.core import zgloszenia_publikacji_emails
@@ -200,11 +203,30 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
                         instance.save()
 
         def _():
+            recipient_list = None
+
+            pierwszy_autor_i_jednostka = (
+                self.object.zgloszenie_publikacji_autor_set.first()
+            )
+            if pierwszy_autor_i_jednostka is not None:
+                if pierwszy_autor_i_jednostka.jednostka_id is not None:
+                    recipient_list = (
+                        Obslugujacy_Zgloszenia_Wydzialow.objects.emaile_dla_wydzialu(
+                            pierwszy_autor_i_jednostka.jednostka.wydzial
+                        )
+                    )
+
+            if not recipient_list:
+                recipient_list = zgloszenia_publikacji_emails()
+
             try:
                 send_templated_mail(
                     template_name="nowe_zgloszenie",
-                    from_email=self.object.email,
-                    recipient_list=zgloszenia_publikacji_emails(),
+                    from_email=getattr(
+                        settings, "DEFAULT_FROM_EMAIL", "webmaster@localhost"
+                    ),
+                    headers={"reply-to": self.object.email},
+                    recipient_list=recipient_list,
                     context={
                         "object": self.object,
                         "site_url": self.request.get_host(),

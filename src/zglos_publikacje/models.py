@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
@@ -172,3 +173,36 @@ class Zgloszenie_Publikacji_Autor(BazaModeluOdpowiedzialnosciAutorow):
                         f"rok {self.rok} do dyscypliny {self.dyscyplina_naukowa}."
                     }
                 )
+
+
+class Obslugujacy_Zgloszenia_WydzialowManager(models.Manager):
+    def emaile_dla_wydzialu(self, wydzial):
+
+        # Jeżeli jest ktokolwiek przypisany do danego wydziału, to zwróć go:
+        if self.filter(wydzial=wydzial).exists():
+            ret = []
+            for email in (
+                self.filter(wydzial=wydzial)
+                .values_list("user__email", flat=True)
+                .distinct()
+            ):
+                if email != "" and email is not None and email != "brak@email.pl":
+                    ret.append(email)
+
+            if ret:
+                return ret
+
+
+class Obslugujacy_Zgloszenia_Wydzialow(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, models.CASCADE, verbose_name="Użytkownik"
+    )
+    wydzial = models.ForeignKey("bpp.Wydzial", models.CASCADE, verbose_name="Wydział")
+
+    objects = Obslugujacy_Zgloszenia_WydzialowManager()
+
+    class Meta:
+        verbose_name = "obsługujący zgłoszenia dla wydziału"
+        verbose_name_plural = "obsługujący zgłoszenia dla wydziałów"
+        ordering = ("user__username", "wydzial__nazwa")
+        unique_together = [("user", "wydzial")]

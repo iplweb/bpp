@@ -22,7 +22,11 @@ from pbn_api.models import (
     SentData,
 )
 from rozbieznosci_dyscyplin.models import RozbieznosciView, RozbieznosciZrodelView
-from zglos_publikacje.models import Zgloszenie_Publikacji, Zgloszenie_Publikacji_Autor
+from zglos_publikacje.models import (
+    Obslugujacy_Zgloszenia_Wydzialow,
+    Zgloszenie_Publikacji,
+    Zgloszenie_Publikacji_Autor,
+)
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
@@ -171,7 +175,7 @@ groups = {
         RozbieznosciZrodelView,
     ],
     "indeks autorów": [Autor, Autor_Jednostka],
-    "administracja": [User, Group, SearchForm],
+    "administracja": [User, Group, SearchForm, Obslugujacy_Zgloszenia_Wydzialow],
     "web": [Url, Rule, Site, Favicon, FaviconImg, Article, Template],
     "raporty": [
         flexible_models.Report,
