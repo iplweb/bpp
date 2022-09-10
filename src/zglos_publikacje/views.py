@@ -170,6 +170,9 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
         for attr_name, value in kwargs.items():
             setattr(self.object, attr_name, value)
 
+        if self.request.user.is_authenticated and self.object.utworzyl_id is None:
+            self.object.utworzyl = self.request.user
+
         self.object.save()
 
         typ_odpowiedzialnosci = Typ_Odpowiedzialnosci.objects.filter(

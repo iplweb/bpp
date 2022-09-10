@@ -27,6 +27,13 @@ class Zgloszenie_Publikacji(
     utworzono = models.DateTimeField(
         "Utworzono", auto_now_add=True, blank=True, null=True
     )
+    utworzyl = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        models.CASCADE,
+        verbose_name="Utworzył",
+        null=True,
+        blank=True,
+    )
 
     ostatnio_zmieniony = models.DateTimeField(auto_now=True, null=True, db_index=True)
 
