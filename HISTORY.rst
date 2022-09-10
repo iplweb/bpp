@@ -37,7 +37,8 @@ dev
   tylko do nich docierały zgłoszenia publikacji, można też dodać ich jako osoby obsługujące
   zgłoszenia dla wydziału (Redagowanie -> Administracja) aby dostawały e-maile wg wydziału
   pierwszej jednostki autora ze zgłoszenia publikacji (b/n),
-* użycie backendu django-celery-email dla wysyłania e-maili out-of-band (b/n)
+* użycie backendu django-celery-email dla wysyłania e-maili out-of-band (b/n),
+* logowanie dostępu do serwisu BPP za pomocą django-easy-audit (b/n),
 
 202207.1087
 -----------

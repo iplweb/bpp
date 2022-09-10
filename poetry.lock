@@ -941,6 +941,18 @@ python-versions = "*"
 six = "*"
 
 [[package]]
+name = "django-easy-audit"
+version = "1.3.3"
+description = "Yet another Django audit log app, hopefully the simplest one."
+category = "main"
+optional = false
+python-versions = ">=3.5"
+
+[package.dependencies]
+beautifulsoup4 = "*"
+django = ">=2.2,<5.0"
+
+[[package]]
 name = "django-environ"
 version = "0.9.0"
 description = "A package that allows you to utilize 12factor inspired environment variables to configure your Django application."
@@ -3668,7 +3680,7 @@ test = ["pytest"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.10,<3.11"
-content-hash = "1e55181e6105de5e776306a2329b80496cec35e715766009a6b96f0674672301"
+content-hash = "698ba3729032f2af8acd6ec8972fb4f415619771369e6f8fb1362d9aab67669c"
 
 [metadata.files]
 aioredis = [
@@ -4051,6 +4063,7 @@ django-dsl = []
 django-dynamic-fixture = [
     {file = "django-dynamic-fixture-3.1.2.tar.gz", hash = "sha256:08cf0dadb91a1058ef7bf2486e5df2a93571f4517a7de1b806d1a6ee6d78b078"},
 ]
+django-easy-audit = []
 django-environ = []
 django-extensions = [
     {file = "django-extensions-3.1.3.tar.gz", hash = "sha256:5f0fea7bf131ca303090352577a9e7f8bfbf5489bd9d9c8aea9401db28db34a0"},

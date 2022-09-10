@@ -125,6 +125,7 @@ MIDDLEWARE = [
     "dj_pagination.middleware.PaginationMiddleware",
     "session_security.middleware.SessionSecurityMiddleware",
     "notifications.middleware.NotificationsMiddleware",
+    "easyaudit.middleware.easyaudit.EasyAuditMiddleware",
 ]
 
 INTERNAL_IPS = ("127.0.0.1",)
@@ -160,6 +161,7 @@ if TESTING:
 
 
 INSTALLED_APPS = [
+    "easyaudit",
     "tee",
     "formtools",
     "denorm.apps.DenormAppConfig",
@@ -811,4 +813,28 @@ MANAGERS = ADMINS
 
 #
 # Koniec konfiguracji kont administratora i managera
+#
+
+#
+# django-easy-audit
+#
+
+DJANGO_EASY_AUDIT_WATCH_REQUEST_EVENTS = False
+DJANGO_EASY_AUDIT_ADMIN_SHOW_REQUEST_EVENTS = False
+DJANGO_EASY_AUDIT_READONLY_EVENTS = True
+DJANGO_EASY_AUDIT_REGISTERED_CLASSES = [
+    "zglos_publikacje.Zgloszenie_Publikacji",
+    "bpp.Wydawnictwo_Zwarte",
+    "bpp.Wydawnictwo_Ciagle",
+    "bpp.Patent",
+    "bpp.Praca_Doktorska",
+    "bpp.Praca_Habilitacyjna",
+    "bpp.Autor",
+    "bpp.Jednostka",
+    "bpp.Uczelnia",
+    "bpp.Wydzial",
+]
+
+#
+# Koniec django-easy-audit
 #
