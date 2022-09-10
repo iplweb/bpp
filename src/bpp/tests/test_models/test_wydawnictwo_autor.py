@@ -1,6 +1,6 @@
 import pytest
 from django.core.exceptions import ValidationError
-from model_mommy import mommy
+from model_bakery import baker
 
 from bpp.models import (
     Patent,
@@ -44,6 +44,6 @@ def test_autor_jednostka_afiliuje_na_obca(autor_jan_kowalski, obca_jednostka, w)
     ],
 )
 def test_autor_jednostka_afiliuje_bug(autor_jan_kowalski, obca_jednostka, w, r):
-    ri = mommy.make(r)
+    ri = baker.make(r)
     wi = w(autor=autor_jan_kowalski, jednostka=None, rekord=ri)
     wi.clean()

@@ -4,7 +4,7 @@ from ewaluacja2021.models import LiczbaNDlaUczelni
 from ..models import Uczelnia, Ukryj_Status_Korekty, Wydzial
 
 # Uczelnia
-from .core import CommitedModelAdmin, RestrictDeletionToAdministracjaGroupMixin
+from .core import BaseBppAdminMixin, RestrictDeletionToAdministracjaGroupMixin
 from .helpers import ADNOTACJE_FIELDSET, ZapiszZAdnotacjaMixin
 
 from django.contrib import admin
@@ -47,7 +47,10 @@ class Ukryj_Status_KorektyInline(admin.StackedInline):
 
 
 class UczelniaAdmin(
-    RestrictDeletionToAdministracjaGroupMixin, ZapiszZAdnotacjaMixin, CommitedModelAdmin
+    RestrictDeletionToAdministracjaGroupMixin,
+    ZapiszZAdnotacjaMixin,
+    BaseBppAdminMixin,
+    admin.ModelAdmin,
 ):
     list_display = ["nazwa", "nazwa_dopelniacz_field", "skrot", "pbn_uid"]
     autocomplete_fields = ["pbn_uid", "obca_jednostka"]
@@ -116,6 +119,7 @@ class UczelniaAdmin(
                     "pokazuj_raport_slotow_autor",
                     "pokazuj_raport_slotow_zerowy",
                     "pokazuj_raport_slotow_uczelnia",
+                    "pokazuj_formularz_zglaszania_publikacji",
                     "wyszukiwanie_rekordy_na_strone_anonim",
                     "wyszukiwanie_rekordy_na_strone_zalogowany",
                     "sortuj_jednostki_alfabetycznie",
@@ -139,6 +143,13 @@ class UczelniaAdmin(
             {
                 "classes": ("grp-collapse grp-opened",),
                 "fields": ("podpowiadaj_dyscypliny",),
+            },
+        ),
+        (
+            "Zgłaszanie publikacji",
+            {
+                "classes": ("grp-collapse grp-opened",),
+                "fields": ("wymagaj_informacji_o_oplatach",),
             },
         ),
         ADNOTACJE_FIELDSET,

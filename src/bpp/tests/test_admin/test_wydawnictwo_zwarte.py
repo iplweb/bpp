@@ -1,6 +1,6 @@
 import pytest
 from django.urls import reverse
-from model_mommy import mommy
+from model_bakery import baker
 
 from pbn_api.models import Publication
 
@@ -21,12 +21,12 @@ TEST_PBN_ID = 50000
 )
 def test_Wydawnictwo_Zwarte_Admin_sprawdz_duplikaty_www_doi(admin_app, fld, value):
     if fld == "pbn_uid":
-        value = mommy.make(Publication, pk=TEST_PBN_ID)
+        value = baker.make(Publication, pk=TEST_PBN_ID)
 
-    mommy.make(Wydawnictwo_Zwarte, **{fld: value})
-    w2 = mommy.make(Wydawnictwo_Zwarte)
+    baker.make(Wydawnictwo_Zwarte, rok=2020, **{fld: value})
+    w2 = baker.make(Wydawnictwo_Zwarte, rok=2020)
     if fld == "pbn_uid":
-        value = TEST_PBN_ID  # mommy.make(Publication, pk=TEST_PBN_ID)
+        value = TEST_PBN_ID  # baker.make(Publication, pk=TEST_PBN_ID)
 
     url = "admin:bpp_wydawnictwo_zwarte_change"
     page = admin_app.get(reverse(url, args=(w2.pk,)))

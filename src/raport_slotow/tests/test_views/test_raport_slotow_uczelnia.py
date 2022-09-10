@@ -1,13 +1,13 @@
 import pytest
 from django.urls import reverse
-from model_mommy import mommy
+from model_bakery import baker
 
 from raport_slotow.models.uczelnia import RaportSlotowUczelnia
 
 
 @pytest.fixture
 def raport_slotow_uczelnia(uczelnia, admin_user) -> RaportSlotowUczelnia:
-    return mommy.make(RaportSlotowUczelnia, owner=admin_user)
+    return baker.make(RaportSlotowUczelnia, owner=admin_user)
 
 
 @pytest.fixture

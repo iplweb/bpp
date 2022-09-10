@@ -12,8 +12,8 @@ class Scientist(LinkDoPBNMixin, BasePBNMongoDBModel):
     url_do_pbn = const.LINK_PBN_DO_AUTORA
     atrybut_dla_url_do_pbn = "pk"
 
-    from_institution_api = models.NullBooleanField(
-        "Rekord z API instytucji", db_index=True
+    from_institution_api = models.BooleanField(
+        "Rekord z API instytucji", db_index=True, null=True
     )
 
     lastName = models.TextField(db_index=True, null=True, blank=True)

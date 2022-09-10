@@ -1,0 +1,14 @@
+{% block subject %}Zgłoszenie publikacji z dnia {{ object.utworzono }} - {{ object.tytul_oryginalny }}{% endblock %}
+{% block plain %}
+  Dzień dobry,
+
+  do systemu BPP zostało dodane nowe zgłoszenie publikacji.
+
+  {{ object.tytul_oryginalny }}
+
+  Obejrzyj je po zalogowaniu się pod adresem:
+
+    https://{{ site_url }}{% url "admin:zglos_publikacje_zgloszenie_publikacji_change" object.id %}
+
+  Dziękuję!
+{% endblock %}

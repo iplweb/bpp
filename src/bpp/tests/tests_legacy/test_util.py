@@ -1,7 +1,5 @@
-# -*- encoding: utf-8 -*-
-
 from django.test import TestCase
-from model_mommy import mommy
+from model_bakery import baker
 
 from bpp.models import Autor
 from bpp.util import get_copy_from_db, has_changed, slugify_function
@@ -19,12 +17,12 @@ class TestUtil(TestCase):
         self.assertEqual(slugify_function(test), result)
 
     def test_get_copy_from_db(self):
-        a = mommy.make(Autor)
+        a = baker.make(Autor)
         b = get_copy_from_db(a)
         self.assertEqual(a.pk, b.pk)
 
     def test_has_changed(self):
-        a = mommy.make(Autor)
+        a = baker.make(Autor)
         self.assertEqual(has_changed(a, "nazwisko"), False)
 
         a.nazwisko = "Foo"

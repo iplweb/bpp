@@ -2,7 +2,7 @@ from datetime import timedelta
 
 import pytest
 from django.urls import reverse
-from model_mommy import mommy
+from model_bakery import baker
 
 from django.utils.timezone import localtime
 
@@ -74,7 +74,7 @@ def test_rest_api_wydawnictwo_zwarte_ukryj_status(
 @pytest.fixture
 def wiele_wydawnictw_zwartych(db):
     for a in range(100):
-        mommy.make(Wydawnictwo_Zwarte)
+        baker.make(Wydawnictwo_Zwarte)
 
 
 @pytest.mark.django_db

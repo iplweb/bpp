@@ -8,6 +8,7 @@ from django_filters.views import FilterView
 from django_tables2 import SingleTableMixin
 
 from formdefaults.helpers import FormDefaultsMixin
+from nowe_raporty.views import BaseRaportAuthMixin
 from raport_slotow.filters import RaportSlotowUczelniaEwaluacjaFilter
 from raport_slotow.forms import ParametryRaportSlotowEwaluacjaForm
 from raport_slotow.models import RaportUczelniaEwaluacjaView
@@ -16,13 +17,11 @@ from raport_slotow.util import MyExportMixin
 
 from django.utils import timezone
 
-from bpp.views.mixins import UczelniaSettingRequiredMixin
-
 from django_bpp.version import VERSION
 
 
 class ParametryRaportSlotowEwaluacja(
-    UczelniaSettingRequiredMixin,
+    BaseRaportAuthMixin,
     FormDefaultsMixin,
     FormView,
 ):
@@ -47,7 +46,7 @@ class ParametryRaportSlotowEwaluacja(
 
 
 class RaportSlotowEwaluacja(
-    UczelniaSettingRequiredMixin, MyExportMixin, SingleTableMixin, FilterView
+    BaseRaportAuthMixin, MyExportMixin, SingleTableMixin, FilterView
 ):
     template_name = "raport_slotow/raport_slotow_ewaluacja.html"
     table_class = RaportSlotowEwaluacjaTable
@@ -66,7 +65,7 @@ class RaportSlotowEwaluacja(
             if self.data["upowaznienie_pbn"] == "":
                 self.data["upowaznienie_pbn"] = None
 
-            return super(RaportSlotowEwaluacja, self).get(self.request, *args, **kw)
+            return super().get(self.request, *args, **kw)
         else:
             return self.form_invalid(form)
 
@@ -79,7 +78,7 @@ class RaportSlotowEwaluacja(
             ("Od roku:", self.data["od_roku"]),
             ("Do roku:", self.data["do_roku"]),
             ("Upoważnienie PBN:", self.data["upowaznienie_pbn"]),
-            ("Wygenerowano:", timezone.now()),
+            ("Wygenerowano:", str(timezone.now())),
             ("Wersja oprogramowania BPP", VERSION),
         ]
 
@@ -159,7 +158,7 @@ class RaportSlotowEwaluacja(
         )
 
     def get_context_data(self, *, object_list=None, **kwargs):
-        context = super(RaportSlotowEwaluacja, self).get_context_data(**kwargs)
+        context = super().get_context_data(**kwargs)
         context["od_roku"] = self.data["od_roku"]
         context["do_roku"] = self.data["do_roku"]
         context["export_link"] = urllib.parse.urlencode(

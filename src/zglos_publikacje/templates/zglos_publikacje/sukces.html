@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block extratitle %}
+    Zgłoś publikację
+{% endblock %}
+{% block content %}
+
+    <h1>Dziękujemy!</h1>
+
+    <p>
+        Dziękujemy za zgłoszenie.</p>
+
+    <p> Zespół Biblioteki został powiadomiony. Gdy Twoje zgłoszenie
+        zostanie zaakceptowane, otrzymasz e-mail z potwierdzeniem oraz z lokalizacją wpisu w bazie BPP.
+    </p>
+    <p><a class="submit button" href="{% url "zglos_publikacje:nowe_zgloszenie" %}">Zgłoś kolejną publikację</a></p>
+{% endblock %}

@@ -13,6 +13,7 @@ from long_running.views import (
     LongRunningRouterView,
     RestartLongRunningOperationView,
 )
+from nowe_raporty.views import BaseRaportAuthMixin
 from raport_slotow.filters import (
     RaportSlotowUczelniaBezJednostekIWydzialowFilter,
     RaportSlotowUczelniaFilter,
@@ -35,7 +36,7 @@ from django_bpp.version import VERSION
 
 
 class ListaRaportSlotowUczelnia(
-    UczelniaSettingRequiredMixin, FormDefaultsMixin, LongRunningOperationsView
+    BaseRaportAuthMixin, FormDefaultsMixin, LongRunningOperationsView
 ):
     uczelnia_attr = "pokazuj_raport_slotow_uczelnia"
     title = "Raport slotów - uczelnia"
@@ -65,14 +66,12 @@ class UtworzRaportSlotowUczelnia(
         return context
 
 
-class RouterRaportuSlotowUczelnia(UczelniaSettingRequiredMixin, LongRunningRouterView):
+class RouterRaportuSlotowUczelnia(BaseRaportAuthMixin, LongRunningRouterView):
     uczelnia_attr = "pokazuj_raport_slotow_uczelnia"
     model = RaportSlotowUczelnia
 
 
-class SzczegolyRaportSlotowUczelnia(
-    UczelniaSettingRequiredMixin, LongRunningDetailsView
-):
+class SzczegolyRaportSlotowUczelnia(BaseRaportAuthMixin, LongRunningDetailsView):
     # template_name = "raport_slotow/raport_slotow_uczelnia_szcz.html"
     uczelnia_attr = "pokazuj_raport_slotow_uczelnia"
     export_formats = ["html", "xlsx"]
@@ -81,14 +80,14 @@ class SzczegolyRaportSlotowUczelnia(
 
 
 class WygenerujPonownieRaportSlotowUczelnia(
-    UczelniaSettingRequiredMixin, RestartLongRunningOperationView
+    BaseRaportAuthMixin, RestartLongRunningOperationView
 ):
     uczelnia_attr = "pokazuj_raport_slotow_uczelnia"
     model = RaportSlotowUczelnia
 
 
 class SzczegolyRaportSlotowUczelniaListaRekordow(
-    UczelniaSettingRequiredMixin,
+    BaseRaportAuthMixin,
     LoginRequiredMixin,
     MyExportMixin,
     SingleTableMixin,

@@ -1,4 +1,3 @@
-# -*- encoding: utf-8 -*-
 from django import forms
 from multiseek.models import SearchForm
 
@@ -21,7 +20,7 @@ from .autor import AutorAdmin  # noqa
 from .autor_dyscyplina import Autor_DyscyplinaAdmin  # noqa
 from .charakter_formalny import Charakter_FormalnyAdmin  # noqa
 from .core import (
-    CommitedModelAdmin,
+    BaseBppAdminMixin,
     PreventDeletionAdmin,
     RestrictDeletionToAdministracjaGroupAdmin,
     RestrictDeletionToAdministracjaGroupMixin,
@@ -84,12 +83,14 @@ admin.site.register(Wymiar_Etatu, PreventDeletionAdmin)
 
 @admin.register(Zewnetrzna_Baza_Danych)
 class Zewnetrzna_Baza_DanychAdmin(
-    RestrictDeletionToAdministracjaGroupAdmin, CommitedModelAdmin
+    RestrictDeletionToAdministracjaGroupAdmin, BaseBppAdminMixin, admin.ModelAdmin
 ):
     list_display = ["nazwa", "skrot"]
 
 
-class Charakter_PBNAdmin(RestrictDeletionToAdministracjaGroupMixin, CommitedModelAdmin):
+class Charakter_PBNAdmin(
+    RestrictDeletionToAdministracjaGroupMixin, BaseBppAdminMixin, admin.ModelAdmin
+):
     list_display = [
         "identyfikator",
         "wlasciwy_dla",
@@ -101,19 +102,19 @@ class Charakter_PBNAdmin(RestrictDeletionToAdministracjaGroupMixin, CommitedMode
 
     def charaktery_formalne(self, rec):
         return ", ".join(
-            ["%s (%s)" % (x.nazwa, x.skrot) for x in rec.charakter_formalny_set.all()]
+            [f"{x.nazwa} ({x.skrot})" for x in rec.charakter_formalny_set.all()]
         )
 
     def typy_kbn(self, rec):
-        return ", ".join(
-            ["%s (%s)" % (x.nazwa, x.skrot) for x in rec.typ_kbn_set.all()]
-        )
+        return ", ".join([f"{x.nazwa} ({x.skrot})" for x in rec.typ_kbn_set.all()])
 
 
 admin.site.register(Charakter_PBN, Charakter_PBNAdmin)
 
 
-class NazwaISkrotAdmin(RestrictDeletionToAdministracjaGroupMixin, CommitedModelAdmin):
+class NazwaISkrotAdmin(
+    RestrictDeletionToAdministracjaGroupMixin, BaseBppAdminMixin, admin.ModelAdmin
+):
     list_display = ["skrot", "nazwa"]
     search_fields = ["skrot", "nazwa"]
 
@@ -121,7 +122,9 @@ class NazwaISkrotAdmin(RestrictDeletionToAdministracjaGroupMixin, CommitedModelA
 admin.site.register(Tytul, NazwaISkrotAdmin)
 
 
-class Typ_KBNAdmin(RestrictDeletionToAdministracjaGroupAdmin, CommitedModelAdmin):
+class Typ_KBNAdmin(
+    RestrictDeletionToAdministracjaGroupAdmin, BaseBppAdminMixin, admin.ModelAdmin
+):
     list_display = ["nazwa", "skrot", "artykul_pbn", "charakter_pbn"]
 
 
@@ -129,13 +132,13 @@ admin.site.register(Typ_KBN, Typ_KBNAdmin)
 
 
 class Typ_OdpowiedzialnosciAdmin(
-    RestrictDeletionToAdministracjaGroupMixin, CommitedModelAdmin
+    RestrictDeletionToAdministracjaGroupMixin, BaseBppAdminMixin, admin.ModelAdmin
 ):
     list_display = ["nazwa", "skrot", "typ_ogolny"]
 
 
 class Tryb_OpenAccess_Wydawnictwo_CiagleAdmin(
-    RestrictDeletionToAdministracjaGroupMixin, CommitedModelAdmin
+    RestrictDeletionToAdministracjaGroupMixin, BaseBppAdminMixin, admin.ModelAdmin
 ):
     list_display = ["nazwa", "skrot"]
 
@@ -146,7 +149,7 @@ admin.site.register(
 
 
 class Tryb_OpenAccess_Wydawnictwo_ZwarteAdmin(
-    RestrictDeletionToAdministracjaGroupMixin, CommitedModelAdmin
+    RestrictDeletionToAdministracjaGroupMixin, BaseBppAdminMixin, admin.ModelAdmin
 ):
     list_display = ["nazwa", "skrot"]
 
@@ -157,7 +160,7 @@ admin.site.register(
 
 
 class Czas_Udostepnienia_OpenAccessAdmin(
-    RestrictDeletionToAdministracjaGroupMixin, CommitedModelAdmin
+    RestrictDeletionToAdministracjaGroupMixin, BaseBppAdminMixin, admin.ModelAdmin
 ):
     list_display = ["nazwa", "skrot"]
 
@@ -166,7 +169,7 @@ admin.site.register(Czas_Udostepnienia_OpenAccess, Czas_Udostepnienia_OpenAccess
 
 
 class Licencja_OpenAccessAdmin(
-    RestrictDeletionToAdministracjaGroupMixin, CommitedModelAdmin
+    RestrictDeletionToAdministracjaGroupMixin, BaseBppAdminMixin, admin.ModelAdmin
 ):
     list_display = ["nazwa", "skrot"]
 
@@ -175,7 +178,7 @@ admin.site.register(Licencja_OpenAccess, Licencja_OpenAccessAdmin)
 
 
 class Wersja_Tekstu_OpenAccessAdmin(
-    RestrictDeletionToAdministracjaGroupMixin, CommitedModelAdmin
+    RestrictDeletionToAdministracjaGroupMixin, BaseBppAdminMixin, admin.ModelAdmin
 ):
     list_display = ["nazwa", "skrot"]
 
@@ -236,7 +239,7 @@ class BppUserAdmin(UserAdmin):
             if not BppUser.objects.exclude(pk=obj.pk).exists():
                 return False
 
-        return super(BppUserAdmin, self).has_delete_permission(request, obj)
+        return super().has_delete_permission(request, obj)
 
     def lista_grup(self, row):
         return ", ".join([x.name for x in row.groups.all()])

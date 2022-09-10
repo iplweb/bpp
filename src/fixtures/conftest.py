@@ -8,6 +8,7 @@ import django_webtest
 import pytest
 import webtest
 from dbtemplates.models import Template
+from django_webtest import DjangoTestApp
 from rest_framework.test import APIClient
 from splinter.driver import DriverAPI
 
@@ -21,10 +22,10 @@ try:
 except ImportError:
     from django.urls import reverse
 
-from model_mommy import mommy
+from model_bakery import baker
 
 from bpp import const
-from bpp.const import GR_WPROWADZANIE_DANYCH, TO_AUTOR
+from bpp.const import GR_RAPORTY_WYSWIETLANIE, GR_WPROWADZANIE_DANYCH, TO_AUTOR
 from bpp.fixtures import get_openaccess_data
 from bpp.models import (
     Autor_Dyscyplina,
@@ -55,9 +56,9 @@ NORMAL_DJANGO_USER_PASSWORD = "test_password"
 
 from asgi_live_server import asgi_live_server  # noqa
 
-from bpp.tests.util import setup_mommy
+from bpp.tests.util import setup_model_bakery
 
-setup_mommy()
+setup_model_bakery()
 
 
 def current_rok():
@@ -88,6 +89,13 @@ def dyscyplina3(db):
     return Dyscyplina_Naukowa.objects.get_or_create(
         nazwa="trzecia dyscyplina", kod="3.3"
     )[0]
+
+
+@pytest.fixture
+def grupa_raporty_wyswietlanie():
+    from django.contrib.auth.models import Group
+
+    return Group.objects.get_or_create(name=GR_RAPORTY_WYSWIETLANIE)[0]
 
 
 @pytest.fixture
@@ -242,7 +250,7 @@ def autor_jan_nowak(db, tytuly):
 
 @pytest.fixture(scope="function")
 def autor(db, tytuly):
-    return mommy.make(Autor)
+    return baker.make(Autor)
 
 
 @pytest.fixture(scope="function")
@@ -273,6 +281,28 @@ JEDNOSTKA_UCZELNI = "Jednostka Uczelni"
 def jednostka(wydzial, db):
 
     return _jednostka_maker(JEDNOSTKA_UCZELNI, skrot="Jedn. Ucz.", wydzial=wydzial)
+
+
+@pytest.mark.django_db
+@pytest.fixture(scope="function")
+def aktualna_jednostka(jednostka: Jednostka, wydzial, db):
+    jednostka.jednostka_wydzial_set.create(wydzial=wydzial)
+    jednostka.refresh_from_db()
+    return jednostka
+
+
+@pytest.mark.django_db
+@pytest.fixture
+def drugi_wydzial(uczelnia):
+    return baker.make(Wydzial, uczelnia=uczelnia)
+
+
+@pytest.mark.django_db
+@pytest.fixture
+def druga_aktualna_jednostka(druga_jednostka, drugi_wydzial):
+    druga_jednostka.jednostka_wydzial_set.create(wydzial=drugi_wydzial)
+    druga_jednostka.refresh_from_db()
+    return druga_jednostka
 
 
 JEDNOSTKA_PODRZEDNA = "Jednostka P-rzedna"
@@ -315,7 +345,7 @@ def jednostka_maker():
 
 
 def _zrodlo_maker(nazwa, skrot, **kwargs):
-    return mommy.make(Zrodlo, nazwa=nazwa, skrot=skrot, **kwargs)
+    return baker.make(Zrodlo, nazwa=nazwa, skrot=skrot, **kwargs)
 
 
 @pytest.fixture
@@ -353,7 +383,7 @@ def _wydawnictwo_maker(klass, **kwargs):
     for key, value in kw_wyd.items():
         set_default(key, value, kwargs)
 
-    return mommy.make(klass, **kwargs)
+    return baker.make(klass, **kwargs)
 
 
 def _wydawnictwo_ciagle_maker(**kwargs):
@@ -532,8 +562,13 @@ def _webtest_login(webtest_app, username, password, login_form="login_form"):
 def wprowadzanie_danych_user(normal_django_user):
     from django.contrib.auth.models import Group
 
+    # zeby bpp.core.editor_emails zwracało
+    normal_django_user.email = "foo@bar.pl"
+
     grp = Group.objects.get_or_create(name=GR_WPROWADZANIE_DANYCH)[0]
     normal_django_user.groups.add(grp)
+
+    normal_django_user.save()
     return normal_django_user
 
 
@@ -552,7 +587,7 @@ def wd_app(webtest_app, wprowadzanie_danych_user):
 
 
 @pytest.fixture(scope="function")
-def admin_app(webtest_app, admin_user):
+def admin_app(webtest_app, admin_user) -> DjangoTestApp:
     """
     :rtype: django_webtest.DjangoTestApp
     """
@@ -813,21 +848,21 @@ from asgi_live_server import asgi_live_server  # noqa
 
 @pytest.fixture
 def wydawnictwo_zwarte_przed_korekta(statusy_korekt):
-    return mommy.make(
+    return baker.make(
         Wydawnictwo_Zwarte, status_korekty=statusy_korekt["przed korektą"]
     )
 
 
 @pytest.fixture
 def wydawnictwo_zwarte_w_trakcie_korekty(statusy_korekt):
-    return mommy.make(
+    return baker.make(
         Wydawnictwo_Zwarte, status_korekty=statusy_korekt["w trakcie korekty"]
     )
 
 
 @pytest.fixture
 def wydawnictwo_zwarte_po_korekcie(statusy_korekt):
-    return mommy.make(Wydawnictwo_Zwarte, status_korekty=statusy_korekt["po korekcie"])
+    return baker.make(Wydawnictwo_Zwarte, status_korekty=statusy_korekt["po korekcie"])
 
 
 @pytest.fixture
@@ -850,7 +885,7 @@ def gen_kod_dyscypliny_func():
     return f"{top}.{bottom}"
 
 
-mommy.generators.add(
+baker.generators.add(
     "bpp.models.dyscyplina_naukowa.KodDyscyplinyField", gen_kod_dyscypliny_func
 )
 
@@ -905,7 +940,7 @@ def pytest_collection_modifyitems(items):
     # lub 'admin_browser', aby można było szybko uruchamiać wyłacznie te testy
     # lub nie uruchamiać ich:
 
-    flaky_test = pytest.mark.flaky(reruns=5)
+    flaky_test = pytest.mark.flaky(reruns=10)
 
     for item in items:
         fixtures = getattr(item, "fixturenames", ())

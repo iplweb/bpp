@@ -53,6 +53,14 @@ class JednostkaManager(FulltextSearchMixin, TreeManager):
     def get_queryset(self, *args, **kwargs):
         return super().get_queryset(*args, **kwargs).select_related("wydzial")
 
+    def widoczne(self):
+        "Jednostki widoczne (nie-ukryte)"
+        return self.filter(widoczna=True)
+
+    def publiczne(self):
+        """Jednostki widoczne publicznie"""
+        return self.widoczne().filter(aktualna=True)
+
 
 class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
     parent = TreeForeignKey(
@@ -68,7 +76,7 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
         Uczelnia,
         CASCADE,
         # Jeżeli dam tu rozsądny default, żeby w adminie się wyświetlało prawidłowo,
-        # to z kolei wysiądzie mi cała masa testów, korzystająca z model_mommy
+        # to z kolei wysiądzie mi cała masa testów, korzystająca z model_bakery
         # i tworząca obiekt 'Uczelnia' na poczekaniu (pole nie może być NULL).
         # Zatem, zostawiamy to wyłączone i w adminie ustawimy wartośći inicjalne.
         # default=lambda: Uczelnia.objects.first()

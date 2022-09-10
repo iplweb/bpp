@@ -22,13 +22,22 @@ from pbn_api.models import (
     SentData,
 )
 from rozbieznosci_dyscyplin.models import RozbieznosciView, RozbieznosciZrodelView
+from zglos_publikacje.models import (
+    Obslugujacy_Zgloszenia_Wydzialow,
+    Zgloszenie_Publikacji,
+    Zgloszenie_Publikacji_Autor,
+)
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
 
-from bpp.const import GR_WPROWADZANIE_DANYCH
+from bpp.const import (
+    GR_RAPORTY_WYSWIETLANIE,
+    GR_WPROWADZANIE_DANYCH,
+    GR_ZGLOSZENIA_PUBLIKACJI,
+)
 from bpp.models import (
     Autor,
     Autor_Dyscyplina,
@@ -166,7 +175,7 @@ groups = {
         RozbieznosciZrodelView,
     ],
     "indeks autorów": [Autor, Autor_Jednostka],
-    "administracja": [User, Group, SearchForm],
+    "administracja": [User, Group, SearchForm, Obslugujacy_Zgloszenia_Wydzialow],
     "web": [Url, Rule, Site, Favicon, FaviconImg, Article, Template],
     "raporty": [
         flexible_models.Report,
@@ -176,6 +185,16 @@ groups = {
         flexible_models.Datasource,
         flexible_models.ColumnOrder,
     ],
+    GR_ZGLOSZENIA_PUBLIKACJI: [Zgloszenie_Publikacji, Zgloszenie_Publikacji_Autor],
+    GR_RAPORTY_WYSWIETLANIE: [],
+}
+
+# Słownik na podstawie którego dodajemy użytkowników z danej grupy automatycznie
+# do innej:
+groups_auto_add = {
+    GR_WPROWADZANIE_DANYCH: [
+        GR_RAPORTY_WYSWIETLANIE,
+    ]
 }
 
 # Po migracji, upewnij się że robots.txt są generowane poprawnie
@@ -228,3 +247,6 @@ def odtworz_grupy(**kwargs):
     for u, grps in list(grp_dict.items()):
         for gname in grps:
             u.groups.add(Group.objects.get(name=gname))
+            if gname in groups_auto_add:
+                for extra_group in groups_auto_add[gname]:
+                    u.groups.add(Group.objects.get(name=extra_group))

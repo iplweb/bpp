@@ -16,7 +16,9 @@ Contents:
    sloty
    pbn
    import_pracownikow
+   zglos_publikacje
    usage_admin
+   advanced
    contributing
    faq
    authors

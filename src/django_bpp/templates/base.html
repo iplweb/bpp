@@ -24,8 +24,7 @@
 {% endblock %}
 
 {% block body %}
-    {% if request.user.is_authenticated %}
-
+        {% load notifications %}
         <div id="messageTemplate" style="display: none;">
         {% verbatim messageTemplate %}
         <div data-closable
@@ -48,6 +47,8 @@
         {% endverbatim messageTemplate %}
         </div>
         {# fix pycharm highlighting #}
+
+    {% if request.user.is_authenticated %}
         {{ extraChannels|json_script:"extra-channels" }}
         <script type="text/javascript">
             $(document).ready(function () {
@@ -64,7 +65,6 @@
                 });
 
                 {% if messages %}
-                    {% load notifications %}
                     {% for message in messages %}
                         bppNotifications.addMessage({
                             cssClass: '{{ message.level|message_level_to_css_class }}',
@@ -82,6 +82,31 @@
             });
 
         </script>
+    {% else %}
+{#        Użytkownik NIE jest autoryzowany -- wyrzuć mu za pomoca JScript (zeby wygladalo identycznie) #}
+{#        listę statycznych komunikatów -- flash messages (tych co to pomiędzy requestami)... #}
+
+        <script type="text/javascript">
+            $(document).ready(function () {
+                bppNotifications.init("{% static "bpp/wav/alert.wav" %}");
+
+                {% if messages %}
+                    {% for message in messages %}
+                        bppNotifications.addMessage({
+                            cssClass: '{{ message.level|message_level_to_css_class }}',
+                            clickURL: '{{ message.url }}',
+                            {% if message.pk %}
+                                closeURL: '{% url "messages_extends:message_mark_read" message.pk %}',
+                            {% endif %}
+                            pk: '{{ message.pk }}',
+                            text: '{{ message.message|just_single_quotes|safe }}',
+                            sound: false
+                        });
+                    {% endfor %}
+                {% endif %}
+            });
+        </script>
+
     {% endif %}
 
     <div class="title-bar" data-responsive-toggle="example-menu" data-hide-for="medium">
@@ -192,33 +217,38 @@
 
                         </ul>
                     </li>
-                    {% if not request.user.is_anonymous %}
-                        <li>
-                            <a href="#">operacje</a>
-                            <ul class="menu vertical">
-                                <li><a href="{% url "pbn_api:authorize" %}">autoryzuj PBN API</a></li>
-                                {% if request.user|has_group:"wprowadzanie danych" or request.user.is_superuser %}
-                                    <li><a href="{% url "integrator2:main" %}">import danych</a></li>
-                                    <li><a href="{% url "import_pracownikow:index" %}">import pracowników</a></li>
-                                    <li><a href="{% url "ewaluacja2021:lista-importow" %}">import udziałów dla autorów</a>
+                    {% if not request.user.is_anonymous  %}
+
+                        {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}
+                            <li>
+                                <a href="#">operacje</a>
+                                <ul class="menu vertical">
+                                    {% if request.user|has_group:"wprowadzanie danych" or request.user.is_superuser %}
+                                        <li><a href="{% url "pbn_api:authorize" %}">autoryzuj PBN API</a></li>
+                                        <li><a href="{% url "integrator2:main" %}">import danych</a></li>
+                                        <li><a href="{% url "import_pracownikow:index" %}">import pracowników</a></li>
+                                        <li><a href="{% url "ewaluacja2021:lista-importow" %}">import udziałów dla autorów</a>
+                                        </li>
+                                        <li><a href="{% url "import_list_if:index" %}">import list IF</a></li>
+                                        <li><a href="{% url "import_dyscyplin:index" %}">import dyscyplin</a></li>
+                                        <li><a href="{% url "admin:rozbieznosci_dyscyplin_rozbieznosciview_changelist" %}">
+                                            rozbieżności dyscyplin</a></li>
+                                        <li><a href="{% url "rozbieznosci_if:index" %}">rozbieżności
+                                            punktacji IF</a></li>
+                                    {% endif %}
+
+                                    <li><a id="password-change-link" href="{% url "password_change" %}">zmiana hasła</a>
                                     </li>
-                                    <li><a href="{% url "import_list_if:index" %}">import list IF</a></li>
-                                    <li><a href="{% url "import_dyscyplin:index" %}">import dyscyplin</a></li>
-                                    <li><a href="{% url "admin:rozbieznosci_dyscyplin_rozbieznosciview_changelist" %}">
-                                        rozbieżności dyscyplin</a></li>
-                                    <li><a href="{% url "rozbieznosci_if:index" %}">rozbieżności
-                                        punktacji IF</a></li>
-                                {% endif %}
+                                </ul>
+                            </li>
+                        {% endif %}
 
-                                <li><a id="password-change-link" href="{% url "password_change" %}">zmiana hasła</a>
-                                </li>
-                                <li><a href="{% url "logout" %}">wyloguj</a></li>
-                            </ul>
-                        </li>
+                        {% if request.user.is_staff %}
+                            <li><a target="_blank"
+                                   href="{% url "admin:index" %}">redagowanie</a>
+                            </li>
+                        {% endif %}
 
-                        <li><a target="_blank"
-                               href="{% url "admin:index" %}">redagowanie</a>
-                        </li>
                         <li><a target="_blank"
                                href="{% url "logout" %}">wyloguj</a>
                         </li>

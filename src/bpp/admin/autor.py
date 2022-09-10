@@ -1,6 +1,7 @@
 from dal import autocomplete
 from django import forms
 from django.db.models import Q
+from djangoql.admin import DjangoQLSearchMixin
 
 from ewaluacja2021.models import IloscUdzialowDlaAutora
 from pbn_api.models import Scientist
@@ -11,7 +12,7 @@ from ..models import (  # Publikacja_Habilitacyjna
     Dyscyplina_Naukowa,
     Jednostka,
 )
-from .core import CommitedModelAdmin
+from .core import BaseBppAdminMixin
 from .filters import (
     JednostkaFilter,
     OrcidObecnyFilter,
@@ -133,7 +134,12 @@ class AutorForm(forms.ModelForm):
         widgets = {"imiona": CHARMAP_SINGLE_LINE, "nazwisko": CHARMAP_SINGLE_LINE}
 
 
-class AutorAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
+class AutorAdmin(
+    DjangoQLSearchMixin, ZapiszZAdnotacjaMixin, BaseBppAdminMixin, admin.ModelAdmin
+):
+    djangoql_completion_enabled_by_default = False
+    djangoql_completion = True
+
     form = AutorForm
     autocomplete_fields = ["pbn_uid"]
 

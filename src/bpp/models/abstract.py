@@ -6,7 +6,7 @@ from decimal import Decimal
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.core.validators import URLValidator
+from django.core.validators import MinValueValidator, URLValidator
 from django.db import models
 from django.db.models import CASCADE, SET_NULL, Q, Sum
 from django.urls.base import reverse
@@ -197,6 +197,7 @@ class ModelZRokiem(models.Model):
         help_text="""Rok uwzględniany przy wyszukiwaniu i raportach
         KBN/MNiSW)""",
         db_index=True,
+        validators=[MinValueValidator(0)],
     )
 
     class Meta:
@@ -464,11 +465,11 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
     czyli: powiązanie ForeignKey, jednostkę, rodzaj zapisu nazwiska, ale
     nie zawiera podstawowej informacji, czyli powiązania"""
 
-    autor = models.ForeignKey("Autor", CASCADE)
-    jednostka = models.ForeignKey("Jednostka", CASCADE)
+    autor = models.ForeignKey("bpp.Autor", CASCADE)
+    jednostka = models.ForeignKey("bpp.Jednostka", CASCADE)
     kolejnosc = models.IntegerField("Kolejność", default=0)
     typ_odpowiedzialnosci = models.ForeignKey(
-        "Typ_Odpowiedzialnosci", CASCADE, verbose_name="Typ odpowiedzialności"
+        "bpp.Typ_Odpowiedzialnosci", CASCADE, verbose_name="Typ odpowiedzialności"
     )
     zapisany_jako = models.CharField(max_length=512)
     afiliuje = models.BooleanField(
@@ -561,12 +562,16 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
         # - musi istnieć takie przypisanie autora do dyscypliny dla danego roku
         if self.dyscyplina_naukowa is not None:
 
-            if self.rekord_id is None and self.rekord is None:
-                raise ValidationError(
-                    {
-                        "dyscyplina_naukowa": "Określono dyscyplinę naukową, ale brak publikacji nadrzędnej. "
-                    }
-                )
+            if self.rekord_id is None:
+                # Może nie ustalono rekordu nadrzędnego... a moze dodajemy nowy
+                # rekord do bazy?
+
+                if self.rekord is None:
+                    raise ValidationError(
+                        {
+                            "dyscyplina_naukowa": "Określono dyscyplinę naukową, ale brak publikacji nadrzędnej. "
+                        }
+                    )
 
             if self.rekord is not None and self.rekord.rok is None:
                 raise ValidationError(
@@ -602,7 +607,8 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
 
         # --- Walidacja procentów ---
         # Znajdź inne obiekty z tego rekordu, które są już w bazie danych, ewentualnie
-        # utrudniając ich zapisanie w sytuacji, gdyby ilość procent przekroczyła 100:
+        # utrudniając ich zapisanie w sytuacji, gdyby ilość procent
+        # przekroczyła 100:
         inne = self.__class__.objects.filter(rekord=self.rekord)
         if self.pk:
             inne = inne.exclude(pk=self.pk)
@@ -836,12 +842,14 @@ class ModelZOplataZaPublikacje(models.Model):
         "w zakresie badań naukowych lub prac rozwojowych",
     )
 
-    opl_pub_other = models.BooleanField(verbose_name="Inne środki finansowe", null=True)
+    opl_pub_other = models.BooleanField(
+        verbose_name="Inne środki finansowe", null=True, blank=True, default=None
+    )
 
     opl_pub_amount = models.DecimalField(
         max_digits=20,
         decimal_places=2,
-        verbose_name="Kwota (zł)",
+        verbose_name="Kwota brutto (zł)",
         null=True,
         blank=True,
     )
@@ -890,7 +898,8 @@ class ModelZOplataZaPublikacje(models.Model):
 
                 raise ValidationError(errdct)
         else:
-            # Publikacja kosztowa z kolei (self.opl_pub_cost_free jest None albo False) ...
+            # Publikacja kosztowa z kolei (self.opl_pub_cost_free jest None
+            # albo False) ...
             if self.opl_pub_amount is not None and self.opl_pub_amount > 0:
                 # ...jeżeli ma wpisany koszt, musi miec zaznaczony któreś z pól:
                 if (
@@ -940,6 +949,22 @@ class ModelZOplataZaPublikacje(models.Model):
                         errdct["opl_pub_other"] = errmsg
 
                     raise ValidationError(errdct)
+                else:
+                    if self.opl_pub_cost_free is not None:
+                        # jeżeli nie ma wpisanego kosztu i nie ma zaznaczonego
+                        # zadnego z pól to tym bardziej źle
+                        errdct = {"opl_pub_amount": "Tu należy uzupełnić kwotę. "}
+
+                        errmsg = (
+                            "Jeżeli publikacja nie była bezkosztowa, należy zaznaczyć "
+                            "przynajmniej jedno z tych pól"
+                        )
+
+                        errdct["opl_pub_research_potential"] = errmsg
+                        errdct["opl_pub_research_or_development_projects"] = errmsg
+                        errdct["opl_pub_other"] = errmsg
+
+                        raise ValidationError(errdct)
 
 
 class Wydawnictwo_Baza(RekordBPPBaza):

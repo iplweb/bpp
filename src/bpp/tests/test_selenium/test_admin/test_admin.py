@@ -10,7 +10,7 @@ except ImportError:
 
 import pytest
 from django.db import transaction
-from model_mommy import mommy
+from model_bakery import baker
 from selenium.webdriver.support.wait import WebDriverWait
 
 from bpp.models import (
@@ -450,7 +450,7 @@ def test_admin_domyslnie_afiliuje_nowy_rekord(
     expected,
 ):
     # twórz nowy obiekt, nie używaj z fixtury, bo db i transactional_db
-    mommy.make(Uczelnia, domyslnie_afiliuje=expected)
+    baker.make(Uczelnia, domyslnie_afiliuje=expected)
 
     browser = admin_browser
     with wait_for_page_load(browser):
@@ -477,10 +477,10 @@ def test_admin_domyslnie_afiliuje_istniejacy_rekord(
     admin_browser, asgi_live_server, url, klasa, expected, afiliowany, denorms
 ):
     # twórz nowy obiekt, nie używaj z fixtury, bo db i transactional_db
-    mommy.make(Uczelnia, domyslnie_afiliuje=expected)
-    autor = mommy.make(Autor, nazwisko="Kowal", imiona="Ski")
-    jednostka = mommy.make(Jednostka, nazwa="Lol", skrot="WT")
-    wydawnictwo = mommy.make(klasa, tytul_oryginalny="test")
+    baker.make(Uczelnia, domyslnie_afiliuje=expected)
+    autor = baker.make(Autor, nazwisko="Kowal", imiona="Ski")
+    jednostka = baker.make(Jednostka, nazwa="Lol", skrot="WT")
+    wydawnictwo = baker.make(klasa, tytul_oryginalny="test")
     Typ_Odpowiedzialnosci.objects.get_or_create(
         skrot="aut.", nazwa="autor", typ_ogolny=TO_AUTOR
     )

@@ -48,7 +48,7 @@
     {% endif %}
 
 {% load czy_pokazywac %}
-{% czy_pokazywac liczbe_cytowan_na_stronie_autora  %}
+{% czy_pokazywac liczbe_cytowan_na_stronie_autora ignoruj_grupe %}
     {% if autor.liczba_cytowan %}
         <p><strong>Liczba cytowań: </strong>{{ autor.liczba_cytowan }}</p>
         <p><strong>Liczba cytowań z jednostek

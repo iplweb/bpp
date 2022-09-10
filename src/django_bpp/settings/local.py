@@ -45,8 +45,6 @@ HTML_MINIFY = False
 CELERY_ALWAYS_EAGER = False  # True  # False
 CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
 
-EMAIL_PORT = 25
-
 PUNKTUJ_MONOGRAFIE = False
 
 DEBUG_TOOLBAR = False
@@ -76,3 +74,5 @@ TEMPLATES[0]["OPTIONS"]["loaders"] = [  # noqa
     "django.template.loaders.filesystem.Loader",
     "django.template.loaders.app_directories.Loader",
 ]
+
+PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]

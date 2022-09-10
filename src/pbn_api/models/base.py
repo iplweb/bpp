@@ -1,8 +1,7 @@
 import warnings
 
 from django.db import models
-
-from django.contrib.postgres.fields import JSONField
+from django.db.models import JSONField
 
 from django.utils.functional import cached_property
 
@@ -52,7 +51,7 @@ class BasePBNMongoDBModel(BasePBNModel):
     ):
         if self.pull_up_on_save:
             self._pull_up_on_save()
-        return super(BasePBNMongoDBModel, self).save(
+        return super().save(
             force_insert=force_insert,
             force_update=force_update,
             using=using,

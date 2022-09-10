@@ -4,6 +4,7 @@ import string
 import sys
 from datetime import timedelta
 
+import environ
 import sentry_sdk
 from django.core.exceptions import DisallowedHost, ImproperlyConfigured
 from sentry_sdk.integrations.django import DjangoIntegration
@@ -160,6 +161,7 @@ if TESTING:
 
 INSTALLED_APPS = [
     "tee",
+    "formtools",
     "denorm.apps.DenormAppConfig",
     "reversion",
     "djangoql",
@@ -187,6 +189,7 @@ INSTALLED_APPS = [
     "taggit",
     "taggit_serializer",
     "columns",
+    "zglos_publikacje.apps.ZglosPublikacjeConfig",
     "formdefaults.apps.FormdefaultsConfig",
     "raport_slotow",
     # Musi być PRZED django-autocomplete-light do momentu
@@ -275,7 +278,7 @@ TEST_RUNNER = "django.test.runner.DiscoverRunner"
 PROJECT_APPS = ("bpp",)
 
 
-# Ustawienia ModelMommy
+# Ustawienia ModelBakery
 
 
 def autoslug_gen():
@@ -284,7 +287,8 @@ def autoslug_gen():
     )
 
 
-MOMMY_CUSTOM_FIELDS_GEN = {"autoslug.fields.AutoSlugField": autoslug_gen}
+BAKER_CUSTOM_FIELDS_GEN = {"autoslug.fields.AutoSlugField": autoslug_gen}
+BAKER_CUSTOM_CLASS = "bpp.tests.bpp_baker.BPP_Baker"
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTOCOL", "https")
 
@@ -294,7 +298,7 @@ SCRIPT_PATH = os.path.abspath(os.path.dirname(__file__))
 
 SITE_ROOT = os.path.abspath(os.path.join(SCRIPT_PATH, "..", ".."))
 
-STATIC_ROOT = os.path.join(SCRIPT_PATH, "..", "staticroot")
+STATIC_ROOT = os.path.abspath(os.path.join(SCRIPT_PATH, "..", "staticroot"))
 
 COMPRESS_CSS_FILTERS = [
     "compressor.filters.css_default.CssAbsoluteFilter",
@@ -365,9 +369,6 @@ SESSION_REDIS_PREFIX = "session"
 ALLOWED_TAGS = ("b", "em", "i", "strong", "strike", "u", "sup", "font", "sub")
 
 SESSION_SECURITY_PASSIVE_URLS = ["/messages/"]
-
-ADMINS = (("Michal Pasternak", "michal.dtz@gmail.com"),)
-MANAGERS = ADMINS
 
 
 def int_or_None(value):
@@ -670,12 +671,6 @@ PERMISSIONS_WIDGET_EXCLUDE_MODELS = [
     "bpp.opi_2012_afiliacja_do_wydzialu",
     "bpp.opi_2012_tytul_cache",
     "bpp.nowe_sumy_view",
-    "bpp.kronika_patent_view",
-    "bpp.kronika_praca_doktorska_view",
-    "bpp.kronika_praca_habilitacyjna_view",
-    "bpp.kronika_view",
-    "bpp.kronika_wydawnictwo_ciagle_view",
-    "bpp.kronika_wydawnictwo_zwarte_view",
     "bpp.autorzy",
     "bpp.rekord",
     "bpp.rekord_view",
@@ -696,3 +691,148 @@ Maksymalna ilość autorów wyświetlanych w danej grupie na podstronie przeglą
 przekroczenia tej liczby, dana podgrupa autorów ("aktualni pracownicy","współpracowali kiedyś" itp) nie zostanie
 wyświetlona.
 """
+
+
+DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
+
+# django-import-export, używaj transakcji:
+IMPORT_EXPORT_USE_TRANSACTIONS = True
+
+# Maksymalna
+BPP_MAX_ALLOWED_EXPORT_ITEMS = 1500
+
+# Ponieważ konieczna jest konfiguracja django-ldap-auth i potrzebne będą kolejne zmienne
+# środowiskowe, ponieważ z Pipenv przeszedłem na poetry, ponieważ tych konfiguracji i
+# serwerów (testowych, produkcyjnych) robi się coraz więcej -- z tych okazji zaczynam
+# migrację konfiguracji na django-environ. Na ten moment przez django-environ pobiorę
+# konfigurację LDAPa, docelowo przez django-environ powinna iść cała konfiguracja
+# serwisu + docelowo będzie pewnie można zrezygnować z wielu plików konfiguracyjnych
+# (local, test, production).
+
+env = environ.Env(
+    # casting, default value
+    #
+    # LDAP
+    #
+    AUTH_LDAP_SERVER_URI=(str, None),
+    # AUTH_LDAP_BIND_DN=(str, None),
+    # AUTH_LDAP_BIND_PASSWORD=(str, None),
+    # AUTH_LDAP_USER_SEARCH=(str, None),
+    AUTH_LDAP_GROUP_SEARCH=(str, "ou=django,ou=groups,dc=auth,dc=local"),
+    AUTH_LDAP_USER_SEARCH_QUERY=(str, "userPrincipalName=%(user)s@auth.local"),
+    #
+    # Email
+    #
+    EMAIL_URL=(str, "smtp://127.0.0.1:25"),
+    DEFAULT_FROM_EMAIL=(str, "webmaster@localhost"),
+    SERVER_EMAIL=(str, "root@localhost"),
+    #
+    # Administratorzy
+    #
+    ADMINS=(str, "Michał Pasternak <michal.dtz@gmail.com>"),
+)
+
+ENVFILE_PATH = os.path.join(os.path.expanduser("~"), ".env")
+
+if os.path.exists(ENVFILE_PATH) and os.path.isfile(ENVFILE_PATH):
+    environ.Env.read_env(ENVFILE_PATH)
+
+#
+# Konfiguracja LDAP
+#
+
+AUTH_LDAP_SERVER_URI = env("AUTH_LDAP_SERVER_URI")
+
+if AUTH_LDAP_SERVER_URI:
+    AUTH_LDAP_BIND_DN = env("AUTH_LDAP_BIND_DN")
+    AUTH_LDAP_BIND_PASSWORD = env("AUTH_LDAP_BIND_PASSWORD")
+
+    import ldap
+    from django_auth_ldap.config import GroupOfNamesType, LDAPSearch
+
+    AUTH_LDAP_USER_SEARCH = LDAPSearch(
+        env("AUTH_LDAP_USER_SEARCH"),
+        ldap.SCOPE_SUBTREE,
+        env("AUTH_LDAP_USER_SEARCH_QUERY"),
+    )
+
+    # Set up the basic group parameters.
+    AUTH_LDAP_GROUP_SEARCH = LDAPSearch(
+        env("AUTH_LDAP_GROUP_SEARCH"),
+        ldap.SCOPE_SUBTREE,
+        "(objectClass=groupOfNames)",
+    )
+    AUTH_LDAP_GROUP_TYPE = GroupOfNamesType(name_attr="cn")
+
+    AUTH_LDAP_GROUP_TYPE = GroupOfNamesType(name_attr="cn")
+
+    # This is the default, but I like to be explicit.
+    AUTH_LDAP_ALWAYS_UPDATE_USER = True
+
+    # Use LDAP group membership to calculate group permissions.
+    AUTH_LDAP_FIND_GROUP_PERMS = True
+
+    # Cache distinguished names and group memberships for an hour to minimize
+    # LDAP traffic.
+    AUTH_LDAP_CACHE_TIMEOUT = 3600
+
+    # Keep ModelBackend around for per-user permissions and maybe a local
+    # superuser.
+    AUTHENTICATION_BACKENDS = (
+        "django_auth_ldap.backend.LDAPBackend",
+        "django.contrib.auth.backends.ModelBackend",
+    )
+
+#
+# Koniec konfiguracji LDAP
+#
+
+
+#
+# Konfiguracja serwera pocztowego
+#
+EMAIL_CONFIG = env.email("EMAIL_URL")
+vars().update(EMAIL_CONFIG)
+SERVER_EMAIL = env("SERVER_EMAIL")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL")
+
+#
+# Koniec konfiguracji serwera pocztowego
+#
+
+#
+# Konta administratorów i managerów
+#
+
+from email.utils import getaddresses
+
+ADMINS = getaddresses([env("ADMINS")])
+MANAGERS = ADMINS
+
+#
+# Koniec konfiguracji kont administratora i managera
+#
+
+#
+# django-easy-audit
+#
+
+DJANGO_EASY_AUDIT_WATCH_REQUEST_EVENTS = False
+DJANGO_EASY_AUDIT_ADMIN_SHOW_REQUEST_EVENTS = False
+DJANGO_EASY_AUDIT_READONLY_EVENTS = True
+DJANGO_EASY_AUDIT_REGISTERED_CLASSES = [
+    "zglos_publikacje.Zgloszenie_Publikacji",
+    "bpp.Wydawnictwo_Zwarte",
+    "bpp.Wydawnictwo_Ciagle",
+    "bpp.Patent",
+    "bpp.Praca_Doktorska",
+    "bpp.Praca_Habilitacyjna",
+    "bpp.Autor",
+    "bpp.Jednostka",
+    "bpp.Uczelnia",
+    "bpp.Wydzial",
+]
+
+#
+# Koniec django-easy-audit
+#

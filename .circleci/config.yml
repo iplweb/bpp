@@ -7,7 +7,7 @@ jobs:
   build:
 
     docker:
-      - image: cimg/python:3.8.13-node
+      - image: cimg/python:3.10.5-node
         environment:
           PGUSER: postgres
           PGHOST: localhost
@@ -15,7 +15,7 @@ jobs:
           PGDATABASE: bpp
           DJANGO_BPP_SECRET_KEY: foobar
           DJANGO_SETTINGS_MODULE: django_bpp.settings.test
-      - image: mpasternak79/cimg-postgres:12
+      - image: mpasternak79/cimg-postgres:14
         environment:
           POSTGRESS_PASSWORD: password
           POSTGRES_HOST_AUTH_METHOD: trust
@@ -24,14 +24,23 @@ jobs:
     steps:
 
       - run:
+          name: Update apt
+          command: |
+            sudo apt update
+
+      - run:
           name: install postgresql-client
           command: |
             sudo apt install -y postgresql-client
 
       - run:
+          name: install stuff required to build python-ldap
+          command: |
+            sudo apt install -y libsasl2-dev python3-dev libldap2-dev libssl-dev
+
+      - run:
           name: Install Pango for WeasyPrint
           command: |
-            sudo apt update
             sudo apt install pango1.0-tests
 
       - run:
@@ -55,7 +64,10 @@ jobs:
       - restore_cache:
           key: cache-14-{{ checksum "poetry.lock" }}-{{ checksum "yarn.lock" }}
 
+      - run: sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+      - run: wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
       - run: sudo apt -q -q -q update
+      - run: sudo apt-get --quiet install -y --quiet postgresql-client-14
       - run: sudo apt --quiet install -y --quiet gettext locales
       - run: sudo sed -i 's/^# *\(pl_PL.UTF-8\)/\1/' /etc/locale.gen
       - run: sudo locale-gen
@@ -108,7 +120,7 @@ jobs:
 
   test:
     docker:
-      - image: cimg/python:3.8.13-browsers
+      - image: cimg/python:3.10.5-browsers
         environment:
           PGUSER: postgres
           PGHOST: localhost
@@ -190,7 +202,7 @@ jobs:
 
   js-tests:
     docker:
-      - image: cimg/python:3.8.13-node
+      - image: cimg/python:3.10.5-node
 
     steps:
 

@@ -6,13 +6,14 @@ from typing import TYPE_CHECKING, List, Union
 from autoslug import AutoSlugField
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
-from django.db import models
+from django.db import ProgrammingError, models
 from django.db.models import SET_NULL, Max
 from django.urls.base import reverse
 from model_utils import Choices
 
 from pbn_api.exceptions import WillNotExportError
 from .. import const
+from ..const import GR_RAPORTY_WYSWIETLANIE
 from ..util import year_last_month
 from .fields import OpcjaWyswietlaniaField
 
@@ -27,7 +28,13 @@ if TYPE_CHECKING:
 
 class UczelniaManager(models.Manager):
     def get_default(self) -> Union["Uczelnia", None]:
-        return self.all().only("pk").first()
+        try:
+            return self.all().first()
+        except ProgrammingError:
+            # Błąd może wystapić w sytuacji, gdy do obiektu Uczelnia po stronie kodu zostały
+            # dodane jakieś kolumny, ale nie zostały jeszcze dodane do bazy danych. Próba "grzebnięcia"
+            # po bazie spowoduje błąd. Spróbujemy wobec tego pobrać wyłacznie PK rekordu:
+            return self.all().only("pk").first()
 
     def get_for_request(self, request):
         if hasattr(request, "_uczelnia"):
@@ -151,6 +158,11 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         'Pokazuj opcję "Praca recenzowana"'
     )
 
+    pokazuj_formularz_zglaszania_publikacji = OpcjaWyswietlaniaField(
+        "Pokazuj opcję 'Zgłoś nową publikację'",
+        help_text="Czy pokazywać formularz zgłaszania publikacji?",
+    )
+
     domyslnie_afiliuje = models.BooleanField(
         "Domyślnie zaznaczaj, że autor afiliuje",
         help_text="""Przy powiązaniach autor + wydawnictwo, zaznaczaj domyślnie,
@@ -185,6 +197,15 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
     pokazuj_raport_slotow_uczelnia = OpcjaWyswietlaniaField(
         "Pokazuj raport slotów - uczelnia",
         default=OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM,
+    )
+
+    wymagaj_informacji_o_oplatach = models.BooleanField(
+        "Wymagaj inforamcji o opłatach",
+        default=True,
+        help_text="Gdy zaznaczone, moduł 'Zgłaszanie publikacji' będzie wyświetlać użytkownikowi formularz "
+        "informacji o opłatach za publikację w przypadku zgłaszania artykułu lub monografii. "
+        "Gdy odznaczone, taki formularz nie bedzie wyświetlany, niezależnie od rodzaju "
+        "zgłaszanej publikacji. ",
     )
 
     wydruk_logo = models.BooleanField("Pokazuj logo na wydrukach", default=False)
@@ -399,7 +420,7 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
             "status_korekty", flat=True
         )
 
-    def sprawdz_uprawnienie(self, attr, request):
+    def sprawdz_uprawnienie(self, attr, request, ignoruj_grupe=None):
         res = getattr(self, f"pokazuj_{attr}")
         if res == OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE:
             return True
@@ -407,6 +428,18 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         if res == OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM:
             if request.user.is_anonymous:
                 return False
+
+            if request.user.is_superuser:
+                return True
+
+            if str(ignoruj_grupe) != "ignoruj_grupe":
+                if request.user.groups.filter(name=GR_RAPORTY_WYSWIETLANIE).exists():
+                    # Pokazuj zalogowanym ale wyłącznie gdy są w grupei GR_RAPORTY_WYSWIETLANIE
+                    # chyba, ze jest podany parametr ignoruj_grupe
+                    return True
+                else:
+                    return False
+
             return True
 
         if res == OpcjaWyswietlaniaField.POKAZUJ_GDY_W_ZESPOLE:

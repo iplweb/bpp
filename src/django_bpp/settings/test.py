@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 # Konfiguracja hosta 'master'
 
 import os
@@ -13,6 +11,7 @@ DEBUG_TOOLBAR = False
 SENDFILE_BACKEND = "sendfile.backends.simple"
 
 SELENIUM_DRIVER = "Firefox"
+
 
 SESSION_COOKIE_SECURE = False
 CSRF_COOKIE_SECURE = False
@@ -37,3 +36,5 @@ CACHES = {
         "BACKEND": "django.core.cache.backends.dummy.DummyCache",
     }
 }
+
+PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]

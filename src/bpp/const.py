@@ -18,7 +18,8 @@ TYP_OGOLNY_DO_PBN = {
 }
 
 GR_WPROWADZANIE_DANYCH = "wprowadzanie danych"
-
+GR_ZGLOSZENIA_PUBLIKACJI = "zgłoszenia publikacji"
+GR_RAPORTY_WYSWIETLANIE = "generowanie raportów"
 CHARAKTER_SLOTY_KSIAZKA = 1
 CHARAKTER_SLOTY_ROZDZIAL = 2
 CHARAKTER_SLOTY_REFERAT = 3
@@ -85,7 +86,15 @@ LINK_PBN_DO_WYDAWCY = "{pbn_api_root}/core/#/publisher/view/{pbn_uid_id}/current
 LINK_PBN_DO_ZRODLA = "{pbn_api_root}/core/#/journal/view/{pbn_uid_id}/current"
 LINK_PBN_DO_PUBLIKACJI = "{pbn_api_root}/core/#/publication/view/{pbn_uid_id}/current"
 
-PBN_LATA = [2017, 2018, 2019, 2020, 2021, 2022]
+PBN_LATA = [
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023,
+]
 
 # Minimalny rok od którego zaczynamy liczyć punkty dla prac PBN i w ogóle minimalny rok integracji.
 PBN_MIN_ROK = PBN_LATA[0]
@@ -106,3 +115,5 @@ ZDUBLOWANE_POLE_KOMUNIKAT = (
     "Technicznie nie jest to błąd, ale mogą pojawić się problemy przy synchronizacji danych "
     "z systemami zewnętrznymi, np z bazą danych PBN."
 )
+
+PUSTY_ADRES_EMAIL = "brak@email.pl"

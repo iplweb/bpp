@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 import pytest
 from selenium.webdriver.support.wait import WebDriverWait
 
@@ -8,7 +6,7 @@ try:
 except ImportError:
     from django.urls import reverse
 
-from model_mommy import mommy
+from model_bakery import baker
 from selenium.webdriver.common.keys import Keys
 
 from bpp.models import Autor, Zrodlo
@@ -20,7 +18,7 @@ pytestmark = [pytest.mark.slow, pytest.mark.selenium]
 
 @pytest.fixture(scope="function")
 def autorzy_browser(browser, live_server):
-    mommy.make(Autor, nazwisko="Atest", imiona="foo")
+    baker.make(Autor, nazwisko="Atest", imiona="foo")
     browser.visit(live_server + reverse("bpp:browse_autorzy"))
     yield browser
     browser.quit()
@@ -56,7 +54,7 @@ def test_autorzy_literki(autorzy_browser):
 
 @pytest.fixture(scope="function")
 def zrodla_browser(browser, live_server):
-    mommy.make(Zrodlo, nazwa="Atest")
+    baker.make(Zrodlo, nazwa="Atest")
     browser.visit(live_server + reverse("bpp:browse_zrodla"))
     yield browser
     browser.quit()

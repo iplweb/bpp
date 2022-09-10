@@ -57,7 +57,12 @@ class WydawcaAdmin(DjangoQLSearchMixin, admin.ModelAdmin):
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True
 
-    search_fields = ["nazwa", "alias_dla__nazwa", "pbn_uid_id", "alias_dla__pbn_uid_id"]
+    search_fields = [
+        "nazwa",
+        "alias_dla__nazwa",
+        "pbn_uid__mongoId",
+        "alias_dla__pbn_uid__mongoId",
+    ]
     autocomplete_fields = ["alias_dla", "pbn_uid"]
     list_display = [
         "nazwa",
@@ -88,7 +93,9 @@ class WydawcaAdmin(DjangoQLSearchMixin, admin.ModelAdmin):
                 self, request, queryset, search_term
             )
 
-        if not search_term or len(search_term) == PBN_UID_LEN:
+        if not search_term or (
+            len(search_term) == PBN_UID_LEN and search_term.find(" ") == -1
+        ):
             return super().get_search_results(request, queryset, search_term)
 
         queryset = (

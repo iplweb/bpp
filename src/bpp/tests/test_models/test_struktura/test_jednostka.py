@@ -1,16 +1,32 @@
-# -*- encoding: utf-8 -*-
 from datetime import date
 
 import pytest
-from model_mommy import mommy
+from model_bakery import baker
 
 from bpp.models.struktura import Jednostka, Jednostka_Wydzial, Wydzial
 
 
 @pytest.mark.django_db
+def test_jednostka_publiczna(wydzial, uczelnia):
+    j = baker.make(Jednostka, widoczna=True, uczelnia=uczelnia, aktualna=True)
+    Jednostka_Wydzial.objects.create(jednostka=j, wydzial=wydzial)
+    assert Jednostka.objects.publiczne().count() == 1
+
+
+@pytest.mark.django_db
+def test_jednostka_widoczne():
+    j = baker.make(Jednostka, widoczna=True, aktualna=True)
+    assert Jednostka.objects.widoczne().count() == 1
+
+    j.widoczna = False
+    j.save()
+    assert Jednostka.objects.widoczne().count() == 0
+
+
+@pytest.mark.django_db
 def test_jednostka_test_wydzial_dnia_pusty():
-    j = mommy.make(Jednostka, nazwa="Jednostka")
-    w = mommy.make(Wydzial, nazwa="Wydzial", uczelnia=j.uczelnia)
+    j = baker.make(Jednostka, nazwa="Jednostka")
+    w = baker.make(Wydzial, nazwa="Wydzial", uczelnia=j.uczelnia)
 
     Jednostka_Wydzial.objects.create(jednostka=j, wydzial=w)
 
@@ -21,8 +37,8 @@ def test_jednostka_test_wydzial_dnia_pusty():
 
 @pytest.mark.django_db
 def test_jednostka_test_wydzial_dnia():
-    j = mommy.make(Jednostka)
-    w = mommy.make(Wydzial, uczelnia=j.uczelnia)
+    j = baker.make(Jednostka)
+    w = baker.make(Wydzial, uczelnia=j.uczelnia)
 
     Jednostka_Wydzial.objects.create(
         jednostka=j, wydzial=w, od=date(2015, 1, 1), do=date(2015, 2, 1)
@@ -37,8 +53,8 @@ def test_jednostka_test_wydzial_dnia():
 
 @pytest.mark.django_db
 def test_jednostka_test_przypisania_dla_czasokresu():
-    j = mommy.make(Jednostka)
-    w = mommy.make(Wydzial, uczelnia=j.uczelnia)
+    j = baker.make(Jednostka)
+    w = baker.make(Wydzial, uczelnia=j.uczelnia)
     Jednostka_Wydzial.objects.create(
         jednostka=j, wydzial=w, od=date(2015, 1, 1), do=date(2015, 2, 1)
     )

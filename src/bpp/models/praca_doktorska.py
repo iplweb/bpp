@@ -113,10 +113,6 @@ class Praca_Doktorska_Baza(
     def slug(self):
         return self.get_slug()
 
-    def clean(self):
-        DwaTytuly.clean(self)
-        ModelZOplataZaPublikacje.clean(self)
-
 
 class _Praca_Doktorska_PropertyCache:
     @cached_property
@@ -143,3 +139,7 @@ class Praca_Doktorska(Praca_Doktorska_Baza):
         verbose_name_plural = "prace doktorskie"
         app_label = "bpp"
         ordering = ("rok", "tytul_oryginalny")
+
+    def clean(self):
+        DwaTytuly.clean(self)
+        ModelZOplataZaPublikacje.clean(self)

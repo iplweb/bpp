@@ -1,5 +1,7 @@
 from typing import Union
 
+from pathspec.util import normalize_file
+
 
 def remove_trailing_interpunction(s: str) -> str:
     try:
@@ -122,3 +124,11 @@ def normalize_doi(s):
         .replace("doi.org/", "")
         .lower()
     )
+
+
+def normalize_filename(s: str) -> str:
+    s = normalize_file(s).replace(" ", "_").replace(",", "_")
+
+    while s.find("__") != -1:
+        s = s.replace("__", "_")
+    return s

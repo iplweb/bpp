@@ -2,7 +2,7 @@ import os
 
 import pytest
 from django.urls import reverse
-from model_mommy import mommy
+from model_bakery import baker
 
 from bpp.models import Uczelnia
 from bpp.tests import proper_click_element
@@ -12,7 +12,7 @@ from django_bpp.selenium_util import wait_for_page_load
 
 @pytest.mark.django_db(transaction=True)
 def test_integracyjny(admin_browser, asgi_live_server):
-    mommy.make(Uczelnia)
+    baker.make(Uczelnia)
     admin_browser.visit(asgi_live_server.url + reverse("import_dyscyplin:index"))
 
     with wait_for_page_load(admin_browser):

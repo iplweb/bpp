@@ -3,8 +3,45 @@
 Historia zmian
 ==============
 
-202207.87
----------
+202209.1088
+-----------
+
+* usunięto moduł generowania drukowanej "Kroniki Uczelni" (b/n),
+* obsługa Python 3.10, Django 3.2 (#1115),
+* użycie model_bakery zamiast model_mommy (b/n),
+* aktualizuj listę charakterów w multiwyszukiwarce na bieżąco (#647),
+* obsługa PostgreSQL 14 (#1243),
+* aktualizacja biblioteki Celery do 5.2.2 (b/n),
+* podgląd edycji schematu opisu bibliograficznego (#898),
+* możliwość dopisywania własnych publikacji do bazy danych przez pracowników uczelni (#1237),
+* możliwość edycji zgłoszeń publikacji + powiadomienia przez e-mail (#1255),
+* nowa grupa użytkowników "zgłoszenia publikacji" - redaktorzy zajmujący się zgłoszeniami
+  publikacji (b/n),
+* w przypadku pustej grupy użytkowników "zgłoszenia publikacji", wysyłaj informację mailową
+  do grupy użytkowników "wprowadzanie danych"
+* możliwość wyłączenia wymagania informacji o opłatach w formularzu zgłaszania prac (b/n),
+* wyświetlaj "flash messages" dla użytkownika niezalogowanego (b/n),
+* włącz język zapytań dla modułu redagowania: autorzy, źródła, jednostki, itp.
+  (b/n),
+* możliwość eksportu danych wydawnictw ciągłych i zwartych do formatu XLSX (b/n),
+* możliwość autoryzacji użytkowników za pomocą protokołu LDAP / ActiveDirectory (b/n),
+* wstępna konfiguracja za pomocą django-environ (b/n),
+* wszyscy zalogowani użytkownicy którzy chcą uzyskać dostęp do raportów muszą być dodani
+  do grupy "generowanie raportów" (b/n),
+* formularz zgłaszania publikacji opcjonalnie wymaga zalogowania (b/n),
+* możliwość konfiguracji e-mail za pomoca pliku .env (b/n)
+* możliwość konfiguracji kont administratora za pomocą pliku .env (b/n),
+* usunięty błąd wyszukiwania wydawców w module redagowania po PBN ID (b/n),
+* możliwość obliczania slotów za 2023 (b/n),
+* zgłaszanie publikacji: mozna dopisywac redaktorow do grupy "zgłoszenia publikacji" aby
+  tylko do nich docierały zgłoszenia publikacji, można też dodać ich jako osoby obsługujące
+  zgłoszenia dla wydziału (Redagowanie -> Administracja) aby dostawały e-maile wg wydziału
+  pierwszej jednostki autora ze zgłoszenia publikacji (b/n),
+* użycie backendu django-celery-email dla wysyłania e-maili out-of-band (b/n),
+* logowanie dostępu do serwisu BPP za pomocą django-easy-audit (b/n),
+
+202207.1087
+-----------
 
 * aktualizacja biblioteki do generowania PDF z systemu do wersji WeasyPrint 55.0, dodatkowe
   "uodpornienie" systemu drukującego na przestarzałe certyfikaty SSL na serwerze bpp (#1223),
@@ -18,7 +55,6 @@ Historia zmian
 * umożliwiaj wygenerowanie kodu JSON wysyłanego do PBN API z linii
   poleceń -- polecenie ``pbn_show_json`` (b/n),
 * poprawnie wysyłaj strony do PBN API (#1176),
-* podgląd edycji schematu opisu bibliograficznego (#898),
 * informacja o aktualnej jednostce w raportach "zerowych" (#1224),
 * możliwość pobierania/uruchamiania systemu BPP za pomoca polecenia pipx (#1231),
 * przed wyszukiwaniem pełnotekstowym usuń tagi HTML z zapytania (#1222),

@@ -159,7 +159,7 @@ def test_redirect_to_admin_view(wydawnictwo_ciagle, client, admin_user):
     )
     assert res.status_code == 302
 
-    client.login(username=admin_user, password="password")
+    client.login(username=admin_user.username, password="password")
     res2 = client.get(res.url)
 
     assert res2.status_code == 200

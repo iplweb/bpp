@@ -1,10 +1,9 @@
-# -*- encoding: utf-8 -*-
-from model_mommy import mommy
+from model_bakery import baker
 
-from bpp.models import Autor, Jednostka, Zrodlo, Charakter_Formalny, Uczelnia
+from bpp.models import Autor, Charakter_Formalny, Jednostka, Zrodlo
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
+from bpp.tests.tests_legacy.testutil import UserRequestFactory, WebTestCase
 from bpp.views import autocomplete
-from bpp.tests.tests_legacy.testutil import WebTestCase
 
 
 class TestAutocomplete(WebTestCase):
@@ -14,36 +13,41 @@ class TestAutocomplete(WebTestCase):
 
         x = autocomplete.Wydawnictwo_NadrzedneAutocomplete()
         x.q = "foobar"
-        self.assertTrue(len(x.get_queryset()) != None)
+        self.assertTrue(len(x.get_queryset()) is not None)
 
     def test_JednostkaAutocomplete(self):
         x = autocomplete.JednostkaAutocomplete()
         x.q = "foobar"
-        self.assertTrue(len(x.get_queryset()) != None)
+        self.assertTrue(len(x.get_queryset()) is not None)
+
+    def test_PublicJednostkaAutocomplete(self):
+        x = autocomplete.PublicJednostkaAutocomplete()
+        x.q = "foobar"
+        self.assertTrue(len(x.get_queryset()) is not None)
 
     def test_KonferencjaAutocomplete(self):
         x = autocomplete.KonferencjaAutocomplete()
         x.q = "foobar"
-        self.assertTrue(len(x.get_queryset()) != None)
+        self.assertTrue(len(x.get_queryset()) is not None)
 
     def test_Seria_WydawniczaAutocomplete(self):
         x = autocomplete.Seria_WydawniczaAutocomplete()
         x.q = "foobar"
-        self.assertTrue(len(x.get_queryset()) != None)
+        self.assertTrue(len(x.get_queryset()) is not None)
 
     def test_ZrodloAutocomplete(self):
         x = autocomplete.ZrodloAutocomplete()
         x.q = "foobar"
-        self.assertTrue(len(x.get_queryset()) != None)
+        self.assertTrue(len(x.get_queryset()) is not None)
 
     def test_AutorAutocomplete(self):
         x = autocomplete.AutorAutocomplete()
         x.q = "foobar"
-        self.assertTrue(len(x.get_queryset()) != None)
+        self.assertTrue(len(x.get_queryset()) is not None)
         x.q = ":"
-        self.assertTrue(len(x.get_queryset()) != None)
+        self.assertTrue(len(x.get_queryset()) is not None)
 
-        self.assertEquals(x.create_object("test").pk, -1)
+        self.assertEqual(x.create_object("test").pk, -1)
 
         res = x.create_object("budnik jan")
         y = Autor.objects.get(pk=res.pk)
@@ -55,26 +59,35 @@ class TestAutocomplete(WebTestCase):
         assert y.imiona == "Ilona Joanna"
         assert y.nazwisko == "Kotulowska-Papis"
 
-    def test_GlobalNavigationAutocomplete(self):
+    def test_GlobalNavigationAutocomplete(
+        self,
+    ):
         x = autocomplete.GlobalNavigationAutocomplete()
+
+        class MockUser:
+            is_anonymous = False
+
+        x.request = UserRequestFactory(MockUser()).get("/")
         x.q = None
-        x.get_result_label("foo", "bar")
+        x.get_result_label(
+            "foo"
+        )  # XXX uwaga, tu byly 2 parametry, ale test sie wykrzaczał. mpasternak 10.07.2022
         x.get(None)
         x.q = "foobar"
-        self.assertTrue(len(x.get_queryset()) != None)
+        self.assertTrue(len(x.get_queryset()) is not None)
 
     def test_GlobalNavigationAutocomplete_query_for_id(self):
-        mommy.make(Wydawnictwo_Ciagle, pk=123)
+        baker.make(Wydawnictwo_Ciagle, pk=123)
         x = autocomplete.GlobalNavigationAutocomplete()
         x.q = "123"
         self.assertTrue(len(x.get_queryset()) == 1)
 
     def test_GlobalNavigationAutocomplete_test_every_url(self):
         S = "Foobar 123"
-        mommy.make(Autor, nazwisko=S)
-        mommy.make(Wydawnictwo_Ciagle, tytul_oryginalny=S)
-        mommy.make(Zrodlo, nazwa=S)
-        mommy.make(Jednostka, nazwa=S)
+        baker.make(Autor, nazwisko=S)
+        baker.make(Wydawnictwo_Ciagle, tytul_oryginalny=S)
+        baker.make(Zrodlo, nazwa=S)
+        baker.make(Jednostka, nazwa=S)
 
         x = autocomplete.GlobalNavigationAutocomplete()
         x.q = "Foo"
@@ -87,26 +100,26 @@ class TestAutocomplete(WebTestCase):
                 # dla tego zapytania
                 url = "/global-nav-redir/%s/" % child["id"]
                 res = self.client.get(url)
-                self.assertEquals(res.status_code, 302)
+                self.assertEqual(res.status_code, 302)
                 cnt += 1
 
-        self.assertEquals(cnt, 4)
+        self.assertEqual(cnt, 4)
 
     def test_ZapisanyJakoAutocomplete(self):
         x = autocomplete.ZapisanyJakoAutocomplete()
-        a = mommy.make(Autor, imiona="Jan", nazwisko="Kowalski", poprzednie_nazwiska="")
+        a = baker.make(Autor, imiona="Jan", nazwisko="Kowalski", poprzednie_nazwiska="")
         x.forwarded = dict(autor=str(a.id))
         self.assertTrue(len(x.get_list()), 3)
 
     def test_PodrzednaPublikacjaHabilitacyjnaAutocomplete(self):
         x = autocomplete.PodrzednaPublikacjaHabilitacyjnaAutocomplete()
-        a = mommy.make(Autor, imiona="Jan", nazwisko="Kowalski", poprzednie_nazwiska="")
+        a = baker.make(Autor, imiona="Jan", nazwisko="Kowalski", poprzednie_nazwiska="")
         x.forwarded = dict(autor=str(a.id))
 
         x.q = "foobar"
-        self.assertTrue(len(x.get_queryset()) != None)
+        self.assertTrue(len(x.get_queryset()) is not None)
 
-    def test_GlobalNavigationAutocomplete(self):
+    def test_GlobalNavigationAutocomplete_alt(self):
         x = autocomplete.GlobalNavigationAutocomplete()
         x.q = "foobar"
-        self.assertTrue(len(x.get_queryset()) != None)
+        self.assertTrue(len(x.get_queryset()) is not None)

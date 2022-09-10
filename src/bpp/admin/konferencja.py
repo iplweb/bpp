@@ -1,10 +1,8 @@
-# -*- encoding: utf-8 -*-
-
 from django import forms
 
 from miniblog.admin import SmallerTextarea
 from ..models.konferencja import Konferencja
-from .core import CommitedModelAdmin
+from .core import BaseBppAdminMixin
 from .helpers import ADNOTACJE_FIELDSET
 
 from django.contrib import admin
@@ -57,7 +55,7 @@ class Wydawnictwo_Ciagle_KonferencjaInline(admin.TabularInline):
     extra = 0
 
 
-class KonferencjaAdmin(CommitedModelAdmin):
+class KonferencjaAdmin(BaseBppAdminMixin, admin.ModelAdmin):
     list_display = [
         "nazwa",
         "typ_konferencji",

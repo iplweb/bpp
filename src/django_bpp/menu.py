@@ -14,7 +14,7 @@ from django.contrib import admin
 
 from django.utils.translation import ugettext_lazy as _
 
-from bpp.const import GR_WPROWADZANIE_DANYCH
+from bpp.const import GR_WPROWADZANIE_DANYCH, GR_ZGLOSZENIA_PUBLIKACJI
 
 PBN_MENU = [
     ("Instytucje", "/admin/pbn_api/institution"),
@@ -276,12 +276,17 @@ REDAKTOR_MENU = [
         "Rozbieżności dyscyplin źródeł",
         "/admin/rozbieznosci_dyscyplin/rozbieznoscizrodelview/",
     ),
+    ("Zgłoszenia publikacji", "/admin/zglos_publikacje/zgloszenie_publikacji/"),
 ]
 
 ADMIN_MENU = [
     ("Grupy", "/admin/auth/group/"),
     ("Użytkownicy", "/admin/bpp/bppuser/"),
     ("Formularze wyszukiwania", "/admin/multiseek/searchform/"),
+    (
+        "Obsługa zgłoszeń prac - wydziały",
+        "/admin/zglos_publikacje/obslugujacy_zgloszenia_wydzialow/",
+    ),
 ]
 
 
@@ -328,6 +333,10 @@ class CustomMenu(Menu):
         flt("dane systemowe", "Dane systemowe", SYSTEM_MENU)
         flt("struktura", "Struktura", STRUKTURA_MENU)
         flt(GR_WPROWADZANIE_DANYCH, "Wprowadzanie danych", REDAKTOR_MENU)
+        if GR_ZGLOSZENIA_PUBLIKACJI not in groups and not user.is_superuser:
+            # Wyrzuć "zgłoszenia publikacji" z REDAKTOR_MENU
+            del self.children[-1].children[-1]
+
         flt("raporty", "Raporty", RAPORTY_MENU)
         flt("administracja", "Administracja", ADMIN_MENU)
 

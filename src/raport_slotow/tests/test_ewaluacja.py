@@ -1,12 +1,13 @@
 from django.urls import reverse
 
-from bpp.models import Autor_Dyscyplina
 from raport_slotow.views import ewaluacja
+
+from bpp.models import Autor_Dyscyplina
 
 
 def test_raport_ewaluacja_no_queries(
     rekord_slotu,
-    django_assert_num_queries,
+    django_assert_max_num_queries,
     admin_client,
     rok,
     autor_jan_kowalski,
@@ -24,7 +25,7 @@ def test_raport_ewaluacja_no_queries(
     r.data = dict(od_roku=rok, do_roku=rok, _export="html")
     assert r.get_queryset().count() == 1
 
-    with django_assert_num_queries(13):
+    with django_assert_max_num_queries(13):
         admin_client.get(
             url,
             data={

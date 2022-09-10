@@ -40,7 +40,7 @@
         </ul>
     {% endif %}
 
-    {% if jednostka.pokazuj_opis %}
+    {% if jednostka.pokazuj_opis and jednostka.opis %}
         {{ jednostka.opis|safe }}
     {% endif %}
 

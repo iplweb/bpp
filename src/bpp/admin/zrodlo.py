@@ -1,6 +1,7 @@
 # Proste tabele
 from dal import autocomplete
 from django import forms
+from djangoql.admin import DjangoQLSearchMixin
 
 from pbn_api.const import ACTIVE
 from pbn_api.models import Journal
@@ -10,7 +11,7 @@ from ..models import (  # Publikacja_Habilitacyjna
     Punktacja_Zrodla,
     Zrodlo,
 )
-from .core import CommitedModelAdmin
+from .core import BaseBppAdminMixin
 from .filters import PBN_UID_IDObecnyFilter
 from .helpers import (
     ADNOTACJE_FIELDSET,
@@ -96,7 +97,12 @@ class ZrodloForm(forms.ModelForm):
         fields = "__all__"
 
 
-class ZrodloAdmin(ZapiszZAdnotacjaMixin, CommitedModelAdmin):
+class ZrodloAdmin(
+    DjangoQLSearchMixin, ZapiszZAdnotacjaMixin, BaseBppAdminMixin, admin.ModelAdmin
+):
+    djangoql_completion_enabled_by_default = False
+    djangoql_completion = True
+
     form = ZrodloForm
 
     fields = None

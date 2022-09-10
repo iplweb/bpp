@@ -1,11 +1,11 @@
 from dal import autocomplete
+from djangoql.admin import DjangoQLSearchMixin
 from import_export import resources
 from import_export.admin import ExportMixin
 from import_export.fields import Field
 
 from django.contrib import admin
 
-from bpp.admin.core import BaseBppAdmin
 from bpp.admin.filters import (
     OrcidAutoraDyscyplinyObecnyFilter,
     PBN_UID_IDAutoraObecnyFilter,
@@ -17,7 +17,7 @@ class Autor_DyscyplinaResource(resources.ModelResource):
     def get_queryset(self):
 
         return (
-            super(Autor_DyscyplinaResource, self)
+            super()
             .get_queryset()
             .select_related("autor")
             .prefetch_related("dyscyplina_naukowa", "subdyscyplina_naukowa")
@@ -69,7 +69,10 @@ class Autor_DyscyplinaForm(forms.ModelForm):
         fields = "__all__"
 
 
-class Autor_DyscyplinaAdmin(ExportMixin, BaseBppAdmin):
+class Autor_DyscyplinaAdmin(DjangoQLSearchMixin, ExportMixin, admin.ModelAdmin):
+    djangoql_completion_enabled_by_default = True
+    djangoql_completion = True
+
     resource_class = Autor_DyscyplinaResource
     form = Autor_DyscyplinaForm
 

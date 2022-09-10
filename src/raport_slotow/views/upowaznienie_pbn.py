@@ -8,6 +8,7 @@ from django_filters.views import FilterView
 from django_tables2 import SingleTableMixin
 
 from formdefaults.helpers import FormDefaultsMixin
+from nowe_raporty.views import BaseRaportAuthMixin
 from raport_slotow.filters import RaportSlotowUczelniaEwaluacjaFilter
 from raport_slotow.forms import ParametryRaportSlotowEwaluacjaForm
 from raport_slotow.models import RaportEwaluacjaUpowaznieniaView
@@ -16,13 +17,11 @@ from raport_slotow.util import MyExportMixin
 
 from django.utils import timezone
 
-from bpp.views.mixins import UczelniaSettingRequiredMixin
-
 from django_bpp.version import VERSION
 
 
 class ParametryRaportEwaluacjaUpowaznienia(
-    UczelniaSettingRequiredMixin,
+    BaseRaportAuthMixin,
     FormDefaultsMixin,
     FormView,
 ):
@@ -47,7 +46,7 @@ class ParametryRaportEwaluacjaUpowaznienia(
 
 
 class RaportEwaluacjaUpowaznienia(
-    UczelniaSettingRequiredMixin, MyExportMixin, SingleTableMixin, FilterView
+    BaseRaportAuthMixin, MyExportMixin, SingleTableMixin, FilterView
 ):
     template_name = "raport_slotow/raport_ewaluacja_upowaznienia.html"
     table_class = RaportEwaluacjaUpowaznieniaTable
@@ -79,7 +78,7 @@ class RaportEwaluacjaUpowaznienia(
             ("Od roku:", self.data["od_roku"]),
             ("Do roku:", self.data["do_roku"]),
             ("Upoważnienie PBN:", self.data["upowaznienie_pbn"]),
-            ("Wygenerowano:", timezone.now()),
+            ("Wygenerowano:", str(timezone.now())),
             ("Wersja oprogramowania BPP", VERSION),
         ]
 

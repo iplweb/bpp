@@ -73,6 +73,12 @@ urlpatterns = (
             include(("api_v1.urls", "api_v1"), namespace="api_v1"),
         ),
         path(
+            "zglos_publikacje/",
+            include(
+                ("zglos_publikacje.urls", "zglos_publikacje"),
+            ),
+        ),
+        path(
             "pbn_api/",
             include("pbn_api.urls"),
         ),
@@ -162,7 +168,7 @@ urlpatterns = (
         ),
         url(
             r"^password_reset_confirm/"
-            r"([0-9A-Za-z_\-]+)/([0-9A-Za-z]{1,13})/([0-9A-Za-z-=_]{1,32})/$",
+            r"([0-9A-Za-z_\-]+)/([0-9A-Za-z]{1,13})/([0-9A-Za-z-=_]{1,64})/$",
             PasswordResetConfirmView.as_view(),
             name="password_reset_confirm",
         ),

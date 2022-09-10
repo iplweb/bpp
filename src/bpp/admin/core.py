@@ -1,4 +1,3 @@
-# -*- encoding: utf-8 -*-
 from decimal import Decimal
 
 from dal import autocomplete
@@ -20,10 +19,8 @@ from bpp.models import (
 
 # Proste tabele
 
-BaseBppAdmin = admin.ModelAdmin
 
-
-class CommitedModelAdmin(BaseBppAdmin):
+class BaseBppAdminMixin:
     """Ta klasa jest potrzebna, (XXXżeby działały sygnały post_commit.XXX)
 
     Ta klasa KIEDYŚ była potrzebna, obecnie niespecjalnie. Aczkolwiek,
@@ -36,10 +33,6 @@ class CommitedModelAdmin(BaseBppAdmin):
 
     # ograniczenie wielkosci listy
     list_per_page = 50
-
-    def save_formset(self, *args, **kw):
-        super(CommitedModelAdmin, self).save_formset(*args, **kw)
-        # transaction.commit()
 
 
 def get_first_typ_odpowiedzialnosci():
@@ -89,7 +82,7 @@ def generuj_formularz_dla_autorow(
         )
 
         def __init__(self, *args, **kwargs):
-            super(baseModel_AutorForm, self).__init__(*args, **kwargs)
+            super().__init__(*args, **kwargs)
 
             # Ustaw inicjalną wartość dla pola 'afiliuje'
             domyslnie_afiliuje = True

@@ -6,13 +6,14 @@ from typing import Any, Dict, List, Optional, Union
 
 import openpyxl.worksheet.worksheet
 from openpyxl.utils import get_column_letter
-from openpyxl.worksheet.filters import AutoFilter
-from openpyxl.worksheet.table import Table, TableColumn, TableStyleInfo
+from openpyxl.worksheet.table import TableColumn
 from unidecode import unidecode
 
 from django.contrib.sites.models import Site
 
 from django.utils.functional import cached_property
+
+from bpp.util import worksheet_columns_autosize, worksheet_create_table
 
 
 def chunker(n, iterable):
@@ -133,30 +134,13 @@ def output_table_to_xlsx(
         ws.append(footer_row)
 
     if dataset:
-        max_column = ws.max_column
-        max_column_letter = get_column_letter(max_column)
-        max_row = ws.max_row
-
-        style = TableStyleInfo(
-            name="TableStyleMedium9",
-            showFirstColumn=False,
-            showLastColumn=False,
-            showRowStripes=True,
-            showColumnStripes=True,
+        worksheet_create_table(
+            ws,
+            title=title,
+            first_table_row=first_table_row,
+            totals=totals,
+            table_columns=table_columns,
         )
-        tab = Table(
-            displayName=title,
-            ref=f"A{first_table_row}:{max_column_letter}{max_row}",
-            autoFilter=AutoFilter(
-                ref=f"A{first_table_row}:{max_column_letter}{max_row - 1}"
-            ),
-            totalsRowShown=True if totals else False,
-            totalsRowCount=1 if totals else False,
-            tableStyleInfo=style,
-            tableColumns=table_columns,
-        )
-
-        ws.add_table(tab)
 
     if totals is None:
         totals = []
@@ -168,33 +152,12 @@ def output_table_to_xlsx(
         # Ustaw automatyczny rozmiar
         ws.column_dimensions[letter].bestFit = True
 
-    max_width = 55
-
-    if column_widths is None:
-        column_widths = {}
-
+    dont_resize_those_columns = []
     for ncol, col in enumerate(ws.columns):
-        max_length = 0
-        column = col[0].column_letter  # Get the column name
-
-        # Nie ustawiaj szerokosci tym kolumnom, one będą jako auto-size
         if headers[ncol] in totals:
-            continue
+            dont_resize_those_columns.append(ncol)
 
-        if column in column_widths:
-            adjusted_width = column_widths[column]
-        else:
-            for cell in col:
-                try:  # Necessary to avoid error on empty cells
-                    if len(str(cell.value)) > max_length:
-                        max_length = len(cell.value)
-                except (ValueError, TypeError):
-                    pass
-            adjusted_width = (max_length + 2) * 1.1
-            if adjusted_width > max_width:
-                adjusted_width = max_width
-
-        ws.column_dimensions[column].width = adjusted_width
+    worksheet_columns_autosize(ws, dont_resize_those_columns=dont_resize_those_columns)
 
 
 def string2fn(s):

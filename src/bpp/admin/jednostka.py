@@ -1,10 +1,11 @@
 import sys
 
 from django import forms
+from djangoql.admin import DjangoQLSearchMixin
 from mptt.admin import DraggableMPTTAdmin
 
 from ..models.struktura import Jednostka, Jednostka_Wydzial
-from .core import CommitedModelAdmin, RestrictDeletionToAdministracjaGroupMixin
+from .core import BaseBppAdminMixin, RestrictDeletionToAdministracjaGroupMixin
 from .filters import PBN_UID_IDObecnyFilter
 from .helpers import ADNOTACJE_FIELDSET, LimitingFormset, ZapiszZAdnotacjaMixin
 
@@ -36,11 +37,15 @@ class Autor_JednostkaInline(admin.TabularInline):
 
 
 class JednostkaAdmin(
+    DjangoQLSearchMixin,
     RestrictDeletionToAdministracjaGroupMixin,
     ZapiszZAdnotacjaMixin,
-    CommitedModelAdmin,
+    BaseBppAdminMixin,
     DraggableMPTTAdmin,
 ):
+    djangoql_completion_enabled_by_default = False
+    djangoql_completion = True
+
     change_list_template = "admin/grappelli_mptt_change_list.html"
 
     list_display_links = ["indented_title"]
@@ -154,7 +159,7 @@ class JednostkaAdmin(
         from django.db import connection
 
         if "bpp_uczelnia" not in connection.introspection.table_names():
-            return CommitedModelAdmin.list_per_page
+            return BaseBppAdminMixin.list_per_page
 
         req = None
         if hasattr(self, "request"):
@@ -163,10 +168,10 @@ class JednostkaAdmin(
         uczelnia = Uczelnia.objects.get_for_request(req)
 
         if uczelnia is None:
-            return CommitedModelAdmin.list_per_page
+            return BaseBppAdminMixin.list_per_page
 
         if uczelnia.sortuj_jednostki_alfabetycznie:
-            return CommitedModelAdmin.list_per_page
+            return BaseBppAdminMixin.list_per_page
 
         return sys.maxsize
 

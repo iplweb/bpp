@@ -1,6 +1,6 @@
 import pytest
 from django.core.exceptions import ImproperlyConfigured, ValidationError
-from model_mommy import mommy
+from model_bakery import baker
 
 from bpp.models import Uczelnia
 
@@ -33,7 +33,7 @@ def test_Uczelnia_clean_integracja(uczelnia, mocker):
 
 @pytest.mark.django_db
 def test_Uczelnia_pbn_client():
-    uczelnia = mommy.make(
+    uczelnia = baker.make(
         Uczelnia,
         nazwa="Testowa uczelnia",
         skrot="TU",

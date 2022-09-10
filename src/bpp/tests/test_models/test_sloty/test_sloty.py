@@ -292,6 +292,9 @@ def test_ISlot_wydawnictwo_zwarte_zakres_lat_nie_ten(zwarte_z_dyscyplinami):
     ISlot(zwarte_z_dyscyplinami)
 
     zwarte_z_dyscyplinami.rok = 2023
+    ISlot(zwarte_z_dyscyplinami)
+
+    zwarte_z_dyscyplinami.rok = 2024
     with pytest.raises(CannotAdapt):
         ISlot(zwarte_z_dyscyplinami)
 

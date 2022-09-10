@@ -224,7 +224,11 @@ class OrganPrzyznajacyNagrodyAutocomplete(NazwaMixin, autocomplete.Select2QueryS
 
 
 class WidocznaJednostkaAutocomplete(JednostkaAutocomplete):
-    qset = Jednostka.objects.filter(widoczna=True).select_related("wydzial")
+    qset = Jednostka.objects.widoczne().select_related("wydzial")
+
+
+class PublicJednostkaAutocomplete(JednostkaAutocomplete):
+    qset = Jednostka.objects.publiczne().select_related("wydzial")
 
 
 def autocomplete_create_error(msg):

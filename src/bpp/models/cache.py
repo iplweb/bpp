@@ -409,6 +409,18 @@ class RekordBase(
     def punktacja_autora(self):
         return Cache_Punktacja_Autora.objects.filter(rekord_id=[self.id[0], self.id[1]])
 
+    @cached_property
+    def pierwszy_autor_afiliowany(self):
+        """Zwraca pierwszego autora, afiliującego na jednostkę uczelni z tej pracy"""
+        return self.autorzy.filter(afiliuje=True).order_by("kolejnosc").first()
+
+    @cached_property
+    def pierwsza_jednostka_afiliowana(self):
+        """Zwraca pierwszego autora, afiliującego na jednostkę uczelni z tej pracy"""
+        res = self.pierwszy_autor_afiliowany()
+        if res is not None:
+            return self.pierwszy_autor_afiliowany().jednostka
+
 
 class Rekord(RekordBase):
     class Meta:

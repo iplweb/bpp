@@ -46,15 +46,18 @@ def parse_tag(token, parser):
 
 
 class CzyPokazywacNode(template.Node):
-    def __init__(self, nodelist, attr):
+    def __init__(self, nodelist, attr, ignoruj_grupe=None):
         self.nodelist = nodelist
 
         self.attr = attr
+        self.ignoruj_grupe = ignoruj_grupe
 
     def render(self, context):
         uczelnia = context.get("uczelnia")
         if uczelnia is not None:
-            if uczelnia.sprawdz_uprawnienie(self.attr.token, context.request):
+            if uczelnia.sprawdz_uprawnienie(
+                self.attr.token, context.request, ignoruj_grupe=self.ignoruj_grupe
+            ):
                 return self.nodelist.render(context)
         return ""
 
@@ -63,7 +66,7 @@ def czy_pokazywac(parser, token):
     tag_name, args, kwargs = parse_tag(token, parser)
     nodelist = parser.parse("end_czy_pokazywac")
     parser.delete_first_token()
-    return CzyPokazywacNode(nodelist, args[0])
+    return CzyPokazywacNode(nodelist, args[0], *args[1:])
 
 
 register.tag("czy_pokazywac", czy_pokazywac)

@@ -9,7 +9,7 @@ try:
 except ImportError:
     from django.urls import reverse
 
-from model_mommy import mommy
+from model_bakery import baker
 
 from fixtures import NORMAL_DJANGO_USER_LOGIN, NORMAL_DJANGO_USER_PASSWORD
 
@@ -46,8 +46,8 @@ def test_autor_ukrywanie_nazwisk(autor_jan_nowak, client, admin_client):
 
 @pytest.mark.django_db
 def test_AutorView_funkcja_za_nazwiskiem(app):
-    autor = mommy.make(Autor, nazwisko="Foo", imiona="Bar")
-    jednostka = mommy.make(Jednostka, nazwa="Jednostka")
+    autor = baker.make(Autor, nazwisko="Foo", imiona="Bar")
+    jednostka = baker.make(Jednostka, nazwa="Jednostka")
     funkcja = Funkcja_Autora.objects.create(
         nazwa="profesor uczelni", skrot="prof. ucz."
     )
@@ -81,13 +81,13 @@ def test_AutorView_funkcja_za_nazwiskiem(app):
 def test_browse_autor():
     Typ_Odpowiedzialnosci.objects.get_or_create(nazwa="autor", skrot="aut.")
 
-    autor = mommy.make(Autor)
-    jednostka = mommy.make(Jednostka, skupia_pracownikow=True)
-    wc = mommy.make(Wydawnictwo_Ciagle, liczba_cytowan=200)
+    autor = baker.make(Autor)
+    jednostka = baker.make(Jednostka, skupia_pracownikow=True)
+    wc = baker.make(Wydawnictwo_Ciagle, liczba_cytowan=200)
     wc.dodaj_autora(autor, jednostka, zapisany_jako="Jan K")
 
-    j2 = mommy.make(Jednostka, skupia_pracownikow=False)
-    wc2 = mommy.make(Wydawnictwo_Ciagle, liczba_cytowan=300)
+    j2 = baker.make(Jednostka, skupia_pracownikow=False)
+    wc2 = baker.make(Wydawnictwo_Ciagle, liczba_cytowan=300)
     wc2.dodaj_autora(autor, j2, zapisany_jako="Jan K2", afiliuje=False)
 
     return autor
@@ -96,7 +96,7 @@ def test_browse_autor():
 def test_browse_autor_dwa_doktoraty(typy_odpowiedzialnosci, autor_jan_kowalski, client):
     tytuly_prac = ["Praca 1", "Praca 2"]
     for praca in tytuly_prac:
-        mommy.make(Praca_Doktorska, tytul_oryginalny=praca, autor=autor_jan_kowalski)
+        baker.make(Praca_Doktorska, tytul_oryginalny=praca, autor=autor_jan_kowalski)
 
     res = client.get(
         reverse(
