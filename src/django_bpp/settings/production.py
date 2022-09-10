@@ -57,3 +57,7 @@ ALLOWED_HOSTS = [
 ]
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+EMAIL_BACKEND = "djcelery_email.backends.CeleryEmailBackend"
+
+INSTALLED_APPS.append("djcelery_email")  # noqa

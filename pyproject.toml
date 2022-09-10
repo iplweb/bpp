@@ -158,6 +158,7 @@ django-formtools = "^2.3"
 pathspec = "^0.9.0"
 django-auth-ldap = "^4.1.0"
 django-environ = "^0.9.0"
+django-celery-email = "^3.0.0"
 
 [tool.poetry.dev-dependencies]
 model-bakery = ">=1.5.1"
