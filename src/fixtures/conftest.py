@@ -283,6 +283,28 @@ def jednostka(wydzial, db):
     return _jednostka_maker(JEDNOSTKA_UCZELNI, skrot="Jedn. Ucz.", wydzial=wydzial)
 
 
+@pytest.mark.django_db
+@pytest.fixture(scope="function")
+def aktualna_jednostka(jednostka: Jednostka, wydzial, db):
+    jednostka.jednostka_wydzial_set.create(wydzial=wydzial)
+    jednostka.refresh_from_db()
+    return jednostka
+
+
+@pytest.mark.django_db
+@pytest.fixture
+def drugi_wydzial(uczelnia):
+    return baker.make(Wydzial, uczelnia=uczelnia)
+
+
+@pytest.mark.django_db
+@pytest.fixture
+def druga_aktualna_jednostka(druga_jednostka, drugi_wydzial):
+    druga_jednostka.jednostka_wydzial_set.create(wydzial=drugi_wydzial)
+    druga_jednostka.refresh_from_db()
+    return druga_jednostka
+
+
 JEDNOSTKA_PODRZEDNA = "Jednostka P-rzedna"
 
 

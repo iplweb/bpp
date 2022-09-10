@@ -7,7 +7,7 @@ from bpp.models import Wydzial
 
 
 class WydzialJednostkiPierwszegoAutora(SimpleListFilter):
-    title = "wydział 1go autora"
+    title = "wydział 1-go autora"
     parameter_name = "wydz1a"
     db_field_name = "zgloszenie_publikacji_autor__jednostka__wydzial"
 
@@ -29,6 +29,8 @@ class WydzialJednostkiPierwszegoAutora(SimpleListFilter):
             field = self.parameter_name
 
         if v:
-            return queryset.filter(**{field: v})
+            return queryset.filter(
+                **{field: v, "zgloszenie_publikacji_autor__kolejnosc": 0}
+            )
 
         return queryset

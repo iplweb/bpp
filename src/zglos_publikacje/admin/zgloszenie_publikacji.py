@@ -188,3 +188,5 @@ class Zgloszenie_PublikacjiAdmin(admin.ModelAdmin):
             return obj.zgloszenie_publikacji_autor_set.first().jednostka.wydzial.nazwa
         except BaseException:
             pass
+
+    wydzial_pierwszego_autora.short_description = "Wydział pierwszego autora"
