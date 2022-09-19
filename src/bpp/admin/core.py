@@ -8,6 +8,7 @@ from django.forms.widgets import HiddenInput
 
 from django.contrib import admin
 
+from bpp.admin.zglos_publikacje_helpers import KorzystaZNumeruZgloszeniaInlineMixin
 from bpp.jezyk_polski import warianty_zapisanego_nazwiska
 from bpp.models import (
     Autor,
@@ -208,7 +209,7 @@ def generuj_inline_dla_autorow(baseModel, include_dyscyplina=True):
         baseClass = admin.TabularInline
         extraRows = 1
 
-    class baseModel_AutorInline(baseClass):
+    class baseModel_AutorInline(KorzystaZNumeruZgloszeniaInlineMixin, baseClass):
         model = baseModel
         extra = extraRows
         form = generuj_formularz_dla_autorow(

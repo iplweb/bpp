@@ -117,3 +117,5 @@ ZDUBLOWANE_POLE_KOMUNIKAT = (
 )
 
 PUSTY_ADRES_EMAIL = "brak@email.pl"
+
+NUMER_ZGLOSZENIA_PARAM = "numer_zgloszenia"

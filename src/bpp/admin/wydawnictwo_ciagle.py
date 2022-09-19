@@ -26,6 +26,7 @@ from .helpers import (
 )
 from .xlsx_export import resources
 from .xlsx_export.mixins import EksportDanychMixin
+from .zglos_publikacje_helpers import UzupelniajWstepneDanePoNumerzeZgloszeniaMixin
 
 from django.contrib import admin
 
@@ -186,6 +187,7 @@ class Wydawnictwo_CiagleAdmin(
     KolumnyZeSkrotamiMixin,
     AdnotacjeZDatamiOrazPBNMixin,
     BaseBppAdminMixin,
+    UzupelniajWstepneDanePoNumerzeZgloszeniaMixin,
     EksportDanychMixin,
     admin.ModelAdmin,
 ):
