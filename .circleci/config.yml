@@ -62,7 +62,7 @@ jobs:
       - checkout
 
       - restore_cache:
-          key: cache-14-{{ checksum "poetry.lock" }}-{{ checksum "yarn.lock" }}
+          key: cache-15-{{ checksum "poetry.lock" }}-{{ checksum "yarn.lock" }}
 
       - run: sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
       - run: wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
@@ -110,7 +110,7 @@ jobs:
             ls -las /home/circleci/.cache/*poetry*/
 
       - save_cache:
-          key: cache-14-{{ checksum "poetry.lock" }}-{{ checksum "yarn.lock" }}
+          key: cache-15-{{ checksum "poetry.lock" }}-{{ checksum "yarn.lock" }}
           paths:
             - "/home/circleci/.cache"
 
