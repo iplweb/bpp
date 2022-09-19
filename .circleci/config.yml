@@ -75,6 +75,7 @@ jobs:
       - run: export LC_ALL=pl_PL.UTF-8
       - run: locale
       - run: sudo npm install -g grunt-cli
+      - run: pip install --upgrade pip poetry
 
       - run:
           name: Install project
