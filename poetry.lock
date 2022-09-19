@@ -571,6 +571,17 @@ django-crispy-forms = ">=1.8.1"
 dev = ["django-debug-toolbar", "flake8", "pytest", "pytest-django", "sphinx", "sphinx-autobuild", "sphinx-rtd-theme"]
 
 [[package]]
+name = "crossrefapi"
+version = "1.5.0"
+description = "Library that implements the endpoints of the Crossref API"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+requests = ">=2.11.1"
+
+[[package]]
 name = "cryptography"
 version = "38.0.1"
 description = "cryptography is a package which provides cryptographic recipes and primitives to Python developers."
@@ -3790,7 +3801,7 @@ test = ["pytest"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.10,<3.11"
-content-hash = "be65bdacd551b9466e2c1a9ad814a558f4237a621f3acbadd8ebd46a59a2276b"
+content-hash = "e27b174de8fd36c23f3aeba9198f336736f2b177513d5ec5edaa98e4112e879c"
 
 [metadata.files]
 aioredis = [
@@ -4249,6 +4260,9 @@ coveralls = [
 ]
 crispy-forms-foundation = [
     {file = "crispy-forms-foundation-0.8.0.tar.gz", hash = "sha256:6c1baa7abf528ca3a37cc7d040b0244cd57230a88bd64962847eb55b9cdfe809"},
+]
+crossrefapi = [
+    {file = "crossrefapi-1.5.0.tar.gz", hash = "sha256:db4b688d97ec624a243e52532e0ade6172185d2a778c9c7bc458b7ee129bb884"},
 ]
 cryptography = [
     {file = "cryptography-38.0.1-cp36-abi3-macosx_10_10_universal2.whl", hash = "sha256:10d1f29d6292fc95acb597bacefd5b9e812099d75a6469004fd38ba5471a977f"},
