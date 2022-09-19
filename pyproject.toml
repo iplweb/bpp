@@ -52,6 +52,9 @@ include = ["AUTHORS.rst", "CONTRIBUTING.rst", "HISTORY.rst", "LICENSE",
 [tool.poetry.scripts]
 "bpp-manage.py" = "django_bpp.manage_command:entry_point"
 
+[tool.poetry.group.dev.dependencies]
+bumpver = "^2022.1118"
+
 [tool.bumpver]
 current_version = "v202209.1088"
 version_pattern = "vYYYY0M.BUILD[-TAGNUM][GITHASH]"
@@ -188,7 +191,7 @@ black = "^22.3.0"
 autoflake = "^1.4"
 autopep8 = "^1.6.0"
 flake8 = "^4.0.1"
-bumpver = {url = "https://github.com/mbarkhau/bumpver/archive/refs/tags/2022.1117.tar.gz#egg=bumpver-202211.17"}
+# bumpver = {url = "https://github.com/mbarkhau/bumpver/archive/refs/tags/2022.1117.tar.gz#egg=bumpver-202211.17"}
 # Poprzedni bumpver: https://github.com/mpasternak/bumpver/archive/refs/tags/v202219.04-alpha.tar.gz#egg=bumpver-202219.04-alpha"
 typing = ">=3.6,<3.7"
 isort = ">=5.7.0"
