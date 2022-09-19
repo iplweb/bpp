@@ -89,14 +89,15 @@ class KorzystaZNumeruZgloszeniaMixin:
     """
 
     def get_zgloszenie_publikacji(self, request):
-        nz = request.GET.get(const.NUMER_ZGLOSZENIA_PARAM, "")
-        if nz.isnumeric():
-            from zglos_publikacje.models import Zgloszenie_Publikacji
+        if request.method == "GET":
+            nz = request.GET.get(const.NUMER_ZGLOSZENIA_PARAM, "")
+            if nz.isnumeric():
+                from zglos_publikacje.models import Zgloszenie_Publikacji
 
-            try:
-                return Zgloszenie_Publikacji.objects.get(pk=nz)
-            except Zgloszenie_Publikacji.DoesNotExist:
-                pass
+                try:
+                    return Zgloszenie_Publikacji.objects.get(pk=nz)
+                except Zgloszenie_Publikacji.DoesNotExist:
+                    pass
 
 
 class KorzystaZNumeruZgloszeniaInlineMixin(KorzystaZNumeruZgloszeniaMixin):
