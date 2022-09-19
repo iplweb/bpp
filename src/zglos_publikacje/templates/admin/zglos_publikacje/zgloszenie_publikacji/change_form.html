@@ -4,5 +4,11 @@
     {% if original.moze_zostac_zwrocony %}
         <li><a href="../zwroc/">Zwróć do autora</a></li>
     {% endif %}
+    {% if original.status == 0 or original.status == 3 %}
+        <li><a href="{% url "admin:bpp_wydawnictwo_ciagle_add" %}?numer_zgloszenia={{ original.pk }}">Dodaj wyd.
+            ciągłe</a></li>
+        <li><a href="{% url "admin:bpp_wydawnictwo_zwarte_add" %}?numer_zgloszenia={{ original.pk }}">Dodaj wyd.
+            zwarte</a></li>
+    {% endif %}
     {{ block.super }}
 {% endblock %}

@@ -21,6 +21,7 @@ from .nagroda import NagrodaInline
 from .wydawnictwo_ciagle import CleanDOIWWWPublicWWWMixin
 from .xlsx_export import resources
 from .xlsx_export.mixins import EksportDanychMixin
+from .zglos_publikacje_helpers import UzupelniajWstepneDanePoNumerzeZgloszeniaMixin
 
 from django.contrib import admin, messages
 
@@ -223,6 +224,7 @@ class Wydawnictwo_ZwarteAdmin(
     helpers.AdnotacjeZDatamiOrazPBNMixin,
     OptionalPBNSaveMixin,
     EksportDanychMixin,
+    UzupelniajWstepneDanePoNumerzeZgloszeniaMixin,
     Wydawnictwo_ZwarteAdmin_Baza,
 ):
     form = Wydawnictwo_ZwarteForm
