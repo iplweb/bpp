@@ -75,6 +75,12 @@ jobs:
       - run: export LC_ALL=pl_PL.UTF-8
       - run: locale
       - run: sudo npm install -g grunt-cli
+      - run:
+          name: Reinstall fresh PIP
+          run:
+            curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+            python3 get-pip.py --force-reinstall
+
       - run: pip install --upgrade pip poetry
 
       - run:
