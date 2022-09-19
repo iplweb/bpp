@@ -7,7 +7,7 @@ jobs:
   build:
 
     docker:
-      - image: cimg/python:3.10.5-node
+      - image: cimg/python:3.10.7-node
         environment:
           PGUSER: postgres
           PGHOST: localhost
@@ -127,7 +127,7 @@ jobs:
 
   test:
     docker:
-      - image: cimg/python:3.10.5-browsers
+      - image: cimg/python:3.10.7-browsers
         environment:
           PGUSER: postgres
           PGHOST: localhost
@@ -209,7 +209,7 @@ jobs:
 
   js-tests:
     docker:
-      - image: cimg/python:3.10.5-node
+      - image: cimg/python:3.10.7-node
 
     steps:
 
