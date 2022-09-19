@@ -153,6 +153,9 @@ class UzupelniajWstepneDanePoNumerzeZgloszeniaMixin(
 
         z = self.get_zgloszenie_publikacji(request)
 
+        if z is None:
+            return super().get_formset_kwargs(request, obj, inline, prefix)
+
         initial = []
         for zpa in z.zgloszenie_publikacji_autor_set.all():
             initial.append(
