@@ -156,6 +156,18 @@ a rok jest większy lub równy jak 2017, należy dla wydawnictw wpisać taki kod
   and rok >= 2017
   and zrodlo.pbn_uid = None
 
+Autorzy ukryci, z aktualnym miejscem pracy określonym, innymi niż 'Obca jednostka'
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+Aby znaleźć autorów z atrybutem "pokazuj" ustalonym na "nie", z aktualnym miejscem
+pracy nie-pustym, ale innym, niż "Obca jednostka", w tabeli autorów wpisujemy następujące
+zapytanie DjangoQL:
+
+.. code-block:: python
+
+ pokazuj = False and aktualna_jednostka.nazwa != "Obca jednostka"
+ and aktualna_jednostka != None
+
 Operatory logiczne a ich kolejność
 """"""""""""""""""""""""""""""""""
 
