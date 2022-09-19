@@ -200,7 +200,7 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
     )
 
     wymagaj_informacji_o_oplatach = models.BooleanField(
-        "Wymagaj inforamcji o opłatach",
+        "Wymagaj informacji o opłatach",
         default=True,
         help_text="Gdy zaznaczone, moduł 'Zgłaszanie publikacji' będzie wyświetlać użytkownikowi formularz "
         "informacji o opłatach za publikację w przypadku zgłaszania artykułu lub monografii. "
