@@ -114,15 +114,25 @@ def normalize_public_uri(public_uri):
         return public_uri.strip()
 
 
-def normalize_doi(s):
+def normalize_doi(s: str) -> None | str:
+    """
+    https://www.doi.org/doi_handbook/2_Numbering.html#2.4
+    """
+
     if s is None:
-        return s
+        return
+
+    s = s.strip()
+
+    if not s:
+        return
+
     return (
-        s.strip()
+        s.lower()
         .replace("http://", "")
         .replace("https://", "")
+        .replace("dx.doi.org/", "")
         .replace("doi.org/", "")
-        .lower()
     )
 
 
