@@ -4,14 +4,11 @@
 # - Patent
 # - Praca_Doktorska
 # - Praca_Habilitacyjna
-from datetime import timedelta
 
 import denorm
-from crossref.restful import Works
 from django.db import connections, models, router
 from django.db.models import CASCADE, ForeignKey
 from django.db.models.deletion import DO_NOTHING
-from django_extensions.db.fields.json import JSONField
 from taggit.managers import TaggableManager, _TaggableManager
 from taggit.models import Tag
 
@@ -19,10 +16,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields.array import ArrayField
 from django.contrib.postgres.search import SearchVectorField as VectorField
 
-from django.utils import timezone
 from django.utils.functional import cached_property
 
-from bpp.fields import DOIField
 from bpp.models import (
     Autor,
     Dyscyplina_Naukowa,
@@ -591,40 +586,3 @@ class Cache_Punktacja_Autora_Sum_Gruop(models.Model):
             "autor",
             "dyscyplina",
         )
-
-
-class CrossrefAPICacheManager(models.Manager):
-
-    CACHE_DURATION_DAYS = 14
-    cache_last_run = None
-
-    def cleanup(self):
-        cache_duration = timezone.now() - timedelta(days=self.CACHE_DURATION_DAYS)
-        if self.cache_last_run is not None:
-            if self.cache_last_run > cache_duration:
-                return
-
-        self.filter(ostatnio_zmodyfikowany__lte=cache_duration).delete()
-        self.cache_last_run = timezone.now()
-
-    def api_get_by_doi(self, doi):
-        works = Works()
-        return works.doi(doi)
-
-    def get_by_doi(self, doi):
-        self.cleanup()
-
-        ret = self.filter(doi=doi).first()
-        if ret is None:
-            data = self.api_get_by_doi(doi)
-            if data:
-                ret = self.create(doi=doi, data=data)
-        return ret.data
-
-
-class CrossrefAPICache(models.Model):
-    objects = CrossrefAPICacheManager()
-
-    doi = DOIField(unique=True)
-    data = JSONField()
-    ostatnio_zmodyfikowany = models.DateTimeField(auto_now=True)
