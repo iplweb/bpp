@@ -6,9 +6,9 @@ Historia zmian
 
 dev
 ---
-
 * możliwość szybkiego dodawania zgłoszeń prac użytkowników jako
   wydawnictwo zwarte lub wydawnictwo ciągłe (b/n),
+* możliwość porównywania danych prac z CrossRef API po DOI -- prace w toku (b/n),
 
 202209.1088
 -----------

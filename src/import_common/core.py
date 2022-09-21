@@ -277,7 +277,7 @@ def matchuj_dyscypline(kod, nazwa):
         pass
 
 
-def matchuj_wydawce(nazwa, pbn_uid_id=None):
+def matchuj_wydawce(nazwa, pbn_uid_id=None, similarity=0.9):
     nazwa = normalize_nazwa_wydawcy(nazwa)
     try:
         return Wydawca.objects.get(nazwa=nazwa, alias_dla_id=None)
@@ -293,11 +293,10 @@ def matchuj_wydawce(nazwa, pbn_uid_id=None):
 
     loose = (
         Wydawca.objects.annotate(similarity=TrigramSimilarity("nazwa", nazwa))
-        .filter(similarity__gte=0.9)
+        .filter(similarity__gte=similarity)
         .order_by("-similarity")[:5]
     )
     if loose.count() > 0 and loose.count() < 2:
-        print("XXX DOPASOWANIE WYDAWCY LUZNE UWAGA", loose, nazwa)
         return loose.first()
 
 
@@ -308,9 +307,44 @@ MATCH_SIMILARITY_THRESHOLD = 0.95
 MATCH_SIMILARITY_THRESHOLD_LOW = 0.90
 MATCH_SIMILARITY_THRESHOLD_VERY_LOW = 0.80
 
+# Znormalizowany tytuł w bazie danych -- wyrzucony ciąg znaków [online], podwójne
+# spacje pozamieniane na pojedyncze, trim całości
 normalized_db_title = Trim(
-    Replace(Lower("tytul_oryginalny"), Value(" [online]"), Value(""))
+    Replace(
+        Replace(Lower("tytul_oryginalny"), Value(" [online]"), Value("")),
+        Value("  "),
+        Value(" "),
+    )
 )
+
+# Znormalizowany skrót nazwy źródła -- wyrzucone spacje i kropki, trim, zmniejszone
+# znaki
+normalized_db_zrodlo_skrot = Trim(
+    Replace(
+        Replace(
+            Replace(Lower("skrot"), Value(" "), Value("")),
+            Value("-"),
+            Value(""),
+        ),
+        Value("."),
+        Value(""),
+    )
+)
+
+
+def normalize_zrodlo_skrot_for_db_lookup(s):
+    return s.lower().replace(" ", "").strip().replace("-", "").replace(".", "")
+
+
+# Znormalizowany skrot zrodla do wyszukiwania -- wyrzucone wszystko procz kropek
+normalized_db_zrodlo_nazwa = Trim(
+    Replace(Lower("nazwa"), Value(" "), Value("")),
+)
+
+
+def normalize_zrodlo_nazwa_for_db_lookup(s):
+    return s.lower().replace(" ", "").strip()
+
 
 normalized_db_isbn = Trim(Replace(Lower("isbn"), Value("-"), Value("")))
 

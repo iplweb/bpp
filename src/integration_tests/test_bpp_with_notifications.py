@@ -1,4 +1,3 @@
-# -*- encoding: utf-8 -*-
 import time
 
 from django.core.management import call_command
@@ -149,15 +148,15 @@ def test_preauth_browser(preauth_browser, live_server):
     """Sprawdz, czy pre-autoryzowany browser zwyklego uzytkownika
     funkcjonuje poprawnie."""
     preauth_browser.visit(live_server + "/admin/")
-    assert preauth_browser.is_text_present(u"Login") or preauth_browser.is_text_present(
-        u"Zaloguj si"
+    assert preauth_browser.is_text_present("Login") or preauth_browser.is_text_present(
+        "Zaloguj si"
     )
 
 
 def test_admin_browser(admin_browser, asgi_live_server):
     """Sprawdz, czy pre-autoryzowany browser admina funkcjonuje poprawnie"""
     admin_browser.visit(asgi_live_server.url + "/admin/")
-    assert admin_browser.is_text_present(u"Administracja stron")
+    assert admin_browser.is_text_present("Redagowanie")
 
 
 def test_webtest(webtest_app, normal_django_user):

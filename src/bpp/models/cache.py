@@ -4,10 +4,12 @@
 # - Patent
 # - Praca_Doktorska
 # - Praca_Habilitacyjna
+
 import denorm
 from django.db import connections, models, router
 from django.db.models import CASCADE, ForeignKey
 from django.db.models.deletion import DO_NOTHING
+from django.urls import reverse
 from taggit.managers import TaggableManager, _TaggableManager
 from taggit.models import Tag
 
@@ -420,6 +422,9 @@ class RekordBase(
         res = self.pierwszy_autor_afiliowany()
         if res is not None:
             return self.pierwszy_autor_afiliowany().jednostka
+
+    def get_absolute_url(self):
+        return reverse("bpp:browse_rekord", args=(self.pk[0], self.pk[1]))
 
 
 class Rekord(RekordBase):

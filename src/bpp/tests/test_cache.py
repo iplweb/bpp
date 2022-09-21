@@ -1,4 +1,3 @@
-# TODO: przenies do bpp/tests/test_cache.py
 import pytest
 from model_bakery import baker
 
@@ -367,6 +366,10 @@ def test_caching_kolejnosc(wydawnictwo_ciagle_z_dwoma_autorami, denorms):
 
 def test_rekord_describe_content_type(wydawnictwo_zwarte):
     assert "wydawnictwo" in Rekord.objects.first().describe_content_type
+
+
+def test_Rekord_get_absolute_url(wydawnictwo_zwarte):
+    assert Rekord.objects.first().get_absolute_url().startswith("/")
 
 
 def test_aktualizacja_rekordu_autora(typy_odpowiedzialnosci, denorms):
