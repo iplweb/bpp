@@ -225,6 +225,9 @@ jobs:
             make yarn
             make js-tests
 
+  coveralls:
+    steps:
+      - curl -k https://coveralls.io/webhook?repo_token=$COVERALLS_REPO_TOKEN -d "payload[build_num]=$CIRCLE_WORKFLOW_ID&payload[status]=done"
 
 workflows:
   version: 2
@@ -237,3 +240,6 @@ workflows:
       - js-tests:
           requires:
             - build
+      - coveralls:
+          requires:
+            - test
