@@ -28,8 +28,8 @@
 {% block content %}
     <div style="border: 2px solid red; border-style: groove; padding: 5px; width: auto;">
         <p><strong>Prace w toku!</strong></p>
-    <p>Oglądasz część serwisu udostępnioną jako podgląd technologiczny nadchodzących zmian.
-    Funkcja nie została jeszcze ukończona. </p>
+        <p>Oglądasz część serwisu udostępnioną jako podgląd technologiczny nadchodzących zmian.
+            Funkcja nie została jeszcze ukończona. </p>
 
     </div>
     <style>
@@ -61,7 +61,9 @@
         {% for elem in dane_porownania %}
             <tr>
                 <td>{{ elem.atrybut }}</td>
-                <td class="pre">{{ elem.wartosc_z_crossref }}</td>
+                <td class="pre">
+                    <pre>{{ elem.wartosc_z_crossref }}</pre>
+                </td>
                 <td>
                     {% if elem.rezultat.status == 'ok' %}
                         <span class="fi-check" style="color:green;"></span>
@@ -80,7 +82,9 @@
                 </td>
                 <td>{{ elem.rezultat.opis }}</td>
                 <td>{% for rekord in elem.rezultat.rekordy %}
-                    <a target="_blank" href="{{ rekord.get_absolute_url }}">{{ rekord }}{% if rekord.aktualna_jednostka %} - {{ rekord.aktualna_jednostka }}{% endif %}</a><br/>
+                    <a target="_blank" href="{{ rekord.get_absolute_url }}">
+                        {{ rekord }}{% if rekord.aktualna_jednostka %} - {{ rekord.aktualna_jednostka }}{% endif %}</a>
+                    <br/>
                 {% endfor %}</td>
             </tr>
         {% endfor %}
@@ -92,7 +96,9 @@
         {% for key, value in do_skopiowania %}
             <tr>
                 <td>{{ key }}</td>
-                <td style="font-family: monospace !important; white-space: pre !important; word-break: break-all;">{{ value }}</td>
+                <td class="pre">
+                    <pre>{{ value }}</pre>
+                </td>
             </tr>
         {% endfor %}
     </table>
@@ -106,23 +112,27 @@
         {% for key, value in ignorowane %}
             <tr>
                 <td>{{ key }}</td>
-                <td style="font-family: monospace !important; white-space: pre !important; word-break: break-all;">{{ value }}</td>
+                <td class="pre">
+                    <pre>{{ value }}</pre>
+                </td>
             </tr>
         {% endfor %}
     </table>
 
     {% if obce %}
-    <h1>Dane obce</h1>
-    Poniższe pola nie figurują w kodzie BPP i nie ma na ten moment w kodzie żadnych wskazówek,
-    do jakiej grupy je zakwalifikować.
-    <table class="grp-table">
-        {% for key, value in obce %}
-            <tr>
-                <td>{{ key }}</td>
-                <td style="font-family: monospace !important; white-space: pre !important; word-break: break-all;">{{ value }}</td>
-            </tr>
-        {% endfor %}
-    </table>
+        <h1>Dane obce</h1>
+        Poniższe pola nie figurują w kodzie BPP i nie ma na ten moment w kodzie żadnych wskazówek,
+        do jakiej grupy je zakwalifikować.
+        <table class="grp-table">
+            {% for key, value in obce %}
+                <tr>
+                    <td>{{ key }}</td>
+                    <td class="pre">
+                        <pre>{{ value }}</pre>
+                    </td>
+                </tr>
+            {% endfor %}
+        </table>
     {% endif %}
 
 {% endblock %}
