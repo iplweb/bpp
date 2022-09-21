@@ -6,7 +6,7 @@ from django.urls import reverse
 from django_webtest import DjangoTestApp, DjangoWebtestResponse
 from model_bakery import baker
 
-from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
+from bpp.models import Autor, Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
 
 NAZWA_LINKU_EKSPORTU = "Eksport"
 
@@ -16,6 +16,7 @@ NAZWA_LINKU_EKSPORTU = "Eksport"
     [
         ("wydawnictwo_ciagle", Wydawnictwo_Ciagle),
         ("wydawnictwo_zwarte", Wydawnictwo_Zwarte),
+        ("autor", Autor),
     ],
 )
 def test_xlsx_export_overflow(urlname, klass, admin_app: DjangoTestApp, settings):
@@ -45,13 +46,14 @@ def test_xlsx_export_overflow(urlname, klass, admin_app: DjangoTestApp, settings
 
 
 @pytest.mark.parametrize(
-    "urlname,klass",
+    "urlname,klass,cname",
     [
-        ("wydawnictwo_ciagle", Wydawnictwo_Ciagle),
-        ("wydawnictwo_zwarte", Wydawnictwo_Zwarte),
+        ("wydawnictwo_ciagle", Wydawnictwo_Ciagle, "id"),
+        ("wydawnictwo_zwarte", Wydawnictwo_Zwarte, "id"),
+        ("autor", Autor, "nazwisko"),
     ],
 )
-def test_xlsx_export_data(urlname, klass, admin_app: DjangoTestApp):
+def test_xlsx_export_data(urlname, klass, cname, admin_app: DjangoTestApp):
     baker.make(klass)
 
     page: DjangoWebtestResponse = admin_app.get(
@@ -60,7 +62,7 @@ def test_xlsx_export_data(urlname, klass, admin_app: DjangoTestApp):
 
     xlsx_binary_data = page.click(NAZWA_LINKU_EKSPORTU)
     wb = openpyxl.load_workbook(BytesIO(xlsx_binary_data.content))
-    assert wb.active["A1"].value == "id"
+    assert wb.active["A1"].value == cname
 
 
 def test_xlsx_export_nazwy_zamiast_numerkow(

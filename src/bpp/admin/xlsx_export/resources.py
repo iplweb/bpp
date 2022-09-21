@@ -8,7 +8,7 @@ from import_export.fields import Field
 
 from django.contrib.sites.models import Site
 
-from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
+from bpp.models import Autor, Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
 
 WYDAWNICTWO_TYPOWE_EXCLUDES = [
     "tekst_przed_pierwszym_autorem",
@@ -52,7 +52,7 @@ class Wydawnictwo_ResourceBase(resources.ModelResource):
     bpp_admin_url = Field(attribute="pk")
 
     def dehydrate_pbn_url(self, obj):
-        pbn_uid_id = getattr(obj, "pbn_uid_id")
+        pbn_uid_id = getattr(obj, "pbn_uid_id", None)
         if pbn_uid_id:
             return obj.pbn_uid.link_do_pbn()
 
@@ -85,3 +85,18 @@ class Wydawnictwo_CiagleResource(Wydawnictwo_ResourceBase):
         model = Wydawnictwo_Ciagle
         exclude = WYDAWNICTWO_TYPOWE_EXCLUDES
         export_order = WYDAWNICTWO_TYPOWY_EXPORT_ORDER
+
+
+class AutorResource(resources.ModelResource):
+    aktualna_jednostka = Field(attribute="aktualna_jednostka__nazwa")
+    aktualna_funkcja = Field(attribute="aktualna_funkcja__nazwa")
+    tytul = Field(attribute="tytul__skrot")
+
+    def dehydrate_jednostki(self, obj):
+        if obj.jednostki.exists():
+            return ", ".join(obj.jednostki.values_list("nazwa", flat=True))
+
+    class Meta:
+        model = Autor
+        export_order = ["nazwisko", "imiona", "poprzednie_nazwiska"]
+        exclude = ["search", "slug", "sort", "expertus_id", "pbn_id"]

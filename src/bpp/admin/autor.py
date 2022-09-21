@@ -20,6 +20,8 @@ from .filters import (
     PBNIDObecnyFilter,
 )
 from .helpers import ADNOTACJE_FIELDSET, CHARMAP_SINGLE_LINE, ZapiszZAdnotacjaMixin
+from .xlsx_export import resources
+from .xlsx_export.mixins import EksportDanychMixin
 
 from django.contrib import admin
 
@@ -135,13 +137,18 @@ class AutorForm(forms.ModelForm):
 
 
 class AutorAdmin(
-    DjangoQLSearchMixin, ZapiszZAdnotacjaMixin, BaseBppAdminMixin, admin.ModelAdmin
+    DjangoQLSearchMixin,
+    ZapiszZAdnotacjaMixin,
+    EksportDanychMixin,
+    BaseBppAdminMixin,
+    admin.ModelAdmin,
 ):
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True
 
     form = AutorForm
     autocomplete_fields = ["pbn_uid"]
+    resource_class = resources.AutorResource
 
     list_display = [
         "nazwisko",
