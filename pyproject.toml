@@ -9,6 +9,7 @@ packages = [
 	 { include="bpp", from="src"},
 	 { include="celeryui", from="src"},
 	 { include="create_test_db", from="src"},
+	 { include="crossref_bpp", from="src"},
 	 { include="django_bpp", from="src"},
 	 { include="ewaluacja2021", from="src"},
 	 { include="fixtures", from="src"},
