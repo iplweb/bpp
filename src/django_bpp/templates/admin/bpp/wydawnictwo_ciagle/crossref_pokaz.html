@@ -1,0 +1,128 @@
+{% extends "admin/base_site.html" %}
+{% load compress %}
+<!-- LOADING -->
+{% load static i18n admin_modify admin_urls grp_tags %}
+
+
+<!-- STYLESHEETS -->
+{% block stylesheets %}
+    {{ block.super }}
+{% endblock %}
+
+{% block extrahead %}
+    <link rel="stylesheet" type="text/css"
+          href="{% static "foundation-datepicker/foundation/fonts/foundation-icons.css" %}">
+{% endblock %}
+
+<!-- BREADCRUMBS -->
+{% block breadcrumbs %}
+    <ul>
+        <li><a href="{% url 'admin:index' %}">{% trans "Home" %}</a></li>
+        <li><a href="/admin/bpp/">Bibliografia Publikacji Pracowników</a></li>
+        <li><a href="{% url 'admin:bpp_wydawnictwo_ciagle_changelist' %}">Wydawnictwa ciągłe</a></li>
+        <li>Pobierz z CrossRef API</li>
+    </ul>
+{% endblock %}
+
+<!-- CONTENT -->
+{% block content %}
+    <div style="border: 2px solid red; border-style: groove; padding: 5px; width: auto;">
+        <p><strong>Prace w toku!</strong></p>
+    <p>Oglądasz część serwisu udostępnioną jako podgląd technologiczny nadchodzących zmian.
+    Funkcja nie została jeszcze ukończona. </p>
+
+    </div>
+    <style>
+        .pre {
+            font-family: monospace !important;
+            white-space: pre !important;
+            word-break: break-all;
+        }
+    </style>
+    <h1>Matchowanie danych</h1>
+    Poniżej znajdują się elementy danych z CrossRef API które po stronie BPP są indeksowane bądź
+    są identyfikatorami. Oznacza to, że dla istniejących rekordów po stronie BPP powinien pojawić
+    się match (luźny bądź dopasowany) oraz odsyłacz do tego matchu. W przypadku, gdy matchowanie
+    jest niejedoznaczne, pojawi się lista możliwych dopasowań. Gdy nie można dopasować żadnego
+    rekordu, należy upewnić się, że jest tak w istocie - to znaczy, że po stronie BPP na pewno
+    nie ma takiego wpisu. W sytuacji, gdy system nie matchuje prawidłowo istniejącego rekordu
+    po stronie BPP, za taką sytuację winę mogą ponosić różne formy tekstowego zapisu np nazwisk
+    (brak drugiego nazwiska, rozdzielenie znakiem minusa kontra rozdzielenie myślnikiem,
+    brak polskiej literki przy tekstowym dopasowaniu dokładnym) itp.
+    </p>
+    <table class="grp-table">
+        <tr>
+            <th>Atrybut</th>
+            <th>Wartość z CrossRef</th>
+            <th></th>
+            <th>Wynik porównania</th>
+            <th>Odsyłacze</th>
+        </tr>
+        {% for elem in dane_porownania %}
+            <tr>
+                <td>{{ elem.atrybut }}</td>
+                <td class="pre">{{ elem.wartosc_z_crossref }}</td>
+                <td>
+                    {% if elem.rezultat.status == 'ok' %}
+                        <span class="fi-check" style="color:green;"></span>
+                    {% elif elem.rezultat.status == 'user' %}
+                        <span class="fi-results" style="color:pink;"></span>
+                    {% elif elem.rezultat.status == 'luzne' %}
+                        <span class="fi-die-five" style="color:orange;"></span>
+                    {% elif elem.rezultat.status == 'brak' %}
+                        <span class="fi-prohibited" style="color:black;"></span>
+                    {% elif elem.rezultat.status == 'blad' %}
+                        <span class="fi-skull" style="color:red;"></span>
+                    {% else %}
+                        Brak templatki dla statusu {{ elem.rezultat.status }} -- należy poprawić
+                        w kodzie oprogramowania BPP. Powiadom administratora serwisu.
+                    {% endif %}
+                </td>
+                <td>{{ elem.rezultat.opis }}</td>
+                <td>{% for rekord in elem.rezultat.rekordy %}
+                    <a target="_blank" href="{{ rekord.get_absolute_url }}">{{ rekord }}{% if rekord.aktualna_jednostka %} - {{ rekord.aktualna_jednostka }}{% endif %}</a><br/>
+                {% endfor %}</td>
+            </tr>
+        {% endfor %}
+    </table>
+
+    <h1>Kopiowanie danych!</h1>
+    Poniższe pola są znane i mogą zostać skopiowane do docelowego rekordu z niewielkimi przeróbkami.
+    <table class="grp-table">
+        {% for key, value in do_skopiowania %}
+            <tr>
+                <td>{{ key }}</td>
+                <td style="font-family: monospace !important; white-space: pre !important; word-break: break-all;">{{ value }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+
+    <h1>Ignorowane dane...</h1>
+    Poniższe pola zostały oznaczone w kodzie BPP jako ignorowane. Oznacza to, że wiemy,
+    że pojawiają się w danych z CrossRef API, ale nie wiemy, co sobą reprezentują,
+    nie mamy wskazówek, w jaki sposób je wykorzystać lub też wiemy, czym są i po co są,
+    ale nie zrobimy z nimi po stronie BPP nic użytecznego:
+    <table class="grp-table">
+        {% for key, value in ignorowane %}
+            <tr>
+                <td>{{ key }}</td>
+                <td style="font-family: monospace !important; white-space: pre !important; word-break: break-all;">{{ value }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+
+    {% if obce %}
+    <h1>Dane obce</h1>
+    Poniższe pola nie figurują w kodzie BPP i nie ma na ten moment w kodzie żadnych wskazówek,
+    do jakiej grupy je zakwalifikować.
+    <table class="grp-table">
+        {% for key, value in obce %}
+            <tr>
+                <td>{{ key }}</td>
+                <td style="font-family: monospace !important; white-space: pre !important; word-break: break-all;">{{ value }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+    {% endif %}
+
+{% endblock %}

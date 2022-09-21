@@ -20,6 +20,16 @@ def remove_extra_spaces(s: str) -> str:
     return s
 
 
+def normalize_first_name(s: str) -> str | None:
+    if not isinstance(s, str) or s is None or s == "" or not s:
+        return
+    return remove_extra_spaces(s)
+
+
+normalize_last_name = normalize_first_name
+normalize_publisher = normalize_first_name
+
+
 def normalize_nullboleanfield(s: Union[str, None, bool]) -> Union[bool, None]:
     if isinstance(s, bool):
         return s
@@ -87,8 +97,8 @@ def normalize_nazwa_dyscypliny(s):
     return normalize_skrot(s)
 
 
-def normalize_isbn(isbn):
-    if isbn is None:
+def normalize_isbn(isbn: str) -> str | None:
+    if isbn is None or not isinstance(isbn, str) or not isbn:
         return
 
     return isbn.replace(".", "").replace("-", "").replace(" ", "").strip()
@@ -142,3 +152,14 @@ def normalize_filename(s: str) -> str:
     while s.find("__") != -1:
         s = s.replace("__", "_")
     return s
+
+
+def normalize_orcid(s: str) -> str | None:
+    if not isinstance(s, str) or s is None or s == "" or not s:
+        return
+    return (
+        s.strip()
+        .lower()
+        .replace("http://orcid.org/", "")
+        .replace("https://orcid.org/", "")
+    )

@@ -1,7 +1,7 @@
 import pytest
 from model_bakery import baker
 
-from bpp.models import CrossrefAPICache, Praca_Doktorska
+from bpp.models import Praca_Doktorska
 from bpp.models.autor import Autor
 from bpp.models.cache import Autorzy, Rekord
 from bpp.models.openaccess import (
@@ -368,6 +368,10 @@ def test_rekord_describe_content_type(wydawnictwo_zwarte):
     assert "wydawnictwo" in Rekord.objects.first().describe_content_type
 
 
+def test_Rekord_get_absolute_url(wydawnictwo_zwarte):
+    assert Rekord.objects.first().get_absolute_url().startswith("/")
+
+
 def test_aktualizacja_rekordu_autora(typy_odpowiedzialnosci, denorms):
     w = baker.make(Wydawnictwo_Ciagle)
 
@@ -436,30 +440,3 @@ def test_rebuild_zwarte(
 def test_rebuild_patent(django_assert_max_num_queries, patent, denorms):
     with django_assert_max_num_queries(40):
         denorms.rebuildall("Patent")
-
-
-@pytest.mark.django_db
-def test_CrossrefAPICacheManager_cleanup():
-    CrossrefAPICache.objects.cleanup()
-
-
-@pytest.mark.django_db
-def test_CrossrefAPICacheManager_get_by_doi(mocker):
-    with mocker.patch.object(
-        CrossrefAPICache.objects, "api_get_by_doi", return_value={"a": "b"}
-    ):
-        data = CrossrefAPICache.objects.get_by_doi("whatever")
-    assert data["a"] == "b"
-
-
-@pytest.mark.django_db
-def test_CrossrefAPICacheManager_get_by_doi_no_queries(
-    mocker, django_assert_max_num_queries
-):
-    with django_assert_max_num_queries(5):
-        with mocker.patch.object(
-            CrossrefAPICache.objects, "api_get_by_doi", return_value={"a": "b"}
-        ):
-            CrossrefAPICache.objects.get_by_doi("whatever")
-            CrossrefAPICache.objects.get_by_doi("whatever")
-            CrossrefAPICache.objects.get_by_doi("whatever")

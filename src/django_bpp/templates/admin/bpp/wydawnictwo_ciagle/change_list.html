@@ -1,0 +1,11 @@
+{% extends "admin/import_export/change_list_export.html" %}
+
+{% block object-tools-items %}
+    {{ block.super }}
+    {% if has_add_permission %}
+        <li><a href="./pobierz-z-crossref/"
+               class="grp-add-link">
+            Dodaj z CrossRef API
+        </a></li>
+    {% endif %}
+{% endblock %}

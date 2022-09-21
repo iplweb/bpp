@@ -1,6 +1,10 @@
 import pytest
 
-from import_common.normalization import normalize_doi, normalize_kod_dyscypliny
+from import_common.normalization import (
+    normalize_doi,
+    normalize_kod_dyscypliny,
+    normalize_orcid,
+)
 
 
 @pytest.mark.parametrize(
@@ -39,3 +43,16 @@ def test_normalize_kod_dyscypliny(i, o):
 )
 def test_normalize_doi(i, o):
     assert normalize_doi(i) == o
+
+
+@pytest.mark.parametrize(
+    "i,o",
+    [
+        ("http://orcid.org/0000-0003-2575-3642", "0000-0003-2575-3642"),
+        ("https://orcid.org/0000-0003-2575-3642", "0000-0003-2575-3642"),
+        ("HTTP://ORCiD.oRG/0000-0003-2575-3642", "0000-0003-2575-3642"),
+        ("   HTTP://ORCiD.oRG/0000-0003-2575-3642", "0000-0003-2575-3642"),
+    ],
+)
+def test_normalize_orcid(i, o):
+    assert normalize_orcid(i) == o

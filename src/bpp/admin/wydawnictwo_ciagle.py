@@ -5,6 +5,7 @@ from djangoql.admin import DjangoQLSearchMixin
 from mptt.forms import TreeNodeChoiceField
 from taggit.forms import TextareaTagWidget
 
+from crossref_bpp.mixins import AdminCrossrefAPIMixin
 from pbn_api.models import Publication
 from . import BaseBppAdminMixin
 from .actions import (
@@ -188,9 +189,17 @@ class Wydawnictwo_CiagleAdmin(
     AdnotacjeZDatamiOrazPBNMixin,
     BaseBppAdminMixin,
     UzupelniajWstepneDanePoNumerzeZgloszeniaMixin,
+    AdminCrossrefAPIMixin,
     EksportDanychMixin,
     admin.ModelAdmin,
 ):
+    change_list_template = "admin/bpp/wydawnictwo_ciagle/change_list.html"
+
+    crossref_templates = {
+        "form": "admin/bpp/wydawnictwo_ciagle/crossref_pobierz.html",
+        "show": "admin/bpp/wydawnictwo_ciagle/crossref_pokaz.html",
+    }
+
     resource_class = resources.Wydawnictwo_CiagleResource
 
     djangoql_completion_enabled_by_default = False

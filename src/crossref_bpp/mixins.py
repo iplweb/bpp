@@ -1,54 +1,13 @@
-import json
-from textwrap import fill
-
 from django.conf.urls import url
 from django.template.response import TemplateResponse
 
+from .core import Komparator
 from .forms import PobierzZCrossrefAPIForm
+from .utils import json_format_with_wrap
 
 
 class AdminCrossrefAPIMixin:
     crossref_templates = {}
-
-    znane_klucze = [
-        "DOI",
-        "ISSN",
-        "URL",
-        "abstract",
-        "author",
-        "issn-type",
-        "issue",
-        "license",
-        "link",
-        "page",
-        "publisher",
-        "resource",
-        "short-container-title",
-        "subject",
-        "title",
-        "type",
-        "volume",
-    ]
-
-    ignorowane_klucze = [
-        "content-domain",
-        "created",
-        "deposited",
-        "indexed",
-        "is-referenced-by-count",
-        "issued",
-        "journal-issue",
-        "member",
-        "original-title",
-        "published",
-        "published-online",
-        "reference-count",
-        "references-count",
-        "relation",
-        "short-title",
-        "source",
-        "subtitle",
-    ]
 
     def get_urls(self):
         # get the default urls
@@ -76,25 +35,40 @@ class AdminCrossrefAPIMixin:
             title="Pobierz z CrossRef",
         )
 
-        def nicely_format(s, width=70):
-            news = []
-            for elem in s:
-                if len(elem) > width:
-                    elem = fill(elem, width=width)
-                news.append(elem)
-            return "\n".join(news)
-
         if request.method == "POST":
             form = PobierzZCrossrefAPIForm(request.POST)
             if form.is_valid():
+
                 json_data = form.cleaned_data["json_data"]
-                context["json_data"] = json_data
-                context["json_presentation"] = [
-                    (
-                        key,
-                        nicely_format(json.dumps(item, indent=2).split("\n")),
-                    )
+                # context["json_data"] = json_data
+                # context["json_presentation"] = [
+                #     (
+                #         key,
+                #         json_format_with_wrap(item),
+                #     )
+                #     for key, item in sorted(json_data.items())
+                # ]
+
+                context["dane_porownania"] = Komparator.utworz_dane_porownania(
+                    json_data
+                )
+
+                context["do_skopiowania"] = [
+                    (key, json_format_with_wrap(item))
                     for key, item in sorted(json_data.items())
+                    if key in Komparator.atrybuty.do_skopiowania
+                ]
+
+                context["ignorowane"] = [
+                    (key, json_format_with_wrap(item))
+                    for key, item in sorted(json_data.items())
+                    if key in Komparator.atrybuty.ignorowane
+                ]
+
+                context["obce"] = [
+                    (key, json_format_with_wrap(item))
+                    for key, item in sorted(json_data.items())
+                    if key not in Komparator.atrybuty.wszystkie
                 ]
 
                 return TemplateResponse(
