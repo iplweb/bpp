@@ -546,7 +546,7 @@ class Komparator:
             return WynikPorownania(
                 StatusPorownania.DOKLADNE, "określony jezyk", rekordy=[c]
             )
-        except Charakter_Formalny.DoesNotExist:
+        except Jezyk.DoesNotExist:
             return WynikPorownania(
                 StatusPorownania.BLAD,
                 f'w systemie BPP nie zdefiniowano wartosci dla typu jezyka "{wartosc}",'

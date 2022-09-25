@@ -10,7 +10,10 @@ from import_common.normalization import normalize_doi
 
 class PobierzZCrossrefAPIForm(forms.Form):
     identyfikator_doi = forms.CharField(
-        required=True, widget=forms.TextInput(attrs={"style": "width: 512px"})
+        label="Identyfikator DOI",
+        help_text="... może być również adres URL http://dx.doi.org/... lub http://doi.org/...",
+        required=True,
+        widget=forms.TextInput(attrs={"style": "width: 512px"}),
     )
 
     def clean_identyfikator_doi(self):

@@ -7,6 +7,8 @@ from .forms import PobierzZCrossrefAPIForm
 def pobierz_z_crossref(request, context=None, crossref_templates=None):
     if context is None:
         context = {}
+
+    form = PobierzZCrossrefAPIForm()
     if request.method == "POST":
         form = PobierzZCrossrefAPIForm(request.POST)
         if form.is_valid():
@@ -35,6 +37,5 @@ def pobierz_z_crossref(request, context=None, crossref_templates=None):
                 request, crossref_templates.get("show", ""), context
             )
 
-    form = PobierzZCrossrefAPIForm()
     context["crossref_form"] = form
     return TemplateResponse(request, crossref_templates.get("form", ""), context)
