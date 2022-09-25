@@ -626,7 +626,9 @@ def jezyki(db):
     pl.save()
     assert pl.pk == 1
 
-    ang, created = Jezyk.objects.get_or_create(pk=2, skrot="ang.", nazwa="angielski")
+    ang, created = Jezyk.objects.get_or_create(
+        pk=2, skrot="ang.", nazwa="angielski", skrot_crossref="en"
+    )
     ang.skrot_dla_pbn = "EN"
     ang.save()
     assert ang.pk == 2

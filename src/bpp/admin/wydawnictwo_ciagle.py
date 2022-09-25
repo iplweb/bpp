@@ -15,6 +15,10 @@ from .actions import (
     wyslij_do_pbn,
 )
 from .core import KolumnyZeSkrotamiMixin, generuj_inline_dla_autorow
+from .crossref_api_helpers import (
+    KorzystaZCrossRefAPIStreszczenieInlineMixin,
+    UzupelniajWstepneDanePoCrossRefAPIMixin,
+)
 
 # Widget do automatycznego uzupełniania punktacji wydawnictwa ciągłego
 from .element_repozytorium import Element_RepozytoriumInline
@@ -25,6 +29,7 @@ from .helpers import (
     OptionalPBNSaveMixin,
     sprawdz_duplikaty_www_doi,
 )
+from .util import CustomizableFormsetParamsAdminMixinWyrzucWDjango40
 from .xlsx_export import resources
 from .xlsx_export.mixins import EksportDanychMixin
 from .zglos_publikacje_helpers import UzupelniajWstepneDanePoNumerzeZgloszeniaMixin
@@ -170,7 +175,9 @@ class Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychForm(forms.ModelForm):
         fields = ["baza", "info"]
 
 
-class Wydawnictwo_Ciagle_StreszczenieInline(admin.StackedInline):
+class Wydawnictwo_Ciagle_StreszczenieInline(
+    KorzystaZCrossRefAPIStreszczenieInlineMixin, admin.StackedInline
+):
     model = Wydawnictwo_Ciagle_Streszczenie
     extra = 0
     fields = ["jezyk_streszczenia", "streszczenie"]
@@ -189,6 +196,8 @@ class Wydawnictwo_CiagleAdmin(
     AdnotacjeZDatamiOrazPBNMixin,
     BaseBppAdminMixin,
     UzupelniajWstepneDanePoNumerzeZgloszeniaMixin,
+    UzupelniajWstepneDanePoCrossRefAPIMixin,
+    CustomizableFormsetParamsAdminMixinWyrzucWDjango40,
     AdminCrossrefAPIMixin,
     EksportDanychMixin,
     admin.ModelAdmin,

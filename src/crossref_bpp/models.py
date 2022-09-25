@@ -33,6 +33,9 @@ class CrossrefAPICacheManager(models.Manager):
         ret = self.filter(doi=doi).first()
         if ret is None:
             data = self.api_get_by_doi(doi)
+            if data is None:
+                return
+
             ret = self.create(doi=doi, data=data)
 
         return ret.data

@@ -8,7 +8,9 @@ dev
 ---
 * możliwość szybkiego dodawania zgłoszeń prac użytkowników jako
   wydawnictwo zwarte lub wydawnictwo ciągłe (b/n),
-* możliwość porównywania danych prac z CrossRef API po DOI -- prace w toku (b/n),
+* możliwość porównywania danych prac z CrossRef API po DOI (b/n),
+* możliwość importu rekordów z CrossRef API - do nowego rekordu wydawnictwa
+  ciągłego (b/n),
 * możliwość eksportowania danych z tabeli autora do formatu XLS (b/n),
 
 202209.1088

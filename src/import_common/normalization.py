@@ -53,6 +53,14 @@ def normalize_tytul_naukowy(s):
     return normalize_skrot(s)
 
 
+def normalize_title(s: str) -> str | None:
+    if s is None or not s:
+        return
+    while s.find("  ") >= 0:
+        s = s.replace("  ", " ")
+    return s.strip()
+
+
 ONLINE_STR = "[online]"
 
 

@@ -74,5 +74,3 @@ TEMPLATES[0]["OPTIONS"]["loaders"] = [  # noqa
     "django.template.loaders.filesystem.Loader",
     "django.template.loaders.app_directories.Loader",
 ]
-
-PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
