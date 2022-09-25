@@ -119,3 +119,4 @@ ZDUBLOWANE_POLE_KOMUNIKAT = (
 PUSTY_ADRES_EMAIL = "brak@email.pl"
 
 NUMER_ZGLOSZENIA_PARAM = "numer_zgloszenia"
+CROSSREF_API_PARAM = "identyfikator_doi"

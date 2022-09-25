@@ -32,8 +32,31 @@
             Funkcja nie została jeszcze ukończona. </p>
 
     </div>
+    {% if rekord_po_stronie_bpp %}
+        <h1>Rekord prawdopodobnie już istnieje w BPP!</h1>
+        <p>Wygląda na to, że po stronie BPP może już istnieć taki rekord.</p><br/>
+        <p>
+            <a href="{{ rekord_po_stronie_bpp.get_absolute_url }}">{{ rekord_po_stronie_bpp.opis_bibliograficzny_cache|safe }}</a>
+        </p>
+        <br/>
+        <p>Poniżej możesz obejrzeć dane, które otrzymane zostały z CrossRef API oraz ich ewentualne
+            porównanie z tym, co znajduje się po stronie BPP. </p>
+        <br/><p>
+        Na ten moment funkcja synchronizacji danych istniejących rekordów z informacjami z CrossRef API
+        nie jest zaimplementowana.
+    </p><p>Możesz też mimo to spróbować <a href="../add/?identyfikator_doi={{ identyfikator_doi }}">dodać nowy
+        rekord</a>, ale
+        istnieje dość duże ryzyko, że zdublujesz istniejący już wpis. </p>
+    {% else %}
+        <h1>Brak odpowiednika po stronie BPP</h1>
+        <p>Wygląda na to (bazując na polach DOI, alternative-id oraz title), że w bazie BPP nie ma takiego
+            rekordu. Możesz kliknąć poniższy link, aby przejść do formularza tworzenia nowego rekordu.
+            Uwaga - po zatwierdzeniu formularza zostanie utworzony nowy rekord w bazie.</p>
+        <br/>
+        <p><a href="../add/?identyfikator_doi={{ identyfikator_doi }}">Dodaj nowy rekord</a></p>
+    {% endif %}
     <style>
-        .pre {
+        pre {
             font-family: monospace !important;
             white-space: pre !important;
             word-break: break-all;

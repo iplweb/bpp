@@ -55,6 +55,7 @@ include = ["AUTHORS.rst", "CONTRIBUTING.rst", "HISTORY.rst", "LICENSE",
 
 [tool.poetry.group.dev.dependencies]
 bumpver = "^2022.1118"
+pytest-recording = "^0.12.1"
 
 [tool.bumpver]
 current_version = "v202209.1088"

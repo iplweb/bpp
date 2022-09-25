@@ -23,11 +23,13 @@ from import_common.normalization import (
 )
 
 from django.utils.datastructures import CaseInsensitiveMapping
+from django.utils.functional import cached_property
 
 from bpp.models import (
     Autor,
     Charakter_Formalny,
     Jezyk,
+    Licencja_OpenAccess,
     Rekord,
     Wydawca,
     Wydawnictwo_Ciagle,
@@ -65,6 +67,26 @@ class WynikPorownania:
         self.opis = opis
         self.rekordy = rekordy
 
+    @cached_property
+    def rekord_po_stronie_bpp(self):
+        """Zwróć pierwszy rekord z self.rekordy jeżeli wynik porównania jest dokładny lub luźny"""
+        ile_rekordow = 0
+        if hasattr(
+            self.rekordy,
+            "exists",
+        ):
+            ile_rekordow = self.rekordy.count()
+            pierwszy_rekord = self.rekordy.first()
+        elif hasattr(self.rekordy, "__len__"):
+            ile_rekordow = len(self.rekordy)
+            pierwszy_rekord = self.rekordy[0]
+
+        if (
+            self.status in (StatusPorownania.DOKLADNE, StatusPorownania.LUZNE)
+            and ile_rekordow == 1
+        ):
+            return pierwszy_rekord
+
 
 NIEPRAWIDLOWY_FORMAT_DANYCH = WynikPorownania(
     StatusPorownania.BLAD, "nieprawidłowy format danych"
@@ -74,10 +96,13 @@ BRAK_DOPASOWANIA = WynikPorownania(StatusPorownania.BLAD, "brak dopasowania")
 
 class Komparator:
     class atrybuty:
-        do_zmatchowania = [
+        do_porownania_rekordu = [
             "DOI",
             "alternative-id",
             "title",
+        ]
+
+        do_zmatchowania = do_porownania_rekordu + [
             "ISSN",
             "issn-type",
             "link",
@@ -85,6 +110,7 @@ class Komparator:
             "container-title",
             "type",
             "language",
+            "license",
             "publisher",
             "URL",
             "resource",
@@ -94,7 +120,6 @@ class Komparator:
         do_skopiowania = [
             "abstract",
             "issue",
-            "license",
             "page",
             "subject",
             "volume",
@@ -340,7 +365,7 @@ class Komparator:
         )
         if tgrm:
             return WynikPorownania(
-                StatusPorownania.WYMAGA_INGERENCJI,
+                StatusPorownania.LUZNE,
                 "luźne porównanie tytułu wg funkcji podobieństwa trygramów",
                 rekordy=tgrm,
             )
@@ -359,7 +384,7 @@ class Komparator:
         )
         if tgrm:
             return WynikPorownania(
-                StatusPorownania.WYMAGA_INGERENCJI,
+                StatusPorownania.LUZNE,
                 "luźne porównanie tytułu wg funkcji podobieństwa trygramów",
                 rekordy=tgrm,
             )
@@ -427,7 +452,7 @@ class Komparator:
             )
             if last_chance:
                 return WynikPorownania(
-                    StatusPorownania.WYMAGA_INGERENCJI,
+                    StatusPorownania.LUZNE,
                     "luźne porównanie tytułu wg funkcji podobieństwa trygramów",
                     rekordy=last_chance,
                 )
@@ -480,8 +505,36 @@ class Komparator:
             )
 
     @classmethod
+    def porownaj_license(cls, wartosc):
+        if wartosc.get("URL"):
+            url = wartosc.get("URL", "")
+            try:
+                skrot = "CC-" + (
+                    url.split("creativecommons.org/licenses/")[1].split("/")[0].upper()
+                )
+            except (IndexError, TypeError, ValueError):
+                return WynikPorownania(
+                    StatusPorownania.BLAD,
+                    f"system BPP nie umie dopasować rodzaju licencji dla {url}, proszę zgłosić"
+                    f"do autora. ",
+                )
+            try:
+                licencja = Licencja_OpenAccess.objects.get(skrot=skrot)
+            except Licencja_OpenAccess.DoesNotExist:
+                return WynikPorownania(
+                    StatusPorownania.BLAD,
+                    f"w systemie BPP nie znaleziono licencji ze skrótem {skrot}, proszę o dopisanie",
+                )
+
+            return WynikPorownania(
+                StatusPorownania.DOKLADNE,
+                "okreslony rodzaj licencji",
+                rekordy=[licencja],
+            )
+
+    @classmethod
     def porownaj_language(cls, wartosc):
-        if wartosc not in Jezyk.SKROT_CROSSREF.labels:
+        if wartosc not in Jezyk.SKROT_CROSSREF.values:
             return WynikPorownania(
                 StatusPorownania.BLAD,
                 f'w systemie BPP nie zdefiniowano wartosci dla typu jezyka "{wartosc}",'
@@ -511,6 +564,7 @@ class Komparator:
             dane_porownania.append(
                 {
                     "atrybut": atrybut_label or atrybut,
+                    "_atrybut": atrybut,
                     "wartosc_z_crossref": json_format_with_wrap(wartosc_z_crossref),
                     "rezultat": rezultat,
                 }
@@ -540,3 +594,33 @@ class Komparator:
                 porownaj_jeden_parametr(atrybut, wartosc_z_crossref)
 
         return dane_porownania
+
+    @classmethod
+    def _dane(cls, json_data, atrybuty, key_in_atrybuty=True):
+        return [
+            (key, json_format_with_wrap(item))
+            for key, item in sorted(json_data.items())
+            if (key in atrybuty) == key_in_atrybuty
+        ]
+
+    @classmethod
+    def dane_do_skopiowania(cls, json_data):
+        return cls._dane(json_data, Komparator.atrybuty.do_skopiowania)
+
+    @classmethod
+    def dane_ignorowane(cls, json_data):
+        return cls._dane(json_data, Komparator.atrybuty.ignorowane)
+
+    @classmethod
+    def dane_obce(cls, json_data):
+        return cls._dane(
+            json_data, Komparator.atrybuty.wszystkie, key_in_atrybuty=False
+        )
+
+    @classmethod
+    def czy_rekord_ma_odpowiednik_w_bpp(cls, dane_porownania_dict):
+        for atrybut in Komparator.atrybuty.do_porownania_rekordu:
+            wynik_porownania = dane_porownania_dict.get(atrybut)
+
+            if wynik_porownania and wynik_porownania.rekord_po_stronie_bpp:
+                return wynik_porownania.rekord_po_stronie_bpp
