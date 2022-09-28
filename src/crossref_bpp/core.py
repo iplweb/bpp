@@ -357,37 +357,44 @@ class Komparator:
 
     @classmethod
     def porownaj_short_container_title(cls, wartosc):
+        poszukiwania = [wartosc]
+        if wartosc.lower().startswith("the "):
+            poszukiwania.append(wartosc[4:])
 
-        tgrm = perform_trigram_search(
-            Zrodlo.objects.exclude(skrot="").exclude(skrot=None),
-            normalized_db_zrodlo_skrot,
-            normalize_zrodlo_skrot_for_db_lookup(wartosc),
-        )
-        if tgrm:
-            return WynikPorownania(
-                StatusPorownania.LUZNE,
-                "luźne porównanie tytułu wg funkcji podobieństwa trygramów",
-                rekordy=tgrm,
+        for ciag in poszukiwania:
+
+            tgrm = perform_trigram_search(
+                Zrodlo.objects.exclude(skrot="").exclude(skrot=None),
+                normalized_db_zrodlo_skrot,
+                normalize_zrodlo_skrot_for_db_lookup(ciag),
             )
+            if tgrm:
+                return WynikPorownania(
+                    StatusPorownania.LUZNE,
+                    "luźne porównanie tytułu wg funkcji podobieństwa trygramów",
+                    rekordy=tgrm,
+                )
 
         return BRAK_DOPASOWANIA
 
     @classmethod
     def porownaj_container_title(cls, wartosc):
+        poszukiwania = [wartosc]
+        if wartosc.lower().startswith("the "):
+            poszukiwania.append(wartosc[4:])
 
-        # proba = matchuj_zrodlo(wartosc):
-
-        tgrm = perform_trigram_search(
-            Zrodlo.objects.exclude(nazwa="").exclude(nazwa=None),
-            normalized_db_zrodlo_nazwa,
-            normalize_zrodlo_nazwa_for_db_lookup(wartosc),
-        )
-        if tgrm:
-            return WynikPorownania(
-                StatusPorownania.LUZNE,
-                "luźne porównanie tytułu wg funkcji podobieństwa trygramów",
-                rekordy=tgrm,
+        for ciag in poszukiwania:
+            tgrm = perform_trigram_search(
+                Zrodlo.objects.exclude(nazwa="").exclude(nazwa=None),
+                normalized_db_zrodlo_nazwa,
+                normalize_zrodlo_nazwa_for_db_lookup(ciag),
             )
+            if tgrm:
+                return WynikPorownania(
+                    StatusPorownania.LUZNE,
+                    "luźne porównanie tytułu wg funkcji podobieństwa trygramów",
+                    rekordy=tgrm,
+                )
 
         return BRAK_DOPASOWANIA
 
@@ -516,7 +523,7 @@ class Komparator:
                 return WynikPorownania(
                     StatusPorownania.BLAD,
                     f"system BPP nie umie dopasować rodzaju licencji dla {url}, proszę zgłosić"
-                    f"do autora. ",
+                    f" ten fakt do autora oprogramowania. ",
                 )
             try:
                 licencja = Licencja_OpenAccess.objects.get(skrot=skrot)
