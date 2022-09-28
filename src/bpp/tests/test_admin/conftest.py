@@ -23,3 +23,12 @@ def zgloszenie_publikacji(
     )
 
     return z
+
+
+@pytest.fixture
+def zgloszenie_publikacji_z_oplata(zgloszenie_publikacji) -> Zgloszenie_Publikacji:
+    zgloszenie_publikacji.opl_pub_cost_free = False
+    zgloszenie_publikacji.opl_pub_amount = 20000
+    zgloszenie_publikacji.opl_pub_research_potential = True
+    zgloszenie_publikacji.save()
+    return zgloszenie_publikacji
