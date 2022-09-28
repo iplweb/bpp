@@ -29,6 +29,8 @@ class LogAdmin(admin.ModelAdmin):
         "traceback",
     ]
 
+    date_hierarchy = "started_on"
+
     def has_add_permission(self, request):
         return False
 
