@@ -3,6 +3,7 @@ import traceback
 from contextlib import redirect_stderr, redirect_stdout
 
 from django.core.management import ManagementUtility
+from sentry_sdk import capture_exception
 
 from tee.models import Log
 from tee.utils import TeeIO
@@ -29,7 +30,9 @@ def execute(argv, **kwargs):
                     utility = ManagementUtility(argv)
                     utility.execute()
                     log.finished_successfully = True
-                except Exception:
+                except Exception as e:
+                    capture_exception(e)
+
                     log.finished_successfully = False
                     log.traceback = traceback.format_exc(limit=65535)
 
