@@ -9,7 +9,7 @@ from functools import reduce
 
 import django
 from django.db import transaction
-from django.db.models import F, Func, Q
+from django.db.models import F, Func, IntegerField, Q
 from django.db.models.functions import Length
 
 from pbn_api.integrator import istarmap  # noqa
@@ -861,7 +861,13 @@ def integruj_zrodla(disable_progress_bar):
                 )
                 u = (
                     Journal.objects.filter(qry)
-                    .annotate(json_len=Func(F("versions"), function="pg_column_size"))
+                    .annotate(
+                        json_len=Func(
+                            F("versions"),
+                            function="pg_column_size",
+                            output_field=IntegerField,
+                        )
+                    )
                     .order_by("-json_len")
                     .first()
                 )
