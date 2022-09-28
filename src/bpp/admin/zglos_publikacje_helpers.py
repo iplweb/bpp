@@ -1,7 +1,7 @@
 """Klasy pomocnicze dla klas ModelAdmin które chcą korzystać z parametru
 GET ``numer_zgloszenia`` czyli wypełniać dane wstępne wg zawartości zgłoszenia
 o danym numerze ID. """
-
+from django.utils import timezone
 
 from bpp import const
 from bpp.admin.helpers import MODEL_Z_OPLATA_ZA_PUBLIKACJE
@@ -53,16 +53,17 @@ class UzupelniajWstepneDanePoNumerzeZgloszeniaMixin(
             ret = {
                 "tytul_oryginalny": z.tytul_oryginalny,
                 "rok": z.rok,
+                "public_www": z.strona_www,
+                "public_dostep_dnia": timezone.now().date(),
             }
 
             for pole in MODEL_Z_OPLATA_ZA_PUBLIKACJE:
                 ret[pole] = getattr(z, pole)
 
-            ret[
-                "adnotacje"
-            ] = f"E-mail zgłaszającego: <{z.email}>.\nNumer zgłoszenia: {z.id} -- {str(z)}"
-
-            ret["public_www"] = z.strona_www
+            ret["adnotacje"] = (
+                f"E-mail zgłaszającego: <{z.email}>.\nNumer zgłoszenia: {z.id} -- {str(z)}\n"
+                f"Pole 'Dostęp dnia' ustawione automatycznie na datę utworzenia rekordu. "
+            )
 
             return ret
 

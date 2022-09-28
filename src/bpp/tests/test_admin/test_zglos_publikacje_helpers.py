@@ -85,3 +85,15 @@ def test_integracyjny_admin_czy_oplaty_przechodza(
         == str(zgloszenie_publikacji_z_oplata.opl_pub_amount) + ".00"
     )
     assert page.forms[1]["opl_pub_cost_free"].value == "false"
+
+
+@pytest.mark.parametrize(["url"], [("wydawnictwo_ciagle",), ("wydawnictwo_zwarte",)])
+def test_integracyjny_admin_czy_public_dostep_dnia_ustawiony(
+    admin_app, zgloszenie_publikacji, url
+):
+    url = (
+        reverse(f"admin:bpp_{url}_add")
+        + f"?{NUMER_ZGLOSZENIA_PARAM}={zgloszenie_publikacji.pk}"
+    )
+    page = admin_app.get(url)
+    assert page.forms[1]["public_dostep_dnia"].value != ""
