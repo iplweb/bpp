@@ -59,6 +59,7 @@ class KorzystaZCrossRefAPIStreszczenieInlineMixin(
     def get_extra_json_list_length(self, json_data):
         if json_data.get(self.crossref_api_json_attrname) is not None:
             return 1
+        return self.extra
 
 
 class UzupelniajWstepneDanePoCrossRefAPIMixin(
