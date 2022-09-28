@@ -865,7 +865,7 @@ def integruj_zrodla(disable_progress_bar):
                         json_len=Func(
                             F("versions"),
                             function="pg_column_size",
-                            output_field=IntegerField,
+                            output_field=IntegerField(),
                         )
                     )
                     .order_by("-json_len")
