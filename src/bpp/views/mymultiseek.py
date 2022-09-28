@@ -1,5 +1,4 @@
-# -*- encoding: utf-8 -*-
-from django.db.models import Case, Q, Sum, TextField, When
+from django.db.models import Sum
 from django.views.decorators.cache import never_cache
 from multiseek.logic import get_registry
 from multiseek.views import (
@@ -28,6 +27,7 @@ class MyMultiseekResults(MultiseekResults):
     registry = "bpp.multiseek.registry"
 
     def get_queryset(self, only_those_ids=None):
+
         if only_those_ids:
             qset = (
                 get_registry(self.registry)
@@ -35,7 +35,7 @@ class MyMultiseekResults(MultiseekResults):
                 .filter(pk__in=only_those_ids)
             )
         else:
-            qset = super(MyMultiseekResults, self).get_queryset()
+            qset = super().get_queryset()
 
         if not self.request.user.is_authenticated:
             uczelnia = Uczelnia.objects.get_for_request(self.request)
@@ -64,22 +64,11 @@ class MyMultiseekResults(MultiseekResults):
                 "punktacja_wewnetrzna",
                 "charakter_formalny__nazwa",
                 "typ_kbn__nazwa",
+                "zrodlo_lub_nadrzedne",
             )
 
         #
-        ret = qset.only(*flds).annotate(
-            zrodlo_lub_nadrzedne=Case(
-                When(
-                    Q(zrodlo_id=None),
-                    then="wydawnictwo_nadrzedne__tytul_oryginalny",
-                ),
-                When(
-                    Q(wydawnictwo_nadrzedne_id=None),
-                    then="zrodlo__nazwa",
-                ),
-                output_field=TextField(),
-            )
-        )
+        ret = qset.only(*flds)
 
         sql = str(ret.query)
 
@@ -91,7 +80,7 @@ class MyMultiseekResults(MultiseekResults):
     def get_context_data(self, **kwargs):
         pass
 
-        ctx = super(MyMultiseekResults, self).get_context_data()
+        ctx = super().get_context_data()
 
         if not self.request.GET.get("print-removed", False):
             qset = self.get_queryset()
@@ -136,12 +125,12 @@ def bpp_remove_by_hand(request, pk):
     from the search results in the query function. The list of those
     records is cleaned when there is a form reset.
     """
-    pk = tuple([int(x) for x in pk.split("_")])
+    pk = tuple(int(x) for x in pk.split("_"))
     return manually_add_or_remove(request, pk)
 
 
 @never_cache
 def bpp_remove_from_removed_by_hand(request, pk):
     """Cancel manual record removal."""
-    pk = tuple([int(x) for x in pk.split("_")])
+    pk = tuple(int(x) for x in pk.split("_"))
     return manually_add_or_remove(request, pk, add=False)

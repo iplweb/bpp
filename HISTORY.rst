@@ -12,6 +12,8 @@ dev
 * możliwość importu rekordów z CrossRef API - do nowego rekordu wydawnictwa
   ciągłego (b/n),
 * możliwość eksportowania danych z tabeli autora do formatu XLS (b/n),
+* popraw błąd wyszukiwarki objawiający się problemami z sortowaniem po polu
+  źródło/wydawnictwo nadrzędne (b/n),
 
 202209.1088
 -----------
