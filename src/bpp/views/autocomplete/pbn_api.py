@@ -155,7 +155,7 @@ class PublicationAutocomplete(BasePBNAutocomplete):
 class ScientistAutocomplete(BasePBNAutocomplete):
 
     pbn_api_model = Scientist
-    sort_order = ("from_institution_api", "lastName", "name")
+    sort_order = ("from_institution_api",)  # "lastName", "name")
 
     def fetch_pbn_data(self, client, query):
         return client.get_person_by_id(query)
