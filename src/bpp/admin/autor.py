@@ -146,6 +146,8 @@ class AutorAdmin(
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True
 
+    max_allowed_export_items = 5000
+
     form = AutorForm
     autocomplete_fields = ["pbn_uid"]
     resource_class = resources.AutorResource
