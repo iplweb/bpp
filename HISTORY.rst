@@ -14,6 +14,8 @@ dev
 * możliwość eksportowania danych z tabeli autora do formatu XLS (b/n),
 * popraw błąd wyszukiwarki objawiający się problemami z sortowaniem po polu
   źródło/wydawnictwo nadrzędne (b/n),
+* poprawiono błąd wysyłania rekordu do PBN w sytuacji, gdy lokalnie nie istnieje
+  instytucja lub osoba (b/n)
 
 202209.1088
 -----------
