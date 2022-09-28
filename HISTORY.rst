@@ -15,7 +15,9 @@ dev
 * popraw błąd wyszukiwarki objawiający się problemami z sortowaniem po polu
   źródło/wydawnictwo nadrzędne (b/n),
 * poprawiono błąd wysyłania rekordu do PBN w sytuacji, gdy lokalnie nie istnieje
-  instytucja lub osoba (b/n)
+  instytucja lub osoba (b/n),
+* poprawki aplikacji do uruchamiania procesów w tle (b/n),
+* nie wyświetlaj przycisku "pokaż w PBN" gdy autor nie ma określonego odpowiednika w PBN,
 
 202209.1088
 -----------
