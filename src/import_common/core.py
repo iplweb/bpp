@@ -125,11 +125,17 @@ def matchuj_autora(
         except Autor.DoesNotExist:
             pass
 
-    if pbn_uid_id is not None:
+    if orcid:
         try:
-            return Autor.objects.get(pbn_uid_id=pbn_uid_id)
+            return Autor.objects.get(orcid__iexact=orcid.strip())
         except Autor.DoesNotExist:
             pass
+
+    if pbn_uid_id is not None and pbn_uid_id.strip() != "":
+        # Może być > 1 autor z takim pbn_uid_id
+        _qset = Autor.objects.filter(pbn_uid_id=pbn_uid_id)
+        if _qset.exists():
+            return _qset.first()
 
     if system_kadrowy_id is not None:
         try:
@@ -157,13 +163,6 @@ def matchuj_autora(
                 return Autor.objects.get(pbn_id=pbn_id)
             except Autor.DoesNotExist:
                 pass
-
-    if orcid:
-        try:
-
-            return Autor.objects.get(orcid__iexact=orcid.strip())
-        except Autor.DoesNotExist:
-            pass
 
     queries = [
         Q(
