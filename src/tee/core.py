@@ -23,6 +23,9 @@ def execute(argv, **kwargs):
 
     log = Log.objects.create(command_name=argv[0], args=argv[1:])
 
+    # TODO: this is memory-inefficient. stdout or stderr should flush from time to time
+    # and save the result to the database, like in 1-MB chunks
+
     try:
         with redirect_stderr(stderr):
             with redirect_stdout(stdout):
