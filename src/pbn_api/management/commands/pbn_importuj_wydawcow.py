@@ -116,8 +116,8 @@ class Command(PBNBaseCommand):
                         else:
                             # pbn_side is None
                             if wydawca_side is not None:
-                                raise NotImplementedError(
-                                    f"PBN nie ma poziomu a wydawca ma, co robic? {publisher} {rok}"
+                                print(
+                                    f"4 PBN nie ma poziomu a wydawca ma, co robic? {publisher} {rok}"
                                 )
 
                             # wydawca_side is None, są równe zatem, nic nie robimy
