@@ -898,6 +898,7 @@ def integruj_zrodla(disable_progress_bar):
         print(f"\nNie znaleziono dopasowania w PBN dla {zrodlo}")
 
 
+@transaction.atomic
 def integruj_wydawcow():
     # Najpierw dopasuj wydawcow z MNISWId
     for elem in pbar(
@@ -909,6 +910,7 @@ def integruj_wydawcow():
         w = matchuj_wydawce(elem.value("object", "publisherName"))
         if w is not None:
             if w.pbn_uid_id is None and w.pbn_uid_id != elem.pk:
+                print(f"Przypisuje Wydawca PBN {elem} -> wydawca BPP {w}")
                 w.pbn_uid_id = elem.pk
                 w.save()
 
@@ -920,6 +922,7 @@ def integruj_wydawcow():
         w = matchuj_wydawce(elem.value("object", "publisherName"))
         if w is not None:
             if w.pbn_uid_id is None and w.pbn_uid_id != elem.pk:
+                print(f"Przypisuje Wydawca PBN {elem} -> wydawca BPP {w}")
                 w.pbn_uid_id = elem.pk
                 w.save()
 
