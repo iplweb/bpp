@@ -236,6 +236,7 @@ INSTALLED_APPS = [
     "djangoql",
     "cacheops",
     "channels",
+    "dynamic_columns",
     "django.contrib.humanize",
     "django.contrib.contenttypes",
     "django.contrib.auth",
@@ -855,3 +856,22 @@ DJANGO_EASY_AUDIT_REGISTERED_CLASSES = [
 #
 # Koniec django-easy-audit
 #
+
+
+SILENCED_SYSTEM_CHECKS = ["admin.E117"]
+
+DYNAMIC_COLUMNS_ALLOWED_IMPORT_PATHS = [
+    "bpp.admin.wydawnictwo_ciagle",
+    "bpp.admin.wydawnictwo_zwarte",
+    "bpp.admin.autor",
+]
+
+DYNAMIC_COLUMNS_FORBIDDEN_COLUMN_NAMES = [
+    "^kc_.*",
+    ".*_cache$",
+    ".*_sort$",
+    "search_index",
+    "legacy_data",
+    "slug",
+    "^cached_.*",
+]

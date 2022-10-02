@@ -287,6 +287,10 @@ ADMIN_MENU = [
         "Obsługa zgłoszeń prac - wydziały",
         "/admin/zglos_publikacje/obslugujacy_zgloszenia_wydzialow/",
     ),
+    (
+        "Kolumny w module redagowania",
+        "/admin/dynamic_columns/modeladmincolumn/",
+    ),
 ]
 
 

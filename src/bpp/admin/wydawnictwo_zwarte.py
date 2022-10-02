@@ -4,6 +4,7 @@ from djangoql.admin import DjangoQLSearchMixin
 from mptt.forms import TreeNodeChoiceField
 from taggit.forms import TextareaTagWidget
 
+from dynamic_columns.mixins import DynamicColumnsMixin
 from pbn_api.models import Publication
 from .actions import (
     ustaw_po_korekcie,
@@ -65,8 +66,11 @@ class Wydawnictwo_ZwarteAdmin_Baza(BaseBppAdminMixin, admin.ModelAdmin):
         wyslij_do_pbn,
     ]
 
-    list_display = [
+    list_display_always = [
         "tytul_oryginalny",
+    ]
+
+    list_display_default = [
         "wydawnictwo",
         "doi",
         "wydawnictwo_nadrzedne_col",
@@ -75,6 +79,8 @@ class Wydawnictwo_ZwarteAdmin_Baza(BaseBppAdminMixin, admin.ModelAdmin):
         "charakter_formalny__skrot",
         "ostatnio_zmieniony",
     ]
+
+    list_display_allowed = "__all__"
 
     search_fields = [
         "tytul",
@@ -227,6 +233,7 @@ class Wydawnictwo_ZwarteAdmin(
     EksportDanychMixin,
     UzupelniajWstepneDanePoNumerzeZgloszeniaMixin,
     CustomizableFormsetParamsAdminMixinWyrzucWDjango40,
+    DynamicColumnsMixin,
     Wydawnictwo_ZwarteAdmin_Baza,
 ):
     form = Wydawnictwo_ZwarteForm
@@ -252,12 +259,12 @@ class Wydawnictwo_ZwarteAdmin(
         "openaccess_czas_publikacji",
     ]
 
-    list_select_related = [
-        "charakter_formalny",
-        "typ_kbn",
-        "wydawnictwo_nadrzedne",
-        "wydawca",
-    ]
+    list_select_related = {
+        "__always__": ["typ_kbn", "charakter_formalny"],
+        "wydawnictwo_nadrzedne": ["wydawnictwo_nadrzedne"],
+        "wydawnictwo_nadrzedne_col": ["wydawnictwo_nadrzedne"],
+        "wydawca": ["wydawca"],
+    }
 
     autocomplete_fields = [
         "pbn_uid",

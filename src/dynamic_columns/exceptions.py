@@ -1,0 +1,2 @@
+class CodeAccessNotAllowed(Exception):
+    pass

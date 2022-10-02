@@ -3,6 +3,7 @@ from django import forms
 from django.db.models import Q
 from djangoql.admin import DjangoQLSearchMixin
 
+from dynamic_columns.mixins import DynamicColumnsMixin
 from ewaluacja2021.models import IloscUdzialowDlaAutora
 from pbn_api.models import Scientist
 from ..models import (  # Publikacja_Habilitacyjna
@@ -141,6 +142,7 @@ class AutorAdmin(
     ZapiszZAdnotacjaMixin,
     EksportDanychMixin,
     BaseBppAdminMixin,
+    DynamicColumnsMixin,
     admin.ModelAdmin,
 ):
     djangoql_completion_enabled_by_default = False
@@ -152,9 +154,9 @@ class AutorAdmin(
     autocomplete_fields = ["pbn_uid"]
     resource_class = resources.AutorResource
 
-    list_display = [
-        "nazwisko",
-        "imiona",
+    list_display_always = ["nazwisko", "imiona"]
+
+    list_display_default = [
         "tytul",
         "pseudonim",
         "poprzednie_nazwiska",
@@ -163,9 +165,13 @@ class AutorAdmin(
         "orcid",
         "pbn_uid_id",
     ]
-    list_select_related = [
-        "tytul",
-    ]
+
+    list_select_related = {
+        "tytul": [
+            "tytul",
+        ]
+    }
+
     fields = None
     inlines = [
         Autor_JednostkaInline,

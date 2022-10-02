@@ -6,6 +6,7 @@ from mptt.forms import TreeNodeChoiceField
 from taggit.forms import TextareaTagWidget
 
 from crossref_bpp.mixins import AdminCrossrefAPIMixin
+from dynamic_columns.mixins import DynamicColumnsMixin
 from pbn_api.models import Publication
 from . import BaseBppAdminMixin
 from .actions import (
@@ -200,6 +201,7 @@ class Wydawnictwo_CiagleAdmin(
     CustomizableFormsetParamsAdminMixinWyrzucWDjango40,
     AdminCrossrefAPIMixin,
     EksportDanychMixin,
+    DynamicColumnsMixin,
     admin.ModelAdmin,
 ):
     change_list_template = "admin/bpp/wydawnictwo_ciagle/change_list.html"
@@ -226,8 +228,9 @@ class Wydawnictwo_CiagleAdmin(
 
     ordering = ("-ostatnio_zmieniony",)
 
-    list_display = [
-        "tytul_oryginalny",
+    list_display_always = ["tytul_oryginalny"]
+
+    list_display_default = [
         "zrodlo_col",
         "rok",
         "typ_kbn__skrot",
@@ -236,7 +239,12 @@ class Wydawnictwo_CiagleAdmin(
         "ostatnio_zmieniony",
     ]
 
-    list_select_related = ["zrodlo", "typ_kbn", "charakter_formalny"]
+    list_display_allowed = "__all__"
+
+    list_select_related = {
+        "__always__": ["typ_kbn", "charakter_formalny"],
+        "zrodlo_col": ["zrodlo"],
+    }
 
     search_fields = [
         "tytul",
