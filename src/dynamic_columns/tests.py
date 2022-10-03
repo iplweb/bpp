@@ -12,7 +12,8 @@ def test_autor_admin_hide_column(admin_app, autor_jan_kowalski):
     autor_jan_kowalski.save()
 
     # Open the admin, so DynamicColumnMixin.enabled will be called
-    admin_app.get(reverse("admin:bpp_autor_changelist"))
+    res = admin_app.get(reverse("admin:bpp_autor_changelist"))
+    assert "Kowalski" in res
 
     # Get the instance of AutorAdmin
     autor_admin = site._registry.get(autor_jan_kowalski.__class__)
