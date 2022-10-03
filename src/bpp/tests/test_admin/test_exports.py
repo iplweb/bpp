@@ -6,6 +6,8 @@ from django.urls import reverse
 from django_webtest import DjangoTestApp, DjangoWebtestResponse
 from model_bakery import baker
 
+from django.contrib.admin import site
+
 from bpp.models import Autor, Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
 
 NAZWA_LINKU_EKSPORTU = "Eksport"
@@ -23,6 +25,10 @@ def test_xlsx_export_overflow(urlname, klass, admin_app: DjangoTestApp, settings
     max_allowed_export_items = 5
 
     settings.BPP_MAX_ALLOWED_EXPORT_ITEMS = max_allowed_export_items
+
+    modeladmin = site._registry.get(klass)
+    if hasattr(modeladmin, "max_allowed_export_items"):
+        modeladmin.max_allowed_export_items = max_allowed_export_items
 
     baker.make(
         klass,
