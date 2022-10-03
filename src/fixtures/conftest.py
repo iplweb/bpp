@@ -261,7 +261,7 @@ def typ_odpowiedzialnosci_autor(db):
 
 
 @pytest.fixture(scope="function")
-def autor_jan_kowalski(db, tytuly):
+def autor_jan_kowalski(db, tytuly) -> Autor:
     return _autor_maker(imiona="Jan", nazwisko="Kowalski", tytul="prof. dr hab. med.")
 
 

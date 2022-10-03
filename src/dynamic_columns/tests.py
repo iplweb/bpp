@@ -11,13 +11,21 @@ def test_autor_admin_hide_column(admin_app, autor_jan_kowalski):
     autor_jan_kowalski.poprzednie_nazwiska = POPRZEDNIE_NAZWISKA
     autor_jan_kowalski.save()
 
+    # Open the admin, so DynamicColumnMixin.enabled will be called
+    admin_app.get(reverse("admin:bpp_autor_changelist"))
+
+    # Get the instance of AutorAdmin
+    autor_admin = site._registry.get(autor_jan_kowalski.__class__)
+
+    ma = ModelAdmin.objects.db_repr(autor_admin)
+    c = ma.modeladmincolumn_set.get(col_name="poprzednie_nazwiska")
+    c.enabled = True
+    c.save()
+
     # Open the 'default' admin instance
     res = admin_app.get(reverse("admin:bpp_autor_changelist"))
     assert POPRZEDNIE_NAZWISKA in res
     assert "Kowalski" in res
-
-    # Get the instance of AutorAdmin
-    autor_admin = site._registry.get(autor_jan_kowalski.__class__)
 
     ma = ModelAdmin.objects.db_repr(autor_admin)
     c = ma.modeladmincolumn_set.get(col_name="poprzednie_nazwiska")
