@@ -25,7 +25,7 @@ class DynamicColumnsMixin:
     # first in the list view of Django's Admin, they cannot be enabled or disabled,
     # they cannot be moved. This does what the "old" ``list_display`` did:
 
-    list_display_always = []
+    # list_display_always = []
 
     # ``list_display_default``
     #
@@ -33,7 +33,7 @@ class DynamicColumnsMixin:
     # disabled (hidden) via admin interface at some point later. Here one can
     # give the end-user a reasonable selection of initially visible columns:
 
-    list_display_default = []
+    # list_display_default = []
 
     # ``list_display_forbidden``
     #
@@ -50,7 +50,7 @@ class DynamicColumnsMixin:
     # ``list_display_forbidden`` is in fact a list of regex that will be matched
     # against column names.
 
-    list_display_forbidden = []
+    # list_display_forbidden = []
 
     # ``list_select_related``
     #
