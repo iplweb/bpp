@@ -17,7 +17,9 @@ dev
 * poprawiono błąd wysyłania rekordu do PBN w sytuacji, gdy lokalnie nie istnieje
   instytucja lub osoba (b/n),
 * poprawki aplikacji do uruchamiania procesów w tle (b/n),
-* nie wyświetlaj przycisku "pokaż w PBN" gdy autor nie ma określonego odpowiednika w PBN,
+* nie wyświetlaj przycisku "pokaż w PBN" gdy autor nie ma określonego odpowiednika w PBN (b/n),
+* szybsze wyświetlanie listy nazwisk dla odpowiedników PBN dla autora (b/n),
+* możliwość wyboru widocznych kolumn w module redagowania (b/n),
 
 202209.1088
 -----------
