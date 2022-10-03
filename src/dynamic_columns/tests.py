@@ -18,7 +18,7 @@ def test_autor_admin_hide_column(admin_app, autor_jan_kowalski):
     # Get the instance of AutorAdmin
     autor_admin = site._registry.get(autor_jan_kowalski.__class__)
 
-    ma = ModelAdmin.objects.db_repr(autor_admin)
+    ma = ModelAdmin.objects.enable(autor_admin)
     c = ma.modeladmincolumn_set.get(col_name="poprzednie_nazwiska")
     c.enabled = True
     c.save()
