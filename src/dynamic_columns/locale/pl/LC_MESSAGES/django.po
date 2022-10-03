@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-10-03 11:23+0200\n"
+"POT-Creation-Date: 2022-10-03 13:16+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -32,6 +32,42 @@ msgstr "Włącz wybrane kolumny"
 msgid "Model admin name"
 msgstr "Nazwa modułu"
 
-#: admin.py:106
+#: admin.py:106 models.py:244
 msgid "Column name"
 msgstr "Nazwa kolumny"
+
+#: models.py:186
+#, fuzzy
+#| msgid "Model admin name"
+msgid "Model admin"
+msgstr "Nazwa modułu"
+
+#: models.py:187
+#, fuzzy
+#| msgid "Model admin name"
+msgid "Model admins"
+msgstr "Nazwy modułów"
+
+#: models.py:241
+msgid "Parent"
+msgstr "Moduł"
+
+#: models.py:246
+msgid "Enabled"
+msgstr "Widoczna"
+
+#: models.py:247
+msgid "Ordering"
+msgstr "Kolejność"
+
+#: models.py:252
+#, fuzzy
+#| msgid "Model admin name"
+msgid "Model admin column"
+msgstr "Kolumna modułu redagowania"
+
+#: models.py:253
+#, fuzzy
+#| msgid "Model admin name"
+msgid "Model admin columns"
+msgstr "Kolumny modułów redagowania"

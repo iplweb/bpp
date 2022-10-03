@@ -14,6 +14,7 @@ from django.contrib.contenttypes.models import ContentType
 
 from django.utils.datastructures import OrderedSet
 from django.utils.functional import cached_property
+from django.utils.translation import gettext_lazy as _
 
 
 class ModelAdminManager(models.Manager):
@@ -182,6 +183,8 @@ class ModelAdmin(models.Model):
     class Meta:
         unique_together = [("class_name", "model_ref")]
         ordering = ("class_name",)
+        verbose_name = _("Model admin")
+        verbose_name_plural = _("Model admins")
 
     def __str__(self):
         return self.class_name
@@ -234,13 +237,17 @@ class ModelAdminColumn(models.Model):
     It also has an order in which it is displayed.
     """
 
-    parent = models.ForeignKey(ModelAdmin, on_delete=models.CASCADE)
+    parent = models.ForeignKey(
+        ModelAdmin, on_delete=models.CASCADE, verbose_name=_("Parent")
+    )
 
-    col_name = models.CharField(max_length=255)
+    col_name = models.CharField(max_length=255, verbose_name=_("Column name"))
 
-    enabled = models.BooleanField(default=True)
-    ordering = models.PositiveSmallIntegerField()
+    enabled = models.BooleanField(default=True, verbose_name=_("Enabled"))
+    ordering = models.PositiveSmallIntegerField(verbose_name=_("Ordering"))
 
     class Meta:
         unique_together = [("parent", "col_name")]
         ordering = ("parent", "ordering")
+        verbose_name = _("Model admin column")
+        verbose_name_plural = _("Model admin columns")
