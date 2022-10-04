@@ -568,11 +568,18 @@ class Komparator:
         def porownaj_jeden_parametr(atrybut, wartosc_z_crossref, atrybut_label=None):
             rezultat = Komparator.porownaj(atrybut, wartosc_z_crossref)
 
+            if "ORCID" in wartosc_z_crossref:
+                wartosc_z_crossref["ORCID"] = normalize_orcid(
+                    wartosc_z_crossref["ORCID"]
+                )
             dane_porownania.append(
                 {
                     "atrybut": atrybut_label or atrybut,
-                    "_atrybut": atrybut,
-                    "wartosc_z_crossref": json_format_with_wrap(wartosc_z_crossref),
+                    "orig_atrybut": atrybut,
+                    "wartosc_z_crossref_print": json_format_with_wrap(
+                        wartosc_z_crossref
+                    ),
+                    "wartosc_z_crossref": wartosc_z_crossref,
                     "rezultat": rezultat,
                 }
             )
@@ -605,7 +612,7 @@ class Komparator:
     @classmethod
     def _dane(cls, json_data, atrybuty, key_in_atrybuty=True):
         return [
-            (key, json_format_with_wrap(item))
+            (key, {"original": item, "print": json_format_with_wrap(item)})
             for key, item in sorted(json_data.items())
             if (key in atrybuty) == key_in_atrybuty
         ]
@@ -629,5 +636,8 @@ class Komparator:
         for atrybut in Komparator.atrybuty.do_porownania_rekordu:
             wynik_porownania = dane_porownania_dict.get(atrybut)
 
-            if wynik_porownania and wynik_porownania.rekord_po_stronie_bpp:
-                return wynik_porownania.rekord_po_stronie_bpp
+            if (
+                wynik_porownania.get("rezultat")
+                and wynik_porownania.get("rezultat").rekord_po_stronie_bpp
+            ):
+                return wynik_porownania.get("rezultat").rekord_po_stronie_bpp

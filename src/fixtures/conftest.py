@@ -620,7 +620,7 @@ def tytuly():
 
 
 @pytest.fixture(scope="function")
-def jezyki(db):
+def jezyki():
     pl, created = Jezyk.objects.get_or_create(pk=1, skrot="pol.", nazwa="polski")
     pl.skrot_dla_pbn = "PL"
     pl.save()
@@ -681,7 +681,7 @@ def typy_kbn():
 
 
 @pytest.fixture(scope="function")
-def statusy_korekt(db):
+def statusy_korekt():
     for elem in fixture("status_korekty.json"):
         Status_Korekty.objects.get_or_create(pk=elem["pk"], **elem["fields"])
     return {status.nazwa: status for status in Status_Korekty.objects.all()}
@@ -1018,3 +1018,9 @@ from pytest_splinter.webdriver_patches import patch_webdriver
 @pytest.fixture(scope="session")
 def browser_patches():
     patch_webdriver()
+
+
+@pytest.fixture
+def csrf_exempt_django_admin_app(django_app_factory, admin_user):
+    app = django_app_factory(csrf_checks=False)
+    return _webtest_login(app, "admin", "password")
