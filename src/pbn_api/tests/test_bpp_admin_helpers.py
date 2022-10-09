@@ -1,3 +1,4 @@
+import pytest
 from model_bakery import baker
 
 from fixtures.pbn_api import MOCK_RETURNED_MONGODB_DATA
@@ -17,6 +18,7 @@ from bpp.admin.helpers import sprobuj_wgrac_do_pbn
 from bpp.models import Charakter_Formalny
 
 
+@pytest.mark.django_db
 def test_sprobuj_wgrac_do_pbn_charakter_zly(
     rf,
     pbn_wydawnictwo_zwarte,
@@ -35,6 +37,7 @@ def test_sprobuj_wgrac_do_pbn_charakter_zly(
     assert "nie będzie eksportowany do PBN" in list(msg)[0].message
 
 
+@pytest.mark.django_db
 def test_sprobuj_wgrac_do_pbn_uczelnia_brak_obiektu(
     rf, pbn_wydawnictwo_zwarte_z_charakterem
 ):
@@ -48,6 +51,7 @@ def test_sprobuj_wgrac_do_pbn_uczelnia_brak_obiektu(
     assert 'w systemie brakuje obiektu "Uczelnia"' in list(msg)[0].message
 
 
+@pytest.mark.django_db
 def test_sprobuj_wgrac_do_pbn_uczelnia_integracja_wylaczona(
     rf, pbn_wydawnictwo_zwarte_z_charakterem, uczelnia
 ):
@@ -64,6 +68,7 @@ def test_sprobuj_wgrac_do_pbn_uczelnia_integracja_wylaczona(
     assert len(msg) == 0
 
 
+@pytest.mark.django_db
 def test_sprobuj_wgrac_do_pbn_dane_juz_wyslane(
     pbn_wydawnictwo_zwarte_z_charakterem, pbn_uczelnia, pbn_client, rf
 ):
@@ -83,6 +88,7 @@ def test_sprobuj_wgrac_do_pbn_dane_juz_wyslane(
     assert "Identyczne dane rekordu" in list(msg)[0].message
 
 
+@pytest.mark.django_db
 def test_sprobuj_wgrac_do_pbn_access_denied(
     pbn_wydawnictwo_zwarte_z_charakterem, pbn_client, rf, pbn_uczelnia
 ):
@@ -101,6 +107,7 @@ def test_sprobuj_wgrac_do_pbn_access_denied(
     assert "Brak dostępu --" in list(msg)[0].message
 
 
+@pytest.mark.django_db
 def test_sprobuj_wgrac_do_pbn_inny_exception(
     pbn_wydawnictwo_zwarte_z_charakterem, pbn_client, rf, pbn_uczelnia
 ):
@@ -117,6 +124,7 @@ def test_sprobuj_wgrac_do_pbn_inny_exception(
     assert "Nie można zsynchronizować" in list(msg)[0].message
 
 
+@pytest.mark.django_db
 def test_sprobuj_wgrac_do_pbn_inny_blad(
     pbn_wydawnictwo_zwarte_z_charakterem, pbn_client, rf, pbn_uczelnia
 ):
@@ -133,6 +141,7 @@ def test_sprobuj_wgrac_do_pbn_inny_blad(
     assert "Nie można zsynchronizować" in list(msg)[0].message
 
 
+@pytest.mark.django_db
 def test_sprobuj_wgrac_do_pbn_sukces(
     pbn_wydawnictwo_zwarte_z_charakterem, pbn_client, rf, pbn_uczelnia
 ):

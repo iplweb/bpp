@@ -13,6 +13,13 @@ from bpp.views.api import (
     UploadPunktacjaZrodlaView,
 )
 from bpp.views.api.clarivate import GetWoSAMRInformation
+from bpp.views.api.crossref import (
+    UstawiORCIDAutoraView,
+    UstawNrZeszytuView,
+    UstawStreszczenieView,
+    UstawStronyView,
+    UstawTomView,
+)
 from bpp.views.api.pbn_get_by_parameter import (
     GetPBNPublicationsByDOI,
     GetPBNPublicationsByISBN,
@@ -93,6 +100,31 @@ urlpatterns = [
         r"^api/rok-habilitacji/$",
         csrf_exempt(RokHabilitacjiView.as_view()),
         name="api_rok_habilitacji",
+    ),
+    url(
+        r"^api/ustaw-orcid/$",
+        UstawiORCIDAutoraView.as_view(),
+        name="api_ustaw_orcid",
+    ),
+    url(
+        r"^api/ustaw-strony/$",
+        UstawStronyView.as_view(),
+        name="api_ustaw_strony",
+    ),
+    url(
+        r"^api/ustaw-tom/$",
+        UstawTomView.as_view(),
+        name="api_ustaw_tom",
+    ),
+    url(
+        r"^api/ustaw-nr-zeszytu/$",
+        UstawNrZeszytuView.as_view(),
+        name="api_ustaw_nr_zeszytu",
+    ),
+    url(
+        r"^api/ustaw-streszczenie/$",
+        UstawStreszczenieView.as_view(),
+        name="api_ustaw_streszczenie",
     ),
     url(
         r"^api/punktacja-zrodla/(?P<zrodlo_id>[\d]+)/(?P<rok>[\d]+)/$",

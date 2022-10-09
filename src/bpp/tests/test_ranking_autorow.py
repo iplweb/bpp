@@ -1,6 +1,9 @@
+import pytest
+
 from bpp.views.raporty import RankingAutorow
 
 
+@pytest.mark.django_db
 def test_ranking_autorow_get_queryset_prace_sa(
     wydawnictwo_ciagle_z_autorem,
     wydawnictwo_zwarte_z_autorem,
@@ -27,6 +30,7 @@ def test_ranking_autorow_get_queryset_prace_sa(
     assert r.get_queryset().count() == 0
 
 
+@pytest.mark.django_db
 def test_ranking_autorow_po_typie_kbn(
     wydawnictwo_ciagle_z_autorem,
     rf,
@@ -48,6 +52,7 @@ def test_ranking_autorow_po_typie_kbn(
     assert r.get_queryset().count() == 0
 
 
+@pytest.mark.django_db
 def test_ranking_autorow_po_charakterze_formalnym(
     wydawnictwo_ciagle_z_autorem,
     rf,

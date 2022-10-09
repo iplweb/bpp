@@ -71,6 +71,7 @@ def test_xlsx_export_data(urlname, klass, cname, admin_app: DjangoTestApp):
     assert wb.active["A1"].value == cname
 
 
+@pytest.mark.django_db
 def test_xlsx_export_nazwy_zamiast_numerkow(
     wydawnictwo_ciagle, admin_app: DjangoTestApp
 ):

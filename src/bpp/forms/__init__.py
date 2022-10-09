@@ -1,9 +1,6 @@
-# -*- encoding: utf-8 -*-
-
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Hidden
-from crispy_forms_foundation.layout import Layout, Fieldset, ButtonHolder, Submit
-from dal_select2.widgets import Select2WidgetMixin, ListSelect2
+from crispy_forms_foundation.layout import ButtonHolder, Fieldset, Layout, Submit
 
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.contrib.auth.forms import AuthenticationForm

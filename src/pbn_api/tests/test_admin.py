@@ -44,6 +44,7 @@ def test_OswiadczenieInstytucji_delete_model(pbn_uczelnia, pbn_client, rf):
         assert True  # good
 
 
+@pytest.mark.django_db
 def test_pbn_api_admin_SentDataAdmin_wyslij_ponownie(
     wydawnictwo_zwarte, admin_browser, asgi_live_server
 ):

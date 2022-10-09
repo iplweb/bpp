@@ -20,6 +20,7 @@ dev
 * nie wyświetlaj przycisku "pokaż w PBN" gdy autor nie ma określonego odpowiednika w PBN (b/n),
 * szybsze wyświetlanie listy nazwisk dla odpowiedników PBN dla autora (b/n),
 * możliwość wyboru widocznych kolumn w module redagowania (b/n),
+* synchronizacja danych z istniejącymi rekordami z CrossRef API (b/n),
 
 202209.1088
 -----------

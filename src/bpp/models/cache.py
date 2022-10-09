@@ -383,6 +383,10 @@ class RekordBase(
         return "%i_%i" % (self.pk[0], self.pk[1])
 
     @cached_property
+    def form_post_pk(self):
+        return "{%i,%i}" % (self.pk[0], self.pk[1])
+
+    @cached_property
     def ma_punktacje_sloty(self):
         return (
             Cache_Punktacja_Autora.objects.filter(

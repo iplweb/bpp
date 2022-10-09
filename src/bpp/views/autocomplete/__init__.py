@@ -5,6 +5,7 @@ from dal import autocomplete
 from dal_select2_queryset_sequence.views import Select2QuerySetSequenceView
 from django import http
 from django.core.exceptions import ImproperlyConfigured
+from django.db.models import F
 from django.db.models.aggregates import Count
 from django.db.models.query_utils import Q
 from queryset_sequence import QuerySetSequence
@@ -358,7 +359,7 @@ def globalne_wyszukiwanie_autora(querysets, q):
     if jest_pbn_uid(q):
         querysets.append(_fun(Autor.objects.filter(pbn_uid_id=q)))
 
-    querysets.append(_fun(Autor.objects.fulltext_filter(q)))
+    querysets.append(_fun(Autor.objects.fulltext_filter(q).order_by(F("_rank"))))
 
 
 def globalne_wyszukiwanie_jednostki(querysets, s):
