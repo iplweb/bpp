@@ -5,7 +5,6 @@ from dal import autocomplete
 from dal_select2_queryset_sequence.views import Select2QuerySetSequenceView
 from django import http
 from django.core.exceptions import ImproperlyConfigured
-from django.db.models import F
 from django.db.models.aggregates import Count
 from django.db.models.query_utils import Q
 from queryset_sequence import QuerySetSequence
@@ -337,29 +336,37 @@ def jest_pbn_uid(s):
     return jest_czyms(s, const.PBN_UID_LEN)
 
 
+AUTOR_ONLY = (
+    "pk",
+    "nazwisko",
+    "imiona",
+    "poprzednie_nazwiska",
+    "tytul__skrot",
+    "pseudonim",
+)
+
+
 def globalne_wyszukiwanie_autora(querysets, q):
-    def _fun(qry):
-        return (
-            qry.annotate(Count("wydawnictwo_ciagle"))
-            .only(
-                "pk",
-                "nazwisko",
-                "imiona",
-                "poprzednie_nazwiska",
-                "tytul__skrot",
-                "pseudonim",
-            )
-            .select_related("tytul")
-            .order_by("-wydawnictwo_ciagle__count")
-        )
 
     if jest_orcid(q):
-        querysets.append(_fun(Autor.objects.filter(orcid__icontains=q)))
+        querysets.append(
+            Autor.objects.filter(orcid__icontains=q)
+            .only(*AUTOR_ONLY)
+            .select_related("tytul")
+        )
 
     if jest_pbn_uid(q):
-        querysets.append(_fun(Autor.objects.filter(pbn_uid_id=q)))
+        querysets.append(
+            Autor.objects.filter(pbn_uid_id=q).only(*AUTOR_ONLY).select_related("tytul")
+        )
 
-    querysets.append(_fun(Autor.objects.fulltext_filter(q).order_by(F("_rank"))))
+    querysets.append(
+        Autor.objects.fulltext_filter(q)
+        .annotate(Count("wydawnictwo_ciagle"))
+        .only(*AUTOR_ONLY)
+        .select_related("tytul")
+        .order_by("-search__rank", "-wydawnictwo_ciagle__count")
+    )
 
 
 def globalne_wyszukiwanie_jednostki(querysets, s):
@@ -383,7 +390,7 @@ def globalne_wyszukiwanie_zrodla(querysets, s):
 
 
 class GlobalNavigationAutocomplete(Select2QuerySetSequenceView):
-    paginate_by = 20
+    paginate_by = 40
 
     def get_queryset(self):
         if not hasattr(self, "q"):
@@ -447,7 +454,7 @@ class GlobalNavigationAutocomplete(Select2QuerySetSequenceView):
 
 
 class AdminNavigationAutocomplete(StaffRequired, Select2QuerySetSequenceView):
-    paginate_by = 30
+    paginate_by = 60
 
     def get_queryset(self):
         if not self.q:

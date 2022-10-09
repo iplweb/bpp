@@ -25,6 +25,11 @@ dev
 * możliwość oznaczenia afiliacji autora do kierunku studiów (b/n),
 * możliwość wymuszenia wysyłania publikacji afiliujących na uczelnię w sytuacji, gdy jednostka
   nie ma odpowiednika PBN UID a jest poprawną, zatrudniającą autorów jednostką uczelni (b/n),
+* popraw wyszukiwanie autorów w sytuacji, gdy autor o nazwisku o tym samym początku
+  posiada więcej prac naukowych, niż autor o krótszym nazwisku (b/n),
+* użyj funkcji do pełnotekstowego wyszukiwania z Django (porzuć .extra) (b/n),
+* pozbądź się wyszukiwania wg podobieństwa z modułu redagowania dla wydawców (b/n),
+
 
 202209.1088
 -----------
