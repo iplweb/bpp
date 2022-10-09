@@ -496,13 +496,16 @@ def sprobuj_wgrac_do_pbn(request, obj, force_upload=False, pbn_client=None):
                 )
 
     try:
+        uczelnia = Uczelnia.objects.get_for_request(request)
+
         pbn_client.sync_publication(
             obj,
             force_upload=force_upload,
             delete_statements_before_upload=uczelnia.pbn_api_kasuj_przed_wysylka,
-            export_pk_zero=not Uczelnia.objects.get_for_request(
-                request
-            ).pbn_api_nie_wysylaj_prac_bez_pk,
+            export_pk_zero=not uczelnia.pbn_api_nie_wysylaj_prac_bez_pk,
+            always_affiliate_to_uid=uczelnia.pbn_uid_id
+            if uczelnia.pbn_api_afiliacja_zawsze_na_uczelnie
+            else None,
         )
 
     except SameDataUploadedRecently as e:

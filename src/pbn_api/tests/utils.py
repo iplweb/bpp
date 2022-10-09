@@ -23,6 +23,7 @@ def middleware(request):
 class MockTransport(RequestsTransport):
     def __init__(self, return_values=None):
         self.return_values = {}
+        self.input_values = {}
         if return_values:
             self.return_values.update(return_values)
 
@@ -36,4 +37,5 @@ class MockTransport(RequestsTransport):
             raise ValueError(f"Brak odpowiedzi URL zdefiniowanej dla {url}")
 
     def post(self, url, headers=None, body=None, delete=False):
+        self.input_values[url] = {"headers": headers, "body": body, "delete": delete}
         return self.get(url, headers)
