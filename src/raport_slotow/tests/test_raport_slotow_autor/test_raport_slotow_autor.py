@@ -15,6 +15,7 @@ def test_raport_slotow_formularz(admin_client):
     assert res.status_code == 200
 
 
+@pytest.mark.django_db
 def test_raport_slotow_autor_brak_danych(admin_client, autor_jan_kowalski, rok):
     url = reverse(
         "raport_slotow:raport",

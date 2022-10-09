@@ -1,6 +1,3 @@
-# -*- encoding: utf-8 -*-
-
-
 import pytest
 
 
@@ -41,6 +38,7 @@ def test_eksport_pbn_get_issue(informacje, expected, wydawnictwo_ciagle):
     assert wydawnictwo_ciagle.numer_wydania() == expected
 
 
+@pytest.mark.django_db
 def test_punktacja_zrodla(wydawnictwo_ciagle):
     assert wydawnictwo_ciagle.punktacja_zrodla() is None
 

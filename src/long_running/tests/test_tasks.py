@@ -1,5 +1,4 @@
 import pytest
-from django.utils import timezone
 
 from long_running.exceptions import (
     ObjectDoesNotExistException,
@@ -7,7 +6,10 @@ from long_running.exceptions import (
 )
 from long_running.tasks import perform_generic_long_running_task
 
+from django.utils import timezone
 
+
+@pytest.mark.django_db
 def test_perform_generic_long_running_task_no_tries_max_tries(wydawnictwo_ciagle):
 
     with pytest.raises(

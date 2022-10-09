@@ -20,6 +20,7 @@ from bpp.models import (
 )
 
 
+@pytest.mark.django_db
 def test_WydawnictwoPBNAdapter_ciagle(pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina):
     res = WydawnictwoPBNAdapter(
         pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina
@@ -27,6 +28,7 @@ def test_WydawnictwoPBNAdapter_ciagle(pbn_wydawnictwo_ciagle_z_autorem_z_dyscypl
     assert res["journal"]
 
 
+@pytest.mark.django_db
 def test_WydawnictwoPBNAdapter_nie_wysylaj_prac_bez_pk(
     pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina, pbn_uczelnia
 ):
@@ -42,11 +44,13 @@ def test_WydawnictwoPBNAdapter_nie_wysylaj_prac_bez_pk(
         ).pbn_get_json()
 
 
+@pytest.mark.django_db
 def test_WydawnictwoPBNAdapter_zwarte_ksiazka(pbn_wydawnictwo_zwarte_ksiazka):
     res = WydawnictwoPBNAdapter(pbn_wydawnictwo_zwarte_ksiazka).pbn_get_json()
     assert not res.get("journal")
 
 
+@pytest.mark.django_db
 def test_WydawnictwoPBNAdapter_zwarte_rozdzial(pbn_rozdzial_z_autorem_z_dyscyplina):
     res = WydawnictwoPBNAdapter(pbn_rozdzial_z_autorem_z_dyscyplina).pbn_get_json()
     assert not res.get("journal")
@@ -67,6 +71,7 @@ def rozdzial_z_dyscyplina_pbn(praca_z_dyscyplina_pbn):
     return praca_z_dyscyplina_pbn
 
 
+@pytest.mark.django_db
 def test_WydawnictwoPBNAdapter_autor_eksport(
     pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina, jednostka
 ):
@@ -101,6 +106,7 @@ def test_WydawnictwoPBNAdapter_pk_rowne_zero_eksport_wylaczony(
         ).pbn_get_json()
 
 
+@pytest.mark.django_db
 def test_WydawnictwoPBNAdapter_przypinanie_dyscyplin(
     pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina, jednostka
 ):
@@ -124,6 +130,7 @@ def test_WydawnictwoPBNAdapter_przypinanie_dyscyplin(
     assert res["statements"]
 
 
+@pytest.mark.django_db
 def test_WydawnictwoPBNAdapter_eksport_artykulu_bez_oswiadczen_zwraca_blad(
     praca_z_dyscyplina_pbn,
 ):
@@ -131,6 +138,7 @@ def test_WydawnictwoPBNAdapter_eksport_artykulu_bez_oswiadczen_zwraca_blad(
         WydawnictwoPBNAdapter(praca_z_dyscyplina_pbn).pbn_get_json()
 
 
+@pytest.mark.django_db
 def test_WydawnictwoPBNAdapter_eksport_rozdzialu_bez_oswiadczen_zwraca_blad(
     rozdzial_z_dyscyplina_pbn,
 ):
@@ -172,6 +180,7 @@ def test_WydawnictwoPBNAdapter_www_eksport(
     assert res["publicUri"] == WWW2
 
 
+@pytest.mark.django_db
 def test_WydawnictwoPBNAdapter_openaccess_zero_miesiecy_gdy_licencja(
     pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina: Wydawnictwo_Zwarte, openaccess_data
 ):
@@ -201,6 +210,7 @@ def test_WydawnictwoPBNAdapter_openaccess_zero_miesiecy_gdy_licencja(
     assert res["openAccess"]["months"] == "0"
 
 
+@pytest.mark.django_db
 def test_WydawnictwoPBNAdapter_autor_isbn_eisbn(
     pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina,
 ):
@@ -225,6 +235,7 @@ def test_WydawnictwoPBNAdapter_autor_isbn_eisbn(
     assert res["isbn"] == "789"
 
 
+@pytest.mark.django_db
 def test_WydawnictwoPBNAdapter_autor_z_orcid_bez_dyscypliny_idzie_bez_id(
     praca_z_dyscyplina_pbn, jednostka, denorms
 ):
@@ -242,6 +253,7 @@ def test_WydawnictwoPBNAdapter_autor_z_orcid_bez_dyscypliny_idzie_bez_id(
     assert not res["authors"][1].get("orcidId")
 
 
+@pytest.mark.django_db
 def test_WydawnictwoPBNAdapter_pod_redakcja_falsz(
     ksiazka, autor_jan_nowak, jednostka, denorms
 ):
@@ -249,6 +261,7 @@ def test_WydawnictwoPBNAdapter_pod_redakcja_falsz(
     assert WydawnictwoPBNAdapter(ksiazka).pod_redakcja() is False
 
 
+@pytest.mark.django_db
 def test_WydawnictwoPBNAdapter_pod_redakcja_prawda(
     ksiazka, autor_jan_nowak, jednostka, denorms
 ):
@@ -256,6 +269,7 @@ def test_WydawnictwoPBNAdapter_pod_redakcja_prawda(
     assert WydawnictwoPBNAdapter(ksiazka).pod_redakcja() is True
 
 
+@pytest.mark.django_db
 def test_WydawnictwoPBNAdapter_slowa_kluczowe(pbn_wydawnictwo_zwarte_ksiazka):
     pbn_wydawnictwo_zwarte_ksiazka.slowa_kluczowe.add("test")
     pbn_wydawnictwo_zwarte_ksiazka.slowa_kluczowe.add("best")
@@ -264,6 +278,7 @@ def test_WydawnictwoPBNAdapter_slowa_kluczowe(pbn_wydawnictwo_zwarte_ksiazka):
     assert "best" in ret["languageData"]["keywords"][0]["keywords"]
 
 
+@pytest.mark.django_db
 def test_WydawnictwoPBNAdapter_streszczenia(pbn_wydawnictwo_zwarte_ksiazka):
     pbn_wydawnictwo_zwarte_ksiazka.streszczenia.create(
         jezyk_streszczenia=None, streszczenie="123 test streszczenia"
@@ -272,6 +287,7 @@ def test_WydawnictwoPBNAdapter_streszczenia(pbn_wydawnictwo_zwarte_ksiazka):
     assert "test" in ret["languageData"]["abstracts"][0]["text"]
 
 
+@pytest.mark.django_db
 def test_WydawnictwoPBNAdapter_wydawnictwo_zwarte_strony(
     pbn_wydawnictwo_zwarte_ksiazka,
 ):
@@ -281,6 +297,7 @@ def test_WydawnictwoPBNAdapter_wydawnictwo_zwarte_strony(
     assert "pagesFromTo" in ret
 
 
+@pytest.mark.django_db
 def test_WydawnictwoPBNAdapter_wydawnictwo_ciagle_strony(
     pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina,
 ):
@@ -291,6 +308,7 @@ def test_WydawnictwoPBNAdapter_wydawnictwo_ciagle_strony(
     assert "pagesFromTo" in ret
 
 
+@pytest.mark.django_db
 def test_WydawnictwoPBNAdapter_wydawnictwo_ciagle_zakres_stron(
     pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina,
 ):
@@ -305,6 +323,7 @@ def encode_then_decode_json(in_json):
     return json.loads(json.dumps(in_json))
 
 
+@pytest.mark.django_db
 def test_WydawnictwoPBNAdapter_oplata_za_publikacje_platna(
     pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina,
 ):
@@ -320,6 +339,7 @@ def test_WydawnictwoPBNAdapter_oplata_za_publikacje_platna(
     assert ret["fee"]["researchPotentialFinancialResources"]
 
 
+@pytest.mark.django_db
 def test_WydawnictwoPBNAdapter_oplata_za_publikacje_darmowa(
     pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina,
 ):

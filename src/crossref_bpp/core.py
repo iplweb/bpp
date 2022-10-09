@@ -633,8 +633,14 @@ class Komparator:
 
     @classmethod
     def czy_rekord_ma_odpowiednik_w_bpp(cls, dane_porownania_dict):
+        if dane_porownania_dict is None or not dane_porownania_dict:
+            return
+
         for atrybut in Komparator.atrybuty.do_porownania_rekordu:
             wynik_porownania = dane_porownania_dict.get(atrybut)
+
+            if wynik_porownania is None:
+                continue
 
             if (
                 wynik_porownania.get("rezultat")

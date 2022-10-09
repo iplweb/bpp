@@ -250,7 +250,7 @@ def test_browse_snip_invisible(client, uczelnia, wydawnictwo_ciagle):
     assert b"SNIP" not in res.content
 
 
-@pytest.mark.django_Db
+@pytest.mark.django_db
 def test_browse_praca_wydawnictwa_powiazane(wydawnictwo_zwarte, client, denorms):
     # Testuj, czy rozdziały pokazują się w wydawnictwach powiązanych
     baker.make(
@@ -358,6 +358,7 @@ def test_PracaView_ukrywanie_statusy_admin(
     assert res.status_code == 200
 
 
+@pytest.mark.django_db
 def test_PracaViewBySlug_get_object(wydawnictwo_zwarte, denorms):
     denorms.rebuildall("Wydawnictwo_Zwarte")
     wydawnictwo_zwarte.refresh_from_db()
@@ -374,6 +375,7 @@ def test_PracaViewBySlug_get_object(wydawnictwo_zwarte, denorms):
     assert o == r
 
 
+@pytest.mark.django_db
 def test_PracaViewMixin_redirect(wydawnictwo_zwarte, rf, admin_user, denorms):
     denorms.rebuildall("Wydawnictwo_Zwarte")
     req = rf.get("/")

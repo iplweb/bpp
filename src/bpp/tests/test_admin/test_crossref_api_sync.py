@@ -1,3 +1,5 @@
+import base64
+
 import pytest
 from django.urls import reverse
 from model_bakery import baker
@@ -7,8 +9,31 @@ from bpp.models import Autor, Rekord, Wydawnictwo_Ciagle
 from django_bpp.selenium_util import wait_for, wait_for_page_load
 
 
+@pytest.fixture
+def autor_m():
+    return baker.make(
+        Autor,
+        # base64, bo RODO:
+        nazwisko=base64.decodebytes(b"TWllbG5pY3plaw==\n").decode("ascii"),
+        imiona="Katarzyna",
+    )
+
+
+@pytest.mark.vcr
+def test_crossref_api_autor_wo_selenium(admin_app, autor_m):
+
+    url = "/admin/bpp/wydawnictwo_ciagle/pobierz-z-crossref/"
+    page = admin_app.get(url)
+    page.forms[1]["identyfikator_doi"] = "10.12775/jehs.2022.12.07.045"
+    page = page.forms[1].submit().maybe_follow()
+    if b"id_ustaw_orcid_button_author.0" not in page.content:
+        page.showbrowser()
+        raise Exception
+
+
 @pytest.mark.vcr(ignore_localhost=True)
-def test_crossref_api_autor_sync(admin_browser, live_server, transactional_db):
+@pytest.mark.flaky(reruns=1)
+def test_crossref_api_autor_sync(admin_browser, live_server, transactional_db, autor_m):
 
     with wait_for_page_load(admin_browser):
         admin_browser.visit(
@@ -19,7 +44,6 @@ def test_crossref_api_autor_sync(admin_browser, live_server, transactional_db):
 
     admin_browser.find_by_name("identyfikator_doi").type("10.12775/jehs.2022.12.07.045")
 
-    autor = baker.make(Autor, nazwisko="Mielniczek", imiona="Katarzyna")
     try:
         with wait_for_page_load(admin_browser):
             admin_browser.find_by_id("id_submit").click()
@@ -27,13 +51,13 @@ def test_crossref_api_autor_sync(admin_browser, live_server, transactional_db):
         admin_browser.find_by_id("id_ustaw_orcid_button_author.0")[0].click()
 
         def _():
-            autor.refresh_from_db()
-            return autor.orcid == "0000-0003-2575-3642"
+            autor_m.refresh_from_db()
+            return autor_m.orcid == "0000-0003-2575-3642"
 
         wait_for(_)
         assert True
     finally:
-        autor.delete()
+        autor_m.delete()
 
 
 @pytest.fixture

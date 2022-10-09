@@ -1,4 +1,3 @@
-# -*- encoding: utf-8 -*-
 import pytest
 from django.urls.base import reverse
 
@@ -11,6 +10,7 @@ def test_search_field(autor_jan_kowalski):
     assert Autor.objects.all()[0].search is not None
 
 
+@pytest.mark.django_db
 def test_tokenizer_minus(wydawnictwo_zwarte, client):
     wydawnictwo_zwarte.tytul_oryginalny = "ewaluacja 2017-2020"
     wydawnictwo_zwarte.save()

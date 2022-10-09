@@ -27,6 +27,7 @@ def test_nulltest_idx():
         SzablonDlaOpisuBibliograficznego.objects.create(template=test_template)
 
 
+@pytest.mark.django_db
 def test_rozne_opisy_rozne_klasy(wydawnictwo_ciagle, wydawnictwo_zwarte):
     SzablonDlaOpisuBibliograficznego.objects.all().delete()
 
