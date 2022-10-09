@@ -250,6 +250,7 @@ STRUKTURA_MENU = [
     ("Uczelnie", "/admin/bpp/uczelnia/"),
     ("Wydziały", "/admin/bpp/wydzial/"),
     ("Jednostki", "/admin/bpp/jednostka/"),
+    ("Kierunki studiów", "/admin/bpp/kierunek_studiow/"),
 ]
 
 REDAKTOR_MENU = [

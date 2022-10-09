@@ -21,6 +21,8 @@ dev
 * szybsze wyświetlanie listy nazwisk dla odpowiedników PBN dla autora (b/n),
 * możliwość wyboru widocznych kolumn w module redagowania (b/n),
 * synchronizacja danych z istniejącymi rekordami z CrossRef API (b/n),
+* możliwość oznaczenia jednostki jako "koło naukowe" (b/n),
+* możliwość oznaczenia afiliacji autora do kierunku studiów (b/n),
 
 202209.1088
 -----------

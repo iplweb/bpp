@@ -34,6 +34,7 @@ from .multiseek import BppMultiseekVisibility  # noqa
 
 from bpp.models.cache import *  # noqa
 from bpp.models.dyscyplina_naukowa import *  # noqa
+from bpp.models.kierunek_studiow import Kierunek_Studiow  # noqa
 from bpp.models.konferencja import *  # noqa
 from bpp.models.openaccess import *  # noqa
 from bpp.models.opi_2012 import *  # noqa

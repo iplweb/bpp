@@ -467,6 +467,9 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
 
     autor = models.ForeignKey("bpp.Autor", CASCADE)
     jednostka = models.ForeignKey("bpp.Jednostka", CASCADE)
+    kierunek_studiow = models.ForeignKey(
+        "bpp.Kierunek_Studiow", SET_NULL, blank=True, null=True
+    )
     kolejnosc = models.IntegerField("Kolejność", default=0)
     typ_odpowiedzialnosci = models.ForeignKey(
         "bpp.Typ_Odpowiedzialnosci", CASCADE, verbose_name="Typ odpowiedzialności"

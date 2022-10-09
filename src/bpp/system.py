@@ -54,6 +54,7 @@ from bpp.models import (
     Grupa_Pracownicza,
     Jednostka,
     Jezyk,
+    Kierunek_Studiow,
     Patent,
     Patent_Autor,
     Praca_Doktorska,
@@ -104,6 +105,7 @@ groups = {
     "import DBF": [Bib, B_A, Aut, Jed, Poz, B_U, Usi, Ses, Wx2, Ixn],
     "dane systemowe": [
         Charakter_Formalny,
+        Kierunek_Studiow,
         Charakter_PBN,
         Funkcja_Autora,
         Zrodlo_Informacji,
