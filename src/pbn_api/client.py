@@ -97,8 +97,7 @@ class PageableResource:
 
     def __iter__(self):
         for n in range(0, self.total_pages):
-            for elem in self.fetch_page(n):
-                yield elem
+            yield from self.fetch_page(n)
 
 
 class OAuthMixin:
@@ -590,8 +589,14 @@ class PBNClient(
     def post_publication(self, json):
         return self.transport.post(PBN_POST_PUBLICATIONS_URL, body=json)
 
-    def upload_publication(self, rec, force_upload=False, export_pk_zero=None):
-        js = WydawnictwoPBNAdapter(rec, export_pk_zero=export_pk_zero).pbn_get_json()
+    def upload_publication(
+        self, rec, force_upload=False, export_pk_zero=None, always_affiliate_to_uid=None
+    ):
+        js = WydawnictwoPBNAdapter(
+            rec,
+            export_pk_zero=export_pk_zero,
+            always_affiliate_to_uid=always_affiliate_to_uid,
+        ).pbn_get_json()
         if not force_upload:
             needed = SentData.objects.check_if_needed(rec, js)
             if not needed:
@@ -640,6 +645,7 @@ class PBNClient(
         force_upload=False,
         delete_statements_before_upload=False,
         export_pk_zero=None,
+        always_affiliate_to_uid=None,
     ):
         """
         @param delete_statements_before_upload: gdy True, kasuj oświadczenia publikacji przed wysłaniem (jeżeli posiada
@@ -691,7 +697,10 @@ class PBNClient(
 
         # Wgraj dane do PBN
         ret, js = self.upload_publication(
-            pub, force_upload=force_upload, export_pk_zero=export_pk_zero
+            pub,
+            force_upload=force_upload,
+            export_pk_zero=export_pk_zero,
+            always_affiliate_to_uid=always_affiliate_to_uid,
         )
 
         # Pobierz zwrotnie dane z PBN

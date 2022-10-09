@@ -10,5 +10,5 @@ class Kierunek_StudiowAdmin(
 ):
     list_display_links = ["nazwa"]
     list_display = ["nazwa", "skrot", "wydzial"]
-    search_fields = list_display
+    search_fields = ["nazwa", "skrot", "wydzial__nazwa"]
     fields = ["nazwa", "skrot", "wydzial", "opis", "adnotacje"]

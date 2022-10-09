@@ -31,6 +31,7 @@ class WydawnictwoPBNAdapter:
     EDITED_BOOK = "EDITED_BOOK"
 
     export_pk_zero = True
+    always_affiliate_to_uid = None
 
     def __init__(
         self,
@@ -38,7 +39,15 @@ class WydawnictwoPBNAdapter:
         request=None,
         uczelnia=None,
         export_pk_zero=None,
+        always_affiliate_to_uid=None,
     ):
+        """
+        :param always_affiliate_to_uid: jeżeli podany, użyj właśnie tego UID jako UID jako
+        każdej afiliacji we własnej jednostce (czyli w nie-obcej i zatrudniającej pracowników
+        i gdzie autor ma afiliację). W ten sposób każdy autor, który afiliuje na jednostkę
+        uczelni i jest w jednostce która skupia pracowników będzie miał wysłaną afiliację na
+        uczelnię -- niezależnie od wypełnienia uid jednostki lub nie.
+        """
         self.original = original
 
         if export_pk_zero is not None:
@@ -50,6 +59,14 @@ class WydawnictwoPBNAdapter:
             if uczelnia is not None:
                 if uczelnia.pbn_api_nie_wysylaj_prac_bez_pk:
                     self.export_pk_zero = False
+
+        if always_affiliate_to_uid is not None:
+            self.always_affiliate_to_uid = always_affiliate_to_uid
+
+            class FakeJednostka:
+                pbn_uid_id = self.always_affiliate_to_uid
+
+            self.fake_jednostka = FakeJednostka()
 
     @cached_property
     def typy_ogolne_autorow(self):
@@ -253,14 +270,18 @@ class WydawnictwoPBNAdapter:
                 and jednostka.pk != -1
                 and elem.jednostka.skupia_pracownikow
             ):
-                if jednostka.pbn_uid_id is None:
-                    # raise WillNotExportError(
-                    #     f"Jednostka {jednostka} nie ma ustawionego odpowiednika w PBN"
-                    # )
-                    pass
+                if self.always_affiliate_to_uid:
+                    author["affiliations"] = [self.always_affiliate_to_uid]
+                    jednostki.add(self.fake_jednostka)
                 else:
-                    author["affiliations"] = [jednostka.pbn_uid_id]
-                    jednostki.add(elem.jednostka)
+                    if jednostka.pbn_uid_id is None:
+                        # raise WillNotExportError(
+                        #     f"Jednostka {jednostka} nie ma ustawionego odpowiednika w PBN"
+                        # )
+                        pass
+                    else:
+                        author["affiliations"] = [jednostka.pbn_uid_id]
+                        jednostki.add(elem.jednostka)
 
                 statement = WydawnictwoAutorToStatementPBNAdapter(elem).pbn_get_json()
                 if statement:

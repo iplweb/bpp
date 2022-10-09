@@ -23,6 +23,8 @@ dev
 * synchronizacja danych z istniejącymi rekordami z CrossRef API (b/n),
 * możliwość oznaczenia jednostki jako "koło naukowe" (b/n),
 * możliwość oznaczenia afiliacji autora do kierunku studiów (b/n),
+* możliwość wymuszenia wysyłania publikacji afiliujących na uczelnię w sytuacji, gdy jednostka
+  nie ma odpowiednika PBN UID a jest poprawną, zatrudniającą autorów jednostką uczelni (b/n),
 
 202209.1088
 -----------
