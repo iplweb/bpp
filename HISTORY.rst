@@ -4,6 +4,15 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202210.1091 (2022-10-16)
+============================
+
+Naprawione
+----------
+
+- popraw literówkę w nazwie kolumny modułu redagowania (bez_numeru)
+
+
 Bpp 202210.1090 (2022-10-16)
 ============================
 
