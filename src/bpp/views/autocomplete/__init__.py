@@ -1,4 +1,5 @@
 import json
+from collections import OrderedDict
 
 from braces.views import GroupRequiredMixin, LoginRequiredMixin
 from dal import autocomplete
@@ -15,6 +16,8 @@ from import_common.normalization import normalize_isbn
 
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.contrib.postgres.search import TrigramSimilarity
+
+from django.utils.text import capfirst
 
 from bpp import const
 from bpp.const import CHARAKTER_OGOLNY_KSIAZKA, GR_WPROWADZANIE_DANYCH
@@ -342,17 +345,19 @@ AUTOR_ONLY = (
     "imiona",
     "poprzednie_nazwiska",
     "tytul__skrot",
+    "aktualna_funkcja__nazwa",
     "pseudonim",
 )
 
+AUTOR_SELECT_RELATED = "tytul", "aktualna_funkcja"
+
 
 def globalne_wyszukiwanie_autora(querysets, q):
-
     if jest_orcid(q):
         querysets.append(
             Autor.objects.filter(orcid__icontains=q)
             .only(*AUTOR_ONLY)
-            .select_related("tytul")
+            .select_related(*AUTOR_SELECT_RELATED)
         )
 
     if jest_pbn_uid(q):
@@ -364,7 +369,7 @@ def globalne_wyszukiwanie_autora(querysets, q):
         Autor.objects.fulltext_filter(q)
         .annotate(Count("wydawnictwo_ciagle"))
         .only(*AUTOR_ONLY)
-        .select_related("tytul")
+        .select_related(*AUTOR_SELECT_RELATED)
         .order_by("-search__rank", "-wydawnictwo_ciagle__count")
     )
 
@@ -391,6 +396,40 @@ def globalne_wyszukiwanie_zrodla(querysets, s):
 
 class GlobalNavigationAutocomplete(Select2QuerySetSequenceView):
     paginate_by = 40
+
+    def get_result_label(self, result):
+        if isinstance(result, Autor):
+            if result.aktualna_funkcja_id is not None:
+                return str(result) + ", " + str(result.aktualna_funkcja.nazwa)
+        return str(result)
+
+    def get_results(self, context):
+        """
+        Return a list of results usable by Select2.
+
+        It will render as a list of one <optgroup> per different content type
+        containing a list of one <option> per model.
+        """
+        groups = OrderedDict()
+
+        for result in context["object_list"]:
+            groups.setdefault(type(result), [])
+            groups[type(result)].append(result)
+
+        return [
+            {
+                "id": None,
+                "text": capfirst(self.get_model_name(model)),
+                "children": [
+                    {
+                        "id": self.get_result_value(result),
+                        "text": self.get_result_label(result),
+                    }
+                    for result in results
+                ],
+            }
+            for model, results in groups.items()
+        ]
 
     def get_queryset(self):
         if not hasattr(self, "q"):

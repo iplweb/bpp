@@ -224,8 +224,19 @@ directory = "bugfix"
 showcontent = true
 name = "Naprawione"
 
-
 [[tool.towncrier.type]]
 directory = "doc"
 showcontent = true
 name = "Dokumentacja"
+
+
+[[tool.towncrier.type]]
+directory = "feature"
+showcontent = true
+name = "Usprawnienie"
+
+
+[[tool.towncrier.type]]
+directory = "removal"
+showcontent = true
+name = "Usunięto"
