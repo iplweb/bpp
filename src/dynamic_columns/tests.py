@@ -1,8 +1,10 @@
+import pytest
 from django.urls import reverse
 
-from dynamic_columns.models import ModelAdmin
+from dynamic_columns.models import ModelAdmin, ModelAdminColumn
 
 from django.contrib.admin import site
+from django.contrib.contenttypes.models import ContentType
 
 
 def test_autor_admin_hide_column(admin_app, autor_jan_kowalski):
@@ -36,3 +38,17 @@ def test_autor_admin_hide_column(admin_app, autor_jan_kowalski):
     res = admin_app.get(reverse("admin:bpp_autor_changelist"))
     assert POPRZEDNIE_NAZWISKA not in res
     assert "Kowalski" in res
+
+
+@pytest.mark.django_db
+def test_ModelAdminColumn___str__():
+
+    b = ModelAdminColumn(col_name="bar")
+    assert str(b) == 'Column "bar"'
+
+    a = ModelAdmin.objects.create(
+        class_name="foo", model_ref=ContentType.objects.all().first()
+    )
+    b.parent = a
+
+    assert str(b) == 'Column "bar" of model "foo"'

@@ -4,6 +4,8 @@ import pytest
 
 from fixtures import *  # noqa
 
+from django.utils.translation import activate
+
 
 @pytest.fixture(scope="session")
 def today():
@@ -15,3 +17,8 @@ def today():
 @pytest.fixture(scope="session")
 def yesterday(today):
     return today - timedelta(days=1)
+
+
+@pytest.fixture(autouse=True)
+def set_default_language():
+    activate("en")

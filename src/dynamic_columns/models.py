@@ -246,6 +246,14 @@ class ModelAdminColumn(models.Model):
     enabled = models.BooleanField(default=True, verbose_name=_("Enabled"))
     ordering = models.PositiveSmallIntegerField(verbose_name=_("Ordering"))
 
+    def __str__(self):
+        ret = _("Column") + f' "{self.col_name}"'
+
+        if self.parent_id:
+            ret += _(" of model ") + f'"{self.parent.class_name}"'
+
+        return ret
+
     class Meta:
         unique_together = [("parent", "col_name")]
         ordering = ("parent", "ordering")

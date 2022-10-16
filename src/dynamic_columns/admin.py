@@ -12,12 +12,12 @@ from django.contrib.admin.utils import NotRelationField, get_model_from_relation
 from django.utils.translation import gettext_lazy as _
 
 
-@admin.action(description=_("Disable selected columns"))
+@admin.action(description=_("Enable selected columns"))
 def make_enabled(modeladmin, request, queryset):
     queryset.update(enabled=True)
 
 
-@admin.action(description=_("Enable selected columns"))
+@admin.action(description=_("Disable selected columns"))
 def make_disabled(modeladmin, request, queryset):
     queryset.update(enabled=False)
 
