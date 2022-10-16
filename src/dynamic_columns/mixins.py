@@ -35,6 +35,13 @@ class DynamicColumnsMixin:
 
     # list_display_default = []
 
+    # ``list_display_allowed``
+    #
+    # this is a list of columns not enabled by default, but they can be enabled
+    # in the admin later:
+
+    # list_display_allowed = []
+
     # ``list_display_forbidden``
     #
     # You can use "__all__" string in above variables if you want to give the

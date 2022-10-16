@@ -166,10 +166,28 @@ class AutorAdmin(
         "pbn_uid_id",
     ]
 
+    list_display_allowed = [
+        "id",
+        "ostatnio_zmieniony",
+        "adnotacje",
+        "aktualna_jednostka",
+        "aktualna_funkcja",
+        "pokazuj",
+        "www",
+        "plec",
+        "urodzony",
+        "zmarl",
+        "poakzuj_poprzednie_nazwiska",
+        "orcid_w_pbn",
+        "system_kadrowy_id",
+    ]
+
     list_select_related = {
         "tytul": [
             "tytul",
-        ]
+        ],
+        "aktualna_jednostka": ["aktualna_jednostka", "aktualna_jednostka__wydzial"],
+        "aktualna_funkcja": ["aktualna_funkcja"],
     }
 
     fields = None
