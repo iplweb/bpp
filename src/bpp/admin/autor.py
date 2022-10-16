@@ -177,7 +177,7 @@ class AutorAdmin(
         "plec",
         "urodzony",
         "zmarl",
-        "poakzuj_poprzednie_nazwiska",
+        "pokazuj_poprzednie_nazwiska",
         "orcid_w_pbn",
         "system_kadrowy_id",
     ]

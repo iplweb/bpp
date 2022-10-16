@@ -65,7 +65,7 @@ bdist_wheel: distclean production-assets
 	ls -lash dist
 
 upload:
-	twine upload dist/*
+	twine upload dist/*whl
 
 js-tests:
 	grunt qunit
