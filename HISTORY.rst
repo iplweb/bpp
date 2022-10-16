@@ -72,6 +72,11 @@ Usprawnienie
 - użyj funkcji do pełnotekstowego wyszukiwania z Django (porzuć .extra) (b/n),
 - pozbądź się wyszukiwania wg podobieństwa z modułu redagowania dla wydawców (b/n),
 
+Zmiany w poprzednich wersjach
+=============================
+
+Poniżej znajduje się lista zmian w formacie sprzed używania narzędzia ``towncrier``.
+
 
 202209.1088
 -----------
