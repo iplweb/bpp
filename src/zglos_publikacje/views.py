@@ -15,6 +15,7 @@ from messages_extends import messages
 from sentry_sdk import capture_exception
 from templated_email import send_templated_mail
 
+from import_common.normalization import normalize_tytul_publikacji
 from zglos_publikacje import const
 from zglos_publikacje.forms import (
     Zgloszenie_Publikacji_AutorFormSet,
@@ -172,6 +173,18 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
 
         if self.request.user.is_authenticated and self.object.utworzyl_id is None:
             self.object.utworzyl = self.request.user
+
+        if self.object.tytul_oryginalny:
+            # Jeżeli jest tytuł oryginalny, to znormalizuj go, m.in. wycinając znaki
+            # newline, ponieważ django-templated-email w wersji 3.0.0 nie obsługuje ich,
+            # ma to poprawione w trunku, po nowym release można zaktualizować django-templated-email
+            # i pozbyć się tego kodu
+            #
+            # https://github.com/vintasoftware/django-templated-email/issues/138
+
+            self.object.tytul_oryginalny = normalize_tytul_publikacji(
+                self.object.tytul_oryginalny
+            )
 
         self.object.save()
 

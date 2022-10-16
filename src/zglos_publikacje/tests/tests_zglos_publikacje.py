@@ -133,12 +133,16 @@ def test_zglos_publikacje_bez_pliku_nie_artykul(
 
 
 def zrob_submit_calego_formularza(
-    webtest_app, django_capture_on_commit_callbacks, autor=None, jednostka=None
+    webtest_app,
+    django_capture_on_commit_callbacks,
+    autor=None,
+    jednostka=None,
+    tytul_oryginalny="123",
 ):
 
     url = reverse("zglos_publikacje:nowe_zgloszenie")
     page = webtest_app.get(url)
-    page.forms[0]["0-tytul_oryginalny"] = "123"
+    page.forms[0]["0-tytul_oryginalny"] = tytul_oryginalny
     page.forms[0]["0-rok"] = "2020"
     page.forms[0][
         "0-rodzaj_zglaszanej_publikacji"
@@ -199,6 +203,35 @@ def test_wysylanie_maili_trafi_do_grupy_zglaszanie_publikacji(
     from django.core import mail
 
     zrob_submit_calego_formularza(webtest_app, django_capture_on_commit_callbacks)
+    assert len(mail.outbox) == 1
+    assert mail.outbox[0].to == [
+        EMAIL,
+    ]
+
+
+def test_wysylanie_maili_tytul_ma_nowe_linie(
+    webtest_app,
+    django_capture_on_commit_callbacks,
+    normal_django_user,
+    typy_odpowiedzialnosci,
+    uczelnia,
+    wydzial,
+    jednostka,
+):
+    normal_django_user.email = EMAIL
+    normal_django_user.save()
+
+    normal_django_user.groups.add(
+        Group.objects.get_or_create(name=GR_ZGLOSZENIA_PUBLIKACJI)[0]
+    )
+
+    from django.core import mail
+
+    zrob_submit_calego_formularza(
+        webtest_app,
+        django_capture_on_commit_callbacks,
+        tytul_oryginalny="PANIE\nCzy to pojdzie?",
+    )
     assert len(mail.outbox) == 1
     assert mail.outbox[0].to == [
         EMAIL,

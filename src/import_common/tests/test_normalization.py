@@ -4,6 +4,7 @@ from import_common.normalization import (
     normalize_doi,
     normalize_kod_dyscypliny,
     normalize_orcid,
+    normalize_tytul_publikacji,
 )
 
 
@@ -56,3 +57,17 @@ def test_normalize_doi(i, o):
 )
 def test_normalize_orcid(i, o):
     assert normalize_orcid(i) == o
+
+
+@pytest.mark.parametrize(
+    "i,o",
+    [
+        (
+            "to jest tytul\nz nowa linia\n\n\nbo tak",
+            "to jest tytul z nowa linia bo tak",
+        ),
+        ("wytniemy online [online]", "wytniemy online"),
+    ],
+)
+def test_normalize_tytul_publikacji(i, o):
+    assert normalize_tytul_publikacji(i) == o

@@ -70,6 +70,9 @@ def normalize_tytul_publikacji(s):
     ret = remove_trailing_interpunction(normalize_skrot(s))
     if ret.endswith(ONLINE_STR):
         ret = ret[: -len(ONLINE_STR)].strip()
+    ret = ret.replace("\r", " ").replace("\n", " ")
+    while ret.find("  ") >= 0:
+        ret = ret.replace("  ", " ")
     return ret
 
 
