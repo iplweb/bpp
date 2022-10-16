@@ -57,6 +57,7 @@ include = ["AUTHORS.rst", "CONTRIBUTING.rst", "HISTORY.rst", "LICENSE",
 [tool.poetry.group.dev.dependencies]
 bumpver = "^2022.1118"
 pytest-recording = "^0.12.1"
+towncrier = "^22.8.0"
 
 [tool.bumpver]
 current_version = "v202209.1088"
@@ -211,3 +212,20 @@ flake8-bugbear = "^22.8.23"
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.towncrier]
+package = "bpp"
+version = "202209.1088"
+package_dir = "src"
+filename = "HISTORY.rst"
+
+[[tool.towncrier.type]]
+directory = "bugfix"
+showcontent = true
+name = "Naprawione"
+
+
+[[tool.towncrier.type]]
+directory = "doc"
+showcontent = true
+name = "Dokumentacja"

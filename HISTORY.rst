@@ -1,8 +1,8 @@
-]
-
 ==============
 Historia zmian
 ==============
+
+.. towncrier release notes start
 
 dev
 ---
