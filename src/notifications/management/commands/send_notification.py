@@ -1,14 +1,9 @@
-# -*- encoding: utf-8 -*
-
 import messages_extends as messages
-from django.contrib.auth import get_user_model
-
 from django.core.management import BaseCommand
-from django.test import RequestFactory
-from messages_extends.storages import PersistentStorage
 
-import notifications
-from notifications.core import _send, send_notification
+from notifications.core import get_channel_name_for_user, send_notification
+
+from django.contrib.auth import get_user_model
 
 
 class Command(BaseCommand):
@@ -16,10 +11,15 @@ class Command(BaseCommand):
     args = "<username> <message>"
 
     def add_arguments(self, parser):
-        parser.add_argument("user")
+        parser.add_argument("username")
         parser.add_argument("text")
 
     def handle(self, *args, **options):
+        user = get_user_model().objects.get(username=options["username"])
+        channel_name = get_channel_name_for_user(user)
+
         send_notification(
-            options["user"], messages.INFO_PERSISTENT, options["text"],
+            channel_name,
+            messages.INFO_PERSISTENT,
+            options["text"],
         )

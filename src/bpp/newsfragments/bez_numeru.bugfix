@@ -1,0 +1,1 @@
+prawidłowe łączenie do kanałów ASGI w sytuacji, gdy nazwa użytkownika zawiera znaki nie-alfanumeryczne lub akcenty
