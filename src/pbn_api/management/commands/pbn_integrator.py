@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-import os
 import sys
 
 import django
@@ -26,7 +24,6 @@ from pbn_api.integrator import (
     integruj_zrodla,
     pobierz_instytucje,
     pobierz_konferencje,
-    pobierz_ludzi_offline,
     pobierz_ludzi_z_uczelni,
     pobierz_oswiadczenia_z_instytucji,
     pobierz_prace_po_doi,
@@ -41,7 +38,6 @@ from pbn_api.integrator import (
     usun_wszystkie_oswiadczenia,
     usun_zerowe_oswiadczenia,
     weryfikuj_orcidy,
-    wgraj_ludzi_z_offline_do_bazy,
     wyswietl_niezmatchowane_ze_zblizonymi_tytulami,
 )
 from pbn_api.management.commands.util import PBNBaseCommand
@@ -56,7 +52,7 @@ def check_end_before(stage, end_before_stage):
 
 class Command(PBNBaseCommand):
     def add_arguments(self, parser):
-        super(Command, self).add_arguments(parser)
+        super().add_arguments(parser)
 
         parser.add_argument(
             "--disable-multiprocessing", action="store_true", default=False
@@ -246,16 +242,16 @@ class Command(PBNBaseCommand):
             integruj_uczelnie()
             integruj_instytucje()
 
-        stage = 4
-        check_end_before(stage, end_before_stage)
-        if (enable_download_people_all or enable_all) and start_from_stage <= stage:
-            os.makedirs("pbn_json_data", exist_ok=True)
-            pobierz_ludzi_offline(client)
-
-        stage = 5
-        check_end_before(stage, end_before_stage)
-        if (enable_download_people_all or enable_all) and start_from_stage <= stage:
-            wgraj_ludzi_z_offline_do_bazy()
+        # stage = 4
+        # check_end_before(stage, end_before_stage)
+        # if (enable_download_people_all or enable_all) and start_from_stage <= stage:
+        #     os.makedirs("pbn_json_data", exist_ok=True)
+        #     pobierz_ludzi_offline(client)
+        #
+        # stage = 5
+        # check_end_before(stage, end_before_stage)
+        # if (enable_download_people_all or enable_all) and start_from_stage <= stage:
+        #     wgraj_ludzi_z_offline_do_bazy()
 
         stage = 6
         check_end_before(stage, end_before_stage)

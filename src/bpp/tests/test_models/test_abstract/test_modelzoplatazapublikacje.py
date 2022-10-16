@@ -5,6 +5,7 @@ import pytest
 from django.core.exceptions import ValidationError
 
 
+@pytest.mark.django_db
 @pytest.mark.parametrize(
     "kwargs,expectation",
     [

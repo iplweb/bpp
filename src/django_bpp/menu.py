@@ -250,6 +250,7 @@ STRUKTURA_MENU = [
     ("Uczelnie", "/admin/bpp/uczelnia/"),
     ("Wydziały", "/admin/bpp/wydzial/"),
     ("Jednostki", "/admin/bpp/jednostka/"),
+    ("Kierunki studiów", "/admin/bpp/kierunek_studiow/"),
 ]
 
 REDAKTOR_MENU = [
@@ -286,6 +287,10 @@ ADMIN_MENU = [
     (
         "Obsługa zgłoszeń prac - wydziały",
         "/admin/zglos_publikacje/obslugujacy_zgloszenia_wydzialow/",
+    ),
+    (
+        "Kolumny w module redagowania",
+        "/admin/dynamic_columns/modeladmincolumn/",
     ),
 ]
 

@@ -89,25 +89,25 @@ def test_dyscyplina_naukowa_przypisanie_autocomplete(
     res = app.get(reverse("bpp:dyscyplina-naukowa-przypisanie-autocomplete"))
     assert res.json["results"][0]["text"] == "Podaj autora"
 
-    f = json.dumps({"autor": autor_jan_kowalski.id})
+    f = json.dumps({"autor": str(autor_jan_kowalski.id)})
     res = app.get(
         reverse("bpp:dyscyplina-naukowa-przypisanie-autocomplete"), {"forward": f}
     )
     assert res.json["results"][0]["text"] == "Podaj rok"
 
-    f = json.dumps({"autor": autor_jan_kowalski.id, "rok": "fa"})
+    f = json.dumps({"autor": str(autor_jan_kowalski.id), "rok": "fa"})
     res = app.get(
         reverse("bpp:dyscyplina-naukowa-przypisanie-autocomplete"), {"forward": f}
     )
     assert res.json["results"][0]["text"] == "Nieprawidłowy rok"
 
-    f = json.dumps({"autor": autor_jan_kowalski.id, "rok": -10})
+    f = json.dumps({"autor": str(autor_jan_kowalski.id), "rok": -10})
     res = app.get(
         reverse("bpp:dyscyplina-naukowa-przypisanie-autocomplete"), {"forward": f}
     )
     assert res.json["results"][0]["text"] == "Nieprawidłowy rok"
 
-    f = json.dumps({"autor": autor_jan_kowalski.id, "rok": rok})
+    f = json.dumps({"autor": str(autor_jan_kowalski.id), "rok": rok})
     res = app.get(
         reverse("bpp:dyscyplina-naukowa-przypisanie-autocomplete"), {"forward": f}
     )
@@ -120,18 +120,29 @@ def test_dyscyplina_naukowa_przypisanie_autocomplete(
         subdyscyplina_naukowa=dyscyplina1,
     )
 
-    f = json.dumps({"autor": autor_jan_kowalski.id, "rok": rok})
+    f = json.dumps({"autor": str(autor_jan_kowalski.id), "rok": rok})
     res = app.get(
         reverse("bpp:dyscyplina-naukowa-przypisanie-autocomplete"), {"forward": f}
     )
     assert res.json["results"][0]["text"] == "druga dyscyplina"
 
-    f = json.dumps({"autor": autor_jan_kowalski.id, "rok": rok})
+    f = json.dumps({"autor": str(autor_jan_kowalski.id), "rok": rok})
     res = app.get(
         reverse("bpp:dyscyplina-naukowa-przypisanie-autocomplete"),
         {"forward": f, "q": "memetyka"},
     )
     assert res.json["results"][0]["text"] == "memetyka stosowana"
+
+
+def test_dyscyplina_naukowa_przypisanie_autocomplete_brak_autora(
+    app,
+):
+    res = app.get(
+        reverse("bpp:dyscyplina-naukowa-przypisanie-autocomplete"),
+        params={"forward": '{"autor": "", "rok": "2022"}'},
+    )
+    assert res.status_code == 200
+    assert res.json["results"][0]["text"] == "Podaj autora"
 
 
 def test_dyscyplina_naukowa_przypisanie_autocomplete_brak_drugiej(
@@ -144,7 +155,7 @@ def test_dyscyplina_naukowa_przypisanie_autocomplete_brak_drugiej(
         dyscyplina_naukowa=dyscyplina2,
     )
 
-    f = json.dumps({"autor": autor_jan_kowalski.id, "rok": rok})
+    f = json.dumps({"autor": str(autor_jan_kowalski.id), "rok": str(rok)})
     res = app.get(
         reverse("bpp:dyscyplina-naukowa-przypisanie-autocomplete"), {"forward": f}
     )

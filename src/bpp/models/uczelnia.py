@@ -200,7 +200,7 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
     )
 
     wymagaj_informacji_o_oplatach = models.BooleanField(
-        "Wymagaj inforamcji o opłatach",
+        "Wymagaj informacji o opłatach",
         default=True,
         help_text="Gdy zaznaczone, moduł 'Zgłaszanie publikacji' będzie wyświetlać użytkownikowi formularz "
         "informacji o opłatach za publikację w przypadku zgłaszania artykułu lub monografii. "
@@ -304,6 +304,15 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
     )
     pbn_api_nie_wysylaj_prac_bez_pk = models.BooleanField(
         "Nie wysyłaj do PBN prac z PK=0", default=False
+    )
+
+    pbn_api_afiliacja_zawsze_na_uczelnie = models.BooleanField(
+        "Wysyłaj zawsze PBN UID uczelni jako afiliację",
+        default=False,
+        help_text="Jeżeli praca jest w jednostce z wypełnionym PBN UID bądź w jednostce "
+        "innej-niż-obca, zatrudniającej-pracowników, to zaznaczenie tej opcji spowoduje, ze  zamiast PBN "
+        "UID tej jednostki zostanie użyty PBN UID uczelni, co efektywnie "
+        "spowoduje, że afiliacje w PBN będą na uczelnię, nie zaś na konkretną jednostkę. ",
     )
 
     pbn_api_user = models.ForeignKey(

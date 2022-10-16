@@ -31,6 +31,7 @@ def test_SzczegolyRaportuSlotowUczelnia(admin_client, admin_user):
     )
 
 
+@pytest.mark.django_db
 @pytest.mark.parametrize("dziel_na_jednostki_i_wydzialy", [True, False])
 def test_SzczegolyRaportuSlotowUczelniaListaRekordow(
     admin_client, admin_user, dziel_na_jednostki_i_wydzialy

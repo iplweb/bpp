@@ -134,6 +134,17 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
         systemów informatycznych""",
     )
 
+    class RODZAJ_JEDNOSTKI(models.TextChoices):
+        NORMALNA = "normalna", "zwyczajna jednostka (katedra, zakład, pracownia, itp.)"
+        KOLO_NAUKOWE = "kolo_naukowe", "koło naukowe"
+
+    rodzaj_jednostki = models.CharField(
+        max_length=20,
+        db_index=True,
+        default=RODZAJ_JEDNOSTKI.NORMALNA,
+        choices=RODZAJ_JEDNOSTKI.choices,
+    )
+
     search = VectorField(blank=True, null=True)
 
     kolejnosc = models.PositiveIntegerField(default=0, blank=False, null=False)

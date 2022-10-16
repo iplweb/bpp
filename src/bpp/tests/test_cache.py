@@ -1,4 +1,3 @@
-# TODO: przenies do bpp/tests/test_cache.py
 import pytest
 from model_bakery import baker
 
@@ -130,6 +129,7 @@ def test_deletion_cache(doktorat):
     assert Rekord.objects.all().count() == 0
 
 
+@pytest.mark.django_db
 def test_wca_delete_cache(wydawnictwo_ciagle_z_dwoma_autorami, denorms):
     """Czy skasowanie obiektu Wydawnictwo_Ciagle_Autor zmieni opis
     wydawnictwa ciągłego w Rekordy materialized view?"""
@@ -343,6 +343,7 @@ def test_caching_full_refresh(wydawnictwo_ciagle_z_dwoma_autorami, denorms):
     assert Rekord.objects.all().count() == 1
 
 
+@pytest.mark.django_db
 def test_caching_kolejnosc(wydawnictwo_ciagle_z_dwoma_autorami, denorms):
 
     a = list(Wydawnictwo_Ciagle_Autor.objects.all().order_by("kolejnosc"))
@@ -365,8 +366,14 @@ def test_caching_kolejnosc(wydawnictwo_ciagle_z_dwoma_autorami, denorms):
     assert "[AUT.] NOWAK JAN, KOWALSKI JAN" in x.opis_bibliograficzny_cache
 
 
+@pytest.mark.django_db
 def test_rekord_describe_content_type(wydawnictwo_zwarte):
     assert "wydawnictwo" in Rekord.objects.first().describe_content_type
+
+
+@pytest.mark.django_db
+def test_Rekord_get_absolute_url(wydawnictwo_zwarte):
+    assert Rekord.objects.first().get_absolute_url().startswith("/")
 
 
 def test_aktualizacja_rekordu_autora(typy_odpowiedzialnosci, denorms):

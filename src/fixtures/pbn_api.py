@@ -91,10 +91,14 @@ def pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina(
 
 
 @pytest.fixture
+def pbn_autor_z_dyscyplina(autor_z_dyscyplina):
+    return _zrob_autora_pbn(autor_z_dyscyplina.autor)
+
+
+@pytest.fixture
 def pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina(
-    pbn_wydawnictwo_zwarte, autor_z_dyscyplina, pbn_jednostka
+    pbn_wydawnictwo_zwarte, pbn_autor_z_dyscyplina, autor_z_dyscyplina, pbn_jednostka
 ) -> Wydawnictwo_Ciagle:
-    _zrob_autora_pbn(autor_z_dyscyplina.autor)
     pbn_wydawnictwo_zwarte.dodaj_autora(
         autor_z_dyscyplina.autor,
         pbn_jednostka,

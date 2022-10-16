@@ -4,6 +4,7 @@ from djangoql.admin import DjangoQLSearchMixin
 from mptt.forms import TreeNodeChoiceField
 from taggit.forms import TextareaTagWidget
 
+from dynamic_columns.mixins import DynamicColumnsMixin
 from pbn_api.models import Publication
 from .actions import (
     ustaw_po_korekcie,
@@ -16,11 +17,13 @@ from .element_repozytorium import Element_RepozytoriumInline
 from .grant import Grant_RekorduInline
 from .helpers import OptionalPBNSaveMixin, sprawdz_duplikaty_www_doi
 from .nagroda import NagrodaInline
+from .util import CustomizableFormsetParamsAdminMixinWyrzucWDjango40
 
 # Proste tabele
 from .wydawnictwo_ciagle import CleanDOIWWWPublicWWWMixin
 from .xlsx_export import resources
 from .xlsx_export.mixins import EksportDanychMixin
+from .zglos_publikacje_helpers import UzupelniajWstepneDanePoNumerzeZgloszeniaMixin
 
 from django.contrib import admin, messages
 
@@ -63,8 +66,11 @@ class Wydawnictwo_ZwarteAdmin_Baza(BaseBppAdminMixin, admin.ModelAdmin):
         wyslij_do_pbn,
     ]
 
-    list_display = [
+    list_display_always = [
         "tytul_oryginalny",
+    ]
+
+    list_display_default = [
         "wydawnictwo",
         "doi",
         "wydawnictwo_nadrzedne_col",
@@ -73,6 +79,8 @@ class Wydawnictwo_ZwarteAdmin_Baza(BaseBppAdminMixin, admin.ModelAdmin):
         "charakter_formalny__skrot",
         "ostatnio_zmieniony",
     ]
+
+    list_display_allowed = "__all__"
 
     search_fields = [
         "tytul",
@@ -223,6 +231,9 @@ class Wydawnictwo_ZwarteAdmin(
     helpers.AdnotacjeZDatamiOrazPBNMixin,
     OptionalPBNSaveMixin,
     EksportDanychMixin,
+    UzupelniajWstepneDanePoNumerzeZgloszeniaMixin,
+    CustomizableFormsetParamsAdminMixinWyrzucWDjango40,
+    DynamicColumnsMixin,
     Wydawnictwo_ZwarteAdmin_Baza,
 ):
     form = Wydawnictwo_ZwarteForm
@@ -248,12 +259,12 @@ class Wydawnictwo_ZwarteAdmin(
         "openaccess_czas_publikacji",
     ]
 
-    list_select_related = [
-        "charakter_formalny",
-        "typ_kbn",
-        "wydawnictwo_nadrzedne",
-        "wydawca",
-    ]
+    list_select_related = {
+        "__always__": ["typ_kbn", "charakter_formalny"],
+        "wydawnictwo_nadrzedne": ["wydawnictwo_nadrzedne"],
+        "wydawnictwo_nadrzedne_col": ["wydawnictwo_nadrzedne"],
+        "wydawca": ["wydawca"],
+    }
 
     autocomplete_fields = [
         "pbn_uid",

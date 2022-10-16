@@ -1,10 +1,17 @@
-# -*- encoding: utf-8 -*-
-
 from collections import namedtuple
+from hashlib import md5
 
 from asgiref.sync import async_to_sync
+
+from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.messages import DEFAULT_TAGS
+
+
+def get_channel_name_for_user(user: User):
+    return md5(
+        str(user.pk).encode("utf-8") + str(user.username).encode("utf-8")
+    ).hexdigest()
 
 
 def convert_obj_to_channel_name(original):
@@ -42,17 +49,19 @@ def _send(channel_name, data):
 
 
 def send_notification(
-    request_or_username,
+    request_or_channel_name,
     level,
     text,
     closeURL=None,
 ):
-    username = request_or_username
-    if hasattr(username, "user") and hasattr(username.user, "username"):
-        username = request_or_username.user.username
+    channel_name = request_or_channel_name
+    if hasattr(request_or_channel_name, "user") and hasattr(
+        request_or_channel_name.user, "username"
+    ):
+        channel_name = get_channel_name_for_user(request_or_channel_name.user)
 
     return _send(
-        username,
+        channel_name,
         Message(
             text=text, cssClass=DEFAULT_TAGS.get(level), closeURL=closeURL
         )._asdict(),

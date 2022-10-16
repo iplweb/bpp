@@ -9,6 +9,7 @@ from flexible_reports import models as flexible_models
 from multiseek.models import SearchForm
 from robots.models import Rule, Url
 
+from dynamic_columns.models import ModelAdmin, ModelAdminColumn
 from ewaluacja2021.models import IloscUdzialowDlaAutora, LiczbaNDlaUczelni
 from formdefaults.models import FormFieldRepresentation, FormRepresentation
 from import_dbf.models import B_A, B_U, Aut, Bib, Ixn, Jed, Poz, Ses, Usi, Wx2
@@ -53,6 +54,7 @@ from bpp.models import (
     Grupa_Pracownicza,
     Jednostka,
     Jezyk,
+    Kierunek_Studiow,
     Patent,
     Patent_Autor,
     Praca_Doktorska,
@@ -103,6 +105,7 @@ groups = {
     "import DBF": [Bib, B_A, Aut, Jed, Poz, B_U, Usi, Ses, Wx2, Ixn],
     "dane systemowe": [
         Charakter_Formalny,
+        Kierunek_Studiow,
         Charakter_PBN,
         Funkcja_Autora,
         Zrodlo_Informacji,
@@ -175,7 +178,14 @@ groups = {
         RozbieznosciZrodelView,
     ],
     "indeks autorów": [Autor, Autor_Jednostka],
-    "administracja": [User, Group, SearchForm, Obslugujacy_Zgloszenia_Wydzialow],
+    "administracja": [
+        User,
+        Group,
+        SearchForm,
+        Obslugujacy_Zgloszenia_Wydzialow,
+        ModelAdminColumn,
+        ModelAdmin,
+    ],
     "web": [Url, Rule, Site, Favicon, FaviconImg, Article, Template],
     "raporty": [
         flexible_models.Report,

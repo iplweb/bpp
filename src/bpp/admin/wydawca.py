@@ -3,7 +3,6 @@ from django.core.exceptions import ValidationError
 from djangoql.admin import DjangoQLSearchMixin
 
 from django.contrib import admin
-from django.contrib.postgres.search import TrigramSimilarity
 
 from bpp.admin.filters import PBN_UID_IDObecnyFilter
 from bpp.const import PBN_UID_LEN
@@ -76,7 +75,7 @@ class WydawcaAdmin(DjangoQLSearchMixin, admin.ModelAdmin):
         Poziom_WydawcyInline,
     ]
 
-    MIN_TRIGRAM_MATCH = 0.05
+    MIN_TRIGRAM_MATCH = 0.1
 
     def ile_aliasow(self, obj):
         if obj.ile_aliasow:
@@ -98,9 +97,10 @@ class WydawcaAdmin(DjangoQLSearchMixin, admin.ModelAdmin):
         ):
             return super().get_search_results(request, queryset, search_term)
 
-        queryset = (
-            queryset.annotate(similarity=TrigramSimilarity("nazwa", search_term))
-            .filter(similarity__gte=self.MIN_TRIGRAM_MATCH)
-            .order_by("-similarity")
-        )
-        return queryset, False
+        return super().get_search_results(request, queryset, search_term)
+        # queryset = (
+        #     queryset.annotate(similarity=TrigramSimilarity("nazwa", search_term))
+        #     .filter(similarity__gte=self.MIN_TRIGRAM_MATCH)
+        #     .order_by("-similarity")
+        # )
+        # return queryset, False

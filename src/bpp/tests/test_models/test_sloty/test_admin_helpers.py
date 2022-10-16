@@ -1,3 +1,5 @@
+import pytest
+
 from pbn_api.tests.utils import middleware
 
 from django.contrib.messages import get_messages
@@ -6,6 +8,7 @@ from bpp.admin.helpers import sprobuj_policzyc_sloty
 from bpp.const import PBN_MAX_ROK, PBN_MIN_ROK
 
 
+@pytest.mark.django_db
 def test_sprobuj_policzyc_sloty(rf, zwarte_z_dyscyplinami):
     req = rf.get("/")
     for a in range(PBN_MIN_ROK, PBN_MAX_ROK + 1):

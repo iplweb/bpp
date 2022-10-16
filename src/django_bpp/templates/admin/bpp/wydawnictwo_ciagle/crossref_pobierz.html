@@ -1,0 +1,31 @@
+{% extends "admin/base_site.html" %}
+{% load compress %}
+<!-- LOADING -->
+{% load static i18n admin_modify admin_urls grp_tags %}
+
+
+<!-- STYLESHEETS -->
+{% block stylesheets %}
+    {{ block.super }}
+{% endblock %}
+
+<!-- BREADCRUMBS -->
+{% block breadcrumbs %}
+    <ul>
+        <li><a href="{% url 'admin:index' %}">{% trans "Home" %}</a></li>
+        <li><a href="/admin/bpp/">Bibliografia Publikacji Pracowników</a></li>
+        <li><a href="{% url 'admin:bpp_wydawnictwo_ciagle_changelist' %}">Wydawnictwa ciągłe</a></li>
+    <li>Pobierz z CrossRef API</li>
+    </ul>
+{% endblock %}
+
+<!-- CONTENT -->
+{% block content %}
+    <form method="post">{% csrf_token %}
+        <table>
+    {{ crossref_form.as_table }}
+            </table>
+    <input type="submit" value="Wyślij" id="id_submit"/>
+
+    </form>
+{% endblock %}

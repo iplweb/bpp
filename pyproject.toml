@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "bpp_iplweb"
-version = "202209.1088"
+version = "202210.1089"
 description = ""
 authors = ["Michał Pasternak <michal.dtz@gmail.com>"]
 license = "MIT"
@@ -9,6 +9,8 @@ packages = [
 	 { include="bpp", from="src"},
 	 { include="celeryui", from="src"},
 	 { include="create_test_db", from="src"},
+	 { include="crossref_bpp", from="src"},
+	 { include="dynamic_columns", from="src"},
 	 { include="django_bpp", from="src"},
 	 { include="ewaluacja2021", from="src"},
 	 { include="fixtures", from="src"},
@@ -52,8 +54,13 @@ include = ["AUTHORS.rst", "CONTRIBUTING.rst", "HISTORY.rst", "LICENSE",
 [tool.poetry.scripts]
 "bpp-manage.py" = "django_bpp.manage_command:entry_point"
 
+[tool.poetry.group.dev.dependencies]
+bumpver = "^2022.1118"
+pytest-recording = "^0.12.1"
+towncrier = "^22.8.0"
+
 [tool.bumpver]
-current_version = "v202209.1088"
+current_version = "v202210.1089"
 version_pattern = "vYYYY0M.BUILD[-TAGNUM][GITHASH]"
 commit_message = "bump version {old_version} -> {new_version}"
 commit = true
@@ -121,7 +128,7 @@ django-htmlmin = "0.11.0"
 Pillow = "9.2.0"
 olefile = "0.44"
 django-grappelli = "2.15.5"
-django-multiseek = "0.9.46"
+django-multiseek = "0.9.47"
 django-braces = "^1.15.0"
 django-loginas = "0.3.8"
 django-robots = "4.0"
@@ -160,6 +167,7 @@ django-auth-ldap = "^4.1.0"
 django-environ = "^0.9.0"
 django-celery-email = "^3.0.0"
 django-easy-audit = "^1.3.3"
+crossrefapi = "^1.5.0"
 
 [tool.poetry.dev-dependencies]
 model-bakery = ">=1.5.1"
@@ -188,7 +196,7 @@ black = "^22.3.0"
 autoflake = "^1.4"
 autopep8 = "^1.6.0"
 flake8 = "^4.0.1"
-bumpver = {url = "https://github.com/mbarkhau/bumpver/archive/refs/tags/2022.1117.tar.gz#egg=bumpver-202211.17"}
+# bumpver = {url = "https://github.com/mbarkhau/bumpver/archive/refs/tags/2022.1117.tar.gz#egg=bumpver-202211.17"}
 # Poprzedni bumpver: https://github.com/mpasternak/bumpver/archive/refs/tags/v202219.04-alpha.tar.gz#egg=bumpver-202219.04-alpha"
 typing = ">=3.6,<3.7"
 isort = ">=5.7.0"
@@ -204,3 +212,31 @@ flake8-bugbear = "^22.8.23"
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.towncrier]
+package = "bpp"
+version = "202210.1089"
+package_dir = "src"
+filename = "HISTORY.rst"
+
+[[tool.towncrier.type]]
+directory = "bugfix"
+showcontent = true
+name = "Naprawione"
+
+[[tool.towncrier.type]]
+directory = "doc"
+showcontent = true
+name = "Dokumentacja"
+
+
+[[tool.towncrier.type]]
+directory = "feature"
+showcontent = true
+name = "Usprawnienie"
+
+
+[[tool.towncrier.type]]
+directory = "removal"
+showcontent = true
+name = "Usunięto"

@@ -13,6 +13,51 @@ from bpp.util import slugify_function
 
 from django_bpp.version import VERSION
 
+# Ponieważ konieczna jest konfiguracja django-ldap-auth i potrzebne będą kolejne zmienne
+# środowiskowe, ponieważ z Pipenv przeszedłem na poetry, ponieważ tych konfiguracji i
+# serwerów (testowych, produkcyjnych) robi się coraz więcej -- z tych okazji zaczynam
+# migrację konfiguracji na django-environ. Na ten moment przez django-environ pobiorę
+# konfigurację LDAPa, docelowo przez django-environ powinna iść cała konfiguracja
+# serwisu + docelowo będzie pewnie można zrezygnować z wielu plików konfiguracyjnych
+# (local, test, production).
+
+env = environ.Env(
+    # casting, default value
+    #
+    # LDAP
+    #
+    AUTH_LDAP_SERVER_URI=(str, None),
+    # AUTH_LDAP_BIND_DN=(str, None),
+    # AUTH_LDAP_BIND_PASSWORD=(str, None),
+    # AUTH_LDAP_USER_SEARCH=(str, None),
+    AUTH_LDAP_GROUP_SEARCH=(str, "ou=django,ou=groups,dc=auth,dc=local"),
+    AUTH_LDAP_USER_SEARCH_QUERY=(str, "userPrincipalName=%(user)s@auth.local"),
+    #
+    # Email
+    #
+    EMAIL_URL=(str, "smtp://127.0.0.1:25"),
+    DEFAULT_FROM_EMAIL=(str, "webmaster@localhost"),
+    SERVER_EMAIL=(str, "root@localhost"),
+    #
+    # Administratorzy
+    #
+    ADMINS=(str, "Michał Pasternak <michal.dtz@gmail.com>"),
+    #
+    # Konfiguracja Sentry
+    #
+    SENTRYSDK_CONFIG_URL=(str, None),
+    SENTRYSDK_TRACES_SAMPLE_RATE=(float, 0.2),
+)
+
+ENVFILE_PATH = os.path.join(os.path.expanduser("~"), ".env")
+
+if os.path.exists(ENVFILE_PATH) and os.path.isfile(ENVFILE_PATH):
+    environ.Env.read_env(ENVFILE_PATH)
+
+#
+# "Stara" funkcja django_getenv, pobierająca zmienne srodowiskowe
+#
+
 
 def django_getenv(varname, default=None, type=str):
     value = os.getenv(varname, default)
@@ -26,6 +71,30 @@ def django_getenv(varname, default=None, type=str):
         raise ImproperlyConfigured(f"Cannot convert variable {varname} to type {type}")
 
     return value
+
+
+#
+# Ustaw Sentry
+#
+
+
+SENTRYSDK_CONFIG_URL = (
+    env("SENTRYSDK_CONFIG_URL")
+    or os.getenv("DJANGO_BPP_RAVEN_CONFIG_URL", None)
+    or os.getenv("DJANGO_BPP_SENTRYSDK_CONFIG_URL", None)
+)
+
+PROCESS_INTERACTIVE = sys.stdin.isatty()
+
+if SENTRYSDK_CONFIG_URL and not PROCESS_INTERACTIVE:
+    sentry_sdk.init(
+        dsn=SENTRYSDK_CONFIG_URL,
+        traces_sample_rate=env("SENTRYSDK_TRACES_SAMPLE_RATE"),
+        integrations=[DjangoIntegration()],
+        release=VERSION,
+        ignore_errors=[DisallowedHost],
+        send_default_pii=True,
+    )
 
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -167,6 +236,7 @@ INSTALLED_APPS = [
     "djangoql",
     "cacheops",
     "channels",
+    "dynamic_columns",
     "django.contrib.humanize",
     "django.contrib.contenttypes",
     "django.contrib.auth",
@@ -196,11 +266,12 @@ INSTALLED_APPS = [
     # dal 3.3.0-release, musi być naprawiony o ten błąd:
     # https://github.com/yourlabs/django-autocomplete-light/issues/981
     "bpp",
+    "crossref_bpp",
     "pbn_api",
     "dal",
     "dal_select2",
     "grappelli",
-    "django.contrib.admin",
+    "django_bpp.apps.BppAdminConfig",  # replaced `django.contrib.admin`
     "permissions_widget",
     "dj_pagination",
     "admin_tools",
@@ -331,21 +402,6 @@ REDIS_DB_CELERY = django_getenv("DJANGO_BPP_REDIS_DB_CELERY", 2, int)
 REDIS_DB_SESSION = django_getenv("DJANGO_BPP_REDIS_DB_SESSION", 4, int)
 REDIS_DB_CACHE = django_getenv("DJANGO_BPP_REDIS_DB_CACHE", 5, int)
 REDIS_DB_LOCKS = django_getenv("DJANGO_BPP_REDIS_DB_LOCKS", 6, int)
-
-SENTRYSDK_CONFIG_URL = os.getenv("DJANGO_BPP_RAVEN_CONFIG_URL", None) or os.getenv(
-    "DJANGO_BPP_SENTRYSDK_CONFIG_URL", None
-)
-
-PROCESS_INTERACTIVE = sys.stdin.isatty()
-
-if SENTRYSDK_CONFIG_URL and not PROCESS_INTERACTIVE:
-    sentry_sdk.init(
-        dsn=SENTRYSDK_CONFIG_URL,
-        integrations=[DjangoIntegration()],
-        release=VERSION,
-        ignore_errors=[DisallowedHost],
-        send_default_pii=True,
-    )
 
 ALLOWED_HOSTS = [
     "127.0.0.1",
@@ -701,42 +757,6 @@ IMPORT_EXPORT_USE_TRANSACTIONS = True
 # Maksymalna
 BPP_MAX_ALLOWED_EXPORT_ITEMS = 1500
 
-# Ponieważ konieczna jest konfiguracja django-ldap-auth i potrzebne będą kolejne zmienne
-# środowiskowe, ponieważ z Pipenv przeszedłem na poetry, ponieważ tych konfiguracji i
-# serwerów (testowych, produkcyjnych) robi się coraz więcej -- z tych okazji zaczynam
-# migrację konfiguracji na django-environ. Na ten moment przez django-environ pobiorę
-# konfigurację LDAPa, docelowo przez django-environ powinna iść cała konfiguracja
-# serwisu + docelowo będzie pewnie można zrezygnować z wielu plików konfiguracyjnych
-# (local, test, production).
-
-env = environ.Env(
-    # casting, default value
-    #
-    # LDAP
-    #
-    AUTH_LDAP_SERVER_URI=(str, None),
-    # AUTH_LDAP_BIND_DN=(str, None),
-    # AUTH_LDAP_BIND_PASSWORD=(str, None),
-    # AUTH_LDAP_USER_SEARCH=(str, None),
-    AUTH_LDAP_GROUP_SEARCH=(str, "ou=django,ou=groups,dc=auth,dc=local"),
-    AUTH_LDAP_USER_SEARCH_QUERY=(str, "userPrincipalName=%(user)s@auth.local"),
-    #
-    # Email
-    #
-    EMAIL_URL=(str, "smtp://127.0.0.1:25"),
-    DEFAULT_FROM_EMAIL=(str, "webmaster@localhost"),
-    SERVER_EMAIL=(str, "root@localhost"),
-    #
-    # Administratorzy
-    #
-    ADMINS=(str, "Michał Pasternak <michal.dtz@gmail.com>"),
-)
-
-ENVFILE_PATH = os.path.join(os.path.expanduser("~"), ".env")
-
-if os.path.exists(ENVFILE_PATH) and os.path.isfile(ENVFILE_PATH):
-    environ.Env.read_env(ENVFILE_PATH)
-
 #
 # Konfiguracja LDAP
 #
@@ -836,3 +856,22 @@ DJANGO_EASY_AUDIT_REGISTERED_CLASSES = [
 #
 # Koniec django-easy-audit
 #
+
+
+SILENCED_SYSTEM_CHECKS.append("admin.E117")
+
+DYNAMIC_COLUMNS_ALLOWED_IMPORT_PATHS = [
+    "bpp.admin.wydawnictwo_ciagle",
+    "bpp.admin.wydawnictwo_zwarte",
+    "bpp.admin.autor",
+]
+
+DYNAMIC_COLUMNS_FORBIDDEN_COLUMN_NAMES = [
+    "^kc_.*",
+    ".*_cache$",
+    ".*_sort$",
+    "search_index",
+    "legacy_data",
+    "slug",
+    "^cached_.*",
+]

@@ -1,3 +1,4 @@
+import pytest
 from model_bakery import baker
 
 from long_running import const
@@ -111,6 +112,7 @@ def test_LongRunningResultsView_parent_obejct(operation):
     assert Foo().parent_object == operation
 
 
+@pytest.mark.django_db
 def test_LongRunningResultsView_parent_object_get_details_set(
     wydawnictwo_ciagle, mocker
 ):
@@ -124,6 +126,7 @@ def test_LongRunningResultsView_parent_object_get_details_set(
     wydawnictwo_ciagle.get_details_set.assert_called_once()
 
 
+@pytest.mark.django_db
 def test_CreateLongRunningOperationView(wydawnictwo_ciagle, mocker):
     class Foo(CreateLongRunningOperationView):
         parent_object = wydawnictwo_ciagle

@@ -1,6 +1,7 @@
 import json
 
 import pytest
+from django.urls import reverse
 
 from fixtures import pbn_publication_json
 
@@ -225,3 +226,16 @@ def test_ostatnia_jednostka_errors_autor_bez_dysc(rf, ojv, autor):
     assert res["jednostka_id"] is None
     assert res["nazwa"] is None
     assert res["status"] == "ok"
+
+
+def test_ustaw_orcid_autora(csrf_exempt_django_admin_app, autor_jan_kowalski):
+    ORCID = "1" * 19
+
+    assert autor_jan_kowalski.orcid != ORCID
+    csrf_exempt_django_admin_app.post(
+        reverse("bpp:api_ustaw_orcid"),
+        params={"autor": autor_jan_kowalski.pk, "orcid": ORCID},
+    )
+
+    autor_jan_kowalski.refresh_from_db()
+    assert autor_jan_kowalski.orcid == ORCID

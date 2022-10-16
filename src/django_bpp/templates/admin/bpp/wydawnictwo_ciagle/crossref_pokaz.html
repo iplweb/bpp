@@ -1,0 +1,363 @@
+{% extends "admin/base_site.html" %}
+{% load compress %}
+<!-- LOADING -->
+{% load static i18n admin_modify admin_urls grp_tags %}
+
+
+<!-- STYLESHEETS -->
+{% block stylesheets %}
+    {{ block.super }}
+{% endblock %}
+
+{% block extrahead %}
+    <link rel="stylesheet" type="text/css"
+          href="{% static "foundation-datepicker/foundation/fonts/foundation-icons.css" %}">
+{% endblock %}
+
+<!-- BREADCRUMBS -->
+{% block breadcrumbs %}
+    <ul>
+        <li><a href="{% url 'admin:index' %}">{% trans "Home" %}</a></li>
+        <li><a href="/admin/bpp/">Bibliografia Publikacji Pracowników</a></li>
+        <li><a href="{% url 'admin:bpp_wydawnictwo_ciagle_changelist' %}">Wydawnictwa ciągłe</a></li>
+        <li>Pobierz z CrossRef API</li>
+    </ul>
+{% endblock %}
+
+<!-- CONTENT -->
+{% block content %}
+    <div style="border: 2px solid red; border-style: groove; padding: 5px; width: auto;">
+        <p><strong>Prace w toku!</strong></p>
+        <p>Oglądasz część serwisu udostępnioną jako podgląd technologiczny nadchodzących zmian.
+            Funkcja nie została jeszcze ukończona. </p>
+
+    </div>
+    {% if rekord_po_stronie_bpp %}
+        <h1>Rekord prawdopodobnie już istnieje w BPP!</h1>
+        <p>Wygląda na to, że po stronie BPP może już istnieć taki rekord.</p><br/>
+        <p>
+            <a href="{{ rekord_po_stronie_bpp.get_absolute_url }}">{{ rekord_po_stronie_bpp.opis_bibliograficzny_cache|safe }}</a>
+        </p>
+        <br/>
+        <p>Poniżej możesz obejrzeć dane, które otrzymane zostały z CrossRef API oraz ich ewentualne
+            porównanie z tym, co znajduje się po stronie BPP. </p>
+        <br/>
+    <p>Możesz też mimo to spróbować <a href="../add/?identyfikator_doi={{ identyfikator_doi }}">dodać nowy
+        rekord</a>, ale
+        istnieje dość duże ryzyko, że zdublujesz istniejący już wpis. </p>
+    {% else %}
+        <h1>Brak odpowiednika po stronie BPP</h1>
+        <p>Wygląda na to (bazując na polach DOI, alternative-id oraz title), że w bazie BPP nie ma takiego
+            rekordu. Możesz kliknąć poniższy link, aby przejść do formularza tworzenia nowego rekordu.
+            Uwaga - po zatwierdzeniu formularza zostanie utworzony nowy rekord w bazie.</p>
+        <br/>
+        <p><a href="../add/?identyfikator_doi={{ identyfikator_doi }}">Dodaj nowy rekord</a></p>
+    {% endif %}
+    <style>
+        pre {
+            font-family: monospace !important;
+            white-space: pre !important;
+            word-break: break-all;
+        }
+    </style>
+    <script type="text/javascript">
+        window.addEventListener("load", () => {
+            function sendData(form) {
+                const XHR = new XMLHttpRequest();
+                const FD = new FormData(form);
+
+                XHR.addEventListener("load", (event) => {
+                    const btn = form.querySelector("input[type=submit]");
+                    btn.value = "Wykonano!";
+                });
+
+                XHR.addEventListener("error", (event) => {
+                    form.querySelector("input[type=submit]").value = "Wystąpił błąd...";
+                    alert('Wystąpił bład podczas wysyłania zapytania.');
+                });
+
+                XHR.open("POST", form.action);
+                XHR.send(FD);
+            }
+
+            const forms = document.querySelectorAll("form.ajax-form");
+
+            forms.forEach(function (item, idx) {
+                item.addEventListener('submit', function (event) {
+                    event.preventDefault();
+                    sendData(item);
+                });
+            });
+        });
+    </script>
+
+    <h1>Matchowanie danych</h1>
+    Poniżej znajdują się elementy danych z CrossRef API które po stronie BPP są indeksowane bądź
+    są identyfikatorami. Oznacza to, że dla istniejących rekordów po stronie BPP powinien pojawić
+    się match (luźny bądź dopasowany) oraz odsyłacz do tego matchu. W przypadku, gdy matchowanie
+    jest niejedoznaczne, pojawi się lista możliwych dopasowań. Gdy nie można dopasować żadnego
+    rekordu, należy upewnić się, że jest tak w istocie - to znaczy, że po stronie BPP na pewno
+    nie ma takiego wpisu. W sytuacji, gdy system nie matchuje prawidłowo istniejącego rekordu
+    po stronie BPP, za taką sytuację winę mogą ponosić różne formy tekstowego zapisu np nazwisk
+    (brak drugiego nazwiska, rozdzielenie znakiem minusa kontra rozdzielenie myślnikiem,
+    brak polskiej literki przy tekstowym dopasowaniu dokładnym) itp.
+    </p>
+    <table class="grp-table">
+        <tr>
+            <th>Atrybut</th>
+            <th>Wartość z CrossRef</th>
+            <th></th>
+            <th>Wynik porównania</th>
+            <th>Odsyłacze</th>
+        </tr>
+        {% for elem in dane_porownania %}
+            <tr>
+                <td>{{ elem.atrybut }}</td>
+                <td class="pre">
+                    <pre>{{ elem.wartosc_z_crossref_print }}</pre>
+                </td>
+                <td>
+                    {% if elem.rezultat.status == 'ok' %}
+                        <span class="fi-check" style="color:green;"></span>
+                    {% elif elem.rezultat.status == 'user' %}
+                        <span class="fi-results" style="color:pink;"></span>
+                    {% elif elem.rezultat.status == 'luzne' %}
+                        <span class="fi-die-five" style="color:orange;"></span>
+                    {% elif elem.rezultat.status == 'brak' %}
+                        <span class="fi-prohibited" style="color:black;"></span>
+                    {% elif elem.rezultat.status == 'blad' %}
+                        <span class="fi-skull" style="color:red;"></span>
+                    {% else %}
+                        Brak templatki dla statusu {{ elem.rezultat.status }} -- należy poprawić
+                        w kodzie oprogramowania BPP. Powiadom administratora serwisu.
+                    {% endif %}
+                </td>
+                <td>{{ elem.rezultat.opis }}</td>
+                <td>
+                    {% for rekord in elem.rezultat.rekordy %}
+                        <a target="_blank" href="{{ rekord.get_absolute_url }}">
+                            {{ rekord }}{% if rekord.aktualna_jednostka %} -
+                                {{ rekord.aktualna_jednostka }}{% endif %}</a>
+                        <br/>
+                    {% endfor %}
+
+                    {% if elem.atrybut == "container-title" %}
+                        {% if dane_nowego_zrodla %}
+                            <form action="{% url "admin:bpp_zrodlo_add" %}" method="GET" target="_blank">
+                                <input type="hidden" name="nazwa" value="{{ dane_nowego_zrodla.nazwa }}"/>
+                                <input type="hidden" name="skrot" value="{{ dane_nowego_zrodla.skrot }}"/>
+                                <input type="hidden" name="issn" value="{{ dane_nowego_zrodla.issn }}"/>
+                                <input type="submit" value="Utwórz nowe źródło"/>
+                            </form>
+                        {% endif %}
+                    {% endif %}
+
+                    {% if elem.orig_atrybut == "author" %}
+                        {# umożliwiaj dodanie autora #}
+                        {% if elem.rezultat.status != 'ok' %}
+                            <form action="{% url "admin:bpp_autor_add" %}" method="GET" target="_blank">
+                                <input type="hidden" name="nazwisko" value="{{ elem.wartosc_z_crossref.family }}"/>
+                                <input type="hidden" name="imiona" value="{{ elem.wartosc_z_crossref.given }}"/>
+                                <input type="hidden" name="orcid" value="{{ elem.wartosc_z_crossref.ORCID }}"/>
+                                <input type="submit" value="Utwórz nowego autora"/>
+                            </form>
+                        {% endif %}
+
+                        {# Jeżeli autor jest jeden i nie ma ORCIDu po stronie BPP, a po stronie CrossRef jest #}
+                        {# to wyświetl przycisk umożliwiający jego dodanie:  #}
+                        {% if elem.wartosc_z_crossref.ORCID %}
+                            {% if elem.rezultat.rekordy|length == 1 %}
+                                {% if not elem.rezultat.rekordy.0.orcid %}
+                                    <form class="ajax-form"
+                                          method="post" action="{% url "bpp:api_ustaw_orcid" %}">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="autor" value="{{ elem.rezultat.rekordy.0.pk }}"/>
+                                        <input type="hidden" name="orcid" value="{{ elem.wartosc_z_crossref.ORCID }}"/>
+                                        <input type="submit" id="id_ustaw_orcid_button_{{ elem.atrybut }}"
+                                               value="Skopiuj ORCID do rekordu autora"/>
+                                    </form>
+                                {% endif %}
+                            {% endif %}
+                        {% endif %}
+                    {% endif %}
+                </td>
+            </tr>
+        {% endfor %}
+    </table>
+
+    <h1>Kopiowanie danych!</h1>
+    Poniższe pola są znane i mogą zostać skopiowane do docelowego rekordu z niewielkimi przeróbkami.
+    <table class=" grp-table">
+        <tr>
+            <th>Atrybut</th>
+            <th>Wartość</th>
+
+            {% if rekord_po_stronie_bpp %}
+                <th>Wartość po stronie BPP</th>
+                <th>Sugerowane działania</th>
+            {% endif %}
+        </tr>
+        {% for key, value in do_skopiowania %}
+            <tr>
+                <td>{{ key }}</td>
+                <td class="pre">
+                    <pre>{{ value.print }}</pre>
+                </td>
+                {% if rekord_po_stronie_bpp %}
+                    <td>
+                        {% if key == "abstract" %}
+                            {% if rekord_po_stronie_bpp.original.streszczenia.exists %}
+                                Istnieją streszczenia dla tego rekordu.
+                                <br/>
+                                {% for streszczenie in rekord_po_stronie_bpp.original.streszczenia.all %}
+                                    Język: {{ streszczenie.jezyk_streszczenia }}<br/>
+                                    {{ streszczenie.streszczenie }}
+                                {% endfor %}
+                            {% else %}
+                                Brak streszczeń.
+                            {% endif %}
+                        {% endif %}
+
+                        {% if key == "page" %}
+                            {% if rekord_po_stronie_bpp.original.strony != value.original %}
+                                wartość różna, po stronie BPP: {{ rekord_po_stronie_bpp.original.strony }}
+                            {% else %}
+                                wartości zgodne
+                            {% endif %}
+                        {% endif %}
+
+                        {% if key == "issue" %}
+                            {% if rekord_po_stronie_bpp.original.nr_zeszytu != value.original %}
+                                wartość różna, po stronie BPP: {{ rekord_po_stronie_bpp.original.nr_zeszytu }}
+                            {% else %}
+                                wartości zgodne
+                            {% endif %}
+                        {% endif %}
+
+                        {% if key == "volume" %}
+                            {% if rekord_po_stronie_bpp.original.tom != value.original %}
+                                wartość różna, po stronie BPP: {{ rekord_po_stronie_bpp.original.tom }}
+                            {% else %}
+                                wartości zgodne
+                            {% endif %}
+                        {% endif %}
+
+                        {% if key == "subject" %}
+                            {% if rekord_po_stronie_bpp.slowa_kluczowe.exists %}
+                                Określone słowa kluczowe:<br/>
+                                {% for slowo_kluczowe in rekord_po_stronie_bpp.slowa_kluczowe.all %}
+                                    {{ slowo_kluczowe.tag }}<br/>
+                                {% endfor %}
+                            {% else %}
+                                brak słów kluczowych
+                            {% endif %}
+                        {% endif %}
+
+                    </td>
+                    <td>
+                        {% if key == "abstract" %}
+                            {% if not rekord_po_stronie_bpp.original.streszczenia.exists %}
+
+                                <form class="ajax-form"
+                                      method="post" action="{% url "bpp:api_ustaw_streszczenie" %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="rekord"
+                                           value="{{ rekord_po_stronie_bpp.form_post_pk }}"/>
+                                    <input type="hidden" name="streszczenie" value="{{ value.original|escape }}"/>
+                                    <input type="submit" id="id_ustaw_streszczenie_button"
+                                           value="Skopiuj wartość do rekordu"/>
+                                </form>
+                            {% else %}
+                                System BPP na ten moment potrafi dodać streszczenie, gdy nie ma po stronie BPP
+                                żadnych streszczeń. Ten rekord ma streszczenia po stronie BPP. Jeżeli potrzebujesz
+                                je dodać, zrób to ręcznie.
+                            {% endif %}
+                        {% endif %}
+
+                        {% if key == "page" %}
+                            {% if rekord_po_stronie_bpp.original.strony != value.original %}
+                                <form class="ajax-form"
+                                      method="post" action="{% url "bpp:api_ustaw_strony" %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="rekord"
+                                           value="{{ rekord_po_stronie_bpp.form_post_pk }}"/>
+                                    <input type="hidden" name="strony" value="{{ value.original }}"/>
+                                    <input type="submit" id="id_ustaw_strony_button"
+                                           value="Skopiuj wartość do rekordu"/>
+                                </form>
+                            {% endif %}
+                        {% endif %}
+
+                        {% if key == "volume" %}
+                            {% if rekord_po_stronie_bpp.original.tom != value.original %}
+                                <form class="ajax-form"
+                                      method="post" action="{% url "bpp:api_ustaw_tom" %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="rekord"
+                                           value="{{ rekord_po_stronie_bpp.form_post_pk }}"/>
+                                    <input type="hidden" name="tom" value="{{ value.original }}"/>
+                                    <input type="submit" id="id_ustaw_tom_button"
+                                           value="Skopiuj wartość do rekordu"/>
+                                </form>
+                            {% endif %}
+                        {% endif %}
+
+                        {% if key == "issue" %}
+
+                            {% if rekord_po_stronie_bpp.original.nr_zeszytu != value.original %}
+                                <form class="ajax-form"
+                                      method="post" action="{% url "bpp:api_ustaw_nr_zeszytu" %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="rekord"
+                                           value="{{ rekord_po_stronie_bpp.form_post_pk }}"/>
+                                    <input type="hidden" name="nr_zeszytu" value="{{ value.original }}"/>
+                                    <input type="submit" id="id_ustaw_nr_zeszytu_button"
+                                           value="Skopiuj wartość do rekordu"/>
+                                </form>
+                            {% endif %}
+                        {% endif %}
+                        {% if key == "subject" %}
+                            {% if not rekord_po_stronie_bpp.original.slowa_kluczowe.exists %}
+                                Dodaj słowa kluczowe ręcznie - na ten moment po stronie BPP brak kodu umożliwiającego
+                                automatyczne dodawanie słów kluczowych.
+                            {% endif %}
+                        {% endif %}
+                    </td>
+                {% endif %}
+            </tr>
+        {% endfor %}
+    </table>
+
+    <h1>Ignorowane dane...</h1>
+    Poniższe pola zostały oznaczone w kodzie BPP jako ignorowane. Oznacza to, że wiemy,
+    że pojawiają się w danych z CrossRef API, ale nie wiemy, co sobą reprezentują,
+    nie mamy wskazówek, w jaki sposób je wykorzystać lub też wiemy, czym są i po co są,
+    ale nie zrobimy z nimi po stronie BPP nic użytecznego:
+    <table class="grp-table">
+        {% for key, value in ignorowane %}
+            <tr>
+                <td>{{ key }}</td>
+                <td class="pre">
+                    <pre>{{ value.print }}</pre>
+                </td>
+            </tr>
+        {% endfor %}
+    </table>
+
+    {% if obce %}
+        <h1>Dane obce</h1>
+        Poniższe pola nie figurują w kodzie BPP i nie ma na ten moment w kodzie żadnych wskazówek,
+        do jakiej grupy je zakwalifikować.
+        <table class="grp-table">
+            {% for key, value in obce %}
+                <tr>
+                    <td>{{ key }}</td>
+                    <td class="pre">
+                        <pre>{{ value.print }}</pre>
+                    </td>
+                </tr>
+            {% endfor %}
+        </table>
+    {% endif %}
+
+{% endblock %}

@@ -18,6 +18,10 @@ dropdb --if-exists bpp
 
 pg_restore -j 6 -d template1  -C "$1" || true
 
+for tbl in `psql -qAt -c "select tablename from pg_tables where schemaname = 'public';" bpp` ; do  psql -c "alter table \"$tbl\" owner to postgres" bpp ; done
+
+for tbl in `psql -qAt -c "select sequence_name from information_schema.sequences where sequence_schema = 'public';" bpp` ; do  psql -c "alter sequence \"$tbl\" owner to postgres" bpp ; done
+
 cd "$BASEDIR/.."
 python src/manage.py migrate
 python src/manage.py createsuperuser --noinput --username admin --email michal.dtz@gmail.com || true

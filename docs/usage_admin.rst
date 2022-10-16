@@ -183,3 +183,38 @@ to autor, tłumacz czy redaktor - i właśnie dla takiego celu stworzone został
 "... ogólne". Pola z charakterem "ogólnym" danego rekordu zawiera kilka rodzajów typów, odgórnie
 zdefiniowanych w kodzie programu, które to potem w tym kodzie są wykorzystywane - na
 potrzeby procedur liczących, raportujących, eksportujących dane itp.
+
+
+Konfiguracja rodzaju i kolejności wyświetlanych kolumn w module redagowania
+---------------------------------------------------------------------------
+
+System umożliwia zmianę rodzaju i ilości wyświetlanych kolumn w module redagowania. W tym celu
+użytkownik posiadający uprawnienia administratora po zalogowaniu się powinien w module redagowania
+wejść w opcję Administracja -> Kolumny w module redagowania:
+
+.. image:: images/admin/dynamic_columns/dynamic_columns_1.png
+
+Następnie wyświetli się nam tabelka. W prawym górnym rogu, za pomocą opcji "Filtruj" wybieramy,
+dla którego modułu chcemy skonfigurować kolumny. Klikamy na przycisk "Filtruj"
+
+.. image:: images/admin/dynamic_columns/dynamic_columns_2.png
+
+I wybieramy interesujący nas moduł:
+
+.. image:: images/admin/dynamic_columns/dynamic_columns_3.png
+
+Następnie możemy - za pomocą szarego prostokątu po prawej stronie - zmieniać kolejność kolumn.
+Wystarczy najechac na niego myszą i przeciągnąć (ang. *drag and drop*):
+
+.. image:: images/admin/dynamic_columns/dynamic_columns_4.png
+
+Można też wybrane kolumny podświetlić za pomocą ptaszków (ang. *checkbox*) po lewej stronie i
+na dole tabeli wybrać jedno z działań np włączyć lub wyłączyć grupowo wiele pól na raz.
+
+.. image:: images/admin/dynamic_columns/dynamic_columns_5.png
+
+.. note:: Niektóre kolumny w kodzie programu ustawione są jako *zawsze* *widoczne* i nie będą
+    dostępne do edycji. Nie będzie można zmienić ich kolejności ani ich schować.
+
+.. note:: Im więcej kolumn wybranych, tym więcej danych musi przetworzyć system. Im mniej
+    - tym tabele będą wyświetlały się szybciej.

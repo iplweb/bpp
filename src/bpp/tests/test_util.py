@@ -27,48 +27,42 @@ def test_knapsack_empty():
     assert knapsack(10, [], [], []) == (0, [])
 
 
-@pytest.mark.timeout(3)
+@pytest.mark.timeout(5)
 def test_knapsack_very_long():
     # Test na optymalizacje sytuacji gdy chcemy dostac znacznie wiecej punktow niz wychdozi z danej listy,
     knapsack(99900, [1] * 99800, [1] * 99800, [1] * 99800)
 
 
 def test_knapsack_zwracaj_liste():
-    assert (
-        knapsack(
-            10,
-            [1, 2, 3, 4, 5],
-            [1, 2, 3, 4, 5],
-            [
-                "a",
-                "b",
-                "c",
-                "d",
-                "e",
-            ],
-            True,
-        )
-        == (10, ["d", "c", "b", "a"])
-    )
+    assert knapsack(
+        10,
+        [1, 2, 3, 4, 5],
+        [1, 2, 3, 4, 5],
+        [
+            "a",
+            "b",
+            "c",
+            "d",
+            "e",
+        ],
+        True,
+    ) == (10, ["d", "c", "b", "a"])
 
 
 def test_knapsack_nie_zwracaj_listy():
-    assert (
-        knapsack(
-            10,
-            [1, 2, 3, 4, 5],
-            [1, 2, 3, 4, 5],
-            [
-                "a",
-                "b",
-                "c",
-                "d",
-                "e",
-            ],
-            zwracaj_liste_przedmiotow=False,
-        )
-        == (10, [])
-    )
+    assert knapsack(
+        10,
+        [1, 2, 3, 4, 5],
+        [1, 2, 3, 4, 5],
+        [
+            "a",
+            "b",
+            "c",
+            "d",
+            "e",
+        ],
+        zwracaj_liste_przedmiotow=False,
+    ) == (10, [])
 
 
 @pytest.mark.django_db

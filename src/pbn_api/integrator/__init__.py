@@ -9,7 +9,7 @@ from functools import reduce
 
 import django
 from django.db import transaction
-from django.db.models import F, Func, Q
+from django.db.models import F, Func, IntegerField, Q
 from django.db.models.functions import Length
 
 from pbn_api.integrator import istarmap  # noqa
@@ -178,6 +178,22 @@ def ensure_publication_exists(client, publicationId):
         )
 
 
+def ensure_person_exists(client: PBNClient, personId):
+    try:
+        personId = Scientist.objects.get(pk=personId)
+    except Scientist.DoesNotExist:
+        zapisz_mongodb(client.get_person_by_id(personId), Scientist, client=client)
+
+
+def ensure_institution_exists(client: PBNClient, institutionId):
+    try:
+        institutionId = Institution.objects.get(pk=institutionId)
+    except Institution.DoesNotExist:
+        zapisz_mongodb(
+            client.get_publication_by_id(institutionId), Institution, client=client
+        )
+
+
 def zapisz_publikacje_instytucji(elem, klass, client=None, **extra):
     try:
         ensure_publication_exists(client, elem["publicationId"])
@@ -223,6 +239,28 @@ def zapisz_oswiadczenie_instytucji(elem, klass, client=None, **extra):
 
     try:
         ensure_publication_exists(client, elem["publicationId"])
+    except HttpException as e:
+        if e.status_code == 500:
+            print(
+                f"Podczas próby pobrania danych o nie-istniejącej obecnie po naszej stronie publikacji o id"
+                f" {elem['publicationId']} z PBNu, wystąpił błąd wewnętrzny serwera po ich stronie. Dane "
+                f"dotyczące oświadczeń z tej publikacji nie zostały zapisane. "
+            )
+            return
+
+    try:
+        ensure_institution_exists(client, elem["institutionId"])
+    except HttpException as e:
+        if e.status_code == 500:
+            print(
+                f"Podczas próby pobrania danych o nie-istniejącej obecnie po naszej stronie publikacji o id"
+                f" {elem['publicationId']} z PBNu, wystąpił błąd wewnętrzny serwera po ich stronie. Dane "
+                f"dotyczące oświadczeń z tej publikacji nie zostały zapisane. "
+            )
+            return
+
+    try:
+        ensure_person_exists(client, elem["personId"])
     except HttpException as e:
         if e.status_code == 500:
             print(
@@ -823,7 +861,13 @@ def integruj_zrodla(disable_progress_bar):
                 )
                 u = (
                     Journal.objects.filter(qry)
-                    .annotate(json_len=Func(F("versions"), function="pg_column_size"))
+                    .annotate(
+                        json_len=Func(
+                            F("versions"),
+                            function="pg_column_size",
+                            output_field=IntegerField(),
+                        )
+                    )
                     .order_by("-json_len")
                     .first()
                 )
@@ -854,6 +898,7 @@ def integruj_zrodla(disable_progress_bar):
         print(f"\nNie znaleziono dopasowania w PBN dla {zrodlo}")
 
 
+@transaction.atomic
 def integruj_wydawcow():
     # Najpierw dopasuj wydawcow z MNISWId
     for elem in pbar(
@@ -865,6 +910,7 @@ def integruj_wydawcow():
         w = matchuj_wydawce(elem.value("object", "publisherName"))
         if w is not None:
             if w.pbn_uid_id is None and w.pbn_uid_id != elem.pk:
+                print(f"Przypisuje Wydawca PBN {elem} -> wydawca BPP {w}")
                 w.pbn_uid_id = elem.pk
                 w.save()
 
@@ -876,6 +922,7 @@ def integruj_wydawcow():
         w = matchuj_wydawce(elem.value("object", "publisherName"))
         if w is not None:
             if w.pbn_uid_id is None and w.pbn_uid_id != elem.pk:
+                print(f"Przypisuje Wydawca PBN {elem} -> wydawca BPP {w}")
                 w.pbn_uid_id = elem.pk
                 w.save()
 

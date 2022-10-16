@@ -7,6 +7,7 @@ from django.db import models
 from django.db.models import CASCADE
 from django.db.models.signals import post_migrate
 from django.dispatch import receiver
+from django.urls import reverse
 from model_utils import Choices
 from mptt.fields import TreeForeignKey
 from mptt.models import MPTTModel
@@ -82,6 +83,9 @@ CHARAKTER_OGOLNY_CHOICES = Choices(
 
 
 class Charakter_Formalny(NazwaISkrot, MPTTModel):
+    class CHARAKTER_CROSSREF(models.IntegerChoices):
+        JOURNAL_ARTICLE = 1, "journal-article"
+        PROCEEDINGS_ARTICLE = 2, "proceedings-article"
 
     denorm_always_skip = (
         "tree_id",
@@ -157,6 +161,15 @@ class Charakter_Formalny(NazwaISkrot, MPTTModel):
         help_text="""Jak potraktować ten charakter przy kalkulacji slotów dla wydawnictwa zwartego?""",
     )
 
+    charakter_crossref = models.PositiveSmallIntegerField(
+        "Charakter w CrossRef",
+        null=True,
+        blank=True,
+        default=None,
+        choices=CHARAKTER_CROSSREF.choices,
+        unique=True,
+    )
+
     wliczaj_do_rankingu = models.BooleanField(default=True)
 
     class Meta:
@@ -211,6 +224,9 @@ class Charakter_Formalny(NazwaISkrot, MPTTModel):
     artykul_pbn = property(get_artykul_pbn, set_artykul_pbn)
     ksiazka_pbn = property(get_ksiazka_pbn, set_ksiazka_pbn)
     rozdzial_pbn = property(get_rozdzial_pbn, set_rozdzial_pbn)
+
+    def get_absolute_url(self):
+        return reverse("admin:bpp_charakter_formalny_change", args=(self.pk,))
 
 
 @receiver(post_migrate)
@@ -269,6 +285,19 @@ class Typ_Odpowiedzialnosci(NazwaISkrot):
 
 
 class Jezyk(NazwaISkrot):
+    class SKROT_CROSSREF(models.TextChoices):
+        en = "en", "en - angielski"
+        es = "es", "es - hiszpański"
+
+    skrot_crossref = models.CharField(
+        max_length=10,
+        verbose_name="Skrót nazwy języka wg API CrossRef",
+        choices=SKROT_CROSSREF.choices,
+        blank=True,
+        null=True,
+        unique=True,
+    )
+
     pbn_uid = models.ForeignKey(
         "pbn_api.Language", null=True, blank=True, on_delete=models.SET_NULL
     )

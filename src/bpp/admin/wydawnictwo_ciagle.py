@@ -5,6 +5,8 @@ from djangoql.admin import DjangoQLSearchMixin
 from mptt.forms import TreeNodeChoiceField
 from taggit.forms import TextareaTagWidget
 
+from crossref_bpp.mixins import AdminCrossrefAPIMixin
+from dynamic_columns.mixins import DynamicColumnsMixin
 from pbn_api.models import Publication
 from . import BaseBppAdminMixin
 from .actions import (
@@ -14,6 +16,10 @@ from .actions import (
     wyslij_do_pbn,
 )
 from .core import KolumnyZeSkrotamiMixin, generuj_inline_dla_autorow
+from .crossref_api_helpers import (
+    KorzystaZCrossRefAPIStreszczenieInlineMixin,
+    UzupelniajWstepneDanePoCrossRefAPIMixin,
+)
 
 # Widget do automatycznego uzupełniania punktacji wydawnictwa ciągłego
 from .element_repozytorium import Element_RepozytoriumInline
@@ -24,8 +30,10 @@ from .helpers import (
     OptionalPBNSaveMixin,
     sprawdz_duplikaty_www_doi,
 )
+from .util import CustomizableFormsetParamsAdminMixinWyrzucWDjango40
 from .xlsx_export import resources
 from .xlsx_export.mixins import EksportDanychMixin
+from .zglos_publikacje_helpers import UzupelniajWstepneDanePoNumerzeZgloszeniaMixin
 
 from django.contrib import admin
 
@@ -168,7 +176,9 @@ class Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychForm(forms.ModelForm):
         fields = ["baza", "info"]
 
 
-class Wydawnictwo_Ciagle_StreszczenieInline(admin.StackedInline):
+class Wydawnictwo_Ciagle_StreszczenieInline(
+    KorzystaZCrossRefAPIStreszczenieInlineMixin, admin.StackedInline
+):
     model = Wydawnictwo_Ciagle_Streszczenie
     extra = 0
     fields = ["jezyk_streszczenia", "streszczenie"]
@@ -186,9 +196,21 @@ class Wydawnictwo_CiagleAdmin(
     KolumnyZeSkrotamiMixin,
     AdnotacjeZDatamiOrazPBNMixin,
     BaseBppAdminMixin,
+    UzupelniajWstepneDanePoNumerzeZgloszeniaMixin,
+    UzupelniajWstepneDanePoCrossRefAPIMixin,
+    CustomizableFormsetParamsAdminMixinWyrzucWDjango40,
+    AdminCrossrefAPIMixin,
     EksportDanychMixin,
+    DynamicColumnsMixin,
     admin.ModelAdmin,
 ):
+    change_list_template = "admin/bpp/wydawnictwo_ciagle/change_list.html"
+
+    crossref_templates = {
+        "form": "admin/bpp/wydawnictwo_ciagle/crossref_pobierz.html",
+        "show": "admin/bpp/wydawnictwo_ciagle/crossref_pokaz.html",
+    }
+
     resource_class = resources.Wydawnictwo_CiagleResource
 
     djangoql_completion_enabled_by_default = False
@@ -206,8 +228,9 @@ class Wydawnictwo_CiagleAdmin(
 
     ordering = ("-ostatnio_zmieniony",)
 
-    list_display = [
-        "tytul_oryginalny",
+    list_display_always = ["tytul_oryginalny"]
+
+    list_display_default = [
         "zrodlo_col",
         "rok",
         "typ_kbn__skrot",
@@ -216,7 +239,12 @@ class Wydawnictwo_CiagleAdmin(
         "ostatnio_zmieniony",
     ]
 
-    list_select_related = ["zrodlo", "typ_kbn", "charakter_formalny"]
+    list_display_allowed = "__all__"
+
+    list_select_related = {
+        "__always__": ["typ_kbn", "charakter_formalny"],
+        "zrodlo_col": ["zrodlo"],
+    }
 
     search_fields = [
         "tytul",

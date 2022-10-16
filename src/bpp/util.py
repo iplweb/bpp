@@ -14,12 +14,14 @@ import openpyxl.worksheet.worksheet
 import progressbar
 from django.apps import apps
 from django.conf import settings
-from django.db.models import Max, Min
+from django.db.models import Max, Min, Value
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.filters import AutoFilter
 from openpyxl.worksheet.table import Table, TableColumn, TableStyleInfo
 from psycopg2.extensions import QuotedString
 from unidecode import unidecode
+
+from django.contrib.postgres.search import SearchQuery, SearchRank
 
 from django.utils import timezone
 from django.utils.html import strip_tags
@@ -45,6 +47,9 @@ def fulltext_tokenize(s):
         .replace("\\", " ")
         .replace("(", " ")
         .replace(")", " ")
+        .replace("#", " ")
+        .replace("@", " ")
+        .replace("!", " ")
         .replace("[", " ")
         .replace("]", " ")
         .replace("\t", " ")
@@ -53,7 +58,7 @@ def fulltext_tokenize(s):
         .replace("<", " ")
         .replace(">", " ")
     )
-    return [x.strip() for x in s.split(" ") if x.strip()]
+    return [x.strip() for x in s.strip().split(" ") if x.strip()]
 
 
 class FulltextSearchMixin:
@@ -80,27 +85,16 @@ class FulltextSearchMixin:
 
         clean_qstr = strip_tags(qstr)
         words = fulltext_tokenize(clean_qstr)
-        qstr = " & ".join(startswith(words))
-        params = ("bpp_nazwy_wlasne", qstr)
+        if not words:
+            return self.none().annotate(**{self.fts_field + "__rank": Value(0)})
 
-        return self.all().extra(
-            select={
-                self.model._meta.db_table
-                + "__rank": "ts_rank_cd("
-                + self.model._meta.db_table
-                + "."
-                + self.fts_field
-                + ", to_tsquery(%s::regconfig, %s), 16)"
-            },
-            select_params=params,
-            where=[
-                self.model._meta.db_table
-                + "."
-                + self.fts_field
-                + " @@ to_tsquery(%s::regconfig, %s)"
-            ],
-            params=params,
-            order_by=["-" + self.model._meta.db_table + "__rank"],
+        qstr = "(" + " & ".join(startswith(words)) + ") | (" + " & ".join(words) + ")"
+        sq = SearchQuery(qstr, search_type="raw", config="bpp_nazwy_wlasne")
+
+        return (
+            self.filter(**{self.fts_field: sq})
+            .annotate(**{self.fts_field + "__rank": SearchRank(self.fts_field, sq)})
+            .order_by(f"-{self.fts_field}__rank")
         )
 
 

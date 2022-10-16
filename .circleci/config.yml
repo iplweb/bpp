@@ -7,7 +7,7 @@ jobs:
   build:
 
     docker:
-      - image: cimg/python:3.10.5-node
+      - image: cimg/python:3.10.7-node
         environment:
           PGUSER: postgres
           PGHOST: localhost
@@ -62,7 +62,7 @@ jobs:
       - checkout
 
       - restore_cache:
-          key: cache-14-{{ checksum "poetry.lock" }}-{{ checksum "yarn.lock" }}
+          key: cache-15-{{ checksum "poetry.lock" }}-{{ checksum "yarn.lock" }}
 
       - run: sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
       - run: wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
@@ -75,6 +75,13 @@ jobs:
       - run: export LC_ALL=pl_PL.UTF-8
       - run: locale
       - run: sudo npm install -g grunt-cli
+      - run:
+          name: Reinstall fresh PIP
+          command: |
+            curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+            python3 get-pip.py --force-reinstall
+
+      - run: pip install --upgrade pip poetry
 
       - run:
           name: Install project
@@ -103,7 +110,7 @@ jobs:
             ls -las /home/circleci/.cache/*poetry*/
 
       - save_cache:
-          key: cache-14-{{ checksum "poetry.lock" }}-{{ checksum "yarn.lock" }}
+          key: cache-15-{{ checksum "poetry.lock" }}-{{ checksum "yarn.lock" }}
           paths:
             - "/home/circleci/.cache"
 
@@ -120,7 +127,7 @@ jobs:
 
   test:
     docker:
-      - image: cimg/python:3.10.5-browsers
+      - image: cimg/python:3.10.7-browsers
         environment:
           PGUSER: postgres
           PGHOST: localhost
@@ -163,8 +170,16 @@ jobs:
           name: Wait for db
           command: dockerize -wait tcp://$PGHOST:$PGPORT -timeout 1m
 
+      - run:
+          name: Reinstall fresh PIP
+          command: |
+            curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+            python3 get-pip.py --force-reinstall
+
+      - run: pip install --upgrade pip poetry
+
       - restore_cache:
-          key: cache-14-{{ checksum "poetry.lock" }}-{{ checksum "yarn.lock" }}
+          key: cache-15-{{ checksum "poetry.lock" }}-{{ checksum "yarn.lock" }}
 
       - run:
           name: restore database from dump
@@ -202,7 +217,7 @@ jobs:
 
   js-tests:
     docker:
-      - image: cimg/python:3.10.5-node
+      - image: cimg/python:3.10.7-node
 
     steps:
 
@@ -218,6 +233,11 @@ jobs:
             make yarn
             make js-tests
 
+  coveralls:
+    docker:
+      - image: cimg/python:3.10.7-node
+    steps:
+      - run: curl -k https://coveralls.io/webhook?repo_token=$COVERALLS_REPO_TOKEN -d "payload[build_num]=$CIRCLE_WORKFLOW_ID&payload[status]=done"
 
 workflows:
   version: 2
@@ -230,3 +250,6 @@ workflows:
       - js-tests:
           requires:
             - build
+      - coveralls:
+          requires:
+            - test

@@ -8,11 +8,14 @@ from django.forms.widgets import HiddenInput
 
 from django.contrib import admin
 
+from bpp.admin.crossref_api_helpers import KorzystaZCrossRefAPIAutorInlineMixin
+from bpp.admin.zglos_publikacje_helpers import KorzystaZNumeruZgloszeniaInlineMixin
 from bpp.jezyk_polski import warianty_zapisanego_nazwiska
 from bpp.models import (
     Autor,
     Dyscyplina_Naukowa,
     Jednostka,
+    Kierunek_Studiow,
     Typ_Odpowiedzialnosci,
     Uczelnia,
 )
@@ -57,6 +60,14 @@ def generuj_formularz_dla_autorow(
         jednostka = forms.ModelChoiceField(
             queryset=Jednostka.objects.all(),
             widget=autocomplete.ModelSelect2(url="bpp:jednostka-autocomplete"),
+        )
+
+        kierunek_studiow = forms.ModelChoiceField(
+            label="Kierunek studiów",
+            help_text="W przypadku autorów-studentów, możesz wpisać tu kierunek studiów, na jakim się znajdują. "
+            "Pole opcjonalne. ",
+            queryset=Kierunek_Studiow.objects.all(),
+            required=False,
         )
 
         if include_dyscyplina:
@@ -146,6 +157,7 @@ def generuj_formularz_dla_autorow(
             fields = [
                 "autor",
                 "jednostka",
+                "kierunek_studiow",
                 "typ_odpowiedzialnosci",
                 "zapisany_jako",
                 "afiliuje",
@@ -208,7 +220,11 @@ def generuj_inline_dla_autorow(baseModel, include_dyscyplina=True):
         baseClass = admin.TabularInline
         extraRows = 1
 
-    class baseModel_AutorInline(baseClass):
+    class baseModel_AutorInline(
+        KorzystaZNumeruZgloszeniaInlineMixin,
+        KorzystaZCrossRefAPIAutorInlineMixin,
+        baseClass,
+    ):
         model = baseModel
         extra = extraRows
         form = generuj_formularz_dla_autorow(

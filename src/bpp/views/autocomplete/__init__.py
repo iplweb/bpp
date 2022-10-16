@@ -1,4 +1,5 @@
 import json
+from collections import OrderedDict
 
 from braces.views import GroupRequiredMixin, LoginRequiredMixin
 from dal import autocomplete
@@ -15,6 +16,8 @@ from import_common.normalization import normalize_isbn
 
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.contrib.postgres.search import TrigramSimilarity
+
+from django.utils.text import capfirst
 
 from bpp import const
 from bpp.const import CHARAKTER_OGOLNY_KSIAZKA, GR_WPROWADZANIE_DANYCH
@@ -336,29 +339,39 @@ def jest_pbn_uid(s):
     return jest_czyms(s, const.PBN_UID_LEN)
 
 
+AUTOR_ONLY = (
+    "pk",
+    "nazwisko",
+    "imiona",
+    "poprzednie_nazwiska",
+    "tytul__skrot",
+    "aktualna_funkcja__nazwa",
+    "pseudonim",
+)
+
+AUTOR_SELECT_RELATED = "tytul", "aktualna_funkcja"
+
+
 def globalne_wyszukiwanie_autora(querysets, q):
-    def _fun(qry):
-        return (
-            qry.annotate(Count("wydawnictwo_ciagle"))
-            .only(
-                "pk",
-                "nazwisko",
-                "imiona",
-                "poprzednie_nazwiska",
-                "tytul__skrot",
-                "pseudonim",
-            )
-            .select_related("tytul")
-            .order_by("-wydawnictwo_ciagle__count")
+    if jest_orcid(q):
+        querysets.append(
+            Autor.objects.filter(orcid__icontains=q)
+            .only(*AUTOR_ONLY)
+            .select_related(*AUTOR_SELECT_RELATED)
         )
 
-    if jest_orcid(q):
-        querysets.append(_fun(Autor.objects.filter(orcid__icontains=q)))
-
     if jest_pbn_uid(q):
-        querysets.append(_fun(Autor.objects.filter(pbn_uid_id=q)))
+        querysets.append(
+            Autor.objects.filter(pbn_uid_id=q).only(*AUTOR_ONLY).select_related("tytul")
+        )
 
-    querysets.append(_fun(Autor.objects.fulltext_filter(q)))
+    querysets.append(
+        Autor.objects.fulltext_filter(q)
+        .annotate(Count("wydawnictwo_ciagle"))
+        .only(*AUTOR_ONLY)
+        .select_related(*AUTOR_SELECT_RELATED)
+        .order_by("-search__rank", "-wydawnictwo_ciagle__count")
+    )
 
 
 def globalne_wyszukiwanie_jednostki(querysets, s):
@@ -382,7 +395,41 @@ def globalne_wyszukiwanie_zrodla(querysets, s):
 
 
 class GlobalNavigationAutocomplete(Select2QuerySetSequenceView):
-    paginate_by = 20
+    paginate_by = 40
+
+    def get_result_label(self, result):
+        if isinstance(result, Autor):
+            if result.aktualna_funkcja_id is not None:
+                return str(result) + ", " + str(result.aktualna_funkcja.nazwa)
+        return str(result)
+
+    def get_results(self, context):
+        """
+        Return a list of results usable by Select2.
+
+        It will render as a list of one <optgroup> per different content type
+        containing a list of one <option> per model.
+        """
+        groups = OrderedDict()
+
+        for result in context["object_list"]:
+            groups.setdefault(type(result), [])
+            groups[type(result)].append(result)
+
+        return [
+            {
+                "id": None,
+                "text": capfirst(self.get_model_name(model)),
+                "children": [
+                    {
+                        "id": self.get_result_value(result),
+                        "text": self.get_result_label(result),
+                    }
+                    for result in results
+                ],
+            }
+            for model, results in groups.items()
+        ]
 
     def get_queryset(self):
         if not hasattr(self, "q"):
@@ -446,7 +493,7 @@ class GlobalNavigationAutocomplete(Select2QuerySetSequenceView):
 
 
 class AdminNavigationAutocomplete(StaffRequired, Select2QuerySetSequenceView):
-    paginate_by = 30
+    paginate_by = 60
 
     def get_queryset(self):
         if not self.q:
@@ -654,6 +701,17 @@ class Dyscyplina_Naukowa_PrzypisanieAutocomplete(autocomplete.Select2ListView):
         autor = self.forwarded.get("autor", None)
         if autor is None:
             return [(None, "Podaj autora")]
+
+        if not isinstance(autor, str):
+            return [(None, "Podaj autora")]
+
+        if not autor.strip():
+            return [(None, "Podaj autora")]
+
+        try:
+            autor = int(autor)
+        except (TypeError, ValueError):
+            return [(None, "Nieprawidłowe ID autora")]
 
         rok = self.forwarded.get("rok", None)
         if rok is None:

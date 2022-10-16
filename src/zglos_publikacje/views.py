@@ -15,6 +15,7 @@ from messages_extends import messages
 from sentry_sdk import capture_exception
 from templated_email import send_templated_mail
 
+from import_common.normalization import normalize_tytul_publikacji
 from zglos_publikacje import const
 from zglos_publikacje.forms import (
     Zgloszenie_Publikacji_AutorFormSet,
@@ -173,6 +174,18 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
         if self.request.user.is_authenticated and self.object.utworzyl_id is None:
             self.object.utworzyl = self.request.user
 
+        if self.object.tytul_oryginalny:
+            # Jeżeli jest tytuł oryginalny, to znormalizuj go, m.in. wycinając znaki
+            # newline, ponieważ django-templated-email w wersji 3.0.0 nie obsługuje ich,
+            # ma to poprawione w trunku, po nowym release można zaktualizować django-templated-email
+            # i pozbyć się tego kodu
+            #
+            # https://github.com/vintasoftware/django-templated-email/issues/138
+
+            self.object.tytul_oryginalny = normalize_tytul_publikacji(
+                self.object.tytul_oryginalny
+            )
+
         self.object.save()
 
         typ_odpowiedzialnosci = Typ_Odpowiedzialnosci.objects.filter(
@@ -208,16 +221,28 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
         def _():
             recipient_list = None
 
-            pierwszy_autor_i_jednostka = (
-                self.object.zgloszenie_publikacji_autor_set.first()
-            )
-            if pierwszy_autor_i_jednostka is not None:
-                if pierwszy_autor_i_jednostka.jednostka_id is not None:
-                    recipient_list = (
-                        Obslugujacy_Zgloszenia_Wydzialow.objects.emaile_dla_wydzialu(
-                            pierwszy_autor_i_jednostka.jednostka.wydzial
-                        )
+            # Wybór autora i jednostki.
+            #
+            # Szukamy pierwszej, nie-obcej jednostki, skupiającej pracowników.
+            # Jeżeli nie znajdziemy takiej, używamy obcej.
+
+            jednostka_do_powiadomienia = None
+
+            for zpa in self.object.zgloszenie_publikacji_autor_set.all().select_related(
+                "jednostka"
+            ):
+                if zpa.jednostka_id is not None:
+                    jednostka_do_powiadomienia = zpa.jednostka
+
+                if jednostka_do_powiadomienia.skupia_pracownikow:
+                    break
+
+            if jednostka_do_powiadomienia is not None:
+                recipient_list = (
+                    Obslugujacy_Zgloszenia_Wydzialow.objects.emaile_dla_wydzialu(
+                        jednostka_do_powiadomienia.wydzial
                     )
+                )
 
             if not recipient_list:
                 recipient_list = zgloszenia_publikacji_emails()

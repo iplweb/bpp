@@ -1,5 +1,6 @@
 import datetime
 
+import pytest
 from django.conf import settings
 from django.core.management import call_command
 from django.test import TestCase
@@ -309,6 +310,7 @@ class TestCacheZapisani(LoadFixturesMixin, TestCase):
         self.assertEqual(c.opis_bibliograficzny_zapisani_autorzy_cache, "Kowalski Jan")
 
 
+@pytest.mark.django_db
 def test_MinimalCachingProblem_tworzenie(
     statusy_korekt, jezyki, typy_odpowiedzialnosci
 ):
@@ -329,6 +331,7 @@ def test_MinimalCachingProblem_tworzenie(
     foo()
 
 
+@pytest.mark.django_db
 def test_MinimalCachingProblem_usuwanie(statusy_korekt, jezyki, typy_odpowiedzialnosci):
     def foo():
         j = baker.make(Jednostka)

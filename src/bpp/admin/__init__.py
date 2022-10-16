@@ -27,6 +27,7 @@ from .core import (
 )
 from .dyscyplina_naukowa import Dyscyplina_NaukowaAdmin  # noqa
 from .jednostka import JednostkaAdmin  # NOQA
+from .kierunek_studiow import Kierunek_StudiowAdmin  # noqa
 from .konferencja import KonferencjaAdmin  # noqa
 from .patent import Patent_Admin  # noqa
 from .praca_doktorska import Praca_DoktorskaAdmin  # noqa
@@ -61,7 +62,7 @@ from bpp.models.openaccess import (
 
 
 class JezykAdmin(RestrictDeletionToAdministracjaGroupAdmin):
-    list_display = ["nazwa", "skrot", "pbn_uid"]
+    list_display = ["nazwa", "skrot", "pbn_uid", "skrot_crossref"]
 
 
 class Funkcja_AutoraAdmin(RestrictDeletionToAdministracjaGroupAdmin):

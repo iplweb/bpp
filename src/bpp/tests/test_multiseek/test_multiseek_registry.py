@@ -113,6 +113,7 @@ def test_StronaWWWUstawionaQueryObject_obydwie_strony(
     assert Rekord.objects.filter(*(qry,)).count() == 1
 
 
+@pytest.mark.django_db
 def test_multiseek_licencja_openaccess_ustawiona(wydawnictwo_zwarte):
     lqo = LicencjaOpenAccessUstawionaQueryObject(
         field_name="licencja_openaccess", label="X", public=True
@@ -124,6 +125,7 @@ def test_multiseek_licencja_openaccess_ustawiona(wydawnictwo_zwarte):
     assert Rekord.objects.filter(*(res,)).count() == 1
 
 
+@pytest.mark.django_db
 def test_multiseek_charakter_formalny_ogolny(wydawnictwo_zwarte, ksiazka_polska):
     wydawnictwo_zwarte.charakter_formalny = ksiazka_polska
     wydawnictwo_zwarte.save()
@@ -139,10 +141,11 @@ def test_multiseek_charakter_formalny_ogolny(wydawnictwo_zwarte, ksiazka_polska)
 def test_DataUtworzeniaQueryObject():
     d = DataUtworzeniaQueryObject()
     assert d.value_for_description('[""]') == str(datetime.now().date())
-    d.value_for_description('["2018-01-01 12:00:00"]') == "2018-01-01"
-    d.value_for_description(
-        '["2018-01-01 12:00:00", "2018-01-01 12:00:00"]'
-    ) == "od 2018-01-01 do 2018-01-01"
+    assert d.value_for_description('["2018-01-01 12:00:00"]') == "2018-01-01"
+    assert (
+        d.value_for_description('["2018-01-01 12:00:00", "2018-01-01 12:00:00"]')
+        == "od 2018-01-01 do 2018-01-01"
+    )
 
 
 @pytest.mark.django_db

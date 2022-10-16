@@ -3,6 +3,7 @@ from django import forms
 from django.db.models import Q
 from djangoql.admin import DjangoQLSearchMixin
 
+from dynamic_columns.mixins import DynamicColumnsMixin
 from ewaluacja2021.models import IloscUdzialowDlaAutora
 from pbn_api.models import Scientist
 from ..models import (  # Publikacja_Habilitacyjna
@@ -20,6 +21,8 @@ from .filters import (
     PBNIDObecnyFilter,
 )
 from .helpers import ADNOTACJE_FIELDSET, CHARMAP_SINGLE_LINE, ZapiszZAdnotacjaMixin
+from .xlsx_export import resources
+from .xlsx_export.mixins import EksportDanychMixin
 
 from django.contrib import admin
 
@@ -135,17 +138,25 @@ class AutorForm(forms.ModelForm):
 
 
 class AutorAdmin(
-    DjangoQLSearchMixin, ZapiszZAdnotacjaMixin, BaseBppAdminMixin, admin.ModelAdmin
+    DjangoQLSearchMixin,
+    ZapiszZAdnotacjaMixin,
+    EksportDanychMixin,
+    BaseBppAdminMixin,
+    DynamicColumnsMixin,
+    admin.ModelAdmin,
 ):
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True
 
+    max_allowed_export_items = 5000
+
     form = AutorForm
     autocomplete_fields = ["pbn_uid"]
+    resource_class = resources.AutorResource
 
-    list_display = [
-        "nazwisko",
-        "imiona",
+    list_display_always = ["nazwisko", "imiona"]
+
+    list_display_default = [
         "tytul",
         "pseudonim",
         "poprzednie_nazwiska",
@@ -154,9 +165,31 @@ class AutorAdmin(
         "orcid",
         "pbn_uid_id",
     ]
-    list_select_related = [
-        "tytul",
+
+    list_display_allowed = [
+        "id",
+        "ostatnio_zmieniony",
+        "adnotacje",
+        "aktualna_jednostka",
+        "aktualna_funkcja",
+        "pokazuj",
+        "www",
+        "plec",
+        "urodzony",
+        "zmarl",
+        "poakzuj_poprzednie_nazwiska",
+        "orcid_w_pbn",
+        "system_kadrowy_id",
     ]
+
+    list_select_related = {
+        "tytul": [
+            "tytul",
+        ],
+        "aktualna_jednostka": ["aktualna_jednostka", "aktualna_jednostka__wydzial"],
+        "aktualna_funkcja": ["aktualna_funkcja"],
+    }
+
     fields = None
     inlines = [
         Autor_JednostkaInline,

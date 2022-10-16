@@ -1,4 +1,3 @@
-# -*- encoding: utf-8 -*-
 import xml.etree.ElementTree as ET
 
 import pytest
@@ -13,6 +12,7 @@ def test_proper_content_type(client):
     assert "xml" in res["Content-type"]
 
 
+@pytest.mark.django_db
 def test_identify(wydawnictwo_ciagle, client):
     identify = reverse("bpp:oai") + "?verb=Identify"
     res = client.get(identify)
@@ -23,6 +23,7 @@ def toXML(response):
     return ET.fromstring(response.content.decode("utf-8"))
 
 
+@pytest.mark.django_db
 def test_listRecords(ksiazka, client):
     listRecords = reverse("bpp:oai") + "?verb=ListRecords&metadataPrefix=oai_dc"
     res = client.get(listRecords)
@@ -31,6 +32,7 @@ def test_listRecords(ksiazka, client):
     assert "Tytul Wydawnictwo" in toXML(res)[2][0][1][0][1].text
 
 
+@pytest.mark.django_db
 def test_listRecords_status_korekty(
     ksiazka, client, uczelnia, przed_korekta, po_korekcie
 ):
@@ -53,6 +55,7 @@ def test_listRecords_status_korekty(
     assert "Tytul Wydawnictwo" in res[2][0][1][0][1].text
 
 
+@pytest.mark.django_db
 def test_listRecords_no_queries_zwarte(ksiazka, client, django_assert_max_num_queries):
     listRecords = reverse("bpp:oai") + "?verb=ListRecords&metadataPrefix=oai_dc"
     with django_assert_max_num_queries(6):
@@ -60,6 +63,7 @@ def test_listRecords_no_queries_zwarte(ksiazka, client, django_assert_max_num_qu
     assert "Tytul Wydawnictwo" in toXML(res)[2][0][1][0][1].text
 
 
+@pytest.mark.django_db
 def test_listRecords_no_queries_ciagle(artykul, client, django_assert_max_num_queries):
     listRecords = reverse("bpp:oai") + "?verb=ListRecords&metadataPrefix=oai_dc"
     with django_assert_max_num_queries(6):

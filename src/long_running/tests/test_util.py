@@ -1,9 +1,11 @@
 import pytest
 
-from bpp.models import Wydawnictwo_Ciagle
 from long_running.util import wait_for_object
 
+from bpp.models import Wydawnictwo_Ciagle
 
+
+@pytest.mark.django_db
 def test_wait_for_object(wydawnictwo_ciagle):
     with pytest.warns(DeprecationWarning):
         assert (

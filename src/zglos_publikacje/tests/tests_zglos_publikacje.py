@@ -1,3 +1,5 @@
+import os
+
 import pytest
 from django.urls import reverse
 from model_bakery import baker
@@ -133,12 +135,16 @@ def test_zglos_publikacje_bez_pliku_nie_artykul(
 
 
 def zrob_submit_calego_formularza(
-    webtest_app, django_capture_on_commit_callbacks, autor=None, jednostka=None
+    webtest_app,
+    django_capture_on_commit_callbacks,
+    autor=None,
+    jednostka=None,
+    tytul_oryginalny="123",
 ):
 
     url = reverse("zglos_publikacje:nowe_zgloszenie")
     page = webtest_app.get(url)
-    page.forms[0]["0-tytul_oryginalny"] = "123"
+    page.forms[0]["0-tytul_oryginalny"] = tytul_oryginalny
     page.forms[0]["0-rok"] = "2020"
     page.forms[0][
         "0-rodzaj_zglaszanej_publikacji"
@@ -205,6 +211,35 @@ def test_wysylanie_maili_trafi_do_grupy_zglaszanie_publikacji(
     ]
 
 
+def test_wysylanie_maili_tytul_ma_nowe_linie(
+    webtest_app,
+    django_capture_on_commit_callbacks,
+    normal_django_user,
+    typy_odpowiedzialnosci,
+    uczelnia,
+    wydzial,
+    jednostka,
+):
+    normal_django_user.email = EMAIL
+    normal_django_user.save()
+
+    normal_django_user.groups.add(
+        Group.objects.get_or_create(name=GR_ZGLOSZENIA_PUBLIKACJI)[0]
+    )
+
+    from django.core import mail
+
+    zrob_submit_calego_formularza(
+        webtest_app,
+        django_capture_on_commit_callbacks,
+        tytul_oryginalny="PANIE\nCzy to pojdzie?",
+    )
+    assert len(mail.outbox) == 1
+    assert mail.outbox[0].to == [
+        EMAIL,
+    ]
+
+
 def test_wysylanie_maili_obslugujacym_zgloszenia(
     webtest_app,
     django_capture_on_commit_callbacks,
@@ -228,3 +263,39 @@ def test_wysylanie_maili_obslugujacym_zgloszenia(
 
     assert len(mail.outbox) == 1
     assert mail.outbox[0].to == [inny_user.email]
+
+
+def test_zglos_publikacje_czy_pliki_trafiaja_do_bazy(
+    webtest_app,
+    django_capture_on_commit_callbacks,
+    typy_odpowiedzialnosci,
+):
+    example_content = open(
+        os.path.join(os.path.dirname(__name__), "example.pdf"), "rb"
+    ).read()
+
+    url = reverse("zglos_publikacje:nowe_zgloszenie")
+    page = webtest_app.get(url)
+    page.forms[0]["0-tytul_oryginalny"] = "123"
+    page.forms[0]["0-rok"] = "2020"
+    page.forms[0][
+        "0-rodzaj_zglaszanej_publikacji"
+    ] = Zgloszenie_Publikacji.Rodzaje.ARTYKUL_LUB_MONOGRAFIA
+    page.forms[0]["0-email"] = "123@123.pl"
+
+    page2 = page.forms[0].submit()
+    page2.forms[0]["1-plik"] = (
+        "123.pdf",
+        example_content,
+    )
+
+    page3 = page2.forms[0].submit()
+
+    page4 = page3.forms[0].submit()
+
+    page4.forms[0]["3-opl_pub_cost_free"] = "true"
+
+    with django_capture_on_commit_callbacks(execute=True):  # as callbacks:
+        page4.forms[0].submit().maybe_follow()
+
+    assert Zgloszenie_Publikacji.objects.first().plik.read() == example_content

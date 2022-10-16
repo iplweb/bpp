@@ -1,8 +1,8 @@
-# -*- encoding: utf-8 -*-
 import pytest
 from django.urls.base import reverse
 
 from bpp.models.cache import Rekord
+
 from django_bpp.selenium_util import wait_for, wait_for_page_load
 
 
@@ -74,3 +74,15 @@ def test_szukaj(multiseek_browser):
     with wait_for_page_load(multiseek_browser):
         multiseek_browser.find_by_id("multiseek-szukaj").click()
     assert "błąd serwera" not in multiseek_browser.html
+
+
+def test_multiseek_sortowanie_wg_zrodlo_lub_nadrzedne(
+    uczelnia, browser, wydawnictwo_zwarte, statusy_korekt, admin_client, rf, live_server
+):
+    with wait_for_page_load(browser):
+        browser.visit(live_server.url + reverse("multiseek:index"))
+
+    browser.find_by_id("id_ordering_0").select(9)  # wyd. nadrzedne/zrodlo
+    with wait_for_page_load(browser):
+        browser.find_by_id("multiseek-szukaj").click()
+    assert "Błąd serwera" not in browser.html

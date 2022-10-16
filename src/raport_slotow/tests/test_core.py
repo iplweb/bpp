@@ -1,3 +1,5 @@
+import pytest
+
 from raport_slotow.core import (
     autorzy_z_dyscyplinami,
     autorzy_z_punktami,
@@ -26,13 +28,16 @@ def test_autorzy_z_punktami_autor_nadal_nie_ma(autor_z_dyscyplina):
     assert autorzy_z_punktami().count() == 0
 
 
+@pytest.mark.django_db
 def test_autorzy_z_punktami_autor_ma(praca_z_dyscyplina):
     assert autorzy_z_punktami().count() == 1
 
 
+@pytest.mark.django_db
 def test_autorzy_zerowi(rekord_slotu, autor_z_dyscyplina):
     assert autorzy_zerowi().count() == 1
 
 
+@pytest.mark.django_db
 def test_autorzy_zerowi_rok_powyzej(rekord_slotu, autor_jan_nowak, rok):
     assert autorzy_zerowi(od_roku=rok + 20).count() == 0

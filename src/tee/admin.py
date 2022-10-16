@@ -29,6 +29,8 @@ class LogAdmin(admin.ModelAdmin):
         "traceback",
     ]
 
+    date_hierarchy = "started_on"
+
     def has_add_permission(self, request):
         return False
 
@@ -38,7 +40,7 @@ class LogAdmin(admin.ModelAdmin):
     def cmd_name(self, obj):
         args = ""
         if obj.args:
-            args = " {' '.join(obj.args)}"
+            args = f" {' '.join(obj.args)}"
         return f"{obj.command_name}" + args
 
     def finished_successfully(self, obj: Log):
