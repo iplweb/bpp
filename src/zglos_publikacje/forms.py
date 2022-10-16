@@ -90,6 +90,7 @@ class Zgloszenie_Publikacji_Plik(forms.ModelForm):
                 "Kliknij przycisk 'Przeglądaj' aby uzupełnić plik PDF z pełnym tekstem "
                 "zgłaszanej publikacji. "
             )
+        return self.cleaned_data["plik"]
 
 
 class Zgloszenie_Publikacji_AutorForm(forms.ModelForm):

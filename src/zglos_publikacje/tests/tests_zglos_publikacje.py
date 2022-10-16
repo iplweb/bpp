@@ -1,3 +1,5 @@
+import os
+
 import pytest
 from django.urls import reverse
 from model_bakery import baker
@@ -261,3 +263,39 @@ def test_wysylanie_maili_obslugujacym_zgloszenia(
 
     assert len(mail.outbox) == 1
     assert mail.outbox[0].to == [inny_user.email]
+
+
+def test_zglos_publikacje_czy_pliki_trafiaja_do_bazy(
+    webtest_app,
+    django_capture_on_commit_callbacks,
+    typy_odpowiedzialnosci,
+):
+    example_content = open(
+        os.path.join(os.path.dirname(__name__), "example.pdf"), "rb"
+    ).read()
+
+    url = reverse("zglos_publikacje:nowe_zgloszenie")
+    page = webtest_app.get(url)
+    page.forms[0]["0-tytul_oryginalny"] = "123"
+    page.forms[0]["0-rok"] = "2020"
+    page.forms[0][
+        "0-rodzaj_zglaszanej_publikacji"
+    ] = Zgloszenie_Publikacji.Rodzaje.ARTYKUL_LUB_MONOGRAFIA
+    page.forms[0]["0-email"] = "123@123.pl"
+
+    page2 = page.forms[0].submit()
+    page2.forms[0]["1-plik"] = (
+        "123.pdf",
+        example_content,
+    )
+
+    page3 = page2.forms[0].submit()
+
+    page4 = page3.forms[0].submit()
+
+    page4.forms[0]["3-opl_pub_cost_free"] = "true"
+
+    with django_capture_on_commit_callbacks(execute=True):  # as callbacks:
+        page4.forms[0].submit().maybe_follow()
+
+    assert Zgloszenie_Publikacji.objects.first().plik.read() == example_content
