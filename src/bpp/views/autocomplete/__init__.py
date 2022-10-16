@@ -702,6 +702,17 @@ class Dyscyplina_Naukowa_PrzypisanieAutocomplete(autocomplete.Select2ListView):
         if autor is None:
             return [(None, "Podaj autora")]
 
+        if not isinstance(autor, str):
+            return [(None, "Podaj autora")]
+
+        if not autor.strip():
+            return [(None, "Podaj autora")]
+
+        try:
+            autor = int(autor)
+        except (TypeError, ValueError):
+            return [(None, "Nieprawidłowe ID autora")]
+
         rok = self.forwarded.get("rok", None)
         if rok is None:
             return [(None, "Podaj rok")]

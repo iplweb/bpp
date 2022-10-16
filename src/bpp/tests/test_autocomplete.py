@@ -134,6 +134,17 @@ def test_dyscyplina_naukowa_przypisanie_autocomplete(
     assert res.json["results"][0]["text"] == "memetyka stosowana"
 
 
+def test_dyscyplina_naukowa_przypisanie_autocomplete_brak_autora(
+    app,
+):
+    res = app.get(
+        reverse("bpp:dyscyplina-naukowa-przypisanie-autocomplete"),
+        params={"forward": '{"autor": "", "rok": "2022"}'},
+    )
+    assert res.status_code == 200
+    assert res.json["results"][0]["text"] == "Podaj autora"
+
+
 def test_dyscyplina_naukowa_przypisanie_autocomplete_brak_drugiej(
     app, autor_jan_kowalski, dyscyplina1, dyscyplina2, rok
 ):
