@@ -4,6 +4,15 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202210.1090 (2022-10-16)
+============================
+
+Naprawione
+----------
+
+- załącz prawidłowo pliki tłumaczeń w pakiecie WHL (bez_numeru)
+
+
 Bpp 202209.1089 (2022-10-16)
 ============================
 
