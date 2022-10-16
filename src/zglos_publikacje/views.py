@@ -221,16 +221,28 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
         def _():
             recipient_list = None
 
-            pierwszy_autor_i_jednostka = (
-                self.object.zgloszenie_publikacji_autor_set.first()
-            )
-            if pierwszy_autor_i_jednostka is not None:
-                if pierwszy_autor_i_jednostka.jednostka_id is not None:
-                    recipient_list = (
-                        Obslugujacy_Zgloszenia_Wydzialow.objects.emaile_dla_wydzialu(
-                            pierwszy_autor_i_jednostka.jednostka.wydzial
-                        )
+            # Wybór autora i jednostki.
+            #
+            # Szukamy pierwszej, nie-obcej jednostki, skupiającej pracowników.
+            # Jeżeli nie znajdziemy takiej, używamy obcej.
+
+            jednostka_do_powiadomienia = None
+
+            for zpa in self.object.zgloszenie_publikacji_autor_set.all().select_related(
+                "jednostka"
+            ):
+                if zpa.jednostka_id is not None:
+                    jednostka_do_powiadomienia = zpa.jednostka
+
+                if jednostka_do_powiadomienia.skupia_pracownikow:
+                    break
+
+            if jednostka_do_powiadomienia is not None:
+                recipient_list = (
+                    Obslugujacy_Zgloszenia_Wydzialow.objects.emaile_dla_wydzialu(
+                        jednostka_do_powiadomienia.wydzial
                     )
+                )
 
             if not recipient_list:
                 recipient_list = zgloszenia_publikacji_emails()

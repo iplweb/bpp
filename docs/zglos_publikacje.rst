@@ -59,7 +59,15 @@ Redagowanie -> Administracja -> Użytkownicy.
 Możemy też rozdzielać powiadomienia wg wydziałów uczelni. Za pomocą opcji Redagowanie -> Administracja ->  Obsługa zgłoszeń
 prac - wydziały możemy dopisać konkretnych użytkowników do konkretnych wydziałów. W sytuacji, gdy zgłaszający
 publikację wypełni przynajmniej jednego autora i jego jednostkę, powiadomienie o tym zgłoszeniu trafi do
-przypisanej osoby - według wydziału jednostki pierwszego autora w zgłoszeniu.
+przypisanej osoby - według wydziału pierwszej, skupiającej pracowników jednostki autora, wg kolejności autorów
+w zgłoszeniu.
+
+Czyli, jeżeli pierwszych kilku autorów ma przypisaną "Obcą jednostkę", a kolejny ma przypisaną jednostkę
+należącą do wydziału X, to powiadamiane będą osoby przypisane do wydziału X.
+
+Nic nie stoi na przeszkodzie, aby przypisać też osoby powiadamiane w przypadku dodania pracy
+do obcej jednostki (przydzielając jej wirtualny wydział np "obcy wydział") - w tej sytuacji
+powiadomienia będą mogły otrzymać osoby gdy np praca nie ma żadnego autora z uczelni.
 
 
 Zwracanie zgłoszenia
