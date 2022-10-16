@@ -4,31 +4,55 @@ Historia zmian
 
 .. towncrier release notes start
 
-dev
----
-* możliwość szybkiego dodawania zgłoszeń prac użytkowników jako
+Bpp 202209.1089 (2022-10-16)
+============================
+
+Naprawione
+----------
+
+- prawidłowe łączenie do kanałów ASGI w sytuacji, gdy nazwa użytkownika zawiera znaki nie-alfanumeryczne lub akcenty (bez_numeru-01)
+- prawidłowe wysyłanie listów e-mail w sytuacji gdy tytuł pracy zawiera nowe linie (moduł ``zglos_publikacje``) (bez_numeru-02)
+- prawidłowo obsługuj pliki dodawane w formularzu zgłoszenia pracy (bez_numeru-03)
+- zmiana w powiadamianiu zgłaszających publikację: użyj nie jednostki pierwszego autora do określenia wydziału (a przez to
+  osoby do powiadomienia), ale użyj pierwszej nie-obcej jednostki, jeżeli taka występuje, do określenia wydziału (a przez
+  to osoby do powiadomienia) (bez_numeru-04)
+- poprawne komunikaty przy braku ID autora w autocomplete dla dyscypliny (bez_numeru-05)
+
+
+Dokumentacja
+------------
+
+- użycie ``towncrier`` do generowania list zmian (bez_numeru-01)
+
+
+Usprawnienie
+------------
+
+- pokazuj aktualną funkcję autora po nazwisku w wyszukiwaniu globalnym (bez_numeru-01)
+- umożliwiaj większy wybór kolumn przy wyświetlaniu tabelki autorów w module redagowania (bez_numeru-02)
+- możliwość szybkiego dodawania zgłoszeń prac użytkowników jako
   wydawnictwo zwarte lub wydawnictwo ciągłe (b/n),
-* możliwość porównywania danych prac z CrossRef API po DOI (b/n),
-* możliwość importu rekordów z CrossRef API - do nowego rekordu wydawnictwa
+- możliwość porównywania danych prac z CrossRef API po DOI (b/n),
+- możliwość importu rekordów z CrossRef API - do nowego rekordu wydawnictwa
   ciągłego (b/n),
-* możliwość eksportowania danych z tabeli autora do formatu XLS (b/n),
-* popraw błąd wyszukiwarki objawiający się problemami z sortowaniem po polu
+- możliwość eksportowania danych z tabeli autora do formatu XLS (b/n),
+- popraw błąd wyszukiwarki objawiający się problemami z sortowaniem po polu
   źródło/wydawnictwo nadrzędne (b/n),
-* poprawiono błąd wysyłania rekordu do PBN w sytuacji, gdy lokalnie nie istnieje
+- poprawiono błąd wysyłania rekordu do PBN w sytuacji, gdy lokalnie nie istnieje
   instytucja lub osoba (b/n),
-* poprawki aplikacji do uruchamiania procesów w tle (b/n),
-* nie wyświetlaj przycisku "pokaż w PBN" gdy autor nie ma określonego odpowiednika w PBN (b/n),
-* szybsze wyświetlanie listy nazwisk dla odpowiedników PBN dla autora (b/n),
-* możliwość wyboru widocznych kolumn w module redagowania (b/n),
-* synchronizacja danych z istniejącymi rekordami z CrossRef API (b/n),
-* możliwość oznaczenia jednostki jako "koło naukowe" (b/n),
-* możliwość oznaczenia afiliacji autora do kierunku studiów (b/n),
-* możliwość wymuszenia wysyłania publikacji afiliujących na uczelnię w sytuacji, gdy jednostka
+- poprawki aplikacji do uruchamiania procesów w tle (b/n),
+- nie wyświetlaj przycisku "pokaż w PBN" gdy autor nie ma określonego odpowiednika w PBN (b/n),
+- szybsze wyświetlanie listy nazwisk dla odpowiedników PBN dla autora (b/n),
+- możliwość wyboru widocznych kolumn w module redagowania (b/n),
+- synchronizacja danych z istniejącymi rekordami z CrossRef API (b/n),
+- możliwość oznaczenia jednostki jako "koło naukowe" (b/n),
+- możliwość oznaczenia afiliacji autora do kierunku studiów (b/n),
+- możliwość wymuszenia wysyłania publikacji afiliujących na uczelnię w sytuacji, gdy jednostka
   nie ma odpowiednika PBN UID a jest poprawną, zatrudniającą autorów jednostką uczelni (b/n),
-* popraw wyszukiwanie autorów w sytuacji, gdy autor o nazwisku o tym samym początku
+- popraw wyszukiwanie autorów w sytuacji, gdy autor o nazwisku o tym samym początku
   posiada więcej prac naukowych, niż autor o krótszym nazwisku (b/n),
-* użyj funkcji do pełnotekstowego wyszukiwania z Django (porzuć .extra) (b/n),
-* pozbądź się wyszukiwania wg podobieństwa z modułu redagowania dla wydawców (b/n),
+- użyj funkcji do pełnotekstowego wyszukiwania z Django (porzuć .extra) (b/n),
+- pozbądź się wyszukiwania wg podobieństwa z modułu redagowania dla wydawców (b/n),
 
 
 202209.1088
