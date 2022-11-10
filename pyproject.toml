@@ -77,7 +77,7 @@ push = false
 
 
 [tool.poetry.dependencies]
-python = ">=3.10,<3.11"
+python = ">=3.10,<4"
 Django = ">=3.2,<3.3"
 arrow = "1.2.1"
 pygad = "2.16.1"
