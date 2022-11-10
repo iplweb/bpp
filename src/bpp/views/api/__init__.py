@@ -99,7 +99,7 @@ class OstatniaJednostkaIDyscyplinaView(View):
                     ret.update(
                         dict(
                             jednostka_id=uczelnia.obca_jednostka_id,
-                            nazwa=uczelnia.obca_jednostka.nzawa,
+                            nazwa=uczelnia.obca_jednostka.nazwa,
                             status="ok",
                         )
                     )
