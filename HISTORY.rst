@@ -4,6 +4,21 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202210.1092 (2022-11-20)
+============================
+
+Naprawione
+----------
+
+- popraw literówkę (bez_numeru)
+
+
+Usprawnienie
+------------
+
+- użyj standardowego polecenia env() zamiast django_getenv() do konfigurowania serwisu (bez_numeru)
+
+
 Bpp 202210.1091 (2022-10-16)
 ============================
 
