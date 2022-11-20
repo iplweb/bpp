@@ -21,7 +21,7 @@ CACHES = {
             f"{REDIS_HOST}:{REDIS_PORT}",  # noqa
         ],
         "OPTIONS": {
-            "DB": REDIS_DB_CACHE,  # noqa
+            "DB": env("DJANGO_BPP_REDIS_DB_CACHE"),  # noqa
             "PARSER_CLASS": "redis.connection.HiredisParser",
             "CONNECTION_POOL_CLASS": "redis.BlockingConnectionPool",
             "CONNECTION_POOL_CLASS_KWARGS": {
@@ -53,7 +53,7 @@ CACHEOPS_DEFAULTS = {"timeout": 60 * 60}
 
 ALLOWED_HOSTS = [
     "127.0.0.1",
-    django_getenv("DJANGO_BPP_HOSTNAME", "localhost"),  # noqa
+    env("DJANGO_BPP_HOSTNAME"),  # noqa
 ]
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

@@ -13,15 +13,12 @@ konfiguracyjne będą stopniowo migrować do tego formatu.
 
 `Przykładowy plik .env.example w repozytorium kodu na GitHub <https://github.com/iplweb/bpp/blob/dev/.env.example>`_
 
-Mimo to, wiele zmiennych nadal funkcjonuje sobie w pliku django_bpp/settings. Wszędzie tam,
-gdzie widzimy funkcję `django_getenv`, pobierana jest nazwa zmiennej środowiskowej:
-
 `Plik django_bpp/settings/base.py repozytorium kodu na GitHub <https://github.com/iplweb/bpp/blob/dev/src/django_bpp/settings/base.py>`_
 
-Można je nadpisać, domyślnie jest to robione w skrypcie `activate` wirtualnego środowiska -
-jeżeli korzystamy z instalacji za pomocą pakietu `bpp-on-ansible <https://github.com/iplweb/bpp-on-ansible>`_ .
-Za zmienne odpowiada plik `config.yml <https://github.com/iplweb/bpp-on-ansible/blob/develop/ansible/roles/bpp-site/tasks/config.yml#L13>`_.
-Większość nazw zmiennych powinna być dość czytelna.
+Zmienne można nadpisać.
+
+Jeżeli zainstalujemy BPP korzystając z pakietu `bpp-on-ansible <https://github.com/iplweb/bpp-on-ansible>`_ ,
+to utworzy on domyślny plik ``.env``. Za zmienne odpowiada plik `config.yml <https://github.com/iplweb/bpp-on-ansible/blob/develop/ansible/roles/bpp-site/tasks/config.yml#L13>`_.
 
 
 Konfiguracja LDAP (ActiveDirectory)
