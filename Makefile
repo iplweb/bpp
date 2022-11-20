@@ -108,7 +108,7 @@ integration-start-from-match-single-thread:
 
 restart-pbn-from-download: remove-pbn-integracja-publikacji-dane integration-start-from-download
 
-new-release:
+upgrade-version:
 	$(eval CUR_VERSION=v$(shell ./bin/bpp-version.py))
 	$(eval NEW_VERSION=$(shell bumpver test $(CUR_VERSION) 'vYYYY0M.BUILD[-TAGNUM]' |head -1|cut -d: -f2))
 	git flow release start $(NEW_VERSION)
@@ -116,7 +116,9 @@ new-release:
 	emacs HISTORY.rst
 	git flow release finish "$(NEW_VERSION)" -p -m "Nowa wersja: $(NEW_VERSION)"
 
-release: tests js-tests new-release bdist_wheel upload
+new-release: upgrade-version bdist_wheel upload
+
+release: tests js-tests new-release
 
 set-version-from-vcs:
 	$(eval CUR_VERSION_VCS=$(shell git describe | sed s/\-/\./ | sed s/\-/\+/))
