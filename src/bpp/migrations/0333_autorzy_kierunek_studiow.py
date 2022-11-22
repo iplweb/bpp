@@ -19,4 +19,8 @@ class Migration(migrations.Migration):
         migrations.RunPython(
             lambda *args, **kw: load_custom_sql("0207_uczelnia_analiza_view")
         ),
+        # To również
+        migrations.RunPython(
+            lambda *args, **kw: load_custom_sql("0308_ewaluacja_upowaznienia_view")
+        ),
     ]
