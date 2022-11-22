@@ -93,6 +93,18 @@ class Autorzy(AutorzyBase):
     autor = models.ForeignKey("Autor", DO_NOTHING)
     dyscyplina_naukowa = models.ForeignKey("Dyscyplina_Naukowa", DO_NOTHING)
 
+    @cached_property
+    def wydawnictwo_autor_class(self):
+        return (
+            ContentType.objects.get(pk=self.id[0])
+            .model_class()
+            .autorzy_set.rel.related_model
+        )
+
+    @cached_property
+    def original(self):
+        return self.wydawnictwo_autor_class.objects.get(pk=self.id[1])
+
     class Meta:
         managed = False
         db_table = "bpp_autorzy_mat"
