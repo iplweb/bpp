@@ -27,6 +27,7 @@ from bpp.models import (
     Autor_Dyscyplina,
     Dyscyplina_Naukowa,
     Jednostka,
+    Kierunek_Studiow,
     Uczelnia,
     Wydawca,
     Zewnetrzna_Baza_Danych,
@@ -127,6 +128,16 @@ class JednostkaAutocomplete(JednostkaMixin, autocomplete.Select2QuerySetView):
         if self.q:
             qs = qs.filter(Q(nazwa__icontains=self.q) | Q(skrot__icontains=self.q))
         return qs.order_by(*Jednostka.objects.get_default_ordering())
+
+
+class KierunekStudiowAutocomplete(autocomplete.Select2QuerySetView):
+    qset = Kierunek_Studiow.objects.all().select_related("wydzial")
+
+    def get_queryset(self):
+        qs = self.qset
+        if self.q:
+            qs = qs.filter(Q(nazwa__icontains=self.q) | Q(skrot__icontains=self.q))
+        return qs.order_by("nazwa")
 
 
 class LataAutocomplete(autocomplete.Select2QuerySetView):

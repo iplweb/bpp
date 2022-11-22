@@ -6,12 +6,14 @@ from datetime import timedelta
 
 import environ
 import sentry_sdk
-from django.core.exceptions import DisallowedHost, ImproperlyConfigured
+from django.core.exceptions import DisallowedHost
 from sentry_sdk.integrations.django import DjangoIntegration
 
 from bpp.util import slugify_function
 
 from django_bpp.version import VERSION
+
+SECRET_KEY_UNSET = "Please set the DJANGO_BPP_SECRET_KEY variable."
 
 # Ponieważ konieczna jest konfiguracja django-ldap-auth i potrzebne będą kolejne zmienne
 # środowiskowe, ponieważ z Pipenv przeszedłem na poetry, ponieważ tych konfiguracji i
@@ -47,31 +49,57 @@ env = environ.Env(
     #
     SENTRYSDK_CONFIG_URL=(str, None),
     SENTRYSDK_TRACES_SAMPLE_RATE=(float, 0.2),
+    #
+    # Konfiguracja hosta Redisa
+    #
+    DJANGO_BPP_REDIS_HOST=(str, "localhost"),
+    DJANGO_BPP_REDIS_PORT=(int, 6379),
+    #
+    # Konfiguracja baz Redisa (numerki)
+    #
+    DJANGO_BPP_REDIS_DB_BROKER=(int, 1),
+    DJANGO_BPP_REDIS_DB_CELERY=(int, 2),
+    DJANGO_BPP_REDIS_DB_SESSION=(int, 4),
+    DJANGO_BPP_REDIS_DB_CACHE=(int, 5),
+    DJANGO_BPP_REDIS_DB_LOCKS=(int, 6),
+    #
+    # Konfiguracja Django
+    #
+    DJANGO_BPP_HOSTNAME=(str, "localhost"),
+    DJANGO_BPP_DB_NAME=(str, "bpp"),
+    DJANGO_BPP_DB_USER=(str, "postgres"),
+    DJANGO_BPP_DB_PASSWORD=(str, "password"),
+    DJANGO_BPP_DB_HOST=(str, "localhost"),
+    DJANGO_BPP_DB_PORT=(int, 5432),
+    DJANGO_BPP_SECRET_KEY=(str, SECRET_KEY_UNSET),
+    DJANGO_BPP_MEDIA_ROOT=(str, os.path.join(os.getenv("HOME", "C:/"), "bpp-media")),
+    #
+    # Konfiguracja wymuszania zmiany haseł
+    #
+    DJANGO_BPP_USE_PASSWORD_HISTORY=(bool, True),
+    DJANGO_BPP_PASSWORD_HISTORY_COUNT=(int, 12),
+    #
+    # Konfiguracja wygaszania sesji
+    #
+    DJANGO_BPP_SESSION_SECURITY_WARN_AFTER=(int, 540),
+    DJANGO_BPP_SESSION_SECURITY_EXPIRE_AFTER=(int, 600),
+    #
+    # Konfiguracja BPP
+    #
+    DJANGO_BPP_UZYWAJ_PUNKTACJI_WEWNETRZNEJ=(bool, True),
+    DJANGO_BPP_ENABLE_NEW_REPORTS=(int, 1),
+    DJANGO_BPP_PUNKTUJ_MONOGRAFIE=(bool, True),
+    #
+    # Konfiguracja usług Google
+    #
+    DJANGO_BPP_GOOGLE_ANALYTICS_PROPERTY_ID=(str, None),
+    DJANGO_BPP_GOOGLE_VERIFICATION_CODE=(str, "1111111111111111"),
 )
 
 ENVFILE_PATH = os.path.join(os.path.expanduser("~"), ".env")
 
 if os.path.exists(ENVFILE_PATH) and os.path.isfile(ENVFILE_PATH):
     environ.Env.read_env(ENVFILE_PATH)
-
-#
-# "Stara" funkcja django_getenv, pobierająca zmienne srodowiskowe
-#
-
-
-def django_getenv(varname, default=None, type=str):
-    value = os.getenv(varname, default)
-
-    if value is None:
-        raise ImproperlyConfigured(f"Please set {varname} variable")
-
-    try:
-        value = type(value)
-    except (ValueError, TypeError):
-        raise ImproperlyConfigured(f"Cannot convert variable {varname} to type {type}")
-
-    return value
-
 
 #
 # Ustaw Sentry
@@ -127,9 +155,6 @@ STATICFILES_FINDERS = (
     "compressor.finders.CompressorFinder",
     #    'django.contrib.staticfiles.finders.DefaultStorageFinder',
 )
-
-# Make this unique, and don't share it with anybody.
-SECRET_KEY = "=6uqi1)(qnzjo8q@-@m#egd8v#+zac6feh2h-b&amp;=3bczpfqxxd"
 
 TEMPLATES = [
     {
@@ -396,30 +421,23 @@ COMPRESS_OFFLINE_CONTEXT = [
     },
 ]
 
-# Domyslnie, redis na Ubuntu pozwala na 16 baz danych
-REDIS_DB_BROKER = django_getenv("DJANGO_BPP_REDIS_DB_BROKER", 1, int)
-REDIS_DB_CELERY = django_getenv("DJANGO_BPP_REDIS_DB_CELERY", 2, int)
-REDIS_DB_SESSION = django_getenv("DJANGO_BPP_REDIS_DB_SESSION", 4, int)
-REDIS_DB_CACHE = django_getenv("DJANGO_BPP_REDIS_DB_CACHE", 5, int)
-REDIS_DB_LOCKS = django_getenv("DJANGO_BPP_REDIS_DB_LOCKS", 6, int)
-
 ALLOWED_HOSTS = [
     "127.0.0.1",
     "test.unexistenttld",
-    django_getenv("DJANGO_BPP_HOSTNAME", "localhost"),
+    env("DJANGO_BPP_HOSTNAME"),
 ]
 
-REDIS_HOST = django_getenv("DJANGO_BPP_REDIS_HOST", "localhost")
-REDIS_PORT = int(django_getenv("DJANGO_BPP_REDIS_PORT", "6379"))
+REDIS_HOST = env("DJANGO_BPP_REDIS_HOST")
+REDIS_PORT = env("DJANGO_BPP_REDIS_PORT")
 
-BROKER_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB_BROKER}"
+BROKER_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}/{env('DJANGO_BPP_REDIS_DB_BROKER')}"
 # CELERY_RESULT_BACKEND = BROKER_URL
 CELERY_RESULT_BACKEND = "django-db"
 
 #
 SESSION_REDIS_HOST = REDIS_HOST
 SESSION_REDIS_PORT = REDIS_PORT
-SESSION_REDIS_DB = REDIS_DB_SESSION
+SESSION_REDIS_DB = env("DJANGO_BPP_REDIS_DB_SESSION")
 SESSION_REDIS_PREFIX = "session"
 
 ALLOWED_TAGS = ("b", "em", "i", "strong", "strike", "u", "sup", "font", "sub")
@@ -427,23 +445,14 @@ ALLOWED_TAGS = ("b", "em", "i", "strong", "strike", "u", "sup", "font", "sub")
 SESSION_SECURITY_PASSIVE_URLS = ["/messages/"]
 
 
-def int_or_None(value):
-    try:
-        return int(value)
-    except ValueError:
-        return ""
-
-
 DATABASES = {
     "default": {
-        "ENGINE": django_getenv(
-            "DJANGO_BPP_DB_ENGINE", "django.db.backends.postgresql_psycopg2"
-        ),
-        "NAME": django_getenv("DJANGO_BPP_DB_NAME", "bpp"),
-        "USER": django_getenv("DJANGO_BPP_DB_USER", "postgres"),
-        "PASSWORD": django_getenv("DJANGO_BPP_DB_PASSWORD", "password"),
-        "HOST": django_getenv("DJANGO_BPP_DB_HOST", "localhost"),
-        "PORT": int_or_None(django_getenv("DJANGO_BPP_DB_PORT", "5432")),
+        "ENGINE": "django.db.backends.postgresql_psycopg2",
+        "NAME": env("DJANGO_BPP_DB_NAME"),
+        "USER": env("DJANGO_BPP_DB_USER"),
+        "PASSWORD": env("DJANGO_BPP_DB_PASSWORD"),
+        "HOST": env("DJANGO_BPP_DB_HOST"),
+        "PORT": env("DJANGO_BPP_DB_PORT"),
     },
 }
 
@@ -452,7 +461,7 @@ if DATABASES["default"]["HOST"] in ["localhost", "127.0.0.1"]:
     options["sslmode"] = "disable"
     DATABASES["default"]["OPTIONS"] = options
 
-SECRET_KEY = django_getenv("DJANGO_BPP_SECRET_KEY")
+SECRET_KEY = env("DJANGO_BPP_SECRET_KEY")
 
 SENDFILE_URL = MEDIA_URL
 
@@ -463,9 +472,9 @@ PASSWORD_DURATION_SECONDS = int(
     os.getenv("DJANGO_BPP_PASSWORD_DURATION_SECONDS", str((60 * 60 * 24) * 30))
 )
 
-PASSWORD_USE_HISTORY = bool(int(os.getenv("DJANGO_BPP_USE_PASSWORD_HISTORY", "1")))
+PASSWORD_USE_HISTORY = env("DJANGO_BPP_USE_PASSWORD_HISTORY")
 
-PASSWORD_HISTORY_COUNT = int(os.getenv("DJANGO_BPP_PASSWORD_HISTORY_COUNT", "12"))
+PASSWORD_HISTORY_COUNT = env("DJANGO_BPP_PASSWORD_HISTORY_COUNT")
 
 # wymagane przez django-password-policies
 SESSION_SERIALIZER = "django.contrib.sessions.serializers.PickleSerializer"
@@ -502,41 +511,31 @@ CAN_LOGIN_AS = can_login_as
 
 #
 
-MEDIA_ROOT = django_getenv("DJANGO_BPP_MEDIA_ROOT", os.getenv("HOME", "C:/bpp-media"))
+MEDIA_ROOT = env("DJANGO_BPP_MEDIA_ROOT")
 
 SENDFILE_ROOT = MEDIA_ROOT
 
-GOOGLE_ANALYTICS_PROPERTY_ID = django_getenv(
-    "DJANGO_BPP_GOOGLE_ANALYTICS_PROPERTY_ID", ""
-)
+GOOGLE_ANALYTICS_PROPERTY_ID = env("DJANGO_BPP_GOOGLE_ANALYTICS_PROPERTY_ID")
 
 ROBOTS_SITEMAP_VIEW_NAME = "sitemap"
 
-WEBMASTER_VERIFICATION = {
-    "google": django_getenv("DJANGO_BPP_GOOGLE_VERIFICATION_CODE", "1111111111111111"),
-}
+WEBMASTER_VERIFICATION = {"google": env("DJANGO_BPP_GOOGLE_VERIFICATION_CODE")}
 
 EXCLUDE_FROM_MINIFYING = ["^google.*html$"]
 
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 
-UZYWAJ_PUNKTACJI_WEWNETRZNEJ = bool(
-    int(django_getenv("DJANGO_BPP_UZYWAJ_PUNKTACJI_WEWNETRZNEJ", "1"))
-)
+UZYWAJ_PUNKTACJI_WEWNETRZNEJ = env("DJANGO_BPP_UZYWAJ_PUNKTACJI_WEWNETRZNEJ")
 
 THEME_NAME = os.getenv("DJANGO_BPP_THEME_NAME", "app-blue")
 
-ENABLE_NEW_REPORTS = int(os.getenv("DJANGO_BPP_ENABLE_NEW_REPORTS", "1"))
+ENABLE_NEW_REPORTS = env("DJANGO_BPP_ENABLE_NEW_REPORTS")
 
-SESSION_SECURITY_WARN_AFTER = int(
-    os.getenv("DJANGO_BPP_SESSION_SECURITY_WARN_AFTER", "540")
-)
+SESSION_SECURITY_WARN_AFTER = env("DJANGO_BPP_SESSION_SECURITY_WARN_AFTER")
 
-SESSION_SECURITY_EXPIRE_AFTER = int(
-    os.getenv("DJANGO_BPP_SESSION_SECURITY_EXPIRE_AFTER", "600")
-)
+SESSION_SECURITY_EXPIRE_AFTER = env("DJANGO_BPP_SESSION_SECURITY_EXPIRE_AFTER")
 
-PUNKTUJ_MONOGRAFIE = bool(int(os.getenv("DJANGO_BPP_PUNKTUJ_MONOGRAFIE", "1")))
+PUNKTUJ_MONOGRAFIE = env("DJANGO_BPP_PUNKTUJ_MONOGRAFIE")
 
 STATICSITEMAPS_ROOT_SITEMAP = "django_bpp.sitemaps.django_bpp_sitemaps"
 STATICSITEMAPS_REFRESH_AFTER = 24 * 60

@@ -66,6 +66,7 @@ class AutorzyBase(models.Model):
     typ_odpowiedzialnosci = models.ForeignKey("Typ_Odpowiedzialnosci", DO_NOTHING)
     zapisany_jako = models.TextField()
     dyscyplina_naukowa = models.ForeignKey("Dyscyplina_Naukowa", DO_NOTHING)
+    kierunek_studiow = models.ForeignKey("Kierunek_Studiow", DO_NOTHING)
 
     afiliuje = models.BooleanField()
     zatrudniony = models.BooleanField()
@@ -92,6 +93,19 @@ class Autorzy(AutorzyBase):
     typ_odpowiedzialnosci = models.ForeignKey("Typ_Odpowiedzialnosci", DO_NOTHING)
     autor = models.ForeignKey("Autor", DO_NOTHING)
     dyscyplina_naukowa = models.ForeignKey("Dyscyplina_Naukowa", DO_NOTHING)
+    kierunek_studiow = models.ForeignKey("Kierunek_Studiow", DO_NOTHING)
+
+    @cached_property
+    def wydawnictwo_autor_class(self):
+        return (
+            ContentType.objects.get(pk=self.id[0])
+            .model_class()
+            .autorzy_set.rel.related_model
+        )
+
+    @cached_property
+    def original(self):
+        return self.wydawnictwo_autor_class.objects.get(pk=self.id[1])
 
     class Meta:
         managed = False

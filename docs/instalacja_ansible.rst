@@ -5,15 +5,15 @@ Instalacja
 ==========
 
 
-Wersja stabilna
----------------
+Instalacja na serwerze przy pomocy Ansible
+------------------------------------------
 
-Aby zainstalować BPP, skorzystaj z dołączonych do kodu źródłowego skryptów
-ansible. Przyjrzyj się na cel ``production`` w pliku ``Makefile`` znajdującym
-się w głównym katalogu projektu. 
+Aby zainstalować BPP, skorzystaj z repozytorium https://github.com/iplweb/bpp-on-ansible/
+i załączonej tam dokumentacji.
 
-Ze źródeł
----------
+
+Instalacja ze źródeł
+--------------------
 
 Kod źródłowy projektu BPP możesz znaleźć w  `repozytorium GitHub`_.
 
@@ -36,9 +36,7 @@ Lub pobrać `archiwum tar`_:
 Obraz maszyny wirtualnej
 ------------------------
 
-Niekiedy udostępniane są obrazy maszyny wirtualnej w formacie OVA, zawierające
+Obrazy maszyny wirtualnej w formacie OVA, zawierające
 system operacyjny Linux z zainstalowanym oprogramowaniem Bibliografia Publikacji
-Pracowników. Jeżeli chcesz dowiedzieć się więcej, zajrzyj na stronę
-http://bpp.iplweb.pl/pobierz/ . Taki sposób uruchomienia oprogramowania
-pozwala zapoznać się z jego możliwościami, jednakże nie polecamy stosowania
-go w produkcji.
+Pracowników, udostępniane były kiedys. Jeżeli życzysz sobie pomocy w wygenerowaniu
+takiego obrazu, prosimy o kontakt.

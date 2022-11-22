@@ -64,7 +64,7 @@ class MyMultiseekResults(MultiseekResults):
                 "punktacja_wewnetrzna",
                 "charakter_formalny__nazwa",
                 "typ_kbn__nazwa",
-                "zrodlo_lub_nadrzedne",
+                # "zrodlo_lub_nadrzedne",
             )
 
         #

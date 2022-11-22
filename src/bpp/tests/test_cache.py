@@ -15,6 +15,16 @@ from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, Wydawnictwo_Ciagle
 from bpp.models.zrodlo import Zrodlo
 
 
+@pytest.mark.django_db
+def test_Autorzy_original(wydawnictwo_ciagle_z_dwoma_autorami):
+    assert (
+        Autorzy.objects.first().original.pk
+        in wydawnictwo_ciagle_z_dwoma_autorami.autorzy_set.all().values_list(
+            "pk", flat=True
+        )
+    )
+
+
 def test_opis_bibliograficzny_wydawnictwo_ciagle(
     transactional_db, standard_data, denorms, autor_jan_kowalski, jednostka
 ):

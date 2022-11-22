@@ -58,6 +58,7 @@ from bpp.models import (
     Dyscyplina_Naukowa,
     Jednostka,
     Jezyk,
+    Kierunek_Studiow,
     SlowaKluczoweView,
     Typ_Odpowiedzialnosci,
     Uczelnia,
@@ -931,6 +932,28 @@ class RodzajKonferenckjiQueryObject(BppMultiseekVisibilityMixin, ValueListQueryO
         return q
 
 
+class RodzajJednostkiQueryObject(BppMultiseekVisibilityMixin, ValueListQueryObject):
+    label = "Rodzaj jednostki"
+    field_name = "rodzaj_jednostki"
+    values = Jednostka.RODZAJ_JEDNOSTKI.labels
+
+    def value_from_web(self, value):
+        if value not in self.values:
+            return
+        return value
+
+    def real_query(self, value, operation):
+        if value == Jednostka.RODZAJ_JEDNOSTKI.NORMALNA.label:
+            tk = Jednostka.RODZAJ_JEDNOSTKI.NORMALNA.value
+        else:
+            tk = Jednostka.RODZAJ_JEDNOSTKI.KOLO_NAUKOWE.value
+
+        q = Q(**{"autorzy__jednostka__rodzaj_jednostki": tk})
+        if operation == DIFFERENT:
+            return ~q
+        return q
+
+
 class ObcaJednostkaQueryObject(BppMultiseekVisibilityMixin, BooleanQueryObject):
     label = "Obca jednostka"
     field_name = "obca_jednostka"
@@ -1058,6 +1081,37 @@ class PublicDostepDniaQueryObject(BppMultiseekVisibilityMixin, BooleanQueryObjec
         return ret
 
 
+class KierunekStudiowQueryObject(
+    BppMultiseekVisibilityMixin, ForeignKeyDescribeMixin, AutocompleteQueryObject
+):
+    label = "Kierunek studiów"
+    type = AUTOCOMPLETE
+    ops = [
+        EQUAL,
+        DIFFERENT,
+        UNION,
+    ]
+    model = Kierunek_Studiow
+    search_fields = ["nazwa"]
+    field_name = "kierunek_studiow"
+    url = "bpp:kierunek-studiow-autocomplete"
+
+    def real_query(self, value, operation):
+        if operation in EQUALITY_OPS_ALL:
+            ret = Q(autorzy__kierunek_studiow=value)
+
+        elif operation in UNION_OPS_ALL:
+            q = Autorzy.objects.filter(kierunek_studiow=value).values("rekord_id")
+            ret = Q(pk__in=q)
+
+        else:
+            raise UnknownOperation(operation)
+
+        if operation in DIFFERENT_ALL:
+            return ~ret
+        return ret
+
+
 multiseek_fields = [
     TytulPracyQueryObject(),
     NazwiskoIImieQueryObject(),
@@ -1119,6 +1173,8 @@ multiseek_fields = [
     StronaWWWUstawionaQueryObject(),
     DOIQueryObject(),
     AktualnaJednostkaAutoraQueryObject(),
+    RodzajJednostkiQueryObject(),
+    KierunekStudiowQueryObject(),
 ]
 
 

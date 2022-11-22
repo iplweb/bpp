@@ -20,8 +20,8 @@
         </th>
         <td>
             {{ praca.tekst_przed_pierwszym_autorem|default:"" }}
-            {% for autor in praca.autorzy_dla_opisu %}{% ifchanged autor.typ_odpowiedzialnosci %}[
-                {{ autor.typ_odpowiedzialnosci.skrot|upper }}] {% endifchanged %}{% if links == "admin" %}
+            {% for autor in praca.autorzy_dla_opisu %}{% ifchanged autor.typ_odpowiedzialnosci %}
+                [{{ autor.typ_odpowiedzialnosci.skrot|upper }}] {% endifchanged %}{% if links == "admin" %}
                 <a href="{% url "admin:bpp_autor_change" autor.autor.pk %}">
                 {% else %}{% if links == "normal" %}<a href="{% url "bpp:browse_autor" autor.autor.slug %}">{% else %}
                 {% endif %}{% endif %}{% if links %}{{ autor.zapisany_jako }}{% else %}
@@ -47,7 +47,7 @@
                     <a href="{% url "bpp:browse_praca" "wydawnictwo_zwarte" praca.wydawnictwo_nadrzedne.pk %}">
                 {% endif %}
                 {{ praca.informacje|default:""|znak_na_koncu:", "|safe }}
-                {{ praca.szczegoly|safe }}
+                {{ praca.szczegoly|default:""|safe }}
                 {% if praca.wydawnictwo_nadrzedne %}
                     </a>
                 {% endif %}

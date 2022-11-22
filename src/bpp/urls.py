@@ -38,6 +38,7 @@ from bpp.views.autocomplete import (
     Dyscyplina_NaukowaAutocomplete,
     GlobalNavigationAutocomplete,
     JednostkaAutocomplete,
+    KierunekStudiowAutocomplete,
     KonferencjaAutocomplete,
     LataAutocomplete,
     OrganPrzyznajacyNagrodyAutocomplete,
@@ -355,6 +356,11 @@ urlpatterns = [
         r"^jednostka-widoczna-autocomplete/$",
         WidocznaJednostkaAutocomplete.as_view(),
         name="jednostka-widoczna-autocomplete",
+    ),
+    url(
+        r"^kierunek-studiow-autocomplete/$",
+        KierunekStudiowAutocomplete.as_view(),
+        name="kierunek-studiow-autocomplete",
     ),
     url(
         r"^jednostka-autocomplete/$",

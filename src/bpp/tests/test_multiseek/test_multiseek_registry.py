@@ -9,6 +9,7 @@ from bpp import const
 from bpp.models import (
     Autor_Dyscyplina,
     Dyscyplina_Naukowa,
+    Jednostka,
     Typ_Odpowiedzialnosci,
     Zewnetrzna_Baza_Danych,
 )
@@ -30,6 +31,7 @@ from bpp.multiseek_registry import (
     DyscyplinaQueryObject,
     ForeignKeyDescribeMixin,
     JednostkaQueryObject,
+    KierunekStudiowQueryObject,
     LicencjaOpenAccessUstawionaQueryObject,
     LiczbaAutorowQueryObject,
     NazwiskoIImieQueryObject,
@@ -43,6 +45,7 @@ from bpp.multiseek_registry import (
     PierwszeNazwiskoIImie,
     PierwszyWydzialQueryObject,
     PublicDostepDniaQueryObject,
+    RodzajJednostkiQueryObject,
     RodzajKonferenckjiQueryObject,
     SlowaKluczoweQueryObject,
     StronaWWWUstawionaQueryObject,
@@ -466,3 +469,31 @@ def test_SlowaKluczoweQueryObject(wydawnictwo_zwarte):
 def test_AktualnaJednostkaAutoraQueryObject(jednostka, param):
     res = AktualnaJednostkaAutoraQueryObject().real_query(jednostka, param)
     assert res is not None
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "param",
+    [
+        logic.EQUAL,
+        logic.DIFFERENT,
+    ],
+)
+def test_RodzajJednostkiQueryObject(param):
+    ret = RodzajJednostkiQueryObject().real_query(
+        Jednostka.RODZAJ_JEDNOSTKI.NORMALNA.label, param
+    )
+    assert Rekord.objects.filter(*(ret,)).count() == 0
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "param",
+    [
+        logic.EQUAL,
+        logic.DIFFERENT,
+    ],
+)
+def test_KierunekStudiowQueryObject(param, kierunek_studiow):
+    ret = KierunekStudiowQueryObject().real_query(kierunek_studiow, param)
+    assert Rekord.objects.filter(*(ret,)).count() == 0

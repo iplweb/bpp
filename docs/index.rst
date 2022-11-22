@@ -7,6 +7,7 @@ Contents:
    :maxdepth: 2
 
    readme
+   instalacja_ansible
    edycja_uczelnia
    edycja_wydawnictwo
    edycja_autor
