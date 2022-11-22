@@ -86,3 +86,13 @@ def test_multiseek_sortowanie_wg_zrodlo_lub_nadrzedne(
     with wait_for_page_load(browser):
         browser.find_by_id("multiseek-szukaj").click()
     assert "Błąd serwera" not in browser.html
+
+
+def test_multiseek_tabelka_wyswietlanie(browser, live_server):
+    with wait_for_page_load(browser):
+        browser.visit(live_server.url + reverse("multiseek:index"))
+
+    browser.find_by_id("id_report_type").select(1)  # tabela
+    with wait_for_page_load(browser):
+        browser.find_by_id("multiseek-szukaj").click()
+    assert "błąd serwera" not in browser.html

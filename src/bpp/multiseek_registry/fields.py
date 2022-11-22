@@ -58,6 +58,7 @@ from bpp.models import (
     Dyscyplina_Naukowa,
     Jednostka,
     Jezyk,
+    Kierunek_Studiow,
     SlowaKluczoweView,
     Typ_Odpowiedzialnosci,
     Uczelnia,
@@ -1080,6 +1081,37 @@ class PublicDostepDniaQueryObject(BppMultiseekVisibilityMixin, BooleanQueryObjec
         return ret
 
 
+class KierunekStudiowQueryObject(
+    BppMultiseekVisibilityMixin, ForeignKeyDescribeMixin, AutocompleteQueryObject
+):
+    label = "Kierunek studiów"
+    type = AUTOCOMPLETE
+    ops = [
+        EQUAL,
+        DIFFERENT,
+        UNION,
+    ]
+    model = Kierunek_Studiow
+    search_fields = ["nazwa"]
+    field_name = "kierunek_studiow"
+    url = "bpp:kierunek-studiow-autocomplete"
+
+    def real_query(self, value, operation):
+        if operation in EQUALITY_OPS_ALL:
+            ret = Q(autorzy__kierunek_studiow=value)
+
+        elif operation in UNION_OPS_ALL:
+            q = Autorzy.objects.filter(kierunek_studiow=value).values("rekord_id")
+            ret = Q(pk__in=q)
+
+        else:
+            raise UnknownOperation(operation)
+
+        if operation in DIFFERENT_ALL:
+            return ~ret
+        return ret
+
+
 multiseek_fields = [
     TytulPracyQueryObject(),
     NazwiskoIImieQueryObject(),
@@ -1142,6 +1174,7 @@ multiseek_fields = [
     DOIQueryObject(),
     AktualnaJednostkaAutoraQueryObject(),
     RodzajJednostkiQueryObject(),
+    KierunekStudiowQueryObject(),
 ]
 
 

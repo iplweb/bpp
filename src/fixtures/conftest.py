@@ -30,6 +30,7 @@ from bpp.fixtures import get_openaccess_data
 from bpp.models import (
     Autor_Dyscyplina,
     Dyscyplina_Naukowa,
+    Kierunek_Studiow,
     Wydawca,
     Zewnetrzna_Baza_Danych,
 )
@@ -1024,3 +1025,14 @@ def browser_patches():
 def csrf_exempt_django_admin_app(django_app_factory, admin_user):
     app = django_app_factory(csrf_checks=False)
     return _webtest_login(app, "admin", "password")
+
+
+@pytest.mark.django_db
+@pytest.fixture
+def kierunek_studiow(wydzial):
+    return Kierunek_Studiow.objects.get_or_create(
+        wydzial=wydzial,
+        nazwa="memetyka użytkowa",
+        skrot="mem. uż.",
+        opis="testowy kierunek studiów",
+    )[0]

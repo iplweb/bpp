@@ -1,9 +1,4 @@
-import json
-
-import pytest
-from django.conf import settings
 from django.urls import reverse
-from multiseek.views import MULTISEEK_SESSION_KEY
 
 
 def test_multiseek_status_korekty_ukrywanie(
@@ -26,19 +21,3 @@ def test_multiseek_status_korekty_ukrywanie(
 
     res = admin_client.get(reverse("multiseek:results"))
     assert b"Rezultaty wyszukiwania (3" in res.content
-
-
-@pytest.mark.django_db
-def test_multiseek_tabelka_wyswietlanie(
-    webtest_app,
-    wydawnictwo_ciagle,
-):
-
-    webtest_app.set_cookie(settings.SESSION_COOKIE_NAME, "whatever")
-    page = webtest_app.get(reverse("multiseek:results"))
-
-    webtest_app.session[MULTISEEK_SESSION_KEY] = json.dumps({"report_type": "1"})
-    page = webtest_app.get(reverse("multiseek:results"))
-
-    page.showbrowser()
-    raise NotImplementedError

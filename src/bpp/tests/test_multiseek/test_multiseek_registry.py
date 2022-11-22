@@ -31,6 +31,7 @@ from bpp.multiseek_registry import (
     DyscyplinaQueryObject,
     ForeignKeyDescribeMixin,
     JednostkaQueryObject,
+    KierunekStudiowQueryObject,
     LicencjaOpenAccessUstawionaQueryObject,
     LiczbaAutorowQueryObject,
     NazwiskoIImieQueryObject,
@@ -482,4 +483,17 @@ def test_RodzajJednostkiQueryObject(param):
     ret = RodzajJednostkiQueryObject().real_query(
         Jednostka.RODZAJ_JEDNOSTKI.NORMALNA.label, param
     )
+    assert Rekord.objects.filter(*(ret,)).count() == 0
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "param",
+    [
+        logic.EQUAL,
+        logic.DIFFERENT,
+    ],
+)
+def test_KierunekStudiowQueryObject(param, kierunek_studiow):
+    ret = KierunekStudiowQueryObject().real_query(kierunek_studiow, param)
     assert Rekord.objects.filter(*(ret,)).count() == 0

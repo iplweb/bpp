@@ -10,17 +10,21 @@
 
 BASEDIR=$(dirname "$0")
 
+LOCAL_DATABASE_NAME=bpp
+
 pkill -TERM -f "src/manage.py runserver" || true
 
 sleep 1
 
-dropdb --if-exists bpp
+dropdb --if-exists $LOCAL_DATABASE_NAME
 
-pg_restore -j 6 -d template1  -C "$1" || true
+createdb $LOCAL_DATABASE_NAME
 
-for tbl in `psql -qAt -c "select tablename from pg_tables where schemaname = 'public';" bpp` ; do  psql -c "alter table \"$tbl\" owner to postgres" bpp ; done
+pg_restore -j 6 -d $LOCAL_DATABASE_NAME  "$1" || true
 
-for tbl in `psql -qAt -c "select sequence_name from information_schema.sequences where sequence_schema = 'public';" bpp` ; do  psql -c "alter sequence \"$tbl\" owner to postgres" bpp ; done
+for tbl in `psql -qAt -c "select tablename from pg_tables where schemaname = 'public';" $LOCAL_DATABASE_NAME` ; do  psql -c "alter table \"$tbl\" owner to postgres" $LOCAL_DATABASE_NAME ; done
+
+for tbl in `psql -qAt -c "select sequence_name from information_schema.sequences where sequence_schema = 'public';" $LOCAL_DATABASE_NAME` ; do  psql -c "alter sequence \"$tbl\" owner to postgres" $LOCAL_DATABASE_NAME ; done
 
 cd "$BASEDIR/.."
 python src/manage.py migrate
