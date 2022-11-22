@@ -3,7 +3,7 @@ import sys
 from django.core.management import BaseCommand, CommandError, CommandParser
 from django.db import transaction
 
-from bpp.models import Autorzy, Jednostka, Kierunek_Studiow, Wydzial
+from bpp.models import Autorzy, AutorzyView, Jednostka, Kierunek_Studiow, Wydzial
 
 
 class Command(BaseCommand):
@@ -56,3 +56,12 @@ class Command(BaseCommand):
 
                 jednostka.delete()
             wydzialokierunek.delete()
+
+        # Skasuj nieuzywane kierunki studiow
+        wykorzystane = AutorzyView.objects.values_list(
+            "kierunek_studiow_id", flat=True
+        ).distinct()
+
+        for elem in Kierunek_Studiow.objects.all():
+            if elem.pk not in wykorzystane:
+                elem.delete()
