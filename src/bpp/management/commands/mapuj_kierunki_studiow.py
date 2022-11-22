@@ -1,6 +1,6 @@
 import sys
 
-from django.core.management import BaseCommand
+from django.core.management import BaseCommand, CommandError, CommandParser
 from django.db import transaction
 
 from bpp.models import Autorzy, Jednostka, Kierunek_Studiow, Wydzial
@@ -9,8 +9,25 @@ from bpp.models import Autorzy, Jednostka, Kierunek_Studiow, Wydzial
 class Command(BaseCommand):
     help = 'Mapuje kierunki studiów z zadanego "wydziału" i wyświetla zmienione rekordy'
 
+    def add_arguments(self, parser: CommandParser):
+
+        parser.add_argument(
+            "--jednostka",
+            default="Uniwersytet Medyczny w Lublinie",
+            help="Jednostka, do której zostaną przypisani przemapowywani studenci",
+        )
+
     @transaction.atomic
-    def handle(self, *args, **options):
+    def handle(self, jednostka, *args, **options):
+        jednostka_id = -1
+        try:
+            jednostka_id = Jednostka.objects.get(nazwa=jednostka).pk
+        except Jednostka.DoesNotExist:
+            raise CommandError(
+                f'Brak jednostki o nazwie "{jednostka}". '
+                f"Uzyj parametru --jednostka i podaj inną nazwę"
+            )
+
         for wydzialokierunek in Wydzial.objects.filter(nazwa__startswith="Studenci - "):
             wnazwa = wydzialokierunek.nazwa.replace("Studenci - ", "").strip()
             try:
@@ -27,13 +44,15 @@ class Command(BaseCommand):
                     nazwa=nazwa, skrot=skrot, wydzial=wydzial
                 )[0]
 
-                for wa in Autorzy.objects.filter(jednostka=jednostka):
-                    wa.jednostka_id = -1
+                for wa in [
+                    a.original for a in Autorzy.objects.filter(jednostka=jednostka)
+                ]:
+                    wa.jednostka_id = jednostka_id
                     wa.kierunek_studiow = kierunek_studiow
                     print(
                         f"{wa.rekord.tytul_oryginalny}\t{wa.autor}\t{kierunek_studiow.nazwa}"
                     )
                     wa.save()
 
-            jednostka.delete()
-        wydzialokierunek.delete()
+                jednostka.delete()
+            wydzialokierunek.delete()
