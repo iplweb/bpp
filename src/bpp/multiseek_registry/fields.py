@@ -931,6 +931,28 @@ class RodzajKonferenckjiQueryObject(BppMultiseekVisibilityMixin, ValueListQueryO
         return q
 
 
+class RodzajJednostkiQueryObject(BppMultiseekVisibilityMixin, ValueListQueryObject):
+    label = "Rodzaj jednostki"
+    field_name = "rodzaj_jednostki"
+    values = Jednostka.RODZAJ_JEDNOSTKI.labels
+
+    def value_from_web(self, value):
+        if value not in self.values:
+            return
+        return value
+
+    def real_query(self, value, operation):
+        if value == Jednostka.RODZAJ_JEDNOSTKI.NORMALNA.label:
+            tk = Jednostka.RODZAJ_JEDNOSTKI.NORMALNA.value
+        else:
+            tk = Jednostka.RODZAJ_JEDNOSTKI.KOLO_NAUKOWE.value
+
+        q = Q(**{"autorzy__jednostka__rodzaj_jednostki": tk})
+        if operation == DIFFERENT:
+            return ~q
+        return q
+
+
 class ObcaJednostkaQueryObject(BppMultiseekVisibilityMixin, BooleanQueryObject):
     label = "Obca jednostka"
     field_name = "obca_jednostka"
@@ -1119,6 +1141,7 @@ multiseek_fields = [
     StronaWWWUstawionaQueryObject(),
     DOIQueryObject(),
     AktualnaJednostkaAutoraQueryObject(),
+    RodzajJednostkiQueryObject(),
 ]
 
 
