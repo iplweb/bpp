@@ -78,7 +78,7 @@ class RaportEwaluacjaUpowaznienia(
             ("Od roku:", self.data["od_roku"]),
             ("Do roku:", self.data["do_roku"]),
             ("Upoważnienie PBN:", self.data["upowaznienie_pbn"]),
-            ("Wygenerowano:", str(timezone.now())),
+            ("Wygenerowano:", str(timezone.make_naive(timezone.now()))),
             ("Wersja oprogramowania BPP", VERSION),
         ]
 

@@ -134,7 +134,7 @@ class SzczegolyRaportSlotowUczelniaListaRekordow(
                 "Dziel na jednostki:",
                 "tak" if self.parent_object.dziel_na_jednostki_i_wydzialy else "nie",
             ),
-            ("Wygenerowano:", self.parent_object.finished_on),
+            ("Wygenerowano:", timezone.make_naive(self.parent_object.finished_on)),
             ("Wersja oprogramowania BPP", VERSION),
         ]
 
