@@ -4,6 +4,21 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202211.1095 (2022-11-30)
+============================
+
+Naprawione
+----------
+
+- naprawiono generowanie raportu slotów uczelnia w formacie XLSX (#1316)
+
+
+Usprawnienie
+------------
+
+- umożliwiaj import opłat za publikację z plików XLSX generowanych przez system (bez_numeru)
+
+
 Bpp 202211.1094 (2022-11-22)
 ============================
 
