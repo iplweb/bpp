@@ -1,5 +1,7 @@
+from decimal import Decimal
 from typing import Union
 
+from numpy import isnan
 from pathspec.util import normalize_file
 
 
@@ -30,17 +32,24 @@ normalize_last_name = normalize_first_name
 normalize_publisher = normalize_first_name
 
 
-def normalize_nullboleanfield(s: Union[str, None, bool]) -> Union[bool, None]:
+def normalize_boolean(s: Union[str, None, bool]) -> Union[bool, None]:
     if isinstance(s, bool):
         return s
-    if s is None:
+
+    if not isinstance(s, str):
         return
+
     s = s.strip().lower()
 
-    if s in ["true", "tak", "prawda", "t", "p"]:
+    if s.lower() in ["tak", "prawda", "true", "t", "p"]:
         return True
+
     if s in ["false", "nie", "fałsz", "falsz", "f", "n"]:
         return False
+
+
+def normalize_nullboleanfield(s: Union[str, None, bool]) -> Union[bool, None]:
+    return normalize_boolean(s)
 
 
 def normalize_skrot(s):
@@ -174,3 +183,61 @@ def normalize_orcid(s: str) -> str | None:
         .replace("http://orcid.org/", "")
         .replace("https://orcid.org/", "")
     )
+
+
+def normalize_nulldecimalfield(probably_decimal):
+    if probably_decimal is None:
+        return
+
+    if probably_decimal is not None and isnan(probably_decimal):
+        return
+
+    return Decimal(probably_decimal)
+
+
+def normalize_oplaty_za_publikacje(
+    rekord,
+    opl_pub_cost_free,
+    opl_pub_research_potential,
+    opl_pub_research_or_development_projects,
+    opl_pub_other,
+    opl_pub_amount,
+):
+    # Publikacja bezkosztowa
+    rekord.opl_pub_cost_free = False
+    if normalize_boolean(opl_pub_cost_free):
+        rekord.opl_pub_cost_free = True
+
+    # Środki finansowe o których mowa w artykule 365
+    rekord.opl_pub_research_potential = False
+    if normalize_boolean(opl_pub_research_potential):
+        rekord.opl_pub_research_potential = True
+
+    # Środki finansowe na realizację projektu
+    rekord.opl_pub_research_or_development_projects = False
+    if normalize_boolean(opl_pub_research_or_development_projects):
+        rekord.opl_pub_research_or_development_projects = True
+
+    # Inne srodki finansowe
+    rekord.opl_pub_other = False
+    if normalize_boolean(opl_pub_other):
+        rekord.opl_pub_other = True
+
+    # Kwota
+    rekord.opl_pub_amount = normalize_nulldecimalfield(opl_pub_amount)
+
+    rekord.clean()
+
+
+def normalize_rekord_id(rekord_id):
+    """Normalizuje z postaci (43, 43) do {43,43} zeby mozna odpytac baze dancyh."""
+    if not isinstance(rekord_id, str):
+        return
+
+    if rekord_id is None:
+        return
+
+    if not rekord_id:
+        return
+
+    return rekord_id.replace("(", "{").replace(")", "}")
