@@ -12,7 +12,6 @@ from import_common.normalization import (
 )
 
 from bpp.models import ModelZOplataZaPublikacje, Rekord
-from bpp.util import pbar
 
 
 class Command(BaseCommand):
@@ -25,8 +24,18 @@ class Command(BaseCommand):
     @transaction.atomic
     def handle(self, pliki, *args, **options):
 
-        for plik in pbar(pliki):
-            xlsx = pandas.read_excel(plik)
+        for plik in pliki:
+            print()
+            print()
+            print()
+            print(plik.name)
+            print("=" * 80)
+            print()
+
+            try:
+                xlsx = pandas.read_excel(plik)
+            except ValueError:
+                print(f"Nie umiem otworzyc pliku {plik.name}")
 
             for wiersz, row in enumerate(xlsx.iloc):
                 pk = normalize_rekord_id(row[1])
@@ -35,7 +44,22 @@ class Command(BaseCommand):
 
                 rekord = Rekord.objects.get(pk=pk)
                 original: ModelZOplataZaPublikacje = rekord.original
-                assert rekord.tytul_oryginalny == row["Tytuł oryginalny"]
+
+                try:
+                    row["Tytuł oryginalny"]
+                except KeyError:
+                    print(
+                        "Plik nie ma kolumny 'Tytuł oryginalny', nie importuję pliku w ogóle"
+                    )
+                    continue
+
+                if rekord.tytul_oryginalny != row["Tytuł oryginalny"]:
+                    print(
+                        f"wiersz {wiersz} -- tytuł rekordu inny niz w bazie, nie importuję (plik: "
+                        f"{row['Tytuł oryginalny']}, baza {rekord.tytul_oryginalny})"
+                    )
+                    print()
+                    continue
 
                 try:
                     normalize_oplaty_za_publikacje(
@@ -53,9 +77,10 @@ class Command(BaseCommand):
                     )
                 except ValidationError as e:
                     print(
-                        f"Plik {plik} Wiersz {wiersz} -- problem z walidacją rekordu {rekord.tytul_oryginalny} -- "
+                        f"wiersz {wiersz} -- problem z walidacją rekordu {rekord.tytul_oryginalny} -- "
                         f"{e}. Zmiany nie zostały wprowadzone do bazy. "
                     )
+                    print()
                     continue
 
                 original.save()

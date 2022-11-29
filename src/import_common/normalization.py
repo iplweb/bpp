@@ -1,6 +1,7 @@
 from decimal import Decimal
 from typing import Union
 
+from django.core.exceptions import ValidationError
 from numpy import isnan
 from pathspec.util import normalize_file
 
@@ -189,10 +190,21 @@ def normalize_nulldecimalfield(probably_decimal):
     if probably_decimal is None:
         return
 
-    if probably_decimal is not None and isnan(probably_decimal):
-        return
+    try:
+        if probably_decimal is not None and isnan(probably_decimal):
+            return
+    except TypeError:
+        raise ValidationError(
+            f"Nie mogę skonwertować liczby w formacie {probably_decimal} na typ Decimal"
+        )
 
-    return Decimal(probably_decimal)
+    try:
+        # float() zeby pozbyc sie np numpy.int64
+        return Decimal(float(probably_decimal))
+    except TypeError:
+        raise ValidationError(
+            f"Nie mogę skonwertować liczby w formacie {probably_decimal} na typ Decimal"
+        )
 
 
 def normalize_oplaty_za_publikacje(
@@ -240,4 +252,10 @@ def normalize_rekord_id(rekord_id):
     if not rekord_id:
         return
 
-    return rekord_id.replace("(", "{").replace(")", "}")
+    ret = rekord_id.replace("(", "{").replace(")", "}").strip()
+    if not ret.startswith("{"):
+        ret = "{" + ret
+    if not ret.endswith("}"):
+        ret += "}"
+
+    return ret
