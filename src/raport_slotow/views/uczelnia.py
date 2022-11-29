@@ -125,6 +125,10 @@ class SzczegolyRaportSlotowUczelniaListaRekordow(
         return table
 
     def get_export_description(self):
+        wygenerowano = "(brak danych)"
+        if self.parent_object.finished_on:
+            wygenerowano = timezone.make_naive(self.parent_object.finished_on)
+
         return [
             ("Nazwa raportu:", "raport slotów - uczelnia"),
             ("Od roku:", self.parent_object.od_roku),
@@ -134,7 +138,7 @@ class SzczegolyRaportSlotowUczelniaListaRekordow(
                 "Dziel na jednostki:",
                 "tak" if self.parent_object.dziel_na_jednostki_i_wydzialy else "nie",
             ),
-            ("Wygenerowano:", self.parent_object.finished_on),
+            ("Wygenerowano:", wygenerowano),
             ("Wersja oprogramowania BPP", VERSION),
         ]
 

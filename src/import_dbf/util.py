@@ -2048,7 +2048,9 @@ def dodaj_aktualnosc():
         status=Article.STATUS.published,
         title="Informacja o imporcie bazy danych",
     )[0]
-    a.article_body = "Bazę danych zaimportowano: %s" % timezone.localtime()
+    a.article_body = "Bazę danych zaimportowano: %s" % timezone.make_naive(
+        timezone.now()
+    )
     a.save()
 
 

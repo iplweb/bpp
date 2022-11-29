@@ -16,3 +16,7 @@ python src/manage.py import_sgsp ~/Desktop/artykuly_autor_2021.xlsx
 python src/manage.py denorm_rebuild
 
 python src/manage.py createsuperuser --noinput --email michal.dtz@gmail.com --username admin
+
+BASEDIR=$(dirname "$0")
+
+$BASEDIR/fix-sequences.sh

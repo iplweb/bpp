@@ -84,7 +84,7 @@ class RaportSlotow(BaseRaportAuthMixin, MyExportMixin, MultiTableMixin, Template
             ("Minimalny PK", self.kwargs["minimalny_pk"]),
             ("Od roku:", self.kwargs["od_roku"]),
             ("Do roku:", self.kwargs["do_roku"]),
-            ("Wygenerowano:", str(timezone.now())),
+            ("Wygenerowano:", str(timezone.make_naive(timezone.now()))),
             ("Wersja oprogramowania BPP", VERSION),
         ]
 
