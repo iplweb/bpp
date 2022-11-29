@@ -11,6 +11,7 @@ from import_common.normalization import (
 )
 
 from bpp.models import ModelZOplataZaPublikacje, Rekord
+from bpp.util import pbar
 
 
 class Command(BaseCommand):
@@ -25,8 +26,7 @@ class Command(BaseCommand):
 
         for plik in pliki:
             xlsx = pandas.read_excel(plik)
-
-            for row in xlsx.iloc:
+            for row in pbar(xlsx.iloc, count=xlsx.count()[0]):
                 pk = normalize_rekord_id(row[0])
                 if pk is None:
                     continue

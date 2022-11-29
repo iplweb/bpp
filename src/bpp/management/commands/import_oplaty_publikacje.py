@@ -11,6 +11,7 @@ from import_common.normalization import (
 )
 
 from bpp.models import ModelZOplataZaPublikacje, Rekord
+from bpp.util import pbar
 
 
 class Command(BaseCommand):
@@ -23,7 +24,7 @@ class Command(BaseCommand):
     @transaction.atomic
     def handle(self, pliki, *args, **options):
 
-        for plik in pliki:
+        for plik in pbar(pliki):
             xlsx = pandas.read_excel(plik)
 
             for row in xlsx.iloc:
