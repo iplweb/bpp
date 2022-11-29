@@ -2,6 +2,7 @@ import argparse
 from optparse import OptionParser
 
 import pandas
+from django.core.exceptions import ValidationError
 from django.core.management import BaseCommand
 from django.db import transaction
 
@@ -26,7 +27,7 @@ class Command(BaseCommand):
 
         for plik in pliki:
             xlsx = pandas.read_excel(plik)
-            for row in pbar(xlsx.iloc, count=xlsx.count()[0]):
+            for wiersz, row in enumerate(pbar(xlsx.iloc, count=xlsx.count()[0])):
                 pk = normalize_rekord_id(row[0])
                 if pk is None:
                     continue
@@ -34,18 +35,25 @@ class Command(BaseCommand):
                 rekord = Rekord.objects.get(pk=pk)
                 original: ModelZOplataZaPublikacje = rekord.original
 
-                normalize_oplaty_za_publikacje(
-                    original,
-                    # Publikacja bezkosztowa
-                    row[2],
-                    # Środki finansowe o których mowa w artykule 365
-                    row[3],
-                    # Środki finansowe na realizację projektu
-                    row[4],
-                    # Inne srodki finansowe
-                    row[5],
-                    # Kwota
-                    row[1],
-                )
+                try:
+                    normalize_oplaty_za_publikacje(
+                        original,
+                        # Publikacja bezkosztowa
+                        row[2],
+                        # Środki finansowe o których mowa w artykule 365
+                        row[3],
+                        # Środki finansowe na realizację projektu
+                        row[4],
+                        # Inne srodki finansowe
+                        row[5],
+                        # Kwota
+                        row[1],
+                    )
+                except ValidationError as e:
+                    print(
+                        f"Problem z walidacją plik {plik} wiersz {wiersz} rekordu "
+                        f"{rekord.tytul_oryginalny} -- {e}. Zmiany nie zostały wprowadzone do bazy. "
+                    )
+                    continue
 
                 original.save()

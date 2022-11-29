@@ -2,6 +2,7 @@ import argparse
 from optparse import OptionParser
 
 import pandas
+from django.core.exceptions import ValidationError
 from django.core.management import BaseCommand
 from django.db import transaction
 
@@ -27,7 +28,7 @@ class Command(BaseCommand):
         for plik in pbar(pliki):
             xlsx = pandas.read_excel(plik)
 
-            for row in xlsx.iloc:
+            for wiersz, row in enumerate(xlsx.iloc):
                 pk = normalize_rekord_id(row[1])
                 if pk is None:
                     continue
@@ -36,18 +37,25 @@ class Command(BaseCommand):
                 original: ModelZOplataZaPublikacje = rekord.original
                 assert rekord.tytul_oryginalny == row["Tytuł oryginalny"]
 
-                normalize_oplaty_za_publikacje(
-                    original,
-                    # Publikacja bezkosztowa
-                    row[4],
-                    # Środki finansowe o których mowa w artykule 365
-                    row[5],
-                    # Środki finansowe na realizację projektu
-                    row[6],
-                    # Inne srodki finansowe
-                    row[7],
-                    # Kwota
-                    row[8],
-                )
+                try:
+                    normalize_oplaty_za_publikacje(
+                        original,
+                        # Publikacja bezkosztowa
+                        row[4],
+                        # Środki finansowe o których mowa w artykule 365
+                        row[5],
+                        # Środki finansowe na realizację projektu
+                        row[6],
+                        # Inne srodki finansowe
+                        row[7],
+                        # Kwota
+                        row[8],
+                    )
+                except ValidationError as e:
+                    print(
+                        f"Plik {plik} Wiersz {wiersz} -- problem z walidacją rekordu {rekord.tytul_oryginalny} -- "
+                        f"{e}. Zmiany nie zostały wprowadzone do bazy. "
+                    )
+                    continue
 
                 original.save()
