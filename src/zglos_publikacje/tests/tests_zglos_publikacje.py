@@ -134,6 +134,32 @@ def test_zglos_publikacje_bez_pliku_nie_artykul(
     assert b"zostanie zaakceptowane" in page3.content
 
 
+@pytest.mark.django_db
+def test_zglos_publikacje_tytul_wielkosc_liter(
+    webtest_app, uczelnia, typy_odpowiedzialnosci
+):
+    TYTUL_PRACY = "Test Wielkich Liter"
+
+    url = reverse("zglos_publikacje:nowe_zgloszenie")
+    page = webtest_app.get(url)
+    page.forms[0]["0-tytul_oryginalny"] = TYTUL_PRACY
+    page.forms[0][
+        "0-rodzaj_zglaszanej_publikacji"
+    ] = Zgloszenie_Publikacji.Rodzaje.POZOSTALE
+
+    page.forms[0]["0-strona_www"] = "https://onet.pl"
+    page.forms[0]["0-rok"] = "2020"
+    page.forms[0]["0-email"] = "123@123.pl"
+
+    # Lista autorow
+    page2 = page.forms[0].submit()
+
+    # Sukces!
+    page2.forms[0].submit().maybe_follow()
+
+    assert Zgloszenie_Publikacji.objects.first().tytul_oryginalny == TYTUL_PRACY
+
+
 def zrob_submit_calego_formularza(
     webtest_app,
     django_capture_on_commit_callbacks,
