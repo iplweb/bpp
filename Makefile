@@ -136,3 +136,6 @@ poetry-sync:
 test-package-from-vcs: check-git-clean poetry-sync set-version-from-vcs bdist_wheel
 	ls -lash dist
 	git reset --hard
+
+loc: clean
+	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
