@@ -26,9 +26,14 @@ class Command(BaseCommand):
             default=2022,
             help="Ogranicz do roku",
         )
+        parser.add_argument(
+            "--dry-run",
+            action="store_true",
+            default=False,
+        )
 
     @transaction.atomic
-    def handle(self, jednostka, rok, *args, **options):
+    def handle(self, jednostka, rok, dry_run, *args, **options):
         for _jedn in Jednostka.objects.exclude(
             rodzaj_jednostki=Jednostka.RODZAJ_JEDNOSTKI.KOLO_NAUKOWE
         ):
@@ -89,4 +94,5 @@ class Command(BaseCommand):
                 )
                 continue
 
-        transaction.rollback()
+        if dry_run:
+            transaction.rollback()
