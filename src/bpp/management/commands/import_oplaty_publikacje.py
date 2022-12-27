@@ -19,10 +19,11 @@ class Command(BaseCommand):
     args = "<plik xls 1> <plik xls 2> ..."
 
     def add_arguments(self, parser: OptionParser):
+        parser.add_argument("--dry", action=argparse.BooleanOptionalAction)
         parser.add_argument("pliki", type=argparse.FileType("rb"), nargs="+")
 
     @transaction.atomic
-    def handle(self, pliki, *args, **options):
+    def handle(self, dry, pliki, *args, **options):
 
         for plik in pliki:
             print()
@@ -36,8 +37,9 @@ class Command(BaseCommand):
                 xlsx = pandas.read_excel(plik)
             except ValueError:
                 print(f"Nie umiem otworzyc pliku {plik.name}")
+                continue
 
-            for wiersz, row in enumerate(xlsx.iloc):
+            for wiersz, row in xlsx.iterrows():
                 pk = normalize_rekord_id(row[1])
                 if pk is None:
                     continue
@@ -55,7 +57,7 @@ class Command(BaseCommand):
 
                 if rekord.tytul_oryginalny != row["Tytuł oryginalny"]:
                     print(
-                        f"wiersz {wiersz} -- tytuł rekordu inny niz w bazie, nie importuję (plik: "
+                        f"wiersz {wiersz+2} -- tytuł rekordu inny niz w bazie, nie importuję (plik: "
                         f"{row['Tytuł oryginalny']}, baza {rekord.tytul_oryginalny})"
                     )
                     print()
@@ -77,10 +79,13 @@ class Command(BaseCommand):
                     )
                 except ValidationError as e:
                     print(
-                        f"wiersz {wiersz} -- problem z walidacją rekordu {rekord.tytul_oryginalny} -- "
+                        f"wiersz {wiersz+2} -- problem z walidacją rekordu {rekord.tytul_oryginalny} -- "
                         f"{e}. Zmiany nie zostały wprowadzone do bazy. "
                     )
                     print()
                     continue
 
                 original.save()
+
+        if dry:
+            transaction.set_rollback(True)

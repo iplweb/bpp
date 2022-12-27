@@ -67,6 +67,7 @@ def test_normalize_orcid(i, o):
             "to jest tytul z nowa linia bo tak",
         ),
         ("wytniemy online [online]", "wytniemy online"),
+        ("A duzych liter NIE SPRAWDZILEM", "A duzych liter NIE SPRAWDZILEM"),
     ],
 )
 def test_normalize_tytul_publikacji(i, o):

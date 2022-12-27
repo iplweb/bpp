@@ -23,6 +23,12 @@ def remove_extra_spaces(s: str) -> str:
     return s
 
 
+def fix_spaces_before_dots_and_commas(s: str) -> str:
+    while s.find(" .") >= 0 or s.find(" ,") >= 0:
+        s = s.replace(" .", ". ").replace(" ,", ", ")
+    return s
+
+
 def normalize_first_name(s: str) -> str | None:
     if not isinstance(s, str) or s is None or s == "" or not s:
         return
@@ -56,7 +62,7 @@ def normalize_nullboleanfield(s: Union[str, None, bool]) -> Union[bool, None]:
 def normalize_skrot(s):
     if s is None:
         return
-    return remove_extra_spaces(s.lower().replace(" .", ". "))
+    return remove_extra_spaces(fix_spaces_before_dots_and_commas(s.lower()))
 
 
 def normalize_tytul_naukowy(s):
@@ -66,9 +72,7 @@ def normalize_tytul_naukowy(s):
 def normalize_title(s: str) -> str | None:
     if s is None or not s:
         return
-    while s.find("  ") >= 0:
-        s = s.replace("  ", " ")
-    return s.strip()
+    return remove_extra_spaces(s)
 
 
 ONLINE_STR = "[online]"
@@ -77,13 +81,13 @@ ONLINE_STR = "[online]"
 def normalize_tytul_publikacji(s):
     if s is None:
         return
-    ret = remove_trailing_interpunction(normalize_skrot(s))
+    ret = remove_trailing_interpunction(
+        remove_extra_spaces(fix_spaces_before_dots_and_commas(s))
+    )
     if ret.endswith(ONLINE_STR):
         ret = ret[: -len(ONLINE_STR)].strip()
     ret = ret.replace("\r", " ").replace("\n", " ")
-    while ret.find("  ") >= 0:
-        ret = ret.replace("  ", " ")
-    return ret
+    return remove_extra_spaces(ret)
 
 
 def normalize_funkcja_autora(s: str) -> str:

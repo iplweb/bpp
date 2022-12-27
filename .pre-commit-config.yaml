@@ -45,8 +45,8 @@ repos:
         -   id: trailing-whitespace
         -   id: mixed-line-ending
 
-    - repo: https://gitlab.com/pycqa/flake8
-      rev: '3.9.2'
+    - repo: https://github.com/PyCQA/flake8
+      rev: '6.0.0'
       hooks:
         - id: flake8
           args: ["--exclude=*/migrations/*"]

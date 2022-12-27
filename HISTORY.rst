@@ -4,6 +4,16 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202212.1096 (2022-12-27)
+============================
+
+Usprawnienie
+------------
+
+- * mapowanie kół naukowych do powiązania autora i jednostki do rekordu --
+    dla jednostek przypisz koło naukowe, do którego przypisany jest autor. (bez_numeru)
+
+
 Bpp 202211.1095 (2022-11-30)
 ============================
 

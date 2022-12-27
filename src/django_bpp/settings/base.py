@@ -98,8 +98,14 @@ env = environ.Env(
 
 ENVFILE_PATH = os.path.join(os.path.expanduser("~"), ".env")
 
-if os.path.exists(ENVFILE_PATH) and os.path.isfile(ENVFILE_PATH):
-    environ.Env.read_env(ENVFILE_PATH)
+#
+# Odczytaj plik ~/.env oraz dodatkowo ~/.env.local ;
+# jeżeli zmienna jest zdefiniowana w tym drugim to nadpisz ten pierwszy...
+#
+
+for fn in [ENVFILE_PATH, ENVFILE_PATH + ".local"]:
+    if os.path.exists(fn) and os.path.isfile(fn):
+        environ.Env.read_env(fn, overwrite=True)
 
 #
 # Ustaw Sentry

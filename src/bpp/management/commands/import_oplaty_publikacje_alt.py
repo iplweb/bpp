@@ -51,7 +51,7 @@ class Command(BaseCommand):
                     )
                 except ValidationError as e:
                     print(
-                        f"Problem z walidacją plik {plik} wiersz {wiersz} rekordu "
+                        f"Problem z walidacją plik {plik} wiersz {wiersz+2} rekordu "
                         f"{rekord.tytul_oryginalny} -- {e}. Zmiany nie zostały wprowadzone do bazy. "
                     )
                     continue
