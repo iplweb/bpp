@@ -79,6 +79,7 @@ class Command(BaseCommand):
                 continue
 
             elif kolo_naukowe.count() == 1:
+                aj = aj.original
                 aj.jednostka = kolo_naukowe.first()
                 aj.save()
                 print(
