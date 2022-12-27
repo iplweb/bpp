@@ -24,6 +24,41 @@ from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 from bpp.util import strip_html
 
 
+class OplataZaWydawnictwoPBNAdapter:
+    def __init__(self, original: Wydawnictwo_Ciagle | Wydawnictwo_Zwarte):
+        self.original = original
+
+    def pbn_get_json(self):
+        fee = {}
+
+        if hasattr(self.original, "opl_pub_amount") and hasattr(
+            self.original, "opl_pub_cost_free"
+        ):
+
+            if self.original.opl_pub_cost_free is True:
+                fee["amount"] = 0
+                fee["costFreePublication"] = True
+                fee["other"] = False
+                fee["researchOrDevelopmentProjectsFinancialResources"] = False
+                fee["researchPotentialFinancialResources"] = False
+
+            if (
+                self.original.opl_pub_amount is not None
+                and self.original.opl_pub_amount > 0
+            ):
+                fee["amount"] = str(self.original.opl_pub_amount)
+                fee["costFreePublication"] = False
+                fee["other"] = self.original.opl_pub_other or False
+                fee["researchOrDevelopmentProjectsFinancialResources"] = (
+                    self.original.opl_pub_research_or_development_projects or False
+                )
+                fee["researchPotentialFinancialResources"] = (
+                    self.original.opl_pub_research_potential or False
+                )
+
+        return fee
+
+
 class WydawnictwoPBNAdapter:
     CHAPTER = "CHAPTER"
     BOOK = "BOOK"
@@ -408,35 +443,9 @@ class WydawnictwoPBNAdapter:
                         }
                     )
 
-        if hasattr(self.original, "opl_pub_amount") and hasattr(
-            self.original, "opl_pub_cost_free"
-        ):
-            # ModelZOplataZaPublikacje
-            fee = {}
-
-            if self.original.opl_pub_cost_free is True:
-                fee["amount"] = 0
-                fee["costFreePublication"] = True
-                fee["other"] = False
-                fee["researchOrDevelopmentProjectsFinancialResources"] = False
-                fee["researchPotentialFinancialResources"] = False
-
-            if (
-                self.original.opl_pub_amount is not None
-                and self.original.opl_pub_amount > 0
-            ):
-                fee["amount"] = str(self.original.opl_pub_amount)
-                fee["costFreePublication"] = False
-                fee["other"] = self.original.opl_pub_other or False
-                fee["researchOrDevelopmentProjectsFinancialResources"] = (
-                    self.original.opl_pub_research_or_development_projects or False
-                )
-                fee["researchPotentialFinancialResources"] = (
-                    self.original.opl_pub_research_potential or False
-                )
-
-            if fee:
-                ret["fee"] = fee
+        fee = OplataZaWydawnictwoPBNAdapter(self.original).pbn_get_json()
+        if fee:
+            ret["fee"] = fee
 
         if ret["type"] in [
             WydawnictwoPBNAdapter.ARTICLE,

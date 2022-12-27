@@ -2,6 +2,9 @@ DELETED = "DELETED"
 ACTIVE = "ACTIVE"
 
 PBN_POST_PUBLICATIONS_URL = "/api/v1/publications"
+
+PBN_POST_PUBLICATION_FEE_URL = "/v1/institutionProfile/publications/fees/{id}"
+
 PBN_GET_LANGUAGES_URL = "/api/v1/dictionary/languages"
 PBN_SEARCH_PUBLICATIONS_URL = "/api/v1/search/publications"
 
