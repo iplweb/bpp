@@ -19,12 +19,13 @@ class Command(BaseCommand):
     args = "<plik xls 1> <plik xls 2> ..."
 
     def add_arguments(self, parser: OptionParser):
-        parser.add_argument("--dry", action=argparse.BooleanOptionalAction)
+        parser.add_argument(
+            "--dry", action=argparse.BooleanOptionalAction, default=False
+        )
         parser.add_argument("pliki", type=argparse.FileType("rb"), nargs="+")
 
     @transaction.atomic
     def handle(self, dry, pliki, *args, **options):
-
         for plik in pliki:
             print()
             print()

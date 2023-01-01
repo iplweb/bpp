@@ -4,6 +4,15 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202301.1097 (2023-01-01)
+============================
+
+Usprawnienie
+------------
+
+- możliwość wysyłania wyłącznie informacji o płatnościach do PBNu (bez_numeru2)
+
+
 Bpp 202212.1096 (2022-12-27)
 ============================
 
