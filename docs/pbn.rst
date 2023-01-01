@@ -44,6 +44,27 @@ Integracja z PBN API
    - autorzy mogą lecz nie muszą mieć określony odpowiednik dla PBN,
    - autorzy powinni mieć uzupełnione numery ORCID.
 
+Wgrywanie wyłącznie opłat do PBN przez API
+------------------------------------------
+
+Pojedyncze rekordy:
+
+.. code-block:: shell
+
+    bpp-manage.py pbn_client upload_publication_fee pub:wydawnictwo_ciagle:{id rekordu}
+
+Wszystkie rekordy:
+
+.. code-block:: shell
+
+    bpp-manage.py pbn_upload_fees
+
+.. note::
+
+   Procedura ``pbn_upload_fees`` w przypadku wgrywania informacji o płatnościach
+   dla publikacji która nigdy nie była wcześniej wgrywana do PBN (nie posiada numeru
+   PBN UID czyli "odpowiednika PBN") wgra taką pracę na serwer.
+
 Kody błędów
 -----------
 

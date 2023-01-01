@@ -597,7 +597,7 @@ class PBNClient(
         return self.transport.post(PBN_POST_PUBLICATIONS_URL, body=json)
 
     def post_publication_fee(self, publicationId, json):
-        self.transport.post(
+        return self.transport.post(
             PBN_POST_PUBLICATION_FEE_URL.format(id=publicationId), body=json
         )
 
@@ -746,7 +746,7 @@ class PBNClient(
                 f"Brak danych o opłatach za publikację {pub.pbn_uid_id}"
             )
 
-        self.post_publication_fee(pub.pbn_uid_id, fee)
+        return self.post_publication_fee(pub.pbn_uid_id, fee)
 
     def demo(self):
         from bpp.models import Wydawnictwo_Ciagle
