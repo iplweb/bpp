@@ -13,6 +13,7 @@ from django.contrib.postgres.fields import ArrayField
 from bpp.models import (
     BazaModeluStreszczen,
     DodajAutoraMixin,
+    ManagerModeliZOplataZaPublikacjeMixin,
     MaProcentyMixin,
     ModelOpcjonalnieNieEksportowanyDoAPI,
     ModelZMiejscemPrzechowywania,
@@ -157,7 +158,7 @@ class ModelZOpenAccessWydawnictwoZwarte(ModelZOpenAccess):
 rok_regex = re.compile(r"\s[12]\d\d\d")
 
 
-class Wydawnictwo_Zwarte_Manager(models.Manager):
+class Wydawnictwo_Zwarte_Manager(ManagerModeliZOplataZaPublikacjeMixin, models.Manager):
     def wydawnictwa_nadrzedne_dla_innych(self):
         return (
             self.exclude(wydawnictwo_nadrzedne_id=None)

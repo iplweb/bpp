@@ -71,3 +71,11 @@ class StatementDeletionError(Exception):
 
 class NeedsPBNAuthorisationException(HttpException):
     pass
+
+
+class NoFeeDataException(ValueError):
+    pass
+
+
+class NoPBNUIDException(ValueError):
+    pass

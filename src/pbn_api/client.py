@@ -7,11 +7,15 @@ from urllib.parse import parse_qs, quote, urlparse
 
 import requests
 from django.db import transaction
+from django.db.models import Model
 from requests import ConnectionError
 from requests.exceptions import SSLError
 from simplejson.errors import JSONDecodeError
 
-from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
+from pbn_api.adapters.wydawnictwo import (
+    OplataZaWydawnictwoPBNAdapter,
+    WydawnictwoPBNAdapter,
+)
 from pbn_api.const import (
     DEFAULT_BASE_URL,
     NEEDS_PBN_AUTH_MSG,
@@ -20,6 +24,7 @@ from pbn_api.const import (
     PBN_GET_JOURNAL_BY_ID,
     PBN_GET_LANGUAGES_URL,
     PBN_GET_PUBLICATION_BY_ID_URL,
+    PBN_POST_PUBLICATION_FEE_URL,
     PBN_POST_PUBLICATIONS_URL,
     PBN_SEARCH_PUBLICATIONS_URL,
 )
@@ -28,6 +33,8 @@ from pbn_api.exceptions import (
     AuthenticationResponseError,
     HttpException,
     NeedsPBNAuthorisationException,
+    NoFeeDataException,
+    NoPBNUIDException,
     PraceSerwisoweException,
     SameDataUploadedRecently,
 )
@@ -589,6 +596,11 @@ class PBNClient(
     def post_publication(self, json):
         return self.transport.post(PBN_POST_PUBLICATIONS_URL, body=json)
 
+    def post_publication_fee(self, publicationId, json):
+        return self.transport.post(
+            PBN_POST_PUBLICATION_FEE_URL.format(id=publicationId), body=json
+        )
+
     def upload_publication(
         self, rec, force_upload=False, export_pk_zero=None, always_affiliate_to_uid=None
     ):
@@ -655,12 +667,7 @@ class PBNClient(
         # if not pub.doi:
         #     raise WillNotExportError("Ustaw DOI dla publikacji")
 
-        if type(pub) == str:
-            # Ciag znaków w postaci wydawnictwo_zwarte:123 pozwoli na podawanie tego
-            # parametru do wywołań z linii poleceń
-            model, pk = pub.split(":")
-            ctype = ContentType.objects.get(app_label="bpp", model=model)
-            pub = ctype.model_class().objects.get(pk=pk)
+        pub = self.eventually_coerce_to_publication(pub)
 
         #
         if (
@@ -715,6 +722,31 @@ class PBNClient(
         if pub.pbn_uid_id != ret["objectId"]:
             pub.pbn_uid = publication
             pub.save()
+
+    def eventually_coerce_to_publication(self, pub: Model | str) -> Model:
+        if type(pub) == str:
+            # Ciag znaków w postaci wydawnictwo_zwarte:123 pozwoli na podawanie tego
+            # parametru do wywołań z linii poleceń
+            model, pk = pub.split(":")
+            ctype = ContentType.objects.get(app_label="bpp", model=model)
+            pub = ctype.model_class().objects.get(pk=pk)
+
+        return pub
+
+    def upload_publication_fee(self, pub: Model):
+        pub = self.eventually_coerce_to_publication(pub)
+        if pub.pbn_uid_id is None:
+            raise NoPBNUIDException(
+                f"PBN UID (czyli 'numer odpowiednika w PBN') dla rekordu '{pub}' jest pusty."
+            )
+
+        fee = OplataZaWydawnictwoPBNAdapter(pub).pbn_get_json()
+        if not fee:
+            raise NoFeeDataException(
+                f"Brak danych o opłatach za publikację {pub.pbn_uid_id}"
+            )
+
+        return self.post_publication_fee(pub.pbn_uid_id, fee)
 
     def demo(self):
         from bpp.models import Wydawnictwo_Ciagle

@@ -829,6 +829,11 @@ class ModelZPBN_UID(LinkDoPBNMixin, models.Model):
         abstract = True
 
 
+class ManagerModeliZOplataZaPublikacjeMixin:
+    def rekordy_z_oplata(self):
+        return self.exclude(opl_pub_cost_free=None)
+
+
 class ModelZOplataZaPublikacje(models.Model):
     opl_pub_cost_free = models.BooleanField(
         verbose_name="Publikacja bezkosztowa", null=True

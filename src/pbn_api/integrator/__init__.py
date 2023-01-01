@@ -31,6 +31,8 @@ from pbn_api.client import PBNClient
 from pbn_api.const import ACTIVE, DELETED
 from pbn_api.exceptions import (
     HttpException,
+    NoFeeDataException,
+    NoPBNUIDException,
     SameDataUploadedRecently,
     StatementDeletionError,
     WillNotExportError,
@@ -1562,3 +1564,14 @@ def usun_zerowe_oswiadczenia(client):
                         raise e
 
                 elem.delete()
+
+
+def wyslij_informacje_o_platnosciach(client: PBNClient):
+    for model in Wydawnictwo_Ciagle, Wydawnictwo_Zwarte:
+        for elem in pbar(model.objects.rekordy_z_oplata()):
+            try:
+                client.upload_publication_fee(elem)
+            except NoPBNUIDException:
+                client.upload_publication(elem)
+            except NoFeeDataException:
+                pass

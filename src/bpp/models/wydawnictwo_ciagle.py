@@ -7,6 +7,7 @@ from django.contrib.postgres.fields import ArrayField
 
 from bpp.models import (
     BazaModeluStreszczen,
+    ManagerModeliZOplataZaPublikacjeMixin,
     MaProcentyMixin,
     ModelZKwartylami,
     ModelZOplataZaPublikacje,
@@ -80,6 +81,10 @@ class ModelZOpenAccessWydawnictwoCiagle(ModelZOpenAccess):
 
     class Meta:
         abstract = True
+
+
+class Wydawnictwo_Ciagle_Manager(ManagerModeliZOplataZaPublikacjeMixin, models.Manager):
+    pass
 
 
 class Wydawnictwo_Ciagle(
@@ -173,6 +178,8 @@ class Wydawnictwo_Ciagle(
             strony = wez_zakres_stron(self.szczegoly)
             if strony:
                 return strony
+
+    objects = Wydawnictwo_Ciagle_Manager()
 
     #
     # Cache framework by django-denorm-iplweb
