@@ -196,6 +196,7 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
             "punkty_pk",
             "autor",
             "aktualna_jednostka",
+            "afiliowana_jednostka",
             "pbn_id",
             "orcid",
             "dyscyplina",
@@ -217,6 +218,8 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
     aktualna_jednostka = Column(
         "Aktualna jednostka", "autorzy.autor.aktualna_jednostka.nazwa"
     )
+
+    afiliowana_jednostka = Column("Afiliowana jednostka", "autorzy.jednostka.nazwa")
     rok = Column("Rok", "rekord.rok", orderable=True)
     zrodlo_informacje = None
     # Column(
@@ -327,6 +330,7 @@ class RaportEwaluacjaUpowaznieniaTable(RaportSlotowEwaluacjaTable):
             "pbn_id",
             "orcid",
             "aktualna_jednostka",
+            "afiliowana_jednostka",
             "dyscyplina",
             "procent_dyscypliny",
             "subdyscyplina",
@@ -338,7 +342,3 @@ class RaportEwaluacjaUpowaznieniaTable(RaportSlotowEwaluacjaTable):
 
     pkdaut = None
     slot = None
-
-    aktualna_jednostka = Column(
-        "Aktualna jednostka", "autorzy.autor.aktualna_jednostka"
-    )
