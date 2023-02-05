@@ -127,6 +127,16 @@ def generuj_formularz_dla_autorow(
 
                 if self.initial.get("autor", None):
                     autor = self.initial.get("autor")
+                    if isinstance(autor, int):
+                        try:
+                            autor = Autor.objects.get(pk=int(autor))
+                        except Autor.DoesNotExist:
+
+                            class autor:
+                                imiona = "TakiAutor"
+                                nazwisko = "NieIstnieje"
+                                poprzednie_nazwiska = ""
+
                     warianty = warianty_zapisanego_nazwiska(
                         autor.imiona, autor.nazwisko, autor.poprzednie_nazwiska
                     )
