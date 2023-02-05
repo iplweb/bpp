@@ -3,7 +3,9 @@ from decimal import Decimal
 from dal import autocomplete
 from dal_select2.fields import Select2ListCreateChoiceField
 from django import forms
+from django.conf import settings
 from django.db.models.fields import BLANK_CHOICE_DASH
+from django.forms import NullBooleanField
 from django.forms.widgets import HiddenInput
 
 from django.contrib import admin
@@ -19,6 +21,9 @@ from bpp.models import (
     Typ_Odpowiedzialnosci,
     Uczelnia,
 )
+
+UPOWAZNIENIE_PBN = "upowaznienie_pbn"
+
 
 # Proste tabele
 
@@ -43,7 +48,9 @@ def get_first_typ_odpowiedzialnosci():
 
 
 def generuj_formularz_dla_autorow(
-    baseModel, include_rekord=False, include_dyscyplina=True
+    baseModel,
+    include_rekord=False,
+    include_dyscyplina=True,
 ):
     class baseModel_AutorForm(forms.ModelForm):
 
@@ -90,6 +97,12 @@ def generuj_formularz_dla_autorow(
         typ_odpowiedzialnosci = forms.ModelChoiceField(
             queryset=Typ_Odpowiedzialnosci.objects.all(),
             initial=get_first_typ_odpowiedzialnosci,
+        )
+
+        oswiadczenie_ken = forms.NullBooleanField(
+            label="Oświadczenie KEN",
+            help_text="Oświadczenie Komisji Ewaluacji Nauki (Uniwersytet Medyczny w Lublinie). "
+            "Wyklucza Upoważnienie PBN. ",
         )
 
         def __init__(self, *args, **kwargs):
@@ -148,6 +161,12 @@ def generuj_formularz_dla_autorow(
                 ),
             )
 
+            include_oswiadczenie_ken = getattr(
+                settings, "BPP_POKAZUJ_OSWIADCZENIE_KEN", False
+            )
+            if not include_oswiadczenie_ken:
+                self.fields["oswiadczenie_ken"] = NullBooleanField(widget=HiddenInput())
+
         class Media:
             js = ["/static/bpp/js/autorform_dependant.js"]
 
@@ -162,7 +181,8 @@ def generuj_formularz_dla_autorow(
                 "zapisany_jako",
                 "afiliuje",
                 "zatrudniony",
-                "upowaznienie_pbn",
+                UPOWAZNIENIE_PBN,
+                "oswiadczenie_ken",
                 "procent",
                 "profil_orcid",
                 DATA_OSWIADCZENIA,
@@ -228,7 +248,9 @@ def generuj_inline_dla_autorow(baseModel, include_dyscyplina=True):
         model = baseModel
         extra = extraRows
         form = generuj_formularz_dla_autorow(
-            baseModel, include_rekord=False, include_dyscyplina=include_dyscyplina
+            baseModel,
+            include_rekord=False,
+            include_dyscyplina=include_dyscyplina,
         )
         formset = baseModel_AutorFormset
         sortable_field_name = "kolejnosc"

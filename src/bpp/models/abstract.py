@@ -512,6 +512,14 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
         "Uczelnię do sprawozdania tej publikacji w ocenie parametrycznej Uczelni",
     )
 
+    oswiadczenie_ken = models.BooleanField(
+        "Oświadczenie KEN",
+        null=True,
+        blank=True,
+        default=None,
+        help_text="Oświadczenie Komisji Ewaluacji Nauki (Uniwersytet Medyczny w Lublinie)",
+    )
+
     profil_orcid = models.BooleanField(
         "Praca w profilu ORCID autora",
         default=False,
@@ -642,6 +650,20 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
                 {
                     "afiliuje": "Jeżeli autor opracował tą pracę w obcej jednostce, to pole "
                     "'Afiliuje' nie powinno być zaznaczone."
+                }
+            )
+
+        # --- Walidacja oświadczeń KEN (Uniwersytet Medyczny w Lublinie) ---
+        # Jeżeli jednocześnie włączone upowaznienie_pbn oraz oświadczenie_ken to zgłoś błąd
+        if self.upowaznienie_pbn and self.oswiadczenie_ken:
+            msg = (
+                "Pola 'Upoważnienie PBN' oraz 'Oświadczenie KEN' nie mogą być jednocześnie wybrane. "
+                "Odznacz jedno lub drugie. "
+            )
+            raise ValidationError(
+                {
+                    "upowaznienie_pbn": msg,
+                    "oswiadczenie_ken": msg,
                 }
             )
 
