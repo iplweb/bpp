@@ -41,6 +41,7 @@ from bpp.multiseek_registry import (
     OpenaccessWersjaTekstuQueryObject,
     OstatnieNazwiskoIImie,
     OstatnioZmieniony,
+    OswiadczenieKENQueryObject,
     PierwszaJednostkaQueryObject,
     PierwszeNazwiskoIImie,
     PierwszyWydzialQueryObject,
@@ -496,4 +497,18 @@ def test_RodzajJednostkiQueryObject(param):
 )
 def test_KierunekStudiowQueryObject(param, kierunek_studiow):
     ret = KierunekStudiowQueryObject().real_query(kierunek_studiow, param)
+    assert Rekord.objects.filter(*(ret,)).count() == 0
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "param",
+    [
+        logic.EQUAL,
+        logic.DIFFERENT,
+    ],
+)
+@pytest.mark.parametrize("value", [True, False, None])
+def test_OswiadczenieKENQueryObject(param, value):
+    ret = OswiadczenieKENQueryObject().real_query(value, param)
     assert Rekord.objects.filter(*(ret,)).count() == 0
