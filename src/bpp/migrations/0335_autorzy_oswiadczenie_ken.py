@@ -12,7 +12,7 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.RunPython(
-            lambda *args, **kw: load_custom_sql("0335_autorzy_kierunek_studiow")
+            lambda *args, **kw: load_custom_sql("0335_autorzy_oswiadczenie_ken")
         ),
         # To musi być wczytane, bo "DROP CASCADE" i gubi widoki ewaluacyjne
         migrations.RunPython(
