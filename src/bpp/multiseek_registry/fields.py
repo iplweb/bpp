@@ -1112,6 +1112,36 @@ class KierunekStudiowQueryObject(
         return ret
 
 
+class OswiadczenieKENQueryObject(BppMultiseekVisibilityMixin, BooleanQueryObject):
+    label = "Oświadczenie KEN"
+    ops = [
+        EQUAL,
+        DIFFERENT,
+        UNION,
+    ]
+    field_name = "oswiadczenie_ken"
+
+    def real_query(self, value, operation):
+        if operation in EQUALITY_OPS_ALL:
+            ret = Q(autorzy__oswiadczenie_ken=value)
+
+        elif operation in UNION_OPS_ALL:
+            q = Autorzy.objects.filter(oswiadczenie_ken=value).values("rekord_id")
+            ret = Q(pk__in=q)
+
+        else:
+            raise UnknownOperation(operation)
+
+        if operation in DIFFERENT_ALL:
+            return ~ret
+        return ret
+
+    def enabled(self, request=None):
+        if getattr(settings, "BPP_POKAZUJ_OSWIADCZENIE_KEN", False):
+            return super().enabled(request)
+        return False
+
+
 multiseek_fields = [
     TytulPracyQueryObject(),
     NazwiskoIImieQueryObject(),
@@ -1175,6 +1205,7 @@ multiseek_fields = [
     AktualnaJednostkaAutoraQueryObject(),
     RodzajJednostkiQueryObject(),
     KierunekStudiowQueryObject(),
+    OswiadczenieKENQueryObject(),
 ]
 
 
