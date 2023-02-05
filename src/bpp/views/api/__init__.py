@@ -99,6 +99,12 @@ def ostatnia_dyscyplina(request, a, rok):
         if ad.exists():
             # Jest wpis Autor_Dyscyplina dla tego autora i roku.
             ad = ad.first()
+            if (
+                ad.dyscyplina_naukowa_id is not None
+                and ad.subdyscyplina_naukowa_id is not None
+            ):
+                return None
+
             return ad.dyscyplina_naukowa or ad.subdyscyplina_naukowa
 
 
