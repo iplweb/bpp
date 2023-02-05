@@ -73,6 +73,35 @@ class UploadPunktacjaZrodlaView(View):
         return JsonResponse(dict(result="exists"))
 
 
+def ostatnia_jednostka(request, a):
+    uczelnia = Uczelnia.objects.get_for_request(request)
+
+    jed = a.aktualna_jednostka
+    if jed is None:
+        # Brak aktualnej jednostki, spróbuj podpowiedzieć obcą jednostkę:
+        if uczelnia is None:
+            return None
+
+        else:
+            # uczelnia is not None
+            if uczelnia.obca_jednostka_id is not None:
+                return uczelnia.obca_jednostka
+    else:
+        return jed
+
+
+def ostatnia_dyscyplina(request, a, rok):
+    uczelnia = Uczelnia.objects.get_for_request(request)
+
+    if uczelnia is not None and uczelnia.podpowiadaj_dyscypliny and rok:
+        ad = Autor_Dyscyplina.objects.filter(autor=a, rok=rok)
+
+        if ad.exists():
+            # Jest wpis Autor_Dyscyplina dla tego autora i roku.
+            ad = ad.first()
+            return ad.dyscyplina_naukowa or ad.subdyscyplina_naukowa
+
+
 class OstatniaJednostkaIDyscyplinaView(View):
     """Zwraca jako JSON ostatnią jednostkę danego autora oraz ewentualnie jego
     dyscyplinę naukową, w sytuacji gdy jest ona jedna i określona na dany rok.
@@ -84,50 +113,31 @@ class OstatniaJednostkaIDyscyplinaView(View):
         except (Autor.DoesNotExist, TypeError, ValueError):
             return JsonResponse({"status": "error", "reason": "autor nie istnieje"})
 
-        uczelnia = Uczelnia.objects.get_for_request(request)
+        ost_jed = ostatnia_jednostka(request, a)
 
         ret = {}
 
-        jed = a.aktualna_jednostka
-        if jed is None:
-            # Brak aktualnej jednostki, spróbuj podpowiedzieć obcą jednostkę:
-            if uczelnia is None:
-                ret.update(dict(jednostka_id=None, nazwa=None, status="ok"))
-            else:
-                # uczelnia is not None
-                if uczelnia.obca_jednostka_id is not None:
-                    ret.update(
-                        dict(
-                            jednostka_id=uczelnia.obca_jednostka_id,
-                            nazwa=uczelnia.obca_jednostka.nazwa,
-                            status="ok",
-                        )
-                    )
+        if ost_jed is None:
+            ret.update(dict(jednostka_id=None, nazwa=None, status="ok"))
         else:
-            ret.update(dict(jednostka_id=jed.pk, nazwa=jed.nazwa, status="ok"))
+            ret.update(
+                dict(
+                    jednostka_id=ost_jed.pk,
+                    nazwa=ost_jed.nazwa,
+                    status="ok",
+                )
+            )
 
         try:
             rok = int(request.POST.get("rok"))
         except (TypeError, ValueError):
             rok = None
 
-        if uczelnia is not None and uczelnia.podpowiadaj_dyscypliny and rok:
-            ad = Autor_Dyscyplina.objects.filter(autor=a, rok=rok)
+        ost_dys = ostatnia_dyscyplina(request, a, rok)
 
-            if ad.exists():
-                # Jest wpis Autor_Dyscyplina dla tego autora i roku.
-
-                ad = ad.first()
-
-                if not (
-                    ad.dyscyplina_naukowa_id is not None
-                    and ad.subdyscyplina_naukowa_id is not None
-                ):
-                    # W sytuacji gdy określona jest tylko jedna z nich:
-
-                    d = ad.dyscyplina_naukowa or ad.subdyscyplina_naukowa
-                    ret["dyscyplina_nazwa"] = d.nazwa
-                    ret["dyscyplina_id"] = d.pk
-                    ret["status"] = "ok"
+        if ost_dys is not None:
+            ret["dyscyplina_nazwa"] = ost_dys.nazwa
+            ret["dyscyplina_id"] = ost_dys.pk
+            ret["status"] = "ok"
 
         return JsonResponse(ret)

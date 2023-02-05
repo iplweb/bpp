@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 from dal import autocomplete
-from dal_select2.fields import Select2ListCreateChoiceField
+from dal_select2.fields import Select2ListChoiceField, Select2ListCreateChoiceField
 from django import forms
 from django.conf import settings
 from django.db.models.fields import BLANK_CHOICE_DASH
@@ -87,8 +87,7 @@ def generuj_formularz_dla_autorow(
                 required=False,
             )
 
-        zapisany_jako = Select2ListCreateChoiceField(
-            choice_list=[],
+        zapisany_jako = Select2ListChoiceField(
             widget=autocomplete.Select2(
                 url="bpp:zapisany-jako-autocomplete", forward=["autor"]
             ),
@@ -119,7 +118,31 @@ def generuj_formularz_dla_autorow(
             instance = kwargs.get("instance")
             data = kwargs.get("data")
             if not data and not instance:
-                # Jeżeli nie ma na czym pracowac
+
+                if not kwargs.get("initial"):
+                    # Jeżeli nie ma na czym pracowac
+                    return
+
+                self.initial = kwargs.get("initial")
+
+                if self.initial.get("autor", None):
+                    autor = self.initial.get("autor")
+                    warianty = warianty_zapisanego_nazwiska(
+                        autor.imiona, autor.nazwisko, autor.poprzednie_nazwiska
+                    )
+                    warianty = list(warianty)
+
+                    if self.initial.get("zapisany_jako", "") not in warianty:
+                        warianty.append(self.initial.get("zapisany_jako"))
+
+                    self.fields["zapisany_jako"] = Select2ListCreateChoiceField(
+                        choice_list=list(warianty),
+                        initial=self.initial.get("zapisany_jako"),
+                        widget=autocomplete.Select2(
+                            url="bpp:zapisany-jako-autocomplete", forward=["autor"]
+                        ),
+                    )
+
                 return
 
             initial = None
