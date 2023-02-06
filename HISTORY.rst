@@ -4,6 +4,24 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202302.1098 (2023-02-06)
+============================
+
+Naprawione
+----------
+
+- poprawna obsługa parametrów początkowych dla formularzy inline z autorami w przypadku dodawania rekordu
+  przy pomocy CrossRef API (#1310)
+
+
+Usprawnienie
+------------
+
+- Możliwość dodawania i wyszukiwania oświadczeń Komisji Ewaluacji Nauki
+  (Uniwersytet Medyczny w Lublinie) (#1318)
+- dodanie kolumny z jednostką afiliowaną do raportu ewaluacja - upoważnienia (#1330)
+
+
 Bpp 202301.1097 (2023-01-01)
 ============================
 
