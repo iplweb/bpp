@@ -119,14 +119,16 @@ def generuj_formularz_dla_autorow(
             data = kwargs.get("data")
             if not data and not instance:
 
-                if not kwargs.get("initial"):
-                    # Jeżeli nie ma na czym pracowac
-                    return
-
-                self.initial = kwargs.get("initial")
-
-                if self.initial.get("autor", None):
+                if kwargs.get("initial"):
+                    self.initial = kwargs.get("initial")
                     autor = self.initial.get("autor")
+                else:
+                    try:
+                        autor = int(args[0]["autor"][0])
+                    except (TypeError, ValueError, IndexError):
+                        autor = None
+
+                if autor is not None:
                     if isinstance(autor, int):
                         try:
                             autor = Autor.objects.get(pk=int(autor))
