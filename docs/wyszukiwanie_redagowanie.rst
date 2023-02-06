@@ -168,6 +168,16 @@ zapytanie DjangoQL:
  pokazuj = False and aktualna_jednostka.nazwa != "Obca jednostka"
  and aktualna_jednostka != None
 
+
+Źródła bez odpowiednika w PBN, które mają publikacje w roku 2022
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+Po wejściu w Redagowanie -> Źródła,
+
+.. code-block:: python
+
+  pbn_uid = None and wydawnictwo_ciagle.rok = 2022
+
 Operatory logiczne a ich kolejność
 """"""""""""""""""""""""""""""""""
 

@@ -1572,6 +1572,21 @@ def wyslij_informacje_o_platnosciach(client: PBNClient):
             try:
                 client.upload_publication_fee(elem)
             except NoPBNUIDException:
-                client.upload_publication(elem)
+                try:
+                    client.upload_publication(elem)
+                except Exception as e:
+                    print(
+                        f"Podczas aktualizacji pracy {elem.tytul_oryginalny, elem.pk} wystąpił błąd: {e}. Wczytaj "
+                        f"dane tej pracy ręcznie. "
+                    )
             except NoFeeDataException:
                 pass
+            except HttpException as exc:
+                if (
+                    exc.status_code == 400
+                    and exc.content.find("Validation failed") >= 0
+                    and exc.content.find("no.institution.profile.publication") >= 0
+                ):
+                    print(
+                        f"Publikacja {elem.tytul_oryginalny} nie wystepuje na profilu instytucji!"
+                    )

@@ -6,6 +6,7 @@ import math
 from crossref_bpp.core import Komparator
 from crossref_bpp.models import CrossrefAPICache
 from import_common.normalization import normalize_title
+from ..views.api import ostatnia_dyscyplina, ostatnia_jednostka
 from .util import CustomizableFormsetParamsAdminMixinWyrzucWDjango40
 
 from bpp import const
@@ -174,13 +175,22 @@ class UzupelniajWstepneDanePoCrossRefAPIMixin(
             for zpa in z.get("author", []):
                 rekord = Komparator.porownaj_author(zpa).rekord_po_stronie_bpp
                 if rekord:
+                    jednostka = ostatnia_jednostka(request, rekord)
+                    dyscyplina = ostatnia_dyscyplina(
+                        request,
+                        rekord,
+                        z.get("published", {}).get("date-parts", [[None]])[0][0],
+                    )
+
                     initial.append(
                         {
                             "autor": rekord,
-                            # "jednostka": zpa.jednostka_id,
-                            # "dyscyplina_naukowa": zpa.dyscyplina_naukowa_id,
+                            "jednostka": jednostka,
+                            "dyscyplina_naukowa": dyscyplina,
+                            "zapisany_jako": f"{rekord.imiona} {rekord.nazwisko}",
                         }
                     )
+                    print(initial)
                 else:
                     initial.append({})
 

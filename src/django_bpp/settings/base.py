@@ -94,6 +94,10 @@ env = environ.Env(
     #
     DJANGO_BPP_GOOGLE_ANALYTICS_PROPERTY_ID=(str, None),
     DJANGO_BPP_GOOGLE_VERIFICATION_CODE=(str, "1111111111111111"),
+    #
+    # Konfiguracja widoczności opcji "Oświadczenie KEN"
+    #
+    DJANGO_BPP_POKAZUJ_OSWIADCZENIE_KEN=(bool, False),
 )
 
 ENVFILE_PATH = os.path.join(os.path.expanduser("~"), ".env")
@@ -880,3 +884,9 @@ DYNAMIC_COLUMNS_FORBIDDEN_COLUMN_NAMES = [
     "slug",
     "^cached_.*",
 ]
+
+#
+# Widoczność opcji "Oświadczenie KEN"
+#
+
+BPP_POKAZUJ_OSWIADCZENIE_KEN = env("DJANGO_BPP_POKAZUJ_OSWIADCZENIE_KEN")

@@ -1,9 +1,11 @@
 from decimal import Decimal
 
 from dal import autocomplete
-from dal_select2.fields import Select2ListCreateChoiceField
+from dal_select2.fields import Select2ListChoiceField, Select2ListCreateChoiceField
 from django import forms
+from django.conf import settings
 from django.db.models.fields import BLANK_CHOICE_DASH
+from django.forms import NullBooleanField
 from django.forms.widgets import HiddenInput
 
 from django.contrib import admin
@@ -19,6 +21,9 @@ from bpp.models import (
     Typ_Odpowiedzialnosci,
     Uczelnia,
 )
+
+UPOWAZNIENIE_PBN = "upowaznienie_pbn"
+
 
 # Proste tabele
 
@@ -43,7 +48,9 @@ def get_first_typ_odpowiedzialnosci():
 
 
 def generuj_formularz_dla_autorow(
-    baseModel, include_rekord=False, include_dyscyplina=True
+    baseModel,
+    include_rekord=False,
+    include_dyscyplina=True,
 ):
     class baseModel_AutorForm(forms.ModelForm):
 
@@ -80,8 +87,7 @@ def generuj_formularz_dla_autorow(
                 required=False,
             )
 
-        zapisany_jako = Select2ListCreateChoiceField(
-            choice_list=[],
+        zapisany_jako = Select2ListChoiceField(
             widget=autocomplete.Select2(
                 url="bpp:zapisany-jako-autocomplete", forward=["autor"]
             ),
@@ -90,6 +96,12 @@ def generuj_formularz_dla_autorow(
         typ_odpowiedzialnosci = forms.ModelChoiceField(
             queryset=Typ_Odpowiedzialnosci.objects.all(),
             initial=get_first_typ_odpowiedzialnosci,
+        )
+
+        oswiadczenie_ken = forms.NullBooleanField(
+            label="Oświadczenie KEN",
+            help_text="Oświadczenie Komisji Ewaluacji Nauki (Uniwersytet Medyczny w Lublinie). "
+            "Wyklucza Upoważnienie PBN. ",
         )
 
         def __init__(self, *args, **kwargs):
@@ -106,7 +118,43 @@ def generuj_formularz_dla_autorow(
             instance = kwargs.get("instance")
             data = kwargs.get("data")
             if not data and not instance:
-                # Jeżeli nie ma na czym pracowac
+
+                if kwargs.get("initial"):
+                    self.initial = kwargs.get("initial")
+                    autor = self.initial.get("autor")
+                else:
+                    try:
+                        autor = int(args[0]["autor"][0])
+                    except (TypeError, ValueError, IndexError):
+                        autor = None
+
+                if autor is not None:
+                    if isinstance(autor, int):
+                        try:
+                            autor = Autor.objects.get(pk=int(autor))
+                        except Autor.DoesNotExist:
+
+                            class autor:
+                                imiona = "TakiAutor"
+                                nazwisko = "NieIstnieje"
+                                poprzednie_nazwiska = ""
+
+                    warianty = warianty_zapisanego_nazwiska(
+                        autor.imiona, autor.nazwisko, autor.poprzednie_nazwiska
+                    )
+                    warianty = list(warianty)
+
+                    if self.initial.get("zapisany_jako", "") not in warianty:
+                        warianty.append(self.initial.get("zapisany_jako"))
+
+                    self.fields["zapisany_jako"] = Select2ListCreateChoiceField(
+                        choice_list=list(warianty),
+                        initial=self.initial.get("zapisany_jako"),
+                        widget=autocomplete.Select2(
+                            url="bpp:zapisany-jako-autocomplete", forward=["autor"]
+                        ),
+                    )
+
                 return
 
             initial = None
@@ -148,6 +196,12 @@ def generuj_formularz_dla_autorow(
                 ),
             )
 
+            include_oswiadczenie_ken = getattr(
+                settings, "BPP_POKAZUJ_OSWIADCZENIE_KEN", False
+            )
+            if not include_oswiadczenie_ken:
+                self.fields["oswiadczenie_ken"] = NullBooleanField(widget=HiddenInput())
+
         class Media:
             js = ["/static/bpp/js/autorform_dependant.js"]
 
@@ -162,7 +216,8 @@ def generuj_formularz_dla_autorow(
                 "zapisany_jako",
                 "afiliuje",
                 "zatrudniony",
-                "upowaznienie_pbn",
+                UPOWAZNIENIE_PBN,
+                "oswiadczenie_ken",
                 "procent",
                 "profil_orcid",
                 DATA_OSWIADCZENIA,
@@ -228,7 +283,9 @@ def generuj_inline_dla_autorow(baseModel, include_dyscyplina=True):
         model = baseModel
         extra = extraRows
         form = generuj_formularz_dla_autorow(
-            baseModel, include_rekord=False, include_dyscyplina=include_dyscyplina
+            baseModel,
+            include_rekord=False,
+            include_dyscyplina=include_dyscyplina,
         )
         formset = baseModel_AutorFormset
         sortable_field_name = "kolejnosc"
