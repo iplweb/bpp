@@ -178,6 +178,15 @@ Po wejściu w Redagowanie -> Źródła,
 
   pbn_uid = None and wydawnictwo_ciagle.rok = 2022
 
+Publikacje za lata 2020-2021 z określonym odpowiednikiem PBN oraz nieokreśloną informacją o płatności
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+Po wejściu w Redagowanie -> Wydawnictwa ciągłe/zwarte,
+
+.. code-block:: python
+
+  pbn_uid != None and opl_pub_cost_free != None and rok >= 2020 and rok <= 2021
+
 Operatory logiczne a ich kolejność
 """"""""""""""""""""""""""""""""""
 
