@@ -207,7 +207,7 @@ twine = "^4.0.0"
 PyPDF2 = "^1.27.7"
 pytest-rerunfailures = "^10.2"
 ipdb = "^0.13.9"
-ipython = "^8.2.0"
+ipython = "^8.10.0"
 flake8-bugbear = "^22.8.23"
 
 [build-system]
