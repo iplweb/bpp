@@ -4,6 +4,15 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202302.1099 (2023-02-21)
+============================
+
+Usprawnienie
+------------
+
+- umożliwiaj pobieranie raportu slotów - uczelnia przez API w formacie JSON (#1332)
+
+
 Bpp 202302.1098 (2023-02-06)
 ============================
 
