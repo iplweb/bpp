@@ -1,8 +1,9 @@
 import django_filters
 from rest_framework import viewsets
-from rest_framework.authentication import BasicAuthentication, SessionAuthentication
+from rest_framework.authentication import BasicAuthentication
 from rest_framework.permissions import IsAuthenticated
 
+from api_v1.permissions import IsGrupaRaportyWyswietlanie
 from api_v1.serializers.raport_slotow_uczelnia import (
     RaportSlotowUczelniaSerializer,
     RaportSlotowUczelniaWierszSerializer,
@@ -27,8 +28,10 @@ class RaportSlotowUczelniaWierszFilterSet(django_filters.rest_framework.FilterSe
 
 
 class RaportSlotowUczelniaWierszViewSet(viewsets.ReadOnlyModelViewSet):
-    authentication_classes = [SessionAuthentication, BasicAuthentication]
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [
+        BasicAuthentication,
+    ]
+    permission_classes = [IsAuthenticated, IsGrupaRaportyWyswietlanie]
 
     filterset_class = RaportSlotowUczelniaWierszFilterSet
 
@@ -41,8 +44,10 @@ class RaportSlotowUczelniaWierszViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class RaportSlotowUczelniaViewSet(viewsets.ModelViewSet):
-    authentication_classes = [SessionAuthentication, BasicAuthentication]
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [
+        BasicAuthentication,
+    ]
+    permission_classes = [IsAuthenticated, IsGrupaRaportyWyswietlanie]
 
     def get_queryset(self):
         return RaportSlotowUczelnia.objects.filter(owner=self.request.user)

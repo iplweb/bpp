@@ -52,7 +52,10 @@ class RaportSlotowUczelniaSerializer(serializers.ModelSerializer):
         ]
 
     def validate(self, attrs):
-        if attrs["akcja"] == RaportSlotowUczelnia.Akcje.SLOTY and attrs["slot"] is None:
+        if (
+            attrs.get("akcja") == RaportSlotowUczelnia.Akcje.SLOTY
+            and attrs.get("slot") is None
+        ):
             raise ValidationError(
                 {
                     "slot": "slot nie moze byc pusty dla akcji zbierania do wielkosci slotu"
