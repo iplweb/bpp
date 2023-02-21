@@ -72,6 +72,10 @@ urlpatterns = (
             r"^api/v1/",
             include(("api_v1.urls", "api_v1"), namespace="api_v1"),
         ),
+        url(
+            r"^api/v1/api-auth/",
+            include("rest_framework.urls", namespace="rest_framework"),
+        ),
         path(
             "zglos_publikacje/",
             include(
