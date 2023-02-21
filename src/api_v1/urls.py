@@ -12,6 +12,10 @@ from api_v1.viewsets.openaccess import Czas_Udostepnienia_OpenAccess_ViewSet
 from api_v1.viewsets.patent import Patent_AutorViewSet, PatentViewSet
 from api_v1.viewsets.praca_doktorska import Praca_DoktorskaViewSet
 from api_v1.viewsets.praca_habilitacyjna import Praca_HabilitacyjnaViewSet
+from api_v1.viewsets.raport_slotow_uczelnia import (
+    RaportSlotowUczelniaViewSet,
+    RaportSlotowUczelniaWierszViewSet,
+)
 from api_v1.viewsets.struktura import JednostkaViewSet, UczelniaViewSet, WydzialViewSet
 from api_v1.viewsets.system import (
     Charakter_FormalnyViewSet,
@@ -36,6 +40,10 @@ from api_v1.viewsets.wydawnictwo_zwarte import (
 from api_v1.viewsets.zrodlo import Rodzaj_ZrodlaViewSet, ZrodloViewSet
 
 router = routers.DefaultRouter()
+
+#
+# Read-only JSON API
+#
 
 router.register(r"konferencja", KonferencjaViewSet)
 router.register(r"seria_wydawnicza", Seria_WydawniczaViewSet)
@@ -88,7 +96,25 @@ router.register(r"funkcja_autora", Funkcja_AutoraViewSet)
 router.register(r"tytul", TytulViewSet)
 router.register(r"autor_jednostka", Autor_JednostkaViewSet)
 
+#
+# Raport slotow uczelnia
+#
+
+router.register(
+    r"raport_slotow_uczelnia",
+    RaportSlotowUczelniaViewSet,
+    basename="raport_slotow_uczelnia",
+)
+router.register(
+    r"raport_slotow_uczelnia_wiersz",
+    RaportSlotowUczelniaWierszViewSet,
+    basename="raport_slotow_uczelnia_wiersz",
+)
+
+#
+#
+#
+
 urlpatterns = [
     url(r"^", include(router.urls)),
-    url(r"^api-auth/", include("rest_framework.urls", namespace="rest_framework")),
 ]
