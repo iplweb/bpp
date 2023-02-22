@@ -19,6 +19,7 @@ Contents:
    import_pracownikow
    zglos_publikacje
    usage_admin
+   api
    advanced
    contributing
    faq
