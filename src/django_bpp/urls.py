@@ -41,6 +41,7 @@ admin.autodiscover()
 urlpatterns = (
     [
         url(r"^favicon\.ico$", cache_page(60 * 60)(favicon)),
+        path("tinymce/", include("tinymce.urls")),
         url(
             r"^admin/bpp/wydawnictwo_ciagle/toz/(?P<pk>[\d]+)/$",
             login_required(WydawnictwoCiagleTozView.as_view()),
