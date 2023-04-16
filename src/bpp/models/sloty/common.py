@@ -54,13 +54,6 @@ class SlotMixin:
             )
         return a
 
-    def mnoznik(self, dyscyplina):
-        """
-        Hook, który wykorzystywany jest później przy obliczaniu punktów
-        dla Wydawnictwo_Zwarte
-        """
-        return 1
-
     def pkd_dla_autora(self, wca):
         """
         Dzieli PKd (czyli punkty PK dla dyscypliny) przez liczbę k czyli
@@ -76,7 +69,7 @@ class SlotMixin:
         if azd == 0:
             return
 
-        pkd = Decimal(self.punkty_pkd(dyscyplina)) * Decimal(self.mnoznik(dyscyplina))
+        pkd = Decimal(self.punkty_pkd(dyscyplina))
         if pkd is None:
             return
 

@@ -12,7 +12,7 @@ from django.contrib.contenttypes.models import ContentType
 
 from django.utils.functional import cached_property
 
-from bpp.models import Typ_Odpowiedzialnosci, Uczelnia, Wydawca
+from bpp.models import Dyscyplina_Naukowa, Typ_Odpowiedzialnosci, Uczelnia, Wydawca
 from bpp.models.cache import Cache_Punktacja_Autora, Cache_Punktacja_Dyscypliny
 from bpp.models.patent import Patent
 from bpp.models.sloty.wydawnictwo_ciagle import SlotKalkulator_Wydawnictwo_Ciagle_Prog3
@@ -83,7 +83,6 @@ def ISlot(original, uczelnia=None):
         # Referaty zjazdowe
 
         if original.charakter_formalny.charakter_sloty == const.CHARAKTER_SLOTY_REFERAT:
-
             if (
                 original.punkty_kbn == 15
                 and original.zewnetrzna_baza_danych.filter(
@@ -156,32 +155,99 @@ def ISlot(original, uczelnia=None):
         elif rozdzial and autorstwo:
             tryb_kalkulacji = const.TRYB_KALKULACJI.ROZDZIAL_W_MONOGRAFI
 
+        rodzaje_hst = {
+            Dyscyplina_Naukowa.objects.get(pk=x[0]).dyscyplina_hst
+            for x in original.wszystkie_dyscypliny_rekordu()
+        }
+        if len(rodzaje_hst) > 1:
+            raise CannotAdapt(
+                """Rekord zawiera zarówno dyscypliny z grupy HST (nauki humanistyczne, nauki społeczne
+                i nauki teologiczne) jak i dyscypliny spoza tej grupy. Na obecną chwilę algorytm tego
+                oprogramowania nie obsługuje takich rekordów. Proszę o weryfikację rekordu i ewentualne
+                zgłoszenie problemu. """
+            )
+        elif len(rodzaje_hst) == 0:
+            raise CannotAdapt("Rekord nie zawiera danych dyscyplin.")
+
+        tryb_hst = list(rodzaje_hst)[0]
+
         if poziom_wydawcy == 2:
-            if (
-                (ksiazka and autorstwo and original.punkty_kbn in [200, 100])
-                or (ksiazka and redakcja and original.punkty_kbn in [100, 50])
-                or (rozdzial and original.punkty_kbn in [50, 25])
-            ):
+            warunek_dla_monografii = (
+                ksiazka
+                and autorstwo
+                and (
+                    (tryb_hst is not True and original.punkty_kbn in [200, 100])
+                    or (tryb_hst is True and original.punkty_kbn == 300)
+                )
+            )
+            warunek_dla_redakcji = (
+                ksiazka
+                and redakcja
+                and (
+                    (tryb_hst is not True and original.punkty_kbn in [100, 50])
+                    or (tryb_hst is True and original.punkty_kbn == 150)
+                )
+            )
+            warunek_dla_rozdzialow = rozdzial and (
+                (tryb_hst is not True and original.punkty_kbn in [50, 25])
+                or (tryb_hst is True and original.punkty_kbn == 75)
+            )
+
+            if warunek_dla_monografii or warunek_dla_redakcji or warunek_dla_rozdzialow:
                 return SlotKalkulator_Wydawnictwo_Zwarte_Prog1(
                     original, tryb_kalkulacji
                 )
 
         elif poziom_wydawcy == 1:
-            if (
-                (ksiazka and autorstwo and original.punkty_kbn in [80, 40, 100])
-                or (ksiazka and redakcja and original.punkty_kbn in [20, 10])
-                or (rozdzial and original.punkty_kbn in [20, 10])
-            ):
+            warunek_dla_monografii = (
+                ksiazka
+                and autorstwo
+                and (
+                    (tryb_hst is not True and original.punkty_kbn in [80, 40, 100])
+                    or (tryb_hst is True and original.punkty_kbn == 120)
+                )
+            )
+            warunek_dla_redakcji = (
+                ksiazka
+                and redakcja
+                and (
+                    (tryb_hst is not True and original.punkty_kbn in [20, 10])
+                    or (tryb_hst is True and original.punkty_kbn == 40)
+                )
+            )
+            warunek_dla_rozdzialow = rozdzial and (
+                (tryb_hst is not True and original.punkty_kbn in [20, 10])
+                or (tryb_hst is True and original.punkty_kbn == 20)
+            )
+
+            if warunek_dla_monografii or warunek_dla_redakcji or warunek_dla_rozdzialow:
                 return SlotKalkulator_Wydawnictwo_Zwarte_Prog2(
                     original, tryb_kalkulacji
                 )
 
         else:
-            if (
-                (ksiazka and autorstwo and original.punkty_kbn in [20, 10])
-                or (ksiazka and redakcja and original.punkty_kbn in [5, 2.5])
-                or (rozdzial and original.punkty_kbn in [5, 2.5])
-            ):
+            warunek_dla_monografii = (
+                ksiazka
+                and autorstwo
+                and (
+                    (tryb_hst is not True and original.punkty_kbn in [20, 10])
+                    or (tryb_hst is True and original.punkty_kbn in [20, 120])
+                )
+            )
+            warunek_dla_redakcji = (
+                ksiazka
+                and redakcja
+                and (
+                    (tryb_hst is not True and original.punkty_kbn in [5, 2.5])
+                    or (tryb_hst is True and original.punkty_kbn in [10, 20])
+                )
+            )
+            warunek_dla_rozdzialow = rozdzial and (
+                (tryb_hst is not True and original.punkty_kbn in [5, 2.5])
+                or (tryb_hst is True and original.punkty_kbn in [5, 20])
+            )
+
+            if warunek_dla_monografii or warunek_dla_redakcji or warunek_dla_rozdzialow:
                 return SlotKalkulator_Wydawnictwo_Zwarte_Prog3(
                     original, tryb_kalkulacji
                 )
@@ -189,7 +255,8 @@ def ISlot(original, uczelnia=None):
         raise CannotAdapt(
             "Rekordu nie można dopasować do żadnej z grup monografii. Poziom "
             "wydawcy: %(poziom_wydawcy)s, ksiazka: %(ksiazka)s, rozdzial: %(rozdzial)s, "
-            "autorstwo: %(autorstwo)s, redakcja: %(redakcja)s, punkty kbn: %(punkty_kbn)s"
+            "autorstwo: %(autorstwo)s, redakcja: %(redakcja)s, punkty kbn: %(punkty_kbn)s, "
+            "tryb_hst: %(tryb_hst)s"
             % dict(
                 poziom_wydawcy=poziom_wydawcy,
                 ksiazka=ksiazka,
@@ -197,6 +264,7 @@ def ISlot(original, uczelnia=None):
                 autorstwo=autorstwo,
                 redakcja=redakcja,
                 punkty_kbn=original.punkty_kbn,
+                tryb_hst=tryb_hst,
             )
         )
 
@@ -260,7 +328,6 @@ class IPunktacjaCacher:
 
     @transaction.atomic
     def rebuildEntries(self):
-
         pk = (self.ctype, self.original.pk)
 
         # Jeżeli nie można zaadaptować danego rekordu do kalkulatora

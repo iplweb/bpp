@@ -25,7 +25,6 @@ except ImportError:
 from model_bakery import baker
 
 from bpp import const
-from bpp.const import GR_RAPORTY_WYSWIETLANIE, GR_WPROWADZANIE_DANYCH, TO_AUTOR
 from bpp.fixtures import get_openaccess_data
 from bpp.models import (
     Autor_Dyscyplina,
@@ -74,7 +73,15 @@ def rok():
 @pytest.fixture
 def dyscyplina1(db):
     return Dyscyplina_Naukowa.objects.get_or_create(
-        nazwa="memetyka stosowana", kod="1.1"
+        nazwa="memetyka stosowana", kod="3.1"
+    )[0]
+
+
+@pytest.fixture
+def dyscyplina1_hst(db):
+    return Dyscyplina_Naukowa.objects.get_or_create(
+        nazwa="nauka teologiczna",
+        kod="7.1",
     )[0]
 
 
@@ -86,9 +93,17 @@ def dyscyplina2(db):
 
 
 @pytest.fixture
+def dyscyplina2_hst(db):
+    return Dyscyplina_Naukowa.objects.get_or_create(
+        nazwa="nauka humanistyczna",
+        kod="1.1",
+    )[0]
+
+
+@pytest.fixture
 def dyscyplina3(db):
     return Dyscyplina_Naukowa.objects.get_or_create(
-        nazwa="trzecia dyscyplina", kod="3.3"
+        nazwa="trzecia dyscyplina", kod="4.3"
     )[0]
 
 
@@ -96,7 +111,7 @@ def dyscyplina3(db):
 def grupa_raporty_wyswietlanie():
     from django.contrib.auth.models import Group
 
-    return Group.objects.get_or_create(name=GR_RAPORTY_WYSWIETLANIE)[0]
+    return Group.objects.get_or_create(name=const.GR_RAPORTY_WYSWIETLANIE)[0]
 
 
 @pytest.fixture
@@ -257,8 +272,15 @@ def autor(db, tytuly):
 @pytest.fixture(scope="function")
 def typ_odpowiedzialnosci_autor(db):
     return Typ_Odpowiedzialnosci.objects.get_or_create(
-        skrot="aut.", nazwa="autor", typ_ogolny=TO_AUTOR
-    )
+        skrot="aut.", nazwa="autor", typ_ogolny=const.TO_AUTOR
+    )[0]
+
+
+@pytest.fixture(scope="function")
+def typ_odpowiedzialnosci_redaktor(db):
+    return Typ_Odpowiedzialnosci.objects.get_or_create(
+        skrot="red.", nazwa="redaktor", typ_ogolny=const.TO_REDAKTOR
+    )[0]
 
 
 @pytest.fixture(scope="function")
@@ -280,7 +302,6 @@ JEDNOSTKA_UCZELNI = "Jednostka Uczelni"
 @pytest.mark.django_db
 @pytest.fixture(scope="function")
 def jednostka(wydzial, db):
-
     return _jednostka_maker(JEDNOSTKA_UCZELNI, skrot="Jedn. Ucz.", wydzial=wydzial)
 
 
@@ -312,7 +333,6 @@ JEDNOSTKA_PODRZEDNA = "Jednostka P-rzedna"
 @pytest.mark.django_db
 @pytest.fixture(scope="function")
 def jednostka_podrzedna(jednostka):
-
     return _jednostka_maker(
         JEDNOSTKA_PODRZEDNA, skrot="JP", wydzial=jednostka.wydzial, parent=jednostka
     )
@@ -566,7 +586,7 @@ def wprowadzanie_danych_user(normal_django_user):
     # zeby bpp.core.editor_emails zwracało
     normal_django_user.email = "foo@bar.pl"
 
-    grp = Group.objects.get_or_create(name=GR_WPROWADZANIE_DANYCH)[0]
+    grp = Group.objects.get_or_create(name=const.GR_WPROWADZANIE_DANYCH)[0]
     normal_django_user.groups.add(grp)
 
     normal_django_user.save()
@@ -668,6 +688,11 @@ def charaktery_formalne():
 @pytest.fixture(scope="function")
 def ksiazka_polska(charaktery_formalne):
     return charaktery_formalne["KSP"]
+
+
+@pytest.fixture(scope="function")
+def charakter_formalny_rozdzial(charaktery_formalne):
+    return charaktery_formalne["ROZ"]
 
 
 @pytest.fixture(scope="function")
@@ -821,7 +846,6 @@ def denorms():
 
 @pytest.fixture
 def praca_z_dyscyplina(wydawnictwo_ciagle_z_autorem, dyscyplina1, rok, db, denorms):
-
     wydawnictwo_ciagle_z_autorem.punkty_kbn = 5
     wydawnictwo_ciagle_z_autorem.save()
 
@@ -969,7 +993,6 @@ def szablony():
         )
 
     def instaluj_szablony():
-
         create_template(Template, "opis_bibliograficzny.html")
         create_template(Template, "browse/praca_tabela.html")
 
