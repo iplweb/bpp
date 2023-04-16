@@ -13,6 +13,7 @@ from django.urls.base import reverse
 from mptt.fields import TreeForeignKey
 from mptt.managers import TreeManager
 from mptt.models import MPTTModel
+from tinymce.models import HTMLField
 
 from .uczelnia import Uczelnia
 from .wydzial import Wydzial
@@ -24,7 +25,7 @@ from django.utils import timezone
 from bpp.models import ModelZAdnotacjami, ModelZPBN_UID
 from bpp.models.abstract import ModelZPBN_ID
 from bpp.models.autor import Autor, Autor_Jednostka
-from bpp.util import FulltextSearchMixin, safe_html
+from bpp.util import FulltextSearchMixin
 
 SORTUJ_RECZNIE = ("kolejnosc", "nazwa")
 SORTUJ_ALFABETYCZNIE = ("nazwa",)
@@ -94,7 +95,7 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
 
     nazwa = models.CharField(max_length=512, unique=True)
     skrot = models.CharField("Skrót", max_length=128, unique=True)
-    opis = models.TextField(blank=True, null=True)
+    opis = HTMLField(blank=True, null=True)  # models.TextField(blank=True, null=True)
     pokazuj_opis = models.BooleanField(
         default=True,
         help_text="Gdy to pole jest zaznaczone, system wyświetli pole 'Opis' na podstronie jednostki.",
@@ -277,10 +278,6 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
             return self.przypisanie_dla_dnia(data).wydzial
         except AttributeError:
             return
-
-    def clean(self):
-        if self.opis:
-            self.opis = safe_html(self.opis)
 
 
 class Jednostka_Wydzial_Manager(models.Manager):

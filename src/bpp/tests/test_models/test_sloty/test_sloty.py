@@ -9,8 +9,6 @@ from bpp.models import (
     Autor_Dyscyplina,
     Cache_Punktacja_Autora,
     Cache_Punktacja_Dyscypliny,
-    Charakter_Formalny,
-    Dyscyplina_Naukowa,
     Rekord,
     Typ_KBN,
     Typ_Odpowiedzialnosci,
@@ -338,6 +336,19 @@ def test_ISlot_wydawnictwo_zwarte_tier3(zwarte_z_dyscyplinami):
 
 
 @pytest.mark.django_db
+def test_ISlot_wydawnictwo_zwarte_hst_tier3(zwarte_z_dyscyplinami_hst):
+    zwarte_z_dyscyplinami_hst.rok = 2021
+
+    zwarte_z_dyscyplinami_hst.punkty_kbn = 20
+    i = ISlot(zwarte_z_dyscyplinami_hst)
+    assert isinstance(i, SlotKalkulator_Wydawnictwo_Zwarte_Prog3)
+
+    zwarte_z_dyscyplinami_hst.punkty_kbn = 120
+    i = ISlot(zwarte_z_dyscyplinami_hst)
+    assert isinstance(i, SlotKalkulator_Wydawnictwo_Zwarte_Prog3)
+
+
+@pytest.mark.django_db
 def test_ISlot_wydawnictwo_zwarte_tier3_rok_2022(zwarte_z_dyscyplinami):
     zwarte_z_dyscyplinami.rok = 2022
     i = ISlot(zwarte_z_dyscyplinami)
@@ -355,6 +366,16 @@ def test_ISlot_wydawnictwo_zwarte_tier2(zwarte_z_dyscyplinami, wydawca):
 
 
 @pytest.mark.django_db
+def test_ISlot_wydawnictwo_zwarte_hst_tier2(zwarte_z_dyscyplinami_hst, wydawca):
+    rok = 2021
+    wydawca.poziom_wydawcy_set.create(rok=rok, poziom=1)
+    zwarte_z_dyscyplinami_hst.punkty_kbn = 120
+    zwarte_z_dyscyplinami_hst.rok = rok
+    i = ISlot(zwarte_z_dyscyplinami_hst)
+    assert isinstance(i, SlotKalkulator_Wydawnictwo_Zwarte_Prog2)
+
+
+@pytest.mark.django_db
 def test_ISlot_wydawnictwo_zwarte_tier1(zwarte_z_dyscyplinami, wydawca):
     rok = 2021
     wydawca.poziom_wydawcy_set.create(rok=rok, poziom=2)
@@ -362,6 +383,109 @@ def test_ISlot_wydawnictwo_zwarte_tier1(zwarte_z_dyscyplinami, wydawca):
     zwarte_z_dyscyplinami.rok = rok
     i = ISlot(zwarte_z_dyscyplinami)
     assert isinstance(i, SlotKalkulator_Wydawnictwo_Zwarte_Prog1)
+
+
+@pytest.mark.django_db
+def test_ISlot_wydawnictwo_zwarte_hst_tier1(zwarte_z_dyscyplinami_hst, wydawca):
+    rok = 2021
+    wydawca.poziom_wydawcy_set.create(rok=rok, poziom=2)
+    zwarte_z_dyscyplinami_hst.punkty_kbn = 300
+    zwarte_z_dyscyplinami_hst.rok = rok
+    i = ISlot(zwarte_z_dyscyplinami_hst)
+    assert isinstance(i, SlotKalkulator_Wydawnictwo_Zwarte_Prog1)
+
+
+@pytest.mark.django_db
+def test_ISlot_wydawnictwo_zwarte_hst_tier1_redakcja(
+    zwarte_z_dyscyplinami_hst, wydawca, typ_odpowiedzialnosci_redaktor
+):
+    rok = 2021
+    wydawca.poziom_wydawcy_set.create(rok=rok, poziom=2)
+    for autor in zwarte_z_dyscyplinami_hst.autorzy_set.all():
+        autor.typ_odpowiedzialnosci = typ_odpowiedzialnosci_redaktor
+        autor.save()
+    zwarte_z_dyscyplinami_hst.punkty_kbn = 150
+    zwarte_z_dyscyplinami_hst.rok = rok
+    i = ISlot(zwarte_z_dyscyplinami_hst)
+    assert isinstance(i, SlotKalkulator_Wydawnictwo_Zwarte_Prog1)
+
+
+@pytest.mark.django_db
+def test_ISlot_wydawnictwo_zwarte_hst_tier2_redakcja(
+    zwarte_z_dyscyplinami_hst, wydawca, typ_odpowiedzialnosci_redaktor
+):
+    rok = 2021
+    wydawca.poziom_wydawcy_set.create(rok=rok, poziom=1)
+    for autor in zwarte_z_dyscyplinami_hst.autorzy_set.all():
+        autor.typ_odpowiedzialnosci = typ_odpowiedzialnosci_redaktor
+        autor.save()
+    zwarte_z_dyscyplinami_hst.punkty_kbn = 40
+    zwarte_z_dyscyplinami_hst.rok = rok
+    i = ISlot(zwarte_z_dyscyplinami_hst)
+    assert isinstance(i, SlotKalkulator_Wydawnictwo_Zwarte_Prog2)
+
+
+@pytest.mark.django_db
+def test_ISlot_wydawnictwo_zwarte_hst_tier3_redakcja(
+    zwarte_z_dyscyplinami_hst, wydawca, typ_odpowiedzialnosci_redaktor
+):
+    rok = 2021
+    for autor in zwarte_z_dyscyplinami_hst.autorzy_set.all():
+        autor.typ_odpowiedzialnosci = typ_odpowiedzialnosci_redaktor
+        autor.save()
+
+    zwarte_z_dyscyplinami_hst.rok = rok
+
+    zwarte_z_dyscyplinami_hst.punkty_kbn = 10
+    i = ISlot(zwarte_z_dyscyplinami_hst)
+    assert isinstance(i, SlotKalkulator_Wydawnictwo_Zwarte_Prog3)
+
+    zwarte_z_dyscyplinami_hst.punkty_kbn = 20
+    i = ISlot(zwarte_z_dyscyplinami_hst)
+    assert isinstance(i, SlotKalkulator_Wydawnictwo_Zwarte_Prog3)
+
+
+@pytest.mark.django_db
+def test_ISlot_wydawnictwo_zwarte_hst_tier1_autorstwo(
+    zwarte_z_dyscyplinami_hst, wydawca, charakter_formalny_rozdzial
+):
+    rok = 2021
+    wydawca.poziom_wydawcy_set.create(rok=rok, poziom=2)
+    zwarte_z_dyscyplinami_hst.charakter_formalny = charakter_formalny_rozdzial
+    zwarte_z_dyscyplinami_hst.punkty_kbn = 75
+    zwarte_z_dyscyplinami_hst.rok = rok
+    i = ISlot(zwarte_z_dyscyplinami_hst)
+    assert isinstance(i, SlotKalkulator_Wydawnictwo_Zwarte_Prog1)
+
+
+@pytest.mark.django_db
+def test_ISlot_wydawnictwo_zwarte_hst_tier2_autorstwo(
+    zwarte_z_dyscyplinami_hst, wydawca, charakter_formalny_rozdzial
+):
+    rok = 2021
+    wydawca.poziom_wydawcy_set.create(rok=rok, poziom=1)
+    zwarte_z_dyscyplinami_hst.charakter_formalny = charakter_formalny_rozdzial
+    zwarte_z_dyscyplinami_hst.punkty_kbn = 20
+    zwarte_z_dyscyplinami_hst.rok = rok
+    i = ISlot(zwarte_z_dyscyplinami_hst)
+    assert isinstance(i, SlotKalkulator_Wydawnictwo_Zwarte_Prog2)
+
+
+@pytest.mark.django_db
+def test_ISlot_wydawnictwo_zwarte_hst_tier3_autorstwo(
+    zwarte_z_dyscyplinami_hst, wydawca, charakter_formalny_rozdzial
+):
+    rok = 2021
+    zwarte_z_dyscyplinami_hst.charakter_formalny = charakter_formalny_rozdzial
+    zwarte_z_dyscyplinami_hst.rok = rok
+
+    zwarte_z_dyscyplinami_hst.punkty_kbn = 5
+    i = ISlot(zwarte_z_dyscyplinami_hst)
+    assert isinstance(i, SlotKalkulator_Wydawnictwo_Zwarte_Prog3)
+
+    zwarte_z_dyscyplinami_hst.punkty_kbn = 20
+    i = ISlot(zwarte_z_dyscyplinami_hst)
+    assert isinstance(i, SlotKalkulator_Wydawnictwo_Zwarte_Prog3)
 
 
 @pytest.mark.django_db
@@ -466,86 +590,6 @@ def test_sloty_prace_wieloosrodkowe(zwarte_z_dyscyplinami, typy_kbn):
 def test_ISlot_patent(patent):
     with pytest.raises(CannotAdapt):
         ISlot(patent)
-
-
-@pytest.mark.django_db
-def test_ISlot_mnozniki_dla_dyscyplin_z_dziedziony_np_humanistycznych_zwarte(
-    wydawnictwo_zwarte,
-    autor_jan_kowalski,
-    jednostka,
-    typy_kbn,
-    charaktery_formalne,
-    wydawca,
-    denorms,
-):
-    d_teologia = Dyscyplina_Naukowa.objects.create(
-        kod="07.001", nazwa="Teologia stosowana"
-    )
-
-    ROK = 2019
-
-    wydawca.poziom_wydawcy_set.create(rok=ROK, poziom=2)
-
-    wydawnictwo_zwarte.punkty_kbn = 200.0
-    wydawnictwo_zwarte.rok = ROK
-    wydawnictwo_zwarte.wydawca = wydawca
-    wydawnictwo_zwarte.charakter_formalny = Charakter_Formalny.objects.get(skrot="KSP")
-    wydawnictwo_zwarte.save()
-
-    Autor_Dyscyplina.objects.create(
-        autor=autor_jan_kowalski, rok=ROK, dyscyplina_naukowa=d_teologia
-    )
-
-    wydawnictwo_zwarte.dodaj_autora(
-        autor_jan_kowalski, jednostka, dyscyplina_naukowa=d_teologia
-    )
-
-    ISlot(wydawnictwo_zwarte)
-    denorms.flush()
-
-    assert Cache_Punktacja_Autora.objects.first().pkdaut == 300
-
-
-@pytest.mark.django_db
-@pytest.mark.parametrize("punktacja,oczekiwana", [(30, 30), (20, 20), (0.5, 0.5)])
-def test_ISlot_mnozniki_dla_dyscyplin_z_dziedziony_np_humanistycznych_ciagle(
-    wydawnictwo_ciagle,
-    autor_jan_kowalski,
-    jednostka,
-    typy_kbn,
-    charaktery_formalne,
-    wydawca,
-    punktacja,
-    oczekiwana,
-    denorms,
-):
-    d_teologia = Dyscyplina_Naukowa.objects.create(
-        kod="07.001", nazwa="Teologia stosowana"
-    )
-
-    ROK = 2018
-
-    wydawca.poziom_wydawcy_set.create(rok=ROK, poziom=2)
-
-    wydawnictwo_ciagle.punkty_kbn = Decimal(punktacja)
-    wydawnictwo_ciagle.rok = ROK
-    wydawnictwo_ciagle.charakter_formalny = Charakter_Formalny.objects.get(skrot="AC")
-    wydawnictwo_ciagle.save()
-
-    Autor_Dyscyplina.objects.create(
-        autor=autor_jan_kowalski, dyscyplina_naukowa=d_teologia, rok=ROK
-    )
-
-    wydawnictwo_ciagle.dodaj_autora(
-        autor_jan_kowalski, jednostka, dyscyplina_naukowa=d_teologia
-    )
-
-    wydawnictwo_ciagle.refresh_from_db()
-
-    ISlot(wydawnictwo_ciagle)
-    denorms.flush()
-
-    assert Cache_Punktacja_Autora.objects.first().pkdaut == oczekiwana
 
 
 @pytest.mark.parametrize("akcja", ["wszystko", None])

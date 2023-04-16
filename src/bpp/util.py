@@ -64,7 +64,7 @@ def fulltext_tokenize(s):
 class FulltextSearchMixin:
     fts_field = "search"
 
-    def fulltext_filter(self, qstr):
+    def fulltext_filter(self, qstr, normalization=None):
         def quotes(wordlist):
             ret = []
             for elem in wordlist:
@@ -93,7 +93,14 @@ class FulltextSearchMixin:
 
         return (
             self.filter(**{self.fts_field: sq})
-            .annotate(**{self.fts_field + "__rank": SearchRank(self.fts_field, sq)})
+            .annotate(
+                **{
+                    self.fts_field
+                    + "__rank": SearchRank(
+                        self.fts_field, sq, normalization=normalization
+                    )
+                }
+            )
             .order_by(f"-{self.fts_field}__rank")
         )
 
@@ -567,7 +574,6 @@ def worksheet_columns_autosize(
     right_margin=2,
     multiplier=1.1,
 ):
-
     if column_widths is None:
         column_widths = {}
 

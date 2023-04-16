@@ -264,6 +264,7 @@ if TESTING:
 
 
 INSTALLED_APPS = [
+    "tinymce",
     "tee",
     "formtools",
     "denorm.apps.DenormAppConfig",
@@ -890,3 +891,14 @@ DYNAMIC_COLUMNS_FORBIDDEN_COLUMN_NAMES = [
 #
 
 BPP_POKAZUJ_OSWIADCZENIE_KEN = env("DJANGO_BPP_POKAZUJ_OSWIADCZENIE_KEN")
+
+#
+# TinyMCE
+#
+
+TINYMCE_DEFAULT_CONFIG = {
+    # "theme": "simple",  # default value
+    "relative_urls": False,  # default value
+    "width": "100%",
+    "height": 300,
+}

@@ -22,49 +22,6 @@ from import_common.normalization import normalize_kod_dyscypliny
 from bpp import const
 
 
-def mnoznik_dla_monografii(kod_dziedziny, tryb_kalkulacji, punktacja_monografii):
-    """
-    § 12.
-    5. W przypadku działalności naukowej prowadzonej w ramach dyscyplin naukowych
-    należących do dziedziny nauk humanistycznych, dziedziny nauk społecznych i
-    dziedziny nauk teologicznych całkowitą wartość punktową:
-
-    1) monografii naukowej wynoszącą – zgodnie z przepisem ust. 2 pkt 1:
-        a) 200 pkt, zwiększa się o 50%,
-        b) 80 pkt, zwiększa się o 25%;
-
-    2) redakcji naukowej monografii naukowej wynoszącą – zgodnie z przepisem ust. 3
-        pkt 1 – 100 pkt, zwiększa się o 50%;
-
-    3) rozdziału w monografii naukowej wynoszącą – zgodnie z przepisem ust. 4 pkt 1
-        – 50 pkt, zwiększa się o 50%.
-
-    :return:
-    """
-    if kod_dziedziny in const.WYZSZA_PUNKTACJA:
-
-        if tryb_kalkulacji == const.TRYB_KALKULACJI.AUTORSTWO_MONOGRAFII:
-            if punktacja_monografii == 200:
-                return 1.5
-            elif punktacja_monografii == 80:
-                return 1.25
-
-        elif tryb_kalkulacji == const.TRYB_KALKULACJI.REDAKCJA_MONOGRAFI:
-            if punktacja_monografii == 100:
-                return 1.5
-
-        elif tryb_kalkulacji == const.TRYB_KALKULACJI.ROZDZIAL_W_MONOGRAFI:
-            if punktacja_monografii == 50:
-                return 1.5
-
-        else:
-            raise NotImplementedError(
-                f"Nieobsługiwany tryb kalkulacji: {tryb_kalkulacji}"
-            )
-
-    return 1
-
-
 def waliduj_format_kodu_numer(value):
     try:
         val1, val2 = (int(x) for x in value.split("."))
@@ -122,12 +79,11 @@ class Dyscyplina_Naukowa(models.Model):
             try:
                 return const.DZIEDZINY.get(const.DZIEDZINA(kod_dziedziny))
             except ValueError:
-                return "[niepoprawny kod]"
+                return const.NIEPOPRAWNY_KOD
 
-    def mnoznik_dla_monografi(self, tryb_kalkulacji, punktacja_monografi):
-        return mnoznik_dla_monografii(
-            self.kod_dziedziny(), tryb_kalkulacji, punktacja_monografi
-        )
+    @property
+    def dyscyplina_hst(self):
+        return self.kod_dziedziny() in const.DZIEDZINY_HST
 
 
 class Autor_DyscyplinaManager(models.Manager):

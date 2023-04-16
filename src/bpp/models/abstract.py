@@ -572,7 +572,6 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
         # - rekord nadrzędny musi być określony i mieć jakąś wartość w polu 'Rok'
         # - musi istnieć takie przypisanie autora do dyscypliny dla danego roku
         if self.dyscyplina_naukowa is not None:
-
             if self.rekord_id is None:
                 # Może nie ustalono rekordu nadrzędnego... a moze dodajemy nowy
                 # rekord do bazy?
@@ -937,7 +936,6 @@ class ModelZOplataZaPublikacje(models.Model):
                     and not self.opl_pub_research_potential
                     and not self.opl_pub_other
                 ):
-
                     errmsg = (
                         "Jeżeli wpisano opłatę za publikację, należy dodatkowo zaznaczyć, z jakich środków"
                         " została ta opłata zrealizowana. Przejrzyj pola dotyczące środków finansowych "
@@ -1231,6 +1229,15 @@ class ModelZPrzeliczaniemDyscyplin(models.Model):
 
     def odpiete_dyscypliny(self):
         return self.autorzy_set.exclude(dyscyplina_naukowa=None).exclude(przypieta=True)
+
+    def wszystkie_dyscypliny_rekordu(self):
+        """Ta funkcja zwraca każdą dyscyplinę przypiętą do pracy w postaci listy."""
+        return (
+            self.autorzy_set.exclude(dyscyplina_naukowa=None)
+            .filter(przypieta=True)
+            .values_list("dyscyplina_naukowa")
+            .distinct()
+        )
 
     class Meta:
         abstract = True

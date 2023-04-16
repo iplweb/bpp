@@ -60,7 +60,6 @@ class PublicTaggitTagAutocomplete(autocomplete.Select2QuerySetView):
 
 class Wydawnictwo_NadrzedneAutocomplete(autocomplete.Select2QuerySetView):
     def get_queryset(self):
-
         qs = Wydawnictwo_Zwarte.objects.filter(
             charakter_formalny__charakter_ogolny=CHARAKTER_OGOLNY_KSIAZKA
         )
@@ -173,7 +172,6 @@ class NazwaTrigramMixin:
     def get_queryset(self):
         qs = self.qset
         if self.q:
-
             self.q = self.q.strip()
             qs = (
                 qs.annotate(similarity=TrigramSimilarity("nazwa", self.q))
@@ -399,7 +397,10 @@ def globalne_wyszukiwanie_zrodla(querysets, s):
     def _fun(qry):
         return qry.only("pk", "nazwa", "poprzednia_nazwa")
 
-    querysets.append(_fun(Zrodlo.objects.fulltext_filter(s)))
+    rezultaty = Zrodlo.objects.fulltext_filter(s, normalization=8).order_by(
+        "-search__rank", "nazwa"
+    )
+    querysets.append(_fun(rezultaty))
 
     if jest_pbn_uid(s):
         querysets.append(_fun(Zrodlo.objects.filter(pbn_uid_id=s)))
@@ -538,7 +539,6 @@ class AdminNavigationAutocomplete(StaffRequired, Select2QuerySetSequenceView):
             Praca_Doktorska,
             Praca_Habilitacyjna,
         ]:
-
             filter = Q(tytul_oryginalny__icontains=self.q)
 
             try:
