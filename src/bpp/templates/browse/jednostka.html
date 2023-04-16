@@ -69,7 +69,7 @@
                                        />
                             <label for="autor_{{ autor.pk }}">
                                     <span class="custom checkbox"></span>
-                                    {{ autor }}
+                                    {{ autor }}{% if autor.aktualna_funkcja.pokazuj_za_nazwiskiem %}, {{ autor.aktualna_funkcja }}{% endif %}
                                     <a href="{% url "bpp:browse_autor" autor.slug %}">►</a>
                             </label><br/>
                         {% endfor %}
