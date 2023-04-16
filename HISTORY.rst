@@ -4,6 +4,16 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202304.1100 (2023-04-17)
+============================
+
+Usprawnienie
+------------
+
+- poprawna obsługa punktacji dyscyplin z dziedzin humanistycznych, społecznych i teologicznych (1331-dyscypliny)
+- opis jednostki może zawierać tagi HTML (#1341)
+
+
 Bpp 202302.1099 (2023-02-21)
 ============================
 
