@@ -4,6 +4,15 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202305.1102 (2023-05-22)
+============================
+
+Usprawnienie
+------------
+
+- nowy styl prezentacji jednostek na stronie wydziału (#1344)
+
+
 Bpp 202304.1101 (2023-04-17)
 ============================
 
