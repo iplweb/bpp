@@ -307,6 +307,16 @@ def jednostka(wydzial, db):
 
 @pytest.mark.django_db
 @pytest.fixture(scope="function")
+def kolo_naukowe(jednostka: Jednostka):
+    jednostka.nazwa = "Studenckie Koło Naukowe Przykładowe"
+    jednostka.skrot = "SKN"
+    jednostka.rodzaj_jednostki = Jednostka.RODZAJ_JEDNOSTKI.KOLO_NAUKOWE
+    jednostka.save()
+    return jednostka
+
+
+@pytest.mark.django_db
+@pytest.fixture(scope="function")
 def aktualna_jednostka(jednostka: Jednostka, wydzial, db):
     jednostka.jednostka_wydzial_set.create(wydzial=wydzial)
     jednostka.refresh_from_db()

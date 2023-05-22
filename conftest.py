@@ -19,6 +19,11 @@ def yesterday(today):
     return today - timedelta(days=1)
 
 
+@pytest.fixture(scope="session")
+def tommorow(today):
+    return today + timedelta(days=1)
+
+
 @pytest.fixture(autouse=True)
 def set_default_language():
     activate("en")
