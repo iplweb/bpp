@@ -11,22 +11,105 @@
 {% endblock %}
 
 {% block content %}
-    <h1>{{ wydzial }}</h1>
-    {% include "browse/go_to_admin_change.html" with url="admin:bpp_wydzial_change" pk=wydzial.pk group="struktura" %}
-    {#    <h2><a href="{% url "bpp:browse_uczelnia" wydzial.uczelnia.slug %}">#}
-    {#    {{ wydzial.uczelnia }}#}
-    {#    </a></h2>#}
-
-    <div class="row" style="line-height: 180%;">
-        {% for jednostka in wydzial.jednostki %}
-            <div class="large-6 medium-12 small-12 columns">
-                <a href="{% url "bpp:browse_jednostka" jednostka.slug %}">
-                    {{ jednostka.nazwa }}
-                </a>
+    <div id="opisWydzialu">
+        <h1>{{ wydzial }}</h1>
+        {% include "browse/go_to_admin_change.html" with url="admin:bpp_wydzial_change" pk=wydzial.pk group="struktura" %}
+        {% if wydzial.pokazuj_opis and wydzial.opis %}
+            {{ wydzial.opis|safe }}
+        {% endif %}
+    </div>
+    {% if wydzial.wymaga_nawigacji %}
+        <div data-sticky-container id="navStickyContainer">
+            <div data-sticky class="sticky"
+                 style="border: 1px solid gray; background: white;"
+                 data-anchor="listyJednostek" data-margin-top="4">
+                <nav class="sticky-container">
+                    <ul class="menu expanded" data-magellan>
+                        {% if wydzial.aktualne_jednostki.exists %}
+                            <li><a href="#aktualne">Jednostki aktualne</a></li>
+                        {% endif %}
+                        {% if wydzial.kola_naukowe.exists %}
+                            <li><a href="#kola_naukowe">Koła naukowe</a></li>
+                        {% endif %}
+                        {% if wydzial.historyczne_jednostki.exists %}
+                            <li><a href="#historyczne">Jednostki historyczne</a></li>
+                        {% endif %}
+                    </ul>
+                </nav>
             </div>
+        </div>
+    {% endif %}
+    <!-- Add content where magellan will be linked -->
+    <div class="sections" id="listyJednostek">
+        {% if wydzial.aktualne_jednostki.exists %}
+            <section id="aktualne" data-magellan-target="aktualne">
+                {% if wydzial.wymaga_nawigacji %}
+                    <h2>Jednostki aktualne</h2>
+                {% endif %}
+                <div class="row" style="line-height: 180%;">
+                    {% for jednostka in wydzial.aktualne_jednostki %}
+                        <div class="large-6 medium-12 small-12 columns">
+                            <a href="{% url "bpp:browse_jednostka" jednostka.slug %}">
+                                {{ jednostka.nazwa }}
+                            </a>
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>
+        {% endif %}
 
-        {% endfor %}
+
+        {% if wydzial.kola_naukowe.exists %}
+            <section id="kola_naukowe" data-magellan-target="kola_naukowe">
+                {% if wydzial.wymaga_nawigacji %}
+                    <h2>Koła naukowe</h2>
+                {% endif %}
+                <div class="row" style="line-height: 180%;">
+                    {% for jednostka in wydzial.kola_naukowe %}
+                        <div class="large-6 medium-12 small-12 columns">
+                            <a href="{% url "bpp:browse_jednostka" jednostka.slug %}">
+                                {{ jednostka.nazwa }}
+                            </a>
+                        </div>
+                    {% endfor %}
+                </div>
+
+            </section>
+        {% endif %}
+
+        {% if wydzial.historyczne_jednostki.exists %}
+            <section id="historyczne" data-magellan-target="historyczne">
+                {% if wydzial.wymaga_nawigacji %}
+                    <h2>Jednostki historyczne</h2>
+                {% endif %}
+                <div class="row" style="line-height: 180%;">
+                    {% for jednostka in wydzial.historyczne_jednostki %}
+                        <div class="large-6 medium-12 small-12 columns">
+                            <a href="{% url "bpp:browse_jednostka" jednostka.slug %}">
+                                {{ jednostka.nazwa }}
+                            </a>
+                        </div>
+
+                    {% endfor %}
+                </div>
+
+            </section>
+        {% endif %}
     </div>
 
+    <script type="text/javascript">
+        $(document).ready(showOrHideNav);
+        $(window).resize(showOrHideNav);
+
+        function showOrHideNav() {
+            var listyJednostek = $("#listyJednostek").height();
+            var win = $(window).height();
+
+            if (listyJednostek < win)
+                $("#navStickyContainer").hide();
+            else
+                $("#navStickyContainer").show();
+        }
+    </script>
 
 {% endblock %}

@@ -42,6 +42,7 @@ class WydzialAdmin(
                     "skrot",
                     "pbn_id",
                     "opis",
+                    "pokazuj_opis",
                     "widoczny",
                     "zezwalaj_na_ranking_autorow",
                     "zarzadzaj_automatycznie",

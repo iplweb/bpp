@@ -1,0 +1,17 @@
+{% if "test" in request.get_host %}{% load static %}
+    {#                         Najprostsza, naiwna identyfikacja serwera testowego - słowo 'test' w nazwie domeny.#}
+    <div class="hide-on-print callout alert">
+        <b>Serwer testowy</b>. Zmiany mogą zostać nadpisane zgodnie z ustawieniami aktualizacji.
+    </div>
+    <style>
+        body {
+            background-image: url("{% static "bpp/images/test_server_background.jpg" %}") !important;
+            background-size: 100%;
+            background-repeat: repeat-y;
+        }
+
+        #test-image-copyright {
+            display: block !important;
+        }
+    </style>
+{% endif %}

@@ -1,0 +1,173 @@
+<div class="title-bar" data-responsive-toggle="example-menu" data-hide-for="medium">
+    <button class="menu-icon" type="button" data-toggle="example-menu"></button>
+    <div class="title-bar-title hide-for-print">Menu</div>
+</div>
+
+<div class="top-bar stacked-for-medium hide-for-print" id="example-menu" data-sticky data-options="marginTop:0;">
+    <div class="top-bar-left">
+        <ul class="dropdown menu" data-dropdown-menu>
+            <li class="menu-text" style="cursor:pointer;"
+                onclick="location.href='/';">
+                BPP
+            </li>
+            <li><a href="{% url "multiseek:index" %}"><i class="fi-magnifying-glass"></i> szukaj</a>
+            </li>
+            <li>
+                <a href="#"><i class="fi-list"></i> przeglądaj</a>
+                <ul class="menu vertical">
+                    <li><a href="/">uczelnia</a></li>
+                    <li><a href="{% url "bpp:browse_jednostki" %}">jednostki</a></li>
+                    <li><a href="{% url "bpp:browse_autorzy" %}">autorzy</a></li>
+                    <li><a href="{% url "bpp:browse_zrodla" %}">źródła</a></li>
+                </ul>
+            </li>
+            <li>
+                <a href="#"><i class="fi-graph-trend"></i> raporty</a>
+                <ul class="menu vertical">
+                    {% load czy_pokazywac %}
+                    {% czy_pokazywac raport_dla_komisji_centralnej %}
+                        <li>
+                            <a href="{% url "bpp:raport_dla_komisji_centralnej" %}">raport
+                                dla Komisji Centralnej</a></li>
+                    {% end_czy_pokazywac %}
+
+                    {% load user_in_group %}
+
+                    {% if ENABLE_NEW_REPORTS %}
+                        {% czy_pokazywac raport_uczelni %}
+                            <li>
+                                <a href="{% url "nowe_raporty:uczelnia_form" %}">
+                                    raport uczelni
+                                </a>
+                            </li>
+                        {% end_czy_pokazywac %}
+                        {% czy_pokazywac raport_wydzialow %}
+                            <li>
+                                <a href="{% url "nowe_raporty:wydzial_form" %}">
+                                    raport wydziałów
+                                </a>
+                            </li>
+                        {% end_czy_pokazywac %}
+                        {% czy_pokazywac raport_jednostek %}
+                            <li>
+                                <a href="{% url "nowe_raporty:jednostka_form" %}">
+                                    raport jednostek
+                                </a>
+                            </li>
+                        {% end_czy_pokazywac %}
+                        {% czy_pokazywac raport_autorow %}
+                            <li>
+                                <a href="{% url "nowe_raporty:autor_form" %}">
+                                    raport autorów
+                                </a>
+                            </li>
+                        {% end_czy_pokazywac %}
+                    {% else %}
+                        {% czy_pokazywac raport_jednostek %}
+                            <li>
+                                <a href="{% url "bpp:raport_jednostek_formularz" %}">raport
+                                    jednostek</a></li>
+                        {% end_czy_pokazywac %}
+                        {% czy_pokazywac raport_autorow %}
+
+                            <li><a href="{% url "bpp:raport_autorow_formularz" %}">raport
+                                autorów</a></li>
+                        {% end_czy_pokazywac %}
+                    {% endif %}
+                    {% czy_pokazywac ranking_autorow %}
+                        <hr>
+                        <li><a href="{% url "bpp:ranking_autorow_formularz" %}">ranking
+                            autorów</a></li>
+                        <hr>
+                    {% end_czy_pokazywac %}
+
+                    {% czy_pokazywac raport_slotow_autor %}
+                        <li><a href="{% url "raport_slotow:index" %}">raport slotów - autor</a></li>
+                    {% end_czy_pokazywac %}
+                    {% czy_pokazywac raport_slotow_zerowy %}
+                        <li><a href="{% url "raport_slotow:raport-slotow-zerowy" %}">raport slotów - zerowy</a>
+                        </li>
+                        <li><a href="{% url "raport_slotow:raport-slotow-zerowy-bez-5" %}">raport slotów -
+                            zerowy PK>5</a></li>
+                    {% end_czy_pokazywac %}
+
+                    {% czy_pokazywac raport_slotow_uczelnia %}
+                        <li><a href="{% url "raport_slotow:lista-raport-slotow-uczelnia" %}">raport slotów -
+                            uczelnia</a></li>
+                        <li><a href="{% url "raport_slotow:index-ewaluacja" %}">raport slotów - ewaluacja</a>
+                        <li><a href="{% url "raport_slotow:index-upowaznienia" %}">raport ewaluacja -
+                            upoważnienia</a>
+                        <li><a href="{% url "ewaluacja2021:lista-raportow3n" %}">raport ewaluacja - 3N</a>
+                        </li>
+                    {% end_czy_pokazywac %}
+
+
+                </ul>
+            </li>
+            {% if not request.user.is_anonymous %}
+
+                {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}
+                    <li>
+                        <a href="#">operacje</a>
+                        <ul class="menu vertical">
+                            {% if request.user|has_group:"wprowadzanie danych" or request.user.is_superuser %}
+                                <li><a href="{% url "pbn_api:authorize" %}">autoryzuj PBN API</a></li>
+                                <li><a href="{% url "integrator2:main" %}">import danych</a></li>
+                                <li><a href="{% url "import_pracownikow:index" %}">import pracowników</a></li>
+                                <li><a href="{% url "ewaluacja2021:lista-importow" %}">import udziałów dla
+                                    autorów</a>
+                                </li>
+                                <li><a href="{% url "import_list_if:index" %}">import list IF</a></li>
+                                <li><a href="{% url "import_dyscyplin:index" %}">import dyscyplin</a></li>
+                                <li><a href="{% url "admin:rozbieznosci_dyscyplin_rozbieznosciview_changelist" %}">
+                                    rozbieżności dyscyplin</a></li>
+                                <li><a href="{% url "rozbieznosci_if:index" %}">rozbieżności
+                                    punktacji IF</a></li>
+                            {% endif %}
+
+                            <li><a id="password-change-link" href="{% url "password_change" %}">zmiana hasła</a>
+                            </li>
+                        </ul>
+                    </li>
+                {% endif %}
+
+                {% if request.user.is_staff %}
+                    <li><a target="_blank"
+                           href="{% url "admin:index" %}">redagowanie</a>
+                    </li>
+                {% endif %}
+
+                <li><a target="_blank"
+                       href="{% url "logout" %}">wyloguj</a>
+                </li>
+
+            {% endif %}
+
+            {% if request.user.is_anonymous %}
+                <li><a href="{% url "login_form" %}?next={{ request.get_full_path }}">
+                    <i class="fi-lock"></i>
+                    zaloguj</a></li>
+            {% endif %}
+
+
+        </ul>
+    </div>
+    <div class="top-bar-right">
+        <ul class="dropdown menu" data-dropdown-menu>
+            {% block global-nav %}
+                <li>{% load crispy_forms_tags %}
+                    {% crispy global_nav_form %}
+                    <script type="text/javascript">
+                        $(document).ready(function () {
+                            $(':input[name$=global_nav_value]').on('change', function () {
+                                location.href = "/global-nav-redir/" + $(this).val() +
+                                    "/?source=user";
+                            });
+                        });
+                    </script>
+                </li>
+            {% endblock %}
+
+        </ul>
+    </div>
+</div>

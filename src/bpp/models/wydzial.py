@@ -1,18 +1,20 @@
-# -*- encoding: utf-8 -*-
-
 """
 Struktura uczelni.
 """
+from collections import defaultdict
 
 from autoslug import AutoSlugField
 from django.db import models
-from django.db.models import CASCADE
+from django.db.models import CASCADE, Q
 from django.urls.base import reverse
+
+from .uczelnia import Uczelnia
+
+from django.utils import timezone
 
 from bpp.models import ModelZAdnotacjami
 from bpp.models.abstract import ModelZPBN_ID
 from bpp.util import FulltextSearchMixin
-from .uczelnia import Uczelnia
 
 
 class Wydzial(ModelZAdnotacjami, ModelZPBN_ID):
@@ -37,6 +39,7 @@ class Wydzial(ModelZAdnotacjami, ModelZPBN_ID):
     )
 
     opis = models.TextField(null=True, blank=True)
+    pokazuj_opis = models.BooleanField(default=False)
     slug = AutoSlugField(populate_from="nazwa", max_length=512, unique=True)
     poprzednie_nazwy = models.CharField(
         max_length=4096, blank=True, null=True, default=""
@@ -81,6 +84,71 @@ class Wydzial(ModelZAdnotacjami, ModelZPBN_ID):
             *Jednostka.objects.get_default_ordering()
         )
 
+    def aktualne_jednostki(self):
+        """Lista jednostek aktualnie przypisanych do danego wydziału,
+        bez kół naukowych."""
+        from .jednostka import Jednostka
+
+        return (
+            self.jednostki()
+            .exclude(rodzaj_jednostki=Jednostka.RODZAJ_JEDNOSTKI.KOLO_NAUKOWE)
+            .exclude(aktualna=False)
+        )
+
+    def historyczne_jednostki(self):
+        """Lista przeszłych (historycznych) jednostek, które kiedyś były przypisane
+        do danego wydziału, bez kół naukowych"""
+        from .jednostka import Jednostka, Jednostka_Wydzial
+
+        today = timezone.now().date()
+
+        return (
+            Jednostka.objects.exclude(
+                rodzaj_jednostki=Jednostka.RODZAJ_JEDNOSTKI.KOLO_NAUKOWE
+            )
+            .exclude(aktualna=True)
+            .filter(
+                pk__in=Jednostka_Wydzial.objects.filter(wydzial=self)
+                .exclude(do=None)
+                .exclude(do__gte=today)
+                .values_list("jednostka_id", flat=True)
+            )
+            .order_by(*Jednostka.objects.get_default_ordering())
+        )
+
+    def kola_naukowe(self):
+        from .jednostka import Jednostka, Jednostka_Wydzial
+
+        today = timezone.now().date()
+
+        return (
+            Jednostka.objects.filter(
+                rodzaj_jednostki=Jednostka.RODZAJ_JEDNOSTKI.KOLO_NAUKOWE
+            )
+            .filter(
+                Q(wydzial=self)
+                | Q(
+                    wydzial=None,
+                    pk__in=Jednostka_Wydzial.objects.filter(wydzial=self)
+                    .exclude(do=None)
+                    .exclude(do__lt=today),
+                )
+            )
+            .order_by(*Jednostka.objects.get_default_ordering())
+        )
+
+    def wymaga_nawigacji(self):
+        """Jeżeli wydział ma aktualne jednostki i koła naukowe lub jednostki historyczne, to wymaga
+        wyświetlenia nawigacji na podstronie oglądania wydziału, więc wtedy zwróć True
+        """
+        res = defaultdict(int)
+
+        res[self.aktualne_jednostki().exists()] += 1
+        res[self.historyczne_jednostki().exists()] += 1
+        res[self.kola_naukowe().exists()] += 1
+
+        return res[True] >= 2
+
 
 class JednostkaManager(FulltextSearchMixin, models.Manager):
     def create(self, *args, **kw):
@@ -88,4 +156,4 @@ class JednostkaManager(FulltextSearchMixin, models.Manager):
             # Kompatybilność wsteczna, z czasów, gdy nie było metryczki historycznej
             # dla obecności jednostki w wydziałach
             kw["uczelnia"] = kw["wydzial"].uczelnia
-        return super(JednostkaManager, self).create(*args, **kw)
+        return super().create(*args, **kw)
