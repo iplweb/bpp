@@ -102,10 +102,17 @@
         $(window).resize(showOrHideNav);
 
         function showOrHideNav() {
+            /* decyzja o ukryciu lub pokazaniu nawigacji opiera się na określeniu, czy wyszła poza
+            okno. W tym celu pobieramy zmienną y (top) DIVa z listą jednostek i sprawdzamy, czy
+            po dodaniu go do wysokosci tej listy wyjdzie poza okno. Jeżeli tak -> wyświetlamy nawigację.
+
+            Funkcja uruchamiana po zmianie rozmiaru okna.
+             */
             var listyJednostek = $("#listyJednostek").height();
             var win = $(window).height();
+            var top = document.getElementById("listyJednostek").getBoundingClientRect().top;
 
-            if (listyJednostek < win)
+            if (listyJednostek < win - top)
                 $("#navStickyContainer").hide();
             else
                 $("#navStickyContainer").show();
