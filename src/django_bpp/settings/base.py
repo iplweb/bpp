@@ -1,4 +1,5 @@
 import os
+import pkgutil
 import random
 import string
 import sys
@@ -891,3 +892,29 @@ DYNAMIC_COLUMNS_FORBIDDEN_COLUMN_NAMES = [
 #
 
 BPP_POKAZUJ_OSWIADCZENIE_KEN = env("DJANGO_BPP_POKAZUJ_OSWIADCZENIE_KEN")
+
+#
+# Dodanie modułów w namespace 'bpp_plugins' do INSTALLED_APPS
+#
+
+
+try:
+    import bpp_plugins
+
+    INSTALL_PLUGINS = True
+except ImportError:
+    INSTALL_PLUGINS = False
+
+if INSTALL_PLUGINS:
+
+    def iter_namespace(ns_pkg):
+        return pkgutil.iter_modules(ns_pkg.__path__, ns_pkg.__name__ + ".")
+
+    DISCOVERED_PLUGINS = [name for finder, name, ispkg in iter_namespace(bpp_plugins)]
+
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    logger.info("Znaleziono pluginy BPP", DISCOVERED_PLUGINS)
+    [INSTALLED_APPS.append(x) for x in DISCOVERED_PLUGINS]
