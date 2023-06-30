@@ -59,6 +59,7 @@ bumpver = "^2022.1118"
 pytest-recording = "0.12.2"
 vcrpy = "<5"
 towncrier = "^22.8.0"
+daphne = "*"
 
 [tool.bumpver]
 current_version = "v202306.1103"
