@@ -724,6 +724,17 @@ prompt-toolkit = ">=3.0.36"
 testing = ["pytest (>=7.2.1)", "pytest-cov (>=4.0.0)", "tox (>=4.4.3)"]
 
 [[package]]
+name = "cloudpickle"
+version = "2.2.1"
+description = "Extended pickling support for Python objects"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "cloudpickle-2.2.1-py3-none-any.whl", hash = "sha256:61f594d1f4c295fa5cd9014ceb3a1fc4a70b0de1164b94fbc2d854ccba056f9f"},
+    {file = "cloudpickle-2.2.1.tar.gz", hash = "sha256:d89684b8de9e34a2a43b3460fbca07d09d6e25ce858df4d5a44240403b6178f5"},
+]
+
+[[package]]
 name = "colorama"
 version = "0.4.6"
 description = "Cross-platform colored terminal text."
@@ -3835,16 +3846,17 @@ files = [
 
 [[package]]
 name = "pygad"
-version = "2.16.1"
-description = "PyGAD: A Python 3 Library for Building the Genetic Algorithm and Training Machine Learning Algoithms (Keras & PyTorch)."
+version = "3.1.0"
+description = "PyGAD: A Python Library for Building the Genetic Algorithm and Training Machine Learning Algoithms (Keras & PyTorch)."
 optional = false
 python-versions = "*"
 files = [
-    {file = "pygad-2.16.1-py3-none-any.whl", hash = "sha256:312f0e3cbfb67cca7a34fc871377828438cc2e30714e7d99d41ffafc81d9f039"},
-    {file = "pygad-2.16.1.tar.gz", hash = "sha256:bfb0be6eaf3a5a94222f657f94bbc02603b7fdde3035cb0affce78ef9d2620c6"},
+    {file = "pygad-3.1.0-py3-none-any.whl", hash = "sha256:f118399fd1d409019d50b44efa1b245032799c11f141743011a320f3233f89e4"},
+    {file = "pygad-3.1.0.tar.gz", hash = "sha256:baaa26cd8815e0729574d9bef3d46a9ac018833f17f673f8c4606bb312e752d5"},
 ]
 
 [package.dependencies]
+cloudpickle = "*"
 matplotlib = "*"
 numpy = "*"
 
@@ -5207,13 +5219,13 @@ test = ["Cython (>=0.29.32,<0.30.0)", "aiohttp", "flake8 (>=3.9.2,<3.10.0)", "my
 
 [[package]]
 name = "vcrpy"
-version = "5.0.0"
+version = "4.4.0"
 description = "Automatically mock your HTTP interactions to simplify and speed up testing"
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.7"
 files = [
-    {file = "vcrpy-5.0.0-py2.py3-none-any.whl", hash = "sha256:28b66c87be7678896e9e78fee4f6695e3fb153d5d7e5f635416a33658452bb44"},
-    {file = "vcrpy-5.0.0.tar.gz", hash = "sha256:1ef3ddea819a26eda10b560c70bd74c41855241d431745712e31a5b2de2d05a8"},
+    {file = "vcrpy-4.4.0-py2.py3-none-any.whl", hash = "sha256:560c9d0d8436ced29223ceefb513c3ac3f2e2a60d51a9830f236a1e63167905a"},
+    {file = "vcrpy-4.4.0.tar.gz", hash = "sha256:d1109ae93dbc2e7fcbc485849a7600d5dea510d3bef070eec4419c9a72ca2639"},
 ]
 
 [package.dependencies]
@@ -6081,4 +6093,4 @@ test = ["pytest"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<4"
-content-hash = "7c9cac48f9a6588d3c7c5cbb9dfd5f074ff70d28fa7f8d4403bdf3fda7000c0b"
+content-hash = "c39cd6d5806846c5ba3f406d79320cafa3060a20cef8d8b137c003eaafe3b56b"

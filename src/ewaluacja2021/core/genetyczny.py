@@ -62,7 +62,6 @@ class GAD(FitnessFuncMixin, Ewaluacja3NBase):
         )
 
     def pracuj(self):
-
         self.lista_prac_by_index = {
             idx: praca for idx, praca in enumerate(self.lista_prac_tuples)
         }
@@ -94,7 +93,6 @@ class GAD(FitnessFuncMixin, Ewaluacja3NBase):
         )
 
         def cykl_genetyczny(najlepszy_osobnik, nr_cyklu):
-
             osbn_czesciowo_losowe = []
 
             baza_dla_randomizera = najlepszy_osobnik
@@ -168,7 +166,6 @@ class GAD(FitnessFuncMixin, Ewaluacja3NBase):
             direction = 1
             ile_razy_nie_znaleziono_lepszych = 0
             while True:
-
                 znaleziono_lepsze = False
 
                 for a in range(0, len(solution)):
@@ -184,7 +181,7 @@ class GAD(FitnessFuncMixin, Ewaluacja3NBase):
                     else:
                         new_solution.append(new_solution.pop(a))
 
-                    self.fitness_func(new_solution)
+                    self.fitness_func(new_solution, solution_idx=None)
 
                     if self.suma_pkd > fitness:
                         fitness = self.suma_pkd
@@ -204,7 +201,7 @@ class GAD(FitnessFuncMixin, Ewaluacja3NBase):
                         # Nie znaleziono lepszych zestawów w obydwu kierunkach
                         break
 
-            self.fitness_func(solution)
+            self.fitness_func(solution, solution_idx=None)
             print(f"Po przesuwaniu bąbelkowym: {self.suma_pkd}")
 
             return solution

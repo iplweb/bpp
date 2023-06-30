@@ -56,7 +56,8 @@ include = ["AUTHORS.rst", "CONTRIBUTING.rst", "HISTORY.rst", "LICENSE",
 
 [tool.poetry.group.dev.dependencies]
 bumpver = "^2022.1118"
-pytest-recording = "^0.12.1"
+pytest-recording = "0.12.2"
+vcrpy = "<5"
 towncrier = "^22.8.0"
 
 [tool.bumpver]
@@ -80,7 +81,7 @@ push = false
 python = ">=3.10,<4"
 Django = ">=3.2,<3.3"
 arrow = "1.2.1"
-pygad = "2.16.1"
+pygad = ">=3.0"
 django-denorm-iplweb = "1.1.0"
 django-permissions-widget = "1.5.2"
 simplejson = "3.17.5"

@@ -4,6 +4,8 @@ import pytest
 from django.urls import reverse
 from model_bakery import baker
 
+from crossref_bpp.models import CrossrefAPICache
+
 from bpp.models import Autor, Rekord, Wydawnictwo_Ciagle
 
 from django_bpp.selenium_util import wait_for, wait_for_page_load
@@ -21,7 +23,6 @@ def autor_m():
 
 @pytest.mark.vcr
 def test_crossref_api_autor_wo_selenium(admin_app, autor_m):
-
     url = "/admin/bpp/wydawnictwo_ciagle/pobierz-z-crossref/"
     page = admin_app.get(url)
     page.forms[1]["identyfikator_doi"] = "10.12775/jehs.2022.12.07.045"
@@ -34,7 +35,6 @@ def test_crossref_api_autor_wo_selenium(admin_app, autor_m):
 @pytest.mark.vcr(ignore_localhost=True)
 @pytest.mark.flaky(reruns=1)
 def test_crossref_api_autor_sync(admin_browser, live_server, transactional_db, autor_m):
-
     with wait_for_page_load(admin_browser):
         admin_browser.visit(
             live_server.url
@@ -92,6 +92,7 @@ def test_crossref_api_strony_view(
     wydawnictwo_ciagle_jehs_2022,
     csrf_exempt_django_admin_app,
 ):
+    CrossrefAPICache.objects.all().delete()
 
     csrf_exempt_django_admin_app.post(
         reverse("bpp:api_ustaw_strony"),

@@ -5,7 +5,7 @@ from .sumator_base import SumatorBase
 
 
 class FitnessFuncMixin:
-    def fitness_func(self, lista_prac):
+    def fitness_func(self, lista_prac, solution_idx=None):
         self.zeruj()
         for praca_idx in lista_prac:
             praca_tuple = self.lista_prac_by_index.get(praca_idx, None)
@@ -22,7 +22,9 @@ class GenetycznySumator(FitnessFuncMixin, SumatorBase):
 
 
 def fitness_wrapper(lista_prac):
-    return fitness_wrapper.instancja_genetycznego_sumatora.fitness_func(lista_prac)
+    return fitness_wrapper.instancja_genetycznego_sumatora.fitness_func(
+        lista_prac, solution_idx=None
+    )
 
 
 def multiprocessing_gad_pool_initializer(
