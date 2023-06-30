@@ -86,12 +86,7 @@ django-permissions-widget = "1.5.2"
 simplejson = "3.17.5"
 django-dbtemplates-iplweb = "4.1.0"
 django-reversion = "4.0.0"
-channels = "3.0.5"
-# asgiref = "3.3.4"
-# Bez asgiref 3.3.4 daphne wyrzuca "single thread executor, would deadlock"
-# i efektywnie nie mozna testowac na lokalnej maszynie.
-uvicorn = {version = "0.18.2", extras = ["standard"]}
-channels-redis = "3.4.0"
+uvicorn = { version = ">=0.22", extras = ["standard"] }
 django-flexible-reports = ">0.2.9"
 psycopg2 = "2.9.5"
 django-group-by = "0.3.1"
