@@ -4,6 +4,23 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202307.1104 (2023-07-04)
+============================
+
+Naprawione
+----------
+
+- poprawne wyszukiwanie po wydziale pierwszego zgłaszającego autora w module "Zgłoś publikację" (new-2)
+
+
+Usprawnienie
+------------
+
+- modułowość oprogramowania -- możliwość instalowania pakietów w namespace ``bpp_plugins``, które to
+  kolejno zostaną automatycznie wykryte i dodane do INSTALLED_APPS (new-1)
+- pole 'Opis' również dla autorów (new-2)
+
+
 Bpp 202305.1102 (2023-05-22)
 ============================
 
