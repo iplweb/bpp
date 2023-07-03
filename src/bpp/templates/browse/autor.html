@@ -47,6 +47,10 @@
         {% endif %}
     {% endif %}
 
+{% if autor.pokazuj_opis and autor.opis %}
+{{ autor.opis|safe }}
+{% endif %}
+
 {% load czy_pokazywac %}
 {% czy_pokazywac liczbe_cytowan_na_stronie_autora ignoruj_grupe %}
     {% if autor.liczba_cytowan %}

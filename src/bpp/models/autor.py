@@ -11,6 +11,7 @@ from django.core.validators import RegexValidator
 from django.db import IntegrityError, models, transaction
 from django.db.models import CASCADE, SET_NULL, Q, Sum, UniqueConstraint
 from django.urls.base import reverse
+from tinymce.models import HTMLField
 
 from django.contrib.postgres.search import SearchVectorField as VectorField
 
@@ -102,6 +103,11 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
 
     urodzony = models.DateField(blank=True, null=True)
     zmarl = models.DateField(blank=True, null=True)
+
+    opis = HTMLField(blank=True, null=True)  # models.TextField(blank=True, null=True)
+    pokazuj_opis = models.BooleanField(
+        default=False, help_text="""Czy pokazywać tekst z pola 'Opis' na stronie?"""
+    )
     poprzednie_nazwiska = models.CharField(
         max_length=1024,
         blank=True,
@@ -203,7 +209,6 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
     def dodaj_jednostke(
         self, jednostka, rok=None, funkcja=None
     ) -> Autor_Jednostka | None:
-
         start_pracy = None
         koniec_pracy = None
 
@@ -409,7 +414,6 @@ class Autor_Jednostka_Manager(models.Manager):
         for rec in Autor_Jednostka.objects.filter(
             autor=autor, jednostka=jednostka
         ).order_by("rozpoczal_prace"):
-
             if poprzedni_rekord is None:
                 poprzedni_rekord = rec
                 continue

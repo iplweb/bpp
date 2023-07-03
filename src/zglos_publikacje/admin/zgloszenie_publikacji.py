@@ -183,9 +183,15 @@ class Zgloszenie_PublikacjiAdmin(admin.ModelAdmin):
 
         return render(request, self.zwroc_view_template, context)
 
-    def wydzial_pierwszego_autora(self, obj):
+    def wydzial_pierwszego_autora(self, obj: Zgloszenie_Publikacji):
         try:
-            return obj.zgloszenie_publikacji_autor_set.first().jednostka.wydzial.nazwa
+            return (
+                obj.zgloszenie_publikacji_autor_set.filter(
+                    jednostka__skupia_pracownikow=True
+                )
+                .first()
+                .jednostka.wydzial.nazwa
+            )
         except BaseException:
             pass
 
