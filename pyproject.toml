@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "bpp_iplweb"
-version = "202307.1104"
+version = "202307.1105"
 description = ""
 authors = ["Michał Pasternak <michal.dtz@gmail.com>"]
 license = "MIT"
@@ -33,12 +33,22 @@ packages = [
     { include = "test_bpp", from = "src" },
 ]
 include = [
-    "AUTHORS.rst",
-    "CONTRIBUTING.rst",
-    "HISTORY.rst",
-    "LICENSE",
-    "README.rst",
-    "src/*/static",
+    { path = "AUTHORS.rst" },
+    { path = "CONTRIBUTING.rst" },
+    { path = "HISTORY.rst" },
+    { path = "LICENSE" },
+    { path = "README.rst" },
+    { path = "src/*/static" },
+    { path = "src/**/locale/**/*.mo" },
+    { path = "src/**/locale/**/*.po" },
+    { path = "src/templates/*.html" },
+    { path = "src/templates/*.css" },
+    { path = "src/templates/password*.txt" },
+    { path = "src/*/migrations/*.sql" },
+    { path = "src/*/migrations/*.txt" },
+    { path = "src/*/fixtures/" },
+    { path = "src/*/fixtures/*.json" },
+    { path = "src/maint-site" },
     { path = "src/django_bpp/staticroot/**/*.css", format = "wheel" },
     { path = "src/django_bpp/staticroot/**/*.gif", format = "wheel" },
     { path = "src/django_bpp/staticroot/**/*.htm", format = "wheel" },
@@ -58,16 +68,6 @@ include = [
     { path = "src/django_bpp/staticroot/**/*.xlsx", format = "wheel" },
     { path = "src/django_bpp/staticroot/**/*.mo", format = "wheel" },
     { path = "src/django_bpp/staticroot/**/*.po", format = "wheel" },
-    "src/**/locale/**/*.mo",
-    "src/**/locale/**/*.po",
-    "src/templates/*.html",
-    "src/templates/*.css",
-    "src/templates/password*.txt",
-    "src/*/migrations/*.sql",
-    "src/*/migrations/*.txt",
-    "src/*/fixtures/",
-    "src/*/fixtures/*.json",
-    "src/maint-site",
     { path = "docs/*.rst", format = "sdist" },
     { path = "docs/conf.py", format = "sdist" },
     { path = "docs/Makefile", format = "sdist" },
@@ -81,13 +81,13 @@ include = [
 "bpp-manage.py" = "django_bpp.manage_command:entry_point"
 
 [tool.poetry.group.dev.dependencies]
-bumpver = "^2022.1118"
+bumpver = "^2023.1124"
 pytest-recording = "^0.12.1"
 vcrpy = "4.4.0"
 towncrier = "^22.8.0"
 
 [tool.bumpver]
-current_version = "v202307.1104"
+current_version = "v202307.1105"
 version_pattern = "vYYYY0M.BUILD[-TAGNUM][GITHASH]"
 commit_message = "bump version {old_version} -> {new_version}"
 commit = true
@@ -245,7 +245,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.towncrier]
 package = "bpp"
-version = "202307.1104"
+version = "202307.1105"
 package_dir = "src"
 filename = "HISTORY.rst"
 
