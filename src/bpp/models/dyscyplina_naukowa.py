@@ -5,18 +5,6 @@ from django.db import models, transaction
 from django.db.models import CASCADE, PositiveSmallIntegerField
 from model_utils import Choices
 
-# bpp=# select distinct substr(id, 1, 2), dziedzina from import_dbf_ldy;
-#  substr |                 dziedzina
-# --------+--------------------------------------------
-#  01     | Dziedzina nauk humanistycznych
-#  02     | Dziedzina nauk inżynieryjno-technicznych
-#  03     | Dziedzina nauk medycznych i nauk o zdrowiu
-#  04     | Dziedzina nauk rolniczych
-#  05     | Dziedzina nauk społecznych
-#  06     | Dziedzina nauk ścisłych i przyrodniczych
-#  07     | Dziedzina nauk teologicznych
-#  08     | Dziedzina sztuki
-# (8 rows)
 from import_common.normalization import normalize_kod_dyscypliny
 
 from bpp import const

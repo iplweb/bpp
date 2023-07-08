@@ -16,7 +16,6 @@ packages = [
 	 { include="fixtures", from="src"},
 	 { include="formdefaults", from="src"},
 	 { include="import_common", from="src"},
-	 { include="import_dbf", from="src"},
 	 { include="import_dyscyplin", from="src"},
 	 { include="import_list_if", from="src"},
 	 { include="import_pracownikow", from="src"},
@@ -40,7 +39,7 @@ exclude = [
 	"src/django_bpp/staticroot/grappelli/tinymce/",
 ]
 include = ["AUTHORS.rst", "CONTRIBUTING.rst", "HISTORY.rst", "LICENSE",
-	"README.rst", "src/import_dbf/Makefile", "src/import_dbf/sql",
+	"README.rst",
 	"src/*/static",
 	"src/django_bpp/staticroot/**/*",
 	"src/**/locale/**/*.mo",

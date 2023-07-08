@@ -337,7 +337,6 @@ INSTALLED_APPS = [
     "miniblog",
     "import_dyscyplin",
     "mptt",
-    "import_dbf",
     "rest_framework",
     "django_filters",
     "api_v1",
@@ -693,7 +692,6 @@ COMPRESS_OUTPUT_DIR = f"CACHE-{VERSION}"
 PERMISSIONS_WIDGET_PATCH_GROUPADMIN = False
 PERMISSIONS_WIDGET_PATCH_USERADMIN = True
 PERMISSIONS_WIDGET_EXCLUDE_APPS = [
-    "import_dbf",
     "favicon",
     "taggit",
     "test_bpp",
