@@ -4,6 +4,15 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202307.1105 (2023-07-09)
+============================
+
+Usprawnienie
+------------
+
+- Moduł import_dbf przesunięty do oddzielnego modułu -- plugina (new-2)
+
+
 Bpp 202307.1104 (2023-07-04)
 ============================
 

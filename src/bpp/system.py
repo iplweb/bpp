@@ -12,7 +12,6 @@ from robots.models import Rule, Url
 from dynamic_columns.models import ModelAdmin, ModelAdminColumn
 from ewaluacja2021.models import IloscUdzialowDlaAutora, LiczbaNDlaUczelni
 from formdefaults.models import FormFieldRepresentation, FormRepresentation
-from import_dbf.models import B_A, B_U, Aut, Bib, Ixn, Jed, Poz, Ses, Usi, Wx2
 from miniblog.models import Article
 from pbn_api.models import (
     Conference,
@@ -102,7 +101,6 @@ from bpp.models.wydawca import Poziom_Wydawcy, Wydawca
 User = get_user_model()
 
 groups = {
-    "import DBF": [Bib, B_A, Aut, Jed, Poz, B_U, Usi, Ses, Wx2, Ixn],
     "dane systemowe": [
         Charakter_Formalny,
         Kierunek_Studiow,
