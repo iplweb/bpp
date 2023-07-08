@@ -81,7 +81,7 @@ include = [
 "bpp-manage.py" = "django_bpp.manage_command:entry_point"
 
 [tool.poetry.group.dev.dependencies]
-bumpver = "^2022.1118"
+bumpver = "^2023.1124"
 pytest-recording = "^0.12.1"
 vcrpy = "4.4.0"
 towncrier = "^22.8.0"
