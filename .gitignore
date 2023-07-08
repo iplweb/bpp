@@ -105,27 +105,12 @@ log
 dump-*.dump
 *.pgdump
 
-src/import_dbf/db/
-src/import_dbf/db-old/
-/src/import_dbf/tests/test.dbf.sql
 /stellar.yaml
 
 .env
-src/import_dbf/integruj-dbf-enable-publikacja.log.txt
-src/import_dbf/integruj-dbf-publikacja-log.txt
-src/import_dbf/post-import-dbf.sql
 *.gz
 /src/bpp/static/scss/.sass-cache/
-/src/import_dbf/pre-integruj-dbf-enable-publikacja.sql
-/src/import_dbf/integruj-dbf-grupy-punktowe-log.txt
-/src/import_dbf/isbn-przenies.txt
-/src/import_dbf/isbn-skasuj.txt
-/src/import_dbf/pd.txt
-/src/import_dbf/zd.txt
-src/import_dbf/integruj-dbf-szkielety.txt
 *.psql
-src/import_dbf/import-dbf-przypisz-dyscypliny.log.txt
-src/import_dbf/import-dbf-utworz-doktoraty.txt
 *.xlsx
 pbn_json_data
 integracja-publikacji-bg-up.txt
