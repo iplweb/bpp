@@ -5,50 +5,77 @@ description = ""
 authors = ["Michał Pasternak <michal.dtz@gmail.com>"]
 license = "MIT"
 packages = [
-	 { include="api_v1", from="src"},
-	 { include="bpp", from="src"},
-	 { include="celeryui", from="src"},
-	 { include="create_test_db", from="src"},
-	 { include="crossref_bpp", from="src"},
-	 { include="dynamic_columns", from="src"},
-	 { include="django_bpp", from="src"},
-	 { include="ewaluacja2021", from="src"},
-	 { include="fixtures", from="src"},
-	 { include="formdefaults", from="src"},
-	 { include="import_common", from="src"},
-	 { include="import_dyscyplin", from="src"},
-	 { include="import_list_if", from="src"},
-	 { include="import_pracownikow", from="src"},
-	 { include="integrator2", from="src"},
-	 { include="zglos_publikacje", from="src"},
-	 { include="long_running", from="src"},
-	 { include="miniblog", from="src"},
-	 { include="notifications", from="src"},
-	 { include="nowe_raporty", from="src"},
-	 { include="pbn_api", from="src"},
-	 { include="raport_slotow", from="src"},
-	 { include="rozbieznosci_dyscyplin", from="src"},
-	 { include="rozbieznosci_if", from="src"},
-	 { include="tee", from="src"},
-	 { include="test_bpp", from="src"},
+    { include = "api_v1", from = "src" },
+    { include = "bpp", from = "src" },
+    { include = "celeryui", from = "src" },
+    { include = "create_test_db", from = "src" },
+    { include = "crossref_bpp", from = "src" },
+    { include = "dynamic_columns", from = "src" },
+    { include = "django_bpp", from = "src" },
+    { include = "ewaluacja2021", from = "src" },
+    { include = "fixtures", from = "src" },
+    { include = "formdefaults", from = "src" },
+    { include = "import_common", from = "src" },
+    { include = "import_dyscyplin", from = "src" },
+    { include = "import_list_if", from = "src" },
+    { include = "import_pracownikow", from = "src" },
+    { include = "integrator2", from = "src" },
+    { include = "zglos_publikacje", from = "src" },
+    { include = "long_running", from = "src" },
+    { include = "miniblog", from = "src" },
+    { include = "notifications", from = "src" },
+    { include = "nowe_raporty", from = "src" },
+    { include = "pbn_api", from = "src" },
+    { include = "raport_slotow", from = "src" },
+    { include = "rozbieznosci_dyscyplin", from = "src" },
+    { include = "rozbieznosci_if", from = "src" },
+    { include = "tee", from = "src" },
+    { include = "test_bpp", from = "src" },
 ]
-exclude = [
-	"src/django_bpp/staticroot/sinon",
-	"src/django_bpp/staticroot/qunitjs",
-	"src/django_bpp/staticroot/sitemap-*",
-	"src/django_bpp/staticroot/grappelli/tinymce/",
+include = [
+    "AUTHORS.rst",
+    "CONTRIBUTING.rst",
+    "HISTORY.rst",
+    "LICENSE",
+    "README.rst",
+    "src/*/static",
+    { path = "src/django_bpp/staticroot/**/*.css", format = "wheel" },
+    { path = "src/django_bpp/staticroot/**/*.gif", format = "wheel" },
+    { path = "src/django_bpp/staticroot/**/*.htm", format = "wheel" },
+    { path = "src/django_bpp/staticroot/**/*.html", format = "wheel" },
+    { path = "src/django_bpp/staticroot/**/*.ico", format = "wheel" },
+    { path = "src/django_bpp/staticroot/**/*.jpg", format = "wheel" },
+    { path = "src/django_bpp/staticroot/**/*.js", format = "wheel" },
+    { path = "src/django_bpp/staticroot/**/*.json", format = "wheel" },
+    { path = "src/django_bpp/staticroot/**/*.map", format = "wheel" },
+    { path = "src/django_bpp/staticroot/**/*.png", format = "wheel" },
+    { path = "src/django_bpp/staticroot/**/*.svg", format = "wheel" },
+    { path = "src/django_bpp/staticroot/**/*.swf", format = "wheel" },
+    { path = "src/django_bpp/staticroot/**/*.ttf", format = "wheel" },
+    { path = "src/django_bpp/staticroot/**/*.wav", format = "wheel" },
+    { path = "src/django_bpp/staticroot/**/*.woff", format = "wheel" },
+    { path = "src/django_bpp/staticroot/**/*.woff2", format = "wheel" },
+    { path = "src/django_bpp/staticroot/**/*.xlsx", format = "wheel" },
+    { path = "src/django_bpp/staticroot/**/*.mo", format = "wheel" },
+    { path = "src/django_bpp/staticroot/**/*.po", format = "wheel" },
+    "src/**/locale/**/*.mo",
+    "src/**/locale/**/*.po",
+    "src/templates/*.html",
+    "src/templates/*.css",
+    "src/templates/password*.txt",
+    "src/*/migrations/*.sql",
+    "src/*/migrations/*.txt",
+    "src/*/fixtures/",
+    "src/*/fixtures/*.json",
+    "src/maint-site",
+    { path = "docs/*.rst", format = "sdist" },
+    { path = "docs/conf.py", format = "sdist" },
+    { path = "docs/Makefile", format = "sdist" },
+    { path = "docs/make.bat", format = "sdist" },
+    { path = "docs/*.jpg", format = "sdist" },
+    { path = "docs/*.png", format = "sdist" },
+    { path = "docs/*.gif", format = "sdist" },
 ]
-include = ["AUTHORS.rst", "CONTRIBUTING.rst", "HISTORY.rst", "LICENSE",
-	"README.rst",
-	"src/*/static",
-	"src/django_bpp/staticroot/**/*",
-	"src/**/locale/**/*.mo",
-	"src/**/locale/**/*.po", "src/templates/*.html", "src/templates/*.css",
-	"src/templates/password*.txt", "src/*/migrations/*.sql",
-	"src/*/migrations/*.txt", "src/*/fixtures/", "src/*/fixtures/*.json",
-	"src/maint-site",
-	"docs/*.rst", "docs/conf.py", "docs/Makefile", "docs/make.bat",
-	"docs/*.jpg", "docs/*.png", "docs/*.gif"]
 
 [tool.poetry.scripts]
 "bpp-manage.py" = "django_bpp.manage_command:entry_point"
@@ -69,7 +96,7 @@ push = false
 
 [tool.bumpver.file_patterns]
 "pyproject.toml" = ['current_version = "{version}"',
-		  'version = "{pep440_version}"']
+    'version = "{pep440_version}"']
 "setup.py" = ['version="{pep440_version}",']
 "src/django_bpp/version.py" = ['VERSION = "{pep440_version}"']
 "package.json" = ['"version": "{version}",']
@@ -91,7 +118,7 @@ channels = "3.0.5"
 # asgiref = "3.3.4"
 # Bez asgiref 3.3.4 daphne wyrzuca "single thread executor, would deadlock"
 # i efektywnie nie mozna testowac na lokalnej maszynie.
-uvicorn = {version = "0.18.2", extras = ["standard"]}
+uvicorn = { version = "0.18.2", extras = ["standard"] }
 channels-redis = "3.4.0"
 django-flexible-reports = ">0.2.9"
 psycopg2 = "2.9.5"
@@ -105,7 +132,7 @@ django-autoslug = "1.9.8"
 django-autocomplete-light = "3.9.4"
 django-admin-tools = "0.9.0"
 xlrd = "2.0.1"
-celery = {version = "5.2.7", extras = ["redis"]}
+celery = { version = "5.2.7", extras = ["redis"] }
 django-celery-results = "2.4.0"
 django-tables2 = "2.3.1"
 django-sendfile = "0.3.11"
