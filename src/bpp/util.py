@@ -677,3 +677,20 @@ def worksheet_create_urls(
                     data.value = '=HYPERLINK("{}", "{}")'.format(
                         data.value, default_link_name
                     )
+
+
+def dont_log_anonymous_crud_events(
+    instance, object_json_repr, created, raw, using, update_fields, **kwargs
+):
+    """
+    Za pomocą tej procedury  moduł django-easyaudit decyduje, czy zalogować dane
+    zdarzenie, czy nie.
+
+    Procedura ta sprawdza, czy w parametrach ``kwargs`` zawarty jest parametr
+    ``request``, a jeżeli tak -- to czy ma on atrybut ``user`` czyli użytkownik. Jeśli tak,
+    to zwracana jest wartość ``True``, aby dane zdarzenie mogło byc zalogowane.
+
+    Jeżeli nie ma parametru ``user``, to takie zdarzenie logowane nie będzie.
+    """
+    if kwargs.get("request", None) and getattr(kwargs["request"], "user", None):
+        return True

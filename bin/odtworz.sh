@@ -16,7 +16,7 @@ pkill -TERM -f "src/manage.py runserver" || true
 
 sleep 1
 
-dropdb --if-exists $LOCAL_DATABASE_NAME
+dropdb -f --if-exists $LOCAL_DATABASE_NAME
 
 createdb $LOCAL_DATABASE_NAME
 
