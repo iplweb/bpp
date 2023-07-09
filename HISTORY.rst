@@ -4,6 +4,21 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202307.1106 (2023-07-09)
+============================
+
+Naprawione
+----------
+
+- napraw błąd związany z przetwarzaniem zmiennych przez bibliotekę formularzy ``django-crispy-forms`` (template1)
+
+
+Usprawnienie
+------------
+
+- Nie loguj "anonimowych" zdarzeń związanych ze zmianą rekordu przez easyaudit (new)
+
+
 Bpp 202307.1105 (2023-07-09)
 ============================
 
