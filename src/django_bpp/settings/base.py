@@ -846,9 +846,22 @@ MANAGERS = ADMINS
 # django-easy-audit
 #
 
+#
+# Uwaga: domyślnie easy-audit NIE jest włączony. Włącza go dopiero
+# konfiguracja produkcyjna za pomocą poniższego kodu:
+#
+# INSTALLED_APPS.append("easyaudit")  # noqa
+# MIDDLEWARE.append(  # noqa
+#     "easyaudit.middleware.easyaudit.EasyAuditMiddleware",
+# )
+# DJANGO_EASY_AUDIT_PROPAGATE_EXCEPTIONS = True
+
 DJANGO_EASY_AUDIT_WATCH_REQUEST_EVENTS = False
 DJANGO_EASY_AUDIT_ADMIN_SHOW_REQUEST_EVENTS = False
 DJANGO_EASY_AUDIT_READONLY_EVENTS = True
+DJANGO_EASY_AUDIT_CRUD_DIFFERENCE_CALLBACKS = [
+    "bpp.util.dont_log_anonymous_crud_events"
+]
 DJANGO_EASY_AUDIT_REGISTERED_CLASSES = [
     "zglos_publikacje.Zgloszenie_Publikacji",
     "bpp.Wydawnictwo_Zwarte",
