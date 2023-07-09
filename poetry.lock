@@ -1726,13 +1726,12 @@ python-dateutil = ">=2.8.1"
 
 [[package]]
 name = "django-password-policies-iplweb"
-version = "0.8.4"
+version = "0.8.5"
 description = "A Django application to implent password policies."
 optional = false
 python-versions = "*"
 files = [
-    {file = "django-password-policies-iplweb-0.8.4.tar.gz", hash = "sha256:928d6574010ea7a2e689b533aa939ee4fd544bb2536016cac4df5b91e61b9b4c"},
-    {file = "django_password_policies_iplweb-0.8.4-py3-none-any.whl", hash = "sha256:0208cdfff1e3e2cb9adfdc97b3bfea87b4f0915e46bbde219f64d72641a02309"},
+    {file = "django_password_policies_iplweb-0.8.5-py3-none-any.whl", hash = "sha256:a77466719708d3dd5325b7a13c1f60bc998adfc3ea8be21f77a7862ca01d8618"},
 ]
 
 [package.dependencies]
@@ -6421,4 +6420,4 @@ test = ["pytest"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<4"
-content-hash = "1856ffb6075a28e7daecdbd4051a097ec125fd7fc1285bb1bf5f590b5cf2a82d"
+content-hash = "c8bdecf1bb56e426fc26e71f5d1babc341d2717b7da8265ce00b83213fa47b5c"
