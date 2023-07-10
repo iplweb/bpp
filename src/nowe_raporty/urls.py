@@ -1,6 +1,4 @@
-# -*- encoding: utf-8 -*-
-
-from django.conf.urls import url
+from django.urls import re_path as url
 from django.views.generic.base import TemplateView
 
 from nowe_raporty.views import (
