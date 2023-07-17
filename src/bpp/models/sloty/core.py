@@ -127,7 +127,7 @@ def ISlot(original, uczelnia=None):
         if ksiazka and rozdzial:
             raise NotImplementedError("To sie nie powinno wydarzyc)")
 
-        if ksiazka:
+        if ksiazka and original.pk:
             for elem in Typ_Odpowiedzialnosci.objects.filter(
                 pk__in=original.autorzy_set.values_list("typ_odpowiedzialnosci_id")
             ).distinct():
