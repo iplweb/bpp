@@ -17,7 +17,6 @@ from .element_repozytorium import Element_RepozytoriumInline
 from .grant import Grant_RekorduInline
 from .helpers import OptionalPBNSaveMixin, sprawdz_duplikaty_www_doi
 from .nagroda import NagrodaInline
-from .util import CustomizableFormsetParamsAdminMixinWyrzucWDjango40
 
 # Proste tabele
 from .wydawnictwo_ciagle import CleanDOIWWWPublicWWWMixin
@@ -232,7 +231,6 @@ class Wydawnictwo_ZwarteAdmin(
     OptionalPBNSaveMixin,
     EksportDanychMixin,
     UzupelniajWstepneDanePoNumerzeZgloszeniaMixin,
-    CustomizableFormsetParamsAdminMixinWyrzucWDjango40,
     DynamicColumnsMixin,
     Wydawnictwo_ZwarteAdmin_Baza,
 ):

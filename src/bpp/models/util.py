@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 """Funkcje pomocnicze dla klas w bpp.models"""
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 
@@ -51,7 +49,7 @@ def dodaj_autora(
     )
 
     if zapisany_jako is None:
-        zapisany_jako = "%s %s" % (autor.nazwisko, autor.imiona)
+        zapisany_jako = f"{autor.nazwisko} {autor.imiona}"
 
     if kolejnosc is None:
         kolejnosc = klass.objects.filter(rekord=rekord).aggregate(Max("kolejnosc"))[
@@ -119,6 +117,9 @@ class ModelZOpisemBibliograficznym(models.Model):
     def autorzy_dla_opisu(self):
         # Takie 'autorzy_set.all()' ale na potrzeby opisu bibliograficznego -- zaciąga
         # rekordy zależne za pomocą .select_related:
+
+        if not self.pk:
+            return []
 
         return self.autorzy_set.select_related(
             "autor", "typ_odpowiedzialnosci"

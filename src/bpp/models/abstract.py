@@ -1232,6 +1232,9 @@ class ModelZPrzeliczaniemDyscyplin(models.Model):
 
     def wszystkie_dyscypliny_rekordu(self):
         """Ta funkcja zwraca każdą dyscyplinę przypiętą do pracy w postaci listy."""
+        if not self.pk:
+            return []
+
         return (
             self.autorzy_set.exclude(dyscyplina_naukowa=None)
             .filter(przypieta=True)
