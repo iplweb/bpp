@@ -16,9 +16,7 @@ class MyAuthenticationForm(AuthenticationForm):
                 "Zaloguj się!",
                 "username",
                 "password",
-                Hidden(
-                    REDIRECT_FIELD_NAME, request.GET.get(REDIRECT_FIELD_NAME, "/bpp/")
-                ),
+                Hidden(REDIRECT_FIELD_NAME, """"{{next}}"""),
             ),
             ButtonHolder(
                 Submit(
