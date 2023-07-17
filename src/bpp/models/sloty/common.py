@@ -29,6 +29,9 @@ class SlotMixin:
 
     @cached_property
     def dyscypliny(self):
+        if not self.original.pk:
+            return set()
+
         ret = set()
         for wa in self.original.autorzy_set.all():
             d = wa.okresl_dyscypline()
