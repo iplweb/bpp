@@ -1,20 +1,29 @@
 import contextlib
+from importlib import import_module
 
 from pbn_api.client import RequestsTransport
 
 from django.contrib.messages.middleware import MessageMiddleware
-from django.contrib.sessions.middleware import SessionMiddleware
 
 
 @contextlib.contextmanager
 def middleware(request):
     """Annotate a request object with a session"""
-    middleware = SessionMiddleware()
-    middleware.process_request(request)
+
+    from django.conf import settings
+
+    engine = import_module(settings.SESSION_ENGINE)
+    SessionStore = engine.SessionStore
+
+    session_key = request.COOKIES.get(settings.SESSION_COOKIE_NAME)
+    request.session = SessionStore(session_key)
+
+    # middleware = SessionMiddleware()
+    # middleware.process_request(request)
     request.session.save()
 
     """Annotate a request object with a messages"""
-    middleware = MessageMiddleware()
+    middleware = MessageMiddleware([])
     middleware.process_request(request)
     request.session.save()
     yield request

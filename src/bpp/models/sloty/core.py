@@ -355,6 +355,9 @@ class IPunktacjaCacher:
                 zapisani_autorzy_z_dyscypliny=[a.zapisany_jako for a in azd],
             )
 
+        if not self.original.pk:
+            return
+
         for wa in self.original.autorzy_set.all():
             if (
                 not wa.afiliuje

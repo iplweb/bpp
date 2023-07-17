@@ -6,7 +6,7 @@ from django.urls import reverse
 from django.views.generic import DetailView, View
 from django.views.generic.base import TemplateView
 from django.views.generic.edit import BaseDeleteView, FormView
-from sendfile import sendfile
+from django_sendfile import sendfile
 
 from celeryui.interfaces import IWebTask
 from celeryui.models import Report
