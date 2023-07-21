@@ -2,7 +2,7 @@ from .base import *  # noqa
 
 DEBUG = False
 DEBUG_TOOLBAR = False
-SENDFILE_BACKEND = "sendfile.backends.nginx"
+SENDFILE_BACKEND = "django_sendfile.backends.nginx"
 
 SESSION_COOKIE_SECURE = False
 CSRF_COOKIE_SECURE = False

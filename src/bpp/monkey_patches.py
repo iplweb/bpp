@@ -1,6 +1,4 @@
 from asgiref.sync import sync_to_async
-from crispy_forms.utils import TEMPLATE_PACK
-from django.template.loader import render_to_string
 
 # https://stackoverflow.com/questions/71952949/serving-file-asyncronously-with-django-and-uvicorn
 
@@ -18,17 +16,3 @@ def patch_sync_to_async(*args, **kwargs):
     """
     kwargs["thread_sensitive"] = False
     return sync_to_async(*args, **kwargs)
-
-
-def fix_crispy_forms_BaseInput_render(
-    self, form, form_style, context, template_pack=TEMPLATE_PACK, *args, **kwargs
-):
-    """
-    Patch for remote exploit,
-    https://github.com/django-crispy-forms/django-crispy-forms/issues/1359
-    """
-
-    template = self.get_template_name(template_pack)
-    context.update({"input": self})
-
-    return render_to_string(template, context.flatten())

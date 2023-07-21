@@ -4,6 +4,15 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202307.1107 (2023-07-21)
+============================
+
+Usprawnienie
+------------
+
+- Django 4.2 (new)
+
+
 Bpp 202307.1106 (2023-07-09)
 ============================
 

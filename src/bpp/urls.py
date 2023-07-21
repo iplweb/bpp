@@ -1,5 +1,5 @@
-from django.conf.urls import url
 from django.urls import path
+from django.urls import re_path as url
 from django.views.decorators.csrf import csrf_exempt
 
 from django.contrib.auth.decorators import login_required

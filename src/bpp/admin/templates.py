@@ -6,12 +6,12 @@ from dbtemplates.admin import TemplateAdmin, TemplateAdminForm
 from dbtemplates.models import Template
 from dbtemplates.utils.cache import remove_cached_template
 from dbtemplates.utils.template import check_template_syntax
-from django.conf.urls import url
 from django.core.exceptions import ValidationError
 from django.template import Context, TemplateSyntaxError
 from django.template.engine import Engine
 from django.template.loaders.cached import Loader as CachedLoader
 from django.template.response import TemplateResponse
+from django.urls import re_path as url
 
 from django.contrib import admin, messages
 

@@ -7,7 +7,6 @@ from crossref_bpp.core import Komparator
 from crossref_bpp.models import CrossrefAPICache
 from import_common.normalization import normalize_title
 from ..views.api import ostatnia_dyscyplina, ostatnia_jednostka
-from .util import CustomizableFormsetParamsAdminMixinWyrzucWDjango40
 
 from bpp import const
 
@@ -64,7 +63,7 @@ class KorzystaZCrossRefAPIStreszczenieInlineMixin(
 
 
 class UzupelniajWstepneDanePoCrossRefAPIMixin(
-    KorzystaZCrossRefAPIMixin, CustomizableFormsetParamsAdminMixinWyrzucWDjango40
+    KorzystaZCrossRefAPIMixin,
 ):
     """Mixin dla klas ModelAdmin które chcą miec wypełniane parametry wg zgłoszenia
     z parametru requestu GET ``identyfikator_doi``.
@@ -196,7 +195,6 @@ class UzupelniajWstepneDanePoCrossRefAPIMixin(
 
         elif prefix == "streszczenia" and obj.pk is None:
             if z.get("abstract") is not None:
-
                 jezyk_pk = None
                 jezyk = Komparator.porownaj_language(
                     z.get("language")

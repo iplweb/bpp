@@ -12,14 +12,13 @@ And to activate the app index dashboard::
 
 from admin_tools.dashboard import AppIndexDashboard, Dashboard, modules
 
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
 
 
 class CustomIndexDashboard(Dashboard):
     def init_with_context(self, context):
-
         user = context["request"].user
 
         if user.groups.filter(name="dane systemowe"):

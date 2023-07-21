@@ -1,10 +1,11 @@
 from rest_framework import serializers
-from taggit_serializer.serializers import TagListSerializerField
+from taggit.serializers import TagListSerializerField
 
 from api_v1.serializers.util import (
     AbsoluteUrlSerializerMixin,
     WydawnictwoSerializerMixin,
 )
+
 from bpp.models import Praca_Doktorska
 
 

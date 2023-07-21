@@ -47,6 +47,13 @@ class RaportSlotowZerowy(
                 "ALTER TABLE raport_slotow_raportzerowyentry ADD COLUMN id SERIAL"
             )
 
+            for n, cn in enumerate(
+                ["autor_id", "rok", "dyscyplina_naukowa_id"], start=1
+            ):
+                cursor.execute(
+                    f"ALTER TABLE raport_slotow_raportzerowyentry RENAME COLUMN col{n} TO {cn}"
+                )
+
         qset = RaportZerowyEntry.objects.group_by(
             "autor", "dyscyplina_naukowa"
         ).annotate(lata=StringAgg(Cast("rok", CharField()), ", ", ordering=("rok")))

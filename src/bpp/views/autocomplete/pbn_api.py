@@ -12,7 +12,7 @@ from pbn_api.models import Journal, Publication, Scientist
 
 from django.contrib.auth.mixins import LoginRequiredMixin
 
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 
 from bpp import const
 from bpp.const import PBN_UID_LEN
@@ -136,7 +136,6 @@ class BasePBNAutocomplete(LoginRequiredMixin, autocomplete.Select2QuerySetView):
 
 
 class PublicationAutocomplete(BasePBNAutocomplete):
-
     pbn_api_model = Publication
     sort_order = ("title", "-year")
 
@@ -153,7 +152,6 @@ class PublicationAutocomplete(BasePBNAutocomplete):
 
 
 class ScientistAutocomplete(BasePBNAutocomplete):
-
     pbn_api_model = Scientist
     sort_order = ("from_institution_api",)  # "lastName", "name")
 
@@ -170,7 +168,6 @@ class ScientistAutocomplete(BasePBNAutocomplete):
 
 
 class JournalAutocomplete(BasePBNAutocomplete):
-
     pbn_api_model = Journal
     sort_order = ("title", "mniswId")
 

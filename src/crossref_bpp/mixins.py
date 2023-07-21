@@ -1,4 +1,4 @@
-from django.conf.urls import url
+from django.urls import re_path as url
 
 from .views import pobierz_z_crossref
 
@@ -19,7 +19,6 @@ class AdminCrossrefAPIMixin:
         return security_urls + urls
 
     def pobierz_z_crossref(self, request):
-
         context = dict(
             self.admin_site.each_context(request),
             app_label="bpp",
