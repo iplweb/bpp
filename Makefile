@@ -57,10 +57,10 @@ production-assets: distclean assets
 	rm -rf src/django_bpp/staticroot/vendor/select2/docs
 	rm -rf src/django_bpp/staticroot/scss/*.scss
 
-# compilemessages
-	export PYTHONPATH=. && cd src && django-admin.py compilemessages
+compilemessages:
+	export PYTHONPATH=. && cd src && django-admin compilemessages
 
-bdist_wheel: distclean production-assets
+bdist_wheel: distclean production-assets compilemessages
 	poetry build
 	ls -lash dist
 

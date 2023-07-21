@@ -16,7 +16,7 @@ SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 
 CACHES = {
     "default": {
-        "BACKEND": "redis_cache.RedisCache",
+        "BACKEND": "django_redis.cache.RedisCache",
         "LOCATION": [
             f"{REDIS_HOST}:{REDIS_PORT}",  # noqa
         ],
