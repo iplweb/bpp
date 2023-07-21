@@ -978,7 +978,7 @@ TransactionTestCase._fixture_teardown = _fixture_teardown
 def pytest_collection_modifyitems(items):
     # Dodaj marker "selenium" dla wszystkich testów uzywających fikstur 'browser'
     # lub 'admin_browser', aby można było szybko uruchamiać wyłacznie te testy
-    # lub nie uruchamiać ich:
+    # lub nie uruchamiać ich
 
     flaky_test = pytest.mark.flaky(reruns=10)
 

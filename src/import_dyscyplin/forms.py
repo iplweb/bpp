@@ -13,7 +13,7 @@ class Import_Dyscyplin_KolumnaForm(ModelForm):
         ]
 
     def __init__(self, *args, **kw):
-        super(Import_Dyscyplin_KolumnaForm, self).__init__(*args, **kw)
+        super().__init__(*args, **kw)
         helper = FormHelper(self)
         helper.form_class = "custom"
         helper.layout = Layout(
@@ -29,10 +29,10 @@ class KolumnaForm(ModelForm):
 
 
 class KolumnaFormSetHelper(FormHelper):
-    template = "bootstrap/table_inline_formset.html"
+    template = "bootstrap5/table_inline_formset.html"
 
     def __init__(self, *args, **kwargs):
-        super(KolumnaFormSetHelper, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.form_method = "post"
         self.add_input(
             Submit("submit", "Zatwierdź i przejdź dalej", css_class="button success")
@@ -51,7 +51,7 @@ class Import_DyscyplinForm(ModelForm):
         model = Import_Dyscyplin
 
     def __init__(self, *args, **kw):
-        super(Import_DyscyplinForm, self).__init__(*args, **kw)
+        super().__init__(*args, **kw)
         helper = FormHelper(self)
         helper.form_class = "custom"
         helper.layout = Layout(

@@ -940,6 +940,24 @@ requests = ">=1.0.0"
 yaml = ["PyYAML (>=3.10)"]
 
 [[package]]
+name = "crispy-bootstrap5"
+version = "0.7"
+description = "Bootstrap5 template pack for django-crispy-forms"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "crispy-bootstrap5-0.7.tar.gz", hash = "sha256:0745a67199619149b7feca87dab7a45664876ed50fb582b38fd2aeb3f8a8d869"},
+    {file = "crispy_bootstrap5-0.7-py3-none-any.whl", hash = "sha256:f3ff1ef5cb379fe80b1b02e245008f276444098a4bdb8d855bed84c623798a85"},
+]
+
+[package.dependencies]
+django = ">=3.2"
+django-crispy-forms = ">=1.13.0"
+
+[package.extras]
+test = ["pytest", "pytest-django"]
+
+[[package]]
 name = "crispy-forms-foundation"
 version = "1.0.0"
 description = "Django application to add 'django-crispy-forms' layout objects for 'Foundation for sites'"
@@ -1585,13 +1603,13 @@ files = [
 
 [[package]]
 name = "django-grappelli"
-version = "2.15.5"
+version = "3.0.6"
 description = "A jazzy skin for the Django Admin-Interface."
 optional = false
 python-versions = "*"
 files = [
-    {file = "django-grappelli-2.15.5.tar.gz", hash = "sha256:84da7f1ab9051d3421255355a987544420dffef595b1a550f3032b5418017415"},
-    {file = "django_grappelli-2.15.5-py2.py3-none-any.whl", hash = "sha256:072c020c15af4c463e21770bd8c60ebddafd2ae9a7eed364344f981e046a6c3c"},
+    {file = "django-grappelli-3.0.6.tar.gz", hash = "sha256:7a39f6c5bf5d3333fdbf8345c0427c1129a2fb6a37966d07a1bf74346d708c76"},
+    {file = "django_grappelli-3.0.6-py2.py3-none-any.whl", hash = "sha256:6cef98fe717473f1cb2bddfe68218193d5709ffacf184cdb62138093a6bd8fc5"},
 ]
 
 [[package]]
@@ -6422,4 +6440,4 @@ test = ["pytest"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<4"
-content-hash = "488c4975bcbc71b9a40fdbf97009c6ab25100ea0d3e4d868213d1cb4ecd6aed0"
+content-hash = "eab2dfcf1a245a0704adba1f08c3667227fa25c8fd60009217f1eaab8b621d80"

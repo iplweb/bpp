@@ -318,6 +318,7 @@ INSTALLED_APPS = [
     "django_extensions",
     "celeryui",
     "crispy_forms",
+    "crispy_bootstrap5",
     "crispy_forms_foundation",
     "compressor",
     "session_security",
