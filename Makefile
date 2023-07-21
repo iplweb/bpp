@@ -57,10 +57,10 @@ production-assets: distclean assets
 	rm -rf src/django_bpp/staticroot/vendor/select2/docs
 	rm -rf src/django_bpp/staticroot/scss/*.scss
 
-# compilemessages
-	export PYTHONPATH=. && cd src && django-admin.py compilemessages
+compilemessages:
+	export PYTHONPATH=. && cd src && django-admin compilemessages
 
-bdist_wheel: distclean production-assets
+bdist_wheel: distclean production-assets compilemessages
 	poetry build
 	ls -lash dist
 
@@ -97,9 +97,9 @@ upgrade-version:
 	$(eval NEW_VERSION=$(shell bumpver test $(CUR_VERSION) 'vYYYY0M.BUILD[-TAGNUM]' |head -1|cut -d: -f2))
 	git flow release start $(NEW_VERSION)
 	bumpver update
-	towncrier build --yes
+	-towncrier build --yes
 	emacs HISTORY.rst
-	git commit -m "Opis zmian dla nowej wersji oprogramowania"
+	-git commit -m "Opis zmian dla nowej wersji oprogramowania"
 	git flow release finish "$(NEW_VERSION)" -p -m "Nowa wersja: $(NEW_VERSION)"
 
 new-release: upgrade-version bdist_wheel upload
