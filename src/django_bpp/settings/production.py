@@ -18,7 +18,7 @@ CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
         "LOCATION": [
-            f"{REDIS_HOST}:{REDIS_PORT}",  # noqa
+            f"redis://{REDIS_HOST}:{REDIS_PORT}",  # noqa
         ],
         "OPTIONS": {
             "DB": env("DJANGO_BPP_REDIS_DB_CACHE"),  # noqa
