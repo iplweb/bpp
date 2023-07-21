@@ -16,7 +16,7 @@ from .base import DATABASES, INSTALLED_APPS, MIDDLEWARE
 
 DEBUG = True
 
-SENDFILE_BACKEND = "sendfile.backends.simple"
+SENDFILE_BACKEND = "django_sendfile.backends.simple"
 
 SELENIUM_DRIVER = "Firefox"
 

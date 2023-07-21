@@ -74,7 +74,6 @@ def test_safe_html_dwa_tytuly_DwaTytuly(
     ],
 )
 def test_zapisz_wydawnictwo_w_adminie(klass, autor_klass, name, url, admin_app):
-
     if klass == Wydawnictwo_Ciagle:
         wc = baker.make(klass, zrodlo__nazwa="Kopara", rok=2020)
     else:
@@ -187,7 +186,7 @@ def test_BppTemplateAdmin_zapis_dobrej_templatki(admin_app):
     res.forms["template_form"]["content"] = "dobry content"
     res.forms["template_form"]["name"] = "nazwa.html"
     res = res.forms["template_form"].submit().maybe_follow()
-    res.mustcontain("został dodany pomyślnie")
+    res.mustcontain("został(a)(-ło) dodany(-na)(-ne) pomyślnie")
 
 
 @pytest.mark.django_db
