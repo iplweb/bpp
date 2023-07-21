@@ -1,14 +1,15 @@
 from django.conf import settings
 from django.db import models
 from django.urls.base import reverse
-from django.utils import timezone
-from django.utils.html import escape
-from django.utils.translation import ugettext_lazy as _
 
 # Create your models here.
 from model_utils.choices import Choices
 from model_utils.fields import SplitField
 from model_utils.models import StatusModel, TimeStampedModel
+
+from django.utils import timezone
+from django.utils.html import escape
+from django.utils.translation import gettext_lazy as _
 
 from bpp.models.struktura import Uczelnia
 

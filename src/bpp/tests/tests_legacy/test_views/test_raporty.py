@@ -66,7 +66,7 @@ class TestPobranieRaportu(RaportMixin, UserTestCase):
         self.r.finished_on = timezone.now()
         self.r.save()
 
-        with override_settings(SENDFILE_BACKEND="sendfile.backends.nginx"):
+        with override_settings(SENDFILE_BACKEND="django_sendfile.backends.nginx"):
             url = reverse("bpp:pobranie-raportu", kwargs=dict(uid=self.r.uid))
             resp = self.client.get(url)
             self.assertEqual(resp.status_code, 200)

@@ -8,7 +8,7 @@ DEBUG = True
 
 DEBUG_TOOLBAR = False
 
-SENDFILE_BACKEND = "sendfile.backends.simple"
+SENDFILE_BACKEND = "django_sendfile.backends.simple"
 
 SELENIUM_DRIVER = "Firefox"
 

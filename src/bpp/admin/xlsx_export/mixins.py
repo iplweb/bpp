@@ -86,6 +86,7 @@ class EksportDanychMixin(ExportMixin):
             "list_max_show_all": self.list_max_show_all,
             "list_editable": self.list_editable,
             "model_admin": self,
+            "search_help_text": "Wyszukaj...",
         }
         import django
 

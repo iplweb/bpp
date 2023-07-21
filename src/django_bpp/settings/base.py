@@ -135,9 +135,7 @@ if SENTRYSDK_CONFIG_URL and not PROCESS_INTERACTIVE:
         send_default_pii=True,
     )
 
-
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-
 
 TIME_ZONE = "Europe/Warsaw"
 LANGUAGE_CODE = "pl"
@@ -263,7 +261,6 @@ if TESTING:
     CELERY_TASK_ALWAYS_EAGER = True
     CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
 
-
 INSTALLED_APPS = [
     "tinymce",
     "tee",
@@ -294,7 +291,6 @@ INSTALLED_APPS = [
     "static_sitemaps",
     "cookielaw",
     "taggit",
-    "taggit_serializer",
     "columns",
     "zglos_publikacje.apps.ZglosPublikacjeConfig",
     "formdefaults.apps.FormdefaultsConfig",
@@ -309,7 +305,7 @@ INSTALLED_APPS = [
     "dal_select2",
     "grappelli",
     "django_bpp.apps.BppAdminConfig",  # replaced `django.contrib.admin`
-    "permissions_widget",
+    "tabular_permissions",
     "dj_pagination",
     "admin_tools",
     "admin_tools.theming",
@@ -322,6 +318,7 @@ INSTALLED_APPS = [
     "django_extensions",
     "celeryui",
     "crispy_forms",
+    "crispy_bootstrap5",
     "crispy_forms_foundation",
     "compressor",
     "session_security",
@@ -360,7 +357,6 @@ PROJECT_ROOT = BASE_DIR
 
 MULTISEEK_REGISTRY = "bpp.multiseek_registry"
 
-
 AUTOSLUG_SLUGIFY_FUNCTION = slugify_function
 
 LOGIN_REDIRECT_URL = "/"
@@ -378,7 +374,6 @@ DJORM_POOL_OPTIONS = {
     "max_overflow": 0,
     "recycle": 3600,  # the default value
 }
-
 
 TEST_RUNNER = "django.test.runner.DiscoverRunner"
 
@@ -454,7 +449,6 @@ SESSION_REDIS_PREFIX = "session"
 ALLOWED_TAGS = ("b", "em", "i", "strong", "strike", "u", "sup", "font", "sub")
 
 SESSION_SECURITY_PASSIVE_URLS = ["/messages/"]
-
 
 DATABASES = {
     "default": {
@@ -612,7 +606,6 @@ YARN_FILE_PATTERNS = {
     "sinon": ["pkg/sinon.js"],
 }
 
-
 REST_FRAMEWORK = {
     # Use Django's standard `django.contrib.auth` permissions,
     # or allow read-only access for unauthenticated users.
@@ -628,11 +621,9 @@ REST_FRAMEWORK = {
     # "DEFAULT_THROTTLE_RATES": {"anon": "50/second",},
 }
 
-
 BPP_WALIDUJ_AFILIACJE_AUTOROW = (
     os.getenv("DJANGO_BPP_WALIDUJ_AFILIACJE_AUTOROW", "tak") == "tak"
 )
-
 
 ASGI_APPLICATION = "django_bpp.routing.application"
 CHANNEL_LAYERS = {
@@ -643,7 +634,6 @@ CHANNEL_LAYERS = {
         },
     },
 }
-
 
 # "Wszytko na stdout" konfiguracja logowania poniżej
 
@@ -687,61 +677,66 @@ if LOG_EVERYTHING:
 # pamiętają, żeby odświeżyć cache:
 COMPRESS_OUTPUT_DIR = f"CACHE-{VERSION}"
 
+# django-tabular-permissions
 
-# django-permissions-widget
-PERMISSIONS_WIDGET_PATCH_GROUPADMIN = False
-PERMISSIONS_WIDGET_PATCH_USERADMIN = True
-PERMISSIONS_WIDGET_EXCLUDE_APPS = [
-    "favicon",
-    "taggit",
-    "test_bpp",
-    "rozbieznosci_if",
-    "rozbieznosci_dyscyplin",
-    "sessions",
-    "sites",
-    "contenttypes",
-    "raport_slotow",
-    "multiseek",
-    "messages_extends",
-    "menu",
-    "sites",
-    "robots",
-    "pbn_api",
-    "admin",
-    "auth",
-    "password_policies",
-    "notifications",
-    "celeryui",
-    "dashboard",
-    "django.contrib.contenttypes",
-    "egeria",
-    "eksport_pbn",
-    "import_dyscyplin",
-    "import_list_if",
-    "import_pracownikow",
-    "integrator2",
-    "admin_tools",
-]
+TABULAR_PERMISSIONS_CONFIG = {
+    "exclude": {
+        "override": False,
+        "apps": [
+            "favicon",
+            "taggit",
+            "test_bpp",
+            "rozbieznosci_if",
+            "rozbieznosci_dyscyplin",
+            "sessions",
+            "sites",
+            "contenttypes",
+            "raport_slotow",
+            "multiseek",
+            "messages_extends",
+            "menu",
+            "sites",
+            "robots",
+            "pbn_api",
+            "admin",
+            "auth",
+            "password_policies",
+            "notifications",
+            "celeryui",
+            "dashboard",
+            "django.contrib.contenttypes",
+            "egeria",
+            "eksport_pbn",
+            "import_dyscyplin",
+            "import_list_if",
+            "import_pracownikow",
+            "integrator2",
+            "admin_tools",
+        ],
+        "models": [
+            "bpp.cache_punktacja_autora",
+            "bpp.cache_punktacja_autora_query",
+            "bpp.cache_punktacja_autora_query_view",
+            "bpp.cache_punktacja_autora_sum",
+            "bpp.cache_punktacja_autora_sum_group_ponizej",
+            "bpp.cache_punktacja_autora_sum_gruop",
+            "bpp.cache_punktacja_autora_sum_ponizej",
+            "bpp.cache_punktacja_dyscypliny",
+            "bpp.sumy_wydawnictwo_zwarte_view",
+            "bpp.opi_2012_afiliacja_do_wydzialu",
+            "bpp.opi_2012_tytul_cache",
+            "bpp.nowe_sumy_view",
+            "bpp.autorzy",
+            "bpp.rekord",
+            "bpp.rekord_view",
+            "bpp.autorzy_view",
+        ],
+        "function": "tabular_permissions.helpers.dummy_permissions_exclude",
+    },
+}
 
-PERMISSIONS_WIDGET_EXCLUDE_MODELS = [
-    "bpp.cache_punktacja_autora",
-    "bpp.cache_punktacja_autora_query",
-    "bpp.cache_punktacja_autora_query_view",
-    "bpp.cache_punktacja_autora_sum",
-    "bpp.cache_punktacja_autora_sum_group_ponizej",
-    "bpp.cache_punktacja_autora_sum_gruop",
-    "bpp.cache_punktacja_autora_sum_ponizej",
-    "bpp.cache_punktacja_dyscypliny",
-    "bpp.sumy_wydawnictwo_zwarte_view",
-    "bpp.opi_2012_afiliacja_do_wydzialu",
-    "bpp.opi_2012_tytul_cache",
-    "bpp.nowe_sumy_view",
-    "bpp.autorzy",
-    "bpp.rekord",
-    "bpp.rekord_view",
-    "bpp.autorzy_view",
-]
-
+# PERMISSIONS_WIDGET_PATCH_GROUPADMIN = False
+# PERMISSIONS_WIDGET_PATCH_USERADMIN = True
 
 DBTEMPLATES_USE_REVERSION = True
 
@@ -756,7 +751,6 @@ Maksymalna ilość autorów wyświetlanych w danej grupie na podstronie przeglą
 przekroczenia tej liczby, dana podgrupa autorów ("aktualni pracownicy","współpracowali kiedyś" itp) nie zostanie
 wyświetlona.
 """
-
 
 DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
 

@@ -505,7 +505,7 @@ def submitted_form_bad(browser, wait_time=SHORT_WAIT_TIME):
 
 def submitted_form_good(browser, wait_time=SHORT_WAIT_TIME):
     WebDriverWait(browser.driver, wait_time).until(
-        lambda driver: "został dodany pomyślnie" in driver.page_source
+        lambda driver: "został(a)(-ło) dodany(-na)(-ne) pomyślnie" in driver.page_source
     )
     return True
 

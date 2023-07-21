@@ -66,6 +66,9 @@ class Wydawca(ModelZNazwa, ModelZPBN_UID):
     @denormalized(JSONField, blank=True, null=True)
     @depend_on_related("bpp.Poziom_Wydawcy")
     def lista_poziomow(self):
+        if not self.pk:
+            return []
+
         return [
             (x.rok, x.poziom) for x in self.poziom_wydawcy_set.all().order_by("rok")
         ]

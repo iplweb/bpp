@@ -30,7 +30,6 @@ from .helpers import (
     OptionalPBNSaveMixin,
     sprawdz_duplikaty_www_doi,
 )
-from .util import CustomizableFormsetParamsAdminMixinWyrzucWDjango40
 from .xlsx_export import resources
 from .xlsx_export.mixins import EksportDanychMixin
 from .zglos_publikacje_helpers import UzupelniajWstepneDanePoNumerzeZgloszeniaMixin
@@ -198,7 +197,6 @@ class Wydawnictwo_CiagleAdmin(
     BaseBppAdminMixin,
     UzupelniajWstepneDanePoNumerzeZgloszeniaMixin,
     UzupelniajWstepneDanePoCrossRefAPIMixin,
-    CustomizableFormsetParamsAdminMixinWyrzucWDjango40,
     AdminCrossrefAPIMixin,
     EksportDanychMixin,
     DynamicColumnsMixin,

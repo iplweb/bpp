@@ -1,7 +1,7 @@
 from django.conf import settings
-from django.conf.urls import include, url
 from django.conf.urls.static import static
-from django.urls import path
+from django.urls import include, path
+from django.urls import re_path as url
 from django.views.decorators.cache import cache_page
 from django.views.decorators.csrf import csrf_exempt
 from django.views.i18n import JavaScriptCatalog

@@ -127,7 +127,7 @@ def ISlot(original, uczelnia=None):
         if ksiazka and rozdzial:
             raise NotImplementedError("To sie nie powinno wydarzyc)")
 
-        if ksiazka:
+        if ksiazka and original.pk:
             for elem in Typ_Odpowiedzialnosci.objects.filter(
                 pk__in=original.autorzy_set.values_list("typ_odpowiedzialnosci_id")
             ).distinct():
@@ -354,6 +354,9 @@ class IPunktacjaCacher:
                 autorzy_z_dyscypliny=[a.pk for a in azd],
                 zapisani_autorzy_z_dyscypliny=[a.zapisany_jako for a in azd],
             )
+
+        if not self.original.pk:
+            return
 
         for wa in self.original.autorzy_set.all():
             if (

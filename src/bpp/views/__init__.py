@@ -10,7 +10,7 @@ from django.http import JsonResponse
 from django.http.response import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.defaults import page_not_found, permission_denied, server_error
-from sendfile import sendfile
+from django_sendfile import sendfile
 
 from bpp.models import Uczelnia
 

@@ -50,4 +50,4 @@ def test_autor_inline_wydawnictwo_dyscyplina(
     with wait_for_page_load(admin_browser):
         admin_browser.find_by_name("_continue").click()
 
-    assert "dodany pomyślnie" in admin_browser.html
+    assert "dodany(-na)(-ne) pomyślnie" in admin_browser.html
