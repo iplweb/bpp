@@ -99,7 +99,7 @@ upgrade-version:
 	bumpver update
 	-towncrier build --yes
 	emacs HISTORY.rst
-	git commit -m "Opis zmian dla nowej wersji oprogramowania"
+	-git commit -m "Opis zmian dla nowej wersji oprogramowania"
 	git flow release finish "$(NEW_VERSION)" -p -m "Nowa wersja: $(NEW_VERSION)"
 
 new-release: upgrade-version bdist_wheel upload
