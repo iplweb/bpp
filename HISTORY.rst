@@ -4,6 +4,15 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202307.1110 (2023-07-25)
+============================
+
+Naprawione
+----------
+
+- poprawka błędu pojawiającego się przy wyświetlaniu wielu stron w multiwyszukiwarce (bug1)
+
+
 Bpp 202307.1107 (2023-07-21)
 ============================
 
