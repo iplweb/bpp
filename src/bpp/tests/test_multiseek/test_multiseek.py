@@ -1,4 +1,7 @@
 from django.urls import reverse
+from model_bakery import baker as mommy
+
+from bpp.models import Wydawnictwo_Ciagle
 
 
 def test_multiseek_status_korekty_ukrywanie(
@@ -21,3 +24,15 @@ def test_multiseek_status_korekty_ukrywanie(
 
     res = admin_client.get(reverse("multiseek:results"))
     assert b"Rezultaty wyszukiwania (3" in res.content
+
+
+def test_multiseek_paging_template(
+    uczelnia,
+    client,
+    admin_client,
+):
+    for _ in range(100):
+        mommy.make(Wydawnictwo_Ciagle)
+
+    res = client.get(reverse("multiseek:results"))
+    assert res.status_code == 200
