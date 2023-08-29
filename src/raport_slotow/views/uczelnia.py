@@ -18,7 +18,7 @@ from raport_slotow.filters import (
     RaportSlotowUczelniaBezJednostekIWydzialowFilter,
     RaportSlotowUczelniaFilter,
 )
-from raport_slotow.forms import UtworzRaportSlotowUczelniaForm
+from raport_slotow.forms.uczelnia import UtworzRaportSlotowUczelniaForm
 from raport_slotow.models.uczelnia import RaportSlotowUczelnia
 from raport_slotow.tables import (
     RaportSlotowUczelniaBezJednostekIWydzialowTable,

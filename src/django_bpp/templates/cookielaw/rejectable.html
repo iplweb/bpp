@@ -1,0 +1,13 @@
+{% load i18n %}
+
+<div id="CookielawBanner" class="sticky hide-for-print" data-sticky data-stick-to="bottom">
+    <div class="callout warning">
+        <h3>{% trans "COOKIE_INFO_HEADER" %}</h3>
+        <p>
+            {% trans "COOKIE_INFO_PARA" %}<p/>
+            <a class="btn btn-primary pull-right" href="javascript:Cookielaw.accept();"><b>Zgadzam się</b></a>
+        <p/>
+            <a class="btn pull-right reject" href="javascript:Cookielaw.reject();"><b>Nie zgadzam się</b></a>
+        </p>
+    </div>
+</div>

@@ -1,8 +1,9 @@
 import pytest
 from django.urls import reverse
-from raport_slotow.const import DZIALANIE_SLOT, DZIALANIE_WSZYSTKO
-from raport_slotow.forms import AutorRaportSlotowForm
 from selenium.webdriver.common.keys import Keys
+
+from raport_slotow.const import DZIALANIE_SLOT, DZIALANIE_WSZYSTKO
+from raport_slotow.forms.autor import AutorRaportSlotowForm
 
 
 def test_AutorRaportSlotowForm_clean_lata(autor_jan_kowalski):

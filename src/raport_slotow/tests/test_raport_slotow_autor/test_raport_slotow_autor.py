@@ -6,7 +6,7 @@ from django.urls import reverse
 from openpyxl import load_workbook
 
 from raport_slotow import const
-from raport_slotow.forms import AutorRaportSlotowForm
+from raport_slotow.forms.autor import AutorRaportSlotowForm
 from raport_slotow.views import SESSION_KEY
 
 

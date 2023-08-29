@@ -1,0 +1,17 @@
+{% extends "base.html" %}{% load render_table from django_tables2 %}
+
+{% block extratitle %}
+    Raport slotów - zerowy
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li class="current">raport slotów - zerowy
+    </li>
+{% endblock %}
+
+{% block content %}
+    <h1>Raport slotów - zerowy </h1>
+    {% load crispy_forms_tags %}
+    {% crispy form %}
+{% endblock %}

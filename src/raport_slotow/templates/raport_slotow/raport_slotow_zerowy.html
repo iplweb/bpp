@@ -6,7 +6,8 @@
 
 {% block breadcrumbs %}
     {{ block.super }}
-    <li class="current">raport slotów - zerowy
+    <li><a href="{% url "raport_slotow:raport-slotow-zerowy-parametry" %}">raport slotów - zerowy</a></li>
+    <li class="current">wygenerowany raport
     {% if min_pk %}
         , minimalne PK = {{ min_pk }}
     {% endif %}
@@ -37,14 +38,13 @@
                     <td>{{ filter.form.rok__min }}&nbsp;{{ filter.form.rok__max }}</td>
                     <td>{{ filter.form.dyscyplina_naukowa }}</td>
 
-                    <td><input type="submit" value="Filtruj"/>
+                    <td><input type="submit" name="submit" value="Filtruj"/>
 
                         {% for key, value in data.items %}
                             <input type="hidden" name="{{ key }}" value="{{ value }}"/>
                         {% endfor %}
 
-                        <input type="reset" value="Usuń filtry" onclick="location.href='?';"/>
-                        <input type="button" value="Pobierz XLS" onclick="location.href='?{{ export_link }}';"/>
+                        <input type="submit" name="submit" value="Pobierz XLS"/>
                     </td>
                 </tr>
             </table>
