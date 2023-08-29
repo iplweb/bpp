@@ -102,7 +102,10 @@ upgrade-version:
 	-git commit -m "Opis zmian dla nowej wersji oprogramowania"
 	git flow release finish "$(NEW_VERSION)" -p -m "Nowa wersja: $(NEW_VERSION)"
 
-new-release: upgrade-version bdist_wheel upload
+poetry-lock:
+	poetry lock
+
+new-release: poetry-lock upgrade-version bdist_wheel upload
 
 release: tests js-tests new-release
 
