@@ -208,6 +208,7 @@ TEMPLATES = [
                 "bpp.context_processors.config.max_no_authors_on_browse_jednostka_page",
                 "bpp.context_processors.global_nav.user",
                 "bpp.context_processors.google_analytics.google_analytics",
+                "cookielaw.context_processors.cookielaw",
             ],
         },
     },

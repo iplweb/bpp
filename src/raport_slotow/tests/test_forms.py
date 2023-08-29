@@ -1,4 +1,4 @@
-from raport_slotow.forms import ParametryRaportSlotowEwaluacjaForm
+from raport_slotow.forms.ewaluacja import ParametryRaportSlotowEwaluacjaForm
 
 
 def test_ParametryRaporSlotowEwaluacjaForm_faulty():

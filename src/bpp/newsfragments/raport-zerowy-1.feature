@@ -1,0 +1,2 @@
+
+konfigurowalny raport zerowy

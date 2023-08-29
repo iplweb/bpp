@@ -6,7 +6,8 @@ from raport_slotow.views import (
     ParametryRaportSlotowEwaluacja,
     RaportSlotow,
     RaportSlotowEwaluacja,
-    RaportSlotowZerowy,
+    RaportSlotowZerowyParametry,
+    RaportSlotowZerowyWyniki,
     RouterRaportuSlotowUczelnia,
     SzczegolyRaportSlotowUczelnia,
     SzczegolyRaportSlotowUczelniaListaRekordow,
@@ -82,12 +83,12 @@ urlpatterns = [
     ),
     path(
         "raport-slotow-zerowy/",
-        RaportSlotowZerowy.as_view(),
-        name="raport-slotow-zerowy",
+        RaportSlotowZerowyParametry.as_view(),
+        name="raport-slotow-zerowy-parametry",
     ),
     path(
-        "raport-slotow-zerowy/5/",
-        RaportSlotowZerowy.as_view(min_pk=5),
-        name="raport-slotow-zerowy-bez-5",
+        "raport-slotow-zerowy/pokaz/",
+        RaportSlotowZerowyWyniki.as_view(),
+        name="raport-slotow-zerowy-wyniki",
     ),
 ]

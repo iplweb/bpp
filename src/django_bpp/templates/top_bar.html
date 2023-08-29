@@ -85,10 +85,8 @@
                         <li><a href="{% url "raport_slotow:index" %}">raport slotów - autor</a></li>
                     {% end_czy_pokazywac %}
                     {% czy_pokazywac raport_slotow_zerowy %}
-                        <li><a href="{% url "raport_slotow:raport-slotow-zerowy" %}">raport slotów - zerowy</a>
+                        <li><a href="{% url "raport_slotow:raport-slotow-zerowy-parametry" %}">raport slotów - zerowy</a>
                         </li>
-                        <li><a href="{% url "raport_slotow:raport-slotow-zerowy-bez-5" %}">raport slotów -
-                            zerowy PK>5</a></li>
                     {% end_czy_pokazywac %}
 
                     {% czy_pokazywac raport_slotow_uczelnia %}

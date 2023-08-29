@@ -10,7 +10,7 @@ from django_tables2 import SingleTableMixin
 from formdefaults.helpers import FormDefaultsMixin
 from nowe_raporty.views import BaseRaportAuthMixin
 from raport_slotow.filters import RaportSlotowUczelniaEwaluacjaFilter
-from raport_slotow.forms import ParametryRaportSlotowEwaluacjaForm
+from raport_slotow.forms.ewaluacja import ParametryRaportSlotowEwaluacjaForm
 from raport_slotow.models import RaportEwaluacjaUpowaznieniaView
 from raport_slotow.tables import RaportEwaluacjaUpowaznieniaTable
 from raport_slotow.util import MyExportMixin
