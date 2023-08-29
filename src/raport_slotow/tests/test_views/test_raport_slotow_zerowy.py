@@ -2,7 +2,7 @@ import django
 import pytest
 from django.urls import reverse
 
-from raport_slotow.views import RaportSlotowZerowy
+from raport_slotow.views.zerowy import RaportSlotowZerowy
 
 from bpp.models.dyscyplina_naukowa import Autor_Dyscyplina
 from bpp.models.sloty.core import IPunktacjaCacher

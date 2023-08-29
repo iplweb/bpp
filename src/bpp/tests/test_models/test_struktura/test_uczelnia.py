@@ -148,7 +148,6 @@ def test_pokazuj_tabele_slotow_na_stronie_rekordu(
     client,
     praca_z_dyscyplina,
 ):
-
     url = browse_praca_url(praca_z_dyscyplina)
 
     S = "Punktacja dyscyplin i sloty"
@@ -236,7 +235,16 @@ def test_pokazuj_raport_slotow_menu_na_glownej(
     "nazwa_url,atrybut_uczelni,params",
     [
         ("raport_slotow:index", "pokazuj_raport_slotow_autor", {}),
-        ("raport_slotow:raport-slotow-zerowy", "pokazuj_raport_slotow_zerowy", {}),
+        (
+            "raport_slotow:raport-slotow-zerowy-parametry",
+            "pokazuj_raport_slotow_zerowy",
+            {},
+        ),
+        (
+            "raport_slotow:raport-slotow-zerowy-wyniki",
+            "pokazuj_raport_slotow_zerowy",
+            {},
+        ),
         (
             "raport_slotow:raport",
             "pokazuj_raport_slotow_autor",
@@ -309,7 +317,6 @@ def test_pokazuj_raport_slotow_czy_mozna_kliknac(
         # dla opcji "pokazuj raport slotów uczelnia" login jest zawsze wymagany
         pass
     else:
-
         res = client.get(url)
         assert res.status_code == 200
         res = admin_client.get(url)
