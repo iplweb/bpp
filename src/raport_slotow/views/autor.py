@@ -11,7 +11,7 @@ from django_weasyprint.utils import django_url_fetcher
 
 from formdefaults.helpers import FormDefaultsMixin
 from nowe_raporty.views import BaseRaportAuthMixin
-from raport_slotow.forms import AutorRaportSlotowForm
+from raport_slotow.forms.autor import AutorRaportSlotowForm
 from raport_slotow.tables import RaportSlotowAutorTable
 from raport_slotow.util import InitialValuesFromGETMixin, MyExportMixin, MyTableExport
 from .. import const

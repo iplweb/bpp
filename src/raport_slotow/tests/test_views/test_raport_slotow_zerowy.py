@@ -2,12 +2,13 @@ import django
 import pytest
 from django.urls import reverse
 
+from raport_slotow.views import RaportSlotowZerowy
+
 from bpp.models.dyscyplina_naukowa import Autor_Dyscyplina
 from bpp.models.sloty.core import IPunktacjaCacher
 from bpp.models.system import Charakter_Formalny
 from bpp.models.wydawca import Wydawca
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
-from raport_slotow.views import RaportSlotowZerowy
 
 
 @pytest.fixture
@@ -76,3 +77,8 @@ def test_raport_slotow_zerowy_rednering(
     res = admin_client.get(reverse("raport_slotow:raport-slotow-zerowy"))
     assert b"Kowalski" in res.content
     assert b"Nowak" not in res.content
+
+
+def test_raport_slotow_zerowy_formularz_zamowienia(admin_client: django.test.Client):
+    res = admin_client.get(reverse("raport_slotow:raport-slotow-zerowy-parametry"))
+    assert res.status_code == 200
