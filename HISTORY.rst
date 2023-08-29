@@ -4,6 +4,21 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202308.1111 (2023-08-29)
+============================
+
+Naprawione
+----------
+
+- poprawiono wyświetlanie bannera dot. cookies; kod trackera Google pojawia się w tej sytuacji opcjonalnie (bug1-cookie)
+
+
+Usprawnienie
+------------
+
+- konfigurowalny raport zerowy (raport-zerowy-1)
+
+
 Bpp 202307.1110 (2023-07-25)
 ============================
 
