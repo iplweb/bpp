@@ -1,9 +1,12 @@
+from unittest.mock import MagicMock
+
 import django
 import pytest
 from django.urls import reverse
 
-from raport_slotow.views.zerowy import RaportSlotowZerowy
+from raport_slotow.views.zerowy import RaportSlotowZerowyWyniki
 
+from bpp.models import OpcjaWyswietlaniaField, Uczelnia
 from bpp.models.dyscyplina_naukowa import Autor_Dyscyplina
 from bpp.models.sloty.core import IPunktacjaCacher
 from bpp.models.system import Charakter_Formalny
@@ -54,7 +57,16 @@ def fikstura_raportu_slotow(
 
 def test_raport_slotow_zerowy_get_querylist_min_pk(fikstura_raportu_slotow):
     jk, jn = fikstura_raportu_slotow
-    res = RaportSlotowZerowy(min_pk=200).get_queryset()
+    rszw = RaportSlotowZerowyWyniki(min_pk=200)
+
+    rszw.form = MagicMock()
+    rszw.form.cleaned_data = dict()
+    rszw.form.cleaned_data["od_roku"] = 2020
+    rszw.form.cleaned_data["do_roku"] = 2020
+    rszw.form.cleaned_data["min_pk"] = 200
+    rszw.form.cleaned_data["rodzaj_raportu"] = "x"
+
+    res = rszw.get_queryset()
     res = res.values_list("autor_id", flat=True)
     assert res.count() == 2
 
@@ -62,7 +74,16 @@ def test_raport_slotow_zerowy_get_querylist_min_pk(fikstura_raportu_slotow):
 def test_raport_slotow_zerowy_get_querylist(fikstura_raportu_slotow):
     jk, jn = fikstura_raportu_slotow
 
-    res = RaportSlotowZerowy().get_queryset()
+    rszw = RaportSlotowZerowyWyniki()
+
+    rszw.form = MagicMock()
+    rszw.form.cleaned_data = dict()
+    rszw.form.cleaned_data["od_roku"] = 2020
+    rszw.form.cleaned_data["do_roku"] = 2020
+    rszw.form.cleaned_data["min_pk"] = 5
+    rszw.form.cleaned_data["rodzaj_raportu"] = "x"
+
+    res = rszw.get_queryset()
 
     res = res.values_list("autor_id", flat=True)
 
@@ -72,13 +93,22 @@ def test_raport_slotow_zerowy_get_querylist(fikstura_raportu_slotow):
 
 
 def test_raport_slotow_zerowy_rednering(
-    fikstura_raportu_slotow, admin_client: django.test.Client
+    fikstura_raportu_slotow, admin_client: django.test.Client, uczelnia
 ):
-    res = admin_client.get(reverse("raport_slotow:raport-slotow-zerowy"))
+    uczelnia.pokazuj_raport_slotow_zerowy = OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE
+    uczelnia.save()
+    res = admin_client.get(
+        reverse("raport_slotow:raport-slotow-zerowy-wyniki")
+        + "?od_roku=2020&do_roku=2020&min_pk=0&rodzaj_raportu=SL&_export=html"
+    )
     assert b"Kowalski" in res.content
     assert b"Nowak" not in res.content
 
 
-def test_raport_slotow_zerowy_formularz_zamowienia(admin_client: django.test.Client):
+def test_raport_slotow_zerowy_formularz_zamowienia(
+    admin_client: django.test.Client, uczelnia: Uczelnia
+):
+    uczelnia.pokazuj_raport_slotow_zerowy = OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE
+    uczelnia.save()
     res = admin_client.get(reverse("raport_slotow:raport-slotow-zerowy-parametry"))
     assert res.status_code == 200
