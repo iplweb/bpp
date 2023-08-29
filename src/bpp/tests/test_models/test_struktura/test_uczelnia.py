@@ -243,7 +243,13 @@ def test_pokazuj_raport_slotow_menu_na_glownej(
         (
             "raport_slotow:raport-slotow-zerowy-wyniki",
             "pokazuj_raport_slotow_zerowy",
-            {},
+            {
+                "od_roku": 2020,
+                "do_roku": 2020,
+                "min_pk": 0,
+                "rodzaj_raportu": "SL",
+                "_export": "html",
+            },
         ),
         (
             "raport_slotow:raport",
