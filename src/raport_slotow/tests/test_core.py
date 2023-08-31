@@ -34,6 +34,13 @@ def test_autorzy_z_punktami_autor_ma(praca_z_dyscyplina):
 
 
 @pytest.mark.django_db
+def test_autorzy_z_punktami_autor_ma_min_pk(praca_z_dyscyplina):
+    assert autorzy_z_punktami(min_pk=4).count() == 1
+    assert autorzy_z_punktami(min_pk=5).count() == 1
+    assert autorzy_z_punktami(min_pk=6).count() == 0
+
+
+@pytest.mark.django_db
 def test_autorzy_zerowi(rekord_slotu, autor_z_dyscyplina):
     assert autorzy_zerowi().count() == 1
 
