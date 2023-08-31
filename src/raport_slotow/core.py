@@ -49,7 +49,7 @@ def autorzy_z_punktami(
 
     exclude_kwargs = dict()
     if min_pk is not None:
-        exclude_kwargs = dict(rekord__punkty_kbn__lte=min_pk)
+        exclude_kwargs = dict(rekord__punkty_kbn__lt=min_pk)
 
     return (
         Cache_Punktacja_Autora_Query_View.objects.all()

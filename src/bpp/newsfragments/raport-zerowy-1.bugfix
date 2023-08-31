@@ -1,0 +1,4 @@
+
+poprawka dotycząca parametru 'minimalne PK' dla raportu zerowego (ignoruj
+prace z wynikiem PK mniejszym, niż zadany parametr; poprzednio - mniejszym
+lub równym)
