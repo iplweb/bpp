@@ -4,6 +4,17 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202308.1112 (2023-08-31)
+============================
+
+Naprawione
+----------
+
+- poprawka dotycząca parametru 'minimalne PK' dla raportu zerowego (ignoruj
+  prace z wynikiem PK mniejszym, niż zadany parametr; poprzednio - mniejszym
+  lub równym) (raport-zerowy-1)
+
+
 Bpp 202308.1111 (2023-08-29)
 ============================
 
