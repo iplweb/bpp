@@ -23,11 +23,7 @@ class Dyscyplina_NaukowaAdmin(
     )
     list_filter = ("widoczna",)
 
-    fields = [
-        "nazwa",
-        "kod",
-        "widoczna",
-    ]
+    fields = ["nazwa", "kod", "widoczna", "pbn_uid"]
     mptt_level_indent = 40
 
 
