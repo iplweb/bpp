@@ -1,4 +1,5 @@
 import random
+import sys
 import time
 import warnings
 from builtins import NotImplementedError
@@ -12,6 +13,8 @@ from requests import ConnectionError
 from requests.exceptions import SSLError
 from simplejson.errors import JSONDecodeError
 
+from import_common.core import matchuj_dyscypline_pbn
+from import_common.normalization import normalize_kod_dyscypliny
 from pbn_api.adapters.wydawnictwo import (
     OplataZaWydawnictwoPBNAdapter,
     WydawnictwoPBNAdapter,
@@ -20,6 +23,7 @@ from pbn_api.const import (
     DEFAULT_BASE_URL,
     NEEDS_PBN_AUTH_MSG,
     PBN_DELETE_PUBLICATION_STATEMENT,
+    PBN_GET_DISCIPLINES_URL,
     PBN_GET_INSTITUTION_STATEMENTS,
     PBN_GET_JOURNAL_BY_ID,
     PBN_GET_LANGUAGES_URL,
@@ -38,6 +42,7 @@ from pbn_api.exceptions import (
     PraceSerwisoweException,
     SameDataUploadedRecently,
 )
+from pbn_api.models.discipline import Discipline, DisciplineGroup
 from pbn_api.models.sentdata import SentData
 
 from django.contrib.contenttypes.models import ContentType
@@ -187,7 +192,6 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
                     raise e
 
         if ret.status_code == 403:
-
             if fail_on_auth_missing:
                 raise AccessDeniedException(url, smart_content(ret.content))
             # Needs auth
@@ -239,7 +243,6 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
 
         ret = method(self.base_url + url, headers=sent_headers, json=body)
         if ret.status_code == 403:
-
             try:
                 ret_json = ret.json()
             except BaseException:
@@ -302,7 +305,6 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
         try:
             return ret.json()
         except JSONDecodeError as e:
-
             if ret.status_code == 200:
                 if ret.content == b"":
                     return
@@ -416,7 +418,7 @@ class DictionariesMixin:
         return self.transport.get("/api/v1/dictionary/countries")
 
     def get_disciplines(self):
-        return self.transport.get("/api/v1/dictionary/disciplines")
+        return self.transport.get(PBN_GET_DISCIPLINES_URL)
 
     def get_languages(self):
         return self.transport.get(PBN_GET_LANGUAGES_URL)
@@ -682,7 +684,6 @@ class PBNClient(
                 # od stanu tabeli SentData
                 force_upload = True
             except HttpException as e:
-
                 NIE_ISTNIEJA = "Nie istnieją oświadczenia dla publikacji"
 
                 ignored_exception = False
@@ -778,19 +779,122 @@ class PBNClient(
 
         args, kw = extract_arguments(cmd[1:])
         res = fun(*args, **kw)
-        if type(res) == dict:
-            pprint(res)
-        elif is_iterable(res):
-            if self._interactive and hasattr(res, "total_elements"):
-                print(
-                    "Incoming data: no_elements=",
-                    res.total_elements,
-                    "no_pages=",
-                    res.total_pages,
+
+        if not sys.stdout.isatty():
+            # Non-interactive mode, just output the json
+            import json
+
+            print(json.dumps(res))
+        else:
+            if type(res) == dict:
+                pprint(res)
+            elif is_iterable(res):
+                if self._interactive and hasattr(res, "total_elements"):
+                    print(
+                        "Incoming data: no_elements=",
+                        res.total_elements,
+                        "no_pages=",
+                        res.total_pages,
+                    )
+                    input("Press ENTER to continue> ")
+                for elem in res:
+                    pprint(elem)
+
+    @transaction.atomic
+    def download_disciplines(self):
+        """Zapisuje słownik dyscyplin z API PBN do lokalnej bazy"""
+
+        for elem in self.get_disciplines():
+            validityDateFrom = elem.get("validityDateFrom", None)
+            validityDateTo = elem.get("validityDateTo", None)
+            uuid = elem["uuid"]
+
+            parent_group, created = DisciplineGroup.objects.update_or_create(
+                uuid=uuid,
+                defaults={
+                    "validityDateFrom": validityDateFrom,
+                    "validityDateTo": validityDateTo,
+                },
+            )
+
+            for discipline in elem["disciplines"]:
+                # print("XXX", discipline["uuid"])
+                Discipline.objects.update_or_create(
+                    parent_group=parent_group,
+                    uuid=discipline["uuid"],
+                    defaults=dict(
+                        code=discipline["code"],
+                        name=discipline["name"],
+                        polonCode=discipline["polonCode"],
+                        scientificFieldName=discipline["scientificFieldName"],
+                    ),
                 )
-                input("Press ENTER to continue> ")
-            for elem in res:
-                pprint(elem)
+
+    @transaction.atomic
+    def sync_disciplines(self):
+        self.download_disciplines()
+        try:
+            cur_dg = DisciplineGroup.objects.get_current()
+        except DisciplineGroup.DoesNotExist:
+            raise ValueError(
+                "Brak aktualnego słownika dyscyplin na serwerze. Pobierz aktualny słownik "
+                "dyscyplin z PBN."
+            )
+
+        from bpp.models import Dyscyplina_Naukowa
+
+        for dyscyplina in Dyscyplina_Naukowa.objects.all():
+            needs_update = False
+            group_current = True
+
+            if dyscyplina.pbn_uid_id is None:
+                needs_update = True
+                reason = "nie ma odpowoednika w PBN"
+            else:
+                if not dyscyplina.pbn_uid.parent_group.is_current:
+                    needs_update = True
+                    group_current = False
+                    reason = "grupa macierzysta dyscyplin przestała być aktualna."
+
+            if not needs_update:
+                # Odpowoednik w PBN ustawiony.
+                # Aktualny słownik dyscyplin.
+                continue
+
+            print(
+                f"Po stronie BPP, dyscyplina {dyscyplina} wymaga aktualizacji -- bo {reason} "
+            )
+
+            if group_current is False:
+                raise NotImplementedError(
+                    "Automatyczna aktualizacja kodów dyscyplin z PBN z nieaktualnego słownika "
+                    "nie obsługiwana. Skontaktuj się z autorem systemu. "
+                )
+
+            discipline = matchuj_dyscypline_pbn(dyscyplina.kod, dyscyplina.nazwa)
+            if discipline is None:
+                raise ValueError(
+                    f"Brak odpowoednika dyscypliny w PBN dla {dyscyplina}!"
+                )
+
+            dyscyplina.pbn_uid = discipline
+            dyscyplina.save(update_fields=["pbn_uid"])
+
+        for discipline in cur_dg.discipline_set.all():
+            # Każda dyscyplina z aktualnego słownika powinna być wpisana do systemu BPP
+            try:
+                Dyscyplina_Naukowa.objects.get(pbn_uid=discipline)
+            except Dyscyplina_Naukowa.DoesNotExist:
+                try:
+                    Dyscyplina_Naukowa.objects.get(
+                        kod=normalize_kod_dyscypliny(discipline.code)
+                    )
+                except Dyscyplina_Naukowa.DoesNotExist:
+                    Dyscyplina_Naukowa.objects.create(
+                        kod=normalize_kod_dyscypliny(discipline.code),
+                        nazwa=discipline.name,
+                        pbn_uid=discipline,
+                    )
 
     def interactive(self):
         self._interactive = True

@@ -33,6 +33,7 @@ class OswiadczeniaInstytucjiAdmin(BasePBNAPIAdmin):
         "area",
         "inOrcid",
         "type",
+        "disciplines",
     ]
 
     readonly_fields = [
@@ -43,6 +44,7 @@ class OswiadczeniaInstytucjiAdmin(BasePBNAPIAdmin):
         "personId",
         "publicationId",
         "type",
+        "disciplines",
     ]
 
     list_filter = [
@@ -74,4 +76,4 @@ class OswiadczeniaInstytucjiAdmin(BasePBNAPIAdmin):
                 f"spróbować jeszcze raz. Oświadczenie nie zostało usunięte ani z PBN, ani z lokalnej bazy.",
             )
             return
-        super(OswiadczeniaInstytucjiAdmin, self).delete_model(request, obj)
+        super().delete_model(request, obj)
