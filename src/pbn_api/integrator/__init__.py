@@ -78,7 +78,6 @@ from bpp.util import pbar
 
 def integruj_jezyki(client):
     for remote_lang in client.get_languages():
-
         try:
             lang = Language.objects.get(code=remote_lang["code"])
         except Language.DoesNotExist:
@@ -120,7 +119,6 @@ def integruj_jezyki(client):
 
 def integruj_kraje(client):
     for remote_country in client.get_countries():
-
         try:
             c = Country.objects.get(code=remote_country["code"])
         except Country.DoesNotExist:
@@ -415,7 +413,6 @@ def _pobierz_offline(fun, db):
     p = initialize_pool()
 
     for status in [ACTIVE, DELETED]:
-
         data = fun(status=status, page_size=10000)
 
         params = [
@@ -714,7 +711,6 @@ def weryfikuj_orcidy(client: PBNClient, instutition_id):
 
 def matchuj_autora_po_stronie_pbn(imiona, nazwisko, orcid):
     if orcid is not None:
-
         # Szukamy w rekordach zaimportowanych przez API instytucji
 
         qry = Q(versions__contains=[{"current": True, "object": {"orcid": orcid}}]) & Q(
@@ -945,7 +941,6 @@ def zweryfikuj_lub_stworz_match(elem, bpp_rekord):
 
 
 def _integruj_single_part(ids):
-
     for _id in ids:
         try:
             elem = Publication.objects.get(pk=_id)
@@ -997,7 +992,6 @@ def initialize_pool(multipler=1):
 def _integruj_publikacje(
     pubs, disable_multiprocessing=False, skip_pages=0, label="_integruj_publikacje"
 ):
-
     _bede_uzywal_bazy_danych_z_multiprocessing_z_django()
     pool = initialize_pool()
 
@@ -1138,7 +1132,6 @@ def _synchronizuj_pojedyncza_publikacje(
                 PBN_KOMUNIKAT_ISBN_ISTNIEJE in e.content
                 or PBN_KOMUNIKAT_DOI_ISTNIEJE in e.content
             ):
-
                 warnings.warn(
                     f"UWAGA: rekord z BPP {rec} mimo posiadania PBN UID {rec.pbn_uid_id} dostał"
                     f"przy synchronizacji komunkat: {e.content} !! Sprawa DO SPRAWDZENIA RECZNIE"
@@ -1541,7 +1534,6 @@ def usun_wszystkie_oswiadczenia(client):
 
 
 def usun_zerowe_oswiadczenia(client):
-
     for klass in Wydawnictwo_Ciagle, Wydawnictwo_Zwarte:
         zerowe = klass.objects.exclude(pbn_uid=None).filter(punkty_kbn=0)
 

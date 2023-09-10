@@ -6,8 +6,6 @@ from .base import BasePBNMongoDBModel
 
 from django.utils.functional import cached_property
 
-from bpp.models import Uczelnia
-
 
 class Institution(BasePBNMongoDBModel):
     class Meta:
@@ -62,7 +60,7 @@ class Institution(BasePBNMongoDBModel):
 
     @cached_property
     def rekord_w_bpp(self):
-        from bpp.models import Jednostka
+        from bpp.models import Jednostka, Uczelnia
 
         try:
             return Jednostka.objects.get(pbn_uid_id=self.pk)
@@ -97,6 +95,7 @@ class OswiadczenieInstytucji(models.Model):
     personId = models.ForeignKey("pbn_api.Scientist", on_delete=models.CASCADE)
     publicationId = models.ForeignKey("pbn_api.Publication", on_delete=models.CASCADE)
     type = models.CharField(max_length=50)
+    disciplines = models.JSONField(blank=True, null=True)
 
     def get_bpp_publication(self):
         from bpp.models import (
@@ -136,6 +135,8 @@ class OswiadczenieInstytucji(models.Model):
         verbose_name_plural = "Oświadczenia instytucji"
 
     def sprobuj_skasowac_z_pbn(self, request=None, pbn_client=None):
+        from bpp.models import Uczelnia
+
         if pbn_client is None:
             uczelnia = Uczelnia.objects.get_for_request(request)
             if uczelnia is None:
