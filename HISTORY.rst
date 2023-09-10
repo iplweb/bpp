@@ -4,6 +4,15 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202309.1113 (2023-09-10)
+============================
+
+Usprawnienie
+------------
+
+- obsługa API v2 dla dyscyplin PBN (nowe-dyscypliny-pbn)
+
+
 Bpp 202308.1112 (2023-08-31)
 ============================
 
