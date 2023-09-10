@@ -23,3 +23,5 @@ PBN_GET_PUBLICATION_BY_ID_URL = "/api/v1/publications/id/{id}"
 PBN_GET_INSTITUTION_STATEMENTS = (
     "/api/v1/institutionProfile/publications/page/statements"
 )
+
+PBN_GET_DISCIPLINES_URL = "/api/v2/dictionary/disciplines"

@@ -192,7 +192,6 @@ def matchuj_autora(
     # aktualną...
 
     if jednostka:
-
         queries = [
             Q(
                 Q(autor__nazwisko__iexact=nazwisko.strip())
@@ -284,7 +283,6 @@ def matchuj_wydawce(nazwa, pbn_uid_id=None, similarity=0.9):
         pass
 
     if pbn_uid_id is not None:
-
         try:
             return Wydawca.objects.get(pbn_uid_id=pbn_uid_id)
         except Wydawca.DoesNotExist:
@@ -360,7 +358,6 @@ def matchuj_publikacje(
     isbn_matchuj_tylko_nadrzedne=True,
     doi_matchuj_tylko_nadrzedne=True,
 ):
-
     if doi is not None:
         doi = normalize_doi(doi)
         if doi:
@@ -469,7 +466,6 @@ def matchuj_publikacje(
         )
         fail_if_seq_scan(res, DEBUG_MATCHOWANIE)
         if res.exists():
-
             if res.first().podobienstwo >= MATCH_SIMILARITY_THRESHOLD:
                 return res.first()
 
@@ -504,3 +500,38 @@ def matchuj_publikacje(
         if res.exists():
             if res.first().podobienstwo >= MATCH_SIMILARITY_THRESHOLD_LOW:
                 return res.first()
+
+
+def normalize_kod_dyscypliny_pbn(kod):
+    if kod is None:
+        raise ValueError("kod = None")
+
+    if kod.find(".") == -1:
+        # Nie ma kropki, wiec juz znormalizowany
+        return kod
+
+    k1, k2 = (int(x) for x in kod.split(".", 2))
+    return f"{k1}{k2:02}"
+
+
+def matchuj_dyscypline_pbn(kod, nazwa):
+    kod = normalize_kod_dyscypliny_pbn(kod)
+
+    from pbn_api.models import Discipline
+
+    from django.utils import timezone
+
+    d = timezone.now().date()
+    parent_group_args = Q(parent_group__validityDateFrom__lte=d), Q(
+        parent_group__validityDateTo=None
+    ) | Q(parent_group__validityDateTo__gt=d)
+
+    try:
+        return Discipline.objects.get(*parent_group_args, code=kod)
+    except Discipline.DoesNotExist:
+        pass
+
+    try:
+        return Discipline.objects.get(*parent_group_args, name=nazwa)
+    except Discipline.DoesNotExist:
+        pass

@@ -44,6 +44,14 @@ class Dyscyplina_Naukowa(models.Model):
     nazwa = models.CharField(max_length=200, unique=True)
     widoczna = models.BooleanField(default=True)
 
+    pbn_uid = models.ForeignKey(
+        "pbn_api.Discipline",
+        on_delete=models.SET_NULL,
+        verbose_name="Odpowiednik w PBN",
+        null=True,
+        blank=True,
+    )
+
     def kod_dla_pbn(self):
         a, b = (int(x) for x in self.kod.split(".", 1))
         return int("%i%.2i" % (a, b))

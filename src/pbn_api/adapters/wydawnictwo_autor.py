@@ -26,6 +26,7 @@ class WydawnictwoAutorToStatementPBNAdapter:
 
         if self.original.dyscyplina_naukowa_id is not None and self.original.przypieta:
             ret["disciplineId"] = self.original.dyscyplina_naukowa.kod_dla_pbn()
+            ret["disciplineUuid"] = str(self.original.dyscyplina_naukowa.pbn_uid.uuid)
         else:
             return
 

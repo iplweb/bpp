@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 from model_bakery import baker
 
@@ -9,18 +11,21 @@ from pbn_api.client import (
     PBN_GET_PUBLICATION_BY_ID_URL,
     PBN_POST_PUBLICATIONS_URL,
 )
+from pbn_api.const import PBN_GET_DISCIPLINES_URL
 from pbn_api.exceptions import (
     HttpException,
     PKZeroExportDisabled,
     SameDataUploadedRecently,
 )
 from pbn_api.models import Institution, Publication, SentData
+from pbn_api.models.discipline import Discipline
 from pbn_api.tests.utils import middleware
 
 from django.contrib.messages import get_messages
 
 from bpp.admin.helpers import sprobuj_wgrac_do_pbn
 from bpp.decorators import json
+from bpp.models import Dyscyplina_Naukowa
 
 
 @pytest.mark.django_db
@@ -60,7 +65,6 @@ def test_PBNClient_test_upload_publication_exception(
 def test_PBNClient_test_upload_publication_wszystko_ok(
     pbn_client, pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina, pbn_publication
 ):
-
     pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = {
         "objectId": pbn_publication.pk
     }
@@ -116,7 +120,6 @@ def test_sync_publication_to_samo_id(
 def test_sync_publication_tekstowo_podane_id(
     pbn_client, pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina, pbn_publication
 ):
-
     pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = {
         "objectId": pbn_publication.pk
     }
@@ -424,3 +427,42 @@ def test_sync_publication_kasuj_oswiadczenia_przed_blad_400_nie_zaburzy(
     pbn_publication.refresh_from_db()
     assert pbn_publication.versions[0]["baz"] == "quux"
     assert stare_id == pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.pbn_uid_id
+
+
+def test_get_disciplines(pbn_client):
+    pbn_client.transport.return_values[PBN_GET_DISCIPLINES_URL] = json.loads(
+        open(Path(__file__).parent / "fixture_test_get_disciplines.json", "rb").read()
+    )
+    ret = pbn_client.get_disciplines()
+    assert "validityDateFrom" in ret[0]
+
+
+@pytest.mark.django_db
+def test_download_disciplines(pbn_client):
+    pbn_client.transport.return_values[PBN_GET_DISCIPLINES_URL] = json.loads(
+        open(Path(__file__).parent / "fixture_test_get_disciplines.json", "rb").read()
+    )
+
+    assert Discipline.objects.count() == 0
+    pbn_client.download_disciplines()
+    assert Discipline.objects.count() != 0
+
+
+@pytest.mark.django_db
+def test_sync_disciplines(pbn_client):
+    pbn_client.transport.return_values[PBN_GET_DISCIPLINES_URL] = json.loads(
+        open(Path(__file__).parent / "fixture_test_get_disciplines.json", "rb").read()
+    )
+
+    d1 = Dyscyplina_Naukowa.objects.create(kod="5.1", nazwa="ekonomia i finanse")
+    d2 = Dyscyplina_Naukowa.objects.create(kod="1.6", nazwa="nauka o kulturze")
+
+    assert Dyscyplina_Naukowa.objects.count() == 2
+    pbn_client.sync_disciplines()
+
+    assert Dyscyplina_Naukowa.objects.count() > 2
+    d1.refresh_from_db(), d2.refresh_from_db()
+
+    assert d1.pbn_uid_id is not None
+
+    assert d2.pbn_uid_id is not None

@@ -1,0 +1,48 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate, br
+      Connection:
+      - keep-alive
+      User-Agent:
+      - python-requests/2.26.0
+    method: GET
+    uri: https://pbn-micro-alpha.opi.org.pl/api/v2/dictionary/disciplines
+  response:
+    body:
+      string: "{\"code\":403,\"message\":\"Forbidden\",\"description\":\"W celu poprawnej
+        autentykacji nale\u017Cy poda\u0107 poprawny token aplikacji. Podany token
+        aplikacji null (null) nie istnieje lub zosta\u0142 uniewa\u017Cniony!\"}"
+    headers:
+      Cache-Control:
+      - no-cache, no-store, max-age=0, must-revalidate
+      Connection:
+      - Keep-Alive
+      Content-Length:
+      - '196'
+      Content-Type:
+      - application/json;charset=UTF-8
+      Date:
+      - Sun, 10 Sep 2023 08:14:10 GMT
+      Expires:
+      - '0'
+      Keep-Alive:
+      - timeout=5, max=100
+      Pragma:
+      - no-cache
+      Server:
+      - Apache
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - DENY
+      X-XSS-Protection:
+      - 1; mode=block
+    status:
+      code: 403
+      message: ''
+version: 1

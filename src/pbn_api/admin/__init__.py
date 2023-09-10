@@ -1,4 +1,5 @@
 from .conference import *  # noqa
+from .discipline import *  # noqa
 from .institution import *  # noqa
 from .journal import *  # noqa
 from .monkeypatch_nowrap_foreignkey_admin import *  # noqa
