@@ -192,7 +192,6 @@ def matchuj_autora(
     # aktualną...
 
     if jednostka:
-
         queries = [
             Q(
                 Q(autor__nazwisko__iexact=nazwisko.strip())
@@ -284,7 +283,6 @@ def matchuj_wydawce(nazwa, pbn_uid_id=None, similarity=0.9):
         pass
 
     if pbn_uid_id is not None:
-
         try:
             return Wydawca.objects.get(pbn_uid_id=pbn_uid_id)
         except Wydawca.DoesNotExist:
@@ -360,7 +358,6 @@ def matchuj_publikacje(
     isbn_matchuj_tylko_nadrzedne=True,
     doi_matchuj_tylko_nadrzedne=True,
 ):
-
     if doi is not None:
         doi = normalize_doi(doi)
         if doi:
@@ -469,7 +466,6 @@ def matchuj_publikacje(
         )
         fail_if_seq_scan(res, DEBUG_MATCHOWANIE)
         if res.exists():
-
             if res.first().podobienstwo >= MATCH_SIMILARITY_THRESHOLD:
                 return res.first()
 

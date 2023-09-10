@@ -2,7 +2,8 @@ import json
 import os
 import random
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
+from uuid import uuid4
 
 import django_webtest
 import pytest
@@ -12,7 +13,10 @@ from django_webtest import DjangoTestApp
 from rest_framework.test import APIClient
 from splinter.driver import DriverAPI
 
-from pbn_api.models import Language
+from pbn_api.models import Discipline, Language
+from pbn_api.models.discipline import DisciplineGroup
+
+from django.utils import timezone
 
 from bpp.models.szablondlaopisubibliograficznego import SzablonDlaOpisuBibliograficznego
 from bpp.util import get_fixture
@@ -71,39 +75,100 @@ def rok():
 
 
 @pytest.fixture
-def dyscyplina1(db):
-    return Dyscyplina_Naukowa.objects.get_or_create(
-        nazwa="memetyka stosowana", kod="3.1"
+def pbn_discipline_group(db):
+    n = timezone.now().date()
+    return DisciplineGroup.objects.get_or_create(
+        uuid=uuid4(), validityDateTo=None, validityDateFrom=n - timedelta(days=7)
     )[0]
 
 
 @pytest.fixture
-def dyscyplina1_hst(db):
-    return Dyscyplina_Naukowa.objects.get_or_create(
-        nazwa="nauka teologiczna",
-        kod="7.1",
+def pbn_dyscyplina1(db, pbn_discipline_group):
+    return Discipline.objects.get_or_create(
+        parent_group=pbn_discipline_group,
+        uuid=uuid4(),
+        code="301",
+        name="memetyka stosowana",
+        scientificFieldName="Dziedzina memetyk",
     )[0]
 
 
 @pytest.fixture
-def dyscyplina2(db):
+def dyscyplina1(db, pbn_dyscyplina1):
     return Dyscyplina_Naukowa.objects.get_or_create(
-        nazwa="druga dyscyplina", kod="2.2"
+        nazwa="memetyka stosowana", kod="3.1", pbn_uid=pbn_dyscyplina1
     )[0]
 
 
 @pytest.fixture
-def dyscyplina2_hst(db):
-    return Dyscyplina_Naukowa.objects.get_or_create(
-        nazwa="nauka humanistyczna",
-        kod="1.1",
+def pbn_dyscyplina1_hst(db, pbn_discipline_group):
+    return Discipline.objects.get_or_create(
+        parent_group=pbn_discipline_group,
+        uuid=uuid4(),
+        code="701",
+        name="nauka teologiczna",
+        scientificFieldName="Dziedzina nauk teologicznych",
     )[0]
 
 
 @pytest.fixture
-def dyscyplina3(db):
+def dyscyplina1_hst(db, pbn_dyscyplina1_hst):
     return Dyscyplina_Naukowa.objects.get_or_create(
-        nazwa="trzecia dyscyplina", kod="4.3"
+        nazwa="nauka teologiczna", kod="7.1", pbn_uid=pbn_dyscyplina1_hst
+    )[0]
+
+
+@pytest.fixture
+def pbn_dyscyplina2(db, pbn_discipline_group):
+    return Discipline.objects.get_or_create(
+        parent_group=pbn_discipline_group,
+        uuid=uuid4(),
+        code="202",
+        name="druga dyscyplina",
+        scientificFieldName="Dziedzina drugich dyscyplin",
+    )[0]
+
+
+@pytest.fixture
+def dyscyplina2(db, pbn_dyscyplina2):
+    return Dyscyplina_Naukowa.objects.get_or_create(
+        nazwa="druga dyscyplina", kod="2.2", pbn_uid=pbn_dyscyplina2
+    )[0]
+
+
+@pytest.fixture
+def pbn_dyscyplina2_hst(db, pbn_discipline_group):
+    return Discipline.objects.get_or_create(
+        parent_group=pbn_discipline_group,
+        uuid=uuid4(),
+        code="101",
+        name="nauka humanistyczna",
+        scientificFieldName="Dziedzina nauk humanistycznych",
+    )[0]
+
+
+@pytest.fixture
+def dyscyplina2_hst(db, pbn_dyscyplina2_hst):
+    return Dyscyplina_Naukowa.objects.get_or_create(
+        nazwa="nauka humanistyczna", kod="1.1", pbn_uid=pbn_dyscyplina2_hst
+    )[0]
+
+
+@pytest.fixture
+def pbn_dyscyplina3(db, pbn_discipline_group):
+    return Discipline.objects.get_or_create(
+        parent_group=pbn_discipline_group,
+        uuid=uuid4(),
+        code="403",
+        name="trzecia dyscyplina",
+        scientificFieldName="Dziedzina trzecich dyscyplin",
+    )[0]
+
+
+@pytest.fixture
+def dyscyplina3(db, pbn_dyscyplina3):
+    return Dyscyplina_Naukowa.objects.get_or_create(
+        nazwa="trzecia dyscyplina", kod="4.3", pbn_uid=pbn_dyscyplina3
     )[0]
 
 
