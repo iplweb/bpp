@@ -32,6 +32,7 @@ jobs:
           name: install postgresql-client
           command: |
             sudo apt install -y postgresql-client
+            psql --version
 
       - run:
           name: install stuff required to build python-ldap
@@ -58,6 +59,11 @@ jobs:
           command: |
             set | grep PG
             createdb bpp
+
+      - run:
+          name: create pg_trgm extension
+          command: |
+            echo "create extension pg_trgm with schema pg_catalog;" | psql bpp
 
       - checkout
 
