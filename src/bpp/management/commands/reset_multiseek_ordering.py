@@ -1,4 +1,3 @@
-# -*- encoding: utf-8 -*-
 from django.core.management import BaseCommand
 from django.db import transaction
 
@@ -7,7 +6,7 @@ from bpp.multiseek_registry import registry
 
 
 class Command(BaseCommand):
-    help = "Resetuje sortowanie opci w wyszukiwarce zgodnie z kodem"
+    help = "Resetuje sortowanie opcji w wyszukiwarce zgodnie z kodem"
 
     @transaction.atomic
     def handle(self, *args, **options):

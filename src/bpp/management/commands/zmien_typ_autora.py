@@ -1,22 +1,21 @@
-# -*- encoding: utf-8 -*-
-
+from django.conf import settings
 from django.core.management import BaseCommand
 from django.db import transaction
 
-from bpp.management.commands.import_bpp import set_seq
 from bpp.models import (
-    Autor,
-    Jednostka,
-    Wydzial,
-    Uczelnia,
-    Zrodlo,
-    Wydawnictwo_Zwarte,
-    Wydawnictwo_Zwarte_Baza,
-    Praca_Doktorska,
     Typ_Odpowiedzialnosci,
     Wydawnictwo_Ciagle,
+    Wydawnictwo_Zwarte,
     cache,
 )
+
+
+def set_seq(s):
+    if settings.DATABASES["default"]["ENGINE"].find("postgresql") >= 0:
+        from django.db import connection
+
+        cursor = connection.cursor()
+        cursor.execute(f"SELECT setval('{s}_id_seq', (SELECT MAX(id) FROM {s}))")
 
 
 class Command(BaseCommand):
