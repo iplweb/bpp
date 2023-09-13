@@ -8,7 +8,7 @@ PBN_POST_PUBLICATION_FEE_URL = "/api/v1/institutionProfile/publications/fees/{id
 PBN_GET_LANGUAGES_URL = "/api/v1/dictionary/languages"
 PBN_SEARCH_PUBLICATIONS_URL = "/api/v1/search/publications"
 
-PBN_GET_JOURNAL_BY_ID = f"/api/v1/journals/{id}"
+PBN_GET_JOURNAL_BY_ID = "/api/v1/journals/{id}"
 
 DEFAULT_BASE_URL = "https://pbn-micro-alpha.opi.org.pl"
 
