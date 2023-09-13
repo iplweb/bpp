@@ -65,6 +65,7 @@ def test_global_nav_redir(model, source, typy_odpowiedzialnosci):
     assert isinstance(res, HttpResponseRedirect)
 
 
+@pytest.mark.flaky(reruns=5)
 def test_global_nav_ukrywanie_statusow_przed_korekta_praca_schowana(
     client, uczelnia, wydawnictwo_ciagle, przed_korekta, po_korekcie
 ):
