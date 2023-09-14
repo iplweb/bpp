@@ -203,6 +203,7 @@ class Wydawnictwo_CiagleAdmin(
     admin.ModelAdmin,
 ):
     change_list_template = "admin/bpp/wydawnictwo_ciagle/change_list.html"
+    import_export_change_list_template = "admin/bpp/wydawnictwo_ciagle/change_list.html"
 
     crossref_templates = {
         "form": "admin/bpp/wydawnictwo_ciagle/crossref_pobierz.html",
