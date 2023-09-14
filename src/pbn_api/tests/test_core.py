@@ -25,6 +25,12 @@ def test_PBNClient_get_pages_warning():
         c.get_conferences()
 
 
+def test_PBNClient_get_journal_by_id():
+    t = MockTransport({"/api/v1/journals/foo": True})
+    c = PBNClient(t)
+    assert c.get_journal_by_id("foo")
+
+
 def test_PBNClient_get_conferences():
     t = MockTransport(
         {

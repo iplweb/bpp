@@ -4,6 +4,22 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202309.1114 (2023-09-14)
+============================
+
+Naprawione
+----------
+
+- napraw pobieranie journali przez ich PBN UID (pobieranie-journala-przez-pbn-id)
+- ponownie włacz widoczność przycisków "Eksport" oraz "Dodaj z CrossRef API" (regresja-eksport-api)
+
+
+Usprawnienie
+------------
+
+- import list ministerialnych 2023 (import-list-2023)
+
+
 Bpp 202309.1113 (2023-09-10)
 ============================
 

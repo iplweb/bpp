@@ -9,6 +9,32 @@ from bpp.models import Uczelnia, Wydawnictwo_Ciagle
 from bpp.tests import normalize_html
 
 
+def test_admin_czy_jest_przycisk_export_wydawnictwo_ciagle(
+    admin_app, wydawnictwo_ciagle
+):
+    url = "admin:bpp_wydawnictwo_ciagle_changelist"
+    page = admin_app.get(reverse(url))
+
+    assert b"Eksport" in page.content
+    assert b"Dodaj z CrossRef API" in page.content
+
+
+def test_admin_czy_jest_przycisk_export_wydawnictwo_zwarte(
+    admin_app, wydawnictwo_zwarte
+):
+    url = "admin:bpp_wydawnictwo_zwarte_changelist"
+    page = admin_app.get(reverse(url))
+
+    assert b"Eksport" in page.content
+
+
+def test_admin_czy_jest_przycisk_export_autor(admin_app, autor):
+    url = "admin:bpp_autor_changelist"
+    page = admin_app.get(reverse(url))
+
+    assert b"Eksport" in page.content
+
+
 def test_wydawnictwo_ciagle_admin_zapisz_bez_linkow(
     admin_app, uczelnia, wydawnictwo_ciagle, charaktery_formalne
 ):
@@ -27,7 +53,6 @@ def test_wydawnictwo_ciagle_admin_zapisz_bez_linkow(
 def test_wydawnictwo_ciagle_admin_zapisz_i_wyslij_do_pbn_add_tak(
     admin_app, uczelnia, mocker
 ):
-
     uczelnia.pbn_aktualizuj_na_biezaco = True
     uczelnia.pbn_integracja = True
     uczelnia.pbn_client = mocker.Mock()
@@ -41,7 +66,6 @@ def test_wydawnictwo_ciagle_admin_zapisz_i_wyslij_do_pbn_add_tak(
 def test_wydawnictwo_ciagle_admin_zapisz_i_wyslij_do_pbn_add_nie(
     admin_app, uczelnia, mocker
 ):
-
     uczelnia.pbn_aktualizuj_na_biezaco = False
     uczelnia.pbn_integracja = True
     uczelnia.pbn_client = mocker.Mock()

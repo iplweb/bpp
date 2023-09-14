@@ -15,12 +15,16 @@ from formdefaults.models import FormFieldRepresentation, FormRepresentation
 from miniblog.models import Article
 from pbn_api.models import (
     Conference,
+    Discipline,
     Institution,
     Journal,
+    OswiadczenieInstytucji,
+    Publication,
     Publisher,
     Scientist,
     SentData,
 )
+from pbn_api.models.discipline import DisciplineGroup
 from rozbieznosci_dyscyplin.models import RozbieznosciView, RozbieznosciZrodelView
 from zglos_publikacje.models import (
     Obslugujacy_Zgloszenia_Wydzialow,
@@ -133,6 +137,10 @@ groups = {
         Publisher,
         Scientist,
         SentData,
+        Discipline,
+        Publication,
+        OswiadczenieInstytucji,
+        DisciplineGroup,
         BppMultiseekVisibility,
     ],
     "struktura": [

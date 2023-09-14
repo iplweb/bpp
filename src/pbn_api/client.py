@@ -866,10 +866,13 @@ class PBNClient(
             )
 
             if group_current is False:
-                raise NotImplementedError(
+                import warnings
+
+                warnings.warn(
                     "Automatyczna aktualizacja kodów dyscyplin z PBN z nieaktualnego słownika "
                     "nie obsługiwana. Skontaktuj się z autorem systemu. "
                 )
+                continue
 
             discipline = matchuj_dyscypline_pbn(dyscyplina.kod, dyscyplina.nazwa)
             if discipline is None:
