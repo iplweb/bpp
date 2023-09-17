@@ -219,6 +219,8 @@ def matchuj_zrodlo(
     issn: Union[str, None] = None,
     e_issn: Union[str, None] = None,
     alt_nazwa=None,
+    disable_fuzzy=False,
+    disable_skrot=False,
 ) -> Union[None, Zrodlo]:
     if s is None or str(s) == "":
         return
@@ -241,11 +243,13 @@ def matchuj_zrodlo(
 
         elem = normalize_tytul_zrodla(elem)
         try:
+            if disable_skrot is True:
+                return Zrodlo.objects.get(nazwa__iexact=elem)
             return Zrodlo.objects.get(Q(nazwa__iexact=elem) | Q(skrot__iexact=elem))
         except Zrodlo.MultipleObjectsReturned:
             pass
         except Zrodlo.DoesNotExist:
-            if elem.endswith("."):
+            if not disable_fuzzy and elem.endswith("."):
                 try:
                     return Zrodlo.objects.get(
                         Q(nazwa__istartswith=elem[:-1])
