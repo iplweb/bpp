@@ -13,6 +13,7 @@ from pbn_api.exceptions import (
     AccessDeniedException,
     NeedsPBNAuthorisationException,
     PKZeroExportDisabled,
+    PraceSerwisoweException,
     SameDataUploadedRecently,
 )
 from pbn_api.models import SentData
@@ -448,6 +449,12 @@ def sprobuj_wgrac_do_pbn(request, obj, force_upload=False, pbn_client=None):
                     res = None
                     try:
                         res = _pobierz_prace_po_elemencie(pbn_client, "isbn", ni)
+                    except PraceSerwisoweException:
+                        messages.warning(
+                            request,
+                            "Pobieranie z PBN odpowiednika wydawnictwa nadrzędnego pracy po ISBN nie powiodło się "
+                            "-- trwają prace serwisowe po stronie PBN. ",
+                        )
                     except NeedsPBNAuthorisationException:
                         messages.warning(
                             request,
@@ -471,6 +478,12 @@ def sprobuj_wgrac_do_pbn(request, obj, force_upload=False, pbn_client=None):
                     res = None
                     try:
                         res = _pobierz_prace_po_elemencie(pbn_client, "doi", nd)
+                    except PraceSerwisoweException:
+                        messages.warning(
+                            request,
+                            "Pobieranie z PBN odpowiednika wydawnictwa nadrzędnego pracy po DOI nie powiodło się "
+                            "-- trwają prace serwisowe po stronie PBN. ",
+                        )
                     except NeedsPBNAuthorisationException:
                         messages.warning(
                             request,
