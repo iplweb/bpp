@@ -1513,8 +1513,8 @@ def pobierz_rekordy_publikacji_instytucji(client: PBNClient):
     ):
         pass
 
-    pool.join()
     pool.close()
+    pool.join()
 
 
 def usun_wszystkie_oswiadczenia(client):
