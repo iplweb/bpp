@@ -59,7 +59,6 @@ def test_rest_api_wydawnictwo_zwarte_filtering_rok(api_client, wydawnictwo_ciagl
 def test_rest_api_wydawnictwo_zwarte_ukryj_status(
     api_client, wydawnictwo_zwarte, uczelnia, przed_korekta, po_korekcie
 ):
-
     res = api_client.get(reverse("api_v1:wydawnictwo_zwarte-list"))
     assert res.json()["count"] == 1
 
@@ -87,6 +86,17 @@ def test_rest_api_wydawnictwo_zwarte_no_queries(
 
 TEKST_STRESZCZENIA = b"Tekst streszczenia"
 TEXT_OF_SUMMARY = b"Text of summary"
+
+
+@pytest.mark.django_db
+def test_rest_api_wydawnictwo_zwarte_html_rendering(
+    wiele_wydawnictw_zwartych, admin_client
+):
+    res = admin_client.get(
+        reverse("api_v1:wydawnictwo_zwarte-list"),
+        headers={"Accept": "text/html"},
+    )
+    assert res.status_code == 200
 
 
 @pytest.fixture

@@ -944,6 +944,21 @@ requests = ">=1.0.0"
 yaml = ["PyYAML (>=3.10)"]
 
 [[package]]
+name = "crispy-bootstrap3"
+version = "2022.1"
+description = "Bootstrap3 template pack for django-crispy-forms"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "crispy-bootstrap3-2022.1.tar.gz", hash = "sha256:f62729ed06976caf7fd5fd4fe009c0a702b0705db7765c2b486ba96c64341146"},
+    {file = "crispy_bootstrap3-2022.1-py3-none-any.whl", hash = "sha256:be4908ca997e6ee86cda128c631b3adb33f1db483fd97fa72ae45ca3ad49ad02"},
+]
+
+[package.dependencies]
+django = ">=3.2"
+django-crispy-forms = ">=1.14.0"
+
+[[package]]
 name = "crispy-bootstrap5"
 version = "0.7"
 description = "Bootstrap5 template pack for django-crispy-forms"
@@ -6545,4 +6560,4 @@ test = ["pytest"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<4"
-content-hash = "18e7646e4088c982bfb0237c3d248c4da9744253d302ee7770e819df5c7b9487"
+content-hash = "2b4414a20c2074d47827bb6a8423deb64d1e3f528ff363cce32c654d65c45719"

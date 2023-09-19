@@ -198,6 +198,7 @@ crossrefapi = "^1.5.0"
 pandas = "^1.5.2"
 django-tinymce = "^3.6.1"
 crispy-bootstrap5 = "^0.7"
+crispy-bootstrap3 = "^2022.1"
 
 [tool.poetry.dev-dependencies]
 model-bakery = ">=1.5.1"

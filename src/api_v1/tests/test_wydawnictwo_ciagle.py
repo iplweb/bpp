@@ -59,7 +59,6 @@ def test_rest_api_wydawnictwo_ciagle_filtering_rok(api_client, wydawnictwo_ciagl
 def test_rest_api_wydawnictwo_ciagle_ukryj_status(
     api_client, wydawnictwo_ciagle, uczelnia, przed_korekta, po_korekcie
 ):
-
     res = api_client.get(reverse("api_v1:wydawnictwo_ciagle-list"))
     assert res.json()["count"] == 1
 
@@ -83,6 +82,17 @@ def test_rest_api_wydawnictwo_ciagle_no_queries(
 ):
     with django_assert_max_num_queries(11):
         api_client.get(reverse("api_v1:wydawnictwo_ciagle-list"))
+
+
+@pytest.mark.django_db
+def test_rest_api_wydawnictwo_ciagle_html_rendering(
+    wiele_wydawnictw_ciaglych, admin_client
+):
+    res = admin_client.get(
+        reverse("api_v1:wydawnictwo_ciagle-list"),
+        headers={"Accept": "text/html"},
+    )
+    assert res.status_code == 200
 
 
 TEKST_STRESZCZENIA = b"Tekst streszczenia"
