@@ -89,7 +89,7 @@ class PublikacjaInstytucji(models.Model):
 class OswiadczenieInstytucji(models.Model):
     addedTimestamp = models.DateField()
     statedTimestamp = models.DateField(null=True, blank=True)
-    area = models.PositiveSmallIntegerField()
+    area = models.PositiveSmallIntegerField(null=True, blank=True)
     inOrcid = models.BooleanField()
     institutionId = models.ForeignKey(Institution, on_delete=models.CASCADE)
     personId = models.ForeignKey("pbn_api.Scientist", on_delete=models.CASCADE)
