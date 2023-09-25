@@ -4,7 +4,7 @@ import pytest
 
 from django.contrib.contenttypes.models import ContentType
 
-from bpp.const import TO_AUTOR, TO_REDAKTOR
+from bpp.const import PBN_LATA, TO_AUTOR, TO_REDAKTOR
 from bpp.models import (
     Autor_Dyscyplina,
     Cache_Punktacja_Autora,
@@ -283,16 +283,12 @@ def test_ISlot_wydawnictwo_zwarte_zakres_lat_nie_ten(zwarte_z_dyscyplinami):
     with pytest.raises(CannotAdapt):
         ISlot(zwarte_z_dyscyplinami)
 
-    zwarte_z_dyscyplinami.rok = 2021
-    ISlot(zwarte_z_dyscyplinami)
+    for rok in PBN_LATA:
+        zwarte_z_dyscyplinami.rok = rok
+        ISlot(zwarte_z_dyscyplinami)
 
-    zwarte_z_dyscyplinami.rok = 2020
-    ISlot(zwarte_z_dyscyplinami)
-
-    zwarte_z_dyscyplinami.rok = 2023
-    ISlot(zwarte_z_dyscyplinami)
-
-    zwarte_z_dyscyplinami.rok = 2024
+    rok += 1
+    zwarte_z_dyscyplinami.rok = rok
     with pytest.raises(CannotAdapt):
         ISlot(zwarte_z_dyscyplinami)
 
