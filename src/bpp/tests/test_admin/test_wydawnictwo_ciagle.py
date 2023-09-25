@@ -16,6 +16,14 @@ def test_admin_czy_jest_przycisk_export_wydawnictwo_ciagle(
     page = admin_app.get(reverse(url))
 
     assert b"Eksport" in page.content
+
+
+def test_admin_czy_jest_przycisk_crossref_wydawnictwo_ciagle(
+    admin_app, wydawnictwo_ciagle
+):
+    url = "admin:bpp_wydawnictwo_ciagle_changelist"
+    page = admin_app.get(reverse(url))
+
     assert b"Dodaj z CrossRef API" in page.content
 
 
