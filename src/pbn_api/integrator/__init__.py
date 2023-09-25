@@ -307,6 +307,9 @@ def pobierz_instytucje(client: PBNClient):
 def integruj_uczelnie():
     uczelnia = Uczelnia.objects.get_default()
 
+    if uczelnia.pbn_uid_id is not None:
+        return
+
     try:
         u = Institution.objects.get(
             versions__contains=[{"current": True, "object": {"name": uczelnia.nazwa}}]
@@ -1510,8 +1513,8 @@ def pobierz_rekordy_publikacji_instytucji(client: PBNClient):
     ):
         pass
 
-    pool.join()
     pool.close()
+    pool.join()
 
 
 def usun_wszystkie_oswiadczenia(client):

@@ -78,11 +78,14 @@ class Command(BaseCommand):
         for elem in data:
             zrodlo = matchuj_zrodlo(
                 elem["Tytuł 1"],
-                alt_nazwa=elem["Tytuł 2"],
+                # alt_nazwa=elem["Tytuł 2"],
                 issn=elem["issn"],
                 e_issn=elem["e-issn"],
+                disable_fuzzy=True,
+                disable_skrot=True,
             )
             if zrodlo is None:
+                logger.info(f"PKT-5; {elem['Tytuł 1']}; brak dopasowania w BPP")
                 continue
 
             # Jest źródło.
@@ -99,6 +102,10 @@ class Command(BaseCommand):
                     pz.punkty_kbn = elem["Punkty"]
                     pz.save(update_fields=["punkty_kbn"])
             else:
+                logger.info(
+                    f"PKT-4; {zrodlo.nazwa}; ustawiam; {elem['Punkty']}; "
+                    f"za rok {rok}; (w XLS: {elem['Tytuł 1']}) "
+                )
                 zrodlo.punktacja_zrodla_set.create(rok=rok, punkty_kbn=elem["Punkty"])
 
             # Aktualne dyscypliny:

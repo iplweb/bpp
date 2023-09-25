@@ -96,7 +96,11 @@ pattern = re.compile("Strona WWW")
 
 def nastepna_komorka_po_strona_www(dokument):
     soup = BeautifulSoup(dokument, "html.parser")
-    return soup.find("th", text=pattern).parent.find("td").text.strip()
+    strona_www_label_komorka = soup.find("th", text=pattern)
+    if strona_www_label_komorka is None:
+        return
+
+    return strona_www_label_komorka.parent.find("td").text.strip()
 
 
 @pytest.mark.django_db
@@ -116,7 +120,7 @@ def test_darmowy_platny_dostep_www_wyswietlanie(client, wydawnictwo_ciagle, deno
         follow=True,
     )
     val = nastepna_komorka_po_strona_www(res.content)
-    assert val == "Brak danych"
+    assert val is None
 
     wydawnictwo_ciagle.www = "platny"
     wydawnictwo_ciagle.public_www = ""

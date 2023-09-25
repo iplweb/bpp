@@ -320,6 +320,7 @@ INSTALLED_APPS = [
     "celeryui",
     "crispy_forms",
     "crispy_bootstrap5",
+    "crispy_bootstrap3",  # dla django-rest-api HTML
     "crispy_forms_foundation",
     "compressor",
     "session_security",

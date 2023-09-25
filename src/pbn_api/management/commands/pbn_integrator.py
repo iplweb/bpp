@@ -223,6 +223,8 @@ class Command(PBNBaseCommand):
         if (enable_system_data or enable_all) and start_from_stage <= stage:
             integruj_jezyki(client)
             integruj_kraje(client)
+            client.download_disciplines()
+            client.sync_disciplines()
 
         stage = 1
         check_end_before(stage, end_before_stage)
@@ -409,7 +411,6 @@ class Command(PBNBaseCommand):
             usun_zerowe_oswiadczenia(client)
 
         if enable_sync:
-
             uczelnia = Uczelnia.objects.get_default()
 
             if export_pk_zero is None:

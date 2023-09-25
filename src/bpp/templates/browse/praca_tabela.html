@@ -47,7 +47,9 @@
                     <a href="{% url "bpp:browse_praca" "wydawnictwo_zwarte" praca.wydawnictwo_nadrzedne.pk %}">
                 {% endif %}
                 {% if not praca.informacje and not praca.szczegoly %}
-                    W: {{ praca.wydawnictwo_nadrzedne.opis_bibliograficzny|safe }}
+                    {% if praca.wydawnictwo_nadrzedne.opis_bibliograficzny %}
+                        W: {{ praca.wydawnictwo_nadrzedne.opis_bibliograficzny|safe }}
+                    {% endif %}
                 {% endif %}
                 {{ praca.informacje|default:""|znak_na_koncu:", "|safe }}
                 {{ praca.szczegoly|default:""|safe }}
@@ -117,21 +119,23 @@
             </td>
         </tr>
     {% endif %}
-    <tr>
-        <th>
-            Strona WWW:
-        </th>
-        <td>
-            {% if praca.public_www %}
-                <a href="{{ praca.public_www }}">
-                    {{ praca.public_www|truncatechars:120 }}</a>
-            {% elif praca.www %}
-                <a href="{{ praca.www }}">{{ praca.www|truncatechars:120 }}</a>
-            {% else %}
-                Brak danych
-            {% endif %}
-        </td>
-    </tr>
+    {% if praca.public_www or praca.www %}
+        <tr>
+            <th>
+                Strona WWW:
+            </th>
+            <td>
+                {% if praca.public_www %}
+                    <a href="{{ praca.public_www }}">
+                        {{ praca.public_www|truncatechars:120 }}</a>
+                {% elif praca.www %}
+                    <a href="{{ praca.www }}">{{ praca.www|truncatechars:120 }}</a>
+                {% else %}
+                    Brak danych
+                {% endif %}
+            </td>
+        </tr>
+    {% endif %}
     {% if praca.doi %}
         <tr>
             <th>DOI</th>
@@ -281,24 +285,24 @@
         </td>
     </tr>
     {% if praca.kwartyl_w_scopus %}
-    <tr>
-        <th>
-            Kwartyl w SCOPUS:
-        </th>
-        <td>
-            Q{{ praca.kwartyl_w_scopus }}
-        </td>
-    </tr>
+        <tr>
+            <th>
+                Kwartyl w SCOPUS:
+            </th>
+            <td>
+                Q{{ praca.kwartyl_w_scopus }}
+            </td>
+        </tr>
     {% endif %}
     {% if praca.kwartyl_w_wos %}
-    <tr>
-        <th>
-            Kwartyl w WoS:
-        </th>
-        <td>
-            Q{{ praca.kwartyl_w_wos }}
-        </td>
-    </tr>
+        <tr>
+            <th>
+                Kwartyl w WoS:
+            </th>
+            <td>
+                Q{{ praca.kwartyl_w_wos }}
+            </td>
+        </tr>
     {% endif %}
     {% if praca.liczba_cytowan %}
         <tr>
@@ -457,8 +461,8 @@
             </tr>
             {% for pa in praca.odpiete_dyscypliny.select_related %}
                 <tr>
-                <td>{{ pa.autor }}</td>
-                <td>{{ pa.dyscyplina_naukowa.nazwa }}</td>
+                    <td>{{ pa.autor }}</td>
+                    <td>{{ pa.dyscyplina_naukowa.nazwa }}</td>
                 </tr>
             {% endfor %}
         </table>
