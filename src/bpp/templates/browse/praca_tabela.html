@@ -285,24 +285,24 @@
         </td>
     </tr>
     {% if praca.kwartyl_w_scopus %}
-    <tr>
-        <th>
-            Kwartyl w SCOPUS:
-        </th>
-        <td>
-            Q{{ praca.kwartyl_w_scopus }}
-        </td>
-    </tr>
+        <tr>
+            <th>
+                Kwartyl w SCOPUS:
+            </th>
+            <td>
+                Q{{ praca.kwartyl_w_scopus }}
+            </td>
+        </tr>
     {% endif %}
     {% if praca.kwartyl_w_wos %}
-    <tr>
-        <th>
-            Kwartyl w WoS:
-        </th>
-        <td>
-            Q{{ praca.kwartyl_w_wos }}
-        </td>
-    </tr>
+        <tr>
+            <th>
+                Kwartyl w WoS:
+            </th>
+            <td>
+                Q{{ praca.kwartyl_w_wos }}
+            </td>
+        </tr>
     {% endif %}
     {% if praca.liczba_cytowan %}
         <tr>
@@ -461,8 +461,8 @@
             </tr>
             {% for pa in praca.odpiete_dyscypliny.select_related %}
                 <tr>
-                <td>{{ pa.autor }}</td>
-                <td>{{ pa.dyscyplina_naukowa.nazwa }}</td>
+                    <td>{{ pa.autor }}</td>
+                    <td>{{ pa.dyscyplina_naukowa.nazwa }}</td>
                 </tr>
             {% endfor %}
         </table>
