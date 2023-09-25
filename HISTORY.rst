@@ -4,6 +4,15 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202309.1115 (2023-09-25)
+============================
+
+Usprawnienie
+------------
+
+- licz sloty dla roku 2024, przy pomocy dotychczasowego algorytmu (rok-2024)
+
+
 Bpp 202309.1114 (2023-09-14)
 ============================
 
