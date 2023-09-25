@@ -119,21 +119,23 @@
             </td>
         </tr>
     {% endif %}
-    <tr>
-        <th>
-            Strona WWW:
-        </th>
-        <td>
-            {% if praca.public_www %}
-                <a href="{{ praca.public_www }}">
-                    {{ praca.public_www|truncatechars:120 }}</a>
-            {% elif praca.www %}
-                <a href="{{ praca.www }}">{{ praca.www|truncatechars:120 }}</a>
-            {% else %}
-                Brak danych
-            {% endif %}
-        </td>
-    </tr>
+    {% if praca.public_www or praca.www %}
+        <tr>
+            <th>
+                Strona WWW:
+            </th>
+            <td>
+                {% if praca.public_www %}
+                    <a href="{{ praca.public_www }}">
+                        {{ praca.public_www|truncatechars:120 }}</a>
+                {% elif praca.www %}
+                    <a href="{{ praca.www }}">{{ praca.www|truncatechars:120 }}</a>
+                {% else %}
+                    Brak danych
+                {% endif %}
+            </td>
+        </tr>
+    {% endif %}
     {% if praca.doi %}
         <tr>
             <th>DOI</th>
