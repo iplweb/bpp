@@ -411,7 +411,6 @@ class Command(PBNBaseCommand):
             usun_zerowe_oswiadczenia(client)
 
         if enable_sync:
-
             uczelnia = Uczelnia.objects.get_default()
 
             if export_pk_zero is None:
