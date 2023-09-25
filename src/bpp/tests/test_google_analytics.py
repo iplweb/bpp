@@ -19,12 +19,12 @@ def test_google_analytics_disabled(remove_key, client):
     try:
         settings.DEBUG = True
         res = client.get("/")
-        assert b"GoogleAnalyticsObject" not in res.content
+        assert b"https://www.googletagmanager.com/gtag/js" not in res.content
 
         settings.DEBUG = False
         settings.GOOGLE_ANALYTICS_PROPERTY_ID = ""
         res = client.get("/")
-        assert b"GoogleAnalyticsObject" not in res.content
+        assert b"https://www.googletagmanager.com/gtag/js" not in res.content
 
     finally:
         settings.DEBUG = orig_DEBUG
@@ -46,7 +46,7 @@ def test_google_analytics_enabled(remove_key, client):
 
         res = client.get("/")
 
-        assert b"GoogleAnalyticsObject" in res.content
+        assert b"https://www.googletagmanager.com/gtag/js" in res.content
 
     finally:
         settings.DEBUG = orig_DEBUG

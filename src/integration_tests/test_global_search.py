@@ -35,7 +35,7 @@ def test_global_search_user(
 
         try:
             WebDriverWait(browser, LONG_WAIT_TIME).until(
-                lambda browser: "Strona WWW" in browser.html
+                lambda browser: "Charakter formalny" in browser.html
             )
         except TimeoutException:
             raise TimeoutException(f"Browser.html dump: {browser.html}")
@@ -69,7 +69,7 @@ def test_global_search_logged_in(
 
         try:
             WebDriverWait(browser, LONG_WAIT_TIME).until(
-                lambda browser: "Strona WWW" in browser.html
+                lambda browser: "Charakter formalny" in browser.html
             )
         except TimeoutException:
             raise TimeoutException(f"Browser.html dump: {browser.html}")
