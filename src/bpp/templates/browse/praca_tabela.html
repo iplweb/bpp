@@ -47,7 +47,9 @@
                     <a href="{% url "bpp:browse_praca" "wydawnictwo_zwarte" praca.wydawnictwo_nadrzedne.pk %}">
                 {% endif %}
                 {% if not praca.informacje and not praca.szczegoly %}
-                    W: {{ praca.wydawnictwo_nadrzedne.opis_bibliograficzny|safe }}
+                    {% if praca.wydawnictwo_nadrzedne.opis_bibliograficzny %}
+                        W: {{ praca.wydawnictwo_nadrzedne.opis_bibliograficzny|safe }}
+                    {% endif %}
                 {% endif %}
                 {{ praca.informacje|default:""|znak_na_koncu:", "|safe }}
                 {{ praca.szczegoly|default:""|safe }}
