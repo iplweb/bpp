@@ -7,7 +7,7 @@ from datetime import timedelta
 
 import environ
 import sentry_sdk
-from django.core.exceptions import DisallowedHost
+from django.core.exceptions import DisallowedHost, ImproperlyConfigured
 from sentry_sdk.integrations.django import DjangoIntegration
 
 from bpp.util import slugify_function
@@ -35,6 +35,12 @@ env = environ.Env(
     # AUTH_LDAP_USER_SEARCH=(str, None),
     AUTH_LDAP_GROUP_SEARCH=(str, "ou=django,ou=groups,dc=auth,dc=local"),
     AUTH_LDAP_USER_SEARCH_QUERY=(str, "userPrincipalName=%(user)s@auth.local"),
+    #
+    # Microsoft Auth
+    #
+    MICROSOFT_AUTH_CLIENT_ID=(str, None),
+    MICROSOFT_AUTH_CLIENT_SECRET=(str, None),
+    MICROSOFT_AUTH_TENANT_ID=(str, None),
     #
     # Email
     #
@@ -772,7 +778,16 @@ if AUTH_LDAP_SERVER_URI:
     AUTH_LDAP_BIND_DN = env("AUTH_LDAP_BIND_DN")
     AUTH_LDAP_BIND_PASSWORD = env("AUTH_LDAP_BIND_PASSWORD")
 
-    import ldap
+    try:
+        import ldap
+    except ImportError as e:
+        raise ImproperlyConfigured(
+            f"""W pliku konfiguracyjnym zdefiniowano zmienną AUTH_LDAP_SERVER_URI,
+        co wskazuje na chęć skorzystania z autoryzacji serwerem LDAP. Niestety, biblioteka `ldap` języka
+        Python nie jest możliwa do zaimportowania. Upewnij się, ze zainstalowano pakiet `bpp-iplweb[ldap]`.
+        Wyjątek przy imporcie: {e}
+        """
+        )
     from django_auth_ldap.config import GroupOfNamesType, LDAPSearch
 
     AUTH_LDAP_USER_SEARCH = LDAPSearch(
@@ -810,6 +825,65 @@ if AUTH_LDAP_SERVER_URI:
 
 #
 # Koniec konfiguracji LDAP
+#
+
+#
+# Konfiguracja django-microsoft-auth (Office365)
+#
+
+MICROSOFT_AUTH_CLIENT_ID = env("MICROSOFT_AUTH_CLIENT_ID")
+
+if MICROSOFT_AUTH_CLIENT_ID:
+    try:
+        pass
+    except ImportError as e:
+        raise ImproperlyConfigured(
+            f"""W pliku konfiguracyjnym zdefiniowano zmienną MICROSOFT_AUTH_CLIENT_ID,
+        co wskazuje na chęć skorzystania z autoryzacji serwerem Microsoft (Office 365, Teams, etc). Niestety,
+        biblioteka `microsoft_auth` języka Python nie jest możliwa do zaimportowania. Upewnij się, ze zainstalowano
+        pakiet `bpp-iplweb[office365]`. Wyjątek przy imporcie: {e}
+        """
+        )
+    MICROSOFT_AUTH_CLIENT_SECRET = env("MICROSOFT_AUTH_CLIENT_SECRET")
+    MICROSOFT_AUTH_TENANT_ID = env("MICROSOFT_AUTH_TENANT_ID")
+    MICROSOFT_AUTH_LOGIN_TYPE = "ma"
+
+    INSTALLED_APPS.append("microsoft_auth")
+    TEMPLATES[0]["options"]["context_processors"].append(
+        "microsoft_auth.context_processors.microsoft",
+    )
+
+    AUTHENTICATION_BACKENDS = [
+        "microsoft_auth.backends.MicrosoftAuthenticationBackend",
+        "django.contrib.auth.backends.ModelBackend",
+    ]
+
+    # Konfiguracja w urls.py doda microsoft_auth.urls do ścieżki jezeli wykryje
+    # aplikację `microsoft_auth` w INSTALLED_APPS
+
+
+#
+# Koniec konfiguracji django-microsoft-auth
+#
+
+#
+# Weryfikacja ilości backendów autoryzacyjnych.
+#
+# Zweryfikuj, ile backendów konfiguracyjnych jest skonfigurowanych. Jeżeli
+# teoretycznie zbyt dużo, zwróć błąd:
+#
+
+if AUTH_LDAP_SERVER_URI and MICROSOFT_AUTH_CLIENT_ID:
+    raise ImproperlyConfigured(
+        """W pliku konfiguracyjnym jest określony zarówno parametry
+    AUTH_LDAP_SERVER_URI jak i MICROSOFT_AUTH_CLIENT_ID. Na ten moment oprogramowanie BPP nie wie,
+    co zrobić z listą backendów autoryzacyjnych. Skontaktuj się z autorem programu jeżeli potrzebujesz
+    koniecznie obydwu, ewentualnie usuń tą linię z pliku konfiguracyjnego django_bpp/settings/base.py
+    jeżeli faktycznie wiesz, co robisz. """
+    )
+
+#
+# Koniec weryfikacji konfiguracji ilości backendów autoryzacyjnych
 #
 
 
