@@ -226,6 +226,11 @@ urlpatterns = (
     + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 )
 
+if "microsoft_auth" in getattr(settings, "INSTALLED_APPS", []):
+    urlpatterns += [
+        path("microsoft/", include("microsoft_auth.urls", namespace="microsoft")),
+    ]
+
 
 if settings.DEBUG and settings.DEBUG_TOOLBAR:
     import debug_toolbar
