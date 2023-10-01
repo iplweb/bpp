@@ -4,6 +4,16 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202310.1116 (2023-10-01)
+============================
+
+Usprawnienie
+------------
+
+- autoryzacja za pomocą Office 365 (office365)
+- możliwość instalowania backendów autoryzacyjnych jako warianty podstawowego pakietu (warianty)
+
+
 Bpp 202309.1115 (2023-09-25)
 ============================
 
