@@ -4,6 +4,7 @@ import random
 import string
 import sys
 from datetime import timedelta
+from textwrap import dedent
 
 import environ
 import sentry_sdk
@@ -836,14 +837,17 @@ MICROSOFT_AUTH_CLIENT_ID = env("MICROSOFT_AUTH_CLIENT_ID")
 
 if MICROSOFT_AUTH_CLIENT_ID:
     try:
-        pass
+        import microsoft_auth  # noqa
     except ImportError as e:
         raise ImproperlyConfigured(
-            f"""W pliku konfiguracyjnym zdefiniowano zmienną MICROSOFT_AUTH_CLIENT_ID,
-        co wskazuje na chęć skorzystania z autoryzacji serwerem Microsoft (Office 365, Teams, etc). Niestety,
-        biblioteka `microsoft_auth` języka Python nie jest możliwa do zaimportowania. Upewnij się, ze zainstalowano
-        pakiet `bpp-iplweb[office365]`. Wyjątek przy imporcie: {e}
-        """
+            dedent(
+                f"""
+                W pliku konfiguracyjnym zdefiniowano zmienną MICROSOFT_AUTH_CLIENT_ID,
+                co wskazuje na chęć skorzystania z autoryzacji serwerem Microsoft (Office 365,
+                Teams, etc). Niestety, biblioteka `microsoft_auth` języka Python nie jest
+                możliwa do zaimportowania. Upewnij się, ze zainstalowano pakiet
+                `bpp-iplweb[office365]`. Wyjątek przy próbie importu: {e}"""
+            )
         )
     MICROSOFT_AUTH_CLIENT_SECRET = env("MICROSOFT_AUTH_CLIENT_SECRET")
     MICROSOFT_AUTH_TENANT_ID = env("MICROSOFT_AUTH_TENANT_ID")
