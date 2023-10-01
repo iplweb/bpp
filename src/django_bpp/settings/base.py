@@ -849,7 +849,7 @@ if MICROSOFT_AUTH_CLIENT_ID:
     MICROSOFT_AUTH_LOGIN_TYPE = "ma"
 
     INSTALLED_APPS.append("microsoft_auth")
-    TEMPLATES[0]["options"]["context_processors"].append(
+    TEMPLATES[0]["OPTIONS"]["context_processors"].append(
         "microsoft_auth.context_processors.microsoft",
     )
 
