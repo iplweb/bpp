@@ -4409,21 +4409,17 @@ testing = ["Django", "django-configurations (>=2.0)"]
 
 [[package]]
 name = "pytest-httpserver"
-version = "1.0.1"
+version = "1.0.8"
 description = "pytest-httpserver is a httpserver for pytest"
 optional = false
-python-versions = ">=3.4"
+python-versions = ">=3.8,<4.0"
 files = [
-    {file = "pytest_httpserver-1.0.1-py3-none-any.whl", hash = "sha256:3b2663b539849a2e5bd7d7f380a99b19c4650e154581af699ad6431b5424cacc"},
-    {file = "pytest_httpserver-1.0.1.tar.gz", hash = "sha256:e359c5722ce2bd3bb68f4606f57d5c846e52bf7c748a70de4a3097bb91006089"},
+    {file = "pytest_httpserver-1.0.8-py3-none-any.whl", hash = "sha256:24cd3d9f6a0b927c7bfc400d0b3fda7442721b8267ce29942bf307b190f0bb09"},
+    {file = "pytest_httpserver-1.0.8.tar.gz", hash = "sha256:e052f69bc8a9073db02484681e8e47004dd1fb3763b0ae833bd899e5895c559a"},
 ]
 
 [package.dependencies]
-werkzeug = "*"
-
-[package.extras]
-dev = ["autopep8", "coverage", "flake8", "ipdb", "pytest", "pytest-cov", "reno", "requests", "sphinx", "sphinx-rtd-theme", "wheel"]
-test = ["coverage", "pytest", "pytest-cov", "requests"]
+Werkzeug = ">=2.0.0"
 
 [[package]]
 name = "pytest-lazy-fixture"
@@ -6679,4 +6675,4 @@ office365 = ["django-microsoft-auth"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<4"
-content-hash = "51112f5414b73f8a713140d551424c0248ae2b49df4c85677a6756d64ca5fed8"
+content-hash = "e968c3ec1c7a67fa7a54b2ef3fbcde8630368c4c930644147a0bfee36bd63a23"
