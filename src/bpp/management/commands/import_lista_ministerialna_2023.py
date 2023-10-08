@@ -28,9 +28,10 @@ class Command(BaseCommand):
             default="lista-ministerialna-2023.xlsx",
             help="nazwa pliku do zapisu listy/analizy",
         )
+        parser.add_argument("--rok", default=2023, type=int)
 
     @transaction.atomic
-    def handle(self, url, fn, rok=2023, *args, **options):
+    def handle(self, url, fn, rok, *args, **options):
         # Usuń zbędne spacje z systemowego słownika dyscyplin BPP,
         # napraw literówki
 
