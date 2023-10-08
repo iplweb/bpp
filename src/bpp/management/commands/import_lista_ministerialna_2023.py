@@ -11,7 +11,7 @@ from import_common.core import matchuj_zrodlo
 
 from bpp.models import Dyscyplina_Naukowa
 
-logger = logging.getLogger("django")
+logger = logging.getLogger("django.console.always")
 
 
 class Command(BaseCommand):
