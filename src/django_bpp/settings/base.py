@@ -645,42 +645,66 @@ CHANNEL_LAYERS = {
     },
 }
 
-# "Wszytko na stdout" konfiguracja logowania poniżej
+#
+# Domyślna konfiguracja logowania z Django 4.1, dodatek to logger
+# django.console
+#
 
-LOG_EVERYTHING = False
-
-if LOG_EVERYTHING:
-    import logging.config
-
-    LOGGING_CONFIG = None
-    logging.config.dictConfig(
-        {
-            "version": 1,
-            "disable_existing_loggers": False,
-            "formatters": {
-                "console": {
-                    # exact format is not important, this is the minimum information
-                    "format": "%(asctime)s %(name)-12s %(levelname)-8s %(message)s",
-                },
-            },
-            "handlers": {
-                "console": {
-                    "class": "logging.StreamHandler",
-                    "formatter": "console",
-                },
-                # Add Handler for Sentry for `warning` and above
-            },
-            "loggers": {
-                # root logger
-                "": {
-                    "level": "DEBUG",
-                    "handlers": [
-                        "console",
-                    ],
-                },
-            },
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "filters": {
+        "require_debug_false": {
+            "()": "django.utils.log.RequireDebugFalse",
+        },
+        "require_debug_true": {
+            "()": "django.utils.log.RequireDebugTrue",
+        },
+    },
+    "formatters": {
+        "django.server": {
+            "()": "django.utils.log.ServerFormatter",
+            "format": "[{server_time}] {message}",
+            "style": "{",
         }
-    )
+    },
+    "handlers": {
+        "console": {
+            "level": "INFO",
+            "filters": ["require_debug_true"],
+            "class": "logging.StreamHandler",
+        },
+        "console.always": {
+            "level": "INFO",
+            "class": "logging.StreamHandler",
+        },
+        "django.server": {
+            "level": "INFO",
+            "class": "logging.StreamHandler",
+            "formatter": "django.server",
+        },
+        "mail_admins": {
+            "level": "ERROR",
+            "filters": ["require_debug_false"],
+            "class": "django.utils.log.AdminEmailHandler",
+        },
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console", "mail_admins"],
+            "level": "INFO",
+        },
+        "django.console.always": {
+            "handlers": ["console.always"],
+            "level": "INFO",
+        },
+        "django.server": {
+            "handlers": ["django.server"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
+}
 
 # django-compressor dla każdej wersji będzie miał swoją nazwę katalogu
 # wyjściowego, z tej prostej przyczyny, że nie wszystkie przeglądarki
