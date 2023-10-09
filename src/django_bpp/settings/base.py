@@ -677,6 +677,7 @@ LOGGING = {
         "console.always": {
             "level": "INFO",
             "class": "logging.StreamHandler",
+            "stream": sys.stdout,
         },
         "django.server": {
             "level": "INFO",
@@ -694,7 +695,7 @@ LOGGING = {
             "handlers": ["console", "mail_admins"],
             "level": "INFO",
         },
-        "django.console.always": {
+        "console.always": {
             "handlers": ["console.always"],
             "level": "INFO",
         },
