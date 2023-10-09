@@ -19,14 +19,22 @@ def weryfikuj(zrodlo: Zrodlo, inny_journal: Journal):
                 f"WPM-0: Zrodlo {zrodlo} ma odpowiednik w PBN {zrodlo.pbn_uid} i nie ma tam informacji o {label}, "
                 f"ale wystarczy zamienić go na {inny_journal}, bo w tym innym wpisie są.\n"
             )
+            return True
 
 
 class Command(PBNBaseCommand):
     """Weryfikuje przypisania do PBNu pod kątem występowania ich alternatyw z określonym
     MNISWID + opisem dyscyplin"""
 
+    def add_arguments(self, parser):
+        parser.add_argument("--przemapuj", type=bool, default=False)
+
     @transaction.atomic
-    def handle(self, verbosity=1, *args, **options):
+    def handle(self, przemapuj, verbosity=1, *args, **options):
+        if not przemapuj:
+            logger.info(
+                "Uruchom z argumentem --przemapuj=true aby faktycznie przemapować odpowiedniki"
+            )
         for zrodlo in Zrodlo.objects.exclude(pbn_uid_id=None).select_related("pbn_uid"):
             # Znajdź źródło o takim samym ISSN co przypisane ale z innym MNISWID
 
@@ -72,4 +80,10 @@ class Command(PBNBaseCommand):
 
             if alternatywy:
                 for alternatywa in alternatywy:
-                    weryfikuj(zrodlo, alternatywa)
+                    if weryfikuj(zrodlo, alternatywa) and przemapuj:
+                        zrodlo.pbn_uid = alternatywa
+                        zrodlo.save(update_fields=["pbn_uid"])
+                        logger.info(
+                            f"WPM-1: ustawiam {alternatywa} jako odpowiednik dla {zrodlo}"
+                        )
+                        break
