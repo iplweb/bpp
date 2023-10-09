@@ -90,7 +90,7 @@ class TestAutocomplete(WebTestCase):
         baker.make(Jednostka, nazwa=S)
 
         x = autocomplete.GlobalNavigationAutocomplete()
-        x.q = "Foo"
+        x.q = "Foobar"
         res = x.get_results({"object_list": list(x.get_queryset())})
 
         cnt = 0
