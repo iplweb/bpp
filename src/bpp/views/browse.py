@@ -163,7 +163,12 @@ class ZrodlaView(Browser):
     paginate_by = 70
 
     def get_queryset(self):
-        return super().get_queryset().only("nazwa", "poprzednia_nazwa", "slug")
+        return (
+            super()
+            .get_queryset()
+            .only("nazwa", "poprzednia_nazwa", "slug")
+            .order_by("nazwa")
+        )
 
 
 class JednostkiView(Browser):
@@ -234,7 +239,6 @@ def zrob_formularz(*args):
     prev_op = None
 
     for arg in [x for x in args if x]:
-
         if len(arg) > 1:
             lst = [prev_op]
             lst.extend(arg)
