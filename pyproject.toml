@@ -77,6 +77,29 @@ include = [
     { path = "docs/*.gif", format = "sdist" },
 ]
 
+exclude = [
+    "src/import_list_if/tests",
+    "src/nowe_raporty/tests",
+    "src/api_v1/tests",
+    "src/import_dyscyplin/tests",
+    "src/crossref_bpp/tests",
+    "src/raport_slotow/tests",
+    "src/pbn_api/tests",
+    "src/bpp/tests",
+    "src/formdefaults/tests",
+    "src/zglos_publikacje/tests",
+    "src/import_common/tests",
+    "src/django_bpp/staticroot/notifications/js/tests",
+    "src/long_running/tests",
+    "src/ewaluacja2021/tests",
+    "src/import_pracownikow/tests",
+    "src/import_dbf/tests",
+    "src/notifications/tests",
+    "src/notifications/static/notifications/js/tests",
+    "src/integrator2/tests",
+    "src/fixtures"
+]
+
 [tool.poetry.scripts]
 "bpp-manage.py" = "django_bpp.manage_command:entry_point"
 
