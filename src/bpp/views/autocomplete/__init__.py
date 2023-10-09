@@ -15,14 +15,13 @@ from import_common.core import normalized_db_isbn
 from import_common.normalization import normalize_isbn
 
 from django.contrib.auth.mixins import UserPassesTestMixin
-from django.contrib.postgres.search import TrigramSimilarity
+from django.contrib.postgres.search import SearchQuery, TrigramSimilarity
 
 from django.utils.text import capfirst
 
 from bpp import const
 from bpp.const import CHARAKTER_OGOLNY_KSIAZKA, GR_WPROWADZANIE_DANYCH
 from bpp.jezyk_polski import warianty_zapisanego_nazwiska
-from bpp.lookups import SearchQueryStartsWith
 from bpp.models import (
     Autor_Dyscyplina,
     Dyscyplina_Naukowa,
@@ -45,7 +44,6 @@ from bpp.models.struktura import Wydzial
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor
 from bpp.models.zrodlo import Rodzaj_Zrodla, Zrodlo
-from bpp.util import fulltext_tokenize
 
 
 class PublicTaggitTagAutocomplete(autocomplete.Select2QuerySetView):
@@ -288,9 +286,9 @@ class AutorAutocompleteBase(autocomplete.Select2QuerySetView):
     def get_queryset(self):
         qs = Autor.objects.all()
         if self.q:
-            tokens = fulltext_tokenize(self.q)
-            query = SearchQueryStartsWith(
-                "&".join([token + ":*" for token in tokens if token]),
+            query = SearchQuery(
+                self.q,
+                search_type="websearch",
                 config="bpp_nazwy_wlasne",
             )
 
@@ -539,7 +537,11 @@ class AdminNavigationAutocomplete(StaffRequired, Select2QuerySetSequenceView):
             Praca_Doktorska,
             Praca_Habilitacyjna,
         ]:
-            filter = Q(tytul_oryginalny__icontains=self.q)
+            filter = Q(tytul_oryginalny__icontains=self.q) | Q(
+                search_index=SearchQuery(
+                    self.q, search_type="websearch", config="bpp_nazwy_wlasne"
+                )
+            )
 
             try:
                 int(self.q)
