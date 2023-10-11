@@ -1,6 +1,8 @@
+import argparse
 import logging
 
 from django.db import transaction
+from django.db.transaction import TransactionManagementError
 
 from pbn_api.management.commands.util import PBNBaseCommand
 
@@ -9,14 +11,19 @@ from bpp.models import Dyscyplina_Naukowa, Punktacja_Zrodla, Zrodlo
 logger = logging.getLogger("console.always")
 
 
+class DryRunException(TransactionManagementError):
+    pass
+
+
 class Command(PBNBaseCommand):
     """Nadpisuje wszystkie dyscypliny dla zrodel z odpowiednikami z PBNu"""
 
     def add_arguments(self, parser):
         parser.add_argument("--min-rok", type=int, default=2022)
+        parser.add_argument("--dry-run", action=argparse.BooleanOptionalAction)
 
     @transaction.atomic
-    def handle(self, min_rok, verbosity=1, *args, **options):
+    def handle(self, min_rok, dry_run, verbosity=1, *args, **options):
         dyscypliny = {x.kod: x for x in Dyscyplina_Naukowa.objects.all()}
         missing = set()
         for zrodlo in Zrodlo.objects.exclude(pbn_uid_id=None).select_related("pbn_uid"):
@@ -101,3 +108,8 @@ class Command(PBNBaseCommand):
 
             if usuniete:
                 logger.info(f"IDZ-3: {zrodlo.nazwa} ;--- USUNIETE; {usuniete}")
+
+        if dry_run:
+            raise DryRunException(
+                "IDZ-X: podano opcję --dry-run, wywołuję błąd, aby wycofać zmiany"
+            )

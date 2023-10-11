@@ -1,26 +1,24 @@
-# -*- encoding: utf-8 -*-
+import argparse
 
 from django.core.management import BaseCommand
 from django.db import transaction
 
 from bpp.models import (
+    Patent,
     Praca_Doktorska,
     Praca_Habilitacyjna,
-    Patent,
     parse_informacje_as_dict,
     wez_zakres_stron,
 )
-from bpp.models.abstract import strony_regex, BRAK_PAGINACJI
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
-from django_bpp.sitemaps import Praca_HabilitacyjnaSitemap
 
 
 class Command(BaseCommand):
     help = "Ustawia parametry strony, tom, nr zeszytu dla prac >= 2010 roku, jeżeli nie ustawione"
 
     def add_arguments(self, parser):
-        parser.add_argument("--dry-run", action="store_true")
+        parser.add_argument("--dry-run", action=argparse.BooleanOptionalAction)
 
     def ustaw_atrybut(self, obiekt, atrybut, wartosc):
         if wartosc is None:
