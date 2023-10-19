@@ -1,3 +1,5 @@
+import argparse
+
 from django.core.management import BaseCommand, CommandError, CommandParser
 from django.db import transaction
 
@@ -14,7 +16,6 @@ class Command(BaseCommand):
     )
 
     def add_arguments(self, parser: CommandParser):
-
         parser.add_argument(
             "--jednostka",
             default="Uniwersytet Medyczny w Lublinie",
@@ -26,11 +27,7 @@ class Command(BaseCommand):
             default=2022,
             help="Ogranicz do roku",
         )
-        parser.add_argument(
-            "--dry-run",
-            action="store_true",
-            default=False,
-        )
+        parser.add_argument("--dry-run", action=argparse.BooleanOptionalAction)
 
     @transaction.atomic
     def handle(self, jednostka, rok, dry_run, *args, **options):
