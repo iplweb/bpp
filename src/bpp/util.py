@@ -14,15 +14,17 @@ import openpyxl.worksheet.worksheet
 import progressbar
 from django.apps import apps
 from django.conf import settings
-from django.db.models import Max, Min
+from django.db.models import Max, Min, Value
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.filters import AutoFilter
 from openpyxl.worksheet.table import Table, TableColumn, TableStyleInfo
+from psycopg2.extensions import QuotedString
 from unidecode import unidecode
 
 from django.contrib.postgres.search import SearchQuery, SearchRank
 
 from django.utils import timezone
+from django.utils.html import strip_tags
 
 non_url = re.compile(r"[^\w-]+")
 
@@ -34,11 +36,60 @@ def get_fixture(name):
     return {x["skrot"].lower().strip(): x for x in ret}
 
 
+def fulltext_tokenize(s):
+    s = (
+        s.replace(":", " ")
+        .replace("*", " ")
+        .replace('"', " ")
+        .replace("|", " ")
+        .replace("'", " ")
+        .replace("&", " ")
+        .replace("\\", " ")
+        .replace("(", " ")
+        .replace(")", " ")
+        .replace("#", " ")
+        .replace("@", " ")
+        .replace("!", " ")
+        .replace("[", " ")
+        .replace("]", " ")
+        .replace("\t", " ")
+        .replace("\n", " ")
+        .replace("\r", " ")
+        .replace("<", " ")
+        .replace(">", " ")
+    )
+    return [x.strip() for x in s.strip().split(" ") if x.strip()]
+
+
 class FulltextSearchMixin:
     fts_field = "search"
 
     def fulltext_filter(self, qstr, normalization=None):
-        sq = SearchQuery(qstr, search_type="websearch", config="bpp_nazwy_wlasne")
+        def quotes(wordlist):
+            ret = []
+            for elem in wordlist:
+                ret.append(str(QuotedString(elem.replace("\\", "").encode("utf-8"))))
+            return ret
+
+        def startswith(wordlist):
+            return [x + ":*" for x in quotes(wordlist)]
+
+        def negative(wordlist):
+            return ["!" + x for x in startswith(wordlist)]
+
+        if qstr is None:
+            qstr = ""
+
+        if isinstance(qstr, bytes):
+            qstr = qstr.decode("utf-8")
+
+        clean_qstr = strip_tags(qstr)
+        words = fulltext_tokenize(clean_qstr)
+        if not words:
+            return self.none().annotate(**{self.fts_field + "__rank": Value(0)})
+
+        qstr = "(" + " & ".join(startswith(words)) + ") | (" + " & ".join(words) + ")"
+        sq = SearchQuery(qstr, search_type="raw", config="bpp_nazwy_wlasne")
 
         return (
             self.filter(**{self.fts_field: sq})
