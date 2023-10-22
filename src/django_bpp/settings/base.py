@@ -139,7 +139,10 @@ if SENTRYSDK_CONFIG_URL and not PROCESS_INTERACTIVE:
         traces_sample_rate=env("SENTRYSDK_TRACES_SAMPLE_RATE"),
         integrations=[DjangoIntegration()],
         release=VERSION,
-        ignore_errors=[DisallowedHost],
+        ignore_errors=[
+            DisallowedHost,
+            RuntimeError("Response content shorter than Content-Length"),
+        ],
         send_default_pii=True,
     )
 
