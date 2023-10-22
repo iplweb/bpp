@@ -22,6 +22,10 @@ class AccessDeniedException(Exception):
         self.content = content
 
 
+class BrakIDPracyPoStroniePBN(HttpException):
+    pass
+
+
 class SciencistDoesNotExist(Exception):
     pass
 

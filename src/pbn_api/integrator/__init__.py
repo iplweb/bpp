@@ -31,6 +31,7 @@ from import_common.normalization import (
 from pbn_api.client import PBNClient
 from pbn_api.const import ACTIVE, DELETED
 from pbn_api.exceptions import (
+    BrakIDPracyPoStroniePBN,
     HttpException,
     NoFeeDataException,
     NoPBNUIDException,
@@ -1491,6 +1492,13 @@ def _pobierz_pojedyncza_prace(client, publicationId):
     try:
         data = client.get_publication_by_id(publicationId)
     except HttpException as e:
+        if (
+            e.status_code == 422
+            and f"Publication with ID {publicationId} was not exists!" in e.content
+            # "was not exists" to oryginalna pisownia błędu z PBNu.
+        ):
+            raise BrakIDPracyPoStroniePBN(e)
+
         if e.status_code == 500 and "Internal server error" in e.content:
             print(
                 f"\r\nSerwer PBN zwrocil blad 500 dla PBN UID {publicationId} --> {e.content}"

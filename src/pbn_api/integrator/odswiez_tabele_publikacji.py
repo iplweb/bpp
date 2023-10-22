@@ -1,3 +1,4 @@
+from pbn_api.exceptions import BrakIDPracyPoStroniePBN
 from pbn_api.integrator import DELETED
 
 
@@ -15,7 +16,23 @@ def odswiez_tabele_publikacji_init(_client):
 
 
 def odswiez_tabele_single_task(mongoId):
-    _pobierz_pojedyncza_prace(client, mongoId)
+    from pbn_api.models import Publication
+
+    from bpp.models import Rekord
+
+    try:
+        _pobierz_pojedyncza_prace(client, mongoId)
+    except BrakIDPracyPoStroniePBN:
+        try:
+            rekord_bpp = Rekord.objects.get(pbn_uid_id=mongoId)
+        except Rekord.DoesNotExist:
+            rekord_bpp = None
+
+        print(
+            f"Brak pracy po stronie PBN z id {mongoId}"
+            f", usuwam z PBN, po stronie BPP rekord byl: {rekord_bpp}"
+        )
+        Publication.objects.get(pk=mongoId).delete()
 
 
 def odswiez_tabele_publikacji(client):
