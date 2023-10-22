@@ -18,7 +18,6 @@ class Command(PBNBaseCommand):
 
         with transaction.atomic():
             for publisher in Publisher.objects.official():
-
                 if not publisher.wydawca_set.exists():
                     # Nie ma takiego wydawcy w bazie BPP, spróbuj go zmatchować:
 
@@ -64,7 +63,6 @@ class Command(PBNBaseCommand):
 
                 # Jest już taki wydawca i ma ustawiony match z PBN. Sprawdzimy mu jego poziomy:
                 for wydawca in publisher.wydawca_set.all():
-
                     # Nie pracujemy na aliasach
                     wydawca = wydawca.get_toplevel()
 
@@ -83,13 +81,7 @@ class Command(PBNBaseCommand):
 
                             if wydawca_side is None:
                                 # Nie ma poziomu po naszej stronie dla tego rkou ,dodamy go:
-                                poziom_bpp = points_to_poziom_map.get(
-                                    pbn_side["points"]
-                                )
-                                if not poziom_bpp:
-                                    raise NotImplementedError(
-                                        f"Brak odpowiednika poziomu {pbn_side['points']} w mappingu"
-                                    )
+                                poziom_bpp = self.get_poziom_bpp(pbn_side)
 
                                 if verbosity > 1:
                                     print(
@@ -110,9 +102,16 @@ class Command(PBNBaseCommand):
                             )
 
                             if pbn_side["points"] != wydawca_side_poziom_translated:
-                                raise NotImplementedError(
-                                    f"Poziomy sie roznia dla {publisher} {rok}, co dalej?"
-                                )
+                                if verbosity > 1:
+                                    print(
+                                        f"5 Poziomy sie roznia dla {publisher} {rok}, ustawiam poziom z PBNu?"
+                                    )
+                                    wydawca_side.poziom = self.get_poziom_bpp(pbn_side)
+                                    needs_recalc.add((wydawca, rok))
+
+                                    wydawca_side.save()
+                                    continue
+
                         else:
                             # pbn_side is None
                             if wydawca_side is not None:
@@ -125,3 +124,11 @@ class Command(PBNBaseCommand):
         # To uruchamiamy poza transakcją - jeżeli były zmiany
         if needs_mapping:
             call_command("zamapuj_wydawcow")
+
+    def get_poziom_bpp(self, pbn_side):
+        poziom_bpp = points_to_poziom_map.get(pbn_side["points"])
+        if not poziom_bpp:
+            raise NotImplementedError(
+                f"Brak odpowiednika poziomu {pbn_side['points']} w mappingu"
+            )
+        return poziom_bpp
