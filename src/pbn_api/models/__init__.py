@@ -1,6 +1,6 @@
 from .conference import Conference  # noqa
 from .country import Country  # noqa
-from .discipline import Discipline  # noqa
+from .discipline import Discipline, DisciplineGroup  # noqa
 from .institution import (  # noqa
     Institution,
     OswiadczenieInstytucji,
