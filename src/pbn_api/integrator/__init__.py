@@ -13,6 +13,7 @@ from django.db.models import F, Func, IntegerField, Q
 from django.db.models.functions import Length
 
 from pbn_api.integrator import istarmap  # noqa
+from pbn_api.models.discipline import DisciplineGroup
 
 from bpp.const import PBN_MIN_ROK
 
@@ -44,6 +45,7 @@ from pbn_api.integrator.threaded_page_getter import (
 from pbn_api.models import (
     Conference,
     Country,
+    Discipline,
     Institution,
     Journal,
     Language,
@@ -60,6 +62,7 @@ from django.contrib.postgres.search import TrigramSimilarity
 from bpp.models import (
     Autor,
     Autor_Dyscyplina,
+    Dyscyplina_Naukowa,
     Jednostka,
     Jezyk,
     Praca_Doktorska,
@@ -1348,6 +1351,7 @@ def clear_all():
         Jezyk,
         Uczelnia,
         Zrodlo,
+        Dyscyplina_Naukowa,
     ):
         print(f"Setting pbn_uid_ids of {model} to null...")
         model.objects.exclude(pbn_uid_id=None).update(pbn_uid_id=None)
@@ -1359,9 +1363,12 @@ def clear_all():
         Country,
         Institution,
         Conference,
+        SentData,
         Journal,
         Publisher,
         Scientist,
+        Discipline,
+        DisciplineGroup,
     ):
         print(f"Deleting all {model}")
         model.objects.all()._raw_delete(model.objects.db)
