@@ -65,9 +65,11 @@ def test_global_nav_redir(model, source, typy_odpowiedzialnosci):
     assert isinstance(res, HttpResponseRedirect)
 
 
-@pytest.mark.flaky(reruns=5)
 def test_global_nav_ukrywanie_statusow_przed_korekta_praca_schowana(
-    client, uczelnia, wydawnictwo_ciagle, przed_korekta, po_korekcie
+    client,
+    uczelnia,
+    wydawnictwo_ciagle,
+    przed_korekta,
 ):
     wydawnictwo_ciagle.status_korekty = przed_korekta
     wydawnictwo_ciagle.tytul_oryginalny = "123 test"
@@ -75,7 +77,7 @@ def test_global_nav_ukrywanie_statusow_przed_korekta_praca_schowana(
 
     uczelnia.ukryj_status_korekty_set.create(status_korekty=przed_korekta)
 
-    res = client.get(reverse("bpp:navigation-autocomplete") + "?q=123")
+    res = client.get(reverse("bpp:navigation-autocomplete") + "?q=123%20test")
 
     assert len(json.loads(res.content)["results"]) == 0
 

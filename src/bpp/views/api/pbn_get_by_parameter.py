@@ -1,11 +1,9 @@
-# -*- encoding: utf-8 -*-
-
 from django.http import JsonResponse
 from django.views.generic.base import View
 from sentry_sdk import capture_exception
 
 from import_common.normalization import normalize_doi, normalize_isbn
-from pbn_api.exceptions import NeedsPBNAuthorisationException
+from pbn_api.exceptions import NeedsPBNAuthorisationException, PraceSerwisoweException
 from pbn_api.integrator import _pobierz_prace_po_elemencie
 from pbn_api.models import Publication
 
@@ -68,10 +66,16 @@ class GetPBNPublicationsByBase(View):
                 normalizedInput=ni,
                 year=rok,
             )
+        except PraceSerwisoweException:
+            return JsonResponse(
+                {"error": "Nie pomogę -- w PBNie trwają teraz prace serwisowe..."}
+            )
+
         except NeedsPBNAuthorisationException:
             return JsonResponse(
                 {"error": "Autoryzuj się w PBN korzystając z menu na głównej stronie. "}
             )
+
         except Exception as e:
             # Zgłoś nieznany typ błędu do Sentry
             capture_exception(e)
