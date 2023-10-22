@@ -20,6 +20,12 @@ def test_SentDataAdmin_list_filter_works(admin_client):
     assert res.status_code == 200
 
 
+def test_PublisherAdmin_search_works(admin_client):
+    url = reverse("admin:pbn_api_publisher_changelist")
+    res = admin_client.get(url + "?q=123")
+    assert res.status_code == 200
+
+
 @pytest.mark.django_db
 def test_OswiadczenieInstytucji_delete_model(pbn_uczelnia, pbn_client, rf):
     oi = baker.make(OswiadczenieInstytucji)
@@ -48,7 +54,6 @@ def test_OswiadczenieInstytucji_delete_model(pbn_uczelnia, pbn_client, rf):
 def test_pbn_api_admin_SentDataAdmin_wyslij_ponownie(
     wydawnictwo_zwarte, admin_browser, asgi_live_server
 ):
-
     s = SentData.objects.create(
         object_id=wydawnictwo_zwarte.pk,
         content_type=ContentType.objects.get_for_model(wydawnictwo_zwarte),

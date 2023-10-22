@@ -1,6 +1,9 @@
+from dal import autocomplete
 from django import forms
 from django.core.exceptions import ValidationError
 from djangoql.admin import DjangoQLSearchMixin
+
+from pbn_api.models import Publisher
 
 from django.contrib import admin
 
@@ -51,10 +54,30 @@ class MaAliasListFilter(admin.SimpleListFilter):
             return queryset.exclude(alias_dla=None)
 
 
+class WydawcaForm(forms.ModelForm):
+    pbn_uid = forms.ModelChoiceField(
+        required=False,
+        queryset=Publisher.objects.all(),
+        widget=autocomplete.ModelSelect2(
+            url="bpp:publisher-autocomplete", attrs=dict(style="width: 746px;")
+        ),
+    )
+
+    alias_dla = forms.ModelChoiceField(
+        required=False,
+        queryset=Wydawca.objects.all(),
+        widget=autocomplete.ModelSelect2(
+            url="bpp:wydawca-autocomplete", attrs=dict(style="width: 746px;")
+        ),
+    )
+
+
 @admin.register(Wydawca)
 class WydawcaAdmin(DjangoQLSearchMixin, admin.ModelAdmin):
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True
+
+    form = WydawcaForm
 
     search_fields = [
         "nazwa",
@@ -62,7 +85,10 @@ class WydawcaAdmin(DjangoQLSearchMixin, admin.ModelAdmin):
         "pbn_uid__mongoId",
         "alias_dla__pbn_uid__mongoId",
     ]
-    autocomplete_fields = ["alias_dla", "pbn_uid"]
+    autocomplete_fields = [
+        "alias_dla",
+    ]
+
     list_display = [
         "nazwa",
         "alias_dla",

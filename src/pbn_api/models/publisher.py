@@ -21,6 +21,7 @@ class Publisher(LinkDoPBNMixin, BasePBNMongoDBModel):
     class Meta:
         verbose_name = "Wydawca w PBN API"
         verbose_name_plural = "Wydawcy w PBN API"
+        ordering = ("mniswId", "publisherName")
 
     pull_up_on_save = ["publisherName", "mniswId"]
 

@@ -11,6 +11,10 @@ def _init(_client, _data):
 
     django.setup()
 
+    from django.db import connection
+
+    connection.close()
+
     global client, pobierz_mongodb, Publication, zapisz_mongodb, data
     client = _client
     data = _data
@@ -44,7 +48,7 @@ def pobierz_skasowane_prace(client):
 
     data = client.get_publications(status=DELETED, page_size=200)
 
-    pool = Pool(processes=12, initializer=_init, initargs=(client, data))
+    pool = Pool(processes=6, initializer=_init, initargs=(client, data))
 
     for _ in pbar(
         pool.imap_unordered(

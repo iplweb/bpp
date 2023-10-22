@@ -13,6 +13,7 @@ from django.db.models import F, Func, IntegerField, Q
 from django.db.models.functions import Length
 
 from pbn_api.integrator import istarmap  # noqa
+from pbn_api.models.discipline import DisciplineGroup
 
 from bpp.const import PBN_MIN_ROK
 
@@ -30,6 +31,7 @@ from import_common.normalization import (
 from pbn_api.client import PBNClient
 from pbn_api.const import ACTIVE, DELETED
 from pbn_api.exceptions import (
+    BrakIDPracyPoStroniePBN,
     HttpException,
     NoFeeDataException,
     NoPBNUIDException,
@@ -44,6 +46,7 @@ from pbn_api.integrator.threaded_page_getter import (
 from pbn_api.models import (
     Conference,
     Country,
+    Discipline,
     Institution,
     Journal,
     Language,
@@ -60,6 +63,7 @@ from django.contrib.postgres.search import TrigramSimilarity
 from bpp.models import (
     Autor,
     Autor_Dyscyplina,
+    Dyscyplina_Naukowa,
     Jednostka,
     Jezyk,
     Praca_Doktorska,
@@ -1348,6 +1352,7 @@ def clear_all():
         Jezyk,
         Uczelnia,
         Zrodlo,
+        Dyscyplina_Naukowa,
     ):
         print(f"Setting pbn_uid_ids of {model} to null...")
         model.objects.exclude(pbn_uid_id=None).update(pbn_uid_id=None)
@@ -1359,9 +1364,12 @@ def clear_all():
         Country,
         Institution,
         Conference,
+        SentData,
         Journal,
         Publisher,
         Scientist,
+        Discipline,
+        DisciplineGroup,
     ):
         print(f"Deleting all {model}")
         model.objects.all()._raw_delete(model.objects.db)
@@ -1484,6 +1492,13 @@ def _pobierz_pojedyncza_prace(client, publicationId):
     try:
         data = client.get_publication_by_id(publicationId)
     except HttpException as e:
+        if (
+            e.status_code == 422
+            and f"Publication with ID {publicationId} was not exists!" in e.content
+            # "was not exists" to oryginalna pisownia błędu z PBNu.
+        ):
+            raise BrakIDPracyPoStroniePBN(e)
+
         if e.status_code == 500 and "Internal server error" in e.content:
             print(
                 f"\r\nSerwer PBN zwrocil blad 500 dla PBN UID {publicationId} --> {e.content}"

@@ -212,7 +212,6 @@ class NazwiskoIImieQueryObject(
     url = "bpp:public-autor-autocomplete"
 
     def real_query(self, value, operation):
-
         if operation in EQUALITY_OPS_ALL:
             ret = Q(autorzy__autor=value)
 
@@ -246,7 +245,6 @@ class WydawnictwoNadrzedneQueryObject(
     url = "bpp:public-wydawnictwo-nadrzedne-autocomplete"
 
     def real_query(self, value, operation):
-
         if operation in EQUALITY_OPS_ALL:
             ret = Q(wydawnictwo_nadrzedne=value)
 
@@ -339,7 +337,6 @@ class TypOgolnyAutorQueryObject(NazwiskoIImieQueryObject):
     field_name = "typ_og_autor"
 
     def real_query(self, value, operation):
-
         if operation in EQUALITY_OPS_ALL:
             ret = Q(
                 autorzy__autor=value,
@@ -807,6 +804,8 @@ class CharakterFormalnyQueryObject(
     values = property(_values)
 
     def value_from_web(self, value):
+        if value is None:
+            return None
         return Charakter_Formalny.objects.get(nazwa=value.lstrip("-").lstrip(" "))
 
     def __init__(self, *args, **kwargs):

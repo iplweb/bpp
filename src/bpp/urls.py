@@ -50,6 +50,7 @@ from bpp.views.autocomplete import (
     PublicWydawnictwo_NadrzedneAutocomplete,
     PublicWydzialAutocomplete,
     PublicZrodloAutocomplete,
+    PublisherAutocomplete,
     Seria_WydawniczaAutocomplete,
     WidocznaJednostkaAutocomplete,
     WydawcaAutocomplete,
@@ -411,6 +412,11 @@ urlpatterns = [
         r"^wydawca-autocomplete/$",
         WydawcaAutocomplete.as_view(),
         name="wydawca-autocomplete",
+    ),
+    url(
+        r"^publisher-autocomplete/$",
+        PublisherAutocomplete.as_view(),
+        name="publisher-autocomplete",
     ),
     url(
         r"^lata-autocomplete/$",
