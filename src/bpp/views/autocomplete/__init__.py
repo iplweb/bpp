@@ -13,6 +13,7 @@ from taggit.models import Tag
 
 from import_common.core import normalized_db_isbn
 from import_common.normalization import normalize_isbn
+from pbn_api.models import Publisher
 
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.contrib.postgres.search import TrigramSimilarity
@@ -20,7 +21,7 @@ from django.contrib.postgres.search import TrigramSimilarity
 from django.utils.text import capfirst
 
 from bpp import const
-from bpp.const import CHARAKTER_OGOLNY_KSIAZKA, GR_WPROWADZANIE_DANYCH
+from bpp.const import CHARAKTER_OGOLNY_KSIAZKA, GR_WPROWADZANIE_DANYCH, PBN_UID_LEN
 from bpp.jezyk_polski import warianty_zapisanego_nazwiska
 from bpp.lookups import SearchQueryStartsWith
 from bpp.models import (
@@ -210,6 +211,30 @@ class WydawcaAutocomplete(
 
     def create_object(self, text):
         return self.get_queryset().create(nazwa=text.strip())
+
+
+class PublisherAutocomplete(
+    NazwaTrigramMixin, LoginRequiredMixin, autocomplete.Select2QuerySetView
+):
+    def get_queryset(self):
+        qset = Publisher.objects.all()
+
+        if not self.q or len(self.q) == PBN_UID_LEN:
+            return qset.filter(mongoId=self.q)
+
+        bazowe_zapytanie = (
+            qset.annotate(similarity=TrigramSimilarity("publisherName", self.q))
+            .filter(similarity__gte=self.MIN_TRIGRAM_MATCH)
+            .order_by("-similarity")
+        )
+
+        z_identyfikatorami = bazowe_zapytanie.exclude(mniswId=None)[:10]
+        bez_identyfikatorow = bazowe_zapytanie.filter(mniswId=None)[:10]
+
+        return QuerySetSequence(z_identyfikatorami, bez_identyfikatorow)
+
+    def get_result_label(self, result):
+        return str(result)
 
 
 class PublicKonferencjaAutocomplete(NazwaMixin, autocomplete.Select2QuerySetView):
