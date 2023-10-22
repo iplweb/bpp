@@ -807,6 +807,8 @@ class CharakterFormalnyQueryObject(
     values = property(_values)
 
     def value_from_web(self, value):
+        if value is None:
+            return None
         return Charakter_Formalny.objects.get(nazwa=value.lstrip("-").lstrip(" "))
 
     def __init__(self, *args, **kwargs):
