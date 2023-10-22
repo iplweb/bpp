@@ -109,8 +109,8 @@ def matchuj_jednostke(nazwa, wydzial=None):
 
 
 def matchuj_autora(
-    imiona: str,
-    nazwisko: str,
+    imiona: Union[str, None],
+    nazwisko: Union[str, None],
     jednostka: Union[Jednostka, None] = None,
     bpp_id: Union[int, None] = None,
     pbn_uid_id: Union[str, None] = None,
@@ -163,6 +163,12 @@ def matchuj_autora(
                 return Autor.objects.get(pbn_id=pbn_id)
             except Autor.DoesNotExist:
                 pass
+
+    if imiona is None:
+        imiona = ""
+
+    if nazwisko is None:
+        nazwisko = ""
 
     queries = [
         Q(
