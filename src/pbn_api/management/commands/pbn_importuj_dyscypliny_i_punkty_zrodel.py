@@ -88,7 +88,9 @@ class Command(PBNBaseCommand):
                         missing.add(kod_dyscypliny)
                     continue
 
-                zrodlo.dyscyplina_zrodla_set.create(
+                # Tu zamiast .create użyjemy .get_or_create, bo po stronie PBNu
+                # najwyraźniej lista może zawierac ten sam element kilka razy:
+                zrodlo.dyscyplina_zrodla_set.get_or_create(
                     dyscyplina_id=dyscypliny[kod_dyscypliny].pk
                 )
 
