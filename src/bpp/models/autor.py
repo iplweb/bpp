@@ -9,7 +9,7 @@ from autoslug import AutoSlugField
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import IntegrityError, models, transaction
-from django.db.models import CASCADE, SET_NULL, Q, Sum, UniqueConstraint
+from django.db.models import CASCADE, SET_NULL, Count, Q, Sum, UniqueConstraint
 from django.urls.base import reverse
 from tinymce.models import HTMLField
 
@@ -53,6 +53,9 @@ def autor_split_string(text):
 
 
 class AutorManager(FulltextSearchMixin, models.Manager):
+    # Nie włączaj websearch gdy podano minus (podwójne nazwiska z myślnikiem)
+    fts_enable_websearch_on_minus = False
+
     def create_from_string(self, text):
         """Tworzy rekord autora z ciągu znaków. Używane, gdy dysponujemy
         wpisanym ciągiem znaków z np AutorAutocomplete i chcemy utworzyć
@@ -63,6 +66,9 @@ class AutorManager(FulltextSearchMixin, models.Manager):
         return self.create(
             **dict(nazwisko=text[0].title(), imiona=text[1].title(), pokazuj=False)
         )
+
+    def fulltext_annotate(self, search_query, normalization):
+        return {self.fts_field + "__rank": Count("wydawnictwo_ciagle")}
 
 
 class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
