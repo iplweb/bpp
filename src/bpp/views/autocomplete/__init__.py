@@ -314,18 +314,20 @@ class AutorAutocompleteBase(autocomplete.Select2QuerySetView):
         qs = Autor.objects.all()
         if self.q:
             tokens = fulltext_tokenize(self.q)
-            query = SearchQueryStartsWith(
-                "&".join([token + ":*" for token in tokens if token]),
-                config="bpp_nazwy_wlasne",
-            )
 
-            qs = qs.filter(search=query)
+            if tokens:
+                query = SearchQueryStartsWith(
+                    "&".join([token + ":*" for token in tokens if token]),
+                    config="bpp_nazwy_wlasne",
+                )
 
-            qs = (
-                qs.annotate(Count("wydawnictwo_ciagle"))
-                .select_related("tytul")
-                .order_by("-wydawnictwo_ciagle__count")
-            )
+                qs = qs.filter(search=query)
+
+                qs = (
+                    qs.annotate(Count("wydawnictwo_ciagle"))
+                    .select_related("tytul")
+                    .order_by("-wydawnictwo_ciagle__count")
+                )
 
         return qs
 

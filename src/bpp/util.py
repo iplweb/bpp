@@ -36,29 +36,34 @@ def get_fixture(name):
     return {x["skrot"].lower().strip(): x for x in ret}
 
 
+strip_nonalpha_regex = re.compile("\\W+")
+strip_extra_spaces_regex = re.compile("\\s\\s+")
+
+
+def strip_nonalphanumeric(s):
+    """Usuń nie-alfanumeryczne znaki z ciągu znaków"""
+    if s is None:
+        return
+
+    return strip_nonalpha_regex.sub(" ", s)
+
+
+def strip_extra_spaces(s):
+    if s is None:
+        return
+
+    return strip_extra_spaces_regex.sub("", s).strip()
+
+
 def fulltext_tokenize(s):
-    s = (
-        s.replace(":", " ")
-        .replace("*", " ")
-        .replace('"', " ")
-        .replace("|", " ")
-        .replace("'", " ")
-        .replace("&", " ")
-        .replace("\\", " ")
-        .replace("(", " ")
-        .replace(")", " ")
-        .replace("#", " ")
-        .replace("@", " ")
-        .replace("!", " ")
-        .replace("[", " ")
-        .replace("]", " ")
-        .replace("\t", " ")
-        .replace("\n", " ")
-        .replace("\r", " ")
-        .replace("<", " ")
-        .replace(">", " ")
-    )
-    return [x.strip() for x in s.strip().split(" ") if x.strip()]
+    if s is None:
+        return
+
+    return [
+        elem
+        for elem in strip_extra_spaces(strip_nonalphanumeric(strip_tags(s))).split(" ")
+        if elem
+    ]
 
 
 class FulltextSearchMixin:
@@ -83,8 +88,7 @@ class FulltextSearchMixin:
         if isinstance(qstr, bytes):
             qstr = qstr.decode("utf-8")
 
-        clean_qstr = strip_tags(qstr)
-        words = fulltext_tokenize(clean_qstr)
+        words = fulltext_tokenize(qstr)
         if not words:
             return self.none().annotate(**{self.fts_field + "__rank": Value(0)})
 
