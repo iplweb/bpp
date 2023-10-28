@@ -72,7 +72,7 @@ class FulltextSearchMixin:
 
     # włączaj typ wyszukoiwania web-search gdy podany jest znak minus
     # w tekscie zapytania:
-    fts_enable_websearch_on_minus = True
+    fts_enable_websearch_on_minus_or_quote = True
 
     def fulltext_empty(self):
         return self.none().annotate(**{self.fts_field + "__rank": Value(0)})
@@ -97,10 +97,16 @@ class FulltextSearchMixin:
             return self.fulltext_empty()
 
         if (
-            qstr.find("-") < 0
-            and qstr.find('"') < 0
-            and self.fts_enable_websearch_on_minus
-        ):
+            qstr.find("-") >= 0 or qstr.find('"') >= 0
+        ) and self.fts_enable_websearch_on_minus_or_quote:
+            # Jezeli użytkownik podał cudzysłów lub minus w zapytaniu i dozwolone jest
+            # przełączenie się na websearch (parametr ``self.fts_enable_websearch_on_minus``,
+            # to skorzystaj z trybu zapytania ``websearch``:
+
+            search_query = SearchQuery(
+                qstr, search_type="websearch", config="bpp_nazwy_wlasne"
+            )
+        else:
             # Jeżeli nie ma minusów, cudzysłowów to możesz odpalić dodatkowo tryb wyszukiwania
             # 'phrase' żeby znaleźć wyrazy w kolejności, tak jak zostały podane
 
@@ -117,11 +123,6 @@ class FulltextSearchMixin:
             q3 = SearchQuery(qstr, search_type="phrase", config="bpp_nazwy_wlasne")
 
             search_query = q1 | q3
-
-        else:
-            search_query = SearchQuery(
-                qstr, search_type="websearch", config="bpp_nazwy_wlasne"
-            )
 
         query = (
             self.filter(**{self.fts_field: search_query})

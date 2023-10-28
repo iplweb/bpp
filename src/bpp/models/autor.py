@@ -54,7 +54,7 @@ def autor_split_string(text):
 
 class AutorManager(FulltextSearchMixin, models.Manager):
     # Nie włączaj websearch gdy podano minus (podwójne nazwiska z myślnikiem)
-    fts_enable_websearch_on_minus = False
+    fts_enable_websearch_on_minus_or_quote = False
 
     def create_from_string(self, text):
         """Tworzy rekord autora z ciągu znaków. Używane, gdy dysponujemy
