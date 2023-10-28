@@ -1,5 +1,3 @@
-import sys
-
 import pytest
 
 from bpp.templatetags.prace import close_tags
@@ -19,7 +17,6 @@ def test_close_tags(i, o):
     assert close_tags(i) == o
 
 
-@pytest.mark.skipif(sys.platform == "darwin", reason="lxml behaviour differences")
 @pytest.mark.parametrize(
     "i,o",
     [
