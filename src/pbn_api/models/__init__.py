@@ -12,3 +12,4 @@ from .publication import Publication  # noqa
 from .publisher import Publisher  # noqa
 from .scientist import Scientist  # noqa
 from .sentdata import SentData  # noqa
+from .tlumacz_dyscyplin import TlumaczDyscyplin, TlumaczDyscyplinManager  # noqa
