@@ -13,7 +13,6 @@ from django.db.models import F, Func, IntegerField, Q
 from django.db.models.functions import Length
 
 from pbn_api.integrator import istarmap  # noqa
-from pbn_api.models.discipline import DisciplineGroup
 
 from bpp.const import PBN_MIN_ROK
 
@@ -47,6 +46,7 @@ from pbn_api.models import (
     Conference,
     Country,
     Discipline,
+    DisciplineGroup,
     Institution,
     Journal,
     Language,

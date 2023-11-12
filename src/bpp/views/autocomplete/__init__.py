@@ -23,7 +23,6 @@ from django.utils.text import capfirst
 from bpp import const
 from bpp.const import CHARAKTER_OGOLNY_KSIAZKA, GR_WPROWADZANIE_DANYCH, PBN_UID_LEN
 from bpp.jezyk_polski import warianty_zapisanego_nazwiska
-from bpp.lookups import SearchQueryStartsWith
 from bpp.models import (
     Autor_Dyscyplina,
     Dyscyplina_Naukowa,
@@ -46,7 +45,6 @@ from bpp.models.struktura import Wydzial
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor
 from bpp.models.zrodlo import Rodzaj_Zrodla, Zrodlo
-from bpp.util import fulltext_tokenize
 
 
 class PublicTaggitTagAutocomplete(autocomplete.Select2QuerySetView):
@@ -311,23 +309,9 @@ class ZrodloAutocomplete(GroupRequiredMixin, PublicZrodloAutocomplete):
 
 class AutorAutocompleteBase(autocomplete.Select2QuerySetView):
     def get_queryset(self):
-        qs = Autor.objects.all()
         if self.q:
-            tokens = fulltext_tokenize(self.q)
-            query = SearchQueryStartsWith(
-                "&".join([token + ":*" for token in tokens if token]),
-                config="bpp_nazwy_wlasne",
-            )
-
-            qs = qs.filter(search=query)
-
-            qs = (
-                qs.annotate(Count("wydawnictwo_ciagle"))
-                .select_related("tytul")
-                .order_by("-wydawnictwo_ciagle__count")
-            )
-
-        return qs
+            return Autor.objects.fulltext_filter(self.q).select_related("tytul")
+        return Autor.objects.all()
 
 
 class AutorAutocomplete(GroupRequiredMixin, AutorAutocompleteBase):

@@ -9,3 +9,4 @@ from .publikacjainstytucji import *  # noqa
 from .publisher import *  # noqa
 from .scientist import *  # noqa
 from .sentdata import *  # noqa
+from .tlumacz_dyscyplin import *  # noqa

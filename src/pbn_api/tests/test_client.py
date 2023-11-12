@@ -17,7 +17,7 @@ from pbn_api.exceptions import (
     PKZeroExportDisabled,
     SameDataUploadedRecently,
 )
-from pbn_api.models import Institution, Publication, SentData
+from pbn_api.models import Institution, Publication, SentData, TlumaczDyscyplin
 from pbn_api.models.discipline import Discipline
 from pbn_api.tests.utils import middleware
 
@@ -463,6 +463,6 @@ def test_sync_disciplines(pbn_client):
     assert Dyscyplina_Naukowa.objects.count() > 2
     d1.refresh_from_db(), d2.refresh_from_db()
 
-    assert d1.pbn_uid_id is not None
+    assert TlumaczDyscyplin.objects.przetlumacz_dyscypline(d1, 2022) is not None
 
-    assert d2.pbn_uid_id is not None
+    assert TlumaczDyscyplin.objects.przetlumacz_dyscypline(d2, 2022) is not None

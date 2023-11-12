@@ -1,9 +1,11 @@
 import json
 import multiprocessing
+import operator
 import os
 import re
 import sys
 from datetime import datetime, timedelta
+from functools import reduce
 from math import ceil, floor
 from pathlib import Path
 from typing import Dict, List
@@ -18,7 +20,6 @@ from django.db.models import Max, Min, Value
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.filters import AutoFilter
 from openpyxl.worksheet.table import Table, TableColumn, TableStyleInfo
-from psycopg2.extensions import QuotedString
 from unidecode import unidecode
 
 from django.contrib.postgres.search import SearchQuery, SearchRank
@@ -36,73 +37,99 @@ def get_fixture(name):
     return {x["skrot"].lower().strip(): x for x in ret}
 
 
+strip_nonalpha_regex = re.compile("\\W+")
+strip_extra_spaces_regex = re.compile("\\s\\s+")
+
+
+def strip_nonalphanumeric(s):
+    """Usuń nie-alfanumeryczne znaki z ciągu znaków"""
+    if s is None:
+        return
+
+    return strip_nonalpha_regex.sub(" ", s)
+
+
+def strip_extra_spaces(s):
+    if s is None:
+        return
+
+    return strip_extra_spaces_regex.sub("", s).strip()
+
+
 def fulltext_tokenize(s):
-    s = (
-        s.replace(":", " ")
-        .replace("*", " ")
-        .replace('"', " ")
-        .replace("|", " ")
-        .replace("'", " ")
-        .replace("&", " ")
-        .replace("\\", " ")
-        .replace("(", " ")
-        .replace(")", " ")
-        .replace("#", " ")
-        .replace("@", " ")
-        .replace("!", " ")
-        .replace("[", " ")
-        .replace("]", " ")
-        .replace("\t", " ")
-        .replace("\n", " ")
-        .replace("\r", " ")
-        .replace("<", " ")
-        .replace(">", " ")
-    )
-    return [x.strip() for x in s.strip().split(" ") if x.strip()]
+    if s is None:
+        return
+
+    return [
+        elem
+        for elem in strip_extra_spaces(strip_nonalphanumeric(strip_tags(s))).split(" ")
+        if elem
+    ]
 
 
 class FulltextSearchMixin:
     fts_field = "search"
 
+    # włączaj typ wyszukoiwania web-search gdy podany jest znak minus
+    # w tekscie zapytania:
+    fts_enable_websearch_on_minus_or_quote = True
+
+    def fulltext_empty(self):
+        return self.none().annotate(**{self.fts_field + "__rank": Value(0)})
+
+    def fulltext_annotate(self, search_query, normalization):
+        return {
+            self.fts_field
+            + "__rank": SearchRank(
+                self.fts_field, search_query, normalization=normalization
+            )
+        }
+
     def fulltext_filter(self, qstr, normalization=None):
-        def quotes(wordlist):
-            ret = []
-            for elem in wordlist:
-                ret.append(str(QuotedString(elem.replace("\\", "").encode("utf-8"))))
-            return ret
-
-        def startswith(wordlist):
-            return [x + ":*" for x in quotes(wordlist)]
-
-        def negative(wordlist):
-            return ["!" + x for x in startswith(wordlist)]
-
         if qstr is None:
-            qstr = ""
+            return self.fulltext_empty()
 
         if isinstance(qstr, bytes):
             qstr = qstr.decode("utf-8")
 
-        clean_qstr = strip_tags(qstr)
-        words = fulltext_tokenize(clean_qstr)
+        words = fulltext_tokenize(qstr)
         if not words:
-            return self.none().annotate(**{self.fts_field + "__rank": Value(0)})
+            return self.fulltext_empty()
 
-        qstr = "(" + " & ".join(startswith(words)) + ") | (" + " & ".join(words) + ")"
-        sq = SearchQuery(qstr, search_type="raw", config="bpp_nazwy_wlasne")
+        if (
+            qstr.find("-") >= 0 or qstr.find('"') >= 0
+        ) and self.fts_enable_websearch_on_minus_or_quote:
+            # Jezeli użytkownik podał cudzysłów lub minus w zapytaniu i dozwolone jest
+            # przełączenie się na websearch (parametr ``self.fts_enable_websearch_on_minus``,
+            # to skorzystaj z trybu zapytania ``websearch``:
 
-        return (
-            self.filter(**{self.fts_field: sq})
-            .annotate(
-                **{
-                    self.fts_field
-                    + "__rank": SearchRank(
-                        self.fts_field, sq, normalization=normalization
-                    )
-                }
+            search_query = SearchQuery(
+                qstr, search_type="websearch", config="bpp_nazwy_wlasne"
             )
+        else:
+            # Jeżeli nie ma minusów, cudzysłowów to możesz odpalić dodatkowo tryb wyszukiwania
+            # 'phrase' żeby znaleźć wyrazy w kolejności, tak jak zostały podane
+
+            q1 = reduce(
+                operator.__and__,
+                [
+                    SearchQuery(
+                        word + ":*", search_type="raw", config="bpp_nazwy_wlasne"
+                    )
+                    for word in words
+                ],
+            )
+
+            q3 = SearchQuery(qstr, search_type="phrase", config="bpp_nazwy_wlasne")
+
+            search_query = q1 | q3
+
+        query = (
+            self.filter(**{self.fts_field: search_query})
+            .annotate(**self.fulltext_annotate(search_query, normalization))
             .order_by(f"-{self.fts_field}__rank")
         )
+        return query
 
 
 def strip_html(s):

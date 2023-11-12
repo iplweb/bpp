@@ -1,6 +1,12 @@
 import pytest
 
-from bpp.util import knapsack, strip_html, wytnij_isbn_z_uwag
+from bpp.util import (
+    fulltext_tokenize,
+    knapsack,
+    strip_html,
+    strip_nonalphanumeric,
+    wytnij_isbn_z_uwag,
+)
 
 
 @pytest.mark.parametrize(
@@ -75,3 +81,24 @@ def test_ModelZOpisemBibliograficznym(wydawnictwo_ciagle):
 )
 def test_strip_html(i, o):
     assert strip_html(i) == o
+
+
+@pytest.mark.parametrize(
+    "i, o",
+    [("identyfikacja markerów molekularnych", "identyfikacja markerów molekularnych")],
+)
+def test_strip_nonalphanumeric(i, o):
+    assert strip_nonalphanumeric(i) == o
+
+
+@pytest.mark.parametrize(
+    "i, o",
+    [
+        (
+            "identyfikacja markerów molekularnych",
+            ["identyfikacja", "markerów", "molekularnych"],
+        )
+    ],
+)
+def test_fulltext_tokenize(i, o):
+    assert fulltext_tokenize(i) == o

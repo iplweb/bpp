@@ -290,6 +290,13 @@ class Wydawnictwo_Ciagle_Streszczenie(BazaModeluStreszczen):
         verbose_name_plural = "streszczenia wydawnictw ciągłych"
 
     def __str__(self):
+        try:
+            str(self.rekord)
+        except Wydawnictwo_Ciagle.DoesNotExist:
+            # Może nie istnieć w sytuacji, gdy jesteśmy w trakcie kasowania rekordu, zaś easyaudit
+            # chce zalogować takie wydarzenie.
+            return f"Streszczenie usuniętego rekordu o ID: {self.rekord_id}"
+
         if self.jezyk_streszczenia_id is not None:
             return (
                 f"Streszczenie rekordu {self.rekord} w języku {self.jezyk_streszczenia}"

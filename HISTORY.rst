@@ -4,6 +4,15 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202311.1121 (2023-11-12)
+============================
+
+Usprawnienie
+------------
+
+- kompatybilność z nowym API PBN w zakresie wysyłania dyscyplin ze słowników aktualnych i nieaktualnych (odpowiedniki-pbn)
+
+
 Bpp 202310.1118 (2023-10-19)
 ============================
 

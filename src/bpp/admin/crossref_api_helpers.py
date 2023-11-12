@@ -80,9 +80,17 @@ class UzupelniajWstepneDanePoCrossRefAPIMixin(
                 title = ". ".join(title)
             title = normalize_title(title)
 
-            zrodlo = Komparator.porownaj_container_title(
-                z.get("container-title")[0]
-            ).rekord_po_stronie_bpp
+            try:
+                tytul_kontenera = z.get("container-title")[0]
+            except IndexError:
+                tytul_kontenera = None
+
+            zrodlo = None
+            if tytul_kontenera:
+                zrodlo = Komparator.porownaj_container_title(
+                    tytul_kontenera
+                ).rekord_po_stronie_bpp
+
             if zrodlo is not None:
                 zrodlo = zrodlo.pk
 
