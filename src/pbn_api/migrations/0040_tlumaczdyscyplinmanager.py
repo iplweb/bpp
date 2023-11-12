@@ -7,6 +7,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
     dependencies = [
         ("pbn_api", "0039_alter_oswiadczenieinstytucji_area"),
+        ("bpp", "0341_dyscyplina_naukowa_pbn_uid"),
     ]
 
     operations = [
