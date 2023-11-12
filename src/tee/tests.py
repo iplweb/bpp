@@ -21,6 +21,7 @@ def stderr():
 @pytest.mark.django_db
 def test_tee_okay(stdout: StringIO, stderr: StringIO, mocker):
     with mocker.patch("django.db.connections.close_all"):
+        # with mocker.patch("sys.exit"):
         # patch wymagany, bo BaseCommand wywołuje close_all
         call_command("tee", "tee_test_okay", stdout=stdout, stderr=stderr)
     assert Log.objects.first().finished_successfully
@@ -31,6 +32,7 @@ def test_tee_okay(stdout: StringIO, stderr: StringIO, mocker):
 @pytest.mark.django_db
 def test_tee_exception(stdout, stderr, mocker):
     with mocker.patch("django.db.connections.close_all"):
+        # with mocker.patch("sys.exit"):
         # patch wymagany, bo BaseCommand wywołuje close_all
         call_command("tee", "tee_test_exception", stdout=stdout, stderr=stderr)
     assert Log.objects.first().traceback

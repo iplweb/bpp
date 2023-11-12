@@ -13,9 +13,7 @@ class Dyscyplina_NaukowaAdmin(
         "nazwa",
         "dziedzina",
         "widoczna",
-        "pbn_uid",
-    )  # Sane defaults.
-
+    )
     fields = None
     search_fields = (
         "nazwa",
@@ -23,7 +21,7 @@ class Dyscyplina_NaukowaAdmin(
     )
     list_filter = ("widoczna",)
 
-    fields = ["nazwa", "kod", "widoczna", "pbn_uid"]
+    fields = ["nazwa", "kod", "widoczna"]
     mptt_level_indent = 40
 
 

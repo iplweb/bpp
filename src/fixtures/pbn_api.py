@@ -22,7 +22,7 @@ MOCK_RETURNED_MONGODB_DATA = dict(
 
 
 @pytest.fixture
-def pbn_client():
+def pbn_client() -> PBNClient:
     transport = MockTransport()
     return PBNClient(transport=transport)
 

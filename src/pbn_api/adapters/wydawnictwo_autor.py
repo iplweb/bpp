@@ -1,3 +1,5 @@
+from pbn_api.models import TlumaczDyscyplin
+
 from bpp import const
 from bpp.models.abstract import BazaModeluOdpowiedzialnosciAutorow
 
@@ -25,8 +27,11 @@ class WydawnictwoAutorToStatementPBNAdapter:
             ret["orcid"] = True
 
         if self.original.dyscyplina_naukowa_id is not None and self.original.przypieta:
-            ret["disciplineId"] = self.original.dyscyplina_naukowa.kod_dla_pbn()
-            ret["disciplineUuid"] = str(self.original.dyscyplina_naukowa.pbn_uid.uuid)
+            przetlumaczona = TlumaczDyscyplin.objects.przetlumacz_dyscypline(
+                self.original.dyscyplina_naukowa, self.original.rekord.rok
+            )
+            ret["disciplineId"] = przetlumaczona.code
+            ret["disciplineUuid"] = str(przetlumaczona.uuid)
         else:
             return
 

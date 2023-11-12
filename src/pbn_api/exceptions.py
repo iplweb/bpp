@@ -1,6 +1,10 @@
 import json
 
 
+class TlumaczDyscyplinException(ValueError):
+    pass
+
+
 class PraceSerwisoweException(Exception):
     pass
 
