@@ -13,7 +13,7 @@ from django_webtest import DjangoTestApp
 from rest_framework.test import APIClient
 from splinter.driver import DriverAPI
 
-from pbn_api.models import Discipline, Language
+from pbn_api.models import Discipline, Language, TlumaczDyscyplin
 from pbn_api.models.discipline import DisciplineGroup
 
 from django.utils import timezone
@@ -93,11 +93,21 @@ def pbn_dyscyplina1(db, pbn_discipline_group):
     )[0]
 
 
+def _dyscyplina_maker(nazwa, kod, dyscyplina_pbn):
+    """Produkuje dyscypliny naukowe WRAZ z odpowiednim wpisem tłumacza
+    dyscyplin"""
+    d = Dyscyplina_Naukowa.objects.get_or_create(nazwa=nazwa, kod=kod)[0]
+    TlumaczDyscyplin.objects.get_or_create(
+        dyscyplina_w_bpp=d, pbn_2017_2021=dyscyplina_pbn, pbn_2022_now=dyscyplina_pbn
+    )
+    return d
+
+
 @pytest.fixture
 def dyscyplina1(db, pbn_dyscyplina1):
-    return Dyscyplina_Naukowa.objects.get_or_create(
-        nazwa="memetyka stosowana", kod="3.1", pbn_uid=pbn_dyscyplina1
-    )[0]
+    return _dyscyplina_maker(
+        nazwa="memetyka stosowana", kod="3.1", dyscyplina_pbn=pbn_dyscyplina1
+    )
 
 
 @pytest.fixture
@@ -113,9 +123,9 @@ def pbn_dyscyplina1_hst(db, pbn_discipline_group):
 
 @pytest.fixture
 def dyscyplina1_hst(db, pbn_dyscyplina1_hst):
-    return Dyscyplina_Naukowa.objects.get_or_create(
-        nazwa="nauka teologiczna", kod="7.1", pbn_uid=pbn_dyscyplina1_hst
-    )[0]
+    return _dyscyplina_maker(
+        nazwa="nauka teologiczna", kod="7.1", dyscyplina_pbn=pbn_dyscyplina1_hst
+    )
 
 
 @pytest.fixture
@@ -131,9 +141,9 @@ def pbn_dyscyplina2(db, pbn_discipline_group):
 
 @pytest.fixture
 def dyscyplina2(db, pbn_dyscyplina2):
-    return Dyscyplina_Naukowa.objects.get_or_create(
-        nazwa="druga dyscyplina", kod="2.2", pbn_uid=pbn_dyscyplina2
-    )[0]
+    return _dyscyplina_maker(
+        nazwa="druga dyscyplina", kod="2.2", dyscyplina_pbn=pbn_dyscyplina2
+    )
 
 
 @pytest.fixture
@@ -149,9 +159,9 @@ def pbn_dyscyplina2_hst(db, pbn_discipline_group):
 
 @pytest.fixture
 def dyscyplina2_hst(db, pbn_dyscyplina2_hst):
-    return Dyscyplina_Naukowa.objects.get_or_create(
-        nazwa="nauka humanistyczna", kod="1.1", pbn_uid=pbn_dyscyplina2_hst
-    )[0]
+    return _dyscyplina_maker(
+        nazwa="nauka humanistyczna", kod="1.1", dyscyplina_pbn=pbn_dyscyplina2_hst
+    )
 
 
 @pytest.fixture
@@ -167,9 +177,9 @@ def pbn_dyscyplina3(db, pbn_discipline_group):
 
 @pytest.fixture
 def dyscyplina3(db, pbn_dyscyplina3):
-    return Dyscyplina_Naukowa.objects.get_or_create(
-        nazwa="trzecia dyscyplina", kod="4.3", pbn_uid=pbn_dyscyplina3
-    )[0]
+    return _dyscyplina_maker(
+        nazwa="trzecia dyscyplina", kod="4.3", dyscyplina_pbn=pbn_dyscyplina3
+    )
 
 
 @pytest.fixture

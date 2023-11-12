@@ -1040,5 +1040,9 @@ if INSTALL_PLUGINS:
 
     logger = logging.getLogger(__name__)
 
-    logger.info("Znaleziono pluginy BPP", DISCOVERED_PLUGINS)
+    if DISCOVERED_PLUGINS:
+        logger.info(
+            "Znaleziono i aktywowano następujące pluginy BPP: %s", DISCOVERED_PLUGINS
+        )
+
     [INSTALLED_APPS.append(x) for x in DISCOVERED_PLUGINS]

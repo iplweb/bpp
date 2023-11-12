@@ -13,7 +13,10 @@ from requests import ConnectionError
 from requests.exceptions import SSLError
 from simplejson.errors import JSONDecodeError
 
-from import_common.core import matchuj_dyscypline_pbn
+from import_common.core import (
+    matchuj_aktualna_dyscypline_pbn,
+    matchuj_nieaktualna_dyscypline_pbn,
+)
 from import_common.normalization import normalize_kod_dyscypliny
 from pbn_api.adapters.wydawnictwo import (
     OplataZaWydawnictwoPBNAdapter,
@@ -42,6 +45,7 @@ from pbn_api.exceptions import (
     PraceSerwisoweException,
     SameDataUploadedRecently,
 )
+from pbn_api.models import TlumaczDyscyplin
 from pbn_api.models.discipline import Discipline, DisciplineGroup
 from pbn_api.models.sentdata import SentData
 
@@ -470,7 +474,7 @@ class InstitutionsProfileMixin:
 
     def delete_all_publication_statements(self, publicationId):
         return self.transport.delete(
-            f"/api/v1/institutionProfile/publications/{publicationId}",
+            PBN_DELETE_PUBLICATION_STATEMENT.format(publicationId=publicationId),
             body={"all": True, "statementsOfPersons": []},
         )
 
@@ -691,11 +695,18 @@ class PBNClient(
                 if e.status_code == 400:
                     if e.json:
                         try:
-                            msg = e.json["details"]["publicationId"]
+                            try:
+                                msg = e.json["details"]["publicationId"]
+                            except KeyError:
+                                msg = e.json["details"][
+                                    f"publicationId.{pub.pbn_uid_id}"
+                                ]
                             if NIE_ISTNIEJA in msg:
                                 ignored_exception = True
                         except (TypeError, KeyError):
-                            pass
+                            if NIE_ISTNIEJA in e.content:
+                                ignored_exception = True
+
                     else:
                         if NIE_ISTNIEJA in e.content:
                             ignored_exception = True
@@ -725,7 +736,7 @@ class PBNClient(
             pub.save()
 
     def eventually_coerce_to_publication(self, pub: Model | str) -> Model:
-        if type(pub) == str:
+        if type(pub) is str:
             # Ciag znaków w postaci wydawnictwo_zwarte:123 pozwoli na podawanie tego
             # parametru do wywołań z linii poleceń
             model, pk = pub.split(":")
@@ -786,7 +797,7 @@ class PBNClient(
 
             print(json.dumps(res))
         else:
-            if type(res) == dict:
+            if type(res) is dict:
                 pprint(res)
             elif is_iterable(res):
                 if self._interactive and hasattr(res, "total_elements"):
@@ -844,59 +855,40 @@ class PBNClient(
         from bpp.models import Dyscyplina_Naukowa
 
         for dyscyplina in Dyscyplina_Naukowa.objects.all():
-            needs_update = False
-            group_current = True
+            wpis_tlumacza = TlumaczDyscyplin.objects.get_or_create(
+                dyscyplina_w_bpp=dyscyplina
+            )[0]
 
-            if dyscyplina.pbn_uid_id is None:
-                needs_update = True
-                reason = "nie ma odpowoednika w PBN"
-            else:
-                if not dyscyplina.pbn_uid.parent_group.is_current:
-                    needs_update = True
-                    group_current = False
-                    reason = "grupa macierzysta dyscyplin przestała być aktualna."
-
-            if not needs_update:
-                # Odpowoednik w PBN ustawiony.
-                # Aktualny słownik dyscyplin.
-                continue
-
-            print(
-                f"Po stronie BPP, dyscyplina {dyscyplina} wymaga aktualizacji -- bo {reason} "
+            wpis_tlumacza.pbn_2022_now = matchuj_aktualna_dyscypline_pbn(
+                dyscyplina.kod, dyscyplina.nazwa
+            )
+            # Domyślnie szuka dla lat 2017-2022
+            wpis_tlumacza.pbn_2017_2021 = matchuj_nieaktualna_dyscypline_pbn(
+                dyscyplina.kod, dyscyplina.nazwa
             )
 
-            if group_current is False:
-                import warnings
-
-                warnings.warn(
-                    "Automatyczna aktualizacja kodów dyscyplin z PBN z nieaktualnego słownika "
-                    "nie obsługiwana. Skontaktuj się z autorem systemu. "
-                )
-                continue
-
-            discipline = matchuj_dyscypline_pbn(dyscyplina.kod, dyscyplina.nazwa)
-            if discipline is None:
-                raise ValueError(
-                    f"Brak odpowoednika dyscypliny w PBN dla {dyscyplina}!"
-                )
-
-            dyscyplina.pbn_uid = discipline
-            dyscyplina.save(update_fields=["pbn_uid"])
+            wpis_tlumacza.save()
 
         for discipline in cur_dg.discipline_set.all():
             # Każda dyscyplina z aktualnego słownika powinna być wpisana do systemu BPP
             try:
-                Dyscyplina_Naukowa.objects.get(pbn_uid=discipline)
-            except Dyscyplina_Naukowa.DoesNotExist:
+                TlumaczDyscyplin.objects.get(pbn_2022_now=discipline)
+            except TlumaczDyscyplin.DoesNotExist:
                 try:
-                    Dyscyplina_Naukowa.objects.get(
+                    dyscyplina_w_bpp = Dyscyplina_Naukowa.objects.get(
                         kod=normalize_kod_dyscypliny(discipline.code)
                     )
+                    TlumaczDyscyplin.objects.get_or_create(
+                        dyscyplina_w_bpp=dyscyplina_w_bpp
+                    )
+
                 except Dyscyplina_Naukowa.DoesNotExist:
-                    Dyscyplina_Naukowa.objects.create(
+                    dyscyplina_w_bpp = Dyscyplina_Naukowa.objects.create(
                         kod=normalize_kod_dyscypliny(discipline.code),
                         nazwa=discipline.name,
-                        pbn_uid=discipline,
+                    )
+                    TlumaczDyscyplin.objects.get_or_create(
+                        dyscyplina_w_bpp=dyscyplina_w_bpp
                     )
 
     def interactive(self):

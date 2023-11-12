@@ -527,7 +527,7 @@ def normalize_kod_dyscypliny_pbn(kod):
     return f"{k1}{k2:02}"
 
 
-def matchuj_dyscypline_pbn(kod, nazwa):
+def matchuj_aktualna_dyscypline_pbn(kod, nazwa):
     kod = normalize_kod_dyscypliny_pbn(kod)
 
     from pbn_api.models import Discipline
@@ -546,5 +546,24 @@ def matchuj_dyscypline_pbn(kod, nazwa):
 
     try:
         return Discipline.objects.get(*parent_group_args, name=nazwa)
+    except Discipline.DoesNotExist:
+        pass
+
+
+def matchuj_nieaktualna_dyscypline_pbn(kod, nazwa, rok_min=2017, rok_max=2022):
+    kod = normalize_kod_dyscypliny_pbn(kod)
+
+    from pbn_api.models import Discipline
+
+    nieaktualna_parent_group_args = Q(parent_group__validityDateFrom__year=rok_min), Q(
+        parent_group__validityDateTo__year=rok_max
+    )
+    try:
+        return Discipline.objects.get(*nieaktualna_parent_group_args, code=kod)
+    except Discipline.DoesNotExist:
+        pass
+
+    try:
+        return Discipline.objects.get(*nieaktualna_parent_group_args, name=nazwa)
     except Discipline.DoesNotExist:
         pass

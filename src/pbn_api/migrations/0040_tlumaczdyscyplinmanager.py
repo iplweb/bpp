@@ -5,9 +5,7 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ("bpp", "0342_remove_dyscyplina_naukowa_pbn_uid"),
         ("pbn_api", "0039_alter_oswiadczenieinstytucji_area"),
     ]
 
