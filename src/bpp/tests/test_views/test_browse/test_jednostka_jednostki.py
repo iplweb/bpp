@@ -50,7 +50,6 @@ def test_browse_jednostka_paginate_by(uczelnia: Uczelnia):
 
 
 def test_browse_jednostka_sortowanie(jednostka, jednostka_podrzedna, uczelnia, client):
-
     jednostka.nazwa = "Z jednostka"
     jednostka.save()
 
@@ -130,6 +129,7 @@ def test_jednostka_aktualni_pracownicy(
 
     # Nowak to osoba ktora wczesniej miala publikacje
     wydawnictwo_ciagle.dodaj_autora(autor=autor_jan_nowak, jednostka=jednostka)
+    Autor_Jednostka.objects.filter(autor=autor_jan_nowak).delete()
 
     url = reverse("bpp:browse_jednostka", args=(jednostka.slug,))
     res = client.get(url)
