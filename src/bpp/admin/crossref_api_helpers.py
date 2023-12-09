@@ -1,11 +1,9 @@
 """Klasy pomocnicze dla klas ModelAdmin które chcą korzystać z parametru
 GET ``numer_zgloszenia`` czyli wypełniać dane wstępne wg zawartości zgłoszenia
 o danym numerze ID. """
-import math
-
+from crossref_bpp.admin.helpers import convert_crossref_to_changeform_initial_data
 from crossref_bpp.core import Komparator
 from crossref_bpp.models import CrossrefAPICache
-from import_common.normalization import normalize_title
 from ..views.api import ostatnia_dyscyplina, ostatnia_jednostka
 
 from bpp import const
@@ -16,7 +14,7 @@ class KorzystaZCrossRefAPIMixin:
     powoduje wypełnienie wstępnych parametrów wg danych z CrossRef API
     """
 
-    def get_crossref_api_data(self, request):
+    def get_crossref_api_data(self, request) -> dict | None:
         if request.method == "GET":
             nz = request.GET.get(const.CROSSREF_API_PARAM, "")
             if nz:
@@ -75,94 +73,7 @@ class UzupelniajWstepneDanePoCrossRefAPIMixin(
     def get_changeform_initial_data(self, request):
         z = self.get_crossref_api_data(request)
         if z is not None:
-            title = z.get("title")
-            if isinstance(title, list):
-                title = ". ".join(title)
-            title = normalize_title(title)
-
-            try:
-                tytul_kontenera = z.get("container-title")[0]
-            except IndexError:
-                tytul_kontenera = None
-
-            zrodlo = None
-            if tytul_kontenera:
-                zrodlo = Komparator.porownaj_container_title(
-                    tytul_kontenera
-                ).rekord_po_stronie_bpp
-
-            if zrodlo is not None:
-                zrodlo = zrodlo.pk
-
-            wydawca_txt = ""
-            wydawca_idx = Komparator.porownaj_publisher(
-                z.get("publisher")
-            ).rekord_po_stronie_bpp
-            if wydawca_idx is None:
-                wydawca_txt = z.get("publisher")
-
-            charakter_formalny_pk = None
-            charakter_formalny = Komparator.porownaj_type(
-                z.get("type")
-            ).rekord_po_stronie_bpp
-            if charakter_formalny is not None:
-                charakter_formalny_pk = charakter_formalny.pk
-
-            jezyk_pk = None
-            jezyk = Komparator.porownaj_language(
-                z.get("language")
-            ).rekord_po_stronie_bpp
-            if jezyk is not None:
-                jezyk_pk = jezyk.pk
-
-            e_issn = None
-            if z.get("issn-type", []):
-                for _issn in z.get("issn-type"):
-                    if _issn.get("type") == "electronic":
-                        e_issn = _issn.get("value")
-                        break
-
-            licencja_pk = None
-            licencja_ilosc_miesiecy = None
-            for _licencja in z.get("license", []):
-                licencja = Komparator.porownaj_license(_licencja).rekord_po_stronie_bpp
-                if licencja is not None:
-                    licencja_pk = licencja.pk
-                    try:
-                        licencja_ilosc_miesiecy = int(
-                            math.ceil(int(_licencja.get("delay-in-days")) / 30)
-                        )
-                    except (TypeError, ValueError):
-                        pass
-                    break
-
-            ret = {
-                "tytul_oryginalny": title,
-                "zrodlo": zrodlo,
-                "nr_zeszytu": z.get("issue", ""),
-                "strony": z.get("page", ""),
-                "slowa_kluczowe": ", ".join('"%s"' % x for x in z.get("subject", [])),
-                "wydawca": wydawca_idx,
-                "wydawca_opis": wydawca_txt,
-                "doi": z.get("DOI"),
-                "charakter_formalny": charakter_formalny_pk,
-                "jezyk": jezyk_pk,
-                "adnotacje": "Dodano na podstawie CrossRef API",
-                "e_issn": e_issn,
-                "openaccess_licencja": licencja_pk,
-                "openaccess_ilosc_miesiecy": licencja_ilosc_miesiecy,
-                "issn": z.get(
-                    "ISSN",
-                    [
-                        None,
-                    ],
-                )[0],
-                "www": z.get("resource", {}).get("primary", {}).get("URL", ""),
-                "tom": z.get("volume", ""),
-                "rok": z.get("published", {}).get("date-parts", [[""]])[0][0],
-            }
-
-            return ret
+            return convert_crossref_to_changeform_initial_data(z)
 
         return super().get_changeform_initial_data(request)
 
