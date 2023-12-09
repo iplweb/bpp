@@ -1,8 +1,11 @@
-from datetime import date
+from datetime import date, timedelta
 
 import pytest
 from model_bakery import baker
 
+from django.utils import timezone
+
+from bpp.models import Autor_Jednostka
 from bpp.models.struktura import Jednostka, Jednostka_Wydzial, Wydzial
 
 
@@ -74,7 +77,6 @@ def test_jednostka_test_przypisania_dla_czasokresu():
 
 @pytest.mark.django_db
 def test_jednostka_get_default_ordering(uczelnia):
-
     assert Jednostka.objects.get_default_ordering() == ("nazwa",)
 
     uczelnia.sortuj_jednostki_alfabetycznie = True
@@ -89,3 +91,87 @@ def test_jednostka_get_default_ordering(uczelnia):
         "kolejnosc",
         "nazwa",
     )
+
+
+def test_Jednostka_aktualni_autorzy(jednostka, autor_jan_nowak, druga_jednostka):
+    assert len(jednostka.aktualni_autorzy()) == 0
+
+    aj = Autor_Jednostka.objects.create(jednostka=jednostka, autor=autor_jan_nowak)
+
+    assert len(jednostka.aktualni_autorzy()) == 1
+
+    daj = Autor_Jednostka.objects.create(
+        jednostka=druga_jednostka, autor=autor_jan_nowak, podstawowe_miejsce_pracy=True
+    )
+
+    assert len(jednostka.aktualni_autorzy()) == 0
+    assert len(druga_jednostka.aktualni_autorzy()) == 1
+
+    daj.zakonczyl_prace = timezone.now() - timedelta(days=5)
+    daj.save()
+
+    # Po zakończeniu pracy w domyślnym miejscu pracy 5 dni temu, aktualną jednostką
+    # pozostanie jednostka pierwsza
+    assert len(jednostka.aktualni_autorzy()) == 1
+    assert len(druga_jednostka.aktualni_autorzy()) == 0
+
+    aj.zakonczyl_prace = timezone.now() - timedelta(days=5)
+    aj.save()
+
+    # Po zakonczeniu pracy w pierwszej jednostce, aktualna jednostka będzie pusta
+    assert len(jednostka.aktualni_autorzy()) == 0
+    assert len(druga_jednostka.aktualni_autorzy()) == 0
+
+
+def test_Jednostka_pracownicy(jednostka, autor_jan_nowak):
+    Autor_Jednostka.objects.create(jednostka=jednostka, autor=autor_jan_nowak)
+    assert jednostka.pracownicy().count() == 1
+
+
+def test_Jednostka_wspolpracowali(autor_jan_nowak, druga_jednostka, wydawnictwo_ciagle):
+    daj = Autor_Jednostka.objects.create(
+        jednostka=druga_jednostka, autor=autor_jan_nowak, podstawowe_miejsce_pracy=True
+    )
+    daj.zakonczyl_prace = timezone.now() - timedelta(days=5)
+    daj.save()
+
+    autor_jan_nowak.refresh_from_db()
+    assert autor_jan_nowak.aktualna_jednostka_id is None
+
+    wydawnictwo_ciagle.dodaj_autora(autor_jan_nowak, druga_jednostka)
+
+    assert druga_jednostka.wspolpracowali().count() == 1
+
+
+def test_Jednostka_wspolpracowali_alt(
+    jednostka,
+    uczelnia,
+    wydzial,
+    autor_jan_nowak,
+    autor_jan_kowalski,
+    wydawnictwo_ciagle,
+):
+    Autor_Jednostka.objects.all().delete()
+
+    assert autor_jan_nowak.pk not in jednostka.aktualni_autorzy()
+
+    # Kowalski to obecny pracownik
+    Autor_Jednostka.objects.create(
+        autor=autor_jan_kowalski, jednostka=jednostka, podstawowe_miejsce_pracy=True
+    )
+
+    assert autor_jan_nowak.pk not in jednostka.aktualni_autorzy()
+
+    # Nowak to osoba ktora wczesniej miala publikacje
+    wydawnictwo_ciagle.dodaj_autora(autor=autor_jan_nowak, jednostka=jednostka)
+
+    # usuń powiązanie Nowaka z jednostką, wydawnictwo_ciagle.dodaj_autora przez
+    # DodajAutoraMixin automatycznie tworzy powiązanie (przy ustawieniu
+    # BPP_DODAWAJ_JEDNOSTKE_PRZY_ZAPISIE_PRACY
+    Autor_Jednostka.objects.filter(autor=autor_jan_nowak).delete()
+
+    assert autor_jan_kowalski in jednostka.pracownicy()
+    assert autor_jan_nowak not in jednostka.pracownicy()
+
+    assert autor_jan_nowak in jednostka.wspolpracowali()
+    assert autor_jan_kowalski not in jednostka.wspolpracowali()

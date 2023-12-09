@@ -64,13 +64,16 @@ class Command(BaseCommand):
         for nazwa, zly_kod in labels.axes[1][9:]:
             data = data.rename({zly_kod: nazwa}, axis=1, errors="raise")
 
-        data = data.rename(
-            {
-                "stosunki międzynaropdowe": "stosunki międzynarodowe",
-            },
-            axis=1,
-            errors="raise",
-        )
+        try:
+            data = data.rename(
+                {
+                    "stosunki międzynaropdowe": "stosunki międzynarodowe",
+                },
+                axis=1,
+                errors="raise",
+            )
+        except KeyError:
+            pass
 
         data = data.to_dict("record")
 

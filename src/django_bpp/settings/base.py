@@ -783,7 +783,7 @@ DENORM_AUTOTIME_FIELD_NAMES = [
     "ostatnio_zmieniony",
 ]
 
-MAX_NO_AUTHORS_ON_BROWSE_JEDNOSTKA_PAGE = 200
+MAX_NO_AUTHORS_ON_BROWSE_JEDNOSTKA_PAGE = 500
 """
 Maksymalna ilość autorów wyświetlanych w danej grupie na podstronie przeglądania danych jednostki. W przypadku
 przekroczenia tej liczby, dana podgrupa autorów ("aktualni pracownicy","współpracowali kiedyś" itp) nie zostanie

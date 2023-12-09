@@ -79,7 +79,8 @@ live-docs:
 	sphinx-autobuild --port 8080 -D language=pl docs/ docs/_build
 
 tests:
-	pytest -n 6 --splinter-headless --maxfail 50
+	pytest -n 6 --splinter-headless -m "not selenium" --maxfail 50
+	pytest -n 6 --splinter-headless -m "selenium" --maxfail 50
 
 integration-start-from-match:
 	python src/manage.py pbn_integrator --enable-all --start-from-stage=15
