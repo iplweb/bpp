@@ -59,7 +59,7 @@ class SlotMixin:
 
     def pkd_dla_autora(self, wca):
         """
-        Dzieli PKd (czyli punkty PK dla dyscypliny) przez liczbę k czyli
+        Dzieli PKd (czyli punkty MNiSW/MEiN dla dyscypliny) przez liczbę k czyli
         przez liczbę wszystkich autorów/redaktorów dla artykułu/książki/rozdziału
         z danej dyscypliny.
 

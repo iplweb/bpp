@@ -1201,7 +1201,7 @@ v201910.7
 * klikalny tytuł pracy w raporcie slotów (#772)
 * raport slotów z możliwością podania parametru poszukiwanej ilości slotów i opcjonalnym
   wyświetlaniem autorów poniżej zadanego slotu (#765)
-* nie licz slotów dla prac wieloośrodkowych (typ KBN=PW) (#761)
+* nie licz slotów dla prac wieloośrodkowych (typ MNiSW/MEiN=PW) (#761)
 * zmiana nazwy kolumny "PKdAut" na "punkty dla autora" (#754)
 * wyświetlaj punkty PK w raporcie autora (#769)
 * nie kopiuj linku do płatnego dostępu w opcji "tamże" (#722)

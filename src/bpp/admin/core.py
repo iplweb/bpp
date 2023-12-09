@@ -53,7 +53,6 @@ def generuj_formularz_dla_autorow(
     include_dyscyplina=True,
 ):
     class baseModel_AutorForm(forms.ModelForm):
-
         if include_rekord:
             rekord = forms.ModelChoiceField(
                 widget=HiddenInput, queryset=baseModel.rekord.get_queryset()
@@ -118,7 +117,6 @@ def generuj_formularz_dla_autorow(
             instance = kwargs.get("instance")
             data = kwargs.get("data")
             if not data and not instance:
-
                 if kwargs.get("initial"):
                     self.initial = kwargs.get("initial")
                     autor = self.initial.get("autor")
@@ -317,7 +315,7 @@ class KolumnyZeSkrotamiMixin:
     def typ_kbn__skrot(self, obj):
         return obj.typ_kbn.skrot
 
-    typ_kbn__skrot.short_description = "Typ KBN"
+    typ_kbn__skrot.short_description = "typ MNiSW/MEiN"
     typ_kbn__skrot.admin_order_field = "typ_kbn__skrot"
 
 
