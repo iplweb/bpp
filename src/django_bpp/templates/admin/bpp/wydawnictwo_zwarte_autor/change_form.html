@@ -3,7 +3,9 @@
 {% block object-tools-items %}
     {% if original.rekord.pk %}
         <li><a href="/admin/bpp/wydawnictwo_zwarte/{{ original.rekord.pk }}/change/">Edycja rekordu</a></li>
-        <li><a href="{% url "bpp:browse_praca_by_slug" original.rekord.slug %}" class="grp-state-focus" target="_blank">{% trans "View on site" %}</a></li>
+        <li><a href="{% url "bpp:browse_praca_by_slug" original.rekord.slug %}" class="grp-state-focus"
+               target="_blank">{% trans "View on site" %}</a></li>
     {% endif %}
+    <input type="hidden" name="rok" value="{{ original.rekord.rok }}"/>
     {{ block.super }}
 {% endblock %}

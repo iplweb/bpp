@@ -77,19 +77,27 @@ def rok():
 @pytest.fixture
 def pbn_discipline_group(db):
     n = timezone.now().date()
-    return DisciplineGroup.objects.get_or_create(
-        uuid=uuid4(), validityDateTo=None, validityDateFrom=n - timedelta(days=7)
-    )[0]
+    try:
+        return DisciplineGroup.objects.get_or_create(
+            validityDateTo=None,
+            validityDateFrom=n - timedelta(days=7),
+            defaults=dict(uuid=uuid4()),
+        )[0]
+    except DisciplineGroup.MultipleObjectsReturned:
+        return DisciplineGroup.objects.filter(
+            validityDateTo=None,
+            validityDateFrom=n - timedelta(days=7),
+        ).first()
 
 
 @pytest.fixture
 def pbn_dyscyplina1(db, pbn_discipline_group):
     return Discipline.objects.get_or_create(
         parent_group=pbn_discipline_group,
-        uuid=uuid4(),
         code="301",
         name="memetyka stosowana",
         scientificFieldName="Dziedzina memetyk",
+        defaults=dict(uuid=uuid4()),
     )[0]
 
 
