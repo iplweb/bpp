@@ -81,7 +81,7 @@
          "parent" : 1,
          "template" : "",
          "attr_name" : "typ_kbn",
-         "label" : "Typ KBN",
+         "label" : "Typ MNiSW/MEiN",
          "footer_template" : "{{ value }}",
          "sortable" : true
       },

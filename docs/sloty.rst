@@ -27,7 +27,7 @@ Progi algorytmu
 
 * w poniższych wzorach matematycznych litery oznaczają:
 
-  - PK: punkty PK, czyli punkty MNiSW, również zwane *punkty KBN*
+  - PK: punkty MNiSW/MEiN, wcześniej zwane *punkty KBN*
   - k: liczba autorów/redaktorów dla rekordu z danej dyscypliny, którzy mają w powiązaniu rekordu
     z autorem wybraną daną dyscyplinę oraz zaznaczone pole *Afiliuje* na *tak*,
   - m: liczba wszystkich autorów rekordu.
@@ -129,13 +129,13 @@ Wydawnictwa ciągłe
 
 #. Charakter formalny rekordu nie ma znaczenia
 
-#. Dla zakresu lat 2017-2018, punkty KBN muszą wynosić odpowoednio:
+#. Dla zakresu lat 2017-2018, punkty MNiSW/MEiN muszą wynosić odpowoednio:
 
    * powyżej 30 dla progu 1. algorytmu
    * 20 lub 25 dla progu 2. algorytmu
    * poniżej 20 i powyżej zera dla progu 3. algorytmu
 
-#. Dla zakresu lat 2019-2021, punkty KBN muszą wynosić odpowiednio:
+#. Dla zakresu lat 2019-2021, punkty MNiSW/MEiN muszą wynosić odpowiednio:
 
    * 200, 140, 100 dla progu 1. algorytmu
    * 70 lub 40 dla progu 2. algorytmu
@@ -155,47 +155,47 @@ Wydawnictwa zwarte
 
 #. Charakter dla slotów = refereat:
 
-   * punkty PK = 15 oraz powiązanie z zewnętrzną bazą danych - nazwa bazy danych
+   * punkty MNiSW/MEiN = 15 oraz powiązanie z zewnętrzną bazą danych - nazwa bazy danych
      dowolna, skrót nazwy bazy danych równy "WOS". Powiązanie z zewnętrzną baza danych
      można dodać dla każdego rekordu, korzystając z formularza na końcu strony edycji
      rekordu - próg 3. algorytmu,
 
-   * punkty PK 200, 140, 100 - próg 1. algorytmu,
+   * punkty MNiSW/MEiN 200, 140, 100 - próg 1. algorytmu,
 
-   * punkty PK 70, 40 - próg 2. algorytmu,
+   * punkty MNiSW/MEiN 70, 40 - próg 2. algorytmu,
 
-   *  punkty PK równe 20:
+   *  punkty MNiSW/MEiN równe 20:
 
       - gdy wydawca na dany rok ma poziom równy 1: próg 2. algorytmu
       - gdy wydawca nieokreślony lub inny poziom: próg 3. algorytmu
 
-   * punkty PK równe 50 i poziom wydawcy równe 2: próg 1. algorytmu
+   * punkty MNiSW/MEiN równe 50 i poziom wydawcy równe 2: próg 1. algorytmu
 
-   * punkty PK równe 5: próg 3. algorytmu
+   * punkty MNiSW/MEiN równe 5: próg 3. algorytmu
 
 #. Charakter dla slotów = książka lub rozdział:
 
    * poziom wydawcy równy 2 oraz:
 
-     - autorstwo + książka + punkty PK = (200 lub 100), lub
-     - redakcja + książka + punkty PK = (100 lub 50), lub
-     - rozdział + punkty PK = (50 lub 25)
+     - autorstwo + książka + punkty MNiSW/MEiN = (200 lub 100), lub
+     - redakcja + książka + punkty MNiSW/MEiN = (100 lub 50), lub
+     - rozdział + punkty MNiSW/MEiN = (50 lub 25)
 
      ... da w rezultacie próg 1. algorytmu
 
    * poziom wydawcy równy 1 oraz:
 
-     - autorstwo + książka + punkty PK = (80 lub 40 lub 100), lub
-     - redakcja + książka + punkty PK = (20 lub 10), lub
-     - rozdział + punkty PK = (20 lub 10)
+     - autorstwo + książka + punkty MNiSW/MEiN = (80 lub 40 lub 100), lub
+     - redakcja + książka + punkty MNiSW/MEiN = (20 lub 10), lub
+     - rozdział + punkty MNiSW/MEiN = (20 lub 10)
 
      ... da w rezultacie próg 2. algorytmu
 
    * poziom wydawcy inny lub bez określenia wydawcy oraz:
 
-     - książka + autorstwo + punkty PK = (20 lub 10), lub
-     - książka + redakcja + punkty PK = (5 lub 2.5), lub
-     - rozdział + punkty KBN = (5 lub 2.5)
+     - książka + autorstwo + punkty MNiSW/MEiN = (20 lub 10), lub
+     - książka + redakcja + punkty MNiSW/MEiN = (5 lub 2.5), lub
+     - rozdział + punkty MNiSW/MEiN = (5 lub 2.5)
 
      ... da w rezultacie próg 3. algorytmu.
 

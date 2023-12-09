@@ -319,7 +319,7 @@ class Typ_KBN(NazwaISkrot):
     artykul_pbn = models.BooleanField(
         "Artykuł w PBN",
         help_text="""Wydawnictwa ciągłe posiadające
-    ten typ KBN zostaną włączone do eksportu PBN jako artykuły""",
+    ten typ MNiSW/MEiN zostaną włączone do eksportu PBN jako artykuły""",
         default=False,
     )
 
@@ -339,7 +339,7 @@ class Typ_KBN(NazwaISkrot):
     wliczaj_do_rankingu = models.BooleanField(default=True)
 
     class Meta:
-        verbose_name = "typ KBN"
+        verbose_name = "typ MNiSW/MEiN"
         verbose_name_plural = "typy KBN"
         ordering = ["nazwa"]
         app_label = "bpp"

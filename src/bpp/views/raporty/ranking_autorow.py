@@ -1,19 +1,20 @@
-# -*- encoding: utf-8 -*-
 import itertools
 
 try:
     from django.core.urlresolvers import reverse
 except ImportError:
     from django.urls import reverse
+
 from django.db.models.aggregates import Sum
 from django.template.defaultfilters import safe
-from django.utils.functional import cached_property
 from django_tables2 import Column
 from django_tables2.export.views import ExportMixin
 from django_tables2.tables import Table
 from django_tables2.views import SingleTableView
 
-from bpp.models import Autor, Sumy, OpcjaWyswietlaniaField, Uczelnia
+from django.utils.functional import cached_property
+
+from bpp.models import Autor, OpcjaWyswietlaniaField, Sumy, Uczelnia
 from bpp.models.struktura import Wydzial
 
 
@@ -38,7 +39,7 @@ class RankingAutorowTable(Table):
     )
 
     autor = Column(order_by=("autor__nazwisko", "autor__imiona"))
-    punkty_kbn_sum = Column("Punkty PK", "punkty_kbn_sum")
+    punkty_kbn_sum = Column("Punkty MNiSW/MEiN", "punkty_kbn_sum")
     impact_factor_sum = Column("Impact Factor", "impact_factor_sum")
     liczba_cytowan_sum = Column("Liczba cytowań", "liczba_cytowan_sum")
 
@@ -164,7 +165,7 @@ class RankingAutorow(ExportMixin, SingleTableView):
         if jeden_rok:
             context["table_title"] = "Ranking autorów za rok %s" % context["rok"]
         else:
-            context["table_title"] = "Ranking autorów za lata %s - %s" % (
+            context["table_title"] = "Ranking autorów za lata {} - {}".format(
                 context["od_roku"],
                 context["do_roku"],
             )
