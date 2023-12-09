@@ -20,11 +20,12 @@ scp -r $1:$FN $FN
 echo "Usuwam dump bazy danych ze zdalnego serwera"
 ssh $1 -- rm -r $FN
 
+echo "Zapisuję jako $SAVE_AS"
+mv $FN $SAVE_AS
+du -h "$SAVE_AS"
+
 echo "Odtwarzam baze danych na lokalnym serwerze"
 BASEDIR=$(dirname "$0")
-$BASEDIR/odtworz.sh $FN
-mv $FN $SAVE_AS
+$BASEDIR/odtworz.sh $SAVE_AS
 
-echo "Zapisano dump jako $SAVE_AS"
-du -h "$SAVE_AS"
 # rm -r $FN
