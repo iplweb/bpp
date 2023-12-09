@@ -245,7 +245,13 @@ def generuj_formularz_dla_autorow(
 
 
 def generuj_inline_dla_autorow(baseModel, include_dyscyplina=True):
+    MAKSYMALNA_ILOSC_AUTOROW_W_FORMULARZU = 25
+
     class baseModel_AutorFormset(forms.BaseInlineFormSet):
+        def get_queryset(self):
+            qs = super().get_queryset()
+            return qs[:MAKSYMALNA_ILOSC_AUTOROW_W_FORMULARZU]
+
         def clean(self):
             # get forms that actually have valid data
             percent = Decimal("0.00")
@@ -295,7 +301,11 @@ def generuj_inline_dla_autorow(baseModel, include_dyscyplina=True):
 
         # Maksymalna ilosć autorów edytowanych w ramach formularza. Pozostałych
         # autorów nalezy edytować przez opcję "Edycja autorów"
-        max_num = 25
+        max_num = MAKSYMALNA_ILOSC_AUTOROW_W_FORMULARZU
+        verbose_name_plural = (
+            f"Powiązania autorów z rekordem - jeżeli potrzebujesz więcej, jak {max_num}, "
+            f"edytuj je przy pomocy przycisku 'Autorzy' na górze formularza"
+        )
 
     return baseModel_AutorInline
 
