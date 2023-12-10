@@ -61,7 +61,7 @@ def ISlot(original, uczelnia=None):
                 return SlotKalkulator_Wydawnictwo_Ciagle_Prog3(original)
 
         raise CannotAdapt(
-            "Punkty KBN rekordu (%s) i rok (%s) nie pozwalają na dopasowanie tego rekordu do jakiejkolwiek grupy"
+            "punkty MNiSW/MEiN rekordu (%s) i rok (%s) nie pozwalają na dopasowanie tego rekordu do jakiejkolwiek grupy"
             % (original.punkty_kbn, original.rok)
         )
 
@@ -255,7 +255,7 @@ def ISlot(original, uczelnia=None):
         raise CannotAdapt(
             "Rekordu nie można dopasować do żadnej z grup monografii. Poziom "
             "wydawcy: %(poziom_wydawcy)s, ksiazka: %(ksiazka)s, rozdzial: %(rozdzial)s, "
-            "autorstwo: %(autorstwo)s, redakcja: %(redakcja)s, punkty kbn: %(punkty_kbn)s, "
+            "autorstwo: %(autorstwo)s, redakcja: %(redakcja)s, punkty MNiSW/MEiN: %(punkty_kbn)s, "
             "tryb_hst: %(tryb_hst)s"
             % dict(
                 poziom_wydawcy=poziom_wydawcy,

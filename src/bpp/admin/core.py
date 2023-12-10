@@ -53,7 +53,6 @@ def generuj_formularz_dla_autorow(
     include_dyscyplina=True,
 ):
     class baseModel_AutorForm(forms.ModelForm):
-
         if include_rekord:
             rekord = forms.ModelChoiceField(
                 widget=HiddenInput, queryset=baseModel.rekord.get_queryset()
@@ -118,7 +117,6 @@ def generuj_formularz_dla_autorow(
             instance = kwargs.get("instance")
             data = kwargs.get("data")
             if not data and not instance:
-
                 if kwargs.get("initial"):
                     self.initial = kwargs.get("initial")
                     autor = self.initial.get("autor")
@@ -247,7 +245,13 @@ def generuj_formularz_dla_autorow(
 
 
 def generuj_inline_dla_autorow(baseModel, include_dyscyplina=True):
+    MAKSYMALNA_ILOSC_AUTOROW_W_FORMULARZU = 25
+
     class baseModel_AutorFormset(forms.BaseInlineFormSet):
+        def get_queryset(self):
+            qs = super().get_queryset()
+            return qs[:MAKSYMALNA_ILOSC_AUTOROW_W_FORMULARZU]
+
         def clean(self):
             # get forms that actually have valid data
             percent = Decimal("0.00")
@@ -297,7 +301,11 @@ def generuj_inline_dla_autorow(baseModel, include_dyscyplina=True):
 
         # Maksymalna ilosć autorów edytowanych w ramach formularza. Pozostałych
         # autorów nalezy edytować przez opcję "Edycja autorów"
-        max_num = 25
+        max_num = MAKSYMALNA_ILOSC_AUTOROW_W_FORMULARZU
+        verbose_name_plural = (
+            f"Powiązania autorów z rekordem - jeżeli potrzebujesz więcej, jak {max_num}, "
+            f"edytuj je przy pomocy przycisku 'Autorzy' na górze formularza"
+        )
 
     return baseModel_AutorInline
 
@@ -317,7 +325,7 @@ class KolumnyZeSkrotamiMixin:
     def typ_kbn__skrot(self, obj):
         return obj.typ_kbn.skrot
 
-    typ_kbn__skrot.short_description = "Typ KBN"
+    typ_kbn__skrot.short_description = "typ MNiSW/MEiN"
     typ_kbn__skrot.admin_order_field = "typ_kbn__skrot"
 
 

@@ -15,7 +15,9 @@
             {% if request.user.is_anonymous %}
                 {% load crispy_forms_tags %}
                 {% crispy form %}
+                {% if not microsoft_login_enabled %}
                 <a href="{% url "password_reset" %}">Zapomniałem/am hasła.</a>
+                {% endif %}
             {% else %}
                 <h1>Konto zalogowane do systemu</h1>
                 <p>

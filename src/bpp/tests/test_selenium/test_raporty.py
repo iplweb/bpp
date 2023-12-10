@@ -32,6 +32,12 @@ def submit_page(browser):
     browser.execute_script("$('input[name=submit]:visible').click()")
 
 
+def submit_admin_page(browser):
+    browser.execute_script(
+        "django.jQuery('input[type=submit]:visible').first().click()"
+    )
+
+
 pytestmark = [pytest.mark.slow, pytest.mark.selenium]
 
 
@@ -76,7 +82,6 @@ def test_ranking_autorow(preauth_browser, jednostka_raportow, asgi_live_server):
 def test_raport_jednostek(
     preauth_browser, jednostka_raportow, asgi_live_server, denorms
 ):
-
     with wait_for_page_load(preauth_browser):
         preauth_browser.visit(
             asgi_live_server.url + reverse("bpp:raport_jednostek_formularz")

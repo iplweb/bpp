@@ -307,7 +307,7 @@ class ModelPunktowanyBaza(models.Model):
         db_index=True,
     )
     punkty_kbn = models.DecimalField(
-        "Punkty KBN",
+        "punkty MNiSW/MEiN",
         max_digits=6,
         decimal_places=2,
         default=Decimal("0.00"),
@@ -349,7 +349,7 @@ class ModelPunktowanyBaza(models.Model):
         db_index=True,
     )
     kc_punkty_kbn = models.DecimalField(
-        "KC: Punkty KBN",
+        "KC: punkty MNiSW/MEiN",
         max_digits=6,
         decimal_places=2,
         default=None,
@@ -415,9 +415,9 @@ POLA_PUNKTACJI = [
 
 
 class ModelTypowany(models.Model):
-    """Model zawierający typ KBN oraz język."""
+    """Model zawierający typ MNiSW/MEiN oraz język."""
 
-    typ_kbn = models.ForeignKey("Typ_KBN", CASCADE, verbose_name="Typ KBN")
+    typ_kbn = models.ForeignKey("Typ_KBN", CASCADE, verbose_name="typ MNiSW/MEiN")
     jezyk = models.ForeignKey("Jezyk", CASCADE, verbose_name="Język")
     jezyk_alt = models.ForeignKey(
         "Jezyk",

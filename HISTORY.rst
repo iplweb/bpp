@@ -4,6 +4,35 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202312.1122 (2023-12-10)
+============================
+
+Naprawione
+----------
+
+- napraw edycję dyscyplin dla prac przy większej ilości autorów -- przez
+  zakładkę "Autorzy" dla wydawnictw ciągłych i zwartych (#1194)
+- umożliwiaj edycję rekordów z dużą ilością autorów (wcześniej: błąd timeout) (#1207)
+- porównuj prawidłowo autorów po ORCID w module dodawania z CrossRef (#1356)
+
+
+Usprawnienie
+------------
+
+- opis w HTML również dla wydziału (new-1)
+- wyświetlaj aktualną dyscyplinę/subdyscyplinę autora (#1314)
+- więcej opcji edytora HTML - opis autora i jednostki (#1341)
+- lepsza lista aktualnych pracowników na stronie jednostki (#1342)
+- sortuj jednostki alfabetycznie (fix #1344) (#1344)
+- Zmiana nazw kolumn/etykiet:
+  - PK na MNiSW/MEiN
+  - Typ KBN/MNiSW na Typ MNiSW/MEiN (#1351)
+- opcjonalnie wysyłaj do PBN prace bez oświadczeń (#1358)
+- nie ustawiaj domyślnie ISSN bazując na e-issn dla prac pobieranych z
+  CrossRef (#1361)
+- wyłącz django-password-policies gdy aktywne logowanie przez Microsoft (#1364)
+
+
 Bpp 202311.1121 (2023-11-12)
 ============================
 
@@ -1201,7 +1230,7 @@ v201910.7
 * klikalny tytuł pracy w raporcie slotów (#772)
 * raport slotów z możliwością podania parametru poszukiwanej ilości slotów i opcjonalnym
   wyświetlaniem autorów poniżej zadanego slotu (#765)
-* nie licz slotów dla prac wieloośrodkowych (typ KBN=PW) (#761)
+* nie licz slotów dla prac wieloośrodkowych (typ MNiSW/MEiN=PW) (#761)
 * zmiana nazwy kolumny "PKdAut" na "punkty dla autora" (#754)
 * wyświetlaj punkty PK w raporcie autora (#769)
 * nie kopiuj linku do płatnego dostępu w opcji "tamże" (#722)

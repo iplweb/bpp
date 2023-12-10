@@ -6,15 +6,27 @@
         <li><a target="_blank" href="/admin/pbn_api/publication/{{ original.pbn_uid_id }}/change">Lokalny PBN</a></li>
     {% endif %}
     {% if original.wydawnictwo_nadrzedne_id %}
-        <li><a target="_blank" href="{% url "admin:bpp_wydawnictwo_zwarte_change" original.wydawnictwo_nadrzedne_id %}">Nadrzędne</a></li>
+        <li><a target="_blank" href="{% url "admin:bpp_wydawnictwo_zwarte_change" original.wydawnictwo_nadrzedne_id %}">Nadrzędne</a>
+        </li>
     {% endif %}
     {% if original.wydawnictwa_powiazane_set.exists %}
         <li><a target="_blank" href="../../?q-l=on&q=wydawnictwo_nadrzedne.id%3D+{{ original.pk }}">Powiązane</a></li>
     {% endif %}
     {% if original.pk %}
-        <li><a href="/admin/bpp/wydawnictwo_zwarte_autor/?rekord__id__exact={{ original.pk }}">Autorzy</a></li>
-    {% endif %}
-    {{ block.super }}
+        <li><a
+                {% if original.autorzy.count > 25 %}
+                    style="background: red !important; color: yellow;"
+                {% endif %}
+                    href="/admin/bpp/wydawnictwo_ciagle_autor/?rekord__id__exact={{ original.pk }}">
+            {% if original.autorzy.count > 25 %}
+                ⚠️
+            {% endif %}
+            Autorzy
+            {% if original.autorzy.count > 25 %}
+                ⚠️
+            {% endif %}
+        </a></li>
+    {% endif %}    {{ block.super }}
 {% endblock %}
 
 {% block submit_buttons_bottom %}

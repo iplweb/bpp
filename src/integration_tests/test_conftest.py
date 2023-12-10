@@ -48,6 +48,7 @@ def test_patent(patent):
     assert patent is not None
 
 
+@pytest.mark.uruchom_tylko_bez_microsoft_auth
 def test_preauth_webtest_app(app):
     assert app is not None
     res = app.get("/admin/").follow()

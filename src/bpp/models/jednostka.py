@@ -214,19 +214,36 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
         w przypadku, gdy nikt nie ma 'Podstawowe miejsce pracy' ustawione na TRUE"""
         return self.obecni_autorzy().filter(pokazuj=True)
 
-    #
-    # "Nowe (2022)" procedury wyświetlające aktualnych autorów (ta jednostka ma przypisanie
-    # gdzie podstawowe_miejsce_pracy=True) oraz poprzednich współpracowników
-    #
-
     def aktualni_autorzy(self):
-        return (
+        """
+        "Nowe (2022)" procedury do generowania aktualnych autorów (współpracowników)
+        na stronę jednostki.
+
+        Zasady:
+        * autor jest aktualnym współpracownikiem, jezeli ma przypisanie do danej jednostki
+         i określony atrybut podstawowe_miejsce_pracy = True _ORAZ_ data zakonczenia pracy
+          jest pusta lub w przyszłośc,
+        * autor jest aktualnym współpracownikiem, jeżeli w polu aktualna_jednostka
+          (pole obliczane na podstawie triggera bazodanowego) znajduje się ta sama
+          jednostka co {self}
+        """
+        podstawowe_miejsce_pracy = set(
             Autor_Jednostka.objects.filter(
-                podstawowe_miejsce_pracy=True, jednostka=self
+                Q(
+                    Q(zakonczyl_prace=None)
+                    | Q(zakonczyl_prace__gt=timezone.now().date()),
+                    podstawowe_miejsce_pracy=True,
+                    jednostka=self,
+                )
             )
-            .values_list("autor")
+            .values_list("autor", flat=True)
             .distinct()
         )
+        aktualni_autorzy = set(
+            Autor.objects.filter(aktualna_jednostka=self).values_list("pk", flat=True)
+        )
+
+        return podstawowe_miejsce_pracy.union(aktualni_autorzy)
 
     def pracownicy(self):
         """Autorzy, którzy tą jednostkę mają wpisani jako AKTUALNA -- czyli
@@ -241,7 +258,7 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
         return Autor.objects.filter(
             pk__in=Autorzy.objects.filter(jednostka=self)
             .exclude(autor_id__in=self.aktualni_autorzy())
-            .values_list("autor")
+            .values_list("autor", flat=True)
         )
 
     def kierownik(self):

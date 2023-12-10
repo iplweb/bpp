@@ -1,27 +1,27 @@
-# -*- encoding: utf-8 -*-
-
 try:
     from django.core.urlresolvers import reverse
 except ImportError:
     from django.urls import reverse
-from django.test import TestCase, Client
+
+import pytest
+from django.test import Client, TestCase
+
 from bpp.models.profile import BppUser
-from bpp.models.struktura import Wydzial
-from bpp.models.system import Typ_Odpowiedzialnosci, Charakter_Formalny, Typ_KBN
-from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor, Wydawnictwo_Ciagle
+from bpp.models.system import Typ_KBN, Typ_Odpowiedzialnosci
+from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
 from bpp.tests.tests_legacy.test_reports.util import stworz_obiekty_dla_raportow
 from bpp.tests.util import (
-    any_wydzial,
+    CURRENT_YEAR,
     any_autor,
     any_ciagle,
     any_jednostka,
-    CURRENT_YEAR,
+    any_wydzial,
 )
-from bpp.views.raporty.ranking_autorow import RankingAutorow
+
+pytestmark = pytest.mark.uruchom_tylko_bez_microsoft_auth
 
 
 class TestRankingAutorow(TestCase):
-
     # fixtures = ['typ_odpowiedzialnosci.json',
     #             'charakter_formalny.json',
     #             'typ_kbn.json']
@@ -84,7 +84,11 @@ class TestRankingAutorow(TestCase):
         "Zsumuje punktacje ze wszystkich prac, ze wszystkich wydziałów dla danego roku"
         response = self.client.get(
             reverse(
-                "bpp:ranking-autorow", args=(str(CURRENT_YEAR), str(CURRENT_YEAR),)
+                "bpp:ranking-autorow",
+                args=(
+                    str(CURRENT_YEAR),
+                    str(CURRENT_YEAR),
+                ),
             ),
             follow=True,
         )
@@ -96,7 +100,13 @@ class TestRankingAutorow(TestCase):
     def test_z_wydzialem(self):
         "Zsumuje punktacje ze wszystkich prac, ze wszystkich wydziałów dla danego roku"
         response = self.client.get(
-            reverse("bpp:ranking-autorow", args=(str(CURRENT_YEAR), str(CURRENT_YEAR),))
+            reverse(
+                "bpp:ranking-autorow",
+                args=(
+                    str(CURRENT_YEAR),
+                    str(CURRENT_YEAR),
+                ),
+            )
             + "?wydzialy[]="
             + str(self.w2.pk),
             follow=True,
@@ -109,7 +119,13 @@ class TestRankingAutorow(TestCase):
     def test_bez_rozbicia(self):
         "Zsumuje punktacje ze wszystkich prac bez rozbicia na jednostki"
         response = self.client.get(
-            reverse("bpp:ranking-autorow", args=(str(CURRENT_YEAR), str(CURRENT_YEAR),))
+            reverse(
+                "bpp:ranking-autorow",
+                args=(
+                    str(CURRENT_YEAR),
+                    str(CURRENT_YEAR),
+                ),
+            )
             + "?rozbij_na_jednostki=False",
             follow=True,
         )
@@ -119,7 +135,13 @@ class TestRankingAutorow(TestCase):
     def test_eksport_csv(self):
         "XLS"
         response = self.client.get(
-            reverse("bpp:ranking-autorow", args=(str(CURRENT_YEAR), str(CURRENT_YEAR),))
+            reverse(
+                "bpp:ranking-autorow",
+                args=(
+                    str(CURRENT_YEAR),
+                    str(CURRENT_YEAR),
+                ),
+            )
             + "?_export=csv",
             follow=True,
         )

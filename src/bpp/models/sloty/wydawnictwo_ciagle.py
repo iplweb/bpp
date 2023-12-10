@@ -6,7 +6,7 @@ from .common import SlotMixin
 class SlotKalkulator_Wydawnictwo_Ciagle_Prog1(SlotMixin):
     """
     Artykuł z czasopisma z listy ministerialnej.
-    Dla roku 2017, 2018: punkty KBN >= 30
+    Dla roku 2017, 2018: punkty MNiSW/MEiN >= 30
     """
 
     def punkty_pkd(self, dyscyplina):
@@ -28,7 +28,7 @@ class SlotKalkulator_Wydawnictwo_Ciagle_Prog2(SlotMixin):
     """
     Artykuł z czasopisma z listy ministerialnej.
 
-    Dla roku 2017-2018: punkty KBN 20 lub 25
+    Dla roku 2017-2018: punkty MNiSW/MEiN 20 lub 25
     """
 
     def punkty_pkd(self, dyscyplina):
@@ -61,7 +61,7 @@ class SlotKalkulator_Wydawnictwo_Ciagle_Prog3(SlotMixin):
     """
     Artykuł z czasopisma z listy ministerialnej.
 
-    Dla roku 2017-2018: punkty KBN poniżej 20 lub 5
+    Dla roku 2017-2018: punkty MNiSW/MEiN poniżej 20 lub 5
     """
 
     def punkty_pkd(self, dyscyplina):

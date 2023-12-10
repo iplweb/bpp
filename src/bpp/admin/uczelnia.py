@@ -90,6 +90,7 @@ class UczelniaAdmin(
                     "pbn_api_kasuj_przed_wysylka",
                     "pbn_api_nie_wysylaj_prac_bez_pk",
                     "pbn_api_afiliacja_zawsze_na_uczelnie",
+                    "pbn_wysylaj_bez_oswiadczen",
                 ),
             },
         ),

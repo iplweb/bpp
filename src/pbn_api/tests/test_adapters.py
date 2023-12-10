@@ -75,7 +75,6 @@ def rozdzial_z_dyscyplina_pbn(praca_z_dyscyplina_pbn):
 def test_WydawnictwoPBNAdapter_autor_eksport(
     pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina, jednostka
 ):
-
     autor_bez_dyscypliny = baker.make(Autor)
     pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina.dodaj_autora(
         autor_bez_dyscypliny, jednostka, "Jan Budnik"
@@ -91,7 +90,6 @@ def test_WydawnictwoPBNAdapter_autor_eksport(
 def test_WydawnictwoPBNAdapter_pk_rowne_zero_eksport_wylaczony(
     pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina, jednostka, rf, pbn_uczelnia
 ):
-
     autor_bez_dyscypliny = baker.make(Autor)
     pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina.dodaj_autora(
         autor_bez_dyscypliny, jednostka, "Jan Budnik"
@@ -136,6 +134,26 @@ def test_WydawnictwoPBNAdapter_eksport_artykulu_bez_oswiadczen_zwraca_blad(
 ):
     with pytest.raises(WillNotExportError, match="bez zadeklarowanych"):
         WydawnictwoPBNAdapter(praca_z_dyscyplina_pbn).pbn_get_json()
+
+
+@pytest.mark.django_db
+def test_WydawnictwoPBNAdapter_eksport_artykulu_bez_oswiadczen_nie_zwraca_bledu(
+    praca_z_dyscyplina_pbn, uczelnia
+):
+    uczelnia.pbn_wysylaj_bez_oswiadczen = True
+    uczelnia.save()
+    WydawnictwoPBNAdapter(praca_z_dyscyplina_pbn, uczelnia=uczelnia).pbn_get_json()
+
+
+@pytest.mark.django_db
+def test_WydawnictwoPBNAdapter_eksport_artykulu_bez_oswiadczen_zwraca_ust_uczelni(
+    praca_z_dyscyplina_pbn, uczelnia
+):
+    uczelnia.pbn_wysylaj_bez_oswiadczen = False
+    uczelnia.save()
+
+    with pytest.raises(WillNotExportError, match="bez zadeklarowanych"):
+        WydawnictwoPBNAdapter(praca_z_dyscyplina_pbn, uczelnia=uczelnia).pbn_get_json()
 
 
 @pytest.mark.django_db
@@ -184,7 +202,6 @@ def test_WydawnictwoPBNAdapter_www_eksport(
 def test_WydawnictwoPBNAdapter_openaccess_zero_miesiecy_gdy_licencja(
     pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina: Wydawnictwo_Zwarte, openaccess_data
 ):
-
     praca_z_dyscyplina_pbn = pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina
 
     praca_z_dyscyplina_pbn.openaccess_licencja = Licencja_OpenAccess.objects.first()

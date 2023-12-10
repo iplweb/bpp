@@ -1,3 +1,4 @@
+import pytest
 from model_bakery import baker
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support.wait import WebDriverWait
@@ -6,6 +7,8 @@ from bpp.models import Rekord, Wydawnictwo_Ciagle
 from bpp.tests import select_select2_autocomplete
 
 from django_bpp.selenium_util import LONG_WAIT_TIME, wait_for_page_load
+
+pytestmark = pytest.mark.uruchom_tylko_bez_microsoft_auth
 
 
 def test_global_search_user(

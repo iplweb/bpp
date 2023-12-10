@@ -1,19 +1,13 @@
+from django.apps import apps
 from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import include, path
 from django.urls import re_path as url
 from django.views.decorators.cache import cache_page
 from django.views.decorators.csrf import csrf_exempt
+from django.views.generic import RedirectView
 from django.views.i18n import JavaScriptCatalog
 from loginas.views import user_login
-from password_policies.views import (
-    PasswordChangeDoneView,
-    PasswordChangeFormView,
-    PasswordResetCompleteView,
-    PasswordResetConfirmView,
-    PasswordResetDoneView,
-    PasswordResetFormView,
-)
 
 from django.contrib import admin
 from django.contrib.auth.decorators import login_required
@@ -32,8 +26,6 @@ from bpp.views.mymultiseek import (
     bpp_remove_by_hand,
     bpp_remove_from_removed_by_hand,
 )
-
-from django_bpp.forms import BppPasswordChangeForm
 
 admin.autodiscover()
 
@@ -154,41 +146,6 @@ urlpatterns = (
         url(r"^grappelli/", include("grappelli.urls")),
         url(r"^$", root, name="root"),
         url(
-            r"^accounts/login/$",
-            LoginView.as_view(authentication_form=MyAuthenticationForm),
-            name="login_form",
-        ),
-        url(
-            r"^password_change_done/$",
-            PasswordChangeDoneView.as_view(),
-            name="password_change_done",
-        ),
-        url(
-            r"^password_change/$",
-            PasswordChangeFormView.as_view(form_class=BppPasswordChangeForm),
-            name="password_change",
-        ),
-        url(
-            r"^password_reset/$", PasswordResetFormView.as_view(), name="password_reset"
-        ),
-        url(
-            r"^password_reset_confirm/"
-            r"([0-9A-Za-z_\-]+)/([0-9A-Za-z]{1,13})/([0-9A-Za-z-=_]{1,64})/$",
-            PasswordResetConfirmView.as_view(),
-            name="password_reset_confirm",
-        ),
-        url(
-            r"^password_reset_done/$",
-            PasswordResetDoneView.as_view(),
-            name="password_reset_done",
-        ),
-        url(
-            r"^password_reset_complete/$",
-            PasswordResetCompleteView.as_view(),
-            name="password_reset_complete",
-        ),
-        url(r"^logout/$", LogoutView.as_view(), name="logout"),
-        url(
             r"^messages/",
             include(
                 ("messages_extends.urls", "messages_extends"),
@@ -237,6 +194,84 @@ if settings.DEBUG and settings.DEBUG_TOOLBAR:
 
     urlpatterns += [
         url(r"^__debug__/", include(debug_toolbar.urls)),
+    ]
+
+
+if not apps.is_installed("microsoft_auth"):
+    #
+    # Jeżeli NIE ma włączonej aplikacji microsoft_auth, to obsługuj
+    # własne logowanie hasłem z front-endu:
+    #
+    urlpatterns += [
+        url(
+            r"^accounts/login/$",
+            LoginView.as_view(authentication_form=MyAuthenticationForm),
+            name="login_form",
+        ),
+        url(r"^logout/$", LogoutView.as_view(), name="logout"),
+    ]
+else:
+    urlpatterns += [
+        url(
+            r"^accounts/login/$",
+            RedirectView.as_view(pattern_name="microsoft_auth:to-auth-redirect"),
+            name="login_form",
+        ),
+        url(
+            r"^logout/$",
+            RedirectView.as_view(
+                url="https://login.microsoftonline.com/common/oauth2/v2.0/logout"
+            ),
+            name="logout",
+        ),
+    ]
+
+if apps.is_installed("password_policies"):
+    #
+    # Jeżeli aplikacja microsoft-auth nie jest zainstalowana, włącz politykę haseł
+    # password_policies
+    #
+    from password_policies.views import (
+        PasswordChangeDoneView,
+        PasswordChangeFormView,
+        PasswordResetCompleteView,
+        PasswordResetConfirmView,
+        PasswordResetDoneView,
+        PasswordResetFormView,
+    )
+
+    from django_bpp.forms import BppPasswordChangeForm
+
+    urlpatterns += [
+        url(
+            r"^password_change_done/$",
+            PasswordChangeDoneView.as_view(),
+            name="password_change_done",
+        ),
+        url(
+            r"^password_change/$",
+            PasswordChangeFormView.as_view(form_class=BppPasswordChangeForm),
+            name="password_change",
+        ),
+        url(
+            r"^password_reset/$", PasswordResetFormView.as_view(), name="password_reset"
+        ),
+        url(
+            r"^password_reset_confirm/"
+            r"([0-9A-Za-z_\-]+)/([0-9A-Za-z]{1,13})/([0-9A-Za-z-=_]{1,64})/$",
+            PasswordResetConfirmView.as_view(),
+            name="password_reset_confirm",
+        ),
+        url(
+            r"^password_reset_done/$",
+            PasswordResetDoneView.as_view(),
+            name="password_reset_done",
+        ),
+        url(
+            r"^password_reset_complete/$",
+            PasswordResetCompleteView.as_view(),
+            name="password_reset_complete",
+        ),
     ]
 
 handler404 = "bpp.views.handler404"

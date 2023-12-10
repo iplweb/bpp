@@ -32,6 +32,8 @@ from bpp.models.cache import Rekord
 from bpp.models.struktura import Jednostka, Wydzial
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
 
+pytestmark = pytest.mark.uruchom_tylko_bez_microsoft_auth
+
 
 @pytest.mark.django_db
 @pytest.mark.parametrize(

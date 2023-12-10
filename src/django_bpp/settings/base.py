@@ -1,3 +1,4 @@
+import logging
 import os
 import pkgutil
 import random
@@ -14,6 +15,8 @@ from sentry_sdk.integrations.django import DjangoIntegration
 from bpp.util import slugify_function
 
 from django_bpp.version import VERSION
+
+logger = logging.getLogger(__name__)
 
 SECRET_KEY_UNSET = "Please set the DJANGO_BPP_SECRET_KEY variable."
 
@@ -783,7 +786,7 @@ DENORM_AUTOTIME_FIELD_NAMES = [
     "ostatnio_zmieniony",
 ]
 
-MAX_NO_AUTHORS_ON_BROWSE_JEDNOSTKA_PAGE = 200
+MAX_NO_AUTHORS_ON_BROWSE_JEDNOSTKA_PAGE = 500
 """
 Maksymalna ilość autorów wyświetlanych w danej grupie na podstronie przeglądania danych jednostki. W przypadku
 przekroczenia tej liczby, dana podgrupa autorów ("aktualni pracownicy","współpracowali kiedyś" itp) nie zostanie
@@ -894,6 +897,22 @@ if MICROSOFT_AUTH_CLIENT_ID:
 
     # Konfiguracja w urls.py doda microsoft_auth.urls do ścieżki jezeli wykryje
     # aplikację `microsoft_auth` w INSTALLED_APPS
+
+    # A teraz, ponieważ korzystamy z logowania przez microsoft_auth, wyłącz
+    # polityki dotyczące haseł lokalnych. Problem polega na tym, że użytkownik po zalogowaniu
+    # się przez microsoft_auth dostaje komunikat, że jego hasło uległo przeterminowaniu
+    # i ma je zmienić...
+
+    TEMPLATES[0]["OPTIONS"]["context_processors"].remove(
+        "password_policies.context_processors.password_status"
+    )
+    MIDDLEWARE.remove("password_policies.middleware.PasswordChangeMiddleware")
+    INSTALLED_APPS.remove("password_policies")
+
+    logger.warning(
+        "Używam autoryzacji microsoft_auth, wbudowana w BPP polityka haseł (zmiany, skomplikowanie)"
+        " została wyłączona"
+    )
 
 
 #
@@ -1036,13 +1055,25 @@ if INSTALL_PLUGINS:
 
     DISCOVERED_PLUGINS = [name for finder, name, ispkg in iter_namespace(bpp_plugins)]
 
-    import logging
-
-    logger = logging.getLogger(__name__)
-
     if DISCOVERED_PLUGINS:
         logger.info(
             "Znaleziono i aktywowano następujące pluginy BPP: %s", DISCOVERED_PLUGINS
         )
 
     [INSTALLED_APPS.append(x) for x in DISCOVERED_PLUGINS]
+
+#
+# TinyMCE
+#
+TINYMCE_DEFAULT_CONFIG = {
+    "height": "320px",
+    "width": "780px",
+    "menubar": "file edit view insert format tools table help",
+    "plugins": "advlist autolink lists link image charmap print preview anchor searchreplace visualblocks code "
+    "fullscreen insertdatetime media table paste code help wordcount spellchecker",
+    "toolbar": "undo redo | bold italic underline strikethrough | fontselect fontsizeselect formatselect | alignleft "
+    "aligncenter alignright alignjustify | outdent indent |  numlist bullist checklist | forecolor "
+    "backcolor casechange permanentpen formatpainter removeformat | pagebreak | charmap emoticons | "
+    "fullscreen  preview save print | insertfile image media pageembed template link anchor codesample | "
+    "a11ycheck ltr rtl | showcomments addcomment code",
+}

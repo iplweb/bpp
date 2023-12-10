@@ -68,7 +68,7 @@ class RaportSlotowAutorTable(RaportCommonMixin, tables.Table):
     )
     rok = Column("Rok", "rekord.rok", orderable=True)
     dyscyplina = Column(orderable=False)
-    punkty_kbn = Column("Punkty PK", "rekord.punkty_kbn")
+    punkty_kbn = Column("Punkty MNiSW/MEiN", "rekord.punkty_kbn")
     zrodlo_informacje = Column(
         "Źródło / informacje", "rekord", empty_values=(), orderable=False
     )

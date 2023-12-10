@@ -290,6 +290,12 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         przyciski 'Zapisz i wyślij do PBN'. """,
     )
 
+    pbn_wysylaj_bez_oswiadczen = models.BooleanField(
+        default=False,
+        verbose_name="Wysyłaj prace bez oświadczeń",
+        help_text="Umożliwiaj wysyłanie prac bez oświadczeń do PBN. Domyślnie wyłączone.",
+    )
+
     pbn_api_root = models.URLField(
         "Adres API w PBN", default="https://pbn-micro-alpha.opi.org.pl"
     )

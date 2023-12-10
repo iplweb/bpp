@@ -47,17 +47,18 @@
                     <h2>Jednostki aktualne</h2>
                 {% endif %}
                 <div class="row" style="line-height: 180%;">
-                    {% for jednostka in wydzial.aktualne_jednostki %}
+                    {% for col in wydzial.aktualne_jednostki|columns:2 %}
                         <div class="large-6 medium-12 small-12 columns">
-                            <a href="{% url "bpp:browse_jednostka" jednostka.slug %}">
-                                {{ jednostka.nazwa }}
-                            </a>
+                            {% for jednostka in col %}
+                                <a href="{% url "bpp:browse_jednostka" jednostka.slug %}">
+                                    {{ jednostka.nazwa }}
+                                </a><br/>
+                            {% endfor %}
                         </div>
                     {% endfor %}
                 </div>
             </section>
         {% endif %}
-
 
         {% if wydzial.kola_naukowe.exists %}
             <section id="kola_naukowe" data-magellan-target="kola_naukowe">
@@ -65,11 +66,13 @@
                     <h2>Koła naukowe</h2>
                 {% endif %}
                 <div class="row" style="line-height: 180%;">
-                    {% for jednostka in wydzial.kola_naukowe %}
+                    {% for col in wydzial.kola_naukowe|columns:2 %}
                         <div class="large-6 medium-12 small-12 columns">
-                            <a href="{% url "bpp:browse_jednostka" jednostka.slug %}">
-                                {{ jednostka.nazwa }}
-                            </a>
+                            {% for jednostka in col %}
+                                <a href="{% url "bpp:browse_jednostka" jednostka.slug %}">
+                                    {{ jednostka.nazwa }}
+                                </a><br/>
+                            {% endfor %}
                         </div>
                     {% endfor %}
                 </div>
@@ -83,11 +86,13 @@
                     <h2>Jednostki historyczne</h2>
                 {% endif %}
                 <div class="row" style="line-height: 180%;">
-                    {% for jednostka in wydzial.historyczne_jednostki %}
+                    {% for col in wydzial.historyczne_jednostki|columns:2 %}
                         <div class="large-6 medium-12 small-12 columns">
-                            <a href="{% url "bpp:browse_jednostka" jednostka.slug %}">
-                                {{ jednostka.nazwa }}
-                            </a>
+                            {% for jednostka in col %}
+                                <a href="{% url "bpp:browse_jednostka" jednostka.slug %}">
+                                    {{ jednostka.nazwa }}
+                                </a><br/>
+                            {% endfor %}
                         </div>
 
                     {% endfor %}

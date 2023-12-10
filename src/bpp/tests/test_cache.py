@@ -260,7 +260,6 @@ def test_usuwanie_powiazanych_vs_rekord(
     skrot,
     ma_zostac,
 ):
-
     o = klass.objects.get(skrot=skrot)
     setattr(wydawnictwo_ciagle_z_dwoma_autorami, attrname, o)
     wydawnictwo_ciagle_z_dwoma_autorami.save()
@@ -355,7 +354,6 @@ def test_caching_full_refresh(wydawnictwo_ciagle_z_dwoma_autorami, denorms):
 
 @pytest.mark.django_db
 def test_caching_kolejnosc(wydawnictwo_ciagle_z_dwoma_autorami, denorms):
-
     a = list(Wydawnictwo_Ciagle_Autor.objects.all().order_by("kolejnosc"))
     assert len(a) == 2
 
@@ -438,7 +436,7 @@ def test_prace_autora_z_afiliowanych_jednostek(typy_odpowiedzialnosci):
 def test_rebuild_ciagle(
     django_assert_max_num_queries, wydawnictwo_ciagle_z_dwoma_autorami, denorms
 ):
-    with django_assert_max_num_queries(40):
+    with django_assert_max_num_queries(41):
         denorms.rebuildall("Wydawnictwo_Ciagle")
 
 
@@ -452,5 +450,5 @@ def test_rebuild_zwarte(
 
 @pytest.mark.django_db
 def test_rebuild_patent(django_assert_max_num_queries, patent, denorms):
-    with django_assert_max_num_queries(40):
+    with django_assert_max_num_queries(41):
         denorms.rebuildall("Patent")

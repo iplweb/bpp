@@ -34,3 +34,14 @@ def test_Komparator_porownaj_DOI_liczne(wydawnictwo_ciagle, wydawnictwo_zwarte):
     assert (
         Komparator.porownaj_DOI("  10.500/FOOBAR").status == StatusPorownania.DOKLADNE
     )
+
+
+@pytest.mark.django_db
+def test_porownaj_autor_orcid_z_x(autor_jan_kowalski):
+    autor_jan_kowalski.orcid = "123x"
+    autor_jan_kowalski.save()
+
+    wartosc = {"orcid": "123X"}
+    ret = Komparator.porownaj_author(wartosc)
+    assert ret.status == StatusPorownania.DOKLADNE
+    assert ret.opis.find("ORCID") >= 0

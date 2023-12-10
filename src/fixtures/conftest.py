@@ -9,6 +9,7 @@ import django_webtest
 import pytest
 import webtest
 from dbtemplates.models import Template
+from django.core.exceptions import ImproperlyConfigured
 from django_webtest import DjangoTestApp
 from rest_framework.test import APIClient
 from splinter.driver import DriverAPI
@@ -26,6 +27,7 @@ try:
 except ImportError:
     from django.urls import reverse
 
+from django.apps import apps
 from model_bakery import baker
 
 from bpp import const
@@ -77,19 +79,27 @@ def rok():
 @pytest.fixture
 def pbn_discipline_group(db):
     n = timezone.now().date()
-    return DisciplineGroup.objects.get_or_create(
-        uuid=uuid4(), validityDateTo=None, validityDateFrom=n - timedelta(days=7)
-    )[0]
+    try:
+        return DisciplineGroup.objects.get_or_create(
+            validityDateTo=None,
+            validityDateFrom=n - timedelta(days=7),
+            defaults=dict(uuid=uuid4()),
+        )[0]
+    except DisciplineGroup.MultipleObjectsReturned:
+        return DisciplineGroup.objects.filter(
+            validityDateTo=None,
+            validityDateFrom=n - timedelta(days=7),
+        ).first()
 
 
 @pytest.fixture
 def pbn_dyscyplina1(db, pbn_discipline_group):
     return Discipline.objects.get_or_create(
         parent_group=pbn_discipline_group,
-        uuid=uuid4(),
         code="301",
         name="memetyka stosowana",
         scientificFieldName="Dziedzina memetyk",
+        defaults=dict(uuid=uuid4()),
     )[0]
 
 
@@ -656,10 +666,26 @@ def webtest_app(request):
 
 
 def _webtest_login(webtest_app, username, password, login_form="login_form"):
-    form = webtest_app.get(reverse(login_form)).form
+    if apps.is_installed("microsoft_auth"):
+        if username != "admin":
+            raise ImproperlyConfigured(
+                "Prawdopodobnie próbujesz zalogować zwykłego użytkownika przez panel "
+                "admina. Jednocześnie jest właczone microsoft_auth. To logowanie się nie powiedzie -"
+                " funkcja testowa musiałaby wciągnąć w test cały serwer Microsoftu. Wyłącz "
+                "microsoft_auth i uruchom ten test ponownie. "
+            )
+
+        # Nie używamy parametru login_form, logujemy hasłem przez admina. Czemu?
+        # temu, że przy włączonej autoryzacji microsoft_auth, ten formularz login_form
+        # nie będzie w ogóle dostępny w drzewku URLi (mpasternak, 12.10.2023)
+        form = webtest_app.get(reverse("admin:login")).form
+    else:
+        form = webtest_app.get(reverse(login_form)).form
+
     form["username"] = username  # normal_django_user.username
     form["password"] = password  # NORMAL_DJANGO_USER_PASSWORD
     res = form.submit().maybe_follow()
+
     assert res.context["user"].username == username  # normal_django_user.username
     return webtest_app
 
@@ -697,7 +723,6 @@ def admin_app(webtest_app, admin_user) -> DjangoTestApp:
     """
     :rtype: django_webtest.DjangoTestApp
     """
-
     return _webtest_login(webtest_app, "admin", "password")
 
 

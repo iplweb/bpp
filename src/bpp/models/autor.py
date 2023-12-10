@@ -15,6 +15,8 @@ from tinymce.models import HTMLField
 
 from django.contrib.postgres.search import SearchVectorField as VectorField
 
+from django.utils import timezone
+
 from bpp import const
 from bpp.core import zbieraj_sloty
 from bpp.models import LinkDoPBNMixin, ModelZAdnotacjami, ModelZNazwa, NazwaISkrot
@@ -197,6 +199,26 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
         verbose_name_plural = "autorzy"
         ordering = ["sort"]
         app_label = "bpp"
+
+    def aktualna_dyscyplina(self, pole="dyscyplina_naukowa"):
+        from bpp.models import Autor_Dyscyplina
+
+        try:
+            # Spróbuj pobrać wpis Autor_Dyscyplina dla obecnego roku
+            ret = Autor_Dyscyplina.objects.get(
+                autor=self, rok=timezone.now().date().year
+            )
+        except Autor_Dyscyplina.DoesNotExist:
+            # Spróbuj pobrać jakiś wpis z lat poprzednich:
+            ret = Autor_Dyscyplina.objects.filter(autor=self).order_by("-rok").first()
+
+        if ret is None:
+            return None
+
+        return getattr(ret, pole)
+
+    def aktualna_subdyscyplina(self):
+        return self.aktualna_dyscyplina(pole="subdyscyplina_naukowa")
 
     def __str__(self):
         buf = f"{self.nazwisko} {self.imiona}"
@@ -475,7 +497,7 @@ class Autor_Jednostka_Manager(models.Manager):
 class Autor_Jednostka(models.Model):
     """Powiązanie autora z jednostką"""
 
-    autor = models.ForeignKey(Autor, CASCADE)
+    autor = models.ForeignKey("bpp.Autor", CASCADE)
     jednostka = models.ForeignKey("bpp.Jednostka", CASCADE)
     rozpoczal_prace = models.DateField(
         "Rozpoczął pracę", blank=True, null=True, db_index=True
@@ -483,14 +505,16 @@ class Autor_Jednostka(models.Model):
     zakonczyl_prace = models.DateField(
         "Zakończył pracę", null=True, blank=True, db_index=True
     )
-    funkcja = models.ForeignKey(Funkcja_Autora, CASCADE, null=True, blank=True)
+    funkcja = models.ForeignKey("bpp.Funkcja_Autora", CASCADE, null=True, blank=True)
 
     podstawowe_miejsce_pracy = models.BooleanField(null=True, blank=True, default=None)
 
     grupa_pracownicza = models.ForeignKey(
-        Grupa_Pracownicza, SET_NULL, null=True, blank=True
+        "bpp.Grupa_Pracownicza", SET_NULL, null=True, blank=True
     )
-    wymiar_etatu = models.ForeignKey(Wymiar_Etatu, SET_NULL, null=True, blank=True)
+    wymiar_etatu = models.ForeignKey(
+        "bpp.Wymiar_Etatu", SET_NULL, null=True, blank=True
+    )
 
     objects = Autor_Jednostka_Manager()
 

@@ -44,6 +44,7 @@ def test_autor_ukrywanie_nazwisk(autor_jan_nowak, client, admin_client):
     assert NAZWISKO not in normalize_html(page.rendered_content)
 
 
+@pytest.mark.uruchom_tylko_bez_microsoft_auth
 @pytest.mark.django_db
 def test_AutorView_funkcja_za_nazwiskiem(app):
     autor = baker.make(Autor, nazwisko="Foo", imiona="Bar")
