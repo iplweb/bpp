@@ -305,7 +305,7 @@ class Komparator:
         if orcid:
             ret = None
             try:
-                ret = Autor.objects.get(orcid=orcid)
+                ret = Autor.objects.get(orcid__iexact=orcid)
             except Autor.DoesNotExist:
                 pass
             if ret:
@@ -362,7 +362,6 @@ class Komparator:
             poszukiwania.append(wartosc[4:])
 
         for ciag in poszukiwania:
-
             tgrm = perform_trigram_search(
                 Zrodlo.objects.exclude(skrot="").exclude(skrot=None),
                 normalized_db_zrodlo_skrot,
@@ -418,7 +417,6 @@ class Komparator:
             ret = matchuj_wydawce(wartosc, similarity=0.65)
 
             if ret is None:
-
                 t = Wydawca.objects.filter(nazwa__istartswith=wartosc).filter()
                 if t.count() == 1:
                     mozliwe_wartosci.add(t)
@@ -453,7 +451,6 @@ class Komparator:
     def porownaj_title(cls, wartosc):
         ret = Rekord.objects.filter(tytul_oryginalny__istartswith=wartosc)
         if not ret.exists():
-
             last_chance = perform_trigram_search(
                 Rekord.objects.all(), normalized_db_title, wartosc.lower().strip()
             )
