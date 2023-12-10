@@ -7,6 +7,7 @@ from autoslug import AutoSlugField
 from django.db import models
 from django.db.models import CASCADE, Q
 from django.urls.base import reverse
+from tinymce.models import HTMLField
 
 from .uczelnia import Uczelnia
 
@@ -38,7 +39,7 @@ class Wydzial(ModelZAdnotacjami, ModelZPBN_ID):
         help_text='Skrót nazwy wydziału, wersja minimalna, np. "WL"',
     )
 
-    opis = models.TextField(null=True, blank=True)
+    opis = HTMLField(null=True, blank=True)
     pokazuj_opis = models.BooleanField(default=False)
     slug = AutoSlugField(populate_from="nazwa", max_length=512, unique=True)
     poprzednie_nazwy = models.CharField(
