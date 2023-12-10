@@ -205,10 +205,30 @@ jobs:
             poetry run pip list
 
       - run:
-          name: pytest
+          name: pytest without selenium, without Microsoft Auth
           command: |
             mkdir -p test-results
-            poetry run pytest --splinter-headless --cov=src --ds=django_bpp.settings.test --verbose --junitxml=test-results/junit.xml `circleci tests glob "src/**/test_*.py" | circleci tests split --split-by=timings`
+            poetry run pytest -m "not selenium" --splinter-headless --cov=src --ds=django_bpp.settings.test --verbose --junitxml=test-results/junit.xml `circleci tests glob "src/**/test_*.py" | circleci tests split --split-by=timings`
+
+      - run:
+          name: pytest without selenium, WITH Microsoft Auth
+          command: |
+            mkdir -p test-results
+
+            poetry run pip install django_microsoft_auth
+            echo MICROSOFT_AUTH_CLIENT_ID=foobar > ~/.env.local
+            echo MICROSOFT_AUTH_CLIENT_SECRET=foobar >> ~/.env.local
+
+            poetry run pytest -m "not selenium" --splinter-headless --cov=src --ds=django_bpp.settings.test --verbose --junitxml=test-results/junit.xml `circleci tests glob "src/**/test_*.py" | circleci tests split --split-by=timings`
+
+            poetry run pip uninstall -y django_microsoft_auth
+            rm ~/.env.local
+
+      - run:
+          name: pytest WITH selenium, WITHOUT Microsoft Auth
+          command: |
+            mkdir -p test-results
+            poetry run pytest -m "selenium" --splinter-headless --cov=src --ds=django_bpp.settings.test --verbose --junitxml=test-results/junit.xml `circleci tests glob "src/**/test_*.py" | circleci tests split --split-by=timings`
 
       - store_test_results:
           path: test-results

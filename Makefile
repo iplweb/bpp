@@ -1,6 +1,6 @@
 BRANCH=`git branch | sed -n '/\* /s///p'`
 
-.PHONY: clean distclean tests release
+.PHONY: clean distclean tests release tests-without-selenium
 
 PYTHON=python3
 
@@ -78,9 +78,24 @@ live-docs:
 	pip install --upgrade sphinx-autobuild
 	sphinx-autobuild --port 8080 -D language=pl docs/ docs/_build
 
-tests:
+enable-microsoft-auth:
+	echo MICROSOFT_AUTH_CLIENT_ID=foobar > ~/.env.local
+	echo MICROSOFT_AUTH_CLIENT_SECRET=foobar >> ~/.env.local
+	pip install django_microsoft_auth
+
+disable-microsoft-auth:
+	rm ~/.env.local
+	pip uninstall -y django_microsoft_auth
+
+tests-without-selenim:
 	pytest -n 6 --splinter-headless -m "not selenium" --maxfail 50
+
+tests-with-microsoft-auth: enable-microsoft-auth tests-without-selenim disable-microsoft-auth
+
+tests-with-selenium:
 	pytest -n 6 --splinter-headless -m "selenium" --maxfail 50
+
+tests: tests-with-microsoft-auth tests-without-selenim tests-with-selenium
 
 integration-start-from-match:
 	python src/manage.py pbn_integrator --enable-all --start-from-stage=15

@@ -1,9 +1,13 @@
 import pytest
+from django.apps import apps
 from django.core import mail
 from django.urls import reverse
 
 
 @pytest.mark.django_db
+@pytest.mark.skipif(
+    apps.is_installed("microsoft_auth"), reason="działa bez django_microsoft_auth"
+)
 def test_password_reset(webtest_app, normal_django_user):
     EMAIL = "foo@bar.pl"
     normal_django_user.email = EMAIL

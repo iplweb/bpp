@@ -1,7 +1,10 @@
+import pytest
 from django.db import transaction
 from django.urls import reverse
 
 from import_dyscyplin.models import Import_Dyscyplin, Import_Dyscyplin_Row
+
+pytestmark = pytest.mark.uruchom_tylko_bez_microsoft_auth
 
 
 def wyslij(wd_app, plik):
@@ -38,7 +41,7 @@ def test_CreateImport_DyscyplinView_bledny_plik(wd_app, conftest_py, transaction
 
     assert Import_Dyscyplin.objects.all().count() == 1
     i = Import_Dyscyplin.objects.all().first()
-    assert i.bledny == True
+    assert i.bledny
     assert i.stan == Import_Dyscyplin.STAN.BLEDNY
 
 
@@ -48,7 +51,7 @@ def test_CreateImport_DyscyplinView_dobry_plik(wd_app, test1_xlsx, transactional
 
     assert Import_Dyscyplin.objects.all().count() == 1
     i = Import_Dyscyplin.objects.all().first()
-    assert i.bledny == False
+    assert i.bledny is False
     assert i.stan == Import_Dyscyplin.STAN.PRZEANALIZOWANY
 
 

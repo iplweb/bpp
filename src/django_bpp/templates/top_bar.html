@@ -123,8 +123,9 @@
                                 <li><a href="{% url "rozbieznosci_if:index" %}">rozbieżności
                                     punktacji IF</a></li>
                             {% endif %}
-
-                            <li><a id="password-change-link" href="{% url "password_change" %}">zmiana hasła</a>
+                            {% if not microsoft_login_enabled %}
+                                <li><a id="password-change-link" href="{% url "password_change" %}">zmiana hasła</a>
+                            {% endif %}
                             </li>
                         </ul>
                     </li>
@@ -136,7 +137,13 @@
                     </li>
                 {% endif %}
 
-                <li><a href="{% url "logout" %}">wyloguj</a>
+                <li><a
+                        {% if microsoft_login_enabled %}
+                            href="https://login.microsoftonline.com/common/oauth2/v2.0/logout"
+                        {% else %}
+                            href="{% url "logout" %}"
+                        {% endif %}
+                >wyloguj</a>
                 </li>
 
             {% endif %}

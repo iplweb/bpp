@@ -1,7 +1,10 @@
+from unittest.mock import Mock
+
 import pytest
 from django.core.exceptions import ImproperlyConfigured
 from django.urls import reverse
-from mock import Mock
+
+pytestmark = pytest.mark.uruchom_tylko_bez_microsoft_auth
 
 
 def test_Uczelnia_wosclient(uczelnia):

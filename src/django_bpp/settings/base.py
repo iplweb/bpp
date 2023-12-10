@@ -1,3 +1,4 @@
+import logging
 import os
 import pkgutil
 import random
@@ -14,6 +15,8 @@ from sentry_sdk.integrations.django import DjangoIntegration
 from bpp.util import slugify_function
 
 from django_bpp.version import VERSION
+
+logger = logging.getLogger(__name__)
 
 SECRET_KEY_UNSET = "Please set the DJANGO_BPP_SECRET_KEY variable."
 
@@ -895,6 +898,22 @@ if MICROSOFT_AUTH_CLIENT_ID:
     # Konfiguracja w urls.py doda microsoft_auth.urls do ścieżki jezeli wykryje
     # aplikację `microsoft_auth` w INSTALLED_APPS
 
+    # A teraz, ponieważ korzystamy z logowania przez microsoft_auth, wyłącz
+    # polityki dotyczące haseł lokalnych. Problem polega na tym, że użytkownik po zalogowaniu
+    # się przez microsoft_auth dostaje komunikat, że jego hasło uległo przeterminowaniu
+    # i ma je zmienić...
+
+    TEMPLATES[0]["OPTIONS"]["context_processors"].remove(
+        "password_policies.context_processors.password_status"
+    )
+    MIDDLEWARE.remove("password_policies.middleware.PasswordChangeMiddleware")
+    INSTALLED_APPS.remove("password_policies")
+
+    logger.warning(
+        "Używam autoryzacji microsoft_auth, wbudowana w BPP polityka haseł (zmiany, skomplikowanie)"
+        " została wyłączona"
+    )
+
 
 #
 # Koniec konfiguracji django-microsoft-auth
@@ -1035,10 +1054,6 @@ if INSTALL_PLUGINS:
         return pkgutil.iter_modules(ns_pkg.__path__, ns_pkg.__name__ + ".")
 
     DISCOVERED_PLUGINS = [name for finder, name, ispkg in iter_namespace(bpp_plugins)]
-
-    import logging
-
-    logger = logging.getLogger(__name__)
 
     if DISCOVERED_PLUGINS:
         logger.info(

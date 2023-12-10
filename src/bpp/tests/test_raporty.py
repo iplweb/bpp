@@ -14,6 +14,8 @@ from bpp.views.raporty.raport_aut_jed_common import (
     raport_autorow_tabela,
 )
 
+pytestmark = pytest.mark.uruchom_tylko_bez_microsoft_auth
+
 
 def test_raport_autorow(app, autor_jan_kowalski, jednostka, standard_data):
     ksp = Charakter_Formalny.objects.get(skrot="KSP")
