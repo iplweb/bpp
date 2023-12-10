@@ -148,7 +148,7 @@ jobs:
           POSTGRES_HOST_AUTH_METHOD: trust
       - image: redis:latest
 
-    parallelism: 6
+    parallelism: 4
     steps:
 
       - browser-tools/install-browser-tools
@@ -253,12 +253,25 @@ jobs:
 
       - run: sudo npm install -g grunt-cli
 
+      - run:
+          name: Reinstall fresh PIP
+          command: |
+            curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+            python3 get-pip.py --force-reinstall
+
+      - run: pip install --upgrade pip poetry
+
+      - run:
+          name: Install project
+          command: |
+            poetry install --no-root --no-ansi --verbose
+
       # Testy JavaScript
       - run:
           name: JS Tests
           command: |
-            make yarn
-            make js-tests
+            poetry run make yarn
+            poetry run make js-tests
 
   coveralls:
     docker:
