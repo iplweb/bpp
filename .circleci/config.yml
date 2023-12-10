@@ -148,7 +148,7 @@ jobs:
           POSTGRES_HOST_AUTH_METHOD: trust
       - image: redis:latest
 
-    parallelism: 8
+    parallelism: 6
     steps:
 
       - browser-tools/install-browser-tools

@@ -34,7 +34,6 @@ class OplataZaWydawnictwoPBNAdapter:
         if hasattr(self.original, "opl_pub_amount") and hasattr(
             self.original, "opl_pub_cost_free"
         ):
-
             if self.original.opl_pub_cost_free is True:
                 fee["amount"] = 0
                 fee["costFreePublication"] = True
@@ -85,6 +84,8 @@ class WydawnictwoPBNAdapter:
         """
         self.original = original
 
+        self.pbn_wysylaj_bez_oswiadczen = False
+
         if export_pk_zero is not None:
             self.export_pk_zero = export_pk_zero
         else:
@@ -94,6 +95,9 @@ class WydawnictwoPBNAdapter:
             if uczelnia is not None:
                 if uczelnia.pbn_api_nie_wysylaj_prac_bez_pk:
                     self.export_pk_zero = False
+
+                if uczelnia.pbn_wysylaj_bez_oswiadczen:
+                    self.pbn_wysylaj_bez_oswiadczen = True
 
         if always_affiliate_to_uid is not None:
             self.always_affiliate_to_uid = always_affiliate_to_uid
@@ -243,7 +247,6 @@ class WydawnictwoPBNAdapter:
 
         ret["mainLanguage"] = self.original.jezyk.pbn_uid.code
         if self.original.jezyk_orig:
-
             if self.original.jezyk_orig.pbn_uid_id is None:
                 raise LanguageMissingPBNUID(
                     f'Język *oryginalny* rekordu "{self.original.jezyk}" nie ma określonego odpowiednika w PBN'
@@ -451,7 +454,6 @@ class WydawnictwoPBNAdapter:
             WydawnictwoPBNAdapter.ARTICLE,
             WydawnictwoPBNAdapter.CHAPTER,
         ]:
-
             if self.export_pk_zero is False:
                 if hasattr(self.original, "punkty_kbn"):
                     if self.original.punkty_kbn == 0:
@@ -460,7 +462,7 @@ class WydawnictwoPBNAdapter:
                             "systemu (obiekt Uczelnia). "
                         )
 
-            if not ret.get("statements"):
+            if not ret.get("statements") and not self.pbn_wysylaj_bez_oswiadczen:
                 raise StatementsMissing(
                     "Nie wyślę rekordu artykułu lub rozdziału bez zadeklarowanych oświadczeń autorów (dyscyplin). "
                 )

@@ -1,6 +1,6 @@
 BRANCH=`git branch | sed -n '/\* /s///p'`
 
-.PHONY: clean distclean tests release tests-without-selenium
+.PHONY: clean distclean tests release tests-without-selenium tests-with-selenium
 
 PYTHON=python3
 
@@ -84,10 +84,10 @@ enable-microsoft-auth:
 	pip install django_microsoft_auth
 
 disable-microsoft-auth:
-	rm ~/.env.local
+	rm -f ~/.env.local
 	pip uninstall -y django_microsoft_auth
 
-tests-without-selenim:
+tests-without-selenium:
 	pytest -n 6 --splinter-headless -m "not selenium" --maxfail 50
 
 tests-with-microsoft-auth: enable-microsoft-auth tests-without-selenim disable-microsoft-auth
@@ -95,7 +95,9 @@ tests-with-microsoft-auth: enable-microsoft-auth tests-without-selenim disable-m
 tests-with-selenium:
 	pytest -n 6 --splinter-headless -m "selenium" --maxfail 50
 
-tests: tests-with-microsoft-auth tests-without-selenim tests-with-selenium
+full-tests: tests-with-microsoft-auth tests-without-selenim tests-with-selenium
+
+tests: disable-microsoft-auth tests-without-selenium tests-with-selenium
 
 integration-start-from-match:
 	python src/manage.py pbn_integrator --enable-all --start-from-stage=15
