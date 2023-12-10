@@ -67,7 +67,7 @@ bdist_wheel: distclean production-assets compilemessages
 upload:
 	twine upload dist/*whl
 
-js-tests:
+js-tests: assets
 	grunt qunit
 
 # cel: live-docs
@@ -90,14 +90,15 @@ disable-microsoft-auth:
 tests-without-selenium:
 	pytest -n 6 --splinter-headless -m "not selenium" --maxfail 50
 
-tests-with-microsoft-auth: enable-microsoft-auth tests-without-selenim disable-microsoft-auth
+tests-with-microsoft-auth: enable-microsoft-auth tests-without-selenium disable-microsoft-auth
 
 tests-with-selenium:
 	pytest -n 6 --splinter-headless -m "selenium" --maxfail 50
 
-full-tests: tests-with-microsoft-auth tests-without-selenim tests-with-selenium
+tests: disable-microsoft-auth tests-without-selenium tests-with-selenium js-tests
 
-tests: disable-microsoft-auth tests-without-selenium tests-with-selenium
+full-tests: tests-with-microsoft-auth tests
+
 
 integration-start-from-match:
 	python src/manage.py pbn_integrator --enable-all --start-from-stage=15
