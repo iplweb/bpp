@@ -41,6 +41,14 @@
         </p>
     {% endif %}
 
+    {% if autor.aktualna_dyscyplina %}
+        <p>Dyscyplina: {{ autor.aktualna_dyscyplina }}</p>
+    {% endif %}
+
+    {% if autor.aktualna_subdyscyplina %}
+        <p>Druga dyscyplina: {{ autor.aktualna_subdyscyplina }}</p>
+    {% endif %}
+
     {% if request.user.is_authenticated %}
         {% if not autor.pokazuj_poprzednie_nazwiska %}
             <small>Poprzednie nazwiska (ukryte): {{ autor.poprzednie_nazwiska }}</small>
