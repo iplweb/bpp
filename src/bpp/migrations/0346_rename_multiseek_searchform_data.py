@@ -4,9 +4,7 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-    dependencies = [
-        ("bpp", "0345_alter_wydzial_opis"),
-    ]
+    dependencies = [("bpp", "0345_alter_wydzial_opis"), ("multiseek", "0001_initial")]
 
     operations = [
         migrations.RunSQL(
