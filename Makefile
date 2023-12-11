@@ -97,7 +97,19 @@ tests-with-selenium:
 
 tests: disable-microsoft-auth tests-without-selenium tests-with-selenium js-tests
 
-full-tests: tests-with-microsoft-auth tests
+destroy-test-databases:
+	-dropdb --force test_bpp
+	-dropdb --force test_bpp_gw0
+	-dropdb --force test_bpp_gw1
+	-dropdb --force test_bpp_gw2
+	-dropdb --force test_bpp_gw3
+	-dropdb --force test_bpp_gw4
+	-dropdb --force test_bpp_gw5
+	-dropdb --force test_bpp_gw6
+	-dropdb --force test_bpp_gw8
+	-dropdb --force test_bpp_gw7
+
+full-tests: destroy-test-databases tests-with-microsoft-auth tests
 
 
 integration-start-from-match:

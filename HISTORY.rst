@@ -4,6 +4,15 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202312.1123 (2023-12-11)
+============================
+
+Naprawione
+----------
+
+- korekta literówek w nazwach pól w wyszukiwarce + migracja zapisanych formularzy wyszukiwania (new-1)
+
+
 Bpp 202312.1122 (2023-12-10)
 ============================
 
