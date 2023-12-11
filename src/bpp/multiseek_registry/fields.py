@@ -695,7 +695,7 @@ class PunktacjaSNIP(BppMultiseekVisibilityMixin, DecimalQueryObject):
 
 
 class PunktyKBNQueryObject(BppMultiseekVisibilityMixin, DecimalQueryObject):
-    label = "punkty MNiSW/MEiN"
+    label = "Punkty MNiSW/MEiN"
     field_name = "punkty_kbn"
 
 
@@ -875,7 +875,7 @@ class OpenaccessCzasPublikacjiQueryObject(
 class TypKBNQueryObject(BppMultiseekVisibilityMixin, ValueListQueryObject):
     field_name = "typ_kbn"
     values = Typ_KBN.objects.all()
-    label = "typ MNiSW/MEiN"
+    label = "Typ MNiSW/MEiN"
 
     def value_from_web(self, value):
         return Typ_KBN.objects.get(nazwa=value)
