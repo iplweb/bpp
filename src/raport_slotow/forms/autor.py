@@ -48,7 +48,6 @@ class AutorRaportSlotowForm(forms.Form):
         required=False,
         max_digits=8,
         decimal_places=4,
-        max_value=20,
     )
 
     _export = forms.ChoiceField(
