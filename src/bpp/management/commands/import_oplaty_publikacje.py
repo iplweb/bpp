@@ -45,7 +45,11 @@ class Command(BaseCommand):
                 if pk is None:
                     continue
 
-                rekord = Rekord.objects.get(pk=pk)
+                try:
+                    rekord = Rekord.objects.get(pk=pk)
+                except Rekord.DoesNotExist:
+                    print(f"Brak w bazie rekordu o ID = {pk}")
+                    continue
                 original: ModelZOplataZaPublikacje = rekord.original
 
                 try:
