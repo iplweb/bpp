@@ -88,12 +88,12 @@ disable-microsoft-auth:
 	pip uninstall -y django_microsoft_auth
 
 tests-without-selenium:
-	pytest -n 6 --splinter-headless -m "not selenium" --maxfail 50
+	pytest -n 10 --splinter-headless -m "not selenium" --maxfail 50
 
 tests-with-microsoft-auth: enable-microsoft-auth tests-without-selenium disable-microsoft-auth
 
 tests-with-selenium:
-	pytest -n 6 --splinter-headless -m "selenium" --maxfail 50
+	pytest -n 12 --splinter-headless -m "selenium" --maxfail 50
 
 tests: disable-microsoft-auth tests-without-selenium tests-with-selenium js-tests
 
