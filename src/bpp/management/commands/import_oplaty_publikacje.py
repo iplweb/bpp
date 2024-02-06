@@ -45,7 +45,11 @@ class Command(BaseCommand):
                 if pk is None:
                     continue
 
-                rekord = Rekord.objects.get(pk=pk)
+                try:
+                    rekord = Rekord.objects.get(pk=pk)
+                except Rekord.DoesNotExist:
+                    print(f"Brak w bazie rekordu o ID = {pk}")
+                    continue
                 original: ModelZOplataZaPublikacje = rekord.original
 
                 try:
@@ -58,7 +62,7 @@ class Command(BaseCommand):
 
                 if rekord.tytul_oryginalny != row["Tytuł oryginalny"]:
                     print(
-                        f"wiersz {wiersz+2} -- tytuł rekordu inny niz w bazie, nie importuję (plik: "
+                        f"wiersz {wiersz + 2} -- tytuł rekordu inny niz w bazie, nie importuję (plik: "
                         f"{row['Tytuł oryginalny']}, baza {rekord.tytul_oryginalny})"
                     )
                     print()
@@ -80,7 +84,7 @@ class Command(BaseCommand):
                     )
                 except ValidationError as e:
                     print(
-                        f"wiersz {wiersz+2} -- problem z walidacją rekordu {rekord.tytul_oryginalny} -- "
+                        f"wiersz {wiersz + 2} -- problem z walidacją rekordu {rekord.tytul_oryginalny} -- "
                         f"{e}. Zmiany nie zostały wprowadzone do bazy. "
                     )
                     print()

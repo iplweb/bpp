@@ -1077,3 +1077,9 @@ TINYMCE_DEFAULT_CONFIG = {
     "fullscreen  preview save print | insertfile image media pageembed template link anchor codesample | "
     "a11ycheck ltr rtl | showcomments addcomment code",
 }
+
+#
+# django-static-sitemaps
+#
+
+STATICSITEMAPS_PING_GOOGLE = False

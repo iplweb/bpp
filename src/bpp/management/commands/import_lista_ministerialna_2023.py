@@ -80,37 +80,43 @@ class Command(BaseCommand):
         # Dane z XLSa będą miały klucze z nazwami dyscyplin czyli np { 'archeologia': 'x' }
 
         for elem in data:
+            tytul_zrodla = elem["Tytuł 1"] or elem["Tytuł 2"]
             zrodlo = matchuj_zrodlo(
-                elem["Tytuł 1"],
+                tytul_zrodla,
                 # alt_nazwa=elem["Tytuł 2"],
-                issn=elem["issn"],
-                e_issn=elem["e-issn"],
+                issn=elem["issn"] or elem["issn.1"],
+                e_issn=elem["e-issn"] or elem["e-issn.1"],
                 disable_fuzzy=True,
                 disable_skrot=True,
             )
             if zrodlo is None:
-                logger.info(f"PKT-5; {elem['Tytuł 1']}; brak dopasowania w BPP")
+                logger.info(f"PKT-5; {tytul_zrodla}; brak dopasowania w BPP")
                 continue
+
+            try:
+                punktacja = elem["Punkty"]
+            except KeyError:
+                punktacja = elem["Punktacja"]
 
             # Jest źródło.
             # Sprawdźmy, czy ma punkty za 2023:
             if zrodlo.punktacja_zrodla_set.filter(rok=rok).exists():
                 # Istnieje, sprawdźmy, czy różna:
                 pz = zrodlo.punktacja_zrodla_set.get(rok=rok)
-                if pz.punkty_kbn != elem["Punkty"]:
+                if pz.punkty_kbn != punktacja:
                     logger.info(
                         f"PKT-0; {zrodlo.nazwa}; różna punktacja;  "
                         f"BPP {pz.punkty_kbn}; "
-                        f'XLS {elem["Punkty"]}; Ustawiam na XLS.'
+                        f"XLS {punktacja}; Ustawiam na XLS."
                     )
-                    pz.punkty_kbn = elem["Punkty"]
+                    pz.punkty_kbn = punktacja
                     pz.save(update_fields=["punkty_kbn"])
             else:
                 logger.info(
-                    f"PKT-4; {zrodlo.nazwa}; ustawiam; {elem['Punkty']}; "
+                    f"PKT-4; {zrodlo.nazwa}; ustawiam; {punktacja}; "
                     f"za rok {rok}; (w XLS: {elem['Tytuł 1']}) "
                 )
-                zrodlo.punktacja_zrodla_set.create(rok=rok, punkty_kbn=elem["Punkty"])
+                zrodlo.punktacja_zrodla_set.create(rok=rok, punkty_kbn=punktacja)
 
             # Aktualne dyscypliny:
             aktualne_dyscypliny_zrodla = {
