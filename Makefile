@@ -75,25 +75,28 @@ js-tests: assets
 live-docs:
 	# Nie wrzucam instalacji sphinx-autobuild do requirements_dev.in
 	# celowo i z premedytacją:
-	pip install --upgrade sphinx-autobuild
-	sphinx-autobuild --port 8080 -D language=pl docs/ docs/_build
+	poetry run pip install --upgrade sphinx-autobuild
+	poetry run sphinx-autobuild --port 8080 -D language=pl docs/ docs/_build
 
 enable-microsoft-auth:
 	echo MICROSOFT_AUTH_CLIENT_ID=foobar > ~/.env.local
 	echo MICROSOFT_AUTH_CLIENT_SECRET=foobar >> ~/.env.local
-	pip install django_microsoft_auth
+	poetry run pip install django_microsoft_auth
 
 disable-microsoft-auth:
 	rm -f ~/.env.local
-	pip uninstall -y django_microsoft_auth
+	poetry run pip uninstall -y django_microsoft_auth
 
 tests-without-selenium:
-	pytest -n 10 --splinter-headless -m "not selenium" --maxfail 50
+	poetry run pytest -n 10 --splinter-headless -m "not selenium" --maxfail 50
 
-tests-with-microsoft-auth: enable-microsoft-auth tests-without-selenium disable-microsoft-auth
+tests-without-selenium-with-microsoft-auth:
+	poetry run pytest -n 10 --splinter-headless -m "not selenium" --maxfail 50
+
+tests-with-microsoft-auth: enable-microsoft-auth tests-without-selenium-with-microsoft-auth disable-microsoft-auth
 
 tests-with-selenium:
-	pytest -n 12 --splinter-headless -m "selenium" --maxfail 50
+	poetry run pytest -n 12 --splinter-headless -m "selenium" --maxfail 50
 
 tests: disable-microsoft-auth tests-without-selenium tests-with-selenium js-tests
 
