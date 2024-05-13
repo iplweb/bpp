@@ -15,4 +15,4 @@ def test_migrate():
 @pytest.mark.django_db
 @pytest.mark.vcr
 def test_importuj_liste_ministerialna_2023():
-    call_command("import_lista_ministerialna_2023")
+    call_command("import_lista_ministerialna_2023", "--download")
