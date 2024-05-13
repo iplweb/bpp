@@ -29,9 +29,11 @@ class Command(BaseCommand):
             help="nazwa pliku do zapisu listy/analizy",
         )
         parser.add_argument("--rok", default=2023, type=int)
+        parser.add_argument("--dry-run", action="store_true")
+        parser.add_argument("--download", action="store_true")
 
     @transaction.atomic
-    def handle(self, url, fn, rok, *args, **options):
+    def handle(self, url, fn, rok, dry_run, download, *args, **options):
         # Usuń zbędne spacje z systemowego słownika dyscyplin BPP,
         # napraw literówki
 
@@ -48,8 +50,13 @@ class Command(BaseCommand):
         # Pobierz plik z listą z URLa
 
         if not Path(fn).exists():
-            response = requests.get(url)
-            open(fn, "wb").write(response.content)
+            if download:
+                response = requests.get(url)
+                open(fn, "wb").write(response.content)
+            else:
+                raise ValueError(
+                    f"Brak pliku {fn}. Podaj parametr --download aby pobrac"
+                )
 
         data = pandas.read_excel(fn, header=1).replace({numpy.nan: None})
 
@@ -153,3 +160,6 @@ class Command(BaseCommand):
 
             if usuniete:
                 logger.info(f"PKT-2; {zrodlo.nazwa} ;--- USUNIETE; {usuniete}")
+
+        if dry_run:
+            transaction.rollback()
