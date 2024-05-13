@@ -194,6 +194,7 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
             "liczba_autorow_z_dyscypliny",
             "liczba_wszystkich_autorow",
             "punkty_pk",
+            "impact_factor",
             "autor",
             "aktualna_jednostka",
             "afiliowana_jednostka",
@@ -270,6 +271,7 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
         orderable=False,
     )
     punkty_pk = Column("PK", "rekord.punkty_kbn")
+    impact_factor = Column("IF", "rekord.impact_factor")
     autor = Column("Autor ewaluowany", "autorzy.autor")
     pbn_id = Column("PBN ID", "autorzy.autor.pbn_id")
     orcid = Column("ORCID", "autorzy.autor.orcid")
