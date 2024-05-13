@@ -18,13 +18,14 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator
 from django.db import models
 
+from long_running.models import Report
+from long_running.notification_mixins import ASGINotificationMixin
+from raport_slotow.core import autorzy_zerowi
+
 from bpp.core import zbieraj_sloty
 from bpp.fields import YearField
 from bpp.models import Autor, Cache_Punktacja_Autora_Query, Uczelnia
 from bpp.util import year_last_month
-from long_running.models import Report
-from long_running.notification_mixins import ASGINotificationMixin
-from raport_slotow.core import autorzy_zerowi
 
 
 class RaportSlotowUczelnia(ASGINotificationMixin, Report):
@@ -118,7 +119,9 @@ class RaportSlotowUczelnia(ASGINotificationMixin, Report):
                 autor_id, dyscyplina_id, jednostka_id = res
             else:
                 autor_id, dyscyplina_id = res
-                jednostka_id = None
+                jednostka_id = Autor.objects.get(
+                    id=autor_id
+                ).aktualna_jednostka_id  # None
 
             maks_punkty, lista, sloty_sum = zbieraj_sloty(
                 autor_id,

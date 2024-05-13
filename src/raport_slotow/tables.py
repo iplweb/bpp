@@ -101,6 +101,7 @@ class RaportSlotowUczelniaBezJednostekIWydzialowTable(tables.Table):
         model = RaportSlotowUczelniaWiersz
         fields = (
             "autor",
+            "jednostka",
             "pbn_id",
             "orcid",
             "dyscyplina",
@@ -115,6 +116,7 @@ class RaportSlotowUczelniaBezJednostekIWydzialowTable(tables.Table):
     dyscyplina = Column()
     pbn_id = Column("PBN ID", "autor.pbn_id")
     orcid = Column("ORCID", "autor.orcid")
+    jednostka = Column("Aktualna jednostka")
 
     def __init__(self, od_roku, do_roku, slot, *args, **kw):
         self.od_roku = od_roku
@@ -139,7 +141,12 @@ class RaportSlotowUczelniaBezJednostekIWydzialowTable(tables.Table):
                 }
             )
         )
-        return safe(f"<a href={url}>{value}</a>")
+
+        autor_url = reverse("bpp:browse_autor", args=(value.pk,))
+        return safe(
+            f"<a href={autor_url}>{value}</a>"
+            f' <a href={url}><span class="fi-results"/></a>'
+        )
 
     def value_autor(self, value):
         return value
@@ -160,6 +167,8 @@ class RaportSlotowUczelniaTable(RaportSlotowUczelniaBezJednostekIWydzialowTable)
             "slot",
             "avg",
         )
+
+    jednostka = Column("Jednostka")
 
     wydzial = Column("Wydział", accessor="jednostka.wydzial.nazwa")
 
@@ -194,6 +203,7 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
             "liczba_autorow_z_dyscypliny",
             "liczba_wszystkich_autorow",
             "punkty_pk",
+            "impact_factor",
             "autor",
             "aktualna_jednostka",
             "afiliowana_jednostka",
@@ -270,6 +280,7 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
         orderable=False,
     )
     punkty_pk = Column("PK", "rekord.punkty_kbn")
+    impact_factor = Column("IF", "rekord.impact_factor")
     autor = Column("Autor ewaluowany", "autorzy.autor")
     pbn_id = Column("PBN ID", "autorzy.autor.pbn_id")
     orcid = Column("ORCID", "autorzy.autor.orcid")
