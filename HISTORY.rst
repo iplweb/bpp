@@ -4,6 +4,16 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202405.1125 (2024-05-13)
+============================
+
+Usprawnienie
+------------
+
+- dodano kolumnę "impact factor" do raportu uczelnia - ewaluacja (new-1)
+- dodano kolumnę "Aktualna jednostka" dla raportu slotów - uczelnia bez podziału na jednostki i wydziały (new-2)
+
+
 Bpp 202312.1123 (2023-12-11)
 ============================
 
