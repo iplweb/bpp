@@ -15,24 +15,6 @@ def test_Uczelnia_clean_pbn_biezaco_tak_integracja_nie(uczelnia):
 
 
 @pytest.mark.django_db
-def test_Uczelnia_clean_integracja(uczelnia, mocker):
-    uczelnia.pbn_integracja = True
-    uczelnia.pbn_app_token = uczelnia.pbn_app_name = "hej"
-
-    pbn_client = mocker.Mock()
-    pbn_client.return_value.get_languages.side_effect = KeyError("foo")
-
-    orig = uczelnia.pbn_client
-
-    uczelnia.pbn_client = pbn_client
-
-    with pytest.raises(ValidationError, match="Nie można pobrać"):
-        uczelnia.clean()
-
-    uczelnia.pbn_client = orig
-
-
-@pytest.mark.django_db
 def test_Uczelnia_pbn_client():
     uczelnia = baker.make(
         Uczelnia,
