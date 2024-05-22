@@ -86,6 +86,8 @@ class Charakter_Formalny(NazwaISkrot, MPTTModel):
     class CHARAKTER_CROSSREF(models.IntegerChoices):
         JOURNAL_ARTICLE = 1, "journal-article"
         PROCEEDINGS_ARTICLE = 2, "proceedings-article"
+        BOOK = 3, "book"
+        BOOK_CHAPTER = 4, "book-chapter"
 
     denorm_always_skip = (
         "tree_id",

@@ -108,7 +108,6 @@ class UzupelniajWstepneDanePoCrossRefAPIMixin(
                             "zapisany_jako": f"{rekord.imiona} {rekord.nazwisko}",
                         }
                     )
-                    print(initial)
                 else:
                     initial.append({})
 

@@ -4,6 +4,7 @@ from djangoql.admin import DjangoQLSearchMixin
 from mptt.forms import TreeNodeChoiceField
 from taggit.forms import TextareaTagWidget
 
+from crossref_bpp.mixins import AdminCrossrefAPIMixin
 from dynamic_columns.mixins import DynamicColumnsMixin
 from pbn_api.models import Publication
 from .actions import (
@@ -13,6 +14,10 @@ from .actions import (
     wyslij_do_pbn,
 )
 from .core import BaseBppAdminMixin, KolumnyZeSkrotamiMixin, generuj_inline_dla_autorow
+from .crossref_api_helpers import (
+    KorzystaZCrossRefAPIStreszczenieInlineMixin,
+    UzupelniajWstepneDanePoCrossRefAPIMixin,
+)
 from .element_repozytorium import Element_RepozytoriumInline
 from .grant import Grant_RekorduInline
 from .helpers import OptionalPBNSaveMixin, sprawdz_duplikaty_www_doi
@@ -49,7 +54,9 @@ from bpp.models.konferencja import Konferencja
 from bpp.models.seria_wydawnicza import Seria_Wydawnicza
 
 
-class Wydawnictwo_Zwarte_StreszczenieInline(admin.StackedInline):
+class Wydawnictwo_Zwarte_StreszczenieInline(
+    KorzystaZCrossRefAPIStreszczenieInlineMixin, admin.StackedInline
+):
     model = Wydawnictwo_Zwarte_Streszczenie
     extra = 0
     fields = ["jezyk_streszczenia", "streszczenie"]
@@ -231,9 +238,19 @@ class Wydawnictwo_ZwarteAdmin(
     OptionalPBNSaveMixin,
     EksportDanychMixin,
     UzupelniajWstepneDanePoNumerzeZgloszeniaMixin,
+    UzupelniajWstepneDanePoCrossRefAPIMixin,
     DynamicColumnsMixin,
+    AdminCrossrefAPIMixin,
     Wydawnictwo_ZwarteAdmin_Baza,
 ):
+    change_list_template = "admin/bpp/wydawnictwo_zwarte/change_list.html"
+    import_export_change_list_template = "admin/bpp/wydawnictwo_zwarte/change_list.html"
+
+    crossref_templates = {
+        "form": "admin/bpp/wydawnictwo_zwarte/crossref_pobierz.html",
+        "show": "admin/bpp/wydawnictwo_zwarte/crossref_pokaz.html",
+    }
+
     form = Wydawnictwo_ZwarteForm
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True

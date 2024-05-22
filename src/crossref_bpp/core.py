@@ -105,6 +105,10 @@ class Komparator:
         do_zmatchowania = do_porownania_rekordu + [
             "ISSN",
             "issn-type",
+            "ISBN",
+            "isbn-type",
+            "publisher-location",
+            "edition-number",
             "link",
             "short-container-title",
             "container-title",
