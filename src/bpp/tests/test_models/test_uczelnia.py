@@ -1,5 +1,6 @@
 import pytest
 from django.core.exceptions import ImproperlyConfigured, ValidationError
+from django.urls import reverse
 from model_bakery import baker
 
 from bpp.models import Uczelnia
@@ -11,24 +12,6 @@ def test_Uczelnia_clean_pbn_biezaco_tak_integracja_nie(uczelnia):
 
     with pytest.raises(ValidationError, match="nie używasz integracji"):
         uczelnia.clean()
-
-
-@pytest.mark.django_db
-def test_Uczelnia_clean_integracja(uczelnia, mocker):
-    uczelnia.pbn_integracja = True
-    uczelnia.pbn_app_token = uczelnia.pbn_app_name = "hej"
-
-    pbn_client = mocker.Mock()
-    pbn_client.return_value.get_languages.side_effect = KeyError("foo")
-
-    orig = uczelnia.pbn_client
-
-    uczelnia.pbn_client = pbn_client
-
-    with pytest.raises(ValidationError, match="Nie można pobrać"):
-        uczelnia.clean()
-
-    uczelnia.pbn_client = orig
 
 
 @pytest.mark.django_db
@@ -72,3 +55,35 @@ def test_Uczelnia_pbn_client():
     uczelnia.save()
 
     assert uczelnia.pbn_client()
+
+
+@pytest.mark.django_db
+def test_uczelnia_deklaracja_dostepnosci_tekst(uczelnia, client):
+    TEKST_Z_HTML = b"<h1>TEST</h1>"
+    uczelnia.pokazuj_deklaracje_dostepnosci = (
+        Uczelnia.DeklaracjaDostepnosciChoices.TEKST
+    )
+    uczelnia.deklaracja_dostepnosci_tekst = TEKST_Z_HTML
+    uczelnia.save()
+
+    url_deklaracji_bpp = reverse("bpp:browse_deklaracja_dostepnosci")
+    res = client.get(url_deklaracji_bpp)
+    assert TEKST_Z_HTML in res.content
+
+    res = client.get("/", follow=True)
+    assert url_deklaracji_bpp in res.rendered_content
+
+
+@pytest.mark.django_db
+def test_uczelnia_deklaracja_dostepnosci_url(uczelnia, client):
+    uczelnia.pokazuj_deklaracje_dostepnosci = (
+        Uczelnia.DeklaracjaDostepnosciChoices.ZEWNETRZNY_URL
+    )
+    uczelnia.deklaracja_dostepnosci_url = "https://onet.pl"
+    uczelnia.save()
+
+    res = client.get(reverse("bpp:browse_deklaracja_dostepnosci"))
+    assert b"https://onet.pl" in res.content
+
+    res = client.get("/", follow=True)
+    assert b"https://onet.pl" in res.content

@@ -6,11 +6,20 @@
     <meta http-equiv="X-UA-Compatible" content="IE=10">
     {% load static %}
     {% load compress %}
-    <title>{% if "test" in request.get_host %}** SERWER TESTOWY ** {% endif %}{% block title %}{% block extratitle %}{% endblock %}
+    <title>{% if "test" in request.get_host %}** SERWER TESTOWY ** {% endif %}{% block title %}{% block extratitle %}
+    {% endblock %}
         - Bibliografia Publikacji {{ uczelnia.skrot }}
     {% endblock %}</title>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width"/>
+
+    {% if uczelnia.pokazuj_deklaracje_dostepnosci == 1 %}
+        <meta name="deklaracja-dostępności" content="{{ uczelnia.deklaracja_dostepnosci_url }}"/>
+    {% endif %}
+
+    {% if uczelnia.pokazuj_deklaracje_dostepnosci == 2 %}
+        <meta name="deklaracja-dostępności" content="{% url "bpp:browse_deklaracja_dostepnosci" %}}"/>
+    {% endif %}
 
     {% load i18n %}
     <script type="text/javascript" src="/bpp/jsi18n/?language={{ LANGUAGE_CODE }}"></script>
@@ -32,8 +41,8 @@
               href="{% static "select2-foundation_theme/dist/select2-foundation-theme.css" %}">
 
         <link rel="stylesheet" href="{% static "multiseek/css/style.css" %}"/>
-        <link rel="stylesheet" href="{% static "cookielaw/css/cookielaw.css" %}" />
-{#        <link rel="stylesheet" href="{% static "datatables.net-dt/css/jquery.dataTables.css" %}"/>#}
+        <link rel="stylesheet" href="{% static "cookielaw/css/cookielaw.css" %}"/>
+        {#        <link rel="stylesheet" href="{% static "datatables.net-dt/css/jquery.dataTables.css" %}"/>#}
         <link rel="stylesheet" href="{% static "datatables.net-zf/css/dataTables.foundation.css" %}"/>
 
 
@@ -99,7 +108,7 @@
     $.fn.select2.defaults.set('theme', 'foundation');
 
     $(document).on('select2:open', () => {
-        function _(){
+        function _() {
             document.querySelector('.select2-search__field').focus()
         }
 
@@ -111,7 +120,7 @@
         "language": {
             "url": "{% static "bpp/js/Polish.json" %}"
         },
-        "lengthMenu": [ [10, 25, 50, 100, -1], [10, 25, 50, 100, "wszystkie"] ]
+        "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "wszystkie"]]
     });
 
 

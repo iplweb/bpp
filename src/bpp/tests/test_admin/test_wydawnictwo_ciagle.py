@@ -118,7 +118,7 @@ def test_wydawnictwo_ciagle_admin_zapisz_i_wyslij_do_pbn_change_tak(
         )
         content = normalize_html(page.content.decode("utf-8"))
         assert "pomyślnie zmieniony" in content
-        assert len(pbn_client.mock_calls) == 4
+        assert len(pbn_client.mock_calls) == 2
     finally:
         Uczelnia.pbn_client = orig_pbn_client
 

@@ -7,9 +7,10 @@ from autoslug import AutoSlugField
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import ProgrammingError, models
-from django.db.models import SET_NULL, Max
+from django.db.models import SET_NULL, Max, URLField
 from django.urls.base import reverse
 from model_utils import Choices
+from tinymce.models import HTMLField
 
 from pbn_api.exceptions import WillNotExportError
 from .. import const
@@ -333,6 +334,22 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         null=True,
     )
 
+    class DeklaracjaDostepnosciChoices(models.IntegerChoices):
+        NIE_POKAZUJ = 0, "nie pokazuj"
+        ZEWNETRZNY_URL = 1, "zewnętrzny adres URL"
+        TEKST = 2, "tekst na podstronie serwisu BPP"
+
+    pokazuj_deklaracje_dostepnosci = models.PositiveSmallIntegerField(
+        choices=DeklaracjaDostepnosciChoices.choices,
+        default=DeklaracjaDostepnosciChoices.NIE_POKAZUJ,
+    )
+    deklaracja_dostepnosci_tekst = HTMLField(
+        verbose_name="Tekst na stronę BPP dla deklaracji dostępności",
+        blank=True,
+        null=True,
+    )
+    deklaracja_dostepnosci_url = URLField(blank=True, null=True)
+
     objects = UczelniaManager()
 
     class Meta:
@@ -366,20 +383,30 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
                 }
             )
 
-        if self.pbn_integracja:
-            # Wykonaj próbne pobranie rekordu z PBNu
-            client = self.pbn_client()
-            try:
-                client.get_languages()
-            except Exception as e:
-                raise ValidationError(
-                    {
-                        "pbn_integracja": f"Nie można pobrać przykładowych rekordów przez API celem weryfikacji. "
-                        f"Kod błędu: {e}. "
-                        f"Jeżeli bład nie dotyczy problemów z siecią lub z autoryzacją, skontaktuj się"
-                        f"z administratorem. "
-                    }
-                )
+        if (
+            self.pokazuj_deklaracje_dostepnosci
+            == Uczelnia.DeklaracjaDostepnosciChoices.ZEWNETRZNY_URL
+            and not self.deklaracja_dostepnosci_url
+        ):
+            raise ValidationError(
+                {
+                    "pokazuj_deklaracje_dostepnosci": "Wybrano pokazywanie deklaracji dostępności "
+                    "z zewnętrznego adresu URL... ",
+                    "deklaracja_dostepnosci_url": "... ale nie został on wpisany poprawnie. Proszę skorygować.",
+                }
+            )
+        if (
+            self.pokazuj_deklaracje_dostepnosci
+            == Uczelnia.DeklaracjaDostepnosciChoices.TEKST
+            and not self.deklaracja_dostepnosci_tekst
+        ):
+            raise ValidationError(
+                {
+                    "pokazuj_deklaracje_dostepnosci": "Wybrano pokazywanie deklaracji dostępności za "
+                    "pomocą tekstu w serwisie BPP... ",
+                    "deklaracja_dostepnosci_tekst": "... ale nie został on wpisany poprawnie. Proszę skorygować.",
+                }
+            )
 
     def save(self, *args, **kw):
         self.clean()

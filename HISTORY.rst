@@ -4,6 +4,24 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202405.1126 (2024-05-22)
+============================
+
+Naprawione
+----------
+
+- poprawne edytowanie autorów wydawnictwa zwartego przez "zakładkę"
+
+
+Usprawnienie
+------------
+
+- dodano deklarację dostępności z opcją skonfigurowania jej w ramach serwisu
+  lub na zewnątrz (#1398)
+- dodaj flagi HttpOnly oraz Secure do ciasteczek sessionId oraz csrftoken,
+  dodaj nagłówek X-Frame-Options (#1406)
+
+
 Bpp 202405.1125 (2024-05-13)
 ============================
 
