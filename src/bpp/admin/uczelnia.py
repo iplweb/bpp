@@ -1,13 +1,14 @@
 from django import forms
 
 from ewaluacja2021.models import LiczbaNDlaUczelni
+from pbn_api.exceptions import PraceSerwisoweException
 from ..models import Uczelnia, Ukryj_Status_Korekty, Wydzial
 
 # Uczelnia
 from .core import BaseBppAdminMixin, RestrictDeletionToAdministracjaGroupMixin
 from .helpers import ADNOTACJE_FIELDSET, ZapiszZAdnotacjaMixin
 
-from django.contrib import admin
+from django.contrib import admin, messages
 
 
 class WydzialInlineForm(forms.ModelForm):
@@ -162,6 +163,17 @@ class UczelniaAdmin(
                 "fields": ("clarivate_username", "clarivate_password"),
             },
         ),
+        (
+            "Deklaracja dostępności",
+            {
+                "classes": ("grp-collapse grp-closed"),
+                "fields": (
+                    "pokazuj_deklaracje_dostepnosci",
+                    "deklaracja_dostepnosci_url",
+                    "deklaracja_dostepnosci_tekst",
+                ),
+            },
+        ),
     )
 
     inlines = [
@@ -169,6 +181,31 @@ class UczelniaAdmin(
         Ukryj_Status_KorektyInline,
         LiczbaNDlaUczelniInline,
     ]
+
+    def save_model(self, request, obj, form, change):
+        ret = super().save_model(request, obj, form, change)
+
+        if obj.pbn_integracja:
+            # Wykonaj próbne pobranie rekordu z PBNu
+            client = obj.pbn_client()
+            try:
+                client.get_languages()
+            except PraceSerwisoweException:
+                messages.warning(
+                    request,
+                    "Nie można zweryfikować konfiguracji dla połączenia z PBN, gdyż po stronie PBN "
+                    "trwają prace serwisowe. Prosimy spróbować później.",
+                )
+            except Exception as e:
+                messages.warning(
+                    request,
+                    f"To nie błąd - to ostrzeżenie. Nie można pobrać przykładowych rekordów "
+                    f"przez PBN API celem weryfikacji konfiguracji połączenia z PBNem. "
+                    f"Kod błędu podczas próbnego pobrania danych z PBN: {e}. "
+                    f"Jeżeli bład nie dotyczy problemów z siecią lub z autoryzacją PBN, skontaktuj się "
+                    f"proszę z administratorem, gdyż konfiguracja PBN może być niekompletna. ",
+                )
+            return ret
 
 
 admin.site.register(Uczelnia, UczelniaAdmin)

@@ -11,7 +11,7 @@ except ImportError:
 from django.db.models.query_utils import Q
 from django.http import Http404, HttpResponseForbidden, HttpResponseRedirect
 from django.shortcuts import get_object_or_404
-from django.views.generic import DetailView, ListView, RedirectView
+from django.views.generic import DetailView, ListView, RedirectView, TemplateView
 from multiseek.logic import AND, OR
 from multiseek.util import make_field
 from multiseek.views import MULTISEEK_SESSION_KEY, MULTISEEK_SESSION_KEY_REMOVED
@@ -401,3 +401,17 @@ class RekordToPracaView(RedirectView):
             "bpp:browse_praca",
             args=(self.kwargs["content_type_id"], self.kwargs["object_id"]),
         )
+
+
+class WyswietlDeklaracjeDostepnosci(TemplateView):
+    template_name = "browse/deklaracja_dostepnosci.html"
+
+    def get_context_data(self, **kwargs):
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
+        if uczelnia is None:
+            raise Http404
+
+        tekst = uczelnia.deklaracja_dostepnosci_tekst
+        url = uczelnia.deklaracja_dostepnosci_tekst
+
+        return {"tekst": tekst, "url": url, "uczelnia": uczelnia}

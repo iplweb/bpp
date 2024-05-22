@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block extratitle %}
+    Deklaracja dostępności
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "bpp:browse_deklaracja_dostepnosci" %}">Deklaracja dostępności</a></li>
+{% endblock %}
+
+{% block content %}
+
+    {% if uczelnia.pokazuj_deklaracje_dostepnosci == 1 %}
+    Przekierowuję na stronę
+    <a href="{{ uczelnia.deklaracja_dostepnosci_url }}">{{ uczelnia.deklaracja_dostepnosci_url }}</a>
+    <script>
+        location.href = '{{ uczelnia.deklaracja_dostepnosci_url }}';
+    </script>
+    {% endif %}
+
+    {% if uczelnia.pokazuj_deklaracje_dostepnosci == 2 %}
+    {{ uczelnia.deklaracja_dostepnosci_tekst|safe }}
+    {% endif %}
+
+{% endblock %}

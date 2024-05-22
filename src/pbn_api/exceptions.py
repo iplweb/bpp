@@ -6,7 +6,8 @@ class TlumaczDyscyplinException(ValueError):
 
 
 class PraceSerwisoweException(Exception):
-    pass
+    def __str__(self):
+        return "Po stronie PBN trwają prace serwisowe. Prosimy spróbować później. "
 
 
 class HttpException(Exception):
