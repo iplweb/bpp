@@ -79,6 +79,7 @@ from bpp.views.browse import (
     RekordToPracaView,
     UczelniaView,
     WydzialView,
+    WyswietlDeklaracjeDostepnosci,
     ZrodlaView,
     ZrodloView,
 )
@@ -183,6 +184,11 @@ urlpatterns = [
         r"^jednostka/(?P<slug>[\w-]+)/$",
         JednostkaView.as_view(),
         name="browse_jednostka",
+    ),
+    url(
+        r"^deklaracja-dostepnosci/$",
+        WyswietlDeklaracjeDostepnosci.as_view(),
+        name="browse_deklaracja_dostepnosci",
     ),
     url(r"^jednostki/$", JednostkiView.as_view(), name="browse_jednostki"),
     url(
