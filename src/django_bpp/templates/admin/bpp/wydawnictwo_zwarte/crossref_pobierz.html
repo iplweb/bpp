@@ -1,0 +1,11 @@
+{% extends "admin/bpp/wydawnictwo_ciagle/crossref_pobierz.html" %}
+
+-->
+{% block breadcrumbs %}
+    <ul>{% load i18n %}
+        <li><a href="{% url 'admin:index' %}">{% trans "Home" %}</a></li>
+        <li><a href="/admin/bpp/">Bibliografia Publikacji Pracowników</a></li>
+        <li><a href="{% url 'admin:bpp_wydawnictwo_zwarte_changelist' %}">Wydawnictwa zwarte</a></li>
+    <li>Pobierz z CrossRef API</li>
+    </ul>
+{% endblock %}

@@ -187,6 +187,7 @@ def normalize_orcid(s: str) -> str | None:
         .lower()
         .replace("http://orcid.org/", "")
         .replace("https://orcid.org/", "")
+        .upper()
     )
 
 

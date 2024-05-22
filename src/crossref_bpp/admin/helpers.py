@@ -57,6 +57,15 @@ def convert_crossref_to_changeform_initial_data(z: dict) -> dict:
             else:
                 issn = _issn.get("value")
 
+    isbn = None
+    e_isbn = None
+    if z.get("isbn-type", []):
+        for _isbn in z.get("isbn-type"):
+            if _isbn.get("type") == "electronic":
+                e_isbn = _isbn.get("value")
+            else:
+                isbn = _isbn.get("value")
+
     # Jeżeli nie udało się pobrać ISSN w poprzedniej pętli przy analizie listy issn-type,
     # wobec tego pobierz ISSN z parametru ISSN po stronie crossref-api. ALE ustaw issn
     # jedynie wtedy gdy jest ono INNE niż e_issn (ustawiony w pętli powyżej):
@@ -74,6 +83,17 @@ def convert_crossref_to_changeform_initial_data(z: dict) -> dict:
                     # wartości jako ISSN.
                     issn = None
 
+    if isbn is None:
+        if z.get("ISBN", None):
+            try:
+                isbn = z.get("ISBN")[0]
+            except IndexError:
+                isbn = None
+
+            if isbn is not None:
+                if isbn == e_isbn:
+                    isbn = None
+
     licencja_pk = None
     licencja_ilosc_miesiecy = None
     for _licencja in z.get("license", []):
@@ -88,6 +108,12 @@ def convert_crossref_to_changeform_initial_data(z: dict) -> dict:
                 pass
             break
 
+    rok = z.get("published", {}).get("date-parts", [[""]])[0][0]
+
+    miejsce_i_rok = ""
+    if z.get("publisher-location"):
+        miejsce_i_rok = z.get("publisher-location") + " " + str(rok)
+
     ret = {
         "tytul_oryginalny": title,
         "zrodlo": zrodlo,
@@ -101,12 +127,16 @@ def convert_crossref_to_changeform_initial_data(z: dict) -> dict:
         "jezyk": jezyk_pk,
         "adnotacje": "Dodano na podstawie CrossRef API",
         "e_issn": e_issn,
+        "e_isbn": e_isbn,
+        "isbn": isbn,
+        "oznaczenie_wydania": z.get("edition-number"),
+        "miejsce_i_rok": miejsce_i_rok,
         "openaccess_licencja": licencja_pk,
         "openaccess_ilosc_miesiecy": licencja_ilosc_miesiecy,
         "issn": issn,
         "www": z.get("resource", {}).get("primary", {}).get("URL", ""),
         "tom": z.get("volume", ""),
-        "rok": z.get("published", {}).get("date-parts", [[""]])[0][0],
+        "rok": rok,
     }
 
     return ret

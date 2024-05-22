@@ -21,7 +21,9 @@ class PobierzZCrossrefAPIForm(forms.Form):
         return normalize_doi(v)
 
     def clean(self):
-        doi = self.cleaned_data["identyfikator_doi"]
+        doi = self.cleaned_data.get("identyfikator_doi")
+        if doi is None:
+            raise ValidationError("Podaj identyfikator DOI")
         try:
             data = CrossrefAPICache.objects.get_by_doi(doi)
         except Exception as e:
