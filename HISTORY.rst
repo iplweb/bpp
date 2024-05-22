@@ -4,6 +4,15 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202405.1128 (2024-05-23)
+============================
+
+Usprawnienie
+------------
+
+- umożliwiaj dodawanie książek / rozdziałów przez CrossRef API (#1371)
+
+
 Bpp 202405.1126 (2024-05-22)
 ============================
 
