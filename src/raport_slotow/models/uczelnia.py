@@ -186,9 +186,13 @@ class RaportSlotowUczelnia(ASGINotificationMixin, Report):
 
                 seen.add((autor_id, dyscyplina_id))
 
+                jednostka_id = Autor.objects.get(
+                    id=autor_id
+                ).aktualna_jednostka_id  # None
+
                 kw = dict(
                     autor_id=autor_id,
-                    jednostka_id=None,
+                    jednostka_id=jednostka_id,
                     dyscyplina_id=dyscyplina_id,
                     slot=0,
                     pkd_aut_sum=0,
