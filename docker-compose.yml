@@ -1,0 +1,52 @@
+version: '2'
+services:
+
+#  db:
+#    image: pass_the_pes_database:1
+#    build:
+#      context: deploy/bpp_database
+#    restart: always
+#    shm_size: 128mb
+#    volumes:
+#      - psql_db:/var/lib/postgresql/data
+#    environment:
+#      POSTGRES_HOST_AUTH_METHOD: trust
+#      POSTGRES_DB: pass_the_pes
+
+  appserver:
+    image: bpp_appserver:202405.1128
+    build:
+      context: .
+    restart: always
+    #depends_on:
+    #  - db
+    environment:
+      DJANGO_BPP_DB_NAME: bpp
+      DJANGO_BPP_DB_USER: postgres
+      DJANGO_BPP_DB_HOST: host.docker.internal
+      DEBUG: false
+      DJANGO_SETTINGS_MODULE: django_bpp.settings.local
+      PYTHONPATH: /src
+    volumes:
+      - staticfiles:/staticroot
+      # - media:/
+    ports:
+      - 8000:8000
+    extra_hosts:
+        host.docker.internal: host-gateway
+
+#  webserver:
+#    image: pass_the_pes_webserver:1
+#    build:
+#      context: deploy/pass_the_pes_webserver/
+#    restart: always
+#    depends_on:
+#      - appserver
+#    ports:
+#      - 80:80
+#    volumes:
+#      - staticfiles:/var/www/html/staticroot
+
+volumes:
+  staticfiles:
+  media:

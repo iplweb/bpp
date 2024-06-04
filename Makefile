@@ -1,6 +1,6 @@
 BRANCH=`git branch | sed -n '/\* /s///p'`
 
-.PHONY: clean distclean tests release tests-without-selenium tests-with-selenium
+.PHONY: clean distclean tests release tests-without-selenium tests-with-selenium docker
 
 PYTHON=python3
 
@@ -161,3 +161,6 @@ test-package-from-vcs: check-git-clean poetry-sync set-version-from-vcs bdist_wh
 
 loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
+
+docker:
+	docker build -t bpp_appserver:202405.1128 -t bpp_appserver:latest .
