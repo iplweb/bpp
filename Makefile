@@ -163,4 +163,4 @@ loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 docker:
-	docker build -t bpp_appserver:202405.1128 -t bpp_appserver:latest .
+	docker build -t bpp_appserver:202405.1128 -t bpp_appserver:latest -f deploy/Dockerfile.appserver .
