@@ -119,9 +119,7 @@ class RaportSlotowUczelnia(ASGINotificationMixin, Report):
                 autor_id, dyscyplina_id, jednostka_id = res
             else:
                 autor_id, dyscyplina_id = res
-                jednostka_id = Autor.objects.get(
-                    id=autor_id
-                ).aktualna_jednostka_id  # None
+                jednostka_id = None
 
             maks_punkty, lista, sloty_sum = zbieraj_sloty(
                 autor_id,
@@ -137,6 +135,11 @@ class RaportSlotowUczelnia(ASGINotificationMixin, Report):
             avg = None
             if sloty_sum != 0:
                 avg = maks_punkty / sloty_sum
+
+            if not self.dziel_na_jednostki_i_wydzialy:
+                # Pobieramy ID jednostki dopiero tutaj, bo wcześniej zostaloby użyte
+                # jako parametr funkcji zbieraj_sloty
+                jednostka_id = Autor.objects.get(id=autor_id).aktualna_jednostka_id
 
             self.raportslotowuczelniawiersz_set.create(
                 autor_id=autor_id,
