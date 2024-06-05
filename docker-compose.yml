@@ -1,49 +1,33 @@
 services:
   db:
-    build:
-      context: deploy
-      dockerfile: Dockerfile.db
-    environment:
-      LANG: pl_PL.utf-8
-      POSTGRES_INITDB_ARGS: "--locale-provider=icu --icu-locale=pl-PL"
-      POSTGRES_HOST_AUTH_METHOD: trust
+    image: iplweb/bpp_dbserver:202405.1128
     volumes:
       - postgresql_data:/var/lib/postgresql/data
-    healthcheck:
-      test: pg_isready -U postgres
-      interval: 10s
-      timeout: 3s
-      retries: 5
 
   appserver:
-    image: bpp_appserver:202405.1128
-    build:
-      context: .
-      dockerfile: deploy/bpp_appserver/Dockerfile
+    image: iplweb/bpp_appserver:202405.1128
     restart: always
     depends_on:
       db:
         condition: service_healthy
     environment:
-      DJANGO_BPP_DB_NAME: bpp
-      DJANGO_BPP_DB_USER: postgres
+      DEBUG: false
       DJANGO_BPP_DB_HOST: db
-      DJANGO_BPP_HOSTNAME: localhost
+      DJANGO_BPP_DB_USER: postgres
+      DJANGO_BPP_DB_NAME: bpp
       DJANGO_BPP_REDIS_HOST: redis
-      DEBUG: 0
+      DJANGO_BPP_HOSTNAME: localhost
       DJANGO_SETTINGS_MODULE: django_bpp.settings.local
-      PYTHONPATH: /src
+      WEB_CONCURRENCY: 8
     volumes:
       - staticfiles:/staticroot
       - media:/mediaroot
-    extra_hosts:
-        host.docker.internal: host-gateway
     healthcheck:
-        test: "bash -c 'printf \"GET / HTTP/1.1\n\n\" > /dev/tcp/127.0.0.1/8000; exit $$?;'"
-        interval: 30s
-        timeout: 10s
-        retries: 10
-        start_period: 5s
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 10s
+      test: "bash -c 'printf \"GET / HTTP/1.1\n\n\" > /dev/tcp/127.0.0.1/8000; exit $$?;'"
 
   workserver:
     extends: appserver
@@ -53,12 +37,11 @@ services:
           condition: service_healthy
 
   webserver:
-    image: bpp_webserver:202405.1128
-    build:
-      context: deploy/bpp_webserver/
+    image: iplweb/bpp_webserver:202405.1128
     restart: always
     depends_on:
-      - appserver
+      appserver:
+        condition: service_healthy
     ports:
       - 80:80
       - 443:443
@@ -73,9 +56,9 @@ services:
 
 secrets:
   key.pem:
-    file: ./deploy/bpp_webserver/key.pem
+    file: ./deploy/webserver/key.pem
   cert.pem:
-    file: ./deploy/bpp_webserver/cert.pem
+    file: ./deploy/webserver/cert.pem
 
 volumes:
   staticfiles:

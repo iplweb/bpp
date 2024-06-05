@@ -162,5 +162,21 @@ test-package-from-vcs: check-git-clean poetry-sync set-version-from-vcs bdist_wh
 loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
-docker:
-	docker build -t bpp_appserver:202405.1128 -t bpp_appserver:latest -f deploy/Dockerfile.appserver .
+
+build-dbserver:
+	docker buildx use mybuild
+	docker buildx build --push --platform linux/amd64,linux/arm64 -t iplweb/bpp_dbserver:202405.1128 -t iplweb/bpp_dbserver:latest -f deploy/dbserver/Dockerfile deploy/dbserver/
+
+build-appserver:
+	docker buildx use mybuild
+	docker buildx build --push --platform linux/amd64,linux/arm64 -t iplweb/bpp_appserver:202405.1128 -t iplweb/bpp_appserver:latest -f deploy/appserver/Dockerfile .
+
+build-webserver:
+	docker buildx use mybuild
+	docker buildx build --push --platform linux/amd64,linux/arm64 -t iplweb/bpp_webserver:202405.1128 -t iplweb/bpp_webserver:latest -f deploy/webserver/Dockerfile deploy/webserver/
+
+docker: build-dbserver build-webserver build-appserver
+
+reload-compose:
+	docker-compose pull
+	docker-compose up --build --force-recreate

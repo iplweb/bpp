@@ -1,6 +1,10 @@
 #!/bin/sh
 
-createdb -h $DJANGO_BPP_DB_HOST -U $DJANGO_BPP_DB_USER $DJANGO_BPP_DB_NAME || true
+export PGUSER="${DJANGO_BPP_DB_USER}"
+export PGHOST="${DJANGO_BPP_DB_HOST}"
+export PGPASSWORD="${DJANGO_BPP_DB_PASSWORD}"
+
+echo "SELECT 'CREATE DATABASE ${DJANGO_BPP_DB_NAME}' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '${DJANGO_BPP_DB_NAME}')\gexec" | psql
 
 staticroot=/src/django_bpp/staticroot
 

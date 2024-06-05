@@ -34,18 +34,20 @@ RUN apt-get update && apt-get -y install python3-pip libpango-1.0-0 libpangoft2-
 RUN pip install uvicorn
 
 ENV VIRTUAL_ENV=/app/.venv \
-    PATH="/app/.venv/bin:$PATH"
+    PATH="/app/.venv/bin:$PATH" \
+    PYTHONPATH=src
 
 COPY --from=builder ${VIRTUAL_ENV} ${VIRTUAL_ENV}
-COPY --from=yarn-builder node_modules ./node_modules
-COPY src ./src
-COPY --chmod=755 deploy/bpp_appserver/entrypoint-appserver.sh /
-COPY --chmod=755 deploy/bpp_appserver/entrypoint-workserver.sh /
 
-ENV PYTHONPATH=src
+COPY --from=yarn-builder node_modules ./node_modules
+
+COPY src ./src
 
 RUN DATABASE_URL=postgres://whatever@whenever:5432/anydb python src/manage.py collectstatic --noinput
 
 EXPOSE 8000
+
+COPY --chmod=755 deploy/appserver/entrypoint-appserver.sh /
+COPY --chmod=755 deploy/appserver/entrypoint-workserver.sh /
 
 ENTRYPOINT ["/entrypoint-appserver.sh"]
