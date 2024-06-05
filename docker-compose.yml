@@ -1,52 +1,83 @@
-version: '2'
 services:
-
-#  db:
-#    image: pass_the_pes_database:1
-#    build:
-#      context: deploy/bpp_database
-#    restart: always
-#    shm_size: 128mb
-#    volumes:
-#      - psql_db:/var/lib/postgresql/data
-#    environment:
-#      POSTGRES_HOST_AUTH_METHOD: trust
-#      POSTGRES_DB: pass_the_pes
+  db:
+    build:
+      context: deploy
+      dockerfile: Dockerfile.db
+    environment:
+      LANG: pl_PL.utf-8
+      POSTGRES_INITDB_ARGS: "--locale-provider=icu --icu-locale=pl-PL"
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes:
+      - postgresql_data:/var/lib/postgresql/data
+    healthcheck:
+      test: pg_isready -U postgres
+      interval: 10s
+      timeout: 3s
+      retries: 5
 
   appserver:
     image: bpp_appserver:202405.1128
     build:
       context: .
+      dockerfile: deploy/bpp_appserver/Dockerfile
     restart: always
-    #depends_on:
-    #  - db
+    depends_on:
+      db:
+        condition: service_healthy
     environment:
       DJANGO_BPP_DB_NAME: bpp
       DJANGO_BPP_DB_USER: postgres
-      DJANGO_BPP_DB_HOST: host.docker.internal
-      DEBUG: false
+      DJANGO_BPP_DB_HOST: db
+      DJANGO_BPP_HOSTNAME: localhost
+      DJANGO_BPP_REDIS_HOST: redis
+      DEBUG: 0
       DJANGO_SETTINGS_MODULE: django_bpp.settings.local
       PYTHONPATH: /src
     volumes:
       - staticfiles:/staticroot
-      # - media:/
-    ports:
-      - 8000:8000
+      - media:/mediaroot
     extra_hosts:
         host.docker.internal: host-gateway
+    healthcheck:
+        test: "bash -c 'printf \"GET / HTTP/1.1\n\n\" > /dev/tcp/127.0.0.1/8000; exit $$?;'"
+        interval: 30s
+        timeout: 10s
+        retries: 10
+        start_period: 5s
 
-#  webserver:
-#    image: pass_the_pes_webserver:1
-#    build:
-#      context: deploy/pass_the_pes_webserver/
-#    restart: always
-#    depends_on:
-#      - appserver
-#    ports:
-#      - 80:80
-#    volumes:
-#      - staticfiles:/var/www/html/staticroot
+  workserver:
+    extends: appserver
+    entrypoint: /entrypoint-workserver.sh
+    depends_on:
+      appserver:
+          condition: service_healthy
+
+  webserver:
+    image: bpp_webserver:202405.1128
+    build:
+      context: deploy/bpp_webserver/
+    restart: always
+    depends_on:
+      - appserver
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - staticfiles:/var/www/html/staticroot
+    secrets:
+      - key.pem
+      - cert.pem
+
+  redis:
+    image: redis:latest
+
+secrets:
+  key.pem:
+    file: ./deploy/bpp_webserver/key.pem
+  cert.pem:
+    file: ./deploy/bpp_webserver/cert.pem
 
 volumes:
   staticfiles:
   media:
+  postgresql_data:

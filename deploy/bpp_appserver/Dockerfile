@@ -29,7 +29,7 @@ RUN yarn
 
 FROM python:3.11-slim-bullseye as runtime
 
-RUN apt-get update && apt-get -y install python3-pip libpango-1.0-0 libpangoft2-1.0-0 libpq5
+RUN apt-get update && apt-get -y install python3-pip libpango-1.0-0 libpangoft2-1.0-0 postgresql-client
 
 RUN pip install uvicorn
 
@@ -39,7 +39,8 @@ ENV VIRTUAL_ENV=/app/.venv \
 COPY --from=builder ${VIRTUAL_ENV} ${VIRTUAL_ENV}
 COPY --from=yarn-builder node_modules ./node_modules
 COPY src ./src
-COPY --chmod=755 deploy/entrypoint-appserver.sh /
+COPY --chmod=755 deploy/bpp_appserver/entrypoint-appserver.sh /
+COPY --chmod=755 deploy/bpp_appserver/entrypoint-workserver.sh /
 
 ENV PYTHONPATH=src
 
