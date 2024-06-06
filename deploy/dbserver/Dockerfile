@@ -9,4 +9,6 @@ ENV POSTGRES_HOST_AUTH_METHOD trust
 HEALTHCHECK --interval=10s --timeout=3s --retries=5 \
   CMD pg_isready -U postgres
 
-RUN apt update && apt install -y postgresql-plpython3-16
+RUN apt update && apt install -y postgresql-plpython3-16 python-is-python3
+
+COPY --chmod=755 autotune.py /
