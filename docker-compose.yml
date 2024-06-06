@@ -8,6 +8,8 @@ services:
     image: iplweb/bpp_appserver:202405.1128
     restart: always
     depends_on:
+      redis:
+        condition: service_started
       db:
         condition: service_healthy
     environment:
@@ -22,26 +24,31 @@ services:
     volumes:
       - staticfiles:/staticroot
       - media:/mediaroot
-    healthcheck:
-      interval: 30s
-      timeout: 10s
-      retries: 10
-      start_period: 10s
-      test: "bash -c 'printf \"GET / HTTP/1.1\n\n\" > /dev/tcp/127.0.0.1/8000; exit $$?;'"
 
   workserver:
-    extends: appserver
-    entrypoint: /entrypoint-workserver.sh
+    image: iplweb/bpp_workerserver:202405.1128
     depends_on:
-      appserver:
-          condition: service_healthy
+      - redis
+      - appserver
+
+  denormserver:
+    image: iplweb/bpp_appserver:202405.1128
+    env_file: .env
+    entrypoint: ["python", "src/manage.py", "denorm_queue"]
+    deploy:
+      mode: replicated
+      replicas: 4
+    restart: always
+    depends_on:
+      - redis
+      - dbserver
 
   webserver:
     image: iplweb/bpp_webserver:202405.1128
     restart: always
     depends_on:
-      appserver:
-        condition: service_healthy
+      - redis
+      - appserver
     ports:
       - 80:80
       - 443:443

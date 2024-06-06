@@ -163,19 +163,31 @@ loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-build-dbserver:
-	docker buildx use mybuild
-	docker buildx build --push --platform linux/amd64,linux/arm64 -t iplweb/bpp_dbserver:202405.1128 -t iplweb/bpp_dbserver:latest -f deploy/dbserver/Dockerfile deploy/dbserver/
+DOCKER_TAG=202405.1128
+DOCKER_BUILD=build --push --platform linux/amd64,linux/arm64
+#DOCKER_BUILD=build --platform linux/amd64,linux/arm64
 
-build-appserver:
-	docker buildx use mybuild
-	docker buildx build --push --platform linux/amd64,linux/arm64 -t iplweb/bpp_appserver:202405.1128 -t iplweb/bpp_appserver:latest -f deploy/appserver/Dockerfile .
+set-build-context:
+	docker context use desktop-linux
 
-build-webserver:
-	docker buildx use mybuild
-	docker buildx build --push --platform linux/amd64,linux/arm64 -t iplweb/bpp_webserver:202405.1128 -t iplweb/bpp_webserver:latest -f deploy/webserver/Dockerfile deploy/webserver/
+build-dbserver: set-build-context
+	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_dbserver:${DOCKER_TAG} -t iplweb/bpp_dbserver:latest -f deploy/dbserver/Dockerfile deploy/dbserver/
 
-docker: build-dbserver build-webserver build-appserver
+build-appserver-base: set-build-context
+	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_base:${DOCKER_TAG} -t iplweb/bpp_base:latest -f deploy/bpp_base/Dockerfile .
+
+build-appserver: set-build-context
+	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_appserver:${DOCKER_TAG} -t iplweb/bpp_appserver:latest -f deploy/appserver/Dockerfile .
+
+build-workerserver: set-build-context
+	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_workerserver:${DOCKER_TAG} -t iplweb/bpp_workerserver:latest -f deploy/workerserver/Dockerfile .
+
+build-webserver: set-build-context
+	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_webserver:${DOCKER_TAG} -t iplweb/bpp_webserver:latest -f deploy/webserver/Dockerfile deploy/webserver/
+
+build-servers: build-appserver-base build-appserver build-workerserver
+
+docker: build-dbserver build-webserver build-servers
 
 reload-compose:
 	docker-compose pull
