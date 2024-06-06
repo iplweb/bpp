@@ -1,4 +1,21 @@
 services:
+  # Ofelia to taki cron...
+  ofelia:
+    image: mcuadros/ofelia:latest
+    env_file: .env
+    depends_on:
+      - appserver
+    command: daemon --docker
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    labels:
+      # ofelia.smtp-host:
+      # ofelia.smtp-port:
+      # ofelia.smtp-user:
+      # ofelia.smtp-password:
+      # ofelia.email-to:
+      # ofelia.email-from: "Ofelia @ BPP <ofelia@bpp>"
+
   db:
     image: iplweb/bpp_dbserver:202405.1128
     volumes:
@@ -24,6 +41,23 @@ services:
     volumes:
       - staticfiles:/staticroot
       - media:/mediaroot
+    labels:
+      ofelia.enabled: "true"
+
+      ofelia.job-exec.denorm_rebuild.schedule: "0 0 22 * * *"
+      ofelia.job-exec.denorm_rebuild.command: "python src/manage.py denorm_rebuild --no-flush"
+
+      ofelia.job-exec.refresh_sitemap.schedule: "0 30 1 * * *"
+      ofelia.job-exec.refresh_sitemap.command: "python src/manage.py refresh_sitemap -v0"
+
+      ofelia.job-exec.rebuild_kolejnosc.schedule: "0 30 3 * * *"
+      ofelia.job-exec.rebuild_kolejnosc.command: "python src/manage.py rebuild_kolejnosc"
+
+      ofelia.job-exec.rebuild_autor_jednostka.schedule: "0 30 4 * * *"
+      ofelia.job-exec.rebuild_autor_jednostka.command: "python src/manage.py rebuild_autor_jednostka"
+
+      ofelia.job-exec.pbn_integrator.schedule: "0 30 21 * * 6"
+      ofelia.job-exec.pbn_integrator.command: "python src/manage.py tee pbn_integrator --enable-all --disable-multiprocessing"
 
   workserver:
     image: iplweb/bpp_workerserver:202405.1128
