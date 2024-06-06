@@ -38,3 +38,10 @@ apt remove postgresql-14 redis nginx supervisor
 apt autoremove
 apt clean
 apt autoclean
+
+# Usuń crontaby
+sudo crontab -e
+su - bpp -c "crontab -e"
+
+# Usuń użytkownika systemowego "bpp"
+userdel bpp
