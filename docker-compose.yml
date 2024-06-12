@@ -1,20 +1,32 @@
+#
+# Uwaga uwaga: ten docker-compose.yml to przykładowa konfiguracja uruchamiania BPP.
+#
+# Proszę NIE używać w produkcji -- prawdziwy serwer wymaga odpowiedniej konfiguracji,
+# na bazie pliku .env.docker... ustawienia tego pliku NIE są produkcyjne (serwer w trybie
+# DEBUG), zatem postawienie takiej instalacji w intra- czy ekstranecie mija się z celem.
+#
+# Podobnie, certyfikaty SSL nginxa.
+#
+#       -- mpasternak 12.06.2024
+#
+
 services:
   # Ofelia to taki cron...
   ofelia:
     image: mcuadros/ofelia:latest
-    env_file: .env
+    env_file: .env.docker
     depends_on:
       - appserver
     command: daemon --docker
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    labels:
-      # ofelia.smtp-host:
-      # ofelia.smtp-port:
-      # ofelia.smtp-user:
-      # ofelia.smtp-password:
-      # ofelia.email-to:
-      # ofelia.email-from: "Ofelia @ BPP <ofelia@bpp>"
+#    labels:
+#       ofelia.smtp-host:
+#       ofelia.smtp-port:
+#       ofelia.smtp-user:
+#       ofelia.smtp-password:
+#       ofelia.email-to:
+#       ofelia.email-from: "Ofelia @ BPP <ofelia@bpp>"
 
   db:
     image: iplweb/bpp_dbserver:202405.1128
@@ -24,20 +36,12 @@ services:
   appserver:
     image: iplweb/bpp_appserver:202405.1128
     restart: always
+    env_file: .env.docker
     depends_on:
       redis:
         condition: service_started
       db:
         condition: service_healthy
-    environment:
-      DEBUG: false
-      DJANGO_BPP_DB_HOST: db
-      DJANGO_BPP_DB_USER: postgres
-      DJANGO_BPP_DB_NAME: bpp
-      DJANGO_BPP_REDIS_HOST: redis
-      DJANGO_BPP_HOSTNAME: localhost
-      DJANGO_SETTINGS_MODULE: django_bpp.settings.local
-      WEB_CONCURRENCY: 8
     volumes:
       - staticfiles:/staticroot
       - media:/mediaroot
@@ -61,21 +65,24 @@ services:
 
   workserver:
     image: iplweb/bpp_workerserver:202405.1128
+    env_file: .env.docker
     depends_on:
       - redis
       - appserver
 
   denormserver:
     image: iplweb/bpp_appserver:202405.1128
-    env_file: .env
+    env_file: .env.docker
     entrypoint: ["python", "src/manage.py", "denorm_queue"]
-    deploy:
-      mode: replicated
-      replicas: 4
+#    deploy:
+#      mode: replicated
+#      replicas: 4
     restart: always
     depends_on:
-      - redis
-      - dbserver
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
 
   webserver:
     image: iplweb/bpp_webserver:202405.1128
@@ -88,18 +95,20 @@ services:
       - 443:443
     volumes:
       - staticfiles:/var/www/html/staticroot
-    secrets:
-      - key.pem
-      - cert.pem
+      - ./deploy/webserver/key.pem:/etc/ssl/private/key.pem
+      - ./deploy/webserver/cert.pem:/etc/ssl/private/cert.pem
+#    secrets:
+#      - key.pem
+#      - cert.pem
 
   redis:
     image: redis:latest
 
-secrets:
-  key.pem:
-    file: ./deploy/webserver/key.pem
-  cert.pem:
-    file: ./deploy/webserver/cert.pem
+#secrets:
+#  key.pem:
+#    file: ./deploy/webserver/key.pem
+#  cert.pem:
+#    file: ./deploy/webserver/cert.pem
 
 volumes:
   staticfiles:
