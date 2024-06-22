@@ -152,7 +152,6 @@ jobs:
       - browser-tools/install-firefox
       - browser-tools/install-geckodriver
 
-
       - run:
           command: |
             firefox --version
@@ -244,7 +243,7 @@ jobs:
 
   js-tests:
     docker:
-      - image: cimg/python:3.11.9-browsers
+      - image: cimg/python:3.11.9-node
         environment:
           PGUSER: postgres
           PGHOST: localhost
@@ -262,8 +261,7 @@ jobs:
     steps:
 
 
-      - browser-tools/install-firefox
-      - browser-tools/install-geckodriver
+      - browser-tools/install-browsers
 
       - run:
           command: |
@@ -272,6 +270,9 @@ jobs:
 
       - attach_workspace:
           at: .
+
+      - restore_cache:
+          key: cache-15-{{ checksum "poetry.lock" }}-{{ checksum "yarn.lock" }}
 
       - run: sudo npm install -g grunt-cli
 
