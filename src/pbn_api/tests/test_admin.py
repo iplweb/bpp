@@ -11,7 +11,7 @@ from pbn_api.tests.utils import middleware
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.messages import get_messages
 
-from django_bpp.selenium_util import LONG_WAIT_TIME, wait_for_page_load
+from django_bpp.selenium_util import LONG_WAIT_TIME, wait_for, wait_for_page_load
 
 
 def test_SentDataAdmin_list_filter_works(admin_client):
@@ -64,6 +64,8 @@ def test_pbn_api_admin_SentDataAdmin_wyslij_ponownie(
         admin_browser.visit(
             channels_live_server.url + f"/admin/pbn_api/sentdata/{s.pk}/change"
         )
+
+    wait_for(lambda: len(admin_browser.find_by_id("wyslij-ponownie")) > 0)
 
     elem = admin_browser.find_by_id("wyslij-ponownie")
 

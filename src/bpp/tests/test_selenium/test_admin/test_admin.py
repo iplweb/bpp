@@ -124,6 +124,8 @@ def test_automatycznie_uzupelnij_punkty(admin_browser, channels_live_server):
 
     any_zrodlo(nazwa="FOO BAR")
 
+    wait_for(lambda: len(admin_browser.find_by_id("id_wypelnij_pola_punktacji_button")))
+
     elem = admin_browser.find_by_id("id_wypelnij_pola_punktacji_button")
     show_element(admin_browser, elem)
     elem.click()
