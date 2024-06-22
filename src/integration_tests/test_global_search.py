@@ -12,7 +12,7 @@ pytestmark = pytest.mark.uruchom_tylko_bez_microsoft_auth
 
 
 def test_global_search_user(
-    asgi_live_server,
+    channels_live_server,
     browser,
     transactional_db,
 ):
@@ -25,7 +25,7 @@ def test_global_search_user(
         assert Rekord.objects.filter(tytul_oryginalny__icontains="Test").exists()
 
         with wait_for_page_load(browser):
-            browser.visit(asgi_live_server.url)
+            browser.visit(channels_live_server.url)
 
         with wait_for_page_load(browser):
             select_select2_autocomplete(
@@ -48,7 +48,7 @@ def test_global_search_user(
 
 
 def test_global_search_logged_in(
-    asgi_live_server,
+    channels_live_server,
     admin_browser,
     transactional_db,
 ):
@@ -59,7 +59,7 @@ def test_global_search_logged_in(
         Rekord.objects.full_refresh()
 
         with wait_for_page_load(browser):
-            browser.visit(asgi_live_server.url)
+            browser.visit(channels_live_server.url)
 
         with wait_for_page_load(browser):
             select_select2_autocomplete(
@@ -81,12 +81,12 @@ def test_global_search_logged_in(
             rec.delete()
 
 
-def test_global_search_in_admin(asgi_live_server, admin_browser, transactional_db):
+def test_global_search_in_admin(channels_live_server, admin_browser, transactional_db):
     browser = admin_browser
     baker.make(Wydawnictwo_Ciagle, tytul_oryginalny="Test")
 
     with wait_for_page_load(browser):
-        browser.visit(asgi_live_server.url + "/admin/")
+        browser.visit(channels_live_server.url + "/admin/")
 
     with wait_for_page_load(browser):
         select_select2_autocomplete(

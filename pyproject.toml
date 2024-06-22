@@ -141,12 +141,12 @@ django-tabular-permissions = "2.9.1"
 simplejson = "3.17.5"
 django-dbtemplates-iplweb = "4.1.0"
 django-reversion = "5.0.4"
-channels = "3.0.5"
+channels = { version = "~4", extras = ["daphne"] }
 # asgiref = "3.3.4"
 # Bez asgiref 3.3.4 daphne wyrzuca "single thread executor, would deadlock"
 # i efektywnie nie mozna testowac na lokalnej maszynie.
 uvicorn = { version = "0.18.2", extras = ["standard"] }
-channels-redis = "3.4.0"
+channels-redis = "~4"
 django-flexible-reports = ">0.2.9"
 psycopg2 = "2.9.5"
 django-group-by = "0.3.1"
@@ -227,6 +227,7 @@ pandas = "^1.5.2"
 django-tinymce = "^3.6.1"
 crispy-bootstrap5 = "^0.7"
 crispy-bootstrap3 = "^2022.1"
+twisted = {extras = ["http2", "tls"], version = "^24.3.0"}
 
 [tool.poetry.dev-dependencies]
 model-bakery = ">=1.5.1"
@@ -263,7 +264,7 @@ pre-commit = "^3.5.0"
 django-debug-toolbar = "^3.2.4"
 twine = "^4.0.0"
 PyPDF2 = "^1.27.7"
-pytest-rerunfailures = "^10.2"
+# pytest-rerunfailures = "^10.2"
 ipdb = "^0.13.9"
 ipython = "^8.2.0"
 flake8-bugbear = "^22.8.23"

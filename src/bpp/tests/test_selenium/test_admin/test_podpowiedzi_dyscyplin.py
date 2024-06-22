@@ -20,7 +20,7 @@ def scroll_until_handler_clicked_successfully(browser, handler="grp-add-handler"
 @pytest.mark.parametrize("url", ["wydawnictwo_ciagle", "wydawnictwo_zwarte"])
 def test_podpowiedzi_dyscyplin_autor_ma_dwie(
     url,
-    asgi_live_server,
+    channels_live_server,
     admin_browser,
     autor_jan_kowalski,
     dyscyplina1,
@@ -33,7 +33,7 @@ def test_podpowiedzi_dyscyplin_autor_ma_dwie(
         subdyscyplina_naukowa=dyscyplina2,
     )
     url = reverse("admin:bpp_%s_add" % url)
-    admin_browser.visit(asgi_live_server.url + url)
+    admin_browser.visit(channels_live_server.url + url)
 
     admin_browser.type("rok", "2018")
 
@@ -49,7 +49,7 @@ def test_podpowiedzi_dyscyplin_autor_ma_dwie(
 @pytest.mark.parametrize("url", ["wydawnictwo_ciagle", "wydawnictwo_zwarte"])
 def test_podpowiedzi_dyscyplin_autor_ma_jedna_uczelnia_podpowiada(
     url,
-    asgi_live_server,
+    channels_live_server,
     admin_browser,
     autor_jan_kowalski,
     dyscyplina1,
@@ -65,7 +65,7 @@ def test_podpowiedzi_dyscyplin_autor_ma_jedna_uczelnia_podpowiada(
     url = reverse("admin:bpp_%s_add" % url)
 
     with wait_for_page_load(admin_browser):
-        admin_browser.visit(asgi_live_server.url + url)
+        admin_browser.visit(channels_live_server.url + url)
 
     admin_browser.type("rok", "2018")
 
@@ -88,7 +88,7 @@ def test_podpowiedzi_dyscyplin_autor_ma_jedna_uczelnia_podpowiada(
 @pytest.mark.parametrize("url", ["wydawnictwo_ciagle", "wydawnictwo_zwarte"])
 def test_podpowiedzi_dyscyplin_autor_ma_jedna_uczelnia_nie_podpowiada(
     url,
-    asgi_live_server,
+    channels_live_server,
     admin_browser,
     autor_jan_kowalski,
     dyscyplina1,
@@ -102,7 +102,7 @@ def test_podpowiedzi_dyscyplin_autor_ma_jedna_uczelnia_nie_podpowiada(
         rok=2018, autor=autor_jan_kowalski, dyscyplina_naukowa=dyscyplina1
     )
     url = reverse("admin:bpp_%s_add" % url)
-    admin_browser.visit(asgi_live_server.url + url)
+    admin_browser.visit(channels_live_server.url + url)
 
     admin_browser.type("rok", "2018")
 

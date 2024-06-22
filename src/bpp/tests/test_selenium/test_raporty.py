@@ -16,9 +16,9 @@ from bpp.tests.util import (
 from django_bpp.selenium_util import wait_for, wait_for_page_load
 
 # @pytest.fixture
-# def preauth_browser(preauth_browser, asgi_live_server):
+# def preauth_browser(preauth_browser, channels_live_server):
 #     with wait_for_page_load(preauth_browser):
-#         preauth_browser.visit(asgi_live_server.url + reverse("bpp:raporty"))
+#         preauth_browser.visit(channels_live_server.url + reverse("bpp:raporty"))
 #     return preauth_browser
 
 
@@ -62,9 +62,9 @@ def jednostka_raportow(
 
 
 @pytest.mark.django_db(transaction=True)
-def test_ranking_autorow(preauth_browser, jednostka_raportow, asgi_live_server):
+def test_ranking_autorow(preauth_browser, jednostka_raportow, channels_live_server):
     preauth_browser.visit(
-        asgi_live_server.url + reverse("bpp:ranking_autorow_formularz")
+        channels_live_server.url + reverse("bpp:ranking_autorow_formularz")
     )
     from django.utils import timezone
 
@@ -80,11 +80,11 @@ def test_ranking_autorow(preauth_browser, jednostka_raportow, asgi_live_server):
 
 @pytest.mark.django_db(transaction=True)
 def test_raport_jednostek(
-    preauth_browser, jednostka_raportow, asgi_live_server, denorms
+    preauth_browser, jednostka_raportow, channels_live_server, denorms
 ):
     with wait_for_page_load(preauth_browser):
         preauth_browser.visit(
-            asgi_live_server.url + reverse("bpp:raport_jednostek_formularz")
+            channels_live_server.url + reverse("bpp:raport_jednostek_formularz")
         )
 
     select_select2_autocomplete(preauth_browser, "id_jednostka", "Jedn")

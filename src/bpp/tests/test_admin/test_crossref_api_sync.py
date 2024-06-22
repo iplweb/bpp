@@ -32,7 +32,6 @@ def test_crossref_api_autor_wo_selenium(admin_app, autor_m):
 
 
 @pytest.mark.vcr(ignore_localhost=True)
-@pytest.mark.flaky(reruns=1)
 def test_crossref_api_autor_sync(admin_browser, live_server, transactional_db, autor_m):
 
     with wait_for_page_load(admin_browser):

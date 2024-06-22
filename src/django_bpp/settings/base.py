@@ -272,7 +272,7 @@ def _elem_in_sys_argv(possible):
             return True
 
 
-TESTING = _elem_in_sys_argv(
+TESTING = os.environ.get("DJANGO_BPP_TESTING", "") or _elem_in_sys_argv(
     [
         "jenkins",
         "py.test",
@@ -289,6 +289,7 @@ if TESTING:
     CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
 
 INSTALLED_APPS = [
+    # "django_werkzeug",
     "tinymce",
     "tee",
     "formtools",
@@ -659,7 +660,9 @@ BPP_WALIDUJ_AFILIACJE_AUTOROW = (
     os.getenv("DJANGO_BPP_WALIDUJ_AFILIACJE_AUTOROW", "tak") == "tak"
 )
 
-ASGI_APPLICATION = "django_bpp.routing.application"
+# ASGI_APPLICATION = "django_bpp.routing.application"
+ASGI_APPLICATION = "django_bpp.asgi.application"
+
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
@@ -728,6 +731,11 @@ LOGGING = {
             "level": "INFO",
             "propagate": False,
         },
+        # Wypluwanie wszystkiego na konsolę, w tym tekstu z live-serverów
+        # "": {  # Root logger
+        #     "handlers": ["console"],
+        #     "level": "INFO",
+        # },
     },
 }
 

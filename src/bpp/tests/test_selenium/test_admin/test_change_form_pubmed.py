@@ -25,11 +25,11 @@ from django_bpp.selenium_util import wait_for, wait_for_page_load
     ],
 )
 def test_change_form_pubmed_brak_takiej_pracy(
-    admin_browser, asgi_live_server, url, tytul, wynik
+    admin_browser, channels_live_server, url, tytul, wynik
 ):
     url = reverse(f"admin:bpp_{url}_add")
     with wait_for_page_load(admin_browser):
-        admin_browser.visit(asgi_live_server.url + url)
+        admin_browser.visit(channels_live_server.url + url)
     admin_browser.find_by_id("id_tytul_oryginalny").fill(tytul)
     for elem in admin_browser.find_by_tag("h2")[:3]:
         show_element(admin_browser, elem)  # ._element)

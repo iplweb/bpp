@@ -2,19 +2,20 @@ from collections import namedtuple
 from hashlib import md5
 
 from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 
-from django.contrib.auth.models import User
-from django.contrib.contenttypes.models import ContentType
 from django.contrib.messages import DEFAULT_TAGS
 
 
-def get_channel_name_for_user(user: User):
+def get_channel_name_for_user(user: "django.contrib.auth.models.User"):  # noqa
     return md5(
         str(user.pk).encode("utf-8") + str(user.username).encode("utf-8")
     ).hexdigest()
 
 
 def convert_obj_to_channel_name(original):
+    from django.contrib.contenttypes.models import ContentType
+
     ctype = ContentType.objects.get_for_model(original)
     pk = original.pk
     return f"{ctype.app_label}.{ctype.model}-{pk}"
@@ -23,6 +24,8 @@ def convert_obj_to_channel_name(original):
 def get_obj_from_channel_name(name):
     app_label_model, pk = name.split("-", 1)
     app_label, model = app_label_model.split(".", 1)
+    from django.contrib.contenttypes.models import ContentType
+
     ctype = ContentType.objects.get(app_label=app_label, model=model)
     obj = ctype.get_object_for_this_type(pk=int(pk))
     return obj
@@ -32,8 +35,6 @@ Message = namedtuple(
     "Message", "text cssClass clickURL hideCloseOption closeURL closeText"
 )
 Message.__new__.__defaults__ = ("info", None, False, None, "&times;")
-
-from channels.layers import get_channel_layer
 
 
 def _send(channel_name, data):

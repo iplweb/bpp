@@ -11,9 +11,9 @@ from django_bpp.selenium_util import wait_for_page_load
 
 
 @pytest.mark.django_db(transaction=True)
-def test_integracyjny(admin_browser, asgi_live_server):
+def test_integracyjny(admin_browser, channels_live_server):
     baker.make(Uczelnia)
-    admin_browser.visit(asgi_live_server.url + reverse("import_dyscyplin:index"))
+    admin_browser.visit(channels_live_server.url + reverse("import_dyscyplin:index"))
 
     with wait_for_page_load(admin_browser):
         admin_browser.find_by_id("add-new-file").click()
