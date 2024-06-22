@@ -245,6 +245,18 @@ jobs:
   js-tests:
     docker:
       - image: cimg/python:3.11.0-node
+        environment:
+          PGUSER: postgres
+          PGHOST: localhost
+          PGPORT: 5432
+          PGDATABASE: bpp
+          DJANGO_BPP_SECRET_KEY: foobar
+          DJANGO_SETTINGS_MODULE: django_bpp.settings.test
+      - image: mpasternak79/cimg-postgres:14
+        environment:
+          POSTGRESS_PASSWORD: password
+          POSTGRES_HOST_AUTH_METHOD: trust
+        command: -c fsync=off
 
     steps:
 
