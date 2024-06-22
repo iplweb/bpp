@@ -8,6 +8,7 @@ from import_pracownikow.tests.conftest import (
 from bpp.models import Autor, Autor_Jednostka
 
 
+@pytest.mark.django_db
 def test_ImportPracownikow_perform(import_pracownikow):
     import_pracownikow.perform()
     assert import_pracownikow.importpracownikowrow_set.count() == 1
