@@ -261,7 +261,7 @@ jobs:
     steps:
 
 
-      - browser-tools/install-browsers
+      - browser-tools/install-browser-tools
 
       - run:
           command: |
