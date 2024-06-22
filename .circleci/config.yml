@@ -140,7 +140,7 @@ jobs:
           PGDATABASE: bpp
           DJANGO_BPP_SECRET_KEY: foobar
           DJANGO_SETTINGS_MODULE: django_bpp.settings.test
-      - image: mpasternak79/cimg-postgres:12
+      - image: mpasternak79/cimg-postgres:14
         environment:
           POSTGRESS_PASSWORD: password
           POSTGRES_HOST_AUTH_METHOD: trust
@@ -259,8 +259,20 @@ jobs:
 
     steps:
 
+
+      - browser-tools/install-browser-tools
+
+      - run:
+          command: |
+            firefox --version
+            geckodriver --version
+
       - attach_workspace:
           at: .
+
+      - run: sudo apt update
+
+      - run: sudo apt install google-chrome-stable
 
       - run: sudo npm install -g grunt-cli
 
@@ -291,9 +303,6 @@ jobs:
           command: cat pg_dump.sql | psql bpp
 
       # Testy JavaScript
-
-      - browser-tools/install-browser-tools
-
       - run:
           name: JS Tests
           command: |
