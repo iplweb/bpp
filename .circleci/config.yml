@@ -278,6 +278,9 @@ jobs:
           command: |
             poetry install --no-root --no-ansi --verbose
 
+      - run:
+          name: Wait for DB
+          command: dockerize -wait tcp://localhost:5432 -timeout 1m
       # Testy JavaScript
       - run:
           name: JS Tests
