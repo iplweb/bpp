@@ -291,6 +291,9 @@ jobs:
           command: cat pg_dump.sql | psql bpp
 
       # Testy JavaScript
+
+      - browser-tools/install-browser-tools
+
       - run:
           name: JS Tests
           command: |
