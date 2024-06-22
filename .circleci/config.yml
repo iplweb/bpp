@@ -242,7 +242,7 @@ jobs:
 
   js-tests:
     docker:
-      - image: cimg/python:3.11.0-node
+      - image: cimg/python:3.11.0-browsers
         environment:
           PGUSER: postgres
           PGHOST: localhost
