@@ -266,6 +266,7 @@ def select_select2_autocomplete(
     :param element_id: ID elementu (tekst)
     :param value: tekst do wpisania
     """
+    wait_for(lambda: len(browser.find_by_id(f"select2-{element_id}-container")) > 0)
 
     old_value = browser.find_by_id(f"select2-{element_id}-container").text
 

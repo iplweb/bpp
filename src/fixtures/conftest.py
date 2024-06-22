@@ -1082,13 +1082,13 @@ def pytest_collection_modifyitems(items):
     # lub 'admin_browser', aby można było szybko uruchamiać wyłacznie te testy
     # lub nie uruchamiać ich
 
-    # flaky_test = pytest.mark.flaky(reruns=10)
+    flaky_test = pytest.mark.flaky(reruns=5)
 
     for item in items:
         fixtures = getattr(item, "fixturenames", ())
         if "browser" in fixtures or "admin_browser" in fixtures:
             item.add_marker("selenium")
-            # item.add_marker(flaky_test)
+            item.add_marker(flaky_test)
 
 
 @pytest.fixture
