@@ -256,6 +256,7 @@ jobs:
         environment:
           POSTGRESS_PASSWORD: password
           POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: bpp
         command: -c fsync=off
 
     steps:
