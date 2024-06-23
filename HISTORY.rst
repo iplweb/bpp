@@ -4,6 +4,16 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202405.1128 (2024-06-24)
+============================
+
+Naprawione
+----------
+
+- eksport do PBN dopasowany do nowego API (błąd ValueError("Field 'id' expected a number but got '**UID**'.")) (#1410)
+- poprawnie wyświetlaj w raportach aktualną jednostkę, gdy wybrano również autorów "zerowych"
+
+
 Bpp 202405.1128 (2024-05-23)
 ============================
 
