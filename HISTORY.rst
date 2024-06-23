@@ -4,7 +4,7 @@ Historia zmian
 
 .. towncrier release notes start
 
-Bpp 202405.1128 (2024-06-24)
+Bpp 202406.1129 (2024-06-24)
 ============================
 
 Naprawione
