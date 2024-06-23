@@ -125,8 +125,8 @@ push = false
 "setup.py" = ['version="{pep440_version}",']
 "src/django_bpp/version.py" = ['VERSION = "{pep440_version}"']
 "package.json" = ['"version": "{version}",']
-"Makefile" = ["DOCKER_TAG={version}"]
-"docker-compose.yml" = [ ":{version}"]
+"Makefile" = [ 'DOCKER_VERSION="{pep440_version}"' ]
+"docker-compose.yml" = [ ":{pep440_version}"]
 
 
 
