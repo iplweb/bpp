@@ -163,7 +163,7 @@ loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_TAG=202405.1128
+DOCKER_VERSION="202405.1128"
 DOCKER_BUILD=build --push --platform linux/amd64,linux/arm64
 #DOCKER_BUILD=build --platform linux/amd64,linux/arm64
 
@@ -171,19 +171,19 @@ set-build-context:
 	docker context use desktop-linux
 
 build-dbserver: set-build-context
-	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_dbserver:${DOCKER_TAG} -t iplweb/bpp_dbserver:latest -f deploy/dbserver/Dockerfile deploy/dbserver/
+	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_dbserver:${DOCKER_VERSION} -t iplweb/bpp_dbserver:latest -f deploy/dbserver/Dockerfile deploy/dbserver/
 
 build-appserver-base: set-build-context
-	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_base:${DOCKER_TAG} -t iplweb/bpp_base:latest -f deploy/bpp_base/Dockerfile .
+	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_base:${DOCKER_VERSION} -t iplweb/bpp_base:latest -f deploy/bpp_base/Dockerfile .
 
 build-appserver: set-build-context
-	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_appserver:${DOCKER_TAG} -t iplweb/bpp_appserver:latest -f deploy/appserver/Dockerfile .
+	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_appserver:${DOCKER_VERSION} -t iplweb/bpp_appserver:latest -f deploy/appserver/Dockerfile .
 
 build-workerserver: set-build-context
-	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_workerserver:${DOCKER_TAG} -t iplweb/bpp_workerserver:latest -f deploy/workerserver/Dockerfile .
+	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_workerserver:${DOCKER_VERSION} -t iplweb/bpp_workerserver:latest -f deploy/workerserver/Dockerfile .
 
 build-webserver: set-build-context
-	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_webserver:${DOCKER_TAG} -t iplweb/bpp_webserver:latest -f deploy/webserver/Dockerfile deploy/webserver/
+	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_webserver:${DOCKER_VERSION} -t iplweb/bpp_webserver:latest -f deploy/webserver/Dockerfile deploy/webserver/
 
 build-servers: build-appserver-base build-appserver build-workerserver
 
