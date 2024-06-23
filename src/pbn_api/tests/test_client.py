@@ -98,7 +98,7 @@ def test_sync_publication_to_samo_id(
         PBN_GET_INSTITUTION_STATEMENTS + "?publicationId=123&size=5120"
     ] = [
         {
-            "id": "100",
+            "id": "eaec3254-2eb1-44d9-8c3c-e68fc2a48bd9",
             "addedTimestamp": "2020.05.06",
             "institutionId": pbn_jednostka.pbn_uid_id,
             "personId": pbn_autor.pbn_uid_id,
@@ -348,7 +348,7 @@ def test_sync_publication_kasuj_oswiadczenia_przed_wszystko_dobrze(
         PBN_GET_INSTITUTION_STATEMENTS + "?publicationId=123&size=5120"
     ] = [
         {
-            "id": "100",
+            "id": "eaec3254-2eb1-44d9-8c3c-e68fc2a48bd9",
             "addedTimestamp": "2020.05.06",
             "institutionId": pbn_jednostka.pbn_uid_id,
             "personId": pbn_autor.pbn_uid_id,
@@ -408,7 +408,7 @@ def test_sync_publication_kasuj_oswiadczenia_przed_blad_400_nie_zaburzy(
         PBN_GET_INSTITUTION_STATEMENTS + "?publicationId=123&size=5120"
     ] = [
         {
-            "id": "100",
+            "id": "eaec3254-2eb1-44d9-8c3c-e68fc2a48bd9",
             "addedTimestamp": "2020.05.06",
             "institutionId": pbn_jednostka.pbn_uid_id,
             "personId": pbn_autor.pbn_uid_id,

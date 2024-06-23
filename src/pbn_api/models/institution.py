@@ -87,6 +87,8 @@ class PublikacjaInstytucji(models.Model):
 
 
 class OswiadczenieInstytucji(models.Model):
+    primary_key = models.AutoField(primary_key=True, editable=False)
+    id = models.UUIDField("UID w PBN", null=True, blank=True)
     addedTimestamp = models.DateField()
     statedTimestamp = models.DateField(null=True, blank=True)
     area = models.PositiveSmallIntegerField(null=True, blank=True)

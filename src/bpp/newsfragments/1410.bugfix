@@ -1,0 +1,2 @@
+
+eksport do PBN dopasowany do nowego API (błąd ValueError("Field 'id' expected a number but got '**UID**'."))
