@@ -38,6 +38,7 @@ ALLOWED_HOSTS = [
     "127.0.0.1",
     "mac.iplweb",
     "test.unexistenttld",
+    env("DJANGO_BPP_HOSTNAME"),  # noqa
 ]
 
 HTML_MINIFY = False

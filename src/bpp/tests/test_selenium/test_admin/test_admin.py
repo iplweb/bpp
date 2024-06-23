@@ -55,10 +55,10 @@ pytestmark = [pytest.mark.slow, pytest.mark.selenium]
 
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.parametrize("url", ["wydawnictwo_ciagle", "wydawnictwo_zwarte"])
-def test_uzupelnij_strona_tom_nr_zeszytu(url, admin_browser, asgi_live_server):
+def test_uzupelnij_strona_tom_nr_zeszytu(url, admin_browser, channels_live_server):
     url = reverse("admin:bpp_%s_add" % url)
     with wait_for_page_load(admin_browser):
-        admin_browser.visit(asgi_live_server.url + url)
+        admin_browser.visit(channels_live_server.url + url)
 
     WebDriverWait(admin_browser, SHORT_WAIT_TIME).until(
         lambda browser: not admin_browser.find_by_name("informacje").is_empty()
@@ -89,11 +89,11 @@ def test_uzupelnij_strona_tom_nr_zeszytu(url, admin_browser, asgi_live_server):
 
 
 def test_liczba_znakow_wydawniczych_liczba_arkuszy_wydawniczych(
-    admin_browser, asgi_live_server
+    admin_browser, channels_live_server
 ):
     url = reverse("admin:bpp_wydawnictwo_zwarte_add")
     with wait_for_page_load(admin_browser):
-        admin_browser.visit(asgi_live_server.url + url)
+        admin_browser.visit(channels_live_server.url + url)
 
     try:
         WebDriverWait(admin_browser, SHORT_WAIT_TIME).until(
@@ -116,13 +116,15 @@ def test_liczba_znakow_wydawniczych_liczba_arkuszy_wydawniczych(
 
 
 @pytest.mark.django_db(transaction=True)
-def test_automatycznie_uzupelnij_punkty(admin_browser, asgi_live_server):
+def test_automatycznie_uzupelnij_punkty(admin_browser, channels_live_server):
     url = reverse("admin:bpp_wydawnictwo_ciagle_add")
 
     with wait_for_page_load(admin_browser):
-        admin_browser.visit(asgi_live_server.url + url)
+        admin_browser.visit(channels_live_server.url + url)
 
     any_zrodlo(nazwa="FOO BAR")
+
+    wait_for(lambda: len(admin_browser.find_by_id("id_wypelnij_pola_punktacji_button")))
 
     elem = admin_browser.find_by_id("id_wypelnij_pola_punktacji_button")
     show_element(admin_browser, elem)
@@ -145,7 +147,7 @@ def trigger_event(elem, event):
     )
 
 
-def test_admin_uzupelnij_punkty(admin_browser, asgi_live_server, denorms):
+def test_admin_uzupelnij_punkty(admin_browser, channels_live_server, denorms):
     z = any_zrodlo(nazwa="WTF LOL")
 
     kw = dict(zrodlo=z)
@@ -157,7 +159,7 @@ def test_admin_uzupelnij_punkty(admin_browser, asgi_live_server, denorms):
 
     url = reverse("admin:bpp_wydawnictwo_ciagle_change", args=(c.pk,))
     with wait_for_page_load(admin_browser):
-        admin_browser.visit(asgi_live_server.url + url)
+        admin_browser.visit(channels_live_server.url + url)
 
     rok = admin_browser.find_by_id("id_rok")
     punkty_kbn = admin_browser.find_by_id("id_punkty_kbn")
@@ -197,11 +199,11 @@ def test_admin_uzupelnij_punkty(admin_browser, asgi_live_server, denorms):
     admin_browser.execute_script("window.onbeforeunload = function(e) {};")
 
 
-def test_upload_punkty(admin_browser, asgi_live_server):
+def test_upload_punkty(admin_browser, channels_live_server):
     any_zrodlo(nazwa="WTF LOL")
 
     url = reverse("admin:bpp_wydawnictwo_ciagle_add")
-    admin_browser.visit(asgi_live_server.url + url)
+    admin_browser.visit(channels_live_server.url + url)
 
     select_select2_autocomplete(admin_browser, "id_zrodlo", "WTF")
 
@@ -247,10 +249,10 @@ def autorform_jednostka(db):
 
 
 @pytest.fixture
-def autorform_browser(admin_browser, db, asgi_live_server):
+def autorform_browser(admin_browser, db, channels_live_server):
     url = reverse("admin:bpp_wydawnictwo_ciagle_add")
     with wait_for_page_load(admin_browser):
-        admin_browser.visit(asgi_live_server.url + url)
+        admin_browser.visit(channels_live_server.url + url)
 
     admin_browser.execute_script("window.onbeforeunload = function(e) {};")
     return admin_browser
@@ -311,8 +313,8 @@ def test_autorform_kasowanie_autora(autorform_browser, autorform_jednostka):
     autorform_browser.execute_script("window.onbeforeunload = function(e) {};")
 
 
-def test_bug_on_user_add(admin_browser, asgi_live_server):
-    admin_browser.visit(asgi_live_server.url + reverse("admin:bpp_bppuser_add"))
+def test_bug_on_user_add(admin_browser, channels_live_server):
+    admin_browser.visit(channels_live_server.url + reverse("admin:bpp_bppuser_add"))
     admin_browser.fill("username", "as")
     admin_browser.fill("password1", "as")
     admin_browser.fill("password2", "as")
@@ -324,7 +326,7 @@ def test_bug_on_user_add(admin_browser, asgi_live_server):
 
 @pytest.mark.django_db
 def test_admin_wydawnictwo_zwarte_uzupelnij_rok(
-    wydawnictwo_zwarte, admin_browser, asgi_live_server, transactional_db
+    wydawnictwo_zwarte, admin_browser, channels_live_server, transactional_db
 ):
     """
     :type admin_browser: splinter.driver.webdriver.remote.WebDriver
@@ -332,7 +334,9 @@ def test_admin_wydawnictwo_zwarte_uzupelnij_rok(
 
     browser = admin_browser
 
-    browser.visit(asgi_live_server.url + reverse("admin:bpp_wydawnictwo_zwarte_add"))
+    browser.visit(
+        channels_live_server.url + reverse("admin:bpp_wydawnictwo_zwarte_add")
+    )
 
     rok = browser.find_by_id("id_rok")
     button = browser.find_by_id("id_rok_button")
@@ -372,7 +376,7 @@ def test_admin_wydawnictwo_zwarte_uzupelnij_rok(
     )
 
 
-def test_admin_wydawnictwo_ciagle_uzupelnij_rok(admin_browser, asgi_live_server):
+def test_admin_wydawnictwo_ciagle_uzupelnij_rok(admin_browser, channels_live_server):
     """
     :type admin_browser: splinter.driver.webdriver.remote.WebDriver
     """
@@ -381,7 +385,7 @@ def test_admin_wydawnictwo_ciagle_uzupelnij_rok(admin_browser, asgi_live_server)
 
     with wait_for_page_load(browser):
         browser.visit(
-            asgi_live_server.url + reverse("admin:bpp_wydawnictwo_ciagle_add")
+            channels_live_server.url + reverse("admin:bpp_wydawnictwo_ciagle_add")
         )
     browser.fill("informacje", "Lublin 2002 test")
     elem = browser.find_by_id("id_rok_button")
@@ -399,7 +403,7 @@ def test_admin_wydawnictwo_ciagle_uzupelnij_rok(admin_browser, asgi_live_server)
 
 
 def test_admin_wydawnictwo_ciagle_dowolnie_zapisane_nazwisko(
-    admin_browser, asgi_live_server, autor_jan_kowalski
+    admin_browser, channels_live_server, autor_jan_kowalski
 ):
     """
     :type admin_browser: splinter.driver.webdriver.remote.WebDriver
@@ -409,7 +413,7 @@ def test_admin_wydawnictwo_ciagle_dowolnie_zapisane_nazwisko(
 
     with wait_for_page_load(browser):
         browser.visit(
-            asgi_live_server.url + reverse("admin:bpp_wydawnictwo_ciagle_add")
+            channels_live_server.url + reverse("admin:bpp_wydawnictwo_ciagle_add")
         )
 
     xp1 = "/html/body/div[2]/article/div/form/div/div[1]/ul/li/a"
@@ -446,7 +450,7 @@ def test_admin_wydawnictwo_ciagle_dowolnie_zapisane_nazwisko(
 )
 def test_admin_domyslnie_afiliuje_nowy_rekord(
     admin_browser,
-    asgi_live_server,
+    channels_live_server,
     url,
     expected,
 ):
@@ -455,7 +459,7 @@ def test_admin_domyslnie_afiliuje_nowy_rekord(
 
     browser = admin_browser
     with wait_for_page_load(browser):
-        browser.visit(asgi_live_server.url + reverse(f"admin:bpp_{url}_add"))
+        browser.visit(channels_live_server.url + reverse(f"admin:bpp_{url}_add"))
 
     add_extra_autor_inline(browser)
 
@@ -475,7 +479,7 @@ def test_admin_domyslnie_afiliuje_nowy_rekord(
 )
 # @pytest.mark.django_db(transaction=True)
 def test_admin_domyslnie_afiliuje_istniejacy_rekord(
-    admin_browser, asgi_live_server, url, klasa, expected, afiliowany, denorms
+    admin_browser, channels_live_server, url, klasa, expected, afiliowany, denorms
 ):
     # twórz nowy obiekt, nie używaj z fixtury, bo db i transactional_db
     baker.make(Uczelnia, domyslnie_afiliuje=expected)
@@ -492,7 +496,7 @@ def test_admin_domyslnie_afiliuje_istniejacy_rekord(
     browser = admin_browser
     with wait_for_page_load(browser):
         browser.visit(
-            asgi_live_server.url
+            channels_live_server.url
             + reverse(f"admin:bpp_{url}_change", args=(wydawnictwo.pk,))
         )
 

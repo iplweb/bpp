@@ -6,7 +6,6 @@ from asgiref.sync import async_to_sync
 from channels.generic.websocket import WebsocketConsumer
 
 from notifications.core import get_channel_name_for_user
-from notifications.models import Notification
 
 from django.utils.functional import cached_property
 
@@ -42,6 +41,8 @@ class NotificationsConsumer(WebsocketConsumer):
         self.subscribe()
         self.accept()
 
+        from notifications.models import Notification
+
         Notification.objects.on_connect(self.channels)
 
     def disconnect(self, close_code):
@@ -54,6 +55,8 @@ class NotificationsConsumer(WebsocketConsumer):
         text_data_json = json.loads(text_data)
 
         if text_data_json.get("type") == "ack_message":
+            from notifications.models import Notification
+
             try:
                 n = Notification.objects.get(id=text_data_json["id"])
             except Notification.DoesNotExist:

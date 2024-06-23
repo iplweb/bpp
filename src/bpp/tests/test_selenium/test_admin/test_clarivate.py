@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 from bpp.tests import show_element
 
 try:
@@ -7,8 +5,9 @@ try:
 except ImportError:
     from django.urls import reverse
 
+from unittest.mock import Mock
+
 import pytest
-from mock import Mock
 from selenium.webdriver.support.expected_conditions import alert_is_present
 
 from bpp.tests.util import assertPopupContains, scroll_into_view
@@ -21,11 +20,11 @@ pytestmark = [pytest.mark.slow, pytest.mark.selenium]
 
 
 @pytest.fixture(scope="function")
-def browser_z_wydawnictwem(admin_browser, asgi_live_server, wydawnictwo_ciagle):
+def browser_z_wydawnictwem(admin_browser, live_server, wydawnictwo_ciagle):
     browser = admin_browser
     with wait_for_page_load(browser):
         browser.visit(
-            asgi_live_server.url
+            live_server.url
             + reverse(
                 "admin:bpp_wydawnictwo_ciagle_change", args=(wydawnictwo_ciagle.pk,)
             )
@@ -54,7 +53,7 @@ def test_admin_get_wos_information_clarivate_brak_danych(
 def test_admin_get_wos_information_clarivate_pmid(
     uczelnia, mocker, browser_z_wydawnictwem
 ):
-    from mock import Mock
+    from unittest.mock import Mock
 
     m = Mock()
     m.query_single = Mock(return_value={"timesCited": "31337"})

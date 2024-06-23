@@ -1,4 +1,3 @@
-# -*- encoding: utf-8 -*-
 import time
 
 from selenium.webdriver.support.expected_conditions import staleness_of
@@ -18,15 +17,16 @@ def wait_for(condition_function, max_seconds=DEFAULT_WAIT_TIME):
             return True
         else:
             time.sleep(0.1)
-    raise TimeoutError("Timeout waiting for {}".format(condition_function.__name__))
+    raise TimeoutError(f"Timeout waiting for {condition_function.__name__}")
 
 
-class wait_for_page_load(object):
+class wait_for_page_load:
     def __init__(self, browser, max_seconds=PAGE_LOAD_WAIT_TIME):
         self.browser = browser
         self.max_seconds = max_seconds
 
     def __enter__(self):
+
         self.old_page = self.browser.find_by_tag("html").first._element
 
     def __exit__(self, *_):

@@ -12,6 +12,7 @@ from bpp.tests import fill_admin_inline, normalize_html
 from django_bpp.selenium_util import SHORT_WAIT_TIME, wait_for_page_load
 
 
+@pytest.mark.django_db
 @pytest.mark.parametrize("klass", ["wydawnictwo_ciagle", "wydawnictwo_zwarte"])
 def test_changelist_no_argument(klass, live_server, admin_browser: WebDriver):
     url = f"admin:bpp_{klass}_autor_changelist"
@@ -19,6 +20,7 @@ def test_changelist_no_argument(klass, live_server, admin_browser: WebDriver):
     assert "Musisz wejść w edycję" in normalize_html(admin_browser.html)
 
 
+@pytest.mark.django_db
 @pytest.mark.parametrize("klass", ["wydawnictwo_ciagle", "wydawnictwo_zwarte"])
 def test_edit_btn_invisible(klass, live_server, admin_browser: WebDriver):
     # Przy dodawaniu publikacji -- brak przycisku "edytuj autorów"
@@ -97,6 +99,7 @@ def test_changeform_save(klass, model, admin_browser, live_server):
     assert "Dodaj powiązanie" in normalize_html(admin_browser.html)
 
 
+@pytest.mark.django_db
 @pytest.mark.parametrize(
     "klass,model",
     [

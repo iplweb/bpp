@@ -60,7 +60,7 @@ from django_bpp.selenium_util import wait_for_page_load, wait_for_websocket_conn
 NORMAL_DJANGO_USER_LOGIN = "test_login_bpp"
 NORMAL_DJANGO_USER_PASSWORD = "test_password"
 
-from asgi_live_server import asgi_live_server  # noqa
+from channels_live_server import channels_live_server  # noqa
 
 from bpp.tests.util import setup_model_bakery
 
@@ -223,7 +223,7 @@ def _preauth_session_id_helper(
     password,
     client,
     browser,
-    asgi_live_server,  # noqa
+    channels_live_server,  # noqa
     django_user_model,
     django_username_field,
 ):
@@ -231,7 +231,7 @@ def _preauth_session_id_helper(
     assert res is True
 
     with wait_for_page_load(browser):
-        browser.visit(asgi_live_server.url + "/non-existant-url")
+        browser.visit(channels_live_server.url + "/non-existant-url")
     browser.cookies.add({"sessionid": client.cookies["sessionid"].value})
     browser.authorized_user = django_user_model.objects.get(
         **{django_username_field: username}
@@ -246,7 +246,7 @@ def preauth_browser(
     normal_django_user,
     client,
     browser,
-    asgi_live_server,  # noqa
+    channels_live_server,  # noqa
     django_user_model,
     django_username_field,
 ):
@@ -255,7 +255,7 @@ def preauth_browser(
         NORMAL_DJANGO_USER_PASSWORD,
         client,
         browser,
-        asgi_live_server,
+        channels_live_server,
         django_user_model,
         django_username_field,
     )
@@ -265,9 +265,11 @@ def preauth_browser(
 
 
 @pytest.fixture
-def preauth_asgi_browser(preauth_browser, transactional_db, asgi_live_server):  # noqa
+def preauth_asgi_browser(
+    preauth_browser, transactional_db, channels_live_server  # noqa
+):
     with wait_for_page_load(preauth_browser):
-        preauth_browser.visit(asgi_live_server.url)
+        preauth_browser.visit(channels_live_server.url)
     wait_for_websocket_connection(preauth_browser)
     return preauth_browser
 
@@ -277,7 +279,7 @@ def admin_browser(
     admin_user,
     client,
     browser,
-    asgi_live_server,  # noqa
+    channels_live_server,  # noqa
     django_user_model,
     django_username_field,
     transactional_db,
@@ -287,7 +289,7 @@ def admin_browser(
         "password",
         client,
         browser,
-        asgi_live_server,
+        channels_live_server,
         django_user_model,
         django_username_field,
     )
@@ -983,7 +985,7 @@ def baza_wos():
     )[0]
 
 
-from asgi_live_server import asgi_live_server  # noqa
+# from channels_live_server import channels_live_server  # noqa
 
 
 @pytest.fixture
@@ -1080,7 +1082,7 @@ def pytest_collection_modifyitems(items):
     # lub 'admin_browser', aby można było szybko uruchamiać wyłacznie te testy
     # lub nie uruchamiać ich
 
-    flaky_test = pytest.mark.flaky(reruns=10)
+    flaky_test = pytest.mark.flaky(reruns=5)
 
     for item in items:
         fixtures = getattr(item, "fixturenames", ())

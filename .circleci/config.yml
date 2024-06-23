@@ -1,13 +1,13 @@
 version: 2.1
 
 orbs:
-  browser-tools: circleci/browser-tools@1.2.5
+  browser-tools: circleci/browser-tools@1.4.8
 
 jobs:
   build:
 
     docker:
-      - image: cimg/python:3.11.0-node
+      - image: cimg/python:3.11.9-node
         environment:
           PGUSER: postgres
           PGHOST: localhost
@@ -15,23 +15,21 @@ jobs:
           PGDATABASE: bpp
           DJANGO_BPP_SECRET_KEY: foobar
           DJANGO_SETTINGS_MODULE: django_bpp.settings.test
+
       - image: mpasternak79/cimg-postgres:14
         environment:
           POSTGRESS_PASSWORD: password
           POSTGRES_HOST_AUTH_METHOD: trust
         command: -c fsync=off
+
       - image: cimg/redis:6.0
 
     steps:
 
       - run:
-          name: Update apt
+          name: Update apt & install PostgreSQL
           command: |
             sudo apt update
-
-      - run:
-          name: install postgresql-client
-          command: |
             sudo apt install -y postgresql-client
             psql --version
 
@@ -134,7 +132,7 @@ jobs:
 
   test:
     docker:
-      - image: cimg/python:3.11.0-browsers
+      - image: cimg/python:3.11.9-browsers
         environment:
           PGUSER: postgres
           PGHOST: localhost
@@ -142,7 +140,7 @@ jobs:
           PGDATABASE: bpp
           DJANGO_BPP_SECRET_KEY: foobar
           DJANGO_SETTINGS_MODULE: django_bpp.settings.test
-      - image: mpasternak79/cimg-postgres:12
+      - image: mpasternak79/cimg-postgres:14
         environment:
           POSTGRESS_PASSWORD: password
           POSTGRES_HOST_AUTH_METHOD: trust
@@ -151,7 +149,8 @@ jobs:
     parallelism: 4
     steps:
 
-      - browser-tools/install-browser-tools
+      - browser-tools/install-firefox
+      - browser-tools/install-geckodriver
 
       - run:
           command: |
@@ -244,12 +243,36 @@ jobs:
 
   js-tests:
     docker:
-      - image: cimg/python:3.11.0-node
+      - image: cimg/python:3.11.9-node
+        environment:
+          PGUSER: postgres
+          PGHOST: localhost
+          PGPORT: 5432
+          PGDATABASE: bpp
+          DJANGO_BPP_SECRET_KEY: foobar
+          DJANGO_SETTINGS_MODULE: django_bpp.settings.test
+      - image: mpasternak79/cimg-postgres:14
+        environment:
+          POSTGRESS_PASSWORD: password
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: bpp
+        command: -c fsync=off
 
     steps:
 
+
+      - browser-tools/install-browser-tools
+
+      - run:
+          command: |
+            firefox --version
+            geckodriver --version
+
       - attach_workspace:
           at: .
+
+      - restore_cache:
+          key: cache-15-{{ checksum "poetry.lock" }}-{{ checksum "yarn.lock" }}
 
       - run: sudo npm install -g grunt-cli
 
@@ -266,6 +289,19 @@ jobs:
           command: |
             poetry install --no-root --no-ansi --verbose
 
+      - run:
+          name: Wait for DB
+          command: dockerize -wait tcp://localhost:5432 -timeout 1m
+
+      - run:
+          name: create pg_trgm extension
+          command: |
+            echo "create extension pg_trgm with schema pg_catalog;" | psql bpp
+
+      - run:
+          name: Recreate db
+          command: cat pg_dump.sql | psql bpp
+
       # Testy JavaScript
       - run:
           name: JS Tests
@@ -275,7 +311,7 @@ jobs:
 
   coveralls:
     docker:
-      - image: cimg/python:3.11.0-node
+      - image: cimg/python:3.11.9-node
     steps:
       - run: curl -k https://coveralls.io/webhook?repo_token=$COVERALLS_REPO_TOKEN -d "payload[build_num]=$CIRCLE_WORKFLOW_ID&payload[status]=done"
 

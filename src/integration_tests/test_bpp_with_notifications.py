@@ -94,7 +94,7 @@ def test_live_server(live_server, browser):
 
 
 @pytest.mark.django_db(transaction=True)
-def test_asgi_live_server(preauth_asgi_browser):
+def test_channels_live_server(preauth_asgi_browser):
 
     s = "test notyfikacji 123 456"
     call_command(
@@ -153,12 +153,14 @@ def test_preauth_browser(preauth_browser, live_server):
     )
 
 
-def test_admin_browser(admin_browser, asgi_live_server):
+@pytest.mark.django_db
+def test_admin_browser(admin_browser, channels_live_server):
     """Sprawdz, czy pre-autoryzowany browser admina funkcjonuje poprawnie"""
-    admin_browser.visit(asgi_live_server.url + "/admin/")
+    admin_browser.visit(channels_live_server.url + "/admin/")
     assert admin_browser.is_text_present("Redagowanie")
 
 
+@pytest.mark.django_db
 def test_webtest(webtest_app, normal_django_user):
     form = webtest_app.get(reverse("login_form")).form
     form["username"] = normal_django_user.username

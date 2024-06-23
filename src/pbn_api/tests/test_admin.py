@@ -11,7 +11,7 @@ from pbn_api.tests.utils import middleware
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.messages import get_messages
 
-from django_bpp.selenium_util import LONG_WAIT_TIME, wait_for_page_load
+from django_bpp.selenium_util import LONG_WAIT_TIME, wait_for, wait_for_page_load
 
 
 def test_SentDataAdmin_list_filter_works(admin_client):
@@ -52,7 +52,7 @@ def test_OswiadczenieInstytucji_delete_model(pbn_uczelnia, pbn_client, rf):
 
 @pytest.mark.django_db
 def test_pbn_api_admin_SentDataAdmin_wyslij_ponownie(
-    wydawnictwo_zwarte, admin_browser, asgi_live_server
+    wydawnictwo_zwarte, admin_browser, channels_live_server
 ):
     s = SentData.objects.create(
         object_id=wydawnictwo_zwarte.pk,
@@ -62,8 +62,10 @@ def test_pbn_api_admin_SentDataAdmin_wyslij_ponownie(
 
     with wait_for_page_load(admin_browser):
         admin_browser.visit(
-            asgi_live_server.url + f"/admin/pbn_api/sentdata/{s.pk}/change"
+            channels_live_server.url + f"/admin/pbn_api/sentdata/{s.pk}/change"
         )
+
+    wait_for(lambda: len(admin_browser.find_by_id("wyslij-ponownie")) > 0)
 
     elem = admin_browser.find_by_id("wyslij-ponownie")
 

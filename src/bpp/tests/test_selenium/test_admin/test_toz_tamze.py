@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 from selenium.webdriver.support.wait import WebDriverWait
 
 try:
@@ -22,12 +20,12 @@ ID = "id_tytul_oryginalny"
 pytestmark = [pytest.mark.slow, pytest.mark.selenium]
 
 
-def test_admin_wydawnictwo_ciagle_toz(admin_browser, asgi_live_server):
+def test_admin_wydawnictwo_ciagle_toz(admin_browser, channels_live_server):
     Wydawnictwo_Ciagle.objects.all().delete()
     c = any_ciagle(informacje="TO INFORMACJE")
 
     admin_browser.visit(
-        asgi_live_server.url
+        channels_live_server.url
         + reverse("admin:bpp_wydawnictwo_ciagle_change", args=(c.pk,))
     )
 
@@ -41,11 +39,11 @@ def test_admin_wydawnictwo_ciagle_toz(admin_browser, asgi_live_server):
     wait_for(lambda: wcc() == 2)
 
 
-def test_admin_wydawnictwo_zwarte_toz(admin_browser, asgi_live_server):
+def test_admin_wydawnictwo_zwarte_toz(admin_browser, channels_live_server):
     c = any_zwarte(informacje="TO INFOMRACJE")
 
     admin_browser.visit(
-        asgi_live_server.url
+        channels_live_server.url
         + reverse("admin:bpp_wydawnictwo_zwarte_change", args=(c.pk,))
     )
 
@@ -58,10 +56,10 @@ def test_admin_wydawnictwo_zwarte_toz(admin_browser, asgi_live_server):
     wait_for(lambda: wcc() == 2)
 
 
-def test_admin_wydawnictwo_ciagle_tamze(admin_browser, asgi_live_server):
+def test_admin_wydawnictwo_ciagle_tamze(admin_browser, channels_live_server):
     c = any_ciagle(informacje="TO INFORMACJE", uwagi="te uwagi", www="te www")
     admin_browser.visit(
-        asgi_live_server.url
+        channels_live_server.url
         + reverse("admin:bpp_wydawnictwo_ciagle_change", args=(c.pk,))
     )
 
@@ -79,7 +77,7 @@ def test_admin_wydawnictwo_ciagle_tamze(admin_browser, asgi_live_server):
     assert "te www" not in admin_browser.html
 
 
-def test_admin_wydawnictwo_zwarte_tamze(admin_browser, asgi_live_server, wydawca):
+def test_admin_wydawnictwo_zwarte_tamze(admin_browser, channels_live_server, wydawca):
     c = any_zwarte(
         informacje="TO INFORMACJE",
         uwagi="te uwagi",
@@ -91,7 +89,7 @@ def test_admin_wydawnictwo_zwarte_tamze(admin_browser, asgi_live_server, wydawca
         e_isbn="E_ISBN",
     )
     admin_browser.visit(
-        asgi_live_server.url
+        channels_live_server.url
         + reverse("admin:bpp_wydawnictwo_zwarte_change", args=(c.pk,))
     )
     tamze = admin_browser.find_by_id("tamze")
@@ -112,10 +110,10 @@ def test_admin_wydawnictwo_zwarte_tamze(admin_browser, asgi_live_server, wydawca
     assert "ten adres WWW" not in admin_browser.html
 
 
-def test_admin_patent_toz(admin_browser, asgi_live_server):
+def test_admin_patent_toz(admin_browser, channels_live_server):
     c = any_patent(informacje="TO INFORMACJE")
     admin_browser.visit(
-        asgi_live_server.url + reverse("admin:bpp_patent_change", args=(c.pk,))
+        channels_live_server.url + reverse("admin:bpp_patent_change", args=(c.pk,))
     )
 
     wcc = Patent.objects.count
@@ -132,11 +130,11 @@ def test_admin_patent_toz(admin_browser, asgi_live_server):
     wait_for(lambda: wcc() == 2)
 
 
-def test_admin_patent_tamze(admin_browser, asgi_live_server):
+def test_admin_patent_tamze(admin_browser, channels_live_server):
     c = any_patent(informacje="TO INFORMACJE")
     with wait_for_page_load(admin_browser):
         admin_browser.visit(
-            asgi_live_server.url + reverse("admin:bpp_patent_change", args=(c.pk,))
+            channels_live_server.url + reverse("admin:bpp_patent_change", args=(c.pk,))
         )
 
     with wait_for_page_load(admin_browser):

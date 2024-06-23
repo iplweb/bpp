@@ -21,13 +21,13 @@ from django_bpp.selenium_util import VERY_SHORT_WAIT_TIME, wait_for_page_load
 @pytest.mark.parametrize("field_name", ["isbn", "e_isbn"])
 def test_change_form_get_pbn_by_isbn_or_eisbn_via_api_pub_jest_w_api(
     admin_browser,
-    asgi_live_server,
+    channels_live_server,
     field_name,
     pbn_serwer,
 ):
     url = reverse("admin:bpp_wydawnictwo_zwarte_add")
     with wait_for_page_load(admin_browser):
-        admin_browser.visit(asgi_live_server.url + url)
+        admin_browser.visit(channels_live_server.url + url)
 
     ROK = "2222"
     ISBN = "123"
@@ -63,11 +63,11 @@ def test_change_form_get_pbn_by_isbn_or_eisbn_via_api_pub_jest_w_api(
 
 @pytest.mark.parametrize("field_name", ["isbn", "e_isbn"])
 def test_change_form_get_pbn_by_isbn_or_eisbn_via_api_pub_jest_w_lokalnej_bazie(
-    admin_browser, asgi_live_server, field_name, pbn_serwer, transactional_db
+    admin_browser, channels_live_server, field_name, pbn_serwer, transactional_db
 ):
     url = reverse("admin:bpp_wydawnictwo_zwarte_add")
     with wait_for_page_load(admin_browser):
-        admin_browser.visit(asgi_live_server.url + url)
+        admin_browser.visit(channels_live_server.url + url)
 
     ROK = "2222"
     ISBN = "123"
@@ -114,11 +114,11 @@ def test_change_form_get_pbn_by_isbn_or_eisbn_via_api_pub_jest_w_lokalnej_bazie(
 
 @pytest.mark.parametrize("wydawnictwo", ["wydawnictwo_ciagle", "wydawnictwo_zwarte"])
 def test_change_form_get_pbn_by_doi_via_api_jest_w_api(
-    admin_browser, asgi_live_server, wydawnictwo, pbn_serwer
+    admin_browser, channels_live_server, wydawnictwo, pbn_serwer
 ):
     url = reverse(f"admin:bpp_{wydawnictwo}_add")
     with wait_for_page_load(admin_browser):
-        admin_browser.visit(asgi_live_server.url + url)
+        admin_browser.visit(channels_live_server.url + url)
 
     ROK = "2222"
     DOI = "123"
@@ -156,11 +156,11 @@ def test_change_form_get_pbn_by_doi_via_api_jest_w_api(
 
 @pytest.mark.parametrize("wydawnictwo", ["wydawnictwo_ciagle", "wydawnictwo_zwarte"])
 def test_change_form_get_pbn_by_doi_via_api_nie_ma_w_api_jest_w_bazie(
-    admin_browser, asgi_live_server, wydawnictwo, pbn_serwer, transactional_db
+    admin_browser, channels_live_server, wydawnictwo, pbn_serwer, transactional_db
 ):
     url = reverse(f"admin:bpp_{wydawnictwo}_add")
     with wait_for_page_load(admin_browser):
-        admin_browser.visit(asgi_live_server.url + url)
+        admin_browser.visit(channels_live_server.url + url)
 
     ROK = "2222"
     DOI = "123"

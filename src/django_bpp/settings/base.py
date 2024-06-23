@@ -83,6 +83,7 @@ env = environ.Env(
     DJANGO_BPP_DB_PASSWORD=(str, "password"),
     DJANGO_BPP_DB_HOST=(str, "localhost"),
     DJANGO_BPP_DB_PORT=(int, 5432),
+    DJANGO_BPP_DB_DISABLE_SSL=(bool, False),
     DJANGO_BPP_SECRET_KEY=(str, SECRET_KEY_UNSET),
     DJANGO_BPP_MEDIA_ROOT=(str, os.path.join(os.getenv("HOME", "C:/"), "bpp-media")),
     #
@@ -137,15 +138,26 @@ SENTRYSDK_CONFIG_URL = (
 PROCESS_INTERACTIVE = sys.stdin.isatty()
 
 if SENTRYSDK_CONFIG_URL and not PROCESS_INTERACTIVE:
+    # Ignore common errors
+    def before_send(event, hint):
+        if "exc_info" in hint:
+            errors_to_ignore = (
+                DisallowedHost,
+                RuntimeError("Response content shorter than Content-Length"),
+            )
+            exc_value = hint["exc_info"][1]
+
+            if isinstance(exc_value, errors_to_ignore):
+                return None
+
+        return event
+
     sentry_sdk.init(
         dsn=SENTRYSDK_CONFIG_URL,
         traces_sample_rate=env("SENTRYSDK_TRACES_SAMPLE_RATE"),
         integrations=[DjangoIntegration()],
         release=VERSION,
-        ignore_errors=[
-            DisallowedHost,
-            RuntimeError("Response content shorter than Content-Length"),
-        ],
+        before_send=before_send,
         send_default_pii=True,
     )
 
@@ -260,7 +272,7 @@ def _elem_in_sys_argv(possible):
             return True
 
 
-TESTING = _elem_in_sys_argv(
+TESTING = os.environ.get("DJANGO_BPP_TESTING", "") or _elem_in_sys_argv(
     [
         "jenkins",
         "py.test",
@@ -277,6 +289,7 @@ if TESTING:
     CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
 
 INSTALLED_APPS = [
+    # "django_werkzeug",
     "tinymce",
     "tee",
     "formtools",
@@ -449,6 +462,10 @@ ALLOWED_HOSTS = [
     env("DJANGO_BPP_HOSTNAME"),
 ]
 
+CSRF_TRUSTED_ORIGINS = [
+    "https://" + env("DJANGO_BPP_HOSTNAME"),
+]
+
 REDIS_HOST = env("DJANGO_BPP_REDIS_HOST")
 REDIS_PORT = env("DJANGO_BPP_REDIS_PORT")
 
@@ -477,7 +494,9 @@ DATABASES = {
     },
 }
 
-if DATABASES["default"]["HOST"] in ["localhost", "127.0.0.1"]:
+if (DATABASES["default"]["HOST"] in ["localhost", "127.0.0.1"]) or (
+    env("DJANGO_BPP_DB_DISABLE_SSL")
+):
     options = DATABASES["default"].get("OPTIONS", {})
     options["sslmode"] = "disable"
     DATABASES["default"]["OPTIONS"] = options
@@ -641,7 +660,9 @@ BPP_WALIDUJ_AFILIACJE_AUTOROW = (
     os.getenv("DJANGO_BPP_WALIDUJ_AFILIACJE_AUTOROW", "tak") == "tak"
 )
 
-ASGI_APPLICATION = "django_bpp.routing.application"
+# ASGI_APPLICATION = "django_bpp.routing.application"
+ASGI_APPLICATION = "django_bpp.asgi.application"
+
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
@@ -710,6 +731,11 @@ LOGGING = {
             "level": "INFO",
             "propagate": False,
         },
+        # Wypluwanie wszystkiego na konsolę, w tym tekstu z live-serverów
+        # "": {  # Root logger
+        #     "handlers": ["console"],
+        #     "level": "INFO",
+        # },
     },
 }
 

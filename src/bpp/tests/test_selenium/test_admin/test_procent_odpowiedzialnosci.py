@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 from django.apps import apps
 
 try:
@@ -30,7 +28,7 @@ pytestmark = [pytest.mark.slow, pytest.mark.selenium]
     "klass", ["wydawnictwo_ciagle", "wydawnictwo_zwarte", "patent"]
 )
 def test_procent_odpowiedzialnosci_baseModel_AutorFormset_jeden_autor(
-    asgi_live_server,
+    channels_live_server,
     admin_browser,
     autor_jan_kowalski,
     autor_jan_nowak,
@@ -43,7 +41,7 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_jeden_autor(
     jezyki,
     klass,
 ):
-    url = asgi_live_server.url + reverse("admin:bpp_%s_add" % klass)
+    url = channels_live_server.url + reverse("admin:bpp_%s_add" % klass)
 
     with wait_for_page_load(admin_browser):
         admin_browser.visit(url)
@@ -64,7 +62,7 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_jeden_autor(
     "klass", ["wydawnictwo_ciagle", "wydawnictwo_zwarte", "patent"]
 )
 def test_procent_odpowiedzialnosci_baseModel_AutorFormset_problem_jeden_autor(
-    asgi_live_server,
+    channels_live_server,
     admin_browser,
     autor_jan_kowalski,
     autor_jan_nowak,
@@ -77,7 +75,7 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_problem_jeden_autor(
     jezyki,
     klass,
 ):
-    url = asgi_live_server.url + reverse("admin:bpp_%s_add" % klass)
+    url = channels_live_server.url + reverse("admin:bpp_%s_add" % klass)
 
     with wait_for_page_load(admin_browser):
         admin_browser.visit(url)
@@ -98,7 +96,7 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_problem_jeden_autor(
     "klass", ["wydawnictwo_ciagle", "wydawnictwo_zwarte", "patent"]
 )
 def test_procent_odpowiedzialnosci_baseModel_AutorFormset_dwoch_autorow(
-    asgi_live_server,
+    channels_live_server,
     admin_browser,
     autor_jan_kowalski,
     autor_jan_nowak,
@@ -111,7 +109,7 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_dwoch_autorow(
     jezyki,
     klass,
 ):
-    url = asgi_live_server.url + reverse("admin:bpp_%s_add" % klass)
+    url = channels_live_server.url + reverse("admin:bpp_%s_add" % klass)
 
     with wait_for_page_load(admin_browser):
         admin_browser.visit(url)
@@ -141,7 +139,7 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_dwoch_autorow(
     "klass", ["wydawnictwo_ciagle", "wydawnictwo_zwarte", "patent"]
 )
 def test_procent_odpowiedzialnosci_baseModel_AutorFormset_problem_dwoch_autorow(
-    asgi_live_server,
+    channels_live_server,
     admin_browser,
     autor_jan_kowalski,
     autor_jan_nowak,
@@ -154,7 +152,7 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_problem_dwoch_autorow(
     jezyki,
     klass,
 ):
-    url = asgi_live_server.url + reverse("admin:bpp_%s_add" % klass)
+    url = channels_live_server.url + reverse("admin:bpp_%s_add" % klass)
 
     with wait_for_page_load(admin_browser):
         admin_browser.visit(url)
@@ -184,7 +182,7 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_problem_dwoch_autorow(
     "klass", ["wydawnictwo_ciagle", "wydawnictwo_zwarte", "patent"]
 )
 def test_procent_odpowiedzialnosci_baseModel_AutorFormset_dobrze_potem_zle_dwoch_autorow(
-    asgi_live_server,
+    channels_live_server,
     admin_browser,
     autor_jan_kowalski,
     autor_jan_nowak,
@@ -197,7 +195,7 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_dobrze_potem_zle_dwoch
     jezyki,
     klass,
 ):
-    url = asgi_live_server.url + reverse("admin:bpp_%s_add" % klass)
+    url = channels_live_server.url + reverse("admin:bpp_%s_add" % klass)
 
     with wait_for_page_load(admin_browser):
         admin_browser.visit(url)
@@ -229,7 +227,7 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_dobrze_potem_zle_dwoch
 
     model = apps.get_app_config("bpp").get_model(klass)
 
-    url = asgi_live_server.url + reverse(
+    url = channels_live_server.url + reverse(
         "admin:bpp_%s_change" % klass, args=(model.objects.first().pk,)
     )
 

@@ -1,6 +1,6 @@
 BRANCH=`git branch | sed -n '/\* /s///p'`
 
-.PHONY: clean distclean tests release tests-without-selenium tests-with-selenium
+.PHONY: clean distclean tests release tests-without-selenium tests-with-selenium docker
 
 PYTHON=python3
 
@@ -140,7 +140,7 @@ poetry-lock:
 	poetry lock
 	-git commit -m "Update lockfile" poetry.lock
 
-new-release: poetry-lock upgrade-version bdist_wheel
+new-release: poetry-lock upgrade-version bdist_wheel upload build-servers
 
 release: tests js-tests new-release
 
@@ -161,3 +161,34 @@ test-package-from-vcs: check-git-clean poetry-sync set-version-from-vcs bdist_wh
 
 loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
+
+
+DOCKER_VERSION="202405.1128"
+DOCKER_BUILD=build --push --platform linux/amd64,linux/arm64
+#DOCKER_BUILD=build --platform linux/amd64,linux/arm64
+
+set-build-context:
+	docker context use desktop-linux
+
+build-dbserver: set-build-context
+	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_dbserver:${DOCKER_VERSION} -t iplweb/bpp_dbserver:latest -f deploy/dbserver/Dockerfile deploy/dbserver/
+
+build-appserver-base: set-build-context
+	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_base:${DOCKER_VERSION} -t iplweb/bpp_base:latest -f deploy/bpp_base/Dockerfile .
+
+build-appserver: set-build-context
+	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_appserver:${DOCKER_VERSION} -t iplweb/bpp_appserver:latest -f deploy/appserver/Dockerfile .
+
+build-workerserver: set-build-context
+	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_workerserver:${DOCKER_VERSION} -t iplweb/bpp_workerserver:latest -f deploy/workerserver/Dockerfile .
+
+build-webserver: set-build-context
+	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_webserver:${DOCKER_VERSION} -t iplweb/bpp_webserver:latest -f deploy/webserver/Dockerfile deploy/webserver/
+
+build-servers: build-appserver-base build-appserver build-workerserver
+
+docker: build-dbserver build-webserver build-servers
+
+reload-compose:
+	docker-compose pull
+	docker-compose up --build --force-recreate

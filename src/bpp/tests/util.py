@@ -1,5 +1,6 @@
 """Ten moduł zawiera 'normalne', dla ludzi funkcje, które mogą być używane
 do ustawiania testów."""
+
 from __future__ import annotations
 
 import cgi
@@ -265,6 +266,7 @@ def select_select2_autocomplete(
     :param element_id: ID elementu (tekst)
     :param value: tekst do wpisania
     """
+    wait_for(lambda: len(browser.find_by_id(f"select2-{element_id}-container")) > 0)
 
     old_value = browser.find_by_id(f"select2-{element_id}-container").text
 
@@ -371,7 +373,7 @@ def assertPopupContains(browser, text, accept=True):
 def add_extra_autor_inline(browser, no_current_inlines=0):
     elem = None
 
-    WebDriverWait(browser, SHORT_WAIT_TIME).until(
+    WebDriverWait(browser, LONG_WAIT_TIME).until(
         lambda browser: not browser.find_by_css(".grp-add-handler").is_empty()
     )
 

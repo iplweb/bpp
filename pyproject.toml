@@ -109,6 +109,7 @@ pytest-recording = "^0.12.1"
 vcrpy = "4.4.0"
 towncrier = "^22.8.0"
 pytest-sugar = "^0.9.7"
+pytest-rerunfailures = "^14.0"
 
 [tool.bumpver]
 current_version = "v202405.1128"
@@ -124,6 +125,9 @@ push = false
 "setup.py" = ['version="{pep440_version}",']
 "src/django_bpp/version.py" = ['VERSION = "{pep440_version}"']
 "package.json" = ['"version": "{version}",']
+"Makefile" = [ 'DOCKER_VERSION="{pep440_version}"' ]
+"docker-compose.yml" = [ ":{pep440_version}"]
+
 
 
 
@@ -138,12 +142,9 @@ django-tabular-permissions = "2.9.1"
 simplejson = "3.17.5"
 django-dbtemplates-iplweb = "4.1.0"
 django-reversion = "5.0.4"
-channels = "3.0.5"
-# asgiref = "3.3.4"
-# Bez asgiref 3.3.4 daphne wyrzuca "single thread executor, would deadlock"
-# i efektywnie nie mozna testowac na lokalnej maszynie.
+channels = { version = "~4", extras = ["daphne"] }
 uvicorn = { version = "0.18.2", extras = ["standard"] }
-channels-redis = "3.4.0"
+channels-redis = "~4"
 django-flexible-reports = ">0.2.9"
 psycopg2 = "2.9.5"
 django-group-by = "0.3.1"
@@ -224,6 +225,7 @@ pandas = "^1.5.2"
 django-tinymce = "^3.6.1"
 crispy-bootstrap5 = "^0.7"
 crispy-bootstrap3 = "^2022.1"
+twisted = {extras = ["http2", "tls"], version = "^24.3.0"}
 
 [tool.poetry.dev-dependencies]
 model-bakery = ">=1.5.1"
@@ -233,16 +235,16 @@ django-webtest = "1.9.10"
 beautifulsoup4 = ">=4.6.0"
 WebTest = "3.0.0"
 Sphinx = "5.0.2"
-coveralls = "1.10.0"
+coveralls = "~4"
 psutil = ">=5.6.6"
-pytest = ">=6.2.4"
+# FIXME: https://github.com/TvoroG/pytest-lazy-fixture/issues/65
+pytest = "<8.0.0"
 pytest-django = ">=4.4.0"
 pytest-httpserver = "^1.0.8"
 pytest-cov = ">=2.10.1"
 splinter = ">=0.15.0"
 pytest-splinter = ">=3.3.1"
 selenium = ">=3.141.0"
-pytest-pythonpath = "^0.7.4"
 pytest-mock = "^3.7.0"
 pytest-xdist = ">=2.3.0"
 pytest-lazy-fixture = "^0.6.3"
@@ -252,15 +254,12 @@ black = "^22.3.0"
 autoflake = "^1.4"
 autopep8 = "^1.6.0"
 flake8 = "^4.0.1"
-# bumpver = {url = "https://github.com/mbarkhau/bumpver/archive/refs/tags/2022.1117.tar.gz#egg=bumpver-202211.17"}
-# Poprzedni bumpver: https://github.com/mpasternak/bumpver/archive/refs/tags/v202219.04-alpha.tar.gz#egg=bumpver-202219.04-alpha"
 typing = ">=3.6,<3.7"
 isort = ">=5.7.0"
 pre-commit = "^3.5.0"
 django-debug-toolbar = "^3.2.4"
 twine = "^4.0.0"
 PyPDF2 = "^1.27.7"
-pytest-rerunfailures = "^10.2"
 ipdb = "^0.13.9"
 ipython = "^8.2.0"
 flake8-bugbear = "^22.8.23"

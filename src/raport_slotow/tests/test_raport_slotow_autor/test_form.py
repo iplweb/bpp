@@ -69,6 +69,7 @@ def test_AutorRaportSlotowForm_clean_dzialanie_slot_zero(autor_jan_kowalski):
 
 
 @pytest.mark.selenium
+@pytest.mark.django_db
 def test_AutorRaportSlotowForm_javascript(admin_browser, live_server):
     url = live_server.url + reverse("raport_slotow:index")
     # with wait_for_page_load(admin_browser):

@@ -7,6 +7,7 @@ from django.db.models import Q
 from django.forms import BaseInlineFormSet
 from django.forms.widgets import Textarea
 from django.urls import reverse
+from sentry_sdk import capture_exception
 
 from import_common.normalization import normalize_isbn
 from pbn_api.exceptions import (
@@ -516,9 +517,11 @@ def sprobuj_wgrac_do_pbn(request, obj, force_upload=False, pbn_client=None):
             force_upload=force_upload,
             delete_statements_before_upload=uczelnia.pbn_api_kasuj_przed_wysylka,
             export_pk_zero=not uczelnia.pbn_api_nie_wysylaj_prac_bez_pk,
-            always_affiliate_to_uid=uczelnia.pbn_uid_id
-            if uczelnia.pbn_api_afiliacja_zawsze_na_uczelnie
-            else None,
+            always_affiliate_to_uid=(
+                uczelnia.pbn_uid_id
+                if uczelnia.pbn_api_afiliacja_zawsze_na_uczelnie
+                else None
+            ),
         )
 
     except SameDataUploadedRecently as e:
@@ -585,6 +588,10 @@ def sprobuj_wgrac_do_pbn(request, obj, force_upload=False, pbn_client=None):
             'Nie można zsynchronizować obiektu "%s" z PBN. Kod błędu: %r. %s'
             % (link_do_obiektu(obj), e, extra),
         )
+
+        # Zaloguj problem do Sentry, bo w sumie nie wiadomo, co to za problem na tym etapie...
+        capture_exception(e)
+
         return
 
     sent_data = SentData.objects.get(

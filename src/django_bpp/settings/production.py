@@ -22,8 +22,8 @@ CACHES = {
         ],
         "OPTIONS": {
             "DB": env("DJANGO_BPP_REDIS_DB_CACHE"),  # noqa
-            "PARSER_CLASS": "redis.connection.HiredisParser",
             "CONNECTION_POOL_CLASS": "redis.BlockingConnectionPool",
+            #
             "CONNECTION_POOL_CLASS_KWARGS": {
                 "max_connections": 50,
                 "timeout": 20,
@@ -38,6 +38,9 @@ CACHE_MIDDLEWARE_SECONDS = 3600 * 24
 
 DATA_UPLOAD_MAX_MEMORY_SIZE = 2621440 * 3  # 7.5 MB
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 50000
+
+# Persistent connections
+DATABASES["default"]["CONN_MAX_AGE"] = None  # noqa
 
 CACHEOPS = {
     "bpp.bppmultiseekvisibility": {"ops": ("get", "fetch")},
