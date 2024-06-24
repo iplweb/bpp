@@ -140,7 +140,7 @@ poetry-lock:
 	poetry lock
 	-git commit -m "Update lockfile" poetry.lock
 
-new-release: poetry-lock upgrade-version bdist_wheel upload build-servers
+new-release: poetry-lock upgrade-version bdist_wheel upload docker
 
 release: tests js-tests new-release
 
