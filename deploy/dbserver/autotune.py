@@ -10,7 +10,7 @@ ONE_MB_IN_KB = 1024
 ONE_GB_IN_KB = 1024 * ONE_MB_IN_KB
 
 how_much_ram_for_postgres = float(os.environ.get("POSTGRESQL_RAM_PERCENT", "0.5"))
-force_ram_for_postgres = os.environ.get("POSTGERSQL_RAM_THIS_MUCH_GB", None)
+force_ram_for_postgres = os.environ.get("POSTGRESQL_RAM_THIS_MUCH_GB", None)
 default_ram_for_postgres = 4096
 
 
@@ -82,6 +82,7 @@ def generate_config(ram_kb):
 def main():
     ram_mb = total_ram_size_mb()
     config = generate_config(ram_mb * ONE_MB_IN_KB)
+    print("# Automatically added by autotune.py")
     for k, v in sorted(config.items()):
         print(f"{k} = {v}")
 
