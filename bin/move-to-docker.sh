@@ -4,7 +4,12 @@
 # na PostgreSQL w dockerze + deinstalujący pakiety z "metalowego" serwera
 # które nie będą potrzebne po dockeryzacji:
 
-# Uruchamiac na "metalowym" serwerze.
+# NIE uruchamiac, traktować jako luźną propozycję wyciągnięcia informacji z metalowego
+# serwera...
+
+# Skopiuj ustawienia z plików ~/.env, ~/.env.local, ~/env/bin/activate
+# do pliku .env obok docker-compose
+cat .env .env.local env/bin/activate > .env
 
 # Nazwa bazy danych na "metalowym" serwerze
 DB_NAME=bpp
@@ -34,8 +39,8 @@ docker container unpause $WEB_CONTAINER
 
 # Zatrzymaj "metalowego" PostgreSQL
 service postgresql stop
-apt remove postgresql-14 redis nginx supervisor
-apt autoremove
+apt remove postgresql-14 redis-server redis supervisor nginx-*
+apt autoremove -y
 apt clean
 apt autoclean
 
