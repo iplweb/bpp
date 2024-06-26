@@ -95,6 +95,7 @@ services:
       - 443:443
     volumes:
       - staticfiles:/var/www/html/staticroot
+      - media:/mediaroot
       - ./deploy/webserver/key.pem:/etc/ssl/private/key.pem
       - ./deploy/webserver/cert.pem:/etc/ssl/private/cert.pem
 #    secrets:
