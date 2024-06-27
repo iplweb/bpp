@@ -33,7 +33,7 @@ RUN yarn
 
 FROM python:3.11-slim-bullseye as runtime
 
-RUN apt-get update && apt-get -y install python3-pip libpango-1.0-0 libpangoft2-1.0-0 postgresql-client
+RUN apt-get update && apt-get -y install python3-pip libpango-1.0-0 libpangoft2-1.0-0 postgresql-client pandoc
 
 ENV VIRTUAL_ENV=/app/.venv \
     PATH="/app/.venv/bin:$PATH" \
