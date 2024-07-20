@@ -1,6 +1,7 @@
 """
 Struktura uczelni.
 """
+
 from collections import defaultdict
 
 from autoslug import AutoSlugField
@@ -104,9 +105,7 @@ class Wydzial(ModelZAdnotacjami, ModelZPBN_ID):
         today = timezone.now().date()
 
         return (
-            Jednostka.objects.exclude(
-                rodzaj_jednostki=Jednostka.RODZAJ_JEDNOSTKI.KOLO_NAUKOWE
-            )
+            Jednostka.objects.all()
             .exclude(aktualna=True)
             .filter(
                 pk__in=Jednostka_Wydzial.objects.filter(wydzial=self)
@@ -127,7 +126,7 @@ class Wydzial(ModelZAdnotacjami, ModelZPBN_ID):
                 rodzaj_jednostki=Jednostka.RODZAJ_JEDNOSTKI.KOLO_NAUKOWE
             )
             .filter(
-                Q(wydzial=self)
+                Q(wydzial=self, aktualna=True)
                 | Q(
                     wydzial=None,
                     pk__in=Jednostka_Wydzial.objects.filter(wydzial=self)
