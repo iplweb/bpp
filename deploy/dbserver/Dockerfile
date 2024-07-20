@@ -12,3 +12,8 @@ HEALTHCHECK --interval=10s --timeout=3s --retries=5 \
 RUN apt update && apt install -y postgresql-plpython3-16 python-is-python3
 
 COPY --chmod=755 autotune.py /
+COPY --chmod=755 docker-entrypoint-autotune.sh /usr/local/bin/
+
+ENTRYPOINT ["docker-entrypoint-autotune.sh"]
+
+CMD ["postgres"]

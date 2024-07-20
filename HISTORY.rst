@@ -4,7 +4,17 @@ Historia zmian
 
 .. towncrier release notes start
 
-Bpp 202405.1128 (2024-06-24)
+Bpp 202407.1130 (2024-07-20)
+============================
+
+Naprawione
+----------
+
+- poprawiono dodawanie autorów przez "zakładkę Autorzy" - problem z komunikatem "wpisz rok" w polu dyscypliny
+  dla wydawnictw ciągłych i zwartych
+
+
+Bpp 202406.1129 (2024-06-24)
 ============================
 
 Naprawione

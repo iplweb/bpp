@@ -140,7 +140,7 @@ poetry-lock:
 	poetry lock
 	-git commit -m "Update lockfile" poetry.lock
 
-new-release: poetry-lock upgrade-version bdist_wheel upload build-servers
+new-release: poetry-lock upgrade-version bdist_wheel upload docker
 
 release: tests js-tests new-release
 
@@ -163,7 +163,7 @@ loc: clean
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION="202405.1128"
+DOCKER_VERSION="202407.1130"
 DOCKER_BUILD=build --push --platform linux/amd64,linux/arm64
 #DOCKER_BUILD=build --platform linux/amd64,linux/arm64
 

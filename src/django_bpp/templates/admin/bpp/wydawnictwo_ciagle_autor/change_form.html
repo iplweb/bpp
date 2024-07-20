@@ -1,5 +1,12 @@
 {% extends "admin/change_form.html" %}{% load i18n %}
 
+{% block object-tools %}
+    {% if rok %}
+        <input type="hidden" name="rok" value="{{ rok }}"/>
+    {% endif %}
+    {{ block.super }}
+{% endblock %}
+
 {% block object-tools-items %}
     {% if original.rekord.pk %}
         <li><a href="/admin/bpp/wydawnictwo_ciagle/{{ original.rekord.pk }}/change/">Edycja rekordu</a></li>
