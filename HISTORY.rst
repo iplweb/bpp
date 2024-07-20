@@ -4,6 +4,15 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202407.1131 (2024-07-20)
+============================
+
+Naprawione
+----------
+
+- nie wyświetlaj nieaktualnych kół naukowych w polu "aktualne jednostki", przesuń do "jednostki historyczne"
+
+
 Bpp 202407.1130 (2024-07-20)
 ============================
 
