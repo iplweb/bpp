@@ -80,6 +80,9 @@ def matchuj_wymiar_etatu(wymiar_etatu: str) -> Wymiar_Etatu:
 
 
 def matchuj_jednostke(nazwa, wydzial=None):
+    if nazwa is None:
+        return
+
     nazwa = normalize_nazwa_jednostki(nazwa)
 
     try:

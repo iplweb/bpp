@@ -140,17 +140,17 @@ def przeanalizuj_plik_xls(sciezka, parent):
             procent_subdyscypliny=original.get("procent subdyscypliny"),
         )
 
-        if i.dyscyplina_naukowa is None:
+        if i.dyscyplina is None:
             i.procent_dyscypliny = None
 
-        if i.subdyscyplina_naukowa is None:
+        if i.subdyscyplina is None:
             i.procent_subdyscypliny = None
 
         if autor is None:
             i.stan = Import_Dyscyplin_Row.STAN.BLEDNY
             i.info = "Nie można dopasować autora"
         else:
-            if i.dyscyplina_naukowa is None and i.subdyscyplina_naukowa is not None:
+            if i.dyscyplina is None and i.subdyscyplina is not None:
                 i.stan = Import_Dyscyplin_Row.STAN.BLEDNY
                 i.info = "Dyscyplina pusta, subdyscyplina ustawiona."
 

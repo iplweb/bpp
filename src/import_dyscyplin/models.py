@@ -204,9 +204,9 @@ class Import_Dyscyplin(TimeStampedModel):
         field=stan,
         source=STAN.NOWY,
         target=GET_STATE(
-            lambda self: self.STAN.BLEDNY
-            if self.bledny
-            else self.STAN.OKRESLANIE_OPCJI_IMPORTU,
+            lambda self: (
+                self.STAN.BLEDNY if self.bledny else self.STAN.OKRESLANIE_OPCJI_IMPORTU
+            ),
             states=[STAN.BLEDNY, STAN.OKRESLANIE_OPCJI_IMPORTU],
         ),
         on_error=STAN.BLEDNY,
@@ -384,6 +384,7 @@ class Import_Dyscyplin(TimeStampedModel):
 
                 try:
                     Autor_Dyscyplina.objects.get(autor=elem.autor, rok=self.rok)
+
                 except Autor_Dyscyplina.DoesNotExist:
                     if (
                         elem.dyscyplina_naukowa is None
@@ -392,9 +393,10 @@ class Import_Dyscyplin(TimeStampedModel):
                         elem.stan = Import_Dyscyplin_Row.STAN.BLEDNY
                         elem.info = "To przypisanie zostało już usunięte"
                         elem.save()
+                        continue
 
-            if elem.dyscyplina_naukowa is not None:
-                elem.info = "Skasuję przypisanie na ten rok"
+            if elem.dyscyplina_naukowa is None:
+                elem.info = "Skasuję przypisanie na ten rok. "
                 elem.save()
 
     def id_zdublowanych_autorow(self):
@@ -483,10 +485,10 @@ class Import_Dyscyplin(TimeStampedModel):
                     subdyscyplina_naukowa=elem.subdyscyplina_naukowa,
                     procent_subdyscypliny=elem.procent_subdyscypliny,
                 )
-                elem.info = "nowe przypisanie dla %i: %s, %s." % (
+                elem.info = "nowe przypisanie dla %i: %s%s." % (
                     self.rok,
                     elem.dyscyplina_naukowa,
-                    elem.subdyscyplina_naukowa,
+                    (", " + str(elem.subdyscyplina_naukowa)).replace(", None", ""),
                 )
 
             elem.stan = Import_Dyscyplin_Row.STAN.ZINTEGROWANY
@@ -572,7 +574,9 @@ class Import_Dyscyplin_Row(models.Model):
             "info": self.info,
             "dyscyplina": f"{self.dyscyplina} ({self.kod_dyscypliny})",
             "procent_dyscypliny": self.procent_dyscypliny or "",
-            "subdyscyplina": f"{self.subdyscyplina} ({self.kod_subdyscypliny})",
+            "subdyscyplina": f"{self.subdyscyplina} ({self.kod_subdyscypliny})".replace(
+                "None ()", ""
+            ),
             "procent_subdyscypliny": self.procent_subdyscypliny or "",
             "dopasowanie_autora": "-",
         }
