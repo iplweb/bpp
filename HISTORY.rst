@@ -4,6 +4,15 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202407.1132 (2024-07-21)
+============================
+
+Naprawione
+----------
+
+- importuj plik dyscyplin bazując na formacie POLON (fix #1434)
+
+
 Bpp 202407.1131 (2024-07-20)
 ============================
 
