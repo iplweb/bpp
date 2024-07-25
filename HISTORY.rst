@@ -4,6 +4,15 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202407.1133 (2024-07-25)
+============================
+
+Usprawnienie
+------------
+
+- ranking autorów bez kół naukowych (#1395)
+
+
 Bpp 202407.1132 (2024-07-21)
 ============================
 
