@@ -1,5 +1,6 @@
 """W tym pakiecie znajdują się procedury generujące raporty, które są dostępne
 "od ręki" -- generowane za pomocą WWW"""
+
 from crispy_forms.helper import FormHelper
 from crispy_forms_foundation.layout import ButtonHolder
 from crispy_forms_foundation.layout import Column as F4Column
@@ -179,6 +180,19 @@ class RankingAutorowForm(forms.Form):
         "wchodzącą w struktury uczelni",
     )
 
+    bez_kol_naukowych = forms.BooleanField(
+        label="Bez kół naukowych",
+        initial=True,
+        required=False,
+        help_text="""Nie pokazuj autorów, których aktualna jednostka jest kołem naukowym""",
+    )
+    bez_nieaktualnych = forms.BooleanField(
+        label="Bez nieaktualnych autorów",
+        initial=True,
+        required=False,
+        help_text="""Nie pokazuj autorów, którzy nie mają określonego pola 'Aktualna jednostka'.""",
+    )
+
     od_roku = forms.IntegerField(initial=Uczelnia.objects.do_roku_default)
     do_roku = forms.IntegerField(initial=Uczelnia.objects.do_roku_default)
 
@@ -200,6 +214,8 @@ class RankingAutorowForm(forms.Form):
                 Row(F4Column("_export", css_class="large-12 small-12")),
                 Row(F4Column("rozbij_na_jednostki", css_class="large-12 small-12")),
                 Row(F4Column("tylko_afiliowane", css_class="large-12 small-12")),
+                Row(F4Column("bez_kol_naukowych", css_class="large-12 small-12")),
+                Row(F4Column("bez_nieaktualnych", css_class="large-12 small-12")),
                 Row(F4Column("wydzialy", css_class="large-12 small-12")),
                 Hidden("report", "ranking-autorow"),
             ),
@@ -207,5 +223,3 @@ class RankingAutorowForm(forms.Form):
         )
 
         super().__init__(*args, **kwargs)
-        # ustaw_rok(self['od_roku'], lata)
-        # ustaw_rok(self['do_roku'], lata)

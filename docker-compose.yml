@@ -29,12 +29,12 @@ services:
 #       ofelia.email-from: "Ofelia @ BPP <ofelia@bpp>"
 
   db:
-    image: iplweb/bpp_dbserver:202407.1132
+    image: iplweb/bpp_dbserver:202407.1133
     volumes:
       - postgresql_data:/var/lib/postgresql/data
 
   appserver:
-    image: iplweb/bpp_appserver:202407.1132
+    image: iplweb/bpp_appserver:202407.1133
     restart: always
     env_file: .env.docker
     depends_on:
@@ -64,14 +64,14 @@ services:
       ofelia.job-exec.pbn_integrator.command: "python src/manage.py tee pbn_integrator --enable-all --disable-multiprocessing"
 
   workserver:
-    image: iplweb/bpp_workerserver:202407.1132
+    image: iplweb/bpp_workerserver:202407.1133
     env_file: .env.docker
     depends_on:
       - redis
       - appserver
 
   denormserver:
-    image: iplweb/bpp_appserver:202407.1132
+    image: iplweb/bpp_appserver:202407.1133
     env_file: .env.docker
     entrypoint: ["python", "src/manage.py", "denorm_queue"]
 #    deploy:
@@ -85,7 +85,7 @@ services:
         condition: service_started
 
   webserver:
-    image: iplweb/bpp_webserver:202407.1132
+    image: iplweb/bpp_webserver:202407.1133
     restart: always
     depends_on:
       - redis
