@@ -218,6 +218,7 @@ class RankingAutorowFormularz(RaportyFormMixin, FormView):
         params["rozbij_na_jednostki"] = form.cleaned_data["rozbij_na_jednostki"]
         params["tylko_afiliowane"] = form.cleaned_data["tylko_afiliowane"]
         params["bez_kol_naukowych"] = form.cleaned_data["bez_kol_naukowych"]
+        params["bez_nieaktualnych"] = form.cleaned_data["bez_nieaktualnych"]
 
         return HttpResponseRedirect(url + "?" + urlencode(params))
 

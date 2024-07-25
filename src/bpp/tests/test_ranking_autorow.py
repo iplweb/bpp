@@ -100,3 +100,26 @@ def test_ranking_autorow_bez_kol_naukowych(
         reverse("bpp:ranking-autorow", args=(0, 3030)) + "?bez_kol_naukowych=True"
     )
     assert "Kowalski" not in res.rendered_content
+
+
+@pytest.mark.django_db
+def test_ranking_autorow_bez_nieaktualnych(
+    wydawnictwo_ciagle_z_autorem,
+    admin_client,
+    autor_jan_kowalski,
+):
+    autor_jan_kowalski.autor_jednostka_set.all().delete()
+
+    wydawnictwo_ciagle_z_autorem.punkty_pk = 20
+    wydawnictwo_ciagle_z_autorem.impact_factor = 20
+    wydawnictwo_ciagle_z_autorem.save()
+
+    res = admin_client.get(
+        reverse("bpp:ranking-autorow", args=(0, 3030)) + "?bez_nieaktualnych=False"
+    )
+    assert "Kowalski" in res.rendered_content
+
+    res = admin_client.get(
+        reverse("bpp:ranking-autorow", args=(0, 3030)) + "?bez_nieaktualnych=True"
+    )
+    assert "Kowalski" not in res.rendered_content

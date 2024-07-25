@@ -186,6 +186,12 @@ class RankingAutorowForm(forms.Form):
         required=False,
         help_text="""Nie pokazuj autorów, których aktualna jednostka jest kołem naukowym""",
     )
+    bez_nieaktualnych = forms.BooleanField(
+        label="Bez nieaktualnych autorów",
+        initial=True,
+        required=False,
+        help_text="""Nie pokazuj autorów, którzy nie mają określonego pola 'Aktualna jednostka'.""",
+    )
 
     od_roku = forms.IntegerField(initial=Uczelnia.objects.do_roku_default)
     do_roku = forms.IntegerField(initial=Uczelnia.objects.do_roku_default)
@@ -209,6 +215,7 @@ class RankingAutorowForm(forms.Form):
                 Row(F4Column("rozbij_na_jednostki", css_class="large-12 small-12")),
                 Row(F4Column("tylko_afiliowane", css_class="large-12 small-12")),
                 Row(F4Column("bez_kol_naukowych", css_class="large-12 small-12")),
+                Row(F4Column("bez_nieaktualnych", css_class="large-12 small-12")),
                 Row(F4Column("wydzialy", css_class="large-12 small-12")),
                 Hidden("report", "ranking-autorow"),
             ),

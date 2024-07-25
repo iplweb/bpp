@@ -99,6 +99,10 @@ class RankingAutorow(ExportMixin, SingleTableView):
     def bez_kol_naukowych(self):
         return self.request.GET.get("bez_kol_naukowych", "False") == "True"
 
+    @cached_property
+    def bez_nieaktualnych(self):
+        return self.request.GET.get("bez_nieaktualnych", "True") == "True"
+
     def get_queryset(self):
         qset = Sumy.objects.all()
         qset = qset.filter(
@@ -134,6 +138,9 @@ class RankingAutorow(ExportMixin, SingleTableView):
             qset = qset.exclude(
                 autor__aktualna_jednostka__rodzaj_jednostki=Jednostka.RODZAJ_JEDNOSTKI.KOLO_NAUKOWE
             )
+
+        if self.bez_nieaktualnych:
+            qset = qset.exclude(autor__aktualna_jednostka=None)
 
         uczelnia = Uczelnia.objects.get_default()
         if uczelnia is not None:
