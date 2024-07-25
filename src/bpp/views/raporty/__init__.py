@@ -1,5 +1,8 @@
 """W tym pakiecie znajdują się procedury generujące raporty, które są dostępne
 "od ręki" -- generowane za pomocą WWW"""
+
+from urllib.parse import urlencode
+
 from django.http import Http404
 from django.http.response import HttpResponseRedirect
 from django.urls import reverse
@@ -202,34 +205,21 @@ class RankingAutorowFormularz(RaportyFormMixin, FormView):
             ),
         )
 
+        params = {}
+
         w = form.cleaned_data["wydzialy"]
         if w:
-            url += "?"
-            url += "&".join(["wydzialy[]=%s" % x.pk for x in w])
+            params["wydzialy[]"] = [x.pk for x in w]
 
         e = form.cleaned_data["_export"]
         if e:
-            if url.find("?") < 0:
-                url += "?"
-            else:
-                url += "&"
-            url += f"_export={ e }"
+            params["_export"] = e
 
-        r = form.cleaned_data["rozbij_na_jednostki"]
-        if url.find("?") < 0:
-            url += "?"
-        else:
-            url += "&"
-        url += f"rozbij_na_jednostki={ r }"
+        params["rozbij_na_jednostki"] = form.cleaned_data["rozbij_na_jednostki"]
+        params["tylko_afiliowane"] = form.cleaned_data["tylko_afiliowane"]
+        params["bez_kol_naukowych"] = form.cleaned_data["bez_kol_naukowych"]
 
-        ta = form.cleaned_data["tylko_afiliowane"]
-        if url.find("?") < 0:
-            url += "?"
-        else:
-            url += "&"
-        url += f"tylko_afiliowane={ ta }"
-
-        return HttpResponseRedirect(url)
+        return HttpResponseRedirect(url + "?" + urlencode(params))
 
 
 class RaportDlaKomisjiCentralnejFormularz(RaportyFormMixin, FormView):

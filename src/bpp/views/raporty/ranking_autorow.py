@@ -14,7 +14,7 @@ from django_tables2.views import SingleTableView
 
 from django.utils.functional import cached_property
 
-from bpp.models import Autor, OpcjaWyswietlaniaField, Sumy, Uczelnia
+from bpp.models import Autor, Jednostka, OpcjaWyswietlaniaField, Sumy, Uczelnia
 from bpp.models.struktura import Wydzial
 
 
@@ -95,6 +95,10 @@ class RankingAutorow(ExportMixin, SingleTableView):
     def tylko_afiliowane(self):
         return self.request.GET.get("tylko_afiliowane", "False") == "True"
 
+    @cached_property
+    def bez_kol_naukowych(self):
+        return self.request.GET.get("bez_kol_naukowych", "False") == "True"
+
     def get_queryset(self):
         qset = Sumy.objects.all()
         qset = qset.filter(
@@ -125,6 +129,11 @@ class RankingAutorow(ExportMixin, SingleTableView):
         qset = qset.exclude(impact_factor_sum=0, liczba_cytowan_sum=0, punkty_kbn_sum=0)
 
         qset = qset.exclude(autor__pokazuj=False)
+
+        if self.bez_kol_naukowych:
+            qset = qset.exclude(
+                autor__aktualna_jednostka__rodzaj_jednostki=Jednostka.RODZAJ_JEDNOSTKI.KOLO_NAUKOWE
+            )
 
         uczelnia = Uczelnia.objects.get_default()
         if uczelnia is not None:
