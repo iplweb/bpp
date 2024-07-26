@@ -5,14 +5,11 @@ from crispy_forms.helper import FormHelper
 from crispy_forms_foundation.layout import ButtonHolder
 from crispy_forms_foundation.layout import Column as F4Column
 from crispy_forms_foundation.layout import Fieldset, Hidden, Layout, Row, Submit
-from dal import autocomplete
 from django import forms
 from django.core import validators
 from django_tables2.export.export import TableExport
 
 from bpp.models import Uczelnia, Wydzial
-from bpp.models.autor import Autor
-from bpp.models.struktura import Jednostka
 
 
 def ustaw_rok(rok, lata):
@@ -32,107 +29,6 @@ def ustaw_rok(rok, lata):
         rok.field.validators.append(validators.MaxValueValidator(rok.field.max_value))
     if rok.field.min_value is not None:
         rok.field.validators.append(validators.MinValueValidator(rok.field.min_value))
-
-
-class RaportJednostekForm(forms.Form):
-    jednostka = forms.ModelChoiceField(
-        queryset=Jednostka.objects.filter(widoczna=True),
-        widget=autocomplete.ModelSelect2(url="bpp:jednostka-widoczna-autocomplete"),
-    )
-
-    od_roku = forms.IntegerField()
-    do_roku = forms.IntegerField()
-    output = forms.BooleanField(
-        label="Pobierz jako plik Microsoft Word", required=False
-    )
-
-    def __init__(self, lata, *args, **kwargs):
-        self.helper = FormHelper()
-        self.helper.form_method = "post"
-        self.helper.form_action = "#RaportJednostek"
-
-        self.helper.layout = Layout(
-            Fieldset(
-                "Raport jednostek",
-                Row(F4Column("jednostka", css_class="large-12 small-12")),
-                Row(
-                    F4Column("od_roku", css_class="large-6 small-6"),
-                    F4Column("do_roku", css_class="large-6 small-6"),
-                ),
-                Row(F4Column("output", css_class="large-12 small-12")),
-                Hidden("report", "raport-jednostek"),
-            ),
-            ButtonHolder(
-                Submit("submit", "Wyświetl", css_class="button"),
-            ),
-        )
-
-        super().__init__(*args, **kwargs)
-        ustaw_rok(self["od_roku"], lata)
-        ustaw_rok(self["do_roku"], lata)
-
-
-class RaportAutorowForm(forms.Form):
-    autor = forms.ModelChoiceField(
-        queryset=Autor.objects.all(),
-        widget=autocomplete.ModelSelect2(url="bpp:autor-z-uczelni-autocomplete"),
-    )
-    od_roku = forms.IntegerField()
-    do_roku = forms.IntegerField()
-    output = forms.BooleanField(
-        label="Pobierz jako plik Microsoft Word", required=False
-    )
-
-    def __init__(self, lata, *args, **kwargs):
-        self.helper = FormHelper()
-        self.helper.form_method = "post"
-        self.helper.form_action = "#RaportAutorow"
-
-        # self.helper.form_action = "./prepare/"
-        self.helper.layout = Layout(
-            Fieldset(
-                "Raport autorów",
-                Row(F4Column("autor", css_class="large-12 small-12")),
-                Row(
-                    F4Column("od_roku", css_class="large-6 small-6"),
-                    F4Column("do_roku", css_class="large-6 small-6"),
-                ),
-                Row(F4Column("output", css_class="large-12 small-12")),
-                Hidden("report", "raport-autorow"),
-            ),
-            ButtonHolder(Submit("submit", "Szukaj", css_class="button white")),
-        )
-
-        super().__init__(*args, **kwargs)
-        ustaw_rok(self["od_roku"], lata)
-        ustaw_rok(self["do_roku"], lata)
-
-
-class RaportDlaKomisjiCentralnejForm(forms.Form):
-    autor = forms.ModelChoiceField(
-        queryset=Autor.objects.all(),
-        widget=autocomplete.ModelSelect2(url="bpp:public-autor-autocomplete"),
-    )
-
-    rok_habilitacji = forms.IntegerField(required=False)
-
-    def __init__(self, lata, *args, **kwargs):
-        self.helper = FormHelper()
-        self.helper.form_method = "post"
-        self.helper.form_action = "#RaportDlaKomisjiCentralnej"
-        # self.helper.form_action = "./prepare/"
-        self.helper.layout = Layout(
-            Fieldset(
-                "Raport dla Komisji Centralnej",
-                "autor",
-                "rok_habilitacji",
-                Hidden("report", "raport-dla-komisji-centralnej"),
-            ),
-            ButtonHolder(Submit("submit", "Zamów", css_class="button white")),
-        )
-
-        super().__init__(*args, **kwargs)
-        ustaw_rok(self["rok_habilitacji"], lata)
 
 
 class WydzialChoiceField(forms.ModelMultipleChoiceField):

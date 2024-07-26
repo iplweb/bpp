@@ -25,11 +25,6 @@
                 <a href="#"><i class="fi-graph-trend"></i> raporty</a>
                 <ul class="menu vertical">
                     {% load czy_pokazywac %}
-                    {% czy_pokazywac raport_dla_komisji_centralnej %}
-                        <li>
-                            <a href="{% url "bpp:raport_dla_komisji_centralnej" %}">raport
-                                dla Komisji Centralnej</a></li>
-                    {% end_czy_pokazywac %}
 
                     {% load user_in_group %}
 

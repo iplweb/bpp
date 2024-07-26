@@ -7,7 +7,6 @@ license = "MIT"
 packages = [
     { include = "api_v1", from = "src" },
     { include = "bpp", from = "src" },
-    { include = "celeryui", from = "src" },
     { include = "create_test_db", from = "src" },
     { include = "crossref_bpp", from = "src" },
     { include = "dynamic_columns", from = "src" },
@@ -168,8 +167,6 @@ pyoai = "2.5.0"
 django-crispy-forms = "2.0.0"
 crispy-forms-foundation = "1.0.1"
 django-compressor = "4.4"
-"zope.interface" = "5.1.0"
-"zope.component" = "4.6.2"
 sentry-sdk = "1.9.2"
 bleach = ">=3.3.0"
 django-session-security = "2.6.7"

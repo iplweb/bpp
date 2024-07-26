@@ -1,6 +1,7 @@
 """
 Struktura uczelni.
 """
+
 from typing import TYPE_CHECKING, List, Union
 
 from autoslug import AutoSlugField
@@ -149,10 +150,6 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
 
     pokazuj_raport_wydzialow = OpcjaWyswietlaniaField(
         "Pokazuj raport wydziałów", default=OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM
-    )
-
-    pokazuj_raport_dla_komisji_centralnej = OpcjaWyswietlaniaField(
-        "Pokazuj raport dla Komisji Centralnej"
     )
 
     pokazuj_praca_recenzowana = OpcjaWyswietlaniaField(

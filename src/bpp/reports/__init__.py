@@ -4,8 +4,6 @@ za pomocą celery.
 
 import re
 
-from celeryui.registry import registerAdapter
-
 # Bo padną importy reports/__init__.py w chwili importowania formularzy
 
 numery_stron_regex = re.compile(
@@ -95,12 +93,3 @@ def slugify(title):
 import logging
 
 logger = logging.getLogger(__name__)
-
-
-def addToRegistry(klass):
-    logger.info(f"rejestruje {klass.slug!r} jako {klass!r}")
-    registerAdapter(klass.slug, klass)
-
-
-# Poniższy import jest KONIECZNY żeby adaptery do registry się
-# prawidłowo zassały (tasks.py importuje tylko toplevel-module)
