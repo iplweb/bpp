@@ -27,7 +27,7 @@ FROM node:20.14-bullseye as yarn-builder
 
 COPY package.json yarn.lock ./
 
-RUN yarn
+RUN --mount=type=cache,target=/root/.yarn YARN_CACHE_FOLDER=/root/.yarn yarn
 
 ##########################################################################################
 
