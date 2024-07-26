@@ -1,13 +1,12 @@
 [tool.poetry]
 name = "bpp_iplweb"
-version = "202407.1133"
+version = "202407.1134"
 description = ""
 authors = ["Michał Pasternak <michal.dtz@gmail.com>"]
 license = "MIT"
 packages = [
     { include = "api_v1", from = "src" },
     { include = "bpp", from = "src" },
-    { include = "celeryui", from = "src" },
     { include = "create_test_db", from = "src" },
     { include = "crossref_bpp", from = "src" },
     { include = "dynamic_columns", from = "src" },
@@ -27,6 +26,7 @@ packages = [
     { include = "nowe_raporty", from = "src" },
     { include = "pbn_api", from = "src" },
     { include = "raport_slotow", from = "src" },
+    { include = "ranking_autorow", from = "src" },
     { include = "rozbieznosci_dyscyplin", from = "src" },
     { include = "rozbieznosci_if", from = "src" },
     { include = "tee", from = "src" },
@@ -112,7 +112,7 @@ pytest-sugar = "^0.9.7"
 pytest-rerunfailures = "^14.0"
 
 [tool.bumpver]
-current_version = "v202407.1133"
+current_version = "v202407.1134"
 version_pattern = "vYYYY0M.BUILD[-TAGNUM][GITHASH]"
 commit_message = "bump version {old_version} -> {new_version}"
 commit = true
@@ -168,8 +168,6 @@ pyoai = "2.5.0"
 django-crispy-forms = "2.0.0"
 crispy-forms-foundation = "1.0.1"
 django-compressor = "4.4"
-"zope.interface" = "5.1.0"
-"zope.component" = "4.6.2"
 sentry-sdk = "1.9.2"
 bleach = ">=3.3.0"
 django-session-security = "2.6.7"
@@ -189,7 +187,7 @@ django-webmaster-verification = "0.4.3"
 django-favicon-plus-reloaded = "1.1.6"
 django-querysetsequence = "0.12"
 pypandoc = "1.5"
-django-static-sitemaps = "^4.7.0"
+django-static-sitemaps = "^5.0.0"
 django-model-utils = "4.3.1"
 django-fsm = "2.8.0"
 django-mptt = "0.13.4"
@@ -270,7 +268,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.towncrier]
 package = "bpp"
-version = "202407.1133"
+version = "202407.1134"
 package_dir = "src"
 filename = "HISTORY.rst"
 

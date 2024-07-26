@@ -1,18 +1,13 @@
-# -*- encoding: utf-8 -*-
 import os
 
 from celery.utils.log import get_task_logger
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
-from django.core.management import call_command
 
 try:
-    from django.core.urlresolvers import reverse
+    pass
 except ImportError:
-    from django.urls import reverse
-
-from celeryui.interfaces import IWebTask
-from celeryui.models import Report
+    pass
 
 from bpp.models import (
     Praca_Doktorska,
@@ -21,7 +16,6 @@ from bpp.models import (
     Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
 )
-from bpp.util import remove_old_objects
 
 logger = get_task_logger(__name__)
 
@@ -33,30 +27,6 @@ def remove_file(path):
     if path.startswith(os.path.join(settings.MEDIA_ROOT, "report")):
         logger.warning("Removing %r" % path)
         os.unlink(path)
-
-
-@app.task
-def make_report(uid):
-    from celeryui.models import Report
-
-    from bpp import reports  # for registry
-
-    reports  # pycharm, don't clean this plz
-
-    report = Report.objects.get(uid=uid)
-    report.started()
-
-    def execute():
-        report.execute(raise_exceptions=True)
-        msg = 'Ukończono generowanie raportu "%s", <a href="%s">kliknij tutaj, aby otworzyć</a>. '
-        url = reverse("bpp:podglad-raportu", args=(report.uid,))
-        call_command(
-            "send_message",
-            report.ordered_by.username,
-            msg % (IWebTask(report).title, url),
-        )
-
-    return execute()
 
 
 task_limits = {}
@@ -76,11 +46,6 @@ def my_limit(fun):
         task_limits[fun] = fun.apply_async(
             countdown=settings.MAT_VIEW_REFRESH_COUNTDOWN
         )
-
-
-@app.task(ignore_result=True, store_errors_even_if_ignored=True)
-def remove_old_report_files():
-    return remove_old_objects(Report, field_name="started_on")
 
 
 def _zaktualizuj_liczbe_cytowan(klasy=None):

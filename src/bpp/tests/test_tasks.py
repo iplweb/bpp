@@ -1,29 +1,9 @@
-from datetime import timedelta
 from unittest.mock import Mock
 
 import pytest
-from model_bakery import baker
-
-from celeryui.models import Report
-
-from django.utils import timezone
 
 from bpp.models import Wydawnictwo_Ciagle
-from bpp.tasks import _zaktualizuj_liczbe_cytowan, remove_old_report_files
-
-
-@pytest.mark.django_db
-def test_remove_old_report_files():
-    baker.make(Report)
-    r = baker.make(Report)
-    r.started_on = timezone.now() - timedelta(days=20)
-    r.save()
-
-    assert Report.objects.all().count() == 2
-
-    remove_old_report_files()
-
-    assert Report.objects.all().count() == 1
+from bpp.tasks import _zaktualizuj_liczbe_cytowan
 
 
 @pytest.mark.django_db

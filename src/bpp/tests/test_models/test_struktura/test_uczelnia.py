@@ -95,7 +95,6 @@ lista_stron_raportow = [
     ("pokazuj_raport_autorow", "nowe_raporty/autor"),
     ("pokazuj_raport_jednostek", "nowe_raporty/jednostka"),
     ("pokazuj_raport_wydzialow", "nowe_raporty/wydzial"),
-    ("pokazuj_raport_dla_komisji_centralnej", "raporty/dla-komisji-centralnej"),
 ]
 
 
