@@ -2,10 +2,9 @@ from django.urls import path
 from django.urls import re_path as url
 from django.views.decorators.csrf import csrf_exempt
 
-from django.contrib.auth.decorators import login_required
+from ranking_autorow.views import RankingAutorow, RankingAutorowFormularz
 
 import bpp
-from bpp import reports  # noqa
 from bpp.views.api import (
     OstatniaJednostkaIDyscyplinaView,
     PunktacjaZrodlaView,
@@ -84,19 +83,6 @@ from bpp.views.browse import (
     ZrodloView,
 )
 from bpp.views.oai import OAIView
-from bpp.views.raporty import (
-    KasowanieRaportu,
-    PobranieRaportu,
-    PodgladRaportu,
-    RankingAutorow,
-    RankingAutorowFormularz,
-    RaportAutorow,
-    RaportDlaKomisjiCentralnejFormularz,
-    RaportJednostek,
-    RaportJednostek2012,
-    RaportSelector,
-)
-from bpp.views.raporty.raport_autorow_2012 import RaportAutorow2012
 
 urlpatterns = [
     url(
@@ -239,64 +225,15 @@ urlpatterns = [
         name="browse_rekord",
     ),
     url(r"^build_search/$", BuildSearch.as_view(), name="browse_build_search"),
-    url(r"^raporty/$", login_required(RaportSelector.as_view()), name="raporty"),
-    url(
-        r"^raporty/jednostek/$",
-        RaportJednostek.as_view(),
-        name="raport_jednostek_formularz",
-    ),
-    url(
-        r"^raporty/autorow/$", RaportAutorow.as_view(), name="raport_autorow_formularz"
-    ),
     url(
         r"^raporty/ranking-autorow/wybierz/$",
         RankingAutorowFormularz.as_view(),
         name="ranking_autorow_formularz",
     ),
     url(
-        r"^raporty/dla-komisji-centralnej/$",
-        login_required(RaportDlaKomisjiCentralnejFormularz.as_view()),
-        name="raport_dla_komisji_centralnej",
-    ),
-    url(
-        r"^raporty/pobranie/(?P<uid>[\w-]+)/$",
-        login_required(PobranieRaportu.as_view()),
-        name="pobranie-raportu",
-    ),
-    url(
-        r"^raporty/podglad/(?P<uid>[\w-]+)/skasuj/$",
-        login_required(KasowanieRaportu.as_view()),
-        name="kasowanie-raportu",
-    ),
-    url(
-        r"^raporty/podglad/(?P<uid>[\w-]+)/$",
-        login_required(PodgladRaportu.as_view()),
-        name="podglad-raportu",
-    ),
-    url(
         r"^raporty/ranking-autorow/(?P<od_roku>\d+)/(?P<do_roku>\d+)/$",
         RankingAutorow.as_view(),
         name="ranking-autorow",
-    ),
-    url(
-        r"^raporty/raport-jednostek-2012/(?P<pk>\d+)/(?P<rok_min>\d+)-(?P<rok_max>\d+)/$",
-        RaportJednostek2012.as_view(),
-        name="raport-jednostek-rok-min-max",
-    ),
-    url(
-        r"^raporty/raport-jednostek-2012/(?P<pk>\d+)/(?P<rok_min>\d+)/$",
-        RaportJednostek2012.as_view(),
-        name="raport-jednostek",
-    ),
-    url(
-        r"^raporty/raport-autorow-2012/(?P<pk>\d+)/(?P<rok_min>\d+)-(?P<rok_max>\d+)/$",
-        RaportAutorow2012.as_view(),
-        name="raport-autorow-rok-min-max",
-    ),
-    url(
-        r"^raporty/raport-autorow-2012/(?P<pk>\d+)/(?P<rok_min>\d+)/$",
-        RaportAutorow2012.as_view(),
-        name="raport-autorow",
     ),
     url(r"^$", bpp.views.root, name="root"),
     url(

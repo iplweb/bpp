@@ -1,0 +1,4 @@
+
+* przeniesiono ustawienia "ranking autorów bez kół naukowych" do obiektu uczelnia,
+* poprawki kodu: usunięcie kodu raportów jednostek i autorów, w tym tzw. "raport jednostek / autorów 2012",
+* poprawki kodu: usunięcie celeryui oraz raportów zależnych (j/w); przesunięcie rankingu autorów do oddzielnego modułu

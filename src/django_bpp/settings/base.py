@@ -344,7 +344,6 @@ INSTALLED_APPS = [
     "messages_extends",
     "multiseek",
     "django_extensions",
-    "celeryui",
     "crispy_forms",
     "crispy_bootstrap5",
     "crispy_bootstrap3",  # dla django-rest-api HTML
@@ -769,7 +768,6 @@ TABULAR_PERMISSIONS_CONFIG = {
             "auth",
             "password_policies",
             "notifications",
-            "celeryui",
             "dashboard",
             "django.contrib.contenttypes",
             "egeria",
@@ -1123,3 +1121,5 @@ SESSION_COOKIE_SECURE = True
 LANGUAGE_COOKIE_SECURE = True
 
 X_FRAME_OPTIONS = "SAMEORIGIN"
+
+STATICSITEMAPS_ROOT_DIR = os.path.relpath(STATIC_ROOT, os.getcwd())
