@@ -10,9 +10,9 @@ Bpp 202407.1134 (2024-07-26)
 Naprawione
 ----------
 
-- * przeniesiono ustawienia "ranking autorów bez kół naukowych" do obiektu uczelnia,
-  * poprawki kodu: usunięcie kodu raportów jednostek i autorów, w tym tzw. "raport jednostek / autorów 2012",
-  * poprawki kodu: usunięcie celeryui oraz raportów zależnych (j/w); przesunięcie rankingu autorów do oddzielnego modułu (#1395)
+- przeniesiono ustawienia "ranking autorów bez kół naukowych" do obiektu uczelnia,
+- poprawki kodu: usunięcie kodu raportów jednostek i autorów, w tym tzw. "raport jednostek / autorów 2012",
+- poprawki kodu: usunięcie celeryui oraz raportów zależnych (j/w); przesunięcie rankingu autorów do oddzielnego modułu (#1395)
 
 
 Bpp 202407.1133 (2024-07-25)
