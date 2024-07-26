@@ -1870,12 +1870,12 @@ django = "*"
 
 [[package]]
 name = "django-static-sitemaps"
-version = "4.7.0"
+version = "5.0.0"
 description = "Tool for generating sitemaps as static files"
 optional = false
 python-versions = "*"
 files = [
-    {file = "django-static-sitemaps-4.7.0.tar.gz", hash = "sha256:b9e3f5e50068075805a24481b2b144d211d740d81c262c2cbad4c555ea2eed29"},
+    {file = "django-static-sitemaps-5.0.0.tar.gz", hash = "sha256:4580bda5bbaa4dbf40bc8bbde5936e1675eac1c7b76f65286705befeeefbaa85"},
 ]
 
 [package.dependencies]
@@ -6531,4 +6531,4 @@ office365 = ["django-microsoft-auth"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.12"
-content-hash = "62a00bae060d8abe22e256aca9eb435995c21cbff4e8ee8deae2e6fd0e4b01b5"
+content-hash = "beb5b79f51ca373a953ef51fa0224381ac6595af4676a1e6f805f06191e4c1ff"

@@ -26,6 +26,7 @@ packages = [
     { include = "nowe_raporty", from = "src" },
     { include = "pbn_api", from = "src" },
     { include = "raport_slotow", from = "src" },
+    { include = "ranking_autorow", from = "src" },
     { include = "rozbieznosci_dyscyplin", from = "src" },
     { include = "rozbieznosci_if", from = "src" },
     { include = "tee", from = "src" },
@@ -186,7 +187,7 @@ django-webmaster-verification = "0.4.3"
 django-favicon-plus-reloaded = "1.1.6"
 django-querysetsequence = "0.12"
 pypandoc = "1.5"
-django-static-sitemaps = "^4.7.0"
+django-static-sitemaps = "^5.0.0"
 django-model-utils = "4.3.1"
 django-fsm = "2.8.0"
 django-mptt = "0.13.4"

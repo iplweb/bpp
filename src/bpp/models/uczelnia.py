@@ -138,6 +138,10 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         "Pokazuj ranking autorów",
     )
 
+    ranking_autorow_bez_kol_naukowych = models.BooleanField(
+        "Ranking autorów bez kół naukowych", default=True
+    )
+
     pokazuj_raport_uczelni = OpcjaWyswietlaniaField(
         "Pokazuj raport uczelni", default=OpcjaWyswietlaniaField.POKAZUJ_NIGDY
     )

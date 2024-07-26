@@ -2,8 +2,9 @@ from django.urls import path
 from django.urls import re_path as url
 from django.views.decorators.csrf import csrf_exempt
 
+from ranking_autorow.views import RankingAutorow, RankingAutorowFormularz
+
 import bpp
-from bpp import reports  # noqa
 from bpp.views.api import (
     OstatniaJednostkaIDyscyplinaView,
     PunktacjaZrodlaView,
@@ -82,7 +83,6 @@ from bpp.views.browse import (
     ZrodloView,
 )
 from bpp.views.oai import OAIView
-from bpp.views.raporty import RankingAutorow, RankingAutorowFormularz
 
 urlpatterns = [
     url(

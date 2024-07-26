@@ -1,8 +1,9 @@
 import pytest
 from django.urls import reverse
 
+from ranking_autorow.views import RankingAutorow
+
 from bpp.models import Jednostka
-from bpp.views.raporty import RankingAutorow
 
 TEST123 = "TEST123"
 
@@ -84,6 +85,7 @@ def test_ranking_autorow_bez_kol_naukowych(
     admin_client,
     jednostka,
     rf,
+    uczelnia,
 ):
     jednostka.rodzaj_jednostki = Jednostka.RODZAJ_JEDNOSTKI.KOLO_NAUKOWE
     jednostka.save()
@@ -92,14 +94,17 @@ def test_ranking_autorow_bez_kol_naukowych(
     wydawnictwo_ciagle_z_autorem.impact_factor = 20
     wydawnictwo_ciagle_z_autorem.save()
 
-    res = admin_client.get(
-        reverse("bpp:ranking-autorow", args=(0, 3030)) + "?bez_kol_naukowych=False"
-    )
-    assert "Kowalski" in res.rendered_content
+    # domyslnie jest ranking_autorow_bez_kol_naukowych = True
     res = admin_client.get(
         reverse("bpp:ranking-autorow", args=(0, 3030)) + "?bez_kol_naukowych=True"
     )
     assert "Kowalski" not in res.rendered_content
+
+    uczelnia.ranking_autorow_bez_kol_naukowych = False
+    uczelnia.save()
+
+    res = admin_client.get(reverse("bpp:ranking-autorow", args=(0, 3030)))
+    assert "Kowalski" in res.rendered_content
 
 
 @pytest.mark.django_db

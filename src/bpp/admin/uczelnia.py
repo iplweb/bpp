@@ -110,6 +110,7 @@ class UczelniaAdmin(
                     "pokazuj_punktacja_snip",
                     "pokazuj_status_korekty",
                     "pokazuj_ranking_autorow",
+                    "ranking_autorow_bez_kol_naukowych",
                     "pokazuj_raport_autorow",
                     "pokazuj_raport_jednostek",
                     "pokazuj_raport_wydzialow",
