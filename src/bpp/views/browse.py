@@ -1,6 +1,8 @@
 import json
 import re
 
+from django.db.models import Count
+
 from django.contrib.contenttypes.models import ContentType
 
 try:
@@ -148,10 +150,38 @@ class AutorzyView(Browser):
     paginate_by = 252
 
     def get_queryset(self):
-        return (
-            super()
-            .get_queryset()
-            .only("nazwisko", "imiona", "slug", "poprzednie_nazwiska")
+
+        # Uwzględnia wybraną literkę etc
+        ret = super().get_queryset()
+
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
+        if uczelnia is not None:
+
+            if not uczelnia.pokazuj_autorow_obcych_w_przegladaniu_danych:
+                ret = ret.annotate(
+                    Count("autor_jednostka")
+                )  # ilość jednostek dla każdego autora
+
+                # Wyrzuć autorów przypisanych do Obca + Błędna
+                ret = ret.exclude(
+                    Q(
+                        autor_jednostka__jednostka__pk=-1
+                    )  # "BŁĄD: brak wpisanej jednostki"
+                    & Q(autor_jednostka__jednostka__pk=uczelnia.obca_jednostka_id),
+                )
+
+                ret = ret.exclude(aktualna_jednostka=None, autor_jednostka__count=1)
+                ret = ret.exclude(
+                    aktualna_jednostka_id=uczelnia.obca_jednostka_id,
+                    autor_jednostka__count=1,
+                )
+
+            if not uczelnia.pokazuj_autorow_bez_prac_w_przegladaniu_danych:
+                # Nie pokazuj autorów bez prac
+                ret = ret.exclude(autorzyview=None)
+
+        return ret.only("nazwisko", "imiona", "slug", "poprzednie_nazwiska").order_by(
+            "nazwisko", "imiona"
         )
 
 

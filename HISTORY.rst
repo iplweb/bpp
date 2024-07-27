@@ -4,6 +4,23 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202407.1135 (2024-07-27)
+============================
+
+Naprawione
+----------
+
+- popraw błąd wyświetlania niektórych prac doktorskich (#1440)
+
+
+Usprawnienie
+------------
+
+- nie pokazuj obcych autorów na stronach przeglądania danych (opcja obiektu 'Uczelnia')
+
+- opcjonalnie nie wyświetlaj autorów bez publikacji na stronach przeglądania danych (opcja obiektu 'Uczelnia') (#1439)
+
+
 Bpp 202407.1134 (2024-07-26)
 ============================
 

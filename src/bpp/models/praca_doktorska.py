@@ -34,7 +34,7 @@ class Praca_Doktorska_Baza(
         class FakeAutorDoktoratuHabilitacji:
             autor = self.autor
             jednostka = self.jednostka
-            zapisany_jako = f"{ autor.nazwisko or '' } { autor.imiona or '' }"
+            zapisany_jako = f"{autor.nazwisko or ''} {autor.imiona or ''}"
 
         class FakeSet(list):
             def all(self):
@@ -45,6 +45,12 @@ class Praca_Doktorska_Baza(
 
             def odpiete_dyscypliny(self, *args, **kw):
                 return FakeSet([])
+
+            def exclude(self, *args, **kw):
+                return self
+
+            def exists(self):
+                return False
 
         ret = FakeAutorDoktoratuHabilitacji()
         ret.typ_odpowiedzialnosci = Typ_Odpowiedzialnosci.objects.get(skrot="aut.")

@@ -82,7 +82,7 @@ class TestBrowseAutorzy(UserTestCase):
 
     def test_get_queryset(self):
         q = self.view.get_queryset()
-        self.assertEqual(list(q)[0], self.autor)
+        self.assertIn(self.autor, list(q))
 
     def test_get_context_data(self):
         self.view.object_list = []
