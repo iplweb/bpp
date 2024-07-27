@@ -46,6 +46,12 @@ class Praca_Doktorska_Baza(
             def odpiete_dyscypliny(self, *args, **kw):
                 return FakeSet([])
 
+            def exclude(self, *args, **kw):
+                return self
+
+            def exists(self):
+                return False
+
         ret = FakeAutorDoktoratuHabilitacji()
         ret.typ_odpowiedzialnosci = Typ_Odpowiedzialnosci.objects.get(skrot="aut.")
         return FakeSet([ret])

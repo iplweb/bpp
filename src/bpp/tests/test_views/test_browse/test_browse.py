@@ -391,3 +391,18 @@ def test_PracaViewMixin_redirect(wydawnictwo_zwarte, rf, admin_user, denorms):
     ).get(req)
     assert res.status_code == 302
     assert res.url.find("/bpp/rekord/Wydawnictwo-Zwarte") == 0
+
+
+@pytest.mark.django_db
+def test_browse_doktorat(client, doktorat):
+    res = client.get(
+        reverse(
+            "bpp:browse_praca",
+            args=(
+                ContentType.objects.get(app_label="bpp", model="praca_doktorska").pk,
+                doktorat.pk,
+            ),
+        ),
+        follow=True,
+    )
+    assert res.status_code == 200

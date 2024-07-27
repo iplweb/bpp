@@ -25,6 +25,24 @@ from bpp.models import (
 from bpp.models.autor import Autor
 
 
+def test_autor_pokaz_doktorat_habilitacje_anon(autor_jan_nowak, client, doktorat):
+    doktorat.autor = autor_jan_nowak
+    doktorat.save()
+
+    url = reverse("bpp:browse_autor", args=(autor_jan_nowak.slug,))
+    assert client.get(url).status_code == 200
+
+
+def test_autor_pokaz_doktorat_habilitacje_admin(
+    autor_jan_nowak, admin_client, doktorat
+):
+    doktorat.autor = autor_jan_nowak
+    doktorat.save()
+
+    url = reverse("bpp:browse_autor", args=(autor_jan_nowak.slug,))
+    assert admin_client.get(url).status_code == 200
+
+
 def test_autor_ukrywanie_nazwisk(autor_jan_nowak, client, admin_client):
     NAZWISKO = "NazwiskoAutora"
     autor_jan_nowak.poprzednie_nazwiska = NAZWISKO
