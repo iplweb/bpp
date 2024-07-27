@@ -110,6 +110,7 @@ vcrpy = "4.4.0"
 towncrier = "^22.8.0"
 pytest-sugar = "^0.9.7"
 pytest-rerunfailures = "^14.0"
+django-debug-toolbar = "^4.4.6"
 
 [tool.bumpver]
 current_version = "v202407.1134"
