@@ -344,6 +344,19 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         choices=DeklaracjaDostepnosciChoices.choices,
         default=DeklaracjaDostepnosciChoices.NIE_POKAZUJ,
     )
+
+    pokazuj_autorow_obcych_w_przegladaniu_danych = models.BooleanField(
+        "Pokazuj autorów obcych w przeglądaniu danych",
+        default=False,
+        help_text="""Autor obcy to taki, który ma afiliację wyłącznie na
+        obcą jednostkę i obca jednostka jest jego jednostką aktualną""",
+    )
+
+    pokazuj_autorow_bez_prac_w_przegladaniu_danych = models.BooleanField(
+        verbose_name="Pokazuj autorów nie posiadających rekordów publikacji w przeglądaniu danych",
+        default=True,
+    )
+
     deklaracja_dostepnosci_tekst = HTMLField(
         verbose_name="Tekst na stronę BPP dla deklaracji dostępności",
         blank=True,

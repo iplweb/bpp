@@ -123,6 +123,8 @@ class UczelniaAdmin(
                     "pokazuj_raport_slotow_zerowy",
                     "pokazuj_raport_slotow_uczelnia",
                     "pokazuj_formularz_zglaszania_publikacji",
+                    "pokazuj_autorow_obcych_w_przegladaniu_danych",
+                    "pokazuj_autorow_bez_prac_w_przegladaniu_danych",
                     "wyszukiwanie_rekordy_na_strone_anonim",
                     "wyszukiwanie_rekordy_na_strone_zalogowany",
                     "sortuj_jednostki_alfabetycznie",
