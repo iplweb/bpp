@@ -173,7 +173,7 @@ set-build-context:
 build-dbserver: set-build-context
 	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_dbserver:${DOCKER_VERSION} -t iplweb/bpp_dbserver:latest -f deploy/dbserver/Dockerfile deploy/dbserver/
 
-build-appserver-base: set-build-context
+build-appserver-base: assets set-build-context
 	docker buildx ${DOCKER_BUILD} -t iplweb/bpp_base:${DOCKER_VERSION} -t iplweb/bpp_base:latest -f deploy/bpp_base/Dockerfile .
 
 build-appserver: set-build-context
