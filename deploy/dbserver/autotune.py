@@ -41,7 +41,10 @@ def normalize_size(v):
     return f"{int(v)}kB"
 
 
-def to_config_value(v):
+def to_config_value(v, n=None):
+    if n == "max_connections":
+        return int(v)
+
     if isinstance(v, str):
         return v
 
@@ -65,7 +68,8 @@ def generate_config(ram_kb):
     # We're tweaking this a little bit here. While we allow up to 250
     # connections (because we've frequently seen customers with leaky or
     # misconfigured connection pools), we assume 50 per GB.
-    conns = 50
+    conns = 50 * ram_kb / ONE_GB_IN_KB
+    config["max_connections"] = conns
     config["work_mem"] = (ram_kb * 3 / 4) / (conns * 3)
 
     config["min_wal_size"] = ONE_GB_IN_KB
@@ -76,7 +80,7 @@ def generate_config(ram_kb):
     config["checkpoint_completion_target"] = "0.7"
     config["default_statistics_target"] = "100"
 
-    return {x: to_config_value(y) for x, y in config.items()}
+    return {x: to_config_value(y, x) for x, y in config.items()}
 
 
 def main():
