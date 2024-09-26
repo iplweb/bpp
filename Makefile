@@ -38,7 +38,7 @@ distclean: clean
 
 
 yarn:
-	yarn install --no-progress --emoji false -s
+	yarn install #  --no-progress --emoji false -s
 
 assets: yarn
 	grunt build
