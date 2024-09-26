@@ -4,6 +4,15 @@ Historia zmian
 
 .. towncrier release notes start
 
+Bpp 202409.1136 (2024-09-26)
+============================
+
+Naprawione
+----------
+
+- poprawka błędu uniemożliwiającego zaznaczenie wydziałów w rankingu autorów
+
+
 Bpp 202407.1135 (2024-07-27)
 ============================
 
