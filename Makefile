@@ -37,11 +37,15 @@ distclean: clean
 	rm -rf dist
 
 
+createdb:
+	-createdb bpp
+	python src/manage.py migrate
+
 yarn:
 	yarn cache clean && yarn install
 	# yarn install #  --no-progress --emoji false -s
 
-assets: yarn
+assets: createdb yarn
 	grunt build
 	poetry run src/manage.py collectstatic --noinput -v0 --traceback
 	poetry run src/manage.py compress --force  -v0 --traceback
