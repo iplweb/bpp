@@ -107,8 +107,9 @@ class TestRankingAutorow(TestCase):
                     str(CURRENT_YEAR),
                 ),
             )
-            + "?wydzialy[]="
-            + str(self.w2.pk),
+            + "?wydzialy[]=["
+            + str(self.w2.pk)
+            + "]",
             follow=True,
         )
         # wydział 2
